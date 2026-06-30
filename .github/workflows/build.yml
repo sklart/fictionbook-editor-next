@@ -16,13 +16,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 0
-
-      - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v2
 
       - name: Check generated version files
         shell: pwsh

@@ -62,6 +62,13 @@ if (-not $cmake) {
 
 $generator = Get-CMakeVisualStudioGenerator -Toolset $PlatformToolset
 
+Write-Host "PCRE2: конфигурация $Configuration"
+Write-Host "PCRE2: PlatformToolset = $PlatformToolset"
+Write-Host "PCRE2: CMake generator = $generator"
+Write-Host "PCRE2: cmake.exe = $cmake"
+Write-Host "PCRE2: каталог сборки = $buildDir"
+Write-Host "PCRE2: каталог установки = $installDir"
+
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 

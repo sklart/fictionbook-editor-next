@@ -67,7 +67,23 @@ $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer
 & (Join-Path $repoRoot "tools\version\sync-version.ps1")
 & (Join-Path $repoRoot "tools\build\build-scintilla.ps1")
 Write-Host "Подготовка PCRE2..."
-& (Join-Path $repoRoot "tools\build\build-pcre2.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+$pcre2BuildScript = Join-Path $repoRoot "tools\build\build-pcre2.ps1"
+$pcre2BuildArgs = @(
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    $pcre2BuildScript,
+    "-Configuration",
+    $Configuration
+)
+if ($PlatformToolset) {
+    $pcre2BuildArgs += @("-PlatformToolset", $PlatformToolset)
+}
+& pwsh @pcre2BuildArgs
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
 if (-not (Test-Path -LiteralPath (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"))) {
     throw "PCRE2 не подготовлен: отсутствует build\pcre2\install\$Configuration\include\pcre2.h"
 }
