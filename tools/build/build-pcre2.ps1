@@ -86,33 +86,44 @@ function Invoke-ExternalCommand {
         [switch]$QuietOutput
     )
 
-    $global:LASTEXITCODE = $null
-    if (-not $QuietOutput) {
-        & $FilePath @ArgumentList
-        if ($null -eq $global:LASTEXITCODE) {
-            throw "Команда не вернула код завершения: $FilePath $($ArgumentList -join ' ')"
-        }
-        return [int]$global:LASTEXITCODE
+    $processStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $processStartInfo.FileName = $FilePath
+    $processStartInfo.UseShellExecute = $false
+    $processStartInfo.RedirectStandardOutput = $true
+    $processStartInfo.RedirectStandardError = $true
+
+    foreach ($argument in $ArgumentList) {
+        [void]$processStartInfo.ArgumentList.Add($argument)
     }
 
-    $logPath = Join-Path ([IO.Path]::GetTempPath()) ("build-pcre2-{0}-{1}.log" -f $PID, [guid]::NewGuid().ToString("N"))
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $processStartInfo
+
     try {
-        & $FilePath @ArgumentList *> $logPath
-        if ($null -eq $global:LASTEXITCODE) {
-            Write-Warning "Команда PCRE2 не вернула код завершения. Вывожу сохранённый лог:"
-            Get-Content -LiteralPath $logPath
-            throw "Команда не вернула код завершения: $FilePath $($ArgumentList -join ' ')"
-        }
-        $exitCode = [int]$global:LASTEXITCODE
-        if ($exitCode -ne 0) {
-            Write-Warning "Сборка PCRE2 завершилась с ошибкой. Вывожу сохранённый лог:"
-            Get-Content -LiteralPath $logPath
-        }
-        return $exitCode
+        [void]$process.Start()
+        $standardOutput = $process.StandardOutput.ReadToEnd()
+        $standardError = $process.StandardError.ReadToEnd()
+        $process.WaitForExit()
+        $exitCode = [int]$process.ExitCode
     }
     finally {
-        Remove-Item -LiteralPath $logPath -Force -ErrorAction SilentlyContinue
+        $process.Dispose()
     }
+
+    if ((-not $QuietOutput) -or $exitCode -ne 0) {
+        if (-not [string]::IsNullOrWhiteSpace($standardOutput)) {
+            $standardOutput -split "`r?`n" | Where-Object { $_ } | ForEach-Object { Write-Host $_ }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($standardError)) {
+            $standardError -split "`r?`n" | Where-Object { $_ } | ForEach-Object { Write-Host $_ }
+        }
+    }
+
+    if ($exitCode -ne 0) {
+        Write-Warning "Сборка PCRE2 завершилась с ошибкой."
+    }
+
+    return $exitCode
 }
 
 function Copy-Pcre2OutputIfMissing {
@@ -211,9 +222,10 @@ try {
         "-D", "PCRE2_SUPPORT_JIT=OFF"
     )
 
+    Write-Host "PCRE2: конфигурация CMake"
     $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $configureArgs -QuietOutput:$Quiet
     if ($exitCode -ne 0) {
-        exit $exitCode
+        throw "Конфигурация PCRE2 завершилась с кодом $exitCode."
     }
 
     foreach ($target in @("pcre2-8-static", "pcre2-posix-static")) {
@@ -221,7 +233,7 @@ try {
         $buildArgs = @("--build", $buildDir, "--config", $Configuration, "--target", $target)
         $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $buildArgs -QuietOutput:$Quiet
         if ($exitCode -ne 0) {
-            exit $exitCode
+            throw "Сборка цели PCRE2 $target завершилась с кодом $exitCode."
         }
     }
 
@@ -229,7 +241,7 @@ try {
     $installArgs = @("--install", $buildDir, "--config", $Configuration)
     $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $installArgs -QuietOutput:$Quiet
     if ($exitCode -ne 0) {
-        exit $exitCode
+        throw "Установка PCRE2 завершилась с кодом $exitCode."
     }
 
     Copy-Pcre2RequiredFile -FileName "pcre2.h" -DestinationDirectory (Join-Path $installDir "include") -CandidatePaths @(
