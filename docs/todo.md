@@ -232,6 +232,9 @@
   `build.ps1 -Configuration Release -Platform Win32 -SkipUpx`,
   `verify-release.ps1 -Configuration Release`, FBE startup, FBV fixture,
   FBShell loader, shell-surface diagnostics и plugin/export smoke.
+- [x] Закрыта регрессия clean GitHub Actions/standalone-сборки `FBShell` после
+  WTL 10.0.1: helper-функции переведены с `WTL::CString` на `ATL::CString`,
+  а include-путь WTL в `FBShell.vcxproj` сделан относительным к проекту.
 
 - Если обновления `Scintilla` / `Lexilla` / `PCRE2` / `Hunspell` станут регулярной
   операцией, добавить поверх нового download/apply-контура отдельный

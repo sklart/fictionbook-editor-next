@@ -41,6 +41,9 @@
 - Обновление WTL 10.0.1 проверено автоматическим smoke-контуром: FBE startup,
   FBV fixture, FBShell loader, shell-surface diagnostics, ExportEPUB regression,
   plugin mojibake check, полный `build.ps1` и `verify-release.ps1`.
+- Исправлена clean CI- и standalone-сборка `FBShell` после обновления WTL
+  10.0.1: общие helper-функции shell-модуля явно используют `ATL::CString`, а
+  путь к WTL в `FBShell.vcxproj` больше не зависит от значения `$(SolutionDir)`.
 - Проверка обновлений в окне `О программе` стала устойчивее к GitHub/raw-ответам
   без явного `Content-Length`: манифест `update.xml` больше не должен ошибочно
   показывать `Ошибка загрузки` только из-за формата HTTP-ответа.

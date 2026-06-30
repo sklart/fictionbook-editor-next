@@ -6,8 +6,8 @@
 extern const wchar_t 	*FBNS;
 extern const wchar_t 	*XLINKNS;
 bool	StrEQ(const wchar_t *zstr,const wchar_t *wstr,int wlen);
-void	NormalizeInplace(WTL::CString& s);
-WTL::CString	GetAttr(MSXML2::ISAXAttributes *attr,const wchar_t *name,const wchar_t *ns=NULL);
+void	NormalizeInplace(ATL::CString& s);
+ATL::CString	GetAttr(MSXML2::ISAXAttributes *attr,const wchar_t *name,const wchar_t *ns=NULL);
 template<class T>
 extern inline HRESULT CreateObject(CComPtr<T>& ptr) {
   T	  *obj;
@@ -17,7 +17,7 @@ extern inline HRESULT CreateObject(CComPtr<T>& ptr) {
   ptr=obj;
   return S_OK;
 }
-void	AppendText(WTL::CString& str,const TCHAR *text,int textlen);
+void	AppendText(ATL::CString& str,const TCHAR *text,int textlen);
 
 extern CRITICAL_SECTION	g_Lock;
 

@@ -84,7 +84,7 @@ bool StrEQ(const wchar_t *zstr,const wchar_t *wstr,int wlen) {
   return wlen==0 && !*zstr;
 }
 
-void NormalizeInplace(WTL::CString& s) {
+void NormalizeInplace(ATL::CString& s) {
   int len=s.GetLength();
   TCHAR *p=s.GetBuffer(len);
   TCHAR *r=p;
@@ -119,7 +119,7 @@ void NormalizeInplace(WTL::CString& s) {
   s.ReleaseBuffer(static_cast<int>(q-r));
 }
 
-WTL::CString GetAttr(MSXML2::ISAXAttributes *attr,const wchar_t *name,const wchar_t *ns) {
+ATL::CString GetAttr(MSXML2::ISAXAttributes *attr,const wchar_t *name,const wchar_t *ns) {
   int nslen=ns ? lstrlenW(ns) : 0;
   int nlen=lstrlenW(name);
 
@@ -127,14 +127,14 @@ WTL::CString GetAttr(MSXML2::ISAXAttributes *attr,const wchar_t *name,const wcha
   wchar_t *val;
 
   if (FAILED(attr->raw_getValueFromName((wchar_t*)ns,nslen,(wchar_t*)name,nlen,&val,&vlen)))
-    return WTL::CString();
+    return ATL::CString();
 
-  WTL::CString ret(val,vlen);
+  ATL::CString ret(val,vlen);
   NormalizeInplace(ret);
   return ret;
 }
 
-void AppendText(WTL::CString& str,const TCHAR *text,int len) {
+void AppendText(ATL::CString& str,const TCHAR *text,int len) {
   int off=str.GetLength();
   int total=off+len;
 
