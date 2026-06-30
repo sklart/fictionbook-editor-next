@@ -67,6 +67,7 @@
 <img src="docs/screenshots/ExportEPUB.png" alt="Настройки экспорта в EPUB" width="30%">
 - Добавлен плагин импорта EPUB.
 
+<img src="docs/screenshots/ImportEPUB.png" alt="Настройки импорта в EPUB" width="30%">
 - Добавлены плагины экспорта в DOCX и EPUB, плагин импорта EPUB.
 
 - Для ImportEPUB добавлена вспомогательная библиотека `ImportEPUBLunaSVG.dll`, которая помогает преобразовывать SVG-обложки EPUB в PNG/JPEG.
