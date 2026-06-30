@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [ValidateSet("Debug", "Release")]
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+
+    [string]$PlatformToolset
 )
 
 $ErrorActionPreference = "Stop"
@@ -9,7 +11,14 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
-& (Join-Path $repoRoot "tools\build\build-pcre2.ps1") -Configuration $Configuration -Quiet
+$buildPcre2Arguments = @{
+    Configuration = $Configuration
+    Quiet = $true
+}
+if ($PlatformToolset) {
+    $buildPcre2Arguments.PlatformToolset = $PlatformToolset
+}
+& (Join-Path $repoRoot "tools\build\build-pcre2.ps1") @buildPcre2Arguments
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

@@ -1,6 +1,8 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+
+    [string]$PlatformToolset
 )
 
 $ErrorActionPreference = "Stop"
@@ -60,9 +62,15 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1")
-& (Join-Path $repoRoot "tools\tests\test-pcre2.ps1") -Configuration $Configuration
-& (Join-Path $repoRoot "tools\tests\test-pcre2-wrapper.ps1") -Configuration $Configuration
-& (Join-Path $repoRoot "tools\tests\test-pcre2-replace.ps1") -Configuration $Configuration
+$pcre2TestArguments = @{
+    Configuration = $Configuration
+}
+if ($PlatformToolset) {
+    $pcre2TestArguments.PlatformToolset = $PlatformToolset
+}
+& (Join-Path $repoRoot "tools\tests\test-pcre2.ps1") @pcre2TestArguments
+& (Join-Path $repoRoot "tools\tests\test-pcre2-wrapper.ps1") @pcre2TestArguments
+& (Join-Path $repoRoot "tools\tests\test-pcre2-replace.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-export-epub-cyrillic.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-epub-xhtml11.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-plugin-mojibake.ps1")

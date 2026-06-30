@@ -101,7 +101,13 @@ foreach ($propertyHandlerPlatform in @("Win32", "x64")) {
     }
 }
 
-& (Join-Path $PSScriptRoot "verify-release.ps1") -Configuration $Configuration
+$verifyReleaseArguments = @{
+    Configuration = $Configuration
+}
+if ($PlatformToolset) {
+    $verifyReleaseArguments.PlatformToolset = $PlatformToolset
+}
+& (Join-Path $PSScriptRoot "verify-release.ps1") @verifyReleaseArguments
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1")
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
 & (Join-Path $PSScriptRoot "package-portable.ps1") `
