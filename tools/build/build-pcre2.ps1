@@ -86,15 +86,24 @@ function Invoke-ExternalCommand {
         [switch]$QuietOutput
     )
 
+    $global:LASTEXITCODE = $null
     if (-not $QuietOutput) {
         & $FilePath @ArgumentList
-        return $LASTEXITCODE
+        if ($null -eq $global:LASTEXITCODE) {
+            throw "Команда не вернула код завершения: $FilePath $($ArgumentList -join ' ')"
+        }
+        return [int]$global:LASTEXITCODE
     }
 
     $logPath = Join-Path ([IO.Path]::GetTempPath()) ("build-pcre2-{0}-{1}.log" -f $PID, [guid]::NewGuid().ToString("N"))
     try {
         & $FilePath @ArgumentList *> $logPath
-        $exitCode = $LASTEXITCODE
+        if ($null -eq $global:LASTEXITCODE) {
+            Write-Warning "Команда PCRE2 не вернула код завершения. Вывожу сохранённый лог:"
+            Get-Content -LiteralPath $logPath
+            throw "Команда не вернула код завершения: $FilePath $($ArgumentList -join ' ')"
+        }
+        $exitCode = [int]$global:LASTEXITCODE
         if ($exitCode -ne 0) {
             Write-Warning "Сборка PCRE2 завершилась с ошибкой. Вывожу сохранённый лог:"
             Get-Content -LiteralPath $logPath
