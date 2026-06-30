@@ -58,7 +58,7 @@ jobs:
         run: ./tools/build/verify-artifacts.ps1 -Platform Win32
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: FictionBookEditorNext-${{ github.sha }}-win32
           path: out/artifacts/*
