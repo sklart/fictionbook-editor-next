@@ -131,6 +131,53 @@ function Copy-Pcre2OutputIfMissing {
     Write-Host "PCRE2: восстановлен файл $destinationPath из $sourcePath"
 }
 
+function Copy-Pcre2RequiredFile {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FileName,
+
+        [Parameter(Mandatory)]
+        [string]$DestinationDirectory,
+
+        [Parameter(Mandatory)]
+        [string[]]$CandidatePaths
+    )
+
+    $destinationPath = Join-Path $DestinationDirectory $FileName
+    foreach ($candidatePath in $CandidatePaths) {
+        if (Test-Path -LiteralPath $candidatePath) {
+            New-Item -ItemType Directory -Path $DestinationDirectory -Force | Out-Null
+            Copy-Item -LiteralPath $candidatePath -Destination $destinationPath -Force
+            Write-Host "PCRE2: разложен файл $destinationPath из $candidatePath"
+            return
+        }
+    }
+
+    Copy-Pcre2OutputIfMissing -FileName $FileName -DestinationDirectory $DestinationDirectory
+}
+
+function Assert-Pcre2Prepared {
+    $requiredPaths = @(
+        (Join-Path $installDir "include\pcre2.h"),
+        (Join-Path $installDir "include\pcre2posix.h"),
+        (Join-Path $installDir "lib\pcre2-8-static.lib"),
+        (Join-Path $installDir "lib\pcre2-posix-static.lib")
+    )
+
+    $missingPaths = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_) })
+    if ($missingPaths.Count -eq 0) {
+        return
+    }
+
+    Write-Warning "PCRE2 не разложен полностью. Найденные файлы build\\pcre2:"
+    Get-ChildItem -LiteralPath $buildRoot -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like "pcre2*.h" -or $_.Name -like "pcre2*.lib" } |
+        Select-Object -ExpandProperty FullName |
+        ForEach-Object { Write-Warning "  $_" }
+
+    throw ("PCRE2 не подготовлен, отсутствуют обязательные файлы: {0}" -f ($missingPaths -join "; "))
+}
+
 try {
     $mutexAcquired = $buildMutex.WaitOne([TimeSpan]::FromMinutes(10))
     if (-not $mutexAcquired) {
@@ -160,23 +207,42 @@ try {
         exit $exitCode
     }
 
-    $buildArgs = @("--build", $buildDir, "--config", $Configuration, "--target", "pcre2-8-static", "pcre2-posix-static")
-    $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $buildArgs -QuietOutput:$Quiet
-    if ($exitCode -ne 0) {
-        exit $exitCode
+    foreach ($target in @("pcre2-8-static", "pcre2-posix-static")) {
+        Write-Host "PCRE2: сборка цели $target"
+        $buildArgs = @("--build", $buildDir, "--config", $Configuration, "--target", $target)
+        $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $buildArgs -QuietOutput:$Quiet
+        if ($exitCode -ne 0) {
+            exit $exitCode
+        }
     }
 
+    Write-Host "PCRE2: установка в $installDir"
     $installArgs = @("--install", $buildDir, "--config", $Configuration)
     $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $installArgs -QuietOutput:$Quiet
     if ($exitCode -ne 0) {
         exit $exitCode
     }
 
-    Copy-Pcre2OutputIfMissing -FileName "pcre2.h" -DestinationDirectory (Join-Path $installDir "include")
-    Copy-Pcre2OutputIfMissing -FileName "pcre2posix.h" -DestinationDirectory (Join-Path $installDir "include")
-    Copy-Pcre2OutputIfMissing -FileName "pcre2-8-static.lib" -DestinationDirectory (Join-Path $installDir "lib")
-    Copy-Pcre2OutputIfMissing -FileName "pcre2-posix-static.lib" -DestinationDirectory (Join-Path $installDir "lib")
+    Copy-Pcre2RequiredFile -FileName "pcre2.h" -DestinationDirectory (Join-Path $installDir "include") -CandidatePaths @(
+        (Join-Path $buildDir "interface\pcre2.h"),
+        (Join-Path $sourceDir "src\pcre2.h"),
+        (Join-Path $sourceDir "pcre2.h")
+    )
+    Copy-Pcre2RequiredFile -FileName "pcre2posix.h" -DestinationDirectory (Join-Path $installDir "include") -CandidatePaths @(
+        (Join-Path $buildDir "interface\pcre2posix.h"),
+        (Join-Path $sourceDir "src\pcre2posix.h"),
+        (Join-Path $sourceDir "pcre2posix.h")
+    )
+    Copy-Pcre2RequiredFile -FileName "pcre2-8-static.lib" -DestinationDirectory (Join-Path $installDir "lib") -CandidatePaths @(
+        (Join-Path $buildDir "$Configuration\pcre2-8-static.lib"),
+        (Join-Path $buildDir "pcre2-8-static.lib")
+    )
+    Copy-Pcre2RequiredFile -FileName "pcre2-posix-static.lib" -DestinationDirectory (Join-Path $installDir "lib") -CandidatePaths @(
+        (Join-Path $buildDir "$Configuration\pcre2-posix-static.lib"),
+        (Join-Path $buildDir "pcre2-posix-static.lib")
+    )
 
+    Assert-Pcre2Prepared
     Write-Host "PCRE2 подготовлен в каталоге $installDir"
 }
 finally {
