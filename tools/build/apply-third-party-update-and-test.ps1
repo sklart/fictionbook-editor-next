@@ -6,7 +6,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell")]
+    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "wtl")]
     [string]$Dependency,
 
     [string]$SourcePath,
@@ -147,11 +147,35 @@ function Invoke-HunspellPipeline {
     }
 }
 
+function Invoke-WtlPipeline {
+    Invoke-ScriptStep -Label (Get-ThirdPartyText -Base64 "0KDQsNC30LLRkdGA0YLRi9Cy0LDQvdC40LUg0L7QsdC90L7QstC70LXQvdC40Y8=") -Action { Invoke-ApplyStep }
+
+    if ($script:IsWhatIfMode) {
+        Write-Host (Get-ThirdPartyText -Base64 "V2hhdElmINCw0LrRgtC40LLQtdC9OiDRiNCw0LPQuCDRgdCx0L7RgNC60Lgg0Lgg0YLQtdGB0YLQvtCyINC/0YDQvtC/0YPRidC10L3Riy4=")
+        return
+    }
+
+    Invoke-ScriptStep -Label "Сборка после обновления WTL" -Action {
+        & (Join-Path $PSScriptRoot "build.ps1") -Configuration $Configuration -Platform Win32 -SkipUpx
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+    }
+
+    Invoke-ScriptStep -Label "Release-gate после обновления WTL" -Action {
+        & (Join-Path $PSScriptRoot "verify-release.ps1") -Configuration $Configuration
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+    }
+}
+
 switch ($Dependency) {
     "scintilla" { Invoke-ScintillaPipeline }
     "lexilla" { Invoke-ScintillaPipeline }
     "pcre2" { Invoke-Pcre2Pipeline }
     "hunspell" { Invoke-HunspellPipeline }
+    "wtl" { Invoke-WtlPipeline }
     default { throw (Format-ThirdPartyText "0J3QtdC40LfQstC10YHRgtC90YvQuSBvcmNoZXN0cmF0b3Ig0LTQu9GPINC30LDQstC40YHQuNC80L7RgdGC0LggezB9" $Dependency) }
 }
 

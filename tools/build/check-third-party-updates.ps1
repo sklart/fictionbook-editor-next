@@ -5,7 +5,7 @@
 
 [CmdletBinding()]
 param(
-    [ValidateSet("all", "scintilla", "lexilla", "pcre2", "hunspell")]
+    [ValidateSet("all", "scintilla", "lexilla", "pcre2", "hunspell", "wtl")]
     [string[]]$Dependency = @("all")
 )
 

@@ -6,7 +6,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell")]
+    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "wtl")]
     [string]$Dependency,
 
     [string]$SourcePath,
@@ -116,6 +116,14 @@ function Resolve-SourceLayout {
         return $CandidatePath
     }
     catch {
+        if ($DependencyEntry.SourceSubdirectory) {
+            $nestedPath = Join-Path $CandidatePath $DependencyEntry.SourceSubdirectory
+            if (Test-Path -LiteralPath $nestedPath) {
+                Assert-DependencySourceTree -Dependency $DependencyEntry -Path $nestedPath
+                return $nestedPath
+            }
+        }
+
         $subdirectories = Get-ChildItem -LiteralPath $CandidatePath -Directory -ErrorAction Stop
         if ($subdirectories.Count -eq 1) {
             $nestedPath = $subdirectories[0].FullName

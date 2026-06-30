@@ -6,7 +6,7 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell")]
+    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "wtl")]
     [string]$Dependency,
 
     [ValidateSet("Debug", "Release")]

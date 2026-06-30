@@ -418,10 +418,12 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlctrlx.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlddx.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atldlgs.h" />
+    <ClInclude Include="$(SolutionDir)third_party\wtl\atldwm.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlframe.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlgdi.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlmisc.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlprint.h" />
+    <ClInclude Include="$(SolutionDir)third_party\wtl\atlribbon.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlres.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlscrl.h" />
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlsplit.h" />

@@ -5,6 +5,10 @@
 заметки остаются в `docs/legacy-todo.txt`, а здесь ведётся актуальный бэклог.
 
 ## Актуальная техдолговая заметка
+- Рассмотреть возможность отдельного legacy-установщика для Windows XP: только
+  как отдельную ветку/артефакт с явным предупреждением о потере части современной
+  функциональности, без возврата legacy PCRE в основной runtime FictionBook
+  Editor Next.
 - [x] Подключить новые иконки приложения `FBE2_new.ico` и `FBE_new.ico` к ресурсам сборки FBE/локализованных resource DLL; старые иконки оставить в дереве как резерв.
 - [x] Добавить в установщик опциональную установку консольных batch-конвертеров из новых import/export-плагинов: секция `Batch-конвертеры` ставит `ExportDOCXBatch.exe`, `ExportEPUBBatch.exe`, `ImportEPUBBatch.exe` и их обязательные DLL-зависимости рядом с FBE.
 - [x] Вынести `ImportEPUBLunaSVG.dll` из batch-конвертеров в подсекцию `ImportEPUB`: библиотека устанавливается как дополнительный компонент для преобразования SVG-обложек EPUB в PNG/JPEG.
@@ -220,10 +224,14 @@
   также подтверждён на реальной машине. Дальше по этой теме нужен только
   контроль на отсутствие регрессий.
 
-- При случае расширить новый контур проверки обновлений сторонних исходников
-  за пределы `Scintilla` / `Lexilla` / `PCRE2` / `Hunspell`: отдельно оценить
-  `WTL`, `NSIS UAC` и решить, для каких зависимостей нужен
-  такой же автоматический check/download-поток.
+- [x] Контур проверки обновлений сторонних исходников расширен на `WTL`:
+  версия читается из `_WTL_VER`, upstream проверяется через SourceForge RSS,
+  download/apply-скрипты понимают архив WTL с вложенной папкой `Include`.
+  Следующий кандидат для отдельной оценки — `NSIS UAC`.
+- [x] WTL 10.0.1 проверен после раскладки: прошли `check-third-party-updates`,
+  `build.ps1 -Configuration Release -Platform Win32 -SkipUpx`,
+  `verify-release.ps1 -Configuration Release`, FBE startup, FBV fixture,
+  FBShell loader, shell-surface diagnostics и plugin/export smoke.
 
 - Если обновления `Scintilla` / `Lexilla` / `PCRE2` / `Hunspell` станут регулярной
   операцией, добавить поверх нового download/apply-контура отдельный

@@ -5,7 +5,7 @@
 
 [CmdletBinding()]
 param(
-    [ValidateSet("all", "scintilla", "lexilla", "pcre2", "hunspell")]
+    [ValidateSet("all", "scintilla", "lexilla", "pcre2", "hunspell", "wtl")]
     [string[]]$Dependency = @("all"),
 
     [string]$DestinationRoot,
@@ -71,15 +71,90 @@ function Download-File {
 
     Enable-ModernTls
 
-    $client = New-Object System.Net.WebClient
-    $client.Headers["User-Agent"] = "FBeditor-third-party-update-download"
+    Invoke-WebRequest `
+        -Uri $Uri `
+        -OutFile $OutputPath `
+        -Headers @{ "User-Agent" = "Mozilla/5.0 (compatible; FBeditor-third-party-update-download)" } `
+        -MaximumRedirection 10 `
+        -UseBasicParsing
+}
 
+function Test-ZipArchiveSignature {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $false
+    }
+
+    $stream = [IO.File]::OpenRead($Path)
     try {
-        $client.DownloadFile($Uri, $OutputPath)
+        if ($stream.Length -lt 4) {
+            return $false
+        }
+
+        return ($stream.ReadByte() -eq 0x50) -and
+            ($stream.ReadByte() -eq 0x4B)
     }
     finally {
-        $client.Dispose()
+        $stream.Dispose()
     }
+}
+
+function Resolve-LocalArchiveFallback {
+    param(
+        [Parameter(Mandatory)]
+        $DependencyEntry,
+
+        [Parameter(Mandatory)]
+        $Info
+    )
+
+    if ($DependencyEntry.Name -ne "wtl") {
+        return $null
+    }
+
+    $candidates = @()
+    if ($env:FBE_WTL_ARCHIVE) {
+        $candidates += $env:FBE_WTL_ARCHIVE
+    }
+
+    $candidates += (Join-Path (Split-Path $repoRoot -Parent) $Info.RemoteTag)
+
+    foreach ($candidate in $candidates) {
+        if ((Test-Path -LiteralPath $candidate) -and (Test-ZipArchiveSignature -Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Expand-DependencyArchive {
+    param(
+        [Parameter(Mandatory)]
+        $DependencyEntry,
+
+        [Parameter(Mandatory)]
+        [string]$ZipPath,
+
+        [Parameter(Mandatory)]
+        [string]$DestinationPath
+    )
+
+    if ($DependencyEntry.SourceSubdirectory) {
+        if (Test-Path -LiteralPath $DestinationPath) {
+            Remove-Item -LiteralPath $DestinationPath -Recurse -Force
+        }
+
+        New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
+        Expand-Archive -LiteralPath $ZipPath -DestinationPath $DestinationPath -Force
+        return
+    }
+
+    Expand-ZipArchiveToSingleRoot -ZipPath $ZipPath -DestinationPath $DestinationPath
 }
 
 $dependencies = Resolve-DependenciesToDownload -Selected $Dependency
@@ -112,12 +187,23 @@ foreach ($entry in $dependencies) {
 
     Write-Host (Format-ThirdPartyText "0KHQutCw0YfQuNCy0LDRjiB7MH0gezF9Li4u" $info.DisplayName, $info.RemoteVersion)
     Download-File -Uri $info.RemoteZipUrl -OutputPath $archivePath
+    if (-not (Test-ZipArchiveSignature -Path $archivePath)) {
+        $fallbackArchive = Resolve-LocalArchiveFallback -DependencyEntry $entry -Info $info
+        if ($fallbackArchive) {
+            Write-Warning ("SourceForge вернул не ZIP-архив; использую локально скачанный архив: {0}" -f $fallbackArchive)
+            Copy-Item -LiteralPath $fallbackArchive -Destination $archivePath -Force
+        }
+    }
+
+    if (-not (Test-ZipArchiveSignature -Path $archivePath)) {
+        throw ("Скачанный файл не является ZIP-архивом: {0}. Для WTL можно указать локальный архив через переменную FBE_WTL_ARCHIVE." -f $archivePath)
+    }
 
     if (Test-Path -LiteralPath $targetDirectory) {
         Remove-Item -LiteralPath $targetDirectory -Recurse -Force
     }
 
-    Expand-ZipArchiveToSingleRoot -ZipPath $archivePath -DestinationPath $targetDirectory
+    Expand-DependencyArchive -DependencyEntry $entry -ZipPath $archivePath -DestinationPath $targetDirectory
     Save-UpdateMetadata -Directory $targetDirectory -Info $info
 
     Write-Host (Format-ThirdPartyText "0JPQvtGC0L7QstC+OiB7MH0=" $targetDirectory)

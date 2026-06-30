@@ -80,7 +80,7 @@ function Get-RemoteTextContent {
     Enable-ModernTls
 
     $client = New-Object System.Net.WebClient
-    $client.Headers["User-Agent"] = "FBeditor-third-party-update-check"
+    $client.Headers["User-Agent"] = "Mozilla/5.0 (compatible; FBeditor-third-party-update-check)"
 
     try {
         return $client.DownloadString($Uri)
@@ -302,6 +302,71 @@ function Get-DependencyCatalog {
                     Version = $best.Version
                     ZipUrl = "https://github.com/hunspell/hunspell/archive/refs/tags/$($best.Tag).zip"
                     Source = "git ls-remote"
+                }
+            }
+        }
+        [pscustomobject]@{
+            Name = "wtl"
+            DisplayName = "WTL"
+            Repository = "https://sourceforge.net/projects/wtl/"
+            LocalPath = Join-Path $repoRoot "third_party\wtl"
+            SourceSubdirectory = "Include"
+            ValidationPaths = @(
+                "atlapp.h",
+                "atlctrls.h",
+                "atlframe.h",
+                "atlres.h"
+            )
+            VersionReader = {
+                param($entry)
+                $headerFile = Join-Path $entry.LocalPath "atlapp.h"
+                if (-not (Test-Path -LiteralPath $headerFile)) {
+                    throw "Не найден atlapp.h: $headerFile"
+                }
+
+                $content = Get-Content -LiteralPath $headerFile
+                $versionLine = $content | Where-Object { $_ -match '^\s*#define\s+_WTL_VER\s+0x([0-9A-Fa-f]+)' } | Select-Object -First 1
+                if (-not $versionLine) {
+                    throw "Не удалось разобрать версию WTL из $headerFile"
+                }
+
+                $match = [regex]::Match($versionLine, '0x([0-9A-Fa-f]{4})')
+                if (-not $match.Success) {
+                    throw "Неожиданный формат _WTL_VER в $headerFile"
+                }
+
+                $digits = $match.Groups[1].Value
+                $major = [int]$digits.Substring(0, 2)
+                $minor = [int]$digits.Substring(2, 1)
+                $patch = [int]$digits.Substring(3, 1)
+                return "{0}.{1}.{2}" -f $major, $minor, $patch
+            }
+            RemoteInfoReader = {
+                param($entry)
+                $content = Get-RemoteTextContent -Uri "https://sourceforge.net/projects/wtl/rss?path=/WTL%2010"
+
+                $matches = [regex]::Matches($content, 'WTL(\d{2})_(\d{2})_Release\.zip')
+                if ($matches.Count -eq 0) {
+                    throw "Не удалось найти архив WTL на странице SourceForge."
+                }
+
+                $versions = foreach ($match in $matches) {
+                    $major = [int]$match.Groups[1].Value
+                    $patch = [int]$match.Groups[2].Value
+                    $version = "{0}.0.{1}" -f $major, $patch
+                    [pscustomobject]@{
+                        Tag = $match.Value
+                        Version = $version
+                        Comparison = [version]$version
+                    }
+                }
+
+                $best = $versions | Sort-Object Comparison -Descending | Select-Object -First 1
+                return [pscustomobject]@{
+                    Tag = $best.Tag
+                    Version = $best.Version
+                    ZipUrl = "https://sourceforge.net/projects/wtl/files/WTL%2010/$($best.Tag)/download"
+                    Source = "SourceForge"
                 }
             }
         }

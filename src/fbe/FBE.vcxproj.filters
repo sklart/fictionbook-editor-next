@@ -279,6 +279,9 @@
     <ClInclude Include="$(SolutionDir)third_party\wtl\atldlgs.h">
       <Filter>Header Files\WTL</Filter>
     </ClInclude>
+    <ClInclude Include="$(SolutionDir)third_party\wtl\atldwm.h">
+      <Filter>Header Files\WTL</Filter>
+    </ClInclude>
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlframe.h">
       <Filter>Header Files\WTL</Filter>
     </ClInclude>
@@ -289,6 +292,9 @@
       <Filter>Header Files\WTL</Filter>
     </ClInclude>
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlprint.h">
+      <Filter>Header Files\WTL</Filter>
+    </ClInclude>
+    <ClInclude Include="$(SolutionDir)third_party\wtl\atlribbon.h">
       <Filter>Header Files\WTL</Filter>
     </ClInclude>
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlres.h">

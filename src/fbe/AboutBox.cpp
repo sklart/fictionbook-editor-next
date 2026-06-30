@@ -285,7 +285,6 @@ void CAboutDlg::OnAfterDownloadConnected (FCHttpDownload* pTask)
     const int maximumSize = GetMaximumDownloadSize(pTask->GetURL());
     if (resp.m_status_code == 0 ||
         !IsHttpsUrl(resp.m_effective_url) ||
-        resp.m_content_length < 0 ||
         resp.m_content_length > maximumSize)
     {
         SetDlgItemText (IDC_TEXT_STATUS, m_sCantConnect);
@@ -392,7 +391,7 @@ void CAboutDlg::FinishUpdateStatus (FCHttpDownload* pTask)
     {
          case HTTP_STATUS_OK :
          case HTTP_STATUS_PARTIAL_CONTENT :
-             if (resp.m_content_length)
+             if (resp.m_content_length > 0)
              {
 				 if (resp.m_content_length == nDownload) bStatus = true;
              }
