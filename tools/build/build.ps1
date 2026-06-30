@@ -66,7 +66,8 @@ $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer
 
 & (Join-Path $repoRoot "tools\version\sync-version.ps1")
 & (Join-Path $repoRoot "tools\build\build-scintilla.ps1")
-& (Join-Path $repoRoot "tools\build\build-pcre2.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot "tools\build\build-pcre2.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+& (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
 
 if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."

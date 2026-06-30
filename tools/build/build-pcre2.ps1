@@ -8,6 +8,8 @@ param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
 
+    [string]$PlatformToolset,
+
     [switch]$Quiet
 )
 
@@ -20,6 +22,18 @@ $buildRoot = Join-Path $repoRoot "build\pcre2"
 $buildDir = Join-Path $buildRoot $Configuration
 $installDir = Join-Path $buildRoot "install\$Configuration"
 $mutexName = "Global\FBeditor-build-pcre2-$Configuration"
+
+function Get-CMakeVisualStudioGenerator {
+    param(
+        [string]$Toolset
+    )
+
+    if ($Toolset -eq "v143") {
+        return "Visual Studio 17 2022"
+    }
+
+    return "Visual Studio 18 2026"
+}
 
 if (-not (Test-Path -LiteralPath $sourceDir)) {
     throw "Не найден каталог с исходниками PCRE2: $sourceDir"
@@ -45,6 +59,8 @@ if (-not $cmake) {
 if (-not $cmake) {
     throw "Не найден cmake.exe."
 }
+
+$generator = Get-CMakeVisualStudioGenerator -Toolset $PlatformToolset
 
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 New-Item -ItemType Directory -Path $installDir -Force | Out-Null
@@ -92,7 +108,7 @@ try {
     $configureArgs = @(
         "-S", $sourceDir,
         "-B", $buildDir,
-        "-G", "Visual Studio 18 2026",
+        "-G", $generator,
         "-A", "Win32",
         "-D", "CMAKE_INSTALL_PREFIX=$installDir",
         "-D", "CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>",
