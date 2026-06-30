@@ -24,8 +24,15 @@ foreach ($entry in $manifest.files) {
     }
 
     $item = Get-Item -LiteralPath $path
-    if ($item.Length -ne $entry.size) {
-        throw "$($entry.name): размер $($item.Length), ожидался $($entry.size)."
+    $allowedSizes = @()
+    if ($entry.allowedSizes) {
+        $allowedSizes = @($entry.allowedSizes | ForEach-Object { [int64]$_ })
+    }
+    else {
+        $allowedSizes = @([int64]$entry.size)
+    }
+    if ($allowedSizes -notcontains [int64]$item.Length) {
+        throw "$($entry.name): размер $($item.Length), ожидался один из: $($allowedSizes -join ', ')."
     }
 
     $expectedHash = [string]$entry.sha256
