@@ -4,10 +4,10 @@
   "files": [
     {
       "name": "FBV.exe",
-      "version": "3.0.0",
-      "built": "2026-06-30",
+      "version": "3.0.1",
+      "built": "2026-07-01",
       "purpose": "FictionBook Validator Next, launched by the localized shell command for FB2 validation",
-      "size": 83456,
+      "size": 82944,
       "allowedSizes": [82944, 83456],
       "modernization": "FBV.exe собирается из локального проекта src/fbv; release-gate фиксирует PE/x86-архитектуру и допускает известные размеры для локального v145 и CI v143 toolset, но не SHA-256, потому что hash меняется при каждой сборке.",
       "hashPolicy": "volatile-build-output-with-toolset-size-variance"

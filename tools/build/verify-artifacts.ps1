@@ -149,7 +149,11 @@ try {
         if (-not $zipEntry) {
             throw "В архиве $portableName отсутствует зафиксированный runtime-файл '$($entry.name)'."
         }
-        if ($zipEntry.Length -ne $entry.size) {
+        $allowedSizes = @($entry.size)
+        if ($entry.PSObject.Properties.Name -contains "allowedSizes") {
+            $allowedSizes = @($entry.allowedSizes)
+        }
+        if ($zipEntry.Length -notin $allowedSizes) {
             throw "В архиве $portableName файл '$($entry.name)' имеет неожиданный размер."
         }
 
