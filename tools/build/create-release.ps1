@@ -86,10 +86,16 @@ if (-not $SkipBuild) {
 }
 
 foreach ($propertyHandlerPlatform in @("Win32", "x64")) {
-    & (Join-Path $PSScriptRoot "build-experimental-property-handler.ps1") `
-        -Configuration $Configuration `
-        -Platform $propertyHandlerPlatform `
-        -SkipUpx:$SkipUpx
+    $propertyHandlerBuildArguments = @{
+        Configuration = $Configuration
+        Platform = $propertyHandlerPlatform
+        SkipUpx = $SkipUpx
+    }
+    if ($PlatformToolset) {
+        $propertyHandlerBuildArguments.PlatformToolset = $PlatformToolset
+    }
+
+    & (Join-Path $PSScriptRoot "build-experimental-property-handler.ps1") @propertyHandlerBuildArguments
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

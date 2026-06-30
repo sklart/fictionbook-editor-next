@@ -6,6 +6,8 @@ param(
     [ValidateSet("Win32", "x64")]
     [string]$Platform = "Win32",
 
+    [string]$PlatformToolset,
+
     [string]$OutputDirectory = "",
 
     [string]$IntermediateDirectory = "",
@@ -50,6 +52,10 @@ $properties = @(
 )
 
 $properties += "/p:EnableUpx=false"
+
+if ($PlatformToolset) {
+    $properties += "/p:PlatformToolset=$PlatformToolset"
+}
 
 & $msbuild $fbshellProject /m /t:Build `
     $properties /v:minimal /nologo

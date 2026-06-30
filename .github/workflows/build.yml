@@ -44,6 +44,7 @@ jobs:
           $arguments = @{
             Configuration = "Release"
             Platform = "Win32"
+            PlatformToolset = "v143"
             SkipBuild = $true
           }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
