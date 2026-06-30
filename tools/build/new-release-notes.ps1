@@ -105,3 +105,5 @@ if (-not [string]::IsNullOrWhiteSpace($outputDirectory)) {
 
 Set-Content -LiteralPath $OutputPath -Value $notes -Encoding UTF8
 Write-Host "Заметки к релизу подготовлены: $OutputPath"
+$global:LASTEXITCODE = 0
+exit 0
