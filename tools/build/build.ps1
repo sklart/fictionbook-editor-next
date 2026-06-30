@@ -66,7 +66,12 @@ $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer
 
 & (Join-Path $repoRoot "tools\version\sync-version.ps1")
 & (Join-Path $repoRoot "tools\build\build-scintilla.ps1")
+Write-Host "Подготовка PCRE2..."
 & (Join-Path $repoRoot "tools\build\build-pcre2.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+if (-not (Test-Path -LiteralPath (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"))) {
+    throw "PCRE2 не подготовлен: отсутствует build\pcre2\install\$Configuration\include\pcre2.h"
+}
+Write-Host "Подготовка Hunspell..."
 & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
 
 if (-not (Test-Path -LiteralPath $vswhere)) {

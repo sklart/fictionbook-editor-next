@@ -99,6 +99,31 @@ function Invoke-ExternalCommand {
     }
 }
 
+function Copy-Pcre2OutputIfMissing {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FileName,
+
+        [Parameter(Mandatory)]
+        [string]$DestinationDirectory
+    )
+
+    $destinationPath = Join-Path $DestinationDirectory $FileName
+    if (Test-Path -LiteralPath $destinationPath) {
+        return
+    }
+
+    $sourcePath = Get-ChildItem -LiteralPath $buildDir -Recurse -File -Filter $FileName -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty FullName -First 1
+    if (-not $sourcePath) {
+        throw "Сборка PCRE2 не создала обязательный файл $FileName."
+    }
+
+    New-Item -ItemType Directory -Path $DestinationDirectory -Force | Out-Null
+    Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
+    Write-Host "PCRE2: восстановлен файл $destinationPath из $sourcePath"
+}
+
 try {
     $mutexAcquired = $buildMutex.WaitOne([TimeSpan]::FromMinutes(10))
     if (-not $mutexAcquired) {
@@ -139,6 +164,11 @@ try {
     if ($exitCode -ne 0) {
         exit $exitCode
     }
+
+    Copy-Pcre2OutputIfMissing -FileName "pcre2.h" -DestinationDirectory (Join-Path $installDir "include")
+    Copy-Pcre2OutputIfMissing -FileName "pcre2posix.h" -DestinationDirectory (Join-Path $installDir "include")
+    Copy-Pcre2OutputIfMissing -FileName "pcre2-8-static.lib" -DestinationDirectory (Join-Path $installDir "lib")
+    Copy-Pcre2OutputIfMissing -FileName "pcre2-posix-static.lib" -DestinationDirectory (Join-Path $installDir "lib")
 
     Write-Host "PCRE2 подготовлен в каталоге $installDir"
 }
