@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <genre>computers</genre>
+      <author>
+        <first-name>Codex</first-name>
+        <last-name>MissingBinary</last-name>
+      </author>
+      <book-title>Missing Binary Smoke Test</book-title>
+      <coverpage>
+        <image l:href="#cover-missing.png"/>
+      </coverpage>
+      <lang>ru</lang>
+    </title-info>
+    <document-info>
+      <author>
+        <nickname>Codex</nickname>
+      </author>
+      <program-used>FictionBookEditor</program-used>
+      <date value="2026-06-14">14.06.2026</date>
+      <id>fb2-cover-missing-binary-smoke-test</id>
+      <version>1.0</version>
+    </document-info>
+  </description>
+  <body>
+    <section>
+      <title><p>Missing Binary</p></title>
+      <p>missing binary smoke body</p>
+    </section>
+  </body>
+</FictionBook>

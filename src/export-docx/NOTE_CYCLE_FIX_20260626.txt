@@ -1,0 +1,23 @@
+ExportDOCX note-cycle fix, 2026-06-26
+=====================================
+
+Problem case:
+  librusec\18907.fb2
+
+Observed failure:
+  Export function raised structured exception 0xC00000FD.
+  0xC00000FD is stack overflow.
+
+Root cause:
+  The FB2 file is XML-valid and has shallow DOM depth, but its notes body contains a cyclic note reference:
+    note81 -> note84 -> note81
+
+  During Word footnote/endnote creation, FindOrCreateFootnote() built note81, then note84, then tried to build note81 again before the first note81 had been pushed into m_footnotes. This caused unbounded recursion.
+
+Fix:
+  ExportDOCXPlugin.cpp now tracks footnotes currently being built in m_buildingFootnotes.
+  If a note reference points to a note that is already in the current build stack, the recursive footnote reference is skipped and left as normal link/text, with a validation warning.
+
+Expected result after rebuild:
+  18907.fb2 should no longer crash with 0xC00000FD.
+  It may be exported as OK_WITH_WARNINGS because the source contains cyclic note references.

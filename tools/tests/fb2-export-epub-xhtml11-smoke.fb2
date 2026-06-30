@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <genre>computers</genre>
+      <author>
+        <first-name>Codex</first-name>
+        <last-name>EPUB</last-name>
+      </author>
+      <book-title>EPUB XHTML 1.1 regression smoke</book-title>
+      <annotation>Прямой текст аннотации должен стать блочным XHTML.
+        <p>Абзац аннотации.</p>
+        <cite>Прямой текст цитаты должен оказаться внутри блочного контейнера.</cite>
+      </annotation>
+      <coverpage>
+        <image l:href="#cover.png"/>
+      </coverpage>
+      <lang>ru</lang>
+    </title-info>
+    <document-info>
+      <author>
+        <nickname>Codex</nickname>
+      </author>
+      <date value="2026-06-30">30.06.2026</date>
+      <id>fb2-export-epub-xhtml11-smoke-test</id>
+      <version>1.0</version>
+    </document-info>
+  </description>
+  <body>
+    <section>
+      <title><p>Проверка EPUB 2</p></title>
+      <epigraph>Прямой текст эпиграфа должен стать блочным XHTML.
+        <text-author>Codex</text-author>
+      </epigraph>
+      <p>Обычный абзац перед ссылками.</p>
+      <p><a l:href="file:///d:/xml/!new/index.html">Локальная ссылка не должна попасть в href</a></p>
+      <p><a l:href="http://www.kapustin.boom.ru\journal\arikaynen15.htm">HTTP-ссылка с обратными слэшами</a></p>
+    </section>
+  </body>
+  <binary id="cover.png" content-type="image/png">
+    iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8
+    /x8AAwMCAO+/p9sAAAAASUVORK5CYII=
+  </binary>
+</FictionBook>

@@ -2,26 +2,39 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Localization", "Localization", "{6C7862A8-8BAE-4B07-B1EA-9642D9122354}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FBE", "FBE.vcxproj", "{E1B04471-3393-4970-93ED-FB6A57BCDA8B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libhunspell", "build\hunspell\libhunspell.vcxproj", "{A4E47388-15F1-4B6E-930E-E631BC69D441}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Russian", "locales\res_rus\res_rus.vcxproj", "{1BC3F431-9672-4191-9FC5-A8B1C9C08E36}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FBE", "src\fbe\FBE.vcxproj", "{E1B04471-3393-4970-93ED-FB6A57BCDA8B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A4E47388-15F1-4B6E-930E-E631BC69D441} = {A4E47388-15F1-4B6E-930E-E631BC69D441}
+	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FBShell", "FBSHell\FBShell.vcxproj", "{856C10BA-254C-4FA0-B45B-00F4B5A6DEB2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Russian", "src\locales\res_rus\res_rus.vcxproj", "{1BC3F431-9672-4191-9FC5-A8B1C9C08E36}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ukrainian", "locales\res_ukr\res_ukr.vcxproj", "{B0D6E5EB-56C0-4DC2-A98F-98EFE5158B8B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FBShell", "src\fbshell\FBShell.vcxproj", "{856C10BA-254C-4FA0-B45B-00F4B5A6DEB2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExportHTML", "ExportHTML\ExportHTML.vcxproj", "{07249A4A-8D68-4300-B70F-688FD4F80506}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ukrainian", "src\locales\res_ukr\res_ukr.vcxproj", "{B0D6E5EB-56C0-4DC2-A98F-98EFE5158B8B}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExportHTML", "src\export-html\ExportHTML.vcxproj", "{07249A4A-8D68-4300-B70F-688FD4F80506}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FBV", "src\fbv\FBV.vcxproj", "{700EF473-7FF9-4CD4-93FB-9C3ABF5D5C4A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExportDOCX", "src\export-docx\ExportDOCX.vcxproj", "{78F164FC-3EE2-4EBA-BD07-0E38CAFE89FB}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExportEPUB", "src\export-epub\ExportEPUB.vcxproj", "{4730AA98-D733-48D1-82AC-E50E53D52DEE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImportEPUB", "src\import-epub\ImportEPUB.vcxproj", "{6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}"
 EndProject
 Global
-	GlobalSection(SubversionScc) = preSolution
-		Svn-Managed = True
-		Manager = AnkhSVN - Subversion Support for Visual Studio
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A4E47388-15F1-4B6E-930E-E631BC69D441}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A4E47388-15F1-4B6E-930E-E631BC69D441}.Debug|Win32.Build.0 = Debug|Win32
+		{A4E47388-15F1-4B6E-930E-E631BC69D441}.Release|Win32.ActiveCfg = Release|Win32
+		{A4E47388-15F1-4B6E-930E-E631BC69D441}.Release|Win32.Build.0 = Release|Win32
 		{E1B04471-3393-4970-93ED-FB6A57BCDA8B}.Debug|Win32.ActiveCfg = Debug|Win32
 		{E1B04471-3393-4970-93ED-FB6A57BCDA8B}.Debug|Win32.Build.0 = Debug|Win32
 		{E1B04471-3393-4970-93ED-FB6A57BCDA8B}.Release|Win32.ActiveCfg = Release|Win32
@@ -42,6 +55,22 @@ Global
 		{07249A4A-8D68-4300-B70F-688FD4F80506}.Debug|Win32.Build.0 = Debug|Win32
 		{07249A4A-8D68-4300-B70F-688FD4F80506}.Release|Win32.ActiveCfg = Release|Win32
 		{07249A4A-8D68-4300-B70F-688FD4F80506}.Release|Win32.Build.0 = Release|Win32
+		{700EF473-7FF9-4CD4-93FB-9C3ABF5D5C4A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{700EF473-7FF9-4CD4-93FB-9C3ABF5D5C4A}.Debug|Win32.Build.0 = Debug|Win32
+		{700EF473-7FF9-4CD4-93FB-9C3ABF5D5C4A}.Release|Win32.ActiveCfg = Release|Win32
+		{700EF473-7FF9-4CD4-93FB-9C3ABF5D5C4A}.Release|Win32.Build.0 = Release|Win32
+		{78F164FC-3EE2-4EBA-BD07-0E38CAFE89FB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{78F164FC-3EE2-4EBA-BD07-0E38CAFE89FB}.Debug|Win32.Build.0 = Debug|Win32
+		{78F164FC-3EE2-4EBA-BD07-0E38CAFE89FB}.Release|Win32.ActiveCfg = Release|Win32
+		{78F164FC-3EE2-4EBA-BD07-0E38CAFE89FB}.Release|Win32.Build.0 = Release|Win32
+		{4730AA98-D733-48D1-82AC-E50E53D52DEE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4730AA98-D733-48D1-82AC-E50E53D52DEE}.Debug|Win32.Build.0 = Debug|Win32
+		{4730AA98-D733-48D1-82AC-E50E53D52DEE}.Release|Win32.ActiveCfg = Release|Win32
+		{4730AA98-D733-48D1-82AC-E50E53D52DEE}.Release|Win32.Build.0 = Release|Win32
+		{6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}.Debug|Win32.Build.0 = Debug|Win32
+		{6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}.Release|Win32.ActiveCfg = Release|Win32
+		{6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

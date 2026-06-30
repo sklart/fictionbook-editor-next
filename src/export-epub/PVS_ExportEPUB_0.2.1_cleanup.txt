@@ -1,0 +1,19 @@
+PVS-Studio cleanup for ExportEPUB 0.2.1-beta
+============================================
+
+Input: ExportEPUB(3).plog
+Total diagnostics: 14
+
+Fixed in code:
+- ExportEPUBBatch.cpp: V821, V823.
+- ExportEPUBPlugin.cpp: V734, V1028, V691, V821, V501, V820.
+
+Suppressed as intentional ATL/COM noise:
+- ExportEPUB.cpp: V835 in DllGetClassObject. The COM export signature is fixed by WinAPI/ATL and must not be changed.
+- ExportEPUBPlugin.h: V835/V1096 in BEGIN_COM_MAP. ATL generates static COM map tables inside the macro; rewriting this to satisfy the analyzer would make the code less idiomatic and riskier.
+
+Notes:
+- EPUB conversion logic was not redesigned in this pack.
+- Fallback generated XML id changed from xml_id to fb2xml to avoid the empirical V691 warning.
+- External URL %20 handling now has a non-duplicated condition.
+- Re-run PVS-Studio after MSBuild to confirm that only accepted ATL/COM diagnostics remain, or that local suppression comments are honored by your PVS configuration.

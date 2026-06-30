@@ -1,0 +1,38 @@
+ExportDOCX final quality/reporting fix, 2026-06-27
+
+Changes:
+1. Images with content-type="application/octet-stream" are now identified by magic bytes after base64 decoding.
+   Supported signatures: JPEG, PNG, GIF, BMP, TIFF.
+   If the signature is recognized, the media part gets a proper extension/content type and no noisy unknown-content-type warning is emitted.
+
+2. Batch summary/reporting is clarified:
+   - SUCCESS_TOTAL = OK_CLEAN + OK_WITH_WARNINGS
+   - OK_CLEAN = successful exports without warnings
+   - OK_WITH_WARNINGS = successful exports with non-fatal warnings
+   The same labels are written to summary.txt, HTML report, current file marker and progress state.
+
+3. New warnings_files.txt report:
+   - Default path: next to the CSV log.
+   - CLI option: -WarningsFilesList <path> / -WarningsList <path>.
+   - RUN_LARGE_FB2_TEST.cmd now passes this path explicitly.
+
+4. Additional footnote hardening found during 01_OK_WITH_WARNINGS QA:
+   Word footnotes/endnotes no longer contain nested w:footnoteReference elements.
+   Note-to-note links inside note bodies are exported as plain visible text.
+   This avoids problematic structures in documents like 18907.docx and prevents note cycles from leaking into OOXML footnotes.
+
+QA performed on 01_OK_WITH_WARNINGS(1).ZIP:
+- DOCX files checked structurally: 51
+- ZIP containers readable: 51/51
+- Main XML parsed: 51/51
+- Required DOCX parts present: 51/51
+- Media parts: 483 total, 286 JPEG by signature, 197 PNG by signature
+- Existing old-run .bin media parts with valid image signatures: 40
+- Unknown media signatures: 0
+- NBSP artifacts in text: 0 files
+- Replacement characters U+FFFD/U+FFFE: 0 files
+- Excessive hard line breaks: 0 files
+- One legitimate {N} usage exists in the OOoFBTools manual as literal example text, not as page-marker leakage.
+- 18907.docx from the old run contained 2 nested footnoteReference elements inside footnotes; source code is now hardened against generating those.
+
+Note: this environment cannot compile the Win32 ATL/MSXML project. Rebuild locally with BUILD_BATCH_WIN32_RELEASE.cmd and rerun the large test without -Resume/-SkipIfNewer for a clean post-fix report.

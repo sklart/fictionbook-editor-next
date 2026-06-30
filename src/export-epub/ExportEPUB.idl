@@ -1,0 +1,18 @@
+import "oaidl.idl";
+import "ocidl.idl";
+import "..\fbe\fbe.idl";
+
+[
+    uuid(F63062F5-AF65-4FB8-B692-054B71DD57FE),
+]
+library ExportEPUBLib
+{
+    importlib("stdole2.tlb");
+    [
+        uuid(A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF)
+    ]
+    coclass ExportEPUBPlugin
+    {
+        [default] interface IFBEExportPlugin;
+    };
+};

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files"><UniqueIdentifier>{11111111-1111-1111-1111-111111111111}</UniqueIdentifier></Filter>
+    <Filter Include="Header Files"><UniqueIdentifier>{22222222-2222-2222-2222-222222222222}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\lunasvg.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\graphics.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\svgelement.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\svggeometryelement.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\svglayoutstate.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\svgpaintelement.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\svgparser.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\svgproperty.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\svgrenderstate.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="source\svgtextelement.cpp"><Filter>Source Files</Filter></ClCompile>
+
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\lunasvg.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\graphics.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\svgelement.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\svggeometryelement.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\svglayoutstate.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\svgpaintelement.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\svgparserutils.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\svgproperty.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\svgrenderstate.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="source\svgtextelement.h"><Filter>Header Files</Filter></ClInclude>
+
+  </ItemGroup>
+</Project>

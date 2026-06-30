@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <genre match="100">computers</genre>
+      <genre match="95">reference</genre>
+      <author>
+        <first-name>Codex</first-name>
+        <last-name>Smoke</last-name>
+      </author>
+      <book-title>Metadata Smoke Test</book-title>
+      <keywords>alpha; beta; metadata</keywords>
+      <date value="2026-06-12">12.06.2026</date>
+      <lang>ru</lang>
+      <src-lang>en</src-lang>
+      <sequence name="Shell Series" number="2"/>
+    </title-info>
+    <document-info>
+      <author>
+        <first-name>Codex</first-name>
+        <last-name>Editor</last-name>
+      </author>
+      <program-used>FictionBookEditor</program-used>
+      <date value="2026-06-12">12.06.2026</date>
+      <id>fb2-metadata-smoke-test</id>
+      <version>1.2</version>
+    </document-info>
+  </description>
+  <body>
+    <section>
+      <title><p>Smoke</p></title>
+      <p>metadata test body</p>
+    </section>
+  </body>
+</FictionBook>

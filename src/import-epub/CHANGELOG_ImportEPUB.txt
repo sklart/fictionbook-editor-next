@@ -1,0 +1,290 @@
+ImportEPUB 1.0.72.0
+
+- Improved EPUB notes detection for Standard Ebooks style endnotes stored as <li id="..."> inside an endnotes/footnotes container. These list-item notes are now collected into FB2 body name="notes" and noteref links can become type="note" links instead of ordinary unresolved internal links.
+- Regression checker now evaluates all friedrich-engels variants and uses the maximum NoteLinks value, so a plain/kepub variant with zero note links no longer hides the advanced EPUB result.
+- Version bumped to 1.0.72.0.
+
+ImportEPUB 1.0.71.0
+- Preserves multiple EPUB anchors on the same block/heading by adding FB2 anchor markers for alias ids.
+- Fixes missing internal-link warnings for books that use empty self-closing <a id="..."/> anchors before headings/text.
+
+﻿fix70 - crash-isolated batch conversion and resume-report checks
+----------------------------------------------------------------
+- Added ImportEPUBBatch.exe --isolate-crashes for batch mode. Each EPUB is converted in a child ImportEPUBBatch process, so a fail-fast crash such as 0xC0000409 is written as FAILED_CRASH and the parent batch continues with the next file.
+- Child conversion writes a temporary one-row CSV report that the parent merges into the main CSV report, preserving normal OK/OK_WITH_WARNINGS/FAILED statistics for non-crashing files.
+- RUN_IMPORT_REGRESSION_TESTS.cmd and BIG_VOLUME_TEST default options now include --isolate-crashes.
+- RUN_IMPORT_REGRESSION_TESTS.ps1 no longer treats SKIPPED rows in resume mode as failed semantic checks; skipped linear-algebra/friedrich rows are reported as warnings instead of false errors.
+- Version bumped to 1.0.70.0.
+
+fix69 - malformed HTML fallback and crash-resume regression run
+----------------------------------------------------------------
+- EPUB HTML/XHTML fallback now normalizes common HTML void elements (<link>, <meta>, <br>, <img>, etc.) into XML-safe self-closing tags before retrying MSXML loadXML.
+- XML fallback now normalizes XML 1.1 declarations to XML 1.0 and removes invalid control characters, which helps OPF files rejected by MSXML with "bad version".
+- RUN_IMPORT_REGRESSION_TESTS.cmd now has RESUME_MODE=1 by default and uses --skip-existing, so after a crash/interruption the run can continue without reconverting already written FB2 files.
+- Fixed RUN_IMPORT_REGRESSION_TESTS.ps1 Find-Row single-result unwrapping, which could produce false "test file not found" warnings.
+- For a completely clean regression run set RESUME_MODE=0.
+
+fix68 - TODO entry for deferred MathML formula backend
+---------------------------------------------------------
+- Documentation-only update: added a deferred MathML/formula conversion task to TODO_ImportEPUB.txt.
+- Candidate pipeline recorded for future work: MathML -> mml2tex -> LaTeX -> MicroTeX -> SVG/bitmap -> PNG -> FB2 image/binary.
+- Marked this as optional helper/backend work to be done after the current large EPUB corpus testing is complete.
+- No code changes and no version bump required for this TODO-only package.
+
+
+fix67 - HTML entity fallback and long-run regression report resilience
+- Added fallback loading for .htm/.html/.xhtml spine documents with undeclared HTML entities, especially &nbsp;.
+- Common HTML named entities are converted to XML-safe numeric entities before MSXML loadXML retry.
+- Unknown named entities are escaped literally instead of aborting the whole import.
+- RUN_IMPORT_REGRESSION_TESTS.cmd now uses --flush-report-each so partial CSV/HTML reports survive a crash or abort.
+- RUN_IMPORT_REGRESSION_TESTS.cmd now has MAX_FILES variable for smoke runs.
+- Version bumped to 1.0.67.0.
+
+fix66 - avoid generated note_* ids for ordinary paragraphs
+------------------------------------------------------------
+- Fixed conversion bug where empty XHTML id/name attributes were normalized to "note".
+- Ordinary paragraphs and sections without source anchors no longer receive FB2 ids such as note_3125.
+- Real EPUB anchors and pagebreak ids are still preserved when present.
+- Empty note/anchor ids are now ignored instead of producing artificial note_* ids.
+- VersionInfo default version bumped to 1.0.66.0.
+
+fix65 - PVS-Studio cleanups for own code
+- VersionInfo default version bumped to 1.0.65.0.
+- Fixed ImportOptionsDialog.cpp V560: removed unsigned lower-bound check for SvgConversionMode.
+- Fixed EpubImport.cpp V1048: removed redundant EN DASH self-assignment in CleanTypographyText().
+- Added PVS_STUDIO_NOTES.txt with a summary of remaining third-party LunaSVG/PlutoVG diagnostics.
+
+
+fix64 - stabilization for large EPUB batches
+---------------------------------------------
+- VersionInfo default version bumped to 1.0.64.0.
+- Added --flush-report-each to ImportEPUBBatch.exe so CSV/HTML reports are updated after every processed EPUB.
+- Added --max-files <N> for smoke testing large collections.
+- Added BIG_VOLUME_TEST.cmd / BIG_VOLUME_TEST.ps1 for large-volume runs.
+- Added BUILD_STABLE_TEST_RELEASE.cmd for full stable build + dependency check.
+- Added STABILIZATION_BIG_TEST_README.txt with recommended workflow for 3178-file / 4+ GB tests.
+- Big test package intentionally includes reports, binaries and limited problem files instead of all source/converted books.
+
+
+Fix63
+-----
+- File-open dialog OK button caption changed from "Импорт" to "Открыть...".
+- Conversion quality improvements:
+  * table <caption> is preserved as an FB2 <subtitle> before the table;
+  * table cells with nested p/div/list/br content are flattened with separators instead of being silently concatenated;
+  * <pre>/<code> keeps leading indentation by converting leading spaces to NBSP;
+  * poem lines separated by <br> are converted to separate FB2 <v> lines.
+
+﻿fix62:
+- Grouped ImportEPUB settings dialog into logical sections: content/structure, images/SVG, links/notes, cleanup/filtering, validation/logging/debug.
+- Kept all existing option ids, registry keys and defaults unchanged; only the visual layout of the settings window was reorganized.
+- Added tooltips to section headers and adjusted the dialog size for the grouped layout.
+
+
+fix61:
+- Improved note-reference conversion: an EPUB link is converted to FB2 type="note" only when it is explicitly marked as a noteref and the target note section was actually collected. Ordinary anchors that only look like notes by id/class remain normal links, reducing false MissingNoteTargets.
+- Added path-aware internal link normalization for href values such as chapter.xhtml#id, ../text/chapter.xhtml#id and chapter.xhtml. The importer now maps EPUB file+fragment pairs to generated FB2 ids when possible.
+- Added document-level section ids for XHTML spine files so links to a chapter file without a fragment can point to the generated FB2 section.
+- Improved duplicate anchor handling across XHTML files: global links still target the first id, while file-qualified links can resolve to suffixed ids generated for later duplicates.
+- Extended CSV/HTML quality reports with AnchorsImported, HrefsResolved, HrefsUnresolved, NoteRefsDetected and NoteRefsResolved columns.
+
+fix59
+-----
+- Fixed ImportEPUB.dll build error after fix57/fix58: ResolveFb2HrefFragment was used before declaration in EpubImport.cpp.
+- Added forward declaration before InlineToFb2().
+
+
+2026-06-25 - fix56
+-------------------
+- Fixed ImportEPUBBatch.exe build after quality-report changes.
+- Added missing <string> include for std::wstring used by quality validation sets.
+- LunaSVG/PlutoVG third-party warnings are not treated as fatal; the static libraries may build with C4244/C4018 warnings from upstream code.
+
+﻿Fix52
+-----
+- SVG rasterization was changed to an optional side-by-side library model.
+- ImportEPUB.dll and ImportEPUBBatch.exe no longer try ImageMagick/Inkscape/Edge for SVG.
+- In SVG PNG/JPEG modes, the importer now looks for ImportEPUBLunaSVG.dll next to the current module.
+- If ImportEPUBLunaSVG.dll is absent, wrong-bitness, missing exports, or fails to render, ImportEPUB embeds a visible PNG/JPEG placeholder.
+- Added optional ImportEPUBLunaSVG.vcxproj wrapper project with a small C ABI around LunaSVG.
+- Added BUILD_LUNASVG_ADAPTER_WIN32_RELEASE.cmd and thirdparty/lunasvg placement instructions.
+- Updated settings tooltips to describe the optional LunaSVG helper and placeholder fallback.
+
+Fix45
+- ImportEPUBBatch теперь выводит Unicode-текст через WriteConsoleW, поэтому русские сообщения об ошибках больше не должны превращаться в вопросительные знаки в cmd/Windows Terminal.
+- Для перенаправленного вывода используется UTF-8.
+- Добавлена поддержка EPUB, где элементы spine являются изображениями напрямую: image/jpeg, image/png, image/svg+xml и другие image/*.
+- Такие spine-элементы импортируются как отдельные FB2-секции с <image l:href="#..."/>.
+- Исправлена диагностика: ошибка теперь говорит о неподдерживаемых файлах spine, а не только о XHTML.
+
+Fix43
+- BUILD_BATCH_WIN32_RELEASE.cmd теперь сначала пересобирает ImportEPUB.dll, затем ImportEPUBBatch.exe.
+- Это гарантирует, что batch-утилита собирается и используется вместе с актуальной библиотекой ImportEPUB.dll.
+
+Fix42
+- Консольная пакетная утилита переименована из epub2fb2.exe в ImportEPUBBatch.exe для унификации с ExportDOCXBatch/ExportEPUBBatch.
+- Проект, исходник, ресурсный файл, справка, README и командные файлы обновлены под имя ImportEPUBBatch.
+- CSV-отчёт по умолчанию теперь называется ImportEPUBBatch_report.csv.
+
+2026-06-25 - fix41
+- Расширен CLI консольного конвертера ImportEPUBBatch.exe.
+- Добавлен ключ --profile <full|text|minimal>.
+- Добавлены парные переключатели включения/отключения основных функций импорта: images, cover, notes, tables, lists, links, subtitles, poems, pagebreaks, split-sections, css-semantic, clean-typography.
+- Добавлены ключи --include-hidden, --keep-service-pages, --keep-service-sections, --keep-footnote-backlinks, --diagnostic-section, --save-copy, --keep-temp-on-error.
+- README дополнен полным списком ключей и примерами профилей импорта.
+
+
+2026-06-25 - fix40
+- Добавлен отдельный ресурсный файл ImportEPUBBatch.rc для консольной утилиты ImportEPUBBatch.exe.
+- В ImportEPUBBatch.exe добавлены VERSIONINFO и иконка.
+- В свойства EXE добавлены CompanyName, FileDescription, FileVersion, InternalName, LegalCopyright, OriginalFilename, ProductName и ProductVersion.
+- ImportEPUBBatch.vcxproj теперь компилирует ImportEPUBBatch.rc и подключает resource.h.
+
+
+2026-06-25 - fix38
+- Исправлена ошибка линковки LNK2001 _CLSID_DOMDocument60 после перехода на <msxml6.h>.
+- Создание MSXML DOM теперь выполняется через CLSIDFromProgID("Msxml2.DOMDocument.6.0") + CoCreateInstance.
+- Проект по-прежнему не использует #import <msxml6.dll>, поэтому PVS-Studio может анализировать исходники без предварительной подготовки msxml6.tlh/msxml6.tli.
+
+CHANGELOG ImportEPUB
+====================
+
+2026-06-25
+----------
+- Унифицирована структура папки проекта по образцу export-docx.
+- Убраны старые временные командные файлы build_import_epub_*.cmd / register_import_epub_*.cmd.
+- Добавлены единые командные файлы:
+  BUILD_WIN32_RELEASE.cmd,
+  BUILD_BATCH_WIN32_RELEASE.cmd,
+  CLEAN_AFTER_BUILD.cmd,
+  REGISTER_IMPORTEPUB.cmd,
+  UNREGISTER_IMPORTEPUB.cmd,
+  REBUILD_REGISTER_WIN32_RELEASE.cmd,
+  IMPORT_FOLDER.cmd,
+  CHECK_REGISTRATION.cmd.
+- Документация сведена к README_ImportEPUB.txt, TODO_ImportEPUB.txt и CHANGELOG_ImportEPUB.txt.
+- В проекте оставлены исходники, ресурсы, командные файлы сборки/очистки/регистрации и основная документация.
+- Output-папка приведена к виду out\Release для соответствия export-docx/export-epub.
+
+Предыдущие изменения
+--------------------
+- Добавлен COM-плагин ImportEPUB для FBE через IFBEImportPlugin.
+- Добавлен пункт меню Файл -> Импорт -> из EPUB...
+- Реализован импорт EPUB через container.xml, OPF manifest/spine и XHTML.
+- Добавлены nav.xhtml/toc.ncx, OPF guide, cover.xhtml и улучшенное определение обложки.
+- Добавлены изображения, binary, сноски, таблицы, списки, подзаголовки, цитаты, стихи, figure/figcaption, pre/code и pagebreak.
+- Добавлены настройки импорта с всплывающими подсказками и сохранением в реестре.
+- Добавлены логирование, диагностика и проверка итогового FB2.
+- Добавлена консольная утилита ImportEPUBBatch.exe с пакетным режимом, CSV-отчётом, dry-run, stats и preserve-tree.
+- Исправлены ошибки сборки MSVC и замечания PVS-Studio.
+
+2026-06-25
+----------
+- Убран #import <msxml6.dll> из проекта, чтобы PVS-Studio мог анализировать ImportEPUB.sln из чистого состояния без предварительной подготовки.
+- MsxmlImport.h переведён на стабильный заголовок Windows SDK <msxml6.h>.
+- Добавлены тонкие helper-функции для доступа к MSXML DOM через raw COM-интерфейсы.
+- Больше не требуются заранее сгенерированные msxml6.tlh / msxml6.tli.
+[fix39]
+- Улучшен консольный конвертер ImportEPUBBatch.exe.
+- Добавлены ключи --help и --version.
+- Добавлены пакетные ключи --skip-existing, --fail-fast, --quiet.
+- Добавлен ключ --report <file.csv> для пользовательского пути CSV-отчёта.
+- Исправлен CSV-отчёт в режиме --stats: теперь добавляется отдельная колонка Stats.
+- В пакетном режиме статистика выводится в консоль и в CSV-отчёт.
+
+
+## fix44
+- Исправлен BUILD_BATCH_WIN32_RELEASE.cmd: удалены случайные управляющие символы в путях к vswhere/MSBuild.
+- Скрипт batch-сборки теперь сначала собирает ImportEPUB.dll, затем ImportEPUBBatch.exe.
+- Первым проверяется MSBuild по пути Visual Studio 18 Enterprise.
+
+## fix46
+- Исправлен порядок элементов title-info в генерируемом FB2: translator теперь выводится после lang, как требует схема FB2.
+- Исправлен порядок annotation/date/coverpage/lang в title-info.
+- Для XHTML включено сохранение значимых пробелов MSXML, чтобы не склеивались слова вокруг inline-тегов em/strong/a и другого оформления.
+
+
+## fix47
+- Added SVG handling mode for import settings: keep SVG, convert SVG to PNG, convert SVG to JPEG, or skip SVG.
+- Default SVG mode is PNG conversion because SVG binaries are not reliably displayed by Fiction Book Editor/FB2 readers.
+- SVG conversion now uses optional side-by-side ImportEPUBLunaSVG.dll; JPEG mode uses GDI+ after PNG rendering.
+- Added CLI option: --svg keep|png|jpg|skip.
+- Added gdiplus.lib dependency for optional JPEG output.
+- Ensured title-info always writes <lang> before translator entries; empty language falls back to und.
+- Import options dialog now saves all newer settings, including CSS semantics and SVG mode.
+
+## fix48
+- Added CONVERT_AND_PACK_TEST_RESULTS.cmd.
+- The script converts all EPUB files from a configured INPUT_DIR, writes FB2 output to OUTPUT_DIR, enables recursive conversion, stats, logs and SVG-to-PNG mode by default.
+- The script collects original EPUB files, converted FB2 files, ImportEPUB logs and ImportEPUBBatch_report.csv into a timestamped ZIP package for sending to analysis/testing.
+- Added the new command file to Visual Studio project files and README.
+
+
+Fix49
+-----
+- Исправлено попадание VersionInfo в ImportEPUB.dll и ImportEPUBBatch.exe.
+- Добавлено явное определение VS_VERSION_INFO = 1, чтобы ресурс версии был виден в свойствах файла Windows.
+- Добавлен CHECK_VERSIONINFO.cmd для проверки CompanyName, FileDescription, FileVersion, InternalName, OriginalFilename, ProductName и ProductVersion после сборки.
+
+
+fix50
+-----
+- Разделены VersionInfo-строки для ImportEPUB.dll и ImportEPUBBatch.exe.
+- В resource.h добавлены отдельные макросы IMEPUB_DLL_* и IMEPUB_BATCH_*.
+- ProductName для ImportEPUBBatch.exe теперь указывает именно на batch utility, а не на общий набор tools.
+- CHECK_VERSIONINFO.cmd дополнен ожидаемыми значениями для обоих бинарных файлов.
+
+
+fix51
+-----
+- SVG-to-PNG/JPEG mode no longer leaves dangling FB2 image links when no SVG renderer is available.
+- If ImportEPUBLunaSVG.dll is missing or cannot rasterize an SVG, ImportEPUB creates a visible PNG/JPEG placeholder image instead of producing an empty/broken image reference.
+- The placeholder keeps the generated FB2 structurally valid: every <image l:href="#..."> has a matching <binary>.
+- This specifically improves EPUB files where image/svg+xml files are listed directly in spine, such as svg-in-spine.epub and sous-le-vent_svg-in-spine.epub.
+- Confirmed that current title-info generation writes <lang> before translator entries; old files must be regenerated to remove earlier schema errors.
+
+fix53
+-----
+- В проект добавлены исходники LunaSVG 3.5.0 и PlutoVG.
+- Добавлены проекты thirdparty\lunasvg\plutovg.vcxproj и thirdparty\lunasvg\lunasvg.vcxproj для сборки статических библиотек Win32.
+- Добавлен BUILD_LUNASVG_LIBRARY_WIN32_RELEASE.cmd для сборки plutovg.lib и lunasvg.lib.
+- BUILD_LUNASVG_ADAPTER_WIN32_RELEASE.cmd теперь сам собирает статические библиотеки, если они отсутствуют.
+- Добавлен BUILD_LUNASVG_ALL_WIN32_RELEASE.cmd для полной сборки LunaSVG + ImportEPUBLunaSVG.dll.
+- ImportEPUBLunaSVG.vcxproj обновлён для статической линковки LunaSVG/PlutoVG.
+
+fix54 - LunaSVG build scripts and PlutoVG source paths
+--------------------------------------------------------
+- Removed UTF-8 BOM from all .cmd files so cmd.exe no longer executes the first line as "я╗┐@echo".
+- Fixed thirdparty\lunasvg\plutovg.vcxproj source paths: PlutoVG files are located in plutovg\source, not source.
+- Fixed thirdparty\lunasvg\plutovg.vcxproj.filters paths accordingly.
+
+fix55:
+- ImportEPUBBatch CSV report now writes separate statistics columns when --stats is used: sections, paragraphs, images, binaries, tables, note links and characters.
+- Added quality columns to the CSV report: missing image binaries, missing internal links, missing note targets, duplicate ids, external links and total warnings.
+- Batch console status now shows OK_WITH_WARNINGS / OK with warnings when generated FB2 passes conversion but has link/id quality issues.
+- FB2 validation now warns about ordinary internal l:href="#..." links that point to missing ids.
+- CONVERT_AND_PACK_TEST_RESULTS.cmd now places ImportEPUB.dll, ImportEPUBBatch.exe and optional ImportEPUBLunaSVG.dll into the test package binaries folder.
+
+fix57:
+- External HTTP/HTTPS links are now informational only: the ExternalLinks CSV column is still filled, but external links no longer change Status to OK_WITH_WARNINGS and no longer increment Warnings.
+- Improved preservation of XHTML anchors: id/name values from headings, paragraphs, list items, definition-list items, pre blocks, generic containers and first inline descendants are transferred to safe FB2 id attributes when possible.
+- Internal links l:href="#..." are normalized through the generated anchor map, reducing MissingInternalLinks in EPUBs with anchors on nested span/a elements.
+- Duplicate generated FB2 ids are avoided by appending numeric suffixes to later duplicates while keeping ordinary links pointed at the first matching anchor.
+- FB2 validation no longer writes warning text for external links; those remain visible in the batch quality report as ExternalLinks.
+
+fix58:
+- ImportEPUBBatch now writes an HTML report next to the CSV report: ImportEPUBBatch_report.html.
+- The HTML report has color-coded rows for OK, OK_WITH_WARNINGS, FAILED and SKIPPED and repeats the main quality columns from the CSV.
+- CONVERT_AND_PACK_TEST_RESULTS.cmd now includes the HTML report in the report folder of the test ZIP package.
+- Added PACK_PROBLEM_FILES.cmd to create a smaller ZIP package containing only FAILED and/or OK_WITH_WARNINGS rows from an existing CSV report.
+- Added CHECK_DEPENDENCIES.cmd to check ImportEPUB.dll, ImportEPUBBatch.exe, optional ImportEPUBLunaSVG.dll, LunaSVG static libraries, PE bitness and basic VersionInfo fields.
+- Visual Studio project files were updated to include the new command files.
+
+fix60:
+- Added RUN_IMPORT_REGRESSION_TESTS.cmd and RUN_IMPORT_REGRESSION_TESTS.ps1 for repeatable smoke/regression checks over the EPUB test suite.
+- Regression checks verify no FAILED rows, no missing image binaries, SVG image/binary consistency, LunaSVG conversion without placeholders when the adapter is present, note links in the Friedrich Engels sample, and table import in linear-algebra.
+- CSV and HTML reports now include SVG diagnostics: SvgImages, SvgConverted, SvgPlaceholders, SvgSkipped and SvgBackend.
+- CHECK_DEPENDENCIES.cmd was rewritten to use CHECK_DEPENDENCIES.ps1 and now saves CHECK_DEPENDENCIES_REPORT.txt.
+- Dependency check now includes COM InprocServer32 registration and FBE plugin registry entries, warning if the registered DLL differs from the current out\Release\ImportEPUB.dll.
+- CONVERT_AND_PACK_TEST_RESULTS.cmd can optionally run dependency checks before conversion and opens the HTML report after conversion by default.
+- Visual Studio project files were updated to include the new regression/dependency helper scripts.

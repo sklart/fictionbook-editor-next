@@ -1,0 +1,41 @@
+ExportDOCX hang/timeout fix - 2026-06-26
+========================================
+
+Problem observed in _logs(4).zip:
+- The batch run stopped updating after 2026-06-26 13:16:45.
+- ExportDOCX_current_file.txt pointed to:
+  D:\fb2_large_input\librusec\18908.fb2
+- The last completed CSV row was:
+  D:\fb2_large_input\librusec\18907.fb2 -> FAIL 0xC00000FD
+- 0xC00000FD is a stack overflow structured exception.
+- Because the DLL export was called inside the main batch process, a single pathological FB2 could hang the whole run.
+
+Changes:
+1. Added -IsolatedExport option to ExportDOCXBatch.exe.
+   Each FB2 export is performed in a separate worker process.
+
+2. Added -TimeoutSec <N> option.
+   With -IsolatedExport, a stuck worker process is terminated after N seconds.
+   The file is written to CSV/HTML as TIMEOUT and the batch continues.
+
+3. Added internal -WorkerExport mode.
+   This is used only by the parent ExportDOCXBatch.exe process.
+
+4. Structured exceptions in the worker process, such as 0xC00000FD, are detected and reported as FAIL without corrupting/hanging the parent batch process.
+
+5. RUN_LARGE_FB2_TEST.cmd now enables the safe unattended mode by default:
+   ISOLATED_EXPORT=1
+   TIMEOUT_SEC=120
+
+Recommended next steps:
+- Stop the currently stuck ExportDOCXBatch.exe process.
+- Copy/quarantine the current problematic FB2 files:
+  D:\fb2_large_input\librusec\18907.fb2
+  D:\fb2_large_input\librusec\18908.fb2
+- Rebuild ExportDOCXBatch.exe.
+- Resume the large run with RUN_LARGE_FB2_TEST.cmd.
+
+Expected behavior after this fix:
+- 18907.fb2 should be logged as FAIL 0xC00000FD.
+- 18908.fb2 should either export, fail, or become TIMEOUT after 120 seconds.
+- The full batch should continue after that file instead of hanging indefinitely.

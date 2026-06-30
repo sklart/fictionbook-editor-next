@@ -1,0 +1,226 @@
+ExportEPUB 0.2.1-beta
+----------------------
+
+PVS-Studio cleanup после большого стабилизационного пакета.
+
+Исправлено:
+- ExportEPUBBatch.cpp: V821 — nickname автора создаётся только если действительно нужен.
+- ExportEPUBBatch.cpp: V823 — insert заменён на emplace для множества зарезервированных выходных имён.
+- ExportEPUBPlugin.cpp: V734 — лишняя проверка "<svg:" удалена, так как "<svg" уже покрывает этот случай.
+- ExportEPUBPlugin.cpp: V1028 — длина SAFEARRAY считается с явным size_t.
+- ExportEPUBPlugin.cpp: V691 — fallback XML id изменён с xml_id на fb2xml.
+- ExportEPUBPlugin.cpp: V821 — align/valign создаются только в ветке EPUB 3, где используются.
+- ExportEPUBPlugin.cpp: V501 — исправлено дублирующее условие для %20 в host внешних URL.
+- ExportEPUBPlugin.cpp: V820 — переход к родительскому DOM-узлу использует move-семантику.
+- ExportEPUB.cpp / ExportEPUBPlugin.h: добавлены точечные PVS-подавления для неизменяемых ATL/COM-макросов и стандартной COM-сигнатуры DllGetClassObject.
+
+Код сборки, batch-утилиты и EPUB-экспорта сохранён совместимым с текущей структурой проекта.
+
+ExportEPUB 0.2.0-beta
+----------------------
+
+Стабилизация перед тестированием на большом объёме FB2.
+
+Добавлено:
+- TEST_EXPORT_LARGE_FB2.cmd для больших библиотек FB2.
+- LARGE_TEST_ExportEPUB.txt с инструкцией по большому прогону.
+- ExportEPUBBatch.exe: --start-index, --max-files, --progress-every.
+- ExportEPUBBatch.exe: автоматическое удаление пустых/частичных EPUB после неудачного экспорта.
+- ExportEPUBBatch.exe: zero-size EPUB больше не считается актуальным при --newer-only.
+- Компактная упаковка результата большого теста: логи + только проблемные FB2/EPUB.
+
+Исправлено:
+- TEST_EXPORT_AND_PACK.cmd сохранён UTF-8 без BOM и исправлена обработка путей с завершающим слэшем.
+- Большой тест можно безопасно продолжать после прерывания через --newer-only.
+
+
+0.1.23-beta
+----------
+- Fixed ExportEPUBBatch.cpp build error C3861: SanitizeFileName identifier not found.
+- Added a forward declaration for the filename sanitizing helper used by OutputPathFor().
+
+# CHANGELOG ExportEPUB
+
+## 0.1.22-beta
+
+- Улучшено качество конвертации FB2 → EPUB без изменения тестовой инфраструктуры:
+  - `empty-line` теперь выводится как безопасный блочный разделитель `<div class="empty-line">`, а не как искусственный абзац.
+  - `subtitle` стал контекстным: внутри стихов выводится как строка стихотворного блока, в заголовках — как заголовочный подзаголовок, в обычном тексте — как отдельный подзаголовок.
+  - Аннотация на отдельной странице оборачивается в `section.annotation`, при этом сохраняется внутренняя FB2-структура.
+  - Улучшены CSS-правила для стихов, эпиграфов, цитат, аннотаций, таблиц, сносок, пустых строк и кода.
+  - В обычных главах больше не дублируется верхний `h1`, если в тексте уже есть заголовок из FB2 `title`.
+  - Пустые ячейки таблиц получают `&#160;`, чтобы не схлопываться в читалках.
+  - `code` получает `white-space: pre-wrap` и устойчивое моноширинное оформление.
+  - `binary` без `content-type` или с неправильным `content-type` теперь может быть принят, если реальный тип изображения определяется по сигнатуре.
+  - Для секций без явного `title` в навигации используется первый короткий абзац, затем fallback `Глава N`.
+- Исправлен `BUILD_BATCH_WIN32_RELEASE.cmd`: теперь он явно собирает сначала `ExportEPUB.dll`, затем `ExportEPUBBatch.exe`, проверяет наличие обоих файлов и показывает отдельные логи сборки.
+
+## 0.1.21-beta
+
+- Добавлены практические режимы массового экспорта без изменения ядра EPUB:
+  - `--filename source|title|author-title|title-author|series-number-title` — выбор правила имени выходного EPUB.
+  - `--skip-existing` — явный режим пропуска уже существующих EPUB.
+  - `--newer-only` — пересоздавать только отсутствующие или устаревшие EPUB.
+- Для `--filename` добавлено чтение `book-title`, первого автора и первой `sequence` из FB2.
+- Имена файлов очищаются от запрещённых символов Windows, обрезаются до безопасной длины и получают fallback на имя исходного FB2.
+- Добавлена защита от дублей выходных имён внутри одного запуска: `_2`, `_3`, `_4`.
+- CSV-отчёт дополнен полем `SkipReason`.
+- Код формирования XHTML/OPF/ZIP не менялся.
+
+## 0.1.20-beta
+
+- Добавлены практические возможности массовой конвертации:
+  - `ExportEPUBBatch.exe --from-list <file>` — конвертация только файлов из UTF-8 списка.
+  - `ExportEPUBBatch.exe --check-input` / `--list` — быстрый просмотр найденных FB2 без конвертации.
+  - CSV-отчёт расширен полями `ExitCode`, `DurationMs`, `SourceSize`, `OutputSize`.
+- `TEST_EXPORT_PROBLEM_FILES.cmd` переведён на общий механизм `--from-list`.
+- Добавлен редактируемый список `PROBLEM_FILES_ExportEPUB.txt` для повторной проверки выбранных книг.
+- Код экспорта EPUB не менялся.
+
+
+## 0.1.19-beta
+
+- Добавлен TEST_EXPORT_PROBLEM_FILES.cmd для повторной проверки только ранее проблемных FB2-файлов.
+- Командный файл конвертирует выбранные FB2 в EPUB 2/EPUB 3, запускает EPUBCheck и собирает небольшой ZIP-архив для анализа.
+
+# 0.1.18-beta
+
+- Исправлены оставшиеся ошибки EPUBCheck на повторном большом тестовом наборе после 0.1.17-beta.
+- Исправлен XHTML вида <h3><p class="image">...</p></h3>, который возникал из FB2 <subtitle><image .../></subtitle>. Теперь subtitle/title с блочным содержимым выводятся через безопасный <div class="subtitle/title">.
+- В заголовках глав теперь сохраняются id, заданные на <title><p id="...">...</p></title>. Это исправляет внутренние ссылки вида #BdToc_... в книге «Хэлперн. Коллайдер».
+- Убрана повторная фильтрация глав после построения карты ссылок: это предотвращает сдвиг chapter_XXX.xhtml и ссылки на несуществующие файлы, например chapter_012.xhtml в книге «Цимбал. Растения. Параллельный мир».
+- В CSS добавлены базовые правила для .title и .subtitle при блочном выводе заголовков.
+
+# 0.1.17-beta
+
+- Исправлены массовые ошибки EPUBCheck на большом тестовом наборе FB2 из 74 книг.
+- Исправлены вложенные блочные элементы внутри inline-разметки: больше не создаётся XHTML вида <em><p>...</p></em>.
+- Исправлены изображения, вложенные в inline-разметку внутри абзаца: <image> теперь выводится как inline <img>, если выше по дереву есть <p>.
+- Для EPUB 3 табличные align/valign больше не пишутся как устаревшие атрибуты, а переносятся в style="text-align...; vertical-align...".
+- Добавлена проверка фактического формата изображения по сигнатуре файла: PNG/JPEG/GIF/WebP/SVG.
+- Исправлены случаи, когда в FB2 указан content-type=image/jpeg, но внутри лежит PNG: расширение и media-type теперь приводятся к реальному формату.
+- image/jpg нормализуется в image/jpeg для совместимости с EPUBCheck.
+- Fallback identifier теперь создаётся как валидный urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.
+- Исправлены ссылки на главы после удаления пустых глав: fileName chapter_*.xhtml пересчитывается до построения карты ссылок.
+- Добавлена очистка внешних URL: пробелы в host удаляются, пробелы вне host кодируются как %20.
+
+# 0.1.16-beta
+
+- Fixed TEST_EXPORT_AND_PACK.cmd for input folders ending with a backslash.
+- Saved TEST_EXPORT_AND_PACK.cmd as UTF-8 without BOM so @echo off is not broken by BOM bytes.
+- Added safe command-line arguments using "\." for FB2 input and EPUB output folders.
+- Updated script comments with a warning: do not add trailing backslash to FB2_INPUT_DIR.
+
+## 0.1.15-beta
+
+- Добавлен TEST_EXPORT_AND_PACK.cmd для автоматизации тестирования папки FB2.
+- В командном файле в начале задаются переменные FB2_INPUT_DIR, TEST_OUTPUT_ROOT, ARCHIVE_PATH, EPUBCHECK_JAR и RUN_EPUBCHECK.
+- Скрипт конвертирует исходную папку в EPUB 2 и EPUB 3, сохраняет CSV/console-логи, при наличии EPUBCheck формирует epubcheck_epub2.log и epubcheck_epub3.log.
+- Скрипт собирает пакет для анализа: fb2/, epub2/, epub3/, logs/, notes.txt и упаковывает его в ZIP через PowerShell Compress-Archive.
+- README_ExportEPUB.txt обновлён описанием нового командного файла.
+
+## 0.1.14-beta
+
+- Исправлены ссылки на верхнеуровневые FB2-секции, которые экспортируются отдельными XHTML-главами.
+- Для каждой такой главы теперь добавляется невидимый XHTML-якорь с id исходной FB2-секции, поэтому ссылки вида #target-section, #appendix-a, #mixed-2 и #stress-001 больше не ведут на отсутствующие фрагменты.
+- Улучшено восстановление пробелов между текстом и inline-элементами после знаков препинания, если MSXML убрал пробелы вокруг разметки.
+- Исключено ошибочное добавление пробелов вокруг sub/sup, чтобы формулы H<sub>2</sub>O и x<sup>2</sup> не превращались в H <sub>2</sub> O и x <sup>2</sup>.
+- По приложенному набору fb2_epub_test_result.zip выявлено 106 битых XHTML-фрагментов; исправление должно закрыть их все после повторной конвертации.
+
+## 0.1.13-beta
+
+- Исправлена аварийная остановка ExportEPUBBatch.exe на некорректных FB2/XML-файлах из negative_tests.
+- Инициализация COM в ExportEpubFileW переведена на RAII: CoUninitialize теперь вызывается только после освобождения MSXML COM-объектов.
+- Для невалидного XML в batch-режиме теперь возвращается понятная ошибка MSXML с номером строки/позиции, а обработка остальных файлов продолжается.
+- ExportEPUBBatch.exe теперь выводит количество найденных FB2-файлов перед началом обработки.
+- Вызов ExportEPUB.dll из batch-утилиты обёрнут в защитный SEH-блок, чтобы одиночный проблемный файл не обрывал весь прогон.
+
+CHANGELOG ExportEPUB
+====================
+
+
+2026-06-25 — Command scripts polish
+----------------------------------
+- Улучшены BUILD_WIN32_RELEASE.cmd и BUILD_BATCH_WIN32_RELEASE.cmd: выводятся MSBuild, log и binlog, поддержан режим NO_PAUSE=1 для автоматических запусков.
+- REBUILD_REGISTER_WIN32_RELEASE.cmd теперь вызывает сборку без лишней повторной паузы и сам выбирает regsvr32.
+- REGISTER_EXPORTEPUB.cmd и UNREGISTER_EXPORTEPUB.cmd выбирают SysWOW64/System32 regsvr32 в зависимости от доступности.
+- EXPORT_FOLDER.cmd исправлен для корректной передачи дополнительных параметров с путями, содержащими пробелы.
+- Версия поднята до 0.1.12-beta.
+
+2026-06-25 — PVS-Studio cleanup
+-------------------------------
+- Исправлены предупреждения PVS-Studio из повторного отчёта ExportEPUB(2).plog.
+- Убран заведомо ложный V547 для 32-битной проверки размера ZIP-entry через if constexpr.
+- Переписана запись ZIP EOCD через фиксированный буфер, чтобы убрать V525.
+- OBJECT_ENTRY_AUTO перенесён из заголовка в ExportEPUBPlugin.cpp.
+- Убраны лишние копирования строк и COM-указателей.
+- Упрощены пресеты настроек, чтобы не присваивать значения по умолчанию повторно.
+- Пустой catch при записи диагностического лога заменён на OutputDebugStringW.
+
+2026-06-25
+----------
+- Унифицирована структура папки проекта по образцу export-docx.
+- Основные исходники расположены в корне папки проекта.
+- FbeEpubExport.h/.cpp перенесены из src в корень проекта.
+- Командные файлы приведены к единому набору:
+  BUILD_WIN32_RELEASE.cmd,
+  BUILD_BATCH_WIN32_RELEASE.cmd,
+  CLEAN_AFTER_BUILD.cmd,
+  REGISTER_EXPORTEPUB.cmd,
+  UNREGISTER_EXPORTEPUB.cmd,
+  REBUILD_REGISTER_WIN32_RELEASE.cmd,
+  EXPORT_FOLDER.cmd.
+- Документация сведена к README_ExportEPUB.txt, TODO_ExportEPUB.txt и CHANGELOG_ExportEPUB.txt.
+- Убраны лишние служебные docs/tools/tests/cmake-файлы из поставки исходников.
+- Сохранены ExportEPUBBatch.cpp и проект ExportEPUBBatch.vcxproj для массового экспорта.
+
+Предыдущие изменения
+--------------------
+- Добавлен экспорт EPUB 2.0.1 и EPUB 3.3.
+- Реализована корректная EPUB/OCF ZIP-упаковка.
+- Добавлены OPF, NCX, nav.xhtml, обложка, аннотация, metadata и CSS.
+- Добавлены сноски, comments, обратные ссылки, вложенное оглавление и EPUB 3 semantic metadata.
+- Добавлены настройки экспорта, подсказки и пресеты.
+- Добавлена встроенная preflight-проверка.
+- Добавлен ExportEPUBBatch.exe для массового экспорта.
+- Исправлены ошибки EPUBCheck, включая битые fragment identifiers и невалидные вложенные p.
+- Исправлены предупреждения PVS-Studio, не относящиеся к ATL/COM-макросам.
+
+
+## 0.1.11-beta
+
+- Добавлен ресурсный файл ExportEPUBBatch.rc для консольной утилиты.
+- У ExportEPUBBatch.exe теперь есть иконка и VERSIONINFO в свойствах файла.
+- Добавлен ключ ExportEPUBBatch.exe --version-info / --about.
+- Обновлён проект ExportEPUBBatch.vcxproj и filters.
+
+0.1.16-beta
+- Исправлена дата metadata dc:date в OPF: FB2 date/@value теперь используется в первую очередь, а видимые даты dd.mm.yyyy нормализуются в YYYY-MM-DD.
+- Устранены ошибки EPUBCheck OPF-054 для EPUB 2 и предупреждения OPF-053 для EPUB 3 на тестовом наборе.
+- Сообщения об ошибках ExportEPUBBatch теперь выводятся одной строкой без переносов/возвратов каретки.
+
+
+0.1.24-beta
+-----------
+- Исправлено поведение стандартного диалога сохранения: после открытия и закрытия окна настроек подпись кнопки сохранения больше не должна заменяться на "OK".
+- Добавлена настройка "Добавлять титульный блок в начало книги". Титульный блок вставляется в начало первой текстовой главы без сдвига файлов chapter_*.xhtml и без поломки внутренних ссылок.
+- Для batch-утилиты добавлены ключи --title-page / --no-title-page.
+- Улучшено качество XHTML: image-only абзацы получают class="image", date в EPUB 2 выводится без HTML5-тега time, блочный code больше не помещает p внутри pre.
+- Улучшены alt для изображений, lang/xml:lang на элементах, CSS для titlepage/date/strikethrough/code-block.
+- Аннотация теперь оборачивается в div.annotation вместо section.annotation для лучшей совместимости с EPUB 2/XHTML 1.1.
+
+0.2.2-beta
+-----------
+- По результатам большого прогона 22 900 FB2 исправлена генерация XHTML 1.1 для EPUB 2: блочные контейнеры теперь не получают прямой текст без абзаца.
+- Для cite/epigraph и смешанного inline+block содержимого добавлено безопасное оборачивание текстовых фрагментов в p.inline-fragment.
+- Исправлена обработка ссылок с блочным содержимым: blockquote/div/p больше не помещаются внутрь a.
+- file:// ссылки теперь не попадают в EPUB как href, а выводятся как обычный текст.
+- Внешние HTTP/HTTPS ссылки с обратными слэшами нормализуются в URL с прямыми слэшами.
+
+
+## 0.2.2-beta
+
+- Улучшена стабильность обработки FB2 binary: base64 теперь декодируется собственным безопасным декодером, без MSXML dataType=bin.base64.
+- Исправлен возможный ExitCode 100 / "Неопознанная ошибка" на отдельных валидных FB2 с binary-изображениями.
+- В batch-ошибках добавлена стадия обработки: загрузка FB2, построение модели, запись EPUB и т.д.
+- Добавлен проблемный файл librusec\14237.fb2 в список PROBLEM_FILES_ExportEPUB.txt.

@@ -1,0 +1,52 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImportEPUB", "ImportEPUB.vcxproj", "{6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImportEPUBBatch", "ImportEPUBBatch.vcxproj", "{9F0ED6D7-AC98-41C6-BF9B-7215639DE032}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "plutovg", "thirdparty\lunasvg\plutovg.vcxproj", "{72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lunasvg", "thirdparty\lunasvg\lunasvg.vcxproj", "{2C7F38EF-A8F1-4A49-BD06-F74A317008A9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA} = {72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImportEPUBLunaSVG", "ImportEPUBLunaSVG.vcxproj", "{B30EF611-4F9E-4E37-9C8E-B69D85B4C5C1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA} = {72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}
+		{2C7F38EF-A8F1-4A49-BD06-F74A317008A9} = {2C7F38EF-A8F1-4A49-BD06-F74A317008A9}
+	EndProjectSection
+EndProject
+Global
+    GlobalSection(SolutionConfigurationPlatforms) = preSolution
+        Debug|Win32 = Debug|Win32
+        Release|Win32 = Release|Win32
+    EndGlobalSection
+    GlobalSection(ProjectConfigurationPlatforms) = postSolution
+        {6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}.Debug|Win32.ActiveCfg = Debug|Win32
+        {6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}.Debug|Win32.Build.0 = Debug|Win32
+        {6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}.Release|Win32.ActiveCfg = Release|Win32
+        {6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}.Release|Win32.Build.0 = Release|Win32
+        {9F0ED6D7-AC98-41C6-BF9B-7215639DE032}.Debug|Win32.ActiveCfg = Debug|Win32
+        {9F0ED6D7-AC98-41C6-BF9B-7215639DE032}.Debug|Win32.Build.0 = Debug|Win32
+        {9F0ED6D7-AC98-41C6-BF9B-7215639DE032}.Release|Win32.ActiveCfg = Release|Win32
+        {9F0ED6D7-AC98-41C6-BF9B-7215639DE032}.Release|Win32.Build.0 = Release|Win32
+        {72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}.Debug|Win32.ActiveCfg = Debug|Win32
+        {72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}.Debug|Win32.Build.0 = Debug|Win32
+        {72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}.Release|Win32.ActiveCfg = Release|Win32
+        {72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}.Release|Win32.Build.0 = Release|Win32
+        {2C7F38EF-A8F1-4A49-BD06-F74A317008A9}.Debug|Win32.ActiveCfg = Debug|Win32
+        {2C7F38EF-A8F1-4A49-BD06-F74A317008A9}.Debug|Win32.Build.0 = Debug|Win32
+        {2C7F38EF-A8F1-4A49-BD06-F74A317008A9}.Release|Win32.ActiveCfg = Release|Win32
+        {2C7F38EF-A8F1-4A49-BD06-F74A317008A9}.Release|Win32.Build.0 = Release|Win32
+        {B30EF611-4F9E-4E37-9C8E-B69D85B4C5C1}.Debug|Win32.ActiveCfg = Debug|Win32
+        {B30EF611-4F9E-4E37-9C8E-B69D85B4C5C1}.Debug|Win32.Build.0 = Debug|Win32
+        {B30EF611-4F9E-4E37-9C8E-B69D85B4C5C1}.Release|Win32.ActiveCfg = Release|Win32
+        {B30EF611-4F9E-4E37-9C8E-B69D85B4C5C1}.Release|Win32.Build.0 = Release|Win32
+    EndGlobalSection
+    GlobalSection(SolutionProperties) = preSolution
+        HideSolutionNode = FALSE
+    EndGlobalSection
+EndGlobal

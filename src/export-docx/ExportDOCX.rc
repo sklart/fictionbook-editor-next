@@ -1,0 +1,242 @@
+﻿// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+#include "../version.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "wtl/atlres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Russian (Russia) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+#pragma code_page(1251)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// REGISTRY
+//
+
+IDR_EXPORTDOCX          REGISTRY                "ExportDOCXPlugin.rgs"
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""atlres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION FBE_VERSION_NUMBER
+ PRODUCTVERSION FBE_VERSION_NUMBER
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "sklart"
+            VALUE "FileDescription", "FictionBook Editor DOCX export plugin"
+            VALUE "FileVersion", FBE_VERSION_STRING
+            VALUE "InternalName", "ExportDOCX"
+            VALUE "LegalCopyright", "Copyright 2026 Artem Sklyarov aka sklart"
+            VALUE "OriginalFilename", "ExportDOCX.dll"
+            VALUE "ProductName", "FictionBook Editor DOCX export plugin"
+            VALUE "ProductVersion", FBE_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+#endif    // Russian (Russia) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Russian (Russia) user interface resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+#pragma code_page(65001)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_DOCX_SETTINGS DIALOGEX 0, 0, 430, 286
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Настройки экспорта DOCX"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CONTROL         "",IDC_SETTINGS_TAB,"SysTabControl32",WS_TABSTOP,7,7,416,228
+
+    GROUPBOX        "Изображения и структура",IDC_GRP_IMAGES,18,36,394,190
+    CONTROL         "Экспортировать изображения",IDC_EXPORT_IMAGES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,54,220,10
+    CONTROL         "Экспортировать обложку",IDC_EXPORT_COVER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,70,220,10
+    CONTROL         "Ограничивать ширину изображений",IDC_LIMIT_IMAGE_WIDTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,86,220,10
+    LTEXT           "Макс. ширина, см:",IDC_LBL_IMAGE_WIDTH,265,86,80,8
+    EDITTEXT        IDC_IMAGE_MAX_WIDTH_CM,348,83,35,13,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "Создавать титульную страницу",IDC_TITLE_PAGE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,106,240,10
+    CONTROL         "Включать аннотацию на титульную",IDC_TITLE_INCLUDE_ANNOTATION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,122,230,10
+    CONTROL         "Включать жанры",IDC_TITLE_INCLUDE_GENRES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,138,160,10
+    CONTROL         "Включать серию",IDC_TITLE_INCLUDE_SERIES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,154,160,10
+    CONTROL         "Включать сведения FB2",IDC_TITLE_INCLUDE_FB2_INFO,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,170,180,10
+    CONTROL         "Добавлять оглавление Word",IDC_ADD_TOC,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,188,210,10
+    LTEXT           "Глубина:",IDC_LBL_TOC_DEPTH,265,188,42,8
+    COMBOBOX        IDC_TOC_DEPTH,312,184,70,70,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Создавать закладки для разделов FB2",IDC_CREATE_BOOKMARKS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,206,260,10
+    CONTROL         "Преобразовывать гиперссылки",IDC_EXPORT_HYPERLINKS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,220,240,10
+
+    GROUPBOX        "Примечания",IDC_GRP_NOTES,18,36,394,190
+    LTEXT           "Режим примечаний:",IDC_LBL_NOTES_MODE,30,58,90,8
+    COMBOBOX        IDC_NOTES_MODE,130,54,240,70,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+
+    GROUPBOX        "Оформление",IDC_GRP_FORMAT,18,36,394,190
+    LTEXT           "Пресеты настроек:",IDC_LBL_EXPORT_PRESET,30,54,100,8
+    PUSHBUTTON      "Книжный",IDC_PRESET_BOOK,140,50,75,14
+    PUSHBUTTON      "Минимальный",IDC_PRESET_MINIMAL,220,50,85,14
+    PUSHBUTTON      "Редакторский",IDC_PRESET_EDITORIAL,310,50,90,14
+    CONTROL         "Выравнивать основной текст по ширине",IDC_JUSTIFY_TEXT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,72,230,10
+    CONTROL         "Делать отступ первой строки",IDC_FIRST_LINE_INDENT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,88,220,10
+    CONTROL         "Начинать главы с новой страницы",IDC_CHAPTER_PAGE_BREAK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,104,230,10
+    CONTROL         "Улучшать стили FB2",IDC_ENHANCED_FB2_STYLES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,120,180,10
+    LTEXT           "Профиль оформления:",IDC_LBL_STYLE_PROFILE,30,142,100,8
+    COMBOBOX        IDC_STYLE_PROFILE,140,138,150,60,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Размер страницы:",IDC_LBL_PAGE_SIZE,30,164,85,8
+    COMBOBOX        IDC_PAGE_SIZE,140,160,100,60,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "empty-line:",IDC_LBL_EMPTY_LINE_MODE,260,164,55,8
+    COMBOBOX        IDC_EMPTY_LINE_MODE,320,160,80,80,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Использовать свой шрифт",IDC_CUSTOM_FONT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,188,140,10
+    LTEXT           "Шрифт:",IDC_LBL_FONT_NAME,180,188,35,8
+    COMBOBOX        IDC_FONT_NAME,220,184,145,120,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Размер:",IDC_LBL_FONT_SIZE,180,208,35,8
+    EDITTEXT        IDC_FONT_SIZE,220,205,35,13,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "пт",IDC_LBL_FONT_PT,258,208,15,8
+
+    GROUPBOX        "Свойства и проверка",IDC_GRP_PROPS,18,36,394,190
+    CONTROL         "Записывать свойства DOCX из описания FB2",IDC_EXPORT_METADATA,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,54,300,10
+    CONTROL         "Проверять структуру DOCX после экспорта",IDC_VALIDATE_DOCX,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,70,300,10
+    CONTROL         "Создавать диагностический отчёт TXT",IDC_CREATE_REPORT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,86,300,10
+    CONTROL         "Добавлять название книги в верхний колонтитул",IDC_ADD_HEADERS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,106,300,10
+    CONTROL         "Добавлять номера страниц",IDC_ADD_PAGE_NUMBERS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,122,230,10
+    CONTROL         "Не нумеровать титульную/оглавление",IDC_NO_TITLE_PAGE_NUMBER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,138,270,10
+    CONTROL         "Начинать нумерацию с основного текста",IDC_RESTART_PAGE_NUMBERING,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,48,154,300,10
+    CONTROL         "Включать автоматические переносы",IDC_AUTO_HYPHENATION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,174,260,10
+    CONTROL         "Открывать DOCX после экспорта",IDC_OPEN_AFTER_EXPORT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,190,260,10
+    LTEXT           "Язык документа:",IDC_LBL_DOC_LANGUAGE,30,212,85,8
+    COMBOBOX        IDC_DOC_LANGUAGE,130,208,180,60,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+
+    PUSHBUTTON      "По умолчанию",IDC_RESET_DEFAULTS,238,258,78,14
+    DEFPUSHBUTTON   "ОК",IDOK,318,258,50,14
+    PUSHBUTTON      "Отмена",IDCANCEL,373,258,50,14
+END
+
+IDD_DOCX_FILE_OPTIONS DIALOGEX 0, 0, 276, 24
+STYLE DS_SETFONT | WS_CHILD | WS_CLIPSIBLINGS
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Настройки экспорта DOCX...",IDC_FILEDLG_SETTINGS,84,5,122,14
+END
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_MAINICON            ICON                    "res\\ExportDOCX.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_DOCX_SETTINGS, DIALOG
+    BEGIN
+    END
+    IDD_DOCX_FILE_OPTIONS, DIALOG
+    BEGIN
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDR_EXPORTDOCX          "To DOCX"
+    IDS_ERROR_OPEN_FILE     "Не удалось открыть %s: %s"
+    IDS_ERROR_CREATE_DIRECTORY "Не удалось создать папку %s: %s"
+    IDS_ERROR_WRITE_FILE    "Не удалось записать в %s: %s"
+    IDS_ERROR_WRITE_FILE2   "Не удалось записать в %s: неполная запись."
+    IDS_WARNING_FILE_ALREADY_EXISTS 
+                            "%s уже существует.\nЗаменить файл?"
+    IDS_SAVE_FILE_FILTER    "Документ Word (*.docx)|*.docx|"
+    IDS_XML_PARSE_ERROR     "Ошибка разбора XML"
+    IDS_AT_LINE_COLUMN      "%s, строка %d, столбец %d: %s"
+    IDS_AT_S_S              "%s: %s"
+    IDS_ERROR               "Ошибка"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_COM_ERROR           "Ошибка COM"
+END
+
+#endif    // Russian user interface resources
+/////////////////////////////////////////////////////////////////////////////
+

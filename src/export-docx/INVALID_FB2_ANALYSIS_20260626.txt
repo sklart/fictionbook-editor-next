@@ -1,0 +1,31 @@
+ExportDOCX failed FB2 analysis - 2026-06-26
+
+All 8 files from fb2_test_suite_failed_100.zip are malformed FB2/XML files.
+They fail before DOCX generation because MSXML cannot parse the source XML.
+The converter should not silently repair these files during export; the batch runner now pre-validates input XML and records such files as INPUT_INVALID instead of Unexpected FAIL.
+
+Files:
+- 10015.fb2: line 69: raw empty angle brackets inside <p>: <p><><> </p>
+- 10076.fb2: line 32: raw <...> fragments inside paragraph; should be &lt;...&gt;
+- 10078.fb2: line 1316: raw guitar harmonic marker <12> inside paragraph; should be &lt;12&gt;
+- 10100.fb2: line 5251: raw email address in angle brackets <to_xa@mail.ru>; should be &lt;to_xa@mail.ru&gt;
+- 10101.fb2: line 205: broken paragraph opening tag: <p  .... instead of <p> ....
+- 10126.fb2: line 33: raw angle-bracket text causes mismatched tag; should be escaped as text
+- 10131.fb2: line 114: raw dialogue <Когда ты успокоишь ее?> inside paragraph; should be escaped
+- 10144.fb2: line 33: raw angle-bracket text causes invalid XML; should be escaped
+
+Expected result after this fix on the same first 100 files:
+  OK: 92
+  INPUT_INVALID: 8
+  FAIL: 0
+  DOCX_INVALID: 0
+  Unexpected FAIL: 0
+
+New/changed batch behavior:
+- XML pre-validation is enabled by default for real exports, not for -DryRun.
+- Invalid FB2/XML files are skipped before calling ExportDOCX.dll.
+- CSV/HTML status: INPUT_INVALID.
+- A list of invalid input files is written to input_invalid.txt next to the CSV log by default.
+- Use -InputInvalidList <path> to choose another list path.
+- Use -NoInputValidation only if you need the old behavior for debugging.
+- .cmd files saved without UTF-8 BOM to avoid the cmd.exe “я╗┐@echo off” issue.

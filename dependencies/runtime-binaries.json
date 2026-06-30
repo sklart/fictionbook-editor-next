@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "architecture": "x86",
+  "files": [
+    {
+      "name": "FBV.exe",
+      "version": "2.7.9",
+      "built": "2026-06-28",
+      "purpose": "FictionBook Validator launched by the shell command Validate",
+      "size": 82944,
+      "modernization": "FBV.exe собирается из локального проекта src/fbv; release-gate фиксирует размер, PE/VersionInfo и x86-архитектуру, но не SHA-256, потому что hash меняется при каждой локальной сборке.",
+      "hashPolicy": "volatile-build-output"
+    }
+  ]
+}

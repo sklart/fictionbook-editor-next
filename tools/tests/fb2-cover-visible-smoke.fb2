@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <genre>computers</genre>
+      <author>
+        <first-name>Codex</first-name>
+        <last-name>Visible</last-name>
+      </author>
+      <book-title>Visible Cover Smoke Test</book-title>
+      <coverpage>
+        <image l:href="#cover-visible.png"/>
+      </coverpage>
+      <lang>ru</lang>
+    </title-info>
+    <document-info>
+      <author>
+        <nickname>Codex</nickname>
+      </author>
+      <program-used>FictionBookEditor</program-used>
+      <date value="2026-06-14">14.06.2026</date>
+      <id>fb2-cover-visible-smoke-test</id>
+      <version>1.0</version>
+    </document-info>
+  </description>
+  <body>
+    <section>
+      <title><p>Visible Cover</p></title>
+      <p>visible cover smoke body</p>
+    </section>
+  </body>
+  <binary id="cover-visible.png" content-type="image/png">
+    iVBORw0KGgoAAAANSUhEUgAAAGAAAACACAYAAAD03Gy6AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAANDSURBVHhe7dixUdtgHIZxhkidSbICa7ADK1AxAQMwBSUbpEkDR0FFQ0X15RIuifRItj7Ffv0/6x7d/ZrYwr73EbLJxdfb1lTngv+g0zJAMQMUM0AxAxQzQDEDFFsM0L5f6ADckwwQxj3JAGHckwwQxj3JAGHckwwQxj3JAGHckwwQxj3JAGHckwwQxj3JAGHckwwQxj3JAGHckwwQxj3JAGHckwwQxj3JAGHckwwQxj3JAGHckwwQxj3JAGHckwwQxj1pMYCyDFDMAMUMUMwAxQxQzADFDFBsMcCPL990AO5JBgjjnmSAMO5JBgjjnmSAMO5JBgjjnmSAMO5JBgjjnmSAMO5JBgjjnmSAMO5JBgjjnmSAMO5JBgjjnmSAMO5JBgjjnmSAMO5JBgjjnmSAMO5J4QA37b31Hx93V/957mN7nbz20FV7e+I5fL0M7kkbCfB5zA56/cin4ViKdxjuSZsK0NpLe7scvP7lffvgU+aOh5uZ934c3JNOGuD9mo/v03kurvBhxOe7l8Ej4zivD4OHGO6IuCedfwCO+fdqHt/3J7en0W+HAWb0nzsM8G/opfOHjxtgRt+549vMig/U0a1rxXkrcU86aYB9x+QWseLcz2PNVTz+2dPXPh7uSdsJ0P1Nhj83d/X/wj1pOwF+Hwu/BZOvpQvPPwLuSScNsOs+Pq/zXI76dN+e+Zy554Wv/D+4J51/gMkH8cxVzb+Gu29Xh+OetP0AuPKnt7os7kkbCMDPiuGt5XTfdnbhnnQ2AbqPwe1l/N8N+491760f96SNBdh99S8d695bP+5Jmwkwub3wg3fhWPfe+nFPCgcQ9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPMkAY9yQDhHFPWgygLAMUM0AxAxQzQDEDFDNAMQMUM0AxAxQzQDEDFDNAMQMUM0AxAxT7CYi43kfJpUkDAAAAAElFTkSuQmCC
+  </binary>
+</FictionBook>

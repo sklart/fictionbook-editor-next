@@ -1,0 +1,9 @@
+[submodule "third_party/pcre2"]
+	path = third_party/pcre2
+	url = https://github.com/PCRE2Project/pcre2.git
+[submodule "third_party/hunspell"]
+	path = third_party/hunspell
+	url = https://github.com/hunspell/hunspell.git
+[submodule "third_party/lexilla"]
+	path = third_party/lexilla
+	url = https://github.com/ScintillaOrg/lexilla.git

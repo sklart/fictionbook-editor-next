@@ -1,0 +1,492 @@
+{
+  "description": "Канонические regex-кейсы для регрессионных проверок FBE. Кейсы разделены по движкам.",
+  "scintilla": {
+    "search": [
+      {
+        "id": "scintilla_digits_without_parentheses",
+        "subject": "(1)",
+        "pattern": "(\\d+)",
+        "expectedFound": true,
+        "expectedStart": 1,
+        "expectedEnd": 2,
+        "note": "Группа захвата должна находить только число без круглых скобок."
+      },
+      {
+        "id": "scintilla_literal_parentheses",
+        "subject": "(1)",
+        "pattern": "\\(\\d+\\)",
+        "expectedFound": true,
+        "expectedStart": 0,
+        "expectedEnd": 3,
+        "note": "Экранированные круглые скобки должны восприниматься как литералы."
+      },
+      {
+        "id": "scintilla_grouped_literal_parentheses",
+        "subject": "(1) 1 (22) 22",
+        "pattern": "\\((\\d+)\\)",
+        "expectedFound": true,
+        "expectedStart": 0,
+        "expectedEnd": 3,
+        "note": "Литеральные круглые скобки с группой захвата не должны путаться с простым (\\d+)."
+      },
+      {
+        "id": "scintilla_second_numeric_match",
+        "subject": "(1) 1 (22) 22",
+        "pattern": "(\\d+)",
+        "fromOffset": 2,
+        "expectedFound": true,
+        "expectedStart": 4,
+        "expectedEnd": 5,
+        "note": "Повторный поиск должен находить следующее совпадение, а не зацикливаться."
+      },
+      {
+        "id": "scintilla_second_parenthesized_match",
+        "subject": "(1) 1 (22) 22",
+        "pattern": "\\((\\d+)\\)",
+        "fromOffset": 3,
+        "expectedFound": true,
+        "expectedStart": 6,
+        "expectedEnd": 10,
+        "note": "Поиск со смещением должен находить второе совпадение с литеральными скобками."
+      },
+      {
+        "id": "scintilla_case_sensitive_miss",
+        "subject": "alpha beta ALPHA",
+        "pattern": "ALPHA",
+        "expectedFound": true,
+        "expectedStart": 11,
+        "expectedEnd": 16,
+        "note": "Без IgnoreCase поиск должен находить только совпадение в точном регистре."
+      },
+      {
+        "id": "scintilla_case_insensitive_search",
+        "subject": "alpha beta ALPHA",
+        "pattern": "ALPHA",
+        "ignoreCase": true,
+        "expectedFound": true,
+        "expectedStart": 0,
+        "expectedEnd": 5,
+        "note": "С IgnoreCase Scintilla должен находить первое совпадение независимо от регистра."
+      },
+      {
+        "id": "scintilla_xml_second_paragraph",
+        "subject": "<p>one</p><p>two</p>",
+        "pattern": "<p>([^<]+)</p>",
+        "fromOffset": 10,
+        "expectedFound": true,
+        "expectedStart": 10,
+        "expectedEnd": 20,
+        "note": "В режиме Код Scintilla должен корректно находить следующий XML-подобный фрагмент после смещения."
+      },
+      {
+        "id": "scintilla_not_found_after_offset",
+        "subject": "(1) 1 (22) 22",
+        "pattern": "\\((\\d+)\\)",
+        "fromOffset": 10,
+        "expectedFound": false,
+        "note": "Поиск после последнего совпадения должен корректно возвращать not found."
+      },
+      {
+        "id": "scintilla_invalid_regex_not_found",
+        "subject": "alpha",
+        "pattern": "(",
+        "expectedFound": false,
+        "note": "Невалидный regex в режиме Код не должен валить Scintilla и сейчас интерпретируется как not found."
+      },
+      {
+        "id": "scintilla_zero_length_search",
+        "subject": "ab",
+        "pattern": ".*?",
+        "expectedFound": true,
+        "expectedStart": 0,
+        "expectedEnd": 0,
+        "note": "Zero-length regex в режиме Код должен корректно находить пустое совпадение в начале текста."
+      }
+    ],
+    "replace": [
+      {
+        "id": "scintilla_replace_captured_digits",
+        "subject": "(1)",
+        "pattern": "(\\d+)",
+        "replacement": "[\\1]",
+        "expectedText": "([1])",
+        "note": "Замена по группе захвата должна сохранять внешние круглые скобки."
+      },
+      {
+        "id": "scintilla_replace_literal_parenthesized_digits",
+        "subject": "(1) 1 (22) 22",
+        "pattern": "\\((\\d+)\\)",
+        "replacement": "[\\1]",
+        "expectedText": "[1] 1 (22) 22",
+        "note": "Замена по шаблону с литеральными скобками должна менять только первое совпадение."
+      },
+      {
+        "id": "scintilla_replace_second_parenthesized_digits",
+        "subject": "(1) 1 (22) 22",
+        "pattern": "\\((\\d+)\\)",
+        "replacement": "[\\1]",
+        "fromOffset": 3,
+        "expectedText": "(1) 1 [22] 22",
+        "note": "Замена после смещения должна работать по второму совпадению и в прямом, и в GUI-пути."
+      },
+      {
+        "id": "scintilla_replace_case_insensitive_first_match",
+        "subject": "alpha beta ALPHA",
+        "pattern": "ALPHA",
+        "replacement": "[\\0]",
+        "ignoreCase": true,
+        "expectedText": "[alpha] beta ALPHA",
+        "note": "Регистронезависимая замена должна применять \\0 к первому найденному совпадению."
+      },
+      {
+        "id": "scintilla_replace_xml_inner_text",
+        "subject": "<p>one</p><p>two</p>",
+        "pattern": "<p>([^<]+)</p>",
+        "replacement": "<p>[\\1]</p>",
+        "expectedText": "<p>[one]</p><p>two</p>",
+        "note": "Замена в XML-подобном фрагменте должна корректно сохранять захваченный внутренний текст в режиме Код."
+      },
+      {
+        "id": "scintilla_zero_length_replace",
+        "subject": "ab",
+        "pattern": ".*?",
+        "replacement": "#",
+        "expectedText": "#ab",
+        "note": "Одиночная замена по zero-length regex в режиме Код не должна падать и должна вставлять текст в стартовую позицию."
+      }
+    ]
+  },
+  "pcre": {
+    "search": [
+      {
+        "id": "pcre_utf8_cyrillic",
+        "subject": "x привет y",
+        "pattern": "привет",
+        "options": [
+          "utf8"
+        ],
+        "expectedMatch": true,
+        "note": "PCRE должен корректно искать UTF-8 кириллицу."
+      },
+      {
+        "id": "pcre_multiline_disabled",
+        "subject": "alpha\nbeta",
+        "pattern": "^beta",
+        "options": [],
+        "expectedMatch": false,
+        "note": "Без multiline якорь ^ не должен срабатывать на второй строке."
+      },
+      {
+        "id": "pcre_multiline_enabled",
+        "subject": "alpha\nbeta",
+        "pattern": "^beta",
+        "options": [
+          "multiline"
+        ],
+        "expectedMatch": true,
+        "note": "С multiline якорь ^ должен работать на второй строке."
+      },
+      {
+        "id": "pcre_caseless_ascii",
+        "subject": "hello",
+        "pattern": "HELLO",
+        "options": [
+          "caseless"
+        ],
+        "expectedMatch": true,
+        "note": "Флаг caseless должен включать регистронезависимый поиск."
+      },
+      {
+        "id": "pcre_invalid_unclosed_group",
+        "subject": "alpha",
+        "pattern": "(",
+        "options": [
+          "utf8"
+        ],
+        "expectedMatch": false,
+        "expectedCompileError": true,
+        "note": "Невалидный шаблон должен давать ошибку компиляции, а не ложное совпадение."
+      }
+    ],
+    "wrapper": [
+      {
+        "id": "pcre_wrapper_first_match_only",
+        "subject": "alpha beta alpha",
+        "pattern": "alpha",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "alpha",
+        "expectedFirstIndex": 0,
+        "note": "При Global=false wrapper должен возвращать только первое совпадение."
+      },
+      {
+        "id": "pcre_wrapper_global_matches",
+        "subject": "alpha beta alpha",
+        "pattern": "alpha",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 2,
+        "expectedFirstValue": "alpha",
+        "expectedFirstIndex": 0,
+        "note": "При Global=true wrapper должен возвращать все совпадения."
+      },
+      {
+        "id": "pcre_wrapper_multiline_anchor",
+        "subject": "alpha\nbeta",
+        "pattern": "^beta",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": true,
+        "expectedCount": 1,
+        "expectedFirstValue": "beta",
+        "expectedFirstIndex": 6,
+        "note": "Multiline должен разрешать якорю ^ срабатывать на второй строке."
+      },
+      {
+        "id": "pcre_wrapper_capture_group",
+        "subject": "(22)",
+        "pattern": "\\((\\d+)\\)",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "(22)",
+        "expectedFirstIndex": 0,
+        "expectedSubMatches": [
+          "22"
+        ],
+        "note": "Wrapper должен сохранять группы захвата в SubMatches."
+      },
+      {
+        "id": "pcre_wrapper_zero_length_global",
+        "subject": "ab",
+        "pattern": ".*?",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 3,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 0,
+        "note": "Глобальный поиск по шаблону с пустыми совпадениями не должен зацикливаться."
+      },
+      {
+        "id": "pcre_wrapper_invalid_unclosed_group",
+        "subject": "alpha",
+        "pattern": "(",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 0,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 0,
+        "expectedCompileError": true,
+        "note": "Wrapper должен корректно переживать невалидный шаблон и не возвращать совпадения."
+      },
+      {
+        "id": "pcre_wrapper_optional_empty_group",
+        "subject": "b",
+        "pattern": "(a)?b",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "b",
+        "expectedFirstIndex": 0,
+        "expectedFirstSubMatchCount": 0,
+        "expectedFirstSubMatchValue": "",
+        "note": "Незахваченная необязательная группа не должна появляться в SubMatches."
+      },
+      {
+        "id": "pcre_wrapper_captured_empty_group",
+        "subject": "b",
+        "pattern": "(a*)b",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "b",
+        "expectedFirstIndex": 0,
+        "expectedFirstSubMatchCount": 1,
+        "expectedFirstSubMatchValue": "",
+        "note": "Захваченная пустая группа должна сохраняться в SubMatches как пустая строка."
+      },
+      {
+        "id": "pcre_wrapper_utf8_first_index_after_newline",
+        "subject": "я\nпривет",
+        "pattern": "привет",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "привет",
+        "expectedFirstIndex": 2,
+        "expectedFirstSubMatchCount": 0,
+        "expectedFirstSubMatchValue": "",
+        "note": "FirstIndex должен считаться в символах, а не в UTF-8 байтах, даже после перевода строки."
+      },
+      {
+        "id": "pcre_wrapper_multiline_capture_group",
+        "subject": "alpha\nbeta\ngamma",
+        "pattern": "^(beta)$",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": true,
+        "expectedCount": 1,
+        "expectedFirstValue": "beta",
+        "expectedFirstIndex": 6,
+        "expectedFirstSubMatchCount": 1,
+        "expectedFirstSubMatchValue": "beta",
+        "note": "Multiline-поиск должен корректно заполнять и совпадение, и группы захвата."
+      }
+    ],
+    "replace": [
+      {
+        "id": "pcre_replace_first_capture_group",
+        "subject": "(22)",
+        "pattern": "\\((\\d+)\\)",
+        "replacement": "[\\1]",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "[22]",
+        "note": "Подстановка \\1 должна брать первую группу захвата."
+      },
+      {
+        "id": "pcre_replace_whole_match_reference",
+        "subject": "foo 12 bar",
+        "pattern": "(\\d+)",
+        "replacement": "<\\0>",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "foo <12> bar",
+        "note": "Подстановка \\0 должна разворачивать полное совпадение."
+      },
+      {
+        "id": "pcre_replace_global_capture",
+        "subject": "alpha beta alpha",
+        "pattern": "(alpha)",
+        "replacement": "[\\1]",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedText": "[alpha] beta [alpha]",
+        "note": "Глобальная замена должна корректно применять backreference ко всем совпадениям."
+      },
+      {
+        "id": "pcre_replace_title_case_flag",
+        "subject": "ivan",
+        "pattern": "(ivan)",
+        "replacement": "\\T\\1\\Q",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "Ivan",
+        "note": "Флаг \\T должен переводить ASCII-вставку в title case до сброса через \\Q."
+      },
+      {
+        "id": "pcre_replace_upper_case_flag",
+        "subject": "ivan",
+        "pattern": "(ivan)",
+        "replacement": "\\U\\1\\Q",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "IVAN",
+        "note": "Флаг \\U должен переводить ASCII-вставку в верхний регистр до сброса через \\Q."
+      },
+      {
+        "id": "pcre_replace_title_case_cyrillic",
+        "subject": "иван",
+        "pattern": "(иван)",
+        "replacement": "\\T\\1\\Q",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "Иван",
+        "note": "Флаг \\T должен корректно обрабатывать базовый кириллический кейс в текущей Win32-логике FBE."
+      },
+      {
+        "id": "pcre_replace_upper_case_cyrillic",
+        "subject": "иван",
+        "pattern": "(иван)",
+        "replacement": "\\U\\1\\Q",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "ИВАН",
+        "note": "Флаг \\U должен корректно поднимать базовую кириллицу в верхний регистр."
+      },
+      {
+        "id": "pcre_replace_lower_case_cyrillic",
+        "subject": "ИВАН",
+        "pattern": "(ИВАН)",
+        "replacement": "\\L\\1\\Q",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "иван",
+        "note": "Флаг \\L должен корректно опускать базовую кириллицу в нижний регистр."
+      },
+      {
+        "id": "pcre_replace_last_submatch_reference",
+        "subject": "abcd",
+        "pattern": "((ab)(cd))",
+        "replacement": "<\\+>",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "<cd>",
+        "note": "Подстановка \\+ должна брать последнюю захваченную подгруппу."
+      },
+      {
+        "id": "pcre_replace_unmatched_optional_group",
+        "subject": "b",
+        "pattern": "(a)?b",
+        "replacement": "X\\1Y",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "XY",
+        "note": "Незахваченная необязательная группа в замене должна исчезать, а не оставлять мусор."
+      },
+      {
+        "id": "pcre_replace_q_resets_case_mode",
+        "subject": "ivan",
+        "pattern": "(ivan)",
+        "replacement": "\\U\\1\\Q-\\1",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "IVAN-ivan",
+        "note": "После \\Q регистровый режим должен сбрасываться, чтобы следующая вставка шла без преобразования."
+      },
+      {
+        "id": "pcre_replace_zero_length_global",
+        "subject": "ab",
+        "pattern": ".*?",
+        "replacement": "#",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedText": "#a#b#",
+        "note": "Глобальная замена по пустым совпадениям не должна зацикливаться и должна вставлять текст в каждой допустимой позиции."
+      },
+      {
+        "id": "pcre_replace_multiline_line_anchor",
+        "subject": "alpha\nbeta\ngamma",
+        "pattern": "^beta$",
+        "replacement": "[\\0]",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": true,
+        "expectedText": "alpha\n[beta]\ngamma",
+        "note": "С multiline якоря строки должны корректно работать и в замене, а не только в поиске."
+      }
+    ]
+  }
+}
+

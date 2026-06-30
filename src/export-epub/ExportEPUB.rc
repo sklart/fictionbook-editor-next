@@ -1,0 +1,130 @@
+// Resource script for FBE ExportEPUB plugin.
+#pragma code_page(65001)
+//
+#include "resource.h"
+#include "../version.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Russian resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+
+IDR_EXPORTEPUB REGISTRY "ExportEPUBPlugin.rgs"
+IDI_MAINICON ICON "res\\ExportEPUB.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION FBE_VERSION_NUMBER
+ PRODUCTVERSION FBE_VERSION_NUMBER
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "sklart"
+            VALUE "FileDescription", "FictionBook Editor EPUB export plugin"
+            VALUE "FileVersion", FBE_VERSION_STRING
+            VALUE "InternalName", "ExportEPUB"
+            VALUE "LegalCopyright", "Copyright 2026 Artem Sklyarov aka sklart"
+            VALUE "OriginalFilename", "ExportEPUB.dll"
+            VALUE "ProductName", "FictionBook Editor EPUB export plugin"
+            VALUE "ProductVersion", FBE_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+
+
+IDD_EXPORT_OPTIONS DIALOGEX 0, 0, 338, 383
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Параметры экспорта EPUB"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT           "Общие параметры:", -1, 12, 10, 310, 10
+    CONTROL         "Добавлять NCX fallback для EPUB 3", IDC_CHECK_NCX_FALLBACK, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 25, 300, 10
+    CONTROL         "Создавать отдельную страницу обложки", IDC_CHECK_COVER_PAGE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 40, 300, 10
+    CONTROL         "Создавать отдельную страницу аннотации", IDC_CHECK_ANNOTATION_PAGE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 55, 300, 10
+    CONTROL         "Добавлять титульный блок в начало книги", IDC_CHECK_TITLE_PAGE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 70, 300, 10
+    CONTROL         "Создавать диагностический .log рядом с EPUB", IDC_CHECK_WRITE_LOG, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 85, 300, 10
+    CONTROL         "Показывать итоговое окно после экспорта", IDC_CHECK_SHOW_SUMMARY, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 100, 300, 10
+    CONTROL         "Открывать EPUB после экспорта", IDC_CHECK_OPEN_FILE_AFTER_EXPORT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 115, 145, 10
+    CONTROL         "Открывать папку после экспорта", IDC_CHECK_OPEN_FOLDER_AFTER_EXPORT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 172, 115, 155, 10
+    CONTROL         "Показывать предупреждения встроенной проверки", IDC_CHECK_SHOW_PREFLIGHT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 130, 300, 10
+
+    LTEXT           "Оформление CSS:", -1, 12, 150, 310, 10
+    CONTROL         "Выравнивать основной текст по ширине", IDC_CHECK_CSS_JUSTIFY, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 165, 300, 10
+    CONTROL         "Добавлять отступ первой строки", IDC_CHECK_CSS_FIRST_INDENT, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 180, 300, 10
+    CONTROL         "Разрешать переносы слов средствами CSS", IDC_CHECK_CSS_HYPHENATE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 195, 300, 10
+
+    LTEXT           "Навигация и структура:", -1, 12, 215, 310, 10
+    CONTROL         "Включать обложку в оглавление", IDC_CHECK_TOC_COVER, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 230, 150, 10
+    CONTROL         "Включать аннотацию в оглавление", IDC_CHECK_TOC_ANNOTATION, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 172, 230, 155, 10
+    CONTROL         "Включать примечания в оглавление", IDC_CHECK_TOC_NOTES, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 245, 150, 10
+    CONTROL         "Добавлять обратные ссылки из примечаний", IDC_CHECK_NOTE_BACKLINKS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 172, 245, 155, 10
+    LTEXT           "Глубина оглавления:", IDC_STATIC_MAX_TOC_DEPTH, 12, 262, 120, 10
+    EDITTEXT        IDC_EDIT_MAX_TOC_DEPTH, 132, 259, 35, 14, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Порог XHTML, КБ:", IDC_STATIC_MAX_XHTML_KB, 172, 262, 120, 10
+    EDITTEXT        IDC_EDIT_MAX_XHTML_KB, 294, 259, 35, 14, ES_AUTOHSCROLL | ES_NUMBER
+
+    LTEXT           "Изображения:", -1, 12, 280, 310, 10
+    CONTROL         "Использовать первую картинку как обложку, если coverpage отсутствует", IDC_CHECK_COVER_FIRST_IMAGE, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 295, 300, 10
+    CONTROL         "Удалять неиспользуемые binary-изображения", IDC_CHECK_REMOVE_UNUSED_IMAGES, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 12, 310, 300, 10
+
+    LTEXT           "Быстрые настройки:", -1, 12, 330, 310, 10
+    PUSHBUTTON      "По умолчанию", IDC_BUTTON_PRESET_DEFAULT, 12, 345, 72, 14
+    PUSHBUTTON      "Совместимость", IDC_BUTTON_PRESET_COMPAT, 88, 345, 72, 14
+    PUSHBUTTON      "Подробный EPUB", IDC_BUTTON_PRESET_RICH, 164, 345, 72, 14
+
+    DEFPUSHBUTTON   "OK", IDOK, 226, 365, 50, 14
+    PUSHBUTTON      "Отмена", IDCANCEL, 280, 365, 50, 14
+END
+
+
+IDD_SAVE_DIALOG_EXTRA DIALOGEX 0, 0, 250, 24
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
+FONT 8, "MS Shell Dlg"
+BEGIN
+    // Align the button with the standard file name / file type fields of the
+    // Explorer-style Save As dialog instead of keeping it at the left edge.
+    PUSHBUTTON      "Настройки экспорта...", IDC_BUTTON_EXPORT_OPTIONS, 72, 5, 118, 14
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SAVE_FILE_FILTER       "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub||"
+    IDS_ERROR_EXPORT_FAILED    "Не удалось экспортировать EPUB.\n\n%s"
+    IDS_ERROR_INVALID_DOCUMENT "FBE передал некорректный XML-документ."
+    IDS_ERROR_NO_CHAPTERS      "В книге не найден текст для экспорта."
+    IDS_ERROR_TITLE            "Экспорт EPUB"
+    IDS_EXPORT_DONE            "EPUB успешно сохранён."
+END
+
+#endif

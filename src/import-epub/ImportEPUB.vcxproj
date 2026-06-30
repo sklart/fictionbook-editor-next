@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}</ProjectGuid>
+    <RootNamespace>ImportEPUB</RootNamespace>
+    <Keyword>AtlProj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <UseOfAtl>Static</UseOfAtl>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <UseOfAtl>Static</UseOfAtl>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="ExtensionSettings" />
+
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros">
+    <RepoRoot>$(MSBuildProjectDirectory)\</RepoRoot>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\import-epub\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>ImportEPUB</TargetName>
+    <TargetExt>.dll</TargetExt>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;UNICODE;_UNICODE;STRICT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)ImportEPUB.pch</PrecompiledHeaderOutputFile>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>comdlg32.lib;comctl32.lib;ole32.lib;oleaut32.lib;uuid.lib;rpcrt4.lib;shlwapi.lib;shell32.lib;gdiplus.lib;comsuppwd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)ImportEPUB.pdb</ProgramDatabaseFile>
+      <ModuleDefinitionFile>ImportEPUB.def</ModuleDefinitionFile>
+      <TargetMachine>MachineX86</TargetMachine>
+      <RegisterOutput>false</RegisterOutput>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;UNICODE;_UNICODE;STRICT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)ImportEPUB.pch</PrecompiledHeaderOutputFile>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>comdlg32.lib;comctl32.lib;ole32.lib;oleaut32.lib;uuid.lib;rpcrt4.lib;shlwapi.lib;shell32.lib;gdiplus.lib;comsuppw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)ImportEPUB.pdb</ProgramDatabaseFile>
+      <ModuleDefinitionFile>ImportEPUB.def</ModuleDefinitionFile>
+      <TargetMachine>MachineX86</TargetMachine>
+      <RegisterOutput>false</RegisterOutput>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClInclude Include="EpubImport.h" />
+    <ClInclude Include="FBEPluginInterfaces.h" />
+    <ClInclude Include="ImportEPUBModule.h" />
+    <ClInclude Include="ImportEPUBPlugin.h" />
+    <ClInclude Include="ImportEPUBGuids.h" />
+    <ClInclude Include="ImportOptionsDialog.h" />
+    <ClInclude Include="MsxmlImport.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="stdafx.h" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="EpubImport.cpp" />
+    <ClCompile Include="ImportEPUBBatch.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ImportEPUBPlugin.cpp" />
+    <ClCompile Include="ImportOptionsDialog.cpp" />
+    <ClCompile Include="Registry.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ResourceCompile Include="ImportEPUB.rc" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="ImportEPUB.def" />
+
+    <None Include="BUILD_WIN32_RELEASE.cmd" />
+    <None Include="BUILD_BATCH_WIN32_RELEASE.cmd" />
+    <None Include="CLEAN_AFTER_BUILD.cmd" />
+    <None Include="REGISTER_IMPORTEPUB.cmd" />
+    <None Include="UNREGISTER_IMPORTEPUB.cmd" />
+    <None Include="REBUILD_REGISTER_WIN32_RELEASE.cmd" />
+    <None Include="IMPORT_FOLDER.cmd" />
+    <None Include="CONVERT_AND_PACK_TEST_RESULTS.cmd" />
+    <None Include="BIG_VOLUME_TEST.cmd" />
+    <None Include="BIG_VOLUME_TEST.ps1" />
+    <None Include="BUILD_STABLE_TEST_RELEASE.cmd" />
+    <None Include="STABILIZATION_BIG_TEST_README.txt" />
+    <None Include="PACK_PROBLEM_FILES.cmd" />
+    <None Include="CHECK_DEPENDENCIES.cmd" />
+    <None Include="RUN_IMPORT_REGRESSION_TESTS.cmd" />
+    <None Include="RUN_IMPORT_REGRESSION_TESTS.ps1" />
+    <None Include="CHECK_DEPENDENCIES.ps1" />
+    <None Include="BUILD_LUNASVG_ADAPTER_WIN32_RELEASE.cmd" />
+    <None Include="BUILD_LUNASVG_LIBRARY_WIN32_RELEASE.cmd" />
+    <None Include="BUILD_LUNASVG_ALL_WIN32_RELEASE.cmd" />
+    <None Include="thirdparty\lunasvg\README_IMPORT_EPUB_BUILD.txt" />
+    <None Include="thirdparty\lunasvg\LICENSE" />
+    <None Include="thirdparty\lunasvg\plutovg\LICENSE" />
+    <None Include="thirdparty\lunasvg\plutovg.vcxproj" />
+    <None Include="thirdparty\lunasvg\lunasvg.vcxproj" />
+    <None Include="ImportEPUBLunaSVG.vcxproj" />
+    <None Include="ImportEPUBLunaSVG.vcxproj.filters" />
+    <None Include="ImportEPUBLunaSVG.def" />
+    <None Include="CHECK_REGISTRATION.cmd" />
+    <None Include="CHECK_VERSIONINFO.cmd" />
+    <None Include="README_ImportEPUB.txt" />
+    <None Include="TODO_ImportEPUB.txt" />
+    <None Include="CHANGELOG_ImportEPUB.txt" />
+    <None Include="targetver.h" />
+    <None Include="ImportEPUBBatch.vcxproj" />
+    <Image Include="res\ImportEPUB.ico" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+
+  <ItemGroup>
+    <None Include="PVS_STUDIO_NOTES.txt" />
+  </ItemGroup>
+</Project>

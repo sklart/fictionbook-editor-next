@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Generated Files">
+      <UniqueIdentifier>{685BD071-C860-4E9B-A14E-F3BE02450AA8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EPUB Core">
+      <UniqueIdentifier>{1216E685-8E7C-431F-9906-F61D4FD47E7D}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="ExportEPUB.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="ExportEPUBPlugin.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="StdAfx.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="ExportEPUB_i.c"><Filter>Generated Files</Filter></ClCompile>
+    <ClCompile Include="FbeEpubExport.cpp"><Filter>EPUB Core</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="dllmain.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="ExportEPUBPlugin.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="resource.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="StdAfx.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="targetver.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="ExportEPUB_i.h"><Filter>Generated Files</Filter></ClInclude>
+    <ClInclude Include="FbeEpubExport.h"><Filter>EPUB Core</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ExportEPUB.def"><Filter>Source Files</Filter></None>
+    <None Include="ExportEPUBPlugin.rgs"><Filter>Resource Files</Filter></None>
+    <None Include="README_RU.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ExportEPUB.rc"><Filter>Resource Files</Filter></ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\ExportEPUB.ico"><Filter>Resource Files</Filter></Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="ExportEPUB.idl"><Filter>Source Files</Filter></Midl>
+    <Midl Include="..\fbe\fbe.idl"><Filter>Source Files</Filter></Midl>
+  </ItemGroup>
+</Project>

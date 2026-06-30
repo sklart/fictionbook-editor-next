@@ -1,0 +1,18 @@
+ImportEPUB PVS-Studio notes
+===========================
+
+fix65 addresses diagnostics from ImportEPUB(3).plog that belong to our own source files:
+
+1. ImportOptionsDialog.cpp, V560
+   The lower-bound check for SvgConversionMode compared an unsigned DWORD against zero.
+   The condition was simplified to check only the upper bound.
+
+2. EpubImport.cpp, V1048
+   CleanTypographyText() contained a no-op assignment for U+2013 EN DASH.
+   The redundant assignment was removed.
+
+The remaining diagnostics in ImportEPUB(3).plog belong to bundled third-party LunaSVG/PlutoVG/STB sources under thirdparty\lunasvg.
+They are not modified in fix65 to avoid diverging from the upstream library.
+For final release it is better to either:
+- keep third-party diagnostics as a separate PVS project/baseline, or
+- exclude thirdparty\lunasvg from the main ImportEPUB PVS report and track it independently.

@@ -1,0 +1,35 @@
+TODO MathML / formula import backend
+====================================
+
+Статус: отложено до окончания тестирования большого корпуса EPUB.
+
+Кандидатная цепочка:
+  MathML -> mml2tex -> LaTeX -> MicroTeX -> SVG/bitmap -> PNG -> FB2 <image>/<binary>
+
+Принципиальное решение:
+  Делать как optional backend/helper рядом с ImportEPUB.dll и ImportEPUBBatch.exe.
+  Отсутствие или сбой MathML helper не должны ломать обычный импорт EPUB.
+
+План реализации:
+1. Инфраструктура без рендера:
+   - обнаружение MathML в XHTML;
+   - безопасный fallback;
+   - настройки MathML;
+   - статистика MathMLFound/MathMLSkipped/MathMLErrors.
+
+2. MathML -> LaTeX:
+   - mml2tex через Saxon/SaxonC/Java-helper;
+   - логирование исходного MathML и полученного LaTeX;
+   - NormalizeLatexForMicroTeX().
+
+3. Render:
+   - MicroTeX -> SVG;
+   - SVG -> PNG через существующий LunaSVG backend;
+   - вставка в FB2 как <image>/<binary>;
+   - кеширование по hash(normalized MathML + size + scale + color).
+
+Риски:
+- MSXML не подходит для mml2tex, нужен Saxon/XSLT 2+.
+- MicroTeX может не поддерживать часть LaTeX-команд после mml2tex.
+- Inline-формулы в FB2/FBE нужно тестировать отдельно.
+- Нужны timeout/лимиты на формулы для массовой конвертации.

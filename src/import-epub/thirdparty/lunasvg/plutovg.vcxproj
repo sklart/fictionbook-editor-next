@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32"><Configuration>Debug</Configuration><Platform>Win32</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32"><Configuration>Release</Configuration><Platform>Win32</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}</ProjectGuid>
+    <RootNamespace>plutovg</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(MSBuildProjectDirectory)\lib\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\build\obj\$(Platform)\$(Configuration)\plutovg\</IntDir>
+    <TargetName>plutovg</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_LIB;PLUTOVG_BUILD;PLUTOVG_BUILD_STATIC;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\plutovg\include;$(MSBuildProjectDirectory)\plutovg\source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Lib />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_LIB;PLUTOVG_BUILD;PLUTOVG_BUILD_STATIC;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\plutovg\include;$(MSBuildProjectDirectory)\plutovg\source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Lib />
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="plutovg\source\plutovg-blend.c" />
+    <ClCompile Include="plutovg\source\plutovg-canvas.c" />
+    <ClCompile Include="plutovg\source\plutovg-font.c" />
+    <ClCompile Include="plutovg\source\plutovg-matrix.c" />
+    <ClCompile Include="plutovg\source\plutovg-paint.c" />
+    <ClCompile Include="plutovg\source\plutovg-path.c" />
+    <ClCompile Include="plutovg\source\plutovg-rasterize.c" />
+    <ClCompile Include="plutovg\source\plutovg-surface.c" />
+    <ClCompile Include="plutovg\source\plutovg-ft-math.c" />
+    <ClCompile Include="plutovg\source\plutovg-ft-raster.c" />
+    <ClCompile Include="plutovg\source\plutovg-ft-stroker.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="plutovg\include\plutovg.h" />
+    <ClInclude Include="plutovg\source\plutovg-private.h" />
+    <ClInclude Include="plutovg\source\plutovg-utils.h" />
+    <ClInclude Include="plutovg\source\plutovg-ft-math.h" />
+    <ClInclude Include="plutovg\source\plutovg-ft-raster.h" />
+    <ClInclude Include="plutovg\source\plutovg-ft-stroker.h" />
+    <ClInclude Include="plutovg\source\plutovg-ft-types.h" />
+    <ClInclude Include="plutovg\source\plutovg-stb-image-write.h" />
+    <ClInclude Include="plutovg\source\plutovg-stb-image.h" />
+    <ClInclude Include="plutovg\source\plutovg-stb-truetype.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

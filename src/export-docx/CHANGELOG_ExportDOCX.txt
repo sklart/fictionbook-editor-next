@@ -1,0 +1,152 @@
+﻿2026-06-26
+----------
+- Расширен режим ExportDOCXBatch.exe -ValidateDocx: проверяются все XML/RELS-части, relationship Target, r:id/r:embed/r:link, наличие media-файлов и типы изображений в [Content_Types].xml.
+- Добавлен общий файл logs\warnings_summary.txt: в него сводятся предупреждения из per-file TXT-отчётов, DOCX_INVALID и ожидаемые/неожиданные FAIL.
+- В summary.txt и HTML-отчёт добавлены счётчики Expected FAIL и Unexpected FAIL; negative_tests теперь учитываются как ожидаемые отрицательные проверки.
+- Диагностический TXT-отчёт расширен по внутренним ссылкам: всего, разрешено, битые, собранные цели и пропущенные дубликаты закладок.
+- Титульная страница при включённых сведениях FB2 дополняется publish-info, src-title-info и document-info/history.
+- В DOCX добавлен docProps/custom.xml с FB2 ID, версией, программой, жанрами, серией, исходным названием и сведениями публикации.
+- Добавлен небольшой заголовочный файл DocxQuality.h как первый безопасный шаг к выносу статусов/терминов качества из крупных исходников.
+
+
+2026-06-26
+- Исправлена сборка после удаления MathML-обработки: восстановлены служебные методы TextOf, AddDescription и AppendAuthorPart.
+- Исправлено экранирование XML-строки bookmarkStart/bookmarkEnd в AddPendingBookmarkForId().
+
+2026-06-26
+----------
+- Убраны упоминания MathML как штатной возможности экспорта: валидный FB2 не поддерживает MathML отдельным элементом.
+- Из диагностического TXT-отчёта удалён счётчик формул/MathML.
+- Нестандартные XML-вставки больше не оформляются как отдельный режим экспорта формул; поддерживаемые формулы в FB2 остаются текстом/Unicode/индексами или изображениями.
+
+2026-06-25
+----------
+- Добавлен параметр ExportDOCXBatch.exe: -ValidateDocx.
+- Batch-утилита выполняет базовую проверку структуры DOCX ZIP/OpenXML-пакета после экспорта.
+- В CSV/HTML-отчёты добавлен столбец Validation.
+- Добавлены статусы OK_WITH_WARNINGS и DOCX_INVALID.
+- CREATE_EXPORTDOCX_TEST_PACKAGE.cmd теперь по умолчанию включает -ValidateDocx.
+- Диагностический TXT-отчёт расширен: добавлены счётчики stylesheet, маленьких изображений и изображений, ограниченных по высоте.
+- Для обычных изображений добавлено ограничение по высоте рабочей области страницы без растягивания маленьких изображений.
+
+
+2026-06-25
+----------
+- Улучшена классификация ссылок FB2: ссылки type="note" теперь считаются примечаниями только если цель реально находится в body name="notes".
+- Исправлены ложные предупреждения по оглавлениям, где обычные ссылки ошибочно были помечены как type="note".
+- Внутренние ссылки теперь могут вести не только на section/@id, но и на id абзацев, изображений, таблиц, стихотворных строк и других выводимых элементов FB2.
+- Для изображений добавляются закладки как по собственному id элемента image, так и по binary id из l:href.
+
+2026-06-25
+----------
+- Fixed C++ string literal escaping in ExportDOCXPlugin.cpp after the footnotes/endnotes relationships update.
+- The project should now compile again in Release | Win32 with ExportDOCXBatch target.
+
+﻿2026-06-25
+- Fixed ExportDOCXBatch.rc resource compilation by including <winres.h>.
+- ExportDOCXBatch.exe keeps icon and VERSIONINFO resources.
+
+CHANGELOG ExportDOCX
+====================
+
+2026-06-25
+----------
+- Добавлены ресурсы для ExportDOCXBatch.exe:
+  - отдельный файл ExportDOCXBatch.rc;
+  - иконка приложения из res\ExportDOCX.ico;
+  - VERSIONINFO с описанием, именем файла и версией.
+- Справка и консольные сообщения ExportDOCXBatch.exe переведены на английский язык.
+
+
+2026-06-25
+----------
+- Улучшена batch-утилита ExportDOCXBatch.exe:
+  - добавлены параметры -OpenHtmlReport/-OpenHtml, -OpenSummary, -OpenFailedList, -OpenOkList, -OpenReports;
+  - добавлен параметр -PrintFailed для вывода списка ошибочных FB2 в консоль;
+  - HTML-отчёт теперь содержит кликабельные ссылки Input/Output на локальные файлы;
+  - при ошибке LoadLibrary/GetProcAddress выводится подробный Win32-код и текст ошибки.
+
+2026-06-25
+----------
+- Унифицирована структура папки проекта.
+- Удалены лишние служебные файлы и дублирующий REGISTER_EXPORT_DOCX.cmd.
+- Добавлен единый CLEAN_AFTER_BUILD.cmd.
+- Документация сведена к README_ExportDOCX.txt, TODO_ExportDOCX.txt и CHANGELOG_ExportDOCX.txt.
+- В проекте оставлены исходники, ресурсы, командные файлы сборки/очистки/регистрации и основная документация.
+
+Предыдущие изменения
+--------------------
+- Добавлен ExportDOCXBatch.exe для массового экспорта.
+- Добавлены режимы Resume, Retry, FailedList, OkList, Summary, HtmlReport, фильтры по размеру и дате.
+- Добавлены титульная страница, секции Word, колонтитулы и номера страниц.
+- Добавлены диагностические отчёты.
+- Улучшены сноски, изображения, обложка, таблицы, стили Word и внутренние ссылки.
+- Исправлены предупреждения/ошибки сборки MSVC и PVS-Studio.
+
+[2026-06-25]
+- Исправлена ошибка в README с путём к 32-битному regsvr32: C:\Windows\SysWOW64\regsvr32.exe.
+- README расширен: добавлено подробное описание возможностей, настроек экспорта, batch-утилиты, диагностики и типовых проблем.
+- Обновлена иконка ресурса res\ExportDOCX.ico на актуальную версию.
+2026-06-25
+- Устранены реальные замечания PVS-Studio из ExportDOCX(4).plog:
+  V1048 в ParseSizeValue(), V823/V827/V826 в поиске ExportDOCX.dll,
+  V821 в FindFb2Files(), V823 в m_sectionBookmarkTargets, V1048 в LimitCoverImageSize().
+- Для ложных предупреждений PVS-Studio на ATL/WTL/COM ABI добавлены исходные поясняющие suppress-комментарии.
+
+
+2026-06-25
+
+- Восстановлен CREATE_EXPORTDOCX_TEST_PACKAGE.cmd в составе проекта.
+
+- Командный файл тестового пакета теперь умеет распаковывать *.fb2.zip во временную staging-папку и включать их в конвертацию.
+
+- Добавлены staging_source_tree.txt и сведения о staging-папке в test_info.txt.
+
+- Консольный вывод ExportDOCXBatch.exe переведён на UTF-8, чтобы ExportDOCX_batch_console.log читался без NUL-символов.
+
+- Для тестовых наборов с negative_tests добавлен параметр EXIT_WITH_EXPORT_CODE.
+
+
+
+## 2026-06-25 - Batch crash protection fix
+
+- Fixed `ExportFB2FileToDOCX()` so COM smart pointers are released before `CoUninitialize()`.
+- Added SEH protection around every export call in `ExportDOCXBatch.exe`.
+- Malformed FB2 files now produce `FAIL` rows in reports instead of terminating the entire batch run.
+2026-06-25
+- Fixed footnotes.xml/endnotes.xml generation when note text contains images or external links: added required namespaces and relationship parts for notes.
+- Fixed note-link detection: ordinary internal and external hyperlinks are no longer counted as missing notes unless they explicitly target body name="notes" or have type="note".
+
+2026-06-26 - Build fix after MathML cleanup
+- Fixed AddDescription() references to obsolete titlePage* option names.
+- Reused existing titleInclude* settings fields for title page annotation, genres, series and FB2 info.
+- Date output is controlled together with FB2 info to avoid adding an extra UI option.
+
+
+2026-06-26 - Conversion quality presets update
+----------------------------------------------
+- Added export presets in the settings dialog: Book DOCX, Minimal DOCX, Editorial DOCX.
+- Improved cover export: dedicated cover page, page break after cover, height-limited scaling.
+- Improved title page metadata: translators, sequence number, language, publish-info, src-title-info, document history.
+- Improved FB2 element styling: annotation, epigraph, cite, poem/stanza/v, text-author, captions, code.
+- Improved section heading mapping up to Heading 6 and TOC depth 1..6.
+- Improved table export: 100% table width, repeated header row, colspan and basic rowspan/vMerge support.
+- Improved footnote/endnote conversion: notes can contain multiple elements, images and links.
+- Added decorative empty-line mode and more detailed per-file quality statistics.
+
+2026-06-26
+- Fixed build error in note/endnote XML generation: escaped w:id attribute in NoteXml().
+
+2026-06-26
+- Пресеты экспорта в окне настроек заменены с выпадающего списка на три кнопки: «Книжный», «Минимальный», «Редакторский».
+- Для каждой кнопки пресета добавлена подробная всплывающая подсказка с описанием сценария применения.
+
+Стабилизация для большого объёма FB2
+------------------------------------
+- Добавлены RUN_LARGE_FB2_TEST.cmd и RUN_LARGE_FB2_DRYRUN.cmd.
+- Добавлен ANALYZE_LARGE_FB2_RESULTS.cmd для анализа CSV после полного прогона.
+- Добавлен README_LARGE_FB2_TEST.txt с рекомендуемым порядком тестирования.
+- ExportDOCXBatch во время длинного запуска пишет маркеры текущего файла:
+  ExportDOCX_current_file.txt и ExportDOCX_progress_state.txt рядом с CSV-логом.
+- Для ночных прогонов рекомендуется использовать -Resume -SkipIfNewer -Retries 2
+  -PreserveDates -ValidateDocx -ProgressEvery 25.

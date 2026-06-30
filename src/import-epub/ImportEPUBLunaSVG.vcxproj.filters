@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files"><UniqueIdentifier>{1A4940F5-2A40-4B2A-8E90-74E88776E691}</UniqueIdentifier></Filter>
+    <Filter Include="Build Files"><UniqueIdentifier>{D64B82FD-FBBE-4D21-8284-C9942D9D20D1}</UniqueIdentifier></Filter>
+    <Filter Include="thirdparty"><UniqueIdentifier>{F4FEE1B0-5158-4234-9704-37E8B67CF8E5}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ImportEPUBLunaSVG.cpp"><Filter>Source Files</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ImportEPUBLunaSVG.rc"><Filter>Build Files</Filter></ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ImportEPUBLunaSVG.def"><Filter>Build Files</Filter></None>
+    <None Include="thirdparty\lunasvg\README_IMPORT_EPUB_BUILD.txt"><Filter>thirdparty</Filter></None>
+  </ItemGroup>
+</Project>

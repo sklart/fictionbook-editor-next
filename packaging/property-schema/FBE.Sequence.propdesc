@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://schemas.microsoft.com/windows/2006/propertydescription"
+        schemaVersion="1.0">
+  <propertyDescriptionList publisher="FBE Team" product="FictionBook Editor">
+    <propertyDescription
+      name="FBE.Sequence"
+      formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
+      propID="2">
+      <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
+      <labelInfo label="FBE:Серия" hideLabel="false" />
+      <typeInfo
+        type="String"
+        multipleValues="false"
+        isViewable="true"
+        isQueryable="true"
+        includeInFullTextQuery="false"
+        isInnate="true" />
+      <displayInfo displayType="String" />
+    </propertyDescription>
+    <propertyDescription
+      name="FBE.Genre"
+      formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
+      propID="3">
+      <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
+      <labelInfo label="FBE:Жанр" hideLabel="false" />
+      <typeInfo
+        type="String"
+        multipleValues="false"
+        isViewable="true"
+        isQueryable="true"
+        includeInFullTextQuery="false"
+        isInnate="true" />
+      <displayInfo displayType="String" />
+    </propertyDescription>
+    <propertyDescription
+      name="FBE.DocumentVersion"
+      formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
+      propID="4">
+      <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
+      <labelInfo label="FBE:Версия документа" hideLabel="false" />
+      <typeInfo
+        type="String"
+        multipleValues="false"
+        isViewable="true"
+        isQueryable="true"
+        includeInFullTextQuery="false"
+        isInnate="true" />
+      <displayInfo displayType="String" />
+    </propertyDescription>
+    <propertyDescription
+      name="FBE.DocumentDate"
+      formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
+      propID="5">
+      <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
+      <labelInfo label="FBE:Дата документа" hideLabel="false" />
+      <typeInfo
+        type="String"
+        multipleValues="false"
+        isViewable="true"
+        isQueryable="true"
+        includeInFullTextQuery="false"
+        isInnate="true" />
+      <displayInfo displayType="String" />
+    </propertyDescription>
+    <propertyDescription
+      name="FBE.Keywords"
+      formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
+      propID="6">
+      <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
+      <labelInfo label="FBE:Ключевые слова" hideLabel="false" />
+      <typeInfo
+        type="String"
+        multipleValues="false"
+        isViewable="true"
+        isQueryable="true"
+        includeInFullTextQuery="false"
+        isInnate="true" />
+      <displayInfo displayType="String" />
+    </propertyDescription>
+    <propertyDescription
+      name="FBE.DocumentId"
+      formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
+      propID="7">
+      <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
+      <labelInfo label="FBE:Идентификатор документа" hideLabel="false" />
+      <typeInfo
+        type="String"
+        multipleValues="false"
+        isViewable="true"
+        isQueryable="true"
+        includeInFullTextQuery="false"
+        isInnate="true" />
+      <displayInfo displayType="String" />
+    </propertyDescription>
+  </propertyDescriptionList>
+</schema>

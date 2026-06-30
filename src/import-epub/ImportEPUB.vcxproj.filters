@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{843DF7B0-3875-41EC-AE03-230DC056CB5B}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{7DF76D77-B913-4A71-BE4E-91588F928745}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{87285276-1747-4591-9E44-35A57A72C060}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="EpubImport.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="ImportEPUBBatch.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="ImportEPUBPlugin.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="ImportOptionsDialog.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Registry.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="stdafx.cpp"><Filter>Source Files</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="EpubImport.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="FBEPluginInterfaces.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="ImportEPUBModule.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="ImportEPUBPlugin.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="ImportEPUBGuids.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="ImportOptionsDialog.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="MsxmlImport.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="resource.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="stdafx.h"><Filter>Header Files</Filter></ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ImportEPUB.rc"><Filter>Resource Files</Filter></ResourceCompile>
+    <Image Include="res\ImportEPUB.ico"><Filter>Resource Files</Filter></Image>
+    <None Include="ImportEPUB.def"><Filter>Resource Files</Filter></None>
+
+    <None Include="BUILD_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="BUILD_BATCH_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="CLEAN_AFTER_BUILD.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="REGISTER_IMPORTEPUB.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="UNREGISTER_IMPORTEPUB.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="REBUILD_REGISTER_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="IMPORT_FOLDER.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="CONVERT_AND_PACK_TEST_RESULTS.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="BIG_VOLUME_TEST.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="BIG_VOLUME_TEST.ps1"><Filter>Resource Files</Filter></None>
+    <None Include="BUILD_STABLE_TEST_RELEASE.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="STABILIZATION_BIG_TEST_README.txt"><Filter>Resource Files</Filter></None>
+    <None Include="PACK_PROBLEM_FILES.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="CHECK_DEPENDENCIES.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="RUN_IMPORT_REGRESSION_TESTS.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="RUN_IMPORT_REGRESSION_TESTS.ps1"><Filter>Resource Files</Filter></None>
+    <None Include="CHECK_DEPENDENCIES.ps1"><Filter>Resource Files</Filter></None>
+    <None Include="BUILD_LUNASVG_ADAPTER_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="BUILD_LUNASVG_LIBRARY_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="BUILD_LUNASVG_ALL_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="ImportEPUBLunaSVG.vcxproj"><Filter>Resource Files</Filter></None>
+    <None Include="ImportEPUBLunaSVG.vcxproj.filters"><Filter>Resource Files</Filter></None>
+    <None Include="ImportEPUBLunaSVG.def"><Filter>Resource Files</Filter></None>
+    <None Include="CHECK_REGISTRATION.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="CHECK_VERSIONINFO.cmd"><Filter>Resource Files</Filter></None>
+    <None Include="README_ImportEPUB.txt"><Filter>Resource Files</Filter></None>
+    <None Include="TODO_ImportEPUB.txt"><Filter>Resource Files</Filter></None>
+    <None Include="CHANGELOG_ImportEPUB.txt"><Filter>Resource Files</Filter></None>
+    <None Include="targetver.h"><Filter>Header Files</Filter></None>
+    <None Include="ImportEPUBBatch.vcxproj"><Filter>Resource Files</Filter></None>
+      <None Include="thirdparty\lunasvg\README_IMPORT_EPUB_BUILD.txt"><Filter>Resource Files</Filter></None>
+    <None Include="thirdparty\lunasvg\LICENSE"><Filter>Resource Files</Filter></None>
+    <None Include="thirdparty\lunasvg\plutovg\LICENSE"><Filter>Resource Files</Filter></None>
+    <None Include="thirdparty\lunasvg\plutovg.vcxproj"><Filter>Resource Files</Filter></None>
+    <None Include="thirdparty\lunasvg\lunasvg.vcxproj"><Filter>Resource Files</Filter></None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="PVS_STUDIO_NOTES.txt" />
+  </ItemGroup>
+</Project>

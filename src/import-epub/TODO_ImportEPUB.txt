@@ -1,0 +1,62 @@
+TODO ImportEPUB
+===============
+
+Ближайшие задачи
+----------------
+- Повторно проверить полный набор epub_test_suite после добавления поддержки image/* напрямую в spine.
+- Прогнать PVS-Studio после очередного набора изменений.
+- Проверить результат в FB Editor: дерево секций, сноски, обложки, изображения, таблицы и стихи.
+- Добавить набор тестовых EPUB-файлов и ручной сценарий проверки.
+- Постепенно разделить большой EpubImport.cpp на отдельные модули:
+  EpubArchive, EpubPackage, EpubNavigation, XhtmlToFb2, Fb2Builder, ImageUtils, XmlUtils, ImportLog.
+
+
+
+Отложено до окончания тестирования большого EPUB-корпуса
+---------------------------------------------------------
+- MathML/formula import backend. Candidate pipeline:
+  [MathML] -> mml2tex XSLT/XProc -> [LaTeX] -> MicroTeX -> [SVG/bitmap] -> LunaSVG/GDI+ -> [PNG] -> FB2 <image>/<binary>.
+- Реализовывать только как optional backend/helper, не как обязательную зависимость ImportEPUB.dll.
+- Предпочтительная архитектура:
+  ImportEPUBMathHelper.exe или ImportEPUBMath.dll рядом с ImportEPUB.dll/ImportEPUBBatch.exe.
+  Если helper/backend отсутствует или падает, основной импорт EPUB не должен ломаться.
+- Этап 1:
+  найти MathML в XHTML;
+  не терять формулы;
+  добавить настройки "Формулы MathML";
+  добавить статистику MathMLFound/MathMLSkipped/MathMLErrors;
+  fallback: plain text или LaTeX/text placeholder.
+- Этап 2:
+  подключить mml2tex через Saxon/SaxonC/Java-helper;
+  сохранять полученный LaTeX в лог/diagnostics;
+  добавить NormalizeLatexForMicroTeX().
+- Этап 3:
+  MicroTeX -> SVG;
+  SVG -> PNG через существующий LunaSVG backend;
+  вставка PNG в FB2;
+  кеширование формул по hash(normalized MathML + size + scale + color);
+  расширение CSV/HTML отчёта колонками MathMLFound, MathMLRendered, MathMLAsLatex, MathMLFallback, MathMLErrors, MathBackend.
+- Основные риски:
+  mml2tex требует XSLT/XPath 2+/Saxon, MSXML не подходит;
+  MicroTeX может поддерживать не весь LaTeX, который выдаст mml2tex;
+  inline-формулы в FB2/FBE требуют отдельной проверки;
+  нужна защита по timeout/размеру/количеству формул на книгу.
+
+Возможные улучшения
+-------------------
+- Заменить Windows Shell ZIP provider на встроенный miniz/minizip-ридер.
+- Читать файлы EPUB напрямую из ZIP без временной распаковки.
+- Добавить лимиты на размер EPUB, размер одного файла и общий размер ресурсов.
+- Улучшить сопоставление nav.xhtml/toc.ncx с якорями внутри XHTML.
+- Улучшить вложенность секций по структуре nav.xhtml.
+- Расширить распознавание стихов, эпиграфов, цитат, dedication и sidebar.
+- Улучшить обработку сносок без id и с нестандартными классами.
+- Добавить HTML/Markdown-отчёт для пакетной конвертации.
+- Добавить автоматические regression-тесты для ImportEPUBBatch.exe.
+- Проверить совместимость результата с валидаторами FB2 и разными читалками.
+
+- Дополнительно проверить на больших наборах EPUB пробелы вокруг inline-разметки при preserveWhiteSpace=true.
+
+
+- Проверить качество SVG -> PNG/JPEG на тестах svg-in-spine.epub и sous-le-vent_svg-in-spine.epub.
+- При необходимости добавить поле пользовательского пути к Inkscape/ImageMagick.

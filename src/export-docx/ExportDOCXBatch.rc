@@ -1,0 +1,44 @@
+// Resource script for ExportDOCXBatch.exe.
+// The batch utility uses the same icon and version number as the DOCX export plugin.
+
+#include <winres.h>
+#include "resource.h"
+#include "../version.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+IDI_MAINICON ICON "res\\ExportDOCX.ico"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION FBE_VERSION_NUMBER
+ PRODUCTVERSION FBE_VERSION_NUMBER
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "sklart"
+            VALUE "FileDescription", "FictionBook Editor DOCX batch export utility"
+            VALUE "FileVersion", FBE_VERSION_STRING
+            VALUE "InternalName", "ExportDOCXBatch"
+            VALUE "LegalCopyright", "Copyright 2026 Artem Sklyarov aka sklart"
+            VALUE "OriginalFilename", "ExportDOCXBatch.exe"
+            VALUE "ProductName", "FictionBook Editor DOCX export plugin"
+            VALUE "ProductVersion", FBE_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

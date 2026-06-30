@@ -1,0 +1,35 @@
+HKCR
+{
+    NoRemove CLSID
+    {
+        ForceRemove {A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF} = s 'ExportEPUBPlugin Class'
+        {
+            InprocServer32 = s '%MODULE%'
+            {
+                val ThreadingModel = s 'Apartment'
+            }
+        }
+    }
+}
+
+HKCU
+{
+    NoRemove Software
+    {
+        NoRemove FBETeam
+        {
+            NoRemove 'FictionBook Editor'
+            {
+                NoRemove Plugins
+                {
+                    ForceRemove {A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF} = s 'Export FB2 to EPUB'
+                    {
+                        val Type = s 'Export'
+                        val Menu = s 'To EPUB'
+                        val Icon = s '%MODULE%'
+                    }
+                }
+            }
+        }
+    }
+}

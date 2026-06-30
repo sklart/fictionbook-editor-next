@@ -1,0 +1,27 @@
+ExportDOCX: исправления по ExportDOCX(6).plog
+Дата: 26.06.2026
+
+Исправлены предупреждения PVS-Studio по основным исходникам проекта:
+
+ExportDOCXBatch.cpp
+- ExtractAttributeValues: values.push_back(xml.substr(...)) заменено на values.emplace_back(xml, ...), без временной std::wstring.
+- ValidateRelationshipTargets: поиск символа '>' теперь выполняется как find(L'>'), без поиска односимвольной строки.
+- Сообщения об ошибках в vector<wstring> формируются через локальную std::wstring и errors.emplace_back(std::move(...)), без лишних временных объектов.
+- Для ZIP-карт введены алиасы ZipEntryMap и WStringMap с прозрачным компаратором std::less<>. Это убирает лишние временные std::wstring при find() по строковым литералам.
+- Проверка наличия '<' и '>' в XML/RELS теперь использует символьный find(L'<') / find(L'>').
+- Сохранение извлеченного текста XML/RELS переведено на emplace(..., std::move(text)); ветки сделаны взаимоисключающими (.xml / .rels).
+
+ExportDOCXPlugin.cpp
+- IsInsideNotesBody: параметр передается по const-ссылке; переход к родительскому DOM-узлу выполняется через raw pointer + Attach(), без лишнего копирования COM smart pointer.
+- ImageDrawingXml: удалены заведомо истинные части условия wpx > 0 && hpx > 0; счетчик малых изображений теперь проверяет только реальный критерий размера wpx <= 320 && hpx <= 320.
+
+Примечание:
+- В этой среде нет MSVC/ATL/COM SDK, поэтому контрольная сборка Release|Win32 не запускалась. После распаковки рекомендуется выполнить локально:
+  BUILD_WIN32_RELEASE.cmd
+  BUILD_BATCH_WIN32_RELEASE.cmd
+  затем повторить анализ PVS-Studio.
+
+26.06.2026 12:05 build fix:
+- В ExportDOCX.sln добавлены конфигурации решения Debug|Win32 и Release|Win32.
+- Существующие конфигурации x86 сохранены как алиасы, маппинг проектов оставлен на Debug/Release|Win32.
+- Это исправляет ошибку MSB4126: указанная конфигурация решения "Release|Win32" недопустима.

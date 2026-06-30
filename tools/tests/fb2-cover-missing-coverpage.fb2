@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <genre>computers</genre>
+      <author>
+        <first-name>Codex</first-name>
+        <last-name>NoCover</last-name>
+      </author>
+      <book-title>Missing Coverpage Smoke Test</book-title>
+      <lang>ru</lang>
+    </title-info>
+    <document-info>
+      <author>
+        <nickname>Codex</nickname>
+      </author>
+      <program-used>FictionBookEditor</program-used>
+      <date value="2026-06-14">14.06.2026</date>
+      <id>fb2-cover-missing-coverpage-smoke-test</id>
+      <version>1.0</version>
+    </document-info>
+  </description>
+  <body>
+    <section>
+      <title><p>Missing Coverpage</p></title>
+      <p>missing coverpage smoke body</p>
+    </section>
+  </body>
+</FictionBook>

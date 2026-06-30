@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <genre match="100">prose_history</genre>
+      <genre match="80">nonfiction</genre>
+      <author>
+        <first-name>Иван</first-name>
+        <middle-name>Петрович</middle-name>
+        <last-name>Смирнов</last-name>
+      </author>
+      <book-title>Кириллический smoke test для shell-свойств</book-title>
+      <keywords>история; shell; тест; кириллица</keywords>
+      <date value="2024-11-05">05.11.2024</date>
+      <lang>ru</lang>
+      <src-lang>bg</src-lang>
+      <sequence name="Большая серия проверок" number="7"/>
+      <annotation>
+        <p>Тестовый FB2-файл для проверки shell-свойств на кириллице.</p>
+      </annotation>
+    </title-info>
+    <document-info>
+      <author>
+        <first-name>Тестовый</first-name>
+        <last-name>Редактор</last-name>
+      </author>
+      <program-used>FictionBookEditor</program-used>
+      <date value="2024-11-06">06.11.2024</date>
+      <id>fb2-metadata-cyrillic-smoke-test</id>
+      <version>2.4</version>
+    </document-info>
+  </description>
+  <body>
+    <section>
+      <title>
+        <p>Smoke</p>
+      </title>
+      <p>Контрольный кириллический документ для диагностики shell property handler.</p>
+    </section>
+  </body>
+</FictionBook>

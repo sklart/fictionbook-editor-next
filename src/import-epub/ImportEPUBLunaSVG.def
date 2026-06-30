@@ -1,0 +1,3 @@
+LIBRARY "ImportEPUBLunaSVG"
+EXPORTS
+    ImportEPUBLunaSvgRenderPng = _ImportEPUBLunaSvgRenderPng@24

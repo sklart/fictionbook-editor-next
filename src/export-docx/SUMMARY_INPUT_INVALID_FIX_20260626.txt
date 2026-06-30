@@ -1,0 +1,13 @@
+ExportDOCXBatch summary/progress INPUT_INVALID fix
+Date: 2026-06-26
+
+Reason:
+After the input-validation run, CSV, HTML and large_test_analysis correctly showed INPUT_INVALID=8, but summary.txt, ExportDOCX_current_file.txt and ExportDOCX_progress_state.txt did not include a separate INPUT_INVALID line.
+
+Changes:
+- Added INPUT_INVALID count to summary.txt.
+- Added InputInvalidList path to summary.txt.
+- Added INPUT_INVALID count to ExportDOCX_current_file.txt.
+- Added INPUT_INVALID count to ExportDOCX_progress_state.txt.
+
+This does not change conversion behavior. It only makes final reports consistent with CSV/HTML/analysis output.

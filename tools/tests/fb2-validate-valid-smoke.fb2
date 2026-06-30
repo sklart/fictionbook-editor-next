@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <genre match="100">prose_history</genre>
+      <author>
+        <first-name>Иван</first-name>
+        <middle-name>Петрович</middle-name>
+        <last-name>Смирнов</last-name>
+      </author>
+      <book-title>FBV Validate Smoke Test</book-title>
+      <annotation>
+        <p>Минимальный XSD-валидный FB2-файл для ручной проверки shell-команды Validate.</p>
+      </annotation>
+      <keywords>validate; fbv; smoke</keywords>
+      <date value="2026-06-20">20.06.2026</date>
+      <lang>ru</lang>
+      <sequence name="Validate Smoke Series" number="1"/>
+    </title-info>
+    <document-info>
+      <author>
+        <first-name>Codex</first-name>
+        <last-name>Smoke</last-name>
+      </author>
+      <program-used>FictionBookEditor</program-used>
+      <date value="2026-06-20">20.06.2026</date>
+      <id>fb2-validate-valid-smoke-test</id>
+      <version>1.0</version>
+    </document-info>
+  </description>
+  <body>
+    <section>
+      <title>
+        <p>Smoke</p>
+      </title>
+      <p>Этот документ должен проходить базовую XSD-валидацию в FictionBook Validator.</p>
+    </section>
+  </body>
+</FictionBook>

@@ -1,0 +1,35 @@
+HKCR
+{
+	NoRemove CLSID
+	{
+		ForceRemove {41494D79-3346-4E8C-A432-51BCD3742FC1} = s 'ExportDOCXPlugin Class'
+		{
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+		}
+	}
+}
+
+HKCU
+{
+	NoRemove Software
+	{
+		NoRemove FBETeam
+		{
+			NoRemove 'FictionBook Editor'
+			{
+				NoRemove Plugins
+				{
+					ForceRemove {41494D79-3346-4E8C-A432-51BCD3742FC1} = s 'Export FB2 to DOCX'
+					{
+						val Type = s 'Export'
+						val Menu = s 'To DOCX'
+						val Icon = s '%MODULE%'
+					}
+				}
+			}
+		}
+	}
+}

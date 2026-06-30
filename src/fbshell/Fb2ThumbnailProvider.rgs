@@ -1,0 +1,14 @@
+﻿HKCR
+{
+  NoRemove CLSID
+  {
+    ForceRemove {4F99D1F0-5D76-4B9C-9D3D-9E6B8B4C7E31} = s 'FictionBook Modern Thumbnail Provider (Experimental)'
+    {
+      ForceRemove 'Programmable'
+      InprocServer32 = s '%MODULE%'
+      {
+        val ThreadingModel = s 'Apartment'
+      }
+    }
+  }
+}

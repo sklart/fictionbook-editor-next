@@ -1,0 +1,9 @@
+LIBRARY      "ExportEPUB.DLL"
+
+EXPORTS
+    DllCanUnloadNow     PRIVATE
+    DllGetClassObject   PRIVATE
+    DllRegisterServer   PRIVATE
+    DllUnregisterServer PRIVATE
+    DllInstall          PRIVATE
+    ExportEpubFileW
