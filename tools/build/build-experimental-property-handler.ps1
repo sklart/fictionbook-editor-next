@@ -64,9 +64,9 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-Write-Host "Штатная modern shell-сборка подготовлена в отдельной FBShell.dll."
+Write-Host "Штатная shell-сборка подготовлена в отдельной FBShell.dll."
 Write-Host "В неё сейчас входят:"
-Write-Host "  - modern property handler для .fb2;"
-Write-Host "  - modern thumbnail provider для обложек .fb2."
+Write-Host "  - обработчик свойств для .fb2;"
+Write-Host "  - обработчик миниатюр для обложек .fb2."
 Write-Host "Собирался только проект src\fbshell\FBShell.vcxproj, без полного FBE.sln."
 Write-Host "Результат сборки: $experimentalOutDir"

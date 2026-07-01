@@ -25,6 +25,7 @@
 !define FB2_TILEINFO_PROPERTIES "prop:System.Author;System.Title"
 !define FB2_DETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
 !define FB2_PREVIEWDETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
+!define FB2_SYSTEM_ASSOC_KEY "Software\Classes\SystemFileAssociations\.fb2"
 ManifestDPIAware true
 SetCompressor /SOLID lzma
 
@@ -560,44 +561,55 @@ nthere:
   WriteUninstaller "$INSTDIR\uninst.exe"
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "EstimatedSize" $0
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "InstallDir" "$INSTDIR"
 
   SetAutoClose false
 SectionEnd
 
-Section $(System_Integration) System_Integration_id
-  SectionIn 1
+SectionGroup /e $(System_Integration) System_Integration_id
 
-  ; register typelib
+Section /o $(FB2_File_Association) FB2_File_Association_id
+  ; Регистрируем typelib для автоматизации редактора и исторической совместимости.
   Push "$INSTDIR\FBE.exe"
   Call RegisterTlb
 
-  ; create an FB2 progid
+  ; Создаём FB2 ProgID.
   WriteRegStr HKCU "Software\Classes\FictionBook.2" "" "FictionBook"
   WriteRegStr HKCU "Software\Classes\FictionBook.2\CurVer" "" "FictionBook.2"
 
-  ; create an FB2 filetype
+  ; Создаём тип файла FB2.
   WriteRegStr HKCU "Software\Classes\.fb2" "" "FictionBook.2"
   WriteRegStr HKCU "Software\Classes\.fb2" "PerceivedType" "Text"
   WriteRegStr HKCU "Software\Classes\.fb2" "Content Type" "text/xml"
   WriteRegStr HKCU "Software\Classes\.fb2\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
   WriteRegStr HKCU "Software\Classes\FictionBook.2\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
+  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
+SectionEnd
+
+Section /o $(FB2_Validate_Command) FB2_Validate_Command_id
+  ; Добавляем команду проверки, не отбирая .fb2 у другой читалки.
+  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "" "Validate"
+  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "MUIVerb" '@$INSTDIR\FBVVerbResources.dll,-109;v2'
+  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
+  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
+
+  ; Сохраняем совместимость для систем, где .fb2 явно связан с FictionBook.2.
+  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "" "Validate"
+  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "MUIVerb" '@$INSTDIR\FBVVerbResources.dll,-109;v2'
+  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
+  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
+SectionEnd
+
+Section /o $(FB2_Explorer_Properties) FB2_Explorer_Properties_id
+  ; Создаём FB2 ProgID только для shell-строк метаданных; .fb2 здесь не ассоциируем.
+  WriteRegStr HKCU "Software\Classes\FictionBook.2" "" "FictionBook"
+  WriteRegStr HKCU "Software\Classes\FictionBook.2\CurVer" "" "FictionBook.2"
   WriteRegStr HKCU "Software\Classes\FictionBook.2" "InfoTip" "${FB2_INFOTIP_PROPERTIES}"
   WriteRegStr HKCU "Software\Classes\FictionBook.2" "TileInfo" "${FB2_TILEINFO_PROPERTIES}"
   WriteRegStr HKCU "Software\Classes\FictionBook.2" "Details" "${FB2_DETAILS_PROPERTIES}"
   WriteRegStr HKCU "Software\Classes\FictionBook.2" "PreviewDetails" "${FB2_PREVIEWDETAILS_PROPERTIES}"
 
-  ; register verb
-  ;WriteRegStr HKCR "FictionBook.2\shell\Open\Command" "" '"$INSTDIR\FBE.exe" "%1"'
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "" "Validate"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "MUIVerb" '@$INSTDIR\FBVVerbResources.dll,-109;v2'
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
-
-  ; write the installation path into the registry
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "InstallDir" "$INSTDIR"
-
-  ; modern property handler for Win32/x64 Explorer
+  ; Современный обработчик свойств для Win32/x64 Проводника.
   SetOutPath "${FBE_SHELL_SHARED_DIR}"
   File /nonfatal "${INPUTDIR}\FBShell.dll"
   File /nonfatal "${INPUTDIR}\FBShell64.dll"
@@ -613,8 +625,10 @@ Section $(System_Integration) System_Integration_id
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "${PRODUCT_SYSTEM_INTEGRATION_REGVAL}" 1
 SectionEnd
 
+SectionGroupEnd
+
 Function ComponentsPageLeave
-  SectionGetFlags ${System_Integration_id} $0
+  SectionGetFlags ${FB2_Explorer_Properties_id} $0
   IntOp $0 $0 & ${SF_SELECTED}
   ${If} $0 = 0
     Return
@@ -765,6 +779,9 @@ SubSectionEnd
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${MainSection_id} $(DESC_Main)
   !insertmacro MUI_DESCRIPTION_TEXT ${System_Integration_id} $(DESC_System_Integration)
+  !insertmacro MUI_DESCRIPTION_TEXT ${FB2_File_Association_id} $(DESC_FB2_File_Association)
+  !insertmacro MUI_DESCRIPTION_TEXT ${FB2_Validate_Command_id} $(DESC_FB2_Validate_Command)
+  !insertmacro MUI_DESCRIPTION_TEXT ${FB2_Explorer_Properties_id} $(DESC_FB2_Explorer_Properties)
   !insertmacro MUI_DESCRIPTION_TEXT ${ShCutGroup_id} $(DESC_ShCutGroup)
   !insertmacro MUI_DESCRIPTION_TEXT ${Desktop_ShortCut_id} $(DESC_Desktop_ShortCut)
   !insertmacro MUI_DESCRIPTION_TEXT ${Start_Menu_ShortCuts_id} $(DESC_Start_Menu_ShortCuts)
@@ -817,6 +834,7 @@ Section Uninstall
   ; remove verbs; TODO: check if these really point to FBE
   DeleteRegKey HKCU "Software\Classes\FictionBook.2\shell\Edit"
   DeleteRegKey HKCU "Software\Classes\FictionBook.2\shell\Validate"
+  DeleteRegKey HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate"
   DeleteRegKey HKCU "Software\Classes\.fb2\DefaultIcon"
   DeleteRegValue HKCU "Software\Classes\FictionBook.2" "InfoTip"
   DeleteRegValue HKCU "Software\Classes\FictionBook.2" "TileInfo"

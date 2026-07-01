@@ -4,7 +4,7 @@
   "files": [
     {
       "name": "FBV.exe",
-      "version": "3.0.1",
+      "version": "3.0.2",
       "built": "2026-07-01",
       "purpose": "FictionBook Validator Next, launched by the localized shell command for FB2 validation",
       "size": 82944,
