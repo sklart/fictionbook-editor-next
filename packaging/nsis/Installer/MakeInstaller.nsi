@@ -62,6 +62,9 @@ LicenseForceSelection radiobuttons
 
 ; Components page
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE ComponentsPageLeave
+; Оставляем описание компонентов, но используем компактную MUI-разметку:
+; у дерева компонентов больше ширины, а сами описания держим короткими.
+!define MUI_COMPONENTSPAGE_SMALLDESC
 !insertmacro MUI_PAGE_COMPONENTS
 
 ; Directory page
@@ -611,8 +614,44 @@ Section /o $(FB2_Explorer_Properties) FB2_Explorer_Properties_id
 
   ; Современный обработчик свойств для Win32/x64 Проводника.
   SetOutPath "${FBE_SHELL_SHARED_DIR}"
-  File /nonfatal "${INPUTDIR}\FBShell.dll"
-  File /nonfatal "${INPUTDIR}\FBShell64.dll"
+  File /nonfatal /oname=FBShell.dll.new "${INPUTDIR}\FBShell.dll"
+  IfFileExists "${FBE_SHELL_SHARED_DIR}\FBShell.dll.new" 0 fbshell32_done
+  IfFileExists "${FBE_SHELL_SHARED_DIR}\FBShell.dll" 0 fbshell32_install
+  ClearErrors
+  Delete "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
+  IfErrors 0 fbshell32_install
+    DetailPrint "FBShell.dll занята Проводником Windows; обновление будет завершено после перезагрузки."
+    Delete /REBOOTOK "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
+    Rename /REBOOTOK "${FBE_SHELL_SHARED_DIR}\FBShell.dll.new" "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
+    SetRebootFlag true
+    Goto fbshell32_done
+fbshell32_install:
+  ClearErrors
+  Rename "${FBE_SHELL_SHARED_DIR}\FBShell.dll.new" "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
+  IfErrors 0 fbshell32_done
+    DetailPrint "FBShell.dll не удалось заменить сразу; обновление будет завершено после перезагрузки."
+    Rename /REBOOTOK "${FBE_SHELL_SHARED_DIR}\FBShell.dll.new" "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
+    SetRebootFlag true
+fbshell32_done:
+  File /nonfatal /oname=FBShell64.dll.new "${INPUTDIR}\FBShell64.dll"
+  IfFileExists "${FBE_SHELL_SHARED_DIR}\FBShell64.dll.new" 0 fbshell64_done
+  IfFileExists "${FBE_SHELL_SHARED_DIR}\FBShell64.dll" 0 fbshell64_install
+  ClearErrors
+  Delete "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
+  IfErrors 0 fbshell64_install
+    DetailPrint "FBShell64.dll занята Проводником Windows; обновление будет завершено после перезагрузки."
+    Delete /REBOOTOK "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
+    Rename /REBOOTOK "${FBE_SHELL_SHARED_DIR}\FBShell64.dll.new" "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
+    SetRebootFlag true
+    Goto fbshell64_done
+fbshell64_install:
+  ClearErrors
+  Rename "${FBE_SHELL_SHARED_DIR}\FBShell64.dll.new" "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
+  IfErrors 0 fbshell64_done
+    DetailPrint "FBShell64.dll не удалось заменить сразу; обновление будет завершено после перезагрузки."
+    Rename /REBOOTOK "${FBE_SHELL_SHARED_DIR}\FBShell64.dll.new" "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
+    SetRebootFlag true
+fbshell64_done:
   File /nonfatal "${INPUTDIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
   SetOutPath "$INSTDIR\InstallerTools"
   File /nonfatal "${INPUTDIR}\InstallerTools\register-sequence-property-schema.ps1"

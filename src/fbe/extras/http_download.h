@@ -338,7 +338,12 @@ struct HTTP_RESPONSE_INFO
             if (!InternetQueryOption(hRequest, INTERNET_OPTION_URL, NULL, &urlLength) &&
                 GetLastError() == ERROR_INSUFFICIENT_BUFFER)
             {
-                std::vector<wchar_t> url(urlLength / sizeof(wchar_t) + 1) ;
+                // Для Unicode-вызова InternetQueryOptionW длина INTERNET_OPTION_URL
+                // на современных системах возвращается в символах. Деление на
+                // sizeof(wchar_t) выделяет слишком маленький буфер, из-за чего
+                // effective URL остаётся пустым, а проверка обновлений ошибочно
+                // считает HTTPS-ответ недоверенным.
+                std::vector<wchar_t> url(urlLength + 1) ;
                 if (InternetQueryOption(hRequest, INTERNET_OPTION_URL, url.data(), &urlLength))
                     m_effective_url = url.data() ;
             }

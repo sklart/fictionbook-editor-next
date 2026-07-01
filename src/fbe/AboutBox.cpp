@@ -62,19 +62,31 @@ namespace
 
 	bool IsVersion(const CString& value)
 	{
-		int position = 0;
-		for (int part = 0; part < 3; ++part)
+		CString trimmed(value);
+		trimmed.Trim();
+		if (trimmed.IsEmpty())
+			return false;
+
+		int dots = 0;
+		bool hasDigitInPart = false;
+		for (int i = 0; i < trimmed.GetLength(); ++i)
 		{
-			const CString component = value.Tokenize(L".", position);
-			if (component.IsEmpty())
-				return false;
-			for (int i = 0; i < component.GetLength(); ++i)
+			const wchar_t ch = trimmed[i];
+			if (ch == L'.')
 			{
-				if (component[i] < L'0' || component[i] > L'9')
+				if (!hasDigitInPart)
 					return false;
+				hasDigitInPart = false;
+				++dots;
+				if (dots > 2)
+					return false;
+				continue;
 			}
+			if (ch < L'0' || ch > L'9')
+				return false;
+			hasDigitInPart = true;
 		}
-		return position == -1;
+		return dots == 2 && hasDigitInPart;
 	}
 
 	bool GetUniqueNodeText(
@@ -82,14 +94,173 @@ namespace
 		const wchar_t* name,
 		CString& value)
 	{
-		MSXML2::IXMLDOMNodeListPtr nodes = root->selectNodes(name);
-		if (!nodes || nodes->length != 1)
+		MSXML2::IXMLDOMNodeListPtr nodes = root->childNodes;
+		if (!nodes)
 			return false;
 
-		MSXML2::IXMLDOMNodePtr node = nodes->item[0];
-		value = static_cast<const wchar_t*>(node->text);
+		MSXML2::IXMLDOMNodePtr matchedNode;
+		for (long i = 0; i < nodes->length; ++i)
+		{
+			MSXML2::IXMLDOMNodePtr node = nodes->item[i];
+			if (!node || node->nodeType != MSXML2::NODE_ELEMENT)
+				continue;
+
+			CString nodeName;
+			if (node->baseName.length() > 0)
+				nodeName = static_cast<const wchar_t*>(node->baseName);
+			else
+				nodeName = static_cast<const wchar_t*>(node->nodeName);
+
+			if (nodeName.CompareNoCase(name) != 0)
+				continue;
+			if (matchedNode)
+				return false;
+			matchedNode = node;
+		}
+		if (!matchedNode)
+			return false;
+
+		value = static_cast<const wchar_t*>(matchedNode->text);
 		value.Trim();
 		return !value.IsEmpty();
+	}
+
+	bool GetSimpleXmlTagText(
+		const CString& xml,
+		const wchar_t* name,
+		CString& value)
+	{
+		CString openTag;
+		openTag.Format(L"<%s>", name);
+		CString closeTag;
+		closeTag.Format(L"</%s>", name);
+
+		const int openPosition = xml.Find(openTag);
+		if (openPosition < 0)
+			return false;
+
+		const int valuePosition = openPosition + openTag.GetLength();
+		const int closePosition = xml.Find(closeTag, valuePosition);
+		if (closePosition < 0)
+			return false;
+
+		value = xml.Mid(valuePosition, closePosition - valuePosition);
+		value.Trim();
+		return !value.IsEmpty();
+	}
+
+	CString DecodeUtf8OrAnsi(const std::string& data)
+	{
+		if (data.empty())
+			return CString();
+
+		int length = ::MultiByteToWideChar(
+			CP_UTF8,
+			MB_ERR_INVALID_CHARS,
+			data.data(),
+			static_cast<int>(data.size()),
+			nullptr,
+			0);
+		UINT codePage = CP_UTF8;
+		DWORD flags = MB_ERR_INVALID_CHARS;
+		if (length <= 0)
+		{
+			codePage = CP_ACP;
+			flags = 0;
+			length = ::MultiByteToWideChar(
+				codePage,
+				flags,
+				data.data(),
+				static_cast<int>(data.size()),
+				nullptr,
+				0);
+		}
+		if (length <= 0)
+			return CString();
+
+		std::vector<wchar_t> buffer(length + 1);
+		if (::MultiByteToWideChar(
+			codePage,
+			flags,
+			data.data(),
+			static_cast<int>(data.size()),
+			buffer.data(),
+			length) <= 0)
+		{
+			return CString();
+		}
+		return CString(buffer.data(), length);
+	}
+
+	void AppendUpdateTrace(const CString& line)
+	{
+		wchar_t localAppData[MAX_PATH] = {};
+		const DWORD envLength = ::GetEnvironmentVariableW(
+			L"LOCALAPPDATA",
+			localAppData,
+			_countof(localAppData));
+		if (envLength == 0 || envLength >= _countof(localAppData))
+			return;
+
+		CString directory(localAppData);
+		directory += L"\\FBE";
+		::CreateDirectoryW(directory, nullptr);
+
+		CString path(directory);
+		path += L"\\update-check-trace.log";
+
+		HANDLE file = ::CreateFileW(
+			path,
+			FILE_APPEND_DATA,
+			FILE_SHARE_READ,
+			nullptr,
+			OPEN_ALWAYS,
+			FILE_ATTRIBUTE_NORMAL,
+			nullptr);
+		if (file == INVALID_HANDLE_VALUE)
+			return;
+
+		SYSTEMTIME time;
+		::GetLocalTime(&time);
+		CString text;
+		text.Format(
+			L"%04u-%02u-%02u %02u:%02u:%02u  %s\r\n",
+			time.wYear,
+			time.wMonth,
+			time.wDay,
+			time.wHour,
+			time.wMinute,
+			time.wSecond,
+			line.GetString());
+
+		const int utf8Length = ::WideCharToMultiByte(
+			CP_UTF8,
+			0,
+			text,
+			text.GetLength(),
+			nullptr,
+			0,
+			nullptr,
+			nullptr);
+		if (utf8Length > 0)
+		{
+			std::vector<char> utf8(utf8Length);
+			if (::WideCharToMultiByte(
+				CP_UTF8,
+				0,
+				text,
+				text.GetLength(),
+				utf8.data(),
+				utf8Length,
+				nullptr,
+				nullptr) > 0)
+			{
+				DWORD written = 0;
+				::WriteFile(file, utf8.data(), static_cast<DWORD>(utf8.size()), &written, nullptr);
+			}
+		}
+
+		::CloseHandle(file);
 	}
 
 	CString CalculateFileSHA256(const CString& filename)
@@ -241,6 +412,7 @@ void CAboutDlg::CheckUpdate()
 {
     DeleteAllDownload();
     SetDlgItemText(IDC_TEXT_STATUS, m_sCheckingUpdate);
+	AppendUpdateTrace(L"start manifest check");
     
 	HTTP_SEND_HEADER ht = PrepareHeader(FBE_UPDATE_MANIFEST_URL);
 	
@@ -283,10 +455,28 @@ void CAboutDlg::OnAfterDownloadConnected (FCHttpDownload* pTask)
     const HTTP_RESPONSE_INFO   & resp = pTask->GetResponseInfo();
 
     const int maximumSize = GetMaximumDownloadSize(pTask->GetURL());
+	CString effectiveUrl = resp.m_effective_url;
+	if (effectiveUrl.IsEmpty())
+		effectiveUrl = pTask->GetURL();
+	CString trace;
+	trace.Format(
+		L"connected: status=%d content_length=%d url=%s effective=%s",
+		resp.m_status_code,
+		resp.m_content_length,
+		pTask->GetURL().GetString(),
+		effectiveUrl.GetString());
+	AppendUpdateTrace(trace);
     if (resp.m_status_code == 0 ||
-        !IsHttpsUrl(resp.m_effective_url) ||
+        !IsHttpsUrl(effectiveUrl) ||
         resp.m_content_length > maximumSize)
     {
+		trace.Format(
+			L"reject response: status=%d content_length=%d maximum=%d effective=%s",
+			resp.m_status_code,
+			resp.m_content_length,
+			maximumSize,
+			effectiveUrl.GetString());
+		AppendUpdateTrace(trace);
         SetDlgItemText (IDC_TEXT_STATUS, m_sCantConnect);
         DeleteDownload (pTask->GetTaskID());
 		m_UpdatePict.SetBitmap(m_StatusBitmaps[2]);
@@ -424,6 +614,16 @@ void CAboutDlg::FinishUpdateStatus (FCHttpDownload* pTask)
             break;
     }
 
+	CString trace;
+	trace.Format(
+		L"finish status: status=%d content_length=%d downloaded=%d final_read=%d accepted=%d",
+		resp.m_status_code,
+		resp.m_content_length,
+		nDownload,
+		resp.m_final_read_result,
+		bStatus ? 1 : 0);
+	AppendUpdateTrace(trace);
+
     // Calculate the checksum before writing or executing the downloaded file.
 	if (bStatus)
 	{
@@ -452,26 +652,74 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 		bool manifestHandled = false;
 		try
 		{
+			const string manifestData = m_file.str();
+			CString manifestText = DecodeUtf8OrAnsi(manifestData);
+			CString trace;
+			trace.Format(
+				L"manifest bytes=%u chars=%d",
+				static_cast<unsigned int>(manifestData.size()),
+				manifestText.GetLength());
+			AppendUpdateTrace(trace);
+
 			MSXML2::IXMLDOMDocument2Ptr xmlDoc(U::CreateDocument(false));
 			xmlDoc->put_async(VARIANT_FALSE);
 			xmlDoc->put_validateOnParse(VARIANT_FALSE);
 			xmlDoc->put_resolveExternals(VARIANT_FALSE);
 			xmlDoc->setProperty(L"ProhibitDTD", _variant_t(VARIANT_TRUE));
 
-			_bstr_t str(m_file.str().c_str());
+			_bstr_t str(manifestText);
 			if (xmlDoc->loadXML(str) == VARIANT_TRUE && !xmlDoc->doctype)
 			{
 				MSXML2::IXMLDOMElementPtr root = xmlDoc->GetdocumentElement();
 				CString availableVersion;
 				CString updateURL;
 				CString updateSHA256;
-				if (root &&
-					CString(static_cast<const wchar_t*>(root->nodeName)) == L"FBE" &&
-					GetUniqueNodeText(root, L"Version", availableVersion) &&
-					GetUniqueNodeText(root, L"DownloadUrl", updateURL) &&
-					GetUniqueNodeText(root, L"SHA256", updateSHA256) &&
+				CString rootName;
+				if (root)
+				{
+					if (root->baseName.length() > 0)
+						rootName = static_cast<const wchar_t*>(root->baseName);
+					else
+						rootName = static_cast<const wchar_t*>(root->nodeName);
+				}
+				const bool rootOk = rootName.CompareNoCase(L"FBE") == 0;
+				bool versionOk = rootOk && GetUniqueNodeText(root, L"Version", availableVersion);
+				bool urlOk = rootOk && GetUniqueNodeText(root, L"DownloadUrl", updateURL);
+				bool shaOk = rootOk && GetUniqueNodeText(root, L"SHA256", updateSHA256);
+
+				if ((!versionOk || !urlOk || !shaOk) && rootOk)
+				{
+					// update.xml — маленький контролируемый манифест без вложенных
+					// одноимённых тегов. Fallback нужен, чтобы проверка обновлений не
+					// зависела от особенностей MSXML DOM/XPath на конкретной системе.
+					versionOk = GetSimpleXmlTagText(manifestText, L"Version", availableVersion);
+					urlOk = GetSimpleXmlTagText(manifestText, L"DownloadUrl", updateURL);
+					shaOk = GetSimpleXmlTagText(manifestText, L"SHA256", updateSHA256);
+					AppendUpdateTrace(L"manifest DOM nodes fallback: simple tag extraction used");
+				}
+
+				trace.Format(
+					L"manifest checks: root=%s rootOk=%d versionOk=%d urlOk=%d shaOk=%d isVersion=%d",
+					rootName.GetString(),
+					rootOk ? 1 : 0,
+					versionOk ? 1 : 0,
+					urlOk ? 1 : 0,
+					shaOk ? 1 : 0,
+					IsVersion(availableVersion) ? 1 : 0);
+				AppendUpdateTrace(trace);
+
+				if (rootOk &&
+					versionOk &&
+					urlOk &&
+					shaOk &&
 					IsVersion(availableVersion))
 				{
+					trace.Format(
+						L"manifest parsed: version=%s url=%s sha256=%s",
+						availableVersion.GetString(),
+						updateURL.GetString(),
+						updateSHA256.GetString());
+					AppendUpdateTrace(trace);
 					if (IsNewerVersion(availableVersion))
 					{
 						CString path = updateURL;
@@ -494,24 +742,43 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 						}
 						else
 						{
+							AppendUpdateTrace(L"manifest rejected: untrusted update URL, extension or SHA256");
 							SetDlgItemText(IDC_TEXT_STATUS, m_sDownloadError);
 							m_UpdatePict.SetBitmap(m_StatusBitmaps[2]);
 						}
 					}
 					else 
 					{
+						AppendUpdateTrace(L"manifest accepted: current version is latest");
 						SetDlgItemText (IDC_TEXT_STATUS, m_sHaveLatestVersion);
 						m_UpdatePict.SetBitmap(m_StatusBitmaps[0]);
 						manifestHandled = true;
 					}
 				}
+				else
+				{
+					AppendUpdateTrace(L"manifest rejected: missing root, required nodes or version format");
+				}
+			}
+			else
+			{
+				MSXML2::IXMLDOMParseErrorPtr parseError = xmlDoc->parseError;
+				CString reason;
+				if (parseError)
+					reason = static_cast<const wchar_t*>(parseError->reason);
+				trace.Format(L"manifest XML load failed: %s", reason.GetString());
+				AppendUpdateTrace(trace);
 			}
 		}
-		catch (const _com_error&)
+		catch (const _com_error& error)
 		{
+			CString trace;
+			trace.Format(L"manifest COM exception: 0x%08X", static_cast<unsigned int>(error.Error()));
+			AppendUpdateTrace(trace);
 		}
 		if (!manifestHandled)
 		{
+			AppendUpdateTrace(L"manifest handling failed");
 			SetDlgItemText(IDC_TEXT_STATUS, m_sDownloadError);
 			m_UpdatePict.SetBitmap(m_StatusBitmaps[2]);
 		}

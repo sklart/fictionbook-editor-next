@@ -360,24 +360,24 @@ BEGIN
     COMBOBOX        IDC_ENCODING,130,0,164,104,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
 END
 
-IDD_ABOUTBOX DIALOGEX 0, 0, 266, 151
+IDD_ABOUTBOX DIALOGEX 0, 0, 330, 151
 STYLE DS_SETFONT | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "About"
 FONT 9, "Tahoma", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,215,133,44,14
+    DEFPUSHBUTTON   "OK",IDOK,279,133,44,14
     CONTROL         248,IDC_AB_STATIC_BANNER,"Static",SS_BITMAP | SS_NOTIFY | NOT WS_VISIBLE,6,6,56,123,WS_EX_CLIENTEDGE
     CONTROL         "",IDC_AB_BANNER,"Static",SS_OWNERDRAW | SS_NOTIFY | NOT WS_VISIBLE,6,6,57,123,WS_EX_CLIENTEDGE
     ICON            IDR_MAINFRAME,IDC_STATIC_AB_APPICON,73,8,20,20
-    EDITTEXT        IDC_STATIC_AB_APPNAMEVER,99,8,157,12,ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP
+    EDITTEXT        IDC_STATIC_AB_APPNAMEVER,99,8,221,12,ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP
     LTEXT           "Build",IDC_STATIC_BUILD,101,20,15,8
-    EDITTEXT        IDC_BUILDSTAMP,123,20,132,12,ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP
+    EDITTEXT        IDC_BUILDSTAMP,123,20,196,12,ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP
     CONTROL         "<a href=""https://github.com/sklart/fictionbook-editor-next"">https://github.com/sklart/fictionbook-editor-next</a>",IDC_SYSLINK_AB_LINKS,
-                    "SysLink",0x0,101,32,154,8
-    EDITTEXT        IDC_CONTRIBS,70,51,189,77,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_WANTRETURN | NOT WS_BORDER | WS_VSCROLL | NOT WS_TABSTOP,WS_EX_STATICEDGE
-    CONTROL         "Static",IDC_TEXT_STATUS,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,24,137,180,8
+                    "SysLink",0x0,101,32,218,8
+    EDITTEXT        IDC_CONTRIBS,70,51,253,77,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_WANTRETURN | NOT WS_BORDER | WS_VSCROLL | NOT WS_TABSTOP,WS_EX_STATICEDGE
+    CONTROL         "Static",IDC_TEXT_STATUS,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,24,137,244,8
     CONTROL         400,IDC_PIC_UPDATE,"Static",SS_BITMAP,9,136,9,9
-    PUSHBUTTON      "Update now",IDC_UPDATE,161,133,49,14,NOT WS_VISIBLE
+    PUSHBUTTON      "Update now",IDC_UPDATE,225,133,49,14,NOT WS_VISIBLE
 END
 
 IDD_ADDIMAGE DIALOGEX 0, 0, 147, 66
@@ -647,7 +647,7 @@ BEGIN
             VALUE "FileDescription", FBE_PRODUCT_NAME
             VALUE "FileVersion", FBE_VERSION_STRING
             VALUE "InternalName", "FBE"
-            VALUE "LegalCopyright", "Copyright 2010 © FBE Team, 2008 © LitRes, 2003 © Mike Matsnev"
+            VALUE "LegalCopyright", "Copyright 2010 ï¿½ FBE Team, 2008 ï¿½ LitRes, 2003 ï¿½ Mike Matsnev"
             VALUE "OriginalFilename", "FBE.exe"
             VALUE "ProductName", FBE_PRODUCT_NAME
             VALUE "ProductVersion", FBE_VERSION_STRING
@@ -1082,7 +1082,7 @@ BEGIN
     IDS_UPDATE_INCORRECTMD5 "Error, incorrect SHA-256 checksum"
     IDS_UPDATE_NEWVERSIONAVAILABLE "A new version of FBE is available."
     IDS_UPDATE_HAVELATESTVERSION "You have a latest version of FBE."
-    IDS_ABOUT_LOGOCAPTION   "FB2 animated logo » press ? for help"
+    IDS_ABOUT_LOGOCAPTION   "FB2 animated logo ï¿½ press ? for help"
     IDS_UPDATE_CLOSE        "FBE must be closed to continue installation.\r\n\r\nYou may delete installation file at download location ""%s"" later.\r\n\r\nQuit FBE now and continue installation?"
     IDS_LANG_UKRAINIAN      "Ukrainian"
     IDS_UPDATEEXISTS        "Update file %s is already exists.\r\nWould you like to execute this file?"

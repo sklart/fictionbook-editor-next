@@ -87,8 +87,6 @@ if (-not [string]::IsNullOrWhiteSpace($repository) -and
 $notes = New-Object System.Collections.Generic.List[string]
 $notes.Add("# FictionBook Editor Next $normalizedVersion")
 $notes.Add("")
-$notes.Add("Это пользовательское описание изменений. Оно намеренно написано не как список изменённых файлов, а как краткое объяснение того, что стало лучше в программе.")
-$notes.Add("")
 $notes.AddRange([string[]]$body)
 
 if (-not [string]::IsNullOrWhiteSpace($commitsUrl)) {

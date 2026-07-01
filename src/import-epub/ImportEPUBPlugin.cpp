@@ -405,53 +405,82 @@ STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** do
     *filename = nullptr;
     *document = nullptr;
 
-    CStringW epubPath;
+    CStringW stage = L"подготовка импорта EPUB";
 
-    // The original FBE import interface passes HWND as "long".
-    // This is safe for the classic Win32 FBE build, but in a hypothetical
-    // x64 host the handle would be truncated before it reaches the plugin.
-    // Therefore the x64 build deliberately opens the dialog without an owner
-    // window instead of trying to reconstruct a broken HWND value.
+    try
+    {
+        CStringW epubPath;
+
+        // The original FBE import interface passes HWND as "long".
+        // This is safe for the classic Win32 FBE build, but in a hypothetical
+        // x64 host the handle would be truncated before it reaches the plugin.
+        // Therefore the x64 build deliberately opens the dialog without an owner
+        // window instead of trying to reconstruct a broken HWND value.
 #if defined(_WIN64)
-    UNREFERENCED_PARAMETER(hWnd);
-    HWND ownerWindow = nullptr;
+        UNREFERENCED_PARAMETER(hWnd);
+        HWND ownerWindow = nullptr;
 #else
-    HWND ownerWindow = reinterpret_cast<HWND>(static_cast<LONG_PTR>(hWnd));
+        HWND ownerWindow = reinterpret_cast<HWND>(static_cast<LONG_PTR>(hWnd));
 #endif
 
-    EpubImportOptions options;
-    LoadImportOptions(options);
-    if (!SelectEpubFile(ownerWindow, epubPath, options))
-        return S_FALSE;
+        EpubImportOptions options;
+        stage = L"чтение настроек ImportEPUB";
+        LoadImportOptions(options);
+        stage = L"выбор EPUB-файла";
+        if (!SelectEpubFile(ownerWindow, epubPath, options))
+            return S_FALSE;
 
-    const CStringW fb2Path = ChangeExtensionToFb2(epubPath);
+        const CStringW fb2Path = ChangeExtensionToFb2(epubPath);
 
-    CStringW fb2Xml;
-    CStringW importError;
-    if (!BuildFb2XmlFromEpub(epubPath, options, fb2Xml, importError))
-    {
-        CStringW msg;
-        msg = L"EPUB пока не удалось импортировать полностью.\n\n";
-        msg += importError;
-        msg += L"\n\nБудет открыт диагностический FB2-документ.";
-        ::MessageBoxW(ownerWindow, msg, L"ImportEPUB", MB_OK | MB_ICONWARNING);
-        fb2Xml = BuildDiagnosticFb2Xml(epubPath, importError);
-    }
-
-    HRESULT hr = CreateFb2Dom(fb2Xml, document);
-    if (FAILED(hr))
-        return hr;
-
-    *filename = ::SysAllocString(fb2Path);
-    if (!*filename)
-    {
-        if (*document)
+        CStringW fb2Xml;
+        CStringW importError;
+        stage = L"преобразование EPUB в FB2";
+        if (!BuildFb2XmlFromEpub(epubPath, options, fb2Xml, importError))
         {
-            (*document)->Release();
-            *document = nullptr;
+            CStringW msg;
+            msg = L"EPUB пока не удалось импортировать полностью.\n\n";
+            msg += importError;
+            msg += L"\n\nБудет открыт диагностический FB2-документ.";
+            ::MessageBoxW(ownerWindow, msg, L"ImportEPUB", MB_OK | MB_ICONWARNING);
+            fb2Xml = BuildDiagnosticFb2Xml(epubPath, importError);
         }
-        return E_OUTOFMEMORY;
-    }
 
-    return S_OK;
+        stage = L"создание FB2 DOM-документа";
+        HRESULT hr = CreateFb2Dom(fb2Xml, document);
+        if (FAILED(hr))
+            return hr;
+
+        stage = L"возврат результата импорта в FBE";
+        *filename = ::SysAllocString(fb2Path);
+        if (!*filename)
+        {
+            if (*document)
+            {
+                (*document)->Release();
+                *document = nullptr;
+            }
+            return E_OUTOFMEMORY;
+        }
+
+        return S_OK;
+    }
+    catch (const _com_error& e)
+    {
+        CStringW message;
+        message.Format(
+            L"ImportEPUB остановил импорт из-за COM-ошибки.\n\nСтадия: %s\nHRESULT: 0x%08X",
+            stage.GetString(),
+            static_cast<unsigned int>(e.Error()));
+        ::MessageBoxW(nullptr, message, L"ImportEPUB", MB_OK | MB_ICONERROR);
+        return S_FALSE;
+    }
+    catch (...)
+    {
+        CStringW message;
+        message.Format(
+            L"ImportEPUB остановил импорт из-за непредвиденной ошибки.\n\nСтадия: %s",
+            stage.GetString());
+        ::MessageBoxW(nullptr, message, L"ImportEPUB", MB_OK | MB_ICONERROR);
+        return S_FALSE;
+    }
 }

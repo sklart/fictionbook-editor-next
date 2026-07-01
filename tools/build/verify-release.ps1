@@ -74,6 +74,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-epub-cyrillic.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-epub-xhtml11.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-plugin-mojibake.ps1")
+& (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 
 function Test-BinarySecurityFlags {
     param(
