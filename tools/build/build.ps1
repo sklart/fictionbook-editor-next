@@ -11,6 +11,9 @@ param(
     [ValidateSet("Win32")]
     [string]$Platform = "Win32",
 
+    [ValidateSet("Modern", "Win7")]
+    [string]$CompatibilityTarget = "Modern",
+
     [string]$PlatformToolset,
 
     [switch]$SkipUpx,
@@ -65,7 +68,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 
 & (Join-Path $repoRoot "tools\version\sync-version.ps1")
-& (Join-Path $repoRoot "tools\build\build-scintilla.ps1")
+& (Join-Path $repoRoot "tools\build\build-scintilla.ps1") -CompatibilityTarget $CompatibilityTarget
 Write-Host "Подготовка PCRE2..."
 $pcre2BuildScript = Join-Path $repoRoot "tools\build\build-pcre2.ps1"
 $pcre2BuildArgs = @(

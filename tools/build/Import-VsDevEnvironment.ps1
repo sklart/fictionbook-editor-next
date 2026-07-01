@@ -9,12 +9,15 @@ param(
     [string]$Arch = "x86",
 
     [ValidateSet("x64")]
-    [string]$HostArch = "x64"
+    [string]$HostArch = "x64",
+
+    [string]$VcVarsVersion
 )
 
 $ErrorActionPreference = "Stop"
 
-$sentinelName = "FBE_VSDEV_${Arch}_${HostArch}_INITIALIZED"
+$sentinelVersion = if ($VcVarsVersion) { $VcVarsVersion } else { "latest" }
+$sentinelName = "FBE_VSDEV_${Arch}_${HostArch}_${sentinelVersion}_INITIALIZED"
 if ([Environment]::GetEnvironmentVariable($sentinelName, "Process") -eq "1") {
     return
 }
@@ -32,8 +35,12 @@ if (-not $installationPath) {
 }
 
 $vsDevCmd = Join-Path $installationPath "Common7\Tools\VsDevCmd.bat"
-$environment = & cmd.exe /d /s /c "`"$vsDevCmd`" -arch=$Arch -host_arch=$HostArch >nul && set"
+$vcVarsVersionArgument = if ($VcVarsVersion) { " -vcvars_ver=$VcVarsVersion" } else { "" }
+$environment = & cmd.exe /d /s /c "`"$vsDevCmd`" -arch=$Arch -host_arch=$HostArch$vcVarsVersionArgument >nul && set"
 if ($LASTEXITCODE -ne 0) {
+    if ($VcVarsVersion) {
+        throw "Не удалось инициализировать среду сборки Visual Studio для $Arch с vcvars_ver=$VcVarsVersion."
+    }
     throw "Не удалось инициализировать среду сборки Visual Studio для $Arch."
 }
 

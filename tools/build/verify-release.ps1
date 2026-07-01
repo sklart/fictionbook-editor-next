@@ -2,7 +2,12 @@
 param(
     [string]$Configuration = "Release",
 
-    [string]$PlatformToolset
+    [ValidateSet("Modern", "Win7")]
+    [string]$CompatibilityTarget = "Modern",
+
+    [string]$PlatformToolset,
+
+    [switch]$SkipUpdateManifest
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,7 +64,9 @@ $requiredSymbols = @(
 
 & (Join-Path $PSScriptRoot "verify-runtime-binaries.ps1") -Directory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
-& (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
+if (-not $SkipUpdateManifest) {
+    & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
+}
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1")
 $pcre2TestArguments = @{
@@ -75,6 +82,9 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-epub-xhtml11.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-plugin-mojibake.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
+if ($CompatibilityTarget -eq "Win7") {
+    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") -Configuration $Configuration
+}
 
 function Test-BinarySecurityFlags {
     param(

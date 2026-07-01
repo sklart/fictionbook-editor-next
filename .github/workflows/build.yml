@@ -27,9 +27,9 @@ jobs:
           ./tools/version/sync-version.ps1
           git diff --exit-code -- packaging/nsis/Installer/version.nsh
 
-      - name: Build Release Win32
+      - name: Build Release Win32 modern
         shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143 -SkipUpx -WarningsAsErrors
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpx -WarningsAsErrors
 
       - name: Install NSIS
         shell: pwsh
@@ -38,12 +38,13 @@ jobs:
             choco install nsis --no-progress --yes
           }
 
-      - name: Create release artifacts
+      - name: Create modern release artifacts
         shell: pwsh
         run: |
           $arguments = @{
             Configuration = "Release"
             Platform = "Win32"
+            CompatibilityTarget = "Modern"
             PlatformToolset = "v143"
             SkipBuild = $true
           }
@@ -53,9 +54,26 @@ jobs:
           }
           ./tools/build/create-release.ps1 @arguments
 
+      - name: Build Release Win32 Win7-compatible
+        shell: pwsh
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipUpx -WarningsAsErrors
+
+      - name: Create Win7-compatible release artifacts
+        shell: pwsh
+        run: |
+          $arguments = @{
+            Configuration = "Release"
+            Platform = "Win32"
+            CompatibilityTarget = "Win7"
+            PlatformToolset = "v143"
+            SkipBuild = $true
+            PreserveArtifacts = $true
+          }
+          ./tools/build/create-release.ps1 @arguments
+
       - name: Verify release archives
         shell: pwsh
-        run: ./tools/build/verify-artifacts.ps1 -Platform Win32
+        run: ./tools/build/verify-artifacts.ps1 -Platform Win32 -CompatibilityTarget All
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7.0.1

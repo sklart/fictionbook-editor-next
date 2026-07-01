@@ -134,12 +134,23 @@
 
 В релизах GitHub публикуются:
 
-- `FictionBookEditorNext-<version>-win32-setup.exe` — обычный установщик;
-- `FictionBookEditorNext-<version>-win32-portable.zip` — portable-сборка;
-- `FictionBookEditorNext-<version>-win32-symbols.zip` — debug-символы для диагностики падений;
+- `FictionBookEditorNext-<version>-win32-setup.exe` — основной установщик для
+  Windows 8.1 / 10 / 11. Это рекомендуемый вариант для большинства
+  пользователей.
+- `FictionBookEditorNext-<version>-win32-portable.zip` — основная
+  portable-сборка для Windows 8.1 / 10 / 11.
+- `FictionBookEditorNext-<version>-win7-win32-setup.exe` — установщик для
+  Windows 7 SP1. Используйте его на Windows 7 вместо основного установщика.
+- `FictionBookEditorNext-<version>-win7-win32-portable.zip` — отдельная
+  portable-сборка для Windows 7 SP1. Используйте её только если обычная сборка
+  не запускается на Windows 7.
+- `FictionBookEditorNext-<version>-win32-symbols.zip` — debug-символы для
+  диагностики падений основной сборки.
+- `FictionBookEditorNext-<version>-win7-win32-symbols.zip` — debug-символы для
+  диагностики падений Win7-сборки.
 - `SHA256SUMS.txt` — контрольные суммы артефактов.
 
-Рекомендуемый вариант для большинства пользователей — установщик.
+Рекомендуемый вариант для большинства пользователей — основной установщик.
 
 В установщике интеграция с `.fb2` разбита на отдельные пункты. Если вы уже
 используете другую читалку и хотите сохранить привычную иконку файлов, не
@@ -148,14 +159,33 @@
 
 ## Поддерживаемые версии Windows
 
-Основной целевой сценарий FictionBook Editor Next — Windows 10 и Windows 11.
+Основной целевой сценарий FictionBook Editor Next — Windows 8.1, Windows 10 и
+Windows 11.
 На этих версиях проверяются установщик, shell-интеграция Проводника, миниатюры,
 свойства `.fb2`, MUI-локализация команды проверки и автоматическая сборка
 релизов.
 
-Ожидаемая совместимость сохраняется для Windows 7 SP1 / Windows 8.1 при наличии
-актуальных системных обновлений и Visual C++ runtime, но эти системы сейчас не
-являются основным release-gate контуром.
+Для Windows 7 SP1 публикуется отдельная совместимая сборка. Она собирается так,
+чтобы не импортировать напрямую функции Windows 8+ в критичных runtime-модулях
+вроде `Scintilla.dll`.
+
+Практический смысл Win7-сборки:
+
+- меньше риск ошибки запуска вида «точка входа в процедуру не найдена» на
+  Windows 7;
+- редакторская часть и режим `Код` используют более осторожный путь совместимости;
+- пакет предназначен именно для пользователей, которым нужно сохранить работу
+  на Windows 7 SP1.
+
+Теоретическая цена Win7-совместимости:
+
+- часть современных системных возможностей Windows 8/10/11 не используется в
+  совместимых модулях напрямую;
+- поведение DPI/таймеров/внутренних UI-мелочей может быть чуть менее современным,
+  чем в основной сборке;
+- Windows 7 всё равно должна быть обновлена до SP1 и иметь актуальный Universal
+  CRT / Visual C++ runtime, иначе отдельные современные компоненты и плагины
+  могут потребовать системные обновления.
 
 Windows XP и Windows Vista не поддерживаются стандартной сборкой Next: часть
 обновлённых библиотек, shell-интеграции и tooling ориентирована на более новые
@@ -187,6 +217,7 @@ git submodule update --init --recursive
 - [docs/versioning.md](docs/versioning.md)
 - [docs/release-checklist.md](docs/release-checklist.md)
 - [docs/manual-test-plan.md](docs/manual-test-plan.md)
+- [docs/localization.md](docs/localization.md)
 
 ## Документация для разработчиков
 

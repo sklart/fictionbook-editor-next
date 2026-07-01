@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FBE>
-	<Name>FictionBook Editor Next Release 3.0.3</Name>
+	<Name>FictionBook Editor Next Release 3.0.4</Name>
 	<Date>01-07-2026</Date>
-	<Version>3.0.3</Version>
+	<Version>3.0.4</Version>
 	<Beta>false</Beta>
-	<DownloadUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.3/FictionBookEditorNext-3.0.3-win32-setup.exe</DownloadUrl>
-	<SHA256>C74F78605D8344EB182671CD83944739016E434C661058D69B2F8036011C073D</SHA256>
+	<DownloadUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.4/FictionBookEditorNext-3.0.4-win32-setup.exe</DownloadUrl>
+	<SHA256>63FCCE7700344C04EF788ABBF519C1F12BA874905C6905487A9B11C08D99F564</SHA256>
 </FBE>

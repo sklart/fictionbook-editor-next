@@ -5,6 +5,20 @@
 заметки остаются в `docs/legacy-todo.txt`, а здесь ведётся актуальный бэклог.
 
 ## Актуальная техдолговая заметка
+- [x] Подготовить релизный контур к двум вариантам пакетов: основной modern
+  build для Windows 8.1/10/11 и отдельный Win7-compatible setup/portable build.
+- После первого успешного GitHub Actions-прогона с двумя профилями проверить,
+  что release assets содержат оба набора ZIP, оба setup-файла и
+  `SHA256SUMS.txt` описывает все файлы.
+- На Windows 7 SP1 x64 протестировать именно
+  `FictionBookEditorNext-*-win7-win32-setup.exe` и `FictionBookEditorNext-*-win7-win32-portable.zip`: запуск FBE, режим `Код`,
+  Scintilla-поиск/замена, FBV, ImportEPUB/ExportEPUB/ExportDOCX.
+- [x] Зафиксировать Weblate-friendly направление локализации в
+  `docs/localization.md` и стартовом каталоге `localization/plugin-ui`.
+- Следующим отдельным локализационным блоком вынести строки окон плагинов
+  `ExportDOCX`, `ExportEPUB`, `ImportEPUB`, `ExportHTML` в стабильный каталог
+  переводов и добавить украинскую + основные европейские локализации без
+  ручного редактирования координат диалогов.
 - Рассмотреть возможность отдельного legacy-установщика для Windows XP: только
   как отдельную ветку/артефакт с явным предупреждением о потере части современной
   функциональности, без возврата legacy PCRE в основной runtime FictionBook
@@ -31,6 +45,15 @@
 - На Windows 7 SP1 x64 отдельно проверить запуск `FBE.exe` после замены
   `PathCchRemoveFileSpec` на `PathRemoveFileSpecW`: ошибка про отсутствующий
   `api-ms-win-core-path-l1-1-0.dll` не должна повторяться.
+- На Windows 7 SP1 x64 отдельно проверить запуск после Win7-сборки
+  `Scintilla.dll`: ошибка про отсутствующий
+  `GetSystemTimePreciseAsFileTime` не должна повторяться, а режим `Код` должен
+  открываться и проходить базовый поиск/замену.
+- Определить финальную стратегию для `api-ms-win-crt-*.dll` на чистой
+  Windows 7: документировать обязательный VC++ Redistributable / KB2999226,
+  ставить redistributable из установщика или класть app-local UCRT/VC Runtime
+  рядом с portable/setup-сборкой. До решения `check-win7-imports.ps1` выводит
+  эти зависимости предупреждением, но не блокирует релиз.
 - После пересборки и установки повторить GUI-smoke `ImportEPUB`: пункт меню
   должен открывать диалог выбора EPUB, а при COM-сбое показывать сообщение
   ImportEPUB со стадией, а не безымянное окно FBE `COM Error`.

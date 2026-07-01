@@ -26,7 +26,6 @@
 #include <algorithm>
 #include <iterator>
 #include <memory>
-#include <chrono>
 
 #ifndef NO_CXX11_REGEX
 #include <regex>

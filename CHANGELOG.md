@@ -8,6 +8,22 @@
 
 ### Добавлено
 
+- Релизный контур разделён на два профиля: основной modern-билд для Windows
+  8.1/10/11 и отдельный Win7-compatible установщик/portable-пакет для Windows 7 SP1.
+  `create-release.ps1`, GitHub Actions и `verify-artifacts.ps1` теперь умеют
+  собирать и проверять оба набора артефактов в одном релизе.
+- README и curated release notes 3.0.4 дополнены разделом «Что скачивать»:
+  для каждого артефакта описано, кому нужен основной установщик, portable,
+  Win7-compatible portable и соответствующие debug-символы.
+- Добавлен документ `docs/localization.md` и стартовый каталог
+  `localization/plugin-ui`: они фиксируют будущий Weblate-friendly подход к
+  переводам окон плагинов через стабильные текстовые ключи, а не ручное
+  редактирование координатных Win32 `.rc`.
+- Добавлен Win7-аудит релизных импортов `tools/tests/check-win7-imports.ps1`:
+  он ловит прямые зависимости от WinAPI, отсутствующих в Windows 7, включая
+  `GetSystemTimePreciseAsFileTime` и `PathCch*`; зависимости
+  `api-ms-win-crt-*` пока выводятся как предупреждение, потому что это вопрос
+  поставки Universal CRT/VC Runtime, а не прямой Win8+ импорт.
 - Добавлен smoke-тест `tools/tests/test-import-epub-registration.ps1`: он
   проверяет 32-битную COM-регистрацию `ImportEPUB.dll` и обязательные
   COM-зависимости импорта (`MSXML6`, `IFileOpenDialog`, `Shell.Application`),
@@ -90,6 +106,12 @@
 - Для совместимости с Windows 7 убран прямой импорт `PathCchRemoveFileSpec` /
   `api-ms-win-core-path-l1-1-0.dll`: FBE снова использует совместимый
   `PathRemoveFileSpecW` из `SHLWAPI.dll`.
+- Для совместимости с Windows 7 скорректирована сборка Scintilla 5.6.3:
+  Windows-часть Scintilla теперь собирается с целевым `_WIN32_WINNT/WINVER =
+  0x0601`, использует `QueryPerformanceCounter` вместо `std::chrono` в
+  `ElapsedPeriod`, а `build-scintilla.ps1` предпочитает `vcvars_ver=14.44`.
+  Это убирает прямой импорт `GetSystemTimePreciseAsFileTime`, из-за которого
+  `Scintilla.dll` не загружалась на Windows 7.
 - Удалены оставшиеся старые WTL-заголовки `atlresce.h` и `atlwince.h`: они не
   используются проектом после перехода на WTL 10.0.1 и относились к устаревшему
   Windows CE-контуру.
@@ -566,6 +588,8 @@ ecipe, pdb, dll и
   ошибок и уже подтверждённым regression-набором.
 
 ### Исправлено
+
+- create-release.ps1 больше не включает сам SHA256SUMS.txt в список хешируемых релизных артефактов; финальная проверка modern+Win7-комплекта теперь сверяет только setup/portable/symbols.
 - Исправлен приоритет логических операций в обработчике modeless-диалогов:
   клавиатурные сообщения теперь фильтруются строго внутри соответствующих
   `WM_KEYDOWN`/`WM_CHAR`. Удалены недостижимая ветвь сохранения selection и

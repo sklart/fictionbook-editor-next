@@ -26,17 +26,19 @@
 #include <optional>
 #include <algorithm>
 #include <memory>
-#include <chrono>
 #include <mutex>
 
 // Want to use std::min and std::max so don't want Windows.h version of min and max
 #if !defined(NOMINMAX)
 #define NOMINMAX
 #endif
+#ifndef FBE_SCINTILLA_WINVER
+#define FBE_SCINTILLA_WINVER 0x0A00
+#endif
 #undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0A00
+#define _WIN32_WINNT FBE_SCINTILLA_WINVER
 #undef WINVER
-#define WINVER 0x0A00
+#define WINVER FBE_SCINTILLA_WINVER
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
 #include <commctrl.h>
@@ -44,6 +46,10 @@
 #include <windowsx.h>
 #include <zmouse.h>
 #include <ole2.h>
+
+#ifndef WM_DPICHANGED_AFTERPARENT
+#define WM_DPICHANGED_AFTERPARENT 0x02E3
+#endif
 
 #include <wrl.h>
 using Microsoft::WRL::ComPtr;

@@ -19,9 +19,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 $sourceDir = Join-Path $repoRoot "third_party\pcre2"
 $buildRoot = Join-Path $repoRoot "build\pcre2"
-$buildDir = Join-Path $buildRoot $Configuration
 $installDir = Join-Path $buildRoot "install\$Configuration"
-$mutexName = "Global\FBeditor-build-pcre2-$Configuration"
 
 function Get-CMakeVisualStudioGenerator {
     param(
@@ -61,6 +59,9 @@ if (-not $cmake) {
 }
 
 $generator = Get-CMakeVisualStudioGenerator -Toolset $PlatformToolset
+$generatorSuffix = if ($generator -eq "Visual Studio 17 2022") { "vs2022" } else { "vs2026" }
+$buildDir = Join-Path $buildRoot "$Configuration-$generatorSuffix"
+$mutexName = "Global\FBeditor-build-pcre2-$Configuration-$generatorSuffix"
 
 Write-Host "PCRE2: конфигурация $Configuration"
 Write-Host "PCRE2: PlatformToolset = $PlatformToolset"

@@ -26,7 +26,6 @@
 #include <algorithm>
 #include <iterator>
 #include <memory>
-#include <chrono>
 #include <atomic>
 #include <thread>
 #include <future>

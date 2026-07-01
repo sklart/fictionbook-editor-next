@@ -6,12 +6,16 @@ param(
     [ValidateSet("Win32")]
     [string]$Platform = "Win32",
 
+    [ValidateSet("Modern", "Win7")]
+    [string]$CompatibilityTarget = "Modern",
+
     [string]$PlatformToolset,
 
     [switch]$SkipUpx,
     [switch]$WarningsAsErrors,
     [switch]$SkipBuild,
     [switch]$SkipInstaller,
+    [switch]$PreserveArtifacts,
     [switch]$ValidateUpdateManifest,
     [string]$ReleaseTag
 )
@@ -58,6 +62,7 @@ if ($ReleaseTag -and $ReleaseTag -ne "v$version") {
     throw "Тег релиза '$ReleaseTag' не совпадает с версией исходников 'v$version'."
 }
 $architecture = $Platform.ToLowerInvariant()
+$artifactCompatibility = if ($CompatibilityTarget -eq "Win7") { "win7-" } else { "" }
 $artifactsDir = Join-Path $repoRoot "out\artifacts"
 $portableDir = Join-Path $repoRoot "out\package\FictionBookEditor"
 $symbolsDir = Join-Path $repoRoot "out\package\symbols"
@@ -72,6 +77,7 @@ if (-not $SkipBuild) {
     $buildArguments = @{
         Configuration = $Configuration
         Platform = $Platform
+        CompatibilityTarget = $CompatibilityTarget
     }
     if ($PlatformToolset) {
         $buildArguments.PlatformToolset = $PlatformToolset
@@ -103,6 +109,8 @@ foreach ($propertyHandlerPlatform in @("Win32", "x64")) {
 
 $verifyReleaseArguments = @{
     Configuration = $Configuration
+    CompatibilityTarget = $CompatibilityTarget
+    SkipUpdateManifest = $true
 }
 if ($PlatformToolset) {
     $verifyReleaseArguments.PlatformToolset = $PlatformToolset
@@ -117,7 +125,7 @@ if ($PlatformToolset) {
 & (Join-Path $PSScriptRoot "verify-package-stage.ps1")
 & (Join-Path $PSScriptRoot "verify-nsis-layout.ps1")
 
-if (Test-Path -LiteralPath $artifactsDir) {
+if ((Test-Path -LiteralPath $artifactsDir) -and -not $PreserveArtifacts) {
     try {
         Remove-PathWithRetry -LiteralPath $artifactsDir
     }
@@ -126,12 +134,18 @@ if (Test-Path -LiteralPath $artifactsDir) {
         Write-Warning "Предыдущие артефакты заблокированы; использую $artifactsDir"
     }
 }
-New-Item -ItemType Directory -Path $artifactsDir | Out-Null
+New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
 
-$portableZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-portable.zip"
-$symbolsZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-symbols.zip"
-$setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-setup.exe"
+$portableZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$artifactCompatibility$architecture-portable.zip"
+$symbolsZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$artifactCompatibility$architecture-symbols.zip"
+$setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$version-$artifactCompatibility$architecture-setup.exe"
 $checksumsPath = Join-Path $artifactsDir "SHA256SUMS.txt"
+
+foreach ($artifactPath in @($portableZip, $symbolsZip)) {
+    if (Test-Path -LiteralPath $artifactPath) {
+        Remove-PathWithRetry -LiteralPath $artifactPath
+    }
+}
 
 function Set-ManifestNodeValue {
     param(
@@ -239,13 +253,13 @@ if (-not $SkipInstaller) {
     }
 }
 
-$artifactFiles = Get-ChildItem -LiteralPath $artifactsDir -File | Sort-Object Name
+$artifactFiles = Get-ChildItem -LiteralPath $artifactsDir -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" } | Sort-Object Name
 $checksumLines = foreach ($file in $artifactFiles) {
     $hash = Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256
     "{0}  {1}" -f $hash.Hash, $file.Name
 }
 [IO.File]::WriteAllLines($checksumsPath, $checksumLines, [Text.Encoding]::ASCII)
-if (-not $SkipInstaller) {
+if (-not $SkipInstaller -and $CompatibilityTarget -eq "Modern") {
     $setupHash = (Get-FileHash -LiteralPath $setupArtifact -Algorithm SHA256).Hash
     $updateManifestPath = Join-Path $repoRoot "update.xml"
     [xml]$manifest = Get-Content -Raw -LiteralPath $updateManifestPath
@@ -289,8 +303,9 @@ if ($ValidateUpdateManifest) {
 $verifyArtifactArguments = @{
     Platform = $Platform
     ArtifactsDirectory = $artifactsDir
+    CompatibilityTarget = if ($PreserveArtifacts -and $CompatibilityTarget -eq "Win7") { "All" } else { $CompatibilityTarget }
 }
-if ($SkipInstaller) {
+if ($SkipInstaller -and -not ($PreserveArtifacts -and $CompatibilityTarget -eq "Win7")) {
     $verifyArtifactArguments.SkipInstaller = $true
 }
 & (Join-Path $PSScriptRoot "verify-artifacts.ps1") @verifyArtifactArguments

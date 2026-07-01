@@ -3,12 +3,38 @@
 
 [CmdletBinding()]
 param(
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+    [string]$DllPath
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+$repoRootPath = $repoRoot.Path
+
+if (-not $DllPath) {
+    $DllPath = Join-Path $repoRootPath "out\$Configuration\ImportEPUB.dll"
+}
+
+$DllPath = [IO.Path]::GetFullPath($DllPath)
+if (-not (Test-Path -LiteralPath $DllPath)) {
+    throw "ImportEPUB.dll не найден: $DllPath"
+}
+
+$regsvr32 = Join-Path $env:WINDIR "SysWOW64\regsvr32.exe"
+if (-not (Test-Path -LiteralPath $regsvr32)) {
+    $regsvr32 = Join-Path $env:WINDIR "System32\regsvr32.exe"
+}
+if (-not (Test-Path -LiteralPath $regsvr32)) {
+    throw "regsvr32.exe не найден."
+}
+
+Write-Host "Регистрирую ImportEPUB для smoke-теста: $DllPath"
+& $regsvr32 /s $DllPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Регистрация ImportEPUB.dll завершилась с кодом $LASTEXITCODE."
+}
+
 $testRoot = Join-Path $repoRoot "out\tests\import-epub-registration"
 New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
 
