@@ -239,7 +239,17 @@ if (-not $SkipInstaller) {
 
     Push-Location $installerDir
     try {
-        & $makensis '/X!addincludedir ..\NSIS' '/X!addplugindir /x86-unicode ..\NSIS' ('/DINPUTDIR=' + $portableDir) ('/DOUTPUTFILE=' + $setupArtifact) 'MakeInstaller.nsi'
+        $makensisArguments = @(
+            '/X!addincludedir ..\NSIS',
+            '/X!addplugindir /x86-unicode ..\NSIS',
+            ('/DINPUTDIR=' + $portableDir),
+            ('/DOUTPUTFILE=' + $setupArtifact)
+        )
+        if ($CompatibilityTarget -eq "Win7") {
+            $makensisArguments += '/DFBE_WIN7_BUILD=1'
+        }
+        $makensisArguments += 'MakeInstaller.nsi'
+        & $makensis @makensisArguments
         if ($LASTEXITCODE -ne 0) {
             throw "NSIS завершился с кодом $LASTEXITCODE."
         }

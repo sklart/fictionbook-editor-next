@@ -8,6 +8,19 @@
 
 ### Добавлено
 
+- Регистрация `ExportHTML.dll` выровнена с современными плагинами: `DllRegisterServer` больше не пытается регистрировать type library, потому что FBE использует COM-класс плагина, а лишний TLB-шаг может падать на чистых системах и скрывать плагин из меню экспорта.
+- GitHub release notes теперь получают ссылку на версионируемый файл `docs/release-notes/<version>.md`, чтобы опубликованное описание релиза было связано с исходником в репозитории.
+- Генератор release notes `tools/build/new-release-notes.ps1` склеивает случайно перенесённые строки внутри Markdown-list items, чтобы в GitHub Release один пункт списка отображался без ручных разрывов строк.
+- Win7-compatible установщик теперь явно помечается в названии окна как `Windows 7 compatible`, а `create-release.ps1` передаёт в NSIS отдельный define `FBE_WIN7_BUILD` для таких артефактов.
+- Манифест `dependencies/runtime-binaries.json` разделён на профили `Modern` и `Win7`, а `verify-runtime-binaries.ps1` / `verify-artifacts.ps1` проверяют runtime-файлы с учётом выбранного профиля сборки.
+- Для Win7-сборки убран прямой импорт `GetSystemTimePreciseAsFileTime` из `ExportEPUB.dll`: timestamp EPUB теперь формируется через Win7-совместимый `GetSystemTime`, без изменения пользовательского сценария экспорта.
+- Для чистой Windows 7 зафиксирована стратегия по `api-ms-win-crt-*.dll`: документировать обязательные системные обновления Universal CRT, включая KB2999226, и актуальный Microsoft Visual C++ Redistributable, не встраивая app-local UCRT в текущий установщик.
+- Добавлен release-gate `tools/tests/test-plugin-static-runtime.ps1`: GUI-плагины и batch-конвертеры в Release должны собираться со статическим CRT (`/MT`), чтобы clean Windows 7 / portable-сценарии не теряли плагины из-за отсутствующего Visual C++ runtime.
+- Добавлен проверяемый контракт будущей runtime-локализации `localization/runtime/contract.json`: основной внешний формат зафиксирован как JSON в каталоге `Lang`, для FBE/FBV/плагинов описан обязательный встроенный fallback, а shell/MUI-ресурсы запланированы в `Lang\Shell`. Новый тест `tools/tests/test-localization-runtime-contract.ps1` подключён к release-gate.
+- Добавлен генератор чернового NSIS-плана языковых пакетов `tools/localization/export-nsis-language-pack-plan.ps1` и проверка `tools/tests/test-nsis-language-pack-plan.ps1`: draft `.nsh` строится из `language-packs.json`, но пока не подключается к установщику.
+- Добавлен инвентарь будущих языковых пакетов установщика `localization/language-packs.json` и проверка `tools/tests/test-language-packs-inventory.ps1`: они фиксируют, какие `res_*.dll`, `.mui`, словари, лицензии, жанры и XSL относятся к каждому языку, чтобы позже сделать языки выбираемыми компонентами установки.
+- В FBV начата runtime-локализация основного интерфейса без смены архитектуры: строки статуса, кнопки `Stop/Revalidate/Exit`, имя колонки, сообщение `No errors`, формат SAX-ошибки и базовые error-сообщения перенесены в `STRINGTABLE` для всех целевых языков.
+- Добавлен экспортёр `tools/localization/export-weblate-seed.ps1`: он собирает `localization/app-ui` и `localization/plugin-ui` в per-language JSON-файлы под `out/localization/weblate-seed`, чтобы текущие строки можно было отдавать переводчикам и позже подключить к Weblate. Проверка `tools/tests/test-localization-export.ps1` добавлена в release-gate.
 - Релизный контур разделён на два профиля: основной modern-билд для Windows
   8.1/10/11 и отдельный Win7-compatible установщик/portable-пакет для Windows 7 SP1.
   `create-release.ps1`, GitHub Actions и `verify-artifacts.ps1` теперь умеют
@@ -15,6 +28,7 @@
 - README и curated release notes 3.0.4 дополнены разделом «Что скачивать»:
   для каждого артефакта описано, кому нужен основной установщик, portable,
   Win7-compatible portable и соответствующие debug-символы.
+- Добавлен проверяемый каталог `localization/plugin-ui/catalog.json`: в нём заведены первые стабильные ключи для основных строк окон `ExportHTML`, `ExportDOCX`, `ExportEPUB` и `ImportEPUB`, включая украинский и черновые переводы на основные европейские языки. Новый smoke-тест `tools/tests/test-plugin-localization-catalog.ps1` подключён к `verify-release.ps1` и проверяет полноту переводов по всем целевым языкам.
 - Добавлен документ `docs/localization.md` и стартовый каталог
   `localization/plugin-ui`: они фиксируют будущий Weblate-friendly подход к
   переводам окон плагинов через стабильные текстовые ключи, а не ручное

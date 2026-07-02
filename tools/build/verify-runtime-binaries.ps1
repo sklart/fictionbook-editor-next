@@ -1,6 +1,9 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$Directory
+    [string]$Directory,
+
+    [ValidateSet("Modern", "Win7")]
+    [string]$CompatibilityTarget = "Modern"
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,11 +16,16 @@ if (-not $Directory) {
 $Directory = (Resolve-Path -LiteralPath $Directory).Path
 
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-if ($manifest.schemaVersion -ne 1 -or $manifest.architecture -ne "x86") {
+if ($manifest.schemaVersion -ne 2 -or $manifest.architecture -ne "x86") {
     throw "Неподдерживаемый манифест runtime-бинарников."
 }
 
-foreach ($entry in $manifest.files) {
+$profile = $manifest.profiles.$CompatibilityTarget
+if (-not $profile -or -not $profile.files) {
+    throw "В манифесте runtime-бинарников нет профиля $CompatibilityTarget."
+}
+
+foreach ($entry in $profile.files) {
     $path = Join-Path $Directory $entry.name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Отсутствует зафиксированный runtime-бинарник: $path"
@@ -76,4 +84,4 @@ foreach ($entry in $manifest.files) {
     }
 }
 
-Write-Host "Проверка runtime-бинарников для $Directory прошла успешно."
+Write-Host "Проверка runtime-бинарников для $Directory ($CompatibilityTarget) прошла успешно."

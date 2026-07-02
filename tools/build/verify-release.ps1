@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Configuration = "Release",
 
@@ -62,7 +62,9 @@ $requiredSymbols = @(
     "res_ukr.pdb"
 )
 
-& (Join-Path $PSScriptRoot "verify-runtime-binaries.ps1") -Directory $outputDir
+& (Join-Path $PSScriptRoot "verify-runtime-binaries.ps1") `
+    -Directory $outputDir `
+    -CompatibilityTarget $CompatibilityTarget
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
 if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
@@ -81,6 +83,15 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-epub-cyrillic.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-epub-xhtml11.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-plugin-mojibake.ps1")
+& (Join-Path $repoRoot "tools\tests\test-plugin-static-runtime.ps1")
+& (Join-Path $repoRoot "tools\tests\test-release-notes-format.ps1")
+& (Join-Path $repoRoot "tools\tests\test-plugin-localization-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-app-localization-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbv-localization-resources.ps1")
+& (Join-Path $repoRoot "tools\tests\test-localization-export.ps1")
+& (Join-Path $repoRoot "tools\tests\test-localization-runtime-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-language-packs-inventory.ps1")
+& (Join-Path $repoRoot "tools\tests\test-nsis-language-pack-plan.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 if ($CompatibilityTarget -eq "Win7") {
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") -Configuration $Configuration
@@ -257,4 +268,3 @@ finally {
 }
 
 Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
-

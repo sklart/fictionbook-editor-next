@@ -31,8 +31,11 @@ STDAPI DllGetClassObject(_In_ REFCLSID rclsid, _In_ REFIID riid, _Outptr_ LPVOID
 
 STDAPI DllRegisterServer(void)
 {
-	// registers object, typelib and all interfaces in typelib
-	HRESULT hr = _AtlModule.DllRegisterServer();
+	// FBE plugins only need COM class and .rgs registration.
+	// Do not register the generated type library here: on clean systems this can
+	// fail because imported/dependent type libraries are not present yet, while
+	// the plugin itself is perfectly usable through the FBE plugin interface.
+	HRESULT hr = _AtlModule.DllRegisterServer(FALSE);
 	return hr;
 }
 
@@ -41,7 +44,7 @@ STDAPI DllRegisterServer(void)
 
 STDAPI DllUnregisterServer(void)
 {
-	HRESULT hr = _AtlModule.DllUnregisterServer();
+	HRESULT hr = _AtlModule.DllUnregisterServer(FALSE);
 	return hr;
 }
 

@@ -1,0 +1,218 @@
+{
+  "formatVersion": 1,
+  "description": "Инвентарь будущих языковых пакетов установщика. Основной runtime-формат локализации — JSON в Lang; shell-строки Windows остаются MUI-ресурсами в Lang/Shell.",
+  "fallbackLanguage": "en-US",
+  "currentInstallerLanguages": [
+    "en-US",
+    "ru-RU",
+    "uk-UA"
+  ],
+  "languages": [
+    {
+      "language": "en-US",
+      "displayName": "English",
+      "installerLanguage": "English",
+      "defaultInstall": true,
+      "required": true,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/en-US/FBVVerbResources.dll.mui"
+        ],
+        "dictionaries": [
+          "Dict/en_US.dic",
+          "Dict/en_US.aff"
+        ],
+        "license": [
+          "gpl-3.0.txt"
+        ],
+        "templates": [
+          "blank.fb2"
+        ]
+      }
+    },
+    {
+      "language": "ru-RU",
+      "displayName": "Русский",
+      "installerLanguage": "Russian",
+      "defaultInstall": true,
+      "required": false,
+      "assets": {
+        "fbeResources": [
+          "res_rus.dll"
+        ],
+        "fbvMui": [
+          "Lang/Shell/ru-RU/FBVVerbResources.dll.mui"
+        ],
+        "dictionaries": [
+          "Dict/ru_RU.dic",
+          "Dict/ru_RU.aff"
+        ],
+        "license": [
+          "gpl-3.0.ru.txt"
+        ],
+        "genres": [
+          "genres.rus.txt",
+          "genres.rus.txt_L"
+        ],
+        "xslt": [
+          "rus.xsl"
+        ]
+      }
+    },
+    {
+      "language": "uk-UA",
+      "displayName": "Українська",
+      "installerLanguage": "Ukrainian",
+      "defaultInstall": true,
+      "required": false,
+      "assets": {
+        "fbeResources": [
+          "res_ukr.dll"
+        ],
+        "fbvMui": [
+          "Lang/Shell/uk-UA/FBVVerbResources.dll.mui"
+        ],
+        "dictionaries": [
+          "Dict/uk_UA.dic",
+          "Dict/uk_UA.aff"
+        ],
+        "license": [
+          "gpl-3.0.ua.txt"
+        ],
+        "genres": [
+          "genres.ukr.txt"
+        ],
+        "xslt": [
+          "ukr.xsl"
+        ],
+        "futureTemplates": [
+          "blank_ukr.fb2"
+        ]
+      }
+    },
+    {
+      "language": "de-DE",
+      "displayName": "Deutsch",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/de-DE/FBVVerbResources.dll.mui"
+        ],
+        "dictionaries": [
+          "Dict/de_DE.dic",
+          "Dict/de_DE.aff"
+        ]
+      }
+    },
+    {
+      "language": "fr-FR",
+      "displayName": "Français",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/fr-FR/FBVVerbResources.dll.mui"
+        ]
+      }
+    },
+    {
+      "language": "es-ES",
+      "displayName": "Español",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/es-ES/FBVVerbResources.dll.mui"
+        ]
+      }
+    },
+    {
+      "language": "it-IT",
+      "displayName": "Italiano",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/it-IT/FBVVerbResources.dll.mui"
+        ]
+      }
+    },
+    {
+      "language": "pl-PL",
+      "displayName": "Polski",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/pl-PL/FBVVerbResources.dll.mui"
+        ]
+      }
+    },
+    {
+      "language": "pt-PT",
+      "displayName": "Português",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/pt-PT/FBVVerbResources.dll.mui"
+        ]
+      }
+    },
+    {
+      "language": "nl-NL",
+      "displayName": "Nederlands",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/nl-NL/FBVVerbResources.dll.mui"
+        ]
+      }
+    },
+    {
+      "language": "cs-CZ",
+      "displayName": "Čeština",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/cs-CZ/FBVVerbResources.dll.mui"
+        ]
+      }
+    },
+    {
+      "language": "bg-BG",
+      "displayName": "Български",
+      "installerLanguage": null,
+      "defaultInstall": false,
+      "required": false,
+      "assets": {
+        "fbvMui": [
+          "Lang/Shell/bg-BG/FBVVerbResources.dll.mui"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "defaultInstall=True означает язык, который сейчас логично ставить по умолчанию до появления полноценной страницы выбора языков.",
+    "required=True означает fallback-компонент, который нельзя отключать без отдельной runtime-стратегии.",
+    "Основной runtime-формат будущей локализации FBE/FBV/плагинов — JSON-файлы в каталоге Lang.",
+    "Shell-команды Windows используют MUI-ресурсы, потому что Проводник ожидает строку вида @module,-id; эти файлы планируются в Lang/Shell.",
+    "futureTemplates описывает желаемые файлы, которых пока может не быть в пакете."
+  ],
+  "languageNeutralAssets": {
+    "shellMuiHost": [
+      "Lang/Shell/FBVVerbResources.dll"
+    ]
+  }
+}

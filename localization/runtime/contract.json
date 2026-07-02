@@ -1,0 +1,58 @@
+{
+  "formatVersion": 1,
+  "description": "Контракт будущей runtime-локализации FictionBook Editor Next. Пока не подключён к запуску программы.",
+  "catalogFormat": "json",
+  "runtimeRoot": "Lang",
+  "fallbackLanguage": "en-US",
+  "lookupOrder": [
+    "Lang/{locale}/{module}.json",
+    "Lang/en-US/{module}.json",
+    "embedded:{module}"
+  ],
+  "missingFilePolicy": "fall back to embedded resources and continue startup",
+  "missingKeyPolicy": "fall back to en-US, then embedded string, then diagnostic key text",
+  "shellMui": {
+    "hostModule": "Lang/Shell/FBVVerbResources.dll",
+    "localizedMuiPattern": "Lang/Shell/{locale}/FBVVerbResources.dll.mui",
+    "registryValueExample": "@<InstallDir>\\Lang\\Shell\\FBVVerbResources.dll,-109;v2",
+    "fallbackPolicy": "register plain verb text if the MUI host is unavailable"
+  },
+  "modules": [
+    {
+      "module": "fbe",
+      "file": "fbe.json",
+      "owner": "FBE.exe",
+      "embeddedFallback": true
+    },
+    {
+      "module": "fbv",
+      "file": "fbv.json",
+      "owner": "FBV.exe",
+      "embeddedFallback": true
+    },
+    {
+      "module": "export-html",
+      "file": "export-html.json",
+      "owner": "ExportHTML.dll",
+      "embeddedFallback": true
+    },
+    {
+      "module": "export-docx",
+      "file": "export-docx.json",
+      "owner": "ExportDOCX.dll",
+      "embeddedFallback": true
+    },
+    {
+      "module": "export-epub",
+      "file": "export-epub.json",
+      "owner": "ExportEPUB.dll",
+      "embeddedFallback": true
+    },
+    {
+      "module": "import-epub",
+      "file": "import-epub.json",
+      "owner": "ImportEPUB.dll",
+      "embeddedFallback": true
+    }
+  ]
+}

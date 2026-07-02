@@ -11,6 +11,42 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Join-WrappedMarkdownListItems {
+    param(
+        [string[]]$Lines
+    )
+
+    $result = New-Object System.Collections.Generic.List[string]
+    $insideFence = $false
+
+    foreach ($line in $Lines) {
+        if ($line -match '^\s*```') {
+            $insideFence = -not $insideFence
+            $result.Add($line)
+            continue
+        }
+
+        if ($insideFence -or
+            $line -match '^\s*$' -or
+            $line -match '^\s*#' -or
+            $line -match '^\s*[-*+]\s+' -or
+            $line -match '^\s*\d+\.\s+') {
+            $result.Add($line)
+            continue
+        }
+
+        if ($result.Count -gt 0 -and
+            $result[$result.Count - 1] -match '^\s*([-*+]|\d+\.)\s+') {
+            $result[$result.Count - 1] = $result[$result.Count - 1].TrimEnd() + " " + $line.Trim()
+            continue
+        }
+
+        $result.Add($line)
+    }
+
+    return [string[]]$result
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Resolve-Path (Join-Path $scriptDir "..\..")
 $changelogPath = Join-Path $repoRoot "CHANGELOG.md"
@@ -62,12 +98,16 @@ if ($body.Count -eq 0) {
     )
 }
 
+$body = Join-WrappedMarkdownListItems -Lines ([string[]]$body)
+
 $repository = $env:GITHUB_REPOSITORY
 $currentTag = $env:GITHUB_REF_NAME
 $commitsUrl = $null
+$releaseNotesSourceUrl = $null
 
 if (-not [string]::IsNullOrWhiteSpace($repository) -and
     -not [string]::IsNullOrWhiteSpace($currentTag)) {
+    $releaseNotesSourceUrl = "https://github.com/$repository/blob/$currentTag/docs/release-notes/$normalizedVersion.md"
     $previousTag = $null
     try {
         $previousTag = (& git -C $repoRoot describe --tags --abbrev=0 "$currentTag^" 2>$null)
@@ -88,6 +128,13 @@ $notes = New-Object System.Collections.Generic.List[string]
 $notes.Add("# FictionBook Editor Next $normalizedVersion")
 $notes.Add("")
 $notes.AddRange([string[]]$body)
+
+if (-not [string]::IsNullOrWhiteSpace($releaseNotesSourceUrl)) {
+    $notes.Add("")
+    $notes.Add("### Исходник заметок")
+    $notes.Add("")
+    $notes.Add("- [docs/release-notes/$normalizedVersion.md]($releaseNotesSourceUrl)")
+}
 
 if (-not [string]::IsNullOrWhiteSpace($commitsUrl)) {
     $notes.Add("")

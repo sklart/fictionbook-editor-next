@@ -1,0 +1,414 @@
+{
+  "formatVersion": 1,
+  "description": "Стартовый каталог подготовки локализации основного интерфейса FBE, FBV и будущих языковых пакетов установщика. Пока не является runtime-источником ресурсов.",
+  "targetLanguages": [
+    "en-US",
+    "ru-RU",
+    "uk-UA",
+    "de-DE",
+    "fr-FR",
+    "es-ES",
+    "it-IT",
+    "pl-PL",
+    "pt-PT",
+    "nl-NL",
+    "cs-CZ",
+    "bg-BG"
+  ],
+  "components": {
+    "fbe.core": {
+      "kind": "win32-resource-dll",
+      "sources": {
+        "ru-RU": "src/locales/res_rus/FBE.rc",
+        "uk-UA": "src/locales/res_ukr/FBE.rc"
+      },
+      "runtimeArtifacts": [
+        "res_rus.dll",
+        "res_ukr.dll"
+      ],
+      "notes": "Основной интерфейс FBE сейчас локализуется ресурсными DLL. Каталог фиксирует будущий Weblate-friendly слой поверх существующих .rc."
+    },
+    "fbv.core": {
+      "kind": "win32-resource",
+      "sources": {
+        "neutral": "src/fbv/FBV.rc"
+      },
+      "runtimeArtifacts": [
+        "FBV.exe"
+      ],
+      "notes": "FBV пока имеет основной диалог и часть строк прямо в FBV.rc; shell-команда Validate локализуется отдельным MUI-контуром."
+    },
+    "fbv.shell_validate_verb": {
+      "kind": "mui-resource",
+      "sources": {
+        "neutral": "src/fbv/FBV.rc"
+      },
+      "runtimeArtifacts": [
+        "FBVVerbResources.dll",
+        "*.mui"
+      ],
+      "notes": "Подпись команды проверки FB2 в Проводнике уже локализуется через MUIVerb."
+    },
+    "installer.language_packs": {
+      "kind": "future-installer-components",
+      "sources": {
+        "installer": "packaging/nsis/Installer/MakeInstaller.nsi"
+      },
+      "runtimeArtifacts": [
+        "res_*.dll",
+        "*.mui"
+      ],
+      "notes": "Будущий контур: дать пользователю возможность не устанавливать ненужные языковые ресурсы."
+    }
+  },
+  "seedStrings": {
+    "fbe.about.caption": {
+      "resourceId": "IDD_ABOUTBOX",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "About",
+        "ru-RU": "О программе",
+        "uk-UA": "Про програму",
+        "de-DE": "Info",
+        "fr-FR": "À propos",
+        "es-ES": "Acerca de",
+        "it-IT": "Informazioni",
+        "pl-PL": "O programie",
+        "pt-PT": "Acerca do programa",
+        "nl-NL": "Over",
+        "cs-CZ": "O programu",
+        "bg-BG": "За програмата"
+      }
+    },
+    "fbe.update.checking": {
+      "resourceId": "IDS_UPDATE_CHECK",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Checking for updates...",
+        "ru-RU": "Проверяю обновления...",
+        "uk-UA": "Перевіряю оновлення...",
+        "de-DE": "Suche nach Updates...",
+        "fr-FR": "Recherche des mises à jour...",
+        "es-ES": "Buscando actualizaciones...",
+        "it-IT": "Controllo aggiornamenti...",
+        "pl-PL": "Sprawdzanie aktualizacji...",
+        "pt-PT": "A procurar atualizações...",
+        "nl-NL": "Controleren op updates...",
+        "cs-CZ": "Kontrolují se aktualizace...",
+        "bg-BG": "Проверка за обновления..."
+      }
+    },
+    "fbe.update.download_error": {
+      "resourceId": "IDS_UPDATE_DOWNLOADERROR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Download error",
+        "ru-RU": "Ошибка загрузки",
+        "uk-UA": "Помилка завантаження",
+        "de-DE": "Downloadfehler",
+        "fr-FR": "Erreur de téléchargement",
+        "es-ES": "Error de descarga",
+        "it-IT": "Errore di download",
+        "pl-PL": "Błąd pobierania",
+        "pt-PT": "Erro de transferência",
+        "nl-NL": "Downloadfout",
+        "cs-CZ": "Chyba stahování",
+        "bg-BG": "Грешка при изтегляне"
+      }
+    },
+    "fbe.update.latest_version": {
+      "resourceId": "IDS_UPDATE_HAVELATESTVERSION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "You have the latest version of FBE installed.",
+        "ru-RU": "У Вас установлена последняя версия FBE.",
+        "uk-UA": "У Вас встановлена остання версія FBE.",
+        "de-DE": "Sie haben die neueste FBE-Version installiert.",
+        "fr-FR": "Vous avez la dernière version de FBE.",
+        "es-ES": "Tiene instalada la última versión de FBE.",
+        "it-IT": "È installata l’ultima versione di FBE.",
+        "pl-PL": "Masz zainstalowaną najnowszą wersję FBE.",
+        "pt-PT": "Tem instalada a versão mais recente do FBE.",
+        "nl-NL": "U hebt de nieuwste versie van FBE geïnstalleerd.",
+        "cs-CZ": "Máte nainstalovanou nejnovější verzi FBE.",
+        "bg-BG": "Инсталирана е най-новата версия на FBE."
+      }
+    },
+    "fbe.save.readonly_warning": {
+      "resourceId": "IDS_READONLY_SAVE_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "The file is read-only:\n%s\n\nSave a copy under another name?",
+        "ru-RU": "Файл доступен только для чтения:\n%s\n\nСохранить копию под другим именем?",
+        "uk-UA": "Файл доступний лише для читання:\n%s\n\nЗберегти копію під іншим іменем?",
+        "de-DE": "Die Datei ist schreibgeschützt:\n%s\n\nEine Kopie unter einem anderen Namen speichern?",
+        "fr-FR": "Le fichier est en lecture seule :\n%s\n\nEnregistrer une copie sous un autre nom ?",
+        "es-ES": "El archivo es de solo lectura:\n%s\n\n¿Guardar una copia con otro nombre?",
+        "it-IT": "Il file è di sola lettura:\n%s\n\nSalvare una copia con un altro nome?",
+        "pl-PL": "Plik jest tylko do odczytu:\n%s\n\nZapisać kopię pod inną nazwą?",
+        "pt-PT": "O ficheiro é só de leitura:\n%s\n\nGuardar uma cópia com outro nome?",
+        "nl-NL": "Het bestand is alleen-lezen:\n%s\n\nEen kopie onder een andere naam opslaan?",
+        "cs-CZ": "Soubor je pouze pro čtení:\n%s\n\nUložit kopii pod jiným názvem?",
+        "bg-BG": "Файлът е само за четене:\n%s\n\nДа се запази копие с друго име?"
+      }
+    },
+    "fbv.window.title": {
+      "resourceId": "IDD_MAIN.CAPTION",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "FictionBook Validator",
+        "ru-RU": "FictionBook Validator",
+        "uk-UA": "FictionBook Validator",
+        "de-DE": "FictionBook Validator",
+        "fr-FR": "FictionBook Validator",
+        "es-ES": "FictionBook Validator",
+        "it-IT": "FictionBook Validator",
+        "pl-PL": "FictionBook Validator",
+        "pt-PT": "FictionBook Validator",
+        "nl-NL": "FictionBook Validator",
+        "cs-CZ": "FictionBook Validator",
+        "bg-BG": "FictionBook Validator"
+      }
+    },
+    "fbv.validation.no_errors": {
+      "resourceId": "IDS_VALIDATION_NO_ERRORS",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "No errors.",
+        "ru-RU": "Ошибок нет.",
+        "uk-UA": "Помилок немає.",
+        "de-DE": "Keine Fehler.",
+        "fr-FR": "Aucune erreur.",
+        "es-ES": "Sin errores.",
+        "it-IT": "Nessun errore.",
+        "pl-PL": "Brak błędów.",
+        "pt-PT": "Sem erros.",
+        "nl-NL": "Geen fouten.",
+        "cs-CZ": "Žádné chyby.",
+        "bg-BG": "Няма грешки."
+      }
+    },
+    "fbv.shell.validate": {
+      "resourceId": "IDS_SHELL_VALIDATE_VERB",
+      "component": "fbv.shell_validate_verb",
+      "translations": {
+        "en-US": "Check FB2 for errors",
+        "ru-RU": "Проверить FB2 на ошибки",
+        "uk-UA": "Перевірити FB2 на помилки",
+        "de-DE": "FB2 auf Fehler prüfen",
+        "fr-FR": "Vérifier le FB2",
+        "es-ES": "Comprobar FB2",
+        "it-IT": "Controlla FB2",
+        "pl-PL": "Sprawdź FB2",
+        "pt-PT": "Verificar FB2",
+        "nl-NL": "FB2 controleren",
+        "cs-CZ": "Zkontrolovat FB2",
+        "bg-BG": "Провери FB2"
+      }
+    },
+    "installer.languages.optional": {
+      "resourceId": "TODO:NSIS_LANGUAGE_COMPONENTS",
+      "component": "installer.language_packs",
+      "translations": {
+        "en-US": "Install optional interface languages",
+        "ru-RU": "Установить дополнительные языки интерфейса",
+        "uk-UA": "Установити додаткові мови інтерфейсу",
+        "de-DE": "Optionale Oberflächensprachen installieren",
+        "fr-FR": "Installer les langues d’interface optionnelles",
+        "es-ES": "Instalar idiomas de interfaz opcionales",
+        "it-IT": "Installa lingue opzionali dell’interfaccia",
+        "pl-PL": "Zainstaluj dodatkowe języki interfejsu",
+        "pt-PT": "Instalar idiomas opcionais da interface",
+        "nl-NL": "Optionele interfacetalen installeren",
+        "cs-CZ": "Instalovat volitelné jazyky rozhraní",
+        "bg-BG": "Инсталиране на допълнителни езици на интерфейса"
+      }
+    },
+    "fbv.status.done": {
+      "resourceId": "IDS_STATUS_DONE",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "Done.",
+        "ru-RU": "Готово.",
+        "uk-UA": "Готово.",
+        "de-DE": "Fertig.",
+        "fr-FR": "Terminé.",
+        "es-ES": "Listo.",
+        "it-IT": "Completato.",
+        "pl-PL": "Gotowe.",
+        "pt-PT": "Concluído.",
+        "nl-NL": "Gereed.",
+        "cs-CZ": "Hotovo.",
+        "bg-BG": "Готово."
+      }
+    },
+    "fbv.status.scanning": {
+      "resourceId": "IDS_STATUS_SCANNING",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "Scanning...",
+        "ru-RU": "Сканирование...",
+        "uk-UA": "Сканування...",
+        "de-DE": "Scannen...",
+        "fr-FR": "Analyse...",
+        "es-ES": "Analizando...",
+        "it-IT": "Scansione...",
+        "pl-PL": "Skanowanie...",
+        "pt-PT": "A analisar...",
+        "nl-NL": "Scannen...",
+        "cs-CZ": "Skenování...",
+        "bg-BG": "Сканиране..."
+      }
+    },
+    "fbv.button.stop": {
+      "resourceId": "IDS_BUTTON_STOP",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "&Stop",
+        "ru-RU": "&Остановить",
+        "uk-UA": "&Зупинити",
+        "de-DE": "&Stopp",
+        "fr-FR": "&Arrêter",
+        "es-ES": "&Detener",
+        "it-IT": "&Interrompi",
+        "pl-PL": "&Zatrzymaj",
+        "pt-PT": "&Parar",
+        "nl-NL": "&Stoppen",
+        "cs-CZ": "&Zastavit",
+        "bg-BG": "&Спри"
+      }
+    },
+    "fbv.button.revalidate": {
+      "resourceId": "IDS_BUTTON_REVALIDATE",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "Re&validate",
+        "ru-RU": "&Проверить снова",
+        "uk-UA": "&Перевірити знову",
+        "de-DE": "&Erneut prüfen",
+        "fr-FR": "&Revérifier",
+        "es-ES": "&Volver a validar",
+        "it-IT": "&Verifica di nuovo",
+        "pl-PL": "&Sprawdź ponownie",
+        "pt-PT": "&Validar novamente",
+        "nl-NL": "&Opnieuw controleren",
+        "cs-CZ": "&Zkontrolovat znovu",
+        "bg-BG": "&Провери отново"
+      }
+    },
+    "fbv.button.exit": {
+      "resourceId": "IDS_BUTTON_EXIT",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "E&xit",
+        "ru-RU": "В&ыход",
+        "uk-UA": "В&ихід",
+        "de-DE": "&Beenden",
+        "fr-FR": "&Quitter",
+        "es-ES": "&Salir",
+        "it-IT": "&Esci",
+        "pl-PL": "&Zakończ",
+        "pt-PT": "&Sair",
+        "nl-NL": "&Afsluiten",
+        "cs-CZ": "&Konec",
+        "bg-BG": "И&зход"
+      }
+    },
+    "fbv.column.file_name": {
+      "resourceId": "IDS_COLUMN_FILE_NAME",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "File name",
+        "ru-RU": "Имя файла",
+        "uk-UA": "Ім’я файлу",
+        "de-DE": "Dateiname",
+        "fr-FR": "Nom du fichier",
+        "es-ES": "Nombre de archivo",
+        "it-IT": "Nome file",
+        "pl-PL": "Nazwa pliku",
+        "pt-PT": "Nome do ficheiro",
+        "nl-NL": "Bestandsnaam",
+        "cs-CZ": "Název souboru",
+        "bg-BG": "Име на файл"
+      }
+    },
+    "fbv.error.sax_location": {
+      "resourceId": "IDS_SAX_ERROR_LOCATION",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "At line %d, column %d:\\r\\n%s",
+        "ru-RU": "Строка %d, столбец %d:\\r\\n%s",
+        "uk-UA": "Рядок %d, стовпець %d:\\r\\n%s",
+        "de-DE": "Zeile %d, Spalte %d:\\r\\n%s",
+        "fr-FR": "Ligne %d, colonne %d :\\r\\n%s",
+        "es-ES": "Línea %d, columna %d:\\r\\n%s",
+        "it-IT": "Riga %d, colonna %d:\\r\\n%s",
+        "pl-PL": "Wiersz %d, kolumna %d:\\r\\n%s",
+        "pt-PT": "Linha %d, coluna %d:\\r\\n%s",
+        "nl-NL": "Regel %d, kolom %d:\\r\\n%s",
+        "cs-CZ": "Řádek %d, sloupec %d:\\r\\n%s",
+        "bg-BG": "Ред %d, колона %d:\\r\\n%s"
+      }
+    },
+    "fbv.error.caption": {
+      "resourceId": "IDS_ERROR",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "Error",
+        "ru-RU": "Ошибка",
+        "uk-UA": "Помилка",
+        "de-DE": "Fehler",
+        "fr-FR": "Erreur",
+        "es-ES": "Error",
+        "it-IT": "Errore",
+        "pl-PL": "Błąd",
+        "pt-PT": "Erro",
+        "nl-NL": "Fout",
+        "cs-CZ": "Chyba",
+        "bg-BG": "Грешка"
+      }
+    },
+    "fbv.error.cannot_load_schema": {
+      "resourceId": "IDS_CANNOT_LOAD_SCHEMA",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "Can't load FictionBook schema.",
+        "ru-RU": "Не удалось загрузить схему FictionBook.",
+        "uk-UA": "Не вдалося завантажити схему FictionBook.",
+        "de-DE": "FictionBook-Schema kann nicht geladen werden.",
+        "fr-FR": "Impossible de charger le schéma FictionBook.",
+        "es-ES": "No se puede cargar el esquema FictionBook.",
+        "it-IT": "Impossibile caricare lo schema FictionBook.",
+        "pl-PL": "Nie można załadować schematu FictionBook.",
+        "pt-PT": "Não foi possível carregar o esquema FictionBook.",
+        "nl-NL": "Kan FictionBook-schema niet laden.",
+        "cs-CZ": "Nelze načíst schéma FictionBook.",
+        "bg-BG": "Не може да се зареди схемата FictionBook."
+      }
+    },
+    "fbv.error.com_format": {
+      "resourceId": "IDS_COM_ERROR_FORMAT",
+      "component": "fbv.core",
+      "translations": {
+        "en-US": "COM Error: %x [%s]",
+        "ru-RU": "COM Error: %x [%s]",
+        "uk-UA": "COM Error: %x [%s]",
+        "de-DE": "COM-Fehler: %x [%s]",
+        "fr-FR": "Erreur COM : %x [%s]",
+        "es-ES": "Error COM: %x [%s]",
+        "it-IT": "Errore COM: %x [%s]",
+        "pl-PL": "Błąd COM: %x [%s]",
+        "pt-PT": "Erro COM: %x [%s]",
+        "nl-NL": "COM-fout: %x [%s]",
+        "cs-CZ": "Chyba COM: %x [%s]",
+        "bg-BG": "COM грешка: %x [%s]"
+      }
+    }
+  },
+  "futurePipeline": [
+    "Извлечь переводимые строки из существующих Win32 .rc в стабильный JSON/PO-каталог.",
+    "Дать переводчикам редактировать только текстовые каталоги, без координат диалогов.",
+    "Генерировать .rc/.rc2-фрагменты и MUI-ресурсы из каталога на этапе сборки.",
+    "Разделить языковые ресурсы в установщике на опциональные компоненты, чтобы пользователь мог не устанавливать ненужные языки."
+  ]
+}

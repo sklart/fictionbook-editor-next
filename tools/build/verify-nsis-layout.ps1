@@ -30,4 +30,18 @@ if ($nsiText -notmatch [regex]::Escape('!define INPUTDIR "..\..\..\out\package\F
     throw "MakeInstaller.nsi должен по умолчанию направлять INPUTDIR в out\\package\\FictionBookEditor."
 }
 
+if ($nsiText -notmatch [regex]::Escape('!define MUI_STARTMENUPAGE_DEFAULTFOLDER "${PRODUCT_NAME}"')) {
+    throw "Папка меню Пуск по умолчанию должна называться FictionBook Editor Next без номера версии."
+}
+
+if ($nsiText -notmatch 'FBE_WIN7_BUILD' -or
+    $nsiText -notmatch 'Windows 7 compatible') {
+    throw "MakeInstaller.nsi должен явно маркировать Win7-compatible установщик."
+}
+
+$createReleaseText = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot "create-release.ps1")
+if ($createReleaseText -notmatch [regex]::Escape('/DFBE_WIN7_BUILD=1')) {
+    throw "create-release.ps1 должен передавать /DFBE_WIN7_BUILD=1 при сборке Win7-инсталлятора."
+}
+
 Write-Host "Проверка структуры NSIS-контура прошла успешно."

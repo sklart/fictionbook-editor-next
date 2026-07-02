@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <ctime>
 #include <fstream>
 #include <iomanip>
@@ -145,17 +144,26 @@ std::wstring NormalizeSubject(const std::wstring& value) {
 }
 
 std::wstring MakeModifiedTimestampUtc() {
-    using clock = std::chrono::system_clock;
-    std::time_t now = clock::to_time_t(clock::now());
-    std::tm tm{};
 #ifdef _WIN32
-    gmtime_s(&tm, &now);
+    SYSTEMTIME st{};
+    GetSystemTime(&st);
+    std::wstringstream ss;
+    ss << std::setfill(L'0')
+       << std::setw(4) << st.wYear << L"-"
+       << std::setw(2) << st.wMonth << L"-"
+       << std::setw(2) << st.wDay << L"T"
+       << std::setw(2) << st.wHour << L":"
+       << std::setw(2) << st.wMinute << L":"
+       << std::setw(2) << st.wSecond << L"Z";
+    return ss.str();
 #else
+    std::time_t now = std::time(nullptr);
+    std::tm tm{};
     gmtime_r(&now, &tm);
-#endif
     std::wstringstream ss;
     ss << std::put_time(&tm, L"%Y-%m-%dT%H:%M:%SZ");
     return ss.str();
+#endif
 }
 
 

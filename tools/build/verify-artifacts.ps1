@@ -123,6 +123,24 @@ $obsoletePortableEntries = @(
 
 $runtimeManifest = Get-Content -Raw -LiteralPath `
     (Join-Path $repoRoot "dependencies\runtime-binaries.json") | ConvertFrom-Json
+if ($runtimeManifest.schemaVersion -ne 2 -or $runtimeManifest.architecture -ne "x86") {
+    throw "Неподдерживаемый манифест runtime-бинарников."
+}
+
+function Get-RuntimeManifestFiles {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ProfileName
+    )
+
+    $profile = $runtimeManifest.profiles.$ProfileName
+    if (-not $profile -or -not $profile.files) {
+        throw "В манифесте runtime-бинарников нет профиля $ProfileName."
+    }
+
+    return @($profile.files)
+}
+
 $expectedSymbolEntries = @(
     "ExportHTML.pdb",
     "ExportDOCX.pdb",
@@ -147,6 +165,7 @@ foreach ($profile in $artifactProfiles) {
     $symbolsName = "FictionBookEditorNext-$version-$($profile.Prefix)$architecture-symbols.zip"
     $portablePath = Join-Path $ArtifactsDirectory $portableName
     $portableEntries = Get-ZipEntryNames -Path $portablePath
+    $runtimeFiles = Get-RuntimeManifestFiles -ProfileName $(if ($profile.Label -eq "win7") { "Win7" } else { "Modern" })
 
     foreach ($name in $requiredPortableEntries) {
         if ($portableEntries -notcontains $name) {
@@ -189,7 +208,7 @@ foreach ($profile in $artifactProfiles) {
 
     $portableArchive = [IO.Compression.ZipFile]::OpenRead($portablePath)
     try {
-        foreach ($entry in $runtimeManifest.files) {
+        foreach ($entry in $runtimeFiles) {
             $zipEntry = $portableArchive.GetEntry($entry.name)
             if (-not $zipEntry) {
                 throw "В архиве $portableName отсутствует зафиксированный runtime-файл '$($entry.name)'."

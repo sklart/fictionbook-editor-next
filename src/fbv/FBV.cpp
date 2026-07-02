@@ -119,6 +119,13 @@ static int		FBNS_len;
 static const wchar_t	*XLINKNS=L"http://www.w3.org/1999/xlink";
 static int		XLINKNS_len;
 
+static CString LoadFbString(UINT id)
+{
+  CString text;
+  text.LoadString(id);
+  return text;
+}
+
 void CMainDlg::DoEvents()
 {
   MSG	msg;
@@ -253,7 +260,7 @@ void CMainDlg::ProcessCommandLine() {
   ::GlobalFree((HGLOBAL)argv);
 
   if (!m_stop) {
-    SendDlgItemMessage(IDC_STATUS,SB_SETTEXT,0,(LPARAM)_T("Done."));
+    SendDlgItemMessage(IDC_STATUS,SB_SETTEXT,0,(LPARAM)(LPCTSTR)LoadFbString(IDS_STATUS_DONE));
     ::ShowWindow(GetDlgItem(IDC_VALIDATE),SW_SHOW);
   }
 }
@@ -512,7 +519,8 @@ public:
     if (line>0 && col>0) {
       wchar_t	buffer[2048];
 
-      _snwprintf_s(buffer, _countof(buffer),L"At line %d, column %d:\r\n%s",
+      CString format = LoadFbString(IDS_SAX_ERROR_LOCATION);
+      _snwprintf_s(buffer, _countof(buffer), (LPCTSTR)format,
 	  line,col,(const wchar_t*)msg);
 
       // delete namespace references
@@ -569,7 +577,7 @@ void CMainDlg::SetCOMError(int idx,FileInfo *fi,_com_error& e) {
 void CMainDlg::ValidateFiles() {
   m_validating=true;
   m_stop=false;
-  SetDlgItemText(IDC_VALIDATE,_T("&Stop"));
+  SetDlgItemText(IDC_VALIDATE, LoadFbString(IDS_BUTTON_STOP));
 
   // create an error handler
   SAXEH     eh;
@@ -638,8 +646,8 @@ void CMainDlg::ValidateFiles() {
 	  AtlTaskDialog(::GetActiveWindow(), IDS_ERROR, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
   }
 
-  SendDlgItemMessage(IDC_STATUS,SB_SETTEXT,0,(LPARAM)_T("Done."));
-  SetDlgItemText(IDC_VALIDATE,_T("Re&validate"));
+  SendDlgItemMessage(IDC_STATUS,SB_SETTEXT,0,(LPARAM)(LPCTSTR)LoadFbString(IDS_STATUS_DONE));
+  SetDlgItemText(IDC_VALIDATE, LoadFbString(IDS_BUTTON_REVALIDATE));
   m_validating=false;
 }
 
@@ -647,6 +655,10 @@ LRESULT CMainDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bH
 {
 	if (!GetSchemaFile())
 		EndDialog(FALSE);
+
+	SetDlgItemText(IDC_VALIDATE, LoadFbString(IDS_BUTTON_REVALIDATE));
+	SetDlgItemText(IDCANCEL, LoadFbString(IDS_BUTTON_EXIT));
+	SendDlgItemMessage(IDC_STATUS, SB_SETTEXT, 0, (LPARAM)(LPCTSTR)LoadFbString(IDS_STATUS_SCANNING));
 
 	DlgResize_Init(false);
 
@@ -674,7 +686,8 @@ LRESULT CMainDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bH
 	lvc.mask = LVCF_FMT | LVCF_WIDTH;
 	lvc.fmt = LVCFMT_LEFT;
 	lvc.cx = rcmsg.right - rcmsg.left - ::GetSystemMetrics(SM_CXVSCROLL) - 4;
-	lvc.pszText = _T("File name");
+	CString columnTitle = LoadFbString(IDS_COLUMN_FILE_NAME);
+	lvc.pszText = const_cast<LPTSTR>((LPCTSTR)columnTitle);
 	::SendDlgItemMessage(*this, IDC_FILELIST, LVM_INSERTCOLUMN, 0, (LPARAM)&lvc);
 	// set startup timer
 	m_timer = ::SetTimer(*this, INIT_TIMER, 100, NULL);
@@ -759,7 +772,7 @@ LRESULT CMainDlg::OnLvnItemchangedFilelist(int /*idCtrl*/, LPNMHDR pNMHDR, BOOL&
 		if (fi->errmsg && fi->errmsg[0])
 			SetDlgItemText(IDC_MSG, fi->errmsg);
 		else
-			SetDlgItemText(IDC_MSG, _T("No errors."));
+			SetDlgItemText(IDC_MSG, LoadFbString(IDS_VALIDATION_NO_ERRORS));
 
 		SendDlgItemMessage(IDC_STATUS, SB_SETTEXT, 0, (LPARAM)fi->filename);
 	}

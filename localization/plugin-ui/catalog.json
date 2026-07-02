@@ -1,0 +1,445 @@
+{
+  "formatVersion": 1,
+  "description": "Weblate-friendly каталог пользовательских строк окон плагинов FictionBook Editor Next. Пока используется как исходная база переводов; подключение к Win32-ресурсам выполняется отдельным этапом.",
+  "targetLanguages": [
+    "en-US",
+    "ru-RU",
+    "uk-UA",
+    "de-DE",
+    "fr-FR",
+    "es-ES",
+    "it-IT",
+    "pl-PL",
+    "pt-PT",
+    "nl-NL",
+    "cs-CZ",
+    "bg-BG"
+  ],
+  "strings": {
+    "export_html.dialog.save.template_label": {
+      "source": "XSL Template:",
+      "translations": {
+        "en-US": "XSL template:",
+        "ru-RU": "Шаблон XSL:",
+        "uk-UA": "Шаблон XSL:",
+        "de-DE": "XSL-Vorlage:",
+        "fr-FR": "Modèle XSL :",
+        "es-ES": "Plantilla XSL:",
+        "it-IT": "Modello XSL:",
+        "pl-PL": "Szablon XSL:",
+        "pt-PT": "Modelo XSL:",
+        "nl-NL": "XSL-sjabloon:",
+        "cs-CZ": "Šablona XSL:",
+        "bg-BG": "XSL шаблон:"
+      }
+    },
+    "export_html.dialog.save.include_description": {
+      "source": "Include document description",
+      "translations": {
+        "en-US": "Include document description",
+        "ru-RU": "Включать описание документа",
+        "uk-UA": "Включати опис документа",
+        "de-DE": "Dokumentbeschreibung einschließen",
+        "fr-FR": "Inclure la description du document",
+        "es-ES": "Incluir la descripción del documento",
+        "it-IT": "Includi la descrizione del documento",
+        "pl-PL": "Dołącz opis dokumentu",
+        "pt-PT": "Incluir a descrição do documento",
+        "nl-NL": "Documentbeschrijving opnemen",
+        "cs-CZ": "Zahrnout popis dokumentu",
+        "bg-BG": "Включване на описанието на документа"
+      }
+    },
+    "export_html.dialog.save.toc_depth": {
+      "source": "TOC depth:",
+      "translations": {
+        "en-US": "TOC depth:",
+        "ru-RU": "Глубина оглавления:",
+        "uk-UA": "Глибина змісту:",
+        "de-DE": "Tiefe des Inhaltsverzeichnisses:",
+        "fr-FR": "Profondeur de la table des matières :",
+        "es-ES": "Profundidad del índice:",
+        "it-IT": "Profondità dell'indice:",
+        "pl-PL": "Głębokość spisu treści:",
+        "pt-PT": "Profundidade do índice:",
+        "nl-NL": "Diepte van inhoudsopgave:",
+        "cs-CZ": "Hloubka obsahu:",
+        "bg-BG": "Дълбочина на съдържанието:"
+      }
+    },
+    "export_epub.dialog.options.caption": {
+      "source": "Параметры экспорта EPUB",
+      "translations": {
+        "en-US": "EPUB export options",
+        "ru-RU": "Параметры экспорта EPUB",
+        "uk-UA": "Параметри експорту EPUB",
+        "de-DE": "EPUB-Exportoptionen",
+        "fr-FR": "Options d’export EPUB",
+        "es-ES": "Opciones de exportación EPUB",
+        "it-IT": "Opzioni di esportazione EPUB",
+        "pl-PL": "Opcje eksportu EPUB",
+        "pt-PT": "Opções de exportação EPUB",
+        "nl-NL": "EPUB-exportopties",
+        "cs-CZ": "Možnosti exportu EPUB",
+        "bg-BG": "Опции за експортиране в EPUB"
+      }
+    },
+    "export_epub.dialog.options.general": {
+      "source": "Общие параметры:",
+      "translations": {
+        "en-US": "General options:",
+        "ru-RU": "Общие параметры:",
+        "uk-UA": "Загальні параметри:",
+        "de-DE": "Allgemeine Optionen:",
+        "fr-FR": "Options générales :",
+        "es-ES": "Opciones generales:",
+        "it-IT": "Opzioni generali:",
+        "pl-PL": "Opcje ogólne:",
+        "pt-PT": "Opções gerais:",
+        "nl-NL": "Algemene opties:",
+        "cs-CZ": "Obecné možnosti:",
+        "bg-BG": "Общи опции:"
+      }
+    },
+    "export_epub.dialog.options.create_cover_page": {
+      "source": "Создавать отдельную страницу обложки",
+      "translations": {
+        "en-US": "Create a separate cover page",
+        "ru-RU": "Создавать отдельную страницу обложки",
+        "uk-UA": "Створювати окрему сторінку обкладинки",
+        "de-DE": "Separate Titelseite erstellen",
+        "fr-FR": "Créer une page de couverture séparée",
+        "es-ES": "Crear una página de cubierta separada",
+        "it-IT": "Crea una pagina di copertina separata",
+        "pl-PL": "Utwórz osobną stronę okładki",
+        "pt-PT": "Criar uma página de capa separada",
+        "nl-NL": "Aparte omslagpagina maken",
+        "cs-CZ": "Vytvořit samostatnou stránku obálky",
+        "bg-BG": "Създаване на отделна страница с корица"
+      }
+    },
+    "export_epub.dialog.options.open_after_export": {
+      "source": "Открывать EPUB после экспорта",
+      "translations": {
+        "en-US": "Open EPUB after export",
+        "ru-RU": "Открывать EPUB после экспорта",
+        "uk-UA": "Відкривати EPUB після експорту",
+        "de-DE": "EPUB nach dem Export öffnen",
+        "fr-FR": "Ouvrir l’EPUB après l’export",
+        "es-ES": "Abrir el EPUB después de exportar",
+        "it-IT": "Apri EPUB dopo l'esportazione",
+        "pl-PL": "Otwórz EPUB po eksporcie",
+        "pt-PT": "Abrir EPUB após a exportação",
+        "nl-NL": "EPUB openen na export",
+        "cs-CZ": "Otevřít EPUB po exportu",
+        "bg-BG": "Отваряне на EPUB след експортиране"
+      }
+    },
+    "export_epub.dialog.options.css": {
+      "source": "Оформление CSS:",
+      "translations": {
+        "en-US": "CSS styling:",
+        "ru-RU": "Оформление CSS:",
+        "uk-UA": "Оформлення CSS:",
+        "de-DE": "CSS-Gestaltung:",
+        "fr-FR": "Mise en forme CSS :",
+        "es-ES": "Estilo CSS:",
+        "it-IT": "Stile CSS:",
+        "pl-PL": "Style CSS:",
+        "pt-PT": "Estilo CSS:",
+        "nl-NL": "CSS-opmaak:",
+        "cs-CZ": "Stylování CSS:",
+        "bg-BG": "CSS оформление:"
+      }
+    },
+    "export_epub.dialog.options.navigation": {
+      "source": "Навигация и структура:",
+      "translations": {
+        "en-US": "Navigation and structure:",
+        "ru-RU": "Навигация и структура:",
+        "uk-UA": "Навігація та структура:",
+        "de-DE": "Navigation und Struktur:",
+        "fr-FR": "Navigation et structure :",
+        "es-ES": "Navegación y estructura:",
+        "it-IT": "Navigazione e struttura:",
+        "pl-PL": "Nawigacja i struktura:",
+        "pt-PT": "Navegação e estrutura:",
+        "nl-NL": "Navigatie en structuur:",
+        "cs-CZ": "Navigace a struktura:",
+        "bg-BG": "Навигация и структура:"
+      }
+    },
+    "export_docx.dialog.settings.caption": {
+      "source": "Настройки экспорта DOCX",
+      "translations": {
+        "en-US": "DOCX export settings",
+        "ru-RU": "Настройки экспорта DOCX",
+        "uk-UA": "Налаштування експорту DOCX",
+        "de-DE": "DOCX-Exporteinstellungen",
+        "fr-FR": "Paramètres d’export DOCX",
+        "es-ES": "Configuración de exportación DOCX",
+        "it-IT": "Impostazioni di esportazione DOCX",
+        "pl-PL": "Ustawienia eksportu DOCX",
+        "pt-PT": "Definições de exportação DOCX",
+        "nl-NL": "DOCX-exportinstellingen",
+        "cs-CZ": "Nastavení exportu DOCX",
+        "bg-BG": "Настройки за експортиране в DOCX"
+      }
+    },
+    "export_docx.dialog.settings.tab.main": {
+      "source": "Основное",
+      "translations": {
+        "en-US": "Main",
+        "ru-RU": "Основное",
+        "uk-UA": "Основне",
+        "de-DE": "Allgemein",
+        "fr-FR": "Principal",
+        "es-ES": "Principal",
+        "it-IT": "Principale",
+        "pl-PL": "Główne",
+        "pt-PT": "Principal",
+        "nl-NL": "Hoofd",
+        "cs-CZ": "Hlavní",
+        "bg-BG": "Основни"
+      }
+    },
+    "export_docx.dialog.settings.tab.notes": {
+      "source": "Примечания",
+      "translations": {
+        "en-US": "Notes",
+        "ru-RU": "Примечания",
+        "uk-UA": "Примітки",
+        "de-DE": "Anmerkungen",
+        "fr-FR": "Notes",
+        "es-ES": "Notas",
+        "it-IT": "Note",
+        "pl-PL": "Przypisy",
+        "pt-PT": "Notas",
+        "nl-NL": "Notities",
+        "cs-CZ": "Poznámky",
+        "bg-BG": "Бележки"
+      }
+    },
+    "export_docx.dialog.settings.images_structure": {
+      "source": "Изображения и структура",
+      "translations": {
+        "en-US": "Images and structure",
+        "ru-RU": "Изображения и структура",
+        "uk-UA": "Зображення та структура",
+        "de-DE": "Bilder und Struktur",
+        "fr-FR": "Images et structure",
+        "es-ES": "Imágenes y estructura",
+        "it-IT": "Immagini e struttura",
+        "pl-PL": "Obrazy i struktura",
+        "pt-PT": "Imagens e estrutura",
+        "nl-NL": "Afbeeldingen en structuur",
+        "cs-CZ": "Obrázky a struktura",
+        "bg-BG": "Изображения и структура"
+      }
+    },
+    "export_docx.dialog.settings.export_images": {
+      "source": "Экспортировать изображения",
+      "translations": {
+        "en-US": "Export images",
+        "ru-RU": "Экспортировать изображения",
+        "uk-UA": "Експортувати зображення",
+        "de-DE": "Bilder exportieren",
+        "fr-FR": "Exporter les images",
+        "es-ES": "Exportar imágenes",
+        "it-IT": "Esporta immagini",
+        "pl-PL": "Eksportuj obrazy",
+        "pt-PT": "Exportar imagens",
+        "nl-NL": "Afbeeldingen exporteren",
+        "cs-CZ": "Exportovat obrázky",
+        "bg-BG": "Експортиране на изображения"
+      }
+    },
+    "export_docx.dialog.settings.create_title_page": {
+      "source": "Создавать титульную страницу",
+      "translations": {
+        "en-US": "Create a title page",
+        "ru-RU": "Создавать титульную страницу",
+        "uk-UA": "Створювати титульну сторінку",
+        "de-DE": "Titelseite erstellen",
+        "fr-FR": "Créer une page de titre",
+        "es-ES": "Crear una portada",
+        "it-IT": "Crea una pagina del titolo",
+        "pl-PL": "Utwórz stronę tytułową",
+        "pt-PT": "Criar página de título",
+        "nl-NL": "Titelpagina maken",
+        "cs-CZ": "Vytvořit titulní stránku",
+        "bg-BG": "Създаване на титулна страница"
+      }
+    },
+    "export_docx.dialog.settings.notes_mode": {
+      "source": "Режим примечаний:",
+      "translations": {
+        "en-US": "Notes mode:",
+        "ru-RU": "Режим примечаний:",
+        "uk-UA": "Режим приміток:",
+        "de-DE": "Anmerkungsmodus:",
+        "fr-FR": "Mode des notes :",
+        "es-ES": "Modo de notas:",
+        "it-IT": "Modalità note:",
+        "pl-PL": "Tryb przypisów:",
+        "pt-PT": "Modo de notas:",
+        "nl-NL": "Notitiemodus:",
+        "cs-CZ": "Režim poznámek:",
+        "bg-BG": "Режим на бележките:"
+      }
+    },
+    "export_docx.dialog.settings.open_after_export": {
+      "source": "Открывать DOCX после экспорта",
+      "translations": {
+        "en-US": "Open DOCX after export",
+        "ru-RU": "Открывать DOCX после экспорта",
+        "uk-UA": "Відкривати DOCX після експорту",
+        "de-DE": "DOCX nach dem Export öffnen",
+        "fr-FR": "Ouvrir le DOCX après l’export",
+        "es-ES": "Abrir el DOCX después de exportar",
+        "it-IT": "Apri DOCX dopo l'esportazione",
+        "pl-PL": "Otwórz DOCX po eksporcie",
+        "pt-PT": "Abrir DOCX após a exportação",
+        "nl-NL": "DOCX openen na export",
+        "cs-CZ": "Otevřít DOCX po exportu",
+        "bg-BG": "Отваряне на DOCX след експортиране"
+      }
+    },
+    "import_epub.dialog.options.caption": {
+      "source": "Настройки импорта EPUB",
+      "translations": {
+        "en-US": "EPUB import options",
+        "ru-RU": "Настройки импорта EPUB",
+        "uk-UA": "Налаштування імпорту EPUB",
+        "de-DE": "EPUB-Importoptionen",
+        "fr-FR": "Options d’import EPUB",
+        "es-ES": "Opciones de importación EPUB",
+        "it-IT": "Opzioni di importazione EPUB",
+        "pl-PL": "Opcje importu EPUB",
+        "pt-PT": "Opções de importação EPUB",
+        "nl-NL": "EPUB-importopties",
+        "cs-CZ": "Možnosti importu EPUB",
+        "bg-BG": "Опции за импортиране от EPUB"
+      }
+    },
+    "import_epub.dialog.options.import_cover": {
+      "source": "Импортировать обложку",
+      "translations": {
+        "en-US": "Import cover",
+        "ru-RU": "Импортировать обложку",
+        "uk-UA": "Імпортувати обкладинку",
+        "de-DE": "Cover importieren",
+        "fr-FR": "Importer la couverture",
+        "es-ES": "Importar cubierta",
+        "it-IT": "Importa copertina",
+        "pl-PL": "Importuj okładkę",
+        "pt-PT": "Importar capa",
+        "nl-NL": "Omslag importeren",
+        "cs-CZ": "Importovat obálku",
+        "bg-BG": "Импортиране на корица"
+      }
+    },
+    "import_epub.dialog.options.import_images": {
+      "source": "Импортировать изображения",
+      "translations": {
+        "en-US": "Import images",
+        "ru-RU": "Импортировать изображения",
+        "uk-UA": "Імпортувати зображення",
+        "de-DE": "Bilder importieren",
+        "fr-FR": "Importer les images",
+        "es-ES": "Importar imágenes",
+        "it-IT": "Importa immagini",
+        "pl-PL": "Importuj obrazy",
+        "pt-PT": "Importar imagens",
+        "nl-NL": "Afbeeldingen importeren",
+        "cs-CZ": "Importovat obrázky",
+        "bg-BG": "Импортиране на изображения"
+      }
+    },
+    "import_epub.dialog.options.import_notes": {
+      "source": "Импортировать сноски",
+      "translations": {
+        "en-US": "Import footnotes",
+        "ru-RU": "Импортировать сноски",
+        "uk-UA": "Імпортувати виноски",
+        "de-DE": "Fußnoten importieren",
+        "fr-FR": "Importer les notes de bas de page",
+        "es-ES": "Importar notas al pie",
+        "it-IT": "Importa note a piè di pagina",
+        "pl-PL": "Importuj przypisy",
+        "pt-PT": "Importar notas de rodapé",
+        "nl-NL": "Voetnoten importeren",
+        "cs-CZ": "Importovat poznámky pod čarou",
+        "bg-BG": "Импортиране на бележки под линия"
+      }
+    },
+    "import_epub.dialog.options.svg_images": {
+      "source": "SVG-изображения:",
+      "translations": {
+        "en-US": "SVG images:",
+        "ru-RU": "SVG-изображения:",
+        "uk-UA": "SVG-зображення:",
+        "de-DE": "SVG-Bilder:",
+        "fr-FR": "Images SVG :",
+        "es-ES": "Imágenes SVG:",
+        "it-IT": "Immagini SVG:",
+        "pl-PL": "Obrazy SVG:",
+        "pt-PT": "Imagens SVG:",
+        "nl-NL": "SVG-afbeeldingen:",
+        "cs-CZ": "Obrázky SVG:",
+        "bg-BG": "SVG изображения:"
+      }
+    },
+    "common.button.defaults": {
+      "source": "По умолчанию",
+      "translations": {
+        "en-US": "Defaults",
+        "ru-RU": "По умолчанию",
+        "uk-UA": "За замовчуванням",
+        "de-DE": "Standardwerte",
+        "fr-FR": "Par défaut",
+        "es-ES": "Predeterminados",
+        "it-IT": "Predefiniti",
+        "pl-PL": "Domyślne",
+        "pt-PT": "Predefinições",
+        "nl-NL": "Standaard",
+        "cs-CZ": "Výchozí",
+        "bg-BG": "По подразбиране"
+      }
+    },
+    "common.button.ok": {
+      "source": "ОК",
+      "translations": {
+        "en-US": "OK",
+        "ru-RU": "ОК",
+        "uk-UA": "ОК",
+        "de-DE": "OK",
+        "fr-FR": "OK",
+        "es-ES": "Aceptar",
+        "it-IT": "OK",
+        "pl-PL": "OK",
+        "pt-PT": "OK",
+        "nl-NL": "OK",
+        "cs-CZ": "OK",
+        "bg-BG": "ОК"
+      }
+    },
+    "common.button.cancel": {
+      "source": "Отмена",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Отмена",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Zrušit",
+        "bg-BG": "Отказ"
+      }
+    }
+  }
+}

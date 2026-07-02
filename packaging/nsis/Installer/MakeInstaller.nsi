@@ -6,7 +6,12 @@
 !define PRODUCT_NAME "FictionBook Editor Next"
 !define PRODUCT_STAGE "Release"
 !define PRODUCT_BUILD "build ${BUILDNUM}"
-!define PRODUCT_VERSION "${PRODUCT_STAGE} ${PRODUCT_VER_NUM} (${PRODUCT_BUILD})"
+!ifdef FBE_WIN7_BUILD
+!define PRODUCT_COMPATIBILITY_SUFFIX " (Windows 7 compatible)"
+!else
+!define PRODUCT_COMPATIBILITY_SUFFIX ""
+!endif
+!define PRODUCT_VERSION "${PRODUCT_STAGE} ${PRODUCT_VER_NUM} (${PRODUCT_BUILD})${PRODUCT_COMPATIBILITY_SUFFIX}"
 !define PRODUCT_VENDOR "FBE Team"
 !define PRODUCT_NAME_VERSION "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 !ifndef OUTPUTFILE
@@ -73,7 +78,7 @@ LicenseForceSelection radiobuttons
 ; Start menu page
 var ICONS_GROUP
 !define MUI_STARTMENUPAGE_NODISABLE
-!define MUI_STARTMENUPAGE_DEFAULTFOLDER "${PRODUCT_NAME} ${PRODUCT_VER_NUM}"
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "${PRODUCT_NAME}"
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT "${PRODUCT_UNINST_ROOT_KEY}"
 !define MUI_STARTMENUPAGE_REGISTRY_KEY "${PRODUCT_UNINST_KEY}"
 !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "${PRODUCT_STARTMENU_REGVAL}"
@@ -85,6 +90,9 @@ var ICONS_GROUP
 ; Finish page
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION ExecAppFile
+!define MUI_FINISHPAGE_RUN_TEXT "Запустить FictionBook Editor Next"
+!define MUI_FINISHPAGE_TITLE "Установка завершена"
+!define MUI_FINISHPAGE_TEXT "FictionBook Editor Next успешно установлен.$\r$\n$\r$\nНажмите кнопку $\"Готово$\" для выхода из программы установки."
 !define MUI_FINISHPAGE_TITLE_3LINES
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW FinishPageShow
 !insertmacro MUI_PAGE_FINISH
@@ -666,6 +674,7 @@ SectionEnd
 
 SectionGroupEnd
 
+
 Function ComponentsPageLeave
   SectionGetFlags ${FB2_Explorer_Properties_id} $0
   IntOp $0 $0 & ${SF_SELECTED}
@@ -756,6 +765,10 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 		SectionEnd
 	SectionGroupEnd
 
+	Section -VerifyExportPlugins VerifyExportPlugins_id
+		Call VerifyPluginRegistration
+	SectionEnd
+
 	Section /o $(Plugin_BatchConverters) BatchConverters_id
 		SetOutPath "$INSTDIR"
 		File "${INPUTDIR}\ExportDOCXBatch.exe"
@@ -770,6 +783,46 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 		File "${INPUTDIR}\ImportEPUB.dll"
 	SectionEnd
 SectionGroupEnd
+
+Function VerifyPluginRegistration
+  SectionGetFlags ${ExportHTML_Plugin_id} $1
+  IntOp $1 $1 & ${SF_SELECTED}
+  ${If} $1 = 0
+    Goto verify_export_docx
+  ${EndIf}
+  ClearErrors
+  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor\Plugins\{E242A6D3-84BF-4285-9FAA-160F95370668}" "Type"
+  ${If} $0 != "Export"
+    DetailPrint "ExportHTML plugin registration was not found after RegDll."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportHTML не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
+  ${EndIf}
+
+verify_export_docx:
+  SectionGetFlags ${ExportDOCX_Plugin_id} $1
+  IntOp $1 $1 & ${SF_SELECTED}
+  ${If} $1 = 0
+    Goto verify_export_epub
+  ${EndIf}
+  ClearErrors
+  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor\Plugins\{41494D79-3346-4E8C-A432-51BCD3742FC1}" "Type"
+  ${If} $0 != "Export"
+    DetailPrint "ExportDOCX plugin registration was not found after RegDll."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportDOCX не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
+  ${EndIf}
+
+verify_export_epub:
+  SectionGetFlags ${ExportEPUB_Plugin_id} $1
+  IntOp $1 $1 & ${SF_SELECTED}
+  ${If} $1 = 0
+    Return
+  ${EndIf}
+  ClearErrors
+  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor\Plugins\{A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF}" "Type"
+  ${If} $0 != "Export"
+    DetailPrint "ExportEPUB plugin registration was not found after RegDll."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportEPUB не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
+  ${EndIf}
+FunctionEnd
 
 Section !$(Scripts) Scripts_id
 ;Scripts and dependances
