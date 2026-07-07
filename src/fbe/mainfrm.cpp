@@ -3599,6 +3599,56 @@ LRESULT CMainFrame::OnChar(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
   return 0;
 }
 
+
+static CString ExtractXmlDeclarationEncoding(const CString& xmlText)
+{
+	const int declStart = xmlText.Find(L"<?xml");
+	if (declStart < 0)
+		return CString();
+
+	const int declEnd = xmlText.Find(L"?>", declStart);
+	if (declEnd < 0)
+		return CString();
+
+	CString decl = xmlText.Mid(declStart, declEnd - declStart + 2);
+	CString declLower(decl);
+	declLower.MakeLower();
+
+	int encPos = declLower.Find(L"encoding");
+	if (encPos < 0)
+		return CString();
+
+	encPos = decl.Find(L"=", encPos);
+	if (encPos < 0)
+		return CString();
+
+	++encPos;
+
+	while (encPos < decl.GetLength() &&
+		(decl[encPos] == L' ' || decl[encPos] == L'\t' ||
+		 decl[encPos] == L'\r' || decl[encPos] == L'\n'))
+	{
+		++encPos;
+	}
+
+	if (encPos >= decl.GetLength())
+		return CString();
+
+	const wchar_t quote = decl[encPos];
+	if (quote != L'"' && quote != L'\'')
+		return CString();
+
+	const int valueStart = encPos + 1;
+	const int valueEnd = decl.Find(quote, valueStart);
+	if (valueEnd <= valueStart)
+		return CString();
+
+	CString encoding = decl.Mid(valueStart, valueEnd - valueStart);
+	encoding.Trim();
+
+	return encoding;
+}
+
 bool  CMainFrame::SourceToHTML() 
 {
 	LRESULT changed = m_source.SendMessage(SCI_GETMODIFY);
@@ -3694,6 +3744,14 @@ bool  CMainFrame::SourceToHTML()
 				return false;
 			}			
 		}
+	}
+
+	if(changed)
+	{
+		CString sourceText(ustr);
+		CString sourceEncoding = ExtractXmlDeclarationEncoding(sourceText);
+		if (!sourceEncoding.IsEmpty())
+			m_doc->m_encoding = sourceEncoding;
 	}
 
 	SysFreeString(ustr);
@@ -3849,16 +3907,25 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		}while(root = root->nextSibling);
 	}
 
-	// ���� �������� ���������, �� ������ ������ XMLDOM
+	// Определяем кодировку для отображения XML declaration в режиме Source
+	CString sourceEncoding = _Settings.KeepEncoding()
+		? m_doc->m_encoding
+		: _Settings.GetDefaultEncoding();
+
+	if (sourceEncoding.IsEmpty())
+		sourceEncoding = L"utf-8";
+
+	// Если документ изменился, создаём новый XMLDOM
 	{
-		if(m_doc->DocRelChanged() || !(bool)m_saved_xml)
+		if (m_doc->DocRelChanged() || !(bool)m_saved_xml)
 		{
-			if((bool)m_saved_xml)
+			if ((bool)m_saved_xml)
 			{
-				m_saved_xml.Release();			
+				m_saved_xml.Release();
 			}
-			m_saved_xml = m_doc->CreateDOM(_T(""));
-			if(!(bool)m_saved_xml)
+
+			m_saved_xml = m_doc->CreateDOM(sourceEncoding);
+			if (!(bool)m_saved_xml)
 			{
 				return false;
 			}
@@ -3882,48 +3949,75 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	save.close(); */
 
 	MSXML2::IXMLDOMNodePtr xml_selected_begin;
-	MSXML2::IXMLDOMNodePtr xml_selected_end;
-	//	�� ���� ������� ������ ������� � XML
-	//if(saveSelection)
-	{
-		MSXML2::IXMLDOMNodePtr xml_body = m_saved_xml->firstChild->firstChild;		
-		while(xml_body)
-		{
-			if(U::scmp(xml_body->nodeName, L"body") == 0)
-			{
-				if(bodies_count)
-				{
-					--bodies_count;
-					xml_body = xml_body->nextSibling;
-					continue;
-				}
-				xml_selected_begin = selection_begin_path.GetNodeFromXMLDOM(xml_body);
-				
-				// ������ ���������� ���� �� ����.
-				selection_begin_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_begin);
-				path = selection_begin_path;
+MSXML2::IXMLDOMNodePtr xml_selected_end;
 
-				if(one_element)
-				{
-					selection_end_path = selection_begin_path;
-				}
-				else
-				{
-					xml_selected_end = selection_end_path.GetNodeFromXMLDOM(xml_body);
-					selection_end_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_end);
-				}
-				
-				break;
-			}
-			xml_body = xml_body->nextSibling;			
-		}
-	}
+{
+    MSXML2::IXMLDOMElementPtr xml_root = m_saved_xml->documentElement;
+    if (!(bool)xml_root)
+        return false;
 
-	// ���������� XML � �����
-	_bstr_t   src(m_saved_xml->xml);
+    MSXML2::IXMLDOMNodePtr xml_body = xml_root->firstChild;
 
-	int savedPosBegin = 0;
-	int savedPosEnd = 0;
+    while (xml_body)
+    {
+        if (U::scmp(xml_body->nodeName, L"body") == 0)
+        {
+            if (bodies_count)
+            {
+                --bodies_count;
+                xml_body = xml_body->nextSibling;
+                continue;
+            }
+
+            xml_selected_begin = selection_begin_path.GetNodeFromXMLDOM(xml_body);
+
+            selection_begin_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_begin);
+            path = selection_begin_path;
+
+            if (one_element)
+            {
+                selection_end_path = selection_begin_path;
+            }
+            else
+            {
+                xml_selected_end = selection_end_path.GetNodeFromXMLDOM(xml_body);
+                selection_end_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_end);
+            }
+
+            break;
+        }
+
+        xml_body = xml_body->nextSibling;
+    }
+}
+
+// Получаем XML для отображения в Scintilla.
+// Важно: MSXML document.xml может вернуть <?xml version="1.0"?>
+// без encoding, поэтому для режима Source восстанавливаем encoding вручную.
+_bstr_t rawSrc(m_saved_xml->xml);
+CString srcText((const wchar_t*)rawSrc);
+
+CString xmlDecl;
+xmlDecl.Format(
+	L"<?xml version=\"1.0\" encoding=\"%s\"?>",
+	(const wchar_t*)sourceEncoding);
+
+const CString xmlDeclWithoutEncoding(L"<?xml version=\"1.0\"?>");
+
+if (srcText.Left(xmlDeclWithoutEncoding.GetLength()).CompareNoCase(xmlDeclWithoutEncoding) == 0)
+{
+	srcText.Delete(0, xmlDeclWithoutEncoding.GetLength());
+	srcText.Insert(0, xmlDecl);
+}
+else if (srcText.Left(5).CompareNoCase(L"<?xml") != 0)
+{
+	srcText.Insert(0, xmlDecl + L"\r\n");
+}
+
+_bstr_t src((const wchar_t*)srcText);
+
+int savedPosBegin = 0;
+int savedPosEnd = 0;
 	//if(saveSelection)
 	{
 		savedPosBegin = selection_begin_path.GetNodeFromText(src, selection_begin_char);
