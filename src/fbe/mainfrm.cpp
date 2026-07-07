@@ -334,7 +334,8 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     if (m_doc->Save(filename)) {
       m_doc->m_filename=filename;
 	  U::SetCurrentDirectoryToFile(filename);
-      m_doc->m_namevalid=true;	 
+      m_doc->m_namevalid=true;
+      m_mru.AddToList(filename);
 	  m_file_age = FileAge(m_doc->m_filename);
 	  if(IsSourceActive())
 		  m_source.SendMessage(SCI_SETSAVEPOINT);
@@ -1555,7 +1556,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   FB::Doc::m_active_doc = m_doc;
   bool start_with_params = false;
   CString startupFileName;
-  // Çàãðóæàåì ôàéë èç êîìàíäíîé ñòðîêè, åñëè îí áûë ïåðåäàí.
+  // È ä±³ç¡¥ê¡´áª« é¥ ë¯¬á®¤î¯© ò³±®ë¦¬ æ²«æ¡®ë¡¡é¡¯æ±¥å¡­.
   if (_ARGV.GetSize()>0 && !_ARGV[0].IsEmpty()) 
   { 
     const DWORD fullPathLength = ::GetFullPathName(_ARGV[0], 0, NULL, NULL);
