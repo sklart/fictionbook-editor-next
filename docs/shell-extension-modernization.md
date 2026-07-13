@@ -6,19 +6,24 @@
 ## Что входит в `src\fbshell`
 
 Важно: в стандартную сборку и стандартную поставку теперь входит именно modern
-property handler. Legacy-компоненты (`ColumnProvider`, `ContextMenu`, `IconExtractor`) больше не подключены к активному проекту `FBShell`; они сохранены в дереве исходников только как исторический reference-контур.
+property handler. Legacy-компоненты `ColumnProvider` и `ContextMenu` больше не
+подключены к активному проекту `FBShell` и остаются только историческим
+reference-контуром. Старый `IconExtractor` вместе с `ImageLoader` и bundled
+`zlib/libpng/libjpeg` удалён из дерева исходников: актуальные миниатюры строятся
+через modern thumbnail provider и `Fb2CoverImage`.
 
 Исторически в `src\fbshell` были собраны сразу три разных shell-компонента:
 
 - `ColumnProvider` — старый провайдер колонок Проводника;
-- `IconExtractor` — извлечение обложки FB2 для значков и превью-иконок;
+- `IconExtractor` — старое извлечение обложки FB2 для значков и превью-иконок,
+  удалено после перехода на modern thumbnail provider;
 - `ContextMenu` — пункт контекстного меню для запуска `FBV.exe`.
 
 Это видно по регистрации трёх COM-классов в:
 
 - `src\fbshell\FBShell.cpp`;
 - `src\fbshell\ColumnProvider.rgs`;
-- `src\fbshell\IconExtractor.rgs`;
+- `src\fbshell\IconExtractor.rgs` — исторически, сейчас удалён;
 - `src\fbshell\ContextMenu.rgs`.
 
 Важно: эти `.rgs` больше не являются описанием актуальной поставки FBE.
@@ -177,9 +182,8 @@ Legacy-контуры shell extension по-прежнему стоит счит�
 
 - legacy `ColumnProvider`;
 - legacy `ContextMenu`;
-- legacy `IconExtractor`;
-- старый bundled image-stack (`zlib/libpng/libjpeg`) внутри активной сборки
-  `FBShell`.
+- legacy `IconExtractor` и старый bundled image-stack (`zlib/libpng/libjpeg`),
+  которые уже удалены из дерева исходников после перехода на modern thumbnail provider.
 
 ## Результат ручной проверки
 

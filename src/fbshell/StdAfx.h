@@ -59,7 +59,6 @@ extern CComModule _Module;
 
 #include "resource.h"
 
-#include "Image.h"
 #include "FBShell.h"
 
 #include <wchar.h>
