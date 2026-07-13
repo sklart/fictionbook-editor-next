@@ -6,12 +6,14 @@ param(
     [string]$CompatibilityTarget = "Modern"
 )
 
+# Проверяет выпускные x86-бинарники по манифесту runtime-binaries.json.
+# По умолчанию анализируется out\Release: именно из него собираются portable и setup.
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $manifestPath = Join-Path $repoRoot "dependencies\runtime-binaries.json"
 if (-not $Directory) {
-    $Directory = Join-Path $repoRoot "runtime"
+    $Directory = Join-Path $repoRoot "out\Release"
 }
 $Directory = (Resolve-Path -LiteralPath $Directory).Path
 

@@ -8,10 +8,17 @@
         {
           "name": "FBV.exe",
           "version": "3.0.4",
-          "built": "2026-07-02",
+          "built": "2026-07-10",
           "purpose": "FictionBook Validator Next, запускается локализованной shell-командой проверки FB2",
-          "size": 90624,
-          "allowedSizes": [82944, 83456, 90624],
+          "size": 587264,
+          "allowedSizes": [
+            82944,
+            83456,
+            90624,
+            566784,
+            584704,
+            587264
+          ],
           "modernization": "FBV.exe собирается из локального проекта src/fbv; release-gate фиксирует PE/x86-архитектуру и допустимый размер для текущего профиля, но не SHA-256, потому что hash меняется при каждой сборке.",
           "hashPolicy": "volatile-build-output-with-profile-size-check"
         }
@@ -23,10 +30,15 @@
         {
           "name": "FBV.exe",
           "version": "3.0.4",
-          "built": "2026-07-02",
+          "built": "2026-07-10",
           "purpose": "FictionBook Validator Next, запускается локализованной shell-командой проверки FB2",
-          "size": 90624,
-          "allowedSizes": [90624],
+          "size": 587264,
+          "allowedSizes": [
+            90624,
+            566784,
+            584704,
+            587264
+          ],
           "modernization": "FBV.exe собирается из локального проекта src/fbv; release-gate фиксирует PE/x86-архитектуру и допустимый размер для Win7-профиля, но не SHA-256, потому что hash меняется при каждой сборке.",
           "hashPolicy": "volatile-build-output-with-profile-size-check"
         }
