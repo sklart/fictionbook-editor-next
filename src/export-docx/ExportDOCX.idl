@@ -9,7 +9,7 @@ library ExportDOCXLib
 {
 	importlib("stdole2.tlb");
 	[
-		uuid(41494D79-3346-4E8C-A432-51BCD3742FC1)
+		uuid(09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56)
 	]
 	coclass ExportDOCXPlugin
 	{

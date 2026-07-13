@@ -204,7 +204,7 @@ namespace
 			return;
 
 		CString directory(localAppData);
-		directory += L"\\FBE";
+		directory += L"\\FBE Next";
 		::CreateDirectoryW(directory, nullptr);
 
 		CString path(directory);
@@ -956,7 +956,7 @@ bool CAboutDlg::SaveVerifiedUpdate(const std::string& data, CString& filename)
 	if (::StringFromGUID2(updateId, updateIdText, _countof(updateIdText)) == 0)
 		return false;
 
-	filename.Format(L"%sFBE-update-%s.exe", tempDirectory, updateIdText);
+	filename.Format(L"%sFBENext-update-%s.exe", tempDirectory, updateIdText);
 	HANDLE file = ::CreateFile(
 		filename,
 		GENERIC_WRITE,

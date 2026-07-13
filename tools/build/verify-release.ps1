@@ -103,6 +103,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-rc-ui-literals-inventory.ps1")
 & (Join-Path $repoRoot "tools\tests\test-localization-runtime-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-next-isolation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-export.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbv-runtime-lang-overlay.ps1")
@@ -112,6 +113,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-docx-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-language-packs-inventory.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-language-pack-plan.ps1")
+& (Join-Path $repoRoot "tools\tests\test-nsis-installer-language-fallbacks.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 if ($CompatibilityTarget -eq "Win7") {
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") -Configuration $Configuration

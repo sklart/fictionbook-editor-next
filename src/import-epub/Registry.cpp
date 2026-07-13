@@ -42,7 +42,7 @@ namespace
             return hr;
 
         CRegKey progIdKey;
-        status = progIdKey.Create(HKEY_CURRENT_USER, L"Software\\Classes\\FBE.ImportEPUB");
+        status = progIdKey.Create(HKEY_CURRENT_USER, L"Software\\Classes\\FBENext.ImportEPUB");
         if (status == ERROR_SUCCESS)
         {
             SetStringValue(progIdKey, nullptr, L"FBE EPUB Import Plugin");
@@ -85,7 +85,7 @@ namespace
 
     HRESULT CreateFbePluginRegistration(const CStringW& clsid, const CStringW& modulePath)
     {
-        CStringW pluginKeyPath = L"Software\\FBETeam\\FictionBook Editor\\Plugins\\" + clsid;
+        CStringW pluginKeyPath = L"Software\\FBETeam\\FictionBook Editor Next\\Plugins\\" + clsid;
 
         CRegKey pluginKey;
         LSTATUS status = pluginKey.Create(HKEY_CURRENT_USER, pluginKeyPath);
@@ -154,10 +154,10 @@ STDAPI UnregisterPluginServer()
 {
     const CStringW clsid = GuidToString(CLSID_ImportEPUBPlugin);
 
-    DeleteKeyIfExists(HKEY_CURRENT_USER, CStringW(L"Software\\FBETeam\\FictionBook Editor\\Plugins\\") + clsid);
+    DeleteKeyIfExists(HKEY_CURRENT_USER, CStringW(L"Software\\FBETeam\\FictionBook Editor Next\\Plugins\\") + clsid);
     DeleteKeyIfExists(HKEY_CURRENT_USER, CStringW(L"Software\\Classes\\CLSID\\") + clsid);
     DeleteKeyIfExists(HKEY_CURRENT_USER, CStringW(L"Software\\Classes\\Wow6432Node\\CLSID\\") + clsid);
-    DeleteKeyIfExists(HKEY_CURRENT_USER, L"Software\\Classes\\FBE.ImportEPUB");
+    DeleteKeyIfExists(HKEY_CURRENT_USER, L"Software\\Classes\\FBENext.ImportEPUB");
 
     return S_OK;
 }

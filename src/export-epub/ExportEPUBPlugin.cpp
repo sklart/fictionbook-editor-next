@@ -2685,7 +2685,7 @@ ExportPluginSettings RichStructureExportSettings()
     return settings;
 }
 
-const wchar_t* SETTINGS_KEY = L"Software\\FBETeam\\FictionBook Editor\\Plugins\\ExportEPUB";
+const wchar_t* SETTINGS_KEY = L"Software\\FBETeam\\FictionBook Editor Next\\Plugins\\ExportEPUB";
 
 bool ReadBoolSetting(HKEY key, const wchar_t* name, bool defaultValue)
 {

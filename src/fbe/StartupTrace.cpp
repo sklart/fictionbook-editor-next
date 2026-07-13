@@ -34,7 +34,7 @@ void StartupTrace::Start()
 {
 	wchar_t enabled[8] = {};
 	const DWORD length = ::GetEnvironmentVariable(
-		L"FBE_STARTUP_TRACE", enabled, _countof(enabled));
+		L"FBE_NEXT_STARTUP_TRACE", enabled, _countof(enabled));
 	if (length == 0 || length >= _countof(enabled) ||
 		(length == 1 && enabled[0] == L'0'))
 	{
@@ -50,7 +50,7 @@ void StartupTrace::Start()
 	}
 
 	CString directory(localAppData);
-	directory += L"\\FBE";
+	directory += L"\\FBE Next";
 	::CreateDirectory(directory, NULL);
 
 	const CString path = directory + L"\\startup-trace.log";

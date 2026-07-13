@@ -2,7 +2,7 @@ HKCR
 {
 	NoRemove CLSID
 	{
-		ForceRemove {41494D79-3346-4E8C-A432-51BCD3742FC1} = s 'ExportDOCXPlugin Class'
+		ForceRemove {09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56} = s 'ExportDOCXPlugin Class'
 		{
 			InprocServer32 = s '%MODULE%'
 			{
@@ -18,11 +18,11 @@ HKCU
 	{
 		NoRemove FBETeam
 		{
-			NoRemove 'FictionBook Editor'
+			NoRemove 'FictionBook Editor Next'
 			{
 				NoRemove Plugins
 				{
-					ForceRemove {41494D79-3346-4E8C-A432-51BCD3742FC1} = s 'Export FB2 to DOCX'
+					ForceRemove {09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56} = s 'Export FB2 to DOCX'
 					{
 						val Type = s 'Export'
 						val Menu = s 'To DOCX'

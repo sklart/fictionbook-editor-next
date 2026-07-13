@@ -1,78 +1,56 @@
 <#
 .SYNOPSIS
-Генерирует черновой NSIS-план будущих языковых компонентов установщика.
+Генерирует NSIS-секции языковых компонентов установщика.
 
 .DESCRIPTION
-Скрипт читает `localization/language-packs.json` и создаёт в
-`out/localization/nsis-language-packs` справочный `.nsh`-файл с будущими
-секциями языковых пакетов. Файл намеренно не подключается к `MakeInstaller.nsi`:
-это промежуточный артефакт для ревизии структуры перед изменением поведения
-установщика.
+Скрипт читает `localization/language-packs.json` и создаёт подключаемый
+`packaging/nsis/Installer/Generated/LanguagePacks.generated.nsh`. Файл
+описывает выборочную установку runtime JSON и MUI-ресурсов интерфейса.
+Словари остаются отдельными компонентами установщика.
 #>
 [CmdletBinding()]
 param(
-    [string]$OutputDirectory
+    [string]$OutputPath
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    $OutputDirectory = Join-Path $repoRoot "out\localization\nsis-language-packs"
+if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+    $OutputPath = Join-Path $repoRoot "packaging\nsis\Installer\Generated\LanguagePacks.generated.nsh"
 }
 
 $inventoryPath = Join-Path $repoRoot "localization\language-packs.json"
 $inventory = Get-Content -Raw -LiteralPath $inventoryPath | ConvertFrom-Json -Depth 30
 
-New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutputPath) | Out-Null
 
 $lines = New-Object System.Collections.Generic.List[string]
-$lines.Add("; Черновой план языковых компонентов FictionBook Editor Next.")
+$lines.Add("; Языковые компоненты FictionBook Editor Next.")
 $lines.Add("; Сгенерировано из localization/language-packs.json.")
-$lines.Add("; Этот файл пока НЕ подключается к MakeInstaller.nsi.")
-$lines.Add("; Он нужен для ревизии будущего разбиения языков на компоненты.")
+$lines.Add("; Не редактируйте вручную: запускайте tools/localization/export-nsis-language-pack-plan.ps1.")
 $lines.Add("")
 $lines.Add("; Fallback-язык: $($inventory.fallbackLanguage)")
 $lines.Add("; Текущие языки интерфейса установщика: $(@($inventory.currentInstallerLanguages) -join ', ')")
 $lines.Add("")
-$lines.Add("; Language-neutral ресурсы, которые нужны нескольким языкам.")
-if ($inventory.languageNeutralAssets) {
-    foreach ($group in $inventory.languageNeutralAssets.PSObject.Properties) {
-        foreach ($asset in @($group.Value)) {
-            $normalized = ([string]$asset).Replace('/', '\')
-            $targetDir = '$INSTDIR'
-            $relativeDir = [IO.Path]::GetDirectoryName($normalized)
-            if (-not [string]::IsNullOrWhiteSpace($relativeDir)) {
-                $targetDir = '$INSTDIR\' + $relativeDir
-            }
-            $lines.Add(('SetOutPath "{0}"' -f $targetDir))
-            $lines.Add('File /nonfatal "${INPUTDIR}\' + $normalized + '"')
-        }
-    }
-}
-
-$lines.Add("")
-$lines.Add(('SectionGroup /e "{0}" LanguagePacksGroup_id' -f "Языки интерфейса и проверки FB2"))
+$lines.Add('SectionGroup /e $(LanguagePacksGroup) LanguagePacksGroup_id')
 
 foreach ($language in @($inventory.languages)) {
     $flags = @()
-    if ($language.required) { $flags += "RO" }
-    elseif (-not $language.defaultInstall) { $flags += "/o" }
+    if (-not $language.required -and -not $language.defaultInstall) { $flags += "/o" }
 
     $flagText = if ($flags.Count -gt 0) { ($flags -join " ") + " " } else { "" }
     $sectionName = "LanguagePack_$($language.language -replace '[^A-Za-z0-9]', '_')"
     $lines.Add("")
     $lines.Add(('  Section {0}"{1} ({2})" {3}' -f $flagText, $language.displayName, $language.language, $sectionName))
     $lines.Add("    ; required=$($language.required); defaultInstall=$($language.defaultInstall); installerLanguage=$($language.installerLanguage)")
+    if ($language.required) {
+        $lines.Add("    SectionIn RO")
+    }
 
-    foreach ($group in $language.assets.PSObject.Properties) {
-        if ($group.Name -eq "futureTemplates") {
-            foreach ($asset in @($group.Value)) {
-                $lines.Add("    ; TODO futureTemplates: $asset")
-            }
-            continue
-        }
-
+    foreach ($groupName in @("fbeResources", "fbvMui")) {
+        $group = $language.assets.PSObject.Properties[$groupName]
+        if ($null -eq $group) { continue }
         foreach ($asset in @($group.Value)) {
             $normalized = ([string]$asset).Replace('/', '\')
             $targetDir = '$INSTDIR'
@@ -86,15 +64,17 @@ foreach ($language in @($inventory.languages)) {
         }
     }
 
+    $lines.Add(('    SetOutPath "$INSTDIR\Lang\{0}"' -f $language.language))
+    $lines.Add(('    File /nonfatal /r "${{INPUTDIR}}\Lang\{0}\*.*"' -f $language.language))
+
     $lines.Add("  SectionEnd")
 }
 
 $lines.Add("")
 $lines.Add("SectionGroupEnd")
 
-$outputPath = Join-Path $OutputDirectory "FictionBookEditorNext.LanguagePacks.draft.nsh"
 [IO.File]::WriteAllText($outputPath, ($lines -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
 
-Write-Host "Черновой NSIS-план языковых пакетов подготовлен."
+Write-Host "NSIS-секции языковых пакетов подготовлены."
 Write-Host "  Файл: $outputPath"
 Write-Host "  Языков: $(@($inventory.languages).Count)"

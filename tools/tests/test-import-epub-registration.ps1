@@ -30,9 +30,9 @@ if (-not (Test-Path -LiteralPath $regsvr32)) {
 }
 
 Write-Host "Регистрирую ImportEPUB для smoke-теста: $DllPath"
-& $regsvr32 /s $DllPath
-if ($LASTEXITCODE -ne 0) {
-    throw "Регистрация ImportEPUB.dll завершилась с кодом $LASTEXITCODE."
+$registration = Start-Process -FilePath $regsvr32 -ArgumentList @('/s', $DllPath) -Wait -PassThru
+if ($registration.ExitCode -ne 0) {
+    throw "Регистрация ImportEPUB.dll завершилась с кодом $($registration.ExitCode)."
 }
 
 $testRoot = Join-Path $repoRoot "out\tests\import-epub-registration"
@@ -78,7 +78,8 @@ int wmain()
     }
 
     int failed = 0;
-    const CLSID importEpubClsid = {0xD4B1B165, 0x4D93, 0x4F2D, {0x8C, 0x8A, 0x2D, 0x0C, 0x64, 0x94, 0x31, 0xA1}};
+    // CLSID FBE Next: не пересекается с ImportEPUB старого FBE.
+    const CLSID importEpubClsid = {0x3C19F5A2, 0x2EC8, 0x4EC7, {0xB7, 0xA9, 0xF4, 0x91, 0x0B, 0x4C, 0xDD, 0x82}};
     failed += TestClsid(L"ImportEPUB plugin", importEpubClsid);
     failed += TestProgId(L"Msxml2.DOMDocument.6.0");
     failed += TestProgId(L"Msxml2.SAXXMLReader.6.0");

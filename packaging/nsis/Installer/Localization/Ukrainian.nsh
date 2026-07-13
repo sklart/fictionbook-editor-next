@@ -21,6 +21,7 @@ LangString Plugin_ExportEPUB ${LANG_UKRAINIAN} "Експорт EPUB"
 LangString Plugin_BatchConverters ${LANG_UKRAINIAN} "Batch-конвертери"
 LangString Scripts ${LANG_UKRAINIAN} "Скрипти"
 LangString Dictionaries ${LANG_UKRAINIAN} "Словники"
+LangString LanguagePacksGroup ${LANG_UKRAINIAN} "Мови інтерфейсу"
 
 LangString EnglishDict ${LANG_UKRAINIAN} "англійський"
 LangString RussianDict ${LANG_UKRAINIAN} "російський"
@@ -56,6 +57,8 @@ LangString DESC_Plugin_ExportEPUB ${LANG_UKRAINIAN} "Експортує пото
 LangString DESC_Plugin_BatchConverters ${LANG_UKRAINIAN} "Встановлює консольні утиліти пакетної конвертації DOCX/EPUB разом із потрібними DLL-залежностями."
 LangString DESC_Scripts ${LANG_UKRAINIAN} "Збірка дуже корисних скриптів від Jurgennt та Sclex."
 LangString DESC_Dictionaries ${LANG_UKRAINIAN} "Словники для перевірки орфографії."
+LangString DESC_LanguagePacksGroup ${LANG_UKRAINIAN} "Виберіть ресурси мов інтерфейсу. Англійська обов'язкова; російська та українська вибрані за замовчуванням."
+LangString DESC_LanguagePack ${LANG_UKRAINIAN} "Установлює runtime-переклади й локалізовану команду Validate для цієї мови інтерфейсу. Словники правопису вибираються окремо."
 
 ; error messages
 LangString ErrCheckMSXMLVersion ${LANG_UKRAINIAN} "Для встановлення потрібен Microsoft XML Parser версії 4.0."

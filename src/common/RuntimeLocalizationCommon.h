@@ -287,7 +287,7 @@ inline bool ReadUtf8TextFile(const wchar_t* path, std::wstring& text)
 inline CStringW ReadPublishedRuntimeLocaleName()
 {
     wchar_t localeName[LOCALE_NAME_MAX_LENGTH] = {};
-    const DWORD envLength = ::GetEnvironmentVariableW(L"FBE_UI_LOCALE", localeName, _countof(localeName));
+    const DWORD envLength = ::GetEnvironmentVariableW(L"FBE_NEXT_UI_LOCALE", localeName, _countof(localeName));
     if (envLength > 0 && envLength < _countof(localeName) && IsKnownRuntimeLocaleName(localeName))
         return CStringW(localeName);
 
@@ -298,7 +298,7 @@ inline CStringW ReadPublishedRuntimeLocaleName()
 
     wchar_t localePath[MAX_PATH] = {};
     wcscpy_s(localePath, localAppData);
-    if (!AppendPath(localePath, _countof(localePath), L"FBE"))
+    if (!AppendPath(localePath, _countof(localePath), L"FBE Next"))
         return CStringW();
     if (!AppendPath(localePath, _countof(localePath), L"interface-locale.txt"))
         return CStringW();

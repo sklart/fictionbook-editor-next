@@ -3,7 +3,7 @@ setlocal EnableExtensions
 chcp 65001 >nul
 
 set "ROOT=%~dp0"
-set "CLSID={D4B1B165-4D93-4F2D-8C8A-2D0C649431A1}"
+set "CLSID={3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}"
 set "REGEXE=%SystemRoot%\System32\reg.exe"
 
 set "DLL=%ROOT%out\Release\ImportEPUB.dll"

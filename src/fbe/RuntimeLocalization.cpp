@@ -156,7 +156,7 @@ static std::map<std::wstring, CStringW> g_runtimeStringsByKey;
 static bool g_runtimeInitialized = false;
 
 
-static const wchar_t kRuntimeLocaleEnvironment[] = L"FBE_UI_LOCALE";
+static const wchar_t kRuntimeLocaleEnvironment[] = L"FBE_NEXT_UI_LOCALE";
 static const wchar_t kRuntimeLocaleFileName[] = L"interface-locale.txt";
 
 static bool GetRuntimeLocaleFilePath(CPath& localePath)
@@ -167,7 +167,7 @@ static bool GetRuntimeLocaleFilePath(CPath& localePath)
 		return false;
 
 	localePath = localAppData;
-	localePath.Append(L"FBE");
+	localePath.Append(L"FBE Next");
 	localePath.Append(kRuntimeLocaleFileName);
 	return true;
 }

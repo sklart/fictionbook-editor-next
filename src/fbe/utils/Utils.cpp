@@ -423,7 +423,9 @@ CString GetSettingsDir()
 	if ( SUCCEEDED( SHGetFolderPath( NULL, CSIDL_LOCAL_APPDATA, NULL, 0, szPath ) ) )
 	{
 		CString appSettingPath(szPath);
-		appSettingPath += L"\\FBE\\";
+		// Next хранит пользовательские данные отдельно от исторического FBE,
+		// чтобы обе версии не делили настройки, recovery и диагностические файлы.
+		appSettingPath += L"\\FBE Next\\";
 		::CreateDirectory(appSettingPath, NULL);
 		return appSettingPath; 
 	}

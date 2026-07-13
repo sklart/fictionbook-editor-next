@@ -211,9 +211,9 @@ Windows и существующую Win32-интеграцию.
 При необходимости можно включить поэтапную трассировку запуска:
 
 ```powershell
-$env:FBE_STARTUP_TRACE = "1"
+$env:FBE_NEXT_STARTUP_TRACE = "1"
 .\out\Release\FBE.exe
-Remove-Item Env:FBE_STARTUP_TRACE
+Remove-Item Env:FBE_NEXT_STARTUP_TRACE
 ```
 
 Лог создаётся в `%LOCALAPPDATA%\FBE\startup-trace.log`. В обычном режиме

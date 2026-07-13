@@ -21,6 +21,7 @@ LangString Plugin_ExportEPUB ${LANG_RUSSIAN} "Экспорт EPUB"
 LangString Plugin_BatchConverters ${LANG_RUSSIAN} "Batch-конвертеры"
 LangString Scripts ${LANG_RUSSIAN} "Скрипты"
 LangString Dictionaries ${LANG_RUSSIAN} "Словари"
+LangString LanguagePacksGroup ${LANG_RUSSIAN} "Языки интерфейса"
 
 LangString EnglishDict ${LANG_RUSSIAN} "Английский"
 LangString RussianDict ${LANG_RUSSIAN} "Русский"
@@ -56,6 +57,8 @@ LangString DESC_Plugin_ExportEPUB ${LANG_RUSSIAN} "Экспортирует те
 LangString DESC_Plugin_BatchConverters ${LANG_RUSSIAN} "Консольные утилиты массовой конвертации DOCX/EPUB и нужные DLL."
 LangString DESC_Scripts ${LANG_RUSSIAN} "Сборка полезных скриптов от Jurgennt (http://jurgennt.nm.ru/)."
 LangString DESC_Dictionaries ${LANG_RUSSIAN} "Словари для встроенной проверки орфографии."
+LangString DESC_LanguagePacksGroup ${LANG_RUSSIAN} "Выберите ресурсы языка интерфейса. Английский обязателен; русский и украинский выбраны по умолчанию."
+LangString DESC_LanguagePack ${LANG_RUSSIAN} "Устанавливает runtime-переводы и локализованную команду Validate для этого языка интерфейса. Словари орфографии выбираются отдельно."
 
 ; error messages
 LangString ErrCheckMSXMLVersion ${LANG_RUSSIAN} "Для установки требуется Microsoft XML Parser версии 4.0."

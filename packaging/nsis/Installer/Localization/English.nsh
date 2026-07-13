@@ -21,6 +21,7 @@ LangString Plugin_ExportEPUB ${LANG_ENGLISH} "Export EPUB"
 LangString Plugin_BatchConverters ${LANG_ENGLISH} "Batch converters"
 LangString Scripts ${LANG_ENGLISH} "Scripts"
 LangString Dictionaries ${LANG_ENGLISH} "Dictionaries"
+LangString LanguagePacksGroup ${LANG_ENGLISH} "Interface languages"
 
 LangString EnglishDict ${LANG_ENGLISH} "English"
 LangString RussianDict ${LANG_ENGLISH} "Russian"
@@ -56,6 +57,8 @@ LangString DESC_Plugin_ExportEPUB ${LANG_ENGLISH} "Exports the current book to E
 LangString DESC_Plugin_BatchConverters ${LANG_ENGLISH} "Installs command-line batch conversion utilities for DOCX/EPUB together with their DLL dependencies."
 LangString DESC_Scripts ${LANG_ENGLISH} "Jurgennt's (http://jurgennt.nm.ru/) pack of useful scripts."
 LangString DESC_Dictionaries ${LANG_ENGLISH} "Dictionaries for built-in spell-checker."
+LangString DESC_LanguagePacksGroup ${LANG_ENGLISH} "Choose interface-language resources. English is required; Russian and Ukrainian are selected by default."
+LangString DESC_LanguagePack ${LANG_ENGLISH} "Installs runtime translations and the localized Validate command for this interface language. Spell-check dictionaries are selected separately."
 
 ; error messages
 LangString ErrCheckMSXMLVersion ${LANG_ENGLISH} "This application requires Microsoft XML Parser version 4.0 to run."

@@ -194,7 +194,7 @@ CSettings::~CSettings()
 
 void CSettings::Init()
 {
-	const TCHAR* appname = L"FictionBook Editor";
+	const TCHAR* appname = L"FictionBook Editor Next";
 	m_key_path = L"Software\\FBETeam\\";
 	m_key_path += appname;
 	m_key.Create(HKEY_CURRENT_USER, m_key_path);

@@ -487,7 +487,7 @@ void InitSettings() {
       appname=filepath;
     }
   }
-  _SettingsPath=_T("Software\\Haali\\");
+  _SettingsPath=_T("Software\\FBETeam\\FictionBook Editor Next\\PluginSettings\\");
   _SettingsPath+=appname;
   _Settings.Create(HKEY_CURRENT_USER,_SettingsPath);
 }

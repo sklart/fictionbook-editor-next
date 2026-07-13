@@ -598,7 +598,7 @@ struct DocxExportSettings {
           imageMaxWidthCm(14), fontSizePt(12), fontName(L"Times New Roman") {}
 };
 
-static const wchar_t* kSettingsRegPath = L"Software\\FBEditor\\ExportDOCX";
+static const wchar_t* kSettingsRegPath = L"Software\\FBETeam\\FictionBook Editor Next\\ExportDOCX";
 
 DWORD ReadRegDword(HKEY root, const wchar_t* subkey, const wchar_t* name, DWORD defValue) {
     CRegKey key;

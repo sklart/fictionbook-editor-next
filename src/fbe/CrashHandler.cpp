@@ -16,7 +16,7 @@ namespace
 	{
 		std::vector<CString> reportNames;
 		WIN32_FIND_DATA findData = {};
-		HANDLE search = ::FindFirstFile(crashDirectory + L"FBE-crash-*.*", &findData);
+		HANDLE search = ::FindFirstFile(crashDirectory + L"FBENext-crash-*.*", &findData);
 		if (search == INVALID_HANDLE_VALUE)
 			return;
 
@@ -106,7 +106,7 @@ namespace
 
 		wchar_t basePath[MAX_PATH];
 		_snwprintf_s(basePath, _countof(basePath), _TRUNCATE,
-			L"%sFBE-crash-%04u%02u%02u-%02u%02u%02u",
+			L"%sFBENext-crash-%04u%02u%02u-%02u%02u%02u",
 			g_crashDirectory, localTime.wYear, localTime.wMonth, localTime.wDay,
 			localTime.wHour, localTime.wMinute, localTime.wSecond);
 

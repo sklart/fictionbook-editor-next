@@ -62,21 +62,21 @@ static HRESULT RegisterDOCXPluginManually()
 
 	// COM class registration.
 	HRESULT hr = SetRegString(HKEY_CLASSES_ROOT,
-		L"CLSID\\{41494D79-3346-4E8C-A432-51BCD3742FC1}",
+		L"CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}",
 		NULL,
 		L"ExportDOCXPlugin Class");
 	if (FAILED(hr))
 		return hr;
 
 	hr = SetRegString(HKEY_CLASSES_ROOT,
-		L"CLSID\\{41494D79-3346-4E8C-A432-51BCD3742FC1}\\InprocServer32",
+		L"CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}\\InprocServer32",
 		NULL,
 		modulePath);
 	if (FAILED(hr))
 		return hr;
 
 	hr = SetRegString(HKEY_CLASSES_ROOT,
-		L"CLSID\\{41494D79-3346-4E8C-A432-51BCD3742FC1}\\InprocServer32",
+		L"CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}\\InprocServer32",
 		L"ThreadingModel",
 		L"Apartment");
 	if (FAILED(hr))
@@ -85,36 +85,36 @@ static HRESULT RegisterDOCXPluginManually()
 	CStringW defaultIcon;
 	defaultIcon.Format(L"%s,%d", modulePath, IDI_MAINICON);
 	hr = SetRegString(HKEY_CLASSES_ROOT,
-		L"CLSID\\{41494D79-3346-4E8C-A432-51BCD3742FC1}\\DefaultIcon",
+		L"CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}\\DefaultIcon",
 		NULL,
 		defaultIcon);
 	if (FAILED(hr))
 		return hr;
 
-	// FBEditor plugin registration. This mirrors ExportHTMLPlugin.rgs.
+	// Регистрация плагина FBE Next не пересекается с историческим FBE.
 	hr = SetRegString(HKEY_CURRENT_USER,
-		L"Software\\FBETeam\\FictionBook Editor\\Plugins\\{41494D79-3346-4E8C-A432-51BCD3742FC1}",
+		L"Software\\FBETeam\\FictionBook Editor Next\\Plugins\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}",
 		NULL,
 		L"Export FB2 to DOCX");
 	if (FAILED(hr))
 		return hr;
 
 	hr = SetRegString(HKEY_CURRENT_USER,
-		L"Software\\FBETeam\\FictionBook Editor\\Plugins\\{41494D79-3346-4E8C-A432-51BCD3742FC1}",
+		L"Software\\FBETeam\\FictionBook Editor Next\\Plugins\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}",
 		L"Type",
 		L"Export");
 	if (FAILED(hr))
 		return hr;
 
 	hr = SetRegString(HKEY_CURRENT_USER,
-		L"Software\\FBETeam\\FictionBook Editor\\Plugins\\{41494D79-3346-4E8C-A432-51BCD3742FC1}",
+		L"Software\\FBETeam\\FictionBook Editor Next\\Plugins\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}",
 		L"Menu",
 		L"To DOCX");
 	if (FAILED(hr))
 		return hr;
 
 	hr = SetRegString(HKEY_CURRENT_USER,
-		L"Software\\FBETeam\\FictionBook Editor\\Plugins\\{41494D79-3346-4E8C-A432-51BCD3742FC1}",
+		L"Software\\FBETeam\\FictionBook Editor Next\\Plugins\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}",
 		L"Icon",
 		modulePath);
 	return hr;
@@ -124,11 +124,11 @@ static HRESULT UnregisterDOCXPluginManually()
 {
 	CRegKey hkcr;
 	if (hkcr.Open(HKEY_CLASSES_ROOT, L"CLSID") == ERROR_SUCCESS)
-		hkcr.RecurseDeleteKey(L"{41494D79-3346-4E8C-A432-51BCD3742FC1}");
+		hkcr.RecurseDeleteKey(L"{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}");
 
 	CRegKey plugins;
-	if (plugins.Open(HKEY_CURRENT_USER, L"Software\\FBETeam\\FictionBook Editor\\Plugins") == ERROR_SUCCESS)
-		plugins.RecurseDeleteKey(L"{41494D79-3346-4E8C-A432-51BCD3742FC1}");
+	if (plugins.Open(HKEY_CURRENT_USER, L"Software\\FBETeam\\FictionBook Editor Next\\Plugins") == ERROR_SUCCESS)
+		plugins.RecurseDeleteKey(L"{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}");
 
 	return S_OK;
 }
@@ -180,4 +180,3 @@ STDAPI DllInstall(BOOL bInstall, _In_opt_  LPCWSTR pszCmdLine)
 
 	return hr;
 }
-

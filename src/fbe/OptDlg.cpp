@@ -248,7 +248,8 @@ LRESULT COptDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
 
   if(new_lang != _Settings.GetInterfaceLanguageID())
   {
-	_Settings.SetNeedRestart();
+	// Главное окно и новые диалоги перечитывают locale сразу после закрытия
+	// настроек. Перезапуск для одной только смены языка больше не требуется.
 	_Settings.SetInterfaceLanguage(new_lang);
 	FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());
 	FbeResetRuntimeLocalization();

@@ -18,7 +18,8 @@
 !define OUTPUTFILE "${PRODUCT_NAME_VERSION}.exe"
 !endif
 !define PRODUCT_URL "https://github.com/sklart/fictionbook-editor-next"
-!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\FBE.exe"
+; Отдельное имя ключа не позволяет FBE Next перезаписывать App Paths старого FBE.
+!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\FictionBookEditorNext.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKCU"
 !define PRODUCT_STARTMENU_REGVAL "NSIS:StartMenuDir"
@@ -122,11 +123,21 @@ var ICONS_GROUP
 !insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "Russian"
 !insertmacro MUI_LANGUAGE "Ukrainian"
+!insertmacro MUI_LANGUAGE "German"
+!insertmacro MUI_LANGUAGE "French"
+!insertmacro MUI_LANGUAGE "Spanish"
+!insertmacro MUI_LANGUAGE "Italian"
+!insertmacro MUI_LANGUAGE "Polish"
+!insertmacro MUI_LANGUAGE "Portuguese"
+!insertmacro MUI_LANGUAGE "Dutch"
+!insertmacro MUI_LANGUAGE "Czech"
+!insertmacro MUI_LANGUAGE "Bulgarian"
 
 ; Localized strings
 !include "Localization\English.nsh"
 !include "Localization\Russian.nsh"
 !include "Localization\Ukrainian.nsh"
+!include "Generated\EuropeanFallback.generated.nsh"
 
 Name "${PRODUCT_NAME_VERSION}"
 OutFile "${OUTPUTFILE}"
@@ -523,35 +534,6 @@ nthere:
   File "${INPUTDIR}\Lexilla.dll"
   File "${INPUTDIR}\FBV.exe"
   File "${INPUTDIR}\FBVVerbResources.dll"
-  File "${INPUTDIR}\res_rus.dll"
-  File "${INPUTDIR}\res_ukr.dll"
-  SetOutPath "$INSTDIR\en-US"
-  File /nonfatal "${INPUTDIR}\en-US\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\ru-RU"
-  File /nonfatal "${INPUTDIR}\ru-RU\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\uk-UA"
-  File /nonfatal "${INPUTDIR}\uk-UA\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\de-DE"
-  File /nonfatal "${INPUTDIR}\de-DE\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\fr-FR"
-  File /nonfatal "${INPUTDIR}\fr-FR\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\es-ES"
-  File /nonfatal "${INPUTDIR}\es-ES\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\it-IT"
-  File /nonfatal "${INPUTDIR}\it-IT\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\pl-PL"
-  File /nonfatal "${INPUTDIR}\pl-PL\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\cs-CZ"
-  File /nonfatal "${INPUTDIR}\cs-CZ\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\bg-BG"
-  File /nonfatal "${INPUTDIR}\bg-BG\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\pt-PT"
-  File /nonfatal "${INPUTDIR}\pt-PT\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR\nl-NL"
-  File /nonfatal "${INPUTDIR}\nl-NL\FBVVerbResources.dll.mui"
-  SetOutPath "$INSTDIR"
-  File /nonfatal /r "${INPUTDIR}\Lang"
-
   SetOutPath "$INSTDIR"
   File /nonfatal "${INPUTDIR}\*.reg"
   File "${INPUTDIR}\gpl-3.0.txt"
@@ -579,6 +561,8 @@ nthere:
 
   SetAutoClose false
 SectionEnd
+
+!include "Generated\LanguagePacks.generated.nsh"
 
 SectionGroup /e $(System_Integration) System_Integration_id
 
@@ -794,7 +778,7 @@ Function VerifyPluginRegistration
     Goto verify_export_docx
   ${EndIf}
   ClearErrors
-  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor\Plugins\{E242A6D3-84BF-4285-9FAA-160F95370668}" "Type"
+  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{C3098839-EF69-4DE5-B27D-1E80051CA843}" "Type"
   ${If} $0 != "Export"
     DetailPrint "ExportHTML plugin registration was not found after RegDll."
     MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportHTML не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
@@ -807,7 +791,7 @@ verify_export_docx:
     Goto verify_export_epub
   ${EndIf}
   ClearErrors
-  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor\Plugins\{41494D79-3346-4E8C-A432-51BCD3742FC1}" "Type"
+  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "Type"
   ${If} $0 != "Export"
     DetailPrint "ExportDOCX plugin registration was not found after RegDll."
     MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportDOCX не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
@@ -820,7 +804,7 @@ verify_export_epub:
     Return
   ${EndIf}
   ClearErrors
-  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor\Plugins\{A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF}" "Type"
+  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "Type"
   ${If} $0 != "Export"
     DetailPrint "ExportEPUB plugin registration was not found after RegDll."
     MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportEPUB не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
@@ -891,6 +875,19 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${BatchConverters_id} $(DESC_Plugin_BatchConverters)
   !insertmacro MUI_DESCRIPTION_TEXT ${Scripts_id} $(DESC_Scripts)
   !insertmacro MUI_DESCRIPTION_TEXT ${Dictionaries_id} $(DESC_Dictionaries)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePacksGroup_id} $(DESC_LanguagePacksGroup)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_en_US} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_ru_RU} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_uk_UA} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_de_DE} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_fr_FR} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_es_ES} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_it_IT} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_pl_PL} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_pt_PT} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_nl_NL} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_cs_CZ} $(DESC_LanguagePack)
+  !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_bg_BG} $(DESC_LanguagePack)
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Function un.DeleteShortcuts
@@ -1031,12 +1028,10 @@ Section Uninstall
 
     Call un.GetUserAppData
     Pop $0
-    Delete "$0\FBE\Hotkeys.xml"
-    Delete "$0\FBE\Settings.xml"
-    Delete "$0\FBE\Words.xml"
-    RMDir /r "$0\FBE"
+    Delete "$0\FBE Next\Words.xml"
+	RMDir /r "$0\FBE Next"
 
-    DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam"
+	DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam\FictionBook Editor Next"
 
 DoNotDelete:
 

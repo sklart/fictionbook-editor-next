@@ -35,10 +35,10 @@ if (-not (Test-Path -LiteralPath $regsvr32)) {
 }
 
 $plugins = @(
-    @{ Name = 'ExportHTML'; Dll = 'ExportHTML.dll'; Clsid = '{E242A6D3-84BF-4285-9FAA-160F95370668}' },
-    @{ Name = 'ExportDOCX'; Dll = 'ExportDOCX.dll'; Clsid = '{41494D79-3346-4E8C-A432-51BCD3742FC1}' },
-    @{ Name = 'ExportEPUB'; Dll = 'ExportEPUB.dll'; Clsid = '{A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF}' },
-    @{ Name = 'ImportEPUB'; Dll = 'ImportEPUB.dll'; Clsid = '{D4B1B165-4D93-4F2D-8C8A-2D0C649431A1}' }
+    @{ Name = 'ExportHTML'; Dll = 'ExportHTML.dll'; Clsid = '{C3098839-EF69-4DE5-B27D-1E80051CA843}' },
+    @{ Name = 'ExportDOCX'; Dll = 'ExportDOCX.dll'; Clsid = '{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}' },
+    @{ Name = 'ExportEPUB'; Dll = 'ExportEPUB.dll'; Clsid = '{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}' },
+    @{ Name = 'ImportEPUB'; Dll = 'ImportEPUB.dll'; Clsid = '{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}' }
 )
 
 function Get-RegisteredInprocPath {

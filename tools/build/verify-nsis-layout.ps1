@@ -7,6 +7,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $installerDir = Join-Path $repoRoot "packaging\nsis\Installer"
 $makeInstallerBat = Join-Path $installerDir "MakeInstaller.bat"
 $makeInstallerNsi = Join-Path $installerDir "MakeInstaller.nsi"
+$languageFallbackGenerator = Join-Path $repoRoot "tools\localization\export-nsis-installer-fallbacks.ps1"
 $legacyInputDir = Join-Path $installerDir "Input"
 
 if (Test-Path -LiteralPath $legacyInputDir) {
@@ -37,6 +38,22 @@ if ($nsiText -notmatch [regex]::Escape('!define MUI_STARTMENUPAGE_DEFAULTFOLDER 
 if ($nsiText -notmatch 'FBE_WIN7_BUILD' -or
     $nsiText -notmatch 'Windows 7 compatible') {
     throw "MakeInstaller.nsi должен явно маркировать Win7-compatible установщик."
+}
+
+foreach ($language in @("English", "Russian", "Ukrainian", "German", "French", "Spanish", "Italian", "Polish", "Portuguese", "Dutch", "Czech", "Bulgarian")) {
+    if ($nsiText -notmatch [regex]::Escape('!insertmacro MUI_LANGUAGE "' + $language + '"')) {
+        throw "MakeInstaller.nsi должен подключать язык мастера установки: $language."
+    }
+}
+
+if ($batText -notmatch [regex]::Escape('tools\localization\export-nsis-installer-fallbacks.ps1')) {
+    throw "MakeInstaller.bat должен генерировать fallback продуктовых строк для дополнительных языков NSIS."
+}
+if ($nsiText -notmatch [regex]::Escape('!include "Generated\EuropeanFallback.generated.nsh"')) {
+    throw "MakeInstaller.nsi должен подключать generated fallback дополнительных языков NSIS."
+}
+if (-not (Test-Path -LiteralPath $languageFallbackGenerator)) {
+    throw "Не найден генератор fallback продуктовых строк NSIS: $languageFallbackGenerator"
 }
 
 $createReleaseText = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot "create-release.ps1")

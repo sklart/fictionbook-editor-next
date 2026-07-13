@@ -9,7 +9,7 @@ library ExportEPUBLib
 {
     importlib("stdole2.tlb");
     [
-        uuid(A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF)
+        uuid(36FCFB2D-C3D8-4B81-ABC1-5A09CA846515)
     ]
     coclass ExportEPUBPlugin
     {

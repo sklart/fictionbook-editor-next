@@ -97,13 +97,13 @@ static CString LocalizeBundledPluginMenuText(const CString& clsidText, const CSt
 	normalized.MakeUpper();
 
 	LPCWSTR key = NULL;
-	if(normalized == L"{D4B1B165-4D93-4F2D-8C8A-2D0C649431A1}")
+	if(normalized == L"{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}")
 		key = L"fbe.plugin.import_epub.menu";
-	else if(normalized == L"{41494D79-3346-4E8C-A432-51BCD3742FC1}")
+	else if(normalized == L"{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}")
 		key = L"fbe.plugin.export_docx.menu";
-	else if(normalized == L"{A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF}")
+	else if(normalized == L"{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}")
 		key = L"fbe.plugin.export_epub.menu";
-	else if(normalized == L"{E242A6D3-84BF-4285-9FAA-160F95370668}")
+	else if(normalized == L"{C3098839-EF69-4DE5-B27D-1E80051CA843}")
 		key = L"fbe.plugin.export_html.menu";
 
 	if(key == NULL)
@@ -1446,62 +1446,8 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 		++ncmd;
 	}
 
-	// Old path to provide searching of old plugins
-	CRegKey oldRk;
-	if(oldRk.Open(HKEY_LOCAL_MACHINE, L"Software\\Haali\\FBE\\Plugins") != ERROR_SUCCESS)
-		goto skip;
-	else
-	{
-		for(int i = ncmd; ncmd < 20; ++i)
-		{
-			CString name;
-			DWORD size = 128; // enough for GUIDs
-			TCHAR* cp = name.GetBuffer(size);
-			FILETIME ft;
-			if(::RegEnumKeyEx(oldRk, i, cp, &size, 0, 0, 0, &ft) != ERROR_SUCCESS)
-				break;
-			name.ReleaseBuffer(size);
-			CRegKey pk;
-			if(pk.Open(oldRk, name) != ERROR_SUCCESS)
-				continue;
-			CString pt(U::QuerySV(pk, L"Type"));
-			CString ms(U::QuerySV(pk, L"Menu"));
-			if(pt.IsEmpty() || ms.IsEmpty() || pt != type)
-				continue;
-			ms = LocalizeBundledPluginMenuText(name, ms);
-			CLSID clsid;
-			if(::CLSIDFromString((TCHAR*)(const TCHAR *)name, &clsid) != NOERROR)
-				continue;
-
-			// all checks pass, add to menu and remember clsid
-			plist.Add(clsid);
-			::AppendMenu(hMenu, MF_STRING, cmdbase + ncmd, ms);
-			CString hs = ms;
-			hs.Remove(L'&');
-			InitPluginHotkey(name, cmdbase + ncmd,pt + CString(L" | ") + hs);
-			// check if an icon is available
-			CString icon(U::QuerySV(pk, L"Icon"));
-			if(!icon.IsEmpty())
-			{
-				int cp = icon.ReverseFind(L',');
-				int iconID;
-				if(cp > 0 && _stscanf((const TCHAR *)icon + cp, L",%d", &iconID) == 1)
-					icon.Delete(cp, icon.GetLength() - cp);
-				else
-					iconID = 0;
-
-				// try load from file first
-				HICON hIcon;
-				if(::ExtractIconEx(icon, iconID, NULL, &hIcon, 1) > 0 && hIcon)
-				{
-					m_MenuBar.AddIcon(hIcon, cmdbase + ncmd);
-					::DestroyIcon(hIcon);
-				}
-			}
-			++ncmd;
-		}
-	}
-skip:
+	// Не подхватываем legacy Haali/FBE plugins из HKLM: Next использует только
+	// собственную per-user ветку, чтобы не смешивать две установленные версии.
 	if(ncmd > 0) // delete placeholder from menu
 	::RemoveMenu(hMenu, 0, MF_BYPOSITION);
 }
@@ -1568,7 +1514,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
   InitToolBar(m_CmdToolbar, IDR_MAINFRAME);
   // Restore commands toolbar layout and position
-  m_CmdToolbar.RestoreState(HKEY_CURRENT_USER, L"SOFTWARE\\FBETeam\\FictionBook Editor\\Toolbars", L"CommandToolbar");
+	m_CmdToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
   UIAddToolBar(m_CmdToolbar);
 
   m_ScriptsToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
@@ -1939,7 +1885,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   else UIEnable(ID_TOOLS_SPELLCHECK, false, true);
 
   // Restore scripts toolbar layout and position
-  m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, L"SOFTWARE\\FBETeam\\FictionBook Editor\\Toolbars", L"ScriptsToolbar");
+	m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
 
   StartupTrace::Mark(L"main frame OnCreate completed");
   return 0;
@@ -2004,8 +1950,8 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
     }
 
 	// Save toolbar layout
-    m_CmdToolbar.SaveState(HKEY_CURRENT_USER, L"SOFTWARE\\FBETeam\\FictionBook Editor\\Toolbars", L"CommandToolbar");
-    m_ScriptsToolbar.SaveState(HKEY_CURRENT_USER, L"SOFTWARE\\FBETeam\\FictionBook Editor\\Toolbars", L"ScriptsToolbar");
+	 m_CmdToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
+	 m_ScriptsToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
 
     _Settings.SetToolbarsSettings(tbs);
 	_Settings.SaveHotkeyGroups();

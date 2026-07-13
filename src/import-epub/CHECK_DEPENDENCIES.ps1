@@ -4,7 +4,7 @@ $outDir = Join-Path $scriptDir 'out\Release'
 if (-not (Test-Path -LiteralPath $outDir)) { $outDir = Join-Path $scriptDir 'out' }
 $reportPath = Join-Path $scriptDir 'CHECK_DEPENDENCIES_REPORT.txt'
 $lines = New-Object System.Collections.Generic.List[string]
-$clsid = '{D4B1B165-4D93-4F2D-8C8A-2D0C649431A1}'
+$clsid = '{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}'
 
 function Say([string]$text, [ConsoleColor]$color = [ConsoleColor]::Gray) {
     $lines.Add($text) | Out-Null
@@ -107,9 +107,9 @@ Say ''
 
 Say '=== FBE plugin registration ==='
 $pluginPaths = @(
-    'HKCU:\Software\FBETeam\FictionBook Editor\Plugins\' + $clsid,
-    'HKLM:\SOFTWARE\WOW6432Node\FBETeam\FictionBook Editor\Plugins\' + $clsid,
-    'HKLM:\SOFTWARE\FBETeam\FictionBook Editor\Plugins\' + $clsid
+    'HKCU:\Software\FBETeam\FictionBook Editor Next\Plugins\' + $clsid,
+    'HKLM:\SOFTWARE\WOW6432Node\FBETeam\FictionBook Editor Next\Plugins\' + $clsid,
+    'HKLM:\SOFTWARE\FBETeam\FictionBook Editor Next\Plugins\' + $clsid
 )
 $foundPlugin = $false
 foreach ($pp in $pluginPaths) {

@@ -14,6 +14,12 @@ IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 "%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\tools\build\prepare-installer.ps1"
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
+"%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\tools\localization\export-nsis-language-pack-plan.ps1"
+IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+
+"%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\tools\localization\export-nsis-installer-fallbacks.ps1"
+IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
+
 SET "MAKENSIS=%ProgramFiles(x86)%\NSIS\Unicode\makensis.exe"
 IF NOT EXIST "%MAKENSIS%" SET "MAKENSIS=%ProgramFiles(x86)%\NSIS\makensis.exe"
 SET "INPUTDIR=%REPO_ROOT%\out\package\FictionBookEditor"

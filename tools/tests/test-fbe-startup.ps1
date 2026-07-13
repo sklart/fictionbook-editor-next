@@ -14,10 +14,10 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Не найден исполняемый файл FBE: $executable"
 }
 
-$traceFile = Join-Path $env:LOCALAPPDATA "FBE\startup-trace.log"
-$previousTraceSetting = $env:FBE_STARTUP_TRACE
+$traceFile = Join-Path $env:LOCALAPPDATA "FBE Next\startup-trace.log"
+$previousTraceSetting = $env:FBE_NEXT_STARTUP_TRACE
 if ($Trace) {
-    $env:FBE_STARTUP_TRACE = "1"
+    $env:FBE_NEXT_STARTUP_TRACE = "1"
 }
 
 Add-Type @"
@@ -87,5 +87,5 @@ finally {
             Write-Warning "Тестовый процесс FBE не завершился в течение 10 секунд."
         }
     }
-    $env:FBE_STARTUP_TRACE = $previousTraceSetting
+    $env:FBE_NEXT_STARTUP_TRACE = $previousTraceSetting
 }

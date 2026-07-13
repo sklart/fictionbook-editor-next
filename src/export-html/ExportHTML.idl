@@ -9,7 +9,7 @@ library ExportHTMLLib
 {
 	importlib("stdole2.tlb");
 	[
-		uuid(E242A6D3-84BF-4285-9FAA-160F95370668)
+		uuid(C3098839-EF69-4DE5-B27D-1E80051CA843)
 	]
 	coclass ExportHTMLPlugin
 	{

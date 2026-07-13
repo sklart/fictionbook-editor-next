@@ -1,0 +1,90 @@
+; Английский fallback продуктовых строк для дополнительных языков NSIS.
+; Сгенерировано из Localization\\English.nsh.
+; Не редактируйте вручную: запускайте tools/localization/export-nsis-installer-fallbacks.ps1.
+
+!macro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK LanguageId
+LicenseLangString License ${LanguageId} "${INPUTDIR}\gpl-3.0.txt"
+LangString Main ${LanguageId} "Program files"
+LangString System_Integration ${LanguageId} "System integration"
+LangString FB2_File_Association ${LanguageId} "Use FBE Next for .fb2 files"
+LangString FB2_Validate_Command ${LanguageId} "Add “Check FB2 for errors” command"
+LangString FB2_Explorer_Properties ${LanguageId} ".fb2 properties and thumbnails in Explorer"
+LangString ShCutGroup ${LanguageId} "Shortcuts"
+LangString Desktop_ShortCut ${LanguageId} "Desktop"
+LangString Start_Menu_ShortCuts ${LanguageId} "Start menu"
+LangString PluginsGroup ${LanguageId} "Plugins"
+LangString ImportPluginsGroup ${LanguageId} "Import plugins"
+LangString ExportPluginsGroup ${LanguageId} "Export plugins"
+LangString Plugin_ImportEPUB ${LanguageId} "Import EPUB"
+LangString Plugin_ImportEPUB_SVG ${LanguageId} "SVG covers for ImportEPUB"
+LangString Plugin_ExportHTML ${LanguageId} "Export HTML"
+LangString Plugin_ExportDOCX ${LanguageId} "Export DOCX"
+LangString Plugin_ExportEPUB ${LanguageId} "Export EPUB"
+LangString Plugin_BatchConverters ${LanguageId} "Batch converters"
+LangString Scripts ${LanguageId} "Scripts"
+LangString Dictionaries ${LanguageId} "Dictionaries"
+LangString LanguagePacksGroup ${LanguageId} "Interface languages"
+LangString EnglishDict ${LanguageId} "English"
+LangString RussianDict ${LanguageId} "Russian"
+LangString UkrainianDict ${LanguageId} "Ukrainian"
+LangString ByelorussianDict ${LanguageId} "Byelorussian"
+LangString BulgarianDict ${LanguageId} "Bulgarian"
+LangString CzechDict ${LanguageId} "Czech"
+LangString PolishDict ${LanguageId} "Polish"
+LangString GermanDict ${LanguageId} "German"
+LangString FrenchDict ${LanguageId} "French"
+LangString SpanishDict ${LanguageId} "Spanish"
+LangString ItalianDict ${LanguageId} "Italian"
+LangString DownloadingDict ${LanguageId} "Downloading "
+LangString Dictionary ${LanguageId} " dictionary"
+LangString DESC_Main ${LanguageId} "FBE main executable file, dlls and service files."
+LangString DESC_System_Integration ${LanguageId} "Optional .fb2 integration with Windows. You can select only the features you need."
+LangString DESC_FB2_File_Association ${LanguageId} "Makes FictionBook Editor Next the application for .fb2 files and changes the .fb2 icon to the editor icon. Leave unchecked to keep your current reader and icon."
+LangString DESC_FB2_Validate_Command ${LanguageId} "Adds a context-menu command to validate .fb2 files with FBV without changing the default .fb2 application."
+LangString DESC_FB2_Explorer_Properties ${LanguageId} "Registers .fb2 metadata, details pane fields and cover thumbnails in Windows Explorer. Requires administrator privileges."
+LangString DESC_ShCutGroup ${LanguageId} "Install shortcuts."
+LangString DESC_Desktop_ShortCut ${LanguageId} "Desktop shortcut."
+LangString DESC_Start_Menu_ShortCuts ${LanguageId} "Start menu shortcuts."
+LangString DESC_PluginsGroup ${LanguageId} "Additional plugins that extends functionality."
+LangString DESC_ImportPluginsGroup ${LanguageId} "Plugins that add import from external book formats into FictionBook Editor."
+LangString DESC_ExportPluginsGroup ${LanguageId} "Plugins that add export from FictionBook Editor to external book and document formats."
+LangString DESC_Plugin_ImportEPUB ${LanguageId} "Imports EPUB books into FictionBook Editor for editing and conversion to FB2."
+LangString DESC_Plugin_ImportEPUB_SVG ${LanguageId} "Optional ImportEPUBLunaSVG.dll helper for converting EPUB SVG covers to PNG/JPEG during import."
+LangString DESC_Plugin_ExportHTML ${LanguageId} "Exports the current book to HTML for viewing in a browser or further processing."
+LangString DESC_Plugin_ExportDOCX ${LanguageId} "Exports the current book to DOCX for Microsoft Word and compatible word processors."
+LangString DESC_Plugin_ExportEPUB ${LanguageId} "Exports the current book to EPUB for e-readers, libraries and EPUB-compatible applications."
+LangString DESC_Plugin_BatchConverters ${LanguageId} "Installs command-line batch conversion utilities for DOCX/EPUB together with their DLL dependencies."
+LangString DESC_Scripts ${LanguageId} "Jurgennt's (http://jurgennt.nm.ru/) pack of useful scripts."
+LangString DESC_Dictionaries ${LanguageId} "Dictionaries for built-in spell-checker."
+LangString DESC_LanguagePacksGroup ${LanguageId} "Choose interface-language resources. English is required; Russian and Ukrainian are selected by default."
+LangString DESC_LanguagePack ${LanguageId} "Installs runtime translations and the localized Validate command for this interface language. Spell-check dictionaries are selected separately."
+LangString ErrCheckMSXMLVersion ${LanguageId} "This application requires Microsoft XML Parser version 4.0 to run."
+LangString ErrCheckIEVersion ${LanguageId} "This application requires Microsoft Internet Expolorer version 5.5 or newer to run."
+LangString ErrCheckFBERunning ${LanguageId} "Please exit FictionBook Editor before continue."
+LangString ErrCheckFBVRunning ${LanguageId} "Please exit FictionBook Validator before continue."
+LangString ErrNTCurrentVersion ${LanguageId} "FictionBook Tools run only on Windows NT and later OS'es."
+LangString ErrShellIntergation ${LanguageId} "FB shell intergation dll was in use and could not be overwritten.$\r$\n\
+	Please logout and logon again, and restart this installation."
+LangString WarnModernPropertyHandlerInstall ${LanguageId} "Could not enable modern .fb2 properties in Windows Explorer automatically. The main FBE installation will continue, and the shell integration can be enabled later manually."
+LangString UacRetryInstaller ${LanguageId} "Administrator privileges are required to complete system integration. Retry elevation?"
+LangString UacAbortInstaller ${LanguageId} "System integration requires administrator privileges. Setup will be aborted."
+LangString UacLogonServiceInstaller ${LanguageId} "Could not request elevation because the logon service is unavailable."
+LangString UacRetryUninstaller ${LanguageId} "Administrator privileges are required to remove system integration correctly. Retry elevation?"
+LangString UacAbortUninstaller ${LanguageId} "Removing system integration requires administrator privileges. Uninstall will be aborted."
+LangString UacLogonServiceUninstaller ${LanguageId} "Could not request elevation for uninstall because the logon service is unavailable."
+LangString UacUnknownError ${LanguageId} "Could not elevate privileges. Error code:"
+LangString FinishPageTitle ${LanguageId} "Installation complete"
+LangString FinishPageText ${LanguageId} "FictionBook Editor Next has been installed successfully.$\r$\n$\r$\nClick $\"Finish$\" to close Setup."
+LangString FinishPageRunText ${LanguageId} "Run FictionBook Editor Next"
+LangString UninstAskSettings ${LanguageId} "Would you like to delete all application settings?"
+!macroend
+
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_GERMAN}
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_FRENCH}
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_SPANISH}
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_ITALIAN}
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_POLISH}
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_PORTUGUESE}
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_DUTCH}
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_CZECH}
+!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_BULGARIAN}

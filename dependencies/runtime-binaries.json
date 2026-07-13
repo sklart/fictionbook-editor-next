@@ -17,7 +17,8 @@
             90624,
             566784,
             584704,
-            587264
+            587264,
+            587776
           ],
           "modernization": "FBV.exe собирается из локального проекта src/fbv; release-gate фиксирует PE/x86-архитектуру и допустимый размер для текущего профиля, но не SHA-256, потому что hash меняется при каждой сборке.",
           "hashPolicy": "volatile-build-output-with-profile-size-check"
@@ -37,7 +38,8 @@
             90624,
             566784,
             584704,
-            587264
+            587264,
+            587776
           ],
           "modernization": "FBV.exe собирается из локального проекта src/fbv; release-gate фиксирует PE/x86-архитектуру и допустимый размер для Win7-профиля, но не SHA-256, потому что hash меняется при каждой сборке.",
           "hashPolicy": "volatile-build-output-with-profile-size-check"

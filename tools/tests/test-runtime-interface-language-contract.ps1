@@ -1,5 +1,5 @@
 ﻿# Проверяет, что runtime JSON-локализация использует общий выбранный язык интерфейса FBE.
-# FBE публикует выбранный язык в FBE_UI_LOCALE и interface-locale.txt, а FBV и плагины
+# FBE Next публикует выбранный язык в FBE_NEXT_UI_LOCALE и interface-locale.txt, а FBV и плагины
 # читают этот контракт перед fallback на язык Windows и en-US.
 [CmdletBinding()]
 param()
@@ -64,8 +64,8 @@ if ($optDlgText -notlike "*FbePublishRuntimeLocaleName(_Settings.GetInterfaceLoc
 if ($optDlgText -notlike "*FbeResetRuntimeLocalization()*") {
     throw "OptDlg.cpp не сбрасывает FBE runtime JSON-cache после смены языка интерфейса."
 }
-if ($optDlgText -notlike "*SetNeedRestart()*") {
-    throw "OptDlg.cpp должен честно предлагать перезапуск после смены языка, пока полный live-refresh GUI не завершён."
+if ($optDlgText -like "*new_lang != _Settings.GetInterfaceLanguageID()*SetNeedRestart()*") {
+    throw "Смена только языка интерфейса не должна требовать перезапуска: главное окно и новые диалоги обновляются runtime-слоем."
 }
 
 $buildScriptText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "tools\build\build.ps1")
@@ -134,7 +134,7 @@ $runtimeConsumers = @(
     "src\import-epub\RuntimeLocalization.cpp"
 )
 
-foreach ($pattern in @("FBE_UI_LOCALE", "interface-locale.txt", "GetPreferredRuntimeLocaleName", "LoadRuntimeStringFiles")) {
+foreach ($pattern in @("FBE_NEXT_UI_LOCALE", "FBE Next", "interface-locale.txt", "GetPreferredRuntimeLocaleName", "LoadRuntimeStringFiles")) {
     if ($sharedRuntimeHelperText -notlike "*$pattern*") {
         throw "Общий runtime localization helper не содержит обязательный элемент контракта: $pattern. Файл: $sharedRuntimeHelperPath"
     }
@@ -144,7 +144,7 @@ foreach ($relativePath in $runtimeConsumers) {
     $path = Join-Path $repoRoot $relativePath
     $text = Get-Content -Raw -LiteralPath $path
     $usesLocalContract = $true
-    foreach ($pattern in @("FBE_UI_LOCALE", "interface-locale.txt", "GetPreferredRuntimeLocaleName")) {
+    foreach ($pattern in @("FBE_NEXT_UI_LOCALE", "FBE Next", "interface-locale.txt", "GetPreferredRuntimeLocaleName")) {
         if ($text -notlike "*$pattern*") {
             $usesLocalContract = $false
             break

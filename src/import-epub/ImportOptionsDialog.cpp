@@ -153,7 +153,7 @@ namespace
         return nullptr;
     }
 
-    const wchar_t* kSettingsKey = L"Software\\FBETeam\\FictionBook Editor\\ImportEPUB";
+    const wchar_t* kSettingsKey = L"Software\\FBETeam\\FictionBook Editor Next\\ImportEPUB";
 
     DWORD BoolToDword(bool value)
     {
