@@ -73,6 +73,9 @@ LangString UacRetryUninstaller ${LANG_RUSSIAN} "Для корректного у
 LangString UacAbortUninstaller ${LANG_RUSSIAN} "Удаление системной интеграции требует прав администратора. Деинсталляция будет прервана."
 LangString UacLogonServiceUninstaller ${LANG_RUSSIAN} "Не удалось запросить повышение прав для деинсталляции: служба входа в систему недоступна."
 LangString UacUnknownError ${LANG_RUSSIAN} "Не удалось повысить права. Код ошибки:"
+LangString FinishPageTitle ${LANG_RUSSIAN} "Установка завершена"
+LangString FinishPageText ${LANG_RUSSIAN} "FictionBook Editor Next успешно установлен.$\r$\n$\r$\nНажмите кнопку $\"Готово$\" для выхода из программы установки."
+LangString FinishPageRunText ${LANG_RUSSIAN} "Запустить FictionBook Editor Next"
 
 ; uninstall messages
 LangString UninstAskSettings ${LANG_RUSSIAN} "Вы желаете удалить файлы настроек программы?"

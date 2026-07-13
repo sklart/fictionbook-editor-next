@@ -73,6 +73,9 @@ LangString UacRetryUninstaller ${LANG_ENGLISH} "Administrator privileges are req
 LangString UacAbortUninstaller ${LANG_ENGLISH} "Removing system integration requires administrator privileges. Uninstall will be aborted."
 LangString UacLogonServiceUninstaller ${LANG_ENGLISH} "Could not request elevation for uninstall because the logon service is unavailable."
 LangString UacUnknownError ${LANG_ENGLISH} "Could not elevate privileges. Error code:"
+LangString FinishPageTitle ${LANG_ENGLISH} "Installation complete"
+LangString FinishPageText ${LANG_ENGLISH} "FictionBook Editor Next has been installed successfully.$\r$\n$\r$\nClick $\"Finish$\" to close Setup."
+LangString FinishPageRunText ${LANG_ENGLISH} "Run FictionBook Editor Next"
 
 ; uninstall messages
 LangString UninstAskSettings ${LANG_ENGLISH} "Would you like to delete all application settings?"

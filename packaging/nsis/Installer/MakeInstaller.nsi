@@ -37,8 +37,8 @@ SetCompressor /SOLID lzma
 ;--------------------------------
 ;Interface Configuration
 
-  !define MUI_WELCOMEFINISHPAGE_BITMAP "..\\res\\fbe.bmp"
-  !define MUI_UNWELCOMEFINISHPAGE_BITMAP "..\\res\\fbe.bmp"
+  !define MUI_WELCOMEFINISHPAGE_BITMAP "..\\res\\fbe-wizard.bmp"
+  !define MUI_UNWELCOMEFINISHPAGE_BITMAP "..\\res\\fbe-wizard.bmp"
 
 RequestExecutionLevel user
 
@@ -90,9 +90,9 @@ var ICONS_GROUP
 ; Finish page
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION ExecAppFile
-!define MUI_FINISHPAGE_RUN_TEXT "Запустить FictionBook Editor Next"
-!define MUI_FINISHPAGE_TITLE "Установка завершена"
-!define MUI_FINISHPAGE_TEXT "FictionBook Editor Next успешно установлен.$\r$\n$\r$\nНажмите кнопку $\"Готово$\" для выхода из программы установки."
+!define MUI_FINISHPAGE_RUN_TEXT "$(FinishPageRunText)"
+!define MUI_FINISHPAGE_TITLE "$(FinishPageTitle)"
+!define MUI_FINISHPAGE_TEXT "$(FinishPageText)"
 !define MUI_FINISHPAGE_TITLE_3LINES
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW FinishPageShow
 !insertmacro MUI_PAGE_FINISH
@@ -298,8 +298,8 @@ Function ExecAppFile
 FunctionEnd
 
 Function FinishPageShow
-  ; Даем длинной подписи чекбокса больше места, чтобы она не обрезалась
-  ; на современных системах с более крупными системными шрифтами.
+  ; Финальная страница использует короткие локализованные строки, чтобы
+  ; не подтягивать длинное имя сборки в заголовок и чекбокс запуска.
   System::Call 'user32::SetWindowPos(p $mui.FinishPage.Run, p 0, i 205, i 241, i 320, i 34, i 0x0004)'
 FunctionEnd
 
