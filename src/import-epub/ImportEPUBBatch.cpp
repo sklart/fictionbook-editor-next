@@ -1,11 +1,16 @@
 ﻿#include "stdafx.h"
 #include "EpubImport.h"
+#include "RuntimeLocalization.h"
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <vector>
 #include <set>
 #include <string>
+
+// У console-конвертера нет DllMain, поэтому экземпляр модуля и runtime-строки
+// инициализируются явно в wmain().
+HINSTANCE g_hInstance = nullptr;
 
 namespace
 {
@@ -1654,6 +1659,8 @@ namespace
 int wmain(int argc, wchar_t** argv)
 {
     InitializeConsoleOutput();
+    g_hInstance = ::GetModuleHandleW(nullptr);
+    InitImportEpubRuntimeStrings();
 
     if (argc == 2 && CStringW(argv[1]).CompareNoCase(L"--help") == 0)
     {

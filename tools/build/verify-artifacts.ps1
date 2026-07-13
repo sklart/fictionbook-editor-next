@@ -110,8 +110,8 @@ $requiredPortableEntries = @(
 )
 
 $portableEditorVersions = @{
-    "Scintilla.dll" = "5.6.3"
-    "Lexilla.dll" = "5.5.0"
+    "Scintilla.dll" = "5.6.4"
+    "Lexilla.dll" = "5.5.1"
 }
 
 $obsoletePortableEntries = @(

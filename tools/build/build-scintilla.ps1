@@ -67,9 +67,16 @@ foreach ($build in @(
 }
 
 $runtimeDir = Join-Path $repoRoot "runtime"
+$scintillaVersionCode = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "third_party\scintilla\version.txt")).Trim()
+$lexillaVersionCode = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "third_party\lexilla\version.txt")).Trim()
+if ($scintillaVersionCode -notmatch '^\d{3}$' -or $lexillaVersionCode -notmatch '^\d{3}$') {
+    throw "Не удалось прочитать трёхзначные версии Scintilla/Lexilla из version.txt."
+}
+$scintillaVersion = "{0}.{1}.{2}" -f $scintillaVersionCode.Substring(0, 1), $scintillaVersionCode.Substring(1, 1), $scintillaVersionCode.Substring(2, 1)
+$lexillaVersion = "{0}.{1}.{2}" -f $lexillaVersionCode.Substring(0, 1), $lexillaVersionCode.Substring(1, 1), $lexillaVersionCode.Substring(2, 1)
 Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\scintilla\bin\Scintilla.dll") `
     -Destination $runtimeDir -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll") `
     -Destination $runtimeDir -Force
 
-Write-Host "Scintilla 5.6.3 и Lexilla 5.5.0 подготовлены в $runtimeDir ($CompatibilityTarget)."
+Write-Host "Scintilla $scintillaVersion и Lexilla $lexillaVersion подготовлены в $runtimeDir ($CompatibilityTarget)."

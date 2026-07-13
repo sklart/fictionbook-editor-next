@@ -25,7 +25,7 @@
 - Репозиторий перенесён в современную структуру `src/runtime/third_party/tools/packaging/docs`.
 - Основное приложение собирается с Visual Studio 2026.
 - Выполнена миграция режима «Дизайн» с PCRE 7.9 на PCRE2 10.47.
-- Обновлены Scintilla до 5.6.3 и Lexilla до 5.5.0; добавлены regression-тесты.
+- Обновлены Scintilla до 5.6.4 и Lexilla до 5.5.1; добавлены regression-тесты.
 - Обновлён Hunspell, устранено выявленное падение орфографии в `suggestmgr.cxx`.
 - Механизм версионирования синхронизирован с `update.xml`.
 - Добавлены аварийное восстановление, minidump-диагностика и безопасная запись документов.
@@ -57,8 +57,8 @@
 - `https://github.com/evpobr/fictionbookeditor` — дополнительный upstream/reference для `ExportHTML` и возможной сверки `FBV`.
 - `https://github.com/hunspell/hunspell` — источник Hunspell.
 - `third_party/pcre2` — исходники PCRE2 10.47.
-- `third_party/scintilla` — исходники Scintilla 5.6.3.
-- `third_party/lexilla` — исходники Lexilla 5.5.0.
+- `third_party/scintilla` — исходники Scintilla 5.6.4.
+- `third_party/lexilla` — исходники Lexilla 5.5.1.
 - `third_party/hunspell` — интегрированные исходники Hunspell; точная версия в текущей документации не определена.
 - `third_party/uac` — полный комплект NSIS UAC plugin 0.2.4c, перенесённый из ранее скачанного `UAC.zip`.
 - `tools/upx/upx.exe` — локальная копия UPX 5.1.1.
@@ -380,8 +380,8 @@
 - Основная архитектура приложения: Win32.
 - Shell DLL: Win32 и x64.
 - PCRE2: 10.47.
-- Scintilla: 5.6.3.
-- Lexilla: 5.5.0.
+- Scintilla: 5.6.4.
+- Lexilla: 5.5.1.
 - NSIS UAC plugin: 0.2.4c.
 - UPX: 5.1.1; для modern shell DLL не применяется.
 - Hunspell: версия не определена.

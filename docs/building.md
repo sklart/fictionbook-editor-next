@@ -48,7 +48,7 @@ Legacy runtime-зависимости, поставляемые только в 
 файлов нужно запускать `tools/build/verify-runtime-binaries.ps1`. Проверка
 релиза также валидирует копии, лежащие рядом с `FBE.exe`.
 
-Редактор исходного кода использует Scintilla 5.6.3 и Lexilla 5.5.0 из
+Редактор исходного кода использует Scintilla 5.6.4 и Lexilla 5.5.1 из
 `third_party`. Скрипт `tools/build/build-scintilla.ps1` собирает их x86 DLL с
 статическим C++ runtime до сборки solution и выкладывает их в `runtime`.
 Скрипт `tools/tests/test-scintilla.ps1` проверяет загрузку Lexilla и синтаксис
@@ -153,11 +153,9 @@ legacy-инициализации MSHTML и проверяет, что восс�
 Скрипт `tools/build/build-pcre2.ps1` собирает статическую x86-библиотеку
 `pcre2-8` через CMake и выкладывает её в `build/pcre2/install/<Configuration>`.
 Скрипт `tools/tests/test-pcre2.ps1` проверяет эту сборку на базовых fixture-кейсах.
-Основной runtime FBE уже использует `PCRE2`, а legacy `PCRE 7.9` сохранён только
-в `third_party/pcre` как внешний reference-контур для compare- и regression-тестов миграции.
-Если `third_party/pcre/pcre.dll` отсутствует, legacy smoke- и compare-тесты
-автоматически пропускаются, а стандартная релизная проверка опирается только
-на основной `PCRE2`-контур.
+Основной runtime FBE использует только `PCRE2`. Исторический reference-контур
+`PCRE 7.9` и связанные с ним тесты удалены: стандартная и ручная проверка
+регулярных выражений опирается на единый актуальный `PCRE2`-контур.
 
 - NSIS для создания установщика.
 

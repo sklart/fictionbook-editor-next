@@ -33,9 +33,7 @@
 - [tools/tests/regex-fixtures.json](D:\Download\FBeditor\tools\tests\regex-fixtures.json);
 - [tools/tests/test-pcre2.ps1](D:\Download\FBeditor\tools\tests\test-pcre2.ps1);
 - [tools/tests/test-pcre2-wrapper.ps1](D:\Download\FBeditor\tools\tests\test-pcre2-wrapper.ps1);
-- [tools/tests/test-pcre2-replace.ps1](D:\Download\FBeditor\tools\tests\test-pcre2-replace.ps1);
-- [tools/tests/test-regex-backend-compare.ps1](D:\Download\FBeditor\tools\tests\test-regex-backend-compare.ps1) —
-  запускается только если доступен legacy `third_party\pcre\pcre.dll`.
+- [tools/tests/test-pcre2-replace.ps1](D:\Download\FBeditor\tools\tests\test-pcre2-replace.ps1).
 
 ## Что важно понимать про FBE
 
@@ -66,10 +64,8 @@
 - `FBE.exe` больше не зависит от `pcre.dll` и `pcre.lib`;
 - исходник legacy backend удалён из `src\fbe`, чтобы не поддерживать мёртвую
   compile-time ветку;
-- legacy `PCRE 7.9` оставлен только как внешний reference-контур для compare-
-  и regression-проверок;
-- при отсутствии `third_party\pcre\pcre.dll` legacy smoke- и compare-тесты
-  автоматически пропускаются.
+- исторический reference-контур `PCRE 7.9`, его исходники и compare-тесты
+  удалены из репозитория.
 
 Текущий backend по умолчанию выбирается в
 [src/fbe/RegexBackend.cpp](D:\Download\FBeditor\src\fbe\RegexBackend.cpp)
@@ -80,8 +76,6 @@
 Ниже перечислено не то, что уже сломано, а то, что ещё не зафиксировано
 отдельными проверками и потому требует аккуратности:
 
-- автоматическое прямое сравнение `PCRE 7.9` и `PCRE2` сейчас зависит от наличия
-  `third_party\pcre\pcre.dll`; если файла нет, compare-контур пропускается;
 - различия в текстах и позициях сообщений об ошибках для невалидных шаблонов;
 - сложные и редкие конструкции `PCRE`, которые не входят в наш набор fixture-кейсов;
 - расширенные регистровые преобразования на кириллице в замене за пределами базовых кейсов.
