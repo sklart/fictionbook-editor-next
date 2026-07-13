@@ -5,6 +5,14 @@
 #include <fstream>
 #include "FBE.h"
 #include "Speller.h"
+#include "RuntimeLocalization.h"
+
+static void SetRuntimeSpellText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR fallback)
+{
+	const CString text = FbeLoadRuntimeStringByKey(key, fallback);
+	if (!text.IsEmpty())
+		::SetDlgItemText(dialog, controlId, text);
+}
 
 const CString Tokens(L" .,?–!—…\r\n\t\"«»“”‘’:;<>(){}[]\u00A0\u2003\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u2060\u3000\u2012\u2013\u2014\u00BA\u25A1\u25AB\u25E6\u201e\u201c");
 
@@ -17,6 +25,16 @@ LRESULT CSpellDialog::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_IgnoreContinue = GetDlgItem(IDC_SPELL_IGNORE);
 	m_WasSuspended = false;
 
+	SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.caption", L"Spell Check"));
+	SetRuntimeSpellText(m_hWnd, IDCANCEL, L"fbe.dialog.idd_spell_check.cancel", L"Cancel");
+	SetRuntimeSpellText(m_hWnd, IDC_SPELL_IGNORE, L"fbe.dialog.idd_spell_check.ignore", L"Ignore");
+	SetRuntimeSpellText(m_hWnd, IDC_SPELL_IGNOREALL, L"fbe.dialog.idd_spell_check.ignore_all", L"Ignore All");
+	SetRuntimeSpellText(m_hWnd, IDC_SPELL_CHANGE, L"fbe.dialog.idd_spell_check.change", L"Change");
+	SetRuntimeSpellText(m_hWnd, IDC_SPELL_CHANGEALL, L"fbe.dialog.idd_spell_check.change_all", L"Change All");
+	SetRuntimeSpellText(m_hWnd, IDC_SPELL_ADD, L"fbe.dialog.idd_spell_check.add", L"Add");
+	SetRuntimeSpellText(m_hWnd, IDC_SPELL_SUGGEST, L"fbe.dialog.idd_spell_check.suggest", L"Suggest");
+	SetRuntimeSpellText(m_hWnd, IDC_SPELL_UNDO, L"fbe.dialog.idd_spell_check.undo", L"Undo");
+
 	UpdateData();
 	CenterWindow();
 	return 1;
@@ -27,7 +45,7 @@ LRESULT CSpellDialog::OnActivate(UINT, WPARAM wParam, LPARAM, BOOL&)
 	if (wParam == WA_INACTIVE)
 	{
 		CString txt;
-		txt.LoadString(IDS_SPELL_CONTINUE);
+		txt = FbeLoadCString(IDS_SPELL_CONTINUE);
 		m_IgnoreContinue.SetWindowText (txt);
 
 		GetDlgItem(IDC_SPELL_IGNOREALL).EnableWindow(FALSE);
@@ -101,7 +119,7 @@ LRESULT CSpellDialog::OnIgnore(WORD, WORD wID, HWND, BOOL&)
 	if (m_WasSuspended)
 	{
 		CString txt;
-		txt.LoadString(IDC_SPELL_IGNORE);
+		txt = FbeLoadCString(IDC_SPELL_IGNORE);
 		m_IgnoreContinue.SetWindowText (txt);
 
 		GetDlgItem(IDC_SPELL_IGNOREALL).EnableWindow(TRUE);
@@ -379,10 +397,10 @@ void CSpeller::AppendSpellMenu (HMENU menu)
 			::AppendMenu(menu, MF_SEPARATOR, 0, NULL);
 
 		CString itemName;
-		itemName.LoadString(IDC_SPELL_IGNOREALL);
+		itemName = FbeLoadCString(IDC_SPELL_IGNOREALL);
 		::AppendMenu(menu, MF_STRING, IDC_SPELL_IGNOREALL, itemName);
 
-		itemName.LoadString(IDC_SPELL_ADD2DICT);
+		itemName = FbeLoadCString(IDC_SPELL_ADD2DICT);
 		::AppendMenu(menu, MF_STRING, IDC_SPELL_ADD2DICT, itemName);
 	}
 }

@@ -20,7 +20,7 @@ static CString BuildPcre2ErrorText(int errorNumber)
 		buffer,
 		sizeof(buffer) / sizeof(buffer[0]));
 	if (result < 0)
-		return CString(L"Неизвестная ошибка PCRE2.");
+		return CString(L"Unknown PCRE2 error.");
 
 	return CString(CA2T(reinterpret_cast<const char*>(buffer), CP_UTF8));
 }
@@ -72,7 +72,7 @@ bool RegexBackend::Execute(
 	if (matchData == NULL)
 	{
 		pcre2_code_free(re);
-		errorText = L"Не удалось выделить память для match data PCRE2.";
+		errorText = L"Failed to allocate PCRE2 match data.";
 		return false;
 	}
 

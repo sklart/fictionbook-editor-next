@@ -5,15 +5,15 @@ namespace FB2Shell {
 namespace {
 
 const PropertyDescriptor kPropertyDescriptors[] = {
-    { PropertyId::Author,          L"author",          L"Автор",            L"System.Author",                 MappingStatus::Confirmed,   DisplayNameSource::WindowsLocalized, L"Подходит как стандартное свойство автора документа." },
-    { PropertyId::Title,           L"title",           L"Название",         L"System.Title",                  MappingStatus::Confirmed,   DisplayNameSource::WindowsLocalized, L"Подходит как стандартное свойство названия документа." },
-    { PropertyId::Genre,           L"genre",           L"FBE:Жанр",         nullptr,                          MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Книжный жанр переведён в отдельное FBE-specific свойство, чтобы не использовать музыкальный системный ключ Windows." },
-    { PropertyId::Keywords,        L"keywords",        L"FBE:Ключевые слова", nullptr,                         MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Ключевые слова переведены в отдельное FBE-specific свойство, потому что UI Проводника Windows 11 непредсказуемо показывает System.Keywords." },
-    { PropertyId::Language,        L"language",        L"Язык",             L"System.Language",               MappingStatus::Confirmed,   DisplayNameSource::WindowsLocalized, L"Подходит как стандартное свойство языка." },
-    { PropertyId::Sequence,        L"sequence",        L"FBE:Серия",        nullptr,                          MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Книжная серия публикуется как отдельное FBE-specific свойство." },
-    { PropertyId::DocumentId,      L"documentId",      L"FBE:Идентификатор документа", nullptr,                 MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Идентификатор документа переведён в отдельное FBE-specific свойство, потому что UI Проводника Windows 11 непредсказуемо показывает System.Document.DocumentID." },
-    { PropertyId::DocumentVersion, L"documentVersion", L"FBE:Версия документа", nullptr,                       MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Версия FB2-документа публикуется как отдельное FBE-specific свойство, а не через общее системное поле версии документа." },
-    { PropertyId::DocumentDate,    L"documentDate",    L"FBE:Дата документа",   nullptr,                       MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Дата FB2-документа публикуется как отдельное FBE-specific свойство, чтобы не смешивать её с системной датой создания файла или документа Windows." }
+    { PropertyId::Author,          L"author",          L"Author",            L"System.Author",                 MappingStatus::Confirmed,   DisplayNameSource::WindowsLocalized, L"Uses the standard Windows document author property." },
+    { PropertyId::Title,           L"title",           L"Title",         L"System.Title",                  MappingStatus::Confirmed,   DisplayNameSource::WindowsLocalized, L"Uses the standard Windows document title property." },
+    { PropertyId::Genre,           L"genre",           L"FBE:Genre",         nullptr,                          MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Book genre is exposed as an FBE-specific property to avoid using the Windows music genre key." },
+    { PropertyId::Keywords,        L"keywords",        L"FBE:Keywords", nullptr,                         MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Keywords are exposed as an FBE-specific property because Explorer UI may show System.Keywords inconsistently." },
+    { PropertyId::Language,        L"language",        L"Language",             L"System.Language",               MappingStatus::Confirmed,   DisplayNameSource::WindowsLocalized, L"Uses the standard Windows language property." },
+    { PropertyId::Sequence,        L"sequence",        L"FBE:Sequence",        nullptr,                          MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Book series is exposed as an FBE-specific property." },
+    { PropertyId::DocumentId,      L"documentId",      L"FBE:Document ID", nullptr,                 MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"Document ID is exposed as an FBE-specific property because Explorer UI may show System.Document.DocumentID inconsistently." },
+    { PropertyId::DocumentVersion, L"documentVersion", L"FBE:Document version", nullptr,                       MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"FB2 document version is exposed as an FBE-specific property instead of the generic Windows document version field." },
+    { PropertyId::DocumentDate,    L"documentDate",    L"FBE:Document date",   nullptr,                       MappingStatus::FbeSpecific, DisplayNameSource::FbeFallback,      L"FB2 document date is exposed as an FBE-specific property to avoid mixing it with Windows file or document dates." }
 };
 
 ATL::CString SelectNonEmpty(const ATL::CString& primary, const ATL::CString& fallback)
@@ -159,7 +159,7 @@ const wchar_t* GetPropertyDebugName(PropertyId propertyId)
 const wchar_t* GetPropertyFallbackDisplayName(PropertyId propertyId)
 {
     const PropertyDescriptor* descriptor = FindDescriptor(propertyId);
-    return descriptor != nullptr ? descriptor->fallbackDisplayName : L"Неизвестное свойство";
+    return descriptor != nullptr ? descriptor->fallbackDisplayName : L"Unknown property";
 }
 
 const wchar_t* GetPropertyWindowsCanonicalName(PropertyId propertyId)

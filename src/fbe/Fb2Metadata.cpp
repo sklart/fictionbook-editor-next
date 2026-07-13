@@ -203,7 +203,7 @@ bool TryRead(const wchar_t* filePath, Metadata& metadata, ATL::CString* errorMes
 
     if (filePath == nullptr || *filePath == L'\0') {
         if (errorMessage != nullptr)
-            *errorMessage = L"Не указан путь к FB2-файлу.";
+            *errorMessage = L"FB2 file path is not specified.";
         return false;
     }
 
@@ -212,7 +212,7 @@ bool TryRead(const wchar_t* filePath, Metadata& metadata, ATL::CString* errorMes
         HRESULT hr = document.CreateInstance(__uuidof(MSXML2::DOMDocument60));
         if (FAILED(hr)) {
             if (errorMessage != nullptr)
-                errorMessage->Format(L"Не удалось создать DOMDocument60: 0x%08X", static_cast<unsigned int>(hr));
+                errorMessage->Format(L"Failed to create DOMDocument60: 0x%08X", static_cast<unsigned int>(hr));
             return false;
         }
 
@@ -231,12 +231,12 @@ bool TryRead(const wchar_t* filePath, Metadata& metadata, ATL::CString* errorMes
                     const long linePos = parseError->linepos;
                     const _bstr_t reason = parseError->reason;
                     errorMessage->Format(
-                        L"Ошибка разбора FB2 (строка %ld, позиция %ld): %s",
+                        L"FB2 parse error (line %ld, position %ld): %s",
                         line,
                         linePos,
                         static_cast<const wchar_t*>(reason));
                 } else {
-                    *errorMessage = L"MSXML не смог загрузить FB2-файл.";
+                    *errorMessage = L"MSXML could not load the FB2 file.";
                 }
             }
             return false;
@@ -249,7 +249,7 @@ bool TryRead(const wchar_t* filePath, Metadata& metadata, ATL::CString* errorMes
 
         if (titleInfo == nullptr && documentInfo == nullptr) {
             if (errorMessage != nullptr)
-                *errorMessage = L"В FB2 не найдены ни title-info, ни document-info.";
+                *errorMessage = L"Neither title-info nor document-info was found in FB2.";
             return false;
         }
 

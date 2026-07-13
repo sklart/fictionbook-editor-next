@@ -77,37 +77,37 @@ bool ExtractBinaryBytes(MSXML2::IXMLDOMNodePtr binaryNode, std::vector<unsigned 
     bytes.clear();
 
     if (binaryNode == nullptr) {
-        errorMessage = L"Не найден узел binary для обложки.";
+        errorMessage = L"Cover binary node was not found.";
         return false;
     }
 
     CComQIPtr<MSXML2::IXMLDOMElement> binaryElement(binaryNode);
     if (!binaryElement) {
-        errorMessage = L"Узел binary обложки не удалось привести к IXMLDOMElement.";
+        errorMessage = L"Cover binary node could not be converted to IXMLDOMElement.";
         return false;
     }
 
     HRESULT hr = binaryElement->put_dataType(_bstr_t(L"bin.base64"));
     if (FAILED(hr)) {
-        errorMessage.Format(L"Не удалось включить режим bin.base64 для узла обложки: 0x%08X", static_cast<unsigned int>(hr));
+        errorMessage.Format(L"Failed to enable bin.base64 mode for the cover node: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
 
     _variant_t typedValue;
     hr = binaryElement->get_nodeTypedValue(&typedValue);
     if (FAILED(hr)) {
-        errorMessage.Format(L"Не удалось получить декодированные байты обложки: 0x%08X", static_cast<unsigned int>(hr));
+        errorMessage.Format(L"Failed to read decoded cover bytes: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
 
     if ((typedValue.vt & VT_ARRAY) == 0 || typedValue.parray == nullptr) {
-        errorMessage = L"MSXML не смог декодировать base64-данные обложки.";
+        errorMessage = L"MSXML could not decode cover base64 data.";
         return false;
     }
 
     SAFEARRAY* safeArray = typedValue.parray;
     if (SafeArrayGetDim(safeArray) != 1) {
-        errorMessage = L"Декодированные данные обложки имеют неожиданный формат.";
+        errorMessage = L"Decoded cover data has an unexpected format.";
         return false;
     }
 
@@ -116,7 +116,7 @@ bool ExtractBinaryBytes(MSXML2::IXMLDOMNodePtr binaryNode, std::vector<unsigned 
     if (FAILED(SafeArrayGetLBound(safeArray, 1, &lowerBound)) ||
         FAILED(SafeArrayGetUBound(safeArray, 1, &upperBound)) ||
         upperBound < lowerBound) {
-        errorMessage = L"Не удалось прочитать размер декодированной обложки.";
+        errorMessage = L"Failed to read decoded cover size.";
         return false;
     }
 
@@ -128,7 +128,7 @@ bool ExtractBinaryBytes(MSXML2::IXMLDOMNodePtr binaryNode, std::vector<unsigned 
     void* dataPointer = nullptr;
     const HRESULT accessHr = SafeArrayAccessData(safeArray, &dataPointer);
     if (FAILED(accessHr)) {
-        errorMessage.Format(L"Не удалось получить доступ к байтам обложки: 0x%08X", static_cast<unsigned int>(accessHr));
+        errorMessage.Format(L"Failed to access cover bytes: 0x%08X", static_cast<unsigned int>(accessHr));
         bytes.clear();
         return false;
     }
@@ -164,7 +164,7 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
 
     if (filePath == nullptr || *filePath == L'\0') {
         if (errorMessage != nullptr)
-            *errorMessage = L"Не указан путь к FB2-файлу.";
+            *errorMessage = L"FB2 file path is not specified.";
         return false;
     }
 
@@ -173,7 +173,7 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
         HRESULT hr = document.CreateInstance(__uuidof(MSXML2::DOMDocument60));
         if (FAILED(hr)) {
             if (errorMessage != nullptr)
-                errorMessage->Format(L"Не удалось создать DOMDocument60: 0x%08X", static_cast<unsigned int>(hr));
+                errorMessage->Format(L"Failed to create DOMDocument60: 0x%08X", static_cast<unsigned int>(hr));
             return false;
         }
 
@@ -189,12 +189,12 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
                 MSXML2::IXMLDOMParseErrorPtr parseError = document->parseError;
                 if (parseError != nullptr) {
                     errorMessage->Format(
-                        L"Ошибка разбора FB2 (строка %ld, позиция %ld): %s",
+                        L"FB2 parse error (line %ld, position %ld): %s",
                         parseError->line,
                         parseError->linepos,
                         static_cast<const wchar_t*>(parseError->reason));
                 } else {
-                    *errorMessage = L"MSXML не смог загрузить FB2-файл.";
+                    *errorMessage = L"MSXML could not load the FB2 file.";
                 }
             }
             return false;
@@ -205,7 +205,7 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
         coverImage.href = GetNodeText(hrefNode);
         if (coverImage.href.IsEmpty()) {
             if (errorMessage != nullptr)
-                *errorMessage = L"В FB2 не найдена ссылка на обложку.";
+                *errorMessage = L"FB2 cover reference was not found.";
             return false;
         }
 
@@ -215,7 +215,7 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
         NormalizeWhitespace(coverImage.binaryId);
         if (coverImage.binaryId.IsEmpty()) {
             if (errorMessage != nullptr)
-                *errorMessage = L"Ссылка на обложку найдена, но идентификатор binary пустой.";
+                *errorMessage = L"FB2 cover reference is present, but the binary identifier is empty.";
             return false;
         }
 
@@ -223,7 +223,7 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
             _bstr_t(L"/fb:FictionBook/fb:binary"));
         if (binaryNodes == nullptr) {
             if (errorMessage != nullptr)
-                *errorMessage = L"В FB2 нет раздела binary для обложки.";
+                *errorMessage = L"FB2 cover binary section was not found.";
             return false;
         }
 
@@ -240,7 +240,7 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
 
         if (matchedBinaryNode == nullptr) {
             if (errorMessage != nullptr)
-                errorMessage->Format(L"Не найден binary с id '%s' для обложки.", static_cast<const wchar_t*>(coverImage.binaryId));
+                errorMessage->Format(L"Cover binary with id '%s' was not found.", static_cast<const wchar_t*>(coverImage.binaryId));
             return false;
         }
 
@@ -255,7 +255,7 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
         if (coverImage.bytes.empty()) {
             coverImage.Clear();
             if (errorMessage != nullptr)
-                *errorMessage = L"Данные обложки декодированы, но результат пустой.";
+                *errorMessage = L"Cover data was decoded, but the result is empty.";
             return false;
         }
 

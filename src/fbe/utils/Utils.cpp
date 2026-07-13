@@ -6,6 +6,7 @@
 #include "../Settings.h"
 #include "../resource.h"
 #include "../res1.h"
+#include "../RuntimeLocalization.h"
 
 #include <iostream>
 #include <sstream>
@@ -510,8 +511,7 @@ ok:
 void  ReportError(HRESULT hr) 
 {
   CString   err(Win32ErrMsg(hr));
-  CString cpt;
-  cpt.LoadString(IDS_ERRMSGBOX_CAPTION);
+  CString cpt(FbeLoadRuntimeString(IDS_ERRMSGBOX_CAPTION));
   ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
 }
 
@@ -540,7 +540,17 @@ void  ReportError(_com_error& e) {
 
   if (err.IsEmpty())
   {
-	  err.Format(_T("Code: %08lx [%s]"),e.Error(),e.ErrorMessage());
+	  CString knownErrorDescription;
+	  switch (e.Error())
+	  {
+	  case REGDB_E_CLASSNOTREG:
+		  knownErrorDescription = FbeLoadRuntimeStringByKey(
+			  L"fbe.com.error.class_not_registered",
+			  L"Class is not registered");
+		  break;
+	  }
+	  LPCTSTR errorMessage = knownErrorDescription.IsEmpty() ? e.ErrorMessage() : static_cast<LPCTSTR>(knownErrorDescription);
+	  err.Format(_T("Code: %08lx [%s]"),e.Error(),errorMessage);
 	  _bstr_t src(e.Source());
 	  if (src.length()>0) {
 		err+=_T("\nSource: ");
@@ -552,16 +562,15 @@ void  ReportError(_com_error& e) {
 		err+=(const wchar_t *)src;
 	  }
   }
-  CString cpt;
-  cpt.LoadString(IDS_COM_ERR_CPT);
+  CString cpt(FbeLoadRuntimeString(IDS_COM_ERR_CPT));
   ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
   VBErr = true;
 }
 
 UINT  MessageBox(UINT type, UINT titleID, UINT msgID, ...) {
   CString title, msg, str;
-  title.LoadString(titleID);
-  msg.LoadString(msgID);
+  title = FbeLoadRuntimeString(titleID);
+  msg = FbeLoadRuntimeString(msgID);
   va_list   ap;
   va_start(ap,msgID);
   str.FormatV(msg,ap);

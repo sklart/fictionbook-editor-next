@@ -92,10 +92,10 @@ void AppendThumbnailTraceFormat(const wchar_t* format, ...)
 bool IsMissingCoverError(const ATL::CString& errorMessage)
 {
     return
-        errorMessage == L"В FB2 не найдена ссылка на обложку." ||
-        errorMessage == L"Ссылка на обложку найдена, но идентификатор binary пустой." ||
-        errorMessage == L"В FB2 нет раздела binary для обложки." ||
-        errorMessage.Find(L"Не найден binary") == 0;
+        errorMessage == L"FB2 cover reference was not found." ||
+        errorMessage == L"FB2 cover reference is present, but the binary identifier is empty." ||
+        errorMessage == L"FB2 cover binary section was not found." ||
+        errorMessage.Find(L"Cover binary was not found") == 0;
 }
 
 class TempFileScope {
@@ -158,7 +158,7 @@ HRESULT CopyStreamToTempFile(IStream* stream, TempFileScope& tempFile)
     if (::GetTempFileNameW(tempDirectory, L"FBE", 0, tempFilePath) == 0) {
         return HRESULT_FROM_WIN32(::GetLastError());
     }
-    AppendThumbnailTraceFormat(L"Создан временный файл для thumbnail provider: %ls", tempFilePath);
+    AppendThumbnailTraceFormat(L"Thumbnail provider temporary file created: %ls", tempFilePath);
     HANDLE fileHandle = ::CreateFileW(
         tempFilePath,
         GENERIC_WRITE,
@@ -174,7 +174,7 @@ HRESULT CopyStreamToTempFile(IStream* stream, TempFileScope& tempFile)
     }
     tempFile.SetPath(tempFilePath);
     const ULONGLONG inputStreamSize = GetStreamSizeOrZero(stream);
-    AppendThumbnailTraceFormat(L"Размер входного FB2-потока: %llu байт", inputStreamSize);
+    AppendThumbnailTraceFormat(L"Input FB2 stream size: %llu bytes", inputStreamSize);
     const HRESULT seekHr = SeekStreamToStart(stream);
     if (FAILED(seekHr)) {
         ::CloseHandle(fileHandle);
@@ -200,7 +200,7 @@ HRESULT CopyStreamToTempFile(IStream* stream, TempFileScope& tempFile)
         totalCopiedBytes += bytesWritten;
     }
     ::CloseHandle(fileHandle);
-    AppendThumbnailTraceFormat(L"Во временный FB2-файл скопировано: %llu байт", totalCopiedBytes);
+    AppendThumbnailTraceFormat(L"Copied to temporary FB2 file: %llu bytes", totalCopiedBytes);
     return S_OK;
 }
 HRESULT BuildThumbnailFromStream(IStream* stream, UINT requestedEdge, HBITMAP* bitmap, WTS_ALPHATYPE* alphaType)
@@ -212,23 +212,23 @@ HRESULT BuildThumbnailFromStream(IStream* stream, UINT requestedEdge, HBITMAP* b
     TempFileScope tempFile;
     const HRESULT copyHr = CopyStreamToTempFile(stream, tempFile);
     if (FAILED(copyHr)) {
-        AppendThumbnailTraceFormat(L"CopyStreamToTempFile завершился ошибкой: 0x%08X", static_cast<unsigned int>(copyHr));
+        AppendThumbnailTraceFormat(L"CopyStreamToTempFile failed: 0x%08X", static_cast<unsigned int>(copyHr));
         return copyHr;
     }
 
-    AppendThumbnailTraceFormat(L"Начато чтение обложки из временного FB2: %ls", tempFile.GetPath());
+    AppendThumbnailTraceFormat(L"Reading cover from temporary FB2 started: %ls", tempFile.GetPath());
 
     FB2CoverImage::CoverImage coverImage;
     ATL::CString coverError;
     if (!FB2CoverImage::TryRead(tempFile.GetPath(), coverImage, &coverError)) {
-        AppendThumbnailTraceFormat(L"FB2CoverImage::TryRead завершился ошибкой: %ls", static_cast<const wchar_t*>(coverError));
+        AppendThumbnailTraceFormat(L"FB2CoverImage::TryRead failed: %ls", static_cast<const wchar_t*>(coverError));
         return IsMissingCoverError(coverError)
             ? HRESULT_FROM_WIN32(ERROR_NOT_FOUND)
             : HRESULT_FROM_WIN32(ERROR_BAD_FORMAT);
     }
 
     AppendThumbnailTraceFormat(
-        L"Обложка прочитана: bytes=%u, content-type=%ls, binary-id=%ls",
+        L"Cover read: bytes=%u, content-type=%ls, binary-id=%ls",
         static_cast<unsigned int>(coverImage.bytes.size()),
         static_cast<const wchar_t*>(coverImage.contentType),
         static_cast<const wchar_t*>(coverImage.binaryId));
@@ -236,20 +236,20 @@ HRESULT BuildThumbnailFromStream(IStream* stream, UINT requestedEdge, HBITMAP* b
     FB2CoverThumbnail::DecodedImage decodedImage;
     ATL::CString decodeError;
     if (!FB2CoverThumbnail::TryDecode(coverImage.bytes, decodedImage, &decodeError)) {
-        AppendThumbnailTraceFormat(L"FB2CoverThumbnail::TryDecode завершился ошибкой: %ls", static_cast<const wchar_t*>(decodeError));
+        AppendThumbnailTraceFormat(L"FB2CoverThumbnail::TryDecode failed: %ls", static_cast<const wchar_t*>(decodeError));
         return HRESULT_FROM_WIN32(ERROR_BAD_FORMAT);
     }
 
-    AppendThumbnailTraceFormat(L"Обложка декодирована успешно: %dx%d", decodedImage.width, decodedImage.height);
+    AppendThumbnailTraceFormat(L"Cover decoded successfully: %dx%d", decodedImage.width, decodedImage.height);
 
     FB2CoverThumbnail::DecodedImage thumbnailImage;
     ATL::CString resizeError;
     if (!FB2CoverThumbnail::TryResizeToFit(decodedImage, requestedEdge, thumbnailImage, &resizeError)) {
-        AppendThumbnailTraceFormat(L"FB2CoverThumbnail::TryResizeToFit завершился ошибкой: %ls", static_cast<const wchar_t*>(resizeError));
+        AppendThumbnailTraceFormat(L"FB2CoverThumbnail::TryResizeToFit failed: %ls", static_cast<const wchar_t*>(resizeError));
         return HRESULT_FROM_WIN32(ERROR_BAD_FORMAT);
     }
 
-    AppendThumbnailTraceFormat(L"Thumbnail подготовлен под shell-контракт: %dx%d, requested=%u", thumbnailImage.width, thumbnailImage.height, static_cast<unsigned int>(requestedEdge));
+    AppendThumbnailTraceFormat(L"Thumbnail prepared for shell contract: %dx%d, requested=%u", thumbnailImage.width, thumbnailImage.height, static_cast<unsigned int>(requestedEdge));
 
     *alphaType = WTSAT_RGB;
     *bitmap = thumbnailImage.bitmap;
@@ -269,10 +269,10 @@ STDMETHODIMP Fb2ThumbnailProvider::Initialize(IStream* stream, DWORD mode)
         return E_POINTER;
     if (m_stream != nullptr)
         return HRESULT_FROM_WIN32(ERROR_ALREADY_INITIALIZED);
-    AppendThumbnailTraceFormat(L"Initialize вызван, mode=0x%08X", static_cast<unsigned int>(mode));
+    AppendThumbnailTraceFormat(L"Initialize called, mode=0x%08X", static_cast<unsigned int>(mode));
     const HRESULT seekHr = SeekStreamToStart(stream);
     if (FAILED(seekHr)) {
-        AppendThumbnailTraceFormat(L"SeekStreamToStart в Initialize завершился ошибкой: 0x%08X", static_cast<unsigned int>(seekHr));
+        AppendThumbnailTraceFormat(L"SeekStreamToStart failed in Initialize: 0x%08X", static_cast<unsigned int>(seekHr));
         return seekHr;
     }
     m_stream = stream;
@@ -285,14 +285,14 @@ STDMETHODIMP Fb2ThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* bitmap, WTS_AL
         return E_POINTER;
     if (m_stream == nullptr)
         return E_UNEXPECTED;
-    AppendThumbnailTraceFormat(L"GetThumbnail вызван, requested=%u.", static_cast<unsigned int>(cx));
+    AppendThumbnailTraceFormat(L"GetThumbnail called, requested=%u.", static_cast<unsigned int>(cx));
     const HRESULT seekHr = SeekStreamToStart(m_stream);
     if (FAILED(seekHr)) {
-        AppendThumbnailTraceFormat(L"SeekStreamToStart в GetThumbnail завершился ошибкой: 0x%08X", static_cast<unsigned int>(seekHr));
+        AppendThumbnailTraceFormat(L"SeekStreamToStart failed in GetThumbnail: 0x%08X", static_cast<unsigned int>(seekHr));
         return seekHr;
     }
     const HRESULT thumbnailHr = BuildThumbnailFromStream(m_stream, cx, bitmap, alphaType);
-    AppendThumbnailTraceFormat(L"GetThumbnail завершился с HRESULT: 0x%08X", static_cast<unsigned int>(thumbnailHr));
+    AppendThumbnailTraceFormat(L"GetThumbnail finished with HRESULT: 0x%08X", static_cast<unsigned int>(thumbnailHr));
     return thumbnailHr;
 }
 

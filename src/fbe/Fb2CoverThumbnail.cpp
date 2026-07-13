@@ -111,7 +111,7 @@ bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL
 
     if (bytes.empty()) {
         if (errorMessage != nullptr)
-            *errorMessage = L"Не переданы байты изображения обложки.";
+            *errorMessage = L"Cover image bytes were not provided.";
         return false;
     }
 
@@ -119,7 +119,7 @@ bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL
     HRESULT hr = CreateStreamFromBytes(bytes, &stream);
     if (FAILED(hr)) {
         if (errorMessage != nullptr)
-            errorMessage->Format(L"Не удалось создать поток из байтов обложки: 0x%08X", static_cast<unsigned int>(hr));
+            errorMessage->Format(L"Failed to create a stream from cover bytes: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
 
@@ -127,7 +127,7 @@ bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL
     hr = decodedImage.Load(stream);
     if (FAILED(hr) || decodedImage.IsNull()) {
         if (errorMessage != nullptr)
-            errorMessage->Format(L"Системный image-стек Windows не смог декодировать обложку: 0x%08X", static_cast<unsigned int>(hr));
+            errorMessage->Format(L"The Windows image stack could not decode the cover: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
 
@@ -138,7 +138,7 @@ bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL
     if (image.bitmap == nullptr || image.width <= 0 || image.height <= 0) {
         image.Reset();
         if (errorMessage != nullptr)
-            *errorMessage = L"Изображение обложки декодировано, но bitmap или размеры некорректны.";
+            *errorMessage = L"Cover image was decoded, but bitmap or dimensions are invalid.";
         return false;
     }
 
@@ -154,13 +154,13 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
 
     if (sourceImage.bitmap == nullptr || sourceImage.width <= 0 || sourceImage.height <= 0) {
         if (errorMessage != nullptr)
-            *errorMessage = L"Не передано корректное декодированное изображение для масштабирования.";
+            *errorMessage = L"A valid decoded image was not provided for resizing.";
         return false;
     }
 
     if (maxEdge == 0) {
         if (errorMessage != nullptr)
-            *errorMessage = L"Запрошен нулевой размер thumbnail.";
+            *errorMessage = L"Requested thumbnail size is zero.";
         return false;
     }
 
@@ -175,7 +175,7 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
 
     if (targetWidth <= 0 || targetHeight <= 0) {
         if (errorMessage != nullptr)
-            *errorMessage = L"Не удалось вычислить размеры thumbnail.";
+            *errorMessage = L"Failed to calculate thumbnail dimensions.";
         return false;
     }
 
@@ -187,7 +187,7 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
     if (!created || targetCImage.IsNull()) {
         sourceCImage.Detach();
         if (errorMessage != nullptr)
-            *errorMessage = L"Не удалось создать target bitmap для thumbnail.";
+            *errorMessage = L"Failed to create target bitmap for thumbnail.";
         return false;
     }
 
@@ -196,7 +196,7 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
         sourceCImage.Detach();
         targetCImage.Destroy();
         if (errorMessage != nullptr)
-            *errorMessage = L"Не удалось получить DC для target thumbnail.";
+            *errorMessage = L"Failed to get DC for target thumbnail.";
         return false;
     }
 
@@ -206,7 +206,7 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
         sourceCImage.Detach();
         targetCImage.Destroy();
         if (errorMessage != nullptr)
-            *errorMessage = L"Не удалось получить DC для исходной обложки.";
+            *errorMessage = L"Failed to get DC for the source cover.";
         return false;
     }
 
@@ -234,7 +234,7 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
     if (!stretchOk) {
         targetCImage.Destroy();
         if (errorMessage != nullptr)
-            errorMessage->Format(L"Не удалось масштабировать bitmap обложки: Win32 0x%08X", static_cast<unsigned int>(::GetLastError()));
+            errorMessage->Format(L"Failed to resize cover bitmap: Win32 0x%08X", static_cast<unsigned int>(::GetLastError()));
         return false;
     }
 
@@ -245,7 +245,7 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
     if (resizedImage.bitmap == nullptr) {
         resizedImage.Reset();
         if (errorMessage != nullptr)
-            *errorMessage = L"Масштабирование завершилось без итогового bitmap.";
+            *errorMessage = L"Resizing finished without a resulting bitmap.";
         return false;
     }
 

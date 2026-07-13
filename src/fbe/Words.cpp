@@ -309,7 +309,7 @@ public:
 			m_fr_context.iWIndex = m_sel_idx;
 
 			CString strFRFind;
-			strFRFind.LoadString(IDS_WORDS_FR_BTN_FIND0);
+			strFRFind = FbeLoadCString(IDS_WORDS_FR_BTN_FIND0);
 
 			btnFRFind.SetWindowText(strFRFind);
 			btnFRFind.EnableWindow(TRUE);
@@ -356,9 +356,9 @@ public:
 		m_lv.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_SUBITEMIMAGES);
 
 		CString colLabels[3];
-		colLabels[0].LoadString(IDS_WORDS_WLIST_WORD);
-		colLabels[1].LoadString(IDS_WORDS_WLIST_REPLACEMENT);
-		colLabels[2].LoadString(IDS_WORDS_WLIST_COUNTED);
+		colLabels[0] = FbeLoadCString(IDS_WORDS_WLIST_WORD);
+		colLabels[1] = FbeLoadCString(IDS_WORDS_WLIST_REPLACEMENT);
+		colLabels[2] = FbeLoadCString(IDS_WORDS_WLIST_COUNTED);
 
 		int maxWordLen = GetWordLen(colLabels[0]), maxReplLen = GetWordLen(colLabels[1]);
 		int wordsSize = m_words.GetSize();
@@ -1046,12 +1046,12 @@ public:
 
 		if(res != -1)
 		{
-			strFRFind.LoadString(IDS_WORDS_FR_BTN_FIND1);
+			strFRFind = FbeLoadCString(IDS_WORDS_FR_BTN_FIND1);
 			btnFRRepl.EnableWindow(TRUE);
 		}
 		else
 		{
-			strFRFind.LoadString(IDS_WORDS_FR_BTN_FIND0);
+			strFRFind = FbeLoadCString(IDS_WORDS_FR_BTN_FIND0);
 			btnFRRepl.EnableWindow(FALSE);
 
 			m_fr_context.iPIndex = 0;
