@@ -3,6 +3,7 @@
 #include "ExportDOCX_i.h"
 #include "dllmain.h"
 #include "utils.h"
+#include "RuntimeLocalization.h"
 
 CExportDOCXModule _AtlModule;
 HINSTANCE g_hInstance = NULL;
@@ -15,6 +16,7 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRes
 	{
 		g_hInstance = hInstance;
 		DisableThreadLibraryCalls(hInstance);
+		InitExportDocxRuntimeStrings();
 		U::InitSettings();
 	}
 	return _AtlModule.DllMain(dwReason, lpReserved);

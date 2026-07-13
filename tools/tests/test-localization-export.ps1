@@ -24,9 +24,21 @@ try {
     }
 
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json -Depth 20
+    if ($manifest.formatVersion -ne 1) {
+        throw "manifest.json содержит неверный formatVersion: $($manifest.formatVersion)."
+    }
+    if ($manifest.fallbackLanguage -ne "en-US") {
+        throw "manifest.json содержит неверный fallbackLanguage: $($manifest.fallbackLanguage)."
+    }
     $languages = @($manifest.languages)
     if ($languages.Count -ne 12) {
         throw "Ожидалось 12 языков экспорта, фактически: $($languages.Count)."
+    }
+    if ($manifest.stringCount -lt 200) {
+        throw "manifest.json содержит подозрительно малый stringCount: $($manifest.stringCount)."
+    }
+    if (@($manifest.files).Count -ne $languages.Count) {
+        throw "manifest.json содержит неверное число файлов: $(@($manifest.files).Count)."
     }
 
     foreach ($language in $languages) {
@@ -36,16 +48,31 @@ try {
         }
 
         $data = Get-Content -Raw -LiteralPath $filePath | ConvertFrom-Json -Depth 30
+        if ($data.formatVersion -ne 1) {
+            throw "В $language.json указан неверный formatVersion: $($data.formatVersion)."
+        }
         if ($data.language -ne $language) {
             throw "В $language.json указан неверный язык: $($data.language)."
         }
+        if ($data.fallbackLanguage -ne "en-US") {
+            throw "В $language.json указан неверный fallbackLanguage: $($data.fallbackLanguage)."
+        }
 
         $strings = $data.strings.PSObject.Properties
+        if ($data.stringCount -ne @($strings).Count) {
+            throw "В $language.json stringCount не совпадает с фактическим числом строк."
+        }
         if (-not ($strings.Name -contains "fbv.validation.no_errors")) {
             throw "В $language.json нет строки fbv.validation.no_errors."
         }
         if (-not ($strings.Name -contains "export_epub.dialog.options.caption")) {
             throw "В $language.json нет строки export_epub.dialog.options.caption."
+        }
+        if (-not ($strings.Name -contains "export_epub.summary.saved")) {
+            throw "В $language.json нет строки export_epub.summary.saved."
+        }
+        if (-not ($strings.Name -contains "import_epub.plugin.filedlg_title")) {
+            throw "В $language.json нет строки import_epub.plugin.filedlg_title."
         }
     }
 

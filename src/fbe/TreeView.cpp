@@ -8,8 +8,49 @@
 #include "FBEView.h"
 #include "FBDoc.h"
 #include "TreeView.h"
+#include "RuntimeLocalization.h"
 
 extern CElementDescMnr _EDMnr;
+
+struct RuntimeTreeMenuBinding
+{
+	UINT commandId;
+	LPCWSTR key;
+};
+
+static const RuntimeTreeMenuBinding kDocumentTreeMenuBindings[] = {
+	{ ID_DT_VIEW, L"fbe.menu.idr_document_tree.view" },
+	{ ID_DT_VIEWSOURCE, L"fbe.menu.idr_document_tree.view_source" },
+	{ ID_DT_RIGHT_ONE, L"fbe.menu.idr_document_tree.move_right" },
+	{ ID_DT_RIGHT_SMART, L"fbe.menu.idr_document_tree.make_child" },
+	{ ID_DT_LEFT, L"fbe.menu.idr_document_tree.move_left" },
+	{ ID_DT_DELETE, L"fbe.menu.idr_document_tree.delete" },
+};
+
+static void ApplyRuntimeDocumentTreeMenuLocalization(HMENU menu)
+{
+	if(menu == NULL)
+		return;
+
+	const int count = ::GetMenuItemCount(menu);
+	for(int i = 0; i < count; ++i)
+	{
+		const UINT commandId = ::GetMenuItemID(menu, i);
+		if(commandId == static_cast<UINT>(-1) || commandId == 0)
+			continue;
+
+		for(size_t binding = 0; binding < _countof(kDocumentTreeMenuBindings); ++binding)
+		{
+			if(kDocumentTreeMenuBindings[binding].commandId != commandId)
+				continue;
+
+			CString text = FbeLoadRuntimeStringByKey(kDocumentTreeMenuBindings[binding].key);
+			if(!text.IsEmpty())
+				::ModifyMenu(menu, i, MF_BYPOSITION | MF_STRING, commandId, text);
+			break;
+		}
+	}
+}
 
 // redrawing the tree is _very_ ugly visually, so we first build a copy and compare them
 struct TreeNode {
@@ -605,6 +646,7 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BO
 	// the font popup is stored in a resource
 	menu = ::LoadMenu(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_DOCUMENT_TREE));
 	pPopup = ::GetSubMenu(menu, 0);
+	ApplyRuntimeDocumentTreeMenuLocalization(pPopup);
 	ClientToScreen(&ptMousePos);
 	BOOL res = ::TrackPopupMenu(pPopup, TPM_LEFTALIGN, ptMousePos.x, ptMousePos.y, 0, *this, 0);
 	int err = GetLastError();

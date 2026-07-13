@@ -24,9 +24,11 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 
 $appCatalogPath = Join-Path $repoRoot "localization\app-ui\catalog.json"
 $pluginCatalogPath = Join-Path $repoRoot "localization\plugin-ui\catalog.json"
+$runtimeContractPath = Join-Path $repoRoot "localization\runtime\contract.json"
 
 $appCatalog = Get-Content -Raw -LiteralPath $appCatalogPath | ConvertFrom-Json -Depth 30
 $pluginCatalog = Get-Content -Raw -LiteralPath $pluginCatalogPath | ConvertFrom-Json -Depth 30
+$runtimeContract = Get-Content -Raw -LiteralPath $runtimeContractPath | ConvertFrom-Json -Depth 20
 
 $appLanguages = @($appCatalog.targetLanguages)
 $pluginLanguages = @($pluginCatalog.targetLanguages)
@@ -77,6 +79,9 @@ function Convert-CatalogStrings {
         if ($entry.Value.PSObject.Properties["component"]) {
             $item.component = [string]$entry.Value.component
         }
+        if ($entry.Value.PSObject.Properties["comment"]) {
+            $item.comment = [string]$entry.Value.comment
+        }
 
         $result[$entry.Name] = $item
     }
@@ -84,12 +89,16 @@ function Convert-CatalogStrings {
 }
 
 $manifest = [ordered]@{
+    formatVersion = 1
     generatedAt = (Get-Date).ToString("s")
+    fallbackLanguage = [string]$runtimeContract.fallbackLanguage
     sourceCatalogs = @(
         "localization/app-ui/catalog.json",
         "localization/plugin-ui/catalog.json"
     )
     languages = $appLanguages
+    stringCount = 0
+    files = @()
     note = "Временный экспорт для переводчиков/Weblate. Не редактируется программой во время выполнения."
 }
 
@@ -102,13 +111,26 @@ foreach ($language in $appLanguages) {
     foreach ($item in $pluginStrings.GetEnumerator()) { $strings[$item.Key] = $item.Value }
 
     $languageExport = [ordered]@{
+        formatVersion = 1
         language = $language
+        fallbackLanguage = [string]$runtimeContract.fallbackLanguage
+        sourceCatalogs = $manifest.sourceCatalogs
+        stringCount = $strings.Count
         strings = $strings
     }
 
     $json = $languageExport | ConvertTo-Json -Depth 20
     $targetPath = Join-Path $OutputDirectory "$language.json"
     [IO.File]::WriteAllText($targetPath, $json + "`n", [Text.UTF8Encoding]::new($false))
+
+    if ($strings.Count -gt $manifest.stringCount) {
+        $manifest.stringCount = $strings.Count
+    }
+    $manifest.files += [ordered]@{
+        language = $language
+        file = "$language.json"
+        stringCount = $strings.Count
+    }
 }
 
 $manifestPath = Join-Path $OutputDirectory "manifest.json"

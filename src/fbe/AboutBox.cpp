@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "Utils.h"
 #include "AboutBox.h"
+#include "RuntimeLocalization.h"
 #include "../version.h"
 
 namespace
@@ -354,23 +355,23 @@ LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_StatusBitmaps[2].LoadBitmap(IDB_UPD_ERR);
 
 	// load localized messages
-	m_sCheckingUpdate.LoadString(IDS_UPDATE_CHECK);
-	m_sConnecting.LoadString(IDS_UPDATE_CONNECTING);
-	m_sCantConnect.LoadString(IDS_UPDATE_CANTCONNECT);
-	m_sDownloadedFrom.LoadString(IDS_UPDATE_DOWNLOADEDFROM);
-	m_sDownloaded.LoadString(IDS_UPDATE_DOWNLOADED);
-	m_sDownloadCompleted.LoadString(IDS_UPDATE_DOWNLOADCOMPLETE);
-	m_sDownloadReady.LoadString(IDS_UPDATE_DOWNLOADREADY);
-	m_sDownloadError.LoadString(IDS_UPDATE_DOWNLOADERROR);
-	m_sError404.LoadString(IDS_UPDATE_404ERROR);
-	m_sError403.LoadString(IDS_UPDATE_403ERROR);
-	m_sError407.LoadString(IDS_UPDATE_407ERROR);
-	m_sNotSupportRange.LoadString(IDS_UPDATE_NOTSUPPORTEDRANGE);
-	m_sDownloadErrorStatus.LoadString(IDS_UPDATE_DOWNLOADERRORSTATUS);
-	m_sIncorrectChecksum.LoadString(IDS_UPDATE_INCORRECTMD5);
-	m_sNewVersionAvailable.LoadString(IDS_UPDATE_NEWVERSIONAVAILABLE);
-	m_sHaveLatestVersion.LoadString(IDS_UPDATE_HAVELATESTVERSION);
-	m_sLogoCaption.LoadString(IDS_ABOUT_LOGOCAPTION);
+	m_sCheckingUpdate = FbeLoadRuntimeString(IDS_UPDATE_CHECK);
+	m_sConnecting = FbeLoadRuntimeString(IDS_UPDATE_CONNECTING);
+	m_sCantConnect = FbeLoadRuntimeString(IDS_UPDATE_CANTCONNECT);
+	m_sDownloadedFrom = FbeLoadRuntimeString(IDS_UPDATE_DOWNLOADEDFROM);
+	m_sDownloaded = FbeLoadRuntimeString(IDS_UPDATE_DOWNLOADED);
+	m_sDownloadCompleted = FbeLoadRuntimeString(IDS_UPDATE_DOWNLOADCOMPLETE);
+	m_sDownloadReady = FbeLoadRuntimeString(IDS_UPDATE_DOWNLOADREADY);
+	m_sDownloadError = FbeLoadRuntimeString(IDS_UPDATE_DOWNLOADERROR);
+	m_sError404 = FbeLoadRuntimeString(IDS_UPDATE_404ERROR);
+	m_sError403 = FbeLoadRuntimeString(IDS_UPDATE_403ERROR);
+	m_sError407 = FbeLoadRuntimeString(IDS_UPDATE_407ERROR);
+	m_sNotSupportRange = FbeLoadRuntimeString(IDS_UPDATE_NOTSUPPORTEDRANGE);
+	m_sDownloadErrorStatus = FbeLoadRuntimeString(IDS_UPDATE_DOWNLOADERRORSTATUS);
+	m_sIncorrectChecksum = FbeLoadRuntimeString(IDS_UPDATE_INCORRECTMD5);
+	m_sNewVersionAvailable = FbeLoadRuntimeString(IDS_UPDATE_NEWVERSIONAVAILABLE);
+	m_sHaveLatestVersion = FbeLoadRuntimeString(IDS_UPDATE_HAVELATESTVERSION);
+	m_sLogoCaption = FbeLoadRuntimeString(IDS_ABOUT_LOGOCAPTION);
 
 	// check FBE update
 	CheckUpdate();

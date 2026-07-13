@@ -5,6 +5,11 @@
 заметки остаются в `docs/legacy-todo.txt`, а здесь ведётся актуальный бэклог.
 
 ## Актуальная техдолговая заметка
+- Провести отдельный аудит дублирующихся bitmap/icon-ресурсов в
+  `src/fbe/res`, `src/locales/res_rus/res` и `src/locales/res_ukr/res`:
+  сравнить хэши, оставить локальные копии только там, где ресурс реально
+  отличается для локализованной DLL, а общие файлы перевести на один источник
+  без нарушения сборки `res_rus.dll`/`res_ukr.dll`.
 - [x] Подготовить релизный контур к двум вариантам пакетов: основной modern
   build для Windows 8.1/10/11 и отдельный Win7-compatible setup/portable build.
 - После первого успешного GitHub Actions-прогона с двумя профилями проверить,
@@ -14,6 +19,7 @@
   `FictionBookEditorNext-*-win7-win32-setup.exe` и `FictionBookEditorNext-*-win7-win32-portable.zip`: запуск FBE, режим `Код`,
   Scintilla-поиск/замена, FBV, ImportEPUB/ExportEPUB/ExportDOCX.
 - После пересборки Win7-compatible установщика повторить clean Win7 smoke: меню `Файл → Экспорт` должно показывать `To HTML`, `To DOCX`, `To EPUB`, а отсутствие плагинов должно считаться release-блокером.
+- После пересборки ordinary и Win7-compatible установщиков вручную проверить финальную страницу мастера установки: русский текст и чекбокс `Запустить FictionBook Editor Next` должны отображаться без mojibake и без обрезания.
 - Если после статического CRT и отключения TLB-регистрации `ExportHTML` на clean Win7 плагины всё ещё не появляются, следующим шагом снять installer log/registry snapshot и проверить фактические HRESULT `RegDll` для `ExportHTML.dll`, `ExportDOCX.dll`, `ExportEPUB.dll`.
 - После следующего GitHub release проверить, что описание релиза содержит ссылку на соответствующий `docs/release-notes/<version>.md` и не имеет ручных переносов внутри пунктов списка.
 - [x] Зафиксировать Weblate-friendly направление локализации в
@@ -22,24 +28,165 @@
   `ExportDOCX`, `ExportEPUB`, `ImportEPUB`, `ExportHTML` заведены в стабильный
   JSON-каталог переводов `localization/plugin-ui/catalog.json` с украинским и
   черновыми европейскими переводами.
-- Следующим локализационным шагом подключить генерацию Win32 resource-фрагментов
+- [x] Подключить генерацию Win32 resource-фрагментов
   из `localization/plugin-ui/catalog.json` и расширить каталог на tooltip,
   диагностические сообщения и отчёты плагинов.
 - [x] Добавить подготовительный каталог локализации основного интерфейса FBE/FBV:
   `localization/app-ui/catalog.json` фиксирует существующие `.rc`-источники,
   первые стабильные ключи, целевые языки и будущий Weblate-friendly переход.
-- Следующим локализационным шагом подключить генерацию Win32 resource-фрагментов
+- [x] Подключить генерацию Win32 resource-фрагментов
   из `localization/plugin-ui/catalog.json` и `localization/app-ui/catalog.json`,
   а затем расширить каталоги на tooltip, диагностические сообщения, отчёты
   плагинов и полный набор строк FBV.
 - [x] Начать runtime-локализацию основных строк FBV: статус, кнопки, колонка,
   `No errors`, SAX/error-сообщения перенесены в `STRINGTABLE` для целевых языков.
+- [x] Подключить runtime JSON-overlay для FBV и всех текущих плагинов: внешние `Lang/<локаль>/fbv.json`, `Lang/<локаль>/export-html.json`, `Lang/<локаль>/import-epub.json`, `Lang/<локаль>/export-epub.json` и `Lang/<локаль>/export-docx.json` перекрывают встроенные ресурсы, но отсутствие файлов не ломает запуск.
+- [x] Подключить основной FBE как runtime JSON-потребитель: `FbeLoadString` и `U::MessageBox` теперь читают 128 уже заведённых строк из `Lang/<локаль>/fbe.json` поверх встроенных ресурсов.
+- [x] Привязать runtime JSON-локализацию к существующей настройке языка FBE: выбранный язык публикуется через `FBE_UI_LOCALE` и `%LOCALAPPDATA%\FBE\interface-locale.txt`, а FBV/плагины читают этот контракт перед fallback на язык Windows и `en-US`.
+- [x] Расширить существующую настройку языка FBE: добавить вариант `Определяется системой` и все 12 целевых языков, чтобы выбранная локаль управляла runtime JSON-слоем FBE/FBV/плагинов через общий контракт.
+- [x] Сделать следующий безопасный шаг к переключению языка без перезапуска: после смены языка FBE runtime string cache сбрасывается, а ExportHTML/ExportDOCX/ExportEPUB/ImportEPUB перечитывают JSON при входе в экспорт/импорт, чтобы новые окна плагинов брали актуальную locale.
+- [x] Исправить порядок применения смены языка в настройках FBE: сначала перезагрузка resource DLL, сброс runtime JSON cache и refresh main-frame UI, затем применение остальных настроек и restart-prompt.
+- [x] Выровнять оба входа в настройки FBE (`OnToolsOptions()` и `OnViewOptions()`), чтобы смена языка не зависела от того, каким пунктом меню открыт диалог.
+- [x] Расширить выпадающий список выбора языка и усилить тест контракта настроек FBE: `Определяется системой` остаётся первым, список не сортируется, а `OnToolsOptions()` применяет language-refresh в правильном порядке.
+- [x] Расширить resource-layout страницы `IDD_OPTIONS` для базового FBE и generated ru/uk: поле `IDC_LANG` теперь не должно обрезать `Определяется системой`, ширина закреплена тестом малых диалогов.
+- [x] Подключить оставшиеся статические подписи и группы `IDD_OPTIONS` к runtime JSON-overlay через стабильные control ID: новые языки теперь могут переводить подписи цветов, шрифтов, групп интерфейса/source/spellcheck и label языка без отдельной resource DLL.
+- [ ] Довести переключение языка интерфейса без перезапуска до полного GUI-refresh: обновлять уже созданные меню, тулбары, диалоги и уже открытые plugin UI, а не только cache и новые окна.
+- [ ] Довести новые языки интерфейса FBE дальше runtime JSON-overlay: сгенерировать/упаковать полноценные Win32 resource DLL или другой единый механизм для меню и диалогов не только ru/uk, сохранив встроенный fallback.
+- [x] Выделить reusable runtime JSON loader для FBE/FBV/плагинов, чтобы убрать дублирование парсера и загрузки `Lang/<локаль>/<модуль>.json` между модулями. Общий `src/common/RuntimeLocalizationCommon.h` подключён к FBE, FBV, ExportHTML, ExportDOCX, ExportEPUB и ImportEPUB; порядок `en-US` → выбранная локаль → встроенные ресурсы централизован.
+- [x] Продолжить FBE JSON→generated `.rc2` без конфликта `RC2151`: закрыт 16-ID блок 176–191 переносом `IDS_SB_SAVED_NO_ERR`, добавлен анализатор `tools/localization/analyze-fbe-stringtable-blocks.ps1`, connect-скрипт удаляет пустые `STRINGTABLE`.
+- [x] Перенести следующие компактные FBE-блоки в JSON→generated `.rc2`: `IDS_MB_*`, `IDS_DOCUMENT_TREE_CAPTION` и `IDS_ENCODINGS`; сборка `res_rus.dll`/`res_ukr.dll` подтверждает отсутствие `RC2151`.
+- [x] Закрыть следующие смешанные FBE-блоки без `RC2151`: 160–175, 288–303 и 304–319 перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 144–159: command-line diagnostics и подписи table/image/section/style полей перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 192–207: выбор папки скриптов, Edit/Navigation hotkey captions и конфликт hotkey скрипта перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 272–287: inline image, fast mode, navigation/spell/tree-view строки перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть последний смешанный FBE-блок 256–271: context menu, document-tree menu, hotkey collision/status и prompt перезапуска настроек перенесены в JSON→generated `.rc2`; анализатор больше не показывает смешанных блоков.
+- [x] Начать перенос полностью ручных FBE-блоков: блок 96–111 перенесён в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 112–127: команды добавления/вставки и базовые Edit hotkeys перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 128–143: metadata/status/settings/table captions перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 208–223: hotkey-подписи сворачивания/разворачивания дерева и выбор `Href` перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 224–239: style/view/navigation hotkey captions и вставка таблицы перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 240–255: hotkey-группы «Скрипты/Символы», окно слов и пункт «Вырезать» перенесены в JSON→generated `.rc2`; по текущему анализатору ручных FBE `IDS_*` блоков не осталось.
+- [x] Добавить инвентарь FBE `MENU`/`DIALOGEX` UI-литералов: 414 строк в 17 ресурсах фиксируются JSON-отчётом и smoke-тестом перед переносом меню/диалогов в Weblate-friendly каталог.
+- [x] Подготовить Weblate-friendly каталог главного меню FBE `IDR_MAINFRAME`: 68 пунктов меню заведены в JSON с 12 языками и проверяются `test-fbe-main-menu-catalog.ps1`.
+- [x] Добавить генератор generated `.rc2` для главного меню FBE `IDR_MAINFRAME`: ru/ukr MENU-фрагменты создаются из JSON и проверяются `test-fbe-main-menu-generated-resource.ps1`; runtime-подключение ручного блока остаётся следующим шагом.
+- [x] Подключить generated главное меню FBE `IDR_MAINFRAME` в runtime-ресурсы: ручной MENU-блок заменён на `FBEIdrMainframeMenu.generated.rc2`, `res_rus.dll`/`res_ukr.dll` собираются, остаточный инвентарь ручных UI-литералов — 278 строк.
+- [x] Перенести малые меню FBE `IDR_DOCUMENT_TREE` и `IDR_TOOLBAR_MENU` на JSON→generated pipeline: ручных `MENU` в FBE-инвентаре больше нет, осталось 264 `DIALOGEX` строки.
+- [x] Подключить каталог малых диалогов FBE к runtime JSON-export и начать runtime-refresh страниц настроек «Вид», «Другое», «Слова» и «Клавиши»: безопасные элементы с уникальными ID берут строки из `Lang/<локаль>/fbe.json`.
+- [x] Подключить runtime JSON-строки для безопасных элементов окон FBE «Найти» и «Заменить»: заголовки, кнопки, чекбоксы и направление поиска берут строки из `Lang/<локаль>/fbe.json`.
+- [x] Закрыть остаточные англоязычные подписи окон поиска/замены FBE: `Find what`, `Replace with`, `Direction` и `Cancel` теперь адресуются через стабильные control ID и runtime JSON-overlay.
+- [x] Расширить `test-runtime-lang-export.ps1` проверками runtime-ключей FBE-диалогов, уже подключённых к `Lang/<локаль>/fbe.json`.
+- [x] Подключить контекстное меню HTML-редактора FBE к runtime-aware строкам, включая ранее жёстко заданный пункт `Undo`.
+- [x] Подключить окно проверки орфографии FBE к runtime JSON для заголовка и основных кнопок, а также перевести его контекстное меню на runtime-aware строки.
+- [x] Подключить окно настроек ExportDOCX к runtime JSON по ключам `export_docx.dialog.settings.*`: видимые группы, чекбоксы, labels шрифта/страницы/языка/empty-line и кнопки заведены в каталог на 12 языков и проверяются runtime-export тестом.
+- [x] Проверить runtime-локализацию окон настроек и tooltip-строк ExportEPUB: `test-export-epub-runtime-lang-overlay.ps1` и `test-export-epub-localization-resources.ps1` подтверждают 87 binding-строк на 12 языков.
+- [x] Проверить runtime-локализацию окна настроек, SVG-комбо и tooltip-строк ImportEPUB: `test-import-epub-runtime-lang-overlay.ps1` и `test-import-epub-localization-resources.ps1` подтверждают 151 binding-строку на 12 языков.
+- [x] Перенести малые DIALOGEX-диалоги FBE `IDD_TABLE`, `IDD_INPUTBOX`, `IDD_ADDIMAGE` на JSON→generated pipeline; осталось 234 ручных DIALOGEX-строки.
+- [x] Перенести следующий компактный DIALOGEX-срез FBE `IDD_TOOLS_SETTINGS`, `IDD_ABOUTBOX`, `IDD_CUSTOMSAVEDLG` на JSON→generated pipeline; осталось 216 ручных DIALOGEX-строк.
+- [x] Перенести страницу настроек слов FBE `IDD_SETTINGS_WORDS` на JSON→generated pipeline; осталось 206 ручных DIALOGEX-строк.
+- [x] Перенести страницу настроек горячих клавиш FBE `IDD_HOTKEYS` на JSON→generated pipeline; осталось 188 ручных DIALOGEX-строк.
+- [x] Перенести диалог поиска FBE `IDD_FIND` на JSON→generated pipeline; осталось 168 ручных DIALOGEX-строк.
+- [x] Перенести диалог замены FBE `IDD_REPLACE` на JSON→generated pipeline; осталось 142 ручных DIALOGEX-строки.
+- [x] Перенести диалог проверки орфографии FBE `IDD_SPELL_CHECK` на JSON→generated pipeline; осталось 118 ручных DIALOGEX-строк.
+- [x] Перенести диалог списка слов FBE `IDD_WORDS` на JSON→generated pipeline; осталось 82 ручных DIALOGEX-строки.
+- [x] Перенести страницу прочих настроек FBE `IDD_SETTING_OTHER` на JSON→generated pipeline; остался только `IDD_OPTIONS` на 42 ручных DIALOGEX-строки.
+- [x] Перенести страницу основных параметров FBE `IDD_OPTIONS` на JSON→generated pipeline; ручной FBE-инвентарь `MENU`/`DIALOGEX` закрыт полностью, осталось 0 UI-литералов.
+- [x] Подключить FBE MENU/DIALOGEX-проверки к `verify-release.ps1`: release-gate теперь сторожит generated главное меню, малые меню, generated DIALOGEX и нулевой ручной UI-инвентарь.
+- [x] Добавить ручной repair-контур для локального запуска `out\Release\FBE.exe`: `repair-local-plugin-registration.ps1` перерегистрирует плагины на DLL из `out\<Configuration>`, чтобы настройки Export/Import брали актуальные runtime JSON-переводы.
+- [x] Локализовать известную COM-ошибку `80040154 / Class not registered` через runtime JSON FBE, чтобы сообщение соответствовало выбранному языку интерфейса, а не языку Windows.
+- [x] Закрыть остатки ручного теста локализации: динамические пункты меню встроенных плагинов ImportEPUB/ExportDOCX/ExportEPUB/ExportHTML локализуются поверх COM-регистрации, `Cancel` в FBE/плагинах берётся из runtime JSON, а немецкие tooltip-подсказки ExportDOCX больше не остаются английскими.
+- [x] Расширить немецкий runtime JSON-слой tooltip-подсказок ImportEPUB и ExportEPUB: профильные overlay-тесты подтверждают, что немецкие tooltip-строки плагинов больше не совпадают с английским fallback.
+- [x] Расширить украинский, французский и испанский runtime JSON-слой tooltip-подсказок ExportEPUB: профильный overlay-тест подтверждает отсутствие английского fallback в ExportEPUB tooltip-строках этих языков.
+- [x] Закрыть tooltip-слой ExportEPUB для всех 12 целевых языков: `export_epub.tooltip.*` больше не совпадает с английским fallback ни для одного подключённого языка.
+- [x] Закрыть tooltip-слой ImportEPUB для всех 12 целевых языков: 33 строки `import_epub.tooltip.*` больше не совпадают с английским fallback ни для одного подключённого языка.
+- [x] Закрыть tooltip-слой ExportDOCX для всех 12 целевых языков: 38 строк `export_docx.tooltip.*` больше не совпадают с английским fallback ни для одного подключённого языка.
+- [x] Закрыть видимые настройки ImportEPUB для всех 12 целевых языков: группы, заголовок, SVG-режимы, hint, кнопки и 25 опций больше не используют английский fallback, кроме нейтральной кнопки `OK`.
+- [x] Закрыть видимые настройки ExportEPUB для всех 12 целевых языков: 30 строк `export_epub.options.*` больше не используют английский fallback, кроме нейтральной кнопки `OK`.
+- [x] Закрыть plugin-level слой ImportEPUB для всех 12 целевых языков: системный диалог выбора EPUB, стадии импорта и сообщения ошибок больше не используют английский fallback.
+- [x] Закрыть runtime diagnostics ImportEPUB для всех 12 целевых языков: 62 строки `import_epub.runtime.*` больше не используют английский fallback, кроме технических имён и идентификаторов.
+- [x] Усилить контракт подготовки FBE-локализации: `test-app-localization-catalog.ps1`
+  теперь проверяет наличие критичных FBE-ресурсов обновления, read-only warning
+  и завершения поиска в `src/fbe/FBE.rc`, `res_rus` и `res_ukr`, а также
+  предупреждает, какие из них ещё не заведены в `localization/app-ui/catalog.json`.
+- [x] Перенести в `localization/app-ui/catalog.json`
+  оставшиеся `IDS_UPDATE_*`, `IDS_SEARCH_END_MSG` и `IDS_READONLY_SAVE_MSG`,
+  чтобы первый критичный FBE-срез попал в Weblate seed и общий проверочный
+  Win32 resource-fragment pipeline.
+- [x] Добавить отдельный строгий генератор FBE
+  `.rc2` по модели FBV, который будет создавать существующие `IDS_*`, а не
+  промежуточные `IDS_L10N_*`.
+- [x] Подключить `FBEStrings.generated.rc2` к `res_rus`/`res_ukr`: ручные дубли
+  первого FBE-среза удалены из локализованных `STRINGTABLE`, тест
+  `test-fbe-localization-resources.ps1` проверяет include и отсутствие дублей,
+  а `res_rus.dll`/`res_ukr.dll` собираются с generated-строками.
+- [x] Перенести второй FBE-срез в JSON→generated `.rc2`: сообщения сохранения,
+  validation/import/export, внешнего изменения файла, нехватки памяти и
+  отсутствующих скриптов теперь генерируются в `FBEStrings.generated.rc2`; обе
+  локализованные resource DLL собираются после удаления ручных дублей.
+- [x] Перенести третий FBE-срез в JSON→generated `.rc2`: script/XML/COM
+  diagnostics, replace/search messages и сообщения замены слов теперь
+  генерируются из `localization/app-ui/catalog.json`; обе локализованные
+  resource DLL собираются после удаления ручных дублей.
+- [x] Перенести четвёртый безопасный FBE-срез в JSON→generated `.rc2`: строки
+  добавления изображения и binary-ресурсов теперь генерируются из
+  `localization/app-ui/catalog.json`; обе локализованные resource DLL собираются
+  после удаления ручных дублей.
+- Следующий FBE-шаг по локализации: вручную проверить GUI-сценарии обновлений,
+  read-only warning и завершения поиска на русской и украинской ресурсных DLL,
+  затем переносить status bar, context menu, document-tree и hotkey captions
+  небольшими группами тем же JSON→generated `.rc2` контуром, но сначала
+  группировать кандидатов по 16-ID `STRINGTABLE` блокам: частичный перенос
+  блока даёт `RC2151 cannot reuse string constants`.
 - [x] Добавить экспорт seed-файлов для переводчиков/Weblate:
   `tools/localization/export-weblate-seed.ps1` собирает app/plugin-каталоги в
   per-language JSON под `out/localization/weblate-seed`.
-- Следующий шаг по FBV: отдельно оценить локализацию layout-диалога
-  `IDD_MAIN` и перевод кнопок/статусов через generated `.rc2`, не размножая
-  координаты Win32-диалога вручную на 12 языков.
+- [x] Подключить FBV к JSON→generated `.rc2`: `FBV.rc` включает
+  `FBVStrings.generated.rc2`, который строится из
+  `localization/app-ui/catalog.json` с существующими `IDS_*`.
+- [x] Повторить JSON→generated `.rc2` подход на маленьком плагине:
+  runtime-строки ExportHTML перенесены в `localization/plugin-ui/catalog.json`,
+  а `ExportHTML.rc` подключает `ExportHTMLStrings.generated.rc2`.
+- [x] Начать локализацию всплывающих подсказок плагинов на реальном runtime-
+  примере: tooltip-строки custom save dialog ExportHTML добавлены в
+  `localization/plugin-ui/catalog.json`, генерируются в
+  `ExportHTMLStrings.generated.rc2` и загружаются через `LoadString`.
+- [x] Перенести первый DOCX runtime-срез из hardcoded строк в JSON→generated
+  `.rc2`: вкладки настроек, значения комбобоксов примечаний/empty-line/языка/
+  профиля и подпись кнопки сохранения теперь идут через `IDS_DOCX_*`.
+- [x] Закрыть основной пользовательский runtime-хвост ExportDOCX: титульная страница, диагностический отчёт, TOC-текст и validation warnings перенесены в JSON→generated `.rc2`; `ExportDOCX.dll` собирается без предупреждений.
+- [x] Перенести первый крупный runtime-срез `ImportEPUB`: XML/ZIP/container/OPF/navigation/spine diagnostics, плейсхолдеры изображений/примечаний и заголовок отчёта теперь идут через JSON→generated `.rc2`; `ImportEPUB.dll` собирается без предупреждений.
+- [x] Добрать второй runtime-срез `ImportEPUB`: SVG/LunaSVG/GDI+, XHTML,
+  spine-изображения, mimetype/encryption и финальная FB2 validation перенесены
+  в JSON→generated `.rc2`; `ImportEPUB.dll` собирается без предупреждений,
+  `EpubImport.cpp` оставляет только 7 строк жанровых эвристик.
+- [x] Перенести основной runtime-срез `ExportEPUBPlugin.cpp`: preflight/summary
+  fallback-строки очищены от кириллицы, body/chapter/annotation/titlepage labels
+  заведены в JSON→generated `.rc2`; `ExportEPUB.dll` собирается без предупреждений.
+- [x] Закрыть 3 строки `Обложка` в `FbeEpubExport.cpp` через аккуратный слой
+  `EpubExportLabels`/`EpubExportOptions`: UI-слой передаёт `IDS_EXPORT_COVER_TITLE`,
+  низкоуровневый exporter не зависит напрямую от Win32-ресурсов.
+- [x] Закрыть runtime/tooltip-срез shell/metadata diagnostics: `Fb2ThumbnailProvider.cpp`, `Fb2ShellProperties.cpp`, `Fb2CoverImage.cpp`, `Fb2CoverThumbnail.cpp`, `Fb2Metadata.cpp` и PCRE2 diagnostics очищены от зашитой кириллицы; `analyze-product-hardcoded-cyrillic.ps1` показывает ноль C/C++ строковых литералов продукта с кириллицей.
+- [x] Добрать EPUB/DOCX остатки hardcoded-кириллицы без потери поведения: EPUB landmarks перенесены в `EpubExportLabels` и JSON→generated `.rc2`, а русскоязычные DOCX/ImportEPUB эвристики сохранены через Unicode escape-последовательности.
+- [x] Прогнать полный `verify-release.ps1` после очистки C/C++ hardcoded-кириллицы: release-gate проходит успешно, включая ExportEPUB XHTML 1.1, ExportEPUB кириллицу, локализационные каталоги и ImportEPUB COM smoke.
+- [x] Подготовить экспорт будущих внешних runtime JSON-файлов: `tools/localization/export-runtime-lang.ps1` формирует `Lang/<язык>/<модуль>.json` для FBE, FBV и плагинов, `test-runtime-lang-export.ps1` подключён к release-gate, а portable/NSIS input уже получает каталог `Lang`.
+- [x] Подключить первый runtime-потребитель внешнего JSON: FBV читает `Lang/en-US/fbv.json` и `Lang/<системная локаль>/fbv.json` поверх встроенных ресурсов; `test-fbv-runtime-lang-overlay.ps1` сторожит binding-контракт.
+- [x] Подключить третий runtime-потребитель внешнего JSON: ImportEPUB читает `Lang/en-US/import-epub.json` и `Lang/<системная локаль>/import-epub.json` поверх встроенных ресурсов; `test-import-epub-runtime-lang-overlay.ps1` сторожит binding-контракт для 151 строки.
+- [x] Подключить четвёртый runtime-потребитель внешнего JSON: ExportEPUB читает `Lang/en-US/export-epub.json` и `Lang/<системная локаль>/export-epub.json` поверх встроенных ресурсов; `test-export-epub-runtime-lang-overlay.ps1` сторожит binding-контракт для 87 строк.
+- [x] Подключить пятый runtime-потребитель внешнего JSON: ExportDOCX читает `Lang/en-US/export-docx.json` и `Lang/<системная локаль>/export-docx.json` поверх встроенных ресурсов; `test-export-docx-runtime-lang-overlay.ps1` сторожит binding-контракт для 143 строк.
+- [x] Добавить первый main-frame refresh после смены языка: FBE обновляет главное меню, динамические Import/Export/Script/MRU-пункты, hotkey-подписи, статические подписи toolbar-полей, тексты кнопок command/script toolbar, runtime-tooltip main toolbar без устаревшего WTL `LoadString` cache, status-pane INS/OVR и заголовок и внутреннее меню панели структуры документа через `RefreshLocalizedMainFrameUi()`.
+- [x] Закрывать modeless-диалоги поиска/замены и проверки орфографии перед применением настроек языка, чтобы при следующем открытии они создавались уже на актуальной локали.
+- [x] Заменить прямые `CString::LoadString` в `src/fbe` на `FbeLoadCString()` и добавить проверку в `test-runtime-interface-language-contract.ps1`, чтобы старый код не обходил runtime JSON-overlay.
+- [x] Расширить проверку обходов локализации на FBV и плагины: `test-runtime-interface-language-contract.ps1` теперь разрешает `LoadString` только в fallback-загрузчиках и ловит новые прямые обращения вне runtime JSON-слоя.
+- [x] Зафиксировать правило, что брендовые имена `FictionBook Editor Next` / `FB Editor Next` не переводятся; заголовок главного окна больше не использует старое `FB Editor`.
+- [x] Добавить автопроверку брендовых имён в `test-app-localization-catalog.ps1`, чтобы машинные переводы не меняли `FictionBook Editor` / `FB Editor Next` / `FictionBook Validator`.
+- [x] Добавить package-gate `test-runtime-lang-package.ps1` и подключить его к `package-portable.ps1`, чтобы `Lang` для 12 языков и 6 модулей обязательно попадал в portable/staging-пакет.
+- [x] Добавить экспорт runtime JSON-локализации в обычный `out\<Configuration>\Lang`: ручной запуск `out\Release\FBE.exe` теперь видит те же `Lang/<locale>/<module>.json`, что portable-пакет и установщик.
+- [x] Подключить главное меню FBE `IDR_MAINFRAME` к runtime JSON для всех 12 языков: menu-каталог экспортируется в `Lang/<locale>/fbe.json`, а FBE накладывает переводы на загруженное Win32-меню при старте и refresh.
+- [x] Подключить вторичные меню FBE `IDR_DOCUMENT_TREE` и `IDR_TOOLBAR_MENU` к runtime JSON для всех 12 языков: контекстное меню дерева документа и меню настройки toolbar теперь используют `Lang/<locale>/fbe.json`.
+- [x] Добавить в `docs/manual-test-plan.md` отдельный раздел ручной проверки локализации перед пользовательским smoke-прогоном.
+- Следующий шаг по локализации: довести переключение языка без перезапуска до полного GUI-refresh — обновлять уже созданные дочерние окна, plugin UI и оставшиеся toolbar/status/cache-строки, которые создаются до смены языка. До завершения этого шага FBE должен честно предлагать перезапуск после смены языка.
+- Отдельный GUI-хвост ExportHTML: проверить окно custom save dialog, заменить
+  повторяющиеся `IDC_STATIC` на отдельные control ID или выставлять текст в
+  `OnInitDialog`; после этого провести GUI-smoke окна сохранения HTML.
 - [x] Добавить инвентарь будущих языковых пакетов установщика:
   `localization/language-packs.json` описывает связь языков с `res_*.dll`,
   `.mui`, словарями, лицензиями, жанрами, XSL и будущими `blank_*.fb2`.
@@ -100,7 +247,7 @@
 - [x] Добавить post-install диагностику для ручного smoke новых `.fb2`-опций:
   `tools/tests/check-fb2-installer-options.ps1` проверяет ожидаемый профиль
   после выбора галочек в GUI-установщике.
-- [x] Подключить новые иконки приложения `FBE2_new.ico` и `FBE_new.ico` к ресурсам сборки FBE/локализованных resource DLL; старые иконки оставить в дереве как резерв.
+- [x] Подключить новые иконки приложения `FBE2.ico` и `FBE.ico` к ресурсам сборки FBE/локализованных resource DLL; временные `*_new.ico` и старые резервные иконки удалены.
 - [x] Добавить в установщик опциональную установку консольных batch-конвертеров из новых import/export-плагинов: секция `Batch-конвертеры` ставит `ExportDOCXBatch.exe`, `ExportEPUBBatch.exe`, `ImportEPUBBatch.exe` и их обязательные DLL-зависимости рядом с FBE.
 - [x] Вынести `ImportEPUBLunaSVG.dll` из batch-конвертеров в подсекцию `ImportEPUB`: библиотека устанавливается как дополнительный компонент для преобразования SVG-обложек EPUB в PNG/JPEG.
 - [x] Подготовить GitHub-релизную структуру для `FictionBook Editor Next 3.0.0`: обновлены имя продукта, update-check URL, GitHub-ссылки в окне `О программе`, имена артефактов `FictionBookEditorNext-*`, README, техническое описание отличий и workflow с пользовательскими release notes.
@@ -504,6 +651,7 @@
 - [x] Решить, выносить ли `ContextMenu` в отдельную опцию.
 - [x] Проверить актуальность встроенных `zlib`, `libpng`, `libjpeg` в `src\fbshell`.
 - [x] Вывести legacy `IconExtractor` из стандартной сборки `FBShell`, оставив его только как opt-in build-флаг.
+- [x] Удалить legacy `IconExtractor`, `ImageLoader` и встроенные `zlib/libpng/libjpeg` из дерева `src\fbshell`, потому что modern thumbnail provider уже использует новый `Fb2CoverImage`-контур.
 - [ ] Вернуться сильно позже к отдельной задаче `cover extraction` / thumbnail provider вместо старого `IconExtractor`.
   - [ ] Выделить отдельный внутренний reader обложки `.fb2` без зависимости
         от legacy `IconExtractor`.

@@ -24,6 +24,7 @@
     <ClCompile Include="dllmain.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="ExportEPUB.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="ExportEPUBPlugin.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="RuntimeLocalization.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="StdAfx.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="ExportEPUB_i.c"><Filter>Generated Files</Filter></ClCompile>
     <ClCompile Include="FbeEpubExport.cpp"><Filter>EPUB Core</Filter></ClCompile>
@@ -32,6 +33,7 @@
     <ClInclude Include="dllmain.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="ExportEPUBPlugin.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="resource.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="RuntimeLocalization.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="StdAfx.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="targetver.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="ExportEPUB_i.h"><Filter>Generated Files</Filter></ClInclude>

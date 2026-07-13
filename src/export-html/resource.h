@@ -16,6 +16,10 @@
 #define IDS_AT_S_S                      110
 #define IDS_ERROR                       111
 #define IDS_COM_ERROR                   112
+#define IDS_TOOLTIP_TEMPLATE            113
+#define IDS_TOOLTIP_BROWSE_TEMPLATE     114
+#define IDS_TOOLTIP_DOCINFO             115
+#define IDS_TOOLTIP_TOC_DEPTH           116
 #define IDC_BROWSE                      1001
 #define IDC_TEMPLATE                    1002
 #define IDC_DOCINFO                     1003

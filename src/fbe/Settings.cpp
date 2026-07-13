@@ -101,6 +101,88 @@ const wchar_t WORDS_XML_FILE[] = L"Words.xml";
 #include "ElementDescMnr.h"
 extern CElementDescMnr _EDMnr;
 
+static DWORD NormalizeInterfaceLanguageID(DWORD langId)
+{
+	switch(langId)
+	{
+	case FBE_INTERFACE_LANGUAGE_AUTO:
+	case FBE_INTERFACE_LANGUAGE_ENGLISH:
+	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
+	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
+	case FBE_INTERFACE_LANGUAGE_GERMAN:
+	case FBE_INTERFACE_LANGUAGE_FRENCH:
+	case FBE_INTERFACE_LANGUAGE_SPANISH:
+	case FBE_INTERFACE_LANGUAGE_ITALIAN:
+	case FBE_INTERFACE_LANGUAGE_POLISH:
+	case FBE_INTERFACE_LANGUAGE_PORTUGUESE:
+	case FBE_INTERFACE_LANGUAGE_DUTCH:
+	case FBE_INTERFACE_LANGUAGE_CZECH:
+	case FBE_INTERFACE_LANGUAGE_BULGARIAN:
+		return langId;
+	}
+
+	// Миграция старых настроек: раньше здесь хранились WinAPI LANG_*,
+	// которые не являются стабильными идентификаторами UI-локалей FBE.
+	switch(PRIMARYLANGID(langId))
+	{
+	case LANG_RUSSIAN:
+		return FBE_INTERFACE_LANGUAGE_RUSSIAN;
+	case LANG_UKRAINIAN:
+		return FBE_INTERFACE_LANGUAGE_UKRAINIAN;
+	case LANG_GERMAN:
+		return FBE_INTERFACE_LANGUAGE_GERMAN;
+	case LANG_FRENCH:
+		return FBE_INTERFACE_LANGUAGE_FRENCH;
+	case LANG_SPANISH:
+		return FBE_INTERFACE_LANGUAGE_SPANISH;
+	case LANG_ITALIAN:
+		return FBE_INTERFACE_LANGUAGE_ITALIAN;
+	case LANG_POLISH:
+		return FBE_INTERFACE_LANGUAGE_POLISH;
+	case LANG_PORTUGUESE:
+		return FBE_INTERFACE_LANGUAGE_PORTUGUESE;
+	case LANG_DUTCH:
+		return FBE_INTERFACE_LANGUAGE_DUTCH;
+	case LANG_CZECH:
+		return FBE_INTERFACE_LANGUAGE_CZECH;
+	case LANG_BULGARIAN:
+		return FBE_INTERFACE_LANGUAGE_BULGARIAN;
+	case LANG_ENGLISH:
+	default:
+		return FBE_INTERFACE_LANGUAGE_ENGLISH;
+	}
+}
+
+static DWORD InterfaceLanguageFromLocaleName(LPCWSTR localeName)
+{
+	if(localeName == NULL || localeName[0] == 0)
+		return FBE_INTERFACE_LANGUAGE_ENGLISH;
+
+	if(::lstrcmpiW(localeName, L"ru-RU") == 0)
+		return FBE_INTERFACE_LANGUAGE_RUSSIAN;
+	if(::lstrcmpiW(localeName, L"uk-UA") == 0)
+		return FBE_INTERFACE_LANGUAGE_UKRAINIAN;
+	if(::lstrcmpiW(localeName, L"de-DE") == 0)
+		return FBE_INTERFACE_LANGUAGE_GERMAN;
+	if(::lstrcmpiW(localeName, L"fr-FR") == 0)
+		return FBE_INTERFACE_LANGUAGE_FRENCH;
+	if(::lstrcmpiW(localeName, L"es-ES") == 0)
+		return FBE_INTERFACE_LANGUAGE_SPANISH;
+	if(::lstrcmpiW(localeName, L"it-IT") == 0)
+		return FBE_INTERFACE_LANGUAGE_ITALIAN;
+	if(::lstrcmpiW(localeName, L"pl-PL") == 0)
+		return FBE_INTERFACE_LANGUAGE_POLISH;
+	if(::lstrcmpiW(localeName, L"pt-PT") == 0)
+		return FBE_INTERFACE_LANGUAGE_PORTUGUESE;
+	if(::lstrcmpiW(localeName, L"nl-NL") == 0)
+		return FBE_INTERFACE_LANGUAGE_DUTCH;
+	if(::lstrcmpiW(localeName, L"cs-CZ") == 0)
+		return FBE_INTERFACE_LANGUAGE_CZECH;
+	if(::lstrcmpiW(localeName, L"bg-BG") == 0)
+		return FBE_INTERFACE_LANGUAGE_BULGARIAN;
+	return FBE_INTERFACE_LANGUAGE_ENGLISH;
+}
+
 CSettings::CSettings():m_need_restart(false), keycodes(0)
 {
 
@@ -1054,7 +1136,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == INTERFACE_LANG_KEY)
 	{
-		m_interface_lang_id = StrToInt(sValue.GetStringValue());
+		m_interface_lang_id = NormalizeInterfaceLanguageID(StrToInt(sValue.GetStringValue()));
 		return true;
 	}
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
@@ -1541,29 +1623,90 @@ DWORD CSettings::GetColorFG()const
 
 DWORD CSettings::GetInterfaceLanguageID()const
 {
-	return m_interface_lang_id;
+	return NormalizeInterfaceLanguageID(m_interface_lang_id);
+}
+
+DWORD CSettings::GetEffectiveInterfaceLanguageID()const
+{
+	const DWORD langId = GetInterfaceLanguageID();
+	if(langId != FBE_INTERFACE_LANGUAGE_AUTO)
+		return langId;
+
+	wchar_t localeName[LOCALE_NAME_MAX_LENGTH] = {};
+	if(::GetUserDefaultLocaleName(localeName, _countof(localeName)) > 0)
+		return InterfaceLanguageFromLocaleName(localeName);
+
+	return NormalizeInterfaceLanguageID(PRIMARYLANGID(GetUserDefaultLangID()));
 }
 
 CString CSettings::GetInterfaceLanguageDllName()const
 {
-	switch(m_interface_lang_id)
+	switch(GetEffectiveInterfaceLanguageID())
 	{
-	case LANG_RUSSIAN:
+	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
 		return L"res_rus.dll";
-	case LANG_UKRAINIAN:
+	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
 		return L"res_ukr.dll";
 	default:
 		return L"";
 	}
 }
 
+CString CSettings::GetInterfaceLocaleName()const
+{
+	if(m_interface_lang_id == FBE_INTERFACE_LANGUAGE_AUTO)
+	{
+		wchar_t localeName[LOCALE_NAME_MAX_LENGTH] = {};
+		if(::GetUserDefaultLocaleName(localeName, _countof(localeName)) > 0 && localeName[0] != 0)
+		{
+			if(::lstrcmpiW(localeName, L"en-US") == 0 || ::lstrcmpiW(localeName, L"ru-RU") == 0 ||
+				::lstrcmpiW(localeName, L"uk-UA") == 0 || ::lstrcmpiW(localeName, L"de-DE") == 0 ||
+				::lstrcmpiW(localeName, L"fr-FR") == 0 || ::lstrcmpiW(localeName, L"es-ES") == 0 ||
+				::lstrcmpiW(localeName, L"it-IT") == 0 || ::lstrcmpiW(localeName, L"pl-PL") == 0 ||
+				::lstrcmpiW(localeName, L"pt-PT") == 0 || ::lstrcmpiW(localeName, L"nl-NL") == 0 ||
+				::lstrcmpiW(localeName, L"cs-CZ") == 0 || ::lstrcmpiW(localeName, L"bg-BG") == 0)
+				return localeName;
+		}
+		return L"en-US";
+	}
+
+	switch(GetInterfaceLanguageID())
+	{
+	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
+		return L"ru-RU";
+	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
+		return L"uk-UA";
+	case FBE_INTERFACE_LANGUAGE_GERMAN:
+		return L"de-DE";
+	case FBE_INTERFACE_LANGUAGE_FRENCH:
+		return L"fr-FR";
+	case FBE_INTERFACE_LANGUAGE_SPANISH:
+		return L"es-ES";
+	case FBE_INTERFACE_LANGUAGE_ITALIAN:
+		return L"it-IT";
+	case FBE_INTERFACE_LANGUAGE_POLISH:
+		return L"pl-PL";
+	case FBE_INTERFACE_LANGUAGE_PORTUGUESE:
+		return L"pt-PT";
+	case FBE_INTERFACE_LANGUAGE_DUTCH:
+		return L"nl-NL";
+	case FBE_INTERFACE_LANGUAGE_CZECH:
+		return L"cs-CZ";
+	case FBE_INTERFACE_LANGUAGE_BULGARIAN:
+		return L"bg-BG";
+	case FBE_INTERFACE_LANGUAGE_ENGLISH:
+	default:
+		return L"en-US";
+	}
+}
+
 CString CSettings::GetLocalizedGenresFileName()const
 {
-	switch(m_interface_lang_id)
+	switch(GetEffectiveInterfaceLanguageID())
 	{
-	case LANG_RUSSIAN:
+	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
 		return L"genres.rus.txt";
-	case LANG_UKRAINIAN:
+	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
 		return L"genres.ukr.txt";
 	default:
 		return L"genres.txt";
@@ -1572,12 +1715,30 @@ CString CSettings::GetLocalizedGenresFileName()const
 
 CString CSettings::GetInterfaceLanguageName()const
 {
-	switch(m_interface_lang_id)
+	switch(GetEffectiveInterfaceLanguageID())
 	{
-	case LANG_RUSSIAN:
+	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
 		return L"russian";
-	case LANG_UKRAINIAN:
+	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
 		return L"ukrainian";
+	case FBE_INTERFACE_LANGUAGE_GERMAN:
+		return L"german";
+	case FBE_INTERFACE_LANGUAGE_FRENCH:
+		return L"french";
+	case FBE_INTERFACE_LANGUAGE_SPANISH:
+		return L"spanish";
+	case FBE_INTERFACE_LANGUAGE_ITALIAN:
+		return L"italian";
+	case FBE_INTERFACE_LANGUAGE_POLISH:
+		return L"polish";
+	case FBE_INTERFACE_LANGUAGE_PORTUGUESE:
+		return L"portuguese";
+	case FBE_INTERFACE_LANGUAGE_DUTCH:
+		return L"dutch";
+	case FBE_INTERFACE_LANGUAGE_CZECH:
+		return L"czech";
+	case FBE_INTERFACE_LANGUAGE_BULGARIAN:
+		return L"bulgarian";
 	default:
 		return L"english";
 	}
@@ -1780,6 +1941,7 @@ void CSettings::SetRestoreFilePosition(bool restore, bool apply)
 
 void CSettings::SetInterfaceLanguage(DWORD lang_id, bool apply)
 {
+	lang_id = NormalizeInterfaceLanguageID(lang_id);
 	if(m_interface_lang_id != lang_id)
 	{
 		m_interface_lang_id = lang_id;
@@ -1978,7 +2140,7 @@ void CSettings::SetDefaults()
 	m_splitter_pos			= 200;
 	m_toolbars_settings.Empty();
 	m_restore_file_position	= false;
-	m_interface_lang_id		= PRIMARYLANGID(GetSystemDefaultLangID());
+	m_interface_lang_id		= FBE_INTERFACE_LANGUAGE_AUTO;
 	m_scripts_folder		= GetDefaultScriptsFolder();
 	m_insimage_ask			= true;
 	m_ins_clear_image		= false;

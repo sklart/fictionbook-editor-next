@@ -1,4 +1,4 @@
-// Microsoft Visual C++ generated resource script.
+﻿// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 #include "../version.h"
@@ -90,249 +90,18 @@ END
 // String Table
 //
 
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Ошибка"
-    IDS_CANNOT_LOAD_SCHEMA      L"Не удалось загрузить схему FictionBook."
-    IDS_COM_ERROR_FORMAT        L"COM Error: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Проверить FB2 на ошибки"
-    IDS_STATUS_DONE             L"Готово."
-    IDS_BUTTON_STOP             L"&Остановить"
-    IDS_BUTTON_REVALIDATE       L"&Проверить снова"
-    IDS_COLUMN_FILE_NAME        L"Имя файла"
-    IDS_VALIDATION_NO_ERRORS    L"Ошибок нет."
-    IDS_SAX_ERROR_LOCATION      L"Строка %d, столбец %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"В&ыход"
-    IDS_STATUS_SCANNING         L"Сканирование..."
-END
-
 #endif    // Russian (Russia) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// Ukrainian resources
+//
+// Generated FBV localization string tables
+//
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_UKR)
-LANGUAGE LANG_UKRAINIAN, SUBLANG_DEFAULT
-#pragma code_page(1251)
+#include "FBVStrings.generated.rc2"
 
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Помилка"
-    IDS_CANNOT_LOAD_SCHEMA      L"Не вдалося завантажити схему FictionBook."
-    IDS_COM_ERROR_FORMAT        L"COM Error: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Перевірити FB2 на помилки"
-    IDS_STATUS_DONE             L"Готово."
-    IDS_BUTTON_STOP             L"&Зупинити"
-    IDS_BUTTON_REVALIDATE       L"&Перевірити знову"
-    IDS_COLUMN_FILE_NAME        L"Ім’я файлу"
-    IDS_VALIDATION_NO_ERRORS    L"Помилок немає."
-    IDS_SAX_ERROR_LOCATION      L"Рядок %d, стовпець %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"В&ихід"
-    IDS_STATUS_SCANNING         L"Сканування..."
-END
 
-#endif    // Ukrainian resources
-/////////////////////////////////////////////////////////////////////////////
-
-/////////////////////////////////////////////////////////////////////////////
-// German resources
-
-LANGUAGE LANG_GERMAN, SUBLANG_DEFAULT
-#pragma code_page(1252)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Fehler"
-    IDS_CANNOT_LOAD_SCHEMA      L"FictionBook-Schema kann nicht geladen werden."
-    IDS_COM_ERROR_FORMAT        L"COM-Fehler: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"FB2-Datei prüfen"
-    IDS_STATUS_DONE             L"Fertig."
-    IDS_BUTTON_STOP             L"&Stopp"
-    IDS_BUTTON_REVALIDATE       L"&Erneut prüfen"
-    IDS_COLUMN_FILE_NAME        L"Dateiname"
-    IDS_VALIDATION_NO_ERRORS    L"Keine Fehler."
-    IDS_SAX_ERROR_LOCATION      L"Zeile %d, Spalte %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"&Beenden"
-    IDS_STATUS_SCANNING         L"Scannen..."
-END
-
-/////////////////////////////////////////////////////////////////////////////
-// French resources
-
-LANGUAGE LANG_FRENCH, SUBLANG_DEFAULT
-#pragma code_page(1252)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Erreur"
-    IDS_CANNOT_LOAD_SCHEMA      L"Impossible de charger le schéma FictionBook."
-    IDS_COM_ERROR_FORMAT        L"Erreur COM : %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Vérifier le fichier FB2"
-    IDS_STATUS_DONE             L"Terminé."
-    IDS_BUTTON_STOP             L"&Arrêter"
-    IDS_BUTTON_REVALIDATE       L"&Revérifier"
-    IDS_COLUMN_FILE_NAME        L"Nom du fichier"
-    IDS_VALIDATION_NO_ERRORS    L"Aucune erreur."
-    IDS_SAX_ERROR_LOCATION      L"Ligne %d, colonne %d :\r\n%s"
-    IDS_BUTTON_EXIT             L"&Quitter"
-    IDS_STATUS_SCANNING         L"Analyse..."
-END
-
-/////////////////////////////////////////////////////////////////////////////
-// Spanish resources
-
-LANGUAGE LANG_SPANISH, SUBLANG_DEFAULT
-#pragma code_page(1252)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Error"
-    IDS_CANNOT_LOAD_SCHEMA      L"No se puede cargar el esquema FictionBook."
-    IDS_COM_ERROR_FORMAT        L"Error COM: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Validar archivo FB2"
-    IDS_STATUS_DONE             L"Listo."
-    IDS_BUTTON_STOP             L"&Detener"
-    IDS_BUTTON_REVALIDATE       L"&Volver a validar"
-    IDS_COLUMN_FILE_NAME        L"Nombre de archivo"
-    IDS_VALIDATION_NO_ERRORS    L"Sin errores."
-    IDS_SAX_ERROR_LOCATION      L"Línea %d, columna %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"&Salir"
-    IDS_STATUS_SCANNING         L"Analizando..."
-END
-
-/////////////////////////////////////////////////////////////////////////////
-// Italian resources
-
-LANGUAGE LANG_ITALIAN, SUBLANG_DEFAULT
-#pragma code_page(1252)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Errore"
-    IDS_CANNOT_LOAD_SCHEMA      L"Impossibile caricare lo schema FictionBook."
-    IDS_COM_ERROR_FORMAT        L"Errore COM: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Verifica file FB2"
-    IDS_STATUS_DONE             L"Completato."
-    IDS_BUTTON_STOP             L"&Interrompi"
-    IDS_BUTTON_REVALIDATE       L"&Verifica di nuovo"
-    IDS_COLUMN_FILE_NAME        L"Nome file"
-    IDS_VALIDATION_NO_ERRORS    L"Nessun errore."
-    IDS_SAX_ERROR_LOCATION      L"Riga %d, colonna %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"&Esci"
-    IDS_STATUS_SCANNING         L"Scansione..."
-END
-
-/////////////////////////////////////////////////////////////////////////////
-// Polish resources
-
-LANGUAGE LANG_POLISH, SUBLANG_DEFAULT
-#pragma code_page(1250)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Błąd"
-    IDS_CANNOT_LOAD_SCHEMA      L"Nie można załadować schematu FictionBook."
-    IDS_COM_ERROR_FORMAT        L"Błąd COM: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Sprawdź plik FB2"
-    IDS_STATUS_DONE             L"Gotowe."
-    IDS_BUTTON_STOP             L"&Zatrzymaj"
-    IDS_BUTTON_REVALIDATE       L"&Sprawdź ponownie"
-    IDS_COLUMN_FILE_NAME        L"Nazwa pliku"
-    IDS_VALIDATION_NO_ERRORS    L"Brak błędów."
-    IDS_SAX_ERROR_LOCATION      L"Wiersz %d, kolumna %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"&Zakończ"
-    IDS_STATUS_SCANNING         L"Skanowanie..."
-END
-
-/////////////////////////////////////////////////////////////////////////////
-// Czech resources
-
-LANGUAGE LANG_CZECH, SUBLANG_DEFAULT
-#pragma code_page(1250)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Chyba"
-    IDS_CANNOT_LOAD_SCHEMA      L"Nelze načíst schéma FictionBook."
-    IDS_COM_ERROR_FORMAT        L"Chyba COM: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Zkontrolovat soubor FB2"
-    IDS_STATUS_DONE             L"Hotovo."
-    IDS_BUTTON_STOP             L"&Zastavit"
-    IDS_BUTTON_REVALIDATE       L"&Zkontrolovat znovu"
-    IDS_COLUMN_FILE_NAME        L"Název souboru"
-    IDS_VALIDATION_NO_ERRORS    L"Žádné chyby."
-    IDS_SAX_ERROR_LOCATION      L"Řádek %d, sloupec %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"&Konec"
-    IDS_STATUS_SCANNING         L"Skenování..."
-END
-
-/////////////////////////////////////////////////////////////////////////////
-// Bulgarian resources
-
-LANGUAGE LANG_BULGARIAN, SUBLANG_DEFAULT
-#pragma code_page(1251)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Грешка"
-    IDS_CANNOT_LOAD_SCHEMA      L"Не може да се зареди схемата FictionBook."
-    IDS_COM_ERROR_FORMAT        L"COM грешка: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Провери FB2 файла"
-    IDS_STATUS_DONE             L"Готово."
-    IDS_BUTTON_STOP             L"&Спри"
-    IDS_BUTTON_REVALIDATE       L"&Провери отново"
-    IDS_COLUMN_FILE_NAME        L"Име на файл"
-    IDS_VALIDATION_NO_ERRORS    L"Няма грешки."
-    IDS_SAX_ERROR_LOCATION      L"Ред %d, колона %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"И&зход"
-    IDS_STATUS_SCANNING         L"Сканиране..."
-END
-
-/////////////////////////////////////////////////////////////////////////////
-// Portuguese resources
-
-LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE
-#pragma code_page(1252)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Erro"
-    IDS_CANNOT_LOAD_SCHEMA      L"Não foi possível carregar o esquema FictionBook."
-    IDS_COM_ERROR_FORMAT        L"Erro COM: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Validar ficheiro FB2"
-    IDS_STATUS_DONE             L"Concluído."
-    IDS_BUTTON_STOP             L"&Parar"
-    IDS_BUTTON_REVALIDATE       L"&Validar novamente"
-    IDS_COLUMN_FILE_NAME        L"Nome do ficheiro"
-    IDS_VALIDATION_NO_ERRORS    L"Sem erros."
-    IDS_SAX_ERROR_LOCATION      L"Linha %d, coluna %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"&Sair"
-    IDS_STATUS_SCANNING         L"A analisar..."
-END
-
-/////////////////////////////////////////////////////////////////////////////
-// Dutch resources
-
-LANGUAGE LANG_DUTCH, SUBLANG_DUTCH
-#pragma code_page(1252)
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Fout"
-    IDS_CANNOT_LOAD_SCHEMA      L"Kan FictionBook-schema niet laden."
-    IDS_COM_ERROR_FORMAT        L"COM-fout: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"FB2-bestand valideren"
-    IDS_STATUS_DONE             L"Gereed."
-    IDS_BUTTON_STOP             L"&Stoppen"
-    IDS_BUTTON_REVALIDATE       L"&Opnieuw controleren"
-    IDS_COLUMN_FILE_NAME        L"Bestandsnaam"
-    IDS_VALIDATION_NO_ERRORS    L"Geen fouten."
-    IDS_SAX_ERROR_LOCATION      L"Regel %d, kolom %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"&Afsluiten"
-    IDS_STATUS_SCANNING         L"Scannen..."
-END
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) resources
 
@@ -358,27 +127,6 @@ BEGIN
 END
 
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// String Table
-//
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR                   L"Error"
-    IDS_CANNOT_LOAD_SCHEMA      L"Can't load FictionBook schema."
-    IDS_COM_ERROR_FORMAT        L"COM Error: %x [%s]"
-    IDS_SHELL_VALIDATE_VERB     L"Check FB2 for errors"
-    IDS_STATUS_DONE             L"Done."
-    IDS_BUTTON_STOP             L"&Stop"
-    IDS_BUTTON_REVALIDATE       L"Re&validate"
-    IDS_COLUMN_FILE_NAME        L"File name"
-    IDS_VALIDATION_NO_ERRORS    L"No errors."
-    IDS_SAX_ERROR_LOCATION      L"At line %d, column %d:\r\n%s"
-    IDS_BUTTON_EXIT             L"E&xit"
-    IDS_STATUS_SCANNING         L"Scanning..."
-END
 
 /////////////////////////////////////////////////////////////////////////////
 //

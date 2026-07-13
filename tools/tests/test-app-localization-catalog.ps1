@@ -107,27 +107,114 @@ foreach ($entry in $seedStrings) {
             throw "У строки $($entry.Name) отсутствует перевод для $language."
         }
     }
-}
 
-$requiredFbeResources = @(
-    "IDS_UPDATE_CHECK",
-    "IDS_UPDATE_DOWNLOADERROR",
-    "IDS_UPDATE_HAVELATESTVERSION",
-    "IDS_READONLY_SAVE_MSG",
-    "IDD_ABOUTBOX"
-)
-foreach ($resourceFile in @("src\locales\res_rus\FBE.rc", "src\locales\res_ukr\FBE.rc")) {
-    $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $resourceFile)
-    foreach ($resourceName in $requiredFbeResources) {
-        if ($text -notmatch [regex]::Escape($resourceName)) {
-            throw "В $resourceFile не найден обязательный ресурс $resourceName."
+    $sourceText = [string]$entry.Value.source
+    $brandFragments = @(
+        "FictionBook Editor Next",
+        "FB Editor Next",
+        "FictionBook Validator Next",
+        "FictionBook Editor",
+        "FictionBook Validator"
+    )
+    foreach ($brand in $brandFragments) {
+        if ($sourceText -notlike "*$brand*") {
+            continue
+        }
+
+        foreach ($language in $requiredLanguages) {
+            $translatedText = [string]$translations.PSObject.Properties[$language].Value
+            if ($translatedText -notlike "*$brand*") {
+                throw "Брендовое имя '$brand' нельзя переводить или менять. Строка: $($entry.Name), язык: $language"
+            }
         }
     }
 }
 
-$fbvRc = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbv\FBV.rc")
-if ($fbvRc -notmatch "IDS_SHELL_VALIDATE_VERB") {
-    throw "В src\fbv\FBV.rc не найден IDS_SHELL_VALIDATE_VERB."
+$fbeResourceHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\resource.h")
+$requiredFbeResources = @(
+    "IDS_UPDATE_CHECK",
+    "IDS_UPDATE_CONNECTING",
+    "IDS_UPDATE_CANTCONNECT",
+    "IDS_UPDATE_DOWNLOADCOMPLETE",
+    "IDS_UPDATE_DOWNLOADERROR",
+    "IDS_UPDATE_404ERROR",
+    "IDS_UPDATE_403ERROR",
+    "IDS_UPDATE_407ERROR",
+    "IDS_UPDATE_NOTSUPPORTEDRANGE",
+    "IDS_UPDATE_DOWNLOADERRORSTATUS",
+    "IDS_UPDATE_INCORRECTMD5",
+    "IDS_UPDATE_NEWVERSIONAVAILABLE",
+    "IDS_UPDATE_HAVELATESTVERSION",
+    "IDS_UPDATE_DOWNLOADEDFROM",
+    "IDS_UPDATE_DOWNLOADED",
+    "IDS_UPDATE_DOWNLOADREADY",
+    "IDS_UPDATE_CLOSE",
+    "IDS_SEARCH_END_MSG",
+    "IDS_READONLY_SAVE_MSG",
+    "IDD_ABOUTBOX"
+)
+$requiredGeneratedFbeStringResources = @(
+    $requiredFbeResources | Where-Object { $_ -match '^IDS_' }
+)
+
+$fbeCatalogResources = @(
+    $seedStrings |
+        Where-Object { [string]$_.Value.component -eq "fbe.core" } |
+        ForEach-Object { [string]$_.Value.resourceId }
+)
+
+foreach ($resourceName in $fbeCatalogResources) {
+    if ($resourceName -match '^IDS_' -and $fbeResourceHeader -notmatch [regex]::Escape($resourceName)) {
+        throw "Каталог FBE ссылается на отсутствующий ресурс src\fbe\resource.h: $resourceName."
+    }
+}
+
+$fbeMainResourceFile = "src\fbe\FBE.rc"
+$fbeMainResourceText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $fbeMainResourceFile)
+foreach ($resourceName in $requiredFbeResources) {
+    if ($fbeMainResourceText -notmatch [regex]::Escape($resourceName)) {
+        throw "В $fbeMainResourceFile не найден обязательный ресурс $resourceName."
+    }
+}
+
+$localizedFbeResourceFiles = @(
+    @{
+        ResourceFile = "src\locales\res_rus\FBE.rc"
+        GeneratedFile = "src\locales\res_rus\FBEStrings.generated.rc2"
+    },
+    @{
+        ResourceFile = "src\locales\res_ukr\FBE.rc"
+        GeneratedFile = "src\locales\res_ukr\FBEStrings.generated.rc2"
+    }
+)
+
+foreach ($resourcePair in $localizedFbeResourceFiles) {
+    $resourceText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $resourcePair.ResourceFile)
+    $generatedText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $resourcePair.GeneratedFile)
+    if ($resourceText -notmatch '#include\s+"FBEStrings\.generated\.rc2"') {
+        throw "В $($resourcePair.ResourceFile) не подключён FBEStrings.generated.rc2."
+    }
+
+    foreach ($resourceName in $requiredGeneratedFbeStringResources) {
+        if ($generatedText -notmatch [regex]::Escape($resourceName)) {
+            throw "В $($resourcePair.GeneratedFile) не найден обязательный ресурс $resourceName."
+        }
+    }
+}
+
+foreach ($resourceName in $requiredFbeResources) {
+    if ($resourceName -notin $fbeCatalogResources) {
+        Write-Warning "FBE-ресурс $resourceName ещё не заведён в localization/app-ui/catalog.json."
+    }
+}
+
+$fbvResourceHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbv\resource.h")
+$fbvGeneratedStrings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbv\FBVStrings.generated.rc2")
+if ($fbvResourceHeader -notmatch "IDS_SHELL_VALIDATE_VERB") {
+    throw "В src\fbv\resource.h не найден IDS_SHELL_VALIDATE_VERB."
+}
+if ($fbvGeneratedStrings -notmatch "IDS_SHELL_VALIDATE_VERB") {
+    throw "В src\fbv\FBVStrings.generated.rc2 не найден IDS_SHELL_VALIDATE_VERB."
 }
 
 Write-Host "Каталог локализации FBE/FBV прошёл проверку."

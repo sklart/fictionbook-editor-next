@@ -5,7 +5,12 @@
 #include <assert.h>
 #include <tchar.h>
 
+#include <map>
+#include <string>
+#include <vector>
+
 #include "resource.h"
+#include "..\common\RuntimeLocalizationCommon.h"
 
 CAppModule _Module;
 
@@ -119,8 +124,39 @@ static int		FBNS_len;
 static const wchar_t	*XLINKNS=L"http://www.w3.org/1999/xlink";
 static int		XLINKNS_len;
 
+struct RuntimeStringBinding {
+  UINT id;
+  const wchar_t* key;
+};
+
+static const RuntimeStringBinding g_runtimeStringBindings[] = {
+  { IDS_ERROR, L"fbv.error.caption" },
+  { IDS_CANNOT_LOAD_SCHEMA, L"fbv.error.cannot_load_schema" },
+  { IDS_COM_ERROR_FORMAT, L"fbv.error.com_format" },
+  { IDS_SHELL_VALIDATE_VERB, L"fbv.shell.validate" },
+  { IDS_STATUS_DONE, L"fbv.status.done" },
+  { IDS_STATUS_SCANNING, L"fbv.status.scanning" },
+  { IDS_BUTTON_STOP, L"fbv.button.stop" },
+  { IDS_BUTTON_REVALIDATE, L"fbv.button.revalidate" },
+  { IDS_COLUMN_FILE_NAME, L"fbv.column.file_name" },
+  { IDS_VALIDATION_NO_ERRORS, L"fbv.validation.no_errors" },
+  { IDS_SAX_ERROR_LOCATION, L"fbv.error.sax_location" },
+  { IDS_BUTTON_EXIT, L"fbv.button.exit" },
+};
+
+static std::map<UINT, CStringW> g_runtimeFbStrings;
+
+static void LoadRuntimeFbStrings()
+{
+  FbeRuntimeLocalization::LoadRuntimeStringFiles(::GetModuleHandleW(NULL), L"fbv.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeFbStrings);
+}
+
 static CString LoadFbString(UINT id)
 {
+  std::map<UINT, CStringW>::const_iterator it = g_runtimeFbStrings.find(id);
+  if (it != g_runtimeFbStrings.end())
+    return it->second;
+
   CString text;
   text.LoadString(id);
   return text;
@@ -346,6 +382,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,
   XLINKNS_len=lstrlenW(XLINKNS);
 
   ::DefWindowProc(NULL, 0, 0, 0L);
+
+  LoadRuntimeFbStrings();
 
   AtlInitCommonControls(ICC_BAR_CLASSES);
 

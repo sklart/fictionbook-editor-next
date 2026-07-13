@@ -281,6 +281,16 @@
 #define IDS_RECOVERY_CAPTION            306
 #define IDS_RECOVERY_MSG                307
 #define IDS_READONLY_SAVE_MSG           308
+#define IDS_LANG_SYSTEM_DEFAULT        309
+#define IDS_LANG_GERMAN                310
+#define IDS_LANG_FRENCH                311
+#define IDS_LANG_SPANISH               312
+#define IDS_LANG_ITALIAN               313
+#define IDS_LANG_POLISH                314
+#define IDS_LANG_PORTUGUESE            315
+#define IDS_LANG_DUTCH                 316
+#define IDS_LANG_CZECH                 317
+#define IDS_LANG_BULGARIAN             318
 #define ID_PANE_CHAR                    305
 #define IDB_UPD_CHECK1                  400
 #define IDB_UPD_CHECK2                  401
@@ -479,6 +489,16 @@
 #define IDC_FAST_MODE                   1110
 #define IDC_IDT                         1111
 #define IDC_AB_STATIC_BANNER            1112
+#define IDC_OPTIONS_FOREGROUND_COLOR    1113
+#define IDC_OPTIONS_BACKGROUND_COLOR    1114
+#define IDC_OPTIONS_BODY_FONT           1115
+#define IDC_OPTIONS_FONT_SIZE           1116
+#define IDC_OPTIONS_INTERFACE_GROUP     1117
+#define IDC_OPTIONS_BODY_GROUP          1118
+#define IDC_OPTIONS_SOURCE_GROUP        1119
+#define IDC_OPTIONS_LANGUAGE_LABEL      1120
+#define IDC_OPTIONS_SPELLCHECK_GROUP    1121
+#define IDC_OPTIONS_SOURCE_FONT         1122
 #define ID_SCRIPT_BASE                  9000
 #define ID_EDIT_INS_SYMBOL              10000
 #define ID_NEXT_ITEM                    32772
@@ -562,6 +582,11 @@
 #define ID_EDIT_PASTE2                  0xE525
 #define IDS_ENCODINGS                   61403
 #define IDS_DOCUMENT_TREE_CAPTION       61404
+#define IDC_FIND_LABEL_TEXT             1123
+#define IDC_FIND_DIRECTION_GROUP        1124
+#define IDC_REPLACE_LABEL_TEXT          1125
+#define IDC_REPLACE_LABEL_REPLACE       1126
+#define IDC_REPLACE_DIRECTION_GROUP     1127
 
 // Next default values for new objects
 // 

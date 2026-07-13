@@ -74,6 +74,9 @@
     <ClCompile Include="FBEview.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="RuntimeLocalization.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="GLLogo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -202,6 +205,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RuntimeLocalization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SearchReplace.h">
@@ -350,7 +356,13 @@
     <None Include="res\Fb2-shema.bmp">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="res\FBE2_new.ico">
+    <None Include="res\FBE.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\FBE2.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\FBE2.ico">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="res\green.bmp">
@@ -464,9 +476,6 @@
     <None Include="res\wordstat.bmp">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="res\wsoverlays.bmp">
-      <Filter>Resource Files</Filter>
-    </None>
     <None Include="res\xml.bmp">
       <Filter>Resource Files</Filter>
     </None>
@@ -504,7 +513,7 @@
     <None Include="extras\atlcrypt.inl">
       <Filter>extras</Filter>
     </None>
-    <None Include="res\FBE_new.ico">
+    <None Include="res\FBE.ico">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

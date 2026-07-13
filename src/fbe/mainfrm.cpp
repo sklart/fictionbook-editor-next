@@ -7,12 +7,225 @@
 #include "AboutBox.h"
 #include "CFileDialogEx.h"
 #include "SettingsDlg.h"
+#include "RuntimeLocalization.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
 #include <vector>
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
+
+extern CSettings _Settings;
+extern HINSTANCE resLib;
+
+struct RuntimeMenuCommandBinding
+{
+	UINT commandId;
+	LPCWSTR key;
+};
+
+static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
+	{ ID_FILE_NEW, L"fbe.menu.idr_mainframe.file.new" },
+	{ ID_FILE_OPEN, L"fbe.menu.idr_mainframe.file.open" },
+	{ ID_FILE_SAVE, L"fbe.menu.idr_mainframe.file.save" },
+	{ ID_FILE_SAVE_AS, L"fbe.menu.idr_mainframe.file.save_as" },
+	{ ID_FILE_VALIDATE, L"fbe.menu.idr_mainframe.file.validate" },
+	{ ID_FILE_MRU_FIRST, L"fbe.menu.idr_mainframe.recent.empty" },
+	{ ID_APP_EXIT, L"fbe.menu.idr_mainframe.file.exit" },
+	{ ID_EDIT_UNDO, L"fbe.menu.idr_mainframe.edit.undo" },
+	{ ID_EDIT_REDO, L"fbe.menu.idr_mainframe.edit.redo" },
+	{ ID_EDIT_CUT, L"fbe.menu.idr_mainframe.edit.cut" },
+	{ ID_EDIT_COPY, L"fbe.menu.idr_mainframe.edit.copy" },
+	{ ID_EDIT_PASTE, L"fbe.menu.idr_mainframe.edit.paste" },
+	{ ID_EDIT_FIND, L"fbe.menu.idr_mainframe.edit.find" },
+	{ ID_EDIT_FINDNEXT, L"fbe.menu.idr_mainframe.edit.find_next" },
+	{ ID_EDIT_REPLACE, L"fbe.menu.idr_mainframe.edit.replace" },
+	{ ID_GOTO_FOOTNOTE, L"fbe.menu.idr_mainframe.edit.goto_footnote" },
+	{ ID_GOTO_MATCHTAG, L"fbe.menu.idr_mainframe.edit.goto_matching_tag" },
+	{ ID_GOTO_WRONGTAG, L"fbe.menu.idr_mainframe.edit.goto_wrong_tag" },
+	{ ID_EDIT_CLONE, L"fbe.menu.idr_mainframe.edit.clone" },
+	{ ID_EDIT_SPLIT, L"fbe.menu.idr_mainframe.edit.split" },
+	{ ID_EDIT_MERGE, L"fbe.menu.idr_mainframe.edit.merge" },
+	{ ID_EDIT_REMOVE_OUTER_SECTION, L"fbe.menu.idr_mainframe.edit.remove_outer_section" },
+	{ 60161, L"fbe.menu.idr_mainframe.view.toolbar" },
+	{ 60162, L"fbe.menu.idr_mainframe.view.scripts_bar" },
+	{ 60163, L"fbe.menu.idr_mainframe.view.links_bar" },
+	{ 60164, L"fbe.menu.idr_mainframe.view.tables_bar" },
+	{ ID_VIEW_STATUS_BAR, L"fbe.menu.idr_mainframe.view.status_bar" },
+	{ ID_VIEW_TREE, L"fbe.menu.idr_mainframe.view.tree" },
+	{ ID_VIEW_DESC, L"fbe.menu.idr_mainframe.view.description" },
+	{ ID_VIEW_BODY, L"fbe.menu.idr_mainframe.view.body" },
+	{ ID_VIEW_SOURCE, L"fbe.menu.idr_mainframe.view.source" },
+	{ ID_VIEW_FASTMODE, L"fbe.menu.idr_mainframe.view.fast_mode" },
+	{ ID_EDIT_ADD_BODY, L"fbe.menu.idr_mainframe.insert.body" },
+	{ ID_EDIT_ADD_TITLE, L"fbe.menu.idr_mainframe.insert.title" },
+	{ ID_EDIT_ADD_EPIGRAPH, L"fbe.menu.idr_mainframe.insert.epigraph" },
+	{ ID_EDIT_ADD_ANN, L"fbe.menu.idr_mainframe.insert.annotation" },
+	{ ID_EDIT_ADD_TA, L"fbe.menu.idr_mainframe.insert.text_author" },
+	{ ID_EDIT_INS_IMAGE, L"fbe.menu.idr_mainframe.insert.image" },
+	{ ID_EDIT_INS_INLINEIMAGE, L"fbe.menu.idr_mainframe.insert.inline_image" },
+	{ ID_EDIT_INS_POEM, L"fbe.menu.idr_mainframe.insert.poem" },
+	{ ID_EDIT_INS_CITE, L"fbe.menu.idr_mainframe.insert.cite" },
+	{ ID_INSERT_TABLE, L"fbe.menu.idr_mainframe.insert.table" },
+	{ ID_EDIT_ADD_IMAGE, L"fbe.menu.idr_mainframe.insert.section_image" },
+	{ ID_EDIT_ADDBINARY, L"fbe.menu.idr_mainframe.insert.binary" },
+	{ ID_STYLE_NORMAL, L"fbe.menu.idr_mainframe.style.normal" },
+	{ ID_STYLE_TEXTAUTHOR, L"fbe.menu.idr_mainframe.style.text_author" },
+	{ ID_STYLE_SUBTITLE, L"fbe.menu.idr_mainframe.style.subtitle" },
+	{ ID_STYLE_LINK, L"fbe.menu.idr_mainframe.style.link" },
+	{ ID_STYLE_NOTE, L"fbe.menu.idr_mainframe.style.note" },
+	{ ID_STYLE_NOLINK, L"fbe.menu.idr_mainframe.style.remove_link" },
+	{ ID_TOOLS_WORDS, L"fbe.menu.idr_mainframe.tools.words" },
+	{ ID_VIEW_OPTIONS, L"fbe.menu.idr_mainframe.tools.options" },
+	{ ID_TOOLS_SPELLCHECK, L"fbe.menu.idr_mainframe.tools.spellcheck" },
+	{ ID_APP_ABOUT, L"fbe.menu.idr_mainframe.help.about" },
+};
+
+static LPCWSTR FindRuntimeMainFrameMenuCommandKey(UINT commandId)
+{
+	for(size_t i = 0; i < _countof(kMainFrameMenuCommandBindings); ++i)
+	{
+		if(kMainFrameMenuCommandBindings[i].commandId == commandId)
+			return kMainFrameMenuCommandBindings[i].key;
+	}
+	return NULL;
+}
+
+static CString LocalizeBundledPluginMenuText(const CString& clsidText, const CString& fallback)
+{
+	CString normalized(clsidText);
+	normalized.MakeUpper();
+
+	LPCWSTR key = NULL;
+	if(normalized == L"{D4B1B165-4D93-4F2D-8C8A-2D0C649431A1}")
+		key = L"fbe.plugin.import_epub.menu";
+	else if(normalized == L"{41494D79-3346-4E8C-A432-51BCD3742FC1}")
+		key = L"fbe.plugin.export_docx.menu";
+	else if(normalized == L"{A9406281-7F4A-4D4B-9D5B-BF1FC6BDF9EF}")
+		key = L"fbe.plugin.export_epub.menu";
+	else if(normalized == L"{E242A6D3-84BF-4285-9FAA-160F95370668}")
+		key = L"fbe.plugin.export_html.menu";
+
+	if(key == NULL)
+		return fallback;
+
+	return FbeLoadRuntimeStringByKey(key, fallback);
+}
+
+static void SetRuntimeMenuItemTextByPosition(HMENU menu, UINT position, LPCWSTR key)
+{
+	if(menu == NULL || key == NULL)
+		return;
+
+	HMENU subMenu = ::GetSubMenu(menu, position);
+	if(subMenu == NULL)
+		return;
+
+	CString text = FbeLoadRuntimeStringByKey(key);
+	if(text.IsEmpty())
+		return;
+
+	::ModifyMenu(menu, position, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(subMenu), text);
+}
+
+static void SetRuntimePlainMenuItemTextByPosition(HMENU menu, UINT position, LPCWSTR key)
+{
+	if(menu == NULL || key == NULL)
+		return;
+
+	MENUITEMINFO itemInfo = {};
+	itemInfo.cbSize = sizeof(itemInfo);
+	itemInfo.fMask = MIIM_ID | MIIM_STATE | MIIM_FTYPE;
+	if(!::GetMenuItemInfo(menu, position, TRUE, &itemInfo))
+		return;
+	if(itemInfo.hSubMenu != NULL || (itemInfo.fType & MFT_SEPARATOR))
+		return;
+
+	CString text = FbeLoadRuntimeStringByKey(key);
+	if(text.IsEmpty())
+		return;
+
+	::ModifyMenu(menu, position, MF_BYPOSITION | MF_STRING | (itemInfo.fState & (MFS_DISABLED | MFS_GRAYED)), itemInfo.wID, text);
+}
+
+static void ApplyRuntimeMenuCommandTexts(HMENU menu)
+{
+	if(menu == NULL)
+		return;
+
+	const int count = ::GetMenuItemCount(menu);
+	for(int i = 0; i < count; ++i)
+	{
+		HMENU subMenu = ::GetSubMenu(menu, i);
+		if(subMenu != NULL)
+			ApplyRuntimeMenuCommandTexts(subMenu);
+
+		const UINT commandId = ::GetMenuItemID(menu, i);
+		if(commandId == static_cast<UINT>(-1) || commandId == 0 || commandId == IDCANCEL)
+			continue;
+
+		LPCWSTR key = FindRuntimeMainFrameMenuCommandKey(commandId);
+		if(key == NULL)
+			continue;
+
+		CString text = FbeLoadRuntimeStringByKey(key);
+		if(!text.IsEmpty())
+			::ModifyMenu(menu, i, MF_BYPOSITION | MF_STRING, commandId, text);
+	}
+}
+
+static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
+{
+	if(menu == NULL)
+		return;
+
+	SetRuntimeMenuItemTextByPosition(menu, 0, L"fbe.menu.idr_mainframe.popup.file");
+	SetRuntimeMenuItemTextByPosition(menu, 1, L"fbe.menu.idr_mainframe.popup.edit");
+	SetRuntimeMenuItemTextByPosition(menu, 2, L"fbe.menu.idr_mainframe.popup.view");
+	SetRuntimeMenuItemTextByPosition(menu, 3, L"fbe.menu.idr_mainframe.popup.insert");
+	SetRuntimeMenuItemTextByPosition(menu, 4, L"fbe.menu.idr_mainframe.popup.style");
+	SetRuntimeMenuItemTextByPosition(menu, 5, L"fbe.menu.idr_mainframe.popup.tools");
+	SetRuntimeMenuItemTextByPosition(menu, 6, L"fbe.menu.idr_mainframe.popup.scripts");
+	SetRuntimeMenuItemTextByPosition(menu, 7, L"fbe.menu.idr_mainframe.popup.help");
+
+	HMENU fileMenu = ::GetSubMenu(menu, 0);
+	if(fileMenu != NULL)
+	{
+		SetRuntimeMenuItemTextByPosition(fileMenu, 6, L"fbe.menu.idr_mainframe.popup.import");
+		SetRuntimeMenuItemTextByPosition(fileMenu, 7, L"fbe.menu.idr_mainframe.popup.export");
+		SetRuntimeMenuItemTextByPosition(fileMenu, 9, L"fbe.menu.idr_mainframe.popup.recent_documents");
+
+		HMENU importMenu = ::GetSubMenu(fileMenu, 6);
+		HMENU exportMenu = ::GetSubMenu(fileMenu, 7);
+		HMENU recentMenu = ::GetSubMenu(fileMenu, 9);
+		SetRuntimePlainMenuItemTextByPosition(importMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.import");
+		SetRuntimePlainMenuItemTextByPosition(exportMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.export");
+		SetRuntimePlainMenuItemTextByPosition(recentMenu, 0, L"fbe.menu.idr_mainframe.recent.empty");
+	}
+
+	HMENU scriptsMenu = ::GetSubMenu(menu, 6);
+	SetRuntimePlainMenuItemTextByPosition(scriptsMenu, 0, L"fbe.menu.idr_mainframe.scripts.empty");
+
+	ApplyRuntimeMenuCommandTexts(menu);
+}
+
+static void ReloadInterfaceResourceInstance()
+{
+	if(resLib)
+	{
+		::FreeLibrary(resLib);
+		resLib = NULL;
+	}
+
+	const CString dllName = _Settings.GetInterfaceLanguageDllName();
+	if(!dllName.IsEmpty())
+		resLib = ::LoadLibrary(U::GetProgDir() + dllName);
+
+	if(resLib)
+		ATL::_AtlBaseModule.SetResourceInstance(resLib);
+	else
+		ATL::_AtlBaseModule.SetResourceInstance(ATL::_AtlBaseModule.GetModuleInstance());
+}
 
 static UINT GetWindowDpi(HWND window)
 {
@@ -57,37 +270,37 @@ LRESULT CALLBACK CBTProc(INT nCode, WPARAM wParam, LPARAM lParam)
 
 			if(GetDlgItem(hChildWnd,IDOK)!=NULL)
 			{
-				s.LoadString(IDS_MB_OK);
+				s = FbeLoadCString(IDS_MB_OK);
 				SetDlgItemText(hChildWnd,IDOK,s);
 			}
 			if(GetDlgItem(hChildWnd,IDCANCEL)!=NULL)
 			{
-				s.LoadString(IDS_MB_CANCEL);
+				s = FbeLoadCString(IDS_MB_CANCEL);
 				SetDlgItemText(hChildWnd,IDCANCEL,s);
 			}
 			if(GetDlgItem(hChildWnd,IDABORT)!=NULL)
 			{
-				s.LoadString(IDS_MB_ABORT);
+				s = FbeLoadCString(IDS_MB_ABORT);
 				SetDlgItemText(hChildWnd,IDABORT,s);
 			}
 			if(GetDlgItem(hChildWnd,IDRETRY)!=NULL)
 			{
-				s.LoadString(IDS_MB_RETRY);
+				s = FbeLoadCString(IDS_MB_RETRY);
 				SetDlgItemText(hChildWnd,IDRETRY,s);
 			}
 			if(GetDlgItem(hChildWnd,IDIGNORE)!=NULL)
 			{
-				s.LoadString(IDS_MB_IGNORE);
+				s = FbeLoadCString(IDS_MB_IGNORE);
 				SetDlgItemText(hChildWnd,IDIGNORE,s);
 			}
 			if(GetDlgItem(hChildWnd,IDYES)!=NULL)
 			{
-				s.LoadString(IDS_MB_YES);
+				s = FbeLoadCString(IDS_MB_YES);
 				SetDlgItemText(hChildWnd,IDYES,s);
 			}
 			if(GetDlgItem(hChildWnd,IDNO)!=NULL)
 			{
-				s.LoadString(IDS_MB_NO);
+				s = FbeLoadCString(IDS_MB_NO);
 				SetDlgItemText(hChildWnd,IDNO,s);
 			}
 		}
@@ -586,6 +799,9 @@ BOOL CMainFrame::OnIdle()
 		m_last_sci_ovr = m_source.SendMessage(SCI_GETOVERTYPE);
 		m_status.SetPaneText(ID_PANE_INS, m_last_sci_ovr ? strOVR : strINS);
 
+	RefreshLocalizedToolbarButtonTexts(m_CmdToolbar);
+	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
+
 		// Added by SeNS: issue (wish) #127
 		DisplayCharCode();
 	}
@@ -766,7 +982,7 @@ BOOL CMainFrame::OnIdle()
 					m_image_title_caption.SetEnabled(false);
 				}
 		
-				// ����������� ID ��� ����� <section>
+				// ??????????? ID ??? ????? <section>
 				MSHTML::IHTMLElementPtr scstn(m_doc->m_body.SelectionStructSection());
 				if(scstn)
 				{
@@ -782,7 +998,7 @@ BOOL CMainFrame::OnIdle()
 					m_section_box.EnableWindow(FALSE);
 					m_section_id_caption.SetEnabled(false);
 				}	
-				// ����������� ID ��� ����� <table>
+				// ??????????? ID ??? ????? <table>
 				MSHTML::IHTMLElementPtr sct(m_doc->m_body.SelectionStructTable());
 				if(sct)
 				{
@@ -799,7 +1015,7 @@ BOOL CMainFrame::OnIdle()
 					m_table_id_caption.SetEnabled(false);
 				}
 
-				// ����������� ID ��� ����� <tr>, <th>, <td>
+				// ??????????? ID ??? ????? <tr>, <th>, <td>
 				MSHTML::IHTMLElementPtr sctc(m_doc->m_body.SelectionStructTableCon());
 				if (sctc) {
 					m_id_table_box.EnableWindow(TRUE);
@@ -815,7 +1031,7 @@ BOOL CMainFrame::OnIdle()
 					m_id_table_caption.SetEnabled(false);
 				}
 
-				// ����������� style ��� ����� <table>
+				// ??????????? style ??? ????? <table>
 				_bstr_t	styleT("");
 				MSHTML::IHTMLElementPtr scsT(m_doc->m_body.SelectionsStyleTB(styleT));
 				if(scsT)
@@ -842,7 +1058,7 @@ BOOL CMainFrame::OnIdle()
 					m_styleT_table_box.EnableWindow(FALSE);
 				}
 
-				// ����������� style ��� ����� <th>, <td>
+				// ??????????? style ??? ????? <th>, <td>
 				_bstr_t	style("");
 				MSHTML::IHTMLElementPtr scs(m_doc->m_body.SelectionsStyleB(style));
 				if(scs)
@@ -869,7 +1085,7 @@ BOOL CMainFrame::OnIdle()
 					m_style_caption.SetEnabled(false);
 				}
 
-				// ����������� colspan ��� ����� <th>, <td>
+				// ??????????? colspan ??? ????? <th>, <td>
 				_bstr_t colspan("");
 				MSHTML::IHTMLElementPtr scc(m_doc->m_body.SelectionsColspanB(colspan));
 				if(scc)
@@ -896,7 +1112,7 @@ BOOL CMainFrame::OnIdle()
 					m_colspan_caption.SetEnabled(false);
 				}
 
-				// ����������� rowspan ��� ����� <th>, <td>
+				// ??????????? rowspan ??? ????? <th>, <td>
 				_bstr_t rowspan("");
 				MSHTML::IHTMLElementPtr scr(m_doc->m_body.SelectionsRowspanB(rowspan));
 				if(scr)
@@ -923,7 +1139,7 @@ BOOL CMainFrame::OnIdle()
 					m_rowspan_caption.SetEnabled(false);
 				}
 
-				// ����������� align ��� ����� <tr>
+				// ??????????? align ??? ????? <tr>
 				_bstr_t alignTR("");
 				MSHTML::IHTMLElementPtr scaTR(m_doc->m_body.SelectionsAlignTRB(alignTR));
 				if(scaTR)
@@ -950,7 +1166,7 @@ BOOL CMainFrame::OnIdle()
 					m_tr_allign_caption.SetEnabled(false);
 				}
 
-				// ����������� align ��� ����� <th>, <td>
+				// ??????????? align ??? ????? <th>, <td>
 				_bstr_t align("");
 				MSHTML::IHTMLElementPtr sca(m_doc->m_body.SelectionsAlignB(align));
 				if(sca)
@@ -977,7 +1193,7 @@ BOOL CMainFrame::OnIdle()
 					m_th_allign_caption.SetEnabled(false);
 				}
 
-				// ����������� valign ��� ����� <th>, <td>
+				// ??????????? valign ??? ????? <th>, <td>
 				_bstr_t valign("");
 				MSHTML::IHTMLElementPtr scva(m_doc->m_body.SelectionsVAlignB(valign));
 				if(scva)
@@ -1122,7 +1338,7 @@ BOOL CMainFrame::OnIdle()
 		m_change_state = DocChanged();
 		CString tt(U::GetFileTitle(m_doc->m_filename));
 		tt += m_change_state ? L" +" : L" -";
-		SetWindowText(tt + L" FB Editor");
+		SetWindowText(tt + L" FB Editor Next");
 	}
 
 	return FALSE;
@@ -1197,6 +1413,7 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 		CString ms(U::QuerySV(pk, L"Menu"));
 		if(pt.IsEmpty() || ms.IsEmpty() || pt != type)
 			continue;
+		ms = LocalizeBundledPluginMenuText(name, ms);
 		CLSID clsid;
 		if(::CLSIDFromString((TCHAR*)(const TCHAR *)name, &clsid) != NOERROR)
 			continue;
@@ -1251,6 +1468,7 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 			CString ms(U::QuerySV(pk, L"Menu"));
 			if(pt.IsEmpty() || ms.IsEmpty() || pt != type)
 				continue;
+			ms = LocalizeBundledPluginMenuText(name, ms);
 			CLSID clsid;
 			if(::CLSIDFromString((TCHAR*)(const TCHAR *)name, &clsid) != NOERROR)
 				continue;
@@ -1339,6 +1557,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   m_MenuBar.SetAlphaImages(true);
   HWND hWndCmdBar = m_MenuBar.Create(m_hWnd, rcDefault, NULL, ATL_SIMPLE_CMDBAR_PANE_STYLE);
   // attach menu
+  ApplyRuntimeMainFrameMenuLocalization(GetMenu());
   m_MenuBar.AttachMenu(GetMenu());
   // remove old menu
   SetMenu(NULL);
@@ -1556,7 +1775,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   FB::Doc::m_active_doc = m_doc;
   bool start_with_params = false;
   CString startupFileName;
-  // Ƞ䱳硥꡴᪫ 饠믬ᮤ 򳱮리 沫桮롡顯汥塭.
+  // ????????? ???? ?? ????????? ??????, ???? ?? ??? ???????.
   if (_ARGV.GetSize()>0 && !_ARGV[0].IsEmpty()) 
   { 
     const DWORD fullPathLength = ::GetFullPathName(_ARGV[0], 0, NULL, NULL);
@@ -2040,6 +2259,158 @@ void CMainFrame::FillMenuWithHkeys(HMENU menu)
 	}
 }
 
+LRESULT CMainFrame::OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandled)
+{
+	LPNMTTDISPINFOA pDispInfo = (LPNMTTDISPINFOA)pnmh;
+	if((idCtrl == 0) || (pDispInfo->uFlags & TTF_IDISHWND))
+	{
+		bHandled = FALSE;
+		return 0;
+	}
+
+	wchar_t wideText[MAX_LOAD_STRING + 1];
+	if(!FbeLoadString(_Module.GetResourceInstance(), idCtrl, wideText, MAX_LOAD_STRING))
+	{
+		bHandled = FALSE;
+		return 0;
+	}
+
+	const wchar_t* text = wcschr(wideText, L'\n');
+	text = (text != NULL) ? text + 1 : wideText;
+	::WideCharToMultiByte(CP_ACP, 0, text, -1, pDispInfo->szText, _countof(pDispInfo->szText), NULL, NULL);
+	return 0;
+}
+
+LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandled)
+{
+	LPNMTTDISPINFOW pDispInfo = (LPNMTTDISPINFOW)pnmh;
+	if((idCtrl == 0) || (pDispInfo->uFlags & TTF_IDISHWND))
+	{
+		bHandled = FALSE;
+		return 0;
+	}
+
+	wchar_t wideText[MAX_LOAD_STRING + 1];
+	if(!FbeLoadString(_Module.GetResourceInstance(), idCtrl, wideText, MAX_LOAD_STRING))
+	{
+		bHandled = FALSE;
+		return 0;
+	}
+
+	const wchar_t* text = wcschr(wideText, L'\n');
+	text = (text != NULL) ? text + 1 : wideText;
+	ATL::Checked::wcsncpy_s(pDispInfo->szText, _countof(pDispInfo->szText), text, _TRUNCATE);
+	return 0;
+}
+void CMainFrame::RefreshLocalizedToolbarButtonTexts(CToolBarCtrl& toolbar)
+{
+	if(!toolbar.IsWindow())
+		return;
+
+	const int buttonCount = toolbar.GetButtonCount();
+	for(int i = 0; i < buttonCount; ++i)
+	{
+		TBBUTTON button = {};
+		if(!toolbar.GetButton(i, &button))
+			continue;
+		if(button.fsStyle & BTNS_SEP)
+			continue;
+		if(button.idCommand <= 0)
+			continue;
+
+		wchar_t buf[MAX_LOAD_STRING + 1];
+		if(!FbeLoadString(_Module.GetResourceInstance(), button.idCommand, buf, MAX_LOAD_STRING))
+			continue;
+
+		const wchar_t* text = wcschr(buf, L'\n');
+		text = (text != NULL) ? text + 1 : buf;
+
+		TBBUTTONINFO info = {};
+		info.cbSize = sizeof(info);
+		info.dwMask = TBIF_TEXT;
+		info.pszText = const_cast<wchar_t*>(text);
+		toolbar.SetButtonInfo(button.idCommand, &info);
+	}
+
+	toolbar.AutoSize();
+	toolbar.Invalidate();
+}
+void CMainFrame::RefreshLocalizedToolbarCaptions()
+{
+	wchar_t buf[MAX_LOAD_STRING + 1];
+
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_ID, buf, MAX_LOAD_STRING))
+		m_id_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_HREF, buf, MAX_LOAD_STRING))
+		m_href_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_SECTION_ID, buf, MAX_LOAD_STRING))
+		m_section_id_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_IMAGE_TITLE, buf, MAX_LOAD_STRING))
+		m_image_title_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TABLE_ID, buf, MAX_LOAD_STRING))
+		m_table_id_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TABLE_STYLE, buf, MAX_LOAD_STRING))
+		m_table_style_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_ID, buf, MAX_LOAD_STRING))
+		m_id_table_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_STYLE, buf, MAX_LOAD_STRING))
+		m_style_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_COLSPAN, buf, MAX_LOAD_STRING))
+		m_colspan_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_ROWSPAN, buf, MAX_LOAD_STRING))
+		m_rowspan_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TR_ALIGN, buf, MAX_LOAD_STRING))
+		m_tr_allign_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TD_ALIGN, buf, MAX_LOAD_STRING))
+		m_th_allign_caption.SetWindowText(buf);
+	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TD_VALIGN, buf, MAX_LOAD_STRING))
+		m_valign_caption.SetWindowText(buf);
+
+	m_id_caption.Invalidate();
+	m_href_caption.Invalidate();
+	m_section_id_caption.Invalidate();
+	m_image_title_caption.Invalidate();
+	m_table_id_caption.Invalidate();
+	m_table_style_caption.Invalidate();
+	m_id_table_caption.Invalidate();
+	m_style_caption.Invalidate();
+	m_colspan_caption.Invalidate();
+	m_rowspan_caption.Invalidate();
+	m_tr_allign_caption.Invalidate();
+	m_th_allign_caption.Invalidate();
+	m_valign_caption.Invalidate();
+
+	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_INS, strINS, MAX_LOAD_STRING);
+	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_OVR, strOVR, MAX_LOAD_STRING);
+
+	m_status.SetPaneText(ID_PANE_INS, m_last_sci_ovr ? strOVR : strINS);
+
+	RefreshLocalizedToolbarButtonTexts(m_CmdToolbar);
+	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
+}
+
+void CMainFrame::RefreshLocalizedMainFrameUi()
+{
+	HMENU menu = ::LoadMenu(_Module.GetResourceInstance(), MAKEINTRESOURCE(IDR_MAINFRAME));
+	if(menu != NULL)
+	{
+		ApplyRuntimeMainFrameMenuLocalization(menu);
+		m_import_plugins.RemoveAll();
+		m_export_plugins.RemoveAll();
+		m_scripts.RemoveAll();
+		m_scripts_images.RemoveAll();
+
+		m_MenuBar.AttachMenu(menu);
+		InitPlugins();
+		FillMenuWithHkeys(m_MenuBar.GetMenu());
+		m_MenuBar.Invalidate();
+		m_MenuBar.UpdateWindow();
+	}
+
+	RefreshLocalizedToolbarCaptions();
+	m_document_tree.RefreshLocalizedTitle();
+	DrawMenuBar();
+}
 // search&replace in scintilla
 CString	  SciSelection(CWindow source) {
   int	  start=source.SendMessage(SCI_GETSELECTIONSTART);
@@ -2094,8 +2465,8 @@ private:
 };
 
 static bool PrepareScintillaRegexReplaceTarget(CWindow source, CString& patternText, int findFlags) {
-  // ��� SCI_REPLACETARGETRE ����� ������ �������� ����� �� �������� target,
-  // ����� Scintilla ����� �������� ������ ������� ����� TARGETFROMSELECTION.
+  // ??? SCI_REPLACETARGETRE ????? ?????? ???????? ????? ?? ???????? target,
+  // ????? Scintilla ????? ???????? ?????? ??????? ????? TARGETFROMSELECTION.
   if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
     patternText.Replace( L"\u00A0", _Settings.GetNBSPChar());
 
@@ -2577,9 +2948,10 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 
 	if(ShowSettingsDialog(m_hWnd))
 	{
+		ReloadInterfaceResourceInstance();
+		FbeResetRuntimeLocalization();
+		RefreshLocalizedMainFrameUi();
 		ApplyConfChanges();
-		/*m_doc->ApplyConfChanges();
-		SetSciStyles();*/
 	}
 
 	switch(find_repl)
@@ -2722,6 +3094,9 @@ LRESULT CMainFrame::OnToolsWords(WORD, WORD, HWND, BOOL&)
 	if(IsSourceActive())
 		ShowView(BODY);
 
+	if(m_Speller)
+		m_Speller->EndDocumentCheck();
+
 	bool bFind = m_doc->m_body.CloseFindDialog(m_doc->m_body.m_find_dlg);
 	bool bReplace = m_doc->m_body.CloseFindDialog(m_doc->m_body.m_replace_dlg);
 
@@ -2743,6 +3118,9 @@ LRESULT CMainFrame::OnToolsWords(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 {
+	if(m_Speller)
+		m_Speller->EndDocumentCheck();
+
 	bool bFind = m_doc->m_body.CloseFindDialog(m_doc->m_body.m_find_dlg);
 	bool bReplace = m_doc->m_body.CloseFindDialog(m_doc->m_body.m_replace_dlg);
 
@@ -2752,7 +3130,12 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 	int find_repl = (bFind || bSciFind) ? 1 : ((bReplace || bSciRepl) ? 2 : 0);
 
 	if(ShowSettingsDialog(m_hWnd))
+	{
+		ReloadInterfaceResourceInstance();
+		FbeResetRuntimeLocalization();
+		RefreshLocalizedMainFrameUi();
 		ApplyConfChanges();
+	}
 
 	switch(find_repl)
 	{
@@ -2774,9 +3157,9 @@ LRESULT CMainFrame::OnToolsScript(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
 	if(IsSourceActive())
 		return 0;
 
-  // ������� �� FBE � �� FBW ����������� �� �������. � FBE ������� ����������� ����� Active Scripting
-  // � �������� � ���� ����������� ����� ���������. 
-  // � FBW ������� ����������� � ����� HTML ���������
+  // ??????? ?? FBE ? ?? FBW ??????????? ?? ???????. ? FBE ??????? ??????????? ????? Active Scripting
+  // ? ???????? ? ???? ??????????? ????? ?????????. 
+  // ? FBW ??????? ??????????? ? ????? HTML ?????????
 	for(int i = 0; i < m_scripts.GetSize(); ++i)
 	{
 		if(m_scripts[i].wID == -1) continue;
@@ -2789,7 +3172,7 @@ LRESULT CMainFrame::OnToolsScript(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
 		}
 	}
   
-  // TODO ��� ������ ���� else
+  // TODO ??? ?????? ???? else
 
   /*if (wID < m_scripts.GetSize()) {
   if (StartScript(this) >= 0) {
@@ -3336,18 +3719,18 @@ LRESULT CMainFrame::OnTreeMoveLeftElement(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnTreeMoveElementSmart(WORD, WORD, HWND, BOOL&)
 {
-	// ���� ������� ������ ���� �������, �� ������� ��� ������
-	// ���� ���������, �� ��������� ������ ��� ��� ���
-	// ���� ������, �� ������ ����� ����
+	// ???? ??????? ?????? ???? ???????, ?? ??????? ??? ??????
+	// ???? ?????????, ?? ????????? ?????? ??? ??? ???
+	// ???? ??????, ?? ?????? ????? ????
 	// ----------
 	// ----------
-	//   ----------    ������ ���������� �������
+	//   ----------    ?????? ?????????? ???????
 	//   ----------
 	// ----------
-	//   ----------    ������ ���������� �������
+	//   ----------    ?????? ?????????? ???????
 	//   ----------
 
-	// ��� ��������� ������ �� �� ��� � ��� ������
+	// ??? ????????? ?????? ?? ?? ??? ? ??? ??????
 
 	m_doc->m_body.BeginUndoUnit(L"structure editing");
 	CTreeItem item = m_document_tree.m_tree.m_tree.GetFirstSelectedItem();
@@ -3600,7 +3983,6 @@ LRESULT CMainFrame::OnChar(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
   return 0;
 }
 
-
 static CString ExtractXmlDeclarationEncoding(const CString& xmlText)
 {
 	const int declStart = xmlText.Find(L"<?xml");
@@ -3624,7 +4006,6 @@ static CString ExtractXmlDeclarationEncoding(const CString& xmlText)
 		return CString();
 
 	++encPos;
-
 	while (encPos < decl.GetLength() &&
 		(decl[encPos] == L' ' || decl[encPos] == L'\t' ||
 		 decl[encPos] == L'\r' || decl[encPos] == L'\n'))
@@ -3646,7 +4027,6 @@ static CString ExtractXmlDeclarationEncoding(const CString& xmlText)
 
 	CString encoding = decl.Mid(valueStart, valueEnd - valueStart);
 	encoding.Trim();
-
 	return encoding;
 }
 
@@ -3660,17 +4040,17 @@ bool  CMainFrame::SourceToHTML()
 	int end_char = 0;
 	int bodies_count = 0;
 	
-	// ����� �����
+	// ????? ?????
 	textlen = m_source.SendMessage(SCI_GETLENGTH);
 	buffer = new char[textlen + 1];
 	m_source.SendMessage(SCI_GETTEXT, textlen+1, (LPARAM)buffer);
-	// ��������� � UTF16
+	// ????????? ? UTF16
 	DWORD   ulen=::MultiByteToWideChar(CP_UTF8,0,buffer,textlen,NULL,0);
 
 	BSTR    ustr=::SysAllocStringLen(NULL,ulen);
 	::MultiByteToWideChar(CP_UTF8,0,buffer,textlen,ustr,ulen);
 	
-	//	������� ���������� �������	
+	//	??????? ?????????? ???????	
 	int	  selectedPosBegin = m_source.SendMessage(SCI_GETSELECTIONSTART);    
 	int	  selectedPosEnd = m_source.SendMessage(SCI_GETSELECTIONEND);    
 	bool one_pos = selectedPosEnd == selectedPosBegin;
@@ -3684,7 +4064,7 @@ bool  CMainFrame::SourceToHTML()
 		selectedPosEnd = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosEnd,NULL,0);
 	}	
 
-	//	���������� � XML
+	//	?????????? ? XML
 	U::DomPath path_begin;
 	U::DomPath path_end;
 
@@ -3702,6 +4082,11 @@ bool  CMainFrame::SourceToHTML()
 		
 	if(changed)
 	{
+		CString sourceText(ustr);
+		CString sourceEncoding = ExtractXmlDeclarationEncoding(sourceText);
+		if (!sourceEncoding.IsEmpty())
+			m_doc->m_encoding = sourceEncoding;
+
 		if((bool)m_saved_xml)
 		{
 			m_saved_xml.Release();
@@ -3718,7 +4103,7 @@ bool  CMainFrame::SourceToHTML()
 			if(ret.vt == VT_DISPATCH)
 			{
 				m_saved_xml = ret.pdispVal;
-				// ���� �������� �� xml, ������ ��������� ������
+				// ???? ???????? ?? xml, ?????? ????????? ??????
 				if(!(bool)m_saved_xml)
 				{
 					MSXML2::IXMLDOMParseErrorPtr err = ret.pdispVal;
@@ -3747,14 +4132,6 @@ bool  CMainFrame::SourceToHTML()
 		}
 	}
 
-	if(changed)
-	{
-		CString sourceText(ustr);
-		CString sourceEncoding = ExtractXmlDeclarationEncoding(sourceText);
-		if (!sourceEncoding.IsEmpty())
-			m_doc->m_encoding = sourceEncoding;
-	}
-
 	SysFreeString(ustr);
 	
 	
@@ -3779,7 +4156,7 @@ bool  CMainFrame::SourceToHTML()
 		}
 	}
 	
-	// ������ ������������� ����. ������������ ������ body
+	// ?????? ????????????? ????. ???????????? ?????? body
 	path_begin.CreatePathFromXMLDOM(body, selectedElementBegin);
 	MSXML2::IXMLDOMElementPtr selectedElementEnd;
 	if(one_pos)
@@ -3793,24 +4170,24 @@ bool  CMainFrame::SourceToHTML()
 	}	
 	
 
-	// ���� �������� ��� �������, �� ���������� ��� � HTML
+	// ???? ???????? ??? ???????, ?? ?????????? ??? ? HTML
 	if(changed)
 	{
-		// ���������� � HTML
+		// ?????????? ? HTML
 		CComDispatchDriver	body(m_doc->m_body.Script());
 		CComVariant		    args[2];
 		args[1] = m_saved_xml.GetInterfacePtr();
 		args[0] = _Settings.GetInterfaceLanguageName();
 		CheckError(body.InvokeN(L"LoadFromDOM", args, 2));
 		m_doc->m_body.Init();
-		// � ��� ���������� ����� HTML � ��������� �� ��������� ������� ������ ���������.
+		// ? ??? ?????????? ????? HTML ? ????????? ?? ????????? ??????? ?????? ?????????.
 		ClearSelection();
 		
         //m_saved_xml.Release();
 		//m_saved_xml = 0;		
 	}
 
-	//	� HTML �� ���� ������� ������ �������
+	//	? HTML ?? ???? ??????? ?????? ???????
 	MSHTML::IHTMLElementPtr selectedHTMLElementBegin;	
 	MSHTML::IHTMLElementPtr selectedHTMLElementEnd;	
 	
@@ -3865,8 +4242,8 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	bool one_element = false;
 
 	int bodies_count = 0;
-	// ����� HTML
-	// ���������� ���� �� ����������� ��������
+	// ????? HTML
+	// ?????????? ???? ?? ??????????? ????????
 	if(saveSelection)
 	{
 		MSHTML::IHTMLElementPtr selectedBeginElement;
@@ -3908,7 +4285,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		}while(root = root->nextSibling);
 	}
 
-	// Определяем кодировку для отображения XML declaration в режиме Source
+	// Preserve the XML declaration encoding when switching to Source view.
 	CString sourceEncoding = _Settings.KeepEncoding()
 		? m_doc->m_encoding
 		: _Settings.GetDefaultEncoding();
@@ -3916,7 +4293,6 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	if (sourceEncoding.IsEmpty())
 		sourceEncoding = L"utf-8";
 
-	// Если документ изменился, создаём новый XMLDOM
 	{
 		if (m_doc->DocRelChanged() || !(bool)m_saved_xml)
 		{
@@ -3924,7 +4300,6 @@ bool CMainFrame::ShowSource(bool saveSelection)
 			{
 				m_saved_xml.Release();
 			}
-
 			m_saved_xml = m_doc->CreateDOM(sourceEncoding);
 			if (!(bool)m_saved_xml)
 			{
@@ -3950,75 +4325,58 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	save.close(); */
 
 	MSXML2::IXMLDOMNodePtr xml_selected_begin;
-MSXML2::IXMLDOMNodePtr xml_selected_end;
+	MSXML2::IXMLDOMNodePtr xml_selected_end;
+	{
+		MSXML2::IXMLDOMElementPtr xml_root = m_saved_xml->documentElement;
+		if (!(bool)xml_root)
+			return false;
 
-{
-    MSXML2::IXMLDOMElementPtr xml_root = m_saved_xml->documentElement;
-    if (!(bool)xml_root)
-        return false;
+		MSXML2::IXMLDOMNodePtr xml_body = xml_root->firstChild;
+		while (xml_body)
+	{
+		if(U::scmp(xml_body->nodeName, L"body") == 0)
+		{
+			if(bodies_count)
+			{
+				--bodies_count;
+				xml_body = xml_body->nextSibling;
+				continue;
+			}
+			xml_selected_begin = selection_begin_path.GetNodeFromXMLDOM(xml_body);
+			selection_begin_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_begin);
+			path = selection_begin_path;
 
-    MSXML2::IXMLDOMNodePtr xml_body = xml_root->firstChild;
+			if(one_element)
+				selection_end_path = selection_begin_path;
+			else
+			{
+				xml_selected_end = selection_end_path.GetNodeFromXMLDOM(xml_body);
+				selection_end_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_end);
+			}
+			break;
+		}
+		xml_body = xml_body->nextSibling;
+	}
+	}
 
-    while (xml_body)
-    {
-        if (U::scmp(xml_body->nodeName, L"body") == 0)
-        {
-            if (bodies_count)
-            {
-                --bodies_count;
-                xml_body = xml_body->nextSibling;
-                continue;
-            }
+	_bstr_t rawSrc(m_saved_xml->xml);
+	CString srcText((const wchar_t*)rawSrc);
+	CString xmlDecl;
+	xmlDecl.Format(L"<?xml version=\"1.0\" encoding=\"%s\"?>", (const wchar_t*)sourceEncoding);
+	const CString xmlDeclWithoutEncoding(L"<?xml version=\"1.0\"?>");
+	if (srcText.Left(xmlDeclWithoutEncoding.GetLength()).CompareNoCase(xmlDeclWithoutEncoding) == 0)
+	{
+		srcText.Delete(0, xmlDeclWithoutEncoding.GetLength());
+		srcText.Insert(0, xmlDecl);
+	}
+	else if (srcText.Left(5).CompareNoCase(L"<?xml") != 0)
+	{
+		srcText.Insert(0, xmlDecl + L"\r\n");
+	}
+	_bstr_t src((const wchar_t*)srcText);
 
-            xml_selected_begin = selection_begin_path.GetNodeFromXMLDOM(xml_body);
-
-            selection_begin_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_begin);
-            path = selection_begin_path;
-
-            if (one_element)
-            {
-                selection_end_path = selection_begin_path;
-            }
-            else
-            {
-                xml_selected_end = selection_end_path.GetNodeFromXMLDOM(xml_body);
-                selection_end_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_end);
-            }
-
-            break;
-        }
-
-        xml_body = xml_body->nextSibling;
-    }
-}
-
-// Получаем XML для отображения в Scintilla.
-// Важно: MSXML document.xml может вернуть <?xml version="1.0"?>
-// без encoding, поэтому для режима Source восстанавливаем encoding вручную.
-_bstr_t rawSrc(m_saved_xml->xml);
-CString srcText((const wchar_t*)rawSrc);
-
-CString xmlDecl;
-xmlDecl.Format(
-	L"<?xml version=\"1.0\" encoding=\"%s\"?>",
-	(const wchar_t*)sourceEncoding);
-
-const CString xmlDeclWithoutEncoding(L"<?xml version=\"1.0\"?>");
-
-if (srcText.Left(xmlDeclWithoutEncoding.GetLength()).CompareNoCase(xmlDeclWithoutEncoding) == 0)
-{
-	srcText.Delete(0, xmlDeclWithoutEncoding.GetLength());
-	srcText.Insert(0, xmlDecl);
-}
-else if (srcText.Left(5).CompareNoCase(L"<?xml") != 0)
-{
-	srcText.Insert(0, xmlDecl + L"\r\n");
-}
-
-_bstr_t src((const wchar_t*)srcText);
-
-int savedPosBegin = 0;
-int savedPosEnd = 0;
+	int savedPosBegin = 0;
+	int savedPosEnd = 0;
 	//if(saveSelection)
 	{
 		savedPosBegin = selection_begin_path.GetNodeFromText(src, selection_begin_char);
@@ -4037,7 +4395,7 @@ int savedPosEnd = 0;
 
 	DWORD nch=::WideCharToMultiByte(CP_UTF8,0,src,src.length(),	NULL,0,NULL,NULL);
 
-	//	�������� ����� � ���������
+	//	???????? ????? ? ?????????
 	if(m_doc->DocRelChanged())
 	{
 		m_source.SendMessage(SCI_CLEARALL);
@@ -4050,7 +4408,7 @@ int savedPosEnd = 0;
 		}
 	}
 
-	//	��������� �� �������
+	//	????????? ?? ???????
 	m_source.SendMessage(SCI_SETSELECTIONSTART,savedPosBegin);
 	m_source.SendMessage(SCI_SETSELECTIONEND,savedPosEnd);
 	m_source.SendMessage(SCI_SCROLLCARET);	
@@ -4125,7 +4483,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	  {
 			int col,line;
 			bool fv;
-			fv=m_doc->SetXMLAndValidate(m_source,true,line,col);// �� ������ Source
+			fv=m_doc->SetXMLAndValidate(m_source,true,line,col);// ?? ?????? Source
 			if (!fv) 
 			{
 				U::MessageBox(MB_OK|MB_ICONERROR, IDR_MAINFRAME, IDS_BAD_XML_MSG);
@@ -4174,7 +4532,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 
   if (prev!=vt && vt!=SOURCE) {
     UIEnable(ID_VIEW_TREE,1);	
-	/*m_save_sp_mode=true;// Modification by Pilgrim - ����� ������ �� ��(!)��� ������ DESC ������� ID_VIEW_TREE � ������� �� BODY �� ���������������. ��, ���� ����� ������� ����� ������� �� SOURCE, �� �������� �� DESC � BODY �� ������ ID_VIEW_TREE. ���� �����������, � ����� ������� m_save_sp_mode=true;
+	/*m_save_sp_mode=true;// Modification by Pilgrim - ????? ?????? ?? ??(!)??? ?????? DESC ??????? ID_VIEW_TREE ? ??????? ?? BODY ?? ???????????????. ??, ???? ????? ??????? ????? ??????? ?? SOURCE, ?? ???????? ?? DESC ? BODY ?? ?????? ID_VIEW_TREE. ???? ???????????, ? ????? ??????? m_save_sp_mode=true;
     UISetCheck(ID_VIEW_TREE, m_save_sp_mode);*/
     m_splitter.SetSinglePaneMode(_Settings.ViewDocumentTree() ? SPLIT_PANE_NONE : SPLIT_PANE_RIGHT);
   }
@@ -4279,6 +4637,9 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	}
 	m_status.SetPaneText(ID_PANE_CHAR, L"");
 	m_status.SetPaneText(ID_PANE_INS, m_last_sci_ovr ? strOVR : strINS);
+
+	RefreshLocalizedToolbarButtonTexts(m_CmdToolbar);
+	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
     break;
   }
   m_last_view = m_current_view;
@@ -4358,9 +4719,9 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
   int col,line;
   bool fv;
   if (IsSourceActive())
-    fv=m_doc->SetXMLAndValidate(m_source,true,line,col);// �� ������ Source
+    fv=m_doc->SetXMLAndValidate(m_source,true,line,col);// ?? ?????? Source
   else
-    fv=m_doc->Validate(line,col);						// �� ������ Body
+    fv=m_doc->Validate(line,col);						// ?? ?????? Body
   if (!fv) {
     ShowView(SOURCE);
     // have to jump through the hoops to move to required column
@@ -4612,8 +4973,8 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::MoveRightElementWithoutChildren(MSHTML::IHTM
 	MSHTML::IHTMLDOMNodePtr move_to;
 	MSHTML::IHTMLDOMNodePtr insert_before;
 	MSHTML::IHTMLDOMNodePtr ret;
-	// ������ ���� �������� ������ ����������� �����
-	// ����� ���� ����� ����� ������ ������ ��������	
+	// ?????? ???? ???????? ?????? ??????????? ?????
+	// ????? ???? ????? ????? ?????? ?????? ????????	
 
 	if(!(bool)(ret = MoveRightElement(node)))
 		return 0;
@@ -4644,16 +5005,16 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::MoveRightElement(MSHTML::IHTMLDOMNodePtr nod
 	MSHTML::IHTMLDOMNodePtr move_from;
 	MSHTML::IHTMLDOMNodePtr move_to;
 	MSHTML::IHTMLDOMNodePtr insert_before;
-	// ������ ���� �������� ������ ����������� �����
+	// ?????? ???? ???????? ?????? ??????????? ?????
 	
 	if(!(bool)node)
 		return 0;
 
-	// ���� ����� ������� ������ ������
+	// ???? ????? ??????? ?????? ??????
 	if(!IsNodeSection(node))
 		return 0;
 
-	// ���� �� ����� ����������� ����, �� �� ������ ������
+	// ???? ?? ????? ??????????? ????, ?? ?? ?????? ??????
 	MSHTML::IHTMLDOMNodePtr prev_sibling = GetPrevSiblingSection(node);
 	
 	if(!(bool)prev_sibling)
@@ -4661,7 +5022,7 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::MoveRightElement(MSHTML::IHTMLDOMNodePtr nod
 
 	MSHTML::IHTMLDOMNodePtr child = GetLastChildSection(prev_sibling);
 
-	// ������ ���� ��������� �������� ������ ����������� �����
+	// ?????? ???? ????????? ???????? ?????? ??????????? ?????
 	move_to = prev_sibling;
 	insert_before = 0;		
 	move_from = node;		
@@ -4677,17 +5038,17 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::MoveRightElement(MSHTML::IHTMLDOMNodePtr nod
 MSHTML::IHTMLDOMNodePtr CMainFrame::MoveLeftElement(MSHTML::IHTMLDOMNodePtr node)
 {
 	MSHTML::IHTMLDOMNodePtr ret;
-	// ������ ����  ��������� ������ ������ ����
-	// � ����� ��������� ������� ������ ������
+	// ?????? ????  ????????? ?????? ?????? ????
+	// ? ????? ????????? ??????? ?????? ??????
 	
 	if(!(bool)node)
 		return 0;
 
-	// ���� ����� ������� ������ ������
+	// ???? ????? ??????? ?????? ??????
 	if(!IsNodeSection(node))
 		return 0;
 
-	// ���� �� ����� ����������� ����, �� �� ������ ������
+	// ???? ?? ????? ??????????? ????, ?? ?? ?????? ??????
 	MSHTML::IHTMLDOMNodePtr parent = node->parentNode;
 	if(!(bool)parent || !IsNodeSection(parent->parentNode))
 		return 0;
@@ -4700,7 +5061,7 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::MoveLeftElement(MSHTML::IHTMLDOMNodePtr node
 		m_doc->MoveNode(sibling, node, 0);	
 		sibling = next_sibling;
 	}	
-	// ������ ����  ��������� ������ ������ ����	
+	// ?????? ????  ????????? ?????? ?????? ????	
 	ret = m_doc->MoveNode(node, parent->parentNode, parent->nextSibling);	
 	
 	return ret;			
@@ -4821,12 +5182,12 @@ LRESULT CMainFrame::OnSciExpand(WORD cose, WORD wID, HWND, BOOL&)
 //////////////////////////////////////////////////////////////////////
 /// @fn CMainFrame::IsEmptySection
 ///
-/// ������� ��������� ���� �� �������� ����� ������ ���. ������� ���������
-/// ����� ������������������ ��������, ���������� ������ ���� ������, �������� 
-/// �� ��������, ��������� �����, ��������� ������� � �������� ���������
-///	@param MSHTML::IHTMLDOMNodePtr section [in, out] ����������� ������
-/// @return bool true - ���� ������ ������
-/// @date 17.12.07 @author ����� ����
+/// ??????? ????????? ???? ?? ???????? ????? ?????? ???. ??????? ?????????
+/// ????? ?????????????????? ????????, ?????????? ?????? ???? ??????, ???????? 
+/// ?? ????????, ????????? ?????, ????????? ??????? ? ???????? ?????????
+///	@param MSHTML::IHTMLDOMNodePtr section [in, out] ??????????? ??????
+/// @return bool true - ???? ?????? ??????
+/// @date 17.12.07 @author ????? ????
 //////////////////////////////////////////////////////////////////////
 bool CMainFrame::IsEmptySection(MSHTML::IHTMLDOMNodePtr section)
 {

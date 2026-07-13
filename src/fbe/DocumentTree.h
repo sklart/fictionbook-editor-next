@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "TreeView.h"
 #include "AppUtils.h"
@@ -16,6 +16,7 @@ private:
 
 	CCommandBarCtrl m_view_bar;
 	CMenu m_st_menu;
+	CMenu m_script_menu;
 
 public:
 	CTreeView m_tree;
@@ -96,6 +97,8 @@ public:
 		return 0;
 	}
 
+	void RefreshLocalizedMenuCaptions();
+
 private:
 	BOOL ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags = 0) throw();
 	void FillViewBar();
@@ -131,4 +134,5 @@ public:
 	LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
+	void RefreshLocalizedTitle();
 };

@@ -1221,7 +1221,7 @@ static bool ExportReportWarningsText(const std::wstring& docxPath, std::wstring&
     std::wstring text;
     if (!ReadTextFileWide(reportPath, text)) return false;
 
-    size_t p = text.find(L"Предупреждения:");
+    size_t p = text.find(L"\x041F\x0440\x0435\x0434\x0443\x043F\x0440\x0435\x0436\x0434\x0435\x043D\x0438\x044F:");
     if (p == std::wstring::npos) p = text.find(L"Warnings:");
     if (p == std::wstring::npos) return false;
 
@@ -1232,7 +1232,7 @@ static bool ExportReportWarningsText(const std::wstring& docxPath, std::wstring&
     size_t nextSection = tail.find(L"\r\n\r\n");
     if (nextSection != std::wstring::npos) tail = tail.substr(0, nextSection);
     tail = TrimString(tail);
-    if (tail.empty() || _wcsicmp(tail.c_str(), L"нет") == 0 || _wcsicmp(tail.c_str(), L"none") == 0)
+    if (tail.empty() || _wcsicmp(tail.c_str(), L"\x043D\x0435\x0442") == 0 || _wcsicmp(tail.c_str(), L"none") == 0)
         return false;
     warnings = tail;
     return !warnings.empty();

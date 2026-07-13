@@ -1,10 +1,17 @@
 #pragma once
 
+#include "RuntimeLocalization.h"
+
 class CCustomSaveDialog : public CFileDialogImpl<CCustomSaveDialog>
 {
 public:
 	HWND	      m_hDlg;
+	HWND	      m_hToolTip;
 	CString     m_template;
+	CString     m_tooltipTemplate;
+	CString     m_tooltipBrowseTemplate;
+	CString     m_tooltipDocInfo;
+	CString     m_tooltipTocDepth;
 	bool	      m_includedesc;
 	int	      m_tocdepth;
 
@@ -15,7 +22,7 @@ public:
 		LPCTSTR lpszFilter = NULL,
 		HWND hWndParent = NULL)
 		: CFileDialogImpl<CCustomSaveDialog>(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, hWndParent),
-		m_hDlg(NULL), m_includedesc(true), m_tocdepth(1)
+		m_hDlg(NULL), m_hToolTip(NULL), m_includedesc(true), m_tocdepth(1)
 	{
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_CUSTOMSAVEDLG);
 	}
@@ -31,6 +38,13 @@ public:
 	CHAIN_MSG_MAP(CFileDialogImpl<CCustomSaveDialog>)
 	END_MSG_MAP()
 
+	~CCustomSaveDialog() {
+		if (m_hToolTip != NULL) {
+			::DestroyWindow(m_hToolTip);
+			m_hToolTip = NULL;
+		}
+	}
+
 	LRESULT OnInitDialog(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		// save window handles
 		m_hDlg = hWnd;
@@ -43,6 +57,7 @@ public:
 			m_includedesc ? BST_CHECKED : BST_UNCHECKED, 0);
 		m_tocdepth = U::QueryIV(_Settings, _T("TOCDepth"), 1);
 		SetDlgItemInt(IDC_TOCDEPTH, m_tocdepth, FALSE);
+		InitTooltips();
 		return TRUE;
 	}
 
@@ -92,5 +107,42 @@ public:
 		_Settings.SetDWORDValue(_T("TOCDepth"), m_tocdepth);
 		return TRUE;
 	}
-};
 
+	void InitTooltips() {
+		m_hToolTip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL,
+			WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, CW_USEDEFAULT, CW_USEDEFAULT,
+			CW_USEDEFAULT, CW_USEDEFAULT, m_hDlg, NULL, _Module.GetModuleInstance(), NULL);
+		if (m_hToolTip == NULL)
+			return;
+
+		::SendMessage(m_hToolTip, TTM_SETMAXTIPWIDTH, 0, 360);
+		m_tooltipTemplate = LoadExportHtmlString(IDS_TOOLTIP_TEMPLATE);
+		m_tooltipBrowseTemplate = LoadExportHtmlString(IDS_TOOLTIP_BROWSE_TEMPLATE);
+		m_tooltipDocInfo = LoadExportHtmlString(IDS_TOOLTIP_DOCINFO);
+		m_tooltipTocDepth = LoadExportHtmlString(IDS_TOOLTIP_TOC_DEPTH);
+		AddTooltip(IDC_TEMPLATE, m_tooltipTemplate);
+		AddTooltip(IDC_BROWSE, m_tooltipBrowseTemplate);
+		AddTooltip(IDC_DOCINFO, m_tooltipDocInfo);
+		AddTooltip(IDC_TOCDEPTH, m_tooltipTocDepth);
+	}
+
+	void AddTooltip(UINT controlId, CString& text) {
+		if (m_hToolTip == NULL)
+			return;
+
+		HWND hControl = ::GetDlgItem(m_hDlg, controlId);
+		if (hControl == NULL)
+			return;
+
+		if (text.IsEmpty())
+			return;
+
+		TOOLINFO ti = { 0 };
+		ti.cbSize = sizeof(ti);
+		ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+		ti.hwnd = m_hDlg;
+		ti.uId = reinterpret_cast<UINT_PTR>(hControl);
+		ti.lpszText = const_cast<LPTSTR>((LPCTSTR)text);
+		::SendMessage(m_hToolTip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&ti));
+	}
+};

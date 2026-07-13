@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <algorithm>
 #include <map>
@@ -8,6 +8,20 @@
 #include "res1.h"
 #include "utils.h"
 #include "XMLSerializer\Serializable.h"
+
+const DWORD FBE_INTERFACE_LANGUAGE_AUTO = 0;
+const DWORD FBE_INTERFACE_LANGUAGE_ENGLISH = 0xFBE001;
+const DWORD FBE_INTERFACE_LANGUAGE_RUSSIAN = 0xFBE002;
+const DWORD FBE_INTERFACE_LANGUAGE_UKRAINIAN = 0xFBE003;
+const DWORD FBE_INTERFACE_LANGUAGE_GERMAN = 0xFBE004;
+const DWORD FBE_INTERFACE_LANGUAGE_FRENCH = 0xFBE005;
+const DWORD FBE_INTERFACE_LANGUAGE_SPANISH = 0xFBE006;
+const DWORD FBE_INTERFACE_LANGUAGE_ITALIAN = 0xFBE007;
+const DWORD FBE_INTERFACE_LANGUAGE_POLISH = 0xFBE008;
+const DWORD FBE_INTERFACE_LANGUAGE_PORTUGUESE = 0xFBE009;
+const DWORD FBE_INTERFACE_LANGUAGE_DUTCH = 0xFBE00A;
+const DWORD FBE_INTERFACE_LANGUAGE_CZECH = 0xFBE00B;
+const DWORD FBE_INTERFACE_LANGUAGE_BULGARIAN = 0xFBE00C;
 
 /*const int ILANG_ENGLISH = 0;
 const int ILANG_RUSSIAN = 1;*/
@@ -111,7 +125,7 @@ public:
 
 	CHotkey(CString reg_name, int IDS_CMD_NAME, WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_reg_name(reg_name), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
 	{
-		m_name.LoadString(IDS_CMD_NAME);
+		m_name = FbeLoadCString(IDS_CMD_NAME);
 
 		m_def_accel.fVirt = FVIRTKEY | fVirt;
 		m_def_accel.cmd = cmd;
@@ -122,7 +136,7 @@ public:
 
 	CHotkey(CString reg_name, int IDS_CMD_NAME, CString uchar,  WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_reg_name(reg_name), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
 	{
-		m_name.LoadString(IDS_CMD_NAME);
+		m_name = FbeLoadCString(IDS_CMD_NAME);
 		m_name += uchar;
 
 		m_def_accel.fVirt = FVIRTKEY | fVirt;
@@ -265,7 +279,7 @@ public:
 
 	CHotkeysGroup(CString reg_name, int IDS_GROUP_NAME) : m_reg_name(reg_name)
 	{
-		m_name.LoadString(IDS_GROUP_NAME);
+		m_name = FbeLoadCString(IDS_GROUP_NAME);
 	}
 
 	bool operator < (const CHotkeysGroup& other) const
@@ -563,7 +577,9 @@ public:
 	bool	GetExtElementStyle(const CString& elem)const;
 	bool	GetWindowPosition(WINDOWPLACEMENT& wpl)const;
 	DWORD	GetInterfaceLanguageID()const;
+	DWORD GetEffectiveInterfaceLanguageID()const;
 	CString GetInterfaceLanguageDllName()const;
+	CString GetInterfaceLocaleName()const;
 	CString GetLocalizedGenresFileName()const;
 	CString GetInterfaceLanguageName()const;
 	CString GetScriptsFolder() const;

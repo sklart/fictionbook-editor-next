@@ -83,6 +83,20 @@ $pcre2BuildArgs = @(
 if ($PlatformToolset) {
     $pcre2BuildArgs += @("-PlatformToolset", $PlatformToolset)
 }
+
+function Export-RuntimeLanguageFiles {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OutputDirectory
+    )
+
+    & (Join-Path $repoRoot "tools\localization\export-runtime-lang.ps1") `
+        -RepositoryRoot $repoRoot `
+        -OutputDirectory (Join-Path $OutputDirectory "Lang") `
+        -Clean
+
+    Write-Host "Runtime-локализация подготовлена рядом с бинарниками: $(Join-Path $OutputDirectory "Lang")"
+}
 & pwsh @pcre2BuildArgs
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
@@ -146,3 +160,4 @@ foreach ($requiredProject in @(
 
 Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
+Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")

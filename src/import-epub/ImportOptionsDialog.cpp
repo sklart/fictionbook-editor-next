@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "ImportOptionsDialog.h"
+#include "resource.h"
+#include "RuntimeLocalization.h"
 
 #include <commctrl.h>
 #include <vector>
@@ -42,38 +44,38 @@ namespace
     struct CheckDef
     {
         int id;
-        LPCWSTR text;
-        LPCWSTR tooltip;
+        UINT textId;
+        UINT tooltipId;
         bool EpubImportOptions::*field;
     };
 
     const CheckDef kChecks[] =
     {
-        { IDC_OPT_COVER, L"Импортировать обложку", L"Ищет обложку в OPF по properties=cover-image, meta name=cover и cover.xhtml. В FB2 добавляется <coverpage> и соответствующий <binary>.", &EpubImportOptions::importCover },
-        { IDC_OPT_IMAGES, L"Импортировать изображения", L"Преобразует XHTML <img> в FB2 <image l:href=\"#...\"/> и добавляет использованные файлы изображений как <binary> в конце FB2.", &EpubImportOptions::importImages },
-        { IDC_OPT_NOTES, L"Импортировать сноски", L"Переносит EPUB-сноски/endnotes/footnotes в отдельный FB2 <body name=\"notes\"> и делает ссылки <a type=\"note\"> рабочими в Fiction Book Editor.", &EpubImportOptions::importNotes },
-        { IDC_OPT_NAV_TITLES, L"Использовать nav.xhtml / toc.ncx для заголовков", L"Берёт названия глав из EPUB-оглавления, если в XHTML-файле нет нормального h1/h2 или имя файла выглядит техническим.", &EpubImportOptions::useNavigationTitles },
-        { IDC_OPT_REPAIR_ENCODING, L"Исправлять типичные ошибки кодировки", L"Пытается восстановить текст вида РђРЅРЅРѕС‚Р°С†РёСЏ в нормальную кириллицу. Применяется к заголовкам, метаданным и тексту.", &EpubImportOptions::repairEncoding },
-        { IDC_OPT_SKIP_SERVICE, L"Пропускать служебные страницы", L"Не добавляет в основной текст cover.xhtml, nav.xhtml, toc.xhtml, страницы оглавления и отдельные документы со сносками.", &EpubImportOptions::skipServicePages },
-        { IDC_OPT_TABLES, L"Импортировать таблицы", L"Преобразует XHTML table/tr/td/th в FB2 table/tr/td/th с сохранением colspan, rowspan, align и valign там, где они есть.", &EpubImportOptions::importTables },
-        { IDC_OPT_LISTS, L"Импортировать списки", L"Преобразует XHTML ul/ol/li в отдельные FB2-абзацы: маркированные списки получают символ •, нумерованные — номера 1., 2., 3.", &EpubImportOptions::importLists },
-        { IDC_OPT_POEMS, L"Распознавать стихи, эпиграфы и цитаты", L"По тегам epub:type и CSS-классам poem, stanza, verse, epigraph, cite пытается создавать FB2 <poem>, <stanza>, <v>, <epigraph> и <cite>.", &EpubImportOptions::importPoemsEpigraphs },
-        { IDC_OPT_SUBTITLES, L"Распознавать подзаголовки", L"Элементы с epub:type=subtitle или CSS-классом subtitle/subhead переносятся как FB2 <subtitle>, а не как обычные абзацы.", &EpubImportOptions::importSubtitles },
-        { IDC_OPT_SPLIT_HEADINGS, L"Создавать секции по заголовкам", L"Если внутри одного XHTML-файла есть несколько h1/h2/h3, плагин создаёт несколько FB2 <section>, а не складывает все заголовки как подзаголовки одной главы.", &EpubImportOptions::splitSectionsByHeadings },
-        { IDC_OPT_LINKS, L"Сохранять ссылки и якоря", L"Сохраняет внутренние и внешние ссылки EPUB как FB2 <a l:href=\"...\">. Для элементов с id/name старается сохранить идентификаторы.", &EpubImportOptions::preserveLinks },
-        { IDC_OPT_CLEAN_TYPOGRAPHY, L"Очищать типографику текста", L"Удаляет мягкие переносы, заменяет неразрывные пробелы обычными, нормализует частые служебные пробельные символы. Это уменьшает мусор после импорта из EPUB.", &EpubImportOptions::cleanTypography },
-        { IDC_OPT_PAGE_BREAKS, L"Импортировать разделители и номера страниц", L"Переносит XHTML hr и pagebreak/doc-pagebreak как <empty-line/>. Если в EPUB указан номер страницы, добавляет его мелким текстом после разрыва.", &EpubImportOptions::importPageBreaks },
-        { IDC_OPT_SKIP_HIDDEN, L"Пропускать скрытые элементы", L"Не импортирует элементы с hidden, aria-hidden=true, display:none, visibility:hidden и типичными CSS-классами hidden/sr-only. Убирает технический и экранно-дикторский мусор из текста.", &EpubImportOptions::skipHiddenElements },
-        { IDC_OPT_VALIDATE, L"Проверять итоговый FB2 перед открытием", L"Перед передачей в FBE выполняет базовую XML-проверку и добавляет предупреждения по отсутствующим body, binary или notes-ссылкам.", &EpubImportOptions::validateResult },
-        { IDC_OPT_DIAGNOSTIC, L"Добавлять диагностический раздел в книгу", L"Вставляет в начало FB2 отдельный раздел с предупреждениями импорта. Полезно для отладки, но обычно не нужно для готовой книги.", &EpubImportOptions::addDiagnosticSection },
-        { IDC_OPT_LOG, L"Писать лог импорта рядом с EPUB", L"Создаёт текстовый файл .ImportEPUB.log рядом с исходным EPUB: найденный OPF, количество глав, картинок, сносок, пропуски и ошибки.", &EpubImportOptions::writeImportLog },
-        { IDC_OPT_SAVE_FB2, L"Сохранять FB2-копию рядом с EPUB", L"После успешного импорта дополнительно сохраняет полученный FB2 как файл .imported.fb2 рядом с исходным EPUB. Удобно для проверки, сравнения и анализа без повторного запуска FBE.", &EpubImportOptions::saveFb2Copy },
-        { IDC_OPT_CSS_SEMANTICS, L"Использовать CSS-классы для структуры", L"Учитывает смысловые CSS-классы: subtitle, epigraph, poem, stanza, verse, text-author, note, footnote, sidebar, dedication. Полноценные визуальные CSS-стили в FB2 не переносятся.", &EpubImportOptions::useCssSemanticClasses },
-        { IDC_OPT_REMOVE_BACKLINKS, L"Удалять обратные ссылки из сносок", L"Удаляет из текста сносок служебные ссылки возврата вида ↩, back, backlink и элементы role=doc-backlink. Основные ссылки из текста к сноскам сохраняются.", &EpubImportOptions::removeFootnoteBacklinks },
-        { IDC_OPT_REMOVE_SERVICE_SECTIONS, L"Удалять служебные и пустые разделы", L"Дополнительно пропускает пустые, навигационные и технические разделы: cover, titlepage, toc, nav, landmarks, page-list, copyright-page, calibre-служебные блоки.", &EpubImportOptions::removeServiceSections },
-        { IDC_OPT_LOG_ON_WARNINGS, L"Создавать лог при ошибках и предупреждениях", L"Если импорт завершился ошибкой или были предупреждения проверки FB2, лог .ImportEPUB.log создаётся автоматически, даже когда постоянное логирование выключено.", &EpubImportOptions::writeLogOnWarnings },
-        { IDC_OPT_SAVE_INTERMEDIATE_ON_ERROR, L"Сохранять промежуточный FB2 при ошибке", L"Если FB2 был сформирован, но проверка выявила проблемы, рядом с EPUB сохраняется .failed-import.fb2 для анализа результата без повторного импорта.", &EpubImportOptions::saveIntermediateFb2OnError },
-        { IDC_OPT_KEEP_TEMP, L"Сохранять временную распаковку при ошибке", L"Если импорт завершится ошибкой, временная папка с распакованным EPUB не удаляется. Это удобно для анализа проблемных файлов.", &EpubImportOptions::keepTempOnError }
+        { IDC_OPT_COVER, IDS_IMPORT_OPTIONS_OPT_COVER, IDS_IMPORT_OPTIONS_TT_COVER, &EpubImportOptions::importCover },
+        { IDC_OPT_IMAGES, IDS_IMPORT_OPTIONS_OPT_IMAGES, IDS_IMPORT_OPTIONS_TT_IMAGES, &EpubImportOptions::importImages },
+        { IDC_OPT_NOTES, IDS_IMPORT_OPTIONS_OPT_NOTES, IDS_IMPORT_OPTIONS_TT_NOTES, &EpubImportOptions::importNotes },
+        { IDC_OPT_NAV_TITLES, IDS_IMPORT_OPTIONS_OPT_NAV_TITLES, IDS_IMPORT_OPTIONS_TT_NAV_TITLES, &EpubImportOptions::useNavigationTitles },
+        { IDC_OPT_REPAIR_ENCODING, IDS_IMPORT_OPTIONS_OPT_REPAIR_ENCODING, IDS_IMPORT_OPTIONS_TT_REPAIR_ENCODING, &EpubImportOptions::repairEncoding },
+        { IDC_OPT_SKIP_SERVICE, IDS_IMPORT_OPTIONS_OPT_SKIP_SERVICE, IDS_IMPORT_OPTIONS_TT_SKIP_SERVICE, &EpubImportOptions::skipServicePages },
+        { IDC_OPT_TABLES, IDS_IMPORT_OPTIONS_OPT_TABLES, IDS_IMPORT_OPTIONS_TT_TABLES, &EpubImportOptions::importTables },
+        { IDC_OPT_LISTS, IDS_IMPORT_OPTIONS_OPT_LISTS, IDS_IMPORT_OPTIONS_TT_LISTS, &EpubImportOptions::importLists },
+        { IDC_OPT_POEMS, IDS_IMPORT_OPTIONS_OPT_POEMS, IDS_IMPORT_OPTIONS_TT_POEMS, &EpubImportOptions::importPoemsEpigraphs },
+        { IDC_OPT_SUBTITLES, IDS_IMPORT_OPTIONS_OPT_SUBTITLES, IDS_IMPORT_OPTIONS_TT_SUBTITLES, &EpubImportOptions::importSubtitles },
+        { IDC_OPT_SPLIT_HEADINGS, IDS_IMPORT_OPTIONS_OPT_SPLIT_HEADINGS, IDS_IMPORT_OPTIONS_TT_SPLIT_HEADINGS, &EpubImportOptions::splitSectionsByHeadings },
+        { IDC_OPT_LINKS, IDS_IMPORT_OPTIONS_OPT_LINKS, IDS_IMPORT_OPTIONS_TT_LINKS, &EpubImportOptions::preserveLinks },
+        { IDC_OPT_CLEAN_TYPOGRAPHY, IDS_IMPORT_OPTIONS_OPT_CLEAN_TYPOGRAPHY, IDS_IMPORT_OPTIONS_TT_CLEAN_TYPOGRAPHY, &EpubImportOptions::cleanTypography },
+        { IDC_OPT_PAGE_BREAKS, IDS_IMPORT_OPTIONS_OPT_PAGE_BREAKS, IDS_IMPORT_OPTIONS_TT_PAGE_BREAKS, &EpubImportOptions::importPageBreaks },
+        { IDC_OPT_SKIP_HIDDEN, IDS_IMPORT_OPTIONS_OPT_SKIP_HIDDEN, IDS_IMPORT_OPTIONS_TT_SKIP_HIDDEN, &EpubImportOptions::skipHiddenElements },
+        { IDC_OPT_VALIDATE, IDS_IMPORT_OPTIONS_OPT_VALIDATE, IDS_IMPORT_OPTIONS_TT_VALIDATE, &EpubImportOptions::validateResult },
+        { IDC_OPT_DIAGNOSTIC, IDS_IMPORT_OPTIONS_OPT_DIAGNOSTIC, IDS_IMPORT_OPTIONS_TT_DIAGNOSTIC, &EpubImportOptions::addDiagnosticSection },
+        { IDC_OPT_LOG, IDS_IMPORT_OPTIONS_OPT_LOG, IDS_IMPORT_OPTIONS_TT_LOG, &EpubImportOptions::writeImportLog },
+        { IDC_OPT_SAVE_FB2, IDS_IMPORT_OPTIONS_OPT_SAVE_FB2, IDS_IMPORT_OPTIONS_TT_SAVE_FB2, &EpubImportOptions::saveFb2Copy },
+        { IDC_OPT_CSS_SEMANTICS, IDS_IMPORT_OPTIONS_OPT_CSS_SEMANTICS, IDS_IMPORT_OPTIONS_TT_CSS_SEMANTICS, &EpubImportOptions::useCssSemanticClasses },
+        { IDC_OPT_REMOVE_BACKLINKS, IDS_IMPORT_OPTIONS_OPT_REMOVE_BACKLINKS, IDS_IMPORT_OPTIONS_TT_REMOVE_BACKLINKS, &EpubImportOptions::removeFootnoteBacklinks },
+        { IDC_OPT_REMOVE_SERVICE_SECTIONS, IDS_IMPORT_OPTIONS_OPT_REMOVE_SERVICE_SECTIONS, IDS_IMPORT_OPTIONS_TT_REMOVE_SERVICE_SECTIONS, &EpubImportOptions::removeServiceSections },
+        { IDC_OPT_LOG_ON_WARNINGS, IDS_IMPORT_OPTIONS_OPT_LOG_ON_WARNINGS, IDS_IMPORT_OPTIONS_TT_LOG_ON_WARNINGS, &EpubImportOptions::writeLogOnWarnings },
+        { IDC_OPT_SAVE_INTERMEDIATE_ON_ERROR, IDS_IMPORT_OPTIONS_OPT_SAVE_INTERMEDIATE_ON_ERROR, IDS_IMPORT_OPTIONS_TT_SAVE_INTERMEDIATE_ON_ERROR, &EpubImportOptions::saveIntermediateFb2OnError },
+        { IDC_OPT_KEEP_TEMP, IDS_IMPORT_OPTIONS_OPT_KEEP_TEMP, IDS_IMPORT_OPTIONS_TT_KEEP_TEMP, &EpubImportOptions::keepTempOnError }
     };
 
 
@@ -125,8 +127,8 @@ namespace
 
     struct GroupDef
     {
-        LPCWSTR title;
-        LPCWSTR tooltip;
+        UINT titleId;
+        UINT tooltipId;
         const int* items;
         int count;
         bool hasSvgMode;
@@ -134,11 +136,11 @@ namespace
 
     const GroupDef kGroups[] =
     {
-        { L"Содержимое и структура", L"Параметры, влияющие на основное содержимое FB2, дерево секций, оглавление, таблицы, списки, стихи и разрывы страниц.", kGroupContent, static_cast<int>(_countof(kGroupContent)), false },
-        { L"Изображения и SVG", L"Параметры импорта обычных изображений и SVG. SVG может быть преобразован в PNG/JPEG через optional-модуль ImportEPUBLunaSVG.dll или заменён видимой заглушкой.", kGroupImages, static_cast<int>(_countof(kGroupImages)), true },
-        { L"Ссылки и сноски", L"Параметры сохранения внутренних/внешних ссылок, EPUB-сносок и удаления обратных ссылок из notes.", kGroupLinksNotes, static_cast<int>(_countof(kGroupLinksNotes)), false },
-        { L"Очистка и фильтрация", L"Параметры исправления текста, удаления скрытых элементов и служебных EPUB-страниц.", kGroupCleanup, static_cast<int>(_countof(kGroupCleanup)), false },
-        { L"Проверка, логирование и отладка", L"Параметры проверки результата, создания логов и сохранения промежуточных FB2-файлов для анализа.", kGroupDiagnostics, static_cast<int>(_countof(kGroupDiagnostics)), false }
+        { IDS_IMPORT_OPTIONS_GROUP_CONTENT, IDS_IMPORT_OPTIONS_TT_GROUP_CONTENT, kGroupContent, static_cast<int>(_countof(kGroupContent)), false },
+        { IDS_IMPORT_OPTIONS_GROUP_IMAGES, IDS_IMPORT_OPTIONS_TT_GROUP_IMAGES, kGroupImages, static_cast<int>(_countof(kGroupImages)), true },
+        { IDS_IMPORT_OPTIONS_GROUP_LINKS_NOTES, IDS_IMPORT_OPTIONS_TT_GROUP_LINKS_NOTES, kGroupLinksNotes, static_cast<int>(_countof(kGroupLinksNotes)), false },
+        { IDS_IMPORT_OPTIONS_GROUP_CLEANUP, IDS_IMPORT_OPTIONS_TT_GROUP_CLEANUP, kGroupCleanup, static_cast<int>(_countof(kGroupCleanup)), false },
+        { IDS_IMPORT_OPTIONS_GROUP_DIAGNOSTICS, IDS_IMPORT_OPTIONS_TT_GROUP_DIAGNOSTICS, kGroupDiagnostics, static_cast<int>(_countof(kGroupDiagnostics)), false }
     };
 
     const CheckDef* FindCheckDef(int id)
@@ -234,7 +236,7 @@ namespace
             m_hwnd = CreateWindowExW(
                 WS_EX_DLGMODALFRAME,
                 wc.lpszClassName,
-                L"Настройки импорта EPUB",
+                LoadText(IDS_IMPORT_OPTIONS_TITLE),
                 WS_CAPTION | WS_SYSMENU | WS_POPUP,
                 x, y, rc.right - rc.left, rc.bottom - rc.top,
                 m_owner, nullptr, _AtlBaseModule.GetModuleInstance(), this);
@@ -324,9 +326,11 @@ namespace
 
         void CreateControls(HWND hwnd)
         {
+            m_tooltipText.reserve(80);
             HFONT font = reinterpret_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
 
-            HWND title = CreateWindowW(L"STATIC", L"Выберите параметры преобразования EPUB в FB2:",
+            CStringW titleText = LoadText(IDS_IMPORT_OPTIONS_HEADER);
+            HWND title = CreateWindowW(L"STATIC", titleText,
                 WS_CHILD | WS_VISIBLE, 14, 14, 650, 22, hwnd, nullptr, _AtlBaseModule.GetModuleInstance(), nullptr);
             SendMessageW(title, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
 
@@ -347,12 +351,13 @@ namespace
                 const GroupDef& group = kGroups[g];
                 const int groupHeight = 24 + group.count * 22 + (group.hasSvgMode ? 30 : 0) + 8;
 
-                HWND box = CreateWindowW(L"BUTTON", group.title,
+                CStringW groupTitle = LoadText(group.titleId);
+                HWND box = CreateWindowW(L"BUTTON", groupTitle,
                     WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
                     groupX, y, groupW, groupHeight,
                     hwnd, nullptr, _AtlBaseModule.GetModuleInstance(), nullptr);
                 SendMessageW(box, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-                AddTooltip(box, group.tooltip);
+                AddTooltipString(box, group.tooltipId);
 
                 int itemY = y + 20;
                 for (int i = 0; i < group.count; ++i)
@@ -361,57 +366,82 @@ namespace
                     if (!def)
                         continue;
 
-                    HWND chk = CreateWindowW(L"BUTTON", def->text,
+                    CStringW checkText = LoadText(def->textId);
+                    HWND chk = CreateWindowW(L"BUTTON", checkText,
                         WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | WS_TABSTOP,
                         checkX, itemY, checkW, 20, hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(def->id)),
                         _AtlBaseModule.GetModuleInstance(), nullptr);
                     SendMessageW(chk, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
                     SendMessageW(chk, BM_SETCHECK, m_options.*(def->field) ? BST_CHECKED : BST_UNCHECKED, 0);
-                    AddTooltip(chk, def->tooltip);
+                    AddTooltipString(chk, def->tooltipId);
                     itemY += 22;
                 }
 
                 if (group.hasSvgMode)
                 {
-                    HWND svgLabel = CreateWindowW(L"STATIC", L"SVG-изображения:",
+                    CStringW svgLabelText = LoadText(IDS_IMPORT_OPTIONS_SVG_LABEL);
+                    HWND svgLabel = CreateWindowW(L"STATIC", svgLabelText,
                         WS_CHILD | WS_VISIBLE, checkX, itemY + 2, 160, 20, hwnd, nullptr, _AtlBaseModule.GetModuleInstance(), nullptr);
                     SendMessageW(svgLabel, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-                    AddTooltip(svgLabel, L"FB2/FBE обычно не отображает SVG напрямую. Для режимов PNG/JPEG используется необязательная ImportEPUBLunaSVG.dll рядом с плагином/утилитой. Если её нет или рендеринг не удался, будет вставлена видимая заглушка.");
+                    AddTooltipString(svgLabel, IDS_IMPORT_OPTIONS_TOOLTIP_SVG_LABEL);
 
                     HWND svgCombo = CreateWindowW(L"COMBOBOX", nullptr,
                         WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_TABSTOP,
                         checkX + 165, itemY, checkW - 165, 180, hwnd, reinterpret_cast<HMENU>(IDC_SVG_MODE),
                         _AtlBaseModule.GetModuleInstance(), nullptr);
                     SendMessageW(svgCombo, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-                    SendMessageW(svgCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Оставлять SVG как есть"));
-                    SendMessageW(svgCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Преобразовывать SVG в PNG"));
-                    SendMessageW(svgCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Преобразовывать SVG в JPEG"));
-                    SendMessageW(svgCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Пропускать SVG"));
+                    CStringW svgKeep = LoadText(IDS_IMPORT_OPTIONS_SVG_KEEP);
+                    CStringW svgPng = LoadText(IDS_IMPORT_OPTIONS_SVG_PNG);
+                    CStringW svgJpeg = LoadText(IDS_IMPORT_OPTIONS_SVG_JPEG);
+                    CStringW svgSkip = LoadText(IDS_IMPORT_OPTIONS_SVG_SKIP);
+                    SendMessageW(svgCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(svgKeep.GetString()));
+                    SendMessageW(svgCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(svgPng.GetString()));
+                    SendMessageW(svgCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(svgJpeg.GetString()));
+                    SendMessageW(svgCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(svgSkip.GetString()));
                     int svgMode = m_options.svgConversionMode;
                     if (svgMode < SVG_IMPORT_KEEP || svgMode > SVG_IMPORT_SKIP)
                         svgMode = SVG_IMPORT_CONVERT_PNG;
                     SendMessageW(svgCombo, CB_SETCURSEL, static_cast<WPARAM>(svgMode), 0);
-                    AddTooltip(svgCombo, L"Рекомендуется PNG. ImportEPUB сам не содержит LunaSVG: он ищет ImportEPUBLunaSVG.dll рядом с ImportEPUB.dll или ImportEPUBBatch.exe. При отсутствии DLL создаётся PNG/JPEG-заглушка с именем SVG-файла.");
+                    AddTooltipString(svgCombo, IDS_IMPORT_OPTIONS_TOOLTIP_SVG_COMBO);
                 }
 
                 y += groupHeight + 6;
             }
 
-            HWND hint = CreateWindowW(L"STATIC", L"Подсказка: наведите мышь на любой пункт или заголовок раздела, чтобы увидеть пояснение.",
+            CStringW hintText = LoadText(IDS_IMPORT_OPTIONS_HINT);
+            HWND hint = CreateWindowW(L"STATIC", hintText,
                 WS_CHILD | WS_VISIBLE, 18, y + 4, 650, 22, hwnd, nullptr, _AtlBaseModule.GetModuleInstance(), nullptr);
             SendMessageW(hint, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
 
             const int buttonY = y + 36;
-            HWND defaults = CreateWindowW(L"BUTTON", L"По умолчанию", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
+            CStringW defaultsText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_DEFAULTS);
+            CStringW okText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_OK);
+            CStringW cancelText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_CANCEL);
+            HWND defaults = CreateWindowW(L"BUTTON", defaultsText, WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
                 18, buttonY, 130, 28, hwnd, reinterpret_cast<HMENU>(IDC_DEFAULTS), _AtlBaseModule.GetModuleInstance(), nullptr);
-            HWND ok = CreateWindowW(L"BUTTON", L"ОК", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP,
+            HWND ok = CreateWindowW(L"BUTTON", okText, WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP,
                 475, buttonY, 90, 28, hwnd, reinterpret_cast<HMENU>(IDC_IMPORT), _AtlBaseModule.GetModuleInstance(), nullptr);
-            HWND cancel = CreateWindowW(L"BUTTON", L"Отмена", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
+            HWND cancel = CreateWindowW(L"BUTTON", cancelText, WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
                 575, buttonY, 90, 28, hwnd, reinterpret_cast<HMENU>(IDC_CANCEL), _AtlBaseModule.GetModuleInstance(), nullptr);
             SendMessageW(defaults, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             SendMessageW(ok, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             SendMessageW(cancel, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-            AddTooltip(defaults, L"Возвращает все параметры к рекомендуемым значениям по умолчанию. Окно при этом не закрывается.");
+            AddTooltipString(defaults, IDS_IMPORT_OPTIONS_TOOLTIP_DEFAULTS);
+        }
+
+        CStringW LoadText(UINT stringId)
+        {
+            return LoadImportEpubString(stringId);
+        }
+
+        void AddTooltipString(HWND control, UINT stringId)
+        {
+            CStringW text = LoadText(stringId);
+            if (text.IsEmpty())
+                return;
+
+            m_tooltipText.push_back(text);
+            AddTooltip(control, m_tooltipText.back().GetString());
         }
 
         void AddTooltip(HWND control, LPCWSTR text)
@@ -460,6 +490,7 @@ namespace
         EpubImportOptions& m_options;
         HWND m_hwnd;
         HWND m_tooltip;
+        std::vector<CStringW> m_tooltipText;
         bool m_done;
         bool m_result;
     };

@@ -46,10 +46,10 @@
     <None Include="res\Fb2-shema.bmp">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="res\FBE_new.ico">
+    <None Include="res\FBE.ico">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="res\FBE2_new.ico">
+    <None Include="res\FBE2.ico">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="res\green.bmp">
@@ -145,9 +145,6 @@
     <None Include="res\Scripts.bmp">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="res\Strikthr.bmp">
-      <Filter>Resource Files</Filter>
-    </None>
     <None Include="res\struct.bmp">
       <Filter>Resource Files</Filter>
     </None>
@@ -158,9 +155,6 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="res\Toolbar_small.bmp">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="res\toolimg.bmp">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="res\update.bmp">

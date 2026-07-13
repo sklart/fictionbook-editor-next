@@ -1,12 +1,20 @@
-﻿// SettingsHotkeysDlg.cpp : Implementation of CSettingsHotkeysDlg
+// SettingsHotkeysDlg.cpp : Implementation of CSettingsHotkeysDlg
 
 #include "stdafx.h"
 #include "SettingsHotkeysDlg.h"
 #include "utils.h"
 #include "Settings.h"
 #include "res1.h"
+#include "RuntimeLocalization.h"
 
 extern CSettings _Settings;
+
+static void SetRuntimeHotkeysText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR fallback)
+{
+	const CString text = FbeLoadRuntimeStringByKey(key, fallback);
+	if (!text.IsEmpty())
+		::SetDlgItemText(dialog, controlId, text);
+}
 
 // CSettingsHotkeysDlg
 CSettingsHotkeysDlg::CSettingsHotkeysDlg(): m_count(0), m_accel(),
@@ -28,7 +36,7 @@ CSettingsHotkeysDlg::CSettingsHotkeysDlg(): m_count(0), m_accel(),
 		}
 	}
 
-	m_wrongHkMsg.LoadString(IDS_HOTKEY_WRONG);
+	m_wrongHkMsg = FbeLoadCString(IDS_HOTKEY_WRONG);
 }
 
 CSettingsHotkeysDlg::~CSettingsHotkeysDlg()
@@ -38,6 +46,14 @@ CSettingsHotkeysDlg::~CSettingsHotkeysDlg()
 LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsHotkeysDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
+
+	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_DESCRIPTION, L"fbe.dialog.idd_hotkeys.description", L"Description");
+	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEYS_GROUPS, L"fbe.dialog.idd_hotkeys.groups", L"Groups:");
+	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEYS, L"fbe.dialog.idd_hotkeys.commands", L"Commands:");
+	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_DEFAULT, L"fbe.dialog.idd_hotkeys.default", L"Default");
+	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_HOTKEY_DELETE, L"fbe.dialog.idd_hotkeys.delete", L"Delete");
+	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_COLLISION, L"fbe.dialog.idd_hotkeys.collision", L"Collision");
+	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_HOTKEY_ASSIGN, L"fbe.dialog.idd_hotkeys.assign", L"Assign");
 
 	m_hkGroups = GetDlgItem(IDC_LIST_HOTKEYS_GROUPS);
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)

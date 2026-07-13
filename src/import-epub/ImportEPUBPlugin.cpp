@@ -4,6 +4,8 @@
 #include "ImportEPUBGuids.h"
 #include "EpubImport.h"
 #include "ImportOptionsDialog.h"
+#include "resource.h"
+#include "RuntimeLocalization.h"
 
 // {D4B1B165-4D93-4F2D-8C8A-2D0C649431A1}
 extern const CLSID CLSID_ImportEPUBPlugin =
@@ -39,6 +41,11 @@ OBJECT_ENTRY_AUTO(CLSID_ImportEPUBPlugin, CImportEPUBPlugin)
 
 namespace
 {
+    CStringW LoadPluginString(UINT stringId, LPCWSTR fallback)
+    {
+        return LoadImportEpubString(stringId, fallback);
+    }
+
     CStringW XmlEscape(const CStringW& text)
     {
         CStringW s(text);
@@ -82,7 +89,7 @@ namespace
 
     // Event sink for the modern Windows file picker.
     //
-    // The user asked for a separate "Настройки импорта..." button directly in
+    // The user asked for a separate import settings button directly in
     // the file selection window. IFileOpenDialog + IFileDialogCustomize is the
     // cleanest way to do this: the button is part of the standard Windows dialog
     // instead of a separate pop-up shown after every file selection.
@@ -176,7 +183,8 @@ namespace
                 {
                     CComPtr<IFileDialog> fileDialog;
                     if (SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialog))) && fileDialog)
-                        fileDialog->SetOkButtonLabel(L"Открыть...");
+                        fileDialog->SetOkButtonLabel(
+                            LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"Open..."));
                 }
             }
             return S_OK;
@@ -242,9 +250,9 @@ namespace
             dialog->SetOptions(existingOptions | FOS_FILEMUSTEXIST | FOS_PATHMUSTEXIST | FOS_FORCEFILESYSTEM);
         }
 
-        dialog->SetTitle(L"Импорт EPUB");
-        dialog->SetOkButtonLabel(L"Открыть...");
-        dialog->SetFileNameLabel(L"EPUB-файл:");
+        dialog->SetTitle(LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_TITLE, L"Import EPUB"));
+        dialog->SetOkButtonLabel(LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"Open..."));
+        dialog->SetFileNameLabel(LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILE_LABEL, L"EPUB file:"));
         dialog->SetDefaultExtension(L"epub");
 
         const COMDLG_FILTERSPEC filters[] =
@@ -267,7 +275,9 @@ namespace
             // its bottom custom-control area. The button is intentionally added
             // without StartVisualGroup/AddText so it does not create the extra
             // two-line block that was visible above the file name field.
-            customize->AddPushButton(IDC_FILEDLG_SETTINGS_BUTTON, L"Настройки импорта...");
+            customize->AddPushButton(
+                IDC_FILEDLG_SETTINGS_BUTTON,
+                LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_SETTINGS_BUTTON, L"Import settings..."));
         }
 
         CComObject<COpenDialogEvents>* rawEvents = nullptr;
@@ -329,8 +339,8 @@ namespace
         xml += L"      <author><first-name></first-name><last-name></last-name></author>\r\n";
         xml += L"      <book-title>" + XmlEscape(bookTitle) + L"</book-title>\r\n";
         xml += L"      <annotation>\r\n";
-        xml += L"        <p>EPUB не удалось импортировать автоматически.</p>\r\n";
-        xml += L"        <p>Ниже показана диагностическая информация.</p>\r\n";
+        xml += L"        <p>EPUB could not be imported automatically.</p>\r\n";
+        xml += L"        <p>Diagnostic information is shown below.</p>\r\n";
         xml += L"      </annotation>\r\n";
         xml += L"      <lang>ru</lang>\r\n";
         xml += L"    </title-info>\r\n";
@@ -344,10 +354,10 @@ namespace
         xml += L"  </description>\r\n";
         xml += L"  <body>\r\n";
         xml += L"    <section>\r\n";
-        xml += L"      <title><p>Импорт EPUB</p></title>\r\n";
-        xml += L"      <p>COM-плагин подключён правильно, но разбор выбранного EPUB завершился ошибкой.</p>\r\n";
-        xml += L"      <p>Исходный файл: " + XmlEscape(sourcePath) + L"</p>\r\n";
-        xml += L"      <p>Ошибка: " + XmlEscape(errorText) + L"</p>\r\n";
+        xml += L"      <title><p>EPUB import</p></title>\r\n";
+        xml += L"      <p>The COM plugin is connected correctly, but parsing the selected EPUB failed.</p>\r\n";
+        xml += L"      <p>Source file: " + XmlEscape(sourcePath) + L"</p>\r\n";
+        xml += L"      <p>Error: " + XmlEscape(errorText) + L"</p>\r\n";
         xml += L"    </section>\r\n";
         xml += L"  </body>\r\n";
         xml += L"</FictionBook>\r\n";
@@ -368,7 +378,11 @@ namespace
         if (FAILED(hr))
         {
             CStringW msg;
-            msg.Format(L"ImportEPUB: не удалось создать MSXML DOMDocument.6.0.\nHRESULT: 0x%08X", static_cast<unsigned int>(hr));
+            msg.Format(
+                LoadPluginString(
+                    IDS_IMPORT_PLUGIN_ERROR_MSXML_CREATE,
+                    L"ImportEPUB: failed to create MSXML DOMDocument.6.0.\nHRESULT: 0x%08X"),
+                static_cast<unsigned int>(hr));
             ::MessageBoxW(nullptr, msg, L"ImportEPUB", MB_OK | MB_ICONERROR);
             return hr;
         }
@@ -383,7 +397,13 @@ namespace
         HRESULT loadHr = dom->loadXML(xmlForMsxml, &loaded);
         if (FAILED(loadHr) || loaded != VARIANT_TRUE)
         {
-            ::MessageBoxW(nullptr, L"ImportEPUB: MSXML не смог загрузить сформированный тестовый FB2 XML.", L"ImportEPUB", MB_OK | MB_ICONERROR);
+            ::MessageBoxW(
+                nullptr,
+                LoadPluginString(
+                    IDS_IMPORT_PLUGIN_ERROR_MSXML_LOAD,
+                    L"ImportEPUB: MSXML could not load the generated test FB2 XML."),
+                L"ImportEPUB",
+                MB_OK | MB_ICONERROR);
             return E_FAIL;
         }
 
@@ -399,13 +419,15 @@ namespace
 
 STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** document)
 {
+    InitImportEpubRuntimeStrings();
+
     if (!filename || !document)
         return E_POINTER;
 
     *filename = nullptr;
     *document = nullptr;
 
-    CStringW stage = L"подготовка импорта EPUB";
+    CStringW stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_PREPARE, L"preparing EPUB import");
 
     try
     {
@@ -424,9 +446,9 @@ STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** do
 #endif
 
         EpubImportOptions options;
-        stage = L"чтение настроек ImportEPUB";
+        stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_READ_SETTINGS, L"reading ImportEPUB settings");
         LoadImportOptions(options);
-        stage = L"выбор EPUB-файла";
+        stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_SELECT_FILE, L"selecting EPUB file");
         if (!SelectEpubFile(ownerWindow, epubPath, options))
             return S_FALSE;
 
@@ -434,23 +456,25 @@ STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** do
 
         CStringW fb2Xml;
         CStringW importError;
-        stage = L"преобразование EPUB в FB2";
+        stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_CONVERT, L"converting EPUB to FB2");
         if (!BuildFb2XmlFromEpub(epubPath, options, fb2Xml, importError))
         {
             CStringW msg;
-            msg = L"EPUB пока не удалось импортировать полностью.\n\n";
-            msg += importError;
-            msg += L"\n\nБудет открыт диагностический FB2-документ.";
+            msg.Format(
+                LoadPluginString(
+                    IDS_IMPORT_PLUGIN_WARNING_PARTIAL_IMPORT,
+                    L"EPUB could not be fully imported yet.\n\n%s\n\nA diagnostic FB2 document will be opened."),
+                importError.GetString());
             ::MessageBoxW(ownerWindow, msg, L"ImportEPUB", MB_OK | MB_ICONWARNING);
             fb2Xml = BuildDiagnosticFb2Xml(epubPath, importError);
         }
 
-        stage = L"создание FB2 DOM-документа";
+        stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_CREATE_DOM, L"creating FB2 DOM document");
         HRESULT hr = CreateFb2Dom(fb2Xml, document);
         if (FAILED(hr))
             return hr;
 
-        stage = L"возврат результата импорта в FBE";
+        stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_RETURN_RESULT, L"returning import result to FBE");
         *filename = ::SysAllocString(fb2Path);
         if (!*filename)
         {
@@ -468,7 +492,9 @@ STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** do
     {
         CStringW message;
         message.Format(
-            L"ImportEPUB остановил импорт из-за COM-ошибки.\n\nСтадия: %s\nHRESULT: 0x%08X",
+            LoadPluginString(
+                IDS_IMPORT_PLUGIN_ERROR_COM,
+                L"ImportEPUB stopped the import because of a COM error.\n\nStage: %s\nHRESULT: 0x%08X"),
             stage.GetString(),
             static_cast<unsigned int>(e.Error()));
         ::MessageBoxW(nullptr, message, L"ImportEPUB", MB_OK | MB_ICONERROR);
@@ -478,7 +504,9 @@ STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** do
     {
         CStringW message;
         message.Format(
-            L"ImportEPUB остановил импорт из-за непредвиденной ошибки.\n\nСтадия: %s",
+            LoadPluginString(
+                IDS_IMPORT_PLUGIN_ERROR_UNEXPECTED,
+                L"ImportEPUB stopped the import because of an unexpected error.\n\nStage: %s"),
             stage.GetString());
         ::MessageBoxW(nullptr, message, L"ImportEPUB", MB_OK | MB_ICONERROR);
         return S_FALSE;

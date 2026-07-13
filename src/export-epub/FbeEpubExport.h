@@ -95,6 +95,14 @@ struct EpubBook {
     std::vector<EpubResource> resources;
 };
 
+struct EpubExportLabels {
+    std::wstring coverTitle = L"Cover";
+    std::wstring navigationTitle = L"Navigation";
+    std::wstring annotationTitle = L"Annotation";
+    std::wstring bodyStartTitle = L"Start of text";
+    std::wstring notesTitle = L"Notes";
+};
+
 struct EpubExportOptions {
     EpubVersion version = EpubVersion::Epub3;
 
@@ -115,6 +123,9 @@ struct EpubExportOptions {
 
     // Pretty XML output. Disable only for debugging size-sensitive cases.
     bool pretty = true;
+
+    // User-visible labels used inside generated EPUB navigation/pages.
+    EpubExportLabels labels;
 };
 
 class EpubExporter {

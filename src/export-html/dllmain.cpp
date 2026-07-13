@@ -3,6 +3,7 @@
 #include "ExportHTML_i.h"
 #include "dllmain.h"
 #include "utils.h"
+#include "RuntimeLocalization.h"
 
 CExportHTMLModule _AtlModule;
 
@@ -14,6 +15,7 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRes
 	{
 		DisableThreadLibraryCalls(hInstance);
 		U::InitSettings();
+		InitExportHtmlRuntimeStrings();
 	}
 	return _AtlModule.DllMain(dwReason, lpReserved);
 }

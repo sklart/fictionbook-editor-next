@@ -550,6 +550,9 @@ nthere:
   SetOutPath "$INSTDIR\nl-NL"
   File /nonfatal "${INPUTDIR}\nl-NL\FBVVerbResources.dll.mui"
   SetOutPath "$INSTDIR"
+  File /nonfatal /r "${INPUTDIR}\Lang"
+
+  SetOutPath "$INSTDIR"
   File /nonfatal "${INPUTDIR}\*.reg"
   File "${INPUTDIR}\gpl-3.0.txt"
   File "${INPUTDIR}\gpl-3.0.ru.txt"
@@ -990,6 +993,7 @@ Section Uninstall
   RMDir /r "$INSTDIR\Help"
   RMDir /r "$INSTDIR\Utilities"
   RMDir /r "$INSTDIR\img"
+  RMDir /r "$INSTDIR\Lang"
 
   Delete "$INSTDIR\blank.fb2"
   Delete "$INSTDIR\FBV.exe"

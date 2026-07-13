@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "resource.h"
 #include "res1.h"
 #include "utils.h"
@@ -171,7 +171,7 @@ void CTreeWithToolBar::FillViewBar()
 	unsigned int count = _EDMnr.GetEDsCount();
 
 	m_st_menu = ::CreateMenu();	
-	HMENU menu = ::CreateMenu();
+	m_script_menu = ::CreateMenu();
 	HMENU bar = ::CreateMenu();
 
 
@@ -182,7 +182,7 @@ void CTreeWithToolBar::FillViewBar()
 	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCTREE_MENU_SCRIPTS, scriptsMenuItem, MAX_LOAD_STRING);
 
 	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)m_st_menu, elsMenuItem);
-	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)menu, scriptsMenuItem);
+	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)m_script_menu, scriptsMenuItem);
 
 	int picType = 0;
 	HANDLE picHandle = 0;
@@ -208,7 +208,7 @@ void CTreeWithToolBar::FillViewBar()
 
 	for(unsigned int i = 0; i < count; ++i)
 	{
-		::AppendMenu(menu, MF_STRING, IDC_TREE_BASE + i, _EDMnr.GetED(i)->GetCaption());
+		::AppendMenu(m_script_menu, MF_STRING, IDC_TREE_BASE + i, _EDMnr.GetED(i)->GetCaption());
 		CElementDescriptor* ED = _EDMnr.GetED(i);
 
 		if(ED->GetPic(picHandle, picType))
@@ -230,13 +230,33 @@ void CTreeWithToolBar::FillViewBar()
 		}
 	}
 
-	::AppendMenu(menu, MF_SEPARATOR, 0, 0);
-	CString s; s.LoadString(IDS_DOC_TREE_CLEANUP);
-	::AppendMenu(menu, MF_STRING, IDC_TREE_CLEAR_ALL, s);
+	::AppendMenu(m_script_menu, MF_SEPARATOR, 0, 0);
+	wchar_t cleanupMenuItem[MAX_LOAD_STRING + 1];
+	FbeLoadString(_Module.GetResourceInstance(), IDS_DOC_TREE_CLEANUP, cleanupMenuItem, MAX_LOAD_STRING);
+	::AppendMenu(m_script_menu, MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
 
 	m_view_bar.AttachMenu(bar);
 }
 
+void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
+{
+	CMenuHandle bar = m_view_bar.GetMenu();
+	if(bar.IsNull())
+		return;
+
+	wchar_t elsMenuItem[MAX_LOAD_STRING + 1];
+	wchar_t scriptsMenuItem[MAX_LOAD_STRING + 1];
+	wchar_t cleanupMenuItem[MAX_LOAD_STRING + 1];
+
+	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCTREE_MENU_ELEMENTS, elsMenuItem, MAX_LOAD_STRING);
+	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCTREE_MENU_SCRIPTS, scriptsMenuItem, MAX_LOAD_STRING);
+	FbeLoadString(_Module.GetResourceInstance(), IDS_DOC_TREE_CLEANUP, cleanupMenuItem, MAX_LOAD_STRING);
+
+	bar.ModifyMenu(0, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_st_menu, elsMenuItem);
+	bar.ModifyMenu(1, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_script_menu, scriptsMenuItem);
+	m_script_menu.ModifyMenu(IDC_TREE_CLEAR_ALL, MF_BYCOMMAND | MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
+	m_view_bar.Invalidate();
+}
 LRESULT CTreeWithToolBar::OnMenuCommand(WORD, WORD wID, HWND, BOOL&)
 {
 	bool ctrl_state = (GetKeyState(VK_CONTROL) & 0x8000) != 0x0;
@@ -303,15 +323,19 @@ LRESULT CDocumentTree::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 	/*m_element_browser.Create(*this, rcDefault);
 	m_element_browser.m_tree.SetMainwindow(GetParent());*/
 	this->SetClient(m_tree);
-
-	wchar_t capt[MAX_LOAD_STRING + 1];
-	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCUMENT_TREE_CAPTION, capt, MAX_LOAD_STRING);
-	this->SetTitle(capt);    
+	RefreshLocalizedTitle();
     bHandled=FALSE;
     return lRet;
 }
 
 
+void CDocumentTree::RefreshLocalizedTitle()
+{
+	wchar_t capt[MAX_LOAD_STRING + 1];
+	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCUMENT_TREE_CAPTION, capt, MAX_LOAD_STRING);
+	this->SetTitle(capt);
+	m_tree.RefreshLocalizedMenuCaptions();
+}
 
 //WS_DLGFRAME  | WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | TBSTYLE_TOOLTIPS | TBSTYLE_BUTTON | TBSTYLE_AUTOSIZE
 

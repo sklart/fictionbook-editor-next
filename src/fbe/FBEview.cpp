@@ -3007,16 +3007,17 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	CString itemName;
 
 	menu.CreatePopupMenu();
-	menu.AppendMenu(MF_STRING,ID_EDIT_UNDO,_T("&Undo"));
+	itemName = FbeLoadCString(IDS_HOTKEY_EDIT_UNDO);
+	menu.AppendMenu(MF_STRING, ID_EDIT_UNDO, itemName);
 	menu.AppendMenu(MF_SEPARATOR);
 
-	itemName.LoadString(IDS_CTXMENU_CUT);
+	itemName = FbeLoadCString(IDS_CTXMENU_CUT);
 	menu.AppendMenu(MF_STRING, ID_EDIT_CUT, itemName);
 
-	itemName.LoadString(IDS_CTXMENU_COPY);
+	itemName = FbeLoadCString(IDS_CTXMENU_COPY);
 	menu.AppendMenu(MF_STRING, ID_EDIT_COPY, itemName);
 
-	itemName.LoadString(IDS_CTXMENU_PASTE);
+	itemName = FbeLoadCString(IDS_CTXMENU_PASTE);
 	menu.AppendMenu(MF_STRING, ID_EDIT_PASTE, itemName);
 
 	if(m_normalize)
@@ -3025,7 +3026,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		MSHTML::IHTMLElementPtr cur(SelectionContainer());
 		MSHTML::IHTMLElementPtr initial(cur);
 		int cmd = ID_SEL_BASE;
-		itemName.LoadString(IDS_CTXMENU_SELECT);
+		itemName = FbeLoadCString(IDS_CTXMENU_SELECT);
 
 		while((bool)cur && U::scmp(cur->tagName,L"BODY") && U::scmp(cur->id, L"fbw_body"))
 		{
@@ -3041,7 +3042,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 			if(src != L"#undefined")
 			{
 				menu.AppendMenu(MF_SEPARATOR);
-				itemName.LoadString(IDS_CTXMENU_IMG_SAVEAS);
+				itemName = FbeLoadCString(IDS_CTXMENU_IMG_SAVEAS);
 				menu.AppendMenu(MF_STRING, ID_SAVEIMG_AS, itemName);
 			}
 		}

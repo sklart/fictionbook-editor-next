@@ -4,6 +4,7 @@
 #include "ExportDOCXPlugin.h"
 
 #include "utils.h"
+#include "RuntimeLocalization.h"
 
 #include <vector>
 #include <string>
@@ -13,6 +14,18 @@
 #include <utility>
 
 namespace {
+
+CStringW LoadDocxString(UINT stringId, LPCWSTR fallback)
+{
+    return LoadExportDocxString(stringId, fallback);
+}
+
+CStringW LoadDocxYesNo(bool value)
+{
+    return value
+        ? LoadDocxString(IDS_DOCX_REPORT_YES, L"yes")
+        : LoadDocxString(IDS_DOCX_REPORT_NO, L"no");
+}
 
 struct ZipEntry {
     std::string name;
@@ -218,7 +231,7 @@ CStringW TextNodeValue(IXMLDOMNodePtr n) {
     // IXMLDOMNode::text in MSXML normalizes whitespace for XML text nodes.
     // For inline FB2 markup this is harmful: spaces around <emphasis>,
     // <strong>, etc. can disappear and Word then shows glued words
-    // (for example: "скрытые<emphasis>численные</emphasis>отношения").
+    // (for example: "hidden<emphasis>numeric</emphasis>relations").
     // nodeValue returns the actual text-node content and preserves leading
     // and trailing spaces/NBSPs.
     VARIANT v;
@@ -936,21 +949,82 @@ private:
     DocxExportSettings& m_settings;
     DocxExportSettings m_original;
     HWND m_hToolTip;
+    std::vector<CString> m_tooltipText;
+
+    void SetDlgItemRuntimeText(int controlId, LPCWSTR key) {
+        const CStringW text = LoadExportDocxStringByKey(key, nullptr);
+        if (!text.IsEmpty())
+            ::SetDlgItemTextW(m_hWnd, controlId, text);
+    }
+
+    void ApplyRuntimeTexts() {
+        const CStringW caption = LoadExportDocxStringByKey(L"export_docx.dialog.settings.caption", nullptr);
+        if (!caption.IsEmpty())
+            SetWindowText(caption);
+
+        SetDlgItemRuntimeText(IDC_GRP_IMAGES, L"export_docx.dialog.settings.images_structure");
+        SetDlgItemRuntimeText(IDC_EXPORT_IMAGES, L"export_docx.dialog.settings.export_images");
+        SetDlgItemRuntimeText(IDC_EXPORT_COVER, L"export_docx.dialog.settings.export_cover");
+        SetDlgItemRuntimeText(IDC_LIMIT_IMAGE_WIDTH, L"export_docx.dialog.settings.limit_image_width");
+        SetDlgItemRuntimeText(IDC_LBL_IMAGE_WIDTH, L"export_docx.dialog.settings.max_width_cm");
+        SetDlgItemRuntimeText(IDC_TITLE_PAGE, L"export_docx.dialog.settings.create_title_page");
+        SetDlgItemRuntimeText(IDC_TITLE_INCLUDE_ANNOTATION, L"export_docx.dialog.settings.title_include_annotation");
+        SetDlgItemRuntimeText(IDC_TITLE_INCLUDE_GENRES, L"export_docx.dialog.settings.title_include_genres");
+        SetDlgItemRuntimeText(IDC_TITLE_INCLUDE_SERIES, L"export_docx.dialog.settings.title_include_series");
+        SetDlgItemRuntimeText(IDC_TITLE_INCLUDE_FB2_INFO, L"export_docx.dialog.settings.title_include_fb2_info");
+        SetDlgItemRuntimeText(IDC_ADD_TOC, L"export_docx.dialog.settings.add_toc");
+        SetDlgItemRuntimeText(IDC_LBL_TOC_DEPTH, L"export_docx.dialog.settings.toc_depth");
+        SetDlgItemRuntimeText(IDC_CREATE_BOOKMARKS, L"export_docx.dialog.settings.create_bookmarks");
+        SetDlgItemRuntimeText(IDC_EXPORT_HYPERLINKS, L"export_docx.dialog.settings.export_hyperlinks");
+        SetDlgItemRuntimeText(IDC_GRP_NOTES, L"export_docx.dialog.settings.notes_group");
+        SetDlgItemRuntimeText(IDC_LBL_NOTES_MODE, L"export_docx.dialog.settings.notes_mode");
+        SetDlgItemRuntimeText(IDC_GRP_FORMAT, L"export_docx.dialog.settings.formatting_group");
+        SetDlgItemRuntimeText(IDC_LBL_EXPORT_PRESET, L"export_docx.dialog.settings.export_preset");
+        SetDlgItemRuntimeText(IDC_PRESET_BOOK, L"export_docx.dialog.settings.preset_book");
+        SetDlgItemRuntimeText(IDC_PRESET_MINIMAL, L"export_docx.dialog.settings.preset_minimal");
+        SetDlgItemRuntimeText(IDC_PRESET_EDITORIAL, L"export_docx.dialog.settings.preset_editorial");
+        SetDlgItemRuntimeText(IDC_JUSTIFY_TEXT, L"export_docx.dialog.settings.justify_text");
+        SetDlgItemRuntimeText(IDC_FIRST_LINE_INDENT, L"export_docx.dialog.settings.first_line_indent");
+        SetDlgItemRuntimeText(IDC_CHAPTER_PAGE_BREAK, L"export_docx.dialog.settings.chapter_page_break");
+        SetDlgItemRuntimeText(IDC_ENHANCED_FB2_STYLES, L"export_docx.dialog.settings.enhanced_fb2_styles");
+        SetDlgItemRuntimeText(IDC_LBL_STYLE_PROFILE, L"export_docx.dialog.settings.style_profile");
+        SetDlgItemRuntimeText(IDC_LBL_PAGE_SIZE, L"export_docx.dialog.settings.page_size");
+        SetDlgItemRuntimeText(IDC_LBL_EMPTY_LINE_MODE, L"export_docx.dialog.settings.empty_line");
+        SetDlgItemRuntimeText(IDC_CUSTOM_FONT, L"export_docx.dialog.settings.custom_font");
+        SetDlgItemRuntimeText(IDC_LBL_FONT_NAME, L"export_docx.dialog.settings.font_name");
+        SetDlgItemRuntimeText(IDC_LBL_FONT_SIZE, L"export_docx.dialog.settings.font_size");
+        SetDlgItemRuntimeText(IDC_LBL_FONT_PT, L"export_docx.dialog.settings.font_points");
+        SetDlgItemRuntimeText(IDC_GRP_PROPS, L"export_docx.dialog.settings.properties_validation");
+        SetDlgItemRuntimeText(IDC_EXPORT_METADATA, L"export_docx.dialog.settings.export_metadata");
+        SetDlgItemRuntimeText(IDC_VALIDATE_DOCX, L"export_docx.dialog.settings.validate_docx");
+        SetDlgItemRuntimeText(IDC_CREATE_REPORT, L"export_docx.dialog.settings.create_report");
+        SetDlgItemRuntimeText(IDC_ADD_HEADERS, L"export_docx.dialog.settings.add_headers");
+        SetDlgItemRuntimeText(IDC_ADD_PAGE_NUMBERS, L"export_docx.dialog.settings.add_page_numbers");
+        SetDlgItemRuntimeText(IDC_NO_TITLE_PAGE_NUMBER, L"export_docx.dialog.settings.no_title_page_number");
+        SetDlgItemRuntimeText(IDC_RESTART_PAGE_NUMBERING, L"export_docx.dialog.settings.restart_page_numbering");
+        SetDlgItemRuntimeText(IDC_AUTO_HYPHENATION, L"export_docx.dialog.settings.auto_hyphenation");
+        SetDlgItemRuntimeText(IDC_OPEN_AFTER_EXPORT, L"export_docx.dialog.settings.open_after_export");
+        SetDlgItemRuntimeText(IDC_LBL_DOC_LANGUAGE, L"export_docx.dialog.settings.doc_language");
+        SetDlgItemRuntimeText(IDC_RESET_DEFAULTS, L"export_docx.dialog.settings.reset_defaults");
+        SetDlgItemRuntimeText(IDOK, L"export_docx.dialog.settings.ok");
+        SetDlgItemRuntimeText(IDCANCEL, L"export_docx.dialog.settings.cancel");
+    }
 
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
         NormalizeSettings(m_settings);
         if (::IsThemeActive() && ::IsAppThemed()) {
             ::EnableThemeDialogTexture(m_hWnd, ETDT_ENABLETAB);
         }
+        ApplyRuntimeTexts();
         InitTabs();
         CheckDlgButton(IDC_EXPORT_IMAGES, m_settings.exportImages ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(IDC_EXPORT_COVER, m_settings.exportCover ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(IDC_LIMIT_IMAGE_WIDTH, m_settings.limitImageWidth ? BST_CHECKED : BST_UNCHECKED);
         SetDlgItemInt(IDC_IMAGE_MAX_WIDTH_CM, m_settings.imageMaxWidthCm, FALSE);
 
-        SendDlgItemMessage(IDC_NOTES_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Сноски Word внизу страницы"));
-        SendDlgItemMessage(IDC_NOTES_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Концевые примечания Word"));
-        SendDlgItemMessage(IDC_NOTES_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Раздел «Примечания» в конце документа"));
+        SendDlgItemMessage(IDC_NOTES_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_NOTES_FOOTNOTES, L"Word footnotes at the bottom of the page"))));
+        SendDlgItemMessage(IDC_NOTES_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_NOTES_ENDNOTES, L"Word endnotes"))));
+        SendDlgItemMessage(IDC_NOTES_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_NOTES_SECTION, L"Separate Notes section at the end"))));
         SendDlgItemMessage(IDC_NOTES_MODE, CB_SETCURSEL, static_cast<WPARAM>(m_settings.notesMode), 0);
 
         CheckDlgButton(IDC_JUSTIFY_TEXT, m_settings.justifyText ? BST_CHECKED : BST_UNCHECKED);
@@ -984,10 +1058,10 @@ private:
         SendDlgItemMessage(IDC_TOC_DEPTH, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"6"));
         SendDlgItemMessage(IDC_TOC_DEPTH, CB_SETCURSEL, static_cast<WPARAM>(m_settings.tocDepth - 1), 0);
 
-        SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Игнорировать"));
-        SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Пустой абзац"));
-        SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Интервал"));
-        SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Разделитель * * *"));
+        SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_EMPTY_LINE_IGNORE, L"Ignore"))));
+        SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_EMPTY_LINE_PARAGRAPH, L"Empty paragraph"))));
+        SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_EMPTY_LINE_SPACING, L"Spacing"))));
+        SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_EMPTY_LINE_SEPARATOR, L"* * * separator"))));
         SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_SETCURSEL, static_cast<WPARAM>(m_settings.emptyLineMode), 0);
 
         SendDlgItemMessage(IDC_PAGE_SIZE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"A4"));
@@ -995,14 +1069,14 @@ private:
         SendDlgItemMessage(IDC_PAGE_SIZE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Letter"));
         SendDlgItemMessage(IDC_PAGE_SIZE, CB_SETCURSEL, static_cast<WPARAM>(m_settings.pageSize), 0);
 
-        SendDlgItemMessage(IDC_DOC_LANGUAGE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Русский (ru-RU)"));
-        SendDlgItemMessage(IDC_DOC_LANGUAGE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Английский (en-US)"));
-        SendDlgItemMessage(IDC_DOC_LANGUAGE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Авто из FB2 (<lang>)"));
+        SendDlgItemMessage(IDC_DOC_LANGUAGE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_LANGUAGE_RU, L"Russian (ru-RU)"))));
+        SendDlgItemMessage(IDC_DOC_LANGUAGE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_LANGUAGE_EN, L"English (en-US)"))));
+        SendDlgItemMessage(IDC_DOC_LANGUAGE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_LANGUAGE_AUTO, L"Auto from FB2 (<lang>)"))));
         SendDlgItemMessage(IDC_DOC_LANGUAGE, CB_SETCURSEL, static_cast<WPARAM>(m_settings.docLanguage), 0);
 
-        SendDlgItemMessage(IDC_STYLE_PROFILE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Книжный"));
-        SendDlgItemMessage(IDC_STYLE_PROFILE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Компактный"));
-        SendDlgItemMessage(IDC_STYLE_PROFILE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Минимальный"));
+        SendDlgItemMessage(IDC_STYLE_PROFILE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_PROFILE_BOOK, L"Book"))));
+        SendDlgItemMessage(IDC_STYLE_PROFILE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_PROFILE_COMPACT, L"Compact"))));
+        SendDlgItemMessage(IDC_STYLE_PROFILE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_PROFILE_MINIMAL, L"Minimal"))));
         SendDlgItemMessage(IDC_STYLE_PROFILE, CB_SETCURSEL, static_cast<WPARAM>(m_settings.styleProfile), 0);
 
         FillFontCombo(m_settings.customFont ? m_settings.fontName : DefaultFontForProfile(m_settings.styleProfile));
@@ -1131,10 +1205,14 @@ private:
         if (hTab == NULL) return;
         TCITEM item = { 0 };
         item.mask = TCIF_TEXT;
-        item.pszText = const_cast<LPWSTR>(L"Основное"); TabCtrl_InsertItem(hTab, 0, &item);
-        item.pszText = const_cast<LPWSTR>(L"Примечания"); TabCtrl_InsertItem(hTab, 1, &item);
-        item.pszText = const_cast<LPWSTR>(L"Оформление"); TabCtrl_InsertItem(hTab, 2, &item);
-        item.pszText = const_cast<LPWSTR>(L"Дополнительно"); TabCtrl_InsertItem(hTab, 3, &item);
+        CStringW tabMain = LoadDocxString(IDS_DOCX_TAB_MAIN, L"Main");
+        CStringW tabNotes = LoadDocxString(IDS_DOCX_TAB_NOTES, L"Notes");
+        CStringW tabFormat = LoadDocxString(IDS_DOCX_TAB_FORMAT, L"Formatting");
+        CStringW tabAdvanced = LoadDocxString(IDS_DOCX_TAB_ADVANCED, L"Advanced");
+        item.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(tabMain)); TabCtrl_InsertItem(hTab, 0, &item);
+        item.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(tabNotes)); TabCtrl_InsertItem(hTab, 1, &item);
+        item.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(tabFormat)); TabCtrl_InsertItem(hTab, 2, &item);
+        item.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(tabAdvanced)); TabCtrl_InsertItem(hTab, 3, &item);
         TabCtrl_SetCurSel(hTab, 0);
     }
 
@@ -1301,55 +1379,54 @@ private:
             return;
 
         ::SendMessage(m_hToolTip, TTM_SETMAXTIPWIDTH, 0, 440);
-        AddTooltip(IDC_EXPORT_IMAGES, L"Включает изображения из секций <image> и связанных блоков <binary> в DOCX-пакет.");
-        AddTooltip(IDC_EXPORT_COVER, L"Добавляет изображение из description/title-info/coverpage в начало документа, если обложка есть в FB2.");
-        AddTooltip(IDC_LIMIT_IMAGE_WIDTH, L"Масштабирует слишком широкие изображения, чтобы они не выходили за заданную ширину страницы.");
-        AddTooltip(IDC_IMAGE_MAX_WIDTH_CM, L"Максимальная ширина изображения в сантиметрах. Обычно удобно 12–16 см для страницы A4.");
-        AddTooltip(IDC_TITLE_PAGE, L"Создаёт титульную страницу из описания FB2: обложка, название, авторы и выбранные дополнительные сведения.");
-        AddTooltip(IDC_TITLE_INCLUDE_ANNOTATION, L"Добавляет аннотацию из description/title-info/annotation на титульную страницу.");
-        AddTooltip(IDC_TITLE_INCLUDE_GENRES, L"Добавляет жанры FB2 на титульную страницу.");
-        AddTooltip(IDC_TITLE_INCLUDE_SERIES, L"Добавляет сведения о серии FB2 из элементов sequence.");
-        AddTooltip(IDC_TITLE_INCLUDE_FB2_INFO, L"Добавляет технические сведения из document-info: ID, версию FB2 и программу, если они есть в файле.");
-        AddTooltip(IDC_NOTES_MODE,
-            L"Режим примечаний:\n"
-            L"Сноски Word — примечания выводятся внизу страницы возле соответствующего слова.\n"
-            L"Концевые примечания Word — примечания собираются в стандартный блок endnotes Word.\n"
-            L"Раздел «Примечания» — body name=notes добавляется отдельным разделом в конец документа.");
-        AddTooltip(IDC_ADD_TOC, L"Добавляет заголовок «Оглавление», автоматическое поле TOC и стили TOC. После открытия документа поле может потребовать обновления.");
-        AddTooltip(IDC_TOC_DEPTH, L"Максимальная глубина заголовков, попадающих в автоматическое оглавление Word: от 1 до 4.");
-        AddTooltip(IDC_CREATE_BOOKMARKS, L"Создаёт закладки Word для разделов FB2 с атрибутом id. Нужны для внутренних переходов и ссылок внутри документа.");
-        AddTooltip(IDC_EXPORT_HYPERLINKS, L"Преобразует внешние ссылки http/https/mailto и внутренние ссылки #id в гиперссылки Word. Ссылки на примечания обрабатываются выбранным режимом примечаний.");
-        AddTooltip(IDC_EXPORT_METADATA, L"Записывает название, автора, жанры, язык, дату и аннотацию из description/title-info в свойства DOCX.");
-        AddTooltip(IDC_VALIDATE_DOCX, L"После формирования DOCX выполняет базовую и расширенную проверку: обязательные части, связи, изображения, сноски/концевые примечания, гиперссылки, таблицы и служебные XML-части.");
-        AddTooltip(IDC_CREATE_REPORT, L"Создаёт рядом с DOCX диагностический TXT-отчёт: количество глав, абзацев, таблиц, изображений, сносок, гиперссылок и предупреждения проверки.");
-        AddTooltip(IDC_JUSTIFY_TEXT, L"Выравнивает основной текст по ширине. Не влияет на заголовки, стихи, изображения и служебные стили.");
-        AddTooltip(IDC_FIRST_LINE_INDENT, L"Добавляет отступ первой строки для обычных абзацев, как в книжной вёрстке.");
-        AddTooltip(IDC_CHAPTER_PAGE_BREAK, L"Начинает разделы и главы FB2 с новой страницы. Работает для заголовков первого и второго уровня.");
-        AddTooltip(IDC_ENHANCED_FB2_STYLES, L"Применяет отдельные стили Word для стихов, цитат, эпиграфов, авторов эпиграфов и подписей к иллюстрациям.");
-        AddTooltip(IDC_CUSTOM_FONT, L"Позволяет переопределить шрифт и размер основного текста вручную, независимо от выбранного профиля.");
-        AddTooltip(IDC_FONT_NAME, L"Список установленных в Windows шрифтов. Плагин использует выбранный шрифт как основной шрифт DOCX.");
-        AddTooltip(IDC_FONT_SIZE, L"Размер основного текста в пунктах. Для книг обычно 11–12 пт, для компактного варианта 10–11 пт.");
-        AddTooltip(IDC_PAGE_SIZE, L"Размер страницы итогового документа: A4 для обычной печати, A5 для книжного макета, Letter для американского формата.");
-        AddTooltip(IDC_EMPTY_LINE_MODE, L"Обработка FB2-тега empty-line: игнорировать, вставлять пустой абзац или добавлять увеличенный интервал перед следующим абзацем.");
-        AddTooltip(IDC_ADD_HEADERS, L"Добавляет верхний колонтитул с названием книги. Полезно для больших документов и печати.");
-        AddTooltip(IDC_ADD_PAGE_NUMBERS, L"Добавляет номер страницы в нижний колонтитул стандартным полем PAGE Word.");
-        AddTooltip(IDC_NO_TITLE_PAGE_NUMBER, L"Создаёт отдельную секцию Word для титульной страницы и оглавления без номера страницы.");
-        AddTooltip(IDC_RESTART_PAGE_NUMBERING, L"Начинает нумерацию страниц основного текста с 1 после титульной страницы/оглавления.");
-        AddTooltip(IDC_AUTO_HYPHENATION, L"Включает автоматические переносы Word. Особенно полезно при выравнивании текста по ширине.");
-        AddTooltip(IDC_OPEN_AFTER_EXPORT, L"После успешного экспорта открывает созданный DOCX системным приложением по умолчанию.");
-        AddTooltip(IDC_DOC_LANGUAGE, L"Язык документа для проверки орфографии и переносов. Режим «Авто из FB2» берёт значение из description/title-info/lang и преобразует ru/en/de/fr/uk и другие короткие коды в язык Word.");
-        AddTooltip(IDC_RESET_DEFAULTS, L"Сбрасывает параметры в текущем окне к безопасным значениям по умолчанию. Окно не закрывается, изменения сохраняются после нажатия «ОК».");
-        AddTooltip(IDC_PRESET_BOOK,
-            L"Книжный DOCX: сбалансированный вариант для чтения и печати. Включает обложку, титульную страницу, оглавление, стили FB2, ссылки, сноски, метаданные и нумерацию страниц без лишних технических блоков.");
-        AddTooltip(IDC_PRESET_MINIMAL,
-            L"Минимальный DOCX: максимально простой документ. Оставляет основной текст и изображения, отключает обложку, титульную страницу, оглавление, гиперссылки, закладки, расширенные стили, отчёт и нумерацию страниц.");
-        AddTooltip(IDC_PRESET_EDITORIAL,
-            L"Редакторский DOCX: вариант для проверки и доработки. Включает всё из книжного режима плюс src-title-info, сведения FB2, history, колонтитулы, закладки, отчёты и расширенную проверку DOCX.");
-        AddTooltip(IDC_STYLE_PROFILE,
-            L"Профиль оформления DOCX:\n"
-            L"Книжный — Times New Roman 12 пт, умеренные поля, выравнивание по ширине и отступ первой строки.\n"
-            L"Компактный — Times New Roman 10,5 пт, уменьшенные поля, меньший межстрочный интервал и более короткий отступ.\n"
-            L"Минимальный — простой документ: Calibri 11 пт, стандартные поля, выравнивание слева и без книжных отступов.");
+        m_tooltipText.clear();
+        m_tooltipText.reserve(40);
+        AddTooltipString(IDC_EXPORT_IMAGES, IDS_TOOLTIP_EXPORT_IMAGES);
+        AddTooltipString(IDC_EXPORT_COVER, IDS_TOOLTIP_EXPORT_COVER);
+        AddTooltipString(IDC_LIMIT_IMAGE_WIDTH, IDS_TOOLTIP_LIMIT_IMAGE_WIDTH);
+        AddTooltipString(IDC_IMAGE_MAX_WIDTH_CM, IDS_TOOLTIP_IMAGE_MAX_WIDTH_CM);
+        AddTooltipString(IDC_TITLE_PAGE, IDS_TOOLTIP_TITLE_PAGE);
+        AddTooltipString(IDC_TITLE_INCLUDE_ANNOTATION, IDS_TOOLTIP_TITLE_INCLUDE_ANNOTATION);
+        AddTooltipString(IDC_TITLE_INCLUDE_GENRES, IDS_TOOLTIP_TITLE_INCLUDE_GENRES);
+        AddTooltipString(IDC_TITLE_INCLUDE_SERIES, IDS_TOOLTIP_TITLE_INCLUDE_SERIES);
+        AddTooltipString(IDC_TITLE_INCLUDE_FB2_INFO, IDS_TOOLTIP_TITLE_INCLUDE_FB2_INFO);
+        AddTooltipString(IDC_NOTES_MODE, IDS_TOOLTIP_NOTES_MODE);
+        AddTooltipString(IDC_ADD_TOC, IDS_TOOLTIP_ADD_TOC);
+        AddTooltipString(IDC_TOC_DEPTH, IDS_TOOLTIP_TOC_DEPTH);
+        AddTooltipString(IDC_CREATE_BOOKMARKS, IDS_TOOLTIP_CREATE_BOOKMARKS);
+        AddTooltipString(IDC_EXPORT_HYPERLINKS, IDS_TOOLTIP_EXPORT_HYPERLINKS);
+        AddTooltipString(IDC_EXPORT_METADATA, IDS_TOOLTIP_EXPORT_METADATA);
+        AddTooltipString(IDC_VALIDATE_DOCX, IDS_TOOLTIP_VALIDATE_DOCX);
+        AddTooltipString(IDC_CREATE_REPORT, IDS_TOOLTIP_CREATE_REPORT);
+        AddTooltipString(IDC_JUSTIFY_TEXT, IDS_TOOLTIP_JUSTIFY_TEXT);
+        AddTooltipString(IDC_FIRST_LINE_INDENT, IDS_TOOLTIP_FIRST_LINE_INDENT);
+        AddTooltipString(IDC_CHAPTER_PAGE_BREAK, IDS_TOOLTIP_CHAPTER_PAGE_BREAK);
+        AddTooltipString(IDC_ENHANCED_FB2_STYLES, IDS_TOOLTIP_ENHANCED_FB2_STYLES);
+        AddTooltipString(IDC_CUSTOM_FONT, IDS_TOOLTIP_CUSTOM_FONT);
+        AddTooltipString(IDC_FONT_NAME, IDS_TOOLTIP_FONT_NAME);
+        AddTooltipString(IDC_FONT_SIZE, IDS_TOOLTIP_FONT_SIZE);
+        AddTooltipString(IDC_PAGE_SIZE, IDS_TOOLTIP_PAGE_SIZE);
+        AddTooltipString(IDC_EMPTY_LINE_MODE, IDS_TOOLTIP_EMPTY_LINE_MODE);
+        AddTooltipString(IDC_ADD_HEADERS, IDS_TOOLTIP_ADD_HEADERS);
+        AddTooltipString(IDC_ADD_PAGE_NUMBERS, IDS_TOOLTIP_ADD_PAGE_NUMBERS);
+        AddTooltipString(IDC_NO_TITLE_PAGE_NUMBER, IDS_TOOLTIP_NO_TITLE_PAGE_NUMBER);
+        AddTooltipString(IDC_RESTART_PAGE_NUMBERING, IDS_TOOLTIP_RESTART_PAGE_NUMBERING);
+        AddTooltipString(IDC_AUTO_HYPHENATION, IDS_TOOLTIP_AUTO_HYPHENATION);
+        AddTooltipString(IDC_OPEN_AFTER_EXPORT, IDS_TOOLTIP_OPEN_AFTER_EXPORT);
+        AddTooltipString(IDC_DOC_LANGUAGE, IDS_TOOLTIP_DOC_LANGUAGE);
+        AddTooltipString(IDC_RESET_DEFAULTS, IDS_TOOLTIP_RESET_DEFAULTS);
+        AddTooltipString(IDC_PRESET_BOOK, IDS_TOOLTIP_PRESET_BOOK);
+        AddTooltipString(IDC_PRESET_MINIMAL, IDS_TOOLTIP_PRESET_MINIMAL);
+        AddTooltipString(IDC_PRESET_EDITORIAL, IDS_TOOLTIP_PRESET_EDITORIAL);
+        AddTooltipString(IDC_STYLE_PROFILE, IDS_TOOLTIP_STYLE_PROFILE);
+    }
+
+    void AddTooltipString(UINT id, UINT stringId) {
+        CString text(LoadDocxString(stringId, nullptr));
+        if (text.IsEmpty())
+            return;
+        m_tooltipText.push_back(text);
+        AddTooltip(id, m_tooltipText.back());
     }
 
     void AddTooltip(UINT id, LPCWSTR text) {
@@ -1388,7 +1465,7 @@ private:
     static void RestoreSaveButtonText(HWND hDlg) {
         HWND hParent = ::GetParent(hDlg);
         if (hParent != NULL)
-            ::SetDlgItemText(hParent, IDOK, L"&Сохранить");
+            ::SetDlgItemText(hParent, IDOK, LoadDocxString(IDS_DOCX_SAVE_BUTTON, L"&Save"));
     }
 
     static UINT_PTR CALLBACK HookProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -1398,6 +1475,7 @@ private:
             OPENFILENAME* ofn = reinterpret_cast<OPENFILENAME*>(lParam);
             self = ofn ? reinterpret_cast<CDocxSaveDialog*>(ofn->lCustData) : NULL;
             ::SetWindowLongPtr(hDlg, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+            ::SetDlgItemTextW(hDlg, IDC_FILEDLG_SETTINGS, LoadExportDocxStringByKey(L"export_docx.dialog.file_options.settings_button", L"Export DOCX settings..."));
             RestoreSaveButtonText(hDlg);
             return TRUE;
         }
@@ -1529,30 +1607,30 @@ public:
         if (!title.IsEmpty())
             m_body += ParagraphFromText(title, L"BookTitle");
         if (m_opt.titleIncludeTranslators && !translators.IsEmpty())
-            m_body += ParagraphFromText(CStringW(L"Перевод: ") + translators, L"TitleInfo");
+            m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_TRANSLATION, L"Translation: ") + translators, L"TitleInfo");
 
         if (m_opt.titleIncludeAnnotation && !annotation.IsEmpty()) {
-            m_body += ParagraphFromText(L"Аннотация", L"ChapterTitle2");
+            m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_ANNOTATION, L"Annotation"), L"ChapterTitle2");
             m_body += ParagraphFromText(annotation, L"Annotation");
         }
         if (m_opt.titleIncludeGenres && !genres.IsEmpty())
-            m_body += ParagraphFromText(CStringW(L"Жанры: ") + genres, L"Fb2Info");
+            m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_GENRES, L"Genres: ") + genres, L"Fb2Info");
         if (m_opt.titleIncludeSeries && !sequence.IsEmpty())
-            m_body += ParagraphFromText(CStringW(L"Серия: ") + sequence, L"Fb2Info");
+            m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_SERIES, L"Series: ") + sequence, L"Fb2Info");
         if (!date.IsEmpty())
-            m_body += ParagraphFromText(CStringW(L"Дата: ") + date, L"Fb2Info");
+            m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_DATE, L"Date: ") + date, L"Fb2Info");
         if (!lang.IsEmpty())
-            m_body += ParagraphFromText(CStringW(L"Язык: ") + lang, L"Fb2Info");
+            m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_LANGUAGE, L"Language: ") + lang, L"Fb2Info");
         if (m_opt.titleIncludePublishInfo && !publishInfo.IsEmpty())
-            m_body += ParagraphFromText(CStringW(L"Публикация: ") + publishInfo, L"Fb2Info");
+            m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_PUBLISH_INFO, L"Publication: ") + publishInfo, L"Fb2Info");
         if (m_opt.titleIncludeSrcTitleInfo && !srcInfo.IsEmpty())
-            m_body += ParagraphFromText(CStringW(L"Оригинал: ") + srcInfo, L"Fb2Info");
+            m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_SOURCE_INFO, L"Original: ") + srcInfo, L"Fb2Info");
         if (m_opt.titleIncludeFb2Info) {
             if (!fb2id.IsEmpty()) m_body += ParagraphFromText(CStringW(L"FB2 ID: ") + fb2id, L"Fb2Info");
-            if (!version.IsEmpty()) m_body += ParagraphFromText(CStringW(L"Версия FB2: ") + version, L"Fb2Info");
-            if (!program.IsEmpty()) m_body += ParagraphFromText(CStringW(L"Программа: ") + program, L"Fb2Info");
+            if (!version.IsEmpty()) m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_FB2_VERSION, L"FB2 version: ") + version, L"Fb2Info");
+            if (!program.IsEmpty()) m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_PROGRAM, L"Program: ") + program, L"Fb2Info");
             if (!history.IsEmpty() && !m_opt.appendHistory) {
-                m_body += ParagraphFromText(L"История документа", L"ChapterTitle2");
+                m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_HISTORY, L"Document history"), L"ChapterTitle2");
                 m_body += ParagraphFromText(history, L"Annotation");
             }
         }
@@ -1654,46 +1732,46 @@ public:
         CStringW report;
         report += L"ExportDOCX diagnostic report\r\n";
         report += L"============================\r\n\r\n";
-        report += L"Файл DOCX: " + docxFileName + L"\r\n";
-        report += L"Название: " + FirstTextByXPath(L"/*[local-name()='FictionBook']/*[local-name()='description']/*[local-name()='title-info']/*[local-name()='book-title']") + L"\r\n";
-        report += L"Авторы: " + AuthorsText() + L"\r\n";
-        report += L"Язык Word: " + LanguageCode() + L"\r\n";
-        report += L"Исходный <lang>: " + SourceLanguageRaw() + L"\r\n\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_FILE, L"DOCX file: ") + docxFileName + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_TITLE, L"Title: ") + FirstTextByXPath(L"/*[local-name()='FictionBook']/*[local-name()='description']/*[local-name()='title-info']/*[local-name()='book-title']") + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_AUTHORS, L"Authors: ") + AuthorsText() + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_WORD_LANGUAGE, L"Word language: ") + LanguageCode() + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_SOURCE_LANGUAGE, L"Source <lang>: ") + SourceLanguageRaw() + L"\r\n\r\n";
 
         CStringW line;
-        line.Format(L"Разделов FB2: %d\r\n", m_sectionCount); report += line;
-        line.Format(L"Абзацев DOCX: %d\r\n", m_paragraphCount); report += line;
-        line.Format(L"Таблиц: %d\r\n", m_tableCount); report += line;
-        line.Format(L"Изображений в тексте/обложке: %d\r\n", m_imageReferences); report += line;
-        line.Format(L"Изображений встроено в DOCX: %d\r\n", static_cast<int>(m_images.size())); report += line;
-        line.Format(L"Обложек вставлено: %d\r\n", m_coverImagesInserted); report += line;
-        line.Format(L"Изображений не найдено/не декодировано: %d\r\n", m_missingImages); report += line;
-        line.Format(L"Ссылок на примечания: %d\r\n", m_noteReferences); report += line;
-        line.Format(L"Сносок/концевых примечаний создано: %d\r\n", static_cast<int>(m_footnotes.size())); report += line;
-        line.Format(L"Примечаний не найдено: %d\r\n", m_missingNotes); report += line;
-        line.Format(L"Внешних гиперссылок: %d\r\n", m_externalHyperlinkCount); report += line;
-        line.Format(L"Внутренних гиперссылок всего: %d\r\n", m_internalHyperlinkCount); report += line;
-        line.Format(L"Внутренних гиперссылок разрешено: %d\r\n", m_internalHyperlinkCount - m_brokenInternalHyperlinks); report += line;
-        line.Format(L"Битых внутренних гиперссылок: %d\r\n", m_brokenInternalHyperlinks); report += line;
-        line.Format(L"Целей внутренних ссылок собрано: %d\r\n", static_cast<int>(m_bookmarkTargets.size())); report += line;
-        line.Format(L"Дубликатов закладок пропущено: %d\r\n", m_duplicateBookmarkIdsFixed); report += line;
-        line.Format(L"FB2 stylesheet обнаружено: %d\r\n", m_cssStylesheetCount); report += line;
-        line.Format(L"Маленьких изображений оставлено без растягивания: %d\r\n", m_smallImageCount); report += line;
-        line.Format(L"Изображений ограничено по высоте страницы: %d\r\n", m_heightLimitedImages); report += line;
-        line.Format(L"Закладок Word: %d\r\n", m_nextBookmark - 1); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_FB2_SECTIONS, L"FB2 sections: %d\r\n")), m_sectionCount); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_DOCX_PARAGRAPHS, L"DOCX paragraphs: %d\r\n")), m_paragraphCount); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_TABLES, L"Tables: %d\r\n")), m_tableCount); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_IMAGES_REFERENCED, L"Images in text/cover: %d\r\n")), m_imageReferences); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_IMAGES_EMBEDDED, L"Images embedded in DOCX: %d\r\n")), static_cast<int>(m_images.size())); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_COVERS_INSERTED, L"Covers inserted: %d\r\n")), m_coverImagesInserted); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_IMAGES_MISSING, L"Images missing/not decoded: %d\r\n")), m_missingImages); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_NOTE_LINKS, L"Note links: %d\r\n")), m_noteReferences); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_NOTES_CREATED, L"Footnotes/endnotes created: %d\r\n")), static_cast<int>(m_footnotes.size())); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_NOTES_MISSING, L"Notes missing: %d\r\n")), m_missingNotes); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_EXTERNAL_LINKS, L"External hyperlinks: %d\r\n")), m_externalHyperlinkCount); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_INTERNAL_LINKS_TOTAL, L"Internal hyperlinks total: %d\r\n")), m_internalHyperlinkCount); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_INTERNAL_LINKS_RESOLVED, L"Internal hyperlinks resolved: %d\r\n")), m_internalHyperlinkCount - m_brokenInternalHyperlinks); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_INTERNAL_LINKS_BROKEN, L"Broken internal hyperlinks: %d\r\n")), m_brokenInternalHyperlinks); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_INTERNAL_TARGETS, L"Internal link targets collected: %d\r\n")), static_cast<int>(m_bookmarkTargets.size())); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_DUP_BOOKMARKS_SKIPPED, L"Duplicate bookmarks skipped: %d\r\n")), m_duplicateBookmarkIdsFixed); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_FB2_STYLESHEETS, L"FB2 stylesheets found: %d\r\n")), m_cssStylesheetCount); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_SMALL_IMAGES, L"Small images left unscaled: %d\r\n")), m_smallImageCount); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_HEIGHT_LIMITED_IMAGES, L"Images limited by page height: %d\r\n")), m_heightLimitedImages); report += line;
+        line.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_WORD_BOOKMARKS, L"Word bookmarks: %d\r\n")), m_nextBookmark - 1); report += line;
 
-        report += L"\r\nНастройки:\r\n";
-        report += L"- Титульная страница: " + CStringW(m_opt.titlePage ? L"да" : L"нет") + L"\r\n";
-        report += L"- Оглавление: " + CStringW(m_opt.addToc ? L"да" : L"нет") + L"\r\n";
-        report += L"- Изображения: " + CStringW(m_opt.exportImages ? L"да" : L"нет") + L"\r\n";
-        report += L"- Примечания: " + NotesModeText() + L"\r\n";
-        report += L"- Размер страницы: " + PageSizeText() + L"\r\n";
-        { CStringW line2; line2.Format(L"- Глубина оглавления: %d\r\n", m_opt.tocDepth); report += line2; }
-        report += L"- Обработка empty-line: " + EmptyLineModeText() + L"\r\n";
-        report += L"- Открывать после экспорта: " + CStringW(m_opt.openAfterExport ? L"да" : L"нет") + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_SETTINGS_HEADER, L"\r\nSettings:\r\n");
+        report += LoadDocxString(IDS_DOCX_REPORT_TITLE_PAGE, L"- Title page: ") + LoadDocxYesNo(m_opt.titlePage) + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_TOC, L"- TOC: ") + LoadDocxYesNo(m_opt.addToc) + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_IMAGES, L"- Images: ") + LoadDocxYesNo(m_opt.exportImages) + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_NOTES, L"- Notes: ") + NotesModeText() + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_PAGE_SIZE, L"- Page size: ") + PageSizeText() + L"\r\n";
+        { CStringW line2; line2.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_REPORT_TOC_DEPTH, L"- TOC depth: %d\r\n")), m_opt.tocDepth); report += line2; }
+        report += LoadDocxString(IDS_DOCX_REPORT_EMPTY_LINE, L"- empty-line handling: ") + EmptyLineModeText() + L"\r\n";
+        report += LoadDocxString(IDS_DOCX_REPORT_OPEN_AFTER_EXPORT, L"- Open after export: ") + LoadDocxYesNo(m_opt.openAfterExport) + L"\r\n";
 
-        report += L"\r\nПредупреждения:\r\n";
-        report += m_validationWarnings.IsEmpty() ? L"нет\r\n" : (m_validationWarnings + L"\r\n");
+        report += LoadDocxString(IDS_DOCX_REPORT_WARNINGS_HEADER, L"\r\nWarnings:\r\n");
+        report += m_validationWarnings.IsEmpty() ? (LoadDocxString(IDS_DOCX_REPORT_NO, L"no") + L"\r\n") : (m_validationWarnings + L"\r\n");
         return report;
     }
 
@@ -1838,7 +1916,7 @@ private:
         if (!m_recursiveFootnoteWarnings.insert(key).second) return;
 
         CStringW warn;
-        warn.Format(L"Обнаружена циклическая ссылка между примечаниями около #%s; рекурсивная ссылка оставлена обычным текстом, чтобы избежать переполнения стека.",
+        warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_RECURSIVE_NOTE, L"Cyclic note link near #%s was found; the recursive link was left as plain text to avoid stack overflow.")),
             static_cast<LPCWSTR>(fbId));
         AddValidationWarning(warn);
     }
@@ -1867,7 +1945,7 @@ private:
         IXMLDOMNodePtr notesBody = FindBodyByName(RootOf(m_doc), L"notes");
         if (!notesBody) return;
 
-        m_body += ParagraphFromText(L"\x041F\x0440\x0438\x043C\x0435\x0447\x0430\x043D\x0438\x044F", L"Heading1");
+        m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_NOTES_TITLE, L"Notes"), L"Heading1");
         ConvertChildren(notesBody, L"Normal");
     }
 
@@ -1878,7 +1956,7 @@ private:
         CStringW history = DocumentHistoryText();
         if (history.IsEmpty()) return;
         m_body += PageBreakParagraph();
-        m_body += ParagraphFromText(L"История документа", L"Heading1");
+        m_body += ParagraphFromText(LoadDocxString(IDS_DOCX_TITLE_HISTORY, L"Document history"), L"Heading1");
         m_body += ParagraphFromText(history, L"Annotation");
     }
 
@@ -1991,7 +2069,7 @@ private:
         }
         else if (nm == L"stylesheet") {
             ++m_cssStylesheetCount;
-            AddValidationWarning(L"Обнаружен FB2 stylesheet; CSS не применяется напрямую к DOCX, но текст книги сохранён.");
+            AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_FB2_STYLESHEET, L"An FB2 stylesheet was found; CSS is not applied directly to DOCX, but the book text was preserved."));
         }
         else {
             ConvertChildren(node, defaultStyle);
@@ -2120,7 +2198,7 @@ private:
     }
 
     void RemoveTrailingHyphenBeforePageMarker(CStringW& runs) {
-        // Page markers can split a word: "Повест-<strong>{43}</strong>вуя".
+        // Page markers can split a word, for example across an inline marker.
         // After removing the marker, also remove the artificial line-break hyphen.
         CStringW marker = L"-</w:t></w:r>";
         int pos = runs.ReverseFind(L'-');
@@ -2269,20 +2347,20 @@ private:
     bool IsCaptionParagraph(IXMLDOMNodePtr node) {
         CStringW l = CollapseSpaces(TextOf(node));
         l.MakeLower();
-        return l.Find(L"илл.") == 0 || l.Find(L"рис.") == 0 || l.Find(L"табл.") == 0 ||
-               l.Find(L"fig.") == 0 || l.Find(L"figure ") == 0 || l.Find(L"таблица ") == 0;
+        return l.Find(L"\x0438\x043B\x043B.") == 0 || l.Find(L"\x0440\x0438\x0441.") == 0 || l.Find(L"\x0442\x0430\x0431\x043B.") == 0 ||
+               l.Find(L"fig.") == 0 || l.Find(L"figure ") == 0 || l.Find(L"\x0442\x0430\x0431\x043B\x0438\x0446\x0430 ") == 0;
     }
 
     CStringW TocXml() {
         CStringW x;
-        x += ParagraphFromText(L"Оглавление", L"TOCTitle");
+        x += ParagraphFromText(LoadDocxString(IDS_DOCX_TOC_TITLE, L"Table of contents"), L"TOCTitle");
         x += L"<w:p><w:pPr><w:pStyle w:val=\"TOC1\"/></w:pPr>";
         x += L"<w:r><w:fldChar w:fldCharType=\"begin\" w:dirty=\"true\"/></w:r>";
         x += CStringW(L"<w:r><w:instrText xml:space=\"preserve\"> TOC \\o \"1-") + TocDepthString() + L"\" \\h \\z \\u </w:instrText></w:r>";
         x += L"<w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>";
-        x += L"<w:r><w:t>Оглавление будет заполнено Word после обновления поля.</w:t></w:r>";
+        x += CStringW(L"<w:r><w:t>") + XmlEscape(LoadDocxString(IDS_DOCX_TOC_PLACEHOLDER, L"The table of contents will be filled by Word after updating the field.")) + L"</w:t></w:r>";
         x += L"<w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>";
-        x += ParagraphFromText(L"Чтобы обновить: щёлкните правой кнопкой мыши по оглавлению и выберите «Обновить поле».", L"TOCInstruction");
+        x += ParagraphFromText(LoadDocxString(IDS_DOCX_TOC_UPDATE_HINT, L"To update: right-click the table of contents and choose Update Field."), L"TOCInstruction");
         return x;
     }
 
@@ -2373,13 +2451,13 @@ private:
         if (internal) {
             ++m_internalHyperlinkCount;
             if (!m_opt.createBookmarks) {
-                AddValidationWarning(L"Внутренняя гиперссылка оставлена обычным текстом, потому что создание закладок отключено.");
+                AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_INTERNAL_LINK_BOOKMARKS_DISABLED, L"The internal hyperlink was left as plain text because bookmark creation is disabled."));
                 return linkRuns;
             }
             if (!HasBookmarkTarget(href)) {
                 ++m_brokenInternalHyperlinks;
                 CStringW warn;
-                warn.Format(L"Внутренняя ссылка #%s не имеет найденной id-цели в основном тексте; ссылка оставлена обычным текстом.", static_cast<LPCWSTR>(href));
+                warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_INTERNAL_LINK_MISSING_TARGET, L"Internal link #%s has no matching id target in the main text; the link was left as plain text.")), static_cast<LPCWSTR>(href));
                 AddValidationWarning(warn);
                 return linkRuns;
             }
@@ -2406,7 +2484,7 @@ private:
         if (!part) {
             ++m_missingImages;
             CStringW warn;
-            warn.Format(L"Не найдено или не декодировано изображение binary id=\"%s\".", static_cast<LPCWSTR>(href));
+            warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_IMAGE_NOT_FOUND, L"Image binary id=\"%s\" was not found or could not be decoded.")), static_cast<LPCWSTR>(href));
             AddValidationWarning(warn);
             return L"";
         }
@@ -2472,7 +2550,7 @@ private:
         part.fbId = fbId;
         if (!DecodeBase64(CStringW(b64), part.bytes)) {
             CStringW warn;
-            warn.Format(L"Не удалось декодировать base64 изображения binary id=\"%s\".", static_cast<LPCWSTR>(fbId));
+            warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_IMAGE_BASE64_FAILED, L"Failed to decode base64 image binary id=\"%s\".")), static_cast<LPCWSTR>(fbId));
             AddValidationWarning(warn);
             return NULL;
         }
@@ -2491,7 +2569,7 @@ private:
 
         if (ext.CompareNoCase(L"bin") == 0) {
             CStringW warn;
-            warn.Format(L"Неизвестный content-type изображения binary id=\"%s\": %s.", static_cast<LPCWSTR>(fbId), static_cast<LPCWSTR>(ct));
+            warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_IMAGE_UNKNOWN_CONTENT_TYPE, L"Unknown image content-type for binary id=\"%s\": %s.")), static_cast<LPCWSTR>(fbId), static_cast<LPCWSTR>(ct));
             AddValidationWarning(warn);
         }
 
@@ -2501,7 +2579,7 @@ private:
         DetectImageSize(part);
         if (part.widthPx <= 0 || part.heightPx <= 0) {
             CStringW warn;
-            warn.Format(L"Не удалось определить размеры изображения binary id=\"%s\"; применён размер по умолчанию.", static_cast<LPCWSTR>(fbId));
+            warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_IMAGE_SIZE_FAILED, L"Failed to detect image size for binary id=\"%s\"; default size was used.")), static_cast<LPCWSTR>(fbId));
             AddValidationWarning(warn);
         }
         m_images.push_back(part);
@@ -2559,7 +2637,7 @@ private:
             if (explicitNote) {
                 ++m_missingNotes;
                 CStringW warn;
-                warn.Format(L"Ссылка на примечание #%s найдена, но соответствующий section в body name=notes не найден.", static_cast<LPCWSTR>(href));
+                warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_NOTE_MISSING, L"Note link #%s was found, but the matching section in body name=notes was not found.")), static_cast<LPCWSTR>(href));
                 AddValidationWarning(warn);
             }
             return L"";
@@ -2769,7 +2847,7 @@ private:
         long rn = 0;
         if (rows) rows->get_length(&rn);
         if (rn == 0) {
-            AddValidationWarning(L"Найдена таблица FB2 без строк tr; таблица пропущена.");
+            AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_TABLE_NO_ROWS, L"An FB2 table without tr rows was found; the table was skipped."));
             return;
         }
 
@@ -2801,7 +2879,7 @@ private:
                 if (colspan > 1) ++m_tableColspanCount;
                 if (rowspan > 1) ++m_tableRowspanCount;
                 if (rowspan > 1 && colspan > 1)
-                    AddValidationWarning(L"Таблица содержит ячейку с одновременными rowspan и colspan; вертикальное объединение применено только к основной колонке.");
+                    AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_TABLE_ROWSPAN_COLSPAN, L"The table contains a cell with both rowspan and colspan; vertical merge was applied only to the main column."));
                 CStringW tcPr = L"<w:tcPr><w:tcW w:w=\"0\" w:type=\"auto\"/>";
                 if (colspan > 1) {
                     CStringW span;
@@ -2844,33 +2922,33 @@ private:
 
     void ValidateDocxPackage() {
         if (!m_opt.validateDocx) return;
-        if (m_body.IsEmpty()) AddValidationWarning(L"document.xml не содержит тела документа.");
+        if (m_body.IsEmpty()) AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_DOCUMENT_NO_BODY, L"document.xml does not contain the document body."));
         if (m_opt.addToc) {
             CStringW tocMarker = CStringW(L"TOC \\o \"1-") + TocDepthString();
             if (m_frontMatter.Find(tocMarker) < 0 && m_body.Find(tocMarker) < 0)
-                AddValidationWarning(L"Не найдено поле оглавления TOC.");
+                AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_TOC_FIELD_MISSING, L"The TOC field was not found."));
         }
         for (size_t i = 0; i < m_images.size(); ++i) {
-            if (m_images[i].bytes.empty()) AddValidationWarning(L"Найдено изображение с пустыми бинарными данными.");
+            if (m_images[i].bytes.empty()) AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_EMPTY_IMAGE, L"An image with empty binary data was found."));
             if (m_images[i].relId.IsEmpty() || m_images[i].fileName.IsEmpty())
-                AddValidationWarning(L"Найдено изображение без relationship id или имени файла.");
+                AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_IMAGE_REL_MISSING, L"An image without relationship id or file name was found."));
         }
         for (size_t i = 0; i < m_footnotes.size(); ++i) {
             if (m_footnotes[i].xml.IsEmpty())
-                AddValidationWarning(m_opt.notesMode == 1 ? L"Найдено пустое концевое примечание." : L"Найдена пустая сноска.");
+                AddValidationWarning(m_opt.notesMode == 1 ? static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_EMPTY_ENDNOTE, L"An empty endnote was found.")) : static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_EMPTY_FOOTNOTE, L"An empty footnote was found.")));
         }
         for (size_t i = 0; i < m_hyperlinks.size(); ++i) {
             if (m_hyperlinks[i].relId.IsEmpty() || m_hyperlinks[i].target.IsEmpty())
-                AddValidationWarning(L"Найдена гиперссылка без relationship id или адреса.");
+                AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_HYPERLINK_REL_MISSING, L"A hyperlink without relationship id or target address was found."));
         }
         if (m_opt.addHeaders && FirstTextByXPath(L"/*[local-name()='FictionBook']/*[local-name()='description']/*[local-name()='title-info']/*[local-name()='book-title']").IsEmpty())
-            AddValidationWarning(L"Включён верхний колонтитул, но название книги в FB2 не найдено.");
+            AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_HEADER_TITLE_MISSING, L"Header is enabled, but the FB2 book title was not found."));
         if (m_tableCount > 0 && m_body.Find(L"<w:tbl>") < 0)
-            AddValidationWarning(L"Таблицы были обнаружены, но в document.xml не найден блок w:tbl.");
+            AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_TABLE_XML_MISSING, L"Tables were detected, but no w:tbl block was found in document.xml."));
         if (m_imageReferences > 0 && m_opt.exportImages && m_images.empty())
-            AddValidationWarning(L"В тексте есть ссылки на изображения, но ни одно изображение не встроено в DOCX.");
+            AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_REFERENCED_IMAGES_NOT_EMBEDDED, L"The text contains image references, but no image was embedded into DOCX."));
         if (m_opt.docLanguage == 2 && LanguageCode().IsEmpty())
-            AddValidationWarning(L"Язык документа выбран автоматически, но поле FB2 <lang> пустое или не распознано.");
+            AddValidationWarning(LoadDocxString(IDS_DOCX_WARNING_AUTO_LANGUAGE_EMPTY, L"Document language is automatic, but FB2 <lang> is empty or not recognized."));
     }
 
     CStringW ContentTypesXml() {
@@ -3050,9 +3128,9 @@ private:
     }
 
     CStringW NotesModeText() const {
-        if (m_opt.notesMode == 1) return L"концевые примечания Word";
-        if (m_opt.notesMode == 2) return L"раздел «Примечания» в конце";
-        return L"сноски Word";
+        if (m_opt.notesMode == 1) return LoadDocxString(IDS_DOCX_NOTES_ENDNOTES, L"Word endnotes");
+        if (m_opt.notesMode == 2) return LoadDocxString(IDS_DOCX_NOTES_SECTION, L"Notes section at the end");
+        return LoadDocxString(IDS_DOCX_NOTES_FOOTNOTES, L"Word footnotes");
     }
 
     CStringW PageSizeText() const {
@@ -3070,16 +3148,16 @@ private:
     }
 
     CStringW EmptyLineModeText() const {
-        if (m_opt.emptyLineMode == 0) return L"игнорировать";
-        if (m_opt.emptyLineMode == 1) return L"пустой абзац";
-        if (m_opt.emptyLineMode == 3) return L"декоративный разделитель * * *";
-        return L"интервал перед следующим абзацем";
+        if (m_opt.emptyLineMode == 0) return LoadDocxString(IDS_DOCX_EMPTY_LINE_IGNORE, L"Ignore");
+        if (m_opt.emptyLineMode == 1) return LoadDocxString(IDS_DOCX_EMPTY_LINE_PARAGRAPH, L"Empty paragraph");
+        if (m_opt.emptyLineMode == 3) return LoadDocxString(IDS_DOCX_EMPTY_LINE_SEPARATOR, L"Decorative separator * * *");
+        return LoadDocxString(IDS_DOCX_EMPTY_LINE_SPACING, L"Spacing before next paragraph");
     }
 
     CStringW ExportPresetText() const {
-        if (m_opt.exportPreset == 1) return L"Минимальный DOCX";
-        if (m_opt.exportPreset == 2) return L"Редакторский DOCX";
-        return L"Книжный DOCX";
+        if (m_opt.exportPreset == 1) return LoadDocxString(IDS_DOCX_PROFILE_MINIMAL, L"Minimal DOCX");
+        if (m_opt.exportPreset == 2) return LoadDocxString(IDS_DOCX_PROFILE_COMPACT, L"Compact DOCX");
+        return LoadDocxString(IDS_DOCX_PROFILE_BOOK, L"Book DOCX");
     }
 
     void LimitCoverImageSize(__int64& cx, __int64& cy) const {
@@ -3438,13 +3516,13 @@ private:
     }
 
     CStringW ThemeXml() {
-        return L"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"Тема Office\"><a:themeElements><a:clrScheme name=\"Стандартная\"><a:dk1><a:sysClr val=\"windowText\" lastClr=\"000000\"/></a:dk1><a:lt1><a:sysClr val=\"window\" lastClr=\"FFFFFF\"/></a:lt1><a:dk2><a:srgbClr val=\"0E2841\"/></a:dk2><a:lt2><a:srgbClr val=\"E8E8E8\"/></a:lt2><a:accent1><a:srgbClr val=\"156082\"/></a:accent1><a:accent2><a:srgbClr val=\"E97132\"/></a:accent2><a:accent3><a:srgbClr val=\"196B24\"/></a:accent3><a:accent4><a:srgbClr val=\"0F9ED5\"/></a:accent4><a:accent5><a:srgbClr val=\"A02B93\"/></a:accent5><a:accent6><a:srgbClr val=\"4EA72E\"/></a:accent6><a:hlink><a:srgbClr val=\"467886\"/></a:hlink><a:folHlink><a:srgbClr val=\"96607D\"/></a:folHlink></a:clrScheme><a:fontScheme name=\"Стандартная\"><a:majorFont><a:latin typefac"
+        return L"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"Office Theme\"><a:themeElements><a:clrScheme name=\"Default\"><a:dk1><a:sysClr val=\"windowText\" lastClr=\"000000\"/></a:dk1><a:lt1><a:sysClr val=\"window\" lastClr=\"FFFFFF\"/></a:lt1><a:dk2><a:srgbClr val=\"0E2841\"/></a:dk2><a:lt2><a:srgbClr val=\"E8E8E8\"/></a:lt2><a:accent1><a:srgbClr val=\"156082\"/></a:accent1><a:accent2><a:srgbClr val=\"E97132\"/></a:accent2><a:accent3><a:srgbClr val=\"196B24\"/></a:accent3><a:accent4><a:srgbClr val=\"0F9ED5\"/></a:accent4><a:accent5><a:srgbClr val=\"A02B93\"/></a:accent5><a:accent6><a:srgbClr val=\"4EA72E\"/></a:accent6><a:hlink><a:srgbClr val=\"467886\"/></a:hlink><a:folHlink><a:srgbClr val=\"96607D\"/></a:folHlink></a:clrScheme><a:fontScheme name=\"Default\"><a:majorFont><a:latin typefac"
                L"e=\"Aptos Display\" panose=\"02110004020202020204\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/><a:font script=\"Jpan\" typeface=\"游ゴシック Light\"/><a:font script=\"Hang\" typeface=\"맑은 고딕\"/><a:font script=\"Hans\" typeface=\"等线 Light\"/><a:font script=\"Hant\" typeface=\"新細明體\"/><a:font script=\"Arab\" typeface=\"Times New Roman\"/><a:font script=\"Hebr\" typeface=\"Times New Roman\"/><a:font script=\"Thai\" typeface=\"Angsana New\"/><a:font script=\"Ethi\" typeface=\"Nyala\"/><a:font script=\"Beng\" typeface=\"Vrinda\"/><a:font script=\"Gujr\" typeface=\"Shruti\"/><a:font script=\"Khmr\" typeface=\"MoolBoran\"/><a:font script=\"Knda\" typeface=\"Tunga\"/><a:font script=\"Guru\" typeface=\"Raavi\"/><a:font script=\"Cans\" typeface=\"Euphemia\"/><a:font script=\"Cher\" typeface=\"Plantagenet Cherokee\"/><a:font script=\"Yiii\" typeface=\"Microsoft Yi Baiti\"/><a:font script=\"Tibt\" typeface=\"Microsoft Himalaya\"/"
                L"><a:font script=\"Thaa\" typeface=\"MV Boli\"/><a:font script=\"Deva\" typeface=\"Mangal\"/><a:font script=\"Telu\" typeface=\"Gautami\"/><a:font script=\"Taml\" typeface=\"Latha\"/><a:font script=\"Syrc\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Orya\" typeface=\"Kalinga\"/><a:font script=\"Mlym\" typeface=\"Kartika\"/><a:font script=\"Laoo\" typeface=\"DokChampa\"/><a:font script=\"Sinh\" typeface=\"Iskoola Pota\"/><a:font script=\"Mong\" typeface=\"Mongolian Baiti\"/><a:font script=\"Viet\" typeface=\"Times New Roman\"/><a:font script=\"Uigh\" typeface=\"Microsoft Uighur\"/><a:font script=\"Geor\" typeface=\"Sylfaen\"/><a:font script=\"Armn\" typeface=\"Arial\"/><a:font script=\"Bugi\" typeface=\"Leelawadee UI\"/><a:font script=\"Bopo\" typeface=\"Microsoft JhengHei\"/><a:font script=\"Java\" typeface=\"Javanese Text\"/><a:font script=\"Lisu\" typeface=\"Segoe UI\"/><a:font script=\"Mymr\" typeface=\""
                L"Myanmar Text\"/><a:font script=\"Nkoo\" typeface=\"Ebrima\"/><a:font script=\"Olck\" typeface=\"Nirmala UI\"/><a:font script=\"Osma\" typeface=\"Ebrima\"/><a:font script=\"Phag\" typeface=\"Phagspa\"/><a:font script=\"Syrn\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Syrj\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Syre\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Sora\" typeface=\"Nirmala UI\"/><a:font script=\"Tale\" typeface=\"Microsoft Tai Le\"/><a:font script=\"Talu\" typeface=\"Microsoft New Tai Lue\"/><a:font script=\"Tfng\" typeface=\"Ebrima\"/></a:majorFont><a:minorFont><a:latin typeface=\"Aptos\" panose=\"02110004020202020204\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/><a:font script=\"Jpan\" typeface=\"游明朝\"/><a:font script=\"Hang\" typeface=\"맑은 고딕\"/><a:font script=\"Hans\" typeface=\"等线\"/><a:font script=\"Hant\" typeface=\"新細明體\"/><a:font script=\"Arab\" typeface=\"Arial\"/><"
                L"a:font script=\"Hebr\" typeface=\"Arial\"/><a:font script=\"Thai\" typeface=\"Cordia New\"/><a:font script=\"Ethi\" typeface=\"Nyala\"/><a:font script=\"Beng\" typeface=\"Vrinda\"/><a:font script=\"Gujr\" typeface=\"Shruti\"/><a:font script=\"Khmr\" typeface=\"DaunPenh\"/><a:font script=\"Knda\" typeface=\"Tunga\"/><a:font script=\"Guru\" typeface=\"Raavi\"/><a:font script=\"Cans\" typeface=\"Euphemia\"/><a:font script=\"Cher\" typeface=\"Plantagenet Cherokee\"/><a:font script=\"Yiii\" typeface=\"Microsoft Yi Baiti\"/><a:font script=\"Tibt\" typeface=\"Microsoft Himalaya\"/><a:font script=\"Thaa\" typeface=\"MV Boli\"/><a:font script=\"Deva\" typeface=\"Mangal\"/><a:font script=\"Telu\" typeface=\"Gautami\"/><a:font script=\"Taml\" typeface=\"Latha\"/><a:font script=\"Syrc\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Orya\" typeface=\"Kalinga\"/><a:font script=\"Mlym\" typeface=\"Kartika\"/><a:font script=\""
                L"Laoo\" typeface=\"DokChampa\"/><a:font script=\"Sinh\" typeface=\"Iskoola Pota\"/><a:font script=\"Mong\" typeface=\"Mongolian Baiti\"/><a:font script=\"Viet\" typeface=\"Arial\"/><a:font script=\"Uigh\" typeface=\"Microsoft Uighur\"/><a:font script=\"Geor\" typeface=\"Sylfaen\"/><a:font script=\"Armn\" typeface=\"Arial\"/><a:font script=\"Bugi\" typeface=\"Leelawadee UI\"/><a:font script=\"Bopo\" typeface=\"Microsoft JhengHei\"/><a:font script=\"Java\" typeface=\"Javanese Text\"/><a:font script=\"Lisu\" typeface=\"Segoe UI\"/><a:font script=\"Mymr\" typeface=\"Myanmar Text\"/><a:font script=\"Nkoo\" typeface=\"Ebrima\"/><a:font script=\"Olck\" typeface=\"Nirmala UI\"/><a:font script=\"Osma\" typeface=\"Ebrima\"/><a:font script=\"Phag\" typeface=\"Phagspa\"/><a:font script=\"Syrn\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Syrj\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Syre\" typeface=\"Estrange"
-               L"lo Edessa\"/><a:font script=\"Sora\" typeface=\"Nirmala UI\"/><a:font script=\"Tale\" typeface=\"Microsoft Tai Le\"/><a:font script=\"Talu\" typeface=\"Microsoft New Tai Lue\"/><a:font script=\"Tfng\" typeface=\"Ebrima\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Стандартная\"><a:fillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"110000\"/><a:satMod val=\"105000\"/><a:tint val=\"67000\"/></a:schemeClr></a:gs><a:gs pos=\"50000\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"105000\"/><a:satMod val=\"103000\"/><a:tint val=\"73000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"105000\"/><a:satMod val=\"109000\"/><a:tint val=\"81000\"/></a:schemeClr></a:gs></a:gsLst><a:lin ang=\"5400000\" scaled=\"0\"/></a:gradFill><a:gradFill rotWithShape="
+               L"lo Edessa\"/><a:font script=\"Sora\" typeface=\"Nirmala UI\"/><a:font script=\"Tale\" typeface=\"Microsoft Tai Le\"/><a:font script=\"Talu\" typeface=\"Microsoft New Tai Lue\"/><a:font script=\"Tfng\" typeface=\"Ebrima\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Default\"><a:fillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"110000\"/><a:satMod val=\"105000\"/><a:tint val=\"67000\"/></a:schemeClr></a:gs><a:gs pos=\"50000\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"105000\"/><a:satMod val=\"103000\"/><a:tint val=\"73000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"105000\"/><a:satMod val=\"109000\"/><a:tint val=\"81000\"/></a:schemeClr></a:gs></a:gsLst><a:lin ang=\"5400000\" scaled=\"0\"/></a:gradFill><a:gradFill rotWithShape="
                L"\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:satMod val=\"103000\"/><a:lumMod val=\"102000\"/><a:tint val=\"94000\"/></a:schemeClr></a:gs><a:gs pos=\"50000\"><a:schemeClr val=\"phClr\"><a:satMod val=\"110000\"/><a:lumMod val=\"100000\"/><a:shade val=\"100000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:lumMod val=\"99000\"/><a:satMod val=\"120000\"/><a:shade val=\"78000\"/></a:schemeClr></a:gs></a:gsLst><a:lin ang=\"5400000\" scaled=\"0\"/></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w=\"6350\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:prstDash val=\"solid\"/><a:miter lim=\"800000\"/></a:ln><a:ln w=\"12700\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:prstDash val=\"solid\"/><a:miter lim=\"800000\"/></a:ln><a:ln w=\"19050\" cap=\"flat\" cmpd=\"sng\" a"
                L"lgn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:prstDash val=\"solid\"/><a:miter lim=\"800000\"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad=\"57150\" dist=\"19050\" dir=\"5400000\" algn=\"ctr\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"63000\"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:solidFill><a:schemeClr val=\"phClr\"><a:tint val=\"95000\"/><a:satMod val=\"170000\"/></a:schemeClr></a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:tint val=\"93000\"/><a:satMod val=\"150000\"/><a:shade val=\"98000\"/><a:lumMod val=\"102000\"/></a:schemeClr></a:gs><a:gs"
                L" pos=\"50000\"><a:schemeClr val=\"phClr\"><a:tint val=\"98000\"/><a:satMod val=\"130000\"/><a:shade val=\"90000\"/><a:lumMod val=\"103000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:shade val=\"63000\"/><a:satMod val=\"120000\"/></a:schemeClr></a:gs></a:gsLst><a:lin ang=\"5400000\" scaled=\"0\"/></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/><a:extLst><a:ext uri=\"{05A4C25C-085E-4340-85A3-A5531E510DB2}\"><thm15:themeFamily xmlns:thm15=\"http://schemas.microsoft.com/office/thememl/2012/main\" name=\"Office Theme\" id=\"{2E142A2C-CD16-42D6-873A-C26D2A0506FA}\" vid=\"{1BDDFF52-6CD6-40A5-AB3C-68EB2F1E4D0A}\"/></a:ext></a:extLst></a:theme>";
@@ -3456,6 +3534,8 @@ private:
 
 extern "C" __declspec(dllexport) HRESULT WINAPI ExportFB2FileToDOCX(LPCWSTR fb2Path, LPCWSTR docxPath)
 {
+    InitExportDocxRuntimeStrings();
+
     if (!fb2Path || !*fb2Path || !docxPath || !*docxPath)
         return E_INVALIDARG;
 
@@ -3528,6 +3608,8 @@ extern "C" __declspec(dllexport) HRESULT WINAPI ExportFB2FileToDOCX(LPCWSTR fb2P
 
 HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 {
+    InitExportDocxRuntimeStrings();
+
     HWND hwndParent = static_cast<HWND>(LongToHandle(hWnd));
     try {
         IXMLDOMDocument2Ptr source(doc);
@@ -3541,8 +3623,7 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         if (dot >= 0) outName.Delete(dot, outName.GetLength() - dot);
         outName += _T(".docx");
 
-        CString strFilter;
-        strFilter.LoadString(IDS_SAVE_FILE_FILTER);
+        CString strFilter(LoadDocxString(IDS_SAVE_FILE_FILTER, L"Word document (*.docx)|*.docx|"));
         strFilter.Replace(_T('|'), _T('\0'));
         CDocxSaveDialog dlg(outName, strFilter, settings);
         dlg.m_ofn.nFilterIndex = 1;
@@ -3567,7 +3648,7 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         if (settings.validateDocx) {
             CStringW warnings = builder.ValidationWarnings();
             if (!warnings.IsEmpty()) {
-                CStringW msg = L"DOCX создан, но внутренняя проверка нашла предупреждения:\r\n";
+                CStringW msg = LoadDocxString(IDS_DOCX_WARNING_DOCX_CREATED_WITH_WARNINGS, L"DOCX was created, but internal validation found warnings:\r\n");
                 msg += warnings;
                 AtlTaskDialog(hwndParent, static_cast<UINT>(IDR_EXPORTDOCX), static_cast<LPCTSTR>(msg), static_cast<LPCTSTR>(NULL), TDCBF_OK_BUTTON, TD_WARNING_ICON);
             }
@@ -3586,3 +3667,5 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
     }
     return S_OK;
 }
+
+

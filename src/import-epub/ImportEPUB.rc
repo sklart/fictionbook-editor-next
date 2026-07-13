@@ -1,5 +1,9 @@
 #include "resource.h"
 
+#define APSTUDIO_READONLY_SYMBOLS
+#include "../../third_party/wtl/atlres.h"
+#undef APSTUDIO_READONLY_SYMBOLS
+
 // Resource version block uses VS_VERSION_INFO == 1 from resource.h.
 // This makes FileVersionInfo visible in Explorer / file properties.
 
@@ -42,3 +46,5 @@ BEGIN
         VALUE "Translation", 0x409, 1200
     END
 END
+
+#include "ImportEPUBStrings.generated.rc2"

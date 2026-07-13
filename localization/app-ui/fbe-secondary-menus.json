@@ -1,0 +1,160 @@
+{
+  "formatVersion": 1,
+  "description": "Weblate-friendly seed-каталог малых меню FBE IDR_DOCUMENT_TREE и IDR_TOOLBAR_MENU.",
+  "targetLanguages": [
+    "en-US",
+    "ru-RU",
+    "uk-UA",
+    "de-DE",
+    "fr-FR",
+    "es-ES",
+    "it-IT",
+    "pl-PL",
+    "pt-PT",
+    "nl-NL",
+    "cs-CZ",
+    "bg-BG"
+  ],
+  "sourceLanguage": "ru-RU",
+  "component": "fbe.rc_ui.menu.secondary",
+  "resources": [
+    "IDR_DOCUMENT_TREE",
+    "IDR_TOOLBAR_MENU"
+  ],
+  "resourceType": "MENU",
+  "strings": {
+    "fbe.menu.idr_document_tree.view": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "MENUITEM",
+      "targetId": "ID_DT_VIEW",
+      "translations": {
+        "en-US": "&Go to element",
+        "ru-RU": "&Перейти к элементу",
+        "uk-UA": "&Перейти до елементу",
+        "de-DE": "&Zum Element gehen",
+        "fr-FR": "&Aller à l’élément",
+        "es-ES": "&Ir al elemento",
+        "it-IT": "&Vai all’elemento",
+        "pl-PL": "&Przejdź do elementu",
+        "pt-PT": "&Ir para o elemento",
+        "nl-NL": "&Ga naar element",
+        "cs-CZ": "&Přejít na prvek",
+        "bg-BG": "&Отиди на елемент"
+      }
+    },
+    "fbe.menu.idr_document_tree.view_source": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "MENUITEM",
+      "targetId": "ID_DT_VIEWSOURCE",
+      "translations": {
+        "en-US": "Go to &source",
+        "ru-RU": "П&ерейти к коду",
+        "uk-UA": "П&ерейти до коду",
+        "de-DE": "Zum &Quelltext gehen",
+        "fr-FR": "Aller à la &source",
+        "es-ES": "Ir al &código",
+        "it-IT": "Vai al &sorgente",
+        "pl-PL": "Przejdź do ź&ródła",
+        "pt-PT": "Ir para o &código-fonte",
+        "nl-NL": "Ga naar &bron",
+        "cs-CZ": "Přejít na &zdroj",
+        "bg-BG": "Отиди на &кода"
+      }
+    },
+    "fbe.menu.idr_document_tree.move_right": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "MENUITEM",
+      "targetId": "ID_DT_RIGHT_ONE",
+      "translations": {
+        "en-US": "Move right",
+        "ru-RU": "Сдвинуть вправо",
+        "uk-UA": "Перемістити праворуч",
+        "de-DE": "Nach rechts verschieben",
+        "fr-FR": "Déplacer à droite",
+        "es-ES": "Mover a la derecha",
+        "it-IT": "Sposta a destra",
+        "pl-PL": "Przesuń w prawo",
+        "pt-PT": "Mover para a direita",
+        "nl-NL": "Naar rechts verplaatsen",
+        "cs-CZ": "Posunout doprava",
+        "bg-BG": "Премести надясно"
+      }
+    },
+    "fbe.menu.idr_document_tree.make_child": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "MENUITEM",
+      "targetId": "ID_DT_RIGHT_SMART",
+      "translations": {
+        "en-US": "Make child element",
+        "ru-RU": "Сделать дочерним элементом",
+        "uk-UA": "Зробити дочірнім елементом",
+        "de-DE": "Zum Kindelement machen",
+        "fr-FR": "Rendre élément enfant",
+        "es-ES": "Convertir en elemento hijo",
+        "it-IT": "Rendi elemento figlio",
+        "pl-PL": "Utwórz element podrzędny",
+        "pt-PT": "Tornar elemento filho",
+        "nl-NL": "Kindelement maken",
+        "cs-CZ": "Vytvořit podřízený prvek",
+        "bg-BG": "Направи дъщерен елемент"
+      }
+    },
+    "fbe.menu.idr_document_tree.move_left": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "MENUITEM",
+      "targetId": "ID_DT_LEFT",
+      "translations": {
+        "en-US": "Move left",
+        "ru-RU": "Сдвинуть влево",
+        "uk-UA": "Перемістити ліворуч",
+        "de-DE": "Nach links verschieben",
+        "fr-FR": "Déplacer à gauche",
+        "es-ES": "Mover a la izquierda",
+        "it-IT": "Sposta a sinistra",
+        "pl-PL": "Przesuń w lewo",
+        "pt-PT": "Mover para a esquerda",
+        "nl-NL": "Naar links verplaatsen",
+        "cs-CZ": "Posunout doleva",
+        "bg-BG": "Премести наляво"
+      }
+    },
+    "fbe.menu.idr_document_tree.delete": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "MENUITEM",
+      "targetId": "ID_DT_DELETE",
+      "translations": {
+        "en-US": "Delete",
+        "ru-RU": "Удалить",
+        "uk-UA": "Видалити",
+        "de-DE": "Löschen",
+        "fr-FR": "Supprimer",
+        "es-ES": "Eliminar",
+        "it-IT": "Elimina",
+        "pl-PL": "Usuń",
+        "pt-PT": "Eliminar",
+        "nl-NL": "Verwijderen",
+        "cs-CZ": "Odstranit",
+        "bg-BG": "Изтрий"
+      }
+    },
+    "fbe.menu.idr_toolbar_menu.customize": {
+      "resource": "IDR_TOOLBAR_MENU",
+      "kind": "MENUITEM",
+      "targetId": "ID_TOOLS_CUSTOMIZE",
+      "translations": {
+        "en-US": "Customize toolbar...",
+        "ru-RU": "Настройка панели...",
+        "uk-UA": "Налаштування панелі...",
+        "de-DE": "Symbolleiste anpassen...",
+        "fr-FR": "Personnaliser la barre d’outils...",
+        "es-ES": "Personalizar barra de herramientas...",
+        "it-IT": "Personalizza barra degli strumenti...",
+        "pl-PL": "Dostosuj pasek narzędzi...",
+        "pt-PT": "Personalizar barra de ferramentas...",
+        "nl-NL": "Werkbalk aanpassen...",
+        "cs-CZ": "Přizpůsobit panel nástrojů...",
+        "bg-BG": "Настройка на лентата с инструменти..."
+      }
+    }
+  }
+}

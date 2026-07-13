@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ImportEPUBModule.h"
+#include "RuntimeLocalization.h"
 
 CImportEPUBModule _AtlModule;
 HINSTANCE g_hInstance = nullptr;
@@ -7,7 +8,10 @@ HINSTANCE g_hInstance = nullptr;
 extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 {
     if (dwReason == DLL_PROCESS_ATTACH)
+    {
         g_hInstance = hInstance;
+        InitImportEpubRuntimeStrings();
+    }
 
     return _AtlModule.DllMain(dwReason, lpReserved);
 }

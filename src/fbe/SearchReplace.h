@@ -1,8 +1,9 @@
-﻿#ifndef SEARCHREPLACE_H
+#ifndef SEARCHREPLACE_H
 #define SEARCHREPLACE_H
 
 #include "ModelessDialog.h"
 #include "Settings.h"
+#include "RuntimeLocalization.h"
 
 extern CSettings _Settings;
 extern bool VBErr;
@@ -24,6 +25,22 @@ public:
   HWND	GetDlgItem(int id) { return X_GetDlgItem(id); }
   virtual HWND X_GetDlgItem(int id) = 0;
   BOOL	SetDlgItemText(int id,const TCHAR *str) { return ::SetWindowText(GetDlgItem(id),str); }
+
+  void SetRuntimeText(int id, LPCWSTR key, LPCWSTR fallback)
+  {
+    const CString text = FbeLoadRuntimeStringByKey(key, fallback);
+    if (!text.IsEmpty() && GetDlgItem(id))
+      SetDlgItemText(id, text);
+  }
+
+  void SetRuntimeDialogTitle(LPCWSTR key, LPCWSTR fallback)
+  {
+    const CString text = FbeLoadRuntimeStringByKey(key, fallback);
+    HWND probe = GetDlgItem(IDC_TEXT);
+    HWND dialog = probe ? ::GetParent(probe) : NULL;
+    if (!text.IsEmpty() && dialog)
+      ::SetWindowText(dialog, text);
+  }
 
 	BEGIN_MSG_MAP(FRBase)
 		ALT_MSG_MAP(1)
@@ -106,6 +123,28 @@ public:
 
 		LoadHistoryImp(_T("SearchHistory"), m_fh, GetDlgItem(IDC_TEXT), m_view->m_fo.pattern);
 		LoadHistoryImp(_T("ReplaceHistory"), m_rh, GetDlgItem(IDC_REPLACE), m_view->m_fo.replacement);
+
+		const bool isReplaceDialog = GetDlgItem(IDC_REPLACE) != NULL;
+		SetRuntimeDialogTitle(isReplaceDialog ? L"fbe.dialog.idd_replace.caption" : L"fbe.dialog.idd_find.caption", isReplaceDialog ? L"Replace" : L"Find");
+		SetRuntimeText(isReplaceDialog ? IDC_REPLACE_LABEL_TEXT : IDC_FIND_LABEL_TEXT,
+			isReplaceDialog ? L"fbe.dialog.idd_replace.find_what" : L"fbe.dialog.idd_find.find_what",
+			isReplaceDialog ? L"Find:" : L"Find what:");
+		SetRuntimeText(ID_FIND_NEXT, isReplaceDialog ? L"fbe.dialog.idd_replace.find_next" : L"fbe.dialog.idd_find.find_next", L"&Find Next");
+		SetRuntimeText(IDC_WHOLE, isReplaceDialog ? L"fbe.dialog.idd_replace.whole_word" : L"fbe.dialog.idd_find.whole_word", L"Match &whole words");
+		SetRuntimeText(IDC_MATCHCASE, isReplaceDialog ? L"fbe.dialog.idd_replace.match_case" : L"fbe.dialog.idd_find.match_case", L"Match &case");
+		SetRuntimeText(IDC_REGEXP, isReplaceDialog ? L"fbe.dialog.idd_replace.regexp" : L"fbe.dialog.idd_find.regexp", L"Regular &expression");
+		SetRuntimeText(isReplaceDialog ? IDC_REPLACE_DIRECTION_GROUP : IDC_FIND_DIRECTION_GROUP,
+			isReplaceDialog ? L"fbe.dialog.idd_replace.direction" : L"fbe.dialog.idd_find.direction",
+			L"Direction");
+		SetRuntimeText(IDC_UP, isReplaceDialog ? L"fbe.dialog.idd_replace.up" : L"fbe.dialog.idd_find.up", L"&Up");
+		SetRuntimeText(IDC_DOWN, isReplaceDialog ? L"fbe.dialog.idd_replace.down" : L"fbe.dialog.idd_find.down", L"&Down");
+		SetRuntimeText(IDCANCEL, isReplaceDialog ? L"fbe.dialog.idd_replace.cancel" : L"fbe.dialog.idd_find.cancel", L"Cancel");
+		if(isReplaceDialog)
+		{
+			SetRuntimeText(IDC_REPLACE_LABEL_REPLACE, L"fbe.dialog.idd_replace.replace_with", L"Replace:");
+			SetRuntimeText(IDC_REPLACE_ONE, L"fbe.dialog.idd_replace.replace_one", L"&Replace");
+			SetRuntimeText(IDC_REPLACE_ALL, L"fbe.dialog.idd_replace.replace_all", L"Replace &All");
+		}
 
 		// Load options
 		DWORD flags = _Settings.GetSearchOptions();
@@ -280,7 +319,7 @@ public:
   void MakeClose() {
     // change cancel button to "Close"
 	CString s;
-	s.LoadString(IDS_MB_CLOSE);
+	s = FbeLoadCString(IDS_MB_CLOSE);
 	::SetWindowText(CModelessDialogImpl<CReplaceDlgBase>::GetDlgItem(IDCANCEL),s);
     SendMessage(DM_SETDEFID,IDC_REPLACE_ONE);
   }

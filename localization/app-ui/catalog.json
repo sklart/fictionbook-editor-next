@@ -116,6 +116,186 @@
         "bg-BG": "Грешка при изтегляне"
       }
     },
+    "fbe.update.connecting": {
+      "resourceId": "IDS_UPDATE_CONNECTING",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Connecting to server...",
+        "ru-RU": "Подключаюсь к серверу...",
+        "uk-UA": "Підключаюся до сервера...",
+        "de-DE": "Verbindung zum Server wird hergestellt...",
+        "fr-FR": "Connexion au serveur...",
+        "es-ES": "Conectando con el servidor...",
+        "it-IT": "Connessione al server...",
+        "pl-PL": "Łączenie z serwerem...",
+        "pt-PT": "A ligar ao servidor...",
+        "nl-NL": "Verbinding maken met server...",
+        "cs-CZ": "Připojování k serveru...",
+        "bg-BG": "Свързване със сървъра..."
+      }
+    },
+    "fbe.update.cant_connect": {
+      "resourceId": "IDS_UPDATE_CANTCONNECT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Can't connect to server",
+        "ru-RU": "Не могу подключиться к серверу",
+        "uk-UA": "Не можу підключитися до сервера",
+        "de-DE": "Keine Verbindung zum Server möglich",
+        "fr-FR": "Impossible de se connecter au serveur",
+        "es-ES": "No se puede conectar con el servidor",
+        "it-IT": "Impossibile connettersi al server",
+        "pl-PL": "Nie można połączyć się z serwerem",
+        "pt-PT": "Não foi possível ligar ao servidor",
+        "nl-NL": "Kan geen verbinding maken met de server",
+        "cs-CZ": "Nelze se připojit k serveru",
+        "bg-BG": "Не може да се осъществи връзка със сървъра"
+      }
+    },
+    "fbe.update.download_complete": {
+      "resourceId": "IDS_UPDATE_DOWNLOADCOMPLETE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Download completed, writing setup file...",
+        "ru-RU": "Загрузка завершена, записываю файл установщика...",
+        "uk-UA": "Завантаження завершено, записую файл установника...",
+        "de-DE": "Download abgeschlossen, Installationsdatei wird geschrieben...",
+        "fr-FR": "Téléchargement terminé, écriture du fichier d’installation...",
+        "es-ES": "Descarga completada, escribiendo el instalador...",
+        "it-IT": "Download completato, scrittura del programma di installazione...",
+        "pl-PL": "Pobieranie zakończone, zapisywanie instalatora...",
+        "pt-PT": "Transferência concluída, a gravar o instalador...",
+        "nl-NL": "Download voltooid, installatiebestand wordt geschreven...",
+        "cs-CZ": "Stahování dokončeno, ukládá se instalační soubor...",
+        "bg-BG": "Изтеглянето завърши, записва се инсталационният файл..."
+      }
+    },
+    "fbe.update.http_404": {
+      "resourceId": "IDS_UPDATE_404ERROR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "404 error: Not Found",
+        "ru-RU": "Ошибка 404: файл не найден",
+        "uk-UA": "Помилка 404: файл не знайдено",
+        "de-DE": "Fehler 404: Nicht gefunden",
+        "fr-FR": "Erreur 404 : introuvable",
+        "es-ES": "Error 404: no encontrado",
+        "it-IT": "Errore 404: non trovato",
+        "pl-PL": "Błąd 404: nie znaleziono",
+        "pt-PT": "Erro 404: não encontrado",
+        "nl-NL": "Fout 404: niet gevonden",
+        "cs-CZ": "Chyba 404: nenalezeno",
+        "bg-BG": "Грешка 404: не е намерено"
+      }
+    },
+    "fbe.update.http_403": {
+      "resourceId": "IDS_UPDATE_403ERROR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "403 error: Forbidden",
+        "ru-RU": "Ошибка 403: доступ запрещён",
+        "uk-UA": "Помилка 403: доступ заборонено",
+        "de-DE": "Fehler 403: Zugriff verweigert",
+        "fr-FR": "Erreur 403 : accès interdit",
+        "es-ES": "Error 403: acceso denegado",
+        "it-IT": "Errore 403: accesso negato",
+        "pl-PL": "Błąd 403: dostęp zabroniony",
+        "pt-PT": "Erro 403: acesso proibido",
+        "nl-NL": "Fout 403: toegang geweigerd",
+        "cs-CZ": "Chyba 403: přístup odepřen",
+        "bg-BG": "Грешка 403: достъпът е забранен"
+      }
+    },
+    "fbe.update.http_407": {
+      "resourceId": "IDS_UPDATE_407ERROR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "407 error: proxy authentication required",
+        "ru-RU": "Ошибка 407: требуется аутентификация прокси-сервера",
+        "uk-UA": "Помилка 407: потрібна автентифікація проксі-сервера",
+        "de-DE": "Fehler 407: Proxy-Authentifizierung erforderlich",
+        "fr-FR": "Erreur 407 : authentification proxy requise",
+        "es-ES": "Error 407: se requiere autenticación del proxy",
+        "it-IT": "Errore 407: autenticazione proxy richiesta",
+        "pl-PL": "Błąd 407: wymagane uwierzytelnienie proxy",
+        "pt-PT": "Erro 407: autenticação do proxy necessária",
+        "nl-NL": "Fout 407: proxyverificatie vereist",
+        "cs-CZ": "Chyba 407: je vyžadováno ověření proxy",
+        "bg-BG": "Грешка 407: изисква се удостоверяване на прокси"
+      }
+    },
+    "fbe.update.range_not_supported": {
+      "resourceId": "IDS_UPDATE_NOTSUPPORTEDRANGE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": " (range requests are not supported)",
+        "ru-RU": " (дозагрузка не поддерживается)",
+        "uk-UA": " (довантаження не підтримується)",
+        "de-DE": " (Fortsetzen wird nicht unterstützt)",
+        "fr-FR": " (la reprise du téléchargement n’est pas prise en charge)",
+        "es-ES": " (la reanudación no es compatible)",
+        "it-IT": " (la ripresa non è supportata)",
+        "pl-PL": " (wznawianie nie jest obsługiwane)",
+        "pt-PT": " (retoma não suportada)",
+        "nl-NL": " (hervatten wordt niet ondersteund)",
+        "cs-CZ": " (pokračování není podporováno)",
+        "bg-BG": " (дозареждането не се поддържа)"
+      }
+    },
+    "fbe.update.download_error_status": {
+      "resourceId": "IDS_UPDATE_DOWNLOADERRORSTATUS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Download error, status code: %d",
+        "ru-RU": "Ошибка загрузки, код статуса: %d",
+        "uk-UA": "Помилка завантаження, код стану: %d",
+        "de-DE": "Downloadfehler, Statuscode: %d",
+        "fr-FR": "Erreur de téléchargement, code d’état : %d",
+        "es-ES": "Error de descarga, código de estado: %d",
+        "it-IT": "Errore di download, codice di stato: %d",
+        "pl-PL": "Błąd pobierania, kod stanu: %d",
+        "pt-PT": "Erro de transferência, código de estado: %d",
+        "nl-NL": "Downloadfout, statuscode: %d",
+        "cs-CZ": "Chyba stahování, stavový kód: %d",
+        "bg-BG": "Грешка при изтегляне, код на състоянието: %d"
+      }
+    },
+    "fbe.update.incorrect_sha256": {
+      "resourceId": "IDS_UPDATE_INCORRECTMD5",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Error, incorrect SHA-256 checksum",
+        "ru-RU": "Ошибка, неверная контрольная сумма SHA-256.",
+        "uk-UA": "Помилка, неправильна контрольна сума SHA-256.",
+        "de-DE": "Fehler, falsche SHA-256-Prüfsumme.",
+        "fr-FR": "Erreur, somme de contrôle SHA-256 incorrecte.",
+        "es-ES": "Error, suma de comprobación SHA-256 incorrecta.",
+        "it-IT": "Errore, checksum SHA-256 non corretto.",
+        "pl-PL": "Błąd, nieprawidłowa suma kontrolna SHA-256.",
+        "pt-PT": "Erro, soma de verificação SHA-256 incorreta.",
+        "nl-NL": "Fout, onjuiste SHA-256-controlesom.",
+        "cs-CZ": "Chyba, nesprávný kontrolní součet SHA-256.",
+        "bg-BG": "Грешка, неправилна SHA-256 контролна сума."
+      }
+    },
+    "fbe.update.new_version_available": {
+      "resourceId": "IDS_UPDATE_NEWVERSIONAVAILABLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "A new version of FBE is available.",
+        "ru-RU": "Новая версия FBE доступна для загрузки.",
+        "uk-UA": "Нова версія FBE доступна для завантаження.",
+        "de-DE": "Eine neue Version von FBE ist verfügbar.",
+        "fr-FR": "Une nouvelle version de FBE est disponible.",
+        "es-ES": "Hay una nueva versión de FBE disponible.",
+        "it-IT": "È disponibile una nuova versione di FBE.",
+        "pl-PL": "Dostępna jest nowa wersja FBE.",
+        "pt-PT": "Está disponível uma nova versão do FBE.",
+        "nl-NL": "Er is een nieuwe versie van FBE beschikbaar.",
+        "cs-CZ": "Je k dispozici nová verze FBE.",
+        "bg-BG": "Налична е нова версия на FBE."
+      }
+    },
     "fbe.update.latest_version": {
       "resourceId": "IDS_UPDATE_HAVELATESTVERSION",
       "component": "fbe.core",
@@ -134,6 +314,96 @@
         "bg-BG": "Инсталирана е най-новата версия на FBE."
       }
     },
+    "fbe.update.downloaded_from": {
+      "resourceId": "IDS_UPDATE_DOWNLOADEDFROM",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "%d Kb from %d Kb downloaded (%d%%)",
+        "ru-RU": "Загружено %d Kb из %d Kb (%d%%)",
+        "uk-UA": "Завантажено %d Kb з %d Kb (%d%%)",
+        "de-DE": "%d Kb von %d Kb heruntergeladen (%d%%)",
+        "fr-FR": "%d Ko sur %d Ko téléchargés (%d%%)",
+        "es-ES": "%d Kb de %d Kb descargados (%d%%)",
+        "it-IT": "%d Kb di %d Kb scaricati (%d%%)",
+        "pl-PL": "Pobrano %d Kb z %d Kb (%d%%)",
+        "pt-PT": "%d Kb de %d Kb transferidos (%d%%)",
+        "nl-NL": "%d Kb van %d Kb gedownload (%d%%)",
+        "cs-CZ": "Staženo %d Kb z %d Kb (%d%%)",
+        "bg-BG": "Изтеглени %d Kb от %d Kb (%d%%)"
+      }
+    },
+    "fbe.update.downloaded": {
+      "resourceId": "IDS_UPDATE_DOWNLOADED",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "%d Kb downloaded",
+        "ru-RU": "Загружено %d Kb",
+        "uk-UA": "Завантажено %d Kb",
+        "de-DE": "%d Kb heruntergeladen",
+        "fr-FR": "%d Ko téléchargés",
+        "es-ES": "%d Kb descargados",
+        "it-IT": "%d Kb scaricati",
+        "pl-PL": "Pobrano %d Kb",
+        "pt-PT": "%d Kb transferidos",
+        "nl-NL": "%d Kb gedownload",
+        "cs-CZ": "Staženo %d Kb",
+        "bg-BG": "Изтеглени %d Kb"
+      }
+    },
+    "fbe.update.download_ready": {
+      "resourceId": "IDS_UPDATE_DOWNLOADREADY",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Update is ready.",
+        "ru-RU": "Обновление готово.",
+        "uk-UA": "Оновлення готове.",
+        "de-DE": "Das Update ist bereit.",
+        "fr-FR": "La mise à jour est prête.",
+        "es-ES": "La actualización está lista.",
+        "it-IT": "L’aggiornamento è pronto.",
+        "pl-PL": "Aktualizacja jest gotowa.",
+        "pt-PT": "A atualização está pronta.",
+        "nl-NL": "De update is gereed.",
+        "cs-CZ": "Aktualizace je připravena.",
+        "bg-BG": "Обновлението е готово."
+      }
+    },
+    "fbe.update.close_to_install": {
+      "resourceId": "IDS_UPDATE_CLOSE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBE must be closed to continue installation.\r\n\r\nYou may delete installation file at download location \"%s\" later.\r\n\r\nQuit FBE now and continue installation?",
+        "ru-RU": "FBE должен быть закрыт для продолжения установки.\r\n\r\nВы можете позже удалить инсталляционный файл, находящийся в \"%s\".\r\n\r\nЗакрыть FBE и продолжить установку новой версии?",
+        "uk-UA": "FBE потрібно закрити для продовження встановлення.\r\n\r\nВи можете пізніше видалити інсталяційний файл, що знаходиться у \"%s\".\r\n\r\nЗакрити FBE і продовжити встановлення нової версії?",
+        "de-DE": "FBE muss geschlossen werden, um die Installation fortzusetzen.\r\n\r\nSie können die Installationsdatei unter \"%s\" später löschen.\r\n\r\nFBE jetzt beenden und Installation fortsetzen?",
+        "fr-FR": "FBE doit être fermé pour continuer l’installation.\r\n\r\nVous pourrez supprimer plus tard le fichier d’installation situé dans \"%s\".\r\n\r\nQuitter FBE maintenant et continuer l’installation ?",
+        "es-ES": "FBE debe cerrarse para continuar la instalación.\r\n\r\nPuede eliminar más tarde el instalador ubicado en \"%s\".\r\n\r\n¿Cerrar FBE ahora y continuar la instalación?",
+        "it-IT": "FBE deve essere chiuso per continuare l’installazione.\r\n\r\nÈ possibile eliminare in seguito il file di installazione in \"%s\".\r\n\r\nChiudere FBE ora e continuare l’installazione?",
+        "pl-PL": "FBE musi zostać zamknięty, aby kontynuować instalację.\r\n\r\nPlik instalacyjny w lokalizacji \"%s\" można usunąć później.\r\n\r\nZamknąć teraz FBE i kontynuować instalację?",
+        "pt-PT": "O FBE tem de ser fechado para continuar a instalação.\r\n\r\nPode eliminar mais tarde o ficheiro de instalação em \"%s\".\r\n\r\nFechar o FBE agora e continuar a instalação?",
+        "nl-NL": "FBE moet worden gesloten om de installatie voort te zetten.\r\n\r\nU kunt het installatiebestand op \"%s\" later verwijderen.\r\n\r\nFBE nu afsluiten en doorgaan met installeren?",
+        "cs-CZ": "Aby bylo možné pokračovat v instalaci, musí být FBE zavřen.\r\n\r\nInstalační soubor v umístění \"%s\" můžete později odstranit.\r\n\r\nUkončit nyní FBE a pokračovat v instalaci?",
+        "bg-BG": "FBE трябва да бъде затворен, за да продължи инсталацията.\r\n\r\nМожете по-късно да изтриете инсталационния файл от \"%s\".\r\n\r\nДа се затвори ли FBE сега и да продължи инсталацията?"
+      }
+    },
+    "fbe.search.finished": {
+      "resourceId": "IDS_SEARCH_END_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Finished searching for '%s'.",
+        "ru-RU": "Поиск строки \"%s\" завершён.",
+        "uk-UA": "Пошук рядка «%s» завершено.",
+        "de-DE": "Suche nach „%s“ abgeschlossen.",
+        "fr-FR": "Recherche de « %s » terminée.",
+        "es-ES": "Búsqueda de \"%s\" finalizada.",
+        "it-IT": "Ricerca di \"%s\" completata.",
+        "pl-PL": "Zakończono wyszukiwanie „%s”.",
+        "pt-PT": "Pesquisa por \"%s\" concluída.",
+        "nl-NL": "Zoeken naar '%s' voltooid.",
+        "cs-CZ": "Hledání „%s“ dokončeno.",
+        "bg-BG": "Търсенето на „%s“ завърши."
+      }
+    },
     "fbe.save.readonly_warning": {
       "resourceId": "IDS_READONLY_SAVE_MSG",
       "component": "fbe.core",
@@ -150,6 +420,3282 @@
         "nl-NL": "Het bestand is alleen-lezen:\n%s\n\nEen kopie onder een andere naam opslaan?",
         "cs-CZ": "Soubor je pouze pro čtení:\n%s\n\nUložit kopii pod jiným názvem?",
         "bg-BG": "Файлът е само за четене:\n%s\n\nДа се запази копие с друго име?"
+      }
+    },
+    "fbe.save.confirm_changes": {
+      "resourceId": "IDS_SAVE_DLG_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Save changes to %s?",
+        "ru-RU": "Сохранить изменения в %s?",
+        "uk-UA": "Зберегти зміни в %s?",
+        "de-DE": "Änderungen an %s speichern?",
+        "fr-FR": "Enregistrer les modifications dans %s ?",
+        "es-ES": "¿Guardar los cambios en %s?",
+        "it-IT": "Salvare le modifiche in %s?",
+        "pl-PL": "Zapisać zmiany w %s?",
+        "pt-PT": "Guardar alterações em %s?",
+        "nl-NL": "Wijzigingen in %s opslaan?",
+        "cs-CZ": "Uložit změny do %s?",
+        "bg-BG": "Да се запазят ли промените в %s?"
+      }
+    },
+    "fbe.error.caption": {
+      "resourceId": "IDS_ERRMSGBOX_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Error",
+        "ru-RU": "Ошибка",
+        "uk-UA": "Помилка",
+        "de-DE": "Fehler",
+        "fr-FR": "Erreur",
+        "es-ES": "Error",
+        "it-IT": "Errore",
+        "pl-PL": "Błąd",
+        "pt-PT": "Erro",
+        "nl-NL": "Fout",
+        "cs-CZ": "Chyba",
+        "bg-BG": "Грешка"
+      }
+    },
+    "fbe.validation.failed.message": {
+      "resourceId": "IDS_VALIDATION_FAIL_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "%s\r\nDo you still want to save the file?\r\n\r\nWARNING: Invalid files can be displayed incorrectly and can cause errors in other applications.",
+        "ru-RU": "%s\r\nВсё равно сохранить файл?\r\n\r\nВНИМАНИЕ: файлы с ошибками могут отображаться неправильно и вызывать ошибки в других приложениях.",
+        "uk-UA": "%s\r\nУсе одно зберегти файл?\r\n\r\nУВАГА: файли з помилками можуть відображатися неправильно й спричиняти помилки в інших програмах.",
+        "de-DE": "%s\r\nDatei trotzdem speichern?\r\n\r\nWARNUNG: Ungültige Dateien können falsch angezeigt werden und Fehler in anderen Anwendungen verursachen.",
+        "fr-FR": "%s\r\nVoulez-vous quand même enregistrer le fichier ?\r\n\r\nATTENTION : les fichiers invalides peuvent s’afficher incorrectement et provoquer des erreurs dans d’autres applications.",
+        "es-ES": "%s\r\n¿Guardar el archivo de todos modos?\r\n\r\nADVERTENCIA: los archivos no válidos pueden mostrarse incorrectamente y causar errores en otras aplicaciones.",
+        "it-IT": "%s\r\nSalvare comunque il file?\r\n\r\nATTENZIONE: i file non validi possono essere visualizzati in modo errato e causare errori in altre applicazioni.",
+        "pl-PL": "%s\r\nCzy mimo to zapisać plik?\r\n\r\nOSTRZEŻENIE: nieprawidłowe pliki mogą być wyświetlane błędnie i powodować błędy w innych aplikacjach.",
+        "pt-PT": "%s\r\nGuardar o ficheiro mesmo assim?\r\n\r\nAVISO: ficheiros inválidos podem ser apresentados incorretamente e causar erros noutras aplicações.",
+        "nl-NL": "%s\r\nHet bestand toch opslaan?\r\n\r\nWAARSCHUWING: ongeldige bestanden kunnen onjuist worden weergegeven en fouten in andere toepassingen veroorzaken.",
+        "cs-CZ": "%s\r\nPřesto soubor uložit?\r\n\r\nUPOZORNĚNÍ: Neplatné soubory se mohou zobrazovat nesprávně a způsobovat chyby v jiných aplikacích.",
+        "bg-BG": "%s\r\nДа се запази ли файлът въпреки това?\r\n\r\nВНИМАНИЕ: невалидните файлове може да се показват неправилно и да причиняват грешки в други приложения."
+      }
+    },
+    "fbe.validation.failed.caption": {
+      "resourceId": "IDS_VALIDATION_FAIL_CPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Validation failed",
+        "ru-RU": "Проверка не пройдена",
+        "uk-UA": "Перевірку не пройдено",
+        "de-DE": "Validierung fehlgeschlagen",
+        "fr-FR": "Échec de la validation",
+        "es-ES": "Error de validación",
+        "it-IT": "Validazione non riuscita",
+        "pl-PL": "Walidacja nie powiodła się",
+        "pt-PT": "Falha na validação",
+        "nl-NL": "Validatie mislukt",
+        "cs-CZ": "Ověření se nezdařilo",
+        "bg-BG": "Проверката е неуспешна"
+      }
+    },
+    "fbe.error.out_of_memory": {
+      "resourceId": "IDS_OUT_OF_MEM_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Out of memory",
+        "ru-RU": "Недостаточно памяти",
+        "uk-UA": "Недостатньо пам’яті",
+        "de-DE": "Nicht genügend Arbeitsspeicher",
+        "fr-FR": "Mémoire insuffisante",
+        "es-ES": "Memoria insuficiente",
+        "it-IT": "Memoria insufficiente",
+        "pl-PL": "Brak pamięci",
+        "pt-PT": "Memória insuficiente",
+        "nl-NL": "Onvoldoende geheugen",
+        "cs-CZ": "Nedostatek paměti",
+        "bg-BG": "Недостатъчно памет"
+      }
+    },
+    "fbe.import.caption": {
+      "resourceId": "IDS_IMPORT_ERR_CPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Import Error",
+        "ru-RU": "Ошибка импорта",
+        "uk-UA": "Помилка імпорту",
+        "de-DE": "Importfehler",
+        "fr-FR": "Erreur d’importation",
+        "es-ES": "Error de importación",
+        "it-IT": "Errore di importazione",
+        "pl-PL": "Błąd importu",
+        "pt-PT": "Erro de importação",
+        "nl-NL": "Importfout",
+        "cs-CZ": "Chyba importu",
+        "bg-BG": "Грешка при импортиране"
+      }
+    },
+    "fbe.import.unsupported_interface": {
+      "resourceId": "IDS_IMPORT_ERR_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Plugin does not support the required interface",
+        "ru-RU": "Плагин не поддерживает требуемый интерфейс",
+        "uk-UA": "Плагін не підтримує потрібний інтерфейс",
+        "de-DE": "Das Plugin unterstützt die erforderliche Schnittstelle nicht",
+        "fr-FR": "Le plugin ne prend pas en charge l’interface requise",
+        "es-ES": "El complemento no admite la interfaz requerida",
+        "it-IT": "Il plugin non supporta l’interfaccia richiesta",
+        "pl-PL": "Wtyczka nie obsługuje wymaganego interfejsu",
+        "pt-PT": "O plugin não suporta a interface necessária",
+        "nl-NL": "De plug-in ondersteunt de vereiste interface niet",
+        "cs-CZ": "Plugin nepodporuje požadované rozhraní",
+        "bg-BG": "Плъгинът не поддържа необходимия интерфейс"
+      }
+    },
+    "fbe.export.caption": {
+      "resourceId": "IDS_EXPORT_ERR_CPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Export Error",
+        "ru-RU": "Ошибка экспорта",
+        "uk-UA": "Помилка експорту",
+        "de-DE": "Exportfehler",
+        "fr-FR": "Erreur d’exportation",
+        "es-ES": "Error de exportación",
+        "it-IT": "Errore di esportazione",
+        "pl-PL": "Błąd eksportu",
+        "pt-PT": "Erro de exportação",
+        "nl-NL": "Exportfout",
+        "cs-CZ": "Chyba exportu",
+        "bg-BG": "Грешка при експортиране"
+      }
+    },
+    "fbe.export.unsupported_interface": {
+      "resourceId": "IDS_EXPORT_ERR_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Plugin does not support the required interface",
+        "ru-RU": "Плагин не поддерживает требуемый интерфейс",
+        "uk-UA": "Плагін не підтримує потрібний інтерфейс",
+        "de-DE": "Das Plugin unterstützt die erforderliche Schnittstelle nicht",
+        "fr-FR": "Le plugin ne prend pas en charge l’interface requise",
+        "es-ES": "El complemento no admite la interfaz requerida",
+        "it-IT": "Il plugin non supporta l’interfaccia richiesta",
+        "pl-PL": "Wtyczka nie obsługuje wymaganego interfejsu",
+        "pt-PT": "O plugin não suporta a interface necessária",
+        "nl-NL": "De plug-in ondersteunt de vereiste interface niet",
+        "cs-CZ": "Plugin nepodporuje požadované rozhraní",
+        "bg-BG": "Плъгинът не поддържа необходимия интерфейс"
+      }
+    },
+    "fbe.file_changed.caption": {
+      "resourceId": "IDS_FILE_CHANGED_CPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "File changed",
+        "ru-RU": "Файл изменён",
+        "uk-UA": "Файл змінено",
+        "de-DE": "Datei geändert",
+        "fr-FR": "Fichier modifié",
+        "es-ES": "Archivo modificado",
+        "it-IT": "File modificato",
+        "pl-PL": "Plik zmieniony",
+        "pt-PT": "Ficheiro alterado",
+        "nl-NL": "Bestand gewijzigd",
+        "cs-CZ": "Soubor byl změněn",
+        "bg-BG": "Файлът е променен"
+      }
+    },
+    "fbe.file_changed.reload": {
+      "resourceId": "IDS_FILE_CHANGED_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "%s has been changed by another application.\nDo you want to reload it?",
+        "ru-RU": "Файл %s был изменён другой программой.\nПерезагрузить его?",
+        "uk-UA": "Файл %s було змінено іншою програмою.\nПерезавантажити його?",
+        "de-DE": "%s wurde von einer anderen Anwendung geändert.\nNeu laden?",
+        "fr-FR": "%s a été modifié par une autre application.\nVoulez-vous le recharger ?",
+        "es-ES": "%s ha sido modificado por otra aplicación.\n¿Desea recargarlo?",
+        "it-IT": "%s è stato modificato da un’altra applicazione.\nRicaricarlo?",
+        "pl-PL": "%s został zmieniony przez inną aplikację.\nCzy wczytać go ponownie?",
+        "pt-PT": "%s foi alterado por outra aplicação.\nRecarregar?",
+        "nl-NL": "%s is gewijzigd door een andere toepassing.\nOpnieuw laden?",
+        "cs-CZ": "%s byl změněn jinou aplikací.\nNačíst znovu?",
+        "bg-BG": "%s е променен от друго приложение.\nДа се презареди ли?"
+      }
+    },
+    "fbe.scripts.none": {
+      "resourceId": "IDS_NO_SCRIPTS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "No scripts found",
+        "ru-RU": "Скрипты не найдены",
+        "uk-UA": "Скрипти не знайдено",
+        "de-DE": "Keine Skripte gefunden",
+        "fr-FR": "Aucun script trouvé",
+        "es-ES": "No se encontraron scripts",
+        "it-IT": "Nessuno script trovato",
+        "pl-PL": "Nie znaleziono skryptów",
+        "pt-PT": "Nenhum script encontrado",
+        "nl-NL": "Geen scripts gevonden",
+        "cs-CZ": "Nebyly nalezeny žádné skripty",
+        "bg-BG": "Не са намерени скриптове"
+      }
+    },
+    "fbe.status.saved.no_errors": {
+      "resourceId": "IDS_SB_SAVED_NO_ERR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Document saved - No errors found.",
+        "ru-RU": "Документ сохранён. Ошибки не обнаружены.",
+        "uk-UA": "Документ збережено. Помилок не виявлено.",
+        "de-DE": "Dokument gespeichert – keine Fehler gefunden.",
+        "fr-FR": "Document enregistré – aucune erreur trouvée.",
+        "es-ES": "Documento guardado: no se encontraron errores.",
+        "it-IT": "Documento salvato: nessun errore trovato.",
+        "pl-PL": "Dokument zapisany – nie znaleziono błędów.",
+        "pt-PT": "Documento guardado — não foram encontrados erros.",
+        "nl-NL": "Document opgeslagen – geen fouten gevonden.",
+        "cs-CZ": "Dokument uložen – nebyly nalezeny žádné chyby.",
+        "bg-BG": "Документът е запазен — не са открити грешки."
+      }
+    },
+    "fbe.messagebox.ok": {
+      "resourceId": "IDS_MB_OK",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "OK",
+        "ru-RU": "OK",
+        "uk-UA": "Гаразд",
+        "de-DE": "OK",
+        "fr-FR": "OK",
+        "es-ES": "Aceptar",
+        "it-IT": "OK",
+        "pl-PL": "OK",
+        "pt-PT": "OK",
+        "nl-NL": "OK",
+        "cs-CZ": "OK",
+        "bg-BG": "OK"
+      }
+    },
+    "fbe.messagebox.cancel": {
+      "resourceId": "IDS_MB_CANCEL",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Отмена",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Zrušit",
+        "bg-BG": "Отказ"
+      }
+    },
+    "fbe.messagebox.abort": {
+      "resourceId": "IDS_MB_ABORT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "&Abort",
+        "ru-RU": "П&рервать",
+        "uk-UA": "Пе&рервати",
+        "de-DE": "&Abbrechen",
+        "fr-FR": "&Abandonner",
+        "es-ES": "&Anular",
+        "it-IT": "&Interrompi",
+        "pl-PL": "&Przerwij",
+        "pt-PT": "&Abortar",
+        "nl-NL": "&Afbreken",
+        "cs-CZ": "&Přerušit",
+        "bg-BG": "&Прекъсване"
+      }
+    },
+    "fbe.messagebox.retry": {
+      "resourceId": "IDS_MB_RETRY",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "&Retry",
+        "ru-RU": "&Повторить",
+        "uk-UA": "&Повторити",
+        "de-DE": "&Wiederholen",
+        "fr-FR": "&Réessayer",
+        "es-ES": "&Reintentar",
+        "it-IT": "&Riprova",
+        "pl-PL": "&Ponów",
+        "pt-PT": "&Repetir",
+        "nl-NL": "&Opnieuw proberen",
+        "cs-CZ": "&Opakovat",
+        "bg-BG": "&Повторен опит"
+      }
+    },
+    "fbe.messagebox.ignore": {
+      "resourceId": "IDS_MB_IGNORE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "&Ignore",
+        "ru-RU": "&Игнорировать",
+        "uk-UA": "&Ігнорувати",
+        "de-DE": "&Ignorieren",
+        "fr-FR": "&Ignorer",
+        "es-ES": "&Ignorar",
+        "it-IT": "&Ignora",
+        "pl-PL": "&Ignoruj",
+        "pt-PT": "&Ignorar",
+        "nl-NL": "&Negeren",
+        "cs-CZ": "&Ignorovat",
+        "bg-BG": "&Игнориране"
+      }
+    },
+    "fbe.messagebox.yes": {
+      "resourceId": "IDS_MB_YES",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "&Yes",
+        "ru-RU": "&Да",
+        "uk-UA": "&Так",
+        "de-DE": "&Ja",
+        "fr-FR": "&Oui",
+        "es-ES": "&Sí",
+        "it-IT": "&Sì",
+        "pl-PL": "&Tak",
+        "pt-PT": "&Sim",
+        "nl-NL": "&Ja",
+        "cs-CZ": "&Ano",
+        "bg-BG": "&Да"
+      }
+    },
+    "fbe.messagebox.no": {
+      "resourceId": "IDS_MB_NO",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "&No",
+        "ru-RU": "&Нет",
+        "uk-UA": "&Ні",
+        "de-DE": "&Nein",
+        "fr-FR": "&Non",
+        "es-ES": "&No",
+        "it-IT": "&No",
+        "pl-PL": "&Nie",
+        "pt-PT": "&Não",
+        "nl-NL": "&Nee",
+        "cs-CZ": "&Ne",
+        "bg-BG": "&Не"
+      }
+    },
+    "fbe.messagebox.close": {
+      "resourceId": "IDS_MB_CLOSE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Close",
+        "ru-RU": "&Закрыть",
+        "uk-UA": "&Закрити",
+        "de-DE": "Schließen",
+        "fr-FR": "Fermer",
+        "es-ES": "Cerrar",
+        "it-IT": "Chiudi",
+        "pl-PL": "Zamknij",
+        "pt-PT": "Fechar",
+        "nl-NL": "Sluiten",
+        "cs-CZ": "Zavřít",
+        "bg-BG": "Затваряне"
+      }
+    },
+    "fbe.genres.open_failed": {
+      "resourceId": "IDS_GENRES_LIST_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Can't open genres file %s",
+        "ru-RU": "Не найден файл со списком жанров %s",
+        "uk-UA": "Не знайдено файлу зі списком жанрів %s",
+        "de-DE": "Genre-Datei %s kann nicht geöffnet werden",
+        "fr-FR": "Impossible d’ouvrir le fichier des genres %s",
+        "es-ES": "No se puede abrir el archivo de géneros %s",
+        "it-IT": "Impossibile aprire il file dei generi %s",
+        "pl-PL": "Nie można otworzyć pliku gatunków %s",
+        "pt-PT": "Não foi possível abrir o ficheiro de géneros %s",
+        "nl-NL": "Kan het genreb bestand %s niet openen",
+        "cs-CZ": "Nelze otevřít soubor žánrů %s",
+        "bg-BG": "Файлът с жанрове %s не може да бъде отворен"
+      }
+    },
+    "fbe.navigation.reference_not_found": {
+      "resourceId": "IDS_GOTO_REF_FAIL_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Reference not found.",
+        "ru-RU": "В документе нет ни одной ссылки на сноски!",
+        "uk-UA": "В документі немає жодного посилання на примітки!",
+        "de-DE": "Verweis nicht gefunden.",
+        "fr-FR": "Référence introuvable.",
+        "es-ES": "Referencia no encontrada.",
+        "it-IT": "Riferimento non trovato.",
+        "pl-PL": "Nie znaleziono odwołania.",
+        "pt-PT": "Referência não encontrada.",
+        "nl-NL": "Verwijzing niet gevonden.",
+        "cs-CZ": "Odkaz nebyl nalezen.",
+        "bg-BG": "Препратката не е намерена."
+      }
+    },
+    "fbe.import.xml_interface_missing": {
+      "resourceId": "IDS_IMPORT_XML_ERR_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Imported object does not support IXMLDOMDocument2 interface",
+        "ru-RU": "Импортируемый объект не поддерживает интерфейс IXMLDOMDocument2",
+        "uk-UA": "Об'єкт, що імпортується, не підтримує інтерфейс IXMLDOMDocument2",
+        "de-DE": "Das importierte Objekt unterstützt die IXMLDOMDocument2-Schnittstelle nicht",
+        "fr-FR": "L’objet importé ne prend pas en charge l’interface IXMLDOMDocument2",
+        "es-ES": "El objeto importado no admite la interfaz IXMLDOMDocument2",
+        "it-IT": "L’oggetto importato non supporta l’interfaccia IXMLDOMDocument2",
+        "pl-PL": "Importowany obiekt nie obsługuje interfejsu IXMLDOMDocument2",
+        "pt-PT": "O objeto importado não suporta a interface IXMLDOMDocument2",
+        "nl-NL": "Het geïmporteerde object ondersteunt de IXMLDOMDocument2-interface niet",
+        "cs-CZ": "Importovaný objekt nepodporuje rozhraní IXMLDOMDocument2",
+        "bg-BG": "Импортираният обект не поддържа интерфейса IXMLDOMDocument2"
+      }
+    },
+    "fbe.scintilla.load_failed": {
+      "resourceId": "IDS_SCINTILLA_LOAD_ERR_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Can't load XML source editor components (Scintilla/Lexilla).",
+        "ru-RU": "Не удалось загрузить компоненты редактора XML (Scintilla/Lexilla).",
+        "uk-UA": "Не вдалося завантажити компоненти редактора XML (Scintilla/Lexilla).",
+        "de-DE": "XML-Quelltexteditor-Komponenten (Scintilla/Lexilla) können nicht geladen werden.",
+        "fr-FR": "Impossible de charger les composants de l’éditeur source XML (Scintilla/Lexilla).",
+        "es-ES": "No se pueden cargar los componentes del editor de código XML (Scintilla/Lexilla).",
+        "it-IT": "Impossibile caricare i componenti dell’editor sorgente XML (Scintilla/Lexilla).",
+        "pl-PL": "Nie można załadować komponentów edytora źródła XML (Scintilla/Lexilla).",
+        "pt-PT": "Não foi possível carregar os componentes do editor de origem XML (Scintilla/Lexilla).",
+        "nl-NL": "Kan de XML-broneditorcomponenten (Scintilla/Lexilla) niet laden.",
+        "cs-CZ": "Nelze načíst komponenty editoru zdrojového XML (Scintilla/Lexilla).",
+        "bg-BG": "Компонентите на редактора на XML изходен код (Scintilla/Lexilla) не могат да бъдат заредени."
+      }
+    },
+    "fbe.about.logo_caption": {
+      "resourceId": "IDS_ABOUT_LOGOCAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FB2 animated logo » press ? for help",
+        "ru-RU": "Анимированное лого FB2 » нажмите клавишу ? для справки",
+        "uk-UA": "Анімоване FB2 лого » натисніть клавішу ? для довідки",
+        "de-DE": "Animiertes FB2-Logo » drücken Sie ? für Hilfe",
+        "fr-FR": "Logo FB2 animé » appuyez sur ? pour obtenir de l’aide",
+        "es-ES": "Logotipo animado de FB2 » pulse ? para obtener ayuda",
+        "it-IT": "Logo FB2 animato » premere ? per la guida",
+        "pl-PL": "Animowane logo FB2 » naciśnij ?, aby uzyskać pomoc",
+        "pt-PT": "Logótipo FB2 animado » prima ? para obter ajuda",
+        "nl-NL": "Geanimeerd FB2-logo » druk op ? voor hulp",
+        "cs-CZ": "Animované logo FB2 » stiskněte ? pro nápovědu",
+        "bg-BG": "Анимирано лого FB2 » натиснете ? за помощ"
+      }
+    },
+    "fbe.xml.invalid_source_warning": {
+      "resourceId": "IDS_BAD_XML_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "You have opened an invalid XML document.\n\nYou should correct all XML errors (use \"Validate\" and \"Go to wrong tag\" commands) before switching from the SOURCE mode.",
+        "ru-RU": "Был открыт некорректный XML документ.\n\nВы должны исправить все ошибки XML (используйте команды \"Проверить\" и \"Перейти к неправильному тегу\") перед тем, как переключиться из режима кода документа.",
+        "uk-UA": "Було відкрито некоректний XML-документ.\n\nВи повинні виправити всі помилки XML (використовуйте команди \"Перевірити\" і \"Перейти до неправильного тегу\") перед тим, як вийти з режиму коду документа.",
+        "de-DE": "Sie haben ein ungültiges XML-Dokument geöffnet.\n\nKorrigieren Sie alle XML-Fehler (verwenden Sie „Prüfen“ und „Zum falschen Tag wechseln“), bevor Sie den SOURCE-Modus verlassen.",
+        "fr-FR": "Vous avez ouvert un document XML non valide.\n\nCorrigez toutes les erreurs XML (utilisez les commandes « Valider » et « Aller à la balise incorrecte ») avant de quitter le mode SOURCE.",
+        "es-ES": "Ha abierto un documento XML no válido.\n\nCorrija todos los errores XML (use los comandos «Validar» e «Ir a la etiqueta incorrecta») antes de salir del modo SOURCE.",
+        "it-IT": "È stato aperto un documento XML non valido.\n\nCorreggere tutti gli errori XML (usare i comandi “Convalida” e “Vai al tag errato”) prima di uscire dalla modalità SOURCE.",
+        "pl-PL": "Otworzono nieprawidłowy dokument XML.\n\nPopraw wszystkie błędy XML (użyj poleceń „Sprawdź” i „Przejdź do błędnego znacznika”) przed opuszczeniem trybu SOURCE.",
+        "pt-PT": "Abriu um documento XML inválido.\n\nCorrija todos os erros XML (utilize os comandos “Validar” e “Ir para a etiqueta incorreta”) antes de sair do modo SOURCE.",
+        "nl-NL": "U hebt een ongeldig XML-document geopend.\n\nCorrigeer alle XML-fouten (gebruik de opdrachten “Valideren” en “Ga naar onjuiste tag”) voordat u de SOURCE-modus verlaat.",
+        "cs-CZ": "Otevřeli jste neplatný dokument XML.\n\nPřed opuštěním režimu SOURCE opravte všechny chyby XML (použijte příkazy „Ověřit“ a „Přejít na chybnou značku“).",
+        "bg-BG": "Отворен е невалиден XML документ.\n\nПоправете всички XML грешки (използвайте командите „Проверка“ и „Към грешен таг“), преди да излезете от режим SOURCE."
+      }
+    },
+    "fbe.language.ukrainian": {
+      "resourceId": "IDS_LANG_UKRAINIAN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Ukrainian",
+        "ru-RU": "Украинский",
+        "uk-UA": "Українська",
+        "de-DE": "Ukrainisch",
+        "fr-FR": "Ukrainien",
+        "es-ES": "Ucraniano",
+        "it-IT": "Ucraino",
+        "pl-PL": "Ukraiński",
+        "pt-PT": "Ucraniano",
+        "nl-NL": "Oekraïens",
+        "cs-CZ": "Ukrajinština",
+        "bg-BG": "Украински"
+      }
+    },
+    "fbe.update.file_exists": {
+      "resourceId": "IDS_UPDATEEXISTS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Update file %s already exists.\r\nWould you like to execute this file?",
+        "ru-RU": "Файл обновления %s обнаружен на диске. Желаете запустить этот файл?",
+        "uk-UA": "Оновлення %s вже існує.\r\nВи хочете запустити цей файл?",
+        "de-DE": "Die Update-Datei %s ist bereits vorhanden.\r\nMöchten Sie diese Datei ausführen?",
+        "fr-FR": "Le fichier de mise à jour %s existe déjà.\r\nVoulez-vous l’exécuter ?",
+        "es-ES": "El archivo de actualización %s ya existe.\r\n¿Desea ejecutarlo?",
+        "it-IT": "Il file di aggiornamento %s esiste già.\r\nEseguire questo file?",
+        "pl-PL": "Plik aktualizacji %s już istnieje.\r\nCzy chcesz go uruchomić?",
+        "pt-PT": "O ficheiro de atualização %s já existe.\r\nPretende executar este ficheiro?",
+        "nl-NL": "Updatebestand %s bestaat al.\r\nWilt u dit bestand uitvoeren?",
+        "cs-CZ": "Soubor aktualizace %s již existuje.\r\nChcete tento soubor spustit?",
+        "bg-BG": "Файлът за обновяване %s вече съществува.\r\nИскате ли да го стартирате?"
+      }
+    },
+    "fbe.hotkey.edit.subscript": {
+      "resourceId": "IDS_HOTKEY_EDIT_SUB",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Subscript",
+        "ru-RU": "Субскрипт",
+        "uk-UA": "Субскрипт",
+        "de-DE": "Tiefgestellt",
+        "fr-FR": "Indice",
+        "es-ES": "Subíndice",
+        "it-IT": "Pedice",
+        "pl-PL": "Indeks dolny",
+        "pt-PT": "Subscrito",
+        "nl-NL": "Subscript",
+        "cs-CZ": "Dolní index",
+        "bg-BG": "Долен индекс"
+      }
+    },
+    "fbe.hotkey.edit.superscript": {
+      "resourceId": "IDS_HOTKEY_EDIT_SUP",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Superscript",
+        "ru-RU": "Суперскрипт",
+        "uk-UA": "Суперскрипт",
+        "de-DE": "Hochgestellt",
+        "fr-FR": "Exposant",
+        "es-ES": "Superíndice",
+        "it-IT": "Apice",
+        "pl-PL": "Indeks górny",
+        "pt-PT": "Sobrescrito",
+        "nl-NL": "Superscript",
+        "cs-CZ": "Horní index",
+        "bg-BG": "Горен индекс"
+      }
+    },
+    "fbe.recovery.caption": {
+      "resourceId": "IDS_RECOVERY_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Document recovery",
+        "ru-RU": "Восстановление документа",
+        "uk-UA": "Відновлення документа",
+        "de-DE": "Dokumentwiederherstellung",
+        "fr-FR": "Récupération du document",
+        "es-ES": "Recuperación del documento",
+        "it-IT": "Ripristino del documento",
+        "pl-PL": "Odzyskiwanie dokumentu",
+        "pt-PT": "Recuperação do documento",
+        "nl-NL": "Documentherstel",
+        "cs-CZ": "Obnovení dokumentu",
+        "bg-BG": "Възстановяване на документ"
+      }
+    },
+    "fbe.recovery.prompt": {
+      "resourceId": "IDS_RECOVERY_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FictionBook Editor found an automatically saved recovery copy from an earlier session. Open it now?",
+        "ru-RU": "FictionBook Editor обнаружил автоматически сохранённую копию документа из предыдущего сеанса. Открыть её сейчас?",
+        "uk-UA": "FictionBook Editor знайшов автоматично збережену копію документа з попереднього сеансу. Відкрити її зараз?",
+        "de-DE": "FictionBook Editor hat eine automatisch gespeicherte Wiederherstellungskopie aus einer früheren Sitzung gefunden. Jetzt öffnen?",
+        "fr-FR": "FictionBook Editor a trouvé une copie de récupération enregistrée automatiquement lors d’une session précédente. L’ouvrir maintenant ?",
+        "es-ES": "FictionBook Editor encontró una copia de recuperación guardada automáticamente de una sesión anterior. ¿Abrirla ahora?",
+        "it-IT": "FictionBook Editor ha trovato una copia di ripristino salvata automaticamente da una sessione precedente. Aprirla ora?",
+        "pl-PL": "FictionBook Editor znalazł automatycznie zapisaną kopię odzyskiwania z poprzedniej sesji. Otworzyć ją teraz?",
+        "pt-PT": "O FictionBook Editor encontrou uma cópia de recuperação guardada automaticamente numa sessão anterior. Pretende abri-la agora?",
+        "nl-NL": "FictionBook Editor heeft een automatisch opgeslagen herstelkopie uit een eerdere sessie gevonden. Nu openen?",
+        "cs-CZ": "FictionBook Editor našel automaticky uloženou kopii pro obnovení z předchozí relace. Otevřít ji nyní?",
+        "bg-BG": "FictionBook Editor намери автоматично запазено възстановително копие от предишна сесия. Да се отвори ли сега?"
+      }
+    },
+    "fbe.command_line.argument_required": {
+      "resourceId": "IDS_CML_ARGS_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Command line option '%c' requires an argument",
+        "ru-RU": "Для параметра командной строки %c нужен аргумент",
+        "uk-UA": "Для параметра командного рядка %c потрібен аргумент",
+        "de-DE": "Befehlszeilenoption '%c' erfordert ein Argument",
+        "fr-FR": "L’option de ligne de commande '%c' nécessite un argument",
+        "es-ES": "La opción de línea de comandos '%c' requiere un argumento",
+        "it-IT": "L’opzione della riga di comando '%c' richiede un argomento",
+        "pl-PL": "Opcja wiersza poleceń '%c' wymaga argumentu",
+        "pt-PT": "A opção de linha de comandos '%c' requer um argumento",
+        "nl-NL": "Opdrachtregeloptie '%c' vereist een argument",
+        "cs-CZ": "Volba příkazového řádku '%c' vyžaduje argument",
+        "bg-BG": "Опцията от командния ред '%c' изисква аргумент"
+      }
+    },
+    "fbe.command_line.invalid_option": {
+      "resourceId": "IDS_INVALID_CML_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid command line option: '%c'",
+        "ru-RU": "Неправильный параметр командной строки: %c",
+        "uk-UA": "Хибний параметр командного рядка: %c",
+        "de-DE": "Ungültige Befehlszeilenoption: '%c'",
+        "fr-FR": "Option de ligne de commande non valide : '%c'",
+        "es-ES": "Opción de línea de comandos no válida: '%c'",
+        "it-IT": "Opzione della riga di comando non valida: '%c'",
+        "pl-PL": "Nieprawidłowa opcja wiersza poleceń: '%c'",
+        "pt-PT": "Opção de linha de comandos inválida: '%c'",
+        "nl-NL": "Ongeldige opdrachtregeloptie: '%c'",
+        "cs-CZ": "Neplatná volba příkazového řádku: '%c'",
+        "bg-BG": "Невалидна опция от командния ред: '%c'"
+      }
+    },
+    "fbe.table.caption.colspan": {
+      "resourceId": "IDS_TB_CAPT_COLSPAN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "colspan:",
+        "ru-RU": "colspan:",
+        "uk-UA": "colspan:",
+        "de-DE": "colspan:",
+        "fr-FR": "colspan:",
+        "es-ES": "colspan:",
+        "it-IT": "colspan:",
+        "pl-PL": "colspan:",
+        "pt-PT": "colspan:",
+        "nl-NL": "colspan:",
+        "cs-CZ": "colspan:",
+        "bg-BG": "colspan:"
+      }
+    },
+    "fbe.table.caption.image_title": {
+      "resourceId": "IDS_TB_CAPT_IMAGE_TITLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Image title:",
+        "ru-RU": "Подпись к картинке:",
+        "uk-UA": "Підпис до малюнка:",
+        "de-DE": "Bildtitel:",
+        "fr-FR": "Titre de l’image :",
+        "es-ES": "Título de la imagen:",
+        "it-IT": "Titolo immagine:",
+        "pl-PL": "Tytuł obrazu:",
+        "pt-PT": "Título da imagem:",
+        "nl-NL": "Afbeeldingstitel:",
+        "cs-CZ": "Název obrázku:",
+        "bg-BG": "Заглавие на изображението:"
+      }
+    },
+    "fbe.table.caption.rowspan": {
+      "resourceId": "IDS_TB_CAPT_ROWSPAN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "rowspan:",
+        "ru-RU": "rowspan:",
+        "uk-UA": "rowspan:",
+        "de-DE": "rowspan:",
+        "fr-FR": "rowspan:",
+        "es-ES": "rowspan:",
+        "it-IT": "rowspan:",
+        "pl-PL": "rowspan:",
+        "pt-PT": "rowspan:",
+        "nl-NL": "rowspan:",
+        "cs-CZ": "rowspan:",
+        "bg-BG": "rowspan:"
+      }
+    },
+    "fbe.table.caption.section_id": {
+      "resourceId": "IDS_TB_CAPT_SECTION_ID",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Section ID:",
+        "ru-RU": "ID секции:",
+        "uk-UA": "ID секції:",
+        "de-DE": "Abschnitts-ID:",
+        "fr-FR": "ID de section :",
+        "es-ES": "ID de sección:",
+        "it-IT": "ID sezione:",
+        "pl-PL": "ID sekcji:",
+        "pt-PT": "ID da secção:",
+        "nl-NL": "Sectie-ID:",
+        "cs-CZ": "ID oddílu:",
+        "bg-BG": "ID на секция:"
+      }
+    },
+    "fbe.table.caption.style": {
+      "resourceId": "IDS_TB_CAPT_STYLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "style:",
+        "ru-RU": "Стиль:",
+        "uk-UA": "Стиль:",
+        "de-DE": "Stil:",
+        "fr-FR": "Style :",
+        "es-ES": "Estilo:",
+        "it-IT": "Stile:",
+        "pl-PL": "Styl:",
+        "pt-PT": "Estilo:",
+        "nl-NL": "Stijl:",
+        "cs-CZ": "Styl:",
+        "bg-BG": "Стил:"
+      }
+    },
+    "fbe.table.caption.table_id": {
+      "resourceId": "IDS_TB_CAPT_TABLE_ID",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Table ID:",
+        "ru-RU": "ID таблицы:",
+        "uk-UA": "ID таблиці:",
+        "de-DE": "Tabellen-ID:",
+        "fr-FR": "ID du tableau :",
+        "es-ES": "ID de tabla:",
+        "it-IT": "ID tabella:",
+        "pl-PL": "ID tabeli:",
+        "pt-PT": "ID da tabela:",
+        "nl-NL": "Tabel-ID:",
+        "cs-CZ": "ID tabulky:",
+        "bg-BG": "ID на таблица:"
+      }
+    },
+    "fbe.table.caption.table_style": {
+      "resourceId": "IDS_TB_CAPT_TABLE_STYLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Table Style:",
+        "ru-RU": "Стиль таблицы:",
+        "uk-UA": "Стиль таблиці:",
+        "de-DE": "Tabellenstil:",
+        "fr-FR": "Style du tableau :",
+        "es-ES": "Estilo de tabla:",
+        "it-IT": "Stile tabella:",
+        "pl-PL": "Styl tabeli:",
+        "pt-PT": "Estilo da tabela:",
+        "nl-NL": "Tabelstijl:",
+        "cs-CZ": "Styl tabulky:",
+        "bg-BG": "Стил на таблица:"
+      }
+    },
+    "fbe.table.caption.td_align": {
+      "resourceId": "IDS_TB_CAPT_TD_ALIGN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "th, td align:",
+        "ru-RU": "th, td align:",
+        "uk-UA": "th, td align:",
+        "de-DE": "th, td align:",
+        "fr-FR": "th, td align:",
+        "es-ES": "th, td align:",
+        "it-IT": "th, td align:",
+        "pl-PL": "th, td align:",
+        "pt-PT": "th, td align:",
+        "nl-NL": "th, td align:",
+        "cs-CZ": "th, td align:",
+        "bg-BG": "th, td align:"
+      }
+    },
+    "fbe.table.caption.td_valign": {
+      "resourceId": "IDS_TB_CAPT_TD_VALIGN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "th, td valign:",
+        "ru-RU": "th, td valign:",
+        "uk-UA": "th, td valign:",
+        "de-DE": "th, td valign:",
+        "fr-FR": "th, td valign:",
+        "es-ES": "th, td valign:",
+        "it-IT": "th, td valign:",
+        "pl-PL": "th, td valign:",
+        "pt-PT": "th, td valign:",
+        "nl-NL": "th, td valign:",
+        "cs-CZ": "th, td valign:",
+        "bg-BG": "th, td valign:"
+      }
+    },
+    "fbe.table.caption.tr_align": {
+      "resourceId": "IDS_TB_CAPT_TR_ALIGN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "tr align:",
+        "ru-RU": "tr align:",
+        "uk-UA": "tr align:",
+        "de-DE": "tr align:",
+        "fr-FR": "tr align:",
+        "es-ES": "tr align:",
+        "it-IT": "tr align:",
+        "pl-PL": "tr align:",
+        "pt-PT": "tr align:",
+        "nl-NL": "tr align:",
+        "cs-CZ": "tr align:",
+        "bg-BG": "tr align:"
+      }
+    },
+    "fbe.scripts.choose_folder": {
+      "resourceId": "IDS_CHOOSE_SCRIPTS_FLD",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Specify scripts folder",
+        "ru-RU": "Выберите папку со скриптами",
+        "uk-UA": "Оберіть теку зі скриптами",
+        "de-DE": "Skriptordner angeben",
+        "fr-FR": "Indiquer le dossier des scripts",
+        "es-ES": "Especificar carpeta de scripts",
+        "it-IT": "Specificare la cartella degli script",
+        "pl-PL": "Wskaż folder skryptów",
+        "pt-PT": "Especificar pasta dos scripts",
+        "nl-NL": "Scriptmap opgeven",
+        "cs-CZ": "Zadejte složku se skripty",
+        "bg-BG": "Посочете папката със скриптове"
+      }
+    },
+    "fbe.hotkey.edit.merge": {
+      "resourceId": "IDS_HOTKEY_EDIT_MERGE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Merge",
+        "ru-RU": "Слить",
+        "uk-UA": "Об'єднати",
+        "de-DE": "Zusammenführen",
+        "fr-FR": "Fusionner",
+        "es-ES": "Combinar",
+        "it-IT": "Unisci",
+        "pl-PL": "Scal",
+        "pt-PT": "Unir",
+        "nl-NL": "Samenvoegen",
+        "cs-CZ": "Sloučit",
+        "bg-BG": "Сливане"
+      }
+    },
+    "fbe.hotkey.edit.paste": {
+      "resourceId": "IDS_HOTKEY_EDIT_PASTE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Paste",
+        "ru-RU": "Вставить",
+        "uk-UA": "Вставити",
+        "de-DE": "Einfügen",
+        "fr-FR": "Coller",
+        "es-ES": "Pegar",
+        "it-IT": "Incolla",
+        "pl-PL": "Wklej",
+        "pt-PT": "Colar",
+        "nl-NL": "Plakken",
+        "cs-CZ": "Vložit",
+        "bg-BG": "Поставяне"
+      }
+    },
+    "fbe.hotkey.edit.redo": {
+      "resourceId": "IDS_HOTKEY_EDIT_REDO",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Redo",
+        "ru-RU": "Вернуть",
+        "uk-UA": "Повторити дію",
+        "de-DE": "Wiederholen",
+        "fr-FR": "Rétablir",
+        "es-ES": "Rehacer",
+        "it-IT": "Ripeti",
+        "pl-PL": "Ponów",
+        "pt-PT": "Refazer",
+        "nl-NL": "Opnieuw",
+        "cs-CZ": "Znovu",
+        "bg-BG": "Повторение"
+      }
+    },
+    "fbe.hotkey.edit.replace": {
+      "resourceId": "IDS_HOTKEY_EDIT_REPLACE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Replace",
+        "ru-RU": "Заменить",
+        "uk-UA": "Замінити",
+        "de-DE": "Ersetzen",
+        "fr-FR": "Remplacer",
+        "es-ES": "Reemplazar",
+        "it-IT": "Sostituisci",
+        "pl-PL": "Zamień",
+        "pt-PT": "Substituir",
+        "nl-NL": "Vervangen",
+        "cs-CZ": "Nahradit",
+        "bg-BG": "Замяна"
+      }
+    },
+    "fbe.hotkey.edit.split": {
+      "resourceId": "IDS_HOTKEY_EDIT_SPLIT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Split",
+        "ru-RU": "Разделить",
+        "uk-UA": "Розділити",
+        "de-DE": "Teilen",
+        "fr-FR": "Scinder",
+        "es-ES": "Dividir",
+        "it-IT": "Dividi",
+        "pl-PL": "Podziel",
+        "pt-PT": "Dividir",
+        "nl-NL": "Splitsen",
+        "cs-CZ": "Rozdělit",
+        "bg-BG": "Разделяне"
+      }
+    },
+    "fbe.hotkey.edit.undo": {
+      "resourceId": "IDS_HOTKEY_EDIT_UNDO",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Undo",
+        "ru-RU": "Отменить",
+        "uk-UA": "Скасувати дію",
+        "de-DE": "Rückgängig",
+        "fr-FR": "Annuler",
+        "es-ES": "Deshacer",
+        "it-IT": "Annulla",
+        "pl-PL": "Cofnij",
+        "pt-PT": "Anular",
+        "nl-NL": "Ongedaan maken",
+        "cs-CZ": "Zpět",
+        "bg-BG": "Отмяна"
+      }
+    },
+    "fbe.hotkey.group.edit": {
+      "resourceId": "IDS_HOTKEY_GROUP_EDIT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Edit",
+        "ru-RU": "Редактировать",
+        "uk-UA": "Редагування",
+        "de-DE": "Bearbeiten",
+        "fr-FR": "Édition",
+        "es-ES": "Editar",
+        "it-IT": "Modifica",
+        "pl-PL": "Edycja",
+        "pt-PT": "Editar",
+        "nl-NL": "Bewerken",
+        "cs-CZ": "Úpravy",
+        "bg-BG": "Редактиране"
+      }
+    },
+    "fbe.hotkey.group.navigation": {
+      "resourceId": "IDS_HOTKEY_GROUP_NAVIGATION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Navigation",
+        "ru-RU": "Навигация",
+        "uk-UA": "Навігація",
+        "de-DE": "Navigation",
+        "fr-FR": "Navigation",
+        "es-ES": "Navegación",
+        "it-IT": "Navigazione",
+        "pl-PL": "Nawigacja",
+        "pt-PT": "Navegação",
+        "nl-NL": "Navigatie",
+        "cs-CZ": "Navigace",
+        "bg-BG": "Навигация"
+      }
+    },
+    "fbe.hotkey.navigation.next_item": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_NEXT_ITEM",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Next item",
+        "ru-RU": "Следующий элемент",
+        "uk-UA": "Наступний елемент",
+        "de-DE": "Nächstes Element",
+        "fr-FR": "Élément suivant",
+        "es-ES": "Elemento siguiente",
+        "it-IT": "Elemento successivo",
+        "pl-PL": "Następny element",
+        "pt-PT": "Item seguinte",
+        "nl-NL": "Volgend item",
+        "cs-CZ": "Další položka",
+        "bg-BG": "Следващ елемент"
+      }
+    },
+    "fbe.hotkey.navigation.collapse1": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE1",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 1 tree level",
+        "ru-RU": "Свернуть дерево на 1 уровень",
+        "uk-UA": "Згорнути дерево на 1 рівень",
+        "de-DE": "1 Baumebene einklappen",
+        "fr-FR": "Réduire 1 niveau d’arborescence",
+        "es-ES": "Contraer 1 nivel del árbol",
+        "it-IT": "Comprimi 1 livello dell’albero",
+        "pl-PL": "Zwiń 1 poziom drzewa",
+        "pt-PT": "Recolher 1 nível da árvore",
+        "nl-NL": "1 boomniveau samenvouwen",
+        "cs-CZ": "Sbalit 1 úroveň stromu",
+        "bg-BG": "Свиване на дървото с 1 ниво"
+      }
+    },
+    "fbe.hotkey.navigation.collapse2": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE2",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 2 tree levels",
+        "ru-RU": "Свернуть дерево на 2 уровня",
+        "uk-UA": "Згорнути дерево на 2 рівні",
+        "de-DE": "2 Baumebenen einklappen",
+        "fr-FR": "Réduire 2 niveaux d’arborescence",
+        "es-ES": "Contraer 2 niveles del árbol",
+        "it-IT": "Comprimi 2 livelli dell’albero",
+        "pl-PL": "Zwiń 2 poziomy drzewa",
+        "pt-PT": "Recolher 2 níveis da árvore",
+        "nl-NL": "2 boomniveaus samenvouwen",
+        "cs-CZ": "Sbalit 2 úrovně stromu",
+        "bg-BG": "Свиване на дървото с 2 нива"
+      }
+    },
+    "fbe.hotkey.navigation.collapse3": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE3",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 3 tree levels",
+        "ru-RU": "Свернуть дерево на 3 уровня",
+        "uk-UA": "Згорнути дерево на 3 рівні",
+        "de-DE": "3 Baumebenen einklappen",
+        "fr-FR": "Réduire 3 niveaux d’arborescence",
+        "es-ES": "Contraer 3 niveles del árbol",
+        "it-IT": "Comprimi 3 livelli dell’albero",
+        "pl-PL": "Zwiń 3 poziomy drzewa",
+        "pt-PT": "Recolher 3 níveis da árvore",
+        "nl-NL": "3 boomniveaus samenvouwen",
+        "cs-CZ": "Sbalit 3 úrovně stromu",
+        "bg-BG": "Свиване на дървото с 3 нива"
+      }
+    },
+    "fbe.scripts.hotkey_conflict": {
+      "resourceId": "IDS_SCRIPT_HOTKEY_CONFLICT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Script\n%s\n returned a virtual-key that conflicts with previously loaded script\n %s",
+        "ru-RU": "Скрипт\n%s\n имеет код клавиши быстрого доступа, совпадающий с уже загруженным скриптом\n %s",
+        "uk-UA": "Скрипт\n%s\n має код клавіші швидкого доступу, який збігається з уже завантаженим скриптом\n %s",
+        "de-DE": "Das Skript\n%s\n hat eine virtuelle Taste zurückgegeben, die mit einem zuvor geladenen Skript kollidiert\n %s",
+        "fr-FR": "Le script\n%s\n a renvoyé une touche virtuelle qui entre en conflit avec un script déjà chargé\n %s",
+        "es-ES": "El script\n%s\n devolvió una tecla virtual que entra en conflicto con un script cargado previamente\n %s",
+        "it-IT": "Lo script\n%s\n ha restituito un tasto virtuale in conflitto con uno script già caricato\n %s",
+        "pl-PL": "Skrypt\n%s\n zwrócił klawisz wirtualny kolidujący z wcześniej załadowanym skryptem\n %s",
+        "pt-PT": "O script\n%s\n devolveu uma tecla virtual que entra em conflito com um script carregado anteriormente\n %s",
+        "nl-NL": "Script\n%s\n retourneerde een virtuele toets die conflicteert met een eerder geladen script\n %s",
+        "cs-CZ": "Skript\n%s\n vrátil virtuální klávesu, která koliduje s dříve načteným skriptem\n %s",
+        "bg-BG": "Скриптът\n%s\n върна виртуален клавиш, който е в конфликт с вече зареден скрипт\n %s"
+      }
+    },
+    "fbe.hotkey.edit.insert_inline_image": {
+      "resourceId": "IDS_HOTKEY_EDIT_INSERT_INLINEIMAGE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Insert inline image",
+        "ru-RU": "Вставить изображение в текст",
+        "uk-UA": "Додати малюнок до тексту",
+        "de-DE": "Inline-Bild einfügen",
+        "fr-FR": "Insérer une image intégrée",
+        "es-ES": "Insertar imagen en línea",
+        "it-IT": "Inserisci immagine in linea",
+        "pl-PL": "Wstaw obraz w tekście",
+        "pt-PT": "Inserir imagem em linha",
+        "nl-NL": "Inline-afbeelding invoegen",
+        "cs-CZ": "Vložit vložený obrázek",
+        "bg-BG": "Вмъкване на изображение в текста"
+      }
+    },
+    "fbe.hotkey.fast_mode": {
+      "resourceId": "IDS_HOTKEY_FASTMODE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Fast mode",
+        "ru-RU": "Ускоренный режим",
+        "uk-UA": "Прискорений режим",
+        "de-DE": "Schnellmodus",
+        "fr-FR": "Mode rapide",
+        "es-ES": "Modo rápido",
+        "it-IT": "Modalità rapida",
+        "pl-PL": "Tryb szybki",
+        "pt-PT": "Modo rápido",
+        "nl-NL": "Snelle modus",
+        "cs-CZ": "Rychlý režim",
+        "bg-BG": "Бърз режим"
+      }
+    },
+    "fbe.hotkey.navigation.goto_footnote": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_GOTO_FOOTNOTE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Go to footnote or reference",
+        "ru-RU": "Переход к сноске или к ссылке",
+        "uk-UA": "Перехід до виноски або до посилання",
+        "de-DE": "Zur Fußnote oder zum Verweis wechseln",
+        "fr-FR": "Aller à la note ou à la référence",
+        "es-ES": "Ir a nota al pie o referencia",
+        "it-IT": "Vai alla nota o al riferimento",
+        "pl-PL": "Przejdź do przypisu lub odwołania",
+        "pt-PT": "Ir para nota de rodapé ou referência",
+        "nl-NL": "Ga naar voetnoot of verwijzing",
+        "cs-CZ": "Přejít na poznámku nebo odkaz",
+        "bg-BG": "Към бележка под линия или препратка"
+      }
+    },
+    "fbe.hotkey.navigation.goto_matching_tag": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_GOTO_MATCHTAG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Go to matching tag",
+        "ru-RU": "Переход на парный тег",
+        "uk-UA": "Перехід на парний тег",
+        "de-DE": "Zum passenden Tag wechseln",
+        "fr-FR": "Aller à la balise correspondante",
+        "es-ES": "Ir a la etiqueta correspondiente",
+        "it-IT": "Vai al tag corrispondente",
+        "pl-PL": "Przejdź do pasującego znacznika",
+        "pt-PT": "Ir para a etiqueta correspondente",
+        "nl-NL": "Ga naar overeenkomende tag",
+        "cs-CZ": "Přejít na odpovídající značku",
+        "bg-BG": "Към съответстващия таг"
+      }
+    },
+    "fbe.hotkey.navigation.goto_wrong_tag": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_GOTO_WRONGTAG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Go to wrong tag",
+        "ru-RU": "Переход к ошибочному тегу",
+        "uk-UA": "Перехід до помилкового тегу",
+        "de-DE": "Zum fehlerhaften Tag wechseln",
+        "fr-FR": "Aller à la balise incorrecte",
+        "es-ES": "Ir a la etiqueta incorrecta",
+        "it-IT": "Vai al tag errato",
+        "pl-PL": "Przejdź do błędnego znacznika",
+        "pt-PT": "Ir para a etiqueta incorreta",
+        "nl-NL": "Ga naar onjuiste tag",
+        "cs-CZ": "Přejít na chybnou značku",
+        "bg-BG": "Към грешния таг"
+      }
+    },
+    "fbe.hotkey.plugins.last_plugin": {
+      "resourceId": "IDS_HOTKEY_PLUGINS_LAST_PLUGIN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Last plugin",
+        "ru-RU": "Последний плагин",
+        "uk-UA": "Останній модуль",
+        "de-DE": "Letztes Plugin",
+        "fr-FR": "Dernier plugin",
+        "es-ES": "Último complemento",
+        "it-IT": "Ultimo plugin",
+        "pl-PL": "Ostatnia wtyczka",
+        "pt-PT": "Último plugin",
+        "nl-NL": "Laatste plug-in",
+        "cs-CZ": "Poslední plugin",
+        "bg-BG": "Последен плъгин"
+      }
+    },
+    "fbe.hotkey.tools.spell": {
+      "resourceId": "IDS_HOTKEY_TOOLS_SPELL",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Spell check",
+        "ru-RU": "Орфография",
+        "uk-UA": "Орфографія",
+        "de-DE": "Rechtschreibprüfung",
+        "fr-FR": "Vérification orthographique",
+        "es-ES": "Ortografía",
+        "it-IT": "Controllo ortografico",
+        "pl-PL": "Sprawdzanie pisowni",
+        "pt-PT": "Verificação ortográfica",
+        "nl-NL": "Spellingcontrole",
+        "cs-CZ": "Kontrola pravopisu",
+        "bg-BG": "Проверка на правописа"
+      }
+    },
+    "fbe.hotkey.tools.spell_highlight": {
+      "resourceId": "IDS_HOTKEY_TOOLS_SPELLHIGHLIGHT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Toggle highlight",
+        "ru-RU": "Переключить выделение слов с ошибками",
+        "uk-UA": "Переключити виділення помилок",
+        "de-DE": "Hervorhebung umschalten",
+        "fr-FR": "Basculer la mise en évidence",
+        "es-ES": "Alternar resaltado",
+        "it-IT": "Attiva/disattiva evidenziazione",
+        "pl-PL": "Przełącz podświetlanie",
+        "pt-PT": "Alternar realce",
+        "nl-NL": "Markering wisselen",
+        "cs-CZ": "Přepnout zvýraznění",
+        "bg-BG": "Превключване на маркирането"
+      }
+    },
+    "fbe.hotkey.treeview.toggle": {
+      "resourceId": "IDS_HOTKEY_TREEVIEW",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Toggle tree view",
+        "ru-RU": "Дерево вкл/выкл",
+        "uk-UA": "Дерево увімк./вимк.",
+        "de-DE": "Baumansicht umschalten",
+        "fr-FR": "Afficher/masquer l’arborescence",
+        "es-ES": "Alternar vista de árbol",
+        "it-IT": "Attiva/disattiva vista ad albero",
+        "pl-PL": "Przełącz widok drzewa",
+        "pt-PT": "Alternar vista em árvore",
+        "nl-NL": "Boomweergave wisselen",
+        "cs-CZ": "Přepnout stromové zobrazení",
+        "bg-BG": "Превключване на дървовидния изглед"
+      }
+    },
+    "fbe.spell.check_completed": {
+      "resourceId": "IDS_SPELL_CHECK_COMPLETED",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "The spelling check is complete.",
+        "ru-RU": "Проверка орфографии завершена.",
+        "uk-UA": "Перевірку орфографії завершено.",
+        "de-DE": "Die Rechtschreibprüfung ist abgeschlossen.",
+        "fr-FR": "La vérification orthographique est terminée.",
+        "es-ES": "La revisión ortográfica ha finalizado.",
+        "it-IT": "Il controllo ortografico è completato.",
+        "pl-PL": "Sprawdzanie pisowni zakończone.",
+        "pt-PT": "A verificação ortográfica foi concluída.",
+        "nl-NL": "De spellingcontrole is voltooid.",
+        "cs-CZ": "Kontrola pravopisu byla dokončena.",
+        "bg-BG": "Проверката на правописа е завършена."
+      }
+    },
+    "fbe.spell.continue": {
+      "resourceId": "IDS_SPELL_CONTINUE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Continue",
+        "ru-RU": "Продолжить",
+        "uk-UA": "Продовжити",
+        "de-DE": "Fortfahren",
+        "fr-FR": "Continuer",
+        "es-ES": "Continuar",
+        "it-IT": "Continua",
+        "pl-PL": "Kontynuuj",
+        "pt-PT": "Continuar",
+        "nl-NL": "Doorgaan",
+        "cs-CZ": "Pokračovat",
+        "bg-BG": "Продължи"
+      }
+    },
+    "fbe.context.copy": {
+      "resourceId": "IDS_CTXMENU_COPY",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Copy",
+        "ru-RU": "Копировать",
+        "uk-UA": "Копіювати",
+        "de-DE": "Kopieren",
+        "fr-FR": "Copier",
+        "es-ES": "Copiar",
+        "it-IT": "Copia",
+        "pl-PL": "Kopiuj",
+        "pt-PT": "Copiar",
+        "nl-NL": "Kopiëren",
+        "cs-CZ": "Kopírovat",
+        "bg-BG": "Копиране"
+      }
+    },
+    "fbe.context.image_save_as": {
+      "resourceId": "IDS_CTXMENU_IMG_SAVEAS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Save image as...",
+        "ru-RU": "Сохранить изображение как...",
+        "uk-UA": "Зберегти малюнок як...",
+        "de-DE": "Bild speichern unter...",
+        "fr-FR": "Enregistrer l’image sous...",
+        "es-ES": "Guardar imagen como...",
+        "it-IT": "Salva immagine con nome...",
+        "pl-PL": "Zapisz obraz jako...",
+        "pt-PT": "Guardar imagem como...",
+        "nl-NL": "Afbeelding opslaan als...",
+        "cs-CZ": "Uložit obrázek jako...",
+        "bg-BG": "Запазване на изображението като..."
+      }
+    },
+    "fbe.context.paste": {
+      "resourceId": "IDS_CTXMENU_PASTE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Paste",
+        "ru-RU": "Вставить",
+        "uk-UA": "Вставити",
+        "de-DE": "Einfügen",
+        "fr-FR": "Coller",
+        "es-ES": "Pegar",
+        "it-IT": "Incolla",
+        "pl-PL": "Wklej",
+        "pt-PT": "Colar",
+        "nl-NL": "Plakken",
+        "cs-CZ": "Vložit",
+        "bg-BG": "Поставяне"
+      }
+    },
+    "fbe.context.select": {
+      "resourceId": "IDS_CTXMENU_SELECT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Select",
+        "ru-RU": "Выделить",
+        "uk-UA": "Виділити",
+        "de-DE": "Auswählen",
+        "fr-FR": "Sélectionner",
+        "es-ES": "Seleccionar",
+        "it-IT": "Seleziona",
+        "pl-PL": "Zaznacz",
+        "pt-PT": "Selecionar",
+        "nl-NL": "Selecteren",
+        "cs-CZ": "Vybrat",
+        "bg-BG": "Избор"
+      }
+    },
+    "fbe.document_tree.menu.elements": {
+      "resourceId": "IDS_DOCTREE_MENU_ELEMENTS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Elements",
+        "ru-RU": "Элементы",
+        "uk-UA": "Елементи",
+        "de-DE": "Elemente",
+        "fr-FR": "Éléments",
+        "es-ES": "Elementos",
+        "it-IT": "Elementi",
+        "pl-PL": "Elementy",
+        "pt-PT": "Elementos",
+        "nl-NL": "Elementen",
+        "cs-CZ": "Prvky",
+        "bg-BG": "Елементи"
+      }
+    },
+    "fbe.document_tree.menu.scripts": {
+      "resourceId": "IDS_DOCTREE_MENU_SCRIPTS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Scripts",
+        "ru-RU": "Скрипты",
+        "uk-UA": "Скрипти",
+        "de-DE": "Skripte",
+        "fr-FR": "Scripts",
+        "es-ES": "Scripts",
+        "it-IT": "Script",
+        "pl-PL": "Skrypty",
+        "pt-PT": "Scripts",
+        "nl-NL": "Scripts",
+        "cs-CZ": "Skripty",
+        "bg-BG": "Скриптове"
+      }
+    },
+    "fbe.hotkey.assign.collision": {
+      "resourceId": "IDS_HOTKEY_ASSIGN_COLLISION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Assigned to \"%s\"",
+        "ru-RU": "Зарезервировано \"%s\"",
+        "uk-UA": "Зарезервовано «%s»",
+        "de-DE": "Zugewiesen zu „%s“",
+        "fr-FR": "Assigné à « %s »",
+        "es-ES": "Asignado a «%s»",
+        "it-IT": "Assegnato a “%s”",
+        "pl-PL": "Przypisano do „%s”",
+        "pt-PT": "Atribuído a “%s”",
+        "nl-NL": "Toegewezen aan “%s”",
+        "cs-CZ": "Přiřazeno k „%s“",
+        "bg-BG": "Зададено на „%s“"
+      }
+    },
+    "fbe.hotkey.assign.no_collision": {
+      "resourceId": "IDS_HOTKEY_ASSIGN_NO_COLLISION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Not assigned to other command",
+        "ru-RU": "Не зарезервировано для других команд",
+        "uk-UA": "Не зарезервовано для інших команд",
+        "de-DE": "Keinem anderen Befehl zugewiesen",
+        "fr-FR": "Non assigné à une autre commande",
+        "es-ES": "No asignado a otro comando",
+        "it-IT": "Non assegnato ad altri comandi",
+        "pl-PL": "Nie przypisano do innego polecenia",
+        "pt-PT": "Não atribuído a outro comando",
+        "nl-NL": "Niet toegewezen aan een andere opdracht",
+        "cs-CZ": "Není přiřazeno k jinému příkazu",
+        "bg-BG": "Не е зададено за друга команда"
+      }
+    },
+    "fbe.hotkey.default.collision": {
+      "resourceId": "IDS_HOTKEY_DEFAULT_COLLISION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Default hotkey for this command was assigned to \"%s\"! Replace?",
+        "ru-RU": "Сочетание по умолчанию для этой команды было зарезервировано для \"%s\"! Заменить?",
+        "uk-UA": "Типове сполучення для цієї команди було зарезервовано для «%s»! Замінити?",
+        "de-DE": "Der Standard-Hotkey für diesen Befehl wurde „%s“ zugewiesen! Ersetzen?",
+        "fr-FR": "Le raccourci par défaut de cette commande a été assigné à « %s » ! Le remplacer ?",
+        "es-ES": "El atajo predeterminado de este comando se asignó a «%s». ¿Reemplazarlo?",
+        "it-IT": "Il tasto di scelta rapida predefinito per questo comando è stato assegnato a “%s”. Sostituirlo?",
+        "pl-PL": "Domyślny skrót tego polecenia został przypisany do „%s”. Zastąpić?",
+        "pt-PT": "A tecla de atalho predefinida deste comando foi atribuída a “%s”. Substituir?",
+        "nl-NL": "De standaardsneltoets voor deze opdracht is toegewezen aan “%s”. Vervangen?",
+        "cs-CZ": "Výchozí klávesová zkratka pro tento příkaz byla přiřazena k „%s“. Nahradit?",
+        "bg-BG": "Стандартната клавишна комбинация за тази команда е зададена на „%s“. Да се замени ли?"
+      }
+    },
+    "fbe.hotkey.edit.remove_outer_section": {
+      "resourceId": "IDS_HOTKEY_EDIT_REMOVE_OUTER_SECTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Remove outer section",
+        "ru-RU": "Удалить внешнюю секцию",
+        "uk-UA": "Видалити зовнішню секцію",
+        "de-DE": "Äußeren Abschnitt entfernen",
+        "fr-FR": "Supprimer la section externe",
+        "es-ES": "Quitar sección exterior",
+        "it-IT": "Rimuovi sezione esterna",
+        "pl-PL": "Usuń sekcję zewnętrzną",
+        "pt-PT": "Remover secção exterior",
+        "nl-NL": "Buitenste sectie verwijderen",
+        "cs-CZ": "Odebrat vnější sekci",
+        "bg-BG": "Премахване на външната секция"
+      }
+    },
+    "fbe.hotkey.group.plugins": {
+      "resourceId": "IDS_HOTKEY_GROUP_PLUGINS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Plugins",
+        "ru-RU": "Плагины",
+        "uk-UA": "Модулі",
+        "de-DE": "Plugins",
+        "fr-FR": "Plugins",
+        "es-ES": "Complementos",
+        "it-IT": "Plugin",
+        "pl-PL": "Wtyczki",
+        "pt-PT": "Plugins",
+        "nl-NL": "Plug-ins",
+        "cs-CZ": "Pluginy",
+        "bg-BG": "Плъгини"
+      }
+    },
+    "fbe.hotkey.group.tools": {
+      "resourceId": "IDS_HOTKEY_GROUP_TOOLS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Tools",
+        "ru-RU": "Инструменты",
+        "uk-UA": "Інструменти",
+        "de-DE": "Werkzeuge",
+        "fr-FR": "Outils",
+        "es-ES": "Herramientas",
+        "it-IT": "Strumenti",
+        "pl-PL": "Narzędzia",
+        "pt-PT": "Ferramentas",
+        "nl-NL": "Hulpmiddelen",
+        "cs-CZ": "Nástroje",
+        "bg-BG": "Инструменти"
+      }
+    },
+    "fbe.hotkey.tools.words": {
+      "resourceId": "IDS_HOTKEY_TOOLS_WORDS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Words",
+        "ru-RU": "Слова",
+        "uk-UA": "Слова",
+        "de-DE": "Wörter",
+        "fr-FR": "Mots",
+        "es-ES": "Palabras",
+        "it-IT": "Parole",
+        "pl-PL": "Słowa",
+        "pt-PT": "Palavras",
+        "nl-NL": "Woorden",
+        "cs-CZ": "Slova",
+        "bg-BG": "Думи"
+      }
+    },
+    "fbe.hotkey.wrong": {
+      "resourceId": "IDS_HOTKEY_WRONG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Wrong shortcut!",
+        "ru-RU": "Неправильное сочетание!",
+        "uk-UA": "Хибне сполучення!",
+        "de-DE": "Falsche Tastenkombination!",
+        "fr-FR": "Raccourci incorrect !",
+        "es-ES": "¡Atajo incorrecto!",
+        "it-IT": "Scorciatoia non valida!",
+        "pl-PL": "Nieprawidłowy skrót!",
+        "pt-PT": "Atalho incorreto!",
+        "nl-NL": "Verkeerde sneltoets!",
+        "cs-CZ": "Nesprávná zkratka!",
+        "bg-BG": "Неправилна клавишна комбинация!"
+      }
+    },
+    "fbe.settings.need_restart": {
+      "resourceId": "IDS_SETTINGS_NEED_RESTART",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "In order to process changes the program must be restarted.\nRestart now?",
+        "ru-RU": "Изменения вступят в силу после перезагрузки программы.\nПерезагрузить сейчас?",
+        "uk-UA": "Зміни наберуть чинності після перезапуску програми.\nПерезапустити негайно?",
+        "de-DE": "Damit die Änderungen wirksam werden, muss das Programm neu gestartet werden.\nJetzt neu starten?",
+        "fr-FR": "Pour appliquer les modifications, le programme doit être redémarré.\nRedémarrer maintenant ?",
+        "es-ES": "Para aplicar los cambios, el programa debe reiniciarse.\n¿Reiniciar ahora?",
+        "it-IT": "Per applicare le modifiche è necessario riavviare il programma.\nRiavviare ora?",
+        "pl-PL": "Aby zastosować zmiany, program musi zostać uruchomiony ponownie.\nUruchomić ponownie teraz?",
+        "pt-PT": "Para aplicar as alterações, o programa tem de ser reiniciado.\nReiniciar agora?",
+        "nl-NL": "Om de wijzigingen te verwerken moet het programma opnieuw worden gestart.\nNu opnieuw starten?",
+        "cs-CZ": "Aby se změny projevily, musí být program restartován.\nRestartovat nyní?",
+        "bg-BG": "За да се приложат промените, програмата трябва да се рестартира.\nДа се рестартира ли сега?"
+      }
+    },
+    "fbe.document_tree.cleanup": {
+      "resourceId": "IDS_DOC_TREE_CLEANUP",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Clean",
+        "ru-RU": "Очистить",
+        "uk-UA": "Очистити",
+        "de-DE": "Bereinigen",
+        "fr-FR": "Nettoyer",
+        "es-ES": "Limpiar",
+        "it-IT": "Pulisci",
+        "pl-PL": "Wyczyść",
+        "pt-PT": "Limpar",
+        "nl-NL": "Opschonen",
+        "cs-CZ": "Vyčistit",
+        "bg-BG": "Изчистване"
+      }
+    },
+    "fbe.hotkey.edit.add_annotation": {
+      "resourceId": "IDS_HOTKEY_EDIT_ADD_ANNOTATION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Add annotation",
+        "ru-RU": "Добавить аннотацию",
+        "uk-UA": "Додати анотацію",
+        "de-DE": "Anmerkung hinzufügen",
+        "fr-FR": "Ajouter une annotation",
+        "es-ES": "Añadir anotación",
+        "it-IT": "Aggiungi annotazione",
+        "pl-PL": "Dodaj adnotację",
+        "pt-PT": "Adicionar anotação",
+        "nl-NL": "Annotatie toevoegen",
+        "cs-CZ": "Přidat anotaci",
+        "bg-BG": "Добавяне на анотация"
+      }
+    },
+    "fbe.hotkey.edit.add_body": {
+      "resourceId": "IDS_HOTKEY_EDIT_ADD_BODY",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Add body",
+        "ru-RU": "Добавить элемент body",
+        "uk-UA": "Додати елемент body",
+        "de-DE": "Body-Element hinzufügen",
+        "fr-FR": "Ajouter un élément body",
+        "es-ES": "Añadir elemento body",
+        "it-IT": "Aggiungi elemento body",
+        "pl-PL": "Dodaj element body",
+        "pt-PT": "Adicionar elemento body",
+        "nl-NL": "body-element toevoegen",
+        "cs-CZ": "Přidat prvek body",
+        "bg-BG": "Добавяне на елемент body"
+      }
+    },
+    "fbe.hotkey.file.open": {
+      "resourceId": "IDS_HOTKEY_FILE_OPEN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Open",
+        "ru-RU": "Открыть",
+        "uk-UA": "Відкрити",
+        "de-DE": "Öffnen",
+        "fr-FR": "Ouvrir",
+        "es-ES": "Abrir",
+        "it-IT": "Apri",
+        "pl-PL": "Otwórz",
+        "pt-PT": "Abrir",
+        "nl-NL": "Openen",
+        "cs-CZ": "Otevřít",
+        "bg-BG": "Отваряне"
+      }
+    },
+    "fbe.hotkey.file.save": {
+      "resourceId": "IDS_HOTKEY_FILE_SAVE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Save",
+        "ru-RU": "Сохранить",
+        "uk-UA": "Зберегти",
+        "de-DE": "Speichern",
+        "fr-FR": "Enregistrer",
+        "es-ES": "Guardar",
+        "it-IT": "Salva",
+        "pl-PL": "Zapisz",
+        "pt-PT": "Guardar",
+        "nl-NL": "Opslaan",
+        "cs-CZ": "Uložit",
+        "bg-BG": "Запазване"
+      }
+    },
+    "fbe.hotkey.file.save_as": {
+      "resourceId": "IDS_HOTKEY_FILE_SAVEAS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Save as...",
+        "ru-RU": "Сохранить как...",
+        "uk-UA": "Зберегти як...",
+        "de-DE": "Speichern unter...",
+        "fr-FR": "Enregistrer sous...",
+        "es-ES": "Guardar como...",
+        "it-IT": "Salva con nome...",
+        "pl-PL": "Zapisz jako...",
+        "pt-PT": "Guardar como...",
+        "nl-NL": "Opslaan als...",
+        "cs-CZ": "Uložit jako...",
+        "bg-BG": "Запазване като..."
+      }
+    },
+    "fbe.hotkey.file.validate": {
+      "resourceId": "IDS_HOTKEY_FILE_VALIDATE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Validate",
+        "ru-RU": "Проверить",
+        "uk-UA": "Перевірити",
+        "de-DE": "Prüfen",
+        "fr-FR": "Valider",
+        "es-ES": "Validar",
+        "it-IT": "Convalida",
+        "pl-PL": "Sprawdź",
+        "pt-PT": "Validar",
+        "nl-NL": "Valideren",
+        "cs-CZ": "Ověřit",
+        "bg-BG": "Проверка"
+      }
+    },
+    "fbe.hotkey.group.file": {
+      "resourceId": "IDS_HOTKEY_GROUP_FILE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "File",
+        "ru-RU": "Файл",
+        "uk-UA": "Файл",
+        "de-DE": "Datei",
+        "fr-FR": "Fichier",
+        "es-ES": "Archivo",
+        "it-IT": "File",
+        "pl-PL": "Plik",
+        "pt-PT": "Ficheiro",
+        "nl-NL": "Bestand",
+        "cs-CZ": "Soubor",
+        "bg-BG": "Файл"
+      }
+    },
+    "fbe.status.insert_mode": {
+      "resourceId": "IDS_PANE_INS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "INS",
+        "ru-RU": "ВСТ",
+        "uk-UA": "ВСТ",
+        "de-DE": "EIN",
+        "fr-FR": "INS",
+        "es-ES": "INS",
+        "it-IT": "INS",
+        "pl-PL": "WST",
+        "pt-PT": "INS",
+        "nl-NL": "INS",
+        "cs-CZ": "VLO",
+        "bg-BG": "ВМК"
+      }
+    },
+    "fbe.status.overwrite_mode": {
+      "resourceId": "IDS_PANE_OVR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "OVR",
+        "ru-RU": "ЗАМ",
+        "uk-UA": "ЗАМ",
+        "de-DE": "ÜBR",
+        "fr-FR": "RFP",
+        "es-ES": "SOB",
+        "it-IT": "SSC",
+        "pl-PL": "NAD",
+        "pt-PT": "SOB",
+        "nl-NL": "OVR",
+        "cs-CZ": "PŘE",
+        "bg-BG": "ЗАМ"
+      }
+    },
+    "fbe.hotkey.edit.add_epigraph": {
+      "resourceId": "IDS_HOTKEY_EDIT_ADD_EPIGRAPH",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Add epigraph",
+        "ru-RU": "Добавить эпиграф",
+        "uk-UA": "Додати епіграф",
+        "de-DE": "Epigraph hinzufügen",
+        "fr-FR": "Ajouter une épigraphe",
+        "es-ES": "Añadir epígrafe",
+        "it-IT": "Aggiungi epigrafe",
+        "pl-PL": "Dodaj epigraf",
+        "pt-PT": "Adicionar epígrafe",
+        "nl-NL": "Epigraaf toevoegen",
+        "cs-CZ": "Přidat epigraf",
+        "bg-BG": "Добавяне на епиграф"
+      }
+    },
+    "fbe.hotkey.edit.add_section_image": {
+      "resourceId": "IDS_HOTKEY_EDIT_ADD_IMAGE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Add section image",
+        "ru-RU": "Вставить картинку секции",
+        "uk-UA": "Вставити малюнок секції",
+        "de-DE": "Abschnittsbild hinzufügen",
+        "fr-FR": "Ajouter une image de section",
+        "es-ES": "Añadir imagen de sección",
+        "it-IT": "Aggiungi immagine della sezione",
+        "pl-PL": "Dodaj obraz sekcji",
+        "pt-PT": "Adicionar imagem da secção",
+        "nl-NL": "Sectieafbeelding toevoegen",
+        "cs-CZ": "Přidat obrázek sekce",
+        "bg-BG": "Добавяне на изображение на секция"
+      }
+    },
+    "fbe.hotkey.edit.add_text_author": {
+      "resourceId": "IDS_HOTKEY_EDIT_ADD_TA",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Add text author",
+        "ru-RU": "Добавить автора текста",
+        "uk-UA": "Додати автора тексту",
+        "de-DE": "Textautor hinzufügen",
+        "fr-FR": "Ajouter l’auteur du texte",
+        "es-ES": "Añadir autor del texto",
+        "it-IT": "Aggiungi autore del testo",
+        "pl-PL": "Dodaj autora tekstu",
+        "pt-PT": "Adicionar autor do texto",
+        "nl-NL": "Tekstauteur toevoegen",
+        "cs-CZ": "Přidat autora textu",
+        "bg-BG": "Добавяне на автор на текста"
+      }
+    },
+    "fbe.hotkey.edit.add_title": {
+      "resourceId": "IDS_HOTKEY_EDIT_ADD_TITLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Add title",
+        "ru-RU": "Добавить заголовок",
+        "uk-UA": "Додати заголовок",
+        "de-DE": "Titel hinzufügen",
+        "fr-FR": "Ajouter un titre",
+        "es-ES": "Añadir título",
+        "it-IT": "Aggiungi titolo",
+        "pl-PL": "Dodaj tytuł",
+        "pt-PT": "Adicionar título",
+        "nl-NL": "Titel toevoegen",
+        "cs-CZ": "Přidat název",
+        "bg-BG": "Добавяне на заглавие"
+      }
+    },
+    "fbe.hotkey.edit.bold": {
+      "resourceId": "IDS_HOTKEY_EDIT_BOLD",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Bold",
+        "ru-RU": "Жирный",
+        "uk-UA": "Жирний",
+        "de-DE": "Fett",
+        "fr-FR": "Gras",
+        "es-ES": "Negrita",
+        "it-IT": "Grassetto",
+        "pl-PL": "Pogrubienie",
+        "pt-PT": "Negrito",
+        "nl-NL": "Vet",
+        "cs-CZ": "Tučné",
+        "bg-BG": "Получер"
+      }
+    },
+    "fbe.hotkey.edit.clone": {
+      "resourceId": "IDS_HOTKEY_EDIT_CLONE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Clone",
+        "ru-RU": "Клонировать",
+        "uk-UA": "Клонувати",
+        "de-DE": "Klonen",
+        "fr-FR": "Cloner",
+        "es-ES": "Clonar",
+        "it-IT": "Clona",
+        "pl-PL": "Klonuj",
+        "pt-PT": "Clonar",
+        "nl-NL": "Klonen",
+        "cs-CZ": "Klonovat",
+        "bg-BG": "Клониране"
+      }
+    },
+    "fbe.hotkey.edit.copy": {
+      "resourceId": "IDS_HOTKEY_EDIT_COPY",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Copy",
+        "ru-RU": "Копировать",
+        "uk-UA": "Копіювати",
+        "de-DE": "Kopieren",
+        "fr-FR": "Copier",
+        "es-ES": "Copiar",
+        "it-IT": "Copia",
+        "pl-PL": "Kopiuj",
+        "pt-PT": "Copiar",
+        "nl-NL": "Kopiëren",
+        "cs-CZ": "Kopírovat",
+        "bg-BG": "Копиране"
+      }
+    },
+    "fbe.hotkey.edit.cut": {
+      "resourceId": "IDS_HOTKEY_EDIT_CUT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cut",
+        "ru-RU": "Вырезать",
+        "uk-UA": "Вирізати",
+        "de-DE": "Ausschneiden",
+        "fr-FR": "Couper",
+        "es-ES": "Cortar",
+        "it-IT": "Taglia",
+        "pl-PL": "Wytnij",
+        "pt-PT": "Cortar",
+        "nl-NL": "Knippen",
+        "cs-CZ": "Vyjmout",
+        "bg-BG": "Изрязване"
+      }
+    },
+    "fbe.hotkey.edit.find": {
+      "resourceId": "IDS_HOTKEY_EDIT_FIND",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Find",
+        "ru-RU": "Найти",
+        "uk-UA": "Знайти",
+        "de-DE": "Suchen",
+        "fr-FR": "Rechercher",
+        "es-ES": "Buscar",
+        "it-IT": "Trova",
+        "pl-PL": "Znajdź",
+        "pt-PT": "Localizar",
+        "nl-NL": "Zoeken",
+        "cs-CZ": "Najít",
+        "bg-BG": "Търсене"
+      }
+    },
+    "fbe.hotkey.edit.find_next": {
+      "resourceId": "IDS_HOTKEY_EDIT_FIND_NEXT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Find next",
+        "ru-RU": "Найти следующий",
+        "uk-UA": "Знайти далі",
+        "de-DE": "Weitersuchen",
+        "fr-FR": "Rechercher le suivant",
+        "es-ES": "Buscar siguiente",
+        "it-IT": "Trova successivo",
+        "pl-PL": "Znajdź następny",
+        "pt-PT": "Localizar seguinte",
+        "nl-NL": "Volgende zoeken",
+        "cs-CZ": "Najít další",
+        "bg-BG": "Търсене на следващ"
+      }
+    },
+    "fbe.hotkey.edit.incremental_search": {
+      "resourceId": "IDS_HOTKEY_EDIT_INCREMENTAL_SEARCH",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Incremental search",
+        "ru-RU": "Инкрементальный поиск",
+        "uk-UA": "Інкрементальний пошук",
+        "de-DE": "Inkrementelle Suche",
+        "fr-FR": "Recherche incrémentale",
+        "es-ES": "Búsqueda incremental",
+        "it-IT": "Ricerca incrementale",
+        "pl-PL": "Wyszukiwanie przyrostowe",
+        "pt-PT": "Pesquisa incremental",
+        "nl-NL": "Incrementeel zoeken",
+        "cs-CZ": "Inkrementální hledání",
+        "bg-BG": "Постепенно търсене"
+      }
+    },
+    "fbe.hotkey.edit.insert_cite": {
+      "resourceId": "IDS_HOTKEY_EDIT_INSERT_CITE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Insert cite",
+        "ru-RU": "Вставить цитату",
+        "uk-UA": "Вставити цитату",
+        "de-DE": "Zitat einfügen",
+        "fr-FR": "Insérer une citation",
+        "es-ES": "Insertar cita",
+        "it-IT": "Inserisci citazione",
+        "pl-PL": "Wstaw cytat",
+        "pt-PT": "Inserir citação",
+        "nl-NL": "Citaat invoegen",
+        "cs-CZ": "Vložit citaci",
+        "bg-BG": "Вмъкване на цитат"
+      }
+    },
+    "fbe.hotkey.edit.insert_image": {
+      "resourceId": "IDS_HOTKEY_EDIT_INSERT_IMAGE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Insert image",
+        "ru-RU": "Вставить изображение",
+        "uk-UA": "Вставити малюнок",
+        "de-DE": "Bild einfügen",
+        "fr-FR": "Insérer une image",
+        "es-ES": "Insertar imagen",
+        "it-IT": "Inserisci immagine",
+        "pl-PL": "Wstaw obraz",
+        "pt-PT": "Inserir imagem",
+        "nl-NL": "Afbeelding invoegen",
+        "cs-CZ": "Vložit obrázek",
+        "bg-BG": "Вмъкване на изображение"
+      }
+    },
+    "fbe.hotkey.edit.insert_poem": {
+      "resourceId": "IDS_HOTKEY_EDIT_INSERT_POEM",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Insert poem",
+        "ru-RU": "Вставить поэму",
+        "uk-UA": "Вставити вірш",
+        "de-DE": "Gedicht einfügen",
+        "fr-FR": "Insérer un poème",
+        "es-ES": "Insertar poema",
+        "it-IT": "Inserisci poesia",
+        "pl-PL": "Wstaw wiersz",
+        "pt-PT": "Inserir poema",
+        "nl-NL": "Gedicht invoegen",
+        "cs-CZ": "Vložit báseň",
+        "bg-BG": "Вмъкване на стихотворение"
+      }
+    },
+    "fbe.hotkey.edit.italic": {
+      "resourceId": "IDS_HOTKEY_EDIT_ITALIC",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Italic",
+        "ru-RU": "Курсив",
+        "uk-UA": "Курсив",
+        "de-DE": "Kursiv",
+        "fr-FR": "Italique",
+        "es-ES": "Cursiva",
+        "it-IT": "Corsivo",
+        "pl-PL": "Kursywa",
+        "pt-PT": "Itálico",
+        "nl-NL": "Cursief",
+        "cs-CZ": "Kurzíva",
+        "bg-BG": "Курсив"
+      }
+    },
+    "fbe.dms.author_nickname": {
+      "resourceId": "IDS_DMS_AUTHOR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Author NickName",
+        "ru-RU": "Ник автора",
+        "uk-UA": "Псевдо автора",
+        "de-DE": "Autoren-Spitzname",
+        "fr-FR": "Pseudonyme de l’auteur",
+        "es-ES": "Alias del autor",
+        "it-IT": "Nickname autore",
+        "pl-PL": "Pseudonim autora",
+        "pt-PT": "Alcunha do autor",
+        "nl-NL": "Auteursbijnaam",
+        "cs-CZ": "Přezdívka autora",
+        "bg-BG": "Псевдоним на автора"
+      }
+    },
+    "fbe.dms.custom_info": {
+      "resourceId": "IDS_DMS_CI",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Custom Info",
+        "ru-RU": "Дополнительная информация",
+        "uk-UA": "Додаткова інформація",
+        "de-DE": "Benutzerdefinierte Informationen",
+        "fr-FR": "Informations personnalisées",
+        "es-ES": "Información personalizada",
+        "it-IT": "Informazioni personalizzate",
+        "pl-PL": "Informacje niestandardowe",
+        "pt-PT": "Informações personalizadas",
+        "nl-NL": "Aangepaste informatie",
+        "cs-CZ": "Vlastní informace",
+        "bg-BG": "Допълнителна информация"
+      }
+    },
+    "fbe.dms.document_info": {
+      "resourceId": "IDS_DMS_DI",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Document Info",
+        "ru-RU": "Информация о документе",
+        "uk-UA": "Інформація про документ",
+        "de-DE": "Dokumentinformationen",
+        "fr-FR": "Informations sur le document",
+        "es-ES": "Información del documento",
+        "it-IT": "Informazioni documento",
+        "pl-PL": "Informacje o dokumencie",
+        "pt-PT": "Informações do documento",
+        "nl-NL": "Documentinformatie",
+        "cs-CZ": "Informace o dokumentu",
+        "bg-BG": "Информация за документа"
+      }
+    },
+    "fbe.dms.genre_match": {
+      "resourceId": "IDS_DMS_GENRE_M",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Genre Match",
+        "ru-RU": "Соответствие жанру",
+        "uk-UA": "Відповідність жанру",
+        "de-DE": "Genre-Übereinstimmung",
+        "fr-FR": "Correspondance du genre",
+        "es-ES": "Coincidencia de género",
+        "it-IT": "Corrispondenza genere",
+        "pl-PL": "Dopasowanie gatunku",
+        "pt-PT": "Correspondência de género",
+        "nl-NL": "Genre-overeenkomst",
+        "cs-CZ": "Shoda žánru",
+        "bg-BG": "Съвпадение на жанра"
+      }
+    },
+    "fbe.dms.id": {
+      "resourceId": "IDS_DMS_ID",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "ID",
+        "ru-RU": "ID",
+        "uk-UA": "ID",
+        "de-DE": "ID",
+        "fr-FR": "ID",
+        "es-ES": "ID",
+        "it-IT": "ID",
+        "pl-PL": "ID",
+        "pt-PT": "ID",
+        "nl-NL": "ID",
+        "cs-CZ": "ID",
+        "bg-BG": "ID"
+      }
+    },
+    "fbe.dms.keywords": {
+      "resourceId": "IDS_DMS_KW",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Keywords",
+        "ru-RU": "Ключевые слова",
+        "uk-UA": "Ключові слова",
+        "de-DE": "Schlüsselwörter",
+        "fr-FR": "Mots-clés",
+        "es-ES": "Palabras clave",
+        "it-IT": "Parole chiave",
+        "pl-PL": "Słowa kluczowe",
+        "pt-PT": "Palavras-chave",
+        "nl-NL": "Trefwoorden",
+        "cs-CZ": "Klíčová slova",
+        "bg-BG": "Ключови думи"
+      }
+    },
+    "fbe.dms.source_title_info": {
+      "resourceId": "IDS_DMS_STI",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Source Title Info",
+        "ru-RU": "Информация об оригинальном тексте",
+        "uk-UA": "Інформація про оригінал твору",
+        "de-DE": "Informationen zum Originaltitel",
+        "fr-FR": "Informations sur le titre source",
+        "es-ES": "Información del título de origen",
+        "it-IT": "Informazioni sul titolo sorgente",
+        "pl-PL": "Informacje o tytule źródłowym",
+        "pt-PT": "Informações do título de origem",
+        "nl-NL": "Brontitelinformatie",
+        "cs-CZ": "Informace o zdrojovém titulu",
+        "bg-BG": "Информация за оригиналното заглавие"
+      }
+    },
+    "fbe.dms.title_info": {
+      "resourceId": "IDS_DMS_TI",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Title info",
+        "ru-RU": "Информация о произведении",
+        "uk-UA": "Інформація про твір",
+        "de-DE": "Titelinformationen",
+        "fr-FR": "Informations sur le titre",
+        "es-ES": "Información del título",
+        "it-IT": "Informazioni sul titolo",
+        "pl-PL": "Informacje o tytule",
+        "pt-PT": "Informações do título",
+        "nl-NL": "Titelinformatie",
+        "cs-CZ": "Informace o titulu",
+        "bg-BG": "Информация за заглавието"
+      }
+    },
+    "fbe.hotkey.navigation.collapse4": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE4",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 4 tree levels",
+        "ru-RU": "Свернуть дерево на 4 уровня",
+        "uk-UA": "Згорнути дерево на 4 рівні",
+        "de-DE": "4 Baumebenen einklappen",
+        "fr-FR": "Réduire 4 niveaux d’arborescence",
+        "es-ES": "Contraer 4 niveles del árbol",
+        "it-IT": "Comprimi 4 livelli dell’albero",
+        "pl-PL": "Zwiń 4 poziomów drzewa",
+        "pt-PT": "Recolher 4 níveis da árvore",
+        "nl-NL": "4 boomniveaus samenvouwen",
+        "cs-CZ": "Sbalit 4 úrovní stromu",
+        "bg-BG": "Свиване на дървото с 4 нива"
+      }
+    },
+    "fbe.hotkey.navigation.collapse5": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE5",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 5 tree levels",
+        "ru-RU": "Свернуть дерево на 5 уровней",
+        "uk-UA": "Згорнути дерево на 5 рівнів",
+        "de-DE": "5 Baumebenen einklappen",
+        "fr-FR": "Réduire 5 niveaux d’arborescence",
+        "es-ES": "Contraer 5 niveles del árbol",
+        "it-IT": "Comprimi 5 livelli dell’albero",
+        "pl-PL": "Zwiń 5 poziomów drzewa",
+        "pt-PT": "Recolher 5 níveis da árvore",
+        "nl-NL": "5 boomniveaus samenvouwen",
+        "cs-CZ": "Sbalit 5 úrovní stromu",
+        "bg-BG": "Свиване на дървото с 5 нива"
+      }
+    },
+    "fbe.hotkey.navigation.collapse6": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE6",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 6 tree levels",
+        "ru-RU": "Свернуть дерево на 6 уровней",
+        "uk-UA": "Згорнути дерево на 6 рівнів",
+        "de-DE": "6 Baumebenen einklappen",
+        "fr-FR": "Réduire 6 niveaux d’arborescence",
+        "es-ES": "Contraer 6 niveles del árbol",
+        "it-IT": "Comprimi 6 livelli dell’albero",
+        "pl-PL": "Zwiń 6 poziomów drzewa",
+        "pt-PT": "Recolher 6 níveis da árvore",
+        "nl-NL": "6 boomniveaus samenvouwen",
+        "cs-CZ": "Sbalit 6 úrovní stromu",
+        "bg-BG": "Свиване на дървото с 6 нива"
+      }
+    },
+    "fbe.hotkey.navigation.collapse7": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE7",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 7 tree levels",
+        "ru-RU": "Свернуть дерево на 7 уровней",
+        "uk-UA": "Згорнути дерево на 7 рівнів",
+        "de-DE": "7 Baumebenen einklappen",
+        "fr-FR": "Réduire 7 niveaux d’arborescence",
+        "es-ES": "Contraer 7 niveles del árbol",
+        "it-IT": "Comprimi 7 livelli dell’albero",
+        "pl-PL": "Zwiń 7 poziomów drzewa",
+        "pt-PT": "Recolher 7 níveis da árvore",
+        "nl-NL": "7 boomniveaus samenvouwen",
+        "cs-CZ": "Sbalit 7 úrovní stromu",
+        "bg-BG": "Свиване на дървото с 7 нива"
+      }
+    },
+    "fbe.hotkey.navigation.collapse8": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE8",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 8 tree levels",
+        "ru-RU": "Свернуть дерево на 8 уровней",
+        "uk-UA": "Згорнути дерево на 8 рівнів",
+        "de-DE": "8 Baumebenen einklappen",
+        "fr-FR": "Réduire 8 niveaux d’arborescence",
+        "es-ES": "Contraer 8 niveles del árbol",
+        "it-IT": "Comprimi 8 livelli dell’albero",
+        "pl-PL": "Zwiń 8 poziomów drzewa",
+        "pt-PT": "Recolher 8 níveis da árvore",
+        "nl-NL": "8 boomniveaus samenvouwen",
+        "cs-CZ": "Sbalit 8 úrovní stromu",
+        "bg-BG": "Свиване на дървото с 8 нива"
+      }
+    },
+    "fbe.hotkey.navigation.collapse9": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_COLLAPSE9",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Collapse 9 tree levels",
+        "ru-RU": "Свернуть дерево на 9 уровней",
+        "uk-UA": "Згорнути дерево на 9 рівнів",
+        "de-DE": "9 Baumebenen einklappen",
+        "fr-FR": "Réduire 9 niveaux d’arborescence",
+        "es-ES": "Contraer 9 niveles del árbol",
+        "it-IT": "Comprimi 9 livelli dell’albero",
+        "pl-PL": "Zwiń 9 poziomów drzewa",
+        "pt-PT": "Recolher 9 níveis da árvore",
+        "nl-NL": "9 boomniveaus samenvouwen",
+        "cs-CZ": "Sbalit 9 úrovní stromu",
+        "bg-BG": "Свиване на дървото с 9 нива"
+      }
+    },
+    "fbe.hotkey.navigation.expand1": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND1",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 1 tree level",
+        "ru-RU": "Развернуть дерево на 1 уровень",
+        "uk-UA": "Розгорнути дерево на 1 рівень",
+        "de-DE": "1 Baumebene ausklappen",
+        "fr-FR": "Développer 1 niveau d’arborescence",
+        "es-ES": "Expandir 1 nivel del árbol",
+        "it-IT": "Espandi 1 livello dell’albero",
+        "pl-PL": "Rozwiń 1 poziom drzewa",
+        "pt-PT": "Expandir 1 nível da árvore",
+        "nl-NL": "1 boomniveau uitvouwen",
+        "cs-CZ": "Rozbalit 1 úroveň stromu",
+        "bg-BG": "Разгъване на дървото с 1 ниво"
+      }
+    },
+    "fbe.hotkey.navigation.expand2": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND2",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 2 tree levels",
+        "ru-RU": "Развернуть дерево на 2 уровня",
+        "uk-UA": "Розгорнути дерево на 2 рівні",
+        "de-DE": "2 Baumebenen ausklappen",
+        "fr-FR": "Développer 2 niveaux d’arborescence",
+        "es-ES": "Expandir 2 niveles del árbol",
+        "it-IT": "Espandi 2 livelloi dell’albero",
+        "pl-PL": "Rozwiń 2 poziomów drzewa",
+        "pt-PT": "Expandir 2 níveles da árvore",
+        "nl-NL": "2 boomniveaus uitvouwen",
+        "cs-CZ": "Rozbalit 2 úrovní stromu",
+        "bg-BG": "Разгъване на дървото с 2 нива"
+      }
+    },
+    "fbe.hotkey.navigation.expand3": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND3",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 3 tree levels",
+        "ru-RU": "Развернуть дерево на 3 уровня",
+        "uk-UA": "Розгорнути дерево на 3 рівні",
+        "de-DE": "3 Baumebenen ausklappen",
+        "fr-FR": "Développer 3 niveaux d’arborescence",
+        "es-ES": "Expandir 3 niveles del árbol",
+        "it-IT": "Espandi 3 livelloi dell’albero",
+        "pl-PL": "Rozwiń 3 poziomów drzewa",
+        "pt-PT": "Expandir 3 níveles da árvore",
+        "nl-NL": "3 boomniveaus uitvouwen",
+        "cs-CZ": "Rozbalit 3 úrovní stromu",
+        "bg-BG": "Разгъване на дървото с 3 нива"
+      }
+    },
+    "fbe.hotkey.navigation.expand4": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND4",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 4 tree levels",
+        "ru-RU": "Развернуть дерево на 4 уровня",
+        "uk-UA": "Розгорнути дерево на 4 рівні",
+        "de-DE": "4 Baumebenen ausklappen",
+        "fr-FR": "Développer 4 niveaux d’arborescence",
+        "es-ES": "Expandir 4 niveles del árbol",
+        "it-IT": "Espandi 4 livelloi dell’albero",
+        "pl-PL": "Rozwiń 4 poziomów drzewa",
+        "pt-PT": "Expandir 4 níveles da árvore",
+        "nl-NL": "4 boomniveaus uitvouwen",
+        "cs-CZ": "Rozbalit 4 úrovní stromu",
+        "bg-BG": "Разгъване на дървото с 4 нива"
+      }
+    },
+    "fbe.hotkey.navigation.expand5": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND5",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 5 tree levels",
+        "ru-RU": "Развернуть дерево на 5 уровней",
+        "uk-UA": "Розгорнути дерево на 5 рівнів",
+        "de-DE": "5 Baumebenen ausklappen",
+        "fr-FR": "Développer 5 niveaux d’arborescence",
+        "es-ES": "Expandir 5 niveles del árbol",
+        "it-IT": "Espandi 5 livelloi dell’albero",
+        "pl-PL": "Rozwiń 5 poziomów drzewa",
+        "pt-PT": "Expandir 5 níveles da árvore",
+        "nl-NL": "5 boomniveaus uitvouwen",
+        "cs-CZ": "Rozbalit 5 úrovní stromu",
+        "bg-BG": "Разгъване на дървото с 5 нива"
+      }
+    },
+    "fbe.hotkey.navigation.expand6": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND6",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 6 tree levels",
+        "ru-RU": "Развернуть дерево на 6 уровней",
+        "uk-UA": "Розгорнути дерево на 6 рівнів",
+        "de-DE": "6 Baumebenen ausklappen",
+        "fr-FR": "Développer 6 niveaux d’arborescence",
+        "es-ES": "Expandir 6 niveles del árbol",
+        "it-IT": "Espandi 6 livelloi dell’albero",
+        "pl-PL": "Rozwiń 6 poziomów drzewa",
+        "pt-PT": "Expandir 6 níveles da árvore",
+        "nl-NL": "6 boomniveaus uitvouwen",
+        "cs-CZ": "Rozbalit 6 úrovní stromu",
+        "bg-BG": "Разгъване на дървото с 6 нива"
+      }
+    },
+    "fbe.hotkey.navigation.expand7": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND7",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 7 tree levels",
+        "ru-RU": "Развернуть дерево на 7 уровней",
+        "uk-UA": "Розгорнути дерево на 7 рівнів",
+        "de-DE": "7 Baumebenen ausklappen",
+        "fr-FR": "Développer 7 niveaux d’arborescence",
+        "es-ES": "Expandir 7 niveles del árbol",
+        "it-IT": "Espandi 7 livelloi dell’albero",
+        "pl-PL": "Rozwiń 7 poziomów drzewa",
+        "pt-PT": "Expandir 7 níveles da árvore",
+        "nl-NL": "7 boomniveaus uitvouwen",
+        "cs-CZ": "Rozbalit 7 úrovní stromu",
+        "bg-BG": "Разгъване на дървото с 7 нива"
+      }
+    },
+    "fbe.hotkey.navigation.expand8": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND8",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 8 tree levels",
+        "ru-RU": "Развернуть дерево на 8 уровней",
+        "uk-UA": "Розгорнути дерево на 8 рівнів",
+        "de-DE": "8 Baumebenen ausklappen",
+        "fr-FR": "Développer 8 niveaux d’arborescence",
+        "es-ES": "Expandir 8 niveles del árbol",
+        "it-IT": "Espandi 8 livelloi dell’albero",
+        "pl-PL": "Rozwiń 8 poziomów drzewa",
+        "pt-PT": "Expandir 8 níveles da árvore",
+        "nl-NL": "8 boomniveaus uitvouwen",
+        "cs-CZ": "Rozbalit 8 úrovní stromu",
+        "bg-BG": "Разгъване на дървото с 8 нива"
+      }
+    },
+    "fbe.hotkey.navigation.expand9": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SCI_EXPAND9",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Expand 9 tree levels",
+        "ru-RU": "Развернуть дерево на 9 уровней",
+        "uk-UA": "Розгорнути дерево на 9 рівнів",
+        "de-DE": "9 Baumebenen ausklappen",
+        "fr-FR": "Développer 9 niveaux d’arborescence",
+        "es-ES": "Expandir 9 niveles del árbol",
+        "it-IT": "Espandi 9 livelloi dell’albero",
+        "pl-PL": "Rozwiń 9 poziomów drzewa",
+        "pt-PT": "Expandir 9 níveles da árvore",
+        "nl-NL": "9 boomniveaus uitvouwen",
+        "cs-CZ": "Rozbalit 9 úrovní stromu",
+        "bg-BG": "Разгъване на дървото с 9 нива"
+      }
+    },
+    "fbe.hotkey.navigation.select_href": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SELECT_HREF",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Href",
+        "ru-RU": "Ссылка",
+        "uk-UA": "Посилання",
+        "de-DE": "Href",
+        "fr-FR": "Href",
+        "es-ES": "Href",
+        "it-IT": "Href",
+        "pl-PL": "Href",
+        "pt-PT": "Href",
+        "nl-NL": "Href",
+        "cs-CZ": "Href",
+        "bg-BG": "Href"
+      }
+    },
+    "fbe.hotkey.edit.insert_table": {
+      "resourceId": "IDS_HOTKEY_EDIT_INSERT_TABLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Insert table",
+        "ru-RU": "Вставить таблицу",
+        "uk-UA": "Вставити таблицю",
+        "de-DE": "Tabelle einfügen",
+        "fr-FR": "Insérer un tableau",
+        "es-ES": "Insertar tabla",
+        "it-IT": "Inserisci tabella",
+        "pl-PL": "Wstaw tabelę",
+        "pt-PT": "Inserir tabela",
+        "nl-NL": "Tabel invoegen",
+        "cs-CZ": "Vložit tabulku",
+        "bg-BG": "Вмъкване на таблица"
+      }
+    },
+    "fbe.hotkey.group.style": {
+      "resourceId": "IDS_HOTKEY_GROUP_STYLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Style",
+        "ru-RU": "Стиль",
+        "uk-UA": "Стиль",
+        "de-DE": "Stil",
+        "fr-FR": "Style",
+        "es-ES": "Estilo",
+        "it-IT": "Stile",
+        "pl-PL": "Styl",
+        "pt-PT": "Estilo",
+        "nl-NL": "Stijl",
+        "cs-CZ": "Styl",
+        "bg-BG": "Стил"
+      }
+    },
+    "fbe.hotkey.group.view": {
+      "resourceId": "IDS_HOTKEY_GROUP_VIEW",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "View",
+        "ru-RU": "Просмотр",
+        "uk-UA": "Перегляд",
+        "de-DE": "Ansicht",
+        "fr-FR": "Affichage",
+        "es-ES": "Ver",
+        "it-IT": "Visualizza",
+        "pl-PL": "Widok",
+        "pt-PT": "Ver",
+        "nl-NL": "Beeld",
+        "cs-CZ": "Zobrazení",
+        "bg-BG": "Изглед"
+      }
+    },
+    "fbe.hotkey.navigation.select_id": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SELECT_ID",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "ID ",
+        "ru-RU": "ID ",
+        "uk-UA": "ID ",
+        "de-DE": "ID ",
+        "fr-FR": "ID ",
+        "es-ES": "ID ",
+        "it-IT": "ID ",
+        "pl-PL": "ID ",
+        "pt-PT": "ID ",
+        "nl-NL": "ID ",
+        "cs-CZ": "ID ",
+        "bg-BG": "ID "
+      }
+    },
+    "fbe.hotkey.navigation.select_table_id": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SELECT_ID_TABLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Table ID",
+        "ru-RU": "ID таблицы",
+        "uk-UA": "ID таблиці",
+        "de-DE": "Tabellen-ID",
+        "fr-FR": "ID du tableau",
+        "es-ES": "ID de tabla",
+        "it-IT": "ID tabella",
+        "pl-PL": "ID tabeli",
+        "pt-PT": "ID da tabela",
+        "nl-NL": "Tabel-ID",
+        "cs-CZ": "ID tabulky",
+        "bg-BG": "ID на таблица"
+      }
+    },
+    "fbe.hotkey.navigation.select_text": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SELECT_TEXT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Text",
+        "ru-RU": "Текст",
+        "uk-UA": "Текст",
+        "de-DE": "Text",
+        "fr-FR": "Texte",
+        "es-ES": "Texto",
+        "it-IT": "Testo",
+        "pl-PL": "Tekst",
+        "pt-PT": "Texto",
+        "nl-NL": "Tekst",
+        "cs-CZ": "Text",
+        "bg-BG": "Текст"
+      }
+    },
+    "fbe.hotkey.navigation.select_tree": {
+      "resourceId": "IDS_HOTKEY_NAVIGATION_SELECT_TREE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Tree",
+        "ru-RU": "Дерево",
+        "uk-UA": "Дерево",
+        "de-DE": "Baum",
+        "fr-FR": "Arborescence",
+        "es-ES": "Árbol",
+        "it-IT": "Albero",
+        "pl-PL": "Drzewo",
+        "pt-PT": "Árvore",
+        "nl-NL": "Boom",
+        "cs-CZ": "Strom",
+        "bg-BG": "Дърво"
+      }
+    },
+    "fbe.hotkey.style.link": {
+      "resourceId": "IDS_HOTKEY_STYLE_LINK",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Link",
+        "ru-RU": "Ссылка",
+        "uk-UA": "Посилання",
+        "de-DE": "Link",
+        "fr-FR": "Lien",
+        "es-ES": "Enlace",
+        "it-IT": "Link",
+        "pl-PL": "Łącze",
+        "pt-PT": "Ligação",
+        "nl-NL": "Link",
+        "cs-CZ": "Odkaz",
+        "bg-BG": "Връзка"
+      }
+    },
+    "fbe.hotkey.style.no_link": {
+      "resourceId": "IDS_HOTKEY_STYLE_NO_LINK",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "No link",
+        "ru-RU": "Без ссылки",
+        "uk-UA": "Без посилання",
+        "de-DE": "Kein Link",
+        "fr-FR": "Sans lien",
+        "es-ES": "Sin enlace",
+        "it-IT": "Nessun link",
+        "pl-PL": "Bez łącza",
+        "pt-PT": "Sem ligação",
+        "nl-NL": "Geen link",
+        "cs-CZ": "Bez odkazu",
+        "bg-BG": "Без връзка"
+      }
+    },
+    "fbe.hotkey.style.normal": {
+      "resourceId": "IDS_HOTKEY_STYLE_NORMAL",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Normal",
+        "ru-RU": "Нормализованный",
+        "uk-UA": "Нормалізований",
+        "de-DE": "Normal",
+        "fr-FR": "Normal",
+        "es-ES": "Normal",
+        "it-IT": "Normale",
+        "pl-PL": "Normalny",
+        "pt-PT": "Normal",
+        "nl-NL": "Normaal",
+        "cs-CZ": "Normální",
+        "bg-BG": "Нормален"
+      }
+    },
+    "fbe.hotkey.style.note": {
+      "resourceId": "IDS_HOTKEY_STYLE_NOTE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Note",
+        "ru-RU": "Сноска",
+        "uk-UA": "Примітка",
+        "de-DE": "Notiz",
+        "fr-FR": "Note",
+        "es-ES": "Nota",
+        "it-IT": "Nota",
+        "pl-PL": "Przypis",
+        "pt-PT": "Nota",
+        "nl-NL": "Notitie",
+        "cs-CZ": "Poznámka",
+        "bg-BG": "Бележка"
+      }
+    },
+    "fbe.hotkey.style.subtitle": {
+      "resourceId": "IDS_HOTKEY_STYLE_SUBTITLE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Subtitle",
+        "ru-RU": "Подзаголовок",
+        "uk-UA": "Підзаголовок",
+        "de-DE": "Untertitel",
+        "fr-FR": "Sous-titre",
+        "es-ES": "Subtítulo",
+        "it-IT": "Sottotitolo",
+        "pl-PL": "Podtytuł",
+        "pt-PT": "Subtítulo",
+        "nl-NL": "Ondertitel",
+        "cs-CZ": "Podtitulek",
+        "bg-BG": "Подзаглавие"
+      }
+    },
+    "fbe.hotkey.style.text_author": {
+      "resourceId": "IDS_HOTKEY_STYLE_TEXT_AUTHOR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Text author",
+        "ru-RU": "Автор текста",
+        "uk-UA": "Автор тексту",
+        "de-DE": "Textautor",
+        "fr-FR": "Auteur du texte",
+        "es-ES": "Autor del texto",
+        "it-IT": "Autore del testo",
+        "pl-PL": "Autor tekstu",
+        "pt-PT": "Autor do texto",
+        "nl-NL": "Tekstauteur",
+        "cs-CZ": "Autor textu",
+        "bg-BG": "Автор на текста"
+      }
+    },
+    "fbe.hotkey.view.body": {
+      "resourceId": "IDS_HOTKEY_VIEW_BODY",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Body",
+        "ru-RU": "Дизайн",
+        "uk-UA": "Дизайн",
+        "de-DE": "Textkörper",
+        "fr-FR": "Corps",
+        "es-ES": "Cuerpo",
+        "it-IT": "Corpo",
+        "pl-PL": "Treść",
+        "pt-PT": "Corpo",
+        "nl-NL": "Body",
+        "cs-CZ": "Tělo",
+        "bg-BG": "Тяло"
+      }
+    },
+    "fbe.hotkey.view.description": {
+      "resourceId": "IDS_HOTKEY_VIEW_DESCRIPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Description",
+        "ru-RU": "Описание",
+        "uk-UA": "Опис",
+        "de-DE": "Beschreibung",
+        "fr-FR": "Description",
+        "es-ES": "Descripción",
+        "it-IT": "Descrizione",
+        "pl-PL": "Opis",
+        "pt-PT": "Descrição",
+        "nl-NL": "Beschrijving",
+        "cs-CZ": "Popis",
+        "bg-BG": "Описание"
+      }
+    },
+    "fbe.hotkey.view.source": {
+      "resourceId": "IDS_HOTKEY_VIEW_SOURCE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Source",
+        "ru-RU": "Код",
+        "uk-UA": "Код",
+        "de-DE": "Quelltext",
+        "fr-FR": "Source",
+        "es-ES": "Código fuente",
+        "it-IT": "Sorgente",
+        "pl-PL": "Źródło",
+        "pt-PT": "Código-fonte",
+        "nl-NL": "Bron",
+        "cs-CZ": "Zdroj",
+        "bg-BG": "Изходен код"
+      }
+    },
+    "fbe.language.english": {
+      "resourceId": "IDS_LANG_ENGLISH",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "English",
+        "ru-RU": "Английский",
+        "uk-UA": "Англійська",
+        "de-DE": "Englisch",
+        "fr-FR": "Anglais",
+        "es-ES": "Inglés",
+        "it-IT": "Inglese",
+        "pl-PL": "Angielski",
+        "pt-PT": "Inglês",
+        "nl-NL": "Engels",
+        "cs-CZ": "Angličtina",
+        "bg-BG": "Английски"
+      }
+    },
+    "fbe.language.russian": {
+      "resourceId": "IDS_LANG_RUSSIAN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Russian",
+        "ru-RU": "Русский",
+        "uk-UA": "Російська",
+        "de-DE": "Russisch",
+        "fr-FR": "Russe",
+        "es-ES": "Ruso",
+        "it-IT": "Russo",
+        "pl-PL": "Rosyjski",
+        "pt-PT": "Russo",
+        "nl-NL": "Russisch",
+        "cs-CZ": "Ruština",
+        "bg-BG": "Руски"
+      }
+    },
+    "fbe.status.no_errors": {
+      "resourceId": "IDS_SB_NO_ERR",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "No errors found.",
+        "ru-RU": "Ошибок не обнаружено.",
+        "uk-UA": "Помилок не виявлено.",
+        "de-DE": "Keine Fehler gefunden.",
+        "fr-FR": "Aucune erreur trouvée.",
+        "es-ES": "No se encontraron errores.",
+        "it-IT": "Nessun errore trovato.",
+        "pl-PL": "Nie znaleziono błędów.",
+        "pt-PT": "Não foram encontrados erros.",
+        "nl-NL": "Geen fouten gevonden.",
+        "cs-CZ": "Nebyly nalezeny žádné chyby.",
+        "bg-BG": "Не са открити грешки."
+      }
+    },
+    "fbe.settings.other.caption": {
+      "resourceId": "IDS_SETTINGS_OTHER_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Other",
+        "ru-RU": "Другое",
+        "uk-UA": "Інше",
+        "de-DE": "Sonstiges",
+        "fr-FR": "Autre",
+        "es-ES": "Otros",
+        "it-IT": "Altro",
+        "pl-PL": "Inne",
+        "pt-PT": "Outro",
+        "nl-NL": "Overig",
+        "cs-CZ": "Ostatní",
+        "bg-BG": "Друго"
+      }
+    },
+    "fbe.settings.view.caption": {
+      "resourceId": "IDS_SETTINGS_VIEW_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "View",
+        "ru-RU": "Вид",
+        "uk-UA": "Вигляд",
+        "de-DE": "Ansicht",
+        "fr-FR": "Affichage",
+        "es-ES": "Ver",
+        "it-IT": "Visualizza",
+        "pl-PL": "Widok",
+        "pt-PT": "Ver",
+        "nl-NL": "Beeld",
+        "cs-CZ": "Zobrazení",
+        "bg-BG": "Изглед"
+      }
+    },
+    "fbe.table.caption.href": {
+      "resourceId": "IDS_TB_CAPT_HREF",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Href:",
+        "ru-RU": "Ссылка:",
+        "uk-UA": "Посилання:",
+        "de-DE": "Href:",
+        "fr-FR": "Href :",
+        "es-ES": "Href:",
+        "it-IT": "Href:",
+        "pl-PL": "Href:",
+        "pt-PT": "Href:",
+        "nl-NL": "Href:",
+        "cs-CZ": "Href:",
+        "bg-BG": "Href:"
+      }
+    },
+    "fbe.table.caption.id": {
+      "resourceId": "IDS_TB_CAPT_ID",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "ID:",
+        "ru-RU": "ID:",
+        "uk-UA": "ID:",
+        "de-DE": "ID:",
+        "fr-FR": "ID :",
+        "es-ES": "ID:",
+        "it-IT": "ID:",
+        "pl-PL": "ID:",
+        "pt-PT": "ID:",
+        "nl-NL": "ID:",
+        "cs-CZ": "ID:",
+        "bg-BG": "ID:"
+      }
+    },
+    "fbe.document_tree.caption": {
+      "resourceId": "IDS_DOCUMENT_TREE_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Document structure",
+        "ru-RU": "Структура документа",
+        "uk-UA": "Структура документу",
+        "de-DE": "Dokumentstruktur",
+        "fr-FR": "Structure du document",
+        "es-ES": "Estructura del documento",
+        "it-IT": "Struttura del documento",
+        "pl-PL": "Struktura dokumentu",
+        "pt-PT": "Estrutura do documento",
+        "nl-NL": "Documentstructuur",
+        "cs-CZ": "Struktura dokumentu",
+        "bg-BG": "Структура на документа"
+      }
+    },
+    "fbe.encodings.list": {
+      "resourceId": "IDS_ENCODINGS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "ru-RU": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "uk-UA": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "de-DE": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "fr-FR": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "es-ES": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "it-IT": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "pl-PL": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "pt-PT": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "nl-NL": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "cs-CZ": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r",
+        "bg-BG": "utf-8,utf-16,windows-1251,windows-1252,iso-8859-1,iso-8859-2,iso-8859-5,iso-8859-15,koi8-r"
+      }
+    },
+    "fbe.script.message.caption": {
+      "resourceId": "IDS_SCRIPT_MSG_CPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBE Script message",
+        "ru-RU": "Сообщение скрипта FBE",
+        "uk-UA": "Повідомлення скрипта FBE",
+        "de-DE": "FBE-Skriptmeldung",
+        "fr-FR": "Message de script FBE",
+        "es-ES": "Mensaje de script de FBE",
+        "it-IT": "Messaggio script FBE",
+        "pl-PL": "Komunikat skryptu FBE",
+        "pt-PT": "Mensagem de script FBE",
+        "nl-NL": "FBE-scriptmelding",
+        "cs-CZ": "Zpráva skriptu FBE",
+        "bg-BG": "Съобщение от FBE скрипт"
+      }
+    },
+    "fbe.script.error_hresult": {
+      "resourceId": "IDS_SCRIPT_ERRX_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Script error: %08X at line %d, column %d",
+        "ru-RU": "Ошибка скрипта: %08X в строке %d, столбце %d",
+        "uk-UA": "Помилка скрипта: %08X у рядку %d, стовпці %d",
+        "de-DE": "Skriptfehler: %08X in Zeile %d, Spalte %d",
+        "fr-FR": "Erreur de script : %08X à la ligne %d, colonne %d",
+        "es-ES": "Error de script: %08X en la línea %d, columna %d",
+        "it-IT": "Errore script: %08X alla riga %d, colonna %d",
+        "pl-PL": "Błąd skryptu: %08X w wierszu %d, kolumnie %d",
+        "pt-PT": "Erro de script: %08X na linha %d, coluna %d",
+        "nl-NL": "Scriptfout: %08X op regel %d, kolom %d",
+        "cs-CZ": "Chyba skriptu: %08X na řádku %d, sloupci %d",
+        "bg-BG": "Грешка в скрипта: %08X на ред %d, колона %d"
+      }
+    },
+    "fbe.script.error_description": {
+      "resourceId": "IDS_SCRIPT_ERRD_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Script error: %s at line %d, column %d",
+        "ru-RU": "Ошибка скрипта: %s в строке %d, столбце %d",
+        "uk-UA": "Помилка скрипта: %s у рядку %d, стовпці %d",
+        "de-DE": "Skriptfehler: %s in Zeile %d, Spalte %d",
+        "fr-FR": "Erreur de script : %s à la ligne %d, colonne %d",
+        "es-ES": "Error de script: %s en la línea %d, columna %d",
+        "it-IT": "Errore script: %s alla riga %d, colonna %d",
+        "pl-PL": "Błąd skryptu: %s w wierszu %d, kolumnie %d",
+        "pt-PT": "Erro de script: %s na linha %d, coluna %d",
+        "nl-NL": "Scriptfout: %s op regel %d, kolom %d",
+        "cs-CZ": "Chyba skriptu: %s na řádku %d, sloupci %d",
+        "bg-BG": "Грешка в скрипта: %s на ред %d, колона %d"
+      }
+    },
+    "fbe.script.error_unknown": {
+      "resourceId": "IDS_SCRIPT_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Unknown error in script.",
+        "ru-RU": "Неизвестная ошибка в скрипте.",
+        "uk-UA": "Невідома помилка в скрипті.",
+        "de-DE": "Unbekannter Fehler im Skript.",
+        "fr-FR": "Erreur inconnue dans le script.",
+        "es-ES": "Error desconocido en el script.",
+        "it-IT": "Errore sconosciuto nello script.",
+        "pl-PL": "Nieznany błąd w skrypcie.",
+        "pt-PT": "Erro desconhecido no script.",
+        "nl-NL": "Onbekende fout in script.",
+        "cs-CZ": "Neznámá chyba ve skriptu.",
+        "bg-BG": "Неизвестна грешка в скрипта."
+      }
+    },
+    "fbe.script.load_error": {
+      "resourceId": "IDS_SCRIPT_LOAD_ERR_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Error loading %s: %s",
+        "ru-RU": "Ошибка загрузки %s: %s",
+        "uk-UA": "Помилка завантаження %s: %s",
+        "de-DE": "Fehler beim Laden von %s: %s",
+        "fr-FR": "Erreur lors du chargement de %s : %s",
+        "es-ES": "Error al cargar %s: %s",
+        "it-IT": "Errore durante il caricamento di %s: %s",
+        "pl-PL": "Błąd ładowania %s: %s",
+        "pt-PT": "Erro ao carregar %s: %s",
+        "nl-NL": "Fout bij laden van %s: %s",
+        "cs-CZ": "Chyba při načítání %s: %s",
+        "bg-BG": "Грешка при зареждане на %s: %s"
+      }
+    },
+    "fbe.com.error.caption": {
+      "resourceId": "IDS_COM_ERR_CPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "COM Error",
+        "ru-RU": "Ошибка COM",
+        "uk-UA": "Помилка COM",
+        "de-DE": "COM-Fehler",
+        "fr-FR": "Erreur COM",
+        "es-ES": "Error COM",
+        "it-IT": "Errore COM",
+        "pl-PL": "Błąd COM",
+        "pt-PT": "Erro COM",
+        "nl-NL": "COM-fout",
+        "cs-CZ": "Chyba COM",
+        "bg-BG": "COM грешка"
+      }
+    },
+    "fbe.com.error.class_not_registered": {
+      "resourceId": "RUNTIME_FBE_COM_CLASS_NOT_REGISTERED",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Class is not registered",
+        "ru-RU": "Класс не зарегистрирован",
+        "uk-UA": "Клас не зареєстровано",
+        "de-DE": "Klasse ist nicht registriert",
+        "fr-FR": "Classe non enregistrée",
+        "es-ES": "Clase no registrada",
+        "it-IT": "Classe non registrata",
+        "pl-PL": "Klasa nie jest zarejestrowana",
+        "pt-PT": "Classe não registada",
+        "nl-NL": "Klasse is niet geregistreerd",
+        "cs-CZ": "Třída není zaregistrována",
+        "bg-BG": "Класът не е регистриран"
+      }
+    },
+    "fbe.plugin.import_epub.menu": {
+      "resourceId": "RUNTIME_FBE_PLUGIN_IMPORT_EPUB_MENU",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "From EPUB...",
+        "ru-RU": "из EPUB...",
+        "uk-UA": "з EPUB...",
+        "de-DE": "Aus EPUB...",
+        "fr-FR": "Depuis EPUB...",
+        "es-ES": "Desde EPUB...",
+        "it-IT": "Da EPUB...",
+        "pl-PL": "Z EPUB...",
+        "pt-PT": "De EPUB...",
+        "nl-NL": "Uit EPUB...",
+        "cs-CZ": "Z EPUB...",
+        "bg-BG": "От EPUB..."
+      }
+    },
+    "fbe.plugin.export_docx.menu": {
+      "resourceId": "RUNTIME_FBE_PLUGIN_EXPORT_DOCX_MENU",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "To DOCX",
+        "ru-RU": "в DOCX",
+        "uk-UA": "у DOCX",
+        "de-DE": "Nach DOCX",
+        "fr-FR": "Vers DOCX",
+        "es-ES": "A DOCX",
+        "it-IT": "In DOCX",
+        "pl-PL": "Do DOCX",
+        "pt-PT": "Para DOCX",
+        "nl-NL": "Naar DOCX",
+        "cs-CZ": "Do DOCX",
+        "bg-BG": "Към DOCX"
+      }
+    },
+    "fbe.plugin.export_epub.menu": {
+      "resourceId": "RUNTIME_FBE_PLUGIN_EXPORT_EPUB_MENU",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "To EPUB",
+        "ru-RU": "в EPUB",
+        "uk-UA": "у EPUB",
+        "de-DE": "Nach EPUB",
+        "fr-FR": "Vers EPUB",
+        "es-ES": "A EPUB",
+        "it-IT": "In EPUB",
+        "pl-PL": "Do EPUB",
+        "pt-PT": "Para EPUB",
+        "nl-NL": "Naar EPUB",
+        "cs-CZ": "Do EPUB",
+        "bg-BG": "Към EPUB"
+      }
+    },
+    "fbe.plugin.export_html.menu": {
+      "resourceId": "RUNTIME_FBE_PLUGIN_EXPORT_HTML_MENU",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "To HTML",
+        "ru-RU": "в HTML",
+        "uk-UA": "у HTML",
+        "de-DE": "Nach HTML",
+        "fr-FR": "Vers HTML",
+        "es-ES": "A HTML",
+        "it-IT": "In HTML",
+        "pl-PL": "Do HTML",
+        "pt-PT": "Para HTML",
+        "nl-NL": "Naar HTML",
+        "cs-CZ": "Do HTML",
+        "bg-BG": "Към HTML"
+      }
+    },
+    "fbe.xml.parse.caption": {
+      "resourceId": "IDS_XML_PARSE_ERR_CPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "XML Parse Error",
+        "ru-RU": "Ошибка разбора XML",
+        "uk-UA": "Помилка розбору XML",
+        "de-DE": "XML-Analysefehler",
+        "fr-FR": "Erreur d’analyse XML",
+        "es-ES": "Error de análisis XML",
+        "it-IT": "Errore di analisi XML",
+        "pl-PL": "Błąd parsowania XML",
+        "pt-PT": "Erro de análise XML",
+        "nl-NL": "XML-parsefout",
+        "cs-CZ": "Chyba parsování XML",
+        "bg-BG": "Грешка при XML анализ"
+      }
+    },
+    "fbe.xml.parse.location": {
+      "resourceId": "IDS_XML_PARSE_ERR_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "At %s, line %d, column %d: %s",
+        "ru-RU": "%s, строка %d, столбец %d: %s",
+        "uk-UA": "%s, рядок %d, стовпець %d: %s",
+        "de-DE": "In %s, Zeile %d, Spalte %d: %s",
+        "fr-FR": "Dans %s, ligne %d, colonne %d : %s",
+        "es-ES": "En %s, línea %d, columna %d: %s",
+        "it-IT": "In %s, riga %d, colonna %d: %s",
+        "pl-PL": "W %s, wiersz %d, kolumna %d: %s",
+        "pt-PT": "Em %s, linha %d, coluna %d: %s",
+        "nl-NL": "In %s, regel %d, kolom %d: %s",
+        "cs-CZ": "V %s, řádek %d, sloupec %d: %s",
+        "bg-BG": "В %s, ред %d, колона %d: %s"
+      }
+    },
+    "fbe.xml.parse.quick": {
+      "resourceId": "IDS_XML_PARSE_ERRQ_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "At %s: %s",
+        "ru-RU": "%s: %s",
+        "uk-UA": "%s: %s",
+        "de-DE": "Bei %s: %s",
+        "fr-FR": "À %s : %s",
+        "es-ES": "En %s: %s",
+        "it-IT": "In %s: %s",
+        "pl-PL": "W %s: %s",
+        "pt-PT": "Em %s: %s",
+        "nl-NL": "Bij %s: %s",
+        "cs-CZ": "V %s: %s",
+        "bg-BG": "В %s: %s"
+      }
+    },
+    "fbe.replace.all.caption": {
+      "resourceId": "IDS_REPL_ALL_CAPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Replace All",
+        "ru-RU": "Заменить всё",
+        "uk-UA": "Замінити все",
+        "de-DE": "Alle ersetzen",
+        "fr-FR": "Tout remplacer",
+        "es-ES": "Reemplazar todo",
+        "it-IT": "Sostituisci tutto",
+        "pl-PL": "Zamień wszystko",
+        "pt-PT": "Substituir tudo",
+        "nl-NL": "Alles vervangen",
+        "cs-CZ": "Nahradit vše",
+        "bg-BG": "Замени всички"
+      }
+    },
+    "fbe.replace.done": {
+      "resourceId": "IDS_REPL_DONE_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "%d replacement(s) done.",
+        "ru-RU": "Выполнено замен: %d.",
+        "uk-UA": "Виконано замін: %d.",
+        "de-DE": "%d Ersetzung(en) durchgeführt.",
+        "fr-FR": "%d remplacement(s) effectué(s).",
+        "es-ES": "%d reemplazo(s) realizados.",
+        "it-IT": "%d sostituzione/i completate.",
+        "pl-PL": "Wykonano zamian: %d.",
+        "pt-PT": "%d substituição(ões) efetuada(s).",
+        "nl-NL": "%d vervanging(en) uitgevoerd.",
+        "cs-CZ": "Provedeno nahrazení: %d.",
+        "bg-BG": "Извършени замени: %d."
+      }
+    },
+    "fbe.search.fail": {
+      "resourceId": "IDS_SEARCH_FAIL_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cannot find the string '%s'.",
+        "ru-RU": "Строка \"%s\" не найдена.",
+        "uk-UA": "Рядок «%s» не знайдено.",
+        "de-DE": "Die Zeichenfolge „%s“ wurde nicht gefunden.",
+        "fr-FR": "Impossible de trouver la chaîne « %s ».",
+        "es-ES": "No se encuentra la cadena \"%s\".",
+        "it-IT": "Impossibile trovare la stringa \"%s\".",
+        "pl-PL": "Nie można znaleźć ciągu „%s”.",
+        "pt-PT": "Não foi possível encontrar a cadeia \"%s\".",
+        "nl-NL": "Kan de tekenreeks '%s' niet vinden.",
+        "cs-CZ": "Řetězec „%s“ nebyl nalezen.",
+        "bg-BG": "Низът „%s“ не е намерен."
+      }
+    },
+    "fbe.replace.words.caption": {
+      "resourceId": "IDS_REPL_WORDS_CPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Replace words",
+        "ru-RU": "Замена слов",
+        "uk-UA": "Заміна слів",
+        "de-DE": "Wörter ersetzen",
+        "fr-FR": "Remplacer les mots",
+        "es-ES": "Reemplazar palabras",
+        "it-IT": "Sostituisci parole",
+        "pl-PL": "Zamień słowa",
+        "pt-PT": "Substituir palavras",
+        "nl-NL": "Woorden vervangen",
+        "cs-CZ": "Nahradit slova",
+        "bg-BG": "Замяна на думи"
+      }
+    },
+    "fbe.replace.words.done": {
+      "resourceId": "IDS_REPL_WORDS_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "%d replacement(s) done",
+        "ru-RU": "Выполнено замен: %d",
+        "uk-UA": "Виконано замін: %d",
+        "de-DE": "%d Ersetzung(en) durchgeführt",
+        "fr-FR": "%d remplacement(s) effectué(s)",
+        "es-ES": "%d reemplazo(s) realizados",
+        "it-IT": "%d sostituzione/i completate",
+        "pl-PL": "Wykonano zamian: %d",
+        "pt-PT": "%d substituição(ões) efetuada(s)",
+        "nl-NL": "%d vervanging(en) uitgevoerd",
+        "cs-CZ": "Provedeno nahrazení: %d",
+        "bg-BG": "Извършени замени: %d"
+      }
+    },
+    "fbe.image.insert_clear.prompt": {
+      "resourceId": "IDS_ADD_CLEARIMG_TEXT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Insert clear image?",
+        "ru-RU": "Вставить прозрачное изображение?",
+        "uk-UA": "Вставити прозоре зображення?",
+        "de-DE": "Transparentes Bild einfügen?",
+        "fr-FR": "Insérer une image transparente ?",
+        "es-ES": "¿Insertar imagen transparente?",
+        "it-IT": "Inserire un’immagine trasparente?",
+        "pl-PL": "Wstawić przezroczysty obraz?",
+        "pt-PT": "Inserir imagem transparente?",
+        "nl-NL": "Transparante afbeelding invoegen?",
+        "cs-CZ": "Vložit průhledný obrázek?",
+        "bg-BG": "Да се вмъкне ли прозрачно изображение?"
+      }
+    },
+    "fbe.image.add.caption": {
+      "resourceId": "IDS_ADD_CLEARIMG_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Add image",
+        "ru-RU": "Добавить изображение",
+        "uk-UA": "Додати зображення",
+        "de-DE": "Bild hinzufügen",
+        "fr-FR": "Ajouter une image",
+        "es-ES": "Agregar imagen",
+        "it-IT": "Aggiungi immagine",
+        "pl-PL": "Dodaj obraz",
+        "pt-PT": "Adicionar imagem",
+        "nl-NL": "Afbeelding toevoegen",
+        "cs-CZ": "Přidat obrázek",
+        "bg-BG": "Добавяне на изображение"
+      }
+    },
+    "fbe.image.choose_file": {
+      "resourceId": "IDS_ADD_IMAGE_FILEDLG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Choose image to add:",
+        "ru-RU": "Выберите изображение для добавления:",
+        "uk-UA": "Виберіть зображення для додавання:",
+        "de-DE": "Bild zum Hinzufügen auswählen:",
+        "fr-FR": "Choisissez l’image à ajouter :",
+        "es-ES": "Elija la imagen para agregar:",
+        "it-IT": "Scegli l’immagine da aggiungere:",
+        "pl-PL": "Wybierz obraz do dodania:",
+        "pt-PT": "Escolha a imagem a adicionar:",
+        "nl-NL": "Kies afbeelding om toe te voegen:",
+        "cs-CZ": "Vyberte obrázek k přidání:",
+        "bg-BG": "Изберете изображение за добавяне:"
+      }
+    },
+    "fbe.binaries.choose_files": {
+      "resourceId": "IDS_ADD_BINARIES_FILEDLG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Choose binaries to add:",
+        "ru-RU": "Выберите файлы для добавления в binary:",
+        "uk-UA": "Виберіть файли для додавання в binary:",
+        "de-DE": "Binärdateien zum Hinzufügen auswählen:",
+        "fr-FR": "Choisissez les fichiers binaires à ajouter :",
+        "es-ES": "Elija los binarios para agregar:",
+        "it-IT": "Scegli i file binari da aggiungere:",
+        "pl-PL": "Wybierz pliki binarne do dodania:",
+        "pt-PT": "Escolha os binários a adicionar:",
+        "nl-NL": "Kies binaire bestanden om toe te voegen:",
+        "cs-CZ": "Vyberte binární soubory k přidání:",
+        "bg-BG": "Изберете binary файлове за добавяне:"
       }
     },
     "fbv.window.title": {
@@ -402,6 +3948,474 @@
         "nl-NL": "COM-fout: %x [%s]",
         "cs-CZ": "Chyba COM: %x [%s]",
         "bg-BG": "COM грешка: %x [%s]"
+      }
+    },
+    "fbe.hotkey.group.scripts": {
+      "resourceId": "IDS_HOTKEY_GROUP_SCRIPTS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Scripts",
+        "ru-RU": "Скрипты",
+        "uk-UA": "Скрипти",
+        "de-DE": "Skripte",
+        "fr-FR": "Scripts",
+        "es-ES": "Scripts",
+        "it-IT": "Script",
+        "pl-PL": "Skrypty",
+        "pt-PT": "Scripts",
+        "nl-NL": "Scripts",
+        "cs-CZ": "Skripty",
+        "bg-BG": "Скриптове"
+      }
+    },
+    "fbe.hotkey.scripts.last_script": {
+      "resourceId": "IDS_HOTKEY_SCRIPTS_LAST_SCRIPT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Last run",
+        "ru-RU": "Последний запущенный",
+        "uk-UA": "Останній запущений",
+        "de-DE": "Zuletzt ausgeführt",
+        "fr-FR": "Dernier exécuté",
+        "es-ES": "Último ejecutado",
+        "it-IT": "Ultimo eseguito",
+        "pl-PL": "Ostatnio uruchomiony",
+        "pt-PT": "Último executado",
+        "nl-NL": "Laatst uitgevoerd",
+        "cs-CZ": "Naposledy spuštěný",
+        "bg-BG": "Последно стартиран"
+      }
+    },
+    "fbe.settings.hotkeys.caption": {
+      "resourceId": "IDS_SETTINGS_HOTKEYS_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Hotkeys",
+        "ru-RU": "Клавиши",
+        "uk-UA": "Клавіші",
+        "de-DE": "Tastenkürzel",
+        "fr-FR": "Raccourcis clavier",
+        "es-ES": "Atajos de teclado",
+        "it-IT": "Tasti di scelta rapida",
+        "pl-PL": "Skróty klawiaturowe",
+        "pt-PT": "Atalhos de teclado",
+        "nl-NL": "Sneltoetsen",
+        "cs-CZ": "Klávesové zkratky",
+        "bg-BG": "Клавишни комбинации"
+      }
+    },
+    "fbe.hotkey.group.symbols": {
+      "resourceId": "IDS_HOTKEY_GROUP_SYMBOLS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Symbols",
+        "ru-RU": "Символы",
+        "uk-UA": "Символи",
+        "de-DE": "Symbole",
+        "fr-FR": "Symboles",
+        "es-ES": "Símbolos",
+        "it-IT": "Simboli",
+        "pl-PL": "Symbole",
+        "pt-PT": "Símbolos",
+        "nl-NL": "Symbolen",
+        "cs-CZ": "Symboly",
+        "bg-BG": "Символи"
+      }
+    },
+    "fbe.settings.words.caption": {
+      "resourceId": "IDS_SETTINGS_WORDS_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Words",
+        "ru-RU": "Слова",
+        "uk-UA": "Слова",
+        "de-DE": "Wörter",
+        "fr-FR": "Mots",
+        "es-ES": "Palabras",
+        "it-IT": "Parole",
+        "pl-PL": "Słowa",
+        "pt-PT": "Palavras",
+        "nl-NL": "Woorden",
+        "cs-CZ": "Slova",
+        "bg-BG": "Думи"
+      }
+    },
+    "fbe.settings.words.list.counted": {
+      "resourceId": "IDS_SETTINGS_WLIST_COUNTED",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Occurrences",
+        "ru-RU": "Встретилось",
+        "uk-UA": "Зустрілося",
+        "de-DE": "Vorkommen",
+        "fr-FR": "Occurrences",
+        "es-ES": "Apariciones",
+        "it-IT": "Occorrenze",
+        "pl-PL": "Wystąpienia",
+        "pt-PT": "Ocorrências",
+        "nl-NL": "Voorkomens",
+        "cs-CZ": "Výskyty",
+        "bg-BG": "Срещания"
+      }
+    },
+    "fbe.settings.words.list.word": {
+      "resourceId": "IDS_SETTINGS_WLIST_WORD",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Word",
+        "ru-RU": "Слово",
+        "uk-UA": "Слово",
+        "de-DE": "Wort",
+        "fr-FR": "Mot",
+        "es-ES": "Palabra",
+        "it-IT": "Parola",
+        "pl-PL": "Słowo",
+        "pt-PT": "Palavra",
+        "nl-NL": "Woord",
+        "cs-CZ": "Slovo",
+        "bg-BG": "Дума"
+      }
+    },
+    "fbe.settings.words.add_error.text": {
+      "resourceId": "IDS_SETTINGS_WORDS_ADD_ERR_TEXT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "This word is already in the list!",
+        "ru-RU": "Это слово уже есть в списке!",
+        "uk-UA": "Це слово вже є у списку!",
+        "de-DE": "Dieses Wort ist bereits in der Liste!",
+        "fr-FR": "Ce mot figure déjà dans la liste !",
+        "es-ES": "¡Esta palabra ya está en la lista!",
+        "it-IT": "Questa parola è già nell’elenco!",
+        "pl-PL": "To słowo jest już na liście!",
+        "pt-PT": "Esta palavra já está na lista!",
+        "nl-NL": "Dit woord staat al in de lijst!",
+        "cs-CZ": "Toto slovo už je v seznamu!",
+        "bg-BG": "Тази дума вече е в списъка!"
+      }
+    },
+    "fbe.settings.words.add_error.caption": {
+      "resourceId": "IDS_SETTINGS_WORDS_ADD_ERR_CAP",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Error adding word",
+        "ru-RU": "Ошибка добавления слова",
+        "uk-UA": "Помилка додавання слова",
+        "de-DE": "Fehler beim Hinzufügen des Wortes",
+        "fr-FR": "Erreur lors de l’ajout du mot",
+        "es-ES": "Error al añadir la palabra",
+        "it-IT": "Errore durante l’aggiunta della parola",
+        "pl-PL": "Błąd dodawania słowa",
+        "pt-PT": "Erro ao adicionar palavra",
+        "nl-NL": "Fout bij toevoegen van woord",
+        "cs-CZ": "Chyba při přidávání slova",
+        "bg-BG": "Грешка при добавяне на дума"
+      }
+    },
+    "fbe.settings.words.add_error.symbols": {
+      "resourceId": "IDS_SETTINGS_WORDS_ADD_ERR_SYM",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "New exceptions may contain only letters and a single \"-\" between them!",
+        "ru-RU": "Новые исключения могут содержать только буквенные символы и один \"-\" между ними!",
+        "uk-UA": "Нові виключення можуть містити лише літерні символи та один «-» між ними!",
+        "de-DE": "Neue Ausnahmen dürfen nur Buchstaben und ein einzelnes „-“ dazwischen enthalten!",
+        "fr-FR": "Les nouvelles exceptions ne peuvent contenir que des lettres et un seul « - » entre elles !",
+        "es-ES": "Las excepciones nuevas solo pueden contener letras y un único «-» entre ellas!",
+        "it-IT": "Le nuove eccezioni possono contenere solo lettere e un solo “-” tra esse!",
+        "pl-PL": "Nowe wyjątki mogą zawierać tylko litery i pojedynczy znak „-” między nimi!",
+        "pt-PT": "As novas exceções só podem conter letras e um único “-” entre elas!",
+        "nl-NL": "Nieuwe uitzonderingen mogen alleen letters en één enkel “-” ertussen bevatten!",
+        "cs-CZ": "Nové výjimky mohou obsahovat pouze písmena a jednu pomlčku „-“ mezi nimi!",
+        "bg-BG": "Новите изключения могат да съдържат само букви и един „-“ между тях!"
+      }
+    },
+    "fbe.words.list.word": {
+      "resourceId": "IDS_WORDS_WLIST_WORD",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Word",
+        "ru-RU": "Слово",
+        "uk-UA": "Слово",
+        "de-DE": "Wort",
+        "fr-FR": "Mot",
+        "es-ES": "Palabra",
+        "it-IT": "Parola",
+        "pl-PL": "Słowo",
+        "pt-PT": "Palavra",
+        "nl-NL": "Woord",
+        "cs-CZ": "Slovo",
+        "bg-BG": "Дума"
+      }
+    },
+    "fbe.words.list.replacement": {
+      "resourceId": "IDS_WORDS_WLIST_REPLACEMENT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Replacement",
+        "ru-RU": "Замена",
+        "uk-UA": "Заміна",
+        "de-DE": "Ersetzung",
+        "fr-FR": "Remplacement",
+        "es-ES": "Sustitución",
+        "it-IT": "Sostituzione",
+        "pl-PL": "Zamiana",
+        "pt-PT": "Substituição",
+        "nl-NL": "Vervanging",
+        "cs-CZ": "Náhrada",
+        "bg-BG": "Замяна"
+      }
+    },
+    "fbe.words.list.counted": {
+      "resourceId": "IDS_WORDS_WLIST_COUNTED",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Count",
+        "ru-RU": "Количество",
+        "uk-UA": "Кількість",
+        "de-DE": "Anzahl",
+        "fr-FR": "Nombre",
+        "es-ES": "Cantidad",
+        "it-IT": "Conteggio",
+        "pl-PL": "Liczba",
+        "pt-PT": "Quantidade",
+        "nl-NL": "Aantal",
+        "cs-CZ": "Počet",
+        "bg-BG": "Брой"
+      }
+    },
+    "fbe.words.find.button.find": {
+      "resourceId": "IDS_WORDS_FR_BTN_FIND0",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Find",
+        "ru-RU": "Найти",
+        "uk-UA": "Знайти",
+        "de-DE": "Suchen",
+        "fr-FR": "Rechercher",
+        "es-ES": "Buscar",
+        "it-IT": "Trova",
+        "pl-PL": "Znajdź",
+        "pt-PT": "Localizar",
+        "nl-NL": "Zoeken",
+        "cs-CZ": "Najít",
+        "bg-BG": "Намери"
+      }
+    },
+    "fbe.words.find.button.next": {
+      "resourceId": "IDS_WORDS_FR_BTN_FIND1",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Next",
+        "ru-RU": "Далее",
+        "uk-UA": "Далі",
+        "de-DE": "Weiter",
+        "fr-FR": "Suivant",
+        "es-ES": "Siguiente",
+        "it-IT": "Avanti",
+        "pl-PL": "Dalej",
+        "pt-PT": "Seguinte",
+        "nl-NL": "Volgende",
+        "cs-CZ": "Další",
+        "bg-BG": "Напред"
+      }
+    },
+    "fbe.context.cut": {
+      "resourceId": "IDS_CTXMENU_CUT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cut",
+        "ru-RU": "Вырезать",
+        "uk-UA": "Вирізати",
+        "de-DE": "Ausschneiden",
+        "fr-FR": "Couper",
+        "es-ES": "Cortar",
+        "it-IT": "Taglia",
+        "pl-PL": "Wytnij",
+        "pt-PT": "Cortar",
+        "nl-NL": "Knippen",
+        "cs-CZ": "Vyjmout",
+        "bg-BG": "Изрежи"
+      }
+    },
+    "fbe.language.system_default": {
+      "resourceId": "IDS_LANG_SYSTEM_DEFAULT",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "System default",
+        "ru-RU": "Определяется системой",
+        "uk-UA": "Визначається системою",
+        "de-DE": "Systemstandard",
+        "fr-FR": "Paramètre système",
+        "es-ES": "Predeterminado del sistema",
+        "it-IT": "Predefinito di sistema",
+        "pl-PL": "Domyślny systemowy",
+        "pt-PT": "Predefinição do sistema",
+        "nl-NL": "Systeemstandaard",
+        "cs-CZ": "Výchozí podle systému",
+        "bg-BG": "По подразбиране от системата"
+      }
+    },
+    "fbe.language.german": {
+      "resourceId": "IDS_LANG_GERMAN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "German",
+        "ru-RU": "Немецкий",
+        "uk-UA": "Німецька",
+        "de-DE": "Deutsch",
+        "fr-FR": "Allemand",
+        "es-ES": "Alemán",
+        "it-IT": "Tedesco",
+        "pl-PL": "Niemiecki",
+        "pt-PT": "Alemão",
+        "nl-NL": "Duits",
+        "cs-CZ": "Němčina",
+        "bg-BG": "Немски"
+      }
+    },
+    "fbe.language.french": {
+      "resourceId": "IDS_LANG_FRENCH",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "French",
+        "ru-RU": "Французский",
+        "uk-UA": "Французька",
+        "de-DE": "Französisch",
+        "fr-FR": "Français",
+        "es-ES": "Francés",
+        "it-IT": "Francese",
+        "pl-PL": "Francuski",
+        "pt-PT": "Francês",
+        "nl-NL": "Frans",
+        "cs-CZ": "Francouzština",
+        "bg-BG": "Френски"
+      }
+    },
+    "fbe.language.spanish": {
+      "resourceId": "IDS_LANG_SPANISH",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Spanish",
+        "ru-RU": "Испанский",
+        "uk-UA": "Іспанська",
+        "de-DE": "Spanisch",
+        "fr-FR": "Espagnol",
+        "es-ES": "Español",
+        "it-IT": "Spagnolo",
+        "pl-PL": "Hiszpański",
+        "pt-PT": "Espanhol",
+        "nl-NL": "Spaans",
+        "cs-CZ": "Španělština",
+        "bg-BG": "Испански"
+      }
+    },
+    "fbe.language.italian": {
+      "resourceId": "IDS_LANG_ITALIAN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Italian",
+        "ru-RU": "Итальянский",
+        "uk-UA": "Італійська",
+        "de-DE": "Italienisch",
+        "fr-FR": "Italien",
+        "es-ES": "Italiano",
+        "it-IT": "Italiano",
+        "pl-PL": "Włoski",
+        "pt-PT": "Italiano",
+        "nl-NL": "Italiaans",
+        "cs-CZ": "Italština",
+        "bg-BG": "Италиански"
+      }
+    },
+    "fbe.language.polish": {
+      "resourceId": "IDS_LANG_POLISH",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Polish",
+        "ru-RU": "Польский",
+        "uk-UA": "Польська",
+        "de-DE": "Polnisch",
+        "fr-FR": "Polonais",
+        "es-ES": "Polaco",
+        "it-IT": "Polacco",
+        "pl-PL": "Polski",
+        "pt-PT": "Polaco",
+        "nl-NL": "Pools",
+        "cs-CZ": "Polština",
+        "bg-BG": "Полски"
+      }
+    },
+    "fbe.language.portuguese": {
+      "resourceId": "IDS_LANG_PORTUGUESE",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Portuguese",
+        "ru-RU": "Португальский",
+        "uk-UA": "Португальська",
+        "de-DE": "Portugiesisch",
+        "fr-FR": "Portugais",
+        "es-ES": "Portugués",
+        "it-IT": "Portoghese",
+        "pl-PL": "Portugalski",
+        "pt-PT": "Português",
+        "nl-NL": "Portugees",
+        "cs-CZ": "Portugalština",
+        "bg-BG": "Португалски"
+      }
+    },
+    "fbe.language.dutch": {
+      "resourceId": "IDS_LANG_DUTCH",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Dutch",
+        "ru-RU": "Нидерландский",
+        "uk-UA": "Нідерландська",
+        "de-DE": "Niederländisch",
+        "fr-FR": "Néerlandais",
+        "es-ES": "Neerlandés",
+        "it-IT": "Olandese",
+        "pl-PL": "Niderlandzki",
+        "pt-PT": "Neerlandês",
+        "nl-NL": "Nederlands",
+        "cs-CZ": "Nizozemština",
+        "bg-BG": "Нидерландски"
+      }
+    },
+    "fbe.language.czech": {
+      "resourceId": "IDS_LANG_CZECH",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Czech",
+        "ru-RU": "Чешский",
+        "uk-UA": "Чеська",
+        "de-DE": "Tschechisch",
+        "fr-FR": "Tchèque",
+        "es-ES": "Checo",
+        "it-IT": "Ceco",
+        "pl-PL": "Czeski",
+        "pt-PT": "Checo",
+        "nl-NL": "Tsjechisch",
+        "cs-CZ": "Čeština",
+        "bg-BG": "Чешки"
+      }
+    },
+    "fbe.language.bulgarian": {
+      "resourceId": "IDS_LANG_BULGARIAN",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Bulgarian",
+        "ru-RU": "Болгарский",
+        "uk-UA": "Болгарська",
+        "de-DE": "Bulgarisch",
+        "fr-FR": "Bulgare",
+        "es-ES": "Búlgaro",
+        "it-IT": "Bulgaro",
+        "pl-PL": "Bułgarski",
+        "pt-PT": "Búlgaro",
+        "nl-NL": "Bulgaars",
+        "cs-CZ": "Bulharština",
+        "bg-BG": "Български"
       }
     }
   },

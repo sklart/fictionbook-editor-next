@@ -1,4 +1,4 @@
-﻿#include "FbeEpubExport.h"
+#include "FbeEpubExport.h"
 
 #include <algorithm>
 #include <array>
@@ -260,7 +260,7 @@ std::wstring NormalizeOpfDate(const std::wstring& value) {
     }
 
     if (IsAllDigits(s) && s.size() >= 4) {
-        // Last-resort fallback for strings such as "2026 год" after tokenizing.
+        // Last-resort fallback for localized year suffixes after tokenizing.
         return s.substr(0, 4);
     }
 
@@ -653,18 +653,19 @@ std::wstring BuildChapterXhtml(const EpubBook& book,
     return x.str();
 }
 
-std::wstring BuildCoverXhtml(const EpubBook& book, EpubVersion version) {
+std::wstring BuildCoverXhtml(const EpubBook& book, const EpubExportOptions& options) {
     const EpubResource* cover = FindResourceById(book, book.coverImageId);
     if (cover == nullptr) return {};
 
-    const bool isEpub3 = version == EpubVersion::Epub3;
+    const bool isEpub3 = options.version == EpubVersion::Epub3;
     const std::wstring lang = XmlEscape(EnsureLanguage(book));
     const std::wstring title = XmlEscape(EnsureTitle(book));
+    const std::wstring coverTitle = XmlEscape(options.labels.coverTitle.empty() ? L"Cover" : options.labels.coverTitle);
     const std::wstring src = XmlEscape(cover->href);
 
     std::wstringstream x;
     x << LR"(<?xml version="1.0" encoding="UTF-8"?>)" << L"\n";
-    if (version == EpubVersion::Epub2) {
+    if (options.version == EpubVersion::Epub2) {
         x << LR"(<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">)" << L"\n";
     } else {
         x << LR"(<!DOCTYPE html>)" << L"\n";
@@ -676,7 +677,7 @@ std::wstring BuildCoverXhtml(const EpubBook& book, EpubVersion version) {
     x << LR"X( xml:lang=")X" << lang << LR"X(" lang=")X" << lang << LR"X(">
 )X"
       << L"<head>\n"
-      << L"  <title>Обложка — " << title << L"</title>\n"
+      << L"  <title>" << coverTitle << L" — " << title << L"</title>\n"
       << LR"X(  <link rel="stylesheet" type="text/css" href="styles/style.css"/>
 )X"
       << L"</head>\n"
@@ -755,10 +756,11 @@ void WriteNavHtmlPoints(std::wstringstream& x,
     x << pad << L"</ol>\n";
 }
 
-std::wstring BuildNcx(const EpubBook& book, bool includeCoverPage, bool includeCoverInToc) {
+std::wstring BuildNcx(const EpubBook& book, const EpubExportOptions& options) {
     const std::wstring uid = XmlEscape(EnsureIdentifier(book));
     const std::wstring title = XmlEscape(EnsureTitle(book));
-    const bool hasCover = includeCoverPage && includeCoverInToc && HasCover(book);
+    const std::wstring coverTitle = XmlEscape(options.labels.coverTitle.empty() ? L"Cover" : options.labels.coverTitle);
+    const bool hasCover = options.includeCoverPage && options.includeCoverInToc && HasCover(book);
 
     std::wstringstream x;
     x << LR"(<?xml version="1.0" encoding="UTF-8"?>)" << L"\n"
@@ -766,7 +768,7 @@ std::wstring BuildNcx(const EpubBook& book, bool includeCoverPage, bool includeC
       << L"<head>\n"
       << LR"X(  <meta name="dtb:uid" content=")X" << uid << LR"X("/>
 )X"
-      << L"  <meta name=\"dtb:depth\" content=\"" << TocDepth(book, includeCoverPage) << L"\"/>\n"
+      << L"  <meta name=\"dtb:depth\" content=\"" << TocDepth(book, options.includeCoverPage) << L"\"/>\n"
       << LR"X(  <meta name="dtb:totalPageCount" content="0"/>
   <meta name="dtb:maxPageNumber" content="0"/>
 )X"
@@ -777,7 +779,7 @@ std::wstring BuildNcx(const EpubBook& book, bool includeCoverPage, bool includeC
     int playOrder = 1;
     if (hasCover) {
         x << LR"X(  <navPoint id="navPoint-cover" playOrder=")X" << playOrder++ << LR"X(">
-    <navLabel><text>Обложка</text></navLabel>
+    <navLabel><text>)X" << coverTitle << LR"X(</text></navLabel>
     <content src="cover.xhtml"/>
   </navPoint>
 )X";
@@ -808,10 +810,15 @@ int FirstChapterIndexByEpubType(const EpubBook& book, const std::wstring& epubTy
     return -1;
 }
 
-std::wstring BuildNavXhtml(const EpubBook& book, bool includeCoverPage, bool includeCoverInToc) {
+std::wstring BuildNavXhtml(const EpubBook& book, const EpubExportOptions& options) {
     const std::wstring lang = XmlEscape(EnsureLanguage(book));
     const std::wstring title = XmlEscape(EnsureTitle(book));
-    const bool hasCover = includeCoverPage && includeCoverInToc && HasCover(book);
+    const std::wstring coverTitle = XmlEscape(options.labels.coverTitle.empty() ? L"Cover" : options.labels.coverTitle);
+    const std::wstring navigationTitle = XmlEscape(options.labels.navigationTitle.empty() ? L"Navigation" : options.labels.navigationTitle);
+    const std::wstring annotationTitle = XmlEscape(options.labels.annotationTitle.empty() ? L"Annotation" : options.labels.annotationTitle);
+    const std::wstring bodyStartTitle = XmlEscape(options.labels.bodyStartTitle.empty() ? L"Start of text" : options.labels.bodyStartTitle);
+    const std::wstring notesTitle = XmlEscape(options.labels.notesTitle.empty() ? L"Notes" : options.labels.notesTitle);
+    const bool hasCover = options.includeCoverPage && options.includeCoverInToc && HasCover(book);
 
     std::wstringstream x;
     x << LR"(<?xml version="1.0" encoding="UTF-8"?>)" << L"\n"
@@ -828,7 +835,7 @@ std::wstring BuildNavXhtml(const EpubBook& book, bool includeCoverPage, bool inc
 )X";
 
     if (hasCover) {
-        x << LR"X(    <li><a href="cover.xhtml">Обложка</a></li>
+        x << LR"X(    <li><a href="cover.xhtml">)X" << coverTitle << LR"X(</a></li>
 )X";
     }
 
@@ -848,26 +855,26 @@ std::wstring BuildNavXhtml(const EpubBook& book, bool includeCoverPage, bool inc
     x << LR"X(  </ol>
 </nav>
 <nav epub:type="landmarks" id="landmarks">
-  <h2>Навигация</h2>
+  <h2>)X" << navigationTitle << LR"X(</h2>
   <ol>
 )X";
     if (hasCover) {
-        x << LR"X(    <li><a epub:type="cover" href="cover.xhtml">Обложка</a></li>
+        x << LR"X(    <li><a epub:type="cover" href="cover.xhtml">)X" << coverTitle << LR"X(</a></li>
 )X";
     }
     const int frontmatterIndex = FirstChapterIndexByEpubType(book, L"frontmatter");
     if (frontmatterIndex >= 0) {
-        x << LR"X(    <li><a epub:type="frontmatter" href=")X" << XmlEscape(ChapterFileName(static_cast<std::size_t>(frontmatterIndex))) << LR"X(">Аннотация</a></li>
+        x << LR"X(    <li><a epub:type="frontmatter" href=")X" << XmlEscape(ChapterFileName(static_cast<std::size_t>(frontmatterIndex))) << LR"X(">)X" << annotationTitle << LR"X(</a></li>
 )X";
     }
     const int bodymatterIndex = FirstChapterIndexByEpubType(book, L"bodymatter");
     if (bodymatterIndex >= 0) {
-        x << LR"X(    <li><a epub:type="bodymatter" href=")X" << XmlEscape(ChapterFileName(static_cast<std::size_t>(bodymatterIndex))) << LR"X(">Начало текста</a></li>
+        x << LR"X(    <li><a epub:type="bodymatter" href=")X" << XmlEscape(ChapterFileName(static_cast<std::size_t>(bodymatterIndex))) << LR"X(">)X" << bodyStartTitle << LR"X(</a></li>
 )X";
     }
     const int endnotesIndex = FirstChapterIndexByEpubType(book, L"endnotes");
     if (endnotesIndex >= 0) {
-        x << LR"X(    <li><a epub:type="endnotes" href=")X" << XmlEscape(ChapterFileName(static_cast<std::size_t>(endnotesIndex))) << LR"X(">Примечания</a></li>
+        x << LR"X(    <li><a epub:type="endnotes" href=")X" << XmlEscape(ChapterFileName(static_cast<std::size_t>(endnotesIndex))) << LR"X(">)X" << notesTitle << LR"X(</a></li>
 )X";
     }
     x << LR"X(  </ol>
@@ -1067,7 +1074,7 @@ std::wstring BuildOpf(const EpubBook& book, const EpubExportOptions& options) {
     if (!isEpub3 && !book.chapters.empty()) {
         x << L"<guide>\n";
         if (hasCoverPage) {
-            x << L"  <reference type=\"cover\" title=\"Обложка\" href=\"cover.xhtml\"/>\n";
+            x << L"  <reference type=\"cover\" title=\"" << XmlEscape(options.labels.coverTitle.empty() ? L"Cover" : options.labels.coverTitle) << L"\" href=\"cover.xhtml\"/>\n";
         }
         x << L"  <reference type=\"text\" title=\"Start\" href=\"" << XmlEscape(ChapterFileName(0)) << L"\"/>\n"
           << L"</guide>\n";
@@ -1208,16 +1215,16 @@ bool EpubExporter::Export(const EpubBook& book,
     if (!zip.AddFile(insideRoot(L"content.opf"), Bytes(Utf8FromWide(BuildOpf(book, options))), errorMessage)) return false;
 
     if (options.includeCoverPage && HasCover(book)) {
-        if (!zip.AddFile(insideRoot(L"cover.xhtml"), Bytes(Utf8FromWide(BuildCoverXhtml(book, options.version))), errorMessage)) return false;
+        if (!zip.AddFile(insideRoot(L"cover.xhtml"), Bytes(Utf8FromWide(BuildCoverXhtml(book, options))), errorMessage)) return false;
     }
 
     if (options.version == EpubVersion::Epub3) {
-        if (!zip.AddFile(insideRoot(L"nav.xhtml"), Bytes(Utf8FromWide(BuildNavXhtml(book, options.includeCoverPage, options.includeCoverInToc))), errorMessage)) return false;
+        if (!zip.AddFile(insideRoot(L"nav.xhtml"), Bytes(Utf8FromWide(BuildNavXhtml(book, options))), errorMessage)) return false;
         if (options.includeNcxFallbackInEpub3) {
-            if (!zip.AddFile(insideRoot(L"toc.ncx"), Bytes(Utf8FromWide(BuildNcx(book, options.includeCoverPage, options.includeCoverInToc))), errorMessage)) return false;
+            if (!zip.AddFile(insideRoot(L"toc.ncx"), Bytes(Utf8FromWide(BuildNcx(book, options))), errorMessage)) return false;
         }
     } else {
-        if (!zip.AddFile(insideRoot(L"toc.ncx"), Bytes(Utf8FromWide(BuildNcx(book, options.includeCoverPage, options.includeCoverInToc))), errorMessage)) return false;
+        if (!zip.AddFile(insideRoot(L"toc.ncx"), Bytes(Utf8FromWide(BuildNcx(book, options))), errorMessage)) return false;
     }
 
     for (std::size_t i = 0; i < book.chapters.size(); ++i) {

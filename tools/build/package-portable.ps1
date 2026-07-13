@@ -1,3 +1,4 @@
+# Собирает portable-каталог FictionBook Editor Next из runtime-файлов, бинарников сборки и вспомогательных ресурсов.
 [CmdletBinding()]
 param(
     [string]$Configuration = "Release",
@@ -24,6 +25,11 @@ if (Test-Path -LiteralPath $stageDir) {
 
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "runtime\*") -Destination $stageDir -Recurse -Force
+
+& (Join-Path $repoRoot "tools\localization\export-runtime-lang.ps1") `
+    -RepositoryRoot $repoRoot `
+    -OutputDirectory (Join-Path $stageDir "Lang") `
+    -Clean
 
 foreach ($name in @("FBE.exe", "FBV.exe", "FBVVerbResources.dll", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "res_rus.dll", "res_ukr.dll")) {
     Copy-Item -LiteralPath (Join-Path $sourceDir $name) -Destination (Join-Path $stageDir $name) -Force
@@ -75,7 +81,10 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "tools\build\register-modern-propert
 Copy-Item -LiteralPath (Join-Path $repoRoot "tools\build\unregister-modern-property-handler.ps1") `
     -Destination (Join-Path $installerToolsDir "unregister-modern-property-handler.ps1") -Force
 
+& (Join-Path $repoRoot "tools\tests\test-runtime-lang-package.ps1") -PackageDirectory $stageDir
+
 Write-Host "Portable-пакет подготовлен в $stageDir"
+
 
 
 

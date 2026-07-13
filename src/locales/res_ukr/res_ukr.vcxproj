@@ -126,8 +126,8 @@
     <None Include="res\document.bmp" />
     <None Include="res\error.bmp" />
     <None Include="res\Fb2-shema.bmp" />
-    <None Include="res\FBE_new.ico" />
-    <None Include="res\FBE2_new.ico" />
+    <None Include="res\FBE.ico" />
+    <None Include="res\FBE2.ico" />
     <None Include="res\green.bmp" />
     <None Include="res\html.bmp" />
     <None Include="res\Icon_02.bmp" />
@@ -159,12 +159,10 @@
     <None Include="res\other.bmp" />
     <None Include="res\prc.bmp" />
     <None Include="res\Scripts.bmp" />
-    <None Include="res\Strikthr.bmp" />
     <None Include="res\struct.bmp" />
     <None Include="res\text.bmp" />
     <None Include="res\Toolbar.bmp" />
     <None Include="res\Toolbar_small.bmp" />
-    <None Include="res\toolimg.bmp" />
     <None Include="res\update.bmp" />
     <None Include="res\wordstat.bmp" />
     <None Include="res\xml.bmp" />

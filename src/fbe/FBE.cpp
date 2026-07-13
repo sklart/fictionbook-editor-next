@@ -22,6 +22,7 @@
 #include "MemProtocol.h"
 #include "CrashHandler.h"
 #include "StartupTrace.h"
+#include "RuntimeLocalization.h"
 
 // typelib interfaces
 #include "FBE.h"
@@ -169,6 +170,8 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 	ATL::_AtlBaseModule.SetResourceInstance(resLib);
 	else
 	ATL::_AtlBaseModule.SetResourceInstance(ATL::_AtlBaseModule.GetModuleInstance());
+
+	FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());
 
 	HookSysDialogs();
 

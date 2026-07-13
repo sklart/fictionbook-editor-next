@@ -2,6 +2,7 @@
 #include "ExportEPUBPlugin.h"
 
 #include "FbeEpubExport.h"
+#include "RuntimeLocalization.h"
 
 #include <Shlwapi.h>
 #include <Shellapi.h>
@@ -20,15 +21,13 @@ const wchar_t* XLINK_NS = L"http://www.w3.org/1999/xlink";
 
 void ShowError(HWND owner, const CString& message)
 {
-    CString title;
-    title.LoadString(IDS_ERROR_TITLE);
+    CString title(LoadExportEpubString(IDS_ERROR_TITLE, L"EPUB export"));
     MessageBox(owner, message, title, MB_ICONERROR | MB_OK);
 }
 
 void ShowExportError(HWND owner, const std::wstring& error)
 {
-    CString fmt;
-    fmt.LoadString(IDS_ERROR_EXPORT_FAILED);
+    CString fmt(LoadExportEpubString(IDS_ERROR_EXPORT_FAILED, L"EPUB export failed: %s"));
     CString msg;
     msg.Format(fmt, error.empty() ? L"Unknown error" : error.c_str());
     ShowError(owner, msg);
@@ -2065,6 +2064,8 @@ std::wstring BodyTitle(IXMLDOMNodePtr body)
     return title;
 }
 
+CString LoadResourceString(UINT stringId, LPCWSTR fallback);
+
 bool IsNotesBodyName(const std::wstring& name)
 {
     return name == L"notes" || name == L"comments";
@@ -2072,12 +2073,12 @@ bool IsNotesBodyName(const std::wstring& name)
 
 std::wstring DefaultBodyTitle(const std::wstring& name, const std::wstring& bookTitle, size_t bodyIndex)
 {
-    if (name == L"notes") return L"Примечания";
-    if (name == L"comments") return L"Комментарии";
+    if (name == L"notes") return static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_BODY_NOTES_TITLE, L"Notes"));
+    if (name == L"comments") return static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_BODY_COMMENTS_TITLE, L"Comments"));
     if (!bookTitle.empty()) return bookTitle;
 
     std::wstringstream ss;
-    ss << L"Текст " << (bodyIndex + 1);
+    ss << static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_BODY_TEXT_PREFIX, L"Text ")) << (bodyIndex + 1);
     return ss.str();
 }
 
@@ -2118,7 +2119,7 @@ void AddBodyChapters(IXMLDOMNodePtr body,
             plan.title = SectionNavTitle(section);
             if (plan.title.empty()) {
                 std::wstringstream ss;
-                ss << L"Глава " << (plans.size() + 1);
+                ss << static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_CHAPTER_PREFIX, L"Chapter ")) << (plans.size() + 1);
                 plan.title = ss.str();
             }
             plan.id = IdFromIndex(L"chap", plans.size() + 1);
@@ -2149,7 +2150,7 @@ void AddAnnotationChapter(IXMLDOMDocument2Ptr doc, std::vector<ChapterPlan>& pla
 
     ChapterPlan plan;
     plan.node.Attach(annotation.Detach());
-    plan.title = L"Аннотация";
+    plan.title = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_ANNOTATION_TITLE, L"Annotation"));
     plan.id = L"annotation";
     plan.fileName = ChapterFileNameForIndex(plans.size());
     plan.epubType = L"frontmatter";
@@ -2509,6 +2510,7 @@ CString DefaultOutputFileName(BSTR filename, IXMLDOMDocument2Ptr source, HWND ow
 
 struct ExportPluginSettings;
 bool AskExportOptions(HWND owner, ExportPluginSettings& settings, fbe::epub::EpubVersion version);
+void SetDlgItemString(HWND dialog, int controlId, UINT stringId);
 
 fbe::epub::EpubVersion VersionFromFilterIndex(DWORD filterIndex)
 {
@@ -2541,6 +2543,7 @@ UINT_PTR CALLBACK SaveDialogHookProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         auto* ofn = reinterpret_cast<OPENFILENAME*>(lParam);
         auto* initCtx = ofn ? reinterpret_cast<SaveDialogContext*>(ofn->lCustData) : nullptr;
         SetWindowLongPtr(hwnd, DWLP_USER, reinterpret_cast<LONG_PTR>(initCtx));
+        SetDlgItemString(hwnd, IDC_BUTTON_EXPORT_OPTIONS, IDS_SAVE_DIALOG_BUTTON_EXPORT_OPTIONS);
 
         if (initCtx != nullptr && ofn != nullptr) {
             initCtx->currentVersion = VersionFromFilterIndex(ofn->nFilterIndex);
@@ -2567,7 +2570,7 @@ UINT_PTR CALLBACK SaveDialogHookProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 // when the user explicitly presses the extra button. Some common-dialog
                 // implementations reset the standard IDOK button text to "OK" after a
                 // nested modal dialog; save and restore the original localized caption
-                // (usually "Сохранить").
+                // (usually the localized Save button label).
                 wchar_t okText[128] = {};
                 HWND okButton = GetDlgItem(parent, IDOK);
                 if (okButton != nullptr && GetWindowTextW(okButton, okText, static_cast<int>(_countof(okText))) > 0) {
@@ -2592,8 +2595,7 @@ bool AskOutputFile(HWND owner,
                    CString& outPath,
                    fbe::epub::EpubVersion& version)
 {
-    CString filter;
-    filter.LoadString(IDS_SAVE_FILE_FILTER);
+    CString filter(LoadExportEpubString(IDS_SAVE_FILE_FILTER, L"EPUB files (*.epub)|*.epub|All files (*.*)|*.*|"));
     filter.Replace(L'|', L'\0');
 
     CString proposed = DefaultOutputFileName(filename, source, owner);
@@ -2827,6 +2829,103 @@ void AddTooltip(HWND tooltip, HWND dialog, int controlId, const wchar_t* text)
     SendMessageW(tooltip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&ti));
 }
 
+void AddTooltipString(HWND tooltip, HWND dialog, int controlId, UINT stringId, std::vector<CString>& tooltipText)
+{
+    CString text(LoadExportEpubString(stringId));
+    if (text.IsEmpty()) {
+        return;
+    }
+
+    tooltipText.push_back(text);
+    AddTooltip(tooltip, dialog, controlId, tooltipText.back().GetString());
+}
+
+void SetDlgItemString(HWND dialog, int controlId, UINT stringId)
+{
+    CString text(LoadExportEpubString(stringId));
+    if (!text.IsEmpty()) {
+        SetDlgItemTextW(dialog, controlId, text.GetString());
+    }
+}
+
+CString LoadResourceString(UINT stringId, LPCWSTR fallback)
+{
+    return CString(LoadExportEpubString(stringId, fallback));
+}
+
+std::wstring FormatString1(UINT stringId, LPCWSTR fallback, const std::wstring& a)
+{
+    CString text;
+    text.Format(LoadResourceString(stringId, fallback), a.c_str());
+    return static_cast<LPCWSTR>(text);
+}
+
+std::wstring FormatString2(UINT stringId, LPCWSTR fallback, const std::wstring& a, const std::wstring& b)
+{
+    CString text;
+    text.Format(LoadResourceString(stringId, fallback), a.c_str(), b.c_str());
+    return static_cast<LPCWSTR>(text);
+}
+
+std::wstring FormatString3(UINT stringId, LPCWSTR fallback, const std::wstring& a, const std::wstring& b, const std::wstring& c)
+{
+    CString text;
+    text.Format(LoadResourceString(stringId, fallback), a.c_str(), b.c_str(), c.c_str());
+    return static_cast<LPCWSTR>(text);
+}
+
+std::wstring FormatStringUInt(UINT stringId, LPCWSTR fallback, unsigned int value)
+{
+    CString text;
+    text.Format(LoadResourceString(stringId, fallback), value);
+    return static_cast<LPCWSTR>(text);
+}
+
+std::wstring FormatStringTextUInt(UINT stringId, LPCWSTR fallback, const std::wstring& a, unsigned int value)
+{
+    CString text;
+    text.Format(LoadResourceString(stringId, fallback), a.c_str(), value);
+    return static_cast<LPCWSTR>(text);
+}
+
+void ApplyExportOptionsDialogText(HWND hwnd)
+{
+    SetDlgItemString(hwnd, IDC_STATIC_OPTIONS_GENERAL, IDS_OPTIONS_SECTION_GENERAL);
+    SetDlgItemString(hwnd, IDC_CHECK_NCX_FALLBACK, IDS_OPTIONS_CHECK_NCX_FALLBACK);
+    SetDlgItemString(hwnd, IDC_CHECK_COVER_PAGE, IDS_OPTIONS_CHECK_COVER_PAGE);
+    SetDlgItemString(hwnd, IDC_CHECK_ANNOTATION_PAGE, IDS_OPTIONS_CHECK_ANNOTATION_PAGE);
+    SetDlgItemString(hwnd, IDC_CHECK_TITLE_PAGE, IDS_OPTIONS_CHECK_TITLE_PAGE);
+    SetDlgItemString(hwnd, IDC_CHECK_WRITE_LOG, IDS_OPTIONS_CHECK_WRITE_LOG);
+    SetDlgItemString(hwnd, IDC_CHECK_SHOW_SUMMARY, IDS_OPTIONS_CHECK_SHOW_SUMMARY);
+    SetDlgItemString(hwnd, IDC_CHECK_OPEN_FILE_AFTER_EXPORT, IDS_OPTIONS_CHECK_OPEN_FILE_AFTER_EXPORT);
+    SetDlgItemString(hwnd, IDC_CHECK_OPEN_FOLDER_AFTER_EXPORT, IDS_OPTIONS_CHECK_OPEN_FOLDER_AFTER_EXPORT);
+    SetDlgItemString(hwnd, IDC_CHECK_SHOW_PREFLIGHT, IDS_OPTIONS_CHECK_SHOW_PREFLIGHT);
+    SetDlgItemString(hwnd, IDC_STATIC_OPTIONS_CSS, IDS_OPTIONS_SECTION_CSS);
+    SetDlgItemString(hwnd, IDC_CHECK_CSS_JUSTIFY, IDS_OPTIONS_CHECK_CSS_JUSTIFY);
+    SetDlgItemString(hwnd, IDC_CHECK_CSS_FIRST_INDENT, IDS_OPTIONS_CHECK_CSS_FIRST_INDENT);
+    SetDlgItemString(hwnd, IDC_CHECK_CSS_HYPHENATE, IDS_OPTIONS_CHECK_CSS_HYPHENATE);
+    SetDlgItemString(hwnd, IDC_STATIC_OPTIONS_NAVIGATION, IDS_OPTIONS_SECTION_NAVIGATION);
+    SetDlgItemString(hwnd, IDC_CHECK_TOC_COVER, IDS_OPTIONS_CHECK_TOC_COVER);
+    SetDlgItemString(hwnd, IDC_CHECK_TOC_ANNOTATION, IDS_OPTIONS_CHECK_TOC_ANNOTATION);
+    SetDlgItemString(hwnd, IDC_CHECK_TOC_NOTES, IDS_OPTIONS_CHECK_TOC_NOTES);
+    SetDlgItemString(hwnd, IDC_CHECK_NOTE_BACKLINKS, IDS_OPTIONS_CHECK_NOTE_BACKLINKS);
+    SetDlgItemString(hwnd, IDC_STATIC_MAX_TOC_DEPTH, IDS_OPTIONS_LABEL_MAX_TOC_DEPTH);
+    SetDlgItemString(hwnd, IDC_STATIC_MAX_XHTML_KB, IDS_OPTIONS_LABEL_MAX_XHTML_KB);
+    SetDlgItemString(hwnd, IDC_STATIC_OPTIONS_IMAGES, IDS_OPTIONS_SECTION_IMAGES);
+    SetDlgItemString(hwnd, IDC_CHECK_COVER_FIRST_IMAGE, IDS_OPTIONS_CHECK_COVER_FIRST_IMAGE);
+    SetDlgItemString(hwnd, IDC_CHECK_REMOVE_UNUSED_IMAGES, IDS_OPTIONS_CHECK_REMOVE_UNUSED_IMAGES);
+    SetDlgItemString(hwnd, IDC_STATIC_OPTIONS_PRESETS, IDS_OPTIONS_SECTION_PRESETS);
+    SetDlgItemString(hwnd, IDC_BUTTON_PRESET_DEFAULT, IDS_OPTIONS_BUTTON_PRESET_DEFAULT);
+    SetDlgItemString(hwnd, IDC_BUTTON_PRESET_COMPAT, IDS_OPTIONS_BUTTON_PRESET_COMPAT);
+    SetDlgItemString(hwnd, IDC_BUTTON_PRESET_RICH, IDS_OPTIONS_BUTTON_PRESET_RICH);
+    SetDlgItemString(hwnd, IDCANCEL, IDS_OPTIONS_BUTTON_CANCEL);
+
+    CString title(LoadExportEpubString(IDS_OPTIONS_DIALOG_TITLE));
+    if (!title.IsEmpty()) {
+        SetWindowTextW(hwnd, title.GetString());
+    }
+}
+
 void InstallExportOptionsTooltips(HWND hwnd)
 {
     INITCOMMONCONTROLSEX icc = {};
@@ -2854,56 +2953,35 @@ void InstallExportOptionsTooltips(HWND hwnd)
     SendMessageW(tooltip, TTM_SETDELAYTIME, TTDT_INITIAL, MAKELPARAM(350, 0));
     SetPropW(hwnd, L"ExportEPUB.OptionsTooltip", tooltip);
 
-    AddTooltip(tooltip, hwnd, IDC_CHECK_NCX_FALLBACK,
-               L"Для EPUB 3 дополнительно создаёт toc.ncx. Это повышает совместимость со старыми читалками. Для EPUB 2 NCX создаётся всегда, независимо от этой настройки.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_COVER_PAGE,
-               L"Создаёт отдельную XHTML-страницу с обложкой и добавляет её в порядок чтения/навигацию согласно выбранным настройкам.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_ANNOTATION_PAGE,
-               L"Переносит FB2 annotation на отдельную XHTML-страницу frontmatter. Если выключено, аннотация остаётся только в метаданных EPUB.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_TITLE_PAGE,
-               L"Добавляет в начало первой текстовой главы титульный блок с названием, авторами, серией, издателем, датой, ISBN и краткой аннотацией. Не меняет ссылки и структуру файлов EPUB.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_WRITE_LOG,
-               L"Создаёт рядом с EPUB диагностический .log с параметрами экспорта, списком глав и ресурсов. По умолчанию выключено.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_SHOW_SUMMARY,
-               L"После успешного экспорта показывает итоговое окно со статистикой, предупреждениями и кнопками открытия файла/папки.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_OPEN_FILE_AFTER_EXPORT,
-               L"Автоматически открывает созданный EPUB программой, назначенной в Windows для файлов .epub.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_OPEN_FOLDER_AFTER_EXPORT,
-               L"Автоматически открывает Проводник с выделением созданного EPUB-файла.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_SHOW_PREFLIGHT,
-               L"Показывает предупреждения встроенной проверки: битые ссылки, дубли id, отсутствующие картинки, слишком большие XHTML и другие проблемы структуры.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_CSS_JUSTIFY,
-               L"Добавляет в CSS выравнивание основного текста по ширине. Отображение зависит от конкретной EPUB-читалки.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_CSS_FIRST_INDENT,
-               L"Добавляет в CSS отступ первой строки для обычных абзацев. Исходный текст FB2 не изменяется.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_CSS_HYPHENATE,
-               L"Разрешает переносы слов через CSS hyphens:auto. Поддержка зависит от EPUB-читалки и языка книги.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_TOC_COVER,
-               L"Добавляет страницу обложки в оглавление nav.xhtml/toc.ncx, если страница обложки создаётся.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_TOC_ANNOTATION,
-               L"Добавляет страницу аннотации в оглавление nav.xhtml/toc.ncx, если страница аннотации создаётся.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_TOC_NOTES,
-               L"Добавляет главы с примечаниями и комментариями в оглавление EPUB.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_NOTE_BACKLINKS,
-               L"Добавляет в примечания обратные ссылки ↩ к месту вызова сноски в основном тексте.");
-    AddTooltip(tooltip, hwnd, IDC_STATIC_MAX_TOC_DEPTH,
-               L"Максимальная глубина вложенных FB2 section, попадающая в оглавление. Допустимый диапазон: 1–12.");
-    AddTooltip(tooltip, hwnd, IDC_EDIT_MAX_TOC_DEPTH,
-               L"Максимальная глубина вложенных FB2 section, попадающая в оглавление. Допустимый диапазон: 1–12.");
-    AddTooltip(tooltip, hwnd, IDC_STATIC_MAX_XHTML_KB,
-               L"Порог размера XHTML-главы в КБ. Если сгенерированный chapter_*.xhtml больше этого значения, встроенная проверка выдаст предупреждение.");
-    AddTooltip(tooltip, hwnd, IDC_EDIT_MAX_XHTML_KB,
-               L"Порог размера XHTML-главы в КБ. Допустимый диапазон: 64–8192 КБ. Это только предупреждение, файл не обрезается.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_COVER_FIRST_IMAGE,
-               L"Если в FB2 нет coverpage, первая найденная binary-картинка будет использована как обложка EPUB.");
-    AddTooltip(tooltip, hwnd, IDC_CHECK_REMOVE_UNUSED_IMAGES,
-               L"Не включает в EPUB binary-изображения, на которые нет ссылок из текста, обложки или аннотации. Уменьшает размер файла.");
-    AddTooltip(tooltip, hwnd, IDC_BUTTON_PRESET_DEFAULT,
-               L"Возвращает рекомендуемые настройки по умолчанию для обычного экспорта FB2 в EPUB.");
-    AddTooltip(tooltip, hwnd, IDC_BUTTON_PRESET_COMPAT,
-               L"Включает более консервативный набор параметров для старых и капризных читалок: проще CSS, меньше глубина оглавления, NCX fallback для EPUB 3.");
-    AddTooltip(tooltip, hwnd, IDC_BUTTON_PRESET_RICH,
-               L"Включает более подробную структуру EPUB: глубокое оглавление, предупреждения, итоговое окно и удаление неиспользуемых изображений.");
+    std::vector<CString>* tooltipText = new std::vector<CString>();
+    tooltipText->reserve(32);
+    SetPropW(hwnd, L"ExportEPUB.OptionsTooltipText", tooltipText);
+
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_NCX_FALLBACK, IDS_TOOLTIP_NCX_FALLBACK, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_COVER_PAGE, IDS_TOOLTIP_COVER_PAGE, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_ANNOTATION_PAGE, IDS_TOOLTIP_ANNOTATION_PAGE, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_TITLE_PAGE, IDS_TOOLTIP_TITLE_PAGE, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_WRITE_LOG, IDS_TOOLTIP_WRITE_LOG, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_SHOW_SUMMARY, IDS_TOOLTIP_SHOW_SUMMARY, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_OPEN_FILE_AFTER_EXPORT, IDS_TOOLTIP_OPEN_FILE_AFTER_EXPORT, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_OPEN_FOLDER_AFTER_EXPORT, IDS_TOOLTIP_OPEN_FOLDER_AFTER_EXPORT, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_SHOW_PREFLIGHT, IDS_TOOLTIP_SHOW_PREFLIGHT, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_CSS_JUSTIFY, IDS_TOOLTIP_CSS_JUSTIFY, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_CSS_FIRST_INDENT, IDS_TOOLTIP_CSS_FIRST_INDENT, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_CSS_HYPHENATE, IDS_TOOLTIP_CSS_HYPHENATE, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_TOC_COVER, IDS_TOOLTIP_TOC_COVER, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_TOC_ANNOTATION, IDS_TOOLTIP_TOC_ANNOTATION, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_TOC_NOTES, IDS_TOOLTIP_TOC_NOTES, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_NOTE_BACKLINKS, IDS_TOOLTIP_NOTE_BACKLINKS, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_STATIC_MAX_TOC_DEPTH, IDS_TOOLTIP_MAX_TOC_DEPTH, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_EDIT_MAX_TOC_DEPTH, IDS_TOOLTIP_MAX_TOC_DEPTH, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_STATIC_MAX_XHTML_KB, IDS_TOOLTIP_MAX_XHTML_KB, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_EDIT_MAX_XHTML_KB, IDS_TOOLTIP_MAX_XHTML_KB, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_COVER_FIRST_IMAGE, IDS_TOOLTIP_COVER_FIRST_IMAGE, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_CHECK_REMOVE_UNUSED_IMAGES, IDS_TOOLTIP_REMOVE_UNUSED_IMAGES, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_BUTTON_PRESET_DEFAULT, IDS_TOOLTIP_PRESET_DEFAULT, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_BUTTON_PRESET_COMPAT, IDS_TOOLTIP_PRESET_COMPAT, *tooltipText);
+    AddTooltipString(tooltip, hwnd, IDC_BUTTON_PRESET_RICH, IDS_TOOLTIP_PRESET_RICH, *tooltipText);
 }
 
 void DestroyExportOptionsTooltips(HWND hwnd)
@@ -2912,6 +2990,13 @@ void DestroyExportOptionsTooltips(HWND hwnd)
     if (tooltip != nullptr) {
         RemovePropW(hwnd, L"ExportEPUB.OptionsTooltip");
         DestroyWindow(tooltip);
+    }
+
+    std::vector<CString>* tooltipText =
+        reinterpret_cast<std::vector<CString>*>(GetPropW(hwnd, L"ExportEPUB.OptionsTooltipText"));
+    if (tooltipText != nullptr) {
+        RemovePropW(hwnd, L"ExportEPUB.OptionsTooltipText");
+        delete tooltipText;
     }
 }
 
@@ -2979,6 +3064,7 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(ctx));
         settings = ctx ? ctx->settings : nullptr;
 
+        ApplyExportOptionsDialogText(hwnd);
         if (settings != nullptr) {
             FillExportOptionsDialog(hwnd, *settings);
         }
@@ -3216,15 +3302,22 @@ PreflightResult RunPreflight(const fbe::epub::EpubBook& book, const ExportPlugin
         for (const auto& id : ids) {
             auto inserted = fragmentOwner.try_emplace(id, chapter.title);
             if (!inserted.second) {
-                result.warnings.emplace_back(L"Повторяющийся XHTML id: " + id + L" (главы: " + inserted.first->second + L", " + chapter.title + L")");
+                result.warnings.emplace_back(FormatString3(
+                    IDS_PREFLIGHT_WARNING_DUP_XHTML_ID,
+                    L"Duplicate XHTML id: %s (chapters: %s, %s)",
+                    id,
+                    inserted.first->second,
+                    chapter.title));
             }
         }
 
         const std::size_t kb = fbe::epub::Utf8FromWide(chapter.bodyXhtml).size() / 1024;
         if (settings.warnLargeXhtmlKb > 0 && kb > settings.warnLargeXhtmlKb) {
-            std::wstringstream w;
-            w << L"Большой XHTML-фрагмент: " << chapter.title << L" — около " << kb << L" КБ";
-            result.warnings.emplace_back(w.str());
+            result.warnings.emplace_back(FormatStringTextUInt(
+                IDS_PREFLIGHT_WARNING_LARGE_XHTML,
+                L"Large XHTML fragment: %s - about %u KB",
+                chapter.title,
+                static_cast<unsigned int>(kb)));
         }
     }
 
@@ -3239,7 +3332,10 @@ PreflightResult RunPreflight(const fbe::epub::EpubBook& book, const ExportPlugin
             if (hash != std::wstring::npos) {
                 const std::wstring id = href.substr(hash + 1);
                 if (!id.empty() && fragmentOwner.find(id) == fragmentOwner.end()) {
-                    result.warnings.emplace_back(L"Ссылка указывает на отсутствующий фрагмент: " + href);
+                    result.warnings.emplace_back(FormatString1(
+                        IDS_PREFLIGHT_WARNING_MISSING_FRAGMENT,
+                        L"Link points to a missing fragment: %s",
+                        href));
                 }
             }
         }
@@ -3249,15 +3345,25 @@ PreflightResult RunPreflight(const fbe::epub::EpubBook& book, const ExportPlugin
     std::unordered_set<std::wstring> resourceHrefs;
     for (const auto& r : book.resources) {
         if (!manifestIds.insert(r.id).second) {
-            result.warnings.emplace_back(L"Повторяющийся manifest id ресурса: " + r.id);
+            result.warnings.emplace_back(FormatString1(
+                IDS_PREFLIGHT_WARNING_DUP_MANIFEST_ID,
+                L"Duplicate manifest resource id: %s",
+                r.id));
         }
         resourceHrefs.insert(r.href);
         if (r.data.empty()) {
-            result.warnings.emplace_back(L"Пустой ресурс изображения/файла: " + r.href);
+            result.warnings.emplace_back(FormatString1(
+                IDS_PREFLIGHT_WARNING_EMPTY_RESOURCE,
+                L"Empty image/file resource: %s",
+                r.href));
         }
         const std::wstring expected = ExpectedMediaTypeFromHref(r.href);
         if (!expected.empty() && expected != fbe::epub::WideFromUtf8(r.mediaType)) {
-            result.warnings.emplace_back(L"media-type не похож на расширение файла: " + r.href + L" (" + fbe::epub::WideFromUtf8(r.mediaType) + L")");
+            result.warnings.emplace_back(FormatString2(
+                IDS_PREFLIGHT_WARNING_MEDIA_TYPE_MISMATCH,
+                L"media-type does not match file extension: %s (%s)",
+                r.href,
+                fbe::epub::WideFromUtf8(r.mediaType)));
         }
     }
 
@@ -3269,7 +3375,10 @@ PreflightResult RunPreflight(const fbe::epub::EpubBook& book, const ExportPlugin
             while (normalized.rfind(L"../", 0) == 0) normalized.erase(0, 3);
             if (normalized.rfind(L"./", 0) == 0) normalized.erase(0, 2);
             if (resourceHrefs.find(normalized) == resourceHrefs.end()) {
-                result.warnings.emplace_back(L"Изображение отсутствует в manifest/resources: " + src);
+                result.warnings.emplace_back(FormatString1(
+                    IDS_PREFLIGHT_WARNING_MISSING_IMAGE,
+                    L"Image is missing from manifest/resources: %s",
+                    src));
             }
         }
     }
@@ -3281,13 +3390,19 @@ std::wstring PreflightWarningsText(const PreflightResult& preflight, std::size_t
 {
     if (preflight.warnings.empty()) return L"";
     std::wstringstream w;
-    w << L"Встроенная проверка нашла предупреждения: " << preflight.warnings.size() << L"\n\n";
+    w << FormatStringUInt(
+        IDS_PREFLIGHT_SUMMARY_HEADER,
+        L"Built-in validation found warnings: %u\n\n",
+        static_cast<unsigned int>(preflight.warnings.size()));
     const std::size_t count = std::min(limit, preflight.warnings.size());
     for (std::size_t i = 0; i < count; ++i) {
         w << L"• " << preflight.warnings[i] << L"\n";
     }
     if (preflight.warnings.size() > count) {
-        w << L"…и ещё " << (preflight.warnings.size() - count) << L" предупреждений.\n";
+        w << FormatStringUInt(
+            IDS_PREFLIGHT_SUMMARY_MORE,
+            L"...and %u more warnings.\n",
+            static_cast<unsigned int>(preflight.warnings.size() - count));
     }
     return w.str();
 }
@@ -3316,8 +3431,11 @@ void CopyWideTextToClipboard(HWND owner, const std::wstring& text)
 std::wstring PreflightWarningsFullText(const PreflightResult& preflight)
 {
     std::wstringstream w;
-    w << L"Встроенная проверка ExportEPUB\n";
-    w << L"Предупреждений: " << preflight.warnings.size() << L"\n\n";
+    w << static_cast<LPCWSTR>(LoadResourceString(IDS_PREFLIGHT_FULL_HEADER, L"ExportEPUB built-in validation\n"));
+    w << FormatStringUInt(
+        IDS_PREFLIGHT_FULL_COUNT,
+        L"Warnings: %u\n\n",
+        static_cast<unsigned int>(preflight.warnings.size()));
     for (std::size_t i = 0; i < preflight.warnings.size(); ++i) {
         w << L"[W" << std::setw(4) << std::setfill(L'0') << (i + 1) << L"] " << preflight.warnings[i] << L"\n";
     }
@@ -3339,10 +3457,11 @@ void OpenFolderWithShell(HWND owner, const CString& path)
 void ShowPreflightWarnings(HWND owner, const PreflightResult& preflight)
 {
     if (preflight.warnings.empty()) return;
-    CString title;
-    title.LoadString(IDS_ERROR_TITLE);
+    CString title(LoadExportEpubString(IDS_ERROR_TITLE, L"EPUB export"));
     std::wstring text = PreflightWarningsText(preflight);
-    text += L"\nНажмите \"Да\", чтобы скопировать полный отчёт в буфер обмена.";
+    text += static_cast<LPCWSTR>(LoadResourceString(
+        IDS_PREFLIGHT_COPY_PROMPT,
+        L"\nClick \"Yes\" to copy the full report to the clipboard."));
     const int rc = MessageBoxW(owner, text.c_str(), title, MB_YESNO | MB_ICONWARNING);
     if (rc == IDYES) {
         CopyWideTextToClipboard(owner, PreflightWarningsFullText(preflight));
@@ -3361,17 +3480,21 @@ void ShowExportSummary(HWND owner,
     }
 
     std::wstringstream w;
-    w << L"EPUB успешно сохранён.\n\n";
-    w << L"Файл: " << static_cast<LPCWSTR>(outPath) << L"\n";
-    w << L"Формат: " << VersionName(opt.version) << L"\n";
-    w << L"Глав: " << book.chapters.size() << L"\n";
-    w << L"Ресурсов: " << book.resources.size() << L"\n";
-    w << L"Изображений: " << imageCount << L"\n";
-    w << L"Предупреждений встроенной проверки: " << preflight.warnings.size() << L"\n\n";
-    w << L"Да — открыть EPUB.\nНет — открыть папку с файлом.\nОтмена — закрыть окно.";
+    w << static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_SUMMARY_SAVED, L"EPUB was saved successfully.\n\n"));
+    w << FormatString1(IDS_EXPORT_SUMMARY_FILE, L"File: %s\n", static_cast<LPCWSTR>(outPath));
+    w << FormatString1(IDS_EXPORT_SUMMARY_FORMAT, L"Format: %s\n", VersionName(opt.version));
+    w << FormatStringUInt(IDS_EXPORT_SUMMARY_CHAPTERS, L"Chapters: %u\n", static_cast<unsigned int>(book.chapters.size()));
+    w << FormatStringUInt(IDS_EXPORT_SUMMARY_RESOURCES, L"Resources: %u\n", static_cast<unsigned int>(book.resources.size()));
+    w << FormatStringUInt(IDS_EXPORT_SUMMARY_IMAGES, L"Images: %u\n", static_cast<unsigned int>(imageCount));
+    w << FormatStringUInt(
+        IDS_EXPORT_SUMMARY_WARNINGS,
+        L"Built-in validation warnings: %u\n\n",
+        static_cast<unsigned int>(preflight.warnings.size()));
+    w << static_cast<LPCWSTR>(LoadResourceString(
+        IDS_EXPORT_SUMMARY_ACTIONS,
+        L"Yes - open EPUB.\nNo - open the folder with the file.\nCancel - close this window."));
 
-    CString title;
-    title.LoadString(IDS_ERROR_TITLE);
+    CString title(LoadExportEpubString(IDS_ERROR_TITLE, L"EPUB export"));
     const int rc = MessageBoxW(owner, w.str().c_str(), title, MB_YESNOCANCEL | MB_ICONINFORMATION);
     if (rc == IDYES) {
         OpenPathWithShell(owner, outPath);
@@ -3425,9 +3548,9 @@ std::wstring BuildInlineTitlePageXhtml(const fbe::epub::EpubBook& book)
         if (!series.empty()) series += L" № ";
         series += book.seriesNumber;
     }
-    AppendTitlePageLine(html, L"Серия", series);
-    AppendTitlePageLine(html, L"Издатель", book.publisher);
-    AppendTitlePageLine(html, L"Дата", book.date);
+    AppendTitlePageLine(html, static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_TITLEPAGE_SERIES, L"Series")), series);
+    AppendTitlePageLine(html, static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_TITLEPAGE_PUBLISHER, L"Publisher")), book.publisher);
+    AppendTitlePageLine(html, static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_TITLEPAGE_DATE, L"Date")), book.date);
     AppendTitlePageLine(html, L"ISBN", book.isbn);
     if (!NormalizeWhitespace(book.description).empty()) {
         html << L"  <div class=\"titlepage-description\">\n"
@@ -3515,6 +3638,8 @@ void WriteExportLog(const CString& outPath,
 
 HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
 {
+    InitExportEpubRuntimeStrings(_AtlBaseModule.GetModuleInstance());
+
     const HWND owner = reinterpret_cast<HWND>(static_cast<LONG_PTR>(hWnd));
 
     try {
@@ -3535,8 +3660,7 @@ HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
         BuildBookFromFbeDocument(doc, book, version == fbe::epub::EpubVersion::Epub3, settings.includeAnnotationPage);
         ApplyPostBuildSettings(book, settings);
         if (book.chapters.empty()) {
-            CString msg;
-            msg.LoadString(IDS_ERROR_NO_CHAPTERS);
+            CString msg(LoadExportEpubString(IDS_ERROR_NO_CHAPTERS, L"No chapters to export."));
             ShowError(owner, msg);
             return S_FALSE;
         }
@@ -3550,6 +3674,11 @@ HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
         opt.version = version;
         opt.includeNcxFallbackInEpub3 = (version == fbe::epub::EpubVersion::Epub3) && settings.includeNcxFallbackInEpub3;
         opt.includeCoverPage = settings.includeCoverPage;
+        opt.labels.coverTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_COVER_TITLE, L"Cover"));
+        opt.labels.navigationTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_NAVIGATION_TITLE, L"Navigation"));
+        opt.labels.annotationTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_LANDMARK_ANNOTATION, L"Annotation"));
+        opt.labels.bodyStartTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_LANDMARK_BODY_START, L"Start of text"));
+        opt.labels.notesTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_LANDMARK_NOTES, L"Notes"));
         std::wstring error;
         if (!fbe::epub::EpubExporter().Export(book, std::filesystem::path((LPCWSTR)outPath), opt, &error)) {
             ShowExportError(owner, error);
@@ -3680,6 +3809,8 @@ extern "C" __declspec(dllexport) int __stdcall ExportEpubFileW(
     wchar_t* errorBuffer,
     unsigned errorBufferChars)
 {
+    InitExportEpubRuntimeStrings(_AtlBaseModule.GetModuleInstance());
+
     SetExportEpubFileError(errorBuffer, errorBufferChars, L"");
 
     const unsigned FLAG_NCX_FALLBACK = 0x0001;
@@ -3757,6 +3888,11 @@ extern "C" __declspec(dllexport) int __stdcall ExportEpubFileW(
         opt.version = isEpub3 ? fbe::epub::EpubVersion::Epub3 : fbe::epub::EpubVersion::Epub2;
         opt.includeNcxFallbackInEpub3 = isEpub3 && settings.includeNcxFallbackInEpub3;
         opt.includeCoverPage = settings.includeCoverPage;
+        opt.labels.coverTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_COVER_TITLE, L"Cover"));
+        opt.labels.navigationTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_NAVIGATION_TITLE, L"Navigation"));
+        opt.labels.annotationTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_LANDMARK_ANNOTATION, L"Annotation"));
+        opt.labels.bodyStartTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_LANDMARK_BODY_START, L"Start of text"));
+        opt.labels.notesTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_LANDMARK_NOTES, L"Notes"));
         phase = L"writing EPUB";
         std::wstring error;
         if (!fbe::epub::EpubExporter().Export(book, std::filesystem::path(outputEpubPath), opt, &error)) {

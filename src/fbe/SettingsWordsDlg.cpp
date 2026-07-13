@@ -3,11 +3,19 @@
 #include "stdafx.h"
 #include "SettingsWordsDlg.h"
 #include "Settings.h"
+#include "RuntimeLocalization.h"
 
 #define IMG_STAT_WIDTH	40
 #define IMG_STAT_HEIGHT	10
 
 extern CSettings _Settings;
+
+static void SetRuntimeSettingsWordsText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR fallback)
+{
+	const CString text = FbeLoadRuntimeStringByKey(key, fallback);
+	if (!text.IsEmpty())
+		::SetDlgItemText(dialog, controlId, text);
+}
 
 static int compare_percent_asc(const void* v1, const void* v2)
 {
@@ -84,16 +92,22 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 
 //	m_list_words.InsertColumn(0, L"%", LVCFMT_CENTER | LVCFMT_IMAGE, IMG_STAT_WIDTH + 10);
 
-	header.LoadString(IDS_SETTINGS_WLIST_COUNTED);
+	header = FbeLoadCString(IDS_SETTINGS_WLIST_COUNTED);
 	m_list_words.InsertColumn(0, header, LVCFMT_LEFT, 60);
 
-	header.LoadString(IDS_SETTINGS_WLIST_WORD);
+	header = FbeLoadCString(IDS_SETTINGS_WLIST_WORD);
 	m_list_words.InsertColumn(1, header, LVCFMT_LEFT, wcWidth);
 	
 	m_list_words.SetItemCount(_Settings.m_words.size());
 
 	m_edt_new = GetDlgItem(IDC_EDIT_NEW);
 	m_chk_all = GetDlgItem(IDC_CHECK_SELALL);
+
+	SetRuntimeSettingsWordsText(m_hWnd, IDC_BUTTON_ADD, L"fbe.dialog.idd_settings_words.add", L"Add");
+	SetRuntimeSettingsWordsText(m_hWnd, IDC_STATIC_WORDS_CHEVRON, L"fbe.dialog.idd_settings_words.group", L"Words");
+	SetRuntimeSettingsWordsText(m_hWnd, IDC_CHECK_SHOW_EXCLUSIONS, L"fbe.dialog.idd_settings_words.show_exclusions", L"Show exclusions");
+	SetRuntimeSettingsWordsText(m_hWnd, IDC_CHECK_SELALL, L"fbe.dialog.idd_settings_words.select_all", L"Select all");
+	SetRuntimeSettingsWordsText(m_hWnd, IDC_BUTTON_REMOVESEL, L"fbe.dialog.idd_settings_words.remove_selected", L"Remove selected");
 
 	// this unuseful code dramatically slowdown application! must be removed
 //	CreateStatBitmaps();
@@ -293,8 +307,8 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 			if(word.CompareNoCase(m_words[i].m_word) == 0)
 			{
 				CString errMsg[2];
-				errMsg[0].LoadString(IDS_SETTINGS_WORDS_ADD_ERR_TEXT);
-				errMsg[1].LoadString(IDS_SETTINGS_WORDS_ADD_ERR_CAP);
+				errMsg[0] = FbeLoadCString(IDS_SETTINGS_WORDS_ADD_ERR_TEXT);
+				errMsg[1] = FbeLoadCString(IDS_SETTINGS_WORDS_ADD_ERR_CAP);
 				MessageBox(errMsg[0], errMsg[1], MB_OK | MB_ICONERROR);
 
 				return false;
@@ -315,8 +329,8 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 	else
 	{
 		CString errMsg[2];
-		errMsg[0].LoadString(IDS_SETTINGS_WORDS_ADD_ERR_SYM);
-		errMsg[1].LoadString(IDS_SETTINGS_WORDS_ADD_ERR_CAP);
+		errMsg[0] = FbeLoadCString(IDS_SETTINGS_WORDS_ADD_ERR_SYM);
+		errMsg[1] = FbeLoadCString(IDS_SETTINGS_WORDS_ADD_ERR_CAP);
 		MessageBox(errMsg[0], errMsg[1], MB_OK | MB_ICONERROR);
 
 		return false;

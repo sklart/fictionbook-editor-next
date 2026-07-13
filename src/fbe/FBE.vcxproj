@@ -265,6 +265,7 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <ClCompile Include="Fb2ShellProperties.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="RegexBackend.cpp" />
     <ClCompile Include="RegexBackendPcre2.cpp" />
+    <ClCompile Include="RuntimeLocalization.cpp" />
     <ClCompile Include="FBEview.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -395,6 +396,7 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <ClInclude Include="res1.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="RegexBackend.h" />
+    <ClInclude Include="RuntimeLocalization.h" />
     <ClInclude Include="SearchReplace.h" />
     <ClInclude Include="XMLSerializer\Serializable.h" />
     <ClInclude Include="Settings.h" />
@@ -443,8 +445,10 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <None Include="res\document.bmp" />
     <None Include="res\error.bmp" />
     <None Include="res\Fb2-shema.bmp" />
-    <None Include="res\FBE_new.ico" />
-    <None Include="res\FBE2_new.ico" />
+    <None Include="res\FBE.svg" />
+    <None Include="res\FBE2.svg" />
+    <None Include="res\FBE.ico" />
+    <None Include="res\FBE2.ico" />
     <None Include="res\green.bmp" />
     <None Include="res\html.bmp" />
     <None Include="res\Icon_02.bmp" />
@@ -482,7 +486,6 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <None Include="res\Toolbar_small.bmp" />
     <None Include="res\update.bmp" />
     <None Include="res\wordstat.bmp" />
-    <None Include="res\wsoverlays.bmp" />
     <None Include="res\xml.bmp" />
     <None Include="$(SolutionDir)runtime\eng.xsl" />
     <None Include="$(SolutionDir)runtime\fb2.xsl" />

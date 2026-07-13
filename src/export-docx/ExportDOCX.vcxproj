@@ -196,6 +196,7 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="ExportDOCX.cpp" />
     <ClCompile Include="ExportDOCXPlugin.cpp" />
+    <ClCompile Include="RuntimeLocalization.cpp" />
     <ClCompile Include="ExportDOCX_i.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -212,6 +213,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ExportDOCX.def" />
+    <None Include="ExportDOCXStrings.generated.rc2" />
     <None Include="ExportDOCXPlugin.rgs" />
   </ItemGroup>
   <ItemGroup>
@@ -220,6 +222,7 @@
     <ClInclude Include="ExportDOCXPlugin.h" />
     <ClInclude Include="ExportDOCX_i.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="RuntimeLocalization.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="utils.h" />
@@ -253,5 +256,13 @@
     <None Include="CLEAN_AFTER_BUILD.cmd" />
     <None Include="EXPORT_FOLDER.cmd" />
   </ItemGroup>
+  <ItemDefinitionGroup>
+    <PreBuildEvent>
+      <Command>pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\tools\localization\update-export-docx-resource-strings.ps1" -Quiet</Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
+
+
+

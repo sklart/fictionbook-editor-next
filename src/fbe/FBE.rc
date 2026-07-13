@@ -272,14 +272,14 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTIO
 CAPTION "Replace"
 FONT 9, "Tahoma", 0, 0, 0x0
 BEGIN
-    LTEXT           "Fi&nd what:",IDC_STATIC,7,9,45,8,NOT WS_GROUP
-    LTEXT           "Replace with:",IDC_STATIC,7,25,45,8,NOT WS_GROUP
+    LTEXT           "Fi&nd what:",IDC_REPLACE_LABEL_TEXT,7,9,45,8,NOT WS_GROUP
+    LTEXT           "Replace with:",IDC_REPLACE_LABEL_REPLACE,7,25,45,8,NOT WS_GROUP
     COMBOBOX        IDC_TEXT,53,7,179,62,CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
     COMBOBOX        IDC_REPLACE,53,23,179,62,CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
     CONTROL         "Match &whole words",IDC_WHOLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,41,98,13
     CONTROL         "Match &case",IDC_MATCHCASE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,54,98,13
     CONTROL         "Regular &expression",IDC_REGEXP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,67,98,13
-    GROUPBOX        "Direction",IDC_STATIC,171,41,60,38,WS_GROUP
+    GROUPBOX        "Direction",IDC_REPLACE_DIRECTION_GROUP,171,41,60,38,WS_GROUP
     CONTROL         "&Up",IDC_UP,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,178,52,44,11
     CONTROL         "&Down",IDC_DOWN,"Button",BS_AUTORADIOBUTTON,178,63,44,11
     DEFPUSHBUTTON   "&Find Next",ID_FIND_NEXT,238,7,50,14,WS_GROUP
@@ -288,38 +288,38 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,238,61,50,14
 END
 
-IDD_OPTIONS DIALOGEX 0, 0, 222, 215
+IDD_OPTIONS DIALOGEX 0, 0, 266, 215
 STYLE DS_SETFONT | WS_CHILD | WS_SYSMENU
 FONT 9, "Tahoma", 0, 0, 0x0
 BEGIN
-    LTEXT           "Text color:",IDC_STATIC,15,70,38,9
+    LTEXT           "Text color:",IDC_OPTIONS_FOREGROUND_COLOR,15,70,38,9
     PUSHBUTTON      "",IDC_FG,60,68,22,12
-    LTEXT           "Background:",IDC_STATIC,89,70,41,9
+    LTEXT           "Background:",IDC_OPTIONS_BACKGROUND_COLOR,89,70,41,9
     PUSHBUTTON      "",IDC_BG,134,68,22,12
-    LTEXT           "Editor font:",IDC_STATIC,15,53,49,9
-    COMBOBOX        IDC_FONT,60,51,151,70,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Font size:",IDC_STATIC,137,24,33,9
-    COMBOBOX        IDC_FONT_SIZE,174,21,36,70,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
-    GROUPBOX        "Common",IDC_STATIC,7,10,210,31
-    GROUPBOX        "Body",IDC_STATIC,7,41,210,46
-    GROUPBOX        "XML source editor",IDC_STATIC,7,89,210,72
+    LTEXT           "Editor font:",IDC_OPTIONS_BODY_FONT,15,53,49,9
+    COMBOBOX        IDC_FONT,60,51,195,70,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Font size:",IDC_OPTIONS_FONT_SIZE,187,24,33,9
+    COMBOBOX        IDC_FONT_SIZE,224,21,36,70,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    GROUPBOX        "Common",IDC_OPTIONS_INTERFACE_GROUP,7,10,252,31
+    GROUPBOX        "Body",IDC_OPTIONS_BODY_GROUP,7,41,252,46
+    GROUPBOX        "XML source editor",IDC_OPTIONS_SOURCE_GROUP,7,89,252,72
     CONTROL         "Wrap lines",IDC_WRAP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,119,56,11
     CONTROL         "Syntax highlighting",IDC_SYNTAXHL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,132,73,11
     CONTROL         "Show end of line marks",IDC_SHOWEOL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,145,104,11
     CONTROL         "Fast Mode",IDC_FAST_MODE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,167,68,43,11
-    LTEXT           "Language:",IDC_STATIC,15,23,48,8
-    COMBOBOX        IDC_LANG,59,21,68,30,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
-    GROUPBOX        "Spellcheck",IDC_STATIC,7,162,210,45
+    LTEXT           "Language:",IDC_OPTIONS_LANGUAGE_LABEL,15,23,48,8
+    COMBOBOX        IDC_LANG,59,21,120,30,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    GROUPBOX        "Spellcheck",IDC_OPTIONS_SPELLCHECK_GROUP,7,162,252,45
     CONTROL         "Highlight misspelled words",IDC_BACKGROUNDSPELLCHECK,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,117,174,94,10
     CONTROL         "Use spellchecker",IDC_USESPELLCHECKER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,174,83,10
-    EDITTEXT        IDC_CUSTOM_DICT,78,189,122,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_CUSTOM_DICT,78,189,166,12,ES_AUTOHSCROLL
     LTEXT           "Custom dictionary:",IDS_SPELL_CUSTOM_DICT,15,191,60,9
-    PUSHBUTTON      "..",IDC_DICTPATH,201,189,12,12
+    PUSHBUTTON      "..",IDC_DICTPATH,245,189,12,12
     CONTROL         "Show line numbers",IDC_SHOWLINENUMBERS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,113,132,95,11
     CONTROL         "Highlight matched tags",IDC_TAGHL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,113,145,87,11
-    LTEXT           "Editor font:",IDC_STATIC,14,105,49,9
-    COMBOBOX        IDC_SRCFONT,59,103,151,70,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Editor font:",IDC_OPTIONS_SOURCE_FONT,14,105,49,9
+    COMBOBOX        IDC_SRCFONT,59,103,195,70,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
     CONTROL         "Show white spaces",IDC_SHOWWHITESPACE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,113,119,71,11
 END
 
@@ -340,13 +340,13 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTIO
 CAPTION "Find"
 FONT 9, "Tahoma", 0, 0, 0x0
 BEGIN
-    LTEXT           "Fi&nd what:",IDC_STATIC,7,9,40,8
+    LTEXT           "Fi&nd what:",IDC_FIND_LABEL_TEXT,7,9,40,8
     COMBOBOX        IDC_TEXT,49,7,183,62,CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_GROUP | WS_TABSTOP
     DEFPUSHBUTTON   "&Find Next",ID_FIND_NEXT,238,7,50,14,WS_GROUP
     CONTROL         "Match &whole words",IDC_WHOLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,30,98,13
     CONTROL         "Match &case",IDC_MATCHCASE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,43,98,13
     CONTROL         "Regular &expression",IDC_REGEXP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,56,98,13
-    GROUPBOX        "Direction",IDC_STATIC,172,30,60,38,WS_GROUP
+    GROUPBOX        "Direction",IDC_FIND_DIRECTION_GROUP,172,30,60,38,WS_GROUP
     CONTROL         "&Up",IDC_UP,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,179,41,44,11
     CONTROL         "&Down",IDC_DOWN,"Button",BS_AUTORADIOBUTTON,179,52,44,11
     PUSHBUTTON      "Cancel",IDCANCEL,238,24,50,14
@@ -1085,6 +1085,16 @@ BEGIN
     IDS_ABOUT_LOGOCAPTION   "FB2 animated logo � press ? for help"
     IDS_UPDATE_CLOSE        "FBE must be closed to continue installation.\r\n\r\nYou may delete installation file at download location ""%s"" later.\r\n\r\nQuit FBE now and continue installation?"
     IDS_LANG_UKRAINIAN      "Ukrainian"
+    IDS_LANG_SYSTEM_DEFAULT "System default"
+    IDS_LANG_GERMAN         "German"
+    IDS_LANG_FRENCH         "French"
+    IDS_LANG_SPANISH        "Spanish"
+    IDS_LANG_ITALIAN        "Italian"
+    IDS_LANG_POLISH         "Polish"
+    IDS_LANG_PORTUGUESE     "Portuguese"
+    IDS_LANG_DUTCH          "Dutch"
+    IDS_LANG_CZECH          "Czech"
+    IDS_LANG_BULGARIAN      "Bulgarian"
     IDS_UPDATEEXISTS        "Update file %s is already exists.\r\nWould you like to execute this file?"
     IDS_UPDATE_DOWNLOADREADY "Update is ready."
     IDS_BAD_XML_MSG         "You have opened an invalid XML document.\n\nYou should correct all XML errors (use ""Validate"" and ""Go to wrong tag"" commands) before switching from the SOURCE mode."

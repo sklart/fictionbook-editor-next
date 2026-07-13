@@ -9,6 +9,7 @@
 #include <dlgs.h>
 #include "resource.h"
 #include "res1.h"
+#include "RuntimeLocalization.h"
 
 #include "atlctrlsext.h"
 
@@ -622,6 +623,8 @@ public:
 		NOTIFY_CODE_HANDLER(SCN_MODIFIED, OnSciModified)
 		NOTIFY_CODE_HANDLER(SCN_MARGINCLICK, OnSciMarginClick)
 		NOTIFY_CODE_HANDLER(SCN_UPDATEUI, OnSciUpdateUI)
+		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOA, OnRuntimeToolTipTextA)
+		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnRuntimeToolTipTextW)
 
 		// tree pane
 		COMMAND_ID_HANDLER(ID_PANE_CLOSE, OnViewTree)
@@ -649,9 +652,29 @@ public:
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSettingChange(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
+	LRESULT OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 
 
   int m_selBandID;
+
+  void ApplyRuntimeToolbarMenuLocalization(HMENU menu)
+  {
+	if(menu == NULL)
+		return;
+
+	const int count = ::GetMenuItemCount(menu);
+	for(int i = 0; i < count; ++i)
+	{
+		const UINT commandId = ::GetMenuItemID(menu, i);
+		if(commandId != ID_TOOLS_CUSTOMIZE)
+			continue;
+
+		CString text = FbeLoadRuntimeStringByKey(L"fbe.menu.idr_toolbar_menu.customize");
+		if(!text.IsEmpty())
+			::ModifyMenu(menu, i, MF_BYPOSITION | MF_STRING, commandId, text);
+	}
+  }
 
   LRESULT OnContextMenu(UINT, WPARAM, LPARAM lParam, BOOL&) 
   {
@@ -680,6 +703,7 @@ public:
 	{
 		menu = ::LoadMenu(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_TOOLBAR_MENU));
 		popup = ::GetSubMenu(menu, 0);
+		ApplyRuntimeToolbarMenuLocalization(popup);
 		ClientToScreen(&ptMousePos);
 		::TrackPopupMenu(popup, TPM_LEFTALIGN, ptMousePos.x, ptMousePos.y, 0, *this, 0);
 	}
@@ -1003,6 +1027,9 @@ public:
 	void ApplyConfChanges();
 	void RestartProgram();
 	void FillMenuWithHkeys(HMENU);
+	void RefreshLocalizedMainFrameUi();
+	void RefreshLocalizedToolbarCaptions();
+	void RefreshLocalizedToolbarButtonTexts(CToolBarCtrl& toolbar);
 
 	// added by SeNS
     CSpeller *m_Speller;

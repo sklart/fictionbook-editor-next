@@ -158,11 +158,11 @@ foreach ($required in @("OEBPS/content.opf", "OEBPS/nav.xhtml", "OEBPS/toc.ncx",
 }
 
 $expectedFragments = @(
-    "<dc:title>Кириллический smoke test для shell-свойств</dc:title>",
-    "<title>Кириллический smoke test для shell-свойств</title>",
-    "<title>Аннотация</title>",
-    "<h1>Аннотация</h1>",
-    "<navLabel><text>Аннотация</text></navLabel>"
+    '<dc:title>Кириллический smoke test для shell-свойств</dc:title>',
+    '<title>Кириллический smoke test для shell-свойств</title>',
+    '<dc:creator id="creator1">Иван Петрович Смирнов</dc:creator>',
+    '<dc:subject>история</dc:subject>',
+    '<meta property="belongs-to-collection" id="series1">Большая серия проверок</meta>'
 )
 
 $combined = ($texts.GetEnumerator() | ForEach-Object { [string]$_.Value }) -join "`n"

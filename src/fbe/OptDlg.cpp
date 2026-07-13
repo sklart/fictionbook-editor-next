@@ -1,4 +1,4 @@
-#include "stdafx.h"
+п»ї#include "stdafx.h"
 #include "resource.h"
 #include "res1.h"
 
@@ -13,9 +13,32 @@
 
 
 #include "OptDlg.h"
+#include "RuntimeLocalization.h"
 #include "Settings.h"
 
 extern CSettings _Settings;
+
+struct InterfaceLanguageChoice
+{
+	DWORD languageId;
+	UINT stringId;
+};
+
+static const InterfaceLanguageChoice kInterfaceLanguages[] = {
+	{ FBE_INTERFACE_LANGUAGE_AUTO, IDS_LANG_SYSTEM_DEFAULT },
+	{ FBE_INTERFACE_LANGUAGE_ENGLISH, IDS_LANG_ENGLISH },
+	{ FBE_INTERFACE_LANGUAGE_RUSSIAN, IDS_LANG_RUSSIAN },
+	{ FBE_INTERFACE_LANGUAGE_UKRAINIAN, IDS_LANG_UKRAINIAN },
+	{ FBE_INTERFACE_LANGUAGE_GERMAN, IDS_LANG_GERMAN },
+	{ FBE_INTERFACE_LANGUAGE_FRENCH, IDS_LANG_FRENCH },
+	{ FBE_INTERFACE_LANGUAGE_SPANISH, IDS_LANG_SPANISH },
+	{ FBE_INTERFACE_LANGUAGE_ITALIAN, IDS_LANG_ITALIAN },
+	{ FBE_INTERFACE_LANGUAGE_POLISH, IDS_LANG_POLISH },
+	{ FBE_INTERFACE_LANGUAGE_PORTUGUESE, IDS_LANG_PORTUGUESE },
+	{ FBE_INTERFACE_LANGUAGE_DUTCH, IDS_LANG_DUTCH },
+	{ FBE_INTERFACE_LANGUAGE_CZECH, IDS_LANG_CZECH },
+	{ FBE_INTERFACE_LANGUAGE_BULGARIAN, IDS_LANG_BULGARIAN },
+};
 
 
 static int __stdcall EnumFontProc(const ENUMLOGFONTEX *lfe,
@@ -30,6 +53,13 @@ static int __stdcall EnumFontProc(const ENUMLOGFONTEX *lfe,
 
 static int  font_sizes[]={8,9,10,11,12,13,14,15,16,18,20,22,24,26,28,36,48,72};
 
+static void SetRuntimeDialogItemText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR fallback)
+{
+	const CString text = FbeLoadRuntimeStringByKey(key, fallback);
+	if (!text.IsEmpty())
+		::SetDlgItemText(dialog, controlId, text);
+}
+
 LRESULT COptDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
   m_fg.SubclassWindow(GetDlgItem(IDC_FG));
@@ -39,6 +69,7 @@ LRESULT COptDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
   m_fontsize=GetDlgItem(IDC_FONT_SIZE);
   m_fast_mode = GetDlgItem(IDC_FAST_MODE); 
   m_lang = GetDlgItem(IDC_LANG);
+  m_lang.SetDroppedWidth(320);
   // SeNS
   m_usespell_check = GetDlgItem(IDC_USESPELLCHECKER);
   m_highlight_check = GetDlgItem(IDC_BACKGROUNDSPELLCHECK);
@@ -51,19 +82,22 @@ LRESULT COptDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
   m_fg.SetColor(_Settings.GetColorFG());
 
   wchar_t buf[MAX_LOAD_STRING + 1];
-  if(FbeLoadString(_Module.GetResourceInstance(), IDS_LANG_ENGLISH, buf, MAX_LOAD_STRING))
- 	m_lang.AddString(buf);
-  if(FbeLoadString(_Module.GetResourceInstance(), IDS_LANG_RUSSIAN, buf, MAX_LOAD_STRING))
-	m_lang.AddString(buf);
-  if(FbeLoadString(_Module.GetResourceInstance(), IDS_LANG_UKRAINIAN, buf, MAX_LOAD_STRING))
-	m_lang.AddString(buf);
-
-  if(LANG_RUSSIAN == _Settings.GetInterfaceLanguageID())
-	m_lang.SetCurSel(1);
-  else if(LANG_UKRAINIAN == _Settings.GetInterfaceLanguageID())
-	m_lang.SetCurSel(2);
-  else
-	m_lang.SetCurSel(0);
+  const DWORD currentLanguage = _Settings.GetInterfaceLanguageID();
+  int selectedLanguageIndex = 0;
+  for(int i = 0; i < _countof(kInterfaceLanguages); ++i)
+  {
+	if(FbeLoadString(_Module.GetResourceInstance(), kInterfaceLanguages[i].stringId, buf, MAX_LOAD_STRING))
+	{
+	  const int item = m_lang.AddString(buf);
+	  if(item >= 0)
+	  {
+		m_lang.SetItemData(item, kInterfaceLanguages[i].languageId);
+		if(kInterfaceLanguages[i].languageId == currentLanguage)
+		  selectedLanguageIndex = item;
+	  }
+	}
+  }
+  m_lang.SetCurSel(selectedLanguageIndex);
 
   // get font list
   CSimpleArray<CString> installedFonts;
@@ -109,6 +143,27 @@ LRESULT COptDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
   m_src_eol=GetDlgItem(IDC_SHOWEOL);
   m_src_whitespace=GetDlgItem(IDC_SHOWWHITESPACE);
   m_src_line_numbers=GetDlgItem(IDC_SHOWLINENUMBERS);
+
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_FOREGROUND_COLOR, L"fbe.dialog.idd_options.foreground_color", L"Text color:");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_BACKGROUND_COLOR, L"fbe.dialog.idd_options.background_color", L"Background:");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_BODY_FONT, L"fbe.dialog.idd_options.font", L"Editor font:");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_FONT_SIZE, L"fbe.dialog.idd_options.font_size", L"Font size:");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_INTERFACE_GROUP, L"fbe.dialog.idd_options.interface", L"Common");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_BODY_GROUP, L"fbe.dialog.idd_options.font_group", L"Body");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_SOURCE_GROUP, L"fbe.dialog.idd_options.source_view", L"XML source editor");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_LANGUAGE_LABEL, L"fbe.dialog.idd_options.language", L"Language:");
+  SetRuntimeDialogItemText(m_hWnd, IDC_WRAP, L"fbe.dialog.idd_options.wrap_lines", L"Wrap lines");
+  SetRuntimeDialogItemText(m_hWnd, IDC_SYNTAXHL, L"fbe.dialog.idd_options.syntax_highlight", L"Syntax highlighting");
+  SetRuntimeDialogItemText(m_hWnd, IDC_SHOWEOL, L"fbe.dialog.idd_options.show_eol", L"Show end of line marks");
+  SetRuntimeDialogItemText(m_hWnd, IDC_FAST_MODE, L"fbe.dialog.idd_options.fast_mode", L"Fast Mode");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_SPELLCHECK_GROUP, L"fbe.dialog.idd_options.spell_checking", L"Spellcheck");
+  SetRuntimeDialogItemText(m_hWnd, IDC_BACKGROUNDSPELLCHECK, L"fbe.dialog.idd_options.background_spell_check", L"Highlight misspelled words");
+  SetRuntimeDialogItemText(m_hWnd, IDC_USESPELLCHECKER, L"fbe.dialog.idd_options.use_spellchecker", L"Use spellchecker");
+  SetRuntimeDialogItemText(m_hWnd, IDS_SPELL_CUSTOM_DICT, L"fbe.dialog.idd_options.custom_dict", L"Custom dictionary:");
+  SetRuntimeDialogItemText(m_hWnd, IDC_SHOWLINENUMBERS, L"fbe.dialog.idd_options.show_line_numbers", L"Show line numbers");
+  SetRuntimeDialogItemText(m_hWnd, IDC_TAGHL, L"fbe.dialog.idd_options.tag_highlight", L"Highlight matched tags");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_SOURCE_FONT, L"fbe.dialog.idd_options.source_font", L"Editor font:");
+  SetRuntimeDialogItemText(m_hWnd, IDC_SHOWWHITESPACE, L"fbe.dialog.idd_options.show_whitespace", L"Show white spaces");
 
   // init controls
   m_src_wrap.SetCheck(_Settings.XmlSrcWrap());
@@ -187,21 +242,16 @@ LRESULT COptDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
   _Settings.SetCustomDict(s);
 
   DWORD new_lang = _Settings.GetInterfaceLanguageID();
-  switch (m_lang.GetCurSel())
-  {
-	case 0: new_lang = LANG_ENGLISH; break;
-	case 1: new_lang = LANG_RUSSIAN; break;
-	case 2: new_lang = LANG_UKRAINIAN; break;
-  }
+  const int selectedLanguageIndex = m_lang.GetCurSel();
+  if(selectedLanguageIndex >= 0)
+	new_lang = static_cast<DWORD>(m_lang.GetItemData(selectedLanguageIndex));
 
-  // если пользователь сменил язык интерфейса....
   if(new_lang != _Settings.GetInterfaceLanguageID())
   {
-  	// выдаем предупреждение, о том, что надо перезапустить программу.
-	//...
-	// выставляем флаг перезагрузки программы.
 	_Settings.SetNeedRestart();
 	_Settings.SetInterfaceLanguage(new_lang);
+	FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());
+	FbeResetRuntimeLocalization();
   }
 
   return 0;

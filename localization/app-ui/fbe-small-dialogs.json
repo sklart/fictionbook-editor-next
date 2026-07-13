@@ -1,0 +1,2547 @@
+{
+  "formatVersion": 1,
+  "description": "Weblate-friendly seed-каталог малых DIALOGEX-диалогов FBE: IDD_TABLE, IDD_INPUTBOX, IDD_ADDIMAGE, IDD_TOOLS_SETTINGS, IDD_ABOUTBOX, IDD_CUSTOMSAVEDLG.",
+  "targetLanguages": [
+    "en-US",
+    "ru-RU",
+    "uk-UA",
+    "de-DE",
+    "fr-FR",
+    "es-ES",
+    "it-IT",
+    "pl-PL",
+    "pt-PT",
+    "nl-NL",
+    "cs-CZ",
+    "bg-BG"
+  ],
+  "sourceLanguage": "ru-RU",
+  "component": "fbe.rc_ui.dialog.small",
+  "resources": [
+    "IDD_TABLE",
+    "IDD_INPUTBOX",
+    "IDD_ADDIMAGE",
+    "IDD_TOOLS_SETTINGS",
+    "IDD_ABOUTBOX",
+    "IDD_CUSTOMSAVEDLG",
+    "IDD_SETTINGS_WORDS",
+    "IDD_HOTKEYS",
+    "IDD_FIND",
+    "IDD_REPLACE",
+    "IDD_SPELL_CHECK",
+    "IDD_WORDS",
+    "IDD_SETTING_OTHER",
+    "IDD_OPTIONS"
+  ],
+  "resourceType": "DIALOGEX",
+  "strings": {
+    "fbe.dialog.idd_table.caption": {
+      "resource": "IDD_TABLE",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "Table parameters",
+        "ru-RU": "Параметры таблицы",
+        "uk-UA": "Параметри таблиці",
+        "de-DE": "Tabellenparameter",
+        "fr-FR": "Paramètres du tableau",
+        "es-ES": "Parámetros de tabla",
+        "it-IT": "Parametri tabella",
+        "pl-PL": "Parametry tabeli",
+        "pt-PT": "Parâmetros da tabela",
+        "nl-NL": "Tabelparameters",
+        "cs-CZ": "Parametry tabulky",
+        "bg-BG": "Параметри на таблицата"
+      }
+    },
+    "fbe.dialog.idd_table.ok": {
+      "resource": "IDD_TABLE",
+      "kind": "DEFPUSHBUTTON",
+      "targetId": "IDOK",
+      "translations": {
+        "en-US": "OK",
+        "ru-RU": "OK",
+        "uk-UA": "Гаразд",
+        "de-DE": "OK",
+        "fr-FR": "OK",
+        "es-ES": "Aceptar",
+        "it-IT": "OK",
+        "pl-PL": "OK",
+        "pt-PT": "OK",
+        "nl-NL": "OK",
+        "cs-CZ": "OK",
+        "bg-BG": "OK"
+      }
+    },
+    "fbe.dialog.idd_table.cancel": {
+      "resource": "IDD_TABLE",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDCANCEL",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Cancel",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Storno",
+        "bg-BG": "Отказ"
+      }
+    },
+    "fbe.dialog.idd_table.rows_label": {
+      "resource": "IDD_TABLE",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Number of table rows <tr><td></td></tr>:",
+        "ru-RU": "Число строк таблицы <tr><td></td></tr>:",
+        "uk-UA": "К-сть рядків таблиці <tr><td></td></tr>:",
+        "de-DE": "Anzahl der Tabellenzeilen <tr><td></td></tr>:",
+        "fr-FR": "Nombre de lignes du tableau <tr><td></td></tr> :",
+        "es-ES": "Número de filas de tabla <tr><td></td></tr>:",
+        "it-IT": "Numero di righe tabella <tr><td></td></tr>:",
+        "pl-PL": "Liczba wierszy tabeli <tr><td></td></tr>:",
+        "pt-PT": "Número de linhas da tabela <tr><td></td></tr>:",
+        "nl-NL": "Aantal tabelrijen <tr><td></td></tr>:",
+        "cs-CZ": "Počet řádků tabulky <tr><td></td></tr>:",
+        "bg-BG": "Брой редове в таблицата <tr><td></td></tr>:"
+      }
+    },
+    "fbe.dialog.idd_table.header_row": {
+      "resource": "IDD_TABLE",
+      "kind": "CONTROL",
+      "targetId": "IDC_CHECK_TABLE_TITLE",
+      "translations": {
+        "en-US": "Insert header row <tr><th></th></tr>",
+        "ru-RU": "Вставить строку заголовков <tr><th></th></tr>",
+        "uk-UA": "Вставити рядків заголовків <tr><th></th></tr>",
+        "de-DE": "Kopfzeile einfügen <tr><th></th></tr>",
+        "fr-FR": "Insérer une ligne d’en-tête <tr><th></th></tr>",
+        "es-ES": "Insertar fila de encabezados <tr><th></th></tr>",
+        "it-IT": "Inserisci riga di intestazione <tr><th></th></tr>",
+        "pl-PL": "Wstaw wiersz nagłówków <tr><th></th></tr>",
+        "pt-PT": "Inserir linha de cabeçalho <tr><th></th></tr>",
+        "nl-NL": "Koprij invoegen <tr><th></th></tr>",
+        "cs-CZ": "Vložit řádek záhlaví <tr><th></th></tr>",
+        "bg-BG": "Вмъкни заглавен ред <tr><th></th></tr>"
+      }
+    },
+    "fbe.dialog.idd_inputbox.caption": {
+      "resource": "IDD_INPUTBOX",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "Input",
+        "ru-RU": "Ввод",
+        "uk-UA": "Введення",
+        "de-DE": "Eingabe",
+        "fr-FR": "Saisie",
+        "es-ES": "Entrada",
+        "it-IT": "Input",
+        "pl-PL": "Wprowadzanie",
+        "pt-PT": "Entrada",
+        "nl-NL": "Invoer",
+        "cs-CZ": "Vstup",
+        "bg-BG": "Въвеждане"
+      }
+    },
+    "fbe.dialog.idd_inputbox.prompt": {
+      "resource": "IDD_INPUTBOX",
+      "kind": "LTEXT",
+      "targetId": "IDC_PROMPT",
+      "translations": {
+        "en-US": "Text:",
+        "ru-RU": "Текст:",
+        "uk-UA": "Текст:",
+        "de-DE": "Text:",
+        "fr-FR": "Texte :",
+        "es-ES": "Texto:",
+        "it-IT": "Testo:",
+        "pl-PL": "Tekst:",
+        "pt-PT": "Texto:",
+        "nl-NL": "Tekst:",
+        "cs-CZ": "Text:",
+        "bg-BG": "Текст:"
+      }
+    },
+    "fbe.dialog.idd_inputbox.yes": {
+      "resource": "IDD_INPUTBOX",
+      "kind": "DEFPUSHBUTTON",
+      "targetId": "IDYES",
+      "translations": {
+        "en-US": "&Yes",
+        "ru-RU": "&Да",
+        "uk-UA": "&Так",
+        "de-DE": "&Ja",
+        "fr-FR": "&Oui",
+        "es-ES": "&Sí",
+        "it-IT": "&Sì",
+        "pl-PL": "&Tak",
+        "pt-PT": "&Sim",
+        "nl-NL": "&Ja",
+        "cs-CZ": "&Ano",
+        "bg-BG": "&Да"
+      }
+    },
+    "fbe.dialog.idd_inputbox.no": {
+      "resource": "IDD_INPUTBOX",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDNO",
+      "translations": {
+        "en-US": "&No",
+        "ru-RU": "&Нет",
+        "uk-UA": "&Ні",
+        "de-DE": "&Nein",
+        "fr-FR": "&Non",
+        "es-ES": "&No",
+        "it-IT": "&No",
+        "pl-PL": "&Nie",
+        "pt-PT": "&Não",
+        "nl-NL": "&Nee",
+        "cs-CZ": "&Ne",
+        "bg-BG": "&Не"
+      }
+    },
+    "fbe.dialog.idd_inputbox.cancel": {
+      "resource": "IDD_INPUTBOX",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDCANCEL",
+      "translations": {
+        "en-US": "&Cancel",
+        "ru-RU": "&Отмена",
+        "uk-UA": "&Скасувати",
+        "de-DE": "&Abbrechen",
+        "fr-FR": "&Annuler",
+        "es-ES": "&Cancelar",
+        "it-IT": "&Annulla",
+        "pl-PL": "&Anuluj",
+        "pt-PT": "&Cancelar",
+        "nl-NL": "&Annuleren",
+        "cs-CZ": "&Storno",
+        "bg-BG": "&Отказ"
+      }
+    },
+    "fbe.dialog.idd_addimage.caption": {
+      "resource": "IDD_ADDIMAGE",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "Make a choice",
+        "ru-RU": "Сделайте выбор",
+        "uk-UA": "Зробіть вибір",
+        "de-DE": "Auswahl treffen",
+        "fr-FR": "Faites un choix",
+        "es-ES": "Elija una opción",
+        "it-IT": "Fai una scelta",
+        "pl-PL": "Dokonaj wyboru",
+        "pt-PT": "Faça uma escolha",
+        "nl-NL": "Maak een keuze",
+        "cs-CZ": "Vyberte možnost",
+        "bg-BG": "Направете избор"
+      }
+    },
+    "fbe.dialog.idd_addimage.yes": {
+      "resource": "IDD_ADDIMAGE",
+      "kind": "DEFPUSHBUTTON",
+      "targetId": "IDYES",
+      "translations": {
+        "en-US": "Yes",
+        "ru-RU": "Да",
+        "uk-UA": "Так",
+        "de-DE": "Ja",
+        "fr-FR": "Oui",
+        "es-ES": "Sí",
+        "it-IT": "Sì",
+        "pl-PL": "Tak",
+        "pt-PT": "Sim",
+        "nl-NL": "Ja",
+        "cs-CZ": "Ano",
+        "bg-BG": "Да"
+      }
+    },
+    "fbe.dialog.idd_addimage.no": {
+      "resource": "IDD_ADDIMAGE",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDCANCEL",
+      "translations": {
+        "en-US": "No",
+        "ru-RU": "Нет",
+        "uk-UA": "Ні",
+        "de-DE": "Nein",
+        "fr-FR": "Non",
+        "es-ES": "No",
+        "it-IT": "No",
+        "pl-PL": "Nie",
+        "pt-PT": "Não",
+        "nl-NL": "Nee",
+        "cs-CZ": "Ne",
+        "bg-BG": "Не"
+      }
+    },
+    "fbe.dialog.idd_addimage.ask_again": {
+      "resource": "IDD_ADDIMAGE",
+      "kind": "CONTROL",
+      "targetId": "IDC_ADDIMAGE_ASKAGAIN",
+      "translations": {
+        "en-US": "Do not ask again",
+        "ru-RU": "Больше не спрашивать",
+        "uk-UA": "Більше не запитувати",
+        "de-DE": "Nicht mehr fragen",
+        "fr-FR": "Ne plus demander",
+        "es-ES": "No volver a preguntar",
+        "it-IT": "Non chiedere più",
+        "pl-PL": "Nie pytaj ponownie",
+        "pt-PT": "Não perguntar novamente",
+        "nl-NL": "Niet opnieuw vragen",
+        "cs-CZ": "Znovu se neptat",
+        "bg-BG": "Не питай отново"
+      }
+    },
+    "fbe.dialog.idd_addimage.text": {
+      "resource": "IDD_ADDIMAGE",
+      "kind": "LTEXT",
+      "targetId": "IDS_ADD_CLEARIMG_TEXT",
+      "translations": {
+        "en-US": "Insert an empty image?",
+        "ru-RU": "Вставить пустое изображение?",
+        "uk-UA": "Вставити порожній малюнок?",
+        "de-DE": "Leeres Bild einfügen?",
+        "fr-FR": "Insérer une image vide ?",
+        "es-ES": "¿Insertar una imagen vacía?",
+        "it-IT": "Inserire un’immagine vuota?",
+        "pl-PL": "Wstawić pusty obraz?",
+        "pt-PT": "Inserir uma imagem vazia?",
+        "nl-NL": "Een lege afbeelding invoegen?",
+        "cs-CZ": "Vložit prázdný obrázek?",
+        "bg-BG": "Да се вмъкне празно изображение?"
+      }
+    },
+    "fbe.dialog.idd_tools_settings.caption": {
+      "resource": "IDD_TOOLS_SETTINGS",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "Settings",
+        "ru-RU": "Настройки",
+        "uk-UA": "Налаштування",
+        "de-DE": "Einstellungen",
+        "fr-FR": "Paramètres",
+        "es-ES": "Configuración",
+        "it-IT": "Impostazioni",
+        "pl-PL": "Ustawienia",
+        "pt-PT": "Definições",
+        "nl-NL": "Instellingen",
+        "cs-CZ": "Nastavení",
+        "bg-BG": "Настройки"
+      }
+    },
+    "fbe.dialog.idd_tools_settings.ok": {
+      "resource": "IDD_TOOLS_SETTINGS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDOK",
+      "translations": {
+        "en-US": "OK",
+        "ru-RU": "OK",
+        "uk-UA": "Гаразд",
+        "de-DE": "OK",
+        "fr-FR": "OK",
+        "es-ES": "Aceptar",
+        "it-IT": "OK",
+        "pl-PL": "OK",
+        "pt-PT": "OK",
+        "nl-NL": "OK",
+        "cs-CZ": "OK",
+        "bg-BG": "OK"
+      }
+    },
+    "fbe.dialog.idd_tools_settings.cancel": {
+      "resource": "IDD_TOOLS_SETTINGS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDCANCEL",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Отмена",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Storno",
+        "bg-BG": "Отказ"
+      }
+    },
+    "fbe.dialog.idd_aboutbox.caption": {
+      "resource": "IDD_ABOUTBOX",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "About",
+        "ru-RU": "О программе",
+        "uk-UA": "Про програму",
+        "de-DE": "Über",
+        "fr-FR": "À propos",
+        "es-ES": "Acerca de",
+        "it-IT": "Informazioni",
+        "pl-PL": "O programie",
+        "pt-PT": "Acerca de",
+        "nl-NL": "Over",
+        "cs-CZ": "O programu",
+        "bg-BG": "За програмата"
+      }
+    },
+    "fbe.dialog.idd_aboutbox.ok": {
+      "resource": "IDD_ABOUTBOX",
+      "kind": "DEFPUSHBUTTON",
+      "targetId": "IDOK",
+      "translations": {
+        "en-US": "OK",
+        "ru-RU": "OK",
+        "uk-UA": "Гаразд",
+        "de-DE": "OK",
+        "fr-FR": "OK",
+        "es-ES": "Aceptar",
+        "it-IT": "OK",
+        "pl-PL": "OK",
+        "pt-PT": "OK",
+        "nl-NL": "OK",
+        "cs-CZ": "OK",
+        "bg-BG": "OK"
+      }
+    },
+    "fbe.dialog.idd_aboutbox.build": {
+      "resource": "IDD_ABOUTBOX",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC_BUILD",
+      "translations": {
+        "en-US": "Build",
+        "ru-RU": "Сборка",
+        "uk-UA": "Збірка",
+        "de-DE": "Build",
+        "fr-FR": "Build",
+        "es-ES": "Compilación",
+        "it-IT": "Build",
+        "pl-PL": "Kompilacja",
+        "pt-PT": "Compilação",
+        "nl-NL": "Build",
+        "cs-CZ": "Sestavení",
+        "bg-BG": "Сборка"
+      }
+    },
+    "fbe.dialog.idd_aboutbox.link": {
+      "resource": "IDD_ABOUTBOX",
+      "kind": "CONTROL",
+      "targetId": "IDC_SYSLINK_AB_LINKS",
+      "translations": {
+        "en-US": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "ru-RU": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "uk-UA": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "de-DE": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "fr-FR": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "es-ES": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "it-IT": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "pl-PL": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "pt-PT": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "nl-NL": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "cs-CZ": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>",
+        "bg-BG": "<a href=\"https://github.com/sklart/fictionbook-editor-next\">https://github.com/sklart/fictionbook-editor-next</a>"
+      }
+    },
+    "fbe.dialog.idd_aboutbox.update": {
+      "resource": "IDD_ABOUTBOX",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_UPDATE",
+      "translations": {
+        "en-US": "Update",
+        "ru-RU": "Обновить",
+        "uk-UA": "Оновити",
+        "de-DE": "Aktualisieren",
+        "fr-FR": "Mettre à jour",
+        "es-ES": "Actualizar",
+        "it-IT": "Aggiorna",
+        "pl-PL": "Aktualizuj",
+        "pt-PT": "Atualizar",
+        "nl-NL": "Bijwerken",
+        "cs-CZ": "Aktualizovat",
+        "bg-BG": "Обновяване"
+      }
+    },
+    "fbe.dialog.idd_customsavedlg.encoding": {
+      "resource": "IDD_CUSTOMSAVEDLG",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Encoding:",
+        "ru-RU": "Кодировка:",
+        "uk-UA": "Кодування:",
+        "de-DE": "Kodierung:",
+        "fr-FR": "Encodage :",
+        "es-ES": "Codificación:",
+        "it-IT": "Codifica:",
+        "pl-PL": "Kodowanie:",
+        "pt-PT": "Codificação:",
+        "nl-NL": "Codering:",
+        "cs-CZ": "Kódování:",
+        "bg-BG": "Кодировка:"
+      }
+    },
+    "fbe.dialog.idd_settings_words.add": {
+      "resource": "IDD_SETTINGS_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_ADD",
+      "translations": {
+        "en-US": "Add",
+        "ru-RU": "Добавить",
+        "uk-UA": "Додати",
+        "de-DE": "Hinzufügen",
+        "fr-FR": "Ajouter",
+        "es-ES": "Añadir",
+        "it-IT": "Aggiungi",
+        "pl-PL": "Dodaj",
+        "pt-PT": "Adicionar",
+        "nl-NL": "Toevoegen",
+        "cs-CZ": "Přidat",
+        "bg-BG": "Добавяне"
+      }
+    },
+    "fbe.dialog.idd_settings_words.group": {
+      "resource": "IDD_SETTINGS_WORDS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC_WORDS_CHEVRON",
+      "translations": {
+        "en-US": "Word-exclusion list",
+        "ru-RU": "Список слов-исключений",
+        "uk-UA": "Список слів-виключень",
+        "de-DE": "Liste ausgeschlossener Wörter",
+        "fr-FR": "Liste des mots exclus",
+        "es-ES": "Lista de palabras excluidas",
+        "it-IT": "Elenco parole escluse",
+        "pl-PL": "Lista wykluczonych słów",
+        "pt-PT": "Lista de palavras excluídas",
+        "nl-NL": "Lijst met uitgesloten woorden",
+        "cs-CZ": "Seznam vyloučených slov",
+        "bg-BG": "Списък с изключени думи"
+      }
+    },
+    "fbe.dialog.idd_settings_words.show_exclusions": {
+      "resource": "IDD_SETTINGS_WORDS",
+      "kind": "CONTROL",
+      "targetId": "IDC_CHECK_SHOW_EXCLUSIONS",
+      "translations": {
+        "en-US": "Show word exclusions in the \"Words\" dialog",
+        "ru-RU": "Показывать слова-исключения в диалоге \"Слова\"",
+        "uk-UA": "Показувати слова-виключення у вікні \"Слова\"",
+        "de-DE": "Wortausnahmen im Dialog \"Wörter\" anzeigen",
+        "fr-FR": "Afficher les mots exclus dans la fenêtre \"Mots\"",
+        "es-ES": "Mostrar palabras excluidas en el diálogo \"Palabras\"",
+        "it-IT": "Mostra parole escluse nella finestra \"Parole\"",
+        "pl-PL": "Pokazuj wykluczone słowa w oknie \"Słowa\"",
+        "pt-PT": "Mostrar palavras excluídas na janela \"Palavras\"",
+        "nl-NL": "Uitgesloten woorden tonen in het venster \"Woorden\"",
+        "cs-CZ": "Zobrazovat vyloučená slova v okně \"Slova\"",
+        "bg-BG": "Показвай изключените думи в прозореца \"Думи\""
+      }
+    },
+    "fbe.dialog.idd_settings_words.select_all": {
+      "resource": "IDD_SETTINGS_WORDS",
+      "kind": "CONTROL",
+      "targetId": "IDC_CHECK_SELALL",
+      "translations": {
+        "en-US": "Select all",
+        "ru-RU": "Выделить все",
+        "uk-UA": "Вибрати все",
+        "de-DE": "Alle auswählen",
+        "fr-FR": "Tout sélectionner",
+        "es-ES": "Seleccionar todo",
+        "it-IT": "Seleziona tutto",
+        "pl-PL": "Zaznacz wszystko",
+        "pt-PT": "Selecionar tudo",
+        "nl-NL": "Alles selecteren",
+        "cs-CZ": "Vybrat vše",
+        "bg-BG": "Избери всички"
+      }
+    },
+    "fbe.dialog.idd_settings_words.remove_selected": {
+      "resource": "IDD_SETTINGS_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_REMOVESEL",
+      "translations": {
+        "en-US": "Remove selected",
+        "ru-RU": "Убрать выделенные",
+        "uk-UA": "Видалити вибрані",
+        "de-DE": "Ausgewählte entfernen",
+        "fr-FR": "Supprimer la sélection",
+        "es-ES": "Quitar seleccionados",
+        "it-IT": "Rimuovi selezionati",
+        "pl-PL": "Usuń zaznaczone",
+        "pt-PT": "Remover selecionados",
+        "nl-NL": "Selectie verwijderen",
+        "cs-CZ": "Odebrat vybrané",
+        "bg-BG": "Премахни избраните"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.description": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC_HOTKEY_DESCRIPTION",
+      "translations": {
+        "en-US": "Description",
+        "ru-RU": "Описание",
+        "uk-UA": "Опис",
+        "de-DE": "Beschreibung",
+        "fr-FR": "Description",
+        "es-ES": "Descripción",
+        "it-IT": "Descrizione",
+        "pl-PL": "Opis",
+        "pt-PT": "Descrição",
+        "nl-NL": "Beschrijving",
+        "cs-CZ": "Popis",
+        "bg-BG": "Описание"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.groups": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC_HOTKEYS_GROUPS",
+      "translations": {
+        "en-US": "Groups:",
+        "ru-RU": "Группы:",
+        "uk-UA": "Групи:",
+        "de-DE": "Gruppen:",
+        "fr-FR": "Groupes :",
+        "es-ES": "Grupos:",
+        "it-IT": "Gruppi:",
+        "pl-PL": "Grupy:",
+        "pt-PT": "Grupos:",
+        "nl-NL": "Groepen:",
+        "cs-CZ": "Skupiny:",
+        "bg-BG": "Групи:"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.commands": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC_HOTKEYS",
+      "translations": {
+        "en-US": "Commands:",
+        "ru-RU": "Команды:",
+        "uk-UA": "Команди:",
+        "de-DE": "Befehle:",
+        "fr-FR": "Commandes :",
+        "es-ES": "Comandos:",
+        "it-IT": "Comandi:",
+        "pl-PL": "Polecenia:",
+        "pt-PT": "Comandos:",
+        "nl-NL": "Opdrachten:",
+        "cs-CZ": "Příkazy:",
+        "bg-BG": "Команди:"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.shortcut": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Shortcut:",
+        "ru-RU": "Клавиша:",
+        "uk-UA": "Клавіша:",
+        "de-DE": "Tastenkürzel:",
+        "fr-FR": "Raccourci :",
+        "es-ES": "Atajo:",
+        "it-IT": "Scorciatoia:",
+        "pl-PL": "Skrót:",
+        "pt-PT": "Atalho:",
+        "nl-NL": "Sneltoets:",
+        "cs-CZ": "Zkratka:",
+        "bg-BG": "Клавиш:"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.default": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_DEFAULT",
+      "translations": {
+        "en-US": "Default",
+        "ru-RU": "По умолчанию",
+        "uk-UA": "Типово",
+        "de-DE": "Standard",
+        "fr-FR": "Par défaut",
+        "es-ES": "Predeterminado",
+        "it-IT": "Predefinito",
+        "pl-PL": "Domyślne",
+        "pt-PT": "Predefinição",
+        "nl-NL": "Standaard",
+        "cs-CZ": "Výchozí",
+        "bg-BG": "По подразбиране"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.delete": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_HOTKEY_DELETE",
+      "translations": {
+        "en-US": "Delete",
+        "ru-RU": "Удалить",
+        "uk-UA": "Видалити",
+        "de-DE": "Löschen",
+        "fr-FR": "Supprimer",
+        "es-ES": "Eliminar",
+        "it-IT": "Elimina",
+        "pl-PL": "Usuń",
+        "pt-PT": "Eliminar",
+        "nl-NL": "Verwijderen",
+        "cs-CZ": "Odstranit",
+        "bg-BG": "Изтриване"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.actions": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Actions",
+        "ru-RU": "Действия",
+        "uk-UA": "Дії",
+        "de-DE": "Aktionen",
+        "fr-FR": "Actions",
+        "es-ES": "Acciones",
+        "it-IT": "Azioni",
+        "pl-PL": "Akcje",
+        "pt-PT": "Ações",
+        "nl-NL": "Acties",
+        "cs-CZ": "Akce",
+        "bg-BG": "Действия"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.collision": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC_HOTKEY_COLLISION",
+      "translations": {
+        "en-US": "Collision",
+        "ru-RU": "Конфликт",
+        "uk-UA": "Конфлікт",
+        "de-DE": "Konflikt",
+        "fr-FR": "Conflit",
+        "es-ES": "Conflicto",
+        "it-IT": "Conflitto",
+        "pl-PL": "Konflikt",
+        "pt-PT": "Conflito",
+        "nl-NL": "Conflict",
+        "cs-CZ": "Konflikt",
+        "bg-BG": "Конфликт"
+      }
+    },
+    "fbe.dialog.idd_hotkeys.assign": {
+      "resource": "IDD_HOTKEYS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_HOTKEY_ASSIGN",
+      "translations": {
+        "en-US": "Assign",
+        "ru-RU": "Назначить",
+        "uk-UA": "Призначити",
+        "de-DE": "Zuweisen",
+        "fr-FR": "Attribuer",
+        "es-ES": "Asignar",
+        "it-IT": "Assegna",
+        "pl-PL": "Przypisz",
+        "pt-PT": "Atribuir",
+        "nl-NL": "Toewijzen",
+        "cs-CZ": "Přiřadit",
+        "bg-BG": "Назначаване"
+      }
+    },
+    "fbe.dialog.idd_find.caption": {
+      "resource": "IDD_FIND",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "Find",
+        "ru-RU": "Поиск",
+        "uk-UA": "Пошук",
+        "de-DE": "Suchen",
+        "fr-FR": "Rechercher",
+        "es-ES": "Buscar",
+        "it-IT": "Trova",
+        "pl-PL": "Znajdź",
+        "pt-PT": "Localizar",
+        "nl-NL": "Zoeken",
+        "cs-CZ": "Najít",
+        "bg-BG": "Търсене"
+      }
+    },
+    "fbe.dialog.idd_find.find_what": {
+      "resource": "IDD_FIND",
+      "kind": "LTEXT",
+      "targetId": "IDC_FIND_LABEL_TEXT",
+      "translations": {
+        "en-US": "Find what:",
+        "ru-RU": "Что искать:",
+        "uk-UA": "Шукати:",
+        "de-DE": "Suchen nach:",
+        "fr-FR": "Rechercher :",
+        "es-ES": "Buscar:",
+        "it-IT": "Trova:",
+        "pl-PL": "Znajdź:",
+        "pt-PT": "Localizar:",
+        "nl-NL": "Zoeken naar:",
+        "cs-CZ": "Hledat:",
+        "bg-BG": "Търси:"
+      }
+    },
+    "fbe.dialog.idd_find.find_next": {
+      "resource": "IDD_FIND",
+      "kind": "DEFPUSHBUTTON",
+      "targetId": "ID_FIND_NEXT",
+      "translations": {
+        "en-US": "&Find next",
+        "ru-RU": "&Искать далее",
+        "uk-UA": "&Знайти далі",
+        "de-DE": "&Weitersuchen",
+        "fr-FR": "&Suivant",
+        "es-ES": "&Buscar siguiente",
+        "it-IT": "&Trova successivo",
+        "pl-PL": "&Znajdź następny",
+        "pt-PT": "&Localizar seguinte",
+        "nl-NL": "&Volgende zoeken",
+        "cs-CZ": "&Najít další",
+        "bg-BG": "&Търси следващ"
+      }
+    },
+    "fbe.dialog.idd_find.whole_word": {
+      "resource": "IDD_FIND",
+      "kind": "CONTROL",
+      "targetId": "IDC_WHOLE",
+      "translations": {
+        "en-US": "&Whole word only",
+        "ru-RU": "&Только слово целиком",
+        "uk-UA": "Лише &ціле слово",
+        "de-DE": "Nur &ganze Wörter",
+        "fr-FR": "Mot &entier uniquement",
+        "es-ES": "Sólo &palabra completa",
+        "it-IT": "Solo parola &intera",
+        "pl-PL": "Tylko &całe słowa",
+        "pt-PT": "Só &palavra inteira",
+        "nl-NL": "Alleen &hele woorden",
+        "cs-CZ": "Pouze &celá slova",
+        "bg-BG": "Само &цяла дума"
+      }
+    },
+    "fbe.dialog.idd_find.match_case": {
+      "resource": "IDD_FIND",
+      "kind": "CONTROL",
+      "targetId": "IDC_MATCHCASE",
+      "translations": {
+        "en-US": "&Match case",
+        "ru-RU": "&Учитывать регистр",
+        "uk-UA": "&Враховувати регістр",
+        "de-DE": "Groß-/Kleinschreibung &beachten",
+        "fr-FR": "Respecter la &casse",
+        "es-ES": "&Coincidir mayúsculas",
+        "it-IT": "&Maiuscole/minuscole",
+        "pl-PL": "Uwzględniaj &wielkość liter",
+        "pt-PT": "&Diferenciar maiúsculas",
+        "nl-NL": "&Hoofdlettergevoelig",
+        "cs-CZ": "Rozlišovat &velikost písmen",
+        "bg-BG": "&Различавай главни/малки"
+      }
+    },
+    "fbe.dialog.idd_find.regexp": {
+      "resource": "IDD_FIND",
+      "kind": "CONTROL",
+      "targetId": "IDC_REGEXP",
+      "translations": {
+        "en-US": "&Regular expression",
+        "ru-RU": "&Регулярное выражение",
+        "uk-UA": "&Регулярний вираз",
+        "de-DE": "&Regulärer Ausdruck",
+        "fr-FR": "Expression &régulière",
+        "es-ES": "Expresión &regular",
+        "it-IT": "Espressione &regolare",
+        "pl-PL": "Wyrażenie &regularne",
+        "pt-PT": "Expressão &regular",
+        "nl-NL": "&Reguliere expressie",
+        "cs-CZ": "&Regulární výraz",
+        "bg-BG": "&Регулярен израз"
+      }
+    },
+    "fbe.dialog.idd_find.direction": {
+      "resource": "IDD_FIND",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_FIND_DIRECTION_GROUP",
+      "translations": {
+        "en-US": "Direction",
+        "ru-RU": "Направление",
+        "uk-UA": "Напрямок",
+        "de-DE": "Richtung",
+        "fr-FR": "Direction",
+        "es-ES": "Dirección",
+        "it-IT": "Direzione",
+        "pl-PL": "Kierunek",
+        "pt-PT": "Direção",
+        "nl-NL": "Richting",
+        "cs-CZ": "Směr",
+        "bg-BG": "Посока"
+      }
+    },
+    "fbe.dialog.idd_find.up": {
+      "resource": "IDD_FIND",
+      "kind": "CONTROL",
+      "targetId": "IDC_UP",
+      "translations": {
+        "en-US": "&Up",
+        "ru-RU": "&Вверх",
+        "uk-UA": "В&гору",
+        "de-DE": "Nach &oben",
+        "fr-FR": "Vers le &haut",
+        "es-ES": "&Arriba",
+        "it-IT": "&Su",
+        "pl-PL": "W &górę",
+        "pt-PT": "Para &cima",
+        "nl-NL": "&Omhoog",
+        "cs-CZ": "Na&horu",
+        "bg-BG": "На&горе"
+      }
+    },
+    "fbe.dialog.idd_find.down": {
+      "resource": "IDD_FIND",
+      "kind": "CONTROL",
+      "targetId": "IDC_DOWN",
+      "translations": {
+        "en-US": "&Down",
+        "ru-RU": "В&низ",
+        "uk-UA": "В&низ",
+        "de-DE": "Nach &unten",
+        "fr-FR": "Vers le &bas",
+        "es-ES": "A&bajo",
+        "it-IT": "&Giù",
+        "pl-PL": "W &dół",
+        "pt-PT": "Para &baixo",
+        "nl-NL": "Om&laag",
+        "cs-CZ": "&Dolů",
+        "bg-BG": "На&долу"
+      }
+    },
+    "fbe.dialog.idd_find.cancel": {
+      "resource": "IDD_FIND",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDCANCEL",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Отмена",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Storno",
+        "bg-BG": "Отказ"
+      }
+    },
+    "fbe.dialog.idd_replace.caption": {
+      "resource": "IDD_REPLACE",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "Replace",
+        "ru-RU": "Заменить",
+        "uk-UA": "Знайти й замінити",
+        "de-DE": "Ersetzen",
+        "fr-FR": "Remplacer",
+        "es-ES": "Reemplazar",
+        "it-IT": "Sostituisci",
+        "pl-PL": "Zamień",
+        "pt-PT": "Substituir",
+        "nl-NL": "Vervangen",
+        "cs-CZ": "Nahradit",
+        "bg-BG": "Замяна"
+      }
+    },
+    "fbe.dialog.idd_replace.find_what": {
+      "resource": "IDD_REPLACE",
+      "kind": "LTEXT",
+      "targetId": "IDC_REPLACE_LABEL_TEXT",
+      "translations": {
+        "en-US": "Find:",
+        "ru-RU": "Найти:",
+        "uk-UA": "Шукати:",
+        "de-DE": "Suchen:",
+        "fr-FR": "Rechercher :",
+        "es-ES": "Buscar:",
+        "it-IT": "Trova:",
+        "pl-PL": "Znajdź:",
+        "pt-PT": "Localizar:",
+        "nl-NL": "Zoeken:",
+        "cs-CZ": "Najít:",
+        "bg-BG": "Търси:"
+      }
+    },
+    "fbe.dialog.idd_replace.replace_with": {
+      "resource": "IDD_REPLACE",
+      "kind": "LTEXT",
+      "targetId": "IDC_REPLACE_LABEL_REPLACE",
+      "translations": {
+        "en-US": "Replace:",
+        "ru-RU": "Заменить:",
+        "uk-UA": "Замінити на:",
+        "de-DE": "Ersetzen:",
+        "fr-FR": "Remplacer :",
+        "es-ES": "Reemplazar:",
+        "it-IT": "Sostituisci:",
+        "pl-PL": "Zamień:",
+        "pt-PT": "Substituir:",
+        "nl-NL": "Vervangen:",
+        "cs-CZ": "Nahradit:",
+        "bg-BG": "Замени:"
+      }
+    },
+    "fbe.dialog.idd_replace.whole_word": {
+      "resource": "IDD_REPLACE",
+      "kind": "CONTROL",
+      "targetId": "IDC_WHOLE",
+      "translations": {
+        "en-US": "&Whole word only",
+        "ru-RU": "&Только слово целиком",
+        "uk-UA": "&Лише ціле слово",
+        "de-DE": "Nur &ganze Wörter",
+        "fr-FR": "Mot &entier uniquement",
+        "es-ES": "Sólo &palabra completa",
+        "it-IT": "Solo parola &intera",
+        "pl-PL": "Tylko &całe słowa",
+        "pt-PT": "Só &palavra inteira",
+        "nl-NL": "Alleen &hele woorden",
+        "cs-CZ": "Pouze &celá slova",
+        "bg-BG": "Само &цяла дума"
+      }
+    },
+    "fbe.dialog.idd_replace.match_case": {
+      "resource": "IDD_REPLACE",
+      "kind": "CONTROL",
+      "targetId": "IDC_MATCHCASE",
+      "translations": {
+        "en-US": "&Match case",
+        "ru-RU": "&Учитывать регистр",
+        "uk-UA": "&Враховувати регістр",
+        "de-DE": "Groß-/Kleinschreibung &beachten",
+        "fr-FR": "Respecter la &casse",
+        "es-ES": "&Coincidir mayúsculas",
+        "it-IT": "&Maiuscole/minuscole",
+        "pl-PL": "Uwzględniaj &wielkość liter",
+        "pt-PT": "&Diferenciar maiúsculas",
+        "nl-NL": "&Hoofdlettergevoelig",
+        "cs-CZ": "Rozlišovat &velikost písmen",
+        "bg-BG": "&Различавай главни/малки"
+      }
+    },
+    "fbe.dialog.idd_replace.regexp": {
+      "resource": "IDD_REPLACE",
+      "kind": "CONTROL",
+      "targetId": "IDC_REGEXP",
+      "translations": {
+        "en-US": "&Regular expression",
+        "ru-RU": "&Регулярное выражение",
+        "uk-UA": "&Регулярний вираз",
+        "de-DE": "&Regulärer Ausdruck",
+        "fr-FR": "Expression &régulière",
+        "es-ES": "Expresión &regular",
+        "it-IT": "Espressione &regolare",
+        "pl-PL": "Wyrażenie &regularne",
+        "pt-PT": "Expressão &regular",
+        "nl-NL": "&Reguliere expressie",
+        "cs-CZ": "&Regulární výraz",
+        "bg-BG": "&Регулярен израз"
+      }
+    },
+    "fbe.dialog.idd_replace.direction": {
+      "resource": "IDD_REPLACE",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_REPLACE_DIRECTION_GROUP",
+      "translations": {
+        "en-US": "Direction",
+        "ru-RU": "Направление",
+        "uk-UA": "Напрямок",
+        "de-DE": "Richtung",
+        "fr-FR": "Direction",
+        "es-ES": "Dirección",
+        "it-IT": "Direzione",
+        "pl-PL": "Kierunek",
+        "pt-PT": "Direção",
+        "nl-NL": "Richting",
+        "cs-CZ": "Směr",
+        "bg-BG": "Посока"
+      }
+    },
+    "fbe.dialog.idd_replace.up": {
+      "resource": "IDD_REPLACE",
+      "kind": "CONTROL",
+      "targetId": "IDC_UP",
+      "translations": {
+        "en-US": "&Up",
+        "ru-RU": "&Вверх",
+        "uk-UA": "В&гору",
+        "de-DE": "Nach &oben",
+        "fr-FR": "Vers le &haut",
+        "es-ES": "&Arriba",
+        "it-IT": "&Su",
+        "pl-PL": "W &górę",
+        "pt-PT": "Para &cima",
+        "nl-NL": "&Omhoog",
+        "cs-CZ": "Na&horu",
+        "bg-BG": "На&горе"
+      }
+    },
+    "fbe.dialog.idd_replace.down": {
+      "resource": "IDD_REPLACE",
+      "kind": "CONTROL",
+      "targetId": "IDC_DOWN",
+      "translations": {
+        "en-US": "&Down",
+        "ru-RU": "В&низ",
+        "uk-UA": "В&низ",
+        "de-DE": "Nach &unten",
+        "fr-FR": "Vers le &bas",
+        "es-ES": "A&bajo",
+        "it-IT": "&Giù",
+        "pl-PL": "W &dół",
+        "pt-PT": "Para &baixo",
+        "nl-NL": "Om&laag",
+        "cs-CZ": "&Dolů",
+        "bg-BG": "На&долу"
+      }
+    },
+    "fbe.dialog.idd_replace.find_next": {
+      "resource": "IDD_REPLACE",
+      "kind": "DEFPUSHBUTTON",
+      "targetId": "ID_FIND_NEXT",
+      "translations": {
+        "en-US": "&Find next",
+        "ru-RU": "&Искать далее",
+        "uk-UA": "&Знайти далі",
+        "de-DE": "&Weitersuchen",
+        "fr-FR": "&Suivant",
+        "es-ES": "&Buscar siguiente",
+        "it-IT": "&Trova successivo",
+        "pl-PL": "&Znajdź następny",
+        "pt-PT": "&Localizar seguinte",
+        "nl-NL": "&Volgende zoeken",
+        "cs-CZ": "&Najít další",
+        "bg-BG": "&Търси следващ"
+      }
+    },
+    "fbe.dialog.idd_replace.replace_one": {
+      "resource": "IDD_REPLACE",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_REPLACE_ONE",
+      "translations": {
+        "en-US": "&Replace",
+        "ru-RU": "&Заменить",
+        "uk-UA": "&Замінити",
+        "de-DE": "&Ersetzen",
+        "fr-FR": "&Remplacer",
+        "es-ES": "&Reemplazar",
+        "it-IT": "&Sostituisci",
+        "pl-PL": "&Zamień",
+        "pt-PT": "&Substituir",
+        "nl-NL": "&Vervangen",
+        "cs-CZ": "&Nahradit",
+        "bg-BG": "&Замени"
+      }
+    },
+    "fbe.dialog.idd_replace.replace_all": {
+      "resource": "IDD_REPLACE",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_REPLACE_ALL",
+      "translations": {
+        "en-US": "Replace &all",
+        "ru-RU": "Заменить &все",
+        "uk-UA": "Замінити &все",
+        "de-DE": "&Alle ersetzen",
+        "fr-FR": "Tout &remplacer",
+        "es-ES": "Reemplazar &todo",
+        "it-IT": "Sostituisci &tutto",
+        "pl-PL": "Zamień &wszystko",
+        "pt-PT": "Substituir &tudo",
+        "nl-NL": "&Alles vervangen",
+        "cs-CZ": "Nahradit &vše",
+        "bg-BG": "Замени &всички"
+      }
+    },
+    "fbe.dialog.idd_replace.cancel": {
+      "resource": "IDD_REPLACE",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDCANCEL",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Отмена",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Storno",
+        "bg-BG": "Отказ"
+      }
+    },
+    "fbe.dialog.idd_spell_check.caption": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "Spelling",
+        "ru-RU": "Орфография",
+        "uk-UA": "Правопис",
+        "de-DE": "Rechtschreibung",
+        "fr-FR": "Orthographe",
+        "es-ES": "Ortografía",
+        "it-IT": "Ortografia",
+        "pl-PL": "Pisownia",
+        "pt-PT": "Ortografia",
+        "nl-NL": "Spelling",
+        "cs-CZ": "Pravopis",
+        "bg-BG": "Правопис"
+      }
+    },
+    "fbe.dialog.idd_spell_check.cancel": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "DEFPUSHBUTTON",
+      "targetId": "IDCANCEL",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Отмена",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Storno",
+        "bg-BG": "Отказ"
+      }
+    },
+    "fbe.dialog.idd_spell_check.not_in_dictionary": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Not in dictionary:",
+        "ru-RU": "Нет в словаре:",
+        "uk-UA": "Немає в словнику:",
+        "de-DE": "Nicht im Wörterbuch:",
+        "fr-FR": "Absent du dictionnaire :",
+        "es-ES": "No está en el diccionario:",
+        "it-IT": "Non nel dizionario:",
+        "pl-PL": "Brak w słowniku:",
+        "pt-PT": "Não está no dicionário:",
+        "nl-NL": "Niet in woordenboek:",
+        "cs-CZ": "Není ve slovníku:",
+        "bg-BG": "Не е в речника:"
+      }
+    },
+    "fbe.dialog.idd_spell_check.replace_with": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Replace with:",
+        "ru-RU": "Заменить на:",
+        "uk-UA": "Замінити на:",
+        "de-DE": "Ersetzen durch:",
+        "fr-FR": "Remplacer par :",
+        "es-ES": "Reemplazar por:",
+        "it-IT": "Sostituisci con:",
+        "pl-PL": "Zamień na:",
+        "pt-PT": "Substituir por:",
+        "nl-NL": "Vervangen door:",
+        "cs-CZ": "Nahradit za:",
+        "bg-BG": "Замени с:"
+      }
+    },
+    "fbe.dialog.idd_spell_check.suggestions": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Suggestions:",
+        "ru-RU": "Варианты:",
+        "uk-UA": "Варіанти:",
+        "de-DE": "Vorschläge:",
+        "fr-FR": "Suggestions :",
+        "es-ES": "Sugerencias:",
+        "it-IT": "Suggerimenti:",
+        "pl-PL": "Sugestie:",
+        "pt-PT": "Sugestões:",
+        "nl-NL": "Suggesties:",
+        "cs-CZ": "Návrhy:",
+        "bg-BG": "Предложения:"
+      }
+    },
+    "fbe.dialog.idd_spell_check.ignore": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_SPELL_IGNORE",
+      "translations": {
+        "en-US": "Ignore",
+        "ru-RU": "Пропустить",
+        "uk-UA": "Пропустити",
+        "de-DE": "Ignorieren",
+        "fr-FR": "Ignorer",
+        "es-ES": "Omitir",
+        "it-IT": "Ignora",
+        "pl-PL": "Ignoruj",
+        "pt-PT": "Ignorar",
+        "nl-NL": "Negeren",
+        "cs-CZ": "Ignorovat",
+        "bg-BG": "Игнорирай"
+      }
+    },
+    "fbe.dialog.idd_spell_check.ignore_all": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_SPELL_IGNOREALL",
+      "translations": {
+        "en-US": "Ignore all",
+        "ru-RU": "Пропустить все",
+        "uk-UA": "Пропустити все",
+        "de-DE": "Alle ignorieren",
+        "fr-FR": "Tout ignorer",
+        "es-ES": "Omitir todo",
+        "it-IT": "Ignora tutto",
+        "pl-PL": "Ignoruj wszystkie",
+        "pt-PT": "Ignorar tudo",
+        "nl-NL": "Alles negeren",
+        "cs-CZ": "Ignorovat vše",
+        "bg-BG": "Игнорирай всички"
+      }
+    },
+    "fbe.dialog.idd_spell_check.change": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_SPELL_CHANGE",
+      "translations": {
+        "en-US": "Change",
+        "ru-RU": "Заменить",
+        "uk-UA": "Замінити",
+        "de-DE": "Ändern",
+        "fr-FR": "Remplacer",
+        "es-ES": "Cambiar",
+        "it-IT": "Cambia",
+        "pl-PL": "Zmień",
+        "pt-PT": "Alterar",
+        "nl-NL": "Wijzigen",
+        "cs-CZ": "Změnit",
+        "bg-BG": "Промени"
+      }
+    },
+    "fbe.dialog.idd_spell_check.change_all": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_SPELL_CHANGEALL",
+      "translations": {
+        "en-US": "Change all",
+        "ru-RU": "Заменить все",
+        "uk-UA": "Замінити все",
+        "de-DE": "Alle ändern",
+        "fr-FR": "Tout remplacer",
+        "es-ES": "Cambiar todo",
+        "it-IT": "Cambia tutto",
+        "pl-PL": "Zmień wszystkie",
+        "pt-PT": "Alterar tudo",
+        "nl-NL": "Alles wijzigen",
+        "cs-CZ": "Změnit vše",
+        "bg-BG": "Промени всички"
+      }
+    },
+    "fbe.dialog.idd_spell_check.add": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_SPELL_ADD",
+      "translations": {
+        "en-US": "Add",
+        "ru-RU": "Добавить",
+        "uk-UA": "Додати",
+        "de-DE": "Hinzufügen",
+        "fr-FR": "Ajouter",
+        "es-ES": "Añadir",
+        "it-IT": "Aggiungi",
+        "pl-PL": "Dodaj",
+        "pt-PT": "Adicionar",
+        "nl-NL": "Toevoegen",
+        "cs-CZ": "Přidat",
+        "bg-BG": "Добави"
+      }
+    },
+    "fbe.dialog.idd_spell_check.suggest": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_SPELL_SUGGEST",
+      "translations": {
+        "en-US": "Suggest",
+        "ru-RU": "Предложить",
+        "uk-UA": "Запропонувати",
+        "de-DE": "Vorschlagen",
+        "fr-FR": "Suggérer",
+        "es-ES": "Sugerir",
+        "it-IT": "Suggerisci",
+        "pl-PL": "Zaproponuj",
+        "pt-PT": "Sugerir",
+        "nl-NL": "Voorstellen",
+        "cs-CZ": "Navrhnout",
+        "bg-BG": "Предложи"
+      }
+    },
+    "fbe.dialog.idd_spell_check.undo": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_SPELL_UNDO",
+      "translations": {
+        "en-US": "Undo",
+        "ru-RU": "Отменить",
+        "uk-UA": "Скасувати",
+        "de-DE": "Rückgängig",
+        "fr-FR": "Annuler",
+        "es-ES": "Deshacer",
+        "it-IT": "Annulla",
+        "pl-PL": "Cofnij",
+        "pt-PT": "Anular",
+        "nl-NL": "Ongedaan maken",
+        "cs-CZ": "Zpět",
+        "bg-BG": "Отмени"
+      }
+    },
+    "fbe.dialog.idd_words.caption": {
+      "resource": "IDD_WORDS",
+      "kind": "CAPTION",
+      "targetId": "",
+      "translations": {
+        "en-US": "Words",
+        "ru-RU": "Слова",
+        "uk-UA": "Слова",
+        "de-DE": "Wörter",
+        "fr-FR": "Mots",
+        "es-ES": "Palabras",
+        "it-IT": "Parole",
+        "pl-PL": "Słowa",
+        "pt-PT": "Palavras",
+        "nl-NL": "Woorden",
+        "cs-CZ": "Slova",
+        "bg-BG": "Думи"
+      }
+    },
+    "fbe.dialog.idd_words.list": {
+      "resource": "IDD_WORDS",
+      "kind": "CONTROL",
+      "targetId": "IDC_WLIST",
+      "translations": {
+        "en-US": "List1",
+        "ru-RU": "List1",
+        "uk-UA": "List1",
+        "de-DE": "List1",
+        "fr-FR": "List1",
+        "es-ES": "List1",
+        "it-IT": "List1",
+        "pl-PL": "List1",
+        "pt-PT": "List1",
+        "nl-NL": "List1",
+        "cs-CZ": "List1",
+        "bg-BG": "List1"
+      }
+    },
+    "fbe.dialog.idd_words.ok": {
+      "resource": "IDD_WORDS",
+      "kind": "DEFPUSHBUTTON",
+      "targetId": "IDOK",
+      "translations": {
+        "en-US": "OK",
+        "ru-RU": "OK",
+        "uk-UA": "Гаразд",
+        "de-DE": "OK",
+        "fr-FR": "OK",
+        "es-ES": "Aceptar",
+        "it-IT": "OK",
+        "pl-PL": "OK",
+        "pt-PT": "OK",
+        "nl-NL": "OK",
+        "cs-CZ": "OK",
+        "bg-BG": "OK"
+      }
+    },
+    "fbe.dialog.idd_words.cancel": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDCANCEL",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Cancel",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Storno",
+        "bg-BG": "Отказ"
+      }
+    },
+    "fbe.dialog.idd_words.show_hide_exclusions": {
+      "resource": "IDD_WORDS",
+      "kind": "CONTROL",
+      "targetId": "IDC_CHECK_SHOWHIDE_EXCLS",
+      "translations": {
+        "en-US": "Show/hide exclusions",
+        "ru-RU": "Показать/скрыть исключения",
+        "uk-UA": "Показати/сховати виключення",
+        "de-DE": "Ausnahmen zeigen/verbergen",
+        "fr-FR": "Afficher/masquer les exclusions",
+        "es-ES": "Mostrar/ocultar exclusiones",
+        "it-IT": "Mostra/nascondi esclusioni",
+        "pl-PL": "Pokaż/ukryj wyjątki",
+        "pt-PT": "Mostrar/ocultar exclusões",
+        "nl-NL": "Uitzonderingen tonen/verbergen",
+        "cs-CZ": "Zobrazit/skrýt výjimky",
+        "bg-BG": "Покажи/скрий изключения"
+      }
+    },
+    "fbe.dialog.idd_words.actions": {
+      "resource": "IDD_WORDS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Actions",
+        "ru-RU": "Действия",
+        "uk-UA": "Дії",
+        "de-DE": "Aktionen",
+        "fr-FR": "Actions",
+        "es-ES": "Acciones",
+        "it-IT": "Azioni",
+        "pl-PL": "Akcje",
+        "pt-PT": "Ações",
+        "nl-NL": "Acties",
+        "cs-CZ": "Akce",
+        "bg-BG": "Действия"
+      }
+    },
+    "fbe.dialog.idd_words.selection": {
+      "resource": "IDD_WORDS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Selection",
+        "ru-RU": "Выделение",
+        "uk-UA": "Виділення",
+        "de-DE": "Auswahl",
+        "fr-FR": "Sélection",
+        "es-ES": "Selección",
+        "it-IT": "Selezione",
+        "pl-PL": "Zaznaczenie",
+        "pt-PT": "Seleção",
+        "nl-NL": "Selectie",
+        "cs-CZ": "Výběr",
+        "bg-BG": "Избор"
+      }
+    },
+    "fbe.dialog.idd_words.deselect": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_DESEL",
+      "translations": {
+        "en-US": "Deselect",
+        "ru-RU": "Снять",
+        "uk-UA": "Зняти",
+        "de-DE": "Abwählen",
+        "fr-FR": "Désélect.",
+        "es-ES": "Deselec.",
+        "it-IT": "Deselez.",
+        "pl-PL": "Odznacz",
+        "pt-PT": "Desmarcar",
+        "nl-NL": "Deselect.",
+        "cs-CZ": "Odznačit",
+        "bg-BG": "Махни"
+      }
+    },
+    "fbe.dialog.idd_words.remove_replacement": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_REMOVEHLREPL",
+      "translations": {
+        "en-US": "No replace",
+        "ru-RU": "Не заменять",
+        "uk-UA": "Не заміняти",
+        "de-DE": "Nicht ersetzen",
+        "fr-FR": "Ne pas rempl.",
+        "es-ES": "No reempl.",
+        "it-IT": "Non sost.",
+        "pl-PL": "Nie zamieniaj",
+        "pt-PT": "Não substituir",
+        "nl-NL": "Niet vervangen",
+        "cs-CZ": "Nenahrazovat",
+        "bg-BG": "Не заменяй"
+      }
+    },
+    "fbe.dialog.idd_words.add_to_exclusions": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_ADDHLTOEXCLS",
+      "translations": {
+        "en-US": "To exclusions",
+        "ru-RU": "В исключения",
+        "uk-UA": "У виключення",
+        "de-DE": "Zu Ausnahmen",
+        "fr-FR": "Aux exclusions",
+        "es-ES": "A exclusiones",
+        "it-IT": "A esclusioni",
+        "pl-PL": "Do wyjątków",
+        "pt-PT": "Para exclusões",
+        "nl-NL": "Naar uitzonder.",
+        "cs-CZ": "Do výjimek",
+        "bg-BG": "В изключения"
+      }
+    },
+    "fbe.dialog.idd_words.select_all": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_SELALL",
+      "translations": {
+        "en-US": "Select all",
+        "ru-RU": "Выделить все",
+        "uk-UA": "Вибрати все",
+        "de-DE": "Alle auswählen",
+        "fr-FR": "Tout sélect.",
+        "es-ES": "Sel. todo",
+        "it-IT": "Selez. tutto",
+        "pl-PL": "Zaznacz wsz.",
+        "pt-PT": "Selecionar tudo",
+        "nl-NL": "Alles select.",
+        "cs-CZ": "Vybrat vše",
+        "bg-BG": "Избери всички"
+      }
+    },
+    "fbe.dialog.idd_words.set_replacement": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_SETHLREPL",
+      "translations": {
+        "en-US": "As replacement",
+        "ru-RU": "В замену",
+        "uk-UA": "На заміну",
+        "de-DE": "Als Ersatz",
+        "fr-FR": "En remplacement",
+        "es-ES": "Como reempl.",
+        "it-IT": "Come sost.",
+        "pl-PL": "Jako zamiana",
+        "pt-PT": "Como substit.",
+        "nl-NL": "Als vervanging",
+        "cs-CZ": "Jako náhrada",
+        "bg-BG": "Като замяна"
+      }
+    },
+    "fbe.dialog.idd_words.select_all_replacements": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_BUTTON_SELALLREPL",
+      "translations": {
+        "en-US": "Select all repl.",
+        "ru-RU": "Выделить замены",
+        "uk-UA": "Вибрати заміни",
+        "de-DE": "Ersatz auswählen",
+        "fr-FR": "Sélect. rempl.",
+        "es-ES": "Sel. reempl.",
+        "it-IT": "Selez. sost.",
+        "pl-PL": "Zaznacz zam.",
+        "pt-PT": "Selecionar subst.",
+        "nl-NL": "Vervangingen sel.",
+        "cs-CZ": "Vybrat náhrady",
+        "bg-BG": "Избери замени"
+      }
+    },
+    "fbe.dialog.idd_words.current_word": {
+      "resource": "IDD_WORDS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_WORDS_FR_GBOX_CURWORD",
+      "translations": {
+        "en-US": "Current word",
+        "ru-RU": "Текущее слово",
+        "uk-UA": "Поточне слово",
+        "de-DE": "Aktuelles Wort",
+        "fr-FR": "Mot courant",
+        "es-ES": "Palabra actual",
+        "it-IT": "Parola corrente",
+        "pl-PL": "Bieżące słowo",
+        "pt-PT": "Palavra atual",
+        "nl-NL": "Huidig woord",
+        "cs-CZ": "Aktuální slovo",
+        "bg-BG": "Текуща дума"
+      }
+    },
+    "fbe.dialog.idd_words.word": {
+      "resource": "IDD_WORDS",
+      "kind": "LTEXT",
+      "targetId": "IDC_WORDS_FR_TEXT_WORD",
+      "translations": {
+        "en-US": "Word:",
+        "ru-RU": "Слово:",
+        "uk-UA": "Слово:",
+        "de-DE": "Wort:",
+        "fr-FR": "Mot :",
+        "es-ES": "Palabra:",
+        "it-IT": "Parola:",
+        "pl-PL": "Słowo:",
+        "pt-PT": "Palavra:",
+        "nl-NL": "Woord:",
+        "cs-CZ": "Slovo:",
+        "bg-BG": "Дума:"
+      }
+    },
+    "fbe.dialog.idd_words.replacement": {
+      "resource": "IDD_WORDS",
+      "kind": "LTEXT",
+      "targetId": "IDC_WORDS_FR_TEXT_REPL",
+      "translations": {
+        "en-US": "Replace:",
+        "ru-RU": "Замена:",
+        "uk-UA": "Заміна:",
+        "de-DE": "Ersatz:",
+        "fr-FR": "Rempl. :",
+        "es-ES": "Reempl.:",
+        "it-IT": "Sost.:",
+        "pl-PL": "Zamiana:",
+        "pt-PT": "Subst.:",
+        "nl-NL": "Vervang:",
+        "cs-CZ": "Náhrada:",
+        "bg-BG": "Замяна:"
+      }
+    },
+    "fbe.dialog.idd_words.find": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_WORDS_FR_BTN_FIND",
+      "translations": {
+        "en-US": "Find",
+        "ru-RU": "Найти",
+        "uk-UA": "Знайти",
+        "de-DE": "Suchen",
+        "fr-FR": "Trouver",
+        "es-ES": "Buscar",
+        "it-IT": "Trova",
+        "pl-PL": "Znajdź",
+        "pt-PT": "Localizar",
+        "nl-NL": "Zoeken",
+        "cs-CZ": "Najít",
+        "bg-BG": "Търси"
+      }
+    },
+    "fbe.dialog.idd_words.replace": {
+      "resource": "IDD_WORDS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_WORDS_FR_BTN_REPL",
+      "translations": {
+        "en-US": "Replace",
+        "ru-RU": "Заменить",
+        "uk-UA": "Замінити",
+        "de-DE": "Ersetzen",
+        "fr-FR": "Remplacer",
+        "es-ES": "Reemplazar",
+        "it-IT": "Sostituisci",
+        "pl-PL": "Zamień",
+        "pt-PT": "Substituir",
+        "nl-NL": "Vervangen",
+        "cs-CZ": "Nahradit",
+        "bg-BG": "Замени"
+      }
+    },
+    "fbe.dialog.idd_setting_other.main_settings": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Main settings",
+        "ru-RU": "Общие настройки",
+        "uk-UA": "Загальні налаштування",
+        "de-DE": "Allgemeine Einstellungen",
+        "fr-FR": "Paramètres généraux",
+        "es-ES": "Opciones generales",
+        "it-IT": "Impostazioni generali",
+        "pl-PL": "Ustawienia ogólne",
+        "pt-PT": "Definições gerais",
+        "nl-NL": "Algemene instellingen",
+        "cs-CZ": "Obecná nastavení",
+        "bg-BG": "Общи настройки"
+      }
+    },
+    "fbe.dialog.idd_setting_other.encoding": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Encoding:",
+        "ru-RU": "Кодировка:",
+        "uk-UA": "Кодування:",
+        "de-DE": "Kodierung:",
+        "fr-FR": "Encodage :",
+        "es-ES": "Codificación:",
+        "it-IT": "Codifica:",
+        "pl-PL": "Kodowanie:",
+        "pt-PT": "Codificação:",
+        "nl-NL": "Codering:",
+        "cs-CZ": "Kódování:",
+        "bg-BG": "Кодировка:"
+      }
+    },
+    "fbe.dialog.idd_setting_other.keep_manual": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "CONTROL",
+      "targetId": "IDC_KEEP",
+      "translations": {
+        "en-US": "Keep manual formatting",
+        "ru-RU": "Сохранять ручное форматирование",
+        "uk-UA": "Зберігати ручне форматування",
+        "de-DE": "Manuelle Formatierung beibehalten",
+        "fr-FR": "Conserver la mise en forme manuelle",
+        "es-ES": "Conservar formato manual",
+        "it-IT": "Mantieni formattazione manuale",
+        "pl-PL": "Zachowaj ręczne formatowanie",
+        "pt-PT": "Manter formatação manual",
+        "nl-NL": "Handmatige opmaak behouden",
+        "cs-CZ": "Zachovat ruční formátování",
+        "bg-BG": "Запази ръчно форматиране"
+      }
+    },
+    "fbe.dialog.idd_setting_other.window_mode": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Window mode",
+        "ru-RU": "Режим окна",
+        "uk-UA": "Режим вікна",
+        "de-DE": "Fenstermodus",
+        "fr-FR": "Mode fenêtre",
+        "es-ES": "Modo de ventana",
+        "it-IT": "Modalità finestra",
+        "pl-PL": "Tryb okna",
+        "pt-PT": "Modo de janela",
+        "nl-NL": "Venstermodus",
+        "cs-CZ": "Režim okna",
+        "bg-BG": "Режим на прозореца"
+      }
+    },
+    "fbe.dialog.idd_setting_other.restore_position": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "CONTROL",
+      "targetId": "IDC_RESTORE_POS",
+      "translations": {
+        "en-US": "Restore window position",
+        "ru-RU": "Восстанавливать положение окна",
+        "uk-UA": "Відновлювати положення вікна",
+        "de-DE": "Fensterposition wiederherstellen",
+        "fr-FR": "Restaurer la position de la fenêtre",
+        "es-ES": "Restaurar posición de ventana",
+        "it-IT": "Ripristina posizione finestra",
+        "pl-PL": "Przywracaj położenie okna",
+        "pt-PT": "Restaurar posição da janela",
+        "nl-NL": "Vensterpositie herstellen",
+        "cs-CZ": "Obnovit polohu okna",
+        "bg-BG": "Възстановявай позицията"
+      }
+    },
+    "fbe.dialog.idd_setting_other.scripts_folder": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Scripts folder",
+        "ru-RU": "Папка скриптов",
+        "uk-UA": "Тека скриптів",
+        "de-DE": "Skriptordner",
+        "fr-FR": "Dossier des scripts",
+        "es-ES": "Carpeta de scripts",
+        "it-IT": "Cartella script",
+        "pl-PL": "Folder skryptów",
+        "pt-PT": "Pasta de scripts",
+        "nl-NL": "Scriptmap",
+        "cs-CZ": "Složka skriptů",
+        "bg-BG": "Папка със скриптове"
+      }
+    },
+    "fbe.dialog.idd_setting_other.default_scripts_folder": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "CONTROL",
+      "targetId": "IDC_DEFAULT_SCRIPTS_FOLDER",
+      "translations": {
+        "en-US": "Default path",
+        "ru-RU": "Путь по умолчанию",
+        "uk-UA": "Типовий шлях",
+        "de-DE": "Standardpfad",
+        "fr-FR": "Chemin par défaut",
+        "es-ES": "Ruta predeterminada",
+        "it-IT": "Percorso predefinito",
+        "pl-PL": "Ścieżka domyślna",
+        "pt-PT": "Caminho predefinido",
+        "nl-NL": "Standaardpad",
+        "cs-CZ": "Výchozí cesta",
+        "bg-BG": "Път по подразбиране"
+      }
+    },
+    "fbe.dialog.idd_setting_other.browse": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_SELECT_SCRIPTS_FOLDER_BUTTON",
+      "translations": {
+        "en-US": "...",
+        "ru-RU": "...",
+        "uk-UA": "...",
+        "de-DE": "...",
+        "fr-FR": "...",
+        "es-ES": "...",
+        "it-IT": "...",
+        "pl-PL": "...",
+        "pt-PT": "...",
+        "nl-NL": "...",
+        "cs-CZ": "...",
+        "bg-BG": "..."
+      }
+    },
+    "fbe.dialog.idd_setting_other.images": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Images",
+        "ru-RU": "Рисунки",
+        "uk-UA": "Малюнки",
+        "de-DE": "Bilder",
+        "fr-FR": "Images",
+        "es-ES": "Imágenes",
+        "it-IT": "Immagini",
+        "pl-PL": "Obrazy",
+        "pt-PT": "Imagens",
+        "nl-NL": "Afbeeldingen",
+        "cs-CZ": "Obrázky",
+        "bg-BG": "Изображения"
+      }
+    },
+    "fbe.dialog.idd_setting_other.ask_image": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "CONTROL",
+      "targetId": "IDC_SETTINGS_ASKIMAGE",
+      "translations": {
+        "en-US": "Ask before inserting an empty image",
+        "ru-RU": "Спрашивать о вставке пустого изображения",
+        "uk-UA": "Запитувати про вставлення порожнього малюнка",
+        "de-DE": "Vor dem Einfügen eines leeren Bildes fragen",
+        "fr-FR": "Demander avant d’insérer une image vide",
+        "es-ES": "Preguntar antes de insertar una imagen vacía",
+        "it-IT": "Chiedi prima di inserire un’immagine vuota",
+        "pl-PL": "Pytaj przed wstawieniem pustego obrazu",
+        "pt-PT": "Perguntar antes de inserir imagem vazia",
+        "nl-NL": "Vragen vóór lege afbeelding invoegen",
+        "cs-CZ": "Ptát se před vložením prázdného obrázku",
+        "bg-BG": "Питай преди празно изображение"
+      }
+    },
+    "fbe.dialog.idd_setting_other.thumbnails": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Thumbnails",
+        "ru-RU": "Миниатюры",
+        "uk-UA": "Мініатюри",
+        "de-DE": "Miniaturen",
+        "fr-FR": "Miniatures",
+        "es-ES": "Miniaturas",
+        "it-IT": "Miniature",
+        "pl-PL": "Miniatury",
+        "pt-PT": "Miniaturas",
+        "nl-NL": "Miniaturen",
+        "cs-CZ": "Miniatury",
+        "bg-BG": "Миниатюри"
+      }
+    },
+    "fbe.dialog.idd_setting_other.clear_images": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "CONTROL",
+      "targetId": "IDC_OPTIONS_CLEARIMGS",
+      "translations": {
+        "en-US": "Clear image cache",
+        "ru-RU": "Очищать кэш изображений",
+        "uk-UA": "Очищати кеш зображень",
+        "de-DE": "Bildcache leeren",
+        "fr-FR": "Vider le cache des images",
+        "es-ES": "Limpiar caché de imágenes",
+        "it-IT": "Svuota cache immagini",
+        "pl-PL": "Czyść pamięć obrazów",
+        "pt-PT": "Limpar cache de imagens",
+        "nl-NL": "Afbeeldingscache wissen",
+        "cs-CZ": "Vyčistit mezipaměť obrázků",
+        "bg-BG": "Изчиствай кеша"
+      }
+    },
+    "fbe.dialog.idd_setting_other.nbsp": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Non-breaking spaces",
+        "ru-RU": "Неразрывные пробелы",
+        "uk-UA": "Нерозривні пробіли",
+        "de-DE": "Geschützte Leerzeichen",
+        "fr-FR": "Espaces insécables",
+        "es-ES": "Espacios indivisibles",
+        "it-IT": "Spazi non separabili",
+        "pl-PL": "Spacje nierozdzielające",
+        "pt-PT": "Espaços inseparáveis",
+        "nl-NL": "Vaste spaties",
+        "cs-CZ": "Nezlomitelné mezery",
+        "bg-BG": "Неразделни интервали"
+      }
+    },
+    "fbe.dialog.idd_setting_other.nbsp_char": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Replacement character:",
+        "ru-RU": "Заменяющий символ:",
+        "uk-UA": "Символ заміни:",
+        "de-DE": "Ersatzzeichen:",
+        "fr-FR": "Caractère de remplacement :",
+        "es-ES": "Carácter de reemplazo:",
+        "it-IT": "Carattere sostitutivo:",
+        "pl-PL": "Znak zastępczy:",
+        "pt-PT": "Carácter de substituição:",
+        "nl-NL": "Vervangend teken:",
+        "cs-CZ": "Náhradní znak:",
+        "bg-BG": "Заместващ знак:"
+      }
+    },
+    "fbe.dialog.idd_setting_other.keyboard": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Keyboard settings",
+        "ru-RU": "Настройки клавиатуры",
+        "uk-UA": "Налаштування клавіатури",
+        "de-DE": "Tastatureinstellungen",
+        "fr-FR": "Paramètres clavier",
+        "es-ES": "Opciones de teclado",
+        "it-IT": "Impostazioni tastiera",
+        "pl-PL": "Ustawienia klawiatury",
+        "pt-PT": "Definições do teclado",
+        "nl-NL": "Toetsenbordinstellingen",
+        "cs-CZ": "Nastavení klávesnice",
+        "bg-BG": "Настройки на клавиатурата"
+      }
+    },
+    "fbe.dialog.idd_setting_other.change_keyboard": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "CONTROL",
+      "targetId": "IDC_CHANGE_KEYB",
+      "translations": {
+        "en-US": "Change on input",
+        "ru-RU": "Менять при вводе",
+        "uk-UA": "Змінювати під час вводу",
+        "de-DE": "Beim Eingeben wechseln",
+        "fr-FR": "Changer à la saisie",
+        "es-ES": "Cambiar al escribir",
+        "it-IT": "Cambia durante input",
+        "pl-PL": "Zmieniaj przy wpisie",
+        "pt-PT": "Alterar ao escrever",
+        "nl-NL": "Wijzigen bij invoer",
+        "cs-CZ": "Měnit při zadávání",
+        "bg-BG": "Променяй при въвеждане"
+      }
+    },
+    "fbe.dialog.idd_setting_other.image_settings": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Image settings, %%",
+        "ru-RU": "Параметры изображений, %%",
+        "uk-UA": "Параметри зображень, %%",
+        "de-DE": "Bildeinstellungen, %%",
+        "fr-FR": "Paramètres d’image, %%",
+        "es-ES": "Opciones de imagen, %%",
+        "it-IT": "Impostazioni immagine, %%",
+        "pl-PL": "Ustawienia obrazów, %%",
+        "pt-PT": "Definições de imagem, %%",
+        "nl-NL": "Afbeeldingsinstellingen, %%",
+        "cs-CZ": "Nastavení obrázků, %%",
+        "bg-BG": "Настройки на изображения, %%"
+      }
+    },
+    "fbe.dialog.idd_setting_other.format": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Format:",
+        "ru-RU": "Формат:",
+        "uk-UA": "Формат:",
+        "de-DE": "Format:",
+        "fr-FR": "Format :",
+        "es-ES": "Formato:",
+        "it-IT": "Formato:",
+        "pl-PL": "Format:",
+        "pt-PT": "Formato:",
+        "nl-NL": "Formaat:",
+        "cs-CZ": "Formát:",
+        "bg-BG": "Формат:"
+      }
+    },
+    "fbe.dialog.idd_setting_other.jpeg_quality": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "JPEG quality:",
+        "ru-RU": "Качество JPEG:",
+        "uk-UA": "Якість JPEG:",
+        "de-DE": "JPEG-Qualität:",
+        "fr-FR": "Qualité JPEG :",
+        "es-ES": "Calidad JPEG:",
+        "it-IT": "Qualità JPEG:",
+        "pl-PL": "Jakość JPEG:",
+        "pt-PT": "Qualidade JPEG:",
+        "nl-NL": "JPEG-kwaliteit:",
+        "cs-CZ": "Kvalita JPEG:",
+        "bg-BG": "Качество JPEG:"
+      }
+    },
+    "fbe.dialog.idd_setting_other.layout": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Layout:",
+        "ru-RU": "Раскладка:",
+        "uk-UA": "Розкладка:",
+        "de-DE": "Layout:",
+        "fr-FR": "Disposition :",
+        "es-ES": "Distribución:",
+        "it-IT": "Layout:",
+        "pl-PL": "Układ:",
+        "pt-PT": "Disposição:",
+        "nl-NL": "Indeling:",
+        "cs-CZ": "Rozložení:",
+        "bg-BG": "Подредба:"
+      }
+    },
+    "fbe.dialog.idd_options.foreground_color": {
+      "resource": "IDD_OPTIONS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Text color:",
+        "ru-RU": "Цвет текста:",
+        "uk-UA": "Колір тексту:",
+        "de-DE": "Textfarbe:",
+        "fr-FR": "Couleur du texte :",
+        "es-ES": "Color del texto:",
+        "it-IT": "Colore testo:",
+        "pl-PL": "Kolor tekstu:",
+        "pt-PT": "Cor do texto:",
+        "nl-NL": "Tekstkleur:",
+        "cs-CZ": "Barva textu:",
+        "bg-BG": "Цвят на текста:"
+      }
+    },
+    "fbe.dialog.idd_options.background_color": {
+      "resource": "IDD_OPTIONS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Background:",
+        "ru-RU": "Цвет фона:",
+        "uk-UA": "Колір тла:",
+        "de-DE": "Hintergrund:",
+        "fr-FR": "Arrière-plan :",
+        "es-ES": "Fondo:",
+        "it-IT": "Sfondo:",
+        "pl-PL": "Tło:",
+        "pt-PT": "Fundo:",
+        "nl-NL": "Achtergrond:",
+        "cs-CZ": "Pozadí:",
+        "bg-BG": "Фон:"
+      }
+    },
+    "fbe.dialog.idd_options.font": {
+      "resource": "IDD_OPTIONS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Font:",
+        "ru-RU": "Шрифт:",
+        "uk-UA": "Шрифт:",
+        "de-DE": "Schrift:",
+        "fr-FR": "Police :",
+        "es-ES": "Fuente:",
+        "it-IT": "Carattere:",
+        "pl-PL": "Czcionka:",
+        "pt-PT": "Tipo de letra:",
+        "nl-NL": "Lettertype:",
+        "cs-CZ": "Písmo:",
+        "bg-BG": "Шрифт:"
+      }
+    },
+    "fbe.dialog.idd_options.font_size": {
+      "resource": "IDD_OPTIONS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Font size:",
+        "ru-RU": "Размер шрифта:",
+        "uk-UA": "Розмір шрифту:",
+        "de-DE": "Schriftgröße:",
+        "fr-FR": "Taille de police :",
+        "es-ES": "Tamaño de fuente:",
+        "it-IT": "Dimensione font:",
+        "pl-PL": "Rozmiar czcionki:",
+        "pt-PT": "Tamanho da letra:",
+        "nl-NL": "Tekengrootte:",
+        "cs-CZ": "Velikost písma:",
+        "bg-BG": "Размер на шрифта:"
+      }
+    },
+    "fbe.dialog.idd_options.interface": {
+      "resource": "IDD_OPTIONS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Interface",
+        "ru-RU": "Интерфейс",
+        "uk-UA": "Інтерфейс",
+        "de-DE": "Oberfläche",
+        "fr-FR": "Interface",
+        "es-ES": "Interfaz",
+        "it-IT": "Interfaccia",
+        "pl-PL": "Interfejs",
+        "pt-PT": "Interface",
+        "nl-NL": "Interface",
+        "cs-CZ": "Rozhraní",
+        "bg-BG": "Интерфейс"
+      }
+    },
+    "fbe.dialog.idd_options.font_group": {
+      "resource": "IDD_OPTIONS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Font",
+        "ru-RU": "Шрифт",
+        "uk-UA": "Шрифт",
+        "de-DE": "Schrift",
+        "fr-FR": "Police",
+        "es-ES": "Fuente",
+        "it-IT": "Carattere",
+        "pl-PL": "Czcionka",
+        "pt-PT": "Tipo de letra",
+        "nl-NL": "Lettertype",
+        "cs-CZ": "Písmo",
+        "bg-BG": "Шрифт"
+      }
+    },
+    "fbe.dialog.idd_options.source_view": {
+      "resource": "IDD_OPTIONS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Source view",
+        "ru-RU": "Исходный текст",
+        "uk-UA": "Вихідний текст",
+        "de-DE": "Quelltextansicht",
+        "fr-FR": "Vue source",
+        "es-ES": "Vista de código",
+        "it-IT": "Vista sorgente",
+        "pl-PL": "Widok źródła",
+        "pt-PT": "Vista de código",
+        "nl-NL": "Bronweergave",
+        "cs-CZ": "Zobrazení zdroje",
+        "bg-BG": "Изходен текст"
+      }
+    },
+    "fbe.dialog.idd_options.wrap_lines": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_WRAP",
+      "translations": {
+        "en-US": "Wrap lines",
+        "ru-RU": "Перенос строк",
+        "uk-UA": "Перенос рядків",
+        "de-DE": "Zeilen umbrechen",
+        "fr-FR": "Retour à la ligne",
+        "es-ES": "Ajustar líneas",
+        "it-IT": "A capo automatico",
+        "pl-PL": "Zawijaj wiersze",
+        "pt-PT": "Quebrar linhas",
+        "nl-NL": "Regels afbreken",
+        "cs-CZ": "Zalamovat řádky",
+        "bg-BG": "Пренасяй редове"
+      }
+    },
+    "fbe.dialog.idd_options.syntax_highlight": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_SYNTAXHL",
+      "translations": {
+        "en-US": "Syntax highlighting",
+        "ru-RU": "Подсветка синтаксиса",
+        "uk-UA": "Підсвітка синтаксису",
+        "de-DE": "Syntaxhervorhebung",
+        "fr-FR": "Coloration syntaxique",
+        "es-ES": "Resaltado de sintaxis",
+        "it-IT": "Evidenziazione sintassi",
+        "pl-PL": "Podświetlanie składni",
+        "pt-PT": "Realce de sintaxe",
+        "nl-NL": "Syntaxisaccentuering",
+        "cs-CZ": "Zvýraznění syntaxe",
+        "bg-BG": "Оцветяване на синтаксиса"
+      }
+    },
+    "fbe.dialog.idd_options.show_eol": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_SHOWEOL",
+      "translations": {
+        "en-US": "Show line-end symbols",
+        "ru-RU": "Показывать символы конца строк",
+        "uk-UA": "Показувати символи кінця рядків",
+        "de-DE": "Zeilenenden anzeigen",
+        "fr-FR": "Afficher les fins de ligne",
+        "es-ES": "Mostrar fin de línea",
+        "it-IT": "Mostra fine riga",
+        "pl-PL": "Pokazuj końce wierszy",
+        "pt-PT": "Mostrar fins de linha",
+        "nl-NL": "Regeleinden tonen",
+        "cs-CZ": "Zobrazit konce řádků",
+        "bg-BG": "Показвай краища на редове"
+      }
+    },
+    "fbe.dialog.idd_options.fast_mode": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_FAST_MODE",
+      "translations": {
+        "en-US": "Fast mode",
+        "ru-RU": "Быстрый режим",
+        "uk-UA": "Швидкий режим",
+        "de-DE": "Schneller Modus",
+        "fr-FR": "Mode rapide",
+        "es-ES": "Modo rápido",
+        "it-IT": "Modalità veloce",
+        "pl-PL": "Tryb szybki",
+        "pt-PT": "Modo rápido",
+        "nl-NL": "Snelle modus",
+        "cs-CZ": "Rychlý režim",
+        "bg-BG": "Бърз режим"
+      }
+    },
+    "fbe.dialog.idd_options.language": {
+      "resource": "IDD_OPTIONS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Language:",
+        "ru-RU": "Язык:",
+        "uk-UA": "Мова:",
+        "de-DE": "Sprache:",
+        "fr-FR": "Langue :",
+        "es-ES": "Idioma:",
+        "it-IT": "Lingua:",
+        "pl-PL": "Język:",
+        "pt-PT": "Idioma:",
+        "nl-NL": "Taal:",
+        "cs-CZ": "Jazyk:",
+        "bg-BG": "Език:"
+      }
+    },
+    "fbe.dialog.idd_options.spell_checking": {
+      "resource": "IDD_OPTIONS",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Spell checking",
+        "ru-RU": "Проверка орфографии",
+        "uk-UA": "Перевірка правопису",
+        "de-DE": "Rechtschreibprüfung",
+        "fr-FR": "Correction orthographique",
+        "es-ES": "Corrección ortográfica",
+        "it-IT": "Controllo ortografico",
+        "pl-PL": "Sprawdzanie pisowni",
+        "pt-PT": "Verificação ortográfica",
+        "nl-NL": "Spellingcontrole",
+        "cs-CZ": "Kontrola pravopisu",
+        "bg-BG": "Проверка на правописа"
+      }
+    },
+    "fbe.dialog.idd_options.background_spell_check": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_BACKGROUNDSPELLCHECK",
+      "translations": {
+        "en-US": "Background check",
+        "ru-RU": "Фоновая проверка",
+        "uk-UA": "Фонова перевірка",
+        "de-DE": "Hintergrundprüfung",
+        "fr-FR": "Vérification en arrière-plan",
+        "es-ES": "Comprobación en segundo plano",
+        "it-IT": "Controllo in background",
+        "pl-PL": "Sprawdzanie w tle",
+        "pt-PT": "Verificação em segundo plano",
+        "nl-NL": "Controle op achtergrond",
+        "cs-CZ": "Kontrola na pozadí",
+        "bg-BG": "Проверка във фонов режим"
+      }
+    },
+    "fbe.dialog.idd_options.use_spellchecker": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_USESPELLCHECKER",
+      "translations": {
+        "en-US": "Use spell checker",
+        "ru-RU": "Использовать орфографию",
+        "uk-UA": "Використовувати правопис",
+        "de-DE": "Rechtschreibprüfung verwenden",
+        "fr-FR": "Utiliser le correcteur",
+        "es-ES": "Usar corrector ortográfico",
+        "it-IT": "Usa controllo ortografico",
+        "pl-PL": "Używaj sprawdzania pisowni",
+        "pt-PT": "Usar corretor ortográfico",
+        "nl-NL": "Spellingcontrole gebruiken",
+        "cs-CZ": "Používat kontrolu pravopisu",
+        "bg-BG": "Използвай правопис"
+      }
+    },
+    "fbe.dialog.idd_options.custom_dict": {
+      "resource": "IDD_OPTIONS",
+      "kind": "LTEXT",
+      "targetId": "IDS_SPELL_CUSTOM_DICT",
+      "translations": {
+        "en-US": "Custom dictionary:",
+        "ru-RU": "Пользовательский словарь:",
+        "uk-UA": "Користувацький словник:",
+        "de-DE": "Benutzerwörterbuch:",
+        "fr-FR": "Dictionnaire personnel :",
+        "es-ES": "Diccionario personal:",
+        "it-IT": "Dizionario utente:",
+        "pl-PL": "Słownik użytkownika:",
+        "pt-PT": "Dicionário do utilizador:",
+        "nl-NL": "Gebruikerswoordenboek:",
+        "cs-CZ": "Uživatelský slovník:",
+        "bg-BG": "Потребителски речник:"
+      }
+    },
+    "fbe.dialog.idd_options.dict_browse": {
+      "resource": "IDD_OPTIONS",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_DICTPATH",
+      "translations": {
+        "en-US": "..",
+        "ru-RU": "..",
+        "uk-UA": "..",
+        "de-DE": "..",
+        "fr-FR": "..",
+        "es-ES": "..",
+        "it-IT": "..",
+        "pl-PL": "..",
+        "pt-PT": "..",
+        "nl-NL": "..",
+        "cs-CZ": "..",
+        "bg-BG": ".."
+      }
+    },
+    "fbe.dialog.idd_options.show_line_numbers": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_SHOWLINENUMBERS",
+      "translations": {
+        "en-US": "Show line numbers",
+        "ru-RU": "Показывать номера строк",
+        "uk-UA": "Показувати номери рядків",
+        "de-DE": "Zeilennummern anzeigen",
+        "fr-FR": "Afficher les numéros de ligne",
+        "es-ES": "Mostrar números de línea",
+        "it-IT": "Mostra numeri di riga",
+        "pl-PL": "Pokazuj numery wierszy",
+        "pt-PT": "Mostrar números de linha",
+        "nl-NL": "Regelnummers tonen",
+        "cs-CZ": "Zobrazit čísla řádků",
+        "bg-BG": "Показвай номера на редове"
+      }
+    },
+    "fbe.dialog.idd_options.tag_highlight": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_TAGHL",
+      "translations": {
+        "en-US": "Highlight current tag",
+        "ru-RU": "Подсветка текущего тега",
+        "uk-UA": "Підсвітка поточного тегу",
+        "de-DE": "Aktuelles Tag hervorheben",
+        "fr-FR": "Surligner la balise courante",
+        "es-ES": "Resaltar etiqueta actual",
+        "it-IT": "Evidenzia tag corrente",
+        "pl-PL": "Podświetl bieżący znacznik",
+        "pt-PT": "Realçar etiqueta atual",
+        "nl-NL": "Huidige tag markeren",
+        "cs-CZ": "Zvýraznit aktuální tag",
+        "bg-BG": "Осветявай текущия таг"
+      }
+    },
+    "fbe.dialog.idd_options.source_font": {
+      "resource": "IDD_OPTIONS",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Font:",
+        "ru-RU": "Шрифт:",
+        "uk-UA": "Шрифт:",
+        "de-DE": "Schrift:",
+        "fr-FR": "Police :",
+        "es-ES": "Fuente:",
+        "it-IT": "Carattere:",
+        "pl-PL": "Czcionka:",
+        "pt-PT": "Tipo de letra:",
+        "nl-NL": "Lettertype:",
+        "cs-CZ": "Písmo:",
+        "bg-BG": "Шрифт:"
+      }
+    },
+    "fbe.dialog.idd_options.show_whitespace": {
+      "resource": "IDD_OPTIONS",
+      "kind": "CONTROL",
+      "targetId": "IDC_SHOWWHITESPACE",
+      "translations": {
+        "en-US": "Show whitespace",
+        "ru-RU": "Показывать пробелы",
+        "uk-UA": "Показувати пробіли",
+        "de-DE": "Leerzeichen anzeigen",
+        "fr-FR": "Afficher les espaces",
+        "es-ES": "Mostrar espacios",
+        "it-IT": "Mostra spazi",
+        "pl-PL": "Pokazuj białe znaki",
+        "pt-PT": "Mostrar espaços",
+        "nl-NL": "Spaties tonen",
+        "cs-CZ": "Zobrazit mezery",
+        "bg-BG": "Показвай интервали"
+      }
+    }
+  }
+}

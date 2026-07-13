@@ -78,6 +78,9 @@
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
+    <PreBuildEvent>
+      <Command>pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\tools\localization\update-import-epub-resource-strings.ps1" -Quiet</Command>
+    </PreBuildEvent>
     <Link>
       <AdditionalDependencies>comdlg32.lib;comctl32.lib;ole32.lib;oleaut32.lib;uuid.lib;rpcrt4.lib;shlwapi.lib;shell32.lib;gdiplus.lib;comsuppwd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
@@ -109,6 +112,9 @@
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
+    <PreBuildEvent>
+      <Command>pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\tools\localization\update-import-epub-resource-strings.ps1" -Quiet</Command>
+    </PreBuildEvent>
     <Link>
       <AdditionalDependencies>comdlg32.lib;comctl32.lib;ole32.lib;oleaut32.lib;uuid.lib;rpcrt4.lib;shlwapi.lib;shell32.lib;gdiplus.lib;comsuppw.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
@@ -130,6 +136,7 @@
     <ClInclude Include="ImportEPUBGuids.h" />
     <ClInclude Include="ImportOptionsDialog.h" />
     <ClInclude Include="MsxmlImport.h" />
+    <ClInclude Include="RuntimeLocalization.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
@@ -144,6 +151,7 @@
     <ClCompile Include="ImportEPUBPlugin.cpp" />
     <ClCompile Include="ImportOptionsDialog.cpp" />
     <ClCompile Include="Registry.cpp" />
+    <ClCompile Include="RuntimeLocalization.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -156,6 +164,7 @@
 
   <ItemGroup>
     <None Include="ImportEPUB.def" />
+    <None Include="ImportEPUBStrings.generated.rc2" />
 
     <None Include="BUILD_WIN32_RELEASE.cmd" />
     <None Include="BUILD_BATCH_WIN32_RELEASE.cmd" />

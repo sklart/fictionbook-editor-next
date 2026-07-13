@@ -87,9 +87,29 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-release-notes-format.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-localization-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-app-localization-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbv-localization-resources.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-html-localization-resources.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-docx-localization-resources.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-epub-localization-resources.ps1")
+& (Join-Path $repoRoot "tools\tests\test-import-epub-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-localization-export.ps1")
+& (Join-Path $repoRoot "tools\tests\test-localization-win32-resource-fragments.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-generated-resource.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-connected-resource.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-secondary-menus.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-small-dialogs.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-rc-ui-literals-inventory.ps1")
 & (Join-Path $repoRoot "tools\tests\test-localization-runtime-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-runtime-lang-export.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-runtime-lang-overlay.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbv-runtime-lang-overlay.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-html-runtime-lang-overlay.ps1")
+& (Join-Path $repoRoot "tools\tests\test-import-epub-runtime-lang-overlay.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-epub-runtime-lang-overlay.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-docx-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-language-packs-inventory.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-language-pack-plan.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
@@ -268,3 +288,6 @@ finally {
 }
 
 Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
+
+
+

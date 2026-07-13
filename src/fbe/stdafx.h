@@ -1,4 +1,4 @@
-п»ї// stdafx.h : include file for standard system include files,
+// stdafx.h : include file for standard system include files,
 //  or project specific include files that are used frequently, but
 //      are changed infrequently
 //
@@ -49,15 +49,28 @@
 
 extern CAppModule _Module;
 
-// Единая обертка для загрузки строковых ресурсов: буфер всегда остается
-// корректной пустой строкой даже при ошибке загрузки ресурса.
+// Общая точка загрузки пользовательских строк FBE:
+// сначала пробуем runtime-слой Lang, затем встроенные Win32-ресурсы.
+int FbeLoadRuntimeString(UINT id, wchar_t* buffer, int bufferChars);
 inline int FbeLoadString(HINSTANCE instance, UINT id, wchar_t* buffer, int bufferChars)
 {
 	if(buffer == NULL || bufferChars <= 0)
 		return 0;
 
 	buffer[0] = L'\0';
+	const int runtimeLength = FbeLoadRuntimeString(id, buffer, bufferChars);
+	if (runtimeLength > 0)
+		return runtimeLength;
+
 	return ::LoadStringW(instance, id, buffer, bufferChars);
+}
+
+inline CString FbeLoadCString(UINT id)
+{
+	wchar_t buffer[1024];
+	if(FbeLoadString(_Module.GetResourceInstance(), id, buffer, _countof(buffer)))
+		return CString(buffer);
+	return CString();
 }
 
 #define _WTL_NO_CSTRING

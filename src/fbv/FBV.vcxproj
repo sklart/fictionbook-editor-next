@@ -176,6 +176,9 @@
     <Image Include="..\FBE\res\FBE.ico" />
     <Image Include="vicons.bmp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="FBVStrings.generated.rc2" />
+  </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(ProjectDir)..\..\out\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\..\build\obj\fbv\$(Platform)\$(Configuration)\</IntDir>

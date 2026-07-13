@@ -2,6 +2,7 @@
 
 #include "utils.h"
 #include "resource.h"
+#include "RuntimeLocalization.h"
 
 namespace U {
 
@@ -301,7 +302,7 @@ ok:
 void  ReportError(HRESULT hr)
 {
 	CString strMessage(Win32ErrMsg(hr));
-	AtlTaskDialog(::GetActiveWindow(), IDS_ERROR, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+	ShowExportHtmlTaskDialog(::GetActiveWindow(), IDS_ERROR, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
 }
 
 void  ReportError(_com_error& e) {
@@ -317,7 +318,7 @@ void  ReportError(_com_error& e) {
     err+=_T("\nDescription: ");
     err+=(const wchar_t *)src;
   }
-  AtlTaskDialog(::GetActiveWindow(), IDS_COM_ERROR, (LPCTSTR)err, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+  ShowExportHtmlTaskDialog(::GetActiveWindow(), IDS_COM_ERROR, (LPCTSTR)err, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
 }
 
 CString	GetWindowText(HWND hWnd) {
@@ -374,13 +375,13 @@ void  ReportParseError(IXMLDOMDocument2Ptr doc)
 		CString   strMessage;
 		if (line && col)
 		{
-			strMessage.Format(IDS_AT_LINE_COLUMN, (LPCTSTR)url,	line, col, (LPCTSTR)reason);
-			AtlTaskDialog(::GetActiveWindow(), IDS_XML_PARSE_ERROR, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+			strMessage = FormatExportHtmlString(IDS_AT_LINE_COLUMN, (LPCTSTR)url,	line, col, (LPCTSTR)reason);
+			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDS_XML_PARSE_ERROR, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
 		}
 		else
 		{
-			strMessage.Format(IDS_AT_S_S, (LPCTSTR)url, (LPCTSTR)reason);
-			AtlTaskDialog(::GetActiveWindow(), IDS_XML_PARSE_ERROR, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+			strMessage = FormatExportHtmlString(IDS_AT_S_S, (LPCTSTR)url, (LPCTSTR)reason);
+			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDS_XML_PARSE_ERROR, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
 		}
 	}
 	catch (_com_error& e)

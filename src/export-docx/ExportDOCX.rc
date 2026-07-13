@@ -1,4 +1,4 @@
-﻿// Microsoft Visual C++ generated resource script.
+// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 #include "../version.h"
@@ -216,27 +216,9 @@ END
 // String Table
 //
 
-STRINGTABLE
-BEGIN
-    IDR_EXPORTDOCX          "To DOCX"
-    IDS_ERROR_OPEN_FILE     "Не удалось открыть %s: %s"
-    IDS_ERROR_CREATE_DIRECTORY "Не удалось создать папку %s: %s"
-    IDS_ERROR_WRITE_FILE    "Не удалось записать в %s: %s"
-    IDS_ERROR_WRITE_FILE2   "Не удалось записать в %s: неполная запись."
-    IDS_WARNING_FILE_ALREADY_EXISTS 
-                            "%s уже существует.\nЗаменить файл?"
-    IDS_SAVE_FILE_FILTER    "Документ Word (*.docx)|*.docx|"
-    IDS_XML_PARSE_ERROR     "Ошибка разбора XML"
-    IDS_AT_LINE_COLUMN      "%s, строка %d, столбец %d: %s"
-    IDS_AT_S_S              "%s: %s"
-    IDS_ERROR               "Ошибка"
-END
-
-STRINGTABLE
-BEGIN
-    IDS_COM_ERROR           "Ошибка COM"
-END
+#include "ExportDOCXStrings.generated.rc2"
 
 #endif    // Russian user interface resources
 /////////////////////////////////////////////////////////////////////////////
+
 

@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "MsxmlImport.h"
 #include "EpubImport.h"
+#include "resource.h"
+#include "RuntimeLocalization.h"
 
 #include <vector>
 #include <map>
@@ -15,6 +17,11 @@ namespace
 {
     EpubImportOptions g_options;
     EpubImportRuntimeStats g_runtimeStats;
+
+    CStringW LoadImportRuntimeString(UINT stringId, LPCWSTR fallback)
+    {
+        return LoadImportEpubString(stringId, fallback);
+    }
 
     struct ManifestItem
     {
@@ -82,7 +89,7 @@ namespace
     int CountMojibakeMarkers(const CStringW& text)
     {
         // Typical UTF-8-as-Windows-1251 mojibake for Russian contains many
-        // pairs beginning with "Р" and "С" (for example: "РђРЅРЅРѕС‚Р°С†РёСЏ").
+        // pairs beginning with mojibake Cyrillic marker letters.
         int count = 0;
         for (int i = 0; i < text.GetLength(); ++i)
         {
@@ -609,10 +616,10 @@ namespace
         {
             CStringW reason = MsxmlGetParseErrorReason(dom);
             if (reason.IsEmpty())
-                reason = htmlMode ? L"неизвестная ошибка XML после HTML fallback" : L"неизвестная ошибка XML после XML fallback";
+                reason = htmlMode ? LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_UNKNOWN_AFTER_HTML, L"unknown XML error after HTML fallback") : LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_UNKNOWN_AFTER_XML, L"unknown XML error after XML fallback");
             errorText.Format(htmlMode
-                ? L"MSXML не смог прочитать HTML/XHTML-файл даже после нормализации HTML-разметки:\r\n%s\r\n%s"
-                : L"MSXML не смог прочитать XML-файл даже после безопасной нормализации:\r\n%s\r\n%s",
+                ? static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_HTML_FALLBACK_FAILED, L"MSXML could not read the HTML/XHTML file even after HTML markup normalization:\r\n%s\r\n%s"))
+                : static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_FALLBACK_FAILED, L"MSXML could not read the XML file even after safe normalization:\r\n%s\r\n%s")),
                 path.GetString(), reason.GetString());
             return false;
         }
@@ -901,14 +908,14 @@ namespace
                 if (!HasPathPrefixNoCase(checkedPath, canonicalRoot))
                 {
                     FindClose(h);
-                    errorText = L"ZIP содержит небезопасный путь вне временной папки: " + child;
+                    errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_UNSAFE_PATH, L"ZIP contains an unsafe path outside the temporary folder: ") + child;
                     return false;
                 }
 
                 if (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
                 {
                     FindClose(h);
-                    errorText = L"ZIP содержит reparse point/symlink, импорт остановлен: " + child;
+                    errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_REPARSE_POINT, L"ZIP contains a reparse point/symlink; import was stopped: ") + child;
                     return false;
                 }
 
@@ -933,7 +940,7 @@ namespace
             Sleep(100);
         }
 
-        errorText = L"Windows ZIP folder provider не завершил распаковку EPUB за отведённое время или не создал META-INF/container.xml.";
+        errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_TIMEOUT_CONTAINER, L"Windows ZIP folder provider did not finish extracting EPUB in time or did not create META-INF/container.xml.");
         return false;
     }
 
@@ -948,7 +955,7 @@ namespace
 
         if (!::CopyFileW(epubPath, zipPath, FALSE))
         {
-            errorText.Format(L"Не удалось скопировать EPUB во временный ZIP-файл. Код Win32: %lu", ::GetLastError());
+            errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_COPY_FAILED, L"Failed to copy EPUB to a temporary ZIP file. Win32 code: %lu")), ::GetLastError());
             return false;
         }
 
@@ -958,7 +965,7 @@ namespace
         HRESULT hr = shell.CoCreateInstance(CLSID_Shell);
         if (FAILED(hr) || !shell)
         {
-            errorText.Format(L"Не удалось создать Shell.Application для распаковки EPUB. HRESULT=0x%08lX", hr);
+            errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_SHELL_CREATE_FAILED, L"Failed to create Shell.Application for EPUB extraction. HRESULT=0x%08lX")), hr);
             return false;
         }
 
@@ -971,7 +978,7 @@ namespace
         VariantClear(&vZip);
         if (FAILED(hr) || !zipFolder)
         {
-            errorText = L"Windows не смог открыть EPUB как ZIP-контейнер. Возможно, файл повреждён или заблокирован.";
+            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_OPEN_FAILED, L"Windows could not open EPUB as a ZIP container. The file may be damaged or blocked.");
             return false;
         }
 
@@ -984,7 +991,7 @@ namespace
         VariantClear(&vDest);
         if (FAILED(hr) || !destFolder)
         {
-            errorText = L"Windows не смог открыть временную папку назначения для распаковки EPUB.";
+            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_DEST_FAILED, L"Windows could not open the temporary destination folder for EPUB extraction.");
             return false;
         }
 
@@ -992,7 +999,7 @@ namespace
         hr = zipFolder->Items(&items);
         if (FAILED(hr) || !items)
         {
-            errorText = L"Windows ZIP provider не вернул список файлов EPUB.";
+            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_ITEMS_FAILED, L"Windows ZIP provider did not return the EPUB file list.");
             return false;
         }
 
@@ -1000,7 +1007,7 @@ namespace
         hr = items->QueryInterface(IID_IDispatch, reinterpret_cast<void**>(&itemsDispatch.p));
         if (FAILED(hr) || !itemsDispatch)
         {
-            errorText = L"Не удалось получить IDispatch для списка файлов EPUB.";
+            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_ITEMS_DISPATCH_FAILED, L"Failed to get IDispatch for the EPUB file list.");
             return false;
         }
 
@@ -1009,7 +1016,7 @@ namespace
         hr = destFolder->CopyHere(vItems, vOptions);
         if (FAILED(hr))
         {
-            errorText.Format(L"Windows ZIP provider не смог распаковать EPUB. HRESULT=0x%08lX", hr);
+            errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_EXTRACT_FAILED, L"Windows ZIP provider could not extract EPUB. HRESULT=0x%08lX")), hr);
             return false;
         }
 
@@ -1085,7 +1092,7 @@ namespace
         HRESULT hr = CreateMsxmlDom(dom);
         if (FAILED(hr))
         {
-            errorText.Format(L"Не удалось создать MSXML DOMDocument.6.0. HRESULT: 0x%08X", static_cast<unsigned int>(hr));
+            errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_MSXML_CREATE_FAILED, L"Failed to create MSXML DOMDocument.6.0. HRESULT: 0x%08X")), static_cast<unsigned int>(hr));
             return false;
         }
 
@@ -1096,7 +1103,7 @@ namespace
         {
             CStringW reason = MsxmlGetParseErrorReason(dom);
             if (reason.IsEmpty())
-                reason = L"неизвестная ошибка XML";
+                reason = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_UNKNOWN, L"unknown XML error");
 
             // Some real-world EPUB files use .htm/.html spine items that are HTML,
             // not strict XHTML: undeclared &nbsp;, <link>, <meta>, <br>, <img>
@@ -1108,7 +1115,7 @@ namespace
             if (LoadXmlFileAfterMarkupSanitizing(path, htmlMode, dom, errorText))
                 return true;
 
-            errorText.Format(L"MSXML не смог прочитать XML-файл:\r\n%s\r\n%s", path.GetString(), reason.GetString());
+            errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_LOAD_FAILED, L"MSXML could not read the XML file:\r\n%s\r\n%s")), path.GetString(), reason.GetString());
             return false;
         }
 
@@ -1444,7 +1451,7 @@ namespace
         CStringW containerPath = extractDir + L"\\META-INF\\container.xml";
         if (!FileExists(containerPath))
         {
-            errorText = L"В EPUB не найден файл META-INF/container.xml.";
+            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_CONTAINER_MISSING, L"META-INF/container.xml was not found in EPUB.");
             return false;
         }
 
@@ -1466,7 +1473,7 @@ namespace
             }
         }
 
-        errorText = L"В container.xml не найден rootfile с OPF-пакетом.";
+        errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_CONTAINER_ROOTFILE_MISSING, L"No rootfile with OPF package was found in container.xml.");
         return false;
     }
 
@@ -1664,7 +1671,7 @@ namespace
 
         if (package.spine.empty())
         {
-            errorText = L"В OPF не найден список spine/itemref — невозможно определить порядок глав.";
+            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_OPF_SPINE_MISSING, L"No spine/itemref list was found in OPF, so chapter order cannot be detected.");
             return false;
         }
 
@@ -1704,7 +1711,7 @@ namespace
         CStringW error;
         if (!LoadXmlFile(navItem.absPath, doc, error))
         {
-            log.Add(L"nav.xhtml: не удалось прочитать оглавление.");
+            log.Add(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_NAV_READ_FAILED, L"nav.xhtml: failed to read the table of contents."));
             log.Add(error);
             return;
         }
@@ -1717,7 +1724,7 @@ namespace
             CStringW title = NodeText(links[i]);
             AddNavigationTitle(package, DirectoryOf(navItem.absPath), href, title);
         }
-        log.AddFormatInt(L"nav.xhtml: заголовков найдено: %d", static_cast<int>(package.navTitlesByAbsPath.size()));
+        log.AddFormatInt(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_NAV_HEADINGS_COUNT, L"nav.xhtml: headings found: %d")), static_cast<int>(package.navTitlesByAbsPath.size()));
     }
 
     MSXML2::IXMLDOMNodePtr FindFirstDescendantByLocalNameForToc(const MSXML2::IXMLDOMNodePtr& node, LPCWSTR localName)
@@ -1745,7 +1752,7 @@ namespace
         CStringW error;
         if (!LoadXmlFile(ncxItem.absPath, doc, error))
         {
-            log.Add(L"toc.ncx: не удалось прочитать оглавление.");
+            log.Add(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_NCX_READ_FAILED, L"toc.ncx: failed to read the table of contents."));
             log.Add(error);
             return;
         }
@@ -1760,7 +1767,7 @@ namespace
             CStringW title = textNode ? NodeText(textNode) : CStringW();
             AddNavigationTitle(package, DirectoryOf(ncxItem.absPath), src, title);
         }
-        log.AddFormatInt(L"toc.ncx: navPoint найдено: %d", static_cast<int>(navPoints.size()));
+        log.AddFormatInt(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_NCX_NAVPOINT_COUNT, L"toc.ncx: navPoint found: %d")), static_cast<int>(navPoints.size()));
     }
 
     void ParsePackageNavigation(EpubPackage& package, ImportLog& log)
@@ -2002,14 +2009,14 @@ namespace
         CStringW adapterPath = CombinePathLocal(moduleDir, L"ImportEPUBLunaSVG.dll");
         if (!FileExists(adapterPath))
         {
-            warning += L"SVG не преобразован: рядом с ImportEPUB.dll/ImportEPUBBatch.exe не найдена дополнительная библиотека ImportEPUBLunaSVG.dll. Будет создана растровая заглушка: " + svgPath + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_ADAPTER_MISSING, L"SVG not converted: ImportEPUBLunaSVG.dll is missing near ImportEPUB.dll/ImportEPUBBatch.exe. A bitmap placeholder will be created: ") + svgPath + L"\r\n";
             return false;
         }
 
         HMODULE adapter = ::LoadLibraryW(adapterPath);
         if (!adapter)
         {
-            warning += L"SVG не преобразован: не удалось загрузить ImportEPUBLunaSVG.dll. Проверьте разрядность Win32/x86 и зависимости LunaSVG. Будет создана растровая заглушка: " + adapterPath + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_ADAPTER_LOAD_FAILED, L"SVG not converted: ImportEPUBLunaSVG.dll could not be loaded. Check Win32/x86 bitness and LunaSVG dependencies. A bitmap placeholder will be created: ") + adapterPath + L"\r\n";
             return false;
         }
 
@@ -2018,7 +2025,7 @@ namespace
         if (!render)
         {
             ::FreeLibrary(adapter);
-            warning += L"SVG не преобразован: ImportEPUBLunaSVG.dll не экспортирует функцию ImportEPUBLunaSvgRenderPng. Будет создана растровая заглушка.\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_ADAPTER_EXPORT_MISSING, L"SVG not converted: ImportEPUBLunaSVG.dll does not export ImportEPUBLunaSvgRenderPng. A bitmap placeholder will be created.\r\n");
             return false;
         }
 
@@ -2031,10 +2038,10 @@ namespace
 
         CStringW details(errorText);
         details.Trim();
-        warning += L"SVG не преобразован через ImportEPUBLunaSVG.dll";
+        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_ADAPTER_RENDER_FAILED, L"SVG was not converted through ImportEPUBLunaSVG.dll");
         if (!details.IsEmpty())
             warning += L": " + details;
-        warning += L". Будет создана растровая заглушка: " + svgPath + L"\r\n";
+        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_PLACEHOLDER_SUFFIX, L". A bitmap placeholder will be created: ") + svgPath + L"\r\n";
         return false;
     }
 
@@ -2073,7 +2080,7 @@ namespace
         ULONG_PTR gdiplusToken = 0;
         if (Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr) != Gdiplus::Ok)
         {
-            warning += L"Не удалось запустить GDI+ для преобразования PNG в JPEG.\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_GDIPLUS_PNG_TO_JPEG_FAILED, L"Could not start GDI+ to convert PNG to JPEG.\r\n");
             return false;
         }
 
@@ -2086,7 +2093,7 @@ namespace
         }
         Gdiplus::GdiplusShutdown(gdiplusToken);
         if (!ok)
-            warning += L"Не удалось сохранить SVG как JPEG: " + jpegPath + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_SAVE_JPEG_FAILED, L"Could not save SVG as JPEG: ") + jpegPath + L"\r\n";
         return ok && FileExists(jpegPath);
     }
 
@@ -2096,7 +2103,7 @@ namespace
         ULONG_PTR gdiplusToken = 0;
         if (Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr) != Gdiplus::Ok)
         {
-            warning += L"Не удалось запустить GDI+ для создания SVG-заглушки.\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_GDIPLUS_PLACEHOLDER_FAILED, L"Could not start GDI+ to create SVG placeholder.\r\n");
             return false;
         }
 
@@ -2141,7 +2148,7 @@ namespace
 
         Gdiplus::GdiplusShutdown(gdiplusToken);
         if (!ok)
-            warning += L"Не удалось создать изображение-заглушку для SVG: " + outputPath + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_PLACEHOLDER_CREATE_FAILED, L"Could not create SVG placeholder image: ") + outputPath + L"\r\n";
         return ok && FileExists(outputPath);
     }
 
@@ -2161,7 +2168,7 @@ namespace
         {
             ++g_runtimeStats.svgSkipped;
             g_runtimeStats.svgBackend = L"skip";
-            warning += L"SVG пропущен по настройке импорта: " + item.href + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_SKIPPED_BY_OPTION, L"SVG skipped by import option: ") + item.href + L"\r\n";
             return false;
         }
 
@@ -2188,7 +2195,7 @@ namespace
             // Do not leave a dangling <image l:href="#..."> without a matching <binary>.
             // If no SVG renderer is available, create a visible placeholder bitmap instead.
             // The original SVG is not embedded in this mode because many FB2/FBE consumers do not display SVG.
-            warning += L"Для SVG будет создана растровая заглушка, потому что дополнительная библиотека ImportEPUBLunaSVG.dll отсутствует или не смогла выполнить рендеринг: " + item.href + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_PLACEHOLDER_REASON, L"A bitmap placeholder will be created for SVG because ImportEPUBLunaSVG.dll is missing or failed to render: ") + item.href + L"\r\n";
             if (g_options.svgConversionMode == SVG_IMPORT_CONVERT_JPEG)
             {
                 CStringW jpgPlaceholder = CombinePathLocal(tempDir, L"svg-placeholder.jpg");
@@ -2245,7 +2252,7 @@ namespace
 
         DeleteDirectoryTree(tempDir);
         if (!ok)
-            warning += L"Не удалось прочитать результат преобразования SVG: " + item.href + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_CONVERTED_READ_FAILED, L"Could not read SVG conversion result: ") + item.href + L"\r\n";
         return ok;
     }
 
@@ -2576,8 +2583,8 @@ namespace
             if (alt.IsEmpty())
                 alt = src;
             if (!alt.IsEmpty())
-                return L"[Изображение: " + XmlEscape(alt) + L"]";
-            return L"[Изображение]";
+                return LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMAGE_PLACEHOLDER_OPEN, L"[Image: ") + XmlEscape(alt) + L"]";
+            return LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMAGE_PLACEHOLDER, L"[Image]");
         }
 
         return ChildrenInlineToFb2(node, ctx);
@@ -3644,7 +3651,7 @@ namespace
 
         if (LooksLikeDedication(node))
         {
-            AppendSpecialSectionNode(node, out, ctx, L"Посвящение");
+            AppendSpecialSectionNode(node, out, ctx, LoadImportRuntimeString(IDS_IMPORT_RUNTIME_DEDICATION_TITLE, L"Dedication"));
             return;
         }
 
@@ -3882,7 +3889,7 @@ namespace
         CStringW error;
         if (!LoadXmlFile(xhtmlPath, doc, error))
         {
-            warning += L"Не удалось проверить XHTML на сноски: " + xhtmlPath + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XHTML_NOTES_CHECK_FAILED, L"Could not check XHTML for notes: ") + xhtmlPath + L"\r\n";
             if (!error.IsEmpty())
                 warning += error + L"\r\n";
             return false;
@@ -3922,7 +3929,7 @@ namespace
             note.content = BuildNoteContent(noteNodes[i], ctx);
             note.content.Trim();
             if (note.content.IsEmpty())
-                note.content = L"      <p>[Пустая сноска]</p>\r\n";
+                note.content = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_EMPTY_NOTE_PLACEHOLDER, L"      <p>[Empty note]</p>\r\n");
 
             notes.push_back(note);
         }
@@ -4007,7 +4014,7 @@ namespace
         if (!cleanTitle.IsEmpty())
             out += L"      <title><p>" + cleanTitle + L"</p></title>\r\n";
         if (content.IsEmpty())
-            out += L"      <p>[Текст главы не извлечён]</p>\r\n";
+            out += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_CHAPTER_TEXT_NOT_EXTRACTED, L"      <p>[Chapter text was not extracted]</p>\r\n");
         else
             out += content;
         out += L"    </section>\r\n";
@@ -4023,13 +4030,13 @@ namespace
             return false;
         if (IsSvgImage(item) && g_options.svgConversionMode == SVG_IMPORT_SKIP)
         {
-            warning += L"SVG-элемент spine пропущен по настройке импорта: " + item.href + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_SPINE_SKIPPED, L"SVG spine item skipped by import option: ") + item.href + L"\r\n";
             return false;
         }
 
         if (!FileExists(item.absPath))
         {
-            warning += L"Файл изображения из spine не найден: " + item.href + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SPINE_IMAGE_MISSING, L"Image file from spine was not found: ") + item.href + L"\r\n";
             return false;
         }
 
@@ -4119,7 +4126,7 @@ namespace
         CStringW error;
         if (!LoadXmlFile(xhtmlPath, doc, error))
         {
-            warning += L"Не удалось прочитать XHTML: " + xhtmlPath + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XHTML_READ_FAILED, L"Could not read XHTML: ") + xhtmlPath + L"\r\n";
             if (!error.IsEmpty())
                 warning += error + L"\r\n";
             return false;
@@ -4128,13 +4135,13 @@ namespace
         MSXML2::IXMLDOMNodePtr body = FindFirstElementByLocalName(MsxmlGetDocumentElement(doc), L"body");
         if (!body)
         {
-            warning += L"В XHTML не найден body: " + xhtmlPath + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XHTML_BODY_MISSING, L"No body found in XHTML: ") + xhtmlPath + L"\r\n";
             return false;
         }
 
         if (IsEndnotesBody(body))
         {
-            warning += L"Файл со сносками перенесён в body name=notes: " + xhtmlPath + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_NOTES_BODY_MOVED, L"Footnote file moved to body name=notes: ") + xhtmlPath + L"\r\n";
             return false;
         }
 
@@ -4212,7 +4219,7 @@ namespace
             CStringW contentType;
             if (!ReadSvgImageData(item, data, contentType, warning))
             {
-                warning += L"Не удалось подготовить изображение: " + item.href + L"\r\n";
+                warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMAGE_PREPARE_FAILED, L"Could not prepare image: ") + item.href + L"\r\n";
                 continue;
             }
             xml += L"  <binary id=\"" + XmlEscape(id) + L"\" content-type=\"" + XmlEscape(contentType) + L"\">\r\n";
@@ -4306,15 +4313,15 @@ namespace
         if (s.Find(L" ") < 0 && s.Find(L",") < 0 && s.Find(L"_") >= 0)
             return s;
 
-        if (ContainsNoCase(lower, L"науч") || ContainsNoCase(lower, L"science") || ContainsNoCase(lower, L"астрон") || ContainsNoCase(lower, L"космос"))
+        if (ContainsNoCase(lower, L"\x043D\x0430\x0443\x0447") || ContainsNoCase(lower, L"science") || ContainsNoCase(lower, L"\x0430\x0441\x0442\x0440\x043E\x043D") || ContainsNoCase(lower, L"\x043A\x043E\x0441\x043C\x043E\x0441"))
             return L"sci_popular";
-        if (ContainsNoCase(lower, L"фантаст") || ContainsNoCase(lower, L"fiction"))
+        if (ContainsNoCase(lower, L"\x0444\x0430\x043D\x0442\x0430\x0441\x0442") || ContainsNoCase(lower, L"fiction"))
             return L"sf";
-        if (ContainsNoCase(lower, L"истор") || ContainsNoCase(lower, L"history"))
+        if (ContainsNoCase(lower, L"\x0438\x0441\x0442\x043E\x0440") || ContainsNoCase(lower, L"history"))
             return L"prose_history";
-        if (ContainsNoCase(lower, L"детектив") || ContainsNoCase(lower, L"detective"))
+        if (ContainsNoCase(lower, L"\x0434\x0435\x0442\x0435\x043A\x0442\x0438\x0432") || ContainsNoCase(lower, L"detective"))
             return L"det_classic";
-        if (ContainsNoCase(lower, L"биограф") || ContainsNoCase(lower, L"biograph"))
+        if (ContainsNoCase(lower, L"\x0431\x0438\x043E\x0433\x0440\x0430\x0444") || ContainsNoCase(lower, L"biograph"))
             return L"nonf_biography";
 
         return CStringW();
@@ -4492,7 +4499,7 @@ namespace
         CStringW mimetype = ReadSmallAsciiFile(mimetypePath);
         if (mimetype.IsEmpty())
         {
-            warning += L"В EPUB не найден файл mimetype. Некоторые валидаторы считают это ошибкой контейнера.\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_MIMETYPE_MISSING, L"EPUB does not contain a mimetype file. Some validators treat this as a container error.\r\n");
             log.Add(L"Warning: mimetype file is missing.");
         }
         else
@@ -4500,7 +4507,7 @@ namespace
             log.AddFormat(L"Mimetype: %s", mimetype);
             if (mimetype.CompareNoCase(L"application/epub+zip") != 0)
             {
-                warning += L"Файл mimetype содержит неожиданное значение: " + mimetype + L"\r\n";
+                warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_MIMETYPE_UNEXPECTED, L"The mimetype file contains an unexpected value: ") + mimetype + L"\r\n";
                 log.Add(L"Warning: unexpected EPUB mimetype value.");
             }
         }
@@ -4508,7 +4515,7 @@ namespace
         CStringW encryptionPath = extractDir + L"\\META-INF\\encryption.xml";
         if (FileExists(encryptionPath))
         {
-            warning += L"В EPUB найден META-INF/encryption.xml. Возможны зашифрованные или обфусцированные ресурсы; часть изображений/шрифтов может не импортироваться.\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ENCRYPTION_DETECTED, L"META-INF/encryption.xml was found in EPUB. Some resources may be encrypted or obfuscated; some images/fonts may not be imported.\r\n");
             log.Add(L"Warning: META-INF/encryption.xml detected.");
         }
 
@@ -4566,7 +4573,7 @@ namespace
                 {
                     CStringW id = xml.Mid(hrefPos, end - hrefPos);
                     if (binaryIds.find(std::wstring(id.GetString())) == binaryIds.end())
-                        warning += L"Изображение ссылается на отсутствующий binary: " + id + L"\r\n";
+                        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMAGE_BINARY_MISSING, L"Image refers to a missing binary: ") + id + L"\r\n";
                 }
             }
             imagePos += 7;
@@ -4597,7 +4604,7 @@ namespace
             idSearchPos = end + 1;
         }
         for (std::set<std::wstring>::const_iterator dup = duplicateIds.begin(); dup != duplicateIds.end(); ++dup)
-            warning += L"Дублирующийся id в итоговом FB2: " + CStringW(dup->c_str()) + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_DUPLICATE_FB2_ID, L"Duplicate id in generated FB2: ") + CStringW(dup->c_str()) + L"\r\n";
 
         // Check ordinary FB2 internal links. Images are validated against <binary>
         // above, and note links are validated separately below, so this block focuses
@@ -4619,7 +4626,7 @@ namespace
                 {
                     CStringW id = xml.Mid(valueStart, valueEnd - valueStart);
                     if (allIds.find(std::wstring(id.GetString())) == allIds.end())
-                        warning += L"Внутренняя ссылка указывает на отсутствующий id: " + id + L"\r\n";
+                        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_INTERNAL_LINK_MISSING_ID, L"Internal link points to a missing id: ") + id + L"\r\n";
                 }
             }
             internalHrefPos += 9;
@@ -4640,7 +4647,7 @@ namespace
                 {
                     CStringW id = xml.Mid(hrefPos, end - hrefPos);
                     if (noteSectionIds.find(std::wstring(id.GetString())) == noteSectionIds.end())
-                        warning += L"Ссылка на сноску без соответствующей секции notes: " + id + L"\r\n";
+                        warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_NOTE_SECTION_MISSING, L"Footnote link has no matching notes section: ") + id + L"\r\n";
                 }
             }
             notePos += 11;
@@ -4653,7 +4660,7 @@ namespace
         HRESULT hr = CreateMsxmlDom(dom);
         if (FAILED(hr))
         {
-            warning += L"Не удалось создать MSXML для проверки итогового FB2.\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_FINAL_MSXML_CREATE_FAILED, L"Could not create MSXML to validate generated FB2.\r\n");
             return false;
         }
 
@@ -4664,14 +4671,14 @@ namespace
         {
             CStringW reason = MsxmlGetParseErrorReason(dom);
             if (reason.IsEmpty())
-                reason = L"неизвестная ошибка XML";
-            warning += L"Итоговый FB2 не прошёл XML-проверку: " + reason + L"\r\n";
+                reason = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_XML_UNKNOWN, L"unknown XML error");
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_FINAL_XML_FAILED, L"Generated FB2 did not pass XML validation: ") + reason + L"\r\n";
             return false;
         }
 
         if (!FindFirstElementByLocalName(MsxmlGetDocumentElement(dom), L"body"))
         {
-            warning += L"В итоговом FB2 не найден body.\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_FINAL_BODY_MISSING, L"No body found in generated FB2.\r\n");
             return false;
         }
 
@@ -4706,7 +4713,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
 
     if (!FileExists(epubPath))
     {
-        errorText = L"Выбранный EPUB-файл не найден.";
+        errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SELECTED_EPUB_MISSING, L"The selected EPUB file was not found.");
         log.Add(errorText);
         log.SaveIfRequested(epubPath, options.writeLogOnWarnings);
         return false;
@@ -4862,7 +4869,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         CStringW xhtmlPath = CombineAndCanonicalizePath(package.opfDir, item.href);
         if (!FileExists(xhtmlPath))
         {
-            warning += L"Файл из spine не найден: " + item.href + L"\r\n";
+            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SPINE_FILE_MISSING, L"Spine file was not found: ") + item.href + L"\r\n";
             log.AddFormat(L"Missing spine file: %s", item.href);
             continue;
         }
@@ -4882,7 +4889,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
 
     if (importedSections == 0)
     {
-        errorText = L"Не удалось импортировать ни одного поддерживаемого файла из spine.";
+        errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SPINE_NO_SUPPORTED, L"Failed to import any supported file from spine.");
         if (!warning.IsEmpty())
             errorText += L"\r\n" + warning;
         log.Add(errorText);
@@ -4904,7 +4911,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     if (options.addDiagnosticSection && !warning.IsEmpty())
     {
         outFb2Xml += L"    <section>\r\n";
-        outFb2Xml += L"      <title><p>Предупреждения импорта EPUB</p></title>\r\n";
+        outFb2Xml += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_IMPORT_WARNINGS_TITLE, L"      <title><p>EPUB import warnings</p></title>\r\n");
         outFb2Xml += L"      <p>" + XmlEscape(warning) + L"</p>\r\n";
         outFb2Xml += L"    </section>\r\n";
     }
