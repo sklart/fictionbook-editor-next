@@ -72,6 +72,23 @@ foreach ($language in $expectedLanguages) {
     }
 }
 
+foreach ($localizedResource in @(
+    "ru-RU\\res_rus.dll",
+    "uk-UA\\res_ukr.dll"
+)) {
+    $resourcePath = Join-Path $langRoot $localizedResource
+    if (-not (Test-Path -LiteralPath $resourcePath -PathType Leaf)) {
+        throw "В runtime Lang отсутствует DLL локализованных ресурсов FBE: $resourcePath"
+    }
+}
+
+foreach ($legacyRootResource in @("res_rus.dll", "res_ukr.dll")) {
+    $legacyRootPath = Join-Path $PackageDirectory $legacyRootResource
+    if (Test-Path -LiteralPath $legacyRootPath -PathType Leaf) {
+        throw "DLL локализованных ресурсов FBE не должна лежать в корне пакета: $legacyRootPath"
+    }
+}
+
 Write-Host "Runtime JSON-локализация присутствует в portable/staging-пакете."
 Write-Host "  Каталог: $PackageDirectory"
 Write-Host "  Языков: $($expectedLanguages.Count)"

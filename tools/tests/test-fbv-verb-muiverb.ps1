@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 if ([string]::IsNullOrWhiteSpace($ModulePath)) {
-    $ModulePath = Join-Path $repoRoot "out\Release\FBVVerbResources.dll"
+    $ModulePath = Join-Path $repoRoot "out\Release\Lang\Shell\FBVVerbResources.dll"
 }
 
 if (-not (Test-Path -LiteralPath $ModulePath -PathType Leaf)) {

@@ -210,7 +210,7 @@ function Assert-ValidateVerbRegistered {
         [string]$StageLabel
     )
 
-    $expectedMuiModulePath = Join-Path (Split-Path -Path $ExpectedFbvExePath -Parent) "FBVVerbResources.dll"
+    $expectedMuiModulePath = Join-Path (Split-Path -Path $ExpectedFbvExePath -Parent) "Lang\Shell\FBVVerbResources.dll"
     $expectedMUIVerb = '@' + $expectedMuiModulePath + ',-109;v2'
     $expectedIcon = '"' + $ExpectedFbvExePath + '",0'
     $expectedCommand = '"' + $ExpectedFbvExePath + '" "%1"'

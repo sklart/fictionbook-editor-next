@@ -33,7 +33,7 @@ $lines.Add("")
 $lines.Add("; Fallback-язык: $($inventory.fallbackLanguage)")
 $lines.Add("; Текущие языки интерфейса установщика: $(@($inventory.currentInstallerLanguages) -join ', ')")
 $lines.Add("")
-$lines.Add('SectionGroup /e $(LanguagePacksGroup) LanguagePacksGroup_id')
+$lines.Add('SectionGroup $(LanguagePacksGroup) LanguagePacksGroup_id')
 
 foreach ($language in @($inventory.languages)) {
     $flags = @()

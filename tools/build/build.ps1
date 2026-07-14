@@ -97,6 +97,54 @@ function Export-RuntimeLanguageFiles {
 
     Write-Host "Runtime-локализация подготовлена рядом с бинарниками: $(Join-Path $OutputDirectory "Lang")"
 }
+
+function Remove-ObsoleteRootLanguageDirectories {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OutputDirectory
+    )
+
+    foreach ($locale in @("en-US", "ru-RU", "uk-UA", "de-DE", "fr-FR", "es-ES", "it-IT", "pl-PL", "pt-PT", "nl-NL", "cs-CZ", "bg-BG")) {
+        $legacyDirectory = Join-Path $OutputDirectory $locale
+        if (-not (Test-Path -LiteralPath $legacyDirectory -PathType Container)) {
+            continue
+        }
+
+        if (@(Get-ChildItem -LiteralPath $legacyDirectory -Force).Count -eq 0) {
+            Remove-Item -LiteralPath $legacyDirectory -Force
+            Write-Host "Удалён пустой устаревший каталог языка: $legacyDirectory"
+        }
+        else {
+            Write-Warning "Сохранён непустой устаревший каталог языка для ручной проверки: $legacyDirectory"
+        }
+    }
+}
+
+function Install-FbeLocalizedResourceLibraries {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OutputDirectory
+    )
+
+    $localizedLibraries = @{
+        "ru-RU" = "res_rus.dll"
+        "uk-UA" = "res_ukr.dll"
+    }
+
+    foreach ($locale in $localizedLibraries.Keys) {
+        $libraryName = $localizedLibraries[$locale]
+        $sourcePath = Join-Path $OutputDirectory $libraryName
+        if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+            throw "Не найдена DLL локализованных ресурсов FBE: $sourcePath"
+        }
+
+        $targetDirectory = Join-Path $OutputDirectory "Lang\\$locale"
+        New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
+        Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $targetDirectory $libraryName) -Force
+    }
+
+    Write-Host "Локализованные DLL FBE подготовлены в каталоге Lang."
+}
 & pwsh @pcre2BuildArgs
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
@@ -161,3 +209,5 @@ foreach ($requiredProject in @(
 Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
 Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Install-FbeLocalizedResourceLibraries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Remove-ObsoleteRootLanguageDirectories -OutputDirectory (Join-Path $repoRoot "out\$Configuration")

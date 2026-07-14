@@ -155,11 +155,11 @@ function Invoke-ShellAssociationRefresh {
 $InstallDirectory = Resolve-InstallDirectory -RequestedDirectory $InstallDirectory
 $fbeExePath = Join-Path $InstallDirectory "FBE.exe"
 $fbvExePath = Join-Path $InstallDirectory "FBV.exe"
-$fbvVerbResourceModulePath = Join-Path $InstallDirectory "FBVVerbResources.dll"
+$fbvVerbResourceModulePath = Join-Path $InstallDirectory "Lang\Shell\FBVVerbResources.dll"
 
 Assert-FileExists -Path $fbeExePath -Description "FBE.exe"
 Assert-FileExists -Path $fbvExePath -Description "FBV.exe"
-Assert-FileExists -Path $fbvVerbResourceModulePath -Description "FBVVerbResources.dll"
+Assert-FileExists -Path $fbvVerbResourceModulePath -Description "Lang\Shell\FBVVerbResources.dll"
 
 $defaultIconValue = "$fbeExePath,0"
 $editCommandValue = '"' + $fbeExePath + '" "%1"'

@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "description": "Инвентарь устанавливаемых языковых пакетов. Основной runtime-формат локализации — JSON в Lang; shell-строки Windows используют MUI-спутники рядом с FBVVerbResources.dll.",
+  "description": "Инвентарь устанавливаемых языковых пакетов. Основной runtime-формат локализации — JSON в Lang; shell-строки Windows используют MUI-спутники в Lang/Shell рядом с FBVVerbResources.dll.",
   "fallbackLanguage": "en-US",
   "currentInstallerLanguages": [
     "en-US",
@@ -16,7 +16,7 @@
       "required": true,
       "assets": {
         "fbvMui": [
-          "en-US/FBVVerbResources.dll.mui"
+          "Lang/Shell/en-US/FBVVerbResources.dll.mui"
         ],
         "dictionaries": [
           "Dict/en_US.dic",
@@ -38,10 +38,10 @@
       "required": false,
       "assets": {
         "fbeResources": [
-          "res_rus.dll"
+          "Lang/ru-RU/res_rus.dll"
         ],
         "fbvMui": [
-          "ru-RU/FBVVerbResources.dll.mui"
+          "Lang/Shell/ru-RU/FBVVerbResources.dll.mui"
         ],
         "dictionaries": [
           "Dict/ru_RU.dic",
@@ -67,10 +67,10 @@
       "required": false,
       "assets": {
         "fbeResources": [
-          "res_ukr.dll"
+          "Lang/uk-UA/res_ukr.dll"
         ],
         "fbvMui": [
-          "uk-UA/FBVVerbResources.dll.mui"
+          "Lang/Shell/uk-UA/FBVVerbResources.dll.mui"
         ],
         "dictionaries": [
           "Dict/uk_UA.dic",
@@ -98,7 +98,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "de-DE/FBVVerbResources.dll.mui"
+          "Lang/Shell/de-DE/FBVVerbResources.dll.mui"
         ],
         "dictionaries": [
           "Dict/de_DE.dic",
@@ -114,7 +114,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "fr-FR/FBVVerbResources.dll.mui"
+          "Lang/Shell/fr-FR/FBVVerbResources.dll.mui"
         ]
       }
     },
@@ -126,7 +126,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "es-ES/FBVVerbResources.dll.mui"
+          "Lang/Shell/es-ES/FBVVerbResources.dll.mui"
         ]
       }
     },
@@ -138,7 +138,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "it-IT/FBVVerbResources.dll.mui"
+          "Lang/Shell/it-IT/FBVVerbResources.dll.mui"
         ]
       }
     },
@@ -150,7 +150,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "pl-PL/FBVVerbResources.dll.mui"
+          "Lang/Shell/pl-PL/FBVVerbResources.dll.mui"
         ]
       }
     },
@@ -162,7 +162,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "pt-PT/FBVVerbResources.dll.mui"
+          "Lang/Shell/pt-PT/FBVVerbResources.dll.mui"
         ]
       }
     },
@@ -174,7 +174,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "nl-NL/FBVVerbResources.dll.mui"
+          "Lang/Shell/nl-NL/FBVVerbResources.dll.mui"
         ]
       }
     },
@@ -186,7 +186,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "cs-CZ/FBVVerbResources.dll.mui"
+          "Lang/Shell/cs-CZ/FBVVerbResources.dll.mui"
         ]
       }
     },
@@ -198,7 +198,7 @@
       "required": false,
       "assets": {
         "fbvMui": [
-          "bg-BG/FBVVerbResources.dll.mui"
+          "Lang/Shell/bg-BG/FBVVerbResources.dll.mui"
         ]
       }
     }
@@ -207,12 +207,12 @@
     "defaultInstall=True означает язык, который отмечен по умолчанию на странице компонентов установщика.",
     "required=True означает fallback-компонент, который нельзя отключать без отдельной runtime-стратегии.",
     "Основной runtime-формат локализации FBE/FBV/плагинов — JSON-файлы в каталоге Lang; каждый выбранный языковой пакет устанавливает только свой Lang/<locale>.",
-    "Shell-команды Windows используют MUI-ресурсы, потому что Проводник ожидает строку вида @module,-id; спутник FBVVerbResources.dll.mui устанавливается в <locale> рядом с приложением.",
+    "Shell-команды Windows используют MUI-ресурсы, потому что Проводник ожидает строку вида @module,-id; host и спутник FBVVerbResources.dll.mui устанавливаются в Lang/Shell/<locale>.",
     "futureTemplates описывает желаемые файлы, которых пока может не быть в пакете."
   ],
   "languageNeutralAssets": {
     "shellMuiHost": [
-      "FBVVerbResources.dll"
+      "Lang/Shell/FBVVerbResources.dll"
     ]
   }
 }

@@ -10,6 +10,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $importVsDevEnvironmentScript = Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1"
 $rcConfigPath = Join-Path $PSScriptRoot "fbv-verb-mui.rcconfig"
 $outputRoot = Join-Path $repoRoot "out\$Configuration"
+$shellLocalizationRoot = Join-Path $outputRoot "Lang\Shell"
 $workRoot = Join-Path $repoRoot "build\obj\fbv-verb-mui\$Configuration"
 $muiModuleName = "FBVVerbResources.dll"
 $muiVersionSuffix = "v2"
@@ -143,21 +144,30 @@ $rcExePath = Get-Command rc.exe -ErrorAction Stop | Select-Object -ExpandPropert
 $linkExePath = Get-Command link.exe -ErrorAction Stop | Select-Object -ExpandProperty Source
 
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
+New-Item -ItemType Directory -Path $shellLocalizationRoot -Force | Out-Null
 if (Test-Path -LiteralPath $workRoot) {
     Remove-Item -LiteralPath $workRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
 
-$baseModulePath = Join-Path $outputRoot $muiModuleName
+$baseModulePath = Join-Path $shellLocalizationRoot $muiModuleName
 $discardModulePath = Join-Path $workRoot "discard.dll"
+$legacyBaseModulePath = Join-Path $outputRoot $muiModuleName
 
 if (Test-Path -LiteralPath $baseModulePath) {
     Remove-Item -LiteralPath $baseModulePath -Force
 }
 
+# До переноса MUI-модули выпускались рядом с FBE.exe. Удаляем только
+# известные сгенерированные файлы, чтобы Release-каталог не сохранял две
+# конкурирующие раскладки одной shell-команды.
+if (Test-Path -LiteralPath $legacyBaseModulePath) {
+    Remove-Item -LiteralPath $legacyBaseModulePath -Force
+}
+
 foreach ($language in $languages) {
     $languageWorkDir = Join-Path $workRoot $language.Name
-    $languageOutputDir = Join-Path $outputRoot $language.Name
+    $languageOutputDir = Join-Path $shellLocalizationRoot $language.Name
     New-Item -ItemType Directory -Path $languageWorkDir -Force | Out-Null
     New-Item -ItemType Directory -Path $languageOutputDir -Force | Out-Null
 
@@ -165,6 +175,11 @@ foreach ($language in $languages) {
     $sourceResPath = Join-Path $languageWorkDir "FBVVerbResources.res"
     $sourceDllPath = Join-Path $languageWorkDir "FBVVerbResources.source.dll"
     $muiPath = Join-Path $languageOutputDir "$muiModuleName.mui"
+    $legacyMuiPath = Join-Path $outputRoot "$($language.Name)\$muiModuleName.mui"
+
+    if (Test-Path -LiteralPath $legacyMuiPath) {
+        Remove-Item -LiteralPath $legacyMuiPath -Force
+    }
 
     New-FbvVerbResourceSource -RcPath $sourceRcPath -Language $language
 

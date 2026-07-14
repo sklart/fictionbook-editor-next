@@ -40,8 +40,8 @@ if ($packs.fallbackLanguage -notin $languageCodes) {
 if (-not $packs.languageNeutralAssets -or -not $packs.languageNeutralAssets.shellMuiHost) {
     throw "В language-packs.json отсутствует languageNeutralAssets.shellMuiHost для MUI-host shell-команд."
 }
-if (@($packs.languageNeutralAssets.shellMuiHost) -notcontains "FBVVerbResources.dll") {
-    throw "MUI-host shell-команд должен планироваться рядом с приложением как FBVVerbResources.dll."
+if (@($packs.languageNeutralAssets.shellMuiHost) -notcontains "Lang/Shell/FBVVerbResources.dll") {
+    throw "MUI-host shell-команд должен планироваться в Lang/Shell как FBVVerbResources.dll."
 }
 
 foreach ($language in @($app.targetLanguages)) {
@@ -67,15 +67,15 @@ foreach ($entry in $languages) {
     if (-not $entry.assets.fbvMui) {
         throw "У языка $($entry.language) отсутствует fbvMui-ресурс для shell-команды Validate."
     }
-    $expectedMui = "$($entry.language)/FBVVerbResources.dll.mui"
+    $expectedMui = "Lang/Shell/$($entry.language)/FBVVerbResources.dll.mui"
     if (@($entry.assets.fbvMui) -notcontains $expectedMui) {
         throw "У языка $($entry.language) MUI-ресурс должен лежать в $expectedMui."
     }
 }
 
 $knownRepoAssets = @(
-    "res_rus.dll",
-    "res_ukr.dll",
+    "Lang/ru-RU/res_rus.dll",
+    "Lang/uk-UA/res_ukr.dll",
     "gpl-3.0.txt",
     "gpl-3.0.ru.txt",
     "gpl-3.0.ua.txt",

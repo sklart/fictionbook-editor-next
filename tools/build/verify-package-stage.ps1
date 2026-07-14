@@ -15,7 +15,7 @@ $StageDirectory = (Resolve-Path -LiteralPath $StageDirectory).Path
 $requiredFiles = @(
     "FBE.exe",
     "FBV.exe",
-    "FBVVerbResources.dll",
+    "Lang\Shell\FBVVerbResources.dll",
     "ExportHTML.dll",
     "ExportDOCX.dll",
     "ExportEPUB.dll",
@@ -27,15 +27,17 @@ $requiredFiles = @(
     "FBShell.dll",
     "FBShell64.dll",
     "FBE.Sequence.propdesc",
-    "res_rus.dll",
-    "res_ukr.dll",
+    "Lang\\ru-RU\\res_rus.dll",
+    "Lang\\uk-UA\\res_ukr.dll",
     "Scintilla.dll",
     "Lexilla.dll"
 )
 
 $forbiddenFiles = @(
     "pcre.dll",
-    "SciLexer.dll"
+    "SciLexer.dll",
+    "res_rus.dll",
+    "res_ukr.dll"
 )
 
 foreach ($name in $requiredFiles) {
@@ -59,7 +61,7 @@ foreach ($name in $requiredInstallerTools) {
 }
 
 foreach ($languageName in @("en-US", "ru-RU", "uk-UA", "de-DE", "fr-FR", "es-ES", "it-IT", "pl-PL", "cs-CZ", "bg-BG", "pt-PT", "nl-NL")) {
-    $path = Join-Path $StageDirectory "$languageName\FBVVerbResources.dll.mui"
+    $path = Join-Path $StageDirectory "Lang\Shell\$languageName\FBVVerbResources.dll.mui"
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "В staging-каталоге отсутствует обязательный MUI-файл: $path"
     }

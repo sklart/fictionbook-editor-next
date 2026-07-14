@@ -24,13 +24,21 @@ try {
     }
 
     $text = Get-Content -Raw -LiteralPath $outputPath
+    if ($text -notmatch 'SectionGroup \$\(LanguagePacksGroup\) LanguagePacksGroup_id') {
+        throw "Группа языковых пакетов должна быть свёрнута по умолчанию."
+    }
+
+    if ($text -match 'SectionGroup /e \$\(LanguagePacksGroup\) LanguagePacksGroup_id') {
+        throw "Группа языковых пакетов не должна принудительно раскрываться."
+    }
+
     foreach ($language in @("en-US", "ru-RU", "uk-UA", "de-DE", "fr-FR", "es-ES", "it-IT", "pl-PL", "pt-PT", "nl-NL", "cs-CZ", "bg-BG")) {
         if ($text -notmatch [regex]::Escape($language)) {
             throw "В draft .nsh отсутствует язык: $language"
         }
     }
 
-    foreach ($asset in @("res_rus.dll", "res_ukr.dll", "FBVVerbResources.dll.mui", "Lang\en-US", "Lang\ru-RU", "Lang\uk-UA")) {
+    foreach ($asset in @("Lang\ru-RU\res_rus.dll", "Lang\uk-UA\res_ukr.dll", "Lang\Shell\en-US\FBVVerbResources.dll.mui", "Lang\Shell\ru-RU\FBVVerbResources.dll.mui", "Lang\Shell\uk-UA\FBVVerbResources.dll.mui", "Lang\en-US", "Lang\ru-RU", "Lang\uk-UA")) {
         if ($text -notmatch [regex]::Escape($asset)) {
             throw "В generated .nsh отсутствует ожидаемый ресурс: $asset"
         }

@@ -533,7 +533,23 @@ nthere:
   File "${INPUTDIR}\Scintilla.dll"
   File "${INPUTDIR}\Lexilla.dll"
   File "${INPUTDIR}\FBV.exe"
-  File "${INPUTDIR}\FBVVerbResources.dll"
+  ; До 3.0.4 MUI host и спутники находились в корне приложения. Очищаем
+  ; только свои старые файлы, чтобы обновление не оставляло дубликаты.
+  Delete "$INSTDIR\FBVVerbResources.dll"
+  Delete "$INSTDIR\en-US\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\ru-RU\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\uk-UA\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\de-DE\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\fr-FR\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\es-ES\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\it-IT\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\pl-PL\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\cs-CZ\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\bg-BG\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\pt-PT\FBVVerbResources.dll.mui"
+  Delete "$INSTDIR\nl-NL\FBVVerbResources.dll.mui"
+  SetOutPath "$INSTDIR\Lang\Shell"
+  File "${INPUTDIR}\Lang\Shell\FBVVerbResources.dll"
   SetOutPath "$INSTDIR"
   File /nonfatal "${INPUTDIR}\*.reg"
   File "${INPUTDIR}\gpl-3.0.txt"
@@ -587,13 +603,13 @@ SectionEnd
 Section /o $(FB2_Validate_Command) FB2_Validate_Command_id
   ; Добавляем команду проверки, не отбирая .fb2 у другой читалки.
   WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "" "Validate"
-  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "MUIVerb" '@$INSTDIR\FBVVerbResources.dll,-109;v2'
+  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "MUIVerb" '@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2'
   WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
   WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
 
   ; Сохраняем совместимость для систем, где .fb2 явно связан с FictionBook.2.
   WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "" "Validate"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "MUIVerb" '@$INSTDIR\FBVVerbResources.dll,-109;v2'
+  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "MUIVerb" '@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2'
   WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
   WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
 SectionEnd
@@ -992,8 +1008,7 @@ Section Uninstall
   RMDir /r "$INSTDIR\img"
   RMDir /r "$INSTDIR\Lang"
 
-  Delete "$INSTDIR\blank.fb2"
-  Delete "$INSTDIR\FBV.exe"
+  ; Удаляем MUI-раскладку из ранних выпусков FictionBook Editor Next.
   Delete "$INSTDIR\FBVVerbResources.dll"
   Delete "$INSTDIR\en-US\FBVVerbResources.dll.mui"
   Delete "$INSTDIR\ru-RU\FBVVerbResources.dll.mui"
@@ -1019,6 +1034,9 @@ Section Uninstall
   RMDir "$INSTDIR\bg-BG"
   RMDir "$INSTDIR\pt-PT"
   RMDir "$INSTDIR\nl-NL"
+
+  Delete "$INSTDIR\blank.fb2"
+  Delete "$INSTDIR\FBV.exe"
   Delete "$INSTDIR\res_rus.dll"
   Delete "$INSTDIR\res_ukr.dll"
   Delete "$INSTDIR\FBE.exe"

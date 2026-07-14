@@ -40,6 +40,14 @@ if ($nsiText -notmatch 'FBE_WIN7_BUILD' -or
     throw "MakeInstaller.nsi должен явно маркировать Win7-compatible установщик."
 }
 
+if ($nsiText -notmatch [regex]::Escape('SetOutPath "$INSTDIR\Lang\Shell"') -or
+    $nsiText -notmatch [regex]::Escape('File "${INPUTDIR}\Lang\Shell\FBVVerbResources.dll"')) {
+    throw "MakeInstaller.nsi должен устанавливать MUI-host shell-команды в Lang\\Shell."
+}
+if ($nsiText -notmatch [regex]::Escape('@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2')) {
+    throw "MUIVerb shell-команды должен ссылаться на модуль в Lang\\Shell."
+}
+
 foreach ($language in @("English", "Russian", "Ukrainian", "German", "French", "Spanish", "Italian", "Polish", "Portuguese", "Dutch", "Czech", "Bulgarian")) {
     if ($nsiText -notmatch [regex]::Escape('!insertmacro MUI_LANGUAGE "' + $language + '"')) {
         throw "MakeInstaller.nsi должен подключать язык мастера установки: $language."

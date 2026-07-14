@@ -90,7 +90,7 @@ function Get-InstallerOptionState {
 
     $fbeExePath = Join-Path $ResolvedInstallDirectory "FBE.exe"
     $fbvExePath = Join-Path $ResolvedInstallDirectory "FBV.exe"
-    $fbvVerbResourcesPath = Join-Path $ResolvedInstallDirectory "FBVVerbResources.dll"
+    $fbvVerbResourcesPath = Join-Path $ResolvedInstallDirectory "Lang\Shell\FBVVerbResources.dll"
 
     $fb2Key = "HKCU:\Software\Classes\.fb2"
     $fb2DefaultIconKey = "HKCU:\Software\Classes\.fb2\DefaultIcon"

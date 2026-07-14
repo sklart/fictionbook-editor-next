@@ -26,22 +26,46 @@ if (Test-Path -LiteralPath $stageDir) {
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "runtime\*") -Destination $stageDir -Recurse -Force
 
+foreach ($legacyRootResource in @("res_rus.dll", "res_ukr.dll")) {
+    $legacyRootPath = Join-Path $stageDir $legacyRootResource
+    if (Test-Path -LiteralPath $legacyRootPath -PathType Leaf) {
+        Remove-Item -LiteralPath $legacyRootPath -Force
+    }
+}
+
 & (Join-Path $repoRoot "tools\localization\export-runtime-lang.ps1") `
     -RepositoryRoot $repoRoot `
     -OutputDirectory (Join-Path $stageDir "Lang") `
     -Clean
 
-foreach ($name in @("FBE.exe", "FBV.exe", "FBVVerbResources.dll", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "res_rus.dll", "res_ukr.dll")) {
+foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")) {
     Copy-Item -LiteralPath (Join-Path $sourceDir $name) -Destination (Join-Path $stageDir $name) -Force
 }
 
+$localizedResourceDlls = @{
+    "ru-RU" = "res_rus.dll"
+    "uk-UA" = "res_ukr.dll"
+}
+foreach ($locale in $localizedResourceDlls.Keys) {
+    $targetLanguageDir = Join-Path $stageDir "Lang\\$locale"
+    New-Item -ItemType Directory -Path $targetLanguageDir -Force | Out-Null
+    $dllName = $localizedResourceDlls[$locale]
+    Copy-Item -LiteralPath (Join-Path $sourceDir $dllName) -Destination (Join-Path $targetLanguageDir $dllName) -Force
+}
+
+$shellLocalizationSourceDir = Join-Path $sourceDir "Lang\Shell"
+$shellLocalizationTargetDir = Join-Path $stageDir "Lang\Shell"
+New-Item -ItemType Directory -Path $shellLocalizationTargetDir -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $shellLocalizationSourceDir "FBVVerbResources.dll") `
+    -Destination (Join-Path $shellLocalizationTargetDir "FBVVerbResources.dll") -Force
+
 foreach ($languageName in @("en-US", "ru-RU", "uk-UA", "de-DE", "fr-FR", "es-ES", "it-IT", "pl-PL", "cs-CZ", "bg-BG", "pt-PT", "nl-NL")) {
-    $sourceLanguageDir = Join-Path $sourceDir $languageName
+    $sourceLanguageDir = Join-Path $shellLocalizationSourceDir $languageName
     if (-not (Test-Path -LiteralPath $sourceLanguageDir -PathType Container)) {
         throw "Не найден каталог MUI-ресурсов: $sourceLanguageDir"
     }
 
-    $targetLanguageDir = Join-Path $stageDir $languageName
+    $targetLanguageDir = Join-Path $shellLocalizationTargetDir $languageName
     New-Item -ItemType Directory -Path $targetLanguageDir -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $sourceLanguageDir "FBVVerbResources.dll.mui") `
         -Destination (Join-Path $targetLanguageDir "FBVVerbResources.dll.mui") -Force
