@@ -16,12 +16,14 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $rcPath = Join-Path $repoRoot "src\export-html\ExportHTML.rc"
 $generatedRcPath = Join-Path $repoRoot "src\export-html\ExportHTMLStrings.generated.rc2"
+$dialogPath = Join-Path $repoRoot "src\export-html\CustomFileSaveDialog.h"
 
 $rc = Get-Content -Raw -LiteralPath $rcPath
 if (-not (Test-Path -LiteralPath $generatedRcPath)) {
     throw "Сгенерированный файл строк ExportHTML не найден: $generatedRcPath"
 }
 $generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
+$dialog = Get-Content -Raw -LiteralPath $dialogPath
 
 if ($rc -notmatch '#include\s+"ExportHTMLStrings\.generated\.rc2"') {
     throw "ExportHTML.rc не подключает ExportHTMLStrings.generated.rc2."
@@ -29,6 +31,23 @@ if ($rc -notmatch '#include\s+"ExportHTMLStrings\.generated\.rc2"') {
 
 if ($rc -match 'IDS_SAVE_FILE_FILTER\s+"') {
     throw "В ExportHTML.rc вернулась ручная STRINGTABLE-строка; runtime-строки должны генерироваться из JSON."
+}
+
+foreach ($controlId in @("IDC_TEMPLATE_LABEL", "IDC_TOC_DEPTH_LABEL")) {
+    if ($rc -notmatch ("LTEXT\s+[^\r\n]*" + [regex]::Escape($controlId))) {
+        throw "ExportHTML.rc должен использовать отдельный control ID $controlId вместо IDC_STATIC."
+    }
+}
+
+foreach ($expectedCall in @(
+    "SetDlgItemText(IDC_TEMPLATE_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL))",
+    "SetDlgItemText(IDC_DOCINFO, LoadExportHtmlString(IDS_CUSTOM_SAVE_INCLUDE_DESC))",
+    "SetDlgItemText(IDC_TOC_DEPTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH))",
+    "LoadExportHtmlString(IDS_OPEN_TEMPLATE_FILTER)"
+)) {
+    if ($dialog -notmatch [regex]::Escape($expectedCall)) {
+        throw "CustomFileSaveDialog.h не применяет локализованную строку: $expectedCall"
+    }
 }
 
 $requiredResourceIds = @(
@@ -47,7 +66,12 @@ $requiredResourceIds = @(
     "IDS_TOOLTIP_TEMPLATE",
     "IDS_TOOLTIP_BROWSE_TEMPLATE",
     "IDS_TOOLTIP_DOCINFO",
-    "IDS_TOOLTIP_TOC_DEPTH"
+    "IDS_TOOLTIP_TOC_DEPTH",
+    "IDS_CUSTOM_SAVE_TEMPLATE_LABEL",
+    "IDS_CUSTOM_SAVE_INCLUDE_DESC",
+    "IDS_CUSTOM_SAVE_TOC_DEPTH",
+    "IDS_OPEN_TEMPLATE_FILTER",
+    "IDS_UNKNOWN_ERROR"
 )
 
 $requiredLanguageBlocks = @(

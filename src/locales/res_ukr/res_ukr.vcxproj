@@ -177,6 +177,10 @@
     <Manifest Include="res\FBE.exe.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="CopyUkrainianResourcesToRuntimeLanguageDirectory" AfterTargets="PostBuildEvent">
+    <MakeDir Directories="$(OutDir)Lang\uk-UA" />
+    <Copy SourceFiles="$(OutDir)res_ukr.dll" DestinationFiles="$(OutDir)Lang\uk-UA\res_ukr.dll" />
+  </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

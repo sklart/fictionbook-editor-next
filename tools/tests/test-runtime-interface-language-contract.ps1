@@ -13,6 +13,7 @@ $publisherChecks = @(
     @{ Path = "src\fbe\Settings.cpp"; Pattern = 'return L"uk-UA"'; Description = "CSettings сопоставляет украинский интерфейс с uk-UA" },
     @{ Path = "src\fbe\Settings.cpp"; Pattern = 'return L"en-US"'; Description = "CSettings сопоставляет английский/fallback интерфейс с en-US" },
     @{ Path = "src\fbe\RuntimeLocalization.h"; Pattern = "FbePublishRuntimeLocaleName"; Description = "FBE runtime-layer объявляет публикацию выбранного языка" },
+    @{ Path = "src\fbe\RuntimeLocalization.h"; Pattern = "FbeIsRuntimeLocaleInstalled"; Description = "FBE runtime-layer объявляет проверку установленного языкового пакета" },
     @{ Path = "src\fbe\RuntimeLocalization.h"; Pattern = "FbeResetRuntimeLocalization"; Description = "FBE runtime-layer объявляет сброс runtime JSON-cache" },
     @{ Path = "src\fbe\FBE.cpp"; Pattern = "FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName())"; Description = "FBE публикует выбранный язык при старте" }
 )
@@ -64,6 +65,12 @@ if ($optDlgText -notlike "*FbePublishRuntimeLocaleName(_Settings.GetInterfaceLoc
 if ($optDlgText -notlike "*FbeResetRuntimeLocalization()*") {
     throw "OptDlg.cpp не сбрасывает FBE runtime JSON-cache после смены языка интерфейса."
 }
+if ($optDlgText -notmatch 'FbeIsRuntimeLocaleInstalled\s*\(\s*kInterfaceLanguages\[i\]\.localeName\s*\)') {
+    throw "OptDlg.cpp должен скрывать языки, для которых отсутствует Lang/<locale>/fbe.json."
+}
+if ($sharedRuntimeHelperText -notlike "*RuntimeStringFileExists*") {
+    throw "RuntimeLocalizationCommon.h должен проверять наличие JSON-файла выбранного языкового пакета."
+}
 if ($optDlgText -like "*new_lang != _Settings.GetInterfaceLanguageID()*SetNeedRestart()*") {
     throw "Смена только языка интерфейса не должна требовать перезапуска: главное окно и новые диалоги обновляются runtime-слоем."
 }
@@ -91,8 +98,10 @@ foreach ($pattern in @(
     "RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar)",
     "OnRuntimeToolTipTextW",
     "OnRuntimeToolTipTextA",
-    "m_MenuBar.AttachMenu(menu)",
+    "RefreshBundledPluginMenuTexts",
     "FillMenuWithHkeys(m_MenuBar.GetMenu())",
+	"m_MenuBar.SetButtonInfo(index, &buttonInfo)",
+	"TB_DELETEBUTTON",
     "m_status.SetPaneText(ID_PANE_INS, m_last_sci_ovr ? strOVR : strINS)",
     "m_document_tree.RefreshLocalizedTitle()",
     "RefreshLocalizedMenuCaptions()",
@@ -103,10 +112,29 @@ foreach ($pattern in @(
         throw "mainfrm.cpp не содержит обязательный элемент live-refresh контракта языка: $pattern"
     }
 }
-$onToolsOptionsPattern = "if\(ShowSettingsDialog\(m_hWnd\)\)\s*\{\s*ReloadInterfaceResourceInstance\(\);\s*FbeResetRuntimeLocalization\(\);\s*RefreshLocalizedMainFrameUi\(\);\s*ApplyConfChanges\(\);\s*\}"
-$settingsDialogRefreshMatches = [regex]::Matches($mainFrameText, $onToolsOptionsPattern)
-if ($settingsDialogRefreshMatches.Count -lt 2) {
-    throw "Все входы в диалог настроек FBE должны сначала обновлять resource/runtime/main-frame язык, а затем применять остальные настройки."
+foreach ($pattern in @(
+    "EditorConfigurationSnapshot",
+    "CaptureEditorConfigurationSnapshot()",
+    "previousInterfaceLanguage != _Settings.GetInterfaceLanguageID()",
+    "_Settings.Save()",
+    "_Settings.SaveWords()"
+)) {
+    if ($mainFrameText -notlike "*$pattern*") {
+        throw "mainfrm.cpp не содержит обязательный элемент безопасной live-смены языка: $pattern"
+    }
+}
+
+$refreshMatch = [regex]::Match($mainFrameText, 'void\s+CMainFrame::RefreshLocalizedMainFrameUi\s*\(\s*\)\s*\{(?<body>.*?)\n\}', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+if (-not $refreshMatch.Success) {
+    throw "Не удалось выделить RefreshLocalizedMainFrameUi для проверки безопасного обновления меню."
+}
+foreach ($forbiddenPattern in @("LoadMenu(", "m_MenuBar.AttachMenu", "InitPlugins()", "m_import_plugins.RemoveAll", "m_export_plugins.RemoveAll", "m_scripts.RemoveAll", "m_scripts_images.RemoveAll")) {
+    if ($refreshMatch.Groups['body'].Value -like "*$forbiddenPattern*") {
+        throw "RefreshLocalizedMainFrameUi не должен повторно создавать меню, плагины, скрипты или toolbar: $forbiddenPattern"
+    }
+}
+if ($mainFrameText -notmatch "acceleratorSeparator\s*=\s*text\.Find\(L'\\t'\)") {
+    throw "FillMenuWithHkeys должен заменять прежнюю подпись горячей клавиши, а не добавлять её повторно при каждой смене языка."
 }
 
 foreach ($language in $requiredInterfaceLanguages) {

@@ -20,6 +20,7 @@ const RuntimeStringBinding g_runtimeStringBindings[] = {
     { IDS_AT_LINE_COLUMN, L"export_docx.runtime.at_line_column" },
     { IDS_AT_S_S, L"export_docx.runtime.at_s_s" },
     { IDS_COM_ERROR, L"export_docx.runtime.com_error" },
+    { IDS_UNKNOWN_ERROR, L"export_docx.runtime.unknown_error" },
     { IDS_DOCX_EMPTY_LINE_IGNORE, L"export_docx.runtime.empty_line_ignore" },
     { IDS_DOCX_EMPTY_LINE_PARAGRAPH, L"export_docx.runtime.empty_line_paragraph" },
     { IDS_DOCX_EMPTY_LINE_SEPARATOR, L"export_docx.runtime.empty_line_separator" },

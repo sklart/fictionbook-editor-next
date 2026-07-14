@@ -37,6 +37,7 @@ const RuntimeStringBinding g_runtimeStringBindings[] = {
     { IDS_EXPORT_TITLEPAGE_DATE, L"export_epub.content.titlepage_date" },
     { IDS_EXPORT_TITLEPAGE_PUBLISHER, L"export_epub.content.titlepage_publisher" },
     { IDS_EXPORT_TITLEPAGE_SERIES, L"export_epub.content.titlepage_series" },
+    { IDS_ERROR_UNKNOWN, L"export_epub.runtime.unknown_error" },
     { IDS_OPTIONS_BUTTON_CANCEL, L"export_epub.options.button_cancel" },
     { IDS_OPTIONS_BUTTON_PRESET_COMPAT, L"export_epub.options.button_preset_compat" },
     { IDS_OPTIONS_BUTTON_PRESET_DEFAULT, L"export_epub.options.button_preset_default" },

@@ -112,6 +112,49 @@ static CString LocalizeBundledPluginMenuText(const CString& clsidText, const CSt
 	return FbeLoadRuntimeStringByKey(key, fallback);
 }
 
+// Обновляет уже существующие пункты встроенных плагинов. При смене языка не
+// нужно заново создавать плагины, скрипты, значки меню и кнопки toolbar: такой
+// путь накапливал GDI-ресурсы и добавлял повторные элементы интерфейса.
+static void RefreshBundledPluginMenuTexts(HMENU menu, const TCHAR* type, UINT commandBase)
+{
+	if(menu == NULL)
+		return;
+
+	CRegKey pluginsKey;
+	if(pluginsKey.Open(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Plugins") != ERROR_SUCCESS)
+		return;
+
+	int commandOffset = 0;
+	for(int registryIndex = 0; commandOffset < 20; ++registryIndex)
+	{
+		CString clsidText;
+		DWORD size = 128;
+		TCHAR* buffer = clsidText.GetBuffer(size);
+		FILETIME writeTime = {};
+		if(::RegEnumKeyEx(pluginsKey, registryIndex, buffer, &size, 0, 0, 0, &writeTime) != ERROR_SUCCESS)
+			break;
+		clsidText.ReleaseBuffer(size);
+
+		CRegKey pluginKey;
+		if(pluginKey.Open(pluginsKey, clsidText) != ERROR_SUCCESS)
+			continue;
+
+		const CString pluginType(U::QuerySV(pluginKey, L"Type"));
+		const CString fallback(U::QuerySV(pluginKey, L"Menu"));
+		if(pluginType.IsEmpty() || fallback.IsEmpty() || pluginType != type)
+			continue;
+
+		const CString text = LocalizeBundledPluginMenuText(clsidText, fallback);
+		MENUITEMINFO itemInfo = {};
+		itemInfo.cbSize = sizeof(itemInfo);
+		itemInfo.fMask = MIIM_STRING;
+		itemInfo.dwTypeData = const_cast<LPTSTR>(static_cast<LPCTSTR>(text));
+		itemInfo.cch = text.GetLength();
+		::SetMenuItemInfo(menu, commandBase + commandOffset, FALSE, &itemInfo);
+		++commandOffset;
+	}
+}
+
 static void SetRuntimeMenuItemTextByPosition(HMENU menu, UINT position, LPCWSTR key)
 {
 	if(menu == NULL || key == NULL)
@@ -198,33 +241,111 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 		HMENU importMenu = ::GetSubMenu(fileMenu, 6);
 		HMENU exportMenu = ::GetSubMenu(fileMenu, 7);
 		HMENU recentMenu = ::GetSubMenu(fileMenu, 9);
-		SetRuntimePlainMenuItemTextByPosition(importMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.import");
-		SetRuntimePlainMenuItemTextByPosition(exportMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.export");
-		SetRuntimePlainMenuItemTextByPosition(recentMenu, 0, L"fbe.menu.idr_mainframe.recent.empty");
+		if(importMenu != NULL && ::GetMenuItemID(importMenu, 0) == IDCANCEL)
+			SetRuntimePlainMenuItemTextByPosition(importMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.import");
+		if(exportMenu != NULL && ::GetMenuItemID(exportMenu, 0) == IDCANCEL)
+			SetRuntimePlainMenuItemTextByPosition(exportMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.export");
+		if(recentMenu != NULL && ::GetMenuItemID(recentMenu, 0) == IDCANCEL)
+			SetRuntimePlainMenuItemTextByPosition(recentMenu, 0, L"fbe.menu.idr_mainframe.recent.empty");
 	}
 
 	HMENU scriptsMenu = ::GetSubMenu(menu, 6);
-	SetRuntimePlainMenuItemTextByPosition(scriptsMenu, 0, L"fbe.menu.idr_mainframe.scripts.empty");
+	if(scriptsMenu != NULL && ::GetMenuItemID(scriptsMenu, 0) == IDCANCEL)
+		SetRuntimePlainMenuItemTextByPosition(scriptsMenu, 0, L"fbe.menu.idr_mainframe.scripts.empty");
 
 	ApplyRuntimeMenuCommandTexts(menu);
 }
 
 static void ReloadInterfaceResourceInstance()
 {
-	if(resLib)
+	const CString dllName = _Settings.GetInterfaceLanguageDllName();
+	if(dllName.IsEmpty())
 	{
-		::FreeLibrary(resLib);
 		resLib = NULL;
+		ATL::_AtlBaseModule.SetResourceInstance(ATL::_AtlBaseModule.GetModuleInstance());
+		return;
 	}
 
-	const CString dllName = _Settings.GetInterfaceLanguageDllName();
-	if(!dllName.IsEmpty())
-		resLib = ::LoadLibrary(U::GetProgDir() + dllName);
+	// Созданные Win32-окна и меню могут ещё обращаться к ресурсам прежней DLL.
+	// Не выгружаем её до завершения процесса: это исключает use-after-free при
+	// переключении языка и стоит лишь двух небольших resource DLL.
+	static HINSTANCE russianResources = NULL;
+	static HINSTANCE ukrainianResources = NULL;
+	HINSTANCE* cachedResource = NULL;
+	if(dllName.CompareNoCase(L"Lang\\ru-RU\\res_rus.dll") == 0)
+		cachedResource = &russianResources;
+	else if(dllName.CompareNoCase(L"Lang\\uk-UA\\res_ukr.dll") == 0)
+		cachedResource = &ukrainianResources;
+
+	if(cachedResource != NULL && *cachedResource == NULL)
+		*cachedResource = ::LoadLibrary(U::GetProgDir() + dllName);
+
+	resLib = cachedResource != NULL ? *cachedResource : NULL;
 
 	if(resLib)
 		ATL::_AtlBaseModule.SetResourceInstance(resLib);
 	else
 		ATL::_AtlBaseModule.SetResourceInstance(ATL::_AtlBaseModule.GetModuleInstance());
+}
+
+// Снимок параметров, которые действительно требуют перенастройки редактора.
+// Смена только языка не должна повторно инициализировать MSHTML, Scintilla и
+// проверку орфографии: это заметно задерживает интерфейс и не влияет на их работу.
+struct EditorConfigurationSnapshot
+{
+	CString font;
+	CString sourceFont;
+	CString customDictionary;
+	CString nbsp;
+	DWORD fontSize;
+	DWORD foreground;
+	DWORD background;
+	DWORD customDictionaryCodepage;
+	bool sourceWrap;
+	bool sourceSyntaxHighlight;
+	bool sourceTagHighlight;
+	bool sourceShowEol;
+	bool sourceShowWhitespace;
+	bool sourceShowLineNumbers;
+	bool fastMode;
+	bool useSpellChecker;
+	bool highlightMisspells;
+
+	bool operator==(const EditorConfigurationSnapshot& other) const
+	{
+		return font == other.font && sourceFont == other.sourceFont &&
+			customDictionary == other.customDictionary && nbsp == other.nbsp &&
+			fontSize == other.fontSize && foreground == other.foreground &&
+			background == other.background && customDictionaryCodepage == other.customDictionaryCodepage &&
+			sourceWrap == other.sourceWrap && sourceSyntaxHighlight == other.sourceSyntaxHighlight &&
+			sourceTagHighlight == other.sourceTagHighlight && sourceShowEol == other.sourceShowEol &&
+			sourceShowWhitespace == other.sourceShowWhitespace && sourceShowLineNumbers == other.sourceShowLineNumbers &&
+			fastMode == other.fastMode && useSpellChecker == other.useSpellChecker &&
+			highlightMisspells == other.highlightMisspells;
+	}
+};
+
+static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
+{
+	EditorConfigurationSnapshot snapshot = {};
+	snapshot.font = _Settings.GetFont();
+	snapshot.sourceFont = _Settings.GetSrcFont();
+	snapshot.customDictionary = _Settings.GetCustomDict();
+	snapshot.nbsp = _Settings.GetNBSPChar();
+	snapshot.fontSize = _Settings.GetFontSize();
+	snapshot.foreground = _Settings.GetColorFG();
+	snapshot.background = _Settings.GetColorBG();
+	snapshot.customDictionaryCodepage = _Settings.GetCustomDictCodepage();
+	snapshot.sourceWrap = _Settings.XmlSrcWrap();
+	snapshot.sourceSyntaxHighlight = _Settings.XmlSrcSyntaxHL();
+	snapshot.sourceTagHighlight = _Settings.XmlSrcTagHL();
+	snapshot.sourceShowEol = _Settings.XmlSrcShowEOL();
+	snapshot.sourceShowWhitespace = _Settings.XmlSrcShowSpace();
+	snapshot.sourceShowLineNumbers = _Settings.XMLSrcShowLineNumbers();
+	snapshot.fastMode = _Settings.FastMode();
+	snapshot.useSpellChecker = _Settings.GetUseSpellChecker();
+	snapshot.highlightMisspells = _Settings.GetHighlightMisspells();
+	return snapshot;
 }
 
 static UINT GetWindowDpi(HWND window)
@@ -2190,6 +2311,12 @@ void CMainFrame::FillMenuWithHkeys(HMENU menu)
 
 			if(menuTextLength > 0)
 			{
+				// При повторном обновлении интерфейса пункт уже мог содержать
+				// старую подсказку клавиатурного сокращения. Убираем её перед
+				// добавлением актуальной, чтобы текст не накапливался.
+				const int acceleratorSeparator = text.Find(L'\t');
+				if(acceleratorSeparator >= 0)
+					text = text.Left(acceleratorSeparator);
 				text += L"\t";
 				text += U::AccelToString(hotkey.m_accel);
 
@@ -2283,49 +2410,90 @@ void CMainFrame::RefreshLocalizedToolbarButtonTexts(CToolBarCtrl& toolbar)
 }
 void CMainFrame::RefreshLocalizedToolbarCaptions()
 {
-	wchar_t buf[MAX_LOAD_STRING + 1];
+	// Панели ссылок и таблиц используют toolbar-кнопки только как разметку:
+	// поверх каждой из них находится CCustomStatic или combo-box. Простая
+	// смена текста static-контрола оставляла старую ширину кнопки-разметки,
+	// из-за чего подписи накладывались друг на друга после смены языка.
+	// Пересобираем только эти пустые кнопки и заново размещаем уже созданные
+	// дочерние контролы. Содержимое combo-box при этом не затрагивается.
+	struct CaptionToolbarBinding
+	{
+		CCustomStatic* caption;
+		CWindow* editor;
+		CString text;
+		LPCWSTR editorPlaceholder;
+	};
 
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_ID, buf, MAX_LOAD_STRING))
-		m_id_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_HREF, buf, MAX_LOAD_STRING))
-		m_href_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_SECTION_ID, buf, MAX_LOAD_STRING))
-		m_section_id_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_IMAGE_TITLE, buf, MAX_LOAD_STRING))
-		m_image_title_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TABLE_ID, buf, MAX_LOAD_STRING))
-		m_table_id_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TABLE_STYLE, buf, MAX_LOAD_STRING))
-		m_table_style_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_ID, buf, MAX_LOAD_STRING))
-		m_id_table_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_STYLE, buf, MAX_LOAD_STRING))
-		m_style_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_COLSPAN, buf, MAX_LOAD_STRING))
-		m_colspan_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_ROWSPAN, buf, MAX_LOAD_STRING))
-		m_rowspan_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TR_ALIGN, buf, MAX_LOAD_STRING))
-		m_tr_allign_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TD_ALIGN, buf, MAX_LOAD_STRING))
-		m_th_allign_caption.SetWindowText(buf);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_TB_CAPT_TD_VALIGN, buf, MAX_LOAD_STRING))
-		m_valign_caption.SetWindowText(buf);
+	auto loadCaption = [](UINT resourceId) -> CString
+	{
+		wchar_t buffer[MAX_LOAD_STRING + 1] = {};
+		return FbeLoadString(_Module.GetResourceInstance(), resourceId, buffer, MAX_LOAD_STRING)
+			? CString(buffer) : CString();
+	};
 
-	m_id_caption.Invalidate();
-	m_href_caption.Invalidate();
-	m_section_id_caption.Invalidate();
-	m_image_title_caption.Invalidate();
-	m_table_id_caption.Invalidate();
-	m_table_style_caption.Invalidate();
-	m_id_table_caption.Invalidate();
-	m_style_caption.Invalidate();
-	m_colspan_caption.Invalidate();
-	m_rowspan_caption.Invalidate();
-	m_tr_allign_caption.Invalidate();
-	m_th_allign_caption.Invalidate();
-	m_valign_caption.Invalidate();
+	auto rebuildCaptionToolbar = [this](HWND toolbar, CaptionToolbarBinding* bindings, size_t bindingCount)
+	{
+		if(!::IsWindow(toolbar))
+			return;
 
+		::SendMessage(toolbar, WM_SETREDRAW, FALSE, 0);
+		for(int index = static_cast<int>(::SendMessage(toolbar, TB_BUTTONCOUNT, 0, 0)) - 1; index >= 0; --index)
+			::SendMessage(toolbar, TB_DELETEBUTTON, index, 0);
+
+		for(size_t index = 0; index < bindingCount; ++index)
+		{
+			AddTbButton(toolbar, bindings[index].text);
+			AddTbButton(toolbar, bindings[index].editorPlaceholder);
+		}
+
+		::SendMessage(toolbar, TB_AUTOSIZE, 0, 0);
+		for(size_t index = 0; index < bindingCount; ++index)
+		{
+			RECT captionRect = {};
+			RECT editorRect = {};
+			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 2), reinterpret_cast<LPARAM>(&captionRect));
+			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 2 + 1), reinterpret_cast<LPARAM>(&editorRect));
+			--captionRect.bottom;
+			--editorRect.bottom;
+
+			bindings[index].caption->SetWindowText(bindings[index].text);
+			::SetWindowPos(bindings[index].caption->m_hWnd, NULL,
+				captionRect.left, captionRect.top, captionRect.right - captionRect.left, captionRect.bottom - captionRect.top,
+				SWP_NOACTIVATE | SWP_NOZORDER);
+			::SetWindowPos(bindings[index].editor->m_hWnd, NULL,
+				editorRect.left, editorRect.top, editorRect.right - editorRect.left, editorRect.bottom - editorRect.top,
+				SWP_NOACTIVATE | SWP_NOZORDER);
+		}
+
+		::SendMessage(toolbar, WM_SETREDRAW, TRUE, 0);
+		::RedrawWindow(toolbar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+	};
+
+	CaptionToolbarBinding linksToolbar[] = {
+		{ &m_id_caption, &m_id_box, loadCaption(IDS_TB_CAPT_ID), L"123456789012345678901234567890" },
+		{ &m_href_caption, &m_href_box, loadCaption(IDS_TB_CAPT_HREF), L"123456789012345678901234567890" },
+		{ &m_section_id_caption, &m_section_box, loadCaption(IDS_TB_CAPT_SECTION_ID), L"123456789012345678901234567890" },
+		{ &m_image_title_caption, &m_image_title_box, loadCaption(IDS_TB_CAPT_IMAGE_TITLE), L"123456789012345678901234567890" },
+	};
+	CaptionToolbarBinding tableToolbar[] = {
+		{ &m_table_id_caption, &m_id_table_id_box, loadCaption(IDS_TB_CAPT_TABLE_ID), L"12345678901234567890" },
+		{ &m_table_style_caption, &m_styleT_table_box, loadCaption(IDS_TB_CAPT_TABLE_STYLE), L"123456789012345" },
+		{ &m_id_table_caption, &m_id_table_box, loadCaption(IDS_TB_CAPT_ID), L"12345678901234567890" },
+		{ &m_style_caption, &m_style_table_box, loadCaption(IDS_TB_CAPT_STYLE), L"123456789012345" },
+	};
+	CaptionToolbarBinding tableToolbar2[] = {
+		{ &m_colspan_caption, &m_colspan_table_box, loadCaption(IDS_TB_CAPT_COLSPAN), L"12345" },
+		{ &m_rowspan_caption, &m_rowspan_table_box, loadCaption(IDS_TB_CAPT_ROWSPAN), L"12345" },
+		{ &m_tr_allign_caption, &m_alignTR_table_box, loadCaption(IDS_TB_CAPT_TR_ALIGN), L"12345678" },
+		{ &m_th_allign_caption, &m_align_table_box, loadCaption(IDS_TB_CAPT_TD_ALIGN), L"12345678" },
+		{ &m_valign_caption, &m_valign_table_box, loadCaption(IDS_TB_CAPT_TD_VALIGN), L"12345678" },
+	};
+
+	rebuildCaptionToolbar(m_id_caption.GetParent(), linksToolbar, _countof(linksToolbar));
+	rebuildCaptionToolbar(m_table_id_caption.GetParent(), tableToolbar, _countof(tableToolbar));
+	rebuildCaptionToolbar(m_colspan_caption.GetParent(), tableToolbar2, _countof(tableToolbar2));
+
+	wchar_t buf[MAX_LOAD_STRING + 1] = {};
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_INS, strINS, MAX_LOAD_STRING);
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_OVR, strOVR, MAX_LOAD_STRING);
 
@@ -2337,25 +2505,44 @@ void CMainFrame::RefreshLocalizedToolbarCaptions()
 
 void CMainFrame::RefreshLocalizedMainFrameUi()
 {
-	HMENU menu = ::LoadMenu(_Module.GetResourceInstance(), MAKEINTRESOURCE(IDR_MAINFRAME));
+	// Меню и панели уже построены при старте. Переводим их на месте: повторный
+	// AttachMenu + InitPlugins создавал новые toolbar-кнопки и GDI-изображения
+	// при каждом переключении языка, вызывая задержку, рост памяти и артефакты UI.
+	HMENU menu = m_MenuBar.GetMenu();
 	if(menu != NULL)
 	{
 		ApplyRuntimeMainFrameMenuLocalization(menu);
-		m_import_plugins.RemoveAll();
-		m_export_plugins.RemoveAll();
-		m_scripts.RemoveAll();
-		m_scripts_images.RemoveAll();
 
-		m_MenuBar.AttachMenu(menu);
-		InitPlugins();
+		HMENU fileMenu = ::GetSubMenu(menu, 0);
+		if(fileMenu != NULL)
+		{
+			RefreshBundledPluginMenuTexts(::GetSubMenu(fileMenu, 6), L"Import", ID_IMPORT_BASE);
+			RefreshBundledPluginMenuTexts(::GetSubMenu(fileMenu, 7), L"Export", ID_EXPORT_BASE);
+		}
+
 		FillMenuWithHkeys(m_MenuBar.GetMenu());
+		const int menuItemCount = ::GetMenuItemCount(menu);
+		const int buttonCount = m_MenuBar.GetButtonCount();
+		for(int index = 0; index < menuItemCount && index < buttonCount; ++index)
+		{
+			wchar_t text[MAX_LOAD_STRING + 1] = {};
+			const int textLength = ::GetMenuString(menu, index, text, _countof(text), MF_BYPOSITION);
+			if(textLength <= 0)
+				continue;
+
+			TBBUTTONINFO buttonInfo = {};
+			buttonInfo.cbSize = sizeof(buttonInfo);
+			buttonInfo.dwMask = TBIF_TEXT;
+			buttonInfo.pszText = text;
+			m_MenuBar.SetButtonInfo(index, &buttonInfo);
+		}
+		m_MenuBar.AutoSize();
 		m_MenuBar.Invalidate();
-		m_MenuBar.UpdateWindow();
 	}
 
 	RefreshLocalizedToolbarCaptions();
 	m_document_tree.RefreshLocalizedTitle();
-	DrawMenuBar();
+	UpdateLayout();
 }
 // search&replace in scintilla
 CString	  SciSelection(CWindow source) {
@@ -2884,6 +3071,8 @@ LRESULT CMainFrame::OnViewTree(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 {
+	const DWORD previousInterfaceLanguage = _Settings.GetInterfaceLanguageID();
+	const EditorConfigurationSnapshot previousConfiguration = CaptureEditorConfigurationSnapshot();
 	bool bFind = m_doc->m_body.CloseFindDialog(m_doc->m_body.m_find_dlg);
 	bool bReplace = m_doc->m_body.CloseFindDialog(m_doc->m_body.m_replace_dlg);
 
@@ -2894,10 +3083,22 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 
 	if(ShowSettingsDialog(m_hWnd))
 	{
-		ReloadInterfaceResourceInstance();
-		FbeResetRuntimeLocalization();
-		RefreshLocalizedMainFrameUi();
-		ApplyConfChanges();
+		if(previousInterfaceLanguage != _Settings.GetInterfaceLanguageID())
+		{
+			ReloadInterfaceResourceInstance();
+			FbeResetRuntimeLocalization();
+			RefreshLocalizedMainFrameUi();
+		}
+
+		if(!(previousConfiguration == CaptureEditorConfigurationSnapshot()) || _Settings.NeedRestart())
+			ApplyConfChanges();
+		else
+		{
+			// Окно общих настроек не меняет hotkey- или word-коллекции.
+			// Их XML-сериализация здесь не нужна и могла аварийно завершиться
+			// на старых пользовательских настройках при смене только языка.
+			_Settings.Save();
+		}
 	}
 
 	switch(find_repl)
@@ -3064,6 +3265,8 @@ LRESULT CMainFrame::OnToolsWords(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 {
+	const DWORD previousInterfaceLanguage = _Settings.GetInterfaceLanguageID();
+	const EditorConfigurationSnapshot previousConfiguration = CaptureEditorConfigurationSnapshot();
 	if(m_Speller)
 		m_Speller->EndDocumentCheck();
 
@@ -3077,10 +3280,21 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 
 	if(ShowSettingsDialog(m_hWnd))
 	{
-		ReloadInterfaceResourceInstance();
-		FbeResetRuntimeLocalization();
-		RefreshLocalizedMainFrameUi();
-		ApplyConfChanges();
+		if(previousInterfaceLanguage != _Settings.GetInterfaceLanguageID())
+		{
+			ReloadInterfaceResourceInstance();
+			FbeResetRuntimeLocalization();
+			RefreshLocalizedMainFrameUi();
+		}
+
+		if(!(previousConfiguration == CaptureEditorConfigurationSnapshot()) || _Settings.NeedRestart())
+			ApplyConfChanges();
+		else
+		{
+			// См. аналогичный путь OnViewOptions: сохраняем собственно
+			// настройки, но не сериализуем не затронутые этим диалогом XML-коллекции.
+			_Settings.Save();
+		}
 	}
 
 	switch(find_repl)

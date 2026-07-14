@@ -57,6 +57,11 @@ public:
 			m_includedesc ? BST_CHECKED : BST_UNCHECKED, 0);
 		m_tocdepth = U::QueryIV(_Settings, _T("TOCDepth"), 1);
 		SetDlgItemInt(IDC_TOCDEPTH, m_tocdepth, FALSE);
+		// Подписи шаблона задано через стабильные ID, чтобы внешний JSON-слой
+		// мог заменить английский layout для всех поддерживаемых языков.
+		SetDlgItemText(IDC_TEMPLATE_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL));
+		SetDlgItemText(IDC_DOCINFO, LoadExportHtmlString(IDS_CUSTOM_SAVE_INCLUDE_DESC));
+		SetDlgItemText(IDC_TOC_DEPTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH));
 		InitTooltips();
 		return TRUE;
 	}
@@ -80,12 +85,14 @@ public:
 	}
 
 	LRESULT OnBrowse(WORD, WORD, HWND, BOOL&) {
+		CString filter = LoadExportHtmlString(IDS_OPEN_TEMPLATE_FILTER);
+		filter.Replace(_T('|'), _T('\0'));
 		CFileDialog	dlg(
 			TRUE,
 			_T("xsl"),
 			NULL,
 			OFN_HIDEREADONLY | OFN_PATHMUSTEXIST,
-			_T("XSL Templates (*.xsl;*.xslt)\0*.xsl;*.xslt\0All files (*.*)\0*.*\0\0")
+			filter
 			);
 
 		if (dlg.DoModal(*this) == IDOK)

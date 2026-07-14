@@ -50,6 +50,9 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 	{ IDS_IMPORT_XML_ERR_MSG, L"fbe.import.xml_interface_missing" },
 	{ IDS_SCINTILLA_LOAD_ERR_MSG, L"fbe.scintilla.load_failed" },
 	{ IDS_ABOUT_LOGOCAPTION, L"fbe.about.logo_caption" },
+	{ IDS_ABOUT_WINDOW_CAPTION, L"fbe.about.window_caption" },
+	{ IDS_ABOUT_BUILD_LABEL, L"fbe.about.build_label" },
+	{ IDS_ABOUT_UPDATE_NOW, L"fbe.about.update_now" },
 	{ IDS_BAD_XML_MSG, L"fbe.xml.invalid_source_warning" },
 	{ IDS_MB_OK, L"fbe.messagebox.ok" },
 	{ IDS_MB_CANCEL, L"fbe.messagebox.cancel" },
@@ -253,7 +256,13 @@ CString FbeLoadRuntimeStringByKey(LPCWSTR key, LPCWSTR fallback)
 	if (it != g_runtimeStringsByKey.end())
 		return it->second;
 
-	return fallback != NULL ? CString(fallback) : CString();
+    return fallback != NULL ? CString(fallback) : CString();
+}
+
+bool FbeIsRuntimeLocaleInstalled(LPCWSTR localeName)
+{
+    return FbeRuntimeLocalization::RuntimeStringFileExists(
+        _Module.GetModuleInstance(), localeName, L"fbe.json");
 }
 
 void FbePublishRuntimeLocaleName(LPCWSTR localeName)

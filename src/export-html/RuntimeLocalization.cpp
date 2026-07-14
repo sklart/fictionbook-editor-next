@@ -29,6 +29,11 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
     { IDS_TOOLTIP_BROWSE_TEMPLATE, L"export_html.tooltip.browse_template" },
     { IDS_TOOLTIP_DOCINFO, L"export_html.tooltip.include_description" },
     { IDS_TOOLTIP_TOC_DEPTH, L"export_html.tooltip.toc_depth" },
+    { IDS_CUSTOM_SAVE_TEMPLATE_LABEL, L"export_html.dialog.save.template_label" },
+    { IDS_CUSTOM_SAVE_INCLUDE_DESC, L"export_html.dialog.save.include_description" },
+    { IDS_CUSTOM_SAVE_TOC_DEPTH, L"export_html.dialog.save.toc_depth" },
+    { IDS_OPEN_TEMPLATE_FILTER, L"export_html.dialog.save.template_filter" },
+    { IDS_UNKNOWN_ERROR, L"export_html.runtime.unknown_error" },
 };
 
 static std::map<UINT, CStringW> g_runtimeStrings;

@@ -326,6 +326,26 @@ inline CStringW GetPreferredRuntimeLocaleName()
     return L"en-US";
 }
 
+inline bool RuntimeStringFileExists(HINSTANCE moduleInstance, const wchar_t* localeName, const wchar_t* moduleJsonName)
+{
+    if (moduleInstance == nullptr || !IsKnownRuntimeLocaleName(localeName) ||
+        moduleJsonName == nullptr || moduleJsonName[0] == 0)
+        return false;
+
+    wchar_t modulePath[MAX_PATH] = {};
+    const DWORD pathLength = ::GetModuleFileNameW(moduleInstance, modulePath, _countof(modulePath));
+    if (pathLength == 0 || pathLength >= _countof(modulePath) || !RemoveFileSpec(modulePath))
+        return false;
+
+    if (!AppendPath(modulePath, _countof(modulePath), L"Lang") ||
+        !AppendPath(modulePath, _countof(modulePath), localeName) ||
+        !AppendPath(modulePath, _countof(modulePath), moduleJsonName))
+        return false;
+
+    const DWORD attributes = ::GetFileAttributesW(modulePath);
+    return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
 template <typename Binding>
 inline bool LoadRuntimeStringFileByRelativePath(HINSTANCE moduleInstance, const wchar_t* jsonFileName, const Binding* bindings, size_t bindingCount, std::map<UINT, CStringW>& strings)
 {

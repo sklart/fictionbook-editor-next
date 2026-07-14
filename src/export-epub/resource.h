@@ -10,6 +10,7 @@
 #define IDS_EXPORT_DONE                 107
 #define IDI_MAINICON                    108
 #define IDI_BATCHICON                   111
+#define IDS_ERROR_UNKNOWN                112
 #define IDD_EXPORT_OPTIONS              109
 #define IDD_SAVE_DIALOG_EXTRA           110
 #define IDS_TOOLTIP_NCX_FALLBACK        200

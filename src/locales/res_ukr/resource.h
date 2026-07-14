@@ -291,6 +291,9 @@
 #define IDS_LANG_DUTCH                 316
 #define IDS_LANG_CZECH                 317
 #define IDS_LANG_BULGARIAN             318
+#define IDS_ABOUT_WINDOW_CAPTION        319
+#define IDS_ABOUT_BUILD_LABEL           320
+#define IDS_ABOUT_UPDATE_NOW            321
 #define ID_PANE_CHAR                    305
 #define IDB_UPD_CHECK1                  400
 #define IDB_UPD_CHECK2                  401

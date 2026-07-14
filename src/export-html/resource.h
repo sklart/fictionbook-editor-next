@@ -20,10 +20,17 @@
 #define IDS_TOOLTIP_BROWSE_TEMPLATE     114
 #define IDS_TOOLTIP_DOCINFO             115
 #define IDS_TOOLTIP_TOC_DEPTH           116
+#define IDS_CUSTOM_SAVE_TEMPLATE_LABEL  117
+#define IDS_CUSTOM_SAVE_INCLUDE_DESC    118
+#define IDS_CUSTOM_SAVE_TOC_DEPTH       119
+#define IDS_OPEN_TEMPLATE_FILTER        120
+#define IDS_UNKNOWN_ERROR                121
 #define IDC_BROWSE                      1001
 #define IDC_TEMPLATE                    1002
 #define IDC_DOCINFO                     1003
 #define IDC_TOCDEPTH                    1004
+#define IDC_TEMPLATE_LABEL              1005
+#define IDC_TOC_DEPTH_LABEL             1006
 
 // Next default values for new objects
 // 

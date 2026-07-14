@@ -18,6 +18,8 @@
   "strings": {
     "export_html.dialog.save.template_label": {
       "source": "XSL Template:",
+      "component": "export-html.dialog.save",
+      "resourceId": "IDS_CUSTOM_SAVE_TEMPLATE_LABEL",
       "translations": {
         "en-US": "XSL template:",
         "ru-RU": "Шаблон XSL:",
@@ -35,6 +37,8 @@
     },
     "export_html.dialog.save.include_description": {
       "source": "Include document description",
+      "component": "export-html.dialog.save",
+      "resourceId": "IDS_CUSTOM_SAVE_INCLUDE_DESC",
       "translations": {
         "en-US": "Include document description",
         "ru-RU": "Включать описание документа",
@@ -52,6 +56,8 @@
     },
     "export_html.dialog.save.toc_depth": {
       "source": "TOC depth:",
+      "component": "export-html.dialog.save",
+      "resourceId": "IDS_CUSTOM_SAVE_TOC_DEPTH",
       "translations": {
         "en-US": "TOC depth:",
         "ru-RU": "Глубина оглавления:",
@@ -65,6 +71,25 @@
         "nl-NL": "Diepte van inhoudsopgave:",
         "cs-CZ": "Hloubka obsahu:",
         "bg-BG": "Дълбочина на съдържанието:"
+      }
+    },
+    "export_html.dialog.save.template_filter": {
+      "source": "XSL Templates (*.xsl;*.xslt)|*.xsl;*.xslt|All files (*.*)|*.*|",
+      "component": "export-html.dialog.save",
+      "resourceId": "IDS_OPEN_TEMPLATE_FILTER",
+      "translations": {
+        "en-US": "XSL Templates (*.xsl;*.xslt)|*.xsl;*.xslt|All files (*.*)|*.*|",
+        "ru-RU": "Шаблоны XSL (*.xsl;*.xslt)|*.xsl;*.xslt|Все файлы (*.*)|*.*|",
+        "uk-UA": "Шаблони XSL (*.xsl;*.xslt)|*.xsl;*.xslt|Усі файли (*.*)|*.*|",
+        "de-DE": "XSL-Vorlagen (*.xsl;*.xslt)|*.xsl;*.xslt|Alle Dateien (*.*)|*.*|",
+        "fr-FR": "Modèles XSL (*.xsl;*.xslt)|*.xsl;*.xslt|Tous les fichiers (*.*)|*.*|",
+        "es-ES": "Plantillas XSL (*.xsl;*.xslt)|*.xsl;*.xslt|Todos los archivos (*.*)|*.*|",
+        "it-IT": "Modelli XSL (*.xsl;*.xslt)|*.xsl;*.xslt|Tutti i file (*.*)|*.*|",
+        "pl-PL": "Szablony XSL (*.xsl;*.xslt)|*.xsl;*.xslt|Wszystkie pliki (*.*)|*.*|",
+        "pt-PT": "Modelos XSL (*.xsl;*.xslt)|*.xsl;*.xslt|Todos os ficheiros (*.*)|*.*|",
+        "nl-NL": "XSL-sjablonen (*.xsl;*.xslt)|*.xsl;*.xslt|Alle bestanden (*.*)|*.*|",
+        "cs-CZ": "Šablony XSL (*.xsl;*.xslt)|*.xsl;*.xslt|Všechny soubory (*.*)|*.*|",
+        "bg-BG": "XSL шаблони (*.xsl;*.xslt)|*.xsl;*.xslt|Всички файлове (*.*)|*.*|"
       }
     },
     "export_html.tooltip.template": {
@@ -369,6 +394,44 @@
         "nl-NL": "COM-fout",
         "cs-CZ": "Chyba COM",
         "bg-BG": "COM грешка"
+      }
+    },
+    "export_html.runtime.unknown_error": {
+      "source": "Unknown error %x",
+      "component": "export-html.runtime",
+      "resourceId": "IDS_UNKNOWN_ERROR",
+      "translations": {
+        "en-US": "Unknown error %x",
+        "ru-RU": "Неизвестная ошибка %x",
+        "uk-UA": "Невідома помилка %x",
+        "de-DE": "Unbekannter Fehler %x",
+        "fr-FR": "Erreur inconnue %x",
+        "es-ES": "Error desconocido %x",
+        "it-IT": "Errore sconosciuto %x",
+        "pl-PL": "Nieznany błąd %x",
+        "pt-PT": "Erro desconhecido %x",
+        "nl-NL": "Onbekende fout %x",
+        "cs-CZ": "Neznámá chyba %x",
+        "bg-BG": "Неизвестна грешка %x"
+      }
+    },
+    "export_epub.runtime.unknown_error": {
+      "source": "Unknown error",
+      "component": "export-epub.runtime",
+      "resourceId": "IDS_ERROR_UNKNOWN",
+      "translations": {
+        "en-US": "Unknown error",
+        "ru-RU": "Неизвестная ошибка",
+        "uk-UA": "Невідома помилка",
+        "de-DE": "Unbekannter Fehler",
+        "fr-FR": "Erreur inconnue",
+        "es-ES": "Error desconocido",
+        "it-IT": "Errore sconosciuto",
+        "pl-PL": "Nieznany błąd",
+        "pt-PT": "Erro desconhecido",
+        "nl-NL": "Onbekende fout",
+        "cs-CZ": "Neznámá chyba",
+        "bg-BG": "Неизвестна грешка"
       }
     },
     "export_epub.dialog.options.caption": {
@@ -4079,6 +4142,25 @@
         "nl-NL": "COM-fout",
         "cs-CZ": "Chyba COM",
         "bg-BG": "COM грешка"
+      }
+    },
+    "export_docx.runtime.unknown_error": {
+      "source": "Unknown error %x",
+      "component": "export-docx.runtime",
+      "resourceId": "IDS_UNKNOWN_ERROR",
+      "translations": {
+        "en-US": "Unknown error %x",
+        "ru-RU": "Неизвестная ошибка %x",
+        "uk-UA": "Невідома помилка %x",
+        "de-DE": "Unbekannter Fehler %x",
+        "fr-FR": "Erreur inconnue %x",
+        "es-ES": "Error desconocido %x",
+        "it-IT": "Errore sconosciuto %x",
+        "pl-PL": "Nieznany błąd %x",
+        "pt-PT": "Erro desconhecido %x",
+        "nl-NL": "Onbekende fout %x",
+        "cs-CZ": "Neznámá chyba %x",
+        "bg-BG": "Неизвестна грешка %x"
       }
     },
     "export_docx.tooltip.export_images": {

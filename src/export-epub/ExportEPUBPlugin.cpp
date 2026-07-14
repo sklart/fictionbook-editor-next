@@ -29,7 +29,7 @@ void ShowExportError(HWND owner, const std::wstring& error)
 {
     CString fmt(LoadExportEpubString(IDS_ERROR_EXPORT_FAILED, L"EPUB export failed: %s"));
     CString msg;
-    msg.Format(fmt, error.empty() ? L"Unknown error" : error.c_str());
+    msg.Format(fmt, error.empty() ? static_cast<LPCWSTR>(LoadExportEpubString(IDS_ERROR_UNKNOWN, L"Unknown error")) : error.c_str());
     ShowError(owner, msg);
 }
 

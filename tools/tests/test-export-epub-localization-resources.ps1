@@ -44,6 +44,9 @@ if ($cpp -match 'result\.warnings\.emplace_back\(L"[А-Яа-яЁё]' -or
     $cpp -match 'text\s*\+=\s*L"\\n[А-Яа-яЁё]') {
     throw "В ExportEPUBPlugin.cpp вернулась hardcoded русская строка preflight/summary UI."
 }
+if ($cpp -match 'error\.empty\(\) \? L"Unknown error"') {
+    throw "В ExportEPUBPlugin.cpp вернулась hardcoded fallback-строка Unknown error."
+}
 
 $resourceHeaderPath = Join-Path (Join-Path $repoRoot "src\export-epub") "resource.h"
 $resourceHeader = Get-Content -Raw -LiteralPath $resourceHeaderPath
@@ -55,6 +58,7 @@ $requiredResourceIds = @(
 if ($requiredResourceIds.Count -eq 0) {
     throw "В resource.h не найдены generated IDS_* строки ExportEPUB с ID >= 200."
 }
+$requiredResourceIds += "IDS_ERROR_UNKNOWN"
 
 $requiredLanguageBlocks = @(
     "LANG_RUSSIAN",

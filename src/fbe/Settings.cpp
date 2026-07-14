@@ -1644,9 +1644,9 @@ CString CSettings::GetInterfaceLanguageDllName()const
 	switch(GetEffectiveInterfaceLanguageID())
 	{
 	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
-		return L"res_rus.dll";
+		return L"Lang\\ru-RU\\res_rus.dll";
 	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
-		return L"res_ukr.dll";
+		return L"Lang\\uk-UA\\res_ukr.dll";
 	default:
 		return L"";
 	}

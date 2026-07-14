@@ -309,6 +309,8 @@ namespace
 LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
 	m_bAllowResize = false;
+	SetWindowText(FbeLoadRuntimeString(IDS_ABOUT_WINDOW_CAPTION));
+	SetDlgItemText(IDC_STATIC_BUILD, FbeLoadRuntimeString(IDS_ABOUT_BUILD_LABEL));
 
 	SetIcon(LoadIcon(_Module.GetResourceInstance(),MAKEINTRESOURCE(IDR_MAINFRAME)));
 
@@ -341,6 +343,7 @@ LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 
 	// setup automatic updates engine
 	m_UpdateButton = GetDlgItem(IDC_UPDATE);
+	m_UpdateButton.SetWindowText(FbeLoadRuntimeString(IDS_ABOUT_UPDATE_NOW));
 	m_UpdateButton.ShowWindow(SW_HIDE);
 
 	m_AnimIdx = 0;

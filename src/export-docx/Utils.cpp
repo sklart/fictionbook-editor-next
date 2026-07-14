@@ -2,6 +2,7 @@
 
 #include "utils.h"
 #include "resource.h"
+#include "RuntimeLocalization.h"
 
 namespace U {
 
@@ -260,7 +261,7 @@ CString	Win32ErrMsg(DWORD code) {
   int len=::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,NULL,code,0,buf,1024,NULL);
   ret.ReleaseBuffer(static_cast<int>(len));
   if (len==0)
-    ret.Format(_T("Unknown error %x"),code);
+    ret.Format(LoadExportDocxString(IDS_UNKNOWN_ERROR, L"Unknown error %x"), code);
   return ret;
 }
 

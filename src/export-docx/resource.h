@@ -148,6 +148,7 @@
 #define IDS_DOCX_WARNING_AUTO_LANGUAGE_EMPTY 373
 #define IDS_DOCX_WARNING_DOCX_CREATED_WITH_WARNINGS 374
 #define IDS_DOCX_NOTES_TITLE            375
+#define IDS_UNKNOWN_ERROR                376
 #define IDC_EXPORT_IMAGES               1101
 #define IDC_EXPORT_COVER                1102
 #define IDC_JUSTIFY_TEXT                1105

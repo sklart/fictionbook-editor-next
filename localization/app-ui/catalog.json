@@ -80,6 +80,60 @@
         "bg-BG": "За програмата"
       }
     },
+    "fbe.about.window_caption": {
+      "resourceId": "IDS_ABOUT_WINDOW_CAPTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "About",
+        "ru-RU": "О программе",
+        "uk-UA": "Про програму",
+        "de-DE": "Info",
+        "fr-FR": "À propos",
+        "es-ES": "Acerca de",
+        "it-IT": "Informazioni",
+        "pl-PL": "O programie",
+        "pt-PT": "Acerca do programa",
+        "nl-NL": "Over",
+        "cs-CZ": "O programu",
+        "bg-BG": "За програмата"
+      }
+    },
+    "fbe.about.build_label": {
+      "resourceId": "IDS_ABOUT_BUILD_LABEL",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Build",
+        "ru-RU": "Сборка",
+        "uk-UA": "Збірка",
+        "de-DE": "Build",
+        "fr-FR": "Build",
+        "es-ES": "Compilación",
+        "it-IT": "Build",
+        "pl-PL": "Kompilacja",
+        "pt-PT": "Compilação",
+        "nl-NL": "Build",
+        "cs-CZ": "Sestavení",
+        "bg-BG": "Компилация"
+      }
+    },
+    "fbe.about.update_now": {
+      "resourceId": "IDS_ABOUT_UPDATE_NOW",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Update now",
+        "ru-RU": "Обновить",
+        "uk-UA": "Оновити",
+        "de-DE": "Jetzt aktualisieren",
+        "fr-FR": "Mettre à jour",
+        "es-ES": "Actualizar ahora",
+        "it-IT": "Aggiorna ora",
+        "pl-PL": "Aktualizuj teraz",
+        "pt-PT": "Atualizar agora",
+        "nl-NL": "Nu bijwerken",
+        "cs-CZ": "Aktualizovat",
+        "bg-BG": "Обнови сега"
+      }
+    },
     "fbe.update.checking": {
       "resourceId": "IDS_UPDATE_CHECK",
       "component": "fbe.core",

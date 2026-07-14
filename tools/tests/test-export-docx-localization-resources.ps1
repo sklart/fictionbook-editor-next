@@ -48,6 +48,7 @@ $requiredResourceIds = @(
     "IDS_AT_S_S",
     "IDS_ERROR",
     "IDS_COM_ERROR",
+    "IDS_UNKNOWN_ERROR",
     "IDS_TOOLTIP_EXPORT_IMAGES",
     "IDS_TOOLTIP_EXPORT_COVER",
     "IDS_TOOLTIP_LIMIT_IMAGE_WIDTH",

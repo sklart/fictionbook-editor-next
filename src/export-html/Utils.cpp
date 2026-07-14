@@ -261,7 +261,7 @@ CString	Win32ErrMsg(DWORD code) {
   int len=::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,NULL,code,0,buf,1024,NULL);
   ret.ReleaseBuffer(len);
   if (len==0)
-    ret.Format(_T("Unknown error %x"),code);
+    ret = FormatExportHtmlString(IDS_UNKNOWN_ERROR, code);
   return ret;
 }
 
