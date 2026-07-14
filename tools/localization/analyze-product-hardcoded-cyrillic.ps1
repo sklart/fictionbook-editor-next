@@ -125,7 +125,11 @@ function Find-CyrillicStringLiterals {
                     $column++
                     continue
                 }
-                if ($c -eq '\\') {
+                # В PowerShell строка '\\' содержит два символа. Здесь нужен
+                # ровно один обратный слеш, иначе экранированная кавычка в C++
+                # завершает literal раньше времени, и анализатор захватывает
+                # последующие комментарии как часть строки.
+                if ($c -eq '\') {
                     [void]$value.Append($c)
                     $escaped = $true
                     $i++

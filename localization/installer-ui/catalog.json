@@ -1,0 +1,740 @@
+{
+  "formatVersion": 1,
+  "description": "Weblate-friendly каталог собственных строк установщика FictionBook Editor Next. Английский, русский и украинский импортированы из действующих NSIS-файлов; остальные языки добавляются после вычитки.",
+  "targetLanguages": [
+    "en-US",
+    "ru-RU",
+    "uk-UA",
+    "de-DE",
+    "fr-FR",
+    "es-ES",
+    "it-IT",
+    "pl-PL",
+    "pt-PT",
+    "nl-NL",
+    "cs-CZ",
+    "bg-BG"
+  ],
+  "strings": {
+    "nsis.Main": {
+      "source": "Program files",
+      "component": "installer.nsi",
+      "nsisName": "Main",
+      "translations": {
+        "en-US": "Program files",
+        "ru-RU": "Файлы программы",
+        "uk-UA": "Файли програми"
+      }
+    },
+    "nsis.System_Integration": {
+      "source": "System integration",
+      "component": "installer.nsi",
+      "nsisName": "System_Integration",
+      "translations": {
+        "en-US": "System integration",
+        "ru-RU": "Системная интеграция",
+        "uk-UA": "Системна інтеграція"
+      }
+    },
+    "nsis.FB2_File_Association": {
+      "source": "Use FBE Next for .fb2 files",
+      "component": "installer.nsi",
+      "nsisName": "FB2_File_Association",
+      "translations": {
+        "en-US": "Use FBE Next for .fb2 files",
+        "ru-RU": "Сделать FBE Next приложением для .fb2",
+        "uk-UA": "Використовувати FBE Next для .fb2"
+      }
+    },
+    "nsis.FB2_Validate_Command": {
+      "source": "Add “Check FB2 for errors” command",
+      "component": "installer.nsi",
+      "nsisName": "FB2_Validate_Command",
+      "translations": {
+        "en-US": "Add “Check FB2 for errors” command",
+        "ru-RU": "Команда «Проверить FB2 на ошибки»",
+        "uk-UA": "Команда «Перевірити FB2 на помилки»"
+      }
+    },
+    "nsis.FB2_Explorer_Properties": {
+      "source": ".fb2 properties and thumbnails in Explorer",
+      "component": "installer.nsi",
+      "nsisName": "FB2_Explorer_Properties",
+      "translations": {
+        "en-US": ".fb2 properties and thumbnails in Explorer",
+        "ru-RU": "Свойства и миниатюры .fb2 в Проводнике",
+        "uk-UA": "Властивості та мініатюри .fb2 у Провіднику"
+      }
+    },
+    "nsis.ShCutGroup": {
+      "source": "Shortcuts",
+      "component": "installer.nsi",
+      "nsisName": "ShCutGroup",
+      "translations": {
+        "en-US": "Shortcuts",
+        "ru-RU": "Ярлыки",
+        "uk-UA": "Ярлики"
+      }
+    },
+    "nsis.Desktop_ShortCut": {
+      "source": "Desktop",
+      "component": "installer.nsi",
+      "nsisName": "Desktop_ShortCut",
+      "translations": {
+        "en-US": "Desktop",
+        "ru-RU": "Рабочий стол",
+        "uk-UA": "Стільниця"
+      }
+    },
+    "nsis.Start_Menu_ShortCuts": {
+      "source": "Start menu",
+      "component": "installer.nsi",
+      "nsisName": "Start_Menu_ShortCuts",
+      "translations": {
+        "en-US": "Start menu",
+        "ru-RU": "Меню Пуск",
+        "uk-UA": "Меню «Пуск»"
+      }
+    },
+    "nsis.PluginsGroup": {
+      "source": "Plugins",
+      "component": "installer.nsi",
+      "nsisName": "PluginsGroup",
+      "translations": {
+        "en-US": "Plugins",
+        "ru-RU": "Плагины",
+        "uk-UA": "Модулі"
+      }
+    },
+    "nsis.ImportPluginsGroup": {
+      "source": "Import plugins",
+      "component": "installer.nsi",
+      "nsisName": "ImportPluginsGroup",
+      "translations": {
+        "en-US": "Import plugins",
+        "ru-RU": "Плагины импорта",
+        "uk-UA": "Плагіни імпорту"
+      }
+    },
+    "nsis.ExportPluginsGroup": {
+      "source": "Export plugins",
+      "component": "installer.nsi",
+      "nsisName": "ExportPluginsGroup",
+      "translations": {
+        "en-US": "Export plugins",
+        "ru-RU": "Плагины экспорта",
+        "uk-UA": "Плагіни експорту"
+      }
+    },
+    "nsis.Plugin_ImportEPUB": {
+      "source": "Import EPUB",
+      "component": "installer.nsi",
+      "nsisName": "Plugin_ImportEPUB",
+      "translations": {
+        "en-US": "Import EPUB",
+        "ru-RU": "Импорт EPUB",
+        "uk-UA": "Імпорт EPUB"
+      }
+    },
+    "nsis.Plugin_ImportEPUB_SVG": {
+      "source": "SVG covers for ImportEPUB",
+      "component": "installer.nsi",
+      "nsisName": "Plugin_ImportEPUB_SVG",
+      "translations": {
+        "en-US": "SVG covers for ImportEPUB",
+        "ru-RU": "SVG-обложки для ImportEPUB",
+        "uk-UA": "SVG-обкладинки для ImportEPUB"
+      }
+    },
+    "nsis.Plugin_ExportHTML": {
+      "source": "Export HTML",
+      "component": "installer.nsi",
+      "nsisName": "Plugin_ExportHTML",
+      "translations": {
+        "en-US": "Export HTML",
+        "ru-RU": "Экспорт HTML",
+        "uk-UA": "Експорт HTML"
+      }
+    },
+    "nsis.Plugin_ExportDOCX": {
+      "source": "Export DOCX",
+      "component": "installer.nsi",
+      "nsisName": "Plugin_ExportDOCX",
+      "translations": {
+        "en-US": "Export DOCX",
+        "ru-RU": "Экспорт DOCX",
+        "uk-UA": "Експорт DOCX"
+      }
+    },
+    "nsis.Plugin_ExportEPUB": {
+      "source": "Export EPUB",
+      "component": "installer.nsi",
+      "nsisName": "Plugin_ExportEPUB",
+      "translations": {
+        "en-US": "Export EPUB",
+        "ru-RU": "Экспорт EPUB",
+        "uk-UA": "Експорт EPUB"
+      }
+    },
+    "nsis.Plugin_BatchConverters": {
+      "source": "Batch converters",
+      "component": "installer.nsi",
+      "nsisName": "Plugin_BatchConverters",
+      "translations": {
+        "en-US": "Batch converters",
+        "ru-RU": "Batch-конвертеры",
+        "uk-UA": "Batch-конвертери"
+      }
+    },
+    "nsis.Scripts": {
+      "source": "Scripts",
+      "component": "installer.nsi",
+      "nsisName": "Scripts",
+      "translations": {
+        "en-US": "Scripts",
+        "ru-RU": "Скрипты",
+        "uk-UA": "Скрипти"
+      }
+    },
+    "nsis.Dictionaries": {
+      "source": "Dictionaries",
+      "component": "installer.nsi",
+      "nsisName": "Dictionaries",
+      "translations": {
+        "en-US": "Dictionaries",
+        "ru-RU": "Словари",
+        "uk-UA": "Словники"
+      }
+    },
+    "nsis.LanguagePacksGroup": {
+      "source": "Interface languages",
+      "component": "installer.nsi",
+      "nsisName": "LanguagePacksGroup",
+      "translations": {
+        "en-US": "Interface languages",
+        "ru-RU": "Языки интерфейса",
+        "uk-UA": "Мови інтерфейсу"
+      }
+    },
+    "nsis.EnglishDict": {
+      "source": "English",
+      "component": "installer.nsi",
+      "nsisName": "EnglishDict",
+      "translations": {
+        "en-US": "English",
+        "ru-RU": "Английский",
+        "uk-UA": "англійський"
+      }
+    },
+    "nsis.RussianDict": {
+      "source": "Russian",
+      "component": "installer.nsi",
+      "nsisName": "RussianDict",
+      "translations": {
+        "en-US": "Russian",
+        "ru-RU": "Русский",
+        "uk-UA": "російський"
+      }
+    },
+    "nsis.UkrainianDict": {
+      "source": "Ukrainian",
+      "component": "installer.nsi",
+      "nsisName": "UkrainianDict",
+      "translations": {
+        "en-US": "Ukrainian",
+        "ru-RU": "Украинский",
+        "uk-UA": "український"
+      }
+    },
+    "nsis.ByelorussianDict": {
+      "source": "Byelorussian",
+      "component": "installer.nsi",
+      "nsisName": "ByelorussianDict",
+      "translations": {
+        "en-US": "Byelorussian",
+        "ru-RU": "Белоруский",
+        "uk-UA": "білоруський"
+      }
+    },
+    "nsis.BulgarianDict": {
+      "source": "Bulgarian",
+      "component": "installer.nsi",
+      "nsisName": "BulgarianDict",
+      "translations": {
+        "en-US": "Bulgarian",
+        "ru-RU": "Болгарский",
+        "uk-UA": "болгарський"
+      }
+    },
+    "nsis.CzechDict": {
+      "source": "Czech",
+      "component": "installer.nsi",
+      "nsisName": "CzechDict",
+      "translations": {
+        "en-US": "Czech",
+        "ru-RU": "Чешский",
+        "uk-UA": "чеський"
+      }
+    },
+    "nsis.PolishDict": {
+      "source": "Polish",
+      "component": "installer.nsi",
+      "nsisName": "PolishDict",
+      "translations": {
+        "en-US": "Polish",
+        "ru-RU": "Польский",
+        "uk-UA": "польський"
+      }
+    },
+    "nsis.GermanDict": {
+      "source": "German",
+      "component": "installer.nsi",
+      "nsisName": "GermanDict",
+      "translations": {
+        "en-US": "German",
+        "ru-RU": "Немецкий",
+        "uk-UA": "німецький"
+      }
+    },
+    "nsis.FrenchDict": {
+      "source": "French",
+      "component": "installer.nsi",
+      "nsisName": "FrenchDict",
+      "translations": {
+        "en-US": "French",
+        "ru-RU": "Французский",
+        "uk-UA": "французький"
+      }
+    },
+    "nsis.SpanishDict": {
+      "source": "Spanish",
+      "component": "installer.nsi",
+      "nsisName": "SpanishDict",
+      "translations": {
+        "en-US": "Spanish",
+        "ru-RU": "Испанский",
+        "uk-UA": "іспанський"
+      }
+    },
+    "nsis.ItalianDict": {
+      "source": "Italian",
+      "component": "installer.nsi",
+      "nsisName": "ItalianDict",
+      "translations": {
+        "en-US": "Italian",
+        "ru-RU": "Итальянский",
+        "uk-UA": "італійський"
+      }
+    },
+    "nsis.DownloadingDict": {
+      "source": "Downloading ",
+      "component": "installer.nsi",
+      "nsisName": "DownloadingDict",
+      "translations": {
+        "en-US": "Downloading ",
+        "ru-RU": "Загружаю ",
+        "uk-UA": "Завантажую "
+      }
+    },
+    "nsis.Dictionary": {
+      "source": " dictionary",
+      "component": "installer.nsi",
+      "nsisName": "Dictionary",
+      "translations": {
+        "en-US": " dictionary",
+        "ru-RU": " словарь",
+        "uk-UA": " словник"
+      }
+    },
+    "nsis.DESC_Main": {
+      "source": "FBE main executable file, dlls and service files.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Main",
+      "translations": {
+        "en-US": "FBE main executable file, dlls and service files.",
+        "ru-RU": "Исполняемый файл FBE, библиотеки и служебные файлы.",
+        "uk-UA": "Виконуваний файл FBE, бібліотеки та службові файли."
+      }
+    },
+    "nsis.DESC_System_Integration": {
+      "source": "Optional .fb2 integration with Windows. You can select only the features you need.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_System_Integration",
+      "translations": {
+        "en-US": "Optional .fb2 integration with Windows. You can select only the features you need.",
+        "ru-RU": "Необязательная интеграция .fb2 с Windows. Выбирайте только нужные пункты.",
+        "uk-UA": "Необов'язкові пункти інтеграції .fb2 з Windows. Можна вибрати лише потрібні можливості."
+      }
+    },
+    "nsis.DESC_FB2_File_Association": {
+      "source": "Makes FictionBook Editor Next the application for .fb2 files and changes the .fb2 icon to the editor icon. Leave unchecked to keep your current reader and icon.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_FB2_File_Association",
+      "translations": {
+        "en-US": "Makes FictionBook Editor Next the application for .fb2 files and changes the .fb2 icon to the editor icon. Leave unchecked to keep your current reader and icon.",
+        "ru-RU": "Открывает .fb2 через FBE Next и меняет иконку файла. Не выбирайте, если хотите оставить текущую читалку.",
+        "uk-UA": "Призначає FictionBook Editor Next програмою для .fb2 і змінює іконку .fb2 на іконку редактора. Не вибирайте цей пункт, якщо хочете зберегти поточну читалку та звичну іконку."
+      }
+    },
+    "nsis.DESC_FB2_Validate_Command": {
+      "source": "Adds a context-menu command to validate .fb2 files with FBV without changing the default .fb2 application.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_FB2_Validate_Command",
+      "translations": {
+        "en-US": "Adds a context-menu command to validate .fb2 files with FBV without changing the default .fb2 application.",
+        "ru-RU": "Добавляет команду проверки .fb2 через FBV без смены приложения по умолчанию.",
+        "uk-UA": "Додає до контекстного меню .fb2 команду перевірки книги через FBV, не змінюючи програму за замовчуванням для .fb2."
+      }
+    },
+    "nsis.DESC_FB2_Explorer_Properties": {
+      "source": "Registers .fb2 metadata, details pane fields and cover thumbnails in Windows Explorer. Requires administrator privileges.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_FB2_Explorer_Properties",
+      "translations": {
+        "en-US": "Registers .fb2 metadata, details pane fields and cover thumbnails in Windows Explorer. Requires administrator privileges.",
+        "ru-RU": "Добавляет свойства, панель сведений и миниатюры .fb2 в Проводник. Нужны права администратора.",
+        "uk-UA": "Реєструє властивості, праву панель відомостей і мініатюри обкладинок .fb2 у Провіднику Windows. Потребує прав адміністратора."
+      }
+    },
+    "nsis.DESC_ShCutGroup": {
+      "source": "Install shortcuts.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_ShCutGroup",
+      "translations": {
+        "en-US": "Install shortcuts.",
+        "ru-RU": "Установить ярлыки.",
+        "uk-UA": "Встановити ярлики."
+      }
+    },
+    "nsis.DESC_Desktop_ShortCut": {
+      "source": "Desktop shortcut.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Desktop_ShortCut",
+      "translations": {
+        "en-US": "Desktop shortcut.",
+        "ru-RU": "Ярлык на Рабочий стол.",
+        "uk-UA": "Ярлик на Стільниці (Робочому столі)."
+      }
+    },
+    "nsis.DESC_Start_Menu_ShortCuts": {
+      "source": "Start menu shortcuts.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Start_Menu_ShortCuts",
+      "translations": {
+        "en-US": "Start menu shortcuts.",
+        "ru-RU": "Ярлыки в меню Пуск.",
+        "uk-UA": "Ярлики в меню «Пуск»."
+      }
+    },
+    "nsis.DESC_PluginsGroup": {
+      "source": "Additional plugins that extends functionality.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_PluginsGroup",
+      "translations": {
+        "en-US": "Additional plugins that extends functionality.",
+        "ru-RU": "Плагины, расширяющие функционал программы.",
+        "uk-UA": "Модулі, що розширюють функціональність програми."
+      }
+    },
+    "nsis.DESC_ImportPluginsGroup": {
+      "source": "Plugins that add import from external book formats into FictionBook Editor.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_ImportPluginsGroup",
+      "translations": {
+        "en-US": "Plugins that add import from external book formats into FictionBook Editor.",
+        "ru-RU": "Плагины импорта книг из внешних форматов.",
+        "uk-UA": "Плагіни, що додають імпорт книг із зовнішніх форматів у FictionBook Editor."
+      }
+    },
+    "nsis.DESC_ExportPluginsGroup": {
+      "source": "Plugins that add export from FictionBook Editor to external book and document formats.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_ExportPluginsGroup",
+      "translations": {
+        "en-US": "Plugins that add export from FictionBook Editor to external book and document formats.",
+        "ru-RU": "Плагины экспорта во внешние книжные и документные форматы.",
+        "uk-UA": "Плагіни, що додають експорт із FictionBook Editor у зовнішні книжкові та документні формати."
+      }
+    },
+    "nsis.DESC_Plugin_ImportEPUB": {
+      "source": "Imports EPUB books into FictionBook Editor for editing and conversion to FB2.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Plugin_ImportEPUB",
+      "translations": {
+        "en-US": "Imports EPUB books into FictionBook Editor for editing and conversion to FB2.",
+        "ru-RU": "Импортирует EPUB-книги в FBE для редактирования и конвертации в FB2.",
+        "uk-UA": "Імпортує EPUB-книги у FictionBook Editor для редагування та конвертації у FB2."
+      }
+    },
+    "nsis.DESC_Plugin_ImportEPUB_SVG": {
+      "source": "Optional ImportEPUBLunaSVG.dll helper for converting EPUB SVG covers to PNG/JPEG during import.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Plugin_ImportEPUB_SVG",
+      "translations": {
+        "en-US": "Optional ImportEPUBLunaSVG.dll helper for converting EPUB SVG covers to PNG/JPEG during import.",
+        "ru-RU": "Библиотека для преобразования SVG-обложек EPUB в PNG/JPEG при импорте.",
+        "uk-UA": "Додаткова бібліотека ImportEPUBLunaSVG.dll для перетворення SVG-обкладинок EPUB у PNG/JPEG під час імпорту."
+      }
+    },
+    "nsis.DESC_Plugin_ExportHTML": {
+      "source": "Exports the current book to HTML for viewing in a browser or further processing.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Plugin_ExportHTML",
+      "translations": {
+        "en-US": "Exports the current book to HTML for viewing in a browser or further processing.",
+        "ru-RU": "Экспортирует текущую книгу в HTML для просмотра в браузере или дальнейшей обработки.",
+        "uk-UA": "Експортує поточну книгу в HTML для перегляду в браузері або подальшої обробки."
+      }
+    },
+    "nsis.DESC_Plugin_ExportDOCX": {
+      "source": "Exports the current book to DOCX for Microsoft Word and compatible word processors.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Plugin_ExportDOCX",
+      "translations": {
+        "en-US": "Exports the current book to DOCX for Microsoft Word and compatible word processors.",
+        "ru-RU": "Экспортирует текущую книгу в DOCX для Microsoft Word и совместимых текстовых редакторов.",
+        "uk-UA": "Експортує поточну книгу в DOCX для Microsoft Word і сумісних текстових редакторів."
+      }
+    },
+    "nsis.DESC_Plugin_ExportEPUB": {
+      "source": "Exports the current book to EPUB for e-readers, libraries and EPUB-compatible applications.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Plugin_ExportEPUB",
+      "translations": {
+        "en-US": "Exports the current book to EPUB for e-readers, libraries and EPUB-compatible applications.",
+        "ru-RU": "Экспортирует текущую книгу в EPUB для электронных книг, библиотек и EPUB-совместимых приложений.",
+        "uk-UA": "Експортує поточну книгу в EPUB для електронних книг, бібліотек та EPUB-сумісних застосунків."
+      }
+    },
+    "nsis.DESC_Plugin_BatchConverters": {
+      "source": "Installs command-line batch conversion utilities for DOCX/EPUB together with their DLL dependencies.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Plugin_BatchConverters",
+      "translations": {
+        "en-US": "Installs command-line batch conversion utilities for DOCX/EPUB together with their DLL dependencies.",
+        "ru-RU": "Консольные утилиты массовой конвертации DOCX/EPUB и нужные DLL.",
+        "uk-UA": "Встановлює консольні утиліти пакетної конвертації DOCX/EPUB разом із потрібними DLL-залежностями."
+      }
+    },
+    "nsis.DESC_Scripts": {
+      "source": "Jurgennt's (http://jurgennt.nm.ru/) pack of useful scripts.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Scripts",
+      "translations": {
+        "en-US": "Jurgennt's (http://jurgennt.nm.ru/) pack of useful scripts.",
+        "ru-RU": "Сборка полезных скриптов от Jurgennt (http://jurgennt.nm.ru/).",
+        "uk-UA": "Збірка дуже корисних скриптів від Jurgennt та Sclex."
+      }
+    },
+    "nsis.DESC_Dictionaries": {
+      "source": "Dictionaries for built-in spell-checker.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_Dictionaries",
+      "translations": {
+        "en-US": "Dictionaries for built-in spell-checker.",
+        "ru-RU": "Словари для встроенной проверки орфографии.",
+        "uk-UA": "Словники для перевірки орфографії."
+      }
+    },
+    "nsis.DESC_LanguagePacksGroup": {
+      "source": "Choose interface-language resources. English is required; Russian and Ukrainian are selected by default.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_LanguagePacksGroup",
+      "translations": {
+        "en-US": "Choose interface-language resources. English is required; Russian and Ukrainian are selected by default.",
+        "ru-RU": "Выберите ресурсы языка интерфейса. Английский обязателен; русский и украинский выбраны по умолчанию.",
+        "uk-UA": "Виберіть ресурси мов інтерфейсу. Англійська обов'язкова; російська та українська вибрані за замовчуванням."
+      }
+    },
+    "nsis.DESC_LanguagePack": {
+      "source": "Installs runtime translations and the localized Validate command for this interface language. Spell-check dictionaries are selected separately.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_LanguagePack",
+      "translations": {
+        "en-US": "Installs runtime translations and the localized Validate command for this interface language. Spell-check dictionaries are selected separately.",
+        "ru-RU": "Устанавливает runtime-переводы и локализованную команду Validate для этого языка интерфейса. Словари орфографии выбираются отдельно.",
+        "uk-UA": "Установлює runtime-переклади й локалізовану команду Validate для цієї мови інтерфейсу. Словники правопису вибираються окремо."
+      }
+    },
+    "nsis.ErrCheckMSXMLVersion": {
+      "source": "This application requires Microsoft XML Parser version 4.0 to run.",
+      "component": "installer.nsi",
+      "nsisName": "ErrCheckMSXMLVersion",
+      "translations": {
+        "en-US": "This application requires Microsoft XML Parser version 4.0 to run.",
+        "ru-RU": "Для установки требуется Microsoft XML Parser версии 4.0.",
+        "uk-UA": "Для встановлення потрібен Microsoft XML Parser версії 4.0."
+      }
+    },
+    "nsis.ErrCheckIEVersion": {
+      "source": "This application requires Microsoft Internet Expolorer version 5.5 or newer to run.",
+      "component": "installer.nsi",
+      "nsisName": "ErrCheckIEVersion",
+      "translations": {
+        "en-US": "This application requires Microsoft Internet Expolorer version 5.5 or newer to run.",
+        "ru-RU": "Для установки требуется Microsoft Internet Expolorer версии 5.5 или выше.",
+        "uk-UA": "Для встановлення потрібен Microsoft Internet Expolorer версії 5.5 або новіший."
+      }
+    },
+    "nsis.ErrCheckFBERunning": {
+      "source": "Please exit FictionBook Editor before continue.",
+      "component": "installer.nsi",
+      "nsisName": "ErrCheckFBERunning",
+      "translations": {
+        "en-US": "Please exit FictionBook Editor before continue.",
+        "ru-RU": "Пожалуйста закройте FictionBook Editor перед началом установки.",
+        "uk-UA": "Перед початком встановлення закрийте FictionBook Editor."
+      }
+    },
+    "nsis.ErrCheckFBVRunning": {
+      "source": "Please exit FictionBook Validator before continue.",
+      "component": "installer.nsi",
+      "nsisName": "ErrCheckFBVRunning",
+      "translations": {
+        "en-US": "Please exit FictionBook Validator before continue.",
+        "ru-RU": "Пожалуйста закройте FictionBook Validator перед началом установки.",
+        "uk-UA": "Перед початком встановлення закрийте FictionBook Validator."
+      }
+    },
+    "nsis.ErrNTCurrentVersion": {
+      "source": "FictionBook Tools run only on Windows NT and later OS'es.",
+      "component": "installer.nsi",
+      "nsisName": "ErrNTCurrentVersion",
+      "translations": {
+        "en-US": "FictionBook Tools run only on Windows NT and later OS'es.",
+        "ru-RU": "FictionBook Tools работает только в Windows NT и на более поздних OS.",
+        "uk-UA": "FictionBook Tools працює лише у Windows NT, XP, Vista, 7."
+      }
+    },
+    "nsis.ErrShellIntergation": {
+      "source": "FB shell intergation dll was in use and could not be overwritten.$\\r$\\n\\\n\tPlease logout and logon again, and restart this installation.",
+      "component": "installer.nsi",
+      "nsisName": "ErrShellIntergation",
+      "translations": {
+        "en-US": "FB shell intergation dll was in use and could not be overwritten.$\\r$\\n\\\n\tPlease logout and logon again, and restart this installation.",
+        "ru-RU": "Библиотека dll интеграции оболочки FB используется и не может быть перезаписана.$\\r$\\n\\\n\tПожалуйста, завершите сессию и перезапустите установку.",
+        "uk-UA": "DLL-бібліотека інтеграції оболонки FB використовується і її неможливо перезаписати.$\\r$\\n\\\n\tБудь ласка, завершіть сеанс, після чого перезапустіть встановлення."
+      }
+    },
+    "nsis.WarnModernPropertyHandlerInstall": {
+      "source": "Could not enable modern .fb2 properties in Windows Explorer automatically. The main FBE installation will continue, and the shell integration can be enabled later manually.",
+      "component": "installer.nsi",
+      "nsisName": "WarnModernPropertyHandlerInstall",
+      "translations": {
+        "en-US": "Could not enable modern .fb2 properties in Windows Explorer automatically. The main FBE installation will continue, and the shell integration can be enabled later manually.",
+        "ru-RU": "Не удалось автоматически включить современные свойства .fb2 в Проводнике Windows. Основная установка FBE продолжится, а shell-интеграцию можно будет включить позже вручную.",
+        "uk-UA": "Не вдалося автоматично ввімкнути сучасні властивості .fb2 у Провіднику Windows. Основне встановлення FBE буде продовжено, а shell-інтеграцію можна буде ввімкнути пізніше вручну."
+      }
+    },
+    "nsis.UacRetryInstaller": {
+      "source": "Administrator privileges are required to complete system integration. Retry elevation?",
+      "component": "installer.nsi",
+      "nsisName": "UacRetryInstaller",
+      "translations": {
+        "en-US": "Administrator privileges are required to complete system integration. Retry elevation?",
+        "ru-RU": "Для завершения установки системной интеграции нужны права администратора. Повторить запрос прав?",
+        "uk-UA": "Для завершення встановлення системної інтеграції потрібні права адміністратора. Повторити запит на підвищення прав?"
+      }
+    },
+    "nsis.UacAbortInstaller": {
+      "source": "System integration requires administrator privileges. Setup will be aborted.",
+      "component": "installer.nsi",
+      "nsisName": "UacAbortInstaller",
+      "translations": {
+        "en-US": "System integration requires administrator privileges. Setup will be aborted.",
+        "ru-RU": "Установка системной интеграции требует прав администратора. Установка будет прервана.",
+        "uk-UA": "Системна інтеграція потребує прав адміністратора. Встановлення буде перервано."
+      }
+    },
+    "nsis.UacLogonServiceInstaller": {
+      "source": "Could not request elevation because the logon service is unavailable.",
+      "component": "installer.nsi",
+      "nsisName": "UacLogonServiceInstaller",
+      "translations": {
+        "en-US": "Could not request elevation because the logon service is unavailable.",
+        "ru-RU": "Не удалось запросить повышение прав: служба входа в систему недоступна.",
+        "uk-UA": "Не вдалося запросити підвищення прав: служба входу в систему недоступна."
+      }
+    },
+    "nsis.UacRetryUninstaller": {
+      "source": "Administrator privileges are required to remove system integration correctly. Retry elevation?",
+      "component": "installer.nsi",
+      "nsisName": "UacRetryUninstaller",
+      "translations": {
+        "en-US": "Administrator privileges are required to remove system integration correctly. Retry elevation?",
+        "ru-RU": "Для корректного удаления системной интеграции нужны права администратора. Повторить запрос прав?",
+        "uk-UA": "Для коректного видалення системної інтеграції потрібні права адміністратора. Повторити запит на підвищення прав?"
+      }
+    },
+    "nsis.UacAbortUninstaller": {
+      "source": "Removing system integration requires administrator privileges. Uninstall will be aborted.",
+      "component": "installer.nsi",
+      "nsisName": "UacAbortUninstaller",
+      "translations": {
+        "en-US": "Removing system integration requires administrator privileges. Uninstall will be aborted.",
+        "ru-RU": "Удаление системной интеграции требует прав администратора. Деинсталляция будет прервана.",
+        "uk-UA": "Видалення системної інтеграції потребує прав адміністратора. Деінсталяцію буде перервано."
+      }
+    },
+    "nsis.UacLogonServiceUninstaller": {
+      "source": "Could not request elevation for uninstall because the logon service is unavailable.",
+      "component": "installer.nsi",
+      "nsisName": "UacLogonServiceUninstaller",
+      "translations": {
+        "en-US": "Could not request elevation for uninstall because the logon service is unavailable.",
+        "ru-RU": "Не удалось запросить повышение прав для деинсталляции: служба входа в систему недоступна.",
+        "uk-UA": "Не вдалося запросити підвищення прав для деінсталяції: служба входу в систему недоступна."
+      }
+    },
+    "nsis.UacUnknownError": {
+      "source": "Could not elevate privileges. Error code:",
+      "component": "installer.nsi",
+      "nsisName": "UacUnknownError",
+      "translations": {
+        "en-US": "Could not elevate privileges. Error code:",
+        "ru-RU": "Не удалось повысить права. Код ошибки:",
+        "uk-UA": "Не вдалося підвищити права. Код помилки:"
+      }
+    },
+    "nsis.FinishPageTitle": {
+      "source": "Installation complete",
+      "component": "installer.nsi",
+      "nsisName": "FinishPageTitle",
+      "translations": {
+        "en-US": "Installation complete",
+        "ru-RU": "Установка завершена",
+        "uk-UA": "Встановлення завершено"
+      }
+    },
+    "nsis.FinishPageText": {
+      "source": "FictionBook Editor Next has been installed successfully.$\\r$\\n$\\r$\\nClick $\\\"Finish$\\\" to close Setup.",
+      "component": "installer.nsi",
+      "nsisName": "FinishPageText",
+      "translations": {
+        "en-US": "FictionBook Editor Next has been installed successfully.$\\r$\\n$\\r$\\nClick $\\\"Finish$\\\" to close Setup.",
+        "ru-RU": "FictionBook Editor Next успешно установлен.$\\r$\\n$\\r$\\nНажмите кнопку $\\\"Готово$\\\" для выхода из программы установки.",
+        "uk-UA": "FictionBook Editor Next успішно встановлено.$\\r$\\n$\\r$\\nНатисніть кнопку $\\\"Готово$\\\", щоб вийти з програми встановлення."
+      }
+    },
+    "nsis.FinishPageRunText": {
+      "source": "Run FictionBook Editor Next",
+      "component": "installer.nsi",
+      "nsisName": "FinishPageRunText",
+      "translations": {
+        "en-US": "Run FictionBook Editor Next",
+        "ru-RU": "Запустить FictionBook Editor Next",
+        "uk-UA": "Запустити FictionBook Editor Next"
+      }
+    },
+    "nsis.UninstAskSettings": {
+      "source": "Would you like to delete all application settings?",
+      "component": "installer.nsi",
+      "nsisName": "UninstAskSettings",
+      "translations": {
+        "en-US": "Would you like to delete all application settings?",
+        "ru-RU": "Вы желаете удалить файлы настроек программы?",
+        "uk-UA": "Бажаєте видалити файли налаштувань програми?"
+      }
+    }
+  }
+}

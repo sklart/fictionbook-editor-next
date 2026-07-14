@@ -216,7 +216,7 @@ $env:FBE_NEXT_STARTUP_TRACE = "1"
 Remove-Item Env:FBE_NEXT_STARTUP_TRACE
 ```
 
-Лог создаётся в `%LOCALAPPDATA%\FBE\startup-trace.log`. В обычном режиме
+Лог создаётся в `%LOCALAPPDATA%\FBE Next\startup-trace.log`. В обычном режиме
 трассировка полностью выключена и файл не открывается.
 
 Автоматический тест запуска с выводом этой трассы:

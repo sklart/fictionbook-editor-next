@@ -5,7 +5,8 @@
 .DESCRIPTION
 Скрипт запускает `tools/localization/export-weblate-seed.ps1` во временный
 каталог и проверяет, что для каждого целевого языка создан JSON-файл со строками
-из `app-ui` и `plugin-ui`. Это страхует будущую подготовку Weblate от поломок.
+из `app-ui`, `plugin-ui` и `installer-ui`. Это страхует будущую подготовку
+Weblate от поломок.
 #>
 [CmdletBinding()]
 param()
@@ -73,6 +74,17 @@ try {
         }
         if (-not ($strings.Name -contains "import_epub.plugin.filedlg_title")) {
             throw "В $language.json нет строки import_epub.plugin.filedlg_title."
+        }
+        if (-not ($strings.Name -contains "nsis.FinishPageRunText")) {
+            throw "В $language.json нет строки nsis.FinishPageRunText."
+        }
+        $installerFinishString = $strings["nsis.FinishPageRunText"].Value
+        if ($language -in @("en-US", "ru-RU", "uk-UA")) {
+            if ($installerFinishString.needsTranslation) {
+                throw "Для $language.json ошибочно помечен английский fallback установщика."
+            }
+        } elseif (-not $installerFinishString.needsTranslation) {
+            throw "Для $language.json не помечена необходимость вычитки строки установщика."
         }
     }
 
