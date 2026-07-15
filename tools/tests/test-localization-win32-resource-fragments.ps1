@@ -36,7 +36,7 @@ try {
     }
 
     $header = Get-Content -Raw -LiteralPath $headerPath
-    if ($header -notmatch 'IDS_L10N_APP_FBE_UPDATE_CHECKING\s+70001') {
+    if ($header -notmatch 'IDS_L10N_APP_FBE_UPDATE_CHECKING\s+70004') {
         throw "Header не содержит ожидаемый app-ui идентификатор."
     }
     if ($header -notmatch 'IDS_L10N_PLUGIN_EXPORT_EPUB_DIALOG_OPTIONS_CAPTION\s+\d+') {

@@ -107,6 +107,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-next-isolation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-export.ps1")
+& (Join-Path $repoRoot "tools\tests\test-runtime-lang-output-layout.ps1") -Configuration $Configuration -OutputDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbv-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-runtime-lang-overlay.ps1")

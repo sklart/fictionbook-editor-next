@@ -23,8 +23,20 @@ $installDir = Join-Path $buildRoot "install\$Configuration"
 
 function Get-CMakeVisualStudioGenerator {
     param(
-        [string]$Toolset
+        [string]$Toolset,
+
+        [string]$VisualStudioProductLineVersion
     )
+
+    # Генератор определяется по реально найденной Visual Studio: v143 может
+    # быть установлен как в VS 2022, так и в VS 2026.
+    if ($VisualStudioProductLineVersion -eq "18") {
+        return "Visual Studio 18 2026"
+    }
+
+    if ($VisualStudioProductLineVersion -eq "17") {
+        return "Visual Studio 17 2022"
+    }
 
     if ($Toolset -eq "v143") {
         return "Visual Studio 17 2022"
@@ -48,17 +60,23 @@ if (-not $installationPath) {
     throw "Не найдены инструменты сборки Visual Studio C++ для x86."
 }
 
-$cmake = (Get-Command cmake.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1)
+$visualStudioProductLineVersion = & $vswhere -latest -products * `
+    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+    -property catalog_productLineVersion
+
+# Приоритет у CMake из той же Visual Studio, которую выбрал vswhere. Это
+# исключает случайный CMake из Python/другой SDK, не знающий генератор VS.
+$cmake = Get-ChildItem (Join-Path $installationPath "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin") `
+    -Filter cmake.exe -Recurse -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty FullName -First 1
 if (-not $cmake) {
-    $cmake = Get-ChildItem (Join-Path $installationPath "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin") `
-        -Filter cmake.exe -Recurse -ErrorAction SilentlyContinue |
-        Select-Object -ExpandProperty FullName -First 1
+    $cmake = (Get-Command cmake.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1)
 }
 if (-not $cmake) {
     throw "Не найден cmake.exe."
 }
 
-$generator = Get-CMakeVisualStudioGenerator -Toolset $PlatformToolset
+$generator = Get-CMakeVisualStudioGenerator -Toolset $PlatformToolset -VisualStudioProductLineVersion $visualStudioProductLineVersion
 $generatorSuffix = if ($generator -eq "Visual Studio 17 2022") { "vs2022" } else { "vs2026" }
 $buildDir = Join-Path $buildRoot "$Configuration-$generatorSuffix"
 $mutexName = "Global\FBeditor-build-pcre2-$Configuration-$generatorSuffix"

@@ -10,12 +10,20 @@ Release notes должны быть удобны для чтения на GitHub
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = "3.0.4"
+    [string]$Version
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $versionHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\version.h")
+    $versionMatch = [regex]::Match($versionHeader, '#define\s+FBE_VERSION_STRING\s+"(?<version>\d+\.\d+\.\d+)"')
+    if (-not $versionMatch.Success) {
+        throw "В src\\version.h не найден FBE_VERSION_STRING."
+    }
+    $Version = $versionMatch.Groups["version"].Value
+}
 $notesPath = Join-Path $repoRoot "docs\release-notes\$Version.md"
 if (-not (Test-Path -LiteralPath $notesPath)) {
     throw "Не найден curated release notes файл: $notesPath"

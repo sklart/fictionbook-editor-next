@@ -67,11 +67,9 @@ $artifactsDir = Join-Path $repoRoot "out\artifacts"
 $portableDir = Join-Path $repoRoot "out\package\FictionBookEditor"
 $symbolsDir = Join-Path $repoRoot "out\package\symbols"
 
-$syncArguments = @{}
-if ($ValidateUpdateManifest) {
-    $syncArguments.ValidateUpdateManifest = $true
-}
-& (Join-Path $repoRoot "tools\version\sync-version.ps1") @syncArguments
+# До упаковки синхронизируется только version.nsh. Проверка update.xml должна
+# выполняться в конце: SHA-256 нового setup появляется лишь после его сборки.
+& (Join-Path $repoRoot "tools\version\sync-version.ps1")
 
 if (-not $SkipBuild) {
     $buildArguments = @{
