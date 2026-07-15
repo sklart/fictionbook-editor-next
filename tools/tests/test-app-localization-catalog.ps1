@@ -84,7 +84,7 @@ foreach ($entry in $seedStrings) {
         throw "Некорректный ключ строки FBE/FBV: $($entry.Name)"
     }
 
-    if ([string]::IsNullOrWhiteSpace([string]$entry.Value.resourceId)) {
+    if ([string]::IsNullOrWhiteSpace([string]$entry.Value.resourceId) -and -not [bool]$entry.Value.runtimeOnly) {
         throw "У строки $($entry.Name) отсутствует resourceId."
     }
 

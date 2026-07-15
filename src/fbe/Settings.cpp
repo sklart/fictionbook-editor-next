@@ -81,6 +81,7 @@ const wchar_t JPEG_QUALITY_KEY[]		= L"JpegQuality";
 const wchar_t INSIMAGE_ASKING[]			= L"InsImageDialog";
 const wchar_t SCRIPTS_HKEY_ERR_NTF[]	= L"ScrHkErrDialog";
 const wchar_t INS_CLEAR_IMAGE[]			= L"InsClearImage";
+const wchar_t CREATE_BACKUP_FILE_KEY[]		= L"CreateBackupFile";
 const wchar_t WINDOW_POSITION[]			= L"WindowPosition";
 const wchar_t WORDS_DLG_POSITION[]		= L"WordsDlgPosition";
 const wchar_t SHOW_WORDS_EXCLUSIONS[]	= L"ShowWordsExclusions";
@@ -802,6 +803,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 
 	properties.push_back(INSIMAGE_ASKING);
 	properties.push_back(INS_CLEAR_IMAGE);
+	properties.push_back(CREATE_BACKUP_FILE_KEY);
 	properties.push_back(WINDOW_POSITION);
 	properties.push_back(WORDS_DLG_POSITION);
 	properties.push_back(SHOW_WORDS_EXCLUSIONS);
@@ -978,6 +980,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == INS_CLEAR_IMAGE)
 	{
 		property = GetStringedProperty(&m_ins_clear_image, KEY_BOOL);
+		return true;
+	}
+	else if(sProperty == CREATE_BACKUP_FILE_KEY)
+	{
+		property = GetStringedProperty(&m_create_backup_file, KEY_BOOL);
 		return true;
 	}
 	else if(sProperty == WORDS_DLG_POSITION)
@@ -1204,6 +1211,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == INS_CLEAR_IMAGE)
 	{
 		m_ins_clear_image = StrToBool(sValue);
+		return true;
+	}
+	else if(sProperty == CREATE_BACKUP_FILE_KEY)
+	{
+		m_create_backup_file = StrToBool(sValue);
 		return true;
 	}
 	else if(sProperty == SHOW_WORDS_EXCLUSIONS)
@@ -1771,6 +1783,11 @@ bool CSettings::GetIsInsClearImage() const
 	return m_ins_clear_image;
 }
 
+bool CSettings::GetCreateBackupFile() const
+{
+	return m_create_backup_file;
+}
+
 bool CSettings::GetShowWordsExcls() const
 {
 	return m_show_words_excls;
@@ -1975,6 +1992,13 @@ void CSettings::SetIsInsClearImage(bool clear, bool apply)
 		Save();
 }
 
+void CSettings::SetCreateBackupFile(bool createBackup, bool apply)
+{
+	m_create_backup_file = createBackup;
+	if(apply)
+		Save();
+}
+
 void CSettings::SetShowWordsExcls(bool show, bool apply)
 {
 	m_show_words_excls = show;
@@ -2144,6 +2168,7 @@ void CSettings::SetDefaults()
 	m_scripts_folder		= GetDefaultScriptsFolder();
 	m_insimage_ask			= true;
 	m_ins_clear_image		= false;
+	m_create_backup_file		= true;
 	m_show_words_excls		= true;
 	// added by SeNS
 	m_usespell_check		= true;

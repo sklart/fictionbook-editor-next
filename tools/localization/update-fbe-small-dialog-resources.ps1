@@ -7,7 +7,8 @@
 `FBESmallDialogs.generated.rc2` для русской и украинской resource DLL.
 В generated-файл входят `IDD_TABLE`, `IDD_INPUTBOX`, `IDD_ADDIMAGE`,
 `IDD_TOOLS_SETTINGS`, `IDD_ABOUTBOX`, `IDD_CUSTOMSAVEDLG` и
-`IDD_SETTINGS_WORDS`, `IDD_HOTKEYS`, `IDD_FIND` и `IDD_REPLACE`.
+`IDD_SETTINGS_WORDS`, `IDD_HOTKEYS`, `IDD_FIND`, `IDD_REPLACE` и
+`IDD_SETTING_NEXT`.
 #>
 [CmdletBinding()]
 param(
@@ -235,6 +236,15 @@ foreach($language in $Languages){
     $l.Add('    LTEXT           "' + (Get-Text 'idd_words.replacement' $language) + '",IDC_WORDS_FR_TEXT_REPL,124,298,29,8')
     $l.Add('    PUSHBUTTON      "' + (Get-Text 'idd_words.find' $language) + '",IDC_WORDS_FR_BTN_FIND,245,296,42,14')
     $l.Add('    PUSHBUTTON      "' + (Get-Text 'idd_words.replace' $language) + '",IDC_WORDS_FR_BTN_REPL,299,296,43,14,WS_DISABLED')
+    $l.Add("END")
+    $l.Add("")
+    $l.Add("IDD_SETTING_NEXT DIALOGEX 0, 0, 225, 222")
+    $l.Add("STYLE DS_SETFONT | WS_CHILD | WS_SYSMENU")
+    $l.Add('FONT 9, "Tahoma", 400, 0, 0xCC')
+    $l.Add("BEGIN")
+    $l.Add('    GROUPBOX        "' + (Get-Text 'idd_setting_next.saving' $language) + '",IDC_FBE_NEXT_SAVING_GROUP,7,11,211,42')
+    $l.Add('    CONTROL         "' + (Get-Text 'idd_setting_next.create_backup_file' $language) + '",IDC_CREATE_BACKUP_FILE,')
+    $l.Add('                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,14,24,196,19')
     $l.Add("END")
     $l.Add("")
     if ($language -eq "uk-UA") {

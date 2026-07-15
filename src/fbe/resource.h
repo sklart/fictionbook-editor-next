@@ -204,6 +204,7 @@
 #define IDS_WORDS_WLIST_WORD            250
 #define IDS_HOTKEY_SYMBOL_DIVISION_SIGN 251
 #define IDD_SETTINGS_WORDS              251
+#define IDD_SETTING_NEXT                256
 #define IDS_WORDS_WLIST_REPLACEMENT     251
 #define IDS_HOTKEY_SYMBOL_LEFT_SINGLE_QUOTATION_MARK 252
 #define IDS_WORDS_WLIST_COUNTED         252
@@ -592,15 +593,17 @@
 #define ID_EDIT_PASTE2                  0xE525
 #define IDS_ENCODINGS                   61403
 #define IDS_DOCUMENT_TREE_CAPTION       61404
+#define IDC_CREATE_BACKUP_FILE          1128
+#define IDC_FBE_NEXT_SAVING_GROUP       1129
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        256
+#define _APS_NEXT_RESOURCE_VALUE        257
 #define _APS_NEXT_COMMAND_VALUE         32912
-#define _APS_NEXT_CONTROL_VALUE         1128
+#define _APS_NEXT_CONTROL_VALUE         1130
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

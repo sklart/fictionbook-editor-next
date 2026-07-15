@@ -3230,6 +3230,25 @@
         "bg-BG": "Не са открити грешки."
       }
     },
+    "fbe.settings.next.caption": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBE Next settings",
+        "ru-RU": "Настройки FBE Next",
+        "uk-UA": "Налаштування FBE Next",
+        "de-DE": "FBE-Next-Einstellungen",
+        "fr-FR": "Paramètres de FBE Next",
+        "es-ES": "Configuración de FBE Next",
+        "it-IT": "Impostazioni di FBE Next",
+        "pl-PL": "Ustawienia FBE Next",
+        "pt-PT": "Definições do FBE Next",
+        "nl-NL": "Instellingen van FBE Next",
+        "cs-CZ": "Nastavení FBE Next",
+        "bg-BG": "Настройки на FBE Next"
+      }
+    },
     "fbe.settings.other.caption": {
       "resourceId": "IDS_SETTINGS_OTHER_CAPTION",
       "component": "fbe.core",

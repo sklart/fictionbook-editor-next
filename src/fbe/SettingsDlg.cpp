@@ -4,8 +4,10 @@
 #include "Settings.h"
 #include "SettingsDlg.h"
 #include "SettingsOtherDlg.h"
+#include "SettingsNextDlg.h"
 #include "SettingsHotkeysDlg.h"
 #include "SettingsWordsDlg.h"
+#include "RuntimeLocalization.h"
 #include "res1.h"
 
 extern CSettings _Settings;
@@ -58,6 +60,9 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	if(FbeLoadString(_Module.GetResourceInstance(), IDS_SETTINGS_WORDS_CAPTION, buf, MAX_LOAD_STRING))
 		TabItem.pszText = buf;
 	m_tab_ctrl.InsertItem(3, &TabItem);
+	CString nextCaption = FbeLoadRuntimeStringByKey(L"fbe.settings.next.caption", L"FBE Next settings");
+	TabItem.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(nextCaption));
+	m_tab_ctrl.InsertItem(4, &TabItem);
 
 	CRect rect;
 	m_tab_ctrl.GetWindowRect(rect);
@@ -81,6 +86,10 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	pPage4->Create(m_tab_ctrl);
 	this->AddTabPage(3, pPage4, rect);
 
+	CSettingsNextDlg* pPage5 = new CSettingsNextDlg;
+	pPage5->Create(m_tab_ctrl);
+	this->AddTabPage(4, pPage5, rect);
+
 	HMODULE hThemeDll = LoadSystemLibrary(_T("UxTheme.dll"));
 	if (hThemeDll != NULL)
 	{
@@ -89,6 +98,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		{
 			pEnableThemeDialogTexture(*pPage1, ETDT_USETABTEXTURE);
 			pEnableThemeDialogTexture(*pPage2, ETDT_USETABTEXTURE);
+			pEnableThemeDialogTexture(*pPage5, ETDT_USETABTEXTURE);
 		}
 		FreeLibrary(hThemeDll);
 	}	

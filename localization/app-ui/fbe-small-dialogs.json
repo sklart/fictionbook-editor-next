@@ -31,6 +31,7 @@
     "IDD_SPELL_CHECK",
     "IDD_WORDS",
     "IDD_SETTING_OTHER",
+    "IDD_SETTING_NEXT",
     "IDD_OPTIONS"
   ],
   "resourceType": "DIALOGEX",
@@ -2522,6 +2523,44 @@
         "nl-NL": "Lettertype:",
         "cs-CZ": "Písmo:",
         "bg-BG": "Шрифт:"
+      }
+    },
+    "fbe.dialog.idd_setting_next.saving": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_FBE_NEXT_SAVING_GROUP",
+      "translations": {
+        "en-US": "Saving",
+        "ru-RU": "Сохранение",
+        "uk-UA": "Збереження",
+        "de-DE": "Speichern",
+        "fr-FR": "Enregistrement",
+        "es-ES": "Guardado",
+        "it-IT": "Salvataggio",
+        "pl-PL": "Zapisywanie",
+        "pt-PT": "Guardar",
+        "nl-NL": "Opslaan",
+        "cs-CZ": "Ukládání",
+        "bg-BG": "Записване"
+      }
+    },
+    "fbe.dialog.idd_setting_next.create_backup_file": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "CONTROL",
+      "targetId": "IDC_CREATE_BACKUP_FILE",
+      "translations": {
+        "en-US": "Create a backup copy (.bak) when saving an existing file",
+        "ru-RU": "Создавать резервную копию (.bak) при сохранении существующего файла",
+        "uk-UA": "Створювати резервну копію (.bak) під час збереження наявного файлу",
+        "de-DE": "Beim Speichern einer vorhandenen Datei eine Sicherungskopie (.bak) erstellen",
+        "fr-FR": "Créer une copie de sauvegarde (.bak) lors de l’enregistrement d’un fichier existant",
+        "es-ES": "Crear una copia de seguridad (.bak) al guardar un archivo existente",
+        "it-IT": "Creare una copia di backup (.bak) durante il salvataggio di un file esistente",
+        "pl-PL": "Twórz kopię zapasową (.bak) podczas zapisywania istniejącego pliku",
+        "pt-PT": "Criar uma cópia de segurança (.bak) ao guardar um ficheiro existente",
+        "nl-NL": "Maak een reservekopie (.bak) bij het opslaan van een bestaand bestand",
+        "cs-CZ": "Při ukládání existujícího souboru vytvořit záložní kopii (.bak)",
+        "bg-BG": "Създавай резервно копие (.bak) при записване на съществуващ файл"
       }
     },
     "fbe.dialog.idd_options.show_whitespace": {

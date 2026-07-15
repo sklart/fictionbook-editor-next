@@ -299,6 +299,7 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <ClCompile Include="SettingsDlg.cpp" />
     <ClCompile Include="SettingsHotkeysDlg.cpp" />
     <ClCompile Include="SettingsOtherDlg.cpp" />
+    <ClCompile Include="SettingsNextDlg.cpp" />
     <ClCompile Include="SettingsWordsDlg.cpp" />
     <ClCompile Include="Speller.cpp" />
     <ClCompile Include="Splitter.cpp" />
@@ -403,6 +404,7 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <ClInclude Include="SettingsDlg.h" />
     <ClInclude Include="SettingsHotkeysDlg.h" />
     <ClInclude Include="SettingsOtherDlg.h" />
+    <ClInclude Include="SettingsNextDlg.h" />
     <ClInclude Include="SettingsWordsDlg.h" />
     <ClInclude Include="Speller.h" />
     <ClInclude Include="Splitter.h" />

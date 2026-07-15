@@ -913,7 +913,7 @@ static void CommitRecoveryFile(const CString& temporaryFile, const CString& dest
 		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
 }
-static void CommitSavedFile(const CString& temporaryFile, const CString& destinationFile)
+static void CommitSavedFile(const CString& temporaryFile, const CString& destinationFile, bool createBackupFile)
 {
 	HANDLE temporaryHandle = ::CreateFile(temporaryFile, GENERIC_WRITE, FILE_SHARE_READ,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -938,15 +938,21 @@ static void CommitSavedFile(const CString& temporaryFile, const CString& destina
 		return;
 	}
 
-	CString backupFile(destinationFile + L".bak");
-	if (!::DeleteFile(backupFile))
+	CString backupFile;
+	LPCWSTR backupFilePath = NULL;
+	if (createBackupFile)
 	{
-		const DWORD backupError = ::GetLastError();
-		if (backupError != ERROR_FILE_NOT_FOUND)
-			throw _com_error(HRESULT_FROM_WIN32(backupError));
+		backupFile = destinationFile + L".bak";
+		if (!::DeleteFile(backupFile))
+		{
+			const DWORD backupError = ::GetLastError();
+			if (backupError != ERROR_FILE_NOT_FOUND)
+				throw _com_error(HRESULT_FROM_WIN32(backupError));
+		}
+		backupFilePath = backupFile;
 	}
 
-	if (!::ReplaceFile(destinationFile, temporaryFile, backupFile, 0, NULL, NULL))
+	if (!::ReplaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL))
 		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
 }
 
@@ -1069,7 +1075,7 @@ forcesave:
     }
 
 	try {
-		CommitSavedFile(buf, filename);
+		CommitSavedFile(buf, filename, _Settings.GetCreateBackupFile());
 	}
 	catch (...) {
 		::DeleteFile(buf);

@@ -65,6 +65,8 @@ $modules = @($moduleFiles.Keys | Sort-Object)
 
     $checks = @(
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.about.caption' },
+        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.settings.next.caption'; Expected = 'Настройки FBE Next' },
+        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.saving'; Expected = 'Сохранение' },
         @{ Path = Join-Path (Join-Path $langRoot 'en-US') 'fbv.json'; Key = 'fbv.validation.no_errors' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.menu.idr_mainframe.popup.file'; Expected = '&Datei' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.menu.idr_document_tree.view'; Expected = '&Zum Element gehen' },
