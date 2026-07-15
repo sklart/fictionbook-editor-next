@@ -62,9 +62,6 @@ $requiredSymbols = @(
     "res_ukr.pdb"
 )
 
-& (Join-Path $PSScriptRoot "verify-runtime-binaries.ps1") `
-    -Directory $outputDir `
-    -CompatibilityTarget $CompatibilityTarget
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
 if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")

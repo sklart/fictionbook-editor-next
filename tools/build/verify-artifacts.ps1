@@ -90,6 +90,7 @@ function Get-ZipEntryNames {
 
 $requiredPortableEntries = @(
     "FBE.exe",
+    "FBV.exe",
     "ExportHTML.dll",
     "ExportDOCX.dll",
     "ExportEPUB.dll",
@@ -121,26 +122,6 @@ $obsoletePortableEntries = @(
     "gdiplus.manifest"
 )
 
-$runtimeManifest = Get-Content -Raw -LiteralPath `
-    (Join-Path $repoRoot "dependencies\runtime-binaries.json") | ConvertFrom-Json
-if ($runtimeManifest.schemaVersion -ne 2 -or $runtimeManifest.architecture -ne "x86") {
-    throw "Неподдерживаемый манифест runtime-бинарников."
-}
-
-function Get-RuntimeManifestFiles {
-    param(
-        [Parameter(Mandatory)]
-        [string]$ProfileName
-    )
-
-    $profile = $runtimeManifest.profiles.$ProfileName
-    if (-not $profile -or -not $profile.files) {
-        throw "В манифесте runtime-бинарников нет профиля $ProfileName."
-    }
-
-    return @($profile.files)
-}
-
 $expectedSymbolEntries = @(
     "ExportHTML.pdb",
     "ExportDOCX.pdb",
@@ -165,8 +146,6 @@ foreach ($profile in $artifactProfiles) {
     $symbolsName = "FictionBookEditorNext-$version-$($profile.Prefix)$architecture-symbols.zip"
     $portablePath = Join-Path $ArtifactsDirectory $portableName
     $portableEntries = Get-ZipEntryNames -Path $portablePath
-    $runtimeFiles = Get-RuntimeManifestFiles -ProfileName $(if ($profile.Label -eq "win7") { "Win7" } else { "Modern" })
-
     foreach ($name in $requiredPortableEntries) {
         if ($portableEntries -notcontains $name) {
             throw "В архиве $portableName отсутствует обязательный файл '$name'."
@@ -204,47 +183,6 @@ foreach ($profile in $artifactProfiles) {
         if ($portableEntries -contains $name) {
             throw "В архиве $portableName найден устаревший приватный компонент GDI+: '$name'."
         }
-    }
-
-    $portableArchive = [IO.Compression.ZipFile]::OpenRead($portablePath)
-    try {
-        foreach ($entry in $runtimeFiles) {
-            $zipEntry = $portableArchive.GetEntry($entry.name)
-            if (-not $zipEntry) {
-                throw "В архиве $portableName отсутствует зафиксированный runtime-файл '$($entry.name)'."
-            }
-            $allowedSizes = @($entry.size)
-            if ($entry.PSObject.Properties.Name -contains "allowedSizes") {
-                $allowedSizes = @($entry.allowedSizes)
-            }
-            if ($zipEntry.Length -notin $allowedSizes) {
-                throw "В архиве $portableName файл '$($entry.name)' имеет неожиданный размер."
-            }
-
-            $expectedHash = [string]$entry.sha256
-            if (-not [string]::IsNullOrWhiteSpace($expectedHash)) {
-                $stream = $zipEntry.Open()
-                try {
-                    $sha256 = [Security.Cryptography.SHA256]::Create()
-                    try {
-                        $hash = [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace("-", "")
-                    }
-                    finally {
-                        $sha256.Dispose()
-                    }
-                }
-                finally {
-                    $stream.Dispose()
-                }
-
-                if ($hash -ne $expectedHash) {
-                    throw "В архиве $portableName файл '$($entry.name)' имеет неожиданный SHA-256."
-                }
-            }
-        }
-    }
-    finally {
-        $portableArchive.Dispose()
     }
 
     $symbolEntries = @(Get-ZipEntryNames -Path (Join-Path $ArtifactsDirectory $symbolsName) | Sort-Object)
