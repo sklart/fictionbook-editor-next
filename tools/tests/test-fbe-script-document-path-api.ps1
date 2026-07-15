@@ -44,9 +44,16 @@ foreach ($contract in @(
 }
 
 foreach ($member in $documentedMembers) {
-    if ($documentation -notmatch ("(?m)^### .*" + [regex]::Escape($member))) {
+    $section = [regex]::Match(
+        $documentation,
+        "(?ms)^### .*" + [regex]::Escape($member) + ".*?(?=^### |\z)"
+    )
+    if (-not $section.Success) {
         throw "В документации не найден раздел API: $member."
+    }
+    if ($section.Value -notmatch '```js') {
+        throw "В разделе API отсутствует пример JavaScript: $member."
     }
 }
 
-Write-Host 'Проверка контракта и полноты документации API скриптов прошла успешно.'
+Write-Host 'Проверка контракта, полноты и примеров документации API скриптов прошла успешно.'
