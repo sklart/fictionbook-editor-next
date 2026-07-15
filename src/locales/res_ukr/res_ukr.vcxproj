@@ -45,9 +45,11 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)out\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)build\obj\locales\res_ukr\$(Configuration)\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">res_ukr</TargetName>
+    <TargetPath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)Lang\uk-UA\res_ukr.dll</TargetPath>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)out\$(Configuration)\</OutDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">res_ukr</TargetName>
+    <TargetPath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)Lang\uk-UA\res_ukr.dll</TargetPath>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)build\obj\locales\res_ukr\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
@@ -70,7 +72,7 @@
       <BufferSecurityCheck>true</BufferSecurityCheck>
     </ClCompile>
     <Link>
-      <OutputFile>$(OutDir)res_ukr.dll</OutputFile>
+      <OutputFile>$(OutDir)Lang\uk-UA\res_ukr.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)res_ukr.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
@@ -81,8 +83,8 @@
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
-      <Command Condition="'$(EnableUpx)'!='false'">"$(SolutionDir)tools\upx\upx.exe" -d "$(OutDir)res_ukr.dll" &gt;nul 2&gt;&amp;1
-"$(SolutionDir)tools\upx\upx.exe" "$(OutDir)res_ukr.dll"</Command>
+      <Command Condition="'$(EnableUpx)'!='false'">"$(SolutionDir)tools\upx\upx.exe" -d "$(OutDir)Lang\uk-UA\res_ukr.dll" &gt;nul 2&gt;&amp;1
+"$(SolutionDir)tools\upx\upx.exe" "$(OutDir)Lang\uk-UA\res_ukr.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -94,7 +96,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <OutputFile>$(OutDir)res_ukr.dll</OutputFile>
+      <OutputFile>$(OutDir)Lang\uk-UA\res_ukr.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -105,8 +107,8 @@
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command Condition="'$(EnableUpx)'!='false'">"$(SolutionDir)tools\upx\upx.exe" -d "$(OutDir)res_ukr.dll" &gt;nul 2&gt;&amp;1
-"$(SolutionDir)tools\upx\upx.exe" "$(OutDir)res_ukr.dll"</Command>
+      <Command Condition="'$(EnableUpx)'!='false'">"$(SolutionDir)tools\upx\upx.exe" -d "$(OutDir)Lang\uk-UA\res_ukr.dll" &gt;nul 2&gt;&amp;1
+"$(SolutionDir)tools\upx\upx.exe" "$(OutDir)Lang\uk-UA\res_ukr.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -177,9 +179,8 @@
     <Manifest Include="res\FBE.exe.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <Target Name="CopyUkrainianResourcesToRuntimeLanguageDirectory" AfterTargets="PostBuildEvent">
+  <Target Name="PrepareUkrainianRuntimeLanguageDirectory" BeforeTargets="Link">
     <MakeDir Directories="$(OutDir)Lang\uk-UA" />
-    <Copy SourceFiles="$(OutDir)res_ukr.dll" DestinationFiles="$(OutDir)Lang\uk-UA\res_ukr.dll" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

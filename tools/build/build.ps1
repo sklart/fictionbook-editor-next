@@ -120,7 +120,7 @@ function Remove-ObsoleteRootLanguageDirectories {
     }
 }
 
-function Install-FbeLocalizedResourceLibraries {
+function Confirm-FbeLocalizedResourceLibraries {
     param(
         [Parameter(Mandatory)]
         [string]$OutputDirectory
@@ -133,17 +133,19 @@ function Install-FbeLocalizedResourceLibraries {
 
     foreach ($locale in $localizedLibraries.Keys) {
         $libraryName = $localizedLibraries[$locale]
-        $sourcePath = Join-Path $OutputDirectory $libraryName
-        if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
-            throw "Не найдена DLL локализованных ресурсов FBE: $sourcePath"
+        $localizedPath = Join-Path $OutputDirectory "Lang\\$locale\\$libraryName"
+        if (-not (Test-Path -LiteralPath $localizedPath -PathType Leaf)) {
+            throw "Не найдена DLL локализованных ресурсов FBE: $localizedPath"
         }
 
-        $targetDirectory = Join-Path $OutputDirectory "Lang\\$locale"
-        New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
-        Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $targetDirectory $libraryName) -Force
+        $legacyRootPath = Join-Path $OutputDirectory $libraryName
+        if (Test-Path -LiteralPath $legacyRootPath -PathType Leaf) {
+            Remove-Item -LiteralPath $legacyRootPath -Force
+            Write-Host "Удалена устаревшая корневая копия DLL локализации: $legacyRootPath"
+        }
     }
 
-    Write-Host "Локализованные DLL FBE подготовлены в каталоге Lang."
+    Write-Host "Локализованные DLL FBE проверены в каталоге Lang."
 }
 & pwsh @pcre2BuildArgs
 if ($LASTEXITCODE -ne 0) {
@@ -209,5 +211,5 @@ foreach ($requiredProject in @(
 Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
 Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
-Install-FbeLocalizedResourceLibraries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Confirm-FbeLocalizedResourceLibraries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 Remove-ObsoleteRootLanguageDirectories -OutputDirectory (Join-Path $repoRoot "out\$Configuration")

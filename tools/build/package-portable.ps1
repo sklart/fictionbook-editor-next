@@ -50,7 +50,7 @@ foreach ($locale in $localizedResourceDlls.Keys) {
     $targetLanguageDir = Join-Path $stageDir "Lang\\$locale"
     New-Item -ItemType Directory -Path $targetLanguageDir -Force | Out-Null
     $dllName = $localizedResourceDlls[$locale]
-    Copy-Item -LiteralPath (Join-Path $sourceDir $dllName) -Destination (Join-Path $targetLanguageDir $dllName) -Force
+    Copy-Item -LiteralPath (Join-Path $sourceDir "Lang\\$locale\\$dllName") -Destination (Join-Path $targetLanguageDir $dllName) -Force
 }
 
 $shellLocalizationSourceDir = Join-Path $sourceDir "Lang\Shell"

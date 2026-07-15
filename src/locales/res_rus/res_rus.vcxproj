@@ -45,9 +45,11 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)out\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)build\obj\locales\res_rus\$(Configuration)\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">res_rus</TargetName>
+    <TargetPath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)Lang\ru-RU\res_rus.dll</TargetPath>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)out\$(Configuration)\</OutDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">res_rus</TargetName>
+    <TargetPath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)Lang\ru-RU\res_rus.dll</TargetPath>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)build\obj\locales\res_rus\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
@@ -70,7 +72,7 @@
       <BufferSecurityCheck>true</BufferSecurityCheck>
     </ClCompile>
     <Link>
-      <OutputFile>$(OutDir)res_rus.dll</OutputFile>
+      <OutputFile>$(OutDir)Lang\ru-RU\res_rus.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)res_rus.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
@@ -90,7 +92,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <OutputFile>$(OutDir)res_rus.dll</OutputFile>
+      <OutputFile>$(OutDir)Lang\ru-RU\res_rus.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -101,8 +103,8 @@
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command Condition="'$(EnableUpx)'!='false'">"$(SolutionDir)tools\upx\upx.exe" -d "$(OutDir)res_rus.dll" &gt;nul 2&gt;&amp;1
-"$(SolutionDir)tools\upx\upx.exe" "$(OutDir)res_rus.dll"</Command>
+      <Command Condition="'$(EnableUpx)'!='false'">"$(SolutionDir)tools\upx\upx.exe" -d "$(OutDir)Lang\ru-RU\res_rus.dll" &gt;nul 2&gt;&amp;1
+"$(SolutionDir)tools\upx\upx.exe" "$(OutDir)Lang\ru-RU\res_rus.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -173,9 +175,8 @@
     <Manifest Include="res\FBE.exe.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <Target Name="CopyRussianResourcesToRuntimeLanguageDirectory" AfterTargets="PostBuildEvent">
+  <Target Name="PrepareRussianRuntimeLanguageDirectory" BeforeTargets="Link">
     <MakeDir Directories="$(OutDir)Lang\ru-RU" />
-    <Copy SourceFiles="$(OutDir)res_rus.dll" DestinationFiles="$(OutDir)Lang\ru-RU\res_rus.dll" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

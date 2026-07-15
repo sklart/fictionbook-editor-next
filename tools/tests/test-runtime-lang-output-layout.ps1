@@ -67,6 +67,13 @@ foreach ($resourcePath in @(
     }
 }
 
+foreach ($legacyRootResource in @("res_rus.dll", "res_ukr.dll")) {
+    $legacyRootPath = Join-Path $OutputDirectory $legacyRootResource
+    if (Test-Path -LiteralPath $legacyRootPath -PathType Leaf) {
+        throw "В корне каталога результатов не должна находиться устаревшая DLL локализации: $legacyRootPath"
+    }
+}
+
 Write-Host "Runtime-локализация в каталоге результатов размещена корректно."
 Write-Host "  Каталог: $OutputDirectory"
 Write-Host "  Языков: $($locales.Count)"

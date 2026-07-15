@@ -37,13 +37,13 @@ $requiredFiles = @(
     "ExportEPUBBatch.exe",
     "ImportEPUBBatch.exe",
     "FBShell.dll",
-    "res_rus.dll",
-    "res_ukr.dll",
     "Scintilla.dll",
     "Lexilla.dll"
 )
 $forbiddenFiles = @(
-    "pcre.dll"
+    "pcre.dll",
+    "res_rus.dll",
+    "res_ukr.dll"
 )
 
 $requiredSymbols = @(
@@ -179,6 +179,15 @@ foreach ($name in $requiredFiles) {
         -RequireControlFlowGuard:($name -in $controlFlowGuardFiles)
 }
 
+foreach ($name in @("Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll")) {
+    $path = Join-Path $outputDir $name
+    if (-not (Test-Path -LiteralPath $path)) {
+        throw "Отсутствует обязательный результат сборки: $path"
+    }
+
+    Test-BinarySecurityFlags -Path $path
+}
+
 foreach ($name in $forbiddenFiles) {
     $path = Join-Path $outputDir $name
     if (Test-Path -LiteralPath $path) {
@@ -196,7 +205,7 @@ foreach ($name in $requiredSymbols) {
     }
 }
 
-foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll", "res_rus.dll", "res_ukr.dll")) {
+foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll")) {
     $path = Join-Path $outputDir $name
     $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($path)
 
@@ -221,8 +230,8 @@ $requiredFileDescriptions = @{
     "ExportEPUBBatch.exe" = "FictionBook Editor EPUB batch export utility"
     "ImportEPUBBatch.exe" = "FictionBook Editor EPUB batch import utility"
     "FBShell.dll" = "FictionBook Editor shell property handler"
-    "res_rus.dll" = "FictionBook Editor Russian resources"
-    "res_ukr.dll" = "FictionBook Editor Ukrainian resources"
+    "Lang\\ru-RU\\res_rus.dll" = "FictionBook Editor Russian resources"
+    "Lang\\uk-UA\\res_ukr.dll" = "FictionBook Editor Ukrainian resources"
 }
 
 foreach ($entry in $requiredFileDescriptions.GetEnumerator()) {
