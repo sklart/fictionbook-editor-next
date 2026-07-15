@@ -32,6 +32,22 @@ $baseRcText = [IO.File]::ReadAllText((Join-Path $repoRoot "src\fbe\FBE.rc"),$cp1
 if ($baseRcText -notmatch 'COMBOBOX\s+IDC_LANG,\d+,\d+,1[0-9]{2},\d+') {
     throw "Базовый FBE.rc должен оставлять достаточно широкое поле IDC_LANG для 'Определяется системой'."
 }
+$settingsDialogIds = @('IDD_TOOLS_SETTINGS', 'IDD_OPTIONS', 'IDD_SETTING_OTHER', 'IDD_HOTKEYS', 'IDD_SETTINGS_WORDS', 'IDD_SETTING_NEXT')
+function Assert-SettingsDialogFont([string]$text, [string]$sourceName) {
+    foreach ($dialogId in $settingsDialogIds) {
+        $dialog = [regex]::Match($text, "(?ms)^$dialogId DIALOGEX.*?^END")
+        if (-not $dialog.Success) {
+            throw "В $sourceName не найден диалог настроек $dialogId."
+        }
+        if ($dialog.Value -notmatch 'FONT 8, "Tahoma", 400, 0, 0x1') {
+            throw "В $sourceName для $dialogId должен использоваться шрифт-эталон Tahoma 8."
+        }
+        if ($dialog.Value -match 'DS_FIXEDSYS') {
+            throw "В $sourceName у $dialogId не должен использоваться DS_FIXEDSYS: он меняет шрифт страницы."
+        }
+    }
+}
+Assert-SettingsDialogFont $baseRcText 'базовом FBE.rc'
 foreach($file in $files){
     $rcText=[IO.File]::ReadAllText($file.Rc,$cp1251)
     if($rcText -notmatch '#include\s+"FBESmallDialogs\.generated\.rc2"'){ throw "В $($file.Language) FBE.rc не подключён FBESmallDialogs.generated.rc2." }
@@ -39,6 +55,7 @@ foreach($file in $files){
     $bytes=[IO.File]::ReadAllBytes($file.Generated)
     if($bytes.Length -lt 2 -or $bytes[0] -ne 0xFF -or $bytes[1] -ne 0xFE){ throw "Generated-файл малых диалогов должен быть UTF-16 LE BOM: $($file.Generated)" }
     $generatedText=[IO.File]::ReadAllText($file.Generated,$utf16)
+    Assert-SettingsDialogFont $generatedText "generated-ресурсе $($file.Language)"
     foreach($resource in @('IDD_TABLE DIALOGEX','IDD_INPUTBOX DIALOGEX','IDD_ADDIMAGE DIALOGEX','IDD_TOOLS_SETTINGS DIALOGEX','IDD_ABOUTBOX DIALOGEX','IDD_CUSTOMSAVEDLG DIALOGEX','IDD_SETTINGS_WORDS DIALOGEX','IDD_HOTKEYS DIALOGEX','IDD_FIND DIALOGEX','IDD_REPLACE DIALOGEX','IDD_SPELL_CHECK DIALOGEX','IDD_WORDS DIALOGEX','IDD_SETTING_OTHER DIALOGEX','IDD_SETTING_NEXT DIALOGEX','IDD_OPTIONS DIALOGEX','IDC_CHECK_TABLE_TITLE','IDC_ADDIMAGE_ASKAGAIN','IDC_UPDATE','IDC_ENCODING','IDC_CHECK_SHOW_EXCLUSIONS','IDC_BUTTON_HOTKEY_ASSIGN','ID_FIND_NEXT','IDC_REPLACE_ALL','IDC_SPELL_IGNOREALL','IDC_BUTTON_REMOVEHLREPL','IDC_WORDS_FR_BTN_REPL','IDC_DEFAULT_SCRIPTS_FOLDER','IDC_OPTIONS_CLEARIMGS','IDC_CREATE_BACKUP_FILE','IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE','IDC_FBE_NEXT_WINDOW_TITLE_GROUP','IDC_SHOWLINENUMBERS','IDC_BACKGROUNDSPELLCHECK')){ if($generatedText -notmatch [regex]::Escape($resource)){ throw "В generated малых диалогов $($file.Language) нет $resource." } }
     if($generatedText -notmatch 'COMBOBOX\s+IDC_LANG,\d+,\d+,1[0-9]{2},\d+'){
         throw "Generated IDD_OPTIONS $($file.Language) должен оставлять достаточно широкое поле IDC_LANG для 'Определяется системой'."
