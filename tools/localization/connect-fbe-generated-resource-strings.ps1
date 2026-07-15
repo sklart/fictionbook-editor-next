@@ -36,12 +36,12 @@ $targets = @(
     @{
         Path = Join-Path $repoRoot "src\locales\res_rus\FBE.rc"
         EndMarker = "#endif    // Russian (Russia) resources"
-        Encoding = [Text.Encoding]::GetEncoding(1251)
+        Encoding = [Text.UTF8Encoding]::new($false)
     },
     @{
         Path = Join-Path $repoRoot "src\locales\res_ukr\FBE.rc"
         EndMarker = "#endif    // Ukrainian (Ukraine) resources"
-        Encoding = [Text.Encoding]::GetEncoding(1251)
+        Encoding = [Text.UTF8Encoding]::new($false)
     }
 )
 

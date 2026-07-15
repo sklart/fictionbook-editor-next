@@ -63,6 +63,10 @@ foreach ($file in $files) {
         throw "В $($file.RcPath) не подключён FBEStrings.generated.rc2."
     }
 
+    if ($rcText -match '(?m)^\s*(?:(?:ID|IDC|ATL_)[A-Z0-9_]+|\d+)\s+"[^"\r\n]*\?{2,}') {
+        throw "В $($file.RcPath) обнаружена повреждённая строка Win32-ресурса с вопросительными знаками."
+    }
+
     if ($text -notmatch [regex]::Escape($file.ExpectedLanguage)) {
         throw "В $($file.Path) отсутствует ожидаемая директива языка: $($file.ExpectedLanguage)"
     }
