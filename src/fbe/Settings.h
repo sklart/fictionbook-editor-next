@@ -485,6 +485,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_insimage_ask;
 	bool		m_ins_clear_image;
 	bool		m_create_backup_file;
+	bool		m_show_full_path_in_window_title;
 
 	bool		m_show_words_excls;
 
@@ -589,6 +590,7 @@ public:
 	bool	GetInsImageAsking()const;
 	bool	GetIsInsClearImage()const;
 	bool	GetCreateBackupFile()const;
+	bool	GetShowFullPathInWindowTitle()const;
 	bool	GetShowWordsExcls()const;
 	bool	GetWordsDlgPosition(WINDOWPLACEMENT &wpl)const;
 
@@ -620,6 +622,7 @@ public:
 	void	SetInsImageAsking(const bool value, bool apply = false);
 	void	SetIsInsClearImage(const bool value, bool apply = false);
 	void	SetCreateBackupFile(const bool value, bool apply = false);
+	void	SetShowFullPathInWindowTitle(const bool value, bool apply = false);
 	void	SetDocTreeItemState(const CString& item, bool state);
 	void	SetShowWordsExcls(const bool value, bool apply = false);
 	void	SetWordsDlgPosition(const WINDOWPLACEMENT& wpl,  bool apply = false);

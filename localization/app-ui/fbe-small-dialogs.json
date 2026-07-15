@@ -2563,6 +2563,44 @@
         "bg-BG": "Създавай резервно копие (.bak) при записване на съществуващ файл"
       }
     },
+    "fbe.dialog.idd_setting_next.window_title": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_FBE_NEXT_WINDOW_TITLE_GROUP",
+      "translations": {
+        "en-US": "Window title",
+        "ru-RU": "Заголовок окна",
+        "uk-UA": "Заголовок вікна",
+        "de-DE": "Fenstertitel",
+        "fr-FR": "Titre de la fenêtre",
+        "es-ES": "Título de la ventana",
+        "it-IT": "Titolo della finestra",
+        "pl-PL": "Tytuł okna",
+        "pt-PT": "Título da janela",
+        "nl-NL": "Venstertitel",
+        "cs-CZ": "Název okna",
+        "bg-BG": "Заглавие на прозореца"
+      }
+    },
+    "fbe.dialog.idd_setting_next.show_full_path_in_window_title": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "CONTROL",
+      "targetId": "IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE",
+      "translations": {
+        "en-US": "Show full file path in the window title",
+        "ru-RU": "Показывать полный путь к файлу в заголовке окна",
+        "uk-UA": "Показувати повний шлях до файлу в заголовку вікна",
+        "de-DE": "Vollständigen Dateipfad im Fenstertitel anzeigen",
+        "fr-FR": "Afficher le chemin complet du fichier dans le titre de la fenêtre",
+        "es-ES": "Mostrar la ruta completa del archivo en el título de la ventana",
+        "it-IT": "Mostra il percorso completo del file nel titolo della finestra",
+        "pl-PL": "Pokazuj pełną ścieżkę pliku w tytule okna",
+        "pt-PT": "Mostrar o caminho completo do ficheiro no título da janela",
+        "nl-NL": "Volledig bestandspad in de venstertitel weergeven",
+        "cs-CZ": "Zobrazit úplnou cestu k souboru v názvu okna",
+        "bg-BG": "Показвай пълния път до файла в заглавието на прозореца"
+      }
+    },
     "fbe.dialog.idd_options.show_whitespace": {
       "resource": "IDD_OPTIONS",
       "kind": "CONTROL",

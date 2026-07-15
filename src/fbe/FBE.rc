@@ -222,6 +222,9 @@ BEGIN
     GROUPBOX        "Saving",IDC_FBE_NEXT_SAVING_GROUP,7,11,211,42
     CONTROL         "Create a backup copy (.bak) when saving an existing file",IDC_CREATE_BACKUP_FILE,
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,14,24,196,19
+    GROUPBOX        "Window title",IDC_FBE_NEXT_WINDOW_TITLE_GROUP,7,61,211,42
+    CONTROL         "Show full file path in the window title",IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE,
+                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,14,74,196,19
 END
 
 IDD_TOOLS_SETTINGS DIALOGEX 0, 0, 266, 282

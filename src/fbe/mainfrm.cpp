@@ -1457,7 +1457,47 @@ BOOL CMainFrame::OnIdle()
 	{
 		m_need_title_update = false;
 		m_change_state = DocChanged();
-		CString tt(U::GetFileTitle(m_doc->m_filename));
+		CString tt;
+		if (_Settings.GetShowFullPathInWindowTitle() && m_doc->m_namevalid)
+		{
+			CString fullPath(U::GetFullPathName(m_doc->m_filename));
+			CClientDC dc(m_hWnd);
+			CRect clientRect;
+			GetClientRect(&clientRect);
+			const int maxPathWidth = max(160, clientRect.Width() - 240);
+
+			SIZE pathSize = {};
+			::GetTextExtentPoint32W(dc, fullPath, fullPath.GetLength(), &pathSize);
+			if (pathSize.cx <= maxPathWidth)
+			{
+				tt = fullPath;
+			}
+			else
+			{
+				CString root;
+				if (fullPath.GetLength() >= 3 && fullPath[1] == L':' && fullPath[2] == L'\\')
+					root = fullPath.Left(3);
+				else if (fullPath.Left(2) == L"\\\\")
+				{
+					const int serverEnd = fullPath.Find(L'\\', 2);
+					const int shareEnd = serverEnd >= 0 ? fullPath.Find(L'\\', serverEnd + 1) : -1;
+					if (shareEnd >= 0)
+						root = fullPath.Left(shareEnd + 1);
+				}
+
+				CString fileName(U::GetFileTitle(fullPath));
+				tt = root + L"...\\" + fileName;
+				::GetTextExtentPoint32W(dc, tt, tt.GetLength(), &pathSize);
+				while (pathSize.cx > maxPathWidth && fileName.GetLength() > 1)
+				{
+					fileName = fileName.Mid(1);
+					tt = L"..." + fileName;
+					::GetTextExtentPoint32W(dc, tt, tt.GetLength(), &pathSize);
+				}
+			}
+		}
+		else
+			tt = U::GetFileTitle(m_doc->m_filename);
 		tt += m_change_state ? L" +" : L" -";
 		SetWindowText(tt + L" FB Editor Next");
 	}
@@ -3072,6 +3112,7 @@ LRESULT CMainFrame::OnViewTree(WORD, WORD, HWND, BOOL&)
 LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 {
 	const DWORD previousInterfaceLanguage = _Settings.GetInterfaceLanguageID();
+	const bool previousShowFullPathInWindowTitle = _Settings.GetShowFullPathInWindowTitle();
 	const EditorConfigurationSnapshot previousConfiguration = CaptureEditorConfigurationSnapshot();
 	bool bFind = m_doc->m_body.CloseFindDialog(m_doc->m_body.m_find_dlg);
 	bool bReplace = m_doc->m_body.CloseFindDialog(m_doc->m_body.m_replace_dlg);
@@ -3089,6 +3130,8 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 			FbeResetRuntimeLocalization();
 			RefreshLocalizedMainFrameUi();
 		}
+		if (previousShowFullPathInWindowTitle != _Settings.GetShowFullPathInWindowTitle())
+			m_need_title_update = true;
 
 		if(!(previousConfiguration == CaptureEditorConfigurationSnapshot()) || _Settings.NeedRestart())
 			ApplyConfChanges();
@@ -3266,6 +3309,7 @@ LRESULT CMainFrame::OnToolsWords(WORD, WORD, HWND, BOOL&)
 LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 {
 	const DWORD previousInterfaceLanguage = _Settings.GetInterfaceLanguageID();
+	const bool previousShowFullPathInWindowTitle = _Settings.GetShowFullPathInWindowTitle();
 	const EditorConfigurationSnapshot previousConfiguration = CaptureEditorConfigurationSnapshot();
 	if(m_Speller)
 		m_Speller->EndDocumentCheck();
@@ -3286,6 +3330,8 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 			FbeResetRuntimeLocalization();
 			RefreshLocalizedMainFrameUi();
 		}
+		if (previousShowFullPathInWindowTitle != _Settings.GetShowFullPathInWindowTitle())
+			m_need_title_update = true;
 
 		if(!(previousConfiguration == CaptureEditorConfigurationSnapshot()) || _Settings.NeedRestart())
 			ApplyConfChanges();

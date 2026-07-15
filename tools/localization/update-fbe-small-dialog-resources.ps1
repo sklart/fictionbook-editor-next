@@ -245,6 +245,9 @@ foreach($language in $Languages){
     $l.Add('    GROUPBOX        "' + (Get-Text 'idd_setting_next.saving' $language) + '",IDC_FBE_NEXT_SAVING_GROUP,7,11,211,42')
     $l.Add('    CONTROL         "' + (Get-Text 'idd_setting_next.create_backup_file' $language) + '",IDC_CREATE_BACKUP_FILE,')
     $l.Add('                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,14,24,196,19')
+    $l.Add('    GROUPBOX        "' + (Get-Text 'idd_setting_next.window_title' $language) + '",IDC_FBE_NEXT_WINDOW_TITLE_GROUP,7,61,211,42')
+    $l.Add('    CONTROL         "' + (Get-Text 'idd_setting_next.show_full_path_in_window_title' $language) + '",IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE,')
+    $l.Add('                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,14,74,196,19')
     $l.Add("END")
     $l.Add("")
     if ($language -eq "uk-UA") {

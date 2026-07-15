@@ -595,6 +595,8 @@
 #define IDS_DOCUMENT_TREE_CAPTION       61404
 #define IDC_CREATE_BACKUP_FILE          1128
 #define IDC_FBE_NEXT_SAVING_GROUP       1129
+#define IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE 1130
+#define IDC_FBE_NEXT_WINDOW_TITLE_GROUP 1131
 
 // Next default values for new objects
 // 

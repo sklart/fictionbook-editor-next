@@ -1081,6 +1081,8 @@ public:
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL& bHandled)
 	{
 		UpdateViewSizeInfo();
+		if (_Settings.GetShowFullPathInWindowTitle() && m_doc && m_doc->m_namevalid)
+			m_need_title_update = true;
 		bHandled = FALSE;
 		return 0;
 	}
