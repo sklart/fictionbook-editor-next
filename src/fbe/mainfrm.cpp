@@ -4236,8 +4236,324 @@ static CString ExtractXmlDeclarationEncoding(const CString& xmlText)
 	return encoding;
 }
 
+// Возвращает позицию символа отображаемого текста XML-узла в Source. Теги и
+// сущности XML пропускаются, поэтому форматирование Source не влияет на поиск.
+static int FindXmlNodeTextPosition(const CString& sourceXml,
+	MSXML2::IXMLDOMNodePtr xmlNode, int textPosition)
+{
+	if (!(bool)xmlNode || textPosition < 0)
+		return -1;
+
+	bstr_t nodeTextValue(xmlNode->text);
+	CString nodeText((const wchar_t*)nodeTextValue);
+	if (nodeText.IsEmpty())
+		return -1;
+
+	std::vector<int> matchedPositions;
+	matchedPositions.reserve(nodeText.GetLength());
+	for (int position = 0, matched = 0; position < sourceXml.GetLength();)
+	{
+		if (sourceXml[position] == L'<')
+		{
+			const int tagEnd = sourceXml.Find(L'>', position + 1);
+			if (tagEnd < 0)
+				return -1;
+			position = tagEnd + 1;
+			continue;
+		}
+
+		wchar_t sourceCharacter = sourceXml[position];
+		int nextPosition = position + 1;
+		if (sourceCharacter == L'&')
+		{
+			const int entityEnd = sourceXml.Find(L';', position + 1);
+			if (entityEnd >= 0)
+			{
+				const CString entity = sourceXml.Mid(position, entityEnd - position + 1);
+				if (entity == L"&amp;") sourceCharacter = L'&';
+				else if (entity == L"&lt;") sourceCharacter = L'<';
+				else if (entity == L"&gt;") sourceCharacter = L'>';
+				else if (entity == L"&quot;") sourceCharacter = L'\"';
+				else if (entity == L"&apos;") sourceCharacter = L'\'';
+				nextPosition = entityEnd + 1;
+			}
+		}
+
+		if (sourceCharacter == nodeText[matched])
+		{
+			matchedPositions.push_back(position);
+			++matched;
+			if (matched == nodeText.GetLength())
+			{
+				if (textPosition < static_cast<int>(matchedPositions.size()))
+					return matchedPositions[textPosition];
+				return nextPosition;
+			}
+		}
+		else
+		{
+			matchedPositions.clear();
+			matched = 0;
+		}
+
+		position = nextPosition;
+	}
+
+	return -1;
+}
+
+// Ищет непрерывный диапазон отображаемого текста в Source, не учитывая XML-теги.
+static bool FindVisibleXmlTextRange(const CString& sourceXml,
+	const CString& visibleText, int& rangeStart, int& rangeEnd)
+{
+	rangeStart = -1;
+	rangeEnd = -1;
+	if (visibleText.IsEmpty())
+		return false;
+	CString normalizedText;
+	bool previousTextWhitespace = false;
+	for (int i = 0; i < visibleText.GetLength(); ++i)
+	{
+		const bool whitespace = iswspace(visibleText[i]) || visibleText[i] == L'\xA0';
+		if (whitespace)
+		{
+			if (!previousTextWhitespace)
+				normalizedText += L' ';
+		}
+		else
+		{
+			normalizedText += visibleText[i];
+		}
+		previousTextWhitespace = whitespace;
+	}
+	if (normalizedText.IsEmpty())
+		return false;
+
+	std::vector<int> matchedPositions;
+	matchedPositions.reserve(normalizedText.GetLength());
+	bool previousSourceWhitespace = false;
+	for (int position = 0, matched = 0; position < sourceXml.GetLength();)
+	{
+		if (sourceXml[position] == L'<')
+		{
+			const int tagEnd = sourceXml.Find(L'>', position + 1);
+			if (tagEnd < 0)
+				return false;
+			position = tagEnd + 1;
+			continue;
+		}
+
+		wchar_t sourceCharacter = sourceXml[position];
+		int nextPosition = position + 1;
+		if (sourceCharacter == L'&')
+		{
+			const int entityEnd = sourceXml.Find(L';', position + 1);
+			if (entityEnd >= 0)
+			{
+				const CString entity = sourceXml.Mid(position, entityEnd - position + 1);
+				if (entity == L"&amp;") sourceCharacter = L'&';
+				else if (entity == L"&lt;") sourceCharacter = L'<';
+				else if (entity == L"&gt;") sourceCharacter = L'>';
+				else if (entity == L"&quot;") sourceCharacter = L'\"';
+				else if (entity == L"&apos;") sourceCharacter = L'\'';
+				else if (entity == L"&nbsp;") sourceCharacter = L'\xA0';
+				nextPosition = entityEnd + 1;
+			}
+		}
+
+		const bool whitespace = iswspace(sourceCharacter) || sourceCharacter == L'\xA0';
+		if (whitespace)
+		{
+			if (previousSourceWhitespace)
+			{
+				position = nextPosition;
+				continue;
+			}
+			sourceCharacter = L' ';
+		}
+		previousSourceWhitespace = whitespace;
+
+		if (sourceCharacter == normalizedText[matched])
+		{
+			matchedPositions.push_back(position);
+			++matched;
+			if (matched == normalizedText.GetLength())
+			{
+				rangeStart = matchedPositions.front();
+				rangeEnd = nextPosition;
+				return true;
+			}
+		}
+		else
+		{
+			matchedPositions.clear();
+			matched = 0;
+			if (sourceCharacter == normalizedText[0])
+			{
+				matchedPositions.push_back(position);
+				matched = 1;
+			}
+		}
+
+		position = nextPosition;
+	}
+
+	return false;
+}
+
+// Преобразует фрагмент Source в отображаемый текст для поиска в Body.
+static CString ExtractVisibleXmlText(const CString& sourceFragment)
+{
+	CString text;
+	for (int position = 0; position < sourceFragment.GetLength();)
+	{
+		if (sourceFragment[position] == L'<')
+		{
+			const int tagEnd = sourceFragment.Find(L'>', position + 1);
+			if (tagEnd < 0)
+				break;
+			CString tagName = sourceFragment.Mid(position + 1,
+				tagEnd - position - 1);
+			tagName.TrimLeft();
+			if (!tagName.IsEmpty() && tagName[0] == L'/')
+				tagName.Delete(0);
+			const int tagNameEnd = tagName.FindOneOf(L" \t\r\n/");
+			if (tagNameEnd >= 0)
+				tagName = tagName.Left(tagNameEnd);
+			// В HTML граница абзаца представлена переводом строки, в XML —
+			// парой тегов. Сохраняем эту границу для IHTMLTxtRange::findText.
+			if (tagName.CompareNoCase(L"p") == 0 ||
+				tagName.CompareNoCase(L"empty-line") == 0 ||
+				tagName.CompareNoCase(L"title") == 0)
+			{
+				while (!text.IsEmpty() && text[text.GetLength() - 1] == L' ')
+					text.Delete(text.GetLength() - 1);
+				if (!text.IsEmpty() && text.Right(2) != L"\r\n")
+					text += L"\r\n";
+			}
+			position = tagEnd + 1;
+			continue;
+		}
+
+		if (sourceFragment[position] == L'&')
+		{
+			const int entityEnd = sourceFragment.Find(L';', position + 1);
+			if (entityEnd >= 0)
+			{
+				const CString entity = sourceFragment.Mid(position, entityEnd - position + 1);
+				if (entity == L"&amp;") text += L'&';
+				else if (entity == L"&lt;") text += L'<';
+				else if (entity == L"&gt;") text += L'>';
+				else if (entity == L"&quot;") text += L'\"';
+				else if (entity == L"&apos;") text += L'\'';
+				else text += entity;
+				position = entityEnd + 1;
+				continue;
+			}
+		}
+
+		const wchar_t character = sourceFragment[position++];
+		if (iswspace(character) || character == L'\xA0')
+		{
+			if (!text.IsEmpty() && text.Right(2) != L"\r\n" &&
+				text[text.GetLength() - 1] != L' ')
+				text += L' ';
+		}
+		else
+		{
+			text += character;
+		}
+	}
+	return text;
+}
+
+// Находит диапазон в HTML по началу и концу видимого текста. Это покрывает
+// Source-выделения, пересекающие абзацы: один вызов findText для всего такого
+// диапазона не работает в MSHTML из-за разных представлений перевода строки.
+static MSHTML::IHTMLTxtRangePtr FindBodyTextRange(
+	MSHTML::IHTMLBodyElementPtr htmlBody, const CString& visibleText)
+{
+	if (!(bool)htmlBody || visibleText.IsEmpty())
+		return MSHTML::IHTMLTxtRangePtr();
+
+	MSHTML::IHTMLTxtRangePtr wholeRange = htmlBody->createTextRange();
+	if ((bool)wholeRange && wholeRange->findText((const wchar_t*)visibleText,
+		1073741824, 0) == VARIANT_TRUE)
+		return wholeRange;
+
+	CString startAnchor = visibleText;
+	CString endAnchor = visibleText;
+	startAnchor.TrimLeft();
+	endAnchor.TrimRight();
+	const int firstLineEnd = startAnchor.Find(L"\r\n");
+	if (firstLineEnd >= 0)
+		startAnchor = startAnchor.Left(firstLineEnd);
+	const int lastLineBegin = endAnchor.ReverseFind(L'\n');
+	if (lastLineBegin >= 0)
+		endAnchor = endAnchor.Mid(lastLineBegin + 1);
+	startAnchor.Trim();
+	endAnchor.Trim();
+	if (startAnchor.IsEmpty() || endAnchor.IsEmpty())
+		return MSHTML::IHTMLTxtRangePtr();
+
+	// Длинная граница практически исключает совпадение с другой фразой.
+	const int anchorLength = 96;
+	if (startAnchor.GetLength() > anchorLength)
+		startAnchor = startAnchor.Left(anchorLength);
+	if (endAnchor.GetLength() > anchorLength)
+		endAnchor = endAnchor.Right(anchorLength);
+
+	MSHTML::IHTMLTxtRangePtr startRange = htmlBody->createTextRange();
+	MSHTML::IHTMLTxtRangePtr endRange = htmlBody->createTextRange();
+	if (!(bool)startRange || !(bool)endRange ||
+		startRange->findText((const wchar_t*)startAnchor, 1073741824, 0) != VARIANT_TRUE)
+		return MSHTML::IHTMLTxtRangePtr();
+	endRange->collapse(VARIANT_FALSE);
+	if (endRange->findText((const wchar_t*)endAnchor, 1073741824, 1) != VARIANT_TRUE)
+		return MSHTML::IHTMLTxtRangePtr();
+
+	startRange->setEndPoint(L"EndToEnd", endRange);
+	return startRange;
+}
+
+// Границы выделения Source могут попасть в имя тега или его атрибут. В Body
+// таких символов нет, поэтому отсекаем разметку и оставляем только видимый
+// текст между тегами.
+static int SkipXmlMarkupForward(const CString& sourceXml, int position)
+{
+	while (position < sourceXml.GetLength())
+	{
+		const int tagBegin = sourceXml.Left(position).ReverseFind(L'<');
+		const int tagEnd = tagBegin >= 0
+			? sourceXml.Find(L'>', tagBegin + 1)
+			: -1;
+		if (tagBegin >= 0 && tagEnd >= position)
+			position = tagEnd + 1;
+		else
+			break;
+	}
+	return position;
+}
+
+static int SkipXmlMarkupBackward(const CString& sourceXml, int position)
+{
+	while (position > 0)
+	{
+		const int tagBegin = sourceXml.Left(position).ReverseFind(L'<');
+		const int tagEnd = tagBegin >= 0
+			? sourceXml.Find(L'>', tagBegin + 1)
+			: -1;
+		if (tagBegin >= 0 && tagEnd >= position)
+			position = tagBegin;
+		else
+			break;
+	}
+	return position;
+}
+
 bool  CMainFrame::SourceToHTML() 
 {
+	m_source_selection_transferred = false;
 	LRESULT changed = m_source.SendMessage(SCI_GETMODIFY);
 	int	    textlen = 0;
 	char*	buffer = 0;
@@ -4269,12 +4585,30 @@ bool  CMainFrame::SourceToHTML()
 		selectedPosBegin = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosBegin,NULL,0);
 		selectedPosEnd = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosEnd,NULL,0);
 	}	
+	CString sourceText(ustr);
+	if (!one_pos)
+	{
+		selectedPosBegin = SkipXmlMarkupForward(sourceText, selectedPosBegin);
+		selectedPosEnd = SkipXmlMarkupBackward(sourceText, selectedPosEnd);
+		if (selectedPosEnd < selectedPosBegin)
+			selectedPosEnd = selectedPosBegin;
+	}
+	CString selectedSourceText;
+	bool selectionCrossesParagraph = false;
+	if (selectedPosEnd > selectedPosBegin)
+	{
+		const CString selectedSourceXml = sourceText.Mid(selectedPosBegin,
+			selectedPosEnd - selectedPosBegin);
+		selectedSourceText = ExtractVisibleXmlText(selectedSourceXml);
+		selectionCrossesParagraph = selectedSourceXml.Find(L"</p") >= 0 ||
+			selectedSourceXml.Find(L"<p") >= 0;
+	}
 
 	//	?????????? ? XML
 	U::DomPath path_begin;
 	U::DomPath path_end;
 
-	path_begin.CreatePathFromText(ustr, selectedPosBegin, &begin_char);
+	bool selection_path_available = path_begin.CreatePathFromText(ustr, selectedPosBegin, &begin_char);
 	
 	if(one_pos)
 	{
@@ -4283,12 +4617,11 @@ bool  CMainFrame::SourceToHTML()
 	}
 	else
 	{	
-		path_end.CreatePathFromText(ustr, selectedPosEnd, &end_char);
+		selection_path_available = path_end.CreatePathFromText(ustr, selectedPosEnd, &end_char) && selection_path_available;
 	}
 		
 	if(changed)
 	{
-		CString sourceText(ustr);
 		CString sourceEncoding = ExtractXmlDeclarationEncoding(sourceText);
 		if (!sourceEncoding.IsEmpty())
 			m_doc->m_encoding = sourceEncoding;
@@ -4344,35 +4677,40 @@ bool  CMainFrame::SourceToHTML()
 	MSXML2::IXMLDOMNodeListPtr ChildNodes = m_saved_xml->documentElement->childNodes;
 	MSXML2::IXMLDOMNodePtr body;
 
-	MSXML2::IXMLDOMElementPtr selectedElementBegin = path_begin.GetNodeFromXMLDOM(m_saved_xml);
-	for(int i = 0; i < ChildNodes->length; i++)
-	{
-		bstr_t name = ChildNodes->item[i]->nodeName;
-		if(U::scmp(ChildNodes->item[i]->nodeName, L"body") == 0)
-		{
-			if(U::IsParentElement(selectedElementBegin, ChildNodes->item[i]))
-			{
-				body = ChildNodes->item[i];
-				break;
-			}
-			else
-			{
-				++bodies_count;				
-			}			
-		}
-	}
-	
-	// ?????? ????????????? ????. ???????????? ?????? body
-	path_begin.CreatePathFromXMLDOM(body, selectedElementBegin);
+	MSXML2::IXMLDOMElementPtr selectedElementBegin;
 	MSXML2::IXMLDOMElementPtr selectedElementEnd;
-	if(one_pos)
+	if(selection_path_available && !selectionCrossesParagraph)
 	{
-		path_end = path_begin;
-	}
-	else
-	{
-		selectedElementEnd  = path_end.GetNodeFromXMLDOM(m_saved_xml);
-		path_end.CreatePathFromXMLDOM(body, selectedElementEnd);
+		selectedElementBegin = path_begin.GetNodeFromXMLDOM(m_saved_xml);
+		for(int i = 0; (bool)selectedElementBegin && i < ChildNodes->length; i++)
+		{
+			bstr_t name = ChildNodes->item[i]->nodeName;
+			if(U::scmp(ChildNodes->item[i]->nodeName, L"body") == 0)
+			{
+				if(U::IsParentElement(selectedElementBegin, ChildNodes->item[i]))
+				{
+					body = ChildNodes->item[i];
+					break;
+				}
+				else
+				{
+					++bodies_count;
+				}
+			}
+		}
+
+		selection_path_available = (bool)body &&
+			path_begin.CreatePathFromXMLDOM(body, selectedElementBegin);
+		if(one_pos)
+		{
+			path_end = path_begin;
+		}
+		else
+		{
+			selectedElementEnd = path_end.GetNodeFromXMLDOM(m_saved_xml);
+			selection_path_available = (bool)selectedElementEnd &&
+				path_end.CreatePathFromXMLDOM(body, selectedElementEnd) && selection_path_available;
+		}
 	}	
 	
 
@@ -4393,41 +4731,61 @@ bool  CMainFrame::SourceToHTML()
 		//m_saved_xml = 0;		
 	}
 
-	//	? HTML ?? ???? ??????? ?????? ???????
-	MSHTML::IHTMLElementPtr selectedHTMLElementBegin;	
-	MSHTML::IHTMLElementPtr selectedHTMLElementEnd;	
-	
-	MSHTML::IHTMLDOMNodePtr root = m_doc->m_body.Document()->body;
-	root = root->firstChild; // <DIV id = fbw_desc>
-	root = root->nextSibling; // <DIV id = fbw_body>
-	root = root->firstChild;// <DIV clss = ...>
-	do
+	if(selection_path_available)
 	{
-		if(U::scmp(MSHTML::IHTMLElementPtr(root)->className, L"body") == 0)
+		// Выделение из Source переносится только в отображаемый текстовый body.
+		MSHTML::IHTMLElementPtr selectedHTMLElementBegin;
+		MSHTML::IHTMLElementPtr selectedHTMLElementEnd;
+		MSHTML::IHTMLDOMNodePtr root = m_doc->m_body.Document()->body;
+		if(root)
+			root = root->firstChild; // <DIV id = fbw_desc>
+		if(root)
+			root = root->nextSibling; // <DIV id = fbw_body>
+		if(root)
+			root = root->firstChild; // <DIV class = ...>
+
+		while(root)
 		{
-			if(bodies_count)
+			if(U::scmp(MSHTML::IHTMLElementPtr(root)->className, L"body") == 0)
 			{
-				--bodies_count;
-			}
-			else
-			{
-				selectedHTMLElementBegin = path_begin.GetNodeFromHTMLDOM(root);
-				if(one_pos)
+				if(bodies_count)
 				{
-					selectedHTMLElementEnd = selectedHTMLElementBegin;
+					--bodies_count;
 				}
 				else
 				{
-					selectedHTMLElementEnd = path_end.GetNodeFromHTMLDOM(root);
+					selectedHTMLElementBegin = path_begin.GetNodeFromHTMLDOM(root);
+					selectedHTMLElementEnd = one_pos
+						? selectedHTMLElementBegin
+						: path_end.GetNodeFromHTMLDOM(root);
+					break;
 				}
-				break;
 			}
+			root = root->nextSibling;
 		}
-	}while(root = root->nextSibling);
-	
+
+		if((bool)selectedHTMLElementBegin && (bool)selectedHTMLElementEnd)
+		{
+			m_doc->m_body.GoTo(selectedHTMLElementBegin);
+			m_body_selection = m_doc->m_body.SetSelection(
+				selectedHTMLElementBegin, selectedHTMLElementEnd, begin_char, end_char);
+			m_source_selection_transferred = (bool)m_body_selection;
+		}
+	}
+
+	if(!m_source_selection_transferred && !selectedSourceText.IsEmpty())
+	{
+		MSHTML::IHTMLBodyElementPtr htmlBody(m_doc->m_body.Document()->body);
+		MSHTML::IHTMLTxtRangePtr range = FindBodyTextRange(htmlBody,
+			selectedSourceText);
+		if((bool)range)
+		{
+			m_body_selection = range;
+			m_source_selection_transferred = true;
+		}
+	}
+
 	delete[] buffer;
-	m_doc->m_body.GoTo(selectedHTMLElementBegin);		
-	m_body_selection =  m_doc->m_body.SetSelection(selectedHTMLElementBegin, selectedHTMLElementEnd, begin_char, end_char);	
 	m_doc->MarkDocCP(); // document is in sync with source
 	if(_Settings.ViewDocumentTree())
 	{
@@ -4439,6 +4797,7 @@ bool  CMainFrame::SourceToHTML()
 
 bool CMainFrame::ShowSource(bool saveSelection)
 {
+	m_body_selection_transferred = false;
 	U::DomPath selection_begin_path;
 	U::DomPath selection_end_path;
 
@@ -4456,6 +4815,12 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		MSHTML::IHTMLElementPtr selectedEndElement;
 
 		m_doc->m_body.GetSelectionInfo((MSHTML::IHTMLElementPtr*)(&selectedBeginElement), (MSHTML::IHTMLElementPtr*)(&selectedEndElement), &selection_begin_char, &selection_end_char, 0);
+		if(selectedBeginElement == selectedEndElement && (bool)m_body_selection)
+		{
+			const CString selectedText((const wchar_t*)m_body_selection->text);
+			if(!selectedText.IsEmpty())
+				selection_end_char = selection_begin_char + selectedText.GetLength();
+		}
 
 
 		// <body>
@@ -4480,7 +4845,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 					{
 						selection_end_path = selection_begin_path;
 					}
-					else
+				else
 					{
 						selection_end_path.CreatePathFromHTMLDOM(root, selectedEndElement);
 					}
@@ -4553,7 +4918,10 @@ bool CMainFrame::ShowSource(bool saveSelection)
 			path = selection_begin_path;
 
 			if(one_element)
+			{
 				selection_end_path = selection_begin_path;
+				xml_selected_end = xml_selected_begin;
+			}
 			else
 			{
 				xml_selected_end = selection_end_path.GetNodeFromXMLDOM(xml_body);
@@ -4583,19 +4951,51 @@ bool CMainFrame::ShowSource(bool saveSelection)
 
 	int savedPosBegin = 0;
 	int savedPosEnd = 0;
+	bool selection_mapped_to_source = false;
 	//if(saveSelection)
 	{
-		savedPosBegin = selection_begin_path.GetNodeFromText(src, selection_begin_char);
-		savedPosEnd = 0;
-		if(savedPosBegin)
+		if(saveSelection)
 		{
-			savedPosEnd = selection_end_path.GetNodeFromText(src, selection_end_char);
-			if(!savedPosEnd)
+			int beginPosition = -1;
+			int endPosition = -1;
+			bool hasBodySelectionText = false;
+			if((bool)m_body_selection)
 			{
-				savedPosEnd = savedPosBegin;
-			}		
-			savedPosBegin =::WideCharToMultiByte(CP_UTF8,0,src,savedPosBegin,	NULL,0,NULL,NULL);
-			savedPosEnd =::WideCharToMultiByte(CP_UTF8,0,src,savedPosEnd,	NULL,0,NULL,NULL);
+				const CString selectedText((const wchar_t*)m_body_selection->text);
+				hasBodySelectionText = !selectedText.IsEmpty();
+				if(hasBodySelectionText)
+					FindVisibleXmlTextRange(srcText, selectedText, beginPosition, endPosition);
+			}
+
+			// DomPath оперирует XML-узлами, а не видимым текстом. Для реального
+			// выделения Body он может вернуть начало родительского узла и тем самым
+			// захватить текст, которого пользователь не выделял. Используем его
+			// только если текста выделения у Body действительно нет.
+			if(!hasBodySelectionText && (bool)xml_selected_begin &&
+				(beginPosition < 0 || endPosition < 0))
+			{
+				beginPosition = selection_begin_path.GetNodeFromText(src, selection_begin_char);
+				endPosition = selection_end_path.GetNodeFromText(src, selection_end_char);
+			}
+
+			// Старый DomPath не всегда умеет пройти от XML-документа к узлу
+			// отображаемого текста. Сам узел уже получен из DOM, поэтому при
+			// таком отказе сопоставляем позицию по его XML-представлению.
+			if(!hasBodySelectionText && (bool)xml_selected_begin && beginPosition <= 0)
+				beginPosition = FindXmlNodeTextPosition(srcText, xml_selected_begin,
+					selection_begin_char);
+			if(!hasBodySelectionText && (bool)xml_selected_end && endPosition <= 0)
+				endPosition = FindXmlNodeTextPosition(srcText, xml_selected_end,
+					selection_end_char);
+
+			if(beginPosition >= 0 && endPosition >= 0)
+			{
+				savedPosBegin = ::WideCharToMultiByte(CP_UTF8, 0, src,
+					beginPosition, NULL, 0, NULL, NULL);
+				savedPosEnd = ::WideCharToMultiByte(CP_UTF8, 0, src,
+					endPosition, NULL, 0, NULL, NULL);
+				selection_mapped_to_source = true;
+			}
 		}
 	}
 
@@ -4618,6 +5018,9 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	m_source.SendMessage(SCI_SETSELECTIONSTART,savedPosBegin);
 	m_source.SendMessage(SCI_SETSELECTIONEND,savedPosEnd);
 	m_source.SendMessage(SCI_SCROLLCARET);	
+	m_body_selection_transferred = selection_mapped_to_source;
+	m_source_selection_start = savedPosBegin;
+	m_source_selection_end = savedPosEnd;
 
 	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
 	m_doc->MarkDocCP();
@@ -4762,6 +5165,8 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 			  if (!SourceToHTML())
 				return;
 			  m_source.SendMessage(SCI_SETSAVEPOINT);
+			  if(m_source_selection_transferred && (bool)m_body_selection)
+				m_body_selection->select();
 			}
 			m_status.SetPaneText(ID_PANE_INS, m_last_ie_ovr ? strOVR : strINS);
 
@@ -4834,6 +5239,12 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
     m_view.HideActiveWnd();
     m_splitter.SetSinglePaneMode(SPLIT_PANE_RIGHT);
     m_view.ActivateWnd(m_source);
+	if(m_body_selection_transferred)
+	{
+		m_source.SendMessage(SCI_SETSELECTIONSTART, m_source_selection_start);
+		m_source.SendMessage(SCI_SETSELECTIONEND, m_source_selection_end);
+		m_source.SendMessage(SCI_SCROLLCARET);
+	}
 	{
 		if(prev == BODY)
 		{
@@ -4853,6 +5264,27 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
   if(!(prev == SOURCE && vt == BODY))
 	RestoreSelection();
   m_view.SetFocus();
+	if(vt == SOURCE && m_body_selection_transferred)
+	{
+		// Source получает фокус и окончательный размер только в конце смены
+		// режима. Повторная установка здесь делает прокрутку устойчивой.
+		m_source.SendMessage(SCI_SETSEL, m_source_selection_start,
+			m_source_selection_end);
+		const int sourceLine = m_source.SendMessage(SCI_LINEFROMPOSITION,
+			m_source_selection_start);
+		m_source.SendMessage(SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine);
+		m_source.SendMessage(SCI_GOTOPOS, m_source_selection_start);
+		m_source.SendMessage(SCI_SETSEL, m_source_selection_start,
+			m_source_selection_end);
+		m_source.SendMessage(SCI_SCROLLCARET);
+		// После отображения панели Scintilla может сбросить положение каретки.
+		// Повторяем диапазон в очереди сообщений уже после завершения layout.
+		::PostMessage(m_source, SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine, 0);
+		::PostMessage(m_source, SCI_GOTOPOS, m_source_selection_start, 0);
+		::PostMessage(m_source, SCI_SETSEL, m_source_selection_start,
+			m_source_selection_end);
+		::PostMessage(m_source, SCI_SCROLLCARET, 0, 0);
+	}
 }
 
 /*CMainFrame::VIEW_TYPE CMainFrame::GetCurView() {

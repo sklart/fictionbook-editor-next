@@ -63,6 +63,7 @@ $requiredSymbols = @(
 )
 
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
 }
