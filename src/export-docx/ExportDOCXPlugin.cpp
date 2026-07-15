@@ -2698,7 +2698,7 @@ private:
             wchar_t ch = text[i];
             if ((ch >= L'0' && ch <= L'9') || ch == L'*' || ch == L'[' || ch == L']' ||
                 ch == L'(' || ch == L')' || ch == L'.' || ch == L',' || ch == L'-' ||
-                ch == L'—' || ch == L' ' || ch == L'№') {
+                ch == L'—' || ch == L' ' || ch == static_cast<wchar_t>(0x2116)) {
                 continue;
             }
             hasMeaningful = true;
