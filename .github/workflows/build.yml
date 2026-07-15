@@ -94,3 +94,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${{ github.ref_name }}" out/artifacts/* --verify-tag --notes-file out/RELEASE_NOTES.md
+
+      - name: Синхронизировать манифест автообновления
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # create-release.ps1 записывает SHA-256 фактически собранного setup в
+          # update.xml. Публикуем этот манифест в master отдельным коммитом,
+          # чтобы проверка обновлений всегда сверяла файл с CI-артефактом.
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE "update.xml"
+          $manifestContent = [IO.File]::ReadAllText($manifestPath, [Text.UTF8Encoding]::new($false))
+          $encodedContent = [Convert]::ToBase64String([Text.UTF8Encoding]::new($false).GetBytes($manifestContent))
+          $remoteFile = gh api "repos/${{ github.repository }}/contents/update.xml?ref=master" | ConvertFrom-Json
+
+          if ($remoteFile.content) {
+            $remoteContent = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($remoteFile.content -replace "\s", "")))
+            if ($remoteContent -eq $manifestContent) {
+              Write-Host "update.xml уже содержит актуальную контрольную сумму."
+              exit 0
+            }
+          }
+
+          gh api --method PUT "repos/${{ github.repository }}/contents/update.xml" `
+            -f "message=Синхронизировать манифест обновления ${{ github.ref_name }}" `
+            -f "content=$encodedContent" `
+            -f "sha=$($remoteFile.sha)" `
+            -f "branch=master"
