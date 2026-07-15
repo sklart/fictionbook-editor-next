@@ -98,6 +98,8 @@ IDispatchPtr  CFBEView::CreateHelper()
 	CComObject<ExternalHelper> *obj;
 	if(FAILED(CComObject<ExternalHelper>::CreateInstance(&obj)))
 		obj = NULL;
+	else
+		obj->SetDocumentFilePathSource(m_document_filename, m_document_namevalid);
 	return obj;
 }
 

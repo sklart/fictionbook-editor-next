@@ -28,6 +28,56 @@ struct DescElement
 
 static CSimpleMap<CString, DescElement> g_desc_elements;
 
+static CString GetCurrentDocumentFilePath(const CString* filename, const bool* namevalid)
+{
+	if (filename == NULL || namevalid == NULL || !*namevalid || filename->IsEmpty())
+		return CString();
+
+	return U::GetFullPathName(*filename);
+}
+
+HRESULT ExternalHelper::GetDocumentFilePath(BSTR* path)
+{
+	if (path == NULL)
+		return E_POINTER;
+
+	*path = GetCurrentDocumentFilePath(m_document_filename, m_document_namevalid).AllocSysString();
+	return S_OK;
+}
+
+HRESULT ExternalHelper::GetDocumentFileName(BSTR* name)
+{
+	if (name == NULL)
+		return E_POINTER;
+
+	const CString path = GetCurrentDocumentFilePath(m_document_filename, m_document_namevalid);
+	const int separator = path.ReverseFind(L'\\');
+	const CString result = path.IsEmpty() ? CString() : (separator >= 0 ? path.Mid(separator + 1) : path);
+	*name = result.AllocSysString();
+	return S_OK;
+}
+
+HRESULT ExternalHelper::GetDocumentDirectory(BSTR* directory)
+{
+	if (directory == NULL)
+		return E_POINTER;
+
+	const CString path = GetCurrentDocumentFilePath(m_document_filename, m_document_namevalid);
+	if (path.IsEmpty())
+	{
+		*directory = ::SysAllocString(L"");
+		return S_OK;
+	}
+
+	const int separator = path.ReverseFind(L'\\');
+	CString result;
+	if (separator == 2 && path.GetLength() >= 3 && path[1] == L':')
+		result = path.Left(3);
+	else if (separator > 0)
+		result = path.Left(separator);
+	*directory = result.AllocSysString();
+	return S_OK;
+}
 struct Lang
 {
 	CString id;

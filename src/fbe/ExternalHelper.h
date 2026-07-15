@@ -20,7 +20,10 @@ class ExternalHelper :
   public CComObjectRoot,
   public IDispatchImpl<IExternalHelper, &IID_IExternalHelper>
 {
+  const CString* m_document_filename;
+  const bool* m_document_namevalid;
 public:
+  ExternalHelper() : m_document_filename(NULL), m_document_namevalid(NULL) {}
 
   DECLARE_NO_REGISTRY()
 
@@ -32,6 +35,15 @@ public:
   END_COM_MAP()
 
   // IExternalHelper
+  void SetDocumentFilePathSource(const CString* filename, const bool* namevalid)
+  {
+    m_document_filename = filename;
+    m_document_namevalid = namevalid;
+  }
+  STDMETHOD(GetDocumentFilePath)(BSTR* path);
+  STDMETHOD(GetDocumentFileName)(BSTR* name);
+  STDMETHOD(GetDocumentDirectory)(BSTR* directory);
+
   STDMETHOD(BeginUndoUnit)(IDispatch *obj,BSTR name) {
     MSHTML::IMarkupServices   *srv;
     HRESULT hr=obj->QueryInterface(&srv);

@@ -51,6 +51,7 @@ Doc::Doc(HWND hWndFrame) :
 		 m_body_cp(-1),
 	     m_encoding(_T("utf-8"))
 {
+  m_body.SetDocumentFilePathSource(&m_filename, &m_namevalid);
   m_active_docs.Add(this,this);
 }
 

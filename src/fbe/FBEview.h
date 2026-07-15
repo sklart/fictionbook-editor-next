@@ -186,6 +186,8 @@ protected:
   typedef CHTMLChangeSink<CFBEView,RANGE_SINK>	  RangeSink;
 
   HWND			    m_frame;
+  const CString		   *m_document_filename;
+  const bool			   *m_document_namevalid;
 
 public:
   CString m_file_name, m_file_path;
@@ -310,7 +312,7 @@ public:
 
   DECLARE_WND_SUPERCLASS(NULL, CAxWindow::GetWndClassName())
 
-  CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
+  CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
     m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
     m_form_changed(false), m_form_cp(false), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name(), m_elementsNum(0) { }
   ~CFBEView();
@@ -646,7 +648,12 @@ public:
   void	EditorChanged(int id);
 
   // external helper
-  static IDispatchPtr	CreateHelper();
+  void                SetDocumentFilePathSource(const CString* filename, const bool* namevalid)
+  {
+    m_document_filename = filename;
+    m_document_namevalid = namevalid;
+  }
+  IDispatchPtr         CreateHelper();
 
   // DWebBrowserEvents2
   void __stdcall  OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl);
