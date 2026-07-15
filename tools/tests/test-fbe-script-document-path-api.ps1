@@ -14,6 +14,16 @@ $viewSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cp
 $documentSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBDoc.cpp')
 $documentation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'docs\scripting-api.md')
 
+$documentedMembers = @(
+    'BeginUndoUnit', 'EndUndoUnit', 'inflateBlock', 'GenrePopup', 'GetStylePath',
+    'GetBinarySize', 'InflateParagraphs', 'GetUUID', 'MsgBox', 'AskYesNo',
+    'SaveBinary', 'GetExtendedStyle', 'DescShowElement', 'DescShowMenu',
+    'IsFastMode', 'SetStyleEx', 'GetImageDimsByPath', 'GetImageDimsByData',
+    'GetNBSP', 'GetViewWidth', 'GetViewHeight', 'GetProgramVersion', 'InputBox',
+    'GetModalResult', 'SetStatusBarText', 'GetDocumentFilePath',
+    'GetDocumentFileName', 'GetDocumentDirectory'
+)
+
 foreach ($contract in @(
     @{ Text = 'id\(26\).*GetDocumentFilePath'; Source = $idl; Name = 'COM-ID полного пути' },
     @{ Text = 'id\(27\).*GetDocumentFileName'; Source = $idl; Name = 'COM-ID имени файла' },
@@ -33,4 +43,10 @@ foreach ($contract in @(
     }
 }
 
-Write-Host 'Проверка API пути к открытому документу для скриптов прошла успешно.'
+foreach ($member in $documentedMembers) {
+    if ($documentation -notmatch ("(?m)^### .*" + [regex]::Escape($member))) {
+        throw "В документации не найден раздел API: $member."
+    }
+}
+
+Write-Host 'Проверка контракта и полноты документации API скриптов прошла успешно.'
