@@ -211,5 +211,14 @@ foreach ($requiredProject in @(
 Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
 Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+
+# Экспорт JSON очищает Lang, поэтому resource DLL создаются после него.
+foreach ($localizedResourceProject in @(
+    "src\locales\res_rus\res_rus.vcxproj",
+    "src\locales\res_ukr\res_ukr.vcxproj"
+)) {
+    Invoke-RequiredProjectRebuild -ProjectPath (Join-Path $repoRoot $localizedResourceProject)
+}
+
 Confirm-FbeLocalizedResourceLibraries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 Remove-ObsoleteRootLanguageDirectories -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
