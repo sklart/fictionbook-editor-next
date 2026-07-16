@@ -87,6 +87,36 @@ function Find-CyrillicStringLiterals {
             continue
         }
 
+        # Символьные литералы не являются строками интерфейса. Пропускаем их
+        # целиком, включая экранированные апострофы и двойные кавычки.
+        if ($ch -eq "'") {
+            $i++
+            $column++
+            $escaped = $false
+            while ($i -lt $length) {
+                $c = $text[$i]
+                if ($c -eq "`n") {
+                    $line++
+                    $column = 1
+                    $i++
+                    $escaped = $false
+                    continue
+                }
+                if ($escaped) {
+                    $escaped = $false
+                } elseif ($c -eq '\') {
+                    $escaped = $true
+                } elseif ($c -eq "'") {
+                    $i++
+                    $column++
+                    break
+                }
+                $i++
+                $column++
+            }
+            continue
+        }
+
         $literalStart = $i
         $literalLine = $line
         $literalColumn = $column
