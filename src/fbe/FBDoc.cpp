@@ -423,6 +423,37 @@ static void Indent(MSXML2::IXMLDOMNode *node, MSXML2::IXMLDOMDocument2 *xml, int
 		node->raw_appendChild(text, NULL);
 }
 
+// MSXML форматирует значение узла bin.base64 переводами строк. Для FB2 это
+// допустимо, но заметно раздувает книги с большим количеством иллюстраций.
+// После получения двоичных данных из редактора сохраняем тот же base64 как
+// обычный текст без разделяющих пробельных символов.
+static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
+{
+	MSXML2::IXMLDOMNodeListPtr binaries = document->selectNodes(
+		_bstr_t(L"/fb:FictionBook/fb:binary"));
+	if (binaries == NULL)
+		return;
+
+	const long count = binaries->length;
+	for (long index = 0; index < count; ++index)
+	{
+		MSXML2::IXMLDOMNodePtr binary = binaries->item[index];
+		if (binary == NULL)
+			continue;
+
+		binary->PutdataType(_bstr_t(L"bin.base64"));
+		_bstr_t encoded(binary->Gettext());
+		CString compact((const wchar_t*)encoded);
+		compact.Remove(L' ');
+		compact.Remove(L'\t');
+		compact.Remove(L'\r');
+		compact.Remove(L'\n');
+
+		binary->PutdataType(_bstr_t());
+		binary->Puttext(_bstr_t((const wchar_t*)compact));
+	}
+}
+
 // set an attribute on the element
 static void   SetAttr(MSXML2::IXMLDOMElement *xe,const wchar_t *name,
 		      const wchar_t *ns,const _bstr_t& val,
@@ -879,6 +910,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding) {
   // fetch binaries
   CheckError(body.Invoke1(L"GetBinaries",&args[2]));
 
+  CompactBinaryTextContent(ndoc);
+
   Indent(root,ndoc,0);
   return ndoc;
 }
@@ -1240,7 +1273,7 @@ BSTR Doc::PrepareDefaultId(const CString& filename){
     if ((c>=_T('0') && c<=_T('9')) ||
 	(c>=_T('A') && c<=_T('Z')) ||
 	(c>=_T('a') && c<=_T('z')) ||
-	c==_T('_') || c==_T('.'))
+	c==_T('_') || c==_T('-') || c==_T('.'))
       newid.AppendChar(c);
     ++cp;
   }

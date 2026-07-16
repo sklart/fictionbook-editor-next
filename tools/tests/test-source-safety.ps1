@@ -149,4 +149,16 @@ $colorButton = Read-SourceFile "src\fbe\extras\ColorButton.cpp"
 Assert-NotContains $colorButton "GetVersionEx" `
     "UI behavior must not depend on manifest-sensitive version detection"
 
+$spellerSource = Read-SourceFile "src\fbe\Speller.cpp"
+Assert-Contains $spellerSource "GetParagraphContainer" `
+    "проверка орфографии должна нормализовать inline-выделение до абзаца"
+Assert-Contains $spellerSource "GetNextParagraph(elem, m_fbw_body);" `
+    "проверка видимой области должна обходить соседние DOM-абзацы"
+Assert-NotContains $spellerSource "MSHTML::IHTMLElementCollectionPtr paras" `
+    "проверка видимой области не должна собирать все абзацы длинного документа"
+Assert-NotContains $mainFrame "IsHTMLChanged()" `
+    "обработчик изменения не должен пересчитывать все HTML-элементы документа"
+Assert-NotContains $viewHeader "bool IsHTMLChanged()" `
+    "редактор не должен хранить глобальный счётчик HTML-элементов для орфографии"
+
 Write-Host "Проверки безопасной работы с исходниками прошли успешно."

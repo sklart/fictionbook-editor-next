@@ -2948,9 +2948,6 @@ void  CFBEView::Init() {
       ii->value=L"FB Tools";
   }
 
-  // added by SeNS
-  m_elementsNum = Document()->all->length;
-
   // turn off browser's d&d
   HRESULT hr = m_browser->put_RegisterAsDropTarget(VARIANT_FALSE);
 //  m_browser->RegisterAsDropTarget = VARIANT_TRUE;
@@ -4185,7 +4182,7 @@ BSTR CFBEView::PrepareDefaultId(const CString& filename){
 		if ((c>=_T('0') && c<=_T('9')) ||
 			(c>=_T('A') && c<=_T('Z')) ||
 			(c>=_T('a') && c<=_T('z')) ||
-			c==_T('_') || c==_T('.'))
+			c==_T('_') || c==_T('-') || c==_T('.'))
 			ncp[newlen++]=c;
 		++cp;
 	}

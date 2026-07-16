@@ -314,7 +314,7 @@ public:
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
     m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-    m_form_changed(false), m_form_cp(false), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name(), m_elementsNum(0) { }
+    m_form_changed(false), m_form_cp(false), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);
@@ -691,17 +691,6 @@ public:
   _bstr_t   Selection();
   bool CloseFindDialog(CFindDlgBase* dlg);
   bool CloseFindDialog(CReplaceDlgBase* dlg); 
-
-  // added by SeNS
-  long m_elementsNum;
-  bool IsHTMLChanged()
-  {
-	  long newElementsNum = Document()->all->length;
-	  bool b = (newElementsNum != m_elementsNum);
-	  if (b) m_startMatch = m_endMatch = 0;
-	  m_elementsNum = newElementsNum;
-	  return b;
-  }
 
 private:
 	bool ExpandTxtRangeToParagraphs(MSHTML::IHTMLTxtRangePtr &rng, MSHTML::IHTMLElementPtr& begin, MSHTML::IHTMLElementPtr& end)const;

@@ -204,7 +204,7 @@ public:
 	}
 
 	void CheckScroll();
-	void CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID, bool HTMLChanged);
+	void CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID);
 	void CheckCurrentPage();
 	// main function
 	SPELL_RESULT SpellCheck(CString word);

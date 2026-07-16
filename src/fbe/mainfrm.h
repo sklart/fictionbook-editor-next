@@ -919,7 +919,7 @@ public:
 	// added by SeNS: do spellcheck
 	if (m_Speller && m_current_view == BODY)
 		if (m_Speller->Enabled() && _Settings.GetHighlightMisspells())
-			m_Speller->CheckElement(m_doc->m_body.SelectionContainer(), -1, m_doc->m_body.IsHTMLChanged());
+			m_Speller->CheckElement(m_doc->m_body.SelectionContainer(), -1);
 
 	return 0;
   }

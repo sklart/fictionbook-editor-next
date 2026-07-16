@@ -678,12 +678,64 @@ void CSpeller::ClearMarks (int elemID)
 }
 
 //
-// Spellcheck selected element
+// Возвращает абзац, содержащий заданный элемент. Выделение MSHTML может
+// находиться внутри EM, A или другого inline-элемента, но подчёркивания
+// должны быть связаны с устойчивым контейнером P.
 //
-void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID, bool HTMLChanged)
+static MSHTML::IHTMLElementPtr GetParagraphContainer(MSHTML::IHTMLElementPtr element)
+{
+	while (element)
+	{
+		if (U::scmp(element->tagName, L"P") == 0)
+			return element;
+		element = element->parentElement;
+	}
+	return MSHTML::IHTMLElementPtr();
+}
+
+//
+// Ищет следующий абзац через DOM-соседей, не строя коллекцию всех P
+// документа. Это сохраняет локальность правки в конце длинного раздела.
+//
+static MSHTML::IHTMLElementPtr GetNextParagraph(
+	MSHTML::IHTMLElementPtr element,
+	MSHTML::IHTMLElementPtr documentBody)
+{
+	MSHTML::IHTMLDOMNodePtr node(element);
+	MSHTML::IHTMLDOMNodePtr body(documentBody);
+
+	while (node && node != body)
+	{
+		if (node->nextSibling)
+			node = node->nextSibling;
+		else
+		{
+			node = node->parentNode;
+			while (node && node != body && !node->nextSibling)
+				node = node->parentNode;
+			if (!node || node == body)
+				break;
+			node = node->nextSibling;
+		}
+
+		MSHTML::IHTMLElementPtr candidate(node);
+		if (candidate && U::scmp(candidate->tagName, L"P") == 0)
+			return candidate;
+	}
+
+	return MSHTML::IHTMLElementPtr();
+}
+
+//
+// Проверяет абзац, содержащий выделение.
+//
+void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 {
 	CWords words;
-	// skip whole document checking
+	elem = GetParagraphContainer(elem);
+	if (!elem)
+		return;
+
 	CString html = elem->innerHTML;
 	if (html.Find(L"<DIV") >= 0) return;
 
@@ -693,10 +745,9 @@ void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID, bool HTML
 	{
 		if (uniqID < 0)	uniqID = MSHTML::IHTMLUniqueNamePtr(elem)->uniqueNumber;
 
-		if (HTMLChanged)
-			ClearAllMarks();
-		else 
-			ClearMarks(uniqID);
+		// Добавление inline-тега меняет только этот абзац. Очистка всех
+		// подчёркиваний делала локальную правку пропорциональной размеру документа.
+		ClearMarks(uniqID);
 
 		// tokenize and spellcheck
 		splitter->Split(&innerText, &words);
@@ -706,9 +757,6 @@ void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID, bool HTML
 				MarkElement (elem, uniqID, words.GetValueAt(i), words.GetKeyAt(i));
 		}
 	}
-	// spell check previous element
-	if (HTMLChanged)
-		HighlightMisspells();
 }
 
 // 
@@ -737,74 +785,56 @@ void CSpeller::HighlightMisspells()
 void CSpeller::CheckCurrentPage()
 {
 	CWords words;
-	CString tagName;
 	std::pair< std::set<long>::iterator, bool > pr;
-	int currNum, numChanges = 0, nStartElem, nEndElem;
+	int currNum, numChanges = 0;
 	MSHTML::IHTMLElementPtr elem, endElem;
 
 	// lookup first element on page
 	for (int y=10; y<m_scrollElement->clientHeight; y+=10)
 	{
-		elem = m_doc2->elementFromPoint(63, y);
-		tagName.SetString(elem->tagName);
-		if (tagName.CompareNoCase(L"P")==0) break;
+		elem = GetParagraphContainer(m_doc2->elementFromPoint(63, y));
+		if (elem) break;
 	}
 	// lookup last element on page
 	for (int y=m_scrollElement->clientHeight; y>10; y-=10)
 	{
-		endElem = m_doc2->elementFromPoint(63, y);
-		tagName.SetString(endElem->tagName);
-		if (tagName.CompareNoCase(L"P")==0) break;
+		endElem = GetParagraphContainer(m_doc2->elementFromPoint(63, y));
+		if (endElem) break;
 	}
 
-	// get all document paragraphs
-	MSHTML::IHTMLElementPtr fbw_body = m_doc3->getElementById(L"fbw_body");
-	MSHTML::IHTMLElementCollectionPtr paras = MSHTML::IHTMLElement2Ptr(fbw_body)->getElementsByTagName(L"P");
+	if (!elem)
+		return;
 
-	nStartElem = nEndElem = -1;
-	for (int i=0; i<paras->length; i++)
+	// Проверяем только видимые абзацы. Если нижняя граница не определена,
+	// берём небольшое число следующих абзацев. Обход начинается с видимого P,
+	// поэтому его стоимость не зависит от длины раздела.
+	for (int checked = 0; elem && checked < 20; ++checked)
 	{
-		if ((nStartElem == -1) && paras->item(i) == elem) nStartElem = i;
-		else if (paras->item(i) == endElem) 
-		{
-			nEndElem = i;
-			break;
-		}
-	}
-
-	if (nStartElem == -1) nStartElem = 0;
-
-	if (nEndElem == -1) nEndElem = nStartElem+20;
-	else if (nEndElem+1 < paras->length) nEndElem++;
-
-	for (int i=nStartElem; i<nEndElem; i++)
-	{
-		elem = paras->item(i);
-		// get element unique number
-		if (elem)
-		{
-			currNum = MSHTML::IHTMLUniqueNamePtr(elem)->uniqueNumber;
+		currNum = MSHTML::IHTMLUniqueNamePtr(elem)->uniqueNumber;
 		
-			// Getting uniqueNumber from IHTMLUniqueName interface changes
-			// the internal HTML document version. We need to correct this
-			// issue, because document not really changed
-			pr = m_uniqIDs.insert(currNum);
-			if (pr.second) numChanges++;
+		// Getting uniqueNumber from IHTMLUniqueName interface changes
+		// the internal HTML document version. We need to correct this
+		// issue, because document not really changed
+		pr = m_uniqIDs.insert(currNum);
+		if (pr.second) numChanges++;
 
-			CString innerText = elem->innerText;
-			if(!innerText.IsEmpty())
+		CString innerText = elem->innerText;
+		if(!innerText.IsEmpty())
+		{
+			// remove underline
+			ClearMarks(currNum);
+			splitter->Split(&innerText, &words);
+			for (int i=0; i<words.GetSize(); i++)
 			{
-				// remove underline
-				ClearMarks(currNum);
-				splitter->Split(&innerText, &words);
-				for (int i=0; i<words.GetSize(); i++)
-				{
-					CString wrd = words.GetValueAt(i);
-					if (SpellCheck(wrd) == SPELL_MISSPELL)
-						MarkElement(elem, currNum, wrd, words.GetKeyAt(i));
-				}
+				CString wrd = words.GetValueAt(i);
+				if (SpellCheck(wrd) == SPELL_MISSPELL)
+					MarkElement(elem, currNum, wrd, words.GetKeyAt(i));
 			}
 		}
+
+		if (elem == endElem)
+			break;
+		elem = GetNextParagraph(elem, m_fbw_body);
 	}
 	
 	if (numChanges) AdvanceVersionNumber(numChanges);
