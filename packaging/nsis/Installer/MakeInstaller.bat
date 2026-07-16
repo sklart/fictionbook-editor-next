@@ -1,5 +1,6 @@
 @ECHO OFF
 SETLOCAL
+CHCP 65001 >NUL
 
 SET "SCRIPT_DIR=%~dp0"
 FOR %%I IN ("%SCRIPT_DIR%..\..\..") DO SET "REPO_ROOT=%%~fI"
@@ -21,7 +22,11 @@ IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
 SET "MAKENSIS=%ProgramFiles(x86)%\NSIS\Unicode\makensis.exe"
-IF NOT EXIST "%MAKENSIS%" SET "MAKENSIS=%ProgramFiles(x86)%\NSIS\makensis.exe"
+IF NOT EXIST "%MAKENSIS%" (
+  ECHO ОШИБКА: не найден Unicode-вариант NSIS: "%MAKENSIS%"
+  ECHO Установите NSIS Unicode. Обычный makensis.exe не подходит: он искажает UTF-8 строки установщика.
+  EXIT /B 1
+)
 SET "INPUTDIR=%REPO_ROOT%\out\package\FictionBookEditor"
 SET "ARTIFACTSDIR=%REPO_ROOT%\out\artifacts"
 SET "VERSION_NSH=%INSTALLER_DIR%\version.nsh"

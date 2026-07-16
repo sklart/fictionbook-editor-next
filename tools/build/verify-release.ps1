@@ -82,6 +82,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-epub-xhtml11.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-plugin-mojibake.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-static-runtime.ps1")
+& (Join-Path $repoRoot "tools\tests\test-plugin-per-user-registration.ps1")
 & (Join-Path $repoRoot "tools\localization\analyze-product-hardcoded-cyrillic.ps1") -FailOnFindings
 & (Join-Path $repoRoot "tools\tests\test-product-hardcoded-cyrillic-audit.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-notes-format.ps1")
@@ -116,6 +117,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-language-pack-plan.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-installer-language-fallbacks.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-installer-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-nsis-components-page-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 if ($CompatibilityTarget -eq "Win7") {
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") -Configuration $Configuration

@@ -60,23 +60,29 @@ static HRESULT RegisterDOCXPluginManually()
 	if (len == 0 || len >= _countof(modulePath))
 		return HRESULT_FROM_WIN32(::GetLastError() ? ::GetLastError() : ERROR_INSUFFICIENT_BUFFER);
 
+	// Установщик FBE Next работает без повышения прав. COM-класс сохраняем
+	// явно в пользовательском разделе Classes, чтобы не требовалась запись в HKLM.
+	const wchar_t* clsidKey = L"Software\\Classes\\CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}";
+	const wchar_t* inprocKey = L"Software\\Classes\\CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}\\InprocServer32";
+	const wchar_t* iconKey = L"Software\\Classes\\CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}\\DefaultIcon";
+
 	// COM class registration.
-	HRESULT hr = SetRegString(HKEY_CLASSES_ROOT,
-		L"CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}",
+	HRESULT hr = SetRegString(HKEY_CURRENT_USER,
+		clsidKey,
 		NULL,
 		L"ExportDOCXPlugin Class");
 	if (FAILED(hr))
 		return hr;
 
-	hr = SetRegString(HKEY_CLASSES_ROOT,
-		L"CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}\\InprocServer32",
+	hr = SetRegString(HKEY_CURRENT_USER,
+		inprocKey,
 		NULL,
 		modulePath);
 	if (FAILED(hr))
 		return hr;
 
-	hr = SetRegString(HKEY_CLASSES_ROOT,
-		L"CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}\\InprocServer32",
+	hr = SetRegString(HKEY_CURRENT_USER,
+		inprocKey,
 		L"ThreadingModel",
 		L"Apartment");
 	if (FAILED(hr))
@@ -84,8 +90,8 @@ static HRESULT RegisterDOCXPluginManually()
 
 	CStringW defaultIcon;
 	defaultIcon.Format(L"%s,%d", modulePath, IDI_MAINICON);
-	hr = SetRegString(HKEY_CLASSES_ROOT,
-		L"CLSID\\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}\\DefaultIcon",
+	hr = SetRegString(HKEY_CURRENT_USER,
+		iconKey,
 		NULL,
 		defaultIcon);
 	if (FAILED(hr))
@@ -122,9 +128,9 @@ static HRESULT RegisterDOCXPluginManually()
 
 static HRESULT UnregisterDOCXPluginManually()
 {
-	CRegKey hkcr;
-	if (hkcr.Open(HKEY_CLASSES_ROOT, L"CLSID") == ERROR_SUCCESS)
-		hkcr.RecurseDeleteKey(L"{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}");
+	CRegKey classes;
+	if (classes.Open(HKEY_CURRENT_USER, L"Software\\Classes\\CLSID") == ERROR_SUCCESS)
+		classes.RecurseDeleteKey(L"{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}");
 
 	CRegKey plugins;
 	if (plugins.Open(HKEY_CURRENT_USER, L"Software\\FBETeam\\FictionBook Editor Next\\Plugins") == ERROR_SUCCESS)

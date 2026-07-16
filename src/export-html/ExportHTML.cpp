@@ -31,6 +31,10 @@ STDAPI DllGetClassObject(_In_ REFCLSID rclsid, _In_ REFIID riid, _Outptr_ LPVOID
 
 STDAPI DllRegisterServer(void)
 {
+	// Установщик FBE Next работает без повышения прав. COM-класс плагина
+	// поэтому должен регистрироваться в HKCU\Software\Classes, а не в HKLM.
+	ATL::AtlSetPerUserRegistration(true);
+
 	// FBE plugins only need COM class and .rgs registration.
 	// Do not register the generated type library here: on clean systems this can
 	// fail because imported/dependent type libraries are not present yet, while
@@ -44,6 +48,7 @@ STDAPI DllRegisterServer(void)
 
 STDAPI DllUnregisterServer(void)
 {
+	ATL::AtlSetPerUserRegistration(true);
 	HRESULT hr = _AtlModule.DllUnregisterServer(FALSE);
 	return hr;
 }
