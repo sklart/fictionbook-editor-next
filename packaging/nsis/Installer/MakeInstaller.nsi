@@ -67,9 +67,10 @@ RequestExecutionLevel user
 LicenseForceSelection radiobuttons
 
 ; Components page
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW ComponentsPageShow
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE ComponentsPageLeave
-; Оставляем описание компонентов, но используем компактную MUI-разметку:
-; у дерева компонентов больше ширины, а сами описания держим короткими.
+; Компактная разметка оставляет больше ширины для дерева компонентов.
+; Высота поля описания увеличивается в ComponentsPageShow.
 !define MUI_COMPONENTSPAGE_SMALLDESC
 !insertmacro MUI_PAGE_COMPONENTS
 
@@ -712,6 +713,18 @@ Function ComponentsPageLeave
   Quit
 FunctionEnd
 
+Function ComponentsPageShow
+  ; Стандартный modern_smalldesc оставляет описанию лишь две строки. Увеличиваем
+  ; поле вниз на 16 пикселей: место есть до нижнего разделителя, а длинные
+  ; локализованные пояснения теперь читаются без обрезания.
+  GetDlgItem $0 $HWNDPARENT 1043
+  System::Call 'user32::GetWindowRect(p r0, *i .r1, *i .r2, *i .r3, *i .r4)'
+  IntOp $3 $3 - $1
+  IntOp $4 $4 - $2
+  IntOp $4 $4 + 16
+  System::Call 'user32::SetWindowPos(p r0, p 0, i 0, i 0, i r3, i r4, i 0x0006)'
+FunctionEnd
+
 Function CreateStartMenuShortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP"
@@ -797,7 +810,7 @@ Function VerifyPluginRegistration
   ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{C3098839-EF69-4DE5-B27D-1E80051CA843}" "Type"
   ${If} $0 != "Export"
     DetailPrint "ExportHTML plugin registration was not found after RegDll."
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportHTML не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportHTML не зарегистрировался. Установка продолжена, но экспорт в HTML будет недоступен. Проверьте журнал установки и повторите установку."
   ${EndIf}
 
 verify_export_docx:
@@ -810,7 +823,7 @@ verify_export_docx:
   ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "Type"
   ${If} $0 != "Export"
     DetailPrint "ExportDOCX plugin registration was not found after RegDll."
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportDOCX не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportDOCX не зарегистрировался. Установка продолжена, но экспорт в DOCX будет недоступен. Проверьте журнал установки и повторите установку."
   ${EndIf}
 
 verify_export_epub:
@@ -823,7 +836,7 @@ verify_export_epub:
   ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "Type"
   ${If} $0 != "Export"
     DetailPrint "ExportEPUB plugin registration was not found after RegDll."
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportEPUB не зарегистрировался. На чистой Windows 7 это обычно означает отсутствие системных runtime-зависимостей VC++/UCRT или ошибку загрузки DLL. Проверьте установленные компоненты Visual C++ Redistributable и повторите установку."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportEPUB не зарегистрировался. Установка продолжена, но экспорт в EPUB будет недоступен. Проверьте журнал установки и повторите установку."
   ${EndIf}
 FunctionEnd
 

@@ -347,53 +347,53 @@
       }
     },
     "nsis.DESC_Main": {
-      "source": "FBE main executable file, dlls and service files.",
+      "source": "FBE application files and libraries.",
       "component": "installer.nsi",
       "nsisName": "DESC_Main",
       "translations": {
-        "en-US": "FBE main executable file, dlls and service files.",
-        "ru-RU": "Исполняемый файл FBE, библиотеки и служебные файлы.",
-        "uk-UA": "Виконуваний файл FBE, бібліотеки та службові файли."
+        "en-US": "FBE application files and libraries.",
+        "ru-RU": "Файлы FBE, библиотеки и служебные данные.",
+        "uk-UA": "Файли FBE, бібліотеки та службові дані."
       }
     },
     "nsis.DESC_System_Integration": {
-      "source": "Optional .fb2 integration with Windows. You can select only the features you need.",
+      "source": "Optional .fb2 integration with Windows.",
       "component": "installer.nsi",
       "nsisName": "DESC_System_Integration",
       "translations": {
-        "en-US": "Optional .fb2 integration with Windows. You can select only the features you need.",
-        "ru-RU": "Необязательная интеграция .fb2 с Windows. Выбирайте только нужные пункты.",
-        "uk-UA": "Необов'язкові пункти інтеграції .fb2 з Windows. Можна вибрати лише потрібні можливості."
+        "en-US": "Optional .fb2 integration with Windows.",
+        "ru-RU": "Необязательная интеграция .fb2 с Windows.",
+        "uk-UA": "Необов'язкова інтеграція .fb2 з Windows."
       }
     },
     "nsis.DESC_FB2_File_Association": {
-      "source": "Makes FictionBook Editor Next the application for .fb2 files and changes the .fb2 icon to the editor icon. Leave unchecked to keep your current reader and icon.",
+      "source": "Opens .fb2 files in FBE Next and changes their icon.",
       "component": "installer.nsi",
       "nsisName": "DESC_FB2_File_Association",
       "translations": {
-        "en-US": "Makes FictionBook Editor Next the application for .fb2 files and changes the .fb2 icon to the editor icon. Leave unchecked to keep your current reader and icon.",
-        "ru-RU": "Открывает .fb2 через FBE Next и меняет иконку файла. Не выбирайте, если хотите оставить текущую читалку.",
-        "uk-UA": "Призначає FictionBook Editor Next програмою для .fb2 і змінює іконку .fb2 на іконку редактора. Не вибирайте цей пункт, якщо хочете зберегти поточну читалку та звичну іконку."
+        "en-US": "Opens .fb2 files in FBE Next and changes their icon.",
+        "ru-RU": "Открывает .fb2 в FBE Next и меняет его значок.",
+        "uk-UA": "Відкриває .fb2 у FBE Next і змінює його значок."
       }
     },
     "nsis.DESC_FB2_Validate_Command": {
-      "source": "Adds a context-menu command to validate .fb2 files with FBV without changing the default .fb2 application.",
+      "source": "Adds a context-menu command to check .fb2 files with FBV.",
       "component": "installer.nsi",
       "nsisName": "DESC_FB2_Validate_Command",
       "translations": {
-        "en-US": "Adds a context-menu command to validate .fb2 files with FBV without changing the default .fb2 application.",
-        "ru-RU": "Добавляет команду проверки .fb2 через FBV без смены приложения по умолчанию.",
-        "uk-UA": "Додає до контекстного меню .fb2 команду перевірки книги через FBV, не змінюючи програму за замовчуванням для .fb2."
+        "en-US": "Adds a context-menu command to check .fb2 files with FBV.",
+        "ru-RU": "Добавляет команду проверки .fb2 через FBV.",
+        "uk-UA": "Додає команду перевірки .fb2 через FBV."
       }
     },
     "nsis.DESC_FB2_Explorer_Properties": {
-      "source": "Registers .fb2 metadata, details pane fields and cover thumbnails in Windows Explorer. Requires administrator privileges.",
+      "source": "Adds .fb2 properties and cover thumbnails in Explorer. Requires administrator rights.",
       "component": "installer.nsi",
       "nsisName": "DESC_FB2_Explorer_Properties",
       "translations": {
-        "en-US": "Registers .fb2 metadata, details pane fields and cover thumbnails in Windows Explorer. Requires administrator privileges.",
-        "ru-RU": "Добавляет свойства, панель сведений и миниатюры .fb2 в Проводник. Нужны права администратора.",
-        "uk-UA": "Реєструє властивості, праву панель відомостей і мініатюри обкладинок .fb2 у Провіднику Windows. Потребує прав адміністратора."
+        "en-US": "Adds .fb2 properties and cover thumbnails in Explorer. Requires administrator rights.",
+        "ru-RU": "Свойства и миниатюры .fb2 в Проводнике. Нужны права администратора.",
+        "uk-UA": "Властивості й мініатюри .fb2 у Провіднику. Потрібні права адміністратора."
       }
     },
     "nsis.DESC_ShCutGroup": {
@@ -427,103 +427,103 @@
       }
     },
     "nsis.DESC_PluginsGroup": {
-      "source": "Additional plugins that extends functionality.",
+      "source": "Optional plugins that extend FBE.",
       "component": "installer.nsi",
       "nsisName": "DESC_PluginsGroup",
       "translations": {
-        "en-US": "Additional plugins that extends functionality.",
-        "ru-RU": "Плагины, расширяющие функционал программы.",
-        "uk-UA": "Модулі, що розширюють функціональність програми."
+        "en-US": "Optional plugins that extend FBE.",
+        "ru-RU": "Дополнительные плагины для FBE.",
+        "uk-UA": "Додаткові плагіни для FBE."
       }
     },
     "nsis.DESC_ImportPluginsGroup": {
-      "source": "Plugins that add import from external book formats into FictionBook Editor.",
+      "source": "Plugins for importing external book formats.",
       "component": "installer.nsi",
       "nsisName": "DESC_ImportPluginsGroup",
       "translations": {
-        "en-US": "Plugins that add import from external book formats into FictionBook Editor.",
-        "ru-RU": "Плагины импорта книг из внешних форматов.",
-        "uk-UA": "Плагіни, що додають імпорт книг із зовнішніх форматів у FictionBook Editor."
+        "en-US": "Plugins for importing external book formats.",
+        "ru-RU": "Импорт книг из внешних форматов.",
+        "uk-UA": "Імпорт книг із зовнішніх форматів."
       }
     },
     "nsis.DESC_ExportPluginsGroup": {
-      "source": "Plugins that add export from FictionBook Editor to external book and document formats.",
+      "source": "Plugins for exporting books and documents.",
       "component": "installer.nsi",
       "nsisName": "DESC_ExportPluginsGroup",
       "translations": {
-        "en-US": "Plugins that add export from FictionBook Editor to external book and document formats.",
-        "ru-RU": "Плагины экспорта во внешние книжные и документные форматы.",
-        "uk-UA": "Плагіни, що додають експорт із FictionBook Editor у зовнішні книжкові та документні формати."
+        "en-US": "Plugins for exporting books and documents.",
+        "ru-RU": "Экспорт во внешние книжные и документные форматы.",
+        "uk-UA": "Експорт у зовнішні книжкові та документні формати."
       }
     },
     "nsis.DESC_Plugin_ImportEPUB": {
-      "source": "Imports EPUB books into FictionBook Editor for editing and conversion to FB2.",
+      "source": "Imports EPUB books into FBE.",
       "component": "installer.nsi",
       "nsisName": "DESC_Plugin_ImportEPUB",
       "translations": {
-        "en-US": "Imports EPUB books into FictionBook Editor for editing and conversion to FB2.",
-        "ru-RU": "Импортирует EPUB-книги в FBE для редактирования и конвертации в FB2.",
-        "uk-UA": "Імпортує EPUB-книги у FictionBook Editor для редагування та конвертації у FB2."
+        "en-US": "Imports EPUB books into FBE.",
+        "ru-RU": "Импортирует EPUB-книги в FBE.",
+        "uk-UA": "Імпортує EPUB-книги у FBE."
       }
     },
     "nsis.DESC_Plugin_ImportEPUB_SVG": {
-      "source": "Optional ImportEPUBLunaSVG.dll helper for converting EPUB SVG covers to PNG/JPEG during import.",
+      "source": "Converts SVG EPUB covers to PNG/JPEG.",
       "component": "installer.nsi",
       "nsisName": "DESC_Plugin_ImportEPUB_SVG",
       "translations": {
-        "en-US": "Optional ImportEPUBLunaSVG.dll helper for converting EPUB SVG covers to PNG/JPEG during import.",
-        "ru-RU": "Библиотека для преобразования SVG-обложек EPUB в PNG/JPEG при импорте.",
-        "uk-UA": "Додаткова бібліотека ImportEPUBLunaSVG.dll для перетворення SVG-обкладинок EPUB у PNG/JPEG під час імпорту."
+        "en-US": "Converts SVG EPUB covers to PNG/JPEG.",
+        "ru-RU": "Преобразует SVG-обложки EPUB в PNG/JPEG.",
+        "uk-UA": "Перетворює SVG-обкладинки EPUB у PNG/JPEG."
       }
     },
     "nsis.DESC_Plugin_ExportHTML": {
-      "source": "Exports the current book to HTML for viewing in a browser or further processing.",
+      "source": "Exports the current book to HTML.",
       "component": "installer.nsi",
       "nsisName": "DESC_Plugin_ExportHTML",
       "translations": {
-        "en-US": "Exports the current book to HTML for viewing in a browser or further processing.",
-        "ru-RU": "Экспортирует текущую книгу в HTML для просмотра в браузере или дальнейшей обработки.",
-        "uk-UA": "Експортує поточну книгу в HTML для перегляду в браузері або подальшої обробки."
+        "en-US": "Exports the current book to HTML.",
+        "ru-RU": "Экспортирует текущую книгу в HTML.",
+        "uk-UA": "Експортує поточну книгу в HTML."
       }
     },
     "nsis.DESC_Plugin_ExportDOCX": {
-      "source": "Exports the current book to DOCX for Microsoft Word and compatible word processors.",
+      "source": "Exports the current book to DOCX.",
       "component": "installer.nsi",
       "nsisName": "DESC_Plugin_ExportDOCX",
       "translations": {
-        "en-US": "Exports the current book to DOCX for Microsoft Word and compatible word processors.",
-        "ru-RU": "Экспортирует текущую книгу в DOCX для Microsoft Word и совместимых текстовых редакторов.",
-        "uk-UA": "Експортує поточну книгу в DOCX для Microsoft Word і сумісних текстових редакторів."
+        "en-US": "Exports the current book to DOCX.",
+        "ru-RU": "Экспортирует текущую книгу в DOCX.",
+        "uk-UA": "Експортує поточну книгу в DOCX."
       }
     },
     "nsis.DESC_Plugin_ExportEPUB": {
-      "source": "Exports the current book to EPUB for e-readers, libraries and EPUB-compatible applications.",
+      "source": "Exports the current book to EPUB.",
       "component": "installer.nsi",
       "nsisName": "DESC_Plugin_ExportEPUB",
       "translations": {
-        "en-US": "Exports the current book to EPUB for e-readers, libraries and EPUB-compatible applications.",
-        "ru-RU": "Экспортирует текущую книгу в EPUB для электронных книг, библиотек и EPUB-совместимых приложений.",
-        "uk-UA": "Експортує поточну книгу в EPUB для електронних книг, бібліотек та EPUB-сумісних застосунків."
+        "en-US": "Exports the current book to EPUB.",
+        "ru-RU": "Экспортирует текущую книгу в EPUB.",
+        "uk-UA": "Експортує поточну книгу в EPUB."
       }
     },
     "nsis.DESC_Plugin_BatchConverters": {
-      "source": "Installs command-line batch conversion utilities for DOCX/EPUB together with their DLL dependencies.",
+      "source": "Installs DOCX/EPUB batch-conversion utilities.",
       "component": "installer.nsi",
       "nsisName": "DESC_Plugin_BatchConverters",
       "translations": {
-        "en-US": "Installs command-line batch conversion utilities for DOCX/EPUB together with their DLL dependencies.",
-        "ru-RU": "Консольные утилиты массовой конвертации DOCX/EPUB и нужные DLL.",
-        "uk-UA": "Встановлює консольні утиліти пакетної конвертації DOCX/EPUB разом із потрібними DLL-залежностями."
+        "en-US": "Installs DOCX/EPUB batch-conversion utilities.",
+        "ru-RU": "Утилиты массовой конвертации DOCX/EPUB.",
+        "uk-UA": "Утиліти пакетної конвертації DOCX/EPUB."
       }
     },
     "nsis.DESC_Scripts": {
-      "source": "Jurgennt's (http://jurgennt.nm.ru/) pack of useful scripts.",
+      "source": "Useful community scripts.",
       "component": "installer.nsi",
       "nsisName": "DESC_Scripts",
       "translations": {
-        "en-US": "Jurgennt's (http://jurgennt.nm.ru/) pack of useful scripts.",
-        "ru-RU": "Сборка полезных скриптов от Jurgennt (http://jurgennt.nm.ru/).",
-        "uk-UA": "Збірка дуже корисних скриптів від Jurgennt та Sclex."
+        "en-US": "Useful community scripts.",
+        "ru-RU": "Сборка полезных скриптов от сообщества.",
+        "uk-UA": "Збірка корисних скриптів спільноти."
       }
     },
     "nsis.DESC_Dictionaries": {
@@ -537,23 +537,23 @@
       }
     },
     "nsis.DESC_LanguagePacksGroup": {
-      "source": "Choose interface-language resources. English is required; Russian and Ukrainian are selected by default.",
+      "source": "Interface language resources. English is required; Russian and Ukrainian are selected.",
       "component": "installer.nsi",
       "nsisName": "DESC_LanguagePacksGroup",
       "translations": {
-        "en-US": "Choose interface-language resources. English is required; Russian and Ukrainian are selected by default.",
-        "ru-RU": "Выберите ресурсы языка интерфейса. Английский обязателен; русский и украинский выбраны по умолчанию.",
-        "uk-UA": "Виберіть ресурси мов інтерфейсу. Англійська обов'язкова; російська та українська вибрані за замовчуванням."
+        "en-US": "Interface language resources. English is required; Russian and Ukrainian are selected.",
+        "ru-RU": "Ресурсы языка интерфейса. Английский обязателен; русский и украинский выбраны.",
+        "uk-UA": "Ресурси мов інтерфейсу. Англійська обов'язкова; російська та українська вибрані."
       }
     },
     "nsis.DESC_LanguagePack": {
-      "source": "Installs runtime translations and the localized Validate command for this interface language. Spell-check dictionaries are selected separately.",
+      "source": "Installs interface translations and the localized Validate command. Dictionaries are separate.",
       "component": "installer.nsi",
       "nsisName": "DESC_LanguagePack",
       "translations": {
-        "en-US": "Installs runtime translations and the localized Validate command for this interface language. Spell-check dictionaries are selected separately.",
-        "ru-RU": "Устанавливает runtime-переводы и локализованную команду Validate для этого языка интерфейса. Словари орфографии выбираются отдельно.",
-        "uk-UA": "Установлює runtime-переклади й локалізовану команду Validate для цієї мови інтерфейсу. Словники правопису вибираються окремо."
+        "en-US": "Installs interface translations and the localized Validate command. Dictionaries are separate.",
+        "ru-RU": "Переводы интерфейса и локализованная команда Validate. Словари выбираются отдельно.",
+        "uk-UA": "Переклади інтерфейсу й локалізована команда Validate. Словники вибираються окремо."
       }
     },
     "nsis.ErrCheckMSXMLVersion": {
