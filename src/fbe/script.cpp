@@ -5,6 +5,7 @@
 #include <mlang.h>
 
 #include "mainfrm.h"
+#include "ScriptDiagnostics.h"
 
 
 #define	MAXARGS	32
@@ -456,11 +457,11 @@ public:
 
 			if (ei.bstrDescription)
 			{
-				U::MessageBox(MB_ICONERROR|MB_OK, IDS_SCRIPT_MSG_CPT, IDS_SCRIPT_ERRD_MSG, ei.bstrDescription, line+1, column+1);			
+				FbeScriptDiagnostics::Show(m_frame->m_hWnd, ei, line, column);
 			}
 			else
 			{
-				U::MessageBox(MB_ICONERROR|MB_OK, IDS_SCRIPT_MSG_CPT, IDS_SCRIPT_ERRX_MSG, ei.scode, line+1, column+1);			
+				FbeScriptDiagnostics::Show(m_frame->m_hWnd, ei, line, column);
 			}				
 			SysFreeString(ei.bstrSource);
 			SysFreeString(ei.bstrDescription);
@@ -630,8 +631,8 @@ HRESULT	ScriptLoad(const wchar_t *filename) {
     DWORD   code = GetLastError();
     wchar_t em[256];
     FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,0,code,0,em,sizeof(em)/sizeof(em[0]),0);
-	U::MessageBox(MB_ICONERROR|MB_OK, IDS_SCRIPT_MSG_CPT, IDS_SCRIPT_LOAD_ERR_MSG, filename, em);
-    return HRESULT_FROM_WIN32(GetLastError());
+	FbeScriptDiagnostics::ShowLoad(GetActiveWindow(), filename, em, HRESULT_FROM_WIN32(code));
+    return HRESULT_FROM_WIN32(code);
   }
 
   LARGE_INTEGER fileSize = {};
@@ -698,7 +699,9 @@ HRESULT	ScriptLoad(const wchar_t *filename) {
 		wchar_t* buffer = new wchar_t[length + 1];
 		DWORD cvt = MultiByteToWideChar(pencode.nCodePage, 0 , (LPCSTR)tmp, length, buffer, length);
 		buffer[cvt] = 0;
+        FbeScriptDiagnostics::SetContext(filename, CString(buffer));
 		hr = pF->ParseScriptText(buffer, NULL, NULL, NULL, 0, 0, SCRIPTTEXT_ISVISIBLE | SCRIPTTEXT_ISPERSISTENT, NULL, &ei);
+        FbeScriptDiagnostics::FinishLoading();
 		delete[] buffer;
 	  }
       else
@@ -714,7 +717,9 @@ HRESULT	ScriptLoad(const wchar_t *filename) {
 			  memcpy(tmp, converted, length + 2);
 			  delete[] converted;
 		  }
-		  hr = pF->ParseScriptText((wchar_t*)tmp, NULL, NULL, NULL, 0, 0, SCRIPTTEXT_ISVISIBLE | SCRIPTTEXT_ISPERSISTENT, NULL, &ei);
+		  FbeScriptDiagnostics::SetContext(filename, CString((wchar_t*)tmp));
+          hr = pF->ParseScriptText((wchar_t*)tmp, NULL, NULL, NULL, 0, 0, SCRIPTTEXT_ISVISIBLE | SCRIPTTEXT_ISPERSISTENT, NULL, &ei);
+          FbeScriptDiagnostics::FinishLoading();
 	  }
   }
   else hr = 0; 

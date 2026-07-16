@@ -3447,6 +3447,96 @@
         "bg-BG": "Грешка при зареждане на %s: %s"
       }
     },
+    "fbe.script.diagnostic_parse": {
+      "resourceId": "IDS_SCRIPT_PARSE_DIAGNOSTIC_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "ru-RU": "Тип: синтаксическая ошибка\\nЭтап: загрузка пользовательского скрипта\\n\\nФайл:\\n%s\\n\\nПуть:\\n%s\\n\\nСтрока %d, столбец %d:\\n%s\\n\\nИсходное сообщение JScript:\\n%s\\n\\nКод ошибки: 0x%08X",
+        "uk-UA": "Тип: синтаксична помилка\\nЕтап: завантаження користувацького скрипта\\n\\nФайл:\\n%s\\n\\nШлях:\\n%s\\n\\nРядок %d, стовпець %d:\\n%s\\n\\nПочаткове повідомлення JScript:\\n%s\\n\\nКод помилки: 0x%08X",
+        "de-DE": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "fr-FR": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "es-ES": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "it-IT": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "pl-PL": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "pt-PT": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "nl-NL": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "cs-CZ": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "bg-BG": "Type: syntax error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X"
+      }
+    },
+    "fbe.script.diagnostic_runtime": {
+      "resourceId": "IDS_SCRIPT_RUNTIME_DIAGNOSTIC_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "ru-RU": "Тип: ошибка выполнения\\nЭтап: выполнение пользовательского скрипта\\n\\nФайл:\\n%s\\n\\nПуть:\\n%s\\n\\nСтрока %d, столбец %d:\\n%s\\n\\nИсходное сообщение JScript:\\n%s\\n\\nКод ошибки: 0x%08X",
+        "uk-UA": "Тип: помилка виконання\\nЕтап: виконання користувацького скрипта\\n\\nФайл:\\n%s\\n\\nШлях:\\n%s\\n\\nРядок %d, стовпець %d:\\n%s\\n\\nПочаткове повідомлення JScript:\\n%s\\n\\nКод помилки: 0x%08X",
+        "de-DE": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "fr-FR": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "es-ES": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "it-IT": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "pl-PL": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "pt-PT": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "nl-NL": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "cs-CZ": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X",
+        "bg-BG": "Type: runtime error\\nStage: executing custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nLine %d, column %d:\\n%s\\n\\nOriginal JScript message:\\n%s\\n\\nError code: 0x%08X"
+      }
+    },
+    "fbe.script.diagnostic_load": {
+      "resourceId": "IDS_SCRIPT_LOAD_DIAGNOSTIC_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "ru-RU": "Тип: ошибка загрузки файла\\nЭтап: загрузка пользовательского скрипта\\n\\nФайл:\\n%s\\n\\nПуть:\\n%s\\n\\nИсходное сообщение:\\n%s\\n\\nКод ошибки: 0x%08X",
+        "uk-UA": "Тип: помилка завантаження файлу\\nЕтап: завантаження користувацького скрипта\\n\\nФайл:\\n%s\\n\\nШлях:\\n%s\\n\\nПочаткове повідомлення:\\n%s\\n\\nКод помилки: 0x%08X",
+        "de-DE": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "fr-FR": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "es-ES": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "it-IT": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "pl-PL": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "pt-PT": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "nl-NL": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "cs-CZ": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X",
+        "bg-BG": "Type: file loading error\\nStage: loading custom script\\n\\nFile:\\n%s\\n\\nPath:\\n%s\\n\\nOriginal message:\\n%s\\n\\nError code: 0x%08X"
+      }
+    },
+    "fbe.script.copy_details": {
+      "resourceId": "IDS_SCRIPT_COPY_DETAILS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Copy details",
+        "ru-RU": "Копировать сведения",
+        "uk-UA": "Копіювати відомості",
+        "de-DE": "Copy details",
+        "fr-FR": "Copy details",
+        "es-ES": "Copy details",
+        "it-IT": "Copy details",
+        "pl-PL": "Copy details",
+        "pt-PT": "Copy details",
+        "nl-NL": "Copy details",
+        "cs-CZ": "Copy details",
+        "bg-BG": "Copy details"
+      }
+    },
+    "fbe.script.close_details": {
+      "resourceId": "IDS_SCRIPT_CLOSE_DETAILS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Close",
+        "ru-RU": "Закрыть",
+        "uk-UA": "Закрити",
+        "de-DE": "Close",
+        "fr-FR": "Close",
+        "es-ES": "Close",
+        "it-IT": "Close",
+        "pl-PL": "Close",
+        "pt-PT": "Close",
+        "nl-NL": "Close",
+        "cs-CZ": "Close",
+        "bg-BG": "Close"
+      }
+    },
     "fbe.com.error.caption": {
       "resourceId": "IDS_COM_ERR_CPT",
       "component": "fbe.core",
