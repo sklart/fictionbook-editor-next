@@ -1,5 +1,6 @@
-# Проверяет, что Modern/Win7 release-поток повторно собирает только DLL
-# редактора, а общие компоненты и MUI/property handler используются явно.
+# Проверяет, что Modern/Win7 release-поток повторно собирает DLL редактора и
+# пакетные конвертеры, а остальные общие компоненты и MUI/property handler
+# используются явно.
 [CmdletBinding()]
 param()
 
@@ -26,10 +27,13 @@ $portable = Get-Text "tools\build\package-portable.ps1"
 $artifacts = Get-Text "tools\build\verify-artifacts.ps1"
 
 Assert-Contains $workflow "-EditorRuntimeOnly" "Win7-этап workflow"
+Assert-Contains $workflow "-BatchConvertersOnly" "Win7-этап пакетных конвертеров workflow"
 Assert-Contains $workflow "SkipPropertyHandlerBuild = `$true" "Win7-релиз workflow"
 Assert-Contains $workflow "SkipFbvVerbMuiBuild = `$true" "Win7-релиз workflow"
 Assert-Contains $build "[switch]`$EditorRuntimeOnly" "build.ps1"
 Assert-Contains $build "Собраны только целевые DLL редактора" "build.ps1"
+Assert-Contains $build "[switch]`$BatchConvertersOnly" "build.ps1"
+Assert-Contains $build "Собраны только пакетные конвертеры" "build.ps1"
 Assert-Contains $scintilla "[string]`$OutputDirectory" "build-scintilla.ps1"
 Assert-Contains $scintilla "out\editor-runtime" "build-scintilla.ps1"
 Assert-Contains $release "[switch]`$SkipPropertyHandlerBuild" "create-release.ps1"
@@ -41,6 +45,9 @@ Assert-Contains $portable '"Scintilla.dll", "Lexilla.dll"' "package-portable.ps1
 Assert-Contains $artifacts "Get-ZipEntrySha256" "verify-artifacts.ps1"
 Assert-Contains $artifacts "Общий файл" "verify-artifacts.ps1"
 Assert-Contains $artifacts "Win7-вариант не был применён" "verify-artifacts.ps1"
+
+$win7Imports = Get-Text "tools\tests\check-win7-imports.ps1"
+Assert-Contains $win7Imports '"CreateFile2"' "check-win7-imports.ps1"
 
 $runtimeOnlyIndex = $build.IndexOf("if (`$EditorRuntimeOnly)")
 $pcre2Index = $build.IndexOf("Подготовка PCRE2")

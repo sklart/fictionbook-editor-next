@@ -152,6 +152,17 @@ namespace
         ConsolePrintf(L"  --max-files <N>      Process only first N EPUB files; useful for smoke tests\n");
     }
 
+    void ShowInteractiveLaunchHelp()
+    {
+        ::MessageBoxW(
+            nullptr,
+            L"Это консольный пакетный конвертер EPUB в FB2.\r\n\r\n"
+            L"Запустите ImportEPUBBatch.exe из командной строки или PowerShell, "
+            L"указав входной и выходной путь. Для полного списка параметров используйте --help.",
+            L"ImportEPUBBatch",
+            MB_OK | MB_ICONINFORMATION);
+    }
+
     void PrintVersion()
     {
         ConsolePrintf(L"ImportEPUBBatch / ImportEPUB 1.0.71.0 crash-isolated batch build\n");
@@ -1658,6 +1669,12 @@ namespace
 
 int wmain(int argc, wchar_t** argv)
 {
+    if (argc == 1)
+    {
+        ShowInteractiveLaunchHelp();
+        return 0;
+    }
+
     InitializeConsoleOutput();
     g_hInstance = ::GetModuleHandleW(nullptr);
     InitImportEpubRuntimeStrings();

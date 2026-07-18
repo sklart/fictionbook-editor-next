@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Portable-пакет для Windows 7 теперь повторно собирает все три пакетных
+  конвертера (`ExportDOCXBatch.exe`, `ExportEPUBBatch.exe`,
+  `ImportEPUBBatch.exe`) с API-уровнем Windows 7, поэтому экспорт EPUB больше
+  не требует отсутствующую в этой системе функцию `CreateFile2`. При запуске
+  любого Batch-конвертера двойным щелчком вместо мгновенно исчезающего окна
+  выводится понятная подсказка о запуске из командной строки или PowerShell.
 - Оптимизирован GitHub release-конвейер Modern/Win7: общие FBE, плагины,
   FBV, property handler, MUI и зависимости собираются один раз, а второй этап
   компилирует только отдельные `Scintilla.dll`/`Lexilla.dll` для Win7. Упаковка

@@ -22,6 +22,10 @@ param(
     # Используется release-конвейером после уже выполненной общей сборки.
     [switch]$EditorRuntimeOnly,
 
+    # Повторно собрать только консольные пакетные конвертеры для выбранного
+    # варианта Windows, сохранив остальные общие релизные бинарники.
+    [switch]$BatchConvertersOnly,
+
     [switch]$WarningsAsErrors
 )
 
@@ -182,7 +186,8 @@ if (-not $msbuild) {
 
 $properties = @(
     "/p:Configuration=$Configuration",
-    "/p:Platform=$Platform"
+    "/p:Platform=$Platform",
+    "/p:CompatibilityTarget=$CompatibilityTarget"
 )
 
 if ($PlatformToolset) {
@@ -195,6 +200,19 @@ if ($SkipUpx) {
 
 if ($WarningsAsErrors) {
     $properties += "/p:TreatWarningAsError=true"
+}
+
+if ($BatchConvertersOnly) {
+    foreach ($batchProject in @(
+        "src\\export-docx\\ExportDOCXBatch.vcxproj",
+        "src\\export-epub\\ExportEPUBBatch.vcxproj",
+        "src\\import-epub\\ImportEPUBBatch.vcxproj"
+    )) {
+        Invoke-RequiredProjectRebuild -ProjectPath (Join-Path $repoRoot $batchProject)
+    }
+
+    Write-Host "Собраны только пакетные конвертеры для ${CompatibilityTarget}."
+    return
 }
 
 & $msbuild (Join-Path $repoRoot "FBE.sln") /m /t:Build `

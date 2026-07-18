@@ -58,6 +58,10 @@ jobs:
         shell: pwsh
         run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly
 
+      - name: Build Win7-compatible batch converters
+        shell: pwsh
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly
+
       - name: Create Win7-compatible release artifacts
         shell: pwsh
         run: |

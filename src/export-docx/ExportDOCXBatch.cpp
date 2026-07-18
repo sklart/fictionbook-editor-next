@@ -6,6 +6,7 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#include "targetver.h"
 #include <windows.h>
 #include <msxml6.h>
 #include <shlobj.h>
@@ -1619,6 +1620,17 @@ static void Usage()
     PrintLine(L"By default, the DLL is searched next to the EXE, in the current directory, and in out\\Release.");
 }
 
+static void ShowInteractiveLaunchHelp()
+{
+    ::MessageBoxW(
+        nullptr,
+        L"Это консольный пакетный конвертер FB2 в DOCX.\r\n\r\n"
+        L"Запустите ExportDOCXBatch.exe из командной строки или PowerShell, "
+        L"указав входной и выходной путь. Для полного списка параметров используйте -Help.",
+        L"ExportDOCXBatch",
+        MB_OK | MB_ICONINFORMATION);
+}
+
 static int NonNegativeInt(const std::wstring& value)
 {
     int v = _wtoi(value.c_str());
@@ -1837,6 +1849,11 @@ static bool ParseArgs(int argc, wchar_t** argv, Options& opt)
 int wmain(int argc, wchar_t** argv)
 {
     InitConsole();
+
+    if (argc == 1) {
+        ShowInteractiveLaunchHelp();
+        return 0;
+    }
 
     for (int i = 1; i < argc; ++i) {
         if (IsHelpOption(argv[i])) {

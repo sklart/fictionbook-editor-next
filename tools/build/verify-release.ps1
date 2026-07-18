@@ -123,7 +123,21 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-components-page-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 if ($CompatibilityTarget -eq "Win7") {
-    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") -Configuration $Configuration
+    $sharedWin7Files = @(
+        "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
+        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe",
+        "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll"
+    )
+    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+        -Configuration $Configuration `
+        -OutputDirectory $outputDir `
+        -IncludeNames $sharedWin7Files
+
+    $win7EditorRuntimeDir = Join-Path $repoRoot "out\editor-runtime\Win7"
+    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+        -Configuration $Configuration `
+        -OutputDirectory $win7EditorRuntimeDir `
+        -IncludeNames @("Scintilla.dll", "Lexilla.dll")
 }
 
 function Test-BinarySecurityFlags {

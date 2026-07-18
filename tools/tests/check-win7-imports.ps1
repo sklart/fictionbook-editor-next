@@ -13,13 +13,15 @@ Redistributable на целевой системе или при локальн�
 [CmdletBinding()]
 param(
     [string]$Configuration = "Release",
+    [string]$OutputDirectory,
+    [string[]]$IncludeNames,
     [switch]$TreatCrtApiSetAsError
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$outDir = Join-Path $repoRoot "out\$Configuration"
+$outDir = if ($OutputDirectory) { $OutputDirectory } else { Join-Path $repoRoot "out\$Configuration" }
 
 if (-not (Test-Path -LiteralPath $outDir)) {
     throw "Каталог релизных бинарников не найден: $outDir"
@@ -28,6 +30,7 @@ if (-not (Test-Path -LiteralPath $outDir)) {
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
 $blockedPatterns = @(
+    "CreateFile2",
     "GetSystemTimePreciseAsFileTime",
     "PathCch",
     "SetDefaultDllDirectories",
@@ -48,7 +51,12 @@ $warningPatterns = @(
 
 $files = Get-ChildItem -LiteralPath $outDir -File |
     Where-Object { $_.Extension -in ".exe", ".dll" } |
+    Where-Object { -not $IncludeNames -or $_.Name -in $IncludeNames } |
     Sort-Object Name
+
+if ($files.Count -eq 0) {
+    throw "В каталоге $outDir не найдены бинарники для проверки импортов."
+}
 
 $errors = New-Object System.Collections.Generic.List[string]
 $warnings = New-Object System.Collections.Generic.List[string]

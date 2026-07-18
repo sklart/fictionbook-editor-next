@@ -1,5 +1,15 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
+
+// Пакетный конвертер входит в portable-сборку для Windows 7 SP1. В частности,
+// реализация std::filesystem выбирает доступные Win32 API по этой границе.
+// Определения должны быть заданы до подключения windows.h.
+#ifndef WINVER
+#define WINVER 0x0601
+#endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
+#endif
 #include <windows.h>
 #include "../version.h"
 
@@ -123,6 +133,17 @@ void PrintUsage()
         L"  ExportEPUBBatch.exe --input \"D:\\Books\" --from-list problem_files.txt --output \"D:\\EPUB\" --version both\n"
         L"  ExportEPUBBatch.exe --input \"D:\\Books\" --output \"D:\\EPUB\" --version 3 --filename author-title --newer-only\n"
         L"  ExportEPUBBatch.exe --input \"D:\\Books\" --output \"D:\\EPUB\" --version 3 --recursive --start-index 1001 --max-files 1000\n";
+}
+
+void ShowInteractiveLaunchHelp()
+{
+    ::MessageBoxW(
+        nullptr,
+        L"Это консольный пакетный конвертер FB2 в EPUB.\r\n\r\n"
+        L"Запустите ExportEPUBBatch.exe из командной строки или PowerShell "
+        L"с параметром --input. Для полного списка параметров используйте --help.",
+        L"ExportEPUBBatch",
+        MB_OK | MB_ICONINFORMATION);
 }
 
 std::wstring ToLower(std::wstring s)
@@ -857,6 +878,11 @@ void DeletePartialOutputIfNeeded(const Options& opt, const fs::path& out)
 
 int wmain(int argc, wchar_t** argv)
 {
+    if (argc == 1) {
+        ShowInteractiveLaunchHelp();
+        return 0;
+    }
+
     Options opt;
     if (!ParseArgs(argc, argv, opt)) return 2;
 
