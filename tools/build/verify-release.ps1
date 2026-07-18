@@ -63,6 +63,7 @@ $requiredSymbols = @(
 )
 
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
+& (Join-Path $repoRoot "tools\tests\test-release-pipeline-deduplication.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")

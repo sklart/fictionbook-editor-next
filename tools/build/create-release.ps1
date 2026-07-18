@@ -16,6 +16,9 @@ param(
     [switch]$SkipBuild,
     [switch]$SkipInstaller,
     [switch]$PreserveArtifacts,
+    # Общие property handler и MUI уже подготовлены современным этапом.
+    [switch]$SkipPropertyHandlerBuild,
+    [switch]$SkipFbvVerbMuiBuild,
     [switch]$ValidateUpdateManifest,
     [string]$ReleaseTag
 )
@@ -66,6 +69,7 @@ $artifactCompatibility = if ($CompatibilityTarget -eq "Win7") { "win7-" } else {
 $artifactsDir = Join-Path $repoRoot "out\artifacts"
 $portableDir = Join-Path $repoRoot "out\package\FictionBookEditor"
 $symbolsDir = Join-Path $repoRoot "out\package\symbols"
+$editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
 
 # До упаковки синхронизируется только version.nsh. Проверка update.xml должна
 # выполняться в конце: SHA-256 нового setup появляется лишь после его сборки.
@@ -89,19 +93,34 @@ if (-not $SkipBuild) {
     & (Join-Path $PSScriptRoot "build.ps1") @buildArguments
 }
 
-foreach ($propertyHandlerPlatform in @("Win32", "x64")) {
-    $propertyHandlerBuildArguments = @{
-        Configuration = $Configuration
-        Platform = $propertyHandlerPlatform
-        SkipUpx = $SkipUpx
+if ($SkipPropertyHandlerBuild) {
+    foreach ($propertyHandlerPlatform in @("Win32", "x64")) {
+        $propertyHandlerOutput = Join-Path $repoRoot "out\package\shell-build\$propertyHandlerPlatform\$Configuration\FBShell.dll"
+        if (-not (Test-Path -LiteralPath $propertyHandlerOutput -PathType Leaf)) {
+            throw "Нельзя пропустить сборку property handler: отсутствует $propertyHandlerOutput"
+        }
+        $propertyHandlerSymbols = Join-Path $repoRoot "out\package\shell-build\$propertyHandlerPlatform\$Configuration\FBShell.pdb"
+        if (-not (Test-Path -LiteralPath $propertyHandlerSymbols -PathType Leaf)) {
+            throw "Нельзя пропустить сборку property handler: отсутствуют символы $propertyHandlerSymbols"
+        }
     }
-    if ($PlatformToolset) {
-        $propertyHandlerBuildArguments.PlatformToolset = $PlatformToolset
-    }
+    Write-Host "Повторная сборка property handler пропущена: используются общие подготовленные DLL."
+}
+else {
+    foreach ($propertyHandlerPlatform in @("Win32", "x64")) {
+        $propertyHandlerBuildArguments = @{
+            Configuration = $Configuration
+            Platform = $propertyHandlerPlatform
+            SkipUpx = $SkipUpx
+        }
+        if ($PlatformToolset) {
+            $propertyHandlerBuildArguments.PlatformToolset = $PlatformToolset
+        }
 
-    & (Join-Path $PSScriptRoot "build-experimental-property-handler.ps1") @propertyHandlerBuildArguments
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
+        & (Join-Path $PSScriptRoot "build-experimental-property-handler.ps1") @propertyHandlerBuildArguments
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
     }
 }
 
@@ -118,8 +137,10 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
 & (Join-Path $PSScriptRoot "package-portable.ps1") `
     -Configuration $Configuration `
+    -EditorRuntimeDirectory $editorRuntimeDirectory `
     -RequireWin32PropertyHandler `
-    -RequireX64ShellExtension
+    -RequireX64ShellExtension `
+    -SkipFbvVerbMuiBuild:$SkipFbvVerbMuiBuild
 & (Join-Path $PSScriptRoot "verify-package-stage.ps1")
 & (Join-Path $PSScriptRoot "verify-nsis-layout.ps1")
 

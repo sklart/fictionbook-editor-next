@@ -8,7 +8,11 @@ param(
     [ValidateSet("Modern", "Win7")]
     [string]$CompatibilityTarget = "Modern",
 
-    [string]$VcVarsVersion
+    [string]$VcVarsVersion,
+
+    # Каталог для целевых DLL редактора. Пустое значение сохраняет
+    # историческое поведение и использует out\editor-runtime\<вариант>.
+    [string]$OutputDirectory = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -67,6 +71,11 @@ foreach ($build in @(
 }
 
 $runtimeDir = Join-Path $repoRoot "runtime"
+$editorRuntimeDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
+} else {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
+}
 $scintillaVersionCode = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "third_party\scintilla\version.txt")).Trim()
 $lexillaVersionCode = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "third_party\lexilla\version.txt")).Trim()
 if ($scintillaVersionCode -notmatch '^\d{3}$' -or $lexillaVersionCode -notmatch '^\d{3}$') {
@@ -78,5 +87,11 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\scintilla\bin\Scintilla
     -Destination $runtimeDir -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll") `
     -Destination $runtimeDir -Force
+New-Item -ItemType Directory -Path $editorRuntimeDir -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\scintilla\bin\Scintilla.dll") `
+    -Destination (Join-Path $editorRuntimeDir "Scintilla.dll") -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll") `
+    -Destination (Join-Path $editorRuntimeDir "Lexilla.dll") -Force
 
 Write-Host "Scintilla $scintillaVersion и Lexilla $lexillaVersion подготовлены в $runtimeDir ($CompatibilityTarget)."
+Write-Host "Целевые DLL редактора сохранены в $editorRuntimeDir."

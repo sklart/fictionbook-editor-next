@@ -88,6 +88,37 @@ function Get-ZipEntryNames {
     }
 }
 
+function Get-ZipEntrySha256 {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+
+        [Parameter(Mandatory)]
+        [string]$EntryName
+    )
+
+    $archive = [IO.Compression.ZipFile]::OpenRead($Path)
+    try {
+        $entry = $archive.GetEntry($EntryName)
+        if ($null -eq $entry) {
+            throw "В архиве $(Split-Path -Leaf $Path) отсутствует файл '$EntryName'."
+        }
+
+        $stream = $entry.Open()
+        $sha256 = [Security.Cryptography.SHA256]::Create()
+        try {
+            return [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace("-", "")
+        }
+        finally {
+            $sha256.Dispose()
+            $stream.Dispose()
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 $requiredPortableEntries = @(
     "FBE.exe",
     "FBV.exe",
@@ -188,6 +219,35 @@ foreach ($profile in $artifactProfiles) {
     $symbolEntries = @(Get-ZipEntryNames -Path (Join-Path $ArtifactsDirectory $symbolsName) | Sort-Object)
     if (Compare-Object $expectedSymbolEntries $symbolEntries) {
         throw "Архив $symbolsName не содержит ожидаемый набор PDB-файлов."
+    }
+}
+
+if ($CompatibilityTarget -eq "All") {
+    $modernPortablePath = Join-Path $ArtifactsDirectory "FictionBookEditorNext-$version-$architecture-portable.zip"
+    $win7PortablePath = Join-Path $ArtifactsDirectory "FictionBookEditorNext-$version-win7-$architecture-portable.zip"
+
+    # Общие бинарники должны происходить из одного явного modern-этапа, а не
+    # из неявного инкрементального состояния второй сборки.
+    $commonPortableEntries = @(
+        "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
+        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe",
+        "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll", "FBShell64.dll",
+        "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll"
+    )
+    foreach ($name in $commonPortableEntries) {
+        $modernHash = Get-ZipEntrySha256 -Path $modernPortablePath -EntryName $name
+        $win7Hash = Get-ZipEntrySha256 -Path $win7PortablePath -EntryName $name
+        if ($modernHash -ne $win7Hash) {
+            throw "Общий файл '$name' различается между Modern и Win7 portable-пакетами."
+        }
+    }
+
+    # Scintilla собирается отдельно с Win7-определением, поэтому архивы
+    # обязаны содержать разные редакторские DLL, а не одну старую runtime-копию.
+    $modernScintillaHash = Get-ZipEntrySha256 -Path $modernPortablePath -EntryName "Scintilla.dll"
+    $win7ScintillaHash = Get-ZipEntrySha256 -Path $win7PortablePath -EntryName "Scintilla.dll"
+    if ($modernScintillaHash -eq $win7ScintillaHash) {
+        throw "Scintilla.dll в Modern и Win7 portable-пакетах совпадает; Win7-вариант не был применён."
     }
 }
 

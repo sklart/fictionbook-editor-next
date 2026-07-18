@@ -18,6 +18,10 @@ param(
 
     [switch]$SkipUpx,
 
+    # Собрать только Scintilla/Lexilla для указанного варианта Windows.
+    # Используется release-конвейером после уже выполненной общей сборки.
+    [switch]$EditorRuntimeOnly,
+
     [switch]$WarningsAsErrors
 )
 
@@ -66,9 +70,17 @@ function Invoke-RequiredProjectRebuild {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+$editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
+
+& (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `
+    -CompatibilityTarget $CompatibilityTarget `
+    -OutputDirectory $editorRuntimeDirectory
+if ($EditorRuntimeOnly) {
+    Write-Host "Собраны только целевые DLL редактора для ${CompatibilityTarget}: $editorRuntimeDirectory"
+    return
+}
 
 & (Join-Path $repoRoot "tools\version\sync-version.ps1")
-& (Join-Path $repoRoot "tools\build\build-scintilla.ps1") -CompatibilityTarget $CompatibilityTarget
 Write-Host "Подготовка PCRE2..."
 $pcre2BuildScript = Join-Path $repoRoot "tools\build\build-pcre2.ps1"
 $pcre2BuildArgs = @(

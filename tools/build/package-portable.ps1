@@ -3,14 +3,26 @@
 param(
     [string]$Configuration = "Release",
 
+    # Явный источник Scintilla/Lexilla конкретного варианта совместимости.
+    # При отсутствии параметра сохраняется локальное историческое поведение.
+    [string]$EditorRuntimeDirectory = "",
+
     [switch]$RequireWin32PropertyHandler,
-    [switch]$RequireX64ShellExtension
+    [switch]$RequireX64ShellExtension,
+
+    # Повторная сборка MUI не нужна, если общий релизный этап уже её выполнил.
+    [switch]$SkipFbvVerbMuiBuild
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $sourceDir = Join-Path $repoRoot "out\$Configuration"
+$editorRuntimeSourceDir = if ([string]::IsNullOrWhiteSpace($EditorRuntimeDirectory)) {
+    Join-Path $repoRoot "runtime"
+} else {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EditorRuntimeDirectory)
+}
 $buildFbvVerbMuiScript = Join-Path $PSScriptRoot "build-fbv-verb-mui.ps1"
 $propertyHandlerRootDir = Join-Path $repoRoot "out\package\shell-build"
 $win32PropertyHandlerSourceDir = Join-Path $propertyHandlerRootDir "Win32\$Configuration"
@@ -21,10 +33,26 @@ if (Test-Path -LiteralPath $stageDir) {
     Remove-Item -Recurse -Force -LiteralPath $stageDir
 }
 
-& $buildFbvVerbMuiScript -Configuration $Configuration
+if (-not $SkipFbvVerbMuiBuild) {
+    & $buildFbvVerbMuiScript -Configuration $Configuration
+}
+
+foreach ($name in @("Scintilla.dll", "Lexilla.dll")) {
+    $editorRuntimePath = Join-Path $editorRuntimeSourceDir $name
+    if (-not (Test-Path -LiteralPath $editorRuntimePath -PathType Leaf)) {
+        throw "Не найдена целевая DLL редактора: $editorRuntimePath"
+    }
+}
 
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "runtime\*") -Destination $stageDir -Recurse -Force
+
+# Runtime-каталог содержит удобные локальные копии DLL. Для релиза заменяем их
+# явным вариантом, чтобы пакет не зависел от предыдущей исторической сборки.
+foreach ($name in @("Scintilla.dll", "Lexilla.dll")) {
+    Copy-Item -LiteralPath (Join-Path $editorRuntimeSourceDir $name) `
+        -Destination (Join-Path $stageDir $name) -Force
+}
 
 foreach ($legacyRootResource in @("res_rus.dll", "res_ukr.dll")) {
     $legacyRootPath = Join-Path $stageDir $legacyRootResource

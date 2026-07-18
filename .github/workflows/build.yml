@@ -54,9 +54,9 @@ jobs:
           }
           ./tools/build/create-release.ps1 @arguments
 
-      - name: Build Release Win32 Win7-compatible
+      - name: Build Win7-compatible editor runtime
         shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipUpx -WarningsAsErrors
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly
 
       - name: Create Win7-compatible release artifacts
         shell: pwsh
@@ -68,6 +68,8 @@ jobs:
             PlatformToolset = "v143"
             SkipBuild = $true
             PreserveArtifacts = $true
+            SkipPropertyHandlerBuild = $true
+            SkipFbvVerbMuiBuild = $true
           }
           ./tools/build/create-release.ps1 @arguments
 
