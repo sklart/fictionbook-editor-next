@@ -2601,6 +2601,25 @@
         "bg-BG": "Показвай пълния път до файла в заглавието на прозореца"
       }
     },
+    "fbe.dialog.idd_setting_next.source_code": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_FBE_NEXT_SOURCE_CODE_GROUP",
+      "translations": {
+        "en-US": "Source code",
+        "ru-RU": "Исходный код",
+        "uk-UA": "Вихідний код",
+        "de-DE": "Quellcode",
+        "fr-FR": "Code source",
+        "es-ES": "Código fuente",
+        "it-IT": "Codice sorgente",
+        "pl-PL": "Kod źródłowy",
+        "pt-PT": "Código-fonte",
+        "nl-NL": "Broncode",
+        "cs-CZ": "Zdrojový kód",
+        "bg-BG": "Изходен код"
+      }
+    },
     "fbe.dialog.idd_options.show_whitespace": {
       "resource": "IDD_OPTIONS",
       "kind": "CONTROL",
@@ -2618,6 +2637,82 @@
         "nl-NL": "Spaties tonen",
         "cs-CZ": "Zobrazit mezery",
         "bg-BG": "Показвай интервали"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_SOURCE_PALETTE_LABEL",
+      "translations": {
+        "en-US": "Color scheme:",
+        "ru-RU": "Цветовая схема:",
+        "uk-UA": "Колірна схема:",
+        "de-DE": "Farbschema:",
+        "fr-FR": "Jeu de couleurs :",
+        "es-ES": "Esquema de colores:",
+        "it-IT": "Schema colori:",
+        "pl-PL": "Schemat kolorów:",
+        "pt-PT": "Esquema de cores:",
+        "nl-NL": "Kleurschema:",
+        "cs-CZ": "Barevné schéma:",
+        "bg-BG": "Цветова схема:"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette.classic": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "VALUE",
+      "targetId": "IDC_OPTIONS_SOURCE_PALETTE",
+      "translations": {
+        "en-US": "Classic",
+        "ru-RU": "Классическая",
+        "uk-UA": "Класична",
+        "de-DE": "Klassisch",
+        "fr-FR": "Classique",
+        "es-ES": "Clásica",
+        "it-IT": "Classico",
+        "pl-PL": "Klasyczny",
+        "pt-PT": "Clássico",
+        "nl-NL": "Klassiek",
+        "cs-CZ": "Klasické",
+        "bg-BG": "Класическа"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette.contrast": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "VALUE",
+      "targetId": "IDC_OPTIONS_SOURCE_PALETTE",
+      "translations": {
+        "en-US": "Contrast",
+        "ru-RU": "Контрастная",
+        "uk-UA": "Контрастна",
+        "de-DE": "Kontrastreich",
+        "fr-FR": "Contrasté",
+        "es-ES": "Alto contraste",
+        "it-IT": "Ad alto contrasto",
+        "pl-PL": "Kontrastowy",
+        "pt-PT": "Alto contraste",
+        "nl-NL": "Hoog contrast",
+        "cs-CZ": "Kontrastní",
+        "bg-BG": "Контрастна"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette.dark": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "VALUE",
+      "targetId": "IDC_OPTIONS_SOURCE_PALETTE",
+      "translations": {
+        "en-US": "Dark",
+        "ru-RU": "Тёмная",
+        "uk-UA": "Темна",
+        "de-DE": "Dunkel",
+        "fr-FR": "Sombre",
+        "es-ES": "Oscura",
+        "it-IT": "Scuro",
+        "pl-PL": "Ciemny",
+        "pt-PT": "Escuro",
+        "nl-NL": "Donker",
+        "cs-CZ": "Tmavé",
+        "bg-BG": "Тъмна"
       }
     }
   }

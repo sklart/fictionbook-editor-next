@@ -431,6 +431,13 @@ public:
 	void Destroy(ISerializable*);
 };
 
+enum XmlSrcColorPalette
+{
+	XML_SRC_COLOR_PALETTE_CLASSIC = 0,
+	XML_SRC_COLOR_PALETTE_CONTRAST,
+	XML_SRC_COLOR_PALETTE_DARK,
+};
+
 class CSettings : public ISerializable, public IObjectFactory
 {
 	CRegKey		m_key;
@@ -449,6 +456,7 @@ class CSettings : public ISerializable, public IObjectFactory
 
 	bool		m_xml_src_wrap;
 	bool		m_xml_src_syntaxHL;
+	DWORD		m_xml_src_color_palette;
 	bool		m_xml_src_tagHL;
 	bool		m_xml_src_showEOL;
 	bool		m_xml_src_showSpace;
@@ -542,6 +550,7 @@ public:
 	bool KeepEncoding()const;
 	bool XmlSrcWrap()const;
 	bool XmlSrcSyntaxHL()const;
+	DWORD GetXmlSrcColorPalette()const;
 	bool XmlSrcTagHL()const;
 	bool XmlSrcShowEOL()const;
 	bool XmlSrcShowSpace()const;
@@ -604,6 +613,7 @@ public:
 	void	SetFontSize(DWORD size, bool apply = false);
 	void	SetXmlSrcWrap(bool wrap, bool apply = false);
 	void	SetXmlSrcSyntaxHL(bool hl, bool apply = false);
+	void	SetXmlSrcColorPalette(DWORD palette, bool apply = false);
 	void	SetXmlSrcTagHL(bool hl, bool apply = false);
 	void	SetXmlSrcShowEOL(bool eol, bool apply = false);
 	void	SetXmlSrcShowSpace(bool eol, bool apply = false);

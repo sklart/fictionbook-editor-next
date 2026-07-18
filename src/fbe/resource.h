@@ -510,6 +510,9 @@
 #define IDC_REPLACE_LABEL_TEXT          1125
 #define IDC_REPLACE_LABEL_REPLACE       1126
 #define IDC_REPLACE_DIRECTION_GROUP     1127
+#define IDC_OPTIONS_SOURCE_PALETTE_LABEL 1132
+#define IDC_OPTIONS_SOURCE_PALETTE       1133
+#define IDC_FBE_NEXT_SOURCE_CODE_GROUP   1134
 #define ID_SCRIPT_BASE                  9000
 #define ID_EDIT_INS_SYMBOL              10000
 #define ID_NEXT_ITEM                    32772
@@ -590,6 +593,7 @@
 #define ID_GOTO_WRONGTAG                32908
 #define ID_TOOLS_CUSTOMIZE              32909
 #define ID_HIDETOOLBAR                  32910
+#define ID_TOOLS_DIAGNOSTIC_TRACE        32911
 #define ID_EDIT_PASTE2                  0xE525
 #define IDS_ENCODINGS                   61403
 #define IDS_DOCUMENT_TREE_CAPTION       61404

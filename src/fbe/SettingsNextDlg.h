@@ -7,6 +7,8 @@
 
 class CSettingsNextDlg : public CAxDialogImpl<CSettingsNextDlg>
 {
+    CComboBox m_source_palette;
+
 public:
 	enum { IDD = IDD_SETTING_NEXT };
 

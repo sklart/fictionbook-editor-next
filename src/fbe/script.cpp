@@ -16,24 +16,6 @@ DEFINE_GUID(CLSID_VBScript, 0xb54f3741, 0x5b07, 0x11cf, 0xa4, 0xb0, 0x0,
 DEFINE_GUID(CLSID_JScript, 0xf414c260, 0x6ac0, 0x11cf, 0xb6, 0xd1, 0x00,
    0xaa, 0x00, 0xbb, 0xbb, 0x58);
 
-static void	strlcatW(wchar_t *d, const wchar_t *s, int dl) {
-  int l;
-
-  if (dl<=0)
-    return;
-
-  l = wcslen(d);
-  if (l>=dl)
-    return;
-
-  --dl;
-
-  while (l < dl && *s)
-    d[l++] = *s++;
-
-  d[l] = 0;
-}
-
 void *::operator new(size_t amount) {
   return ::HeapAlloc(::GetProcessHeap(),0,amount);
 }
@@ -590,32 +572,47 @@ bool ScriptFindFunc(const wchar_t* func)
 }
 
 static HANDLE TryOpen(bool pfx,const wchar_t *mid,const wchar_t *last) {
-  wchar_t   xfilename[MAX_PATH];
-
-  xfilename[0] = 0;
+  CString xfilename;
 
   if (pfx) {
-    wchar_t *cp;
-    GetModuleFileNameW(NULL,xfilename,sizeof(xfilename)/sizeof(xfilename[0]));
-    for (cp = xfilename + lstrlenW(xfilename);cp>xfilename;--cp)
-      if (cp[-1] == L'/' || cp[-1] == L'\\')
-	break;
-    *cp = 0;
+    DWORD capacity = MAX_PATH;
+    CString modulePath;
+    for (;;) {
+      wchar_t *buffer = modulePath.GetBuffer(capacity);
+      DWORD length = ::GetModuleFileNameW(NULL, buffer, capacity);
+      if (length == 0) {
+        modulePath.ReleaseBuffer(0);
+        return INVALID_HANDLE_VALUE;
+      }
+      if (length < capacity) {
+        modulePath.ReleaseBuffer(length);
+        break;
+      }
+      modulePath.ReleaseBuffer(0);
+      if (capacity >= 32768)
+        return INVALID_HANDLE_VALUE;
+      capacity *= 2;
+    }
+
+    int separator = max(modulePath.ReverseFind(L'\\'), modulePath.ReverseFind(L'/'));
+    if (separator >= 0)
+      xfilename = modulePath.Left(separator + 1);
   }
 
   if (mid)
-    strlcatW(xfilename,mid,sizeof(xfilename)/sizeof(xfilename[0]));
+    xfilename += mid;
 
-  int len = lstrlenW(xfilename);
-  if (len > 0 && (xfilename[len-1]==_T('/') || xfilename[len-1]==_T('\\')) &&
-      (last && (*last==_T('/') || *last==_T('\\'))))
+  if (last == NULL)
+    return INVALID_HANDLE_VALUE;
+
+  int len = xfilename.GetLength();
+  if (len > 0 && (xfilename[len-1] == L'/' || xfilename[len-1] == L'\\') &&
+      (*last == L'/' || *last == L'\\'))
     ++last;
 
-  strlcatW(xfilename,last,sizeof(xfilename)/sizeof(xfilename[0]));
-
-  return CreateFile(xfilename,GENERIC_READ,0,NULL,OPEN_EXISTING,0,0);
+  xfilename += last;
+  return ::CreateFileW(xfilename, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
 }
-
 HRESULT	ScriptLoad(const wchar_t *filename) {
   if (!g_script)
     return E_FAIL;

@@ -51,6 +51,7 @@ const wchar_t COLOR_FG_KEY[]			= L"ColorFG";
 const wchar_t FONT_SIZE_KEY[]			= L"FontSize";
 const wchar_t XML_SRC_WRAP_KEY[]		= L"XMLSrcWrap";
 const wchar_t XML_SRC_SYNTAX_HL_KEY[]	= L"XMLSrcSyntaxHL";
+const wchar_t XML_SRC_COLOR_PALETTE_KEY[] = L"XMLSrcColorPalette";
 const wchar_t XML_SRC_TAG_HL_KEY[]		= L"XMLSrcTagHL";
 const wchar_t XML_SRC_SHOW_EOL_KEY[]	= L"XMLSrcShowEOL";
 const wchar_t XML_SRC_SHOW_SPACE_KEY[]	= L"XMLSrcShowSpace";
@@ -777,6 +778,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(FONT_SIZE_KEY);
 	properties.push_back(XML_SRC_WRAP_KEY);
 	properties.push_back(XML_SRC_SYNTAX_HL_KEY);
+	properties.push_back(XML_SRC_COLOR_PALETTE_KEY);
 	properties.push_back(XML_SRC_TAG_HL_KEY);
 	properties.push_back(XML_SRC_SHOW_EOL_KEY);
 	properties.push_back(XML_SRC_SHOW_SPACE_KEY);
@@ -855,6 +857,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == XML_SRC_SYNTAX_HL_KEY)
 	{
 		property = GetStringedProperty(&m_xml_src_syntaxHL, KEY_BOOL);
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_PALETTE_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_color_palette, KEY_INT);
 		return true;
 	}
 	else if(sProperty == XML_SRC_TAG_HL_KEY)
@@ -1091,6 +1098,12 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == XML_SRC_SYNTAX_HL_KEY)
 	{
 		m_xml_src_syntaxHL = StrToBool(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_PALETTE_KEY)
+	{
+		const DWORD palette = StrToInt(sValue.GetStringValue());
+		m_xml_src_color_palette = palette <= XML_SRC_COLOR_PALETTE_DARK ? palette : XML_SRC_COLOR_PALETTE_CLASSIC;
 		return true;
 	}
 	else if(sProperty == XML_SRC_TAG_HL_KEY)
@@ -1469,6 +1482,10 @@ bool CSettings::XmlSrcSyntaxHL()const
 {
 	return m_xml_src_syntaxHL;
 }
+DWORD CSettings::GetXmlSrcColorPalette()const
+{
+	return m_xml_src_color_palette;
+}
 bool CSettings::XmlSrcTagHL()const
 {
 	return m_xml_src_tagHL;
@@ -1568,10 +1585,10 @@ CString CSettings::GetNBSPChar()const
 
 CString CSettings::GetOldNBSPChar()const
 {
-	if (m_old_nbsp.Compare(L"\u00A0") == 0)
-		return CString (L"&nbsp;");
-	else
-		return m_old_nbsp;
+	// В текстовом DOM неразрывный пробел хранится самим символом U+00A0,
+	// а не XML-сущностью &nbsp;. Возвращаем фактическое предыдущее значение,
+	// иначе первая замена после выбора другого обозначения ничего не меняет.
+	return m_old_nbsp;
 }
 
 bool CSettings::GetChangeKeybLayout()const
@@ -1775,14 +1792,12 @@ CString CSettings::GetScriptsFolder() const
 
 CString CSettings::GetDefaultScriptsFolder()
 {
-	CString path = U::GetProgDir() + DEFAULT_SCRIPTS_FOLDER + L"\\";
-	path.MakeLower();
-	return path;
+	return U::GetProgDir() + DEFAULT_SCRIPTS_FOLDER + L"\\";
 }
 
 bool CSettings::IsDefaultScriptsFolder()
 {
-	return GetScriptsFolder() == GetDefaultScriptsFolder();
+	return GetScriptsFolder().CompareNoCase(GetDefaultScriptsFolder()) == 0;
 }
 
 bool CSettings::GetInsImageAsking() const
@@ -1849,6 +1864,13 @@ void CSettings::SetXmlSrcWrap(bool wrap, bool apply)
 void CSettings::SetXmlSrcSyntaxHL(bool hl, bool apply)
 {
 	m_xml_src_syntaxHL = hl;
+	if(apply)
+		Save();
+}
+
+void CSettings::SetXmlSrcColorPalette(DWORD palette, bool apply)
+{
+	m_xml_src_color_palette = palette <= XML_SRC_COLOR_PALETTE_DARK ? palette : XML_SRC_COLOR_PALETTE_CLASSIC;
 	if(apply)
 		Save();
 }
@@ -2177,6 +2199,7 @@ void CSettings::SetDefaults()
 	m_font_size				= 12;
 	m_xml_src_wrap			= true;
 	m_xml_src_syntaxHL		= true;
+	m_xml_src_color_palette = XML_SRC_COLOR_PALETTE_CLASSIC;
 	m_xml_src_tagHL			= true;
 	m_xml_src_showEOL		= false;
 	m_xml_src_showSpace		= false;

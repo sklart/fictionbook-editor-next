@@ -248,6 +248,9 @@ foreach($language in $Languages){
     $l.Add('    GROUPBOX        "' + (Get-Text 'idd_setting_next.window_title' $language) + '",IDC_FBE_NEXT_WINDOW_TITLE_GROUP,7,61,211,42')
     $l.Add('    CONTROL         "' + (Get-Text 'idd_setting_next.show_full_path_in_window_title' $language) + '",IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE,')
     $l.Add('                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,14,74,196,19')
+    $l.Add('    GROUPBOX        "' + (Get-Text 'idd_setting_next.source_code' $language) + '",IDC_STATIC,7,111,211,42')
+    $l.Add('    LTEXT           "' + (Get-Text 'idd_setting_next.source_palette' $language) + '",IDC_OPTIONS_SOURCE_PALETTE_LABEL,14,126,48,9')
+    $l.Add('    COMBOBOX        IDC_OPTIONS_SOURCE_PALETTE,66,124,120,60,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP')
     $l.Add("END")
     $l.Add("")
     if ($language -eq "uk-UA") {

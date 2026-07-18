@@ -225,6 +225,9 @@ BEGIN
     GROUPBOX        "Window title",IDC_FBE_NEXT_WINDOW_TITLE_GROUP,7,61,211,42
     CONTROL         "Show full file path in the window title",IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE,
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,14,74,196,19
+    GROUPBOX        "Source code",IDC_FBE_NEXT_SOURCE_CODE_GROUP,7,111,211,42
+    LTEXT           "Color scheme:",IDC_OPTIONS_SOURCE_PALETTE_LABEL,14,126,48,9
+    COMBOBOX        IDC_OPTIONS_SOURCE_PALETTE,66,124,120,60,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
 END
 
 IDD_TOOLS_SETTINGS DIALOGEX 0, 0, 266, 282
@@ -780,6 +783,8 @@ BEGIN
         MENUITEM "&Settings...",                ID_VIEW_OPTIONS
         MENUITEM SEPARATOR
         MENUITEM "Spell &check...",             ID_TOOLS_SPELLCHECK
+        MENUITEM SEPARATOR
+        MENUITEM "Diagnostic &trace...",        ID_TOOLS_DIAGNOSTIC_TRACE
     END
     POPUP "&Scripts"
     BEGIN

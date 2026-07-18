@@ -90,9 +90,11 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	m_scripts_switched = _Settings.IsDefaultScriptsFolder();
 
 	// added by SeNS
-	m_nbsp_char.AddString(L"?");  // \u25A1
-	m_nbsp_char.AddString(L"?");  // \u25AB
-	m_nbsp_char.AddString(L"?");  // \u26E6
+	// Используем Unicode-экранирование: исходный файл исторически собирался
+	// в разных кодировках, из-за чего сами символы превращались в вопросы.
+	m_nbsp_char.AddString(L"\u25A1");  // □
+	m_nbsp_char.AddString(L"\u25AB");  // ▫
+	m_nbsp_char.AddString(L"\u25E6");  // ◦
 	m_nbsp_char.AddString(L"\u00A0");  // original nbsp
 	m_nbsp_char.SelectString (0, _Settings.GetNBSPChar());
 	m_change_keyb.SetCheck(_Settings.GetChangeKeybLayout());
@@ -181,7 +183,7 @@ LRESULT CSettingsOtherDlg::OnBnClickedDefaultScriptsFolder(WORD /*wNotifyCode*/,
 	{
 		CString path;
 		m_scripts_folder.GetWindowText(path);
-		if(path != _Settings.GetDefaultScriptsFolder())
+		if(path.CompareNoCase(_Settings.GetDefaultScriptsFolder()) != 0)
 		{
 			m_scripts_folder.SetWindowText(_Settings.GetDefaultScriptsFolder());
 		}
@@ -206,7 +208,6 @@ LRESULT CSettingsOtherDlg::OnBnClickedSelectScriptsFolderButton(WORD /*wNotifyCo
 	if (fldDlg.DoModal(*this) == IDOK)
 	{
 		CString folderPath(fldDlg.m_szFolderPath);
-		folderPath.MakeLower();
 		if(!(folderPath.ReverseFind(L'\\') == (folderPath.GetLength() - 1)))
 		{
 			folderPath.Append(L"\\");
