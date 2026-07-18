@@ -380,6 +380,15 @@ EXTERN_C const IID IID_IExternalHelper;
         virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE SetStatusBarText( 
             /* [in] */ BSTR text) = 0;
         
+        virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE GetDocumentFilePath( 
+            /* [retval][out] */ BSTR *path) = 0;
+        
+        virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE GetDocumentFileName( 
+            /* [retval][out] */ BSTR *name) = 0;
+        
+        virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE GetDocumentDirectory( 
+            /* [retval][out] */ BSTR *directory) = 0;
+        
     };
     
     
@@ -598,6 +607,21 @@ EXTERN_C const IID IID_IExternalHelper;
             IExternalHelper * This,
             /* [in] */ BSTR text);
         
+        DECLSPEC_XFGVIRT(IExternalHelper, GetDocumentFilePath)
+        /* [helpstring][id] */ HRESULT ( STDMETHODCALLTYPE *GetDocumentFilePath )( 
+            IExternalHelper * This,
+            /* [retval][out] */ BSTR *path);
+        
+        DECLSPEC_XFGVIRT(IExternalHelper, GetDocumentFileName)
+        /* [helpstring][id] */ HRESULT ( STDMETHODCALLTYPE *GetDocumentFileName )( 
+            IExternalHelper * This,
+            /* [retval][out] */ BSTR *name);
+        
+        DECLSPEC_XFGVIRT(IExternalHelper, GetDocumentDirectory)
+        /* [helpstring][id] */ HRESULT ( STDMETHODCALLTYPE *GetDocumentDirectory )( 
+            IExternalHelper * This,
+            /* [retval][out] */ BSTR *directory);
+        
         END_INTERFACE
     } IExternalHelperVtbl;
 
@@ -711,6 +735,15 @@ EXTERN_C const IID IID_IExternalHelper;
 
 #define IExternalHelper_SetStatusBarText(This,text)	\
     ( (This)->lpVtbl -> SetStatusBarText(This,text) ) 
+
+#define IExternalHelper_GetDocumentFilePath(This,path)	\
+    ( (This)->lpVtbl -> GetDocumentFilePath(This,path) ) 
+
+#define IExternalHelper_GetDocumentFileName(This,name)	\
+    ( (This)->lpVtbl -> GetDocumentFileName(This,name) ) 
+
+#define IExternalHelper_GetDocumentDirectory(This,directory)	\
+    ( (This)->lpVtbl -> GetDocumentDirectory(This,directory) ) 
 
 #endif /* COBJMACROS */
 
