@@ -1172,6 +1172,168 @@
         "bg-BG": "Правопис..."
       }
     },
+    "fbe.menu.idr_mainframe.tools.diagnostic_trace": {
+      "kind": "MENUITEM",
+      "targetId": "ID_TOOLS_DIAGNOSTIC_TRACE",
+      "translations": {
+        "en-US": "Diagnostic &trace...",
+        "ru-RU": "Диагностическая &трассировка...",
+        "uk-UA": "Діагностичне &трасування...",
+        "de-DE": "&Diagnoseprotokoll...",
+        "fr-FR": "&Trace de diagnostic...",
+        "es-ES": "&Traza de diagnóstico...",
+        "it-IT": "&Traccia diagnostica...",
+        "pl-PL": "&Śledzenie diagnostyczne...",
+        "pt-PT": "&Rastreio de diagnóstico...",
+        "nl-NL": "&Diagnostische tracering...",
+        "cs-CZ": "&Diagnostické trasování...",
+        "bg-BG": "&Диагностично проследяване..."
+      }
+    },
+    "fbe.trace.caption": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Diagnostic trace",
+        "ru-RU": "Диагностическая трассировка",
+        "uk-UA": "Діагностичне трасування",
+        "de-DE": "Diagnoseprotokoll",
+        "fr-FR": "Trace de diagnostic",
+        "es-ES": "Traza de diagnóstico",
+        "it-IT": "Traccia diagnostica",
+        "pl-PL": "Śledzenie diagnostyczne",
+        "pt-PT": "Rastreio de diagnóstico",
+        "nl-NL": "Diagnostische tracering",
+        "cs-CZ": "Diagnostické trasování",
+        "bg-BG": "Диагностично проследяване"
+      }
+    },
+    "fbe.trace.enable.question": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Diagnostic trace records startup, commands, view switching, selection, document opening and saving, and COM errors.\n\nEnable it for the next FBE Next launch? Restart the application to begin recording.",
+        "ru-RU": "Диагностическая трассировка записывает в журнал сведения о запуске, командах, переходах между режимами, выделении, открытии и сохранении книги, а также ошибках COM.\n\nВключить её для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу.",
+        "uk-UA": "Діагностичне трасування записує запуск, команди, переходи між режимами, виділення, відкриття й збереження книги, а також помилки COM.\n\nУвімкнути його для наступного запуску FBE Next? Для початку запису перезапустіть програму.",
+        "de-DE": "Das Diagnoseprotokoll zeichnet Start, Befehle, Ansichtswechsel, Auswahl, Öffnen und Speichern von Büchern sowie COM-Fehler auf.\n\nFür den nächsten FBE-Next-Start aktivieren? Starten Sie das Programm neu, um die Aufzeichnung zu beginnen.",
+        "fr-FR": "La trace de diagnostic enregistre le démarrage, les commandes, les changements de vue, la sélection, l’ouverture et l’enregistrement des livres, ainsi que les erreurs COM.\n\nL’activer pour le prochain démarrage de FBE Next ? Redémarrez l’application pour commencer l’enregistrement.",
+        "es-ES": "La traza de diagnóstico registra el inicio, comandos, cambios de vista, selección, apertura y guardado de libros y errores COM.\n\n¿Activarla para el próximo inicio de FBE Next? Reinicie la aplicación para empezar a registrar.",
+        "it-IT": "La traccia diagnostica registra avvio, comandi, cambi di vista, selezione, apertura e salvataggio dei libri ed errori COM.\n\nAttivarla per il prossimo avvio di FBE Next? Riavviare l’applicazione per iniziare la registrazione.",
+        "pl-PL": "Śledzenie diagnostyczne zapisuje uruchomienie, polecenia, przełączanie widoków, zaznaczenie, otwieranie i zapisywanie książek oraz błędy COM.\n\nWłączyć je przy następnym uruchomieniu FBE Next? Uruchom program ponownie, aby rozpocząć zapis.",
+        "pt-PT": "O rastreio de diagnóstico regista o arranque, comandos, mudanças de vista, seleção, abertura e gravação de livros e erros COM.\n\nAtivá-lo no próximo arranque do FBE Next? Reinicie a aplicação para iniciar o registo.",
+        "nl-NL": "De diagnostische tracering registreert opstarten, opdrachten, weergavewisselingen, selectie, openen en opslaan van boeken en COM-fouten.\n\nInschakelen voor de volgende start van FBE Next? Start de toepassing opnieuw om de registratie te beginnen.",
+        "cs-CZ": "Diagnostické trasování zaznamenává spuštění, příkazy, přepínání zobrazení, výběr, otevírání a ukládání knih a chyby COM.\n\nZapnout je pro příští spuštění FBE Next? Pro zahájení záznamu restartujte program.",
+        "bg-BG": "Диагностичното проследяване записва стартирането, командите, превключването на изгледи, избора, отварянето и записването на книги и COM грешките.\n\nДа се включи за следващото стартиране на FBE Next? Рестартирайте програмата, за да започне записът."
+      }
+    },
+    "fbe.trace.enable.completed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Diagnostic trace is enabled. Restart FBE Next to begin writing %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "ru-RU": "Диагностическая трассировка включена. Перезапустите FBE Next, чтобы начать запись в %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "uk-UA": "Діагностичне трасування ввімкнено. Перезапустіть FBE Next, щоб почати запис у %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "de-DE": "Das Diagnoseprotokoll ist aktiviert. Starten Sie FBE Next neu, um in %LOCALAPPDATA%\\FBE Next\\fbe-trace.log zu schreiben.",
+        "fr-FR": "La trace de diagnostic est activée. Redémarrez FBE Next pour écrire dans %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "es-ES": "La traza de diagnóstico está activada. Reinicie FBE Next para escribir en %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "it-IT": "La traccia diagnostica è attivata. Riavviare FBE Next per scrivere in %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "pl-PL": "Śledzenie diagnostyczne jest włączone. Uruchom ponownie FBE Next, aby zapisywać w %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "pt-PT": "O rastreio de diagnóstico está ativo. Reinicie o FBE Next para escrever em %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "nl-NL": "Diagnostische tracering is ingeschakeld. Start FBE Next opnieuw om naar %LOCALAPPDATA%\\FBE Next\\fbe-trace.log te schrijven.",
+        "cs-CZ": "Diagnostické trasování je zapnuto. Restartujte FBE Next, aby se začalo zapisovat do %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "bg-BG": "Диагностичното проследяване е включено. Рестартирайте FBE Next, за да започне запис в %LOCALAPPDATA%\\FBE Next\\fbe-trace.log."
+      }
+    },
+    "fbe.trace.disable.completed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Diagnostic trace will be disabled after FBE Next is restarted.",
+        "ru-RU": "Диагностическая трассировка будет отключена после перезапуска FBE Next.",
+        "uk-UA": "Діагностичне трасування буде вимкнено після перезапуску FBE Next.",
+        "de-DE": "Das Diagnoseprotokoll wird nach dem Neustart von FBE Next deaktiviert.",
+        "fr-FR": "La trace de diagnostic sera désactivée après le redémarrage de FBE Next.",
+        "es-ES": "La traza de diagnóstico se desactivará después de reiniciar FBE Next.",
+        "it-IT": "La traccia diagnostica verrà disattivata dopo il riavvio di FBE Next.",
+        "pl-PL": "Śledzenie diagnostyczne zostanie wyłączone po ponownym uruchomieniu FBE Next.",
+        "pt-PT": "O rastreio de diagnóstico será desativado após reiniciar o FBE Next.",
+        "nl-NL": "Diagnostische tracering wordt uitgeschakeld nadat FBE Next opnieuw is gestart.",
+        "cs-CZ": "Diagnostické trasování bude vypnuto po restartování FBE Next.",
+        "bg-BG": "Диагностичното проследяване ще бъде изключено след рестартиране на FBE Next."
+      }
+    },
+    "fbe.trace.warning": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "FBE Next is running in diagnostic mode. Writing the diagnostic log can slow down the application and records information about actions with books.\n\nDisable diagnostic mode for future launches? Restart the application to apply the change.",
+        "ru-RU": "FBE Next запущен в режиме диагностики. Запись диагностического журнала может замедлять работу программы и содержит сведения о действиях с книгами.\n\nОтключить диагностический режим для следующих запусков? Для применения потребуется перезапустить программу.",
+        "uk-UA": "FBE Next запущено в режимі діагностики. Запис діагностичного журналу може сповільнювати роботу програми та містить відомості про дії з книгами.\n\nВимкнути діагностичний режим для наступних запусків? Для застосування змін перезапустіть програму.",
+        "de-DE": "FBE Next wird im Diagnosemodus ausgeführt. Das Schreiben des Diagnoseprotokolls kann die Anwendung verlangsamen und Informationen über Buchaktionen enthalten.\n\nDiagnosemodus für zukünftige Starts deaktivieren? Starten Sie die Anwendung neu, um die Änderung anzuwenden.",
+        "fr-FR": "FBE Next s’exécute en mode diagnostic. L’écriture du journal de diagnostic peut ralentir l’application et contient des informations sur les actions effectuées avec les livres.\n\nDésactiver le mode diagnostic pour les prochains démarrages ? Redémarrez l’application pour appliquer la modification.",
+        "es-ES": "FBE Next se ejecuta en modo de diagnóstico. La escritura del registro puede ralentizar la aplicación y contiene información sobre acciones con libros.\n\n¿Desactivar el modo de diagnóstico para futuros inicios? Reinicie la aplicación para aplicar el cambio.",
+        "it-IT": "FBE Next è in esecuzione in modalità diagnostica. La scrittura del registro diagnostico può rallentare l’applicazione e contiene informazioni sulle azioni con i libri.\n\nDisattivare la modalità diagnostica per gli avvii futuri? Riavviare l’applicazione per applicare la modifica.",
+        "pl-PL": "FBE Next działa w trybie diagnostycznym. Zapisywanie dziennika diagnostycznego może spowolnić program i zawiera informacje o działaniach na książkach.\n\nWyłączyć tryb diagnostyczny dla przyszłych uruchomień? Uruchom program ponownie, aby zastosować zmianę.",
+        "pt-PT": "O FBE Next está a executar no modo de diagnóstico. A escrita do registo de diagnóstico pode tornar a aplicação mais lenta e contém informações sobre ações com livros.\n\nDesativar o modo de diagnóstico para futuros arranques? Reinicie a aplicação para aplicar a alteração.",
+        "nl-NL": "FBE Next wordt uitgevoerd in de diagnostische modus. Het schrijven van het diagnostische logboek kan de toepassing vertragen en bevat informatie over handelingen met boeken.\n\nDiagnostische modus uitschakelen voor volgende starts? Start de toepassing opnieuw om de wijziging toe te passen.",
+        "cs-CZ": "FBE Next běží v diagnostickém režimu. Zápis diagnostického protokolu může program zpomalit a obsahuje informace o práci s knihami.\n\nVypnout diagnostický režim pro budoucí spuštění? Pro použití změny restartujte program.",
+        "bg-BG": "FBE Next работи в диагностичен режим. Записването на диагностичния журнал може да забави програмата и съдържа сведения за действията с книги.\n\nДа се изключи диагностичният режим за следващи стартирания? Рестартирайте програмата, за да се приложи промяната."
+      }
+    },
+    "fbe.trace.already_enabled": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Diagnostic trace is already enabled for future FBE Next launches. After restart, the application will warn about diagnostic mode and offer to disable it.",
+        "ru-RU": "Диагностическая трассировка уже включена для следующих запусков FBE Next. После перезапуска программа предупредит о диагностическом режиме и предложит его отключить.",
+        "uk-UA": "Діагностичне трасування вже ввімкнено для наступних запусків FBE Next. Після перезапуску програма попередить про діагностичний режим і запропонує його вимкнути.",
+        "de-DE": "Das Diagnoseprotokoll ist bereits für zukünftige FBE-Next-Starts aktiviert. Nach dem Neustart warnt die Anwendung vor dem Diagnosemodus und bietet dessen Deaktivierung an.",
+        "fr-FR": "La trace de diagnostic est déjà activée pour les prochains démarrages de FBE Next. Après redémarrage, l’application avertira du mode diagnostic et proposera de le désactiver.",
+        "es-ES": "La traza de diagnóstico ya está activada para futuros inicios de FBE Next. Tras reiniciar, la aplicación avisará del modo de diagnóstico y ofrecerá desactivarlo.",
+        "it-IT": "La traccia diagnostica è già attivata per i futuri avvii di FBE Next. Dopo il riavvio l’applicazione avviserà della modalità diagnostica e proporrà di disattivarla.",
+        "pl-PL": "Śledzenie diagnostyczne jest już włączone dla przyszłych uruchomień FBE Next. Po ponownym uruchomieniu program ostrzeże o trybie diagnostycznym i zaproponuje jego wyłączenie.",
+        "pt-PT": "O rastreio de diagnóstico já está ativo para futuros arranques do FBE Next. Após reiniciar, a aplicação avisará sobre o modo de diagnóstico e oferecerá desativá-lo.",
+        "nl-NL": "Diagnostische tracering is al ingeschakeld voor volgende starts van FBE Next. Na opnieuw starten waarschuwt de toepassing voor de diagnostische modus en biedt aan deze uit te schakelen.",
+        "cs-CZ": "Diagnostické trasování je již zapnuto pro budoucí spuštění FBE Next. Po restartu program upozorní na diagnostický režim a nabídne jeho vypnutí.",
+        "bg-BG": "Диагностичното проследяване вече е включено за следващи стартирания на FBE Next. След рестартиране програмата ще предупреди за диагностичния режим и ще предложи да го изключи."
+      }
+    },
+    "fbe.trace.title_suffix": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": " [Diagnostics]",
+        "ru-RU": " [Диагностика]",
+        "uk-UA": " [Діагностика]",
+        "de-DE": " [Diagnose]",
+        "fr-FR": " [Diagnostic]",
+        "es-ES": " [Diagnóstico]",
+        "it-IT": " [Diagnostica]",
+        "pl-PL": " [Diagnostyka]",
+        "pt-PT": " [Diagnóstico]",
+        "nl-NL": " [Diagnostiek]",
+        "cs-CZ": " [Diagnostika]",
+        "bg-BG": " [Диагностика]"
+      }
+    },
+    "fbe.trace.change_failed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Could not change the diagnostic trace setting.",
+        "ru-RU": "Не удалось изменить настройку диагностической трассировки.",
+        "uk-UA": "Не вдалося змінити налаштування діагностичного трасування.",
+        "de-DE": "Die Einstellung des Diagnoseprotokolls konnte nicht geändert werden.",
+        "fr-FR": "Impossible de modifier le paramètre de trace de diagnostic.",
+        "es-ES": "No se pudo cambiar la configuración de la traza de diagnóstico.",
+        "it-IT": "Impossibile modificare l’impostazione della traccia diagnostica.",
+        "pl-PL": "Nie udało się zmienić ustawienia śledzenia diagnostycznego.",
+        "pt-PT": "Não foi possível alterar a configuração do rastreio de diagnóstico.",
+        "nl-NL": "De instelling voor diagnostische tracering kon niet worden gewijzigd.",
+        "cs-CZ": "Nastavení diagnostického trasování se nepodařilo změnit.",
+        "bg-BG": "Настройката на диагностичното проследяване не можа да бъде променена."
+      }
+    },
     "fbe.menu.idr_mainframe.popup.scripts": {
       "kind": "POPUP",
       "targetId": "",

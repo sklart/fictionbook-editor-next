@@ -14,10 +14,10 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Не найден исполняемый файл FBE: $executable"
 }
 
-$traceFile = Join-Path $env:LOCALAPPDATA "FBE Next\startup-trace.log"
-$previousTraceSetting = $env:FBE_NEXT_STARTUP_TRACE
+$traceFile = Join-Path $env:LOCALAPPDATA "FBE Next\fbe-trace.log"
+$previousTraceSetting = $env:FBE_NEXT_TRACE
 if ($Trace) {
-    $env:FBE_NEXT_STARTUP_TRACE = "1"
+    $env:FBE_NEXT_TRACE = "1"
 }
 
 Add-Type @"
@@ -65,16 +65,19 @@ try {
     Write-Host "Проверка видимого запуска FBE прошла успешно за $elapsed секунд."
     if ($Trace) {
         if (-not (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
-            throw "Не создан startup trace: $traceFile"
+            throw "Не создан диагностический журнал: $traceFile"
+        }
+        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "[document]" -Quiet)) {
+            throw "В диагностическом журнале нет событий документа: $traceFile"
         }
 
-        Write-Host "Startup trace:"
+        Write-Host "Диагностический журнал:"
         Get-Content -LiteralPath $traceFile
     }
 }
 catch {
     if ($Trace -and (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
-        Write-Warning "Частичный startup trace:"
+        Write-Warning "Частичный диагностический журнал:"
         Get-Content -LiteralPath $traceFile | Write-Warning
     }
     throw
@@ -87,5 +90,5 @@ finally {
             Write-Warning "Тестовый процесс FBE не завершился в течение 10 секунд."
         }
     }
-    $env:FBE_NEXT_STARTUP_TRACE = $previousTraceSetting
+    $env:FBE_NEXT_TRACE = $previousTraceSetting
 }
