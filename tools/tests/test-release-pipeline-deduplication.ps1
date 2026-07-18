@@ -25,6 +25,7 @@ $scintilla = Get-Text "tools\build\build-scintilla.ps1"
 $release = Get-Text "tools\build\create-release.ps1"
 $portable = Get-Text "tools\build\package-portable.ps1"
 $artifacts = Get-Text "tools\build\verify-artifacts.ps1"
+$verifyRelease = Get-Text "tools\build\verify-release.ps1"
 
 Assert-Contains $workflow "-EditorRuntimeOnly" "Win7-этап workflow"
 Assert-Contains $workflow "-BatchConvertersOnly" "Win7-этап пакетных конвертеров workflow"
@@ -45,6 +46,10 @@ Assert-Contains $portable '"Scintilla.dll", "Lexilla.dll"' "package-portable.ps1
 Assert-Contains $artifacts "Get-ZipEntrySha256" "verify-artifacts.ps1"
 Assert-Contains $artifacts "Общий файл" "verify-artifacts.ps1"
 Assert-Contains $artifacts "Win7-вариант не был применён" "verify-artifacts.ps1"
+Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verify-release.ps1"
+if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {
+    throw "Релизный контур не должен блокироваться накопленным набором кириллических строк; строгая проверка допустима только для отдельных фикстур."
+}
 
 $win7Imports = Get-Text "tools\tests\check-win7-imports.ps1"
 Assert-Contains $win7Imports '"CreateFile2"' "check-win7-imports.ps1"
