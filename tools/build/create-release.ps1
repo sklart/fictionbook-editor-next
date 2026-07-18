@@ -20,6 +20,7 @@ param(
     [switch]$SkipPropertyHandlerBuild,
     [switch]$SkipFbvVerbMuiBuild,
     [switch]$ValidateUpdateManifest,
+    [switch]$Prerelease,
     [string]$ReleaseTag
 )
 
@@ -61,8 +62,12 @@ if (-not $versionMatch.Success) {
 
 $version = $versionMatch.Groups["version"].Value
 
-if ($ReleaseTag -and $ReleaseTag -ne "v$version") {
+if ($ReleaseTag -and $ReleaseTag -ne "v$version" -and
+    (-not $Prerelease -or -not $ReleaseTag.StartsWith("v$version-", [StringComparison]::OrdinalIgnoreCase))) {
     throw "Тег релиза '$ReleaseTag' не совпадает с версией исходников 'v$version'."
+}
+if ($Prerelease -and -not $ReleaseTag) {
+    throw "Для предварительного выпуска требуется тег с суффиксом, например v$version-rc.1."
 }
 $architecture = $Platform.ToLowerInvariant()
 $artifactCompatibility = if ($CompatibilityTarget -eq "Win7") { "win7-" } else { "" }
@@ -288,7 +293,7 @@ $checksumLines = foreach ($file in $artifactFiles) {
     "{0}  {1}" -f $hash.Hash, $file.Name
 }
 [IO.File]::WriteAllLines($checksumsPath, $checksumLines, [Text.Encoding]::ASCII)
-if (-not $SkipInstaller -and $CompatibilityTarget -eq "Modern") {
+if (-not $SkipInstaller -and $CompatibilityTarget -eq "Modern" -and -not $Prerelease) {
     $setupHash = (Get-FileHash -LiteralPath $setupArtifact -Algorithm SHA256).Hash
     $updateManifestPath = Join-Path $repoRoot "update.xml"
     [xml]$manifest = Get-Content -Raw -LiteralPath $updateManifestPath
@@ -326,6 +331,9 @@ if (-not $SkipInstaller -and $CompatibilityTarget -eq "Modern") {
 }
 
 if ($ValidateUpdateManifest) {
+    if ($Prerelease) {
+        throw "Предварительный выпуск не должен проверять или изменять update.xml."
+    }
     & (Join-Path $repoRoot "tools\version\sync-version.ps1") -ValidateUpdateManifest
 }
 

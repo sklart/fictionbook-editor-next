@@ -227,11 +227,11 @@ if ($CompatibilityTarget -eq "All") {
     $win7PortablePath = Join-Path $ArtifactsDirectory "FictionBookEditorNext-$version-win7-$architecture-portable.zip"
 
     # Общие бинарники должны происходить из одного явного modern-этапа, а не
-    # из неявного инкрементального состояния второй сборки.
+    # из неявного инкрементального состояния второй сборки. Batch-конвертеры
+    # исключены: они намеренно пересобираются с API-уровнем Windows 7.
     $commonPortableEntries = @(
         "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
-        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe",
-        "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll", "FBShell64.dll",
+        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll", "FBShell64.dll",
         "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll"
     )
     foreach ($name in $commonPortableEntries) {
@@ -248,6 +248,14 @@ if ($CompatibilityTarget -eq "All") {
     $win7ScintillaHash = Get-ZipEntrySha256 -Path $win7PortablePath -EntryName "Scintilla.dll"
     if ($modernScintillaHash -eq $win7ScintillaHash) {
         throw "Scintilla.dll в Modern и Win7 portable-пакетах совпадает; Win7-вариант не был применён."
+    }
+
+    foreach ($name in @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")) {
+        $modernHash = Get-ZipEntrySha256 -Path $modernPortablePath -EntryName $name
+        $win7Hash = Get-ZipEntrySha256 -Path $win7PortablePath -EntryName $name
+        if ($modernHash -eq $win7Hash) {
+            throw "$name в Modern и Win7 portable-пакетах совпадает; Win7-вариант пакетного конвертера не был применён."
+        }
     }
 }
 

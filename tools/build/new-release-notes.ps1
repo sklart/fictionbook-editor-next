@@ -60,7 +60,13 @@ if ($normalizedVersion.StartsWith("v", [StringComparison]::OrdinalIgnoreCase)) {
     $normalizedVersion = $normalizedVersion.Substring(1)
 }
 
-$curatedNotesPath = Join-Path $repoRoot "docs\release-notes\$normalizedVersion.md"
+$curatedNotesVersion = $normalizedVersion
+$curatedNotesPath = Join-Path $repoRoot "docs\release-notes\$curatedNotesVersion.md"
+if (-not (Test-Path -LiteralPath $curatedNotesPath -PathType Leaf) -and
+    $normalizedVersion -match '^(?<stable>\d+\.\d+\.\d+)-') {
+    $curatedNotesVersion = $Matches.stable
+    $curatedNotesPath = Join-Path $repoRoot "docs\release-notes\$curatedNotesVersion.md"
+}
 if (Test-Path -LiteralPath $curatedNotesPath -PathType Leaf) {
     $body = Get-Content -LiteralPath $curatedNotesPath
 }
@@ -107,7 +113,7 @@ $releaseNotesSourceUrl = $null
 
 if (-not [string]::IsNullOrWhiteSpace($repository) -and
     -not [string]::IsNullOrWhiteSpace($currentTag)) {
-    $releaseNotesSourceUrl = "https://github.com/$repository/blob/$currentTag/docs/release-notes/$normalizedVersion.md"
+    $releaseNotesSourceUrl = "https://github.com/$repository/blob/$currentTag/docs/release-notes/$curatedNotesVersion.md"
     $previousTag = $null
     try {
         $previousTag = (& git -C $repoRoot describe --tags --abbrev=0 "$currentTag^" 2>$null)
@@ -133,7 +139,7 @@ if (-not [string]::IsNullOrWhiteSpace($releaseNotesSourceUrl)) {
     $notes.Add("")
     $notes.Add("### Исходник заметок")
     $notes.Add("")
-    $notes.Add("- [docs/release-notes/$normalizedVersion.md]($releaseNotesSourceUrl)")
+    $notes.Add("- [docs/release-notes/$curatedNotesVersion.md]($releaseNotesSourceUrl)")
 }
 
 if (-not [string]::IsNullOrWhiteSpace($commitsUrl)) {

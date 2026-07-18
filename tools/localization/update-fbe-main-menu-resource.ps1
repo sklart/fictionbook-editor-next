@@ -114,7 +114,9 @@ $template = @(
         @{ Type = "MENUITEM"; Key = "tools.words" },
         @{ Type = "MENUITEM"; Key = "tools.options" },
         @{ Type = "SEPARATOR" },
-        @{ Type = "MENUITEM"; Key = "tools.spellcheck" }
+        @{ Type = "MENUITEM"; Key = "tools.spellcheck" },
+        @{ Type = "SEPARATOR" },
+        @{ Type = "MENUITEM"; Key = "tools.diagnostic_trace" }
     ) },
     @{ Type = "POPUP"; Key = "popup.scripts"; Children = @(
         @{ Type = "MENUITEM"; Key = "scripts.empty"; Extra = "INACTIVE" }

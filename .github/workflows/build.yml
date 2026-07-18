@@ -49,8 +49,13 @@ jobs:
             SkipBuild = $true
           }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
-            $arguments.ValidateUpdateManifest = $true
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
+            if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') {
+              $arguments.Prerelease = $true
+            }
+            else {
+              $arguments.ValidateUpdateManifest = $true
+            }
           }
           ./tools/build/create-release.ps1 @arguments
 
@@ -99,10 +104,15 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" out/artifacts/* --verify-tag --notes-file out/RELEASE_NOTES.md
+        run: |
+          $arguments = @("release", "create", "${{ github.ref_name }}", "out/artifacts/*", "--verify-tag", "--notes-file", "out/RELEASE_NOTES.md")
+          if ("${{ github.ref_name }}" -match '^v\d+\.\d+\.\d+-') {
+            $arguments += "--prerelease"
+          }
+          gh @arguments
 
       - name: Синхронизировать манифест автообновления
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && !contains(github.ref_name, '-')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

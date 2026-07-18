@@ -583,6 +583,7 @@
 #define ID_GOTO_WRONGTAG                32908
 #define ID_TOOLS_CUSTOMIZE              32909
 #define ID_HIDETOOLBAR                  32910
+#define ID_TOOLS_DIAGNOSTIC_TRACE        32911
 #define ID_EDIT_PASTE2                  0xE525
 #define IDS_ENCODINGS                   61403
 #define IDS_DOCUMENT_TREE_CAPTION       61404
