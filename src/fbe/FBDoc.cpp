@@ -13,6 +13,7 @@
 #include "Scintilla.h"
 #include "Settings.h"
 #include "ElementDescMnr.h"
+#include "StartupTrace.h"
 #include <new>
 #include <vector>
 
@@ -21,6 +22,22 @@ extern CElementDescMnr _EDMnr;
 extern CSettings _Settings;
 
 namespace FB {
+
+static void TraceDocumentEvent(const wchar_t* operation, const CString& filename)
+{
+	CString trace;
+	trace.Format(L"%s: %s", operation,
+		filename.IsEmpty() ? L"(без имени файла)" : (const wchar_t*)filename);
+	StartupTrace::Event(L"document", trace);
+}
+
+static void TraceRecoveryEvent(const wchar_t* operation, const CString& filename)
+{
+	CString trace;
+	trace.Format(L"%s: %s", operation,
+		filename.IsEmpty() ? L"(без имени файла)" : (const wchar_t*)filename);
+	StartupTrace::Event(L"recovery", trace);
+}
 
 // namespaces
 const _bstr_t	  FBNS(L"http://www.gribuser.ru/xml/fictionbook/2.0");
@@ -306,9 +323,11 @@ void Doc::ShowDescription(bool Show)
 
 void Doc::RunScript(LPCOLESTR filePath)
 {
+	TraceDocumentEvent(L"Запуск пользовательского скрипта", CString(filePath));
 	CComVariant vtResult;
 	CComVariant params(filePath);
 	InvokeFunc(L"apiRunCmd", &params, 1, vtResult);
+	TraceDocumentEvent(L"Пользовательский скрипт завершён", CString(filePath));
 }
 
 VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
@@ -322,6 +341,7 @@ VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 
 bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 {
+	TraceDocumentEvent(L"Загрузка книги начата", filename);
 	HRESULT	hr;
 	const CString path = U::GetProgDirFile(L"main.html");
 	m_body.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
@@ -352,21 +372,26 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	if(res.vt == VT_BOOL)
 	{
 		m_encoding = _Settings.GetDefaultEncoding();
-		return res.boolVal != VARIANT_FALSE;		
+		const bool loaded = res.boolVal != VARIANT_FALSE;
+		TraceDocumentEvent(loaded ? L"Загрузка книги завершена" : L"Загрузка книги отклонена", filename);
+		return loaded;		
 	}
 
 	if(res.vt == VT_BSTR)
 	{
 		m_encoding = res.bstrVal;
+		TraceDocumentEvent(L"Загрузка книги завершена", filename);
 		return true;
 	}
 
 	if(res.vt == VT_EMPTY)
 	{
 		m_encoding = _Settings.GetDefaultEncoding();		
+		TraceDocumentEvent(L"Загрузка книги завершена", filename);
 		return true;
 	}
 
+	TraceDocumentEvent(L"Загрузка книги завершилась без результата", filename);
 	return false;
 }
 
@@ -393,6 +418,7 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
     m_namevalid = true;
   }
   catch (_com_error& e) {
+	TraceDocumentEvent(L"Загрузка книги завершилась COM-ошибкой", filename);
     U::ReportError(e);
     return false;
   }
@@ -402,6 +428,7 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
 
 void  Doc::CreateBlank(HWND hWndParent) {
   try {
+	TraceDocumentEvent(L"Создание пустой книги", L"blank.fb2");
     // load document into DOM
 	  LoadFromHTML(hWndParent, L"blank.fb2");
     //LoadFromDOM(hWndParent,U::CreateDocument(true));
@@ -449,8 +476,19 @@ static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 		compact.Remove(L'\r');
 		compact.Remove(L'\n');
 
+		// IXMLDOMNode::put_text для элемента <binary> возвращает E_INVALIDARG
+		// на части версий MSXML6. Заменяем дочерний текстовый узел обычным
+		// способом DOM: так base64 остаётся компактным и не ломает переход
+		// редактора в режим исходного кода.
 		binary->PutdataType(_bstr_t());
-		binary->Puttext(_bstr_t((const wchar_t*)compact));
+		MSXML2::IXMLDOMNodePtr child = binary->firstChild;
+		while (child != NULL)
+		{
+			binary->removeChild(child);
+			child = binary->firstChild;
+		}
+		binary->appendChild(document->createTextNode(
+			_bstr_t((const wchar_t*)compact)));
 	}
 }
 
@@ -841,7 +879,7 @@ public:
   }
 };
 
-MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding) {
+MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries) {
   // normalize body first
   _EDMnr.CleanUpAll();
    m_body.Normalize(m_body.Document()->body);
@@ -910,20 +948,32 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding) {
   // fetch binaries
   CheckError(body.Invoke1(L"GetBinaries",&args[2]));
 
-  CompactBinaryTextContent(ndoc);
+	// Уплотнение base64 нужно только для записи файла. Переход в Source,
+	// экспорт и скриптовый API должны получать DOM без этой необязательной
+	// операции, чтобы вложение не могло сорвать работу редактора.
+	if (compactBinaries)
+		CompactBinaryTextContent(ndoc);
 
   Indent(root,ndoc,0);
   return ndoc;
 }
 
-MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding)
+MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compactBinaries)
 {
+	CString trace;
+	trace.Format(L"CreateDOM started: encoding=%s, compact-binaries=%d",
+		(const wchar_t*)encoding, compactBinaries ? 1 : 0);
+	StartupTrace::Event(L"document", trace);
 	try
 	{
-		return CreateDOMImp(encoding);
+		MSXML2::IXMLDOMDocument2Ptr result(CreateDOMImp(encoding, compactBinaries));
+		StartupTrace::Event(L"document", L"CreateDOM completed");
+		return result;
 	}
 	catch (_com_error& e)
 	{
+		trace.Format(L"CreateDOM failed: HRESULT=0x%08lX", e.Error());
+		StartupTrace::Event(L"com", trace);
 		U::ReportError(e);
 	}
 
@@ -969,6 +1019,7 @@ static void CommitSavedFile(const CString& temporaryFile, const CString& destina
 
 		if (!::MoveFileEx(temporaryFile, destinationFile, MOVEFILE_WRITE_THROUGH))
 			throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
+		TraceDocumentEvent(L"Сохранение: создан новый файл без .bak", destinationFile);
 		return;
 	}
 
@@ -988,6 +1039,8 @@ static void CommitSavedFile(const CString& temporaryFile, const CString& destina
 
 	if (!::ReplaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL))
 		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
+	TraceDocumentEvent(createBackupFile ? L"Сохранение: создана резервная копия .bak" : L"Сохранение: замена существующего файла без .bak",
+		createBackupFile ? backupFile : destinationFile);
 }
 
 static CString CreateTemporaryFileName(const CString& directory, const wchar_t* prefix)
@@ -1000,6 +1053,10 @@ static CString CreateTemporaryFileName(const CString& directory, const wchar_t* 
 bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		      int *errline,int *errcol)
 {
+	CString trace;
+	trace.Format(L"%s: %s", fValidateOnly ? L"Проверка книги начата" : L"Сохранение книги начато",
+		filename.IsEmpty() ? L"(текущая книга)" : (const wchar_t*)filename);
+	StartupTrace::Event(L"document", trace);
   try {
     // create a schema collection
     MSXML2::IXMLDOMSchemaCollection2Ptr	scol;
@@ -1024,7 +1081,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
     rdr->putErrorHandler(eh);
 
     // construct the document
-	MSXML2::IXMLDOMDocument2Ptr	ndoc(CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding()));
+	MSXML2::IXMLDOMDocument2Ptr	ndoc(CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true));
 
     // reparse the document
     IStreamPtr	    isp(ndoc);
@@ -1051,15 +1108,21 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	  (LPARAM)(const TCHAR *)eh->m_msg);
       } else
 	U::ReportError(hr);
+	  CString validationTrace;
+	  validationTrace.Format(L"%s: строка=%ld, столбец=%ld",
+		fValidateOnly ? L"Проверка книги обнаружила ошибку XML" : L"Сохранение остановлено из-за ошибки XML",
+		eh->m_line, eh->m_col);
+	  StartupTrace::Event(L"document", validationTrace);
       return false;
     }
 
-    if (fValidateOnly) 
+	if (fValidateOnly) 
 	{
 		wchar_t buf[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(), IDS_SB_NO_ERR, buf, MAX_LOAD_STRING);
 		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)buf);
 		::MessageBeep(MB_OK);
+		StartupTrace::Event(L"document", L"Проверка книги завершена без ошибок");
 		return true;
     }
 
@@ -1132,8 +1195,10 @@ forcesave:
 	}
 
 	m_encoding = _Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding();
+	StartupTrace::Event(L"document", L"Сохранение книги завершено");
   }
   catch (_com_error& e) {
+	StartupTrace::Event(L"document", fValidateOnly ? L"Проверка книги завершилась COM-ошибкой" : L"Сохранение книги завершилось COM-ошибкой");
     U::ReportError(e);
     return false;
   }
@@ -1144,10 +1209,11 @@ forcesave:
 bool Doc::SaveRecoveryCopy(const CString& filename)
 {
 	CString temporaryFile;
+	TraceRecoveryEvent(L"Автосохранение начато", filename);
 	try
 	{
 		MSXML2::IXMLDOMDocument2Ptr document(CreateDOMImp(
-			_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding()));
+			_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true));
 
 		CString directory(filename);
 		const int separator = directory.ReverseFind(L'\\');
@@ -1163,12 +1229,14 @@ bool Doc::SaveRecoveryCopy(const CString& filename)
 			_com_issue_errorex(result, document, __uuidof(document));
 
 		CommitRecoveryFile(temporaryFile, filename);
+		TraceRecoveryEvent(L"Автосохранение завершено", filename);
 		return true;
 	}
 	catch (...)
 	{
 		if (!temporaryFile.IsEmpty())
 			::DeleteFile(temporaryFile);
+		TraceRecoveryEvent(L"Автосохранение завершилось ошибкой", filename);
 		return false;
 	}
 }

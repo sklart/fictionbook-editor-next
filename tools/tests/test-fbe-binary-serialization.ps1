@@ -16,6 +16,9 @@ $viewSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBEview.cpp
 
 Assert-True ($docSource -match 'CompactBinaryTextContent') 'Не найдено уплотнение base64 перед сохранением FB2.'
 Assert-True ($docSource -match 'PutdataType\(_bstr_t\(L"bin\.base64"\)\)') 'Перед уплотнением binary должен декодироваться штатным MSXML.'
+Assert-True ($docSource -match 'createTextNode') 'Для compact base64 должен создаваться текстовый DOM-узел.'
+Assert-True ($docSource -notmatch 'binary->Puttext') 'Для элемента binary нельзя использовать put_text: MSXML6 возвращает E_INVALIDARG.'
+Assert-True ($docSource -match 'if \(compactBinaries\)') 'Уплотнение binary должно выполняться только при сохранении файла.'
 Assert-True ($docSource -match "c==_T\('-'\)") 'Doc::PrepareDefaultId должен сохранять допустимое тире в ID.'
 Assert-True ($viewSource -match "c==_T\('-'\)") 'CFBEView::PrepareDefaultId должен сохранять допустимое тире в ID.'
 
@@ -31,7 +34,12 @@ $null = $root.appendChild($binary)
 
 $compact = $binary.text -replace '\s', ''
 $binary.dataType = $null
-$binary.text = $compact
+$child = $binary.firstChild
+while ($null -ne $child) {
+    $null = $binary.removeChild($child)
+    $child = $binary.firstChild
+}
+$null = $binary.appendChild($document.createTextNode($compact))
 $savedText = $binary.text
 
 Assert-True ($savedText -notmatch '\s') 'Компактная base64-строка не должна содержать пробельных символов.'

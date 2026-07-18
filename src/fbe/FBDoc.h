@@ -49,7 +49,7 @@ public:
   bool	  Load(HWND hWndParent,const CString& filename);
   //bool	  LoadFromDOM(HWND hWndParent,MSXML2::IXMLDOMDocument2 *dom);
   bool	  LoadFromHTML(HWND hWndParent,const CString& filename);
-  MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding);
+  MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = false);
   HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult);
   void	  ShowDescription(bool Show);
   void	  RunScript(LPCOLESTR filePath);
@@ -142,7 +142,7 @@ private:
 
   // saving support
   bool	  SaveToFile(const CString& filename,bool fValidateOnly=false,int *errline=NULL,int *errcol=NULL);
-  MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding);
+  MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries = false);
 
   // loading support
   void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,
