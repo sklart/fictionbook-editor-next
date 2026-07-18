@@ -4,7 +4,11 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $sourcePath = Join-Path $repoRoot 'src\fbe\mainfrm.cpp'
+$tracePath = Join-Path $repoRoot 'src\fbe\StartupTrace.cpp'
+$documentPath = Join-Path $repoRoot 'src\fbe\FBDoc.cpp'
 $source = [System.Text.Encoding]::GetEncoding(1251).GetString([System.IO.File]::ReadAllBytes($sourcePath))
+$trace = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($tracePath))
+$document = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($documentPath))
 
 function Assert-Contains {
     param(
@@ -65,5 +69,53 @@ Assert-Contains $source 'FindXmlNodeTextPosition(srcText, xml_selected_begin' `
     'при отказе DomPath переход Body → Source должен использовать XML выбранного узла'
 Assert-Contains $source 'FindXmlNodeTextPosition(srcText, xml_selected_end' `
     'конец выделения Body → Source должен сопоставляться по XML конечного узла'
+
+Assert-Contains $source 'SourceToHTML: source bytes=' `
+    'диагностический журнал должен фиксировать исходные позиции выделения Source'
+Assert-Contains $source 'ShowSource: mapping text=' `
+    'диагностический журнал должен фиксировать способ переноса Body → Source'
+Assert-Contains $source 'ShowView: Source final bytes=' `
+    'диагностический журнал должен фиксировать итоговую прокрутку Source'
+Assert-Contains $trace 'FBE_NEXT_TRACE' `
+	'диагностический журнал должен включаться переменной окружения'
+if ($trace.Contains('FBE_NEXT_STARTUP_TRACE') -or $trace.Contains('FBE_NEXT_SELECTION_TRACE')) {
+	throw 'В диагностическом журнале не должны оставаться отдельные переменные startup/selection.'
+}
+Assert-Contains $trace 'fbe-trace.log' `
+	'диагностический журнал должен записываться в файл FBE Next'
+Assert-Contains $source 'StartupTrace::Event(L"selection", message);' `
+	'записи переноса выделения должны иметь категорию selection'
+Assert-Contains $trace 'void StartupTrace::Event' `
+	'журнал должен принимать события нескольких диагностических категорий'
+Assert-Contains $document 'StartupTrace::Event(L"document", trace);' `
+	'создание XML DOM должно фиксироваться в диагностическом журнале'
+Assert-Contains $document 'StartupTrace::Event(L"com", trace);' `
+	'ошибка создания XML DOM должна фиксироваться как COM-событие'
+Assert-Contains $document 'L"Загрузка книги начата"' `
+	'журнал должен фиксировать начало открытия книги'
+Assert-Contains $document 'L"Сохранение книги начато"' `
+	'общий журнал должен фиксировать начало сохранения книги'
+Assert-Contains $document 'L"Запуск пользовательского скрипта"' `
+	'общий журнал должен фиксировать ручной запуск пользовательского скрипта'
+Assert-Contains $document 'L"recovery"' `
+	'автосохранение должно иметь отдельную категорию recovery'
+Assert-Contains $trace 'FBE_VERSION_WSTRING' `
+	'шапка диагностического журнала должна содержать версию FBE'
+Assert-Contains $source 'ID_TOOLS_DIAGNOSTIC_TRACE' `
+	'меню должно содержать команду включения диагностического журнала'
+Assert-Contains $source 'fbe.trace.warning' `
+	'при запуске с диагностическим журналом должно выводиться предупреждение'
+Assert-Contains $source 'fbe.trace.title_suffix' `
+	'заголовок окна должен отмечать диагностический режим'
+Assert-Contains $source 'TraceMainFrameCommand(wParam, lParam);' `
+	'общий журнал должен фиксировать команды главного окна'
+Assert-Contains $source 'StartupTrace::Event(L"command", trace);' `
+	'команды должны иметь отдельную категорию command'
+Assert-Contains $source 'menu/hotkey/internal' `
+	'для команд из меню и горячих клавиш должен фиксироваться источник WM_COMMAND'
+Assert-Contains $source 'TraceMainFrameHotkey(pMsg);' `
+	'общий журнал должен фиксировать нажатую горячую клавишу до трансляции акселератора'
+Assert-Contains $source 'GetHotkeyText(hotkey.m_accel)' `
+	'запись горячей клавиши должна содержать её сочетание и назначенную команду'
 
 Write-Host 'Двусторонний перенос выделения между Body и Source закреплён проверкой.'

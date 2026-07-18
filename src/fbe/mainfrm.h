@@ -582,6 +582,7 @@ public:
 		// tools menu
 		COMMAND_ID_HANDLER(ID_TOOLS_WORDS, OnToolsWords)
 		COMMAND_ID_HANDLER(ID_TOOLS_OPTIONS, OnToolsOptions)
+		COMMAND_ID_HANDLER(ID_TOOLS_DIAGNOSTIC_TRACE, OnToolsDiagnosticTrace)
       
 		COMMAND_ID_HANDLER(ID_TOOLS_CUSTOMIZE, OnToolCustomize)
 		//COMMAND_ID_HANDLER(ID_HIDETOOLBAR, OnHideToolbar)
@@ -738,13 +739,7 @@ public:
 	}
 
 	LRESULT OnChar(UINT, WPARAM, LPARAM, BOOL&);
-	LRESULT OnPreCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
-	{
-		bHandled = FALSE;
-		if((HIWORD(wParam) == 0 || HIWORD(wParam) == 1) && LOWORD(wParam) != ID_EDIT_INCSEARCH)
-		StopIncSearch(true);
-		return 0;
-	}
+	LRESULT OnPreCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
 	LRESULT OnFileExit(WORD, WORD, HWND, BOOL&)
 	{
@@ -823,6 +818,7 @@ public:
 
   LRESULT OnToolsWords(WORD, WORD, HWND, BOOL&);
   LRESULT OnToolsOptions(WORD, WORD, HWND, BOOL&);
+	LRESULT OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&);
   LRESULT OnToolsScript(WORD, WORD, HWND, BOOL&);
 
   LRESULT OnHideToolbar(WORD wNotifyCode, WORD /*wID*/, HWND hWndCtl, BOOL& bHandled)

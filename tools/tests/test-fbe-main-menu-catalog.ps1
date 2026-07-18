@@ -32,8 +32,8 @@ if ($catalog.resource -ne 'IDR_MAINFRAME' -or $catalog.resourceType -ne 'MENU') 
 }
 
 $entries = @($catalog.strings.PSObject.Properties)
-if ($entries.Count -ne 68) {
-    throw "Ожидалось 68 пунктов главного меню FBE, получено $($entries.Count)."
+if ($entries.Count -ne 77) {
+    throw "Ожидалось 77 строк меню и сообщений FBE, получено $($entries.Count)."
 }
 
 foreach ($entry in $entries) {
@@ -62,6 +62,7 @@ foreach ($requiredKey in @(
     'fbe.menu.idr_mainframe.popup.insert',
     'fbe.menu.idr_mainframe.popup.style',
     'fbe.menu.idr_mainframe.popup.tools',
+    'fbe.menu.idr_mainframe.tools.diagnostic_trace',
     'fbe.menu.idr_mainframe.popup.help'
 )) {
     if (-not $catalog.strings.PSObject.Properties[$requiredKey]) {

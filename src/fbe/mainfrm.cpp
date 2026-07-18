@@ -78,8 +78,52 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_TOOLS_WORDS, L"fbe.menu.idr_mainframe.tools.words" },
 	{ ID_VIEW_OPTIONS, L"fbe.menu.idr_mainframe.tools.options" },
 	{ ID_TOOLS_SPELLCHECK, L"fbe.menu.idr_mainframe.tools.spellcheck" },
+	{ ID_TOOLS_DIAGNOSTIC_TRACE, L"fbe.menu.idr_mainframe.tools.diagnostic_trace" },
 	{ ID_APP_ABOUT, L"fbe.menu.idr_mainframe.help.about" },
 };
+
+static CString GetDiagnosticTraceText(LPCWSTR key, LPCWSTR fallback)
+{
+	return FbeLoadRuntimeStringByKey(key, fallback);
+}
+
+static bool IsDiagnosticTraceEnabledForNextLaunch()
+{
+	CRegKey environmentKey;
+	if(environmentKey.Open(HKEY_CURRENT_USER, L"Environment", KEY_READ) != ERROR_SUCCESS)
+		return false;
+
+	wchar_t value[16] = {};
+	ULONG valueLength = _countof(value);
+	if(environmentKey.QueryStringValue(L"FBE_NEXT_TRACE", value, &valueLength) != ERROR_SUCCESS)
+		return false;
+
+	return value[0] != 0 && !(value[0] == L'0' && value[1] == 0);
+}
+
+static bool SetDiagnosticTraceEnabledForNextLaunch(bool enabled)
+{
+	CRegKey environmentKey;
+	if(environmentKey.Create(HKEY_CURRENT_USER, L"Environment") != ERROR_SUCCESS)
+		return false;
+
+	LONG result = ERROR_SUCCESS;
+	if(enabled)
+		result = environmentKey.SetStringValue(L"FBE_NEXT_TRACE", L"1");
+	else
+	{
+		result = environmentKey.DeleteValue(L"FBE_NEXT_TRACE");
+		if(result == ERROR_FILE_NOT_FOUND)
+			result = ERROR_SUCCESS;
+	}
+	if(result != ERROR_SUCCESS)
+		return false;
+
+	DWORD_PTR ignored = 0;
+	::SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE, 0,
+		reinterpret_cast<LPARAM>(L"Environment"), SMTO_ABORTIFHUNG, 1000, &ignored);
+	return true;
+}
 
 static LPCWSTR FindRuntimeMainFrameMenuCommandKey(UINT commandId)
 {
@@ -89,6 +133,107 @@ static LPCWSTR FindRuntimeMainFrameMenuCommandKey(UINT commandId)
 			return kMainFrameMenuCommandBindings[i].key;
 	}
 	return NULL;
+}
+
+static LPCWSTR GetCommandTraceSource(LPARAM lParam)
+{
+	if(lParam == 0)
+		return L"menu/hotkey/internal";
+
+	wchar_t className[64] = {};
+	if(::GetClassName((HWND)lParam, className, _countof(className)) > 0 &&
+		_wcsicmp(className, TOOLBARCLASSNAME) == 0)
+		return L"toolbar";
+
+	return L"control";
+}
+
+static void TraceMainFrameCommand(WPARAM wParam, LPARAM lParam)
+{
+	const UINT commandId = LOWORD(wParam);
+	const WORD notificationCode = HIWORD(wParam);
+	if(notificationCode != 0 && notificationCode != 1)
+		return;
+
+	const LPCWSTR key = FindRuntimeMainFrameMenuCommandKey(commandId);
+	if(key == NULL)
+		return;
+
+	CString commandName = FbeLoadRuntimeStringByKey(key);
+	if(commandName.IsEmpty())
+		commandName = key;
+
+	CString trace;
+	trace.Format(L"Команда: %s; ID=%u; источник=%s", (const wchar_t*)commandName,
+		commandId, GetCommandTraceSource(lParam));
+	StartupTrace::Event(L"command", trace);
+}
+
+static bool IsAcceleratorModifierPressed(int virtualKey)
+{
+	return (::GetKeyState(virtualKey) & 0x8000) != 0;
+}
+
+static bool MatchesHotkeyMessage(const ACCEL& accelerator, const MSG* message)
+{
+	if((accelerator.fVirt & FVIRTKEY) == 0 || accelerator.key != message->wParam)
+		return false;
+
+	const bool controlPressed = IsAcceleratorModifierPressed(VK_CONTROL);
+	const bool shiftPressed = IsAcceleratorModifierPressed(VK_SHIFT);
+	const bool altPressed = IsAcceleratorModifierPressed(VK_MENU);
+	return ((accelerator.fVirt & FCONTROL) != 0) == controlPressed &&
+		((accelerator.fVirt & FSHIFT) != 0) == shiftPressed &&
+		((accelerator.fVirt & FALT) != 0) == altPressed;
+}
+
+static CString GetHotkeyText(const ACCEL& accelerator)
+{
+	CString text;
+	if((accelerator.fVirt & FCONTROL) != 0)
+		text += L"Ctrl+";
+	if((accelerator.fVirt & FALT) != 0)
+		text += L"Alt+";
+	if((accelerator.fVirt & FSHIFT) != 0)
+		text += L"Shift+";
+
+	wchar_t keyName[64] = {};
+	const UINT scanCode = ::MapVirtualKey(accelerator.key, MAPVK_VK_TO_VSC);
+	if(scanCode != 0 && ::GetKeyNameText(static_cast<LONG>(scanCode << 16), keyName, _countof(keyName)) > 0)
+		text += keyName;
+	else
+	{
+		CString fallback;
+		fallback.Format(L"VK_%u", accelerator.key);
+		text += fallback;
+	}
+	return text;
+}
+
+static void TraceMainFrameHotkey(const MSG* message)
+{
+	if(message->message != WM_KEYDOWN && message->message != WM_SYSKEYDOWN)
+		return;
+	if((message->lParam & 0x40000000) != 0)
+		return;
+
+	for(size_t groupIndex = 0; groupIndex < _Settings.m_hotkey_groups.size(); ++groupIndex)
+	{
+		const CHotkeysGroup& group = _Settings.m_hotkey_groups[groupIndex];
+		for(size_t hotkeyIndex = 0; hotkeyIndex < group.m_hotkeys.size(); ++hotkeyIndex)
+		{
+			const CHotkey& hotkey = group.m_hotkeys[hotkeyIndex];
+			if(!MatchesHotkeyMessage(hotkey.m_accel, message))
+				continue;
+
+			CString trace;
+			trace.Format(L"Горячая клавиша: %s; команда: %s; ID=%u",
+				(const wchar_t*)GetHotkeyText(hotkey.m_accel),
+				(const wchar_t*)hotkey.m_name, hotkey.m_accel.cmd);
+			StartupTrace::Event(L"command", trace);
+			return;
+		}
+	}
 }
 
 static CString LocalizeBundledPluginMenuText(const CString& clsidText, const CString& fallback)
@@ -755,6 +900,7 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 	{
 		m_ctrl_tab = false;
 	}
+	TraceMainFrameHotkey(pMsg);
 
 	// well, if we are doing an incremental search, then swallow WM_CHARS
 	if (m_incsearch && pMsg->hwnd != *this)
@@ -793,6 +939,15 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 	}
 
 	return FALSE;
+}
+
+LRESULT CMainFrame::OnPreCommand(UINT, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+{
+	bHandled = FALSE;
+	TraceMainFrameCommand(wParam, lParam);
+	if((HIWORD(wParam) == 0 || HIWORD(wParam) == 1) && LOWORD(wParam) != ID_EDIT_INCSEARCH)
+		StopIncSearch(true);
+	return 0;
 }
 
 void  CMainFrame::UIUpdateViewCmd(CFBEView& view, WORD wID, OLECMD& oc, const wchar_t *hk)
@@ -1499,7 +1654,10 @@ BOOL CMainFrame::OnIdle()
 		else
 			tt = U::GetFileTitle(m_doc->m_filename);
 		tt += m_change_state ? L" +" : L" -";
-		SetWindowText(tt + L" FB Editor Next");
+		CString title(tt + L" FB Editor Next");
+		if (StartupTrace::Enabled())
+			title += GetDiagnosticTraceText(L"fbe.trace.title_suffix", L" [Диагностика]");
+		SetWindowText(title);
 	}
 
 	return FALSE;
@@ -1615,7 +1773,19 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 
 void CMainFrame::InitPlugins()
 {
+	if (StartupTrace::Enabled())
+	{
+		CString trace;
+		trace.Format(L"Каталог пользовательских скриптов: %s", (LPCWSTR)_Settings.GetScriptsFolder());
+		StartupTrace::Event(L"script", trace);
+	}
 	CollectScripts(_Settings.GetScriptsFolder(), L"*.js", 1, L"0");	
+	if (StartupTrace::Enabled())
+	{
+		CString trace;
+		trace.Format(L"Найдено пользовательских скриптов: %d", m_scripts.GetSize());
+		StartupTrace::Event(L"script", trace);
+	}
 	StartupTrace::Mark(L"scripts collected");
 	QuickScriptsSort(m_scripts, 0, m_scripts.GetSize() - 1);
 	UpScriptsFolders(m_scripts);
@@ -2048,6 +2218,32 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // Restore scripts toolbar layout and position
 	m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
 
+  if (StartupTrace::Enabled())
+  {
+	  const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностическая трассировка"));
+	  const CString warning(GetDiagnosticTraceText(L"fbe.trace.warning",
+		  L"FBE Next запущен в режиме диагностики. Запись диагностического журнала может замедлять работу программы и содержит сведения о действиях с книгами.\n\n"
+		  L"Отключить диагностический режим для следующих запусков? Для применения потребуется перезапустить программу."));
+	  if (::MessageBox(m_hWnd, warning, caption, MB_YESNO | MB_ICONWARNING) == IDYES)
+	  {
+		  if (SetDiagnosticTraceEnabledForNextLaunch(false))
+		  {
+			  ::MessageBox(m_hWnd,
+				  GetDiagnosticTraceText(L"fbe.trace.disable.completed",
+					  L"Диагностический режим будет отключён после перезапуска FBE Next."),
+				  caption, MB_OK | MB_ICONINFORMATION);
+		  }
+		  else
+		  {
+			  ::MessageBox(m_hWnd,
+				  GetDiagnosticTraceText(L"fbe.trace.change_failed",
+					  L"Не удалось изменить настройку диагностической трассировки."),
+				  caption, MB_OK | MB_ICONERROR);
+		  }
+	  }
+  }
+
+  m_need_title_update = true;
   StartupTrace::Mark(L"main frame OnCreate completed");
   return 0;
 }
@@ -2146,6 +2342,7 @@ bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
 {
 	CString temporaryFile;
 	HANDLE file = INVALID_HANDLE_VALUE;
+	StartupTrace::Event(L"recovery", L"Автосохранение исходного кода начато");
 	try
 	{
 		CString directory(filename);
@@ -2182,6 +2379,7 @@ bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
 			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 			throw ::GetLastError();
 
+		StartupTrace::Event(L"recovery", L"Автосохранение исходного кода завершено");
 		return true;
 	}
 	catch (...)
@@ -2190,6 +2388,7 @@ bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
 			::CloseHandle(file);
 		if (!temporaryFile.IsEmpty())
 			::DeleteFile(temporaryFile);
+		StartupTrace::Event(L"recovery", L"Автосохранение исходного кода завершилось ошибкой");
 		return false;
 	}
 }
@@ -2206,6 +2405,8 @@ bool CMainFrame::SaveRecoveryNow()
 	const bool saved = IsSourceActive()
 		? SaveSourceRecoveryCopy(recoveryFile)
 		: (!m_bad_xml && m_doc->SaveRecoveryCopy(recoveryFile));
+	if (!saved && m_bad_xml)
+		StartupTrace::Event(L"recovery", L"Автосохранение пропущено: исходный XML содержит ошибку");
 	m_recovery_written = saved || m_recovery_written;
 	return saved;
 }
@@ -3353,6 +3554,40 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 		break;
 	}
 
+	return 0;
+}
+
+LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
+{
+	const bool enabled = IsDiagnosticTraceEnabledForNextLaunch();
+	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностическая трассировка"));
+	if(enabled)
+	{
+		::MessageBox(m_hWnd,
+			GetDiagnosticTraceText(L"fbe.trace.already_enabled",
+				L"Диагностическая трассировка уже включена для следующих запусков FBE Next. После перезапуска программа предупредит о диагностическом режиме и предложит его отключить."),
+			caption, MB_OK | MB_ICONINFORMATION);
+		return 0;
+	}
+
+	const CString question(GetDiagnosticTraceText(L"fbe.trace.enable.question",
+			L"Диагностическая трассировка записывает в журнал сведения о запуске, командах, переходах между режимами, выделении, открытии и сохранении книги, а также ошибках COM.\n\n"
+			L"Включить её для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу."));
+	if(::MessageBox(m_hWnd, question, caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
+		return 0;
+
+	if(!SetDiagnosticTraceEnabledForNextLaunch(true))
+	{
+		::MessageBox(m_hWnd,
+			GetDiagnosticTraceText(L"fbe.trace.change_failed",
+				L"Не удалось изменить настройку диагностической трассировки."),
+			caption, MB_OK | MB_ICONERROR);
+		return 0;
+	}
+
+	const CString result(GetDiagnosticTraceText(L"fbe.trace.enable.completed",
+		L"Диагностическая трассировка включена. Перезапустите FBE Next, чтобы начать запись в %LOCALAPPDATA%\\FBE Next\\fbe-trace.log."));
+	::MessageBox(m_hWnd, result, caption, MB_OK | MB_ICONINFORMATION);
 	return 0;
 }
 
@@ -4551,6 +4786,23 @@ static int SkipXmlMarkupBackward(const CString& sourceXml, int position)
 	return position;
 }
 
+// В журнал не попадает полный текст книги: только короткий фрагмент выделения.
+static CString SelectionTraceFragment(const CString& text)
+{
+	CString result(text);
+	result.Replace(L"\r", L"\\r");
+	result.Replace(L"\n", L"\\n");
+	result.Replace(L"\t", L"\\t");
+	if (result.GetLength() > 160)
+		result = result.Left(160) + L"...";
+	return result;
+}
+
+static void WriteSelectionTrace(const CString& message)
+{
+	StartupTrace::Event(L"selection", message);
+}
+
 bool  CMainFrame::SourceToHTML() 
 {
 	m_source_selection_transferred = false;
@@ -4576,6 +4828,13 @@ bool  CMainFrame::SourceToHTML()
 	int	  selectedPosBegin = m_source.SendMessage(SCI_GETSELECTIONSTART);    
 	int	  selectedPosEnd = m_source.SendMessage(SCI_GETSELECTIONEND);    
 	bool one_pos = selectedPosEnd == selectedPosBegin;
+	if (StartupTrace::Enabled())
+	{
+		CString trace;
+		trace.Format(L"SourceToHTML: source bytes=[%d,%d], text bytes=%d, caret=%d",
+			selectedPosBegin, selectedPosEnd, textlen, one_pos ? 1 : 0);
+		WriteSelectionTrace(trace);
+	}
 	if(one_pos)
 	{
 		selectedPosEnd = selectedPosBegin = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosBegin,NULL,0);
@@ -4584,7 +4843,7 @@ bool  CMainFrame::SourceToHTML()
 	{
 		selectedPosBegin = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosBegin,NULL,0);
 		selectedPosEnd = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosEnd,NULL,0);
-	}	
+	}
 	CString sourceText(ustr);
 	if (!one_pos)
 	{
@@ -4603,6 +4862,15 @@ bool  CMainFrame::SourceToHTML()
 		selectionCrossesParagraph = selectedSourceXml.Find(L"</p") >= 0 ||
 			selectedSourceXml.Find(L"<p") >= 0;
 	}
+	if (StartupTrace::Enabled())
+	{
+		CString trace;
+		trace.Format(L"SourceToHTML: XML chars=[%d,%d], visible chars=%d, crosses-p=%d, text=\"%s\"",
+			selectedPosBegin, selectedPosEnd, selectedSourceText.GetLength(),
+			selectionCrossesParagraph ? 1 : 0,
+			(const wchar_t*)SelectionTraceFragment(selectedSourceText));
+		WriteSelectionTrace(trace);
+	}
 
 	//	?????????? ? XML
 	U::DomPath path_begin;
@@ -4616,8 +4884,15 @@ bool  CMainFrame::SourceToHTML()
 		end_char = begin_char;
 	}
 	else
-	{	
+	{
 		selection_path_available = path_end.CreatePathFromText(ustr, selectedPosEnd, &end_char) && selection_path_available;
+	}
+	if (StartupTrace::Enabled())
+	{
+		CString trace;
+		trace.Format(L"SourceToHTML: DOM path available=%d, chars=[%d,%d]",
+			selection_path_available ? 1 : 0, begin_char, end_char);
+		WriteSelectionTrace(trace);
 	}
 		
 	if(changed)
@@ -4784,6 +5059,14 @@ bool  CMainFrame::SourceToHTML()
 			m_source_selection_transferred = true;
 		}
 	}
+	if (StartupTrace::Enabled())
+	{
+		CString trace;
+		trace.Format(L"SourceToHTML: transfer result=%d, DOM-path=%d, crosses-p=%d",
+			m_source_selection_transferred ? 1 : 0,
+			selection_path_available ? 1 : 0, selectionCrossesParagraph ? 1 : 0);
+		WriteSelectionTrace(trace);
+	}
 
 	delete[] buffer;
 	m_doc->MarkDocCP(); // document is in sync with source
@@ -4805,6 +5088,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	int selection_end_char = 0;
 	bstr_t path;
 	bool one_element = false;
+	bool selection_path_available = false;
 
 	int bodies_count = 0;
 	// ????? HTML
@@ -4821,6 +5105,19 @@ bool CMainFrame::ShowSource(bool saveSelection)
 			if(!selectedText.IsEmpty())
 				selection_end_char = selection_begin_char + selectedText.GetLength();
 		}
+		if (StartupTrace::Enabled())
+		{
+			CString selectedText;
+			if ((bool)m_body_selection)
+				selectedText = (const wchar_t*)m_body_selection->text;
+			CString trace;
+			trace.Format(L"ShowSource: Body chars=[%d,%d], same-element=%d, text chars=%d, text=\"%s\"",
+				selection_begin_char, selection_end_char,
+				selectedBeginElement == selectedEndElement ? 1 : 0,
+				selectedText.GetLength(),
+				(const wchar_t*)SelectionTraceFragment(selectedText));
+			WriteSelectionTrace(trace);
+		}
 
 
 		// <body>
@@ -4828,7 +5125,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		root = root->firstChild; // <DIV id = fbw_desc>
 		root = root->nextSibling; // <DIV id = fbw_body>
 		root = root->firstChild;// <DIV clss = ...>
-		if (root) do
+		if (root && (bool)selectedBeginElement && (bool)selectedEndElement) do
 		{
 			if(U::scmp(MSHTML::IHTMLElementPtr(root)->className, L"body") == 0)
 			{
@@ -4838,8 +5135,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 				}
 				else
 				{
-					bool res = selection_begin_path.CreatePathFromHTMLDOM(root, selectedBeginElement);
-					path = selection_begin_path;
+					selection_path_available = selection_begin_path.CreatePathFromHTMLDOM(root, selectedBeginElement);
 					one_element = selectedBeginElement == selectedEndElement;
 					if(one_element)
 					{
@@ -4847,8 +5143,10 @@ bool CMainFrame::ShowSource(bool saveSelection)
 					}
 				else
 					{
-						selection_end_path.CreatePathFromHTMLDOM(root, selectedEndElement);
+						selection_path_available = selection_end_path.CreatePathFromHTMLDOM(root, selectedEndElement) && selection_path_available;
 					}
+					if(selection_path_available)
+						path = selection_begin_path;
 
 					break;
 				}
@@ -4897,6 +5195,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 
 	MSXML2::IXMLDOMNodePtr xml_selected_begin;
 	MSXML2::IXMLDOMNodePtr xml_selected_end;
+	if(selection_path_available)
 	{
 		MSXML2::IXMLDOMElementPtr xml_root = m_saved_xml->documentElement;
 		if (!(bool)xml_root)
@@ -4914,7 +5213,12 @@ bool CMainFrame::ShowSource(bool saveSelection)
 				continue;
 			}
 			xml_selected_begin = selection_begin_path.GetNodeFromXMLDOM(xml_body);
-			selection_begin_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_begin);
+			if(!(bool)xml_selected_begin ||
+				!selection_begin_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_begin))
+			{
+				selection_path_available = false;
+				break;
+			}
 			path = selection_begin_path;
 
 			if(one_element)
@@ -4925,7 +5229,9 @@ bool CMainFrame::ShowSource(bool saveSelection)
 			else
 			{
 				xml_selected_end = selection_end_path.GetNodeFromXMLDOM(xml_body);
-				selection_end_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_end);
+				if(!(bool)xml_selected_end ||
+					!selection_end_path.CreatePathFromXMLDOM(m_saved_xml, xml_selected_end))
+					selection_path_available = false;
 			}
 			break;
 		}
@@ -4952,50 +5258,56 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	int savedPosBegin = 0;
 	int savedPosEnd = 0;
 	bool selection_mapped_to_source = false;
-	//if(saveSelection)
+	if(saveSelection)
 	{
-		if(saveSelection)
+		int beginPosition = -1;
+		int endPosition = -1;
+		bool hasBodySelectionText = false;
+		if((bool)m_body_selection)
 		{
-			int beginPosition = -1;
-			int endPosition = -1;
-			bool hasBodySelectionText = false;
-			if((bool)m_body_selection)
-			{
-				const CString selectedText((const wchar_t*)m_body_selection->text);
-				hasBodySelectionText = !selectedText.IsEmpty();
-				if(hasBodySelectionText)
-					FindVisibleXmlTextRange(srcText, selectedText, beginPosition, endPosition);
-			}
+			const CString selectedText((const wchar_t*)m_body_selection->text);
+			hasBodySelectionText = !selectedText.IsEmpty();
+			if(hasBodySelectionText)
+				FindVisibleXmlTextRange(srcText, selectedText, beginPosition, endPosition);
+		}
 
-			// DomPath оперирует XML-узлами, а не видимым текстом. Для реального
-			// выделения Body он может вернуть начало родительского узла и тем самым
-			// захватить текст, которого пользователь не выделял. Используем его
-			// только если текста выделения у Body действительно нет.
-			if(!hasBodySelectionText && (bool)xml_selected_begin &&
-				(beginPosition < 0 || endPosition < 0))
-			{
-				beginPosition = selection_begin_path.GetNodeFromText(src, selection_begin_char);
-				endPosition = selection_end_path.GetNodeFromText(src, selection_end_char);
-			}
+		// DomPath оперирует XML-узлами, а не видимым текстом. Для реального
+		// выделения Body он может вернуть начало родительского узла и тем самым
+		// захватить текст, которого пользователь не выделял. Используем его
+		// только если текста выделения у Body действительно нет.
+		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_begin &&
+			(beginPosition < 0 || endPosition < 0))
+		{
+			beginPosition = selection_begin_path.GetNodeFromText(src, selection_begin_char);
+			endPosition = selection_end_path.GetNodeFromText(src, selection_end_char);
+		}
 
-			// Старый DomPath не всегда умеет пройти от XML-документа к узлу
-			// отображаемого текста. Сам узел уже получен из DOM, поэтому при
-			// таком отказе сопоставляем позицию по его XML-представлению.
-			if(!hasBodySelectionText && (bool)xml_selected_begin && beginPosition <= 0)
-				beginPosition = FindXmlNodeTextPosition(srcText, xml_selected_begin,
-					selection_begin_char);
-			if(!hasBodySelectionText && (bool)xml_selected_end && endPosition <= 0)
-				endPosition = FindXmlNodeTextPosition(srcText, xml_selected_end,
-					selection_end_char);
+		// Старый DomPath не всегда умеет пройти от XML-документа к узлу
+		// отображаемого текста. Сам узел уже получен из DOM, поэтому при
+		// таком отказе сопоставляем позицию по его XML-представлению.
+		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_begin && beginPosition <= 0)
+			beginPosition = FindXmlNodeTextPosition(srcText, xml_selected_begin,
+				selection_begin_char);
+		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_end && endPosition <= 0)
+			endPosition = FindXmlNodeTextPosition(srcText, xml_selected_end,
+				selection_end_char);
 
-			if(beginPosition >= 0 && endPosition >= 0)
-			{
-				savedPosBegin = ::WideCharToMultiByte(CP_UTF8, 0, src,
-					beginPosition, NULL, 0, NULL, NULL);
-				savedPosEnd = ::WideCharToMultiByte(CP_UTF8, 0, src,
-					endPosition, NULL, 0, NULL, NULL);
-				selection_mapped_to_source = true;
-			}
+		if(beginPosition >= 0 && endPosition >= 0)
+		{
+			savedPosBegin = ::WideCharToMultiByte(CP_UTF8, 0, src,
+				beginPosition, NULL, 0, NULL, NULL);
+			savedPosEnd = ::WideCharToMultiByte(CP_UTF8, 0, src,
+				endPosition, NULL, 0, NULL, NULL);
+			selection_mapped_to_source = true;
+		}
+		if (StartupTrace::Enabled())
+		{
+			CString trace;
+			trace.Format(L"ShowSource: mapping text=%d, DOM-path=%d, XML chars=[%d,%d], source bytes=[%d,%d], mapped=%d",
+				hasBodySelectionText ? 1 : 0, selection_path_available ? 1 : 0,
+				beginPosition, endPosition, savedPosBegin, savedPosEnd,
+				selection_mapped_to_source ? 1 : 0);
+			WriteSelectionTrace(trace);
 		}
 	}
 
@@ -5021,6 +5333,15 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	m_body_selection_transferred = selection_mapped_to_source;
 	m_source_selection_start = savedPosBegin;
 	m_source_selection_end = savedPosEnd;
+	if (StartupTrace::Enabled())
+	{
+		const int sourceLine = m_source.SendMessage(SCI_LINEFROMPOSITION, savedPosBegin);
+		CString trace;
+		trace.Format(L"ShowSource: applied bytes=[%d,%d], line=%d, first-visible=%d",
+			savedPosBegin, savedPosEnd, sourceLine,
+			(int)m_source.SendMessage(SCI_GETFIRSTVISIBLELINE));
+		WriteSelectionTrace(trace);
+	}
 
 	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
 	m_doc->MarkDocCP();
@@ -5031,6 +5352,13 @@ bool CMainFrame::ShowSource(bool saveSelection)
 void  CMainFrame::ShowView(VIEW_TYPE vt) 
 {
   VIEW_TYPE prev = m_current_view;
+	if (StartupTrace::Enabled())
+	{
+		const wchar_t* const viewNames[] = { L"Body", L"Description", L"Source", L"Next" };
+		CString trace;
+		trace.Format(L"ShowView: requested %s -> %s", viewNames[prev], viewNames[vt]);
+		WriteSelectionTrace(trace);
+	}
   SaveSelection(m_current_view);
 
   // added by SeNS
@@ -5249,7 +5577,10 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 		if(prev == BODY)
 		{
 			CComDispatchDriver	body(m_doc->m_body.Script());
-			CheckError(body.InvokeN(L"SaveBodyScroll",0,0));
+			// Эта вспомогательная функция не должна отменять переход в Source.
+			// На части систем MSHTML возвращает E_INVALIDARG, хотя сохранение
+			// прокрутки не влияет на содержимое документа.
+			body.Invoke0(L"SaveBodyScroll");
 		}
 	}
 	m_status.SetPaneText(ID_PANE_CHAR, L"");
@@ -5284,6 +5615,22 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 		::PostMessage(m_source, SCI_SETSEL, m_source_selection_start,
 			m_source_selection_end);
 		::PostMessage(m_source, SCI_SCROLLCARET, 0, 0);
+		if (StartupTrace::Enabled())
+		{
+			CString trace;
+			trace.Format(L"ShowView: Source final bytes=[%d,%d], line=%d, first-visible=%d",
+				m_source_selection_start, m_source_selection_end, sourceLine,
+				(int)m_source.SendMessage(SCI_GETFIRSTVISIBLELINE));
+			WriteSelectionTrace(trace);
+		}
+	}
+	else if (StartupTrace::Enabled())
+	{
+		CString trace;
+		trace.Format(L"ShowView: completed current=%d, body-transfer=%d, source-transfer=%d",
+			m_current_view, m_body_selection_transferred ? 1 : 0,
+			m_source_selection_transferred ? 1 : 0);
+		WriteSelectionTrace(trace);
 	}
 }
 
@@ -5298,59 +5645,59 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 
 void  CMainFrame::SetSciStyles() {
   const bool highContrast = IsHighContrastEnabled();
-  const COLORREF windowText = ::GetSysColor(COLOR_WINDOWTEXT);
-  const COLORREF windowBackground = ::GetSysColor(COLOR_WINDOW);
+  const DWORD palette = _Settings.GetXmlSrcColorPalette();
+  const bool darkPalette = !highContrast && palette == XML_SRC_COLOR_PALETTE_DARK;
+  const COLORREF windowText = darkPalette ? RGB(220,220,220) : ::GetSysColor(COLOR_WINDOWTEXT);
+  const COLORREF windowBackground = darkPalette ? RGB(30,30,30) : ::GetSysColor(COLOR_WINDOW);
 
   m_source.SendMessage(SCI_STYLERESETDEFAULT);
 
-  /// Set source font
   CT2A srcFont(_Settings.GetSrcFont());
   m_source.SendMessage(SCI_STYLESETFONT,STYLE_DEFAULT,(LPARAM) srcFont.m_psz);
   m_source.SendMessage(SCI_STYLESETSIZE,STYLE_DEFAULT, _Settings.GetFontSize());
   m_source.SendMessage(SCI_STYLESETFORE, STYLE_DEFAULT, windowText);
   m_source.SendMessage(SCI_STYLESETBACK, STYLE_DEFAULT, windowBackground);
 
-/*  DWORD fs = _Settings.GetColorFG();
-  if (fs!=CLR_DEFAULT)
-    m_source.SendMessage(SCI_STYLESETFORE,STYLE_DEFAULT,fs);
-
-  fs = _Settings.GetColorBG();
-  if (fs!=CLR_DEFAULT)
-    m_source.SendMessage(SCI_STYLESETBACK,STYLE_DEFAULT,fs);*/
-
   m_source.SendMessage(SCI_STYLECLEARALL);
-  m_source.SendMessage(SCI_STYLESETFORE, STYLE_LINENUMBER, windowText);
+  m_source.SendMessage(SCI_STYLESETFORE, STYLE_LINENUMBER, darkPalette ? RGB(140,140,140) : windowText);
   m_source.SendMessage(SCI_STYLESETBACK, STYLE_LINENUMBER, windowBackground);
   m_source.SendMessage(SCI_SETCARETFORE, windowText);
   m_source.SendMessage(SCI_SETSELFORE, TRUE, ::GetSysColor(COLOR_HIGHLIGHTTEXT));
   m_source.SendMessage(SCI_SETSELBACK, TRUE, ::GetSysColor(COLOR_HIGHLIGHT));
 
-  // set XML specific styles
   static struct {
-    char    style;
-    int	    color;
-  }   styles[]={
-    { 0, RGB(0,0,0) },	    // default text
-    { 1, RGB(128,0,0) },    // tags
-    { 2, RGB(128,0,0) },    // unknown tags
-    { 3, RGB(128,128,0) },  // attributes
-    { 4, RGB(255,0,0) },    // unknown attributes
-    { 5, RGB(0,128,96) },   // numbers
-    { 6, RGB(0,128,0) },    // double quoted strings
-    { 7, RGB(0,128,0) },    // single quoted strings
-    { 8, RGB(128,0,128) },  // other inside tag
-    { 9, RGB(0,128,128) },  // comments
-    { 10, RGB(128,0,128) }, // entities
-    { 11, RGB(128,0,0) },   // tag ends
-    { 12, RGB(128,0,128) }, // xml decl start
-    { 13, RGB(128,0,128) }, // xml decl end
-    { 17, RGB(128,0,0) },   // cdata
-    { 18, RGB(128,0,0) },   // question
-    { 19, RGB(96,128,96) }, // unquoted value
+    char style;
+    COLORREF classic;
+    COLORREF contrast;
+    COLORREF dark;
+  } styles[] = {
+    { 0, RGB(0,0,0),       RGB(0,0,0),       RGB(220,220,220) },
+    { 1, RGB(128,0,0),     RGB(0,0,180),     RGB(86,156,214) },
+    { 2, RGB(128,0,0),     RGB(0,0,180),     RGB(86,156,214) },
+    { 3, RGB(128,128,0),   RGB(128,0,128),   RGB(156,220,254) },
+    { 4, RGB(255,0,0),     RGB(220,0,0),     RGB(255,99,71) },
+    { 5, RGB(0,128,96),    RGB(0,110,110),   RGB(181,206,168) },
+    { 6, RGB(0,128,0),     RGB(0,110,0),     RGB(206,145,120) },
+    { 7, RGB(0,128,0),     RGB(0,110,0),     RGB(206,145,120) },
+    { 8, RGB(128,0,128),   RGB(128,0,128),   RGB(197,134,192) },
+    { 9, RGB(0,128,128),   RGB(0,110,110),   RGB(106,153,85) },
+    { 10, RGB(128,0,128),  RGB(128,0,128),   RGB(197,134,192) },
+    { 11, RGB(128,0,0),    RGB(0,0,180),     RGB(86,156,214) },
+    { 12, RGB(128,0,128),  RGB(128,0,128),   RGB(197,134,192) },
+    { 13, RGB(128,0,128),  RGB(128,0,128),   RGB(197,134,192) },
+    { 17, RGB(128,0,0),    RGB(0,0,180),     RGB(86,156,214) },
+    { 18, RGB(128,0,0),    RGB(0,0,180),     RGB(86,156,214) },
+    { 19, RGB(96,128,96),  RGB(0,110,0),     RGB(181,206,168) },
   };
   if (_Settings.XmlSrcSyntaxHL() && !highContrast)
-    for (int i=0;i<sizeof(styles)/sizeof(styles[0]);++i)
-      m_source.SendMessage(SCI_STYLESETFORE,styles[i].style,styles[i].color);
+  {
+    for (int i = 0; i < sizeof(styles) / sizeof(styles[0]); ++i)
+    {
+      const COLORREF color = palette == XML_SRC_COLOR_PALETTE_DARK ? styles[i].dark :
+        (palette == XML_SRC_COLOR_PALETTE_CONTRAST ? styles[i].contrast : styles[i].classic);
+      m_source.SendMessage(SCI_STYLESETFORE, styles[i].style, color);
+    }
+  }
 }
 
 LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
@@ -5947,6 +6294,14 @@ void CMainFrame::SaveSelection(VIEW_TYPE vt)
 	if(vt == BODY)
 	{		
 		m_body_selection = m_doc->m_body.Document()->selection->createRange();		
+		if (StartupTrace::Enabled() && (bool)m_body_selection)
+		{
+			const CString selectedText((const wchar_t*)m_body_selection->text);
+			CString trace;
+			trace.Format(L"SaveSelection: Body text chars=%d, text=\"%s\"",
+				selectedText.GetLength(), (const wchar_t*)SelectionTraceFragment(selectedText));
+			WriteSelectionTrace(trace);
+		}
 	}
 	if(vt == DESC)
 	{		

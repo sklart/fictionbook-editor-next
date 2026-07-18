@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "StartupTrace.h"
+#include "../version.h"
 
 namespace
 {
@@ -8,9 +9,9 @@ namespace
 	ULONGLONG startTime = 0;
 	ULONGLONG previousTime = 0;
 
-	void WriteUtf8(const wchar_t* text)
+	void WriteUtf8(HANDLE file, const wchar_t* text)
 	{
-		if (traceFile == INVALID_HANDLE_VALUE)
+		if (file == INVALID_HANDLE_VALUE)
 			return;
 
 		const int byteCount = ::WideCharToMultiByte(
@@ -25,21 +26,53 @@ namespace
 		utf8.ReleaseBuffer(byteCount - 1);
 
 		DWORD written = 0;
-		::WriteFile(traceFile, utf8.GetString(), utf8.GetLength(), &written, NULL);
-		::FlushFileBuffers(traceFile);
+		::WriteFile(file, utf8.GetString(), utf8.GetLength(), &written, NULL);
+		::FlushFileBuffers(file);
 	}
+
+	bool IsTraceEnabled(const wchar_t* variable)
+	{
+		wchar_t enabled[8] = {};
+		const DWORD length = ::GetEnvironmentVariable(
+			variable, enabled, _countof(enabled));
+		return length != 0 && length < _countof(enabled) &&
+			!(length == 1 && enabled[0] == L'0');
+	}
+
+	const wchar_t* GetProcessorArchitectureName(WORD architecture)
+	{
+		switch (architecture)
+		{
+		case PROCESSOR_ARCHITECTURE_AMD64:
+			return L"x64";
+		case PROCESSOR_ARCHITECTURE_ARM64:
+			return L"ARM64";
+		case PROCESSOR_ARCHITECTURE_INTEL:
+			return L"x86";
+		default:
+			return L"unknown";
+		}
+	}
+
+	void WriteMark(const wchar_t* category, const wchar_t* stage)
+	{
+		if (traceFile == INVALID_HANDLE_VALUE)
+			return;
+
+		const ULONGLONG now = ::GetTickCount64();
+		CString line;
+		line.Format(L"[%s] [+%llu ms, delta %llu ms] %s\r\n",
+			category, now - startTime, now - previousTime, stage);
+		previousTime = now;
+		WriteUtf8(traceFile, line);
+	}
+
 }
 
 void StartupTrace::Start()
 {
-	wchar_t enabled[8] = {};
-	const DWORD length = ::GetEnvironmentVariable(
-		L"FBE_NEXT_STARTUP_TRACE", enabled, _countof(enabled));
-	if (length == 0 || length >= _countof(enabled) ||
-		(length == 1 && enabled[0] == L'0'))
-	{
+	if (!IsTraceEnabled(L"FBE_NEXT_TRACE"))
 		return;
-	}
 
 	wchar_t localAppData[MAX_PATH] = {};
 	if (FAILED(::SHGetFolderPath(
@@ -53,39 +86,48 @@ void StartupTrace::Start()
 	directory += L"\\FBE Next";
 	::CreateDirectory(directory, NULL);
 
-	const CString path = directory + L"\\startup-trace.log";
+	startTime = ::GetTickCount64();
+	previousTime = startTime;
+	const CString path = directory + L"\\fbe-trace.log";
 	traceFile = ::CreateFile(
 		path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS,
 		FILE_ATTRIBUTE_NORMAL, NULL);
-	if (traceFile == INVALID_HANDLE_VALUE)
-		return;
-
-	startTime = previousTime = ::GetTickCount64();
-	WriteUtf8(L"FictionBook Editor startup trace\r\n");
-	Mark(L"process started");
+	if (traceFile != INVALID_HANDLE_VALUE)
+	{
+		WriteUtf8(traceFile,
+			L"FictionBook Editor diagnostic trace\r\n");
+		SYSTEM_INFO systemInfo = {};
+		::GetNativeSystemInfo(&systemInfo);
+		CString environment;
+		environment.Format(L"FBE version: %s; process: Win32; OS architecture: %s\r\n",
+			FBE_VERSION_WSTRING,
+			GetProcessorArchitectureName(systemInfo.wProcessorArchitecture));
+		WriteUtf8(traceFile, environment);
+		WriteMark(L"startup", L"process started");
+	}
 }
 
 void StartupTrace::Mark(const wchar_t* stage)
 {
-	if (traceFile == INVALID_HANDLE_VALUE)
-		return;
+	WriteMark(L"startup", stage);
+}
 
-	const ULONGLONG now = ::GetTickCount64();
-	wchar_t line[256] = {};
-	_snwprintf_s(
-		line, _countof(line), _TRUNCATE,
-		L"[+%llu ms, delta %llu ms] %ls\r\n",
-		now - startTime, now - previousTime, stage);
-	previousTime = now;
-	WriteUtf8(line);
+bool StartupTrace::Enabled()
+{
+	return traceFile != INVALID_HANDLE_VALUE;
+}
+
+void StartupTrace::Event(const wchar_t* category, const wchar_t* stage)
+{
+	WriteMark(category, stage);
 }
 
 void StartupTrace::Finish()
 {
-	if (traceFile == INVALID_HANDLE_VALUE)
-		return;
-
-	Mark(L"process shutdown");
-	::CloseHandle(traceFile);
-	traceFile = INVALID_HANDLE_VALUE;
+	if (traceFile != INVALID_HANDLE_VALUE)
+	{
+		WriteMark(L"startup", L"process shutdown");
+		::CloseHandle(traceFile);
+		traceFile = INVALID_HANDLE_VALUE;
+	}
 }
