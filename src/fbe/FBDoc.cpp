@@ -1539,6 +1539,21 @@ void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString tagName)
 			case INWORD2:
 				if(!letter)
 				{
+					if(flags & GW_INCLUDE_HYPHENS)
+					{
+						if(iswspace(*p))
+						{
+							wend = p;
+							state = HYPH1;
+							break;
+						}
+						else if(*p == L'-')
+						{
+							wend = p;
+							state = HYPH2;
+							break;
+						}
+					}
 					*p = L'\0';
 					U::RemoveSpaces(wstart);
 					wl.Add(wstart);

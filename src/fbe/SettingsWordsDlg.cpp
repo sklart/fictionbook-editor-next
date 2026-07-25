@@ -284,7 +284,7 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 
 		if(word[symbol] == L'-')
 		{
-			if(symbol == 0 && word.GetLength() == 1 || symbol == word.GetLength() - 1 || hyphens > 1)
+			if(symbol == 0 || symbol == word.GetLength() - 1 || word[symbol - 1] == L'-')
 			{
 				ambigous = true;
 				break;
@@ -296,7 +296,7 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 		symbol++;
 	}
 
-	if(hyphens != 1)
+	if(hyphens == 0)
 		ambigous = true;
 
 	if(!ambigous)
