@@ -468,7 +468,6 @@ static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 		if (binary == NULL)
 			continue;
 
-		binary->PutdataType(_bstr_t(L"bin.base64"));
 		_bstr_t encoded(binary->Gettext());
 		CString compact((const wchar_t*)encoded);
 		compact.Remove(L' ');
@@ -476,11 +475,11 @@ static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 		compact.Remove(L'\r');
 		compact.Remove(L'\n');
 
-		// IXMLDOMNode::put_text для элемента <binary> возвращает E_INVALIDARG
-		// на части версий MSXML6. Заменяем дочерний текстовый узел обычным
-		// способом DOM: так base64 остаётся компактным и не ломает переход
-		// редактора в режим исходного кода.
-		binary->PutdataType(_bstr_t());
+		// GetBinaries уже создаёт обычный текстовый узел Base64. Повторное
+		// назначение dataType на элементе <binary> несовместимо с частью
+		// версий MSXML6 и возвращает E_INVALIDARG. Заменяем дочерний текстовый
+		// узел обычным способом DOM: так Base64 остаётся компактным и не
+		// ломает переход редактора в режим исходного кода.
 		MSXML2::IXMLDOMNodePtr child = binary->firstChild;
 		while (child != NULL)
 		{
