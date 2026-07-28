@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "rose-pine-moon",
   "name": "Rosé Pine Moon",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#232136",
     "editor.foreground": "#E0DEF4",

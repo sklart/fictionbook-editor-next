@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "github-light-default",
   "name": "GitHub Light Default",
-  "type": "light",
+  "isDark": false,
   "colors": {
     "editor.background": "#FFFFFF",
     "editor.foreground": "#1F2328",

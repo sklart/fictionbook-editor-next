@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "dracula",
   "name": "Dracula",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#282A36",
     "editor.foreground": "#F8F8F2",

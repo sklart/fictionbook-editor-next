@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "solarized-light",
   "name": "Solarized Light",
-  "type": "light",
+  "isDark": false,
   "colors": {
     "editor.background": "#FDF6E3",
     "editor.foreground": "#657B83",

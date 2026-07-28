@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "night-owl",
   "name": "Night Owl",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#011627",
     "editor.foreground": "#D6DEEB",

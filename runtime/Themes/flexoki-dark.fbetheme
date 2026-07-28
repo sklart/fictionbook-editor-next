@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "flexoki-dark",
   "name": "Flexoki Dark",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#100F0F",
     "editor.foreground": "#CECDC3",

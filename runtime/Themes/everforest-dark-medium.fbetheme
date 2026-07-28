@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "everforest-dark-medium",
   "name": "Everforest Dark Medium",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#2D353B",
     "editor.foreground": "#D3C6AA",

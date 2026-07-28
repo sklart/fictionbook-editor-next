@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "codeoss-dark-plus",
   "name": "Dark+",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#1E1E1E",
     "editor.foreground": "#D4D4D4",

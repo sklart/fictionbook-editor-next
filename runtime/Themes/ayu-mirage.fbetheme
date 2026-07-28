@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "ayu-mirage",
   "name": "Ayu Mirage",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#1F2430",
     "editor.foreground": "#CCCAC2",

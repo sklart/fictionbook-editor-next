@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "catppuccin-latte",
   "name": "Catppuccin Latte",
-  "type": "light",
+  "isDark": false,
   "colors": {
     "editor.background": "#EFF1F5",
     "editor.foreground": "#4C4F69",

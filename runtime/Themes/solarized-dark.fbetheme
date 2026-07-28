@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "solarized-dark",
   "name": "Solarized Dark",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#002B36",
     "editor.foreground": "#839496",

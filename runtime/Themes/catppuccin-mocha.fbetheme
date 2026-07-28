@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "catppuccin-mocha",
   "name": "Catppuccin Mocha",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#1E1E2E",
     "editor.foreground": "#CDD6F4",

@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "tokyo-night-storm",
   "name": "Tokyo Night Storm",
-  "type": "dark",
+  "isDark": true,
   "colors": {
     "editor.background": "#24283B",
     "editor.foreground": "#C0CAF5",

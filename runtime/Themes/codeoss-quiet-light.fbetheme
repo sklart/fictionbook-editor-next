@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "codeoss-quiet-light",
   "name": "Quiet Light",
-  "type": "light",
+  "isDark": false,
   "colors": {
     "editor.background": "#F5F5F5",
     "editor.foreground": "#333333",

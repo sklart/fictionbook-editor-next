@@ -1,8 +1,9 @@
 {
+  "format": "FictionBookEditorNext.CodeTheme",
   "formatVersion": 1,
   "id": "gruvbox-light-medium",
   "name": "Gruvbox Light Medium",
-  "type": "light",
+  "isDark": false,
   "colors": {
     "editor.background": "#FBF1C7",
     "editor.foreground": "#3C3836",
