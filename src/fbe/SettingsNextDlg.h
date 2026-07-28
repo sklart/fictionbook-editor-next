@@ -14,6 +14,8 @@ class CSettingsNextDlg : public CAxDialogImpl<CSettingsNextDlg>
     CToolTipCtrl m_source_tooltips;
     std::vector<CString> m_source_theme_ids;
     std::vector<CString> m_source_theme_display_names;
+    std::vector<CString> m_source_theme_names;
+    std::vector<bool> m_source_theme_is_user;
     CColorButton m_source_colors[XML_SRC_COLOR_GROUP_COUNT];
     bool m_source_color_custom[XML_SRC_COLOR_GROUP_COUNT];
 

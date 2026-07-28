@@ -99,6 +99,8 @@ inline bool JsonParseString(const std::wstring& text, size_t& pos, std::wstring&
         if (ch == L'"')
             return true;
         if (ch != L'\\') {
+            if (ch < 0x20)
+                return false;
             value.push_back(ch);
             continue;
         }
@@ -201,11 +203,35 @@ inline bool JsonSkipValue(const std::wstring& text, size_t& pos)
         return false;
     }
 
-    while (pos < text.size()) {
-        const wchar_t ch = text[pos];
-        if (ch == L',' || ch == L'}' || ch == L']' || ch == L' ' || ch == L'\t' || ch == L'\r' || ch == L'\n')
-            break;
+    const size_t valueStart = pos;
+    const auto matchesLiteral = [&](const wchar_t* literal) {
+        const size_t length = wcslen(literal);
+        if(text.compare(pos, length, literal) != 0)
+            return false;
+        pos += length;
+        return true;
+    };
+    if(matchesLiteral(L"true") || matchesLiteral(L"false") || matchesLiteral(L"null"))
+        return true;
+    pos = valueStart;
+    if(text[pos] == L'-') ++pos;
+    if(pos >= text.size()) return false;
+    if(text[pos] == L'0') ++pos;
+    else if(text[pos] >= L'1' && text[pos] <= L'9')
+        while(pos < text.size() && text[pos] >= L'0' && text[pos] <= L'9') ++pos;
+    else return false;
+    if(pos < text.size() && text[pos] == L'.') {
         ++pos;
+        const size_t fractionStart = pos;
+        while(pos < text.size() && text[pos] >= L'0' && text[pos] <= L'9') ++pos;
+        if(pos == fractionStart) return false;
+    }
+    if(pos < text.size() && (text[pos] == L'e' || text[pos] == L'E')) {
+        ++pos;
+        if(pos < text.size() && (text[pos] == L'+' || text[pos] == L'-')) ++pos;
+        const size_t exponentStart = pos;
+        while(pos < text.size() && text[pos] >= L'0' && text[pos] <= L'9') ++pos;
+        if(pos == exponentStart) return false;
     }
     return true;
 }

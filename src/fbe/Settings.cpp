@@ -1184,7 +1184,9 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == XML_SRC_COLOR_COMMENT_KEY)
 	{
-		m_xml_src_colors[XML_SRC_COLOR_COMMENT] = StrToInt(sValue.GetStringValue());
+		// XML comments are not preserved by the document model.  A historical
+		// override therefore must not survive invisibly without a UI to edit it.
+		m_xml_src_colors[XML_SRC_COLOR_COMMENT] = XML_SRC_COLOR_DEFAULT;
 		return true;
 	}
 	else if(sProperty == XML_SRC_COLOR_BACKGROUND_KEY)
@@ -1659,41 +1661,44 @@ bool CSettings::HasXmlSrcCustomColor(XmlSrcColorGroup group)const
 {
 	return group < XML_SRC_COLOR_GROUP_COUNT && m_xml_src_colors[group] != XML_SRC_COLOR_DEFAULT;
 }
-DWORD CSettings::GetXmlSrcStyleColor(XmlSrcStyleToken token)const
+XmlSrcColorGroup CSettings::GetXmlSrcColorGroup(XmlSrcStyleToken token)
 {
-	XmlSrcColorGroup group = XML_SRC_COLOR_GROUP_COUNT;
 	switch(token)
 	{
 	case XML_SRC_STYLE_EDITOR_BACKGROUND:
-		group = XML_SRC_COLOR_BACKGROUND;
-		break;
+		return XML_SRC_COLOR_BACKGROUND;
 	case XML_SRC_STYLE_EDITOR_FOREGROUND:
 	case XML_SRC_STYLE_XML_TEXT:
-		group = XML_SRC_COLOR_TEXT;
-		break;
+	case XML_SRC_STYLE_XML_ENTITY:
+		return XML_SRC_COLOR_TEXT;
 	case XML_SRC_STYLE_XML_TAG_NAME:
 	case XML_SRC_STYLE_XML_TAG_DELIMITER:
-		group = XML_SRC_COLOR_TAG;
-		break;
+		return XML_SRC_COLOR_TAG;
 	case XML_SRC_STYLE_XML_ATTRIBUTE_NAME:
-		group = XML_SRC_COLOR_ATTRIBUTE;
-		break;
+	case XML_SRC_STYLE_XML_NAMESPACE:
+		return XML_SRC_COLOR_ATTRIBUTE;
 	case XML_SRC_STYLE_XML_ATTRIBUTE_VALUE:
-		group = XML_SRC_COLOR_STRING;
-		break;
+		return XML_SRC_COLOR_STRING;
 	case XML_SRC_STYLE_XML_COMMENT:
-		group = XML_SRC_COLOR_COMMENT;
-		break;
+		return XML_SRC_COLOR_COMMENT;
 	default:
-		break;
+		return XML_SRC_COLOR_GROUP_COUNT;
 	}
-	if(group < XML_SRC_COLOR_GROUP_COUNT)
-		return GetXmlSrcColor(group);
+}
+
+DWORD CSettings::GetXmlSrcStyleColor(XmlSrcStyleToken token)const
+{
+	const XmlSrcColorGroup group = GetXmlSrcColorGroup(token);
+	// Group colors are overrides only.  Without an override every token keeps
+	// its own exact color from the selected .fbetheme.
+	if(group < XML_SRC_COLOR_GROUP_COUNT && HasXmlSrcCustomColor(group))
+		return m_xml_src_colors[group];
 	DWORD color = 0;
 	if(XmlSourceThemes::GetThemeColor(GetXmlSrcThemeId(), token, color))
 		return color;
 	return GetXmlSrcThemeColor(m_xml_src_color_palette, token);
 }
+
 bool CSettings::XmlSrcTagHL()const
 {
 	return m_xml_src_tagHL;

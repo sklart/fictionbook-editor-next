@@ -1,9 +1,15 @@
 #include "stdafx.h"
 #include "XmlSourceThemes.h"
 #include "..\common\RuntimeLocalizationCommon.h"
+#include "RuntimeLocalization.h"
 
 namespace
 {
+CString ThemeString(LPCWSTR key, LPCWSTR fallback)
+{
+	return FbeLoadRuntimeStringByKey(key, fallback);
+}
+
 const wchar_t kThemeSystem[] = L"system-auto";
 const wchar_t kThemeFbeLight[] = L"fbe-light";
 const wchar_t kThemeFbeDark[] = L"fbe-dark";
@@ -14,6 +20,7 @@ const wchar_t kThemeHistorical[] = L"fbe-historical";
 struct ThemeRecord
 {
 	XmlSourceThemeInfo info;
+	XmlSourceThemeMetadata metadata;
 	DWORD colors[XML_SRC_STYLE_TOKEN_COUNT];
 };
 
@@ -122,6 +129,40 @@ bool ReadJsonStringMember(const std::wstring& json, size_t objectStart, const wc
 		FbeRuntimeLocalization::JsonParseString(json, valueStart, value);
 }
 
+CString EscapeJsonString(const CString& value)
+{
+	CString escaped;
+	for(int index = 0; index < value.GetLength(); ++index)
+	{
+		const wchar_t ch = value[index];
+		switch(ch)
+		{
+		case L'\\': escaped += L"\\\\"; break;
+		case L'\"': escaped += L"\\\""; break;
+		case L'\b': escaped += L"\\b"; break;
+		case L'\f': escaped += L"\\f"; break;
+		case L'\n': escaped += L"\\n"; break;
+		case L'\r': escaped += L"\\r"; break;
+		case L'\t': escaped += L"\\t"; break;
+		default:
+			if(ch < 0x20) { CString item; item.Format(L"\\u%04X", static_cast<unsigned int>(ch)); escaped += item; }
+			else escaped += ch;
+			break;
+		}
+	}
+	return escaped;
+}
+
+bool ReadJsonBooleanMember(const std::wstring& json, size_t objectStart, const wchar_t* name, bool& value)
+{
+	size_t valueStart = 0;
+	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, objectStart, name, valueStart)) return false;
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, valueStart);
+	if(json.compare(valueStart, 4, L"true") == 0) { value = true; return true; }
+	if(json.compare(valueStart, 5, L"false") == 0) { value = false; return true; }
+	return false;
+}
+
 bool ReadJsonIntegerMember(const std::wstring& json, size_t objectStart, const wchar_t* name, int& value)
 {
 	size_t valueStart = 0;
@@ -129,12 +170,42 @@ bool ReadJsonIntegerMember(const std::wstring& json, size_t objectStart, const w
 	FbeRuntimeLocalization::JsonSkipWhitespace(json, valueStart);
 	if(valueStart >= json.size() || json[valueStart] < L'0' || json[valueStart] > L'9') return false;
 	int result = 0;
-	while(valueStart < json.size() && json[valueStart] >= L'0' && json[valueStart] <= L'9')
-	{
-		if(result > 100000) return false;
-		result = result * 10 + (json[valueStart++] - L'0');
-	}
+	if(json[valueStart] == L'0')
+		++valueStart;
+	else
+		while(valueStart < json.size() && json[valueStart] >= L'0' && json[valueStart] <= L'9')
+		{
+			if(result > 100000) return false;
+			result = result * 10 + (json[valueStart++] - L'0');
+		}
+	// A JSON integer member must end at a JSON member delimiter.  This rejects
+	// decimals, exponents, signs, quoted values and arbitrary suffixes.
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, valueStart);
+	if(valueStart >= json.size() || (json[valueStart] != L',' && json[valueStart] != L'}')) return false;
 	value = result;
+	return true;
+}
+
+bool ReadOptionalJsonStringMember(const std::wstring& json, size_t objectStart, const wchar_t* name,
+	size_t maxLength, CString& output, CString* error)
+{
+	size_t valueStart = 0;
+	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, objectStart, name, valueStart))
+		return true;
+	std::wstring value;
+	if(!FbeRuntimeLocalization::JsonParseString(json, valueStart, value))
+	{
+		if(error) error->Format(ThemeString(L"fbe.theme.error.invalid_metadata",
+			L"Invalid %s value: expected a string."), name);
+		return false;
+	}
+	if(value.size() > maxLength)
+	{
+		if(error) error->Format(ThemeString(L"fbe.theme.error.metadata_too_long",
+			L"Value of %s is too long."), name);
+		return false;
+	}
+	output = value.c_str();
 	return true;
 }
 
@@ -159,37 +230,112 @@ bool ReadLegacyAnsiThemeFile(const wchar_t* path, std::wstring& text)
 	return ::MultiByteToWideChar(1251, 0, bytes.data(), static_cast<int>(bytes.size()), &text[0], wideCount) == wideCount;
 }
 
-bool ParseThemeFile(const wchar_t* path, ThemeRecord& record, bool allowLegacyAnsi = false)
+bool ParseThemeFile(const wchar_t* path, ThemeRecord& record, bool allowLegacyAnsi = false, CString* error = NULL)
 {
 	// Theme files are data only. Keep malformed or unexpectedly large files from
 	// delaying startup; a user can still fix or remove the offending file.
 	WIN32_FILE_ATTRIBUTE_DATA attributes = {};
-	if(!::GetFileAttributesExW(path, GetFileExInfoStandard, &attributes)) return false;
+	if(!::GetFileAttributesExW(path, GetFileExInfoStandard, &attributes)) { if(error) *error = ThemeString(L"fbe.theme.error.read", L"Cannot read theme file."); return false; }
 	const ULONGLONG fileSize = (static_cast<ULONGLONG>(attributes.nFileSizeHigh) << 32) | attributes.nFileSizeLow;
-	if(fileSize > 1024 * 1024) return false;
+	if(fileSize > 1024 * 1024) { if(error) *error = ThemeString(L"fbe.theme.error.too_large", L"Theme file exceeds 1 MB."); return false; }
 	std::wstring json;
 	if(!FbeRuntimeLocalization::ReadUtf8TextFile(path, json) &&
-		(!allowLegacyAnsi || !ReadLegacyAnsiThemeFile(path, json))) return false;
+		(!allowLegacyAnsi || !ReadLegacyAnsiThemeFile(path, json))) { if(error) *error = ThemeString(L"fbe.theme.error.invalid_utf8_json", L"Invalid UTF-8 JSON."); return false; }
+	size_t jsonEnd = 0;
+	if(!FbeRuntimeLocalization::JsonSkipValue(json, jsonEnd)) { if(error) *error = ThemeString(L"fbe.theme.error.invalid_json", L"Invalid JSON."); return false; }
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, jsonEnd);
+	if(jsonEnd != json.size()) { if(error) *error = ThemeString(L"fbe.theme.error.trailing_json", L"Unexpected data after the JSON object."); return false; }
 	int formatVersion = 0;
-	std::wstring id, name, type, format;
-	const bool hasFormat = ReadJsonStringMember(json, 0, L"format", format);
+	std::wstring id, name, format;
+	bool isDark = false;
 	size_t colorsStart = 0;
-	if(!ReadJsonIntegerMember(json, 0, L"formatVersion", formatVersion) || formatVersion != 1 ||
-		(hasFormat && format != L"FictionBookEditorNext.CodeTheme") ||
-		(!hasFormat && (!ReadJsonStringMember(json, 0, L"type", type) || (type != L"light" && type != L"dark"))) ||
-		!FbeRuntimeLocalization::JsonFindObjectMember(json, 0, L"colors", colorsStart))
+	size_t isDarkStart = 0;
+	const bool hasIsDark = FbeRuntimeLocalization::JsonFindObjectMember(json, 0, L"isDark", isDarkStart);
+	const bool hasDark = hasIsDark && ReadJsonBooleanMember(json, 0, L"isDark", isDark);
+	if(!ReadJsonStringMember(json, 0, L"format", format))
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.missing_format", L"Missing required field: format.");
 		return false;
+	}
+	if(format != L"FictionBookEditorNext.CodeTheme")
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.invalid_format", L"Unsupported theme format.");
+		return false;
+	}
+	if(!ReadJsonIntegerMember(json, 0, L"formatVersion", formatVersion))
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.missing_version", L"Missing required field: formatVersion.");
+		return false;
+	}
+	if(formatVersion != 1)
+	{
+		if(error) error->Format(ThemeString(L"fbe.theme.error.unsupported_version", L"Unsupported theme format version: %d."), formatVersion);
+		return false;
+	}
+	if(!hasIsDark)
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.missing_is_dark", L"Missing required field: isDark.");
+		return false;
+	}
+	if(!hasDark)
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.invalid_is_dark", L"Invalid value for isDark.");
+		return false;
+	}
+	if(!ReadJsonStringMember(json, 0, L"id", id))
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.missing_id", L"Missing required field: id.");
+		return false;
+	}
+	if(!IsValidThemeId(id))
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.invalid_id", L"Invalid theme id.");
+		return false;
+	}
+	if(!ReadJsonStringMember(json, 0, L"name", name) || name.empty() || name.size() > 100)
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.invalid_name", L"Missing or invalid theme name.");
+		return false;
+	}
+	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, 0, L"colors", colorsStart))
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.missing_colors", L"Missing required field: colors.");
+		return false;
+	}
 	for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i)
 	{
 		size_t colorStart = 0;
 		std::wstring colorText;
-		if(!FbeRuntimeLocalization::JsonFindObjectMember(json, colorsStart, kStyleTokenNames[i], colorStart) ||
-			!FbeRuntimeLocalization::JsonParseString(json, colorStart, colorText) ||
+		const bool hasColor = FbeRuntimeLocalization::JsonFindObjectMember(json, colorsStart,
+			kStyleTokenNames[i], colorStart);
+		if(!hasColor && i == XML_SRC_STYLE_XML_COMMENT)
+		{
+			record.colors[i] = record.colors[XML_SRC_STYLE_XML_TEXT];
+			continue;
+		}
+		if(!hasColor || !FbeRuntimeLocalization::JsonParseString(json, colorStart, colorText) ||
 			!ParseHexColor(colorText, record.colors[i]))
+		{
+			if(error) error->Format(ThemeString(L"fbe.theme.error.invalid_color", L"Invalid required color: %s."), kStyleTokenNames[i]);
 			return false;
+		}
 	}
 	record.info.id = id.c_str();
 	record.info.name = name.c_str();
+	record.info.isDark = isDark;
+	record.metadata.isDark = isDark;
+	record.metadata.recalculateIsDark = false;
+	if(!ReadOptionalJsonStringMember(json, 0, L"baseThemeId", 64, record.metadata.baseThemeId, error) ||
+		!ReadOptionalJsonStringMember(json, 0, L"author", 100, record.metadata.author, error) ||
+		!ReadOptionalJsonStringMember(json, 0, L"description", 2000, record.metadata.description, error) ||
+		!ReadOptionalJsonStringMember(json, 0, L"source", 500, record.metadata.source, error) ||
+		!ReadOptionalJsonStringMember(json, 0, L"license", 500, record.metadata.license, error))
+		return false;
+	if(!record.metadata.baseThemeId.IsEmpty() && !IsValidThemeId(std::wstring(record.metadata.baseThemeId)))
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.invalid_base_theme_id", L"Invalid baseThemeId.");
+		return false;
+	}
 	return true;
 }
 
@@ -251,10 +397,17 @@ void LoadThemesFromDirectory(const CString& directory, bool isUser, std::vector<
 		if((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) continue;
 		ThemeRecord record = {};
 		const CString path = directory + L"\\" + findData.cFileName;
-		if(ParseThemeFile(path, record) && !IsBuiltInThemeId(record.info.id) && !HasThemeId(themes, record.info.id))
+		CString parseError;
+		const bool parsed = ParseThemeFile(path, record, false, &parseError);
+		if(parsed && !IsBuiltInThemeId(record.info.id) && !HasThemeId(themes, record.info.id))
 		{
 			record.info.isUser = isUser;
 			themes.push_back(record);
+		}
+		else if(!parsed)
+		{
+			CString trace = L"FBE XML theme skipped: " + path + L": " + parseError + L"\r\n";
+			::OutputDebugStringW(trace);
 		}
 	}
 	while(::FindNextFileW(found, &findData));
@@ -331,10 +484,10 @@ const std::vector<XmlSourceThemeInfo>& GetAvailableThemes()
 {
 	if(g_availableThemesInitialized) return g_availableThemes;
 	g_availableThemesInitialized = true;
-	g_availableThemes.push_back({ CString(kThemeSystem), L"Как в системе" });
-	g_availableThemes.push_back({ CString(kThemeFbeLight), L"FBE Светлая" });
-	g_availableThemes.push_back({ CString(kThemeFbeDark), L"FBE Тёмная" });
-	g_availableThemes.push_back({ CString(kThemeHistorical), L"Историческая FBE" });
+	g_availableThemes.push_back({ CString(kThemeSystem), L"Automatic — follow Windows theme", false, false });
+	g_availableThemes.push_back({ CString(kThemeFbeLight), L"FBE Light", false, false });
+	g_availableThemes.push_back({ CString(kThemeFbeDark), L"FBE Dark", false, true });
+	g_availableThemes.push_back({ CString(kThemeHistorical), L"Historical FBE", false, false });
 	const std::vector<ThemeRecord>& externalThemes = GetExternalThemes();
 	std::vector<XmlSourceThemeInfo> builtInThemes;
 	std::vector<XmlSourceThemeInfo> userThemes;
@@ -354,10 +507,33 @@ const std::vector<XmlSourceThemeInfo>& GetAvailableThemes()
 	g_availableThemes.insert(g_availableThemes.end(), builtInThemes.begin(), builtInThemes.end());
 	for(size_t i = 0; i < userThemes.size(); ++i)
 	{
-		userThemes[i].name = CString(L"Пользовательские темы — ") + userThemes[i].name;
 		g_availableThemes.push_back(userThemes[i]);
 	}
 	return g_availableThemes;
+}
+
+bool GetImportThemeId(const CString& sourcePath, CString& id, CString& error)
+{
+	ThemeRecord record = {};
+	id.Empty();
+	error.Empty();
+	if(!ParseThemeFile(sourcePath, record, true, &error)) return false;
+	id = record.info.id;
+	return true;
+}
+
+bool IsUserTheme(const CString& id)
+{
+	const ThemeRecord* record = FindExternalTheme(id);
+	return record != NULL && record->info.isUser;
+}
+
+bool GetThemeMetadata(const CString& id, XmlSourceThemeMetadata& metadata)
+{
+	const ThemeRecord* record = FindExternalTheme(NormalizeThemeId(id));
+	if(record == NULL) return false;
+	metadata = record->metadata;
+	return true;
 }
 
 void ReloadThemes()
@@ -385,30 +561,33 @@ bool GetThemeColor(const CString& id, XmlSrcStyleToken token, DWORD& color)
 	return true;
 }
 
-bool ImportThemeFile(const CString& sourcePath, CString& importedId, CString& error)
+bool ImportThemeFile(const CString& sourcePath, CString& importedId, CString& error, ImportThemeConflictMode conflictMode)
 {
 	importedId.Empty();
 	error.Empty();
 	ThemeRecord record = {};
-	if(sourcePath.IsEmpty() || !ParseThemeFile(sourcePath, record, true))
+	if(sourcePath.IsEmpty() || !ParseThemeFile(sourcePath, record, true, &error))
 	{
-		error = L"Invalid .fbetheme file.";
+			if(error.IsEmpty()) error = ThemeString(L"fbe.theme.error.invalid_file", L"Invalid .fbetheme file.");
 		return false;
 	}
 	const CString directory = GetUserThemeDirectory();
 	if(directory.IsEmpty() || (!::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS))
 	{
-		error = L"Cannot create the user Themes directory.";
+		error = ThemeString(L"fbe.theme.error.create_directory", L"Cannot create the user Themes directory.");
 		return false;
 	}
-	const CString importedThemeId = MakeAvailableUserThemeId(record.info.id);
+	CString importedThemeId = MakeAvailableUserThemeId(record.info.id);
+	const ThemeRecord* existing = FindExternalTheme(record.info.id);
+	if(conflictMode == IMPORT_THEME_REPLACE_USER && existing != NULL && existing->info.isUser)
+		importedThemeId = record.info.id;
 	const bool copied = importedThemeId.CompareNoCase(record.info.id) != 0;
 	const CString destination = directory + L"\\" + importedThemeId + L".fbetheme";
 	CString importedName(record.info.name);
-	if(copied) importedName += L" (imported)";
+	if(copied) importedName += ThemeString(L"fbe.theme.import.copy_suffix", L" (imported)");
 	// Always write a validated UTF-8 file. This also normalizes a manually
 	// created Windows-1251 theme instead of leaving an unreadable user copy.
-	if(!ExportThemeFile(importedThemeId, importedName, record.colors, destination, error)) return false;
+	if(!ExportThemeFile(importedThemeId, importedName, record.colors, destination, error, &record.metadata)) return false;
 	const DWORD importedAttributes = ::GetFileAttributesW(destination);
 	if(importedAttributes != INVALID_FILE_ATTRIBUTES && (importedAttributes & FILE_ATTRIBUTE_READONLY) != 0)
 		::SetFileAttributesW(destination, importedAttributes & ~FILE_ATTRIBUTE_READONLY);
@@ -429,7 +608,7 @@ bool DeleteUserTheme(const CString& id, CString& error)
 	{
 		if(::GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES)
 		{
-			error = L"\x0423\x0434\x0430\x043B\x0438\x0442\x044C \x043C\x043E\x0436\x043D\x043E \x0442\x043E\x043B\x044C\x043A\x043E \x043F\x043E\x043B\x044C\x0437\x043E\x0432\x0430\x0442\x0435\x043B\x044C\x0441\x043A\x0443\x044E \x0442\x0435\x043C\x0443.";
+			error = ThemeString(L"fbe.theme.error.delete_only_user", L"Only a user theme can be deleted.");
 			return false;
 		}
 	}
@@ -442,7 +621,7 @@ bool DeleteUserTheme(const CString& id, CString& error)
 		::SetFileAttributesW(path, attributes & ~FILE_ATTRIBUTE_READONLY);
 	if(!::DeleteFileW(path))
 	{
-		error.Format(L"Cannot delete the user theme (error %lu).", ::GetLastError());
+		error.Format(ThemeString(L"fbe.theme.error.delete_failed", L"Cannot delete the user theme (error %lu)."), ::GetLastError());
 		return false;
 	}
 	ReloadThemes();
@@ -450,20 +629,34 @@ bool DeleteUserTheme(const CString& id, CString& error)
 }
 
 bool ExportThemeFile(const CString& id, const CString& name, const DWORD* colors,
-	const CString& destinationPath, CString& error)
+	const CString& destinationPath, CString& error, const XmlSourceThemeMetadata* metadata)
 {
 	error.Empty();
 	if(id.IsEmpty() || name.IsEmpty() || colors == NULL || destinationPath.IsEmpty())
 	{
-		error = L"Theme data is incomplete.";
+		error = ThemeString(L"fbe.theme.error.incomplete_data", L"Theme data is incomplete.");
 		return false;
 	}
-	CString escapedName(name);
-	escapedName.Replace(L"\\", L"\\\\");
-	escapedName.Replace(L"\"", L"\\\"");
+	const CString escapedName = EscapeJsonString(name);
 	CString content;
-	content.Format(L"{\r\n  \"format\": \"FictionBookEditorNext.CodeTheme\",\r\n  \"formatVersion\": 1,\r\n  \"id\": \"%s\",\r\n  \"name\": \"%s\",\r\n  \"isDark\": %s,\r\n  \"colors\": {\r\n",
-		id, escapedName, ((54 * GetRValue(colors[XML_SRC_STYLE_EDITOR_BACKGROUND]) + 183 * GetGValue(colors[XML_SRC_STYLE_EDITOR_BACKGROUND]) + 19 * GetBValue(colors[XML_SRC_STYLE_EDITOR_BACKGROUND])) / 256 < 128 ? L"true" : L"false"));
+	const bool calculatedIsDark = (54 * GetRValue(colors[XML_SRC_STYLE_EDITOR_BACKGROUND]) +
+		183 * GetGValue(colors[XML_SRC_STYLE_EDITOR_BACKGROUND]) +
+		19 * GetBValue(colors[XML_SRC_STYLE_EDITOR_BACKGROUND])) / 256 < 128;
+	const bool isDark = metadata != NULL && !metadata->recalculateIsDark ? metadata->isDark : calculatedIsDark;
+	content.Format(L"{\r\n  \"format\": \"FictionBookEditorNext.CodeTheme\",\r\n  \"formatVersion\": 1,\r\n  \"id\": \"%s\",\r\n  \"name\": \"%s\",\r\n  \"isDark\": %s,\r\n",
+		id, escapedName, isDark ? L"true" : L"false");
+	if(metadata != NULL)
+	{
+		const struct { const wchar_t* key; const CString* value; } fields[] = {
+			{ L"baseThemeId", &metadata->baseThemeId }, { L"author", &metadata->author },
+			{ L"description", &metadata->description }, { L"source", &metadata->source },
+			{ L"license", &metadata->license },
+		};
+		for(int i = 0; i < _countof(fields); ++i)
+			if(!fields[i].value->IsEmpty())
+				content.AppendFormat(L"  \"%s\": \"%s\",\r\n", fields[i].key, EscapeJsonString(*fields[i].value));
+	}
+	content += L"  \"colors\": {\r\n";
 	for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i)
 	{
 		CString color;
@@ -473,25 +666,26 @@ bool ExportThemeFile(const CString& id, const CString& name, const DWORD* colors
 	}
 	content += L"  }\r\n}\r\n";
 	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, content, content.GetLength(), NULL, 0, NULL, NULL);
-	if(bytes <= 0) { error = L"Cannot encode theme."; return false; }
+	if(bytes <= 0) { error = ThemeString(L"fbe.theme.error.encode", L"Cannot encode theme."); return false; }
 	std::vector<char> utf8(bytes);
 	::WideCharToMultiByte(CP_UTF8, 0, content, content.GetLength(), &utf8[0], bytes, NULL, NULL);
 	const CString temporary = destinationPath + L".tmp";
 	HANDLE file = ::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) { error = L"Cannot create temporary theme file."; return false; }
+	if(file == INVALID_HANDLE_VALUE) { error = ThemeString(L"fbe.theme.error.create_temporary", L"Cannot create temporary theme file."); return false; }
 	DWORD written = 0;
 	const BOOL saved = ::WriteFile(file, &utf8[0], static_cast<DWORD>(utf8.size()), &written, NULL);
 	::CloseHandle(file);
 	if(!saved || written != utf8.size() || !::MoveFileExW(temporary, destinationPath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
 		::DeleteFileW(temporary);
-		error = L"Cannot save exported theme.";
+		error = ThemeString(L"fbe.theme.error.save", L"Cannot save exported theme.");
 		return false;
 	}
 	return true;
 }
 
-bool SaveThemeAsUser(const CString& name, const DWORD* colors, CString& savedId, CString& error)
+bool SaveThemeAsUser(const CString& name, const DWORD* colors, CString& savedId, CString& error,
+	const XmlSourceThemeMetadata* metadata)
 {
 	savedId.Empty();
 	error.Empty();
@@ -500,13 +694,13 @@ bool SaveThemeAsUser(const CString& name, const DWORD* colors, CString& savedId,
 	if(displayName.IsEmpty() || displayName.GetLength() > 100 ||
 		displayName.Find(L'\r') >= 0 || displayName.Find(L'\n') >= 0)
 	{
-		error = L"The theme name is invalid.";
+		error = ThemeString(L"fbe.theme.error.invalid_name", L"Missing or invalid theme name.");
 		return false;
 	}
 	const CString directory = GetUserThemeDirectory();
 	if(directory.IsEmpty() || (!::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS))
 	{
-		error = L"Cannot create the user Themes directory.";
+		error = ThemeString(L"fbe.theme.error.create_directory", L"Cannot create the user Themes directory.");
 		return false;
 	}
 	CString id = L"user-theme";
@@ -517,7 +711,7 @@ bool SaveThemeAsUser(const CString& name, const DWORD* colors, CString& savedId,
 		id.Format(L"user-theme-%d", suffix);
 	}
 	const CString path = directory + L"\\" + id + L".fbetheme";
-	if(!ExportThemeFile(id, displayName, colors, path, error)) return false;
+	if(!ExportThemeFile(id, displayName, colors, path, error, metadata)) return false;
 	savedId = id;
 	ReloadThemes();
 	return true;

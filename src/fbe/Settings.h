@@ -618,6 +618,7 @@ public:
 	CString GetXmlSrcThemeId()const;
 	DWORD GetXmlSrcColor(XmlSrcColorGroup group)const;
 	bool HasXmlSrcCustomColor(XmlSrcColorGroup group)const;
+	static XmlSrcColorGroup GetXmlSrcColorGroup(XmlSrcStyleToken token);
 	static DWORD GetXmlSrcDefaultColor(DWORD palette, XmlSrcColorGroup group);
 	static DWORD GetXmlSrcThemeColor(DWORD palette, XmlSrcStyleToken token);
 	DWORD GetXmlSrcStyleColor(XmlSrcStyleToken token)const;
