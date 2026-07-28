@@ -4598,6 +4598,924 @@
         "cs-CZ": "Bulharština",
         "bg-BG": "Български"
       }
+    },
+    "fbe.theme.conflict.replace": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Replace existing user theme?\nYes: replace\nNo: import a copy",
+        "ru-RU": "Заменить существующую пользовательскую тему?\nДа: заменить\nНет: импортировать копию",
+        "uk-UA": "Замінити наявну користувацьку тему?\nТак: замінити\nНі: імпортувати копію",
+        "de-DE": "Vorhandenes Benutzerthema ersetzen?\nJa: ersetzen\nNein: Kopie importieren",
+        "fr-FR": "Remplacer le thème utilisateur existant ?\nOui : remplacer\nNon : importer une copie",
+        "es-ES": "Reemplazar el tema de usuario existente?\nSi: reemplazar\nNo: importar una copia",
+        "it-IT": "Sostituire il tema utente esistente?\nSi: sostituisci\nNo: importa una copia",
+        "pl-PL": "Zastapic istniejacy motyw uzytkownika?\nTak: zastap\nNie: importuj kopie",
+        "pt-PT": "Substituir o tema de utilizador existente?\nSim: substituir\nNao: importar uma copia",
+        "nl-NL": "Bestaand gebruikersthema vervangen?\nJa: vervangen\nNee: een kopie importeren",
+        "cs-CZ": "Nahradit existujici uzivatelske tema?\nAno: nahradit\nNe: importovat kopii",
+        "bg-BG": "Заменить съществуващата потребителска тема?\nДа: замени\nНе: импортирай копие"
+      }
+    },
+    "fbe.theme.dialog.caption": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FictionBook Editor",
+        "ru-RU": "FictionBook Editor",
+        "uk-UA": "FictionBook Editor",
+        "de-DE": "FictionBook Editor",
+        "fr-FR": "FictionBook Editor",
+        "es-ES": "FictionBook Editor",
+        "it-IT": "FictionBook Editor",
+        "pl-PL": "FictionBook Editor",
+        "pt-PT": "FictionBook Editor",
+        "nl-NL": "FictionBook Editor",
+        "cs-CZ": "FictionBook Editor",
+        "bg-BG": "FictionBook Editor"
+      }
+    },
+    "fbe.theme.actions": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Themes",
+        "ru-RU": "Темы",
+        "uk-UA": "Теми",
+        "de-DE": "Themen",
+        "fr-FR": "Thèmes",
+        "es-ES": "Temas",
+        "it-IT": "Temi",
+        "pl-PL": "Motywy",
+        "pt-PT": "Temas",
+        "nl-NL": "Thema’s",
+        "cs-CZ": "Motivy",
+        "bg-BG": "Теми"
+      }
+    },
+    "fbe.theme.import.summary": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Imported: %d. Skipped: %d.",
+        "ru-RU": "Импортировано: %d. Пропущено: %d.",
+        "uk-UA": "Імпортовано: %d. Пропущено: %d.",
+        "de-DE": "Importiert: %d. Uebersprungen: %d.",
+        "fr-FR": "Importés : %d. Ignorés : %d.",
+        "es-ES": "Importados: %d. Omitidos: %d.",
+        "it-IT": "Importati: %d. Ignorati: %d.",
+        "pl-PL": "Zaimportowano: %d. Pominieto: %d.",
+        "pt-PT": "Importados: %d. Ignorados: %d.",
+        "nl-NL": "Geimporteerd: %d. Overgeslagen: %d.",
+        "cs-CZ": "Importovano: %d. Preskoceno: %d.",
+        "bg-BG": "Импортирани: %d. Пропуснати: %d."
+      }
+    },
+    "fbe.theme.tooltip.palette": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Choose a built-in or user source highlighting theme.",
+        "ru-RU": "Выбор встроенной или пользовательской темы подсветки исходного кода.",
+        "uk-UA": "Вибір вбудованої або користувацької теми підсвічування початкового коду.",
+        "de-DE": "Integriertes oder benutzerdefiniertes Quellcode-Highlighting-Thema auswählen.",
+        "fr-FR": "Choisissez un thème de coloration intégré ou utilisateur.",
+        "es-ES": "Elija un tema de resaltado de código integrado o de usuario.",
+        "it-IT": "Scegli un tema di evidenziazione del codice integrato o utente.",
+        "pl-PL": "Wybierz wbudowany lub użytkownika motyw podświetlania kodu.",
+        "pt-PT": "Escolha um tema de realce de código integrado ou do utilizador.",
+        "nl-NL": "Kies een ingebouwd of gebruikerskleurthema voor broncode.",
+        "cs-CZ": "Vyberte vestavěné nebo uživatelské téma zvýraznění zdrojového kódu.",
+        "bg-BG": "Изберете вградена или потребителска тема за осветяване на изходния код."
+      }
+    },
+    "fbe.theme.tooltip.actions": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Import, export, save a copy, or delete a user theme.",
+        "ru-RU": "Импорт, экспорт, сохранение копии или удаление пользовательской темы.",
+        "uk-UA": "Імпорт, експорт, збереження копії або видалення користувацької теми.",
+        "de-DE": "Thema importieren, exportieren, speichern oder löschen.",
+        "fr-FR": "Importer, exporter, enregistrer une copie ou supprimer un thème utilisateur.",
+        "es-ES": "Importe, exporte, guarde una copia o elimine un tema de usuario.",
+        "it-IT": "Importa, esporta, salva una copia o elimina un tema utente.",
+        "pl-PL": "Importuj, eksportuj, zapisz kopię lub usuń motyw użytkownika.",
+        "pt-PT": "Importe, exporte, guarde uma cópia ou elimine um tema de utilizador.",
+        "nl-NL": "Importeer, exporteer, sla een kopie op of verwijder een gebruikersthema.",
+        "cs-CZ": "Importujte, exportujte, uložte kopii nebo odstraňte uživatelské téma.",
+        "bg-BG": "Импортирайте, експортирайте, запазете копие или изтрийте потребителска тема."
+      }
+    },
+    "fbe.theme.tooltip.text": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "XML plain text color.",
+        "ru-RU": "Цвет обычного текста XML.",
+        "uk-UA": "Колір звичайного тексту XML.",
+        "de-DE": "Farbe des XML-Textes.",
+        "fr-FR": "Couleur du texte XML.",
+        "es-ES": "Color del texto XML.",
+        "it-IT": "Colore del testo XML.",
+        "pl-PL": "Kolor zwykłego tekstu XML.",
+        "pt-PT": "Cor do texto XML.",
+        "nl-NL": "Kleur van gewone XML-tekst.",
+        "cs-CZ": "Barva běžného textu XML.",
+        "bg-BG": "Цвят на обикновения XML текст."
+      }
+    },
+    "fbe.theme.tooltip.tag": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "XML tag names and delimiters color.",
+        "ru-RU": "Цвет имён тегов XML и их разделителей.",
+        "uk-UA": "Колір назв XML-тегів і їхніх роздільників.",
+        "de-DE": "Farbe der XML-Tag-Namen und Trennzeichen.",
+        "fr-FR": "Couleur des noms et délimiteurs de balises XML.",
+        "es-ES": "Color de nombres y delimitadores de etiquetas XML.",
+        "it-IT": "Colore dei nomi e delimitatori dei tag XML.",
+        "pl-PL": "Kolor nazw znaczników XML i separatorów.",
+        "pt-PT": "Cor dos nomes e delimitadores de etiquetas XML.",
+        "nl-NL": "Kleur van XML-tagnamen en scheidingstekens.",
+        "cs-CZ": "Barva názvů a oddělovačů XML značek.",
+        "bg-BG": "Цвят на имената и разделителите на XML етикетите."
+      }
+    },
+    "fbe.theme.tooltip.attribute": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "XML attribute names color.",
+        "ru-RU": "Цвет имён атрибутов XML.",
+        "uk-UA": "Колір назв XML-атрибутів.",
+        "de-DE": "Farbe der XML-Attributnamen.",
+        "fr-FR": "Couleur des noms d’attribut XML.",
+        "es-ES": "Color de nombres de atributos XML.",
+        "it-IT": "Colore dei nomi degli attributi XML.",
+        "pl-PL": "Kolor nazw atrybutów XML.",
+        "pt-PT": "Cor dos nomes dos atributos XML.",
+        "nl-NL": "Kleur van XML-attribuutnamen.",
+        "cs-CZ": "Barva názvů atributů XML.",
+        "bg-BG": "Цвят на имената на XML атрибутите."
+      }
+    },
+    "fbe.theme.tooltip.value": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "XML attribute values color.",
+        "ru-RU": "Цвет значений атрибутов XML.",
+        "uk-UA": "Колір значень XML-атрибутів.",
+        "de-DE": "Farbe der XML-Attributwerte.",
+        "fr-FR": "Couleur des valeurs d’attribut XML.",
+        "es-ES": "Color de valores de atributos XML.",
+        "it-IT": "Colore dei valori degli attributi XML.",
+        "pl-PL": "Kolor wartości atrybutów XML.",
+        "pt-PT": "Cor dos valores dos atributos XML.",
+        "nl-NL": "Kleur van XML-attribuutwaarden.",
+        "cs-CZ": "Barva hodnot atributů XML.",
+        "bg-BG": "Цвят на стойностите на XML атрибутите."
+      }
+    },
+    "fbe.theme.tooltip.background": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Source editor and preview background color.",
+        "ru-RU": "Цвет фона редактора исходного кода и предпросмотра.",
+        "uk-UA": "Колір тла редактора початкового коду та попереднього перегляду.",
+        "de-DE": "Hintergrundfarbe von Quellcode-Editor und Vorschau.",
+        "fr-FR": "Couleur d’arrière-plan de l’éditeur et de l’aperçu.",
+        "es-ES": "Color de fondo del editor y vista previa.",
+        "it-IT": "Colore di sfondo dell’editor e dell’anteprima.",
+        "pl-PL": "Kolor tła edytora i podglądu.",
+        "pt-PT": "Cor de fundo do editor e da pré-visualização.",
+        "nl-NL": "Achtergrondkleur van editor en voorbeeld.",
+        "cs-CZ": "Barva pozadí editoru a náhledu.",
+        "bg-BG": "Цвят на фона на редактора и прегледа."
+      }
+    },
+    "fbe.theme.tooltip.reset": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Remove manual overrides and restore the selected theme colors.",
+        "ru-RU": "Удалить ручные переопределения и восстановить цвета выбранной темы.",
+        "uk-UA": "Вилучити ручні перевизначення та відновити кольори вибраної теми.",
+        "de-DE": "Manuelle Überschreibungen entfernen und Themenfarben wiederherstellen.",
+        "fr-FR": "Supprimer les remplacements manuels et restaurer les couleurs du thème.",
+        "es-ES": "Quite las anulaciones manuales y restaure los colores del tema.",
+        "it-IT": "Rimuovi le sostituzioni manuali e ripristina i colori del tema.",
+        "pl-PL": "Usuń ręczne nadpisania i przywróć kolory motywu.",
+        "pt-PT": "Remova as substituições manuais e restaure as cores do tema.",
+        "nl-NL": "Handmatige overschrijvingen verwijderen en themakleuren herstellen.",
+        "cs-CZ": "Odstraňte ruční přepsání a obnovte barvy motivu.",
+        "bg-BG": "Премахнете ръчните замени и възстановете цветовете на темата."
+      }
+    },
+    "fbe.theme.menu.import": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Import theme...",
+        "ru-RU": "Импортировать тему...",
+        "uk-UA": "Імпортувати тему...",
+        "de-DE": "Thema importieren...",
+        "fr-FR": "Importer un thème...",
+        "es-ES": "Importar tema...",
+        "it-IT": "Importa tema...",
+        "pl-PL": "Importuj motyw...",
+        "pt-PT": "Importar tema...",
+        "nl-NL": "Thema importeren...",
+        "cs-CZ": "Importovat motiv...",
+        "bg-BG": "Импортиране на тема..."
+      }
+    },
+    "fbe.theme.menu.export": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Export theme...",
+        "ru-RU": "Экспортировать тему...",
+        "uk-UA": "Експортувати тему...",
+        "de-DE": "Thema exportieren...",
+        "fr-FR": "Exporter le thème...",
+        "es-ES": "Exportar tema...",
+        "it-IT": "Esporta tema...",
+        "pl-PL": "Eksportuj motyw...",
+        "pt-PT": "Exportar tema...",
+        "nl-NL": "Thema exporteren...",
+        "cs-CZ": "Exportovat motiv...",
+        "bg-BG": "Експортиране на тема..."
+      }
+    },
+    "fbe.theme.menu.save_as": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Save theme as...",
+        "ru-RU": "Сохранить тему как...",
+        "uk-UA": "Зберегти тему як...",
+        "de-DE": "Thema speichern unter...",
+        "fr-FR": "Enregistrer le thème sous...",
+        "es-ES": "Guardar tema como...",
+        "it-IT": "Salva tema con nome...",
+        "pl-PL": "Zapisz motyw jako...",
+        "pt-PT": "Guardar tema como...",
+        "nl-NL": "Thema opslaan als...",
+        "cs-CZ": "Uložit motiv jako...",
+        "bg-BG": "Запазване на темата като..."
+      }
+    },
+    "fbe.theme.menu.delete": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Delete selected user theme...",
+        "ru-RU": "Удалить выбранную пользовательскую тему...",
+        "uk-UA": "Видалити вибрану користувацьку тему...",
+        "de-DE": "Ausgewähltes Benutzerthema löschen...",
+        "fr-FR": "Supprimer le thème utilisateur sélectionné...",
+        "es-ES": "Eliminar el tema de usuario seleccionado...",
+        "it-IT": "Elimina il tema utente selezionato...",
+        "pl-PL": "Usuń wybrany motyw użytkownika...",
+        "pt-PT": "Eliminar o tema de utilizador selecionado...",
+        "nl-NL": "Geselecteerd gebruikersthema verwijderen...",
+        "cs-CZ": "Odstranit vybrané uživatelské téma...",
+        "bg-BG": "Изтриване на избраната потребителска тема..."
+      }
+    },
+    "fbe.theme.delete.confirm": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Delete user theme \"%s\"? The theme file is deleted immediately. This cannot be undone by Cancel in Settings.",
+        "ru-RU": "Удалить пользовательскую тему «%s»? Файл темы будет удалён сразу. Это действие нельзя отменить кнопкой «Отмена» в настройках.",
+        "uk-UA": "Видалити користувацьку тему «%s»? Файл теми буде видалено негайно. Цю дію не можна скасувати кнопкою «Скасувати» у налаштуваннях.",
+        "de-DE": "Benutzerthema „%s“ löschen? Die Themadatei wird sofort gelöscht. Dies kann mit Abbrechen in den Einstellungen nicht rückgängig gemacht werden.",
+        "fr-FR": "Supprimer le thème utilisateur « %s » ? Le fichier de thème sera supprimé immédiatement. Cette action ne peut pas être annulée avec Annuler dans les paramètres.",
+        "es-ES": "¿Eliminar el tema de usuario «%s»? El archivo del tema se eliminará inmediatamente. Esta acción no se puede deshacer con Cancelar en Configuración.",
+        "it-IT": "Eliminare il tema utente «%s»? Il file del tema verrà eliminato subito. Questa azione non può essere annullata con Annulla nelle impostazioni.",
+        "pl-PL": "Usunąć motyw użytkownika „%s”? Plik motywu zostanie usunięty natychmiast. Tej operacji nie można cofnąć przyciskiem Anuluj w ustawieniach.",
+        "pt-PT": "Eliminar o tema do utilizador «%s»? O ficheiro do tema será eliminado imediatamente. Esta ação não pode ser anulada com Cancelar nas definições.",
+        "nl-NL": "Gebruikersthema „%s” verwijderen? Het themabestand wordt onmiddellijk verwijderd. Dit kan niet ongedaan worden gemaakt met Annuleren in Instellingen.",
+        "cs-CZ": "Odstranit uživatelský motiv „%s“? Soubor motivu bude odstraněn okamžitě. Tuto akci nelze vrátit tlačítkem Zrušit v nastavení.",
+        "bg-BG": "Да се изтрие потребителската тема „%s“? Файлът на темата ще бъде изтрит незабавно. Това действие не може да се отмени с Отказ в настройките."
+      }
+    },
+    "fbe.theme.save.default_name": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "New theme",
+        "ru-RU": "Новая тема",
+        "uk-UA": "Нова тема",
+        "de-DE": "Neues Thema",
+        "fr-FR": "Nouveau thème",
+        "es-ES": "Tema nuevo",
+        "it-IT": "Nuovo tema",
+        "pl-PL": "Nowy motyw",
+        "pt-PT": "Novo tema",
+        "nl-NL": "Nieuw thema",
+        "cs-CZ": "Nový motiv",
+        "bg-BG": "Нова тема"
+      }
+    },
+    "fbe.theme.save.title": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Save theme as",
+        "ru-RU": "Сохранить тему как",
+        "uk-UA": "Зберегти тему як",
+        "de-DE": "Thema speichern unter",
+        "fr-FR": "Enregistrer le thème sous",
+        "es-ES": "Guardar tema como",
+        "it-IT": "Salva tema con nome",
+        "pl-PL": "Zapisz motyw jako",
+        "pt-PT": "Guardar tema como",
+        "nl-NL": "Thema opslaan als",
+        "cs-CZ": "Uložit motiv jako",
+        "bg-BG": "Запазване на темата като"
+      }
+    },
+    "fbe.theme.save.prompt": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Theme name:",
+        "ru-RU": "Название темы:",
+        "uk-UA": "Назва теми:",
+        "de-DE": "Themenname:",
+        "fr-FR": "Nom du thème :",
+        "es-ES": "Nombre del tema:",
+        "it-IT": "Nome del tema:",
+        "pl-PL": "Nazwa motywu:",
+        "pt-PT": "Nome do tema:",
+        "nl-NL": "Themanaam:",
+        "cs-CZ": "Název motivu:",
+        "bg-BG": "Име на темата:"
+      }
+    },
+    "fbe.theme.user_suffix": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": " (user)",
+        "ru-RU": " (пользовательская)",
+        "uk-UA": " (користувацька)",
+        "de-DE": " (Benutzer)",
+        "fr-FR": " (utilisateur)",
+        "es-ES": " (usuario)",
+        "it-IT": " (utente)",
+        "pl-PL": " (użytkownika)",
+        "pt-PT": " (utilizador)",
+        "nl-NL": " (gebruiker)",
+        "cs-CZ": " (uživatel)",
+        "bg-BG": " (потребителска)"
+      }
+    },
+    "fbe.theme.current_color": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Current color: #%02X%02X%02X",
+        "ru-RU": "Текущий цвет: #%02X%02X%02X",
+        "uk-UA": "Поточний колір: #%02X%02X%02X",
+        "de-DE": "Aktuelle Farbe: #%02X%02X%02X",
+        "fr-FR": "Couleur actuelle : #%02X%02X%02X",
+        "es-ES": "Color actual: #%02X%02X%02X",
+        "it-IT": "Colore corrente: #%02X%02X%02X",
+        "pl-PL": "Bieżący kolor: #%02X%02X%02X",
+        "pt-PT": "Cor atual: #%02X%02X%02X",
+        "nl-NL": "Huidige kleur: #%02X%02X%02X",
+        "cs-CZ": "Aktuální barva: #%02X%02X%02X",
+        "bg-BG": "Текущ цвят: #%02X%02X%02X"
+      }
+    },
+    "fbe.theme.modified_suffix": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": " — modified",
+        "ru-RU": " — изменена",
+        "uk-UA": " — змінено",
+        "de-DE": " — geändert",
+        "fr-FR": " — modifié",
+        "es-ES": " — modificado",
+        "it-IT": " — modificato",
+        "pl-PL": " — zmieniono",
+        "pt-PT": " — modificado",
+        "nl-NL": " — gewijzigd",
+        "cs-CZ": " — změněno",
+        "bg-BG": " — променено"
+      }
+    },
+    "fbe.theme.import.copy_suffix": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": " (imported)",
+        "ru-RU": " (импортирована)",
+        "uk-UA": " (імпортовано)",
+        "de-DE": " (importiert)",
+        "fr-FR": " (importé)",
+        "es-ES": " (importado)",
+        "it-IT": " (importato)",
+        "pl-PL": " (zaimportowano)",
+        "pt-PT": " (importado)",
+        "nl-NL": " (geïmporteerd)",
+        "cs-CZ": " (importováno)",
+        "bg-BG": " (импортирана)"
+      }
+    },
+    "fbe.theme.error.read": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cannot read theme file.",
+        "ru-RU": "Не удаётся прочитать файл темы.",
+        "uk-UA": "Не вдається прочитати файл теми.",
+        "de-DE": "Themadatei kann nicht gelesen werden.",
+        "fr-FR": "Impossible de lire le fichier de thème.",
+        "es-ES": "No se puede leer el archivo de tema.",
+        "it-IT": "Impossibile leggere il file del tema.",
+        "pl-PL": "Nie można odczytać pliku motywu.",
+        "pt-PT": "Não é possível ler o ficheiro de tema.",
+        "nl-NL": "Kan themabestand niet lezen.",
+        "cs-CZ": "Soubor motivu nelze přečíst.",
+        "bg-BG": "Файлът на темата не може да бъде прочетен."
+      }
+    },
+    "fbe.theme.error.too_large": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Theme file exceeds 1 MB.",
+        "ru-RU": "Файл темы превышает 1 МБ.",
+        "uk-UA": "Файл теми перевищує 1 МБ.",
+        "de-DE": "Themadatei ist größer als 1 MB.",
+        "fr-FR": "Le fichier de thème dépasse 1 Mo.",
+        "es-ES": "El archivo de tema supera 1 MB.",
+        "it-IT": "Il file del tema supera 1 MB.",
+        "pl-PL": "Plik motywu przekracza 1 MB.",
+        "pt-PT": "O ficheiro de tema excede 1 MB.",
+        "nl-NL": "Themabestand is groter dan 1 MB.",
+        "cs-CZ": "Soubor motivu přesahuje 1 MB.",
+        "bg-BG": "Файлът на темата надвишава 1 МБ."
+      }
+    },
+    "fbe.theme.error.invalid_utf8_json": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid UTF-8 JSON.",
+        "ru-RU": "Некорректный JSON в UTF-8.",
+        "uk-UA": "Некоректний JSON у UTF-8.",
+        "de-DE": "Ungültiges UTF-8-JSON.",
+        "fr-FR": "JSON UTF-8 non valide.",
+        "es-ES": "JSON UTF-8 no válido.",
+        "it-IT": "JSON UTF-8 non valido.",
+        "pl-PL": "Nieprawidłowy JSON UTF-8.",
+        "pt-PT": "JSON UTF-8 inválido.",
+        "nl-NL": "Ongeldige UTF-8-JSON.",
+        "cs-CZ": "Neplatný UTF-8 JSON.",
+        "bg-BG": "Невалиден UTF-8 JSON."
+      }
+    },
+    "fbe.theme.error.invalid_json": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid JSON.",
+        "ru-RU": "Некорректный JSON.",
+        "uk-UA": "Некоректний JSON.",
+        "de-DE": "Ungültiges JSON.",
+        "fr-FR": "JSON non valide.",
+        "es-ES": "JSON no válido.",
+        "it-IT": "JSON non valido.",
+        "pl-PL": "Nieprawidłowy JSON.",
+        "pt-PT": "JSON inválido.",
+        "nl-NL": "Ongeldige JSON.",
+        "cs-CZ": "Neplatný JSON.",
+        "bg-BG": "Невалиден JSON."
+      }
+    },
+    "fbe.theme.error.trailing_json": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Unexpected data after the JSON object.",
+        "ru-RU": "После корневого объекта JSON обнаружены лишние данные.",
+        "uk-UA": "Після кореневого об’єкта JSON виявлено зайві дані.",
+        "de-DE": "Unerwartete Daten nach dem JSON-Stammobjekt.",
+        "fr-FR": "Données inattendues après l’objet JSON racine.",
+        "es-ES": "Datos inesperados después del objeto JSON raíz.",
+        "it-IT": "Dati imprevisti dopo l’oggetto JSON radice.",
+        "pl-PL": "Nieoczekiwane dane po głównym obiekcie JSON.",
+        "pt-PT": "Dados inesperados após o objeto JSON raiz.",
+        "nl-NL": "Onverwachte gegevens na het hoofd-JSON-object.",
+        "cs-CZ": "Neočekávaná data za kořenovým objektem JSON.",
+        "bg-BG": "Неочаквани данни след коренния JSON обект."
+      }
+    },
+    "fbe.theme.error.missing_format": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Missing required field: format.",
+        "ru-RU": "Отсутствует обязательное поле: format.",
+        "uk-UA": "Відсутнє обов’язкове поле: format.",
+        "de-DE": "Pflichtfeld fehlt: format.",
+        "fr-FR": "Champ obligatoire manquant : format.",
+        "es-ES": "Falta el campo obligatorio: format.",
+        "it-IT": "Campo obbligatorio mancante: format.",
+        "pl-PL": "Brakuje wymaganego pola: format.",
+        "pt-PT": "Falta o campo obrigatório: format.",
+        "nl-NL": "Verplicht veld ontbreekt: format.",
+        "cs-CZ": "Chybí povinné pole: format.",
+        "bg-BG": "Липсва задължително поле: format."
+      }
+    },
+    "fbe.theme.error.invalid_format": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Unsupported theme format.",
+        "ru-RU": "Неподдерживаемый формат темы.",
+        "uk-UA": "Непідтримуваний формат теми.",
+        "de-DE": "Nicht unterstütztes Themenformat.",
+        "fr-FR": "Format de thème non pris en charge.",
+        "es-ES": "Formato de tema no compatible.",
+        "it-IT": "Formato del tema non supportato.",
+        "pl-PL": "Nieobsługiwany format motywu.",
+        "pt-PT": "Formato de tema não suportado.",
+        "nl-NL": "Niet-ondersteund themaformaat.",
+        "cs-CZ": "Nepodporovaný formát motivu.",
+        "bg-BG": "Неподдържан формат на тема."
+      }
+    },
+    "fbe.theme.error.missing_version": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Missing required field: formatVersion.",
+        "ru-RU": "Отсутствует обязательное поле: formatVersion.",
+        "uk-UA": "Відсутнє обов’язкове поле: formatVersion.",
+        "de-DE": "Pflichtfeld fehlt: formatVersion.",
+        "fr-FR": "Champ obligatoire manquant : formatVersion.",
+        "es-ES": "Falta el campo obligatorio: formatVersion.",
+        "it-IT": "Campo obbligatorio mancante: formatVersion.",
+        "pl-PL": "Brakuje wymaganego pola: formatVersion.",
+        "pt-PT": "Falta o campo obrigatório: formatVersion.",
+        "nl-NL": "Verplicht veld ontbreekt: formatVersion.",
+        "cs-CZ": "Chybí povinné pole: formatVersion.",
+        "bg-BG": "Липсва задължително поле: formatVersion."
+      }
+    },
+    "fbe.theme.error.unsupported_version": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Unsupported theme format version: %d.",
+        "ru-RU": "Неподдерживаемая версия формата темы: %d.",
+        "uk-UA": "Непідтримувана версія формату теми: %d.",
+        "de-DE": "Nicht unterstützte Themenformatversion: %d.",
+        "fr-FR": "Version du format de thème non prise en charge : %d.",
+        "es-ES": "Versión de formato de tema no compatible: %d.",
+        "it-IT": "Versione del formato del tema non supportata: %d.",
+        "pl-PL": "Nieobsługiwana wersja formatu motywu: %d.",
+        "pt-PT": "Versão do formato de tema não suportada: %d.",
+        "nl-NL": "Niet-ondersteunde versie van het themaformaat: %d.",
+        "cs-CZ": "Nepodporovaná verze formátu motivu: %d.",
+        "bg-BG": "Неподдържана версия на формата на темата: %d."
+      }
+    },
+    "fbe.theme.error.missing_is_dark": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Missing required field: isDark.",
+        "ru-RU": "Отсутствует обязательное поле: isDark.",
+        "uk-UA": "Відсутнє обов’язкове поле: isDark.",
+        "de-DE": "Pflichtfeld fehlt: isDark.",
+        "fr-FR": "Champ obligatoire manquant : isDark.",
+        "es-ES": "Falta el campo obligatorio: isDark.",
+        "it-IT": "Campo obbligatorio mancante: isDark.",
+        "pl-PL": "Brakuje wymaganego pola: isDark.",
+        "pt-PT": "Falta o campo obrigatório: isDark.",
+        "nl-NL": "Verplicht veld ontbreekt: isDark.",
+        "cs-CZ": "Chybí povinné pole: isDark.",
+        "bg-BG": "Липсва задължително поле: isDark."
+      }
+    },
+    "fbe.theme.error.missing_id": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Missing required field: id.",
+        "ru-RU": "Отсутствует обязательное поле: id.",
+        "uk-UA": "Відсутнє обов’язкове поле: id.",
+        "de-DE": "Pflichtfeld fehlt: id.",
+        "fr-FR": "Champ obligatoire manquant : id.",
+        "es-ES": "Falta el campo obligatorio: id.",
+        "it-IT": "Campo obbligatorio mancante: id.",
+        "pl-PL": "Brakuje wymaganego pola: id.",
+        "pt-PT": "Falta o campo obrigatório: id.",
+        "nl-NL": "Verplicht veld ontbreekt: id.",
+        "cs-CZ": "Chybí povinné pole: id.",
+        "bg-BG": "Липсва задължително поле: id."
+      }
+    },
+    "fbe.theme.error.invalid_id": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid theme id.",
+        "ru-RU": "Недопустимый идентификатор темы.",
+        "uk-UA": "Неприпустимий ідентифікатор теми.",
+        "de-DE": "Ungültige Themen-ID.",
+        "fr-FR": "Identifiant de thème non valide.",
+        "es-ES": "ID de tema no válido.",
+        "it-IT": "ID del tema non valido.",
+        "pl-PL": "Nieprawidłowy identyfikator motywu.",
+        "pt-PT": "ID do tema inválido.",
+        "nl-NL": "Ongeldige thema-ID.",
+        "cs-CZ": "Neplatné ID motivu.",
+        "bg-BG": "Невалиден идентификатор на тема."
+      }
+    },
+    "fbe.theme.error.invalid_name": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Missing or invalid theme name.",
+        "ru-RU": "Отсутствует или недопустимо имя темы.",
+        "uk-UA": "Відсутня або неприпустима назва теми.",
+        "de-DE": "Themenname fehlt oder ist ungültig.",
+        "fr-FR": "Nom de thème manquant ou non valide.",
+        "es-ES": "Falta el nombre del tema o no es válido.",
+        "it-IT": "Nome del tema mancante o non valido.",
+        "pl-PL": "Brakuje nazwy motywu lub jest nieprawidłowa.",
+        "pt-PT": "O nome do tema está ausente ou é inválido.",
+        "nl-NL": "Themanaam ontbreekt of is ongeldig.",
+        "cs-CZ": "Název motivu chybí nebo je neplatný.",
+        "bg-BG": "Липсва или е невалидно име на тема."
+      }
+    },
+    "fbe.theme.error.missing_colors": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Missing required field: colors.",
+        "ru-RU": "Отсутствует обязательное поле: colors.",
+        "uk-UA": "Відсутнє обов’язкове поле: colors.",
+        "de-DE": "Pflichtfeld fehlt: colors.",
+        "fr-FR": "Champ obligatoire manquant : colors.",
+        "es-ES": "Falta el campo obligatorio: colors.",
+        "it-IT": "Campo obbligatorio mancante: colors.",
+        "pl-PL": "Brakuje wymaganego pola: colors.",
+        "pt-PT": "Falta o campo obrigatório: colors.",
+        "nl-NL": "Verplicht veld ontbreekt: colors.",
+        "cs-CZ": "Chybí povinné pole: colors.",
+        "bg-BG": "Липсва задължително поле: colors."
+      }
+    },
+    "fbe.theme.error.invalid_color": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid required color: %s.",
+        "ru-RU": "Недопустимый обязательный цвет: %s.",
+        "uk-UA": "Неприпустимий обов’язковий колір: %s.",
+        "de-DE": "Ungültige Pflichtfarbe: %s.",
+        "fr-FR": "Couleur obligatoire non valide : %s.",
+        "es-ES": "Color obligatorio no válido: %s.",
+        "it-IT": "Colore obbligatorio non valido: %s.",
+        "pl-PL": "Nieprawidłowy wymagany kolor: %s.",
+        "pt-PT": "Cor obrigatória inválida: %s.",
+        "nl-NL": "Ongeldige verplichte kleur: %s.",
+        "cs-CZ": "Neplatná povinná barva: %s.",
+        "bg-BG": "Невалиден задължителен цвят: %s."
+      }
+    },
+    "fbe.theme.error.invalid_file": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid .fbetheme file.",
+        "ru-RU": "Некорректный файл .fbetheme.",
+        "uk-UA": "Некоректний файл .fbetheme.",
+        "de-DE": "Ungültige .fbetheme-Datei.",
+        "fr-FR": "Fichier .fbetheme non valide.",
+        "es-ES": "Archivo .fbetheme no válido.",
+        "it-IT": "File .fbetheme non valido.",
+        "pl-PL": "Nieprawidłowy plik .fbetheme.",
+        "pt-PT": "Ficheiro .fbetheme inválido.",
+        "nl-NL": "Ongeldig .fbetheme-bestand.",
+        "cs-CZ": "Neplatný soubor .fbetheme.",
+        "bg-BG": "Невалиден файл .fbetheme."
+      }
+    },
+    "fbe.theme.error.create_directory": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cannot create the user Themes directory.",
+        "ru-RU": "Не удаётся создать каталог пользовательских тем.",
+        "uk-UA": "Не вдається створити каталог користувацьких тем.",
+        "de-DE": "Verzeichnis für Benutzerthemen kann nicht erstellt werden.",
+        "fr-FR": "Impossible de créer le dossier des thèmes utilisateur.",
+        "es-ES": "No se puede crear la carpeta de temas de usuario.",
+        "it-IT": "Impossibile creare la cartella dei temi utente.",
+        "pl-PL": "Nie można utworzyć katalogu motywów użytkownika.",
+        "pt-PT": "Não é possível criar a pasta de temas do utilizador.",
+        "nl-NL": "Kan de map voor gebruikersthema’s niet maken.",
+        "cs-CZ": "Nelze vytvořit složku uživatelských motivů.",
+        "bg-BG": "Не може да се създаде папката за потребителски теми."
+      }
+    },
+    "fbe.theme.error.delete_only_user": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Only a user theme can be deleted.",
+        "ru-RU": "Удалять можно только пользовательскую тему.",
+        "uk-UA": "Видаляти можна лише користувацьку тему.",
+        "de-DE": "Nur eine Benutzerthema kann gelöscht werden.",
+        "fr-FR": "Seul un thème utilisateur peut être supprimé.",
+        "es-ES": "Solo se puede eliminar un tema de usuario.",
+        "it-IT": "Solo un tema utente può essere eliminato.",
+        "pl-PL": "Można usunąć tylko motyw użytkownika.",
+        "pt-PT": "Só pode ser eliminado um tema do utilizador.",
+        "nl-NL": "Alleen een gebruikersthema kan worden verwijderd.",
+        "cs-CZ": "Lze odstranit pouze uživatelský motiv.",
+        "bg-BG": "Само потребителска тема може да бъде изтрита."
+      }
+    },
+    "fbe.theme.error.delete_failed": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cannot delete the user theme (error %lu).",
+        "ru-RU": "Не удаётся удалить пользовательскую тему (ошибка %lu).",
+        "uk-UA": "Не вдається видалити користувацьку тему (помилка %lu).",
+        "de-DE": "Benutzerthema kann nicht gelöscht werden (Fehler %lu).",
+        "fr-FR": "Impossible de supprimer le thème utilisateur (erreur %lu).",
+        "es-ES": "No se puede eliminar el tema de usuario (error %lu).",
+        "it-IT": "Impossibile eliminare il tema utente (errore %lu).",
+        "pl-PL": "Nie można usunąć motywu użytkownika (błąd %lu).",
+        "pt-PT": "Não é possível eliminar o tema do utilizador (erro %lu).",
+        "nl-NL": "Kan gebruikersthema niet verwijderen (fout %lu).",
+        "cs-CZ": "Nelze odstranit uživatelský motiv (chyba %lu).",
+        "bg-BG": "Не може да се изтрие потребителската тема (грешка %lu)."
+      }
+    },
+    "fbe.theme.error.incomplete_data": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Theme data is incomplete.",
+        "ru-RU": "Данные темы неполные.",
+        "uk-UA": "Дані теми неповні.",
+        "de-DE": "Themadaten sind unvollständig.",
+        "fr-FR": "Les données du thème sont incomplètes.",
+        "es-ES": "Los datos del tema están incompletos.",
+        "it-IT": "I dati del tema sono incompleti.",
+        "pl-PL": "Dane motywu są niekompletne.",
+        "pt-PT": "Os dados do tema estão incompletos.",
+        "nl-NL": "Themgegevens zijn onvolledig.",
+        "cs-CZ": "Data motivu jsou neúplná.",
+        "bg-BG": "Данните за темата са непълни."
+      }
+    },
+    "fbe.theme.error.encode": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cannot encode theme.",
+        "ru-RU": "Не удаётся закодировать тему.",
+        "uk-UA": "Не вдається закодувати тему.",
+        "de-DE": "Thema kann nicht kodiert werden.",
+        "fr-FR": "Impossible d’encoder le thème.",
+        "es-ES": "No se puede codificar el tema.",
+        "it-IT": "Impossibile codificare il tema.",
+        "pl-PL": "Nie można zakodować motywu.",
+        "pt-PT": "Não é possível codificar o tema.",
+        "nl-NL": "Kan thema niet coderen.",
+        "cs-CZ": "Motiv nelze zakódovat.",
+        "bg-BG": "Темата не може да бъде кодирана."
+      }
+    },
+    "fbe.theme.error.create_temporary": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cannot create temporary theme file.",
+        "ru-RU": "Не удаётся создать временный файл темы.",
+        "uk-UA": "Не вдається створити тимчасовий файл теми.",
+        "de-DE": "Temporäre Themadatei kann nicht erstellt werden.",
+        "fr-FR": "Impossible de créer le fichier de thème temporaire.",
+        "es-ES": "No se puede crear el archivo temporal del tema.",
+        "it-IT": "Impossibile creare il file temporaneo del tema.",
+        "pl-PL": "Nie można utworzyć tymczasowego pliku motywu.",
+        "pt-PT": "Não é possível criar o ficheiro temporário do tema.",
+        "nl-NL": "Kan tijdelijk themabestand niet maken.",
+        "cs-CZ": "Nelze vytvořit dočasný soubor motivu.",
+        "bg-BG": "Не може да се създаде временен файл за темата."
+      }
+    },
+    "fbe.theme.error.save": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Cannot save exported theme.",
+        "ru-RU": "Не удаётся сохранить экспортированную тему.",
+        "uk-UA": "Не вдається зберегти експортовану тему.",
+        "de-DE": "Exportierte Thema kann nicht gespeichert werden.",
+        "fr-FR": "Impossible d’enregistrer le thème exporté.",
+        "es-ES": "No se puede guardar el tema exportado.",
+        "it-IT": "Impossibile salvare il tema esportato.",
+        "pl-PL": "Nie można zapisać wyeksportowanego motywu.",
+        "pt-PT": "Não é possível guardar o tema exportado.",
+        "nl-NL": "Kan geëxporteerd thema niet opslaan.",
+        "cs-CZ": "Nelze uložit exportovaný motiv.",
+        "bg-BG": "Не може да се запише експортираната тема."
+      }
+    },
+    "fbe.theme.error.invalid_is_dark": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid isDark value.",
+        "ru-RU": "Недопустимое значение isDark.",
+        "uk-UA": "Неприпустиме значення isDark.",
+        "de-DE": "Ungültiger isDark-Wert.",
+        "fr-FR": "Valeur isDark non valide.",
+        "es-ES": "Valor isDark no válido.",
+        "it-IT": "Valore isDark non valido.",
+        "pl-PL": "Nieprawidłowa wartość isDark.",
+        "pt-PT": "Valor isDark inválido.",
+        "nl-NL": "Ongeldige isDark-waarde.",
+        "cs-CZ": "Neplatná hodnota isDark.",
+        "bg-BG": "Невалидна стойност на isDark."
+      }
+    },
+    "fbe.dialog.idd_setting_next.color_automatic": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Automatic",
+        "ru-RU": "Автоматически",
+        "uk-UA": "Автоматично",
+        "de-DE": "Automatisch",
+        "fr-FR": "Automatique",
+        "es-ES": "Automático",
+        "it-IT": "Automatico",
+        "pl-PL": "Automatycznie",
+        "pt-PT": "Automático",
+        "nl-NL": "Automatisch",
+        "cs-CZ": "Automaticky",
+        "bg-BG": "Автоматично"
+      }
+    },
+    "fbe.dialog.idd_setting_next.color_more": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "More colors...",
+        "ru-RU": "Другие цвета...",
+        "uk-UA": "Інші кольори...",
+        "de-DE": "Weitere Farben...",
+        "fr-FR": "Autres couleurs...",
+        "es-ES": "Más colores...",
+        "it-IT": "Altri colori...",
+        "pl-PL": "Więcej kolorów...",
+        "pt-PT": "Mais cores...",
+        "nl-NL": "Meer kleuren...",
+        "cs-CZ": "Další barvy...",
+        "bg-BG": "Още цветове..."
+      }
+    },
+    "fbe.theme.error.invalid_metadata": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid %s value: expected a string.",
+        "ru-RU": "Недопустимое значение %s: ожидается строка.",
+        "uk-UA": "Неприпустиме значення %s: очікується рядок.",
+        "de-DE": "Ungültiger Wert für %s: Zeichenfolge erwartet.",
+        "fr-FR": "Valeur %s non valide : une chaîne est attendue.",
+        "es-ES": "Valor de %s no válido: se esperaba una cadena.",
+        "it-IT": "Valore di %s non valido: è prevista una stringa.",
+        "pl-PL": "Nieprawidłowa wartość %s: oczekiwano tekstu.",
+        "pt-PT": "Valor de %s inválido: é esperada uma cadeia.",
+        "nl-NL": "Ongeldige waarde voor %s: tekenreeks verwacht.",
+        "cs-CZ": "Neplatná hodnota %s: očekává se řetězec.",
+        "bg-BG": "Невалидна стойност за %s: очаква се низ."
+      }
+    },
+    "fbe.theme.error.metadata_too_long": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Value of %s is too long.",
+        "ru-RU": "Значение %s слишком длинное.",
+        "uk-UA": "Значення %s надто довге.",
+        "de-DE": "Wert von %s ist zu lang.",
+        "fr-FR": "La valeur de %s est trop longue.",
+        "es-ES": "El valor de %s es demasiado largo.",
+        "it-IT": "Il valore di %s è troppo lungo.",
+        "pl-PL": "Wartość %s jest zbyt długa.",
+        "pt-PT": "O valor de %s é demasiado longo.",
+        "nl-NL": "Waarde van %s is te lang.",
+        "cs-CZ": "Hodnota %s je příliš dlouhá.",
+        "bg-BG": "Стойността на %s е твърде дълга."
+      }
+    },
+    "fbe.theme.error.invalid_base_theme_id": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Invalid baseThemeId.",
+        "ru-RU": "Недопустимый baseThemeId.",
+        "uk-UA": "Неприпустимий baseThemeId.",
+        "de-DE": "Ungültige baseThemeId.",
+        "fr-FR": "baseThemeId non valide.",
+        "es-ES": "baseThemeId no válido.",
+        "it-IT": "baseThemeId non valido.",
+        "pl-PL": "Nieprawidłowy baseThemeId.",
+        "pt-PT": "baseThemeId inválido.",
+        "nl-NL": "Ongeldige baseThemeId.",
+        "cs-CZ": "Neplatné baseThemeId.",
+        "bg-BG": "Невалиден baseThemeId."
+      }
+    },
+    "fbe.theme.file_filter": {
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBE themes (*.fbetheme)",
+        "ru-RU": "Темы FBE (*.fbetheme)",
+        "uk-UA": "Теми FBE (*.fbetheme)",
+        "de-DE": "FBE-Themen (*.fbetheme)",
+        "fr-FR": "Thèmes FBE (*.fbetheme)",
+        "es-ES": "Temas FBE (*.fbetheme)",
+        "it-IT": "Temi FBE (*.fbetheme)",
+        "pl-PL": "Motywy FBE (*.fbetheme)",
+        "pt-PT": "Temas FBE (*.fbetheme)",
+        "nl-NL": "FBE-thema’s (*.fbetheme)",
+        "cs-CZ": "Motivy FBE (*.fbetheme)",
+        "bg-BG": "Теми на FBE (*.fbetheme)"
+      }
     }
   },
   "futurePipeline": [
