@@ -1,0 +1,62 @@
+Сторонние палитры XML-подсветки
+===============================
+
+Дата импорта: 23.07.2026.
+
+Файлы из Themes\ не являются копиями исходного кода сторонних расширений.
+Для FBE Next палитры адаптированы к собственным 23 логическим ролям XML-редактора.
+Названия и базовые цвета сверены с открытыми upstream-проектами, указанными ниже.
+
+Источник: Microsoft VS Code, ветка main, MIT
+https://github.com/microsoft/vscode
+Темы: Dark+, Light Modern, Quiet Light.
+
+Источник: Solarized, ветка master, MIT
+https://github.com/altercation/solarized
+Темы: Solarized Light, Solarized Dark.
+
+Источник: Gruvbox, ветка master, MIT
+https://github.com/morhetz/gruvbox
+Темы: Gruvbox Light Medium, Gruvbox Dark Medium.
+
+Источник: Everforest, ветка master, MIT
+https://github.com/sainnhe/everforest
+Темы: Everforest Light Medium, Everforest Dark Medium.
+
+Источник: Flexoki, ветка main, MIT
+https://github.com/kepano/flexoki
+Темы: Flexoki Light, Flexoki Dark.
+
+Источник: Dracula Theme, ветка master, MIT
+https://github.com/dracula/dracula-theme
+Тема: Dracula.
+
+Источник: Nord, ветка develop, MIT
+https://github.com/nordtheme/nord
+Тема: Nord.
+
+Источник: Catppuccin for VSCode, ветка main, MIT
+https://github.com/catppuccin/vscode
+Темы: Catppuccin Latte, Catppuccin Mocha.
+
+Источник: Tokyo Night for VS Code, ветка master, MIT
+https://github.com/enkia/tokyo-night-vscode-theme
+Тема: Tokyo Night Storm.
+
+Источник: Ayu for VS Code, ветка master, MIT
+https://github.com/ayu-theme/ayu-vscode
+Тема: Ayu Mirage.
+
+Источник: Rosé Pine for VS Code, ветка main, MIT
+https://github.com/rose-pine/vscode
+Тема: Rosé Pine Moon.
+
+Источник: Night Owl, ветка main, MIT
+https://github.com/sdras/night-owl-vscode-theme
+Тема: Night Owl.
+
+Источник: GitHub Theme for VS Code, ветка main, MIT
+https://github.com/github/github-vscode-theme
+Темы: GitHub Light Default, GitHub Dark Default.
+
+Текст лицензии MIT: MIT.txt.

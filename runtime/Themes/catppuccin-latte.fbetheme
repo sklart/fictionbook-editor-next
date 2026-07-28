@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "catppuccin-latte",
+  "name": "Catppuccin Latte",
+  "type": "light",
+  "colors": {
+    "editor.background": "#EFF1F5",
+    "editor.foreground": "#4C4F69",
+    "editor.selection.background": "#CCD0DA",
+    "editor.selection.foreground": "#4C4F69",
+    "editor.currentLine.background": "#E6E9EF",
+    "editor.caret": "#4C4F69",
+    "editor.lineNumber": "#8C8FA1",
+    "editor.lineNumber.active": "#4C4F69",
+    "editor.matchingTag.background": "#DCE0E8",
+    "editor.matchingTag.border": "#1E66F5",
+    "xml.text": "#4C4F69",
+    "xml.tag.name": "#1E66F5",
+    "xml.tag.delimiter": "#8C8FA1",
+    "xml.attribute.name": "#179299",
+    "xml.attribute.value": "#40A02B",
+    "xml.namespace": "#7287FD",
+    "xml.comment": "#8C8FA1",
+    "xml.entity": "#FE640B",
+    "xml.cdata": "#8839EF",
+    "xml.processingInstruction": "#8839EF",
+    "xml.doctype": "#8839EF",
+    "xml.error": "#D20F39",
+    "xml.warning": "#DF8E1D"
+  }
+}

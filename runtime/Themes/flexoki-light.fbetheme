@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "flexoki-light",
+  "name": "Flexoki Light",
+  "type": "light",
+  "colors": {
+    "editor.background": "#FFFCF0",
+    "editor.foreground": "#100F0F",
+    "editor.selection.background": "#DDE7CE",
+    "editor.selection.foreground": "#100F0F",
+    "editor.currentLine.background": "#F2F0E5",
+    "editor.caret": "#100F0F",
+    "editor.lineNumber": "#878580",
+    "editor.lineNumber.active": "#100F0F",
+    "editor.matchingTag.background": "#E6E4D9",
+    "editor.matchingTag.border": "#24837B",
+    "xml.text": "#100F0F",
+    "xml.tag.name": "#AF3029",
+    "xml.tag.delimiter": "#878580",
+    "xml.attribute.name": "#205EA6",
+    "xml.attribute.value": "#66800B",
+    "xml.namespace": "#24837B",
+    "xml.comment": "#878580",
+    "xml.entity": "#BC5215",
+    "xml.cdata": "#A02F6F",
+    "xml.processingInstruction": "#A02F6F",
+    "xml.doctype": "#A02F6F",
+    "xml.error": "#D14D41",
+    "xml.warning": "#AD8301"
+  }
+}

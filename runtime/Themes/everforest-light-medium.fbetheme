@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "everforest-light-medium",
+  "name": "Everforest Light Medium",
+  "type": "light",
+  "colors": {
+    "editor.background": "#FDF6E3",
+    "editor.foreground": "#5C6A72",
+    "editor.selection.background": "#D3C6AA",
+    "editor.selection.foreground": "#5C6A72",
+    "editor.currentLine.background": "#F4F0D9",
+    "editor.caret": "#5C6A72",
+    "editor.lineNumber": "#939F91",
+    "editor.lineNumber.active": "#5C6A72",
+    "editor.matchingTag.background": "#E1DCC7",
+    "editor.matchingTag.border": "#3A94C5",
+    "xml.text": "#5C6A72",
+    "xml.tag.name": "#8DA101",
+    "xml.tag.delimiter": "#939F91",
+    "xml.attribute.name": "#DF69BA",
+    "xml.attribute.value": "#F85552",
+    "xml.namespace": "#35A77C",
+    "xml.comment": "#829181",
+    "xml.entity": "#F57D26",
+    "xml.cdata": "#DF69BA",
+    "xml.processingInstruction": "#DF69BA",
+    "xml.doctype": "#DF69BA",
+    "xml.error": "#E67E80",
+    "xml.warning": "#DFB000"
+  }
+}

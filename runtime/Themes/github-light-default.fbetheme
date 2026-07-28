@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "github-light-default",
+  "name": "GitHub Light Default",
+  "type": "light",
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#1F2328",
+    "editor.selection.background": "#B6E3FF",
+    "editor.selection.foreground": "#1F2328",
+    "editor.currentLine.background": "#F6F8FA",
+    "editor.caret": "#1F2328",
+    "editor.lineNumber": "#8C959F",
+    "editor.lineNumber.active": "#1F2328",
+    "editor.matchingTag.background": "#DDF4FF",
+    "editor.matchingTag.border": "#0969DA",
+    "xml.text": "#1F2328",
+    "xml.tag.name": "#116329",
+    "xml.tag.delimiter": "#8C959F",
+    "xml.attribute.name": "#0550AE",
+    "xml.attribute.value": "#0A3069",
+    "xml.namespace": "#0969DA",
+    "xml.comment": "#6E7781",
+    "xml.entity": "#CF222E",
+    "xml.cdata": "#8250DF",
+    "xml.processingInstruction": "#8250DF",
+    "xml.doctype": "#8250DF",
+    "xml.error": "#CF222E",
+    "xml.warning": "#9A6700"
+  }
+}

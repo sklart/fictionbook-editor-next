@@ -115,6 +115,10 @@ foreach ($pattern in @(
 foreach ($pattern in @(
     "EditorConfigurationSnapshot",
     "CaptureEditorConfigurationSnapshot()",
+	"sourceColorPalette",
+	"snapshot.sourceColorPalette = _Settings.GetXmlSrcColorPalette()",
+	"SCE_H_SGML_BLOCK_DEFAULT",
+	"SCE_H_XCCOMMENT",
     "previousInterfaceLanguage != _Settings.GetInterfaceLanguageID()",
     "_Settings.Save()",
     "_Settings.SaveWords()"

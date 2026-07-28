@@ -1,4 +1,4 @@
-﻿// Doc.cpp: implementation of the Doc class.
+// Doc.cpp: implementation of the Doc class.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -23,22 +23,50 @@ extern CSettings _Settings;
 
 namespace FB {
 
+// Журнал не содержит имён и путей книг: для диагностики достаточно факта
+// наличия файла и результата операции.
 static void TraceDocumentEvent(const wchar_t* operation, const CString& filename)
 {
 	CString trace;
-	trace.Format(L"%s: %s", operation,
-		filename.IsEmpty() ? L"(без имени файла)" : (const wchar_t*)filename);
-	StartupTrace::Event(L"document", trace);
+	trace.Format(L"%s; file-present=%d", operation, filename.IsEmpty() ? 0 : 1);
+	StartupTrace::Event(L"xml", trace);
 }
 
 static void TraceRecoveryEvent(const wchar_t* operation, const CString& filename)
 {
 	CString trace;
-	trace.Format(L"%s: %s", operation,
-		filename.IsEmpty() ? L"(без имени файла)" : (const wchar_t*)filename);
+	trace.Format(L"%s; file-present=%d", operation, filename.IsEmpty() ? 0 : 1);
 	StartupTrace::Event(L"recovery", trace);
 }
 
+static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
+{
+	try
+	{
+		if (!document)
+		{
+			StartupTrace::Error(L"webbrowser", L"W150", L"HTML-документ недоступен после загрузки");
+			return;
+		}
+		_bstr_t readyState(document->readyState);
+		MSHTML::IHTMLDocument5Ptr document5(document);
+        _bstr_t compatMode(document5 ? document5->compatMode : L"(unknown)");
+		_bstr_t charset(document->charset);
+		MSHTML::IHTMLDocument3Ptr document3(document);
+		const bool hasBody = (bool)document->body;
+		const bool hasFbwDesc = document3 && (bool)document3->getElementById(L"fbw_desc");
+		const bool hasFbwBody = document3 && (bool)document3->getElementById(L"fbw_body");
+		CString trace;
+		trace.Format(L"W151 ready-state=%s; compat-mode=%s; charset=%s; body=%d; fbw_desc=%d; fbw_body=%d",
+			(const wchar_t*)readyState, (const wchar_t*)compatMode, (const wchar_t*)charset,
+			hasBody ? 1 : 0, hasFbwDesc ? 1 : 0, hasFbwBody ? 1 : 0);
+		StartupTrace::Event(L"webbrowser", trace);
+	}
+	catch (_com_error& error)
+	{
+		StartupTrace::HResult(L"webbrowser", L"W152", error.Error(), L"Чтение состояния HTML-документа");
+	}
+}
 // namespaces
 const _bstr_t	  FBNS(L"http://www.gribuser.ru/xml/fictionbook/2.0");
 const _bstr_t	  XLINKNS(L"http://www.w3.org/1999/xlink");
@@ -66,7 +94,8 @@ Doc::Doc(HWND hWndFrame) :
 		 m_body_ver(-1),
 //	     m_desc_cp(-1),
 		 m_body_cp(-1),
-	     m_encoding(_T("utf-8"))
+	     m_encoding(_T("utf-8")),
+	     m_last_save_error(S_OK)
 {
   m_body.SetDocumentFilePathSource(&m_filename, &m_namevalid);
   m_active_docs.Add(this,this);
@@ -113,6 +142,7 @@ static DWORD __stdcall XMLTransformThread(LPVOID varg) {
 void Doc::TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,
     CFBEView& dest)
 {
+  StartupTrace::Event(L"xslt", L"T400 Преобразование XML для режима просмотра начато");
   // create processor
   MSXML2::IXSLProcessorPtr	proc(tp->createProcessor());
   proc->input=_variant_t(doc.GetInterfacePtr());
@@ -188,14 +218,22 @@ void Doc::TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr do
   IPersistStreamInitPtr	ips(dest.Browser()->Document);
   ips->InitNew();
   ips->Load(U::NewStream(hRd));
+  StartupTrace::Event(L"xslt", L"T490 Преобразование XML для режима просмотра завершено");
 }
 
 static MSXML2::IXSLTemplatePtr	LoadXSL(const CString& path) {
+  CString trace;
+  trace.Format(L"T300 Загрузка XSL; шаблон=%s", path.CompareNoCase(L"body.xsl") == 0 ? L"body" : L"description");
+  StartupTrace::Event(L"xslt", trace);
   MSXML2::IXMLDOMDocument2Ptr	xsl(U::CreateDocument(true));
   if (!U::LoadXml(xsl,U::GetProgDirFile(path)))
+  {
+    StartupTrace::Error(L"xslt", L"T301", L"Не удалось загрузить XSL");
     throw _com_error(E_FAIL);
+  }
   MSXML2::IXSLTemplatePtr	tp(U::CreateTemplate());
   tp->stylesheet=xsl;
+  StartupTrace::Event(L"xslt", L"T390 Шаблон XSL подготовлен");
   return tp;
 }
 
@@ -290,24 +328,80 @@ static MSXML2::IXSLTemplatePtr	LoadXSL(const CString& path) {
   return true;
 }*/
 
+static CString VariantTypeName(const VARIANT& value)
+{
+	CString type;
+	type.Format(L"VT_%u", static_cast<unsigned int>(V_VT(&value)));
+	return type;
+}
+
 HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult)
 {
-	CComPtr<IDispatch> pScript;    
-	IHTMLDocument2Ptr doc = m_body.Browser()->Document;
-	HRESULT hr = doc->get_Script(&pScript);
-	if (FAILED(hr) || !pScript) return FAILED(hr) ? hr : E_NOINTERFACE;
+	CString trace;
+	trace.Format(L"C100 InvokeFunc: %s; arguments=%d", FuncName, count);
+	StartupTrace::Event(L"script", trace);
 
-	LPOLESTR szMember = const_cast<LPOLESTR>(FuncName);
-	DISPID dispid;
-	
-	hr = pScript->GetIDsOfNames(IID_NULL, &szMember, 1, LOCALE_SYSTEM_DEFAULT, &dispid);
-
-	if (SUCCEEDED(hr))
-	{		
-		CComDispatchDriver dispDriver(pScript);        
-		hr = dispDriver.InvokeN(dispid, params , count, &vtResult);		
+	if (!m_body.Browser())
+	{
+		StartupTrace::HResult(L"script", L"C101", E_UNEXPECTED, L"Веб-браузер недоступен");
+		return E_UNEXPECTED;
 	}
 
+	IHTMLDocument2Ptr doc = m_body.Browser()->Document;
+	if (!doc)
+	{
+		StartupTrace::HResult(L"script", L"C102", E_NOINTERFACE, L"HTML-документ недоступен");
+		return E_NOINTERFACE;
+	}
+
+	CComPtr<IDispatch> pScript;
+	HRESULT hr = doc->get_Script(&pScript);
+	StartupTrace::HResult(L"script", L"C110", hr, L"get_Script");
+	if (FAILED(hr) || !pScript)
+		return FAILED(hr) ? hr : E_NOINTERFACE;
+
+	LPOLESTR szMember = const_cast<LPOLESTR>(FuncName);
+	DISPID dispid = DISPID_UNKNOWN;
+	hr = pScript->GetIDsOfNames(IID_NULL, &szMember, 1, LOCALE_SYSTEM_DEFAULT, &dispid);
+	trace.Format(L"GetIDsOfNames: name=%s; dispid=%ld", FuncName, static_cast<long>(dispid));
+	StartupTrace::HResult(L"script", L"C120", hr, trace);
+	if (FAILED(hr))
+		return hr;
+
+	CString argumentTypes;
+	for (int index = 0; index < count; ++index)
+	{
+		if (!argumentTypes.IsEmpty())
+			argumentTypes += L",";
+		argumentTypes += VariantTypeName(params[index]);
+	}
+	trace.Format(L"Invoke: dispid=%ld; argument-types=[%s]", static_cast<long>(dispid),
+		(const wchar_t*)argumentTypes);
+	StartupTrace::Event(L"script", trace);
+
+	DISPPARAMS dispatchParameters = {};
+	dispatchParameters.rgvarg = params;
+	dispatchParameters.cArgs = count;
+	EXCEPINFO exceptionInfo = {};
+	UINT argumentError = 0;
+	::VariantClear(&vtResult);
+	::VariantInit(&vtResult);
+	hr = pScript->Invoke(dispid, IID_NULL, LOCALE_SYSTEM_DEFAULT, DISPATCH_METHOD,
+		&dispatchParameters, &vtResult, &exceptionInfo, &argumentError);
+
+	CString details;
+	details.Format(L"Invoke: dispid=%ld; argument-error=%u; result-type=VT_%u",
+		static_cast<long>(dispid), argumentError, static_cast<unsigned int>(V_VT(&vtResult)));
+	if (exceptionInfo.bstrDescription)
+	{
+		details += L"; exception-description-present";
+		::SysFreeString(exceptionInfo.bstrDescription);
+	}
+	if (exceptionInfo.bstrSource)
+		::SysFreeString(exceptionInfo.bstrSource);
+	if (exceptionInfo.bstrHelpFile)
+		::SysFreeString(exceptionInfo.bstrHelpFile);
+	StartupTrace::HResult(L"script", L"C130", hr, details);
 	return hr;
 }
 
@@ -325,11 +419,32 @@ void Doc::RunScript(LPCOLESTR filePath)
 {
 	TraceDocumentEvent(L"Запуск пользовательского скрипта", CString(filePath));
 	CComVariant vtResult;
-	CComVariant params(filePath);
-	InvokeFunc(L"apiRunCmd", &params, 1, vtResult);
+
+	// Пользовательский набор может лежать вне штатного runtime. В этом случае
+	// вспомогательные HTML-окна должны искаться рядом с выбранной папкой Scripts.
+	CString htmlFolder = _Settings.GetScriptsFolder();
+	htmlFolder.TrimRight(L"\\/");
+	int separator = htmlFolder.ReverseFind(L'\\');
+	const int slash = htmlFolder.ReverseFind(L'/');
+	if (slash > separator)
+		separator = slash;
+	if (separator >= 0)
+		htmlFolder = htmlFolder.Left(separator + 1) + L"HTML\\";
+	else
+		htmlFolder.Empty();
+
+	const DWORD attributes = htmlFolder.IsEmpty() ? INVALID_FILE_ATTRIBUTES : ::GetFileAttributes(htmlFolder);
+	if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+		htmlFolder = U::GetProgDirFile(L"HTML\\");
+	StartupTrace::Event(L"script", L"Каталог HTML пользовательского скрипта определён");
+
+	// InvokeN передаёт аргументы в обратном порядке.
+	CComVariant params[2];
+	params[1] = filePath;
+	params[0] = htmlFolder;
+	InvokeFunc(L"apiRunCmd", params, 2, vtResult);
 	TraceDocumentEvent(L"Пользовательский скрипт завершён", CString(filePath));
 }
-
 VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 {
 	CComVariant vtResult;
@@ -343,9 +458,13 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 {
 	TraceDocumentEvent(L"Загрузка книги начата", filename);
 	HRESULT	hr;
+	StartupTrace::Event(L"webbrowser", L"W100 Создание браузерного элемента");
 	const CString path = U::GetProgDirFile(L"main.html");
 	m_body.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
-	hr = m_body.Browser()->Navigate((LPCTSTR)path);	
+	hr = m_body.Browser()->Navigate((LPCTSTR)path);
+	StartupTrace::HResult(L"webbrowser", L"W110", hr, L"Navigate main.html");
+	if (FAILED(hr))
+		return false;	
 	MSG	  msg;
     while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) 
 	{
@@ -353,9 +472,13 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
       ::DispatchMessage(&msg);
     }
 
+	StartupTrace::Event(L"webbrowser", L"W120 Документ main.html загружен");
+	StartupTrace::Event(L"webbrowser", L"W130 Подключение window.external");
 	m_body.SetExternalDispatch(m_body.CreateHelper());
 
-	m_body.Init();	
+	m_body.Init();
+	StartupTrace::Event(L"webbrowser", L"W140 Инициализация HTML-документа завершена");	
+	TraceHtmlDocumentState(m_body.Browser()->Document);
 	//FastMode();
 	
 	CComVariant params[2];
@@ -363,36 +486,52 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	params[0] = _Settings.GetInterfaceLanguageName();
 	CComVariant res;
 	
+	CComVariant diagnosticTrace;
+	V_VT(&diagnosticTrace) = VT_BOOL;
+	V_BOOL(&diagnosticTrace) = StartupTrace::Enabled() ? VARIANT_TRUE : VARIANT_FALSE;
+	CComVariant diagnosticResult;
+	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult);
+	StartupTrace::HResult(L"script", L"J010", hr, L"apiSetDiagnosticTraceEnabled");
+	if (FAILED(hr))
+		return false;
 	ApplyConfChanges();
+	StartupTrace::Event(L"document", L"J100 Вызов apiLoadFB2");
 	hr = InvokeFunc(L"apiLoadFB2", params, 2, res);
+	StartupTrace::HResult(L"document", L"J200", hr, L"apiLoadFB2");
+	if (FAILED(hr))
+	{
+		TraceDocumentEvent(L"Загрузка книги завершилась ошибкой JavaScript", filename);
+		return false;
+	}
 	//m_body.Normalize(m_body.Document()->body);
-	// mark unchanged
-    MarkSavePoint();
-
+	bool loaded = false;
 	if(res.vt == VT_BOOL)
 	{
 		m_encoding = _Settings.GetDefaultEncoding();
-		const bool loaded = res.boolVal != VARIANT_FALSE;
-		TraceDocumentEvent(loaded ? L"Загрузка книги завершена" : L"Загрузка книги отклонена", filename);
-		return loaded;		
+		loaded = res.boolVal != VARIANT_FALSE;
 	}
-
-	if(res.vt == VT_BSTR)
+	else if(res.vt == VT_BSTR)
 	{
 		m_encoding = res.bstrVal;
-		TraceDocumentEvent(L"Загрузка книги завершена", filename);
-		return true;
+		loaded = true;
 	}
-
-	if(res.vt == VT_EMPTY)
+	else if(res.vt == VT_EMPTY)
 	{
-		m_encoding = _Settings.GetDefaultEncoding();		
-		TraceDocumentEvent(L"Загрузка книги завершена", filename);
-		return true;
+		// VT_EMPTY допустим только после успешного Invoke, что уже проверено выше.
+		m_encoding = _Settings.GetDefaultEncoding();
+		loaded = true;
 	}
 
-	TraceDocumentEvent(L"Загрузка книги завершилась без результата", filename);
-	return false;
+	if (!loaded)
+	{
+		TraceDocumentEvent(L"Загрузка книги завершилась без результата", filename);
+		return false;
+	}
+
+	// Отмечаем документ неизменённым только после подтверждённой загрузки JavaScript.
+	MarkSavePoint();
+	TraceDocumentEvent(L"Загрузка книги завершена", filename);
+	return true;
 }
 
 bool Doc::Load(HWND hWndParent,const CString& filename) {
@@ -430,7 +569,8 @@ void  Doc::CreateBlank(HWND hWndParent) {
   try {
 	TraceDocumentEvent(L"Создание пустой книги", L"blank.fb2");
     // load document into DOM
-	  LoadFromHTML(hWndParent, L"blank.fb2");
+	  if (!LoadFromHTML(hWndParent, L"blank.fb2"))
+	  StartupTrace::Error(L"document", L"D201", L"Пустая книга не была загружена");
     //LoadFromDOM(hWndParent,U::CreateDocument(true));
   }
   catch (_com_error& e) {
@@ -960,19 +1100,18 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compactBinaries)
 {
 	CString trace;
-	trace.Format(L"CreateDOM started: encoding=%s, compact-binaries=%d",
+	trace.Format(L"X100 CreateDOM started: encoding=%s, compact-binaries=%d",
 		(const wchar_t*)encoding, compactBinaries ? 1 : 0);
-	StartupTrace::Event(L"document", trace);
+	StartupTrace::Event(L"xml", trace);
 	try
 	{
 		MSXML2::IXMLDOMDocument2Ptr result(CreateDOMImp(encoding, compactBinaries));
-		StartupTrace::Event(L"document", L"CreateDOM completed");
+		StartupTrace::Event(L"xml", L"X190 CreateDOM completed");
 		return result;
 	}
 	catch (_com_error& e)
 	{
-		trace.Format(L"CreateDOM failed: HRESULT=0x%08lX", e.Error());
-		StartupTrace::Event(L"com", trace);
+		StartupTrace::HResult(L"xml", L"X191", e.Error(), L"CreateDOM");
 		U::ReportError(e);
 	}
 
@@ -1050,12 +1189,13 @@ static CString CreateTemporaryFileName(const CString& directory, const wchar_t* 
 	return CString(temporaryPath);
 }
 bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
-		      int *errline,int *errcol)
+		      int *errline,int *errcol,bool reportAccessDenied)
 {
+	m_last_save_error = S_OK;
 	CString trace;
-	trace.Format(L"%s: %s", fValidateOnly ? L"Проверка книги начата" : L"Сохранение книги начато",
-		filename.IsEmpty() ? L"(текущая книга)" : (const wchar_t*)filename);
-	StartupTrace::Event(L"document", trace);
+	trace.Format(L"%s; file-present=%d", fValidateOnly ? L"Проверка книги начата" : L"Сохранение книги начато",
+		filename.IsEmpty() ? 0 : 1);
+	StartupTrace::Event(L"xml", trace);
   try {
     // create a schema collection
     MSXML2::IXMLDOMSchemaCollection2Ptr	scol;
@@ -1198,7 +1338,9 @@ forcesave:
   }
   catch (_com_error& e) {
 	StartupTrace::Event(L"document", fValidateOnly ? L"Проверка книги завершилась COM-ошибкой" : L"Сохранение книги завершилось COM-ошибкой");
-    U::ReportError(e);
+	m_last_save_error = e.Error();
+	if (reportAccessDenied || (e.Error() != E_ACCESSDENIED && HRESULT_CODE(e.Error()) != ERROR_ACCESS_DENIED))
+		U::ReportError(e);
     return false;
   }
 
@@ -1243,7 +1385,7 @@ bool  Doc::Save() {
   if (!m_namevalid)
     return false;
   AU::CPersistentWaitCursor wc;
-  if (SaveToFile(m_filename)) {
+  if (SaveToFile(m_filename, false, NULL, NULL, false)) {
     MarkSavePoint();
     return true;
   }

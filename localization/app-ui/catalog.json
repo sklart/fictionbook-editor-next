@@ -476,6 +476,24 @@
         "bg-BG": "Файлът е само за четене:\n%s\n\nДа се запази копие с друго име?"
       }
     },
+    "fbe.save.access_denied": {
+      "resourceId": "IDS_SAVE_ACCESS_DENIED_MSG",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Access to the file was denied:\n%s\n\nSave a copy under another name?",
+        "ru-RU": "Нет доступа к файлу:\n%s\n\nСохранить копию под другим именем?",
+        "uk-UA": "Немає доступу до файлу:\n%s\n\nЗберегти копію під іншим іменем?",
+        "de-DE": "Zugriff auf die Datei verweigert:\n%s\n\nEine Kopie unter anderem Namen speichern?",
+        "fr-FR": "Accès au fichier refusé :\n%s\n\nEnregistrer une copie sous un autre nom ?",
+        "es-ES": "Se denegó el acceso al archivo:\n%s\n\n¿Guardar una copia con otro nombre?",
+        "it-IT": "Accesso al file negato:\n%s\n\nSalvare una copia con un altro nome?",
+        "pl-PL": "Odmowa dostępu do pliku:\n%s\n\nZapisać kopię pod inną nazwą?",
+        "pt-PT": "Acesso ao ficheiro negado:\n%s\n\nGuardar uma cópia com outro nome?",
+        "nl-NL": "Toegang tot het bestand is geweigerd:\n%s\n\nEen kopie onder een andere naam opslaan?",
+        "cs-CZ": "Přístup k souboru byl odepřen:\n%s\n\nUložit kopii pod jiným názvem?",
+        "bg-BG": "Достъпът до файла е отказан:\n%s\n\nДа се запази копие под друго име?"
+      }
+    },
     "fbe.save.confirm_changes": {
       "resourceId": "IDS_SAVE_DLG_MSG",
       "component": "fbe.core",

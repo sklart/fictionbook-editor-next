@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "rose-pine-moon",
+  "name": "Rosé Pine Moon",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#232136",
+    "editor.foreground": "#E0DEF4",
+    "editor.selection.background": "#44415A",
+    "editor.selection.foreground": "#E0DEF4",
+    "editor.currentLine.background": "#2A283E",
+    "editor.caret": "#E0DEF4",
+    "editor.lineNumber": "#6E6A86",
+    "editor.lineNumber.active": "#E0DEF4",
+    "editor.matchingTag.background": "#44415A",
+    "editor.matchingTag.border": "#9CCFD8",
+    "xml.text": "#E0DEF4",
+    "xml.tag.name": "#EBBCBA",
+    "xml.tag.delimiter": "#6E6A86",
+    "xml.attribute.name": "#9CCFD8",
+    "xml.attribute.value": "#F6C177",
+    "xml.namespace": "#C4A7E7",
+    "xml.comment": "#6E6A86",
+    "xml.entity": "#EB6F92",
+    "xml.cdata": "#C4A7E7",
+    "xml.processingInstruction": "#C4A7E7",
+    "xml.doctype": "#C4A7E7",
+    "xml.error": "#EB6F92",
+    "xml.warning": "#F6C177"
+  }
+}

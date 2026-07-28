@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "github-dark-default",
+  "name": "GitHub Dark Default",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#0D1117",
+    "editor.foreground": "#E6EDF3",
+    "editor.selection.background": "#264F78",
+    "editor.selection.foreground": "#FFFFFF",
+    "editor.currentLine.background": "#161B22",
+    "editor.caret": "#E6EDF3",
+    "editor.lineNumber": "#7D8590",
+    "editor.lineNumber.active": "#E6EDF3",
+    "editor.matchingTag.background": "#1F6FEB",
+    "editor.matchingTag.border": "#58A6FF",
+    "xml.text": "#E6EDF3",
+    "xml.tag.name": "#7EE787",
+    "xml.tag.delimiter": "#7D8590",
+    "xml.attribute.name": "#79C0FF",
+    "xml.attribute.value": "#A5D6FF",
+    "xml.namespace": "#58A6FF",
+    "xml.comment": "#8B949E",
+    "xml.entity": "#FFA657",
+    "xml.cdata": "#D2A8FF",
+    "xml.processingInstruction": "#D2A8FF",
+    "xml.doctype": "#D2A8FF",
+    "xml.error": "#FF7B72",
+    "xml.warning": "#D29922"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "codeoss-quiet-light",
+  "name": "Quiet Light",
+  "type": "light",
+  "colors": {
+    "editor.background": "#F5F5F5",
+    "editor.foreground": "#333333",
+    "editor.selection.background": "#ADD6FF",
+    "editor.selection.foreground": "#000000",
+    "editor.currentLine.background": "#E9E9E9",
+    "editor.caret": "#000000",
+    "editor.lineNumber": "#999999",
+    "editor.lineNumber.active": "#333333",
+    "editor.matchingTag.background": "#DCEBFA",
+    "editor.matchingTag.border": "#0066BF",
+    "xml.text": "#333333",
+    "xml.tag.name": "#800000",
+    "xml.tag.delimiter": "#808080",
+    "xml.attribute.name": "#AA0D91",
+    "xml.attribute.value": "#C41A16",
+    "xml.namespace": "#3A9691",
+    "xml.comment": "#008000",
+    "xml.entity": "#AA0D91",
+    "xml.cdata": "#7A3E9D",
+    "xml.processingInstruction": "#7A3E9D",
+    "xml.doctype": "#7A3E9D",
+    "xml.error": "#C00000",
+    "xml.warning": "#9A6B00"
+  }
+}

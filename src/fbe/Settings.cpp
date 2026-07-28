@@ -1,4 +1,5 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
+#include "XmlSourceThemes.h"
 
 enum KEY_TYPE
 {
@@ -6,6 +7,7 @@ enum KEY_TYPE
 	KEY_UINT,
 	KEY_ULONG,
 	KEY_BOOL,
+	KEY_STRING,
 	KEY_STRUCT
 };
 
@@ -32,6 +34,8 @@ CString GetStringedProperty(void* member, KEY_TYPE type)
 			temp.Format(L"%s", *(bool*)member ? L"true" : L"false");
 			return temp;
 		}
+	case KEY_STRING:
+		return *(CString*)member;
 	default:
 		return CString();
 	}
@@ -52,6 +56,13 @@ const wchar_t FONT_SIZE_KEY[]			= L"FontSize";
 const wchar_t XML_SRC_WRAP_KEY[]		= L"XMLSrcWrap";
 const wchar_t XML_SRC_SYNTAX_HL_KEY[]	= L"XMLSrcSyntaxHL";
 const wchar_t XML_SRC_COLOR_PALETTE_KEY[] = L"XMLSrcColorPalette";
+const wchar_t XML_SRC_THEME_ID_KEY[] = L"XMLSrcThemeId";
+const wchar_t XML_SRC_COLOR_TEXT_KEY[] = L"XMLSrcColorText";
+const wchar_t XML_SRC_COLOR_TAG_KEY[] = L"XMLSrcColorTag";
+const wchar_t XML_SRC_COLOR_ATTRIBUTE_KEY[] = L"XMLSrcColorAttribute";
+const wchar_t XML_SRC_COLOR_STRING_KEY[] = L"XMLSrcColorString";
+const wchar_t XML_SRC_COLOR_COMMENT_KEY[] = L"XMLSrcColorComment";
+const wchar_t XML_SRC_COLOR_BACKGROUND_KEY[] = L"XMLSrcColorBackground";
 const wchar_t XML_SRC_TAG_HL_KEY[]		= L"XMLSrcTagHL";
 const wchar_t XML_SRC_SHOW_EOL_KEY[]	= L"XMLSrcShowEOL";
 const wchar_t XML_SRC_SHOW_SPACE_KEY[]	= L"XMLSrcShowSpace";
@@ -779,6 +790,12 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(XML_SRC_WRAP_KEY);
 	properties.push_back(XML_SRC_SYNTAX_HL_KEY);
 	properties.push_back(XML_SRC_COLOR_PALETTE_KEY);
+	properties.push_back(XML_SRC_THEME_ID_KEY);
+	properties.push_back(XML_SRC_COLOR_TEXT_KEY);
+	properties.push_back(XML_SRC_COLOR_TAG_KEY);
+	properties.push_back(XML_SRC_COLOR_ATTRIBUTE_KEY);
+	properties.push_back(XML_SRC_COLOR_STRING_KEY);
+	properties.push_back(XML_SRC_COLOR_COMMENT_KEY);
 	properties.push_back(XML_SRC_TAG_HL_KEY);
 	properties.push_back(XML_SRC_SHOW_EOL_KEY);
 	properties.push_back(XML_SRC_SHOW_SPACE_KEY);
@@ -862,6 +879,41 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == XML_SRC_COLOR_PALETTE_KEY)
 	{
 		property = GetStringedProperty(&m_xml_src_color_palette, KEY_INT);
+		return true;
+	}
+	else if(sProperty == XML_SRC_THEME_ID_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_theme_id, KEY_STRING);
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_TEXT_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_colors[XML_SRC_COLOR_TEXT], KEY_ULONG);
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_TAG_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_colors[XML_SRC_COLOR_TAG], KEY_ULONG);
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_ATTRIBUTE_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_colors[XML_SRC_COLOR_ATTRIBUTE], KEY_ULONG);
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_STRING_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_colors[XML_SRC_COLOR_STRING], KEY_ULONG);
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_COMMENT_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_colors[XML_SRC_COLOR_COMMENT], KEY_ULONG);
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_BACKGROUND_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_colors[XML_SRC_COLOR_BACKGROUND], KEY_ULONG);
 		return true;
 	}
 	else if(sProperty == XML_SRC_TAG_HL_KEY)
@@ -1102,8 +1154,42 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == XML_SRC_COLOR_PALETTE_KEY)
 	{
-		const DWORD palette = StrToInt(sValue.GetStringValue());
-		m_xml_src_color_palette = palette <= XML_SRC_COLOR_PALETTE_DARK ? palette : XML_SRC_COLOR_PALETTE_CLASSIC;
+		SetXmlSrcColorPalette(StrToInt(sValue.GetStringValue()));
+		return true;
+	}
+	else if(sProperty == XML_SRC_THEME_ID_KEY)
+	{
+		SetXmlSrcThemeId(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_TEXT_KEY)
+	{
+		m_xml_src_colors[XML_SRC_COLOR_TEXT] = StrToInt(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_TAG_KEY)
+	{
+		m_xml_src_colors[XML_SRC_COLOR_TAG] = StrToInt(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_ATTRIBUTE_KEY)
+	{
+		m_xml_src_colors[XML_SRC_COLOR_ATTRIBUTE] = StrToInt(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_STRING_KEY)
+	{
+		m_xml_src_colors[XML_SRC_COLOR_STRING] = StrToInt(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_COMMENT_KEY)
+	{
+		m_xml_src_colors[XML_SRC_COLOR_COMMENT] = StrToInt(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == XML_SRC_COLOR_BACKGROUND_KEY)
+	{
+		m_xml_src_colors[XML_SRC_COLOR_BACKGROUND] = StrToInt(sValue.GetStringValue());
 		return true;
 	}
 	else if(sProperty == XML_SRC_TAG_HL_KEY)
@@ -1484,7 +1570,129 @@ bool CSettings::XmlSrcSyntaxHL()const
 }
 DWORD CSettings::GetXmlSrcColorPalette()const
 {
-	return m_xml_src_color_palette;
+	if(m_xml_src_color_palette == XML_SRC_COLOR_PALETTE_LEGACY_CONTRAST)
+		return XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	if(m_xml_src_color_palette == XML_SRC_COLOR_PALETTE_LEGACY_HIGH_CONTRAST_DARK)
+		return XML_SRC_COLOR_PALETTE_FBE_DARK;
+	if(m_xml_src_color_palette == XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_LIGHT)
+		return XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	if(m_xml_src_color_palette == XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_DARK)
+		return XML_SRC_COLOR_PALETTE_FBE_DARK;
+	return m_xml_src_color_palette <= XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_DARK
+		? m_xml_src_color_palette : XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+}
+CString CSettings::GetXmlSrcThemeId()const
+{
+	return XmlSourceThemes::NormalizeThemeId(m_xml_src_theme_id);
+}
+DWORD CSettings::GetXmlSrcDefaultColor(DWORD palette, XmlSrcColorGroup group)
+{
+	static const XmlSrcStyleToken tokens[XML_SRC_COLOR_GROUP_COUNT] = {
+		XML_SRC_STYLE_XML_TEXT,
+		XML_SRC_STYLE_XML_TAG_NAME,
+		XML_SRC_STYLE_XML_ATTRIBUTE_NAME,
+		XML_SRC_STYLE_XML_ATTRIBUTE_VALUE,
+		XML_SRC_STYLE_XML_COMMENT,
+		XML_SRC_STYLE_EDITOR_BACKGROUND,
+	};
+	return GetXmlSrcThemeColor(palette,
+		tokens[group < XML_SRC_COLOR_GROUP_COUNT ? group : XML_SRC_COLOR_TEXT]);
+}
+
+DWORD CSettings::GetXmlSrcThemeColor(DWORD palette, XmlSrcStyleToken token)
+{
+	if(palette == XML_SRC_COLOR_PALETTE_SYSTEM)
+	{
+		// Значение AppsUseLightTheme существует в Windows 10/11. В Windows 7
+		// и при любой ошибке чтения выбираем светлую FBE Light.
+		DWORD appsUseLightTheme = 1;
+		DWORD valueSize = sizeof(appsUseLightTheme);
+		const LONG result = ::RegGetValue(HKEY_CURRENT_USER,
+			L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+			L"AppsUseLightTheme", RRF_RT_REG_DWORD, NULL, &appsUseLightTheme, &valueSize);
+		palette = result == ERROR_SUCCESS && appsUseLightTheme == 0
+			? XML_SRC_COLOR_PALETTE_FBE_DARK
+			: XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	}
+	// Старые значения 1 и 4 больше не отображаются в списке схем. Если они
+	// сохранены ранней сборкой, безопасно переводим их в ближайшие FBE-темы.
+	if(palette == XML_SRC_COLOR_PALETTE_LEGACY_CONTRAST)
+		palette = XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	else if(palette == XML_SRC_COLOR_PALETTE_LEGACY_HIGH_CONTRAST_DARK)
+		palette = XML_SRC_COLOR_PALETTE_FBE_DARK;
+	else if(palette == XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_LIGHT)
+		palette = XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	else if(palette == XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_DARK)
+		palette = XML_SRC_COLOR_PALETTE_FBE_DARK;
+	else if(palette > XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_DARK)
+		palette = XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	if(token >= XML_SRC_STYLE_TOKEN_COUNT)
+		token = XML_SRC_STYLE_EDITOR_FOREGROUND;
+
+	DWORD color = 0;
+	if(XmlSourceThemes::GetThemeColor(XmlSourceThemes::GetThemeIdForPalette(palette), token, color))
+		return color;
+	return RGB(32,34,36);
+
+}
+DWORD CSettings::GetXmlSrcColor(XmlSrcColorGroup group)const
+{
+	if(group >= XML_SRC_COLOR_GROUP_COUNT)
+		group = XML_SRC_COLOR_TEXT;
+	if(m_xml_src_colors[group] != XML_SRC_COLOR_DEFAULT)
+		return m_xml_src_colors[group];
+
+	static const XmlSrcStyleToken tokens[XML_SRC_COLOR_GROUP_COUNT] = {
+		XML_SRC_STYLE_XML_TEXT,
+		XML_SRC_STYLE_XML_TAG_NAME,
+		XML_SRC_STYLE_XML_ATTRIBUTE_NAME,
+		XML_SRC_STYLE_XML_ATTRIBUTE_VALUE,
+		XML_SRC_STYLE_XML_COMMENT,
+		XML_SRC_STYLE_EDITOR_BACKGROUND,
+	};
+	DWORD color = 0;
+	if(XmlSourceThemes::GetThemeColor(GetXmlSrcThemeId(), tokens[group], color))
+		return color;
+	return GetXmlSrcDefaultColor(m_xml_src_color_palette, group);
+}
+bool CSettings::HasXmlSrcCustomColor(XmlSrcColorGroup group)const
+{
+	return group < XML_SRC_COLOR_GROUP_COUNT && m_xml_src_colors[group] != XML_SRC_COLOR_DEFAULT;
+}
+DWORD CSettings::GetXmlSrcStyleColor(XmlSrcStyleToken token)const
+{
+	XmlSrcColorGroup group = XML_SRC_COLOR_GROUP_COUNT;
+	switch(token)
+	{
+	case XML_SRC_STYLE_EDITOR_BACKGROUND:
+		group = XML_SRC_COLOR_BACKGROUND;
+		break;
+	case XML_SRC_STYLE_EDITOR_FOREGROUND:
+	case XML_SRC_STYLE_XML_TEXT:
+		group = XML_SRC_COLOR_TEXT;
+		break;
+	case XML_SRC_STYLE_XML_TAG_NAME:
+	case XML_SRC_STYLE_XML_TAG_DELIMITER:
+		group = XML_SRC_COLOR_TAG;
+		break;
+	case XML_SRC_STYLE_XML_ATTRIBUTE_NAME:
+		group = XML_SRC_COLOR_ATTRIBUTE;
+		break;
+	case XML_SRC_STYLE_XML_ATTRIBUTE_VALUE:
+		group = XML_SRC_COLOR_STRING;
+		break;
+	case XML_SRC_STYLE_XML_COMMENT:
+		group = XML_SRC_COLOR_COMMENT;
+		break;
+	default:
+		break;
+	}
+	if(group < XML_SRC_COLOR_GROUP_COUNT)
+		return GetXmlSrcColor(group);
+	DWORD color = 0;
+	if(XmlSourceThemes::GetThemeColor(GetXmlSrcThemeId(), token, color))
+		return color;
+	return GetXmlSrcThemeColor(m_xml_src_color_palette, token);
 }
 bool CSettings::XmlSrcTagHL()const
 {
@@ -1870,7 +2078,32 @@ void CSettings::SetXmlSrcSyntaxHL(bool hl, bool apply)
 
 void CSettings::SetXmlSrcColorPalette(DWORD palette, bool apply)
 {
-	m_xml_src_color_palette = palette <= XML_SRC_COLOR_PALETTE_DARK ? palette : XML_SRC_COLOR_PALETTE_CLASSIC;
+	if(palette == XML_SRC_COLOR_PALETTE_LEGACY_CONTRAST)
+		palette = XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	else if(palette == XML_SRC_COLOR_PALETTE_LEGACY_HIGH_CONTRAST_DARK)
+		palette = XML_SRC_COLOR_PALETTE_FBE_DARK;
+	else if(palette == XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_LIGHT)
+		palette = XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	else if(palette == XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_DARK)
+		palette = XML_SRC_COLOR_PALETTE_FBE_DARK;
+	m_xml_src_color_palette = palette <= XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_DARK ? palette : XML_SRC_COLOR_PALETTE_FBE_LIGHT;
+	m_xml_src_theme_id = XmlSourceThemes::GetThemeIdForPalette(m_xml_src_color_palette);
+	if(apply)
+		Save();
+}
+
+void CSettings::SetXmlSrcThemeId(const CString& id, bool apply)
+{
+	m_xml_src_theme_id = XmlSourceThemes::NormalizeThemeId(id);
+	m_xml_src_color_palette = XmlSourceThemes::GetPaletteForThemeId(m_xml_src_theme_id);
+	if(apply)
+		Save();
+}
+
+void CSettings::SetXmlSrcColor(XmlSrcColorGroup group, DWORD color, bool apply)
+{
+	if(group < XML_SRC_COLOR_GROUP_COUNT)
+		m_xml_src_colors[group] = color;
 	if(apply)
 		Save();
 }
@@ -2199,7 +2432,10 @@ void CSettings::SetDefaults()
 	m_font_size				= 12;
 	m_xml_src_wrap			= true;
 	m_xml_src_syntaxHL		= true;
-	m_xml_src_color_palette = XML_SRC_COLOR_PALETTE_CLASSIC;
+	m_xml_src_color_palette = XML_SRC_COLOR_PALETTE_SYSTEM;
+	m_xml_src_theme_id = XmlSourceThemes::GetThemeIdForPalette(m_xml_src_color_palette);
+	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
+		m_xml_src_colors[i] = XML_SRC_COLOR_DEFAULT;
 	m_xml_src_tagHL			= true;
 	m_xml_src_showEOL		= false;
 	m_xml_src_showSpace		= false;

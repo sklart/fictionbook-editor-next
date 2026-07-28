@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "everforest-dark-medium",
+  "name": "Everforest Dark Medium",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#2D353B",
+    "editor.foreground": "#D3C6AA",
+    "editor.selection.background": "#543A48",
+    "editor.selection.foreground": "#FFFFFF",
+    "editor.currentLine.background": "#343F44",
+    "editor.caret": "#D3C6AA",
+    "editor.lineNumber": "#859289",
+    "editor.lineNumber.active": "#D3C6AA",
+    "editor.matchingTag.background": "#3D484D",
+    "editor.matchingTag.border": "#7FBBB3",
+    "xml.text": "#D3C6AA",
+    "xml.tag.name": "#A7C080",
+    "xml.tag.delimiter": "#859289",
+    "xml.attribute.name": "#D699B6",
+    "xml.attribute.value": "#E69875",
+    "xml.namespace": "#83C092",
+    "xml.comment": "#859289",
+    "xml.entity": "#E69875",
+    "xml.cdata": "#D699B6",
+    "xml.processingInstruction": "#D699B6",
+    "xml.doctype": "#D699B6",
+    "xml.error": "#E67E80",
+    "xml.warning": "#DBBC7F"
+  }
+}

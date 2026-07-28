@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "night-owl",
+  "name": "Night Owl",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#011627",
+    "editor.foreground": "#D6DEEB",
+    "editor.selection.background": "#1D3B53",
+    "editor.selection.foreground": "#FFFFFF",
+    "editor.currentLine.background": "#0B2942",
+    "editor.caret": "#80A4C2",
+    "editor.lineNumber": "#637777",
+    "editor.lineNumber.active": "#D6DEEB",
+    "editor.matchingTag.background": "#1D3B53",
+    "editor.matchingTag.border": "#82AAFF",
+    "xml.text": "#D6DEEB",
+    "xml.tag.name": "#C792EA",
+    "xml.tag.delimiter": "#637777",
+    "xml.attribute.name": "#ADD8E6",
+    "xml.attribute.value": "#ECC48D",
+    "xml.namespace": "#82AAFF",
+    "xml.comment": "#637777",
+    "xml.entity": "#F78C6C",
+    "xml.cdata": "#C792EA",
+    "xml.processingInstruction": "#C792EA",
+    "xml.doctype": "#C792EA",
+    "xml.error": "#EF5350",
+    "xml.warning": "#FFCB6B"
+  }
+}

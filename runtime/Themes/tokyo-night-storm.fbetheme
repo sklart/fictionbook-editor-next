@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "tokyo-night-storm",
+  "name": "Tokyo Night Storm",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#24283B",
+    "editor.foreground": "#C0CAF5",
+    "editor.selection.background": "#33467C",
+    "editor.selection.foreground": "#C0CAF5",
+    "editor.currentLine.background": "#292E42",
+    "editor.caret": "#C0CAF5",
+    "editor.lineNumber": "#565F89",
+    "editor.lineNumber.active": "#C0CAF5",
+    "editor.matchingTag.background": "#33467C",
+    "editor.matchingTag.border": "#7AA2F7",
+    "xml.text": "#C0CAF5",
+    "xml.tag.name": "#7AA2F7",
+    "xml.tag.delimiter": "#565F89",
+    "xml.attribute.name": "#73DACA",
+    "xml.attribute.value": "#9ECE6A",
+    "xml.namespace": "#7DCFFF",
+    "xml.comment": "#565F89",
+    "xml.entity": "#FF9E64",
+    "xml.cdata": "#BB9AF7",
+    "xml.processingInstruction": "#BB9AF7",
+    "xml.doctype": "#BB9AF7",
+    "xml.error": "#F7768E",
+    "xml.warning": "#E0AF68"
+  }
+}

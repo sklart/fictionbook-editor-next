@@ -266,6 +266,7 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <ClCompile Include="RegexBackend.cpp" />
     <ClCompile Include="RegexBackendPcre2.cpp" />
     <ClCompile Include="RuntimeLocalization.cpp" />
+    <ClCompile Include="XmlSourceThemes.cpp" />
     <ClCompile Include="FBEview.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -398,6 +399,7 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
     <ClInclude Include="resource.h" />
     <ClInclude Include="RegexBackend.h" />
     <ClInclude Include="RuntimeLocalization.h" />
+    <ClInclude Include="XmlSourceThemes.h" />
     <ClInclude Include="SearchReplace.h" />
     <ClInclude Include="XMLSerializer\Serializable.h" />
     <ClInclude Include="Settings.h" />

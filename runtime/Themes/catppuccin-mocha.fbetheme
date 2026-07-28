@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "catppuccin-mocha",
+  "name": "Catppuccin Mocha",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#1E1E2E",
+    "editor.foreground": "#CDD6F4",
+    "editor.selection.background": "#45475A",
+    "editor.selection.foreground": "#CDD6F4",
+    "editor.currentLine.background": "#313244",
+    "editor.caret": "#CDD6F4",
+    "editor.lineNumber": "#7F849C",
+    "editor.lineNumber.active": "#CDD6F4",
+    "editor.matchingTag.background": "#45475A",
+    "editor.matchingTag.border": "#89B4FA",
+    "xml.text": "#CDD6F4",
+    "xml.tag.name": "#89B4FA",
+    "xml.tag.delimiter": "#7F849C",
+    "xml.attribute.name": "#89DCEB",
+    "xml.attribute.value": "#A6E3A1",
+    "xml.namespace": "#89B4FA",
+    "xml.comment": "#7F849C",
+    "xml.entity": "#FAB387",
+    "xml.cdata": "#CBA6F7",
+    "xml.processingInstruction": "#CBA6F7",
+    "xml.doctype": "#CBA6F7",
+    "xml.error": "#F38BA8",
+    "xml.warning": "#F9E2AF"
+  }
+}

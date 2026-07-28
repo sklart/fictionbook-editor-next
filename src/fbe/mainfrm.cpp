@@ -1,4 +1,4 @@
-﻿// MainFrm.cpp : implmentation of the CMainFrame class
+// MainFrm.cpp : implmentation of the CMainFrame class
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
@@ -79,6 +79,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_VIEW_OPTIONS, L"fbe.menu.idr_mainframe.tools.options" },
 	{ ID_TOOLS_SPELLCHECK, L"fbe.menu.idr_mainframe.tools.spellcheck" },
 	{ ID_TOOLS_DIAGNOSTIC_TRACE, L"fbe.menu.idr_mainframe.tools.diagnostic_trace" },
+	{ ID_TOOLS_OPEN_DIAGNOSTIC_LOG, L"fbe.menu.idr_mainframe.tools.open_diagnostic_log" },
 	{ ID_APP_ABOUT, L"fbe.menu.idr_mainframe.help.about" },
 };
 
@@ -89,42 +90,13 @@ static CString GetDiagnosticTraceText(LPCWSTR key, LPCWSTR fallback)
 
 static bool IsDiagnosticTraceEnabledForNextLaunch()
 {
-	CRegKey environmentKey;
-	if(environmentKey.Open(HKEY_CURRENT_USER, L"Environment", KEY_READ) != ERROR_SUCCESS)
-		return false;
-
-	wchar_t value[16] = {};
-	ULONG valueLength = _countof(value);
-	if(environmentKey.QueryStringValue(L"FBE_NEXT_TRACE", value, &valueLength) != ERROR_SUCCESS)
-		return false;
-
-	return value[0] != 0 && !(value[0] == L'0' && value[1] == 0);
+	return StartupTrace::IsEnabledForNextLaunch();
 }
 
 static bool SetDiagnosticTraceEnabledForNextLaunch(bool enabled)
 {
-	CRegKey environmentKey;
-	if(environmentKey.Create(HKEY_CURRENT_USER, L"Environment") != ERROR_SUCCESS)
-		return false;
-
-	LONG result = ERROR_SUCCESS;
-	if(enabled)
-		result = environmentKey.SetStringValue(L"FBE_NEXT_TRACE", L"1");
-	else
-	{
-		result = environmentKey.DeleteValue(L"FBE_NEXT_TRACE");
-		if(result == ERROR_FILE_NOT_FOUND)
-			result = ERROR_SUCCESS;
-	}
-	if(result != ERROR_SUCCESS)
-		return false;
-
-	DWORD_PTR ignored = 0;
-	::SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE, 0,
-		reinterpret_cast<LPARAM>(L"Environment"), SMTO_ABORTIFHUNG, 1000, &ignored);
-	return true;
+	return StartupTrace::SetEnabledForNextLaunch(enabled);
 }
-
 static LPCWSTR FindRuntimeMainFrameMenuCommandKey(UINT commandId)
 {
 	for(size_t i = 0; i < _countof(kMainFrameMenuCommandBindings); ++i)
@@ -164,7 +136,7 @@ static void TraceMainFrameCommand(WPARAM wParam, LPARAM lParam)
 		commandName = key;
 
 	CString trace;
-	trace.Format(L"Команда: %s; ID=%u; источник=%s", (const wchar_t*)commandName,
+	trace.Format(L"M100 Команда: %s; ID=%u; источник=%s", (const wchar_t*)commandName,
 		commandId, GetCommandTraceSource(lParam));
 	StartupTrace::Event(L"command", trace);
 }
@@ -227,9 +199,8 @@ static void TraceMainFrameHotkey(const MSG* message)
 				continue;
 
 			CString trace;
-			trace.Format(L"Горячая клавиша: %s; команда: %s; ID=%u",
-				(const wchar_t*)GetHotkeyText(hotkey.m_accel),
-				(const wchar_t*)hotkey.m_name, hotkey.m_accel.cmd);
+			trace.Format(L"M110 Горячая клавиша: %s; ID=%u",
+				(const wchar_t*)GetHotkeyText(hotkey.m_accel), hotkey.m_accel.cmd);
 			StartupTrace::Event(L"command", trace);
 			return;
 		}
@@ -445,6 +416,9 @@ struct EditorConfigurationSnapshot
 	DWORD fontSize;
 	DWORD foreground;
 	DWORD background;
+	DWORD sourceColorPalette;
+	CString sourceThemeId;
+	DWORD sourceColors[XML_SRC_COLOR_GROUP_COUNT];
 	DWORD customDictionaryCodepage;
 	bool sourceWrap;
 	bool sourceSyntaxHighlight;
@@ -461,7 +435,10 @@ struct EditorConfigurationSnapshot
 		return font == other.font && sourceFont == other.sourceFont &&
 			customDictionary == other.customDictionary && nbsp == other.nbsp &&
 			fontSize == other.fontSize && foreground == other.foreground &&
-			background == other.background && customDictionaryCodepage == other.customDictionaryCodepage &&
+			background == other.background && sourceColorPalette == other.sourceColorPalette &&
+			sourceThemeId == other.sourceThemeId &&
+			memcmp(sourceColors, other.sourceColors, sizeof(sourceColors)) == 0 &&
+			customDictionaryCodepage == other.customDictionaryCodepage &&
 			sourceWrap == other.sourceWrap && sourceSyntaxHighlight == other.sourceSyntaxHighlight &&
 			sourceTagHighlight == other.sourceTagHighlight && sourceShowEol == other.sourceShowEol &&
 			sourceShowWhitespace == other.sourceShowWhitespace && sourceShowLineNumbers == other.sourceShowLineNumbers &&
@@ -480,6 +457,10 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	snapshot.fontSize = _Settings.GetFontSize();
 	snapshot.foreground = _Settings.GetColorFG();
 	snapshot.background = _Settings.GetColorBG();
+	snapshot.sourceColorPalette = _Settings.GetXmlSrcColorPalette();
+	snapshot.sourceThemeId = _Settings.GetXmlSrcThemeId();
+	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
+		snapshot.sourceColors[i] = _Settings.GetXmlSrcColor(static_cast<XmlSrcColorGroup>(i));
 	snapshot.customDictionaryCodepage = _Settings.GetCustomDictCodepage();
 	snapshot.sourceWrap = _Settings.XmlSrcWrap();
 	snapshot.sourceSyntaxHighlight = _Settings.XmlSrcSyntaxHL();
@@ -493,6 +474,24 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	return snapshot;
 }
 
+static bool HasDocumentStyleConfigurationChanged(const EditorConfigurationSnapshot& before,
+	const EditorConfigurationSnapshot& after)
+{
+	return before.font != after.font || before.fontSize != after.fontSize ||
+		before.foreground != after.foreground || before.background != after.background ||
+		before.fastMode != after.fastMode;
+}
+static bool HasOnlySourceEditorConfigurationChanged(const EditorConfigurationSnapshot& before,
+	const EditorConfigurationSnapshot& after)
+{
+	return before.font == after.font && before.foreground == after.foreground &&
+		before.background == after.background && before.fontSize == after.fontSize &&
+		before.customDictionary == after.customDictionary && before.nbsp == after.nbsp &&
+		before.customDictionaryCodepage == after.customDictionaryCodepage &&
+		before.fastMode == after.fastMode && before.useSpellChecker == after.useSpellChecker &&
+		before.highlightMisspells == after.highlightMisspells &&
+		!(before == after);
+}
 static UINT GetWindowDpi(HWND window)
 {
 	typedef UINT (WINAPI* GetDpiForWindowProc)(HWND);
@@ -835,6 +834,11 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   }
   else
   {
+	const HRESULT saveError = m_doc->GetLastSaveError();
+	const bool accessDenied = saveError == E_ACCESSDENIED || HRESULT_CODE(saveError) == ERROR_ACCESS_DENIED;
+	if (accessDenied && U::MessageBox(MB_YESNO | MB_ICONEXCLAMATION | MB_DEFBUTTON1,
+		IDR_MAINFRAME, IDS_SAVE_ACCESS_DENIED_MSG, m_doc->m_filename) == IDYES)
+		return SaveFile(true);
 	return FAIL;
   }
 }
@@ -1775,16 +1779,14 @@ void CMainFrame::InitPlugins()
 {
 	if (StartupTrace::Enabled())
 	{
-		CString trace;
-		trace.Format(L"Каталог пользовательских скриптов: %s", (LPCWSTR)_Settings.GetScriptsFolder());
-		StartupTrace::Event(L"script", trace);
+		StartupTrace::Event(L"plugin", L"P100 Каталог пользовательских скриптов определён");
 	}
 	CollectScripts(_Settings.GetScriptsFolder(), L"*.js", 1, L"0");	
 	if (StartupTrace::Enabled())
 	{
 		CString trace;
-		trace.Format(L"Найдено пользовательских скриптов: %d", m_scripts.GetSize());
-		StartupTrace::Event(L"script", trace);
+		trace.Format(L"P110 Найдено пользовательских скриптов: %d", m_scripts.GetSize());
+		StartupTrace::Event(L"plugin", trace);
 	}
 	StartupTrace::Mark(L"scripts collected");
 	QuickScriptsSort(m_scripts, 0, m_scripts.GetSize() - 1);
@@ -1828,6 +1830,7 @@ void CMainFrame::InitPlugins()
 LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
   StartupTrace::Mark(L"main frame OnCreate started");
+  StartupTrace::Event(L"settings", L"G100 Настройки приложения применены");
   m_ctrl_tab = false;
 
   // create command bar window
@@ -2220,7 +2223,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
   if (StartupTrace::Enabled())
   {
-	  const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностическая трассировка"));
+	  const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"));
 	  const CString warning(GetDiagnosticTraceText(L"fbe.trace.warning",
 		  L"FBE Next запущен в режиме диагностики. Запись диагностического журнала может замедлять работу программы и содержит сведения о действиях с книгами.\n\n"
 		  L"Отключить диагностический режим для следующих запусков? Для применения потребуется перезапустить программу."));
@@ -2237,7 +2240,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		  {
 			  ::MessageBox(m_hWnd,
 				  GetDiagnosticTraceText(L"fbe.trace.change_failed",
-					  L"Не удалось изменить настройку диагностической трассировки."),
+					  L"Не удалось изменить настройку диагностического журнала."),
 				  caption, MB_OK | MB_ICONERROR);
 		  }
 	  }
@@ -3334,8 +3337,18 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 		if (previousShowFullPathInWindowTitle != _Settings.GetShowFullPathInWindowTitle())
 			m_need_title_update = true;
 
-		if(!(previousConfiguration == CaptureEditorConfigurationSnapshot()) || _Settings.NeedRestart())
-			ApplyConfChanges();
+		const EditorConfigurationSnapshot currentConfiguration = CaptureEditorConfigurationSnapshot();
+		if (!(previousConfiguration == currentConfiguration) || _Settings.NeedRestart())
+		{
+			if (HasOnlySourceEditorConfigurationChanged(previousConfiguration, currentConfiguration))
+			{
+				ApplyXmlSourceEditorChanges();
+			}
+			else
+			{
+				ApplyConfChanges(HasDocumentStyleConfigurationChanged(previousConfiguration, currentConfiguration));
+			}
+		}
 		else
 		{
 			// Окно общих настроек не меняет hotkey- или word-коллекции.
@@ -3534,8 +3547,18 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 		if (previousShowFullPathInWindowTitle != _Settings.GetShowFullPathInWindowTitle())
 			m_need_title_update = true;
 
-		if(!(previousConfiguration == CaptureEditorConfigurationSnapshot()) || _Settings.NeedRestart())
-			ApplyConfChanges();
+		const EditorConfigurationSnapshot currentConfiguration = CaptureEditorConfigurationSnapshot();
+		if (!(previousConfiguration == currentConfiguration) || _Settings.NeedRestart())
+		{
+			if (HasOnlySourceEditorConfigurationChanged(previousConfiguration, currentConfiguration))
+			{
+				ApplyXmlSourceEditorChanges();
+			}
+			else
+			{
+				ApplyConfChanges(HasDocumentStyleConfigurationChanged(previousConfiguration, currentConfiguration));
+			}
+		}
 		else
 		{
 			// См. аналогичный путь OnViewOptions: сохраняем собственно
@@ -3557,22 +3580,45 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+static bool OpenDiagnosticLogFolder()
+{
+	wchar_t localAppData[MAX_PATH] = {};
+	if(FAILED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE,
+		NULL, SHGFP_TYPE_CURRENT, localAppData)))
+		return false;
+
+	CString directory(localAppData);
+	directory += L"\\FBE Next";
+	::CreateDirectory(directory, NULL);
+	return reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", directory,
+		NULL, NULL, SW_SHOWNORMAL)) > 32;
+}
+
+LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
+{
+	if(!OpenDiagnosticLogFolder())
+	{
+		::MessageBox(m_hWnd, L"Не удалось открыть папку диагностического журнала.",
+			L"Диагностический журнал", MB_OK | MB_ICONERROR);
+	}
+	return 0;
+}
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 {
 	const bool enabled = IsDiagnosticTraceEnabledForNextLaunch();
-	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностическая трассировка"));
+	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"));
 	if(enabled)
 	{
 		::MessageBox(m_hWnd,
 			GetDiagnosticTraceText(L"fbe.trace.already_enabled",
-				L"Диагностическая трассировка уже включена для следующих запусков FBE Next. После перезапуска программа предупредит о диагностическом режиме и предложит его отключить."),
+				L"Диагностический журнал уже включён для следующих запусков FBE Next. После перезапуска программа предупредит о диагностическом режиме и предложит его отключить."),
 			caption, MB_OK | MB_ICONINFORMATION);
 		return 0;
 	}
 
 	const CString question(GetDiagnosticTraceText(L"fbe.trace.enable.question",
-			L"Диагностическая трассировка записывает в журнал сведения о запуске, командах, переходах между режимами, выделении, открытии и сохранении книги, а также ошибках COM.\n\n"
-			L"Включить её для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу."));
+			L"Диагностический журнал содержит технические сведения о запуске, командах, переходах между режимами, выделении, открытии и сохранении книги, а также ошибках COM. Текст книги, пути файлов, содержимое скриптов и содержимое изображений не записываются.\n\n"
+			L"Включить его для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу."));
 	if(::MessageBox(m_hWnd, question, caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return 0;
 
@@ -3580,13 +3626,13 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 	{
 		::MessageBox(m_hWnd,
 			GetDiagnosticTraceText(L"fbe.trace.change_failed",
-				L"Не удалось изменить настройку диагностической трассировки."),
+				L"Не удалось изменить настройку диагностического журнала."),
 			caption, MB_OK | MB_ICONERROR);
 		return 0;
 	}
 
 	const CString result(GetDiagnosticTraceText(L"fbe.trace.enable.completed",
-		L"Диагностическая трассировка включена. Перезапустите FBE Next, чтобы начать запись в %LOCALAPPDATA%\\FBE Next\\fbe-trace.log."));
+		L"Диагностический журнал включён. Перезапустите FBE Next, чтобы начать запись в %LOCALAPPDATA%\\FBE Next\\fbe-trace.log."));
 	::MessageBox(m_hWnd, result, caption, MB_OK | MB_ICONINFORMATION);
 	return 0;
 }
@@ -4786,21 +4832,19 @@ static int SkipXmlMarkupBackward(const CString& sourceXml, int position)
 	return position;
 }
 
-// В журнал не попадает полный текст книги: только короткий фрагмент выделения.
-static CString SelectionTraceFragment(const CString& text)
+// Журнал не содержит текст книги или выделения: только длину диапазона.
+static CString SelectionTraceSummary(const CString& text)
 {
-	CString result(text);
-	result.Replace(L"\r", L"\\r");
-	result.Replace(L"\n", L"\\n");
-	result.Replace(L"\t", L"\\t");
-	if (result.GetLength() > 160)
-		result = result.Left(160) + L"...";
+	CString result;
+	result.Format(L"chars=%d", text.GetLength());
 	return result;
 }
 
 static void WriteSelectionTrace(const CString& message)
 {
-	StartupTrace::Event(L"selection", message);
+	CString trace(L"E200 ");
+	trace += message;
+	StartupTrace::Event(L"editor", trace);
 }
 
 bool  CMainFrame::SourceToHTML() 
@@ -4868,7 +4912,7 @@ bool  CMainFrame::SourceToHTML()
 		trace.Format(L"SourceToHTML: XML chars=[%d,%d], visible chars=%d, crosses-p=%d, text=\"%s\"",
 			selectedPosBegin, selectedPosEnd, selectedSourceText.GetLength(),
 			selectionCrossesParagraph ? 1 : 0,
-			(const wchar_t*)SelectionTraceFragment(selectedSourceText));
+			(const wchar_t*)SelectionTraceSummary(selectedSourceText));
 		WriteSelectionTrace(trace);
 	}
 
@@ -5115,7 +5159,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 				selection_begin_char, selection_end_char,
 				selectedBeginElement == selectedEndElement ? 1 : 0,
 				selectedText.GetLength(),
-				(const wchar_t*)SelectionTraceFragment(selectedText));
+				(const wchar_t*)SelectionTraceSummary(selectedText));
 			WriteSelectionTrace(trace);
 		}
 
@@ -5645,11 +5689,14 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 
 void  CMainFrame::SetSciStyles() {
   const bool highContrast = IsHighContrastEnabled();
-  const DWORD palette = _Settings.GetXmlSrcColorPalette();
-  const bool darkPalette = !highContrast && palette == XML_SRC_COLOR_PALETTE_DARK;
-  const COLORREF windowText = darkPalette ? RGB(220,220,220) : ::GetSysColor(COLOR_WINDOWTEXT);
-  const COLORREF windowBackground = darkPalette ? RGB(30,30,30) : ::GetSysColor(COLOR_WINDOW);
+  const COLORREF windowText = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
+    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_FOREGROUND);
+  const COLORREF windowBackground = highContrast ? ::GetSysColor(COLOR_WINDOW) :
+    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
 
+  // Смена схемы должна применяться как одна операция: Scintilla иначе
+  // кратко рисует прежние стили и не всегда перекрашивает уже открытый код.
+  m_source.SendMessage(WM_SETREDRAW, FALSE, 0);
   m_source.SendMessage(SCI_STYLERESETDEFAULT);
 
   CT2A srcFont(_Settings.GetSrcFont());
@@ -5659,45 +5706,71 @@ void  CMainFrame::SetSciStyles() {
   m_source.SendMessage(SCI_STYLESETBACK, STYLE_DEFAULT, windowBackground);
 
   m_source.SendMessage(SCI_STYLECLEARALL);
-  m_source.SendMessage(SCI_STYLESETFORE, STYLE_LINENUMBER, darkPalette ? RGB(140,140,140) : windowText);
+  m_source.SendMessage(SCI_STYLESETFORE, STYLE_LINENUMBER, highContrast ? windowText :
+    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_LINE_NUMBER));
   m_source.SendMessage(SCI_STYLESETBACK, STYLE_LINENUMBER, windowBackground);
-  m_source.SendMessage(SCI_SETCARETFORE, windowText);
-  m_source.SendMessage(SCI_SETSELFORE, TRUE, ::GetSysColor(COLOR_HIGHLIGHTTEXT));
-  m_source.SendMessage(SCI_SETSELBACK, TRUE, ::GetSysColor(COLOR_HIGHLIGHT));
+  m_source.SendMessage(SCI_SETCARETFORE, highContrast ? windowText :
+    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CARET));
+  m_source.SendMessage(SCI_SETSELFORE, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) :
+    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_SELECTION_FOREGROUND));
+  m_source.SendMessage(SCI_SETSELBACK, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) :
+    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_SELECTION_BACKGROUND));
+  m_source.SendMessage(SCI_STYLESETFORE, STYLE_BRACELIGHT, highContrast ? windowText :
+    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_XML_TAG_NAME));
+  m_source.SendMessage(SCI_STYLESETBACK, STYLE_BRACELIGHT, highContrast ? windowBackground :
+    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_MATCHING_TAG_BACKGROUND));
 
+  // Номера стилей определены лексером XML из Lexilla (SCE_H_*). Задаём все
+  // базовые XML/SGML-стили, чтобы схема не теряла читаемость на CDATA,
+  // комментариях и объявлениях, а не только на обычных тегах FB2.
   static struct {
-    char style;
-    COLORREF classic;
-    COLORREF contrast;
-    COLORREF dark;
+    int style;
+    XmlSrcStyleToken token;
   } styles[] = {
-    { 0, RGB(0,0,0),       RGB(0,0,0),       RGB(220,220,220) },
-    { 1, RGB(128,0,0),     RGB(0,0,180),     RGB(86,156,214) },
-    { 2, RGB(128,0,0),     RGB(0,0,180),     RGB(86,156,214) },
-    { 3, RGB(128,128,0),   RGB(128,0,128),   RGB(156,220,254) },
-    { 4, RGB(255,0,0),     RGB(220,0,0),     RGB(255,99,71) },
-    { 5, RGB(0,128,96),    RGB(0,110,110),   RGB(181,206,168) },
-    { 6, RGB(0,128,0),     RGB(0,110,0),     RGB(206,145,120) },
-    { 7, RGB(0,128,0),     RGB(0,110,0),     RGB(206,145,120) },
-    { 8, RGB(128,0,128),   RGB(128,0,128),   RGB(197,134,192) },
-    { 9, RGB(0,128,128),   RGB(0,110,110),   RGB(106,153,85) },
-    { 10, RGB(128,0,128),  RGB(128,0,128),   RGB(197,134,192) },
-    { 11, RGB(128,0,0),    RGB(0,0,180),     RGB(86,156,214) },
-    { 12, RGB(128,0,128),  RGB(128,0,128),   RGB(197,134,192) },
-    { 13, RGB(128,0,128),  RGB(128,0,128),   RGB(197,134,192) },
-    { 17, RGB(128,0,0),    RGB(0,0,180),     RGB(86,156,214) },
-    { 18, RGB(128,0,0),    RGB(0,0,180),     RGB(86,156,214) },
-    { 19, RGB(96,128,96),  RGB(0,110,0),     RGB(181,206,168) },
+    { SCE_H_DEFAULT,                XML_SRC_STYLE_XML_TEXT },
+    { SCE_H_TAG,                    XML_SRC_STYLE_XML_TAG_NAME },
+    { SCE_H_TAGUNKNOWN,             XML_SRC_STYLE_XML_TAG_NAME },
+    { SCE_H_ATTRIBUTE,              XML_SRC_STYLE_XML_ATTRIBUTE_NAME },
+    { SCE_H_ATTRIBUTEUNKNOWN,       XML_SRC_STYLE_XML_ATTRIBUTE_NAME },
+    { SCE_H_NUMBER,                 XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
+    { SCE_H_DOUBLESTRING,           XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
+    { SCE_H_SINGLESTRING,           XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
+    { SCE_H_OTHER,                  XML_SRC_STYLE_XML_TAG_DELIMITER },
+    { SCE_H_COMMENT,                XML_SRC_STYLE_XML_COMMENT },
+    { SCE_H_ENTITY,                 XML_SRC_STYLE_XML_ENTITY },
+    { SCE_H_TAGEND,                 XML_SRC_STYLE_XML_TAG_DELIMITER },
+    { SCE_H_XMLSTART,               XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
+    { SCE_H_XMLEND,                 XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
+    { SCE_H_SCRIPT,                 XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
+    { SCE_H_ASP,                    XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
+    { SCE_H_ASPAT,                  XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
+    { SCE_H_CDATA,                  XML_SRC_STYLE_XML_CDATA },
+    { SCE_H_QUESTION,               XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
+    { SCE_H_VALUE,                  XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
+    { SCE_H_XCCOMMENT,              XML_SRC_STYLE_XML_COMMENT },
+    { SCE_H_SGML_DEFAULT,           XML_SRC_STYLE_XML_DOCTYPE },
+    { SCE_H_SGML_COMMAND,           XML_SRC_STYLE_XML_DOCTYPE },
+    { SCE_H_SGML_1ST_PARAM,         XML_SRC_STYLE_XML_ATTRIBUTE_NAME },
+    { SCE_H_SGML_DOUBLESTRING,      XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
+    { SCE_H_SGML_SIMPLESTRING,      XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
+    { SCE_H_SGML_ERROR,             XML_SRC_STYLE_XML_ERROR },
+    { SCE_H_SGML_SPECIAL,           XML_SRC_STYLE_XML_DOCTYPE },
+    { SCE_H_SGML_ENTITY,            XML_SRC_STYLE_XML_ENTITY },
+    { SCE_H_SGML_COMMENT,           XML_SRC_STYLE_XML_COMMENT },
+    { SCE_H_SGML_1ST_PARAM_COMMENT, XML_SRC_STYLE_XML_COMMENT },
+    { SCE_H_SGML_BLOCK_DEFAULT,     XML_SRC_STYLE_XML_DOCTYPE },
   };
   if (_Settings.XmlSrcSyntaxHL() && !highContrast)
   {
     for (int i = 0; i < sizeof(styles) / sizeof(styles[0]); ++i)
     {
-      const COLORREF color = palette == XML_SRC_COLOR_PALETTE_DARK ? styles[i].dark :
-        (palette == XML_SRC_COLOR_PALETTE_CONTRAST ? styles[i].contrast : styles[i].classic);
-      m_source.SendMessage(SCI_STYLESETFORE, styles[i].style, color);
+      m_source.SendMessage(SCI_STYLESETFORE, styles[i].style,
+        _Settings.GetXmlSrcStyleColor(styles[i].token));
     }
   }
+  m_source.SendMessage(SCI_COLOURISE, 0, -1);
+  m_source.SendMessage(WM_SETREDRAW, TRUE, 0);
+  m_source.Invalidate();
 }
 
 LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
@@ -6299,7 +6372,7 @@ void CMainFrame::SaveSelection(VIEW_TYPE vt)
 			const CString selectedText((const wchar_t*)m_body_selection->text);
 			CString trace;
 			trace.Format(L"SaveSelection: Body text chars=%d, text=\"%s\"",
-				selectedText.GetLength(), (const wchar_t*)SelectionTraceFragment(selectedText));
+				selectedText.GetLength(), (const wchar_t*)SelectionTraceSummary(selectedText));
 			WriteSelectionTrace(trace);
 		}
 	}
@@ -6408,7 +6481,25 @@ bool CMainFrame::ShowSettingsDialog(HWND parent)
 	return dlg.DoModal(parent) == IDOK;
 }
 
-void CMainFrame::ApplyConfChanges()
+void CMainFrame::ApplyXmlSourceEditorChanges()
+{
+	const VIEW_TYPE activeView = m_current_view;
+	SetupSci();
+	SetSciStyles();
+	if (_Settings.XMLSrcShowLineNumbers())
+		m_source.SendMessage(SCI_SETMARGINWIDTHN, 0, 64);
+	else
+		m_source.SendMessage(SCI_SETMARGINWIDTHN, 0, 0);
+
+	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source);
+	xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, false);
+	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
+	// Перекраска XML-редактора не должна менять активный режим документа.
+	if(activeView == BODY && m_doc)
+		m_view.ActivateWnd(m_doc->m_body);
+	_Settings.Save();
+}
+void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 {
 	CWaitCursor hourglass;
 	LONG visible = false;
@@ -6416,7 +6507,8 @@ void CMainFrame::ApplyConfChanges()
 	wchar_t restartMsg[MAX_LOAD_STRING + 1];
 	FbeLoadString(_Module.GetResourceInstance(), IDS_SETTINGS_NEED_RESTART, restartMsg, MAX_LOAD_STRING);
 
-	m_doc->ApplyConfChanges();
+	if (applyDocumentStyles && m_doc)
+		m_doc->ApplyConfChanges();
 	SetupSci();
 	SetSciStyles();
 

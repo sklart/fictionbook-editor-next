@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "solarized-dark",
+  "name": "Solarized Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#002B36",
+    "editor.foreground": "#839496",
+    "editor.selection.background": "#073642",
+    "editor.selection.foreground": "#93A1A1",
+    "editor.currentLine.background": "#073642",
+    "editor.caret": "#839496",
+    "editor.lineNumber": "#586E75",
+    "editor.lineNumber.active": "#839496",
+    "editor.matchingTag.background": "#073642",
+    "editor.matchingTag.border": "#268BD2",
+    "xml.text": "#839496",
+    "xml.tag.name": "#268BD2",
+    "xml.tag.delimiter": "#586E75",
+    "xml.attribute.name": "#B58900",
+    "xml.attribute.value": "#2AA198",
+    "xml.namespace": "#268BD2",
+    "xml.comment": "#586E75",
+    "xml.entity": "#CB4B16",
+    "xml.cdata": "#6C71C4",
+    "xml.processingInstruction": "#6C71C4",
+    "xml.doctype": "#6C71C4",
+    "xml.error": "#DC322F",
+    "xml.warning": "#B58900"
+  }
+}

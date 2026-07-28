@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "solarized-light",
+  "name": "Solarized Light",
+  "type": "light",
+  "colors": {
+    "editor.background": "#FDF6E3",
+    "editor.foreground": "#657B83",
+    "editor.selection.background": "#EEE8D5",
+    "editor.selection.foreground": "#586E75",
+    "editor.currentLine.background": "#EEE8D5",
+    "editor.caret": "#657B83",
+    "editor.lineNumber": "#93A1A1",
+    "editor.lineNumber.active": "#657B83",
+    "editor.matchingTag.background": "#EEE8D5",
+    "editor.matchingTag.border": "#268BD2",
+    "xml.text": "#657B83",
+    "xml.tag.name": "#268BD2",
+    "xml.tag.delimiter": "#93A1A1",
+    "xml.attribute.name": "#B58900",
+    "xml.attribute.value": "#2AA198",
+    "xml.namespace": "#268BD2",
+    "xml.comment": "#93A1A1",
+    "xml.entity": "#CB4B16",
+    "xml.cdata": "#6C71C4",
+    "xml.processingInstruction": "#6C71C4",
+    "xml.doctype": "#6C71C4",
+    "xml.error": "#DC322F",
+    "xml.warning": "#B58900"
+  }
+}

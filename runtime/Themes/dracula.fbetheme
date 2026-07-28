@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "dracula",
+  "name": "Dracula",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#282A36",
+    "editor.foreground": "#F8F8F2",
+    "editor.selection.background": "#44475A",
+    "editor.selection.foreground": "#FFFFFF",
+    "editor.currentLine.background": "#303241",
+    "editor.caret": "#F8F8F0",
+    "editor.lineNumber": "#6272A4",
+    "editor.lineNumber.active": "#F8F8F2",
+    "editor.matchingTag.background": "#44475A",
+    "editor.matchingTag.border": "#8BE9FD",
+    "xml.text": "#F8F8F2",
+    "xml.tag.name": "#FF79C6",
+    "xml.tag.delimiter": "#6272A4",
+    "xml.attribute.name": "#50FA7B",
+    "xml.attribute.value": "#F1FA8C",
+    "xml.namespace": "#8BE9FD",
+    "xml.comment": "#6272A4",
+    "xml.entity": "#FFB86C",
+    "xml.cdata": "#BD93F9",
+    "xml.processingInstruction": "#BD93F9",
+    "xml.doctype": "#BD93F9",
+    "xml.error": "#FF5555",
+    "xml.warning": "#FFB86C"
+  }
+}

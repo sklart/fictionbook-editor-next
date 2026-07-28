@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "flexoki-dark",
+  "name": "Flexoki Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#100F0F",
+    "editor.foreground": "#CECDC3",
+    "editor.selection.background": "#403E3C",
+    "editor.selection.foreground": "#FFFFFF",
+    "editor.currentLine.background": "#1C1B1A",
+    "editor.caret": "#CECDC3",
+    "editor.lineNumber": "#878580",
+    "editor.lineNumber.active": "#CECDC3",
+    "editor.matchingTag.background": "#343331",
+    "editor.matchingTag.border": "#5E9C8F",
+    "xml.text": "#CECDC3",
+    "xml.tag.name": "#D14D41",
+    "xml.tag.delimiter": "#878580",
+    "xml.attribute.name": "#4385BE",
+    "xml.attribute.value": "#879A39",
+    "xml.namespace": "#5E9C8F",
+    "xml.comment": "#878580",
+    "xml.entity": "#DA702C",
+    "xml.cdata": "#CE5D97",
+    "xml.processingInstruction": "#CE5D97",
+    "xml.doctype": "#CE5D97",
+    "xml.error": "#D14D41",
+    "xml.warning": "#D0A215"
+  }
+}

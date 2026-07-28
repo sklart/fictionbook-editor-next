@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "codeoss-light-modern",
+  "name": "Light Modern",
+  "type": "light",
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#1F1F1F",
+    "editor.selection.background": "#ADD6FF",
+    "editor.selection.foreground": "#000000",
+    "editor.currentLine.background": "#F5F5F5",
+    "editor.caret": "#000000",
+    "editor.lineNumber": "#8C8C8C",
+    "editor.lineNumber.active": "#1F1F1F",
+    "editor.matchingTag.background": "#D7EBFF",
+    "editor.matchingTag.border": "#0078D4",
+    "xml.text": "#1F1F1F",
+    "xml.tag.name": "#800000",
+    "xml.tag.delimiter": "#808080",
+    "xml.attribute.name": "#0451A5",
+    "xml.attribute.value": "#A31515",
+    "xml.namespace": "#267F99",
+    "xml.comment": "#008000",
+    "xml.entity": "#795E26",
+    "xml.cdata": "#AF00DB",
+    "xml.processingInstruction": "#AF00DB",
+    "xml.doctype": "#AF00DB",
+    "xml.error": "#E51400",
+    "xml.warning": "#986F0B"
+  }
+}

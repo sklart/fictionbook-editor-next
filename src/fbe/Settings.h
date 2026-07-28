@@ -433,9 +433,71 @@ public:
 
 enum XmlSrcColorPalette
 {
-	XML_SRC_COLOR_PALETTE_CLASSIC = 0,
-	XML_SRC_COLOR_PALETTE_CONTRAST,
-	XML_SRC_COLOR_PALETTE_DARK,
+	// Первые три значения уже записывались в настройки ранних сборок 3.0.7.
+	// Их номера нельзя менять: это сохранит выбранную пользователем палитру.
+	XML_SRC_COLOR_PALETTE_HISTORICAL = 0,
+	// Зарезервировано для совместимости с настройками ранних сборок 3.0.7.
+	// Отдельная контрастная схема больше не предлагается и приводится к FBE Light.
+	XML_SRC_COLOR_PALETTE_LEGACY_CONTRAST = 1,
+	XML_SRC_COLOR_PALETTE_FBE_DARK = 2,
+	XML_SRC_COLOR_PALETTE_FBE_LIGHT = 3,
+	// Зарезервировано для совместимости; приводится к FBE Dark.
+	XML_SRC_COLOR_PALETTE_LEGACY_HIGH_CONTRAST_DARK = 4,
+	// Новое значение по умолчанию. В зависимости от темы Windows выбирается
+	// FBE Light или FBE Dark; при невозможности определения — FBE Light.
+	XML_SRC_COLOR_PALETTE_SYSTEM,
+	XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_LIGHT,
+	XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_DARK,
+
+	// Имена прежнего API оставлены для исходной и профильной совместимости.
+	XML_SRC_COLOR_PALETTE_CLASSIC = XML_SRC_COLOR_PALETTE_HISTORICAL,
+	XML_SRC_COLOR_PALETTE_DARK = XML_SRC_COLOR_PALETTE_FBE_DARK,
+};
+
+enum XmlSrcColorGroup
+{
+	XML_SRC_COLOR_TEXT = 0,
+	XML_SRC_COLOR_TAG,
+	XML_SRC_COLOR_ATTRIBUTE,
+	XML_SRC_COLOR_STRING,
+	XML_SRC_COLOR_COMMENT,
+	// Добавлено в конец, чтобы не менять номера сохранённых цветов текста.
+	XML_SRC_COLOR_BACKGROUND,
+	XML_SRC_COLOR_GROUP_COUNT,
+};
+
+const DWORD XML_SRC_COLOR_DEFAULT = 0xffffffffUL;
+
+// Стабильные логические роли оформления редактора исходного XML. Лексер
+// Scintilla распознаёт синтаксис, а эта таблица определяет только внешний вид.
+// Новые темы и семантические правила FB2 должны опираться на эти роли, а не на
+// номера SCE_H_* и не на имена конкретных тегов.
+enum XmlSrcStyleToken
+{
+	XML_SRC_STYLE_EDITOR_BACKGROUND = 0,
+	XML_SRC_STYLE_EDITOR_FOREGROUND,
+	XML_SRC_STYLE_SELECTION_BACKGROUND,
+	XML_SRC_STYLE_SELECTION_FOREGROUND,
+	XML_SRC_STYLE_CURRENT_LINE_BACKGROUND,
+	XML_SRC_STYLE_CARET,
+	XML_SRC_STYLE_LINE_NUMBER,
+	XML_SRC_STYLE_LINE_NUMBER_ACTIVE,
+	XML_SRC_STYLE_MATCHING_TAG_BACKGROUND,
+	XML_SRC_STYLE_MATCHING_TAG_BORDER,
+	XML_SRC_STYLE_XML_TEXT,
+	XML_SRC_STYLE_XML_TAG_NAME,
+	XML_SRC_STYLE_XML_TAG_DELIMITER,
+	XML_SRC_STYLE_XML_ATTRIBUTE_NAME,
+	XML_SRC_STYLE_XML_ATTRIBUTE_VALUE,
+	XML_SRC_STYLE_XML_NAMESPACE,
+	XML_SRC_STYLE_XML_COMMENT,
+	XML_SRC_STYLE_XML_ENTITY,
+	XML_SRC_STYLE_XML_CDATA,
+	XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION,
+	XML_SRC_STYLE_XML_DOCTYPE,
+	XML_SRC_STYLE_XML_ERROR,
+	XML_SRC_STYLE_XML_WARNING,
+	XML_SRC_STYLE_TOKEN_COUNT,
 };
 
 class CSettings : public ISerializable, public IObjectFactory
@@ -457,6 +519,8 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_xml_src_wrap;
 	bool		m_xml_src_syntaxHL;
 	DWORD		m_xml_src_color_palette;
+	CString		 m_xml_src_theme_id;
+	DWORD		m_xml_src_colors[XML_SRC_COLOR_GROUP_COUNT];
 	bool		m_xml_src_tagHL;
 	bool		m_xml_src_showEOL;
 	bool		m_xml_src_showSpace;
@@ -551,6 +615,12 @@ public:
 	bool XmlSrcWrap()const;
 	bool XmlSrcSyntaxHL()const;
 	DWORD GetXmlSrcColorPalette()const;
+	CString GetXmlSrcThemeId()const;
+	DWORD GetXmlSrcColor(XmlSrcColorGroup group)const;
+	bool HasXmlSrcCustomColor(XmlSrcColorGroup group)const;
+	static DWORD GetXmlSrcDefaultColor(DWORD palette, XmlSrcColorGroup group);
+	static DWORD GetXmlSrcThemeColor(DWORD palette, XmlSrcStyleToken token);
+	DWORD GetXmlSrcStyleColor(XmlSrcStyleToken token)const;
 	bool XmlSrcTagHL()const;
 	bool XmlSrcShowEOL()const;
 	bool XmlSrcShowSpace()const;
@@ -614,6 +684,8 @@ public:
 	void	SetXmlSrcWrap(bool wrap, bool apply = false);
 	void	SetXmlSrcSyntaxHL(bool hl, bool apply = false);
 	void	SetXmlSrcColorPalette(DWORD palette, bool apply = false);
+	void	SetXmlSrcThemeId(const CString& id, bool apply = false);
+	void	SetXmlSrcColor(XmlSrcColorGroup group, DWORD color, bool apply = false);
 	void	SetXmlSrcTagHL(bool hl, bool apply = false);
 	void	SetXmlSrcShowEOL(bool eol, bool apply = false);
 	void	SetXmlSrcShowSpace(bool eol, bool apply = false);

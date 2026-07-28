@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "gruvbox-dark-medium",
+  "name": "Gruvbox Dark Medium",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#282828",
+    "editor.foreground": "#EBDBB2",
+    "editor.selection.background": "#504945",
+    "editor.selection.foreground": "#FFFFFF",
+    "editor.currentLine.background": "#3C3836",
+    "editor.caret": "#EBDBB2",
+    "editor.lineNumber": "#928374",
+    "editor.lineNumber.active": "#EBDBB2",
+    "editor.matchingTag.background": "#504945",
+    "editor.matchingTag.border": "#83A598",
+    "xml.text": "#EBDBB2",
+    "xml.tag.name": "#FB4934",
+    "xml.tag.delimiter": "#928374",
+    "xml.attribute.name": "#FABD2F",
+    "xml.attribute.value": "#B8BB26",
+    "xml.namespace": "#83A598",
+    "xml.comment": "#928374",
+    "xml.entity": "#FE8019",
+    "xml.cdata": "#D3869B",
+    "xml.processingInstruction": "#D3869B",
+    "xml.doctype": "#D3869B",
+    "xml.error": "#FB4934",
+    "xml.warning": "#FABD2F"
+  }
+}

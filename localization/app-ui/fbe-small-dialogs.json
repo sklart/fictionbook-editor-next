@@ -156,7 +156,7 @@
       "targetId": "IDC_PROMPT",
       "translations": {
         "en-US": "Text:",
-        "ru-RU": "Текст:",
+        "ru-RU": "Обычный текст:",
         "uk-UA": "Текст:",
         "de-DE": "Text:",
         "fr-FR": "Texte :",
@@ -2645,8 +2645,8 @@
       "targetId": "IDC_OPTIONS_SOURCE_PALETTE_LABEL",
       "translations": {
         "en-US": "Color scheme:",
-        "ru-RU": "Цветовая схема:",
-        "uk-UA": "Колірна схема:",
+        "ru-RU": "Тема подсветки:",
+        "uk-UA": "Тема підсвічування:",
         "de-DE": "Farbschema:",
         "fr-FR": "Jeu de couleurs :",
         "es-ES": "Esquema de colores:",
@@ -2657,6 +2657,47 @@
         "cs-CZ": "Barevné schéma:",
         "bg-BG": "Цветова схема:"
       }
+    },
+    "fbe.dialog.idd_setting_next.source_color_text": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_SOURCE_COLOR_TEXT_LABEL",
+      "translations": { "en-US": "Text:", "ru-RU": "Обычный текст:", "uk-UA": "Текст:", "de-DE": "Text:", "fr-FR": "Texte :", "es-ES": "Texto:", "it-IT": "Testo:", "pl-PL": "Tekst:", "pt-PT": "Texto:", "nl-NL": "Tekst:", "cs-CZ": "Text:", "bg-BG": "Текст:" }
+    },
+    "fbe.dialog.idd_setting_next.source_color_tag": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_SOURCE_COLOR_TAG_LABEL",
+      "translations": { "en-US": "Tags:", "ru-RU": "Теги:", "uk-UA": "Теги:", "de-DE": "Tags:", "fr-FR": "Balises :", "es-ES": "Etiquetas:", "it-IT": "Tag:", "pl-PL": "Znaczniki:", "pt-PT": "Etiquetas:", "nl-NL": "Tags:", "cs-CZ": "Značky:", "bg-BG": "Тагове:" }
+    },
+    "fbe.dialog.idd_setting_next.source_color_attribute": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE_LABEL",
+      "translations": { "en-US": "Attributes:", "ru-RU": "Имена атрибутов:", "uk-UA": "Назви атрибутів:", "de-DE": "Attribute:", "fr-FR": "Attributs :", "es-ES": "Atributos:", "it-IT": "Attributi:", "pl-PL": "Atrybuty:", "pt-PT": "Atributos:", "nl-NL": "Attributen:", "cs-CZ": "Atributy:", "bg-BG": "Атрибути:" }
+    },
+    "fbe.dialog.idd_setting_next.source_color_string": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_SOURCE_COLOR_STRING_LABEL",
+      "translations": { "en-US": "Strings:", "ru-RU": "Значения атрибутов:", "uk-UA": "Значення атрибутів:", "de-DE": "Zeichenketten:", "fr-FR": "Chaînes :", "es-ES": "Cadenas:", "it-IT": "Stringhe:", "pl-PL": "Łańcuchy:", "pt-PT": "Cadeias:", "nl-NL": "Tekenreeksen:", "cs-CZ": "Řetězce:", "bg-BG": "Низове:" }
+    },
+    "fbe.dialog.idd_setting_next.source_color_comment": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_SOURCE_COLOR_COMMENT_LABEL",
+      "translations": { "en-US": "Comments:", "ru-RU": "Комментарии:", "uk-UA": "Коментарі:", "de-DE": "Kommentare:", "fr-FR": "Commentaires :", "es-ES": "Comentarios:", "it-IT": "Commenti:", "pl-PL": "Komentarze:", "pt-PT": "Comentários:", "nl-NL": "Opmerkingen:", "cs-CZ": "Komentáře:", "bg-BG": "Коментари:" }
+    },
+    "fbe.dialog.idd_setting_next.source_color_background": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_SOURCE_COLOR_BACKGROUND_LABEL",
+      "translations": { "en-US": "Background:", "ru-RU": "Фон:", "uk-UA": "Тло:", "de-DE": "Hintergrund:", "fr-FR": "Arrière-plan :", "es-ES": "Fondo:", "it-IT": "Sfondo:", "pl-PL": "Tło:", "pt-PT": "Fundo:", "nl-NL": "Achtergrond:", "cs-CZ": "Pozadí:", "bg-BG": "Фон:" }
+    },    "fbe.dialog.idd_setting_next.source_colors_reset": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "PUSHBUTTON",
+      "targetId": "IDC_OPTIONS_SOURCE_COLORS_RESET",
+      "translations": { "en-US": "Restore colors", "ru-RU": "Восстановить цвета схемы", "uk-UA": "Відновити кольори схеми", "de-DE": "Farben zurücksetzen", "fr-FR": "Réinitialiser les couleurs", "es-ES": "Restaurar colores", "it-IT": "Ripristina colori", "pl-PL": "Przywróć kolory", "pt-PT": "Restaurar cores", "nl-NL": "Kleuren herstellen", "cs-CZ": "Obnovit barvy", "bg-BG": "Нулиране на цветовете" }
     },
     "fbe.dialog.idd_setting_next.source_palette.classic": {
       "resource": "IDD_SETTING_NEXT",
@@ -2696,7 +2737,65 @@
         "bg-BG": "Контрастна"
       }
     },
-    "fbe.dialog.idd_setting_next.source_palette.dark": {
+    "fbe.dialog.idd_setting_next.source_palette.system": {
+      "resource": "IDD_SETTING_NEXT",
+      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
+      "property": "label",
+      "translations": {
+        "en-US": "Match system",
+        "ru-RU": "Автоматически — по теме Windows",
+        "uk-UA": "Як у системі",
+        "de-DE": "Wie im System",
+        "fr-FR": "Selon le système",
+        "es-ES": "Como en el sistema",
+        "it-IT": "Come nel sistema",
+        "pl-PL": "Jak w systemie",
+        "pt-PT": "Como no sistema",
+        "nl-NL": "Zoals in het systeem",
+        "cs-CZ": "Podle systému",
+        "bg-BG": "Както в системата"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette.fbe_light": {
+      "resource": "IDD_SETTING_NEXT",
+      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
+      "property": "label",
+      "translations": {
+        "en-US": "FBE Light", "ru-RU": "FBE Light", "uk-UA": "FBE Light", "de-DE": "FBE Light", "fr-FR": "FBE Light", "es-ES": "FBE Light", "it-IT": "FBE Light", "pl-PL": "FBE Light", "pt-PT": "FBE Light", "nl-NL": "FBE Light", "cs-CZ": "FBE Light", "bg-BG": "FBE Light"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette.fbe_dark": {
+      "resource": "IDD_SETTING_NEXT",
+      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
+      "property": "label",
+      "translations": {
+        "en-US": "FBE Dark", "ru-RU": "FBE Dark", "uk-UA": "FBE Dark", "de-DE": "FBE Dark", "fr-FR": "FBE Dark", "es-ES": "FBE Dark", "it-IT": "FBE Dark", "pl-PL": "FBE Dark", "pt-PT": "FBE Dark", "nl-NL": "FBE Dark", "cs-CZ": "FBE Dark", "bg-BG": "FBE Dark"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette.high_contrast_light": {
+      "resource": "IDD_SETTING_NEXT",
+      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
+      "property": "label",
+      "translations": {
+        "en-US": "FBE High Contrast Light", "ru-RU": "FBE: высокая контрастность, светлая", "uk-UA": "FBE: висока контрастність, світла", "de-DE": "FBE hoher Kontrast, hell", "fr-FR": "FBE contraste élevé clair", "es-ES": "FBE alto contraste claro", "it-IT": "FBE contrasto elevato chiaro", "pl-PL": "FBE: wysoki kontrast, jasny", "pt-PT": "FBE alto contraste claro", "nl-NL": "FBE hoog contrast licht", "cs-CZ": "FBE: vysoký kontrast, světlý", "bg-BG": "FBE: висок контраст, светъл"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette.high_contrast_dark": {
+      "resource": "IDD_SETTING_NEXT",
+      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
+      "property": "label",
+      "translations": {
+        "en-US": "FBE High Contrast Dark", "ru-RU": "FBE: высокая контрастность, тёмная", "uk-UA": "FBE: висока контрастність, темна", "de-DE": "FBE hoher Kontrast, dunkel", "fr-FR": "FBE contraste élevé sombre", "es-ES": "FBE alto contraste oscuro", "it-IT": "FBE contrasto elevato scuro", "pl-PL": "FBE: wysoki kontrast, ciemny", "pt-PT": "FBE alto contraste escuro", "nl-NL": "FBE hoog contrast donker", "cs-CZ": "FBE: vysoký kontrast, tmavý", "bg-BG": "FBE: висок контраст, тъмен"
+      }
+    },
+    "fbe.dialog.idd_setting_next.source_palette.historical": {
+      "resource": "IDD_SETTING_NEXT",
+      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
+      "property": "label",
+      "translations": {
+        "en-US": "Historical FBE", "ru-RU": "Историческая FBE", "uk-UA": "Історична FBE", "de-DE": "Historisches FBE", "fr-FR": "FBE historique", "es-ES": "FBE histórico", "it-IT": "FBE storico", "pl-PL": "Historyczny FBE", "pt-PT": "FBE histórico", "nl-NL": "Historische FBE", "cs-CZ": "Historické FBE", "bg-BG": "Исторически FBE"
+      }
+    },    "fbe.dialog.idd_setting_next.source_palette.dark": {
       "resource": "IDD_SETTING_NEXT",
       "kind": "VALUE",
       "targetId": "IDC_OPTIONS_SOURCE_PALETTE",

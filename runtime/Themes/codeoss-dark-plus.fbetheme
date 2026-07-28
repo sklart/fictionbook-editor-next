@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "codeoss-dark-plus",
+  "name": "Dark+",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#1E1E1E",
+    "editor.foreground": "#D4D4D4",
+    "editor.selection.background": "#264F78",
+    "editor.selection.foreground": "#FFFFFF",
+    "editor.currentLine.background": "#2A2D2E",
+    "editor.caret": "#AEAFAD",
+    "editor.lineNumber": "#858585",
+    "editor.lineNumber.active": "#D4D4D4",
+    "editor.matchingTag.background": "#264F78",
+    "editor.matchingTag.border": "#569CD6",
+    "xml.text": "#D4D4D4",
+    "xml.tag.name": "#569CD6",
+    "xml.tag.delimiter": "#808080",
+    "xml.attribute.name": "#9CDCFE",
+    "xml.attribute.value": "#CE9178",
+    "xml.namespace": "#4EC9B0",
+    "xml.comment": "#6A9955",
+    "xml.entity": "#DCDCAA",
+    "xml.cdata": "#C586C0",
+    "xml.processingInstruction": "#C586C0",
+    "xml.doctype": "#C586C0",
+    "xml.error": "#F44747",
+    "xml.warning": "#CCA700"
+  }
+}

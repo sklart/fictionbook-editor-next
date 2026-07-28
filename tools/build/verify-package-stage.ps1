@@ -67,6 +67,27 @@ foreach ($languageName in @("en-US", "ru-RU", "uk-UA", "de-DE", "fr-FR", "es-ES"
     }
 }
 
+$requiredThemeFiles = @(
+    "Themes\README.md",
+    "Themes\codeoss-dark-plus.fbetheme",
+    "Themes\dracula.fbetheme",
+    "Themes\github-light-default.fbetheme",
+    "Themes\github-dark-default.fbetheme",
+    "Themes\catppuccin-latte.fbetheme",
+    "Themes\catppuccin-mocha.fbetheme",
+    "Themes\licenses\THIRD_PARTY_NOTICES.txt",
+    "Themes\licenses\MIT.txt"
+)
+foreach ($name in $requiredThemeFiles) {
+    $path = Join-Path $StageDirectory $name
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "В staging-каталоге отсутствует обязательный файл темы: $path"
+    }
+}
+$themeFiles = @(Get-ChildItem -LiteralPath (Join-Path $StageDirectory "Themes") -Filter "*.fbetheme" -File)
+if ($themeFiles.Count -ne 21) {
+    throw "В staging-каталоге должно быть 21 поставляемая внешняя тема, найдено: $($themeFiles.Count)."
+}
 foreach ($name in $forbiddenFiles) {
     $path = Join-Path $StageDirectory $name
     if (Test-Path -LiteralPath $path -PathType Leaf) {

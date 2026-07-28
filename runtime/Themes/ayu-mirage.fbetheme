@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "id": "ayu-mirage",
+  "name": "Ayu Mirage",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#1F2430",
+    "editor.foreground": "#CCCAC2",
+    "editor.selection.background": "#33415E",
+    "editor.selection.foreground": "#FFFFFF",
+    "editor.currentLine.background": "#242936",
+    "editor.caret": "#FFCC66",
+    "editor.lineNumber": "#707A8C",
+    "editor.lineNumber.active": "#CCCAC2",
+    "editor.matchingTag.background": "#33415E",
+    "editor.matchingTag.border": "#73D0FF",
+    "xml.text": "#CCCAC2",
+    "xml.tag.name": "#FFCC66",
+    "xml.tag.delimiter": "#707A8C",
+    "xml.attribute.name": "#FFD580",
+    "xml.attribute.value": "#BAE67E",
+    "xml.namespace": "#73D0FF",
+    "xml.comment": "#5C6773",
+    "xml.entity": "#F29E74",
+    "xml.cdata": "#D4BFFF",
+    "xml.processingInstruction": "#D4BFFF",
+    "xml.doctype": "#D4BFFF",
+    "xml.error": "#F27983",
+    "xml.warning": "#FFCC66"
+  }
+}
