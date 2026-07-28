@@ -114,6 +114,8 @@ if(@(Get-ChildItem -LiteralPath $themeDirectory -File -Filter "*.json").Count -n
 $themeIds = @{}
 foreach($themeFile in $themeFiles) {
     try { $theme = Get-Content -Raw -LiteralPath $themeFile.FullName | ConvertFrom-Json } catch { throw "Некорректный JSON темы $($themeFile.Name): $_" }
+    if($theme.format -ne "FictionBookEditorNext.CodeTheme") { throw "Theme must use official format." }
+    if($theme.isDark -isnot [bool]) { throw "Theme must contain boolean isDark." }
     if($theme.formatVersion -ne 1) { throw "Тема $($themeFile.Name) не использует formatVersion: 1." }
     if([string]::IsNullOrWhiteSpace($theme.id) -or [string]::IsNullOrWhiteSpace($theme.name)) { throw "В теме $($themeFile.Name) нет id или name." }
     if($themeIds.ContainsKey($theme.id)) { throw "Повторяющийся id встроенной темы: $($theme.id)." }
@@ -146,17 +148,24 @@ foreach($requiredText in @(
     'DeleteUserTheme',
     'UpdateSourceColorTooltips',
     'UpdateSourceThemeDisplay',
-    '\x0438\x0437\x043C\x0435\x043D\x0435\x043D\x0430',
+    'fbe.theme.modified_suffix',
     'color_automatic',
     'color_more',
-    'GetXmlSrcThemeColor(XML_SRC_COLOR_PALETTE_SYSTEM'
+    'ResolveSourceTokenColor(sourceId'
 )) {
     if($settingsDialog -notlike "*$requiredText*") {
         throw "В SettingsNextDlg.cpp отсутствует обязательный сценарий тем: $requiredText"
     }
 }
 
-foreach($requiredText in @('MakeAvailableUserThemeId', 'FindExternalTheme(base)', 'ReadLegacyAnsiThemeFile', 'ParseThemeFile(sourcePath, record, true)', 'FILE_ATTRIBUTE_READONLY', 'ExportThemeFile', 'MoveFileExW')) {
+foreach($requiredText in @(
+    'MakeAvailableUserThemeId', 'FindExternalTheme(base)', 'ReadLegacyAnsiThemeFile',
+    'ParseThemeFile(sourcePath, record, true, &error)', 'FILE_ATTRIBUTE_READONLY',
+    'ExportThemeFile', 'MoveFileExW', 'GetThemeMetadata',
+    'JsonSkipValue(json, jsonEnd)', 'fbe.theme.error.invalid_format',
+    'fbe.theme.error.unsupported_version', 'fbe.theme.error.trailing_json',
+    'XmlSourceThemeMetadata', 'baseThemeId', 'record.metadata.isDark', 'fbe.theme.error.invalid_is_dark'
+)) {
     if($themeSource -notlike "*$requiredText*") {
         throw "В XmlSourceThemes.cpp отсутствует безопасная операция с пользовательской темой: $requiredText"
     }
@@ -176,6 +185,36 @@ if($settingsDialog -like '*<!--*') {
     throw 'В предпросмотре не должен отображаться XML-комментарий до подтверждения сохранности модели документа.'
 }
 
+# Preview, export and the editor must resolve XML tokens through the same
+# semantic groups. CLR_DEFAULT is an inherited value, never an actual white
+# override. These checks keep namespace/entity from being silently discarded
+# during export.
+foreach($requiredText in @(
+    'ResolveSourceTokenColor',
+    'CSettings::GetXmlSrcColorGroup',
+    'm_source_colors[i].GetColor() != CLR_DEFAULT',
+    'SetColor(CLR_DEFAULT)',
+    'GetTextExtentPoint32W',
+    'compact = fullSize.cx > availableWidth',
+    'IsHighContrastEnabled',
+    'XML_SRC_STYLE_XML_TAG_DELIMITER'
+)) {
+    if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Resolver preview/export missing required behavior: $requiredText"
+    }
+}
+$settingsSource = Read-ProjectFile "src\fbe\Settings.cpp"
+foreach($requiredText in @(
+    'case XML_SRC_STYLE_XML_NAMESPACE:',
+    'case XML_SRC_STYLE_XML_ENTITY:',
+    'GetXmlSrcColorGroup',
+    'HasXmlSrcCustomColor(group)'
+)) {
+    if($settingsSource -notlike "*$requiredText*") {
+        throw "Editor token resolver does not share namespace/entity semantics: $requiredText"
+    }
+}
+
 foreach($fixture in @('tools\tests\fb2-xml-comments-smoke.fb2', 'tools\tests\test-fb2-xml-comments.ps1')) {
     if(-not (Test-Path -LiteralPath (Join-Path $repoRoot $fixture))) {
         throw "Отсутствует проверочный материал XML-комментариев: $fixture"
@@ -183,3 +222,24 @@ foreach($fixture in @('tools\tests\fb2-xml-comments-smoke.fb2', 'tools\tests\tes
 }
 
 Write-Host "Формат .fbetheme и операции пользовательских тем прошли проверку."
+
+# Strict JSON parser and metadata contract.
+foreach($requiredText in @(
+    'JsonSkipValue(json, jsonEnd)',
+    'jsonEnd != json.size()',
+    'ReadOptionalJsonStringMember',
+    'fbe.theme.error.invalid_metadata',
+    'fbe.theme.error.metadata_too_long',
+    'metadata->recalculateIsDark',
+    'record.metadata.recalculateIsDark = false'
+)) {
+    if($themeSource -notlike "*$requiredText*") {
+        throw "Strict JSON/metadata validation is missing: $requiredText"
+    }
+}
+if($settingsDialog -notlike '*SetXmlSrcThemeId(fallbackId, true)*') {
+    throw 'Deleting the active theme does not immediately persist a safe id.'
+}
+if($documentation -notlike '*xml.namespace*' -or $documentation -notlike '*зарезервированным*') {
+    throw 'Documentation does not describe xml.namespace.'
+}
