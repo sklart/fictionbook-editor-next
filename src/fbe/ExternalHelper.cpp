@@ -8,6 +8,8 @@
 #include "FBE.h"
 #include "ExternalHelper.h"
 
+__declspec(thread) bool ExternalHelper::s_traceScriptActive = false;
+
 #define MENU_BASE 5000
 
 struct Genre

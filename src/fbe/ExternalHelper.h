@@ -23,6 +23,7 @@ class ExternalHelper :
 {
   const CString* m_document_filename;
   const bool* m_document_namevalid;
+  static __declspec(thread) bool s_traceScriptActive;
 public:
   ExternalHelper() : m_document_filename(NULL), m_document_namevalid(NULL) {}
 
@@ -60,12 +61,14 @@ public:
 
   STDMETHOD(TraceScript)(BSTR code, BSTR message)
   {
+    if(s_traceScriptActive)
+      return S_OK;
+    s_traceScriptActive = true;
     CString safeCode(code ? code : L"");
     safeCode = safeCode.Left(32);
-    // JavaScript-код может вызвать этот метод сам. В журнал не попадает
-    // переданная строка: так исключается запись текста книги или пути файла.
     CString safeMessage = StartupTrace::SanitizeLogText(message ? message : L"", 512);
     StartupTrace::ScriptEvent(safeCode, safeMessage);
+    s_traceScriptActive = false;
     return S_OK;
   }
 
