@@ -25,8 +25,10 @@ namespace XmlSourceThemes
 	CString NormalizeThemeId(const CString& id);
 	const std::vector<XmlSourceThemeInfo>& GetAvailableThemes();
 	void ReloadThemes();
+	bool GetImportThemeInfo(const CString& sourcePath, CString& id, CString& name, CString& error);
 	bool GetImportThemeId(const CString& sourcePath, CString& id, CString& error);
 	bool IsUserTheme(const CString& id);
+	CString MakeAvailableThemeId(const CString& requestedId);
 	bool GetThemeColor(const CString& id, XmlSrcStyleToken token, DWORD& color);
 	bool GetThemeMetadata(const CString& id, XmlSourceThemeMetadata& metadata);
 	bool DeleteUserTheme(const CString& id, CString& error);

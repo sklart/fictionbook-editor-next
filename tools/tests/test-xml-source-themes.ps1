@@ -153,7 +153,7 @@ foreach($requiredText in @(
     'color_more',
     'ResolveSourceTokenColor(sourceId'
 )) {
-    if($settingsDialog -notlike "*$requiredText*") {
+    if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
         throw "В SettingsNextDlg.cpp отсутствует обязательный сценарий тем: $requiredText"
     }
 }
@@ -171,15 +171,15 @@ foreach($requiredText in @(
     }
 }
 
-# Комментарии Lexilla пока не переживают полный цикл визуального редактирования.
-# Поэтому не допускаем показа неработающего цвета комментариев или комментария в примере.
-foreach($requiredText in @(
-    'IDC_OPTIONS_SOURCE_COLOR_COMMENT_LABEL), SW_HIDE',
-    'IDC_OPTIONS_SOURCE_COLOR_COMMENT), SW_HIDE'
-)) {
-    if($settingsDialog -notlike "*$requiredText*") {
-        throw "Настройка XML-комментариев не скрыта: $requiredText"
-    }
+# Комментарии Lexilla остаются токеном темы, но FBE не сохраняет comment
+# nodes в полном цикле визуального редактирования. Поэтому UI-элементов и
+# обработчиков для них быть не должно.
+if($settingsDialog -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
+    throw 'В SettingsNextDlg.cpp остался мёртвый UI-код XML-комментариев.'
+}
+$settingsHeader = Read-ProjectFile "src\fbe\SettingsNextDlg.h"
+if($settingsHeader -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
+    throw 'В SettingsNextDlg.h остался обработчик XML-комментариев.'
 }
 if($settingsDialog -like '*<!--*') {
     throw 'В предпросмотре не должен отображаться XML-комментарий до подтверждения сохранности модели документа.'
@@ -236,6 +236,20 @@ foreach($requiredText in @(
     if($themeSource -notlike "*$requiredText*") {
         throw "Strict JSON/metadata validation is missing: $requiredText"
     }
+}
+foreach($requiredText in @(
+    'GetImportThemeInfo',
+    'fbe.theme.import.more_errors',
+    'candidateName, candidateId',
+    'stem[i] < 0x20',
+    "L'_'"
+)) {
+    if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Theme import/export safety behavior is missing: $requiredText"
+    }
+}
+if($themeSource -notlike '*GetImportThemeInfo*') {
+    throw 'Theme parser does not expose the imported theme name for conflict handling.'
 }
 if($settingsDialog -notlike '*SetXmlSrcThemeId(fallbackId, true)*') {
     throw 'Deleting the active theme does not immediately persist a safe id.'

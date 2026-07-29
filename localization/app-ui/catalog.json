@@ -4601,23 +4601,43 @@
     },
     "fbe.theme.conflict.replace": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
-        "en-US": "Replace existing user theme?\nYes: replace\nNo: import a copy",
-        "ru-RU": "Заменить существующую пользовательскую тему?\nДа: заменить\nНет: импортировать копию",
-        "uk-UA": "Замінити наявну користувацьку тему?\nТак: замінити\nНі: імпортувати копію",
-        "de-DE": "Vorhandenes Benutzerthema ersetzen?\nJa: ersetzen\nNein: Kopie importieren",
-        "fr-FR": "Remplacer le thème utilisateur existant ?\nOui : remplacer\nNon : importer une copie",
-        "es-ES": "Reemplazar el tema de usuario existente?\nSi: reemplazar\nNo: importar una copia",
-        "it-IT": "Sostituire il tema utente esistente?\nSi: sostituisci\nNo: importa una copia",
-        "pl-PL": "Zastapic istniejacy motyw uzytkownika?\nTak: zastap\nNie: importuj kopie",
-        "pt-PT": "Substituir o tema de utilizador existente?\nSim: substituir\nNao: importar uma copia",
-        "nl-NL": "Bestaand gebruikersthema vervangen?\nJa: vervangen\nNee: een kopie importeren",
-        "cs-CZ": "Nahradit existujici uzivatelske tema?\nAno: nahradit\nNe: importovat kopii",
-        "bg-BG": "Заменить съществуващата потребителска тема?\nДа: замени\nНе: импортирай копие"
+        "en-US": "Theme \"%s\" (ID: %s) already exists.\n\nReplace the existing user theme?\nYes: replace\nNo: import a copy\nCancel: skip this file.",
+        "ru-RU": "Тема \"%s\" (ID: %s) уже существует.\n\nЗаменить существующую пользовательскую тему?\nДа: заменить\nНет: импортировать копию\nОтмена: пропустить этот файл.",
+        "uk-UA": "Тема \"%s\" (ID: %s) вже існує.\n\nЗамінити наявну користувацьку тему?\nТак: замінити\nНі: імпортувати копію\nСкасувати: пропустити цей файл.",
+        "de-DE": "Das Thema \"%s\" (ID: %s) ist bereits vorhanden.\n\nVorhandenes Benutzerthema ersetzen?\nJa: ersetzen\nNein: Kopie importieren\nAbbrechen: diese Datei überspringen.",
+        "fr-FR": "Le thème \"%s\" (ID : %s) existe déjà.\n\nRemplacer le thème utilisateur existant ?\nOui : remplacer\nNon : importer une copie\nAnnuler : ignorer ce fichier.",
+        "es-ES": "El tema \"%s\" (ID: %s) ya existe.\n\n¿Reemplazar el tema de usuario existente?\nSí: reemplazar\nNo: importar una copia\nCancelar: omitir este archivo.",
+        "it-IT": "Il tema \"%s\" (ID: %s) esiste già.\n\nSostituire il tema utente esistente?\nSì: sostituisci\nNo: importa una copia\nAnnulla: salta questo file.",
+        "pl-PL": "Motyw \"%s\" (ID: %s) już istnieje.\n\nZastąpić istniejący motyw użytkownika?\nTak: zastąp\nNie: importuj kopię\nAnuluj: pomiń ten plik.",
+        "pt-PT": "O tema \"%s\" (ID: %s) já existe.\n\nSubstituir o tema de utilizador existente?\nSim: substituir\nNão: importar uma cópia\nCancelar: ignorar este ficheiro.",
+        "nl-NL": "Thema \"%s\" (ID: %s) bestaat al.\n\nBestaand gebruikersthema vervangen?\nJa: vervangen\nNee: een kopie importeren\nAnnuleren: dit bestand overslaan.",
+        "cs-CZ": "Motiv \"%s\" (ID: %s) již existuje.\n\nNahradit existující uživatelský motiv?\nAno: nahradit\nNe: importovat kopii\nZrušit: přeskočit tento soubor.",
+        "bg-BG": "Темата \"%s\" (ID: %s) вече съществува.\n\nДа се замени ли съществуващата потребителска тема?\nДа: замени\nНе: импортирай копие\nОтказ: пропусни този файл."
+      }
+    },
+    "fbe.theme.import.more_errors": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Additional errors: %d.",
+        "ru-RU": "Дополнительные ошибки: %d.",
+        "uk-UA": "Додаткові помилки: %d.",
+        "de-DE": "Weitere Fehler: %d.",
+        "fr-FR": "Erreurs supplémentaires : %d.",
+        "es-ES": "Errores adicionales: %d.",
+        "it-IT": "Errori aggiuntivi: %d.",
+        "pl-PL": "Dodatkowe błędy: %d.",
+        "pt-PT": "Erros adicionais: %d.",
+        "nl-NL": "Aanvullende fouten: %d.",
+        "cs-CZ": "Další chyby: %d.",
+        "bg-BG": "Допълнителни грешки: %d."
       }
     },
     "fbe.theme.dialog.caption": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "FictionBook Editor",
         "ru-RU": "FictionBook Editor",
@@ -4635,6 +4655,7 @@
     },
     "fbe.theme.actions": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Themes",
         "ru-RU": "Темы",
@@ -4652,23 +4673,25 @@
     },
     "fbe.theme.import.summary": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Imported: %d. Skipped: %d.",
         "ru-RU": "Импортировано: %d. Пропущено: %d.",
         "uk-UA": "Імпортовано: %d. Пропущено: %d.",
-        "de-DE": "Importiert: %d. Uebersprungen: %d.",
+        "de-DE": "Importiert: %d. Übersprungen: %d.",
         "fr-FR": "Importés : %d. Ignorés : %d.",
         "es-ES": "Importados: %d. Omitidos: %d.",
         "it-IT": "Importati: %d. Ignorati: %d.",
-        "pl-PL": "Zaimportowano: %d. Pominieto: %d.",
+        "pl-PL": "Zaimportowano: %d. Pominięto: %d.",
         "pt-PT": "Importados: %d. Ignorados: %d.",
         "nl-NL": "Geimporteerd: %d. Overgeslagen: %d.",
-        "cs-CZ": "Importovano: %d. Preskoceno: %d.",
+        "cs-CZ": "Importováno: %d. Přeskočeno: %d.",
         "bg-BG": "Импортирани: %d. Пропуснати: %d."
       }
     },
     "fbe.theme.tooltip.palette": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Choose a built-in or user source highlighting theme.",
         "ru-RU": "Выбор встроенной или пользовательской темы подсветки исходного кода.",
@@ -4686,6 +4709,7 @@
     },
     "fbe.theme.tooltip.actions": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Import, export, save a copy, or delete a user theme.",
         "ru-RU": "Импорт, экспорт, сохранение копии или удаление пользовательской темы.",
@@ -4703,6 +4727,7 @@
     },
     "fbe.theme.tooltip.text": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "XML plain text color.",
         "ru-RU": "Цвет обычного текста XML.",
@@ -4720,6 +4745,7 @@
     },
     "fbe.theme.tooltip.tag": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "XML tag names and delimiters color.",
         "ru-RU": "Цвет имён тегов XML и их разделителей.",
@@ -4737,6 +4763,7 @@
     },
     "fbe.theme.tooltip.attribute": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "XML attribute names color.",
         "ru-RU": "Цвет имён атрибутов XML.",
@@ -4754,6 +4781,7 @@
     },
     "fbe.theme.tooltip.value": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "XML attribute values color.",
         "ru-RU": "Цвет значений атрибутов XML.",
@@ -4771,6 +4799,7 @@
     },
     "fbe.theme.tooltip.background": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Source editor and preview background color.",
         "ru-RU": "Цвет фона редактора исходного кода и предпросмотра.",
@@ -4788,6 +4817,7 @@
     },
     "fbe.theme.tooltip.reset": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Remove manual overrides and restore the selected theme colors.",
         "ru-RU": "Удалить ручные переопределения и восстановить цвета выбранной темы.",
@@ -4805,6 +4835,7 @@
     },
     "fbe.theme.menu.import": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Import theme...",
         "ru-RU": "Импортировать тему...",
@@ -4822,6 +4853,7 @@
     },
     "fbe.theme.menu.export": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Export theme...",
         "ru-RU": "Экспортировать тему...",
@@ -4839,6 +4871,7 @@
     },
     "fbe.theme.menu.save_as": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Save theme as...",
         "ru-RU": "Сохранить тему как...",
@@ -4856,6 +4889,7 @@
     },
     "fbe.theme.menu.delete": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Delete selected user theme...",
         "ru-RU": "Удалить выбранную пользовательскую тему...",
@@ -4873,6 +4907,7 @@
     },
     "fbe.theme.delete.confirm": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Delete user theme \"%s\"? The theme file is deleted immediately. This cannot be undone by Cancel in Settings.",
         "ru-RU": "Удалить пользовательскую тему «%s»? Файл темы будет удалён сразу. Это действие нельзя отменить кнопкой «Отмена» в настройках.",
@@ -4890,6 +4925,7 @@
     },
     "fbe.theme.save.default_name": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "New theme",
         "ru-RU": "Новая тема",
@@ -4907,6 +4943,7 @@
     },
     "fbe.theme.save.title": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Save theme as",
         "ru-RU": "Сохранить тему как",
@@ -4924,6 +4961,7 @@
     },
     "fbe.theme.save.prompt": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Theme name:",
         "ru-RU": "Название темы:",
@@ -4941,6 +4979,7 @@
     },
     "fbe.theme.user_suffix": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": " (user)",
         "ru-RU": " (пользовательская)",
@@ -4958,6 +4997,7 @@
     },
     "fbe.theme.current_color": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Current color: #%02X%02X%02X",
         "ru-RU": "Текущий цвет: #%02X%02X%02X",
@@ -4975,6 +5015,7 @@
     },
     "fbe.theme.modified_suffix": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": " — modified",
         "ru-RU": " — изменена",
@@ -4992,6 +5033,7 @@
     },
     "fbe.theme.import.copy_suffix": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": " (imported)",
         "ru-RU": " (импортирована)",
@@ -5009,6 +5051,7 @@
     },
     "fbe.theme.error.read": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Cannot read theme file.",
         "ru-RU": "Не удаётся прочитать файл темы.",
@@ -5026,6 +5069,7 @@
     },
     "fbe.theme.error.too_large": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Theme file exceeds 1 MB.",
         "ru-RU": "Файл темы превышает 1 МБ.",
@@ -5043,6 +5087,7 @@
     },
     "fbe.theme.error.invalid_utf8_json": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Invalid UTF-8 JSON.",
         "ru-RU": "Некорректный JSON в UTF-8.",
@@ -5060,6 +5105,7 @@
     },
     "fbe.theme.error.invalid_json": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Invalid JSON.",
         "ru-RU": "Некорректный JSON.",
@@ -5077,6 +5123,7 @@
     },
     "fbe.theme.error.trailing_json": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Unexpected data after the JSON object.",
         "ru-RU": "После корневого объекта JSON обнаружены лишние данные.",
@@ -5094,6 +5141,7 @@
     },
     "fbe.theme.error.missing_format": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Missing required field: format.",
         "ru-RU": "Отсутствует обязательное поле: format.",
@@ -5111,6 +5159,7 @@
     },
     "fbe.theme.error.invalid_format": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Unsupported theme format.",
         "ru-RU": "Неподдерживаемый формат темы.",
@@ -5128,6 +5177,7 @@
     },
     "fbe.theme.error.missing_version": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Missing required field: formatVersion.",
         "ru-RU": "Отсутствует обязательное поле: formatVersion.",
@@ -5145,6 +5195,7 @@
     },
     "fbe.theme.error.unsupported_version": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Unsupported theme format version: %d.",
         "ru-RU": "Неподдерживаемая версия формата темы: %d.",
@@ -5162,6 +5213,7 @@
     },
     "fbe.theme.error.missing_is_dark": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Missing required field: isDark.",
         "ru-RU": "Отсутствует обязательное поле: isDark.",
@@ -5179,6 +5231,7 @@
     },
     "fbe.theme.error.missing_id": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Missing required field: id.",
         "ru-RU": "Отсутствует обязательное поле: id.",
@@ -5196,6 +5249,7 @@
     },
     "fbe.theme.error.invalid_id": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Invalid theme id.",
         "ru-RU": "Недопустимый идентификатор темы.",
@@ -5213,6 +5267,7 @@
     },
     "fbe.theme.error.invalid_name": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Missing or invalid theme name.",
         "ru-RU": "Отсутствует или недопустимо имя темы.",
@@ -5230,6 +5285,7 @@
     },
     "fbe.theme.error.missing_colors": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Missing required field: colors.",
         "ru-RU": "Отсутствует обязательное поле: colors.",
@@ -5247,6 +5303,7 @@
     },
     "fbe.theme.error.invalid_color": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Invalid required color: %s.",
         "ru-RU": "Недопустимый обязательный цвет: %s.",
@@ -5264,6 +5321,7 @@
     },
     "fbe.theme.error.invalid_file": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Invalid .fbetheme file.",
         "ru-RU": "Некорректный файл .fbetheme.",
@@ -5281,6 +5339,7 @@
     },
     "fbe.theme.error.create_directory": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Cannot create the user Themes directory.",
         "ru-RU": "Не удаётся создать каталог пользовательских тем.",
@@ -5298,6 +5357,7 @@
     },
     "fbe.theme.error.delete_only_user": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Only a user theme can be deleted.",
         "ru-RU": "Удалять можно только пользовательскую тему.",
@@ -5315,6 +5375,7 @@
     },
     "fbe.theme.error.delete_failed": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Cannot delete the user theme (error %lu).",
         "ru-RU": "Не удаётся удалить пользовательскую тему (ошибка %lu).",
@@ -5332,6 +5393,7 @@
     },
     "fbe.theme.error.incomplete_data": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Theme data is incomplete.",
         "ru-RU": "Данные темы неполные.",
@@ -5349,6 +5411,7 @@
     },
     "fbe.theme.error.encode": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Cannot encode theme.",
         "ru-RU": "Не удаётся закодировать тему.",
@@ -5366,6 +5429,7 @@
     },
     "fbe.theme.error.create_temporary": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Cannot create temporary theme file.",
         "ru-RU": "Не удаётся создать временный файл темы.",
@@ -5383,6 +5447,7 @@
     },
     "fbe.theme.error.save": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Cannot save exported theme.",
         "ru-RU": "Не удаётся сохранить экспортированную тему.",
@@ -5400,6 +5465,7 @@
     },
     "fbe.theme.error.invalid_is_dark": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Invalid isDark value.",
         "ru-RU": "Недопустимое значение isDark.",
@@ -5417,6 +5483,7 @@
     },
     "fbe.dialog.idd_setting_next.color_automatic": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Automatic",
         "ru-RU": "Автоматически",
@@ -5434,6 +5501,7 @@
     },
     "fbe.dialog.idd_setting_next.color_more": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "More colors...",
         "ru-RU": "Другие цвета...",
@@ -5451,6 +5519,7 @@
     },
     "fbe.theme.error.invalid_metadata": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Invalid %s value: expected a string.",
         "ru-RU": "Недопустимое значение %s: ожидается строка.",
@@ -5468,6 +5537,7 @@
     },
     "fbe.theme.error.metadata_too_long": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Value of %s is too long.",
         "ru-RU": "Значение %s слишком длинное.",
@@ -5485,6 +5555,7 @@
     },
     "fbe.theme.error.invalid_base_theme_id": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "Invalid baseThemeId.",
         "ru-RU": "Недопустимый baseThemeId.",
@@ -5502,6 +5573,7 @@
     },
     "fbe.theme.file_filter": {
       "component": "fbe.core",
+      "runtimeOnly": true,
       "translations": {
         "en-US": "FBE themes (*.fbetheme)",
         "ru-RU": "Темы FBE (*.fbetheme)",

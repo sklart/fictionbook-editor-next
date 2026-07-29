@@ -1587,6 +1587,10 @@ CString CSettings::GetXmlSrcThemeId()const
 {
 	return XmlSourceThemes::NormalizeThemeId(m_xml_src_theme_id);
 }
+CString CSettings::GetStoredXmlSrcThemeId()const
+{
+	return m_xml_src_theme_id;
+}
 DWORD CSettings::GetXmlSrcDefaultColor(DWORD palette, XmlSrcColorGroup group)
 {
 	static const XmlSrcStyleToken tokens[XML_SRC_COLOR_GROUP_COUNT] = {

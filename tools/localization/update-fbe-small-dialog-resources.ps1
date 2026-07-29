@@ -251,7 +251,7 @@ foreach($language in $Languages){
     $l.Add('    GROUPBOX        "' + (Get-Text 'idd_setting_next.source_code' $language) + '",IDC_FBE_NEXT_SOURCE_CODE_GROUP,7,111,316,161')
     $l.Add('    LTEXT           "' + (Get-Text 'idd_setting_next.source_palette' $language) + '",IDC_OPTIONS_SOURCE_PALETTE_LABEL,14,126,70,9')
     $l.Add('    COMBOBOX        IDC_OPTIONS_SOURCE_PALETTE,88,124,184,60,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP')
-    $l.Add('    PUSHBUTTON      "...",IDC_OPTIONS_SOURCE_THEME_ACTIONS,278,124,22,14')
+    $l.Add('    PUSHBUTTON      "Themes",IDC_OPTIONS_SOURCE_THEME_ACTIONS,276,124,40,14')
     $l.Add('    LTEXT           "' + (Get-Text 'idd_setting_next.source_color_text' $language) + '",IDC_OPTIONS_SOURCE_COLOR_TEXT_LABEL,14,145,76,9')
     $l.Add('    PUSHBUTTON      "",IDC_OPTIONS_SOURCE_COLOR_TEXT,94,143,30,12')
     $l.Add('    LTEXT           "' + (Get-Text 'idd_setting_next.source_color_tag' $language) + '",IDC_OPTIONS_SOURCE_COLOR_TAG_LABEL,150,145,80,9')

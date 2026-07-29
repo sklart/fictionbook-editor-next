@@ -292,7 +292,8 @@ bool ParseThemeFile(const wchar_t* path, ThemeRecord& record, bool allowLegacyAn
 		if(error) *error = ThemeString(L"fbe.theme.error.invalid_id", L"Invalid theme id.");
 		return false;
 	}
-	if(!ReadJsonStringMember(json, 0, L"name", name) || name.empty() || name.size() > 100)
+	if(!ReadJsonStringMember(json, 0, L"name", name) || name.empty() || name.size() > 100 ||
+		std::find_if(name.begin(), name.end(), [](wchar_t ch) { return ch <= 0x1f || ch == 0x7f; }) != name.end())
 	{
 		if(error) *error = ThemeString(L"fbe.theme.error.invalid_name", L"Missing or invalid theme name.");
 		return false;
@@ -512,14 +513,27 @@ const std::vector<XmlSourceThemeInfo>& GetAvailableThemes()
 	return g_availableThemes;
 }
 
-bool GetImportThemeId(const CString& sourcePath, CString& id, CString& error)
+bool GetImportThemeInfo(const CString& sourcePath, CString& id, CString& name, CString& error)
 {
 	ThemeRecord record = {};
 	id.Empty();
+	name.Empty();
 	error.Empty();
 	if(!ParseThemeFile(sourcePath, record, true, &error)) return false;
 	id = record.info.id;
+	name = record.info.name;
 	return true;
+}
+
+bool GetImportThemeId(const CString& sourcePath, CString& id, CString& error)
+{
+	CString name;
+	return GetImportThemeInfo(sourcePath, id, name, error);
+}
+
+CString MakeAvailableThemeId(const CString& requestedId)
+{
+	return MakeAvailableUserThemeId(requestedId);
 }
 
 bool IsUserTheme(const CString& id)

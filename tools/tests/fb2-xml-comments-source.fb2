@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <!-- before title-info -->
+    <title-info>
+      <genre match="100">prose_history</genre>
+      <author><first-name>Иван</first-name><last-name>Смирнов</last-name></author>
+      <book-title>XML comments smoke test</book-title>
+      <lang>ru</lang>
+    </title-info>
+    <!-- before document-info -->
+    <document-info>
+      <author><first-name>Codex</first-name><last-name>Smoke</last-name></author>
+      <program-used>FictionBookEditor</program-used>
+      <date value="2026-07-28">28.07.2026</date>
+      <id>fb2-xml-comments-smoke-test</id>
+      <version>1.0</version>
+    </document-info>
+  </description>
+  <body>
+    <!-- before first section -->
+    <section>
+      <title><p>Комментарии</p></title>
+      <p>Первый абзац.</p>
+      <!-- between paragraphs -->
+      <p>Второй абзац.</p>
+    </section>
+    <!-- between sections -->
+    <section>
+      <title><p>Вторая секция</p></title>
+      <p>Текст второй секции.</p>
+    </section>
+  </body>
+  <!-- after body, inside FictionBook -->
+</FictionBook>

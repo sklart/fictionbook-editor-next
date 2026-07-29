@@ -616,6 +616,8 @@ public:
 	bool XmlSrcSyntaxHL()const;
 	DWORD GetXmlSrcColorPalette()const;
 	CString GetXmlSrcThemeId()const;
+	// Raw value is used only when an active user theme is deleted.
+	CString GetStoredXmlSrcThemeId()const;
 	DWORD GetXmlSrcColor(XmlSrcColorGroup group)const;
 	bool HasXmlSrcCustomColor(XmlSrcColorGroup group)const;
 	static XmlSrcColorGroup GetXmlSrcColorGroup(XmlSrcStyleToken token);

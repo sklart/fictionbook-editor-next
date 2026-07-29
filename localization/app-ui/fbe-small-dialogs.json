@@ -2734,25 +2734,6 @@
         "bg-BG": "Низове:"
       }
     },
-    "fbe.dialog.idd_setting_next.source_color_comment": {
-      "resource": "IDD_SETTING_NEXT",
-      "kind": "LTEXT",
-      "targetId": "IDC_OPTIONS_SOURCE_COLOR_COMMENT_LABEL",
-      "translations": {
-        "en-US": "Comments:",
-        "ru-RU": "Комментарии:",
-        "uk-UA": "Коментарі:",
-        "de-DE": "Kommentare:",
-        "fr-FR": "Commentaires :",
-        "es-ES": "Comentarios:",
-        "it-IT": "Commenti:",
-        "pl-PL": "Komentarze:",
-        "pt-PT": "Comentários:",
-        "nl-NL": "Opmerkingen:",
-        "cs-CZ": "Komentáře:",
-        "bg-BG": "Коментари:"
-      }
-    },
     "fbe.dialog.idd_setting_next.source_color_background": {
       "resource": "IDD_SETTING_NEXT",
       "kind": "LTEXT",
