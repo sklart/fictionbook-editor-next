@@ -473,21 +473,35 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 {
 	TraceDocumentEvent(L"Загрузка книги начата", filename);
 	HRESULT	hr;
-	StartupTrace::Event(L"webbrowser", L"W100 Создание браузерного элемента");
+	StartupTrace::Event(L"webbrowser", L"WB100", L"m_body.Create begin");
 	const CString path = U::GetProgDirFile(L"main.html");
 	m_body.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
-	hr = m_body.Browser()->Navigate((LPCTSTR)path);
-	StartupTrace::HResult(L"webbrowser", L"W110", hr, L"Navigate main.html");
-	if (FAILED(hr))
-		return false;	
-	MSG	  msg;
-    while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) 
+	if (!m_body.Browser())
 	{
-      ::TranslateMessage(&msg);
-      ::DispatchMessage(&msg);
-    }
+		StartupTrace::Error(L"webbrowser", L"WB101", L"m_body.Create did not provide IWebBrowser2");
+		return false;
+	}
+	StartupTrace::Event(L"webbrowser", L"WB110", L"IWebBrowser2 available");
+	hr = m_body.Browser()->Navigate((LPCTSTR)path);
+	StartupTrace::HResult(L"webbrowser", L"WB120", hr, L"Navigate main.html");
+	if (FAILED(hr))
+		return false;
+	MSG msg;
+	StartupTrace::Event(L"webbrowser", L"WB130", L"waiting for DocumentComplete");
+	while (!m_body.Loaded())
+	{
+		const int messageResult = ::GetMessage(&msg, NULL, 0, 0);
+		if (messageResult == 0)`r`n		{`r`n			StartupTrace::Warning(L"webbrowser", L"WB132", L"message loop ended before DocumentComplete");`r`n			return false;`r`n		}
+		if (messageResult == -1)
+		{
+			StartupTrace::HResult(L"webbrowser", L"WB131", HRESULT_FROM_WIN32(::GetLastError()), L"GetMessage failed");
+			return false;
+		}
+		::TranslateMessage(&msg);
+		::DispatchMessage(&msg);
+	}
 
-	StartupTrace::Event(L"webbrowser", L"W120 Документ main.html загружен");
+	StartupTrace::Event(L"webbrowser", L"WB140", L"DocumentComplete observed");
 	StartupTrace::Event(L"webbrowser", L"W130 Подключение window.external");
 	m_body.SetExternalDispatch(m_body.CreateHelper());
 
