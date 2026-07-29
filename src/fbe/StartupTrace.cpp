@@ -10,7 +10,8 @@ namespace
 	bool traceLockInitialized = false;
 	ULONGLONG startTime = 0, previousTime = 0, writtenBytes = 0, recordSequence = 0;
 	DWORD lastWriteError = ERROR_SUCCESS;
-	CString tracePath, lastStageCode, lastStageMessage;
+	CString tracePath, traceBasePath, lastStageCode, lastStageMessage;
+	unsigned int traceSegment = 0;
 	const ULONGLONG maxTraceSize = 16ULL * 1024ULL * 1024ULL;
 	const wchar_t* const diagnosticTraceRegistryPath = L"Software\\FBETeam\\FictionBook Editor Next\\Diagnostics";
 	const wchar_t* const diagnosticTraceRegistryValue = L"TraceNextLaunch";
@@ -52,6 +53,27 @@ namespace
 		return true;
 	}
 
+	bool RotateTraceFile()
+	{
+		CString segmentPath;
+		segmentPath.Format(L"%s-part%u.log", (LPCWSTR)traceBasePath, ++traceSegment);
+		HANDLE nextFile = ::CreateFile(segmentPath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+		if(nextFile == INVALID_HANDLE_VALUE)
+		{
+			lastWriteError = ::GetLastError();
+			return false;
+		}
+		if(traceFile != INVALID_HANDLE_VALUE)
+		{
+			::FlushFileBuffers(traceFile);
+			::CloseHandle(traceFile);
+		}
+		traceFile = nextFile;
+		tracePath = segmentPath;
+		writtenBytes = 0;
+		return true;
+	}
+
 	void WriteUtf8(const CString& text, bool flush, bool force)
 	{
 		if (traceFile == INVALID_HANDLE_VALUE) return;
@@ -59,7 +81,11 @@ namespace
 		if (byteCount <= 0) return;
 		CStringA utf8; char* buffer = utf8.GetBuffer(byteCount);
 		::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), buffer, byteCount, NULL, NULL); utf8.ReleaseBuffer(byteCount);
-		if (!force && writtenBytes + byteCount > maxTraceSize) { lastWriteError = ERROR_DISK_FULL; return; }
+		if(writtenBytes + byteCount > maxTraceSize && !RotateTraceFile() && !force)
+		{
+			lastWriteError = ERROR_DISK_FULL;
+			return;
+		}
 		WriteAll(utf8, byteCount);
 		if (flush && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError();
 	}
@@ -95,12 +121,13 @@ void StartupTrace::Start()
 	{
 		CString suffixText;
 		if (suffix) suffixText.Format(L"-%u", suffix);
-		tracePath.Format(L"%s\\fbe-trace-%04u%02u%02u-%02u%02u%02u-pid%lu%s.log", (LPCWSTR)directory, time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, ::GetCurrentProcessId(), (LPCWSTR)suffixText);
+		traceBasePath.Format(L"%s\\fbe-trace-%04u%02u%02u-%02u%02u%02u-pid%lu%s", (LPCWSTR)directory, time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, ::GetCurrentProcessId(), (LPCWSTR)suffixText);
+		tracePath = traceBasePath + L".log";
 		traceFile = ::CreateFile(tracePath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (traceFile != INVALID_HANDLE_VALUE) break;
 	}
 	if (traceFile == INVALID_HANDLE_VALUE) { lastWriteError = ::GetLastError(); return; }
-	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = 0;
+	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = traceSegment = 0;
 	Event(L"environment", L"E000", L"FictionBook Editor diagnostic trace started");
 	Event(L"startup", L"S100", L"process started");
 }
@@ -123,4 +150,4 @@ CString StartupTrace::NormalizeLogValue(const wchar_t* text, int maximumLength) 
 CString StartupTrace::SanitizeLogText(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, true); }
 CString StartupTrace::RedactPath(const wchar_t* text) { return Sanitize(text, 512, true); }
 CString StartupTrace::SanitizeExceptionText(const wchar_t* text) { return Sanitize(text, 256, true); }
-void StartupTrace::Finish() { if (traceFile != INVALID_HANDLE_VALUE) { Event(L"startup", L"S999", L"process shutdown"); Flush(); ::CloseHandle(traceFile); traceFile = INVALID_HANDLE_VALUE; } if (traceLockInitialized) { ::DeleteCriticalSection(&traceLock); traceLockInitialized = false; } }
+void StartupTrace::Finish() { if (traceFile != INVALID_HANDLE_VALUE) { Event(L"startup", L"S999", L"process shutdown"); Flush(); ::CloseHandle(traceFile); traceFile = INVALID_HANDLE_VALUE; traceBasePath.Empty(); } if (traceLockInitialized) { ::DeleteCriticalSection(&traceLock); traceLockInitialized = false; } }
