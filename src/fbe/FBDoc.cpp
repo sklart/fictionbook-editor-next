@@ -608,6 +608,9 @@ static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 		if (binary == NULL)
 			continue;
 
+		MSXML2::IXMLDOMElementPtr binaryElement(binary);
+		if (binaryElement != NULL)
+			binaryElement->PutdataType(_bstr_t(L"bin.base64"));
 		_bstr_t encoded(binary->Gettext());
 		CString compact((const wchar_t*)encoded);
 		compact.Remove(L' ');
