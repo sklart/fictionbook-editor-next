@@ -397,33 +397,45 @@ function SaveImage(source)
 
 function LoadXSL(path, lang)
 {
+	TraceScript("J400", "operation=LoadXSL");
 	var xslt = new ActiveXObject("Msxml2.XSLTemplate.6.0");  // 4.0->6.0 TaF issues 201
 	var xsl = new ActiveXObject("Msxml2.FreeThreadedDOMDocument.6.0"); // 4.0->6.0 TaF issues 201
 	xsl.async = false;
     xsl.setProperty("ResolveExternals", true);  // added by TaF issues 201
 	var proc;
 
+	TraceScript("J440", "operation=xsl.load");
 	xsl.load(path);
-	var doc = xsl.documentElement;
-	var imp = doc.firstChild;
-
-	var ats = imp.attributes;
-	var href = ats.getNamedItem("href");
-	if(lang == "russian")
-		href.nodeValue = "rus.xsl";
-	if(lang == "english")
-	    href.nodeValue = "eng.xsl";
-	if (lang == "ukrainian")
-	    href.nodeValue = "ukr.xsl";
-
-
 	if(xsl.parseError.errorCode)
 	{
+		TraceScript("J450", "operation=XSL parse error");
 		errCantLoad(xsl, path);
 		return false;
 	}
+	var doc = xsl.documentElement;
+	if(!doc)
+	{
+		TraceScript("J460", "operation=XSL documentElement missing");
+		return false;
+	}
+	var imp = doc.firstChild;
+	if(!imp || !imp.attributes)
+	{
+		TraceScript("J461", "operation=XSL import/include missing");
+		return false;
+	}
+	var href = imp.attributes.getNamedItem("href");
+	if(!href)
+	{
+		TraceScript("J462", "operation=XSL href missing");
+		return false;
+	}
+	if(lang == "russian") href.nodeValue = "rus.xsl";
+	if(lang == "english") href.nodeValue = "eng.xsl";
+	if(lang == "ukrainian") href.nodeValue = "ukr.xsl";
 
 	xslt.stylesheet = xsl;
+	TraceScript("J499", "operation=LoadXSL success");
 	return xslt;
 }
 
@@ -447,6 +459,7 @@ function ShowCoverImage(prntEl,fullImg)
 
 function TransformXML(xslt, dom)
 {
+	TraceScript("J500", "operation=TransformXML");
 	var body = document.getElementById("fbw_body");
 	if(!body)
 	{
@@ -478,6 +491,7 @@ function TransformXML(xslt, dom)
 
 function ShowDescElements()
 {
+  TraceScript("J800", "operation=ShowDescElements");
   var desc = document.getElementById("fbw_desc");
   var spans = desc.getElementsByTagName("SPAN");
   for(var i=0; i < spans.length; i++)
@@ -490,6 +504,7 @@ function ShowDescElements()
 
 function LoadFromDOM(dom, lang)
 {
+	TraceScript("J300", "operation=LoadFromDOM");
 	dom.setProperty("SelectionNamespaces", "xmlns:fb='"+fbNS+"' xmlns:xlink='"+xlNS+"'");
 
 	var xpath=window.external.GetStylePath()+"\\fb2.xsl";
@@ -975,6 +990,7 @@ function SetCurrentDate(desc)
 
 function SetupDescription(desc)
 {
+	TraceScript("J700", "operation=SetupDescription");
 	SetDocumentVersion(desc);
 	SetProgramUsed(desc);
 	SetCurrentDate(desc)
@@ -1588,6 +1604,7 @@ function GetBinaries(doc)
 // load a list of binary objects from document
 function PutBinaries(doc)
 {
+ TraceScript("J600", "operation=PutBinaries");
  var nerr=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
 
  for(var i=0; i<bl.length; i++)
