@@ -22,6 +22,8 @@ struct ThemeRecord
 	XmlSourceThemeInfo info;
 	XmlSourceThemeMetadata metadata;
 	DWORD colors[XML_SRC_STYLE_TOKEN_COUNT];
+	// File names are independent from stable theme IDs.
+	CString sourcePath;
 };
 
 const ThemeRecord* FindExternalTheme(const CString& id);
@@ -103,6 +105,27 @@ bool IsValidThemeId(const std::wstring& id)
 		const wchar_t ch = id[i];
 		if(!((ch >= L'a' && ch <= L'z') || (ch >= L'0' && ch <= L'9') || ch == L'-'))
 			return false;
+	}
+	return true;
+}
+
+bool IsValidThemeName(const CString& name, CString* error = NULL)
+{
+	CString trimmed(name);
+	trimmed.Trim();
+	if(trimmed.IsEmpty() || trimmed.GetLength() > 100)
+	{
+		if(error) *error = ThemeString(L"fbe.theme.error.invalid_name", L"Missing or invalid theme name.");
+		return false;
+	}
+	for(int i = 0; i < name.GetLength(); ++i)
+	{
+		const wchar_t ch = name[i];
+		if(ch <= 0x1f || ch == 0x7f)
+		{
+			if(error) *error = ThemeString(L"fbe.theme.error.invalid_name", L"Missing or invalid theme name.");
+			return false;
+		}
 	}
 	return true;
 }
@@ -292,37 +315,36 @@ bool ParseThemeFile(const wchar_t* path, ThemeRecord& record, bool allowLegacyAn
 		if(error) *error = ThemeString(L"fbe.theme.error.invalid_id", L"Invalid theme id.");
 		return false;
 	}
-	if(!ReadJsonStringMember(json, 0, L"name", name) || name.empty() || name.size() > 100 ||
-		std::find_if(name.begin(), name.end(), [](wchar_t ch) { return ch <= 0x1f || ch == 0x7f; }) != name.end())
-	{
-		if(error) *error = ThemeString(L"fbe.theme.error.invalid_name", L"Missing or invalid theme name.");
-		return false;
-	}
+	if(!ReadJsonStringMember(json, 0, L"name", name) || !IsValidThemeName(CString(name.c_str()), error)) return false;
 	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, 0, L"colors", colorsStart))
 	{
 		if(error) *error = ThemeString(L"fbe.theme.error.missing_colors", L"Missing required field: colors.");
 		return false;
 	}
+	bool colorPresent[XML_SRC_STYLE_TOKEN_COUNT] = {};
 	for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i)
 	{
 		size_t colorStart = 0;
 		std::wstring colorText;
-		const bool hasColor = FbeRuntimeLocalization::JsonFindObjectMember(json, colorsStart,
-			kStyleTokenNames[i], colorStart);
-		if(!hasColor && i == XML_SRC_STYLE_XML_COMMENT)
-		{
-			record.colors[i] = record.colors[XML_SRC_STYLE_XML_TEXT];
+		colorPresent[i] = FbeRuntimeLocalization::JsonFindObjectMember(json, colorsStart, kStyleTokenNames[i], colorStart);
+		if(colorPresent[i] && FbeRuntimeLocalization::JsonParseString(json, colorStart, colorText) && ParseHexColor(colorText, record.colors[i]))
 			continue;
-		}
-		if(!hasColor || !FbeRuntimeLocalization::JsonParseString(json, colorStart, colorText) ||
-			!ParseHexColor(colorText, record.colors[i]))
-		{
-			if(error) error->Format(ThemeString(L"fbe.theme.error.invalid_color", L"Invalid required color: %s."), kStyleTokenNames[i]);
-			return false;
-		}
+		const bool reservedToken = i == XML_SRC_STYLE_LINE_NUMBER_ACTIVE || i == XML_SRC_STYLE_MATCHING_TAG_BACKGROUND ||
+			i == XML_SRC_STYLE_MATCHING_TAG_BORDER || i == XML_SRC_STYLE_XML_NAMESPACE || i == XML_SRC_STYLE_XML_COMMENT ||
+			i == XML_SRC_STYLE_XML_WARNING;
+		if(reservedToken && !colorPresent[i]) continue;
+		if(error) error->Format(ThemeString(L"fbe.theme.error.invalid_color", L"Invalid required color: %s."), kStyleTokenNames[i]);
+		return false;
 	}
+	if(!colorPresent[XML_SRC_STYLE_LINE_NUMBER_ACTIVE]) record.colors[XML_SRC_STYLE_LINE_NUMBER_ACTIVE] = record.colors[XML_SRC_STYLE_LINE_NUMBER];
+	if(!colorPresent[XML_SRC_STYLE_MATCHING_TAG_BACKGROUND]) record.colors[XML_SRC_STYLE_MATCHING_TAG_BACKGROUND] = record.colors[XML_SRC_STYLE_SELECTION_BACKGROUND];
+	if(!colorPresent[XML_SRC_STYLE_MATCHING_TAG_BORDER]) record.colors[XML_SRC_STYLE_MATCHING_TAG_BORDER] = record.colors[XML_SRC_STYLE_XML_TAG_NAME];
+	if(!colorPresent[XML_SRC_STYLE_XML_NAMESPACE]) record.colors[XML_SRC_STYLE_XML_NAMESPACE] = record.colors[XML_SRC_STYLE_XML_ATTRIBUTE_NAME];
+	if(!colorPresent[XML_SRC_STYLE_XML_COMMENT]) record.colors[XML_SRC_STYLE_XML_COMMENT] = record.colors[XML_SRC_STYLE_XML_TEXT];
+	if(!colorPresent[XML_SRC_STYLE_XML_WARNING]) record.colors[XML_SRC_STYLE_XML_WARNING] = record.colors[XML_SRC_STYLE_XML_ERROR];
 	record.info.id = id.c_str();
 	record.info.name = name.c_str();
+	record.sourcePath = path;
 	record.info.isDark = isDark;
 	record.metadata.isDark = isDark;
 	record.metadata.recalculateIsDark = false;
@@ -393,26 +415,44 @@ void LoadThemesFromDirectory(const CString& directory, bool isUser, std::vector<
 	WIN32_FIND_DATAW findData = {};
 	HANDLE found = ::FindFirstFileW(mask, &findData);
 	if(found == INVALID_HANDLE_VALUE) return;
+	std::vector<CString> paths;
 	do
 	{
-		if((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) continue;
-		ThemeRecord record = {};
-		const CString path = directory + L"\\" + findData.cFileName;
-		CString parseError;
-		const bool parsed = ParseThemeFile(path, record, false, &parseError);
-		if(parsed && !IsBuiltInThemeId(record.info.id) && !HasThemeId(themes, record.info.id))
-		{
-			record.info.isUser = isUser;
-			themes.push_back(record);
-		}
-		else if(!parsed)
-		{
-			CString trace = L"FBE XML theme skipped: " + path + L": " + parseError + L"\r\n";
-			::OutputDebugStringW(trace);
-		}
+		if((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+			paths.push_back(directory + L"\\" + findData.cFileName);
 	}
 	while(::FindNextFileW(found, &findData));
 	::FindClose(found);
+	std::sort(paths.begin(), paths.end(), [](const CString& left, const CString& right) { return left.CompareNoCase(right) < 0; });
+	for(size_t index = 0; index < paths.size(); ++index)
+	{
+		ThemeRecord record = {};
+		const CString& path = paths[index];
+		CString parseError;
+		if(!ParseThemeFile(path, record, false, &parseError))
+		{
+			::OutputDebugStringW((L"FBE XML theme skipped: " + path + L": " + parseError + L"\r\n").GetString());
+			continue;
+		}
+		if(IsBuiltInThemeId(record.info.id) || HasThemeId(themes, record.info.id))
+		{
+			CString acceptedPath(L"built-in theme");
+			if(!IsBuiltInThemeId(record.info.id))
+			{
+				for(size_t acceptedIndex = 0; acceptedIndex < themes.size(); ++acceptedIndex)
+					if(themes[acceptedIndex].info.id.CompareNoCase(record.info.id) == 0)
+					{
+						acceptedPath = themes[acceptedIndex].sourcePath;
+						break;
+					}
+			}
+			::OutputDebugStringW((L"FBE XML theme duplicate skipped: " + path + L" (ID: " + record.info.id +
+				L"); accepted: " + acceptedPath + L"; first loaded theme has priority.\r\n").GetString());
+			continue;
+		}
+		record.info.isUser = isUser;
+		themes.push_back(record);
+	}
 }
 
 std::vector<ThemeRecord> g_externalThemes;
@@ -513,24 +553,17 @@ const std::vector<XmlSourceThemeInfo>& GetAvailableThemes()
 	return g_availableThemes;
 }
 
-bool GetImportThemeInfo(const CString& sourcePath, CString& id, CString& name, CString& error)
+bool LoadImportTheme(const CString& sourcePath, XmlSourceThemeImport& theme, CString& error)
 {
 	ThemeRecord record = {};
-	id.Empty();
-	name.Empty();
 	error.Empty();
-	if(!ParseThemeFile(sourcePath, record, true, &error)) return false;
-	id = record.info.id;
-	name = record.info.name;
+	if(sourcePath.IsEmpty() || !ParseThemeFile(sourcePath, record, true, &error)) return false;
+	theme.sourcePath = sourcePath;
+	theme.info = record.info;
+	theme.metadata = record.metadata;
+	for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i) theme.colors[i] = record.colors[i];
 	return true;
 }
-
-bool GetImportThemeId(const CString& sourcePath, CString& id, CString& error)
-{
-	CString name;
-	return GetImportThemeInfo(sourcePath, id, name, error);
-}
-
 CString MakeAvailableThemeId(const CString& requestedId)
 {
 	return MakeAvailableUserThemeId(requestedId);
@@ -575,16 +608,15 @@ bool GetThemeColor(const CString& id, XmlSrcStyleToken token, DWORD& color)
 	return true;
 }
 
-bool ImportThemeFile(const CString& sourcePath, CString& importedId, CString& error, ImportThemeConflictMode conflictMode)
+bool ImportThemeFile(const XmlSourceThemeImport& theme, CString& importedId, CString& error, ImportThemeConflictMode conflictMode)
 {
 	importedId.Empty();
 	error.Empty();
 	ThemeRecord record = {};
-	if(sourcePath.IsEmpty() || !ParseThemeFile(sourcePath, record, true, &error))
-	{
-			if(error.IsEmpty()) error = ThemeString(L"fbe.theme.error.invalid_file", L"Invalid .fbetheme file.");
-		return false;
-	}
+	record.info = theme.info;
+	record.metadata = theme.metadata;
+	record.sourcePath = theme.sourcePath;
+	for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i) record.colors[i] = theme.colors[i];
 	const CString directory = GetUserThemeDirectory();
 	if(directory.IsEmpty() || (!::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS))
 	{
@@ -596,46 +628,54 @@ bool ImportThemeFile(const CString& sourcePath, CString& importedId, CString& er
 	if(conflictMode == IMPORT_THEME_REPLACE_USER && existing != NULL && existing->info.isUser)
 		importedThemeId = record.info.id;
 	const bool copied = importedThemeId.CompareNoCase(record.info.id) != 0;
-	const CString destination = directory + L"\\" + importedThemeId + L".fbetheme";
+	const CString destination = conflictMode == IMPORT_THEME_REPLACE_USER && existing != NULL && existing->info.isUser ? existing->sourcePath : directory + L"\\" + importedThemeId + L".fbetheme";
 	CString importedName(record.info.name);
 	if(copied) importedName += ThemeString(L"fbe.theme.import.copy_suffix", L" (imported)");
-	// Always write a validated UTF-8 file. This also normalizes a manually
-	// created Windows-1251 theme instead of leaving an unreadable user copy.
-	if(!ExportThemeFile(importedThemeId, importedName, record.colors, destination, error, &record.metadata)) return false;
-	const DWORD importedAttributes = ::GetFileAttributesW(destination);
-	if(importedAttributes != INVALID_FILE_ATTRIBUTES && (importedAttributes & FILE_ATTRIBUTE_READONLY) != 0)
-		::SetFileAttributesW(destination, importedAttributes & ~FILE_ATTRIBUTE_READONLY);
+	const DWORD originalAttributes = ::GetFileAttributesW(destination);
+	const bool readOnly = originalAttributes != INVALID_FILE_ATTRIBUTES && (originalAttributes & FILE_ATTRIBUTE_READONLY) != 0;
+	if(readOnly && !::SetFileAttributesW(destination, originalAttributes & ~FILE_ATTRIBUTE_READONLY))
+	{
+		error = ThemeString(L"fbe.theme.error.save", L"Cannot save exported theme.");
+		return false;
+	}
+	if(!ExportThemeFile(importedThemeId, importedName, record.colors, destination, error, &record.metadata))
+	{
+		if(readOnly) ::SetFileAttributesW(destination, originalAttributes);
+		return false;
+	}
 	importedId = importedThemeId;
 	ReloadThemes();
 	return true;
 }
 
+bool ImportThemeFile(const CString& sourcePath, CString& importedId, CString& error, ImportThemeConflictMode conflictMode)
+{
+	XmlSourceThemeImport theme = {};
+	if(!LoadImportTheme(sourcePath, theme, error)) return false;
+	return ImportThemeFile(theme, importedId, error, conflictMode);
+}
 bool DeleteUserTheme(const CString& id, CString& error)
 {
 	error.Empty();
 	const ThemeRecord* record = FindExternalTheme(id);
-	const CString userDirectory = GetUserThemeDirectory();
-	// Versions prior to unique imported IDs could leave a hidden user copy with
-	// the same ID as a shipped theme.  Let deletion remove that legacy copy.
-	CString path = userDirectory + L"\\" + id + L".fbetheme";
 	if(record == NULL || !record->info.isUser)
 	{
-		if(::GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES)
-		{
-			error = ThemeString(L"fbe.theme.error.delete_only_user", L"Only a user theme can be deleted.");
-			return false;
-		}
+		error = ThemeString(L"fbe.theme.error.delete_only_user", L"Only a user theme can be deleted.");
+		return false;
 	}
-	else
-	{
-		path = userDirectory + L"\\" + record->info.id + L".fbetheme";
-	}
+	const CString path = record->sourcePath;
 	const DWORD attributes = ::GetFileAttributesW(path);
-	if(attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY) != 0)
-		::SetFileAttributesW(path, attributes & ~FILE_ATTRIBUTE_READONLY);
-	if(!::DeleteFileW(path))
+	if(attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY) != 0 &&
+		!::SetFileAttributesW(path, attributes & ~FILE_ATTRIBUTE_READONLY))
 	{
 		error.Format(ThemeString(L"fbe.theme.error.delete_failed", L"Cannot delete the user theme (error %lu)."), ::GetLastError());
+		return false;
+	}
+	if(!::DeleteFileW(path))
+	{
+		const DWORD deleteError = ::GetLastError();
+		if(attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY) != 0) ::SetFileAttributesW(path, attributes);
+		error.Format(ThemeString(L"fbe.theme.error.delete_failed", L"Cannot delete the user theme (error %lu)."), deleteError);
 		return false;
 	}
 	ReloadThemes();
@@ -646,9 +686,20 @@ bool ExportThemeFile(const CString& id, const CString& name, const DWORD* colors
 	const CString& destinationPath, CString& error, const XmlSourceThemeMetadata* metadata)
 {
 	error.Empty();
-	if(id.IsEmpty() || name.IsEmpty() || colors == NULL || destinationPath.IsEmpty())
+	if(id.IsEmpty() || !IsValidThemeId(std::wstring(id)))
 	{
-		error = ThemeString(L"fbe.theme.error.incomplete_data", L"Theme data is incomplete.");
+		error = ThemeString(L"fbe.theme.error.invalid_id", L"Invalid theme id.");
+		return false;
+	}
+	if(!IsValidThemeName(name, &error)) return false;
+	if(colors == NULL)
+	{
+		error = ThemeString(L"fbe.theme.error.missing_colors", L"Missing required field: colors.");
+		return false;
+	}
+	if(destinationPath.IsEmpty())
+	{
+		error = ThemeString(L"fbe.theme.error.empty_path", L"Theme file path is empty.");
 		return false;
 	}
 	const CString escapedName = EscapeJsonString(name);
@@ -704,26 +755,14 @@ bool SaveThemeAsUser(const CString& name, const DWORD* colors, CString& savedId,
 	savedId.Empty();
 	error.Empty();
 	CString displayName(name);
-	displayName.Trim();
-	if(displayName.IsEmpty() || displayName.GetLength() > 100 ||
-		displayName.Find(L'\r') >= 0 || displayName.Find(L'\n') >= 0)
-	{
-		error = ThemeString(L"fbe.theme.error.invalid_name", L"Missing or invalid theme name.");
-		return false;
-	}
+	if(!IsValidThemeName(displayName, &error)) return false;
 	const CString directory = GetUserThemeDirectory();
 	if(directory.IsEmpty() || (!::CreateDirectoryW(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS))
 	{
 		error = ThemeString(L"fbe.theme.error.create_directory", L"Cannot create the user Themes directory.");
 		return false;
 	}
-	CString id = L"user-theme";
-	for(int suffix = 2; ; ++suffix)
-	{
-		const CString path = directory + L"\\" + id + L".fbetheme";
-		if(::GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) break;
-		id.Format(L"user-theme-%d", suffix);
-	}
+	const CString id = MakeAvailableUserThemeId(L"user-theme");
 	const CString path = directory + L"\\" + id + L".fbetheme";
 	if(!ExportThemeFile(id, displayName, colors, path, error, metadata)) return false;
 	savedId = id;

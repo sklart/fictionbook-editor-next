@@ -160,6 +160,23 @@ static std::vector<wchar_t> MakeThemeFileFilter()
 	return filter;
 }
 
+enum XmlSourcePreviewVariant
+{
+	XML_SOURCE_PREVIEW_FULL,
+	XML_SOURCE_PREVIEW_COMPACT,
+	XML_SOURCE_PREVIEW_MINIMAL,
+	XML_SOURCE_PREVIEW_FALLBACK,
+	XML_SOURCE_PREVIEW_NONE,
+};
+
+static XmlSourcePreviewVariant SelectSourcePreviewVariant(bool fullFits, bool compactFits,
+	bool minimalFits, bool fallbackFits)
+{
+	if(fullFits) return XML_SOURCE_PREVIEW_FULL;
+	if(compactFits) return XML_SOURCE_PREVIEW_COMPACT;
+	if(minimalFits) return XML_SOURCE_PREVIEW_MINIMAL;
+	return fallbackFits ? XML_SOURCE_PREVIEW_FALLBACK : XML_SOURCE_PREVIEW_NONE;
+}
 static bool IsHighContrastEnabled()
 {
 	HIGHCONTRAST highContrast = {};
@@ -258,6 +275,22 @@ LRESULT CSettingsNextDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 	return 1;
 }
 
+void CSettingsNextDlg::LoadSourceThemeControlsFromSettings()
+{
+	const CString activeThemeId = _Settings.GetXmlSrcThemeId();
+	ReloadSourceThemes(activeThemeId);
+	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
+	{
+		if(i == XML_SRC_COLOR_COMMENT) continue;
+		const XmlSrcColorGroup group = static_cast<XmlSrcColorGroup>(i);
+		m_source_color_custom[i] = _Settings.HasXmlSrcCustomColor(group);
+		m_source_colors[i].SetDefaultColor(GetThemeDefaultColor(activeThemeId, group));
+		m_source_colors[i].SetColor(m_source_color_custom[i] ? _Settings.GetXmlSrcColor(group) : CLR_DEFAULT);
+	}
+	UpdateSourceColorTooltips();
+	UpdateSourceThemeDisplay();
+	InvalidateSourcePreview();
+}
 void CSettingsNextDlg::UpdateSourceColorTooltips()
 {
 	static const int labels[XML_SRC_COLOR_GROUP_COUNT] = {
@@ -276,8 +309,11 @@ void CSettingsNextDlg::UpdateSourceColorTooltips()
 		label.ReleaseBuffer();
 		label.TrimRight(L": ");
 		CString colorText;
-		colorText.Format(ThemeString(L"fbe.theme.current_color", L"Current color: #%02X%02X%02X"),
-			GetRValue(color), GetGValue(color), GetBValue(color));
+		if (m_source_colors[i].GetColor() == CLR_DEFAULT)
+			colorText = ThemeString(L"fbe.theme.using_theme_colors", L"Uses the selected theme colors.");
+		else
+			colorText.Format(ThemeString(L"fbe.theme.current_color", L"Current color: #%02X%02X%02X"),
+				GetRValue(color), GetGValue(color), GetBValue(color));
 		const CString text = label + L". " + colorText;
 		m_source_tooltips.UpdateTipText(text.GetString(), GetDlgItem(kSourceColorControls[i]));
 	}
@@ -413,37 +449,45 @@ LRESULT CSettingsNextDlg::OnThemeActions(WORD, WORD, HWND, BOOL&)
 	{
 		const std::vector<wchar_t> filter = MakeThemeFileFilter();
 		WTL::CFileDialogEx dialog(TRUE, L"fbetheme", NULL,
-			OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_EXPLORER,
+			OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_EXPLORER | OFN_HIDEREADONLY,
 			filter.data(), m_hWnd);
 		if(dialog.DoModal() != IDOK) return 0;
 		int imported = 0;
-		int skipped = 0;
+		int failed = 0;
+		int cancelled = 0;
 		CString lastImportedId;
 		CString failures;
 		int shownFailures = 0;
 		const CSimpleArray<CString>& paths = dialog.GetFileNames();
 		for(int i = 0; i < paths.GetSize(); ++i)
 		{
-			CString importedId, error, candidateId, candidateName;
+			CString importedId, error;
+			XmlSourceThemeImport parsedTheme = {};
+			if(!XmlSourceThemes::LoadImportTheme(paths[i], parsedTheme, error))
+			{
+				++failed;
+				::OutputDebugStringW((paths[i] + L": " + error + L"\r\n").GetString());
+				if(shownFailures < 10) { failures += paths[i] + L": " + error + L"\r\n"; ++shownFailures; }
+				continue;
+			}
 			XmlSourceThemes::ImportThemeConflictMode conflictMode = XmlSourceThemes::IMPORT_THEME_COPY;
-			if(XmlSourceThemes::GetImportThemeInfo(paths[i], candidateId, candidateName, error) && XmlSourceThemes::IsUserTheme(candidateId))
+			if(XmlSourceThemes::IsUserTheme(parsedTheme.info.id))
 			{
 				CString conflict;
 				conflict.Format(ThemeString(L"fbe.theme.conflict.replace",
 					L"Theme \"%s\" (ID: %s) already exists.\n\nReplace the existing user theme?\nYes: replace\nNo: import a copy\nCancel: skip this file."),
-					candidateName, candidateId);
+					parsedTheme.info.name, parsedTheme.info.id);
 				const int decision = ::MessageBox(m_hWnd, conflict, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNOCANCEL | MB_ICONQUESTION);
-				if(decision == IDCANCEL) { ++skipped; continue; }
+				if(decision == IDCANCEL) { ++cancelled; continue; }
 				if(decision == IDYES) conflictMode = XmlSourceThemes::IMPORT_THEME_REPLACE_USER;
-			}
-			if(XmlSourceThemes::ImportThemeFile(paths[i], importedId, error, conflictMode))
+			}			if(XmlSourceThemes::ImportThemeFile(parsedTheme, importedId, error, conflictMode))
 			{
 				++imported;
 				lastImportedId = importedId;
 			}
 			else
 			{
-				++skipped;
+				++failed;
 				::OutputDebugStringW((paths[i] + L": " + error + L"\r\n").GetString());
 				if(shownFailures < 10) { failures += paths[i] + L": " + error + L"\r\n"; ++shownFailures; }
 			}
@@ -455,10 +499,10 @@ LRESULT CSettingsNextDlg::OnThemeActions(WORD, WORD, HWND, BOOL&)
 			OnSourcePaletteChanged(0, 0, NULL, handled);
 		}
 		CString result;
-		result.Format(ThemeString(L"fbe.theme.import.summary", L"Imported: %d. Skipped: %d."), imported, skipped);
+		result.Format(ThemeString(L"fbe.theme.import.summary", L"Imported: %d. Errors: %d. Cancelled: %d."), imported, failed, cancelled);
 		if(!failures.IsEmpty()) result += L"\r\n\r\n" + failures;
-		if(skipped > shownFailures) { CString more; more.Format(ThemeString(L"fbe.theme.import.more_errors", L"Additional errors: %d."), skipped - shownFailures); result += L"\r\n" + more; }
-		::MessageBox(m_hWnd, result, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | (skipped ? MB_ICONWARNING : MB_ICONINFORMATION));
+		if(failed > shownFailures) { CString more; more.Format(ThemeString(L"fbe.theme.import.more_errors", L"Additional errors: %d."), failed - shownFailures); result += L"\r\n" + more; }
+		::MessageBox(m_hWnd, result, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | (failed ? MB_ICONWARNING : MB_ICONINFORMATION));
 		return 0;
 	}
 
@@ -468,25 +512,34 @@ LRESULT CSettingsNextDlg::OnThemeActions(WORD, WORD, HWND, BOOL&)
 		const int selectedIndex = m_source_palette.GetCurSel();
 		if(selectedIndex >= 0 && selectedIndex < static_cast<int>(m_source_theme_names.size()))
 			sourceName = m_source_theme_names[selectedIndex];
+		const bool deletedThemeWasActive = _Settings.GetStoredXmlSrcThemeId().CompareNoCase(sourceId) == 0;
 		CString confirmation;
-		confirmation.Format(ThemeString(L"fbe.theme.delete.confirm",
-			L"Delete user theme \"%s\"?\n\nThe theme file is deleted immediately. This cannot be undone by Cancel in Settings."), sourceName);
+		confirmation.Format(ThemeString(deletedThemeWasActive ? L"fbe.theme.delete.confirm_active" : L"fbe.theme.delete.confirm_inactive",
+			deletedThemeWasActive ?
+			L"Delete active user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel. The editor will switch to FBE Light and manual colors will be reset." :
+			L"Delete user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel."), sourceName);
 		if(::MessageBox(m_hWnd, confirmation, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 			return 0;
-		const bool deletedThemeWasActive = _Settings.GetStoredXmlSrcThemeId().CompareNoCase(sourceId) == 0;
 		const CString fallbackId = XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT);
 		CString error;
 		if(!XmlSourceThemes::DeleteUserTheme(sourceId, error))
 			::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
+		else if(deletedThemeWasActive)
+		{
+			_Settings.SetXmlSrcThemeId(fallbackId, false);
+			for(int group = 0; group < XML_SRC_COLOR_GROUP_COUNT; ++group)
+				_Settings.SetXmlSrcColor(static_cast<XmlSrcColorGroup>(group), XML_SRC_COLOR_DEFAULT, false);
+			_Settings.Save();
+			LoadSourceThemeControlsFromSettings();
+			const HWND mainWindow = _Settings.GetMainWindow();
+			if(::IsWindow(mainWindow))
+				::PostMessage(mainWindow, WM_FBE_APPLY_XML_SOURCE_THEME, 0, 0);
+		}
 		else
 		{
-			if(deletedThemeWasActive)
-				_Settings.SetXmlSrcThemeId(fallbackId, true);
-			ReloadSourceThemes(fallbackId);
-			BOOL handled = FALSE;
-			OnSourcePaletteChanged(0, 0, NULL, handled);
-		}
-		return 0;
+			// An inactive file is removed immediately, without changing active settings.
+			LoadSourceThemeControlsFromSettings();
+		}		return 0;
 	}
 	if(command != 2 && command != 3) return 0;
 
@@ -535,6 +588,8 @@ LRESULT CSettingsNextDlg::OnThemeActions(WORD, WORD, HWND, BOOL&)
 		hasExistingMetadata, metadata);
 	exportId = XmlSourceThemes::IsUserTheme(sourceId) ? sourceId :
 		XmlSourceThemes::MakeAvailableThemeId(L"custom-" + metadata.baseThemeId);
+	// Existing user themes retain optional metadata without a self-referential base id.
+	if(metadata.baseThemeId.CompareNoCase(exportId) == 0) metadata.baseThemeId.Empty();
 	if(!XmlSourceThemes::ExportThemeFile(exportId, sourceName, colors, dialog.m_szFileName, error, &metadata))
 		::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
 	return 0;
@@ -602,13 +657,6 @@ LRESULT CSettingsNextDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL& bHandled
 	};
 	const DWORD background = highContrast ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOW)) :
 		ResolveSourceTokenColor(id, XML_SRC_STYLE_EDITOR_BACKGROUND, m_source_colors);
-	const DWORD text = colorFor(XML_SRC_STYLE_XML_TEXT);
-	const DWORD tag = colorFor(XML_SRC_STYLE_XML_TAG_NAME);
-	const DWORD delimiter = colorFor(XML_SRC_STYLE_XML_TAG_DELIMITER);
-	const DWORD attribute = colorFor(XML_SRC_STYLE_XML_ATTRIBUTE_NAME);
-	const DWORD value = colorFor(XML_SRC_STYLE_XML_ATTRIBUTE_VALUE);
-	const DWORD entity = colorFor(XML_SRC_STYLE_XML_ENTITY);
-	const DWORD pi = colorFor(XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION);
 	HBRUSH brush = ::CreateSolidBrush(background);
 	::FillRect(drawItem->hDC, &drawItem->rcItem, brush); ::DeleteObject(brush);
 	::FrameRect(drawItem->hDC, &drawItem->rcItem, reinterpret_cast<HBRUSH>(::GetStockObject(highContrast ? BLACK_BRUSH : GRAY_BRUSH)));
@@ -622,35 +670,62 @@ LRESULT CSettingsNextDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL& bHandled
 	RECT bounds = drawItem->rcItem; ::InflateRect(&bounds, -4, -2);
 	const int lineHeight = metrics.tmHeight + 1;
 	const int availableWidth = bounds.right - bounds.left;
-	const wchar_t* fullLine = L"  <p class=\"body\">Text &amp;</p>";
-	SIZE fullSize = {}; ::GetTextExtentPoint32W(drawItem->hDC, fullLine, static_cast<int>(wcslen(fullLine)), &fullSize);
-	const bool compact = fullSize.cx > availableWidth;
-	const bool minimal = bounds.bottom - bounds.top < lineHeight * 4;
+
+	// Each variant is measured as complete XML lines before anything is painted.
+	// This guarantees that a closing delimiter is never clipped at a DPI/font size.
+	static const wchar_t* fullLines[] = {
+		L"<?xml version=\"1.0\"?>", L"<section id=\"main\">",
+		L"  <p class=\"body\">Text &amp;</p>", L"</section>" };
+	static const wchar_t* compactLines[] = {
+		L"<section id=\"m\">", L"  <p>Text &amp;</p>", L"</section>" };
+	static const wchar_t* minimalLines[] = { L"<p id=\"x\">T&amp;</p>" };
+	static const wchar_t* fallbackLines[] = { L"<p/>" };
+	const auto fits = [&](const wchar_t* const* lines, int count) {
+		if(bounds.bottom - bounds.top < count * lineHeight) return false;
+		for(int i = 0; i < count; ++i) {
+			SIZE size = {}; ::GetTextExtentPoint32W(drawItem->hDC, lines[i], static_cast<int>(wcslen(lines[i])), &size);
+			if(size.cx > availableWidth) return false;
+		}
+		return true;
+	};
+	const XmlSourcePreviewVariant variant = SelectSourcePreviewVariant(
+		fits(fullLines, _countof(fullLines)), fits(compactLines, _countof(compactLines)),
+		fits(minimalLines, _countof(minimalLines)), fits(fallbackLines, _countof(fallbackLines)));
+	if(variant == XML_SOURCE_PREVIEW_NONE) {
+		::SetBkMode(drawItem->hDC, oldMode); ::SelectObject(drawItem->hDC, oldFont); if(createdFont) ::DeleteObject(createdFont);
+		bHandled = TRUE; return 0;
+	}
+
+	const DWORD text = colorFor(XML_SRC_STYLE_XML_TEXT);
+	const DWORD tag = colorFor(XML_SRC_STYLE_XML_TAG_NAME);
+	const DWORD delimiter = colorFor(XML_SRC_STYLE_XML_TAG_DELIMITER);
+	const DWORD attribute = colorFor(XML_SRC_STYLE_XML_ATTRIBUTE_NAME);
+	const DWORD value = colorFor(XML_SRC_STYLE_XML_ATTRIBUTE_VALUE);
+	const DWORD entity = colorFor(XML_SRC_STYLE_XML_ENTITY);
+	const DWORD pi = colorFor(XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION);
 	int x = bounds.left, y = bounds.top;
 	const auto nextLine = [&]() { x = bounds.left; y += lineHeight; };
 	const auto token = [&](const wchar_t* valueText, DWORD color) {
-		if(y + metrics.tmHeight > bounds.bottom || x >= bounds.right) return;
 		SIZE size = {}; ::GetTextExtentPoint32W(drawItem->hDC, valueText, static_cast<int>(wcslen(valueText)), &size);
-		if(x + size.cx > bounds.right) return; // Samples are selected before painting; never split XML syntax.
+		ATLASSERT(x + size.cx <= bounds.right);
 		::SetTextColor(drawItem->hDC, color);
 		::ExtTextOutW(drawItem->hDC, x, y, 0, NULL, valueText, static_cast<UINT>(wcslen(valueText)), NULL);
 		x += size.cx;
 	};
-	// Keep every sample valid and short for the actual source font and DPI.
-	if(minimal)
-	{
-		token(L"<", delimiter); token(L"p", tag); token(L" id", attribute); token(L"=", delimiter);
-		token(L"\"x\"", value); token(L">", delimiter); token(L"T", text); token(L"&amp;", entity);
-		token(L"</", delimiter); token(L"p", tag); token(L">", delimiter);
-		::SetBkMode(drawItem->hDC, oldMode); ::SelectObject(drawItem->hDC, oldFont); if(createdFont) ::DeleteObject(createdFont);
-		bHandled = TRUE; return 0;
+	if(variant == XML_SOURCE_PREVIEW_FULL) {
+		token(L"<?xml version", pi); token(L"=", delimiter); token(L"\"1.0\"", value); token(L"?>", pi); nextLine();
+		token(L"<", delimiter); token(L"section", tag); token(L" id", attribute); token(L"=", delimiter); token(L"\"main\"", value); token(L">", delimiter); nextLine();
+		token(L"  <", delimiter); token(L"p", tag); token(L" class", attribute); token(L"=", delimiter); token(L"\"body\"", value); token(L">", delimiter); token(L"Text ", text); token(L"&amp;", entity); token(L"</", delimiter); token(L"p", tag); token(L">", delimiter); nextLine();
+		token(L"</", delimiter); token(L"section", tag); token(L">", delimiter);
+	} else if(variant == XML_SOURCE_PREVIEW_COMPACT) {
+		token(L"<", delimiter); token(L"section", tag); token(L" id", attribute); token(L"=", delimiter); token(L"\"m\"", value); token(L">", delimiter); nextLine();
+		token(L"  <", delimiter); token(L"p", tag); token(L">", delimiter); token(L"Text ", text); token(L"&amp;", entity); token(L"</", delimiter); token(L"p", tag); token(L">", delimiter); nextLine();
+		token(L"</", delimiter); token(L"section", tag); token(L">", delimiter);
+	} else if(variant == XML_SOURCE_PREVIEW_MINIMAL) {
+		token(L"<", delimiter); token(L"p", tag); token(L" id", attribute); token(L"=", delimiter); token(L"\"x\"", value); token(L">", delimiter); token(L"T", text); token(L"&amp;", entity); token(L"</", delimiter); token(L"p", tag); token(L">", delimiter);
+	} else {
+		token(L"<", delimiter); token(L"p", tag); token(L"/>", delimiter);
 	}
-	token(L"<?xml", pi); token(L" version", pi); token(L"=", delimiter); token(L"\"1.0\"", value); token(L"?>", pi);
-	nextLine(); token(L"<", delimiter); token(compact ? L"s" : L"section", tag); token(L" id", attribute); token(L"=", delimiter); token(L"\"m\"", value); token(L">", delimiter);
-	nextLine(); token(compact ? L"<" : L"  <", delimiter); token(L"p", tag);
-	if(!compact) { token(L" class", attribute); token(L"=", delimiter); token(L"\"body\"", value); }
-	token(L">", delimiter); token(compact ? L"T" : L"Text ", text); token(L"&amp;", entity); token(L"</", delimiter); token(L"p", tag); token(L">", delimiter);
-	nextLine(); token(L"</", delimiter); token(compact ? L"s" : L"section", tag); token(L">", delimiter);
 	::SetBkMode(drawItem->hDC, oldMode); ::SelectObject(drawItem->hDC, oldFont); if(createdFont) ::DeleteObject(createdFont);
 	bHandled = TRUE; return 0;
 }

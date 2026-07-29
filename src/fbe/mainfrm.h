@@ -304,7 +304,7 @@ public:
     m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_file_age(0), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
     m_source_selection_transferred(false), m_source_selection_start(0),
-    m_source_selection_end(0), m_selBandID(-1)
+    m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1)
 	// added by SeNS
 	{ 
 		strINS[0] = L'\0';
@@ -373,6 +373,7 @@ public:
   bool                    m_source_selection_transferred;
   int                     m_source_selection_start;
   int                     m_source_selection_end;
+  int                     m_source_line_number_digits;
 
   void SaveSelection(VIEW_TYPE vt);  
   void RestoreSelection(); 
@@ -500,6 +501,7 @@ public:
 			MESSAGE_HANDLER(WM_THEMECHANGED, OnSettingChange)
 		#endif
 		MESSAGE_HANDLER(WM_DROPFILES, OnDropFiles)
+		MESSAGE_HANDLER(WM_FBE_APPLY_XML_SOURCE_THEME, OnApplyXmlSourceTheme)
 		MESSAGE_HANDLER(AU::WM_SETSTATUSTEXT, OnSetStatusText)
 		MESSAGE_HANDLER(AU::WM_TRACKPOPUPMENU, OnTrackPopupMenu)
 
@@ -658,6 +660,7 @@ public:
   LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnPostCreate(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSettingChange(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
@@ -1029,7 +1032,8 @@ public:
 	void UpdateFileTimeStamp();
 	bool ShowSettingsDialog(HWND parent = ::GetActiveWindow());
 	void ApplyConfChanges(bool applyDocumentStyles = true);
-	void ApplyXmlSourceEditorChanges();
+	void ApplyXmlSourceEditorChanges(bool saveSettings = true);
+	void UpdateSourceLineNumberMargin(bool force = false);
 	void RestartProgram();
 	void FillMenuWithHkeys(HMENU);
 	void RefreshLocalizedMainFrameUi();

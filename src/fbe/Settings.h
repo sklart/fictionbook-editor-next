@@ -1,5 +1,8 @@
 #pragma once
 
+// Shared by SettingsNext and CMainFrame; must target the main window.
+#define WM_FBE_APPLY_XML_SOURCE_THEME (WM_APP + 0x145)
+
 #include <algorithm>
 #include <map>
 #include <vector>

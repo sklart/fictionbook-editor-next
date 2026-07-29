@@ -141,6 +141,20 @@ foreach($requiredText in @('GetUserThemeDirectory', 'LoadThemesFromDirectory(Get
 # фиксируем статическим контрактом: многофайловый импорт, сохранение/удаление
 # пользовательской темы, обновление подсказок и экспорт фактической системной
 # палитры вместо условной светлой схемы.
+$colorButtonSource = Read-ProjectFile "src\fbe\extras\ColorButton.cpp"
+$colorButtonHeader = Read-ProjectFile "src\fbe\extras\ColorButton.h"
+foreach($requiredText in @(
+    'm_clrCurrent = CLR_DEFAULT',
+    '(m_clrCurrent == CLR_DEFAULT) ? m_clrDefault : m_clrCurrent',
+    'clr = m_clrPicker = CLR_DEFAULT'
+)) {
+    if($colorButtonSource.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "CColorButton no longer preserves CLR_DEFAULT as inherited color: $requiredText"
+    }
+}
+if($colorButtonHeader.IndexOf('return m_clrCurrent;', [System.StringComparison]::Ordinal) -lt 0) {
+    throw 'CColorButton::GetColor must expose CLR_DEFAULT instead of a rendered fallback color.'
+}
 $settingsDialog = Read-ProjectFile "src\fbe\SettingsNextDlg.cpp"
 foreach($requiredText in @(
     'OFN_ALLOWMULTISELECT',
@@ -184,6 +198,9 @@ if($settingsHeader -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
 if($settingsDialog -like '*<!--*') {
     throw 'В предпросмотре не должен отображаться XML-комментарий до подтверждения сохранности модели документа.'
 }
+if($settingsSource.IndexOf('m_xml_src_colors[XML_SRC_COLOR_COMMENT] = XML_SRC_COLOR_DEFAULT', [System.StringComparison]::Ordinal) -lt 0) {
+    throw 'Историческое переопределение цвета XML-комментариев не очищается при загрузке Settings.xml.'
+}
 
 # Preview, export and the editor must resolve XML tokens through the same
 # semantic groups. CLR_DEFAULT is an inherited value, never an actual white
@@ -195,8 +212,12 @@ foreach($requiredText in @(
     'm_source_colors[i].GetColor() != CLR_DEFAULT',
     'SetColor(CLR_DEFAULT)',
     'GetTextExtentPoint32W',
-    'compact = fullSize.cx > availableWidth',
-    'IsHighContrastEnabled',
+    'Each variant is measured as complete XML lines before anything is painted.',
+    'fits(fullLines',
+    'fits(compactLines',
+    'fits(minimalLines',
+    'ResolveSourceTokenColor(id, XML_SRC_STYLE_EDITOR_BACKGROUND',
+    'XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION',
     'XML_SRC_STYLE_XML_TAG_DELIMITER'
 )) {
     if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
@@ -238,9 +259,10 @@ foreach($requiredText in @(
     }
 }
 foreach($requiredText in @(
-    'GetImportThemeInfo',
+    'LoadImportTheme',
+    'ImportThemeFile(parsedTheme,'
     'fbe.theme.import.more_errors',
-    'candidateName, candidateId',
+    'parsedTheme.info.name, parsedTheme.info.id',
     'stem[i] < 0x20',
     "L'_'"
 )) {
@@ -248,12 +270,53 @@ foreach($requiredText in @(
         throw "Theme import/export safety behavior is missing: $requiredText"
     }
 }
-if($themeSource -notlike '*GetImportThemeInfo*') {
-    throw 'Theme parser does not expose the imported theme name for conflict handling.'
+if($themeSource -like '*GetImportThemeInfo*' -or $themeSource -like '*GetImportThemeId*') {
+    throw 'Legacy import helpers would parse a selected file more than once.'
 }
-if($settingsDialog -notlike '*SetXmlSrcThemeId(fallbackId, true)*') {
-    throw 'Deleting the active theme does not immediately persist a safe id.'
+if($settingsDialog.IndexOf('m_source_colors[i].GetColor() == CLR_DEFAULT', [System.StringComparison]::Ordinal) -lt 0 -or
+   $settingsDialog.IndexOf('fbe.theme.using_theme_colors', [System.StringComparison]::Ordinal) -lt 0) {
+    throw 'Automatic color tooltip does not describe inheritance from the selected theme.'
+}
+foreach($requiredText in @(
+    'SetXmlSrcThemeId(fallbackId, false)',
+    'SetXmlSrcColor(static_cast<XmlSrcColorGroup>(group), XML_SRC_COLOR_DEFAULT, false)',
+    '_Settings.Save()',
+    'LoadSourceThemeControlsFromSettings()',
+    '_Settings.GetMainWindow()',
+    'WM_FBE_APPLY_XML_SOURCE_THEME'
+)) {
+    if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Active/inactive theme deletion behavior is missing: $requiredText"
+    }
+}foreach($requiredText in @(
+    'fbe.theme.delete.confirm_active',
+    'fbe.theme.delete.confirm_inactive',
+    'deletedThemeWasActive',
+    'PostMessage(mainWindow, WM_FBE_APPLY_XML_SOURCE_THEME'
+)) {
+    if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Theme deletion does not distinguish active and inactive user themes: $requiredText"
+    }
+}
+if($themeSource.IndexOf('fbe.theme.error.empty_path', [System.StringComparison]::Ordinal) -lt 0) {
+    throw 'Export does not diagnose an empty destination path separately.'
 }
 if($documentation -notlike '*xml.namespace*' -or $documentation -notlike '*зарезервированным*') {
     throw 'Documentation does not describe xml.namespace.'
 }
+
+
+# Fold markers inherit active theme colors, and a failed delete preserves the
+# original DeleteFileW error while restoring the read-only attribute.
+$mainFrame = Read-ProjectFile "src\fbe\mainfrm.cpp"
+$foldBlock = [regex]::Match($mainFrame, 'const COLORREF markerFore[\s\S]*?DefineMarker\(SC_MARKNUM_FOLDEROPENMID, SC_MARK_EMPTY, markerFore, markerBack\);')
+if(!$foldBlock.Success) { throw 'Cannot inspect fold marker palette setup.' }
+foreach($requiredText in @('XML_SRC_STYLE_LINE_NUMBER', 'XML_SRC_STYLE_EDITOR_BACKGROUND', 'GetSysColor(COLOR_WINDOW)', 'GetSysColor(COLOR_WINDOWTEXT)', 'markerFore, markerBack')) {
+    if($foldBlock.Value -notlike "*$requiredText*") { throw "Fold marker setup is missing: $requiredText" }
+}
+if($foldBlock.Value -match 'RGB\(0xff, 0xff, 0xff\)|RGB\(0, 0, 0\)') { throw 'Fold markers must not use hard-coded black or white outside high contrast.' }
+$deleteBlock = [regex]::Match($themeSource, 'if\(!::DeleteFileW\(path\)\)[\s\S]*?return false;[\s\S]*?\n\t}')
+if(!$deleteBlock.Success -or $deleteBlock.Value -notmatch 'const DWORD deleteError = ::GetLastError\(\);' -or $deleteBlock.Value -notmatch 'SetFileAttributesW\(path, attributes\)' -or $deleteBlock.Value -notmatch 'deleteError') { throw 'Theme deletion must preserve DeleteFileW error before restoring attributes.' }
+$applyBlock = [regex]::Match($mainFrame, 'LRESULT CMainFrame::OnApplyXmlSourceTheme[\s\S]*?void CMainFrame::ApplyConfChanges')
+if(!$applyBlock.Success -or $applyBlock.Value -notmatch 'ApplyXmlSourceEditorChanges\(false\)' -or $applyBlock.Value -notmatch 'if\(saveSettings\)') { throw 'Active theme deletion must apply styles without a second Settings.xml save.' }
+if($settingsDialog -notmatch 'baseThemeId.CompareNoCase\(exportId\) == 0\) metadata.baseThemeId.Empty\(\)') { throw 'Theme export must remove baseThemeId self-references.' }

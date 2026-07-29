@@ -50,6 +50,7 @@ END_MSG_MAP()
 	LRESULT OnDrawItem(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnMouseMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	void ReloadSourceThemes(const CString& selectedThemeId);
+	void LoadSourceThemeControlsFromSettings();
 	void UpdateSourceColorTooltips();
 	void UpdateSourceThemeDisplay();
 	void InvalidateSourcePreview();

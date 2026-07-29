@@ -2446,6 +2446,7 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		SetupSci();
 		SetSciStyles();
+		UpdateSourceLineNumberMargin(true);
 		m_source.SendMessage(SCI_COLOURISE, 0, -1);
 	}
 	if (m_document_tree.IsWindow())
@@ -2473,6 +2474,12 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	}
 
 	m_current_dpi = newDpi;
+	if(m_source.IsWindow())
+	{
+		SetupSci();
+		SetSciStyles();
+		UpdateSourceLineNumberMargin(true);
+	}
 	m_status.SetPaneWidth(ID_PANE_CHAR, MulDiv(60, newDpi, 96));
 	m_status.SetPaneWidth(399, MulDiv(20, newDpi, 96));
 	m_status.SetPaneWidth(ID_PANE_INS, MulDiv(30, newDpi, 96));
@@ -5604,8 +5611,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
     break;
   case SOURCE:
 	// added by SeNS: display line numbers
-	if (_Settings.XMLSrcShowLineNumbers()) m_source.SendMessage(SCI_SETMARGINWIDTHN,0,64);
-	else m_source.SendMessage(SCI_SETMARGINWIDTHN,0,0);
+	UpdateSourceLineNumberMargin(false);
 
     UISetCheck(ID_VIEW_SOURCE, 1);
     m_view.HideActiveWnd();
@@ -5678,14 +5684,41 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	}
 }
 
-/*CMainFrame::VIEW_TYPE CMainFrame::GetCurView() {
-  HWND	hWnd=m_view.GetActiveWnd();
-  if (hWnd==m_doc->m_body)
-    return BODY;
-  if (hWnd==m_doc->m_desc)
-    return DESC;
-  return SOURCE;
-}*/
+static int GetLineNumberDigits(int lineCount)
+{
+	if(lineCount < 1) lineCount = 1;
+	int digits = 1;
+	for(int value = lineCount; value >= 10; value /= 10) ++digits;
+	return digits < 4 ? 4 : digits;
+}
+
+static bool ShouldUpdateSourceLineNumberMargin(int previousDigits, int lineCount)
+{
+	return previousDigits != GetLineNumberDigits(lineCount);
+}
+
+void CMainFrame::UpdateSourceLineNumberMargin(bool force)
+{
+	if(!m_source.IsWindow()) return;
+	if(!_Settings.XMLSrcShowLineNumbers())
+	{
+		if(force || m_source_line_number_digits != 0)
+			m_source.SendMessage(SCI_SETMARGINWIDTHN, 0, 0);
+		m_source_line_number_digits = 0;
+		return;
+	}
+	const int lineCount = static_cast<int>(m_source.SendMessage(SCI_GETLINECOUNT));
+	if(!force && !ShouldUpdateSourceLineNumberMargin(m_source_line_number_digits, lineCount)) return;
+	const int digits = GetLineNumberDigits(lineCount);
+	CStringA sample;
+	for(int i = 0; i < digits; ++i) sample += '9';
+	const int measuredWidth = static_cast<int>(m_source.SendMessage(SCI_TEXTWIDTH,
+		STYLE_LINENUMBER, reinterpret_cast<LPARAM>(sample.GetString())));
+	const int width = measuredWidth > 0 ? measuredWidth + 8 : 64;
+	if(force || static_cast<int>(m_source.SendMessage(SCI_GETMARGINWIDTHN, 0)) != width)
+		m_source.SendMessage(SCI_SETMARGINWIDTHN, 0, width);
+	m_source_line_number_digits = digits;
+}
 
 void  CMainFrame::SetSciStyles() {
   const bool highContrast = IsHighContrastEnabled();
@@ -5711,6 +5744,16 @@ void  CMainFrame::SetSciStyles() {
   m_source.SendMessage(SCI_STYLESETBACK, STYLE_LINENUMBER, windowBackground);
   m_source.SendMessage(SCI_SETCARETFORE, highContrast ? windowText :
     _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CARET));
+  // Current-line highlighting is editor chrome and remains active when XML
+  // syntax highlighting is disabled. High contrast never uses a theme color.
+  if(highContrast)
+    m_source.SendMessage(SCI_SETCARETLINEVISIBLE, FALSE);
+  else
+  {
+    m_source.SendMessage(SCI_SETCARETLINEBACK,
+      _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CURRENT_LINE_BACKGROUND));
+    m_source.SendMessage(SCI_SETCARETLINEVISIBLE, TRUE);
+  }
   m_source.SendMessage(SCI_SETSELFORE, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) :
     _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_SELECTION_FOREGROUND));
   m_source.SendMessage(SCI_SETSELBACK, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) :
@@ -5872,8 +5915,7 @@ void  CMainFrame::SetupSci()
   m_source.SendMessage(SCI_SETXCARETPOLICY,CARET_SLOP|CARET_EVEN,50);
   m_source.SendMessage(SCI_SETYCARETPOLICY,CARET_SLOP|CARET_EVEN,50);
   // added by SeNS: display line numbers
-  if (_Settings.XMLSrcShowLineNumbers()) m_source.SendMessage(SCI_SETMARGINWIDTHN,0,64);
-  else m_source.SendMessage(SCI_SETMARGINWIDTHN,0,0);
+  UpdateSourceLineNumberMargin(true);
   m_source.SendMessage(SCI_SETMARGINWIDTHN,1,0);
   m_source.SendMessage(SCI_SETFOLDFLAGS, 16);
   m_source.SendMessage(SCI_SETPROPERTY,(WPARAM)"fold",(WPARAM)"1");
@@ -5892,8 +5934,10 @@ void  CMainFrame::SetupSci()
   if (_Settings.XmlSrcSyntaxHL()) 
   {
     const bool highContrast = IsHighContrastEnabled();
-    const COLORREF markerFore = highContrast ? ::GetSysColor(COLOR_WINDOW) : RGB(0xff, 0xff, 0xff);
-    const COLORREF markerBack = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) : RGB(0, 0, 0);
+    const COLORREF markerFore = highContrast ? ::GetSysColor(COLOR_WINDOW) :
+      _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_LINE_NUMBER);
+    const COLORREF markerBack = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
+      _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
     const COLORREF indicatorColor = highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) : RGB(128, 128, 255);
     m_source.SendMessage(SCI_SETILEXER, 0, reinterpret_cast<LPARAM>(CreateEditorLexer("xml")));
     m_source.SendMessage(SCI_SETMARGINTYPEN, 2, SC_MARGIN_SYMBOL);
@@ -5929,6 +5973,8 @@ void  CMainFrame::SetupSci()
 }
 
 void  CMainFrame::SciModified(const SCNotification& scn) {
+  if (scn.modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))
+    UpdateSourceLineNumberMargin(false);
   if (scn.modificationType & SC_MOD_CHANGEFOLD) {
     if (scn.foldLevelNow & SC_FOLDLEVELHEADERFLAG) {
       if (!(scn.foldLevelPrev & SC_FOLDLEVELHEADERFLAG))
@@ -6481,15 +6527,17 @@ bool CMainFrame::ShowSettingsDialog(HWND parent)
 	return dlg.DoModal(parent) == IDOK;
 }
 
-void CMainFrame::ApplyXmlSourceEditorChanges()
+LRESULT CMainFrame::OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&)
+{
+	ApplyXmlSourceEditorChanges(false);
+	return 0;
+}
+void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 {
 	const VIEW_TYPE activeView = m_current_view;
 	SetupSci();
 	SetSciStyles();
-	if (_Settings.XMLSrcShowLineNumbers())
-		m_source.SendMessage(SCI_SETMARGINWIDTHN, 0, 64);
-	else
-		m_source.SendMessage(SCI_SETMARGINWIDTHN, 0, 0);
+	UpdateSourceLineNumberMargin(true);
 
 	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source);
 	xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, false);
@@ -6497,7 +6545,8 @@ void CMainFrame::ApplyXmlSourceEditorChanges()
 	// Перекраска XML-редактора не должна менять активный режим документа.
 	if(activeView == BODY && m_doc)
 		m_view.ActivateWnd(m_doc->m_body);
-	_Settings.Save();
+	if(saveSettings)
+		_Settings.Save();
 }
 void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 {
@@ -6513,10 +6562,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	SetSciStyles();
 
 	// added by SeNS: display line numbers
-	if (_Settings.XMLSrcShowLineNumbers())
-		m_source.SendMessage(SCI_SETMARGINWIDTHN,0,64);
-	else
-		m_source.SendMessage(SCI_SETMARGINWIDTHN,0,0);
+	UpdateSourceLineNumberMargin(true);
 
 	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source);
 	xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, false);
