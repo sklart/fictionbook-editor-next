@@ -13,6 +13,23 @@ var IDNO     = 7;
 
 window.onerror = errorHandler; // document.lvl=0;
 var ImagesInfo = new Array();
+var diagnosticTraceEnabled = false;
+var diagnosticLastStage = "J000";
+function SetDiagnosticLastStage(code) { diagnosticLastStage = code; }
+function apiGetDiagnosticLastStage() { return diagnosticLastStage; }
+function apiSetDiagnosticTraceEnabled(enabled) { diagnosticTraceEnabled = enabled ? true : false; TraceScript("J001", "operation=apiSetDiagnosticTraceEnabled"); return true; }
+function TraceScript(code, message)
+{
+ SetDiagnosticLastStage(code);
+ if(!diagnosticTraceEnabled) return;
+ try { if(window.external && window.external.TraceScript) window.external.TraceScript(code, message); } catch(ignore) {}
+}
+function DiagError(code, operation, error)
+{
+ var details = "operation=" + operation;
+ try { if(error) details += "; number=" + error.number + "; name=" + error.name + "; description=" + error.description + "; message=" + error.message + "; line=" + error.lineNumber; } catch(ignore) {}
+ TraceScript(code, details);
+}
 
 //======================================
 // Public API
@@ -510,6 +527,7 @@ function recursiveChangeNbsp(elem, repChar) {
 
 function apiLoadFB2(path, lang)
 {
+	TraceScript("J100", "operation=apiLoadFB2");
 	var css=document.getElementById("css");
 	var css_filename = css.href;
 	css.href="";

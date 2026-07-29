@@ -64,8 +64,7 @@ public:
     safeCode = safeCode.Left(32);
     // JavaScript-код может вызвать этот метод сам. В журнал не попадает
     // переданная строка: так исключается запись текста книги или пути файла.
-    CString safeMessage;
-    safeMessage.Format(L"details-length=%u", message ? ::SysStringLen(message) : 0);
+    CString safeMessage = StartupTrace::SanitizeLogText(message ? message : L"", 512);
     StartupTrace::ScriptEvent(safeCode, safeMessage);
     return S_OK;
   }
