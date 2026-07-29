@@ -2926,6 +2926,7 @@ void  CFBEView::Init() {
 
   // attach document events handler
   DocumentEvents::DispEventUnadvise(Document(),&DIID_HTMLDocumentEvents2);
+  StartupTrace::Event(L"webbrowser", L"WB230", L"DispEventAdvise document");
   DocumentEvents::DispEventAdvise(Document(),&DIID_HTMLDocumentEvents2);
   TextEvents::DispEventUnadvise(Document()->body,&DIID_HTMLTextContainerEvents2);
   TextEvents::DispEventAdvise(Document()->body,&DIID_HTMLTextContainerEvents2);
