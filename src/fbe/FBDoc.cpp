@@ -520,6 +520,13 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	StartupTrace::HResult(L"document", L"J200", hr, L"apiLoadFB2");
 	if (FAILED(hr))
 	{
+		// Preserve the original apiLoadFB2 HRESULT. This extra query is diagnostic only.
+		CComVariant lastStage;
+		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticLastStage", NULL, 0, lastStage);
+		if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
+			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
+		else
+			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticLastStage");
 		TraceDocumentEvent(L"Загрузка книги завершилась ошибкой JavaScript", filename);
 		return false;
 	}
