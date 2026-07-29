@@ -205,6 +205,28 @@ bool StartupTrace::Enabled()
 	return traceFile != INVALID_HANDLE_VALUE;
 }
 
+void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wchar_t* message)
+{
+	WriteRecord(category, L"info", code, message, false);
+}
+
+void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message)
+{
+	WriteRecord(category, L"warning", code, message, false);
+}
+
+void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
+	const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message)
+{
+	CString details(message ? message : L"");
+	if (exceptionInfo)
+		details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.description=%s",
+			exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode),
+			(LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrDescription));
+	if (errorInfo)
+		details += L"; IErrorInfo-present";
+	WriteRecord(category, L"error", code, details, true);
+}
 void StartupTrace::Event(const wchar_t* category, const wchar_t* stage)
 {
 	CString message(stage ? stage : L"");
@@ -248,6 +270,23 @@ void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message)
 		safeMessage = safeMessage.Left(512) + L"…";
 	WriteRecord(L"script", L"info", code, safeMessage, false);
 }
+
+CString StartupTrace::NormalizeLogValue(const wchar_t* text, int maximumLength)
+{
+	CString value(text ? text : L"");
+	value.Replace(L"\r", L" "); value.Replace(L"\n", L" "); value.Replace(L"\t", L" ");
+	for (int i = 0; i < value.GetLength(); ++i) if (value[i] < L' ') value.SetAt(i, L' ');
+	if (maximumLength > 0 && value.GetLength() > maximumLength) value = value.Left(maximumLength) + L"…";
+	return value;
+}
+CString StartupTrace::SanitizeLogText(const wchar_t* text, int maximumLength) { return NormalizeLogValue(text, maximumLength); }
+CString StartupTrace::SanitizeExceptionText(const wchar_t* text) { return NormalizeLogValue(text, 256); }
+CString StartupTrace::RedactPath(const wchar_t* text) { return NormalizeLogValue(text, 512); }
+void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
+CString StartupTrace::CurrentLogPath() { return CString(); }
+CString StartupTrace::LastStageCode() { return CString(); }
+CString StartupTrace::LastStageMessage() { return CString(); }
+DWORD StartupTrace::LastWriteError() { return ::GetLastError(); }
 
 void StartupTrace::Flush()
 {
