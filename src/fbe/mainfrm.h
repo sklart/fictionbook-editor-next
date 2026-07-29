@@ -1026,7 +1026,8 @@ public:
 	bool ReloadFile();
 	void UpdateFileTimeStamp();
 	bool ShowSettingsDialog(HWND parent = ::GetActiveWindow());
-	void ApplyConfChanges();
+	void ApplyConfChanges(bool applyDocumentStyles = true);
+	void ApplyXmlSourceEditorChanges();
 	void RestartProgram();
 	void FillMenuWithHkeys(HMENU);
 	void RefreshLocalizedMainFrameUi();
