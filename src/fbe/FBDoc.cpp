@@ -51,8 +51,10 @@ static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
 		_bstr_t url(document->URL);
 		_bstr_t readyState(document->readyState);
 		MSHTML::IHTMLDocument5Ptr document5(document);
+		MSHTML::IHTMLDocument6Ptr document6(document);
 		_bstr_t compatMode(document5 ? document5->compatMode : L"(unknown)");
-		long documentMode = document5 ? document5->documentMode : -1;
+		long documentMode = -1;
+		if(document6) document6->get_documentMode(&documentMode);
 		_bstr_t charset(document->charset);
 		MSHTML::IHTMLDocument3Ptr document3(document);
 		const bool hasBody = (bool)document->body;

@@ -2929,15 +2929,20 @@ void  CFBEView::Init() {
   StartupTrace::Event(L"webbrowser", L"WB230", L"DispEventAdvise document");
   DocumentEvents::DispEventAdvise(Document(),&DIID_HTMLDocumentEvents2);
   TextEvents::DispEventUnadvise(Document()->body,&DIID_HTMLTextContainerEvents2);
+  StartupTrace::Event(L"webbrowser", L"WB240", L"DispEventAdvise text container");
   TextEvents::DispEventAdvise(Document()->body,&DIID_HTMLTextContainerEvents2);
 
   // attach editing changed handlers
+  StartupTrace::Event(L"webbrowser", L"WB250", L"RegisterForDirtyRange");
   m_mkc->RegisterForDirtyRange((RangeSink*)this,&m_dirtyRangeCookie);
 
   // attach external helper
+  StartupTrace::Event(L"webbrowser", L"WB260", L"CreateHelper");
+  StartupTrace::Event(L"webbrowser", L"WB270", L"SetExternalDispatch #2");
   SetExternalDispatch(CreateHelper());
 
   // fixup all P elements
+  StartupTrace::Event(L"webbrowser", L"WB280", L"FixupParagraphs");
   FixupParagraphs(Document()->body);
 
   if (m_normalize)
