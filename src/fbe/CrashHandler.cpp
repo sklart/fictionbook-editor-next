@@ -76,17 +76,24 @@ namespace
 		const void* exceptionAddress = exceptionInfo && exceptionInfo->ExceptionRecord
 			? exceptionInfo->ExceptionRecord->ExceptionAddress : NULL;
 
-		wchar_t text[1024];
+		const CString diagnosticTracePath = StartupTrace::RedactPath(StartupTrace::CurrentLogPath());
+		const CString lastStageCode = StartupTrace::LastStageCode();
+		const CString lastStageMessage = StartupTrace::LastStageMessage();
+		wchar_t text[2048];
 		const int textLength = _snwprintf_s(text, _countof(text), _TRUNCATE,
 			L"FictionBook Editor crash report\r\n"
 			L"Version: " FBE_VERSION_WSTRING L"\r\n"
 			L"Process ID: %lu\r\n"
+			L"Crash thread ID: %lu\r\n"
 			L"Exception code: 0x%08lX\r\n"
 			L"Exception address: %p\r\n"
 			L"Minidump written: %s\r\n"
-			L"Minidump error: %lu\r\n",
-			::GetCurrentProcessId(), exceptionCode, exceptionAddress,
-			dumpWritten ? L"yes" : L"no", dumpWritten ? ERROR_SUCCESS : dumpError);
+			L"Minidump error: %lu\r\n"
+			L"Diagnostic trace: %s\r\n"
+			L"Last trace stage: %s; %s\r\n",
+			::GetCurrentProcessId(), ::GetCurrentThreadId(), exceptionCode, exceptionAddress,
+			dumpWritten ? L"yes" : L"no", dumpWritten ? ERROR_SUCCESS : dumpError,
+			(LPCWSTR)diagnosticTracePath, (LPCWSTR)lastStageCode, (LPCWSTR)lastStageMessage);
 
 		const WORD bom = 0xFEFF;
 		DWORD written = 0;
