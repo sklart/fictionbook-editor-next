@@ -493,7 +493,12 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult);
 	StartupTrace::HResult(L"script", L"J010", hr, L"apiSetDiagnosticTraceEnabled");
 	if (FAILED(hr))
-		return false;
+	{
+		// The diagnostic API was introduced after the original runtime. Its
+		// absence (including DISP_E_UNKNOWNNAME) must never prevent a book from
+		// opening with an older main.js.
+		StartupTrace::Event(L"script", L"J011 apiSetDiagnosticTraceEnabled unavailable; continuing without script diagnostics");
+	}
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100 Вызов apiLoadFB2");
 	hr = InvokeFunc(L"apiLoadFB2", params, 2, res);
