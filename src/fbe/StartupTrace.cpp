@@ -138,7 +138,41 @@ void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const w
 void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"-", message, false); }
 void StartupTrace::Error(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"error", code, message, true); }
 void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); }
-void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HRESULT result, const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); if (exceptionInfo) details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.source=%s; excep.description=%s; excep.help=%d; excep.helpContext=%lu; excep.deferred=%d", exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode), (LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrSource), (LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrDescription), exceptionInfo->bstrHelpFile ? 1 : 0, exceptionInfo->dwHelpContext, exceptionInfo->pfnDeferredFillIn ? 1 : 0); if (errorInfo) details += L"; IErrorInfo-present"; WriteRecord(category, L"error", code, details, true); }
+void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
+	const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message)
+{
+	CString details;
+	details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L"");
+	if(exceptionInfo)
+	{
+		details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.source=%s; excep.description=%s; excep.help=%d; excep.helpContext=%lu; excep.deferred=%d",
+			exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode),
+			(LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrSource),
+			(LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrDescription),
+			exceptionInfo->bstrHelpFile ? 1 : 0, exceptionInfo->dwHelpContext,
+			exceptionInfo->pfnDeferredFillIn ? 1 : 0);
+	}
+	if(errorInfo)
+	{
+		GUID guid = GUID_NULL;
+		BSTR source = NULL, description = NULL, helpFile = NULL;
+		DWORD helpContext = 0;
+		errorInfo->GetGUID(&guid);
+		errorInfo->GetSource(&source);
+		errorInfo->GetDescription(&description);
+		errorInfo->GetHelpFile(&helpFile);
+		errorInfo->GetHelpContext(&helpContext);
+		wchar_t guidText[64] = {};
+		::StringFromGUID2(guid, guidText, _countof(guidText));
+		details.AppendFormat(L"; errorInfo.guid=%s; errorInfo.source=%s; errorInfo.description=%s; errorInfo.helpContext=%lu; errorInfo.help=%d",
+			guidText, (LPCWSTR)SanitizeExceptionText(source),
+			(LPCWSTR)SanitizeExceptionText(description), helpContext, helpFile ? 1 : 0);
+		::SysFreeString(source);
+		::SysFreeString(description);
+		::SysFreeString(helpFile);
+	}
+	WriteRecord(category, L"error", code, details, true);
+}
 void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { WriteRecord(L"script", L"info", code, message, false); }
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
