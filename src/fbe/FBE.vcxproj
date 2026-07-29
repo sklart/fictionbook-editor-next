@@ -134,6 +134,7 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
+      <LargeAddressAware>true</LargeAddressAware>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <PostBuildEvent>
@@ -205,6 +206,7 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
+      <LargeAddressAware>true</LargeAddressAware>
       <TargetMachine>MachineX86</TargetMachine>
       <Profile>false</Profile>
     </Link>
