@@ -26,7 +26,7 @@ function TraceScript(code, message)
 }
 function DiagError(code, operation, error)
 {
- var details = "operation=" + operation;
+ var details = "level=error; operation=" + operation;
  try { if(error) details += "; number=" + error.number + "; name=" + error.name + "; description=" + error.description + "; message=" + error.message + "; line=" + error.lineNumber; } catch(ignore) {}
  TraceScript(code, details);
 }

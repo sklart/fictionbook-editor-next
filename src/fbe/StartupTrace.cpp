@@ -42,6 +42,15 @@ namespace
 		return value;
 	}
 
+	CString SanitizeScriptDetails(const wchar_t* message)
+	{
+		CString value = Sanitize(message, 512, true);
+		CString lower(value);
+		lower.MakeLower();
+		if(value.Find(L"<") >= 0 || value.Find(L">") >= 0 || lower.Find(L"base64") >= 0 || lower.Find(L"data:") >= 0)
+			return L"details omitted";
+		return value;
+	}
 	bool WriteAll(const char* bytes, DWORD byteCount)
 	{
 		while (byteCount)
@@ -173,7 +182,7 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 	}
 	WriteRecord(category, L"error", code, details, true);
 }
-void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { WriteRecord(L"script", L"info", code, message, false); }
+void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CString safeMessage = SanitizeScriptDetails(message); const bool isError = safeMessage.Find(L"level=error") == 0; WriteRecord(L"script", isError ? L"error" : L"info", code, safeMessage, isError); }
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
 CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath; }
