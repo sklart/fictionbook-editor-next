@@ -29,7 +29,7 @@ static void TraceDocumentEvent(const wchar_t* operation, const CString& filename
 {
 	CString trace;
 	trace.Format(L"%s; file-present=%d", operation, filename.IsEmpty() ? 0 : 1);
-	StartupTrace::Event(L"xml", trace);
+	StartupTrace::Event(L"document", trace);
 }
 
 static void TraceRecoveryEvent(const wchar_t* operation, const CString& filename)
@@ -1102,7 +1102,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	CString trace;
 	trace.Format(L"X100 CreateDOM started: encoding=%s, compact-binaries=%d",
 		(const wchar_t*)encoding, compactBinaries ? 1 : 0);
-	StartupTrace::Event(L"xml", trace);
+	StartupTrace::Event(L"document", trace);
 	try
 	{
 		MSXML2::IXMLDOMDocument2Ptr result(CreateDOMImp(encoding, compactBinaries));
@@ -1111,7 +1111,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	}
 	catch (_com_error& e)
 	{
-		StartupTrace::HResult(L"xml", L"X191", e.Error(), L"CreateDOM");
+		StartupTrace::HResult(L"com", L"X191", e.Error(), L"CreateDOM");`r`n`t	StartupTrace::Event(L"com", trace);
 		U::ReportError(e);
 	}
 
@@ -1195,7 +1195,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	CString trace;
 	trace.Format(L"%s; file-present=%d", fValidateOnly ? L"Проверка книги начата" : L"Сохранение книги начато",
 		filename.IsEmpty() ? 0 : 1);
-	StartupTrace::Event(L"xml", trace);
+	StartupTrace::Event(L"document", trace);
   try {
     // create a schema collection
     MSXML2::IXMLDOMSchemaCollection2Ptr	scol;

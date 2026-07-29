@@ -4844,7 +4844,7 @@ static void WriteSelectionTrace(const CString& message)
 {
 	CString trace(L"E200 ");
 	trace += message;
-	StartupTrace::Event(L"editor", trace);
+	StartupTrace::Event(L"selection", message);
 }
 
 bool  CMainFrame::SourceToHTML() 
