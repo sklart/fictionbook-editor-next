@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "CrashHandler.h"
+#include "StartupTrace.h"
 #include "utils.h"
 #include "../version.h"
 
@@ -98,6 +99,7 @@ namespace
 
 	LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exceptionInfo)
 	{
+		StartupTrace::EmergencyFlush();
 		if (g_crashDirectory[0] == L'\0')
 			return EXCEPTION_EXECUTE_HANDLER;
 
@@ -106,9 +108,9 @@ namespace
 
 		wchar_t basePath[MAX_PATH];
 		_snwprintf_s(basePath, _countof(basePath), _TRUNCATE,
-			L"%sFBENext-crash-%04u%02u%02u-%02u%02u%02u",
+			L"%sFBENext-crash-%04u%02u%02u-%02u%02u%02u-pid%lu",
 			g_crashDirectory, localTime.wYear, localTime.wMonth, localTime.wDay,
-			localTime.wHour, localTime.wMinute, localTime.wSecond);
+			localTime.wHour, localTime.wMinute, localTime.wSecond, ::GetCurrentProcessId());
 
 		wchar_t dumpPath[MAX_PATH];
 		wchar_t reportPath[MAX_PATH];
