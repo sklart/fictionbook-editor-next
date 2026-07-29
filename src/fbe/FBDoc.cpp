@@ -491,7 +491,11 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	while (!m_body.Loaded())
 	{
 		const int messageResult = ::GetMessage(&msg, NULL, 0, 0);
-		if (messageResult == 0)`r`n		{`r`n			StartupTrace::Warning(L"webbrowser", L"WB132", L"message loop ended before DocumentComplete");`r`n			return false;`r`n		}
+		if (messageResult == 0)
+		{
+			StartupTrace::Warning(L"webbrowser", L"WB132", L"message loop ended before DocumentComplete");
+			return false;
+		}
 		if (messageResult == -1)
 		{
 			StartupTrace::HResult(L"webbrowser", L"WB131", HRESULT_FROM_WIN32(::GetLastError()), L"GetMessage failed");
