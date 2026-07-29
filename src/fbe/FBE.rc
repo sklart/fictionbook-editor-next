@@ -798,7 +798,7 @@ BEGIN
         MENUITEM "Spell &check...",             ID_TOOLS_SPELLCHECK
         MENUITEM SEPARATOR
         MENUITEM "Diagnostic &log...",          ID_TOOLS_DIAGNOSTIC_TRACE
-        MENUITEM "Open diagnostic log &folder",    ID_TOOLS_OPEN_DIAGNOSTIC_LOG
+        MENUITEM "Open current diagnostic &log",   ID_TOOLS_OPEN_DIAGNOSTIC_LOG
     END
     POPUP "&Scripts"
     BEGIN
