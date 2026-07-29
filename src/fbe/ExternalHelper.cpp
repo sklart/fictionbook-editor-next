@@ -28,6 +28,37 @@ struct DescElement
 
 static CSimpleMap<CString, DescElement> g_desc_elements;
 
+static const wchar_t* ExternalHelperMethodName(DISPID dispid)
+{
+	switch (dispid) { case 5: return L"GetStylePath"; case 7: return L"InflateParagraphs"; case 8: return L"GetUUID"; case 12: return L"GetExtendedStyle"; case 19: return L"GetNBSP"; case 22: return L"GetProgramVersion"; case 29: return L"IsDiagnosticTraceEnabled"; case 30: return L"TraceScript"; default: return L"other"; }
+}
+static bool IsLoadDiagnosticMethod(DISPID dispid) { return dispid == 5 || dispid == 7 || dispid == 8 || dispid == 12 || dispid == 19 || dispid == 22 || dispid == 29 || dispid == 30; }
+static CString ExternalHelperArgumentTypes(const DISPPARAMS* parameters)
+{
+	CString types;
+	for (UINT index = 0; parameters && index < parameters->cArgs; ++index) { CString type; type.Format(L"VT_%u", static_cast<unsigned int>(V_VT(&parameters->rgvarg[index]))); if (!types.IsEmpty()) types += L","; types += type; }
+	return types;
+}
+HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
+{
+	HRESULT result = IDispatchImpl<IExternalHelper, &IID_IExternalHelper>::GetTypeInfoCount(typeInfoCount); StartupTrace::HResult(L"external", L"XH100", result, L"GetTypeInfoCount"); return result;
+}
+HRESULT ExternalHelper::GetTypeInfo(UINT typeInfo, LCID lcid, ITypeInfo** resultTypeInfo)
+{
+	HRESULT result = IDispatchImpl<IExternalHelper, &IID_IExternalHelper>::GetTypeInfo(typeInfo, lcid, resultTypeInfo); CString details; details.Format(L"typeinfo=%u; lcid=%lu", typeInfo, lcid); StartupTrace::HResult(L"external", L"XH110", result, details); return result;
+}
+HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCount, LCID lcid, DISPID* dispids)
+{
+	HRESULT result = IDispatchImpl<IExternalHelper, &IID_IExternalHelper>::GetIDsOfNames(riid, names, nameCount, lcid, dispids); CString details; details.Format(L"lcid=%lu; names=%u; method=%s; dispid=%ld", lcid, nameCount, (names && nameCount && names[0]) ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-", (dispids && nameCount) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN)); StartupTrace::HResult(L"external", L"XH120", result, details); return result;
+}
+HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags, DISPPARAMS* parameters, VARIANT* resultValue, EXCEPINFO* exceptionInfo, UINT* argumentError)
+{
+	const bool trace = IsLoadDiagnosticMethod(dispid);
+	if (trace) { CString details; details.Format(L"dispid=%ld; method=%s; flags=0x%04X; args=%u; types=[%s]", static_cast<long>(dispid), ExternalHelperMethodName(dispid), flags, parameters ? parameters->cArgs : 0, (LPCWSTR)ExternalHelperArgumentTypes(parameters)); StartupTrace::Event(L"external", L"XH130", details); }
+	HRESULT callResult = IDispatchImpl<IExternalHelper, &IID_IExternalHelper>::Invoke(dispid, riid, lcid, flags, parameters, resultValue, exceptionInfo, argumentError);
+	if (trace || FAILED(callResult)) { CString details; details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%u", static_cast<long>(dispid), ExternalHelperMethodName(dispid), resultValue ? static_cast<unsigned int>(V_VT(resultValue)) : VT_EMPTY, argumentError ? *argumentError : UINT_MAX); StartupTrace::HResult(L"external", FAILED(callResult) ? L"XH140" : L"XH131", callResult, details); }
+	return callResult;
+}
 static CString GetCurrentDocumentFilePath(const CString* filename, const bool* namevalid)
 {
 	if (filename == NULL || namevalid == NULL || !*namevalid || filename->IsEmpty())
@@ -275,7 +306,7 @@ HRESULT ExternalHelper::GenrePopup(IDispatch *obj,LONG x,LONG y,BSTR *name)
 
 	if(!fp){
 		U::MessageBox(MB_OK|MB_ICONERROR,_T("FBE"),
-			  _T("Не могу найти файл-список языков '%s'."),_T("languages.txt"));
+			  _T("пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ '%s'."),_T("languages.txt"));
 		return;
 	}
 

@@ -41,6 +41,11 @@ public:
     m_document_filename = filename;
     m_document_namevalid = namevalid;
   }
+  STDMETHOD(GetTypeInfoCount)(UINT* typeInfoCount);
+  STDMETHOD(GetTypeInfo)(UINT typeInfo, LCID lcid, ITypeInfo** typeInfo);
+  STDMETHOD(GetIDsOfNames)(REFIID riid, LPOLESTR* names, UINT nameCount, LCID lcid, DISPID* dispids);
+  STDMETHOD(Invoke)(DISPID dispid, REFIID riid, LCID lcid, WORD flags,
+    DISPPARAMS* parameters, VARIANT* result, EXCEPINFO* exceptionInfo, UINT* argumentError);
   STDMETHOD(GetDocumentFilePath)(BSTR* path);
   STDMETHOD(GetDocumentFileName)(BSTR* name);
   STDMETHOD(GetDocumentDirectory)(BSTR* directory);
