@@ -3587,26 +3587,34 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
-static bool OpenDiagnosticLogFolder()
+static bool OpenDiagnosticLog()
 {
-	wchar_t localAppData[MAX_PATH] = {};
+	const CString currentLogPath(StartupTrace::CurrentLogPath());
+	if(!currentLogPath.IsEmpty() && ::GetFileAttributes(currentLogPath) != INVALID_FILE_ATTRIBUTES)
+	{
+		return reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", currentLogPath,
+			NULL, NULL, SW_SHOWNORMAL)) > 32;
+	}
+
+	wchar_t diagnosticsDirectory[MAX_PATH] = {};
 	if(FAILED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE,
-		NULL, SHGFP_TYPE_CURRENT, localAppData)))
+		NULL, SHGFP_TYPE_CURRENT, diagnosticsDirectory)))
 		return false;
 
-	CString directory(localAppData);
-	directory += L"\\FBE Next";
-	::CreateDirectory(directory, NULL);
+	CString directory(diagnosticsDirectory);
+	directory += L"\\FBE Next\\Diagnostics";
+	::SHCreateDirectoryEx(NULL, directory, NULL);
 	return reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", directory,
 		NULL, NULL, SW_SHOWNORMAL)) > 32;
 }
 
 LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
 {
-	if(!OpenDiagnosticLogFolder())
+	if(!OpenDiagnosticLog())
 	{
-		::MessageBox(m_hWnd, L"Не удалось открыть папку диагностического журнала.",
-			L"Диагностический журнал", MB_OK | MB_ICONERROR);
+		::MessageBox(m_hWnd,
+			GetDiagnosticTraceText(L"fbe.trace.open_failed", L"Не удалось открыть диагностический журнал."),
+			GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"), MB_OK | MB_ICONERROR);
 	}
 	return 0;
 }
@@ -3624,7 +3632,7 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 	}
 
 	const CString question(GetDiagnosticTraceText(L"fbe.trace.enable.question",
-			L"Диагностический журнал содержит технические сведения о запуске, командах, переходах между режимами, выделении, открытии и сохранении книги, а также ошибках COM. Текст книги, пути файлов, содержимое скриптов и содержимое изображений не записываются.\n\n"
+			L"Диагностический журнал содержит технические сведения о запуске, командах и ошибках COM. Текст книги, XML, HTML, Base64 и содержимое пользовательских сценариев не записываются; пути обезличиваются.\n\n"
 			L"Включить его для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу."));
 	if(::MessageBox(m_hWnd, question, caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return 0;
@@ -3639,7 +3647,7 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 	}
 
 	const CString result(GetDiagnosticTraceText(L"fbe.trace.enable.completed",
-		L"Диагностический журнал включён. Перезапустите FBE Next, чтобы начать запись в %LOCALAPPDATA%\\FBE Next\\fbe-trace.log."));
+		L"Диагностический журнал включён. Перезапустите FBE Next, чтобы начать запись."));
 	::MessageBox(m_hWnd, result, caption, MB_OK | MB_ICONINFORMATION);
 	return 0;
 }

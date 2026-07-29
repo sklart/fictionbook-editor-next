@@ -1190,6 +1190,24 @@
         "bg-BG": "&Диагностично проследяване..."
       }
     },
+    "fbe.menu.idr_mainframe.tools.open_diagnostic_log": {
+      "kind": "MENUITEM",
+      "targetId": "ID_TOOLS_OPEN_DIAGNOSTIC_LOG",
+      "translations": {
+        "en-US": "Open current diagnostic &log",
+        "ru-RU": "Открыть текущий диагностический &журнал",
+        "uk-UA": "Відкрити поточний діагностичний &журнал",
+        "de-DE": "Aktuelles Diagnose&protokoll öffnen",
+        "fr-FR": "Ouvrir le journal de diagnostic &actuel",
+        "es-ES": "Abrir el registro de diagnóstico &actual",
+        "it-IT": "Apri il &registro diagnostico corrente",
+        "pl-PL": "Otwórz bieżący dziennik &diagnostyczny",
+        "pt-PT": "Abrir o registo de diagnóstico &atual",
+        "nl-NL": "Huidig diagnostisch &logboek openen",
+        "cs-CZ": "Otevřít aktuální diagnostický &protokol",
+        "bg-BG": "Отваряне на текущия диагностичен &журнал"
+      }
+    },
     "fbe.trace.caption": {
       "kind": "MESSAGE",
       "targetId": "",
@@ -1212,8 +1230,8 @@
       "kind": "MESSAGE",
       "targetId": "",
       "translations": {
-        "en-US": "Diagnostic trace records startup, commands, view switching, selection, document opening and saving, and COM errors.\n\nEnable it for the next FBE Next launch? Restart the application to begin recording.",
-        "ru-RU": "Диагностическая трассировка записывает в журнал сведения о запуске, командах, переходах между режимами, выделении, открытии и сохранении книги, а также ошибках COM.\n\nВключить её для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу.",
+        "en-US": "Diagnostic trace records technical information about startup, commands, and COM errors. Book text, XML, HTML, Base64, and user-script contents are not recorded; paths are redacted.\n\nEnable it for the next FBE Next launch? Restart the application to begin recording.",
+        "ru-RU": "Диагностическая трассировка записывает технические сведения о запуске, командах и ошибках COM. Текст книги, XML, HTML, Base64 и содержимое пользовательских сценариев не записываются; пути обезличиваются.\n\nВключить её для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу.",
         "uk-UA": "Діагностичне трасування записує запуск, команди, переходи між режимами, виділення, відкриття й збереження книги, а також помилки COM.\n\nУвімкнути його для наступного запуску FBE Next? Для початку запису перезапустіть програму.",
         "de-DE": "Das Diagnoseprotokoll zeichnet Start, Befehle, Ansichtswechsel, Auswahl, Öffnen und Speichern von Büchern sowie COM-Fehler auf.\n\nFür den nächsten FBE-Next-Start aktivieren? Starten Sie das Programm neu, um die Aufzeichnung zu beginnen.",
         "fr-FR": "La trace de diagnostic enregistre le démarrage, les commandes, les changements de vue, la sélection, l’ouverture et l’enregistrement des livres, ainsi que les erreurs COM.\n\nL’activer pour le prochain démarrage de FBE Next ? Redémarrez l’application pour commencer l’enregistrement.",
@@ -1230,8 +1248,8 @@
       "kind": "MESSAGE",
       "targetId": "",
       "translations": {
-        "en-US": "Diagnostic trace is enabled. Restart FBE Next to begin writing %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
-        "ru-RU": "Диагностическая трассировка включена. Перезапустите FBE Next, чтобы начать запись в %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
+        "en-US": "Diagnostic trace is enabled. Restart FBE Next to begin writing the log.",
+        "ru-RU": "Диагностическая трассировка включена. Перезапустите FBE Next, чтобы начать запись.",
         "uk-UA": "Діагностичне трасування ввімкнено. Перезапустіть FBE Next, щоб почати запис у %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
         "de-DE": "Das Diagnoseprotokoll ist aktiviert. Starten Sie FBE Next neu, um in %LOCALAPPDATA%\\FBE Next\\fbe-trace.log zu schreiben.",
         "fr-FR": "La trace de diagnostic est activée. Redémarrez FBE Next pour écrire dans %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
@@ -1332,6 +1350,24 @@
         "nl-NL": "De instelling voor diagnostische tracering kon niet worden gewijzigd.",
         "cs-CZ": "Nastavení diagnostického trasování se nepodařilo změnit.",
         "bg-BG": "Настройката на диагностичното проследяване не можа да бъде променена."
+      }
+    },
+    "fbe.trace.open_failed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Could not open the diagnostic log.",
+        "ru-RU": "Не удалось открыть диагностический журнал.",
+        "uk-UA": "Не вдалося відкрити діагностичний журнал.",
+        "de-DE": "Das Diagnoseprotokoll konnte nicht geöffnet werden.",
+        "fr-FR": "Impossible d’ouvrir le journal de diagnostic.",
+        "es-ES": "No se pudo abrir el registro de diagnóstico.",
+        "it-IT": "Impossibile aprire il registro diagnostico.",
+        "pl-PL": "Nie udało się otworzyć dziennika diagnostycznego.",
+        "pt-PT": "Não foi possível abrir o registo de diagnóstico.",
+        "nl-NL": "Het diagnostische logboek kon niet worden geopend.",
+        "cs-CZ": "Diagnostický protokol se nepodařilo otevřít.",
+        "bg-BG": "Диагностичният журнал не можа да бъде отворен."
       }
     },
     "fbe.menu.idr_mainframe.popup.scripts": {

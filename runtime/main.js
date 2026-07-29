@@ -13,6 +13,23 @@ var IDNO     = 7;
 
 window.onerror = errorHandler; // document.lvl=0;
 var ImagesInfo = new Array();
+var diagnosticTraceEnabled = false;
+var diagnosticLastStage = "J000";
+function SetDiagnosticLastStage(code) { diagnosticLastStage = code; }
+function apiGetDiagnosticLastStage() { return diagnosticLastStage; }
+function apiSetDiagnosticTraceEnabled(enabled) { diagnosticTraceEnabled = enabled ? true : false; TraceScript("J001", "operation=apiSetDiagnosticTraceEnabled"); return true; }
+function TraceScript(code, message)
+{
+ SetDiagnosticLastStage(code);
+ if(!diagnosticTraceEnabled) return;
+ try { if(window.external && window.external.TraceScript) window.external.TraceScript(code, message); } catch(ignore) {}
+}
+function DiagError(code, operation, error)
+{
+ var details = "level=error; operation=" + operation;
+ try { if(error) details += "; number=" + error.number + "; name=" + error.name + "; description=" + error.description + "; message=" + error.message + "; line=" + error.lineNumber; } catch(ignore) {}
+ TraceScript(code, details);
+}
 
 //======================================
 // Public API
@@ -380,36 +397,50 @@ function SaveImage(source)
 
 function LoadXSL(path, lang)
 {
-	var xslt = new ActiveXObject("Msxml2.XSLTemplate.6.0");  // 4.0->6.0 TaF issues 201
-	var xsl = new ActiveXObject("Msxml2.FreeThreadedDOMDocument.6.0"); // 4.0->6.0 TaF issues 201
+	TraceScript("J400", "operation=LoadXSL");
+	TraceScript("J410", "operation=create XSLTemplate");
+	var xslt = new ActiveXObject("Msxml2.XSLTemplate.6.0");
+	TraceScript("J420", "operation=create FreeThreadedDOMDocument");
+	var xsl = new ActiveXObject("Msxml2.FreeThreadedDOMDocument.6.0");
 	xsl.async = false;
-    xsl.setProperty("ResolveExternals", true);  // added by TaF issues 201
-	var proc;
+	TraceScript("J430", "operation=ResolveExternals");
+	xsl.setProperty("ResolveExternals", true);
 
+	TraceScript("J440", "operation=xsl.load");
 	xsl.load(path);
-	var doc = xsl.documentElement;
-	var imp = doc.firstChild;
-
-	var ats = imp.attributes;
-	var href = ats.getNamedItem("href");
-	if(lang == "russian")
-		href.nodeValue = "rus.xsl";
-	if(lang == "english")
-	    href.nodeValue = "eng.xsl";
-	if (lang == "ukrainian")
-	    href.nodeValue = "ukr.xsl";
-
-
 	if(xsl.parseError.errorCode)
 	{
+		TraceScript("J450", "operation=XSL parse error");
 		errCantLoad(xsl, path);
 		return false;
 	}
-
+	var doc = xsl.documentElement;
+	if(!doc)
+	{
+		TraceScript("J460", "operation=XSL documentElement missing");
+		return false;
+	}
+	var imp = doc.firstChild;
+	if(!imp || !imp.attributes)
+	{
+		TraceScript("J461", "operation=XSL import/include missing");
+		return false;
+	}
+	var href = imp.attributes.getNamedItem("href");
+	if(!href)
+	{
+		TraceScript("J462", "operation=XSL href missing");
+		return false;
+	}
+	TraceScript("J470", "operation=language XSL");
+	if(lang == "russian") href.nodeValue = "rus.xsl";
+	if(lang == "english") href.nodeValue = "eng.xsl";
+	if(lang == "ukrainian") href.nodeValue = "ukr.xsl";
+	TraceScript("J480", "operation=stylesheet assignment");
 	xslt.stylesheet = xsl;
+	TraceScript("J499", "operation=LoadXSL success");
 	return xslt;
 }
-
 function ClickOnDesc()
 {
   var srcName = event.srcElement.nodeName;
@@ -430,61 +461,88 @@ function ShowCoverImage(prntEl,fullImg)
 
 function TransformXML(xslt, dom)
 {
+	TraceScript("J500", "operation=TransformXML");
+	TraceScript("J510", "operation=fbw_body");
 	var body = document.getElementById("fbw_body");
-	if(!body)
-	{
-		return false;
-	}
-
+	if(!body) return false;
+	TraceScript("J511", "operation=fbw_desc");
 	var desc = document.getElementById("fbw_desc");
-	if(!desc)
-	{
-		return false;
-	}
+	if(!desc) return false;
 
-	proc=xslt.createProcessor();
+	TraceScript("J520", "operation=createProcessor");
+	var proc=xslt.createProcessor();
+	TraceScript("J521", "operation=input assignment");
 	proc.input=dom;
+	TraceScript("J530", "operation=description mode");
 	proc.setStartMode("description");
+	TraceScript("J531", "operation=description transform");
 	proc.transform();
+	TraceScript("J532", "operation=description output");
+	TraceScript("J540", "operation=desc.innerHTML");
 	desc.innerHTML=proc.output;
+	TraceScript("J550", "operation=PutBinaries");
 	PutBinaries(dom);
+	TraceScript("J560", "operation=SetupDescription");
 	SetupDescription(desc);
+	TraceScript("J570", "operation=onclick");
 	desc.onclick=ClickOnDesc;
+	TraceScript("J580", "operation=body mode");
 	proc.setStartMode("body");
+	TraceScript("J581", "operation=body transform");
 	proc.transform();
+	TraceScript("J582", "operation=body output");
+	TraceScript("J590", "operation=body.innerHTML");
 	body.innerHTML=proc.output;
+	TraceScript("J595", "operation=InflateParagraphs");
 	window.external.InflateParagraphs(body);
 	document.fbwFilename=name;
+	TraceScript("J597", "operation=document properties");
 	document.urlprefix="fbw-internal:";
+	TraceScript("J599", "operation=TransformXML success");
 	return true;
 }
-
 function ShowDescElements()
 {
+  TraceScript("J800", "operation=ShowDescElements");
   var desc = document.getElementById("fbw_desc");
+  if(!desc) return;
   var spans = desc.getElementsByTagName("SPAN");
+  TraceScript("J810", "operation=SPAN count; count=" + spans.length);
   for(var i=0; i < spans.length; i++)
   {
     var elem_id = spans[i].getAttribute("id");
     if(elem_id)
-      ShowElement(elem_id, window.external.GetExtendedStyle(elem_id));
+    {
+      TraceScript("J820", "operation=GetExtendedStyle; index=" + i);
+      var extendedStyle=window.external.GetExtendedStyle(elem_id);
+      TraceScript("J821", "operation=GetExtendedStyle result; index=" + i);
+      TraceScript("J830", "operation=ShowElement; index=" + i);
+      ShowElement(elem_id, extendedStyle);
+      TraceScript("J831", "operation=ShowElement result; index=" + i);
+    }
   }
+  TraceScript("J899", "operation=ShowDescElements success");
 }
-
 function LoadFromDOM(dom, lang)
 {
+	TraceScript("J300", "operation=LoadFromDOM");
+	TraceScript("J310", "operation=namespaces");
 	dom.setProperty("SelectionNamespaces", "xmlns:fb='"+fbNS+"' xmlns:xlink='"+xlNS+"'");
-
+	TraceScript("J320", "operation=GetStylePath");
 	var xpath=window.external.GetStylePath()+"\\fb2.xsl";
-
-	var ret = TransformXML(LoadXSL(xpath, lang), dom);
-
+	TraceScript("J321", "operation=GetStylePath result");
+	TraceScript("J330", "operation=LoadXSL");
+	var xsl=LoadXSL(xpath, lang);
+	TraceScript("J331", "operation=LoadXSL result");
+	TraceScript("J340", "operation=TransformXML");
+	var ret=TransformXML(xsl, dom);
+	TraceScript("J341", "operation=TransformXML result");
+	TraceScript("J350", "operation=ShowDescElements");
 	ShowDescElements();
-
-	// transform to html
-    return ret;
+	TraceScript("J351", "operation=ShowDescElements result");
+	if(ret) TraceScript("J399", "operation=LoadFromDOM success");
+	return ret;
 }
-
 function XmlFromText(text)
 {
 	var xml = new ActiveXObject("Msxml2.DOMDocument.6.0"); // 4.0->6.0 TaF issues 201
@@ -510,20 +568,29 @@ function recursiveChangeNbsp(elem, repChar) {
 
 function apiLoadFB2(path, lang)
 {
+	TraceScript("J100", "operation=apiLoadFB2");
+	TraceScript("J101", "operation=css lookup");
 	var css=document.getElementById("css");
+	TraceScript("J102", "operation=save css href");
 	var css_filename = css.href;
+	TraceScript("J103", "operation=disable css");
 	css.href="";
-	var xml = new ActiveXObject("Msxml2.DOMDocument.6.0"); // 4.0->6.0 TaF issues 201
+	TraceScript("J110", "operation=create DOMDocument");
+	var xml = new ActiveXObject("Msxml2.DOMDocument.6.0");
+	TraceScript("J111", "operation=configure DOM");
 	xml.async=false;
 	xml.preserveWhiteSpace = true;
-
+	TraceScript("J112", "operation=xml.load");
 	xml.load(path);
+	TraceScript("J113", "operation=xml.load result");
 	if(xml.parseError.errorCode)
 	{
+		TraceScript("J114", "operation=XML parse error");
 		errCantLoad(xml, path);
 		return false;
 	}
 
+	TraceScript("J120", "operation=read declaration");
 	pi = xml.firstChild;
 	var encoding;
 	if (pi)
@@ -534,59 +601,66 @@ function apiLoadFB2(path, lang)
 			enc = attr.getNamedItem("encoding");
 			if(enc)
 			{
+				TraceScript("J121", "operation=encoding present");
 				encoding = enc.text;
-				//alert(encoding);
 			}
 		}
 	}
 
+	TraceScript("J130", "operation=SelectionNamespaces");
 	xml.setProperty("SelectionNamespaces", "xmlns:fb='"+fbNS+"' xmlns:xlink='"+xlNS+"'");
-
-        if(window.external.GetNBSP())
-        {
+	TraceScript("J140", "operation=GetNBSP");
+	if(window.external.GetNBSP())
+	{
+		TraceScript("J141", "operation=GetNBSP result");
 		var nbspChar=window.external.GetNBSP();
-
 		if(nbspChar!="\u00A0")
 		{
+			TraceScript("J150", "operation=annotation NBSP conversion");
 			var sel=xml.selectSingleNode("/fb:FictionBook/fb:description/fb:title-info/fb:annotation");
 			if(sel) recursiveChangeNbsp(sel,nbspChar);
+			TraceScript("J151", "operation=history NBSP conversion");
 			sel=xml.selectSingleNode("/fb:FictionBook/fb:description/fb:document-info/fb:history");
 			if(sel) recursiveChangeNbsp(sel,nbspChar);
+			TraceScript("J152", "operation=body NBSP conversion");
 			sel=xml.selectSingleNode("/fb:FictionBook/fb:body");
-		 	while(sel) {
-			  if(sel.nodeName=="body") recursiveChangeNbsp(sel,nbspChar);
-			  sel=sel.nextSibling;
+			while(sel) {
+				if(sel.nodeName=="body") recursiveChangeNbsp(sel,nbspChar);
+				sel=sel.nextSibling;
 			}
-		}            
-        }
-                        
+		}
+	}
+	TraceScript("J160", "operation=LoadFromDOM");
 	if (!LoadFromDOM(xml, lang))
 	{
+		TraceScript("J161", "operation=LoadFromDOM result");
 		MsgBox("Error: can't prepare document for Body mode.");
 		return false;
 	}
-
+	TraceScript("J161", "operation=LoadFromDOM result");
+	TraceScript("J170", "operation=selection.empty");
 	document.selection.empty();
-
+	TraceScript("J171", "operation=selection.empty result");
+	TraceScript("J180", "operation=fbw_desc lookup");
 	var desc = document.getElementById("fbw_desc");
+	TraceScript("J181", "operation=diID lookup");
 	var id=desc.all.diID;
 	if(id)
 	if(path.indexOf("blank.fb2") != -1)
 	{
+		TraceScript("J190", "operation=GetUUID");
 		id.value=window.external.GetUUID();
+		TraceScript("J191", "operation=GetUUID result");
 	}
-	else
-	{
-		id.value=id.value; // ???????? ????????? ????????. ??? ???? ??????? ??? ?????? ??? ???????? ?????????? ????? ?????? ????, ??? ???????? ? ????? ?????????.
-	}
-
-
+	else id.value=id.value;
+	TraceScript("J200", "operation=apiShowDesc");
 	apiShowDesc(false);
+	TraceScript("J201", "operation=apiShowDesc result");
+	TraceScript("J210", "operation=CSS restore");
 	css.href = css_filename;
-
+	TraceScript("J299", "operation=apiLoadFB2 success");
 	return encoding;
 }
-
 function apiShowDesc(state)
 {
 	var body=document.getElementById("fbw_body");
@@ -957,19 +1031,25 @@ function SetCurrentDate(desc)
 
 function SetupDescription(desc)
 {
+	TraceScript("J700", "operation=SetupDescription");
+	TraceScript("J710", "operation=SetDocumentVersion");
 	SetDocumentVersion(desc);
+	TraceScript("J720", "operation=GetProgramVersion");
 	SetProgramUsed(desc);
+	TraceScript("J730", "operation=SetCurrentDate");
 	SetCurrentDate(desc)
-
 	var DocumentID=desc.all.diID;
 	if(DocumentID && DocumentID.value=="")
+	{
+		TraceScript("J740", "operation=GetUUID");
 		DocumentID.value=window.external.GetUUID();
-
+	}
+	TraceScript("J750", "operation=InitFieldsets");
 	InitFieldsets();
-
+	TraceScript("J760", "operation=SelectLanguages");
 	SelectLanguages();
-}
-//-----------------------------------------------
+	TraceScript("J799", "operation=SetupDescription success");
+}//-----------------------------------------------
 
 //function InflateParagraphs(e)
 //{
@@ -1570,34 +1650,37 @@ function GetBinaries(doc)
 // load a list of binary objects from document
 function PutBinaries(doc)
 {
+ TraceScript("J600", "operation=PutBinaries");
  var nerr=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
-
+ TraceScript("J610", "operation=binary count; count=" + bl.length);
  for(var i=0; i<bl.length; i++)
  {
   if(bl[i].tagName!="binary") continue;
-
+  TraceScript("J611", "operation=binary; index=" + i);
   bl[i].dataType="bin.base64";
   var id=bl[i].getAttribute("id"); var dt;
-
   try
   {
+   TraceScript("J620", "operation=nodeTypedValue; index=" + i);
    dt=bl[i].nodeTypedValue;
+   TraceScript("J621", "operation=nodeTypedValue result; index=" + i);
   }
   catch(e)
   {
-   if(nerr++<3) MsgBox("Invalid base64 data for "+id);  continue;
+   TraceScript("J622", "operation=invalid Base64; index=" + i);
+   DiagError("J622", "nodeTypedValue", e);
+   if(nerr++<3) MsgBox("Invalid base64 data for "+id); continue;
   }
-
+  TraceScript("J630", "operation=apiAddBinary; index=" + i);
   apiAddBinary("", id, bl[i].getAttribute("content-type"),dt);
+  TraceScript("J631", "operation=apiAddBinary result; index=" + i);
  }
-
  if(nerr>3){ nerr-=3; MsgBox(nerr+" more invalid images ignored"); }
-
- // update Cover lists
-
+ TraceScript("J640", "operation=FillLists");
  FillLists();
+ TraceScript("J641", "operation=FillLists result");
+ TraceScript("J699", "operation=PutBinaries success");
 }
-
 //// == BODY == ///////////////////////////////////////////////////////////////////
 
 function KillDivs(e)

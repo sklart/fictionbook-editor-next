@@ -1,4 +1,4 @@
-﻿// FBE.cpp : main source file for FBE.exe
+// FBE.cpp : main source file for FBE.exe
 //
 
 #include "stdafx.h"
@@ -73,25 +73,84 @@ static HMODULE LoadApplicationLibrary(const CString& fileName)
 	return library;
 }
 
-static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
+static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wchar_t* phase)
 {
-	CComPtr<ITypeLib> typeLibrary;
-	HRESULT result = ::LoadRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT,
-		&typeLibrary);
-	if (SUCCEEDED(result))
-		return result;
+	if (!typeLibrary)
+		return E_POINTER;
 
-	const CString modulePath = U::GetModulePath();
-	if (modulePath.IsEmpty())
-		return HRESULT_FROM_WIN32(GetLastError());
-
-	result = ::LoadTypeLibEx((LPCOLESTR)(LPCTSTR)modulePath, REGKIND_NONE, &typeLibrary);
+	TLIBATTR* attributes = NULL;
+	HRESULT result = typeLibrary->GetLibAttr(&attributes);
+	StartupTrace::HResult(L"typelib", L"TL130", result, L"GetLibAttr");
 	if (FAILED(result))
 		return result;
+	CString details;
+	details.Format(L"phase=%s; libid=%08lX; version=%u.%u; lcid=%lu; syskind=%u; typeinfo=%u", phase,
+		attributes->guid.Data1, attributes->wMajorVerNum, attributes->wMinorVerNum, attributes->lcid,
+		attributes->syskind, typeLibrary->GetTypeInfoCount());
+	StartupTrace::Event(L"typelib", L"TL131", details);
+	typeLibrary->ReleaseTLibAttr(attributes);
 
-	return ::RegisterTypeLibForUser(typeLibrary, (LPOLESTR)(LPCTSTR)modulePath, NULL);
+	CComPtr<ITypeInfo> externalHelper;
+	result = typeLibrary->GetTypeInfoOfGuid(IID_IExternalHelper, &externalHelper);
+	StartupTrace::HResult(L"typelib", L"TL140", result, L"GetTypeInfoOfGuid(IID_IExternalHelper)");
+	if (FAILED(result)) return result;
+	const wchar_t* const requiredMethods[] = { L"GetStylePath", L"GetNBSP", L"GetUUID", L"GetExtendedStyle", L"InflateParagraphs", L"GetProgramVersion", L"IsDiagnosticTraceEnabled", L"TraceScript" };
+	for (int index = 0; index < _countof(requiredMethods); ++index)
+	{
+		LPOLESTR name = const_cast<LPOLESTR>(requiredMethods[index]);
+		MEMBERID memberId = DISPID_UNKNOWN;
+		result = externalHelper->GetIDsOfNames(&name, 1, &memberId);
+		CString method; method.Format(L"method=%s; dispid=%ld", requiredMethods[index], static_cast<long>(memberId));
+		StartupTrace::HResult(L"typelib", L"TL150", result, method);
+		if (FAILED(result)) return result;
+	}
+	return S_OK;
 }
 
+static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
+{
+	StartupTrace::Event(L"typelib", L"TL100", L"registered FBELib validation started");
+	CComPtr<ITypeLib> registered;
+	HRESULT result = ::LoadRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registered);
+	StartupTrace::HResult(L"typelib", L"TL110", result, L"LoadRegTypeLib");
+	if (SUCCEEDED(result))
+	{
+		LPOLESTR registeredPath = NULL;
+		HRESULT pathResult = ::QueryPathOfRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registeredPath);
+		StartupTrace::HResult(L"typelib", L"TL120", pathResult, L"QueryPathOfRegTypeLib");
+		const CString modulePath = U::GetModulePath();
+		const bool pathMatchesCurrentExe = registeredPath && modulePath.CompareNoCase(registeredPath) == 0;
+		StartupTrace::Event(L"typelib", L"TL121", pathMatchesCurrentExe ? L"registered typelib path matches current FBE.exe" : L"registered typelib path differs from current FBE.exe");
+		// QueryPathOfRegTypeLib returns a BSTR, not CoTaskMem-allocated memory.
+		// Releasing it with CoTaskMemFree corrupts the CRT heap and is often
+		// detected only by the next COM call.
+		// Keep the registry path alive through the validation call while diagnosing allocator compatibility.
+		// It is released immediately after validation below.
+		
+		result = ValidateExternalHelperTypeLibrary(registered, L"registered");
+		if (registeredPath) ::SysFreeString(registeredPath);
+		if (SUCCEEDED(result)) { StartupTrace::Event(L"typelib", L"TL199", L"registered FBELib is compatible"); return S_OK; }
+		StartupTrace::Warning(L"typelib", L"TL151", L"registered FBELib is incompatible; repairing per-user registration");
+	}
+	const CString modulePath = U::GetModulePath();
+	if (modulePath.IsEmpty()) return HRESULT_FROM_WIN32(::GetLastError());
+	CComPtr<ITypeLib> embedded;
+	result = ::LoadTypeLibEx((LPCOLESTR)(LPCTSTR)modulePath, REGKIND_NONE, &embedded);
+	StartupTrace::HResult(L"typelib", L"TL160", result, L"LoadTypeLibEx(current FBE.exe)");
+	if (FAILED(result)) return result;
+	result = ValidateExternalHelperTypeLibrary(embedded, L"embedded");
+	StartupTrace::HResult(L"typelib", L"TL170", result, L"embedded FBELib validation");
+	if (FAILED(result)) return result;
+	result = ::RegisterTypeLibForUser(embedded, (LPOLESTR)(LPCTSTR)modulePath, NULL);
+	StartupTrace::HResult(L"typelib", L"TL180", result, L"RegisterTypeLibForUser");
+	if (FAILED(result)) return result;
+	registered.Release();
+	result = ::LoadRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registered);
+	StartupTrace::HResult(L"typelib", L"TL190", result, L"LoadRegTypeLib after registration");
+	if (SUCCEEDED(result)) result = ValidateExternalHelperTypeLibrary(registered, L"registered-after-repair");
+	StartupTrace::HResult(L"typelib", L"TL199", result, L"FBELib validation result");
+	return result;
+}
 // External helpers
 IDispatchPtr  CFBEView::CreateHelper()
 {

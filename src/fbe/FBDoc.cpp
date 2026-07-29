@@ -383,24 +383,39 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	dispatchParameters.rgvarg = params;
 	dispatchParameters.cArgs = count;
 	EXCEPINFO exceptionInfo = {};
-	UINT argumentError = 0;
+	UINT argumentError = UINT_MAX;
 	::VariantClear(&vtResult);
 	::VariantInit(&vtResult);
 	hr = pScript->Invoke(dispid, IID_NULL, LOCALE_SYSTEM_DEFAULT, DISPATCH_METHOD,
 		&dispatchParameters, &vtResult, &exceptionInfo, &argumentError);
+	if (exceptionInfo.pfnDeferredFillIn)
+		exceptionInfo.pfnDeferredFillIn(&exceptionInfo);
+	CComPtr<IErrorInfo> errorInfo;
+	if (FAILED(hr))
+		::GetErrorInfo(0, &errorInfo);
 
 	CString details;
 	details.Format(L"Invoke: dispid=%ld; argument-error=%u; result-type=VT_%u",
 		static_cast<long>(dispid), argumentError, static_cast<unsigned int>(V_VT(&vtResult)));
 	if (exceptionInfo.bstrDescription)
-	{
-		details += L"; exception-description-present";
-		::SysFreeString(exceptionInfo.bstrDescription);
-	}
+		details += L"; excep.description=" + StartupTrace::SanitizeExceptionText(exceptionInfo.bstrDescription);
 	if (exceptionInfo.bstrSource)
-		::SysFreeString(exceptionInfo.bstrSource);
-	if (exceptionInfo.bstrHelpFile)
-		::SysFreeString(exceptionInfo.bstrHelpFile);
+		details += L"; excep.source=" + StartupTrace::SanitizeExceptionText(exceptionInfo.bstrSource);
+	details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.help=%d; excep.helpContext=%lu; excep.deferred=%d",
+		exceptionInfo.wCode, static_cast<unsigned long>(exceptionInfo.scode), exceptionInfo.bstrHelpFile ? 1 : 0,
+		exceptionInfo.dwHelpContext, exceptionInfo.pfnDeferredFillIn ? 1 : 0);
+	if (errorInfo)
+	{
+		BSTR source = NULL, description = NULL, help = NULL; DWORD context = 0; GUID guid = {};
+		errorInfo->GetGUID(&guid); errorInfo->GetSource(&source); errorInfo->GetDescription(&description);
+		errorInfo->GetHelpFile(&help); errorInfo->GetHelpContext(&context);
+		details.AppendFormat(L"; errorInfo.guid=%08lX; errorInfo.source=%s; errorInfo.description=%s; errorInfo.help=%d; errorInfo.helpContext=%lu",
+			guid.Data1, (LPCWSTR)StartupTrace::SanitizeExceptionText(source), (LPCWSTR)StartupTrace::SanitizeExceptionText(description), help ? 1 : 0, context);
+		::SysFreeString(source); ::SysFreeString(description); ::SysFreeString(help);
+	}
+	if (exceptionInfo.bstrDescription) ::SysFreeString(exceptionInfo.bstrDescription);
+	if (exceptionInfo.bstrSource) ::SysFreeString(exceptionInfo.bstrSource);
+	if (exceptionInfo.bstrHelpFile) ::SysFreeString(exceptionInfo.bstrHelpFile);
 	StartupTrace::HResult(L"script", L"C130", hr, details);
 	return hr;
 }
@@ -458,21 +473,39 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 {
 	TraceDocumentEvent(L"Загрузка книги начата", filename);
 	HRESULT	hr;
-	StartupTrace::Event(L"webbrowser", L"W100 Создание браузерного элемента");
+	StartupTrace::Event(L"webbrowser", L"WB100", L"m_body.Create begin");
 	const CString path = U::GetProgDirFile(L"main.html");
 	m_body.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
-	hr = m_body.Browser()->Navigate((LPCTSTR)path);
-	StartupTrace::HResult(L"webbrowser", L"W110", hr, L"Navigate main.html");
-	if (FAILED(hr))
-		return false;	
-	MSG	  msg;
-    while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) 
+	if (!m_body.Browser())
 	{
-      ::TranslateMessage(&msg);
-      ::DispatchMessage(&msg);
-    }
+		StartupTrace::Error(L"webbrowser", L"WB101", L"m_body.Create did not provide IWebBrowser2");
+		return false;
+	}
+	StartupTrace::Event(L"webbrowser", L"WB110", L"IWebBrowser2 available");
+	hr = m_body.Browser()->Navigate((LPCTSTR)path);
+	StartupTrace::HResult(L"webbrowser", L"WB120", hr, L"Navigate main.html");
+	if (FAILED(hr))
+		return false;
+	MSG msg;
+	StartupTrace::Event(L"webbrowser", L"WB130", L"waiting for DocumentComplete");
+	while (!m_body.Loaded())
+	{
+		const int messageResult = ::GetMessage(&msg, NULL, 0, 0);
+		if (messageResult == 0)
+		{
+			StartupTrace::Warning(L"webbrowser", L"WB132", L"message loop ended before DocumentComplete");
+			return false;
+		}
+		if (messageResult == -1)
+		{
+			StartupTrace::HResult(L"webbrowser", L"WB131", HRESULT_FROM_WIN32(::GetLastError()), L"GetMessage failed");
+			return false;
+		}
+		::TranslateMessage(&msg);
+		::DispatchMessage(&msg);
+	}
 
-	StartupTrace::Event(L"webbrowser", L"W120 Документ main.html загружен");
+	StartupTrace::Event(L"webbrowser", L"WB140", L"DocumentComplete observed");
 	StartupTrace::Event(L"webbrowser", L"W130 Подключение window.external");
 	m_body.SetExternalDispatch(m_body.CreateHelper());
 
@@ -493,13 +526,25 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult);
 	StartupTrace::HResult(L"script", L"J010", hr, L"apiSetDiagnosticTraceEnabled");
 	if (FAILED(hr))
-		return false;
+	{
+		// The diagnostic API was introduced after the original runtime. Its
+		// absence (including DISP_E_UNKNOWNNAME) must never prevent a book from
+		// opening with an older main.js.
+		StartupTrace::Event(L"script", L"J011 apiSetDiagnosticTraceEnabled unavailable; continuing without script diagnostics");
+	}
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100 Вызов apiLoadFB2");
 	hr = InvokeFunc(L"apiLoadFB2", params, 2, res);
 	StartupTrace::HResult(L"document", L"J200", hr, L"apiLoadFB2");
 	if (FAILED(hr))
 	{
+		// Preserve the original apiLoadFB2 HRESULT. This extra query is diagnostic only.
+		CComVariant lastStage;
+		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticLastStage", NULL, 0, lastStage);
+		if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
+			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
+		else
+			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticLastStage");
 		TraceDocumentEvent(L"Загрузка книги завершилась ошибкой JavaScript", filename);
 		return false;
 	}

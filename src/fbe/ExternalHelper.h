@@ -23,6 +23,7 @@ class ExternalHelper :
 {
   const CString* m_document_filename;
   const bool* m_document_namevalid;
+  static __declspec(thread) bool s_traceScriptActive;
 public:
   ExternalHelper() : m_document_filename(NULL), m_document_namevalid(NULL) {}
 
@@ -41,6 +42,11 @@ public:
     m_document_filename = filename;
     m_document_namevalid = namevalid;
   }
+  STDMETHOD(GetTypeInfoCount)(UINT* typeInfoCount);
+  STDMETHOD(GetTypeInfo)(UINT typeInfo, LCID lcid, ITypeInfo** resultTypeInfo);
+  STDMETHOD(GetIDsOfNames)(REFIID riid, LPOLESTR* names, UINT nameCount, LCID lcid, DISPID* dispids);
+  STDMETHOD(Invoke)(DISPID dispid, REFIID riid, LCID lcid, WORD flags,
+    DISPPARAMS* parameters, VARIANT* result, EXCEPINFO* exceptionInfo, UINT* argumentError);
   STDMETHOD(GetDocumentFilePath)(BSTR* path);
   STDMETHOD(GetDocumentFileName)(BSTR* name);
   STDMETHOD(GetDocumentDirectory)(BSTR* directory);
@@ -55,13 +61,14 @@ public:
 
   STDMETHOD(TraceScript)(BSTR code, BSTR message)
   {
+    if(s_traceScriptActive)
+      return S_OK;
+    s_traceScriptActive = true;
     CString safeCode(code ? code : L"");
     safeCode = safeCode.Left(32);
-    // JavaScript-код может вызвать этот метод сам. В журнал не попадает
-    // переданная строка: так исключается запись текста книги или пути файла.
-    CString safeMessage;
-    safeMessage.Format(L"details-length=%u", message ? ::SysStringLen(message) : 0);
+    CString safeMessage = StartupTrace::SanitizeLogText(message ? message : L"", 512);
     StartupTrace::ScriptEvent(safeCode, safeMessage);
+    s_traceScriptActive = false;
     return S_OK;
   }
 

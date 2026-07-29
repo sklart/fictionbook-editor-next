@@ -514,9 +514,7 @@ ok:
 void  ReportError(HRESULT hr) 
 {
   CString   err(Win32ErrMsg(hr));
-  CString trace;
-  trace.Format(_T("HRESULT=0x%08lX: %s"), hr, (LPCTSTR)err);
-  StartupTrace::Event(L"error", trace);
+  StartupTrace::HResult(L"utils", L"U100", hr, L"ReportError(HRESULT)");
   CString cpt(FbeLoadRuntimeString(IDS_ERRMSGBOX_CAPTION));
   ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
 }
@@ -569,9 +567,8 @@ void  ReportError(_com_error& e) {
 	  }
   }
   CString cpt(FbeLoadRuntimeString(IDS_COM_ERR_CPT));
-  CString trace;
-  trace.Format(_T("COM HRESULT=0x%08lX: %s"), e.Error(), (LPCTSTR)err);
-  StartupTrace::Event(L"com", trace);
+  StartupTrace::ComException(L"utils", L"U110", e.Error(), NULL, e.ErrorInfo(),
+    L"ReportError(_com_error)");
   ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
   VBErr = true;
 }

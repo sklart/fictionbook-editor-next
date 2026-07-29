@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "CrashHandler.h"
+#include "StartupTrace.h"
 #include "utils.h"
 #include "../version.h"
 
@@ -75,17 +76,24 @@ namespace
 		const void* exceptionAddress = exceptionInfo && exceptionInfo->ExceptionRecord
 			? exceptionInfo->ExceptionRecord->ExceptionAddress : NULL;
 
-		wchar_t text[1024];
+		const CString diagnosticTracePath = StartupTrace::RedactPath(StartupTrace::CurrentLogPath());
+		const CString lastStageCode = StartupTrace::LastStageCode();
+		const CString lastStageMessage = StartupTrace::LastStageMessage();
+		wchar_t text[2048];
 		const int textLength = _snwprintf_s(text, _countof(text), _TRUNCATE,
 			L"FictionBook Editor crash report\r\n"
 			L"Version: " FBE_VERSION_WSTRING L"\r\n"
 			L"Process ID: %lu\r\n"
+			L"Crash thread ID: %lu\r\n"
 			L"Exception code: 0x%08lX\r\n"
 			L"Exception address: %p\r\n"
 			L"Minidump written: %s\r\n"
-			L"Minidump error: %lu\r\n",
-			::GetCurrentProcessId(), exceptionCode, exceptionAddress,
-			dumpWritten ? L"yes" : L"no", dumpWritten ? ERROR_SUCCESS : dumpError);
+			L"Minidump error: %lu\r\n"
+			L"Diagnostic trace: %s\r\n"
+			L"Last trace stage: %s; %s\r\n",
+			::GetCurrentProcessId(), ::GetCurrentThreadId(), exceptionCode, exceptionAddress,
+			dumpWritten ? L"yes" : L"no", dumpWritten ? ERROR_SUCCESS : dumpError,
+			(LPCWSTR)diagnosticTracePath, (LPCWSTR)lastStageCode, (LPCWSTR)lastStageMessage);
 
 		const WORD bom = 0xFEFF;
 		DWORD written = 0;
@@ -98,6 +106,7 @@ namespace
 
 	LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exceptionInfo)
 	{
+		StartupTrace::EmergencyFlush();
 		if (g_crashDirectory[0] == L'\0')
 			return EXCEPTION_EXECUTE_HANDLER;
 
@@ -106,9 +115,9 @@ namespace
 
 		wchar_t basePath[MAX_PATH];
 		_snwprintf_s(basePath, _countof(basePath), _TRUNCATE,
-			L"%sFBENext-crash-%04u%02u%02u-%02u%02u%02u",
+			L"%sFBENext-crash-%04u%02u%02u-%02u%02u%02u-pid%lu",
 			g_crashDirectory, localTime.wYear, localTime.wMonth, localTime.wDay,
-			localTime.wHour, localTime.wMinute, localTime.wSecond);
+			localTime.wHour, localTime.wMinute, localTime.wSecond, ::GetCurrentProcessId());
 
 		wchar_t dumpPath[MAX_PATH];
 		wchar_t reportPath[MAX_PATH];

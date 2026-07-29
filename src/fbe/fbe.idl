@@ -78,5 +78,7 @@ library FBELib
 	[id(26), helpstring("method GetDocumentFilePath")] HRESULT GetDocumentFilePath([out, retval] BSTR* path);
 	[id(27), helpstring("method GetDocumentFileName")] HRESULT GetDocumentFileName([out, retval] BSTR* name);
 	[id(28), helpstring("method GetDocumentDirectory")] HRESULT GetDocumentDirectory([out, retval] BSTR* directory);
+	[id(29), helpstring("method IsDiagnosticTraceEnabled")] HRESULT IsDiagnosticTraceEnabled([out, retval] BOOL* enabled);
+	[id(30), helpstring("method TraceScript")] HRESULT TraceScript([in] BSTR code, [in] BSTR message);
   };
 };
