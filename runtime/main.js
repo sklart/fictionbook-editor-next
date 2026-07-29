@@ -398,11 +398,13 @@ function SaveImage(source)
 function LoadXSL(path, lang)
 {
 	TraceScript("J400", "operation=LoadXSL");
-	var xslt = new ActiveXObject("Msxml2.XSLTemplate.6.0");  // 4.0->6.0 TaF issues 201
-	var xsl = new ActiveXObject("Msxml2.FreeThreadedDOMDocument.6.0"); // 4.0->6.0 TaF issues 201
+	TraceScript("J410", "operation=create XSLTemplate");
+	var xslt = new ActiveXObject("Msxml2.XSLTemplate.6.0");
+	TraceScript("J420", "operation=create FreeThreadedDOMDocument");
+	var xsl = new ActiveXObject("Msxml2.FreeThreadedDOMDocument.6.0");
 	xsl.async = false;
-    xsl.setProperty("ResolveExternals", true);  // added by TaF issues 201
-	var proc;
+	TraceScript("J430", "operation=ResolveExternals");
+	xsl.setProperty("ResolveExternals", true);
 
 	TraceScript("J440", "operation=xsl.load");
 	xsl.load(path);
@@ -430,15 +432,15 @@ function LoadXSL(path, lang)
 		TraceScript("J462", "operation=XSL href missing");
 		return false;
 	}
+	TraceScript("J470", "operation=language XSL");
 	if(lang == "russian") href.nodeValue = "rus.xsl";
 	if(lang == "english") href.nodeValue = "eng.xsl";
 	if(lang == "ukrainian") href.nodeValue = "ukr.xsl";
-
+	TraceScript("J480", "operation=stylesheet assignment");
 	xslt.stylesheet = xsl;
 	TraceScript("J499", "operation=LoadXSL success");
 	return xslt;
 }
-
 function ClickOnDesc()
 {
   var srcName = event.srcElement.nodeName;
@@ -460,35 +462,45 @@ function ShowCoverImage(prntEl,fullImg)
 function TransformXML(xslt, dom)
 {
 	TraceScript("J500", "operation=TransformXML");
+	TraceScript("J510", "operation=fbw_body");
 	var body = document.getElementById("fbw_body");
-	if(!body)
-	{
-		return false;
-	}
-
+	if(!body) return false;
+	TraceScript("J511", "operation=fbw_desc");
 	var desc = document.getElementById("fbw_desc");
-	if(!desc)
-	{
-		return false;
-	}
+	if(!desc) return false;
 
-	proc=xslt.createProcessor();
+	TraceScript("J520", "operation=createProcessor");
+	var proc=xslt.createProcessor();
+	TraceScript("J521", "operation=input assignment");
 	proc.input=dom;
+	TraceScript("J530", "operation=description mode");
 	proc.setStartMode("description");
+	TraceScript("J531", "operation=description transform");
 	proc.transform();
+	TraceScript("J532", "operation=description output");
+	TraceScript("J540", "operation=desc.innerHTML");
 	desc.innerHTML=proc.output;
+	TraceScript("J550", "operation=PutBinaries");
 	PutBinaries(dom);
+	TraceScript("J560", "operation=SetupDescription");
 	SetupDescription(desc);
+	TraceScript("J570", "operation=onclick");
 	desc.onclick=ClickOnDesc;
+	TraceScript("J580", "operation=body mode");
 	proc.setStartMode("body");
+	TraceScript("J581", "operation=body transform");
 	proc.transform();
+	TraceScript("J582", "operation=body output");
+	TraceScript("J590", "operation=body.innerHTML");
 	body.innerHTML=proc.output;
+	TraceScript("J595", "operation=InflateParagraphs");
 	window.external.InflateParagraphs(body);
 	document.fbwFilename=name;
+	TraceScript("J597", "operation=document properties");
 	document.urlprefix="fbw-internal:";
+	TraceScript("J599", "operation=TransformXML success");
 	return true;
 }
-
 function ShowDescElements()
 {
   TraceScript("J800", "operation=ShowDescElements");
@@ -505,18 +517,23 @@ function ShowDescElements()
 function LoadFromDOM(dom, lang)
 {
 	TraceScript("J300", "operation=LoadFromDOM");
+	TraceScript("J310", "operation=namespaces");
 	dom.setProperty("SelectionNamespaces", "xmlns:fb='"+fbNS+"' xmlns:xlink='"+xlNS+"'");
-
+	TraceScript("J320", "operation=GetStylePath");
 	var xpath=window.external.GetStylePath()+"\\fb2.xsl";
-
-	var ret = TransformXML(LoadXSL(xpath, lang), dom);
-
+	TraceScript("J321", "operation=GetStylePath result");
+	TraceScript("J330", "operation=LoadXSL");
+	var xsl=LoadXSL(xpath, lang);
+	TraceScript("J331", "operation=LoadXSL result");
+	TraceScript("J340", "operation=TransformXML");
+	var ret=TransformXML(xsl, dom);
+	TraceScript("J341", "operation=TransformXML result");
+	TraceScript("J350", "operation=ShowDescElements");
 	ShowDescElements();
-
-	// transform to html
-    return ret;
+	TraceScript("J351", "operation=ShowDescElements result");
+	if(ret) TraceScript("J399", "operation=LoadFromDOM success");
+	return ret;
 }
-
 function XmlFromText(text)
 {
 	var xml = new ActiveXObject("Msxml2.DOMDocument.6.0"); // 4.0->6.0 TaF issues 201
