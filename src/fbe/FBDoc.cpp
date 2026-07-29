@@ -1111,7 +1111,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	}
 	catch (_com_error& e)
 	{
-		StartupTrace::HResult(L"com", L"X191", e.Error(), L"CreateDOM");`r`n`t	StartupTrace::Event(L"com", trace);
+		StartupTrace::HResult(L"com", L"X191", e.Error(), L"CreateDOM");
+		StartupTrace::Event(L"com", trace);
 		U::ReportError(e);
 	}
 
