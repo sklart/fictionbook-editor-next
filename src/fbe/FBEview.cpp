@@ -1,4 +1,4 @@
-﻿// FBEView.cpp : implementation of the CFBEView class
+// FBEView.cpp : implementation of the CFBEView class
 //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -12,6 +12,7 @@
 #include "SearchReplace.h"
 #include "Scintilla.h"
 #include "ElementDescMnr.h"
+#include "StartupTrace.h"
 #include <vector>
 
 extern CElementDescMnr _EDMnr;
@@ -2888,6 +2889,18 @@ void	CFBEView::EditorChanged(int id) {
 
 // DWebBrowserEvents2
 void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
+  CComPtr<IUnknown> eventBrowser;
+  CComPtr<IUnknown> topLevelBrowser;
+  if (pDisp) pDisp->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&eventBrowser));
+  if (m_browser) m_browser->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&topLevelBrowser));
+  if (!eventBrowser || !topLevelBrowser || eventBrowser != topLevelBrowser)
+  {
+    StartupTrace::Event(L"webbrowser", L"WB141", L"DocumentComplete ignored for frame");
+    return;
+  }
+  CString url = (vtUrl && V_VT(vtUrl) == VT_BSTR) ? StartupTrace::RedactPath(V_BSTR(vtUrl)) : CString(L"-");
+  CString details; details.Format(L"url=%s", (LPCWSTR)url);
+  StartupTrace::Event(L"webbrowser", L"WB140", details);
   m_complete=true;
 }
 
