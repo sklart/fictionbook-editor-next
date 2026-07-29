@@ -505,15 +505,24 @@ function ShowDescElements()
 {
   TraceScript("J800", "operation=ShowDescElements");
   var desc = document.getElementById("fbw_desc");
+  if(!desc) return;
   var spans = desc.getElementsByTagName("SPAN");
+  TraceScript("J810", "operation=SPAN count; count=" + spans.length);
   for(var i=0; i < spans.length; i++)
   {
     var elem_id = spans[i].getAttribute("id");
     if(elem_id)
-      ShowElement(elem_id, window.external.GetExtendedStyle(elem_id));
+    {
+      TraceScript("J820", "operation=GetExtendedStyle; index=" + i);
+      var extendedStyle=window.external.GetExtendedStyle(elem_id);
+      TraceScript("J821", "operation=GetExtendedStyle result; index=" + i);
+      TraceScript("J830", "operation=ShowElement; index=" + i);
+      ShowElement(elem_id, extendedStyle);
+      TraceScript("J831", "operation=ShowElement result; index=" + i);
+    }
   }
+  TraceScript("J899", "operation=ShowDescElements success");
 }
-
 function LoadFromDOM(dom, lang)
 {
 	TraceScript("J300", "operation=LoadFromDOM");
@@ -1023,19 +1032,24 @@ function SetCurrentDate(desc)
 function SetupDescription(desc)
 {
 	TraceScript("J700", "operation=SetupDescription");
+	TraceScript("J710", "operation=SetDocumentVersion");
 	SetDocumentVersion(desc);
+	TraceScript("J720", "operation=GetProgramVersion");
 	SetProgramUsed(desc);
+	TraceScript("J730", "operation=SetCurrentDate");
 	SetCurrentDate(desc)
-
 	var DocumentID=desc.all.diID;
 	if(DocumentID && DocumentID.value=="")
+	{
+		TraceScript("J740", "operation=GetUUID");
 		DocumentID.value=window.external.GetUUID();
-
+	}
+	TraceScript("J750", "operation=InitFieldsets");
 	InitFieldsets();
-
+	TraceScript("J760", "operation=SelectLanguages");
 	SelectLanguages();
-}
-//-----------------------------------------------
+	TraceScript("J799", "operation=SetupDescription success");
+}//-----------------------------------------------
 
 //function InflateParagraphs(e)
 //{
@@ -1638,33 +1652,35 @@ function PutBinaries(doc)
 {
  TraceScript("J600", "operation=PutBinaries");
  var nerr=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
-
+ TraceScript("J610", "operation=binary count; count=" + bl.length);
  for(var i=0; i<bl.length; i++)
  {
   if(bl[i].tagName!="binary") continue;
-
+  TraceScript("J611", "operation=binary; index=" + i);
   bl[i].dataType="bin.base64";
   var id=bl[i].getAttribute("id"); var dt;
-
   try
   {
+   TraceScript("J620", "operation=nodeTypedValue; index=" + i);
    dt=bl[i].nodeTypedValue;
+   TraceScript("J621", "operation=nodeTypedValue result; index=" + i);
   }
   catch(e)
   {
-   if(nerr++<3) MsgBox("Invalid base64 data for "+id);  continue;
+   TraceScript("J622", "operation=invalid Base64; index=" + i);
+   DiagError("J622", "nodeTypedValue", e);
+   if(nerr++<3) MsgBox("Invalid base64 data for "+id); continue;
   }
-
+  TraceScript("J630", "operation=apiAddBinary; index=" + i);
   apiAddBinary("", id, bl[i].getAttribute("content-type"),dt);
+  TraceScript("J631", "operation=apiAddBinary result; index=" + i);
  }
-
  if(nerr>3){ nerr-=3; MsgBox(nerr+" more invalid images ignored"); }
-
- // update Cover lists
-
+ TraceScript("J640", "operation=FillLists");
  FillLists();
+ TraceScript("J641", "operation=FillLists result");
+ TraceScript("J699", "operation=PutBinaries success");
 }
-
 //// == BODY == ///////////////////////////////////////////////////////////////////
 
 function KillDivs(e)
