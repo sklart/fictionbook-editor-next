@@ -235,7 +235,7 @@ public:
   bool			  m_doc_changed:1;
   bool			  m_sel_changed:1;
   bool			  m_change_state:1;
-  bool			  m_need_title_update:1;
+  bool			  m_need_title_update:1;
   bool            m_recovery_written:1;
   UINT            m_current_dpi;
 
@@ -347,7 +347,7 @@ public:
   bool	  DiscardChanges();
 
   FILE_OP_STATUS	  SaveFile(bool askname);
-  FILE_OP_STATUS	  LoadFile(const wchar_t *initfilename=NULL);
+  FILE_OP_STATUS	  LoadFile(const wchar_t *initfilename=NULL);
   CString GetRecoveryFileName();
   void DeleteRecoveryFile();
   void TryRestoreRecovery();
@@ -486,7 +486,7 @@ public:
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		MESSAGE_HANDLER(WM_QUERYENDSESSION, OnQueryEndSession)
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
-		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
         MESSAGE_HANDLER(WM_TIMER, OnTimer)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
@@ -583,6 +583,7 @@ public:
 		COMMAND_ID_HANDLER(ID_TOOLS_WORDS, OnToolsWords)
 		COMMAND_ID_HANDLER(ID_TOOLS_OPTIONS, OnToolsOptions)
 		COMMAND_ID_HANDLER(ID_TOOLS_DIAGNOSTIC_TRACE, OnToolsDiagnosticTrace)
+		COMMAND_ID_HANDLER(ID_TOOLS_OPEN_DIAGNOSTIC_LOG, OnToolsOpenDiagnosticLog)
       
 		COMMAND_ID_HANDLER(ID_TOOLS_CUSTOMIZE, OnToolCustomize)
 		//COMMAND_ID_HANDLER(ID_HIDETOOLBAR, OnHideToolbar)
@@ -655,7 +656,7 @@ public:
   LRESULT OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
-  LRESULT OnPostCreate(UINT, WPARAM, LPARAM, BOOL&);
+  LRESULT OnPostCreate(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSettingChange(UINT, WPARAM, LPARAM, BOOL&);
@@ -819,6 +820,7 @@ public:
   LRESULT OnToolsWords(WORD, WORD, HWND, BOOL&);
   LRESULT OnToolsOptions(WORD, WORD, HWND, BOOL&);
 	LRESULT OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&);
+	LRESULT OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&);
   LRESULT OnToolsScript(WORD, WORD, HWND, BOOL&);
 
   LRESULT OnHideToolbar(WORD wNotifyCode, WORD /*wID*/, HWND hWndCtl, BOOL& bHandled)

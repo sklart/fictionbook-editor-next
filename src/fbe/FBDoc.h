@@ -49,13 +49,15 @@ public:
   bool	  Load(HWND hWndParent,const CString& filename);
   //bool	  LoadFromDOM(HWND hWndParent,MSXML2::IXMLDOMDocument2 *dom);
   bool	  LoadFromHTML(HWND hWndParent,const CString& filename);
-  MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = false);
+  MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = true);
   HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult);
   void	  ShowDescription(bool Show);
   void	  RunScript(LPCOLESTR filePath);
   VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath);
 
-  bool	  Save(const CString& filename);
+  bool	  Save(const CString& filename);
+
+  HRESULT GetLastSaveError() const { return m_last_save_error; }
   bool    SaveRecoveryCopy(const CString& filename);
   bool	  Validate(int &errline,int &errcol) {
     AU::CPersistentWaitCursor wc;
@@ -140,9 +142,15 @@ private:
   //long		    m_desc_cp;
   long		    m_body_cp;
 
+  // Последняя ошибка операции сохранения. Нужна, чтобы интерфейс мог
+  // предложить «Сохранить как» при отказе в доступе к исходному файлу.
+
+  HRESULT      m_last_save_error;
+
   // saving support
-  bool	  SaveToFile(const CString& filename,bool fValidateOnly=false,int *errline=NULL,int *errcol=NULL);
-  MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries = false);
+  bool	  SaveToFile(const CString& filename,bool fValidateOnly=false,int *errline=NULL,int *errcol=NULL,
+                   bool reportAccessDenied=true);
+  MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries = true);
 
   // loading support
   void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,

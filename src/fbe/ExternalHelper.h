@@ -1,10 +1,11 @@
-﻿#ifndef EXTERNALHELPER_H
+#ifndef EXTERNALHELPER_H
 #define EXTERNALHELPER_H
 
 
 #include <fcntl.h>
 #include "Settings.h"
 #include "utils.h"
+#include "StartupTrace.h"
 
 extern CSettings _Settings;
 
@@ -43,6 +44,26 @@ public:
   STDMETHOD(GetDocumentFilePath)(BSTR* path);
   STDMETHOD(GetDocumentFileName)(BSTR* name);
   STDMETHOD(GetDocumentDirectory)(BSTR* directory);
+
+  STDMETHOD(IsDiagnosticTraceEnabled)(BOOL* enabled)
+  {
+    if (!enabled)
+      return E_POINTER;
+    *enabled = StartupTrace::Enabled() ? TRUE : FALSE;
+    return S_OK;
+  }
+
+  STDMETHOD(TraceScript)(BSTR code, BSTR message)
+  {
+    CString safeCode(code ? code : L"");
+    safeCode = safeCode.Left(32);
+    // JavaScript-код может вызвать этот метод сам. В журнал не попадает
+    // переданная строка: так исключается запись текста книги или пути файла.
+    CString safeMessage;
+    safeMessage.Format(L"details-length=%u", message ? ::SysStringLen(message) : 0);
+    StartupTrace::ScriptEvent(safeCode, safeMessage);
+    return S_OK;
+  }
 
   STDMETHOD(BeginUndoUnit)(IDispatch *obj,BSTR name) {
     MSHTML::IMarkupServices   *srv;
@@ -183,6 +204,9 @@ public:
 			imgSaveDlg.m_ofn.nFilterIndex = 0;
 			imgSaveDlg.m_ofn.lpstrDefExt = L"jpg";
 
+			// Замена существующей картинки должна подтверждаться стандартным
+			// диалогом, а не блокироваться последующим CREATE_NEW.
+			imgSaveDlg.m_ofn.Flags |= OFN_OVERWRITEPROMPT;
 			modalResult = imgSaveDlg.DoModal(NULL);
 			file_name.SetString(imgSaveDlg.m_szFileName);
 		}
@@ -191,7 +215,7 @@ public:
 		{
 			int len = SysStringByteLen(data);
 			void* buf = (void*)data;
-			HANDLE file = CreateFile(file_name, GENERIC_WRITE | FILE_WRITE_DATA, FILE_SHARE_WRITE, 0, CREATE_NEW, 0, 0);
+			HANDLE file = CreateFile(file_name, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 			if(INVALID_HANDLE_VALUE == file)
 			{
 				return S_OK;
