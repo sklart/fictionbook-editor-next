@@ -2906,7 +2906,20 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
 
 void  CFBEView::Init() {
   // save document pointer
+  StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
+  if(!m_browser)
+  {
+    StartupTrace::Error(L"webbrowser", L"WB200", L"IWebBrowser2 unavailable");
+    return;
+  }
+  StartupTrace::Event(L"webbrowser", L"WB200", L"Document begin");
   m_hdoc=m_browser->Document;
+  if(!m_hdoc)
+  {
+    StartupTrace::Error(L"webbrowser", L"WB201", L"HTML document unavailable");
+    return;
+  }
+  StartupTrace::Event(L"webbrowser", L"WB200", L"Document result");
 
   m_mk_srv=m_hdoc;
   m_mkc=m_hdoc;
@@ -4266,4 +4279,3 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 	}
 	catch (_com_error&) { }
 }
-
