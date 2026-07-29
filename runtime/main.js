@@ -560,20 +560,28 @@ function recursiveChangeNbsp(elem, repChar) {
 function apiLoadFB2(path, lang)
 {
 	TraceScript("J100", "operation=apiLoadFB2");
+	TraceScript("J101", "operation=css lookup");
 	var css=document.getElementById("css");
+	TraceScript("J102", "operation=save css href");
 	var css_filename = css.href;
+	TraceScript("J103", "operation=disable css");
 	css.href="";
-	var xml = new ActiveXObject("Msxml2.DOMDocument.6.0"); // 4.0->6.0 TaF issues 201
+	TraceScript("J110", "operation=create DOMDocument");
+	var xml = new ActiveXObject("Msxml2.DOMDocument.6.0");
+	TraceScript("J111", "operation=configure DOM");
 	xml.async=false;
 	xml.preserveWhiteSpace = true;
-
+	TraceScript("J112", "operation=xml.load");
 	xml.load(path);
+	TraceScript("J113", "operation=xml.load result");
 	if(xml.parseError.errorCode)
 	{
+		TraceScript("J114", "operation=XML parse error");
 		errCantLoad(xml, path);
 		return false;
 	}
 
+	TraceScript("J120", "operation=read declaration");
 	pi = xml.firstChild;
 	var encoding;
 	if (pi)
@@ -584,59 +592,66 @@ function apiLoadFB2(path, lang)
 			enc = attr.getNamedItem("encoding");
 			if(enc)
 			{
+				TraceScript("J121", "operation=encoding present");
 				encoding = enc.text;
-				//alert(encoding);
 			}
 		}
 	}
 
+	TraceScript("J130", "operation=SelectionNamespaces");
 	xml.setProperty("SelectionNamespaces", "xmlns:fb='"+fbNS+"' xmlns:xlink='"+xlNS+"'");
-
-        if(window.external.GetNBSP())
-        {
+	TraceScript("J140", "operation=GetNBSP");
+	if(window.external.GetNBSP())
+	{
+		TraceScript("J141", "operation=GetNBSP result");
 		var nbspChar=window.external.GetNBSP();
-
 		if(nbspChar!="\u00A0")
 		{
+			TraceScript("J150", "operation=annotation NBSP conversion");
 			var sel=xml.selectSingleNode("/fb:FictionBook/fb:description/fb:title-info/fb:annotation");
 			if(sel) recursiveChangeNbsp(sel,nbspChar);
+			TraceScript("J151", "operation=history NBSP conversion");
 			sel=xml.selectSingleNode("/fb:FictionBook/fb:description/fb:document-info/fb:history");
 			if(sel) recursiveChangeNbsp(sel,nbspChar);
+			TraceScript("J152", "operation=body NBSP conversion");
 			sel=xml.selectSingleNode("/fb:FictionBook/fb:body");
-		 	while(sel) {
-			  if(sel.nodeName=="body") recursiveChangeNbsp(sel,nbspChar);
-			  sel=sel.nextSibling;
+			while(sel) {
+				if(sel.nodeName=="body") recursiveChangeNbsp(sel,nbspChar);
+				sel=sel.nextSibling;
 			}
-		}            
-        }
-                        
+		}
+	}
+	TraceScript("J160", "operation=LoadFromDOM");
 	if (!LoadFromDOM(xml, lang))
 	{
+		TraceScript("J161", "operation=LoadFromDOM result");
 		MsgBox("Error: can't prepare document for Body mode.");
 		return false;
 	}
-
+	TraceScript("J161", "operation=LoadFromDOM result");
+	TraceScript("J170", "operation=selection.empty");
 	document.selection.empty();
-
+	TraceScript("J171", "operation=selection.empty result");
+	TraceScript("J180", "operation=fbw_desc lookup");
 	var desc = document.getElementById("fbw_desc");
+	TraceScript("J181", "operation=diID lookup");
 	var id=desc.all.diID;
 	if(id)
 	if(path.indexOf("blank.fb2") != -1)
 	{
+		TraceScript("J190", "operation=GetUUID");
 		id.value=window.external.GetUUID();
+		TraceScript("J191", "operation=GetUUID result");
 	}
-	else
-	{
-		id.value=id.value; // ???????? ????????? ????????. ??? ???? ??????? ??? ?????? ??? ???????? ?????????? ????? ?????? ????, ??? ???????? ? ????? ?????????.
-	}
-
-
+	else id.value=id.value;
+	TraceScript("J200", "operation=apiShowDesc");
 	apiShowDesc(false);
+	TraceScript("J201", "operation=apiShowDesc result");
+	TraceScript("J210", "operation=CSS restore");
 	css.href = css_filename;
-
+	TraceScript("J299", "operation=apiLoadFB2 success");
 	return encoding;
 }
-
 function apiShowDesc(state)
 {
 	var body=document.getElementById("fbw_body");
