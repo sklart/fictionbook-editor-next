@@ -45,29 +45,33 @@ static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
 	{
 		if (!document)
 		{
-			StartupTrace::Error(L"webbrowser", L"W150", L"HTML-документ недоступен после загрузки");
+			StartupTrace::Error(L"webbrowser", L"WB300", L"HTML document unavailable");
 			return;
 		}
+		_bstr_t url(document->URL);
 		_bstr_t readyState(document->readyState);
 		MSHTML::IHTMLDocument5Ptr document5(document);
-        _bstr_t compatMode(document5 ? document5->compatMode : L"(unknown)");
+		_bstr_t compatMode(document5 ? document5->compatMode : L"(unknown)");
+		long documentMode = document5 ? document5->documentMode : -1;
 		_bstr_t charset(document->charset);
 		MSHTML::IHTMLDocument3Ptr document3(document);
 		const bool hasBody = (bool)document->body;
+		const bool hasCss = document3 && (bool)document3->getElementById(L"css");
 		const bool hasFbwDesc = document3 && (bool)document3->getElementById(L"fbw_desc");
 		const bool hasFbwBody = document3 && (bool)document3->getElementById(L"fbw_body");
+		const bool hasUserCmd = document3 && (bool)document3->getElementById(L"userCmd");
 		CString trace;
-		trace.Format(L"W151 ready-state=%s; compat-mode=%s; charset=%s; body=%d; fbw_desc=%d; fbw_body=%d",
-			(const wchar_t*)readyState, (const wchar_t*)compatMode, (const wchar_t*)charset,
-			hasBody ? 1 : 0, hasFbwDesc ? 1 : 0, hasFbwBody ? 1 : 0);
-		StartupTrace::Event(L"webbrowser", trace);
+		trace.Format(L"url=%s; ready-state=%s; document-mode=%ld; compat-mode=%s; charset=%s; body=%d; css=%d; fbw_desc=%d; fbw_body=%d; userCmd=%d",
+			(LPCWSTR)StartupTrace::RedactPath((const wchar_t*)url), (const wchar_t*)readyState,
+			documentMode, (const wchar_t*)compatMode, (const wchar_t*)charset,
+			hasBody ? 1 : 0, hasCss ? 1 : 0, hasFbwDesc ? 1 : 0, hasFbwBody ? 1 : 0, hasUserCmd ? 1 : 0);
+		StartupTrace::Event(L"webbrowser", L"WB310", trace);
 	}
 	catch (_com_error& error)
 	{
-		StartupTrace::HResult(L"webbrowser", L"W152", error.Error(), L"Чтение состояния HTML-документа");
+		StartupTrace::HResult(L"webbrowser", L"WB320", error.Error(), L"HTML document state");
 	}
-}
-// namespaces
+}// namespaces
 const _bstr_t	  FBNS(L"http://www.gribuser.ru/xml/fictionbook/2.0");
 const _bstr_t	  XLINKNS(L"http://www.w3.org/1999/xlink");
 const _bstr_t	  NEWLINE(L"\n");
