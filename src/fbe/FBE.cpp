@@ -1,4 +1,4 @@
-﻿// FBE.cpp : main source file for FBE.exe
+// FBE.cpp : main source file for FBE.exe
 //
 
 #include "stdafx.h"
@@ -121,8 +121,14 @@ static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 		const CString modulePath = U::GetModulePath();
 		const bool pathMatchesCurrentExe = registeredPath && modulePath.CompareNoCase(registeredPath) == 0;
 		StartupTrace::Event(L"typelib", L"TL121", pathMatchesCurrentExe ? L"registered typelib path matches current FBE.exe" : L"registered typelib path differs from current FBE.exe");
-		if (registeredPath) ::CoTaskMemFree(registeredPath);
+		// QueryPathOfRegTypeLib returns a BSTR, not CoTaskMem-allocated memory.
+		// Releasing it with CoTaskMemFree corrupts the CRT heap and is often
+		// detected only by the next COM call.
+		// Keep the registry path alive through the validation call while diagnosing allocator compatibility.
+		// It is released immediately after validation below.
+		
 		result = ValidateExternalHelperTypeLibrary(registered, L"registered");
+		if (registeredPath) ::SysFreeString(registeredPath);
 		if (SUCCEEDED(result)) { StartupTrace::Event(L"typelib", L"TL199", L"registered FBELib is compatible"); return S_OK; }
 		StartupTrace::Warning(L"typelib", L"TL151", L"registered FBELib is incompatible; repairing per-user registration");
 	}
