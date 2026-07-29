@@ -177,8 +177,15 @@ if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
 }
 
-$msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild `
-    -find "MSBuild\Current\Bin\MSBuild.exe" | Select-Object -First 1
+# v143 is supplied by the VS 2022 toolchain. Do not let a newer Visual Studio
+# instance win the generic -latest query: it can have the compiler but not the
+# matching ATL/MFC headers for the requested toolset.
+$vswhereArguments = @("-latest", "-products", "*", "-requires", "Microsoft.Component.MSBuild")
+if ($PlatformToolset -eq "v143") {
+    $vswhereArguments += @("-version", "[17.0,18.0)")
+}
+$vswhereArguments += @("-find", "MSBuild\Current\Bin\MSBuild.exe")
+$msbuild = & $vswhere @vswhereArguments | Select-Object -First 1
 
 if (-not $msbuild) {
     throw "Не найден MSBuild.exe."
