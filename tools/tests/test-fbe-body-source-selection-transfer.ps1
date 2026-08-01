@@ -115,7 +115,7 @@ Assert-Contains $source 'menu/hotkey/internal' `
 	'для команд из меню и горячих клавиш должен фиксироваться источник WM_COMMAND'
 Assert-Contains $source 'TraceMainFrameHotkey(pMsg);' `
 	'общий журнал должен фиксировать нажатую горячую клавишу до трансляции акселератора'
-Assert-Contains $source 'GetHotkeyText(hotkey.m_accel)' `
+Assert-Contains $source 'virtual-key=%u' `
 	'запись горячей клавиши должна содержать её сочетание и назначенную команду'
 
 Write-Host 'Двусторонний перенос выделения между Body и Source закреплён проверкой.'

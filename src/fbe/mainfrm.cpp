@@ -130,13 +130,8 @@ static void TraceMainFrameCommand(WPARAM wParam, LPARAM lParam)
 	const LPCWSTR key = FindRuntimeMainFrameMenuCommandKey(commandId);
 	if(key == NULL)
 		return;
-
-	CString commandName = FbeLoadRuntimeStringByKey(key);
-	if(commandName.IsEmpty())
-		commandName = key;
-
 	CString trace;
-	trace.Format(L"M100 Команда: %s; ID=%u; источник=%s", (const wchar_t*)commandName,
+	trace.Format(L"ui-command-id=%s; command-id=%u; source=%s", key,
 		commandId, GetCommandTraceSource(lParam));
 	StartupTrace::Event(L"command", L"C100", trace);
 }
@@ -197,10 +192,8 @@ static void TraceMainFrameHotkey(const MSG* message)
 			const CHotkey& hotkey = group.m_hotkeys[hotkeyIndex];
 			if(!MatchesHotkeyMessage(hotkey.m_accel, message))
 				continue;
-
 			CString trace;
-			trace.Format(L"M110 Горячая клавиша: %s; ID=%u",
-				(const wchar_t*)GetHotkeyText(hotkey.m_accel), hotkey.m_accel.cmd);
+			trace.Format(L"command-id=%u; virtual-key=%u", hotkey.m_accel.cmd, hotkey.m_accel.key);
 			StartupTrace::Event(L"command", L"C110", trace);
 			return;
 		}
