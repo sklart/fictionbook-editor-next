@@ -1,4 +1,4 @@
-// Версия файла - 2.3
+﻿// Версия файла - 2.3
 
 // Object reference maker
 Object.prototype.$=function $(val){if(val)this.valueOf=this.toSource=this.toString=function(){return val};return val;};
@@ -113,7 +113,7 @@ function apiAddBinary(fullpath, id, type, data)
 					'onclick="Remove(this.parentNode);" unselectable="on">&#x72;</button>';
 	if(type.search("image") != -1)
 	{
-		imghref = "fbw-internal:#" + curid;
+		var imghref = "fbw-internal:#" + curid;
 		div.innerHTML += '<button id="show"' +
 		'onmouseover="ShowImageOfBin(this.parentNode,\'prev\');"' +
 		'onmouseout="HidePrevImage();"' +
@@ -203,7 +203,7 @@ function ShowPrevImage(source)
 	}*/
 
 	var idx = -1;
-	for(i = 0; i < ImagesInfo.length; ++i)
+	for(var i = 0; i < ImagesInfo.length; ++i)
 	{
 		if(ImagesInfo[i].src == source)
 		{
@@ -220,8 +220,8 @@ function ShowPrevImage(source)
 
 	var btnHeight = event.srcElement.offsetHeight;
 
-	coordX = event.clientX;
-	coordY = event.clientY;
+	var coordX = event.clientX;
+	var coordY = event.clientY;
 
 	var scrollX = 0;
 	var scrollY = 0;
@@ -340,7 +340,7 @@ function ShowFullImage(source)
 	if(!fullImgPanel || !fullImg) return;
 
 	var idx = -1;
-	for(i = 0; i < ImagesInfo.length; ++i)
+	for(var i = 0; i < ImagesInfo.length; ++i)
 	{
 		if(ImagesInfo[i].src == source)
 		{
@@ -1149,7 +1149,7 @@ function Remove(obj)
 		if(obj.all.type.value.search("image") != -1)
 		{
 			var idx = -1;
-			for(i = 0; i < ImagesInfo.length; ++i)
+			for(var i = 0; i < ImagesInfo.length; ++i)
 			{
 				if(ImagesInfo[i].id == obj.all.id.value)
 				{
@@ -2275,7 +2275,7 @@ function AddEpigraph(cp,check)
   else if(pps && pps.length > 0)
   {
     var upTag = "";
-    for(i = 0; i < pps.length; ++i)
+    for(var i = 0; i < pps.length; ++i)
     {
       var pwt = document.createElement("P");
       if(i == pps.length - 2
