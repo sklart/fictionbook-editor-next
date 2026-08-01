@@ -753,7 +753,8 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
     m_namevalid = true;
   }
   catch (_com_error& e) {
-	StartupTrace::ComException(L"document", L"D114", e.Error(), e.ExceptInfo(), e.ErrorInfo(), L"book load COM failure");
+	EXCEPINFO exceptionInfo = {};
+	StartupTrace::ComException(L"document", L"D114", e.Error(), &exceptionInfo, e.ErrorInfo(), L"book load COM failure");
     U::ReportError(e);
     return false;
   }
@@ -770,7 +771,8 @@ void  Doc::CreateBlank(HWND hWndParent) {
     //LoadFromDOM(hWndParent,U::CreateDocument(true));
   }
   catch (_com_error& e) {
-    StartupTrace::ComException(L"document", L"D202", e.Error(), e.ExceptInfo(), e.ErrorInfo(), L"blank book creation failed");
+    EXCEPINFO exceptionInfo = {};
+    StartupTrace::ComException(L"document", L"D202", e.Error(), &exceptionInfo, e.ErrorInfo(), L"blank book creation failed");
     U::ReportError(e);
   }
 }
