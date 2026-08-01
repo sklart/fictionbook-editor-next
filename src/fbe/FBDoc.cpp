@@ -39,6 +39,21 @@ static void TraceRecoveryEvent(const wchar_t* code, const wchar_t* operation, co
 	StartupTrace::Event(L"recovery", code, trace);
 }
 
+static void TraceOptionalDiagnosticWarning(const wchar_t* code, HRESULT result, const wchar_t* operation)
+{
+	CString details;
+	details.Format(L"hr=0x%08lX; %s unavailable", static_cast<unsigned long>(result), operation);
+	StartupTrace::Warning(L"diagnostic", code, details);
+}
+
+static void TraceScriptStageSnapshot(const wchar_t* code, const wchar_t* name, BSTR stage)
+{
+	CString details;
+	details.Format(L"%s=%s", name, (LPCWSTR)StartupTrace::SanitizeLogText(stage, 32));
+	// Keep the actual J stage intact for crash diagnostics: this is a C++ query result.
+	StartupTrace::Event(L"document", code, details);
+}
+
 static bool DispatchHasMember(IDispatch* dispatch, const wchar_t* name)
 {
 	if (!dispatch || !name || !*name) return false;
@@ -591,16 +606,16 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	V_BOOL(&diagnosticTrace) = StartupTrace::Enabled() ? VARIANT_TRUE : VARIANT_FALSE;
 	CComVariant diagnosticResult;
 	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult);
-	StartupTrace::HResult(L"script", L"J010", hr, L"apiSetDiagnosticTraceEnabled");
 		if (FAILED(hr))
 	{
 		// The diagnostic API was introduced after the original runtime. Its
 		// absence (including DISP_E_UNKNOWNNAME) must never prevent a book from
 		// opening with an older main.js.
-		StartupTrace::Warning(L"script", L"J011", L"apiSetDiagnosticTraceEnabled unavailable; continuing without script diagnostics");
+		TraceOptionalDiagnosticWarning(L"J011", hr, L"apiSetDiagnosticTraceEnabled");
 	}
 		else
 		{
+			StartupTrace::HResult(L"script", L"J010", hr, L"apiSetDiagnosticTraceEnabled");
 			CComVariant bridgeState;
 			const HRESULT bridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, bridgeState);
 			if (SUCCEEDED(bridgeResult) && V_VT(&bridgeState) == VT_I4)
@@ -612,7 +627,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			}
 			else
 			{
-				StartupTrace::HResult(L"script", L"J013", bridgeResult, L"apiGetDiagnosticTraceBridgeState");
+				TraceOptionalDiagnosticWarning(L"J013", bridgeResult, L"apiGetDiagnosticTraceBridgeState");
 			}
 		}
 
@@ -630,9 +645,9 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		CComVariant lastStage;
 		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticFailureStage", NULL, 0, lastStage);
 		if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
-			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
+			TraceScriptStageSnapshot(L"D115", L"failure-stage", V_BSTR(&lastStage));
 		else
-			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticFailureStage");
+			TraceOptionalDiagnosticWarning(L"J115", stageResult, L"apiGetDiagnosticFailureStage");
 
 		}
 		TraceDocumentEvent(L"D111", L"book load JavaScript failure", filename);
@@ -664,9 +679,9 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			CComVariant operationStage;
 			const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, operationStage);
 			if (SUCCEEDED(stageResult) && V_VT(&operationStage) == VT_BSTR)
-				StartupTrace::Event(L"script", L"J996", StartupTrace::SanitizeLogText(V_BSTR(&operationStage), 32));
+				TraceScriptStageSnapshot(L"D116", L"operation-stage", V_BSTR(&operationStage));
 			else
-				StartupTrace::Warning(L"script", L"J995", L"apiGetDiagnosticOperationStage unavailable");
+				TraceOptionalDiagnosticWarning(L"J117", stageResult, L"apiGetDiagnosticOperationStage");
 		}
 		TraceDocumentEvent(L"D112", L"book load returned false", filename);
 		return false;
@@ -683,9 +698,9 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			CComVariant lastStage;
 			const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, lastStage);
 			if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
-				StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
+				TraceScriptStageSnapshot(L"D117", L"operation-stage", V_BSTR(&lastStage));
 			else
-				StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticOperationStage");
+				TraceOptionalDiagnosticWarning(L"J119", stageResult, L"apiGetDiagnosticOperationStage");
 		}
 
 

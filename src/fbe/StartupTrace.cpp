@@ -177,7 +177,16 @@ namespace
 		const CString safeCategory = Sanitize(category, 64, false), safeCode = Sanitize(code, 32, false), safeMessage = Sanitize(message, 512, true);
 		CString line;
 		line.Format(L"%04u-%02u-%02u %02u:%02u:%02u.%03u; seq=%llu; elapsed=%llu; delta=%llu; PID=%lu; TID=%lu; level=%s; category=%s; code=%s; message=%s\r\n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, ++recordSequence, now - startTime, now - previousTime, ::GetCurrentProcessId(), ::GetCurrentThreadId(), (LPCWSTR)level, (LPCWSTR)safeCategory, (LPCWSTR)(safeCode.IsEmpty() ? CString(L"-") : safeCode), (LPCWSTR)safeMessage);
-		previousTime = now; lastStageCode = safeCode; lastStageMessage = safeMessage; if (safeCategory == L"document") lastDocumentStage = safeCode; if (safeCategory == L"script") lastScriptOperationStage = safeCode;
+		previousTime = now;
+		lastStageCode = safeCode;
+		lastStageMessage = safeMessage;
+		if (safeCategory == L"document")
+			lastDocumentStage = safeCode;
+
+		const bool isJavaScriptOperation = safeCategory == L"script" && safeCode.GetLength() >= 4 && safeCode[0] == L'J';
+		const bool isDiagnosticOrRestoreEvent = safeCode == L"J900" || safeCode == L"J901" || safeMessage.Find(L"operation=CSS restore") == 0;
+		if (isJavaScriptOperation && !isDiagnosticOrRestoreEvent)
+			lastScriptOperationStage = safeCode;
 		WriteUtf8(line, flush, wcscmp(level, L"error") == 0);
 	}
 

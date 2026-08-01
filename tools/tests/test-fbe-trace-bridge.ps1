@@ -29,9 +29,19 @@ foreach($pattern in @('apiGetDiagnosticTraceBridgeState', 'apiGetDiagnosticOpera
 foreach($pattern in @('FBE_NEXT_TRACE_VERBOSE', 'success-count=', 'failure-count=', 'suppressed-count=', 'XH190', 'XH191', 'GetBinarySize', 'GetImageDimsByData', 'GetImageDimsByPath', 'DescShowElement', 'UINT_MAX')) {
     if($externalHelperSource -notlike "*$pattern*") { throw "Missing ExternalHelper trace aggregation contract: $pattern" }
 }
+if($documentSource -notlike '*TraceOptionalDiagnosticWarning*' -or $documentSource -notlike '*TraceScriptStageSnapshot(L"D115", L"failure-stage"*' -or $documentSource -notlike '*TraceScriptStageSnapshot(L"D116", L"operation-stage"*') {
+    throw 'Optional diagnostic API and stage snapshots are not separated from script operation stages.'
+}
+$traceSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.cpp')
+if(-not $traceSource.Contains('safeCode[0] == L''J''') -or -not $traceSource.Contains('safeCode == L"J900"') -or -not $traceSource.Contains('operation=CSS restore')) {
+    throw 'StartupTrace does not preserve the actual JavaScript operation stage.'
+}
+
 if($startupSource -notlike '*ExternalHelper::FlushTraceSummary()*') {
     throw 'ExternalHelper trace summary is not flushed before trace shutdown.'
-}foreach($pattern in @('OnNavigateError', 'L"WB135"', 'StartupTrace::RedactPath')) {
+}
+foreach($pattern in @('OnNavigateError', 'L"WB135"', 'StartupTrace::RedactPath')) {
     if($viewSource -notlike "*$pattern*") { throw "Missing NavigateError diagnostic contract: $pattern" }
 }
-if($viewHeader -notlike '*DISPID_NAVIGATEERROR*') { throw 'Missing NavigateError sink contract.' }Write-Host 'JavaScript trace bridge contract passed.'
+if($viewHeader -notlike '*DISPID_NAVIGATEERROR*') { throw 'Missing NavigateError sink contract.' }
+Write-Host 'JavaScript trace bridge contract passed.'
