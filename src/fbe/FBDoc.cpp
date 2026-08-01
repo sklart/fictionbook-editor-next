@@ -2418,18 +2418,37 @@ MSHTML::IHTMLDOMNodePtr Doc::MoveNode(MSHTML::IHTMLDOMNodePtr from, MSHTML::IHTM
 
 void Doc::FastMode()
 {
-	CComDispatchDriver	body(m_body.Script());
-	CComVariant		    args[1];
-	args[0]=m_fast_mode;
-	CheckError(body.Invoke1(L"apiSetFastMode",&args[0]));
-	return;
+	if (!m_body.HasDoc())
+	{
+		StartupTrace::Warning(L"document", L"D230", L"FastMode deferred: HTML document is not ready");
+		return;
+	}
+
+	try
+	{
+		IDispatchPtr script(m_body.Script());
+		if (!script)
+		{
+			StartupTrace::Warning(L"document", L"D231", L"FastMode deferred: script dispatch is not ready");
+			return;
+		}
+		CComDispatchDriver body(script);
+		CComVariant args[1];
+		args[0] = m_fast_mode;
+		const HRESULT result = body.Invoke1(L"apiSetFastMode", &args[0]);
+		StartupTrace::HResult(L"document", L"D232", result, L"apiSetFastMode");
+	}
+	catch (const _com_error& error)
+	{
+		EXCEPINFO exceptionInfo = {};
+		StartupTrace::ComException(L"document", L"D233", error.Error(), &exceptionInfo, error.ErrorInfo(), L"apiSetFastMode failed");
+	}
 }
 
 void Doc::SetFastMode(bool fast)
 {
 	m_fast_mode = fast;
-	if(m_body != 0)
-		FastMode();
+	FastMode();
 }
 
 bool Doc::GetFastMode()

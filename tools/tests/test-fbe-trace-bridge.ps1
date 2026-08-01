@@ -69,3 +69,7 @@ foreach($pattern in @('bool ClearOldLogSessions()', 'TrySnapshot', 'TryEnterCrit
 foreach($pattern in @('TracePluginDiagnostic', 'type=%s; clsid=%s; operation=%s; dom-returned=%d', 'L"CreateInstance"', 'L"QueryInterface"', 'L"Import"', 'L"Export"', 'L"completed"', 'L"exception"')) {
     if($mainFrameSource -notlike "*$pattern*") { throw "Missing safe plugin diagnostic: $pattern" }
 }
+$fastModeSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBDoc.cpp')
+foreach($pattern in @('void Doc::FastMode()', 'm_body.HasDoc()', 'L"D230"', 'L"D231"', 'L"D233"')) {
+    if($fastModeSource -notlike "*$pattern*") { throw "Missing safe FastMode startup guard: $pattern" }
+}
