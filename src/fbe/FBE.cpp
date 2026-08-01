@@ -94,17 +94,46 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 	result = typeLibrary->GetTypeInfoOfGuid(IID_IExternalHelper, &externalHelper);
 	StartupTrace::HResult(L"typelib", L"TL140", result, L"GetTypeInfoOfGuid(IID_IExternalHelper)");
 	if (FAILED(result)) return result;
-	const wchar_t* const requiredMethods[] = { L"GetStylePath", L"GetNBSP", L"GetUUID", L"GetExtendedStyle", L"InflateParagraphs", L"GetProgramVersion", L"IsDiagnosticTraceEnabled", L"TraceScript" };
-	for (int index = 0; index < _countof(requiredMethods); ++index)
+	struct RequiredMethod { const wchar_t* name; DISPID dispid; bool core; };
+	const RequiredMethod methods[] = {
+		{ L"GetStylePath", 5, true }, { L"InflateParagraphs", 7, true }, { L"GetUUID", 8, true },
+		{ L"GetExtendedStyle", 12, true }, { L"GetNBSP", 19, true }, { L"GetProgramVersion", 22, true },
+		{ L"IsDiagnosticTraceEnabled", 29, false }, { L"TraceScript", 30, false }
+	};
+	CString missingCore, missingDiagnostic, wrongCoreDispids, wrongDiagnosticDispids;
+	for (int index = 0; index < _countof(methods); ++index)
 	{
-		LPOLESTR name = const_cast<LPOLESTR>(requiredMethods[index]);
+		LPOLESTR name = const_cast<LPOLESTR>(methods[index].name);
 		MEMBERID memberId = DISPID_UNKNOWN;
-		result = externalHelper->GetIDsOfNames(&name, 1, &memberId);
-		CString method; method.Format(L"method=%s; dispid=%ld", requiredMethods[index], static_cast<long>(memberId));
-		StartupTrace::HResult(L"typelib", L"TL150", result, method);
-		if (FAILED(result)) return result;
+		HRESULT methodResult = externalHelper->GetIDsOfNames(&name, 1, &memberId);
+		CString method; method.Format(L"method=%s; expected-dispid=%ld; actual-dispid=%ld", methods[index].name, static_cast<long>(methods[index].dispid), static_cast<long>(memberId));
+		if (FAILED(methodResult))
+		{
+			CString& missing = methods[index].core ? missingCore : missingDiagnostic;
+			if (!missing.IsEmpty()) missing += L","; missing += methods[index].name;
+			if (methods[index].core) StartupTrace::HResult(L"typelib", L"TL150", methodResult, method);
+			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL151", method); }
+		}
+		else if (memberId != methods[index].dispid)
+		{
+			CString& wrong = methods[index].core ? wrongCoreDispids : wrongDiagnosticDispids;
+			if (!wrong.IsEmpty()) wrong += L","; wrong += methods[index].name;
+			if (methods[index].core) { method += L"; core-incompatible"; StartupTrace::Error(L"typelib", L"TL152", method); }
+			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL153", method); }
+		}
+		else StartupTrace::Event(L"typelib", L"TL150", method);
 	}
-	return S_OK;
+	CString missing = missingCore;
+	if (!missingDiagnostic.IsEmpty()) { if (!missing.IsEmpty()) missing += L","; missing += missingDiagnostic; }
+	CString wrong = wrongCoreDispids;
+	if (!wrongDiagnosticDispids.IsEmpty()) { if (!wrong.IsEmpty()) wrong += L","; wrong += wrongDiagnosticDispids; }
+	CString summary;
+	summary.Format(L"phase=%s; core-compatible=%d; diagnostic-compatible=%d; missing-methods=%s; wrong-dispids=%s", phase,
+		missingCore.IsEmpty() && wrongCoreDispids.IsEmpty() ? 1 : 0,
+		missingDiagnostic.IsEmpty() && wrongDiagnosticDispids.IsEmpty() ? 1 : 0, (LPCWSTR)missing, (LPCWSTR)wrong);
+	if (!missingCore.IsEmpty() || !wrongCoreDispids.IsEmpty()) { StartupTrace::Error(L"typelib", L"TL199", summary); return E_NOINTERFACE; }
+	if (!missingDiagnostic.IsEmpty() || !wrongDiagnosticDispids.IsEmpty()) StartupTrace::Warning(L"typelib", L"TL199", summary);
+	else StartupTrace::Event(L"typelib", L"TL199", summary);	return S_OK;
 }
 
 static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
