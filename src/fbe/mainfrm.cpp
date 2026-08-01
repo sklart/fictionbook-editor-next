@@ -4848,12 +4848,6 @@ static int SkipXmlMarkupBackward(const CString& sourceXml, int position)
 }
 
 // Журнал не содержит текст книги или выделения: только длину диапазона.
-static CString SelectionTraceSummary(const CString& text)
-{
-	CString result;
-	result.Format(L"selection-chars=%d", text.GetLength());
-	return result;
-}
 
 static void WriteSelectionTrace(const CString& message)
 {
@@ -6423,8 +6417,7 @@ void CMainFrame::SaveSelection(VIEW_TYPE vt)
 		{
 			const CString selectedText((const wchar_t*)m_body_selection->text);
 			CString trace;
-			trace.Format(L"SaveSelection: Body text chars=%d, text=\"%s\"",
-				selectedText.GetLength(), (const wchar_t*)SelectionTraceSummary(selectedText));
+			trace.Format(L"SaveSelection: Body; selection-chars=%d", selectedText.GetLength());
 			WriteSelectionTrace(trace);
 		}
 	}

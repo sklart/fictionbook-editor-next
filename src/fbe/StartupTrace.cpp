@@ -2,6 +2,8 @@
 
 #include "StartupTrace.h"
 #include "../version.h"
+#include <algorithm>
+#include <vector>
 
 namespace
 {
@@ -115,6 +117,42 @@ namespace
 		return false;
 	}
 
+	void CleanupOldTraceSessions(const CString& directory)
+	{
+		std::vector<CString> sessions;
+		WIN32_FIND_DATA findData = {};
+		HANDLE search = ::FindFirstFile(directory + L"\\fbe-trace-*.log", &findData);
+		if (search == INVALID_HANDLE_VALUE) return;
+		do
+		{
+			if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+			CString session(findData.cFileName);
+			if (session.GetLength() < 5 || session.Right(4).CompareNoCase(L".log") != 0) continue;
+			session = session.Left(session.GetLength() - 4);
+			const int part = session.Find(L"-part");
+			if (part >= 0) session = session.Left(part);
+			bool known = false;
+			for (size_t index = 0; index < sessions.size(); ++index) if (sessions[index].CompareNoCase(session) == 0) { known = true; break; }
+			if (!known) sessions.push_back(session);
+		}
+		while (::FindNextFile(search, &findData));
+		::FindClose(search);
+		std::sort(sessions.begin(), sessions.end(), [](const CString& left, const CString& right) { return left.CompareNoCase(right) > 0; });
+		for (size_t sessionIndex = 10; sessionIndex < sessions.size(); ++sessionIndex)
+		{
+			HANDLE files = ::FindFirstFile(directory + L"\\" + sessions[sessionIndex] + L"*.log", &findData);
+			if (files == INVALID_HANDLE_VALUE) continue;
+			do
+			{
+				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+				CString fileName(findData.cFileName);
+				if (fileName == sessions[sessionIndex] + L".log" || fileName.Left(sessions[sessionIndex].GetLength() + 5).CompareNoCase(sessions[sessionIndex] + L"-part") == 0)
+					::DeleteFile(directory + L"\\" + fileName);
+			}
+			while (::FindNextFile(files, &findData));
+			::FindClose(files);
+		}
+	}
 	void WriteUtf8(const CString& text, bool flush, bool force)
 	{
 		if (traceFile == INVALID_HANDLE_VALUE) return;
@@ -181,6 +219,7 @@ void StartupTrace::Start()
 		opened = OpenTraceFile(directory, time);
 		if (!opened) { lastWriteError = ::GetLastError() ? ::GetLastError() : primaryError; return; }
 	}
+	CleanupOldTraceSessions(CurrentLogDirectory());
 	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = traceSegment = 0;
 	Event(L"environment", L"E000", L"FictionBook Editor diagnostic trace started");
 	WriteEnvironmentHeader();

@@ -78,6 +78,7 @@ static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
 		IDispatchPtr external = window ? window->external : NULL;
 		UINT externalTypeInfoCount = 0;
 		const HRESULT externalTypeInfoResult = external ? external->GetTypeInfoCount(&externalTypeInfoCount) : E_NOINTERFACE;
+		const wchar_t* const externalType = external ? L"object" : L"undefined";
 		IDispatchPtr script(MSHTML::IHTMLDocumentPtr(document)->Script);
 		const bool hasApiLoadFB2 = DispatchHasMember(script, L"apiLoadFB2");
 		const bool hasApiSetDiagnosticTrace = DispatchHasMember(script, L"apiSetDiagnosticTraceEnabled");
@@ -85,11 +86,11 @@ static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
 		const bool hasApiFailureStage = DispatchHasMember(script, L"apiGetDiagnosticFailureStage");
 		const bool hasApiBridgeState = DispatchHasMember(script, L"apiGetDiagnosticTraceBridgeState");
 		CString trace;
-		trace.Format(L"url=%s; ready-state=%s; document-mode=%ld; compat-mode=%s; charset=%s; body=%d; css=%d; fbw_desc=%d; fbw_body=%d; userCmd=%d; user-agent=%s; app-version=%s; external=%d; external-typeinfo=%u; external-typeinfo-hr=0x%08lX; apiLoadFB2=%d; apiSetDiagnosticTraceEnabled=%d; apiGetDiagnosticOperationStage=%d; apiGetDiagnosticFailureStage=%d; apiGetDiagnosticTraceBridgeState=%d",
+		trace.Format(L"url=%s; ready-state=%s; document-mode=%ld; compat-mode=%s; charset=%s; body=%d; css=%d; fbw_desc=%d; fbw_body=%d; userCmd=%d; user-agent=%s; app-version=%s; external=%d; typeof-window.external=%s; external-typeinfo=%u; external-typeinfo-hr=0x%08lX; apiLoadFB2=%d; apiSetDiagnosticTraceEnabled=%d; apiGetDiagnosticOperationStage=%d; apiGetDiagnosticFailureStage=%d; apiGetDiagnosticTraceBridgeState=%d",
 			(LPCWSTR)StartupTrace::RedactPath((const wchar_t*)url), (const wchar_t*)readyState,
 			documentMode, (const wchar_t*)compatMode, (const wchar_t*)charset,
 			hasBody ? 1 : 0, hasCss ? 1 : 0, hasFbwDesc ? 1 : 0, hasFbwBody ? 1 : 0, hasUserCmd ? 1 : 0, (LPCWSTR)StartupTrace::SanitizeLogText((const wchar_t*)userAgent, 256), (LPCWSTR)StartupTrace::SanitizeLogText((const wchar_t*)appVersion, 256),
-			external ? 1 : 0, externalTypeInfoCount, static_cast<unsigned long>(externalTypeInfoResult), hasApiLoadFB2 ? 1 : 0,
+			external ? 1 : 0, externalType, externalTypeInfoCount, static_cast<unsigned long>(externalTypeInfoResult), hasApiLoadFB2 ? 1 : 0,
 			hasApiSetDiagnosticTrace ? 1 : 0, hasApiOperationStage ? 1 : 0, hasApiFailureStage ? 1 : 0, hasApiBridgeState ? 1 : 0);
 		StartupTrace::Event(L"webbrowser", L"WB310", trace);
 	}

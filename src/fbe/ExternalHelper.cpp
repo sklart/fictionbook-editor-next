@@ -12,7 +12,39 @@
 __declspec(thread) bool ExternalHelper::s_traceScriptActive = false;
 CComAutoCriticalSection ExternalHelper::s_embeddedTypeInfoLock;
 CComPtr<ITypeInfo> ExternalHelper::s_embeddedTypeInfo;
-namespace { CComAutoCriticalSection g_dispatchTraceLock; std::map<DISPID, unsigned long> g_successfulNameLookups, g_successfulInvokes, g_failedNameLookups, g_failedInvokes; bool IsExternalTraceVerbose() { wchar_t value[8] = {}; const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TRACE_VERBOSE", value, _countof(value)); return length && length < _countof(value) && !(length == 1 && value[0] == L'0'); } bool ShouldLogFirstSuccessfulCall(std::map<DISPID, unsigned long>& calls, DISPID dispid) { CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock); return ++calls[dispid] == 1; } }
+namespace
+{
+	CComAutoCriticalSection g_dispatchTraceLock;
+	std::map<DISPID, unsigned long> g_successfulNameLookups, g_successfulInvokes, g_failedNameLookups, g_failedInvokes;
+	std::map<ULONGLONG, unsigned long> g_uniqueLookupFailures, g_uniqueInvokeFailures;
+
+	bool IsExternalTraceVerbose()
+	{
+		wchar_t value[8] = {};
+		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TRACE_VERBOSE", value, _countof(value));
+		return length && length < _countof(value) && !(length == 1 && value[0] == L'0');
+	}
+
+	bool RecordFirstCall(std::map<DISPID, unsigned long>& calls, DISPID dispid)
+	{
+		CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock);
+		return ++calls[dispid] == 1;
+	}
+
+	bool RecordFirstFailure(std::map<DISPID, unsigned long>& calls, std::map<ULONGLONG, unsigned long>& uniqueFailures, DISPID dispid, HRESULT result)
+	{
+		CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock);
+		++calls[dispid];
+		const ULONGLONG key = (static_cast<ULONGLONG>(static_cast<ULONG>(dispid)) << 32) | static_cast<ULONG>(result);
+		return ++uniqueFailures[key] == 1;
+	}
+
+	unsigned long CallCount(const std::map<DISPID, unsigned long>& calls, DISPID dispid)
+	{
+		std::map<DISPID, unsigned long>::const_iterator found = calls.find(dispid);
+		return found == calls.end() ? 0 : found->second;
+	}
+}
 
 HRESULT ExternalHelper::GetEmbeddedTypeInfo(ITypeInfo** resultTypeInfo)
 {
@@ -66,6 +98,20 @@ struct DescElement
 
 static CSimpleMap<CString, DescElement> g_desc_elements;
 
+static DISPID ExternalHelperMethodDispid(const wchar_t* method)
+{
+	if (!method) return DISPID_UNKNOWN;
+	if (wcscmp(method, L"GetStylePath") == 0) return 5;
+	if (wcscmp(method, L"InflateParagraphs") == 0) return 7;
+	if (wcscmp(method, L"GetUUID") == 0) return 8;
+	if (wcscmp(method, L"GetExtendedStyle") == 0) return 12;
+	if (wcscmp(method, L"GetNBSP") == 0) return 19;
+	if (wcscmp(method, L"GetProgramVersion") == 0) return 22;
+	if (wcscmp(method, L"IsDiagnosticTraceEnabled") == 0) return 29;
+	if (wcscmp(method, L"TraceScript") == 0) return 30;
+	return DISPID_UNKNOWN;
+}
+
 static const wchar_t* ExternalHelperMethodName(DISPID dispid)
 {
 	switch (dispid) { case 5: return L"GetStylePath"; case 7: return L"InflateParagraphs"; case 8: return L"GetUUID"; case 12: return L"GetExtendedStyle"; case 19: return L"GetNBSP"; case 22: return L"GetProgramVersion"; case 29: return L"IsDiagnosticTraceEnabled"; case 30: return L"TraceScript"; default: return L"other"; }
@@ -82,20 +128,27 @@ void ExternalHelper::FlushTraceSummary()
 {
 	if (!StartupTrace::Enabled()) return;
 	CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock);
-	for (std::map<DISPID, unsigned long>::const_iterator it = g_successfulNameLookups.begin(); it != g_successfulNameLookups.end(); ++it)
+	std::map<DISPID, unsigned long> lookupMethods(g_successfulNameLookups);
+	for (std::map<DISPID, unsigned long>::const_iterator it = g_failedNameLookups.begin(); it != g_failedNameLookups.end(); ++it) lookupMethods[it->first] += 0;
+	for (std::map<DISPID, unsigned long>::const_iterator it = lookupMethods.begin(); it != lookupMethods.end(); ++it)
 	{
-		const unsigned long failures = g_failedNameLookups[it->first];
-		CString details; details.Format(L"method=%s; operation=GetIDsOfNames; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), it->second, failures, IsExternalTraceVerbose() || it->second == 0 ? 0 : it->second - 1);
+		const unsigned long successes = CallCount(g_successfulNameLookups, it->first);
+		const unsigned long failures = CallCount(g_failedNameLookups, it->first);
+		const unsigned long suppressed = (IsExternalTraceVerbose() ? 0 : (successes > 0 ? successes - 1 : 0) + (failures > 0 ? failures - 1 : 0));
+		CString details; details.Format(L"method=%s; operation=GetIDsOfNames; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), successes, failures, suppressed);
 		StartupTrace::Event(L"external", L"XH190", details);
 	}
-	for (std::map<DISPID, unsigned long>::const_iterator it = g_successfulInvokes.begin(); it != g_successfulInvokes.end(); ++it)
+	std::map<DISPID, unsigned long> invokeMethods(g_successfulInvokes);
+	for (std::map<DISPID, unsigned long>::const_iterator it = g_failedInvokes.begin(); it != g_failedInvokes.end(); ++it) invokeMethods[it->first] += 0;
+	for (std::map<DISPID, unsigned long>::const_iterator it = invokeMethods.begin(); it != invokeMethods.end(); ++it)
 	{
-		const unsigned long failures = g_failedInvokes[it->first];
-		CString details; details.Format(L"method=%s; operation=Invoke; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), it->second, failures, IsExternalTraceVerbose() || it->second == 0 ? 0 : it->second - 1);
+		const unsigned long successes = CallCount(g_successfulInvokes, it->first);
+		const unsigned long failures = CallCount(g_failedInvokes, it->first);
+		const unsigned long suppressed = (IsExternalTraceVerbose() ? 0 : (successes > 0 ? successes - 1 : 0) + (failures > 0 ? failures - 1 : 0));
+		CString details; details.Format(L"method=%s; operation=Invoke; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), successes, failures, suppressed);
 		StartupTrace::Event(L"external", L"XH191", details);
 	}
-}
-HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
+}HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
 {
 	if (!typeInfoCount)
 		return E_POINTER;
@@ -136,8 +189,9 @@ HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCou
 	details.Format(L"lcid=%lu; names=%u; method=%s; dispid=%ld; source=embedded", lcid, nameCount,
 		names[0] ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-",
 		SUCCEEDED(result) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN));
-	if (FAILED(result)) { CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock); ++g_failedNameLookups[DISPID_UNKNOWN]; }
-	const bool logLookup = FAILED(result) || IsExternalTraceVerbose() || (SUCCEEDED(result) && ShouldLogFirstSuccessfulCall(g_successfulNameLookups, dispids[0]));
+	const DISPID methodDispid = SUCCEEDED(result) ? dispids[0] : ExternalHelperMethodDispid(names[0]);
+	const bool firstFailure = FAILED(result) && RecordFirstFailure(g_failedNameLookups, g_uniqueLookupFailures, methodDispid, result);
+	const bool logLookup = (FAILED(result) && firstFailure) || IsExternalTraceVerbose() || (SUCCEEDED(result) && RecordFirstCall(g_successfulNameLookups, dispids[0]));
 	if (logLookup) StartupTrace::HResult(L"external", L"XH120", result, details);
 	return result;
 }
@@ -149,7 +203,7 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		*argumentError = UINT_MAX;
 
 	const bool trace = IsLoadDiagnosticMethod(dispid);
-	const bool logInvoke = trace && (IsExternalTraceVerbose() || ShouldLogFirstSuccessfulCall(g_successfulInvokes, dispid));
+	const bool logInvoke = trace && (IsExternalTraceVerbose() || RecordFirstCall(g_successfulInvokes, dispid));
 	if (logInvoke)
 	{
 		CString begin;
@@ -168,8 +222,8 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 	if (exceptionInfo && exceptionInfo->pfnDeferredFillIn)
 		exceptionInfo->pfnDeferredFillIn(exceptionInfo);
 
-	if (FAILED(result)) { CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock); ++g_failedInvokes[dispid]; }
-	if (logInvoke || FAILED(result))
+	const bool firstFailure = FAILED(result) && RecordFirstFailure(g_failedInvokes, g_uniqueInvokeFailures, dispid, result);
+	if (logInvoke || firstFailure)
 	{
 		CString argumentText;
 		if (!argumentError || *argumentError == UINT_MAX) argumentText = L"none";
