@@ -145,7 +145,7 @@ void StartupTrace::Start()
 		traceFile = ::CreateFile(tracePath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (traceFile != INVALID_HANDLE_VALUE) break;
 	}
-	if (traceFile == INVALID_HANDLE_VALUE) { lastWriteError = ::GetLastError(); return; }
+	if (traceFile == INVALID_HANDLE_VALUE) { wchar_t temp[MAX_PATH] = {}; if (::GetTempPath(_countof(temp), temp) != 0) { CString fallback(temp); fallback.TrimRight(L'\'); fallback += L"\FBE Next Diagnostics"; ::SHCreateDirectoryEx(NULL, fallback, NULL); traceBasePath.Format(L"%s\fbe-trace-%04u%02u%02u-%02u%02u%02u-pid%lu", (LPCWSTR)fallback, time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, ::GetCurrentProcessId()); tracePath = traceBasePath + L".log"; traceFile = ::CreateFile(tracePath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL); } if (traceFile == INVALID_HANDLE_VALUE) { lastWriteError = ::GetLastError(); return; } }
 	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = traceSegment = 0;
 	Event(L"environment", L"E000", L"FictionBook Editor diagnostic trace started");
 	WriteEnvironmentHeader();
