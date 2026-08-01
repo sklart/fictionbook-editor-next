@@ -77,3 +77,7 @@ $viewCommandGuard = '(?s)CheckCommand\(WORD wID\).*?if \(!HasDoc\(\)\)\s*return 
 if($viewSource -notmatch $viewCommandGuard) {
     throw 'Command availability must not dereference a document before it is attached.'
 }
+$mainFrameIdleGuard = '(?s)BOOL CMainFrame::OnIdle\(\).*?if \(!m_doc \|\| !m_doc->m_body\.HasDoc\(\)\)\s*return false;'
+if($mainFrameSource -notmatch $mainFrameIdleGuard) {
+    throw 'Idle command updates must wait for the HTML document.'
+}

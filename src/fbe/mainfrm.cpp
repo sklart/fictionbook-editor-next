@@ -975,6 +975,11 @@ void  CMainFrame::UIUpdateViewCmd(CFBEView& view, WORD wID, OLECMD& oc, const wc
 
 BOOL CMainFrame::OnIdle()
 {	
+	// LoadFromHTML pumps messages before DocumentComplete.  Do not run the
+	// command-update path until its MSHTML document is available.
+	if (!m_doc || !m_doc->m_body.HasDoc())
+	  return false;
+
 	if(CheckFileTimeStamp())
 	{
 		return true;
