@@ -118,29 +118,53 @@ HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCou
 }
 HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags, DISPPARAMS* parameters, VARIANT* resultValue, EXCEPINFO* exceptionInfo, UINT* argumentError)
 {
-	if(argumentError) *argumentError = UINT_MAX;
+	if (riid != IID_NULL)
+		return DISP_E_UNKNOWNINTERFACE;
+	if (argumentError)
+		*argumentError = UINT_MAX;
+
 	const bool trace = IsLoadDiagnosticMethod(dispid);
-	if(trace)
+	if (trace)
 	{
-		CString details;
-		details.Format(L"dispid=%ld; method=%s; flags=0x%04X; args=%u; types=[%s]", static_cast<long>(dispid), ExternalHelperMethodName(dispid), flags, parameters ? parameters->cArgs : 0, (LPCWSTR)ExternalHelperArgumentTypes(parameters));
-		StartupTrace::Event(L"external", L"XH130", details);
+		CString begin;
+		begin.Format(L"dispid=%ld; method=%s; flags=0x%04X; lcid=%lu; args=%u; types=[%s]", static_cast<long>(dispid), ExternalHelperMethodName(dispid), flags, lcid, parameters ? parameters->cArgs : 0, (LPCWSTR)ExternalHelperArgumentTypes(parameters));
+		StartupTrace::Event(L"external", L"XH130", begin);
 	}
+
 	CComPtr<ITypeInfo> typeInfo;
-	HRESULT callResult = GetEmbeddedTypeInfo(&typeInfo);
-	if (SUCCEEDED(callResult))
-		callResult = typeInfo->Invoke(static_cast<IExternalHelper*>(this), dispid, flags, parameters, resultValue, exceptionInfo, argumentError);
-	if(trace || FAILED(callResult))
+	HRESULT result = GetEmbeddedTypeInfo(&typeInfo);
+	if (SUCCEEDED(result))
+		result = typeInfo->Invoke(static_cast<IExternalHelper*>(this), dispid, flags, parameters, resultValue, exceptionInfo, argumentError);
+
+	CComPtr<IErrorInfo> errorInfo;
+	if (FAILED(result))
+		::GetErrorInfo(0, &errorInfo);
+	if (exceptionInfo && exceptionInfo->pfnDeferredFillIn)
+		exceptionInfo->pfnDeferredFillIn(exceptionInfo);
+
+	if (trace || FAILED(result))
 	{
 		CString argumentText;
-		if(!argumentError || *argumentError == UINT_MAX) argumentText = L"none";
+		if (!argumentError || *argumentError == UINT_MAX) argumentText = L"none";
 		else argumentText.Format(L"%u", *argumentError);
 		CString details;
-		details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%s; source=embedded", static_cast<long>(dispid), ExternalHelperMethodName(dispid), resultValue ? static_cast<unsigned int>(V_VT(resultValue)) : VT_EMPTY, (LPCWSTR)argumentText);
-		StartupTrace::HResult(L"external", FAILED(callResult) ? L"XH140" : L"XH131", callResult, details);
+		details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%s; excep.wCode=%u; excep.scode=0x%08lX; excep.helpContext=%lu", static_cast<long>(dispid), ExternalHelperMethodName(dispid), resultValue ? static_cast<unsigned int>(V_VT(resultValue)) : VT_EMPTY, (LPCWSTR)argumentText, exceptionInfo ? exceptionInfo->wCode : 0, static_cast<unsigned long>(exceptionInfo ? exceptionInfo->scode : S_OK), exceptionInfo ? exceptionInfo->dwHelpContext : 0);
+		if (exceptionInfo && exceptionInfo->bstrSource) details += L"; excep.source=" + StartupTrace::SanitizeExceptionText(exceptionInfo->bstrSource);
+		if (exceptionInfo && exceptionInfo->bstrDescription) details += L"; excep.description=" + StartupTrace::SanitizeExceptionText(exceptionInfo->bstrDescription);
+		if (exceptionInfo && exceptionInfo->bstrHelpFile) details += L"; excep.help=1";
+		if (errorInfo)
+		{
+			BSTR source = NULL, description = NULL, help = NULL;
+			DWORD helpContext = 0; GUID guid = {};
+			errorInfo->GetGUID(&guid); errorInfo->GetSource(&source); errorInfo->GetDescription(&description); errorInfo->GetHelpFile(&help); errorInfo->GetHelpContext(&helpContext);
+			details.AppendFormat(L"; errorInfo.guid=%08lX; errorInfo.source=%s; errorInfo.description=%s; errorInfo.help=%d; errorInfo.helpContext=%lu", guid.Data1, (LPCWSTR)StartupTrace::SanitizeExceptionText(source), (LPCWSTR)StartupTrace::SanitizeExceptionText(description), help ? 1 : 0, helpContext);
+			::SysFreeString(source); ::SysFreeString(description); ::SysFreeString(help);
+		}
+		StartupTrace::HResult(L"external", FAILED(result) ? L"XH140" : L"XH131", result, details);
 	}
-	return callResult;
-}static CString GetCurrentDocumentFilePath(const CString* filename, const bool* namevalid)
+	return result;
+}
+static CString GetCurrentDocumentFilePath(const CString* filename, const bool* namevalid)
 {
 	if (filename == NULL || namevalid == NULL || !*namevalid || filename->IsEmpty())
 		return CString();
