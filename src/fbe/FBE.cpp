@@ -110,48 +110,71 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 {
 	StartupTrace::Event(L"typelib", L"TL100", L"registered FBELib validation started");
-	CComPtr<ITypeLib> registered;
-	HRESULT result = ::LoadRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registered);
-	StartupTrace::HResult(L"typelib", L"TL110", result, L"LoadRegTypeLib");
-	if (SUCCEEDED(result))
+	const CString modulePath = U::GetModulePath();
+	if(modulePath.IsEmpty()) return HRESULT_FROM_WIN32(::GetLastError());
+
+	// Do not prime the OLEAUT cache with LoadRegTypeLib before checking the
+	// physical registration. This is essential for a portable repair.
+	LPOLESTR registeredPath = NULL;
+	HRESULT result = ::QueryPathOfRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registeredPath);
+	StartupTrace::HResult(L"typelib", L"TL120", result, L"QueryPathOfRegTypeLib before repair");
+	CComPtr<ITypeLib> directRegistered;
+	if(SUCCEEDED(result) && registeredPath)
 	{
-		LPOLESTR registeredPath = NULL;
-		HRESULT pathResult = ::QueryPathOfRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registeredPath);
-		StartupTrace::HResult(L"typelib", L"TL120", pathResult, L"QueryPathOfRegTypeLib");
-		const CString modulePath = U::GetModulePath();
-		const bool pathMatchesCurrentExe = registeredPath && modulePath.CompareNoCase(registeredPath) == 0;
-		StartupTrace::Event(L"typelib", L"TL121", pathMatchesCurrentExe ? L"registered typelib path matches current FBE.exe" : L"registered typelib path differs from current FBE.exe");
-		// QueryPathOfRegTypeLib returns a BSTR, not CoTaskMem-allocated memory.
-		// Releasing it with CoTaskMemFree corrupts the CRT heap and is often
-		// detected only by the next COM call.
-		// Keep the registry path alive through the validation call while diagnosing allocator compatibility.
-		// It is released immediately after validation below.
-		
-		result = ValidateExternalHelperTypeLibrary(registered, L"registered");
-		if (registeredPath) ::SysFreeString(registeredPath);
-		if (SUCCEEDED(result)) { StartupTrace::Event(L"typelib", L"TL199", L"registered FBELib is compatible"); return S_OK; }
+		CString details;
+		details.Format(L"registered-path=%s; matches-current=%d", (LPCWSTR)StartupTrace::RedactPath(registeredPath), modulePath.CompareNoCase(registeredPath) == 0 ? 1 : 0);
+		StartupTrace::Event(L"typelib", L"TL121", details);
+		result = ::LoadTypeLibEx(registeredPath, REGKIND_NONE, &directRegistered);
+		StartupTrace::HResult(L"typelib", L"TL122", result, L"LoadTypeLibEx(registered path)");
+		if(SUCCEEDED(result)) result = ValidateExternalHelperTypeLibrary(directRegistered, L"registered-direct");
+		if(SUCCEEDED(result))
+		{
+			::SysFreeString(registeredPath);
+			StartupTrace::Event(L"typelib", L"TL199", L"registered FBELib is compatible without LoadRegTypeLib");
+			return S_OK;
+		}
 		StartupTrace::Warning(L"typelib", L"TL151", L"registered FBELib is incompatible; repairing per-user registration");
 	}
-	const CString modulePath = U::GetModulePath();
-	if (modulePath.IsEmpty()) return HRESULT_FROM_WIN32(::GetLastError());
+	if(registeredPath) { ::SysFreeString(registeredPath); registeredPath = NULL; }
+
 	CComPtr<ITypeLib> embedded;
 	result = ::LoadTypeLibEx((LPCOLESTR)(LPCTSTR)modulePath, REGKIND_NONE, &embedded);
 	StartupTrace::HResult(L"typelib", L"TL160", result, L"LoadTypeLibEx(current FBE.exe)");
-	if (FAILED(result)) return result;
+	if(FAILED(result)) return result;
 	result = ValidateExternalHelperTypeLibrary(embedded, L"embedded");
 	StartupTrace::HResult(L"typelib", L"TL170", result, L"embedded FBELib validation");
-	if (FAILED(result)) return result;
+	if(FAILED(result)) return result;
 	result = ::RegisterTypeLibForUser(embedded, (LPOLESTR)(LPCTSTR)modulePath, NULL);
 	StartupTrace::HResult(L"typelib", L"TL180", result, L"RegisterTypeLibForUser");
-	if (FAILED(result)) return result;
-	registered.Release();
-	result = ::LoadRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registered);
-	StartupTrace::HResult(L"typelib", L"TL190", result, L"LoadRegTypeLib after registration");
-	if (SUCCEEDED(result)) result = ValidateExternalHelperTypeLibrary(registered, L"registered-after-repair");
-	StartupTrace::HResult(L"typelib", L"TL199", result, L"FBELib validation result");
-	return result;
-}
-// External helpers
+	if(FAILED(result)) return result;
+
+	result = ::QueryPathOfRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registeredPath);
+	StartupTrace::HResult(L"typelib", L"TL190", result, L"QueryPathOfRegTypeLib after repair");
+	CComPtr<ITypeLib> repairedDirect;
+	if(SUCCEEDED(result) && registeredPath)
+	{
+		result = ::LoadTypeLibEx(registeredPath, REGKIND_NONE, &repairedDirect);
+		StartupTrace::HResult(L"typelib", L"TL191", result, L"LoadTypeLibEx(repaired path)");
+		if(SUCCEEDED(result)) result = ValidateExternalHelperTypeLibrary(repairedDirect, L"registered-direct-after-repair");
+	}
+	if(registeredPath) { ::SysFreeString(registeredPath); registeredPath = NULL; }
+	if(FAILED(result))
+	{
+		StartupTrace::HResult(L"typelib", L"TL199", result, L"registry-not-updated");
+		return result;
+	}
+
+	// The first LoadRegTypeLib happens only after a direct repaired check.
+	CComPtr<ITypeLib> activeRegistered;
+	HRESULT loadRegResult = ::LoadRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &activeRegistered);
+	StartupTrace::HResult(L"typelib", L"TL192", loadRegResult, L"first LoadRegTypeLib after repair");
+	if(SUCCEEDED(loadRegResult)) loadRegResult = ValidateExternalHelperTypeLibrary(activeRegistered, L"loadreg-after-repair");
+	if(FAILED(loadRegResult))
+		StartupTrace::Warning(L"typelib", L"TL193", L"registry-updated-loadreg-stale; typelib-cache-stale=1");
+	else
+		StartupTrace::Event(L"typelib", L"TL199", L"registry-updated-and-active");
+	return S_OK;
+}// External helpers
 IDispatchPtr  CFBEView::CreateHelper()
 {
 	CComObject<ExternalHelper> *obj;
