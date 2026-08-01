@@ -445,7 +445,7 @@ void Doc::ShowDescription(bool Show)
 
 void Doc::RunScript(LPCOLESTR filePath)
 {
-	TraceDocumentEvent(L"D300", L"Запуск пользовательского скрипта", CString(filePath));
+	TraceDocumentEvent(L"D300", L"script execution started", CString(filePath));
 	CComVariant vtResult;
 
 	// Пользовательский набор может лежать вне штатного runtime. В этом случае
@@ -471,7 +471,7 @@ void Doc::RunScript(LPCOLESTR filePath)
 	params[1] = filePath;
 	params[0] = htmlFolder;
 	InvokeFunc(L"apiRunCmd", params, 2, vtResult);
-	TraceDocumentEvent(L"D301", L"Пользовательский скрипт завершён", CString(filePath));
+	TraceDocumentEvent(L"D301", L"script execution completed", CString(filePath));
 }
 VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 {
@@ -484,7 +484,7 @@ VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 
 bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 {
-	TraceDocumentEvent(L"D110", L"Загрузка книги начата", filename);
+	TraceDocumentEvent(L"D110", L"book load started", filename);
 	HRESULT	hr;
 	StartupTrace::Event(L"webbrowser", L"WB100", L"m_body.Create begin");
 	const CString path = U::GetProgDirFile(L"main.html");
@@ -585,7 +585,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticFailureStage");
 
 		}
-		TraceDocumentEvent(L"D111", L"Загрузка книги завершилась ошибкой JavaScript", filename);
+		TraceDocumentEvent(L"D111", L"book load JavaScript failure", filename);
 		return false;
 	}
 	//m_body.Normalize(m_body.Document()->body);
@@ -643,7 +643,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 
 	// Отмечаем документ неизменённым только после подтверждённой загрузки JavaScript.
 	MarkSavePoint();
-	TraceDocumentEvent(L"D113", L"Загрузка книги завершена", filename);
+	TraceDocumentEvent(L"D113", L"book load completed", filename);
 	return true;
 }
 
@@ -670,7 +670,7 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
     m_namevalid = true;
   }
   catch (_com_error& e) {
-	TraceDocumentEvent(L"D114", L"Загрузка книги завершилась COM-ошибкой", filename);
+	TraceDocumentEvent(L"D114", L"book load COM failure", filename);
     U::ReportError(e);
     return false;
   }
@@ -680,10 +680,10 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
 
 void  Doc::CreateBlank(HWND hWndParent) {
   try {
-	TraceDocumentEvent(L"D120", L"Создание пустой книги", L"blank.fb2");
+	TraceDocumentEvent(L"D120", L"blank book creation", L"blank.fb2");
     // load document into DOM
 	  if (!LoadFromHTML(hWndParent, L"blank.fb2"))
-	  StartupTrace::Error(L"document", L"D201", L"Пустая книга не была загружена");
+	  StartupTrace::Error(L"document", L"D201", L"blank book was not loaded");
     //LoadFromDOM(hWndParent,U::CreateDocument(true));
   }
   catch (_com_error& e) {
@@ -1274,7 +1274,7 @@ static void CommitSavedFile(const CString& temporaryFile, const CString& destina
 
 		if (!::MoveFileEx(temporaryFile, destinationFile, MOVEFILE_WRITE_THROUGH))
 			throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
-		TraceDocumentEvent(L"D210", L"Сохранение: создан новый файл без .bak", destinationFile);
+		TraceDocumentEvent(L"D210", L"book save created new file without backup", destinationFile);
 		return;
 	}
 
@@ -1294,7 +1294,7 @@ static void CommitSavedFile(const CString& temporaryFile, const CString& destina
 
 	if (!::ReplaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL))
 		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
-	TraceDocumentEvent(L"D211", createBackupFile ? L"Сохранение: создана резервная копия .bak" : L"Сохранение: замена существующего файла без .bak",
+	TraceDocumentEvent(L"D211", createBackupFile ? L"book save backup created" : L"book save replacing existing file",
 		createBackupFile ? backupFile : destinationFile);
 }
 
