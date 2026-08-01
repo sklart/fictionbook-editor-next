@@ -45,7 +45,7 @@ foreach ($text in @($runtimeLocalization, $runtimeCommon)) {
 
 $startupTrace = Get-ProjectText 'src\fbe\StartupTrace.cpp'
 Assert-Contains $startupTrace 'FBE_NEXT_TRACE' 'Переменная единого диагностического журнала Next'
-Assert-Contains $startupTrace 'fbe-trace.log' 'Файл единого диагностического журнала Next'
+Assert-Contains $startupTrace 'fbe-trace-' 'Файл единого диагностического журнала Next'
 Assert-NotContains $startupTrace 'FBE_NEXT_STARTUP_TRACE' 'Диагностический журнал Next'
 Assert-NotContains $startupTrace 'FBE_NEXT_SELECTION_TRACE' 'Диагностический журнал Next'
 

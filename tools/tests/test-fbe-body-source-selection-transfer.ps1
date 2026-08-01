@@ -81,15 +81,15 @@ Assert-Contains $trace 'FBE_NEXT_TRACE' `
 if ($trace.Contains('FBE_NEXT_STARTUP_TRACE') -or $trace.Contains('FBE_NEXT_SELECTION_TRACE')) {
 	throw 'В диагностическом журнале не должны оставаться отдельные переменные startup/selection.'
 }
-Assert-Contains $trace 'fbe-trace.log' `
+Assert-Contains $trace 'fbe-trace-' `
 	'диагностический журнал должен записываться в файл FBE Next'
-Assert-Contains $source 'StartupTrace::Event(L"selection", message);' `
+Assert-Contains $source 'StartupTrace::Event(L"selection", L"E200", message);' `
 	'записи переноса выделения должны иметь категорию selection'
 Assert-Contains $trace 'void StartupTrace::Event' `
 	'журнал должен принимать события нескольких диагностических категорий'
-Assert-Contains $document 'StartupTrace::Event(L"document", trace);' `
+Assert-Contains $document 'StartupTrace::Event(L"document", code, trace);' `
 	'создание XML DOM должно фиксироваться в диагностическом журнале'
-Assert-Contains $document 'StartupTrace::Event(L"com", trace);' `
+Assert-Contains $document 'StartupTrace::HResult(L"com", L"X191", e.Error(), L"CreateDOM");' `
 	'ошибка создания XML DOM должна фиксироваться как COM-событие'
 Assert-Contains $document 'L"Загрузка книги начата"' `
 	'журнал должен фиксировать начало открытия книги'
