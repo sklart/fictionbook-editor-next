@@ -488,10 +488,15 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	HRESULT	hr;
 	StartupTrace::Event(L"webbrowser", L"WB100", L"m_body.Create begin");
 	const CString path = U::GetProgDirFile(L"main.html");
-	m_body.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
+	const HWND browserWindow = m_body.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
+	if (!browserWindow)
+	{
+		StartupTrace::HResult(L"webbrowser", L"WB101", HRESULT_FROM_WIN32(::GetLastError()), L"m_body.Create returned no HWND");
+		return false;
+	}
 	if (!m_body.Browser())
 	{
-		StartupTrace::Error(L"webbrowser", L"WB101", L"m_body.Create did not provide IWebBrowser2");
+		StartupTrace::Error(L"webbrowser", L"WB102", L"m_body.Create did not provide IWebBrowser2");
 		return false;
 	}
 	StartupTrace::Event(L"webbrowser", L"WB110", L"IWebBrowser2 available");
@@ -500,9 +505,26 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	if (FAILED(hr))
 		return false;
 	MSG msg;
+	const ULONGLONG navigationStarted = ::GetTickCount64();
+	const DWORD documentCompleteTimeoutMs = 30000;
 	StartupTrace::Event(L"webbrowser", L"WB130", L"waiting for DocumentComplete");
 	while (!m_body.Loaded())
 	{
+		const ULONGLONG elapsed = ::GetTickCount64() - navigationStarted;
+		if (elapsed >= documentCompleteTimeoutMs)
+		{
+			CString details; details.Format(L"elapsed=%llu; document-present=%d", elapsed, m_body.HasDoc() ? 1 : 0);
+			StartupTrace::Warning(L"webbrowser", L"WB133", details);
+			return false;
+		}
+		const DWORD waitResult = ::MsgWaitForMultipleObjects(0, NULL, FALSE, static_cast<DWORD>(documentCompleteTimeoutMs - elapsed), QS_ALLINPUT);
+		if (waitResult == WAIT_TIMEOUT)
+			continue;
+		if (waitResult == WAIT_FAILED)
+		{
+			StartupTrace::HResult(L"webbrowser", L"WB131", HRESULT_FROM_WIN32(::GetLastError()), L"MsgWaitForMultipleObjects failed");
+			return false;
+		}
 		const int messageResult = ::GetMessage(&msg, NULL, 0, 0);
 		if (messageResult == 0)
 		{

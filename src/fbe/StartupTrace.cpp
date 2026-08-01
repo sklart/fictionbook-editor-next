@@ -26,6 +26,23 @@ namespace
 		return value;
 	}
 
+	CString RedactPathFragments(CString value)
+	{
+		for (int index = 0; index < value.GetLength();)
+		{
+			int start = -1;
+			if (index + 2 < value.GetLength() && ((value[index] >= L'A' && value[index] <= L'Z') || (value[index] >= L'a' && value[index] <= L'z')) && value[index + 1] == L':' && (value[index + 2] == L'\\' || value[index + 2] == L'/')) start = index;
+			else if (index + 1 < value.GetLength() && value[index] == L'\\' && value[index + 1] == L'\\') start = index;
+			else if (value.Mid(index, 8).CompareNoCase(L"file:///") == 0) start = index;
+			if (start < 0) { ++index; continue; }
+			int end = start;
+			while (end < value.GetLength() && value[end] != L';' && value[end] != L'\r' && value[end] != L'\n' && value[end] != L'\t') ++end;
+			value = value.Left(start) + L"[path omitted]" + value.Mid(end);
+			index = start + 14;
+		}
+		return value;
+	}
+
 	CString Sanitize(const wchar_t* text, int maximumLength, bool redactPaths)
 	{
 		CString value(text ? text : L"");
@@ -37,7 +54,7 @@ namespace
 		value = ReplaceEnvironmentValue(value, L"TEMP", L"%TEMP%");
 		value = ReplaceEnvironmentValue(value, L"PROGRAMFILES", L"%PROGRAMFILES%");
 		value = ReplaceEnvironmentValue(value, L"PROGRAMDATA", L"%PROGRAMDATA%");
-		if (redactPaths && (value.Find(L":\\") >= 0 || value.Find(L":/") >= 0 || value.Find(L"\\\\") >= 0 || value.Find(L"file:///") >= 0)) value = L"[path omitted]";
+		if (redactPaths) value = RedactPathFragments(value);
 		if (maximumLength > 0 && value.GetLength() > maximumLength) value = value.Left(maximumLength) + L"...";
 		return value;
 	}
@@ -81,6 +98,21 @@ namespace
 		tracePath = segmentPath;
 		writtenBytes = 0;
 		return true;
+	}
+
+	bool OpenTraceFile(const CString& directory, const SYSTEMTIME& time)
+	{
+		::SHCreateDirectoryEx(NULL, directory, NULL);
+		for (unsigned int suffix = 0; suffix != 100; ++suffix)
+		{
+			CString suffixText;
+			if (suffix) suffixText.Format(L"-%u", suffix);
+			traceBasePath.Format(L"%s\\fbe-trace-%04u%02u%02u-%02u%02u%02u-pid%lu%s", (LPCWSTR)directory, time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, ::GetCurrentProcessId(), (LPCWSTR)suffixText);
+			tracePath = traceBasePath + L".log";
+			traceFile = ::CreateFile(tracePath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (traceFile != INVALID_HANDLE_VALUE) return true;
+		}
+		return false;
 	}
 
 	void WriteUtf8(const CString& text, bool flush, bool force)
@@ -133,19 +165,22 @@ void StartupTrace::Start()
 	if (!IsEnabledForNextLaunch()) return;
 	::InitializeCriticalSection(&traceLock); traceLockInitialized = true;
 	wchar_t base[MAX_PATH] = {};
-	if (FAILED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, base))) ::GetTempPath(_countof(base), base);
-	CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next\\Diagnostics"; ::SHCreateDirectoryEx(NULL, directory, NULL);
+	const bool haveLocalAppData = SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, base));
 	SYSTEMTIME time = {}; ::GetLocalTime(&time);
-	for (unsigned int suffix = 0; suffix != 100; ++suffix)
+	bool opened = false;
+	if (haveLocalAppData)
 	{
-		CString suffixText;
-		if (suffix) suffixText.Format(L"-%u", suffix);
-		traceBasePath.Format(L"%s\\fbe-trace-%04u%02u%02u-%02u%02u%02u-pid%lu%s", (LPCWSTR)directory, time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, ::GetCurrentProcessId(), (LPCWSTR)suffixText);
-		tracePath = traceBasePath + L".log";
-		traceFile = ::CreateFile(tracePath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (traceFile != INVALID_HANDLE_VALUE) break;
+		CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next\\Diagnostics";
+		opened = OpenTraceFile(directory, time);
 	}
-	if (traceFile == INVALID_HANDLE_VALUE) { lastWriteError = ::GetLastError(); return; }
+	if (!opened)
+	{
+		const DWORD primaryError = ::GetLastError();
+		if (!::GetTempPath(_countof(base), base)) { lastWriteError = primaryError; return; }
+		CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next Diagnostics";
+		opened = OpenTraceFile(directory, time);
+		if (!opened) { lastWriteError = ::GetLastError() ? ::GetLastError() : primaryError; return; }
+	}
 	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = traceSegment = 0;
 	Event(L"environment", L"E000", L"FictionBook Editor diagnostic trace started");
 	WriteEnvironmentHeader();
