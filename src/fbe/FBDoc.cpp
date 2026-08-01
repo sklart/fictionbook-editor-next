@@ -94,10 +94,10 @@ Doc   *Doc::LocateDocument(const wchar_t *id) {
 // initialize a new Doc
 Doc::Doc(HWND hWndFrame) :
 	     m_filename(_T("Untitled.fb2")), m_namevalid(false),
-//	     m_desc(hWndFrame,false), 
+//	     m_desc(hWndFrame,false),
 		 m_body(hWndFrame, true),
-	     m_frame(hWndFrame), 
-//		 m_desc_ver(-1), 
+	     m_frame(hWndFrame),
+//		 m_desc_ver(-1),
 		 m_body_ver(-1),
 //	     m_desc_cp(-1),
 		 m_body_cp(-1),
@@ -153,18 +153,18 @@ void Doc::TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr do
   // create processor
   MSXML2::IXSLProcessorPtr	proc(tp->createProcessor());
   proc->input=_variant_t(doc.GetInterfacePtr());
-  
+
   // add parameters
   CString	  fss(_Settings.GetFont());
   if (!fss.IsEmpty())
     proc->addParameter(L"font",(const wchar_t *)fss,_bstr_t());
-  
+
   DWORD		  fs = _Settings.GetFontSize();
   if (fs>1) {
     fss.Format(_T("%d"), static_cast<int>(fs));
     proc->addParameter(L"fontSize",(const wchar_t *)fss,_bstr_t());
   }
-  
+
   fs = _Settings.GetColorFG();
   if (fs!=CLR_DEFAULT) {
     fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
@@ -520,52 +520,59 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	m_body.SetExternalDispatch(m_body.CreateHelper());
 
 	m_body.Init();
-	StartupTrace::Event(L"webbrowser", L"WB299", L"browser ready");	
+	StartupTrace::Event(L"webbrowser", L"WB299", L"browser ready");
 	TraceHtmlDocumentState(m_body.Browser()->Document);
 	//FastMode();
-	
+
 	CComVariant params[2];
 	params[1] = filename;
 	params[0] = _Settings.GetInterfaceLanguageName();
 	CComVariant res;
-	
+
+	const bool diagnosticsActive = StartupTrace::Enabled();
+	bool diagnosticBridgeUnavailable = false;
+	if (diagnosticsActive)
+	{
 	CComVariant diagnosticTrace;
 	V_VT(&diagnosticTrace) = VT_BOOL;
 	V_BOOL(&diagnosticTrace) = StartupTrace::Enabled() ? VARIANT_TRUE : VARIANT_FALSE;
 	CComVariant diagnosticResult;
 	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult);
 	StartupTrace::HResult(L"script", L"J010", hr, L"apiSetDiagnosticTraceEnabled");
-	bool diagnosticBridgeUnavailable = false;
-	if (FAILED(hr))
+		if (FAILED(hr))
 	{
 		// The diagnostic API was introduced after the original runtime. Its
 		// absence (including DISP_E_UNKNOWNNAME) must never prevent a book from
 		// opening with an older main.js.
 		StartupTrace::Warning(L"script", L"J011", L"apiSetDiagnosticTraceEnabled unavailable; continuing without script diagnostics");
 	}
-	else
-	{
-		CComVariant bridgeState;
-		const HRESULT bridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, bridgeState);
-		if (SUCCEEDED(bridgeResult) && V_VT(&bridgeState) == VT_I4)
-		{
-			const long state = V_I4(&bridgeState);
-			diagnosticBridgeUnavailable = state == -1;
-			StartupTrace::Event(L"script", L"J012", state == 1 ? L"diagnostic trace bridge=available" :
-				state == -1 ? L"diagnostic trace bridge=unavailable" : L"diagnostic trace bridge=unknown");
-		}
 		else
 		{
-			StartupTrace::HResult(L"script", L"J013", bridgeResult, L"apiGetDiagnosticTraceBridgeState");
+			CComVariant bridgeState;
+			const HRESULT bridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, bridgeState);
+			if (SUCCEEDED(bridgeResult) && V_VT(&bridgeState) == VT_I4)
+			{
+				const long state = V_I4(&bridgeState);
+				diagnosticBridgeUnavailable = state == -1;
+				StartupTrace::Event(L"script", L"J012", state == 1 ? L"diagnostic trace bridge=available" :
+					state == -1 ? L"diagnostic trace bridge=unavailable" : L"diagnostic trace bridge=unknown");
+			}
+			else
+			{
+				StartupTrace::HResult(L"script", L"J013", bridgeResult, L"apiGetDiagnosticTraceBridgeState");
+			}
 		}
-	}
 
+
+	}
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
 	hr = InvokeFunc(L"apiLoadFB2", params, 2, res);
 	StartupTrace::HResult(L"document", L"J200", hr, L"apiLoadFB2");
 	if (FAILED(hr))
 	{
+		if (diagnosticsActive)
+		{
 		// Preserve the original apiLoadFB2 HRESULT. This extra query is diagnostic only.
 		CComVariant lastStage;
 		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticFailureStage", NULL, 0, lastStage);
@@ -573,6 +580,8 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
 		else
 			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticFailureStage");
+
+		}
 		TraceDocumentEvent(L"D111", L"Загрузка книги завершилась ошибкой JavaScript", filename);
 		return false;
 	}
@@ -597,28 +606,36 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 
 	if (!loaded)
 	{
-		CComVariant operationStage;
-		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, operationStage);
-		if (SUCCEEDED(stageResult) && V_VT(&operationStage) == VT_BSTR)
-			StartupTrace::Event(L"script", L"J996", StartupTrace::SanitizeLogText(V_BSTR(&operationStage), 32));
-		else
-			StartupTrace::Warning(L"script", L"J995", L"apiGetDiagnosticOperationStage unavailable");
+		if (diagnosticsActive)
+		{
+			CComVariant operationStage;
+			const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, operationStage);
+			if (SUCCEEDED(stageResult) && V_VT(&operationStage) == VT_BSTR)
+				StartupTrace::Event(L"script", L"J996", StartupTrace::SanitizeLogText(V_BSTR(&operationStage), 32));
+			else
+				StartupTrace::Warning(L"script", L"J995", L"apiGetDiagnosticOperationStage unavailable");
+		}
 		TraceDocumentEvent(L"D112", L"book load returned false", filename);
 		return false;
 	}
 
-	CComVariant postLoadBridgeState;
-	const HRESULT postLoadBridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, postLoadBridgeState);
-	if (SUCCEEDED(postLoadBridgeResult) && V_VT(&postLoadBridgeState) == VT_I4)
-		diagnosticBridgeUnavailable = diagnosticBridgeUnavailable || V_I4(&postLoadBridgeState) == -1;
-	if (diagnosticBridgeUnavailable)
+	if (diagnosticsActive)
 	{
-		CComVariant lastStage;
-		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, lastStage);
-		if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
-			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
-		else
-			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticOperationStage");
+	CComVariant postLoadBridgeState;
+		const HRESULT postLoadBridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, postLoadBridgeState);
+		if (SUCCEEDED(postLoadBridgeResult) && V_VT(&postLoadBridgeState) == VT_I4)
+			diagnosticBridgeUnavailable = diagnosticBridgeUnavailable || V_I4(&postLoadBridgeState) == -1;
+		if (diagnosticBridgeUnavailable)
+		{
+			CComVariant lastStage;
+			const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, lastStage);
+			if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
+				StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
+			else
+				StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticOperationStage");
+		}
+
+
 	}
 
 	// Отмечаем документ неизменённым только после подтверждённой загрузки JavaScript.
@@ -639,7 +656,7 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
 
     if (!LoadFromDOM(hWndParent,dom))
       return false;*/
-	
+
 	CWaitCursor hourglass;
 	if(!LoadFromHTML(hWndParent, filename))
 	{
@@ -807,10 +824,10 @@ static MSXML2::IXMLDOMNodePtr	  ProcessInline(MSHTML::IHTMLDOMNode *inl,
 	  xname=L"sup";
   else if (U::scmp(name,L"A")==0) {
       xname=L"a"; fA=true;
-  } else if (U::scmp(name,L"SPAN")==0) 
+  } else if (U::scmp(name,L"SPAN")==0)
    {
 	  if(U::scmp(cls,L"unknown_element")==0)
-	  {		   
+	  {
 		  _bstr_t realClassName = einl->getAttribute(L"source_class", 2);
 		  xname = realClassName;
 		  fUnk = true;
@@ -843,7 +860,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessInline(MSHTML::IHTMLDOMNode *inl,
 
   if (fUnk)
   {
-	  MSHTML::IHTMLAttributeCollectionPtr col = inl->attributes;		  
+	  MSHTML::IHTMLAttributeCollectionPtr col = inl->attributes;
 	for(int i = 0; i < col->length; ++i)
 	{
 		VARIANT index;
@@ -859,13 +876,13 @@ static MSXML2::IXMLDOMNodePtr	  ProcessInline(MSHTML::IHTMLDOMNode *inl,
 		}
 		else
 		{
-			real_attr_name = (wchar_t*)attr_name + wcslen(prefix);			
+			real_attr_name = (wchar_t*)attr_name + wcslen(prefix);
 			attr_value = MSHTML::IHTMLDOMAttributePtr(col->item(&index))->nodeValue;
 		}
 		MSXML2::IXMLDOMAttributePtr  attr(doc->createNode(2L,real_attr_name,FBNS));
 		attr->appendChild(doc->createTextNode(attr_value));
-		xinl->setAttributeNode(attr);		
-	}	
+		xinl->setAttributeNode(attr);
+	}
   }
 
   MSHTML::IHTMLDOMNodePtr     cn(inl->firstChild);
@@ -897,7 +914,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessP(MSHTML::IHTMLElement *p,
 	baseName=L"th";
   else if (U::scmp(cls,L"td")==0)
 	baseName=L"td";
- 
+
   MSHTML::IHTMLDOMNodePtr   hp(p);
 
   // check if it is an empty-line
@@ -935,7 +952,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessP(MSHTML::IHTMLElement *p,
   _bstr_t	colspan(AU::GetAttrB(p,L"fbcolspan"));
   if (colspan.length()>0)
 	  SetAttr(xp,L"colspan",FBNS,colspan,doc);
-  
+
   _bstr_t	rowspan(AU::GetAttrB(p,L"fbrowspan"));
   if (rowspan.length()>0)
 	  SetAttr(xp,L"rowspan",FBNS,rowspan,doc);
@@ -950,7 +967,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessP(MSHTML::IHTMLElement *p,
 
   hp=hp->firstChild;
 
-  // Modification by Pilgrim  
+  // Modification by Pilgrim
   while ((bool)hp) {
     if (hp->nodeType==NODE_TEXT/*3*/) // text segment
       xp->appendChild(MkText(hp,doc));
@@ -972,7 +989,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
 					     int indent)
 {
   _bstr_t		    cls(div->className);
-  
+
   MSXML2::IXMLDOMElementPtr xdiv(doc->createNode(1L,cls,FBNS));
 
   if (U::scmp(cls,L"image")==0) {
@@ -985,18 +1002,18 @@ static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
   SetID(div,xdiv,doc);
 
   // Modification by Pilgrim
-  if (U::scmp(cls,L"table")==0) { 
+  if (U::scmp(cls,L"table")==0) {
 	  _bstr_t	style(AU::GetAttrB(div,L"fbstyle"));
 	  if (style.length()>0){
 		  SetAttr(xdiv,L"style",FBNS,style,doc);
 	  }
-  }  
-  if (U::scmp(cls,L"tr")==0) { 
+  }
+  if (U::scmp(cls,L"tr")==0) {
 	 _bstr_t	align(AU::GetAttrB(div,L"fbalign"));
 	 if (align.length()>0){
 		SetAttr(xdiv,L"align",FBNS,align,doc);
 	 }
-  }  
+  }
 
   MSHTML::IHTMLDOMNodePtr   ndiv(div);
   MSHTML::IHTMLDOMNodePtr   fc(ndiv->firstChild);
@@ -1063,7 +1080,7 @@ static void   GetBodies(MSHTML::IHTMLElementPtr	body,
     if (!(bool)div)
       continue;
 
-	if (U::scmp(div->tagName,L"DIV")==0 && U::scmp(div->className,L"body")==0) 
+	if (U::scmp(div->tagName,L"DIV")==0 && U::scmp(div->className,L"body")==0)
 	{
       MSXML2::IXMLDOMElementPtr	xb(ProcessDiv(div,doc,1));
       _bstr_t	  bn(AU::GetAttrB(div,L"fbname"));
@@ -1153,8 +1170,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
     if (!(bool)div)
       continue;
-    
-	if (U::scmp(div->tagName,L"DIV")==0 && U::scmp(div->id,L"fbw_body")==0) 
+
+	if (U::scmp(div->tagName,L"DIV")==0 && U::scmp(div->id,L"fbw_body")==0)
 	{
 		 fbw_body = div;
 		 break;
@@ -1352,7 +1369,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
       return false;
     }
 
-	if (fValidateOnly) 
+	if (fValidateOnly)
 	{
 		wchar_t buf[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(), IDS_SB_NO_ERR, buf, MAX_LOAD_STRING);
@@ -1378,21 +1395,21 @@ forcesave:
 	{
 		MSXML2::IXMLDOMNodePtr node = ndoc->firstChild;
 
-		while (node && node!=ndoc) 
+		while (node && node!=ndoc)
 		{
 			if (node->nodeType==3)
 			{
 				CString s = node->nodeValue;
 				int n = s.Replace( _Settings.GetNBSPChar(), L"\u00A0");
 				int k = s.Replace(L"<p>\u00A0</p>", L"<empty-line/>");
-				if (n || k) 
+				if (n || k)
 				{
 					node->nodeValue = s.AllocSysString();
 				}
 			}
 			if (node->firstChild)
 				node=node->firstChild;
-			else 
+			else
 			{
 				while (node && node!=ndoc && node->nextSibling==NULL) node=node->parentNode;
 				if (node && node!=ndoc) node=node->nextSibling;
@@ -1550,7 +1567,7 @@ void  Doc::BinIDsToComboBox(CComboBox& box) {
 	  {
 		MSHTML::IHTMLElementPtr elem = sbo->item(i);
 		CString value = elem->getAttribute(L"value", 0);
-		if (!value.IsEmpty()) 
+		if (!value.IsEmpty())
 		{
 			box.AddString(AddHash(tmp, _bstr_t(value)));
 		}
@@ -1565,7 +1582,7 @@ void  Doc::BinIDsToComboBox(CComboBox& box) {
 }
 
 BSTR Doc::PrepareDefaultId(const CString& filename){
-  
+
   CString _filename = U::Transliterate(filename);
   // prepare a default id
   int cp = _filename.ReverseFind(_T('\\'));
@@ -1631,13 +1648,13 @@ void  Doc::ApplyConfChanges() {
 	CString	  fss(_Settings.GetFont());
     if (!fss.IsEmpty())
       hs->fontFamily=(const wchar_t *)fss;
-  
+
 	DWORD		  fs = _Settings.GetFontSize();
     if (fs>1) {
       fss.Format(_T("%dpt"), static_cast<int>(fs));
       hs->fontSize=(const wchar_t *)fss;
     }
-  
+
     fs = _Settings.GetColorFG();
     if (fs==CLR_DEFAULT)
       fs=::GetSysColor(COLOR_WINDOWTEXT);
@@ -1899,7 +1916,7 @@ void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString tagName)
     desc.Invoke1(L"PutBinaries",&arg);
 
     // transform to html
-	TransformXML(LoadXSL(_T("body.xsl")),dom,m_body);	
+	TransformXML(LoadXSL(_T("body.xsl")),dom,m_body);
 
     // wait until it loads
     while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
@@ -1947,7 +1964,7 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 
     // construct a document
     MSXML2::IXMLDOMDocument2Ptr	dom;
-    
+
     if (!fValidateOnly) {
       dom=U::CreateDocument(true);
 
@@ -2010,7 +2027,7 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
       return false;
     }
 
-    if (fValidateOnly) 
+    if (fValidateOnly)
 	{
 		wchar_t buf[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(), IDS_SB_NO_ERR, buf, MAX_LOAD_STRING);
@@ -2055,7 +2072,7 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 
     // transform to html
     TransformXML(LoadXSL(_T("body.xsl")),dom,m_body);
-	
+
 
     // wait until it loads
     while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
@@ -2084,7 +2101,7 @@ void Doc::SaveSelectedPos()
 	//  UUID
 	UUID	      uuid;
 	wchar_t *str;
-	if (UuidCreate(&uuid)==RPC_S_OK && UuidToStringW(&uuid,&str)==RPC_S_OK) 
+	if (UuidCreate(&uuid)==RPC_S_OK && UuidToStringW(&uuid,&str)==RPC_S_OK)
 	{
 		m_save_marker = str;
 	}
@@ -2105,7 +2122,7 @@ long Doc::GetSavedPos(bstr_t &xml, bool deleteMarker)
 		return 0;
 	}
 	int pos = wpos - (wchar_t*)xml;
-	
+
 	if(deleteMarker)
 	{
 		CStringW cleaned((const wchar_t*)xml);
@@ -2141,12 +2158,12 @@ public:
 	{
 		 m_writer = writer;
 	}
-	
+
 	STDMETHOD(raw_characters)(wchar_t * pwchChars,int cchChars)
 	{
 		 return m_writer->raw_characters(pwchChars, cchChars);
 	}
-    
+
 	STDMETHOD(raw_endDocument)()
 	{
 		return m_writer->raw_endDocument();
@@ -2224,13 +2241,13 @@ bool Doc::TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr* xml)
 
     // connect document to the writer
     wrt->output=xml->GetInterfacePtr();
-    
+
     // connect the writer to the reader
 	rdr->putContentHandler(MSXML2::ISAXContentHandlerPtr(wrt));
-	
+
     // now parse it!
     // oh well, let's waste more memory
-    
+
     VARIANT vt;
     V_VT(&vt)=VT_BSTR;
     V_BSTR(&vt)=text;
@@ -2238,9 +2255,9 @@ bool Doc::TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr* xml)
     //::VariantClear(&vt);
 
 	bstr_t msg = eh->m_msg;
-    if (FAILED(hr)) 
+    if (FAILED(hr))
 	{
-      if (!eh->m_msg.IsEmpty()) 
+      if (!eh->m_msg.IsEmpty())
 	  {
 		// record error position
 		int errline = eh->m_line;
@@ -2248,7 +2265,7 @@ bool Doc::TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr* xml)
 		::MessageBeep(MB_ICONERROR);
 		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT,0,
 		(LPARAM)(const TCHAR *)eh->m_msg);
-      } 
+      }
 	  else
 	  {
 		U::ReportError(hr);
@@ -2273,14 +2290,14 @@ MSHTML::IHTMLDOMNodePtr Doc::MoveNode(MSHTML::IHTMLDOMNodePtr from, MSHTML::IHTM
 	VARIANT disp;
 	MSHTML::IHTMLElementPtr elem = (MSHTML::IHTMLElementPtr)to;
 	bstr_t text = elem->innerHTML;
-	
+
 	//  title
 	if((bool)insertBefore)
 	{
 		while(1)
 		{
-			MSHTML::IHTMLElementPtr elem = (MSHTML::IHTMLElementPtr)insertBefore;	
-			_bstr_t class_name(elem->className);	
+			MSHTML::IHTMLElementPtr elem = (MSHTML::IHTMLElementPtr)insertBefore;
+			_bstr_t class_name(elem->className);
 			if(
 				(0 == U::scmp(class_name, L"title"))
 				|| (0 == U::scmp(class_name, L"epigraph"))
@@ -2311,7 +2328,7 @@ MSHTML::IHTMLDOMNodePtr Doc::MoveNode(MSHTML::IHTMLDOMNodePtr from, MSHTML::IHTM
 }
 
 void Doc::FastMode()
-{	
+{
 	CComDispatchDriver	body(m_body.Script());
 	CComVariant		    args[1];
 	args[0]=m_fast_mode;
