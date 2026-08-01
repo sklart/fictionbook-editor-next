@@ -118,8 +118,8 @@ namespace
 		wchar_t exe[MAX_PATH] = {};
 		::GetModuleFileName(NULL, exe, _countof(exe));
 		CString details;
-		details.Format(L"fbe=%s; native-arch=%u; acp=%u; oemcp=%u; exe=%s", FBE_VERSION_WSTRING, info.wProcessorArchitecture, ::GetACP(), ::GetOEMCP(), (LPCWSTR)RedactPath(exe));
-		Event(L"environment", L"E010", details);
+		details.Format(L"fbe=%s; native-arch=%u; acp=%u; oemcp=%u; exe=%s", FBE_VERSION_WSTRING, info.wProcessorArchitecture, ::GetACP(), ::GetOEMCP(), (LPCWSTR)StartupTrace::RedactPath(exe));
+		StartupTrace::Event(L"environment", L"E010", details);
 	}
 	bool TryGetNextLaunchPreference(bool& enabled) { DWORD value = 0, size = sizeof(value); if (::RegGetValue(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, diagnosticTraceRegistryValue, RRF_RT_REG_DWORD, NULL, &value, &size) != ERROR_SUCCESS) return false; enabled = value != 0; return true; }
 	bool IsTraceEnabled(const wchar_t* variable) { wchar_t value[8] = {}; DWORD n = ::GetEnvironmentVariable(variable, value, _countof(value)); return n && n < _countof(value) && !(n == 1 && value[0] == L'0'); }

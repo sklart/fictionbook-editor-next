@@ -48,13 +48,14 @@ static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
 			StartupTrace::Error(L"webbrowser", L"WB300", L"HTML document unavailable");
 			return;
 		}
-		_bstr_t url(document->URL);
+		MSHTML::IHTMLDocument4Ptr document4(document);
+		_bstr_t url(document4 ? document4->URLUnencoded : L"");
 		_bstr_t readyState(document->readyState);
 		MSHTML::IHTMLDocument5Ptr document5(document);
 		MSHTML::IHTMLDocument6Ptr document6(document);
 		_bstr_t compatMode(document5 ? document5->compatMode : L"(unknown)");
-		long documentMode = -1;
-		if(document6) document6->get_documentMode(&documentMode);
+		_variant_t documentModeValue(document6 ? document6->documentMode : _variant_t());
+		long documentMode = documentModeValue.vt == VT_I4 ? documentModeValue.lVal : -1;
 		_bstr_t charset(document->charset);
 		MSHTML::IHTMLDocument3Ptr document3(document);
 		const bool hasBody = (bool)document->body;
