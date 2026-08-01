@@ -2348,7 +2348,7 @@ bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
 		else
 			directory.Delete(separator, directory.GetLength() - separator);
 
-		wchar_t temporaryBufferwchar_t diagnosticsDirectory[MAX_PATH] = {};
+		wchar_t temporaryBuffer[MAX_PATH] = {};
 		if (::GetTempFileName(directory, L"fbs", 0, temporaryBuffer) == 0)
 			return false;
 		temporaryFile = temporaryBuffer;
