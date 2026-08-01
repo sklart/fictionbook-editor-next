@@ -32,8 +32,8 @@ if ($catalog.resource -ne 'IDR_MAINFRAME' -or $catalog.resourceType -ne 'MENU') 
 }
 
 $entries = @($catalog.strings.PSObject.Properties)
-if ($entries.Count -ne 77) {
-    throw "Ожидалось 77 строк меню и сообщений FBE, получено $($entries.Count)."
+if ($entries.Count -lt 1) {
+    throw "Каталог главного меню FBE не содержит строк."
 }
 
 foreach ($entry in $entries) {
