@@ -86,6 +86,6 @@ if($mainFrameSource -notmatch $viewSelectionGuard) {
     throw 'View selection must tolerate an unavailable HTML document.'
 }
 
-if($documentSource -notlike '*documentCompleteTimeoutMs = 60000*') {
-    throw 'DocumentComplete timeout must tolerate a slow debugger-started MSHTML instance.'
+if($documentSource -notlike '*documentCompleteTimeoutMs = 120000*') {
+    throw 'DocumentComplete timeout must tolerate a very slow debugger-started MSHTML instance.'
 }
