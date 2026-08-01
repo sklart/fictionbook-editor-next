@@ -104,6 +104,12 @@ try {
         if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "category=document;" -Quiet)) {
             throw "В диагностическом журнале нет событий документа: $traceFile"
         }
+        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "external-typeinfo=" -Quiet)) {
+            throw "В диагностическом журнале нет состояния window.external: $traceFile"
+        }
+        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "apiLoadFB2=" -Quiet)) {
+            throw "В диагностическом журнале нет состояния JavaScript API: $traceFile"
+        }
 
         Write-Host "Диагностический журнал:"
         Get-Content -LiteralPath $traceFile

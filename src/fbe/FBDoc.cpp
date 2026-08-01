@@ -39,6 +39,14 @@ static void TraceRecoveryEvent(const wchar_t* code, const wchar_t* operation, co
 	StartupTrace::Event(L"recovery", code, trace);
 }
 
+static bool DispatchHasMember(IDispatch* dispatch, const wchar_t* name)
+{
+	if (!dispatch || !name || !*name) return false;
+	LPOLESTR names[1] = { const_cast<LPOLESTR>(name) };
+	DISPID dispid = DISPID_UNKNOWN;
+	return SUCCEEDED(dispatch->GetIDsOfNames(IID_NULL, names, 1, LOCALE_SYSTEM_DEFAULT, &dispid));
+}
+
 static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
 {
 	try
@@ -63,11 +71,23 @@ static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
 		const bool hasFbwDesc = document3 && (bool)document3->getElementById(L"fbw_desc");
 		const bool hasFbwBody = document3 && (bool)document3->getElementById(L"fbw_body");
 		const bool hasUserCmd = document3 && (bool)document3->getElementById(L"userCmd");
+		MSHTML::IHTMLWindow2Ptr window(document->parentWindow);
+		IDispatchPtr external = window ? window->external : NULL;
+		UINT externalTypeInfoCount = 0;
+		const HRESULT externalTypeInfoResult = external ? external->GetTypeInfoCount(&externalTypeInfoCount) : E_NOINTERFACE;
+		IDispatchPtr script(MSHTML::IHTMLDocumentPtr(document)->Script);
+		const bool hasApiLoadFB2 = DispatchHasMember(script, L"apiLoadFB2");
+		const bool hasApiSetDiagnosticTrace = DispatchHasMember(script, L"apiSetDiagnosticTraceEnabled");
+		const bool hasApiOperationStage = DispatchHasMember(script, L"apiGetDiagnosticOperationStage");
+		const bool hasApiFailureStage = DispatchHasMember(script, L"apiGetDiagnosticFailureStage");
+		const bool hasApiBridgeState = DispatchHasMember(script, L"apiGetDiagnosticTraceBridgeState");
 		CString trace;
-		trace.Format(L"url=%s; ready-state=%s; document-mode=%ld; compat-mode=%s; charset=%s; body=%d; css=%d; fbw_desc=%d; fbw_body=%d; userCmd=%d",
+		trace.Format(L"url=%s; ready-state=%s; document-mode=%ld; compat-mode=%s; charset=%s; body=%d; css=%d; fbw_desc=%d; fbw_body=%d; userCmd=%d; external=%d; external-typeinfo=%u; external-typeinfo-hr=0x%08lX; apiLoadFB2=%d; apiSetDiagnosticTraceEnabled=%d; apiGetDiagnosticOperationStage=%d; apiGetDiagnosticFailureStage=%d; apiGetDiagnosticTraceBridgeState=%d",
 			(LPCWSTR)StartupTrace::RedactPath((const wchar_t*)url), (const wchar_t*)readyState,
 			documentMode, (const wchar_t*)compatMode, (const wchar_t*)charset,
-			hasBody ? 1 : 0, hasCss ? 1 : 0, hasFbwDesc ? 1 : 0, hasFbwBody ? 1 : 0, hasUserCmd ? 1 : 0);
+			hasBody ? 1 : 0, hasCss ? 1 : 0, hasFbwDesc ? 1 : 0, hasFbwBody ? 1 : 0, hasUserCmd ? 1 : 0,
+			external ? 1 : 0, externalTypeInfoCount, static_cast<unsigned long>(externalTypeInfoResult), hasApiLoadFB2 ? 1 : 0,
+			hasApiSetDiagnosticTrace ? 1 : 0, hasApiOperationStage ? 1 : 0, hasApiFailureStage ? 1 : 0, hasApiBridgeState ? 1 : 0);
 		StartupTrace::Event(L"webbrowser", L"WB310", trace);
 	}
 	catch (_com_error& error)
