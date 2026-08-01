@@ -55,3 +55,12 @@ foreach($pattern in @('SetErrorInfo(0, errorInfo)', 'pfnDeferredFillIn = NULL', 
     if($externalHelperSource -notlike "*$pattern*") { throw "Missing ExternalHelper dispatch preservation contract: $pattern" }
 }
 Write-Host 'JavaScript trace bridge contract passed.'
+$fbeSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
+$traceHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.h')
+$traceImplementation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.cpp')
+foreach($pattern in @('PARAMFLAG_FIN', 'PARAMFLAG_FOUT', 'PARAMFLAG_FRETVAL', 'core-compatible=%d; diagnostic-compatible=%d')) {
+    if($fbeSource -notlike "*$pattern*") { throw "Missing typelib signature validation: $pattern" }
+}
+foreach($pattern in @('bool ClearOldLogSessions()', 'TrySnapshot', 'TryEnterCriticalSection', 'FindLatestTrace', 'ResolveDiagnosticLogDirectory')) {
+    if(($traceHeader + $traceImplementation) -notlike "*$pattern*") { throw "Missing trace fallback or crash snapshot contract: $pattern" }
+}
