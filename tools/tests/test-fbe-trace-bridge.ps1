@@ -8,6 +8,7 @@ $documentSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FB
 $externalHelperSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ExternalHelper.cpp')
 $startupSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
 $viewSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
+$viewHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
 
 $required = @(
     'var diagnosticTraceBridgeState = 0;',
@@ -30,6 +31,7 @@ foreach($pattern in @('FBE_NEXT_TRACE_VERBOSE', 'success-count=', 'failure-count
 }
 if($startupSource -notlike '*ExternalHelper::FlushTraceSummary()*') {
     throw 'ExternalHelper trace summary is not flushed before trace shutdown.'
-}foreach($pattern in @('DISPID_NAVIGATEERROR', 'OnNavigateError', 'code=WB135', 'StartupTrace::RedactPath')) {
+}foreach($pattern in @('OnNavigateError', 'L"WB135"', 'StartupTrace::RedactPath')) {
     if($viewSource -notlike "*$pattern*") { throw "Missing NavigateError diagnostic contract: $pattern" }
-}Write-Host 'JavaScript trace bridge contract passed.'
+}
+if($viewHeader -notlike '*DISPID_NAVIGATEERROR*') { throw 'Missing NavigateError sink contract.' }Write-Host 'JavaScript trace bridge contract passed.'
