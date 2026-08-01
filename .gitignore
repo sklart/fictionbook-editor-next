@@ -49,3 +49,6 @@ Thumbs.db
 /src/export-epub/replay_pid*.log
 /src/export-epub/build/
 /src/export-epub/build_logs/
+# Local Visual Studio artifacts for ExportDOCX
+/src/export-docx/ExportDOCX.aps
+/src/export-docx/ExportDOCX.vcxproj.user
