@@ -144,7 +144,7 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		{ L"TraceScript", 30, false, traceScriptTypes, _countof(traceScriptTypes), VT_VOID }
 	};
 	CString missingCore, missingDiagnostic, wrongCoreDispids, wrongDiagnosticDispids, wrongCoreSignatures, wrongDiagnosticSignatures;
-	for (int index = 0; index < _countof(methods); ++index)
+	for (UINT index = 0; index < _countof(methods); ++index)
 	{
 		LPOLESTR name = const_cast<LPOLESTR>(methods[index].name);
 		MEMBERID memberId = DISPID_UNKNOWN;

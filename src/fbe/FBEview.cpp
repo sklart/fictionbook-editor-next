@@ -2902,6 +2902,7 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
   CString url = (vtUrl && V_VT(vtUrl) == VT_BSTR) ? StartupTrace::RedactPath(V_BSTR(vtUrl)) : CString(L"-");
   CString details; details.Format(L"url=%s", (LPCWSTR)url);
   StartupTrace::Event(L"webbrowser", L"WB140", details);
+  m_last_browser_event=L"DocumentComplete";
   m_complete=true;
 }
 
@@ -2997,12 +2998,14 @@ void CFBEView::OnNavigateError(IDispatch* pDisp, VARIANT* vtUrl, VARIANT* vtFram
     status = V_I4(vtStatusCode);
   CString details;
   details.Format(L"url=%s; status=%ld; browser-present=%d", (LPCWSTR)url, status, m_browser ? 1 : 0);
+  m_last_browser_event=L"NavigateError";
   StartupTrace::Warning(L"webbrowser", L"WB135", details);
 }
 void  CFBEView::OnBeforeNavigate(IDispatch *pDisp,VARIANT *vtUrl,VARIANT *vtFlags,
 				 VARIANT *vtTargetFrame,VARIANT *vtPostData,
 				 VARIANT *vtHeaders,VARIANT_BOOL *fCancel)
 {
+  m_last_browser_event=L"BeforeNavigate";
   if (!m_initialized)
     return;
 

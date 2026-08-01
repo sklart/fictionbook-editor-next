@@ -536,7 +536,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		const ULONGLONG elapsed = ::GetTickCount64() - navigationStarted;
 		if (elapsed >= documentCompleteTimeoutMs)
 		{
-			CString details; details.Format(L"elapsed=%llu; document-present=%d", elapsed, m_body.HasDoc() ? 1 : 0);
+			CString details; details.Format(L"elapsed=%llu; document-present=%d; last-browser-event=%s; url=%s", elapsed, m_body.HasDoc() ? 1 : 0, (LPCWSTR)m_body.LastBrowserEvent(), (LPCWSTR)StartupTrace::RedactPath(m_body.NavURL()));
 			StartupTrace::Warning(L"webbrowser", L"WB133", details);
 			return false;
 		}
