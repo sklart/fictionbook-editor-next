@@ -12,7 +12,7 @@
 __declspec(thread) bool ExternalHelper::s_traceScriptActive = false;
 CComAutoCriticalSection ExternalHelper::s_embeddedTypeInfoLock;
 CComPtr<ITypeInfo> ExternalHelper::s_embeddedTypeInfo;
-namespace { CComAutoCriticalSection g_dispatchTraceLock; std::map<DISPID, unsigned long> g_successfulNameLookups, g_successfulInvokes; bool IsExternalTraceVerbose() { wchar_t value[8] = {}; const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TRACE_VERBOSE", value, _countof(value)); return length && length < _countof(value) && !(length == 1 && value[0] == L'0'); } bool ShouldLogFirstSuccessfulCall(std::map<DISPID, unsigned long>& calls, DISPID dispid) { CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock); return ++calls[dispid] == 1; } }
+namespace { CComAutoCriticalSection g_dispatchTraceLock; std::map<DISPID, unsigned long> g_successfulNameLookups, g_successfulInvokes, g_failedNameLookups, g_failedInvokes; bool IsExternalTraceVerbose() { wchar_t value[8] = {}; const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TRACE_VERBOSE", value, _countof(value)); return length && length < _countof(value) && !(length == 1 && value[0] == L'0'); } bool ShouldLogFirstSuccessfulCall(std::map<DISPID, unsigned long>& calls, DISPID dispid) { CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock); return ++calls[dispid] == 1; } }
 
 HRESULT ExternalHelper::GetEmbeddedTypeInfo(ITypeInfo** resultTypeInfo)
 {
@@ -77,6 +77,24 @@ static CString ExternalHelperArgumentTypes(const DISPPARAMS* parameters)
 	for (UINT index = 0; parameters && index < parameters->cArgs; ++index) { const VARTYPE variantType = V_VT(&parameters->rgvarg[index]); CString type; type.Format(L"VT_%u", static_cast<unsigned int>(variantType & VT_TYPEMASK)); if (variantType & VT_BYREF) type += L"|VT_BYREF"; if (variantType & VT_ARRAY) type += L"|VT_ARRAY"; if (!types.IsEmpty()) types += L","; types += type; }
 	return types;
 }
+
+void ExternalHelper::FlushTraceSummary()
+{
+	if (!StartupTrace::Enabled()) return;
+	CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock);
+	for (std::map<DISPID, unsigned long>::const_iterator it = g_successfulNameLookups.begin(); it != g_successfulNameLookups.end(); ++it)
+	{
+		const unsigned long failures = g_failedNameLookups[it->first];
+		CString details; details.Format(L"method=%s; operation=GetIDsOfNames; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), it->second, failures, IsExternalTraceVerbose() || it->second == 0 ? 0 : it->second - 1);
+		StartupTrace::Event(L"external", L"XH190", details);
+	}
+	for (std::map<DISPID, unsigned long>::const_iterator it = g_successfulInvokes.begin(); it != g_successfulInvokes.end(); ++it)
+	{
+		const unsigned long failures = g_failedInvokes[it->first];
+		CString details; details.Format(L"method=%s; operation=Invoke; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), it->second, failures, IsExternalTraceVerbose() || it->second == 0 ? 0 : it->second - 1);
+		StartupTrace::Event(L"external", L"XH191", details);
+	}
+}
 HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
 {
 	if (!typeInfoCount)
@@ -118,6 +136,7 @@ HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCou
 	details.Format(L"lcid=%lu; names=%u; method=%s; dispid=%ld; source=embedded", lcid, nameCount,
 		names[0] ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-",
 		SUCCEEDED(result) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN));
+	if (FAILED(result)) { CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock); ++g_failedNameLookups[DISPID_UNKNOWN]; }
 	const bool logLookup = FAILED(result) || IsExternalTraceVerbose() || (SUCCEEDED(result) && ShouldLogFirstSuccessfulCall(g_successfulNameLookups, dispids[0]));
 	if (logLookup) StartupTrace::HResult(L"external", L"XH120", result, details);
 	return result;
@@ -149,6 +168,7 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 	if (exceptionInfo && exceptionInfo->pfnDeferredFillIn)
 		exceptionInfo->pfnDeferredFillIn(exceptionInfo);
 
+	if (FAILED(result)) { CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock); ++g_failedInvokes[dispid]; }
 	if (logInvoke || FAILED(result))
 	{
 		CString argumentText;

@@ -27,7 +27,9 @@ class ExternalHelper :
   static CComAutoCriticalSection s_embeddedTypeInfoLock;
   static CComPtr<ITypeInfo> s_embeddedTypeInfo;
   static HRESULT GetEmbeddedTypeInfo(ITypeInfo** resultTypeInfo);
+
 public:
+  static void FlushTraceSummary();
   ExternalHelper() : m_document_filename(NULL), m_document_namevalid(NULL) {}
 
   DECLARE_NO_REGISTRY()

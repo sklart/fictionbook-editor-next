@@ -23,6 +23,7 @@
 #include "CrashHandler.h"
 #include "StartupTrace.h"
 #include "RuntimeLocalization.h"
+#include "ExternalHelper.h"
 
 // typelib interfaces
 #include "FBE.h"
@@ -557,6 +558,7 @@ out:
   _Module.Term();
 
   ::OleUninitialize();
+  ExternalHelper::FlushTraceSummary();
   StartupTrace::Finish();
   
   return nRet;
