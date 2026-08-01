@@ -97,12 +97,22 @@ HRESULT ExternalHelper::GetTypeInfo(UINT typeInfo, LCID lcid, ITypeInfo** result
 }
 HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCount, LCID lcid, DISPID* dispids)
 {
+	if (riid != IID_NULL)
+		return DISP_E_UNKNOWNINTERFACE;
+	if (!names || !dispids || nameCount == 0)
+		return E_INVALIDARG;
+	for (UINT index = 0; index < nameCount; ++index)
+		dispids[index] = DISPID_UNKNOWN;
+
 	CComPtr<ITypeInfo> typeInfo;
 	HRESULT result = GetEmbeddedTypeInfo(&typeInfo);
 	if (SUCCEEDED(result))
 		result = typeInfo->GetIDsOfNames(names, nameCount, dispids);
+
 	CString details;
-	details.Format(L"lcid=%lu; names=%u; method=%s; dispid=%ld; source=embedded", lcid, nameCount, (names && nameCount && names[0]) ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-", (dispids && nameCount) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN));
+	details.Format(L"lcid=%lu; names=%u; method=%s; dispid=%ld; source=embedded", lcid, nameCount,
+		names[0] ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-",
+		SUCCEEDED(result) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN));
 	StartupTrace::HResult(L"external", L"XH120", result, details);
 	return result;
 }
