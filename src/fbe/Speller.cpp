@@ -6,6 +6,7 @@
 #include "FBE.h"
 #include "Speller.h"
 #include "RuntimeLocalization.h"
+#include "StartupTrace.h"
 
 static void SetRuntimeSpellText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR fallback)
 {
@@ -14,7 +15,7 @@ static void SetRuntimeSpellText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR
 		::SetDlgItemText(dialog, controlId, text);
 }
 
-const CString Tokens(L" .,?–!—…\r\n\t\"«»“”‘’:;<>(){}[]\u00A0\u2003\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u2060\u3000\u2012\u2013\u2014\u00BA\u25A1\u25AB\u25E6\u201e\u201c");
+const CString Tokens(L" .,?пїЅ!пїЅпїЅ\r\n\t\"пїЅпїЅпїЅпїЅпїЅпїЅ:;<>(){}[]\u00A0\u2003\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u2060\u3000\u2012\u2013\u2014\u00BA\u25A1\u25AB\u25E6\u201e\u201c");
 
 // spell check dialog initialisation
 LRESULT CSpellDialog::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
@@ -251,7 +252,7 @@ CSpeller::CSpeller(CString dictPath):
 	 m_Dictionaries[LANG_RU].codepage = DetectDictionaryCodePage(m_Dictionaries[LANG_RU].handle, m_Dictionaries[LANG_RU].codepage);
 
 	// don't split on apostrophes
-	splitter = new CSplitter(L"'’\u0301");
+	splitter = new CSplitter(L"'пїЅ\u0301");
 }
 
 //
@@ -270,6 +271,11 @@ CSpeller::~CSpeller()
 
 void CSpeller::AttachDocument(MSHTML::IHTMLDocumentPtr doc)
 {
+	if (!doc)
+	{
+		StartupTrace::Warning(L"speller", L"SP100", L"AttachDocument deferred: document is null");
+		return;
+	}
 	// cansel spell check and destroy dialog
 	EndDocumentCheck();
 
@@ -416,7 +422,7 @@ void CSpeller::Replace(int nIndex)
 	try
 	{ 
 		CString replace = (*m_menuSuggestions)[nIndex];
-		if (m_numAphChanged) replace.Replace(L"'", L"’");
+		if (m_numAphChanged) replace.Replace(L"'", L"пїЅ");
 		 replace = replace + addSpace; 
 		_bstr_t b = replace.AllocSysString();
 		range->put_text(b);
@@ -431,7 +437,7 @@ void CSpeller::Replace(CString word)
 {
 	if (m_selRange)
 	{
-		if (m_numAphChanged) word.Replace(L"'", L"’");
+		if (m_numAphChanged) word.Replace(L"'", L"пїЅ");
 		_bstr_t b = word.AllocSysString();
 		m_selRange->put_text(b);
 	}
@@ -562,13 +568,13 @@ SPELL_RESULT CSpeller::SpellCheck(CString word)
 			checkWord.Delete(word.GetLength()-1);
 
 		// replace aphostrophes (dictionaries understand only regular ' aphostrophe
-		m_numAphChanged = checkWord.Replace(L"’", L"'");
+		m_numAphChanged = checkWord.Replace(L"пїЅ", L"'");
 		// remove all soft hyphens
 		checkWord.Replace(L"\u00AD", L"");
 		// remove accent
 		checkWord.Replace(L"\u0301", L"");
-		// special case for Russian letter "ё"
-		if (currDict == m_Dictionaries[LANG_RU].handle) checkWord.Replace(L"ё", L"е");
+		// special case for Russian letter "пїЅ"
+		if (currDict == m_Dictionaries[LANG_RU].handle) checkWord.Replace(L"пїЅ", L"пїЅ");
 
 		// encode string to the dictionary encoding 
 		CT2A str (checkWord, m_codePage);
@@ -678,9 +684,9 @@ void CSpeller::ClearMarks (int elemID)
 }
 
 //
-// Возвращает абзац, содержащий заданный элемент. Выделение MSHTML может
-// находиться внутри EM, A или другого inline-элемента, но подчёркивания
-// должны быть связаны с устойчивым контейнером P.
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ MSHTML пїЅпїЅпїЅпїЅпїЅ
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ EM, A пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ inline-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ P.
 //
 static MSHTML::IHTMLElementPtr GetParagraphContainer(MSHTML::IHTMLElementPtr element)
 {
@@ -694,8 +700,8 @@ static MSHTML::IHTMLElementPtr GetParagraphContainer(MSHTML::IHTMLElementPtr ele
 }
 
 //
-// Ищет следующий абзац через DOM-соседей, не строя коллекцию всех P
-// документа. Это сохраняет локальность правки в конце длинного раздела.
+// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ DOM-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ P
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 //
 static MSHTML::IHTMLElementPtr GetNextParagraph(
 	MSHTML::IHTMLElementPtr element,
@@ -727,7 +733,7 @@ static MSHTML::IHTMLElementPtr GetNextParagraph(
 }
 
 //
-// Проверяет абзац, содержащий выделение.
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 //
 void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 {
@@ -745,8 +751,8 @@ void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 	{
 		if (uniqID < 0)	uniqID = MSHTML::IHTMLUniqueNamePtr(elem)->uniqueNumber;
 
-		// Добавление inline-тега меняет только этот абзац. Очистка всех
-		// подчёркиваний делала локальную правку пропорциональной размеру документа.
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ inline-пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 		ClearMarks(uniqID);
 
 		// tokenize and spellcheck
@@ -805,9 +811,9 @@ void CSpeller::CheckCurrentPage()
 	if (!elem)
 		return;
 
-	// Проверяем только видимые абзацы. Если нижняя граница не определена,
-	// берём небольшое число следующих абзацев. Обход начинается с видимого P,
-	// поэтому его стоимость не зависит от длины раздела.
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ P,
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 	for (int checked = 0; elem && checked < 20; ++checked)
 	{
 		currNum = MSHTML::IHTMLUniqueNamePtr(elem)->uniqueNumber;
@@ -1015,7 +1021,7 @@ void CSpeller::ContinueDocumentCheck()
 			{
 				CString replaceStr = m_ChangeWordsTo[m_ChangeWords.Find(word)];
 				// replace aphostrophes back
-				if (m_numAphChanged) replaceStr.Replace(L"'", L"’");
+				if (m_numAphChanged) replaceStr.Replace(L"'", L"пїЅ");
 				BeginUndoUnit(L"replace word");
 				b = replaceStr.AllocSysString();
 				m_selRange->put_text(b);

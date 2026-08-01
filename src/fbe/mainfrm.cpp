@@ -603,8 +603,13 @@ bool  CMainFrame::IsBandVisible(int id) {
   return (rbi.fStyle&RBBS_HIDDEN)==0;
 }
 
-void  CMainFrame::AttachDocument(FB::Doc *doc) 
+void CMainFrame::AttachDocument(FB::Doc *doc)
 {
+	if (!doc || !doc->m_body.HasDoc())
+	{
+		StartupTrace::Warning(L"mainframe", L"M125", L"document attach deferred: HTML document is not ready");
+		return;
+	}
 	/*if (IsSourceActive()) {
 	UIEnable(ID_VIEW_TREE, 1);
 	UISetCheck(ID_VIEW_TREE, m_save_sp_mode);
