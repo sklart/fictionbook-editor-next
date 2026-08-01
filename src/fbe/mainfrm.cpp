@@ -5360,7 +5360,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		if (StartupTrace::Enabled())
 		{
 			CString trace;
-			trace.Format(L"ShowSource: mapping text=%d, DOM-path=%d, XML chars=[%d,%d], source bytes=[%d,%d], mapped=%d",
+			trace.Format(L"ShowSource: mapping-by-text=%d, DOM-path=%d, XML chars=[%d,%d], source bytes=[%d,%d], mapped=%d",
 				hasBodySelectionText ? 1 : 0, selection_path_available ? 1 : 0,
 				beginPosition, endPosition, savedPosBegin, savedPosEnd,
 				selection_mapped_to_source ? 1 : 0);

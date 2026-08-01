@@ -72,7 +72,7 @@ Assert-Contains $source 'FindXmlNodeTextPosition(srcText, xml_selected_end' `
 
 Assert-Contains $source 'SourceToHTML: source bytes=' `
     'диагностический журнал должен фиксировать исходные позиции выделения Source'
-Assert-Contains $source 'ShowSource: mapping text=' `
+Assert-Contains $source 'ShowSource: mapping-by-text=' `
     'диагностический журнал должен фиксировать способ переноса Body → Source'
 Assert-Contains $source 'ShowView: Source final bytes=' `
     'диагностический журнал должен фиксировать итоговую прокрутку Source'

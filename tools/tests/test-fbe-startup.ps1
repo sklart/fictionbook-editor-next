@@ -95,6 +95,8 @@ try {
         if (-not $traceFile -or -not (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
             throw "Не создан диагностический журнал: $traceFile"
         }
+        if (Select-String -LiteralPath $traceFile -SimpleMatch "code=-" -Quiet) { throw "В диагностическом журнале есть событие без явного code: $traceFile" }
+        if (Select-String -LiteralPath $traceFile -Pattern "Р[А-Яа-я]" -Quiet) { throw "В диагностическом журнале обнаружен mojibake: $traceFile" }
         if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "category=document;" -Quiet)) {
             throw "В диагностическом журнале нет событий документа: $traceFile"
         }
