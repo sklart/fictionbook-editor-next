@@ -2348,7 +2348,7 @@ bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
 		else
 			directory.Delete(separator, directory.GetLength() - separator);
 
-		wchar_t temporaryBuffer[MAX_PATH] = {};
+		wchar_t temporaryBufferwchar_t diagnosticsDirectory[MAX_PATH] = {};
 		if (::GetTempFileName(directory, L"fbs", 0, temporaryBuffer) == 0)
 			return false;
 		temporaryFile = temporaryBuffer;
@@ -3596,7 +3596,7 @@ static bool OpenDiagnosticLog()
 			NULL, NULL, SW_SHOWNORMAL)) > 32;
 	}
 
-[MAX_PATH] = {};
+wchar_t diagnosticsDirectory[MAX_PATH] = {};
 	if(FAILED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE,
 		NULL, SHGFP_TYPE_CURRENT, diagnosticsDirectory)))
 		return false;
