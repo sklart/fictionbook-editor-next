@@ -1250,16 +1250,16 @@
       "translations": {
         "en-US": "Diagnostic trace is enabled. Restart FBE Next to begin writing the log.",
         "ru-RU": "Диагностическая трассировка включена. Перезапустите FBE Next, чтобы начать запись.",
-        "uk-UA": "Діагностичне трасування ввімкнено. Перезапустіть FBE Next, щоб почати запис у %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
-        "de-DE": "Das Diagnoseprotokoll ist aktiviert. Starten Sie FBE Next neu, um in %LOCALAPPDATA%\\FBE Next\\fbe-trace.log zu schreiben.",
-        "fr-FR": "La trace de diagnostic est activée. Redémarrez FBE Next pour écrire dans %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
-        "es-ES": "La traza de diagnóstico está activada. Reinicie FBE Next para escribir en %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
-        "it-IT": "La traccia diagnostica è attivata. Riavviare FBE Next per scrivere in %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
-        "pl-PL": "Śledzenie diagnostyczne jest włączone. Uruchom ponownie FBE Next, aby zapisywać w %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
-        "pt-PT": "O rastreio de diagnóstico está ativo. Reinicie o FBE Next para escrever em %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
-        "nl-NL": "Diagnostische tracering is ingeschakeld. Start FBE Next opnieuw om naar %LOCALAPPDATA%\\FBE Next\\fbe-trace.log te schrijven.",
-        "cs-CZ": "Diagnostické trasování je zapnuto. Restartujte FBE Next, aby se začalo zapisovat do %LOCALAPPDATA%\\FBE Next\\fbe-trace.log.",
-        "bg-BG": "Диагностичното проследяване е включено. Рестартирайте FBE Next, за да започне запис в %LOCALAPPDATA%\\FBE Next\\fbe-trace.log."
+        "uk-UA": "Діагностичне трасування ввімкнено. Перезапустіть FBE Next, щоб почати запис у diagnostic log.",
+        "de-DE": "Das Diagnoseprotokoll ist aktiviert. Starten Sie FBE Next neu, um zu schreiben.",
+        "fr-FR": "La trace de diagnostic est activée. Redémarrez FBE Next pour écrire dans diagnostic log.",
+        "es-ES": "La traza de diagnóstico está activada. Reinicie FBE Next para escribir en diagnostic log.",
+        "it-IT": "La traccia diagnostica è attivata. Riavviare FBE Next per scrivere.",
+        "pl-PL": "Śledzenie diagnostyczne jest włączone. Uruchom ponownie FBE Next, aby zapisywać w diagnostic log.",
+        "pt-PT": "O rastreio de diagnóstico está ativo. Reinicie o FBE Next para escrever em diagnostic log.",
+        "nl-NL": "Diagnostische tracering is ingeschakeld. Start FBE Next opnieuw om naar diagnostic log te schrijven.",
+        "cs-CZ": "Diagnostické trasování je zapnuto. Restartujte FBE Next, aby se začalo zapisovat.",
+        "bg-BG": "Диагностичното проследяване е включено. Рестартирайте FBE Next, за да започне запис."
       }
     },
     "fbe.trace.disable.completed": {
