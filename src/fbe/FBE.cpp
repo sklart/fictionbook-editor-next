@@ -111,15 +111,15 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		{
 			CString& missing = methods[index].core ? missingCore : missingDiagnostic;
 			if (!missing.IsEmpty()) missing += L","; missing += methods[index].name;
-			if (methods[index].core) StartupTrace::HResult(L"typelib", L"TL150", methodResult, method);
-			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL151", method); }
+			if (methods[index].core) StartupTrace::HResult(L"typelib", L"TL151", methodResult, method);
+			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL152", method); }
 		}
 		else if (memberId != methods[index].dispid)
 		{
 			CString& wrong = methods[index].core ? wrongCoreDispids : wrongDiagnosticDispids;
 			if (!wrong.IsEmpty()) wrong += L","; wrong += methods[index].name;
-			if (methods[index].core) { method += L"; core-incompatible"; StartupTrace::Error(L"typelib", L"TL152", method); }
-			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL153", method); }
+			if (methods[index].core) { method += L"; core-incompatible"; StartupTrace::Error(L"typelib", L"TL153", method); }
+			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL154", method); }
 		}
 		else StartupTrace::Event(L"typelib", L"TL150", method);
 	}
@@ -131,9 +131,9 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 	summary.Format(L"phase=%s; core-compatible=%d; diagnostic-compatible=%d; missing-methods=%s; wrong-dispids=%s", phase,
 		missingCore.IsEmpty() && wrongCoreDispids.IsEmpty() ? 1 : 0,
 		missingDiagnostic.IsEmpty() && wrongDiagnosticDispids.IsEmpty() ? 1 : 0, (LPCWSTR)missing, (LPCWSTR)wrong);
-	if (!missingCore.IsEmpty() || !wrongCoreDispids.IsEmpty()) { StartupTrace::Error(L"typelib", L"TL199", summary); return E_NOINTERFACE; }
-	if (!missingDiagnostic.IsEmpty() || !wrongDiagnosticDispids.IsEmpty()) StartupTrace::Warning(L"typelib", L"TL199", summary);
-	else StartupTrace::Event(L"typelib", L"TL199", summary);	return S_OK;
+	if (!missingCore.IsEmpty() || !wrongCoreDispids.IsEmpty()) { StartupTrace::Error(L"typelib", L"TL155", summary); return E_NOINTERFACE; }
+	if (!missingDiagnostic.IsEmpty() || !wrongDiagnosticDispids.IsEmpty()) StartupTrace::Warning(L"typelib", L"TL156", summary);
+	else StartupTrace::Event(L"typelib", L"TL157", summary);	return S_OK;
 }
 
 static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
@@ -159,10 +159,10 @@ static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 		if(SUCCEEDED(result))
 		{
 			::SysFreeString(registeredPath);
-			StartupTrace::Event(L"typelib", L"TL199", L"registered FBELib is compatible without LoadRegTypeLib");
+			StartupTrace::Event(L"typelib", L"TL158", L"registered FBELib is compatible without LoadRegTypeLib");
 			return S_OK;
 		}
-		StartupTrace::Warning(L"typelib", L"TL151", L"registered FBELib is incompatible; repairing per-user registration");
+		StartupTrace::Warning(L"typelib", L"TL159", L"registered FBELib is incompatible; repairing per-user registration");
 	}
 	if(registeredPath) { ::SysFreeString(registeredPath); registeredPath = NULL; }
 
@@ -189,7 +189,7 @@ static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 	if(registeredPath) { ::SysFreeString(registeredPath); registeredPath = NULL; }
 	if(FAILED(result))
 	{
-		StartupTrace::HResult(L"typelib", L"TL199", result, L"registry-not-updated");
+		StartupTrace::HResult(L"typelib", L"TL196", result, L"registry-not-updated");
 		return result;
 	}
 
@@ -201,7 +201,7 @@ static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 	if(FAILED(loadRegResult))
 		StartupTrace::Warning(L"typelib", L"TL193", L"registry-updated-loadreg-stale; typelib-cache-stale=1");
 	else
-		StartupTrace::Event(L"typelib", L"TL199", L"registry-updated-and-active");
+		StartupTrace::Event(L"typelib", L"TL197", L"registry-updated-and-active");
 	return S_OK;
 }// External helpers
 IDispatchPtr  CFBEView::CreateHelper()
