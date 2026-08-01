@@ -138,7 +138,7 @@ static void TraceMainFrameCommand(WPARAM wParam, LPARAM lParam)
 	CString trace;
 	trace.Format(L"M100 Команда: %s; ID=%u; источник=%s", (const wchar_t*)commandName,
 		commandId, GetCommandTraceSource(lParam));
-	StartupTrace::Event(L"command", trace);
+	StartupTrace::Event(L"command", L"C100", trace);
 }
 
 static bool IsAcceleratorModifierPressed(int virtualKey)
@@ -201,7 +201,7 @@ static void TraceMainFrameHotkey(const MSG* message)
 			CString trace;
 			trace.Format(L"M110 Горячая клавиша: %s; ID=%u",
 				(const wchar_t*)GetHotkeyText(hotkey.m_accel), hotkey.m_accel.cmd);
-			StartupTrace::Event(L"command", trace);
+			StartupTrace::Event(L"command", L"C110", trace);
 			return;
 		}
 	}
@@ -1779,14 +1779,14 @@ void CMainFrame::InitPlugins()
 {
 	if (StartupTrace::Enabled())
 	{
-		StartupTrace::Event(L"plugin", L"P100 Каталог пользовательских скриптов определён");
+		StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
 	}
 	CollectScripts(_Settings.GetScriptsFolder(), L"*.js", 1, L"0");	
 	if (StartupTrace::Enabled())
 	{
 		CString trace;
-		trace.Format(L"P110 Найдено пользовательских скриптов: %d", m_scripts.GetSize());
-		StartupTrace::Event(L"plugin", trace);
+		trace.Format(L"script-count=%d", m_scripts.GetSize());
+		StartupTrace::Event(L"plugin", L"P110", trace);
 	}
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
 	QuickScriptsSort(m_scripts, 0, m_scripts.GetSize() - 1);
@@ -1830,7 +1830,7 @@ void CMainFrame::InitPlugins()
 LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
   StartupTrace::Event(L"mainframe", L"M100", L"OnCreate started");
-  StartupTrace::Event(L"settings", L"G100 Настройки приложения применены");
+  StartupTrace::Event(L"settings", L"G100", L"application settings applied");
   m_ctrl_tab = false;
 
   // create command bar window
@@ -2345,7 +2345,7 @@ bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
 {
 	CString temporaryFile;
 	HANDLE file = INVALID_HANDLE_VALUE;
-	StartupTrace::Event(L"recovery", L"Автосохранение исходного кода начато");
+	StartupTrace::Event(L"recovery", L"R100", L"source recovery started");
 	try
 	{
 		CString directory(filename);
@@ -2382,7 +2382,7 @@ bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
 			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 			throw ::GetLastError();
 
-		StartupTrace::Event(L"recovery", L"Автосохранение исходного кода завершено");
+		StartupTrace::Event(L"recovery", L"R110", L"source recovery completed");
 		return true;
 	}
 	catch (...)
@@ -2391,7 +2391,7 @@ bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
 			::CloseHandle(file);
 		if (!temporaryFile.IsEmpty())
 			::DeleteFile(temporaryFile);
-		StartupTrace::Event(L"recovery", L"Автосохранение исходного кода завершилось ошибкой");
+		StartupTrace::Error(L"recovery", L"R120", L"source recovery failed");
 		return false;
 	}
 }
@@ -2409,7 +2409,7 @@ bool CMainFrame::SaveRecoveryNow()
 		? SaveSourceRecoveryCopy(recoveryFile)
 		: (!m_bad_xml && m_doc->SaveRecoveryCopy(recoveryFile));
 	if (!saved && m_bad_xml)
-		StartupTrace::Event(L"recovery", L"Автосохранение пропущено: исходный XML содержит ошибку");
+		StartupTrace::Warning(L"recovery", L"R130", L"source recovery skipped because source XML is invalid");
 	m_recovery_written = saved || m_recovery_written;
 	return saved;
 }
