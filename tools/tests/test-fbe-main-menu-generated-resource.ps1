@@ -46,8 +46,8 @@ foreach ($file in $files) {
     }
 
     $popupCount = ([regex]::Matches($text, '(?m)^\s*POPUP\s+"')).Count
-    if ($popupCount -ne 11) {
-        throw "Ожидалось 11 POPUP в $($file.Language), получено $popupCount."
+    if ($popupCount -ne 12) {
+        throw "Ожидалось 12 POPUP в $($file.Language), получено $popupCount."
     }
 
     foreach ($id in @('ID_FILE_OPEN','ID_FILE_SAVE','ID_EDIT_REPLACE','ID_VIEW_BODY','ID_INSERT_TABLE','ID_STYLE_LINK','ID_TOOLS_SPELLCHECK','ID_TOOLS_DIAGNOSTIC_TRACE','ID_TOOLS_OPEN_DIAGNOSTIC_LOG','ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER','ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH','ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS','ID_APP_ABOUT')) {

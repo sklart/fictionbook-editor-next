@@ -1118,6 +1118,24 @@
         "bg-BG": "&Инструменти"
       }
     },
+    "fbe.menu.idr_mainframe.popup.diagnostics": {
+      "kind": "POPUP",
+      "targetId": "",
+      "translations": {
+        "en-US": "&Diagnostics",
+        "ru-RU": "Диа&гностика",
+        "uk-UA": "Діа&гностика",
+        "de-DE": "&Diagnose",
+        "fr-FR": "&Diagnostic",
+        "es-ES": "&Diagnóstico",
+        "it-IT": "&Diagnostica",
+        "pl-PL": "&Diagnostyka",
+        "pt-PT": "&Diagnóstico",
+        "nl-NL": "&Diagnostiek",
+        "cs-CZ": "&Diagnostika",
+        "bg-BG": "&Диагностика"
+      }
+    },
     "fbe.menu.idr_mainframe.tools.words": {
       "kind": "MENUITEM",
       "targetId": "ID_TOOLS_WORDS",
