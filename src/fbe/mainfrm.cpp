@@ -3596,7 +3596,14 @@ static bool OpenDiagnosticLog()
 			NULL, NULL, SW_SHOWNORMAL)) > 32;
 	}
 
-	wchar_t diagnosticsDirectory[MAX_PATH] = {};
+	const CString currentLogDirectory(StartupTrace::CurrentLogDirectory());
+	if(!currentLogDirectory.IsEmpty() && ::GetFileAttributes(currentLogDirectory) != INVALID_FILE_ATTRIBUTES)
+	{
+		return reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", currentLogDirectory,
+			NULL, NULL, SW_SHOWNORMAL)) > 32;
+	}
+
+[MAX_PATH] = {};
 	if(FAILED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE,
 		NULL, SHGFP_TYPE_CURRENT, diagnosticsDirectory)))
 		return false;
