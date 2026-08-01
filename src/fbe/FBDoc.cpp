@@ -25,18 +25,18 @@ namespace FB {
 
 // Журнал не содержит имён и путей книг: для диагностики достаточно факта
 // наличия файла и результата операции.
-static void TraceDocumentEvent(const wchar_t* operation, const CString& filename)
+static void TraceDocumentEvent(const wchar_t* code, const wchar_t* operation, const CString& filename)
 {
 	CString trace;
 	trace.Format(L"%s; file-present=%d", operation, filename.IsEmpty() ? 0 : 1);
-	StartupTrace::Event(L"document", trace);
+	StartupTrace::Event(L"document", code, trace);
 }
 
-static void TraceRecoveryEvent(const wchar_t* operation, const CString& filename)
+static void TraceRecoveryEvent(const wchar_t* code, const wchar_t* operation, const CString& filename)
 {
 	CString trace;
 	trace.Format(L"%s; file-present=%d", operation, filename.IsEmpty() ? 0 : 1);
-	StartupTrace::Event(L"recovery", trace);
+	StartupTrace::Event(L"recovery", code, trace);
 }
 
 static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
@@ -148,7 +148,7 @@ static DWORD __stdcall XMLTransformThread(LPVOID varg) {
 void Doc::TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,
     CFBEView& dest)
 {
-  StartupTrace::Event(L"xslt", L"T400 Преобразование XML для режима просмотра начато");
+  StartupTrace::Event(L"xslt", L"T400", L"XML transform for view started");
   // create processor
   MSXML2::IXSLProcessorPtr	proc(tp->createProcessor());
   proc->input=_variant_t(doc.GetInterfacePtr());
@@ -224,13 +224,13 @@ void Doc::TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr do
   IPersistStreamInitPtr	ips(dest.Browser()->Document);
   ips->InitNew();
   ips->Load(U::NewStream(hRd));
-  StartupTrace::Event(L"xslt", L"T490 Преобразование XML для режима просмотра завершено");
+  StartupTrace::Event(L"xslt", L"T490", L"XML transform for view completed");
 }
 
 static MSXML2::IXSLTemplatePtr	LoadXSL(const CString& path) {
   CString trace;
-  trace.Format(L"T300 Загрузка XSL; шаблон=%s", path.CompareNoCase(L"body.xsl") == 0 ? L"body" : L"description");
-  StartupTrace::Event(L"xslt", trace);
+  trace.Format(L"XSL load; template=%s", path.CompareNoCase(L"body.xsl") == 0 ? L"body" : L"description");
+  StartupTrace::Event(L"xslt", L"T300", trace);
   MSXML2::IXMLDOMDocument2Ptr	xsl(U::CreateDocument(true));
   if (!U::LoadXml(xsl,U::GetProgDirFile(path)))
   {
@@ -239,7 +239,7 @@ static MSXML2::IXSLTemplatePtr	LoadXSL(const CString& path) {
   }
   MSXML2::IXSLTemplatePtr	tp(U::CreateTemplate());
   tp->stylesheet=xsl;
-  StartupTrace::Event(L"xslt", L"T390 Шаблон XSL подготовлен");
+  StartupTrace::Event(L"xslt", L"T390", L"XSL template prepared");
   return tp;
 }
 
@@ -344,8 +344,8 @@ static CString VariantTypeName(const VARIANT& value)
 HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult)
 {
 	CString trace;
-	trace.Format(L"C100 InvokeFunc: %s; arguments=%d", FuncName, count);
-	StartupTrace::Event(L"script", trace);
+	trace.Format(L"InvokeFunc: %s; arguments=%d", FuncName, count);
+	StartupTrace::Event(L"script", L"C100", trace);
 
 	if (!m_body.Browser())
 	{
@@ -383,7 +383,7 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	}
 	trace.Format(L"Invoke: dispid=%ld; argument-types=[%s]", static_cast<long>(dispid),
 		(const wchar_t*)argumentTypes);
-	StartupTrace::Event(L"script", trace);
+	StartupTrace::Event(L"script", L"C130", trace);
 
 	DISPPARAMS dispatchParameters = {};
 	dispatchParameters.rgvarg = params;
@@ -441,7 +441,7 @@ void Doc::ShowDescription(bool Show)
 
 void Doc::RunScript(LPCOLESTR filePath)
 {
-	TraceDocumentEvent(L"Запуск пользовательского скрипта", CString(filePath));
+	TraceDocumentEvent(L"D300", L"Запуск пользовательского скрипта", CString(filePath));
 	CComVariant vtResult;
 
 	// Пользовательский набор может лежать вне штатного runtime. В этом случае
@@ -460,14 +460,14 @@ void Doc::RunScript(LPCOLESTR filePath)
 	const DWORD attributes = htmlFolder.IsEmpty() ? INVALID_FILE_ATTRIBUTES : ::GetFileAttributes(htmlFolder);
 	if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 		htmlFolder = U::GetProgDirFile(L"HTML\\");
-	StartupTrace::Event(L"script", L"Каталог HTML пользовательского скрипта определён");
+	StartupTrace::Event(L"script", L"C200", L"script HTML folder selected");
 
 	// InvokeN передаёт аргументы в обратном порядке.
 	CComVariant params[2];
 	params[1] = filePath;
 	params[0] = htmlFolder;
 	InvokeFunc(L"apiRunCmd", params, 2, vtResult);
-	TraceDocumentEvent(L"Пользовательский скрипт завершён", CString(filePath));
+	TraceDocumentEvent(L"D301", L"Пользовательский скрипт завершён", CString(filePath));
 }
 VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 {
@@ -480,7 +480,7 @@ VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 
 bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 {
-	TraceDocumentEvent(L"Загрузка книги начата", filename);
+	TraceDocumentEvent(L"D110", L"Загрузка книги начата", filename);
 	HRESULT	hr;
 	StartupTrace::Event(L"webbrowser", L"WB100", L"m_body.Create begin");
 	const CString path = U::GetProgDirFile(L"main.html");
@@ -539,10 +539,10 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		// The diagnostic API was introduced after the original runtime. Its
 		// absence (including DISP_E_UNKNOWNNAME) must never prevent a book from
 		// opening with an older main.js.
-		StartupTrace::Event(L"script", L"J011 apiSetDiagnosticTraceEnabled unavailable; continuing without script diagnostics");
+		StartupTrace::Warning(L"script", L"J011", L"apiSetDiagnosticTraceEnabled unavailable; continuing without script diagnostics");
 	}
 	ApplyConfChanges();
-	StartupTrace::Event(L"document", L"J100 Вызов apiLoadFB2");
+	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
 	hr = InvokeFunc(L"apiLoadFB2", params, 2, res);
 	StartupTrace::HResult(L"document", L"J200", hr, L"apiLoadFB2");
 	if (FAILED(hr))
@@ -554,7 +554,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
 		else
 			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticLastStage");
-		TraceDocumentEvent(L"Загрузка книги завершилась ошибкой JavaScript", filename);
+		TraceDocumentEvent(L"D111", L"Загрузка книги завершилась ошибкой JavaScript", filename);
 		return false;
 	}
 	//m_body.Normalize(m_body.Document()->body);
@@ -578,13 +578,13 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 
 	if (!loaded)
 	{
-		TraceDocumentEvent(L"Загрузка книги завершилась без результата", filename);
+		TraceDocumentEvent(L"D112", L"Загрузка книги завершилась без результата", filename);
 		return false;
 	}
 
 	// Отмечаем документ неизменённым только после подтверждённой загрузки JavaScript.
 	MarkSavePoint();
-	TraceDocumentEvent(L"Загрузка книги завершена", filename);
+	TraceDocumentEvent(L"D113", L"Загрузка книги завершена", filename);
 	return true;
 }
 
@@ -611,7 +611,7 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
     m_namevalid = true;
   }
   catch (_com_error& e) {
-	TraceDocumentEvent(L"Загрузка книги завершилась COM-ошибкой", filename);
+	TraceDocumentEvent(L"D114", L"Загрузка книги завершилась COM-ошибкой", filename);
     U::ReportError(e);
     return false;
   }
@@ -621,7 +621,7 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
 
 void  Doc::CreateBlank(HWND hWndParent) {
   try {
-	TraceDocumentEvent(L"Создание пустой книги", L"blank.fb2");
+	TraceDocumentEvent(L"D120", L"Создание пустой книги", L"blank.fb2");
     // load document into DOM
 	  if (!LoadFromHTML(hWndParent, L"blank.fb2"))
 	  StartupTrace::Error(L"document", L"D201", L"Пустая книга не была загружена");
@@ -1159,17 +1159,17 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	CString trace;
 	trace.Format(L"X100 CreateDOM started: encoding=%s, compact-binaries=%d",
 		(const wchar_t*)encoding, compactBinaries ? 1 : 0);
-	StartupTrace::Event(L"document", trace);
+	StartupTrace::Event(L"xml", L"X100", trace);
 	try
 	{
 		MSXML2::IXMLDOMDocument2Ptr result(CreateDOMImp(encoding, compactBinaries));
-		StartupTrace::Event(L"xml", L"X190 CreateDOM completed");
+		StartupTrace::Event(L"xml", L"X190", L"CreateDOM completed");
 		return result;
 	}
 	catch (_com_error& e)
 	{
 		StartupTrace::HResult(L"com", L"X191", e.Error(), L"CreateDOM");
-		StartupTrace::Event(L"com", trace);
+		StartupTrace::Event(L"com", L"X192", trace);
 		U::ReportError(e);
 	}
 
@@ -1215,7 +1215,7 @@ static void CommitSavedFile(const CString& temporaryFile, const CString& destina
 
 		if (!::MoveFileEx(temporaryFile, destinationFile, MOVEFILE_WRITE_THROUGH))
 			throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
-		TraceDocumentEvent(L"Сохранение: создан новый файл без .bak", destinationFile);
+		TraceDocumentEvent(L"D210", L"Сохранение: создан новый файл без .bak", destinationFile);
 		return;
 	}
 
@@ -1235,7 +1235,7 @@ static void CommitSavedFile(const CString& temporaryFile, const CString& destina
 
 	if (!::ReplaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL))
 		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
-	TraceDocumentEvent(createBackupFile ? L"Сохранение: создана резервная копия .bak" : L"Сохранение: замена существующего файла без .bak",
+	TraceDocumentEvent(L"D211", createBackupFile ? L"Сохранение: создана резервная копия .bak" : L"Сохранение: замена существующего файла без .bak",
 		createBackupFile ? backupFile : destinationFile);
 }
 
@@ -1253,7 +1253,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	CString trace;
 	trace.Format(L"%s; file-present=%d", fValidateOnly ? L"Проверка книги начата" : L"Сохранение книги начато",
 		filename.IsEmpty() ? 0 : 1);
-	StartupTrace::Event(L"document", trace);
+	StartupTrace::Event(L"document", L"D200", trace);
   try {
     // create a schema collection
     MSXML2::IXMLDOMSchemaCollection2Ptr	scol;
@@ -1309,7 +1309,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	  validationTrace.Format(L"%s: строка=%ld, столбец=%ld",
 		fValidateOnly ? L"Проверка книги обнаружила ошибку XML" : L"Сохранение остановлено из-за ошибки XML",
 		eh->m_line, eh->m_col);
-	  StartupTrace::Event(L"document", validationTrace);
+	  StartupTrace::Warning(L"document", L"D220", validationTrace);
       return false;
     }
 
@@ -1319,7 +1319,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		FbeLoadString(_Module.GetResourceInstance(), IDS_SB_NO_ERR, buf, MAX_LOAD_STRING);
 		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)buf);
 		::MessageBeep(MB_OK);
-		StartupTrace::Event(L"document", L"Проверка книги завершена без ошибок");
+		StartupTrace::Event(L"document", L"D221", L"book validation completed without errors");
 		return true;
     }
 
@@ -1392,10 +1392,10 @@ forcesave:
 	}
 
 	m_encoding = _Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding();
-	StartupTrace::Event(L"document", L"Сохранение книги завершено");
+	StartupTrace::Event(L"document", L"D222", L"book save completed");
   }
   catch (_com_error& e) {
-	StartupTrace::Event(L"document", fValidateOnly ? L"Проверка книги завершилась COM-ошибкой" : L"Сохранение книги завершилось COM-ошибкой");
+	StartupTrace::Error(L"document", L"D223", fValidateOnly ? L"book validation COM error" : L"book save COM error");
 	m_last_save_error = e.Error();
 	if (reportAccessDenied || (e.Error() != E_ACCESSDENIED && HRESULT_CODE(e.Error()) != ERROR_ACCESS_DENIED))
 		U::ReportError(e);
@@ -1408,7 +1408,7 @@ forcesave:
 bool Doc::SaveRecoveryCopy(const CString& filename)
 {
 	CString temporaryFile;
-	TraceRecoveryEvent(L"Автосохранение начато", filename);
+	TraceRecoveryEvent(L"R110", L"Автосохранение начато", filename);
 	try
 	{
 		MSXML2::IXMLDOMDocument2Ptr document(CreateDOMImp(
@@ -1428,14 +1428,14 @@ bool Doc::SaveRecoveryCopy(const CString& filename)
 			_com_issue_errorex(result, document, __uuidof(document));
 
 		CommitRecoveryFile(temporaryFile, filename);
-		TraceRecoveryEvent(L"Автосохранение завершено", filename);
+		TraceRecoveryEvent(L"R111", L"Автосохранение завершено", filename);
 		return true;
 	}
 	catch (...)
 	{
 		if (!temporaryFile.IsEmpty())
 			::DeleteFile(temporaryFile);
-		TraceRecoveryEvent(L"Автосохранение завершилось ошибкой", filename);
+		TraceRecoveryEvent(L"R112", L"Автосохранение завершилось ошибкой", filename);
 		return false;
 	}
 }
