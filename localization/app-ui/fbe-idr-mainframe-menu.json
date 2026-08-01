@@ -1390,7 +1390,36 @@
         "bg-BG": "Диагностичният журнал не можа да бъде отворен."
       }
     },
-    "fbe.menu.idr_mainframe.popup.scripts": {
+    "fbe.trace.open_folder_failed": {
+      "kind": "MESSAGE", "targetId": "",
+      "translations": {
+        "en-US": "Could not open the diagnostic trace folder.", "ru-RU": "Не удалось открыть папку диагностических журналов.", "uk-UA": "Не вдалося відкрити папку діагностичних журналів.", "de-DE": "Der Ordner für Diagnoseprotokolle konnte nicht geöffnet werden.", "fr-FR": "Impossible d’ouvrir le dossier des journaux de diagnostic.", "es-ES": "No se pudo abrir la carpeta de registros de diagnóstico.", "it-IT": "Impossibile aprire la cartella dei registri diagnostici.", "pl-PL": "Nie udało się otworzyć folderu dzienników diagnostycznych.", "pt-PT": "Não foi possível abrir a pasta dos registos de diagnóstico.", "nl-NL": "De map met diagnostische logboeken kon niet worden geopend.", "cs-CZ": "Složku diagnostických protokolů se nepodařilo otevřít.", "bg-BG": "Папката с диагностичните журнали не можа да бъде отворена."
+      }
+    },
+    "fbe.trace.copy_path_failed": {
+      "kind": "MESSAGE", "targetId": "",
+      "translations": {
+        "en-US": "Could not copy the diagnostic trace path.", "ru-RU": "Не удалось скопировать путь к диагностическому журналу.", "uk-UA": "Не вдалося скопіювати шлях до діагностичного журналу.", "de-DE": "Der Pfad zum Diagnoseprotokoll konnte nicht kopiert werden.", "fr-FR": "Impossible de copier le chemin du journal de diagnostic.", "es-ES": "No se pudo copiar la ruta del registro de diagnóstico.", "it-IT": "Impossibile copiare il percorso del registro diagnostico.", "pl-PL": "Nie udało się skopiować ścieżki do dziennika diagnostycznego.", "pt-PT": "Não foi possível copiar o caminho do registo de diagnóstico.", "nl-NL": "Het pad naar het diagnostische logboek kon niet worden gekopieerd.", "cs-CZ": "Cestu k diagnostickému protokolu se nepodařilo zkopírovat.", "bg-BG": "Пътят до диагностичния журнал не можа да бъде копиран."
+      }
+    },
+    "fbe.trace.clear_confirmation": {
+      "kind": "MESSAGE", "targetId": "",
+      "translations": {
+        "en-US": "Clear old diagnostic traces? The current trace will be preserved.", "ru-RU": "Очистить старые диагностические журналы? Текущий журнал будет сохранён.", "uk-UA": "Очистити старі діагностичні журнали? Поточний журнал буде збережено.", "de-DE": "Alte Diagnoseprotokolle löschen? Das aktuelle Protokoll bleibt erhalten.", "fr-FR": "Effacer les anciens journaux de diagnostic ? Le journal actuel sera conservé.", "es-ES": "¿Borrar registros de diagnóstico antiguos? Se conservará el registro actual.", "it-IT": "Cancellare i vecchi registri diagnostici? Il registro corrente verrà conservato.", "pl-PL": "Wyczyścić stare dzienniki diagnostyczne? Bieżący dziennik zostanie zachowany.", "pt-PT": "Limpar registos de diagnóstico antigos? O registo atual será preservado.", "nl-NL": "Oude diagnostische logboeken wissen? Het huidige logboek blijft bewaard.", "cs-CZ": "Vymazat staré diagnostické protokoly? Aktuální protokol zůstane zachován.", "bg-BG": "Да се изчистят старите диагностични журнали? Текущият журнал ще бъде запазен."
+      }
+    },
+    "fbe.trace.clear_completed": {
+      "kind": "MESSAGE", "targetId": "",
+      "translations": {
+        "en-US": "Old diagnostic traces were cleared.", "ru-RU": "Старые диагностические журналы очищены.", "uk-UA": "Старі діагностичні журнали очищено.", "de-DE": "Alte Diagnoseprotokolle wurden gelöscht.", "fr-FR": "Les anciens journaux de diagnostic ont été effacés.", "es-ES": "Se borraron los registros de diagnóstico antiguos.", "it-IT": "I vecchi registri diagnostici sono stati cancellati.", "pl-PL": "Stare dzienniki diagnostyczne zostały wyczyszczone.", "pt-PT": "Os registos de diagnóstico antigos foram limpos.", "nl-NL": "Oude diagnostische logboeken zijn gewist.", "cs-CZ": "Staré diagnostické protokoly byly vymazány.", "bg-BG": "Старите диагностични журнали бяха изчистени."
+      }
+    },
+    "fbe.trace.clear_failed": {
+      "kind": "MESSAGE", "targetId": "",
+      "translations": {
+        "en-US": "Could not clear old diagnostic traces.", "ru-RU": "Не удалось очистить старые диагностические журналы.", "uk-UA": "Не вдалося очистити старі діагностичні журнали.", "de-DE": "Alte Diagnoseprotokolle konnten nicht gelöscht werden.", "fr-FR": "Impossible d’effacer les anciens journaux de diagnostic.", "es-ES": "No se pudieron borrar los registros de diagnóstico antiguos.", "it-IT": "Impossibile cancellare i vecchi registri diagnostici.", "pl-PL": "Nie udało się wyczyścić starych dzienników diagnostycznych.", "pt-PT": "Não foi possível limpar os registos de diagnóstico antigos.", "nl-NL": "Oude diagnostische logboeken konden niet worden gewist.", "cs-CZ": "Staré diagnostické protokoly se nepodařilo vymazat.", "bg-BG": "Старите диагностични журнали не можаха да бъдат изчистени."
+      }
+    },    "fbe.menu.idr_mainframe.popup.scripts": {
       "kind": "POPUP",
       "targetId": "",
       "translations": {
