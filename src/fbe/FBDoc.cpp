@@ -534,6 +534,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	CComVariant diagnosticResult;
 	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult);
 	StartupTrace::HResult(L"script", L"J010", hr, L"apiSetDiagnosticTraceEnabled");
+	bool diagnosticBridgeUnavailable = false;
 	if (FAILED(hr))
 	{
 		// The diagnostic API was introduced after the original runtime. Its
@@ -541,6 +542,23 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		// opening with an older main.js.
 		StartupTrace::Warning(L"script", L"J011", L"apiSetDiagnosticTraceEnabled unavailable; continuing without script diagnostics");
 	}
+	else
+	{
+		CComVariant bridgeState;
+		const HRESULT bridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, bridgeState);
+		if (SUCCEEDED(bridgeResult) && V_VT(&bridgeState) == VT_I4)
+		{
+			const long state = V_I4(&bridgeState);
+			diagnosticBridgeUnavailable = state == -1;
+			StartupTrace::Event(L"script", L"J012", state == 1 ? L"diagnostic trace bridge=available" :
+				state == -1 ? L"diagnostic trace bridge=unavailable" : L"diagnostic trace bridge=unknown");
+		}
+		else
+		{
+			StartupTrace::HResult(L"script", L"J013", bridgeResult, L"apiGetDiagnosticTraceBridgeState");
+		}
+	}
+
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
 	hr = InvokeFunc(L"apiLoadFB2", params, 2, res);
@@ -580,6 +598,20 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	{
 		TraceDocumentEvent(L"D112", L"Загрузка книги завершилась без результата", filename);
 		return false;
+	}
+
+	CComVariant postLoadBridgeState;
+	const HRESULT postLoadBridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, postLoadBridgeState);
+	if (SUCCEEDED(postLoadBridgeResult) && V_VT(&postLoadBridgeState) == VT_I4)
+		diagnosticBridgeUnavailable = diagnosticBridgeUnavailable || V_I4(&postLoadBridgeState) == -1;
+	if (diagnosticBridgeUnavailable)
+	{
+		CComVariant lastStage;
+		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticLastStage", NULL, 0, lastStage);
+		if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
+			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
+		else
+			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticLastStage");
 	}
 
 	// Отмечаем документ неизменённым только после подтверждённой загрузки JavaScript.
