@@ -235,7 +235,7 @@ static MSXML2::IXSLTemplatePtr	LoadXSL(const CString& path) {
   MSXML2::IXMLDOMDocument2Ptr	xsl(U::CreateDocument(true));
   if (!U::LoadXml(xsl,U::GetProgDirFile(path)))
   {
-    StartupTrace::Error(L"xslt", L"T301", L"Не удалось загрузить XSL");
+    StartupTrace::Error(L"xslt", L"T301", L"XSL load failed");
     throw _com_error(E_FAIL);
   }
   MSXML2::IXSLTemplatePtr	tp(U::CreateTemplate());
@@ -353,14 +353,14 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 
 	if (!m_body.Browser())
 	{
-		StartupTrace::HResult(L"script", L"C101", E_UNEXPECTED, L"Веб-браузер недоступен");
+		StartupTrace::HResult(L"script", L"C101", E_UNEXPECTED, L"web browser unavailable");
 		return E_UNEXPECTED;
 	}
 
 	IHTMLDocument2Ptr doc = m_body.Browser()->Document;
 	if (!doc)
 	{
-		StartupTrace::HResult(L"script", L"C102", E_NOINTERFACE, L"HTML-документ недоступен");
+		StartupTrace::HResult(L"script", L"C102", E_NOINTERFACE, L"HTML document unavailable");
 		return E_NOINTERFACE;
 	}
 
