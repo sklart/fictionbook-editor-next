@@ -10,7 +10,7 @@ namespace
 	bool traceLockInitialized = false;
 	ULONGLONG startTime = 0, previousTime = 0, writtenBytes = 0, recordSequence = 0;
 	DWORD lastWriteError = ERROR_SUCCESS;
-	CString tracePath, traceBasePath, lastStageCode, lastStageMessage;
+	CString tracePath, traceBasePath, lastStageCode, lastStageMessage, lastDocumentStage, lastScriptOperationStage, lastComFailure;
 	unsigned int traceSegment = 0;
 	const ULONGLONG maxTraceSize = 16ULL * 1024ULL * 1024ULL;
 	const wchar_t* const diagnosticTraceRegistryPath = L"Software\\FBETeam\\FictionBook Editor Next\\Diagnostics";
@@ -107,7 +107,7 @@ namespace
 		const CString safeCategory = Sanitize(category, 64, false), safeCode = Sanitize(code, 32, false), safeMessage = Sanitize(message, 512, true);
 		CString line;
 		line.Format(L"%04u-%02u-%02u %02u:%02u:%02u.%03u; seq=%llu; elapsed=%llu; delta=%llu; PID=%lu; TID=%lu; level=%s; category=%s; code=%s; message=%s\r\n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, ++recordSequence, now - startTime, now - previousTime, ::GetCurrentProcessId(), ::GetCurrentThreadId(), (LPCWSTR)level, (LPCWSTR)safeCategory, (LPCWSTR)(safeCode.IsEmpty() ? CString(L"-") : safeCode), (LPCWSTR)safeMessage);
-		previousTime = now; lastStageCode = safeCode; lastStageMessage = safeMessage;
+		previousTime = now; lastStageCode = safeCode; lastStageMessage = safeMessage; if (safeCategory == L"document") lastDocumentStage = safeCode; if (safeCategory == L"script") lastScriptOperationStage = safeCode; if (wcscmp(level, L"error") == 0) lastComFailure = safeCode + L": " + safeMessage;
 		WriteUtf8(line, flush, wcscmp(level, L"error") == 0);
 	}
 
@@ -200,6 +200,9 @@ CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath; }
 CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separator = tracePath.ReverseFind(L'\\'); return separator >= 0 ? tracePath.Left(separator) : CString(); }
 CString StartupTrace::LastStageCode() { TraceLock guard; return lastStageCode; }
 CString StartupTrace::LastStageMessage() { TraceLock guard; return lastStageMessage; }
+CString StartupTrace::LastDocumentStage() { TraceLock guard; return lastDocumentStage; }
+CString StartupTrace::LastScriptOperationStage() { TraceLock guard; return lastScriptOperationStage; }
+CString StartupTrace::LastComFailure() { TraceLock guard; return lastComFailure; }
 DWORD StartupTrace::LastWriteError() { TraceLock guard; return lastWriteError; }
 CString StartupTrace::NormalizeLogValue(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, false); }
 CString StartupTrace::SanitizeLogText(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, true); }

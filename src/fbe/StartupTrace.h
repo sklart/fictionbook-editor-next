@@ -29,6 +29,9 @@ namespace StartupTrace
 	CString CurrentLogDirectory();
 	CString LastStageCode();
 	CString LastStageMessage();
+	CString LastDocumentStage();
+	CString LastScriptOperationStage();
+	CString LastComFailure();
 	DWORD LastWriteError();
 	CString SanitizeLogText(const wchar_t* text, int maximumLength = 512);
 	CString RedactPath(const wchar_t* text);
