@@ -225,11 +225,11 @@ void StartupTrace::Start()
 	WriteEnvironmentHeader();
 	Event(L"startup", L"S100", L"process started");
 }
-void StartupTrace::Mark(const wchar_t* stage) { Event(L"startup", L"S110", stage); }
+void StartupTrace::Mark(const wchar_t* stage) { Event(L"startup", L"S000", stage); }
 bool StartupTrace::Enabled() { return traceFile != INVALID_HANDLE_VALUE; }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"info", code, message, false); }
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
-void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"-", message, false); }
+void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"LEGACY", message, false); }
 void StartupTrace::Error(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"error", code, message, true); }
 void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); if (FAILED(result)) { TraceLock guard; lastComFailure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); } }
 void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
