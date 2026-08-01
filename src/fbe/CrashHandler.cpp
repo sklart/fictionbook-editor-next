@@ -79,6 +79,9 @@ namespace
 		const CString diagnosticTracePath = StartupTrace::RedactPath(StartupTrace::CurrentLogPath());
 		const CString lastStageCode = StartupTrace::LastStageCode();
 		const CString lastStageMessage = StartupTrace::LastStageMessage();
+		const CString lastDocumentStage = StartupTrace::LastDocumentStage();
+		const CString lastScriptOperationStage = StartupTrace::LastScriptOperationStage();
+		const CString lastComFailure = StartupTrace::LastComFailure();
 		wchar_t text[2048];
 		const int textLength = _snwprintf_s(text, _countof(text), _TRUNCATE,
 			L"FictionBook Editor crash report\r\n"
@@ -89,11 +92,16 @@ namespace
 			L"Exception address: %p\r\n"
 			L"Minidump written: %s\r\n"
 			L"Minidump error: %lu\r\n"
+			L"Diagnostic trace enabled: %s\r\n"
 			L"Diagnostic trace: %s\r\n"
-			L"Last trace stage: %s; %s\r\n",
+			L"Last trace stage: %s; %s\r\n"
+			L"Last document stage: %s\r\n"
+			L"Last script operation stage: %s\r\n"
+			L"Last COM failure: %s\r\n",
 			::GetCurrentProcessId(), ::GetCurrentThreadId(), exceptionCode, exceptionAddress,
 			dumpWritten ? L"yes" : L"no", dumpWritten ? ERROR_SUCCESS : dumpError,
-			(LPCWSTR)diagnosticTracePath, (LPCWSTR)lastStageCode, (LPCWSTR)lastStageMessage);
+			StartupTrace::Enabled() ? L"yes" : L"no", (LPCWSTR)diagnosticTracePath, (LPCWSTR)lastStageCode, (LPCWSTR)lastStageMessage,
+			(LPCWSTR)lastDocumentStage, (LPCWSTR)lastScriptOperationStage, (LPCWSTR)lastComFailure);
 
 		const WORD bom = 0xFEFF;
 		DWORD written = 0;
@@ -115,9 +123,9 @@ namespace
 
 		wchar_t basePath[MAX_PATH];
 		_snwprintf_s(basePath, _countof(basePath), _TRUNCATE,
-			L"%sFBENext-crash-%04u%02u%02u-%02u%02u%02u-pid%lu",
+			L"%sFBENext-crash-%04u%02u%02u-%02u%02u%02u-%03u-pid%lu",
 			g_crashDirectory, localTime.wYear, localTime.wMonth, localTime.wDay,
-			localTime.wHour, localTime.wMinute, localTime.wSecond, ::GetCurrentProcessId());
+			localTime.wHour, localTime.wMinute, localTime.wSecond, localTime.wMilliseconds, ::GetCurrentProcessId());
 
 		wchar_t dumpPath[MAX_PATH];
 		wchar_t reportPath[MAX_PATH];

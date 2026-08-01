@@ -139,7 +139,7 @@ namespace
 		const CString safeCategory = Sanitize(category, 64, false), safeCode = Sanitize(code, 32, false), safeMessage = Sanitize(message, 512, true);
 		CString line;
 		line.Format(L"%04u-%02u-%02u %02u:%02u:%02u.%03u; seq=%llu; elapsed=%llu; delta=%llu; PID=%lu; TID=%lu; level=%s; category=%s; code=%s; message=%s\r\n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, ++recordSequence, now - startTime, now - previousTime, ::GetCurrentProcessId(), ::GetCurrentThreadId(), (LPCWSTR)level, (LPCWSTR)safeCategory, (LPCWSTR)(safeCode.IsEmpty() ? CString(L"-") : safeCode), (LPCWSTR)safeMessage);
-		previousTime = now; lastStageCode = safeCode; lastStageMessage = safeMessage; if (safeCategory == L"document") lastDocumentStage = safeCode; if (safeCategory == L"script") lastScriptOperationStage = safeCode; if (wcscmp(level, L"error") == 0) lastComFailure = safeCode + L": " + safeMessage;
+		previousTime = now; lastStageCode = safeCode; lastStageMessage = safeMessage; if (safeCategory == L"document") lastDocumentStage = safeCode; if (safeCategory == L"script") lastScriptOperationStage = safeCode;
 		WriteUtf8(line, flush, wcscmp(level, L"error") == 0);
 	}
 
@@ -192,7 +192,7 @@ void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wch
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"-", message, false); }
 void StartupTrace::Error(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"error", code, message, true); }
-void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); }
+void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); if (FAILED(result)) { TraceLock guard; lastComFailure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); } }
 void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
 	const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message)
 {
@@ -227,6 +227,7 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 		::SysFreeString(helpFile);
 	}
 	WriteRecord(category, L"error", code, details, true);
+	{ TraceLock guard; lastComFailure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); }
 }
 void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CString safeMessage = SanitizeScriptDetails(message); const bool isError = safeMessage.Find(L"level=error") == 0; WriteRecord(L"script", isError ? L"error" : L"info", code, safeMessage, isError); }
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
