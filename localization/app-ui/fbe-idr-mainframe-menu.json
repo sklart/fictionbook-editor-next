@@ -1252,16 +1252,16 @@
       "translations": {
         "en-US": "Diagnostic trace records technical information about startup, commands, and COM errors. Book text, XML, HTML, Base64, and user-script contents are not recorded; paths are redacted.\n\nEnable it for the next FBE Next launch? Restart the application to begin recording.",
         "ru-RU": "Диагностическая трассировка записывает технические сведения о запуске, командах и ошибках COM. Текст книги, XML, HTML, Base64 и содержимое пользовательских сценариев не записываются; пути обезличиваются.\n\nВключить её для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу.",
-        "uk-UA": "Діагностичне трасування записує запуск, команди, переходи між режимами, виділення, відкриття й збереження книги, а також помилки COM.\n\nУвімкнути його для наступного запуску FBE Next? Для початку запису перезапустіть програму.",
-        "de-DE": "Das Diagnoseprotokoll zeichnet Start, Befehle, Ansichtswechsel, Auswahl, Öffnen und Speichern von Büchern sowie COM-Fehler auf.\n\nFür den nächsten FBE-Next-Start aktivieren? Starten Sie das Programm neu, um die Aufzeichnung zu beginnen.",
-        "fr-FR": "La trace de diagnostic enregistre le démarrage, les commandes, les changements de vue, la sélection, l’ouverture et l’enregistrement des livres, ainsi que les erreurs COM.\n\nL’activer pour le prochain démarrage de FBE Next ? Redémarrez l’application pour commencer l’enregistrement.",
-        "es-ES": "La traza de diagnóstico registra el inicio, comandos, cambios de vista, selección, apertura y guardado de libros y errores COM.\n\n¿Activarla para el próximo inicio de FBE Next? Reinicie la aplicación para empezar a registrar.",
-        "it-IT": "La traccia diagnostica registra avvio, comandi, cambi di vista, selezione, apertura e salvataggio dei libri ed errori COM.\n\nAttivarla per il prossimo avvio di FBE Next? Riavviare l’applicazione per iniziare la registrazione.",
-        "pl-PL": "Śledzenie diagnostyczne zapisuje uruchomienie, polecenia, przełączanie widoków, zaznaczenie, otwieranie i zapisywanie książek oraz błędy COM.\n\nWłączyć je przy następnym uruchomieniu FBE Next? Uruchom program ponownie, aby rozpocząć zapis.",
-        "pt-PT": "O rastreio de diagnóstico regista o arranque, comandos, mudanças de vista, seleção, abertura e gravação de livros e erros COM.\n\nAtivá-lo no próximo arranque do FBE Next? Reinicie a aplicação para iniciar o registo.",
-        "nl-NL": "De diagnostische tracering registreert opstarten, opdrachten, weergavewisselingen, selectie, openen en opslaan van boeken en COM-fouten.\n\nInschakelen voor de volgende start van FBE Next? Start de toepassing opnieuw om de registratie te beginnen.",
-        "cs-CZ": "Diagnostické trasování zaznamenává spuštění, příkazy, přepínání zobrazení, výběr, otevírání a ukládání knih a chyby COM.\n\nZapnout je pro příští spuštění FBE Next? Pro zahájení záznamu restartujte program.",
-        "bg-BG": "Диагностичното проследяване записва стартирането, командите, превключването на изгледи, избора, отварянето и записването на книги и COM грешките.\n\nДа се включи за следващото стартиране на FBE Next? Рестартирайте програмата, за да започне записът."
+        "uk-UA": "Діагностичне трасування записує технічні відомості про запуск, команди та помилки COM. Текст книги, XML, HTML, Base64 і вміст користувацьких сценаріїв не записуються; шляхи знеособлюються.\n\nУвімкнути його для наступного запуску FBE Next? Для початку запису перезапустіть програму.",
+        "de-DE": "Die Diagnosetrace zeichnet technische Informationen zu Start, Befehlen und COM-Fehlern auf. Buchtext, XML, HTML, Base64 und Inhalte von Benutzerskripten werden nicht aufgezeichnet; Pfade werden anonymisiert.\n\nFür den nächsten FBE-Next-Start aktivieren? Starten Sie das Programm neu, um die Aufzeichnung zu beginnen.",
+        "fr-FR": "La trace de diagnostic enregistre des informations techniques sur le démarrage, les commandes et les erreurs COM. Le texte du livre, XML, HTML, Base64 et le contenu des scripts utilisateur ne sont pas enregistrés ; les chemins sont anonymisés.\n\nL’activer pour le prochain démarrage de FBE Next ? Redémarrez l’application pour commencer l’enregistrement.",
+        "es-ES": "La traza de diagnóstico registra información técnica sobre el inicio, los comandos y los errores COM. No se registran el texto del libro, XML, HTML, Base64 ni el contenido de scripts de usuario; las rutas se anonimizan.\n\n¿Activarla para el próximo inicio de FBE Next? Reinicie la aplicación para empezar a registrar.",
+        "it-IT": "La traccia diagnostica registra informazioni tecniche su avvio, comandi ed errori COM. Il testo del libro, XML, HTML, Base64 e il contenuto degli script utente non vengono registrati; i percorsi vengono anonimizzati.\n\nAttivarla per il prossimo avvio di FBE Next? Riavviare l’applicazione per iniziare la registrazione.",
+        "pl-PL": "Śledzenie diagnostyczne zapisuje informacje techniczne o uruchomieniu, poleceniach i błędach COM. Tekst książki, XML, HTML, Base64 i zawartość skryptów użytkownika nie są zapisywane; ścieżki są anonimizowane.\n\nWłączyć je przy następnym uruchomieniu FBE Next? Uruchom program ponownie, aby rozpocząć zapis.",
+        "pt-PT": "O rastreio de diagnóstico regista informações técnicas sobre o arranque, comandos e erros COM. O texto do livro, XML, HTML, Base64 e o conteúdo de scripts de utilizador não são registados; os caminhos são anonimizados.\n\nAtivá-lo no próximo arranque do FBE Next? Reinicie a aplicação para iniciar o registo.",
+        "nl-NL": "De diagnostische tracering registreert technische informatie over opstarten, opdrachten en COM-fouten. Boektekst, XML, HTML, Base64 en inhoud van gebruikersscripts worden niet geregistreerd; paden worden geanonimiseerd.\n\nInschakelen voor de volgende start van FBE Next? Start de toepassing opnieuw om de registratie te beginnen.",
+        "cs-CZ": "Diagnostické trasování zaznamenává technické informace o spuštění, příkazech a chybách COM. Text knihy, XML, HTML, Base64 a obsah uživatelských skriptů se nezaznamenávají; cesty jsou anonymizovány.\n\nZapnout je pro příští spuštění FBE Next? Pro zahájení záznamu restartujte program.",
+        "bg-BG": "Диагностичното проследяване записва технически сведения за стартирането, командите и COM грешките. Текстът на книгата, XML, HTML, Base64 и съдържанието на потребителски скриптове не се записват; пътищата се обезличават.\n\nДа се включи за следващото стартиране на FBE Next? Рестартирайте програмата, за да започне записът."
       }
     },
     "fbe.trace.enable.completed": {
@@ -1270,14 +1270,14 @@
       "translations": {
         "en-US": "Diagnostic trace is enabled. Restart FBE Next to begin writing the log.",
         "ru-RU": "Диагностическая трассировка включена. Перезапустите FBE Next, чтобы начать запись.",
-        "uk-UA": "Діагностичне трасування ввімкнено. Перезапустіть FBE Next, щоб почати запис у diagnostic log.",
+        "uk-UA": "Діагностичне трасування ввімкнено. Перезапустіть FBE Next, щоб почати запис.",
         "de-DE": "Das Diagnoseprotokoll ist aktiviert. Starten Sie FBE Next neu, um zu schreiben.",
-        "fr-FR": "La trace de diagnostic est activée. Redémarrez FBE Next pour écrire dans diagnostic log.",
-        "es-ES": "La traza de diagnóstico está activada. Reinicie FBE Next para escribir en diagnostic log.",
+        "fr-FR": "La trace de diagnostic est activée. Redémarrez FBE Next pour commencer l’enregistrement.",
+        "es-ES": "La traza de diagnóstico está activada. Reinicie FBE Next para empezar a registrar.",
         "it-IT": "La traccia diagnostica è attivata. Riavviare FBE Next per scrivere.",
-        "pl-PL": "Śledzenie diagnostyczne jest włączone. Uruchom ponownie FBE Next, aby zapisywać w diagnostic log.",
-        "pt-PT": "O rastreio de diagnóstico está ativo. Reinicie o FBE Next para escrever em diagnostic log.",
-        "nl-NL": "Diagnostische tracering is ingeschakeld. Start FBE Next opnieuw om naar diagnostic log te schrijven.",
+        "pl-PL": "Śledzenie diagnostyczne jest włączone. Uruchom ponownie FBE Next, aby rozpocząć zapis.",
+        "pt-PT": "O rastreio de diagnóstico está ativo. Reinicie o FBE Next para iniciar o registo.",
+        "nl-NL": "Diagnostische tracering is ingeschakeld. Start FBE Next opnieuw om de registratie te beginnen.",
         "cs-CZ": "Diagnostické trasování je zapnuto. Restartujte FBE Next, aby se začalo zapisovat.",
         "bg-BG": "Диагностичното проследяване е включено. Рестартирайте FBE Next, за да започне запис."
       }

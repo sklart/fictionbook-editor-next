@@ -3451,6 +3451,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 			m_doc=doc;*/
 			m_doc->m_body.Init();
 			m_doc->ResetSavePoint();
+			TracePluginDiagnostic(L"Import", pluginClsid, L"completed", S_OK, 1);
 		}// else
 			//FB::Doc::m_active_doc = m_doc;
 		//delete doc;
@@ -3500,6 +3501,7 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 					HRESULT exportResult = epl->Export((long)m_hWnd, filename, dom);
 					TracePluginDiagnostic(L"Export", pluginClsid, L"Export", exportResult, 1);
 					CheckError(exportResult);
+					TracePluginDiagnostic(L"Export", pluginClsid, L"completed", S_OK, 1);
 				}
 				} 
 				else 
