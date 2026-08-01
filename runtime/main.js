@@ -15,14 +15,25 @@ window.onerror = errorHandler; // document.lvl=0;
 var ImagesInfo = new Array();
 var diagnosticTraceEnabled = false;
 var diagnosticLastStage = "J000";
+// 0 = unknown, 1 = available, -1 = unavailable for this document.
+var diagnosticTraceBridgeState = 0;
 function SetDiagnosticLastStage(code) { diagnosticLastStage = code; }
 function apiGetDiagnosticLastStage() { return diagnosticLastStage; }
+function apiGetDiagnosticTraceBridgeState() { return diagnosticTraceBridgeState; }
 function apiSetDiagnosticTraceEnabled(enabled) { diagnosticTraceEnabled = enabled ? true : false; TraceScript("J001", "operation=apiSetDiagnosticTraceEnabled"); return true; }
 function TraceScript(code, message)
 {
  SetDiagnosticLastStage(code);
- if(!diagnosticTraceEnabled) return;
- try { if(window.external && window.external.TraceScript) window.external.TraceScript(code, message); } catch(ignore) {}
+ if(!diagnosticTraceEnabled || diagnosticTraceBridgeState == -1) return;
+ try
+ {
+  window.external.TraceScript(code, message);
+  diagnosticTraceBridgeState = 1;
+ }
+ catch(ignore)
+ {
+  diagnosticTraceBridgeState = -1;
+ }
 }
 function DiagError(code, operation, error)
 {
