@@ -560,6 +560,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	// The first MSHTML initialization under a debugger can exceed one minute.
 	// This remains a bounded wait; normal launches leave as soon as DocumentComplete arrives.
 	const DWORD documentCompleteTimeoutMs = 120000;
+	const DWORD messageWaitSliceMs = 50;
 	StartupTrace::Event(L"webbrowser", L"WB130", L"waiting for DocumentComplete");
 	while (!m_body.Loaded())
 	{
@@ -577,7 +578,11 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			StartupTrace::Warning(L"webbrowser", L"WB133", details);
 			return false;
 		}
-		const DWORD waitResult = ::MsgWaitForMultipleObjects(0, NULL, FALSE, static_cast<DWORD>(documentCompleteTimeoutMs - elapsed), QS_ALLINPUT);
+		// Keep the UI/COM queue moving in short slices. A single long MsgWait can
+		// delay MSHTML's DocumentComplete callback while a debugger is attached.
+		const DWORD remaining = static_cast<DWORD>(documentCompleteTimeoutMs - elapsed);
+		const DWORD waitResult = ::MsgWaitForMultipleObjects(0, NULL, FALSE,
+			remaining < messageWaitSliceMs ? remaining : messageWaitSliceMs, QS_ALLINPUT);
 		if (waitResult == WAIT_TIMEOUT)
 			continue;
 		if (waitResult == WAIT_FAILED)
@@ -585,19 +590,18 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			StartupTrace::HResult(L"webbrowser", L"WB131", HRESULT_FROM_WIN32(::GetLastError()), L"MsgWaitForMultipleObjects failed");
 			return false;
 		}
-		const int messageResult = ::GetMessage(&msg, NULL, 0, 0);
-		if (messageResult == 0)
+		while (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
-			StartupTrace::Warning(L"webbrowser", L"WB132", L"message loop ended before DocumentComplete");
-			return false;
+			if (msg.message == WM_QUIT)
+			{
+				StartupTrace::Warning(L"webbrowser", L"WB132", L"message loop ended before DocumentComplete");
+				return false;
+			}
+			::TranslateMessage(&msg);
+			::DispatchMessage(&msg);
+			if (m_body.Loaded())
+				break;
 		}
-		if (messageResult == -1)
-		{
-			StartupTrace::HResult(L"webbrowser", L"WB131", HRESULT_FROM_WIN32(::GetLastError()), L"GetMessage failed");
-			return false;
-		}
-		::TranslateMessage(&msg);
-		::DispatchMessage(&msg);
 	}
 
 	StartupTrace::Event(L"webbrowser", L"WB150", L"SetExternalDispatch #1");
