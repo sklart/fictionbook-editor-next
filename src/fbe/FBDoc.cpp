@@ -41,6 +41,15 @@ static void TraceRecoveryEvent(const wchar_t* code, const wchar_t* operation, co
 
 static void TraceOptionalDiagnosticWarning(const wchar_t* code, HRESULT result, const wchar_t* operation)
 {
+	static volatile LONG unknownNameWarnings[5] = {};
+	int warningIndex = -1;
+	if (wcscmp(code, L"J011") == 0) warningIndex = 0;
+	else if (wcscmp(code, L"J013") == 0) warningIndex = 1;
+	else if (wcscmp(code, L"J115") == 0) warningIndex = 2;
+	else if (wcscmp(code, L"J117") == 0) warningIndex = 3;
+	else if (wcscmp(code, L"J119") == 0) warningIndex = 4;
+	if (result == DISP_E_UNKNOWNNAME && warningIndex >= 0 && ::InterlockedExchange(&unknownNameWarnings[warningIndex], 1) != 0)
+		return;
 	CString details;
 	details.Format(L"hr=0x%08lX; %s unavailable", static_cast<unsigned long>(result), operation);
 	StartupTrace::Warning(L"diagnostic", code, details);
@@ -384,11 +393,11 @@ static CString VariantTypeName(const VARIANT& value)
 	return type;
 }
 
-HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult)
+HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult, bool quiet)
 {
 	CString trace;
 	trace.Format(L"InvokeFunc: %s; arguments=%d", FuncName, count);
-	StartupTrace::Event(L"script", L"C100", trace);
+	if (!quiet) StartupTrace::Event(L"script", L"C100", trace);
 
 	if (!m_body.Browser())
 	{
@@ -405,7 +414,7 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 
 	CComPtr<IDispatch> pScript;
 	HRESULT hr = doc->get_Script(&pScript);
-	StartupTrace::HResult(L"script", L"C110", hr, L"get_Script");
+	if (!quiet) StartupTrace::HResult(L"script", L"C110", hr, L"get_Script");
 	if (FAILED(hr) || !pScript)
 		return FAILED(hr) ? hr : E_NOINTERFACE;
 
@@ -413,7 +422,7 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	DISPID dispid = DISPID_UNKNOWN;
 	hr = pScript->GetIDsOfNames(IID_NULL, &szMember, 1, LOCALE_SYSTEM_DEFAULT, &dispid);
 	trace.Format(L"GetIDsOfNames: name=%s; dispid=%ld", FuncName, static_cast<long>(dispid));
-	StartupTrace::HResult(L"script", L"C120", hr, trace);
+	if (!quiet) StartupTrace::HResult(L"script", L"C120", hr, trace);
 	if (FAILED(hr))
 		return hr;
 
@@ -426,7 +435,7 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	}
 	trace.Format(L"Invoke: dispid=%ld; argument-types=[%s]", static_cast<long>(dispid),
 		(const wchar_t*)argumentTypes);
-	StartupTrace::Event(L"script", L"C130", trace);
+	if (!quiet) StartupTrace::Event(L"script", L"C130", trace);
 
 	DISPPARAMS dispatchParameters = {};
 	dispatchParameters.rgvarg = params;
@@ -440,8 +449,9 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	CComPtr<IErrorInfo> errorInfo;
 	if (FAILED(hr))
 		::GetErrorInfo(0, &errorInfo);
-	if (exceptionInfo.pfnDeferredFillIn)
-		exceptionInfo.pfnDeferredFillIn(&exceptionInfo);
+	HRESULT (STDMETHODCALLTYPE *deferredFillIn)(EXCEPINFO*) = exceptionInfo.pfnDeferredFillIn;
+	 exceptionInfo.pfnDeferredFillIn = NULL;
+	 if (deferredFillIn) deferredFillIn(&exceptionInfo);
 
 	CString details;
 	CString argumentText;
@@ -468,7 +478,8 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	if (exceptionInfo.bstrDescription) ::SysFreeString(exceptionInfo.bstrDescription);
 	if (exceptionInfo.bstrSource) ::SysFreeString(exceptionInfo.bstrSource);
 	if (exceptionInfo.bstrHelpFile) ::SysFreeString(exceptionInfo.bstrHelpFile);
-	StartupTrace::HResult(L"script", FAILED(hr) ? L"C140" : L"C131", hr, details);
+	if (errorInfo) ::SetErrorInfo(0, errorInfo);
+	if (!quiet) StartupTrace::HResult(L"script", FAILED(hr) ? L"C140" : L"C131", hr, details);
 	return hr;
 }
 
@@ -550,6 +561,13 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	StartupTrace::Event(L"webbrowser", L"WB130", L"waiting for DocumentComplete");
 	while (!m_body.Loaded())
 	{
+		if (m_body.NavigationFailed())
+		{
+			CString details;
+			details.Format(L"status=%ld; last-browser-event=%s", m_body.NavigationStatus(), (LPCWSTR)m_body.LastBrowserEvent());
+			StartupTrace::Warning(L"webbrowser", L"WB134", details);
+			return false;
+		}
 		const ULONGLONG elapsed = ::GetTickCount64() - navigationStarted;
 		if (elapsed >= documentCompleteTimeoutMs)
 		{
@@ -605,7 +623,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	V_VT(&diagnosticTrace) = VT_BOOL;
 	V_BOOL(&diagnosticTrace) = StartupTrace::Enabled() ? VARIANT_TRUE : VARIANT_FALSE;
 	CComVariant diagnosticResult;
-	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult);
+	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult, true);
 		if (FAILED(hr))
 	{
 		// The diagnostic API was introduced after the original runtime. Its
@@ -617,7 +635,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		{
 			StartupTrace::HResult(L"script", L"J010", hr, L"apiSetDiagnosticTraceEnabled");
 			CComVariant bridgeState;
-			const HRESULT bridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, bridgeState);
+			const HRESULT bridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, bridgeState, true);
 			if (SUCCEEDED(bridgeResult) && V_VT(&bridgeState) == VT_I4)
 			{
 				const long state = V_I4(&bridgeState);
@@ -643,7 +661,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		{
 		// Preserve the original apiLoadFB2 HRESULT. This extra query is diagnostic only.
 		CComVariant lastStage;
-		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticFailureStage", NULL, 0, lastStage);
+		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticFailureStage", NULL, 0, lastStage, true);
 		if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
 			TraceScriptStageSnapshot(L"D115", L"failure-stage", V_BSTR(&lastStage));
 		else
@@ -677,7 +695,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		if (diagnosticsActive)
 		{
 			CComVariant operationStage;
-			const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, operationStage);
+			const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, operationStage, true);
 			if (SUCCEEDED(stageResult) && V_VT(&operationStage) == VT_BSTR)
 				TraceScriptStageSnapshot(L"D116", L"operation-stage", V_BSTR(&operationStage));
 			else
@@ -690,7 +708,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	if (diagnosticsActive)
 	{
 	CComVariant postLoadBridgeState;
-		const HRESULT postLoadBridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, postLoadBridgeState);
+		const HRESULT postLoadBridgeResult = InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, postLoadBridgeState, true);
 		if (SUCCEEDED(postLoadBridgeResult) && V_VT(&postLoadBridgeState) == VT_I4)
 			diagnosticBridgeUnavailable = diagnosticBridgeUnavailable || V_I4(&postLoadBridgeState) == -1;
 		if (diagnosticBridgeUnavailable)

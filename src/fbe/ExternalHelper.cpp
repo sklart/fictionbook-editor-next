@@ -15,7 +15,7 @@ CComPtr<ITypeInfo> ExternalHelper::s_embeddedTypeInfo;
 namespace
 {
 	CComAutoCriticalSection g_dispatchTraceLock;
-	std::map<DISPID, unsigned long> g_successfulNameLookups, g_successfulInvokes, g_failedNameLookups, g_failedInvokes;
+	std::map<DISPID, unsigned long> g_successfulNameLookups, g_successfulInvokes, g_failedNameLookups, g_failedInvokes, g_loggedNameLookups, g_loggedInvokes;
 	std::map<ULONGLONG, unsigned long> g_uniqueLookupFailures, g_uniqueInvokeFailures;
 
 	bool IsExternalTraceVerbose()
@@ -31,12 +31,26 @@ namespace
 		return ++calls[dispid] == 1;
 	}
 
-	bool RecordFirstFailure(std::map<DISPID, unsigned long>& calls, std::map<ULONGLONG, unsigned long>& uniqueFailures, DISPID dispid, HRESULT result)
+	unsigned long SafeMethodHash(const wchar_t* method)
+	{
+		unsigned long hash = 2166136261UL;
+		for (const wchar_t* current = method ? method : L"unknown"; *current; ++current)
+			hash = (hash ^ static_cast<unsigned long>(*current)) * 16777619UL;
+		return hash;
+	}
+
+	bool RecordFirstFailure(std::map<DISPID, unsigned long>& calls, std::map<ULONGLONG, unsigned long>& uniqueFailures, DISPID dispid, HRESULT result, const wchar_t* method)
 	{
 		CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock);
 		++calls[dispid];
-		const ULONGLONG key = (static_cast<ULONGLONG>(static_cast<ULONG>(dispid)) << 32) | static_cast<ULONG>(result);
+		const ULONGLONG key = (static_cast<ULONGLONG>(SafeMethodHash(method)) << 32) ^ static_cast<ULONG>(result);
 		return ++uniqueFailures[key] == 1;
+	}
+
+	void RecordLogged(std::map<DISPID, unsigned long>& calls, DISPID dispid)
+	{
+		CComCritSecLock<CComAutoCriticalSection> lock(g_dispatchTraceLock);
+		++calls[dispid];
 	}
 
 	unsigned long CallCount(const std::map<DISPID, unsigned long>& calls, DISPID dispid)
@@ -130,7 +144,7 @@ void ExternalHelper::FlushTraceSummary()
 	{
 		const unsigned long successes = CallCount(g_successfulNameLookups, it->first);
 		const unsigned long failures = CallCount(g_failedNameLookups, it->first);
-		const unsigned long suppressed = (IsExternalTraceVerbose() ? 0 : (successes > 0 ? successes - 1 : 0) + (failures > 0 ? failures - 1 : 0));
+		const unsigned long suppressed = successes + failures - CallCount(g_loggedNameLookups, it->first);
 		CString details; details.Format(L"method=%s; operation=GetIDsOfNames; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), successes, failures, suppressed);
 		StartupTrace::Event(L"external", L"XH190", details);
 	}
@@ -140,7 +154,7 @@ void ExternalHelper::FlushTraceSummary()
 	{
 		const unsigned long successes = CallCount(g_successfulInvokes, it->first);
 		const unsigned long failures = CallCount(g_failedInvokes, it->first);
-		const unsigned long suppressed = (IsExternalTraceVerbose() ? 0 : (successes > 0 ? successes - 1 : 0) + (failures > 0 ? failures - 1 : 0));
+		const unsigned long suppressed = successes + failures - CallCount(g_loggedInvokes, it->first);
 		CString details; details.Format(L"method=%s; operation=Invoke; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), successes, failures, suppressed);
 		StartupTrace::Event(L"external", L"XH191", details);
 	}
@@ -189,9 +203,10 @@ HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCou
 		names[0] ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-",
 		SUCCEEDED(result) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN));
 	const DISPID methodDispid = SUCCEEDED(result) ? dispids[0] : ExternalHelperMethodDispid(names[0]);
-	const bool firstFailure = FAILED(result) && RecordFirstFailure(g_failedNameLookups, g_uniqueLookupFailures, methodDispid, result);
-	const bool logLookup = (FAILED(result) && firstFailure) || IsExternalTraceVerbose() || (SUCCEEDED(result) && RecordFirstCall(g_successfulNameLookups, dispids[0]));
-	if (logLookup) StartupTrace::HResult(L"external", L"XH120", result, details);
+	const bool firstSuccessfulLookup = SUCCEEDED(result) && RecordFirstCall(g_successfulNameLookups, dispids[0]);
+	const bool firstFailure = FAILED(result) && RecordFirstFailure(g_failedNameLookups, g_uniqueLookupFailures, methodDispid, result, names[0] ? names[0] : L"unknown");
+	const bool logLookup = (FAILED(result) && firstFailure) || IsExternalTraceVerbose() || firstSuccessfulLookup;
+	if (logLookup) { RecordLogged(g_loggedNameLookups, methodDispid); StartupTrace::HResult(L"external", L"XH120", result, details); }
 	return result;
 }
 HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags, DISPPARAMS* parameters, VARIANT* resultValue, EXCEPINFO* exceptionInfo, UINT* argumentError)
@@ -218,11 +233,12 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 	CComPtr<IErrorInfo> errorInfo;
 	if (FAILED(result))
 		::GetErrorInfo(0, &errorInfo);
-	if (exceptionInfo && exceptionInfo->pfnDeferredFillIn)
-		exceptionInfo->pfnDeferredFillIn(exceptionInfo);
+	HRESULT (STDMETHODCALLTYPE *deferredFillIn)(EXCEPINFO*) = exceptionInfo ? exceptionInfo->pfnDeferredFillIn : NULL;
+	if (exceptionInfo) exceptionInfo->pfnDeferredFillIn = NULL;
+	if (deferredFillIn) deferredFillIn(exceptionInfo);
 
 	const bool firstSuccessfulInvoke = SUCCEEDED(result) && knownMethod && RecordFirstCall(g_successfulInvokes, dispid);
-	const bool firstFailure = FAILED(result) && RecordFirstFailure(g_failedInvokes, g_uniqueInvokeFailures, dispid, result);
+	const bool firstFailure = FAILED(result) && RecordFirstFailure(g_failedInvokes, g_uniqueInvokeFailures, dispid, result, ExternalHelperMethodName(dispid));
 	const bool logInvokeResult = (trace && (verbose || firstSuccessfulInvoke)) || firstFailure;
 	if (logInvokeResult)
 	{
@@ -244,8 +260,10 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 			details.AppendFormat(L"; errorInfo.guid=%08lX; errorInfo.source=%s; errorInfo.description=%s; errorInfo.help=%d; errorInfo.helpContext=%lu", guid.Data1, (LPCWSTR)StartupTrace::SanitizeExceptionText(source), (LPCWSTR)StartupTrace::SanitizeExceptionText(description), help ? 1 : 0, helpContext);
 			::SysFreeString(source); ::SysFreeString(description); ::SysFreeString(help);
 		}
+				RecordLogged(g_loggedInvokes, dispid);
 		StartupTrace::HResult(L"external", FAILED(result) ? L"XH140" : L"XH131", result, details);
 	}
+	if (errorInfo) ::SetErrorInfo(0, errorInfo);
 	return result;
 }
 static CString GetCurrentDocumentFilePath(const CString* filename, const bool* namevalid)

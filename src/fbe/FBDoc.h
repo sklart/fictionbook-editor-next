@@ -50,7 +50,7 @@ public:
   //bool	  LoadFromDOM(HWND hWndParent,MSXML2::IXMLDOMDocument2 *dom);
   bool	  LoadFromHTML(HWND hWndParent,const CString& filename);
   MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = true);
-  HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult);
+  HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult, bool quiet = false);
   void	  ShowDescription(bool Show);
   void	  RunScript(LPCOLESTR filePath);
   VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath);

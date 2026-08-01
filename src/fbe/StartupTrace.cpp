@@ -66,9 +66,24 @@ namespace
 		CString value = Sanitize(message, 512, true);
 		CString lower(value);
 		lower.MakeLower();
-		if(value.Find(L"<") >= 0 || value.Find(L">") >= 0 || lower.Find(L"base64") >= 0 || lower.Find(L"data:") >= 0)
-			return L"details omitted";
-		return value;
+		if (value.Find(L"<") < 0 && value.Find(L">") < 0 && lower.Find(L"base64") < 0 && lower.Find(L"data:") < 0)
+			return value;
+
+		// Retain the stable diagnostic fields even when an unsafe detail is removed.
+		CString retained;
+		int position = 0;
+		while (position >= 0)
+		{
+			CString field = value.Tokenize(L";", position); field.Trim();
+			CString fieldLower(field); fieldLower.MakeLower();
+			if (fieldLower.Find(L"level=") == 0 || fieldLower.Find(L"failed-stage=") == 0 || fieldLower.Find(L"operation=") == 0 || fieldLower.Find(L"number=") == 0 || fieldLower.Find(L"line=") == 0)
+			{
+				if (!retained.IsEmpty()) retained += L"; ";
+				retained += field;
+			}
+		}
+		if (!retained.IsEmpty()) retained += L"; ";
+		return retained + L"details omitted";
 	}
 	bool WriteAll(const char* bytes, DWORD byteCount)
 	{
@@ -102,6 +117,33 @@ namespace
 		return true;
 	}
 
+	CString ResolveDiagnosticLogDirectory()
+	{
+		wchar_t base[MAX_PATH] = {};
+		if (SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, base)))
+		{
+			CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next\\Diagnostics";
+			return directory;
+		}
+		if (::GetTempPath(_countof(base), base))
+		{
+			CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next Diagnostics";
+			return directory;
+		}
+		return CString();
+	}
+
+	CString FindLatestTrace(const CString& directory)
+	{
+		CString latest;
+		WIN32_FIND_DATA findData = {};
+		HANDLE search = ::FindFirstFile(directory + L"\\fbe-trace-*.log", &findData);
+		if (search == INVALID_HANDLE_VALUE) return latest;
+		do { if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (latest.IsEmpty() || latest.CompareNoCase(findData.cFileName) < 0)) latest = findData.cFileName; }
+		while (::FindNextFile(search, &findData));
+		::FindClose(search);
+		return latest.IsEmpty() ? CString() : directory + L"\\" + latest;
+	}
 	bool OpenTraceFile(const CString& directory, const SYSTEMTIME& time)
 	{
 		::SHCreateDirectoryEx(NULL, directory, NULL);
@@ -289,12 +331,11 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CString safeMessage = SanitizeScriptDetails(message); const bool isError = safeMessage.Find(L"level=error") == 0; WriteRecord(L"script", isError ? L"error" : L"info", code, safeMessage, isError); }
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
-CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath; }
-CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separator = tracePath.ReverseFind(L'\\'); return separator >= 0 ? tracePath.Left(separator) : CString(); }
+CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath.IsEmpty() ? FindLatestTrace(ResolveDiagnosticLogDirectory()) : tracePath; }
+CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separator = tracePath.ReverseFind(L'\\'); return separator >= 0 ? tracePath.Left(separator) : ResolveDiagnosticLogDirectory(); }
 void StartupTrace::ClearOldLogSessions()
 {
 	TraceLock guard;
-	if (tracePath.IsEmpty()) return;
 	const int separator = traceBasePath.ReverseFind(L'\\');
 	const CString session = separator >= 0 ? traceBasePath.Mid(separator + 1) : traceBasePath;
 	CleanupOldTraceSessions(CurrentLogDirectory(), session, 0);

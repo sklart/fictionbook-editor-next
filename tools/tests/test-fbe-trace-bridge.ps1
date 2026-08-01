@@ -44,4 +44,14 @@ foreach($pattern in @('OnNavigateError', 'L"WB135"', 'StartupTrace::RedactPath')
     if($viewSource -notlike "*$pattern*") { throw "Missing NavigateError diagnostic contract: $pattern" }
 }
 if($viewHeader -notlike '*DISPID_NAVIGATEERROR*') { throw 'Missing NavigateError sink contract.' }
+foreach($pattern in @('L"WB135"', 'L"WB136"', 'm_navigation_status')) {
+    if($viewSource -notlike "*$pattern*") { throw "Incomplete NavigateError handling: $pattern" }
+}
+if($documentSource -notlike '*m_body.NavigationFailed()*') { throw 'DocumentComplete wait does not stop after NavigateError.' }
+foreach($pattern in @('GetErrorInfo(0, &errorInfo)', 'SetErrorInfo(0, errorInfo)', 'pfnDeferredFillIn = NULL', 'InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult, true)', 'InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, bridgeState, true)')) {
+    if($documentSource -notlike "*$pattern*") { throw "Missing quiet optional API or COM error preservation contract: $pattern" }
+}
+foreach($pattern in @('SetErrorInfo(0, errorInfo)', 'pfnDeferredFillIn = NULL', 'RecordLogged', 'SafeMethodHash')) {
+    if($externalHelperSource -notlike "*$pattern*") { throw "Missing ExternalHelper dispatch preservation contract: $pattern" }
+}
 Write-Host 'JavaScript trace bridge contract passed.'

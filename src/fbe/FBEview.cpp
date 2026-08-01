@@ -3044,14 +3044,27 @@ bool CFBEView::Init()
 }
 void CFBEView::OnNavigateError(IDispatch* pDisp, VARIANT* vtUrl, VARIANT* vtFrame, VARIANT* vtStatusCode, VARIANT_BOOL* fCancel)
 {
+  CComPtr<IUnknown> eventBrowser;
+  CComPtr<IUnknown> topLevelBrowser;
+  if (pDisp) pDisp->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&eventBrowser));
+  if (m_browser) m_browser->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&topLevelBrowser));
+  const bool topLevel = eventBrowser && topLevelBrowser && eventBrowser == topLevelBrowser;
   CString url = (vtUrl && V_VT(vtUrl) == VT_BSTR) ? StartupTrace::RedactPath(V_BSTR(vtUrl)) : CString(L"-");
+  CString frame = (vtFrame && V_VT(vtFrame) == VT_BSTR) ? StartupTrace::SanitizeLogText(V_BSTR(vtFrame), 64) : CString(L"-");
   long status = 0;
-  if (vtStatusCode && (V_VT(vtStatusCode) == VT_I4 || V_VT(vtStatusCode) == VT_INT))
-    status = V_I4(vtStatusCode);
-  CString details;
+  if (vtStatusCode && (V_VT(vtStatusCode) == VT_I4 || V_VT(vtStatusCode) == VT_INT)) status = V_I4(vtStatusCode);
+  const int cancelled = fCancel && *fCancel == VARIANT_TRUE ? 1 : 0;
   const ULONGLONG elapsed = m_navigation_started ? ::GetTickCount64() - m_navigation_started : 0;
-  details.Format(L"url=%s; status=%ld; browser-present=%d; navigate-elapsed=%llu", (LPCWSTR)url, status, m_browser ? 1 : 0, elapsed);
-  m_last_browser_event=L"NavigateError";
+  CString details;
+  details.Format(L"url=%s; frame=%s; status=%ld; top-level=%d; cancel=%d; navigate-elapsed=%llu", (LPCWSTR)url, (LPCWSTR)frame, status, topLevel ? 1 : 0, cancelled, elapsed);
+  if (!topLevel)
+  {
+    StartupTrace::Event(L"webbrowser", L"WB136", details);
+    return;
+  }
+  m_navigation_failed = true;
+  m_navigation_status = status;
+  m_last_browser_event = L"NavigateError";
   StartupTrace::Warning(L"webbrowser", L"WB135", details);
 }
 void  CFBEView::OnBeforeNavigate(IDispatch *pDisp,VARIANT *vtUrl,VARIANT *vtFlags,
