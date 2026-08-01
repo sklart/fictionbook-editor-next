@@ -24,6 +24,9 @@ class ExternalHelper :
   const CString* m_document_filename;
   const bool* m_document_namevalid;
   static __declspec(thread) bool s_traceScriptActive;
+  static CComAutoCriticalSection s_embeddedTypeInfoLock;
+  static CComPtr<ITypeInfo> s_embeddedTypeInfo;
+  static HRESULT GetEmbeddedTypeInfo(ITypeInfo** resultTypeInfo);
 public:
   ExternalHelper() : m_document_filename(NULL), m_document_namevalid(NULL) {}
 

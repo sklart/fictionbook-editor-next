@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 Validates that the embedded FBELib and its registration repair use the diagnostic API contract.
 #>
@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $idl = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\fbe.idl')
 $fbe = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
+$external = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ExternalHelper.cpp')
 
 $checks = @(
     @{ Pattern = 'id\(29\).*IsDiagnosticTraceEnabled'; Source = $idl; Name = 'diagnostic enabled DISPID' },
@@ -19,7 +20,10 @@ $checks = @(
     @{ Pattern = 'GetTypeInfoOfGuid\(IID_IExternalHelper\)'; Source = $fbe; Name = 'IExternalHelper lookup' },
     @{ Pattern = 'GetIDsOfNames'; Source = $fbe; Name = 'required method validation' },
     @{ Pattern = 'IsDiagnosticTraceEnabled'; Source = $fbe; Name = 'diagnostic enabled method validation' },
-    @{ Pattern = 'TraceScript'; Source = $fbe; Name = 'TraceScript method validation' }
+    @{ Pattern = 'TraceScript'; Source = $fbe; Name = 'TraceScript method validation' },
+    @{ Pattern = 'REGKIND_NONE'; Source = $external; Name = 'embedded ExternalHelper typelib load' },
+    @{ Pattern = 'typeInfo->GetIDsOfNames'; Source = $external; Name = 'embedded name resolution' },
+    @{ Pattern = 'typeInfo->Invoke'; Source = $external; Name = 'embedded dispatch invoke' }
 )
 
 foreach ($check in $checks) {

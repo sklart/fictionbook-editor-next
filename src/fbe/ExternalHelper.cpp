@@ -9,6 +9,40 @@
 #include "ExternalHelper.h"
 
 __declspec(thread) bool ExternalHelper::s_traceScriptActive = false;
+CComAutoCriticalSection ExternalHelper::s_embeddedTypeInfoLock;
+CComPtr<ITypeInfo> ExternalHelper::s_embeddedTypeInfo;
+
+HRESULT ExternalHelper::GetEmbeddedTypeInfo(ITypeInfo** resultTypeInfo)
+{
+	if (!resultTypeInfo)
+		return E_POINTER;
+	*resultTypeInfo = NULL;
+
+	CComCritSecLock<CComAutoCriticalSection> lock(s_embeddedTypeInfoLock);
+	if (!s_embeddedTypeInfo)
+	{
+		wchar_t modulePath[MAX_PATH] = {};
+		if (::GetModuleFileName(NULL, modulePath, _countof(modulePath)) == 0)
+			return HRESULT_FROM_WIN32(::GetLastError());
+
+		CComPtr<ITypeLib> typeLibrary;
+		HRESULT result = ::LoadTypeLibEx(modulePath, REGKIND_NONE, &typeLibrary);
+		StartupTrace::HResult(L"external", L"XH090", result, L"LoadTypeLibEx(current FBE.exe, REGKIND_NONE)");
+		if (FAILED(result))
+			return result;
+
+		result = typeLibrary->GetTypeInfoOfGuid(IID_IExternalHelper, &s_embeddedTypeInfo);
+		StartupTrace::HResult(L"external", L"XH091", result, L"GetTypeInfoOfGuid(IID_IExternalHelper) from embedded typelib");
+		if (FAILED(result))
+			s_embeddedTypeInfo.Release();
+	}
+	if (!s_embeddedTypeInfo)
+		return E_NOINTERFACE;
+
+	*resultTypeInfo = s_embeddedTypeInfo;
+	(*resultTypeInfo)->AddRef();
+	return S_OK;
+}
 
 #define MENU_BASE 5000
 
@@ -43,15 +77,33 @@ static CString ExternalHelperArgumentTypes(const DISPPARAMS* parameters)
 }
 HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
 {
-	HRESULT result = IDispatchImpl<IExternalHelper, &IID_IExternalHelper>::GetTypeInfoCount(typeInfoCount); StartupTrace::HResult(L"external", L"XH100", result, L"GetTypeInfoCount"); return result;
+	if (!typeInfoCount)
+		return E_POINTER;
+	CComPtr<ITypeInfo> typeInfo;
+	HRESULT result = GetEmbeddedTypeInfo(&typeInfo);
+	if (SUCCEEDED(result))
+		*typeInfoCount = 1;
+	StartupTrace::HResult(L"external", L"XH100", result, L"GetTypeInfoCount (embedded typelib)");
+	return result;
 }
 HRESULT ExternalHelper::GetTypeInfo(UINT typeInfo, LCID lcid, ITypeInfo** resultTypeInfo)
 {
-	HRESULT result = IDispatchImpl<IExternalHelper, &IID_IExternalHelper>::GetTypeInfo(typeInfo, lcid, resultTypeInfo); CString details; details.Format(L"typeinfo=%u; lcid=%lu", typeInfo, lcid); StartupTrace::HResult(L"external", L"XH110", result, details); return result;
+	HRESULT result = typeInfo == 0 ? GetEmbeddedTypeInfo(resultTypeInfo) : DISP_E_BADINDEX;
+	CString details;
+	details.Format(L"typeinfo=%u; lcid=%lu; source=embedded", typeInfo, lcid);
+	StartupTrace::HResult(L"external", L"XH110", result, details);
+	return result;
 }
 HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCount, LCID lcid, DISPID* dispids)
 {
-	HRESULT result = IDispatchImpl<IExternalHelper, &IID_IExternalHelper>::GetIDsOfNames(riid, names, nameCount, lcid, dispids); CString details; details.Format(L"lcid=%lu; names=%u; method=%s; dispid=%ld", lcid, nameCount, (names && nameCount && names[0]) ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-", (dispids && nameCount) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN)); StartupTrace::HResult(L"external", L"XH120", result, details); return result;
+	CComPtr<ITypeInfo> typeInfo;
+	HRESULT result = GetEmbeddedTypeInfo(&typeInfo);
+	if (SUCCEEDED(result))
+		result = typeInfo->GetIDsOfNames(names, nameCount, dispids);
+	CString details;
+	details.Format(L"lcid=%lu; names=%u; method=%s; dispid=%ld; source=embedded", lcid, nameCount, (names && nameCount && names[0]) ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-", (dispids && nameCount) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN));
+	StartupTrace::HResult(L"external", L"XH120", result, details);
+	return result;
 }
 HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags, DISPPARAMS* parameters, VARIANT* resultValue, EXCEPINFO* exceptionInfo, UINT* argumentError)
 {
@@ -63,19 +115,21 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		details.Format(L"dispid=%ld; method=%s; flags=0x%04X; args=%u; types=[%s]", static_cast<long>(dispid), ExternalHelperMethodName(dispid), flags, parameters ? parameters->cArgs : 0, (LPCWSTR)ExternalHelperArgumentTypes(parameters));
 		StartupTrace::Event(L"external", L"XH130", details);
 	}
-	HRESULT callResult = IDispatchImpl<IExternalHelper, &IID_IExternalHelper>::Invoke(dispid, riid, lcid, flags, parameters, resultValue, exceptionInfo, argumentError);
+	CComPtr<ITypeInfo> typeInfo;
+	HRESULT callResult = GetEmbeddedTypeInfo(&typeInfo);
+	if (SUCCEEDED(callResult))
+		callResult = typeInfo->Invoke(static_cast<IExternalHelper*>(this), dispid, flags, parameters, resultValue, exceptionInfo, argumentError);
 	if(trace || FAILED(callResult))
 	{
 		CString argumentText;
 		if(!argumentError || *argumentError == UINT_MAX) argumentText = L"none";
 		else argumentText.Format(L"%u", *argumentError);
 		CString details;
-		details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%s", static_cast<long>(dispid), ExternalHelperMethodName(dispid), resultValue ? static_cast<unsigned int>(V_VT(resultValue)) : VT_EMPTY, (LPCWSTR)argumentText);
+		details.Format(L"dispid=%ld; method=%s; result-type=VT_%u; argument-error=%s; source=embedded", static_cast<long>(dispid), ExternalHelperMethodName(dispid), resultValue ? static_cast<unsigned int>(V_VT(resultValue)) : VT_EMPTY, (LPCWSTR)argumentText);
 		StartupTrace::HResult(L"external", FAILED(callResult) ? L"XH140" : L"XH131", callResult, details);
 	}
 	return callResult;
-}
-static CString GetCurrentDocumentFilePath(const CString* filename, const bool* namevalid)
+}static CString GetCurrentDocumentFilePath(const CString* filename, const bool* namevalid)
 {
 	if (filename == NULL || namevalid == NULL || !*namevalid || filename->IsEmpty())
 		return CString();
