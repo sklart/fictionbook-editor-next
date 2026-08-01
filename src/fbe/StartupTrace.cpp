@@ -197,6 +197,7 @@ void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CS
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
 CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath; }
+CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separator = tracePath.ReverseFind(L'\\'); return separator >= 0 ? tracePath.Left(separator) : CString(); }
 CString StartupTrace::LastStageCode() { TraceLock guard; return lastStageCode; }
 CString StartupTrace::LastStageMessage() { TraceLock guard; return lastStageMessage; }
 DWORD StartupTrace::LastWriteError() { TraceLock guard; return lastWriteError; }

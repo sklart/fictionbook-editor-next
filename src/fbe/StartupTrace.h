@@ -26,6 +26,7 @@ namespace StartupTrace
 	void Flush();
 	void EmergencyFlush();
 	CString CurrentLogPath();
+	CString CurrentLogDirectory();
 	CString LastStageCode();
 	CString LastStageMessage();
 	DWORD LastWriteError();
