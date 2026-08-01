@@ -599,8 +599,6 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 			}
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);
-			if (m_body.Loaded())
-				break;
 		}
 	}
 

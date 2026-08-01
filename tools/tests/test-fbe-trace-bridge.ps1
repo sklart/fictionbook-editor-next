@@ -89,6 +89,9 @@ if($mainFrameSource -notmatch $viewSelectionGuard) {
 if($documentSource -notlike '*documentCompleteTimeoutMs = 120000*') {
     throw 'DocumentComplete timeout must tolerate a very slow debugger-started MSHTML instance.'
 }
+if($documentSource -like '*if (m_body.Loaded())*') {
+    throw 'DocumentComplete must not be consumed inside the message-drain loop.'
+}
 foreach($pattern in @('messageWaitSliceMs = 50', '::PeekMessage(&msg', 'delay MSHTML''s DocumentComplete callback')) {
     if($documentSource -notlike "*$pattern*") { throw "Missing short-slice DocumentComplete wait: $pattern" }
 }
