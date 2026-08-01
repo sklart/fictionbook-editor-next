@@ -4849,6 +4849,12 @@ static int SkipXmlMarkupBackward(const CString& sourceXml, int position)
 
 // Журнал не содержит текст книги или выделения: только длину диапазона.
 
+static CString SelectionTraceSummary(const CString& text)
+{
+	CString result;
+	result.Format(L"selection-chars=%d", text.GetLength());
+	return result;
+}
 static void WriteSelectionTrace(const CString& message)
 {
 	StartupTrace::Event(L"selection", L"E200", message);

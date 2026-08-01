@@ -133,12 +133,16 @@ LRESULT CFBEView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandl
 {
   if (DefWindowProc(uMsg,wParam,lParam))
     return 1;
-  if (!SUCCEEDED(QueryControl(&m_browser)))
+  HRESULT hr = QueryControl(&m_browser);
+  StartupTrace::HResult(L"webbrowser", L"WB111", hr, L"QueryControl(IWebBrowser2)");
+  if (FAILED(hr) || !m_browser)
     return 1;
 
-  // register browser events handler
-  BrowserEvents::DispEventAdvise(m_browser,&DIID_DWebBrowserEvents2);
-
+  hr = BrowserEvents::DispEventAdvise(m_browser, &DIID_DWebBrowserEvents2);
+  StartupTrace::HResult(L"webbrowser", L"WB112", hr, L"BrowserEvents::DispEventAdvise");
+  if (FAILED(hr))
+    return 1;
+  m_last_browser_event = L"BrowserEventsAdvised";
   return 0;
 }
 
@@ -2900,96 +2904,133 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
     return;
   }
   CString url = (vtUrl && V_VT(vtUrl) == VT_BSTR) ? StartupTrace::RedactPath(V_BSTR(vtUrl)) : CString(L"-");
-  CString details; details.Format(L"url=%s", (LPCWSTR)url);
+  CString readyState(L"(unknown)");
+  try
+  {
+    MSHTML::IHTMLDocument2Ptr document = m_browser ? m_browser->Document : NULL;
+    if (document) readyState = (const wchar_t*)_bstr_t(document->readyState);
+  }
+  catch (_com_error&) { }
+  const ULONGLONG elapsed = m_navigation_started ? ::GetTickCount64() - m_navigation_started : 0;
+  CString details; details.Format(L"url=%s; ready-state=%s; navigate-elapsed=%llu", (LPCWSTR)url, (LPCWSTR)readyState, elapsed);
   StartupTrace::Event(L"webbrowser", L"WB140", details);
   m_last_browser_event=L"DocumentComplete";
   m_complete=true;
 }
 
-bool  CFBEView::Init() {
-  // save document pointer
+bool CFBEView::Init()
+{
   StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
-  if(!m_browser)
+  if (!m_browser)
   {
     StartupTrace::Error(L"webbrowser", L"WB200", L"IWebBrowser2 unavailable");
     return false;
   }
-  StartupTrace::Event(L"webbrowser", L"WB200", L"Document begin");
-  m_hdoc=m_browser->Document;
-  if(!m_hdoc)
+
+  CComPtr<IDispatch> documentDispatch;
+  HRESULT hr = m_browser->get_Document(&documentDispatch);
+  StartupTrace::HResult(L"webbrowser", L"WB200", hr, L"IWebBrowser2::get_Document");
+  if (FAILED(hr) || !documentDispatch) return false;
+
+  CComPtr<MSHTML::IHTMLDocument2> document;
+  hr = documentDispatch->QueryInterface(&document);
+  StartupTrace::HResult(L"webbrowser", L"WB201", hr, L"QueryInterface(IHTMLDocument2)");
+  if (FAILED(hr) || !document) return false;
+  m_hdoc = document.p;
+
+  CComPtr<MSHTML::IMarkupServices2> markupServices;
+  hr = document->QueryInterface(&markupServices);
+  StartupTrace::HResult(L"webbrowser", L"WB210", hr, L"QueryInterface(IMarkupServices2)");
+  if (FAILED(hr) || !markupServices) return false;
+  m_mk_srv = markupServices.p;
+
+  CComPtr<MSHTML::IMarkupContainer2> markupContainer;
+  hr = document->QueryInterface(&markupContainer);
+  StartupTrace::HResult(L"webbrowser", L"WB220", hr, L"QueryInterface(IMarkupContainer2)");
+  if (FAILED(hr) || !markupContainer) return false;
+  m_mkc = markupContainer.p;
+
+  CComPtr<MSHTML::IHTMLElement> body;
+  hr = document->get_body(&body);
+  StartupTrace::HResult(L"webbrowser", L"WB225", hr, L"IHTMLDocument2::get_body");
+  if (FAILED(hr) || !body) return false;
+
+  DocumentEvents::DispEventUnadvise(document, &DIID_HTMLDocumentEvents2);
+  hr = DocumentEvents::DispEventAdvise(document, &DIID_HTMLDocumentEvents2);
+  StartupTrace::HResult(L"webbrowser", L"WB230", hr, L"DocumentEvents::DispEventAdvise");
+  if (FAILED(hr)) return false;
+
+  TextEvents::DispEventUnadvise(body, &DIID_HTMLTextContainerEvents2);
+  hr = TextEvents::DispEventAdvise(body, &DIID_HTMLTextContainerEvents2);
+  StartupTrace::HResult(L"webbrowser", L"WB240", hr, L"TextEvents::DispEventAdvise");
+  if (FAILED(hr)) return false;
+
+  hr = m_mkc->RegisterForDirtyRange((RangeSink*)this, &m_dirtyRangeCookie);
+  StartupTrace::HResult(L"webbrowser", L"WB250", hr, L"RegisterForDirtyRange");
+  if (FAILED(hr)) return false;
+
+  IDispatchPtr helper = CreateHelper();
+  if (!helper)
   {
-    StartupTrace::Error(L"webbrowser", L"WB201", L"HTML document unavailable");
+    StartupTrace::Error(L"webbrowser", L"WB260", L"CreateHelper returned null");
     return false;
   }
-  StartupTrace::Event(L"webbrowser", L"WB200", L"Document result");
+  StartupTrace::Event(L"webbrowser", L"WB260", L"CreateHelper completed");
+  hr = SetExternalDispatch(helper);
+  StartupTrace::HResult(L"webbrowser", L"WB270", hr, L"SetExternalDispatch #2");
+  if (FAILED(hr)) return false;
 
-  m_mk_srv=m_hdoc;
-  m_mkc=m_hdoc;
-
-  // attach document events handler
-  DocumentEvents::DispEventUnadvise(Document(),&DIID_HTMLDocumentEvents2);
-  StartupTrace::Event(L"webbrowser", L"WB230", L"DispEventAdvise document");
-  DocumentEvents::DispEventAdvise(Document(),&DIID_HTMLDocumentEvents2);
-  TextEvents::DispEventUnadvise(Document()->body,&DIID_HTMLTextContainerEvents2);
-  StartupTrace::Event(L"webbrowser", L"WB240", L"DispEventAdvise text container");
-  TextEvents::DispEventAdvise(Document()->body,&DIID_HTMLTextContainerEvents2);
-
-  // attach editing changed handlers
-  StartupTrace::Event(L"webbrowser", L"WB250", L"RegisterForDirtyRange");
-  m_mkc->RegisterForDirtyRange((RangeSink*)this,&m_dirtyRangeCookie);
-
-  // attach external helper
-  StartupTrace::Event(L"webbrowser", L"WB260", L"CreateHelper");
-  StartupTrace::Event(L"webbrowser", L"WB270", L"SetExternalDispatch #2");
-  SetExternalDispatch(CreateHelper());
-
-  // fixup all P elements
+  MSHTML::IHTMLElement2Ptr body2(body.p);
+  MSHTML::IHTMLDOMNodePtr bodyNode(body.p);
+  if (!body2 || !bodyNode)
+  {
+    StartupTrace::Error(L"webbrowser", L"WB275", L"body does not expose required interfaces");
+    return false;
+  }
   StartupTrace::Event(L"webbrowser", L"WB280", L"FixupParagraphs");
-  FixupParagraphs(Document()->body);
-
+  FixupParagraphs(body2);
   if (m_normalize)
-    Normalize(Document()->body);
+  {
+    StartupTrace::Event(L"webbrowser", L"WB290", L"Normalize");
+    Normalize(bodyNode);
+  }
 
   if (!m_normalize) {
-    // check ID and version fields
-    MSHTML::IHTMLElementCollectionPtr all(Document()->all);
-    MSHTML::IHTMLInputElementPtr	    ii(all->item(L"diID"));
-    if ((bool)ii && ii->value.length()==0) { // generate new ID
-      UUID	      uuid;
+    MSHTML::IHTMLElementCollectionPtr all(document->all);
+    MSHTML::IHTMLInputElementPtr ii(all->item(L"diID"));
+    if ((bool)ii && ii->value.length()==0) {
+      UUID uuid;
       unsigned char *str;
       if (UuidCreate(&uuid)==RPC_S_OK && UuidToStringA(&uuid,&str)==RPC_S_OK) {
-	CString     us(str);
-	RpcStringFreeA(&str);
-	us.MakeUpper();
-	ii->value=(const wchar_t *)us;
+        CString us(str);
+        RpcStringFreeA(&str);
+        us.MakeUpper();
+        ii->value=(const wchar_t *)us;
       }
     }
     ii=all->item(L"diVersion");
-    if ((bool)ii && ii->value.length()==0)
-      ii->value=L"1.0";
+    if ((bool)ii && ii->value.length()==0) ii->value=L"1.0";
     ii=all->item(L"diDate");
     MSHTML::IHTMLInputElementPtr jj(all->item(L"diDateVal"));
     if ((bool)ii && (bool)jj && ii->value.length()==0 && jj->value.length()==0) {
-      time_t  tt;
+      time_t tt;
       time(&tt);
-      char    buffer[128];
+      char buffer[128];
       strftime(buffer,sizeof(buffer),"%Y-%m-%d",localtime(&tt));
       ii->value=buffer;
       jj->value=buffer;
     }
     ii=all->item(L"diProgs");
-    if ((bool)ii && ii->value.length()==0)
-      ii->value=L"FB Tools";
+    if ((bool)ii && ii->value.length()==0) ii->value=L"FB Tools";
   }
 
-  // turn off browser's d&d
-  HRESULT hr = m_browser->put_RegisterAsDropTarget(VARIANT_FALSE);
-//  m_browser->RegisterAsDropTarget = VARIANT_TRUE;
-
+  hr = m_browser->put_RegisterAsDropTarget(VARIANT_FALSE);
+  StartupTrace::HResult(L"webbrowser", L"WB295", hr, L"put_RegisterAsDropTarget");
+  if (FAILED(hr)) return false;
   m_initialized=true;
+  StartupTrace::Event(L"webbrowser", L"WB299", L"CFBEView::Init completed");
   return true;
 }
-
 void CFBEView::OnNavigateError(IDispatch* pDisp, VARIANT* vtUrl, VARIANT* vtFrame, VARIANT* vtStatusCode, VARIANT_BOOL* fCancel)
 {
   CString url = (vtUrl && V_VT(vtUrl) == VT_BSTR) ? StartupTrace::RedactPath(V_BSTR(vtUrl)) : CString(L"-");
@@ -2997,7 +3038,8 @@ void CFBEView::OnNavigateError(IDispatch* pDisp, VARIANT* vtUrl, VARIANT* vtFram
   if (vtStatusCode && (V_VT(vtStatusCode) == VT_I4 || V_VT(vtStatusCode) == VT_INT))
     status = V_I4(vtStatusCode);
   CString details;
-  details.Format(L"url=%s; status=%ld; browser-present=%d", (LPCWSTR)url, status, m_browser ? 1 : 0);
+  const ULONGLONG elapsed = m_navigation_started ? ::GetTickCount64() - m_navigation_started : 0;
+  details.Format(L"url=%s; status=%ld; browser-present=%d; navigate-elapsed=%llu", (LPCWSTR)url, status, m_browser ? 1 : 0, elapsed);
   m_last_browser_event=L"NavigateError";
   StartupTrace::Warning(L"webbrowser", L"WB135", details);
 }

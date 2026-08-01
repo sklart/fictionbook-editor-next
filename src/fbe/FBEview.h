@@ -215,6 +215,7 @@ protected:
 
   CString		    m_nav_url;
   CString           m_last_browser_event;
+  ULONGLONG         m_navigation_started;
 
   static _ATL_FUNC_INFO DocumentCompleteInfo;
   static _ATL_FUNC_INFO BeforeNavigateInfo;
@@ -296,6 +297,7 @@ public:
   IDispatchPtr	    Script(){ return MSHTML::IHTMLDocumentPtr(m_hdoc)->Script; }
   CString		    NavURL() { return m_nav_url; }
   CString           LastBrowserEvent() { return m_last_browser_event; }
+  void              BeginNavigationTrace() { m_navigation_started = ::GetTickCount64(); m_last_browser_event = L"Navigate"; }
 
   bool			    Loaded() { bool cmp=m_complete; m_complete=false; return cmp; }
   bool			    Init();
@@ -317,7 +319,7 @@ public:
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
     m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-    m_form_changed(false), m_form_cp(false), m_last_browser_event(L"none"), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name() { }
+    m_form_changed(false), m_form_cp(false), m_last_browser_event(L"none"), m_navigation_started(0), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);

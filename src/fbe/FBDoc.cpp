@@ -524,6 +524,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		return false;
 	}
 	StartupTrace::Event(L"webbrowser", L"WB110", L"IWebBrowser2 available");
+	m_body.BeginNavigationTrace();
 	hr = m_body.Browser()->Navigate((LPCTSTR)path);
 	StartupTrace::HResult(L"webbrowser", L"WB120", hr, L"Navigate main.html");
 	if (FAILED(hr))
