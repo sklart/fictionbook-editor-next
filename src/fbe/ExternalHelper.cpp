@@ -68,7 +68,7 @@ static const wchar_t* ExternalHelperMethodName(DISPID dispid)
 {
 	switch (dispid) { case 5: return L"GetStylePath"; case 7: return L"InflateParagraphs"; case 8: return L"GetUUID"; case 12: return L"GetExtendedStyle"; case 19: return L"GetNBSP"; case 22: return L"GetProgramVersion"; case 29: return L"IsDiagnosticTraceEnabled"; case 30: return L"TraceScript"; default: return L"other"; }
 }
-static bool IsLoadDiagnosticMethod(DISPID dispid) { return dispid == 5 || dispid == 7 || dispid == 8 || dispid == 12 || dispid == 19 || dispid == 22 || dispid == 29 || dispid == 30; }
+static bool IsLoadDiagnosticMethod(DISPID dispid) { return dispid == 5 || dispid == 7 || dispid == 8 || dispid == 12 || dispid == 19 || dispid == 22 || dispid == 29; }
 static CString ExternalHelperArgumentTypes(const DISPPARAMS* parameters)
 {
 	CString types;
