@@ -97,6 +97,8 @@ try {
         }
         if (Select-String -LiteralPath $traceFile -SimpleMatch "code=-" -Quiet) { throw "В диагностическом журнале есть событие без явного code: $traceFile" }
         if (Select-String -LiteralPath $traceFile -Pattern "Р[А-Яа-я]" -Quiet) { throw "В диагностическом журнале обнаружен mojibake: $traceFile" }
+        if (Select-String -LiteralPath $traceFile -Pattern "[A-Za-z]:[\\/]" -Quiet) { throw "В диагностическом журнале обнаружен полный путь: $traceFile" }
+        if (Select-String -LiteralPath $traceFile -SimpleMatch "file:///" -Quiet) { throw "В диагностическом журнале обнаружен file URL: $traceFile" }
         if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "category=document;" -Quiet)) {
             throw "В диагностическом журнале нет событий документа: $traceFile"
         }

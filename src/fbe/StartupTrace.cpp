@@ -37,7 +37,7 @@ namespace
 		value = ReplaceEnvironmentValue(value, L"TEMP", L"%TEMP%");
 		value = ReplaceEnvironmentValue(value, L"PROGRAMFILES", L"%PROGRAMFILES%");
 		value = ReplaceEnvironmentValue(value, L"PROGRAMDATA", L"%PROGRAMDATA%");
-		if (redactPaths && (value.Find(L":\\") >= 0 || value.Find(L"\\\\") >= 0)) value = L"[path omitted]";
+		if (redactPaths && (value.Find(L":\\") >= 0 || value.Find(L":/") >= 0 || value.Find(L"\\\\") >= 0 || value.Find(L"file:///") >= 0)) value = L"[path omitted]";
 		if (maximumLength > 0 && value.GetLength() > maximumLength) value = value.Left(maximumLength) + L"...";
 		return value;
 	}
@@ -104,7 +104,7 @@ namespace
 		TraceLock guard;
 		if (traceFile == INVALID_HANDLE_VALUE) return;
 		const ULONGLONG now = ::GetTickCount64(); SYSTEMTIME time = {}; ::GetLocalTime(&time);
-		const CString safeCategory = Sanitize(category, 64, false), safeCode = Sanitize(code, 32, false), safeMessage = Sanitize(message, 512, false);
+		const CString safeCategory = Sanitize(category, 64, false), safeCode = Sanitize(code, 32, false), safeMessage = Sanitize(message, 512, true);
 		CString line;
 		line.Format(L"%04u-%02u-%02u %02u:%02u:%02u.%03u; seq=%llu; elapsed=%llu; delta=%llu; PID=%lu; TID=%lu; level=%s; category=%s; code=%s; message=%s\r\n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, ++recordSequence, now - startTime, now - previousTime, ::GetCurrentProcessId(), ::GetCurrentThreadId(), (LPCWSTR)level, (LPCWSTR)safeCategory, (LPCWSTR)(safeCode.IsEmpty() ? CString(L"-") : safeCode), (LPCWSTR)safeMessage);
 		previousTime = now; lastStageCode = safeCode; lastStageMessage = safeMessage;
