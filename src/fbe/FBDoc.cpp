@@ -401,8 +401,11 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 		::GetErrorInfo(0, &errorInfo);
 
 	CString details;
-	details.Format(L"Invoke: dispid=%ld; argument-error=%u; result-type=VT_%u",
-		static_cast<long>(dispid), argumentError, static_cast<unsigned int>(V_VT(&vtResult)));
+	CString argumentText;
+	if(argumentError == UINT_MAX) argumentText = L"none";
+	else argumentText.Format(L"%u", argumentError);
+	details.Format(L"Invoke: dispid=%ld; argument-error=%s; result-type=VT_%u",
+		static_cast<long>(dispid), (LPCWSTR)argumentText, static_cast<unsigned int>(V_VT(&vtResult)));
 	if (exceptionInfo.bstrDescription)
 		details += L"; excep.description=" + StartupTrace::SanitizeExceptionText(exceptionInfo.bstrDescription);
 	if (exceptionInfo.bstrSource)
