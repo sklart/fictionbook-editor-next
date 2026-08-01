@@ -81,3 +81,7 @@ $mainFrameIdleGuard = '(?s)BOOL CMainFrame::OnIdle\(\).*?if \(!m_doc \|\| !m_doc
 if($mainFrameSource -notmatch $mainFrameIdleGuard) {
     throw 'Idle command updates must wait for the HTML document.'
 }
+$viewSelectionGuard = '(?s)void CMainFrame::SaveSelection\(VIEW_TYPE vt\).*?m_body\.HasDoc\(\).*?return;'
+if($mainFrameSource -notmatch $viewSelectionGuard) {
+    throw 'View selection must tolerate an unavailable HTML document.'
+}

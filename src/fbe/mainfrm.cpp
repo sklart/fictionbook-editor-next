@@ -5561,6 +5561,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 		m_last_ctrl_tab_view = m_current_view;
 	}
 
+
   if (prev!=vt && prev==SOURCE) {
 	  // added by SeNS: special trick for incorrect XML
 	  if (m_bad_xml)
@@ -5603,6 +5604,11 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	  }
   }
 
+  if ((vt == BODY || vt == DESC) && (!m_doc || !m_doc->m_body.HasDoc()))
+  {
+    StartupTrace::Warning(L"selection", L"E281", L"view switch ignored: HTML document is unavailable");
+    return;
+  }
   if (prev!=vt && vt==SOURCE) 
   {
 	  if(!this->ShowSource(prev == BODY))
@@ -6506,6 +6512,11 @@ void CMainFrame::RestoreSelection()
 
 void CMainFrame::SaveSelection(VIEW_TYPE vt)
 {
+	if ((vt == BODY || vt == DESC) && (!m_doc || !m_doc->m_body.HasDoc()))
+	{
+		StartupTrace::Warning(L"selection", L"E301", L"SaveSelection ignored: HTML document is unavailable");
+		return;
+	}
 	if(vt == BODY)
 	{		
 		m_body_selection = m_doc->m_body.Document()->selection->createRange();		
