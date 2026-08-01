@@ -586,7 +586,9 @@ public:
 		COMMAND_ID_HANDLER(ID_TOOLS_OPTIONS, OnToolsOptions)
 		COMMAND_ID_HANDLER(ID_TOOLS_DIAGNOSTIC_TRACE, OnToolsDiagnosticTrace)
 		COMMAND_ID_HANDLER(ID_TOOLS_OPEN_DIAGNOSTIC_LOG, OnToolsOpenDiagnosticLog)
-      
+		COMMAND_ID_HANDLER(ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER, OnToolsOpenDiagnosticFolder)
+		COMMAND_ID_HANDLER(ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH, OnToolsCopyDiagnosticLogPath)
+		COMMAND_ID_HANDLER(ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS, OnToolsClearDiagnosticLogs)
 		COMMAND_ID_HANDLER(ID_TOOLS_CUSTOMIZE, OnToolCustomize)
 		//COMMAND_ID_HANDLER(ID_HIDETOOLBAR, OnHideToolbar)
 
@@ -824,7 +826,9 @@ public:
   LRESULT OnToolsOptions(WORD, WORD, HWND, BOOL&);
 	LRESULT OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&);
 	LRESULT OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&);
-  LRESULT OnToolsScript(WORD, WORD, HWND, BOOL&);
+	LRESULT OnToolsOpenDiagnosticFolder(WORD, WORD, HWND, BOOL&);
+	LRESULT OnToolsCopyDiagnosticLogPath(WORD, WORD, HWND, BOOL&);
+	LRESULT OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&);  LRESULT OnToolsScript(WORD, WORD, HWND, BOOL&);
 
   LRESULT OnHideToolbar(WORD wNotifyCode, WORD /*wID*/, HWND hWndCtl, BOOL& bHandled)
   {

@@ -80,6 +80,9 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_TOOLS_SPELLCHECK, L"fbe.menu.idr_mainframe.tools.spellcheck" },
 	{ ID_TOOLS_DIAGNOSTIC_TRACE, L"fbe.menu.idr_mainframe.tools.diagnostic_trace" },
 	{ ID_TOOLS_OPEN_DIAGNOSTIC_LOG, L"fbe.menu.idr_mainframe.tools.open_diagnostic_log" },
+	{ ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER, L"fbe.menu.idr_mainframe.tools.open_diagnostic_folder" },
+	{ ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH, L"fbe.menu.idr_mainframe.tools.copy_diagnostic_log_path" },
+	{ ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS, L"fbe.menu.idr_mainframe.tools.clear_diagnostic_logs" },
 	{ ID_APP_ABOUT, L"fbe.menu.idr_mainframe.help.about" },
 };
 
@@ -3598,6 +3601,31 @@ static bool OpenDiagnosticLog()
 	return false;
 }
 
+static bool OpenDiagnosticLogFolder()
+{
+	const CString currentLogDirectory(StartupTrace::CurrentLogDirectory());
+	return !currentLogDirectory.IsEmpty() && ::GetFileAttributes(currentLogDirectory) != INVALID_FILE_ATTRIBUTES &&
+		reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", currentLogDirectory, NULL, NULL, SW_SHOWNORMAL)) > 32;
+}
+
+static bool CopyDiagnosticLogPathToClipboard()
+{
+	const CString currentLogPath(StartupTrace::CurrentLogPath());
+	if (currentLogPath.IsEmpty() || !::OpenClipboard(NULL)) return false;
+	::EmptyClipboard();
+	const SIZE_T bytes = (static_cast<SIZE_T>(currentLogPath.GetLength()) + 1) * sizeof(wchar_t);
+	HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, bytes);
+	if (!data) { ::CloseClipboard(); return false; }
+	void* target = ::GlobalLock(data);
+	if (!target) { ::GlobalFree(data); ::CloseClipboard(); return false; }
+	memcpy(target, static_cast<LPCWSTR>(currentLogPath), bytes);
+	::GlobalUnlock(data);
+	const bool copied = ::SetClipboardData(CF_UNICODETEXT, data) != NULL;
+	if (!copied) ::GlobalFree(data);
+	::CloseClipboard();
+	return copied;
+}
+
 LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
 {
 	if(!OpenDiagnosticLog())
@@ -3608,6 +3636,30 @@ LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
 	}
 	return 0;
 }
+
+LRESULT CMainFrame::OnToolsOpenDiagnosticFolder(WORD, WORD, HWND, BOOL&)
+{
+	if (!OpenDiagnosticLogFolder())
+		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.open_folder_failed", L"Could not open the diagnostic log folder."),
+			GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"), MB_OK | MB_ICONERROR);
+	return 0;
+}
+
+LRESULT CMainFrame::OnToolsCopyDiagnosticLogPath(WORD, WORD, HWND, BOOL&)
+{
+	if (!CopyDiagnosticLogPathToClipboard())
+		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.copy_path_failed", L"Could not copy the diagnostic log path."),
+			GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"), MB_OK | MB_ICONERROR);
+	return 0;
+}
+
+LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
+{
+	StartupTrace::ClearOldLogSessions();
+	StartupTrace::Event(L"diagnostic", L"DG120", L"old trace sessions cleared");
+	return 0;
+}
+
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 {
 	const bool enabled = IsDiagnosticTraceEnabledForNextLaunch();

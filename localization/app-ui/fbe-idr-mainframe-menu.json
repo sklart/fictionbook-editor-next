@@ -1208,7 +1208,27 @@
         "bg-BG": "Отваряне на текущия диагностичен &журнал"
       }
     },
-    "fbe.trace.caption": {
+    "fbe.menu.idr_mainframe.tools.open_diagnostic_folder": {
+      "kind": "MENUITEM",
+      "targetId": "ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER",
+      "translations": {
+        "en-US": "Open diagnostic log &folder", "ru-RU": "Открыть &папку диагностических журналов", "uk-UA": "Відкрити &папку діагностичних журналів", "de-DE": "&Ordner mit Diagnoseprotokollen öffnen", "fr-FR": "Ouvrir le &dossier des journaux de diagnostic", "es-ES": "Abrir la &carpeta de registros de diagnóstico", "it-IT": "Apri la &cartella dei registri diagnostici", "pl-PL": "Otwórz &folder dzienników diagnostycznych", "pt-PT": "Abrir a &pasta dos registos de diagnóstico", "nl-NL": "&Map met diagnostische logboeken openen", "cs-CZ": "Otevřít &složku diagnostických protokolů", "bg-BG": "Отваряне на &папката с диагностични журнали"
+      }
+    },
+    "fbe.menu.idr_mainframe.tools.copy_diagnostic_log_path": {
+      "kind": "MENUITEM",
+      "targetId": "ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH",
+      "translations": {
+        "en-US": "Copy diagnostic log &path", "ru-RU": "Копировать &путь к диагностическому журналу", "uk-UA": "Копіювати &шлях до діагностичного журналу", "de-DE": "&Pfad zum Diagnoseprotokoll kopieren", "fr-FR": "Copier le &chemin du journal de diagnostic", "es-ES": "Copiar la &ruta del registro de diagnóstico", "it-IT": "Copia il &percorso del registro diagnostico", "pl-PL": "Kopiuj &ścieżkę do dziennika diagnostycznego", "pt-PT": "Copiar o &caminho do registo de diagnóstico", "nl-NL": "&Pad naar diagnostisch logboek kopiëren", "cs-CZ": "Kopírovat &cestu k diagnostickému protokolu", "bg-BG": "Копиране на &пътя до диагностичния журнал"
+      }
+    },
+    "fbe.menu.idr_mainframe.tools.clear_diagnostic_logs": {
+      "kind": "MENUITEM",
+      "targetId": "ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS",
+      "translations": {
+        "en-US": "Clear old diagnostic logs", "ru-RU": "Очистить старые диагностические журналы", "uk-UA": "Очистити старі діагностичні журнали", "de-DE": "Alte Diagnoseprotokolle löschen", "fr-FR": "Effacer les anciens journaux de diagnostic", "es-ES": "Borrar registros de diagnóstico antiguos", "it-IT": "Cancella i vecchi registri diagnostici", "pl-PL": "Wyczyść stare dzienniki diagnostyczne", "pt-PT": "Limpar registos de diagnóstico antigos", "nl-NL": "Oude diagnostische logboeken wissen", "cs-CZ": "Vymazat staré diagnostické protokoly", "bg-BG": "Изчистване на старите диагностични журнали"
+      }
+    },    "fbe.trace.caption": {
       "kind": "MESSAGE",
       "targetId": "",
       "translations": {
