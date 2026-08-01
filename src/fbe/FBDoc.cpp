@@ -395,11 +395,11 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	::VariantInit(&vtResult);
 	hr = pScript->Invoke(dispid, IID_NULL, LOCALE_SYSTEM_DEFAULT, DISPATCH_METHOD,
 		&dispatchParameters, &vtResult, &exceptionInfo, &argumentError);
-	if (exceptionInfo.pfnDeferredFillIn)
-		exceptionInfo.pfnDeferredFillIn(&exceptionInfo);
 	CComPtr<IErrorInfo> errorInfo;
 	if (FAILED(hr))
 		::GetErrorInfo(0, &errorInfo);
+	if (exceptionInfo.pfnDeferredFillIn)
+		exceptionInfo.pfnDeferredFillIn(&exceptionInfo);
 
 	CString details;
 	CString argumentText;
@@ -426,7 +426,7 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	if (exceptionInfo.bstrDescription) ::SysFreeString(exceptionInfo.bstrDescription);
 	if (exceptionInfo.bstrSource) ::SysFreeString(exceptionInfo.bstrSource);
 	if (exceptionInfo.bstrHelpFile) ::SysFreeString(exceptionInfo.bstrHelpFile);
-	StartupTrace::HResult(L"script", L"C130", hr, details);
+	StartupTrace::HResult(L"script", FAILED(hr) ? L"C140" : L"C131", hr, details);
 	return hr;
 }
 

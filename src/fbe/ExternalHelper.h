@@ -66,15 +66,18 @@ public:
   {
     if(s_traceScriptActive)
       return S_OK;
-    s_traceScriptActive = true;
+    struct TraceScriptGuard
+    {
+      bool& active;
+      TraceScriptGuard(bool& value) : active(value) { active = true; }
+      ~TraceScriptGuard() { active = false; }
+    } guard(s_traceScriptActive);
     CString safeCode(code ? code : L"");
     safeCode = safeCode.Left(32);
     CString safeMessage = StartupTrace::SanitizeLogText(message ? message : L"", 512);
     StartupTrace::ScriptEvent(safeCode, safeMessage);
-    s_traceScriptActive = false;
     return S_OK;
   }
-
   STDMETHOD(BeginUndoUnit)(IDispatch *obj,BSTR name) {
     MSHTML::IMarkupServices   *srv;
     HRESULT hr=obj->QueryInterface(&srv);
