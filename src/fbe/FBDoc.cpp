@@ -1310,7 +1310,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 {
 	m_last_save_error = S_OK;
 	CString trace;
-	trace.Format(L"%s; file-present=%d", fValidateOnly ? L"Проверка книги начата" : L"Сохранение книги начато",
+	trace.Format(L"%s; file-present=%d", fValidateOnly ? L"book validation started" : L"book save started",
 		filename.IsEmpty() ? 0 : 1);
 	StartupTrace::Event(L"document", L"D200", trace);
   try {
@@ -1366,7 +1366,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	U::ReportError(hr);
 	  CString validationTrace;
 	  validationTrace.Format(L"%s: строка=%ld, столбец=%ld",
-		fValidateOnly ? L"Проверка книги обнаружила ошибку XML" : L"Сохранение остановлено из-за ошибки XML",
+		fValidateOnly ? L"book validation started" : L"book save started",
 		eh->m_line, eh->m_col);
 	  StartupTrace::Warning(L"document", L"D220", validationTrace);
       return false;
@@ -1454,7 +1454,7 @@ forcesave:
 	StartupTrace::Event(L"document", L"D222", L"book save completed");
   }
   catch (_com_error& e) {
-	StartupTrace::Error(L"document", L"D223", fValidateOnly ? L"book validation COM error" : L"book save COM error");
+	StartupTrace::Error(L"document", L"D223", fValidateOnly ? L"book validation started" : L"book save started");
 	m_last_save_error = e.Error();
 	if (reportAccessDenied || (e.Error() != E_ACCESSDENIED && HRESULT_CODE(e.Error()) != ERROR_ACCESS_DENIED))
 		U::ReportError(e);
