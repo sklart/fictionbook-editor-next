@@ -581,9 +581,13 @@ function apiLoadFB2(path, lang)
 {
 	TraceScript("J100", "operation=apiLoadFB2");
 	TraceScript("J101", "operation=css lookup");
-	var css=document.getElementById("css");
+	var css=null;
+	var css_filename="";
+	try
+	{
+	css=document.getElementById("css");
 	TraceScript("J102", "operation=save css href");
-	var css_filename = css.href;
+	css_filename = css.href;
 	TraceScript("J103", "operation=disable css");
 	css.href="";
 	TraceScript("J110", "operation=create DOMDocument");
@@ -602,14 +606,14 @@ function apiLoadFB2(path, lang)
 	}
 
 	TraceScript("J120", "operation=read declaration");
-	pi = xml.firstChild;
+	var pi = xml.firstChild;
 	var encoding;
 	if (pi)
 	{
-		attr = pi.attributes;
+		var attr = pi.attributes;
 		if (attr)
 		{
-			enc = attr.getNamedItem("encoding");
+			var enc = attr.getNamedItem("encoding");
 			if(enc)
 			{
 				TraceScript("J121", "operation=encoding present");
@@ -621,11 +625,9 @@ function apiLoadFB2(path, lang)
 	TraceScript("J130", "operation=SelectionNamespaces");
 	xml.setProperty("SelectionNamespaces", "xmlns:fb='"+fbNS+"' xmlns:xlink='"+xlNS+"'");
 	TraceScript("J140", "operation=GetNBSP");
-	if(window.external.GetNBSP())
-	{
-		TraceScript("J141", "operation=GetNBSP result");
-		var nbspChar=window.external.GetNBSP();
-		if(nbspChar!="\u00A0")
+	var nbspChar=window.external.GetNBSP();
+	TraceScript("J141", "operation=GetNBSP result; present=" + (nbspChar ? 1 : 0));
+	if(nbspChar && nbspChar!="\u00A0")
 		{
 			TraceScript("J150", "operation=annotation NBSP conversion");
 			var sel=xml.selectSingleNode("/fb:FictionBook/fb:description/fb:title-info/fb:annotation");
@@ -639,7 +641,6 @@ function apiLoadFB2(path, lang)
 				if(sel.nodeName=="body") recursiveChangeNbsp(sel,nbspChar);
 				sel=sel.nextSibling;
 			}
-		}
 	}
 	TraceScript("J160", "operation=LoadFromDOM");
 	if (!LoadFromDOM(xml, lang))
@@ -667,10 +668,23 @@ function apiLoadFB2(path, lang)
 	TraceScript("J200", "operation=apiShowDesc");
 	apiShowDesc(false);
 	TraceScript("J201", "operation=apiShowDesc result");
-	TraceScript("J210", "operation=CSS restore");
-	css.href = css_filename;
 	TraceScript("J299", "operation=apiLoadFB2 success");
 	return encoding;
+	}
+	catch(e)
+	{
+		DiagError("J900", "apiLoadFB2", e);
+		throw e;
+	}
+	finally
+	{
+		if(css)
+		{
+			TraceScript("J210", "operation=CSS restore begin");
+			try { css.href = css_filename; TraceScript("J211", "operation=CSS restore success"); }
+			catch(ignore) { TraceScript("J212", "operation=CSS restore failure"); }
+		}
+	}
 }
 function apiShowDesc(state)
 {
