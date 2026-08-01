@@ -14,16 +14,21 @@ var IDNO     = 7;
 window.onerror = errorHandler; // document.lvl=0;
 var ImagesInfo = new Array();
 var diagnosticTraceEnabled = false;
-var diagnosticLastStage = "J000";
+var diagnosticOperationStage = "J000";
+var diagnosticLastTraceEvent = "J000";
+var diagnosticFailureStage = "";
 // 0 = unknown, 1 = available, -1 = unavailable for this document.
 var diagnosticTraceBridgeState = 0;
-function SetDiagnosticLastStage(code) { diagnosticLastStage = code; }
-function apiGetDiagnosticLastStage() { return diagnosticLastStage; }
+function SetDiagnosticOperationStage(code) { diagnosticOperationStage = code; }
+function apiGetDiagnosticOperationStage() { return diagnosticOperationStage; }
+function apiGetDiagnosticFailureStage() { return diagnosticFailureStage; }
+function apiGetDiagnosticLastTraceEvent() { return diagnosticLastTraceEvent; }
+function apiGetDiagnosticLastStage() { return diagnosticOperationStage; }
 function apiGetDiagnosticTraceBridgeState() { return diagnosticTraceBridgeState; }
-function apiSetDiagnosticTraceEnabled(enabled) { diagnosticTraceEnabled = enabled ? true : false; TraceScript("J001", "operation=apiSetDiagnosticTraceEnabled"); return true; }
-function TraceScript(code, message)
+function apiSetDiagnosticTraceEnabled(enabled) { diagnosticTraceEnabled = enabled ? true : false; TraceDiagnosticEvent("J001", "operation=apiSetDiagnosticTraceEnabled"); return true; }
+function TraceDiagnosticEvent(code, message)
 {
- SetDiagnosticLastStage(code);
+ diagnosticLastTraceEvent = code;
  if(!diagnosticTraceEnabled || diagnosticTraceBridgeState == -1) return;
  try
  {
@@ -35,11 +40,16 @@ function TraceScript(code, message)
   diagnosticTraceBridgeState = -1;
  }
 }
+function TraceScript(code, message)
+{
+ SetDiagnosticOperationStage(code);
+ TraceDiagnosticEvent(code, message);
+}
 function DiagError(code, operation, error)
 {
- var details = "level=error; operation=" + operation;
+ var details = "level=error; failed-stage=" + diagnosticFailureStage + "; operation=" + operation;
  try { if(error) details += "; number=" + error.number + "; name=" + error.name + "; description=" + error.description + "; message=" + error.message + "; line=" + error.lineNumber; } catch(ignore) {}
- TraceScript(code, details);
+ TraceDiagnosticEvent(code, details);
 }
 
 //======================================
@@ -671,10 +681,12 @@ function apiLoadFB2(path, lang)
 	if(!apiShowDesc(false)) return false;
 	TraceScript("J201", "operation=apiShowDesc result");
 	TraceScript("J299", "operation=apiLoadFB2 success");
+	diagnosticFailureStage = "";
 	return encoding;
 	}
 	catch(e)
 	{
+		diagnosticFailureStage = diagnosticOperationStage;
 		DiagError("J900", "apiLoadFB2", e);
 		throw e;
 	}
@@ -682,9 +694,9 @@ function apiLoadFB2(path, lang)
 	{
 		if(css)
 		{
-			TraceScript("J210", "operation=CSS restore begin");
-			try { css.href = css_filename; TraceScript("J211", "operation=CSS restore success"); }
-			catch(ignore) { TraceScript("J212", "operation=CSS restore failure"); }
+			TraceDiagnosticEvent("J210", "operation=CSS restore begin");
+			try { css.href = css_filename; TraceDiagnosticEvent("J211", "operation=CSS restore success"); }
+			catch(ignore) { TraceDiagnosticEvent("J212", "operation=CSS restore failure"); }
 		}
 	}
 }

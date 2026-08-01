@@ -568,11 +568,11 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	{
 		// Preserve the original apiLoadFB2 HRESULT. This extra query is diagnostic only.
 		CComVariant lastStage;
-		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticLastStage", NULL, 0, lastStage);
+		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticFailureStage", NULL, 0, lastStage);
 		if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
 			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
 		else
-			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticLastStage");
+			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticFailureStage");
 		TraceDocumentEvent(L"D111", L"Загрузка книги завершилась ошибкой JavaScript", filename);
 		return false;
 	}
@@ -608,11 +608,11 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	if (diagnosticBridgeUnavailable)
 	{
 		CComVariant lastStage;
-		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticLastStage", NULL, 0, lastStage);
+		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, lastStage);
 		if (SUCCEEDED(stageResult) && V_VT(&lastStage) == VT_BSTR)
 			StartupTrace::Event(L"script", L"J998", StartupTrace::SanitizeLogText(V_BSTR(&lastStage), 32));
 		else
-			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticLastStage");
+			StartupTrace::HResult(L"script", L"J997", stageResult, L"apiGetDiagnosticOperationStage");
 	}
 
 	// Отмечаем документ неизменённым только после подтверждённой загрузки JavaScript.
