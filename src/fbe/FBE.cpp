@@ -106,7 +106,7 @@ static bool TypeDescMatches(const TYPEDESC& typeDescription, VARTYPE expectedTyp
 }
 
 static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wchar_t* phase,
-	bool* coreCompatible = NULL, bool* diagnosticCompatible = NULL)
+	bool* coreCompatible = NULL, bool* diagnosticCompatible = NULL, bool diagnosticMismatchIsWarning = true)
 {
 	if (coreCompatible) *coreCompatible = false;
 	if (diagnosticCompatible) *diagnosticCompatible = false;
@@ -157,14 +157,14 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		{
 			if (!missing.IsEmpty()) missing += L","; missing += methods[index].name;
 			if (methods[index].core) StartupTrace::HResult(L"typelib", L"TL151", methodResult, method);
-			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL152", method); }
+			else { method += diagnosticMismatchIsWarning ? L"; diagnostic-bridge=degraded" : L"; diagnostic-registration=legacy; internal-bridge=embedded"; if (diagnosticMismatchIsWarning) StartupTrace::Warning(L"typelib", L"TL152", method); else StartupTrace::Event(L"typelib", L"TL152", method); }
 			continue;
 		}
 		if (memberId != methods[index].dispid)
 		{
 			if (!wrongDispids.IsEmpty()) wrongDispids += L","; wrongDispids += methods[index].name;
 			if (methods[index].core) { method += L"; core-incompatible"; StartupTrace::Error(L"typelib", L"TL153", method); }
-			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL154", method); }
+			else { method += diagnosticMismatchIsWarning ? L"; diagnostic-bridge=degraded" : L"; diagnostic-registration=legacy; internal-bridge=embedded"; if (diagnosticMismatchIsWarning) StartupTrace::Warning(L"typelib", L"TL154", method); else StartupTrace::Event(L"typelib", L"TL154", method); }
 			continue;
 		}
 
@@ -204,7 +204,7 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 			if (!wrongSignatures.IsEmpty()) wrongSignatures += L","; wrongSignatures += methods[index].name;
 			method.AppendFormat(L"; signature-hr=0x%08lX; core-compatible=%d", static_cast<unsigned long>(functionResult), methods[index].core ? 0 : 1); method += actualSignature;
 			if (methods[index].core) StartupTrace::Error(L"typelib", L"TL160", method);
-			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL161", method); }
+			else { method += diagnosticMismatchIsWarning ? L"; diagnostic-bridge=degraded" : L"; diagnostic-registration=legacy; internal-bridge=embedded"; if (diagnosticMismatchIsWarning) StartupTrace::Warning(L"typelib", L"TL161", method); else StartupTrace::Event(L"typelib", L"TL161", method); }
 		}
 		else StartupTrace::Event(L"typelib", L"TL150", method);
 	}
@@ -218,8 +218,8 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 	CString summary;
 	summary.Format(L"phase=%s; core-compatible=%d; diagnostic-compatible=%d; missing-methods=%s; wrong-dispids=%s; wrong-signatures=%s", phase, coreIsCompatible ? 1 : 0, diagnosticIsCompatible ? 1 : 0, (LPCWSTR)missing, (LPCWSTR)wrong, (LPCWSTR)signatures);
 	if (!coreIsCompatible) { StartupTrace::Error(L"typelib", L"TL155", summary); return E_NOINTERFACE; }
-	if (!diagnosticIsCompatible) StartupTrace::Warning(L"typelib", L"TL156", summary);
-	else StartupTrace::Event(L"typelib", L"TL157", summary);
+	if (!diagnosticIsCompatible && diagnosticMismatchIsWarning) StartupTrace::Warning(L"typelib", L"TL156", summary);
+	else StartupTrace::Event(L"typelib", !diagnosticIsCompatible ? L"TL156" : L"TL157", summary);
 	return S_OK;
 }
 static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
@@ -241,11 +241,11 @@ static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 		StartupTrace::Event(L"typelib", L"TL121", details);
 		result = ::LoadTypeLibEx(registeredPath, REGKIND_NONE, &directRegistered);
 		StartupTrace::HResult(L"typelib", L"TL122", result, L"LoadTypeLibEx(registered path)");
-		if(SUCCEEDED(result)) result = ValidateExternalHelperTypeLibrary(directRegistered, L"registered-direct");
+		if(SUCCEEDED(result)) result = ValidateExternalHelperTypeLibrary(directRegistered, L"registered-direct", NULL, NULL, false);
 		if(SUCCEEDED(result))
 		{
 			::SysFreeString(registeredPath);
-			StartupTrace::Event(L"typelib", L"TL158", L"registered FBELib is compatible without LoadRegTypeLib");
+			StartupTrace::Event(L"typelib", L"TL158", L"registered FBELib core-compatible; internal diagnostic bridge uses embedded typelib");
 			return S_OK;
 		}
 		StartupTrace::Warning(L"typelib", L"TL159", L"registered FBELib is incompatible; repairing per-user registration");
