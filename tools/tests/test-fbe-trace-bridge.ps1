@@ -19,7 +19,7 @@ foreach($pattern in $required) {
 if($script -match 'window\.external\s*&&\s*window\.external\.TraceScript') {
     throw 'TraceScript must not probe the property before its direct call.'
 }
-foreach($pattern in @('apiGetDiagnosticTraceBridgeState', 'diagnosticBridgeUnavailable', 'diagnostic trace bridge=unknown')) {
+foreach($pattern in @('apiGetDiagnosticTraceBridgeState', 'apiGetDiagnosticOperationStage', 'diagnosticBridgeUnavailable', 'diagnostic trace bridge=unknown')) {
     if($documentSource -notlike "*$pattern*") { throw "Missing C++ trace bridge diagnostic: $pattern" }
 }
 Write-Host 'JavaScript trace bridge contract passed.'

@@ -597,7 +597,13 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 
 	if (!loaded)
 	{
-		TraceDocumentEvent(L"D112", L"Загрузка книги завершилась без результата", filename);
+		CComVariant operationStage;
+		const HRESULT stageResult = InvokeFunc(L"apiGetDiagnosticOperationStage", NULL, 0, operationStage);
+		if (SUCCEEDED(stageResult) && V_VT(&operationStage) == VT_BSTR)
+			StartupTrace::Event(L"script", L"J996", StartupTrace::SanitizeLogText(V_BSTR(&operationStage), 32));
+		else
+			StartupTrace::Warning(L"script", L"J995", L"apiGetDiagnosticOperationStage unavailable");
+		TraceDocumentEvent(L"D112", L"book load returned false", filename);
 		return false;
 	}
 
