@@ -110,6 +110,12 @@ try {
         if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "apiLoadFB2=" -Quiet)) {
             throw "В диагностическом журнале нет состояния JavaScript API: $traceFile"
         }
+        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "user-agent=" -Quiet)) {
+            throw "В диагностическом журнале нет navigator.userAgent: $traceFile"
+        }
+        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "app-version=" -Quiet)) {
+            throw "В диагностическом журнале нет navigator.appVersion: $traceFile"
+        }
 
         Write-Host "Диагностический журнал:"
         Get-Content -LiteralPath $traceFile
