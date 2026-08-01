@@ -117,7 +117,7 @@ namespace
 		return false;
 	}
 
-	void CleanupOldTraceSessions(const CString& directory)
+	void CleanupOldTraceSessions(const CString& directory, const CString& preserveSession, size_t sessionLimit)
 	{
 		std::vector<CString> sessions;
 		WIN32_FIND_DATA findData = {};
@@ -138,8 +138,9 @@ namespace
 		while (::FindNextFile(search, &findData));
 		::FindClose(search);
 		std::sort(sessions.begin(), sessions.end(), [](const CString& left, const CString& right) { return left.CompareNoCase(right) > 0; });
-		for (size_t sessionIndex = 10; sessionIndex < sessions.size(); ++sessionIndex)
+		for (size_t sessionIndex = sessionLimit; sessionIndex < sessions.size(); ++sessionIndex)
 		{
+			if (sessions[sessionIndex].CompareNoCase(preserveSession) == 0) continue;
 			HANDLE files = ::FindFirstFile(directory + L"\\" + sessions[sessionIndex] + L"*.log", &findData);
 			if (files == INVALID_HANDLE_VALUE) continue;
 			do
@@ -237,13 +238,12 @@ void StartupTrace::Start()
 		opened = OpenTraceFile(directory, time);
 		if (!opened) { lastWriteError = ::GetLastError() ? ::GetLastError() : primaryError; return; }
 	}
-	CleanupOldTraceSessions(CurrentLogDirectory());
+	CleanupOldTraceSessions(CurrentLogDirectory(), traceBasePath.Mid(traceBasePath.ReverseFind(L'\\') + 1), 10);
 	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = traceSegment = 0;
 	Event(L"environment", L"E000", L"FictionBook Editor diagnostic trace started");
 	WriteEnvironmentHeader();
 	Event(L"startup", L"S100", L"process started");
 }
-void StartupTrace::Mark(const wchar_t* stage) { Event(L"startup", L"S000", stage); }
 bool StartupTrace::Enabled() { return traceFile != INVALID_HANDLE_VALUE; }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"info", code, message, false); }
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
@@ -291,7 +291,14 @@ void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VA
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
 CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath; }
 CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separator = tracePath.ReverseFind(L'\\'); return separator >= 0 ? tracePath.Left(separator) : CString(); }
-CString StartupTrace::LastStageCode() { TraceLock guard; return lastStageCode; }
+void StartupTrace::ClearOldLogSessions()
+{
+	TraceLock guard;
+	if (tracePath.IsEmpty()) return;
+	const int separator = traceBasePath.ReverseFind(L'\\');
+	const CString session = separator >= 0 ? traceBasePath.Mid(separator + 1) : traceBasePath;
+	CleanupOldTraceSessions(CurrentLogDirectory(), session, 0);
+}CString StartupTrace::LastStageCode() { TraceLock guard; return lastStageCode; }
 CString StartupTrace::LastStageMessage() { TraceLock guard; return lastStageMessage; }
 CString StartupTrace::LastDocumentStage() { TraceLock guard; return lastDocumentStage; }
 CString StartupTrace::LastScriptOperationStage() { TraceLock guard; return lastScriptOperationStage; }

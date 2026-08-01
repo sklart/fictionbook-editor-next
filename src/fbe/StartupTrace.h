@@ -3,7 +3,6 @@
 namespace StartupTrace
 {
 	void Start();
-	void Mark(const wchar_t* stage);
 	// Возвращает true, когда включён диагностический журнал текущего процесса.
 	bool Enabled();
 	// Определяет режим следующего запуска: настройка FBE имеет приоритет над переменной среды.
@@ -27,6 +26,8 @@ namespace StartupTrace
 	void EmergencyFlush();
 	CString CurrentLogPath();
 	CString CurrentLogDirectory();
+	// Removes completed diagnostic sessions while preserving the current process trace.
+	void ClearOldLogSessions();
 	CString LastStageCode();
 	CString LastStageMessage();
 	CString LastDocumentStage();
