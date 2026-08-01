@@ -116,7 +116,7 @@ HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCou
 	details.Format(L"lcid=%lu; names=%u; method=%s; dispid=%ld; source=embedded", lcid, nameCount,
 		names[0] ? (LPCWSTR)StartupTrace::SanitizeLogText(names[0], 64) : L"-",
 		SUCCEEDED(result) ? static_cast<long>(dispids[0]) : static_cast<long>(DISPID_UNKNOWN));
-	StartupTrace::HResult(L"external", L"XH120", result, details);
+	if (!names[0] || _wcsicmp(names[0], L"TraceScript") != 0 || FAILED(result)) StartupTrace::HResult(L"external", L"XH120", result, details);
 	return result;
 }
 HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags, DISPPARAMS* parameters, VARIANT* resultValue, EXCEPINFO* exceptionInfo, UINT* argumentError)
