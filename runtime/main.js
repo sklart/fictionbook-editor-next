@@ -839,7 +839,12 @@ function InputBox(msg, value, result)
 
 function errorHandler(msg,url,lno)
 {
-	MsgBox("Error at line "+lno+":\n"+msg+" ");
+	var fileName = "";
+	try { fileName = String(url || "").replace(/^.*[\\\/]/, ""); } catch(ignore) {}
+	diagnosticFailureStage = diagnosticOperationStage;
+	DiagError("J900", "window.onerror", { number: 0, name: "Error", description: msg, message: msg, lineNumber: lno });
+	TraceDiagnosticEvent("J901", "operation=window.onerror; file=" + fileName + "; line=" + lno);
+	try { MsgBox("Error at line "+lno+":\n"+msg+" "); } catch(ignore) {}
 	return true;
 }
 
