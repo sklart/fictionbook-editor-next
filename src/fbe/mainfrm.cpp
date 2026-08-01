@@ -3458,6 +3458,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 	  }
 	}
     catch (_com_error& e) {
+      TracePluginDiagnostic(L"Import", pluginClsid, L"exception", e.Error(), 0);
       U::ReportError(e);
     }
   }
@@ -3512,6 +3513,7 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 		}
 		catch(_com_error& e)
 		{
+			TracePluginDiagnostic(L"Export", pluginClsid, L"exception", e.Error(), 0);
 			U::ReportError(e);
 		}
 	}
