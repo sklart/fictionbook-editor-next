@@ -116,7 +116,7 @@ try {
         if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "app-version=" -Quiet)) {
             throw "В диагностическом журнале нет navigator.appVersion: $traceFile"
         }
-        foreach ($code in @('WB111', 'WB112', 'WB200', 'WB210', 'WB220', 'WB230', 'WB240', 'WB250', 'WB270', 'WB295', 'WB299')) {
+        foreach ($code in @('WB111', 'WB112', 'WB200', 'WB210', 'WB220', 'WB230', 'WB240', 'WB250', 'WB270', 'WB295', 'WB299', 'WB199')) {
             if (-not (Select-String -LiteralPath $traceFile -SimpleMatch ("code=" + $code) -Quiet)) {
                 throw "В диагностическом журнале нет обязательной стадии WebBrowser: $code"
             }

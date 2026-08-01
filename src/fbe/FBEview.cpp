@@ -150,9 +150,20 @@ CFBEView::~CFBEView()
 {
 	if(HasDoc())
 	{
+		// Init can fail after acquiring the document but before all event sinks and
+		// markup services are available. Teardown must be best-effort in that case.
 		DocumentEvents::DispEventUnadvise(Document(), &DIID_HTMLDocumentEvents2);
-		TextEvents::DispEventUnadvise(Document()->body, &DIID_HTMLTextContainerEvents2);
-		m_mkc->UnRegisterForDirtyRange(m_dirtyRangeCookie);
+		try
+		{
+			MSHTML::IHTMLElementPtr body;
+			if (SUCCEEDED(m_hdoc->get_body(&body)) && body)
+				TextEvents::DispEventUnadvise(body, &DIID_HTMLTextContainerEvents2);
+		}
+		catch (const _com_error&)
+		{
+		}
+		if (m_mkc && m_dirtyRangeCookie)
+			m_mkc->UnRegisterForDirtyRange(m_dirtyRangeCookie);
 	}
 	if(m_browser)
 		BrowserEvents::DispEventUnadvise(m_browser, &DIID_DWebBrowserEvents2);

@@ -185,10 +185,19 @@ namespace
 	{
 		SYSTEM_INFO info = {};
 		::GetNativeSystemInfo(&info);
+		SYSTEM_INFO processInfo = {};
+		::GetSystemInfo(&processInfo);
+		OSVERSIONINFOEX version = {};
+		version.dwOSVersionInfoSize = sizeof(version);
+		::GetVersionEx(reinterpret_cast<OSVERSIONINFO*>(&version));
 		wchar_t exe[MAX_PATH] = {};
 		::GetModuleFileName(NULL, exe, _countof(exe));
 		CString details;
-		details.Format(L"fbe=%s; native-arch=%u; acp=%u; oemcp=%u; exe=%s", FBE_VERSION_WSTRING, info.wProcessorArchitecture, ::GetACP(), ::GetOEMCP(), (LPCWSTR)StartupTrace::RedactPath(exe));
+		details.Format(L"fbe=%s; windows=%lu.%lu.%lu; service-pack=%u.%u; process-arch=%u; native-arch=%u; acp=%u; oemcp=%u; system-lcid=0x%04X; ui-language=0x%04X; exe=%s",
+			FBE_VERSION_WSTRING, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber,
+			version.wServicePackMajor, version.wServicePackMinor, processInfo.wProcessorArchitecture,
+			info.wProcessorArchitecture, ::GetACP(), ::GetOEMCP(), ::GetSystemDefaultLCID(),
+			::GetUserDefaultUILanguage(), (LPCWSTR)StartupTrace::RedactPath(exe));
 		StartupTrace::Event(L"environment", L"E010", details);
 	}
 	bool TryGetNextLaunchPreference(bool& enabled) { DWORD value = 0, size = sizeof(value); if (::RegGetValue(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, diagnosticTraceRegistryValue, RRF_RT_REG_DWORD, NULL, &value, &size) != ERROR_SUCCESS) return false; enabled = value != 0; return true; }

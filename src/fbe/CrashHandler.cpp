@@ -8,6 +8,9 @@
 #include "utils.h"
 #include "../version.h"
 
+#define FBE_WIDEN_TEXT_INNER(value) L##value
+#define FBE_WIDEN_TEXT(value) FBE_WIDEN_TEXT_INNER(value)
+
 namespace
 {
 	const size_t MAX_CRASH_REPORTS = 10;
@@ -86,6 +89,8 @@ namespace
 		const int textLength = _snwprintf_s(text, _countof(text), _TRUNCATE,
 			L"FictionBook Editor crash report\r\n"
 			L"Version: " FBE_VERSION_WSTRING L"\r\n"
+			L"Build name: FictionBook Editor Next Release " FBE_VERSION_WSTRING L"\r\n"
+			L"Build timestamp: " FBE_WIDEN_TEXT(__DATE__) L" " FBE_WIDEN_TEXT(__TIME__) L"\r\n"
 			L"Process ID: %lu\r\n"
 			L"Crash thread ID: %lu\r\n"
 			L"Exception code: 0x%08lX\r\n"

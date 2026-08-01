@@ -565,7 +565,6 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		::DispatchMessage(&msg);
 	}
 
-	StartupTrace::Event(L"webbrowser", L"WB140", L"DocumentComplete observed");
 	StartupTrace::Event(L"webbrowser", L"WB150", L"SetExternalDispatch #1");
 	m_body.SetExternalDispatch(m_body.CreateHelper());
 
@@ -574,7 +573,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		StartupTrace::Error(L"webbrowser", L"WB298", L"CFBEView::Init failed");
 		return false;
 	}
-	StartupTrace::Event(L"webbrowser", L"WB299", L"browser ready");
+	StartupTrace::Event(L"webbrowser", L"WB199", L"browser ready");
 	TraceHtmlDocumentState(m_body.Browser()->Document);
 	//FastMode();
 
