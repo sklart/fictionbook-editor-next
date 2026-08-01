@@ -4851,15 +4851,13 @@ static int SkipXmlMarkupBackward(const CString& sourceXml, int position)
 static CString SelectionTraceSummary(const CString& text)
 {
 	CString result;
-	result.Format(L"chars=%d", text.GetLength());
+	result.Format(L"selection-chars=%d", text.GetLength());
 	return result;
 }
 
 static void WriteSelectionTrace(const CString& message)
 {
-	CString trace(L"E200 ");
-	trace += message;
-	StartupTrace::Event(L"selection", message);
+	StartupTrace::Event(L"selection", L"E200", message);
 }
 
 bool  CMainFrame::SourceToHTML() 
