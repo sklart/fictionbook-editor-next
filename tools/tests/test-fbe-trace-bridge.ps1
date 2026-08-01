@@ -26,7 +26,7 @@ if($script -match 'window\.external\s*&&\s*window\.external\.TraceScript') {
 foreach($pattern in @('apiGetDiagnosticTraceBridgeState', 'apiGetDiagnosticOperationStage', 'diagnosticBridgeUnavailable', 'diagnostic trace bridge=unknown')) {
     if($documentSource -notlike "*$pattern*") { throw "Missing C++ trace bridge diagnostic: $pattern" }
 }
-foreach($pattern in @('FBE_NEXT_TRACE_VERBOSE', 'success-count=', 'failure-count=', 'suppressed-count=', 'XH190', 'XH191')) {
+foreach($pattern in @('FBE_NEXT_TRACE_VERBOSE', 'success-count=', 'failure-count=', 'suppressed-count=', 'XH190', 'XH191', 'GetBinarySize', 'GetImageDimsByData', 'GetImageDimsByPath', 'DescShowElement', 'UINT_MAX')) {
     if($externalHelperSource -notlike "*$pattern*") { throw "Missing ExternalHelper trace aggregation contract: $pattern" }
 }
 if($startupSource -notlike '*ExternalHelper::FlushTraceSummary()*') {

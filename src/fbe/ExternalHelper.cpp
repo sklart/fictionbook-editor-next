@@ -101,22 +101,18 @@ static CSimpleMap<CString, DescElement> g_desc_elements;
 static DISPID ExternalHelperMethodDispid(const wchar_t* method)
 {
 	if (!method) return DISPID_UNKNOWN;
-	if (wcscmp(method, L"GetStylePath") == 0) return 5;
-	if (wcscmp(method, L"InflateParagraphs") == 0) return 7;
-	if (wcscmp(method, L"GetUUID") == 0) return 8;
-	if (wcscmp(method, L"GetExtendedStyle") == 0) return 12;
-	if (wcscmp(method, L"GetNBSP") == 0) return 19;
-	if (wcscmp(method, L"GetProgramVersion") == 0) return 22;
-	if (wcscmp(method, L"IsDiagnosticTraceEnabled") == 0) return 29;
-	if (wcscmp(method, L"TraceScript") == 0) return 30;
+	static const wchar_t* const names[] = { L"", L"BeginUndoUnit", L"EndUndoUnit", L"inflateBlock", L"GenrePopup", L"GetStylePath", L"GetBinarySize", L"InflateParagraphs", L"GetUUID", L"MsgBox", L"AskYesNo", L"SaveBinary", L"GetExtendedStyle", L"DescShowElement", L"DescShowMenu", L"IsFastMode", L"SetStyleEx", L"GetImageDimsByPath", L"GetImageDimsByData", L"GetNBSP", L"GetViewWidth", L"GetViewHeight", L"GetProgramVersion", L"InputBox", L"GetModalResult", L"SetStatusBarText", L"GetDocumentFilePath", L"GetDocumentFileName", L"GetDocumentDirectory", L"IsDiagnosticTraceEnabled", L"TraceScript" };
+	for (DISPID dispid = 1; dispid < static_cast<DISPID>(_countof(names)); ++dispid)
+		if (wcscmp(method, names[dispid]) == 0) return dispid;
 	return DISPID_UNKNOWN;
 }
 
 static const wchar_t* ExternalHelperMethodName(DISPID dispid)
 {
-	switch (dispid) { case 5: return L"GetStylePath"; case 7: return L"InflateParagraphs"; case 8: return L"GetUUID"; case 12: return L"GetExtendedStyle"; case 19: return L"GetNBSP"; case 22: return L"GetProgramVersion"; case 29: return L"IsDiagnosticTraceEnabled"; case 30: return L"TraceScript"; default: return L"other"; }
+	static const wchar_t* const names[] = { L"other", L"BeginUndoUnit", L"EndUndoUnit", L"inflateBlock", L"GenrePopup", L"GetStylePath", L"GetBinarySize", L"InflateParagraphs", L"GetUUID", L"MsgBox", L"AskYesNo", L"SaveBinary", L"GetExtendedStyle", L"DescShowElement", L"DescShowMenu", L"IsFastMode", L"SetStyleEx", L"GetImageDimsByPath", L"GetImageDimsByData", L"GetNBSP", L"GetViewWidth", L"GetViewHeight", L"GetProgramVersion", L"InputBox", L"GetModalResult", L"SetStatusBarText", L"GetDocumentFilePath", L"GetDocumentFileName", L"GetDocumentDirectory", L"IsDiagnosticTraceEnabled", L"TraceScript" };
+	return dispid > 0 && dispid < static_cast<DISPID>(_countof(names)) ? names[dispid] : names[0];
 }
-static bool IsLoadDiagnosticMethod(DISPID dispid) { return dispid == 5 || dispid == 7 || dispid == 8 || dispid == 12 || dispid == 19 || dispid == 22 || dispid == 29; }
+static bool IsLoadDiagnosticMethod(DISPID dispid) { return dispid == 5 || dispid == 6 || dispid == 7 || dispid == 8 || dispid == 12 || dispid == 13 || dispid == 17 || dispid == 18 || dispid == 19 || dispid == 22 || dispid == 29; }
 static CString ExternalHelperArgumentTypes(const DISPPARAMS* parameters)
 {
 	CString types;
@@ -148,7 +144,9 @@ void ExternalHelper::FlushTraceSummary()
 		CString details; details.Format(L"method=%s; operation=Invoke; success-count=%lu; failure-count=%lu; suppressed-count=%lu", ExternalHelperMethodName(it->first), successes, failures, suppressed);
 		StartupTrace::Event(L"external", L"XH191", details);
 	}
-}HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
+}
+
+HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
 {
 	if (!typeInfoCount)
 		return E_POINTER;
@@ -173,12 +171,13 @@ HRESULT ExternalHelper::GetTypeInfo(UINT typeInfo, LCID lcid, ITypeInfo** result
 }
 HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCount, LCID lcid, DISPID* dispids)
 {
+	if (dispids)
+		for (UINT index = 0; index < nameCount; ++index)
+			dispids[index] = DISPID_UNKNOWN;
 	if (riid != IID_NULL)
 		return DISP_E_UNKNOWNINTERFACE;
 	if (!names || !dispids || nameCount == 0)
 		return E_INVALIDARG;
-	for (UINT index = 0; index < nameCount; ++index)
-		dispids[index] = DISPID_UNKNOWN;
 
 	CComPtr<ITypeInfo> typeInfo;
 	HRESULT result = GetEmbeddedTypeInfo(&typeInfo);
@@ -203,13 +202,13 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		*argumentError = UINT_MAX;
 
 	const bool trace = IsLoadDiagnosticMethod(dispid);
-	const bool logInvoke = trace && (IsExternalTraceVerbose() || RecordFirstCall(g_successfulInvokes, dispid));
-	if (logInvoke)
-	{
-		CString begin;
-		begin.Format(L"dispid=%ld; method=%s; flags=0x%04X; lcid=%lu; args=%u; types=[%s]", static_cast<long>(dispid), ExternalHelperMethodName(dispid), flags, lcid, parameters ? parameters->cArgs : 0, (LPCWSTR)ExternalHelperArgumentTypes(parameters));
+	const bool knownMethod = wcscmp(ExternalHelperMethodName(dispid), L"other") != 0;
+	const bool verbose = IsExternalTraceVerbose();
+	const bool logInvokeBegin = trace && verbose;
+	CString begin;
+	begin.Format(L"dispid=%ld; method=%s; flags=0x%04X; lcid=%lu; args=%u; types=[%s]", static_cast<long>(dispid), ExternalHelperMethodName(dispid), flags, lcid, parameters ? parameters->cArgs : 0, (LPCWSTR)ExternalHelperArgumentTypes(parameters));
+	if (logInvokeBegin)
 		StartupTrace::Event(L"external", L"XH130", begin);
-	}
 
 	CComPtr<ITypeInfo> typeInfo;
 	HRESULT result = GetEmbeddedTypeInfo(&typeInfo);
@@ -222,9 +221,13 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 	if (exceptionInfo && exceptionInfo->pfnDeferredFillIn)
 		exceptionInfo->pfnDeferredFillIn(exceptionInfo);
 
+	const bool firstSuccessfulInvoke = SUCCEEDED(result) && knownMethod && RecordFirstCall(g_successfulInvokes, dispid);
 	const bool firstFailure = FAILED(result) && RecordFirstFailure(g_failedInvokes, g_uniqueInvokeFailures, dispid, result);
-	if (logInvoke || firstFailure)
+	const bool logInvokeResult = (trace && (verbose || firstSuccessfulInvoke)) || firstFailure;
+	if (logInvokeResult)
 	{
+		if (!logInvokeBegin && trace)
+			StartupTrace::Event(L"external", L"XH130", begin);
 		CString argumentText;
 		if (!argumentError || *argumentError == UINT_MAX) argumentText = L"none";
 		else argumentText.Format(L"%u", *argumentError);
