@@ -63,4 +63,6 @@ foreach($pattern in @('PARAMFLAG_FIN', 'PARAMFLAG_FOUT', 'PARAMFLAG_FRETVAL', 'c
 }
 foreach($pattern in @('bool ClearOldLogSessions()', 'TrySnapshot', 'TryEnterCriticalSection', 'FindLatestTrace', 'ResolveDiagnosticLogDirectory')) {
     if(($traceHeader + $traceImplementation) -notlike "*$pattern*") { throw "Missing trace fallback or crash snapshot contract: $pattern" }
+}foreach($pattern in @('TraceDiagnosticEvent("J210", "operation=CSS restore begin")', 'TraceDiagnosticEvent("J211", "operation=CSS restore success")', 'TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=success")')) {
+    if($script -notlike "*$pattern*") { throw "Missing CSS restore diagnostic: $pattern" }
 }

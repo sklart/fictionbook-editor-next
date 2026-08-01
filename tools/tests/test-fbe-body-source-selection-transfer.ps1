@@ -83,7 +83,7 @@ if ($trace.Contains('FBE_NEXT_STARTUP_TRACE') -or $trace.Contains('FBE_NEXT_SELE
 }
 Assert-Contains $trace 'fbe-trace-' `
 	'диагностический журнал должен записываться в файл FBE Next'
-Assert-Contains $source 'StartupTrace::Event(L"selection", L"E200", message);' `
+Assert-Contains $source 'StartupTrace::Event(L"selection", code, message);' `
 	'записи переноса выделения должны иметь категорию selection'
 Assert-Contains $trace 'void StartupTrace::Event' `
 	'журнал должен принимать события нескольких диагностических категорий'

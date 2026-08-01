@@ -4904,9 +4904,9 @@ static CString SelectionTraceSummary(const CString& text)
 	result.Format(L"selection-chars=%d", text.GetLength());
 	return result;
 }
-static void WriteSelectionTrace(const CString& message)
+static void WriteSelectionTrace(const wchar_t* code, const CString& message)
 {
-	StartupTrace::Event(L"selection", L"E200", message);
+	StartupTrace::Event(L"selection", code, message);
 }
 
 bool  CMainFrame::SourceToHTML() 
@@ -4939,7 +4939,7 @@ bool  CMainFrame::SourceToHTML()
 		CString trace;
 		trace.Format(L"SourceToHTML: source bytes=[%d,%d], text bytes=%d, caret=%d",
 			selectedPosBegin, selectedPosEnd, textlen, one_pos ? 1 : 0);
-		WriteSelectionTrace(trace);
+		WriteSelectionTrace(L"E210", trace);
 	}
 	if(one_pos)
 	{
@@ -4975,7 +4975,7 @@ bool  CMainFrame::SourceToHTML()
 			selectedPosBegin, selectedPosEnd, selectedSourceText.GetLength(),
 			selectionCrossesParagraph ? 1 : 0,
 			(const wchar_t*)SelectionTraceSummary(selectedSourceText));
-		WriteSelectionTrace(trace);
+		WriteSelectionTrace(L"E220", trace);
 	}
 
 	//	?????????? ? XML
@@ -4998,7 +4998,7 @@ bool  CMainFrame::SourceToHTML()
 		CString trace;
 		trace.Format(L"SourceToHTML: DOM path available=%d, chars=[%d,%d]",
 			selection_path_available ? 1 : 0, begin_char, end_char);
-		WriteSelectionTrace(trace);
+		WriteSelectionTrace(L"E230", trace);
 	}
 		
 	if(changed)
@@ -5171,7 +5171,7 @@ bool  CMainFrame::SourceToHTML()
 		trace.Format(L"SourceToHTML: transfer result=%d, DOM-path=%d, crosses-p=%d",
 			m_source_selection_transferred ? 1 : 0,
 			selection_path_available ? 1 : 0, selectionCrossesParagraph ? 1 : 0);
-		WriteSelectionTrace(trace);
+		WriteSelectionTrace(L"E240", trace);
 	}
 
 	delete[] buffer;
@@ -5222,7 +5222,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 				selectedBeginElement == selectedEndElement ? 1 : 0,
 				selectedText.GetLength(),
 				(const wchar_t*)SelectionTraceSummary(selectedText));
-			WriteSelectionTrace(trace);
+			WriteSelectionTrace(L"E250", trace);
 		}
 
 
@@ -5413,7 +5413,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 				hasBodySelectionText ? 1 : 0, selection_path_available ? 1 : 0,
 				beginPosition, endPosition, savedPosBegin, savedPosEnd,
 				selection_mapped_to_source ? 1 : 0);
-			WriteSelectionTrace(trace);
+			WriteSelectionTrace(L"E260", trace);
 		}
 	}
 
@@ -5446,7 +5446,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		trace.Format(L"ShowSource: applied bytes=[%d,%d], line=%d, first-visible=%d",
 			savedPosBegin, savedPosEnd, sourceLine,
 			(int)m_source.SendMessage(SCI_GETFIRSTVISIBLELINE));
-		WriteSelectionTrace(trace);
+		WriteSelectionTrace(L"E270", trace);
 	}
 
 	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
@@ -5463,7 +5463,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 		const wchar_t* const viewNames[] = { L"Body", L"Description", L"Source", L"Next" };
 		CString trace;
 		trace.Format(L"ShowView: requested %s -> %s", viewNames[prev], viewNames[vt]);
-		WriteSelectionTrace(trace);
+		WriteSelectionTrace(L"E280", trace);
 	}
   SaveSelection(m_current_view);
 
@@ -5726,7 +5726,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 			trace.Format(L"ShowView: Source final bytes=[%d,%d], line=%d, first-visible=%d",
 				m_source_selection_start, m_source_selection_end, sourceLine,
 				(int)m_source.SendMessage(SCI_GETFIRSTVISIBLELINE));
-			WriteSelectionTrace(trace);
+			WriteSelectionTrace(L"E290", trace);
 		}
 	}
 	else if (StartupTrace::Enabled())
@@ -5735,7 +5735,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 		trace.Format(L"ShowView: completed current=%d, body-transfer=%d, source-transfer=%d",
 			m_current_view, m_body_selection_transferred ? 1 : 0,
 			m_source_selection_transferred ? 1 : 0);
-		WriteSelectionTrace(trace);
+		WriteSelectionTrace(L"E299", trace);
 	}
 }
 
@@ -6473,7 +6473,7 @@ void CMainFrame::SaveSelection(VIEW_TYPE vt)
 			const CString selectedText((const wchar_t*)m_body_selection->text);
 			CString trace;
 			trace.Format(L"SaveSelection: Body; selection-chars=%d", selectedText.GetLength());
-			WriteSelectionTrace(trace);
+			WriteSelectionTrace(L"E300", trace);
 		}
 	}
 	if(vt == DESC)

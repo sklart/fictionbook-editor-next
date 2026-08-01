@@ -1,4 +1,4 @@
-﻿// Версия файла - 2.3
+// Версия файла - 2.3
 
 // Object reference maker
 Object.prototype.$=function $(val){if(val)this.valueOf=this.toSource=this.toString=function(){return val};return val;};
@@ -696,7 +696,7 @@ function apiLoadFB2(path, lang)
 		{
 			TraceDiagnosticEvent("J210", "operation=CSS restore begin");
 			try { css.href = css_filename; TraceDiagnosticEvent("J211", "operation=CSS restore success"); }
-			catch(ignore) { TraceDiagnosticEvent("J212", "operation=CSS restore failure"); }
+			catch(ignore) { TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=success"); }
 		}
 	}
 }
