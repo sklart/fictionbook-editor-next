@@ -337,8 +337,11 @@ static MSXML2::IXSLTemplatePtr	LoadXSL(const CString& path) {
 
 static CString VariantTypeName(const VARIANT& value)
 {
+	const VARTYPE variantType = V_VT(&value);
 	CString type;
-	type.Format(L"VT_%u", static_cast<unsigned int>(V_VT(&value)));
+	type.Format(L"VT_%u", static_cast<unsigned int>(variantType & VT_TYPEMASK));
+	if (variantType & VT_BYREF) type += L"|VT_BYREF";
+	if (variantType & VT_ARRAY) type += L"|VT_ARRAY";
 	return type;
 }
 

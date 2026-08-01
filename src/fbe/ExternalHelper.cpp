@@ -72,7 +72,7 @@ static bool IsLoadDiagnosticMethod(DISPID dispid) { return dispid == 5 || dispid
 static CString ExternalHelperArgumentTypes(const DISPPARAMS* parameters)
 {
 	CString types;
-	for (UINT index = 0; parameters && index < parameters->cArgs; ++index) { CString type; type.Format(L"VT_%u", static_cast<unsigned int>(V_VT(&parameters->rgvarg[index]))); if (!types.IsEmpty()) types += L","; types += type; }
+	for (UINT index = 0; parameters && index < parameters->cArgs; ++index) { const VARTYPE variantType = V_VT(&parameters->rgvarg[index]); CString type; type.Format(L"VT_%u", static_cast<unsigned int>(variantType & VT_TYPEMASK)); if (variantType & VT_BYREF) type += L"|VT_BYREF"; if (variantType & VT_ARRAY) type += L"|VT_ARRAY"; if (!types.IsEmpty()) types += L","; types += type; }
 	return types;
 }
 HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
