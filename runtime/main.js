@@ -668,7 +668,7 @@ function apiLoadFB2(path, lang)
 	}
 	else id.value=id.value;
 	TraceScript("J200", "operation=apiShowDesc");
-	apiShowDesc(false);
+	if(!apiShowDesc(false)) return false;
 	TraceScript("J201", "operation=apiShowDesc result");
 	TraceScript("J299", "operation=apiLoadFB2 success");
 	return encoding;
@@ -690,14 +690,13 @@ function apiLoadFB2(path, lang)
 }
 function apiShowDesc(state)
 {
+	TraceScript("J850", "operation=apiShowDesc; requested-state=" + (state ? 1 : 0));
+	TraceScript("J851", "operation=body present");
 	var body=document.getElementById("fbw_body");
-	if(!body)
-		return;
-
+	if(!body) return false;
+	TraceScript("J852", "operation=desc present");
 	var desc=document.getElementById("fbw_desc");
-	if(!desc)
-		return;
-
+	if(!desc) return false;
 	if(state)
 	{
 		document.ScrollSave=document.body.scrollTop;
@@ -711,8 +710,10 @@ function apiShowDesc(state)
 		body.style.display="block";
 		document.body.scrollTop=document.ScrollSave;
 	}
+	TraceScript("J853", "operation=display changed");
+	TraceScript("J859", "operation=apiShowDesc completed");
+	return true;
 }
-
 function apiRunCmd(path)
 {
         window.msgText="Скрипт\n\n"+path+"\n\nне был запущен, т.к. не удалось его успешно загрузить.\n\n"+
