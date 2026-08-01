@@ -142,14 +142,25 @@ public:
 	}  
 	STDMETHOD(InflateParagraphs)(IDispatch *elem)
 	{
-			MSHTML::IHTMLElement2Ptr el;
-			elem->QueryInterface(IID_IHTMLElement2,(void**)&el);
-			MSHTML::IHTMLElementCollectionPtr   pp(el->getElementsByTagName(L"P"));
-			for (long l=0;l<pp->length;++l)
-			{
-				MSHTML::IHTMLElement3Ptr(pp->item(l))->inflateBlock=VARIANT_TRUE;
-			}
-			return S_OK;
+		if (!elem)
+			return E_POINTER;
+		MSHTML::IHTMLElement2Ptr element;
+		HRESULT result = elem->QueryInterface(IID_IHTMLElement2, reinterpret_cast<void**>(&element));
+		if (FAILED(result) || !element)
+			return FAILED(result) ? result : E_NOINTERFACE;
+		MSHTML::IHTMLElementCollectionPtr paragraphs(element->getElementsByTagName(L"P"));
+		if (!paragraphs)
+			return E_NOINTERFACE;
+		for (long index = 0; index < paragraphs->length; ++index)
+		{
+			MSHTML::IHTMLElement3Ptr paragraph(paragraphs->item(index));
+			if (!paragraph)
+				return E_NOINTERFACE;
+			result = paragraph->put_inflateBlock(VARIANT_TRUE);
+			if (FAILED(result))
+				return result;
+		}
+		return S_OK;
 	}
 
 	STDMETHOD(GetUUID)(BSTR *uid)
