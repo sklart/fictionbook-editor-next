@@ -18,6 +18,16 @@ static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 extern CSettings _Settings;
 extern HINSTANCE resLib;
 
+static void TracePluginDiagnostic(const wchar_t* type, const CLSID& clsid, const wchar_t* operation, HRESULT result, int domReturned)
+{
+	wchar_t clsidText[64] = {};
+	::StringFromGUID2(clsid, clsidText, _countof(clsidText));
+	CString details;
+	details.Format(L"type=%s; clsid=%s; operation=%s; dom-returned=%d", type, clsidText, operation, domReturned);
+	if (FAILED(result)) StartupTrace::HResult(L"plugin", L"P210", result, details);
+	else StartupTrace::Event(L"plugin", L"P210", details);
+}
+
 struct RuntimeMenuCommandBinding
 {
 	UINT commandId;
@@ -3377,11 +3387,16 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
   wID-=ID_IMPORT_BASE;
   if (wID<m_import_plugins.GetSize()) {
+    const CLSID& pluginClsid = m_import_plugins[wID];
+    TracePluginDiagnostic(L"Import", pluginClsid, L"begin", S_OK, 0);
     try {
       IUnknownPtr			    unk;
-      CheckError(unk.CreateInstance(m_import_plugins[wID]));
+      HRESULT pluginHr = unk.CreateInstance(pluginClsid);
+      TracePluginDiagnostic(L"Import", pluginClsid, L"CreateInstance", pluginHr, 0);
+      CheckError(pluginHr);
 
       CComQIPtr<IFBEImportPlugin>	    ipl(unk);
+      TracePluginDiagnostic(L"Import", pluginClsid, L"QueryInterface", ipl ? S_OK : E_NOINTERFACE, 0);
 
       IDispatchPtr  obj;
       _bstr_t	    filename;
@@ -3390,6 +3405,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 		m_last_plugin = wID + ID_EXPORT_BASE;
 		BSTR	bs=NULL;
 		HRESULT hr=ipl->Import((long)m_hWnd,&bs,&obj);
+		TracePluginDiagnostic(L"Import", pluginClsid, L"Import", hr, obj ? 1 : 0);
 		CheckError(hr);
 		filename.Assign(bs);
 		if (hr!=S_OK)
@@ -3402,6 +3418,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
       }
 
       MSXML2::IXMLDOMDocument2Ptr dom(obj);	 
+      TracePluginDiagnostic(L"Import", pluginClsid, L"DOM result", dom ? S_OK : E_NOINTERFACE, dom ? 1 : 0);
       if (!(bool)dom)
 	  {
 		U::MessageBox(MB_OK|MB_ICONERROR, IDS_ERRMSGBOX_CAPTION, IDS_IMPORT_XML_ERR_MSG);
@@ -3451,12 +3468,17 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 	wID -= ID_EXPORT_BASE;
 	if(wID<m_export_plugins.GetSize())
 	{
+		const CLSID& pluginClsid = m_export_plugins[wID];
+		TracePluginDiagnostic(L"Export", pluginClsid, L"begin", S_OK, 0);
 		try
 		{
 			IUnknownPtr unk;
-			CheckError(unk.CreateInstance(m_export_plugins[wID]));
+			HRESULT pluginHr = unk.CreateInstance(pluginClsid);
+			TracePluginDiagnostic(L"Export", pluginClsid, L"CreateInstance", pluginHr, 0);
+			CheckError(pluginHr);
 
 			CComQIPtr<IFBEExportPlugin> epl(unk);
+			TracePluginDiagnostic(L"Export", pluginClsid, L"QueryInterface", epl ? S_OK : E_NOINTERFACE, 0);
 
 			if(epl)
 			{
@@ -3472,8 +3494,13 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 					}
 					filename = (const TCHAR*)tmp;
 				}
+				TracePluginDiagnostic(L"Export", pluginClsid, L"DOM result", dom ? S_OK : E_NOINTERFACE, dom ? 1 : 0);
 				if(dom)
-					CheckError(epl->Export((long)m_hWnd, filename, dom));
+				{
+					HRESULT exportResult = epl->Export((long)m_hWnd, filename, dom);
+					TracePluginDiagnostic(L"Export", pluginClsid, L"Export", exportResult, 1);
+					CheckError(exportResult);
+				}
 				} 
 				else 
 				{

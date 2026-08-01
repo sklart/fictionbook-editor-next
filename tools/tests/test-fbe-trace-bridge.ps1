@@ -65,4 +65,7 @@ foreach($pattern in @('bool ClearOldLogSessions()', 'TrySnapshot', 'TryEnterCrit
     if(($traceHeader + $traceImplementation) -notlike "*$pattern*") { throw "Missing trace fallback or crash snapshot contract: $pattern" }
 }foreach($pattern in @('TraceDiagnosticEvent("J210", "operation=CSS restore begin")', 'TraceDiagnosticEvent("J211", "operation=CSS restore success")', 'TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=success")')) {
     if($script -notlike "*$pattern*") { throw "Missing CSS restore diagnostic: $pattern" }
+}$mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+foreach($pattern in @('TracePluginDiagnostic', 'type=%s; clsid=%s; operation=%s; dom-returned=%d', 'L"CreateInstance"', 'L"QueryInterface"', 'L"Import"', 'L"Export"')) {
+    if($mainFrameSource -notlike "*$pattern*") { throw "Missing safe plugin diagnostic: $pattern" }
 }
