@@ -1788,25 +1788,25 @@ void CMainFrame::InitPlugins()
 		trace.Format(L"P110 Найдено пользовательских скриптов: %d", m_scripts.GetSize());
 		StartupTrace::Event(L"plugin", trace);
 	}
-	StartupTrace::Mark(L"scripts collected");
+	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
 	QuickScriptsSort(m_scripts, 0, m_scripts.GetSize() - 1);
 	UpScriptsFolders(m_scripts);
-	StartupTrace::Mark(L"scripts sorted");
+	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
 
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
 	HMENU sub = ::GetSubMenu(file, 6);
 	InitPluginsType(sub, L"Import", ID_IMPORT_BASE, m_import_plugins);
-	StartupTrace::Mark(L"import plugins initialized");
+	StartupTrace::Event(L"plugin", L"P140", L"import plugins initialized");
 
 	sub = ::GetSubMenu(file, 7);
 	InitPluginsType(sub, L"Export", ID_EXPORT_BASE, m_export_plugins);
-	StartupTrace::Mark(L"export plugins initialized");
+	StartupTrace::Event(L"plugin", L"P150", L"export plugins initialized");
 
 	sub = ::GetSubMenu(file, 9);
 	m_mru.SetMenuHandle(sub);
 	m_mru.ReadFromRegistry(_Settings.GetKeyPath());
 	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
-	StartupTrace::Mark(L"MRU initialized");
+	StartupTrace::Event(L"plugin", L"P160", L"MRU initialized");
 
 	// Scripts
 	HMENU ManMenu = m_MenuBar.GetMenu();
@@ -1829,7 +1829,7 @@ void CMainFrame::InitPlugins()
 
 LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
-  StartupTrace::Mark(L"main frame OnCreate started");
+  StartupTrace::Event(L"mainframe", L"M100", L"OnCreate started");
   StartupTrace::Event(L"settings", L"G100 Настройки приложения применены");
   m_ctrl_tab = false;
 
@@ -1954,7 +1954,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   AddSimpleReBarBand(hWndTableBar, 0, TRUE, 0, TRUE) ;
   AddSimpleReBarBand(hWndTableBar2, 0, TRUE, 0, TRUE);
   m_rebar = m_hWndToolBar;
-  StartupTrace::Mark(L"menus and toolbars created");
+  StartupTrace::Event(L"mainframe", L"M110", L"menus and toolbars created");
 
   // add editor controls  
   RECT rc;    
@@ -2048,7 +2048,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   m_view.AttachWnd(m_source);
   SetupSci();
   SetSciStyles();
-  StartupTrace::Mark(L"editor controls created");
+  StartupTrace::Event(L"mainframe", L"M120", L"editor controls created");
 
   // initialize a new blank document
   m_doc=new FB::Doc(*this);
@@ -2091,7 +2091,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	m_file_age = ~0;
   }
 
-  StartupTrace::Mark(L"document content created");
+  StartupTrace::Event(L"mainframe", L"M130", L"document content created");
 
   if (_Settings.FastMode()) {
 		m_doc->SetFastMode(true);
@@ -2100,18 +2100,18 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     m_doc->SetFastMode(false);
 
   AttachDocument(m_doc);
-  StartupTrace::Mark(L"document attached");
+  StartupTrace::Event(L"mainframe", L"M140", L"document attached");
   UISetCheck(ID_VIEW_BODY,1);
 
   m_document_tree.Create(m_splitter);
-  StartupTrace::Mark(L"document tree initialized");
+  StartupTrace::Event(L"mainframe", L"M150", L"document tree initialized");
   
   if (AU::_ARGS.start_in_desc_mode) 
 	ShowView(DESC);
 
   // init plugins&MRU list
   InitPlugins();  
-  StartupTrace::Mark(L"plugins and MRU initialized");
+  StartupTrace::Event(L"mainframe", L"M160", L"plugins and MRU initialized");
 
   // setup splitter
   m_splitter.SetSplitterPanes(m_document_tree, m_view);
@@ -2247,7 +2247,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   }
 
   m_need_title_update = true;
-  StartupTrace::Mark(L"main frame OnCreate completed");
+  StartupTrace::Event(L"mainframe", L"M199", L"OnCreate completed");
   return 0;
 }
 

@@ -273,7 +273,7 @@ HINSTANCE resLib;
 
 int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 {
-	StartupTrace::Mark(L"main window setup started");
+	StartupTrace::Event(L"startup", L"S170", L"main window setup started");
 	CMessageLoop theLoop;
 	_Module.AddMessageLoop(&theLoop);
 	CMainFrame wndMain;
@@ -290,14 +290,14 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 
 	U::InitKeycodes();
 	U::InitSettingsHotkeyGroups();
-	StartupTrace::Mark(L"resources and hotkeys initialized");
+	StartupTrace::Event(L"startup", L"S175", L"resources and hotkeys initialized");
 
 	if(wndMain.CreateEx() == NULL)
 	{
 		ATLTRACE(L"Main window creation failed!\n");
 		return 0;
 	}
-	StartupTrace::Mark(L"main window created");
+	StartupTrace::Event(L"startup", L"S190", L"main frame created");
 
 	WINDOWPLACEMENT wpl;
 	if(_Settings.GetWindowPosition(wpl))
@@ -311,10 +311,10 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 		wndMain.GetWindowPlacement(&wpl);
 		_Settings.SetWindowPosition(wpl);
 	}
-	StartupTrace::Mark(L"main window shown");
+	StartupTrace::Event(L"startup", L"S230", L"main frame ready");
 
 	int nRet = theLoop.Run();
-	StartupTrace::Mark(L"message loop exited");
+	StartupTrace::Event(L"startup", L"S900", L"message loop exited");
 
 	_Module.RemoveMessageLoop();
 
@@ -415,6 +415,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   // initialize COM/OLE
   HRESULT hRes = ::OleInitialize(NULL);
   ATLASSERT(SUCCEEDED(hRes));
+  StartupTrace::HResult(L"startup", L"S110", hRes, L"OleInitialize");
   
   // this resolves ATL window thunking problem when Microsoft Layer for Unicode (MSLU) is used
   ::DefWindowProc(NULL, 0, 0, 0L);
@@ -424,7 +425,9 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   // init module
   hRes = _Module.Init(ObjectMap, hInstance, &LIBID_FBELib);
   ATLASSERT(SUCCEEDED(hRes));
-  StartupTrace::Mark(L"COM and application module initialized");
+  StartupTrace::Event(L"startup", L"S120", L"ATL module initialized");
+
+  StartupTrace::Event(L"startup", L"S130", L"type library validation started");
 
   // Installed builds are registered by NSIS. Portable builds register only
   // for the current user, and only when the type library is not available.
@@ -437,9 +440,9 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 
   // initialize registry settings
   U::InitSettings();
-  StartupTrace::Mark(L"settings initialized");
+  StartupTrace::Event(L"startup", L"S140", L"settings initialized");
   CrashDiagnostics::Initialize();
-  StartupTrace::Mark(L"crash diagnostics initialized");
+  StartupTrace::Event(L"startup", L"S150", L"crash diagnostics initialized");
 
   // parse command line
   ParseCommandLine(lpstrCmdLine,_ARGV);
@@ -456,7 +459,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
     ::MessageBox(NULL, msg, cpt,MB_OK|MB_ICONERROR);
     goto out;
   }
-  StartupTrace::Mark(L"Scintilla and Lexilla loaded");
+  StartupTrace::Event(L"startup", L"S160", L"Scintilla and Lexilla loaded");
 
   // register our protocol handler
   IInternetSession *isess;
@@ -472,7 +475,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   }
 
   // run the main loop
-  StartupTrace::Mark(L"protocol handler initialized");
+  StartupTrace::Event(L"startup", L"S180", L"protocol handler initialized");
   nRet = Run(lpstrCmdLine, nCmdShow);
 out:
   _Module.Term();
