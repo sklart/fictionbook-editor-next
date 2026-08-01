@@ -54,6 +54,17 @@ foreach ($entry in $entries) {
     }
 }
 
+$privacyPhrases = @{
+    'en-US' = 'Book text, XML, HTML, Base64, and user-script contents are not recorded; paths are redacted.'
+    'ru-RU' = 'Текст книги, XML, HTML, Base64 и содержимое пользовательских сценариев не записываются; пути обезличиваются.'
+}
+foreach ($language in $privacyPhrases.Keys) {
+    $value = [string]$catalog.strings.'fbe.trace.enable.question'.translations.PSObject.Properties[$language].Value
+    if ($value -notlike ('*' + $privacyPhrases[$language] + '*')) {
+        throw "В предупреждении о диагностической трассировке нет обязательного privacy-текста для $language."
+    }
+}
+
 foreach ($requiredKey in @(
     'fbe.menu.idr_mainframe.popup.file',
     'fbe.menu.idr_mainframe.file.open',
@@ -63,6 +74,7 @@ foreach ($requiredKey in @(
     'fbe.menu.idr_mainframe.popup.style',
     'fbe.menu.idr_mainframe.popup.tools',
     'fbe.menu.idr_mainframe.tools.diagnostic_trace',
+    'fbe.menu.idr_mainframe.tools.open_diagnostic_log',
     'fbe.trace.caption',
     'fbe.trace.enable.question',
     'fbe.trace.enable.completed',

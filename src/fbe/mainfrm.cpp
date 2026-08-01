@@ -3595,17 +3595,7 @@ static bool OpenDiagnosticLog()
 		return reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", currentLogDirectory,
 			NULL, NULL, SW_SHOWNORMAL)) > 32;
 	}
-
-wchar_t diagnosticsDirectory[MAX_PATH] = {};
-	if(FAILED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE,
-		NULL, SHGFP_TYPE_CURRENT, diagnosticsDirectory)))
-		return false;
-
-	CString directory(diagnosticsDirectory);
-	directory += L"\\FBE Next\\Diagnostics";
-	::SHCreateDirectoryEx(NULL, directory, NULL);
-	return reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", directory,
-		NULL, NULL, SW_SHOWNORMAL)) > 32;
+	return false;
 }
 
 LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
