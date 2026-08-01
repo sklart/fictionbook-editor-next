@@ -14,10 +14,34 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Не найден исполняемый файл FBE: $executable"
 }
 
-$traceFile = Join-Path $env:LOCALAPPDATA "FBE Next\fbe-trace.log"
+$traceDirectory = Join-Path $env:LOCALAPPDATA "FBE Next\Diagnostics"
+$traceFile = $null
+
+function Get-TraceFileForProcess([int]$ProcessId) {
+    if (-not (Test-Path -LiteralPath $traceDirectory -PathType Container)) {
+        return $null
+    }
+
+    return Get-ChildItem -LiteralPath $traceDirectory -Filter ("fbe-trace-*-pid{0}*.log" -f $ProcessId) -File |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1
+}
 $previousTraceSetting = $env:FBE_NEXT_TRACE
+$traceRegistryPath = "HKCU:\Software\FBETeam\FictionBook Editor Next\Diagnostics"
+$traceRegistryValue = "TraceNextLaunch"
+$hadTraceRegistryValue = $false
+$previousTraceRegistryValue = $null
 if ($Trace) {
     $env:FBE_NEXT_TRACE = "1"
+    if (Test-Path -LiteralPath $traceRegistryPath) {
+        $existingTraceProperty = Get-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -ErrorAction SilentlyContinue
+        if ($null -ne $existingTraceProperty) {
+            $hadTraceRegistryValue = $true
+            $previousTraceRegistryValue = [int]$existingTraceProperty.$traceRegistryValue
+        }
+    }
+    New-Item -Path $traceRegistryPath -Force | Out-Null
+    New-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -PropertyType DWord -Value 1 -Force | Out-Null
 }
 
 Add-Type @"
@@ -38,9 +62,13 @@ try {
     do {
         Start-Sleep -Milliseconds 500
         $process.Refresh()
-        if ($Trace -and (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
+        if ($Trace) {
+            $candidateTrace = Get-TraceFileForProcess $process.Id
+            if ($candidateTrace) { $traceFile = $candidateTrace.FullName }
+        }
+        if ($Trace -and $traceFile -and (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
             $traceCompleted = Select-String -LiteralPath $traceFile `
-                -SimpleMatch "main frame OnCreate completed" -Quiet
+                -SimpleMatch "code=M160" -Quiet
         }
     }
     while (-not $process.HasExited -and
@@ -64,10 +92,10 @@ try {
     $elapsed = [int]((Get-Date) - $started).TotalSeconds
     Write-Host "Проверка видимого запуска FBE прошла успешно за $elapsed секунд."
     if ($Trace) {
-        if (-not (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
+        if (-not $traceFile -or -not (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
             throw "Не создан диагностический журнал: $traceFile"
         }
-        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "[document]" -Quiet)) {
+        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "category=document;" -Quiet)) {
             throw "В диагностическом журнале нет событий документа: $traceFile"
         }
 
@@ -76,7 +104,7 @@ try {
     }
 }
 catch {
-    if ($Trace -and (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
+    if ($Trace -and $traceFile -and (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
         Write-Warning "Частичный диагностический журнал:"
         Get-Content -LiteralPath $traceFile | Write-Warning
     }
@@ -91,4 +119,12 @@ finally {
         }
     }
     $env:FBE_NEXT_TRACE = $previousTraceSetting
+    if ($Trace) {
+        if ($hadTraceRegistryValue) {
+            Set-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -Value $previousTraceRegistryValue
+        }
+        else {
+            Remove-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -ErrorAction SilentlyContinue
+        }
+    }
 }

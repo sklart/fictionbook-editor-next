@@ -109,7 +109,7 @@ Assert-Contains $source 'fbe.trace.title_suffix' `
 	'заголовок окна должен отмечать диагностический режим'
 Assert-Contains $source 'TraceMainFrameCommand(wParam, lParam);' `
 	'общий журнал должен фиксировать команды главного окна'
-Assert-Contains $source 'StartupTrace::Event(L"command", trace);' `
+Assert-Contains $source 'StartupTrace::Event(L"command", L"C100", trace);' `
 	'команды должны иметь отдельную категорию command'
 Assert-Contains $source 'menu/hotkey/internal' `
 	'для команд из меню и горячих клавиш должен фиксироваться источник WM_COMMAND'
