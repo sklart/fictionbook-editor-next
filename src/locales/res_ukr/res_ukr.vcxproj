@@ -173,6 +173,7 @@
   <ItemGroup>
     <ResourceCompile Include="FBE.rc">
       <Culture Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">0x0419</Culture>
+      <AdditionalInputs>FBEIdrMainframeMenu.generated.rc2;FBESecondaryMenus.generated.rc2;FBEStrings.generated.rc2;FBESmallDialogs.generated.rc2;%(AdditionalInputs)</AdditionalInputs>
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>

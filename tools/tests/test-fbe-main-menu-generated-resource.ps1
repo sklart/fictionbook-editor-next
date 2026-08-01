@@ -16,7 +16,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 & (Join-Path $repoRoot "tools\localization\update-fbe-main-menu-resource.ps1")
-if ($LASTEXITCODE -ne 0) {
+if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) {
     throw "update-fbe-main-menu-resource.ps1 завершился с кодом $LASTEXITCODE."
 }
 
@@ -41,8 +41,8 @@ foreach ($file in $files) {
     }
 
     $menuItemCount = ([regex]::Matches($text, '(?m)^\s*MENUITEM\s+"')).Count
-    if ($menuItemCount -ne 58) {
-        throw "Ожидалось 58 MENUITEM в $($file.Language), получено $menuItemCount."
+    if ($menuItemCount -ne 62) {
+        throw "Ожидалось 62 MENUITEM в $($file.Language), получено $menuItemCount."
     }
 
     $popupCount = ([regex]::Matches($text, '(?m)^\s*POPUP\s+"')).Count
@@ -50,7 +50,7 @@ foreach ($file in $files) {
         throw "Ожидалось 11 POPUP в $($file.Language), получено $popupCount."
     }
 
-    foreach ($id in @('ID_FILE_OPEN','ID_FILE_SAVE','ID_EDIT_REPLACE','ID_VIEW_BODY','ID_INSERT_TABLE','ID_STYLE_LINK','ID_TOOLS_SPELLCHECK','ID_TOOLS_DIAGNOSTIC_TRACE','ID_APP_ABOUT')) {
+    foreach ($id in @('ID_FILE_OPEN','ID_FILE_SAVE','ID_EDIT_REPLACE','ID_VIEW_BODY','ID_INSERT_TABLE','ID_STYLE_LINK','ID_TOOLS_SPELLCHECK','ID_TOOLS_DIAGNOSTIC_TRACE','ID_TOOLS_OPEN_DIAGNOSTIC_LOG','ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER','ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH','ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS','ID_APP_ABOUT')) {
         if ($text -notmatch [regex]::Escape($id)) {
             throw "В generated MENU-файле $($file.Language) нет $id."
         }
