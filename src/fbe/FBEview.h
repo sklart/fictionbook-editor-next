@@ -28,25 +28,25 @@ public:
 	CEdit m_eRows;
 	CUpDownCtrl m_udRows;
 
-	int m_nRows;		// Выбранное число строк
-	bool m_bTitle;		// Нужна ли строка заголовков таблицы (true - да)
+	int m_nRows;		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+	bool m_bTitle;		// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (true - пїЅпїЅ)
 
 	BEGIN_MSG_MAP(CTableDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_ID_HANDLER(IDOK, OnOK)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCloseCmd)
-		COMMAND_RANGE_CODE_HANDLER_EX(IDC_EDIT_TABLE_ROWS, IDC_EDIT_TABLE_ROWS, EN_CHANGE, OnEditChange)//изменения в эдитах
-		REFLECT_NOTIFICATIONS()//Отправить обратно извещающие сообщения от контрола
+		COMMAND_RANGE_CODE_HANDLER_EX(IDC_EDIT_TABLE_ROWS, IDC_EDIT_TABLE_ROWS, EN_CHANGE, OnEditChange)//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+		REFLECT_NOTIFICATIONS()//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	END_MSG_MAP()
 
-	//карта DDX обмена
+	//пїЅпїЅпїЅпїЅпїЅ DDX пїЅпїЅпїЅпїЅпїЅпїЅ
 	BEGIN_DDX_MAP(CTableDlg)
 		DDX_INT(IDC_EDIT_TABLE_ROWS, m_nRows)
 		//DDX_CHECK(IDC_CHECK_TABLE_TITLE, m_bTitle)
 	END_DDX_MAP()
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
-		DoDataExchange(FALSE, IDC_EDIT_TABLE_ROWS);//запись значений из переменных в контрол(по FALSE)
+		DoDataExchange(FALSE, IDC_EDIT_TABLE_ROWS);//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ(пїЅпїЅ FALSE)
 		//m_nRows = 1; 
 		m_bTitle = true;
 
@@ -80,7 +80,7 @@ public:
 		return IDCANCEL;
 	}
 
-	//на изменения в эдите
+	//пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
 	LRESULT OnEditChange(UINT, int id, HWND)
 	{		
 		static BOOL bAlreadyThere = FALSE;
@@ -295,7 +295,7 @@ public:
   CString		    NavURL() { return m_nav_url; }
 
   bool			    Loaded() { bool cmp=m_complete; m_complete=false; return cmp; }
-  void			    Init();
+  bool			    Init();
 
   long			    GetVersionNumber() { return m_mkc ? m_mkc->GetVersionNumber() : -1; }
 

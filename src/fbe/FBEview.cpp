@@ -2904,20 +2904,20 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
   m_complete=true;
 }
 
-void  CFBEView::Init() {
+bool  CFBEView::Init() {
   // save document pointer
   StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
   if(!m_browser)
   {
     StartupTrace::Error(L"webbrowser", L"WB200", L"IWebBrowser2 unavailable");
-    return;
+    return false;
   }
   StartupTrace::Event(L"webbrowser", L"WB200", L"Document begin");
   m_hdoc=m_browser->Document;
   if(!m_hdoc)
   {
     StartupTrace::Error(L"webbrowser", L"WB201", L"HTML document unavailable");
-    return;
+    return false;
   }
   StartupTrace::Event(L"webbrowser", L"WB200", L"Document result");
 
@@ -2985,6 +2985,7 @@ void  CFBEView::Init() {
 //  m_browser->RegisterAsDropTarget = VARIANT_TRUE;
 
   m_initialized=true;
+  return true;
 }
 
 void  CFBEView::OnBeforeNavigate(IDispatch *pDisp,VARIANT *vtUrl,VARIANT *vtFlags,
