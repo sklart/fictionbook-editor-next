@@ -3655,11 +3655,18 @@ LRESULT CMainFrame::OnToolsCopyDiagnosticLogPath(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 {
-	StartupTrace::ClearOldLogSessions();
-	StartupTrace::Event(L"diagnostic", L"DG120", L"old trace sessions cleared");
+	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"));
+	if (::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_confirmation", L"Clear old diagnostic logs? The current log will be preserved."), caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
+		return 0;
+	if (StartupTrace::ClearOldLogSessions())
+	{
+		StartupTrace::Event(L"diagnostic", L"DG120", L"old trace sessions cleared");
+		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_completed", L"Old diagnostic logs were cleared."), caption, MB_OK | MB_ICONINFORMATION);
+	}
+	else
+		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_failed", L"Could not clear old diagnostic logs."), caption, MB_OK | MB_ICONERROR);
 	return 0;
 }
-
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 {
 	const bool enabled = IsDiagnosticTraceEnabledForNextLaunch();

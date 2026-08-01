@@ -176,17 +176,26 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		{
 			for (UINT parameter = 0; parameter < methods[index].parameterCount; ++parameter)
 			{
-				if (!TypeDescMatches(functionDescription->lprgelemdescParam[parameter].tdesc, methods[index].types[parameter], false)) { signatureMatches = false; break; }
+				const ELEMDESC& parameterDescription = functionDescription->lprgelemdescParam[parameter];
+				// All arguments in the core/diagnostic dispatch contract are [in].
+				// The automation return value is represented by elemdescFunc, not a
+				// synthetic [out, retval] parameter in this embedded type info.
+				if (!TypeDescMatches(parameterDescription.tdesc, methods[index].types[parameter], false) ||
+					(parameterDescription.paramdesc.wParamFlags & PARAMFLAG_FIN) == 0 ||
+					(parameterDescription.paramdesc.wParamFlags & (PARAMFLAG_FOUT | PARAMFLAG_FRETVAL)) != 0)
+				{
+					signatureMatches = false; break;
+				}
 			}
 		}
 		CString actualSignature;
 		if (functionDescription)
 		{
-			actualSignature.Format(L"; actual-invkind=%u; actual-params=%u; actual-result-vt=%u; actual-param-vt=", functionDescription->invkind, functionDescription->cParams, functionDescription->elemdescFunc.tdesc.vt);
-			for (UINT parameter = 0; parameter < functionDescription->cParams; ++parameter)
+			actualSignature.Format(L"; actual-invkind=%u; actual-params=%u; actual-result-vt=%u; actual-result-flags=0x%X; actual-param-vt-flags=", functionDescription->invkind, functionDescription->cParams, functionDescription->elemdescFunc.tdesc.vt, functionDescription->elemdescFunc.paramdesc.wParamFlags);
+			for (UINT parameter = 0; parameter < static_cast<UINT>(functionDescription->cParams); ++parameter)
 			{
 				if (parameter) actualSignature += L",";
-				actualSignature.AppendFormat(L"%u", functionDescription->lprgelemdescParam[parameter].tdesc.vt);
+				actualSignature.AppendFormat(L"%u/0x%X", functionDescription->lprgelemdescParam[parameter].tdesc.vt, functionDescription->lprgelemdescParam[parameter].paramdesc.wParamFlags);
 			}
 		}
 		if (functionDescription) externalHelper->ReleaseFuncDesc(functionDescription);

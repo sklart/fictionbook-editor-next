@@ -20,6 +20,16 @@ namespace
 
 	class TraceLock { public: TraceLock() { if (traceLockInitialized) ::EnterCriticalSection(&traceLock); } ~TraceLock() { if (traceLockInitialized) ::LeaveCriticalSection(&traceLock); } };
 
+	CString TrySnapshot(const CString& value)
+	{
+		// Crash reporting must not wait behind a trace writer. An empty snapshot
+		// is safer than deadlocking the unhandled-exception path.
+		if (!traceLockInitialized || !::TryEnterCriticalSection(&traceLock)) return CString();
+		CString snapshot(value);
+		::LeaveCriticalSection(&traceLock);
+		return snapshot;
+	}
+
 	CString ReplaceEnvironmentValue(CString value, const wchar_t* variable, const wchar_t* token)
 	{
 		wchar_t path[MAX_PATH] = {};
@@ -333,17 +343,20 @@ void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VA
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
 CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath.IsEmpty() ? FindLatestTrace(ResolveDiagnosticLogDirectory()) : tracePath; }
 CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separator = tracePath.ReverseFind(L'\\'); return separator >= 0 ? tracePath.Left(separator) : ResolveDiagnosticLogDirectory(); }
-void StartupTrace::ClearOldLogSessions()
+bool StartupTrace::ClearOldLogSessions()
 {
 	TraceLock guard;
+	const CString directory = CurrentLogDirectory();
+	if (directory.IsEmpty() || ::GetFileAttributes(directory) == INVALID_FILE_ATTRIBUTES) return false;
 	const int separator = traceBasePath.ReverseFind(L'\\');
 	const CString session = separator >= 0 ? traceBasePath.Mid(separator + 1) : traceBasePath;
-	CleanupOldTraceSessions(CurrentLogDirectory(), session, 0);
-}CString StartupTrace::LastStageCode() { TraceLock guard; return lastStageCode; }
-CString StartupTrace::LastStageMessage() { TraceLock guard; return lastStageMessage; }
-CString StartupTrace::LastDocumentStage() { TraceLock guard; return lastDocumentStage; }
-CString StartupTrace::LastScriptOperationStage() { TraceLock guard; return lastScriptOperationStage; }
-CString StartupTrace::LastComFailure() { TraceLock guard; return lastComFailure; }
+	CleanupOldTraceSessions(directory, session, 0);
+	return true;
+}CString StartupTrace::LastStageCode() { return TrySnapshot(lastStageCode); }
+CString StartupTrace::LastStageMessage() { return TrySnapshot(lastStageMessage); }
+CString StartupTrace::LastDocumentStage() { return TrySnapshot(lastDocumentStage); }
+CString StartupTrace::LastScriptOperationStage() { return TrySnapshot(lastScriptOperationStage); }
+CString StartupTrace::LastComFailure() { return TrySnapshot(lastComFailure); }
 DWORD StartupTrace::LastWriteError() { TraceLock guard; return lastWriteError; }
 CString StartupTrace::NormalizeLogValue(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, false); }
 CString StartupTrace::SanitizeLogText(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, true); }

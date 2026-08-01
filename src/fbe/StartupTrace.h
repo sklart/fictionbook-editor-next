@@ -27,7 +27,7 @@ namespace StartupTrace
 	CString CurrentLogPath();
 	CString CurrentLogDirectory();
 	// Removes completed diagnostic sessions while preserving the current process trace.
-	void ClearOldLogSessions();
+	bool ClearOldLogSessions();
 	CString LastStageCode();
 	CString LastStageMessage();
 	CString LastDocumentStage();
