@@ -89,6 +89,9 @@ HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
 }
 HRESULT ExternalHelper::GetTypeInfo(UINT typeInfo, LCID lcid, ITypeInfo** resultTypeInfo)
 {
+	if (!resultTypeInfo)
+		return E_POINTER;
+	*resultTypeInfo = NULL;
 	HRESULT result = typeInfo == 0 ? GetEmbeddedTypeInfo(resultTypeInfo) : DISP_E_BADINDEX;
 	CString details;
 	details.Format(L"typeinfo=%u; lcid=%lu; source=embedded", typeInfo, lcid);
