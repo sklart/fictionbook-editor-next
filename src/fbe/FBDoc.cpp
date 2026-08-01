@@ -557,7 +557,9 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		return false;
 	MSG msg;
 	const ULONGLONG navigationStarted = ::GetTickCount64();
-	const DWORD documentCompleteTimeoutMs = 30000;
+	// The first MSHTML initialization under a debugger can exceed 30 seconds.
+	// This remains a bounded wait; normal launches leave as soon as DocumentComplete arrives.
+	const DWORD documentCompleteTimeoutMs = 60000;
 	StartupTrace::Event(L"webbrowser", L"WB130", L"waiting for DocumentComplete");
 	while (!m_body.Loaded())
 	{

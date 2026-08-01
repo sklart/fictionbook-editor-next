@@ -85,3 +85,7 @@ $viewSelectionGuard = '(?s)void CMainFrame::SaveSelection\(VIEW_TYPE vt\).*?m_bo
 if($mainFrameSource -notmatch $viewSelectionGuard) {
     throw 'View selection must tolerate an unavailable HTML document.'
 }
+
+if($documentSource -notlike '*documentCompleteTimeoutMs = 60000*') {
+    throw 'DocumentComplete timeout must tolerate a slow debugger-started MSHTML instance.'
+}
