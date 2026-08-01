@@ -79,6 +79,7 @@ HRESULT ExternalHelper::GetTypeInfoCount(UINT* typeInfoCount)
 {
 	if (!typeInfoCount)
 		return E_POINTER;
+	*typeInfoCount = 0;
 	CComPtr<ITypeInfo> typeInfo;
 	HRESULT result = GetEmbeddedTypeInfo(&typeInfo);
 	if (SUCCEEDED(result))
