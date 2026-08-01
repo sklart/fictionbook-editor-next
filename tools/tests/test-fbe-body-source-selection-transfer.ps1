@@ -91,11 +91,11 @@ Assert-Contains $document 'StartupTrace::Event(L"document", code, trace);' `
 	'создание XML DOM должно фиксироваться в диагностическом журнале'
 Assert-Contains $document 'StartupTrace::HResult(L"com", L"X191", e.Error(), L"CreateDOM");' `
 	'ошибка создания XML DOM должна фиксироваться как COM-событие'
-Assert-Contains $document 'L"Загрузка книги начата"' `
+Assert-Contains $document 'L"book load started"' `
 	'журнал должен фиксировать начало открытия книги'
-Assert-Contains $document 'L"Сохранение книги начато"' `
+Assert-Contains $document 'L"book save started"' `
 	'общий журнал должен фиксировать начало сохранения книги'
-Assert-Contains $document 'L"Запуск пользовательского скрипта"' `
+Assert-Contains $document 'L"script execution started"' `
 	'общий журнал должен фиксировать ручной запуск пользовательского скрипта'
 Assert-Contains $document 'L"recovery"' `
 	'автосохранение должно иметь отдельную категорию recovery'
