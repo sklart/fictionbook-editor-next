@@ -121,7 +121,8 @@ _ATL_FUNC_INFO CFBEView::BeforeNavigateInfo=
       (VT_BYREF | VT_BOOL),
     }
   };
-_ATL_FUNC_INFO CFBEView::VoidInfo=
+_ATL_FUNC_INFO CFBEView::NavigateErrorInfo=
+  { CC_STDCALL, VT_EMPTY, 5, { VT_DISPATCH, (VT_BYREF | VT_VARIANT), (VT_BYREF | VT_VARIANT), (VT_BYREF | VT_VARIANT), (VT_BYREF | VT_BOOL) } };_ATL_FUNC_INFO CFBEView::VoidInfo=
   { CC_STDCALL, VT_EMPTY, 0 };
 _ATL_FUNC_INFO CFBEView::EventInfo=
   { CC_STDCALL, VT_BOOL, 1, { VT_DISPATCH } };
@@ -2988,6 +2989,16 @@ bool  CFBEView::Init() {
   return true;
 }
 
+void CFBEView::OnNavigateError(IDispatch* pDisp, VARIANT* vtUrl, VARIANT* vtFrame, VARIANT* vtStatusCode, VARIANT_BOOL* fCancel)
+{
+  CString url = (vtUrl && V_VT(vtUrl) == VT_BSTR) ? StartupTrace::RedactPath(V_BSTR(vtUrl)) : CString(L"-");
+  long status = 0;
+  if (vtStatusCode && (V_VT(vtStatusCode) == VT_I4 || V_VT(vtStatusCode) == VT_INT))
+    status = V_I4(vtStatusCode);
+  CString details;
+  details.Format(L"url=%s; status=%ld; browser-present=%d", (LPCWSTR)url, status, m_browser ? 1 : 0);
+  StartupTrace::Warning(L"webbrowser", L"WB135", details);
+}
 void  CFBEView::OnBeforeNavigate(IDispatch *pDisp,VARIANT *vtUrl,VARIANT *vtFlags,
 				 VARIANT *vtTargetFrame,VARIANT *vtPostData,
 				 VARIANT *vtHeaders,VARIANT_BOOL *fCancel)

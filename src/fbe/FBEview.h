@@ -217,6 +217,7 @@ protected:
 
   static _ATL_FUNC_INFO DocumentCompleteInfo;
   static _ATL_FUNC_INFO BeforeNavigateInfo;
+  static _ATL_FUNC_INFO NavigateErrorInfo;
   static _ATL_FUNC_INFO	EventInfo;
   static _ATL_FUNC_INFO	VoidEventInfo;
   static _ATL_FUNC_INFO VoidInfo;
@@ -374,6 +375,7 @@ public:
 	BEGIN_SINK_MAP(CFBEView)
 		SINK_ENTRY_INFO(0, DIID_DWebBrowserEvents2, DISPID_DOCUMENTCOMPLETE, OnDocumentComplete, &DocumentCompleteInfo)
 		SINK_ENTRY_INFO(0, DIID_DWebBrowserEvents2, DISPID_BEFORENAVIGATE2, OnBeforeNavigate, &BeforeNavigateInfo)
+		SINK_ENTRY_INFO(0, DIID_DWebBrowserEvents2, DISPID_NAVIGATEERROR, OnNavigateError, &NavigateErrorInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONSELECTIONCHANGE, OnSelChange, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONCONTEXTMENU, OnContextMenu, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONCLICK, OnClick, &EventInfo)
@@ -657,6 +659,7 @@ public:
 
   // DWebBrowserEvents2
   void __stdcall  OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl);
+  void __stdcall  OnNavigateError(IDispatch *pDisp, VARIANT *vtUrl, VARIANT *vtFrame, VARIANT *vtStatusCode, VARIANT_BOOL *fCancel);
   void __stdcall  OnBeforeNavigate(IDispatch *pDisp,VARIANT *vtUrl,VARIANT *vtFlags,
 				   VARIANT *vtTargetFrame,VARIANT *vtPostData,
 				   VARIANT *vtHeaders,VARIANT_BOOL *fCancel);
