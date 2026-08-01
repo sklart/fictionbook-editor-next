@@ -1,6 +1,7 @@
 #pragma once
 
 #include <commctrl.h>
+#include "StartupTrace.h"
 
 namespace FbeScriptDiagnostics {
 
@@ -114,8 +115,16 @@ inline void ShowDetails(HWND owner, const CString& details)
 	} while (button == 1001);
 }
 
+inline void TraceMetadata(const wchar_t* kind, const CString& path, ULONG line, LONG column, HRESULT code, bool descriptionPresent)
+{
+	CString details;
+	details.Format(L"kind=%s; file=%s; line=%lu; column=%ld; hr=0x%08lX; description-present=%d", kind, (LPCWSTR)StartupTrace::SanitizeLogText(FileName(path), 96), line, column, static_cast<unsigned long>(code), descriptionPresent ? 1 : 0);
+	if (FAILED(code)) StartupTrace::Error(L"script-diagnostics", L"SD100", details);
+	else StartupTrace::Event(L"script-diagnostics", L"SD100", details);
+}
 inline void ShowLoad(HWND owner, const CString& path, const CString& message, HRESULT code)
 {
+	TraceMetadata(L"load", path, 0, 0, code, !message.IsEmpty());
 	CString details;
 	details.Format(FbeLoadCString(IDS_SCRIPT_LOAD_DIAGNOSTIC_MSG),
 		FileName(path), path, message, static_cast<unsigned long>(code));
@@ -125,6 +134,7 @@ inline void ShowLoad(HWND owner, const CString& path, const CString& message, HR
 inline void Show(HWND owner, const EXCEPINFO& exception, ULONG line, LONG column)
 {
 	ErrorReported() = true;
+	TraceMetadata(IsLoading() ? L"parse" : L"runtime", ScriptPath(), line + 1, column + 1, exception.scode, exception.bstrDescription != NULL);
 
 	CString format = FbeLoadCString(IsLoading() ? IDS_SCRIPT_PARSE_DIAGNOSTIC_MSG : IDS_SCRIPT_RUNTIME_DIAGNOSTIC_MSG);
 	CString description = exception.bstrDescription != NULL ? CString(exception.bstrDescription) : FbeLoadCString(IDS_SCRIPT_MSG);

@@ -35,4 +35,9 @@ foreach ($contract in @(
     }
 }
 
+foreach ($contract in @(
+    @{ Text = 'TraceMetadata'; Source = $diagnostics; Name = 'metadata-only trace for script errors' },
+    @{ Text = 'file=%s; line=%lu; column=%ld; hr=0x%08lX; description-present=%d'; Source = $diagnostics; Name = 'safe script trace fields' },
+    @{ Text = 'StartupTrace::Error(L"script-diagnostics", L"SD100"'; Source = $diagnostics; Name = 'script trace error severity' }
+)) { if ($contract.Source -notlike "*$($contract.Text)*") { throw "Missing contract: $($contract.Name)" } }
 Write-Host 'Проверка первого этапа диагностики ошибок пользовательских скриптов прошла успешно.'
