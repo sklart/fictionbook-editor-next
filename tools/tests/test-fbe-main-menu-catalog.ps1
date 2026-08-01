@@ -65,6 +65,18 @@ foreach ($language in $privacyPhrases.Keys) {
     }
 }
 
+foreach ($language in $expectedLanguages) {
+    $value = [string]$catalog.strings.'fbe.trace.enable.question'.translations.PSObject.Properties[$language].Value
+    foreach ($technicalToken in @('XML', 'HTML', 'Base64')) {
+        if ($value -notlike ('*' + $technicalToken + '*')) {
+            throw "В privacy-предупреждении для $language отсутствует $technicalToken."
+        }
+    }
+    $completed = [string]$catalog.strings.'fbe.trace.enable.completed'.translations.PSObject.Properties[$language].Value
+    if ($completed -match '(?i)diagnostic log') {
+        throw "В локализованном сообщении о включении осталась англоязычная вставка diagnostic log: $language"
+    }
+}
 foreach ($requiredKey in @(
     'fbe.menu.idr_mainframe.popup.file',
     'fbe.menu.idr_mainframe.file.open',
