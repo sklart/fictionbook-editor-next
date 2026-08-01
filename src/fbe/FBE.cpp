@@ -73,16 +73,49 @@ static HMODULE LoadApplicationLibrary(const CString& fileName)
 	return library;
 }
 
-static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wchar_t* phase)
+static HRESULT FindFunctionDescription(ITypeInfo* typeInfo, MEMBERID memberId, FUNCDESC** functionDescription)
 {
+	if (!typeInfo || !functionDescription) return E_POINTER;
+	*functionDescription = NULL;
+	TYPEATTR* attributes = NULL;
+	HRESULT result = typeInfo->GetTypeAttr(&attributes);
+	if (FAILED(result)) return result;
+	for (UINT index = 0; index < attributes->cFuncs; ++index)
+	{
+		FUNCDESC* candidate = NULL;
+		result = typeInfo->GetFuncDesc(index, &candidate);
+		if (FAILED(result)) break;
+		if (candidate->memid == memberId)
+		{
+			*functionDescription = candidate;
+			result = S_OK;
+			break;
+		}
+		typeInfo->ReleaseFuncDesc(candidate);
+	}
+	typeInfo->ReleaseTypeAttr(attributes);
+	return *functionDescription ? S_OK : (FAILED(result) ? result : DISP_E_MEMBERNOTFOUND);
+}
+
+static bool TypeDescMatches(const TYPEDESC& typeDescription, VARTYPE expectedType, bool expectedPointer)
+{
+	if (expectedPointer)
+		return typeDescription.vt == VT_PTR && typeDescription.lptdesc && typeDescription.lptdesc->vt == expectedType;
+	return typeDescription.vt == expectedType;
+}
+
+static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wchar_t* phase,
+	bool* coreCompatible = NULL, bool* diagnosticCompatible = NULL)
+{
+	if (coreCompatible) *coreCompatible = false;
+	if (diagnosticCompatible) *diagnosticCompatible = false;
 	if (!typeLibrary)
 		return E_POINTER;
 
 	TLIBATTR* attributes = NULL;
 	HRESULT result = typeLibrary->GetLibAttr(&attributes);
 	StartupTrace::HResult(L"typelib", L"TL130", result, L"GetLibAttr");
-	if (FAILED(result))
-		return result;
+	if (FAILED(result)) return result;
 	CString details;
 	details.Format(L"phase=%s; libid=%08lX; version=%u.%u; lcid=%lu; syskind=%u; typeinfo=%u", phase,
 		attributes->guid.Data1, attributes->wMajorVerNum, attributes->wMinorVerNum, attributes->lcid,
@@ -94,48 +127,91 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 	result = typeLibrary->GetTypeInfoOfGuid(IID_IExternalHelper, &externalHelper);
 	StartupTrace::HResult(L"typelib", L"TL140", result, L"GetTypeInfoOfGuid(IID_IExternalHelper)");
 	if (FAILED(result)) return result;
-	struct RequiredMethod { const wchar_t* name; DISPID dispid; bool core; };
+
+	static const VARTYPE inflateParagraphsTypes[] = { VT_DISPATCH };
+	static const VARTYPE getExtendedStyleTypes[] = { VT_BSTR };
+	static const VARTYPE traceScriptTypes[] = { VT_BSTR, VT_BSTR };
+	struct RequiredMethod { const wchar_t* name; DISPID dispid; bool core; const VARTYPE* types; UINT parameterCount; VARTYPE resultType; };
 	const RequiredMethod methods[] = {
-		{ L"GetStylePath", 5, true }, { L"InflateParagraphs", 7, true }, { L"GetUUID", 8, true },
-		{ L"GetExtendedStyle", 12, true }, { L"GetNBSP", 19, true }, { L"GetProgramVersion", 22, true },
-		{ L"IsDiagnosticTraceEnabled", 29, false }, { L"TraceScript", 30, false }
+		{ L"GetStylePath", 5, true, NULL, 0, VT_BSTR },
+		{ L"InflateParagraphs", 7, true, inflateParagraphsTypes, _countof(inflateParagraphsTypes), VT_VOID },
+		{ L"GetUUID", 8, true, NULL, 0, VT_BSTR },
+		{ L"GetExtendedStyle", 12, true, getExtendedStyleTypes, _countof(getExtendedStyleTypes), VT_I4 },
+		{ L"GetNBSP", 19, true, NULL, 0, VT_BSTR },
+		{ L"GetProgramVersion", 22, true, NULL, 0, VT_BSTR },
+		{ L"IsDiagnosticTraceEnabled", 29, false, NULL, 0, VT_I4 },
+		{ L"TraceScript", 30, false, traceScriptTypes, _countof(traceScriptTypes), VT_VOID }
 	};
-	CString missingCore, missingDiagnostic, wrongCoreDispids, wrongDiagnosticDispids;
+	CString missingCore, missingDiagnostic, wrongCoreDispids, wrongDiagnosticDispids, wrongCoreSignatures, wrongDiagnosticSignatures;
 	for (int index = 0; index < _countof(methods); ++index)
 	{
 		LPOLESTR name = const_cast<LPOLESTR>(methods[index].name);
 		MEMBERID memberId = DISPID_UNKNOWN;
 		HRESULT methodResult = externalHelper->GetIDsOfNames(&name, 1, &memberId);
 		CString method; method.Format(L"method=%s; expected-dispid=%ld; actual-dispid=%ld", methods[index].name, static_cast<long>(methods[index].dispid), static_cast<long>(memberId));
+		CString& missing = methods[index].core ? missingCore : missingDiagnostic;
+		CString& wrongDispids = methods[index].core ? wrongCoreDispids : wrongDiagnosticDispids;
+		CString& wrongSignatures = methods[index].core ? wrongCoreSignatures : wrongDiagnosticSignatures;
 		if (FAILED(methodResult))
 		{
-			CString& missing = methods[index].core ? missingCore : missingDiagnostic;
 			if (!missing.IsEmpty()) missing += L","; missing += methods[index].name;
 			if (methods[index].core) StartupTrace::HResult(L"typelib", L"TL151", methodResult, method);
 			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL152", method); }
+			continue;
 		}
-		else if (memberId != methods[index].dispid)
+		if (memberId != methods[index].dispid)
 		{
-			CString& wrong = methods[index].core ? wrongCoreDispids : wrongDiagnosticDispids;
-			if (!wrong.IsEmpty()) wrong += L","; wrong += methods[index].name;
+			if (!wrongDispids.IsEmpty()) wrongDispids += L","; wrongDispids += methods[index].name;
 			if (methods[index].core) { method += L"; core-incompatible"; StartupTrace::Error(L"typelib", L"TL153", method); }
 			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL154", method); }
+			continue;
+		}
+
+		FUNCDESC* functionDescription = NULL;
+		const HRESULT functionResult = FindFunctionDescription(externalHelper, memberId, &functionDescription);
+		bool signatureMatches = SUCCEEDED(functionResult) && functionDescription && functionDescription->invkind == INVOKE_FUNC &&
+			functionDescription->cParams == methods[index].parameterCount && functionDescription->elemdescFunc.tdesc.vt == methods[index].resultType;
+		if (signatureMatches)
+		{
+			for (UINT parameter = 0; parameter < methods[index].parameterCount; ++parameter)
+			{
+				if (!TypeDescMatches(functionDescription->lprgelemdescParam[parameter].tdesc, methods[index].types[parameter], false)) { signatureMatches = false; break; }
+			}
+		}
+		CString actualSignature;
+		if (functionDescription)
+		{
+			actualSignature.Format(L"; actual-invkind=%u; actual-params=%u; actual-result-vt=%u; actual-param-vt=", functionDescription->invkind, functionDescription->cParams, functionDescription->elemdescFunc.tdesc.vt);
+			for (UINT parameter = 0; parameter < functionDescription->cParams; ++parameter)
+			{
+				if (parameter) actualSignature += L",";
+				actualSignature.AppendFormat(L"%u", functionDescription->lprgelemdescParam[parameter].tdesc.vt);
+			}
+		}
+		if (functionDescription) externalHelper->ReleaseFuncDesc(functionDescription);
+		if (!signatureMatches)
+		{
+			if (!wrongSignatures.IsEmpty()) wrongSignatures += L","; wrongSignatures += methods[index].name;
+			method.AppendFormat(L"; signature-hr=0x%08lX; core-compatible=%d", static_cast<unsigned long>(functionResult), methods[index].core ? 0 : 1); method += actualSignature;
+			if (methods[index].core) StartupTrace::Error(L"typelib", L"TL160", method);
+			else { method += L"; diagnostic-bridge=degraded"; StartupTrace::Warning(L"typelib", L"TL161", method); }
 		}
 		else StartupTrace::Event(L"typelib", L"TL150", method);
 	}
-	CString missing = missingCore;
-	if (!missingDiagnostic.IsEmpty()) { if (!missing.IsEmpty()) missing += L","; missing += missingDiagnostic; }
-	CString wrong = wrongCoreDispids;
-	if (!wrongDiagnosticDispids.IsEmpty()) { if (!wrong.IsEmpty()) wrong += L","; wrong += wrongDiagnosticDispids; }
+	const bool coreIsCompatible = missingCore.IsEmpty() && wrongCoreDispids.IsEmpty() && wrongCoreSignatures.IsEmpty();
+	const bool diagnosticIsCompatible = missingDiagnostic.IsEmpty() && wrongDiagnosticDispids.IsEmpty() && wrongDiagnosticSignatures.IsEmpty();
+	if (coreCompatible) *coreCompatible = coreIsCompatible;
+	if (diagnosticCompatible) *diagnosticCompatible = diagnosticIsCompatible;
+	CString missing = missingCore; if (!missingDiagnostic.IsEmpty()) { if (!missing.IsEmpty()) missing += L","; missing += missingDiagnostic; }
+	CString wrong = wrongCoreDispids; if (!wrongDiagnosticDispids.IsEmpty()) { if (!wrong.IsEmpty()) wrong += L","; wrong += wrongDiagnosticDispids; }
+	CString signatures = wrongCoreSignatures; if (!wrongDiagnosticSignatures.IsEmpty()) { if (!signatures.IsEmpty()) signatures += L","; signatures += wrongDiagnosticSignatures; }
 	CString summary;
-	summary.Format(L"phase=%s; core-compatible=%d; diagnostic-compatible=%d; missing-methods=%s; wrong-dispids=%s", phase,
-		missingCore.IsEmpty() && wrongCoreDispids.IsEmpty() ? 1 : 0,
-		missingDiagnostic.IsEmpty() && wrongDiagnosticDispids.IsEmpty() ? 1 : 0, (LPCWSTR)missing, (LPCWSTR)wrong);
-	if (!missingCore.IsEmpty() || !wrongCoreDispids.IsEmpty()) { StartupTrace::Error(L"typelib", L"TL155", summary); return E_NOINTERFACE; }
-	if (!missingDiagnostic.IsEmpty() || !wrongDiagnosticDispids.IsEmpty()) StartupTrace::Warning(L"typelib", L"TL156", summary);
-	else StartupTrace::Event(L"typelib", L"TL157", summary);	return S_OK;
+	summary.Format(L"phase=%s; core-compatible=%d; diagnostic-compatible=%d; missing-methods=%s; wrong-dispids=%s; wrong-signatures=%s", phase, coreIsCompatible ? 1 : 0, diagnosticIsCompatible ? 1 : 0, (LPCWSTR)missing, (LPCWSTR)wrong, (LPCWSTR)signatures);
+	if (!coreIsCompatible) { StartupTrace::Error(L"typelib", L"TL155", summary); return E_NOINTERFACE; }
+	if (!diagnosticIsCompatible) StartupTrace::Warning(L"typelib", L"TL156", summary);
+	else StartupTrace::Event(L"typelib", L"TL157", summary);
+	return S_OK;
 }
-
 static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 {
 	StartupTrace::Event(L"typelib", L"TL100", L"registered FBELib validation started");
