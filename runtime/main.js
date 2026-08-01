@@ -545,14 +545,16 @@ function LoadFromDOM(dom, lang)
 	TraceScript("J330", "operation=LoadXSL");
 	var xsl=LoadXSL(xpath, lang);
 	TraceScript("J331", "operation=LoadXSL result");
+	if(!xsl) return false;
 	TraceScript("J340", "operation=TransformXML");
 	var ret=TransformXML(xsl, dom);
 	TraceScript("J341", "operation=TransformXML result");
+	if(!ret) return false;
 	TraceScript("J350", "operation=ShowDescElements");
 	ShowDescElements();
 	TraceScript("J351", "operation=ShowDescElements result");
-	if(ret) TraceScript("J399", "operation=LoadFromDOM success");
-	return ret;
+	TraceScript("J399", "operation=LoadFromDOM success");
+	return true;
 }
 function XmlFromText(text)
 {
