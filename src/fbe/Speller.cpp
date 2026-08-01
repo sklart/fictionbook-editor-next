@@ -790,6 +790,11 @@ void CSpeller::HighlightMisspells()
 
 void CSpeller::CheckCurrentPage()
 {
+	if (!m_doc2 || !m_doc3 || !m_doc4 || !m_scrollElement || !m_fbw_body)
+	{
+		StartupTrace::Warning(L"speller", L"SP110", L"CheckCurrentPage skipped: HTML document is not ready");
+		return;
+	}
 	CWords words;
 	std::pair< std::set<long>::iterator, bool > pr;
 	int currNum, numChanges = 0;
