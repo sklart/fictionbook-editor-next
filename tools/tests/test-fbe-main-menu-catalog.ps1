@@ -63,6 +63,15 @@ foreach ($requiredKey in @(
     'fbe.menu.idr_mainframe.popup.style',
     'fbe.menu.idr_mainframe.popup.tools',
     'fbe.menu.idr_mainframe.tools.diagnostic_trace',
+    'fbe.trace.caption',
+    'fbe.trace.enable.question',
+    'fbe.trace.enable.completed',
+    'fbe.trace.disable.completed',
+    'fbe.trace.warning',
+    'fbe.trace.already_enabled',
+    'fbe.trace.title_suffix',
+    'fbe.trace.change_failed',
+    'fbe.trace.open_failed',
     'fbe.menu.idr_mainframe.popup.help'
 )) {
     if (-not $catalog.strings.PSObject.Properties[$requiredKey]) {
