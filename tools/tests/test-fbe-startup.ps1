@@ -101,6 +101,17 @@ try {
         if (Select-String -LiteralPath $traceFile -SimpleMatch "file:///" -Quiet) { throw "В диагностическом журнале обнаружен file URL: $traceFile" }
         $traceScriptLookups = @(Select-String -LiteralPath $traceFile -Pattern "code=XH120;.*method=TraceScript")
         if ($traceScriptLookups.Count -gt 1) { throw "TraceScript name-resolution повторяется $($traceScriptLookups.Count) раз: $traceFile" }
+        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "diagnostic trace bridge=available" -Quiet)) {
+            throw "В диагностическом журнале не подтверждён доступный TraceScript bridge: $traceFile"
+        }
+        foreach ($code in @('J100', 'J400', 'J500', 'J599', 'J299')) {
+            if (-not (Select-String -LiteralPath $traceFile -SimpleMatch ("code=" + $code) -Quiet)) {
+                throw "В диагностическом журнале нет обязательной JavaScript-стадии: $code"
+            }
+        }
+        if (Select-String -LiteralPath $traceFile -SimpleMatch 'level=error' -Quiet) {
+            throw "Успешная загрузка создала error-событие: $traceFile"
+        }
         if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "category=document;" -Quiet)) {
             throw "В диагностическом журнале нет событий документа: $traceFile"
         }
