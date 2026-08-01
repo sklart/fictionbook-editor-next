@@ -73,3 +73,7 @@ $fastModeSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FB
 foreach($pattern in @('void Doc::FastMode()', 'm_body.HasDoc()', 'L"D230"', 'L"D231"', 'L"D233"')) {
     if($fastModeSource -notlike "*$pattern*") { throw "Missing safe FastMode startup guard: $pattern" }
 }
+$viewCommandGuard = '(?s)CheckCommand\(WORD wID\).*?if \(!HasDoc\(\)\)\s*return false;'
+if($viewSource -notmatch $viewCommandGuard) {
+    throw 'Command availability must not dereference a document before it is attached.'
+}

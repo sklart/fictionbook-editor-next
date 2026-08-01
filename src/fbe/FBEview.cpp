@@ -237,8 +237,9 @@ LRESULT CFBEView::OnStyleFootnote(WORD, WORD, HWND, BOOL&) {
   return 0;
 }
 
-bool CFBEView::CheckCommand(WORD wID)
-{
+bool CFBEView::CheckCommand(WORD wID) {
+  if (!HasDoc())
+    return false;
   if (!m_normalize)
     return false;
   switch (wID) {
