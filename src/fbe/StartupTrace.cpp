@@ -382,7 +382,7 @@ void StartupTrace::Start()
 		opened = OpenTraceFile(directory, time);
 		if (!opened) { lastWriteError = ::GetLastError() ? ::GetLastError() : primaryError; return; }
 	}
-	CleanupOldTraceSessions(CurrentLogDirectory(), traceBasePath.Mid(traceBasePath.ReverseFind(L'\\') + 1), 10);
+	std::vector<CString> retentionDirectories; ResolveDiagnosticLogDirectories(retentionDirectories); const CString activeSession = traceBasePath.Mid(traceBasePath.ReverseFind(L'\\') + 1); for (size_t index = 0; index < retentionDirectories.size(); ++index) { const CString preserve = tracePath.Left(retentionDirectories[index].GetLength()).CompareNoCase(retentionDirectories[index]) == 0 ? activeSession : CString(); CleanupOldTraceSessions(retentionDirectories[index], preserve, 10); }
 	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = traceSegment = 0;
 	Event(L"environment", L"E000", L"FictionBook Editor diagnostic trace started");
 	WriteEnvironmentHeader();
@@ -434,7 +434,7 @@ void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CS
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
 CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath.IsEmpty() ? FindLatestTrace(CString()) : tracePath; }
-CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separator = tracePath.ReverseFind(L'\\'); return separator >= 0 ? tracePath.Left(separator) : ResolveDiagnosticLogDirectory(); }
+CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const CString path = tracePath.IsEmpty() ? FindLatestTrace(CString()) : tracePath; const int separator = path.ReverseFind(L'\\'); return separator >= 0 ? path.Left(separator) : ResolveDiagnosticLogDirectory(); }
 bool StartupTrace::ClearOldLogSessions()
 {
 	TraceLock guard;

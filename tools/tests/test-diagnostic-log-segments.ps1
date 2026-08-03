@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.cpp')
-foreach($required in @('ResolveDiagnosticLogDirectories', 'ParseDiagnosticLogName', 'segment > latestSegment', 'FBE Next Diagnostics', 'time.wMilliseconds')) {
+foreach($required in @('ResolveDiagnosticLogDirectories', 'ParseDiagnosticLogName', 'segment > latestSegment', 'FBE Next Diagnostics', 'time.wMilliseconds', 'retentionDirectories', 'CurrentLogDirectory() { TraceLock guard; const CString path = tracePath.IsEmpty() ? FindLatestTrace')) {
     if($source.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing diagnostic log lookup contract: $required" }
 }
 $files = @(
