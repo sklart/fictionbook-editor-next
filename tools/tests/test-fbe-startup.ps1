@@ -86,9 +86,13 @@ try {
     }
 
     if (-not [FbeStartupWindow]::PostMessage([IntPtr]$process.MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { throw "Не удалось отправить WM_CLOSE FBE." }
-    [void]$process.WaitForExit(10000)
+    [void]$process.WaitForExit(3000)
     $process.Refresh()
-    if (-not $process.HasExited) { throw "FBE не завершился штатно после WM_CLOSE." }
+    if (-not $process.HasExited) {
+        if (-not [FbeStartupWindow]::PostMessage([IntPtr]$process.MainWindowHandle, 0x0111, [IntPtr]0xE141, [IntPtr]::Zero)) { throw "Не удалось отправить команду Exit FBE." }
+        [void]$process.WaitForExit(10000); $process.Refresh()
+    }
+    if (-not $process.HasExited) { throw "FBE не завершился штатно после WM_CLOSE и команды Exit." }
     if ($Trace) { foreach($code in @("S900","S999")) { if (-not (Select-String -LiteralPath $traceFile -SimpleMatch ("code=" + $code) -Quiet)) { throw "После WM_CLOSE в журнале нет ${code}: $traceFile" } }; $bytes=[IO.File]::ReadAllBytes($traceFile); try { [void]([Text.UTF8Encoding]::new($false,$true)).GetString($bytes) } catch { throw "Диагностический журнал не является корректным UTF-8: $traceFile" }; if ($bytes.Length -eq 0 -or $bytes[$bytes.Length - 1] -ne 10) { throw "Последняя строка диагностического журнала обрезана: $traceFile" } }
     $elapsed = [int]((Get-Date) - $started).TotalSeconds
     Write-Host "Проверка видимого запуска FBE прошла успешно за $elapsed секунд."
