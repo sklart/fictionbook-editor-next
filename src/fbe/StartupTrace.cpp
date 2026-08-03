@@ -454,8 +454,8 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 	details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L"");
 	if(exceptionInfo)
 	{
-		details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.source=%s; excep.description=%s; excep.help=%d; excep.helpContext=%lu; excep.deferred=%d",
-			exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode),
+		details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.source-present=%d; excep.description-present=%d; excep.source=%s; excep.description=%s; excep.help=%d; excep.helpContext=%lu; excep.deferred=%d",
+			exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode), exceptionInfo->bstrSource ? 1 : 0, exceptionInfo->bstrDescription ? 1 : 0,
 			(LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrSource),
 			(LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrDescription),
 			exceptionInfo->bstrHelpFile ? 1 : 0, exceptionInfo->dwHelpContext,
@@ -473,8 +473,8 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 		errorInfo->GetHelpContext(&helpContext);
 		wchar_t guidText[64] = {};
 		::StringFromGUID2(guid, guidText, _countof(guidText));
-		details.AppendFormat(L"; errorInfo.guid=%s; errorInfo.source=%s; errorInfo.description=%s; errorInfo.helpContext=%lu; errorInfo.help=%d",
-			guidText, (LPCWSTR)SanitizeExceptionText(source),
+		details.AppendFormat(L"; errorInfo.guid=%s; errorInfo.source-present=%d; errorInfo.description-present=%d; errorInfo.source=%s; errorInfo.description=%s; errorInfo.helpContext=%lu; errorInfo.help=%d",
+			guidText, source ? 1 : 0, description ? 1 : 0, (LPCWSTR)SanitizeExceptionText(source),
 			(LPCWSTR)SanitizeExceptionText(description), helpContext, helpFile ? 1 : 0);
 		::SysFreeString(source);
 		::SysFreeString(description);
@@ -541,5 +541,5 @@ DWORD StartupTrace::LastWriteError() { TraceLock guard; return lastWriteError; }
 CString StartupTrace::NormalizeLogValue(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, false); }
 CString StartupTrace::SanitizeLogText(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, true); }
 CString StartupTrace::RedactPath(const wchar_t* text) { return Sanitize(text, 512, true); }
-CString StartupTrace::SanitizeExceptionText(const wchar_t* text) { return Sanitize(text, 256, true); }
+CString StartupTrace::SanitizeExceptionText(const wchar_t* text) { return SanitizeScriptDetails(text); }
 void StartupTrace::Finish() { if (traceFile != INVALID_HANDLE_VALUE) { Event(L"startup", L"S999", L"process shutdown"); Flush(); ::CloseHandle(traceFile); traceFile = INVALID_HANDLE_VALUE; traceBasePath.Empty(); } if (traceLockInitialized) { ::DeleteCriticalSection(&traceLock); traceLockInitialized = false; } }
