@@ -556,20 +556,23 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   StartupTrace::Event(L"startup", L"S160", L"Scintilla and Lexilla loaded");
 
   // register our protocol handler
-  IInternetSession *isess;
-  if (SUCCEEDED(::CoInternetGetSession(0, &isess, 0))) {
-    IClassFactory *cf;
-    if (SUCCEEDED(_Module.GetClassObject(CLSID_MemProtocol, IID_IClassFactory, (void**)&cf))) {
-      HRESULT hr=isess->RegisterNameSpace(cf,CLSID_MemProtocol,L"fbw-internal",0,NULL,0);
-      if (FAILED(hr))
-	      ATLTRACE("Failed to register protocol handler: %x\n",hr);
+  IInternetSession *isess = NULL;
+  hRes = ::CoInternetGetSession(0, &isess, 0);
+  StartupTrace::HResult(L"startup", L"S180", hRes, L"CoInternetGetSession");
+  if (SUCCEEDED(hRes)) {
+    IClassFactory *cf = NULL;
+    hRes = _Module.GetClassObject(CLSID_MemProtocol, IID_IClassFactory, (void**)&cf);
+    StartupTrace::HResult(L"startup", L"S181", hRes, L"_Module.GetClassObject(CMemProtocol)");
+    if (SUCCEEDED(hRes)) {
+      hRes = isess->RegisterNameSpace(cf,CLSID_MemProtocol,L"fbw-internal",0,NULL,0);
+      StartupTrace::HResult(L"startup", L"S182", hRes, L"IInternetSession::RegisterNameSpace");
+      if (FAILED(hRes)) ATLTRACE("Failed to register protocol handler: %x\n",hRes);
       cf->Release();
     }
     isess->Release();
   }
 
   // run the main loop
-  StartupTrace::Event(L"startup", L"S180", L"protocol handler initialized");
   nRet = Run(lpstrCmdLine, nCmdShow);
 out:
   _Module.Term();
