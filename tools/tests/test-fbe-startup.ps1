@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Configuration = "Release",
     [int]$TimeoutSeconds = 90,
@@ -14,17 +14,12 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Не найден исполняемый файл FBE: $executable"
 }
 
-$traceDirectory = Join-Path $env:LOCALAPPDATA "FBE Next\Diagnostics"
+$traceDirectories = @(Join-Path $env:LOCALAPPDATA "FBE Next\Diagnostics", Join-Path $env:TEMP "FBE Next Diagnostics")
 $traceFile = $null
 
 function Get-TraceFileForProcess([int]$ProcessId) {
-    if (-not (Test-Path -LiteralPath $traceDirectory -PathType Container)) {
-        return $null
-    }
-
-    return Get-ChildItem -LiteralPath $traceDirectory -Filter ("fbe-trace-*-pid{0}*.log" -f $ProcessId) -File |
-        Sort-Object LastWriteTimeUtc -Descending |
-        Select-Object -First 1
+    $files = foreach($directory in $traceDirectories) { if (Test-Path -LiteralPath $directory -PathType Container) { Get-ChildItem -LiteralPath $directory -Filter ("fbe-trace-*-pid{0}*.log" -f $ProcessId) -File } }
+    return $files | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 }
 $previousTraceSetting = $env:FBE_NEXT_TRACE
 $traceRegistryPath = "HKCU:\Software\FBETeam\FictionBook Editor Next\Diagnostics"
@@ -51,6 +46,7 @@ using System.Runtime.InteropServices;
 public static class FbeStartupWindow {
     [DllImport("user32.dll")]
     public static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 }
 "@
 
@@ -89,6 +85,11 @@ try {
         throw "FBE создал главное окно, но оно скрыто."
     }
 
+    if (-not [FbeStartupWindow]::PostMessage([IntPtr]$process.MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { throw "Не удалось отправить WM_CLOSE FBE." }
+    [void]$process.WaitForExit(10000)
+    $process.Refresh()
+    if (-not $process.HasExited) { throw "FBE не завершился штатно после WM_CLOSE." }
+    if ($Trace) { foreach($code in @("S900","S999")) { if (-not (Select-String -LiteralPath $traceFile -SimpleMatch ("code=" + $code) -Quiet)) { throw "После WM_CLOSE в журнале нет ${code}: $traceFile" } }; $bytes=[IO.File]::ReadAllBytes($traceFile); try { [void]([Text.UTF8Encoding]::new($false,$true)).GetString($bytes) } catch { throw "Диагностический журнал не является корректным UTF-8: $traceFile" }; if ($bytes.Length -eq 0 -or $bytes[$bytes.Length - 1] -ne 10) { throw "Последняя строка диагностического журнала обрезана: $traceFile" } }
     $elapsed = [int]((Get-Date) - $started).TotalSeconds
     Write-Host "Проверка видимого запуска FBE прошла успешно за $elapsed секунд."
     if ($Trace) {
