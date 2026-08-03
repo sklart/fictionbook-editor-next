@@ -440,7 +440,7 @@ bool StartupTrace::ClearOldLogSessions()
 	TraceLock guard;
 	std::vector<CString> directories;
 	ResolveDiagnosticLogDirectories(directories);
-	const int separator = traceBasePath.ReverseFind(L'\');
+	const int separator = traceBasePath.ReverseFind(L'\\');
 	const CString activeSession = separator >= 0 ? traceBasePath.Mid(separator + 1) : traceBasePath;
 	bool foundDirectory = false;
 	for (size_t index = 0; index < directories.size(); ++index)
