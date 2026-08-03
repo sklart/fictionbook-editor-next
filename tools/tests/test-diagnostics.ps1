@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 Запускает полный набор контрактов диагностической инфраструктуры FBE.
 #>
@@ -13,6 +13,8 @@ $tests = @(
     'test-fbe-main-menu-connected-resource.ps1',
     'test-fbe-main-menu-generated-resource.ps1',
     'test-fbe-main-menu-catalog.ps1',
+    'test-diagnostic-build-artifacts.ps1',
+    'test-resource-id-safety.ps1',
     'test-diagnostic-localization.ps1',
     'test-diagnostic-log-segments.ps1',
     'test-diagnostic-trace-privacy.ps1',
