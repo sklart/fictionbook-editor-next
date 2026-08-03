@@ -339,6 +339,41 @@ static void ApplyRuntimeMenuCommandTexts(HMENU menu)
 	}
 }
 
+static int FindMenuPositionByCommand(HMENU menu, UINT commandId)
+{
+	if(menu == NULL)
+		return -1;
+	const int count = ::GetMenuItemCount(menu);
+	for(int position = 0; position < count; ++position)
+		if(::GetMenuItemID(menu, position) == commandId)
+			return position;
+	return -1;
+}
+
+static int FindTopLevelMenuPositionByCommand(HMENU menu, UINT commandId)
+{
+	if(menu == NULL)
+		return -1;
+	const int count = ::GetMenuItemCount(menu);
+	for(int position = 0; position < count; ++position)
+		if(FindMenuPositionByCommand(::GetSubMenu(menu, position), commandId) >= 0)
+			return position;
+	return -1;
+}
+
+static int FindTopLevelScriptsMenuPosition(HMENU menu)
+{
+	if(menu == NULL)
+		return -1;
+	const int count = ::GetMenuItemCount(menu);
+	for(int position = 0; position < count; ++position)
+	{
+		HMENU subMenu = ::GetSubMenu(menu, position);
+		if(subMenu != NULL && ::GetMenuItemID(subMenu, 0) == IDCANCEL)
+			return position;
+	}
+	return -1;
+}
 static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 {
 	if(menu == NULL)
@@ -350,8 +385,21 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 	SetRuntimeMenuItemTextByPosition(menu, 3, L"fbe.menu.idr_mainframe.popup.insert");
 	SetRuntimeMenuItemTextByPosition(menu, 4, L"fbe.menu.idr_mainframe.popup.style");
 	SetRuntimeMenuItemTextByPosition(menu, 5, L"fbe.menu.idr_mainframe.popup.tools");
-	SetRuntimeMenuItemTextByPosition(menu, 6, L"fbe.menu.idr_mainframe.popup.scripts");
-	SetRuntimeMenuItemTextByPosition(menu, 7, L"fbe.menu.idr_mainframe.popup.help");
+	const int diagnosticTopPosition = FindTopLevelMenuPositionByCommand(menu, ID_TOOLS_DIAGNOSTIC_TRACE);
+	if(diagnosticTopPosition >= 0)
+		SetRuntimeMenuItemTextByPosition(menu, diagnosticTopPosition, L"fbe.menu.idr_mainframe.popup.diagnostics");
+	const int scriptsPosition = FindTopLevelScriptsMenuPosition(menu);
+	if(scriptsPosition >= 0)
+		SetRuntimeMenuItemTextByPosition(menu, scriptsPosition, L"fbe.menu.idr_mainframe.popup.scripts");
+	const int helpPosition = FindTopLevelMenuPositionByCommand(menu, ID_APP_ABOUT);
+	if(helpPosition >= 0)
+	{
+		SetRuntimeMenuItemTextByPosition(menu, helpPosition, L"fbe.menu.idr_mainframe.popup.help");
+		HMENU helpMenu = ::GetSubMenu(menu, helpPosition);
+		const int diagnosticsPosition = FindMenuPositionByCommand(helpMenu, ID_TOOLS_DIAGNOSTIC_TRACE);
+		if(diagnosticsPosition >= 0)
+			SetRuntimeMenuItemTextByPosition(helpMenu, diagnosticsPosition, L"fbe.menu.idr_mainframe.popup.diagnostics");
+	}
 
 	HMENU fileMenu = ::GetSubMenu(menu, 0);
 	if(fileMenu != NULL)
@@ -371,7 +419,7 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 			SetRuntimePlainMenuItemTextByPosition(recentMenu, 0, L"fbe.menu.idr_mainframe.recent.empty");
 	}
 
-	HMENU scriptsMenu = ::GetSubMenu(menu, 6);
+	HMENU scriptsMenu = scriptsPosition >= 0 ? ::GetSubMenu(menu, scriptsPosition) : NULL;
 	if(scriptsMenu != NULL && ::GetMenuItemID(scriptsMenu, 0) == IDCANCEL)
 		SetRuntimePlainMenuItemTextByPosition(scriptsMenu, 0, L"fbe.menu.idr_mainframe.scripts.empty");
 
