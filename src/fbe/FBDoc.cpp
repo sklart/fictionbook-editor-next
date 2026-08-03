@@ -423,7 +423,7 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	DISPID dispid = DISPID_UNKNOWN;
 	hr = pScript->GetIDsOfNames(IID_NULL, &szMember, 1, LOCALE_SYSTEM_DEFAULT, &dispid);
 	trace.Format(L"GetIDsOfNames: name=%s; dispid=%ld", FuncName, static_cast<long>(dispid));
-	if (!quiet) StartupTrace::HResult(L"script", L"C120", hr, trace);
+	if (!quiet) StartupTrace::DispatchFailure(L"script", L"C120", hr, trace);
 	if (FAILED(hr))
 		return hr;
 
@@ -480,7 +480,7 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	if (exceptionInfo.bstrSource) ::SysFreeString(exceptionInfo.bstrSource);
 	if (exceptionInfo.bstrHelpFile) ::SysFreeString(exceptionInfo.bstrHelpFile);
 	if (errorInfo) ::SetErrorInfo(0, errorInfo);
-	if (!quiet) StartupTrace::HResult(L"script", FAILED(hr) ? L"C140" : L"C131", hr, details);
+	if (!quiet) StartupTrace::DispatchFailure(L"script", FAILED(hr) ? L"C140" : L"C131", hr, details);
 	return hr;
 }
 
