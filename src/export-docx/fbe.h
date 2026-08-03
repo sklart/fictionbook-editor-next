@@ -389,6 +389,13 @@ EXTERN_C const IID IID_IExternalHelper;
         virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE GetDocumentDirectory( 
             /* [retval][out] */ BSTR *directory) = 0;
         
+        virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE IsDiagnosticTraceEnabled( 
+            /* [retval][out] */ BOOL *enabled) = 0;
+        
+        virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE TraceScript( 
+            /* [in] */ BSTR code,
+            /* [in] */ BSTR message) = 0;
+        
     };
     
     
@@ -622,6 +629,17 @@ EXTERN_C const IID IID_IExternalHelper;
             IExternalHelper * This,
             /* [retval][out] */ BSTR *directory);
         
+        DECLSPEC_XFGVIRT(IExternalHelper, IsDiagnosticTraceEnabled)
+        /* [helpstring][id] */ HRESULT ( STDMETHODCALLTYPE *IsDiagnosticTraceEnabled )( 
+            IExternalHelper * This,
+            /* [retval][out] */ BOOL *enabled);
+        
+        DECLSPEC_XFGVIRT(IExternalHelper, TraceScript)
+        /* [helpstring][id] */ HRESULT ( STDMETHODCALLTYPE *TraceScript )( 
+            IExternalHelper * This,
+            /* [in] */ BSTR code,
+            /* [in] */ BSTR message);
+        
         END_INTERFACE
     } IExternalHelperVtbl;
 
@@ -744,6 +762,12 @@ EXTERN_C const IID IID_IExternalHelper;
 
 #define IExternalHelper_GetDocumentDirectory(This,directory)	\
     ( (This)->lpVtbl -> GetDocumentDirectory(This,directory) ) 
+
+#define IExternalHelper_IsDiagnosticTraceEnabled(This,enabled)	\
+    ( (This)->lpVtbl -> IsDiagnosticTraceEnabled(This,enabled) ) 
+
+#define IExternalHelper_TraceScript(This,code,message)	\
+    ( (This)->lpVtbl -> TraceScript(This,code,message) ) 
 
 #endif /* COBJMACROS */
 
