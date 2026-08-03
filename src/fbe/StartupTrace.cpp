@@ -143,16 +143,78 @@ namespace
 		return CString();
 	}
 
-	CString FindLatestTrace(const CString& directory)
+	void ResolveDiagnosticLogDirectories(std::vector<CString>& directories)
 	{
-		CString latest;
-		WIN32_FIND_DATA findData = {};
-		HANDLE search = ::FindFirstFile(directory + L"\\fbe-trace-*.log", &findData);
-		if (search == INVALID_HANDLE_VALUE) return latest;
-		do { if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (latest.IsEmpty() || latest.CompareNoCase(findData.cFileName) < 0)) latest = findData.cFileName; }
-		while (::FindNextFile(search, &findData));
-		::FindClose(search);
-		return latest.IsEmpty() ? CString() : directory + L"\\" + latest;
+		directories.clear();
+		wchar_t base[MAX_PATH] = {};
+		if (SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, base)))
+		{
+			CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next\\Diagnostics";
+			directories.push_back(directory);
+		}
+		if (::GetTempPath(_countof(base), base))
+		{
+			CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next Diagnostics";
+			bool known = false;
+			for (size_t index = 0; index < directories.size(); ++index) if (directories[index].CompareNoCase(directory) == 0) known = true;
+			if (!known) directories.push_back(directory);
+		}
+	}
+
+	bool ParseDiagnosticLogName(const CString& name, CString& session, unsigned int& segment)
+	{
+		session.Empty(); segment = 0;
+		if (name.GetLength() < 5 || name.Right(4).CompareNoCase(L".log") != 0) return false;
+		CString stem = name.Left(name.GetLength() - 4);
+		if (stem.Left(10).CompareNoCase(L"fbe-trace-") != 0) return false;
+		const int marker = stem.ReverseFind(L'-');
+		if (marker >= 0 && stem.Mid(marker + 1, 4).CompareNoCase(L"part") == 0)
+		{
+			const CString number = stem.Mid(marker + 5);
+			if (number.IsEmpty()) return false;
+			for (int index = 0; index < number.GetLength(); ++index) if (number[index] < L'0' || number[index] > L'9') return false;
+			segment = static_cast<unsigned int>(wcstoul(number, NULL, 10));
+			session = stem.Left(marker);
+		}
+		else session = stem;
+		return true;
+	}
+
+	ULONGLONG FileTimeValue(const FILETIME& value)
+	{
+		ULARGE_INTEGER result = {}; result.LowPart = value.dwLowDateTime; result.HighPart = value.dwHighDateTime;
+		return result.QuadPart;
+	}
+
+	CString FindLatestTrace(const CString& /*ignoredDirectory*/)
+	{
+		std::vector<CString> directories;
+		ResolveDiagnosticLogDirectories(directories);
+		CString latestPath, latestSession;
+		unsigned int latestSegment = 0;
+		ULONGLONG latestWriteTime = 0;
+		for (size_t directoryIndex = 0; directoryIndex < directories.size(); ++directoryIndex)
+		{
+			WIN32_FIND_DATA findData = {};
+			HANDLE search = ::FindFirstFile(directories[directoryIndex] + L"\\fbe-trace-*.log", &findData);
+			if (search == INVALID_HANDLE_VALUE) continue;
+			do
+			{
+				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+				CString session; unsigned int segment = 0;
+				if (!ParseDiagnosticLogName(findData.cFileName, session, segment)) continue;
+				const ULONGLONG writeTime = FileTimeValue(findData.ftLastWriteTime);
+				const int sessionOrder = latestSession.IsEmpty() ? 1 : session.CompareNoCase(latestSession);
+				if (sessionOrder > 0 || (sessionOrder == 0 && (segment > latestSegment || (segment == latestSegment && writeTime > latestWriteTime))))
+				{
+					latestSession = session; latestSegment = segment; latestWriteTime = writeTime;
+					latestPath = directories[directoryIndex] + L"\\" + findData.cFileName;
+				}
+			}
+			while (::FindNextFile(search, &findData));
+			::FindClose(search);
+		}
+		return latestPath;
 	}
 	bool OpenTraceFile(const CString& directory, const SYSTEMTIME& time)
 	{
@@ -161,7 +223,7 @@ namespace
 		{
 			CString suffixText;
 			if (suffix) suffixText.Format(L"-%u", suffix);
-			traceBasePath.Format(L"%s\\fbe-trace-%04u%02u%02u-%02u%02u%02u-pid%lu%s", (LPCWSTR)directory, time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, ::GetCurrentProcessId(), (LPCWSTR)suffixText);
+			traceBasePath.Format(L"%s\\fbe-trace-%04u%02u%02u-%02u%02u%02u-%03u-pid%lu%s", (LPCWSTR)directory, time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, ::GetCurrentProcessId(), (LPCWSTR)suffixText);
 			tracePath = traceBasePath + L".log";
 			traceFile = ::CreateFile(tracePath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (traceFile != INVALID_HANDLE_VALUE) return true;
@@ -341,7 +403,7 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CString safeMessage = SanitizeScriptDetails(message); const bool isError = safeMessage.Find(L"level=error") == 0; WriteRecord(L"script", isError ? L"error" : L"info", code, safeMessage, isError); }
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
-CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath.IsEmpty() ? FindLatestTrace(ResolveDiagnosticLogDirectory()) : tracePath; }
+CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath.IsEmpty() ? FindLatestTrace(CString()) : tracePath; }
 CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separator = tracePath.ReverseFind(L'\\'); return separator >= 0 ? tracePath.Left(separator) : ResolveDiagnosticLogDirectory(); }
 bool StartupTrace::ClearOldLogSessions()
 {
