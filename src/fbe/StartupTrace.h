@@ -2,6 +2,23 @@
 
 namespace StartupTrace
 {
+	struct CrashTraceSnapshot
+	{
+		bool snapshotAvailable;
+		bool diagnosticEnabled;
+		bool usingTempFallback;
+		DWORD processId;
+		DWORD threadId;
+		wchar_t currentLogPath[MAX_PATH];
+		wchar_t currentLogDirectory[MAX_PATH];
+		wchar_t lastEventCode[64];
+		wchar_t lastEventMessage[512];
+		wchar_t lastDocumentStage[64];
+		wchar_t lastScriptOperationStage[64];
+		wchar_t lastScriptFailureStage[64];
+		wchar_t lastHResultFailure[512];
+		wchar_t lastDispatchFailure[512];
+	};
 	void Start();
 	// Возвращает true, когда включён диагностический журнал текущего процесса.
 	bool Enabled();
@@ -28,6 +45,7 @@ namespace StartupTrace
 	CString CurrentLogDirectory();
 	// Removes completed diagnostic sessions while preserving the current process trace.
 	bool ClearOldLogSessions();
+	bool TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot);
 	CString LastStageCode();
 	CString LastStageMessage();
 	CString LastDocumentStage();

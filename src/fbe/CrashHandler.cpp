@@ -79,12 +79,8 @@ namespace
 		const void* exceptionAddress = exceptionInfo && exceptionInfo->ExceptionRecord
 			? exceptionInfo->ExceptionRecord->ExceptionAddress : NULL;
 
-		const CString diagnosticTracePath = StartupTrace::RedactPath(StartupTrace::CurrentLogPath());
-		const CString lastStageCode = StartupTrace::LastStageCode();
-		const CString lastStageMessage = StartupTrace::LastStageMessage();
-		const CString lastDocumentStage = StartupTrace::LastDocumentStage();
-		const CString lastScriptOperationStage = StartupTrace::LastScriptOperationStage();
-		const CString lastComFailure = StartupTrace::LastComFailure();
+		StartupTrace::CrashTraceSnapshot traceSnapshot = {};
+		StartupTrace::TryGetCrashTraceSnapshot(traceSnapshot);
 		wchar_t text[2048];
 		const int textLength = _snwprintf_s(text, _countof(text), _TRUNCATE,
 			L"FictionBook Editor crash report\r\n"
@@ -102,11 +98,14 @@ namespace
 			L"Last trace stage: %s; %s\r\n"
 			L"Last document stage: %s\r\n"
 			L"Last script operation stage: %s\r\n"
-			L"Last COM failure: %s\r\n",
+			L"Last script failure stage: %s\r\n"
+			L"Last HRESULT failure: %s\r\n"
+			L"Last dispatch failure: %s\r\n",
 			::GetCurrentProcessId(), ::GetCurrentThreadId(), exceptionCode, exceptionAddress,
 			dumpWritten ? L"yes" : L"no", dumpWritten ? ERROR_SUCCESS : dumpError,
-			StartupTrace::Enabled() ? L"yes" : L"no", (LPCWSTR)diagnosticTracePath, (LPCWSTR)lastStageCode, (LPCWSTR)lastStageMessage,
-			(LPCWSTR)lastDocumentStage, (LPCWSTR)lastScriptOperationStage, (LPCWSTR)lastComFailure);
+			traceSnapshot.diagnosticEnabled ? L"yes" : L"no", traceSnapshot.currentLogPath, traceSnapshot.lastEventCode, traceSnapshot.lastEventMessage,
+			traceSnapshot.lastDocumentStage, traceSnapshot.lastScriptOperationStage, traceSnapshot.lastScriptFailureStage,
+			traceSnapshot.lastHResultFailure, traceSnapshot.lastDispatchFailure);
 
 		const WORD bom = 0xFEFF;
 		DWORD written = 0;
