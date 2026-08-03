@@ -437,6 +437,7 @@ bool LoadEditor()
 	g_scintillaModule = LoadApplicationLibrary(L"Scintilla.dll");
 	if(g_scintillaModule == NULL)
 	{
+		StartupTrace::HResult(L"startup", L"S160", HRESULT_FROM_WIN32(::GetLastError()), L"LoadLibraryEx(Scintilla.dll)");
 		ATLTRACE(L"Unable to load Scintilla.dll: %lu\n", ::GetLastError());
 		return false;
 	}
@@ -444,6 +445,7 @@ bool LoadEditor()
 	g_lexillaModule = LoadApplicationLibrary(L"Lexilla.dll");
 	if(g_lexillaModule == NULL)
 	{
+		StartupTrace::HResult(L"startup", L"S161", HRESULT_FROM_WIN32(::GetLastError()), L"LoadLibraryEx(Lexilla.dll)");
 		ATLTRACE(L"Unable to load Lexilla.dll: %lu\n", ::GetLastError());
 		ResetEditorModules();
 		return false;
@@ -453,6 +455,7 @@ bool LoadEditor()
 		::GetProcAddress(g_lexillaModule, "CreateLexer"));
 	if(g_createLexer == NULL)
 	{
+		StartupTrace::HResult(L"startup", L"S162", HRESULT_FROM_WIN32(ERROR_PROC_NOT_FOUND), L"GetProcAddress(CreateLexer)");
 		ATLTRACE(L"Lexilla.dll does not export CreateLexer.\n");
 		ResetEditorModules();
 		return false;
@@ -461,6 +464,7 @@ bool LoadEditor()
 	Scintilla::ILexer5* xmlLexer = g_createLexer("xml");
 	if(xmlLexer == NULL)
 	{
+		StartupTrace::HResult(L"startup", L"S163", HRESULT_FROM_WIN32(ERROR_NOT_FOUND), L"CreateLexer(xml)");
 		ATLTRACE(L"Lexilla.dll does not provide the XML lexer.\n");
 		ResetEditorModules();
 		return false;
