@@ -48,6 +48,12 @@ foreach ($file in $files) {
     $popupCount = ([regex]::Matches($text, '(?m)^\s*POPUP\s+"')).Count
     if ($popupCount -ne 12) {
         throw "Ожидалось 12 POPUP в $($file.Language), получено $popupCount."
+    }    $topLevelPopupCount = ([regex]::Matches($text, '(?m)^    POPUP\s+"')).Count
+    if ($topLevelPopupCount -ne 8) {
+        throw "Ожидалось 8 верхних POPUP в $($file.Language), получено $topLevelPopupCount."
+    }
+    if ($text -notmatch '(?m)^        POPUP\s+".+"\r?$') {
+        throw "В $($file.Language) отсутствует вложенное подменю Диагностика."
     }
 
     foreach ($id in @('ID_FILE_OPEN','ID_FILE_SAVE','ID_EDIT_REPLACE','ID_VIEW_BODY','ID_INSERT_TABLE','ID_STYLE_LINK','ID_TOOLS_SPELLCHECK','ID_TOOLS_DIAGNOSTIC_TRACE','ID_TOOLS_OPEN_DIAGNOSTIC_LOG','ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER','ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH','ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS','ID_APP_ABOUT')) {
