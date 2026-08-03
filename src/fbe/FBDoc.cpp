@@ -602,8 +602,19 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		}
 	}
 
-	StartupTrace::Event(L"webbrowser", L"WB150", L"SetExternalDispatch #1");
-	m_body.SetExternalDispatch(m_body.CreateHelper());
+	StartupTrace::Event(L"webbrowser", L"WB150", L"CreateHelper for pre-init external begin");
+	IDispatchPtr preInitHelper = m_body.CreateHelper();
+	if (!preInitHelper)
+	{
+		StartupTrace::Error(L"webbrowser", L"WB151", L"CreateHelper for pre-init external returned null");
+		return false;
+	}
+	StartupTrace::Event(L"webbrowser", L"WB151", L"CreateHelper for pre-init external result=created");
+	StartupTrace::Event(L"webbrowser", L"WB152", L"SetExternalDispatch pre-init begin");
+	hr = m_body.SetExternalDispatch(preInitHelper);
+	StartupTrace::HResult(L"webbrowser", L"WB153", hr, L"SetExternalDispatch pre-init result");
+	if (FAILED(hr))
+		return false;
 
 	if (!m_body.Init())
 	{

@@ -63,7 +63,7 @@ foreach($pattern in @('PARAMFLAG_FIN', 'PARAMFLAG_FOUT', 'PARAMFLAG_FRETVAL', 'c
 }
 foreach($pattern in @('bool ClearOldLogSessions()', 'TrySnapshot', 'TryEnterCriticalSection', 'FindLatestTrace', 'ResolveDiagnosticLogDirectory')) {
     if(($traceHeader + $traceImplementation) -notlike "*$pattern*") { throw "Missing trace fallback or crash snapshot contract: $pattern" }
-}foreach($pattern in @('TraceDiagnosticEvent("J210", "operation=CSS restore begin")', 'TraceDiagnosticEvent("J211", "operation=CSS restore success")', 'TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=success")')) {
+}foreach($pattern in @('TraceDiagnosticEvent("J210", "operation=CSS restore begin")', 'TraceDiagnosticEvent("J211", "operation=CSS restore success")', 'TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=" + (loadSucceeded ? "success" : "failure"))', 'diagnosticFailureStage="J212"', 'DiagError("J212", "CSS restore", e)', 'var failedStage = diagnosticFailureStage || diagnosticOperationStage || code')) {
     if($script -notlike "*$pattern*") { throw "Missing CSS restore diagnostic: $pattern" }
 }$mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 foreach($pattern in @('TracePluginDiagnostic', 'type=%s; clsid=%s; operation=%s; dom-returned=%d', 'L"CreateInstance"', 'L"QueryInterface"', 'L"Import"', 'L"Export"', 'L"completed"', 'L"exception"')) {
@@ -89,9 +89,9 @@ if($mainFrameSource -notmatch $viewSelectionGuard) {
 if($documentSource -notlike '*documentCompleteTimeoutMs = 120000*') {
     throw 'DocumentComplete timeout must tolerate a very slow debugger-started MSHTML instance.'
 }
-if($documentSource -like '*if (m_body.Loaded())*') {
-    throw 'DocumentComplete must not be consumed inside the message-drain loop.'
-}
 foreach($pattern in @('messageWaitSliceMs = 50', '::PeekMessage(&msg', 'delay MSHTML''s DocumentComplete callback')) {
     if($documentSource -notlike "*$pattern*") { throw "Missing short-slice DocumentComplete wait: $pattern" }
+}
+if($documentSource -like '*if (m_body.Loaded())*') {
+    throw 'DocumentComplete must not be consumed inside the message-drain loop.'
 }
