@@ -397,6 +397,7 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 		wndMain.GetWindowPlacement(&wpl);
 		_Settings.SetWindowPosition(wpl);
 	}
+	StartupTrace::WriteLateEnvironmentHeader();
 	StartupTrace::Event(L"startup", L"S230", L"main frame ready");
 
 	int nRet = theLoop.Run();

@@ -20,6 +20,7 @@ namespace StartupTrace
 		wchar_t lastDispatchFailure[512];
 	};
 	void Start();
+	void WriteLateEnvironmentHeader();
 	// Возвращает true, когда включён диагностический журнал текущего процесса.
 	bool Enabled();
 	// Определяет режим следующего запуска: настройка FBE имеет приоритет над переменной среды.

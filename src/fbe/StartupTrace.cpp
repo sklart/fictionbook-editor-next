@@ -406,6 +406,13 @@ void StartupTrace::Start()
 	WriteEnvironmentHeader();
 	Event(L"startup", L"S100", L"process started");
 }
+void StartupTrace::WriteLateEnvironmentHeader()
+{
+  CString modules;
+  modules.Format(L"fbe=%s; mshtml=%s; ieframe=%s; urlmon=%s; wininet=%s; jscript=%s; jscript9=%s; msxml6=%s; oleaut32=%s; scintilla=%s; lexilla=%s", (LPCWSTR)GetLoadedModuleVersion(L"FBE.exe"), (LPCWSTR)GetLoadedModuleVersion(L"mshtml.dll"), (LPCWSTR)GetLoadedModuleVersion(L"ieframe.dll"), (LPCWSTR)GetLoadedModuleVersion(L"urlmon.dll"), (LPCWSTR)GetLoadedModuleVersion(L"wininet.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript9.dll"), (LPCWSTR)GetLoadedModuleVersion(L"msxml6.dll"), (LPCWSTR)GetLoadedModuleVersion(L"oleaut32.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Scintilla.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Lexilla.dll"));
+  Event(L"environment", L"E020", L"late environment snapshot after editor and browser initialization");
+  Event(L"environment", L"E021", modules);
+}
 bool StartupTrace::Enabled() { return traceFile != INVALID_HANDLE_VALUE; }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"info", code, message, false); }
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
