@@ -351,7 +351,33 @@ namespace
 		return result;
 	}
 
-	void WriteEnvironmentHeader()
+		CString ReadFeatureControlValue(HKEY root, REGSAM view, const CString& feature, const CString& executable)
+	{
+		CString keyPath(L"Software\\Microsoft\\Internet Explorer\\Main\\FeatureControl\\"); keyPath += feature;
+		HKEY key = NULL;
+		if (::RegOpenKeyEx(root, keyPath, 0, KEY_QUERY_VALUE | view, &key) != ERROR_SUCCESS) return CString(L"not-set");
+		DWORD value = 0, size = sizeof(value), type = 0;
+		const LONG result = ::RegQueryValueEx(key, executable, NULL, &type, reinterpret_cast<BYTE*>(&value), &size);
+		::RegCloseKey(key);
+		if (result != ERROR_SUCCESS || type != REG_DWORD || size != sizeof(value)) return CString(L"not-set");
+		CString text; text.Format(L"%lu", value); return text;
+	}
+
+	void WriteFeatureControlSnapshot()
+	{
+		wchar_t path[MAX_PATH] = {}; ::GetModuleFileName(NULL, path, _countof(path));
+		CString executable(path); const int slash = executable.ReverseFind(L'\\'); if (slash >= 0) executable = executable.Mid(slash + 1);
+		const wchar_t* features[] = { L"FEATURE_BROWSER_EMULATION", L"FEATURE_DOCUMENT_COMPATIBLE_MODE", L"FEATURE_LOCALMACHINE_LOCKDOWN", L"FEATURE_BLOCK_LMZ_SCRIPT", L"FEATURE_RESTRICT_ACTIVEXINSTALL", L"FEATURE_ZONE_ELEVATION" };
+		for (size_t index = 0; index < _countof(features); ++index)
+		{
+			const CString feature(features[index]);
+			CString details; details.Format(L"feature=%s; hkcu32=%s; hkcu64=%s; hklm32=%s; hklm64=%s", (LPCWSTR)feature,
+				(LPCWSTR)ReadFeatureControlValue(HKEY_CURRENT_USER, KEY_WOW64_32KEY, feature, executable), (LPCWSTR)ReadFeatureControlValue(HKEY_CURRENT_USER, KEY_WOW64_64KEY, feature, executable),
+				(LPCWSTR)ReadFeatureControlValue(HKEY_LOCAL_MACHINE, KEY_WOW64_32KEY, feature, executable), (LPCWSTR)ReadFeatureControlValue(HKEY_LOCAL_MACHINE, KEY_WOW64_64KEY, feature, executable));
+			StartupTrace::Event(L"environment", L"E022", details);
+		}
+	}
+void WriteEnvironmentHeader()
 	{
 		SYSTEM_INFO info = {};
 		::GetNativeSystemInfo(&info);
@@ -412,6 +438,7 @@ void StartupTrace::WriteLateEnvironmentHeader()
   modules.Format(L"fbe=%s; mshtml=%s; ieframe=%s; urlmon=%s; wininet=%s; jscript=%s; jscript9=%s; msxml6=%s; oleaut32=%s; scintilla=%s; lexilla=%s", (LPCWSTR)GetLoadedModuleVersion(L"FBE.exe"), (LPCWSTR)GetLoadedModuleVersion(L"mshtml.dll"), (LPCWSTR)GetLoadedModuleVersion(L"ieframe.dll"), (LPCWSTR)GetLoadedModuleVersion(L"urlmon.dll"), (LPCWSTR)GetLoadedModuleVersion(L"wininet.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript9.dll"), (LPCWSTR)GetLoadedModuleVersion(L"msxml6.dll"), (LPCWSTR)GetLoadedModuleVersion(L"oleaut32.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Scintilla.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Lexilla.dll"));
   Event(L"environment", L"E020", L"late environment snapshot after editor and browser initialization");
   Event(L"environment", L"E021", modules);
+  WriteFeatureControlSnapshot();
 }
 bool StartupTrace::Enabled() { return traceFile != INVALID_HANDLE_VALUE; }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"info", code, message, false); }
