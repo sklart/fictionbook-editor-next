@@ -116,18 +116,18 @@ $template = @(
         @{ Type = "SEPARATOR" },
         @{ Type = "MENUITEM"; Key = "tools.spellcheck" }
     ) },
-    @{ Type = "POPUP"; Key = "popup.diagnostics"; Children = @(
-        @{ Type = "MENUITEM"; Key = "tools.diagnostic_trace" },
-        @{ Type = "MENUITEM"; Key = "tools.open_diagnostic_log" },
-        @{ Type = "MENUITEM"; Key = "tools.open_diagnostic_folder" },
-        @{ Type = "MENUITEM"; Key = "tools.copy_diagnostic_log_path" },
-        @{ Type = "MENUITEM"; Key = "tools.clear_diagnostic_logs" }
-    ) },
     @{ Type = "POPUP"; Key = "popup.scripts"; Children = @(
         @{ Type = "MENUITEM"; Key = "scripts.empty"; Extra = "INACTIVE" }
     ) },
     @{ Type = "POPUP"; Key = "popup.help"; Children = @(
-        @{ Type = "MENUITEM"; Key = "help.about" }
+        @{ Type = "MENUITEM"; Key = "help.about" },
+        @{ Type = "POPUP"; Key = "popup.diagnostics"; Children = @(
+            @{ Type = "MENUITEM"; Key = "tools.diagnostic_trace" },
+            @{ Type = "MENUITEM"; Key = "tools.open_diagnostic_log" },
+            @{ Type = "MENUITEM"; Key = "tools.open_diagnostic_folder" },
+            @{ Type = "MENUITEM"; Key = "tools.copy_diagnostic_log_path" },
+            @{ Type = "MENUITEM"; Key = "tools.clear_diagnostic_logs" }
+        ) }
     ) }
 )
 
