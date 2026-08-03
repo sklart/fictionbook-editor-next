@@ -14,6 +14,7 @@ $tests = @(
     'test-fbe-main-menu-generated-resource.ps1',
     'test-fbe-main-menu-catalog.ps1',
     'test-diagnostic-build-artifacts.ps1',
+    'test-diagnostic-runner-contract.ps1',
     'test-resource-id-safety.ps1',
     'test-diagnostic-localization.ps1',
     'test-diagnostic-log-segments.ps1',
