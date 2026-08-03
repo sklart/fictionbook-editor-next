@@ -52,3 +52,11 @@ Thumbs.db
 # Local Visual Studio artifacts for ExportDOCX
 /src/export-docx/ExportDOCX.aps
 /src/export-docx/ExportDOCX.vcxproj.user
+
+*.obj
+*.ilk
+*.tlog
+*.lastbuildstate
+PVS-Studio.stacktrace.txt
+fbe-trace-*.log
+FBE-Diagnostics-*.zip
