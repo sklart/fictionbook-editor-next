@@ -19,6 +19,7 @@ $tests = @(
     'test-diagnostic-localization.ps1',
     'test-diagnostic-log-segments.ps1',
     'test-diagnostic-trace-privacy.ps1',
+    'test-diagnostic-snapshot-contract.ps1',
     'test-fbe-trace-bridge.ps1',
     'test-fbe-typelib-diagnostics.ps1'
 )
