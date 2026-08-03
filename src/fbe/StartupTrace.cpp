@@ -232,12 +232,17 @@ namespace
 		return false;
 	}
 
-	void CleanupOldTraceSessions(const CString& directory, const CString& preserveSession, size_t sessionLimit)
+	void CleanupOldTraceSessions(const CString& directory, const CString& preserveSession, size_t sessionLimit, StartupTrace::DiagnosticLogCleanupResult* cleanup = NULL)
 	{
 		std::vector<CString> sessions;
 		WIN32_FIND_DATA findData = {};
 		HANDLE search = ::FindFirstFile(directory + L"\\fbe-trace-*.log", &findData);
-		if (search == INVALID_HANDLE_VALUE) return;
+		if (search == INVALID_HANDLE_VALUE)
+		{
+			const DWORD error = ::GetLastError();
+			if (cleanup && error != ERROR_FILE_NOT_FOUND) { ++cleanup->filesFailed; cleanup->lastError = error; }
+			return;
+		}
 		do
 		{
 			if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
@@ -256,17 +261,30 @@ namespace
 		for (size_t sessionIndex = sessionLimit; sessionIndex < sessions.size(); ++sessionIndex)
 		{
 			if (sessions[sessionIndex].CompareNoCase(preserveSession) == 0) continue;
+			if (cleanup) ++cleanup->sessionsFound;
+			bool sessionDeleted = false;
 			HANDLE files = ::FindFirstFile(directory + L"\\" + sessions[sessionIndex] + L"*.log", &findData);
 			if (files == INVALID_HANDLE_VALUE) continue;
 			do
 			{
 				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
 				CString fileName(findData.cFileName);
-				if (fileName == sessions[sessionIndex] + L".log" || fileName.Left(sessions[sessionIndex].GetLength() + 5).CompareNoCase(sessions[sessionIndex] + L"-part") == 0)
-					::DeleteFile(directory + L"\\" + fileName);
+				if (fileName != sessions[sessionIndex] + L".log" && fileName.Left(sessions[sessionIndex].GetLength() + 5).CompareNoCase(sessions[sessionIndex] + L"-part") != 0) continue;
+				const CString filePath = directory + L"\\" + fileName;
+				if (::DeleteFile(filePath))
+				{
+					sessionDeleted = true;
+					if (cleanup) ++cleanup->filesDeleted;
+				}
+				else if (cleanup)
+				{
+					++cleanup->filesFailed;
+					cleanup->lastError = ::GetLastError();
+				}
 			}
 			while (::FindNextFile(files, &findData));
 			::FindClose(files);
+			if (sessionDeleted && cleanup) ++cleanup->sessionsDeleted;
 		}
 	}
 	void WriteUtf8(const CString& text, bool flush, bool force)
@@ -436,23 +454,26 @@ void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VA
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
 CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath.IsEmpty() ? FindLatestTrace(CString()) : tracePath; }
 CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const CString path = tracePath.IsEmpty() ? FindLatestTrace(CString()) : tracePath; const int separator = path.ReverseFind(L'\\'); return separator >= 0 ? path.Left(separator) : ResolveDiagnosticLogDirectory(); }
-bool StartupTrace::ClearOldLogSessions()
+StartupTrace::DiagnosticLogCleanupResult StartupTrace::ClearOldLogSessions()
 {
 	TraceLock guard;
 	std::vector<CString> directories;
 	ResolveDiagnosticLogDirectories(directories);
 	const int separator = traceBasePath.ReverseFind(L'\\');
 	const CString activeSession = separator >= 0 ? traceBasePath.Mid(separator + 1) : traceBasePath;
+	DiagnosticLogCleanupResult cleanup;
 	bool foundDirectory = false;
 	for (size_t index = 0; index < directories.size(); ++index)
 	{
 		if (directories[index].IsEmpty() || ::GetFileAttributes(directories[index]) == INVALID_FILE_ATTRIBUTES) continue;
 		foundDirectory = true;
 		const CString preserve = tracePath.Left(directories[index].GetLength()).CompareNoCase(directories[index]) == 0 ? activeSession : CString();
-		CleanupOldTraceSessions(directories[index], preserve, 0);
+		CleanupOldTraceSessions(directories[index], preserve, 0, &cleanup);
 	}
-	return foundDirectory;
-}bool StartupTrace::TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot)
+	if (!foundDirectory && cleanup.lastError == ERROR_SUCCESS) cleanup.lastError = ERROR_PATH_NOT_FOUND;
+	return cleanup;
+}
+bool StartupTrace::TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot)
 {
 	::ZeroMemory(&snapshot, sizeof(snapshot));
 	snapshot.processId = ::GetCurrentProcessId();

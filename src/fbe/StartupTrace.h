@@ -44,8 +44,17 @@ namespace StartupTrace
 	void EmergencyFlush();
 	CString CurrentLogPath();
 	CString CurrentLogDirectory();
+	struct DiagnosticLogCleanupResult
+	{
+		unsigned int sessionsFound;
+		unsigned int sessionsDeleted;
+		unsigned int filesDeleted;
+		unsigned int filesFailed;
+		DWORD lastError;
+		DiagnosticLogCleanupResult() : sessionsFound(0), sessionsDeleted(0), filesDeleted(0), filesFailed(0), lastError(ERROR_SUCCESS) { }
+	};
 	// Removes completed diagnostic sessions while preserving the current process trace.
-	bool ClearOldLogSessions();
+	DiagnosticLogCleanupResult ClearOldLogSessions();
 	bool TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot);
 	CString LastStageCode();
 	CString LastStageMessage();
