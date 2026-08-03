@@ -4,6 +4,7 @@
 #include "../version.h"
 #include <algorithm>
 #include <vector>
+#include <winver.h>
 
 namespace
 {
@@ -305,6 +306,33 @@ namespace
 		WriteUtf8(line, flush, wcscmp(level, L"error") == 0);
 	}
 
+	CString GetLoadedModuleVersion(const wchar_t* moduleName)
+	{
+		HMODULE module = ::GetModuleHandle(moduleName);
+		if (!module) return CString(L"not-loaded");
+		wchar_t path[MAX_PATH] = {};
+		if (!::GetModuleFileName(module, path, _countof(path))) return CString(L"unavailable");
+		HMODULE versionLibrary = ::LoadLibrary(L"version.dll");
+		if (!versionLibrary) return CString(L"unavailable");
+		typedef DWORD (WINAPI* GetSizeFn)(LPCWSTR, LPDWORD);
+		typedef BOOL (WINAPI* GetInfoFn)(LPCWSTR, DWORD, DWORD, LPVOID);
+		typedef BOOL (WINAPI* QueryFn)(LPCVOID, LPCWSTR, LPVOID*, PUINT);
+		GetSizeFn getSize = reinterpret_cast<GetSizeFn>(::GetProcAddress(versionLibrary, "GetFileVersionInfoSizeW"));
+		GetInfoFn getInfo = reinterpret_cast<GetInfoFn>(::GetProcAddress(versionLibrary, "GetFileVersionInfoW"));
+		QueryFn query = reinterpret_cast<QueryFn>(::GetProcAddress(versionLibrary, "VerQueryValueW"));
+		DWORD ignored = 0, size = getSize ? getSize(path, &ignored) : 0;
+		CString result(L"unavailable");
+		if (size && getInfo && query)
+		{
+			std::vector<BYTE> data(size);
+			VS_FIXEDFILEINFO* fixed = NULL; UINT fixedSize = 0;
+			if (getInfo(path, 0, size, &data[0]) && query(&data[0], L"\\", reinterpret_cast<void**>(&fixed), &fixedSize) && fixed && fixed->dwSignature == VS_FFI_SIGNATURE)
+				result.Format(L"%u.%u.%u.%u", HIWORD(fixed->dwFileVersionMS), LOWORD(fixed->dwFileVersionMS), HIWORD(fixed->dwFileVersionLS), LOWORD(fixed->dwFileVersionLS));
+		}
+		::FreeLibrary(versionLibrary);
+		return result;
+	}
+
 	void WriteEnvironmentHeader()
 	{
 		SYSTEM_INFO info = {};
@@ -322,6 +350,8 @@ namespace
 			version.wServicePackMajor, version.wServicePackMinor, processInfo.wProcessorArchitecture,
 			info.wProcessorArchitecture, ::GetACP(), ::GetOEMCP(), ::GetSystemDefaultLCID(),
 			::GetUserDefaultUILanguage(), (LPCWSTR)StartupTrace::RedactPath(exe));
+		CString moduleDetails; moduleDetails.Format(L"mshtml=%s; ieframe=%s; jscript=%s; jscript9=%s; msxml6=%s; oleaut32=%s; scintilla=%s; lexilla=%s", (LPCWSTR)GetLoadedModuleVersion(L"mshtml.dll"), (LPCWSTR)GetLoadedModuleVersion(L"ieframe.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript9.dll"), (LPCWSTR)GetLoadedModuleVersion(L"msxml6.dll"), (LPCWSTR)GetLoadedModuleVersion(L"oleaut32.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Scintilla.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Lexilla.dll"));
+		StartupTrace::Event(L"environment", L"E011", moduleDetails);
 		StartupTrace::Event(L"environment", L"E010", details);
 	}
 	bool TryGetNextLaunchPreference(bool& enabled) { DWORD value = 0, size = sizeof(value); if (::RegGetValue(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, diagnosticTraceRegistryValue, RRF_RT_REG_DWORD, NULL, &value, &size) != ERROR_SUCCESS) return false; enabled = value != 0; return true; }
