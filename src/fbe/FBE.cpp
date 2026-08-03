@@ -502,6 +502,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   HRESULT hRes = ::OleInitialize(NULL);
   ATLASSERT(SUCCEEDED(hRes));
   StartupTrace::HResult(L"startup", L"S110", hRes, L"OleInitialize");
+  if (FAILED(hRes)) { StartupTrace::Error(L"startup", L"S110", L"OleInitialize is fatal"); StartupTrace::Finish(); return 1; }
   
   // this resolves ATL window thunking problem when Microsoft Layer for Unicode (MSLU) is used
   ::DefWindowProc(NULL, 0, 0, 0L);
@@ -511,7 +512,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   // init module
   hRes = _Module.Init(ObjectMap, hInstance, &LIBID_FBELib);
   ATLASSERT(SUCCEEDED(hRes));
-  StartupTrace::Event(L"startup", L"S120", L"ATL module initialized");
+  StartupTrace::HResult(L"startup", L"S120", hRes, L"_Module.Init");
+  if (FAILED(hRes)) { StartupTrace::Finish(); ::OleUninitialize(); return 1; }
 
   StartupTrace::Event(L"startup", L"S130", L"type library validation started");
 
@@ -522,7 +524,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
     ATLTRACE(L"Unable to register the FBE type library: 0x%08X\n", hRes);
 
   // enable web browser hosting
-  AtlAxWinInit();
+  if (!AtlAxWinInit()) { hRes = HRESULT_FROM_WIN32(::GetLastError()); StartupTrace::HResult(L"startup", L"S125", hRes, L"AtlAxWinInit"); _Module.Term(); ::OleUninitialize(); StartupTrace::Finish(); return 1; }
+  StartupTrace::HResult(L"startup", L"S125", S_OK, L"AtlAxWinInit");
 
   // initialize registry settings
   U::InitSettings();
