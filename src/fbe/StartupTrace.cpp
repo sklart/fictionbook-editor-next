@@ -408,15 +408,20 @@ CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const int separat
 bool StartupTrace::ClearOldLogSessions()
 {
 	TraceLock guard;
-	const CString directory = CurrentLogDirectory();
-	if (directory.IsEmpty() || ::GetFileAttributes(directory) == INVALID_FILE_ATTRIBUTES) return false;
-	const int separator = traceBasePath.ReverseFind(L'\\');
-	const CString session = separator >= 0 ? traceBasePath.Mid(separator + 1) : traceBasePath;
-	CleanupOldTraceSessions(directory, session, 0);
-	return true;
-}
-
-bool StartupTrace::TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot)
+	std::vector<CString> directories;
+	ResolveDiagnosticLogDirectories(directories);
+	const int separator = traceBasePath.ReverseFind(L'\');
+	const CString activeSession = separator >= 0 ? traceBasePath.Mid(separator + 1) : traceBasePath;
+	bool foundDirectory = false;
+	for (size_t index = 0; index < directories.size(); ++index)
+	{
+		if (directories[index].IsEmpty() || ::GetFileAttributes(directories[index]) == INVALID_FILE_ATTRIBUTES) continue;
+		foundDirectory = true;
+		const CString preserve = tracePath.Left(directories[index].GetLength()).CompareNoCase(directories[index]) == 0 ? activeSession : CString();
+		CleanupOldTraceSessions(directories[index], preserve, 0);
+	}
+	return foundDirectory;
+}bool StartupTrace::TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot)
 {
 	::ZeroMemory(&snapshot, sizeof(snapshot));
 	snapshot.processId = ::GetCurrentProcessId();
