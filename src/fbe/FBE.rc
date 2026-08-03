@@ -797,14 +797,6 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Spell &check...",             ID_TOOLS_SPELLCHECK
     END
-    POPUP "&Diagnostics"
-    BEGIN
-        MENUITEM "Diagnostic &trace...",            ID_TOOLS_DIAGNOSTIC_TRACE
-        MENUITEM "Open current diagnostic &log",    ID_TOOLS_OPEN_DIAGNOSTIC_LOG
-        MENUITEM "Open diagnostic log &folder",     ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER
-        MENUITEM "Copy diagnostic log &path",       ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH
-        MENUITEM "Clear old diagnostic logs",       ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS
-    END
     POPUP "&Scripts"
     BEGIN
         MENUITEM "No scripts found",            IDCANCEL, INACTIVE
@@ -812,6 +804,14 @@ BEGIN
     POPUP "&Help"
     BEGIN
         MENUITEM "&About FBE...",               ID_APP_ABOUT
+        POPUP "&Diagnostics"
+        BEGIN
+            MENUITEM "Diagnostic &trace...",            ID_TOOLS_DIAGNOSTIC_TRACE
+            MENUITEM "Open current diagnostic &log",    ID_TOOLS_OPEN_DIAGNOSTIC_LOG
+            MENUITEM "Open diagnostic log &folder",     ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER
+            MENUITEM "Copy diagnostic log &path",       ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH
+            MENUITEM "Clear old diagnostic logs",       ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS
+        END
     END
 END
 

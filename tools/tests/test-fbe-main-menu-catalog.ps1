@@ -85,6 +85,7 @@ foreach ($requiredKey in @(
     'fbe.menu.idr_mainframe.popup.insert',
     'fbe.menu.idr_mainframe.popup.style',
     'fbe.menu.idr_mainframe.popup.tools',
+    'fbe.menu.idr_mainframe.popup.diagnostics',
     'fbe.menu.idr_mainframe.tools.diagnostic_trace',
     'fbe.menu.idr_mainframe.tools.open_diagnostic_log',
     'fbe.menu.idr_mainframe.tools.open_diagnostic_folder',
@@ -105,6 +106,14 @@ foreach ($requiredKey in @(
     }
 }
 
+$resourceText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
+$helpDiagnostics = '(?s)POPUP "&Help"\s+BEGIN.*?POPUP "&Diagnostics"\s+BEGIN.*?ID_TOOLS_DIAGNOSTIC_TRACE.*?ID_TOOLS_OPEN_DIAGNOSTIC_LOG.*?ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER.*?ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH.*?ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS.*?END.*?END'
+if ($resourceText -notmatch $helpDiagnostics) {
+    throw 'Пять команд диагностики должны быть в подменю Справка → Диагностика.'
+}
+if ([regex]::Matches($resourceText, 'ID_TOOLS_(DIAGNOSTIC_TRACE|OPEN_DIAGNOSTIC_LOG|OPEN_DIAGNOSTIC_FOLDER|COPY_DIAGNOSTIC_LOG_PATH|CLEAR_DIAGNOSTIC_LOGS)').Count -ne 5) {
+    throw 'Каждая команда диагностики должна присутствовать в главном меню ровно один раз.'
+}
 Write-Host "Каталог главного меню FBE прошёл проверку."
 Write-Host "  Файл: $catalogPath"
 Write-Host "  Пунктов: $($entries.Count)"
