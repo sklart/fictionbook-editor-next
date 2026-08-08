@@ -286,7 +286,8 @@ namespace
 
 	void CleanupOldTraceSessions(const CString& directory, const CString& preserveSession, size_t sessionLimit, StartupTrace::DiagnosticLogCleanupResult* cleanup = NULL)
 	{
-		std::vector<CString> sessions;
+		struct TraceSession { CString name; DiagnosticLogName logName; };
+		std::vector<TraceSession> sessions;
 		WIN32_FIND_DATA findData = {};
 		HANDLE search = ::FindFirstFile(directory + L"\\fbe-trace-*.log", &findData);
 		if (search == INVALID_HANDLE_VALUE)
@@ -298,26 +299,24 @@ namespace
 		do
 		{
 			if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-			CString session(findData.cFileName);
-			if (session.GetLength() < 5 || session.Right(4).CompareNoCase(L".log") != 0) continue;
-			session = session.Left(session.GetLength() - 4);
-			const int part = session.Find(L"-part");
-			if (part >= 0) session = session.Left(part);
+			CString session; DiagnosticLogName logName = {};
+			if (!ParseDiagnosticLogName(findData.cFileName, session, logName)) continue;
 			bool known = false;
-			for (size_t index = 0; index < sessions.size(); ++index) if (sessions[index].CompareNoCase(session) == 0) { known = true; break; }
-			if (!known) sessions.push_back(session);
+			for (size_t index = 0; index < sessions.size(); ++index) if (sessions[index].name.CompareNoCase(session) == 0) { known = true; break; }
+			if (!known) { TraceSession entry = { session, logName }; sessions.push_back(entry); }
 		}
 		while (::FindNextFile(search, &findData));
 		::FindClose(search);
-		std::sort(sessions.begin(), sessions.end(), [](const CString& left, const CString& right) { return left.CompareNoCase(right) > 0; });
+		std::sort(sessions.begin(), sessions.end(), [](const TraceSession& left, const TraceSession& right) { return CompareDiagnosticSessionName(left.logName, right.logName) > 0; });
 		for (size_t sessionIndex = sessionLimit; sessionIndex < sessions.size(); ++sessionIndex)
 		{
-			if (sessions[sessionIndex].CompareNoCase(preserveSession) == 0) continue;
+			const CString& session = sessions[sessionIndex].name;
+			if (session.CompareNoCase(preserveSession) == 0) continue;
 			if (cleanup) ++cleanup->sessionsFound;
 			bool sessionHasFiles = false;
 			bool sessionHasFailures = false;
 			bool sessionHasDeletedFiles = false;
-			HANDLE files = ::FindFirstFile(directory + L"\\" + sessions[sessionIndex] + L"*.log", &findData);
+			HANDLE files = ::FindFirstFile(directory + L"\\" + session + L"*.log", &findData);
 			if (files == INVALID_HANDLE_VALUE)
 			{
 				if (cleanup) { ++cleanup->sessionsFailed; cleanup->lastError = ::GetLastError(); }
@@ -327,7 +326,7 @@ namespace
 			{
 				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
 				CString fileName(findData.cFileName);
-				if (fileName != sessions[sessionIndex] + L".log" && fileName.Left(sessions[sessionIndex].GetLength() + 5).CompareNoCase(sessions[sessionIndex] + L"-part") != 0) continue;
+				if (fileName != session + L".log" && fileName.Left(session.GetLength() + 5).CompareNoCase(session + L"-part") != 0) continue;
 				sessionHasFiles = true;
 				const CString filePath = directory + L"\\" + fileName;
 				if (::DeleteFile(filePath))
