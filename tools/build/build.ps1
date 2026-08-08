@@ -36,6 +36,8 @@ param(
 
     [switch]$ReuseEditorRuntime,
 
+    [switch]$ReusePreparedPcre2,
+
     # Явный target-specific каталог для EXE/PDB пакетных конвертеров.
     # В CI обязателен, чтобы Modern и Win7 никогда не делили OutDir.
     [string]$BatchOutputDirectory,
@@ -136,6 +138,9 @@ $pcre2BuildArgs = @(
 if ($PlatformToolset) {
     $pcre2BuildArgs += @("-PlatformToolset", $PlatformToolset)
 }
+if ($ReusePreparedPcre2) {
+    $pcre2BuildArgs += "-ReusePreparedPcre2"
+}
 
 function Export-RuntimeLanguageFiles {
     param(
@@ -210,12 +215,11 @@ else {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
-    Write-Host "Подготовка Hunspell..."
-    & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+    Write-Host "Подготовка generated Hunspell project/header..."
+    & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset -PrepareOnly
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
-    Assert-PreparedDependencies
 }
 
 if (-not (Test-Path -LiteralPath $vswhere)) {
@@ -290,6 +294,8 @@ Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configur
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
+
+Assert-PreparedDependencies
 
 # Эти проекты не входят в FBE.sln. Остальные результаты даёт единственный
 # solution Build; повторный Rebuild доступен только локально по явному ключу.

@@ -37,20 +37,33 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 1
-      - name: Restore third-party build cache
+      - name: Restore PCRE2 cache
+        uses: actions/cache@v4
+        id: pcre2-cache
+        with:
+          path: build/pcre2
+          key: ${{ runner.os }}-pcre2-release-win32-v143-vs2022-${{ hashFiles('third_party/pcre2/**', 'tools/build/build-pcre2.ps1') }}
+      - name: Restore Hunspell cache
         uses: actions/cache@v4
         with:
-          path: |
-            build/pcre2
-            build/hunspell/lib
-            out/editor-runtime
-          key: ${{ runner.os }}-release-win32-v143-modern-win7-${{ hashFiles('third_party/pcre2/**', 'third_party/hunspell/**', 'third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-pcre2.ps1', 'tools/build/build-hunspell.ps1', 'tools/build/build-scintilla.ps1') }}
+          path: build/hunspell
+          key: ${{ runner.os }}-hunspell-release-win32-v143-mt-${{ hashFiles('third_party/hunspell/**', 'tools/build/build-hunspell.ps1') }}
+      - name: Restore Modern editor runtime cache
+        uses: actions/cache@v4
+        with:
+          path: out/editor-runtime/Modern
+          key: ${{ runner.os }}-editor-runtime-modern-win32-v143-${{ hashFiles('third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-scintilla.ps1') }}
+      - name: Restore Win7 editor runtime cache
+        uses: actions/cache@v4
+        with:
+          path: out/editor-runtime/Win7
+          key: ${{ runner.os }}-editor-runtime-win7-win32-v143-vc144-${{ hashFiles('third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-scintilla.ps1') }}
       - name: Build Release Win32 modern
         shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpx -WarningsAsErrors -ReuseEditorRuntime -BatchOutputDirectory out/target-batches/Modern
-      - name: Verify Modern binaries
-        shell: pwsh
-        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest -BatchOutputDirectory out/target-batches/Modern
+        run: |
+          $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; CompatibilityTarget = 'Modern'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; ReuseEditorRuntime = $true; BatchOutputDirectory = 'out/target-batches/Modern' }
+          if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
+          ./tools/build/build.ps1 @arguments
       - name: Build Win32 property handler
         shell: pwsh
         run: ./tools/build/build-experimental-property-handler.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143
@@ -60,6 +73,9 @@ jobs:
       - name: Build FBV Verb MUI
         shell: pwsh
         run: ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release
+      - name: Verify Modern binaries
+        shell: pwsh
+        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest -BatchOutputDirectory out/target-batches/Modern
       - name: Build Win7-compatible editor runtime
         shell: pwsh
         run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime
@@ -70,6 +86,7 @@ jobs:
         shell: pwsh
         run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Win7 -PlatformToolset v143 -SkipUpdateManifest -SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7
       - name: Upload compiled inputs
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: FictionBookEditorNext-${{ github.sha }}-compiled
@@ -79,7 +96,7 @@ jobs:
             out/package/shell-build
             out/target-batches
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
   package:
     if: github.event_name != 'pull_request'
@@ -108,7 +125,7 @@ jobs:
       - name: Create Modern release artifacts without compiling
         shell: pwsh
         run: |
-          $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true; SkipPropertyHandlerBuild = $true; SkipFbvVerbMuiBuild = $true; SkipReleaseVerification = $true; SkipArtifactVerification = $true; BatchOutputDirectory = "out/target-batches/Modern" }
+          $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true; SkipPropertyHandlerBuild = $true; SkipFbvVerbMuiBuild = $true; SkipReleaseVerification = $true; SkipArtifactVerification = $true; SkipVersionSync = $true; BatchOutputDirectory = "out/target-batches/Modern" }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
             if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true } else { $arguments.ValidateUpdateManifest = $true }
@@ -117,7 +134,7 @@ jobs:
       - name: Create Win7 release artifacts without compiling
         shell: pwsh
         run: |
-          ./tools/build/create-release.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipBuild -PreserveArtifacts -SkipPropertyHandlerBuild -SkipFbvVerbMuiBuild -SkipCommonChecks -SkipReleaseVerification -SkipArtifactVerification -BatchOutputDirectory out/target-batches/Win7
+          ./tools/build/create-release.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipBuild -PreserveArtifacts -SkipPropertyHandlerBuild -SkipFbvVerbMuiBuild -SkipCommonChecks -SkipReleaseVerification -SkipArtifactVerification -SkipVersionSync -BatchOutputDirectory out/target-batches/Win7
       - name: Verify all release archives
         shell: pwsh
         run: ./tools/build/verify-artifacts.ps1 -Platform Win32 -CompatibilityTarget All

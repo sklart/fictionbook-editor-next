@@ -10,6 +10,8 @@ param(
 
     [string]$PlatformToolset,
 
+    [switch]$ReusePreparedPcre2,
+
     [switch]$Quiet
 )
 
@@ -53,16 +55,18 @@ if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
 }
 
-$installationPath = & $vswhere -latest -products * `
-    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-    -property installationPath
+$vswhereArguments = @("-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64")
+if ($PlatformToolset -eq "v143") {
+    # v143 release должен использовать VS 2022, а не случайный newest instance.
+    $vswhereArguments += @("-version", "[17.0,18.0)")
+}
+
+$installationPath = & $vswhere @vswhereArguments -property installationPath
 if (-not $installationPath) {
     throw "Не найдены инструменты сборки Visual Studio C++ для x86."
 }
 
-$visualStudioProductLineVersion = & $vswhere -latest -products * `
-    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-    -property catalog_productLineVersion
+$visualStudioProductLineVersion = & $vswhere @vswhereArguments -property catalog_productLineVersion
 
 # Приоритет у CMake из той же Visual Studio, которую выбрал vswhere. Это
 # исключает случайный CMake из Python/другой SDK, не знающий генератор VS.
@@ -78,8 +82,10 @@ if (-not $cmake) {
 
 $generator = Get-CMakeVisualStudioGenerator -Toolset $PlatformToolset -VisualStudioProductLineVersion $visualStudioProductLineVersion
 $generatorSuffix = if ($generator -eq "Visual Studio 17 2022") { "vs2022" } else { "vs2026" }
-$buildDir = Join-Path $buildRoot "$Configuration-$generatorSuffix"
-$mutexName = "Global\FBeditor-build-pcre2-$Configuration-$generatorSuffix"
+$toolsetSuffix = if ($PlatformToolset) { $PlatformToolset } else { "default-toolset" }
+$buildDir = Join-Path $buildRoot "$Configuration-$generatorSuffix-$toolsetSuffix"
+$metadataPath = Join-Path $installDir "fbe-pcre2-fingerprint.json"
+$mutexName = "Global\FBeditor-build-pcre2-$Configuration-$generatorSuffix-$toolsetSuffix"
 
 Write-Host "PCRE2: конфигурация $Configuration"
 Write-Host "PCRE2: PlatformToolset = $PlatformToolset"
@@ -217,10 +223,27 @@ function Assert-Pcre2Prepared {
     throw ("PCRE2 не подготовлен, отсутствуют обязательные файлы: {0}" -f ($missingPaths -join "; "))
 }
 
+function Test-PreparedPcre2Fingerprint {
+    Assert-Pcre2Prepared
+    if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) {
+        throw "PCRE2 cache не содержит fingerprint: $metadataPath"
+    }
+    $metadata = Get-Content -Raw -LiteralPath $metadataPath | ConvertFrom-Json
+    if ($metadata.configuration -ne $Configuration -or $metadata.generator -ne $generator -or $metadata.platformToolset -ne $PlatformToolset) {
+        throw "PCRE2 cache имеет несовместимый fingerprint (configuration/generator/toolset)."
+    }
+}
+
 try {
     $mutexAcquired = $buildMutex.WaitOne([TimeSpan]::FromMinutes(10))
     if (-not $mutexAcquired) {
         throw "Не удалось дождаться блокировки сборки PCRE2 за 10 минут."
+    }
+
+    if ($ReusePreparedPcre2) {
+        Test-PreparedPcre2Fingerprint
+        Write-Host "PCRE2: exact validated cache hit; CMake configure/build/install пропущены."
+        return
     }
 
     $configureArgs = @(
@@ -240,6 +263,9 @@ try {
         "-D", "PCRE2_SUPPORT_UNICODE=ON",
         "-D", "PCRE2_SUPPORT_JIT=OFF"
     )
+    if ($PlatformToolset) {
+        $configureArgs += @("-T", $PlatformToolset)
+    }
 
     Write-Host "PCRE2: конфигурация CMake"
     $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $configureArgs -QuietOutput:$Quiet
@@ -283,6 +309,8 @@ try {
     )
 
     Assert-Pcre2Prepared
+    [ordered]@{ configuration = $Configuration; generator = $generator; platformToolset = $PlatformToolset } |
+        ConvertTo-Json | Set-Content -LiteralPath $metadataPath -Encoding UTF8
     Write-Host "PCRE2 подготовлен в каталоге $installDir"
 }
 finally {

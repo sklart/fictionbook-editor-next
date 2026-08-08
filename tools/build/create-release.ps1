@@ -23,6 +23,7 @@ param(
     [string]$BatchOutputDirectory,
     [switch]$SkipArtifactVerification,
     [switch]$SkipReleaseVerification,
+    [switch]$SkipVersionSync,
     [switch]$ValidateUpdateManifest,
     [switch]$Prerelease,
     [string]$ReleaseTag
@@ -87,7 +88,9 @@ $batchOutputDirectory = if ($BatchOutputDirectory) {
 
 # До упаковки синхронизируется только version.nsh. Проверка update.xml должна
 # выполняться в конце: SHA-256 нового setup появляется лишь после его сборки.
-& (Join-Path $repoRoot "tools\version\sync-version.ps1")
+if (-not $SkipVersionSync) {
+    & (Join-Path $repoRoot "tools\version\sync-version.ps1")
+}
 
 if (-not $SkipBuild) {
     $buildArguments = @{

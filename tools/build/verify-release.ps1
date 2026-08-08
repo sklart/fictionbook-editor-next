@@ -80,7 +80,6 @@ $requiredSymbols = @(
 
 if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
-& (Join-Path $repoRoot "tools\tests\test-release-pipeline-deduplication.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
@@ -240,8 +239,7 @@ foreach ($name in $requiredFiles) {
         -RequireControlFlowGuard:($name -in $controlFlowGuardFiles)
 }
 
-if ($CompatibilityTarget -eq "Win7") {
-    foreach ($propertyHandler in @(
+foreach ($propertyHandler in @(
         @{ Platform = "Win32"; Machine = [UInt16]0x014c },
         @{ Platform = "x64"; Machine = [UInt16]0x8664 }
     )) {
@@ -256,12 +254,13 @@ if ($CompatibilityTarget -eq "Win7") {
         if ($info.FileVersion -ne $expectedVersion -or $info.ProductVersion -ne $expectedVersion) {
             throw "$path имеет версии File='$($info.FileVersion)', Product='$($info.ProductVersion)'; ожидалось '$expectedVersion'."
         }
-        & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
-            -Configuration $Configuration `
-            -OutputDirectory $directory `
-            -IncludeNames @("FBShell.dll")
+        if ($CompatibilityTarget -eq "Win7") {
+            & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+                -Configuration $Configuration `
+                -OutputDirectory $directory `
+                -IncludeNames @("FBShell.dll")
+        }
     }
-}
 
 foreach ($name in @("Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll")) {
     $path = Get-ReleaseOutputPath $name

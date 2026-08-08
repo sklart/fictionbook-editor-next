@@ -8,7 +8,9 @@ param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
 
-    [string]$PlatformToolset
+    [string]$PlatformToolset,
+
+    [switch]$PrepareOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -148,6 +150,11 @@ if (-not (Test-Path -LiteralPath $projectPath)) {
 elseif (-not (Test-Path -LiteralPath $hunvisapiPath)) {
     Write-Host "Заголовок Hunspell visibility не найден, обновляю служебные файлы сборки."
     New-HunspellBuildProject -Path $projectPath -Toolset $PlatformToolset
+}
+
+if ($PrepareOnly) {
+    Write-Host "Hunspell generated project/header подготовлены; MSBuild пропущен."
+    return
 }
 
 if (-not (Test-Path -LiteralPath $vswhere)) {
