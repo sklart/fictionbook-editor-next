@@ -457,17 +457,22 @@ namespace
 
 	bool IsInstalledBuild(const CString& executablePath)
 	{
+		const HKEY roots[] = { HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE };
+		const REGSAM views[] = { KEY_WOW64_32KEY, KEY_WOW64_64KEY };
+		for (size_t rootIndex = 0; rootIndex < _countof(roots); ++rootIndex) for (size_t viewIndex = 0; viewIndex < _countof(views); ++viewIndex) {
 		HKEY key = NULL;
-		if (::RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\FictionBook Editor Next", 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS) return false;
+		if (::RegOpenKeyEx(roots[rootIndex], L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\FictionBook Editor Next", 0, KEY_QUERY_VALUE | views[viewIndex], &key) != ERROR_SUCCESS) continue;
 		wchar_t installedPath[MAX_PATH] = {}; DWORD type = 0, size = sizeof(installedPath);
 		const LONG result = ::RegQueryValueEx(key, L"InstallLocation", NULL, &type, reinterpret_cast<BYTE*>(installedPath), &size);
 		::RegCloseKey(key);
-		if (result != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ)) return false;
+		if (result != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ)) continue;
 		CString installed(installedPath); wchar_t expanded[MAX_PATH] = {};
 		if (type == REG_EXPAND_SZ && ::ExpandEnvironmentStrings(installed, expanded, _countof(expanded))) installed = expanded;
 		installed.TrimRight(L"\\");
 		CString executableDirectory(executablePath); const int slash = executableDirectory.ReverseFind(L'\\'); if (slash >= 0) executableDirectory = executableDirectory.Left(slash);
-		return installed.CompareNoCase(executableDirectory) == 0;
+		if (installed.CompareNoCase(executableDirectory) == 0) return true;
+		}
+		return false;
 	}
 
 	bool IsProcessElevated()
