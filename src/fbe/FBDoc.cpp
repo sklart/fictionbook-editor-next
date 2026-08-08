@@ -88,7 +88,7 @@ static CString GetDiagnosticFaultInjection()
 		L"get-extended-style", L"inflate-paragraphs", L"css-restore-failure",
 		L"api-load-return-false", L"api-load-exception", L"first-set-external",
 		L"second-set-external", L"optional-diagnostic-api-missing", L"navigate-error",
-		L"document-complete-timeout"
+		L"document-complete-timeout", L"controlled-load-failure+css-restore-failure"
 	};
 	for (UINT index = 0; index < _countof(allowed); ++index)
 		if (point.CompareNoCase(allowed[index]) == 0)

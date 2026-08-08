@@ -74,7 +74,13 @@ function TraceScript(code, message)
 }
 function IsDiagnosticFaultInjectionEnabled(point)
 {
- try { return window.fbeNextFaultInjection == point; }
+ try {
+  var injected = window.fbeNextFaultInjection;
+  if(injected == point) return true;
+  var points = injected ? String(injected).split("+") : [];
+  for(var index = 0; index < points.length; ++index) if(points[index] == point) return true;
+  return false;
+ }
  catch(ignore) { return false; }
 }
 function IsDiagnosticFaultInjectionActive()
@@ -749,6 +755,11 @@ function apiLoadFB2(path, lang)
 		failControlled();
 	}
 	TraceScript("J161", "operation=LoadFromDOM result");
+	if(IsDiagnosticFaultInjectionEnabled("controlled-load-failure"))
+	{
+		TraceDiagnosticEvent("J162", "operation=LoadFromDOM injected controlled failure");
+		failControlled();
+	}
 	TraceScript("J170", "operation=selection.empty");
 	document.selection.empty();
 	TraceScript("J171", "operation=selection.empty result");

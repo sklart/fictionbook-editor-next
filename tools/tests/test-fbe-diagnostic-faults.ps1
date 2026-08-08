@@ -143,6 +143,7 @@ try {
 	Invoke-DiagnosticFault 'optional-diagnostic-api-missing' @('FI000', 'J011') -ExpectSuccess
 	Invoke-DiagnosticFault 'navigate-error' @('FI012', 'WB135', 'WB134') -ExpectedText @('last-browser-event=NavigateError') -MaximumElapsedSeconds 5
 	Invoke-DiagnosticFault 'document-complete-timeout' @('FI013', 'WB133') -ExpectedText @('elapsed=0;', 'ready-state=', 'document-present=', 'last-browser-event=') -MaximumElapsedSeconds 5
+	Invoke-DiagnosticFault 'controlled-load-failure+css-restore-failure' @('FI000', 'J161', 'J162', 'J210', 'J212', 'D116', 'D112') -ExpectedText @('operation-stage=J161')
     Write-Host 'Diagnostic fault-injection tests passed.'
 }
 finally {
