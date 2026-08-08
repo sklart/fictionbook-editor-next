@@ -378,12 +378,15 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 	U::InitSettingsHotkeyGroups();
 	StartupTrace::Event(L"startup", L"S175", L"resources and hotkeys initialized");
 
+	StartupTrace::Event(L"startup", L"S190", L"main frame creation begin");
 	if(wndMain.CreateEx() == NULL)
 	{
+		const DWORD error = ::GetLastError();
+		StartupTrace::HResult(L"startup", L"S191", HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_GEN_FAILURE : error), L"main frame creation failed");
 		ATLTRACE(L"Main window creation failed!\n");
 		return 0;
 	}
-	StartupTrace::Event(L"startup", L"S190", L"main frame created");
+	StartupTrace::Event(L"startup", L"S192", L"main frame created");
 
 	WINDOWPLACEMENT wpl;
 	if(_Settings.GetWindowPosition(wpl))
@@ -556,7 +559,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
     ::MessageBox(NULL, msg, cpt,MB_OK|MB_ICONERROR);
     goto out;
   }
-  StartupTrace::Event(L"startup", L"S160", L"Scintilla and Lexilla loaded");
+	StartupTrace::Event(L"startup", L"S164", L"editor modules initialized");
 
   // register our protocol handler
   IInternetSession *isess = NULL;

@@ -74,6 +74,8 @@ foreach($pattern in @('FBE_NEXT_TRACE_VERBOSE', 'apiSetDiagnosticTraceOptions', 
 }
 Write-Host 'JavaScript trace bridge contract passed.'
 $fbeSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
+$startupCodes = @('S160', 'S161', 'S162', 'S163', 'S164', 'S190', 'S191', 'S192')
+foreach($code in $startupCodes) { if(-not $fbeSource.Contains($code)) { throw "Missing unambiguous startup code: $code" } }
 $traceHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.h')
 $traceImplementation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.cpp')
 foreach($pattern in @('PARAMFLAG_FIN', 'PARAMFLAG_FOUT', 'PARAMFLAG_FRETVAL', 'core-compatible=%d; diagnostic-compatible=%d')) {
