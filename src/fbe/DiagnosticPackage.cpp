@@ -2,6 +2,7 @@
 
 #include "StartupTrace.h"
 #include "utils.h"
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -64,11 +65,31 @@ namespace
 		const int count = ::WideCharToMultiByte(CP_UTF8, 0, value, value.GetLength(), NULL, 0, NULL, NULL); std::vector<BYTE> bytes(count); if (count) ::WideCharToMultiByte(CP_UTF8, 0, value, value.GetLength(), reinterpret_cast<char*>(&bytes[0]), count, NULL, NULL); return bytes;
 	}
 
+	bool SessionPartNumber(const CString& name, const CString& sessionStem, unsigned int& part)
+	{
+		part = 0;
+		if (name.CompareNoCase(sessionStem + L".log") == 0) return true;
+		const CString prefix(sessionStem + L"-part");
+		if (name.Left(prefix.GetLength()).CompareNoCase(prefix) != 0 || name.Right(4).CompareNoCase(L".log") != 0) return false;
+		const CString number(name.Mid(prefix.GetLength(), name.GetLength() - prefix.GetLength() - 4));
+		if (number.IsEmpty()) return false;
+		for (int index = 0; index < number.GetLength(); ++index) { if (number[index] < L'0' || number[index] > L'9') return false; part = part * 10 + number[index] - L'0'; }
+		return true;
+	}
+
+	struct SessionFile { CString path; unsigned int part; };
 	void AddSessionFiles(const CString& currentLog, std::vector<CString>& files)
 	{
-		const int slash = currentLog.ReverseFind(L'\\'); if (slash < 0) return; const CString directory = currentLog.Left(slash); CString name = currentLog.Mid(slash + 1); const int part = name.Find(L"-part"); if (part >= 0) name = name.Left(part) + L".log"; if (name.Right(4).CompareNoCase(L".log") != 0) return; const CString base = name.Left(name.GetLength() - 4);
-		WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"\\" + base + L"*.log", &find); if (search == INVALID_HANDLE_VALUE) return;
-		do { if (!(find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) files.push_back(directory + L"\\" + find.cFileName); } while (::FindNextFile(search, &find)); ::FindClose(search);
+		const int slash = currentLog.ReverseFind(L'\\'); if (slash < 0) return;
+		const CString directory = currentLog.Left(slash); CString name = currentLog.Mid(slash + 1);
+		const int part = name.Find(L"-part"); if (part >= 0) name = name.Left(part) + L".log";
+		if (name.Right(4).CompareNoCase(L".log") != 0) return;
+		const CString sessionStem = name.Left(name.GetLength() - 4);
+		std::vector<SessionFile> selected;
+		WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"\\fbe-trace-*.log", &find); if (search == INVALID_HANDLE_VALUE) return;
+		do { unsigned int segment = 0; if (!(find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && SessionPartNumber(find.cFileName, sessionStem, segment)) { SessionFile file = { directory + L"\\" + find.cFileName, segment }; selected.push_back(file); } } while (::FindNextFile(search, &find)); ::FindClose(search);
+		std::sort(selected.begin(), selected.end(), [](const SessionFile& left, const SessionFile& right) { return left.part < right.part; });
+		for (size_t index = 0; index < selected.size(); ++index) files.push_back(selected[index].path);
 	}
 
 	CString FindLatestCrashText()
