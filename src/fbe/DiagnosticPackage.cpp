@@ -17,21 +17,22 @@ namespace
 		bool Open(const CString& path) { file = ::CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL); return file != INVALID_HANDLE_VALUE; }
 		bool Add(const char* name, const std::vector<BYTE>& bytes)
 		{
-			if (file == INVALID_HANDLE_VALUE || strlen(name) > 0xffff || bytes.size() > 0xffffffff) return false;
+			if (file == INVALID_HANDLE_VALUE || !ok || entries.size() >= 65535 || strlen(name) > 0xffff || bytes.size() > 0xffffffff || totalBytes + bytes.size() > 256ULL * 1024ULL * 1024ULL) return false;
 			ZipEntry entry = { name, Crc32(bytes), static_cast<DWORD>(bytes.size()), Tell() };
+			if (!ok) return false;
 			Write32(0x04034b50); Write16(20); Write16(0x0800); Write16(0); Write16(0); Write16(0); Write32(entry.crc); Write32(entry.size); Write32(entry.size); Write16(static_cast<WORD>(entry.name.size())); Write16(0); Write(entry.name.data(), static_cast<DWORD>(entry.name.size())); if (entry.size) Write(&bytes[0], entry.size);
-			entries.push_back(entry); return ok;
+			entries.push_back(entry); totalBytes += bytes.size(); return ok;
 		}
 		bool Close()
 		{
-			const DWORD directory = Tell();
+			const DWORD directory = Tell(); if (!ok) { ::CloseHandle(file); file = INVALID_HANDLE_VALUE; return false; }
 			for (size_t index = 0; index < entries.size(); ++index) { const ZipEntry& entry = entries[index]; Write32(0x02014b50); Write16(20); Write16(20); Write16(0x0800); Write16(0); Write16(0); Write16(0); Write32(entry.crc); Write32(entry.size); Write32(entry.size); Write16(static_cast<WORD>(entry.name.size())); Write16(0); Write16(0); Write16(0); Write16(0); Write32(0); Write32(entry.offset); Write(entry.name.data(), static_cast<DWORD>(entry.name.size())); }
-			const DWORD size = Tell() - directory; Write32(0x06054b50); Write16(0); Write16(0); Write16(static_cast<WORD>(entries.size())); Write16(static_cast<WORD>(entries.size())); Write32(size); Write32(directory); Write16(0);
+			const DWORD end = Tell(); if (!ok || end < directory) { ::CloseHandle(file); file = INVALID_HANDLE_VALUE; return false; } const DWORD size = end - directory; Write32(0x06054b50); Write16(0); Write16(0); Write16(static_cast<WORD>(entries.size())); Write16(static_cast<WORD>(entries.size())); Write32(size); Write32(directory); Write16(0);
 			const bool result = ok; ::CloseHandle(file); file = INVALID_HANDLE_VALUE; return result;
 		}
 	private:
-		HANDLE file; bool ok = true; std::vector<ZipEntry> entries;
-		DWORD Tell() const { return ::SetFilePointer(file, 0, NULL, FILE_CURRENT); }
+		HANDLE file; bool ok = true; ULONGLONG totalBytes = 0; std::vector<ZipEntry> entries;
+		DWORD Tell() { const DWORD result = ::SetFilePointer(file, 0, NULL, FILE_CURRENT); if (result == INVALID_SET_FILE_POINTER && ::GetLastError() != ERROR_SUCCESS) ok = false; return result; }
 		void Write(const void* data, DWORD size) { DWORD written = 0; if (!size) return; if (!::WriteFile(file, data, size, &written, NULL) || written != size) ok = false; }
 		void Write16(WORD value) { BYTE bytes[2] = { static_cast<BYTE>(value), static_cast<BYTE>(value >> 8) }; Write(bytes, 2); }
 		void Write32(DWORD value) { BYTE bytes[4] = { static_cast<BYTE>(value), static_cast<BYTE>(value >> 8), static_cast<BYTE>(value >> 16), static_cast<BYTE>(value >> 24) }; Write(bytes, 4); }
@@ -137,8 +138,8 @@ bool StartupTrace::CreateDiagnosticPackage(CString& packagePath, CString& error)
 	if (!crashTextPath.IsEmpty() && (!ReadBytes(crashTextPath, crashText) || ContainsUnsafeContent(crashText))) { error = L"Privacy scan rejected the crash report."; return false; }
 	std::vector<BYTE> environment = Utf8(ExtractCategoryLines(traceText, L"environment")), typelib = Utf8(ExtractCategoryLines(traceText, L"typelib")), moduleList = Utf8(modules), manifestBytes = Utf8(manifest);
 	if (ContainsUnsafeContent(environment) || ContainsUnsafeContent(typelib) || ContainsUnsafeContent(moduleList) || ContainsUnsafeContent(manifestBytes)) { error = L"Privacy scan rejected generated diagnostic content."; return false; }
-	SYSTEMTIME now = {}; ::GetLocalTime(&now); CString output; output.Format(L"%s\\FBE-Diagnostics-%04u%02u%02u-%02u%02u%02u.zip", (LPCWSTR)CurrentLogDirectory(), now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond);
-	ZipStoreWriter zip; if (!zip.Open(output)) { error = L"Could not create the diagnostic package."; return false; }
+	SYSTEMTIME now = {}; ::GetLocalTime(&now); CString output, base; base.Format(L"%s\\FBE-Diagnostics-%04u%02u%02u-%02u%02u%02u-%03u", (LPCWSTR)CurrentLogDirectory(), now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+	ZipStoreWriter zip; bool opened = false; for (unsigned int suffix = 0; suffix < 1000 && !opened; ++suffix) { if (suffix) output.Format(L"%s-%u.zip", (LPCWSTR)base, suffix); else output = base + L".zip"; opened = zip.Open(output); } if (!opened) { error = L"Could not create the diagnostic package."; return false; }
 	bool added = zip.Add("package-manifest.txt", manifestBytes) && zip.Add("environment-report.txt", environment) && zip.Add("fbelib-report.txt", typelib) && zip.Add("diagnostic-modules.txt", moduleList);
 	if (added && !crashTextPath.IsEmpty()) added = zip.Add("crash/latest-crash-report.txt", crashText);
 	for (size_t index = 0; added && index < files.size(); ++index) { CString leaf = files[index].Mid(files[index].ReverseFind(L'\\') + 1); const int length = ::WideCharToMultiByte(CP_UTF8, 0, leaf, leaf.GetLength(), NULL, 0, NULL, NULL); std::string name("trace/"); name.resize(6 + length); ::WideCharToMultiByte(CP_UTF8, 0, leaf, leaf.GetLength(), &name[6], length, NULL, NULL); added = zip.Add(name.c_str(), contents[index]); }
