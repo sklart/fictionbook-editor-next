@@ -35,8 +35,15 @@ if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
 }
 
-$msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild `
-    -find "MSBuild\Current\Bin\MSBuild.exe" | Select-Object -First 1
+. (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
+
+$vswhereArguments = @("-latest", "-products", "*", "-requires", "Microsoft.Component.MSBuild")
+if ($PlatformToolset -eq "v143") {
+    $vswhereArguments += @("-version", "[17.0,18.0)")
+}
+$vswhereArguments += @("-find", "MSBuild\Current\Bin\MSBuild.exe")
+$msbuild = & $vswhere @vswhereArguments |
+    Select-Object -First 1
 
 if (-not $msbuild) {
     throw "Не найден MSBuild.exe."

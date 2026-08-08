@@ -26,6 +26,16 @@ param(
     # варианта Windows, сохранив остальные общие релизные бинарники.
     [switch]$BatchConvertersOnly,
 
+    # Использовать уже подготовленные PCRE2/Hunspell. Режим предназначен для
+    # второго (Win7) этапа одного release-конвейера.
+    [switch]$SkipDependencies,
+
+    # Диагностический локальный режим. CI всегда полагается на корректный
+    # граф MSBuild и не выполняет повторную полную пересборку проектов.
+    [switch]$ForceRebuildRequiredProjects,
+
+    [switch]$ReuseEditorRuntime,
+
     [switch]$WarningsAsErrors
 )
 
@@ -58,17 +68,31 @@ function Remove-ObsoleteReleaseArtifacts {
         }
     }
 }
-function Invoke-RequiredProjectRebuild {
+function Invoke-RequiredProjectBuild {
     param(
         [Parameter(Mandatory)]
         [string]$ProjectPath
     )
 
-    Write-Host "Пересборка релизного бинарника: $ProjectPath"
+    $target = if ($ForceRebuildRequiredProjects) { "Rebuild" } else { "Build" }
+    Write-Host "Сборка релизного бинарника ($target): $ProjectPath"
     $projectProperties = @($properties) + "/p:SolutionDir=$repoRoot\"
-    & $msbuild $ProjectPath /m /t:Rebuild $projectProperties /v:minimal /nologo
+    & $msbuild $ProjectPath /m "/t:$target" $projectProperties /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
+    }
+}
+
+function Assert-PreparedDependencies {
+    $requiredPaths = @(
+        (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"),
+        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-8-static.lib"),
+        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-posix-static.lib"),
+        (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib")
+    )
+    $missing = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+    if ($missing.Count -gt 0) {
+        throw ("Нельзя пропустить подготовку зависимостей; отсутствуют: {0}" -f ($missing -join "; "))
     }
 }
 
@@ -76,16 +100,25 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 $editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
 
-& (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `
-    -CompatibilityTarget $CompatibilityTarget `
-    -OutputDirectory $editorRuntimeDirectory
 if ($EditorRuntimeOnly) {
+    . (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `
+        -CompatibilityTarget $CompatibilityTarget `
+        -OutputDirectory $editorRuntimeDirectory `
+        -ReusePreparedRuntime:$ReuseEditorRuntime
     Write-Host "Собраны только целевые DLL редактора для ${CompatibilityTarget}: $editorRuntimeDirectory"
     return
 }
 
 & (Join-Path $repoRoot "tools\version\sync-version.ps1")
-Write-Host "Подготовка PCRE2..."
+
+# Общая среда компилятора нужна и PCRE2/Hunspell, и прямым MSBuild-вызовам
+# batch-проектов. Для Win7 фиксируем тот же toolset, что и runtime.
+$vsEnvironmentArguments = @{ Arch = "x86"; HostArch = "x64" }
+if ($CompatibilityTarget -eq "Win7") {
+    $vsEnvironmentArguments.VcVarsVersion = "14.44"
+}
+& (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") @vsEnvironmentArguments
+
 $pcre2BuildScript = Join-Path $repoRoot "tools\build\build-pcre2.ps1"
 $pcre2BuildArgs = @(
     "-NoProfile",
@@ -163,15 +196,23 @@ function Confirm-FbeLocalizedResourceLibraries {
 
     Write-Host "Локализованные DLL FBE проверены в каталоге Lang."
 }
-& pwsh @pcre2BuildArgs
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
+if ($SkipDependencies) {
+    Assert-PreparedDependencies
+    Write-Host "Подготовка PCRE2 и Hunspell пропущена: используются проверенные общие библиотеки."
 }
-if (-not (Test-Path -LiteralPath (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"))) {
-    throw "PCRE2 не подготовлен: отсутствует build\pcre2\install\$Configuration\include\pcre2.h"
+else {
+    Write-Host "Подготовка PCRE2..."
+    & pwsh @pcre2BuildArgs
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    Write-Host "Подготовка Hunspell..."
+    & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    Assert-PreparedDependencies
 }
-Write-Host "Подготовка Hunspell..."
-& (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
 
 if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
@@ -218,12 +259,19 @@ if ($BatchConvertersOnly) {
         "src\\export-epub\\ExportEPUBBatch.vcxproj",
         "src\\import-epub\\ImportEPUBBatch.vcxproj"
     )) {
-        Invoke-RequiredProjectRebuild -ProjectPath (Join-Path $repoRoot $batchProject)
+        Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot $batchProject)
     }
 
     Write-Host "Собраны только пакетные конвертеры для ${CompatibilityTarget}."
     return
 }
+
+. (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `
+    -CompatibilityTarget $CompatibilityTarget `
+    -OutputDirectory $editorRuntimeDirectory `
+    -ReusePreparedRuntime:$ReuseEditorRuntime
+
+Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
 & $msbuild (Join-Path $repoRoot "FBE.sln") /m /t:Build `
     $properties /v:minimal /nologo
@@ -232,14 +280,9 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# Эти проекты дают локальные релизные бинарники. Явный Rebuild защищает
-# release-gate от устаревших файлов, которые общий solution build может оставить
-# из-за некорректного incremental-состояния или старой runtime-копии.
+# Эти проекты не входят в FBE.sln. Остальные результаты даёт единственный
+# solution Build; повторный Rebuild доступен только локально по явному ключу.
 foreach ($requiredProject in @(
-    "src\export-docx\ExportDOCX.vcxproj",
-    "src\export-epub\ExportEPUB.vcxproj",
-    "src\fbv\FBV.vcxproj",
-    "src\import-epub\ImportEPUB.vcxproj",
     "src\export-docx\ExportDOCXBatch.vcxproj",
     "src\export-epub\ExportEPUBBatch.vcxproj",
     "src\import-epub\ImportEPUBBatch.vcxproj",
@@ -250,20 +293,10 @@ foreach ($requiredProject in @(
     "src\import-epub\thirdparty\lunasvg\lunasvg.vcxproj",
     "src\import-epub\ImportEPUBLunaSVG.vcxproj"
 )) {
-    Invoke-RequiredProjectRebuild -ProjectPath (Join-Path $repoRoot $requiredProject)
+    Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot $requiredProject)
 }
 
 Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
-
-Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
-
-# Экспорт JSON очищает Lang, поэтому resource DLL создаются после него.
-foreach ($localizedResourceProject in @(
-    "src\locales\res_rus\res_rus.vcxproj",
-    "src\locales\res_ukr\res_ukr.vcxproj"
-)) {
-    Invoke-RequiredProjectRebuild -ProjectPath (Join-Path $repoRoot $localizedResourceProject)
-}
 
 Confirm-FbeLocalizedResourceLibraries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 Remove-ObsoleteRootLanguageDirectories -OutputDirectory (Join-Path $repoRoot "out\$Configuration")

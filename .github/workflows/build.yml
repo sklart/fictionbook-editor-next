@@ -8,133 +8,151 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
-  release-win32:
+  validate:
     runs-on: windows-2022
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
-          fetch-depth: 0
-
-      - name: Check generated version files
+          fetch-depth: 1
+      - name: Check generated version files and pipeline structure
         shell: pwsh
         run: |
           ./tools/version/sync-version.ps1
           git diff --exit-code -- packaging/nsis/Installer/version.nsh
+          ./tools/tests/test-release-pipeline-deduplication.ps1
 
+  build:
+    needs: validate
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 1
+      - name: Restore third-party build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/pcre2
+            build/hunspell/lib
+            out/editor-runtime
+          key: ${{ runner.os }}-release-win32-v143-modern-win7-${{ hashFiles('third_party/pcre2/**', 'third_party/hunspell/**', 'third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-pcre2.ps1', 'tools/build/build-hunspell.ps1', 'tools/build/build-scintilla.ps1') }}
       - name: Build Release Win32 modern
         shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpx -WarningsAsErrors
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpx -WarningsAsErrors -ReuseEditorRuntime
+      - name: Build Win7-compatible editor runtime
+        shell: pwsh
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime
+      - name: Build Win7-compatible batch converters
+        shell: pwsh
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly -SkipDependencies
+      - name: Verify Modern binaries on pull requests
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest
+      - name: Upload compiled inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: FictionBookEditorNext-${{ github.sha }}-compiled
+          path: |
+            out/Release
+            out/editor-runtime
+            out/package/shell-build
+          if-no-files-found: error
+          retention-days: 14
 
+  package:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 1
+      - name: Download compiled inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: FictionBookEditorNext-${{ github.sha }}-compiled
+          path: .
       - name: Install NSIS
         shell: pwsh
         run: |
           if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
             choco install nsis --no-progress --yes
           }
-
-      - name: Create modern release artifacts
+      - name: Create Modern release artifacts without compiling
         shell: pwsh
         run: |
-          $arguments = @{
-            Configuration = "Release"
-            Platform = "Win32"
-            CompatibilityTarget = "Modern"
-            PlatformToolset = "v143"
-            SkipBuild = $true
-          }
+          $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
-            if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') {
-              $arguments.Prerelease = $true
-            }
-            else {
-              $arguments.ValidateUpdateManifest = $true
-            }
+            if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true } else { $arguments.ValidateUpdateManifest = $true }
           }
           ./tools/build/create-release.ps1 @arguments
-
-      - name: Build Win7-compatible editor runtime
-        shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly
-
-      - name: Build Win7-compatible batch converters
-        shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly
-
-      - name: Create Win7-compatible release artifacts
+      - name: Create Win7 release artifacts without compiling
         shell: pwsh
         run: |
-          $arguments = @{
-            Configuration = "Release"
-            Platform = "Win32"
-            CompatibilityTarget = "Win7"
-            PlatformToolset = "v143"
-            SkipBuild = $true
-            PreserveArtifacts = $true
-            SkipPropertyHandlerBuild = $true
-            SkipFbvVerbMuiBuild = $true
-          }
-          ./tools/build/create-release.ps1 @arguments
-
-      - name: Verify release archives
+          ./tools/build/create-release.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipBuild -PreserveArtifacts -SkipPropertyHandlerBuild -SkipFbvVerbMuiBuild -SkipCommonChecks
+      - name: Verify all release archives
         shell: pwsh
         run: ./tools/build/verify-artifacts.ps1 -Platform Win32 -CompatibilityTarget All
-
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v4
         with:
-          name: FictionBookEditorNext-${{ github.sha }}-win32
-          path: out/artifacts/*
+          name: FictionBookEditorNext-${{ github.sha }}-release
+          path: |
+            out/artifacts
+            update.xml
           if-no-files-found: error
           retention-days: 14
 
+  publish:
+    if: github.ref_type == 'tag'
+    needs: package
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: FictionBookEditorNext-${{ github.sha }}-release
+          path: .
       - name: Prepare human-readable release notes
-        if: github.ref_type == 'tag'
         shell: pwsh
         run: ./tools/build/new-release-notes.ps1 -Version "${{ github.ref_name }}" -OutputPath out/RELEASE_NOTES.md
-
       - name: Publish GitHub release
-        if: github.ref_type == 'tag'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $arguments = @("release", "create", "${{ github.ref_name }}", "out/artifacts/*", "--verify-tag", "--notes-file", "out/RELEASE_NOTES.md")
-          if ("${{ github.ref_name }}" -match '^v\d+\.\d+\.\d+-') {
-            $arguments += "--prerelease"
-          }
+          $assets = @(Get-ChildItem out/artifacts -Recurse -File | Select-Object -ExpandProperty FullName)
+          $arguments = @("release", "create", "${{ github.ref_name }}") + $assets + @("--verify-tag", "--notes-file", "out/RELEASE_NOTES.md")
+          if ("${{ github.ref_name }}" -match '^v\d+\.\d+\.\d+-') { $arguments += "--prerelease" }
           gh @arguments
-
-      - name: Синхронизировать манифест автообновления
-        if: github.ref_type == 'tag' && !contains(github.ref_name, '-')
+      - name: Synchronize update manifest
+        if: "!contains(github.ref_name, '-')"
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # create-release.ps1 записывает SHA-256 фактически собранного setup в
-          # update.xml. Публикуем этот манифест в master отдельным коммитом,
-          # чтобы проверка обновлений всегда сверяла файл с CI-артефактом.
-          $manifestPath = Join-Path $env:GITHUB_WORKSPACE "update.xml"
-          $manifestContent = [IO.File]::ReadAllText($manifestPath, [Text.UTF8Encoding]::new($false))
+          $manifestContent = [IO.File]::ReadAllText("update.xml", [Text.UTF8Encoding]::new($false))
           $encodedContent = [Convert]::ToBase64String([Text.UTF8Encoding]::new($false).GetBytes($manifestContent))
           $remoteFile = gh api "repos/${{ github.repository }}/contents/update.xml?ref=master" | ConvertFrom-Json
-
           if ($remoteFile.content) {
             $remoteContent = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($remoteFile.content -replace "\s", "")))
-            if ($remoteContent -eq $manifestContent) {
-              Write-Host "update.xml уже содержит актуальную контрольную сумму."
-              exit 0
-            }
+            if ($remoteContent -eq $manifestContent) { exit 0 }
           }
-
-          gh api --method PUT "repos/${{ github.repository }}/contents/update.xml" `
-            -f "message=Синхронизировать манифест обновления ${{ github.ref_name }}" `
-            -f "content=$encodedContent" `
-            -f "sha=$($remoteFile.sha)" `
-            -f "branch=master"
+          gh api --method PUT "repos/${{ github.repository }}/contents/update.xml" -f "message=Синхронизировать манифест обновления ${{ github.ref_name }}" -f "content=$encodedContent" -f "sha=$($remoteFile.sha)" -f "branch=master"

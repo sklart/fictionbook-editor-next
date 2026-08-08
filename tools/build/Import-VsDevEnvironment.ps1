@@ -18,7 +18,8 @@ $ErrorActionPreference = "Stop"
 
 $sentinelVersion = if ($VcVarsVersion) { $VcVarsVersion } else { "latest" }
 $sentinelName = "FBE_VSDEV_${Arch}_${HostArch}_${sentinelVersion}_INITIALIZED"
-if ([Environment]::GetEnvironmentVariable($sentinelName, "Process") -eq "1") {
+if ([Environment]::GetEnvironmentVariable($sentinelName, "Process") -eq "1" -and
+    (Get-Command nmake.exe -ErrorAction SilentlyContinue)) {
     return
 }
 
@@ -44,11 +45,23 @@ if ($LASTEXITCODE -ne 0) {
     throw "Не удалось инициализировать среду сборки Visual Studio для $Arch."
 }
 
+# PowerShell 7 может сохранить два различающихся регистром ключа PATH/Path
+# при наследовании окружения. MSBuild передаёт их в ProcessStartInfo как один
+# case-insensitive dictionary и из-за этого не может запустить cl.exe.
+# Удаляем оба варианта до импорта и записываем единственный канонический Path.
+Get-ChildItem Env: |
+    Where-Object { $_.Name -ieq "Path" } |
+    ForEach-Object { Remove-Item -LiteralPath ("Env:" + $_.Name) -ErrorAction SilentlyContinue }
+
 foreach ($line in $environment) {
     $separator = $line.IndexOf("=")
     if ($separator -gt 0) {
+        $name = $line.Substring(0, $separator)
+        if ($name -ieq "Path") {
+            $name = "Path"
+        }
         [Environment]::SetEnvironmentVariable(
-            $line.Substring(0, $separator),
+            $name,
             $line.Substring($separator + 1),
             "Process")
     }

@@ -28,7 +28,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBBatch\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
     <TargetName>ImportEPUBBatch</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>
@@ -93,5 +93,8 @@
   <ItemGroup>
     <ResourceCompile Include="ImportEPUBBatch.rc" />
   </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(CompatibilityTarget)'=='Win7'">
+    <ClCompile><PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

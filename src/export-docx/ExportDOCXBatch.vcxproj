@@ -72,16 +72,16 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -173,5 +173,8 @@
   <ItemGroup>
     <ClInclude Include="DocxQuality.h" />
   </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(CompatibilityTarget)'=='Win7'">
+    <ClCompile><PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

@@ -19,6 +19,7 @@ param(
     # Общие property handler и MUI уже подготовлены современным этапом.
     [switch]$SkipPropertyHandlerBuild,
     [switch]$SkipFbvVerbMuiBuild,
+    [switch]$SkipCommonChecks,
     [switch]$ValidateUpdateManifest,
     [switch]$Prerelease,
     [string]$ReleaseTag
@@ -71,9 +72,9 @@ if ($Prerelease -and -not $ReleaseTag) {
 }
 $architecture = $Platform.ToLowerInvariant()
 $artifactCompatibility = if ($CompatibilityTarget -eq "Win7") { "win7-" } else { "" }
-$artifactsDir = Join-Path $repoRoot "out\artifacts"
-$portableDir = Join-Path $repoRoot "out\package\FictionBookEditor"
-$symbolsDir = Join-Path $repoRoot "out\package\symbols"
+$artifactsDir = Join-Path $repoRoot ("out\artifacts\{0}" -f $CompatibilityTarget)
+$portableDir = Join-Path $repoRoot ("out\package\{0}\FictionBookEditor" -f $CompatibilityTarget)
+$symbolsDir = Join-Path $repoRoot ("out\package\{0}\symbols" -f $CompatibilityTarget)
 $editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
 
 # До упаковки синхронизируется только version.nsh. Проверка update.xml должна
@@ -137,16 +138,18 @@ $verifyReleaseArguments = @{
 if ($PlatformToolset) {
     $verifyReleaseArguments.PlatformToolset = $PlatformToolset
 }
+if ($SkipCommonChecks) {
+    $verifyReleaseArguments.SkipCommonChecks = $true
+}
 & (Join-Path $PSScriptRoot "verify-release.ps1") @verifyReleaseArguments
-& (Join-Path $repoRoot "tools\tests\test-scintilla.ps1")
-& (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
 & (Join-Path $PSScriptRoot "package-portable.ps1") `
     -Configuration $Configuration `
     -EditorRuntimeDirectory $editorRuntimeDirectory `
+    -PackageDirectory $portableDir `
     -RequireWin32PropertyHandler `
     -RequireX64ShellExtension `
     -SkipFbvVerbMuiBuild:$SkipFbvVerbMuiBuild
-& (Join-Path $PSScriptRoot "verify-package-stage.ps1")
+& (Join-Path $PSScriptRoot "verify-package-stage.ps1") -StageDirectory $portableDir
 & (Join-Path $PSScriptRoot "verify-nsis-layout.ps1")
 
 if ((Test-Path -LiteralPath $artifactsDir) -and -not $PreserveArtifacts) {
@@ -242,7 +245,10 @@ handler для 64-bit Explorer.
 Compress-Archive -Path (Join-Path $symbolsDir "*") -DestinationPath $symbolsZip -CompressionLevel Optimal
 
 if (-not $SkipInstaller) {
-    & (Join-Path $PSScriptRoot "prepare-installer.ps1") -Configuration $Configuration -SkipPortablePackage
+    & (Join-Path $PSScriptRoot "prepare-installer.ps1") `
+        -Configuration $Configuration `
+        -SkipPortablePackage `
+        -PortableDirectory $portableDir
 
     $makensisCandidates = @(
         (Join-Path ${env:ProgramFiles(x86)} "NSIS\Unicode\makensis.exe"),
@@ -340,7 +346,7 @@ if ($ValidateUpdateManifest) {
 $verifyArtifactArguments = @{
     Platform = $Platform
     ArtifactsDirectory = $artifactsDir
-    CompatibilityTarget = if ($PreserveArtifacts -and $CompatibilityTarget -eq "Win7") { "All" } else { $CompatibilityTarget }
+    CompatibilityTarget = $CompatibilityTarget
 }
 if ($SkipInstaller -and -not ($PreserveArtifacts -and $CompatibilityTarget -eq "Win7")) {
     $verifyArtifactArguments.SkipInstaller = $true

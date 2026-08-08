@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = "Release",
-    [switch]$SkipPortablePackage
+    [switch]$SkipPortablePackage,
+    [string]$PortableDirectory = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,7 +11,11 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $portableScript = Join-Path $PSScriptRoot "package-portable.ps1"
 $buildExperimentalShellScript = Join-Path $PSScriptRoot "build-experimental-property-handler.ps1"
 $verifyPackageStageScript = Join-Path $PSScriptRoot "verify-package-stage.ps1"
-$portableDir = Join-Path $repoRoot "out\package\FictionBookEditor"
+$portableDir = if ([string]::IsNullOrWhiteSpace($PortableDirectory)) {
+    Join-Path $repoRoot "out\package\FictionBookEditor"
+} else {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PortableDirectory)
+}
 $uacThirdPartyDir = Join-Path $repoRoot "third_party\uac"
 $uacNsisDir = Join-Path $repoRoot "packaging\nsis\NSIS"
 

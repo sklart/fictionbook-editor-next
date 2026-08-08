@@ -1,9 +1,16 @@
 ﻿[CmdletBinding()]
-param()
+param(
+    [string]$EditorRuntimeDirectory = ""
+)
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$runtimeDirectory = if ([string]::IsNullOrWhiteSpace($EditorRuntimeDirectory)) {
+    Join-Path $repoRoot "runtime"
+} else {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EditorRuntimeDirectory)
+}
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
 $testDir = Join-Path $repoRoot "out\tests"
@@ -65,7 +72,7 @@ function Invoke-IsolatedTest {
     New-Item -ItemType Directory -Path $caseDir | Out-Null
     Copy-FileWithRetry -Source $testExe -Destination $caseDir
     foreach ($library in $Libraries) {
-        Copy-FileWithRetry -Source (Join-Path $repoRoot "runtime\$library") `
+        Copy-FileWithRetry -Source (Join-Path $runtimeDirectory $library) `
             -Destination $caseDir
     }
 

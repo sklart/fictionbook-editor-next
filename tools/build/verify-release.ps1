@@ -7,7 +7,11 @@ param(
 
     [string]$PlatformToolset,
 
-    [switch]$SkipUpdateManifest
+    [switch]$SkipUpdateManifest,
+
+    # Исходники, словари и общие статические контракты проверяются один раз
+    # на Modern-этапе; Win7 повторяет только проверки своих бинарников.
+    [switch]$SkipCommonChecks
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,6 +66,7 @@ $requiredSymbols = @(
     "res_ukr.pdb"
 )
 
+if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-pipeline-deduplication.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
@@ -71,7 +76,6 @@ if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
 }
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
-& (Join-Path $repoRoot "tools\tests\test-scintilla.ps1")
 $pcre2TestArguments = @{
     Configuration = $Configuration
 }
@@ -126,6 +130,11 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-installer-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-components-page-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
+}
+
+& (Join-Path $repoRoot "tools\tests\test-scintilla.ps1") `
+    -EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")
+
 if ($CompatibilityTarget -eq "Win7") {
     $sharedWin7Files = @(
         "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
@@ -324,6 +333,4 @@ finally {
 }
 
 Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
-
-
 

@@ -12,12 +12,31 @@ param(
 
     # Каталог для целевых DLL редактора. Пустое значение сохраняет
     # историческое поведение и использует out\editor-runtime\<вариант>.
-    [string]$OutputDirectory = ""
+    [string]$OutputDirectory = "",
+
+    # Разрешает использовать предварительно проверенный runtime из CI-кэша.
+    # Без ключа локальный запуск всегда сохраняет привычную полную сборку.
+    [switch]$ReusePreparedRuntime
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$editorRuntimeDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
+} else {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
+}
+$runtimeDir = Join-Path $repoRoot "runtime"
+
+if ($ReusePreparedRuntime) {
+    $prepared = @("Scintilla.dll", "Lexilla.dll") | ForEach-Object { Join-Path $editorRuntimeDir $_ }
+    if (@($prepared | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) }).Count -eq 0) {
+        foreach ($path in $prepared) { Copy-Item -LiteralPath $path -Destination $runtimeDir -Force }
+        Write-Host "Scintilla/Lexilla $CompatibilityTarget восстановлены из явного runtime-кэша: $editorRuntimeDir"
+        return
+    }
+}
 
 if ($CompatibilityTarget -eq "Win7" -and -not $VcVarsVersion) {
     $VcVarsVersion = "14.44"
@@ -25,7 +44,7 @@ if ($CompatibilityTarget -eq "Win7" -and -not $VcVarsVersion) {
 
 if ($VcVarsVersion) {
     try {
-        & (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") `
+        . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") `
             -Arch x86 `
             -HostArch x64 `
             -VcVarsVersion $VcVarsVersion
@@ -38,12 +57,56 @@ if ($VcVarsVersion) {
 
         Write-Warning "Не удалось включить vcvars_ver=$VcVarsVersion для Scintilla/Lexilla: $($_.Exception.Message)"
         Write-Warning "Продолжаю со стандартной средой Visual Studio."
-        & (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
+        . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
     }
 }
 else {
-    & (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
+    . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 }
+
+function Get-NmakePath {
+    $fromPath = Get-Command nmake.exe -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty Source -First 1
+    if ($fromPath) {
+        return $fromPath
+    }
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    $installationPath = & $vswhere -latest -products * `
+        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+        -property installationPath | Select-Object -First 1
+    if (-not $installationPath) {
+        throw "Не удалось определить Visual Studio для nmake.exe."
+    }
+
+    $toolDirectories = Get-ChildItem -LiteralPath (Join-Path $installationPath "VC\Tools\MSVC") -Directory |
+        Sort-Object Name -Descending
+    if ($VcVarsVersion) {
+        $toolDirectories = @($toolDirectories | Where-Object { $_.Name -like "$VcVarsVersion*" }) +
+            @($toolDirectories | Where-Object { $_.Name -notlike "$VcVarsVersion*" })
+    }
+    foreach ($toolDirectory in $toolDirectories) {
+        $candidate = Join-Path $toolDirectory.FullName "bin\HostX64\x86\nmake.exe"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+    throw "Не найден nmake.exe в установленном наборе инструментов Visual Studio."
+}
+
+$nmake = Get-NmakePath
+$compilerBinDirectory = Split-Path -Parent $nmake
+$resourceCompiler = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter rc.exe -File `
+    -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match '\\x86\\rc\.exe$' } |
+    Sort-Object FullName -Descending |
+    Select-Object -First 1
+if (-not $resourceCompiler) {
+    throw "Не найден rc.exe из Windows SDK."
+}
+$requiredToolDirectories = @($compilerBinDirectory, $resourceCompiler.Directory.FullName)
+$env:Path = (($requiredToolDirectories + @($env:Path)) | Select-Object -Unique) -join ';'
+[Environment]::SetEnvironmentVariable("Path", $env:Path, "Process")
 
 foreach ($build in @(
     @{ Directory = "third_party\scintilla\win32"; Makefile = "scintilla.mak"; Arguments = @() },
@@ -56,11 +119,11 @@ foreach ($build in @(
 
     Push-Location (Join-Path $repoRoot $build.Directory)
     try {
-        & nmake.exe /nologo /f $build.Makefile clean
+        & $nmake /nologo /f $build.Makefile clean
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }
-        & nmake.exe @makeArguments
+        & $nmake @makeArguments
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }
@@ -70,12 +133,6 @@ foreach ($build in @(
     }
 }
 
-$runtimeDir = Join-Path $repoRoot "runtime"
-$editorRuntimeDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
-} else {
-    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
-}
 $scintillaVersionCode = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "third_party\scintilla\version.txt")).Trim()
 $lexillaVersionCode = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "third_party\lexilla\version.txt")).Trim()
 if ($scintillaVersionCode -notmatch '^\d{3}$' -or $lexillaVersionCode -notmatch '^\d{3}$') {

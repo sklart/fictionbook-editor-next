@@ -46,7 +46,30 @@ $nsh = @"
 !define PRODUCT_VER_NUM "$version"
 "@
 
-[IO.File]::WriteAllText($versionNsh, $nsh, [Text.UTF8Encoding]::new($false))
+function Write-Utf8FileIfChanged {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+
+        [Parameter(Mandatory)]
+        [string]$Content
+    )
+
+    $current = if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+    } else {
+        $null
+    }
+    if ($current -ceq $Content) {
+        Write-Host "Generated-файл уже синхронизирован: $Path"
+        return
+    }
+
+    [IO.File]::WriteAllText($Path, $Content, [Text.UTF8Encoding]::new($false))
+    Write-Host "Generated-файл обновлён: $Path"
+}
+
+Write-Utf8FileIfChanged -Path $versionNsh -Content $nsh
 
 if ($ValidateUpdateManifest) {
     [xml]$manifest = Get-Content -Raw -LiteralPath $updateManifest

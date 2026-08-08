@@ -7,6 +7,8 @@ param(
     # При отсутствии параметра сохраняется локальное историческое поведение.
     [string]$EditorRuntimeDirectory = "",
 
+    [string]$PackageDirectory = "",
+
     [switch]$RequireWin32PropertyHandler,
     [switch]$RequireX64ShellExtension,
 
@@ -27,7 +29,11 @@ $buildFbvVerbMuiScript = Join-Path $PSScriptRoot "build-fbv-verb-mui.ps1"
 $propertyHandlerRootDir = Join-Path $repoRoot "out\package\shell-build"
 $win32PropertyHandlerSourceDir = Join-Path $propertyHandlerRootDir "Win32\$Configuration"
 $x64PropertyHandlerSourceDir = Join-Path $propertyHandlerRootDir "x64\$Configuration"
-$stageDir = Join-Path $repoRoot "out\package\FictionBookEditor"
+$stageDir = if ([string]::IsNullOrWhiteSpace($PackageDirectory)) {
+    Join-Path $repoRoot "out\package\FictionBookEditor"
+} else {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PackageDirectory)
+}
 
 if (Test-Path -LiteralPath $stageDir) {
     Remove-Item -Recurse -Force -LiteralPath $stageDir
@@ -136,7 +142,6 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "tools\build\unregister-modern-prope
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-package.ps1") -PackageDirectory $stageDir
 
 Write-Host "Portable-пакет подготовлен в $stageDir"
-
 
 
 

@@ -31,6 +31,47 @@ if (-not $ArtifactsDirectory) {
 }
 $ArtifactsDirectory = (Resolve-Path -LiteralPath $ArtifactsDirectory).Path
 
+if ($CompatibilityTarget -eq "All" -and
+    (Test-Path -LiteralPath (Join-Path $ArtifactsDirectory "Modern") -PathType Container) -and
+    (Test-Path -LiteralPath (Join-Path $ArtifactsDirectory "Win7") -PathType Container)) {
+    # Изолированные profiles имеют собственные SHA256SUMS, поэтому проверяем
+    # каждый каталог отдельно, после чего сравниваем ожидаемо общие/разные DLL.
+    & $PSCommandPath -Platform $Platform -CompatibilityTarget Modern `
+        -ArtifactsDirectory (Join-Path $ArtifactsDirectory "Modern") -SkipInstaller:$SkipInstaller
+    & $PSCommandPath -Platform $Platform -CompatibilityTarget Win7 `
+        -ArtifactsDirectory (Join-Path $ArtifactsDirectory "Win7") -SkipInstaller:$SkipInstaller
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    function Get-ProfileZipEntrySha256 {
+        param([string]$ArchivePath, [string]$EntryName)
+        $archive = [IO.Compression.ZipFile]::OpenRead($ArchivePath)
+        try {
+            $entry = $archive.GetEntry($EntryName)
+            if ($null -eq $entry) { throw "В архиве отсутствует $EntryName" }
+            $stream = $entry.Open()
+            $sha256 = [Security.Cryptography.SHA256]::Create()
+            try { return [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace("-", "") }
+            finally { $sha256.Dispose(); $stream.Dispose() }
+        }
+        finally { $archive.Dispose() }
+    }
+
+    $modernPortable = Join-Path $ArtifactsDirectory "Modern\FictionBookEditorNext-$version-$architecture-portable.zip"
+    $win7Portable = Join-Path $ArtifactsDirectory "Win7\FictionBookEditorNext-$version-win7-$architecture-portable.zip"
+    foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll", "FBShell64.dll", "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll")) {
+        if ((Get-ProfileZipEntrySha256 $modernPortable $name) -ne (Get-ProfileZipEntrySha256 $win7Portable $name)) {
+            throw "Общий файл '$name' различается между Modern и Win7 portable-пакетами."
+        }
+    }
+    foreach ($name in @("Scintilla.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")) {
+        if ((Get-ProfileZipEntrySha256 $modernPortable $name) -eq (Get-ProfileZipEntrySha256 $win7Portable $name)) {
+            throw "$name в Modern и Win7 portable-пакетах совпадает; Win7-вариант не был применён."
+        }
+    }
+    Write-Host "Проверка изолированных Modern и Win7 артефактов прошла успешно."
+    return
+}
+
 $checksumsName = "SHA256SUMS.txt"
 
 $artifactProfiles = switch ($CompatibilityTarget) {
