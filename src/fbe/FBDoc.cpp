@@ -71,6 +71,55 @@ static bool DispatchHasMember(IDispatch* dispatch, const wchar_t* name)
 	return SUCCEEDED(dispatch->GetIDsOfNames(IID_NULL, names, 1, LOCALE_SYSTEM_DEFAULT, &dispid));
 }
 
+static CString GetDiagnosticFaultInjection()
+{
+	if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", NULL, 0) != 1)
+		return CString();
+	wchar_t value[64] = {};
+	const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", value, _countof(value));
+	if (!length || length >= _countof(value))
+		return CString();
+	const CString point(value);
+	static const wchar_t* const allowed[] = {
+		L"get-extended-style", L"inflate-paragraphs", L"css-restore-failure",
+		L"api-load-return-false", L"api-load-exception"
+	};
+	for (UINT index = 0; index < _countof(allowed); ++index)
+		if (point.CompareNoCase(allowed[index]) == 0)
+			return point;
+	return CString();
+}
+
+static void ApplyDiagnosticFaultInjection(MSHTML::IHTMLDocument2Ptr document)
+{
+	const CString point = GetDiagnosticFaultInjection();
+	if (point.IsEmpty() || !document)
+		return;
+	try
+	{
+		MSHTML::IHTMLWindow2Ptr window(document->parentWindow);
+		if (!window)
+		{
+			StartupTrace::HResult(L"fault", L"FI001", E_NOINTERFACE, L"fault injection window unavailable");
+			return;
+		}
+		CString script;
+		script.Format(L"window.fbeNextFaultInjection='%s';", (LPCWSTR)point);
+		window->execScript(_bstr_t(script), _bstr_t(L"JScript"));
+		const HRESULT executeResult = S_OK;
+		StartupTrace::HResult(L"fault", L"FI002", executeResult, L"fault injection flag applied");
+		if (SUCCEEDED(executeResult))
+		{
+			CString details; details.Format(L"point=%s", (LPCWSTR)point);
+			StartupTrace::Event(L"fault", L"FI000", details);
+		}
+	}
+	catch (const _com_error& error)
+	{
+		StartupTrace::HResult(L"fault", L"FI003", error.Error(), L"fault injection flag");
+	}
+}
+
 static void TraceHtmlDocumentState(MSHTML::IHTMLDocument2Ptr document)
 {
 	try
@@ -667,6 +716,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 
 
 	}
+	ApplyDiagnosticFaultInjection(m_body.Browser()->Document);
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
 	hr = InvokeFunc(L"apiLoadFB2", params, 2, res);

@@ -54,6 +54,12 @@ foreach($pattern in @('GetErrorInfo(0, &errorInfo)', 'SetErrorInfo(0, errorInfo)
 foreach($pattern in @('SetErrorInfo(0, errorInfo)', 'pfnDeferredFillIn = NULL', 'RecordLogged', 'SafeMethodHash')) {
     if($externalHelperSource -notlike "*$pattern*") { throw "Missing ExternalHelper dispatch preservation contract: $pattern" }
 }
+foreach($pattern in @('diagnosticFailureStage = "";', 'diagnosticOperationStage = "J100";', 'diagnosticLastTraceEvent = "J100";', 'TraceScript("J105", "operation=apiLoadFB2 injected exception")', 'TraceScript("J106", "operation=apiLoadFB2 injected false result")', 'if(!wasEnabled && diagnosticTraceEnabled) diagnosticTraceBridgeState = 0;', 'name-present=', 'details=omitted')) {
+    if($script -notlike "*$pattern*") { throw "Missing lifecycle or privacy diagnostic contract: $pattern" }
+}
+foreach($pattern in @('FBE_NEXT_TEST_MODE', 'IsDiagnosticFaultInjectionEnabled')) {
+    if(($documentSource + $externalHelperSource + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot ''src\fbe\ExternalHelper.h''))) -notlike "*$pattern*") { throw "Missing fault-injection test-mode gate: $pattern" }
+}
 Write-Host 'JavaScript trace bridge contract passed.'
 $fbeSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
 $traceHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.h')

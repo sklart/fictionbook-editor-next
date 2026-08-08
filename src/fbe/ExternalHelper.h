@@ -7,6 +7,15 @@
 #include "utils.h"
 #include "StartupTrace.h"
 
+inline bool IsDiagnosticFaultInjectionEnabled(const wchar_t* point)
+{
+	if (!point || !*point || !StartupTrace::Enabled() || ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", NULL, 0) != 1)
+		return false;
+	wchar_t value[64] = {};
+	const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", value, _countof(value));
+	return length && length < _countof(value) && _wcsicmp(value, point) == 0;
+}
+
 extern CSettings _Settings;
 
 static int modalResultCode;
@@ -144,6 +153,11 @@ public:
 	}  
 	STDMETHOD(InflateParagraphs)(IDispatch *elem)
 	{
+		if (IsDiagnosticFaultInjectionEnabled(L"inflate-paragraphs"))
+		{
+			StartupTrace::HResult(L"fault", L"FI595", E_FAIL, L"InflateParagraphs injected failure");
+			return E_FAIL;
+		}
 		if (!elem)
 			return E_POINTER;
 		MSHTML::IHTMLElement2Ptr element;
@@ -256,6 +270,13 @@ public:
 
 	STDMETHOD(GetExtendedStyle)(BSTR elem, BOOL* ext)
 	{
+		if (!ext)
+			return E_POINTER;
+		if (IsDiagnosticFaultInjectionEnabled(L"get-extended-style"))
+		{
+			StartupTrace::HResult(L"fault", L"FI820", E_FAIL, L"GetExtendedStyle injected failure");
+			return E_FAIL;
+		}
 		*ext = _Settings.GetExtElementStyle(elem);
 		return S_OK;
 	}

@@ -25,7 +25,14 @@ function apiGetDiagnosticFailureStage() { return diagnosticFailureStage; }
 function apiGetDiagnosticLastTraceEvent() { return diagnosticLastTraceEvent; }
 function apiGetDiagnosticLastStage() { return diagnosticOperationStage; }
 function apiGetDiagnosticTraceBridgeState() { return diagnosticTraceBridgeState; }
-function apiSetDiagnosticTraceEnabled(enabled) { diagnosticTraceEnabled = enabled ? true : false; TraceDiagnosticEvent("J001", "operation=apiSetDiagnosticTraceEnabled"); return true; }
+function apiSetDiagnosticTraceEnabled(enabled)
+{
+ var wasEnabled = diagnosticTraceEnabled;
+ diagnosticTraceEnabled = enabled ? true : false;
+ if(!wasEnabled && diagnosticTraceEnabled) diagnosticTraceBridgeState = 0;
+ TraceDiagnosticEvent("J001", "operation=apiSetDiagnosticTraceEnabled");
+ return true;
+}
 function TraceDiagnosticEvent(code, message)
 {
  diagnosticLastTraceEvent = code;
@@ -45,17 +52,29 @@ function TraceScript(code, message)
  SetDiagnosticOperationStage(code);
  TraceDiagnosticEvent(code, message);
 }
+function IsDiagnosticFaultInjectionEnabled(point)
+{
+ try { return window.fbeNextFaultInjection == point; }
+ catch(ignore) { return false; }
+}
 function DiagError(code, operation, error)
 {
  var failedStage = diagnosticFailureStage || diagnosticOperationStage || code;
  var details = "level=error; failed-stage=" + failedStage + "; operation=" + operation;
+ var errorName = "other";
  try
  {
   if(error)
-   details += "; number=" + error.number + "; name=" + error.name + "; line=" + error.lineNumber + "; description-present=" + (error.description ? 1 : 0) + "; message-present=" + (error.message ? 1 : 0) + "; details=omitted";
+  {
+   var rawName = error.name;
+   if(rawName == "Error" || rawName == "TypeError" || rawName == "RangeError" || rawName == "SyntaxError" || rawName == "Microsoft JScript runtime error") errorName = rawName;
+   details += "; name=" + errorName + "; name-present=" + (rawName ? 1 : 0) + "; description-present=" + (error.description ? 1 : 0) + "; message-present=" + (error.message ? 1 : 0);
+   if(typeof error.number == "number" && isFinite(error.number)) details += "; number=" + error.number;
+   if(typeof error.lineNumber == "number" && isFinite(error.lineNumber)) details += "; line=" + error.lineNumber;
+  }
  }
  catch(ignore) {}
- TraceDiagnosticEvent(code, details);
+ TraceDiagnosticEvent(code, details + "; details=omitted");
 }
 
 //======================================
@@ -597,13 +616,27 @@ function recursiveChangeNbsp(elem, repChar) {
 
 function apiLoadFB2(path, lang)
 {
-	TraceScript("J100", "operation=apiLoadFB2");
-	TraceScript("J101", "operation=css lookup");
+	diagnosticFailureStage = "";
+	diagnosticOperationStage = "J100";
+	diagnosticLastTraceEvent = "J100";
+	TraceDiagnosticEvent("J100", "operation=apiLoadFB2");
 	var css=null;
 	var css_filename="";
 	var loadSucceeded=false;
+	var loadResult=false;
 	try
 	{
+	if(IsDiagnosticFaultInjectionEnabled("api-load-exception"))
+	{
+		TraceScript("J105", "operation=apiLoadFB2 injected exception");
+		throw new Error("diagnostic fault injection");
+	}
+	if(IsDiagnosticFaultInjectionEnabled("api-load-return-false"))
+	{
+		TraceScript("J106", "operation=apiLoadFB2 injected false result");
+		return false;
+	}
+	TraceScript("J101", "operation=css lookup");
 	css=document.getElementById("css");
 	TraceScript("J102", "operation=save css href");
 	css_filename = css.href;
@@ -687,10 +720,8 @@ function apiLoadFB2(path, lang)
 	TraceScript("J200", "operation=apiShowDesc");
 	if(!apiShowDesc(false)) return false;
 	TraceScript("J201", "operation=apiShowDesc result");
-	TraceScript("J299", "operation=apiLoadFB2 success");
-	diagnosticFailureStage = "";
 	loadSucceeded=true;
-	return encoding;
+	loadResult=encoding;
 	}
 	catch(e)
 	{
@@ -703,7 +734,7 @@ function apiLoadFB2(path, lang)
 		if(css)
 		{
 			TraceDiagnosticEvent("J210", "operation=CSS restore begin");
-			try { css.href = css_filename; TraceDiagnosticEvent("J211", "operation=CSS restore success"); }
+			try { if(IsDiagnosticFaultInjectionEnabled("css-restore-failure")) throw new Error("diagnostic fault injection"); css.href = css_filename; TraceDiagnosticEvent("J211", "operation=CSS restore success"); }
 			catch(e)
 			{
 				TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=" + (loadSucceeded ? "success" : "failure"));
@@ -716,6 +747,13 @@ function apiLoadFB2(path, lang)
 			}
 		}
 	}
+	if(loadSucceeded)
+	{
+		TraceScript("J299", "operation=apiLoadFB2 success");
+		diagnosticFailureStage = "";
+		return loadResult;
+	}
+	return false;
 }
 function apiShowDesc(state)
 {
