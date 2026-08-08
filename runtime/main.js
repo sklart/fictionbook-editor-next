@@ -466,7 +466,17 @@ function LoadXSL(path, lang)
 		TraceScript("J460", "operation=XSL documentElement missing");
 		return false;
 	}
-	var imp = doc.firstChild;
+	var imp = null;
+	var child = doc.firstChild;
+	while(child)
+	{
+		if(child.nodeType == 1 && (child.nodeName == "xsl:import" || child.nodeName == "xsl:include" || child.baseName == "import" || child.baseName == "include"))
+		{
+			imp = child;
+			break;
+		}
+		child = child.nextSibling;
+	}
 	if(!imp || !imp.attributes)
 	{
 		TraceScript("J461", "operation=XSL import/include missing");

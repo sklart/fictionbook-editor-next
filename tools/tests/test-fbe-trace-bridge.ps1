@@ -63,6 +63,9 @@ foreach($pattern in @('FBE_NEXT_TEST_MODE', 'IsDiagnosticFaultInjectionEnabled')
 foreach($pattern in @('J512', 'J513', 'J854', 'J855', 'J890', 'if(!ShowDescElements()) return false;', 'return true;')) {
     if($script -notlike "*$pattern*") { throw "Missing explicit JavaScript DOM failure stage: $pattern" }
 }
+foreach($pattern in @('var child = doc.firstChild;', 'child.nodeType == 1', 'child.nodeName == "xsl:import"', 'child.nodeName == "xsl:include"', 'child = child.nextSibling;', 'J461')) {
+    if($script -notlike "*$pattern*") { throw "Missing robust XSL import/include lookup: $pattern" }
+}
 Write-Host 'JavaScript trace bridge contract passed.'
 $fbeSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
 $traceHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.h')
