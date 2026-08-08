@@ -4075,6 +4075,13 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 			return true;
 
 		// at this point we are ready to create a table
+		// Structural editor operations use direct DOM insertion inside a markup
+		// undo unit.  Find the current paragraph as an insertion anchor.
+		MSHTML::IHTMLElementPtr anchor(rng->parentElement());
+		while (anchor && U::scmp(anchor->tagName, L"P") != 0)
+			anchor = anchor->parentElement;
+		if (!anchor || anchor->parentElement != pe)
+			return false;
 
 		// * create an undo unit
 		m_mk_srv->BeginUndoUnit(L"insert table");
@@ -4084,25 +4091,23 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 		nrows = max(1, nrows);
 		ncolumns = max(1, ncolumns);
 		const int totalRows = nrows + (bTitle ? 1 : 0);
+		MSHTML::IHTMLElementPtr firstCell;
 		for (int row = 0; row < totalRows; ++row)
 		{
 			MSHTML::IHTMLElementPtr tre(Document()->createElement(L"TR"));
 			tre->className = L"tr";
 			const wchar_t* cellType = bTitle && row == 0 ? L"TH" : L"TD";
-			for (int column = 0; column < ncolumns; ++column)
-				MSHTML::IHTMLElement2Ptr(tre)->insertAdjacentElement(L"beforeEnd", CreateTableCell(Document(), cellType));
+			for (int column = 0; column < ncolumns; ++column) {
+				MSHTML::IHTMLElementPtr cell(CreateTableCell(Document(), cellType));
+				if (!firstCell) firstCell = cell;
+				MSHTML::IHTMLElement2Ptr(tre)->insertAdjacentElement(L"beforeEnd", cell);
+			}
 			MSHTML::IHTMLElement2Ptr(te)->insertAdjacentElement(L"beforeEnd", tre);
 		}
 
-		// InsertHTML is an editing command, so MSHTML records it in its own
-		// undo stack. IHTMLTxtRange::pasteHTML changes the DOM but is not
-		// undoable by the editor's Undo command.
-		rng->select();
-		if (Document()->execCommand(L"InsertHTML", VARIANT_FALSE, _variant_t(te->outerHTML)) != VARIANT_TRUE)
-		{
-			m_mk_srv->EndUndoUnit();
-			return false;
-		}
+		// Unlike pasteHTML/InsertHTML, direct insertion is supported by this
+		// MSHTML host and is captured by the surrounding undo unit.
+		MSHTML::IHTMLElement2Ptr(anchor)->insertAdjacentElement(L"afterEnd", te);
 
 		// * ensure we have good html
 		RelocateParagraphs(MSHTML::IHTMLDOMNodePtr(pe));
@@ -4110,6 +4115,12 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 
 		// * close undo unit
 		m_mk_srv->EndUndoUnit();
+		if (firstCell) {
+			MSHTML::IHTMLTxtRangePtr cellRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+			cellRange->moveToElementText(firstCell);
+			cellRange->collapse(VARIANT_TRUE);
+			cellRange->select();
+		}
 		// Refresh command state after the modal table dialog. Without this the
 		// Undo button can remain disabled even though MSHTML has an undo unit.
 		::SendMessage(m_frame, WM_COMMAND, MAKELONG(0, IDN_SEL_CHANGE), reinterpret_cast<LPARAM>(m_hWnd));
