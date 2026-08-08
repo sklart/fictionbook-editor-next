@@ -670,6 +670,7 @@ function apiLoadFB2(path, lang)
 	}
 	TraceScript("J101", "operation=css lookup");
 	css=document.getElementById("css");
+	if(!css) { TraceScript("J104", "operation=CSS element missing"); return false; }
 	TraceScript("J102", "operation=save css href");
 	css_filename = css.href;
 	TraceScript("J103", "operation=disable css");
@@ -739,8 +740,10 @@ function apiLoadFB2(path, lang)
 	TraceScript("J171", "operation=selection.empty result");
 	TraceScript("J180", "operation=fbw_desc lookup");
 	var desc = document.getElementById("fbw_desc");
+	if(!desc) { TraceScript("J182", "operation=description element missing"); return false; }
 	TraceScript("J181", "operation=diID lookup");
 	var id=desc.all.diID;
+	if(!id) { TraceScript("J183", "operation=diID element missing"); return false; }
 	if(id)
 	if(path.indexOf("blank.fb2") != -1)
 	{
