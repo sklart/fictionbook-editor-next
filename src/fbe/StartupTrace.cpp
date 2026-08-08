@@ -448,7 +448,7 @@ namespace
 		}
 		const bool present = !path.IsEmpty() && ::GetFileAttributes(path) != INVALID_FILE_ATTRIBUTES;
 		CString details;
-		details.Format(L"module=%s; present=%d; loaded=%d; file-version=%s; product-version=unavailable; architecture=%s",
+		details.Format(L"module=%s; present=%d; loaded=%d; file-version=%s; architecture=%s",
 			moduleName, present ? 1 : 0, module ? 1 : 0,
 			(LPCWSTR)(module ? GetLoadedModuleVersion(mainExecutable ? NULL : moduleName) : CString(L"not-loaded")),
 			(LPCWSTR)ModuleArchitecture(path));
