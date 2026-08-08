@@ -2,7 +2,8 @@
 param(
     [string]$Configuration = "Release",
     [int]$TimeoutSeconds = 90,
-    [switch]$Trace
+    [switch]$Trace,
+    [switch]$VerboseTrace
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,11 +20,19 @@ $traceDirectories = @(
     (Join-Path $env:TEMP "FBE Next Diagnostics")
 )
 $traceFile = $null
+$traceFiles = @()
+$traceText = ""
 
-function Get-TraceFileForProcess([int]$ProcessId, [DateTime]$NotBefore) {
+function Get-TraceFilesForProcess([int]$ProcessId, [DateTime]$NotBefore) {
     $threshold = $NotBefore.ToUniversalTime().AddSeconds(-5)
     $files = foreach($directory in $traceDirectories) { if (Test-Path -LiteralPath $directory -PathType Container) { Get-ChildItem -LiteralPath $directory -Filter ("fbe-trace-*-pid{0}*.log" -f $ProcessId) -File | Where-Object { $_.LastWriteTimeUtc -ge $threshold } } }
-    return $files | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+    return @($files | Sort-Object LastWriteTimeUtc, Name)
+}
+function Get-TraceFileForProcess([int]$ProcessId, [DateTime]$NotBefore) {
+    return Get-TraceFilesForProcess $ProcessId $NotBefore | Select-Object -Last 1
+}
+function Get-TraceGroupText([System.IO.FileInfo[]]$Files) {
+    return (($Files | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n")
 }
 $previousTraceSetting = $env:FBE_NEXT_TRACE
 $traceRegistryPath = "HKCU:\Software\FBETeam\FictionBook Editor Next\Diagnostics"
@@ -154,62 +163,67 @@ try {
         while (-not $process.HasExited -and (Get-Date) -lt $closeDeadline)
     }
     if (-not $process.HasExited) { throw "FBE не завершился штатно после WM_CLOSE и команды Exit." }
-    if ($Trace) { foreach($code in @("S900","S999")) { if (-not (Select-String -LiteralPath $traceFile -SimpleMatch ("code=" + $code) -Quiet)) { throw "После WM_CLOSE в журнале нет ${code}: $traceFile" } }; $bytes=[IO.File]::ReadAllBytes($traceFile); try { [void]([Text.UTF8Encoding]::new($false,$true)).GetString($bytes) } catch { throw "Диагностический журнал не является корректным UTF-8: $traceFile" }; if ($bytes.Length -eq 0 -or $bytes[$bytes.Length - 1] -ne 10) { throw "Последняя строка диагностического журнала обрезана: $traceFile" } }
+    if ($Trace) {
+        $traceFiles = Get-TraceFilesForProcess $process.Id $started
+        if ($traceFiles.Count -eq 0) { throw "После закрытия не найдена группа диагностических журналов процесса $($process.Id)." }
+        $traceText = Get-TraceGroupText $traceFiles
+        foreach($code in @("S900","S999")) { if (-not (Select-String -InputObject $traceText -SimpleMatch ("code=" + $code) -Quiet)) { throw "После WM_CLOSE в группе журналов нет ${code}: $($traceFiles.FullName -join ', ')" } }
+        foreach($file in $traceFiles) { $bytes=[IO.File]::ReadAllBytes($file.FullName); try { [void]([Text.UTF8Encoding]::new($false,$true)).GetString($bytes) } catch { throw "Диагностический журнал не является корректным UTF-8: $($file.FullName)" }; if ($bytes.Length -eq 0 -or $bytes[$bytes.Length - 1] -ne 10) { throw "Последняя строка диагностического журнала обрезана: $($file.FullName)" } }
+    }
     $elapsed = [int]((Get-Date) - $started).TotalSeconds
     Write-Host "Проверка видимого запуска FBE прошла успешно за $elapsed секунд."
     if ($Trace) {
         if (-not $traceFile -or -not (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
             throw "Не создан диагностический журнал: $traceFile"
         }
-        if (Select-String -LiteralPath $traceFile -SimpleMatch "code=-" -Quiet) { throw "В диагностическом журнале есть событие без явного code: $traceFile" }
-        if (Select-String -LiteralPath $traceFile -Pattern "Р[А-Яа-я]" -Quiet) { throw "В диагностическом журнале обнаружен mojibake: $traceFile" }
-        if (Select-String -LiteralPath $traceFile -Pattern "[A-Za-z]:[\\/]" -Quiet) { throw "В диагностическом журнале обнаружен полный путь: $traceFile" }
-        if (Select-String -LiteralPath $traceFile -SimpleMatch "file:///" -Quiet) { throw "В диагностическом журнале обнаружен file URL: $traceFile" }
-        $traceScriptLookups = @(Select-String -LiteralPath $traceFile -Pattern "code=XH120;.*method=TraceScript")
+        if (Select-String -InputObject $traceText -SimpleMatch "code=-" -Quiet) { throw "В диагностическом журнале есть событие без явного code: $traceFile" }
+        if (Select-String -InputObject $traceText -Pattern "Ð.|Ñ.|â.." -Quiet) { throw "В диагностическом журнале обнаружена известная повреждённая UTF-8 последовательность: $traceFile" }
+        if (Select-String -InputObject $traceText -Pattern "[A-Za-z]:[\\/]" -Quiet) { throw "В диагностическом журнале обнаружен полный путь: $traceFile" }
+        if (Select-String -InputObject $traceText -SimpleMatch "file:///" -Quiet) { throw "В диагностическом журнале обнаружен file URL: $traceFile" }
+        $traceScriptLookups = @(Select-String -InputObject $traceText -Pattern "code=XH120;.*method=TraceScript")
         if ($traceScriptLookups.Count -gt 1) { throw "TraceScript name-resolution повторяется $($traceScriptLookups.Count) раз: $traceFile" }
-        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "diagnostic trace bridge=available" -Quiet)) {
+        if (-not (Select-String -InputObject $traceText -SimpleMatch "diagnostic trace bridge=available" -Quiet)) {
             throw "В диагностическом журнале не подтверждён доступный TraceScript bridge: $traceFile"
         }
         foreach ($code in @('J100', 'J400', 'J500', 'J599', 'J299')) {
-            if (-not (Select-String -LiteralPath $traceFile -SimpleMatch ("code=" + $code) -Quiet)) {
+            if (-not (Select-String -InputObject $traceText -SimpleMatch ("code=" + $code) -Quiet)) {
                 throw "В диагностическом журнале нет обязательной JavaScript-стадии: $code"
             }
         }
-        if (Select-String -LiteralPath $traceFile -SimpleMatch 'level=error' -Quiet) {
+        if (Select-String -InputObject $traceText -SimpleMatch 'level=error' -Quiet) {
             throw "Успешная загрузка создала error-событие: $traceFile"
         }
-        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "category=document;" -Quiet)) {
+        if (-not (Select-String -InputObject $traceText -SimpleMatch "category=document;" -Quiet)) {
             throw "В диагностическом журнале нет событий документа: $traceFile"
         }
-        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "external-typeinfo=" -Quiet)) {
+        if (-not (Select-String -InputObject $traceText -SimpleMatch "external-typeinfo=" -Quiet)) {
             throw "В диагностическом журнале нет состояния window.external: $traceFile"
         }
-        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "apiLoadFB2=" -Quiet)) {
+        if (-not (Select-String -InputObject $traceText -SimpleMatch "apiLoadFB2=" -Quiet)) {
             throw "В диагностическом журнале нет состояния JavaScript API: $traceFile"
         }
-        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "user-agent=" -Quiet)) {
+        if (-not (Select-String -InputObject $traceText -SimpleMatch "user-agent=" -Quiet)) {
             throw "В диагностическом журнале нет navigator.userAgent: $traceFile"
         }
-        if (-not (Select-String -LiteralPath $traceFile -SimpleMatch "app-version=" -Quiet)) {
+        if (-not (Select-String -InputObject $traceText -SimpleMatch "app-version=" -Quiet)) {
             throw "В диагностическом журнале нет navigator.appVersion: $traceFile"
         }
         foreach ($code in @('WB111', 'WB112', 'WB200', 'WB210', 'WB220', 'WB230', 'WB240', 'WB250', 'WB270', 'WB295', 'WB299', 'WB199')) {
-            if (-not (Select-String -LiteralPath $traceFile -SimpleMatch ("code=" + $code) -Quiet)) {
+            if (-not (Select-String -InputObject $traceText -SimpleMatch ("code=" + $code) -Quiet)) {
                 throw "В диагностическом журнале нет обязательной стадии WebBrowser: $code"
             }
         }
-        if (Select-String -LiteralPath $traceFile -SimpleMatch 'text="' -Quiet) {
+        if (Select-String -InputObject $traceText -SimpleMatch 'text="' -Quiet) {
             throw "Selection trace не должен содержать поле text: $traceFile"
         }
 
-        Write-Host "Диагностический журнал:"
-        Get-Content -LiteralPath $traceFile
+        if ($VerboseTrace) { Write-Host "Диагностическая группа журналов:"; $traceText }
     }
 }
 catch {
-    if ($Trace -and $traceFile -and (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
+    if ($Trace -and $traceFiles.Count -gt 0) {
         Write-Warning "Частичный диагностический журнал:"
-        Get-Content -LiteralPath $traceFile | Write-Warning
+        $traceText | Write-Warning
     }
     throw
 }
