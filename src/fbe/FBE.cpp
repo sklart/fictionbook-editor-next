@@ -357,6 +357,16 @@ static void ParseCommandLine(LPTSTR cmd, CSimpleArray<CString>& args)
 
 HINSTANCE resLib;
 
+static bool IsMainFrameCreateFaultEnabled()
+{
+	if (!StartupTrace::Enabled()) return false;
+	wchar_t testMode[8] = {}, fault[128] = {};
+	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
+	const DWORD faultLength = ::GetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", fault, _countof(fault));
+	return testModeLength && testModeLength < _countof(testMode) && wcscmp(testMode, L"1") == 0 &&
+		faultLength && faultLength < _countof(fault) && wcscmp(fault, L"main-frame-create-failure") == 0;
+}
+
 int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 {
 	StartupTrace::Event(L"startup", L"S170", L"main window setup started");
@@ -379,12 +389,15 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 	StartupTrace::Event(L"startup", L"S175", L"resources and hotkeys initialized");
 
 	StartupTrace::Event(L"startup", L"S190", L"main frame creation begin");
-	if(wndMain.CreateEx() == NULL)
+	const bool injectedMainFrameFailure = IsMainFrameCreateFaultEnabled();
+	if (injectedMainFrameFailure)
+		StartupTrace::Event(L"fault", L"FI014", L"main-frame-create-failure injected");
+	if(injectedMainFrameFailure || wndMain.CreateEx() == NULL)
 	{
-		const DWORD error = ::GetLastError();
+		const DWORD error = injectedMainFrameFailure ? ERROR_GEN_FAILURE : ::GetLastError();
 		StartupTrace::HResult(L"startup", L"S191", HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_GEN_FAILURE : error), L"main frame creation failed");
 		ATLTRACE(L"Main window creation failed!\n");
-		return 0;
+		return 1;
 	}
 	StartupTrace::Event(L"startup", L"S192", L"main frame created");
 

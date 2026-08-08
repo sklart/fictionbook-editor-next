@@ -81,7 +81,7 @@ function Assert-TraceDoesNotContain([string]$Trace, [string]$Text) {
     }
 }
 
-function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes, [switch]$ExpectSuccess, [string[]]$ExpectedText = @(), [int]$MaximumElapsedSeconds = 0) {
+function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes, [switch]$ExpectSuccess, [string[]]$ExpectedText = @(), [string[]]$ForbiddenCodes = @(), [int]$ExpectedExitCode = -1, [int]$MaximumElapsedSeconds = 0) {
     $started = Get-Date
     $process = $null
     $trace = $null
@@ -109,6 +109,9 @@ function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes, [switc
 
         if(-not $trace) { throw "No diagnostic trace was created for fault '$Fault'." }
         foreach($code in $ExpectedCodes) { Assert-TraceCode $trace $code }
+		foreach($code in $ForbiddenCodes) {
+			if(Select-String -LiteralPath $trace -SimpleMatch ("code=" + $code) -Quiet) { throw "Trace unexpectedly contains ${code}: $trace" }
+		}
 		foreach($text in $ExpectedText) {
 			if(-not (Select-String -LiteralPath $trace -SimpleMatch $text -Quiet)) { throw "Trace does not contain expected text '$text': $trace" }
 		}
@@ -121,6 +124,10 @@ function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes, [switc
             Assert-TraceDoesNotContain $trace 'code=J299'
             Assert-TraceDoesNotContain $trace 'code=D113'
         }
+		if($ExpectedExitCode -ge 0) {
+			$process.WaitForExit(10000) | Out-Null
+			if(-not $process.HasExited -or $process.ExitCode -ne $ExpectedExitCode) { throw "Diagnostic fault '$Fault' exited with $($process.ExitCode), expected $ExpectedExitCode." }
+		}
         Write-Host "Diagnostic fault '$Fault' passed: $trace"
     }
     finally {
@@ -143,6 +150,7 @@ try {
 	Invoke-DiagnosticFault 'optional-diagnostic-api-missing' @('FI000', 'J011') -ExpectSuccess
 	Invoke-DiagnosticFault 'navigate-error' @('FI012', 'WB135', 'WB134') -ExpectedText @('last-browser-event=NavigateError') -MaximumElapsedSeconds 5
 	Invoke-DiagnosticFault 'document-complete-timeout' @('FI013', 'WB133') -ExpectedText @('elapsed=0;', 'ready-state=', 'document-present=', 'last-browser-event=') -MaximumElapsedSeconds 5
+	Invoke-DiagnosticFault 'main-frame-create-failure' @('FI014', 'S191') -ForbiddenCodes @('S192', 'S230') -ExpectedExitCode 1
 	Invoke-DiagnosticFault 'controlled-load-failure+css-restore-failure' @('FI000', 'J161', 'J162', 'J210', 'J212', 'D116', 'D112') -ExpectedText @('operation-stage=J161')
     Write-Host 'Diagnostic fault-injection tests passed.'
 }
