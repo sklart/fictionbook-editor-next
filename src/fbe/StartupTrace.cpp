@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "StartupTrace.h"
+#include "utils.h"
 #include "../version.h"
 #include <algorithm>
 #include <vector>
@@ -418,6 +419,86 @@ namespace
 		return result;
 	}
 
+	CString ModuleArchitecture(const CString& path)
+	{
+		DWORD binaryType = 0;
+		if (!path.IsEmpty() && ::GetBinaryType(path, &binaryType))
+		{
+			if (binaryType == SCS_32BIT_BINARY) return CString(L"x86");
+			if (binaryType == SCS_64BIT_BINARY) return CString(L"x64");
+		}
+		return CString(L"unknown");
+	}
+
+	CString DescribeDiagnosticModule(const wchar_t* moduleName, bool mainExecutable = false)
+	{
+		HMODULE module = mainExecutable ? ::GetModuleHandle(NULL) : ::GetModuleHandle(moduleName);
+		CString path;
+		if (module)
+		{
+			wchar_t buffer[MAX_PATH] = {};
+			if (::GetModuleFileName(module, buffer, _countof(buffer))) path = buffer;
+		}
+		else if (_wcsicmp(moduleName, L"Scintilla.dll") == 0 || _wcsicmp(moduleName, L"Lexilla.dll") == 0)
+			path = U::GetProgDirFile(moduleName);
+		else
+		{
+			wchar_t systemDirectory[MAX_PATH] = {};
+			if (::GetSystemDirectory(systemDirectory, _countof(systemDirectory))) { path = systemDirectory; path.TrimRight(L"\\"); path += L"\\"; path += moduleName; }
+		}
+		const bool present = !path.IsEmpty() && ::GetFileAttributes(path) != INVALID_FILE_ATTRIBUTES;
+		CString details;
+		details.Format(L"module=%s; present=%d; loaded=%d; file-version=%s; product-version=unavailable; architecture=%s",
+			moduleName, present ? 1 : 0, module ? 1 : 0,
+			(LPCWSTR)(module ? GetLoadedModuleVersion(mainExecutable ? NULL : moduleName) : CString(L"not-loaded")),
+			(LPCWSTR)ModuleArchitecture(path));
+		return details;
+	}
+
+	bool IsInstalledBuild(const CString& executablePath)
+	{
+		HKEY key = NULL;
+		if (::RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\FictionBook Editor Next", 0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS) return false;
+		wchar_t installedPath[MAX_PATH] = {}; DWORD type = 0, size = sizeof(installedPath);
+		const LONG result = ::RegQueryValueEx(key, L"InstallLocation", NULL, &type, reinterpret_cast<BYTE*>(installedPath), &size);
+		::RegCloseKey(key);
+		if (result != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ)) return false;
+		CString installed(installedPath); wchar_t expanded[MAX_PATH] = {};
+		if (type == REG_EXPAND_SZ && ::ExpandEnvironmentStrings(installed, expanded, _countof(expanded))) installed = expanded;
+		installed.TrimRight(L"\\");
+		CString executableDirectory(executablePath); const int slash = executableDirectory.ReverseFind(L'\\'); if (slash >= 0) executableDirectory = executableDirectory.Left(slash);
+		return installed.CompareNoCase(executableDirectory) == 0;
+	}
+
+	bool IsProcessElevated()
+	{
+		HANDLE token = NULL; TOKEN_ELEVATION elevation = {}; DWORD size = 0;
+		const bool elevated = ::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token) && ::GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &size) && elevation.TokenIsElevated != 0;
+		if (token) ::CloseHandle(token);
+		return elevated;
+	}
+
+	CString ProcessIntegrityLevel()
+	{
+		HANDLE token = NULL; DWORD size = 0;
+		if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token)) return CString(L"unknown");
+		::GetTokenInformation(token, TokenIntegrityLevel, NULL, 0, &size);
+		std::vector<BYTE> data(size);
+		CString result(L"unknown");
+		if (size && ::GetTokenInformation(token, TokenIntegrityLevel, &data[0], size, &size))
+		{
+			TOKEN_MANDATORY_LABEL* label = reinterpret_cast<TOKEN_MANDATORY_LABEL*>(&data[0]);
+			DWORD count = *::GetSidSubAuthorityCount(label->Label.Sid);
+			DWORD level = *::GetSidSubAuthority(label->Label.Sid, count - 1);
+			if (level < SECURITY_MANDATORY_MEDIUM_RID) result = L"low";
+			else if (level < SECURITY_MANDATORY_HIGH_RID) result = L"medium";
+			else if (level < SECURITY_MANDATORY_SYSTEM_RID) result = L"high";
+			else result = L"system";
+		}
+		::CloseHandle(token);
+		return result;
+	}
+
 		CString ReadFeatureControlValue(HKEY root, REGSAM view, const CString& feature, const CString& executable)
 	{
 		CString keyPath(L"Software\\Microsoft\\Internet Explorer\\Main\\FeatureControl\\"); keyPath += feature;
@@ -455,15 +536,19 @@ void WriteEnvironmentHeader()
 		::GetVersionEx(reinterpret_cast<OSVERSIONINFO*>(&version));
 		wchar_t exe[MAX_PATH] = {};
 		::GetModuleFileName(NULL, exe, _countof(exe));
+		const CString executable(exe);
+		const bool installed = IsInstalledBuild(executable);
+		const bool tempTrace = tracePath.Find(L"\\FBE Next Diagnostics\\") >= 0;
 		CString details;
 		CString buildTimestamp(build_timestamp), buildCommit(build_commit), buildConfiguration(build_configuration);
-		details.Format(L"fbe=%s; build-configuration=%s; build-timestamp=%s; commit=%s; windows=%lu.%lu.%lu; service-pack=%u.%u; process-arch=%u; native-arch=%u; acp=%u; oemcp=%u; system-lcid=0x%04X; ui-language=0x%04X; exe=%s",
+		details.Format(L"fbe=%s; build-configuration=%s; build-timestamp=%s; commit=%s; windows=%lu.%lu.%lu; service-pack=%u.%u; process-arch=%u; native-arch=%u; acp=%u; oemcp=%u; system-lcid=0x%04X; ui-language=0x%04X; deployment=%s; elevated=%d; integrity=%s; trace-location=%s; settings-location=%s; exe=%s",
 			FBE_VERSION_WSTRING, (LPCWSTR)buildConfiguration, (LPCWSTR)buildTimestamp, (LPCWSTR)buildCommit,
 			version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, version.wServicePackMajor, version.wServicePackMinor, processInfo.wProcessorArchitecture,
 			info.wProcessorArchitecture, ::GetACP(), ::GetOEMCP(), ::GetSystemDefaultLCID(),
-			::GetUserDefaultUILanguage(), (LPCWSTR)StartupTrace::RedactPath(exe));
-		CString moduleDetails; moduleDetails.Format(L"mshtml=%s; ieframe=%s; jscript=%s; jscript9=%s; msxml6=%s; oleaut32=%s; scintilla=%s; lexilla=%s", (LPCWSTR)GetLoadedModuleVersion(L"mshtml.dll"), (LPCWSTR)GetLoadedModuleVersion(L"ieframe.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript9.dll"), (LPCWSTR)GetLoadedModuleVersion(L"msxml6.dll"), (LPCWSTR)GetLoadedModuleVersion(L"oleaut32.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Scintilla.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Lexilla.dll"));
-		StartupTrace::Event(L"environment", L"E011", moduleDetails);
+			::GetUserDefaultUILanguage(), installed ? L"installed" : L"portable", IsProcessElevated() ? 1 : 0, (LPCWSTR)ProcessIntegrityLevel(), tempTrace ? L"TEMP" : L"LOCALAPPDATA", (LPCWSTR)StartupTrace::RedactPath(U::GetSettingsDir() + L"Settings.xml"), (LPCWSTR)StartupTrace::RedactPath(exe));
+		const wchar_t* modules[] = { L"mshtml.dll", L"ieframe.dll", L"urlmon.dll", L"wininet.dll", L"jscript.dll", L"jscript9.dll", L"msxml6.dll", L"oleaut32.dll", L"Scintilla.dll", L"Lexilla.dll" };
+		StartupTrace::Event(L"environment", L"E011", DescribeDiagnosticModule(L"FBE.exe", true));
+		for (size_t index = 0; index < _countof(modules); ++index) StartupTrace::Event(L"environment", L"E011", DescribeDiagnosticModule(modules[index]));
 		StartupTrace::Event(L"environment", L"E010", details);
 	}
 	bool TryGetNextLaunchPreference(bool& enabled) { DWORD value = 0, size = sizeof(value); if (::RegGetValue(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, diagnosticTraceRegistryValue, RRF_RT_REG_DWORD, NULL, &value, &size) != ERROR_SUCCESS) return false; enabled = value != 0; return true; }
@@ -503,10 +588,10 @@ void StartupTrace::Start()
 }
 void StartupTrace::WriteLateEnvironmentHeader()
 {
-  CString modules;
-  modules.Format(L"fbe=%s; mshtml=%s; ieframe=%s; urlmon=%s; wininet=%s; jscript=%s; jscript9=%s; msxml6=%s; oleaut32=%s; scintilla=%s; lexilla=%s", (LPCWSTR)GetLoadedModuleVersion(L"FBE.exe"), (LPCWSTR)GetLoadedModuleVersion(L"mshtml.dll"), (LPCWSTR)GetLoadedModuleVersion(L"ieframe.dll"), (LPCWSTR)GetLoadedModuleVersion(L"urlmon.dll"), (LPCWSTR)GetLoadedModuleVersion(L"wininet.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript9.dll"), (LPCWSTR)GetLoadedModuleVersion(L"msxml6.dll"), (LPCWSTR)GetLoadedModuleVersion(L"oleaut32.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Scintilla.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Lexilla.dll"));
-  Event(L"environment", L"E020", L"late environment snapshot after editor and browser initialization");
-  Event(L"environment", L"E021", modules);
+	Event(L"environment", L"E020", L"late environment snapshot after editor and browser initialization");
+	const wchar_t* modules[] = { L"mshtml.dll", L"ieframe.dll", L"urlmon.dll", L"wininet.dll", L"jscript.dll", L"jscript9.dll", L"msxml6.dll", L"oleaut32.dll", L"Scintilla.dll", L"Lexilla.dll" };
+	Event(L"environment", L"E021", DescribeDiagnosticModule(L"FBE.exe", true));
+	for (size_t index = 0; index < _countof(modules); ++index) Event(L"environment", L"E021", DescribeDiagnosticModule(modules[index]));
   WriteFeatureControlSnapshot();
 }
 bool StartupTrace::Enabled() { return traceFile != INVALID_HANDLE_VALUE; }

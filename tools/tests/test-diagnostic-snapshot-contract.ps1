@@ -4,6 +4,9 @@ $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTra
 foreach($required in @('lastHResultFailure = failure', 'lastDispatchFailure = failure', 'lastScriptFailureStage', 'build-configuration=%s; build-timestamp=%s; commit=%s')) {
     if($source.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing diagnostic snapshot update: $required" }
 }
+foreach($required in @('deployment=%s; elevated=%d; integrity=%s; trace-location=%s; settings-location=%s', 'IsInstalledBuild', 'IsProcessElevated', 'ProcessIntegrityLevel', 'DescribeDiagnosticModule', 'GetModuleHandle(NULL)', 'GetBinaryType', 'product-version=unavailable', 'not-loaded', 'GetSystemDirectory', 'L"FBE.exe", true', 'L"mshtml.dll"', 'L"ieframe.dll"', 'L"urlmon.dll"', 'L"wininet.dll"', 'L"jscript.dll"', 'L"jscript9.dll"', 'L"msxml6.dll"', 'L"oleaut32.dll"', 'L"Scintilla.dll"', 'L"Lexilla.dll"')) {
+    if($source.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing environment snapshot field: $required" }
+}
 $buildStamp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\buildstamp.c')
 foreach($required in @('FBE_BUILD_COMMIT', 'build_commit', 'build_configuration')) { if($buildStamp.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing diagnostic build metadata: $required" } }
 $comException = [regex]::Match($source, '(?s)void StartupTrace::ComException\(.*?\n\}')
