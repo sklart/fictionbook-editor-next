@@ -117,7 +117,8 @@ namespace
 		DWORD processId = _wtol(currentLog.Mid(pidMarker + 4, extension - pidMarker - 4));
 		ULARGE_INTEGER traceTime = {}; traceTime.LowPart = traceData.ftLastWriteTime.dwLowDateTime; traceTime.HighPart = traceData.ftLastWriteTime.dwHighDateTime;
 		CString latest; FILETIME latestTime = {};
-		do { if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY || !CrashMatchesSession(find.cFileName, processId)) continue; ULARGE_INTEGER crashTime = {}; crashTime.LowPart = find.ftLastWriteTime.dwLowDateTime; crashTime.HighPart = find.ftLastWriteTime.dwHighDateTime; const ULONGLONG delta = crashTime.QuadPart > traceTime.QuadPart ? crashTime.QuadPart - traceTime.QuadPart : traceTime.QuadPart - crashTime.QuadPart; if (delta <= 24ULL * 60ULL * 60ULL * 10000000ULL && ::CompareFileTime(&find.ftLastWriteTime, &latestTime) > 0) { latestTime = find.ftLastWriteTime; latest = directory + find.cFileName; } } while (::FindNextFile(search, &find)); ::FindClose(search); return latest;
+		const ULONGLONG sessionWindow = 30ULL * 60ULL * 10000000ULL;
+		do { if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY || !CrashMatchesSession(find.cFileName, processId)) continue; ULARGE_INTEGER crashTime = {}; crashTime.LowPart = find.ftLastWriteTime.dwLowDateTime; crashTime.HighPart = find.ftLastWriteTime.dwHighDateTime; const ULONGLONG delta = crashTime.QuadPart > traceTime.QuadPart ? crashTime.QuadPart - traceTime.QuadPart : traceTime.QuadPart - crashTime.QuadPart; if (delta <= sessionWindow && ::CompareFileTime(&find.ftLastWriteTime, &latestTime) > 0) { latestTime = find.ftLastWriteTime; latest = directory + find.cFileName; } } while (::FindNextFile(search, &find)); ::FindClose(search); return latest;
 	}
 
 	CString ExtractCategoryLines(const CString& trace, const wchar_t* category)
