@@ -576,7 +576,6 @@ function TransformXML(xslt, dom)
 	body.innerHTML=proc.output;
 	TraceScript("J595", "operation=InflateParagraphs");
 	window.external.InflateParagraphs(body);
-	document.fbwFilename=name;
 	TraceScript("J597", "operation=document properties");
 	document.urlprefix="fbw-internal:";
 	TraceScript("J599", "operation=TransformXML success");
