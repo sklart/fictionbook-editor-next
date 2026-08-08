@@ -11,12 +11,14 @@ param(
     [ValidateSet("x64")]
     [string]$HostArch = "x64",
 
+    [string]$PlatformToolset,
+
     [string]$VcVarsVersion
 )
 
 $ErrorActionPreference = "Stop"
 
-$sentinelVersion = if ($VcVarsVersion) { $VcVarsVersion } else { "latest" }
+$sentinelVersion = if ($VcVarsVersion) { $VcVarsVersion } elseif ($PlatformToolset) { $PlatformToolset } else { "latest" }
 $sentinelName = "FBE_VSDEV_${Arch}_${HostArch}_${sentinelVersion}_INITIALIZED"
 if ([Environment]::GetEnvironmentVariable($sentinelName, "Process") -eq "1" -and
     (Get-Command nmake.exe -ErrorAction SilentlyContinue)) {
@@ -28,9 +30,11 @@ if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
 }
 
-$installationPath = & $vswhere -latest -products * `
-    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-    -property installationPath
+$vswhereArguments = @("-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64")
+if ($PlatformToolset -eq "v143") {
+    $vswhereArguments += @("-version", "[17.0,18.0)")
+}
+$installationPath = & $vswhere @vswhereArguments -property installationPath
 if (-not $installationPath) {
     throw "Не найдены инструменты сборки Visual Studio C++ для x86."
 }
@@ -68,3 +72,6 @@ foreach ($line in $environment) {
 }
 
 [Environment]::SetEnvironmentVariable($sentinelName, "1", "Process")
+
+$clPath = Get-Command cl.exe -ErrorAction Stop | Select-Object -ExpandProperty Source
+Write-Host "VS toolchain: installation=$installationPath; PlatformToolset=$PlatformToolset; cl.exe=$clPath; VCToolsVersion=$env:VCToolsVersion"

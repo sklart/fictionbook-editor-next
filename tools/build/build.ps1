@@ -38,6 +38,8 @@ param(
 
     [switch]$ReusePreparedPcre2,
 
+    [switch]$SkipVersionSync,
+
     # Явный target-specific каталог для EXE/PDB пакетных конвертеров.
     # В CI обязателен, чтобы Modern и Win7 никогда не делили OutDir.
     [string]$BatchOutputDirectory,
@@ -109,17 +111,20 @@ $editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $Comp
 if ($EditorRuntimeOnly) {
     . (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `
         -CompatibilityTarget $CompatibilityTarget `
+        -PlatformToolset $PlatformToolset `
         -OutputDirectory $editorRuntimeDirectory `
         -ReusePreparedRuntime:$ReuseEditorRuntime
     Write-Host "Собраны только целевые DLL редактора для ${CompatibilityTarget}: $editorRuntimeDirectory"
     return
 }
 
-& (Join-Path $repoRoot "tools\version\sync-version.ps1")
+if (-not $SkipVersionSync) {
+    & (Join-Path $repoRoot "tools\version\sync-version.ps1")
+}
 
 # Общая среда компилятора нужна и PCRE2/Hunspell, и прямым MSBuild-вызовам
 # batch-проектов. Для Win7 фиксируем тот же toolset, что и runtime.
-$vsEnvironmentArguments = @{ Arch = "x86"; HostArch = "x64" }
+$vsEnvironmentArguments = @{ Arch = "x86"; HostArch = "x64"; PlatformToolset = $PlatformToolset }
 if ($CompatibilityTarget -eq "Win7") {
     $vsEnvironmentArguments.VcVarsVersion = "14.44"
 }
@@ -283,6 +288,7 @@ if ($BatchConvertersOnly) {
 
 . (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `
     -CompatibilityTarget $CompatibilityTarget `
+    -PlatformToolset $PlatformToolset `
     -OutputDirectory $editorRuntimeDirectory `
     -ReusePreparedRuntime:$ReuseEditorRuntime
 

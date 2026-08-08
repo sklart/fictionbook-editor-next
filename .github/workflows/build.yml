@@ -61,7 +61,7 @@ jobs:
       - name: Build Release Win32 modern
         shell: pwsh
         run: |
-          $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; CompatibilityTarget = 'Modern'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; ReuseEditorRuntime = $true; BatchOutputDirectory = 'out/target-batches/Modern' }
+          $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; CompatibilityTarget = 'Modern'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; ReuseEditorRuntime = $true; SkipVersionSync = $true; BatchOutputDirectory = 'out/target-batches/Modern' }
           if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
           ./tools/build/build.ps1 @arguments
       - name: Build Win32 property handler
@@ -72,16 +72,16 @@ jobs:
         run: ./tools/build/build-experimental-property-handler.ps1 -Configuration Release -Platform x64 -PlatformToolset v143
       - name: Build FBV Verb MUI
         shell: pwsh
-        run: ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release
+        run: ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release -PlatformToolset v143
       - name: Verify Modern binaries
         shell: pwsh
         run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest -BatchOutputDirectory out/target-batches/Modern
       - name: Build Win7-compatible editor runtime
         shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime -SkipVersionSync
       - name: Build Win7-compatible batch converters
         shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly -SkipDependencies -WarningsAsErrors -BatchOutputDirectory out/target-batches/Win7
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly -SkipDependencies -WarningsAsErrors -SkipVersionSync -BatchOutputDirectory out/target-batches/Win7
       - name: Verify Win7 binaries
         shell: pwsh
         run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Win7 -PlatformToolset v143 -SkipUpdateManifest -SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7
@@ -117,11 +117,6 @@ jobs:
           if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
             choco install nsis --no-progress --yes
           }
-      - name: Restore runtime dictionaries for release verification
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path out/Release/dict -Force | Out-Null
-          Copy-Item runtime/dict/* -Destination out/Release/dict -Force
       - name: Create Modern release artifacts without compiling
         shell: pwsh
         run: |

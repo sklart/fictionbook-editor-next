@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [ValidateSet("Release")]
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+
+    [string]$PlatformToolset
 )
 
 $ErrorActionPreference = "Stop"
@@ -131,7 +133,7 @@ function Invoke-NativeTool {
     }
 }
 
-& $importVsDevEnvironmentScript -Arch x86 -HostArch x64
+& $importVsDevEnvironmentScript -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
 
 $muirctPath = Get-ChildItem (Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin") -Recurse -Filter "muirct.exe" |
     Sort-Object FullName -Descending |
@@ -142,6 +144,7 @@ if (-not $muirctPath) {
 
 $rcExePath = Get-Command rc.exe -ErrorAction Stop | Select-Object -ExpandProperty Source
 $linkExePath = Get-Command link.exe -ErrorAction Stop | Select-Object -ExpandProperty Source
+Write-Host "FBV Verb MUI toolchain: PlatformToolset=$PlatformToolset; rc.exe=$rcExePath; link.exe=$linkExePath; muirct.exe=$muirctPath; WindowsSdkDir=$env:WindowsSdkDir"
 
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $shellLocalizationRoot -Force | Out-Null

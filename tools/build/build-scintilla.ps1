@@ -8,6 +8,8 @@ param(
     [ValidateSet("Modern", "Win7")]
     [string]$CompatibilityTarget = "Modern",
 
+    [string]$PlatformToolset,
+
     [string]$VcVarsVersion,
 
     # Каталог для целевых DLL редактора. Пустое значение сохраняет
@@ -28,15 +30,7 @@ $editorRuntimeDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 }
 $runtimeDir = Join-Path $repoRoot "runtime"
-
-if ($ReusePreparedRuntime) {
-    $prepared = @("Scintilla.dll", "Lexilla.dll") | ForEach-Object { Join-Path $editorRuntimeDir $_ }
-    if (@($prepared | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) }).Count -eq 0) {
-        foreach ($path in $prepared) { Copy-Item -LiteralPath $path -Destination $runtimeDir -Force }
-        Write-Host "Scintilla/Lexilla $CompatibilityTarget восстановлены из явного runtime-кэша: $editorRuntimeDir"
-        return
-    }
-}
+$fingerprintPath = Join-Path $editorRuntimeDir "fbe-editor-runtime-fingerprint.json"
 
 if ($CompatibilityTarget -eq "Win7" -and -not $VcVarsVersion) {
     $VcVarsVersion = "14.44"
@@ -47,6 +41,7 @@ if ($VcVarsVersion) {
         . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") `
             -Arch x86 `
             -HostArch x64 `
+            -PlatformToolset $PlatformToolset `
             -VcVarsVersion $VcVarsVersion
         Write-Host "Scintilla/Lexilla: используется vcvars_ver=$VcVarsVersion."
     }
@@ -57,12 +52,31 @@ if ($VcVarsVersion) {
 
         Write-Warning "Не удалось включить vcvars_ver=$VcVarsVersion для Scintilla/Lexilla: $($_.Exception.Message)"
         Write-Warning "Продолжаю со стандартной средой Visual Studio."
-        . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
+        . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
     }
 }
 else {
-    . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
+    . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
 }
+
+function Test-PreparedRuntimeFingerprint {
+    $prepared = @("Scintilla.dll", "Lexilla.dll") | ForEach-Object { Join-Path $editorRuntimeDir $_ }
+    if (@($prepared | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) }).Count -gt 0 -or
+        -not (Test-Path -LiteralPath $fingerprintPath -PathType Leaf)) {
+        return $false
+    }
+    try { $fingerprint = Get-Content -Raw -LiteralPath $fingerprintPath | ConvertFrom-Json } catch { return $false }
+    if ($fingerprint.compatibilityTarget -ne $CompatibilityTarget -or $fingerprint.platformToolset -ne $PlatformToolset) { return $false }
+    if ($CompatibilityTarget -eq "Win7" -and -not ([string]$fingerprint.vcToolsVersion).StartsWith("14.44")) { return $false }
+    return $true
+}
+
+if ($ReusePreparedRuntime -and (Test-PreparedRuntimeFingerprint)) {
+    foreach ($name in @("Scintilla.dll", "Lexilla.dll")) { Copy-Item -LiteralPath (Join-Path $editorRuntimeDir $name) -Destination $runtimeDir -Force }
+    Write-Host "Scintilla/Lexilla: validated editor runtime cache hit ($CompatibilityTarget, toolset=$PlatformToolset)."
+    return
+}
+if ($ReusePreparedRuntime) { Write-Host "Editor runtime cache fingerprint не соответствует текущему toolchain; выполняется rebuild." }
 
 function Get-NmakePath {
     $fromPath = Get-Command nmake.exe -ErrorAction SilentlyContinue |
@@ -72,9 +86,9 @@ function Get-NmakePath {
     }
 
     $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
-    $installationPath = & $vswhere -latest -products * `
-        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-        -property installationPath | Select-Object -First 1
+    $vswhereArguments = @("-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64")
+    if ($PlatformToolset -eq "v143") { $vswhereArguments += @("-version", "[17.0,18.0)") }
+    $installationPath = & $vswhere @vswhereArguments -property installationPath | Select-Object -First 1
     if (-not $installationPath) {
         throw "Не удалось определить Visual Studio для nmake.exe."
     }
@@ -104,6 +118,7 @@ $resourceCompiler = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
 if (-not $resourceCompiler) {
     throw "Не найден rc.exe из Windows SDK."
 }
+Write-Host "Scintilla/Lexilla toolchain: target=$CompatibilityTarget; PlatformToolset=$PlatformToolset; cl.exe=$((Get-Command cl.exe -ErrorAction Stop).Source); VCToolsVersion=$env:VCToolsVersion; nmake.exe=$nmake; rc.exe=$($resourceCompiler.FullName)"
 $requiredToolDirectories = @($compilerBinDirectory, $resourceCompiler.Directory.FullName)
 $env:Path = (($requiredToolDirectories + @($env:Path)) | Select-Object -Unique) -join ';'
 [Environment]::SetEnvironmentVariable("Path", $env:Path, "Process")
@@ -149,6 +164,14 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\scintilla\bin\Scintilla
     -Destination (Join-Path $editorRuntimeDir "Scintilla.dll") -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll") `
     -Destination (Join-Path $editorRuntimeDir "Lexilla.dll") -Force
+
+[ordered]@{
+    compatibilityTarget = $CompatibilityTarget
+    platformToolset = $PlatformToolset
+    vcToolsVersion = $env:VCToolsVersion
+    scintillaVersion = $scintillaVersion
+    lexillaVersion = $lexillaVersion
+} | ConvertTo-Json | Set-Content -LiteralPath $fingerprintPath -Encoding UTF8
 
 Write-Host "Scintilla $scintillaVersion и Lexilla $lexillaVersion подготовлены в $runtimeDir ($CompatibilityTarget)."
 Write-Host "Целевые DLL редактора сохранены в $editorRuntimeDir."
