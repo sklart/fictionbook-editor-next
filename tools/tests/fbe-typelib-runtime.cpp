@@ -23,8 +23,10 @@ int wmain(int argc, wchar_t** argv)
 	ITypeLib* library = NULL;
 	if (!Check(::LoadTypeLibEx(argv[1], REGKIND_NONE, &library), L"LoadTypeLibEx(REGKIND_NONE)")) return 1;
 	const IID externalHelper = {0x7269066E,0x2089,0x4408,{0xB3,0xF3,0xE8,0xD7,0x59,0x84,0xD5,0xA6}};
+	TLIBATTR* libraryAttributes = NULL; if (SUCCEEDED(library->GetLibAttr(&libraryAttributes)) && libraryAttributes) { wprintf(L"typelib-version=%u.%u; syskind=%u\n", libraryAttributes->wMajorVerNum, libraryAttributes->wMinorVerNum, static_cast<unsigned>(libraryAttributes->syskind)); library->ReleaseTLibAttr(libraryAttributes); }
 	ITypeInfo* info = NULL;
 	if (!Check(library->GetTypeInfoOfGuid(externalHelper, &info), L"GetTypeInfoOfGuid(IExternalHelper)")) { library->Release(); return 1; }
+	TYPEATTR* reportAttributes = NULL; if (SUCCEEDED(info->GetTypeAttr(&reportAttributes)) && reportAttributes) { wprintf(L"iExternalHelper-guid=%08lX-%04X-%04X; typekind=%u; cFuncs=%u\n", reportAttributes->guid.Data1, reportAttributes->guid.Data2, reportAttributes->guid.Data3, static_cast<unsigned>(reportAttributes->typekind), reportAttributes->cFuncs); info->ReleaseTypeAttr(reportAttributes); }
 	int failures = 0;
 	for (UINT index = 0; index < _countof(methods); ++index)
 	{
@@ -37,7 +39,7 @@ int wmain(int argc, wchar_t** argv)
 			if (function->memid == methods[index].id && function->invkind == methods[index].kind)
 			{
 				found = true;
-				wprintf(L"method=%s; dispid=%ld; invkind=%u; params=%u; return-vt=%u\n", methods[index].name, static_cast<long>(function->memid), static_cast<unsigned>(function->invkind), function->cParams, static_cast<unsigned>(BaseType(function->elemdescFunc.tdesc)));
+				wprintf(L"method=%s; dispid=%ld; invkind=%u; params=%u; cParamsOpt=%u; return-vt=%u; return-flags=0x%04X\n", methods[index].name, static_cast<long>(function->memid), static_cast<unsigned>(function->invkind), function->cParams, function->cParamsOpt, static_cast<unsigned>(BaseType(function->elemdescFunc.tdesc)), function->elemdescFunc.paramdesc.wParamFlags);
 				if (function->cParams != methods[index].params || BaseType(function->elemdescFunc.tdesc) != methods[index].result) { fwprintf(stderr, L"Signature mismatch: %s\n", methods[index].name); ++failures; }
 				for (UINT parameter = 0; parameter < function->cParams; ++parameter)
 				{
