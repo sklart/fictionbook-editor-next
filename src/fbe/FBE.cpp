@@ -437,16 +437,18 @@ bool LoadEditor()
 	g_scintillaModule = LoadApplicationLibrary(L"Scintilla.dll");
 	if(g_scintillaModule == NULL)
 	{
-		StartupTrace::HResult(L"startup", L"S160", HRESULT_FROM_WIN32(::GetLastError()), L"LoadLibraryEx(Scintilla.dll)");
-		ATLTRACE(L"Unable to load Scintilla.dll: %lu\n", ::GetLastError());
+		const DWORD error = ::GetLastError();
+		StartupTrace::HResult(L"startup", L"S160", HRESULT_FROM_WIN32(error), L"LoadLibraryEx(Scintilla.dll)");
+		ATLTRACE(L"Unable to load Scintilla.dll: %lu\n", error);
 		return false;
 	}
 
 	g_lexillaModule = LoadApplicationLibrary(L"Lexilla.dll");
 	if(g_lexillaModule == NULL)
 	{
-		StartupTrace::HResult(L"startup", L"S161", HRESULT_FROM_WIN32(::GetLastError()), L"LoadLibraryEx(Lexilla.dll)");
-		ATLTRACE(L"Unable to load Lexilla.dll: %lu\n", ::GetLastError());
+		const DWORD error = ::GetLastError();
+		StartupTrace::HResult(L"startup", L"S161", HRESULT_FROM_WIN32(error), L"LoadLibraryEx(Lexilla.dll)");
+		ATLTRACE(L"Unable to load Lexilla.dll: %lu\n", error);
 		ResetEditorModules();
 		return false;
 	}
@@ -455,7 +457,8 @@ bool LoadEditor()
 		::GetProcAddress(g_lexillaModule, "CreateLexer"));
 	if(g_createLexer == NULL)
 	{
-		StartupTrace::HResult(L"startup", L"S162", HRESULT_FROM_WIN32(ERROR_PROC_NOT_FOUND), L"GetProcAddress(CreateLexer)");
+		const DWORD error = ::GetLastError();
+		StartupTrace::HResult(L"startup", L"S162", HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_PROC_NOT_FOUND : error), L"GetProcAddress(CreateLexer)");
 		ATLTRACE(L"Lexilla.dll does not export CreateLexer.\n");
 		ResetEditorModules();
 		return false;
@@ -529,7 +532,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
     ATLTRACE(L"Unable to register the FBE type library: 0x%08X\n", hRes);
 
   // enable web browser hosting
-  if (!AtlAxWinInit()) { hRes = HRESULT_FROM_WIN32(::GetLastError()); StartupTrace::HResult(L"startup", L"S125", hRes, L"AtlAxWinInit"); _Module.Term(); ::OleUninitialize(); StartupTrace::Finish(); return 1; }
+  if (!AtlAxWinInit()) { const DWORD error = ::GetLastError(); hRes = HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_GEN_FAILURE : error); StartupTrace::HResult(L"startup", L"S125", hRes, L"AtlAxWinInit"); _Module.Term(); ::OleUninitialize(); StartupTrace::Finish(); return 1; }
   StartupTrace::HResult(L"startup", L"S125", S_OK, L"AtlAxWinInit");
 
   // initialize registry settings
