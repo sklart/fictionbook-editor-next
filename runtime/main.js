@@ -937,16 +937,32 @@ function InputBox(msg, value, result)
 //--------------------------------------
 // Our own, less scary error handler
 
+function SanitizeDiagnosticFileName(url)
+{
+	var value = "";
+	try { value = String(url || "").replace(/^.*[\\\/]/, ""); } catch(ignore) {}
+	if(value.length > 128) value = value.substr(0, 128);
+	var safe = "";
+	for(var index = 0; index < value.length; index++)
+	{
+		var character = value.charAt(index);
+		if((character >= "a" && character <= "z") || (character >= "A" && character <= "Z") || (character >= "0" && character <= "9") || character == "." || character == "-" || character == "_") safe += character;
+		else safe += "_";
+	}
+	return safe;
+}
+
 function errorHandler(msg,url,lno)
 {
-	var fileName = "";
-	try { fileName = String(url || "").replace(/^.*[\\\/]/, ""); } catch(ignore) {}
+	var fileName = SanitizeDiagnosticFileName(url);
+	var line = "";
+	if(typeof lno == "number" && isFinite(lno)) line = lno;
 	diagnosticFailureStage = diagnosticFailureStage || diagnosticOperationStage || "J900";
 	DiagError("J900", "window.onerror", { number: 0, name: "Error", description: msg, message: msg, lineNumber: lno });
 	var documentMode = "";
 	var compatMode = "";
 	try { documentMode = document.documentMode; compatMode = document.compatMode; } catch(ignore) {}
-	TraceDiagnosticEvent("J901", "operation=window.onerror; file=" + fileName + "; line=" + lno + "; document-mode=" + documentMode + "; compat-mode=" + compatMode + "; trace-bridge-state=" + diagnosticTraceBridgeState);
+	TraceDiagnosticEvent("J901", "operation=window.onerror; file-present=" + (fileName ? 1 : 0) + "; file-name=" + fileName + "; line=" + line + "; document-mode=" + documentMode + "; compat-mode=" + compatMode + "; trace-bridge-state=" + diagnosticTraceBridgeState);
 	try { MsgBox("Error at line "+lno+":\n"+msg+" "); } catch(ignore) {}
 	return true;
 }
