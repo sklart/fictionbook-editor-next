@@ -15,4 +15,12 @@ $status = & git -C $repoRoot status --porcelain
 $worktreeArtifacts = @($status | Where-Object { $_.Substring(0, 2) -notmatch 'D' } | ForEach-Object { $_.Substring(3).Replace('\', '/') } | Where-Object { $_ -match $artifactPattern })
 if($worktreeArtifacts.Count) { throw "Diagnostic build artifacts in worktree: $($worktreeArtifacts -join ', ')" }
 
+$physicalRoots = @('src', 'runtime', 'packaging', 'docs', 'localization', 'tools') | ForEach-Object { Join-Path $repoRoot $_ } | Where-Object { Test-Path -LiteralPath $_ }
+$excludedPhysicalDirectories = '(?i)\\(\.git|\.vs|build|out|third_party)(\\|$)'
+$physicalArtifacts = @(Get-ChildItem -LiteralPath $physicalRoots -Recurse -File -Force |
+    Where-Object { $_.FullName -notmatch $excludedPhysicalDirectories } |
+    ForEach-Object { $_.FullName.Substring($repoRoot.Length + 1).Replace('\', '/') } |
+    Where-Object { $_ -match $artifactPattern })
+if($physicalArtifacts.Count) { throw "Diagnostic build artifacts physically present outside generated directories: $($physicalArtifacts -join ', ')" }
+
 Write-Host 'Diagnostic build artifact ignore and repository contract passed.'
