@@ -196,6 +196,9 @@ $properties = @(
     "/p:Platform=$Platform",
     "/p:CompatibilityTarget=$CompatibilityTarget"
 )
+$buildCommit = (& git -C $repoRoot rev-parse --short=12 HEAD 2>$null | Select-Object -First 1)
+if(-not $buildCommit) { $buildCommit = 'unknown' }
+$properties += "/p:FbeBuildCommit=$buildCommit"
 
 if ($PlatformToolset) {
     $properties += "/p:PlatformToolset=$PlatformToolset"

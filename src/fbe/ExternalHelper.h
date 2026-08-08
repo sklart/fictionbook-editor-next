@@ -26,6 +26,8 @@ extern "C"
 {
 	extern const char* build_timestamp;
 	extern const char* build_name;
+	extern const char* build_commit;
+	extern const char* build_configuration;
 };
 
 class ExternalHelper :

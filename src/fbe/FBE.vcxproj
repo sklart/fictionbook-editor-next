@@ -112,7 +112,7 @@ exit /b 0
       <AdditionalIncludeDirectories>$(SolutionDir)third_party\wtl;extras;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PreLinkEvent>
-      <Command>cl /nologo /c /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
+      <Command>cl /nologo /c /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
     </PreLinkEvent>
     <Link>
       <GenerateManifest>false</GenerateManifest>
@@ -189,7 +189,7 @@ exit /b 0
       <AdditionalIncludeDirectories>$(SolutionDir)third_party\wtl;extras;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PreLinkEvent>
-      <Command>cl /nologo /c /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
+      <Command>cl /nologo /c /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
     </PreLinkEvent>
     <Link>
       <GenerateManifest>false</GenerateManifest>

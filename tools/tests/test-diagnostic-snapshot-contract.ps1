@@ -1,9 +1,11 @@
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path $PSScriptRoot)
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.cpp')
-foreach($required in @('lastHResultFailure = failure', 'lastDispatchFailure = failure', 'lastScriptFailureStage')) {
+foreach($required in @('lastHResultFailure = failure', 'lastDispatchFailure = failure', 'lastScriptFailureStage', 'build-configuration=%s; build-timestamp=%s; commit=%s')) {
     if($source.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing diagnostic snapshot update: $required" }
 }
+$buildStamp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\buildstamp.c')
+foreach($required in @('FBE_BUILD_COMMIT', 'build_commit', 'build_configuration')) { if($buildStamp.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing diagnostic build metadata: $required" } }
 $comException = [regex]::Match($source, '(?s)void StartupTrace::ComException\(.*?\n\}')
 if(-not $comException.Success -or $comException.Value.IndexOf('lastHResultFailure = failure', [StringComparison]::Ordinal) -lt 0) { throw 'ComException must update lastHResultFailure.' }
 $fbdDoc = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBDoc.cpp')

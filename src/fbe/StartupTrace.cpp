@@ -6,6 +6,8 @@
 #include <vector>
 #include <winver.h>
 
+extern "C" { extern const char* build_timestamp; extern const char* build_commit; extern const char* build_configuration; }
+
 namespace
 {
 	HANDLE traceFile = INVALID_HANDLE_VALUE;
@@ -455,9 +457,10 @@ void WriteEnvironmentHeader()
 		wchar_t exe[MAX_PATH] = {};
 		::GetModuleFileName(NULL, exe, _countof(exe));
 		CString details;
-		details.Format(L"fbe=%s; windows=%lu.%lu.%lu; service-pack=%u.%u; process-arch=%u; native-arch=%u; acp=%u; oemcp=%u; system-lcid=0x%04X; ui-language=0x%04X; exe=%s",
-			FBE_VERSION_WSTRING, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber,
-			version.wServicePackMajor, version.wServicePackMinor, processInfo.wProcessorArchitecture,
+		CString buildTimestamp(build_timestamp), buildCommit(build_commit), buildConfiguration(build_configuration);
+		details.Format(L"fbe=%s; build-configuration=%s; build-timestamp=%s; commit=%s; windows=%lu.%lu.%lu; service-pack=%u.%u; process-arch=%u; native-arch=%u; acp=%u; oemcp=%u; system-lcid=0x%04X; ui-language=0x%04X; exe=%s",
+			FBE_VERSION_WSTRING, (LPCWSTR)buildConfiguration, (LPCWSTR)buildTimestamp, (LPCWSTR)buildCommit,
+			version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, version.wServicePackMajor, version.wServicePackMinor, processInfo.wProcessorArchitecture,
 			info.wProcessorArchitecture, ::GetACP(), ::GetOEMCP(), ::GetSystemDefaultLCID(),
 			::GetUserDefaultUILanguage(), (LPCWSTR)StartupTrace::RedactPath(exe));
 		CString moduleDetails; moduleDetails.Format(L"mshtml=%s; ieframe=%s; jscript=%s; jscript9=%s; msxml6=%s; oleaut32=%s; scintilla=%s; lexilla=%s", (LPCWSTR)GetLoadedModuleVersion(L"mshtml.dll"), (LPCWSTR)GetLoadedModuleVersion(L"ieframe.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript.dll"), (LPCWSTR)GetLoadedModuleVersion(L"jscript9.dll"), (LPCWSTR)GetLoadedModuleVersion(L"msxml6.dll"), (LPCWSTR)GetLoadedModuleVersion(L"oleaut32.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Scintilla.dll"), (LPCWSTR)GetLoadedModuleVersion(L"Lexilla.dll"));
