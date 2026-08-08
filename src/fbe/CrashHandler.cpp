@@ -80,9 +80,13 @@ namespace
 			? exceptionInfo->ExceptionRecord->ExceptionAddress : NULL;
 
 		StartupTrace::CrashTraceSnapshot traceSnapshot = {};
-		StartupTrace::TryGetCrashTraceSnapshot(traceSnapshot);
-		wchar_t text[2048];
-		const int textLength = _snwprintf_s(text, _countof(text), _TRUNCATE,
+		const bool snapshotAvailable = StartupTrace::TryGetCrashTraceSnapshot(traceSnapshot);
+		const wchar_t* snapshotState = snapshotAvailable ? L"yes" : L"no";
+		const wchar_t* diagnosticState = snapshotAvailable ? (traceSnapshot.diagnosticEnabled ? L"yes" : L"no") : L"unknown";
+		const wchar_t* tempFallbackState = snapshotAvailable ? (traceSnapshot.usingTempFallback ? L"yes" : L"no") : L"unknown";
+		const wchar_t* unknown = L"unknown";
+		CString text;
+		text.Format(
 			L"FictionBook Editor crash report\r\n"
 			L"Version: " FBE_VERSION_WSTRING L"\r\n"
 			L"Build name: FictionBook Editor Next Release " FBE_VERSION_WSTRING L"\r\n"
@@ -93,25 +97,26 @@ namespace
 			L"Exception address: %p\r\n"
 			L"Minidump written: %s\r\n"
 			L"Minidump error: %lu\r\n"
+			L"Trace snapshot available: %s\r\n"
 			L"Diagnostic trace enabled: %s\r\n"
-			L"Diagnostic trace: %s\r\n"
-			L"Last trace stage: %s; %s\r\n"
-			L"Last document stage: %s\r\n"
-			L"Last script operation stage: %s\r\n"
-			L"Last script failure stage: %s\r\n"
-			L"Last HRESULT failure: %s\r\n"
-			L"Last dispatch failure: %s\r\n",
+			L"TEMP fallback: %s\r\n",
 			::GetCurrentProcessId(), ::GetCurrentThreadId(), exceptionCode, exceptionAddress,
 			dumpWritten ? L"yes" : L"no", dumpWritten ? ERROR_SUCCESS : dumpError,
-			traceSnapshot.diagnosticEnabled ? L"yes" : L"no", traceSnapshot.currentLogPath, traceSnapshot.lastEventCode, traceSnapshot.lastEventMessage,
-			traceSnapshot.lastDocumentStage, traceSnapshot.lastScriptOperationStage, traceSnapshot.lastScriptFailureStage,
-			traceSnapshot.lastHResultFailure, traceSnapshot.lastDispatchFailure);
+			snapshotState, diagnosticState, tempFallbackState);
+		CString line;
+		line.Format(L"Diagnostic trace: %s\r\n", snapshotAvailable ? traceSnapshot.currentLogPath : unknown); text += line;
+		line.Format(L"Last trace stage: %s; %s\r\n", snapshotAvailable ? traceSnapshot.lastEventCode : unknown, snapshotAvailable ? traceSnapshot.lastEventMessage : unknown); text += line;
+		line.Format(L"Last document stage: %s\r\n", snapshotAvailable ? traceSnapshot.lastDocumentStage : unknown); text += line;
+		line.Format(L"Last script operation stage: %s\r\n", snapshotAvailable ? traceSnapshot.lastScriptOperationStage : unknown); text += line;
+		line.Format(L"Last script failure stage: %s\r\n", snapshotAvailable ? traceSnapshot.lastScriptFailureStage : unknown); text += line;
+		line.Format(L"Last HRESULT failure: %s\r\n", snapshotAvailable ? traceSnapshot.lastHResultFailure : unknown); text += line;
+		line.Format(L"Last dispatch failure: %s\r\n", snapshotAvailable ? traceSnapshot.lastDispatchFailure : unknown); text += line;
 
 		const WORD bom = 0xFEFF;
 		DWORD written = 0;
 		::WriteFile(report, &bom, sizeof(bom), &written, NULL);
-		if (textLength > 0)
-			::WriteFile(report, text, textLength * sizeof(wchar_t), &written, NULL);
+		if (!text.IsEmpty())
+			::WriteFile(report, text, text.GetLength() * sizeof(wchar_t), &written, NULL);
 		::FlushFileBuffers(report);
 		::CloseHandle(report);
 	}
