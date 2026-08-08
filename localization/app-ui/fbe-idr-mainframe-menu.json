@@ -938,6 +938,38 @@
         "bg-BG": "Та&блица"
       }
     },
+    "fbe.menu.idr_mainframe.table.structure": {
+      "kind": "POPUP",
+      "translations": { "en-US": "Table &structure", "ru-RU": "&Структура таблицы", "uk-UA": "Структура &таблиці", "de-DE": "Tabellenstruktur", "fr-FR": "Structure du tableau", "es-ES": "Estructura de tabla", "it-IT": "Struttura tabella", "pl-PL": "Struktura tabeli", "pt-PT": "Estrutura da tabela", "nl-NL": "Tabelstructuur", "cs-CZ": "Struktura tabulky", "bg-BG": "Структура на таблицата" }
+    },
+    "fbe.menu.idr_mainframe.table.insert_row_above": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_ROW_ABOVE",
+      "translations": { "en-US": "Insert row &above", "ru-RU": "Добавить строку с&верху", "uk-UA": "Додати рядок з&верху", "de-DE": "Zeile oben einfügen", "fr-FR": "Insérer une ligne au-dessus", "es-ES": "Insertar fila encima", "it-IT": "Inserisci riga sopra", "pl-PL": "Wstaw wiersz powyżej", "pt-PT": "Inserir linha acima", "nl-NL": "Rij hierboven invoegen", "cs-CZ": "Vložit řádek nad", "bg-BG": "Вмъкни ред отгоре" }
+    },
+    "fbe.menu.idr_mainframe.table.insert_row_below": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_ROW_BELOW",
+      "translations": { "en-US": "Insert row &below", "ru-RU": "Добавить строку с&низу", "uk-UA": "Додати рядок з&низу", "de-DE": "Zeile unten einfügen", "fr-FR": "Insérer une ligne au-dessous", "es-ES": "Insertar fila debajo", "it-IT": "Inserisci riga sotto", "pl-PL": "Wstaw wiersz poniżej", "pt-PT": "Inserir linha abaixo", "nl-NL": "Rij hieronder invoegen", "cs-CZ": "Vložit řádek pod", "bg-BG": "Вмъкни ред отдолу" }
+    },
+    "fbe.menu.idr_mainframe.table.delete_row": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_DELETE_ROW",
+      "translations": { "en-US": "&Delete row", "ru-RU": "&Удалить строку", "uk-UA": "&Видалити рядок", "de-DE": "Zeile löschen", "fr-FR": "Supprimer la ligne", "es-ES": "Eliminar fila", "it-IT": "Elimina riga", "pl-PL": "Usuń wiersz", "pt-PT": "Eliminar linha", "nl-NL": "Rij verwijderen", "cs-CZ": "Odstranit řádek", "bg-BG": "Изтрий ред" }
+    },
+    "fbe.menu.idr_mainframe.table.insert_column_left": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_COLUMN_LEFT",
+      "translations": { "en-US": "Insert column &left", "ru-RU": "Добавить столбец с&лева", "uk-UA": "Додати стовпець з&ліва", "de-DE": "Spalte links einfügen", "fr-FR": "Insérer une colonne à gauche", "es-ES": "Insertar columna a la izquierda", "it-IT": "Inserisci colonna a sinistra", "pl-PL": "Wstaw kolumnę z lewej", "pt-PT": "Inserir coluna à esquerda", "nl-NL": "Kolom links invoegen", "cs-CZ": "Vložit sloupec vlevo", "bg-BG": "Вмъкни колона вляво" }
+    },
+    "fbe.menu.idr_mainframe.table.insert_column_right": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_COLUMN_RIGHT",
+      "translations": { "en-US": "Insert column &right", "ru-RU": "Добавить столбец с&права", "uk-UA": "Додати стовпець з&права", "de-DE": "Spalte rechts einfügen", "fr-FR": "Insérer une colonne à droite", "es-ES": "Insertar columna a la derecha", "it-IT": "Inserisci colonna a destra", "pl-PL": "Wstaw kolumnę z prawej", "pt-PT": "Inserir coluna à direita", "nl-NL": "Kolom rechts invoegen", "cs-CZ": "Vložit sloupec vpravo", "bg-BG": "Вмъкни колона вдясно" }
+    },
+    "fbe.menu.idr_mainframe.table.delete_column": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_DELETE_COLUMN",
+      "translations": { "en-US": "Delete &column", "ru-RU": "У&далить столбец", "uk-UA": "Ви&далити стовпець", "de-DE": "Spalte löschen", "fr-FR": "Supprimer la colonne", "es-ES": "Eliminar columna", "it-IT": "Elimina colonna", "pl-PL": "Usuń kolumnę", "pt-PT": "Eliminar coluna", "nl-NL": "Kolom verwijderen", "cs-CZ": "Odstranit sloupec", "bg-BG": "Изтрий колона" }
+    },
+    "fbe.menu.idr_mainframe.table.toggle_header_cell": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_TOGGLE_HEADER_CELL",
+      "translations": { "en-US": "Toggle &header cell", "ru-RU": "Сменить тип &ячейки", "uk-UA": "Змінити тип &комірки", "de-DE": "Kopfzelle umschalten", "fr-FR": "Basculer la cellule d’en-tête", "es-ES": "Alternar celda de encabezado", "it-IT": "Commuta cella intestazione", "pl-PL": "Przełącz komórkę nagłówka", "pt-PT": "Alternar célula de cabeçalho", "nl-NL": "Kopcel wisselen", "cs-CZ": "Přepnout záhlaví buňky", "bg-BG": "Превключи заглавна клетка" }
+    },
     "fbe.menu.idr_mainframe.insert.section_image": {
       "kind": "MENUITEM",
       "targetId": "ID_EDIT_ADD_IMAGE",

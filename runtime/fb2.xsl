@@ -147,19 +147,21 @@
       
   
   <xsl:template match="f:table">
-    <div class="table">
+    <!-- Use native table elements: MSHTML does not implement CSS table layout
+         for the DIV/P representation that was previously used here. -->
+    <table class="table">
       <xsl:call-template name="id"/>
       <xsl:call-template name="style"/>
       <xsl:apply-templates/>
-    </div>
+    </table>
   </xsl:template> 
   
     <xsl:template match="f:tr">
-    <div class="tr">
+    <tr class="tr">
       <xsl:call-template name="id"/>
       <xsl:call-template name="align"/>
       <xsl:apply-templates/>
-    </div>
+    </tr>
   </xsl:template>   
  
   <!-- text -->
@@ -183,7 +185,8 @@
   </xsl:template>
   
    <xsl:template match="f:th | f:td">
-    <p class="{local-name()}">
+    <xsl:element name="{local-name()}">
+      <xsl:attribute name="class"><xsl:value-of select="local-name()"/></xsl:attribute>
       <xsl:call-template name="id"/>
       <xsl:call-template name="style"/>
       <xsl:call-template name="colspan"/> 
@@ -191,7 +194,7 @@
       <xsl:call-template name="align"/>  
       <xsl:call-template name="valign"/>
       <xsl:apply-templates/>
-    </p>
+    </xsl:element>
   </xsl:template>  
 
   <!-- inline -->
@@ -268,14 +271,16 @@
   </xsl:template>
 
 
-    <xsl:template name="align">
+  <xsl:template name="align">
     <xsl:if test="@align">
       <xsl:attribute name="fbalign"><xsl:value-of select="@align"/></xsl:attribute>
+      <xsl:attribute name="align"><xsl:value-of select="@align"/></xsl:attribute>
     </xsl:if>
   </xsl:template>  
   <xsl:template name="valign">
     <xsl:if test="@valign">
       <xsl:attribute name="fbvalign"><xsl:value-of select="@valign"/></xsl:attribute>
+      <xsl:attribute name="valign"><xsl:value-of select="@valign"/></xsl:attribute>
     </xsl:if>
   </xsl:template>   
   
@@ -283,6 +288,7 @@
   <xsl:template name="colspan">
     <xsl:if test="@colspan">
       <xsl:attribute name="fbcolspan"><xsl:value-of select="@colspan"/></xsl:attribute>
+      <xsl:attribute name="colspan"><xsl:value-of select="@colspan"/></xsl:attribute>
     </xsl:if>
   </xsl:template>
   
@@ -290,6 +296,7 @@
   <xsl:template name="rowspan">
     <xsl:if test="@rowspan">
       <xsl:attribute name="fbrowspan"><xsl:value-of select="@rowspan"/></xsl:attribute>
+      <xsl:attribute name="rowspan"><xsl:value-of select="@rowspan"/></xsl:attribute>
     </xsl:if>
   </xsl:template>
 
@@ -756,4 +763,3 @@
   </xsl:template>
   
   </xsl:stylesheet>
-

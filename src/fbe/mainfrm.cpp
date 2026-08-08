@@ -1232,6 +1232,13 @@ BOOL CMainFrame::OnIdle()
 		UIUpdateViewCmd(view, ID_EDIT_CODE);
 		UISetCheckCmd(view, ID_EDIT_CODE);
 		UIUpdateViewCmd(view, ID_INSERT_TABLE);	
+		UIUpdateViewCmd(view, ID_TABLE_INSERT_ROW_ABOVE);
+		UIUpdateViewCmd(view, ID_TABLE_INSERT_ROW_BELOW);
+		UIUpdateViewCmd(view, ID_TABLE_DELETE_ROW);
+		UIUpdateViewCmd(view, ID_TABLE_INSERT_COLUMN_LEFT);
+		UIUpdateViewCmd(view, ID_TABLE_INSERT_COLUMN_RIGHT);
+		UIUpdateViewCmd(view, ID_TABLE_DELETE_COLUMN);
+		UIUpdateViewCmd(view, ID_TABLE_TOGGLE_HEADER_CELL);
 		UIUpdateViewCmd(view, ID_GOTO_FOOTNOTE);
 		UIUpdateViewCmd(view, ID_GOTO_REFERENCE);
 		UIUpdateViewCmd(view, ID_EDIT_MERGE);

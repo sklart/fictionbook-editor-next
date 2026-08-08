@@ -576,6 +576,13 @@
 #define ID_VIEW_FASTMODE                32878
 #define ID_LAST_SCRIPT                  32899
 #define ID_LAST_PLUGIN                  32900
+#define ID_TABLE_INSERT_ROW_ABOVE          32917
+#define ID_TABLE_INSERT_ROW_BELOW          32918
+#define ID_TABLE_DELETE_ROW                32919
+#define ID_TABLE_INSERT_COLUMN_LEFT        32920
+#define ID_TABLE_INSERT_COLUMN_RIGHT       32921
+#define ID_TABLE_DELETE_COLUMN             32922
+#define ID_TABLE_TOGGLE_HEADER_CELL        32923
 #define ID_ADD_IMAGE                    32902
 #define ID_SAVEIMG_AS                   32904
 #define ID_TOOLS_SPELLCHECK             32905

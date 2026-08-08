@@ -1209,11 +1209,25 @@ static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
 	// process empty lines
     MSHTML::IHTMLElement3Ptr(efc)->inflateBlock = VARIANT_TRUE;
 
-    if (U::scmp(name,L"DIV")==0) {
+    // Tables are deliberately represented by native HTML elements in the
+    // visual editor.  Accept both the legacy DIV/P form and TABLE/TR/TD/TH
+    // so old documents and newly edited tables round-trip to the same FB2.
+	if (U::scmp(name,L"TBODY")==0) {
+		// MSHTML inserts TBODY into every native TABLE.  TBODY is not an
+		// FB2 element, so serialize its rows directly into the table.
+		MSHTML::IHTMLDOMNodePtr tbody(fc);
+		for (MSHTML::IHTMLDOMNodePtr rowNode(tbody->firstChild); rowNode; rowNode = rowNode->nextSibling) {
+			if (rowNode->nodeType != NODE_ELEMENT) continue;
+			MSHTML::IHTMLElementPtr row(rowNode);
+			if (U::scmp(row->tagName, L"TR") != 0) continue;
+			Indent(xdiv, doc, indent + 1);
+			xdiv->appendChild(ProcessDiv(row, doc, indent + 1));
+		}
+	} else if (U::scmp(name,L"DIV")==0 || U::scmp(name,L"TABLE")==0 || U::scmp(name,L"TR")==0) {
       Indent(xdiv,doc,indent+1);
 	  MSXML2::IXMLDOMNodePtr nnp = ProcessDiv(efc,doc,indent+1);
       xdiv->appendChild(nnp);
-    } else if (U::scmp(name,L"P")==0) {
+    } else if (U::scmp(name,L"P")==0 || U::scmp(name,L"TD")==0 || U::scmp(name,L"TH")==0) {
 		MSXML2::IXMLDOMNodePtr  np;
 		try { np = ProcessP(efc,doc,bn); } catch (...) { np = 0; }
       if (np) {

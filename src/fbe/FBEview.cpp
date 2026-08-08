@@ -57,6 +57,84 @@ static bool IsParagraphElement(MSHTML::IHTMLElementPtr elem)
 	return (bool)elem && U::scmp(elem->tagName, L"P") == 0;
 }
 
+// The visual view uses native HTML tables.  Keep table mutations here instead
+// of relying on MSHTML's legacy editing commands: those commands may insert
+// HTML that has no FB2 counterpart and do not group a whole operation in one
+// undo item.
+static bool IsTableCellElement(const MSHTML::IHTMLElementPtr& element)
+{
+	return (bool)element && (U::scmp(element->tagName, L"TD") == 0 || U::scmp(element->tagName, L"TH") == 0);
+}
+
+static MSHTML::IHTMLElementPtr FindTableElement(MSHTML::IHTMLElementPtr element)
+{
+	while (element)
+	{
+		if (U::scmp(element->tagName, L"TABLE") == 0 && U::scmp(element->className, L"table") == 0)
+			return element;
+		element = element->parentElement;
+	}
+	return MSHTML::IHTMLElementPtr();
+}
+
+static MSHTML::IHTMLElementPtr FindTableRow(MSHTML::IHTMLElementPtr element)
+{
+	while (element)
+	{
+		if (U::scmp(element->tagName, L"TR") == 0 && U::scmp(element->className, L"tr") == 0)
+			return element;
+		element = element->parentElement;
+	}
+	return MSHTML::IHTMLElementPtr();
+}
+
+static MSHTML::IHTMLElementPtr FindTableCell(MSHTML::IHTMLElementPtr element)
+{
+	while (element)
+	{
+		if (IsTableCellElement(element)) return element;
+		element = element->parentElement;
+	}
+	return MSHTML::IHTMLElementPtr();
+}
+
+static void GetDirectTableCells(const MSHTML::IHTMLElementPtr& row, std::vector<MSHTML::IHTMLElementPtr>& cells)
+{
+	cells.clear();
+	if (!row) return;
+	for (MSHTML::IHTMLDOMNodePtr node(MSHTML::IHTMLDOMNodePtr(row)->firstChild); node; node = node->nextSibling)
+	{
+		if (node->nodeType != NODE_ELEMENT) continue;
+		MSHTML::IHTMLElementPtr element(node);
+		if (IsTableCellElement(element)) cells.push_back(element);
+	}
+}
+
+static MSHTML::IHTMLElementPtr CreateTableCell(MSHTML::IHTMLDocument2Ptr document, const wchar_t* tagName)
+{
+	MSHTML::IHTMLElementPtr cell(document->createElement(tagName));
+	cell->className = U::scmp(tagName, L"TH") == 0 ? L"th" : L"td";
+	return cell;
+}
+
+static MSHTML::IHTMLElementPtr CreateTableRowLike(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& sourceRow)
+{
+	MSHTML::IHTMLElementPtr row(document->createElement(L"TR"));
+	row->className = L"tr";
+	std::vector<MSHTML::IHTMLElementPtr> cells;
+	GetDirectTableCells(sourceRow, cells);
+	for (size_t index = 0; index < cells.size(); ++index)
+		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"beforeEnd", CreateTableCell(document, cells[index]->tagName));
+	return row;
+}
+
+static void CopyTableCellAttribute(const MSHTML::IHTMLElementPtr& source, const MSHTML::IHTMLElementPtr& destination, const wchar_t* name)
+{
+	_variant_t value(source->getAttribute(name, 0));
+	if (value.vt != VT_EMPTY && value.vt != VT_NULL)
+		destination->setAttribute(name, value, 0);
+}
+
 static void NotifyWrappedSearch(bool wrapped)
 {
 	if(wrapped)
@@ -293,6 +371,14 @@ bool CFBEView::CheckCommand(WORD wID) {
 		}
   case ID_INSERT_TABLE:
 	  return InsertTable(true);
+  case ID_TABLE_INSERT_ROW_ABOVE:
+  case ID_TABLE_INSERT_ROW_BELOW:
+  case ID_TABLE_DELETE_ROW:
+  case ID_TABLE_INSERT_COLUMN_LEFT:
+  case ID_TABLE_INSERT_COLUMN_RIGHT:
+  case ID_TABLE_DELETE_COLUMN:
+  case ID_TABLE_TOGGLE_HEADER_CELL:
+	  return (bool)SelectionStructTableCon();
   case ID_GOTO_FOOTNOTE:
 	  {
 		  const bool footnoteFound = GoToFootnote(true);
@@ -3274,6 +3360,29 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 VARIANT_BOOL  CFBEView::OnKeyDown(IDispatch *evt)
 {
 	MSHTML::IHTMLEventObjPtr oe(evt);
+	if (oe && oe->keyCode == VK_TAB && oe->shiftKey != VARIANT_TRUE)
+	{
+		try
+		{
+			MSHTML::IHTMLElementPtr cell(FindTableCell(MSHTML::IHTMLElementPtr(oe->srcElement)));
+			MSHTML::IHTMLElementPtr row(FindTableRow(cell));
+			MSHTML::IHTMLElementPtr table(FindTableElement(row));
+			if (cell && row && table)
+			{
+				std::vector<MSHTML::IHTMLElementPtr> cells;
+				GetDirectTableCells(row, cells);
+				MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR"));
+				_variant_t lastIndex(rows->length - 1);
+				MSHTML::IHTMLElementPtr lastRow(rows->item(lastIndex, _variant_t()));
+				if (lastRow == row && !cells.empty() && cells.back() == cell)
+				{
+					BOOL handled = FALSE;
+					OnTableInsertRowBelow(0, ID_TABLE_INSERT_ROW_BELOW, NULL, handled);
+				}
+			}
+		}
+		catch (_com_error&) { }
+	}
 	if (oe->keyCode == VK_LEFT || oe->keyCode == VK_UP || oe->keyCode == VK_PRIOR || oe->keyCode == VK_HOME)
   		m_startMatch = m_endMatch = 0;
 	return VARIANT_TRUE;
@@ -3638,6 +3747,156 @@ LRESULT CFBEView::OnEditInsertTable(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 	return 0;
 }
 
+static void NotifyTableStructureChanged(HWND frame, HWND view)
+{
+	::SendMessage(frame, WM_COMMAND, MAKELONG(0, IDN_SEL_CHANGE), reinterpret_cast<LPARAM>(view));
+	::SendMessage(frame, WM_COMMAND, MAKELONG(0, IDN_TREE_RESTORE), 0);
+}
+
+LRESULT CFBEView::OnTableInsertRowAbove(WORD, WORD, HWND, BOOL&)
+{
+	try
+	{
+		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
+		MSHTML::IHTMLElementPtr row(FindTableRow(cell));
+		if (!cell || !row || !FindTableElement(row)) return 0;
+		BeginUndoUnit(L"insert table row above");
+		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"beforeBegin", CreateTableRowLike(Document(), row));
+		EndUndoUnit();
+		NotifyTableStructureChanged(m_frame, m_hWnd);
+	}
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+LRESULT CFBEView::OnTableInsertRowBelow(WORD, WORD, HWND, BOOL&)
+{
+	try
+	{
+		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
+		MSHTML::IHTMLElementPtr row(FindTableRow(cell));
+		if (!cell || !row || !FindTableElement(row)) return 0;
+		BeginUndoUnit(L"insert table row below");
+		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", CreateTableRowLike(Document(), row));
+		EndUndoUnit();
+		NotifyTableStructureChanged(m_frame, m_hWnd);
+	}
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
+{
+	try
+	{
+		MSHTML::IHTMLElementPtr row(FindTableRow(SelectionStructTableCon()));
+		if (!row || !FindTableElement(row) || !row->parentElement) return 0;
+		BeginUndoUnit(L"delete table row");
+		MSHTML::IHTMLDOMNodePtr(row->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(row));
+		EndUndoUnit();
+		NotifyTableStructureChanged(m_frame, m_hWnd);
+	}
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+static bool InsertTableColumn(CFBEView* view, bool before)
+{
+	MSHTML::IHTMLElementPtr selectedCell(view->SelectionStructTableCon());
+	MSHTML::IHTMLElementPtr selectedRow(FindTableRow(selectedCell));
+	MSHTML::IHTMLElementPtr table(FindTableElement(selectedRow));
+	if (!selectedCell || !selectedRow || !table) return false;
+
+	std::vector<MSHTML::IHTMLElementPtr> selectedCells;
+	GetDirectTableCells(selectedRow, selectedCells);
+	size_t column = 0;
+	while (column < selectedCells.size() && selectedCells[column] != selectedCell) ++column;
+	if (column == selectedCells.size()) return false;
+	if (!before) ++column;
+
+	MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR"));
+	if (!rows) return false;
+	view->BeginUndoUnit(before ? L"insert table column left" : L"insert table column right");
+	for (long rowIndex = 0; rowIndex < rows->length; ++rowIndex)
+	{
+		_variant_t itemIndex(rowIndex);
+		MSHTML::IHTMLElementPtr row(rows->item(itemIndex, _variant_t()));
+		std::vector<MSHTML::IHTMLElementPtr> cells;
+		GetDirectTableCells(row, cells);
+		const wchar_t* type = selectedCell->tagName;
+		MSHTML::IHTMLElementPtr cell(CreateTableCell(view->Document(), type));
+		if (column < cells.size()) MSHTML::IHTMLElement2Ptr(cells[column])->insertAdjacentElement(L"beforeBegin", cell);
+		else MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"beforeEnd", cell);
+	}
+	view->EndUndoUnit();
+	return true;
+}
+
+LRESULT CFBEView::OnTableInsertColumnLeft(WORD, WORD, HWND, BOOL&)
+{
+	try { if (InsertTableColumn(this, true)) NotifyTableStructureChanged(m_frame, m_hWnd); }
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+LRESULT CFBEView::OnTableInsertColumnRight(WORD, WORD, HWND, BOOL&)
+{
+	try { if (InsertTableColumn(this, false)) NotifyTableStructureChanged(m_frame, m_hWnd); }
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+LRESULT CFBEView::OnTableDeleteColumn(WORD, WORD, HWND, BOOL&)
+{
+	try
+	{
+		MSHTML::IHTMLElementPtr selectedCell(SelectionStructTableCon());
+		MSHTML::IHTMLElementPtr selectedRow(FindTableRow(selectedCell));
+		MSHTML::IHTMLElementPtr table(FindTableElement(selectedRow));
+		if (!selectedCell || !selectedRow || !table) return 0;
+		std::vector<MSHTML::IHTMLElementPtr> selectedCells;
+		GetDirectTableCells(selectedRow, selectedCells);
+		size_t column = 0;
+		while (column < selectedCells.size() && selectedCells[column] != selectedCell) ++column;
+		if (column == selectedCells.size()) return 0;
+
+		MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR"));
+		BeginUndoUnit(L"delete table column");
+		for (long rowIndex = rows->length - 1; rowIndex >= 0; --rowIndex)
+		{
+			_variant_t itemIndex(rowIndex);
+			MSHTML::IHTMLElementPtr row(rows->item(itemIndex, _variant_t()));
+			std::vector<MSHTML::IHTMLElementPtr> cells;
+			GetDirectTableCells(row, cells);
+			if (column < cells.size()) MSHTML::IHTMLDOMNodePtr(row)->removeChild(MSHTML::IHTMLDOMNodePtr(cells[column]));
+		}
+		EndUndoUnit();
+		NotifyTableStructureChanged(m_frame, m_hWnd);
+	}
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+LRESULT CFBEView::OnTableToggleHeaderCell(WORD, WORD, HWND, BOOL&)
+{
+	try
+	{
+		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
+		if (!cell || !FindTableElement(cell)) return 0;
+		const wchar_t* targetName = U::scmp(cell->tagName, L"TH") == 0 ? L"TD" : L"TH";
+		BeginUndoUnit(L"toggle table header cell");
+		MSHTML::IHTMLElementPtr replacement(CreateTableCell(Document(), targetName));
+		replacement->innerHTML = cell->innerHTML;
+		const wchar_t* const attributes[] = { L"id", L"fbstyle", L"fbcolspan", L"fbrowspan", L"fbalign", L"fbvalign", L"colspan", L"rowspan", L"align", L"valign" };
+		for (size_t index = 0; index < _countof(attributes); ++index) CopyTableCellAttribute(cell, replacement, attributes[index]);
+		MSHTML::IHTMLDOMNodePtr(cell->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement), MSHTML::IHTMLDOMNodePtr(cell));
+		EndUndoUnit();
+		NotifyTableStructureChanged(m_frame, m_hWnd);
+	}
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
 LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 {
 	// added by SeNS
@@ -3730,14 +3989,14 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows) {
 		// * create an undo unit
 		m_mk_srv->BeginUndoUnit(L"insert table");
 
-		MSHTML::IHTMLElementPtr	  te(Document()->createElement(L"DIV"));
+		MSHTML::IHTMLElementPtr	  te(Document()->createElement(L"TABLE"));
 
 		for(int row=nrows; row!=-1; --row){	
 			// * create tr
-			MSHTML::IHTMLElementPtr	  tre(Document()->createElement(L"DIV"));
+			MSHTML::IHTMLElementPtr	  tre(Document()->createElement(L"TR"));
 			tre->className=L"tr";
 			// * create th and td
-			MSHTML::IHTMLElementPtr	  the(Document()->createElement(L"P"));
+			MSHTML::IHTMLElementPtr	  the(Document()->createElement(row == 0 && bTitle ? L"TH" : L"TD"));
 			if(row==0){				
 				if(bTitle){//����� ��������� �������
 					the->className=L"th";// * create th - ���������

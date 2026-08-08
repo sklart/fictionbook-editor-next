@@ -192,6 +192,27 @@ div#fbw_body div.body {
 	border: none;
 }
 
+/* FB2 tables are rendered with native HTML table elements so the visual
+   editor preserves rows, columns, spans and editable cell boundaries. */
+div#fbw_body table.table {
+	border-collapse: collapse;
+	border: solid 1px #808080;
+	margin: 0.5em 0;
+	max-width: 100%;
+}
+div#fbw_body table.table th,
+div#fbw_body table.table td {
+	border: solid 1px #808080;
+	padding: 0.25em 0.4em;
+	vertical-align: top;
+	text-indent: 0;
+	word-wrap: break-word;
+}
+div#fbw_body table.table th {
+	background-color: #E6E6E6;
+	font-weight: bold;
+}
+
 div.section{
 	border-color: #008000;
 }

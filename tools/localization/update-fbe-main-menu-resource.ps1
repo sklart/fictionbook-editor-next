@@ -97,6 +97,17 @@ $template = @(
         @{ Type = "MENUITEM"; Key = "insert.poem" },
         @{ Type = "MENUITEM"; Key = "insert.cite" },
         @{ Type = "MENUITEM"; Key = "insert.table" },
+        @{ Type = "POPUP"; Key = "table.structure"; Children = @(
+            @{ Type = "MENUITEM"; Key = "table.insert_row_above" },
+            @{ Type = "MENUITEM"; Key = "table.insert_row_below" },
+            @{ Type = "MENUITEM"; Key = "table.delete_row" },
+            @{ Type = "SEPARATOR" },
+            @{ Type = "MENUITEM"; Key = "table.insert_column_left" },
+            @{ Type = "MENUITEM"; Key = "table.insert_column_right" },
+            @{ Type = "MENUITEM"; Key = "table.delete_column" },
+            @{ Type = "SEPARATOR" },
+            @{ Type = "MENUITEM"; Key = "table.toggle_header_cell" }
+        ) },
         @{ Type = "MENUITEM"; Key = "insert.section_image" },
         @{ Type = "SEPARATOR" },
         @{ Type = "MENUITEM"; Key = "insert.binary" }

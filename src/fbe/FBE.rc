@@ -776,6 +776,18 @@ BEGIN
         MENUITEM "&Poem",                       ID_EDIT_INS_POEM
         MENUITEM "&Cite",                       ID_EDIT_INS_CITE
         MENUITEM "T&able",                      ID_INSERT_TABLE
+        POPUP "Table structure"
+        BEGIN
+            MENUITEM "Insert row &above",       ID_TABLE_INSERT_ROW_ABOVE
+            MENUITEM "Insert row &below",       ID_TABLE_INSERT_ROW_BELOW
+            MENUITEM "&Delete row",             ID_TABLE_DELETE_ROW
+            MENUITEM SEPARATOR
+            MENUITEM "Insert column &left",     ID_TABLE_INSERT_COLUMN_LEFT
+            MENUITEM "Insert column &right",    ID_TABLE_INSERT_COLUMN_RIGHT
+            MENUITEM "Delete &column",          ID_TABLE_DELETE_COLUMN
+            MENUITEM SEPARATOR
+            MENUITEM "Toggle &header cell",     ID_TABLE_TOGGLE_HEADER_CELL
+        END
         MENUITEM "&Section image",              ID_EDIT_ADD_IMAGE
         MENUITEM SEPARATOR
         MENUITEM "Add &Binary Object...",       ID_EDIT_ADDBINARY
