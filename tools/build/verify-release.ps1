@@ -82,6 +82,7 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-line-number-margin.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-updateui-notification.ps1")
+& (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
