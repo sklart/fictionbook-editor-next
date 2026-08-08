@@ -7,6 +7,8 @@ param(
 
     [string]$PlatformToolset,
 
+    [string]$BatchOutputDirectory,
+
     [switch]$SkipUpdateManifest,
 
     # Исходники, словари и общие статические контракты проверяются один раз
@@ -18,6 +20,16 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $outputDir = Join-Path $repoRoot "out\$Configuration"
+$batchOutputDir = if ($BatchOutputDirectory) {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
+} else {
+    $outputDir
+}
+$batchNames = @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")
+function Get-ReleaseOutputPath([string]$Name) {
+    $directory = if ($Name -in $batchNames) { $batchOutputDir } else { $outputDir }
+    return Join-Path $directory $Name
+}
 $versionHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\version.h")
 $versionMatch = [regex]::Match(
     $versionHeader,
@@ -138,13 +150,17 @@ if ($PlatformToolset) {
 if ($CompatibilityTarget -eq "Win7") {
     $sharedWin7Files = @(
         "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
-        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe",
-        "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll"
+        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll"
     )
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
         -Configuration $Configuration `
         -OutputDirectory $outputDir `
         -IncludeNames $sharedWin7Files
+
+    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+        -Configuration $Configuration `
+        -OutputDirectory $batchOutputDir `
+        -IncludeNames @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")
 
     $win7EditorRuntimeDir = Join-Path $repoRoot "out\editor-runtime\Win7"
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
@@ -202,7 +218,7 @@ $controlFlowGuardFiles = @(
 )
 
 foreach ($name in $requiredFiles) {
-    $path = Join-Path $outputDir $name
+    $path = Get-ReleaseOutputPath $name
 
     if (-not (Test-Path -LiteralPath $path)) {
         throw "Отсутствует обязательный результат сборки: $path"
@@ -213,7 +229,7 @@ foreach ($name in $requiredFiles) {
 }
 
 foreach ($name in @("Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll")) {
-    $path = Join-Path $outputDir $name
+    $path = Get-ReleaseOutputPath $name
     if (-not (Test-Path -LiteralPath $path)) {
         throw "Отсутствует обязательный результат сборки: $path"
     }
@@ -229,7 +245,7 @@ foreach ($name in $forbiddenFiles) {
 }
 
 foreach ($name in $requiredSymbols) {
-    $path = Join-Path $outputDir $name
+    $path = Get-ReleaseOutputPath $name
     if (-not (Test-Path -LiteralPath $path)) {
         throw "Отсутствуют обязательные debug symbols: $path"
     }
@@ -239,7 +255,7 @@ foreach ($name in $requiredSymbols) {
 }
 
 foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll")) {
-    $path = Join-Path $outputDir $name
+    $path = Get-ReleaseOutputPath $name
     $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($path)
 
     if ($info.FileVersion -ne $expectedVersion) {
@@ -268,7 +284,7 @@ $requiredFileDescriptions = @{
 }
 
 foreach ($entry in $requiredFileDescriptions.GetEnumerator()) {
-    $path = Join-Path $outputDir $entry.Key
+    $path = Get-ReleaseOutputPath $entry.Key
     $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($path)
 
     if ([string]::IsNullOrWhiteSpace($info.FileDescription)) {
@@ -333,4 +349,3 @@ finally {
 }
 
 Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
-

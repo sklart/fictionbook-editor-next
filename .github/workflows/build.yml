@@ -47,29 +47,19 @@ jobs:
           key: ${{ runner.os }}-release-win32-v143-modern-win7-${{ hashFiles('third_party/pcre2/**', 'third_party/hunspell/**', 'third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-pcre2.ps1', 'tools/build/build-hunspell.ps1', 'tools/build/build-scintilla.ps1') }}
       - name: Build Release Win32 modern
         shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpx -WarningsAsErrors -ReuseEditorRuntime
-      - name: Stage Modern batch converters
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpx -WarningsAsErrors -ReuseEditorRuntime -BatchOutputDirectory out/target-batches/Modern
+      - name: Verify Modern binaries
         shell: pwsh
-        run: |
-          $targetDirectory = 'out/target-batches/Modern'
-          New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
-          Copy-Item out/Release/ExportDOCXBatch.exe, out/Release/ExportEPUBBatch.exe, out/Release/ImportEPUBBatch.exe -Destination $targetDirectory -Force
+        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest -BatchOutputDirectory out/target-batches/Modern
       - name: Build Win7-compatible editor runtime
         shell: pwsh
         run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime
       - name: Build Win7-compatible batch converters
         shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly -SkipDependencies
-      - name: Stage Win7 batch converters
+        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly -SkipDependencies -WarningsAsErrors -BatchOutputDirectory out/target-batches/Win7
+      - name: Verify Win7 binaries
         shell: pwsh
-        run: |
-          $targetDirectory = 'out/target-batches/Win7'
-          New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
-          Copy-Item out/Release/ExportDOCXBatch.exe, out/Release/ExportEPUBBatch.exe, out/Release/ImportEPUBBatch.exe -Destination $targetDirectory -Force
-      - name: Verify Modern binaries on pull requests
-        if: github.event_name == 'pull_request'
-        shell: pwsh
-        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest
+        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Win7 -PlatformToolset v143 -SkipUpdateManifest -SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7
       - name: Upload compiled inputs
         uses: actions/upload-artifact@v4
         with:
@@ -107,25 +97,19 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path out/Release/dict -Force | Out-Null
           Copy-Item runtime/dict/* -Destination out/Release/dict -Force
-      - name: Restore Modern batch converters
-        shell: pwsh
-        run: Copy-Item out/target-batches/Modern/* -Destination out/Release -Force
       - name: Create Modern release artifacts without compiling
         shell: pwsh
         run: |
-          $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true }
+          $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true; BatchOutputDirectory = "out/target-batches/Modern" }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
             if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true } else { $arguments.ValidateUpdateManifest = $true }
           }
           ./tools/build/create-release.ps1 @arguments
-      - name: Restore Win7 batch converters
-        shell: pwsh
-        run: Copy-Item out/target-batches/Win7/* -Destination out/Release -Force
       - name: Create Win7 release artifacts without compiling
         shell: pwsh
         run: |
-          ./tools/build/create-release.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipBuild -PreserveArtifacts -SkipPropertyHandlerBuild -SkipFbvVerbMuiBuild -SkipCommonChecks
+          ./tools/build/create-release.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipBuild -PreserveArtifacts -SkipPropertyHandlerBuild -SkipFbvVerbMuiBuild -SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7
       - name: Verify all release archives
         shell: pwsh
         run: ./tools/build/verify-artifacts.ps1 -Platform Win32 -CompatibilityTarget All

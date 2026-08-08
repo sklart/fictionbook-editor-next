@@ -50,10 +50,14 @@ Assert-Contains $workflow "package:" "отдельная job упаковки"
 Assert-Contains $workflow "publish:" "отдельная job публикации"
 Assert-Contains $workflow "actions/upload-artifact@v4" "передача результатов между jobs"
 Assert-Contains $workflow "actions/download-artifact@v4" "получение результатов между jobs"
-Assert-Contains $workflow "out/target-batches" "передача целевых batch-конвертеров между jobs"
-Assert-Contains $workflow "Restore Modern batch converters" "восстановление Modern batch-конвертеров"
-Assert-Contains $workflow "Restore Win7 batch converters" "восстановление Win7 batch-конвертеров"
-Assert-Contains $workflow "Verify Modern binaries on pull requests" "основные проверки PR"
+Assert-Contains $workflow "-BatchOutputDirectory out/target-batches/Modern" "явный Modern batch output в CI"
+Assert-Contains $workflow "-BatchOutputDirectory out/target-batches/Win7" "явный Win7 batch output в CI"
+Assert-Contains $workflow "Verify Modern binaries" "Modern verification"
+Assert-Contains $workflow "Verify Win7 binaries" "Win7 verification"
+Assert-Contains $workflow "-SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7" "Win7 verification без дублирования общих тестов"
+Assert-Contains $workflow "-WarningsAsErrors -BatchOutputDirectory out/target-batches/Win7" "Win7 batch warnings-as-errors"
+Assert-NotContains $workflow "Copy-Item out/target-batches/Modern/* -Destination out/Release" "workflow: переключение Modern batch в общий output"
+Assert-NotContains $workflow "Copy-Item out/target-batches/Win7/* -Destination out/Release" "workflow: переключение Win7 batch в общий output"
 Assert-Contains $workflow "-SkipPropertyHandlerBuild" "Win7-релиз workflow"
 Assert-Contains $workflow "-SkipFbvVerbMuiBuild" "Win7-релиз workflow"
 Assert-Contains $build "[switch]`$EditorRuntimeOnly" "build.ps1"
@@ -62,6 +66,7 @@ Assert-Contains $build "[switch]`$BatchConvertersOnly" "build.ps1"
 Assert-Contains $build "[switch]`$SkipDependencies" "build.ps1"
 Assert-Contains $build "Assert-PreparedDependencies" "build.ps1"
 Assert-Contains $build "[switch]`$ForceRebuildRequiredProjects" "build.ps1"
+Assert-Contains $build "[string]`$BatchOutputDirectory" "build.ps1: target-specific batch output"
 Assert-Contains $build "Собраны только пакетные конвертеры" "build.ps1"
 Assert-Contains $scintilla "[string]`$OutputDirectory" "build-scintilla.ps1"
 Assert-Contains $scintilla "out\editor-runtime" "build-scintilla.ps1"
@@ -74,6 +79,7 @@ Assert-Contains $release "[switch]`$SkipCommonChecks" "create-release.ps1"
 Assert-Contains $release "out\artifacts\{0}" "изолированные артефакты release"
 Assert-NotContains $release '& (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1")' "create-release.ps1"
 Assert-Contains $portable "[string]`$EditorRuntimeDirectory" "package-portable.ps1"
+Assert-Contains $portable "[string]`$BatchOutputDirectory" "package-portable.ps1: target-specific batch output"
 Assert-Contains $portable "[switch]`$SkipFbvVerbMuiBuild" "package-portable.ps1"
 Assert-Contains $portable '"Scintilla.dll", "Lexilla.dll"' "package-portable.ps1"
 Assert-Contains $artifacts "Get-ZipEntrySha256" "verify-artifacts.ps1"
@@ -89,6 +95,7 @@ Assert-NotContains $lunaAdapter "thirdparty\lunasvg\lib\Win32" "ImportEPUBLunaSV
 Assert-Contains $artifacts 'foreach ($name in @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe"))' "verify-artifacts.ps1"
 Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verify-release.ps1"
 Assert-Contains $verifyRelease "[switch]`$SkipCommonChecks" "verify-release.ps1"
+Assert-Contains $verifyRelease "[string]`$BatchOutputDirectory" "verify-release.ps1: target-specific batch output"
 Assert-Contains $verifyRelease '-EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")' "verify-release.ps1"
 if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {
     throw "Релизный контур не должен блокироваться накопленным набором кириллических строк; строгая проверка допустима только для отдельных фикстур."
@@ -111,5 +118,13 @@ if ($batchIndex -lt 0 -or $batchReturnIndex -lt 0 -or
 }
 
 Assert-NotContains $build "/t:Rebuild" "build.ps1: CI-граф не должен содержать безусловный Rebuild"
+
+foreach ($batchProjectPath in @(
+    "src\export-docx\ExportDOCXBatch.vcxproj",
+    "src\export-epub\ExportEPUBBatch.vcxproj",
+    "src\import-epub\ImportEPUBBatch.vcxproj"
+)) {
+    Assert-Contains (Get-Text $batchProjectPath) "BatchOutputDirectory" "${batchProjectPath}: target-specific OutDir"
+}
 
 Write-Host "Проверка исключения повторных сборок Modern/Win7 прошла успешно."

@@ -20,6 +20,7 @@ param(
     [switch]$SkipPropertyHandlerBuild,
     [switch]$SkipFbvVerbMuiBuild,
     [switch]$SkipCommonChecks,
+    [string]$BatchOutputDirectory,
     [switch]$ValidateUpdateManifest,
     [switch]$Prerelease,
     [string]$ReleaseTag
@@ -76,6 +77,11 @@ $artifactsDir = Join-Path $repoRoot ("out\artifacts\{0}" -f $CompatibilityTarget
 $portableDir = Join-Path $repoRoot ("out\package\{0}\FictionBookEditor" -f $CompatibilityTarget)
 $symbolsDir = Join-Path $repoRoot ("out\package\{0}\symbols" -f $CompatibilityTarget)
 $editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
+$batchOutputDirectory = if ($BatchOutputDirectory) {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
+} else {
+    Join-Path $repoRoot ("out\{0}" -f $Configuration)
+}
 
 # До упаковки синхронизируется только version.nsh. Проверка update.xml должна
 # выполняться в конце: SHA-256 нового setup появляется лишь после его сборки.
@@ -86,6 +92,7 @@ if (-not $SkipBuild) {
         Configuration = $Configuration
         Platform = $Platform
         CompatibilityTarget = $CompatibilityTarget
+        BatchOutputDirectory = $batchOutputDirectory
     }
     if ($PlatformToolset) {
         $buildArguments.PlatformToolset = $PlatformToolset
@@ -134,6 +141,7 @@ $verifyReleaseArguments = @{
     Configuration = $Configuration
     CompatibilityTarget = $CompatibilityTarget
     SkipUpdateManifest = $true
+    BatchOutputDirectory = $batchOutputDirectory
 }
 if ($PlatformToolset) {
     $verifyReleaseArguments.PlatformToolset = $PlatformToolset
@@ -145,6 +153,7 @@ if ($SkipCommonChecks) {
 & (Join-Path $PSScriptRoot "package-portable.ps1") `
     -Configuration $Configuration `
     -EditorRuntimeDirectory $editorRuntimeDirectory `
+    -BatchOutputDirectory $batchOutputDirectory `
     -PackageDirectory $portableDir `
     -RequireWin32PropertyHandler `
     -RequireX64ShellExtension `
@@ -216,7 +225,8 @@ $symbolNames = @(
     "res_ukr.pdb"
 )
 foreach ($name in $symbolNames) {
-Copy-Item -LiteralPath (Join-Path $repoRoot "out\$Configuration\$name") `
+    $symbolSourceDirectory = if ($name -in @("ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")) { $batchOutputDirectory } else { Join-Path $repoRoot "out\$Configuration" }
+    Copy-Item -LiteralPath (Join-Path $symbolSourceDirectory $name) `
         -Destination $symbolsDir -Force
 }
 Copy-Item -LiteralPath (Join-Path $repoRoot "out\package\shell-build\Win32\$Configuration\FBShell.pdb") `

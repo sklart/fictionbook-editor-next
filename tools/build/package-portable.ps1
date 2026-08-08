@@ -7,6 +7,9 @@ param(
     # При отсутствии параметра сохраняется локальное историческое поведение.
     [string]$EditorRuntimeDirectory = "",
 
+    # Явный источник EXE/PDB batch-конвертеров конкретного target.
+    [string]$BatchOutputDirectory = "",
+
     [string]$PackageDirectory = "",
 
     [switch]$RequireWin32PropertyHandler,
@@ -24,6 +27,11 @@ $editorRuntimeSourceDir = if ([string]::IsNullOrWhiteSpace($EditorRuntimeDirecto
     Join-Path $repoRoot "runtime"
 } else {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EditorRuntimeDirectory)
+}
+$batchOutputSourceDir = if ([string]::IsNullOrWhiteSpace($BatchOutputDirectory)) {
+    $sourceDir
+} else {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
 }
 $buildFbvVerbMuiScript = Join-Path $PSScriptRoot "build-fbv-verb-mui.ps1"
 $propertyHandlerRootDir = Join-Path $repoRoot "out\package\shell-build"
@@ -72,8 +80,11 @@ foreach ($legacyRootResource in @("res_rus.dll", "res_ukr.dll")) {
     -OutputDirectory (Join-Path $stageDir "Lang") `
     -Clean
 
-foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")) {
+foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll")) {
     Copy-Item -LiteralPath (Join-Path $sourceDir $name) -Destination (Join-Path $stageDir $name) -Force
+}
+foreach ($name in @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")) {
+    Copy-Item -LiteralPath (Join-Path $batchOutputSourceDir $name) -Destination (Join-Path $stageDir $name) -Force
 }
 
 $localizedResourceDlls = @{
@@ -142,7 +153,6 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "tools\build\unregister-modern-prope
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-package.ps1") -PackageDirectory $stageDir
 
 Write-Host "Portable-пакет подготовлен в $stageDir"
-
 
 
 
