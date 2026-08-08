@@ -850,8 +850,10 @@ Section !$(Scripts) Scripts_id
 	File /r ${INPUTDIR}\HTML\*.*
         SetOutPath "$INSTDIR\Help"
 	File /r ${INPUTDIR}\Help\*.*
-        SetOutPath "$INSTDIR\Utilities"
+	SetOutPath "$INSTDIR\Utilities"
 	File /r ${INPUTDIR}\Utilities\*.*
+	SetOutPath "$INSTDIR\Themes"
+	File /r ${INPUTDIR}\Themes\*.*
 SectionEnd
 
 SubSection !$(Dictionaries) Dictionaries_id
