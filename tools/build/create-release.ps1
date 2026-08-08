@@ -21,6 +21,7 @@ param(
     [switch]$SkipFbvVerbMuiBuild,
     [switch]$SkipCommonChecks,
     [string]$BatchOutputDirectory,
+    [switch]$SkipArtifactVerification,
     [switch]$ValidateUpdateManifest,
     [switch]$Prerelease,
     [string]$ReleaseTag
@@ -106,6 +107,13 @@ if (-not $SkipBuild) {
     & (Join-Path $PSScriptRoot "build.ps1") @buildArguments
 }
 
+if ($SkipBuild -and -not $SkipPropertyHandlerBuild) {
+    throw "-SkipBuild запрещает native-компиляцию. Подготовьте property handler заранее и укажите -SkipPropertyHandlerBuild."
+}
+if ($SkipBuild -and -not $SkipFbvVerbMuiBuild) {
+    throw "-SkipBuild запрещает native-компиляцию. Подготовьте FBV Verb MUI заранее и укажите -SkipFbvVerbMuiBuild."
+}
+
 if ($SkipPropertyHandlerBuild) {
     foreach ($propertyHandlerPlatform in @("Win32", "x64")) {
         $propertyHandlerOutput = Join-Path $repoRoot "out\package\shell-build\$propertyHandlerPlatform\$Configuration\FBShell.dll"
@@ -159,7 +167,6 @@ if ($SkipCommonChecks) {
     -RequireX64ShellExtension `
     -SkipFbvVerbMuiBuild:$SkipFbvVerbMuiBuild
 & (Join-Path $PSScriptRoot "verify-package-stage.ps1") -StageDirectory $portableDir
-& (Join-Path $PSScriptRoot "verify-nsis-layout.ps1")
 
 if ((Test-Path -LiteralPath $artifactsDir) -and -not $PreserveArtifacts) {
     try {
@@ -258,6 +265,7 @@ if (-not $SkipInstaller) {
     & (Join-Path $PSScriptRoot "prepare-installer.ps1") `
         -Configuration $Configuration `
         -SkipPortablePackage `
+        -SkipPackageVerification `
         -PortableDirectory $portableDir
 
     $makensisCandidates = @(
@@ -361,7 +369,9 @@ $verifyArtifactArguments = @{
 if ($SkipInstaller -and -not ($PreserveArtifacts -and $CompatibilityTarget -eq "Win7")) {
     $verifyArtifactArguments.SkipInstaller = $true
 }
-& (Join-Path $PSScriptRoot "verify-artifacts.ps1") @verifyArtifactArguments
+if (-not $SkipArtifactVerification) {
+    & (Join-Path $PSScriptRoot "verify-artifacts.ps1") @verifyArtifactArguments
+}
 
 Write-Host "Артефакты релиза для версии ${version}:"
 Get-ChildItem -LiteralPath $artifactsDir -File | Select-Object Name, Length | Format-Table -AutoSize

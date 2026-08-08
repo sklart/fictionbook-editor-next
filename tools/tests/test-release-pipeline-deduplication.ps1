@@ -58,6 +58,11 @@ Assert-Contains $workflow "-SkipCommonChecks -BatchOutputDirectory out/target-ba
 Assert-Contains $workflow "-WarningsAsErrors -BatchOutputDirectory out/target-batches/Win7" "Win7 batch warnings-as-errors"
 Assert-NotContains $workflow "Copy-Item out/target-batches/Modern/* -Destination out/Release" "workflow: переключение Modern batch в общий output"
 Assert-NotContains $workflow "Copy-Item out/target-batches/Win7/* -Destination out/Release" "workflow: переключение Win7 batch в общий output"
+Assert-Contains $workflow "Build Win32 property handler" "подготовка Win32 property handler в build job"
+Assert-Contains $workflow "Build x64 property handler" "подготовка x64 property handler в build job"
+Assert-Contains $workflow "Build FBV Verb MUI" "подготовка FBV Verb MUI в build job"
+Assert-Contains $workflow "verify-nsis-layout.ps1" "однократная проверка NSIS в validate"
+Assert-Contains $workflow "SkipArtifactVerification = `$true" "финальная artifact verification только после двух profile"
 Assert-Contains $workflow "-SkipPropertyHandlerBuild" "Win7-релиз workflow"
 Assert-Contains $workflow "-SkipFbvVerbMuiBuild" "Win7-релиз workflow"
 Assert-Contains $build "[switch]`$EditorRuntimeOnly" "build.ps1"
@@ -76,6 +81,9 @@ Assert-Contains $release "[switch]`$SkipFbvVerbMuiBuild" "create-release.ps1"
 Assert-Contains $release "[switch]`$Prerelease" "create-release.ps1"
 Assert-Contains $release "-EditorRuntimeDirectory `$editorRuntimeDirectory" "create-release.ps1"
 Assert-Contains $release "[switch]`$SkipCommonChecks" "create-release.ps1"
+Assert-Contains $release "[switch]`$SkipArtifactVerification" "create-release.ps1: финальная verification управляется CI"
+Assert-Contains $release "-SkipPackageVerification" "create-release.ps1: package stage проверяется один раз"
+Assert-Contains $release "-SkipBuild запрещает native-компиляцию" "create-release.ps1: строгая семантика SkipBuild"
 Assert-Contains $release "out\artifacts\{0}" "изолированные артефакты release"
 Assert-NotContains $release '& (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1")' "create-release.ps1"
 Assert-Contains $portable "[string]`$EditorRuntimeDirectory" "package-portable.ps1"
@@ -96,6 +104,7 @@ Assert-Contains $artifacts 'foreach ($name in @("ExportDOCXBatch.exe", "ExportEP
 Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verify-release.ps1"
 Assert-Contains $verifyRelease "[switch]`$SkipCommonChecks" "verify-release.ps1"
 Assert-Contains $verifyRelease "[string]`$BatchOutputDirectory" "verify-release.ps1: target-specific batch output"
+Assert-Contains $verifyRelease "UsePreparedPcre2 = `$true" "verify-release.ps1: prepared PCRE2 smoke tests"
 Assert-Contains $verifyRelease '-EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")' "verify-release.ps1"
 if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {
     throw "Релизный контур не должен блокироваться накопленным набором кириллических строк; строгая проверка допустима только для отдельных фикстур."
@@ -125,6 +134,10 @@ foreach ($batchProjectPath in @(
     "src\import-epub\ImportEPUBBatch.vcxproj"
 )) {
     Assert-Contains (Get-Text $batchProjectPath) "BatchOutputDirectory" "${batchProjectPath}: target-specific OutDir"
+}
+
+foreach ($pcre2TestPath in @("tools\tests\test-pcre2.ps1", "tools\tests\test-pcre2-wrapper.ps1", "tools\tests\test-pcre2-replace.ps1")) {
+    Assert-Contains (Get-Text $pcre2TestPath) "[switch]`$UsePreparedPcre2" "${pcre2TestPath}: prepared PCRE2 mode"
 }
 
 Write-Host "Проверка исключения повторных сборок Modern/Win7 прошла успешно."

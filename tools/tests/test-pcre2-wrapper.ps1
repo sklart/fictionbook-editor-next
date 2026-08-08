@@ -3,7 +3,9 @@ param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
 
-    [string]$PlatformToolset
+    [string]$PlatformToolset,
+
+    [switch]$UsePreparedPcre2
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,19 +13,17 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
-$buildPcre2Arguments = @{
-    Configuration = $Configuration
-    Quiet = $true
-}
-if ($PlatformToolset) {
-    $buildPcre2Arguments.PlatformToolset = $PlatformToolset
-}
-& (Join-Path $repoRoot "tools\build\build-pcre2.ps1") @buildPcre2Arguments
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-
 $installDir = Join-Path $repoRoot "build\pcre2\install\$Configuration"
+if ($UsePreparedPcre2) {
+    foreach ($path in @((Join-Path $installDir "include\pcre2.h"), (Join-Path $installDir "lib\pcre2-8-static.lib"))) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Не найдена подготовленная PCRE2-зависимость: $path" }
+    }
+} else {
+    $buildPcre2Arguments = @{ Configuration = $Configuration; Quiet = $true }
+    if ($PlatformToolset) { $buildPcre2Arguments.PlatformToolset = $PlatformToolset }
+    & (Join-Path $repoRoot "tools\build\build-pcre2.ps1") @buildPcre2Arguments
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 $testDir = Join-Path $repoRoot "out\tests\pcre2-wrapper"
 $testExe = Join-Path $testDir "pcre2-wrapper-smoke.exe"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null

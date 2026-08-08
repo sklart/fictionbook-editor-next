@@ -28,6 +28,7 @@ jobs:
           ./tools/version/sync-version.ps1
           git diff --exit-code -- packaging/nsis/Installer/version.nsh
           ./tools/tests/test-release-pipeline-deduplication.ps1
+          ./tools/build/verify-nsis-layout.ps1
 
   build:
     needs: validate
@@ -51,6 +52,15 @@ jobs:
       - name: Verify Modern binaries
         shell: pwsh
         run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest -BatchOutputDirectory out/target-batches/Modern
+      - name: Build Win32 property handler
+        shell: pwsh
+        run: ./tools/build/build-experimental-property-handler.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143
+      - name: Build x64 property handler
+        shell: pwsh
+        run: ./tools/build/build-experimental-property-handler.ps1 -Configuration Release -Platform x64 -PlatformToolset v143
+      - name: Build FBV Verb MUI
+        shell: pwsh
+        run: ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release
       - name: Build Win7-compatible editor runtime
         shell: pwsh
         run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime
@@ -100,7 +110,7 @@ jobs:
       - name: Create Modern release artifacts without compiling
         shell: pwsh
         run: |
-          $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true; BatchOutputDirectory = "out/target-batches/Modern" }
+          $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true; SkipPropertyHandlerBuild = $true; SkipFbvVerbMuiBuild = $true; SkipArtifactVerification = $true; BatchOutputDirectory = "out/target-batches/Modern" }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
             if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true } else { $arguments.ValidateUpdateManifest = $true }
@@ -109,7 +119,7 @@ jobs:
       - name: Create Win7 release artifacts without compiling
         shell: pwsh
         run: |
-          ./tools/build/create-release.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipBuild -PreserveArtifacts -SkipPropertyHandlerBuild -SkipFbvVerbMuiBuild -SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7
+          ./tools/build/create-release.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipBuild -PreserveArtifacts -SkipPropertyHandlerBuild -SkipFbvVerbMuiBuild -SkipCommonChecks -SkipArtifactVerification -BatchOutputDirectory out/target-batches/Win7
       - name: Verify all release archives
         shell: pwsh
         run: ./tools/build/verify-artifacts.ps1 -Platform Win32 -CompatibilityTarget All

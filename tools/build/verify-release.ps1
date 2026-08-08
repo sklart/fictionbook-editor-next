@@ -90,6 +90,7 @@ if (-not $SkipUpdateManifest) {
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
 $pcre2TestArguments = @{
     Configuration = $Configuration
+    UsePreparedPcre2 = $true
 }
 if ($PlatformToolset) {
     $pcre2TestArguments.PlatformToolset = $PlatformToolset

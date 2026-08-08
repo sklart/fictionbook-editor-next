@@ -2,6 +2,7 @@
 param(
     [string]$Configuration = "Release",
     [switch]$SkipPortablePackage,
+    [switch]$SkipPackageVerification,
     [string]$PortableDirectory = ""
 )
 
@@ -34,7 +35,9 @@ if (-not (Test-Path -LiteralPath $portableDir)) {
     throw "Portable-пакет не найден: $portableDir"
 }
 
-& $verifyPackageStageScript -StageDirectory $portableDir
+if (-not $SkipPackageVerification) {
+    & $verifyPackageStageScript -StageDirectory $portableDir
+}
 
 if (Test-Path -LiteralPath $uacThirdPartyDir) {
     $uacUnicodePluginDir = Join-Path $uacNsisDir "Plugins\x86-unicode"
