@@ -22,6 +22,7 @@ $tests = @(
     'test-diagnostic-snapshot-contract.ps1',
     'test-diagnostic-cleanup-contract.ps1',
     'test-diagnostic-package.ps1',
+    'test-diagnostic-package-behavior.ps1',
     'test-diagnostic-feature-control.ps1',
     'test-fbe-trace-bridge.ps1',
     'test-fbe-binary-summary.ps1',
