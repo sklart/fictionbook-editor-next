@@ -654,8 +654,11 @@ function apiLoadFB2(path, lang)
 	TraceDiagnosticEvent("J100", "operation=apiLoadFB2");
 	var css=null;
 	var css_filename="";
-	var loadSucceeded=false;
-	var loadResult=false;
+	var result=false;
+	var operationCompleted=false;
+	var cssRestoreFailed=false;
+	var originalException=null;
+	var controlledFailure={ apiLoadFB2: true };
 	try
 	{
 	if(IsDiagnosticFaultInjectionEnabled("api-load-exception"))
@@ -666,11 +669,11 @@ function apiLoadFB2(path, lang)
 	if(IsDiagnosticFaultInjectionEnabled("api-load-return-false"))
 	{
 		TraceScript("J106", "operation=apiLoadFB2 injected false result");
-		return false;
+		throw controlledFailure;
 	}
 	TraceScript("J101", "operation=css lookup");
 	css=document.getElementById("css");
-	if(!css) { TraceScript("J104", "operation=CSS element missing"); return false; }
+	if(!css) { TraceScript("J104", "operation=CSS element missing"); throw controlledFailure; }
 	TraceScript("J102", "operation=save css href");
 	css_filename = css.href;
 	TraceScript("J103", "operation=disable css");
@@ -687,7 +690,7 @@ function apiLoadFB2(path, lang)
 	{
 		TraceScript("J114", "operation=XML parse error");
 		errCantLoad(xml, path);
-		return false;
+		throw controlledFailure;
 	}
 
 	TraceScript("J120", "operation=read declaration");
@@ -732,7 +735,7 @@ function apiLoadFB2(path, lang)
 	{
 		TraceScript("J161", "operation=LoadFromDOM result");
 		MsgBox("Error: can't prepare document for Body mode.");
-		return false;
+		throw controlledFailure;
 	}
 	TraceScript("J161", "operation=LoadFromDOM result");
 	TraceScript("J170", "operation=selection.empty");
@@ -740,10 +743,10 @@ function apiLoadFB2(path, lang)
 	TraceScript("J171", "operation=selection.empty result");
 	TraceScript("J180", "operation=fbw_desc lookup");
 	var desc = document.getElementById("fbw_desc");
-	if(!desc) { TraceScript("J182", "operation=description element missing"); return false; }
+	if(!desc) { TraceScript("J182", "operation=description element missing"); throw controlledFailure; }
 	TraceScript("J181", "operation=diID lookup");
 	var id=desc.all.diID;
-	if(!id) { TraceScript("J183", "operation=diID element missing"); return false; }
+	if(!id) { TraceScript("J183", "operation=diID element missing"); throw controlledFailure; }
 	if(id)
 	if(path.indexOf("blank.fb2") != -1)
 	{
@@ -753,16 +756,19 @@ function apiLoadFB2(path, lang)
 	}
 	else id.value=id.value;
 	TraceScript("J200", "operation=apiShowDesc");
-	if(!apiShowDesc(false)) return false;
+	if(!apiShowDesc(false)) throw controlledFailure;
 	TraceScript("J201", "operation=apiShowDesc result");
-	loadSucceeded=true;
-	loadResult=encoding;
+	result=encoding;
+	operationCompleted=true;
 	}
 	catch(e)
 	{
-		diagnosticFailureStage = diagnosticFailureStage || diagnosticOperationStage || "J900";
-		DiagError("J900", "apiLoadFB2", e);
-		throw e;
+		if(e!==controlledFailure)
+		{
+			originalException=e;
+			diagnosticFailureStage = diagnosticFailureStage || diagnosticOperationStage || "J900";
+			DiagError("J900", "apiLoadFB2", e);
+		}
 	}
 	finally
 	{
@@ -772,21 +778,25 @@ function apiLoadFB2(path, lang)
 			try { if(IsDiagnosticFaultInjectionEnabled("css-restore-failure")) throw new Error("diagnostic fault injection"); css.href = css_filename; TraceDiagnosticEvent("J211", "operation=CSS restore success"); }
 			catch(e)
 			{
-				TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=" + (loadSucceeded ? "success" : "failure"));
-				if(loadSucceeded)
+				TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=" + (operationCompleted ? "success" : "failure"));
+				cssRestoreFailed=true;
+				if(!originalException)
 				{
 					diagnosticFailureStage="J212";
 					DiagError("J212", "CSS restore", e);
-					throw e;
 				}
 			}
 		}
 	}
-	if(loadSucceeded)
+	if(originalException)
+		throw originalException;
+	if(cssRestoreFailed)
+		return false;
+	if(operationCompleted)
 	{
 		TraceScript("J299", "operation=apiLoadFB2 success");
 		diagnosticFailureStage = "";
-		return loadResult;
+		return result;
 	}
 	return false;
 }
