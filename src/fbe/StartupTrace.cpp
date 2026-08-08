@@ -162,23 +162,72 @@ namespace
 		}
 	}
 
-	bool ParseDiagnosticLogName(const CString& name, CString& session, unsigned int& segment)
+	struct DiagnosticLogName
 	{
-		session.Empty(); segment = 0;
-		if (name.GetLength() < 5 || name.Right(4).CompareNoCase(L".log") != 0) return false;
-		CString stem = name.Left(name.GetLength() - 4);
-		if (stem.Left(10).CompareNoCase(L"fbe-trace-") != 0) return false;
-		const int marker = stem.ReverseFind(L'-');
-		if (marker >= 0 && stem.Mid(marker + 1, 4).CompareNoCase(L"part") == 0)
+		unsigned int year, month, day, hour, minute, second, millisecond, processId, suffix, segment;
+	};
+
+	bool ParseDiagnosticLogNumber(const CString& text, int offset, int length, unsigned int& value)
+	{
+		if (length <= 0 || offset < 0 || offset + length > text.GetLength()) return false;
+		unsigned long parsed = 0;
+		for (int index = offset; index < offset + length; ++index)
 		{
-			const CString number = stem.Mid(marker + 5);
-			if (number.IsEmpty()) return false;
-			for (int index = 0; index < number.GetLength(); ++index) if (number[index] < L'0' || number[index] > L'9') return false;
-			segment = static_cast<unsigned int>(wcstoul(number, NULL, 10));
-			session = stem.Left(marker);
+			if (text[index] < L'0' || text[index] > L'9') return false;
+			if (parsed > (ULONG_MAX - static_cast<unsigned long>(text[index] - L'0')) / 10) return false;
+			parsed = parsed * 10 + static_cast<unsigned long>(text[index] - L'0');
 		}
-		else session = stem;
+		value = static_cast<unsigned int>(parsed);
 		return true;
+	}
+
+	bool ParseDiagnosticLogName(const CString& name, CString& session, DiagnosticLogName& logName)
+	{
+		session.Empty(); memset(&logName, 0, sizeof(logName));
+		if (name.GetLength() < 38 || name.Right(4).CompareNoCase(L".log") != 0) return false;
+		const CString stem = name.Left(name.GetLength() - 4);
+		if (stem.Left(10).CompareNoCase(L"fbe-trace-") != 0 || stem[18] != L'-' || stem[25] != L'-' || stem[29] != L'-' || stem.Mid(30, 3).CompareNoCase(L"pid") != 0) return false;
+		if (!ParseDiagnosticLogNumber(stem, 10, 8, logName.year) || !ParseDiagnosticLogNumber(stem, 19, 6, logName.hour) || !ParseDiagnosticLogNumber(stem, 26, 3, logName.millisecond)) return false;
+		logName.month = logName.year % 10000 / 100;
+		logName.day = logName.year % 100;
+		logName.year /= 10000;
+		logName.minute = logName.hour % 10000 / 100;
+		logName.second = logName.hour % 100;
+		logName.hour /= 10000;
+		int position = 33;
+		int next = stem.Find(L'-', position);
+		const int processIdEnd = next < 0 ? stem.GetLength() : next;
+		if (!ParseDiagnosticLogNumber(stem, position, processIdEnd - position, logName.processId)) return false;
+		while (next >= 0)
+		{
+			position = next + 1;
+			next = stem.Find(L'-', position);
+			const int end = next < 0 ? stem.GetLength() : next;
+			if (stem.Mid(position, 4).CompareNoCase(L"part") == 0)
+			{
+				if (logName.segment != 0 || !ParseDiagnosticLogNumber(stem, position + 4, end - position - 4, logName.segment)) return false;
+			}
+			else if (logName.suffix == 0)
+			{
+				if (!ParseDiagnosticLogNumber(stem, position, end - position, logName.suffix)) return false;
+			}
+			else return false;
+		}
+		const int partMarker = stem.ReverseFind(L'-');
+		session = logName.segment != 0 && partMarker >= 0 ? stem.Left(partMarker) : stem;
+		return true;
+	}
+
+	int CompareDiagnosticSessionName(const DiagnosticLogName& left, const DiagnosticLogName& right)
+	{
+		const unsigned int* leftValues = &left.year;
+		const unsigned int* rightValues = &right.year;
+		for (size_t index = 0; index < 9; ++index)
+		{
+			if (leftValues[index] < rightValues[index]) return -1;
+			if (leftValues[index] > rightValues[index]) return 1;
+		}
+		return 0;
 	}
 
 	ULONGLONG FileTimeValue(const FILETIME& value)
@@ -192,7 +241,8 @@ namespace
 		std::vector<CString> directories;
 		ResolveDiagnosticLogDirectories(directories);
 		CString latestPath, latestSession;
-		unsigned int latestSegment = 0;
+		DiagnosticLogName latestLogName = {};
+		bool hasLatestLogName = false;
 		ULONGLONG latestWriteTime = 0;
 		for (size_t directoryIndex = 0; directoryIndex < directories.size(); ++directoryIndex)
 		{
@@ -202,13 +252,13 @@ namespace
 			do
 			{
 				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-				CString session; unsigned int segment = 0;
-				if (!ParseDiagnosticLogName(findData.cFileName, session, segment)) continue;
+				CString session; DiagnosticLogName logName = {};
+				if (!ParseDiagnosticLogName(findData.cFileName, session, logName)) continue;
 				const ULONGLONG writeTime = FileTimeValue(findData.ftLastWriteTime);
-				const int sessionOrder = latestSession.IsEmpty() ? 1 : session.CompareNoCase(latestSession);
-				if (sessionOrder > 0 || (sessionOrder == 0 && (segment > latestSegment || (segment == latestSegment && writeTime > latestWriteTime))))
+				const int sessionOrder = hasLatestLogName ? CompareDiagnosticSessionName(logName, latestLogName) : 1;
+				if (sessionOrder > 0 || (sessionOrder == 0 && (logName.segment > latestLogName.segment || (logName.segment == latestLogName.segment && writeTime > latestWriteTime))))
 				{
-					latestSession = session; latestSegment = segment; latestWriteTime = writeTime;
+					latestSession = session; latestLogName = logName; hasLatestLogName = true; latestWriteTime = writeTime;
 					latestPath = directories[directoryIndex] + L"\\" + findData.cFileName;
 				}
 			}
