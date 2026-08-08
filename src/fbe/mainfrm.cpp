@@ -6169,8 +6169,6 @@ void  CMainFrame::SetupSci()
 }
 
 void  CMainFrame::SciModified(const SCNotification& scn) {
-  if (scn.modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))
-    UpdateSourceLineNumberMargin(false);
   if (scn.modificationType & SC_MOD_CHANGEFOLD) {
     if (scn.foldLevelNow & SC_FOLDLEVELHEADERFLAG) {
       if (!(scn.foldLevelPrev & SC_FOLDLEVELHEADERFLAG))

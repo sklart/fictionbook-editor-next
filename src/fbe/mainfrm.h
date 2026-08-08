@@ -996,7 +996,13 @@ public:
 
   LRESULT OnSciUpdateUI(int id,NMHDR *hdr,BOOL& bHandled) 
   {
-    if (m_current_view == SOURCE)
+    if (hdr->hwndFrom != m_source || m_current_view != SOURCE)
+		return 0;
+
+    const SCNotification& scn = *reinterpret_cast<const SCNotification*>(hdr);
+    if (scn.updated & SC_UPDATE_LINE_COUNT)
+		UpdateSourceLineNumberMargin(false);
+    if (scn.updated & (SC_UPDATE_SELECTION | SC_UPDATE_TEXT))
 		SciUpdateUI(false);
 	return 0;
   }

@@ -59,6 +59,29 @@ else {
     . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
 }
 
+function Get-EditorDependencyVersion {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+
+        [Parameter(Mandatory)]
+        [string]$Name
+    )
+
+    $versionCode = (Get-Content -Raw -LiteralPath $Path).Trim()
+    if ($versionCode -notmatch '^\d{3}$') {
+        throw "Не удалось прочитать трёхзначную версию $Name из $Path."
+    }
+    return "{0}.{1}.{2}" -f $versionCode.Substring(0, 1), $versionCode.Substring(1, 1), $versionCode.Substring(2, 1)
+}
+
+$scintillaVersion = Get-EditorDependencyVersion `
+    -Path (Join-Path $repoRoot "third_party\scintilla\version.txt") `
+    -Name "Scintilla"
+$lexillaVersion = Get-EditorDependencyVersion `
+    -Path (Join-Path $repoRoot "third_party\lexilla\version.txt") `
+    -Name "Lexilla"
+
 function Test-PreparedRuntimeFingerprint {
     $prepared = @("Scintilla.dll", "Lexilla.dll") | ForEach-Object { Join-Path $editorRuntimeDir $_ }
     if (@($prepared | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) }).Count -gt 0 -or
@@ -67,7 +90,13 @@ function Test-PreparedRuntimeFingerprint {
     }
     try { $fingerprint = Get-Content -Raw -LiteralPath $fingerprintPath | ConvertFrom-Json } catch { return $false }
     if ($fingerprint.compatibilityTarget -ne $CompatibilityTarget -or $fingerprint.platformToolset -ne $PlatformToolset) { return $false }
+    if ([string]::IsNullOrWhiteSpace([string]$fingerprint.vcToolsVersion) -or
+        $fingerprint.vcToolsVersion -ne $env:VCToolsVersion) { return $false }
     if ($CompatibilityTarget -eq "Win7" -and -not ([string]$fingerprint.vcToolsVersion).StartsWith("14.44")) { return $false }
+    if ([string]::IsNullOrWhiteSpace([string]$fingerprint.scintillaVersion) -or
+        $fingerprint.scintillaVersion -ne $scintillaVersion) { return $false }
+    if ([string]::IsNullOrWhiteSpace([string]$fingerprint.lexillaVersion) -or
+        $fingerprint.lexillaVersion -ne $lexillaVersion) { return $false }
     return $true
 }
 
@@ -148,13 +177,6 @@ foreach ($build in @(
     }
 }
 
-$scintillaVersionCode = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "third_party\scintilla\version.txt")).Trim()
-$lexillaVersionCode = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "third_party\lexilla\version.txt")).Trim()
-if ($scintillaVersionCode -notmatch '^\d{3}$' -or $lexillaVersionCode -notmatch '^\d{3}$') {
-    throw "Не удалось прочитать трёхзначные версии Scintilla/Lexilla из version.txt."
-}
-$scintillaVersion = "{0}.{1}.{2}" -f $scintillaVersionCode.Substring(0, 1), $scintillaVersionCode.Substring(1, 1), $scintillaVersionCode.Substring(2, 1)
-$lexillaVersion = "{0}.{1}.{2}" -f $lexillaVersionCode.Substring(0, 1), $lexillaVersionCode.Substring(1, 1), $lexillaVersionCode.Substring(2, 1)
 Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\scintilla\bin\Scintilla.dll") `
     -Destination $runtimeDir -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll") `
