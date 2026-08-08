@@ -811,6 +811,7 @@ BEGIN
             MENUITEM "Open diagnostic log &folder",     ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER
             MENUITEM "Copy diagnostic log &path",       ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH
             MENUITEM "Clear old diagnostic logs",       ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS
+            MENUITEM "Create diagnostic &package",      ID_TOOLS_CREATE_DIAGNOSTIC_PACKAGE
         END
     END
 END

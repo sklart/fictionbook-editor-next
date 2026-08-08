@@ -1246,7 +1246,15 @@
       "translations": {
         "en-US": "Clear old diagnostic logs", "ru-RU": "Очистить старые диагностические журналы", "uk-UA": "Очистити старі діагностичні журнали", "de-DE": "Alte Diagnoseprotokolle löschen", "fr-FR": "Effacer les anciens journaux de diagnostic", "es-ES": "Borrar registros de diagnóstico antiguos", "it-IT": "Cancella i vecchi registri diagnostici", "pl-PL": "Wyczyść stare dzienniki diagnostyczne", "pt-PT": "Limpar registos de diagnóstico antigos", "nl-NL": "Oude diagnostische logboeken wissen", "cs-CZ": "Vymazat staré diagnostické protokoly", "bg-BG": "Изчистване на старите диагностични журнали"
       }
-    },    "fbe.trace.caption": {
+    },
+    "fbe.menu.idr_mainframe.tools.create_diagnostic_package": {
+      "kind": "MENUITEM",
+      "targetId": "ID_TOOLS_CREATE_DIAGNOSTIC_PACKAGE",
+      "translations": {
+        "en-US": "Create diagnostic &package", "ru-RU": "Создать диагностический &пакет", "uk-UA": "Створити діагностичний &пакет", "de-DE": "Diagnose&paket erstellen", "fr-FR": "Créer un &package de diagnostic", "es-ES": "Crear &paquete de diagnóstico", "it-IT": "Crea &pacchetto diagnostico", "pl-PL": "Utwórz pakiet &diagnostyczny", "pt-PT": "Criar &pacote de diagnóstico", "nl-NL": "Diagnostisch &pakket maken", "cs-CZ": "Vytvořit diagnostický &balíček", "bg-BG": "Създаване на диагностичен &пакет"
+      }
+    },
+    "fbe.trace.caption": {
       "kind": "MESSAGE",
       "targetId": "",
       "translations": {
@@ -1262,6 +1270,20 @@
         "nl-NL": "Diagnostische tracering",
         "cs-CZ": "Diagnostické trasování",
         "bg-BG": "Диагностично проследяване"
+      }
+    },
+    "fbe.trace.package_created": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Diagnostic package created:\n%s", "ru-RU": "Диагностический пакет создан:\n%s", "uk-UA": "Діагностичний пакет створено:\n%s", "de-DE": "Diagnosepaket erstellt:\n%s", "fr-FR": "Package de diagnostic créé :\n%s", "es-ES": "Paquete de diagnóstico creado:\n%s", "it-IT": "Pacchetto diagnostico creato:\n%s", "pl-PL": "Utworzono pakiet diagnostyczny:\n%s", "pt-PT": "Pacote de diagnóstico criado:\n%s", "nl-NL": "Diagnostisch pakket gemaakt:\n%s", "cs-CZ": "Diagnostický balíček vytvořen:\n%s", "bg-BG": "Диагностичният пакет е създаден:\n%s"
+      }
+    },
+    "fbe.trace.package_failed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Could not create the diagnostic package.", "ru-RU": "Не удалось создать диагностический пакет.", "uk-UA": "Не вдалося створити діагностичний пакет.", "de-DE": "Das Diagnosepaket konnte nicht erstellt werden.", "fr-FR": "Impossible de créer le package de diagnostic.", "es-ES": "No se pudo crear el paquete de diagnóstico.", "it-IT": "Impossibile creare il pacchetto diagnostico.", "pl-PL": "Nie można utworzyć pakietu diagnostycznego.", "pt-PT": "Não foi possível criar o pacote de diagnóstico.", "nl-NL": "Het diagnostische pakket kan niet worden gemaakt.", "cs-CZ": "Diagnostický balíček se nepodařilo vytvořit.", "bg-BG": "Неуспешно създаване на диагностичния пакет."
       }
     },
     "fbe.trace.enable.question": {

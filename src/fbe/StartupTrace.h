@@ -48,6 +48,9 @@ namespace StartupTrace
 	void EmergencyFlush();
 	CString CurrentLogPath();
 	CString CurrentLogDirectory();
+	// Creates a privacy-checked ZIP containing only the current diagnostic session
+	// and generated technical reports. Dumps are deliberately never included.
+	bool CreateDiagnosticPackage(CString& packagePath, CString& error);
 	struct DiagnosticLogCleanupResult
 	{
 		unsigned int sessionsFound;

@@ -93,6 +93,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER, L"fbe.menu.idr_mainframe.tools.open_diagnostic_folder" },
 	{ ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH, L"fbe.menu.idr_mainframe.tools.copy_diagnostic_log_path" },
 	{ ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS, L"fbe.menu.idr_mainframe.tools.clear_diagnostic_logs" },
+	{ ID_TOOLS_CREATE_DIAGNOSTIC_PACKAGE, L"fbe.menu.idr_mainframe.tools.create_diagnostic_package" },
 	{ ID_APP_ABOUT, L"fbe.menu.idr_mainframe.help.about" },
 };
 
@@ -3772,6 +3773,19 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_delete_failed", L"Could not delete %u diagnostic log files; Win32 error %lu."), cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
 		::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONERROR);
 	}
+	return 0;
+}
+LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
+{
+	CString packagePath, error;
+	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"));
+	if (!StartupTrace::CreateDiagnosticPackage(packagePath, error))
+	{
+		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.package_failed", L"Could not create the diagnostic package.") + L"\n\n" + error, caption, MB_OK | MB_ICONERROR);
+		return 0;
+	}
+	CString message; message.Format(GetDiagnosticTraceText(L"fbe.trace.package_created", L"Diagnostic package created:\n%s"), (LPCWSTR)packagePath);
+	::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONINFORMATION);
 	return 0;
 }
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)

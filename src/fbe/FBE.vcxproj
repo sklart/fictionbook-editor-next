@@ -231,7 +231,9 @@ gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.li
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ClCompile Include="CrashHandler.cpp" />
-    <ClCompile Include="DocumentTree.cpp" />
+      <ClCompile Include="DocumentTree.cpp" />
+
+      <ClCompile Include="DiagnosticPackage.cpp" />
     <ClCompile Include="ElementDescMnr.cpp" />
     <ClCompile Include="ElementDescriptor.cpp" />
     <ClCompile Include="ExternalHelper.cpp">

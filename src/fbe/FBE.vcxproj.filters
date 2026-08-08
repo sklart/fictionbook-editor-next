@@ -56,6 +56,9 @@
     <ClCompile Include="DocumentTree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DiagnosticPackage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ElementDescMnr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
