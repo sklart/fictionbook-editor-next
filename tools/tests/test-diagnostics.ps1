@@ -37,7 +37,7 @@ foreach($test in $tests)
 if(-not $SkipStartupSmoke)
 {
     Write-Host '== test-fbe-startup.ps1 =='
-    & (Join-Path $PSScriptRoot 'test-fbe-startup.ps1')
+    & (Join-Path $PSScriptRoot 'test-fbe-startup.ps1') -Trace
 }
 
 Write-Host 'Diagnostic test suite passed.'
