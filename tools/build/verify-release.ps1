@@ -74,8 +74,8 @@ $requiredSymbols = @(
     "ExportEPUBBatch.pdb",
     "ImportEPUBBatch.pdb",
     "FBShell.pdb",
-    "res_rus.pdb",
-    "res_ukr.pdb"
+    "Lang\\ru-RU\\res_rus.pdb",
+    "Lang\\uk-UA\\res_ukr.pdb"
 )
 
 if (-not $SkipCommonChecks) {
@@ -333,8 +333,8 @@ foreach ($entry in $requiredFileDescriptions.GetEnumerator()) {
 }
 
 $editorVersions = @{
-    "Scintilla.dll" = "5.6.4"
-    "Lexilla.dll" = "5.5.1"
+    "Scintilla.dll" = "5.6.5"
+    "Lexilla.dll" = "5.5.2"
 }
 foreach ($name in $editorVersions.Keys) {
     $path = Join-Path $outputDir $name

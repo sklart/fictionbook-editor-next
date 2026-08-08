@@ -48,7 +48,7 @@ Legacy runtime-зависимости, поставляемые только в 
 файлов нужно запускать `tools/build/verify-runtime-binaries.ps1`. Проверка
 релиза также валидирует копии, лежащие рядом с `FBE.exe`.
 
-Редактор исходного кода использует Scintilla 5.6.4 и Lexilla 5.5.1 из
+Редактор исходного кода использует Scintilla 5.6.5 и Lexilla 5.5.2 из
 `third_party`. Скрипт `tools/build/build-scintilla.ps1` собирает их x86 DLL с
 статическим C++ runtime до сборки solution и выкладывает их в `runtime`.
 Скрипт `tools/tests/test-scintilla.ps1` проверяет загрузку Lexilla и синтаксис
@@ -300,5 +300,4 @@ ZIP, установщик и контрольные суммы прикрепл�
 
 Практический пошаговый сценарий выпуска собран в
 [docs/release-checklist.md](D:\Download\FBeditor\docs\release-checklist.md).
-
 
