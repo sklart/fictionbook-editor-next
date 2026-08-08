@@ -22,6 +22,7 @@ param(
     [switch]$SkipCommonChecks,
     [string]$BatchOutputDirectory,
     [switch]$SkipArtifactVerification,
+    [switch]$SkipReleaseVerification,
     [switch]$ValidateUpdateManifest,
     [switch]$Prerelease,
     [string]$ReleaseTag
@@ -157,7 +158,9 @@ if ($PlatformToolset) {
 if ($SkipCommonChecks) {
     $verifyReleaseArguments.SkipCommonChecks = $true
 }
-& (Join-Path $PSScriptRoot "verify-release.ps1") @verifyReleaseArguments
+if (-not $SkipReleaseVerification) {
+    & (Join-Path $PSScriptRoot "verify-release.ps1") @verifyReleaseArguments
+}
 & (Join-Path $PSScriptRoot "package-portable.ps1") `
     -Configuration $Configuration `
     -EditorRuntimeDirectory $editorRuntimeDirectory `
