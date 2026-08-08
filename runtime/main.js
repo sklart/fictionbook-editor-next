@@ -14,6 +14,7 @@ var IDNO     = 7;
 window.onerror = errorHandler; // document.lvl=0;
 var ImagesInfo = new Array();
 var diagnosticTraceEnabled = false;
+var diagnosticVerboseTraceEnabled = false;
 var diagnosticOperationStage = "J000";
 var diagnosticLastTraceEvent = "J000";
 var diagnosticFailureStage = "";
@@ -32,6 +33,25 @@ function apiSetDiagnosticTraceEnabled(enabled)
  if(!wasEnabled && diagnosticTraceEnabled) diagnosticTraceBridgeState = 0;
  TraceDiagnosticEvent("J001", "operation=apiSetDiagnosticTraceEnabled");
  return true;
+}
+function apiSetDiagnosticTraceOptions(enabled, verbose)
+{
+ diagnosticVerboseTraceEnabled = verbose ? true : false;
+ return apiSetDiagnosticTraceEnabled(enabled);
+}
+function TraceOperation(code, message)
+{
+ SetDiagnosticOperationStage(code);
+ TraceDiagnosticEvent(code, message);
+}
+function TraceVerboseOperation(code, message)
+{
+ SetDiagnosticOperationStage(code);
+ if(diagnosticVerboseTraceEnabled) TraceDiagnosticEvent(code, message);
+}
+function TraceDiagnosticSummary(code, message)
+{
+ TraceOperation(code, message);
 }
 function TraceDiagnosticEvent(code, message)
 {
@@ -562,22 +582,23 @@ function ShowDescElements()
   TraceScript("J800", "operation=ShowDescElements");
   var desc = document.getElementById("fbw_desc");
   if(!desc) { TraceScript("J890", "operation=ShowDescElements description missing"); return false; }
-  var spans = desc.getElementsByTagName("SPAN");
+  var shown=0; var spans = desc.getElementsByTagName("SPAN");
   TraceScript("J810", "operation=SPAN count; count=" + spans.length);
   for(var i=0; i < spans.length; i++)
   {
     var elem_id = spans[i].getAttribute("id");
     if(elem_id)
     {
-      TraceScript("J820", "operation=GetExtendedStyle; index=" + i);
+      TraceVerboseOperation("J820", "operation=GetExtendedStyle; index=" + i);
       var extendedStyle=window.external.GetExtendedStyle(elem_id);
-      TraceScript("J821", "operation=GetExtendedStyle result; index=" + i);
-      TraceScript("J830", "operation=ShowElement; index=" + i);
+      TraceVerboseOperation("J821", "operation=GetExtendedStyle result; index=" + i);
+      TraceVerboseOperation("J830", "operation=ShowElement; index=" + i);
       ShowElement(elem_id, extendedStyle);
-      TraceScript("J831", "operation=ShowElement result; index=" + i);
+      TraceVerboseOperation("J831", "operation=ShowElement result; index=" + i);
+      shown++;
     }
   }
-  TraceScript("J899", "operation=ShowDescElements success");
+  TraceDiagnosticSummary("J899", "operation=ShowDescElements success; element-count=" + spans.length + "; element-shown=" + shown);
   return true;
 }
 function LoadFromDOM(dom, lang)
@@ -1765,19 +1786,19 @@ function GetBinaries(doc)
 function PutBinaries(doc)
 {
  TraceScript("J600", "operation=PutBinaries");
- var nerr=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
+ var nerr=0; var success=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
  TraceScript("J610", "operation=binary count; count=" + bl.length);
  for(var i=0; i<bl.length; i++)
  {
   if(bl[i].tagName!="binary") continue;
-  TraceScript("J611", "operation=binary; index=" + i);
+  TraceVerboseOperation("J611", "operation=binary; index=" + i);
   bl[i].dataType="bin.base64";
   var id=bl[i].getAttribute("id"); var dt;
   try
   {
-   TraceScript("J620", "operation=nodeTypedValue; index=" + i);
+   TraceVerboseOperation("J620", "operation=nodeTypedValue; index=" + i);
    dt=bl[i].nodeTypedValue;
-   TraceScript("J621", "operation=nodeTypedValue result; index=" + i);
+   TraceVerboseOperation("J621", "operation=nodeTypedValue result; index=" + i);
   }
   catch(e)
   {
@@ -1785,15 +1806,16 @@ function PutBinaries(doc)
    DiagError("J622", "nodeTypedValue", e);
    if(nerr++<3) MsgBox("Invalid base64 data for "+id); continue;
   }
-  TraceScript("J630", "operation=apiAddBinary; index=" + i);
+  TraceVerboseOperation("J630", "operation=apiAddBinary; index=" + i);
   apiAddBinary("", id, bl[i].getAttribute("content-type"),dt);
-  TraceScript("J631", "operation=apiAddBinary result; index=" + i);
+  TraceVerboseOperation("J631", "operation=apiAddBinary result; index=" + i);
+  success++;
  }
  if(nerr>3){ nerr-=3; MsgBox(nerr+" more invalid images ignored"); }
  TraceScript("J640", "operation=FillLists");
  FillLists();
  TraceScript("J641", "operation=FillLists result");
- TraceScript("J699", "operation=PutBinaries success");
+ TraceDiagnosticSummary("J699", "operation=PutBinaries success; binary-count=" + bl.length + "; binary-success=" + success + "; binary-failures=" + nerr);
 }
 //// == BODY == ///////////////////////////////////////////////////////////////////
 

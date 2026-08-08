@@ -66,6 +66,12 @@ foreach($pattern in @('J512', 'J513', 'J854', 'J855', 'J890', 'if(!ShowDescEleme
 foreach($pattern in @('var child = doc.firstChild;', 'child.nodeType == 1', 'child.nodeName == "xsl:import"', 'child.nodeName == "xsl:include"', 'child = child.nextSibling;', 'J461')) {
     if($script -notlike "*$pattern*") { throw "Missing robust XSL import/include lookup: $pattern" }
 }
+foreach($pattern in @('var diagnosticVerboseTraceEnabled = false;', 'function apiSetDiagnosticTraceOptions(enabled, verbose)', 'function TraceOperation(code, message)', 'function TraceVerboseOperation(code, message)', 'function TraceDiagnosticSummary(code, message)', 'TraceVerboseOperation("J611"', 'TraceVerboseOperation("J620"', 'TraceVerboseOperation("J630"', 'TraceVerboseOperation("J820"', 'TraceVerboseOperation("J830"', 'binary-success=', 'binary-failures=', 'element-shown=')) {
+    if($script -notlike "*$pattern*") { throw "Missing normal/verbose JavaScript trace contract: $pattern" }
+}
+foreach($pattern in @('FBE_NEXT_TRACE_VERBOSE', 'apiSetDiagnosticTraceOptions', 'diagnosticTraceOptions[2]', 'InvokeFunc(L"apiSetDiagnosticTraceEnabled"')) {
+    if(-not $documentSource.Contains($pattern)) { throw "Missing C++ normal/verbose trace selection: $pattern" }
+}
 Write-Host 'JavaScript trace bridge contract passed.'
 $fbeSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
 $traceHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.h')

@@ -684,11 +684,23 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	bool diagnosticBridgeUnavailable = false;
 	if (diagnosticsActive)
 	{
-	CComVariant diagnosticTrace;
-	V_VT(&diagnosticTrace) = VT_BOOL;
-	V_BOOL(&diagnosticTrace) = StartupTrace::Enabled() ? VARIANT_TRUE : VARIANT_FALSE;
+	wchar_t verboseValue[8] = {};
+	const DWORD verboseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TRACE_VERBOSE", verboseValue, _countof(verboseValue));
+	const bool verboseTrace = verboseLength && verboseLength < _countof(verboseValue) && !(verboseLength == 1 && verboseValue[0] == L'0');
+	CComVariant diagnosticTraceOptions[2];
+	V_VT(&diagnosticTraceOptions[1]) = VT_BOOL;
+	V_BOOL(&diagnosticTraceOptions[1]) = StartupTrace::Enabled() ? VARIANT_TRUE : VARIANT_FALSE;
+	V_VT(&diagnosticTraceOptions[0]) = VT_BOOL;
+	V_BOOL(&diagnosticTraceOptions[0]) = verboseTrace ? VARIANT_TRUE : VARIANT_FALSE;
 	CComVariant diagnosticResult;
-	hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult, true);
+	hr = InvokeFunc(L"apiSetDiagnosticTraceOptions", diagnosticTraceOptions, 2, diagnosticResult, true);
+	if (FAILED(hr))
+	{
+		CComVariant diagnosticTrace;
+		V_VT(&diagnosticTrace) = VT_BOOL;
+		V_BOOL(&diagnosticTrace) = StartupTrace::Enabled() ? VARIANT_TRUE : VARIANT_FALSE;
+		hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult, true);
+	}
 		if (FAILED(hr))
 	{
 		// The diagnostic API was introduced after the original runtime. Its
