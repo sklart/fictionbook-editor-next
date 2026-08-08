@@ -31,6 +31,7 @@ $tests = @(
     'test-fbe-typelib-diagnostics.ps1',
     'test-fbe-typelib-runtime.ps1',
     'test-fbe-typelib-registration.ps1',
+    'test-fbe-faults-disabled-without-trace.ps1',
     'test-fbe-diagnostic-faults.ps1'
 )
 
