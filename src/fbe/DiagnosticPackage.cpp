@@ -92,11 +92,26 @@ namespace
 		for (size_t index = 0; index < selected.size(); ++index) files.push_back(selected[index].path);
 	}
 
-	CString FindLatestCrashText()
+	bool CrashMatchesSession(const CString& name, DWORD processId)
+	{
+		const int marker = name.Find(L"-pid");
+		if (marker < 0 || name.Right(4).CompareNoCase(L".txt") != 0) return false;
+		const CString pidText(name.Mid(marker + 4, name.GetLength() - marker - 8));
+		if (pidText.IsEmpty()) return false;
+		unsigned long pid = 0; for (int index = 0; index < pidText.GetLength(); ++index) { if (pidText[index] < L'0' || pidText[index] > L'9') return false; pid = pid * 10 + pidText[index] - L'0'; }
+		return pid == processId;
+	}
+
+	CString FindCrashTextForSession(const CString& currentLog)
 	{
 		const CString directory(U::GetSettingsDir() + L"Crashes\\"); WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"FBENext-crash-*.txt", &find); if (search == INVALID_HANDLE_VALUE) return CString();
+		WIN32_FILE_ATTRIBUTE_DATA traceData = {}; if (!::GetFileAttributesEx(currentLog, GetFileExInfoStandard, &traceData)) { ::FindClose(search); return CString(); }
+		const int pidMarker = currentLog.Find(L"-pid"); const int extension = currentLog.ReverseFind(L'.');
+		if (pidMarker < 0 || extension <= pidMarker) { ::FindClose(search); return CString(); }
+		DWORD processId = _wtol(currentLog.Mid(pidMarker + 4, extension - pidMarker - 4));
+		ULARGE_INTEGER traceTime = {}; traceTime.LowPart = traceData.ftLastWriteTime.dwLowDateTime; traceTime.HighPart = traceData.ftLastWriteTime.dwHighDateTime;
 		CString latest; FILETIME latestTime = {};
-		do { if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue; if (::CompareFileTime(&find.ftLastWriteTime, &latestTime) > 0) { latestTime = find.ftLastWriteTime; latest = directory + find.cFileName; } } while (::FindNextFile(search, &find)); ::FindClose(search); return latest;
+		do { if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY || !CrashMatchesSession(find.cFileName, processId)) continue; ULARGE_INTEGER crashTime = {}; crashTime.LowPart = find.ftLastWriteTime.dwLowDateTime; crashTime.HighPart = find.ftLastWriteTime.dwHighDateTime; const ULONGLONG delta = crashTime.QuadPart > traceTime.QuadPart ? crashTime.QuadPart - traceTime.QuadPart : traceTime.QuadPart - crashTime.QuadPart; if (delta <= 24ULL * 60ULL * 60ULL * 10000000ULL && ::CompareFileTime(&find.ftLastWriteTime, &latestTime) > 0) { latestTime = find.ftLastWriteTime; latest = directory + find.cFileName; } } while (::FindNextFile(search, &find)); ::FindClose(search); return latest;
 	}
 
 	CString ExtractCategoryLines(const CString& trace, const wchar_t* category)
@@ -112,8 +127,8 @@ bool StartupTrace::CreateDiagnosticPackage(CString& packagePath, CString& error)
 	std::vector<std::vector<BYTE> > contents; CString traceText;
 	for (size_t index = 0; index < files.size(); ++index) { std::vector<BYTE> bytes; if (!ReadBytes(files[index], bytes) || ContainsUnsafeContent(bytes)) { error = L"Privacy scan rejected a diagnostic trace file."; return false; } contents.push_back(bytes); const int chars = ::MultiByteToWideChar(CP_UTF8, 0, bytes.empty() ? "" : reinterpret_cast<const char*>(&bytes[0]), static_cast<int>(bytes.size()), NULL, 0); if (chars) { CString text; ::MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&bytes[0]), static_cast<int>(bytes.size()), text.GetBuffer(chars), chars); text.ReleaseBuffer(chars); traceText += text; } }
 	CString modules(L"FBE.exe\r\nmshtml.dll\r\nieframe.dll\r\nurlmon.dll\r\nwininet.dll\r\njscript.dll\r\njscript9.dll\r\nmsxml6.dll\r\noleaut32.dll\r\nScintilla.dll\r\nLexilla.dll\r\n");
-	CString manifest(L"FBE Next diagnostic package\r\nContains only privacy-checked diagnostic records.\r\nCrash dumps, books, settings, recovery files, scripts, images and clipboard data are excluded.\r\n");
-	const CString crashTextPath(FindLatestCrashText()); std::vector<BYTE> crashText;
+	const CString crashTextPath(FindCrashTextForSession(currentLog)); std::vector<BYTE> crashText;
+	CString manifest; manifest.Format(L"FBE Next diagnostic package\r\nContains only privacy-checked diagnostic records.\r\ncrash-report-included=%d\r\nCrash dumps, books, settings, recovery files, scripts, images and clipboard data are excluded.\r\n", crashTextPath.IsEmpty() ? 0 : 1);
 	if (!crashTextPath.IsEmpty() && (!ReadBytes(crashTextPath, crashText) || ContainsUnsafeContent(crashText))) { error = L"Privacy scan rejected the crash report."; return false; }
 	std::vector<BYTE> environment = Utf8(ExtractCategoryLines(traceText, L"environment")), typelib = Utf8(ExtractCategoryLines(traceText, L"typelib")), moduleList = Utf8(modules), manifestBytes = Utf8(manifest);
 	if (ContainsUnsafeContent(environment) || ContainsUnsafeContent(typelib) || ContainsUnsafeContent(moduleList) || ContainsUnsafeContent(manifestBytes)) { error = L"Privacy scan rejected generated diagnostic content."; return false; }
