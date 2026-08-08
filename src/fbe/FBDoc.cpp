@@ -73,6 +73,8 @@ static bool DispatchHasMember(IDispatch* dispatch, const wchar_t* name)
 
 static CString GetDiagnosticFaultInjection()
 {
+	if (!StartupTrace::Enabled())
+		return CString();
 	wchar_t testMode[4] = {};
 	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
 	if (testModeLength != 1 || testMode[0] != L'1')

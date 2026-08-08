@@ -57,7 +57,7 @@ foreach($pattern in @('SetErrorInfo(0, errorInfo)', 'pfnDeferredFillIn = NULL', 
 foreach($pattern in @('diagnosticFailureStage = "";', 'diagnosticOperationStage = "J100";', 'diagnosticLastTraceEvent = "J100";', 'TraceScript("J105", "operation=apiLoadFB2 injected exception")', 'TraceScript("J106", "operation=apiLoadFB2 injected false result")', 'if(!wasEnabled && diagnosticTraceEnabled) diagnosticTraceBridgeState = 0;', 'name-present=', 'details=omitted')) {
     if($script -notlike "*$pattern*") { throw "Missing lifecycle or privacy diagnostic contract: $pattern" }
 }
-foreach($pattern in @('FBE_NEXT_TEST_MODE', 'IsDiagnosticFaultInjectionEnabled')) {
+foreach($pattern in @('FBE_NEXT_TEST_MODE', 'IsDiagnosticFaultInjectionEnabled', 'if (!StartupTrace::Enabled())')) {
     if(($documentSource + $externalHelperSource + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot ''src\fbe\ExternalHelper.h''))) -notlike "*$pattern*") { throw "Missing fault-injection test-mode gate: $pattern" }
 }
 foreach($pattern in @('J104', 'J512', 'J513', 'J182', 'J183', 'J854', 'J855', 'J890', 'if(!ShowDescElements()) return false;', 'return true;')) {
