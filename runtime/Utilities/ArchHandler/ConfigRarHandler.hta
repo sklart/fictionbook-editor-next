@@ -1,65 +1,15 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<HTML>
-<HEAD>
-<TITLE>Конфигуратор ArchHandler</TITLE>
-<META http-equiv="Content-Type" content="text/html; charset=utf-8">
-<SCRIPT type="text/javascript">
-function applySettings() {
- var f1=document.getElementById("f1");
- if (!f1) {alert("Ошибка!"); return}
- f1=f1.value;
- if (f1=="") {alert("Ошибка! Не выбран файл утилиты ArchHandler."); return}
- var f2=document.getElementById("f2");
- if (!f2) {alert("Ошибка!"); return}
- f2=f2.value;
- if (f2=="") {alert("Ошибка! Не выбран файл программы, которая будет обрабатывать файлы с расширением просто .rar."); return}
- var f3=document.getElementById("f3");
- if (!f3) {alert("Ошибка!"); return}
- f3=f3.value;
- if (f2=="") {alert("Ошибка! Не выбран файл программы, которая будет обрабатывать файлы с расширением .fb2.rar."); return}
- var t1=document.getElementById("t1");
- if (!t1) {alert("Ошибка!"); return}
- t1=t1.value;
- var t2=document.getElementById("t2");
- if (!t2) {alert("Ошибка!"); return}
- t2=t2.value;
- try {
-  var fso=new ActiveXObject("Scripting.FileSystemObject");
-  var s1=fso.GetBaseName(f1)+"."+fso.GetExtensionName(f1);
-  var o=new ActiveXObject("Wscript.Shell");
-  o.regWrite("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.rar\\Application",s1,"REG_SZ");
-  var keyValue='"'+f1+'" "%1" "'+f3+'" '+t2+' "'+f2+'" '+t1;
-  o.regWrite("HKEY_CLASSES_ROOT\\Applications\\"+s1+"\\shell\\open\\command\\",keyValue,"REG_SZ");
- }
- catch(e) {
-  alert("Ошибка!");
-  return;
- } 
- alert("Настройки успешно применены.");
-}
-</SCRIPT>
-</HEAD>
-<BODY style="font-family:tahoma; font-size:14px; padding:10px; margin:0; color:black; background-color:white;">
-Exe-файл утилиты ArchHandler, который будет использоваться для обработки файлов .rar (включая .fb2.rar) (один файл годится для обработки только одного из расширений, т.е. не может одновременно обрабатывать и .rar и .zip):
-<br>
-<INPUT type=file style="width:500px;" id=f1>
-<br><br>
-Программа, которая будет открывать файлы с расширением просто .rar:
-<br>
-<INPUT type=file style="width:500px;" id=f2>
-<br><br>
-Параметры, которые будут переданы программе, открывающей файлы с расширением просто .rar (вместо «$1» подставится имя открываемого файла; кавычки нужны для корректной работы в случае, если имя файла содержит, например, пробелы):
-<br>
-<INPUT type=text style="width:500px;" value='"$1"' id=t1>
-<br><br>
-Программа, которая будет открывать файлы с расширением .fb2.rar:
-<br>
-<INPUT type=file style="width:500px;" id=f3>
-<br><br>
-Параметры, которые будут переданы программе, открывающей файлы с расширением .fb2.rar (вместо «$1» подставится имя открываемого файла; кавычки нужны для корректной работы в случае, если имя файла содержит, например, пробелы):
-<br>
-<INPUT type=text style="width:500px;" value='"$1"' id=t2>
-<br><br>
-<P style="padding:0; margin:0; text-align:center;"><INPUT type=button value="Применить" onclick="applySettings();"><INPUT type=button value="Выйти" onclick="window.close();"></P>
-</BODY>
-</HTML>
+<!DOCTYPE html>
+<html><head><title>Конфигуратор ArchHandler — RAR</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script type="text/javascript">
+var archiveType = "rar", archiveExtension = ".rar";
+function error(message) { alert("Не удалось применить настройки.\n\n" + message); }
+function value(id) { var e=document.getElementById(id); if (!e) throw new Error("Не найден элемент " + id); return e.value; }
+function requireProgram(path, label, fso) { if (!path) throw new Error("Не выбран файл: " + label + "."); if (!fso.FileExists(path)) throw new Error("Файл не найден: " + path); if (fso.GetExtensionName(path).toLowerCase() !== "exe") throw new Error("Ожидается EXE-файл: " + path); }
+function key(path) { return "HKCU\\Software\\FictionBook Editor\\ArchHandler\\" + archiveType + "\\" + path; }
+function refreshShell(shell) { try { shell.Run("rundll32.exe shell32.dll,SHChangeNotify 0x08000000,0,0,0", 0, false); } catch (ignore) {} }
+function deleteValue(shell, path) { try { shell.RegDelete(path); } catch (ignore) {} }
+function loadSettings() { try { var o=new ActiveXObject("WScript.Shell"); document.getElementById("f1").value=o.RegRead(key("Handler")); document.getElementById("f2").value=o.RegRead(key("ArchiveProgram")); document.getElementById("t1").value=o.RegRead(key("ArchiveParameters")); document.getElementById("f3").value=o.RegRead(key("FB2Program")); document.getElementById("t2").value=o.RegRead(key("FB2Parameters")); } catch(ignore) {} }
+function applySettings() { try { var fso=new ActiveXObject("Scripting.FileSystemObject"), o=new ActiveXObject("WScript.Shell"); var f1=value("f1"), f2=value("f2"), f3=value("f3"), t1=value("t1"), t2=value("t2"); requireProgram(f1,"ArchHandler",fso); requireProgram(f2,"обычный архиватор",fso); requireProgram(f3,"программа для FB2-архивов",fso); var progId="FictionBookEditor.ArchHandler."+archiveType, classes="HKCU\\Software\\Classes\\", command='"'+f1+'" --type '+archiveType+' "%1"'; o.RegWrite(key("Handler"),f1,"REG_SZ"); o.RegWrite(key("ArchiveProgram"),f2,"REG_SZ"); o.RegWrite(key("ArchiveParameters"),t1,"REG_SZ"); o.RegWrite(key("FB2Program"),f3,"REG_SZ"); o.RegWrite(key("FB2Parameters"),t2,"REG_SZ"); o.RegWrite(classes+progId+"\\", "FictionBook Editor ArchHandler ("+archiveType.toUpperCase()+")", "REG_SZ"); o.RegWrite(classes+progId+"\\DefaultIcon\\", '"'+f1+'",0', "REG_SZ"); o.RegWrite(classes+progId+"\\shell\\open\\command\\",command,"REG_SZ"); o.RegWrite(classes+archiveExtension+"\\OpenWithProgids\\"+progId,"","REG_SZ"); o.RegWrite("HKCU\\Software\\RegisteredApplications\\FictionBook Editor ArchHandler","Software\\FictionBook Editor\\ArchHandler\\Capabilities","REG_SZ"); o.RegWrite("HKCU\\Software\\FictionBook Editor\\ArchHandler\\Capabilities\\ApplicationName","FictionBook Editor ArchHandler","REG_SZ"); o.RegWrite("HKCU\\Software\\FictionBook Editor\\ArchHandler\\Capabilities\\FileAssociations\\"+archiveExtension,progId,"REG_SZ"); refreshShell(o); alert("Настройки успешно применены. Выберите ArchHandler в системных настройках приложений по умолчанию, если хотите назначить его обработчиком."); } catch(e) { error("Код: "+(e.number || "—")+"\nОписание: "+(e.description || e.message || e)); } }
+function resetSettings() { try { var o=new ActiveXObject("WScript.Shell"), progId="FictionBookEditor.ArchHandler."+archiveType, classes="HKCU\\Software\\Classes\\"; deleteValue(o,key("Handler")); deleteValue(o,key("ArchiveProgram")); deleteValue(o,key("ArchiveParameters")); deleteValue(o,key("FB2Program")); deleteValue(o,key("FB2Parameters")); deleteValue(o,classes+archiveExtension+"\\OpenWithProgids\\"+progId); deleteValue(o,classes+progId+"\\shell\\open\\command\\"); deleteValue(o,classes+progId+"\\DefaultIcon\\"); deleteValue(o,classes+progId+"\\"); refreshShell(o); alert("Конфигурация ArchHandler удалена. Текущий обработчик по умолчанию не изменён."); } catch(e) { error("Код: "+(e.number || "—")+"\nОписание: "+(e.description || e.message || e)); } }
+window.onload=loadSettings;
+</script></head><body style="font-family:tahoma;font-size:14px;padding:10px;margin:0"><p>ArchHandler для .rar и .fb2.rar. Конфигуратор регистрирует приложение, но не назначает его обработчиком по умолчанию.</p>ArchHandler.exe:<br><input type=file style="width:500px" id=f1><br><br>Программа для .rar:<br><input type=file style="width:500px" id=f2><br>Параметры (используйте $1 для пути к архиву):<br><input type=text style="width:500px" value='"$1"' id=t1><br><br>Программа для .fb2.rar:<br><input type=file style="width:500px" id=f3><br>Параметры (используйте $1 для пути к архиву):<br><input type=text style="width:500px" value='"$1"' id=t2><br><br><p style="text-align:center"><input type=button value="Применить" onclick="applySettings()"><input type=button value="Сбросить" onclick="resetSettings()"><input type=button value="Выйти" onclick="window.close()"></p></body></html>
