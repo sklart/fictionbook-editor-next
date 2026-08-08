@@ -2,170 +2,26 @@
 <head>
  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
  <title>FB2 Recode</title>
- <style>
-  body { font-family: Tahoma, Arial, sans-serif; }
-  #report { 
-    width: 100%; 
-    height: 400px; 
-    border: 1px solid #999; 
-    overflow: auto; 
-    white-space: pre-wrap; 
-    background: #f9f9f9; 
-    padding: 5px;
-  }
- </style>
+ <style>body{font-family:Tahoma,Arial,sans-serif;margin:16px}#report{height:330px;border:1px solid #999;overflow:auto;white-space:pre-wrap;padding:6px}.ok{color:#176b2c}.warn{color:#805b00}.err{color:#a60000}.row{margin:8px 0}</style>
+ <script src="fb2recode.js"></script>
  <script>
- // Глобальные переменные для счётчика и отчёта
- var convertedCnt = 0;   // количество файлов, которые реально были перекодированы
- var report = [];        // массив объектов с информацией о каждом обработанном файле
- var reportDiv;          // ссылка на div для вывода отчёта
-
- // Функция выбора папки через стандартный диалог Windows
- function getFolder() {
-     var shell = new ActiveXObject("Shell.Application");
-     var folder = shell.BrowseForFolder(0, "Выберите папку с файлами для перекодирования", 16, 0);
-     // Если пользователь выбрал папку, возвращаем её путь, иначе пустую строку
-     return folder ? folder.Items().Item().Path : "";
- }
-
- // Функция добавления строки в отчёт и автопрокрутка
- function appendReportLine(line) {
-     // заменяем переносы \n на <br> для корректного отображения в div
-     reportDiv.innerHTML += line.replace(/\n/g, "<br>") + "<br>";
-     // прокручиваем div вниз, чтобы видеть последние строки
-     reportDiv.scrollTop = reportDiv.scrollHeight;
- }
-
- // Функция обработки одного FB2 файла
- function processFile(filePath, desired_encoding) {
-     var fso = new ActiveXObject("Scripting.FileSystemObject"); // доступ к файловой системе
-     try {
-         // --- Чтение файла через ADODB.Stream ---
-         var stream = new ActiveXObject("ADODB.Stream");
-         stream.Type = 2;                // текстовый поток
-         stream.Charset = "windows-1251"; // исходная кодировка по умолчанию
-         stream.Open();
-         stream.LoadFromFile(filePath);   // загружаем файл
-         var text = stream.ReadText();    // читаем текст
-         stream.Close();
-
-         // Определяем текущую кодировку из XML-декларации
-         var oldEncMatch = text.match(/encoding\s*=\s*["'](.+?)["']/i);
-         var oldEnc = oldEncMatch ? oldEncMatch[1].toUpperCase() : "unknown";
-
-         // Если исходная кодировка UTF-8, читаем повторно как UTF-8
-         if (oldEnc == "UTF-8") {
-             var stream2 = new ActiveXObject("ADODB.Stream");
-             stream2.Type = 2;
-             stream2.Charset = "UTF-8";
-             stream2.Open();
-             stream2.LoadFromFile(filePath);
-             text = stream2.ReadText();
-             stream2.Close();
-         }
-
-         // Определяем, нужно ли менять кодировку
-         var changed = true;
-         if (oldEnc.toUpperCase() == desired_encoding.toUpperCase()) changed = false;
-
-         // --- Замена кодировки в XML-декларации ---
-         text = text.replace(
-             /(<\?xml\s+version\s*=\s*["']1.0["']\s+encoding\s*=\s*["'])(.+?)(["'])/i,
-             "$1" + desired_encoding + "$3"
-         );
-
-         // --- Сохранение файла в новой кодировке ---
-         var outStream = new ActiveXObject("ADODB.Stream");
-         outStream.Type = 2;           // текстовый поток
-         outStream.Charset = desired_encoding; // желаемая кодировка
-         outStream.Open();
-         outStream.WriteText(text);    // записываем текст
-         outStream.SaveToFile(filePath, 2); // сохраняем, перезаписывая
-         outStream.Close();
-
-         // Если был реальный перевод, увеличиваем счётчик
-         if (changed) convertedCnt++;
-
-         // Добавляем строку в отчёт для текущего файла
-         appendReportLine(filePath + "\n  Старое: " + oldEnc + ", Новое: " + desired_encoding + (changed ? " (изменено)" : " (не изменено)"));
-         // Добавляем объект в массив отчёта для возможного дальнейшего использования
-         report.push({file: filePath, old: oldEnc, newEnc: desired_encoding, changed: changed});
-         return true;
-     } catch(e) {
-         // Если ошибка при обработке, фиксируем её в отчёте
-         appendReportLine(filePath + "\n  Старое: error, Новое: " + desired_encoding + " (не изменено)");
-         report.push({file: filePath, old: "error", newEnc: desired_encoding, changed: false});
-         return false;
-     }
- }
-
- // Функция рекурсивной обработки папки и подпапок
- function processFolder(folderPath, desired_encoding, recursive) {
-     var fso = new ActiveXObject("Scripting.FileSystemObject");
-     var folder = fso.GetFolder(folderPath);
-
-     // --- Обрабатываем файлы в текущей папке ---
-     var files = new Enumerator(folder.files);
-     for (; !files.atEnd(); files.moveNext()) {
-         var file = files.item();
-         if (fso.GetExtensionName(file).toLowerCase() == "fb2") {
-             processFile(file.Path, desired_encoding);
-         }
-     }
-
-     // --- Обрабатываем подпапки, если включена рекурсия ---
-     if (recursive) {
-         var subFolders = new Enumerator(folder.SubFolders);
-         for (; !subFolders.atEnd(); subFolders.moveNext()) {
-             processFolder(subFolders.item().Path, desired_encoding, true);
-         }
-     }
- }
-
- // Основная функция, вызываемая по кнопке
- function process() {
-     // Сбрасываем счётчик и массив отчёта
-     convertedCnt = 0;
-     report = [];
-     reportDiv = document.getElementById("report");
-     reportDiv.innerHTML = "";
-
-     // Получаем параметры из формы
-     var folder = document.getElementById("dirPath").value;
-     var encoding = document.getElementById("desired_encoding").value;
-     var recursive = document.getElementById("recursive").checked;
-
-     if (!folder) {
-         reportDiv.innerHTML = "Выберите папку!";
-         return;
-     }
-
-     appendReportLine("Начинаем обработку...\n");
-
-     // Используем setTimeout, чтобы HTA успела обновить интерфейс перед началом обработки
-     setTimeout(function() {
-         processFolder(folder, encoding, recursive); // рекурсивная обработка
-         appendReportLine("\nОбработка завершена. Всего сконвертировано: " + convertedCnt + " файлов.");
-     }, 100);
- }
+ var cancelled=false, running=false, reportDiv;
+ function getFolder(){var shell=new ActiveXObject("Shell.Application"),f=shell.BrowseForFolder(0,"Выберите папку",16,0);return f?f.Items().Item().Path:"";}
+ function getFile(){var shell=new ActiveXObject("UserAccounts.CommonDialog");shell.Filter="FB2 files|*.fb2";shell.FilterIndex=1;if(shell.ShowOpen())return shell.FileName;return "";}
+ function line(text,kind){var d=document.createElement("div");d.className=kind||"";d.appendChild(document.createTextNode(text));reportDiv.appendChild(d);reportDiv.scrollTop=reportDiv.scrollHeight;}
+ function clearReport(){while(reportDiv.firstChild)reportDiv.removeChild(reportDiv.firstChild);}
+ function value(id){return document.getElementById(id).value;}
+ function process(){var input=value("path"),opt,result,i,item,button=document.getElementById("start");if(running)return;if(!input){line("Выберите файл или папку.","err");return;}running=true;cancelled=false;button.disabled=true;document.getElementById("cancel").disabled=false;clearReport();opt={encoding:value("encoding"),recursive:document.getElementById("recursive").checked,backup:document.getElementById("backup").checked,overwrite:document.getElementById("overwrite").checked,dryRun:document.getElementById("dryrun").checked,force:document.getElementById("force").checked};line("Начинаем обработку…");setTimeout(function(){try{result=FB2Recode.run([input],opt,function(name){document.getElementById("current").innerText=name;});for(i=0;i<result.results.length;i++){if(cancelled)break;item=result.results[i];line(item.status+": "+item.path+(item.message?" — "+item.stage+": "+item.message:""),item.status==="error"?"err":item.status==="same"?"warn":"ok");}line("Найдено: "+result.stats.found+"; уже соответствуют: "+result.stats.same+"; преобразовано: "+result.stats.converted+"; ошибок: "+result.stats.errors+(opt.dryRun?" (проверка без записи)":""),result.stats.errors?"err":"ok");}catch(e){line("Критическая ошибка: "+e.message,"err");}running=false;button.disabled=false;document.getElementById("cancel").disabled=true;document.getElementById("current").innerText="";},50);}
+ function copyReport(){window.clipboardData.setData("Text",reportDiv.innerText);}
+ function saveReport(){var p=prompt("Файл отчёта:","fb2recode-report.txt"),s,i;if(!p)return;s=new ActiveXObject("Scripting.FileSystemObject").CreateTextFile(p,true,true);s.Write(reportDiv.innerText);s.Close();}
+ function init(){reportDiv=document.getElementById("report");try{document.getElementById("path").value=new ActiveXObject("WScript.Shell").RegRead("HKCU\\Software\\FB2Recode\\LastPath");}catch(e){}}
+ function chooseFolder(){var p=getFolder();if(p){document.getElementById("path").value=p;try{new ActiveXObject("WScript.Shell").RegWrite("HKCU\\Software\\FB2Recode\\LastPath",p,"REG_SZ");}catch(e){}}}
  </script>
 </head>
-<body>
- <h2>FB2 Recode</h2>
- <form>
-  Папка: 
-  <input type="text" id="dirPath" size="50">
-  <input type="button" value="Выбрать..." onclick="document.getElementById('dirPath').value=getFolder()"><br><br>
-  Желаемая кодировка: 
-  <select id="desired_encoding">
-   <option value="UTF-8">UTF-8</option>
-   <option value="windows-1251">windows-1251</option>
-  </select><br><br>
-  Рекурсивно: <input type="checkbox" id="recursive" checked><br><br>
-  <input type="button" value="Перекодировать" onclick="process();">
- </form>
-
- <h3>Отчёт</h3>
- <div id="report"></div>
-</body>
-</html>
+<body onload="init()"><h2>FB2 Recode</h2>
+ <div class="row">Файл или папка: <input id="path" size="55"> <button onclick="document.getElementById('path').value=getFile()">Файл…</button> <button onclick="chooseFolder()">Папка…</button></div>
+ <div class="row">Кодировка: <select id="encoding"><option value="utf-8">UTF-8</option><option value="windows-1251">Windows-1251</option></select> <label><input id="recursive" type="checkbox" checked> рекурсивно</label></div>
+ <div class="row"><label><input id="backup" type="checkbox" checked> создавать .bak</label> <label><input id="overwrite" type="checkbox"> заменять .bak</label> <label><input id="dryrun" type="checkbox"> только проверить</label> <label><input id="force" type="checkbox"> принудительно заменить непредставимые символы</label></div>
+ <div class="row"><button id="start" onclick="process()">Перекодировать</button> <button id="cancel" disabled onclick="cancelled=true">Отменить отчёт</button> <button onclick="copyReport()">Копировать отчёт</button> <button onclick="saveReport()">Сохранить отчёт</button></div>
+ <div id="current" class="warn"></div><h3>Отчёт</h3><div id="report"></div>
+</body></html>
