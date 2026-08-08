@@ -403,6 +403,7 @@ void WriteEnvironmentHeader()
 }
 
 bool StartupTrace::IsEnabledForNextLaunch() { bool enabled = false; return TryGetNextLaunchPreference(enabled) ? enabled : IsTraceEnabled(L"FBE_NEXT_TRACE"); }
+bool StartupTrace::IsEnabledByStoredNextLaunchPreference() { bool enabled = false; return TryGetNextLaunchPreference(enabled) && enabled; }
 bool StartupTrace::SetEnabledForNextLaunch(bool enabled) { HKEY key = NULL; if (::RegCreateKeyEx(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &key, NULL) != ERROR_SUCCESS) return false; DWORD value = enabled ? 1 : 0; LONG result = ::RegSetValueEx(key, diagnosticTraceRegistryValue, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value)); ::RegCloseKey(key); return result == ERROR_SUCCESS; }
 
 void StartupTrace::Start()

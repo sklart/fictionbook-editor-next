@@ -25,6 +25,9 @@ namespace StartupTrace
 	bool Enabled();
 	// Определяет режим следующего запуска: настройка FBE имеет приоритет над переменной среды.
 	bool IsEnabledForNextLaunch();
+	// Возвращает true только для явно сохранённого пользовательского включения.
+	// Одноразовый FBE_NEXT_TRACE не должен открывать интерактивные уведомления.
+	bool IsEnabledByStoredNextLaunchPreference();
 	// Сохраняет режим следующего запуска в пользовательских настройках FBE.
 	bool SetEnabledForNextLaunch(bool enabled);
 	void Event(const wchar_t* category, const wchar_t* code, const wchar_t* message);

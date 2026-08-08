@@ -14,11 +14,15 @@ if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Не найден исполняемый файл FBE: $executable"
 }
 
-$traceDirectories = @(Join-Path $env:LOCALAPPDATA "FBE Next\Diagnostics", Join-Path $env:TEMP "FBE Next Diagnostics")
+$traceDirectories = @(
+    (Join-Path $env:LOCALAPPDATA "FBE Next\Diagnostics"),
+    (Join-Path $env:TEMP "FBE Next Diagnostics")
+)
 $traceFile = $null
 
-function Get-TraceFileForProcess([int]$ProcessId) {
-    $files = foreach($directory in $traceDirectories) { if (Test-Path -LiteralPath $directory -PathType Container) { Get-ChildItem -LiteralPath $directory -Filter ("fbe-trace-*-pid{0}*.log" -f $ProcessId) -File } }
+function Get-TraceFileForProcess([int]$ProcessId, [DateTime]$NotBefore) {
+    $threshold = $NotBefore.ToUniversalTime().AddSeconds(-5)
+    $files = foreach($directory in $traceDirectories) { if (Test-Path -LiteralPath $directory -PathType Container) { Get-ChildItem -LiteralPath $directory -Filter ("fbe-trace-*-pid{0}*.log" -f $ProcessId) -File | Where-Object { $_.LastWriteTimeUtc -ge $threshold } } }
     return $files | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 }
 $previousTraceSetting = $env:FBE_NEXT_TRACE
@@ -33,10 +37,9 @@ if ($Trace) {
         if ($null -ne $existingTraceProperty) {
             $hadTraceRegistryValue = $true
             $previousTraceRegistryValue = [int]$existingTraceProperty.$traceRegistryValue
+            Remove-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue
         }
     }
-    New-Item -Path $traceRegistryPath -Force | Out-Null
-    New-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -PropertyType DWord -Value 1 -Force | Out-Null
 }
 
 Add-Type @"
@@ -47,50 +50,108 @@ public static class FbeStartupWindow {
     [DllImport("user32.dll")]
     public static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+    public delegate bool EnumWindowsProc(IntPtr window, IntPtr parameter);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32.dll")] public static extern int GetWindowTextLength(IntPtr window);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr window, System.Text.StringBuilder className, int maxCount);
+
+    public static IntPtr FindVisibleTopLevelWindow(int targetProcessId) {
+        IntPtr result = IntPtr.Zero;
+        EnumWindows(delegate(IntPtr window, IntPtr parameter) {
+            uint processId;
+            GetWindowThreadProcessId(window, out processId);
+            if (processId == (uint)targetProcessId && IsWindowVisible(window) && GetWindowTextLength(window) > 0) {
+                result = window;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return result;
+    }
+
+    public static IntPtr FindVisibleDialog(int targetProcessId) {
+        IntPtr result = IntPtr.Zero;
+        EnumWindows(delegate(IntPtr window, IntPtr parameter) {
+            uint processId;
+            GetWindowThreadProcessId(window, out processId);
+            System.Text.StringBuilder className = new System.Text.StringBuilder(256);
+            GetClassName(window, className, className.Capacity);
+            if (processId == (uint)targetProcessId && IsWindowVisible(window) && className.ToString() == "#32770") {
+                result = window;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return result;
+    }
 }
 "@
 
-$process = Start-Process -FilePath $executable -WorkingDirectory $outputDir -PassThru
 $started = Get-Date
+$process = Start-Process -FilePath $executable -WorkingDirectory $outputDir -PassThru
 $deadline = $started.AddSeconds($TimeoutSeconds)
 $traceCompleted = -not $Trace
+$mainWindowHandle = [IntPtr]::Zero
 try {
     do {
         Start-Sleep -Milliseconds 500
         $process.Refresh()
+        $mainWindowHandle = [FbeStartupWindow]::FindVisibleTopLevelWindow($process.Id)
         if ($Trace) {
-            $candidateTrace = Get-TraceFileForProcess $process.Id
+            $candidateTrace = Get-TraceFileForProcess $process.Id $started
             if ($candidateTrace) { $traceFile = $candidateTrace.FullName }
         }
         if ($Trace -and $traceFile -and (Test-Path -LiteralPath $traceFile -PathType Leaf)) {
             $traceCompleted = Select-String -LiteralPath $traceFile `
-                -SimpleMatch "code=M160" -Quiet
+                -SimpleMatch "code=S230" -Quiet
         }
     }
     while (-not $process.HasExited -and
-        (-not $process.Responding -or $process.MainWindowHandle -eq 0 -or
+        (-not $process.Responding -or $mainWindowHandle -eq [IntPtr]::Zero -or
             -not $traceCompleted) -and
         (Get-Date) -lt $deadline)
 
     if ($process.HasExited) {
         throw "FBE завершился во время запуска с кодом $($process.ExitCode)."
     }
-    if (-not $process.Responding -or $process.MainWindowHandle -eq 0) {
+    if (-not $process.Responding -or $mainWindowHandle -eq [IntPtr]::Zero) {
         throw "FBE не успел создать отзывчивое главное окно за $TimeoutSeconds секунд."
     }
     if (-not $traceCompleted) {
         throw "FBE не завершил инициализацию главного окна за $TimeoutSeconds секунд."
     }
-    if (-not [FbeStartupWindow]::IsWindowVisible([IntPtr]$process.MainWindowHandle)) {
+    if (-not [FbeStartupWindow]::IsWindowVisible($mainWindowHandle)) {
         throw "FBE создал главное окно, но оно скрыто."
     }
 
-    if (-not [FbeStartupWindow]::PostMessage([IntPtr]$process.MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { throw "Не удалось отправить WM_CLOSE FBE." }
-    [void]$process.WaitForExit(3000)
-    $process.Refresh()
+    if (-not [FbeStartupWindow]::PostMessage($mainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { throw "Не удалось отправить WM_CLOSE FBE." }
+    $closeDeadline = (Get-Date).AddSeconds(13)
+    do {
+        Start-Sleep -Milliseconds 250
+        $process.Refresh()
+        if (-not $process.HasExited) {
+            $discardDialog = [FbeStartupWindow]::FindVisibleDialog($process.Id)
+            if ($discardDialog -ne [IntPtr]::Zero) {
+                [void][FbeStartupWindow]::PostMessage($discardDialog, 0x0111, [IntPtr]7, [IntPtr]::Zero)
+            }
+        }
+    }
+    while (-not $process.HasExited -and (Get-Date) -lt $closeDeadline)
     if (-not $process.HasExited) {
-        if (-not [FbeStartupWindow]::PostMessage([IntPtr]$process.MainWindowHandle, 0x0111, [IntPtr]0xE141, [IntPtr]::Zero)) { throw "Не удалось отправить команду Exit FBE." }
-        [void]$process.WaitForExit(10000); $process.Refresh()
+        if (-not [FbeStartupWindow]::PostMessage($mainWindowHandle, 0x0111, [IntPtr]0xE141, [IntPtr]::Zero)) { throw "Не удалось отправить команду Exit FBE." }
+        $closeDeadline = (Get-Date).AddSeconds(10)
+        do {
+            Start-Sleep -Milliseconds 250
+            $process.Refresh()
+            if (-not $process.HasExited) {
+                $discardDialog = [FbeStartupWindow]::FindVisibleDialog($process.Id)
+                if ($discardDialog -ne [IntPtr]::Zero) {
+                    [void][FbeStartupWindow]::PostMessage($discardDialog, 0x0111, [IntPtr]7, [IntPtr]::Zero)
+                }
+            }
+        }
+        while (-not $process.HasExited -and (Get-Date) -lt $closeDeadline)
     }
     if (-not $process.HasExited) { throw "FBE не завершился штатно после WM_CLOSE и команды Exit." }
     if ($Trace) { foreach($code in @("S900","S999")) { if (-not (Select-String -LiteralPath $traceFile -SimpleMatch ("code=" + $code) -Quiet)) { throw "После WM_CLOSE в журнале нет ${code}: $traceFile" } }; $bytes=[IO.File]::ReadAllBytes($traceFile); try { [void]([Text.UTF8Encoding]::new($false,$true)).GetString($bytes) } catch { throw "Диагностический журнал не является корректным UTF-8: $traceFile" }; if ($bytes.Length -eq 0 -or $bytes[$bytes.Length - 1] -ne 10) { throw "Последняя строка диагностического журнала обрезана: $traceFile" } }
@@ -161,12 +222,8 @@ finally {
         }
     }
     $env:FBE_NEXT_TRACE = $previousTraceSetting
-    if ($Trace) {
-        if ($hadTraceRegistryValue) {
-            Set-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -Value $previousTraceRegistryValue
-        }
-        else {
-            Remove-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -ErrorAction SilentlyContinue
-        }
+    if ($Trace -and $hadTraceRegistryValue) {
+        New-Item -Path $traceRegistryPath -Force | Out-Null
+        New-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -PropertyType DWord -Value $previousTraceRegistryValue -Force | Out-Null
     }
 }

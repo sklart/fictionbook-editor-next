@@ -2285,7 +2285,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // Restore scripts toolbar layout and position
 	m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
 
-  if (StartupTrace::Enabled())
+  if (StartupTrace::Enabled() && StartupTrace::IsEnabledByStoredNextLaunchPreference())
   {
 	  const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"));
 	  const CString warning(GetDiagnosticTraceText(L"fbe.trace.warning",
