@@ -2,6 +2,8 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $script = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'runtime\main.js')
 $trace = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.cpp')
+$document = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBDoc.cpp')
+$external = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ExternalHelper.cpp')
 foreach($required in @('failedStage = diagnosticFailureStage || diagnosticOperationStage || code', 'description-present=', 'message-present=', 'details=omitted')) {
     if($script.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing safe JavaScript diagnostic field: $required" }
 }
@@ -18,7 +20,12 @@ foreach($required in @('SanitizeScriptDetails', 'RedactPathFragments', 'details 
 foreach($required in @('excep.source-length=', 'excep.description-length=', 'errorInfo.source-length=', 'errorInfo.description-length=', 'details=omitted')) {
     if($trace.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing COM exception privacy field: $required" }
 }
-foreach($unsafe in @('excep.source=%s', 'excep.description=%s', 'errorInfo.source=%s', 'errorInfo.description=%s', 'SanitizeExceptionText(exceptionInfo->bstrDescription)', 'SanitizeExceptionText(description)')) {
-    if($trace.IndexOf($unsafe, [StringComparison]::Ordinal) -ge 0) { throw "COM exception text must not enter the trace: $unsafe" }
+foreach($source in @($trace, $document, $external)) {
+    foreach($unsafe in @('excep.source=%s', 'excep.description=%s', 'errorInfo.source=%s', 'errorInfo.description=%s', 'SanitizeExceptionText(')) {
+        if($source.IndexOf($unsafe, [StringComparison]::Ordinal) -ge 0) { throw "COM exception text must not enter diagnostic output: $unsafe" }
+    }
+}
+foreach($source in @($document, $external)) {
+    if($source.IndexOf('FormatComExceptionMetadata(', [StringComparison]::Ordinal) -lt 0) { throw 'COM dispatch logging must use the shared metadata formatter.' }
 }
 Write-Host 'Diagnostic trace privacy contract passed.'

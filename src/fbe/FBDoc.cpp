@@ -515,22 +515,7 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	else argumentText.Format(L"%u", argumentError);
 	details.Format(L"Invoke: dispid=%ld; argument-error=%s; result-type=VT_%u",
 		static_cast<long>(dispid), (LPCWSTR)argumentText, static_cast<unsigned int>(V_VT(&vtResult)));
-	if (exceptionInfo.bstrDescription)
-		details += L"; excep.description=" + StartupTrace::SanitizeExceptionText(exceptionInfo.bstrDescription);
-	if (exceptionInfo.bstrSource)
-		details += L"; excep.source=" + StartupTrace::SanitizeExceptionText(exceptionInfo.bstrSource);
-	details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.help=%d; excep.helpContext=%lu; excep.deferred=%d",
-		exceptionInfo.wCode, static_cast<unsigned long>(exceptionInfo.scode), exceptionInfo.bstrHelpFile ? 1 : 0,
-		exceptionInfo.dwHelpContext, exceptionInfo.pfnDeferredFillIn ? 1 : 0);
-	if (errorInfo)
-	{
-		BSTR source = NULL, description = NULL, help = NULL; DWORD context = 0; GUID guid = {};
-		errorInfo->GetGUID(&guid); errorInfo->GetSource(&source); errorInfo->GetDescription(&description);
-		errorInfo->GetHelpFile(&help); errorInfo->GetHelpContext(&context);
-		details.AppendFormat(L"; errorInfo.guid=%08lX; errorInfo.source=%s; errorInfo.description=%s; errorInfo.help=%d; errorInfo.helpContext=%lu",
-			guid.Data1, (LPCWSTR)StartupTrace::SanitizeExceptionText(source), (LPCWSTR)StartupTrace::SanitizeExceptionText(description), help ? 1 : 0, context);
-		::SysFreeString(source); ::SysFreeString(description); ::SysFreeString(help);
-	}
+	details += StartupTrace::FormatComExceptionMetadata(&exceptionInfo, errorInfo);
 	if (exceptionInfo.bstrDescription) ::SysFreeString(exceptionInfo.bstrDescription);
 	if (exceptionInfo.bstrSource) ::SysFreeString(exceptionInfo.bstrSource);
 	if (exceptionInfo.bstrHelpFile) ::SysFreeString(exceptionInfo.bstrHelpFile);

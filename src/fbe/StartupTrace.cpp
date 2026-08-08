@@ -606,33 +606,7 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 {
 	CString details;
 	details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L"");
-	if(exceptionInfo)
-	{
-		details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.source-present=%d; excep.source-length=%u; excep.description-present=%d; excep.description-length=%u; excep.help-present=%d; excep.helpContext=%lu; excep.deferred=%d; details=omitted",
-			exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode), exceptionInfo->bstrSource ? 1 : 0, exceptionInfo->bstrSource ? ::SysStringLen(exceptionInfo->bstrSource) : 0,
-			exceptionInfo->bstrDescription ? 1 : 0, exceptionInfo->bstrDescription ? ::SysStringLen(exceptionInfo->bstrDescription) : 0,
-			exceptionInfo->bstrHelpFile ? 1 : 0, exceptionInfo->dwHelpContext,
-			exceptionInfo->pfnDeferredFillIn ? 1 : 0);
-	}
-	if(errorInfo)
-	{
-		GUID guid = GUID_NULL;
-		BSTR source = NULL, description = NULL, helpFile = NULL;
-		DWORD helpContext = 0;
-		errorInfo->GetGUID(&guid);
-		errorInfo->GetSource(&source);
-		errorInfo->GetDescription(&description);
-		errorInfo->GetHelpFile(&helpFile);
-		errorInfo->GetHelpContext(&helpContext);
-		wchar_t guidText[64] = {};
-		::StringFromGUID2(guid, guidText, _countof(guidText));
-		details.AppendFormat(L"; errorInfo.guid=%s; errorInfo.source-present=%d; errorInfo.source-length=%u; errorInfo.description-present=%d; errorInfo.description-length=%u; errorInfo.helpContext=%lu; errorInfo.help-present=%d; details=omitted",
-			guidText, source ? 1 : 0, source ? ::SysStringLen(source) : 0,
-			description ? 1 : 0, description ? ::SysStringLen(description) : 0, helpContext, helpFile ? 1 : 0);
-		::SysFreeString(source);
-		::SysFreeString(description);
-		::SysFreeString(helpFile);
-	}
+	details += FormatComExceptionMetadata(exceptionInfo, errorInfo);
 	WriteRecord(category, L"error", code, details, true);
 	{ TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); lastComFailure = failure; lastHResultFailure = failure; }
 }
@@ -694,5 +668,30 @@ DWORD StartupTrace::LastWriteError() { TraceLock guard; return lastWriteError; }
 CString StartupTrace::NormalizeLogValue(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, false); }
 CString StartupTrace::SanitizeLogText(const wchar_t* text, int maximumLength) { return Sanitize(text, maximumLength, true); }
 CString StartupTrace::RedactPath(const wchar_t* text) { return Sanitize(text, 512, true); }
-CString StartupTrace::SanitizeExceptionText(const wchar_t* text) { return SanitizeScriptDetails(text); }
+CString StartupTrace::FormatComExceptionMetadata(const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo)
+{
+	CString details;
+	if (exceptionInfo)
+	{
+		details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.source-present=%d; excep.source-length=%u; excep.description-present=%d; excep.description-length=%u; excep.help-present=%d; excep.helpContext=%lu; excep.deferred=%d; details=omitted",
+			exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode), exceptionInfo->bstrSource ? 1 : 0, exceptionInfo->bstrSource ? ::SysStringLen(exceptionInfo->bstrSource) : 0,
+			exceptionInfo->bstrDescription ? 1 : 0, exceptionInfo->bstrDescription ? ::SysStringLen(exceptionInfo->bstrDescription) : 0,
+			exceptionInfo->bstrHelpFile ? 1 : 0, exceptionInfo->dwHelpContext, exceptionInfo->pfnDeferredFillIn ? 1 : 0);
+	}
+	if (errorInfo)
+	{
+		GUID guid = GUID_NULL;
+		BSTR source = NULL, description = NULL, helpFile = NULL;
+		DWORD helpContext = 0;
+		errorInfo->GetGUID(&guid); errorInfo->GetSource(&source); errorInfo->GetDescription(&description);
+		errorInfo->GetHelpFile(&helpFile); errorInfo->GetHelpContext(&helpContext);
+		wchar_t guidText[64] = {};
+		::StringFromGUID2(guid, guidText, _countof(guidText));
+		details.AppendFormat(L"; errorInfo.guid=%s; errorInfo.source-present=%d; errorInfo.source-length=%u; errorInfo.description-present=%d; errorInfo.description-length=%u; errorInfo.help-present=%d; errorInfo.helpContext=%lu; details=omitted",
+			guidText, source ? 1 : 0, source ? ::SysStringLen(source) : 0, description ? 1 : 0,
+			description ? ::SysStringLen(description) : 0, helpFile ? 1 : 0, helpContext);
+		::SysFreeString(source); ::SysFreeString(description); ::SysFreeString(helpFile);
+	}
+	return details;
+}
 void StartupTrace::Finish() { if (traceFile != INVALID_HANDLE_VALUE) { Event(L"startup", L"S999", L"process shutdown"); Flush(); ::CloseHandle(traceFile); traceFile = INVALID_HANDLE_VALUE; traceBasePath.Empty(); } if (traceLockInitialized) { ::DeleteCriticalSection(&traceLock); traceLockInitialized = false; } }

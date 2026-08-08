@@ -42,6 +42,8 @@ namespace StartupTrace
 	void DispatchResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message = L"");
 	void ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
 		const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message = L"");
+	// Returns metadata only: never exception/help text supplied by a script or COM server.
+	CString FormatComExceptionMetadata(const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo);
 	// Записывает обезличенное событие JavaScript. Содержимое книги не передаётся.
 	void ScriptEvent(const wchar_t* code, const wchar_t* message);
 	void Flush();
@@ -73,7 +75,6 @@ namespace StartupTrace
 	DWORD LastWriteError();
 	CString SanitizeLogText(const wchar_t* text, int maximumLength = 512);
 	CString RedactPath(const wchar_t* text);
-	CString SanitizeExceptionText(const wchar_t* text);
 	CString NormalizeLogValue(const wchar_t* text, int maximumLength = 512);
 	void Finish();
 }
