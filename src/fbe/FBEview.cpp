@@ -110,6 +110,22 @@ static void GetDirectTableCells(const MSHTML::IHTMLElementPtr& row, std::vector<
 	}
 }
 
+static void GetTableCells(const MSHTML::IHTMLElementPtr& table, std::vector<MSHTML::IHTMLElementPtr>& cells)
+{
+	cells.clear();
+	if (!table) return;
+	MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR"));
+	if (!rows) return;
+	for (long rowIndex = 0; rowIndex < rows->length; ++rowIndex)
+	{
+		_variant_t itemIndex(rowIndex);
+		MSHTML::IHTMLElementPtr row(rows->item(itemIndex, _variant_t()));
+		std::vector<MSHTML::IHTMLElementPtr> rowCells;
+		GetDirectTableCells(row, rowCells);
+		cells.insert(cells.end(), rowCells.begin(), rowCells.end());
+	}
+}
+
 static MSHTML::IHTMLElementPtr CreateTableCell(MSHTML::IHTMLDocument2Ptr document, const wchar_t* tagName)
 {
 	MSHTML::IHTMLElementPtr cell(document->createElement(tagName));
@@ -3233,6 +3249,27 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	itemName = FbeLoadCString(IDS_CTXMENU_PASTE);
 	menu.AppendMenu(MF_STRING, ID_EDIT_PASTE, itemName);
 
+	// The table commands must be available where the user edits a cell, not
+	// only in the main menu.  The source element may be an inline child, so
+	// walk up to its TD/TH ancestor.
+	MSHTML::IHTMLElementPtr contextCell(FindTableCell(MSHTML::IHTMLElementPtr(oe->srcElement)));
+	if (m_normalize && contextCell)
+	{
+		// Right-click does not reliably move the MSHTML selection.  Retain the
+		// clicked cell so the command modifies the cell the menu was opened on.
+		m_cur_sel = contextCell;
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_ABOVE, L"Insert row above");
+		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_BELOW, L"Insert row below");
+		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_ROW, L"Delete row");
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_LEFT, L"Insert column left");
+		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_RIGHT, L"Insert column right");
+		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_COLUMN, L"Delete column");
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_TABLE_TOGGLE_HEADER_CELL, L"Toggle header cell");
+	}
+
 	if(m_normalize)
 	{
 		menu.AppendMenu(MF_SEPARATOR);
@@ -3360,7 +3397,7 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 VARIANT_BOOL  CFBEView::OnKeyDown(IDispatch *evt)
 {
 	MSHTML::IHTMLEventObjPtr oe(evt);
-	if (oe && oe->keyCode == VK_TAB && oe->shiftKey != VARIANT_TRUE)
+	if (oe && oe->keyCode == VK_TAB)
 	{
 		try
 		{
@@ -3370,15 +3407,34 @@ VARIANT_BOOL  CFBEView::OnKeyDown(IDispatch *evt)
 			if (cell && row && table)
 			{
 				std::vector<MSHTML::IHTMLElementPtr> cells;
-				GetDirectTableCells(row, cells);
-				MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR"));
-				_variant_t lastIndex(rows->length - 1);
-				MSHTML::IHTMLElementPtr lastRow(rows->item(lastIndex, _variant_t()));
-				if (lastRow == row && !cells.empty() && cells.back() == cell)
+				GetTableCells(table, cells);
+				size_t index = 0;
+				while (index < cells.size() && cells[index] != cell) ++index;
+				if (index == cells.size()) return VARIANT_TRUE;
+
+				const bool reverse = oe->shiftKey == VARIANT_TRUE;
+				if (!reverse && index + 1 == cells.size())
 				{
 					BOOL handled = FALSE;
 					OnTableInsertRowBelow(0, ID_TABLE_INSERT_ROW_BELOW, NULL, handled);
+					GetTableCells(table, cells);
 				}
+
+				size_t targetIndex = index;
+				if (reverse) {
+					if (targetIndex > 0) --targetIndex;
+				} else if (targetIndex + 1 < cells.size()) {
+					++targetIndex;
+				}
+				if (targetIndex != index) {
+					MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+					range->moveToElementText(cells[targetIndex]);
+					range->collapse(VARIANT_TRUE);
+					range->select();
+				}
+				oe->cancelBubble = VARIANT_TRUE;
+				oe->returnValue = VARIANT_FALSE;
+				return VARIANT_FALSE;
 			}
 		}
 		catch (_com_error&) { }
