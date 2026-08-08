@@ -38,23 +38,30 @@ try {
         if($LASTEXITCODE -ne 0) { throw "Could not back up the original FBELib registration (reg.exe exit $LASTEXITCODE)." }
     }
 
-    # A: no per-user registration. Startup must use its embedded ITypeInfo and repair only afterwards.
+    # A: no per-user registration. The first run may observe any machine-wide legacy
+    # registration, so a test-owned invalid HKCU shadow makes the effective state
+    # deterministic without touching HKLM. The second run is independent of the
+    # initial registration state.
     Remove-Item -LiteralPath $typeLibKey -Recurse -Force -ErrorAction SilentlyContinue
-	$missingRegistrationTrace = Invoke-FbeRegistrationStartup 'missing-per-user-registration'
-	if($missingRegistrationTrace -notmatch 'external-typeinfo=') { throw 'Embedded ExternalHelper was not observed without per-user FBELib registration.' }
-	if($missingRegistrationTrace -notmatch 'core-compatible=1; diagnostic-compatible=0') { throw 'Legacy registered FBELib did not remain core-compatible with diagnostic methods absent.' }
-	if($missingRegistrationTrace -notmatch 'internal diagnostic bridge uses embedded typelib') { throw 'Legacy registered FBELib was not isolated from the embedded diagnostic bridge.' }
+	$stalePathKey = 'HKCU\Software\Classes\TypeLib\{37B16C7D-4400-4D7D-AA35-14C74E265EA4}\1.0\0\win32'
+	& reg.exe add $stalePathKey /ve /t REG_SZ /d 'Z:\missing\controlled-FBELib.tlb' /f | Out-Null
+	if($LASTEXITCODE -ne 0) { throw 'Could not create the controlled missing-registration fixture.' }
+	$repairTrace = Invoke-FbeRegistrationStartup 'missing-per-user-registration' -AllowTraceErrors
+	if($repairTrace -notmatch 'external-typeinfo=') { throw 'Embedded ExternalHelper was not observed without per-user FBELib registration.' }
+	if($repairTrace -notmatch 'code=TL180') { throw 'Missing per-user FBELib registration did not reach controlled repair.' }
+	if(-not (Test-Path -LiteralPath $typeLibKey)) { throw 'Controlled repair did not create the expected per-user FBELib registration.' }
+	$controlledRegistrationTrace = Invoke-FbeRegistrationStartup 'controlled-per-user-registration'
+	if($controlledRegistrationTrace -notmatch 'core-compatible=1; diagnostic-compatible=1') { throw 'Controlled per-user FBELib registration is not fully diagnostic-compatible.' }
+	if($controlledRegistrationTrace -notmatch 'internal diagnostic bridge uses embedded typelib') { throw 'Controlled registration affected the embedded diagnostic bridge.' }
 
     # B: a stale registered path must not affect the embedded window.external contract.
-	if($hadRegistration) { & reg.exe import $backup | Out-Null; if($LASTEXITCODE -ne 0) { throw 'Could not restore the test registration before the stale-path scenario.' } }
-	$stalePathKey = 'HKCU\Software\Classes\TypeLib\{37B16C7D-4400-4D7D-AA35-14C74E265EA4}\1.0\0\win32'
 	& reg.exe add $stalePathKey /ve /t REG_SZ /d 'Z:\missing\legacy-FBELib.tlb' /f | Out-Null
 	if($LASTEXITCODE -ne 0) { throw 'Could not create the stale FBELib registered path.' }
 	$staleRegistrationTrace = Invoke-FbeRegistrationStartup 'stale-registered-path' -AllowTraceErrors
 	if($staleRegistrationTrace -notmatch 'code=TL159') { throw 'Stale registered FBELib was not identified for repair.' }
 	if($staleRegistrationTrace -notmatch 'code=TL180') { throw 'Stale registered FBELib did not reach per-user repair.' }
 
-	Write-Host 'FBELib missing, legacy-compatible, and stale-registration scenarios passed and will be restored.'
+	Write-Host 'FBELib controlled repair and stale-registration scenarios passed and will be restored.'
 }
 finally {
     Restore-Registration
