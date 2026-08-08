@@ -1,4 +1,4 @@
-﻿// Скрипт «Статистика нецензурных слов» для редактора Fiction Book Editor (FBE).
+// Скрипт «Статистика нецензурных слов» для редактора Fiction Book Editor (FBE).
 // Версия 1.8
 // автор — stokber (февраль 2025).
 // В скрипте использован регексп-антимат за авторством imDaniX (https://gist.github.com/imDaniX/8449f40655fcc1b92ae8d756cbca1264#file-swears-javascript-regex) дополненный рядом изменений-добавок.

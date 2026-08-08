@@ -1,0 +1,195 @@
+ <!-- Создание файла — Александр Ка (12.12.2025) -->
+
+ <HTML>
+ <HEAD>
+ <TITLE> Стандартизация символов – Замена                                                                                                                                                             </TITLE>
+ <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <STYLE>
+ BODY {
+	 background: #EBE9ED;
+	 margin: 0;
+	 padding: 8px 8px 0 8px;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 }
+ INPUT {
+	 width: 260px;
+	 padding-left: 8px;
+	 font-family: Arial Unicode MS, Meiryo UI;
+	 font-size: 15px;
+	 }
+ LABEL {
+	 }
+ P {
+	 margin: 0;
+	 padding: 0 0 4px 0;
+	 }
+ BUTTON {
+	 width: 150px;
+	 height=26;
+	 font-size: 13px;
+	 padding: 1px;
+	 margin: 3px;
+	 background: #EDEDEF;
+	 }
+ </STYLE>
+ </HEAD>
+
+ <BODY>
+ <DIV>
+	 <TABLE cellspacing=0 cellpadding=0 style="width: 100%; margin-bottom: 6px">
+		 <TR>
+			 <TD style="width: 100%; border: 1px solid #B0B0B0; padding: 1px; font-size: 16px; color: #191919">
+				 <LABEL id=count style="float: right; padding-right: 5px">Счетчик замен</LABEL>
+				 <LABEL id=title style="padding-left: 5px">Заголовок операции</LABEL>
+			 </TD>
+			 <TD style="padding: 0 0 0 5px; text-align: right">
+				 <BUTTON id=b5 onclick=button_X(5) style="width: 33px; height: 28px; margin: 0 5 0 12; padding: 0;"><IMG height=18 width=18 src="images/undo_.png"></BUTTON>
+				 <BUTTON id=b6 onclick=button_X(6) style="width: 33px; height: 28px; margin: 0 10 0 0; padding: 0;"><IMG height=18 width=18 src="images/redo_.png"></BUTTON>
+				 <BUTTON id=bInfo onclick=button_Info() style="width: 28px; height: 28px; margin: 0; font-weight: bold; font-size: 16px; color: #404040">?</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=1 style="width: 100%">
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL style="vertical-align: -10%;">Найден текст:</LABEL>
+			 </TD>
+			 <TD style="width: 250px">
+				 <INPUT id=searchTxt value="Исходный текст" readonly style="padding: 0 8 0 8; color: #404040">
+			 </TD>
+			 <TD style="width: 270px">
+				 <LABEL id=searchComm style="margin-left: 8px;  font-size: 12px; color: #404040">Пояснение к исходному тексту</LABEL>
+			 </TD>
+		 </TR>
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL style="vertical-align: -10%;">Заменить на:</LABEL>
+			 </TD>
+			 <TD style="width: 250px">
+				 <INPUT id=replaceTxt value="Новый текст" style="padding: 0 8 0 8">
+			 </TD>
+			 <TD style="width: 270px">
+				 <LABEL id=replaceComm style="margin-left: 8px; font-size: 12px; color: #404040">Пояснение к новому тексту</LABEL>
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=0 align=right width="100%">
+		 <TR>
+			 <TD id=notes valign=top style="width: 100%; padding: 5 10 0 3; font-size: 12px; text-indent: -30px; color: #404040">
+				 <LABEL style="text-indent: 0">Примечание к операции</LABEL>
+			 </TD>
+			 <TD valign=top style="width: 200px; padding: 10 5 2 3">
+				 <BUTTON id=b1 onclick=button_X(1)>Заменить</BUTTON>
+				 <BUTTON id=b2 onclick=button_X(2)>Заменить всё</BUTTON>
+			 </TD>
+			 <TD valign=top style="width: 200px; padding: 10 0 2 3">
+				 <BUTTON id=b3 onclick=button_X(3)>Пропустить</BUTTON>
+				 <BUTTON id=b4 onclick=button_X(4)>Пропустить всё</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+ </DIV>
+
+<script>
+
+ var arg = window.dialogArguments;    //  Получение данных, отправленных из основного скрипта (массив из 8 элементов).
+
+ for (var i=0; i<7; i++) {           //  цикл для 7 первых элементов массива.
+         if (arg[i] == undefined  ||  arg[i] == null)   //  Если "arg[i]" не определяется, или его не существует...
+                 arg[i] = "";                  //  то заменяем его на пустой текст.
+             else  arg[i] += "";           //  В противном случае, преобразуем "arg[i]" в текст.
+         if (i !=2  &&  i !=4)              //  Если текст не отправиться в текстовые поля (где код не распознаётся)...
+                 arg[i] = arg[i].replace(/&/g, "&amp;").replace(/ /g, "&nbsp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/­/g, "&shy;");   //  то некоторые символы меняются на код.
+         }
+
+///////////////   Заполняем элементы структуры соответствующем текстом:
+ title.innerHTML=arg[0];   //  описание операции,
+ count.innerHTML=arg[1];   //  счетчик,
+ searchTxt.value=arg[2];       //  исходный текст,
+ searchComm.innerHTML=arg[3];   //  пояснение к нему,
+ replaceTxt.value=arg[4];          //  новый текст,
+ replaceComm.innerHTML=arg[5];   //  пояснение к нему,
+ if (arg[6])
+         notes.innerHTML = '<LABEL style="text-indent: 0"> * ' + arg[6] + '</LABEL>';   //  примечание к операции.
+     else  notes.innerHTML = "";
+ var lastButton = arg[7];      //  Код предыдущей нажатой кнопки.
+ var rT = arg[8];      //  Отступ окна от верхнего края экрана (с шапкой).
+ var activ_b5 = arg[9];   //  Индикатор активности кнопки "Отмена последнего действия"
+ var activ_b6 = arg[10];   //  Индикатор активности кнопки "Возвращение отмененного действия"
+
+
+ var dL=0;    //  Отступ окна от левого края экрана.
+ var dT=0;    //  Отступ окна от верхнего края экрана.
+ var delta;    //  Высота шапки окна.
+ var winInfo;    //  Окно справки.
+
+
+///////////////   Функция, которая включается после загрузки окна
+
+ window.onload = function() {
+         dL=window.screenLeft;   //  Сохранение начального значения отступа окна от левого края экрана
+         dT=window.screenTop;     //  и от верхнего края.
+         delta=dT-rT;
+         if (activ_b5)  b5.innerHTML = '<IMG height=18 width=18 src="images/undo.png">';    //  Активация кнопки "Отмена действия"
+             else  b5.disabled=true;
+         if (activ_b6)  b6.innerHTML = '<IMG height=18 width=18 src="images/redo.png">';    //  Активация кнопки "Возвращение действия"
+             else  b6.disabled=true;
+         var el = [replaceTxt, b1, b2, b3, b4, b5, b6][lastButton];
+         if (el.disabled==false)
+                 el.focus();    //  Перенос "фокуса" на кнопку, указанную в основном скрипте.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие кнопок
+
+ function button_X(num) {
+         window.returnValue = [num, replaceTxt.value, window.screenLeft - dL, window.screenTop - dT];
+         //  Отправка массива: [<код нажатой кнопки>, <текст в поле "Новый текст">, <горизонтальный сдвиг>, <вертикальный сдвиг>].
+         window.close();    //  Закрытие этого окна.
+         }
+
+
+
+///////////////   Функция для открытия/закрытия окна справки
+
+ function button_Info() {   //  "Справка"
+
+ if (winInfo  &&  !winInfo.closed) {    //  Если окно уже открыто...
+         winInfo.close();    //  то закрываем его
+         return;   //  и выходим из функции.
+         }
+
+ var titleMsg = " Стандартизация символов";
+
+ mTxt = [["Справка",, "19 центр линия#707070 #1A544F (Cambria, Georgia, Liberation Serif)"],
+     [],
+     ["• <B>Найден текст</B> — Текст в этом поле можно только скопировать.",, "#191919"],
+     ["• <B>Заменить на</B> — Текст в этом поле можно редактировать.",, "#191919"],
+     ["• <B>Заменить</B> — Заменить текущий символ.",, "#191919"],
+     ["• <B>Пропустить</B> — Пропустить одну замену.",, "#191919"],
+     ["• <B>Заменить всё</B> — Заменить текущий и все следующие символы в этой операции.",, "#191919"],
+     ["• <B>Пропустить всё</B> — Прервать выполнение этой операции.",, "#191919"],
+     [" ",, "5"],
+     [z2('<IMG height=15 width=15 src="images/undo.png">')+" "+z2('<IMG height=15 width=15 src="images/redo.png">')+" — Отмена/возврат последних действий.",, "#191919"],
+     [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+     [z3("×")+" — <I>системная кнопка</I> — Прервать выполнение всех операций.",, "#191919"]];
+
+ winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", [titleMsg, mTxt],
+         "dialogHeight: 353px; dialogWidth: 350px; dialogLeft: "+(window.screenLeft+650)+"; dialogTop: "+(window.screenTop-delta)+"; center: Yes; help: No; resizable: Yes; status: No");
+ }
+
+
+///////////////   Функции добавления стиля выделения в окне справки
+
+function z2(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 3 3 1 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+function z3(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+</SCRIPT>
+</BODY>
+</HTML>

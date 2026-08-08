@@ -1,0 +1,179 @@
+ <!-- Создание файла — Александр Ка (05.05.2026) -->
+
+ <HTML>
+ <HEAD>
+ <TITLE> Стандартизация символов                                                                                                                                              </TITLE>
+ <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <STYLE>
+ BODY {
+	 background: #EBE9ED;
+	 margin: 0;
+	 padding: 12px 5px 0 5px;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 }
+ P {
+	 margin: 0;
+	 padding: 5 10 0 35;
+	 text-indent: -30px;
+	 }
+ BUTTON {
+	 width: 100px;
+	 height=26;
+	 font-size: 13px;
+	 margin: 3px;
+	 padding: 1px;
+	 background: #EDEDEF;
+	 }
+ </STYLE>
+ </HEAD>
+
+ <BODY>
+ <DIV>
+	 <TABLE cellspacing=0 cellpadding=0 style="width: 100%">
+		 <TR style="vertical-align: top">
+			 <TD>
+				 <P style="text-indent: 0px; text-align: center; padding: 0px 10px 0 5px; font-size: 15px; color: #404040;">Разрешить изменение текста в формате «Код»?</P>
+			 </TD>
+			 <TD style="width: 260px; text-align: center;">
+				 <BUTTON id=b1 style="font-family: Webdings; width: 22px; height: 27px; margin: 0; font-size: 15px; color: #404040" onclick=button_01()>3</BUTTON>
+				 <LABEL id=count style="width: 20px; border: 1px solid #C0C0C0; margin: 0 5 0 0; padding: 3 7; font-size: 15px; background: #EDEDEF; color: #404040;">Счетчик</LABEL>
+				 <BUTTON id=b2 style="font-family: Webdings; width: 22px; height: 27px; margin: 0; font-size: 15px; color: #404040" onclick=button_02()>4</BUTTON>
+				 <FIELDSET style="margin: 12px 0 0 0; padding: 3px 0">
+					 <BUTTON id=b3 style="width: 120px" onclick=button_03()>Разрешить всё</BUTTON>
+					 <BUTTON id=b4 style="width: 120px" onclick=button_04()>Запретить всё</BUTTON>
+				 </FIELDSET>
+			 </TD>
+		 </TR>
+	 </TABLE>
+
+	 <BUTTON id=b5 style="position: absolute; z-index: 1; top: 5; right: 5; font-weight: bold; width: 28px; height: 28px; margin: 0 0 0 3; font-size: 16px; color: #404040" onclick=button_05()>?</BUTTON>
+ </DIV>
+
+<script>
+
+ var arg = window.dialogArguments;    //  Получение данных, отправленных из основного скрипта.
+ var mCode = arg[0];    //  Массив с элементами <code>.
+ var textY = arg[1];         //  Высота найденного текста.
+ var fbWindow = arg[2];   //  Объект "window" от FBE.
+ var fbwBody = arg[3];   //  Блок всего текста книги.
+ var wHeight = arg[4];    //  Высота окна с текстом книги.
+ var wWidth = arg[5];   //  Ширина окна с текстом книги.
+ var wT = arg[6];      //  Отступ окна от верхнего края экрана (с шапкой).
+
+ var LCode = mCode.length;   //  Получение количества элементов.
+ var reFONT = new RegExp("(^.+$)", "");          //  Рег. выражение для добавления тега "FONT" с добавлением стиля.
+ var reFONT_1 = '<FONT style="border: 2 solid #821A1A; font-size: 125%; padding: 0 1 1 1">$1</FONT>';   //  Стиль выделения.
+ var k=0;   //  Счетчик элементов "код" в массиве.
+ var eCode = mCode[k];                 //  Отдельный элемент <code>.
+
+ var dT=0;    //  Отступ окна от верхнего края экрана.
+ var winInfo;    //  Окно справки.
+
+ eCode.innerHTML = eCode.innerHTML.replace(reFONT, reFONT_1);  //  Обрамляем весь текст формата <code> тегом "FONT" (с добавлением стиля).
+ count.innerHTML = (k+1) + " / " + LCode;   //  Заполняем элемент счетчика соответствующем текстом.
+ GoTo2(eCode, textY);       //  Переходим на узел <code>.
+
+
+
+///////////////   Функция, которая включается после загрузки окна
+
+ window.onload = function() {
+         b3.focus();    //  Перенос "фокуса" на кнопку  "Разрешить всё".
+         dT=window.screenTop;     //  Отступ окна от верхнего края экрана.
+         delta=dT-wT;
+         }
+
+
+
+///////////////   Функции, реагирующие на нажатие кнопок
+
+ function button_01() {   //  "Предыдущий элемент"
+         eCode.firstChild.removeNode(false);    //  Удаляем форматирование <FONT> у текущего элемента.
+         if (k==0)  k=LCode-1;                 //  Если текущий индекс   нулевой -- изменяем его на индекс последнего элемента.
+             else  k--;                         //  В противном случае -- уменьшаем индекс на единицу.
+         eCode = mCode[k];      //  Изменяем текущий элемент.
+         eCode.innerHTML = eCode.innerHTML.replace(reFONT, reFONT_1);   //  Добавляем форматирование <FONT>.
+         count.innerHTML = (k+1) + " / " + LCode;         //  Изменяем текст счетчик элементов.
+         GoTo2(eCode, textY);        //  Переходим на узел <code>.
+         }
+
+ function button_02() {      //  "следующий элемент"
+         eCode.firstChild.removeNode(false);    //  Удаляем форматирование <FONT> у текущего элемента.
+         if (k==LCode-1)  k=0;                 //  Если текущий индекс   последний -- изменяем его на индекс нулевого элемента.
+             else  k++;                         //  В противном случае -- увеличиваем индекс на единицу.
+         eCode = mCode[k];      //  Изменяем текущий элемент.
+         eCode.innerHTML = eCode.innerHTML.replace(reFONT, reFONT_1);   //  Добавляем форматирование <FONT>.
+         count.innerHTML = (k+1) + " / " + LCode;         //  Изменяем текст счетчик элементов.
+         GoTo2(eCode, textY);        //  Переходим на узел <code>.
+         }
+
+ function button_03()  {             //  "Разрешить всё"
+         eCode.firstChild.removeNode(false);    //  Удаляем форматирование <FONT> у текущего элемента.
+         window.returnValue = 3;      //  Отправка данных: "код нажатой кнопки".
+         window.close();    //  Закрытие этого окна.
+         }
+
+ function button_04()  {            //  "Запретить всё"
+         eCode.firstChild.removeNode(false);    //  Удаляем форматирование <FONT> у текущего элемента.
+         window.returnValue = 4;      //  Отправка данных: "код нажатой кнопки".
+         window.close();    //  Закрытие этого окна.
+         }
+
+ function button_05() {   //  "Справка"
+         if (winInfo  &&  !winInfo.closed) {    //  Если окно уже открыто...
+                 winInfo.close();    //  то закрываем его
+                 return;   //  и выходим из функции.
+                 }
+         var mTxt = [
+             ["Справка",, "19 центр линия#707070 #1A544F (Cambria, Georgia, Liberation Serif)"], [],
+             ["<B>Разрешить всё</B> – разрешить изменение во всех элементах \"Код\".",, "#191919"],
+             ["<B>Запретить всё</B> – запретить изменение во всех элементах \"Код\".",, "#191919"],
+             [" ",, "3"],
+             [z2("3")+"  – предыдущий элемент.",, "#191919"],
+             [z2("4")+"  – следующий элемент.",, "#191919"],
+             [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+             [z3("×")+" — <I>системная кнопка</I> — Приравнивается в кнопке «Разрешить всё».",, "#191919"]];
+
+         winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", [" Блокировка формата <code>", mTxt],
+             "dialogHeight: 249px; dialogWidth: 370px; dialogLeft: "+(window.screenLeft+510)+"; dialogTop: "+(window.screenTop-delta)+"; center: Yes; help: No; resizable: Yes; status: No");
+         }
+
+
+///////////////   Функции добавления стиля выделения в окне справки
+
+function z2(txt) {
+         return '<FONT  style="font-size: 12px; background: #F4F4F4; padding: 1 2 0 2; border: 1px solid #CCCCCC; font-family: Webdings;">' + txt + '</FONT>';
+         }
+function z3(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+
+
+///////////////   Функция перехода к элементу книги (расширенная версия "GoTo(elem)", но без перемещения курсора)
+
+function GoTo2(elem, Y) {   //  * Исходные данные: "Элемент на который следует сделать переход", "Высота элемента в окне текста книги (в процентах)".
+
+ if (!elem)  return;   //  Если элемент удален  --  выходим из функции.
+
+ var wH=wHeight - 6;   //  Высота окна с текстом книги (с запасом 3 пикселя по краям).
+ var wW=wWidth;       //  Ширина окна с текстом книги.
+ var b=elem.getBoundingClientRect();                   //  Получение координат элемента.
+ var c=fbwBody.parentNode.getBoundingClientRect();    //  Получение координат раздела <BODY>.
+ var H=b.bottom-b.top;                  //  Высота элемента (в пикселях).
+ var Width=c.left;         //  Сдвиг вбок.
+
+ if (b.right-c.left > wW) {      //  Если правый край элемента может выйти за границу окна...
+         if (b.right-b.left < wW)     //  то проверяем длину элемента, и если она меньше длины окна,
+                 Width = b.right-wW;   //  то выставляем элемент впритык к правому краю окна,
+             else  Width = b.left;      //  а если больше - то выставляем элемент впритык к левому краю.
+         }
+ if (H <= wH)          //  Если высота элемента меньше высоты окна...
+         fbWindow.scrollBy(Width, b.top - 3 - Math.round((wH-H)*(1-Y*0.01)));   //  то выставляем элемент согласно указанному расположению,
+     else  fbWindow.scrollBy(Width, b.top - 3);       //  а если нет - то выставляем элемент почти впритык к верхнему краю.
+ }
+
+</SCRIPT>
+</BODY>
+</HTML>

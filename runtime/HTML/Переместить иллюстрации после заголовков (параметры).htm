@@ -1,0 +1,139 @@
+<!-- Настройки скрипта "Переместить иллюстрации ниже заголовков" v4.2 -->
+<!DOCTYPE html> 
+<html>
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+ <meta http-equiv="MSThemeCompatible" content="yes">
+ <title>Переместить иллюстрации ниже заголовков - настройки</title>
+ <style>
+  body, input, label { font-family: Tahoma, Verdana, Arial; font-size: 12px; margin: 5px; }
+  .section { margin-bottom: 15px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; }
+  .title { font-weight: bold; margin-bottom: 5px; color: #0066cc; }
+  .option { margin: 5px 0; }
+  .stats { margin-bottom: 15px; padding: 10px; border: 1px solid #99ccff; background: #f0f8ff; }
+  .note { font-style: italic; color: #666; margin-top: 5px; font-size: 11px; }
+  .mainTitle { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #0066cc; }
+  .buttons { text-align: center; margin-top: 20px; }
+  button { margin: 0 10px; padding: 5px 20px; }
+ </style>
+</head>
+<body>
+<div class="mainTitle">Скрипт "Переместить иллюстрации ниже заголовков" v4.2</div>
+
+<div id="statsSection" class="stats">
+ <!-- Статистика будет заполнена JavaScript -->
+</div>
+
+<div class="section">
+ <div class="title">1. УДАЛЯТЬ старые иллюстрации после перемещения?</div>
+ <div class="option">
+  <input type="radio" name="keepOldImages" id="delete1" value="0" checked>
+  <label for="delete1"> УДАЛЯТЬ старые иллюстрации</label><br>
+  <input type="radio" name="keepOldImages" id="keep1" value="1">
+  <label for="keep1"> ОСТАВЛЯТЬ старые иллюстрации</label>
+ </div>
+</div>
+
+<div class="section">
+ <div class="title">2. Переносить ПУСТЫЕ иллюстрации (#undefined)?</div>
+ <div class="option">
+  <input type="radio" name="moveEmptyImages" id="moveEmpty1" value="1" checked>
+  <label for="moveEmpty1"> ПЕРЕНОСИТЬ пустые иллюстрации</label><br>
+  <input type="radio" name="moveEmptyImages" id="moveEmpty2" value="0">
+  <label for="moveEmpty2"> НЕ переносить пустые иллюстрации</label>
+ </div>
+</div>
+
+<div id="existingImagesSection" class="section" style="display: none;">
+ <div class="title">3. ВСТАВЛЯТЬ иллюстрации в секциях, где они уже есть?</div>
+ <div id="existingNote" class="note"></div>
+ <div class="option">
+  <input type="radio" name="insertIfImageExists" id="insert1" value="1" checked>
+  <label for="insert1"> ВСТАВЛЯТЬ дополнительные иллюстрации</label><br>
+  <input type="radio" name="insertIfImageExists" id="insert2" value="0">
+  <label for="insert2"> НЕ вставлять (пропускать такие секции)</label>
+ </div>
+ 
+ <div id="positionSection" style="margin-top: 10px;">
+  <div class="title">4. Куда вставлять относительно существующей иллюстрации?</div>
+  <div class="option">
+   <input type="radio" name="insertPosition" id="position1" value="0" checked>
+   <label for="position1"> ДО существующей иллюстрации</label><br>
+   <input type="radio" name="insertPosition" id="position2" value="1">
+   <label for="position2"> ПОСЛЕ существующей иллюстрации</label>
+  </div>
+  <div class="note">(между иллюстрациями будет добавлена пустая строка)</div>
+ </div>
+</div>
+
+<div class="buttons">
+ <button onclick="collectSettings()">Выполнить</button>
+ <button onclick="cancel()">Отмена</button>
+</div>
+
+<script>
+// Получаем данные из родительского окна
+var analysis = window.dialogArguments;
+
+// Заполняем статистику
+if (analysis) {
+ var statsHTML = '<div class="title">АНАЛИЗ ДОКУМЕНТА:</div>' +
+  '• Секций всего: ' + analysis.totalSections + '<br>' +
+  '• Иллюстраций всего: ' + analysis.totalImages + '<br>' +
+  '• Иллюстраций в концах секций: ' + analysis.imagesAtEndOfSections + '<br>' +
+  '• Секций-иллюстраций: ' + analysis.imageSections + '<br>' +
+  '• Секций с эпиграфами: ' + analysis.sectionsWithEpigraph + '<br>' +
+  '• Секций с иллюстрациями ПОСЛЕ заголовков/эпиграфов: ' + analysis.sectionsWithImagesAfterTitle;
+ 
+ document.getElementById('statsSection').innerHTML = statsHTML;
+ 
+ // Показываем раздел для существующих иллюстраций, если они есть
+ if (analysis.sectionsWithImagesAfterTitle > 0) {
+  document.getElementById('existingImagesSection').style.display = 'block';
+  document.getElementById('existingNote').innerHTML = '(Найдено таких секций: ' + analysis.sectionsWithImagesAfterTitle + ')';
+  
+  // Добавляем обработчики для показа/скрытия раздела позиции
+  document.getElementById('insert1').onclick = togglePositionSection;
+  document.getElementById('insert2').onclick = togglePositionSection;
+ }
+}
+
+function togglePositionSection() {
+ var positionSection = document.getElementById('positionSection');
+ if (document.getElementById('insert1').checked) {
+  positionSection.style.display = 'block';
+ } else {
+  positionSection.style.display = 'none';
+ }
+}
+
+function collectSettings() {
+ var settings = {};
+ 
+ // Собираем настройки
+ settings.keepOldImages = parseInt(document.querySelector('input[name="keepOldImages"]:checked').value);
+ settings.moveEmptyImages = parseInt(document.querySelector('input[name="moveEmptyImages"]:checked').value);
+ 
+ if (analysis && analysis.sectionsWithImagesAfterTitle > 0) {
+  settings.insertIfImageExists = parseInt(document.querySelector('input[name="insertIfImageExists"]:checked').value);
+  if (settings.insertIfImageExists == 1) {
+   settings.insertPosition = parseInt(document.querySelector('input[name="insertPosition"]:checked').value);
+  } else {
+   settings.insertPosition = 0;
+  }
+ } else {
+  settings.insertIfImageExists = 0;
+  settings.insertPosition = 0;
+ }
+ 
+ window.returnValue = settings;
+ window.close();
+}
+
+function cancel() {
+ window.returnValue = null;
+ window.close();
+}
+</script>
+</body>
+</html>

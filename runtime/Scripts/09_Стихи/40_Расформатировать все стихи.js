@@ -8,7 +8,7 @@
 
 function Run() {
  var ScriptName="«Расформатирование всех стихов»";
- var NumerusVersion="1.5";
+ var NumerusVersion="1.6";
 
 //--------------------------------------------------------------------
                  ///  НАСТРОЙКИ
@@ -98,7 +98,7 @@ var n = 0;
          fullDate = new Date(D);                         //  получаем полную дату,
          Day = fullDate.getDate();                            //  день месяца,
          Month = ("0" + (1+fullDate.getMonth())).replace(/^.*?(\d\d)$/g, "$1");   //  месяц,
-         Year = ("0" + fullDate.getFullYear()).replace(/^.*?(\d\d)$/g, "$1");       //  год,
+         Year = fullDate.getFullYear();       //  год,
          mDate[j] = Day + "." + Month + "." + Year;             //  и заполняем массив текстом очередной даты (Д.ММ.ГГ).
          D -= 86400000;                       //  При этом каждый раз уменьшаем проверяемую дату на один день.
          }
@@ -112,7 +112,7 @@ var n = 0;
  var k=0;               //  Счетчик цикла.
 
 fff:
- for (j=mP.length-1;  j>0;  j--) {    //  Последовательный просмотр строк истории.
+ for (j=mP.length-1;  j>=0;  j--) {    //  Последовательный просмотр строк истории.
          s = mP[j].innerHTML;                //  Содержимое строки.
          for (k=0; k<10; k++) {                //  и запускаем цикл для проверки даты.
                  if (s.search(mDate[k]) !=-1) {   //  Если проверяемая дата есть в строке истории...
@@ -132,24 +132,27 @@ fff:
  if (youName!="")                           //  Если есть заполненное имя...
          textYouName += ", ";   //  то добавляем к текстовой записи запятую.
 
- var reHist00s = new RegExp("[^А-яЁёA-Za-z0-9]"+Script_Name+"[^А-яЁёA-Za-z0-9]","g");   //  Стартовая.
+ var reHist00s = new RegExp("[^А-яЁёA-Za-z0-9]"+Script_Name+"[^А-яЁёA-Za-z0-9]","");   //  Стартовая.
  //  Добавление точки с запятой
- var reHist01 = new RegExp("(.[^…\\\?!\\\.,;:—])(\\\s|"+nbspEntity+")(— \\\("+textYouName+mDate[k]+"\\\))","g");
+ var reHist01 = new RegExp("(.[^…\\\?!\\\.,;:—])(\\\s|"+nbspEntity+")(— "+textYouName+mDate[k]+")","");
  var reHist01_ = "$1; $3";
+ //  Добавление точки
+ var reHist02 = new RegExp("(.[^…\\\?!\\\.,;:—])[,;:]{0,1}(\\\s|"+nbspEntity+")(— "+textYouName+mDate[k]+")","");
+ var reHist02_ = "$1. $3";
  //  Добавление слова "Скрипт"
- var reHist02 = new RegExp("(.)(\\\s|"+nbspEntity+")(— \\\("+textYouName+mDate[k]+"\\\))","g");
- var reHist02_ = "$1 Скрипт: $3";
+ var reHist03 = new RegExp("(.)(\\\s|"+nbspEntity+")(— "+textYouName+mDate[k]+")","");
+ var reHist03_ = "$1 Скрипт: $3";
  //  Добавление имени скрипта
- var reHist03 = new RegExp("(.)(\\\s|"+nbspEntity+")(— \\\("+textYouName+mDate[k]+"\\\))","g");
- var reHist03_ = "$1 "+Script_Name+" $3";
+ var reHist04 = new RegExp("(.)(\\\s|"+nbspEntity+")(— "+textYouName+mDate[k]+")","");
+ var reHist04_ = "$1 "+Script_Name+" $3";
 
  if (povtorD) {                                         //  Если найдена запись с недавней датой...
-         if (s.search(reHist03) !=-1) {    //  и если в строке имя пользователя и дата записаны по форме: "— (Имя, Дата)"...
+         if (s.search(reHist04) !=-1) {    //  и если в строке имя пользователя и дата записаны по форме: "— (Имя, Дата)"...
                  if (s.search(reHist00s) ==-1) {    //  то проверяем строку на наличие записи имени скрипта, и если этой записи нет...
                          if (s.search(/([Сс]крипт):/) !=-1)  s = s.replace(/([Сс]крипт):/g, "$1ы:");   //  то заменяем при необходимости слово "Скрипт" на "Скрипты",
                          if (s.search(reHist01) !=-1)  s = s.replace(reHist01, reHist01_);                   //  добавляем при необходимости точку с запятой,
-                         if (s.search(/[Сс]крипты?:/) ==-1)  s = s.replace(reHist02, reHist02_);   //  добавляем при необходимости слово "Скрипт"
-                         s = s.replace(reHist03, reHist03_);      //  и добавляем имя скрипта.
+                         if (s.search(/[Сс]крипты?:/) ==-1)  s = s.replace(reHist02, reHist02_).replace(reHist03, reHist03_);   //  добавляем при необходимости слово "Скрипт"
+                         s = s.replace(reHist04, reHist04_);      //  и добавляем имя скрипта.
                          }
                  if (k != 0)                                                    //  Затем проверяем дату, и если она не сегодняшняя...
                          s = s.replace(mDate[k], mDate[0]);   //  то заменяем на сегодняшнюю.
@@ -192,11 +195,11 @@ fff:
 
          //   Добавление строк в историю изменений
 
- var reHist11 = new RegExp("^(\\\s|"+nbspEntity+"){0,}$","g");   //  Признак пустой строки.
- var reHist12 = new RegExp("(^|\\n)[^0-9]{0,10}"+versionFile+"([^0-9]|$)","g");   //  Поиск старой версии.
+ var reHist11 = new RegExp("^(\\\s|"+nbspEntity+"){0,}$","");   //  Признак пустой строки.
+ var reHist12 = new RegExp("(^|\\n)[^0-9]{0,12}"+versionFile.replace(/\./, "\\.")+"([^0-9]|$)","");   //  Поиск старой версии.
 
  //   Добавление строки с информацией о старой версии
- if (ValidationVersion  &&  History.innerHTML.search(reHist12)==-1) {       //  Если в истории нет записи о старой версии...
+ if (ValidationVersion  &&  History.innerText.search(reHist12)==-1) {       //  Если в истории нет записи о старой версии...
          if (History.lastChild.innerHTML.search(reHist11)==-1)                                               //  то проверяем наличие пустой строки в конце истории
                  History.insertAdjacentElement("beforeEnd",document.createElement("P"));       //  и если ее нет - добавляем новую.
          History.lastChild.innerHTML = "v."+versionFile+" — ?";  //  Затем добавляем в строку информацию о старой версии
@@ -206,7 +209,7 @@ fff:
  //   Добавление строки с информацией о новой версии
  if (History.lastChild.innerHTML.search(reHist11)==-1)                                   //  Если в конце истории нет готовой пустой строки...
          History.insertAdjacentElement("beforeEnd",document.createElement("P"));   //  то добавляем новую строку.
- History.lastChild.innerHTML = versionText+" Скрипт: "+Script_Name+" — ("+textYouName+mDate[0]+")";  //  Добавляем в строку информацию о новой версии.
+ History.lastChild.innerHTML = versionText+" Скрипт: "+Script_Name+" — "+textYouName+mDate[0];  //  Добавляем в строку информацию о новой версии.
  HiCh++;                       //  Изменяем индикатор истории.
 
  }
@@ -538,7 +541,6 @@ fff:
 
                  ///  ИСТОРИЯ ИЗМЕНЕНИЙ
 
-//~~~~~~~~~~~~~~~~~~
 // v.1.0 — Создание скрипта — Александр Ка (10.05.2024)
 // v.1.1 — Исправлена ошибка с добавлением пустых строк — Александр Ка (10.06.2024)
 // v.1.2 —  Александр Ка (17.06.2024)
@@ -547,6 +549,4 @@ fff:
 // v.1.3 — Удаление лишних пустых строк внутри стиха  —  Александр Ка (21.06.2024)
 // v.1.4 — Исправлены все ошибки в окнах для win7  —  Александр Ка (19.01.2025)
 // v.1.5 — Добавление функции повышения версии файла и запись в историю изменений — Александр Ка (29.04.2025)
-//~~~~~~~~~~~~~~~~~~
-
-
+// v.1.6 — Изменение функции "повышения версии файла и запись в историю изменений" — Александр Ка (19.05.2025)

@@ -1,0 +1,161 @@
+<HTML>
+<HEAD>
+<TITLE>.</TITLE>
+<META content="text/html; charset=utf-8" http-equiv=Content-Type>
+<STYLE>
+ BODY {
+	 background: #DEDEE2;
+	 margin: 0;
+	 padding: 0;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 border-top: 1px solid #767677;
+	 }
+DIV.hours{
+	 margin: 0;
+	 height: 49px;
+	 width: 120px;
+	 text-align: center;
+	 }
+LABEL{
+	 height: 35px;
+	 margin: 5px 0 0 0;
+	 padding: 0;
+	 border-right: 1px solid #BFBFBF;
+	 }
+ P {
+	 margin: 0;
+	 padding: 15px 0 0 0px;
+	 font-size: 16px;
+	 color: #515151;
+	 }
+DIV.button{
+	 width: 400px;
+	 position: absolute;
+	 top: 11;
+	 right: 15;
+	 }
+ BUTTON {
+	 width: 90px;
+	 height=26;
+	 font-size: 13px;
+	 margin: 0 5px 0 5px;
+	 padding: 1px;
+	 }
+ </STYLE>
+ </HEAD>
+ <BODY>
+ <DIV class=hours onclick=clickTime()>
+	 <LABEL style="float: right"></LABEL>
+	 <P id=timeDate></P>
+ </DIV>
+ <DIV class=button>
+	 <BUTTON id=b1 onclick=parent.frame1.clickInfo() style="color: #424242">Справка</BUTTON>
+	 <BUTTON id=b2 onclick=parent.frame1.clickDefault() style="color: #635100">Сброс</BUTTON>
+	 <BUTTON id=b3 onclick=parent.frame1.clickSave() style="color: #1A5E2F">Сохранить</BUTTON>
+	 <BUTTON id=b4 onclick=window.close() style="color: #5B1919">Отмена</BUTTON>
+ </DIV>
+ </BODY>
+ <SCRIPT>
+
+ var timeDate = document.getElementById("timeDate");   //  Элемент "часы".
+ var timer_id;       //  Идентификатор таймера №1.
+ var timer2_id;       //  Идентификатор таймера №2.
+ var step = 40;       //  Шаг таймера №2 (мкс).
+ var newText;     //  Новый текст, на который будет происходить переключение.
+ var k=0;      //  Счетчик кадров.
+ var R = 1;   //  Счетчик для режима "Часов".
+
+ var red_=false;   //  Индикатор цвета отключаемого текста.
+ var red=false;    //  Индикатор цвета включаемого текста.
+ var day;    //  День недели (0-6).
+ var data;    //  День месяца.
+ var month;   //  Месяц (0-11).
+
+
+ timer();   //  Запуск функции отображения времени по таймеру.
+
+
+
+///////////////   ФУНКЦИИ
+
+         //  Функция отображения времени по таймеру
+ function timer() {
+         T();             //  Запуск функции получения точного времени.
+         timer_id = setInterval(T, 1000);    //  Запуск функции получения точного времени через каждые 1000мкс.
+         }
+
+         //  Функция получения точного времени
+ function T() {
+         D = new Date();           //  Получаем объект дата-время.
+                 //  Отправляем текст с показаниями текущего времени в элемент "часы":
+         timeDate.innerHTML = D.getHours() + ":" + ("0"+D.getMinutes()).replace(/^.*(..)$/, "$1") + ":" + ("0"+D.getSeconds()).replace(/^.*(..)$/, "$1");
+         }
+
+         //  Функция анимации переключения текста №1 (для текста одной строкой)
+ function gost1(newText) {
+         if (k<=4) {                         //  0-4 кадры:
+                 if (red_)  timeDate.style.color = ["#A04D4D", "#B27070", "#C49999", "#D6C7C7", "#DEDEE2"][k];    //  Гасим красный текст.
+                     else  timeDate.style.color = ["#606060", "#848484", "#A8A8A8", "#CCCCCC", "#DEDEE2"][k];    //  Гасим серый текст.
+                 if (k==4) {                         //  4 кадр:
+                         timeDate.innerHTML = newText;        //  Вставляем в элемент часов новый текст.
+                         timeDate.style.fontSize = "16px";     //  Выбираем размер шрифта.
+                         timeDate.style.paddingTop = "15px";   //  Выбираем верхний отступ.
+                         }
+                 }
+         if (k>=6  &&  k<=10) {                         //  6-10 кадры:
+                 timeDate.style.color = ["#CCCCCC", "#A8A8A8", "#848484", "#606060", "#515151"][k-6];   //  Включаем серый текст.
+                 if (k==10)  clearInterval(timer2_id);          //  10 кадр:   Останавливаем таймер №2 (который управляет этой функцией)
+                 }
+         k++;      //  Увеличиваем счетчик кадров.
+         }
+
+         //  Функция анимации переключения текста №2 (для текста в две строки)
+ function gost2(newText) {
+         if (k<=4) {                         //  0-4 кадры:
+                 timeDate.style.color = ["#606060", "#848484", "#A8A8A8", "#CCCCCC", "#DEDEE2"][k];    //  Гасим серый текст.
+                 if (k==4) {              //  4 кадр:
+                         timeDate.style.fontSize = "13px";     //  Выбираем размер шрифта (для уменьшения промежутка между строками).
+                         timeDate.style.paddingTop = "6px";   //  Выбираем верхний отступ.
+                         timeDate.innerHTML = newText;        //  Вставляем в элемент часов новый текст.
+                         }
+                 }
+         if (k>=6  &&  k<=10) {                         //  6-10 кадры:
+                 if (red)  timeDate.style.color = ["#D6C7C7", "#C49999", "#B27070", "#A04D4D", "#993E3D"][k-6];   //  Включаем красный текст.
+                     else  timeDate.style.color = ["#CCCCCC", "#A8A8A8", "#848484", "#606060", "#515151"][k-6];   //  Включаем серый текст.
+                 if (k==10)  clearInterval(timer2_id);          //  10 кадр:   Останавливаем таймер №2 (который управляет этой функцией)
+                 }
+         k++;      //  Увеличиваем счетчик кадров.
+         }
+
+         //  Функция переключения режима (запускается кликом по "часам")
+ function clickTime() {
+         clearInterval(timer_id);     //  Отключение таймера №1.
+         clearInterval(timer2_id);   //  Контрольное отключение таймера №2.
+         red_ = red;         //  Сохраняем предыдущей индикатор цвета.
+         D = new Date();    //  Объект дата-время.
+         day = D.getDay();   //  День недели.
+         data = D.getDate();   //  День месяца.
+         month = D.getMonth();   //  Месяц.
+         red = (day==0  ||  (data==1  &&  month==0)  ||  (data==8  &&  month==2)  ||  (data==12  &&  month==3)  ||  (data==9  &&  month==4)  ||  (data==31  &&  month==11));
+             //  Индикатор "красных" дней:   Воскресение, 1 января, 8 марта, 12 апреля, 9 мая, 31 декабря.
+
+         k=0;    //  Сброс счетчика кадров.
+         R++;       //  Увеличиваем счетчик режимов.  (В самом начале R=1, и при первом нажатии на "часы", будет выполнено 2-е действие)
+
+         switch (R) {   //  В зависимости от значения счетчика, выполняем одно из трех действий:
+             case 3:             //  Сброс счётчика, и переход к первому действию.
+                 R=1;
+             case 1:             //  Включение циферблата:
+                 newText = D.getHours() + ":" + ("0"+D.getMinutes()).replace(/^.*(..)$/, "$1") + ":" + ("0"+D.getSeconds()).replace(/^.*(..)$/, "$1");   //  Готовим текст времени к включению.
+                 timer2_id = setInterval("gost1(newText)", step);        //  Запускаем анимацию переключения на новый текст.
+                 setTimeout(timer, step*5);    //  Запускаем функцию отображения времени по таймеру с задержкой в 5 кадров.
+                 break;
+             case 2:             //  Переключение на дату:
+                 newText = "<FONT style=\"font-size: 16px\">" + data + " "+["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"][month] + "</FONT><BR>" + ["воскресение", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"][day];   //  Готовим текст даты к включению.
+                 timer2_id = setInterval("gost2(newText)", step);        //  Запускаем анимацию переключения на новый текст.
+                 }
+         }
+
+</SCRIPT>
+</HTML>

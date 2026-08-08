@@ -1,0 +1,1015 @@
+ <!-- Создание файла — Александр Ка (26.07.2026) -->
+
+ <HTML>
+ <HEAD>
+ <TITLE> Восстановление регистра заголовков и подзаголовков                                                                                                                                                                  </TITLE>
+ <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <STYLE>
+ BODY {
+	 background: #EBE9ED;
+	 margin: 0;
+	 padding: 8px 8px 0 8px;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 }
+ BUTTON {
+	 width: 150px;
+	 height: 26;
+	 margin: 3px;
+	 padding: 1px;
+	 font-size: 13px;
+	 background: #EDEDEF;
+	 }
+ P {
+	 font-size: 17px;
+	 margin: 0 2 0 5;
+	 padding: 2 0 2 0;
+	 }
+ SPAN {
+	 padding: 0;
+	 color: #E60;
+	 }
+ SPAN.radio {
+	 color: 000;
+	 height: 18px;
+	 padding: 0 0 0 12;
+	 display: none;
+	 }
+ SPAN.code {
+	 color: #555;
+	 }
+ FONT {
+	 font-size: 17px;
+	 background: #FFBFBF;
+	 }
+ </STYLE>
+ </HEAD>
+
+ <BODY id=mainElem>
+ <DIV>
+	 <TABLE cellspacing=0 cellpadding=0 style="width: 100%; margin-bottom: 4;">
+		 <TR>
+			 <TD style="width: 100%; border: 1px solid #B0B0B0; padding: 0 5 0 5; font-size: 16px; color: #191919;">
+				 <LABEL id=count style="float: right;">Счетчик замен</LABEL>
+				 <LABEL id=titleOp>Заголовок операции</LABEL>
+			 </TD>
+			 <TD style="padding: 0 0 0 2; text-align: right;">
+				 <BUTTON id=b9 onclick=button_9(1) style="width: 28; height: 28px; margin: 0 0 0 10; padding: 0; font-weight: bold; font-size: 16px; font-family: Arial Unicode MS;">⇕</BUTTON>
+				 <BUTTON id=b5 onclick=button_X(5) style="width: 33; height: 28px; margin: 0 0 0 10; padding: 0;"><IMG height=18 width=18 src="images/undo_.png"></BUTTON>
+				 <BUTTON id=b6 onclick=button_X(6) style="width: 33; height: 28px; margin: 0 0 0 5; padding: 0;"><IMG height=18 width=18 src="images/redo_.png"></BUTTON>
+				 <BUTTON id=b10 onclick=button_10() style="width: 28; height: 28px; margin: 0 0 0 10; font-weight: bold; font-size: 16px; color: #404040;">?</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE id=tblInp cellspacing=0 cellpadding=2 style="width: 100%">
+		 <TR>
+			 <TD valign=top style="width: 92px;  font-size: 13px; text-align: right; padding: 0 8 0 0;">
+				 <LABEL id=searchLabal>Найден текст:</LABEL>
+				 <BR>
+				 <BUTTON id=b11 onclick=button_11() style="float: bottom; width: 18; height: 18; margin: 8 0 0 0; padding: 0; font-size: 15px; font-family: Arial Unicode MS; background: #DBDBDB; border: none;">▼</BUTTON>
+			 </TD>
+			 <TD onclick=handler(event)>
+				 <DIV onscroll=sinhro("sTxt") style="height: 63; overflow: auto; text-align: center; border: 2px inset #F9F9F9; width: 100%; padding: 0; background: #FFF;">
+				         <DIV id=searchTxt onclick=bSearchTxt() style="height: 59; padding: 0;">
+					 </DIV>
+				 </DIV>
+			 </TD>
+		 </TR>
+		 <TR>
+			 <TD valign=top style="width: 92px;  font-size: 13px; text-align: right; padding: 0 8 0 0;">
+				 <LABEL id=replaceLabal>Заменить на:</LABEL>
+				 <BR>
+				 <BUTTON id=b12 onclick=regMain(1) style="float: bottom; width: 40; height: 21; margin: 8 0 0 0; padding: 0 0 3 0; letter-spacing: 2px; font-size: 15px; font-family: Arial Unicode MS; background: #DBDBDB; border: none;">А↔а</BUTTON>
+			 </TD>
+			 <TD id=replaceTabl onclick=handler(event) style="padding: 0; border: 2 solid #EBE9ED;">
+				 <DIV onscroll=sinhro("rTxt") style="height: 63; overflow: auto; text-align: center; border: 2px inset #F9F9F9; width: 100%; padding: 0; background: #FFF;">
+					 <DIV id=replaceTxt onclick="hand=true; rButton_X(6);" contentEditable=false style="padding: 0;"></DIV>
+				 </DIV>
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=0 align=right width="100%" style="margin-top: -2;">
+		 <TR>
+			 <TD valign=top style="width: 100%; padding: 0 15 5 3; font-size: 13px;">
+				 <FIELDSET id=rbs style="padding: 5 0 5 0">
+					 <LEGEND style="padding: 0 3 3 15; text-indent: -12; color: #545454;" align=center>Варианты</LEGEND>
+					 <SPAN class=radio onclick=rButton_X(1)>
+						 <INPUT type=radio name=set style="margin: -2 5 0 0;">
+						 <LABEL style="vertical-align: 15%">текст</LABEL>
+					 </SPAN>
+					 <SPAN class=radio onclick=rButton_X(2)>
+						 <INPUT type=radio name=set style="margin: -2 5 0 0;">
+						 <LABEL style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN class=radio onclick=rButton_X(3)>
+						 <INPUT type=radio name=set style="margin: -2 5 0 0;">
+						 <LABEL style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN class=radio onclick=rButton_X(4)>
+						 <INPUT type=radio name=set style="margin: -2 5 0 0;">
+						 <LABEL style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN class=radio onclick=rButton_X(5)>
+						 <INPUT type=radio name=set style="margin: -2 5 0 0;">
+						 <LABEL style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN class=radio onclick=rButton_X(6) disabled>
+						 <INPUT type=radio name=set style="margin: -2 5 0 0;">
+						 <LABEL style="vertical-align: 15%;">Применять ручную правку</LABEL>
+					 </SPAN>
+				 </FIELDSET>
+			 </TD>
+			 <TD valign=bottom style="width: 200px; padding: 10 5 2 3;">
+				 <BUTTON id=b1 onclick=button_X(1)>Заменить</BUTTON>
+				 <BUTTON id=b3 onclick=button_X(3)>Заменить всё</BUTTON>
+			 </TD>
+			 <TD valign=bottom style="width: 200px; padding: 10 0 2 3;">
+				 <BUTTON id=b2 onclick=button_X(2)>Пропустить</BUTTON>
+				 <BUTTON id=b4 onclick=button_X(4)>Пропустить всё</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+ </DIV>
+
+<script>
+
+///////////////   Сохранение всех id местных элементов
+ //  * На случай, если в загруженой строке из текста книги появится такой же id -- вроде бы это невозможно, но лучше перестраховаться.
+
+ var b1 = document.getElementById("b1");
+ var b2 = document.getElementById("b2");
+ var b3 = document.getElementById("b3");
+ var b4 = document.getElementById("b4");
+ var b5 = document.getElementById("b5");
+ var b6 = document.getElementById("b6");
+ var b9 = document.getElementById("b9");
+ var b10 = document.getElementById("b10");
+ var b11 = document.getElementById("b11");
+ var b11 = document.getElementById("b11");
+ var b12 = document.getElementById("b12");
+ var count = document.getElementById("count");
+ var mainElem = document.getElementById("mainElem");
+ var rbs = document.getElementById("rbs");
+ var replaceLabal = document.getElementById("replaceLabal");
+ var replaceTabl = document.getElementById("replaceTabl");
+ var replaceTxt = document.getElementById("replaceTxt");
+ var searchLabal = document.getElementById("searchLabal");
+ var searchTxt = document.getElementById("searchTxt");
+ var titleOp = document.getElementById("titleOp");
+
+
+
+///////////////   Разбор массива данных из основного файла
+
+ var arg = window.dialogArguments;    //  Получение данных, отправленных из основного скрипта.
+
+ titleOp.innerHTML = arg[0] + ".  " + arg[1];   //  Заголовок операции.
+ count.innerHTML=arg[2];          //  Счетчик.
+ var oldTxt = arg[3];                  //  Исходный текст.
+ var lastButton = arg[4];        //  Код исходной нажатой кнопки.
+ var lastRadio = arg[5];       //  Код исходной нажатой радиокнопки.
+ var activ_b5 = arg[6];      //  Индикатор активности кнопки "Отмена последнего действия".
+ var activ_b6 = arg[7];      //  Индикатор активности кнопки "Возвращение отмененного действия".
+ var wT = arg[9];             //  Отступ окна от верхнего края экрана (с шапкой).
+ var mRB = arg[10];        //  Массив управления радиокнопками.
+ var mInfo = arg[11];         //  Текст дополнительной справки.
+ var heightInfo = arg[12];   //  Высота окна справки.
+ var newTxt = arg[14];          //  Новый текст.
+ var last_Button = arg[15];   //  Код следующей нажатой кнопки.
+ var mVar = arg[16];               //  Массив с вариантами строк.
+ var onCompare = arg[17];   //  Положение выключателя сверки.
+ var metod = arg[18];               //  Метод сверки.
+ var minSim = arg[19];            //  Минимальная длина совпадающих участков (для сверки).
+ if ((minSim + "").search(/^\d+$/) == -1  ||  (minSim + "").search(/[^0]/) == -1)   //  Если в число не полностью состоит из цифр, или там нет символа отличного от ноля...
+         minSim = 1000000;                //  то делаем минимальную длину равной 1000000.
+ minSim = +minSim;                //  Преобразуем текст в число.
+ var upperLower = arg[20];    //  Положения переключателя для режима правки.
+ var nbspEntity = arg[21];      //  Символ неразрывного пробела, принятый в FBE.
+ var mImgId = arg[22][0];     //  Адреса иллюстраций.
+ var mImgW = arg[22][1];    //  Ширина иллюстраций.
+ var mImgH = arg[22][2];     //  Высота иллюстраций.
+
+
+
+///////////////   Миниатюризация иллюстраций в полученных строках книги (на время работы этого окна)
+
+ searchTxt.innerHTML = "<P>"+miniImg(oldTxt)+"</P>";    //  Миниатюризация иллюстраций в исходном тексте.
+ newTxt = miniImg(newTxt);                     //  Миниатюризация иллюстраций в новом тексте.
+
+ for (k=0;  k<mVar.length;  k++) {             //  Запускаем цикл для массива вариантов строк.
+         mVar[k] = miniImg(mVar[k]);          //  Уменьшаем иллюстрации в каждой строке.
+         }
+
+
+
+///////////////   Основные переменные
+
+ var dL=0;        //  Отступ окна от левого края экрана.
+ var dT=0;       //  Отступ окна от верхнего края экрана.
+ var delta;       //  Высота шапки окна.
+ var winInfo;    //  Окно справки.
+ var k;                   //  Счетчик цикла.
+ var h;                   //  Счетчик цикла.
+ var hand=false;    //  Индикатор нажатия на поле "Заменить на".
+ var Tw=0;    //  Продолжительность вычислений.
+
+ //  Рег. выражения для чистки поля "Заменить на".
+ var reClear1 = new RegExp("</?(DIV|P|BR|FONT)( [^<>]+)?>", "g");      //  * Удаление.
+ var reClear2 = new RegExp("[\\n\\r]+", "g");                  //  * Замена на пробел.
+
+ //  Рег. выражения для режима изменения регистра.
+ var Az = "A-Za-zÀ-ÖØ-Þà-öø-ķĹ-ňŊ-ſƁ-ƌƎ-ƔƖ-ƙƜƝƠ-ƥƧƨƩƬ-ƹƼƽǄǆǇǉǊǌ-ǜǞ-ǯǱǳǴǵǺ-ȗɓɔɖ-əɛɠɣɨɩɯɲʃʈʊʋʒΆΈΉΊΌΎΏΑ-ΡΣ-ία-ρσ-ώϐϑϕϖϢ-ϱЁ-ЌЎ-яё-ќў-ҁҐ-ҿӁ-ӄӇӈӋӌӐ-ӫӮ-ӵӸӹԱ-Ֆա-ֆḀ-ẕẠ-ỹἀ-ἕἘ-Ἕἠ-ὅὈ-ὍὑὓὕὗὙὛὝὟ-ώᾀ-ᾱᾳᾸ-ᾼῃῈ-ῌῐῑῘ-ΊῠῡῥῨ-ῬῳῸ-ῼⅠ-ⅿⒶ-ⓩＡ-Ｚａ-ｚ";   //  Все буквы, у которых можно изменять регистр.
+ var reRegOn = new RegExp("(&nbsp;|&lt;|&gt;|&shy;|&amp;|["+Az+"])(?=[^<>]*(<|$))", "g");      //  Поиск и активация символов для изменения регистра.
+ var reRegOn_ = "<FONT onclick=register(this) onmouseover='this.style.color = \"#900\";' onmouseout='this.style.color = \"\";' style=\"background: transparent;\">$1</FONT>";
+ var reRegOff = new RegExp("<FONT [^<>]*onclick=register[^<>]*>([^<>]+)<\/FONT>", "g");      //  Поиск и дезактивация символов.
+ var reRegOff_ = "$1";
+ var reRegCodeOff = new RegExp("<FONT [^<>]*onclick=register[^<>]*>(&nbsp;|&lt;|&gt;|&shy;|&amp;)<\/FONT>", "g");      //  Поиск и дезактивация символов.
+ var reRegCodeOff_ = "$1";
+
+
+
+///////////////   Переменные для сверки
+
+ var txtCompare;       //  Рабочий текст для сверки.
+ var modTxt;            //  Оригинальный текст поля "Заменить на".
+ var order = true;   //  Соблюдение порядка oldTxt -> modTxt.
+ var frag1;                //  1-й фрагмент для сравнения.
+ var frag2;                //  2-й фрагмент для сравнения.
+ var subFrag;           //  Потенциальный участок.
+ var subTxt;               //  Дополнительный потенциальный участок.
+ var mOldTxt = [];    //  Массив текста с форматом <FONT> для поля "Найден текст".
+ var mModTxt = [];   //  Массив текста с форматом <FONT> для поля "Заменить на".
+ var rS;                      //  Результаты детального поиска.
+ var pos1;            //  Позиция потенциального участка для 1-го текста.
+ var pos2;       //  Позиция потенциального участка для 2-го текста.
+
+ var L1;         //  Значение меньшей длины совпадающего участка.
+ var L2;         //  Значение большей длины совпадающего участка.
+ var LR_;       //  Текущая длина совпадающего участка.
+ var LR;           //  Максимальная длина предыдущих совпадающих участков.
+ var LMidi;        //  Значение средней длины участка.
+ var mR = [];       //  Массив с данными потенциальных участков.
+ var LBest;              //  Максимальная длина найденных совпадающих участков.
+ var LParent = [];     //  Массив длин родительских совпадающих участков.
+
+
+
+///////////////   Обозначение следующей нажатой кнопки
+
+ if (last_Button) {                     //  Если указан код следующей нажатой кнопки...
+         elemButton = [, b1, b2, b3, b4][last_Button];            //  Получаем элемент этой кнопки.
+         elemButton.style.background = "#F4F4F4";                          //  Делаем кнопку немного светлее.
+         elemButton.innerHTML = "• "+elemButton.innerHTML+" •";       //  Добавляем маркеры.
+         }
+
+
+
+///////////////   Создание радиокнопок
+
+ var mSpan = rbs.getElementsByTagName("SPAN");      //  Массив из элементов SPAN радиокнопок.
+ var mLabel = rbs.getElementsByTagName("LABEL");    //  Массив из элементов LABEL радиокнопок.
+ var mInput = rbs.getElementsByTagName("INPUT");    //  Массив из элементов INPUT радиокнопок.
+
+ for (k=0; k<mRB.length; k++) {               //  Запускаем цикл для массива управления радиокнопками.
+         mSpan[k].style.display = "block";     //  Показываем активные радиокнопки.
+         mLabel[k].innerHTML = mRB[k];    //  Добавляем пояснения.
+         mSpan[k].onmouseover='this.style.background = "#F7F7F7";';   //  Прикрепляем к элементу событие "Наведение мышиного указателя".
+         mSpan[k].onmouseout='this.style.background = "";';                        //  Прикрепляем к элементу событие "Мышиный указатель покинул элемент".
+         mSpan[k].outerHTML = mSpan[k].outerHTML;     //  Перезапись элемента.
+         }
+
+ for (h=k; h<5; h++) {             //  Продолжаем цикл для массива управления радиокнопками.
+         rbs.insertAdjacentHTML("beforeEnd", '<SPAN class=radio style="display: block;"> </SPAN>');   //  Добавляем пустые блоки SPAN до полного заполнения высоты FIELDSET.
+         }
+
+
+
+///////////////   Режим контрольной операции
+
+ if (lastButton == 0) {         //  Если это контрольная операция...
+         titleOp.innerHTML = "Восстановление регистра заголовков и подзаголовков";   //  Вписываем заголовок.
+         count.innerHTML = "<I>финал</I>";   //  Вписываем текст для счетчика.
+         document.title="АК-скрипт                                                                                                                                                                                             ";    //  Меняем заголовок окна.
+         searchTxt.innerHTML = "";           //  Очищаем поля.
+         replaceTxt.innerHTML = "";
+         oldTxt = "";
+         searchTxt.parentNode.style.background = "#EBE9ED";    //  Затемняем цвет фона полей.
+         replaceTxt.parentNode.style.background = "#EBE9ED";
+         tblInp.disabled=true;                      //  Отключаем поля.
+         for (k=0; k<5; k++)                                              //  Запускаем цикл для кнопок.
+                 [b1, b2, b3, b4, b9][k].style.display = "none";    //  где скрываем кнопки.
+         b4.insertAdjacentHTML("afterEnd",  "<BUTTON onclick=button_X(99)>Продолжить</BUTTON>");   //  Добавляем новую кнопку для выхода из скрипта.
+         rbs.firstChild.innerHTML = "Мини-статистика";                          //  Меняем заголовок "Варианты" на "Мини-статистика".
+         }
+
+
+
+ button_9(0);   //  Симуляция нажатия кнопки "Выключатель для сверки" в режиме стартового запуска.
+ rButton_X(lastRadio);                       //  Симуляция нажатия радиокнопки, указанной в основном скрипте.
+
+
+
+
+
+
+//////////////////////////////////    ФУНКЦИИ    //////////////////////////////////
+
+
+///////////////   Функция, которая включается после загрузки окна  (стартовая)
+
+ window.onload = function() {
+         dL=window.screenLeft;      //  Сохранение начального значения отступа окна от левого края экрана.
+         dT=window.screenTop;     //  и от верхнего края.
+         delta=dT-wT;                         //  Высота шапки окна.
+         if (activ_b5)  b5.innerHTML = '<IMG height=18 width=18 src="images/undo.png">';    //  Активация кнопки "Отмена действия".
+             else  b5.disabled=true;
+         if (activ_b6)  b6.innerHTML = '<IMG height=18 width=18 src="images/redo.png">';    //  Активация кнопки "Возвращение действия".
+             else  b6.disabled=true;
+         var el = [mainElem ,b1, b2, b3, b4, b5, b6][lastButton];         //  Определяем элемент на который надо установить фокусировку.
+         if (el.disabled==false)            //  Если этот элемент не дезактивирован...
+                 el.focus();                            //  то устанавливаем на него "фокус".
+             else  mainElem.focus();      //  А если дезактивирован -- "фокусируемся" на боди окна.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие кнопок  (финальная)
+
+ function button_X(num) {
+         window.returnValue = [num, lastRadio, window.screenLeft - dL, window.screenTop - dT, maxiImg(replaceTxt.innerHTML.replace(reClear1, "").replace(reClear2, " ")), onCompare, Tw, upperLower];
+         //  Отправка массива: [<код нажатой кнопки>, <код нажатой радиокнопки>, <горизонтальный сдвиг>, <вертикальный сдвиг>, <текст в поле замены>, <флаг сверки>, <продолжительность вычислений>, <флаг режима правки>].
+         window.close();    //  Закрытие этого окна.
+         }
+
+
+
+///////////////    Функция  уменьшения  иллюстраций
+
+ function miniImg(s) {
+         var reId = new RegExp("(<IMG[^<>]* src=\"([^\"]+))\"([^<>]*>)", "g");   //  Разбор элемента IMG.
+         var rS;      //  Результат детального поиска.
+         var k;       //  Счетчик цикла.
+     LBL:
+         for (reId.lastIndex = 0;   (rS = reId.exec(s)) != null;  reId.lastIndex = rS.index+10) {       //  Цикл для иллюстраций в строке.
+                 if (rS[2].substring(0, 14) != "fbw-internal:#") {                                             //  Если в начале адреса нет этого текста...
+                         s = s.substring(0, rS.index) + rS[1] + " height=1\"" + rS[3] + s.substring(reId.lastIndex);     //  то это внешняя иллюстрация -- блокируем её
+                         continue;                           //  и переходим к следующей иллюстрации в строке.
+                         }
+                 rS[2] = rS[2].substring(14);           //  Получаем id иллюстрации.
+                 for (k=mImgId.length-1; k>=0; k--)     //  Цикл для id всех иллюстраций книги.
+                         if (mImgId[k] == rS[2]) {                            //  Если есть совпадение индексов...
+                                 s = s.substring(0, rS.index) + rS[1] + "\" height=" + mImgH[k] + " width=" + mImgW[k] + rS[3] + s.substring(reId.lastIndex);   //  то изменяем размеры картинки
+                                 continue LBL;                       //  и переходим к следующей иллюстрации в строке.
+                                 }
+                 s = s.substring(0, rS.index) + rS[1] + " height=1\"" + rS[3] + s.substring(reId.lastIndex);      //  Если совпадения индексов нет -- блокируем иллюстрацию.
+                 }
+         return  s;    //  Возвращаем строку с уменьшенными иллюстрациями.
+         }
+
+
+///////////////    Функция  восстановления  иллюстраций
+
+ function maxiImg(s) {
+         return  s.replace(/(<IMG[^<>]*) width=\d+/g, "$1").replace(/(<IMG[^<>]*) height=\d+/g, "$1");    //  Удаление атрибутов ширины и высоты в иллюстрациях.
+         }
+
+
+
+///////////////    Функция  блокировки перехода по ссылкам
+
+ function handler(ev) {
+         var ev = ev || window.event;           //  Получение объекта "событие"  //  * в браузере IE будет работать "ev = window.event;".
+         var elem = ev.srcElement;                           //  Получение элемента, который первым активировал событие "click".
+         while (elem  &&  elem.nodeName != "DIV") {     //  Цикл: Пока элемент не выйдет за пределы возможного обнаружения ссылки.
+                 // * Всё работает, но почему-то "elem" в поле "Найден текст" может становиться некорректным (почему - не разобрался).
+                 if (elem.nodeName == "A") {                                 //  Если текущий элемент -- это ссылка...
+                         if (ev.preventDefault) ev.preventDefault();   //  то блокируем событие "click" у этого элемента  //  * в браузере IE будет работать "ev.returnValue = false;".
+                             else ev.returnValue = false;
+                         return;                                                    //  и выходим из функции.
+                         }
+                 elem = elem.parentNode;     //  Если элемент не ссылка -- переходим на родительский элемент.
+                 }
+         }
+
+
+
+///////////////   Функция синхронизации прокрутки
+
+ function sinhro (inp) {
+         if (inp == "sTxt")                      //  Если выполняется прокрутка в поле "Найден текст"...
+                 replaceTxt.parentNode.scrollTop = searchTxt.parentNode.scrollTop - searchTxt.scrollTop;   //  то выполняем такое же смещение текста для другого поля.
+         if (inp == "rTxt")                      //  Если выполняется прокрутка в поле "Заменить на"...
+                 searchTxt.parentNode.scrollTop = replaceTxt.parentNode.scrollTop - replaceTxt.scrollTop;   //  то выполняем такое же смещение текста для другого поля.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие радиокнопок
+
+ function rButton_X(num) {
+
+         mLabel[lastRadio-1].style.fontSize = "13px";     //  Восстанавливаем размер шрифта для предыдущей радиокнопки.
+         lastRadio=num;                                                        //  Фиксируем номер нажатой радиокнопки.
+         mInput[num-1].checked=true;                    //  Включаем эту радиокнопку.
+
+         if (num==6) {                //  Если выбрана ручная правка...
+                 b3.disabled=true;              //  Блокируем кнопку "Заменить всё".
+                 replaceTabl.style.border = "2 solid #AAA";       //  Выделяем поле рамкой.
+                 if (hand) {                   //  Если произведен мышиный клик по полю "Заменить на"...
+                         hand=false;        //  Готовим индикатор для следующей активации поля "Заменить на".
+                         return;                 //  Выходим из функции.
+                         }
+                 if (replaceTxt.innerText=="")         //  Если текстовое поле не заполнено....
+                         replaceTxt.innerHTML = "<P contentEditable=true>"+newTxt+"</P>";   //  то заполняем текстовое поле заготовленным текстом.
+                 compare();     //  Запускаем основную функцию сверки.
+                 regMain();     //  Запускаем функцию изменения регистра.
+                 return;           //  Выходим из функции.
+                 }
+
+         //  Если выбрана радиокнопка...
+         replaceTabl.style.border = "2 solid #EBE9ED";     //  Удаляем выделение поля "Заменить на".
+         mLabel[num-1].style.fontSize = "14px";           //  Увеличиваем шрифт подписи для выбранной радиокнопки.
+
+         if (lastButton != 0) {    //  Если это не контрольная операция...
+                 b3.disabled=false;                                                   //  Снимаем блокировку с кнопки "Заменить всё".
+                 replaceTxt.innerHTML = "<P>"+mVar[num-1]+"</P>";    //  Заполняем текстовое поле в соответствии с рег. выражением для выбранной радиокнопки.
+                 compare();           //  Запускаем основную функцию сверки.
+                 regMain();           //  Запускаем функцию изменения регистра.
+                 }
+
+         }
+
+
+
+///////////////   Функция для копирования найденного текста
+
+ function button_11() {         //  "Копирование"
+         replaceTxt.innerHTML = searchTxt.innerHTML;     //  Копируем текст из поля "Найден текст" в поле "Заменить на".
+         rButton_X(6);           //  Симуляция нажатия радиокнопки ручной правки.
+         }
+
+
+
+///////////////   Функция нажатия на строку поля "Найден текст"
+
+ function bSearchTxt() {
+         compare();     //  Запускаем основную функцию сверки.
+         regMain();     //  Запускаем функцию изменения регистра.
+         }
+
+
+
+///////////////   Основная функция изменения регистра отдельных букв
+
+ function regMain(Q) {
+         if (Q == 1)                                                  //  Если функция запущена от кнопки "Изменения режима"...
+                 upperLower = !upperLower;    //  то переключаем режим правки текста.
+         s = replaceTxt.firstChild.innerHTML;        //  Сохраняем текст строки в поле "Заменить на".
+         if (upperLower) {                                               //  Если включен режим изменения регистра...
+                 replaceTxt.firstChild.contentEditable=false;   //  Отключаем редактирование текста.
+                 b12.style.color = "000";                                           //  Изменяем цвет шрифта на кнопке.
+                 if (s.search(reRegOff) == -1)                                              //  Если в тексте нет активированных букв...
+                         replaceTxt.firstChild.innerHTML = s.replace(reRegOn, reRegOn_).replace(reRegCodeOff, reRegCodeOff_);    //  то активируем их.
+                 }
+         if (!upperLower) {                              //  Если режим изменения регистра отключен...
+                 if (s.search(reRegOff) != -1)                         //  Если в тексте есть активированные символы...
+                         replaceTxt.firstChild.innerHTML = s.replace(reRegOff, reRegOff_);   //  то удаляем активацию кнопок.
+                 replaceTxt.firstChild.contentEditable=true;    //  Включаем редактирование текста.
+                 b12.style.color = "555";                                          //  Изменяем цвет шрифта на кнопке.
+                 }
+         }
+
+
+///////////////   Функции изменения регистра отдельных букв
+
+ function register(elSim) {
+         var sim = elSim.innerHTML;          //  Символ, который получил щелчок мышкой.
+         if (sim == sim.toUpperCase()  &&  sim == sim.toLowerCase())   //  Если у символа нельзя изменить регистр...
+                 return;         //  то выходим из функции.
+         if (sim == sim.toLowerCase()) {                   //  Если символ в нижнем регистре...
+                 elSim.innerHTML = sim.toUpperCase();    //  то повышаем его.
+                 return;
+                 }
+         if (sim == sim.toUpperCase()) {                  //  Если символ в верхнем регистре...
+                 elSim.innerHTML = sim.toLowerCase();    //  то понижаем его.
+                 return;
+                 }
+         }
+
+
+
+
+
+///////////////   СВЕРКА :  Функция управления сверкой
+
+ function button_9(Q) {      //  "Выключатель для сверки"
+
+         if (Q == 1)                                  //  Если функция запущена от кнопки "Выключатель для сверки"...
+                 onCompare = !onCompare;    //  Изменяем переключатель.
+         if (onCompare) {                        //  Если сверка включена...
+                 b9.style.color = "#212121";    //  делаем шрифт кнопки черным.
+                 if (Q == 1)                        //  Если функция запущена от кнопки "Выключатель для сверки"...
+                         compare();                      //  Запускаем основную функцию сверки.
+                 }
+             else {                              //  Если сверка отключена...
+                 b9.style.color = "#606060";                     //  делаем шрифт кнопки темно-серым,
+                 searchTxt.innerHTML = "<P>"+searchTxt.innerHTML.replace(reClear1, "").replace(reClear2, " ")+"</P>";                   //  вставляем оригинальный текст в поле "Найден текст"
+                 replaceTxt.innerHTML = "<P contentEditable=true>" + replaceTxt.innerHTML.replace(reClear1, "").replace(reClear2, " ") + "</P>";     //  и очищаем от тегов сверки поле "Заменить на".
+                 }
+         if (Q == 1)               //  Если функция запущена от кнопки "Выключатель для сверки"...
+                 regMain();     //  Запускаем функцию изменения регистра.
+         }
+
+
+
+///////////////   СВЕРКА :  Основная функция (выбор метода сверки)
+
+ function compare() {
+         if (!onCompare)   //  Если функция отключена...
+                 return;   //  Выходим из функции.
+
+         Tw -= new Date().getTime();    //  Общее время вычислений (начало промежутка).
+    //     Tw = -new Date().getTime();    //  Время вычисления одной сверки (начало промежутка).
+
+         oldTxt = searchTxt.innerHTML.replace(reClear1, "").replace(reClear2, " ");    //  Получение двух строк из полей "Найден текст" и "Заменить на" для их сверки.
+         modTxt = replaceTxt.innerHTML.replace(reClear1, "").replace(reClear2, " ");
+
+         oldTxt = oldTxt.replace(/&nbsp;/g, " ").replace(/&lt;/g, "\t").replace(/&gt;/g, "\r").replace(/&shy;/g, "­").replace(/&amp;/g, "&");    //  Временная замена html-кодов на символы.
+         modTxt = modTxt.replace(/&nbsp;/g, " ").replace(/&lt;/g, "\t").replace(/&gt;/g, "\r").replace(/&shy;/g, "­").replace(/&amp;/g, "&");
+         //  * Здесь необходимо чтобы символы "&lt;" и "&gt;" не были похожи на "<" и ">" в тегах, и при этом оставались уникальными.
+
+         if (oldTxt.toLowerCase() == modTxt.toLowerCase()) {         //  Если строки полей отличаются только регистром...
+
+                 //  УПРОЩЕННЫЙ МЕТОД
+
+                 var old_Txt;        //  Текст для поля "Найден текст",  с форматированием <FONT>.
+                 var mod_Txt;      //  Текст для поля "Заменить на",  с форматированием <FONT>.
+                 old_Txt = oldTxt;       //  Начальные значения текста с форматом <FONT> для полей "Найден текст" и "Заменить на".
+                 mod_Txt = modTxt;
+                 for (k=oldTxt.length-1;  k>=0 ;  k--) {      //  Запускаем цикл для символов строк полей.
+                         if (old_Txt.substring(k, k+1) != mod_Txt.substring(k, k+1)) {      //  Если пара символов различается...
+                                 old_Txt = old_Txt.substring(0, k) + "<FONT>" + old_Txt.substring(k, k+1) + "</FONT>" + old_Txt.substring(k+1);    //  то добавляем для обоих символов выделение.
+                                 mod_Txt = mod_Txt.substring(0, k) + "<FONT>" + mod_Txt.substring(k, k+1) + "</FONT>" + mod_Txt.substring(k+1);
+                                 }
+                         }
+
+                 old_Txt = old_Txt.replace(/&/g, "&amp;").replace(/ /g, nbspEntity).replace(/\t/g, "&lt;").replace(/\r/g, "&gt;").replace(/­/g, "&shy;");    //  Возвращение html-кодов.
+                 mod_Txt = mod_Txt.replace(/&/g, "&amp;").replace(/ /g, nbspEntity).replace(/\t/g, "&lt;").replace(/\r/g, "&gt;").replace(/­/g, "&shy;");
+
+                 searchTxt.innerHTML = "<P>"+old_Txt.replace(/<\/FONT><FONT>/, "")+"</P>";    //  Заполняем поля текстом с выделением <FONT>.
+                 replaceTxt.innerHTML = "<P contentEditable=true>"+mod_Txt.replace(/<\/FONT><FONT>/, "")+"</P>";
+
+                 Tw += new Date().getTime();     //  Общее время вычислений (конец промежутка).
+// alert("Упрощенный метод" + "\n" + Tw);
+
+                 return;                   //  Выходим из функции.
+                 }
+
+
+         //  1-2 МЕТОД :  Получение первого несовпадающего участка
+
+         mOldTxt = [];       //  Очищаем массивы текста для новых результатов.
+         mModTxt = [];
+
+         if (oldTxt.length < modTxt.length) {    //  Если найденный текст меньше заменяемого...
+                 order = true;          //  то сохраняем порядок фрагментов.
+                 frag1 = oldTxt;
+                 frag2 = modTxt;
+                 }
+             else {               //  А если больше...
+                 order = false;                    //  то изменяем порядок фрагментов.
+                 frag1 = modTxt;
+                 frag2 = oldTxt;
+                 }
+
+         L1 = 0;                         //  Исходное значение  для наименьшей длины участка.
+         L2 = frag1.length+1;   //  Исходное значение  для наибольшей длины участка.
+         LBest = 0;                 //  Лучшая длина участка.
+
+         while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+                 LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+                 if (frag1.substring(0, LMidi) == frag2.substring(0, LMidi)) {      //  Если участки средней длины совпадают (в начале фрагментов)...
+                         L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                         LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                         }
+                     else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+                 }
+
+         subFrag = frag1.substring(0, LBest);       //  Получаем текст 1-го совпадающего участка.
+         if ((rS = /<[^<>]*$/.exec(subFrag)) != null)     //  Если в текст попал обрывок тега...
+                 LBest -= rS[0].length;                              //  то сокращаем длину полученного участка.
+
+         mOldTxt[0] = frag1.substring(0, LBest) + "<FONT>";   //  Добавляем текст 1-го совпадающего участка в массивы с результатами.
+         mModTxt[0] = mOldTxt[0];
+
+         frag1 = frag1.substring(LBest);    //  Убираем из фрагментов полученный участок.
+         frag2 = frag2.substring(LBest);
+
+         L1 = 0;                         //  Исходное значение  для наименьшей длины участка.
+         L2 = frag1.length+1;   //  Исходное значение  для наибольшей длины участка.
+         LBest = 0;                 //  Лучшая длина участка.
+
+         while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+                 LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+                 if (frag1.substring(frag1.length - LMidi) == frag2.substring(frag2.length - LMidi)) {      //  Если участки средней длины совпадают (в конце фрагментов)...
+                         L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                         LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                         }
+                     else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+                 }
+
+         subFrag = frag1.substring(frag1.length - LBest);       //  Получаем текст 2-го совпадающего участка.
+         if ((rS = /^[^<>]*>/.exec(subFrag)) != null)     //  Если в текст попал фрагмент тега...
+                 LBest -= rS[0].length;                              //  то сокращаем длину полученного участка.
+
+         if (order) {                                    //  Если порядок сверки обычный...
+                 mOldTxt[1] = frag1.substring(0, frag1.length - LBest);   //  то добавляем в массивы текст несовпадающих участков в обычном порядке.
+                 mModTxt[1] = frag2.substring(0, frag2.length - LBest);
+                 }
+             else {                                    //  Если порядок сверки обратный...
+                 mOldTxt[1] = frag2.substring(0, frag2.length - LBest);   //  то добавляем в массивы текст несовпадающих участков в обратном порядке.
+                 mModTxt[1] = frag1.substring(0, frag1.length - LBest);
+                 }
+
+         mOldTxt[2] = "</FONT>" + frag1.substring(frag1.length - LBest);   //  Добавляем текст 2-го совпадающего участка в массивы с результатами.
+         mModTxt[2] = mOldTxt[2];
+
+
+         //  Разделение на 1-2-й метод
+
+         if (metod == 1)      //  Если выбран быстрый метод...
+                 compare1();        //  то запускаем 1-й метод сверки.
+             else  compare2();      //  Если выбран лучший метод -- запускаем 2-й метод сверки.
+         }
+
+
+
+///////////////   СВЕРКА :  Функция :  1-й метод сверки (быстрый)
+
+ function compare1() {
+
+ //  * Метод с фиксированной минимальной длиной совпадающего текста. Фиксация имеет недостаток -- если скрипт найдет в начале 1-й строки короткий участок, который совпадет с участком в конце 2-й строки, то скрипт выбирет эти участки, и тем самым "обрубит" дальнейший поиск новых участков. Поэтому, для очень длинных строк, минимум следует увеличивать хотя бы до 5.
+
+ for (k=1; ; k=k+2) {      //  Запускаем цикл для текстов несовпадающих участков из массива с финальными результатами.
+
+         if ((mOldTxt[k].length + ":" + mModTxt[k].length).search(/^0:|:0$|^1:1$|^1:2$|^2:1$/) != -1)
+         //  Если один из участков нулевой длины, или оба состоят из 1 символа, или один участок - 1 символ, а другой - 2 символа...
+                 break;                          //  Прерываем основной цикл.
+
+         if (mOldTxt[k].length < mModTxt[k].length) {    //  Если очередной несовпадающий участок из найденного текста меньше чем из заменяемого...
+                 order = true;          //  то сохраняем порядок фрагментов.
+                 frag1 = mOldTxt[k];
+                 frag2 = mModTxt[k];
+                 }
+             else {               //  А если больше...
+                 order = false;                    //  то изменяем порядок фрагментов.
+                 frag1 = mModTxt[k];
+                 frag2 = mOldTxt[k];
+                 }
+
+         mR = [];    //  Очищаем массив с результатами разделения одного несовпадающего участка.
+
+       LBL:
+         for (pos1 = 0;  pos1 <= frag1.length - minSim;  pos1++) {   //  Запускаем цикл для позиции суб-фрагмента в 1-м фрагменте.
+                 if (frag1.substring(pos1).search(/^[^<>]*>/) != -1) {      //  Если в 1-м фрагменте на текущей позиции есть конфликтная скобка...
+                         pos1 += /^[^<>]*>/.exec(frag1.substring(pos1))[0].length-1;     //  Увеличиваем позицию на длину конфликтного участка, минус поправка для счетчика.
+                         continue;                                     //  Переходим к поиску следующего суб-фрагмента минимальной длины.
+                         }
+                 subTxt = frag1.substring(pos1, pos1 + minSim);       //  Получаем суб-фрагмент минимальной длины на текущей позиции.
+                 if (frag2.indexOf(subTxt) != -1) {        //  Если текст суб-фрагмента можно найти во 2-м фрагменте, т.е. это совпадающий участок...
+                         pos2 = frag2.indexOf(subTxt);           //  Получаем позицию суб-фрагмента во 2-м фрагменте.
+                         if (frag2.substring(pos2).search(/^[^<>]*>/) != -1) {      //  Если в 2-м фрагменте на текущей позиции есть конфликтная скобка...
+                                 var frag_2;                                //  Вводим переменную для укороченного фрагмента.
+                                 while ((frag_2 = frag2.substring(pos2)).search(/^[^<>]*>/) != -1) {                    //  Цикл: пока не будет найден участок без конфликтной скобки.
+                                         if ((pos2 = frag2.indexOf(subTxt, pos2 + /^[^<>]*>/.exec(frag_2)[0].length)) == -1)   //  Если сразу после скобки нет ещё одного совпадающего участка...
+                                                 continue LBL;                                     //  то переходим к поиску следующего суб-фрагмента минимальной длины.
+                                         }
+                                 }
+                         //  Получаем суб. фрагменты, внутри которых можно будет расширить найденный совпадающий участок минимальной длины.
+                         subFrag1 = frag1.substring(pos1);    //  Получаем текст 1-го суб-фрагмента.
+                         subFrag2 = frag2.substring(pos2);    //  Получаем текст 2-го суб-фрагмента.  //  * В начале обоих располагается совпадающий участок.
+
+                         L1 = minSim - 1;                    //  Исходное значение  для наименьшей длины участка.
+                         L2 = subFrag1.length+1;    //  Исходное значение  для наибольшей длины участка.
+                         LBest = 0;                      //  Исходное значение  для лучшей длины участка.
+
+                         while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+                                 LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+                                 if (subFrag1.substring(0, LMidi) == subFrag2.substring(0, LMidi)) {      //  Если участки средней длины совпадают (в начале фрагментов).
+                                         L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                                         LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                                         }
+                                     else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+                                 }
+
+                         subFrag = frag1.substring(pos1, pos1 + LBest);       //  Получаем текст совпадающего участка максимальной длины для текущей позиции.
+
+                         if (subFrag.search(/<[^<>]*$/) != -1) {                  //  Если в совпадающем участке есть 1-й обрывок тега...
+                                 LBest -= /<[^<>]*$/.exec(subFrag)[0].length;                            //  Уменьшаем длину совпадающего участка на длину конфликтного участка.
+                                 if (LBest < minSim) {                             //  Если длина совпадающего участка меньше заданой минимальной длины...
+                                         pos1 += /^[^<>]*<[^<>]*>/.exec(frag1.substring(pos1))[0].length-1;   //  Увеличиваем позицию на длину конфликтного участка, минус поправка.
+                                          continue;                                     //  Переходим к поиску следующего суб-фрагмента минимальной длины.
+                                         }
+                                 }
+
+                         mR[0] = pos1;  mR[1] = pos2;  mR[2] = LBest;   //  Сохраняем результат
+                         break;                                                                                    //  Прерываем цикл поиска совпадающих участков.
+                         }
+                 }
+
+         if (mR.length == 0)     //  Если цикл поиска совпадающего участка ничего не нашел...
+                 break;            //  то прерываем основной цикл.
+
+         if (order) {                                    //  Если порядок сверки обычный -- добавляем в массивы текст трех участков в обычном порядке (с заменой последнего участка).
+                 mOldTxt.splice(k, 1,   frag1.substring(0, mR[0]),     "</FONT>" + frag1.substring(mR[0], mR[0] + mR[2]) + "<FONT>",     frag1.substring(mR[0] + mR[2]));
+                 mModTxt.splice(k, 1,   frag2.substring(0, mR[1]),    "</FONT>" + frag2.substring(mR[1], mR[1] + mR[2]) + "<FONT>",    frag2.substring(mR[1] + mR[2]));
+                 }
+             else {                                    //  Если порядок сверки обратный -- добавляем в массивы текст трех участков в обратном порядке (с заменой последнего участка).
+                 mOldTxt.splice(k, 1,   frag2.substring(0, mR[1]),    "</FONT>" + frag2.substring(mR[1], mR[1] + mR[2]) + "<FONT>",    frag2.substring(mR[1] + mR[2]));
+                 mModTxt.splice(k, 1,   frag1.substring(0, mR[0]),     "</FONT>" + frag1.substring(mR[0], mR[0] + mR[2]) + "<FONT>",     frag1.substring(mR[0] + mR[2]));
+                 }
+         }
+
+ searchTxt.innerHTML = "<P>"+correction(mOldTxt)+"</P>";     //  Преобразуем массивы в текст, корректируем теги сверки и добавляем полученный текст в поля окна.
+ replaceTxt.innerHTML = "<P contentEditable=true>"+correction(mModTxt)+"</P>";
+
+ Tw += new Date().getTime();     //  Общее время вычислений (конец промежутка).
+// alert("Быстрый метод" + "\n" + Tw);
+ }
+
+
+
+///////////////   СВЕРКА :  Функция :  2-й метод сверки (лучший)
+
+function compare2() {
+
+ //  * Отличительная особенность метода в том, что алгоритм в первую очередь ищет совпадающие участки текста максимальной длины. Таким способом несовпадающий участок может быть раздроблен на три участка: один совпадающий и два несовпадающих. Эти два, в свою очередь, тоже могут быть раздроблены тем же способом на три участка... и так далее, до до тех пор, пока скрипт не сможет найти совпадающий участок ни в одном несовпадающем участке.
+
+ LParent = [, mOldTxt[1].length];    //  Добавляем первое значение в массив длин родительских совпадающих участков (для k=1).
+ //  * mOldTxt[1] -- это несовпадающий участок, необходим для заполнения первого значения. Все следующие значения будут получены из совпадающих участков.
+
+LBL1:
+ for (k=1; ; ) {      //  Запускаем цикл для текстов несовпадающих участков из массива с финальными результатами.
+
+         if (mOldTxt[k].length < mModTxt[k].length) {    //  Если очередной несовпадающий участок из найденного текста меньше чем из заменяемого...
+                 order = true;          //  то сохраняем порядок фрагментов.
+                 frag1 = mOldTxt[k];
+                 frag2 = mModTxt[k];
+                 }
+             else {               //  А если больше...
+                 order = false;                    //  то изменяем порядок фрагментов.
+                 frag1 = mModTxt[k];
+                 frag2 = mOldTxt[k];
+                 }
+
+         L1 = minSim-1;                    //  Исходное значение  для наименьшей длины участка.
+         L2 = Math.min(LParent[k], frag1.length)+1;    //  Исходное значение  для наибольшей длины участка.  // * Не может привышать длину родительского совпадающего участка.
+         mRR = [];             //  Очищаем массив результата  с  совпадающем участком   максимальной   длины.
+
+         while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+                 LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+                 mR = [];             //  Очищаем массив результата  с  совпадающем участком   заданной   длины.
+
+LBL2:
+                 for (pos1 = 0;  pos1 <= frag1.length - LMidi;  pos1++) {        //  Запускаем цикл для позиции суб-фрагмента в 1-м фрагменте.
+                         subFrag = frag1.substring(pos1, pos1 + LMidi);          //  Получаем суб-фрагмент заданной длины на текущей позиции.
+
+                         if ((frag2.indexOf(subFrag)) != -1) {                                   //  Если текст суб-фрагмента можно найти во 2-м фрагменте, т.е. это совпадающий участок...
+
+                                 if (frag1.substring(pos1).search(/^[^<>]*>/) != -1) {      //  Если в    (совпадающий + 2-й несовпадающий)    есть конфликтная скобка (для frag1 (!))...
+                                         pos1 += /^[^<>]*>/.exec(frag1.substring(pos1))[0].length-1;     //  Увеличиваем позицию на длину конфликтного участка, минус поправка для счетчика.
+                                         continue;                                     //  Переходим к поиску следующего суб-фрагмента заданной длины.
+                                         }
+
+                                 pos2 = frag2.indexOf(subFrag);           //  Получаем позицию суб-фрагмента во 2-м фрагменте.
+
+                                 if (frag2.substring(pos2).search(/^[^<>]*>/) != -1) {      //  Если в    (совпадающий + 2-й несовпадающий)    есть конфликтная скобка (для frag2 (!))...
+                                         var frag_2;                                //  Вводим переменную для укороченного фрагмента.
+                                         while ((frag_2 = frag2.substring(pos2)).search(/^[^<>]*>/) != -1) {                    //  Цикл: пока не будет найден участок без конфликтной скобки.
+                                                 if ((pos2 = frag2.indexOf(subFrag, pos2 + /^[^<>]*>/.exec(frag_2)[0].length)) == -1)   //  Если сразу после скобки нет ещё одного совпадающего участка...
+                                                         continue LBL2;                                     //  то переходим к поиску следующего суб-фрагмента заданной длины.
+                                                 }
+                                         }
+
+                                 if (subFrag.search(/<[^<>]*$/) != -1) {             //  Если в совпадающем участке есть 1-й обрывок тега...
+                                         if (subFrag.replace(/<[^<>]*>/g, "").search(/<[^<>]*$/) < minSim) {            //  Если совпадающий участок без тегов меньше заданной минимальной длины...
+                                                 pos1 += /^[^<>]*<[^<>]*>/.exec(frag1.substring(pos1))[0].length-1;   //  Увеличиваем позицию на длину конфликтного участка, минус поправка.
+                                                 continue;                                     //  Переходим к поиску следующего суб-фрагмента заданной длины.
+                                                 }
+                                         //  Сохраняем промежуточный результат.
+                                         mR[0] = pos1;     //  Позиция совпадающего участка в 1-м фрагменте.
+                                         mR[1] = pos2;     //  Позиция совпадающего участка во 2-м фрагменте.
+                                         mR[2] = subFrag.search(/<[^<>]*$/);    //  Длина совпадающего участка без обрывка тега (для выделения FONT).
+                                         mR[3] = LMidi;     //  Вся длина совпадающего участка (для максимальной длины дочерних совпадающих участков).
+                                         break;         //  Прерываем цикл поиска совпадающего участка заданной длины.
+                                         }
+
+                                 if (subFrag.replace(/<[^<>]*>/g, "").length < minSim) {            //  Если совпадающий участок без тегов меньше заданной минимальной длины...
+                                         pos1 += /^[^<>]*<[^<>]*>/.exec(frag1.substring(pos1))[0].length-1;   //  Добавляем к позиции длину первого тега, минус поправка.
+                                         continue;                                     //  Переходим к поиску следующего суб-фрагмента заданной длины.
+                                         }
+
+                                 //  Сохраняем промежуточный результат.
+                                 mR[0] = pos1;     //  Позиция совпадающего участка в 1-м фрагменте.
+                                 mR[1] = pos2;     //  Позиция совпадающего участка во 2-м фрагменте.
+                                 mR[2] = LMidi;    //  Длина совпадающего участка без обрывка тега, которого здесь и не было (для выделения FONT).
+                                 mR[3] = LMidi;     //  Вся длина совпадающего участка (для максимальной длины дочерних совпадающих участков).
+                                 break;         //  Прерываем цикл поиска совпадающего участка заданной длины.
+                                 }
+                         }
+
+                 if (mR.length != 0) {    //  Если цикл выдал результат...
+                         L1=LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                         for (h=0; h<=4; h++)  mRR[h] = mR[h];    //  Сохраняем промежуточный результат.
+                         }
+                     else                //  Если нет результата...
+                         L2=LMidi;               //  Изменяем наибольшую длину на среднее значение.
+                 }
+
+         if (mRR.length == 0) {              //  Если основной цикл для поиска совпадающего участка максимальной длины ничего не выдал...
+
+                 while (mOldTxt[(k=k+2)] != undefined) {             //  Проверяем в массиве  наличие следующего несовпадающего участка.
+                         if ((mOldTxt[k].length + ":" + mModTxt[k].length).search(/^0:|:0$|^1:1$|^1:2$|^2:1$/) == -1)
+                         //  Если участки не из тех, где...  или один из участков нулевой длины, или оба состоят из 1 символа, или один участок - 1 символ, а другой - 2 символа...
+                                 continue LBL1;           //  то переходим к очередному дроблению несовпадающего участка.
+                         }
+                 break;           //  Если следующий участок так и не найден  --  Прерываем основной цикл.
+                 }
+
+             else {            //  Если основной цикл выдал результаты...
+
+                 if (order) {                                    //  Если порядок сверки обычный -- добавляем в массивы текст трех участков в обычном порядке (с заменой обработанного участка).
+                         mOldTxt.splice(k, 1,   frag1.substring(0, mRR[0]),     "</FONT>" + frag1.substring(mRR[0], mRR[0] + mRR[2]) + "<FONT>",     frag1.substring(mRR[0] + mRR[2]));
+                         mModTxt.splice(k, 1,   frag2.substring(0, mRR[1]),    "</FONT>" + frag2.substring(mRR[1], mRR[1] + mRR[2]) + "<FONT>",    frag2.substring(mRR[1] + mRR[2]));
+                         }
+                     else {                                    //  Если порядок сверки обратный -- добавляем в массивы текст трех участков в обратном порядке (с заменой обработанного участка).
+                         mOldTxt.splice(k, 1,   frag2.substring(0, mRR[1]),    "</FONT>" + frag2.substring(mRR[1], mRR[1] + mRR[2]) + "<FONT>",    frag2.substring(mRR[1] + mRR[2]));
+                         mModTxt.splice(k, 1,   frag1.substring(0, mRR[0]),     "</FONT>" + frag1.substring(mRR[0], mRR[0] + mRR[2]) + "<FONT>",     frag1.substring(mRR[0] + mRR[2]));
+                         }
+
+                 LParent.splice(k, 1,   mRR[3], undefined, mRR[3]);    //  Добавляем значения в массив длин родительских совпадающих участков.
+                 //  * Указывается длина нового совпадающего участка для двух новых несовпадающих участков (в них невозможно найти совпадающие участки большей длины).
+                 }
+         }
+
+ //  Преобразуем массивы в текст, корректируем теги сверки и добавляем полученный текст в поля окна.
+ searchTxt.innerHTML = "<P>"+correction(mOldTxt)+"</P>";
+ replaceTxt.innerHTML = "<P contentEditable=true>"+correction(mModTxt)+"</P>";
+
+ Tw += new Date().getTime();     //  Общее время вычислений (конец промежутка).
+// alert("Точный метод" + "\n" + Tw);
+ }
+
+
+
+///////////////   СВЕРКА :  Функция :  Финальная коррекции тегов <FONT> и сборка текста строк.
+
+ function correction(mTxt) {
+         var rS;                 //  Результат детального поиска.
+         var k;                       //  Счетчик цикла.
+         var styleTxt = "";        //  Сборная строка с форматами <FONT> сверки.
+
+         for (k=0; k<mTxt.length; k++)      //  Запускаем цикл для участков текста.
+                 styleTxt += mTxt[k];         //  Собираем участки в одну строку.
+
+         styleTxt = styleTxt.replace(/&/g, "&amp;").replace(/ /g, nbspEntity).replace(/\t/g, "&lt;").replace(/\r/g, "&gt;").replace(/­/g, "&shy;");
+
+                 //  Поиск соседних тегов.   При конфликте тегов -- добавление тегов  <FONT>
+         var re01 = new RegExp("(<[^<>]+>)([^<>]*)(<[^<>]+>)", "g");
+         for (re01.lastIndex = 0;   (rS = re01.exec(styleTxt)) != null; )    //  Запускаем цикл для детального поиска соседних тегов.
+                 if (rS[1] == "<FONT>"  &&  rS[3] != "</FONT>") {                   //  Если нет пары для начального тега <FONT>...
+                         styleTxt = styleTxt.substring(0, rS.index) + rS[1] + rS[2] + "</FONT>" + rS[3] + "<FONT>" + styleTxt.substring(re01.lastIndex);
+                         //  То добавляем два тега  </FONT> и <FONT>  вокруг второго местного тега (не FONT).
+                         re01.lastIndex += 7;   //  Корректируем начало поиска следующих соседних тегов.
+                         }
+
+                 //  Объединение примыкающих элементов  FONT.
+         var re02 = new RegExp("</FONT><FONT>", "g");
+         var re02_ = "";
+         styleTxt = styleTxt.replace(re02, re02_);
+
+                 //  Поиск примыкающих элементов  FONT (через другой тег)   и   удаление лишних.
+         var re03 = new RegExp("<FONT></FONT>((<[^<>]+>)+?<FONT>)", "g");
+         var re03_ = "$1";
+         while (styleTxt.search(re03) != -1)
+                 styleTxt = styleTxt.replace(re03, re03_);
+
+         var re04 = new RegExp("(</FONT>(<[^<>]+>)+?)<FONT></FONT>", "g");
+         var re04_ = "$1";
+         while (styleTxt.search(re04) != -1)
+                 styleTxt = styleTxt.replace(re04, re04_);
+
+                 //  Изменение стиля пустого элемента FONT -- добавление синей узкой линии.
+         var re05 = new RegExp("<FONT></FONT>", "g");
+         var re05_ = '<FONT style="width=1; background: #59A3FF;"></FONT>';
+
+                 //  Изменение стиля элемента FONT с одним символом ударения -- добавление красной узкой линии.
+         var re06 = new RegExp("<FONT>("+String.fromCharCode(769)+")</FONT>", "g");
+         var re06_ = '<FONT style="padding-right: 1; background: #FF9999;">$1</FONT>';
+
+         styleTxt = styleTxt.replace(re05, re05_).replace(re06, re06_);
+
+         return styleTxt;    //  Возвращаем готовый текст.
+         }
+
+
+
+
+
+
+
+
+///////////////   Функция для открытия/закрытия окна справки
+
+ function button_10() {   //  "Справка"
+
+ if (winInfo  &&  !winInfo.closed) {    //  Если окно уже открыто...
+         winInfo.close();    //  то закрываем его
+         return;   //  и выходим из функции.
+         }
+
+ var titleMsg = "Восстановление регистра заголовков и подзаголовков";   //  Заголовок окна.
+
+ var mTxt1 = [];   //  Отдельные разделы этого массива справки.
+ var mTxt2 = [];
+ var mTxt3 = [];
+
+ mTxt1 = [["Справка",, "19 центр линия#707070 #1A544F (Cambria, Georgia, Liberation Serif)"], []];   //  Заголовок текста в окне.
+
+ if (mInfo.length!=0) {             //  Если есть массив строк текста дополнительной справки...
+         for (k=0; k<mInfo.length; k++)      //  Запускаем цикл для этого массива.
+                 mTxt2[k] = [mInfo[k],, "#191919 отступ"];     //  Добавляем форматирование для каждой строки.
+         mTxt2[k] = ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]   //  Добавляем строку-разделитель.
+         }
+
+ if (lastButton != 0) {    //  Если это обычная операция...
+         mTxt3 = [         //   Создаем общий раздел справки.
+             ["• <B>Найден текст</B> — Нажатие на поле с текстом обновит сверку.",, "#191919"],
+             [z1("▼")+" — Копирование текста в поле замены.",, "#191919"],
+             [" ",, "3"],
+             ["• <B>Заменить на</B> — Текст в этом поле можно редактировать.",, "#191919"],
+             [z4("А↔а")+" — Выключатель режима изменения регистра щелчком мыши.",, "#191919"],
+             [" ",, "3"],
+             ["• <B>Варианты</B> — Здесь можно выбрать вариант замены.",, "#191919"],
+             ["• <B>Заменить</B> — Произвести одну замену.",, "#191919"],
+             ["• <B>Пропустить</B> — Пропустить одну замену.",, "#191919"],
+             ["• <B>Заменить всё</B> — Произвести текущую и все следующие замены в одной операции.",, "#191919"],
+             ["• <B>Пропустить всё</B> — Прервать выполнение одной операции.",, "#191919"],
+             [" ",, "5"],
+             [z3("⇕")+" — Выключатель для сверки.",, "#191919"],
+             [z2('<IMG height=15 width=15 src="images/undo.png">')+" "+z2('<IMG height=15 width=15 src="images/redo.png">')+" — Отмена/возврат последних действий.",, "#191919"],
+             [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+             [z3("×")+" — <I>системная кнопка</I> — Прервать выполнение всех операций.",, "#191919"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"],
+             ["Красным цветом <B>сверка</B> отмечает отличающиеся символы. Синим – отсутствующие символы или отличающиеся/отсутствующие <теги>.",, "#191919"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"],
+             ["При редакции строки в поле замены, можно использовать системные комбинации:",, "#191919"],
+             [" ",, "3"],
+             ["<B>Ctrl+Z</B> — Отменить.",, "#191919"],
+             ["<B>Ctrl+Y</B> — Вернуть.",, "#191919"],
+             ["<B>Ctrl+I</B> — Добавить/удалить курсив.",, "#191919"],
+             ["<B>Ctrl+B</B> — Добавить/удалить жирность.",, "#191919"],
+             [" ",, "3"],
+             ["... и другие горячие клавиши.",, "#191919"]];
+         }
+
+ if (lastButton == 0) {    //  Если это контрольная операция...
+         mTxt3 = [         //   Создаем измененный общий раздел справки.
+             ["• <B>Продолжить</B> — Перейти к результатам.",, "#191919"],
+             [" ",, "5"],
+             [z2('<IMG height=15 width=15 src="images/undo.png">')+" — Отменить последнее действие.",, "#191919"],
+             [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+             [z3("×")+" <I>(системная кнопка)</I> — Перейти к результатам.",, "#191919"]];
+         }
+
+ var mTxt = mTxt1.concat(mTxt2, mTxt3);    //  Объединяем все разделы в один массив.
+
+
+ //  Запускаем окно справки.
+ winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", [titleMsg, mTxt],
+         "dialogHeight: "+heightInfo+"px; dialogWidth: 350px; dialogLeft: "+(window.screenLeft+698)+"; dialogTop: "+(window.screenTop-delta)+"; center: Yes; help: No; resizable: Yes; status: No");
+
+
+///////////////   Функции добавления стиля выделения в окне справки
+
+function z1(txt) {
+         return '<FONT  style="font-size: 10px;color: #000;  background: #DBDBDB; font-weight: bold; padding: 0 3 0 3; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+function z2(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 3 3 1 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+function z3(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+function z4(txt) {
+         return '<FONT  style="font-size: 12px; letter-spacing: 2px; color: #000; background: #DBDBDB; padding: 0 2 0 2; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+ }
+
+</SCRIPT>
+</BODY>
+</HTML>

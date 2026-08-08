@@ -1,0 +1,322 @@
+ <HTML>
+ <HEAD>
+ <TITLE> Пост-корректор                                                                                                                                                                 </TITLE>
+ <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <STYLE>
+ BODY {
+	 background: #EBE9ED;
+	 margin: 0;
+	 padding: 8px 8px 0 8px;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 }
+ BUTTON {
+	 width: 150px;
+	 height: 26;
+	 margin: 3px;
+	 padding: 1px;
+	 font-size: 13px;
+	 background: #EDEDEF;
+	 }
+ SPAN {
+	 height: 18px;
+	 display: none;
+	 padding: 0 0 0 12;
+	 }
+ </STYLE>
+ </HEAD>
+
+ <BODY id=mainElem>
+ <DIV>
+	 <TABLE cellspacing=0 cellpadding=0 style="width: 100%; margin-bottom: 6px">
+		 <TR>
+			 <TD style="width: 100%; border: 1px solid #B0B0B0; padding: 1 5 1 5; font-size: 16px; color: #191919">
+				 <LABEL id=count style="float: right;">Счетчик замен</LABEL>
+				 <LABEL id=titleOp>Заголовок операции</LABEL>
+			 </TD>
+			 <TD style="padding: 0 0 0 2; text-align: right">
+				 <BUTTON id=b7 onclick=button_X(7) style="width: 33px; height: 28px; margin: 0 0 0 10; padding: 0;"><IMG height=18 width=18 src="images/undo_.png"></BUTTON>
+				 <BUTTON id=b8 onclick=button_X(8) style="width: 33px; height: 28px; margin: 0 0 0 5; padding: 0;"><IMG height=18 width=18 src="images/redo_.png"></BUTTON>
+				 <BUTTON id=b9 onclick=button_09() style="width: 28px; height: 28px; margin: 0 0 0 10; font-weight: bold; font-size: 16px; color: #404040">?</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=1 style="width: 100%">
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL id=searchLabal  style="vertical-align: -10%;">Найден текст:</LABEL>
+			 </TD>
+			 <TD>
+				 <INPUT id=searchTxt value="Исходный текст" readonly style="width: 100%; padding-left: 5px; font-size: 15px; color: #404040;">
+			 </TD>
+		 </TR>
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL id=replaceLabal style="vertical-align: -10%;">Заменить на:</LABEL>
+			 </TD>
+			 <TD>
+				 <INPUT id=replaceTxt value="" onfocus=rButton_X(6) style="width: 100%; padding-left: 5px; font-size: 15px;">
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=0 align=right width="100%">
+		 <TR>
+			 <TD valign=top style="width: 100%; padding: 0 15 5 3; font-size: 13px">
+				 <FIELDSET id=rbs style="padding: 5 0 5 0">
+					 <LEGEND style="padding: 0 3 3 15; text-indent: -12; color: #545454" align=center>Варианты</LEGEND>
+					 <SPAN id=rb1_span onclick=rButton_X(1)>
+						 <INPUT id=rb1 type=radio name=set style="margin: -2 5 0 0">
+						 <LABEL id=rb1_label style="vertical-align: 15%">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb2_span onclick=rButton_X(2)>
+						 <INPUT id=rb2 type=radio name=set style="margin: -2 5 0 0">
+						 <LABEL id=rb2_label style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb3_span onclick=rButton_X(3)>
+						 <INPUT id=rb3 type=radio name=set style="margin: -2 5 0 0">
+						 <LABEL id=rb3_label style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb4_span onclick=rButton_X(4)>
+						 <INPUT id=rb4 type=radio name=set style="margin: -2 5 0 0">
+						 <LABEL id=rb4_label style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb5_span onclick=rButton_X(5)>
+						 <INPUT id=rb5 type=radio name=set style="margin: -2 5 0 0">
+						 <LABEL id=rb5_label style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb6_span onclick=rButton_X(6) disabled>
+						 <INPUT id=rb6 type=radio name=set style="margin: -2 5 0 0">
+						 <LABEL id=rb6_label style="vertical-align: 15%;">Применять ручную правку</LABEL>
+					 </SPAN>
+				 </FIELDSET>
+			 </TD>
+			 <TD valign=bottom style="width: 200px; padding: 10 5 2 3">
+				 <BUTTON id=b1 onclick=button_X(1)>Заменить</BUTTON>
+				 <BUTTON id=b3 onclick=button_X(3)>Заменить похожие</BUTTON>
+				 <BUTTON id=b5 onclick=button_X(5)>Заменить всё</BUTTON>
+			 </TD>
+			 <TD valign=bottom style="width: 200px; padding: 10 0 2 3">
+				 <BUTTON id=b2 onclick=button_X(2)>Пропустить</BUTTON>
+				 <BUTTON id=b4 onclick=button_X(4)>Пропустить похожие</BUTTON>
+				 <BUTTON id=b6 onclick=button_X(6)>Пропустить всё</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+ </DIV>
+
+<script>
+
+
+
+///////////////   Получение данных и переменные
+
+ var arg = window.dialogArguments;    //  Получение данных, отправленных из основного скрипта.
+
+ //  Разбираем массив:
+ titleOp.innerHTML = arg[0] + ".  " + arg[1];   //  Заголовок операции.
+ count.innerHTML=arg[2];   //  Счетчик.
+ searchTxt.value=arg[3];    //  Исходный текст.
+ var lastButton = arg[4];   //  Код исходной нажатой кнопки.
+ var lastRadio = arg[5];   //  Код исходной нажатой радиокнопки.
+ var activ_b7 = arg[6];   //  Индикатор активности кнопки "Отмена последнего действия".
+ var activ_b8 = arg[7];   //  Индикатор активности кнопки "Возвращение отмененного действия".
+ var sino = arg[8];     //  Разрешение на ручную правку.
+ var wT = arg[9];      //  Отступ окна от верхнего края экрана (с шапкой).
+ var mRB = arg[10];    //  Массив управления радиокнопками.
+ var mInfo = arg[11];     //  Текст дополнительной справки.
+ var heightInfo = arg[12];   //  Высота окна справки.
+ var newTxt = arg[14];     //  Новый текст.
+ var last_Button = arg[15];   //  Элемент нажатой кнопки.
+
+ var dL=0;    //  Отступ окна от левого края экрана.
+ var dT=0;    //  Отступ окна от верхнего края экрана.
+ var delta;    //  Высота шапки окна.
+ var winInfo;    //  Окно справки.
+ var k;    //  Счетчик цикла.
+
+ if (last_Button) {    //  Если обозначен код следующей нажатой кнопки...
+         elemButton = [, b1, b2, b3, b4, b5, b6][last_Button];   //  Получаем элемент этой кнопки.
+         elemButton.style.background = "#F4F4F4";           //  Делаем кнопку немного светлее.
+         elemButton.innerHTML = "• "+elemButton.innerHTML+" •";   //  Добавляем маркеры.
+         }
+
+
+///////////////   Блокировка поля ввода
+
+ if (!sino) {    //  Если ручная правка не разрешена...
+         if (lastButton != 0)    //  Если это не контрольная операция...
+                 replaceTxt.title="       Заблокировано   \n ----------------------------- \n Для этого фрагмента \n    не предусмотрена \n       ручная правка ";   //  Добавляем подсказку.
+         replaceTxt.readOnly = true;     //  Блокируем редакцию поля "Заменить на".
+         replaceTxt.onfocus = "";          //  Убираем с поля функцию реагирующую на фокусировку.
+         replaceTxt.style.color = "#404040";    //  Приглушаем цвет шрифта.
+         }
+
+
+
+///////////////   Создание радиокнопок
+
+ var mSpan = rbs.getElementsByTagName("SPAN");   //  Массив из элементов SPAN радиокнопок.
+ var mLabel = rbs.getElementsByTagName("LABEL");   //  Массив из элементов LABEL радиокнопок.
+
+ for (k=0; k<mRB.length; k++) {             //  Запускаем цикл для массива управления радиокнопками.
+         mSpan[k].style.display = "block";      //  Показываем активные радиокнопки.
+         mLabel[k].innerHTML = mRB[k][2];   //  Добавляем пояснения.
+         }
+
+
+
+///////////////   Режим контрольной операции
+
+ if (lastButton == 0) {      //  Если это контрольная операция...
+         titleOp.innerHTML = "Пост-корректор";   //  Вписываем заголовок.
+         count.innerHTML = "<I>финал</I>";   //  Вписываем текст для счетчика.
+         document.title="АК-скрипт                                                                                                                                                                             ";    //  Меняем заголовок окна.
+         searchTxt.value = "";           //  Очищаем поля.
+         replaceTxt.value = "";
+         searchTxt.style.background = "#EBE9ED";    //  Затемняем цвет фона.
+         replaceTxt.style.background = "#EBE9ED";
+         searchTxt.disabled=true;         //  Отключаем поля.
+         replaceTxt.disabled=true;
+         searchLabal.style.color = "#777";       //  Приглушаем названия полей.
+         replaceLabal.style.color = "777";
+         for (k=0; k<6; k++)                    //  Запускаем цикл для кнопок.
+                 [b1, b2, b3, b4, b5, b6][k].style.display = "none";    //  где скрываем кнопки.
+         b6.insertAdjacentHTML("afterEnd",  "<BUTTON onclick=button_X(99)>Продолжить</BUTTON>");   //  Добавляем новую кнопку для выхода из скрипта.
+         rbs.firstChild.innerHTML = "Мини-статистика";        //  Меняем заголовок "Варианты" на "Мини-статистика".
+         }
+
+
+
+ rButton_X(lastRadio);    //  Симуляция нажатия радиокнопки, указанной в основном скрипте.
+
+
+
+///////////////   Функция, которая включается после загрузки окна
+
+ window.onload = function() {
+         dL=window.screenLeft;      //  Сохранение начального значения отступа окна от левого края экрана
+         dT=window.screenTop;     //  и от верхнего края.
+         delta=dT-wT;                         //  Высота шапки окна.
+         if (activ_b7)  b7.innerHTML = '<IMG height=18 width=18 src="images/undo.png">';    //  Активация кнопки "Отмена действия".
+             else  b7.disabled=true;
+         if (activ_b8)  b8.innerHTML = '<IMG height=18 width=18 src="images/redo.png">';    //  Активация кнопки "Возвращение действия".
+             else  b8.disabled=true;
+         var el = [mainElem ,b1, b2, b3, b4, b5, b6, b7, b8][lastButton];
+         if (el.disabled==false)
+                 el.focus();    //  Перенос "фокуса" на кнопку, указанную в основном скрипте.
+             else  mainElem.focus();      //  А если дезактивирован -- "фокусируемся" на боди окна.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие радиокнопок
+
+ function rButton_X(num) {
+         if (num==6  &&  !sino)  num=1;                     //  Дополнительная блокировка поля ввода.
+         mLabel[lastRadio-1].style.fontSize = "13px";     //  Восстанавливаем размер шрифта для предыдущей радиокнопки.
+         lastRadio=num;                                                        //  Фиксируем номер нажатой радиокнопки.
+         var elemLR = mSpan[num-1].firstChild;   //  Находим элемент соответствующий этой радиокнопке.
+         elemLR.checked=true;                       //  Включаем эту радиокнопку.
+
+         if (num==6) {                //  Если выбрана ручная правка...
+                 b5.disabled=true;              //  Блокируем кнопку "Заменить всё".
+                 if (replaceTxt.value=="")         //  Если текстовое поле не заполнено....
+                         replaceTxt.value = newTxt;   //  то заполняем текстовое поле новым текстом.
+                 return;    //  Выходим из функции.
+                 }
+
+         mLabel[num-1].style.fontSize = "14px";   //  Увеличиваем шрифт подписи для выбранной радиокнопки.
+         b5.disabled=false;       //  Снимаем блокировку с кнопки "Заменить всё".
+
+         if (lastButton != 0)      //  Если это не контрольная операция...
+                 replaceTxt.value = arg[3].replace(mRB[num-1][0], mRB[num-1][1]);   //  Заполняем текстовое поле в соответствии с рег. выражением для выбранной радиокнопки.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие кнопок
+
+ function button_X(num) {
+         window.returnValue = [num, lastRadio, window.screenLeft - dL, window.screenTop - dT, replaceTxt.value];
+         //  Отправка массива: [<код нажатой кнопки>, <код нажатой радиокнопки>, <горизонтальный сдвиг>, <вертикальный сдвиг>, <текст в поле замены>].
+         window.close();    //  Закрытие этого окна.
+         }
+
+
+
+///////////////   Функция для открытия/закрытия окна справки
+
+ function button_09() {   //  "Справка"
+
+ if (winInfo  &&  !winInfo.closed) {    //  Если окно уже открыто...
+         winInfo.close();    //  то закрываем его
+         return;   //  и выходим из функции.
+         }
+
+ var titleMsg = "";   //  Заголовок окна.
+
+ var mTxt1 = [];   //  Отдельные разделы этого массива справки.
+ var mTxt2 = [];
+ var mTxt3 = [];
+
+ mTxt1 = [["Справка",, "19 центр линия#707070 #1A544F (Cambria, Georgia, Liberation Serif)"], []];   //  Заголовок текста в окне.
+
+ if (mInfo.length!=0) {             //  Если есть массив строк текста дополнительной справки...
+         for (k=0; k<mInfo.length; k++)      //  Запускаем цикл для этого массива.
+                 mTxt2[k] = [mInfo[k],, "#191919 отступ"];     //  Добавляем форматирование для каждой строки.
+         mTxt2[k] = ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]   //  Добавляем строку-разделитель.
+         }
+
+ if (lastButton != 0) {    //  Если это обычная операция...
+         titleMsg = "Пост-корректор • операция №" + arg[0];   //  Заголовок окна.
+         mTxt3 = [         //   Создаем общий раздел справки.
+             ["• <B>Найден текст</B> — Текст в этом поле можно только скопировать.",, "#191919"],
+             ["• <B>Заменить на</B> — Текст в этом поле можно редактировать.",, "#191919"],
+             ["• <B>Варианты</B> — Здесь можно выбрать вариант замены.",, "#191919"],
+             ["• <B>Заменить</B> — Произвести одну замену.",, "#191919"],
+             ["• <B>Пропустить</B> — Пропустить одну замену.",, "#191919"],
+             ["• <B>Заменить похожие</B> — Заменить текущий и все следующие похожие фрагменты.",, "#191919"],
+             ["• <B>Пропустить похожие</B> — Пропустить текущий и все следующие похожие фрагменты.",, "#191919"],
+             ["• <B>Заменить всё</B> — Произвести текущую и все следующие замены в этой операции.",, "#191919"],
+             ["• <B>Пропустить всё</B> — Прервать выполнение этой операции.",, "#191919"],
+             [" ",, "5"],
+             [z2('<IMG height=15 width=15 src="images/undo.png">')+" "+z2('<IMG height=15 width=15 src="images/redo.png">')+" — Отмена/возврат последних действий.",, "#191919"],
+             [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+             [z3("×")+" <I>(системная кнопка)</I> — Прервать выполнение всех операций.",, "#191919"],
+             [],
+             ["* * *",, "центр 15 #191919"],
+             ["Большинство изменений, сделанных этим скриптом, будут потеряны, если после него запустить обработку «Текст-корректором» или «Генеральной уборкой».",, "отступ #191919"]];
+         }
+
+ if (lastButton == 0) {    //  Если это контрольная операция...
+         titleMsg = "Пост-корректор • Финал";   //  Заголовок окна.
+         mTxt3 = [         //   Создаем измененный общий раздел справки.
+             ["• <B>Продолжить</B> — Перейти к результатам.",, "#191919"],
+             [" ",, "5"],
+             [z2('<IMG height=15 width=15 src="images/undo.png">')+" — Отменить последнее действие.",, "#191919"],
+             [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+             [z3("×")+" <I>(системная кнопка)</I> — Перейти к результатам.",, "#191919"],
+             [],
+             ["* * *",, "центр 15 #191919"],
+             ["Большинство изменений, сделанных этим скриптом, будут потеряны, если после него запустить обработку «Текст-корректором» или «Генеральной уборкой».",, "отступ #191919"]];
+         }
+
+ var mTxt = mTxt1.concat(mTxt2, mTxt3);    //  Объединяем все разделы в один массив.
+
+
+ //  Запускаем окно справки.
+ winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", [titleMsg, mTxt],
+         "dialogHeight: "+heightInfo+"px; dialogWidth: 350px; dialogLeft: "+(window.screenLeft+650)+"; dialogTop: "+(window.screenTop-delta)+"; center: Yes; help: No; resizable: Yes; status: No");
+
+
+function z2(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 3 3 1 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+function z3(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+ }
+
+</SCRIPT>
+</BODY>
+</HTML>

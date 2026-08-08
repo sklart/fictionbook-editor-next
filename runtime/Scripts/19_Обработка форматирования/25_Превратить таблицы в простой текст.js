@@ -1,4 +1,4 @@
-﻿// Скрипт "Превратить таблицы в простой текст v1.3". Автор Sclex
+// Скрипт "Превратить таблицы в простой текст v1.3". Автор Sclex
 
 function Run() {
   var fbwBody=document.getElementById("fbw_body");

@@ -1,0 +1,401 @@
+ <!-- Создание файла — Александр Ка (05.05.2026) -->
+
+ <HTML>
+ <HEAD>
+ <TITLE> Текст-корректор                                                                                                                                                             </TITLE>
+ <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <STYLE>
+ BODY {
+	 background: #EBE9ED;
+	 margin: 0;
+	 padding: 8px 8px 0 8px;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 }
+ BUTTON {
+	 width: 150px;
+	 height=26;
+	 margin: 3px;
+	 padding: 1px;
+	 font-size: 13px;
+	 background: #EDEDEF;
+	 }
+ </STYLE>
+ </HEAD>
+
+ <BODY>
+ <DIV>
+	 <TABLE cellspacing=0 cellpadding=0 style="width: 100%; margin-bottom: 6px">
+		 <TR>
+			 <TD style="width: 100%; border: 1px solid #B0B0B0; padding: 1px; font-size: 16px; color: #191919">
+				 <LABEL id=count style="float: right; padding-right: 5px">Счетчик замен</LABEL>
+				 <LABEL id=title style="padding-left: 5px">Заголовок операции</LABEL>
+			 </TD>
+			 <TD style="padding: 0 0 0 5px; text-align: right">
+				 <BUTTON id=b7 onclick=button_X(7) style="width: 33px; height: 28px; margin: 0 5 0 12; padding: 0;"><IMG height=18 width=18 src="images/undo_.png"></BUTTON>
+				 <BUTTON id=b8 onclick=button_X(8) style="width: 33px; height: 28px; margin: 0 10 0 0; padding: 0;"><IMG height=18 width=18 src="images/redo_.png"></BUTTON>
+				 <BUTTON id=b9 onclick=button_09() style="width: 28px; height: 28px; margin: 0; font-weight: bold; font-size: 16px; color: #404040">?</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=1 style="width: 100%">
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL style="vertical-align: -10%;">Найден текст:</LABEL>
+			 </TD>
+			 <TD>
+				 <INPUT id=searchTxt value="Исходный текст" readonly style="width: 100%; padding-left: 5px; font-size: 15px; color: #404040">
+			 </TD>
+		 </TR>
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL style="vertical-align: -10%;">Заменить на:</LABEL>
+			 </TD>
+			 <TD>
+				 <INPUT id=replaceTxt value="" onfocus=rButton_X(6) style="width: 100%; padding-left: 5px; font-size: 15px">
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=0 align=right width="100%">
+		 <TR>
+			 <TD id=notes valign=top style="width: 100%; padding: 0 15 5 3; font-size: 13px">
+				 <FIELDSET id=rbs style="padding: 5 0 5 12">
+					 <LEGEND style="padding: 0 3 3 15; text-indent: -12; color: #545454" align=center>Варианты</LEGEND>
+					 <SPAN id=rb1_span style="display: block">
+						 <INPUT id=rb1 type=radio name=set onclick=rButton_X(1) style="margin: -2px 5 0 0">
+						 <LABEL id=rb1_label onclick=rButton_X(1) style="vertical-align: 15%">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb2_span style="display: block">
+						 <INPUT id=rb2 type=radio name=set onclick=rButton_X(2) style="margin: -2px 5 0 0">
+						 <LABEL id=rb2_label onclick=rButton_X(2) style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb3_span style="display: block">
+						 <INPUT id=rb3 type=radio name=set onclick=rButton_X(3) style="margin: -2px 5 0 0">
+						 <LABEL id=rb3_label onclick=rButton_X(3) style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb4_span style="display: none">
+						 <INPUT id=rb4 type=radio name=set onclick=rButton_X(4) style="margin: -2px 5 0 0">
+						 <LABEL id=rb4_label onclick=rButton_X(4) style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb5_span style="display: none">
+						 <INPUT id=rb5 type=radio name=set onclick=rButton_X(5) style="margin: -2px 5 0 0">
+						 <LABEL id=rb5_label onclick=rButton_X(5) style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb6_span style="display: none" disabled>
+						 <INPUT id=rb6 type=radio name=set onclick=rButton_X(6) style="margin: -2px 5 0 0">
+						 <LABEL id=rb6_label style="vertical-align: 15%;">Применять ручную правку</LABEL>
+					 </SPAN>
+				 </FIELDSET>
+			 </TD>
+			 <TD valign=bottom style="width: 200px; padding: 10 5 2 3">
+				 <BUTTON id=b1 onclick=button_X(1)>Заменить</BUTTON>
+				 <BUTTON id=b3 onclick=button_X(3)>Заменить похожие</BUTTON>
+				 <BUTTON id=b5 onclick=button_X(5)>Заменить всё</BUTTON>
+			 </TD>
+			 <TD valign=bottom style="width: 200px; padding: 10 0 2 3">
+				 <BUTTON id=b2 onclick=button_X(2)>Пропустить</BUTTON>
+				 <BUTTON id=b4 onclick=button_X(4)>Пропустить похожие</BUTTON>
+				 <BUTTON id=b6 onclick=button_X(6)>Пропустить всё</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+ </DIV>
+
+<script>
+
+ var arg = window.dialogArguments;    //  Получение данных, отправленных из основного скрипта.
+
+///////////////   Заполняем элементы структуры соответствующем текстом:
+ var numOp = arg[0];    //  Номер операции.
+ count.innerHTML=arg[1];   //  счетчик,
+ if (arg[1].search(/^(\d+) \/ \1$/) != -1)  count.style.color = "#B70000";   //  Если на счетчике последняя замена -- выделяем его.
+ searchTxt.value=arg[2];    //  Исходный текст.
+ var lastButton = arg[3];   //  Код предыдущей нажатой кнопки.
+ var lastRadio = arg[4];   //  Код предыдущей нажатой радио-кнопки.
+ var activ_b7 = arg[5];   //  Индикатор активности кнопки "Отмена последнего действия"
+ var activ_b8 = arg[6];   //  Индикатор активности кнопки "Возвращение отмененного действия"
+ var mCount = arg[7];   //  Массив счетчиков для статистики.
+ if (mCount)
+         b9.insertAdjacentHTML("beforeBegin", '<BUTTON id=b10 onclick=button_10() style="width: 28px; height: 28px; margin: 0 5 0 0; font-weight: bold; font-size: 16px; color: #404040">Σ</BUTTON>');
+ var wT = arg[8];      //  Отступ окна от верхнего края экрана (с шапкой).
+
+ var dL=0;    //  Отступ окна от левого края экрана.
+ var dT=0;    //  Отступ окна от верхнего края экрана.
+ var delta;    //  Высота шапки окна.
+ var winInfo;    //  Окно справки.
+ var winStat;    //  Окно статистики.
+
+ var h=1;   //  Счетчик цикла.
+ var rS;      //  Результат детального поиска.
+
+ switch (numOp) {
+         case 901:  title.innerHTML = "901.  Исправление ошибочного °C";  break;
+         case 902:  title.innerHTML = "902.  .. / ?. / !. ››› добавление/удаление точки";  break;
+         case 903:  title.innerHTML = "903.  Перемещение точки за кавычки";  break;
+         case 905:  title.innerHTML = "905.  Коррекция точек подзаголовков";  break;
+         case 911:  title.innerHTML = "911.  Заглавная буква посреди слова";  break;
+         }
+
+
+
+///////////////   Рег. выражения для радиокнопок
+
+ var reRB=[];
+ var reRB_=[];
+
+ switch (numOp) {
+     case 901:
+         reRB[1] = new RegExp(".°C", "");  reRB_[1] = "0 С";
+         reRB[2] = new RegExp(".°C", "");  reRB_[2] = " °C ";
+         reRB[3] = new RegExp(".°C", "");  reRB_[3] = "° С";
+         break;
+     case 902:
+         reRB[1] = new RegExp("\\.$", "");  reRB_[1] = "..";
+         reRB[2] = new RegExp("\\.$", "");  reRB_[2] = "";
+         break;
+     case 903:
+         reRB[1] = new RegExp("(\\.)([«„“»”\"])$", "");  reRB_[1] = "$2$1";
+         break;
+     case 905:
+         reRB[1] = new RegExp("\\.$", "");  reRB_[1] = "";
+         break;
+     case 911:
+         reRB[1] = new RegExp("(^[А-яЁё]+)([АЕЁИОУЫЭЮЯ])([а-яё]*$)", "");
+         reRB[2] = new RegExp("([а-яё])([АЕЁИОУЫЭЮЯ])", "");  reRB_[2] = "$1-$2";
+         reRB[3] = new RegExp("([а-яё])([АЕЁИОУЫЭЮЯ])", "");  reRB_[3] = "$1 $2";
+         reRB[4] = new RegExp("(^[А-яЁё]+)([АЕЁИОУЫЭЮЯ])([а-яё]*$)", "");
+         break;
+         }
+
+ rButton_X(lastRadio);    //  Симуляция нажатия радиокнопки, указанной в основном скрипте.
+
+
+
+///////////////   Заполнение пояснений к радиокнопкам.
+
+ switch (numOp) {
+     case 901:
+         rb1_label.innerHTML = "<цифры>0 C<буквы>";
+         rb2_label.innerHTML = "<цифры> °C <буквы>";
+         rb3_label.innerHTML = "<цифры>° C<буквы>";
+         break;
+     case 902:
+         rb1_label.innerHTML = "Добавить точку";
+         rb2_label.innerHTML = "Удалить точку";
+         rb3_span.style.display = "none";
+         break;
+     case 903:
+         rb1_label.innerHTML = "Переместить точку";
+         rb2_span.style.display = "none";
+         rb3_span.style.display = "none";
+         break;
+     case 905:
+         rb1_label.innerHTML = "Удалить точку";
+         rb2_span.style.display = "none";
+         rb3_span.style.display = "none";
+         break;
+     case 911:
+         rb1_label.innerHTML = "Строчная с ударением";
+         rb2_label.innerHTML = "Дефис";
+         rb3_label.innerHTML = "Пробел";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "Строчная";
+         break;
+         }
+
+
+
+///////////////   Функция, которая включается после загрузки окна
+
+ window.onload = function() {
+         dL=window.screenLeft;   //  Сохранение начального значения отступа окна от левого края экрана
+         dT=window.screenTop;     //  и от верхнего края.
+         delta=dT-wT;
+         if (activ_b7)  b7.innerHTML = '<IMG height=18 width=18 src="images/undo.png">';    //  Активация кнопки "Отмена действия"
+             else  b7.disabled=true;
+         if (activ_b8)  b8.innerHTML = '<IMG height=18 width=18 src="images/redo.png">';    //  Активация кнопки "Возвращение действия"
+             else  b8.disabled=true;
+         var el = [ ,b1, b2, b3, b4, b5, b6, b7, b8][lastButton];
+         if (el.disabled==false)
+                 el.focus();    //  Перенос "фокуса" на кнопку, указанную в основном скрипте.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие радиокнопок
+
+ function rButton_X(num) {
+         lastRadio=num;       //  Номер нажатой радиокнопки.
+         var elemLR = [ , rb1, rb2, rb3, rb4, rb5, rb6][num];       //  Элемент нажатой радиокнопки.
+         elemLR.checked=true;                       //  Переключение.
+
+         if (num==6) {                //  Если выбрана ручная правка...
+                 b5.disabled=true;              //  Блокируем кнопку "Заменить всё".
+                 if (replaceTxt.value=="")         //  Если текстовое поле не заполнено....
+                         replaceTxt.value = arg[2];   //  то заполняем текстовое поле исходным текстом.
+                 return;    //  Выходим из функции.
+                 }
+
+         b5.disabled=false;       //  Снимаем блокировку с кнопки "Заменить всё".
+         //  Заполнение текстового поля
+         if (numOp!=911)
+                 replaceTxt.value = arg[2].replace(reRB[num], reRB_[num]);
+         if (numOp==911)
+                 switch (num) {
+                     case 1:
+                         rS = arg[2].match(reRB[num]);
+                         replaceTxt.value = rS[1] + rS[2].toLowerCase() + "́" + rS[3];
+                         break;
+                     case 2:  case 3:
+                         replaceTxt.value = arg[2].replace(reRB[num], reRB_[num]);
+                         break;
+                     case 4:
+                         rS = arg[2].match(reRB[num]);
+                         replaceTxt.value = rS[1] + rS[2].toLowerCase() + rS[3];
+                         break;
+                         }
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие кнопок
+
+ function button_X(num) {
+         window.returnValue = [num, lastRadio, window.screenLeft - dL, window.screenTop - dT, replaceTxt.value];
+         //  Отправка массива: [<код нажатой кнопки>, <код нажатой радиокнопки>, <горизонтальный сдвиг>, <вертикальный сдвиг>, <текст в поле замены>].
+         window.close();    //  Закрытие этого окна.
+         }
+
+
+
+///////////////   Функция для открытия/закрытия окна справки
+
+ function button_09() {   //  "Справка"
+
+ if (winInfo  &&  !winInfo.closed) {    //  Если окно уже открыто...
+         winInfo.close();    //  то закрываем его
+         return;   //  и выходим из функции.
+         }
+
+ var titleMsg = " Текст-корректор • операция " + numOp;
+
+ var mTxt = [];
+ var mTxt1 = [];
+ var mTxt2 = [];
+ var mTxt3 = [];
+ var height;
+
+ mTxt1 = [["Справка",, "19 центр линия#707070 #1A544F (Cambria, Georgia, Liberation Serif)"], []];
+ mTxt3 = [
+     ["• <B>Найден текст</B> — Текст в этом поле можно только скопировать.",, "#191919"],
+     ["• <B>Заменить на</B> — Текст в этом поле можно редактировать.",, "#191919"],
+     ["• <B>Варианты</B> — Здесь можно выбрать вариант замены.",, "#191919"],
+     ["• <B>Заменить</B> — Произвести одну замену.",, "#191919"],
+     ["• <B>Пропустить</B> — Пропустить одну замену.",, "#191919"],
+     ["• <B>Заменить похожие</B> — Заменить текущий и все следующие похожие фрагменты.",, "#191919"],
+     ["• <B>Пропустить похожие</B> — Пропустить текущий и все следующие похожие фрагменты.",, "#191919"],
+     ["• <B>Заменить всё</B> — Произвести текущую и все следующие замены в этой операции.",, "#191919"],
+     ["• <B>Пропустить всё</B> — Прервать выполнение этой операции.",, "#191919"],
+     [" ",, "5"],
+     [z2('<IMG height=15 width=15 src="images/undo.png">')+" "+z2('<IMG height=15 width=15 src="images/redo.png">')+" — Отмена/возврат последних действий для одной операции.",, "#191919"],
+     [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+     [z3("×")+" <I>(системная кнопка)</I> — Прервать выполнение всех операций.",, "#191919"]];
+
+ switch (numOp) {
+     case 901:
+         mTxt2 = [
+             ["Обычно такая ошибка появляется после обработки старой версией популярного скрипта.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 537;   //  * Нижнее поле = 35px
+         break;
+     case 902:
+         mTxt3.splice(11, 0, [z3("Σ")+" — Открыть/закрыть окно статистики.",, "#191919"]);
+         height = 493;
+         break;
+     case 903:
+         mTxt2 = [
+             ["Точка может располагаться перед кавычками, если она используется для обозначения сокращения."],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 537;
+         break;
+     case 905:
+         mTxt2 = [
+             ["Если формат подзаголовка используется нестандартно – например, для оформления подписи к картинке, – то конечную точку удалять не рекомендуется.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 553;
+         break;
+     case 911:
+         mTxt2 = [
+             ["Обычно таким способом обозначается ударение.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 521;
+         break;
+         }
+
+ mTxt = mTxt1.concat(mTxt2, mTxt3);
+
+ if (winStat  &&  !winStat.closed)     //  Если окно статистики открыто...
+         winStat.close();    //  то закрываем его.
+
+ winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", [titleMsg, mTxt],
+         "dialogHeight: "+height+"px; dialogWidth: 350px; dialogLeft: "+(window.screenLeft+650)+"; dialogTop: "+(window.screenTop-delta)+"; center: Yes; help: No; resizable: Yes; status: No");
+ }
+
+
+
+///////////////   Функция для открытия/закрытия окна статистики
+
+ function button_10() {   //  "Статистика"
+
+ if (winStat  &&  !winStat.closed) {    //  Если окно уже открыто...
+         winStat.close();    //  то закрываем его
+         return;   //  и выходим из функции.
+         }
+
+ var mSt=[];          //  Массив строк статистики.
+ var ind=0;           //  Индекс строк.
+ var w=0;           //  Индекс счетчиков автоматической обработки.
+
+ for (h=0; h<mCount.length; h++)    //  Цикл для счетчиков.
+         if (mCount[h] == 0)     //  Если значение счетчика равно нолю...
+                 mCount[h] = "–";    //  то заменяем его на короткое тире.
+
+ mSt[ind++]=["Статистика<BR><FONT  style='font-size: 16px;'>автоматических операций</FONT>",, "19 центр линия#707070 #1A544F (Cambria, Georgia, Liberation Serif)"];
+ mSt[ind++]=[];
+ mSt[ind++]=["Удаление точек, запятых и т.п.",, "15 разрядка центр линия#CFCFD1"];
+ mSt[ind++]=["131. Точки/запятые после многоточия", mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+ mSt[ind++]=["132. "+z("?")+" "+z("!")+" + многоточие ››› "+z("?..")+" "+z("!.."), mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+ mSt[ind++]=["134. "+z("?!")+" + две точки ››› "+z("?!."), mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+ mSt[ind++]=["150. "+z(",")+" "+z(".")+" "+z("•")+" после пунктуации", mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+ mSt[ind++]=["151. "+z(",")+" "+z(".")+" "+z("•")+" после дефисов/тире", mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+ mSt[ind++]=["172. "+z(";")+" "+z(",")+" "+z(".")+"  в начале строки", mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+ mSt[ind++]=["180. Точка после пробела", mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+ mSt[ind++]=["182. Запятая после пробела", mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+ mSt[ind++]=[];
+ mSt[ind++]=["Добавление точек",, "15 разрядка центр линия#CFCFD1"];
+ mSt[ind++]=["140. "+z("..")+" в середине предложения ››› "+z("…"), mCount[w++], "линия#CFCFD1 фон#F0EFF2"];
+
+ if (winInfo  &&  !winInfo.closed)    //  Если окно справки открыто...
+         winInfo.close();    //  то закрываем его.
+
+ winStat = window.showModelessDialog( "АК-скрипт - Сообщение.html", [" Текст-корректор • операция " + numOp, mSt],
+     "dialogHeight: 320px; dialogWidth: 350px; dialogLeft: "+(window.screenLeft+650)+"; dialogTop: "+(window.screenTop-delta)+"; center: Yes; help: No; resizable: Yes; status: No");
+         }
+
+
+///////////////   Функции добавления стиля выделения в окнах справки и статистики
+
+function z(txt) {
+         return '<FONT  style="font-weight: bold; color: #404040; background-color: #E5E5E5; border-left: 1px solid #CCCCCC; border-right: 1px solid #FFFFFF; padding: 0 3 0 3">' + txt + '</FONT>';
+         }
+function z2(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 3 3 1 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+function z3(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+
+</SCRIPT>
+</BODY>
+</HTML>

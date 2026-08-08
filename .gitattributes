@@ -1,1 +1,9 @@
 runtime/main.js text eol=crlf
+runtime/Scripts/**/*.js text eol=crlf
+runtime/Scripts/**/*.html text eol=crlf
+runtime/Scripts/**/*.htm text eol=crlf
+runtime/Scripts/**/*.css text eol=crlf
+runtime/HTML/**/*.js text eol=crlf
+runtime/HTML/**/*.html text eol=crlf
+runtime/HTML/**/*.htm text eol=crlf
+runtime/HTML/**/*.css text eol=crlf

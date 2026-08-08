@@ -60,4 +60,3 @@ function Run()
  MsgBox("           —= AlexS Script=— \n   «Проверка иллюстраций» v.1.11\n\n" +unused+"\nОтсутствующие иллюстрации: \n"+broken+"\n");
 
 }
-

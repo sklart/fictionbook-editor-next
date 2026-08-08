@@ -1,0 +1,326 @@
+ <!-- Создание файла — Александр Ка (05.05.2026) -->
+
+ <HTML>
+ <HEAD>
+ <TITLE> Текст-корректор                                                                                                                                                             </TITLE>
+ <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <STYLE>
+ BODY {
+	 background: #EBE9ED;
+	 margin: 0;
+	 padding: 8px 8px 0 8px;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 }
+ BUTTON {
+	 width: 150px;
+	 height=26;
+	 margin: 3px;
+	 padding: 1px;
+	 font-size: 13px;
+	 background: #EDEDEF;
+	 }
+ SPAN  {
+	 width: 60;
+	 height: 29px;
+	 margin: 1;
+	 padding: 3 1 1 1;
+	 background-color: #EDEDEF;
+	 border-top: 1px solid #FFFFFF;
+	 border-right: 1px solid #878787;
+	 border-bottom: 1px solid #878787;
+	 border-left: 1px solid #FFFFFF;
+	 }
+ FONT {
+	 font-size: 17px;
+	 background-color: #E5E5E5;
+	 border: 1px solid #BFBFBF;
+	 border-top: 1px solid #A8A8A8;
+	 border-right: 1px solid #FFFFFF;
+	 border-bottom: 1px solid #FFFFFF;
+	 border-left: 1px solid #A8A8A8;
+	 padding: 0 3;
+	 }
+ </STYLE>
+ </HEAD>
+
+ <BODY>
+ <DIV>
+	 <TABLE cellspacing=0 cellpadding=0 style="width: 100%; margin-bottom: 6px">
+		 <TR>
+			 <TD style="width: 100%; border: 1px solid #B0B0B0; padding: 1px; font-size: 16px; color: #191919">
+				 <LABEL id=count style="float: right; padding-right: 5px">Счетчик замен</LABEL>
+				 <LABEL id=title style="padding-left: 5px">Заголовок операции</LABEL>
+			 </TD>
+			 <TD style="padding: 0 0 0 5px; text-align: right">
+				 <BUTTON id=b7 onclick=button_X(7) style="width: 33px; height: 28px; margin: 0 5 0 12; padding: 0;"><IMG height=18 width=18 src="images/undo_.png"></BUTTON>
+				 <BUTTON id=b8 onclick=button_X(8) style="width: 33px; height: 28px; margin: 0 10 0 0; padding: 0;"><IMG height=18 width=18 src="images/redo_.png"></BUTTON>
+				 <BUTTON id=b9 onclick=button_09() style="width: 28px; height: 28px; margin: 0; font-weight: bold; font-size: 16px; color: #404040">?</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=1 style="width: 100%">
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL style="vertical-align: -10%;">Найден текст:</LABEL>
+			 </TD>
+			 <TD>
+				 <INPUT id=searchTxt value="Исходный текст" readonly style="width: 525px; height: 23px; padding-left: 5px; font-size: 15px; color: #404040">
+			 </TD>
+		 </TR>
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL style="vertical-align: -10%;">Заменить на:</LABEL>
+			 </TD>
+			 <TD>
+				 <INPUT id=replaceTxt value="" onfocus=rButton_X(13) style="width: 100%; padding-left: 5px; font-size: 15px">
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=0 align=center width="100%">
+		 <TR>
+			 <TD id=notes valign=top style="width: 100%; padding: 0 15 5 3; font-size: 13px">
+				 <FIELDSET id=rbs style="padding: 3 3 3 3; text-align: center">
+					 <LEGEND style="padding: 0 3 3 3; color: #545454" align=center>Варианты</LEGEND>
+					 <NOBR>
+						 <SPAN id=rb1 onclick=rButton_X(1) onfocus=rOnfocus(1) onblur=rBlur(1) onmouseout=rOut(1)><FONT>-</FONT></SPAN>
+						 <SPAN id=rb4 onclick=rButton_X(4) onfocus=rOnfocus(4) onblur=rBlur(4) onmouseout=rOut(4)><FONT>–</FONT></SPAN>
+						 <SPAN id=rb8 onclick=rButton_X(8) onfocus=rOnfocus(8) onblur=rBlur(8) onmouseout=rOut(8)><FONT>—</FONT></SPAN>
+						 <SPAN id=rb7 onclick=rButton_X(7) onfocus=rOnfocus(7) onblur=rBlur(7) onmouseout=rOut(7)><FONT>  —  </FONT></SPAN>
+					 </NOBR>
+					 <BR>
+					 <NOBR>
+						 <SPAN id=rb2 onclick=rButton_X(2) onfocus=rOnfocus(2) onblur=rBlur(2) onmouseout=rOut(2)><FONT>-  </FONT></SPAN>
+						 <SPAN id=rb5 onclick=rButton_X(5) onfocus=rOnfocus(5) onblur=rBlur(5) onmouseout=rOut(5)><FONT>–  </FONT></SPAN>
+						 <SPAN id=rb9 onclick=rButton_X(9) onfocus=rOnfocus(9) onblur=rBlur(9) onmouseout=rOut(9)><FONT>—  </FONT></SPAN>
+						 <SPAN id=rb11 onclick=rButton_X(11) onfocus=rOnfocus(11) onblur=rBlur(11) onmouseout=rOut(11)><FONT>  </FONT></SPAN>
+					 </NOBR>
+					 <BR>
+					 <NOBR>
+						 <SPAN id=rb3 onclick=rButton_X(3) onfocus=rOnfocus(3) onblur=rBlur(3) onmouseout=rOut(3)><FONT>  -</FONT></SPAN>
+						 <SPAN id=rb6 onclick=rButton_X(6) onfocus=rOnfocus(6) onblur=rBlur(6) onmouseout=rOut(6)><FONT>  –</FONT></SPAN>
+						 <SPAN id=rb10 onclick=rButton_X(10) onfocus=rOnfocus(10) onblur=rBlur(10) onmouseout=rOut(10)><FONT>  —</FONT></SPAN>
+						 <SPAN id=rb12 onclick=rButton_X(12) onfocus=rOnfocus(12) onblur=rBlur(12) onmouseout=rOut(12)><FONT style="color: #404040">del</FONT></SPAN>
+					 </NOBR>
+						 <SPAN id=rb13 style="display: none"><FONT>Скрытый элемент</FONT></SPAN>
+				 </FIELDSET>
+			 </TD>
+			 <TD valign=bottom style="width: 200; padding: 10 5 4 3">
+				 <BUTTON id=b1 onclick=button_X(1)>Заменить</BUTTON>
+				 <BUTTON id=b3 onclick=button_X(3)>Заменить похожие</BUTTON>
+				 <BUTTON id=b5 onclick=button_X(5)>Заменить всё</BUTTON>
+			 </TD>
+			 <TD valign=bottom style="width: 200; padding: 10 0 4 3">
+				 <BUTTON id=b2 onclick=button_X(2)>Пропустить</BUTTON>
+				 <BUTTON id=b4 onclick=button_X(4)>Пропустить похожие</BUTTON>
+				 <BUTTON id=b6 onclick=button_X(6)>Пропустить всё</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+ </DIV>
+
+<script>
+
+ var arg = window.dialogArguments;    //  Получение данных, отправленных из основного скрипта.
+
+///////////////   Заполняем элементы структуры соответствующем текстом:
+ var numOp = arg[0];    //  Номер операции.
+ count.innerHTML=arg[1];   //  счетчик,
+ if (arg[1].search(/^(\d+) \/ \1$/) != -1)  count.style.color = "#B70000";   //  Если на счетчике последняя замена -- выделяем его.
+ searchTxt.value=arg[2];    //  Исходный текст.
+ var lastButton = arg[3];   //  Код предыдущей нажатой кнопки.
+ var lastRadio = arg[4];   //  Код предыдущей нажатой радио-кнопки.
+ var lastLastRadio = 12;   //  Код пред-предыдущей нажатой радио-кнопки.
+ var activ_b7 = arg[5];   //  Индикатор активности кнопки "Отмена последнего действия"
+ var activ_b8 = arg[6];   //  Индикатор активности кнопки "Возвращение отмененного действия"
+ var sino = arg[7];   //  Разрешение на ручную правку
+ var wT = arg[8];      //  Отступ окна от верхнего края экрана (с шапкой).
+
+ var dL=0;    //  Отступ окна от левого края экрана.
+ var dT=0;    //  Отступ окна от верхнего края экрана.
+ var delta;    //  Высота шапки окна.
+ var winInfo;    //  Окно справки.
+
+
+
+///////////////   Блокировка поля ввода
+
+ if (!sino) {
+         replaceTxt.title="       Заблокировано   \n ----------------------------- \n Для этого фрагмента \n    не предусмотрена \n       ручная правка ";
+         replaceTxt.readOnly = true;
+         replaceTxt.onfocus = "";
+         replaceTxt.style.color = "#404040";
+         }
+
+
+
+ switch (numOp) {
+     case 984:
+         title.innerHTML = "984.  Дефис/тире рядом с символами";
+         break;
+         }
+
+
+///////////////   Рег. выражения для радиокнопок
+
+ var reRB = new RegExp("[—–\\- ]+", "");
+ var reRB_=[];
+
+ reRB_[1] = "-";
+ reRB_ [2] = "- ";
+ reRB_ [3] = " -";
+ reRB_ [4] = "–";
+ reRB_ [5] = "– ";
+ reRB_ [6] = " –";
+ reRB_ [7] = " — ";
+ reRB_ [8] = "—";
+ reRB_ [9] = "— ";
+ reRB_ [10] = " —";
+ reRB_ [11] = " ";
+ reRB_ [12] = "";
+
+ rButton_X(lastRadio);    //  Симуляция нажатия радиокнопки, указанной в основном скрипте.
+
+
+
+///////////////   Функция, которая включается после загрузки окна
+
+ window.onload = function() {
+         dL=window.screenLeft;   //  Сохранение начального значения отступа окна от левого края экрана
+         dT=window.screenTop;     //  и от верхнего края.
+         delta=dT-wT;
+         if (activ_b7)  b7.innerHTML = '<IMG height=18 width=18 src="images/undo.png">';    //  Активация/блокировка кнопки "Отмена действия"
+             else  b7.disabled=true;
+         if (activ_b8)  b8.innerHTML = '<IMG height=18 width=18 src="images/redo.png">';    //  Активация/блокировка кнопки "Возвращение действия"
+             else  b8.disabled=true;
+         var el = [ , b1, b2, b3, b4, b5, b6, b7, b8, replaceTxt][lastButton];
+         if (el.disabled==false)
+                 el.focus();    //  Перенос "фокуса" на кнопку, указанную в основном скрипте.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие радиокнопок
+
+ function rButton_X(num) {
+         if (num==13  &&  !sino)  num=1;    //  Дополнительная блокировка поля ввода.
+         lastLastRadio=lastRadio;    //  Номер предыдущей радиокнопки.
+         lastRadio=num;       //  Номер нажатой радиокнопки.
+         var elemLLR = [ , rb1, rb2, rb3, rb4, rb5, rb6, rb7, rb8, rb9, rb10, rb11, rb12, rb13][lastLastRadio];   //  Элемент предыдущей радиокнопки.
+         var elemLR = [ , rb1, rb2, rb3, rb4, rb5, rb6, rb7, rb8, rb9, rb10, rb11, rb12, rb13][lastRadio];       //  Элемент нажатой радиокнопки.
+         elemLLR.firstChild.style.backgroundColor = "#E5E5E5";    //  Изменение стиля обоих радиокнопок.
+         elemLR.firstChild.style.backgroundColor = "#F9F9F9";
+         elemLR.blur();
+
+         if (num==13) {                //  Если выбрана ручная правка...
+                 b5.disabled=true;              //  Блокируем кнопку "Заменить всё".
+                 if (replaceTxt.value=="")         //  Если текстовое поле не заполнено....
+                         replaceTxt.value = arg[2];   //  то заполняем текстовое поле исходным текстом.
+                 return;    //  Выходим из функции.
+                 }
+
+         b5.disabled=false;       //  Снимаем блокировку с кнопки "Заменить всё".
+         replaceTxt.value = arg[2].replace(reRB, reRB_[num]);   //  Заполнение текстового поля.
+         }
+
+
+
+///////////////   Функции анимации радиокнопок
+
+ function rOnfocus(num) {
+         var elemLR = [ , rb1, rb2, rb3, rb4, rb5, rb6, rb7, rb8, rb9, rb10, rb11, rb12][num];       //  Элемент нажатой радиокнопки.
+         elemLR.style.borderTop = "2px solid #878787";
+         elemLR.style.borderRight = "1px solid #FFFFFF";
+         elemLR.style.borderBottom = "1px solid #FFFFFF";
+         elemLR.style.borderLeft = "2px solid #878787";
+         elemLR.style.padding = "3 0 0 1";
+         }
+
+ function rBlur(num) {
+         var elemLR = [ , rb1, rb2, rb3, rb4, rb5, rb6, rb7, rb8, rb9, rb10, rb11, rb12][num];       //  Элемент нажатой радиокнопки.
+         elemLR.style.borderTop = "1px solid #FFFFFF";
+         elemLR.style.borderRight = "1px solid #878787";
+         elemLR.style.borderBottom = "1px solid #878787";
+         elemLR.style.borderLeft = "1px solid #FFFFFF";
+         elemLR.style.padding = "3 1 1 1";
+         elemLR.blur();
+         }
+
+ function rOut(num) {
+         var elemLR = [ , rb1, rb2, rb3, rb4, rb5, rb6, rb7, rb8, rb9, rb10, rb11, rb12][num];       //  Элемент нажатой радиокнопки.
+         elemLR.blur();
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие кнопок
+
+ function button_X(num) {
+         window.returnValue = [num, lastRadio, window.screenLeft - dL, window.screenTop - dT, replaceTxt.value];
+         //  Отправка массива: [<код нажатой кнопки>, <код нажатой радиокнопки>, <горизонтальный сдвиг>, <вертикальный сдвиг>, <текст в поле замены>].
+         window.close();    //  Закрытие этого окна.
+         }
+
+
+
+///////////////   Функция для открытия/закрытия окна справки
+
+ function button_09() {   //  "Справка"
+
+ if (winInfo  &&  !winInfo.closed) {    //  Если окно уже открыто...
+         winInfo.close();    //  то закрываем его
+         return;   //  и выходим из функции.
+         }
+
+ var titleMsg = " Текст-корректор • операция " + numOp;
+
+ var mTxt = [];
+ var mTxt1 = [];
+ var mTxt2 = [];
+ var mTxt3 = [];
+ var height;
+
+ mTxt1 = [["Справка",, "19 центр линия#707070 #1A544F (Cambria, Georgia, Liberation Serif)"], []];
+ mTxt3 = [
+     ["• <B>Найден текст</B> — Текст в этом поле можно только скопировать.",, "#191919"],
+     ["• <B>Заменить на</B> — Текст в этом поле можно редактировать.",, "#191919"],
+     ["• <B>Варианты</B> — Здесь можно выбрать вариант замены.",, "#191919"],
+     ["• <B>Заменить</B> — Произвести одну замену.",, "#191919"],
+     ["• <B>Пропустить</B> — Пропустить одну замену.",, "#191919"],
+     ["• <B>Заменить похожие</B> — Заменить текущий и все следующие похожие фрагменты.",, "#191919"],
+     ["• <B>Пропустить похожие</B> — Пропустить текущий и все следующие похожие фрагменты.",, "#191919"],
+     ["• <B>Заменить всё</B> — Произвести текущую и все следующие замены в этой операции.",, "#191919"],
+     ["• <B>Пропустить всё</B> — Прервать выполнение этой операции.",, "#191919"],
+     [" ",, "5"],
+     [z2('<IMG height=15 width=15 src="images/undo.png">')+" "+z2('<IMG height=15 width=15 src="images/redo.png">')+" — Отмена/возврат последних действий для одной операции.",, "#191919"],
+     [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+     [z3("×")+" <I>(системная кнопка)</I> — Прервать выполнение всех операций.",, "#191919"]];
+
+ switch (numOp) {
+     case 984:
+         mTxt2 = [
+             ["Здесь рассматриваются все случаи сочетаний дефисов/тире рядом с любыми символами, кроме букв и цифр.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+         }
+
+ mTxt = mTxt1.concat(mTxt2, mTxt3);
+
+ winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", [titleMsg, mTxt],
+         "dialogHeight: "+height+"px; dialogWidth: 350px; dialogLeft: "+(window.screenLeft+650)+"; dialogTop: "+(window.screenTop-delta)+"; center: Yes; help: No; resizable: Yes; status: No");
+ }
+
+
+///////////////   Функции добавления стиля выделения в окне справки
+
+function z2(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 3 3 1 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+function z3(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+</SCRIPT>
+</BODY>
+</HTML>

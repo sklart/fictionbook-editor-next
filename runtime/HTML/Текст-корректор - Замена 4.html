@@ -1,0 +1,985 @@
+ <!-- Создание файла — Александр Ка (05.05.2026) -->
+
+ <HTML>
+ <HEAD>
+ <TITLE> Текст-корректор                                                                                                                                                             </TITLE>
+ <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <STYLE>
+ BODY {
+	 background: #EBE9ED;
+	 margin: 0;
+	 padding: 8px 8px 0 8px;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 }
+ BUTTON {
+	 width: 150px;
+	 height=26;
+	 margin: 3px;
+	 padding: 1px;
+	 font-size: 13px;
+	 background: #EDEDEF;
+	 }
+ </STYLE>
+ </HEAD>
+
+ <BODY>
+ <DIV>
+	 <TABLE cellspacing=0 cellpadding=0 style="width: 100%; margin-bottom: 6px">
+		 <TR>
+			 <TD style="width: 100%; border: 1px solid #B0B0B0; padding: 1px; font-size: 16px; color: #191919">
+				 <LABEL id=count style="float: right; padding-right: 5px">Счетчик замен</LABEL>
+				 <LABEL id=title style="padding-left: 5px">Заголовок операции</LABEL>
+			 </TD>
+			 <TD style="padding: 0 0 0 5px; text-align: right">
+				 <BUTTON id=b7 onclick=button_X(7) style="width: 33px; height: 28px; margin: 0 5 0 12; padding: 0;"><IMG height=18 width=18 src="images/undo_.png"></BUTTON>
+				 <BUTTON id=b8 onclick=button_X(8) style="width: 33px; height: 28px; margin: 0 10 0 0; padding: 0;"><IMG height=18 width=18 src="images/redo_.png"></BUTTON>
+				 <BUTTON id=b9 onclick=button_09() style="width: 28px; height: 28px; margin: 0; font-weight: bold; font-size: 16px; color: #404040">?</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=1 style="width: 100%">
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL style="vertical-align: -10%;">Найден текст:</LABEL>
+			 </TD>
+			 <TD>
+				 <INPUT id=searchTxt value="Исходный текст" readonly style="width: 100%; padding-left: 5px; font-size: 15px; color: #404040">
+			 </TD>
+		 </TR>
+		 <TR>
+			 <TD style="width: 95px;  font-size: 13px">
+				 <LABEL style="vertical-align: -10%;">Заменить на:</LABEL>
+			 </TD>
+			 <TD>
+				 <INPUT id=replaceTxt value="" onfocus=rButton_X(6) style="width: 100%; padding-left: 5px; font-size: 15px">
+			 </TD>
+		 </TR>
+	 </TABLE>
+	 <TABLE cellspacing=0 cellpadding=0 align=right width="100%">
+		 <TR>
+			 <TD id=notes valign=top style="width: 100%; padding: 0 15 5 3; font-size: 13px">
+				 <FIELDSET id=rbs style="padding: 5px 0 5px 12px">
+					 <LEGEND style="padding: 0 3 3 15; text-indent: -12; color: #545454" align=center>Варианты</LEGEND>
+					 <SPAN id=rb1_span style="display: block">
+						 <INPUT id=rb1 type=radio name=set onclick=rButton_X(1) style="margin: -2px 5 0 0">
+						 <LABEL id=rb1_label onclick=rButton_X(1) style="vertical-align: 15%">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb2_span style="display: block">
+						 <INPUT id=rb2 type=radio name=set onclick=rButton_X(2) style="margin: -2px 5 0 0">
+						 <LABEL id=rb2_label onclick=rButton_X(2) style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb3_span style="display: block">
+						 <INPUT id=rb3 type=radio name=set onclick=rButton_X(3) style="margin: -2px 5 0 0">
+						 <LABEL id=rb3_label onclick=rButton_X(3) style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb4_span style="display: none">
+						 <INPUT id=rb4 type=radio name=set onclick=rButton_X(4) style="margin: -2px 5 0 0">
+						 <LABEL id=rb4_label onclick=rButton_X(4) style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb5_span style="display: none">
+						 <INPUT id=rb5 type=radio name=set onclick=rButton_X(5) style="margin: -2px 5 0 0">
+						 <LABEL id=rb5_label onclick=rButton_X(5) style="vertical-align: 15%;">текст</LABEL>
+					 </SPAN>
+					 <SPAN id=rb6_span style="display: none" disabled>
+						 <INPUT id=rb6 type=radio name=set onclick=rButton_X(6) style="margin: -2px 5 0 0">
+						 <LABEL id=rb6_label style="vertical-align: 15%;">Применять ручную правку</LABEL>
+					 </SPAN>
+				 </FIELDSET>
+			 </TD>
+			 <TD valign=bottom style="width: 200px; padding: 10 5 2 3">
+				 <BUTTON id=b1 onclick=button_X(1)>Заменить</BUTTON>
+				 <BUTTON id=b3 onclick=button_X(3)>Заменить похожие</BUTTON>
+				 <BUTTON id=b5 onclick=button_X(5)>Заменить всё</BUTTON>
+			 </TD>
+			 <TD valign=bottom style="width: 200px; padding: 10 0 2 3">
+				 <BUTTON id=b2 onclick=button_X(2)>Пропустить</BUTTON>
+				 <BUTTON id=b4 onclick=button_X(4)>Пропустить похожие</BUTTON>
+				 <BUTTON id=b6 onclick=button_X(6)>Пропустить всё</BUTTON>
+			 </TD>
+		 </TR>
+	 </TABLE>
+ </DIV>
+
+<script>
+
+ var arg = window.dialogArguments;    //  Получение данных, отправленных из основного скрипта.
+
+///////////////   Заполняем элементы структуры соответствующем текстом:
+ var numOp = arg[0];    //  Номер операции.
+ count.innerHTML=arg[1];   //  счетчик,
+ if (arg[1].search(/^(\d+) \/ \1$/) != -1)  count.style.color = "#B70000";   //  Если на счетчике последняя замена -- выделяем его.
+ searchTxt.value=arg[2];    //  Исходный текст.
+ var lastButton = arg[3];   //  Код предыдущей нажатой кнопки.
+ var lastRadio = arg[4];   //  Код предыдущей нажатой радио-кнопки.
+ var activ_b7 = arg[5];   //  Индикатор активности кнопки "Отмена последнего действия"
+ var activ_b8 = arg[6];   //  Индикатор активности кнопки "Возвращение отмененного действия"
+ var sino = arg[7];   //  Разрешение на ручную правку
+ var wT = arg[8];      //  Отступ окна от верхнего края экрана (с шапкой).
+
+ var dL=0;    //  Отступ окна от левого края экрана.
+ var dT=0;    //  Отступ окна от верхнего края экрана.
+ var delta;    //  Высота шапки окна.
+ var winInfo;    //  Окно справки.
+
+
+
+///////////////   Блокировка поля ввода
+
+ if (!sino) {
+         replaceTxt.title="       Заблокировано   \n ----------------------------- \n Для этого фрагмента \n    не предусмотрена \n       ручная правка ";
+         replaceTxt.readOnly = true;
+         replaceTxt.onfocus = "";
+         replaceTxt.style.color = "#404040";
+         }
+
+
+
+///////////////   Заголовок
+
+ switch (numOp) {
+         case 931:  title.innerHTML = "931.  Короткое тире между буквами";  break;
+         case 932:  title.innerHTML = "932.  Тире между буквами";  break;
+         case 933:  title.innerHTML = "933.  Дефис после буквы";  break;
+         case 934:  title.innerHTML = "934.  Короткое тире после буквы";  break;
+         case 935:  title.innerHTML = "935.  Тире после буквы";  break;
+         case 936:  title.innerHTML = "936.  Дефис перед буквой";  break;
+         case 937:  title.innerHTML = "937.  Короткое тире перед буквой";  break;
+         case 938:  title.innerHTML = "938.  Тире перед буквой";  break;
+         case 939:  title.innerHTML = "939.  Дефис между запятой и буквой";  break;
+         case 940:  title.innerHTML = "940.  Короткое тире между запятой и буквой";  break;
+         case 941:  title.innerHTML = "941.  Тире между запятой и буквой";  break;
+         case 942:  title.innerHTML = "942.  Дефис между точкой и буквой";  break;
+         case 943:  title.innerHTML = "943.  Короткое тире между точкой и буквой";  break;
+         case 944:  title.innerHTML = "944.  Тире между точкой и буквой";  break;
+         case 945:  title.innerHTML = "945.  Дефис между буквой и символом";  break;
+         case 946:  title.innerHTML = "946.  Короткое тире между буквой и символом";  break;
+         case 947:  title.innerHTML = "947.  Тире между буквой и символом";  break;
+         case 948:  title.innerHTML = "948.  Дефис между символом и буквой";  break;
+         case 949:  title.innerHTML = "949.  Короткое тире между символом и буквой";  break;
+         case 950:  title.innerHTML = "950.  Тире между символом и буквой";  break;
+         case 951:  title.innerHTML = "951.  Дефис после буквы (II)";  break;
+         case 952:  title.innerHTML = "952.  Короткое тире после буквы (II)";  break;
+         case 953:  title.innerHTML = "953.  Тире после буквы (II)";  break;
+         case 954:  title.innerHTML = "954.  Дефис перед буквой (II)";  break;
+         case 955:  title.innerHTML = "955.  Короткое тире перед буквой (II)";  break;
+         case 956:  title.innerHTML = "956.  Тире перед буквой (II)";  break;
+         case 957:  title.innerHTML = "957.  Дефис после буквы в конце строки";  break;
+         case 958:  title.innerHTML = "958.  Короткое тире после буквы в конце строки";  break;
+         case 959:  title.innerHTML = "959.  Тире после буквы в конце строки";  break;
+
+         case 960:  title.innerHTML = "960.  Дефис между числами";  break;
+         case 961:  title.innerHTML = "961.  Короткое тире между числами";  break;
+         case 962:  title.innerHTML = "962.  Тире между числами";  break;
+         case 963:  title.innerHTML = "963.  Дефис после числа";  break;
+         case 964:  title.innerHTML = "964.  Короткое тире после числа";  break;
+         case 965:  title.innerHTML = "965.  Тире после числа";  break;
+         case 966:  title.innerHTML = "966.  Дефис перед числом";  break;
+         case 967:  title.innerHTML = "967.  Короткое тире перед числом";  break;
+         case 968:  title.innerHTML = "968.  Тире перед числом";  break;
+         case 969:  title.innerHTML = "969.  Дефис между числом и символом";  break;
+         case 970:  title.innerHTML = "970.  Короткое тире между числом и символом";  break;
+         case 971:  title.innerHTML = "971.  Тире между числом и символом";  break;
+         case 972:  title.innerHTML = "972.  Дефис между символом и числом";  break;
+         case 973:  title.innerHTML = "973.  Короткое тире между символом и числом";  break;
+         case 974:  title.innerHTML = "974.  Тире между символом и числом";  break;
+         case 975:  title.innerHTML = "975.  Дефис после числа (II)";  break;
+         case 976:  title.innerHTML = "976.  Короткое тире после числа (II)";  break;
+         case 977:  title.innerHTML = "977.  Тире после числа (II)";  break;
+         case 978:  title.innerHTML = "978.  Дефис перед числом (II)";  break;
+         case 979:  title.innerHTML = "979.  Короткое тире перед числом (II)";  break;
+         case 980:  title.innerHTML = "980.  Тире перед числом (II)";  break;
+         case 981:  title.innerHTML = "981.  Короткое тире перед числом в начале строки";  break;
+         case 982:  title.innerHTML = "982.  Дефис перед числом в начале строки";  break;
+         case 983:  title.innerHTML = "983.  Тире перед числом в начале строки";  break;
+         }
+
+
+
+///////////////   Рег. выражения для радиокнопок
+
+ var reTD = new RegExp("[—–\\- ]+", "");
+ var reRB=[];
+ var reRB_=[];
+
+ switch (numOp) {
+     case 931:   //  Слово–Слово
+     case 932:   //  Слово—Слово
+     case 933:   //  Слово- Слово
+     case 936:   //  Слово -Слово
+     case 951:   //  Слово- Символы
+     case 954:   //  Символы -Слово
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "-";
+         reRB[3] = reTD;   reRB_[3] = " ";
+         reRB[4] = reTD;   reRB_[4] = "";
+         break;
+     case 934:   //  Слово– Слово
+     case 935:   //  Слово— Слово
+     case 946:   //  Слово–Символы
+     case 947:   //  Слово—Символы
+     case 952:   //  Слово– Символы
+     case 953:   //  Слово— Символы
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "-";
+         reRB[3] = reTD;   reRB_[3] = "- ";
+         reRB[4] = reTD;   reRB_[4] = " ";
+         reRB[5] = reTD;   reRB_[5] = "";
+         break;
+     case 937:   //  Слово –Слово
+     case 938:   //  Слово —Слово
+     case 949:   //  Символы–Слово
+     case 950:   //  Символы—Слово
+     case 955:   //  Символы –Слово
+     case 956:   //  Символы —Слово
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "-";
+         reRB[3] = reTD;   reRB_[3] = " -";
+         reRB[4] = reTD;   reRB_[4] = " ";
+         reRB[5] = reTD;   reRB_[5] = "";
+         break;
+     case 939:   //  Текст, -Слово
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = " ";
+         break;
+     case 940:   //  Текст, –Слово
+     case 941:   //  Текст, —Слово
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = " -";
+         reRB[3] = reTD;   reRB_[3] = " ";
+         break;
+     case 942:   //  Текст. -Слово
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "-";
+         reRB[3] = reTD;   reRB_[3] = " ";
+         break;
+     case 943:   //  Текст. –Слово
+     case 944:   //  Текст. —Слово
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "-";
+         reRB[3] = reTD;   reRB_[3] = " -";
+         reRB[4] = reTD;   reRB_[4] = " ";
+         break;
+     case 945:   //  Слово-Символы
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "- ";
+         reRB[3] = reTD;   reRB_[3] = " ";
+         reRB[4] = reTD;   reRB_[4] = "";
+         break;
+     case 948:   //  Символы-Слово
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = " -";
+         reRB[3] = reTD;   reRB_[3] = " ";
+         reRB[4] = reTD;   reRB_[4] = "";
+         break;
+     case 957:   //  Слово-<конец строки>
+         reRB[1] = reTD;   reRB_[1] = " —";
+         reRB[2] = reTD;   reRB_[2] = "";
+         break;
+     case 958:   //  Слово–<конец строки>
+     case 959:   //  Слово—<конец строки>
+         reRB[1] = reTD;   reRB_[1] = " —";
+         reRB[2] = reTD;   reRB_[2] = "-";
+         reRB[3] = reTD;   reRB_[3] = "";
+         break;
+     case 960:   //  Число-Число
+     case 969:   //  Число-Символы
+     case 972:   //  Символы-Число
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "–";
+         break;
+     case 961:   //  Число–Число
+     case 970:   //  Число–Символы
+     case 973:   //  Символы–Число
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "-";
+         break;
+     case 962:   //  Число—Число
+     case 963:   //  Число- Число
+     case 964:   //  Число– Число
+     case 965:   //  Число— Число
+     case 966:   //  Число -Число
+     case 967:   //  Число –Число
+     case 968:   //  Число —Число
+     case 971:   //  Число—Символы
+     case 974:   //  Символы—Число
+     case 975:   //  Число- Символы
+     case 979:   //  Символы –Число
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "–";
+         reRB[3] = reTD;   reRB_[3] = "-";
+         break;
+     case 976:   //  Число– Символы
+     case 977:   //  Число— Символы
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "–";
+         reRB[3] = reTD;   reRB_[3] = "-";
+         reRB[4] = reTD;   reRB_[4] = "- ";
+         break;
+     case 978:   //  Символы -Число
+     case 980:   //  Символы —Число
+         reRB[1] = reTD;   reRB_[1] = " — ";
+         reRB[2] = reTD;   reRB_[2] = "–";
+         reRB[3] = reTD;   reRB_[3] = "-";
+         reRB[4] = reTD;   reRB_[4] = " –";
+         break;
+     case 981:   //  <начало строки>–Число
+         reRB[1] = reTD;   reRB_[1] = "— ";
+         reRB[2] = reTD;   reRB_[2] = "";
+         break;
+     case 982:   //  <начало строки>-Число
+     case 983:   //  <начало строки>—Число
+         reRB[1] = reTD;   reRB_[1] = "— ";
+         reRB[2] = reTD;   reRB_[2] = "–";
+         reRB[3] = reTD;   reRB_[3] = "";
+         break;
+         }
+
+ rButton_X(lastRadio);    //  Симуляция нажатия радиокнопки, указанной в основном скрипте.
+
+
+
+///////////////   Заполнение пояснений к радиокнопкам.
+
+ switch (numOp) {
+     case 931:
+     case 932:
+     case 933:
+     case 936:
+         rb1_label.innerHTML = "Слово — Слово";
+         rb2_label.innerHTML = "Слово-Слово";
+         rb3_label.innerHTML = "Слово Слово";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "СловоСлово";
+         break;
+     case 934:
+     case 935:
+         rb1_label.innerHTML = "Слово — Слово";
+         rb2_label.innerHTML = "Слово-Слово";
+         rb3_label.innerHTML = "Слово- Слово";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "Слово Слово";
+         rb5_span.style.display = "block";
+         rb5_label.innerHTML = "СловоСлово";
+         break;
+     case 937:
+     case 938:
+         rb1_label.innerHTML = "Слово — Слово";
+         rb2_label.innerHTML = "Слово-Слово";
+         rb3_label.innerHTML = "Слово -Слово";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "Слово Слово";
+         rb5_span.style.display = "block";
+         rb5_label.innerHTML = "СловоСлово";
+         break;
+     case 939:
+         rb1_label.innerHTML = "Текст, — Слово";
+         rb2_label.innerHTML = "Текст, Слово";
+         rb3_span.style.display = "none";
+         break;
+     case 940:
+     case 941:
+         rb1_label.innerHTML = "Текст, — Слово";
+         rb2_label.innerHTML = "Текст, -Слово";
+         rb3_label.innerHTML = "Текст, Слово";
+         break;
+     case 942:
+         rb1_label.innerHTML = "Текст. — Слово";
+         rb2_label.innerHTML = "Текст.-Слово";
+         rb3_label.innerHTML = "Текст. Слово";
+         break;
+     case 943:
+     case 944:
+         rb1_label.innerHTML = "Текст. — Слово";
+         rb2_label.innerHTML = "Текст.-Слово";
+         rb3_label.innerHTML = "Текст. -Слово";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "Текст. Слово";
+         break;
+     case 945:
+         rb1_label.innerHTML = "Слово — Символы";
+         rb2_label.innerHTML = "Слово- Символы";
+         rb3_label.innerHTML = "Слово Символы";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "СловоСимволы";
+         break;
+     case 947:
+     case 946:
+     case 952:
+     case 953:
+         rb1_label.innerHTML = "Слово — Символы";
+         rb2_label.innerHTML = "Слово-Символы";
+         rb3_label.innerHTML = "Слово- Символы";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "Слово Символы";
+         rb5_span.style.display = "block";
+         rb5_label.innerHTML = "СловоСимволы";
+         break;
+     case 948:
+         rb1_label.innerHTML = "Символы — Слово";
+         rb2_label.innerHTML = "Символы -Слово";
+         rb3_label.innerHTML = "Символы Слово";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "СимволыСлово";
+         break;
+     case 949:
+     case 950:
+     case 955:
+     case 956:
+         rb1_label.innerHTML = "Символы — Слово";
+         rb2_label.innerHTML = "Символы-Слово";
+         rb3_label.innerHTML = "Символы -Слово";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "Символы Слово";
+         rb5_span.style.display = "block";
+         rb5_label.innerHTML = "СимволыСлово";
+         break;
+     case 951:
+         rb1_label.innerHTML = "Слово — Символы";
+         rb2_label.innerHTML = "Слово-Символы";
+         rb3_label.innerHTML = "Слово Символы";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "СловоСимволы";
+         break;
+     case 954:
+         rb1_label.innerHTML = "Символы — Слово";
+         rb2_label.innerHTML = "Символы-Слово";
+         rb3_label.innerHTML = "Символы Слово";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "СимволыСлово";
+         break;
+     case 957:
+         rb1_label.innerHTML = "Слово —";
+         rb2_label.innerHTML = "Слово";
+         rb3_span.style.display = "none";
+         break;
+     case 958:
+     case 959:
+         rb1_label.innerHTML = "Слово —";
+         rb2_label.innerHTML = "Слово-";
+         rb3_label.innerHTML = "Слово";
+         break;
+
+     case 960:
+         rb1_label.innerHTML = "Число — Число";
+         rb2_label.innerHTML = "Число–Число";
+         rb3_span.style.display = "none";
+         break;
+     case 961:
+         rb1_label.innerHTML = "Число — Число";
+         rb2_label.innerHTML = "Число-Число";
+         rb3_span.style.display = "none";
+         break;
+     case 962:
+     case 963:
+     case 964:
+     case 965:
+     case 966:
+     case 967:
+     case 968:
+         rb1_label.innerHTML = "Число — Число";
+         rb2_label.innerHTML = "Число–Число";
+         rb3_label.innerHTML = "Число-Число";
+         break;
+     case 969:
+         rb1_label.innerHTML = "Число — Символы";
+         rb2_label.innerHTML = "Число–Символы";
+         rb3_span.style.display = "none";
+         break;
+     case 970:
+         rb1_label.innerHTML = "Число — Символы";
+         rb2_label.innerHTML = "Число-Символы";
+         rb3_span.style.display = "none";
+         break;
+     case 971:
+     case 975:
+         rb1_label.innerHTML = "Число — Символы";
+         rb2_label.innerHTML = "Число–Символы";
+         rb3_label.innerHTML = "Число-Символы";
+         break;
+     case 972:
+         rb1_label.innerHTML = "Символы — Число";
+         rb2_label.innerHTML = "Символы–Число";
+         rb3_span.style.display = "none";
+         break;
+     case 973:
+         rb1_label.innerHTML = "Символы — Число";
+         rb2_label.innerHTML = "Символы-Число";
+         rb3_span.style.display = "none";
+         break;
+     case 974:
+     case 979:
+         rb1_label.innerHTML = "Символы — Число";
+         rb2_label.innerHTML = "Символы–Число";
+         rb3_label.innerHTML = "Символы-Число";
+         break;
+     case 976:
+     case 977:
+         rb1_label.innerHTML = "Число — Символы";
+         rb2_label.innerHTML = "Число–Символы";
+         rb3_label.innerHTML = "Число-Символы";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "Число- Символы";
+         break;
+     case 978:
+     case 980:
+         rb1_label.innerHTML = "Символы — Число";
+         rb2_label.innerHTML = "Символы–Число";
+         rb3_label.innerHTML = "Символы-Число";
+         rb4_span.style.display = "block";
+         rb4_label.innerHTML = "Символы –Число";
+         break;
+     case 981:
+         rb1_label.innerHTML = "— Число";
+         rb2_label.innerHTML = "Число";
+         rb3_span.style.display = "none";
+         break;
+     case 982:
+     case 983:
+         rb1_label.innerHTML = "— Число";
+         rb2_label.innerHTML = "–Число";
+         rb3_label.innerHTML = "Число";
+         break;
+         }
+
+
+
+///////////////   Функция, которая включается после загрузки окна
+
+ window.onload = function() {
+         dL=window.screenLeft;   //  Сохранение начального значения отступа окна от левого края экрана
+         dT=window.screenTop;     //  и от верхнего края.
+         delta=dT-wT;
+         if (activ_b7)  b7.innerHTML = '<IMG height=18 width=18 src="images/undo.png">';    //  Активация кнопки "Отмена действия"
+             else  b7.disabled=true;
+         if (activ_b8)  b8.innerHTML = '<IMG height=18 width=18 src="images/redo.png">';    //  Активация кнопки "Возвращение действия"
+             else  b8.disabled=true;
+         var el = [ , b1, b2, b3, b4, b5, b6, b7, b8][lastButton];
+         if (el.disabled==false)
+                 el.focus();    //  Перенос "фокуса" на кнопку, указанную в основном скрипте.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие радиокнопок
+
+ function rButton_X(num) {
+         if (num==6  &&  !sino)  num=1;    //  Дополнительная блокировка поля ввода.
+         lastRadio=num;       //  Номер нажатой радиокнопки.
+         var elemLR = [ , rb1, rb2, rb3, rb4, rb5, rb6][num];       //  Элемент нажатой радиокнопки.
+         elemLR.checked=true;                       //  Переключение.
+
+         if (num==6) {                //  Если выбрана ручная правка...
+                 b5.disabled=true;              //  Блокируем кнопку "Заменить всё".
+                 if (replaceTxt.value=="")         //  Если текстовое поле не заполнено....
+                         replaceTxt.value = arg[2];   //  то заполняем текстовое поле исходным текстом.
+                 return;    //  Выходим из функции.
+                 }
+
+         b5.disabled=false;       //  Снимаем блокировку с кнопки "Заменить всё".
+         replaceTxt.value = arg[2].replace(reRB[num], reRB_[num]);   //  Заполнение текстового поля.
+         }
+
+
+
+///////////////   Функция, реагирующая на нажатие кнопок
+
+ function button_X(num) {
+         window.returnValue = [num, lastRadio, window.screenLeft - dL, window.screenTop - dT, replaceTxt.value];
+         //  Отправка массива: [<код нажатой кнопки>, <код нажатой радиокнопки>, <горизонтальный сдвиг>, <вертикальный сдвиг>, <текст в поле замены>].
+         window.close();    //  Закрытие этого окна.
+         }
+
+
+
+///////////////   Функция для открытия/закрытия окна справки
+
+ function button_09() {   //  "Справка"
+
+ if (winInfo  &&  !winInfo.closed) {    //  Если окно уже открыто...
+         winInfo.close();    //  то закрываем его
+         return;   //  и выходим из функции.
+         }
+
+ var titleMsg = " Текст-корректор • операция " + numOp;
+
+ var mTxt = [];
+ var mTxt1 = [];
+ var mTxt2 = [];
+ var mTxt3 = [];
+ var mTxt4 = [];
+ var height;
+
+ mTxt1 = [["Справка",, "19 центр линия#707070 #1A544F (Cambria, Georgia, Liberation Serif)"], []];
+ mTxt3 = [
+     ["• <B>Найден текст</B> — Текст в этом поле можно только скопировать.",, "#191919"],
+     ["• <B>Заменить на</B> — Текст в этом поле можно редактировать.",, "#191919"],
+     ["• <B>Варианты</B> — Здесь можно выбрать вариант замены.",, "#191919"],
+     ["• <B>Заменить</B> — Произвести одну замену.",, "#191919"],
+     ["• <B>Пропустить</B> — Пропустить одну замену.",, "#191919"],
+     ["• <B>Заменить похожие</B> — Заменить текущий и все следующие похожие фрагменты.",, "#191919"],
+     ["• <B>Пропустить похожие</B> — Пропустить текущий и все следующие похожие фрагменты.",, "#191919"],
+     ["• <B>Заменить всё</B> — Произвести текущую и все следующие замены в этой операции.",, "#191919"],
+     ["• <B>Пропустить всё</B> — Прервать выполнение этой операции.",, "#191919"],
+     [" ",, "5"],
+     [z2('<IMG height=15 width=15 src="images/undo.png">')+" "+z2('<IMG height=15 width=15 src="images/redo.png">')+" — Отмена/возврат последних действий для одной операции.",, "#191919"],
+     [z3("?")+" — Открыть/закрыть это окно.",, "#191919"],
+     [z3("×")+" <I>(системная кнопка)</I> — Прервать выполнение всех операций.",, "#191919"]];
+
+ switch (numOp) {
+     case 931:
+         mTxt2 = [
+             ["Сочетание <B>«буква + короткое тире + буква»</B> может использоваться при записи интервалов между нестандартными числами <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">XX–XXI</FONT> <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">0A–FF</FONT>.",, "#191919 отступ"],
+             ["*   Интервалы римскими цифрами обрабатываются автоматически.",, "11 #191919"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 586;
+         break;
+     case 932:
+         mTxt2 = [
+             ["Сочетание <B>«буква + тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 933:
+         mTxt2 = [
+             ["Сочетание <B>«буква + дефис + пробел»</B> используется при записи части слова <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">двух- и трёхэтажные здания</FONT> <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">приставки пре-, от-</FONT> и т.п.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 552;
+         break;
+     case 934:
+         mTxt2 = [
+             ["Сочетание <B>«буква + короткое тире + пробел»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 935:
+         mTxt2 = [
+             ["Сочетание <B>«буква + тире + пробел»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 936:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + дефис + буква»</B> используется при записи части слова <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">окончания -ая, -ый и т.п.</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+     case 937:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + короткое тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 938:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 939:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + дефис + буква»</B> используется при записи части слова <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">окончания -ая, -ый и т.п.</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+     case 940:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + короткое тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 941:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 942:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + дефис + буква»</B> используется при записи части слова <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">окончания -ая, -ый</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+     case 943:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + короткое тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 944:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 945:
+         mTxt2 = [
+             ["Сочетание <B>«буква + дефис + символ»</B> скорее всего ошибочное.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 946:
+         mTxt2 = [
+             ["Сочетание <B>«буква + короткое тире + символ»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 947:
+         mTxt2 = [
+             ["Сочетание <B>«буква + тире + символ»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 948:
+         mTxt2 = [
+             ["Сочетание <B>«символ + дефис + буква»</B> может использоваться при записи сокращения <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">ж.-д. транспорт</FONT> <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">Ж.-П.Сартр</FONT>",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+     case 949:
+         mTxt2 = [
+             ["Сочетание <B>«символ + короткое тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 950:
+         mTxt2 = [
+             ["Сочетание <B>«символ + тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 951:
+         mTxt2 = [
+             ["Сочетание <B>«буква + дефис + пробел»</B> используется при записи части слова <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">двух- и трёхэтажные здания</FONT> <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">приставки пре-, от-</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 537;
+         break;
+     case 952:
+         mTxt2 = [
+             ["Сочетание <B>«буква + короткое тире + пробел»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 953:
+         mTxt2 = [
+             ["Сочетание <B>«буква + тире + пробел»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 954:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + дефис + буква»</B> используется при записи части слова <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">окончания -ая, -ый</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+     case 955:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + короткое тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 956:
+         mTxt2 = [
+             ["Сочетание <B>«пробел + тире + буква»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+
+     case 957:
+         mTxt2 = [
+             ["Сочетание <B>«буква + дефис» в конце строки</B> используется для переноса слов.",, "#191919 отступ"],
+             ["*   Этот скрипт не умеет соединять разорванные строки.",, "11 #191919"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 550;
+         break;
+
+     case 958:
+         mTxt2 = [
+             ["Сочетание <B>«буква + короткое тире» в конце строки</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+
+     case 959:
+         mTxt2 = [
+             ["Сочетание <B>«буква + тире» в конце строки</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+
+     case 960:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + дефис + цифра»</B> используется при записи номеров, кодов и т.п.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         mTxt4 = [
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"],
+             ["*   Иногда новый символ короткого тире временно помечается ударением.",, "11 #191919"]];
+         height = 585;
+         break;
+     case 961:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + короткое тире + цифра»</B> используется при записи промежутков, интервалов, диапазонов.",, "#191919 отступ"],
+             ["*   Большинство интервалов обрабатываются автоматически.",, "11 #191919"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 567;
+         break;
+     case 962:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + тире + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 963:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + дефис + пробел + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 964:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + короткое тире + пробел + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 965:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + тире + пробел + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 966:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + пробел + дефис + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 967:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + пробел + короткое тире + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+     case 968:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + пробел + тире + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 969:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + дефис + символ»</B> используется при записи сложных слов, номеров, кодов и т.п. <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">1-Й</FONT> <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">№3-Б</FONT> <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">12-D2-HG</FONT>.",, "#191919 отступ"],
+             ["*   Строчные русские буквы после чисел здесь не рассматриваются.",, "11 #191919"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         mTxt4 = [
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"],
+             ["*   Иногда новый символ короткого тире временно помечается ударением.",, "11 #191919"]];
+         height = 612;
+         break;
+     case 970:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + короткое тире + символ»</B> может использоваться при записи интервалов между нестандартными числами <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">D9–F3</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 553;
+         break;
+     case 971:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + тире + символ»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 972:
+         mTxt2 = [
+             ["Сочетание <B>«символ + дефис + цифра»</B> используется при записи названий, номеров,  кодов <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">Ту-134</FONT> <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">1K-23W-333</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         mTxt4 = [
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"],
+             ["*   Иногда новый символ короткого тире временно помечается ударением.",, "11 #191919"]];
+         height = 585;
+         break;
+     case 973:
+         mTxt2 = [
+             ["Сочетание <B>«символ + короткое тире + цифра»</B> может использоваться при записи интервалов между нестандартными числами <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">5D–6F</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 553;
+         break;
+     case 974:
+         mTxt2 = [
+             ["Сочетание <B>«символ + тире + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 975:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + дефис + пробел + символ»</B> используется при записи числа как части слова <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">12- и 24-этажные</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+     case 976:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + короткое тире + пробел + символ»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 977:
+         mTxt2 = [
+             ["Сочетание <B>«цифра + тире + пробел + символ»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 978:
+         mTxt2 = [
+             ["Сочетание <B>«символ + пробел + дефис + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 979:
+         mTxt2 = [
+             ["Сочетание <B>«символ + пробел + короткое тире + цифра»</B> может использоваться при записи отрицательных чисел <FONT  style=\"background-color: #C1C1C1; padding: 0 2 0 2\">за окном –17°C</FONT>.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 552;
+         break;
+     case 980:
+         mTxt2 = [
+             ["Сочетание <B>«символ + пробел + тире + цифра»</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 981:
+         mTxt2 = [
+             ["Сочетание <B>«короткое тире + цифра» в начале строки</B> используется для обозначения отрицательных чисел.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 536;
+         break;
+     case 982:
+         mTxt2 = [
+             ["Сочетание <B>«тире + цифра» в начале строки</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+     case 983:
+         mTxt2 = [
+             ["Сочетание <B>«дефис + цифра» в начале строки</B> считается ошибочным.",, "#191919 отступ"],
+             ["- - - - - - - - - - - - - - - - - -",, "11 центр #969696"]];
+         height = 520;
+         break;
+         }
+
+ mTxt = mTxt1.concat(mTxt2, mTxt3, mTxt4);
+
+ winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", [titleMsg, mTxt],
+         "dialogHeight: "+height+"px; dialogWidth: 350px; dialogLeft: "+(window.screenLeft+650)+"; dialogTop: "+(window.screenTop-delta)+"; center: Yes; help: No; resizable: Yes; status: No");
+ }
+
+
+///////////////   Функции добавления стиля выделения в окне справки
+
+function z2(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 3 3 1 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+function z3(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+</SCRIPT>
+</BODY>
+</HTML>
