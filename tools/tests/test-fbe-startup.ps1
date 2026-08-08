@@ -3,7 +3,8 @@ param(
     [string]$Configuration = "Release",
     [int]$TimeoutSeconds = 90,
     [switch]$Trace,
-    [switch]$VerboseTrace
+    [switch]$VerboseTrace,
+    [switch]$AllowTraceErrors
 )
 
 $ErrorActionPreference = "Stop"
@@ -190,7 +191,7 @@ try {
                 throw "В диагностическом журнале нет обязательной JavaScript-стадии: $code"
             }
         }
-        if (Select-String -InputObject $traceText -SimpleMatch 'level=error' -Quiet) {
+		if (-not $AllowTraceErrors -and (Select-String -InputObject $traceText -SimpleMatch 'level=error' -Quiet)) {
             throw "Успешная загрузка создала error-событие: $traceFile"
         }
         if (-not (Select-String -InputObject $traceText -SimpleMatch "category=document;" -Quiet)) {
