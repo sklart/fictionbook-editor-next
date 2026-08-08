@@ -89,6 +89,11 @@ jobs:
           if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
             choco install nsis --no-progress --yes
           }
+      - name: Restore runtime dictionaries for release verification
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path out/Release/dict -Force | Out-Null
+          Copy-Item runtime/dict/* -Destination out/Release/dict -Force
       - name: Create Modern release artifacts without compiling
         shell: pwsh
         run: |
