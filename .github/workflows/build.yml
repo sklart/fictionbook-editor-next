@@ -161,35 +161,35 @@ jobs:
       - name: Prepare human-readable release notes
         shell: pwsh
         run: ./tools/build/new-release-notes.ps1 -Version "${{ github.ref_name }}" -OutputPath out/RELEASE_NOTES.md
-        - name: Publish GitHub release
-          shell: pwsh
-          env:
-            GH_TOKEN: ${{ github.token }}
-          run: |
-            $releaseTag = "${{ github.ref_name }}"
-            $assets = @(Get-ChildItem out/artifacts -Recurse -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" })
-            if ($assets.Count -eq 0) { throw "Не найдены файлы для публикации release." }
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseTag = "${{ github.ref_name }}"
+          $assets = @(Get-ChildItem out/artifacts -Recurse -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" })
+          if ($assets.Count -eq 0) { throw "Не найдены файлы для публикации release." }
 
-            $checksumsPath = Join-Path $env:RUNNER_TEMP "SHA256SUMS.txt"
-            $checksumLines = foreach ($asset in $assets) {
-              $hash = Get-FileHash -LiteralPath $asset.FullName -Algorithm SHA256
-              "{0} *{1}" -f $hash.Hash.ToLowerInvariant(), $asset.Name
-            }
-            [IO.File]::WriteAllLines($checksumsPath, @($checksumLines), [Text.UTF8Encoding]::new($false))
+          $checksumsPath = Join-Path $env:RUNNER_TEMP "SHA256SUMS.txt"
+          $checksumLines = foreach ($asset in $assets) {
+            $hash = Get-FileHash -LiteralPath $asset.FullName -Algorithm SHA256
+            "{0} *{1}" -f $hash.Hash.ToLowerInvariant(), $asset.Name
+          }
+          [IO.File]::WriteAllLines($checksumsPath, @($checksumLines), [Text.UTF8Encoding]::new($false))
 
-            gh release view $releaseTag 2>$null | Out-Null
-            if ($LASTEXITCODE -eq 0) {
-              $arguments = @("release", "edit", $releaseTag, "--notes-file", "out/RELEASE_NOTES.md")
-              if ($releaseTag -match '^v\d+\.\d+\.\d+-') { $arguments += "--prerelease" }
-              gh @arguments
-            } else {
-              $arguments = @("release", "create", $releaseTag, "--verify-tag", "--notes-file", "out/RELEASE_NOTES.md")
-              if ($releaseTag -match '^v\d+\.\d+\.\d+-') { $arguments += "--prerelease" }
-              gh @arguments
-            }
+          gh release view $releaseTag 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            $arguments = @("release", "edit", $releaseTag, "--notes-file", "out/RELEASE_NOTES.md")
+            if ($releaseTag -match '^v\d+\.\d+\.\d+-') { $arguments += "--prerelease" }
+            gh @arguments
+          } else {
+            $arguments = @("release", "create", $releaseTag, "--verify-tag", "--notes-file", "out/RELEASE_NOTES.md")
+            if ($releaseTag -match '^v\d+\.\d+\.\d+-') { $arguments += "--prerelease" }
+            gh @arguments
+          }
 
-            $uploadAssets = @($assets.FullName) + $checksumsPath
-            gh release upload $releaseTag @uploadAssets --clobber
+          $uploadAssets = @($assets.FullName) + $checksumsPath
+          gh release upload $releaseTag @uploadAssets --clobber
       - name: Synchronize update manifest
         if: "!contains(github.ref_name, '-')"
         shell: pwsh
