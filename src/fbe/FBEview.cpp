@@ -4094,8 +4094,15 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 			MSHTML::IHTMLElement2Ptr(te)->insertAdjacentElement(L"beforeEnd", tre);
 		}
 
-		// * paste the results back
-		rng->pasteHTML(te->outerHTML);
+		// InsertHTML is an editing command, so MSHTML records it in its own
+		// undo stack. IHTMLTxtRange::pasteHTML changes the DOM but is not
+		// undoable by the editor's Undo command.
+		rng->select();
+		if (Document()->execCommand(L"InsertHTML", VARIANT_FALSE, _variant_t(te->outerHTML)) != VARIANT_TRUE)
+		{
+			m_mk_srv->EndUndoUnit();
+			return false;
+		}
 
 		// * ensure we have good html
 		RelocateParagraphs(MSHTML::IHTMLDOMNodePtr(pe));
