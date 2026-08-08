@@ -243,6 +243,11 @@ foreach ($requiredProject in @(
     "src\export-docx\ExportDOCXBatch.vcxproj",
     "src\export-epub\ExportEPUBBatch.vcxproj",
     "src\import-epub\ImportEPUBBatch.vcxproj",
+    # The SVG adapter links these two libraries but does not declare MSBuild
+    # project references to them.  Build them explicitly so a clean CI runner
+    # never attempts to link ImportEPUBLunaSVG.dll before its libraries exist.
+    "src\import-epub\thirdparty\lunasvg\plutovg.vcxproj",
+    "src\import-epub\thirdparty\lunasvg\lunasvg.vcxproj",
     "src\import-epub\ImportEPUBLunaSVG.vcxproj"
 )) {
     Invoke-RequiredProjectRebuild -ProjectPath (Join-Path $repoRoot $requiredProject)
