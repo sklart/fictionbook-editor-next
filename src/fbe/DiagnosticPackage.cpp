@@ -49,9 +49,14 @@ namespace
 
 	bool ContainsUnsafeContent(const std::vector<BYTE>& bytes)
 	{
-		std::string text(bytes.empty() ? "" : reinterpret_cast<const char*>(&bytes[0]), bytes.size()); std::string lower(text); for (size_t index = 0; index < lower.size(); ++index) if (lower[index] >= 'A' && lower[index] <= 'Z') lower[index] = static_cast<char>(lower[index] - 'A' + 'a');
-		if (lower.find("<html") != std::string::npos || lower.find("<?xml") != std::string::npos || lower.find("base64") != std::string::npos || lower.find("data:") != std::string::npos || lower.find("file://") != std::string::npos) return true;
-		for (size_t index = 0; index + 2 < text.size(); ++index) if (((text[index] >= 'A' && text[index] <= 'Z') || (text[index] >= 'a' && text[index] <= 'z')) && text[index + 1] == ':' && (text[index + 2] == '\\' || text[index + 2] == '/')) return true;
+		CString text;
+		if (bytes.size() >= 2 && bytes[0] == 0xff && bytes[1] == 0xfe) text.SetString(reinterpret_cast<const wchar_t*>(&bytes[2]), static_cast<int>((bytes.size() - 2) / 2));
+		else if (bytes.size() >= 2 && bytes[0] == 0xfe && bytes[1] == 0xff) { for (size_t index = 2; index + 1 < bytes.size(); index += 2) text += static_cast<wchar_t>((bytes[index] << 8) | bytes[index + 1]); }
+		else { const int chars = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.empty() ? "" : reinterpret_cast<const char*>(&bytes[0]), static_cast<int>(bytes.size()), NULL, 0); if (!chars && !bytes.empty()) return true; if (chars) { ::MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&bytes[0]), static_cast<int>(bytes.size()), text.GetBuffer(chars), chars); text.ReleaseBuffer(chars); } }
+		CString lower(text); lower.MakeLower();
+		if (lower.Find(L"book_private_") >= 0 || lower.Find(L"file://") >= 0 || lower.Find(L"data:") >= 0 || lower.Find(L"<html") >= 0 || lower.Find(L"<?xml") >= 0 || lower.Find(L"\\\\") >= 0) return true;
+		for (int index = 0; index + 2 < text.GetLength(); ++index) if (((text[index] >= L'A' && text[index] <= L'Z') || (text[index] >= L'a' && text[index] <= L'z')) && text[index + 1] == L':' && (text[index + 2] == L'\\' || text[index + 2] == L'/')) return true;
+		int run = 0; for (int index = 0; index < text.GetLength(); ++index) { const wchar_t c = text[index]; const bool base64 = (c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z') || (c >= L'0' && c <= L'9') || c == L'+' || c == L'/' || c == L'='; run = base64 ? run + 1 : 0; if (run >= 128) return true; }
 		return false;
 	}
 
