@@ -73,7 +73,9 @@ static bool DispatchHasMember(IDispatch* dispatch, const wchar_t* name)
 
 static CString GetDiagnosticFaultInjection()
 {
-	if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", NULL, 0) != 1)
+	wchar_t testMode[4] = {};
+	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
+	if (testModeLength != 1 || testMode[0] != L'1')
 		return CString();
 	wchar_t value[64] = {};
 	const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", value, _countof(value));

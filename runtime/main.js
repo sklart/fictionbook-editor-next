@@ -77,6 +77,11 @@ function IsDiagnosticFaultInjectionEnabled(point)
  try { return window.fbeNextFaultInjection == point; }
  catch(ignore) { return false; }
 }
+function IsDiagnosticFaultInjectionActive()
+{
+ try { return !!window.fbeNextFaultInjection; }
+ catch(ignore) { return false; }
+}
 function DiagError(code, operation, error)
 {
  var failedStage = diagnosticFailureStage || diagnosticOperationStage || code;
@@ -963,7 +968,7 @@ function errorHandler(msg,url,lno)
 	var compatMode = "";
 	try { documentMode = document.documentMode; compatMode = document.compatMode; } catch(ignore) {}
 	TraceDiagnosticEvent("J901", "operation=window.onerror; file-present=" + (fileName ? 1 : 0) + "; file-name=" + fileName + "; line=" + line + "; document-mode=" + documentMode + "; compat-mode=" + compatMode + "; trace-bridge-state=" + diagnosticTraceBridgeState);
-	try { MsgBox("Error at line "+lno+":\n"+msg+" "); } catch(ignore) {}
+	if(!IsDiagnosticFaultInjectionActive()) try { MsgBox("Error at line "+lno+":\n"+msg+" "); } catch(ignore) {}
 	return true;
 }
 

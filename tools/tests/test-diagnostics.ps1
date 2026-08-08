@@ -23,7 +23,8 @@ $tests = @(
     'test-diagnostic-cleanup-contract.ps1',
     'test-diagnostic-feature-control.ps1',
     'test-fbe-trace-bridge.ps1',
-    'test-fbe-typelib-diagnostics.ps1'
+    'test-fbe-typelib-diagnostics.ps1',
+    'test-fbe-diagnostic-faults.ps1'
 )
 
 foreach($test in $tests)
