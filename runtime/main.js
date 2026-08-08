@@ -683,6 +683,11 @@ function apiLoadFB2(path, lang)
 		TraceScript("J105", "operation=apiLoadFB2 injected exception");
 		throw new Error("diagnostic fault injection");
 	}
+	if(IsDiagnosticFaultInjectionEnabled("api-load-private-exception"))
+	{
+		TraceScript("J105", "operation=apiLoadFB2 injected private exception");
+		throw new Error("BOOK_PRIVATE_PLAIN_TEXT_MARKER; BOOK_PRIVATE_XML_<tag>; BASE64_PRIVATE_MARKER; C:\\Users\\PrivateUser\\secret.fb2; \\\\server\\private\\book.fb2; file:///C:/private/book.fb2; field=value; level=info");
+	}
 	if(IsDiagnosticFaultInjectionEnabled("api-load-return-false"))
 	{
 		TraceScript("J106", "operation=apiLoadFB2 injected false result");

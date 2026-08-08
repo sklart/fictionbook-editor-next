@@ -86,7 +86,7 @@ static CString GetDiagnosticFaultInjection()
 	const CString point(value);
 	static const wchar_t* const allowed[] = {
 		L"get-extended-style", L"inflate-paragraphs", L"css-restore-failure",
-		L"api-load-return-false", L"api-load-exception", L"first-set-external",
+		L"api-load-return-false", L"api-load-exception", L"api-load-private-exception", L"first-set-external",
 		L"second-set-external", L"optional-diagnostic-api-missing", L"navigate-error",
 		L"document-complete-timeout", L"controlled-load-failure+css-restore-failure"
 	};
