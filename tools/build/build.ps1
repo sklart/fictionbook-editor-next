@@ -36,6 +36,10 @@ param(
 
     [switch]$ReuseEditorRuntime,
 
+    # Явный target-specific каталог для EXE/PDB пакетных конвертеров.
+    # В CI обязателен, чтобы Modern и Win7 никогда не делили OutDir.
+    [string]$BatchOutputDirectory,
+
     [switch]$WarningsAsErrors
 )
 
@@ -241,6 +245,12 @@ $buildCommit = (& git -C $repoRoot rev-parse --short=12 HEAD 2>$null | Select-Ob
 if(-not $buildCommit) { $buildCommit = 'unknown' }
 $properties += "/p:FbeBuildCommit=$buildCommit"
 
+if ($BatchOutputDirectory) {
+    $BatchOutputDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
+    New-Item -ItemType Directory -Path $BatchOutputDirectory -Force | Out-Null
+    $properties += "/p:BatchOutputDirectory=$BatchOutputDirectory\"
+}
+
 if ($PlatformToolset) {
     $properties += "/p:PlatformToolset=$PlatformToolset"
 }
@@ -262,7 +272,8 @@ if ($BatchConvertersOnly) {
         Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot $batchProject)
     }
 
-    Write-Host "Собраны только пакетные конвертеры для ${CompatibilityTarget}."
+    $batchOutputText = if ($BatchOutputDirectory) { " в $BatchOutputDirectory" } else { " в стандартный out\\$Configuration" }
+    Write-Host "Собраны только пакетные конвертеры для ${CompatibilityTarget}$batchOutputText."
     return
 }
 

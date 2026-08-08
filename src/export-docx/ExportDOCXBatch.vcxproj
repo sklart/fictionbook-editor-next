@@ -72,10 +72,12 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <OutDir Condition="'$(BatchOutputDirectory)'!=''">$(BatchOutputDirectory)</OutDir>
     <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <OutDir Condition="'$(BatchOutputDirectory)'!=''">$(BatchOutputDirectory)</OutDir>
     <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
