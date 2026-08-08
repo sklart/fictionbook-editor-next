@@ -81,7 +81,7 @@ function Assert-TraceDoesNotContain([string]$Trace, [string]$Text) {
     }
 }
 
-function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes, [switch]$ExpectSuccess) {
+function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes, [switch]$ExpectSuccess, [string[]]$ExpectedText = @(), [int]$MaximumElapsedSeconds = 0) {
     $started = Get-Date
     $process = $null
     $trace = $null
@@ -109,6 +109,11 @@ function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes, [switc
 
         if(-not $trace) { throw "No diagnostic trace was created for fault '$Fault'." }
         foreach($code in $ExpectedCodes) { Assert-TraceCode $trace $code }
+		foreach($text in $ExpectedText) {
+			if(-not (Select-String -LiteralPath $trace -SimpleMatch $text -Quiet)) { throw "Trace does not contain expected text '$text': $trace" }
+		}
+		$elapsedSeconds = ((Get-Date) - $started).TotalSeconds
+		if($MaximumElapsedSeconds -gt 0 -and $elapsedSeconds -gt $MaximumElapsedSeconds) { throw "Diagnostic fault '$Fault' took $elapsedSeconds seconds, expected at most $MaximumElapsedSeconds." }
         if($ExpectSuccess) {
             Assert-TraceCode $trace 'D113'
             Assert-TraceDoesNotContain $trace 'level=error'
@@ -136,6 +141,8 @@ try {
 	Invoke-DiagnosticFault 'first-set-external' @('FI010', 'WB153')
 	Invoke-DiagnosticFault 'second-set-external' @('FI011', 'WB270', 'WB298')
 	Invoke-DiagnosticFault 'optional-diagnostic-api-missing' @('FI000', 'J011') -ExpectSuccess
+	Invoke-DiagnosticFault 'navigate-error' @('FI012', 'WB135', 'WB134') -ExpectedText @('last-browser-event=NavigateError') -MaximumElapsedSeconds 5
+	Invoke-DiagnosticFault 'document-complete-timeout' @('FI013', 'WB133') -ExpectedText @('elapsed=0;', 'ready-state=', 'document-present=', 'last-browser-event=') -MaximumElapsedSeconds 5
     Write-Host 'Diagnostic fault-injection tests passed.'
 }
 finally {

@@ -87,7 +87,8 @@ static CString GetDiagnosticFaultInjection()
 	static const wchar_t* const allowed[] = {
 		L"get-extended-style", L"inflate-paragraphs", L"css-restore-failure",
 		L"api-load-return-false", L"api-load-exception", L"first-set-external",
-		L"second-set-external", L"optional-diagnostic-api-missing"
+		L"second-set-external", L"optional-diagnostic-api-missing", L"navigate-error",
+		L"document-complete-timeout"
 	};
 	for (UINT index = 0; index < _countof(allowed); ++index)
 		if (point.CompareNoCase(allowed[index]) == 0)
@@ -610,6 +611,14 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	StartupTrace::HResult(L"webbrowser", L"WB120", hr, L"Navigate main.html");
 	if (FAILED(hr))
 		return false;
+	const CString faultPoint = GetDiagnosticFaultInjection();
+	if (faultPoint == L"navigate-error")
+	{
+		CComVariant url(path), frame, status(static_cast<LONG>(INET_E_DOWNLOAD_FAILURE));
+		VARIANT_BOOL cancel = VARIANT_FALSE;
+		StartupTrace::Event(L"fault", L"FI012", L"NavigateError injected before DocumentComplete wait");
+		m_body.OnNavigateError(m_body.Browser(), &url, &frame, &status, &cancel);
+	}
 	MSG msg;
 	const ULONGLONG navigationStarted = ::GetTickCount64();
 	// The first MSHTML initialization under a debugger can exceed one minute.
@@ -617,6 +626,15 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	const DWORD documentCompleteTimeoutMs = 120000;
 	const DWORD messageWaitSliceMs = 50;
 	StartupTrace::Event(L"webbrowser", L"WB130", L"waiting for DocumentComplete");
+	if (faultPoint == L"document-complete-timeout")
+	{
+		CString readyState(L"(unknown)");
+		try { MSHTML::IHTMLDocument2Ptr document = m_body.Browser()->Document; if (document) readyState = static_cast<const wchar_t*>(_bstr_t(document->readyState)); } catch (const _com_error&) { }
+		CString details; details.Format(L"elapsed=0; ready-state=%s; document-present=%d; last-browser-event=%s", (LPCWSTR)readyState, m_body.HasDoc() ? 1 : 0, (LPCWSTR)m_body.LastBrowserEvent());
+		StartupTrace::Event(L"fault", L"FI013", L"DocumentComplete timeout injected");
+		StartupTrace::Warning(L"webbrowser", L"WB133", details);
+		return false;
+	}
 	while (!m_body.Loaded())
 	{
 		if (m_body.NavigationFailed())
@@ -629,7 +647,9 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 		const ULONGLONG elapsed = ::GetTickCount64() - navigationStarted;
 		if (elapsed >= documentCompleteTimeoutMs)
 		{
-			CString details; details.Format(L"elapsed=%llu; document-present=%d; last-browser-event=%s; url=%s", elapsed, m_body.HasDoc() ? 1 : 0, (LPCWSTR)m_body.LastBrowserEvent(), (LPCWSTR)StartupTrace::RedactPath(m_body.NavURL()));
+			CString readyState(L"(unknown)");
+			try { MSHTML::IHTMLDocument2Ptr document = m_body.Browser()->Document; if (document) readyState = static_cast<const wchar_t*>(_bstr_t(document->readyState)); } catch (const _com_error&) { }
+			CString details; details.Format(L"elapsed=%llu; ready-state=%s; document-present=%d; last-browser-event=%s; url=%s", elapsed, (LPCWSTR)readyState, m_body.HasDoc() ? 1 : 0, (LPCWSTR)m_body.LastBrowserEvent(), (LPCWSTR)StartupTrace::RedactPath(m_body.NavURL()));
 			StartupTrace::Warning(L"webbrowser", L"WB133", details);
 			return false;
 		}
