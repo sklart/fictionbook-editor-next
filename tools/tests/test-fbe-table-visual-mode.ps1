@@ -34,7 +34,7 @@ foreach($fragment in @('U::scmp(name,L"TABLE")', 'U::scmp(name,L"TR")', 'U::scmp
 }
 
 $viewSource = Get-Content -Raw -LiteralPath $viewPath
-foreach($fragment in @('Native tables have a deliberately different content model', 'U::scmp(nodeName, L"TABLE") == 0', 'U::scmp(name,L"TBODY")', 'insertAdjacentElement(L"afterEnd", te)')) {
+foreach($fragment in @('Native tables have a deliberately different content model', 'U::scmp(nodeName, L"TABLE") == 0', 'U::scmp(name,L"TBODY")', 'createElement(L"TBODY")', 'insertAdjacentElement(L"afterEnd", te)')) {
     if($viewSource -notlike "*$fragment*") { throw "Нормализация визуального редактора не сохраняет таблицы: $fragment" }
 }
 

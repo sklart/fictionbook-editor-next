@@ -4088,6 +4088,11 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 
 		MSHTML::IHTMLElementPtr te(Document()->createElement(L"TABLE"));
 		te->className = L"table";
+		// MSHTML only materializes rows/cells added through the DOM when they
+		// are placed in a table section.  HTML parsing creates TBODY for us,
+		// but direct DOM insertion must do it explicitly.
+		MSHTML::IHTMLElementPtr tbody(Document()->createElement(L"TBODY"));
+		MSHTML::IHTMLElement2Ptr(te)->insertAdjacentElement(L"beforeEnd", tbody);
 		nrows = max(1, nrows);
 		ncolumns = max(1, ncolumns);
 		const int totalRows = nrows + (bTitle ? 1 : 0);
@@ -4102,7 +4107,7 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 				if (!firstCell) firstCell = cell;
 				MSHTML::IHTMLElement2Ptr(tre)->insertAdjacentElement(L"beforeEnd", cell);
 			}
-			MSHTML::IHTMLElement2Ptr(te)->insertAdjacentElement(L"beforeEnd", tre);
+			MSHTML::IHTMLElement2Ptr(tbody)->insertAdjacentElement(L"beforeEnd", tre);
 		}
 
 		// Unlike pasteHTML/InsertHTML, direct insertion is supported by this
