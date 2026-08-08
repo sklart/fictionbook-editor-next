@@ -1832,7 +1832,7 @@ function GetBinaries(doc)
 function PutBinaries(doc)
 {
  TraceScript("J600", "operation=PutBinaries");
- var nerr=0; var success=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
+ var failureCount=0; var success=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
  TraceScript("J610", "operation=binary count; count=" + bl.length);
  for(var i=0; i<bl.length; i++)
  {
@@ -1850,18 +1850,19 @@ function PutBinaries(doc)
   {
    TraceScript("J622", "operation=invalid Base64; index=" + i);
    DiagError("J622", "nodeTypedValue", e);
-   if(nerr++<3) MsgBox("Invalid base64 data for "+id); continue;
+   if(failureCount++<3) MsgBox("Invalid base64 data for "+id); continue;
   }
   TraceVerboseOperation("J630", "operation=apiAddBinary; index=" + i);
   apiAddBinary("", id, bl[i].getAttribute("content-type"),dt);
   TraceVerboseOperation("J631", "operation=apiAddBinary result; index=" + i);
   success++;
  }
- if(nerr>3){ nerr-=3; MsgBox(nerr+" more invalid images ignored"); }
+ var additionalFailureCount = failureCount > 3 ? failureCount - 3 : 0;
+ if(additionalFailureCount) MsgBox(additionalFailureCount+" more invalid images ignored");
  TraceScript("J640", "operation=FillLists");
  FillLists();
  TraceScript("J641", "operation=FillLists result");
- TraceDiagnosticSummary("J699", "operation=PutBinaries success; binary-count=" + bl.length + "; binary-success=" + success + "; binary-failures=" + nerr);
+ TraceDiagnosticSummary("J699", "operation=PutBinaries success; binary-count=" + bl.length + "; binary-success=" + success + "; binary-failures=" + failureCount);
 }
 //// == BODY == ///////////////////////////////////////////////////////////////////
 
