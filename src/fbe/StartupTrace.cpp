@@ -446,7 +446,7 @@ void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const w
 void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"LEGACY", message, false); }
 void StartupTrace::Error(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"error", code, message, true); }
 void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); if (FAILED(result)) { TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); lastComFailure = failure; lastHResultFailure = failure; if (category && wcscmp(category, L"dispatch") == 0) lastDispatchFailure = failure; } }
-void StartupTrace::DispatchFailure(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { HResult(L"dispatch", code, result, message); }
+void StartupTrace::DispatchResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { HResult(category, code, result, message); if (FAILED(result)) { TraceLock guard; CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); lastDispatchFailure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); } }
 void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
 	const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message)
 {

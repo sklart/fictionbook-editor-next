@@ -36,7 +36,7 @@ namespace StartupTrace
 	// Записывает HRESULT без показа дополнительного диалога.
 	void HResult(const wchar_t* category, const wchar_t* code, HRESULT result,
 		const wchar_t* message = L"");
-	void DispatchFailure(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message = L"");
+	void DispatchResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message = L"");
 	void ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
 		const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message = L"");
 	// Записывает обезличенное событие JavaScript. Содержимое книги не передаётся.

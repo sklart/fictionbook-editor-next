@@ -206,7 +206,7 @@ HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCou
 	const bool firstSuccessfulLookup = SUCCEEDED(result) && RecordFirstCall(g_successfulNameLookups, dispids[0]);
 	const bool firstFailure = FAILED(result) && RecordFirstFailure(g_failedNameLookups, g_uniqueLookupFailures, methodDispid, result, names[0] ? names[0] : L"unknown");
 	const bool logLookup = (FAILED(result) && firstFailure) || IsExternalTraceVerbose() || firstSuccessfulLookup;
-	if (logLookup) { RecordLogged(g_loggedNameLookups, methodDispid); StartupTrace::DispatchFailure(L"external", L"XH120", result, details); }
+	if (logLookup) { RecordLogged(g_loggedNameLookups, methodDispid); StartupTrace::DispatchResult(L"external", L"XH120", result, details); }
 	return result;
 }
 HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags, DISPPARAMS* parameters, VARIANT* resultValue, EXCEPINFO* exceptionInfo, UINT* argumentError)
@@ -261,7 +261,7 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 			::SysFreeString(source); ::SysFreeString(description); ::SysFreeString(help);
 		}
 				RecordLogged(g_loggedInvokes, dispid);
-		StartupTrace::DispatchFailure(L"external", FAILED(result) ? L"XH140" : L"XH131", result, details);
+		StartupTrace::DispatchResult(L"external", FAILED(result) ? L"XH140" : L"XH131", result, details);
 	}
 	if (errorInfo) ::SetErrorInfo(0, errorInfo);
 	return result;
