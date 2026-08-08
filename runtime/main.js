@@ -510,10 +510,10 @@ function TransformXML(xslt, dom)
 	TraceScript("J500", "operation=TransformXML");
 	TraceScript("J510", "operation=fbw_body");
 	var body = document.getElementById("fbw_body");
-	if(!body) return false;
+	if(!body) { TraceScript("J512", "operation=fbw_body missing"); return false; }
 	TraceScript("J511", "operation=fbw_desc");
 	var desc = document.getElementById("fbw_desc");
-	if(!desc) return false;
+	if(!desc) { TraceScript("J513", "operation=fbw_desc missing"); return false; }
 
 	TraceScript("J520", "operation=createProcessor");
 	var proc=xslt.createProcessor();
@@ -551,7 +551,7 @@ function ShowDescElements()
 {
   TraceScript("J800", "operation=ShowDescElements");
   var desc = document.getElementById("fbw_desc");
-  if(!desc) return;
+  if(!desc) { TraceScript("J890", "operation=ShowDescElements description missing"); return false; }
   var spans = desc.getElementsByTagName("SPAN");
   TraceScript("J810", "operation=SPAN count; count=" + spans.length);
   for(var i=0; i < spans.length; i++)
@@ -568,6 +568,7 @@ function ShowDescElements()
     }
   }
   TraceScript("J899", "operation=ShowDescElements success");
+  return true;
 }
 function LoadFromDOM(dom, lang)
 {
@@ -586,7 +587,7 @@ function LoadFromDOM(dom, lang)
 	TraceScript("J341", "operation=TransformXML result");
 	if(!ret) return false;
 	TraceScript("J350", "operation=ShowDescElements");
-	ShowDescElements();
+	if(!ShowDescElements()) return false;
 	TraceScript("J351", "operation=ShowDescElements result");
 	TraceScript("J399", "operation=LoadFromDOM success");
 	return true;
@@ -760,10 +761,10 @@ function apiShowDesc(state)
 	TraceScript("J850", "operation=apiShowDesc; requested-state=" + (state ? 1 : 0));
 	TraceScript("J851", "operation=body present");
 	var body=document.getElementById("fbw_body");
-	if(!body) return false;
+	if(!body) { TraceScript("J854", "operation=apiShowDesc body missing"); return false; }
 	TraceScript("J852", "operation=desc present");
 	var desc=document.getElementById("fbw_desc");
-	if(!desc) return false;
+	if(!desc) { TraceScript("J855", "operation=apiShowDesc description missing"); return false; }
 	if(state)
 	{
 		document.ScrollSave=document.body.scrollTop;
