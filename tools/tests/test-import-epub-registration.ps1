@@ -35,8 +35,60 @@ if ($registration.ExitCode -ne 0) {
     throw "Регистрация ImportEPUB.dll завершилась с кодом $($registration.ExitCode)."
 }
 
+$importEpubClsid = '{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}'
+$perUserInprocPath = "Software\\Classes\\CLSID\\$importEpubClsid\\InprocServer32"
+$currentUser32 = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+    [Microsoft.Win32.RegistryHive]::CurrentUser,
+    [Microsoft.Win32.RegistryView]::Registry32)
+try {
+    $perUserInprocKey = $currentUser32.OpenSubKey($perUserInprocPath)
+    if (-not $perUserInprocKey) {
+        throw "После regsvr32 отсутствует 32-битная пользовательская COM-регистрация $perUserInprocPath."
+    }
+    try {
+        $registeredDll = [string]$perUserInprocKey.GetValue('')
+        if (-not [string]::Equals($registeredDll, $DllPath, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "32-битная пользовательская COM-регистрация ImportEPUB указывает на '$registeredDll', ожидалось '$DllPath'."
+        }
+    }
+    finally {
+        $perUserInprocKey.Dispose()
+    }
+}
+finally {
+    $currentUser32.Dispose()
+}
+
+# На повышенном токене COM игнорирует HKCU\\Software\\Classes. GitHub-hosted
+# runner запускает job именно так, хотя продукт намеренно использует per-user
+# регистрацию. Для smoke-активации временно дублируем уже проверенную запись в
+# 32-битный HKLM и удаляем её в finally ниже.
+$temporaryMachineRegistration = $false
+$machineClasses32 = $null
+$isElevated = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($isElevated) {
+    $machineClasses32 = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+        [Microsoft.Win32.RegistryHive]::LocalMachine,
+        [Microsoft.Win32.RegistryView]::Registry32).CreateSubKey('Software\\Classes')
+    $machineClassPath = "CLSID\\$importEpubClsid"
+    if ($machineClasses32.OpenSubKey($machineClassPath)) {
+        throw "Отказ от smoke-теста: в HKLM уже зарегистрирован CLSID ImportEPUB $importEpubClsid."
+    }
+
+    $machineClassKey = $machineClasses32.CreateSubKey($machineClassPath)
+    $machineClassKey.SetValue('', 'FBE EPUB Import Plugin', [Microsoft.Win32.RegistryValueKind]::String)
+    $machineInprocKey = $machineClassKey.CreateSubKey('InprocServer32')
+    $machineInprocKey.SetValue('', $DllPath, [Microsoft.Win32.RegistryValueKind]::String)
+    $machineInprocKey.SetValue('ThreadingModel', 'Apartment', [Microsoft.Win32.RegistryValueKind]::String)
+    $machineInprocKey.Dispose()
+    $machineClassKey.Dispose()
+    $temporaryMachineRegistration = $true
+}
+
 $testRoot = Join-Path $repoRoot "out\tests\import-epub-registration"
-New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
+try {
+    New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
 
 $sourcePath = Join-Path $testRoot "import-epub-registration-smoke.cpp"
 $exePath = Join-Path $testRoot "import-epub-registration-smoke.exe"
@@ -93,16 +145,25 @@ int wmain()
 }
 '@ | Set-Content -LiteralPath $sourcePath -Encoding UTF8
 
-& (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
+    & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
-& cl.exe /nologo /EHsc /W3 "/Fe:$exePath" $sourcePath ole32.lib uuid.lib
-if ($LASTEXITCODE -ne 0) {
-    throw "Сборка smoke-теста ImportEPUB завершилась с кодом $LASTEXITCODE."
+    & cl.exe /nologo /EHsc /W3 "/Fe:$exePath" $sourcePath ole32.lib uuid.lib
+    if ($LASTEXITCODE -ne 0) {
+        throw "Сборка smoke-теста ImportEPUB завершилась с кодом $LASTEXITCODE."
+    }
+
+    & $exePath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Smoke-тест 32-битной COM-регистрации ImportEPUB завершился с кодом $LASTEXITCODE."
+    }
 }
-
-& $exePath
-if ($LASTEXITCODE -ne 0) {
-    throw "Smoke-тест 32-битной COM-регистрации ImportEPUB завершился с кодом $LASTEXITCODE."
+finally {
+    if ($temporaryMachineRegistration) {
+        $machineClasses32.DeleteSubKeyTree("CLSID\\$importEpubClsid", $false)
+    }
+    if ($machineClasses32) {
+        $machineClasses32.Dispose()
+    }
 }
 
 Write-Host "Smoke-тест 32-битной COM-регистрации ImportEPUB прошёл успешно."
