@@ -105,6 +105,8 @@ Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verif
 Assert-Contains $verifyRelease "[switch]`$SkipCommonChecks" "verify-release.ps1"
 Assert-Contains $verifyRelease "[string]`$BatchOutputDirectory" "verify-release.ps1: target-specific batch output"
 Assert-Contains $verifyRelease "UsePreparedPcre2 = `$true" "verify-release.ps1: prepared PCRE2 smoke tests"
+Assert-Contains $verifyRelease "фактически поставляемая DLL property handler" "verify-release.ps1: поставляемые FBShell DLL"
+Assert-Contains $verifyRelease "Machine = [UInt16]0x8664" "verify-release.ps1: x64 FBShell architecture"
 Assert-Contains $verifyRelease '-EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")' "verify-release.ps1"
 if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {
     throw "Релизный контур не должен блокироваться накопленным набором кириллических строк; строгая проверка допустима только для отдельных фикстур."

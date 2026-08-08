@@ -209,6 +209,17 @@ function Test-BinarySecurityFlags {
     }
 }
 
+function Test-PeMachine {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][UInt16]$ExpectedMachine)
+
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+    $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+    if ($machine -ne $ExpectedMachine) {
+        throw "$Path имеет PE machine 0x$($machine.ToString('x4')); ожидалось 0x$($ExpectedMachine.ToString('x4'))."
+    }
+}
+
 $controlFlowGuardFiles = @(
     "FBE.exe",
     "FBV.exe",
@@ -227,6 +238,29 @@ foreach ($name in $requiredFiles) {
 
     Test-BinarySecurityFlags -Path $path `
         -RequireControlFlowGuard:($name -in $controlFlowGuardFiles)
+}
+
+if ($CompatibilityTarget -eq "Win7") {
+    foreach ($propertyHandler in @(
+        @{ Platform = "Win32"; Machine = [UInt16]0x014c },
+        @{ Platform = "x64"; Machine = [UInt16]0x8664 }
+    )) {
+        $directory = Join-Path $repoRoot "out\package\shell-build\$($propertyHandler.Platform)\$Configuration"
+        $path = Join-Path $directory "FBShell.dll"
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Не найдена фактически поставляемая DLL property handler: $path"
+        }
+        Test-PeMachine -Path $path -ExpectedMachine $propertyHandler.Machine
+        Test-BinarySecurityFlags -Path $path -RequireControlFlowGuard
+        $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($path)
+        if ($info.FileVersion -ne $expectedVersion -or $info.ProductVersion -ne $expectedVersion) {
+            throw "$path имеет версии File='$($info.FileVersion)', Product='$($info.ProductVersion)'; ожидалось '$expectedVersion'."
+        }
+        & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+            -Configuration $Configuration `
+            -OutputDirectory $directory `
+            -IncludeNames @("FBShell.dll")
+    }
 }
 
 foreach ($name in @("Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll")) {
