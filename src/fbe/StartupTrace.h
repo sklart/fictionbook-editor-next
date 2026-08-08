@@ -51,11 +51,13 @@ namespace StartupTrace
 	struct DiagnosticLogCleanupResult
 	{
 		unsigned int sessionsFound;
-		unsigned int sessionsDeleted;
+		unsigned int sessionsFullyDeleted;
+		unsigned int sessionsPartiallyDeleted;
+		unsigned int sessionsFailed;
 		unsigned int filesDeleted;
 		unsigned int filesFailed;
 		DWORD lastError;
-		DiagnosticLogCleanupResult() : sessionsFound(0), sessionsDeleted(0), filesDeleted(0), filesFailed(0), lastError(ERROR_SUCCESS) { }
+		DiagnosticLogCleanupResult() : sessionsFound(0), sessionsFullyDeleted(0), sessionsPartiallyDeleted(0), sessionsFailed(0), filesDeleted(0), filesFailed(0), lastError(ERROR_SUCCESS) { }
 	};
 	// Removes completed diagnostic sessions while preserving the current process trace.
 	DiagnosticLogCleanupResult ClearOldLogSessions();

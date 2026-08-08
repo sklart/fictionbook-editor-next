@@ -262,29 +262,45 @@ namespace
 		{
 			if (sessions[sessionIndex].CompareNoCase(preserveSession) == 0) continue;
 			if (cleanup) ++cleanup->sessionsFound;
-			bool sessionDeleted = false;
+			bool sessionHasFiles = false;
+			bool sessionHasFailures = false;
+			bool sessionHasDeletedFiles = false;
 			HANDLE files = ::FindFirstFile(directory + L"\\" + sessions[sessionIndex] + L"*.log", &findData);
-			if (files == INVALID_HANDLE_VALUE) continue;
+			if (files == INVALID_HANDLE_VALUE)
+			{
+				if (cleanup) { ++cleanup->sessionsFailed; cleanup->lastError = ::GetLastError(); }
+				continue;
+			}
 			do
 			{
 				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
 				CString fileName(findData.cFileName);
 				if (fileName != sessions[sessionIndex] + L".log" && fileName.Left(sessions[sessionIndex].GetLength() + 5).CompareNoCase(sessions[sessionIndex] + L"-part") != 0) continue;
+				sessionHasFiles = true;
 				const CString filePath = directory + L"\\" + fileName;
 				if (::DeleteFile(filePath))
 				{
-					sessionDeleted = true;
+					sessionHasDeletedFiles = true;
 					if (cleanup) ++cleanup->filesDeleted;
 				}
-				else if (cleanup)
+				else
 				{
-					++cleanup->filesFailed;
-					cleanup->lastError = ::GetLastError();
+					sessionHasFailures = true;
+					if (cleanup)
+					{
+						++cleanup->filesFailed;
+						cleanup->lastError = ::GetLastError();
+					}
 				}
 			}
 			while (::FindNextFile(files, &findData));
 			::FindClose(files);
-			if (sessionDeleted && cleanup) ++cleanup->sessionsDeleted;
+			if (cleanup)
+			{
+				if (!sessionHasFiles || (!sessionHasDeletedFiles && sessionHasFailures)) ++cleanup->sessionsFailed;
+				else if (sessionHasFailures) ++cleanup->sessionsPartiallyDeleted;
+				else ++cleanup->sessionsFullyDeleted;
+			}
 		}
 	}
 	void WriteUtf8(const CString& text, bool flush, bool force)

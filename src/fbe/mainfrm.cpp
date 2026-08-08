@@ -3753,21 +3753,21 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 		StartupTrace::Event(L"diagnostic", L"DG122", L"no old trace sessions found");
 		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_empty", L"No old diagnostic logs were found."), caption, MB_OK | MB_ICONINFORMATION);
 	}
-	else if (cleanup.filesFailed == 0)
+	else if (cleanup.filesFailed == 0 && cleanup.sessionsPartiallyDeleted == 0 && cleanup.sessionsFailed == 0)
 	{
-		CString details; details.Format(L"sessions-found=%u; sessions-deleted=%u; files-deleted=%u", cleanup.sessionsFound, cleanup.sessionsDeleted, cleanup.filesDeleted);
+		CString details; details.Format(L"sessions-found=%u; sessions-fully-deleted=%u; sessions-partially-deleted=%u; sessions-failed=%u; files-deleted=%u", cleanup.sessionsFound, cleanup.sessionsFullyDeleted, cleanup.sessionsPartiallyDeleted, cleanup.sessionsFailed, cleanup.filesDeleted);
 		StartupTrace::Event(L"diagnostic", L"DG120", details);
-		CString message; message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_completed_details", L"Deleted %u diagnostic sessions (%u files)."), cleanup.sessionsDeleted, cleanup.filesDeleted);
+		CString message; message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_completed_details", L"Deleted %u diagnostic sessions (%u files)."), cleanup.sessionsFullyDeleted, cleanup.filesDeleted);
 		::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONINFORMATION);
 	}
 	else
 	{
-		CString details; details.Format(L"sessions-deleted=%u; files-deleted=%u; files-failed=%u; win32-error=%lu", cleanup.sessionsDeleted, cleanup.filesDeleted, cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
+		CString details; details.Format(L"sessions-fully-deleted=%u; sessions-partially-deleted=%u; sessions-failed=%u; files-deleted=%u; files-failed=%u; win32-error=%lu", cleanup.sessionsFullyDeleted, cleanup.sessionsPartiallyDeleted, cleanup.sessionsFailed, cleanup.filesDeleted, cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
 		StartupTrace::Error(L"diagnostic", L"DG121", details);
-		const bool partiallyDeleted = cleanup.sessionsDeleted != 0 || cleanup.filesDeleted != 0;
+		const bool partiallyDeleted = cleanup.sessionsFullyDeleted != 0 || cleanup.sessionsPartiallyDeleted != 0 || cleanup.filesDeleted != 0;
 		CString message;
 		if (partiallyDeleted)
-			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_partial", L"Deleted %u diagnostic sessions (%u files). Failed to delete %u files; Win32 error %lu."), cleanup.sessionsDeleted, cleanup.filesDeleted, cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
+			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_partial", L"Deleted %u diagnostic sessions (%u files). Failed to delete %u files; Win32 error %lu."), cleanup.sessionsFullyDeleted, cleanup.filesDeleted, cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
 		else
 			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_delete_failed", L"Could not delete %u diagnostic log files; Win32 error %lu."), cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
 		::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONERROR);
