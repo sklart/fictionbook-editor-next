@@ -15,4 +15,10 @@ foreach($unsafe in @('file=" + fileName', '; line=" + lno')) {
 foreach($required in @('SanitizeScriptDetails', 'RedactPathFragments', 'details omitted', 'source-present=', 'description-present=')) {
     if($trace.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing trace privacy safeguard: $required" }
 }
+foreach($required in @('excep.source-length=', 'excep.description-length=', 'errorInfo.source-length=', 'errorInfo.description-length=', 'details=omitted')) {
+    if($trace.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing COM exception privacy field: $required" }
+}
+foreach($unsafe in @('excep.source=%s', 'excep.description=%s', 'errorInfo.source=%s', 'errorInfo.description=%s', 'SanitizeExceptionText(exceptionInfo->bstrDescription)', 'SanitizeExceptionText(description)')) {
+    if($trace.IndexOf($unsafe, [StringComparison]::Ordinal) -ge 0) { throw "COM exception text must not enter the trace: $unsafe" }
+}
 Write-Host 'Diagnostic trace privacy contract passed.'

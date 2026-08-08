@@ -471,10 +471,9 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 	details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L"");
 	if(exceptionInfo)
 	{
-		details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.source-present=%d; excep.description-present=%d; excep.source=%s; excep.description=%s; excep.help=%d; excep.helpContext=%lu; excep.deferred=%d",
-			exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode), exceptionInfo->bstrSource ? 1 : 0, exceptionInfo->bstrDescription ? 1 : 0,
-			(LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrSource),
-			(LPCWSTR)SanitizeExceptionText(exceptionInfo->bstrDescription),
+		details.AppendFormat(L"; excep.wCode=%u; excep.scode=0x%08lX; excep.source-present=%d; excep.source-length=%u; excep.description-present=%d; excep.description-length=%u; excep.help-present=%d; excep.helpContext=%lu; excep.deferred=%d; details=omitted",
+			exceptionInfo->wCode, static_cast<unsigned long>(exceptionInfo->scode), exceptionInfo->bstrSource ? 1 : 0, exceptionInfo->bstrSource ? ::SysStringLen(exceptionInfo->bstrSource) : 0,
+			exceptionInfo->bstrDescription ? 1 : 0, exceptionInfo->bstrDescription ? ::SysStringLen(exceptionInfo->bstrDescription) : 0,
 			exceptionInfo->bstrHelpFile ? 1 : 0, exceptionInfo->dwHelpContext,
 			exceptionInfo->pfnDeferredFillIn ? 1 : 0);
 	}
@@ -490,9 +489,9 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 		errorInfo->GetHelpContext(&helpContext);
 		wchar_t guidText[64] = {};
 		::StringFromGUID2(guid, guidText, _countof(guidText));
-		details.AppendFormat(L"; errorInfo.guid=%s; errorInfo.source-present=%d; errorInfo.description-present=%d; errorInfo.source=%s; errorInfo.description=%s; errorInfo.helpContext=%lu; errorInfo.help=%d",
-			guidText, source ? 1 : 0, description ? 1 : 0, (LPCWSTR)SanitizeExceptionText(source),
-			(LPCWSTR)SanitizeExceptionText(description), helpContext, helpFile ? 1 : 0);
+		details.AppendFormat(L"; errorInfo.guid=%s; errorInfo.source-present=%d; errorInfo.source-length=%u; errorInfo.description-present=%d; errorInfo.description-length=%u; errorInfo.helpContext=%lu; errorInfo.help-present=%d; details=omitted",
+			guidText, source ? 1 : 0, source ? ::SysStringLen(source) : 0,
+			description ? 1 : 0, description ? ::SysStringLen(description) : 0, helpContext, helpFile ? 1 : 0);
 		::SysFreeString(source);
 		::SysFreeString(description);
 		::SysFreeString(helpFile);
