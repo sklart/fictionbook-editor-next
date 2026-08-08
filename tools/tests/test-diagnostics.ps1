@@ -25,6 +25,7 @@ $tests = @(
     'test-fbe-trace-bridge.ps1',
     'test-fbe-binary-summary.ps1',
     'test-fbe-filename-state.ps1',
+    'test-fbe-js-globals.ps1',
     'test-fbe-typelib-diagnostics.ps1',
     'test-fbe-typelib-runtime.ps1',
     'test-fbe-diagnostic-faults.ps1'

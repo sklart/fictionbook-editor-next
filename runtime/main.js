@@ -2024,7 +2024,7 @@ function StyleCode(check, cp, range)
     // That is due to MSHTML bug
     if(cp.tagName == "P")
     {
-      html = new String(range.htmlText);
+      var html = new String(range.htmlText);
       if(html.indexOf("<DIV") != -1)
       {
         return false;
@@ -2037,8 +2037,8 @@ function StyleCode(check, cp, range)
       range.collapse(true);
       end.collapse(false);
 
-      per = range.parentElement();
-      ped = end.parentElement();
+      var per = range.parentElement();
+      var ped = end.parentElement();
 
       while(per && per.tagName != "P")
         per = per.parentElement;
@@ -2115,7 +2115,7 @@ function AddTitle(cp, check)
   var div = document.createElement("DIV");
   div.className = "title";
 
-  targ = np.tagName;
+  var targ = np.tagName;
   //full = (sel.text == cp.innerText);
 
   var del = false;
@@ -2429,7 +2429,7 @@ function AddEpigraph(cp,check)
         var ppall = pps[i].all;
         var j = 0;
 
-        for(k = 0; k < ppall.length; ++k)
+        for(var k = 0; k < ppall.length; ++k)
         {
           if(ppall[k].innerText && ppall[k].innerText == pptext)
             pptags[j++] = ppall[k].tagName;
@@ -2554,7 +2554,7 @@ function MergeContainers(cp,check)
  window.external.BeginUndoUnit(document,"merge "+cp.className+"s");
 
  if(cp.className=="cite") {
-  for (kj=cp.firstChild; kj; kj=kj.nextSibling)
+  for (var kj=cp.firstChild; kj; kj=kj.nextSibling)
    if (kj.nodeName=="P" && kj.className=="text-author") kj.removeAttribute("className");
  }
 
