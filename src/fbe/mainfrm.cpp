@@ -3781,7 +3781,8 @@ LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"));
 	if (!StartupTrace::CreateDiagnosticPackage(packagePath, error))
 	{
-		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.package_failed", L"Could not create the diagnostic package.") + L"\n\n" + error, caption, MB_OK | MB_ICONERROR);
+		StartupTrace::Error(L"diagnostic", L"DG131", CString(L"diagnostic package creation failed: ") + StartupTrace::SanitizeLogText(error, 256));
+		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.package_failed", L"Could not create the diagnostic package."), caption, MB_OK | MB_ICONERROR);
 		return 0;
 	}
 	CString message; message.Format(GetDiagnosticTraceText(L"fbe.trace.package_created", L"Diagnostic package created:\n%s"), (LPCWSTR)packagePath);
