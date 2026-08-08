@@ -514,6 +514,10 @@ static bool IsEmptyNode(MSHTML::IHTMLDOMNode *node) {
 static void RemoveEmptyNodes(MSHTML::IHTMLDOMNode *node) {
 	if (node->nodeType!=1)
 		return;
+	_bstr_t nodeName(node->nodeName);
+	if (U::scmp(nodeName, L"TABLE") == 0 || U::scmp(nodeName, L"TBODY") == 0 ||
+		U::scmp(nodeName, L"TR") == 0 || U::scmp(nodeName, L"TD") == 0 || U::scmp(nodeName, L"TH") == 0)
+		return;
 
 	MSHTML::IHTMLDOMNodePtr cur(node->firstChild);
 	while (cur)
@@ -933,6 +937,8 @@ restart:
 		if (U::scmp(name,L"P") && U::scmp(name,L"STRONG") && 
 			U::scmp(name,L"STRIKE") && U::scmp(name,L"SUP") && U::scmp(name,L"SUB") && 
 			U::scmp(name,L"EM") && U::scmp(name,L"A") &&
+			U::scmp(name,L"TABLE") && U::scmp(name,L"TBODY") && U::scmp(name,L"TR") &&
+			U::scmp(name,L"TD") && U::scmp(name,L"TH") &&
 			(U::scmp(name,L"SPAN") || U::scmp(curelem->className, L"code")) &&
 			U::scmp(name,L"#text") && U::scmp(name,L"BR") &&
 			(U::scmp(name,L"IMG") || U::scmp(curelem->parentElement->className, L"image")) &&
@@ -1049,6 +1055,12 @@ blowit:
 // this sub should locate any nested paragraphs and bubble them up
 static void RelocateParagraphs(MSHTML::IHTMLDOMNode *node) {
 	if (node->nodeType!=1)
+		return;
+	// Native tables have a deliberately different content model: paragraphs
+	// belong to cells and must never be bubbled out during normalization.
+	_bstr_t nodeName(node->nodeName);
+	if (U::scmp(nodeName, L"TABLE") == 0 || U::scmp(nodeName, L"TBODY") == 0 ||
+		U::scmp(nodeName, L"TR") == 0 || U::scmp(nodeName, L"TD") == 0 || U::scmp(nodeName, L"TH") == 0)
 		return;
 
 	MSHTML::IHTMLDOMNodePtr   cur(node->firstChild);
@@ -4091,6 +4103,10 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 
 		// * close undo unit
 		m_mk_srv->EndUndoUnit();
+		// Refresh command state after the modal table dialog. Without this the
+		// Undo button can remain disabled even though MSHTML has an undo unit.
+		::SendMessage(m_frame, WM_COMMAND, MAKELONG(0, IDN_SEL_CHANGE), reinterpret_cast<LPARAM>(m_hWnd));
+		return true;
 	}
 	catch (_com_error& e) {
 		U::ReportError(e);

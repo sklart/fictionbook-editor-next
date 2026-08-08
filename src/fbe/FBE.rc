@@ -789,7 +789,7 @@ BEGIN
             MENUITEM "Insert column &right",    ID_TABLE_INSERT_COLUMN_RIGHT
             MENUITEM "Delete &column",          ID_TABLE_DELETE_COLUMN
             MENUITEM SEPARATOR
-            MENUITEM "Toggle &header cell",     ID_TABLE_TOGGLE_HEADER_CELL
+            MENUITEM "Make &header/data cell",  ID_TABLE_TOGGLE_HEADER_CELL
         END
         MENUITEM "&Section image",              ID_EDIT_ADD_IMAGE
         MENUITEM SEPARATOR

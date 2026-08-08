@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $xslPath = Join-Path $repoRoot 'runtime\fb2.xsl'
 $sourcePath = Join-Path $repoRoot 'src\fbe\FBDoc.cpp'
+$viewPath = Join-Path $repoRoot 'src\fbe\FBEview.cpp'
 
 $input = @'
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">
@@ -30,6 +31,11 @@ foreach($fragment in @('<table class="table"', '<tr class="tr"', '<th class="th"
 $source = Get-Content -Raw -LiteralPath $sourcePath
 foreach($fragment in @('U::scmp(name,L"TABLE")', 'U::scmp(name,L"TR")', 'U::scmp(name,L"TD")', 'U::scmp(name,L"TH")', 'U::scmp(name,L"TBODY")')) {
     if($source -notlike "*$fragment*") { throw "Обратная сериализация не поддерживает: $fragment" }
+}
+
+$viewSource = Get-Content -Raw -LiteralPath $viewPath
+foreach($fragment in @('Native tables have a deliberately different content model', 'U::scmp(nodeName, L"TABLE") == 0', 'U::scmp(name,L"TBODY")')) {
+    if($viewSource -notlike "*$fragment*") { throw "Нормализация визуального редактора не сохраняет таблицы: $fragment" }
 }
 
 Write-Host 'Визуальное представление и обратная сериализация таблиц FBE прошли проверку.'

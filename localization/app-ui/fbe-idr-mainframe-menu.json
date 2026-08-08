@@ -968,7 +968,7 @@
     },
     "fbe.menu.idr_mainframe.table.toggle_header_cell": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_TOGGLE_HEADER_CELL",
-      "translations": { "en-US": "Toggle &header cell", "ru-RU": "Сменить тип &ячейки", "uk-UA": "Змінити тип &комірки", "de-DE": "Kopfzelle umschalten", "fr-FR": "Basculer la cellule d’en-tête", "es-ES": "Alternar celda de encabezado", "it-IT": "Commuta cella intestazione", "pl-PL": "Przełącz komórkę nagłówka", "pt-PT": "Alternar célula de cabeçalho", "nl-NL": "Kopcel wisselen", "cs-CZ": "Přepnout záhlaví buňky", "bg-BG": "Превключи заглавна клетка" }
+      "translations": { "en-US": "Make &header/data cell", "ru-RU": "Сделать ячейкой &заголовка / данных", "uk-UA": "Зробити коміркою &заголовка / даних", "de-DE": "Als Kopf- oder Datenzelle festlegen", "fr-FR": "Définir comme cellule d’en-tête ou de données", "es-ES": "Convertir en celda de encabezado o datos", "it-IT": "Imposta come cella di intestazione o dati", "pl-PL": "Ustaw jako komórkę nagłówka lub danych", "pt-PT": "Definir como célula de cabeçalho ou dados", "nl-NL": "Instellen als kop- of gegevenscel", "cs-CZ": "Nastavit jako záhlaví nebo datovou buňku", "bg-BG": "Задай като заглавна или клетка с данни" }
     },
     "fbe.menu.idr_mainframe.insert.section_image": {
       "kind": "MENUITEM",
