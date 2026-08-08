@@ -81,7 +81,7 @@ function Assert-TraceDoesNotContain([string]$Trace, [string]$Text) {
     }
 }
 
-function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes) {
+function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes, [switch]$ExpectSuccess) {
     $started = Get-Date
     $process = $null
     $trace = $null
@@ -109,8 +109,13 @@ function Invoke-DiagnosticFault([string]$Fault, [string[]]$ExpectedCodes) {
 
         if(-not $trace) { throw "No diagnostic trace was created for fault '$Fault'." }
         foreach($code in $ExpectedCodes) { Assert-TraceCode $trace $code }
-        Assert-TraceDoesNotContain $trace 'code=J299'
-        Assert-TraceDoesNotContain $trace 'code=D113'
+        if($ExpectSuccess) {
+            Assert-TraceCode $trace 'D113'
+            Assert-TraceDoesNotContain $trace 'level=error'
+        } else {
+            Assert-TraceDoesNotContain $trace 'code=J299'
+            Assert-TraceDoesNotContain $trace 'code=D113'
+        }
         Write-Host "Diagnostic fault '$Fault' passed: $trace"
     }
     finally {
@@ -128,6 +133,9 @@ try {
     Invoke-DiagnosticFault 'api-load-exception' @('FI000', 'J105', 'J900', 'D115')
     Invoke-DiagnosticFault 'api-load-return-false' @('FI000', 'J106', 'D116', 'D112')
     Invoke-DiagnosticFault 'css-restore-failure' @('FI000', 'J210', 'J212', 'D116', 'D112')
+	Invoke-DiagnosticFault 'first-set-external' @('FI010', 'WB153')
+	Invoke-DiagnosticFault 'second-set-external' @('FI011', 'WB270', 'WB298')
+	Invoke-DiagnosticFault 'optional-diagnostic-api-missing' @('FI000', 'J011') -ExpectSuccess
     Write-Host 'Diagnostic fault-injection tests passed.'
 }
 finally {

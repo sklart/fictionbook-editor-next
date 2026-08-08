@@ -86,7 +86,8 @@ static CString GetDiagnosticFaultInjection()
 	const CString point(value);
 	static const wchar_t* const allowed[] = {
 		L"get-extended-style", L"inflate-paragraphs", L"css-restore-failure",
-		L"api-load-return-false", L"api-load-exception"
+		L"api-load-return-false", L"api-load-exception", L"first-set-external",
+		L"second-set-external", L"optional-diagnostic-api-missing"
 	};
 	for (UINT index = 0; index < _countof(allowed); ++index)
 		if (point.CompareNoCase(allowed[index]) == 0)
@@ -665,7 +666,13 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	}
 	StartupTrace::Event(L"webbrowser", L"WB151", L"CreateHelper for pre-init external result=created");
 	StartupTrace::Event(L"webbrowser", L"WB152", L"SetExternalDispatch pre-init begin");
-	hr = m_body.SetExternalDispatch(preInitHelper);
+	if (GetDiagnosticFaultInjection() == L"first-set-external")
+	{
+		hr = E_FAIL;
+		StartupTrace::HResult(L"fault", L"FI010", hr, L"first SetExternalDispatch injected failure");
+	}
+	else
+		hr = m_body.SetExternalDispatch(preInitHelper);
 	StartupTrace::HResult(L"webbrowser", L"WB153", hr, L"SetExternalDispatch pre-init result");
 	if (FAILED(hr))
 		return false;
@@ -697,13 +704,13 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	V_VT(&diagnosticTraceOptions[0]) = VT_BOOL;
 	V_BOOL(&diagnosticTraceOptions[0]) = verboseTrace ? VARIANT_TRUE : VARIANT_FALSE;
 	CComVariant diagnosticResult;
-	hr = InvokeFunc(L"apiSetDiagnosticTraceOptions", diagnosticTraceOptions, 2, diagnosticResult, true);
+	hr = GetDiagnosticFaultInjection() == L"optional-diagnostic-api-missing" ? DISP_E_UNKNOWNNAME : InvokeFunc(L"apiSetDiagnosticTraceOptions", diagnosticTraceOptions, 2, diagnosticResult, true);
 	if (FAILED(hr))
 	{
 		CComVariant diagnosticTrace;
 		V_VT(&diagnosticTrace) = VT_BOOL;
 		V_BOOL(&diagnosticTrace) = StartupTrace::Enabled() ? VARIANT_TRUE : VARIANT_FALSE;
-		hr = InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult, true);
+		hr = GetDiagnosticFaultInjection() == L"optional-diagnostic-api-missing" ? DISP_E_UNKNOWNNAME : InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult, true);
 	}
 		if (FAILED(hr))
 	{

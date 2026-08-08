@@ -17,6 +17,16 @@
 
 extern CElementDescMnr _EDMnr;
 
+static bool IsSecondSetExternalFaultEnabled()
+{
+	wchar_t testMode[4] = {};
+	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
+	if (!StartupTrace::Enabled() || testModeLength != 1 || testMode[0] != L'1') return false;
+	wchar_t fault[64] = {};
+	const DWORD faultLength = ::GetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", fault, _countof(fault));
+	return faultLength == 19 && _wcsicmp(fault, L"second-set-external") == 0;
+}
+
 // normalization helpers
 static void PackText(MSHTML::IHTMLElement2Ptr elem,MSHTML::IHTMLDocument2 *doc);
 static void KillDivs(MSHTML::IHTMLElement2Ptr elem);
@@ -2988,7 +2998,13 @@ bool CFBEView::Init()
     return false;
   }
   StartupTrace::Event(L"webbrowser", L"WB260", L"CreateHelper completed");
-  hr = SetExternalDispatch(helper);
+	if (IsSecondSetExternalFaultEnabled())
+	{
+		hr = E_FAIL;
+		StartupTrace::HResult(L"fault", L"FI011", hr, L"second SetExternalDispatch injected failure");
+	}
+	else
+		hr = SetExternalDispatch(helper);
   StartupTrace::HResult(L"webbrowser", L"WB270", hr, L"SetExternalDispatch #2");
   if (FAILED(hr)) return false;
 
