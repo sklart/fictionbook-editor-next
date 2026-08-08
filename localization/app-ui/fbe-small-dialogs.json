@@ -112,6 +112,25 @@
         "bg-BG": "Брой редове в таблицата <tr><td></td></tr>:"
       }
     },
+    "fbe.dialog.idd_table.columns_label": {
+      "resource": "IDD_TABLE",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Columns:",
+        "ru-RU": "Столбцов:",
+        "uk-UA": "Стовпців:",
+        "de-DE": "Spalten:",
+        "fr-FR": "Colonnes :",
+        "es-ES": "Columnas:",
+        "it-IT": "Colonne:",
+        "pl-PL": "Kolumny:",
+        "pt-PT": "Colunas:",
+        "nl-NL": "Kolommen:",
+        "cs-CZ": "Sloupce:",
+        "bg-BG": "Колони:"
+      }
+    },
     "fbe.dialog.idd_table.header_row": {
       "resource": "IDD_TABLE",
       "kind": "CONTROL",

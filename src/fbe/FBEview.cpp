@@ -144,6 +144,18 @@ static MSHTML::IHTMLElementPtr CreateTableRowLike(MSHTML::IHTMLDocument2Ptr docu
 	return row;
 }
 
+static CString GetLocalizedMainMenuText(UINT commandId, const wchar_t* fallback)
+{
+	CMenu mainMenu;
+	if (mainMenu.LoadMenu(IDR_MAINFRAME))
+	{
+		wchar_t text[256] = {};
+		if (mainMenu.GetMenuString(commandId, text, _countof(text), MF_BYCOMMAND) > 0)
+			return CString(text);
+	}
+	return CString(fallback);
+}
+
 static void CopyTableCellAttribute(const MSHTML::IHTMLElementPtr& source, const MSHTML::IHTMLElementPtr& destination, const wchar_t* name)
 {
 	_variant_t value(source->getAttribute(name, 0));
@@ -281,6 +293,9 @@ CFBEView::~CFBEView()
 
 BOOL CFBEView::PreTranslateMessage(MSG* pMsg)
 {
+	if (pMsg && pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_TAB &&
+		MoveTableCell((::GetKeyState(VK_SHIFT) & 0x8000) != 0))
+		return TRUE;
 	return SendMessage(WM_FORWARDMSG,0,(LPARAM)pMsg)!=0;
 }
 
@@ -3259,15 +3274,15 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		// clicked cell so the command modifies the cell the menu was opened on.
 		m_cur_sel = contextCell;
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_ABOVE, L"Insert row above");
-		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_BELOW, L"Insert row below");
-		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_ROW, L"Delete row");
+		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_ABOVE, GetLocalizedMainMenuText(ID_TABLE_INSERT_ROW_ABOVE, L"Insert row above"));
+		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_BELOW, GetLocalizedMainMenuText(ID_TABLE_INSERT_ROW_BELOW, L"Insert row below"));
+		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_ROW, GetLocalizedMainMenuText(ID_TABLE_DELETE_ROW, L"Delete row"));
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_LEFT, L"Insert column left");
-		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_RIGHT, L"Insert column right");
-		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_COLUMN, L"Delete column");
+		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_LEFT, GetLocalizedMainMenuText(ID_TABLE_INSERT_COLUMN_LEFT, L"Insert column left"));
+		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_RIGHT, GetLocalizedMainMenuText(ID_TABLE_INSERT_COLUMN_RIGHT, L"Insert column right"));
+		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_COLUMN, GetLocalizedMainMenuText(ID_TABLE_DELETE_COLUMN, L"Delete column"));
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, ID_TABLE_TOGGLE_HEADER_CELL, L"Toggle header cell");
+		menu.AppendMenu(MF_STRING, ID_TABLE_TOGGLE_HEADER_CELL, GetLocalizedMainMenuText(ID_TABLE_TOGGLE_HEADER_CELL, L"Toggle header cell"));
 	}
 
 	if(m_normalize)
@@ -3394,53 +3409,59 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 	return VARIANT_TRUE;
 }
 
+bool CFBEView::MoveTableCell(bool reverse)
+{
+	try
+	{
+		if (!HasDoc()) return false;
+		MSHTML::IHTMLTxtRangePtr selection(Document()->selection->createRange());
+		MSHTML::IHTMLElementPtr cell(FindTableCell(selection ? selection->parentElement() : MSHTML::IHTMLElementPtr()));
+		MSHTML::IHTMLElementPtr row(FindTableRow(cell));
+		MSHTML::IHTMLElementPtr table(FindTableElement(row));
+		if (!cell || !row || !table) return false;
+
+		std::vector<MSHTML::IHTMLElementPtr> cells;
+		GetTableCells(table, cells);
+		size_t index = 0;
+		while (index < cells.size() && cells[index] != cell) ++index;
+		if (index == cells.size()) return false;
+
+		if (!reverse && index + 1 == cells.size())
+		{
+			BeginUndoUnit(L"insert table row below");
+			MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", CreateTableRowLike(Document(), row));
+			EndUndoUnit();
+			::SendMessage(m_frame, WM_COMMAND, MAKELONG(0, IDN_SEL_CHANGE), reinterpret_cast<LPARAM>(m_hWnd));
+			::SendMessage(m_frame, WM_COMMAND, MAKELONG(0, IDN_TREE_RESTORE), 0);
+			GetTableCells(table, cells);
+		}
+
+		size_t targetIndex = index;
+		if (reverse) {
+			if (targetIndex > 0) --targetIndex;
+		} else if (targetIndex + 1 < cells.size()) {
+			++targetIndex;
+		}
+		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+		range->moveToElementText(cells[targetIndex]);
+		range->collapse(VARIANT_TRUE);
+		range->select();
+		return true;
+	}
+	catch (_com_error&) { return false; }
+}
+
 VARIANT_BOOL  CFBEView::OnKeyDown(IDispatch *evt)
 {
 	MSHTML::IHTMLEventObjPtr oe(evt);
-	if (oe && oe->keyCode == VK_TAB)
+	if (oe && oe->keyCode == VK_TAB && MoveTableCell(oe->shiftKey == VARIANT_TRUE))
 	{
-		try
-		{
-			MSHTML::IHTMLElementPtr cell(FindTableCell(MSHTML::IHTMLElementPtr(oe->srcElement)));
-			MSHTML::IHTMLElementPtr row(FindTableRow(cell));
-			MSHTML::IHTMLElementPtr table(FindTableElement(row));
-			if (cell && row && table)
-			{
-				std::vector<MSHTML::IHTMLElementPtr> cells;
-				GetTableCells(table, cells);
-				size_t index = 0;
-				while (index < cells.size() && cells[index] != cell) ++index;
-				if (index == cells.size()) return VARIANT_TRUE;
-
-				const bool reverse = oe->shiftKey == VARIANT_TRUE;
-				if (!reverse && index + 1 == cells.size())
-				{
-					BOOL handled = FALSE;
-					OnTableInsertRowBelow(0, ID_TABLE_INSERT_ROW_BELOW, NULL, handled);
-					GetTableCells(table, cells);
-				}
-
-				size_t targetIndex = index;
-				if (reverse) {
-					if (targetIndex > 0) --targetIndex;
-				} else if (targetIndex + 1 < cells.size()) {
-					++targetIndex;
-				}
-				if (targetIndex != index) {
-					MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
-					range->moveToElementText(cells[targetIndex]);
-					range->collapse(VARIANT_TRUE);
-					range->select();
-				}
-				oe->cancelBubble = VARIANT_TRUE;
-				oe->returnValue = VARIANT_FALSE;
-				return VARIANT_FALSE;
-			}
-		}
-		catch (_com_error&) { }
+		oe->cancelBubble = VARIANT_TRUE;
+		oe->returnValue = VARIANT_FALSE;
+		return VARIANT_FALSE;
 	}
-	if (oe->keyCode == VK_LEFT || oe->keyCode == VK_UP || oe->keyCode == VK_PRIOR || oe->keyCode == VK_HOME)
-  		m_startMatch = m_endMatch = 0;
+	if (oe && (oe->keyCode == VK_LEFT || oe->keyCode == VK_UP || oe->keyCode == VK_PRIOR || oe->keyCode == VK_HOME))
+		m_startMatch = m_endMatch = 0;
 	return VARIANT_TRUE;
 }
 
@@ -3797,8 +3818,9 @@ LRESULT CFBEView::OnEditInsertTable(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 	CTableDlg dlg;
 	if(dlg.DoModal()==IDOK) {
 		int nRows = dlg.m_nRows;
+		int nColumns = dlg.m_nColumns;
 		bool bTitle = dlg.m_bTitle;
-		InsertTable(false,bTitle,nRows);
+		InsertTable(false,bTitle,nRows,nColumns);
 	}
 	return 0;
 }
@@ -4006,7 +4028,7 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 	return 0;
 }
 
-bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows) {
+bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 	try {
 		// * create selection range
 		MSHTML::IHTMLTxtRangePtr	rng(Document()->selection->createRange());
@@ -4045,27 +4067,19 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows) {
 		// * create an undo unit
 		m_mk_srv->BeginUndoUnit(L"insert table");
 
-		MSHTML::IHTMLElementPtr	  te(Document()->createElement(L"TABLE"));
-
-		for(int row=nrows; row!=-1; --row){	
-			// * create tr
-			MSHTML::IHTMLElementPtr	  tre(Document()->createElement(L"TR"));
-			tre->className=L"tr";
-			// * create th and td
-			MSHTML::IHTMLElementPtr	  the(Document()->createElement(row == 0 && bTitle ? L"TH" : L"TD"));
-			if(row==0){				
-				if(bTitle){//����� ��������� �������
-					the->className=L"th";// * create th - ���������
-					MSHTML::IHTMLElement2Ptr(tre)->insertAdjacentElement(L"afterBegin",the);
-				}
-			} else {				
-				the->className=L"td";// * create td - ������
-				MSHTML::IHTMLElement2Ptr(tre)->insertAdjacentElement(L"afterBegin",the);
-			}
-			
-			// * create table
-			te->className=L"table";
-			MSHTML::IHTMLElement2Ptr(te)->insertAdjacentElement(L"afterBegin",tre);
+		MSHTML::IHTMLElementPtr te(Document()->createElement(L"TABLE"));
+		te->className = L"table";
+		nrows = max(1, nrows);
+		ncolumns = max(1, ncolumns);
+		const int totalRows = nrows + (bTitle ? 1 : 0);
+		for (int row = 0; row < totalRows; ++row)
+		{
+			MSHTML::IHTMLElementPtr tre(Document()->createElement(L"TR"));
+			tre->className = L"tr";
+			const wchar_t* cellType = bTitle && row == 0 ? L"TH" : L"TD";
+			for (int column = 0; column < ncolumns; ++column)
+				MSHTML::IHTMLElement2Ptr(tre)->insertAdjacentElement(L"beforeEnd", CreateTableCell(Document(), cellType));
+			MSHTML::IHTMLElement2Ptr(te)->insertAdjacentElement(L"beforeEnd", tre);
 		}
 
 		// * paste the results back

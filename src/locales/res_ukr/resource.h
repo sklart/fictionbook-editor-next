@@ -382,6 +382,8 @@
 #define IDC_CHECK_TABLE_TITLE           1038
 #define IDC_EDIT_TABLE_ROWS             1039
 #define IDC_SPIN_TABLE_ROWS             1040
+#define IDC_EDIT_TABLE_COLUMNS          1150
+#define IDC_SPIN_TABLE_COLUMNS          1151
 #define IDC_SECTION                     1041
 #define IDC_IMAGE_TITLE                 1042
 #define IDC_TAB_CTRL                    1042
@@ -637,7 +639,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        255
 #define _APS_NEXT_COMMAND_VALUE         32916
-#define _APS_NEXT_CONTROL_VALUE         1132
+#define _APS_NEXT_CONTROL_VALUE         1152
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

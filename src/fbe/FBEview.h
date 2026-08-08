@@ -27,32 +27,36 @@ public:
 	CButton	m_chekTitle;
 	CEdit m_eRows;
 	CUpDownCtrl m_udRows;
+	CEdit m_eColumns;
+	CUpDownCtrl m_udColumns;
 
-	int m_nRows;		// ��������� ����� �����
-	bool m_bTitle;		// ����� �� ������ ���������� ������� (true - ��)
+	int m_nRows;
+	int m_nColumns;
+	bool m_bTitle;
 
 	BEGIN_MSG_MAP(CTableDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_ID_HANDLER(IDOK, OnOK)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCloseCmd)
-		COMMAND_RANGE_CODE_HANDLER_EX(IDC_EDIT_TABLE_ROWS, IDC_EDIT_TABLE_ROWS, EN_CHANGE, OnEditChange)//��������� � ������
 		REFLECT_NOTIFICATIONS()//��������� ������� ���������� ��������� �� ��������
 	END_MSG_MAP()
 
 	//����� DDX ������
 	BEGIN_DDX_MAP(CTableDlg)
 		DDX_INT(IDC_EDIT_TABLE_ROWS, m_nRows)
-		//DDX_CHECK(IDC_CHECK_TABLE_TITLE, m_bTitle)
+		DDX_INT(IDC_EDIT_TABLE_COLUMNS, m_nColumns)
 	END_DDX_MAP()
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
-		DoDataExchange(FALSE, IDC_EDIT_TABLE_ROWS);//������ �������� �� ���������� � �������(�� FALSE)
-		//m_nRows = 1; 
+		m_nRows = 1;
+		m_nColumns = 2;
 		m_bTitle = true;
 
 		m_chekTitle	= GetDlgItem(IDC_CHECK_TABLE_TITLE);
 		m_eRows		= GetDlgItem(IDC_EDIT_TABLE_ROWS);
 		m_udRows	= GetDlgItem(IDC_SPIN_TABLE_ROWS);
+		m_eColumns = GetDlgItem(IDC_EDIT_TABLE_COLUMNS);
+		m_udColumns = GetDlgItem(IDC_SPIN_TABLE_COLUMNS);
 
 		m_chekTitle.SetCheck(1);
 		m_eRows.SetWindowText(_T("1"));
@@ -61,11 +65,15 @@ public:
 
 		m_udRows.SetRange(1, 1000);
 		m_udRows.SetPos(1);
+		m_eColumns.SetWindowText(_T("2"));
+		m_udColumns.SetRange(1, 1000);
+		m_udColumns.SetPos(2);
 
 		return 0;
 	}
 	LRESULT OnOK(WORD, WORD wID, HWND, BOOL&) {
-		
+		if (!DoDataExchange(TRUE)) return 0;
+		if (m_nRows < 1 || m_nColumns < 1) return 0;
 		m_bTitle = false;
 		if(m_chekTitle.GetCheck() == BST_CHECKED) {
 			m_bTitle = true;
@@ -80,22 +88,6 @@ public:
 		return IDCANCEL;
 	}
 
-	//�� ��������� � �����
-	LRESULT OnEditChange(UINT, int id, HWND)
-	{		
-		static BOOL bAlreadyThere = FALSE;
-
-		if(!bAlreadyThere) {
-			bAlreadyThere = TRUE;
-			DoDataExchange(TRUE, id);
-
-			static int IDs = IDC_EDIT_TABLE_ROWS;
-			if(IDs != id)
-				DoDataExchange(FALSE, IDs);
-			bAlreadyThere = FALSE;
-		}
-		return 0;
-	}
 };
 
 static void CenterChildWindow(CWindow parent, CWindow child)
@@ -648,7 +640,8 @@ public:
 //  MSHTML::IHTMLDOMNodePtr	  ChangeAttribute(MSHTML::IHTMLElementPtr elem, const wchar_t* attrib, const wchar_t* value);
   bool				InsertPoem(bool fCheck);
   bool				InsertCite(bool fCheck);
-  bool				InsertTable(bool fCheck, bool bTitle=true, int nrows=1);
+  bool				InsertTable(bool fCheck, bool bTitle=true, int nrows=1, int ncolumns=2);
+	bool				MoveTableCell(bool reverse);
   long				InsertCode();
   bool				GoToFootnote(bool fCheck);
   bool				GoToReference(bool fCheck);
