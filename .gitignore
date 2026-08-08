@@ -11,6 +11,12 @@
 /third_party/scintilla/bin/*.pdb
 /third_party/scintilla/win32/obj/
 /third_party/scintilla/win32/vc140.pdb
+/third_party/lexilla/bin/*.dll
+/third_party/lexilla/bin/*.exp
+/third_party/lexilla/bin/*.lib
+/third_party/lexilla/bin/*.pdb
+/third_party/lexilla/src/obj/
+/third_party/lexilla/src/vc140.pdb
 /src/fbe/FBE.h
 /src/fbe/FBE.tlb
 /src/fbe/FBE_i.c

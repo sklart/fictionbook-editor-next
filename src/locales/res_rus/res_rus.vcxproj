@@ -74,11 +74,12 @@
     <Link>
       <OutputFile>$(OutDir)Lang\ru-RU\res_rus.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>$(OutDir)res_rus.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)Lang\ru-RU\res_rus.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <ImportLibrary>$(OutDir)res_rus.lib</ImportLibrary>
+      <IgnoreImportLibrary>true</IgnoreImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
     </Link>
@@ -94,12 +95,14 @@
     <Link>
       <OutputFile>$(OutDir)Lang\ru-RU\res_rus.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)Lang\ru-RU\res_rus.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <ImportLibrary>$(OutDir)res_rus.lib</ImportLibrary>
+      <IgnoreImportLibrary>true</IgnoreImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <PostBuildEvent>

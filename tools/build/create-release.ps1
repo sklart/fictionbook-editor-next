@@ -238,8 +238,15 @@ $symbolNames = @(
     "res_ukr.pdb"
 )
 foreach ($name in $symbolNames) {
-    $symbolSourceDirectory = if ($name -in @("ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")) { $batchOutputDirectory } else { Join-Path $repoRoot "out\$Configuration" }
-    Copy-Item -LiteralPath (Join-Path $symbolSourceDirectory $name) `
+    $symbolSourcePath = switch ($name) {
+        "res_rus.pdb" { Join-Path $repoRoot "out\$Configuration\Lang\ru-RU\$name"; break }
+        "res_ukr.pdb" { Join-Path $repoRoot "out\$Configuration\Lang\uk-UA\$name"; break }
+        default {
+            $symbolSourceDirectory = if ($name -in @("ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")) { $batchOutputDirectory } else { Join-Path $repoRoot "out\$Configuration" }
+            Join-Path $symbolSourceDirectory $name
+        }
+    }
+    Copy-Item -LiteralPath $symbolSourcePath `
         -Destination $symbolsDir -Force
 }
 Copy-Item -LiteralPath (Join-Path $repoRoot "out\package\shell-build\Win32\$Configuration\FBShell.pdb") `

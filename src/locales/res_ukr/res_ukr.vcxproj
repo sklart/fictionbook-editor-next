@@ -74,11 +74,12 @@
     <Link>
       <OutputFile>$(OutDir)Lang\uk-UA\res_ukr.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>$(OutDir)res_ukr.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>$(OutDir)Lang\uk-UA\res_ukr.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <ImportLibrary>$(OutDir)res_ukr.lib</ImportLibrary>
+      <IgnoreImportLibrary>true</IgnoreImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
     </Link>
@@ -98,12 +99,14 @@
     <Link>
       <OutputFile>$(OutDir)Lang\uk-UA\res_ukr.dll</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)Lang\uk-UA\res_ukr.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <ImportLibrary>$(OutDir)res_ukr.lib</ImportLibrary>
+      <IgnoreImportLibrary>true</IgnoreImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <PostBuildEvent>

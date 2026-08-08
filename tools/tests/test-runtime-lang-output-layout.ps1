@@ -67,7 +67,16 @@ foreach ($resourcePath in @(
     }
 }
 
-foreach ($legacyRootResource in @("res_rus.dll", "res_ukr.dll")) {
+foreach ($symbolPath in @(
+    (Join-Path $langRoot "ru-RU\\res_rus.pdb"),
+    (Join-Path $langRoot "uk-UA\\res_ukr.pdb")
+)) {
+    if (-not (Test-Path -LiteralPath $symbolPath -PathType Leaf)) {
+        throw "Рядом с DLL локализованных ресурсов отсутствует PDB: $symbolPath"
+    }
+}
+
+foreach ($legacyRootResource in @("res_rus.dll", "res_ukr.dll", "res_rus.pdb", "res_ukr.pdb")) {
     $legacyRootPath = Join-Path $OutputDirectory $legacyRootResource
     if (Test-Path -LiteralPath $legacyRootPath -PathType Leaf) {
         throw "В корне каталога результатов не должна находиться устаревшая DLL локализации: $legacyRootPath"
