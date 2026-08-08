@@ -19,4 +19,8 @@ foreach($key in @('fbe.trace.clear_completed_details','fbe.trace.clear_partial',
 foreach($key in @('fbe.trace.clear_empty','fbe.trace.clear_completed_details','fbe.trace.clear_partial','fbe.trace.clear_delete_failed')) {
     if($frame.IndexOf($key, [StringComparison]::Ordinal) -lt 0) { throw "Cleanup UI does not use $key." }
 }
+if(($localization.strings.'fbe.trace.clear_partial'.translations.'en-US' -split '%u').Count -ne 6) { throw 'Partial cleanup message must report five counters.' }
+foreach($language in $localization.strings.'fbe.trace.clear_partial'.translations.PSObject.Properties) {
+    if(($language.Value -split '%u').Count -ne 6) { throw "Partial cleanup message is incomplete for $($language.Name)." }
+}
 Write-Host 'Diagnostic cleanup contract passed.'

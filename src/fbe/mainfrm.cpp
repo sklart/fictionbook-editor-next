@@ -3767,7 +3767,7 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 		const bool partiallyDeleted = cleanup.sessionsFullyDeleted != 0 || cleanup.sessionsPartiallyDeleted != 0 || cleanup.filesDeleted != 0;
 		CString message;
 		if (partiallyDeleted)
-			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_partial", L"Deleted %u diagnostic sessions (%u files). Failed to delete %u files; Win32 error %lu."), cleanup.sessionsFullyDeleted, cleanup.filesDeleted, cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
+			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_partial", L"Fully deleted sessions: %u\nPartially deleted sessions: %u\nFailed sessions: %u\nDeleted files: %u\nFailed files: %u."), cleanup.sessionsFullyDeleted, cleanup.sessionsPartiallyDeleted, cleanup.sessionsFailed, cleanup.filesDeleted, cleanup.filesFailed);
 		else
 			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_delete_failed", L"Could not delete %u diagnostic log files; Win32 error %lu."), cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
 		::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONERROR);
