@@ -455,24 +455,26 @@ namespace
 		return details;
 	}
 
-	bool IsInstalledBuild(const CString& executablePath)
+	const wchar_t* DetectDeployment(const CString& executablePath)
 	{
 		const HKEY roots[] = { HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE };
 		const REGSAM views[] = { KEY_WOW64_32KEY, KEY_WOW64_64KEY };
+		bool foundOtherInstalledLocation = false;
 		for (size_t rootIndex = 0; rootIndex < _countof(roots); ++rootIndex) for (size_t viewIndex = 0; viewIndex < _countof(views); ++viewIndex) {
 		HKEY key = NULL;
 		if (::RegOpenKeyEx(roots[rootIndex], L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\FictionBook Editor Next", 0, KEY_QUERY_VALUE | views[viewIndex], &key) != ERROR_SUCCESS) continue;
 		wchar_t installedPath[MAX_PATH] = {}; DWORD type = 0, size = sizeof(installedPath);
 		const LONG result = ::RegQueryValueEx(key, L"InstallLocation", NULL, &type, reinterpret_cast<BYTE*>(installedPath), &size);
 		::RegCloseKey(key);
-		if (result != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ)) continue;
+		if (result != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ) || !installedPath[0]) continue;
 		CString installed(installedPath); wchar_t expanded[MAX_PATH] = {};
 		if (type == REG_EXPAND_SZ && ::ExpandEnvironmentStrings(installed, expanded, _countof(expanded))) installed = expanded;
 		installed.TrimRight(L"\\");
 		CString executableDirectory(executablePath); const int slash = executableDirectory.ReverseFind(L'\\'); if (slash >= 0) executableDirectory = executableDirectory.Left(slash);
-		if (installed.CompareNoCase(executableDirectory) == 0) return true;
+		if (installed.CompareNoCase(executableDirectory) == 0) return L"installed";
+		foundOtherInstalledLocation = true;
 		}
-		return false;
+		return foundOtherInstalledLocation ? L"portable" : L"unknown";
 	}
 
 	bool IsProcessElevated()
@@ -542,7 +544,7 @@ void WriteEnvironmentHeader()
 		wchar_t exe[MAX_PATH] = {};
 		::GetModuleFileName(NULL, exe, _countof(exe));
 		const CString executable(exe);
-		const bool installed = IsInstalledBuild(executable);
+		const wchar_t* deployment = DetectDeployment(executable);
 		const bool tempTrace = tracePath.Find(L"\\FBE Next Diagnostics\\") >= 0;
 		CString details;
 		CString buildTimestamp(build_timestamp), buildCommit(build_commit), buildConfiguration(build_configuration);
@@ -550,7 +552,7 @@ void WriteEnvironmentHeader()
 			FBE_VERSION_WSTRING, (LPCWSTR)buildConfiguration, (LPCWSTR)buildTimestamp, (LPCWSTR)buildCommit,
 			version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, version.wServicePackMajor, version.wServicePackMinor, processInfo.wProcessorArchitecture,
 			info.wProcessorArchitecture, ::GetACP(), ::GetOEMCP(), ::GetSystemDefaultLCID(),
-			::GetUserDefaultUILanguage(), installed ? L"installed" : L"portable", IsProcessElevated() ? 1 : 0, (LPCWSTR)ProcessIntegrityLevel(), tempTrace ? L"TEMP" : L"LOCALAPPDATA", (LPCWSTR)StartupTrace::RedactPath(U::GetSettingsDir() + L"Settings.xml"), (LPCWSTR)StartupTrace::RedactPath(exe));
+			::GetUserDefaultUILanguage(), deployment, IsProcessElevated() ? 1 : 0, (LPCWSTR)ProcessIntegrityLevel(), tempTrace ? L"TEMP" : L"LOCALAPPDATA", (LPCWSTR)StartupTrace::RedactPath(U::GetSettingsDir() + L"Settings.xml"), (LPCWSTR)StartupTrace::RedactPath(exe));
 		const wchar_t* modules[] = { L"mshtml.dll", L"ieframe.dll", L"urlmon.dll", L"wininet.dll", L"jscript.dll", L"jscript9.dll", L"msxml6.dll", L"oleaut32.dll", L"Scintilla.dll", L"Lexilla.dll" };
 		StartupTrace::Event(L"environment", L"E011", DescribeDiagnosticModule(L"FBE.exe", true));
 		for (size_t index = 0; index < _countof(modules); ++index) StartupTrace::Event(L"environment", L"E011", DescribeDiagnosticModule(modules[index]));
