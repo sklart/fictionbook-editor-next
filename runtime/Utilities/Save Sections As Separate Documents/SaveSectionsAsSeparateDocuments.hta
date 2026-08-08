@@ -67,9 +67,8 @@ input {font-family: Tahoma; font-size:14px;}
 input.gray {background-color:#D4D0C8; color:black;}
 </STYLE>
 <SCRIPT type="text/javascript">
-//var DOMDocumentObjectName="Microsoft.XMLDOM";
-// var DOMDocumentObjectName="Msxml2.DOMDocument.4.0";
-var DOMDocumentObjectName="Msxml2.DOMDocument.6.0";
+var DOMDocumentObjectName="";
+var msxmlVersion="";
 
 var logStr="";
 var scrollbarWidth=0,scrollbarHeight=0;
@@ -90,30 +89,75 @@ var nbspRegExp=new RegExp("(&nbsp;| |"+String.fromCharCode(160)+")","g");
 
 document.onselectstart = function() { return false; }
 
-function saveBeautifiedXML(xmlDoc,pathForSaving) {
+function createXmlDocument() {
+  var versions=["Msxml2.DOMDocument.6.0", "Msxml2.DOMDocument.3.0"];
+  for (var i=0; i<versions.length; i++) {
+    try {
+      var document1=new ActiveXObject(versions[i]);
+      configureXmlDocument(document1);
+      DOMDocumentObjectName=versions[i];
+      msxmlVersion=versions[i];
+      return document1;
+    }
+    catch (e) {}
+  }
+  throw new Error("Не удалось создать MSXML DOMDocument 6.0 или 3.0.");
+}
 
-  var xmlString = xmlDoc.xml;
-  
-  var xmlWriter = new ActiveXObject(DOMDocumentObjectName);
-  xmlWriter.loadXML(xmlString);
-  xmlWriter.setProperty("SelectionLanguage", "XPath");
-  xmlWriter.setProperty("SelectionNamespaces", "xmlns:xsl='http://www.w3.org/1999/XSL/Transform'");
-  
-  var xslDoc = new ActiveXObject(DOMDocumentObjectName);
+function configureXmlDocument(document1) {
+  document1.async=false;
+  document1.preserveWhiteSpace=true;
+  document1.validateOnParse=false;
+  document1.resolveExternals=false;
+  try { document1.setProperty("ProhibitDTD", true); } catch (e) {}
+}
 
-  xslDoc.load("beautify.xml");
-  
-  var formattedXmlString=xmlWriter.transformNode(xslDoc);
+function configureXPath(document1) {
+  document1.setProperty("SelectionLanguage", "XPath");
+  document1.setProperty("SelectionNamespaces", "xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0' xmlns:xlink='http://www.w3.org/1999/xlink'");
+}
 
-  var xmlDoc2=new ActiveXObject(DOMDocumentObjectName);
-  xmlDoc2.loadXML(formattedXmlString);
+function getParseErrorText(document1,path) {
+  var err=document1.parseError;
+  return "Не удалось разобрать XML.\n\nФайл: "+path+"\nКод: "+err.errorCode+
+    "\nПричина: "+err.reason+"\nСтрока: "+err.line+"\nПозиция: "+err.linepos+
+    "\nФрагмент: "+err.srcText;
+}
 
-  var root=xmlDoc2.documentElement;
-  var xmlDoc3 = new ActiveXObject(DOMDocumentObjectName);
-  xmlDoc3.appendChild(xmlDoc3.createProcessingInstruction("xml", 'version="1.0" encoding="UTF-8"'));
-  xmlDoc3.appendChild(root);
+function getParagraphText(paragraph) {
+  return paragraph ? String(paragraph.text || "") : "";
+}
 
-  xmlDoc3.save(pathForSaving);
+function getXLinkHref(element) {
+  var attr=element.selectSingleNode("@xlink:href");
+  return attr ? attr.nodeValue : null;
+}
+
+function saveCheckedXML(document1,pathForSaving) {
+  var fso=new ActiveXObject("Scripting.FileSystemObject");
+  var temporaryPath=pathForSaving+".tmp";
+  try {
+    var documentChildren=document1.childNodes;
+    for (var childIndex=documentChildren.length-1; childIndex>=0; childIndex--) {
+      if (documentChildren[childIndex].nodeType==7 && documentChildren[childIndex].target=="xml")
+        document1.removeChild(documentChildren[childIndex]);
+    }
+    document1.insertBefore(document1.createProcessingInstruction("xml", 'version="1.0" encoding="UTF-8"'), document1.documentElement);
+    if (fso.FileExists(temporaryPath)) fso.DeleteFile(temporaryPath, true);
+    document1.save(temporaryPath);
+    var verificationDoc=createXmlDocument();
+    configureXPath(verificationDoc);
+    if (!verificationDoc.load(temporaryPath) || verificationDoc.parseError.errorCode)
+      throw new Error(getParseErrorText(verificationDoc, temporaryPath));
+    if (!verificationDoc.selectSingleNode("/fb:FictionBook"))
+      throw new Error("В сохранённом файле не найден корневой элемент FictionBook.");
+    if (fso.FileExists(pathForSaving)) fso.DeleteFile(pathForSaving, true);
+    fso.MoveFile(temporaryPath, pathForSaving);
+  }
+  catch (e) {
+    if (fso.FileExists(temporaryPath)) fso.DeleteFile(temporaryPath, true);
+    throw e;
+  }
 }
 
 function removeNode(node1) {
@@ -167,7 +211,7 @@ function selectAllElements() {
  if (!pp) return;
  while (pp) {
   if (pp.firstChild.nodeName=="TD" && pp.firstChild.className.indexOf("el_")==0 && pp.firstChild.className.indexOf("sel")<0) {
-   n=eval(pp.firstChild.id.substr(2));
+   n=parseInt(pp.firstChild.id.substr(2),10);
    selectedElements[n]=n;
    selectedElementsCnt++;
    if (pp.firstChild.className=="el_") pp.firstChild.className="el_sel";
@@ -199,6 +243,14 @@ function randomSymbol() {
   }
 
   return arrayOfSymbols[getRandomInRange(0,35)];
+}
+
+function createGuid() {
+  return randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+"-"+
+    randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+"-"+
+    randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+"-"+
+    randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+"-"+
+    randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol();
 }
 
 function addZeros2(number1,howManyDigitsToMake) {
@@ -234,25 +286,25 @@ function fillInDescription(sectionTitle,xmlDoc) {
   var titleParagraphs=sectionTitle.selectNodes("./fb:p");
   var arr1,author;
   if (document.getElementById("radio1").checked) {
-    authorParagraph=titleParagraphs[0].xml.replace(/<\/?[^>]*>/g,"");
-    bookTitleParagraph=titleParagraphs[1].xml.replace(/<\/?[^>]*>/g,"");
+    authorParagraph=getParagraphText(titleParagraphs[0]);
+    bookTitleParagraph=getParagraphText(titleParagraphs[1]);
   }
   if (document.getElementById("radio2").checked) {
-    authorParagraph=titleParagraphs[1].xml.replace(/<\/?[^>]*>/g,"");
-    bookTitleParagraph=titleParagraphs[0].xml.replace(/<\/?[^>]*>/g,"");
+    authorParagraph=getParagraphText(titleParagraphs[1]);
+    bookTitleParagraph=getParagraphText(titleParagraphs[0]);
   }
 
   var authorArr=authorParagraph.match(/[^,]+/g);
 
   if (document.getElementById("radio3").checked) {
-    bookTitle=titleParagraphs[0].xml.replace(/<\/?[^>]*>/g,"");
+    bookTitle=getParagraphText(titleParagraphs[0]);
   }
 
   if (document.getElementById("radio4").checked) {
     if (titleParagraphs.length>1)
-     bookTitle=titleParagraphs[1].xml.replace(/<\/?[^>]*>/g,"");
+     bookTitle=getParagraphText(titleParagraphs[1]);
    else
-     bookTitle=titleParagraphs[0].xml.replace(/<\/?[^>]*>/g,"");
+     bookTitle=getParagraphText(titleParagraphs[0]);
   }
 
   var fictionBook=xmlDoc.selectSingleNode("//fb:FictionBook");
@@ -276,11 +328,7 @@ function fillInDescription(sectionTitle,xmlDoc) {
     titleInfo=description.selectSingleNode("./fb:title-info");
   }
 
-  if (document.getElementById("radio1").checked || document.getElementById("radio2").checked) {
-    var authors=titleInfo.selectNodes("./fb:author");
-    for (var i=authors.length-1;i>=0;i--)
-      removeNode(authors[i]);
-  }
+  var authorsReplaced=false;
 
   if (authorArr && (document.getElementById("radio1").checked || document.getElementById("radio2").checked)) {
     for (var j=authorArr.length-1;j>=0;j--) {
@@ -290,6 +338,7 @@ function fillInDescription(sectionTitle,xmlDoc) {
       bookTitle=bookTitleParagraph;
 
       arr1=authorArr[j].match(/([^\s.]+\.?)/g);
+      if (!arr1) continue;
       if (arr1.length==3 && arr1[2].slice(-1)!=".") {
         authorFirstName=arr1[0];
         authorMiddleName=arr1[1];
@@ -310,6 +359,12 @@ function fillInDescription(sectionTitle,xmlDoc) {
       }
   
       if (authorFirstName!="" || authorMiddleName!="" || authorLastName!="") {
+        if (!authorsReplaced) {
+          var oldAuthors=titleInfo.selectNodes("./fb:author");
+          for (var oldAuthorIndex=oldAuthors.length-1; oldAuthorIndex>=0; oldAuthorIndex--)
+            removeNode(oldAuthors[oldAuthorIndex]);
+          authorsReplaced=true;
+        }
         var author=xmlDoc.createNode(1,"author",fictionBook.namespaceURI);
         var genres=titleInfo.selectNodes("./fb:genre");
         if (!genres)
@@ -357,7 +412,7 @@ function fillInDescription(sectionTitle,xmlDoc) {
       }
     }
   }
-  authors=titleInfo.selectNodes("./fb:author");
+  var authors=titleInfo.selectNodes("./fb:author");
   if (authors.length==0) {
     var genres=titleInfo.selectNodes("./fb:genre");
 
@@ -566,17 +621,34 @@ function makeFilenameForSaving(fileCnt,bookTitle) {
   var maxNameLength=70;
   var ch,transliteratedChar;
   var i=0;
-  while (i<bookTitle.length) {
-    ch=bookTitle.charAt(i);
+  var authorNode=xmlDoc.selectSingleNode("/fb:FictionBook/fb:description/fb:title-info/fb:author[1]");
+  var authorName="";
+  if (authorNode) {
+    var lastName=authorNode.selectSingleNode("./fb:last-name");
+    var nickname=authorNode.selectSingleNode("./fb:nickname");
+    authorName=getParagraphText(lastName) || getParagraphText(nickname);
+  }
+  var sourceName=document.getElementById("filenameTemplate").value;
+  sourceName=sourceName.replace(/\{number\}/g,addZeros2(fileCnt,4)).replace(/\{author\}/g,authorName).replace(/\{title\}/g,bookTitle);
+  while (i<sourceName.length) {
+    ch=sourceName.charAt(i);
     transliteratedChar=t[ch];
     if (transliteratedChar && transliteratedName.length+transliteratedChar.length>maxNameLength) break;
     if (transliteratedChar)
       transliteratedName+=transliteratedChar;
     i++;
   }
-  var fullFileName=addZeros2(fileCnt,4)+"_"+transliteratedName;
-  var path=openedFileName.replace(/\\[^\\]+$/,"\\");
+  if (document.getElementById("unicodeNames").checked) transliteratedName=sourceName;
+  transliteratedName=transliteratedName.replace(/[\\\/:*?"<>|]/g,"_").replace(/_+/g,"_").replace(/^_+|_+$/g,"");
+  if (transliteratedName=="") transliteratedName="section";
+  var path=document.getElementById("outputFolder").value;
+  if (path=="") path=openedFileName.replace(/\\[^\\]+$/,"");
+  path=path.replace(/[\\\/]+$/,"")+"\\";
   var fso=new ActiveXObject("Scripting.FileSystemObject");
+  if (!fso.FolderExists(path)) throw new Error("Выходная папка не существует: "+path);
+  var maxNameLength=Math.max(1, 240-path.length-9);
+  if (transliteratedName.length>maxNameLength) transliteratedName=transliteratedName.substr(0,maxNameLength);
+  var fullFileName=transliteratedName;
   i=0;
   while (fso.FileExists(path+fullFileName+(i==0?"":"_"+addZeros2(i,4)+"_SSASD")+".fb2")) i++;
   return path+fullFileName+(i==0?"":"_"+addZeros2(i,4)+"_SSASD")+".fb2";
@@ -706,7 +778,7 @@ function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
       }
       var links=xmlDoc.documentElement.selectNodes("//fb:a");
       for (j=0; j<links.length; j++) {
-        var address=links[j].getAttribute(ns+":href");
+        var address=getXLinkHref(links[j]);
         //alert("addreess: "+address);
         if (address && address.lastIndexOf("#")!=-1 && address.lastIndexOf("#")!=address.length-1) {
           //alert("Адрес ссылки: "+address.substr(address.lastIndexOf("#")+1).toLowerCase());
@@ -764,9 +836,9 @@ function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
       //alert("Разделов в comments body: "+sections.length);
       for (j=sections.length-1; j>=0; j--) {
          subsections=sections[j].selectNodes("./fb:section");
-         if (!subsections && sections[j].getAttribute("id")==null || 
-             (sections[j].getAttribute("id") &&
-              linksObj[sections[j].getAttribute("id").toLowerCase()]!=true)) {
+         var sectionId=sections[j].getAttribute("id");
+         if (subsections.length==0 &&
+             (sectionId==null || linksObj[sectionId.toLowerCase()]!==true)) {
            //alert("Удаляем раздел в comments body.");
            removeNode(sections[j]);
            removesCnt++;
@@ -803,7 +875,7 @@ function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
       delete imagesObj[i];
     var images=xmlDoc.documentElement.selectNodes("//fb:image");
     for (j=0; j<images.length; j++) {
-      var address=images[j].getAttribute(ns+":href");
+      var address=getXLinkHref(images[j]);
       //alert("addreess: "+address);
       if (address && address.lastIndexOf("#")!=-1 && address.lastIndexOf("#")!=address.length-1) {
         //alert("Адрес ссылки: "+address.substr(address.lastIndexOf("#")+1).toLowerCase());
@@ -818,22 +890,21 @@ function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
     }
  
     var idNode=xmlDoc.selectSingleNode("/fb:FictionBook//fb:description//fb:document-info//fb:id");
+    var newId=createGuid();
+    if (!idNode) {
+      var documentInfo=xmlDoc.selectSingleNode("/fb:FictionBook//fb:description//fb:document-info");
+      if (documentInfo) {
+        idNode=xmlDoc.createNode(1,"id",documentInfo.namespaceURI);
+        documentInfo.appendChild(idNode);
+      }
+    }
     if (idNode) {
-      var newId=randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+
-                randomSymbol()+randomSymbol()+randomSymbol()+"-"+
-                randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+"-"+
-                randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+"-"+
-                randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+"-"+
-                randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+
-                randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol()+
-                randomSymbol()+randomSymbol()+randomSymbol()+randomSymbol();
-      var newIdNode=xmlDoc.createTextNode(newId);
-      idNode.replaceChild(newIdNode,idNode.firstChild);
+      while (idNode.hasChildNodes) removeNode(idNode.firstChild);
+      idNode.appendChild(xmlDoc.createTextNode(newId));
     }
 
     var filenameForSaving=makeFilenameForSaving(fileCnt,bookTitle);
-    //xmlDoc.save(filenameForSaving);
-    saveBeautifiedXML(xmlDoc,filenameForSaving);
+    saveCheckedXML(xmlDoc,filenameForSaving);
   }
 }
 
@@ -857,6 +928,25 @@ function getTime2() {
  return TimeStr;
 }
 
+function showWrongTitles(titleTexts, modeMessage) {
+  var msgWindow=window.open("about:blank","_blank","height=640,width=700,status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes");
+  var body=msgWindow.document.body;
+  var heading=msgWindow.document.createElement("h1");
+  heading.appendChild(msgWindow.document.createTextNode("Заголовки, не подходящие для выбранного режима"));
+  body.appendChild(heading);
+  var message=msgWindow.document.createElement("p");
+  message.appendChild(msgWindow.document.createTextNode(modeMessage+" Количество: "+titleTexts.length+"."));
+  body.appendChild(message);
+  var list=msgWindow.document.createElement("ul");
+  for (var i=0; i<titleTexts.length; i++) {
+    var item=msgWindow.document.createElement("li");
+    item.appendChild(msgWindow.document.createTextNode(titleTexts[i]));
+    list.appendChild(item);
+  }
+  body.appendChild(list);
+  msgWindow.focus();
+}
+
 function saveSectionsAsSeparateDocuments() {
  getTime1();
  sortElements();
@@ -865,50 +955,48 @@ function saveSectionsAsSeparateDocuments() {
    return;
  }
  var myElem5,ps;
+ var report={planned:sortedElementArray.length, created:0, skipped:0, errors:0};
  fileCnt=1;
  if (document.getElementById("radio1").checked || document.getElementById("radio2").checked) {
-   var tooShortTitlesCnt=0;
-   var htmlStr2="<DIV style='text-align:center;'><TABLE style='display:inline-block; border:2px solid black;'><TBODY>";
+   var wrongTitleTexts=[];
    var titles=xmlDoc.documentElement.selectNodes("//fb:section/fb:title");
    var itIsFirstTitle=true;
    for (nPtr=0;nPtr<sortedElementArray.length;nPtr++) {
-     myTitle=titles[sortedElementArray[nPtr]-1];
+     var displayIndex=sortedElementArray[nPtr];
+     var sourceIndex=myLinks[displayIndex];
+     myTitle=titles[sourceIndex];
      ps=myTitle.selectNodes("./fb:p");
      if (ps.length<2) {
-       tooShortTitlesCnt++;
-       if (itIsFirstTitle) itIsFirstTitle=false;
-       else htmlStr2+="<TR><TD class=delim></TD></TR>";
-       htmlStr2+="<TR><TD style='padding-left:3px; padding-right:3px;'><NOBR>"+xmlToHtml(getInnerXML(ps[0]))+"</NOBR></TD></TR>";
+       wrongTitleTexts.push(ps.length ? getParagraphText(ps[0]) : "(пустой заголовок)");
      }
    }
-   htmlStr2="<DIV style='width:670px; font-size:16px; text-align:center; margin:0 auto;'><H1>Одноабзацные заголовки, которые должны быть как минимум двухабзацными</H1><BR>"+
-             "<P style='font-size:16px;'>Нижеуказанные заголовки ("+tooShortTitlesCnt+" шт.) являются одноабзацными.</P><BR>"+
-            "<P style='font-size:16px;'>Для создания отдельных документов в режимах \"Автор+название\" или \"Название+автор\" их (заголовки) нужно предварительно сделать двухабзацными.</P><BR></DIV>"+htmlStr2;
-   htmlStr2+="</TBODY></TABLE></DIV>";
-   if (tooShortTitlesCnt>0) {
+   if (wrongTitleTexts.length>0) {
 //    alert("     Некоторые из выделенных вами заголовков содержат в себе менее двух абзацев, при "+
 //          "том, что выбран режим обработки, предполагающий, что заголовки выбранных для "+
 //          "сохранения разделов должны состоять как минимум из двух абзацев.\n\n"+
 //          "     Количество выделенных заголовков, содержащих менее двух абзацев: "+tooShortTitlesCnt+".\n\n"+
 //          "     Сохранение разделов как отдельные документы – не было произведено.");
-    var dialogWidth="700px";
-    var dialogHeight="640px";
-    var msgWindow = window.open("SSASD - Show Wrong Titles.html","_blank","height="+dialogHeight+",width="+dialogWidth+",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes");
-    msgWindow.document.body.innerHTML=htmlStr2;
-    msgWindow.focus();
+    showWrongTitles(wrongTitleTexts, "Для режимов «Автор + название» и «Название + автор» требуется не менее двух абзацев.");
     return;
    }
  }
  for (nPtr=0;nPtr<sortedElementArray.length;nPtr++) {
   //запишем в myElem5 ссылку на заголовок раздела, который (раздел) нужно сохранить как отдельный документ
   myElem5=myLinks[sortedElementArray[nPtr]];
-  saveOneSectionAsSeparateDocument(myElem5,fileCnt);
-  fileCnt++;
+  try {
+   saveOneSectionAsSeparateDocument(myElem5,fileCnt);
+   report.created++;
+   fileCnt++;
+  }
+  catch (e) {
+   report.errors++;
+   alert("Не удалось сохранить раздел №"+(nPtr+1)+".\n\n"+e.message);
+  }
   //alert(makeHTMLTitle(myElem5));
   var fictionBook=xmlDoc.documentElement.selectSingleNode("//fb:FictionBook");
   fictionBook.parentNode.replaceChild(savedFictionBook,fictionBook);
  }
- alert("Готово!\n\nЗатраченное время: "+getTime2()+".");
+ alert("Готово!\n\nЗапланировано: "+report.planned+"\nСоздано: "+report.created+"\nПропущено: "+report.skipped+"\nОшибок: "+report.errors+"\n\nЗатраченное время: "+getTime2()+".");
 }
 
 function isItHighestLevelSection(title3) {
@@ -935,55 +1023,51 @@ function itIsInNotesOrCommentsBody(title4) {
 function saveOuterSectionsAsSeparateDocuments() {
  getTime1();
  var myElem5,ps;
+ var report={planned:0, created:0, skipped:0, errors:0};
  fileCnt=1;
  var titles=xmlDoc.documentElement.selectNodes("//fb:section/fb:title");
  if (document.getElementById("radio1").checked || document.getElementById("radio2").checked) {
-   var tooShortTitlesCnt=0;
-   var htmlStr2="<DIV style='text-align:center;'><TABLE style='display:inline-block; border:2px solid black;'><TBODY>";
-   var itIsFirstTitle=true;
+   var wrongTitleTexts=[];
    for (var i=0; i<titles.length; i++) {
      myTitle=titles[i];
      if (isItHighestLevelSection(myTitle) && !itIsInNotesOrCommentsBody(myTitle)) {
        //alert("myTitle: "+getOuterXML(myTitle));
        ps=myTitle.selectNodes("./fb:p");
        if (ps.length<2) {
-         tooShortTitlesCnt++;
-         if (itIsFirstTitle) itIsFirstTitle=false;
-         else htmlStr2+="<TR><TD class=delim></TD></TR>";
-         htmlStr2+="<TR><TD style='padding-left:3px; padding-right:3px;'><NOBR>"+xmlToHtml(getInnerXML(ps[0]))+"</NOBR></TD></TR>";
+         wrongTitleTexts.push(ps.length ? getParagraphText(ps[0]) : "(пустой заголовок)");
        }
      }
    }
-   htmlStr2="<DIV style='width:670px; font-size:16px; text-align:center; margin:0 auto;'><H1>Одноабзацные заголовки, которые должны быть как минимум двухабзацными</H1><BR>"+
-             "<P style='font-size:16px;'>Нижеуказанные заголовки ("+tooShortTitlesCnt+" шт.) являются одноабзацными.</P><BR>"+
-            "<P style='font-size:16px;'>Для создания отдельных документов в режимах \"Автор+название\" или \"Название+автор\" их (заголовки) нужно предварительно сделать двухабзацными.</P><BR></DIV>"+htmlStr2;
-   htmlStr2+="</TBODY></TABLE></DIV>";
-   if (tooShortTitlesCnt>0) {
+   if (wrongTitleTexts.length>0) {
 //    alert("     Некоторые из заголовков разделов верхнего уровня содержат в себе "+
 //          "менее двух абзацев, при том, что выбран режим обработки, предполагающий, "+
 //          "что заголовки подлежащих сохранению разделов должны состоять как минимум "+
 //          "из двух абзацев.\n\n"+
 //          "     Количество выделенных заголовков, содержащих менее двух абзацев: "+tooShortTitlesCnt+".\n\n"+
 //          "     Сохранение разделов как отдельные документы – не было произведено.");
-    var dialogWidth="700px";
-    var dialogHeight="640px";
-    var msgWindow = window.open("SSASD - Show Wrong Titles.html","_blank","height="+dialogHeight+",width="+dialogWidth+",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes");
-    msgWindow.document.body.innerHTML=htmlStr2;
-    msgWindow.focus();
+    showWrongTitles(wrongTitleTexts, "Для режимов «Автор + название» и «Название + автор» требуется не менее двух абзацев.");
     return;
    }
  }
  for (var i=0; i<titles.length; i++) {
   //запишем в myElem5 ссылку на заголовок раздела, который (раздел) нужно сохранить как отдельный документ
   if (isItHighestLevelSection(titles[i]) && !itIsInNotesOrCommentsBody(titles[i])) {
-    saveOneSectionAsSeparateDocument(i,fileCnt);
-    fileCnt++;
+    report.planned++;
+    try {
+     saveOneSectionAsSeparateDocument(i,fileCnt);
+     report.created++;
+     fileCnt++;
+    }
+    catch (e) {
+     report.errors++;
+     alert("Не удалось сохранить раздел №"+(i+1)+".\n\n"+e.message);
+    }
     //alert(makeHTMLTitle(myElem5));
     var fictionBook=xmlDoc.documentElement.selectSingleNode("//fb:FictionBook");
     fictionBook.parentNode.replaceChild(savedFictionBook,fictionBook);
   }
  }
- alert("Готово!\n\nЗатраченное время: "+getTime2()+".");
+ alert("Готово!\n\nЗапланировано: "+report.planned+"\nСоздано: "+report.created+"\nПропущено: "+report.skipped+"\nОшибок: "+report.errors+"\n\nЗатраченное время: "+getTime2()+".");
 }
 
 function selectElements(selectionBegin,selectionEnd) {
@@ -993,7 +1077,7 @@ function selectElements(selectionBegin,selectionEnd) {
  function selectAnElement(el) {
   currN=el.id;
   if (currN!=null && currN!="" && currN.indexOf("n_")==0)
-   evaledCurrN=eval(currN.substr(2));
+   evaledCurrN=parseInt(currN.substr(2),10);
   if (selectedElements[evaledCurrN]!=evaledCurrN)
    selectedElementsCnt++;
   el.className="el_sel";
@@ -1003,9 +1087,9 @@ function selectElements(selectionBegin,selectionEnd) {
 
  var el=selectionEnd;
  if (selectionBegin && selectionBegin.id)
-  var selectionBeginN=eval(selectionBegin.id.substr(2));
+  var selectionBeginN=parseInt(selectionBegin.id.substr(2),10);
  else return;
- var selectionEndN=eval(selectionEnd.id.substr(2));
+ var selectionEndN=parseInt(selectionEnd.id.substr(2),10);
  var currElement=(selectionBeginN<selectionEndN)?selectionBegin:el;
  var endElement=(selectionBeginN<selectionEndN)?el:selectionBegin;
  currElement=currElement.parentNode;
@@ -1057,7 +1141,7 @@ function getScrollBarWidthAndHeight() {
  var w2=inner.offsetWidth;
  var h2=inner.offsetHeight;
  if (w1==w2) w2 = outer.clientWidth;
- if (h1==h2) h2 = outer.clientWidth;
+ if (h1==h2) h2 = outer.clientHeight;
  outer.removeNode(true);
 
  scrollbarWidth=w1-w2;
@@ -1116,7 +1200,7 @@ function myOnClick() {
  var myN=el.id;
  var evaledN=null;
  if (myN==null || myN=="" || myN.indexOf("n_")!=0) return;
- evaledN=eval(myN.substr(2));
+ evaledN=parseInt(myN.substr(2),10);
  /*if ((currentElementType.substr(0,6)=="titles" || currentElementType=="subtitles" ||
       currentElementType=="emphasis" || currentElementType=="strong" ||
       currentElementType=="sup" || currentElementType=="sub" ||
@@ -1164,7 +1248,7 @@ function myOnClick() {
  if (event.shiftKey && evaledN && selectionBegin) {
   var oldN=selectionBegin.id;
   if (oldN==null || oldN=="" || oldN.indexOf("n_")!=0) return;
-  evaledOldN=eval(oldN.substr(2));
+ evaledOldN=parseInt(oldN.substr(2),10);
   if (!event.ctrlKey) {
    //alert("добавляем в список n_"+evaledOldN);
    selectedElements[evaledOldN]=evaledOldN;
@@ -1304,7 +1388,7 @@ function capturedMouse() {
    return;
   }
   if (el && el.nodeName=="TD" && el.className.indexOf("el_")==0) {
-   evaledN=eval(el.id.substr(2));
+   evaledN=parseInt(el.id.substr(2),10);
    removeActivityFromActiveElement();
    selectElements(activeElement,el);
    activeElement=el;
@@ -1328,11 +1412,11 @@ function capturedMouse() {
  if (event.type=="mousemove") {
   if (event.y<3+document.getElementById('elementList').getBoundingClientRect().top) {
    scrolling="up";
-   if (mouseTimer==null) mouseTimer=setInterval("scrollingTimer();",100);
+   if (mouseTimer==null) mouseTimer=setInterval(scrollingTimer,100);
   }
   else if (event.y>document.getElementById("elementList").offsetHeight-scrollbarHeight+document.getElementById('elementList').getBoundingClientRect().top) {
    scrolling="down";
-   if (mouseTimer==null) mouseTimer=setInterval("scrollingTimer();",100);
+   if (mouseTimer==null) mouseTimer=setInterval(scrollingTimer,100);
   } else if (mouseTimer!=null) {
    clearInterval(mouseTimer);
    mouseTimer=null;
@@ -1406,6 +1490,35 @@ function getInitialWindowSize() {
   initialWindowHeight=document.documentElement.clientHeight;
 }
 
+function addTitleToList(container, titleText, level, displayIndex) {
+  var row=document.createElement("tr");
+  var cell=document.createElement("td");
+  cell.style.paddingLeft=(level*20)+"px";
+  cell.className="el_";
+  cell.id="n_"+displayIndex;
+  var noBreak=document.createElement("nobr");
+  noBreak.appendChild(document.createTextNode(titleText));
+  cell.appendChild(noBreak);
+  row.appendChild(cell);
+  container.appendChild(row);
+  var delimiterRow=document.createElement("tr");
+  var delimiter=document.createElement("td");
+  delimiter.className="delim";
+  delimiterRow.appendChild(delimiter);
+  container.appendChild(delimiterRow);
+}
+
+function chooseOutputFolder() {
+  try {
+    var shell=new ActiveXObject("Shell.Application");
+    var folder=shell.BrowseForFolder(0, "Выберите папку для сохранения FB2", 0);
+    if (folder) document.getElementById("outputFolder").value=folder.Self.Path;
+  }
+  catch (e) {
+    alert("Не удалось открыть выбор папки.\n\n"+e.message);
+  }
+}
+
 
 function applySettings() {
  var f1=document.getElementById("f1");
@@ -1423,44 +1536,52 @@ function applySettings() {
   alert("Ошибка!");
   return;
  }
- xmlDoc=new ActiveXObject(DOMDocumentObjectName);
- //xmlDoc=new ActiveXObject("Microsoft.XMLDOM");
- xmlDoc.async=false;
- xmlDoc.preserveWhiteSpace = true;
- var fbNS="http://www.gribuser.ru/xml/fictionbook/2.0";
- var xlNS="http://www.w3.org/1999/xlink";
- xmlDoc.load(f1);
- xmlDoc.setProperty("SelectionNamespaces", "xmlns:fb='"+fbNS+"' xmlns:xlink='"+xlNS+"'");
- if (xmlDoc.parseError.errorCode) return;
+ try {
+  xmlDoc=createXmlDocument();
+  configureXPath(xmlDoc);
+  if (!xmlDoc.load(f1) || xmlDoc.parseError.errorCode) {
+   alert(getParseErrorText(xmlDoc, f1));
+   return;
+  }
+ }
+ catch (e) {
+  alert("Ошибка открытия XML.\n\n"+e.message);
+  return;
+ }
  openedFileName=f1;
+ document.getElementById("outputFolder").value=f1.replace(/\\[^\\]+$/,"");
  var titles=xmlDoc.documentElement.selectNodes("//fb:section/fb:title");
  //alert("titles.length: \n\n"+titles.length);
  var i;
  //window.clipboardData.setData("text",getOuterXML(xmlDoc.documentElement));
  //savedXmlDocCode=getOuterXML(xmlDoc.documentElement);
- var fictionBook=xmlDoc.documentElement.selectSingleNode("//fb:FictionBook");
+ var fictionBook=xmlDoc.selectSingleNode("/fb:FictionBook");
+ if (!fictionBook) {
+  alert("Корневой элемент FictionBook не найден.");
+  return;
+ }
  savedFictionBook=fictionBook.cloneNode(true);
- var myAttrs=fictionBook.attributes;
- ns="l";
- for (i=0; i<myAttrs.length; i++)
-   if (myAttrs[i].name.indexOf("xmlns:")==0)
-     ns=myAttrs[i].name.replace(/^xmlns:/i,"");
- var htmlStr="<TABLE style='margin: 0 auto;' id=elementListTable><TBODY>";
+ document.getElementById("msxmlInfo").innerText="XML-парсер: "+msxmlVersion;
+ var table=document.createElement("table");
+ table.style.margin="0 auto";
+ table.id="elementListTable";
+ var tableBody=document.createElement("tbody");
+ table.appendChild(tableBody);
  var nCnt=0;
  myLinks={};
  var titleCode;
  for (i=0; i<titles.length; i++) {
    if (!isInNotesOrCommentsBody(titles[i])) {
-     titleCode=xmlToHtml(getInnerXML(titles[i]));
-     //alert("titleCode:\n\n"+titleCode);
-     nCnt++;
-     htmlStr+="<TR><TD  style='padding-left:"+(parentSectionsCnt(titles[i])*20)+"px;' class=el_ id=n_"+nCnt+"><NOBR>"+titleCode+"</NOBR></TD></TR><TR><TD class=delim></TD></TR>";
-     myLinks[nCnt]=i;
-   }
+   titleCode=getParagraphText(titles[i]);
+   nCnt++;
+   addTitleToList(tableBody, titleCode, parentSectionsCnt(titles[i]), nCnt);
+   myLinks[nCnt]=i;
+  }
  }
- htmlStr+="</TBODY></TABLE>";
  selectedElementsCnt=0;
- document.getElementById("elementList").innerHTML=htmlStr;
+ var elementList=document.getElementById("elementList");
+ while (elementList.hasChildNodes) elementList.removeChild(elementList.firstChild);
+ elementList.appendChild(table);
  document.getElementById("elementList").style.display="inline-block";
  document.getElementById("inAllInput").value=nCnt;
  document.getElementById("selectedInput").value=selectedElementsCnt;
@@ -1480,6 +1601,7 @@ function applySettings() {
 <P style="text-align:center">Выберите fb2-файл:
 <br>
 <INPUT type=file style="width:500px;" id=f1></P>
+<P id="msxmlInfo" style="text-align:center"></P>
 <DIV id="selectFileDiv">
 <P style="padding:0; margin:0; text-align:center;"><INPUT type=button value="Найти и показать заголовки разделов" onclick="applySettings();"><INPUT type=button value="Выйти" onclick="window.close();"></P>
 <BR>
@@ -1494,6 +1616,12 @@ function applySettings() {
 </DIV>
 </DIV>
 <DIV id=buttonsDiv style="display:none;">
+<div style="margin:0 auto; width:650px;">
+  <label>Выходная папка: <input type=text id="outputFolder" style="width:400px;"></label> <input type=button value="Выбрать..." onclick="chooseOutputFolder();"><br>
+  <label for="unicodeNames"><input type=checkbox id="unicodeNames"> сохранять названия файлов в Unicode</label>
+  <label>Шаблон: <input type=text id="filenameTemplate" value="{number}_{author}_{title}" style="width:240px;"></label>
+</div>
+<br>
 <div style="margin:0 auto; width:600px;">
 <label for="checkbox1"><input type=checkbox id="checkbox1" name=noteSign style="width:30px; height:30px;"> включать в сохраняемые файлы эпиграфы, в исходном документе относившиеся к body, а также разделы без заголовков, которые (разделы) находились в начале body</label>
 </div>
