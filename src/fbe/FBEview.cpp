@@ -3089,6 +3089,19 @@ bool CFBEView::Init()
   if (FAILED(hr) || !document) return false;
   m_hdoc = document.p;
 
+  // MSHTML otherwise turns text resembling a UNC path (for example, \\word)
+  // into a file:// hyperlink when the editor loses focus.  Links in FB2 must
+  // only be created by an explicit editor command.
+  try
+  {
+    if (document->execCommand(L"AutoUrlDetect", VARIANT_FALSE, _variant_t(VARIANT_FALSE)) != VARIANT_TRUE)
+      StartupTrace::Warning(L"webbrowser", L"WB205", L"AutoUrlDetect was not disabled");
+  }
+  catch (const _com_error& error)
+  {
+    StartupTrace::HResult(L"webbrowser", L"WB205", error.Error(), L"Disable AutoUrlDetect");
+  }
+
   CComPtr<MSHTML::IMarkupServices2> markupServices;
   hr = document->QueryInterface(&markupServices);
   StartupTrace::HResult(L"webbrowser", L"WB210", hr, L"QueryInterface(IMarkupServices2)");
