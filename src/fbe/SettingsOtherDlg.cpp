@@ -43,6 +43,10 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	m_image_type = GetDlgItem(IDC_IMAGETYPE);
 	m_jpeg_quality = GetDlgItem(IDC_JPEGQUALITY);
 	m_updown = GetDlgItem(IDC_JPEGSPIN);
+	m_image_import_format = GetDlgItem(IDC_IMAGE_IMPORT_FORMAT);
+	m_image_import_jpeg_quality = GetDlgItem(IDC_IMAGE_IMPORT_JPEG_QUALITY);
+	m_image_import_updown = GetDlgItem(IDC_IMAGE_IMPORT_JPEG_SPIN);
+	m_image_import_keep_supported = GetDlgItem(IDC_IMAGE_IMPORT_KEEP_SUPPORTED);
 
 	m_keyb_layout = GetDlgItem(IDC_KEYB_LAYOUT);
 
@@ -53,6 +57,7 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_SETTINGS_ASKIMAGE, L"fbe.dialog.idd_setting_other.ask_image", L"Ask for non clear image insertion");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_OPTIONS_CLEARIMGS, L"fbe.dialog.idd_setting_other.clear_images", L"Insert clear images");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_CHANGE_KEYB, L"fbe.dialog.idd_setting_other.change_keyboard", L"Change keyboard layout automatically");
+	SetRuntimeSettingsOtherText(m_hWnd, IDC_IMAGE_IMPORT_KEEP_SUPPORTED, L"fbe.dialog.idd_setting_other.image_import_keep_supported", L"Keep JPEG/PNG without recompression");
 
 	::SendMessage(GetDlgItem(IDC_SETTINGS_ASKIMAGE), BM_SETCHECK, 
 				_Settings.GetInsImageAsking() ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -106,6 +111,14 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	quality.Format(L"%d", static_cast<int>(_Settings.GetJpegQuality()));
 	m_jpeg_quality.SetWindowText(quality);
 	m_updown.SetRange(20, 100);
+	m_image_import_format.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_other.image_import_auto", L"Auto"));
+	m_image_import_format.AddString(L"JPEG");
+	m_image_import_format.AddString(L"PNG");
+	m_image_import_format.SetCurSel(_Settings.GetImageImportFormat());
+	quality.Format(L"%d", static_cast<int>(_Settings.GetImageImportJpegQuality()));
+	m_image_import_jpeg_quality.SetWindowText(quality);
+	m_image_import_updown.SetRange(1, 100);
+	m_image_import_keep_supported.SetCheck(_Settings.GetImageImportKeepSupported() ? BST_CHECKED : BST_UNCHECKED);
 
 	// process keyboard layouts
 	TCHAR name[255];
@@ -163,6 +176,9 @@ LRESULT CSettingsOtherDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl,
 
 	_Settings.SetImageType(m_image_type.GetCurSel());
 	_Settings.SetJpegQuality(m_updown.GetPos());
+	_Settings.SetImageImportFormat(m_image_import_format.GetCurSel());
+	_Settings.SetImageImportJpegQuality(m_image_import_updown.GetPos());
+	_Settings.SetImageImportKeepSupported(m_image_import_keep_supported.GetCheck() == BST_CHECKED);
 
 	int n = m_keyb_layout.GetCurSel();
 	_Settings.SetKeybLayout(m_keyb_layout.GetItemData(n));

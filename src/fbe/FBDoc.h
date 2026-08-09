@@ -104,6 +104,8 @@ public:
   // binary objects
   BSTR PrepareDefaultId(const CString& filename);
   void AddBinary(const CString& filename);
+  HRESULT ImportBinary(const CString& filename, CString& errorMessage, bool* converted = NULL, bool flattenTransparentJpeg = false);
+  HRESULT AddBinaryData(const BYTE* data, size_t size, const CString& logicalFileName, const CString& mimeType);
 
   // config
   void	  ApplyConfChanges();

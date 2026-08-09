@@ -3,6 +3,8 @@
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include "ImageImport.h"
+#include "RuntimeLocalization.h"
 #include "resource.h"
 #include "res1.h"
 
@@ -1806,36 +1808,56 @@ BSTR Doc::PrepareDefaultId(const CString& filename){
  }
 
 // binaries
-void Doc::AddBinary(const CString& filename)
+HRESULT Doc::AddBinaryData(const BYTE* data, size_t size, const CString& logicalFileName, const CString& mimeType)
 {
 	_variant_t args[4];
-	HRESULT hr;
+	if (!data || !size || size > ULONG_MAX)
+		return E_INVALIDARG;
 
-	V_BSTR(&args[3]) = filename.AllocSysString();
+	V_BSTR(&args[3]) = logicalFileName.AllocSysString();
 	V_VT(&args[3]) = VT_BSTR;
-
-	if(FAILED(hr = U::LoadFile(filename, &args[0])))
-	{
-		U::ReportError(hr);
-		return;
-	}
-
-	V_BSTR(&args[2]) = PrepareDefaultId(filename);
+	SAFEARRAY* bytes = SafeArrayCreateVector(VT_UI1, 0, static_cast<ULONG>(size));
+	if (!bytes) return E_OUTOFMEMORY;
+	void* bytesData = NULL;
+	HRESULT hr = SafeArrayAccessData(bytes, &bytesData);
+	if (FAILED(hr)) { SafeArrayDestroy(bytes); return hr; }
+	memcpy(bytesData, data, size); SafeArrayUnaccessData(bytes);
+	V_ARRAY(&args[0]) = bytes; V_VT(&args[0]) = VT_ARRAY | VT_UI1;
+	V_BSTR(&args[2]) = PrepareDefaultId(logicalFileName);
 	V_VT(&args[2]) = VT_BSTR;
-
-	// Try to find out mime type
-	V_BSTR(&args[1]) = U::GetMimeType(filename).AllocSysString();
+	V_BSTR(&args[1]) = mimeType.AllocSysString();
 	V_VT(&args[1]) = VT_BSTR;
-
-	// Stuff the thing into JavaScript
 	CComDispatchDriver body(m_body.Script());
 	hr = body.InvokeN(L"apiAddBinary", args, 4);
-		if(FAILED(hr))
-			U::ReportError(hr);
+	if (FAILED(hr)) return hr;
+	return body.Invoke0(L"FillCoverList");
+}
 
-	hr = body.Invoke0(L"FillCoverList");
-	if(FAILED(hr))
-		U::ReportError(hr);
+void Doc::AddBinary(const CString& filename)
+{
+	CString error;
+	HRESULT hr = ImportBinary(filename, error);
+	if (hr == E_ABORT && ::MessageBox(NULL, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) == IDYES)
+		hr = ImportBinary(filename, error, NULL, true);
+	if (FAILED(hr)) {
+		if (!error.IsEmpty()) ::MessageBox(NULL, error, L"FictionBook Editor", MB_OK | MB_ICONERROR);
+		else U::ReportError(hr);
+	}
+}
+
+HRESULT Doc::ImportBinary(const CString& filename, CString& error, bool* converted, bool flattenTransparentJpeg)
+{
+	ImageImportOptions options;
+	options.outputFormat = static_cast<ImageOutputFormat>(_Settings.GetImageImportFormat());
+	options.jpegQuality = static_cast<int>(_Settings.GetImageImportJpegQuality());
+	options.keepSupportedImages = _Settings.GetImageImportKeepSupported();
+	options.flattenTransparentJpeg = flattenTransparentJpeg;
+	ImageImportResult imported;
+	HRESULT hr = ImportImageForFb2(filename, options, imported, error);
+	if (FAILED(hr)) return hr;
+	if (converted) *converted = imported.converted;
+	hr = AddBinaryData(imported.data.data(), imported.data.size(), imported.logicalFileName, imported.mimeType);
+	return hr;
 }
 
 void  Doc::ApplyConfChanges() {

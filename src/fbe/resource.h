@@ -484,6 +484,10 @@
 #define IDC_KEYB_LAYOUT                 1102
 #define IDC_SPELL_CHANGE                1103
 #define IDC_JPEGSPIN                    1103
+#define IDC_IMAGE_IMPORT_FORMAT          1104
+#define IDC_IMAGE_IMPORT_JPEG_QUALITY    1105
+#define IDC_IMAGE_IMPORT_JPEG_SPIN       1106
+#define IDC_IMAGE_IMPORT_KEEP_SUPPORTED  1107
 #define IDC_SPELL_CHANGEALL             1104
 #define ID_FIND_NEXT                    1104
 #define IDC_TEXT_STATUS                 1105

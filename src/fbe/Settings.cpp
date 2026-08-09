@@ -91,6 +91,9 @@ const wchar_t KEYB_LAYOUT_KEY[]			= L"KeyboardLayout";
 const wchar_t SHOW_LINE_NUMBERS_KEY[]	= L"XMLSrcShowLineNumbers";
 const wchar_t IMAGE_TYPE_KEY[]			= L"PasteImageType";
 const wchar_t JPEG_QUALITY_KEY[]		= L"JpegQuality";
+const wchar_t IMAGE_IMPORT_FORMAT_KEY[] = L"ImageImportFormat";
+const wchar_t IMAGE_IMPORT_JPEG_QUALITY_KEY[] = L"ImageImportJpegQuality";
+const wchar_t IMAGE_IMPORT_KEEP_SUPPORTED_KEY[] = L"ImageImportKeepSupported";
 // 
 
 const wchar_t INSIMAGE_ASKING[]			= L"InsImageDialog";
@@ -826,6 +829,9 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(SHOW_LINE_NUMBERS_KEY);
 	properties.push_back(IMAGE_TYPE_KEY);
 	properties.push_back(JPEG_QUALITY_KEY);
+	properties.push_back(IMAGE_IMPORT_FORMAT_KEY);
+	properties.push_back(IMAGE_IMPORT_JPEG_QUALITY_KEY);
+	properties.push_back(IMAGE_IMPORT_KEEP_SUPPORTED_KEY);
 
 	properties.push_back(INSIMAGE_ASKING);
 	properties.push_back(INS_CLEAR_IMAGE);
@@ -1053,6 +1059,9 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 		property = GetStringedProperty(&m_jpeg_quality, KEY_INT);
 		return true;
 	}
+	else if(sProperty == IMAGE_IMPORT_FORMAT_KEY) { property = GetStringedProperty(&m_image_import_format, KEY_INT); return true; }
+	else if(sProperty == IMAGE_IMPORT_JPEG_QUALITY_KEY) { property = GetStringedProperty(&m_image_import_jpeg_quality, KEY_INT); return true; }
+	else if(sProperty == IMAGE_IMPORT_KEEP_SUPPORTED_KEY) { property = GetStringedProperty(&m_image_import_keep_supported, KEY_BOOL); return true; }
 	///
 	else if(sProperty == INSIMAGE_ASKING)
 	{
@@ -1346,6 +1355,9 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 		m_jpeg_quality = StrToInt(sValue.GetStringValue());
 		return true;
 	}
+	else if(sProperty == IMAGE_IMPORT_FORMAT_KEY) { m_image_import_format = min(2u, StrToInt(sValue.GetStringValue())); return true; }
+	else if(sProperty == IMAGE_IMPORT_JPEG_QUALITY_KEY) { m_image_import_jpeg_quality = max(1u, min(100u, StrToInt(sValue.GetStringValue()))); return true; }
+	else if(sProperty == IMAGE_IMPORT_KEEP_SUPPORTED_KEY) { m_image_import_keep_supported = StrToBool(sValue.GetStringValue()); return true; }
 	///
 	else if(sProperty == INSIMAGE_ASKING)
 	{
@@ -1876,10 +1888,14 @@ DWORD CSettings::GetImageType() const
 	return m_image_type;
 }
 
-DWORD CSettings::GetJpegQuality() const 
+DWORD CSettings::GetJpegQuality() const
 {
 	return m_jpeg_quality;
 }
+
+DWORD CSettings::GetImageImportFormat() const { return m_image_import_format; }
+DWORD CSettings::GetImageImportJpegQuality() const { return m_image_import_jpeg_quality; }
+bool CSettings::GetImageImportKeepSupported() const { return m_image_import_keep_supported; }
 
 ///
 bool CSettings::GetExtElementStyle(const CString& elem)const
@@ -2468,6 +2484,10 @@ void CSettings::LoadWords()
 	}
 }
 
+void CSettings::SetImageImportFormat(const DWORD value, bool apply) { m_image_import_format = min(2u, value); if(apply) Save(); }
+void CSettings::SetImageImportJpegQuality(const DWORD value, bool apply) { m_image_import_jpeg_quality = max(1u, min(100u, value)); if(apply) Save(); }
+void CSettings::SetImageImportKeepSupported(const bool value, bool apply) { m_image_import_keep_supported = value; if(apply) Save(); }
+
 void CSettings::SetScriptCommandIds(const CString& ids, bool apply)
 {
 	m_script_command_ids = ids;
@@ -2553,6 +2573,9 @@ void CSettings::SetDefaults()
 	m_show_line_numbers		= false;
 	m_image_type			= 1;
 	m_jpeg_quality			= 75;
+	m_image_import_format		= 0;
+	m_image_import_jpeg_quality	= 90;
+	m_image_import_keep_supported	= true;
 
 	::ZeroMemory(&m_wnd_placement, sizeof(WINDOWPLACEMENT));
 	m_desc.SetDefaults();

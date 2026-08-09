@@ -25,6 +25,10 @@ class CSettingsOtherDlg :
 	CComboBox	m_image_type;
 	CUpDownCtrl	m_updown;
 	CEdit		m_jpeg_quality;
+	CComboBox	m_image_import_format;
+	CEdit		m_image_import_jpeg_quality;
+	CUpDownCtrl	m_image_import_updown;
+	CButton		m_image_import_keep_supported;
 	CComboBox	m_keyb_layout;
 
 	bool		m_scripts_switched;
@@ -54,5 +58,4 @@ END_MSG_MAP()
 	LRESULT OnBnClickedSelectScriptsFolderButton(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBnClickedSettingsAskimage(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 };
-
 

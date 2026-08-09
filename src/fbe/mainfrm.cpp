@@ -5081,21 +5081,42 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
     _T("*"),
     NULL,
 	OFN_ALLOWMULTISELECT | OFN_HIDEREADONLY | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR,
-	L"All files (*.*)\0*.*\0FBE supported (*.jpg;*.jpeg;*.png)\0*.jpg;*.jpeg;*.png\0JPEG (*.jpg)\0*.jpg\0PNG (*.png)"\
-	L"\0*.png\0Bitmap (*.bmp)\0*.bmp\0GIF (*.gif)\0*.gif\0TIFF (*.tif)\0*.tif\0\0"
+	L"Supported images (*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff)\0*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff\0All files (*.*)\0*.*\0JPEG (*.jpg;*.jpeg)\0*.jpg;*.jpeg\0PNG (*.png)\0*.png\0WebP (*.webp)\0*.webp\0JPEG 2000 (*.jp2;*.j2k)\0*.jp2;*.j2k\0Bitmap (*.bmp)\0*.bmp\0GIF (*.gif)\0*.gif\0TIFF (*.tif;*.tiff)\0*.tif;*.tiff\0\0"
   );  
   wchar_t dlgTitle[MAX_LOAD_STRING + 1];
   FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_BINARIES_FILEDLG, dlgTitle, MAX_LOAD_STRING);
   dlg.m_ofn.lpstrTitle = dlgTitle;
-  dlg.m_ofn.nFilterIndex = 2;
+	dlg.m_ofn.nFilterIndex = 1;
 
 
   if (dlg.DoModal(*this)==IDOK) {
 	_POSITION_ pos = dlg.GetStartPosition();
+	int added = 0, converted = 0;
+	CString failures;
 	while(pos) {
 		CString fileName(dlg.GetNextPathName(pos));
-		m_doc->AddBinary(fileName);
+		CString error;
+		bool wasConverted = false;
+		HRESULT importResult = m_doc->ImportBinary(fileName, error, &wasConverted);
+		if (importResult == E_ABORT) {
+			const CString question = FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?");
+			if (::MessageBox(m_hWnd, question, FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) == IDYES)
+				importResult = m_doc->ImportBinary(fileName, error, &wasConverted, true);
+		}
+		if (SUCCEEDED(importResult)) {
+			++added;
+			if (wasConverted) ++converted;
+		} else {
+			CString leaf = fileName.Mid(fileName.ReverseFind(L'\\') + 1);
+			if (error.IsEmpty()) error = L"Не удалось добавить файл";
+			failures += leaf + L" — " + error + L"\r\n";
+		}
 	}	
+	if (!failures.IsEmpty()) {
+		CString summary = FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_summary", L"Added: %d\r\nConverted: %d\r\nFailed:\r\n%s");
+		CString message; message.Format(summary, added, converted, (LPCWSTR)failures);
+		::MessageBox(m_hWnd, message, FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_OK | MB_ICONWARNING);
+	}
   }
 
   return 0;

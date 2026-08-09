@@ -7,3 +7,9 @@
 [submodule "third_party/lexilla"]
 	path = third_party/lexilla
 	url = https://github.com/ScintillaOrg/lexilla.git
+[submodule "third_party/libwebp"]
+	path = third_party/libwebp
+	url = https://chromium.googlesource.com/webm/libwebp
+[submodule "third_party/openjpeg"]
+	path = third_party/openjpeg
+	url = https://github.com/uclouvain/openjpeg.git

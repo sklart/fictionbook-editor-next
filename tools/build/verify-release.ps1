@@ -95,6 +95,7 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
+& (Join-Path $repoRoot "tools\tests\test-image-import-contract.ps1")
 if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
 }

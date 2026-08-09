@@ -549,6 +549,9 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_show_line_numbers;
 	DWORD		m_image_type;
 	DWORD		m_jpeg_quality;
+	DWORD		m_image_import_format; // 0 Auto, 1 JPEG, 2 PNG
+	DWORD		m_image_import_jpeg_quality;
+	bool		m_image_import_keep_supported;
 	///
 
 	DWORD		m_splitter_pos;
@@ -669,6 +672,9 @@ public:
 	bool	XMLSrcShowLineNumbers()const;
 	DWORD	GetImageType()const;
 	DWORD	GetJpegQuality()const;
+	DWORD	GetImageImportFormat()const;
+	DWORD	GetImageImportJpegQuality()const;
+	bool	GetImageImportKeepSupported()const;
 
 	bool	GetExtElementStyle(const CString& elem)const;
 	bool	GetWindowPosition(WINDOWPLACEMENT& wpl)const;
@@ -742,6 +748,9 @@ public:
 	void	SetXMLSrcShowLineNumbers(const bool value, bool apply = false);
 	void	SetImageType(const DWORD value, bool apply = false);
 	void	SetJpegQuality(const DWORD value, bool apply = false);
+	void	SetImageImportFormat(const DWORD value, bool apply = false);
+	void	SetImageImportJpegQuality(const DWORD value, bool apply = false);
+	void	SetImageImportKeepSupported(const bool value, bool apply = false);
 
 	void	SetViewWidth(int width) { m_viewWidth = width; }
 	void	SetViewHeight(int height) { m_viewHeight = height; }

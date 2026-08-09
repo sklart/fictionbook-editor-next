@@ -96,7 +96,9 @@ function Assert-PreparedDependencies {
         (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"),
         (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-8-static.lib"),
         (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-posix-static.lib"),
-        (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib")
+        (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib"),
+        (Join-Path $repoRoot "build\libwebp\install\$Configuration\lib\libwebp.lib"),
+        (Join-Path $repoRoot "build\openjpeg\install\$Configuration\lib\openjp2.lib")
     )
     $missing = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
     if ($missing.Count -gt 0) {
@@ -222,6 +224,14 @@ else {
     }
     Write-Host "Подготовка generated Hunspell project/header..."
     & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset -PrepareOnly
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    & (Join-Path $repoRoot "tools\build\build-libwebp.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    & (Join-Path $repoRoot "tools\build\build-openjpeg.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

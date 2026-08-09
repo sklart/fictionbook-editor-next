@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include "ImageImport.h"
 #include "res1.h"
 
 #include "utils.h"
@@ -4018,8 +4019,7 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 			NULL,
 			NULL,
 			OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR,
-			L"FBE supported (*.jpg;*.jpeg;*.png)\0*.jpg;*.jpeg;*.png\0JPEG (*.jpg)\0*.jpg\0PNG (*.png)\0*.png\0Bitmap (*.bmp"\
-			L")\0*.bmp\0GIF (*.gif)\0*.gif\0TIFF (*.tif)\0*.tif\0\0"
+			L"Supported images (*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff)\0*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff\0All files (*.*)\0*.*\0\0"
 			);
 
 		wchar_t dlgTitle[MAX_LOAD_STRING + 1];
@@ -4710,16 +4710,21 @@ BSTR CFBEView::PrepareDefaultId(const CString& filename){
 void CFBEView::AddImage(const CString& filename, bool bInline)
 {
 	_variant_t args[4];
-
-	V_BSTR(&args[3]) = filename.AllocSysString();
-	V_VT(&args[3]) = VT_BSTR;
-
-	HRESULT hr;
-	if(FAILED(hr = U::LoadFile(filename, &args[0])))
-	{
-		U::ReportError(hr);
-		return;
-	}
+	ImageImportOptions options;
+	options.outputFormat = static_cast<ImageOutputFormat>(_Settings.GetImageImportFormat());
+	options.jpegQuality = static_cast<int>(_Settings.GetImageImportJpegQuality());
+	options.keepSupportedImages = _Settings.GetImageImportKeepSupported();
+	ImageImportResult imported;
+	CString error;
+	HRESULT hr = ImportImageForFb2(filename, options, imported, error);
+	if (FAILED(hr)) { if (!error.IsEmpty()) ::MessageBox(m_hWnd, error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
+	SAFEARRAY* data = SafeArrayCreateVector(VT_UI1, 0, static_cast<ULONG>(imported.data.size()));
+	if (!data) { U::ReportError(E_OUTOFMEMORY); return; }
+	void* raw = NULL; hr = SafeArrayAccessData(data, &raw);
+	if (FAILED(hr)) { SafeArrayDestroy(data); U::ReportError(hr); return; }
+	memcpy(raw, imported.data.data(), imported.data.size()); SafeArrayUnaccessData(data);
+	V_ARRAY(&args[0]) = data; V_VT(&args[0]) = VT_ARRAY | VT_UI1;
+	V_BSTR(&args[3]) = imported.logicalFileName.AllocSysString(); V_VT(&args[3]) = VT_BSTR;
 
 	// Prepare a default ID
 	int cp = filename.ReverseFind(_T('\\'));
@@ -4728,11 +4733,11 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 	else
 		++cp;
 
-	V_BSTR(&args[2]) = PrepareDefaultId(filename);
+	V_BSTR(&args[2]) = PrepareDefaultId(imported.logicalFileName);
 	V_VT(&args[2]) = VT_BSTR;
 
 	// Try to find out mime type
-	V_BSTR(&args[1]) = U::GetMimeType(filename).AllocSysString();
+	V_BSTR(&args[1]) = imported.mimeType.AllocSysString();
 	V_VT(&args[1]) = VT_BSTR;
 
 	// Stuff the thing into JavaScript
