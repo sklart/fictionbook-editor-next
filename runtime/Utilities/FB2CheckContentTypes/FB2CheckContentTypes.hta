@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>FB2CheckContentTypes</title>
+<hta:application id="oHTA" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="MSThemeCompatible" content="yes" />
+<style type="text/css">
+body { font: 14px Tahoma, Arial, sans-serif; margin: 0; padding: 12px; color: #111; background: #fff; }
+#controls { text-align: center; }
+input, button { font: inherit; }
+#f1 { width: 500px; }
+#resultDiv { margin-top: 14px; line-height: 1.45; }
+.summary { margin: 10px 0; padding: 8px; background: #edf5ff; border: 1px solid #9db9d6; }
+.error { color: #a40000; }
+.warning { color: #765000; }
+.ok { color: #166b20; }
+.entry { margin: 4px 0; }
+.actions { margin: 10px 0; }
+</style>
+<script type="text/javascript">
+var FB_NS = "http://www.gribuser.ru/xml/fictionbook/2.0";
+var reportText = "";
+
+function clearReport() {
+    var result = document.getElementById("resultDiv");
+    while (result.firstChild)
+        result.removeChild(result.firstChild);
+    reportText = "";
+}
+
+function appendText(parent, tagName, text, className) {
+    var node = document.createElement(tagName);
+    if (className)
+        node.className = className;
+    node.appendChild(document.createTextNode(String(text)));
+    parent.appendChild(node);
+    return node;
+}
+
+function addReportLine(text, className) {
+    appendText(document.getElementById("resultDiv"), "div", text, className);
+    reportText += text + "\r\n";
+}
+
+function createXmlDocument() {
+    var versions = ["Msxml2.DOMDocument.6.0", "Msxml2.DOMDocument.3.0"];
+    var i;
+    for (i = 0; i < versions.length; i++) {
+        try {
+            return { document: new ActiveXObject(versions[i]), version: versions[i] };
+        } catch (e) {
+        }
+    }
+    throw new Error("Не удалось создать MSXML DOMDocument 6.0 или 3.0.");
+}
+
+function setPropertyIfSupported(xmlDoc, name, value) {
+    try {
+        xmlDoc.setProperty(name, value);
+    } catch (e) {
+        /* Older MSXML versions do not implement every security limit. */
+    }
+}
+
+function configureXmlDocument(xmlDoc) {
+    xmlDoc.async = false;
+    xmlDoc.preserveWhiteSpace = true;
+    xmlDoc.validateOnParse = false;
+    xmlDoc.resolveExternals = false;
+    setPropertyIfSupported(xmlDoc, "ProhibitDTD", true);
+    setPropertyIfSupported(xmlDoc, "UseInlineSchema", false);
+    setPropertyIfSupported(xmlDoc, "MaxElementDepth", 512);
+    setPropertyIfSupported(xmlDoc, "MaxXMLSize", 134217728);
+    xmlDoc.setProperty("SelectionNamespaces", "xmlns:fb='" + FB_NS + "'");
+}
+
+function formatParseError(error, fileName) {
+    return "Не удалось разобрать XML-файл \"" + fileName + "\".\n" +
+        "Код: " + error.errorCode + "\n" +
+        "Причина: " + error.reason + "\n" +
+        "Строка: " + error.line + "\n" +
+        "Позиция: " + error.linepos + "\n" +
+        "Фрагмент: " + error.srcText;
+}
+
+function getBase64Prefix(value, requiredLength) {
+    var result = "", chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    var i, ch;
+    value = String(value || "");
+    for (i = 0; i < value.length && result.length < requiredLength; i++) {
+        ch = value.charAt(i);
+        if (chars.indexOf(ch) >= 0)
+            result += ch;
+        else if (ch != " " && ch != "\t" && ch != "\r" && ch != "\n")
+            throw new Error("Недопустимый символ Base64 в начале данных.");
+    }
+    if (!result.length)
+        throw new Error("Пустой binary.");
+    return result;
+}
+
+function decodeBase64Prefix(value, requiredBytes) {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    var encoded = getBase64Prefix(value, Math.ceil(requiredBytes / 3) * 4);
+    var bytes = [], i, a, b, c, d;
+    if (encoded.length % 4 != 0)
+        throw new Error("Неполная группа Base64 в начале данных.");
+    for (i = 0; i < encoded.length; i += 4) {
+        a = chars.indexOf(encoded.charAt(i));
+        b = chars.indexOf(encoded.charAt(i + 1));
+        c = encoded.charAt(i + 2) == "=" ? 64 : chars.indexOf(encoded.charAt(i + 2));
+        d = encoded.charAt(i + 3) == "=" ? 64 : chars.indexOf(encoded.charAt(i + 3));
+        if (a < 0 || b < 0 || c < 0 || d < 0 || c == 64 && d != 64 || (c == 64 || d == 64) && i + 4 != encoded.length)
+            throw new Error("Некорректное заполнение Base64 в начале данных.");
+        bytes.push((a << 2) | (b >> 4));
+        if (c != 64) bytes.push(((b & 15) << 4) | (c >> 2));
+        if (d != 64) bytes.push(((c & 3) << 6) | d);
+    }
+    if (bytes.length < requiredBytes)
+        throw new Error("Слишком короткие данные для определения формата.");
+    return bytes;
+}
+
+function le32(bytes, offset) {
+    return bytes[offset] + bytes[offset + 1] * 256 + bytes[offset + 2] * 65536 + bytes[offset + 3] * 16777216;
+}
+
+function detectMimeType(bytes) {
+    if (bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff) return "image/jpeg";
+    if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e && bytes[3] == 0x47 && bytes[4] == 0x0d && bytes[5] == 0x0a && bytes[6] == 0x1a && bytes[7] == 0x0a) return "image/png";
+    if (bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 && bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) return "image/webp";
+    if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && (bytes[3] == 0x38 && (bytes[4] == 0x37 || bytes[4] == 0x39) && bytes[5] == 0x61)) return "image/gif";
+    if ((bytes[0] == 0x49 && bytes[1] == 0x49 && bytes[2] == 0x2a && bytes[3] == 0x00) || (bytes[0] == 0x4d && bytes[1] == 0x4d && bytes[2] == 0x00 && bytes[3] == 0x2a)) return "image/tiff";
+    if (bytes[0] == 0x42 && bytes[1] == 0x4d && bytes[6] == 0 && bytes[7] == 0 && bytes[8] == 0 && bytes[9] == 0 && le32(bytes, 10) >= 14 && le32(bytes, 14) >= 12) return "image/bmp";
+    return "";
+}
+
+function normalizeMimeType(value) {
+    value = String(value || "").replace(/^\s+|\s+$/g, "").toLowerCase();
+    return value == "image/jpg" ? "image/jpeg" : value;
+}
+
+function addActions() {
+    var container = document.createElement("div"), copyButton, saveButton;
+    container.className = "actions";
+    copyButton = document.createElement("button");
+    copyButton.appendChild(document.createTextNode("Копировать отчёт"));
+    copyButton.onclick = function () {
+        try { window.clipboardData.setData("Text", reportText); } catch (e) { alert("Не удалось скопировать отчёт: " + e.message); }
+    };
+    saveButton = document.createElement("button");
+    saveButton.appendChild(document.createTextNode("Сохранить отчёт"));
+    saveButton.onclick = function () {
+        try {
+            var fso = new ActiveXObject("Scripting.FileSystemObject");
+            var file = fso.CreateTextFile("FB2CheckContentTypes-report.txt", true, true);
+            file.Write(reportText);
+            file.Close();
+            alert("Отчёт сохранён в текущей рабочей папке HTA.");
+        } catch (e) { alert("Не удалось сохранить отчёт: " + e.message); }
+    };
+    container.appendChild(copyButton);
+    container.appendChild(document.createTextNode(" "));
+    container.appendChild(saveButton);
+    document.getElementById("resultDiv").appendChild(container);
+}
+
+function fileSelectEvent() {
+    var fileName = document.getElementById("f1").value;
+    var started = new Date(), created, xmlDoc, fictionBook, binaries, i, binary, declared, detected, bytes, status;
+    var matched = 0, mismatched = 0, unknown = 0, damaged = 0;
+    clearReport();
+    if (!/\.fb2$/i.test(fileName)) {
+        addReportLine("Ошибка: выберите файл с расширением .fb2.", "error");
+        return;
+    }
+    try {
+        created = createXmlDocument();
+        xmlDoc = created.document;
+        configureXmlDocument(xmlDoc);
+        if (!xmlDoc.load(fileName) || xmlDoc.parseError.errorCode) {
+            addReportLine(formatParseError(xmlDoc.parseError, fileName), "error");
+            return;
+        }
+    } catch (e) {
+        addReportLine("Не удалось открыть файл \"" + fileName + "\": " + (e.message || e.description), "error");
+        return;
+    }
+    fictionBook = xmlDoc.selectSingleNode("/fb:FictionBook");
+    if (!fictionBook) {
+        addReportLine("Документ не является корректным FB2: корневой элемент FictionBook в пространстве имён FB2 не найден.", "error");
+        return;
+    }
+    binaries = fictionBook.selectNodes("./fb:binary");
+    addReportLine("Результат проверки файла \"" + fileName + "\". MSXML: " + created.version + ".", "summary");
+    for (i = 0; i < binaries.length; i++) {
+        binary = binaries[i];
+        declared = normalizeMimeType(binary.getAttribute("content-type"));
+        try {
+            bytes = decodeBase64Prefix(binary.text, 18);
+            detected = detectMimeType(bytes);
+            if (!detected) { status = "Формат не распознан"; unknown++; }
+            else if (!declared) { status = "MIME не указан; обнаружен " + detected; mismatched++; }
+            else if (declared == detected) { status = "Совпадает"; matched++; }
+            else { status = "Не совпадает: обнаружен " + detected; mismatched++; }
+        } catch (e) {
+            detected = "";
+            status = "Повреждено: " + (e.message || e.description);
+            damaged++;
+        }
+        if (status != "Совпадает" || document.getElementById("showValid").checked)
+            addReportLine("binary " + (i + 1) + "/" + binaries.length + "; id: \"" + binary.getAttribute("id") + "\"; MIME: \"" + declared + "\"; " + status + ".", status == "Совпадает" ? "ok entry" : (detected ? "warning entry" : "error entry"));
+    }
+    addReportLine("Всего binary: " + binaries.length + ". Совпадает: " + matched + ". Не совпадает: " + mismatched + ". Не распознано: " + unknown + ". Повреждено: " + damaged + ". Время проверки: " + (new Date().getTime() - started.getTime()) + " мс.", "summary");
+    addActions();
+}
+</script>
+</head>
+<body>
+<div id="controls">Выберите FB2-файл:<br />
+<input type="file" id="f1" onchange="fileSelectEvent();" />
+<label><input type="checkbox" id="showValid" /> Показывать совпадающие</label></div>
+<div id="resultDiv"></div>
+</body>
+</html>
