@@ -705,7 +705,7 @@ private:
         }
     }
 
-    void PostObserverMessage(DOWNLOAD_MSG_TYPE type)
+    void PostObserverMessage(FIDownloadMessageQueue::DOWNLOAD_MSG_TYPE type)
     {
         m_callback_lock.Lock();
         if (m_event_observer)
