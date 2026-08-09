@@ -384,7 +384,10 @@ LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CAboutDlg::OnCloseCmd(WORD, WORD wID, HWND, BOOL&)
 {
-	DeleteAllDownload();
+	// A manifest request may be blocked in WinINet.  Closing the dialog must
+	// not wait for its worker thread to observe cancellation.
+	m_monitor.reset();
+	AbandonAllDownload();
 	EndDialog(wID);
 	return 0;
 }

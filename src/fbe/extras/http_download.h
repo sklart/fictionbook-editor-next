@@ -28,6 +28,14 @@
 
 class FCHttpDownload ; // fore declare
 
+// Owns downloads detached while their UI consumer is closing. Their
+// destruction can wait for WinINet, so it runs outside the UI thread.
+struct FCHttpDownloadOrphanedTasks
+{
+    std::deque<FCHttpDownload*> m_tasks;
+    static DWORD WINAPI DestroyProc(LPVOID parameter);
+};
+
 //-------------------------------------------------------------------------------------
 /**
     Auto object list.
@@ -647,13 +655,8 @@ private:
         if (!m_connect_thread)
         {
             m_connect_timer.EndTimer() ;
-            if (m_event_observer)
-            {
-                m_event_observer->PostDownloadMessage(
-                    FIDownloadMessageQueue::DOWNLOAD_MSG_CONNECTED, m_id) ;
-                m_event_observer->PostDownloadMessage(
-                    FIDownloadMessageQueue::DOWNLOAD_MSG_FINISH, m_id) ;
-            }
+            PostObserverMessage(FIDownloadMessageQueue::DOWNLOAD_MSG_CONNECTED);
+            PostObserverMessage(FIDownloadMessageQueue::DOWNLOAD_MSG_FINISH);
             return ;
         }
 
@@ -667,8 +670,7 @@ private:
             m_response_info.SetResponse (m_request) ;
 
             // callback
-            if (m_event_observer)
-                m_event_observer->PostDownloadMessage (FIDownloadMessageQueue::DOWNLOAD_MSG_CONNECTED, m_id) ;
+            PostObserverMessage(FIDownloadMessageQueue::DOWNLOAD_MSG_CONNECTED);
 
             // start read thread
             m_read_timer.Start() ;
@@ -676,9 +678,7 @@ private:
             if (!m_read_thread)
             {
                 m_read_timer.EndTimer() ;
-                if (m_event_observer)
-                    m_event_observer->PostDownloadMessage(
-                        FIDownloadMessageQueue::DOWNLOAD_MSG_FINISH, m_id) ;
+                PostObserverMessage(FIDownloadMessageQueue::DOWNLOAD_MSG_FINISH);
             }
         }
     }
@@ -701,9 +701,16 @@ private:
             m_read_thread = NULL ;
             m_read_timer.EndTimer() ;
 
-            if (m_event_observer)
-                m_event_observer->PostDownloadMessage (FIDownloadMessageQueue::DOWNLOAD_MSG_FINISH, m_id) ;
+            PostObserverMessage(FIDownloadMessageQueue::DOWNLOAD_MSG_FINISH);
         }
+    }
+
+    void PostObserverMessage(DOWNLOAD_MSG_TYPE type)
+    {
+        m_callback_lock.Lock();
+        if (m_event_observer)
+            m_event_observer->PostDownloadMessage(type, m_id);
+        m_callback_lock.UnLock();
     }
 
 private:
@@ -714,6 +721,7 @@ private:
     CCalculateSpeed     m_calculate_speed ;
     CReceiveBuffer      m_read_buf ;
     FIDownloadMessageQueue   * m_event_observer ;
+    FCAutoCSec m_callback_lock;
 
     HINTERNET   m_session ;
     HINTERNET   m_request ;
@@ -799,6 +807,15 @@ public:
             InternetCloseHandle (m_request) ;
         if (m_session)
             InternetCloseHandle (m_session) ;
+    }
+
+    // Wait for an in-flight timer callback, then stop any further callbacks
+    // before its consumer can be destroyed.
+    void DisableCallbacks()
+    {
+        m_callback_lock.Lock();
+        m_event_observer = NULL;
+        m_callback_lock.UnLock();
     }
 
     /// Get download url.
@@ -908,6 +925,15 @@ private:
     }
 };
 
+inline DWORD WINAPI FCHttpDownloadOrphanedTasks::DestroyProc(LPVOID parameter)
+{
+    FCHttpDownloadOrphanedTasks* tasks = static_cast<FCHttpDownloadOrphanedTasks*>(parameter);
+    for (size_t i = 0; i < tasks->m_tasks.size(); ++i)
+        delete tasks->m_tasks[i];
+    delete tasks;
+    return 0;
+}
+
 
 //-------------------------------------------------------------------------------------
 /**
@@ -973,6 +999,38 @@ public:
     void DeleteAllDownload()
     {
         m_list.PCL_DeleteAllObjects() ;
+    }
+
+    // Transfers active downloads to a background reaper. Use this only while
+    // closing a UI owner: FCHttpDownload destruction may wait for cancellation
+    // of a blocking WinINet call.
+    void AbandonAllDownload()
+    {
+        std::deque<FCHttpDownload*> tasks;
+        m_list.PCL_ThrowOwnership(tasks);
+        if (tasks.empty())
+            return;
+
+        for (size_t i = 0; i < tasks.size(); ++i)
+            tasks[i]->DisableCallbacks();
+
+        FCHttpDownloadOrphanedTasks* abandoned = new (std::nothrow) FCHttpDownloadOrphanedTasks;
+        if (!abandoned)
+            return; // Keep shutdown bounded if allocation is unavailable.
+
+        abandoned->m_tasks.swap(tasks);
+
+        HANDLE reaper = CreateThread(NULL, 0, FCHttpDownloadOrphanedTasks::DestroyProc, abandoned, 0, NULL);
+        if (reaper)
+        {
+            CloseHandle(reaper);
+            return;
+        }
+
+        // Thread creation failure is exceptional. Do not hang the closing UI
+        // thread trying to reclaim a request that WinINet has not cancelled.
+        abandoned->m_tasks.clear();
+        delete abandoned;
     }
 
     /// Get all download.
