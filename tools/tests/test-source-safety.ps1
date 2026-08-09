@@ -70,6 +70,10 @@ Assert-NotContains $mainFrame "FindClose(hPicture)" `
     "script picture checks must not close invalid search handles"
 Assert-NotContains $mainFrame "if(found)" `
     "FindFirstFile results must be compared with INVALID_HANDLE_VALUE"
+Assert-Contains $mainFrame "m_view->SciFindNext(m_source,false,false)" `
+    "Code-mode Replace must preserve the selected Up/Down direction"
+Assert-NotContains $mainFrame "m_view->SciFindNext(m_source,true,false)" `
+    "Code-mode Replace must not force the next search downward"
 
 $scriptPictureCalls = ([regex]::Matches(
     $mainFrame,

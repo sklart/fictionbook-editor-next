@@ -3324,7 +3324,7 @@ public:
 	}
 
   virtual void DoFind() {
-    if (!m_view->SciFindNext(m_source,true,false))
+    if (!m_view->SciFindNext(m_source,false,false))
 	{
 		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, m_view->m_fo.pattern);	
 	}

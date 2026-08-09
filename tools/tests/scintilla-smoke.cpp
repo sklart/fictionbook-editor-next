@@ -82,6 +82,89 @@ static bool SearchFrom(HWND editor, int start, const char* pattern,
 		SendMessage(editor, SCI_GETTARGETEND, 0, 0) == expectedEnd;
 }
 
+static bool FindFromSelection(HWND editor, const char* pattern, bool reverse,
+	int expectedStart, int expectedEnd)
+{
+	int start = static_cast<int>(SendMessage(editor, SCI_GETSELECTIONSTART, 0, 0));
+	int end = static_cast<int>(SendMessage(editor, SCI_GETSELECTIONEND, 0, 0));
+	if (end > start && !reverse)
+		start = end;
+	if (reverse)
+		--start;
+	if (start < 0)
+		start = 0;
+	end = reverse ? 0 : static_cast<int>(SendMessage(editor, SCI_GETLENGTH, 0, 0));
+	const int wrapStart = end == 0 ? static_cast<int>(SendMessage(editor, SCI_GETLENGTH, 0, 0)) : 0;
+	SendMessage(editor, SCI_SETTARGETSTART, start, 0);
+	SendMessage(editor, SCI_SETTARGETEND, end, 0);
+	SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_MATCHCASE, 0);
+	LRESULT found = SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(pattern), reinterpret_cast<LPARAM>(pattern));
+	if (found == -1 && start != wrapStart)
+	{
+		SendMessage(editor, SCI_SETTARGETSTART, wrapStart, 0);
+		SendMessage(editor, SCI_SETTARGETEND, start, 0);
+		found = SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(pattern), reinterpret_cast<LPARAM>(pattern));
+	}
+	if (found != expectedStart || SendMessage(editor, SCI_GETTARGETEND, 0, 0) != expectedEnd)
+		return false;
+	SendMessage(editor, SCI_SETSELECTIONSTART, expectedStart, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, expectedEnd, 0);
+	return true;
+}
+
+static bool VerifyReplaceDirection(HWND editor)
+{
+	const char* subject = "aa bb aa bb aa";
+	const int first = 0;
+	const int middle = 6;
+	const int last = 12;
+
+	SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(subject));
+	SendMessage(editor, SCI_SETSELECTIONSTART, first, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, first, 0);
+	if (!FindFromSelection(editor, "aa", false, first, first + 2)) return false; // Find Next
+	SendMessage(editor, SCI_SETSELECTIONSTART, last, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, last + 2, 0);
+	if (!FindFromSelection(editor, "aa", true, middle, middle + 2)) return false; // Find Previous
+
+	SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(subject));
+	SendMessage(editor, SCI_SETSELECTIONSTART, middle, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, middle + 2, 0);
+	SendMessage(editor, SCI_TARGETFROMSELECTION, 0, 0);
+	SendMessage(editor, SCI_REPLACETARGET, 2, reinterpret_cast<LPARAM>("XX"));
+	SendMessage(editor, SCI_SETSELECTIONSTART, middle, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, middle + 2, 0);
+	if (!FindFromSelection(editor, "aa", false, last, last + 2)) return false; // Replace downward
+
+	SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(subject));
+	SendMessage(editor, SCI_SETSELECTIONSTART, middle, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, middle + 2, 0);
+	SendMessage(editor, SCI_TARGETFROMSELECTION, 0, 0);
+	SendMessage(editor, SCI_REPLACETARGET, 2, reinterpret_cast<LPARAM>("XX"));
+	SendMessage(editor, SCI_SETSELECTIONSTART, middle, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, middle + 2, 0);
+	if (!FindFromSelection(editor, "aa", true, first, first + 2)) return false; // Replace upward
+
+	SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(subject));
+	SendMessage(editor, SCI_SETSELECTIONSTART, middle, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, middle + 2, 0);
+	SendMessage(editor, SCI_TARGETFROMSELECTION, 0, 0);
+	SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_MATCHCASE, 0);
+	if (SendMessage(editor, SCI_SEARCHINTARGET, 2, reinterpret_cast<LPARAM>("aa")) != middle ||
+		SendMessage(editor, SCI_GETTARGETEND, 0, 0) != middle + 2) return false; // Replace with selection
+	SendMessage(editor, SCI_REPLACETARGET, 2, reinterpret_cast<LPARAM>("YY"));
+	char selectionReplacement[32] = {};
+	SendMessage(editor, SCI_GETTEXT, sizeof(selectionReplacement), reinterpret_cast<LPARAM>(selectionReplacement));
+	if (std::string(selectionReplacement) != "aa bb YY bb aa") return false;
+
+	SendMessage(editor, SCI_SETSELECTIONSTART, first, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, first, 0);
+	if (!FindFromSelection(editor, "aa", true, last, last + 2)) return false; // document beginning wraps up
+	SendMessage(editor, SCI_SETSELECTIONSTART, last + 2, 0);
+	SendMessage(editor, SCI_SETSELECTIONEND, last + 2, 0);
+	return FindFromSelection(editor, "aa", false, first, first + 2); // document end wraps down
+}
+
 static bool ReplaceAndCompare(HWND editor, const std::string& replacement,
 	const std::string& expectedText)
 {
@@ -618,6 +701,13 @@ int main(int argc, char* argv[])
 		FreeLibrary(lexilla);
 		FreeLibrary(scintilla);
 		return 11;
+	}
+	if (!VerifyReplaceDirection(editor))
+	{
+		DestroyWindow(editor);
+		FreeLibrary(lexilla);
+		FreeLibrary(scintilla);
+		return 13;
 	}
 	if (!VerifyXmlEmbeddedLanguagesDisabled(editor))
 	{
