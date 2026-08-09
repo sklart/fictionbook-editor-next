@@ -1,9 +1,9 @@
-#include "stdafx.h"
 #include "Fb2SourceAutocomplete.h"
 #include "generated/Fb2SchemaMetadata.h"
 #include <algorithm>
 #include <set>
 #include <sstream>
+#include <vector>
 
 namespace {
 const Fb2SchemaElementMetadata* FindMetadata(const std::string& name) {
@@ -39,7 +39,12 @@ std::vector<std::string> OpenElements(const std::string& text) {
 }
 
 bool Fb2SourceAutocomplete::IsSuppressed(const std::string& text) {
-	return text.rfind("<!--") > text.rfind("-->") || text.rfind("<![CDATA[") > text.rfind("]]>") || text.rfind("<?") > text.rfind("?>");
+	auto unterminated = [&text](const char* open, const char* close) {
+		const std::string::size_type opened = text.rfind(open);
+		const std::string::size_type closed = text.rfind(close);
+		return opened != std::string::npos && (closed == std::string::npos || opened > closed);
+	};
+	return unterminated("<!--", "-->") || unterminated("<![CDATA[", "]]>") || unterminated("<?", "?>");
 }
 
 std::string Fb2SourceAutocomplete::CurrentOpenTag(const std::string& text) {

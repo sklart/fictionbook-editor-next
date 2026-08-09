@@ -5845,12 +5845,11 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	}
 	phaseProfiler.Mark("selection lookup and mapping");
 
-	DWORD nch=::WideCharToMultiByte(CP_UTF8,0,src,src.length(),	NULL,0,NULL,NULL);
-	phaseProfiler.Mark("UTF-8 size calculation");
-
 	//	???????? ????? ? ?????????
 	if(m_doc->DocRelChanged())
 	{
+		const DWORD nch=::WideCharToMultiByte(CP_UTF8,0,src,src.length(), NULL,0,NULL,NULL);
+		phaseProfiler.Mark("UTF-8 size calculation");
 		m_source.SendMessage(SCI_CLEARALL);
 		phaseProfiler.Mark("SCI_CLEARALL");
 		// Source is filled by one bulk append, so reserve its line-index table once.

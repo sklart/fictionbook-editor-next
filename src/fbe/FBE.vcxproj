@@ -263,7 +263,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.li
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ClCompile Include="Fb2SourceAutocomplete.cpp" />
+    <ClCompile Include="Fb2SourceAutocomplete.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="Fb2CoverImage.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="Fb2CoverThumbnail.cpp"><PrecompiledHeader>Use</PrecompiledHeader></ClCompile>
     <ClCompile Include="Fb2Metadata.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
