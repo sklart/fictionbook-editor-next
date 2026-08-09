@@ -17,21 +17,51 @@
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 
-// Prototype vocabulary. Keep all FB2 completion data in this one table rather
-// than duplicating element names in UI handlers. The production source of
-// truth can replace this table with metadata generated from the FB2 schema.
-static const char kFb2ElementCompletions[] =
-	"FictionBook annotation author binary body cite coverpage date description "
-	"document-info emphasis empty-line epigraph first-name genre history image "
-	"lang last-name middle-name p poem section sequence stanza strong strikethrough "
-	"subtitle text-author title title-info translator v version";
+// The detailed ShowSource profile is intentionally diagnostic-only.  It is
+// populated by the internal benchmark (-b) and has no work in the normal UI
+// hot path beyond the disabled branch in Mark().
+struct SourceProfileSample
+{
+	CStringA phase;
+	double elapsedMilliseconds;
+};
 
-static const char kFb2CommonAttributeCompletions[] = "id=";
-static const char kFb2FictionBookAttributeCompletions[] = "xmlns= xmlns:l=";
-static const char kFb2BodyAttributeCompletions[] = "name=";
-static const char kFb2LinkAttributeCompletions[] = "l:href= type=";
-static const char kFb2ImageAttributeCompletions[] = "l:href=";
-static const char kFb2BinaryAttributeCompletions[] = "id= content-type=";
+static std::vector<SourceProfileSample> g_show_source_profile;
+
+class ShowSourcePhaseProfiler
+{
+public:
+	ShowSourcePhaseProfiler() : m_enabled(!AU::_ARGS.source_memory_benchmark_path.IsEmpty()), m_frequency(0), m_start(0)
+	{
+		if (m_enabled)
+		{
+			LARGE_INTEGER frequency = {};
+			LARGE_INTEGER start = {};
+			::QueryPerformanceFrequency(&frequency);
+			::QueryPerformanceCounter(&start);
+			m_frequency = frequency.QuadPart;
+			m_start = start.QuadPart;
+			g_show_source_profile.clear();
+		}
+	}
+
+	void Mark(const char* phase) const
+	{
+		if (!m_enabled)
+			return;
+		LARGE_INTEGER now = {};
+		::QueryPerformanceCounter(&now);
+		SourceProfileSample sample = {};
+		sample.phase = phase;
+		sample.elapsedMilliseconds = (now.QuadPart - m_start) * 1000.0 / m_frequency;
+		g_show_source_profile.push_back(sample);
+	}
+
+private:
+	bool m_enabled;
+	LONGLONG m_frequency;
+	LONGLONG m_start;
+};
 
 struct ProcessMemorySnapshot
 {
@@ -2722,7 +2752,35 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	};
 
 	appendSnapshot("document-open");
+	auto appendShowSourceProfile = [&](const char* scenario)
+	{
+		for (const SourceProfileSample& sample : g_show_source_profile)
+		{
+			const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+			CStringA phase("showsource-");
+			phase += scenario;
+			phase += ":";
+			phase += sample.phase;
+			CStringA row;
+			row.Format("%s\t%.3f\t%I64u\t%I64u\t%I64u\t%I64u\t%Id\t%Id\t%d\r\n", phase.GetString(),
+				sample.elapsedMilliseconds, static_cast<unsigned __int64>(memory.privateBytes),
+				static_cast<unsigned __int64>(memory.workingSetBytes), static_cast<unsigned __int64>(memory.committedBytes),
+				static_cast<unsigned __int64>(memory.reservedBytes), m_source.SendMessage(SCI_GETLENGTH),
+				m_source.SendMessage(SCI_GETLINECOUNT), AU::_ARGS.disable_undo_selection_history ? 0 : 1);
+			rows += row;
+		}
+	};
 	ShowView(SOURCE);
+	appendShowSourceProfile("first");
+	for (int repeat = 1; repeat <= 5; ++repeat)
+	{
+		ShowView(BODY);
+		ShowView(SOURCE);
+		CStringA scenario;
+		scenario.Format("unchanged-%d", repeat);
+		appendShowSourceProfile(scenario);
+	}
+	appendSnapshot("source-unchanged-body-source-5");
 	m_source.SendMessage(SCI_COLOURISE, 0, -1);
 	appendSnapshot("source-styled-wrap-word");
 	m_source.SendMessage(SCI_SETWRAPMODE, SC_WRAP_NONE);
@@ -5547,6 +5605,7 @@ bool  CMainFrame::SourceToHTML()
 
 bool CMainFrame::ShowSource(bool saveSelection)
 {
+	ShowSourcePhaseProfiler phaseProfiler;
 	m_body_selection_transferred = false;
 	U::DomPath selection_begin_path;
 	U::DomPath selection_end_path;
@@ -5566,6 +5625,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		MSHTML::IHTMLElementPtr selectedEndElement;
 
 		m_doc->m_body.GetSelectionInfo((MSHTML::IHTMLElementPtr*)(&selectedBeginElement), (MSHTML::IHTMLElementPtr*)(&selectedEndElement), &selection_begin_char, &selection_end_char, 0);
+		phaseProfiler.Mark("Body selection extraction");
 		if(selectedBeginElement == selectedEndElement && (bool)m_body_selection)
 		{
 			const CString selectedText((const wchar_t*)m_body_selection->text);
@@ -5620,6 +5680,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 			}
 		}while(root = root->nextSibling);
 	}
+	phaseProfiler.Mark("DomPath construction");
 
 	// Preserve the XML declaration encoding when switching to Source view.
 	CString sourceEncoding = _Settings.KeepEncoding()
@@ -5643,6 +5704,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 			}
 		}
 	}
+	phaseProfiler.Mark("CreateDOM");
 
 /*	std::ofstream save;
 	CString s = m_saved_xml->xml;
@@ -5705,9 +5767,12 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		xml_body = xml_body->nextSibling;
 	}
 	}
+	phaseProfiler.Mark("selection DOM lookup");
 
 	_bstr_t rawSrc(m_saved_xml->xml);
+	phaseProfiler.Mark("m_saved_xml serialization");
 	CString srcText((const wchar_t*)rawSrc);
+	phaseProfiler.Mark("BSTR to CString");
 	CString xmlDecl;
 	xmlDecl.Format(L"<?xml version=\"1.0\" encoding=\"%s\"?>", (const wchar_t*)sourceEncoding);
 	const CString xmlDeclWithoutEncoding(L"<?xml version=\"1.0\"?>");
@@ -5720,6 +5785,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	{
 		srcText.Insert(0, xmlDecl + L"\r\n");
 	}
+	phaseProfiler.Mark("XML declaration normalization");
 	_bstr_t src((const wchar_t*)srcText);
 
 	int savedPosBegin = 0;
@@ -5777,28 +5843,36 @@ bool CMainFrame::ShowSource(bool saveSelection)
 			WriteSelectionTrace(L"E260", trace);
 		}
 	}
+	phaseProfiler.Mark("selection lookup and mapping");
 
 	DWORD nch=::WideCharToMultiByte(CP_UTF8,0,src,src.length(),	NULL,0,NULL,NULL);
+	phaseProfiler.Mark("UTF-8 size calculation");
 
 	//	???????? ????? ? ?????????
 	if(m_doc->DocRelChanged())
 	{
 		m_source.SendMessage(SCI_CLEARALL);
+		phaseProfiler.Mark("SCI_CLEARALL");
 		// Source is filled by one bulk append, so reserve its line-index table once.
 		m_source.SendMessage(SCI_ALLOCATELINES, EstimateSourceLineCount(srcText));
+		phaseProfiler.Mark("line count estimation and SCI_ALLOCATELINES");
 		std::vector<char> buffer(nch);
 		if (!buffer.empty()) 
 		{
 			::WideCharToMultiByte(CP_UTF8,0,src,src.length(),
 									buffer.data(),nch,NULL,NULL);
+			phaseProfiler.Mark("UTF-16 to UTF-8 conversion");
 			m_source.SendMessage(SCI_APPENDTEXT,nch,(LPARAM)buffer.data());
+			phaseProfiler.Mark("SCI_APPENDTEXT");
 		}
 	}
 
 	//	????????? ?? ???????
 	m_source.SendMessage(SCI_SETSELECTIONSTART,savedPosBegin);
 	m_source.SendMessage(SCI_SETSELECTIONEND,savedPosEnd);
-	m_source.SendMessage(SCI_SCROLLCARET);	
+	phaseProfiler.Mark("selection restoration");
+	m_source.SendMessage(SCI_SCROLLCARET);
+	phaseProfiler.Mark("scroll restoration");
 	m_body_selection_transferred = selection_mapped_to_source;
 	m_source_selection_start = savedPosBegin;
 	m_source_selection_end = savedPosEnd;
@@ -5813,6 +5887,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	}
 
 	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+	phaseProfiler.Mark("SCI_EMPTYUNDOBUFFER");
 	m_doc->MarkDocCP();
 	return true;	
 }
@@ -6513,7 +6588,7 @@ void CMainFrame::SciGotoWrongTag()
 
 void CMainFrame::ShowFb2Autocomplete(int character)
 {
-	if (character != '<' && character != ' ' && character != ':')
+	if (character != '<' && character != '/' && character != ' ' && character != ':' && character != '#')
 		return;
 
 	const sptr_t caret = m_source.SendMessage(SCI_GETCURRENTPOS);
@@ -6526,33 +6601,16 @@ void CMainFrame::ShowFb2Autocomplete(int character)
 	m_source.SendMessage(SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range));
 	const std::string beforeCaret(&context[0]);
 
-	if (character == '<')
+	Fb2AutocompleteResult result = m_fb2_autocomplete.Complete(beforeCaret, character);
+	if (result.needsDocumentIds)
 	{
-		m_source.SendMessage(SCI_AUTOCSHOW, 0, reinterpret_cast<LPARAM>(kFb2ElementCompletions));
-		return;
+		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> document(static_cast<size_t>(length) + 1);
+		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(&document[0]));
+		result.candidates = m_fb2_autocomplete.CompleteIds(&document[0]);
 	}
-
-	const std::string::size_type tagStart = beforeCaret.rfind('<');
-	if (tagStart == std::string::npos || beforeCaret.find('>', tagStart) != std::string::npos)
-		return;
-	if (character == ':' && (beforeCaret.compare(tagStart + 1, 6, "xlink:") == 0 ||
-		beforeCaret.compare(tagStart + 1, 2, "l:") == 0))
-	{
-		m_source.SendMessage(SCI_AUTOCSHOW, 0, reinterpret_cast<LPARAM>("href="));
-		return;
-	}
-	if (character != ' ')
-		return;
-
-	const std::string tag = beforeCaret.substr(tagStart + 1,
-		beforeCaret.find_first_of(" \t\r\n/>", tagStart + 1) - tagStart - 1);
-	const char* attributes = kFb2CommonAttributeCompletions;
-	if (tag == "FictionBook") attributes = kFb2FictionBookAttributeCompletions;
-	else if (tag == "body") attributes = kFb2BodyAttributeCompletions;
-	else if (tag == "a") attributes = kFb2LinkAttributeCompletions;
-	else if (tag == "image") attributes = kFb2ImageAttributeCompletions;
-	else if (tag == "binary") attributes = kFb2BinaryAttributeCompletions;
-	m_source.SendMessage(SCI_AUTOCSHOW, 0, reinterpret_cast<LPARAM>(attributes));
+	if (!result.candidates.empty())
+		m_source.SendMessage(SCI_AUTOCSHOW, 0, reinterpret_cast<LPARAM>(result.candidates.c_str()));
 }
 
 void  CMainFrame::SciMarginClicked(const SCNotification& scn) 

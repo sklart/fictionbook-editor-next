@@ -24,9 +24,19 @@ Assert-Contains $matchedTags 'SCI_GETDIRECTFUNCTION' 'direct function lookup'
 Assert-Contains $matchedTags 'SCI_GETDIRECTPOINTER' 'direct pointer lookup'
 Assert-Contains $matchedTags 'return\s+m_source->SendMessage\(' 'safe SendMessage fallback'
 Assert-Contains $matchedTags '~XmlMatchedTagsHighlighter\(\)\s*\{\s*delete\s+_pEditView;' 'matched-tags wrapper cleanup'
-Assert-Contains $mainFrame 'kFb2ElementCompletions' 'single-source FB2 autocomplete vocabulary'
+${autocompleteHeader} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\Fb2SourceAutocomplete.h')
+${autocomplete} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\Fb2SourceAutocomplete.cpp')
+${generator} = Get-Content -Raw (Join-Path $repoRoot 'tools\build\generate-fb2-schema-metadata.ps1')
+${generatedMetadata} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\generated\Fb2SchemaMetadata.h')
+Assert-Contains $mainFrame 'm_fb2_autocomplete\.Complete' 'schema-derived autocomplete integration'
 Assert-Contains $mainFrame 'SCI_AUTOCSHOW' 'Scintilla autocomplete invocation'
-Assert-Contains $mainFrame 'character != .<. && character != . . && character != .:.' 'structural-only autocomplete trigger'
+Assert-Contains $mainFrame 'character != .<. && character != ./. && character != . . && character != .:. && character != .#.' 'structural-only autocomplete trigger'
 Assert-Contains $mainFrameHeader 'ShowFb2Autocomplete\(reinterpret_cast<const SCNotification' 'Source character-added autocomplete routing'
+Assert-Contains $autocompleteHeader 'class\s+Fb2SourceAutocomplete' 'separate autocomplete component'
+Assert-Contains $autocomplete 'OpenElements' 'parent and closing-tag context parser'
+Assert-Contains $autocomplete 'CompleteIds' 'lazy ID completion'
+Assert-Contains $autocomplete 'IsSuppressed' 'comment and CDATA suppression'
+Assert-Contains $generator 'FictionBookLinks\.xsd' 'XLink schema generator input'
+Assert-Contains $generatedMetadata 'xlink:href' 'generated XLink attribute metadata'
 
 Write-Host 'Source modern Scintilla feature contract passed.'

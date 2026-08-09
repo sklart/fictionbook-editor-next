@@ -25,6 +25,7 @@
 #include "SciLexer.h"
 #include "EditorEngine.h"
 #include "xmlMatchedTagsHighlighter.h"
+#include "Fb2SourceAutocomplete.h"
 #include "FBE.h"
 #include "Words.h"
 #include "SearchReplace.h"
@@ -375,7 +376,8 @@ public:
   bool                    m_source_selection_transferred;
   int                     m_source_selection_start;
   int                     m_source_selection_end;
-  int                     m_source_line_number_digits;
+	int                     m_source_line_number_digits;
+	Fb2SourceAutocomplete   m_fb2_autocomplete;
 
   void SaveSelection(VIEW_TYPE vt);  
   void RestoreSelection(); 
