@@ -1,5 +1,6 @@
 /out/
 /tmp/
+/node_modules/
 /.vs/
 /vc*.pdb
 /build/obj/

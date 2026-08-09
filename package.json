@@ -1,0 +1,14 @@
+{
+  "name": "fictionbook-editor-next-tools",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Development checks for FictionBook Editor Next",
+  "scripts": {
+    "lint:scripts": "node tools/lint-scripts/lint-scripts.mjs",
+    "lint:scripts:baseline": "node tools/lint-scripts/lint-scripts.mjs --write-baseline"
+  },
+  "devDependencies": {
+    "eslint": "9.39.1"
+  }
+}
