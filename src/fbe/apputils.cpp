@@ -78,7 +78,7 @@ bool  ParseCmdLineArgs() {
   int		argp=0;
   int		ch;
   for (;;) {
-    switch ((ch=xgetopt(_ARGV,_T("d"),argp,state,arg))) {
+	 switch ((ch=xgetopt(_ARGV,_T("ducb:"),argp,state,arg))) {
     case 0: // end of options
       while (argp--)
 	_ARGV.RemoveAt(0);
@@ -86,6 +86,15 @@ bool  ParseCmdLineArgs() {
     case _T('d'):
       _ARGS.start_in_desc_mode=true;
       break;
+	case _T('u'):
+	  _ARGS.disable_undo_selection_history=true;
+	  break;
+	case _T('c'):
+	  _ARGS.run_source_view_cycles=true;
+	  break;
+	case _T('b'):
+	  _ARGS.source_memory_benchmark_path=arg;
+	  break;
     case -1: // error
       return false;
       // just ignore options for now :)

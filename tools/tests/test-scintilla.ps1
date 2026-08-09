@@ -1,6 +1,11 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$EditorRuntimeDirectory = ""
+    [string]$EditorRuntimeDirectory = "",
+    [switch]$RunDirectBenchmark,
+    [switch]$RunLayoutBenchmark,
+    [switch]$RunLayoutBenchmarkLarge,
+    [switch]$RunAllocateLinesBenchmark,
+    [switch]$RunMemoryBenchmark
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,9 +49,10 @@ function Copy-FileWithRetry(
 
 & cl.exe /nologo /EHsc /std:c++17 /MT `
     "/I$(Join-Path $repoRoot "third_party\scintilla\include")" `
+    "/I$(Join-Path $repoRoot "third_party\lexilla\include")" `
     "/Fo$(Join-Path $testDir "scintilla-smoke.obj")" `
     (Join-Path $PSScriptRoot "scintilla-smoke.cpp") `
-    /link /SUBSYSTEM:CONSOLE user32.lib "/OUT:$testExe"
+    /link /SUBSYSTEM:CONSOLE user32.lib psapi.lib "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
@@ -157,5 +163,49 @@ Invoke-IsolatedTest -Name "missing-lexilla" `
 Invoke-IsolatedTest -Name "missing-scintilla" `
     -Libraries @("Lexilla.dll") -ExpectedExitCode 1 `
     -Arguments $dependencyArguments
+
+function Invoke-ScintillaBenchmark([string]$Mode) {
+    $benchmarkDir = Join-Path $testDir $Mode
+    if (Test-Path -LiteralPath $benchmarkDir) {
+        Remove-Item -LiteralPath $benchmarkDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $benchmarkDir | Out-Null
+    Copy-FileWithRetry -Source $testExe -Destination $benchmarkDir
+    foreach ($library in @("Scintilla.dll", "Lexilla.dll")) {
+        Copy-FileWithRetry -Source (Join-Path $runtimeDirectory $library) -Destination $benchmarkDir
+    }
+    Push-Location $benchmarkDir
+    try {
+        & .\scintilla-smoke.exe $Mode
+        if ($LASTEXITCODE -ne 0) {
+            throw "Scintilla benchmark '$Mode' завершился с кодом $LASTEXITCODE."
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+if ($RunDirectBenchmark) {
+    Invoke-ScintillaBenchmark 'direct-benchmark'
+}
+
+if ($RunLayoutBenchmark) {
+    Invoke-ScintillaBenchmark 'layout-benchmark'
+}
+
+if ($RunLayoutBenchmarkLarge) {
+    Invoke-ScintillaBenchmark 'layout-benchmark-large'
+}
+
+if ($RunAllocateLinesBenchmark) {
+    Invoke-ScintillaBenchmark 'allocate-lines-benchmark'
+}
+
+if ($RunMemoryBenchmark) {
+    foreach ($mode in @('memory-benchmark-1', 'memory-benchmark-5', 'memory-benchmark-20')) {
+        Invoke-ScintillaBenchmark $mode
+    }
+}
 
 Write-Host "Smoke-тесты Scintilla, включая проверки отказа зависимостей, прошли успешно."

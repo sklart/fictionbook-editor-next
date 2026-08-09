@@ -246,10 +246,15 @@ LRESULT CSettingsNextDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_COLORS_RESET,
 		FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.source_colors_reset",
 			L"Restore theme colors"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,
+		FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.show_special_characters",
+			L"Show invisible characters"));
 	::SendMessage(GetDlgItem(IDC_CREATE_BACKUP_FILE), BM_SETCHECK,
 		_Settings.GetCreateBackupFile() ? BST_CHECKED : BST_UNCHECKED, 0);
 	::SendMessage(GetDlgItem(IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE), BM_SETCHECK,
 		_Settings.GetShowFullPathInWindowTitle() ? BST_CHECKED : BST_UNCHECKED, 0);
+	::SendMessage(GetDlgItem(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS), BM_SETCHECK,
+		_Settings.XmlSrcShowSpecialChars() ? BST_CHECKED : BST_UNCHECKED, 0);
 
 	const CString currentThemeId = _Settings.GetXmlSrcThemeId();
 
@@ -389,6 +394,7 @@ LRESULT CSettingsNextDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 {
 	_Settings.SetCreateBackupFile(IsDlgButtonChecked(IDC_CREATE_BACKUP_FILE) == BST_CHECKED);
 	_Settings.SetShowFullPathInWindowTitle(IsDlgButtonChecked(IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE) == BST_CHECKED);
+	_Settings.SetXmlSrcShowSpecialChars(IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED);
 	_Settings.SetXmlSrcThemeId(GetSelectedThemeId(m_source_palette, m_source_theme_ids));
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{

@@ -266,6 +266,7 @@ foreach($language in $Languages){
     $l.Add('    PUSHBUTTON      "' + (Get-Text 'idd_setting_next.source_colors_reset' $language) + '",IDC_OPTIONS_SOURCE_COLORS_RESET,14,193,294,14')
     $l.Add('    LTEXT           "' + (Get-Text 'idd_setting_next.source_color_background' $language) + '",IDC_OPTIONS_SOURCE_COLOR_BACKGROUND_LABEL,14,177,60,9')
     $l.Add('    PUSHBUTTON      "",IDC_OPTIONS_SOURCE_COLOR_BACKGROUND,94,175,30,12')
+    $l.Add('    CONTROL         "' + (Get-Text 'idd_setting_next.show_special_characters' $language) + '",IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,150,177,160,11')
     $l.Add('    CONTROL         "",IDC_OPTIONS_SOURCE_PREVIEW,"Static",SS_OWNERDRAW,14,210,294,58')
     $l.Add("END")
     $l.Add("")

@@ -24,6 +24,7 @@
 #include "Scintilla.h"
 #include "SciLexer.h"
 #include "EditorEngine.h"
+#include "xmlMatchedTagsHighlighter.h"
 #include "FBE.h"
 #include "Words.h"
 #include "SearchReplace.h"
@@ -188,6 +189,7 @@ public:
 	CCustomEdit		m_id; // paragraph ID
 	CCustomEdit		m_href; // link's href
 	CWindow			m_source; // source editor
+	XmlMatchedTagsState m_xml_matched_tags_state;
 	//bool			m_save_sp_mode;
 
   CComboBox		  m_section_box;
@@ -403,8 +405,9 @@ public:
   void	  SetIsText();
 
   // source editor
-  void	  DefineMarker(int marker, int markerType, COLORREF fore,COLORREF back);
-  void	  SetupSci();
+	void	  DefineMarker(int marker, int markerType, COLORREF fore,COLORREF back);
+	void	  SetupSci();
+	void	  ConfigureSourceSpecialCharacterRepresentations();
 
   // source folding
   void	  FoldAll();
@@ -491,6 +494,7 @@ public:
 	BEGIN_MSG_MAP(CMainFrame)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(AU::WM_POSTCREATE, OnPostCreate)
+		MESSAGE_HANDLER(AU::WM_SOURCE_MEMORY_BENCHMARK, OnSourceMemoryBenchmark)
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		MESSAGE_HANDLER(WM_QUERYENDSESSION, OnQueryEndSession)
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
@@ -643,6 +647,7 @@ public:
 		NOTIFY_CODE_HANDLER(SCN_MODIFIED, OnSciModified)
 		NOTIFY_CODE_HANDLER(SCN_MARGINCLICK, OnSciMarginClick)
 		NOTIFY_CODE_HANDLER(SCN_UPDATEUI, OnSciUpdateUI)
+		NOTIFY_CODE_HANDLER(SCN_CHARADDED, OnSciCharAdded)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOA, OnRuntimeToolTipTextA)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnRuntimeToolTipTextW)
 
@@ -669,6 +674,7 @@ public:
   LRESULT OnEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnPostCreate(UINT, WPARAM, LPARAM, BOOL&);
+  LRESULT OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
@@ -994,6 +1000,15 @@ public:
     return 0;
   }
 
+  LRESULT OnSciCharAdded(int id,NMHDR *hdr,BOOL& bHandled) {
+    if (hdr->hwndFrom != m_source || m_current_view != SOURCE) {
+      bHandled=FALSE;
+      return 0;
+    }
+    ShowFb2Autocomplete(reinterpret_cast<const SCNotification*>(hdr)->ch);
+    return 0;
+  }
+
   LRESULT OnSciUpdateUI(int id,NMHDR *hdr,BOOL& bHandled) 
   {
     if (hdr->hwndFrom != m_source || m_current_view != SOURCE)
@@ -1002,6 +1017,8 @@ public:
     const SCNotification& scn = *reinterpret_cast<const SCNotification*>(hdr);
     if (scn.updated & SC_UPDATE_LINE_COUNT)
 		UpdateSourceLineNumberMargin(false);
+    if (scn.updated & SC_UPDATE_TEXT)
+		ClearSourceValidationAnnotations();
     if (scn.updated & (SC_UPDATE_SELECTION | SC_UPDATE_TEXT))
 		SciUpdateUI(false);
 	return 0;
@@ -1026,8 +1043,11 @@ public:
 
 	void SciModified(const SCNotification& scn);
 	void SciMarginClicked(const SCNotification& scn);
+	void ShowFb2Autocomplete(int character);
 	bool SciUpdateUI(bool gotoTag);
 	void SciGotoWrongTag();
+	void ClearSourceValidationAnnotations();
+	void ShowSourceValidationAnnotation(int line, int column, const CString& message);
 	void SciCollapse(int level2Collapse, bool mode);
 
 	void GoToSelectedTreeItem();

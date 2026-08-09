@@ -20,17 +20,42 @@
 
 #pragma once
 
+#include "Scintilla.h"
+
 using namespace std;
+
+class ScintillaDirectCall {
+public:
+	ScintillaDirectCall(CWindow* source) : m_source(source), m_directFunction(nullptr), m_directPointer(0) {
+		if (m_source) {
+			m_directFunction = reinterpret_cast<SciFnDirect>(m_source->SendMessage(SCI_GETDIRECTFUNCTION));
+			m_directPointer = static_cast<sptr_t>(m_source->SendMessage(SCI_GETDIRECTPOINTER));
+		}
+	}
+
+	LRESULT Call(UINT message, WPARAM wParam = 0, LPARAM lParam = 0) const {
+		if (m_directFunction && m_directPointer) {
+			return static_cast<LRESULT>(m_directFunction(m_directPointer, message,
+				static_cast<uptr_t>(wParam), static_cast<sptr_t>(lParam)));
+		}
+		return m_source->SendMessage(message, wParam, lParam);
+	}
+
+private:
+	CWindow* m_source;
+	SciFnDirect m_directFunction;
+	sptr_t m_directPointer;
+};
 
 // wrapper class
 class ScintillaEditView {
 public:
-	ScintillaEditView(CWindow* source): m_source(source){};
+	ScintillaEditView(CWindow* source) : m_directCall(source) {};
 
-	LRESULT execute (UINT Msg, WPARAM wParam=NULL, LPARAM lParam=NULL) {
-	    return m_source->SendMessage(Msg, wParam, lParam); 
+	LRESULT execute(UINT message, WPARAM wParam = 0, LPARAM lParam = 0) {
+		return m_directCall.Call(message, wParam, lParam);
 	}
-	
+
     int getCurrentDocLen() {
         return int(execute(SCI_GETLENGTH));
     };
@@ -55,7 +80,7 @@ public:
 	}
 
 private:
-	CWindow* m_source;
+	ScintillaDirectCall m_directCall;
 };
 
 enum TagCateg {tagOpen, tagClose, inSingleTag, outOfTag, invalidTag, unknownPb};
@@ -63,12 +88,20 @@ enum TagCateg {tagOpen, tagClose, inSingleTag, outOfTag, invalidTag, unknownPb};
 typedef pair<CString, int> TAG;
 typedef vector<TAG>::iterator tagIterator;
 
+struct XmlMatchedTagsState {
+	vector<pair<int, int> > tagRanges;
+	vector<pair<int, int> > attributeRanges;
+};
+
 
 class XmlMatchedTagsHighlighter {
 public:
-	XmlMatchedTagsHighlighter(CWindow* source) {
+	XmlMatchedTagsHighlighter(CWindow* source, XmlMatchedTagsState* state) : _state(state) {
 	  _pEditView = new ScintillaEditView(source);
 	};
+	~XmlMatchedTagsHighlighter() { delete _pEditView; }
+	XmlMatchedTagsHighlighter(const XmlMatchedTagsHighlighter&) = delete;
+	XmlMatchedTagsHighlighter& operator=(const XmlMatchedTagsHighlighter&) = delete;
 	bool tagMatch(bool doHilite, bool doHiliteAttr, bool gotoTag);
 	void gotoWrongTag();
 	
@@ -83,6 +116,7 @@ private:
 	};
 	
 	ScintillaEditView *_pEditView;
+	XmlMatchedTagsState* _state;
 
 	int getFirstTokenPosFrom(int targetStart, int targetEnd, const char *token, std::pair<int, int> & foundPos);
 	TagCateg getTagCategory(XmlMatchedTagsPos & tagsPos, int curPos);

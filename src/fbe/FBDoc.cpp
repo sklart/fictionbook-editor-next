@@ -2132,8 +2132,10 @@ void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString tagName)
 }*/
 
 // source editing
-bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol) {
+bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol,CString* errorMessage) {
   errline=errcol=0;
+  if (errorMessage)
+    errorMessage->Empty();
 
   // validate it first
   try {
@@ -2216,6 +2218,8 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 	// record error position
 	errline=eh->m_line;
 	errcol=eh->m_col;
+	if (errorMessage)
+	  *errorMessage = eh->m_msg;
 	::MessageBeep(MB_ICONERROR);
 	::SendMessage(m_frame,AU::WM_SETSTATUSTEXT,0,
 	  (LPARAM)(const TCHAR *)eh->m_msg);

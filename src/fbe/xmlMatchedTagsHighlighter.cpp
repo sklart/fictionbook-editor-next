@@ -443,9 +443,28 @@ bool XmlMatchedTagsHighlighter::tagMatch(bool doHilite, bool doHiliteAttr, bool 
 {
 	bool bFound = false;
 
-	// Clean up all marks of previous action
-	_pEditView->clearIndicator(EDITOR_INDICATOR_TAG_MATCH);
-	_pEditView->clearIndicator(EDITOR_INDICATOR_TAG_ATTRIBUTE);
+	// Only clear the short ranges highlighted by the previous caret. Clearing
+	// the complete huge Source document on every update makes Scintilla retain
+	// indicator storage proportional to repeated caret moves.
+	if (_state)
+	{
+		for (size_t i = 0; i < _state->tagRanges.size(); ++i) {
+			_pEditView->execute(SCI_SETINDICATORCURRENT, EDITOR_INDICATOR_TAG_MATCH);
+			_pEditView->execute(SCI_INDICATORCLEARRANGE, _state->tagRanges[i].first,
+				_state->tagRanges[i].second - _state->tagRanges[i].first);
+		}
+		for (size_t i = 0; i < _state->attributeRanges.size(); ++i) {
+			_pEditView->execute(SCI_SETINDICATORCURRENT, EDITOR_INDICATOR_TAG_ATTRIBUTE);
+			_pEditView->execute(SCI_INDICATORCLEARRANGE, _state->attributeRanges[i].first,
+				_state->attributeRanges[i].second - _state->attributeRanges[i].first);
+		}
+		_state->tagRanges.clear();
+		_state->attributeRanges.clear();
+	}
+	else {
+		_pEditView->clearIndicator(EDITOR_INDICATOR_TAG_MATCH);
+		_pEditView->clearIndicator(EDITOR_INDICATOR_TAG_ATTRIBUTE);
+	}
 
 #if 0
 	// Detect the current lang type. It works only with html and xml
@@ -476,13 +495,16 @@ bool XmlMatchedTagsHighlighter::tagMatch(bool doHilite, bool doHiliteAttr, bool 
 			if ((xmlTags.tagCloseStart != -1) && (xmlTags.tagCloseEnd != -1))
 			{
 				_pEditView->execute(SCI_INDICATORFILLRANGE,  xmlTags.tagCloseStart, xmlTags.tagCloseEnd - xmlTags.tagCloseStart);
+				if (_state) _state->tagRanges.emplace_back(xmlTags.tagCloseStart, xmlTags.tagCloseEnd);
 				// tag close is present, so it's not single tag
 				openTagTailLen = 1;
 			}
 
 			// Colourising the open tag
 			_pEditView->execute(SCI_INDICATORFILLRANGE,  xmlTags.tagOpenStart, xmlTags.tagNameEnd - xmlTags.tagOpenStart);
+			if (_state) _state->tagRanges.emplace_back(xmlTags.tagOpenStart, xmlTags.tagNameEnd);
 			_pEditView->execute(SCI_INDICATORFILLRANGE,  xmlTags.tagOpenEnd - openTagTailLen, openTagTailLen);
+			if (_state) _state->tagRanges.emplace_back(xmlTags.tagOpenEnd - openTagTailLen, xmlTags.tagOpenEnd);
 
 			// Colouising its attributs
 			if (doHiliteAttr)
@@ -492,6 +514,7 @@ bool XmlMatchedTagsHighlighter::tagMatch(bool doHilite, bool doHiliteAttr, bool 
 				for (size_t i = 0 ; i < attributes.size() ; i++)
 				{
 					_pEditView->execute(SCI_INDICATORFILLRANGE,  attributes[i].first, attributes[i].second - attributes[i].first);
+					if (_state) _state->attributeRanges.push_back(attributes[i]);
 				}
 			}
 

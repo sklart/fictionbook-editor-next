@@ -63,7 +63,7 @@ public:
     AU::CPersistentWaitCursor wc;
     return SaveToFile(CString(),true,&errline,&errcol);
   }
-  bool	  SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol);
+  bool	  SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol,CString* errorMessage=NULL);
   bool	  TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr *xml);
 
   //bool	  SetXML(MSXML2::IXMLDOMDocument2 *dom);

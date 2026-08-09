@@ -19,7 +19,8 @@ namespace AU
 	{
 		WM_POSTCREATE = WM_APP,
 		WM_SETSTATUSTEXT,
-		WM_TRACKPOPUPMENU
+		WM_TRACKPOPUPMENU,
+		WM_SOURCE_MEMORY_BENCHMARK
 	};
 
 	struct TRACKPARAMS
@@ -39,10 +40,12 @@ namespace AU
 	// command line arguments
 	struct CmdLineArgs
 	{
-		// no args yet
 		bool start_in_desc_mode;
+		bool disable_undo_selection_history;
+		bool run_source_view_cycles;
+		CString source_memory_benchmark_path;
 
-		CmdLineArgs(): start_in_desc_mode(false) {}
+		CmdLineArgs(): start_in_desc_mode(false), disable_undo_selection_history(false), run_source_view_cycles(false) {}
 	};
 	extern CmdLineArgs _ARGS;
 	bool ParseCmdLineArgs();
@@ -169,4 +172,3 @@ namespace AU
 }
 
 #endif
-

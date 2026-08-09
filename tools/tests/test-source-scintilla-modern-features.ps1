@@ -1,0 +1,32 @@
+[CmdletBinding()]
+param()
+
+$ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$mainFrame = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+$mainFrameHeader = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\mainfrm.h')
+$matchedTags = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\xmlMatchedTagsHighlighter.h')
+
+function Assert-Contains([string]$Text, [string]$Pattern, [string]$Description) {
+    if ($Text -notmatch $Pattern) {
+        throw "Missing $Description."
+    }
+}
+
+Assert-Contains $mainFrame 'SCI_SETCOMMANDEVENTS\s*,\s*FALSE' 'disabled legacy Scintilla command events'
+Assert-Contains $mainFrame 'SCI_SETMODEVENTMASK\s*,\s*SC_MOD_CHANGEFOLD' 'fold-only modification event mask'
+Assert-Contains $mainFrame 'SCI_SETUNDOSELECTIONHISTORY\s*,\s*AU::_ARGS\.disable_undo_selection_history\s*\?\s*0\s*:\s*\r?\n\s*SC_UNDO_SELECTION_HISTORY_ENABLED\s*\|\s*SC_UNDO_SELECTION_HISTORY_SCROLL' 'configurable undo selection and scroll history'
+Assert-Contains $mainFrame 'lexer\.xml\.allow\.asp"\s*,\s*\(LPARAM\)"0"' 'disabled XML ASP lexer mode'
+Assert-Contains $mainFrame 'lexer\.xml\.allow\.php"\s*,\s*\(LPARAM\)"0"' 'disabled XML PHP lexer mode'
+Assert-Contains $mainFrame 'lexer\.xml\.allow\.scripts"\s*,\s*\(LPARAM\)"0"' 'disabled XML script lexer mode'
+Assert-Contains $matchedTags 'class\s+ScintillaDirectCall' 'Scintilla direct-call wrapper'
+Assert-Contains $matchedTags 'SCI_GETDIRECTFUNCTION' 'direct function lookup'
+Assert-Contains $matchedTags 'SCI_GETDIRECTPOINTER' 'direct pointer lookup'
+Assert-Contains $matchedTags 'return\s+m_source->SendMessage\(' 'safe SendMessage fallback'
+Assert-Contains $matchedTags '~XmlMatchedTagsHighlighter\(\)\s*\{\s*delete\s+_pEditView;' 'matched-tags wrapper cleanup'
+Assert-Contains $mainFrame 'kFb2ElementCompletions' 'single-source FB2 autocomplete vocabulary'
+Assert-Contains $mainFrame 'SCI_AUTOCSHOW' 'Scintilla autocomplete invocation'
+Assert-Contains $mainFrame 'character != .<. && character != . . && character != .:.' 'structural-only autocomplete trigger'
+Assert-Contains $mainFrameHeader 'ShowFb2Autocomplete\(reinterpret_cast<const SCNotification' 'Source character-added autocomplete routing'
+
+Write-Host 'Source modern Scintilla feature contract passed.'

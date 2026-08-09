@@ -10,10 +10,67 @@
 #include "RuntimeLocalization.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
+#include <string>
 #include <vector>
+#include <psapi.h>
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
+
+// Prototype vocabulary. Keep all FB2 completion data in this one table rather
+// than duplicating element names in UI handlers. The production source of
+// truth can replace this table with metadata generated from the FB2 schema.
+static const char kFb2ElementCompletions[] =
+	"FictionBook annotation author binary body cite coverpage date description "
+	"document-info emphasis empty-line epigraph first-name genre history image "
+	"lang last-name middle-name p poem section sequence stanza strong strikethrough "
+	"subtitle text-author title title-info translator v version";
+
+static const char kFb2CommonAttributeCompletions[] = "id=";
+static const char kFb2FictionBookAttributeCompletions[] = "xmlns= xmlns:l=";
+static const char kFb2BodyAttributeCompletions[] = "name=";
+static const char kFb2LinkAttributeCompletions[] = "l:href= type=";
+static const char kFb2ImageAttributeCompletions[] = "l:href=";
+static const char kFb2BinaryAttributeCompletions[] = "id= content-type=";
+
+struct ProcessMemorySnapshot
+{
+	SIZE_T privateBytes;
+	SIZE_T workingSetBytes;
+	SIZE_T committedBytes;
+	SIZE_T reservedBytes;
+};
+
+static ProcessMemorySnapshot GetProcessMemorySnapshot()
+{
+	ProcessMemorySnapshot snapshot = {};
+	PROCESS_MEMORY_COUNTERS_EX counters = {};
+	counters.cb = sizeof(counters);
+	if (::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters)))
+	{
+		snapshot.privateBytes = counters.PrivateUsage;
+		snapshot.workingSetBytes = counters.WorkingSetSize;
+	}
+
+	SYSTEM_INFO systemInfo = {};
+	::GetSystemInfo(&systemInfo);
+	for (BYTE* address = NULL; address < systemInfo.lpMaximumApplicationAddress; )
+	{
+		MEMORY_BASIC_INFORMATION memory = {};
+		const SIZE_T result = ::VirtualQuery(address, &memory, sizeof(memory));
+		if (result == 0)
+			break;
+		if (memory.State == MEM_COMMIT)
+			snapshot.committedBytes += memory.RegionSize;
+		else if (memory.State == MEM_RESERVE)
+			snapshot.reservedBytes += memory.RegionSize;
+		BYTE* const nextAddress = static_cast<BYTE*>(memory.BaseAddress) + memory.RegionSize;
+		if (nextAddress <= address)
+			break;
+		address = nextAddress;
+	}
+	return snapshot;
+}
 
 extern CSettings _Settings;
 extern HINSTANCE resLib;
@@ -480,6 +537,7 @@ struct EditorConfigurationSnapshot
 	bool sourceTagHighlight;
 	bool sourceShowEol;
 	bool sourceShowWhitespace;
+	bool sourceShowSpecialChars;
 	bool sourceShowLineNumbers;
 	bool fastMode;
 	bool useSpellChecker;
@@ -496,7 +554,8 @@ struct EditorConfigurationSnapshot
 			customDictionaryCodepage == other.customDictionaryCodepage &&
 			sourceWrap == other.sourceWrap && sourceSyntaxHighlight == other.sourceSyntaxHighlight &&
 			sourceTagHighlight == other.sourceTagHighlight && sourceShowEol == other.sourceShowEol &&
-			sourceShowWhitespace == other.sourceShowWhitespace && sourceShowLineNumbers == other.sourceShowLineNumbers &&
+			sourceShowWhitespace == other.sourceShowWhitespace && sourceShowSpecialChars == other.sourceShowSpecialChars &&
+			sourceShowLineNumbers == other.sourceShowLineNumbers &&
 			fastMode == other.fastMode && useSpellChecker == other.useSpellChecker &&
 			highlightMisspells == other.highlightMisspells;
 	}
@@ -522,6 +581,7 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	snapshot.sourceTagHighlight = _Settings.XmlSrcTagHL();
 	snapshot.sourceShowEol = _Settings.XmlSrcShowEOL();
 	snapshot.sourceShowWhitespace = _Settings.XmlSrcShowSpace();
+	snapshot.sourceShowSpecialChars = _Settings.XmlSrcShowSpecialChars();
 	snapshot.sourceShowLineNumbers = _Settings.XMLSrcShowLineNumbers();
 	snapshot.fastMode = _Settings.FastMode();
 	snapshot.useSpellChecker = _Settings.GetUseSpellChecker();
@@ -561,6 +621,32 @@ static UINT GetWindowDpi(HWND window)
 	if (dc)
 		::ReleaseDC(window, dc);
 	return dpi ? dpi : 96;
+}
+
+static int EstimateSourceLineCount(const CString& text)
+{
+	int lines = 1;
+	bool previousWasCarriageReturn = false;
+	for(int i = 0; i < text.GetLength(); ++i)
+	{
+		const wchar_t ch = text[i];
+		if(ch == L'\r')
+		{
+			++lines;
+			previousWasCarriageReturn = true;
+		}
+		else if(ch == L'\n')
+		{
+			if(!previousWasCarriageReturn)
+				++lines;
+			previousWasCarriageReturn = false;
+		}
+		else
+		{
+			previousWasCarriageReturn = false;
+		}
+	}
+	return lines;
 }
 
 static bool IsHighContrastEnabled()
@@ -2608,6 +2694,146 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	delete[] lpaccelNew;
 
 	FillMenuWithHkeys(m_MenuBar.GetMenu());
+	if (!AU::_ARGS.source_memory_benchmark_path.IsEmpty())
+		PostMessage(AU::WM_SOURCE_MEMORY_BENCHMARK);
+	return 0;
+}
+
+LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
+{
+	CAtlFile output;
+	if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))
+		return 0;
+
+	CStringA rows("phase\telapsed_ms\tprivate_bytes\tworking_set_bytes\tcommitted_bytes\treserved_bytes\tsource_bytes\tsource_lines\tundo_selection_history\r\n");
+	const ULONGLONG start = ::GetTickCount64();
+	auto appendSnapshot = [&](const char* phase)
+	{
+		const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+		const sptr_t sourceBytes = m_source.SendMessage(SCI_GETLENGTH);
+		const sptr_t sourceLines = m_source.SendMessage(SCI_GETLINECOUNT);
+		CStringA row;
+		row.Format("%s\t%I64u\t%I64u\t%I64u\t%I64u\t%I64u\t%Id\t%Id\t%d\r\n", phase,
+			::GetTickCount64() - start, static_cast<unsigned __int64>(memory.privateBytes),
+			static_cast<unsigned __int64>(memory.workingSetBytes), static_cast<unsigned __int64>(memory.committedBytes),
+			static_cast<unsigned __int64>(memory.reservedBytes), sourceBytes, sourceLines,
+			AU::_ARGS.disable_undo_selection_history ? 0 : 1);
+		rows += row;
+	};
+
+	appendSnapshot("document-open");
+	ShowView(SOURCE);
+	m_source.SendMessage(SCI_COLOURISE, 0, -1);
+	appendSnapshot("source-styled-wrap-word");
+	m_source.SendMessage(SCI_SETWRAPMODE, SC_WRAP_NONE);
+	m_source.SendMessage(SCI_COLOURISE, 0, -1);
+	appendSnapshot("source-styled-wrap-none");
+	FoldAll();
+	appendSnapshot("fold-all");
+	FoldAll();
+	appendSnapshot("expand-all");
+
+	const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+	const sptr_t stride = max<sptr_t>(1, length / 997);
+	const char* const sectionNeedle = "<section";
+	sptr_t searchStart = 0;
+	for (int iteration = 0; iteration < 1000; ++iteration)
+	{
+		m_source.SendMessage(SCI_SETTARGETSTART, searchStart);
+		m_source.SendMessage(SCI_SETTARGETEND, length);
+		const sptr_t found = m_source.SendMessage(SCI_SEARCHINTARGET, strlen(sectionNeedle),
+			reinterpret_cast<LPARAM>(sectionNeedle));
+		searchStart = found < 0 ? 0 : m_source.SendMessage(SCI_GETTARGETEND);
+	}
+	appendSnapshot("find-section-1000");
+	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+	searchStart = 0;
+	for (int iteration = 0; iteration < 100; ++iteration)
+	{
+		m_source.SendMessage(SCI_SETTARGETSTART, searchStart);
+		m_source.SendMessage(SCI_SETTARGETEND, length);
+		const sptr_t found = m_source.SendMessage(SCI_SEARCHINTARGET, strlen(sectionNeedle),
+			reinterpret_cast<LPARAM>(sectionNeedle));
+		if (found < 0) { searchStart = 0; continue; }
+		m_source.SendMessage(SCI_REPLACETARGET, strlen(sectionNeedle), reinterpret_cast<LPARAM>(sectionNeedle));
+		searchStart = m_source.SendMessage(SCI_GETTARGETEND);
+	}
+	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+	m_source.SendMessage(SCI_SETSAVEPOINT);
+	appendSnapshot("replace-section-same-text-100");
+	const sptr_t lineCount = m_source.SendMessage(SCI_GETLINECOUNT);
+	for (int iteration = 0; iteration < 1000; ++iteration)
+	{
+		const sptr_t line = (static_cast<sptr_t>(iteration) * 37) % lineCount;
+		m_source.SendMessage(SCI_SETCURRENTPOS, m_source.SendMessage(SCI_POSITIONFROMLINE, line));
+	}
+	appendSnapshot("navigate-source-lines-1000");
+	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+	for (int iteration = 0; iteration < 10000; ++iteration)
+	{
+		const sptr_t position = length + iteration;
+		m_source.SendMessage(SCI_SETSEL, position, position);
+		m_source.SendMessage(SCI_INSERTTEXT, position, reinterpret_cast<LPARAM>(" "));
+	}
+	appendSnapshot("undo-selection-history-10000-edits");
+	for (int iteration = 0; iteration < 10000 && m_source.SendMessage(SCI_CANUNDO); ++iteration)
+		m_source.SendMessage(SCI_UNDO);
+	appendSnapshot("undo-all-10000-edits");
+	for (int iteration = 0; iteration < 10000 && m_source.SendMessage(SCI_CANREDO); ++iteration)
+		m_source.SendMessage(SCI_REDO);
+	appendSnapshot("redo-all-10000-edits");
+	for (int iteration = 0; iteration < 10000 && m_source.SendMessage(SCI_CANUNDO); ++iteration)
+		m_source.SendMessage(SCI_UNDO);
+	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+	m_source.SendMessage(SCI_SETSAVEPOINT);
+
+	auto runMatchedTags = [&](int first, int last)
+	{
+		for (int iteration = first; iteration < last; ++iteration)
+		{
+			const sptr_t position = (static_cast<sptr_t>(iteration) * stride) % length;
+		// Stress the same caret/update lifecycle as keyboard navigation without
+		// forcing every position through viewport scroll policy and layout cache.
+		m_source.SendMessage(SCI_SETCURRENTPOS, position);
+		XmlMatchedTagsHighlighter tagMatchHighlighter(&m_source, &m_xml_matched_tags_state);
+		tagMatchHighlighter.tagMatch(true, false, false);
+		}
+	};
+	runMatchedTags(0, 10000);
+	appendSnapshot("matched-tags-10000-positions");
+	runMatchedTags(10000, 50000);
+	appendSnapshot("matched-tags-50000-positions");
+	runMatchedTags(50000, 100000);
+	appendSnapshot("matched-tags-100000-positions");
+	if (AU::_ARGS.run_source_view_cycles)
+	{
+		for (int cycle = 1; cycle <= 100; ++cycle)
+		{
+			ShowView(BODY);
+			ShowView(SOURCE);
+			m_source.SendMessage(SCI_COLOURISE, 0, -1);
+			if (cycle == 1 || cycle == 10 || cycle == 50 || cycle == 100)
+			{
+				CStringA phase;
+				phase.Format("body-source-cycle-%d", cycle);
+				const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+				const sptr_t sourceBytes = m_source.SendMessage(SCI_GETLENGTH);
+				const sptr_t sourceLines = m_source.SendMessage(SCI_GETLINECOUNT);
+				CStringA row;
+				row.Format("%s\t%I64u\t%I64u\t%I64u\t%I64u\t%I64u\t%Id\t%Id\t%d\r\n", phase.GetString(),
+					::GetTickCount64() - start, static_cast<unsigned __int64>(memory.privateBytes),
+					static_cast<unsigned __int64>(memory.workingSetBytes), static_cast<unsigned __int64>(memory.committedBytes),
+					static_cast<unsigned __int64>(memory.reservedBytes), sourceBytes, sourceLines,
+					AU::_ARGS.disable_undo_selection_history ? 0 : 1);
+				rows += row;
+			}
+		}
+	}
+
+	DWORD written = 0;
+	output.Write(rows, static_cast<DWORD>(rows.GetLength()), &written);
+	output.Close();
+	PostMessage(WM_CLOSE);
 	return 0;
 }
 
@@ -5558,6 +5784,8 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	if(m_doc->DocRelChanged())
 	{
 		m_source.SendMessage(SCI_CLEARALL);
+		// Source is filled by one bulk append, so reserve its line-index table once.
+		m_source.SendMessage(SCI_ALLOCATELINES, EstimateSourceLineCount(srcText));
 		std::vector<char> buffer(nch);
 		if (!buffer.empty()) 
 		{
@@ -6006,6 +6234,7 @@ void  CMainFrame::SetSciStyles() {
       m_source.SendMessage(SCI_STYLESETFORE, styles[i].style,
         _Settings.GetXmlSrcStyleColor(styles[i].token));
     }
+
   }
   m_source.SendMessage(SCI_COLOURISE, 0, -1);
   m_source.SendMessage(WM_SETREDRAW, TRUE, 0);
@@ -6015,12 +6244,19 @@ void  CMainFrame::SetSciStyles() {
 LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
   int col,line;
   bool fv;
+  CString validationError;
+  ClearSourceValidationAnnotations();
   if (IsSourceActive())
-    fv=m_doc->SetXMLAndValidate(m_source,true,line,col);// ?? ?????? Source
+    fv=m_doc->SetXMLAndValidate(m_source,true,line,col,&validationError);// ?? ?????? Source
   else
     fv=m_doc->Validate(line,col);						// ?? ?????? Body
+  if (fv) {
+    ClearSourceValidationAnnotations();
+    return 0;
+  }
   if (!fv) {
     ShowView(SOURCE);
+    ShowSourceValidationAnnotation(line, col, validationError);
     // have to jump through the hoops to move to required column
     SourceGoTo(line, col);
   }
@@ -6101,8 +6337,15 @@ void  CMainFrame::DefineMarker(int marker, int markerType, COLORREF fore,COLORRE
 
 void  CMainFrame::SetupSci() 
 {
-  m_source.SendMessage(SCI_SETCODEPAGE,SC_CP_UTF8);
-  m_source.SendMessage(SCI_SETEOLMODE,SC_EOL_CRLF);
+  // Source commands are routed explicitly by FBE; legacy WM_COMMAND events are unnecessary.
+  m_source.SendMessage(SCI_SETCOMMANDEVENTS, FALSE);
+  // FBE consumes SCN_MODIFIED only to keep folding state consistent.
+  m_source.SendMessage(SCI_SETMODEVENTMASK, SC_MOD_CHANGEFOLD);
+  m_source.SendMessage(SCI_SETUNDOSELECTIONHISTORY, AU::_ARGS.disable_undo_selection_history ? 0 :
+    SC_UNDO_SELECTION_HISTORY_ENABLED | SC_UNDO_SELECTION_HISTORY_SCROLL);
+	m_source.SendMessage(SCI_SETCODEPAGE,SC_CP_UTF8);
+	ConfigureSourceSpecialCharacterRepresentations();
+	m_source.SendMessage(SCI_SETEOLMODE,SC_EOL_CRLF);
   m_source.SendMessage(SCI_SETVIEWEOL, _Settings.XmlSrcShowEOL());
   m_source.SendMessage(SCI_SETVIEWWS, _Settings.XmlSrcShowSpace());
   m_source.SendMessage(SCI_SETWRAPMODE, _Settings.XmlSrcWrap() ? SC_WRAP_WORD : SC_WRAP_NONE);
@@ -6118,6 +6361,10 @@ void  CMainFrame::SetupSci()
   m_source.SendMessage(SCI_SETPROPERTY,(WPARAM)"fold.html",(WPARAM)"1");
   m_source.SendMessage(SCI_SETPROPERTY,(WPARAM)"fold.compact",(WPARAM)"1");
   m_source.SendMessage(SCI_SETPROPERTY,(WPARAM)"fold.flags",(WPARAM)"16");
+  // FB2 Source is XML, not a host for embedded ASP/PHP/script languages.
+  m_source.SendMessage(SCI_SETPROPERTY, (WPARAM)"lexer.xml.allow.asp", (LPARAM)"0");
+  m_source.SendMessage(SCI_SETPROPERTY, (WPARAM)"lexer.xml.allow.php", (LPARAM)"0");
+  m_source.SendMessage(SCI_SETPROPERTY, (WPARAM)"lexer.xml.allow.scripts", (LPARAM)"0");
 
   // added by SeNS: disable Scintilla's control characters
   char sciCtrlChars[] = {'Q','E','R','S','K',':'};
@@ -6136,6 +6383,7 @@ void  CMainFrame::SetupSci()
       _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
     const COLORREF indicatorColor = highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) : RGB(128, 128, 255);
     m_source.SendMessage(SCI_SETILEXER, 0, reinterpret_cast<LPARAM>(CreateEditorLexer("xml")));
+
     m_source.SendMessage(SCI_SETMARGINTYPEN, 2, SC_MARGIN_SYMBOL);
     m_source.SendMessage(SCI_SETMARGINWIDTHN, 2, 16);
     m_source.SendMessage(SCI_SETMARGINMASKN, 2, SC_MASK_FOLDERS);
@@ -6168,6 +6416,43 @@ void  CMainFrame::SetupSci()
   }
 }
 
+void CMainFrame::ConfigureSourceSpecialCharacterRepresentations()
+{
+	// Representations affect painting only; the UTF-8 document, lexer and save path remain unchanged.
+	struct SpecialCharacterRepresentation
+	{
+		const char* character;
+		const char* label;
+	};
+	static const SpecialCharacterRepresentation representations[] = {
+		{ "\xC2\xA0", "NBSP" },
+		{ "\xC2\xAD", "SHY" },
+		{ "\xE2\x80\x8B", "ZWSP" },
+		{ "\xE2\x80\x8C", "ZWNJ" },
+		{ "\xE2\x80\x8D", "ZWJ" },
+		{ "\xE2\x80\xAF", "NNBSP" },
+		{ "\xE2\x81\xA0", "WJ" },
+		{ "\xEF\xBB\xBF", "BOM" }
+	};
+
+	for (size_t i = 0; i < _countof(representations); ++i)
+	{
+		if (_Settings.XmlSrcShowSpecialChars())
+		{
+			m_source.SendMessage(SCI_SETREPRESENTATION,
+				reinterpret_cast<WPARAM>(representations[i].character),
+				reinterpret_cast<LPARAM>(representations[i].label));
+			m_source.SendMessage(SCI_SETREPRESENTATIONAPPEARANCE,
+				reinterpret_cast<WPARAM>(representations[i].character), SC_REPRESENTATION_PLAIN);
+		}
+		else
+		{
+			m_source.SendMessage(SCI_CLEARREPRESENTATION,
+				reinterpret_cast<WPARAM>(representations[i].character));
+		}
+	}
+}
+
 void  CMainFrame::SciModified(const SCNotification& scn) {
   if (scn.modificationType & SC_MOD_CHANGEFOLD) {
     if (scn.foldLevelNow & SC_FOLDLEVELHEADERFLAG) {
@@ -6184,11 +6469,34 @@ void  CMainFrame::SciModified(const SCNotification& scn) {
   }
 }
 
+void CMainFrame::ClearSourceValidationAnnotations()
+{
+	m_source.SendMessage(SCI_EOLANNOTATIONCLEARALL);
+}
+
+void CMainFrame::ShowSourceValidationAnnotation(int line, int column, const CString& message)
+{
+	if (line <= 0)
+		return;
+
+	CString annotation = message;
+	annotation.Replace(L'\r', L' ');
+	annotation.Replace(L'\n', L' ');
+	if (annotation.IsEmpty())
+		annotation.Format(L"XML validation error (line %d, column %d)", line, column);
+
+	CW2A annotationUtf8(annotation, CP_UTF8);
+	const int sourceLine = line - 1;
+	m_source.SendMessage(SCI_EOLANNOTATIONSETTEXT, sourceLine, reinterpret_cast<LPARAM>(static_cast<LPCSTR>(annotationUtf8)));
+	m_source.SendMessage(SCI_EOLANNOTATIONSETSTYLE, sourceLine, STYLE_LINENUMBER);
+	m_source.SendMessage(SCI_EOLANNOTATIONSETVISIBLE, EOLANNOTATION_STANDARD);
+}
+
 bool CMainFrame::SciUpdateUI(bool gotoTag)
 {
 	if (_Settings.XmlSrcTagHL() || gotoTag)
 	{
-		XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source);
+		XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
 		UIEnable(ID_GOTO_MATCHTAG, xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, gotoTag));
 		return true;
 	}
@@ -6198,9 +6506,53 @@ bool CMainFrame::SciUpdateUI(bool gotoTag)
 void CMainFrame::SciGotoWrongTag()
 {
 	CWaitCursor hourglass;
-	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source);
+	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
 	xmlTagMatchHiliter.gotoWrongTag();
 	
+}
+
+void CMainFrame::ShowFb2Autocomplete(int character)
+{
+	if (character != '<' && character != ' ' && character != ':')
+		return;
+
+	const sptr_t caret = m_source.SendMessage(SCI_GETCURRENTPOS);
+	const sptr_t start = max<sptr_t>(0, caret - 256);
+	std::vector<char> context(static_cast<size_t>(caret - start) + 1);
+	Sci_TextRange range = {};
+	range.chrg.cpMin = start;
+	range.chrg.cpMax = caret;
+	range.lpstrText = &context[0];
+	m_source.SendMessage(SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range));
+	const std::string beforeCaret(&context[0]);
+
+	if (character == '<')
+	{
+		m_source.SendMessage(SCI_AUTOCSHOW, 0, reinterpret_cast<LPARAM>(kFb2ElementCompletions));
+		return;
+	}
+
+	const std::string::size_type tagStart = beforeCaret.rfind('<');
+	if (tagStart == std::string::npos || beforeCaret.find('>', tagStart) != std::string::npos)
+		return;
+	if (character == ':' && (beforeCaret.compare(tagStart + 1, 6, "xlink:") == 0 ||
+		beforeCaret.compare(tagStart + 1, 2, "l:") == 0))
+	{
+		m_source.SendMessage(SCI_AUTOCSHOW, 0, reinterpret_cast<LPARAM>("href="));
+		return;
+	}
+	if (character != ' ')
+		return;
+
+	const std::string tag = beforeCaret.substr(tagStart + 1,
+		beforeCaret.find_first_of(" \t\r\n/>", tagStart + 1) - tagStart - 1);
+	const char* attributes = kFb2CommonAttributeCompletions;
+	if (tag == "FictionBook") attributes = kFb2FictionBookAttributeCompletions;
+	else if (tag == "body") attributes = kFb2BodyAttributeCompletions;
+	else if (tag == "a") attributes = kFb2LinkAttributeCompletions;
+	else if (tag == "image") attributes = kFb2ImageAttributeCompletions;
+	else if (tag == "binary") attributes = kFb2BinaryAttributeCompletions;
+	m_source.SendMessage(SCI_AUTOCSHOW, 0, reinterpret_cast<LPARAM>(attributes));
 }
 
 void  CMainFrame::SciMarginClicked(const SCNotification& scn) 
@@ -6737,7 +7089,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	SetSciStyles();
 	UpdateSourceLineNumberMargin(true);
 
-	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source);
+	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
 	xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, false);
 	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
 	// Перекраска XML-редактора не должна менять активный режим документа.
@@ -6762,7 +7114,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	// added by SeNS: display line numbers
 	UpdateSourceLineNumberMargin(true);
 
-	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source);
+	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
 	xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, false);
 	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
 

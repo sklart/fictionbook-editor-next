@@ -118,7 +118,7 @@ exit /b 0
       <GenerateManifest>false</GenerateManifest>
       <AdditionalOptions>/LTCG %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>rpcrt4.lib;
-gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
+gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>$(SolutionDir)build\hunspell\lib\Release;$(SolutionDir)build\pcre2\install\Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
@@ -195,7 +195,7 @@ exit /b 0
       <GenerateManifest>false</GenerateManifest>
       <RegisterOutput>false</RegisterOutput>
       <AdditionalDependencies>rpcrt4.lib;
-gdiplus.lib;dbghelp.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
+gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>$(SolutionDir)build\hunspell\lib\Debug;$(SolutionDir)build\pcre2\install\Debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>

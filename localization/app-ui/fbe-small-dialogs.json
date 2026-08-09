@@ -2354,6 +2354,25 @@
         "bg-BG": "Показвай краища на редове"
       }
     },
+    "fbe.dialog.idd_setting_next.show_special_characters": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "CONTROL",
+      "targetId": "IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS",
+      "translations": {
+        "en-US": "Show invisible characters",
+        "ru-RU": "Показывать невидимые символы",
+        "uk-UA": "Показувати невидимі символи",
+        "de-DE": "Unsichtbare Zeichen anzeigen",
+        "fr-FR": "Afficher les caractères invisibles",
+        "es-ES": "Mostrar caracteres invisibles",
+        "it-IT": "Mostra caratteri invisibili",
+        "pl-PL": "Pokaż niewidoczne znaki",
+        "pt-PT": "Mostrar carateres invisíveis",
+        "nl-NL": "Onzichtbare tekens weergeven",
+        "cs-CZ": "Zobrazit neviditelné znaky",
+        "bg-BG": "Показвай невидими знаци"
+      }
+    },
     "fbe.dialog.idd_options.fast_mode": {
       "resource": "IDD_OPTIONS",
       "kind": "CONTROL",
