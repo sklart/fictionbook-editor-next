@@ -42,7 +42,18 @@ int main() {
     RequireCandidates(autocomplete, "<a ", ' ', "type= xlink:href= xlink:type=");
     RequireCandidates(autocomplete, "<a xlink:", ':', "href= type=");
     Require(autocomplete.Complete("<a xlink:href=\"#", '#').needsDocumentIds, "href ID completion was not requested");
-    Require(autocomplete.CompleteIds("<p id=\"one\"/><p id='two'/>") == "one two", "document IDs were not collected");
+    Require(autocomplete.Complete("<a xlink:href='#", '#').needsDocumentIds, "single-quoted href ID completion was not requested");
+    Require(autocomplete.Complete("<FictionBook xmlns:foo=\"http://www.w3.org/1999/xlink\"><image foo:href=\"#", '#').needsDocumentIds, "custom XLink prefix ID completion was not requested");
+    Require(!autocomplete.Complete("<section id=\"#", '#').needsDocumentIds, "section id must not request document IDs");
+    Require(!autocomplete.Complete("<p style=\"#", '#').needsDocumentIds, "style must not request document IDs");
+    Require(!autocomplete.Complete("<binary content-type=\"#", '#').needsDocumentIds, "content-type must not request document IDs");
+    const std::string idsFixture =
+        "<FictionBook><body><section id=\"section-1\"><p id='p-1'>Text</p></section></body>"
+        "<binary id=\"image-1\" content-type=\"image/jpeg\"/><p grid=\"false-1\"/>"
+        "<p dataid=\"false-2\"/><p some-id=\"false-3\"/>"
+        "<!-- <section id=\"false-comment\"/> --><![CDATA[<section id=\"false-cdata\"/>]]>"
+        "<?test id=\"false-pi\"?></FictionBook>";
+    Require(autocomplete.CompleteIds(idsFixture) == "image-1 p-1 section-1", "XML-aware document ID extraction failed");
     return 0;
 }
 '@ | Set-Content -LiteralPath $sourcePath -Encoding utf8

@@ -139,6 +139,7 @@ Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verif
 Assert-Contains $verifyRelease "[switch]`$SkipCommonChecks" "verify-release.ps1"
 Assert-Contains $verifyRelease "test-editor-runtime-fingerprint.ps1" "verify-release.ps1: behavioral editor-runtime fingerprint regression"
 Assert-Contains $verifyRelease "test-source-scintilla-modern-features.ps1" "verify-release.ps1: modern Scintilla Source contract"
+Assert-Contains $verifyRelease "test-fb2-source-autocomplete.ps1" "verify-release.ps1: behavioral FB2 autocomplete"
 Assert-Contains $verifyRelease "test-source-eol-annotations.ps1" "verify-release.ps1: Source EOL validation annotations"
 Assert-Contains $verifyRelease "test-source-special-representations.ps1" "verify-release.ps1: Source special-character representations"
 Assert-Contains $verifyRelease "test-source-allocate-lines.ps1" "verify-release.ps1: Source line-index preallocation"

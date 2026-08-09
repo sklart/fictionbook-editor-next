@@ -23,6 +23,49 @@ std::set<std::string> Words(const char* value) {
 	std::set<std::string> result; std::istringstream input(value ? value : ""); std::string word;
 	while (input >> word) result.insert(word); return result;
 }
+void SkipWhitespace(const std::string& text, size_t& at) {
+	while (at < text.size() && (text[at] == ' ' || text[at] == '\t' || text[at] == '\r' || text[at] == '\n')) ++at;
+}
+bool IsXLinkHrefAttribute(const std::string& text, const std::string& attribute) {
+	const std::string::size_type colon = attribute.rfind(':');
+	if (colon == std::string::npos || attribute.substr(colon + 1) != "href") return false;
+	const std::string prefix = attribute.substr(0, colon);
+	if (prefix == "xlink") return true;
+	const std::string declaration = "xmlns:" + prefix;
+	const std::string::size_type xmlns = text.rfind(declaration);
+	if (xmlns == std::string::npos) return false;
+	size_t at = xmlns + declaration.size();
+	SkipWhitespace(text, at);
+	if (at >= text.size() || text[at++] != '=') return false;
+	SkipWhitespace(text, at);
+	if (at >= text.size() || (text[at] != '\'' && text[at] != '"')) return false;
+	const char quote = text[at++];
+	const size_t end = text.find(quote, at);
+	return end != std::string::npos && text.compare(at, end - at, "http://www.w3.org/1999/xlink") == 0;
+}
+bool IsCurrentXLinkHrefValue(const std::string& text) {
+	const std::string::size_type start = text.rfind('<');
+	if (start == std::string::npos || start + 1 >= text.size() || text[start + 1] == '/' || text.find('>', start) != std::string::npos) return false;
+	size_t at = text.find_first_of(" \t\r\n/>", start + 1);
+	if (at == std::string::npos) return false;
+	while (at < text.size()) {
+		SkipWhitespace(text, at);
+		if (at >= text.size() || text[at] == '/' || text[at] == '>') return false;
+		const size_t nameBegin = at;
+		at = text.find_first_of(" \t\r\n=/>", at);
+		if (at == std::string::npos) return false;
+		const std::string attribute = text.substr(nameBegin, at - nameBegin);
+		SkipWhitespace(text, at);
+		if (at >= text.size() || text[at++] != '=') return false;
+		SkipWhitespace(text, at);
+		if (at >= text.size() || (text[at] != '\'' && text[at] != '"')) return false;
+		const char quote = text[at++];
+		const size_t end = text.find(quote, at);
+		if (end == std::string::npos) return IsXLinkHrefAttribute(text, attribute);
+		at = end + 1;
+	}
+	return false;
+}
 std::vector<std::string> OpenElements(const std::string& text) {
 	std::vector<std::string> stack;
 	for (size_t at = 0; (at = text.find('<', at)) != std::string::npos;) {
@@ -98,16 +141,36 @@ Fb2AutocompleteResult Fb2SourceAutocomplete::Complete(const std::string& text, i
 	if (character == ':' && text.substr(text.size() - std::min<size_t>(text.size(), 16)).find(XLinkPrefix(text) + ":") != std::string::npos) {
 		result.candidates = "href= type="; return result;
 	}
-	if (character == '#') result.needsDocumentIds = true;
+	if (character == '#' && IsCurrentXLinkHrefValue(text)) result.needsDocumentIds = true;
 	return result;
 }
 
 std::string Fb2SourceAutocomplete::CompleteIds(const std::string& document) const {
-	std::set<std::string> ids; size_t at = 0;
-	while ((at = document.find("id=", at)) != std::string::npos) {
-		at += 3; if (at >= document.size() || (document[at] != '\'' && document[at] != '\"')) continue;
-		const char quote = document[at++]; const size_t end = document.find(quote, at);
-		if (end != std::string::npos) { ids.insert(document.substr(at, end - at)); at = end + 1; }
+	std::set<std::string> ids;
+	for (size_t at = 0; (at = document.find('<', at)) != std::string::npos;) {
+		if (document.compare(at, 4, "<!--") == 0) { const size_t end = document.find("-->", at + 4); at = end == std::string::npos ? document.size() : end + 3; continue; }
+		if (document.compare(at, 9, "<![CDATA[") == 0) { const size_t end = document.find("]]>", at + 9); at = end == std::string::npos ? document.size() : end + 3; continue; }
+		if (document.compare(at, 2, "<?") == 0) { const size_t end = document.find("?>", at + 2); at = end == std::string::npos ? document.size() : end + 2; continue; }
+		if (at + 1 >= document.size() || document[at + 1] == '/' || document[at + 1] == '!') { const size_t end = document.find('>', at + 1); at = end == std::string::npos ? document.size() : end + 1; continue; }
+		size_t cursor = document.find_first_of(" \t\r\n/>", at + 1);
+		if (cursor == std::string::npos) break;
+		while (cursor < document.size()) {
+			SkipWhitespace(document, cursor);
+			if (cursor >= document.size() || document[cursor] == '/' || document[cursor] == '>') break;
+			const size_t nameBegin = cursor;
+			cursor = document.find_first_of(" \t\r\n=/>", cursor);
+			if (cursor == std::string::npos) break;
+			const std::string attribute = document.substr(nameBegin, cursor - nameBegin);
+			SkipWhitespace(document, cursor);
+			if (cursor >= document.size() || document[cursor++] != '=') break;
+			SkipWhitespace(document, cursor);
+			if (cursor >= document.size() || (document[cursor] != '\'' && document[cursor] != '\"')) break;
+			const char quote = document[cursor++]; const size_t end = document.find(quote, cursor);
+			if (end == std::string::npos) break;
+			if (attribute == "id") ids.insert(document.substr(cursor, end - cursor));
+			cursor = end + 1;
+		}
+		const size_t end = document.find('>', at + 1); at = end == std::string::npos ? document.size() : end + 1;
 	}
 	return Join(ids);
 }
