@@ -108,7 +108,9 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			OFN_HIDEREADONLY | OFN_NOREADONLYRETURN | OFN_OVERWRITEPROMPT | OFN_ENABLETEMPLATE,
 			strFilter
 			);
-		dlg.m_ofn.nFilterIndex = 1;
+		// The portable, self-contained document is the safest default: it cannot
+		// lose its CSS or images when moved to another folder or machine.
+		dlg.m_ofn.nFilterIndex = 4;
 		if (dlg.DoModal((HWND)hWnd) != IDOK)
 			return S_FALSE;
 		CString customCss;

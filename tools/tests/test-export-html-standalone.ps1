@@ -12,6 +12,11 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
+$pluginSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\export-html\ExportHTMLPlugin.cpp')
+if ($pluginSource -notmatch 'dlg\.m_ofn\.nFilterIndex\s*=\s*4') {
+    throw 'Автономный HTML должен быть выбранным по умолчанию форматом сохранения.'
+}
+
 $xsl = New-Object -ComObject Msxml2.DOMDocument.6.0
 $xsl.async = $false
 if (-not $xsl.load((Join-Path $repoRoot 'src\export-html\html.xsl'))) {
