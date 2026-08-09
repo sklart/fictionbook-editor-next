@@ -124,4 +124,4 @@ $lines.Add('static const size_t kFb2SchemaMetadataCount = sizeof(kFb2SchemaMetad
 
 $directory = Split-Path -Parent $OutputPath
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
-[System.IO.File]::WriteAllLines($OutputPath, $lines, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($OutputPath, (($lines -join "`n") + "`n"), [System.Text.UTF8Encoding]::new($false))
