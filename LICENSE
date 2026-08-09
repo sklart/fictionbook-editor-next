@@ -1,0 +1,12 @@
+# FictionBook Editor Next license
+
+FictionBook Editor Next is distributed under the GNU General Public License,
+version 3 or (at your option) any later version (GPL-3.0-or-later).
+
+The complete, verbatim GPL-3.0 text shipped with every release is maintained
+in [runtime/gpl-3.0.txt](runtime/gpl-3.0.txt).  It is copied to release
+packages as `LICENSE`.
+
+See [NOTICE](NOTICE) for project provenance and
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the licenses of bundled
+components.

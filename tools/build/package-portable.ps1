@@ -61,6 +61,28 @@ foreach ($name in @("Scintilla.dll", "Lexilla.dll")) {
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "runtime\*") -Destination $stageDir -Recurse -Force
 
+# Release packages must carry the project license and the notices for every
+# bundled dependency.  Keep the source-of-truth documents at the repository
+# root, then materialize the individual upstream license texts here.
+Copy-Item -LiteralPath (Join-Path $repoRoot "runtime\gpl-3.0.txt") -Destination (Join-Path $stageDir "LICENSE") -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "NOTICE") -Destination (Join-Path $stageDir "NOTICE") -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "THIRD-PARTY-NOTICES.md") -Destination (Join-Path $stageDir "THIRD-PARTY-NOTICES.md") -Force
+$thirdPartyLicenseDir = Join-Path $stageDir "THIRD-PARTY-LICENSES"
+New-Item -ItemType Directory -Path $thirdPartyLicenseDir -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot "THIRD-PARTY-LICENSES\README.md") -Destination $thirdPartyLicenseDir -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "THIRD-PARTY-LICENSES\WTL-MS-PL.txt") -Destination $thirdPartyLicenseDir -Force
+$thirdPartyLicenseFiles = @{
+    "Scintilla-Lexilla.txt" = "third_party\scintilla\License.txt"
+    "PCRE2.txt" = "third_party\pcre2\LICENCE.md"
+    "Hunspell.txt" = "third_party\hunspell\license.hunspell"
+    "LunaSVG.txt" = "src\import-epub\thirdparty\lunasvg\LICENSE"
+    "PlutoVG.txt" = "src\import-epub\thirdparty\lunasvg\plutovg\LICENSE"
+    "UAC.txt" = "third_party\uac\License.txt"
+}
+foreach ($entry in $thirdPartyLicenseFiles.GetEnumerator()) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot $entry.Value) -Destination (Join-Path $thirdPartyLicenseDir $entry.Key) -Force
+}
+
 # Runtime-каталог содержит удобные локальные копии DLL. Для релиза заменяем их
 # явным вариантом, чтобы пакет не зависел от предыдущей исторической сборки.
 foreach ($name in @("Scintilla.dll", "Lexilla.dll")) {
@@ -153,7 +175,6 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "tools\build\unregister-modern-prope
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-package.ps1") -PackageDirectory $stageDir
 
 Write-Host "Portable-пакет подготовлен в $stageDir"
-
 
 
 

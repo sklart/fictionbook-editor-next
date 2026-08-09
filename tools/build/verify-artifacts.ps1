@@ -161,6 +161,17 @@ function Get-ZipEntrySha256 {
 }
 
 $requiredPortableEntries = @(
+    "LICENSE",
+    "NOTICE",
+    "THIRD-PARTY-NOTICES.md",
+    "THIRD-PARTY-LICENSES/README.md",
+    "THIRD-PARTY-LICENSES/WTL-MS-PL.txt",
+    "THIRD-PARTY-LICENSES/Scintilla-Lexilla.txt",
+    "THIRD-PARTY-LICENSES/PCRE2.txt",
+    "THIRD-PARTY-LICENSES/Hunspell.txt",
+    "THIRD-PARTY-LICENSES/LunaSVG.txt",
+    "THIRD-PARTY-LICENSES/PlutoVG.txt",
+    "THIRD-PARTY-LICENSES/UAC.txt",
     "FBE.exe",
     "FBV.exe",
     "ExportHTML.dll",

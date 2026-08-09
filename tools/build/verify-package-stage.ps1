@@ -13,6 +13,9 @@ if ([string]::IsNullOrWhiteSpace($StageDirectory)) {
 $StageDirectory = (Resolve-Path -LiteralPath $StageDirectory).Path
 
 $requiredFiles = @(
+    "LICENSE",
+    "NOTICE",
+    "THIRD-PARTY-NOTICES.md",
     "FBE.exe",
     "FBV.exe",
     "Lang\Shell\FBVVerbResources.dll",
@@ -33,6 +36,17 @@ $requiredFiles = @(
     "Lexilla.dll"
 )
 
+$requiredThirdPartyLicenseFiles = @(
+    "README.md",
+    "WTL-MS-PL.txt",
+    "Scintilla-Lexilla.txt",
+    "PCRE2.txt",
+    "Hunspell.txt",
+    "LunaSVG.txt",
+    "PlutoVG.txt",
+    "UAC.txt"
+)
+
 $forbiddenFiles = @(
     "pcre.dll",
     "SciLexer.dll",
@@ -44,6 +58,13 @@ foreach ($name in $requiredFiles) {
     $path = Join-Path $StageDirectory $name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "В staging-каталоге отсутствует обязательный файл: $path"
+    }
+}
+
+foreach ($name in $requiredThirdPartyLicenseFiles) {
+    $path = Join-Path $StageDirectory "THIRD-PARTY-LICENSES\$name"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "В staging-каталоге отсутствует обязательный текст лицензии: $path"
     }
 }
 

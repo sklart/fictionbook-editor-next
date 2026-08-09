@@ -1,5 +1,16 @@
 # FictionBook Editor Next
 
+## License and third-party components
+
+FictionBook Editor Next is distributed under GPL-3.0-or-later.  The complete
+license text is included in [runtime/gpl-3.0.txt](runtime/gpl-3.0.txt);
+[NOTICE](NOTICE) documents the project's FictionBook Editor provenance.
+
+The current inventory of bundled and build-time dependencies is maintained in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).  Portable archives and the
+installer contain this inventory together with the applicable license texts in
+`THIRD-PARTY-LICENSES`.
+
 **FictionBook Editor Next** — современная сборка FictionBook Editor для Windows.  
 Цель проекта — сохранить привычный редактор FB2, но обновить его окружение: сборку, установщик, shell-интеграцию Windows, проверку FB2, плагины импорта/экспорта и диагностику ошибок.
 

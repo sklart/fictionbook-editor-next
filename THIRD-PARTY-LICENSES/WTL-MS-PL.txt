@@ -1,0 +1,5 @@
+Windows Template Library (WTL) 10.01 is distributed under the Microsoft Public
+License (MS-PL).  WTL headers in `third_party/wtl` retain the original notice.
+
+Canonical license text: https://opensource.org/license/ms-pl.html
+WTL upstream: https://sourceforge.net/projects/wtl/

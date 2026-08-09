@@ -1,0 +1,15 @@
+# FictionBook Editor Next notices
+
+FictionBook Editor Next is a continuation of FictionBook Editor.
+
+The project incorporates and modifies code originating in the historical
+[SeNS FictionBook Editor repository](https://github.com/sensboston/fictionbookeditor).
+The [evpobr fork](https://github.com/evpobr/fictionbookeditor) was also used
+as a reference for selected historical changes.  Copyright notices retained
+in source files and resources identify the original authors and must remain
+with their respective works.
+
+This repository and its release packages also include third-party components.
+Their versions, purposes, upstream sources, and licenses are listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).  The corresponding license
+texts are included in release packages under `THIRD-PARTY-LICENSES`.

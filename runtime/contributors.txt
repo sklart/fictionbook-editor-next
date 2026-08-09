@@ -1,4 +1,8 @@
-The contents of this software may be used under the terms of the GNU General Public License Version 3.
+FictionBook Editor Next is distributed under GNU GPL version 3 or later.
+License and notices: LICENSE, THIRD-PARTY-NOTICES.md, THIRD-PARTY-LICENSES
+
+The project is based on FictionBook Editor by Mike Matsnev, LitRes, FBE Team,
+and the contributors listed below.  Historical source: https://github.com/sensboston/fictionbookeditor
 
 Copyright © 2026 FBE Team, sklart
 Copyright © 2008 LitRes
