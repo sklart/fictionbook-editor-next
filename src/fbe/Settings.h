@@ -553,6 +553,7 @@ class CSettings : public ISerializable, public IObjectFactory
 
 	DWORD		m_splitter_pos;
 	CString		m_toolbars_settings;
+	CString		m_script_command_ids;
 
 	bool		m_restore_file_position;
 
@@ -653,6 +654,7 @@ public:
 	CString	GetSrcFont()const;
 	DWORD	GetSplitterPos()const;	
 	CString GetToolbarsSettings()const;
+	CString GetScriptCommandIds()const;
 	const CRegKey& GetKey()const;
 
 	// added by SeNS
@@ -711,6 +713,7 @@ public:
 	void	SetViewDocumentTree(bool view,  bool apply = false);
 	void	SetSplitterPos(DWORD pos,  bool apply = false);
 	void	SetToolbarsSettings(CString& settings,  bool apply = false);
+	void	SetScriptCommandIds(const CString& ids, bool apply = false);
 	void	SetExtElementStyle(const CString& elem, bool ext, bool apply = false);
 	void	SetWindowPosition(const WINDOWPLACEMENT& wpl,  bool apply = false);
 	void	SetRestoreFilePosition(bool restore, bool apply = false);	

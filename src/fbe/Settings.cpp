@@ -75,6 +75,7 @@ const wchar_t VIEW_STATUS_BAR_KEY[]		= L"ViewStatusBar";
 const wchar_t VIEW_DOCUMENT_TREE_KEY[]	= L"ViewDocumentTree";
 const wchar_t SPLITTER_POS_KEY[]		= L"SplitterPos";
 const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
+const wchar_t SCRIPT_COMMAND_IDS_KEY[] = L"ScriptCommandIds";
 const wchar_t RESTORE_FILE_POS_KEY[]	= L"RestoreFilePosition";
 const wchar_t INTERFACE_LANG_KEY[]		= L"IntefaceLangID";
 const wchar_t SCRIPTS_FOLDER_KEY[]		= L"ScriptsFolder";
@@ -810,6 +811,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(VIEW_DOCUMENT_TREE_KEY);
 	properties.push_back(SPLITTER_POS_KEY);
 	properties.push_back(TOOLBARS_SETTINGS_KEY);
+	properties.push_back(SCRIPT_COMMAND_IDS_KEY);
 	properties.push_back(RESTORE_FILE_POS_KEY);
 	properties.push_back(INTERFACE_LANG_KEY);
 	properties.push_back(SCRIPTS_FOLDER_KEY);
@@ -978,6 +980,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == TOOLBARS_SETTINGS_KEY)
 	{
 		property = m_toolbars_settings;
+		return true;
+	}
+	else if(sProperty == SCRIPT_COMMAND_IDS_KEY)
+	{
+		property = m_script_command_ids;
 		return true;
 	}
 	else if(sProperty == RESTORE_FILE_POS_KEY)
@@ -1266,6 +1273,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == TOOLBARS_SETTINGS_KEY)
 	{
 		m_toolbars_settings = sValue.GetStringValue();
+		return true;
+	}
+	else if(sProperty == SCRIPT_COMMAND_IDS_KEY)
+	{
+		m_script_command_ids = sValue.GetStringValue();
 		return true;
 	}
 	else if(sProperty == RESTORE_FILE_POS_KEY)
@@ -1795,6 +1807,10 @@ DWORD CSettings::GetSplitterPos()const
 CString CSettings::GetToolbarsSettings()const
 {
 	return m_toolbars_settings;
+}
+CString CSettings::GetScriptCommandIds()const
+{
+	return m_script_command_ids;
 }
 CString CSettings::GetKeyPath()const
 {
@@ -2452,6 +2468,13 @@ void CSettings::LoadWords()
 	}
 }
 
+void CSettings::SetScriptCommandIds(const CString& ids, bool apply)
+{
+	m_script_command_ids = ids;
+	if(apply)
+		Save();
+}
+
 void CSettings::SaveWords()
 {
 	// changed by SeNS: extremely slow serialization replaced by fast and simple code
@@ -2511,6 +2534,7 @@ void CSettings::SetDefaults()
 	m_view_doc_tree			= true;
 	m_splitter_pos			= 200;
 	m_toolbars_settings.Empty();
+	m_script_command_ids.Empty();
 	m_restore_file_position	= false;
 	m_interface_lang_id		= FBE_INTERFACE_LANGUAGE_AUTO;
 	m_scripts_folder		= GetDefaultScriptsFolder();

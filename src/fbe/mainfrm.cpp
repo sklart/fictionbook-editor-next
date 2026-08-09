@@ -17,6 +17,148 @@
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 
+namespace
+{
+const int SCRIPT_COMMAND_COUNT = 999;
+
+struct ScriptCommandId
+{
+	CString relativePath;
+	int value;
+};
+
+static CString NormalizeFullPath(const CString& path)
+{
+	DWORD length = ::GetFullPathName(path, 0, NULL, NULL);
+	if(length == 0)
+		return CString();
+
+	std::vector<wchar_t> buffer(length + 1);
+	if(::GetFullPathName(path, static_cast<DWORD>(buffer.size()), &buffer[0], NULL) == 0)
+		return CString();
+
+	CString normalized(&buffer[0]);
+	while(normalized.GetLength() > 3 && (normalized[normalized.GetLength() - 1] == L'\\' || normalized[normalized.GetLength() - 1] == L'/'))
+		normalized.Delete(normalized.GetLength() - 1);
+	return normalized;
+}
+
+static CString NormalizeScriptRelativePath(const CString& scriptsRoot, const CString& scriptPath)
+{
+	const CString root = NormalizeFullPath(scriptsRoot);
+	const CString fullPath = NormalizeFullPath(scriptPath);
+	if(root.IsEmpty() || fullPath.GetLength() <= root.GetLength() || fullPath.Left(root.GetLength()).CompareNoCase(root) != 0)
+		return CString();
+
+	const wchar_t separator = fullPath[root.GetLength()];
+	if(separator != L'\\' && separator != L'/')
+		return CString();
+
+	CString relativePath = fullPath.Mid(root.GetLength() + 1);
+	relativePath.Replace(L'\\', L'/');
+	relativePath.MakeLower();
+	return relativePath;
+}
+
+static DWORD HashScriptRelativePath(const CString& relativePath)
+{
+	DWORD hash = 2166136261u;
+	for(int i = 0; i < relativePath.GetLength(); ++i)
+	{
+		hash ^= static_cast<DWORD>(relativePath[i]);
+		hash *= 16777619u;
+	}
+	return hash;
+}
+
+static CString EncodeScriptPath(const CString& path)
+{
+	CString encoded;
+	for(int i = 0; i < path.GetLength(); ++i)
+	{
+		CString codeUnit;
+		codeUnit.Format(L"%04X", static_cast<unsigned int>(path[i]));
+		encoded += codeUnit;
+	}
+	return encoded;
+}
+
+static bool DecodeScriptPath(const CString& encoded, CString& path)
+{
+	if(encoded.IsEmpty() || encoded.GetLength() % 4 != 0)
+		return false;
+
+	path.Empty();
+	for(int i = 0; i < encoded.GetLength(); i += 4)
+	{
+		const CString codeUnit = encoded.Mid(i, 4);
+		if(codeUnit.SpanIncluding(L"0123456789ABCDEFabcdef").GetLength() != 4)
+			return false;
+		path.AppendChar(static_cast<wchar_t>(wcstoul(codeUnit, NULL, 16)));
+	}
+	return true;
+}
+
+static bool ContainsScriptPath(const std::vector<ScriptCommandId>& ids, const CString& path, int* value = NULL)
+{
+	for(size_t i = 0; i < ids.size(); ++i)
+	{
+		if(ids[i].relativePath == path)
+		{
+			if(value != NULL)
+				*value = ids[i].value;
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool IsScriptCommandIdUsed(const std::vector<ScriptCommandId>& ids, int value)
+{
+	for(size_t i = 0; i < ids.size(); ++i)
+		if(ids[i].value == value)
+			return true;
+	return false;
+}
+
+static std::vector<ScriptCommandId> ParseScriptCommandIds(const CString& serialized)
+{
+	std::vector<ScriptCommandId> ids;
+	int cursor = 0;
+	CString entry;
+	while(!(entry = serialized.Tokenize(L";", cursor)).IsEmpty())
+	{
+		const int delimiter = entry.Find(L':');
+		if(delimiter <= 0)
+			continue;
+
+		const int value = _wtoi(entry.Left(delimiter));
+		CString relativePath;
+		if(value < 1 || value > SCRIPT_COMMAND_COUNT || !DecodeScriptPath(entry.Mid(delimiter + 1), relativePath) ||
+			ContainsScriptPath(ids, relativePath) || IsScriptCommandIdUsed(ids, value))
+			continue;
+
+		ScriptCommandId id = { relativePath, value };
+		ids.push_back(id);
+	}
+	return ids;
+}
+
+static CString SerializeScriptCommandIds(const std::vector<ScriptCommandId>& ids)
+{
+	CString serialized;
+	for(size_t i = 0; i < ids.size(); ++i)
+	{
+		CString entry;
+		entry.Format(L"%d:%s", ids[i].value, static_cast<const wchar_t*>(EncodeScriptPath(ids[i].relativePath)));
+		if(!serialized.IsEmpty())
+			serialized += L";";
+		serialized += entry;
+	}
+	return serialized;
+}
+}
+
 // The detailed ShowSource profile is intentionally diagnostic-only.  It is
 // populated by the internal benchmark (-b) and has no work in the normal UI
 // hot path beyond the disabled branch in Mark().
@@ -1979,6 +2121,7 @@ void CMainFrame::InitPlugins()
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
 	QuickScriptsSort(m_scripts, 0, m_scripts.GetSize() - 1);
 	UpScriptsFolders(m_scripts);
+	AssignScriptCommandIds();
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
 
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
@@ -7480,6 +7623,7 @@ int CMainFrame::GrabScripts(CString path, TCHAR* mask, CString refid)
 						name.Delete(name.GetLength() - 3, 3);
 						script.name = name;
 						script.path = path + fd.cFileName;
+						script.relativePath = NormalizeScriptRelativePath(_Settings.GetScriptsFolder(), script.path);
 
 						CString pictureName(fd.cFileName);
 						pictureName.Delete(pictureName.GetLength() - 3, 3);
@@ -7534,10 +7678,57 @@ int CMainFrame::GrabScripts(CString path, TCHAR* mask, CString refid)
 	 return newid;
 }
 
+void CMainFrame::AssignScriptCommandIds()
+{
+	std::vector<ScriptCommandId> ids = ParseScriptCommandIds(_Settings.GetScriptCommandIds());
+	bool changed = false;
+
+	for(int i = 0; i < m_scripts.GetSize(); ++i)
+	{
+		ScrInfo& script = m_scripts[i];
+		if(script.isFolder)
+		{
+			script.wID = -1;
+			continue;
+		}
+
+		int commandId = 0;
+		if(script.relativePath.IsEmpty())
+		{
+			script.wID = -1;
+			StartupTrace::Event(L"script", L"S120", L"script path is outside Scripts root");
+			continue;
+		}
+
+		if(!ContainsScriptPath(ids, script.relativePath, &commandId))
+		{
+			const int firstCandidate = static_cast<int>(HashScriptRelativePath(script.relativePath) % SCRIPT_COMMAND_COUNT) + 1;
+			for(int attempt = 0; attempt < SCRIPT_COMMAND_COUNT; ++attempt)
+			{
+				const int candidate = ((firstCandidate - 1 + attempt) % SCRIPT_COMMAND_COUNT) + 1;
+				if(!IsScriptCommandIdUsed(ids, candidate))
+				{
+					ScriptCommandId id = { script.relativePath, candidate };
+					ids.push_back(id);
+					commandId = candidate;
+					changed = true;
+					break;
+				}
+			}
+		}
+
+		script.wID = commandId ? commandId : -1;
+		if(script.wID == -1)
+			StartupTrace::Event(L"script", L"S121", L"script command ID capacity exhausted");
+	}
+
+	if(changed)
+		_Settings.SetScriptCommandIds(SerializeScriptCommandIds(ids));
+}
+
 void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray<ScrInfo>& scripts)
 {
 	MENUITEMINFO mi;
-	static int SCRIPT_COMMAND_ID = 1;
 	int menupos = 0;
 
 	for(int i = 0; i < scripts.GetSize(); ++i)
@@ -7559,16 +7750,16 @@ void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray
 			{
 				mi.fMask |= MIIM_SUBMENU | MIIM_ID;
 				mi.hSubMenu = CreateMenu();
-				mi.wID = SCRIPT_COMMAND_ID++;
+				mi.wID = 0;
 				scripts[i].wID = -1;
 				AddScriptsSubMenu(mi.hSubMenu, scripts[i].id, scripts);
 			}
 			else
 			{
+				if(scripts[i].wID < 1)
+					continue;
 				mi.fMask |= MIIM_ID;
-				mi.wID = ID_SCRIPT_BASE + SCRIPT_COMMAND_ID;
-				scripts[i].wID = SCRIPT_COMMAND_ID;
-				SCRIPT_COMMAND_ID++;
+				mi.wID = ID_SCRIPT_BASE + scripts[i].wID;
 
 				InitScriptHotkey(scripts[i]);
 			}
