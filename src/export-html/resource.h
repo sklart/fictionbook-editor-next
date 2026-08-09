@@ -25,12 +25,22 @@
 #define IDS_CUSTOM_SAVE_TOC_DEPTH       119
 #define IDS_OPEN_TEMPLATE_FILTER        120
 #define IDS_UNKNOWN_ERROR                121
+#define IDS_CUSTOM_SAVE_CUSTOM_CSS       122
+#define IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH  123
+#define IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT 124
 #define IDC_BROWSE                      1001
 #define IDC_TEMPLATE                    1002
 #define IDC_DOCINFO                     1003
 #define IDC_TOCDEPTH                    1004
 #define IDC_TEMPLATE_LABEL              1005
 #define IDC_TOC_DEPTH_LABEL             1006
+#define IDC_CUSTOM_CSS                  1007
+#define IDC_BROWSE_CSS                  1008
+#define IDC_CUSTOM_CSS_LABEL            1009
+#define IDC_IMAGE_MAX_WIDTH              1010
+#define IDC_IMAGE_MAX_HEIGHT             1011
+#define IDC_IMAGE_MAX_WIDTH_LABEL        1012
+#define IDC_IMAGE_MAX_HEIGHT_LABEL       1013
 
 // Next default values for new objects
 // 

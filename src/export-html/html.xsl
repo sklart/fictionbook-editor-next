@@ -7,16 +7,22 @@
 
   <X:output method="html" 
     encoding="utf-8"
-    version="4.01"
-    doctype-public="-//W3C//DTD HTML 4.01 Transitional//EN"
-    doctype-system="http://www.w3.org/TR/1999/REC-html401-19991224/loose.dtd"
+    version="5"
     indent="yes"/>
 
   <!-- create <img> elements or not? -->
   <X:param name="saveimages" select="0"/>
+  <!-- Emit FB2 binary images as data: URIs rather than external files. -->
+  <X:param name="embedimages" select="0"/>
   <X:param name="imgprefix" select="''"/>
   <X:param name="includedesc" select="1"/>
   <X:param name="tocdepth" select="1"/>
+  <X:param name="customcss" select="''"/>
+  <X:param name="imagemaxwidth" select="0"/>
+  <X:param name="imagemaxheight" select="0"/>
+
+  <X:key name="binary-by-id" match="F:binary" use="@id"/>
+  <X:key name="note-ref" match="F:a[@type='note' or @F:type='note']" use="@L:href"/>
   
   <!-- note about attributes: this template can be called
        with both qualified and unqualified attributes,
@@ -24,7 +30,11 @@
 
   <X:template match="/">
     <html>
+	<X:if test="/F:FictionBook/F:description/F:title-info/F:lang">
+	  <X:attribute name="lang"><X:value-of select="/F:FictionBook/F:description/F:title-info/F:lang"/></X:attribute>
+	</X:if>
       <head>
+	<meta charset="utf-8"/>
 	<!-- stick in a simple html stylesheet -->
         <style type="text/css">
 	  body { font-family: serif; }
@@ -36,7 +46,8 @@
 	  h5 { font-size: 120%; }
 	  h6 { font-size: 100%; }
 	  p { margin-top: 0pt; margin-bottom: 0.1em; text-indent: 3em; text-align: justify; }
-	  img { border: none; }
+	  img { border: none; max-width: <X:choose><X:when test="$imagemaxwidth &gt; 0"><X:value-of select="$imagemaxwidth"/>px</X:when><X:otherwise>100%</X:otherwise></X:choose>; <X:if test="$imagemaxheight &gt; 0">max-height: <X:value-of select="$imagemaxheight"/>px; </X:if>height: auto; }
+	  .cover { display: block; margin: 0 auto; }
 	  blockquote { margin-left: 1em; margin-right: 1em; color: rgb(228,175,0); }
           li { display: block; }
 	  .epigraph { max-width: 25em; float: right; margin: 0pt; font-size: smaller; }
@@ -47,14 +58,18 @@
 	  .stanza + .stanza { margin-top: 1em; }
 	  .stanza p { text-align: left; text-indent: 0pt; }
 	  .note { position: relative; top: -0.3em; font-size: smaller; text-decoration: none; }
+	  .note-back { margin-left: 0.4em; font-size: smaller; text-decoration: none; }
 	  .annotation { border: solid black 1px; font-size: smaller;
 			margin-left: 2em; margin-right: 2em; padding-left: 0.3em; }
 	  .toclink { text-decoration: none; }
 	  .props { margin-top: 2em; border: none; border-collapse: collapse; }
 	  .props td { border: solid black 1px; vertical-align: top; padding-left: 0.3em; }
+	  .fb2-table { border-collapse: collapse; margin: 1em auto; max-width: 100%; }
+	  .fb2-table td, .fb2-table th { border: solid black 1px; padding: 0.3em; vertical-align: top; }
 	  .propsec { text-align: center; font-weight: bolder; border: none !important }
 	  td p { text-indent: 0pt; }
 	  .center { text-align: center; }
+	  <X:value-of select="$customcss" disable-output-escaping="yes"/>
 	</style>
 	<title>
 		<X:value-of select="/F:FictionBook/F:description/F:title-info/F:book-title"/>
@@ -72,16 +87,24 @@
 	    <X:value-of select="/F:FictionBook/F:description/F:title-info/F:book-title"/>
 	  </X:attribute>
 	</meta>
+	<X:if test="/F:FictionBook/F:description/F:title-info/F:annotation">
+	  <meta name="description">
+	    <X:attribute name="content"><X:value-of select="normalize-space(/F:FictionBook/F:description/F:title-info/F:annotation)"/></X:attribute>
+	  </meta>
+	</X:if>
       </head>
       <body>
         <X:choose>
           <X:when test="string-length(/F:FictionBook/F:description/F:title-info/F:coverpage/F:image/@L:href)">
             <div class="center">
-              <img>
+	      <img class="cover">
                 <X:choose>
                   <X:when test="starts-with(/F:FictionBook/F:description/F:title-info/F:coverpage/F:image/@L:href,'#')">                
                         <X:attribute name="src">
-                          <X:value-of select="concat($imgprefix,substring(/F:FictionBook/F:description/F:title-info/F:coverpage/F:image/@L:href,2))"/>
+                          <X:choose>
+                            <X:when test="$embedimages"><X:value-of select="concat('data:', key('binary-by-id', substring(/F:FictionBook/F:description/F:title-info/F:coverpage/F:image/@L:href,2))/@content-type, ';base64,', translate(key('binary-by-id', substring(/F:FictionBook/F:description/F:title-info/F:coverpage/F:image/@L:href,2)), ' &#x9;&#xA;&#xD;', ''))"/></X:when>
+                            <X:otherwise><X:value-of select="concat($imgprefix,substring(/F:FictionBook/F:description/F:title-info/F:coverpage/F:image/@L:href,2))"/></X:otherwise>
+                          </X:choose>
                         </X:attribute>
                   </X:when>
                   <X:otherwise>
@@ -120,7 +143,7 @@
 	  <!-- annotation -->
 	  <X:apply-templates select="/F:FictionBook/F:description/F:title-info/F:annotation"/>
 	  <!-- description properties -->
-	  <a name="_fbh_description"/>
+	  <a id="_fbh_description" name="_fbh_description"/>
 	  <table class="props">
 	    <X:apply-templates select="/F:FictionBook/F:description/F:title-info"/>
 	    <X:apply-templates select="/F:FictionBook/F:description/F:document-info"/>
@@ -145,17 +168,28 @@
 
   <!-- text sections -->
   <X:template match="F:section">
-    <!-- add an anchor for intra-document links -->
-    <X:call-template name="id"/>
-    <!-- add a anchor for toc -->
-    <X:if test="F:title">
-      <a>
-	<X:attribute name="name">
-	  <X:text>_toc_</X:text><X:value-of select="generate-id()"/>
-	</X:attribute>
-      </a>
-    </X:if>
-    <X:apply-templates/>
+    <section>
+      <!-- add an anchor for intra-document links -->
+      <X:call-template name="id"/>
+      <!-- add a anchor for toc -->
+      <X:if test="F:title">
+        <a>
+	  <X:attribute name="id">
+	    <X:text>_toc_</X:text><X:value-of select="generate-id()"/>
+	  </X:attribute>
+	  <X:attribute name="name">
+	    <X:text>_toc_</X:text><X:value-of select="generate-id()"/>
+	  </X:attribute>
+        </a>
+      </X:if>
+      <X:apply-templates/>
+      <X:if test="(@id or @F:id) and key('note-ref', concat('#', @id | @F:id))">
+        <a class="note-back">
+          <X:attribute name="href"><X:text>#_note_ref_</X:text><X:value-of select="generate-id(key('note-ref', concat('#', @id | @F:id))[1])"/></X:attribute>
+	  <X:text>&#x21A9;</X:text>
+        </a>
+      </X:if>
+    </section>
   </X:template>
 
   <!-- special case to insert table of contents after the first header -->
@@ -209,7 +243,7 @@
   <!-- annotations -->
   <X:template match="F:annotation">
     <div class="annotation">
-      <a name="#_fbh_annotation"/>
+	  <a id="_fbh_annotation" name="_fbh_annotation"/>
       <X:apply-templates/>
     </div>
   </X:template>
@@ -239,6 +273,7 @@
       <X:attribute name="href"><X:value-of select="@L:href"/></X:attribute>
       <X:if test='@type="note" or @F:type="note"'>
 	<X:attribute name="class">note</X:attribute>
+	<X:attribute name="id"><X:text>_note_ref_</X:text><X:value-of select="generate-id()"/></X:attribute>
       </X:if>
       <X:apply-templates/>
     </a>
@@ -253,6 +288,11 @@
     <X:if test="$saveimages">
       <div class="center"><img>
 	<X:choose>
+	  <X:when test="$embedimages and starts-with(@L:href,'#')">
+	    <X:attribute name="src">
+	      <X:value-of select="concat('data:', key('binary-by-id', substring(@L:href,2))/@content-type, ';base64,', translate(key('binary-by-id', substring(@L:href,2)), ' &#x9;&#xA;&#xD;', ''))"/>
+	    </X:attribute>
+	  </X:when>
 	  <X:when test="starts-with(@L:href,'#')">
 	    <X:attribute name="src">
 	      <X:value-of select="concat($imgprefix,substring(@L:href,2))"/>
@@ -271,7 +311,7 @@
   <!-- hyperlink targets -->
   <X:template name="id">
     <X:if test="@id | @F:id">
-      <a><X:attribute name="name"><X:value-of select="@id | @F:id"/></X:attribute></a>
+	  <a><X:attribute name="id"><X:value-of select="@id | @F:id"/></X:attribute><X:attribute name="name"><X:value-of select="@id | @F:id"/></X:attribute></a>
     </X:if>
   </X:template>
 
@@ -322,6 +362,24 @@
     <div class="stanza">
       <X:apply-templates/>
     </div>
+  </X:template>
+
+  <!-- FB2 tables are preserved instead of being swallowed by the fallback rule. -->
+  <X:template match="F:table">
+    <X:call-template name="id"/>
+    <table class="fb2-table"><X:apply-templates/></table>
+  </X:template>
+
+  <X:template match="F:tr">
+    <tr><X:apply-templates/></tr>
+  </X:template>
+
+  <X:template match="F:td | F:th">
+    <X:element name="{local-name()}">
+      <X:if test="@colspan"><X:attribute name="colspan"><X:value-of select="@colspan"/></X:attribute></X:if>
+      <X:if test="@rowspan"><X:attribute name="rowspan"><X:value-of select="@rowspan"/></X:attribute></X:if>
+      <X:apply-templates/>
+    </X:element>
   </X:template>
 
   <X:template match="F:v">

@@ -64,6 +64,10 @@ foreach($file in $files){
     if($generatedText -notmatch 'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS'){
         throw "В generated малых диалогов $($file.Language) нет переключателя невидимых символов FBE Next."
     }
+	$resourceHeader = Get-Content -Raw -LiteralPath (Join-Path (Split-Path -Parent $file.Rc) 'resource.h')
+	if($resourceHeader -notmatch '#define\s+IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS\s+1145'){
+		throw "В resource.h локали $($file.Language) отсутствует идентификатор IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS."
+	}
 }
 Write-Host "Малые DIALOGEX-диалоги FBE прошли проверку."
 Write-Host "  Каталог: $catalogPath"

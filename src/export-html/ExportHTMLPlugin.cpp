@@ -5,6 +5,83 @@
 #include "CustomFileSaveDialog.h"
 #include "RuntimeLocalization.h"
 
+#include <vector>
+#include <regex>
+
+namespace {
+
+bool LoadUtf8TextFile(const CString& filename, CString& text)
+{
+	text.Empty();
+	if (filename.IsEmpty())
+		return true;
+
+	HANDLE file = ::CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	if (file == INVALID_HANDLE_VALUE)
+		return false;
+
+	DWORD sizeHigh = 0;
+	DWORD size = ::GetFileSize(file, &sizeHigh);
+	if (size == INVALID_FILE_SIZE || sizeHigh != 0 || size > 16 * 1024 * 1024) {
+		::CloseHandle(file);
+		::SetLastError(ERROR_FILE_TOO_LARGE);
+		return false;
+	}
+
+	std::vector<char> bytes(size);
+	DWORD read = 0;
+	BOOL ok = size == 0 || ::ReadFile(file, &bytes[0], size, &read, NULL);
+	::CloseHandle(file);
+	if (!ok || read != size)
+		return false;
+
+	DWORD offset = size >= 3 && (unsigned char)bytes[0] == 0xEF &&
+		(unsigned char)bytes[1] == 0xBB && (unsigned char)bytes[2] == 0xBF ? 3 : 0;
+	int sourceLength = static_cast<int>(size - offset);
+	if (sourceLength == 0)
+		return true;
+
+	UINT codePage = CP_UTF8;
+	int length = ::MultiByteToWideChar(codePage, MB_ERR_INVALID_CHARS,
+		&bytes[offset], sourceLength, NULL, 0);
+	if (length == 0) {
+		codePage = CP_ACP;
+		length = ::MultiByteToWideChar(codePage, 0, &bytes[offset], sourceLength, NULL, 0);
+	}
+	if (length == 0)
+		return false;
+
+	wchar_t* buffer = text.GetBuffer(length);
+	if (::MultiByteToWideChar(codePage, 0, &bytes[offset], sourceLength, buffer, length) == 0) {
+		text.ReleaseBuffer(0);
+		return false;
+	}
+	text.ReleaseBuffer(length);
+	return true;
+}
+
+void RemoveServiceMarkers(IXMLDOMDocument2Ptr source)
+{
+	IXMLDOMNodeListPtr textNodes;
+	CheckError(source->selectNodes(bstr_t(L"//text()[contains(., '{')]"), &textNodes));
+	long length = 0;
+	CheckError(textNodes->get_length(&length));
+	const std::wregex marker(L"-?\\{[0-9]+\\}");
+	for (long index = 0; index < length; ++index) {
+		IXMLDOMNodePtr node;
+		CheckError(textNodes->get_item(index, &node));
+		CComBSTR value;
+		CheckError(node->get_text(&value));
+		std::wstring original(value, value.Length());
+		std::wstring cleaned = std::regex_replace(original, marker, L"");
+		if (cleaned != original)
+			CheckError(node->put_text(CComBSTR(cleaned.c_str())));
+	}
+}
+
+}
+
 HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 {
 	InitExportHtmlRuntimeStrings();
@@ -15,6 +92,13 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 	try {
 		// * construct doc pointer
 		IXMLDOMDocument2Ptr	    source(doc);
+		// Work on a private DOM copy: export cleanup must not modify the open book.
+		IXMLDOMNodePtr sourceCopy;
+		CheckError(source->cloneNode(VARIANT_TRUE, &sourceCopy));
+		CheckError(sourceCopy->QueryInterface(IID_PPV_ARGS(&source)));
+		CheckError(source->setProperty(bstr_t(L"SelectionLanguage"), variant_t(L"XPath")));
+		CheckError(source->setProperty(bstr_t(L"SelectionNamespaces"),
+			variant_t(L"xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0'")));
 
 		// * ask the user where he wants his html
 		CString strFilter;
@@ -27,6 +111,14 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		dlg.m_ofn.nFilterIndex = 1;
 		if (dlg.DoModal((HWND)hWnd) != IDOK)
 			return S_FALSE;
+		CString customCss;
+		if (!LoadUtf8TextFile(dlg.m_customCss, customCss)) {
+			strMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, (LPCTSTR)dlg.m_customCss,
+				(LPCTSTR)U::Win32ErrMsg(::GetLastError()));
+			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage,
+				(LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+			return S_FALSE;
+		}
 
 		// * load template
 		IXMLDOMDocument2Ptr	    tdoc(U::CreateDocument(true));
@@ -40,14 +132,23 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		CheckError(tmpl->createProcessor(&proc));
 
 		// * setup input
+		RemoveServiceMarkers(source);
 		CheckError(proc->put_input(variant_t(doc)));
 
 		// * install template parameters
 		CheckError(proc->addParameter(bstr_t(L"includedesc"), variant_t(dlg.m_includedesc), _bstr_t()));
 		CheckError(proc->addParameter(bstr_t(L"tocdepth"), variant_t((long)dlg.m_tocdepth), _bstr_t()));
+		CheckError(proc->addParameter(bstr_t(L"imagemaxwidth"), variant_t((long)dlg.m_imageMaxWidth), _bstr_t()));
+		CheckError(proc->addParameter(bstr_t(L"imagemaxheight"), variant_t((long)dlg.m_imageMaxHeight), _bstr_t()));
+		if (!customCss.IsEmpty())
+			CheckError(proc->addParameter(bstr_t(L"customcss"), variant_t((LPCTSTR)customCss), _bstr_t()));
 
-		bool    fImages = dlg.m_ofn.nFilterIndex <= 2;
+		// 1 = HTML and an adjacent resource folder, 2 = MHT,
+		// 3 = HTML without images, 4 = self-contained HTML with data: URIs.
 		bool    fMIME = dlg.m_ofn.nFilterIndex == 2;
+		bool    fExternalImages = dlg.m_ofn.nFilterIndex == 1;
+		bool    fEmbeddedImages = dlg.m_ofn.nFilterIndex == 4;
+		bool    fImages = fExternalImages || fMIME || fEmbeddedImages;
 
 		CString dfile(dlg.m_szFileName);
 
@@ -66,7 +167,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		if (cp >= 0)
 			dfile.Delete(cp, dfile.GetLength() - cp);
 		dfile += _T("_files");
-		if (fImages) {
+		if (fExternalImages) {
 			// construct a relative path
 			CString	relpath(dfile);
 			cp = relpath.ReverseFind(_T('\\'));
@@ -97,8 +198,11 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			else
 				dfile.Delete(cp, dfile.GetLength() - cp);
 
-			CheckError(proc->addParameter(bstr_t(L"saveimages"), variant_t(true), _bstr_t()));
 		}
+		if (fImages)
+			CheckError(proc->addParameter(bstr_t(L"saveimages"), variant_t(true), _bstr_t()));
+		if (fEmbeddedImages)
+			CheckError(proc->addParameter(bstr_t(L"embedimages"), variant_t(true), _bstr_t()));
 
 		char    boundary[256];
 
@@ -164,7 +268,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		CheckError(proc->transform(&Done));
 
 		// * save images
-		if (fImages) {
+		if (fExternalImages || fMIME) {
 			if (dfile.IsEmpty() || dfile[dfile.GetLength() - 1] != _T('\\'))
 				dfile += _T('\\');
 			IXMLDOMNodeListPtr      bins;

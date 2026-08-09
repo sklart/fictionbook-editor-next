@@ -8,12 +8,15 @@ public:
 	HWND	      m_hDlg;
 	HWND	      m_hToolTip;
 	CString     m_template;
+	CString     m_customCss;
 	CString     m_tooltipTemplate;
 	CString     m_tooltipBrowseTemplate;
 	CString     m_tooltipDocInfo;
 	CString     m_tooltipTocDepth;
 	bool	      m_includedesc;
 	int	      m_tocdepth;
+	int	      m_imageMaxWidth;
+	int	      m_imageMaxHeight;
 
 	CCustomSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
 		LPCTSTR lpszDefExt = NULL,
@@ -22,7 +25,7 @@ public:
 		LPCTSTR lpszFilter = NULL,
 		HWND hWndParent = NULL)
 		: CFileDialogImpl<CCustomSaveDialog>(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, hWndParent),
-		m_hDlg(NULL), m_hToolTip(NULL), m_includedesc(true), m_tocdepth(1)
+		m_hDlg(NULL), m_hToolTip(NULL), m_includedesc(true), m_tocdepth(1), m_imageMaxWidth(0), m_imageMaxHeight(0)
 	{
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_CUSTOMSAVEDLG);
 	}
@@ -33,7 +36,8 @@ public:
 
 	MESSAGE_HANDLER(WM_SIZE, OnSize)
 
-		COMMAND_ID_HANDLER(IDC_BROWSE, OnBrowse);
+	COMMAND_ID_HANDLER(IDC_BROWSE, OnBrowse);
+	COMMAND_ID_HANDLER(IDC_BROWSE_CSS, OnBrowseCss);
 
 	CHAIN_MSG_MAP(CFileDialogImpl<CCustomSaveDialog>)
 	END_MSG_MAP()
@@ -52,16 +56,25 @@ public:
 		// read saved template name
 		m_template = U::QuerySV(_Settings, _T("Template"), U::GetProgDirFile(_T("html.xsl")));
 		SetDlgItemText(IDC_TEMPLATE, m_template);
+		m_customCss = U::QuerySV(_Settings, _T("CustomCss"), _T(""));
+		SetDlgItemText(IDC_CUSTOM_CSS, m_customCss);
 		m_includedesc = U::QueryIV(_Settings, _T("IncludeDesc"), 1) != 0;
 		SendDlgItemMessage(IDC_DOCINFO, BM_SETCHECK,
 			m_includedesc ? BST_CHECKED : BST_UNCHECKED, 0);
 		m_tocdepth = U::QueryIV(_Settings, _T("TOCDepth"), 1);
 		SetDlgItemInt(IDC_TOCDEPTH, m_tocdepth, FALSE);
+		m_imageMaxWidth = U::QueryIV(_Settings, _T("ImageMaxWidth"), 0);
+		m_imageMaxHeight = U::QueryIV(_Settings, _T("ImageMaxHeight"), 0);
+		SetDlgItemInt(IDC_IMAGE_MAX_WIDTH, m_imageMaxWidth, FALSE);
+		SetDlgItemInt(IDC_IMAGE_MAX_HEIGHT, m_imageMaxHeight, FALSE);
 		// Подписи шаблона задано через стабильные ID, чтобы внешний JSON-слой
 		// мог заменить английский layout для всех поддерживаемых языков.
 		SetDlgItemText(IDC_TEMPLATE_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL));
 		SetDlgItemText(IDC_DOCINFO, LoadExportHtmlString(IDS_CUSTOM_SAVE_INCLUDE_DESC));
 		SetDlgItemText(IDC_TOC_DEPTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH));
+		SetDlgItemText(IDC_CUSTOM_CSS_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_CUSTOM_CSS));
+		SetDlgItemText(IDC_IMAGE_MAX_WIDTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH));
+		SetDlgItemText(IDC_IMAGE_MAX_HEIGHT_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT));
 		InitTooltips();
 		return TRUE;
 	}
@@ -101,9 +114,20 @@ public:
 		return 0;
 	}
 
+	LRESULT OnBrowseCss(WORD, WORD, HWND, BOOL&) {
+		CFileDialog dlg(TRUE, _T("css"), NULL,
+			OFN_HIDEREADONLY | OFN_PATHMUSTEXIST,
+			_T("CSS files (*.css)|*.css|All files (*.*)|*.*|"));
+		if (dlg.DoModal(*this) == IDOK)
+			::SetDlgItemText(m_hDlg, IDC_CUSTOM_CSS, dlg.m_szFileName);
+		return 0;
+	}
+
 	BOOL OnFileOK(LPOFNOTIFY on) {
 		m_template = U::GetWindowText(::GetDlgItem(m_hDlg, IDC_TEMPLATE));
 		_Settings.SetStringValue(_T("Template"), m_template);
+		m_customCss = U::GetWindowText(::GetDlgItem(m_hDlg, IDC_CUSTOM_CSS));
+		_Settings.SetStringValue(_T("CustomCss"), m_customCss);
 		m_includedesc = ::SendDlgItemMessage(m_hDlg, IDC_DOCINFO, BM_GETCHECK, 0, 0) == BST_CHECKED;
 		_Settings.SetDWORDValue(_T("IncludeDesc"), m_includedesc);
 		m_tocdepth = ::GetDlgItemInt(m_hDlg, IDC_TOCDEPTH, NULL, FALSE);
@@ -112,6 +136,12 @@ public:
 		if (m_tocdepth>10)
 			m_tocdepth = 10;
 		_Settings.SetDWORDValue(_T("TOCDepth"), m_tocdepth);
+		m_imageMaxWidth = ::GetDlgItemInt(m_hDlg, IDC_IMAGE_MAX_WIDTH, NULL, FALSE);
+		m_imageMaxHeight = ::GetDlgItemInt(m_hDlg, IDC_IMAGE_MAX_HEIGHT, NULL, FALSE);
+		m_imageMaxWidth = min(m_imageMaxWidth, 10000);
+		m_imageMaxHeight = min(m_imageMaxHeight, 10000);
+		_Settings.SetDWORDValue(_T("ImageMaxWidth"), m_imageMaxWidth);
+		_Settings.SetDWORDValue(_T("ImageMaxHeight"), m_imageMaxHeight);
 		return TRUE;
 	}
 

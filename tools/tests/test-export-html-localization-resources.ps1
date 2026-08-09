@@ -43,6 +43,9 @@ foreach ($expectedCall in @(
     "SetDlgItemText(IDC_TEMPLATE_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL))",
     "SetDlgItemText(IDC_DOCINFO, LoadExportHtmlString(IDS_CUSTOM_SAVE_INCLUDE_DESC))",
     "SetDlgItemText(IDC_TOC_DEPTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH))",
+	"SetDlgItemText(IDC_CUSTOM_CSS_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_CUSTOM_CSS))",
+	"SetDlgItemText(IDC_IMAGE_MAX_WIDTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH))",
+	"SetDlgItemText(IDC_IMAGE_MAX_HEIGHT_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT))",
     "LoadExportHtmlString(IDS_OPEN_TEMPLATE_FILTER)"
 )) {
     if ($dialog -notmatch [regex]::Escape($expectedCall)) {
@@ -71,7 +74,10 @@ $requiredResourceIds = @(
     "IDS_CUSTOM_SAVE_INCLUDE_DESC",
     "IDS_CUSTOM_SAVE_TOC_DEPTH",
     "IDS_OPEN_TEMPLATE_FILTER",
-    "IDS_UNKNOWN_ERROR"
+    "IDS_UNKNOWN_ERROR",
+	"IDS_CUSTOM_SAVE_CUSTOM_CSS",
+	"IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH",
+	"IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT"
 )
 
 $requiredLanguageBlocks = @(

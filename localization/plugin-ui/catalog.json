@@ -73,6 +73,41 @@
         "bg-BG": "Дълбочина на съдържанието:"
       }
     },
+    "export_html.dialog.save.custom_css": {
+      "source": "Custom CSS:",
+      "component": "export-html.dialog.save",
+      "resourceId": "IDS_CUSTOM_SAVE_CUSTOM_CSS",
+      "translations": {
+        "en-US": "Custom CSS:",
+        "ru-RU": "Пользовательский CSS:",
+        "uk-UA": "Користувацький CSS:",
+        "de-DE": "Benutzerdefiniertes CSS:",
+        "fr-FR": "CSS personnalisé :",
+        "es-ES": "CSS personalizado:",
+        "it-IT": "CSS personalizzato:",
+        "pl-PL": "Własny CSS:",
+        "pt-PT": "CSS personalizado:",
+        "nl-NL": "Aangepaste CSS:",
+        "cs-CZ": "Vlastní CSS:",
+        "bg-BG": "Потребителски CSS:"
+      }
+    },
+    "export_html.dialog.save.image_max_width": {
+      "source": "Image max. width:",
+      "component": "export-html.dialog.save",
+      "resourceId": "IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH",
+      "translations": {
+        "en-US": "Image max. width:", "ru-RU": "Макс. ширина изображения:", "uk-UA": "Макс. ширина зображення:", "de-DE": "Max. Bildbreite:", "fr-FR": "Largeur max. de l’image :", "es-ES": "Ancho máx. de imagen:", "it-IT": "Larghezza max. immagine:", "pl-PL": "Maks. szerokość obrazu:", "pt-PT": "Largura máx. da imagem:", "nl-NL": "Max. afbeeldingsbreedte:", "cs-CZ": "Max. šířka obrázku:", "bg-BG": "Макс. ширина на изображението:"
+      }
+    },
+    "export_html.dialog.save.image_max_height": {
+      "source": "Max. height:",
+      "component": "export-html.dialog.save",
+      "resourceId": "IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT",
+      "translations": {
+        "en-US": "Max. height:", "ru-RU": "Макс. высота:", "uk-UA": "Макс. висота:", "de-DE": "Max. Bildhöhe:", "fr-FR": "Hauteur max. :", "es-ES": "Alto máx.:", "it-IT": "Altezza max.:", "pl-PL": "Maks. wysokość:", "pt-PT": "Altura máx.:", "nl-NL": "Max. afbeeldingshoogte:", "cs-CZ": "Max. výška:", "bg-BG": "Макс. височина:"
+      }
+    },
     "export_html.dialog.save.template_filter": {
       "source": "XSL Templates (*.xsl;*.xslt)|*.xsl;*.xslt|All files (*.*)|*.*|",
       "component": "export-html.dialog.save",
@@ -283,22 +318,22 @@
       }
     },
     "export_html.runtime.save_file_filter": {
-      "source": "Web Page, complete (*.html;*.htm)|*.htm;*.html|Web Archive, single file (*.mht)|*.mht|Web Page, HTML only (*.html;*.htm)|*.htm;*.html|",
+      "source": "Web Page, complete (*.html;*.htm)|*.htm;*.html|Web Archive, single file (*.mht)|*.mht|Web Page, HTML only (*.html;*.htm)|*.htm;*.html|Self-contained HTML (*.html;*.htm)|*.htm;*.html|",
       "component": "export-html.runtime",
       "resourceId": "IDS_SAVE_FILE_FILTER",
       "translations": {
-        "en-US": "Web Page, complete (*.html;*.htm)|*.htm;*.html|Web Archive, single file (*.mht)|*.mht|Web Page, HTML only (*.html;*.htm)|*.htm;*.html|",
-        "ru-RU": "Веб-страница полностью (*.html;*.htm)|*.htm;*.html|Веб-архив, один файл (*.mht)|*.mht|Веб-страница, только HTML (*.html;*.htm)|*.htm;*.html|",
-        "uk-UA": "Веб-сторінка повністю (*.html;*.htm)|*.htm;*.html|Веб-архів, один файл (*.mht)|*.mht|Веб-сторінка, лише HTML (*.html;*.htm)|*.htm;*.html|",
-        "de-DE": "Webseite, vollständig (*.html;*.htm)|*.htm;*.html|Webarchiv, einzelne Datei (*.mht)|*.mht|Webseite, nur HTML (*.html;*.htm)|*.htm;*.html|",
-        "fr-FR": "Page Web complète (*.html;*.htm)|*.htm;*.html|Archive Web, fichier unique (*.mht)|*.mht|Page Web, HTML seul (*.html;*.htm)|*.htm;*.html|",
-        "es-ES": "Página web completa (*.html;*.htm)|*.htm;*.html|Archivo web, archivo único (*.mht)|*.mht|Página web, solo HTML (*.html;*.htm)|*.htm;*.html|",
-        "it-IT": "Pagina Web completa (*.html;*.htm)|*.htm;*.html|Archivio Web, file singolo (*.mht)|*.mht|Pagina Web, solo HTML (*.html;*.htm)|*.htm;*.html|",
-        "pl-PL": "Strona WWW, kompletna (*.html;*.htm)|*.htm;*.html|Archiwum WWW, pojedynczy plik (*.mht)|*.mht|Strona WWW, tylko HTML (*.html;*.htm)|*.htm;*.html|",
-        "pt-PT": "Página Web completa (*.html;*.htm)|*.htm;*.html|Arquivo Web, ficheiro único (*.mht)|*.mht|Página Web, apenas HTML (*.html;*.htm)|*.htm;*.html|",
-        "nl-NL": "Webpagina, volledig (*.html;*.htm)|*.htm;*.html|Webarchief, enkel bestand (*.mht)|*.mht|Webpagina, alleen HTML (*.html;*.htm)|*.htm;*.html|",
-        "cs-CZ": "Webová stránka, úplná (*.html;*.htm)|*.htm;*.html|Webový archiv, jeden soubor (*.mht)|*.mht|Webová stránka, pouze HTML (*.html;*.htm)|*.htm;*.html|",
-        "bg-BG": "Уеб страница, пълна (*.html;*.htm)|*.htm;*.html|Уеб архив, един файл (*.mht)|*.mht|Уеб страница, само HTML (*.html;*.htm)|*.htm;*.html|"
+        "en-US": "Web Page, complete (*.html;*.htm)|*.htm;*.html|Web Archive, single file (*.mht)|*.mht|Web Page, HTML only (*.html;*.htm)|*.htm;*.html|Self-contained HTML (*.html;*.htm)|*.htm;*.html|",
+        "ru-RU": "Веб-страница полностью (*.html;*.htm)|*.htm;*.html|Веб-архив, один файл (*.mht)|*.mht|Веб-страница, только HTML (*.html;*.htm)|*.htm;*.html|Автономный HTML (*.html;*.htm)|*.htm;*.html|",
+        "uk-UA": "Веб-сторінка повністю (*.html;*.htm)|*.htm;*.html|Веб-архів, один файл (*.mht)|*.mht|Веб-сторінка, лише HTML (*.html;*.htm)|*.htm;*.html|Автономний HTML (*.html;*.htm)|*.htm;*.html|",
+        "de-DE": "Webseite, vollständig (*.html;*.htm)|*.htm;*.html|Webarchiv, einzelne Datei (*.mht)|*.mht|Webseite, nur HTML (*.html;*.htm)|*.htm;*.html|Eigenständiges HTML (*.html;*.htm)|*.htm;*.html|",
+        "fr-FR": "Page Web complète (*.html;*.htm)|*.htm;*.html|Archive Web, fichier unique (*.mht)|*.mht|Page Web, HTML seul (*.html;*.htm)|*.htm;*.html|HTML autonome (*.html;*.htm)|*.htm;*.html|",
+        "es-ES": "Página web completa (*.html;*.htm)|*.htm;*.html|Archivo web, archivo único (*.mht)|*.mht|Página web, solo HTML (*.html;*.htm)|*.htm;*.html|HTML autónomo (*.html;*.htm)|*.htm;*.html|",
+        "it-IT": "Pagina Web completa (*.html;*.htm)|*.htm;*.html|Archivio Web, file singolo (*.mht)|*.mht|Pagina Web, solo HTML (*.html;*.htm)|*.htm;*.html|HTML autonomo (*.html;*.htm)|*.htm;*.html|",
+        "pl-PL": "Strona WWW, kompletna (*.html;*.htm)|*.htm;*.html|Archiwum WWW, pojedynczy plik (*.mht)|*.mht|Strona WWW, tylko HTML (*.html;*.htm)|*.htm;*.html|Samodzielny HTML (*.html;*.htm)|*.htm;*.html|",
+        "pt-PT": "Página Web completa (*.html;*.htm)|*.htm;*.html|Arquivo Web, ficheiro único (*.mht)|*.mht|Página Web, apenas HTML (*.html;*.htm)|*.htm;*.html|HTML autónomo (*.html;*.htm)|*.htm;*.html|",
+        "nl-NL": "Webpagina, volledig (*.html;*.htm)|*.htm;*.html|Webarchief, enkel bestand (*.mht)|*.mht|Webpagina, alleen HTML (*.html;*.htm)|*.htm;*.html|Zelfstandige HTML (*.html;*.htm)|*.htm;*.html|",
+        "cs-CZ": "Webová stránka, úplná (*.html;*.htm)|*.htm;*.html|Webový archiv, jeden soubor (*.mht)|*.mht|Webová stránka, pouze HTML (*.html;*.htm)|*.htm;*.html|Samostatné HTML (*.html;*.htm)|*.htm;*.html|",
+        "bg-BG": "Уеб страница, пълна (*.html;*.htm)|*.htm;*.html|Уеб архив, един файл (*.mht)|*.mht|Уеб страница, само HTML (*.html;*.htm)|*.htm;*.html|Самостоятелен HTML (*.html;*.htm)|*.htm;*.html|"
       }
     },
     "export_html.runtime.xml_parse_error": {

@@ -122,6 +122,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbv-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-localization-resources.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-html-standalone.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-docx-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-epub-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-localization-resources.ps1")

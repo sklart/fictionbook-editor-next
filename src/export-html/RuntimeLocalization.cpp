@@ -33,6 +33,9 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
     { IDS_CUSTOM_SAVE_INCLUDE_DESC, L"export_html.dialog.save.include_description" },
     { IDS_CUSTOM_SAVE_TOC_DEPTH, L"export_html.dialog.save.toc_depth" },
     { IDS_OPEN_TEMPLATE_FILTER, L"export_html.dialog.save.template_filter" },
+	{ IDS_CUSTOM_SAVE_CUSTOM_CSS, L"export_html.dialog.save.custom_css" },
+	{ IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH, L"export_html.dialog.save.image_max_width" },
+	{ IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT, L"export_html.dialog.save.image_max_height" },
     { IDS_UNKNOWN_ERROR, L"export_html.runtime.unknown_error" },
 };
 
