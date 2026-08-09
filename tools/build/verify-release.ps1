@@ -89,6 +89,7 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-source-special-representations.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-allocate-lines.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-full-process-benchmark.ps1")
+& (Join-Path $repoRoot "tools\tests\test-words-ownerdata-stress.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")

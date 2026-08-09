@@ -72,11 +72,8 @@ static int (*g_compare_funcs[])(const void*, const void*) =
 // CSettingsWordsDlg
 CSettingsWordsDlg::CSettingsWordsDlg() : m_sort(0), m_sel_all(false), m_ct(0), m_editidx(-1)
 {
-	unsigned int size = _Settings.m_words.size();
-	for(unsigned int i = 0; i < size; ++i)
-	{
-		m_words.Add(_Settings.m_words[i]);
-	}
+	// Keep edits cancelable without coupling the view to persistent settings.
+	m_words = _Settings.m_words;
 }
 
 LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
@@ -98,7 +95,7 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	header = FbeLoadCString(IDS_SETTINGS_WLIST_WORD);
 	m_list_words.InsertColumn(1, header, LVCFMT_LEFT, wcWidth);
 	
-	m_list_words.SetItemCount(_Settings.m_words.size());
+	m_list_words.SetItemCount(static_cast<int>(m_words.size()));
 
 	m_edt_new = GetDlgItem(IDC_EDIT_NEW);
 	m_chk_all = GetDlgItem(IDC_CHECK_SELALL);
@@ -112,7 +109,10 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	// this unuseful code dramatically slowdown application! must be removed
 //	CreateStatBitmaps();
 
-	qsort(m_words.GetData(), m_words.GetSize(), sizeof(WordsItem), g_compare_funcs[3]);
+	std::sort(m_words.begin(), m_words.end(), [](const WordsItem& left, const WordsItem& right)
+	{
+		return compare_counted_desc(&left, &right) < 0;
+	});
 
 	m_edit = GetDlgItem(IDC_EDIT_LV);
 	m_show_words_excls = GetDlgItem(IDC_CHECK_SHOW_EXCLUSIONS);
@@ -125,7 +125,7 @@ LRESULT CSettingsWordsDlg::OnListDispInfo(int id, NMHDR *hdr, BOOL&)
 {
 	NMLVDISPINFO *ni = (NMLVDISPINFO*)hdr;
 
-	if (ni->item.iItem < 0 || ni->item.iItem >= m_words.GetSize())
+	if (ni->item.iItem < 0 || ni->item.iItem >= static_cast<int>(m_words.size()))
 		return 0;
 
 	WordsItem *w = &m_words[ni->item.iItem];
@@ -134,8 +134,7 @@ LRESULT CSettingsWordsDlg::OnListDispInfo(int id, NMHDR *hdr, BOOL&)
 		{
 			case 0:
 			{
-				w->m_sCount.Format(L"%i", w->m_count);
-				ni->item.pszText = w->m_sCount.GetBuffer();
+				_snwprintf(ni->item.pszText, ni->item.cchTextMax, L"%i", w->m_count);
 			}
 			break;
 			case 1:
@@ -207,7 +206,11 @@ LRESULT CSettingsWordsDlg::OnListSort(int id, NMHDR *hdr, BOOL&)
 	else
 		m_sort = lv->iSubItem + 1;
 
-	qsort(m_words.GetData(), m_words.GetSize(), sizeof(WordsItem), g_compare_funcs[abs(m_sort)*2 - (m_sort < 0 ? 0 : 1)]);
+	const int comparatorIndex = abs(m_sort) * 2 - (m_sort < 0 ? 0 : 1);
+	std::sort(m_words.begin(), m_words.end(), [comparatorIndex](const WordsItem& left, const WordsItem& right)
+	{
+		return g_compare_funcs[comparatorIndex](&left, &right) < 0;
+	});
 
 	m_list_words.InvalidateRect(NULL);
 
@@ -301,8 +304,7 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 
 	if(!ambigous)
 	{
-		unsigned int size = m_words.GetSize();
-		for(unsigned int i = 0; i < size; ++i)
+		for(size_t i = 0; i < m_words.size(); ++i)
 		{
 			if(word.CompareNoCase(m_words[i].m_word) == 0)
 			{
@@ -320,8 +322,11 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 			WordsItem wi(word.MakeLower(), 0);
 			wi.m_prc_idx = m_list_words.GetItemCount() + 1;
 
-			m_words.Add(wi);
-			m_list_words.InsertItem(m_list_words.GetItemCount(), word.MakeLower());
+			m_words.push_back(wi);
+			// In owner-data mode the control owns no per-row items.  Changing the
+			// item count makes the new model row visible on demand.
+			m_list_words.SetItemCount(static_cast<int>(m_words.size()));
+			m_list_words.RedrawItems(static_cast<int>(m_words.size()) - 1, static_cast<int>(m_words.size()) - 1);
 		}
 
 		return true;
@@ -389,18 +394,10 @@ LRESULT CSettingsWordsDlg::OnBnClickedCheckSelall(WORD /*wNotifyCode*/, WORD /*w
 		return 0;
 	}
 
-	if(m_sel_all)
-	{
-		for(int i = 0; i < m_list_words.GetItemCount(); ++i)
-			m_list_words.SetItemState(i, !LVIS_SELECTED, LVIS_SELECTED);
-	}
-	else
-	{
-		for(int i = 0; i < m_list_words.GetItemCount(); ++i)
-			m_list_words.SelectItem(i);
-
+	// -1 applies the state to the complete virtual range in one ListView call.
+	m_list_words.SetItemState(-1, m_sel_all ? 0 : LVIS_SELECTED, LVIS_SELECTED);
+	if(!m_sel_all)
 		::SetFocus(m_list_words);
-	}
 
 	m_sel_all = !m_sel_all;
 
@@ -409,13 +406,27 @@ LRESULT CSettingsWordsDlg::OnBnClickedCheckSelall(WORD /*wNotifyCode*/, WORD /*w
 
 LRESULT CSettingsWordsDlg::OnBnClickedButtonRemovesel(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
-	for(int i = 0; i < m_list_words.GetItemCount(); ++i)
+	std::vector<int> selected;
+	for(int index = m_list_words.GetNextItem(-1, LVNI_SELECTED); index != -1;
+		index = m_list_words.GetNextItem(index, LVNI_SELECTED))
+		selected.push_back(index);
+
+	// Erase the selected rows in one model compaction pass.  This avoids the
+	// quadratic shifting previously caused by deleting every ListView item.
+	if(!selected.empty())
 	{
-		if(m_list_words.GetItemState(i, LVIS_SELECTED) == LVIS_SELECTED)
-		{
-			RemoveWord(i);
-			--i;
-		}
+		std::vector<bool> remove(m_words.size(), false);
+		for(size_t i = 0; i < selected.size(); ++i)
+			remove[selected[i]] = true;
+		std::vector<WordsItem> kept;
+		kept.reserve(m_words.size() - selected.size());
+		for(size_t i = 0; i < m_words.size(); ++i)
+			if(!remove[i])
+				kept.push_back(m_words[i]);
+		m_words.swap(kept);
+		m_list_words.SetItemCount(static_cast<int>(m_words.size()));
+		m_sel_all = false;
+		m_chk_all.SetCheck(BST_UNCHECKED);
 	}
 
 	return 0;
@@ -423,8 +434,10 @@ LRESULT CSettingsWordsDlg::OnBnClickedButtonRemovesel(WORD /*wNotifyCode*/, WORD
 
 void CSettingsWordsDlg::RemoveWord(int index)
 {
-	m_list_words.DeleteItem(index);
-	m_words.RemoveAt(index);
+	if(index < 0 || index >= static_cast<int>(m_words.size()))
+		return;
+	m_words.erase(m_words.begin() + index);
+	m_list_words.SetItemCount(static_cast<int>(m_words.size()));
 }
 
 LRESULT CSettingsWordsDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
@@ -453,9 +466,7 @@ LRESULT CSettingsWordsDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
 		_Settings.SetShowWordsExcls(m_show_words_excls.GetCheck() != 0);
 
 		_Settings.m_words.clear();
-		int n = m_words.GetSize();
-		for(int i = 0; i < n; ++i)
-			_Settings.m_words.push_back(m_words[i]);
+		_Settings.m_words = m_words;
 
 		_Settings.SaveWords();
 	}

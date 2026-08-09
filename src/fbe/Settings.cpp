@@ -2421,11 +2421,6 @@ void CSettings::SetJpegQuality(const DWORD value, bool apply)
 class sortComp { public: bool operator()(void* x, void* y) {
 	return (reinterpret_cast<WordsItem*>(x)->m_word.Compare(reinterpret_cast<WordsItem*>(y)->m_word) < 0); }
 };
-// Predicate for std::unique
-class uniqueComp { public: bool operator()(void* x, void* y) {
-	return (reinterpret_cast<WordsItem*>(x)->m_word.Compare(reinterpret_cast<WordsItem*>(y)->m_word) == 0);	}
-};
-
 //
 void CSettings::LoadWords()
 {
@@ -2435,11 +2430,26 @@ void CSettings::LoadWords()
 	std::vector<void*> objects;
 	ser.Deserialize(&word, objects);
 
-	// changed by SeNS: do it quickly
+	// Deserialization creates one temporary WordsItem per XML node.  Keep only
+	// the deduplicated values in the persistent model and release every
+	// temporary object before returning; large Words.xml files otherwise retain
+	// tens of thousands of unnecessary allocations.
+	m_words.clear();
 	std::sort (objects.begin(), objects.end(), sortComp());
-	objects.erase( std::unique( objects.begin(), objects.end(), uniqueComp()), objects.end() );
-	for(unsigned int i = 0; i < objects.size(); ++i)
-		m_words.push_back(*reinterpret_cast<WordsItem*>(objects[i]));
+	m_words.reserve(objects.size());
+	CString previousWord;
+	bool havePreviousWord = false;
+	for(std::vector<void*>::iterator item = objects.begin(); item != objects.end(); ++item)
+	{
+		WordsItem* loadedWord = reinterpret_cast<WordsItem*>(*item);
+		if(!havePreviousWord || previousWord.Compare(loadedWord->m_word) != 0)
+		{
+			m_words.push_back(*loadedWord);
+			previousWord = loadedWord->m_word;
+			havePreviousWord = true;
+		}
+		word.Destroy(loadedWord);
+	}
 }
 
 void CSettings::SaveWords()

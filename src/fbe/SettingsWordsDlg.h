@@ -2,8 +2,7 @@
 #pragma once
 
 #include "resource.h"
-
-class WordsItem;
+#include "Settings.h"
 
 // CSettingsWordsDlg
 class CSettingsWordsDlg : public CDialogImpl<CSettingsWordsDlg>
@@ -21,7 +20,9 @@ public:
 	DWORD m_ct;
 	int m_editidx;
 
-	CSimpleArray<WordsItem> m_words;
+	// This is the dialog's staged data model.  The owner-data ListView only
+	// asks this vector for visible rows; it never owns a Word item itself.
+	std::vector<WordsItem> m_words;
 
 	CSettingsWordsDlg();
 
@@ -36,7 +37,7 @@ public:
 		COMMAND_HANDLER(IDC_CHECK_SELALL, BN_CLICKED, OnBnClickedCheckSelall)
 		COMMAND_HANDLER(IDC_BUTTON_REMOVESEL, BN_CLICKED, OnBnClickedButtonRemovesel)
 		NOTIFY_HANDLER(IDC_LIST_WORDS, NM_CLICK, OnListClick)
-		NOTIFY_HANDLER(IDC_WLIST, LVN_ITEMCHANGED, OnListChanged)
+		NOTIFY_HANDLER(IDC_LIST_WORDS, LVN_ITEMCHANGED, OnListChanged)
 		NOTIFY_HANDLER(IDC_EDIT_LV, EN_KILLFOCUS, OnEditLVDefocused)
 		COMMAND_ID_HANDLER(IDOK, OnOK)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
