@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include "Fb2SourceStructuralContext.h"
 
 struct Fb2AutocompleteResult
 {
@@ -14,6 +15,7 @@ struct Fb2AutocompleteResult
 class Fb2SourceAutocomplete
 {
 public:
+	Fb2AutocompleteResult Complete(const Fb2SourceStructuralContext& context, int character) const;
 	Fb2AutocompleteResult Complete(const std::string& beforeCaret, int character) const;
 	std::string CompleteIds(const std::string& document) const;
 

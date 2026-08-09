@@ -41,6 +41,7 @@ int main() {
     RequireCandidates(autocomplete, "<image ", ' ', "alt= id= l:href= l:type= title=");
     RequireCandidates(autocomplete, "<a ", ' ', "l:href= l:type= type=");
     RequireCandidates(autocomplete, "<a l:", ':', "href= type=");
+    RequireCandidates(autocomplete, "<image l:", ':', "href= type=");
     RequireCandidates(autocomplete, "<a xlink:", ':', "href= type=");
     Require(autocomplete.Complete("<a l:href=\"#", '#').needsDocumentIds, "l:href ID completion was not requested");
     Require(autocomplete.Complete("<a xlink:href=\"#", '#').needsDocumentIds, "href ID completion was not requested");
@@ -49,6 +50,7 @@ int main() {
     RequireCandidates(autocomplete, "<FictionBook xmlns:foo=\"http://www.w3.org/1999/xlink\"><image foo:", ':', "href= type=");
     Require(autocomplete.Complete("<FictionBook xmlns:foo=\"http://www.w3.org/1999/xlink\"><image foo:href=\"#", '#').needsDocumentIds, "custom XLink prefix ID completion was not requested");
     Require(!autocomplete.Complete("<section id=\"#", '#').needsDocumentIds, "section id must not request document IDs");
+    Require(!autocomplete.Complete("<a href=\"#", '#').needsDocumentIds, "plain href must not request document IDs");
     Require(!autocomplete.Complete("<p style=\"#", '#').needsDocumentIds, "style must not request document IDs");
     Require(!autocomplete.Complete("<binary content-type=\"#", '#').needsDocumentIds, "content-type must not request document IDs");
     const std::string idsFixture =

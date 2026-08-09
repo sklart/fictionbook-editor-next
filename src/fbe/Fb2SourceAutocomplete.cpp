@@ -119,18 +119,17 @@ std::string Fb2SourceAutocomplete::XLinkPrefix(const std::string& text) {
 	return text.substr(begin, end - begin);
 }
 
-Fb2AutocompleteResult Fb2SourceAutocomplete::Complete(const std::string& text, int character) const {
+Fb2AutocompleteResult Fb2SourceAutocomplete::Complete(const Fb2SourceStructuralContext& context, int character) const {
 	Fb2AutocompleteResult result;
-	if (IsSuppressed(text)) return result;
+	if (context.suppressed) return result;
+	const std::string& text = context.localBeforeCaret;
 	if (character == '<') {
-		std::vector<std::string> stack = OpenElements(text.substr(0, text.size() - 1));
-		const Fb2SchemaElementMetadata* parent = stack.empty() ? NULL : FindMetadata(stack.back());
+		const Fb2SchemaElementMetadata* parent = context.parentElement.empty() ? NULL : FindMetadata(context.parentElement);
 		result.candidates = parent ? parent->children : "FictionBook";
 		return result;
 	}
 	if (character == '/' && text.size() >= 2 && text.compare(text.size() - 2, 2, "</") == 0) {
-		std::vector<std::string> stack = OpenElements(text.substr(0, text.size() - 2));
-		if (!stack.empty()) result.candidates = stack.back() + ">";
+		if (!context.closingElement.empty()) result.candidates = context.closingElement + ">";
 		return result;
 	}
 	const std::string tag = CurrentOpenTag(text);
@@ -154,6 +153,21 @@ Fb2AutocompleteResult Fb2SourceAutocomplete::Complete(const std::string& text, i
 	}
 	if (character == '#' && IsCurrentXLinkHrefValue(text)) result.needsDocumentIds = true;
 	return result;
+}
+
+Fb2AutocompleteResult Fb2SourceAutocomplete::Complete(const std::string& text, int character) const {
+	Fb2SourceStructuralContext context;
+	context.localBeforeCaret = text;
+	context.suppressed = IsSuppressed(text);
+	if (!context.suppressed && character == '<' && !text.empty()) {
+		std::vector<std::string> stack = OpenElements(text.substr(0, text.size() - 1));
+		if (!stack.empty()) context.parentElement = stack.back();
+	}
+	if (!context.suppressed && character == '/' && text.size() >= 2 && text.compare(text.size() - 2, 2, "</") == 0) {
+		std::vector<std::string> stack = OpenElements(text.substr(0, text.size() - 2));
+		if (!stack.empty()) context.closingElement = stack.back();
+	}
+	return Complete(context, character);
 }
 
 std::string Fb2SourceAutocomplete::CompleteIds(const std::string& document) const {

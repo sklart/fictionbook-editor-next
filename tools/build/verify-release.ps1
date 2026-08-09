@@ -84,6 +84,7 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-source-updateui-notification.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-scintilla-modern-features.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fb2-source-structural-context.ps1") -CompatibilityTarget Modern
 & (Join-Path $repoRoot "tools\tests\test-fb2-source-autocomplete.ps1") -CompatibilityTarget Modern
 & (Join-Path $repoRoot "tools\tests\test-source-eol-annotations.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-special-representations.ps1")

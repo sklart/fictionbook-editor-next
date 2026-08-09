@@ -33,6 +33,8 @@ ${autocomplete} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\Fb2SourceAutoco
 ${generator} = Get-Content -Raw (Join-Path $repoRoot 'tools\build\generate-fb2-schema-metadata.ps1')
 ${generatedMetadata} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\generated\Fb2SchemaMetadata.h')
 Assert-Contains $mainFrame 'm_fb2_autocomplete\.Complete' 'schema-derived autocomplete integration'
+Assert-Contains $mainFrame 'Fb2SourceStructuralContextResolver' 'chunked structural autocomplete context resolver'
+if ($mainFrame -match 'caret\s*-\s*256') { throw 'Production autocomplete still uses the fixed 256-byte context window.' }
 Assert-Contains $mainFrame 'SCI_AUTOCSHOW' 'Scintilla autocomplete invocation'
 Assert-Contains $mainFrame 'character != .<. && character != ./. && character != . . && character != .:. && character != .#.' 'structural-only autocomplete trigger'
 Assert-Contains $mainFrameHeader 'ShowFb2Autocomplete\(reinterpret_cast<const SCNotification' 'Source character-added autocomplete routing'

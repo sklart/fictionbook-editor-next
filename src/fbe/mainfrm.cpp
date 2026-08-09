@@ -6803,17 +6803,29 @@ void CMainFrame::ShowFb2Autocomplete(int character)
 	if (character != '<' && character != '/' && character != ' ' && character != ':' && character != '#')
 		return;
 
-	const sptr_t caret = m_source.SendMessage(SCI_GETCURRENTPOS);
-	const sptr_t start = max<sptr_t>(0, caret - 256);
-	std::vector<char> context(static_cast<size_t>(caret - start) + 1);
-	Sci_TextRange range = {};
-	range.chrg.cpMin = start;
-	range.chrg.cpMax = caret;
-	range.lpstrText = &context[0];
-	m_source.SendMessage(SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range));
-	const std::string beforeCaret(&context[0]);
+	class ScintillaTextReader : public Fb2SourceTextReader
+	{
+	public:
+		explicit ScintillaTextReader(HWND source) : m_source(source) {}
+		std::size_t Length() const { return static_cast<std::size_t>(::SendMessage(m_source, SCI_GETLENGTH, 0, 0)); }
+		void Read(std::size_t position, std::size_t length, std::string& text) const
+		{
+			text.assign(length, '\0');
+			Sci_TextRange range = {};
+			range.chrg.cpMin = static_cast<sptr_t>(position);
+			range.chrg.cpMax = static_cast<sptr_t>(position + length);
+			range.lpstrText = &text[0];
+			::SendMessage(m_source, SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range));
+			text.resize(strlen(text.c_str()));
+		}
+	private:
+		HWND m_source;
+	};
 
-	Fb2AutocompleteResult result = m_fb2_autocomplete.Complete(beforeCaret, character);
+	const sptr_t caret = m_source.SendMessage(SCI_GETCURRENTPOS);
+	ScintillaTextReader reader(m_source.m_hWnd);
+	Fb2SourceStructuralContextResolver resolver;
+	Fb2AutocompleteResult result = m_fb2_autocomplete.Complete(resolver.Resolve(reader, static_cast<std::size_t>(caret), character), character);
 	if (result.needsDocumentIds)
 	{
 		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
