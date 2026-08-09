@@ -190,6 +190,7 @@ public:
 	CCustomEdit		m_id; // paragraph ID
 	CCustomEdit		m_href; // link's href
 	CWindow			m_source; // source editor
+	WNDPROC			m_source_window_proc;
 	XmlMatchedTagsState m_xml_matched_tags_state;
 	//bool			m_save_sp_mode;
 
@@ -307,7 +308,7 @@ public:
     m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_file_age(0), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
     m_source_selection_transferred(false), m_source_selection_start(0),
-    m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1)
+		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL)
 	// added by SeNS
 	{ 
 		strINS[0] = L'\0';
@@ -410,6 +411,8 @@ public:
 	void	  DefineMarker(int marker, int markerType, COLORREF fore,COLORREF back);
 	void	  SetupSci();
 	void	  ConfigureSourceSpecialCharacterRepresentations();
+	void	  ShowSourceContextMenu(LPARAM screenPosition);
+	static LRESULT CALLBACK SourceEditorWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
   // source folding
   void	  FoldAll();

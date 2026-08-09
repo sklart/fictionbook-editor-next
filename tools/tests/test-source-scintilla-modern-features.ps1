@@ -15,6 +15,9 @@ function Assert-Contains([string]$Text, [string]$Pattern, [string]$Description) 
 
 Assert-Contains $mainFrame 'SCI_SETCOMMANDEVENTS\s*,\s*FALSE' 'disabled legacy Scintilla command events'
 Assert-Contains $mainFrame 'SCI_SETMODEVENTMASK\s*,\s*SC_MOD_CHANGEFOLD' 'fold-only modification event mask'
+Assert-Contains $mainFrame 'SCI_USEPOPUP\s*,\s*SC_POPUP_NEVER' 'disabled English Scintilla popup menu'
+Assert-Contains $mainFrame 'ShowSourceContextMenu' 'localized Source context menu'
+Assert-Contains $mainFrame 'fbe\.context\.cut' 'runtime-localized Source context labels'
 Assert-Contains $mainFrame 'SCI_SETUNDOSELECTIONHISTORY\s*,\s*AU::_ARGS\.disable_undo_selection_history\s*\?\s*0\s*:\s*\r?\n\s*SC_UNDO_SELECTION_HISTORY_ENABLED\s*\|\s*SC_UNDO_SELECTION_HISTORY_SCROLL' 'configurable undo selection and scroll history'
 Assert-Contains $mainFrame 'if\s*\(m_doc->DocRelChanged\(\)\)\s*\{\s*const DWORD nch\s*=\s*::WideCharToMultiByte\(CP_UTF8,0,src,src\.length\(\),\s*NULL,0,NULL,NULL\)' 'UTF-8 size pass only during Source reload'
 Assert-Contains $mainFrame 'lexer\.xml\.allow\.asp"\s*,\s*\(LPARAM\)"0"' 'disabled XML ASP lexer mode'

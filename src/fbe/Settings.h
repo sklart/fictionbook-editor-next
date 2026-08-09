@@ -26,6 +26,9 @@ const DWORD FBE_INTERFACE_LANGUAGE_DUTCH = 0xFBE00A;
 const DWORD FBE_INTERFACE_LANGUAGE_CZECH = 0xFBE00B;
 const DWORD FBE_INTERFACE_LANGUAGE_BULGARIAN = 0xFBE00C;
 
+const DWORD XML_SRC_SPECIAL_CHARS_WORD_LIKE = 0;
+const DWORD XML_SRC_SPECIAL_CHARS_TEXT_LABELS = 1;
+
 /*const int ILANG_ENGLISH = 0;
 const int ILANG_RUSSIAN = 1;*/
 
@@ -528,6 +531,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_xml_src_showEOL;
 	bool		m_xml_src_showSpace;
 	bool		m_xml_src_showSpecialChars;
+	DWORD		m_xml_src_specialCharsStyle;
 
 	bool		m_fast_mode;
 	bool		m_view_status_bar;
@@ -632,6 +636,7 @@ public:
 	bool XmlSrcShowEOL()const;
 	bool XmlSrcShowSpace()const;
 	bool XmlSrcShowSpecialChars()const;
+	DWORD XmlSrcSpecialCharsStyle()const;
 	bool FastMode()const;
 	bool ViewStatusBar()const;
 	bool ViewDocumentTree()const;
@@ -698,6 +703,7 @@ public:
 	void	SetXmlSrcShowEOL(bool eol, bool apply = false);
 	void	SetXmlSrcShowSpace(bool eol, bool apply = false);
 	void	SetXmlSrcShowSpecialChars(bool show, bool apply = false);
+	void	SetXmlSrcSpecialCharsStyle(DWORD style, bool apply = false);
 	void	SetFastMode(bool mode,  bool apply = false);
 	void	SetFont(const CString& font, bool apply = false);
 	void	SetSrcFont(const CString& font, bool apply = false);

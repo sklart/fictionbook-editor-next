@@ -11,6 +11,7 @@
 class CSettingsNextDlg : public CAxDialogImpl<CSettingsNextDlg>
 {
     CComboBox m_source_palette;
+    CComboBox m_special_chars_style;
     CToolTipCtrl m_source_tooltips;
     std::vector<CString> m_source_theme_ids;
     std::vector<CString> m_source_theme_display_names;

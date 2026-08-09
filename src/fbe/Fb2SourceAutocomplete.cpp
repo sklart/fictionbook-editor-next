@@ -30,7 +30,7 @@ bool IsXLinkHrefAttribute(const std::string& text, const std::string& attribute)
 	const std::string::size_type colon = attribute.rfind(':');
 	if (colon == std::string::npos || attribute.substr(colon + 1) != "href") return false;
 	const std::string prefix = attribute.substr(0, colon);
-	if (prefix == "xlink") return true;
+	if (prefix == "l" || prefix == "xlink") return true;
 	const std::string declaration = "xmlns:" + prefix;
 	const std::string::size_type xmlns = text.rfind(declaration);
 	if (xmlns == std::string::npos) return false;
@@ -98,11 +98,22 @@ std::string Fb2SourceAutocomplete::CurrentOpenTag(const std::string& text) {
 }
 
 std::string Fb2SourceAutocomplete::XLinkPrefix(const std::string& text) {
+	const std::string::size_type tagStart = text.rfind('<');
+	if (tagStart != std::string::npos && text.find('>', tagStart) == std::string::npos) {
+		const std::string current = text.substr(tagStart);
+		const char* standardPrefixes[] = { "l", "xlink" };
+		for (size_t i = 0; i < sizeof(standardPrefixes) / sizeof(standardPrefixes[0]); ++i) {
+			const std::string needle = std::string(standardPrefixes[i]) + ":";
+			for (std::string::size_type at = current.find(needle); at != std::string::npos; at = current.find(needle, at + needle.size())) {
+				if (at > 0 && (current[at - 1] == ' ' || current[at - 1] == '\t' || current[at - 1] == '\r' || current[at - 1] == '\n')) return standardPrefixes[i];
+			}
+		}
+	}
 	const std::string uri = "http://www.w3.org/1999/xlink";
 	const std::string::size_type uriAt = text.rfind(uri);
-	if (uriAt == std::string::npos) return "xlink";
+	if (uriAt == std::string::npos) return "l";
 	const std::string::size_type xmlns = text.rfind("xmlns:", uriAt);
-	if (xmlns == std::string::npos || xmlns > uriAt) return "xlink";
+	if (xmlns == std::string::npos || xmlns > uriAt) return "l";
 	const std::string::size_type begin = xmlns + 6;
 	const std::string::size_type end = text.find_first_of("= \t\r\n", begin);
 	return text.substr(begin, end - begin);

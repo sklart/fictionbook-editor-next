@@ -2233,6 +2233,11 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
   // create a source view
   m_source.Create(_T("Scintilla"),m_view,rcDefault,NULL,WS_CHILD|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,0);
+	// Scintilla's built-in popup is English-only. Replace it with the runtime-localized menu below.
+	m_source.SendMessage(SCI_USEPOPUP, SC_POPUP_NEVER);
+	::SetProp(m_source, L"FBE.Next.SourceContextMenuOwner", reinterpret_cast<HANDLE>(this));
+	m_source_window_proc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(m_source, GWLP_WNDPROC,
+		reinterpret_cast<LONG_PTR>(&CMainFrame::SourceEditorWindowProc)));
   m_view.AttachWnd(m_source);
   SetupSci();
   SetSciStyles();
@@ -2441,10 +2446,67 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
+	if(m_source_window_proc != NULL && ::IsWindow(m_source))
+	{
+		::SetWindowLongPtr(m_source, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_source_window_proc));
+		::RemoveProp(m_source, L"FBE.Next.SourceContextMenuOwner");
+		m_source_window_proc = NULL;
+	}
   KillTimer(RECOVERY_TIMER_ID);
   DestroyAcceleratorTable(m_hAccel);
   bHandled=FALSE;
   return 0;
+}
+
+LRESULT CALLBACK CMainFrame::SourceEditorWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	CMainFrame* frame = reinterpret_cast<CMainFrame*>(::GetProp(window, L"FBE.Next.SourceContextMenuOwner"));
+	if(frame != NULL && message == WM_CONTEXTMENU)
+	{
+		frame->ShowSourceContextMenu(lParam);
+		return 0;
+	}
+	return frame != NULL && frame->m_source_window_proc != NULL ?
+		::CallWindowProc(frame->m_source_window_proc, window, message, wParam, lParam) :
+		::DefWindowProc(window, message, wParam, lParam);
+}
+
+void CMainFrame::ShowSourceContextMenu(LPARAM screenPosition)
+{
+	enum SourceContextCommand { SOURCE_CONTEXT_UNDO = 1, SOURCE_CONTEXT_REDO, SOURCE_CONTEXT_CUT,
+		SOURCE_CONTEXT_COPY, SOURCE_CONTEXT_PASTE };
+	CPoint point = CPoint(screenPosition);
+	if(point.x == -1 && point.y == -1)
+	{
+		const sptr_t position = m_source.SendMessage(SCI_GETCURRENTPOS);
+		point.x = m_source.SendMessage(SCI_POINTXFROMPOSITION, 0, position);
+		point.y = m_source.SendMessage(SCI_POINTYFROMPOSITION, 0, position);
+		m_source.ClientToScreen(&point);
+	}
+	CMenu menu;
+	menu.CreatePopupMenu();
+	menu.AppendMenu(MF_STRING | (m_source.SendMessage(SCI_CANUNDO) ? MF_ENABLED : MF_GRAYED), SOURCE_CONTEXT_UNDO,
+		FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.undo", L"Undo"));
+	menu.AppendMenu(MF_STRING | (m_source.SendMessage(SCI_CANREDO) ? MF_ENABLED : MF_GRAYED), SOURCE_CONTEXT_REDO,
+		FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.redo", L"Redo"));
+	menu.AppendMenu(MF_SEPARATOR);
+	const bool hasSelection = m_source.SendMessage(SCI_GETSELECTIONSTART) != m_source.SendMessage(SCI_GETSELECTIONEND);
+	menu.AppendMenu(MF_STRING | (hasSelection ? MF_ENABLED : MF_GRAYED), SOURCE_CONTEXT_CUT,
+		FbeLoadRuntimeStringByKey(L"fbe.context.cut", L"Cut"));
+	menu.AppendMenu(MF_STRING | (hasSelection ? MF_ENABLED : MF_GRAYED), SOURCE_CONTEXT_COPY,
+		FbeLoadRuntimeStringByKey(L"fbe.context.copy", L"Copy"));
+	menu.AppendMenu(MF_STRING | (m_source.SendMessage(SCI_CANPASTE) ? MF_ENABLED : MF_GRAYED), SOURCE_CONTEXT_PASTE,
+		FbeLoadRuntimeStringByKey(L"fbe.context.paste", L"Paste"));
+	const UINT command = menu.TrackPopupMenu(TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON,
+		point.x, point.y, m_hWnd);
+	switch(command)
+	{
+	case SOURCE_CONTEXT_UNDO: m_source.SendMessage(SCI_UNDO); break;
+	case SOURCE_CONTEXT_REDO: m_source.SendMessage(SCI_REDO); break;
+	case SOURCE_CONTEXT_CUT: m_source.SendMessage(SCI_CUT); break;
+	case SOURCE_CONTEXT_COPY: m_source.SendMessage(SCI_COPY); break;
+	case SOURCE_CONTEXT_PASTE: m_source.SendMessage(SCI_PASTE); break;
+	}
 }
 
 LRESULT CMainFrame::OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&)
@@ -6499,8 +6561,8 @@ void CMainFrame::ConfigureSourceSpecialCharacterRepresentations()
 		const char* label;
 	};
 	static const SpecialCharacterRepresentation representations[] = {
-		{ "\xC2\xA0", "NBSP" },
-		{ "\xC2\xAD", "SHY" },
+		{ "\xC2\xA0", "\xC2\xB0" },
+		{ "\xC2\xAD", "\xC2\xAC" },
 		{ "\xE2\x80\x8B", "ZWSP" },
 		{ "\xE2\x80\x8C", "ZWNJ" },
 		{ "\xE2\x80\x8D", "ZWJ" },
@@ -6508,6 +6570,14 @@ void CMainFrame::ConfigureSourceSpecialCharacterRepresentations()
 		{ "\xE2\x81\xA0", "WJ" },
 		{ "\xEF\xBB\xBF", "BOM" }
 	};
+	static const SpecialCharacterRepresentation textLabels[] = {
+		{ "\xC2\xA0", "NBSP" }, { "\xC2\xAD", "SHY" },
+		{ "\xE2\x80\x8B", "ZWSP" }, { "\xE2\x80\x8C", "ZWNJ" },
+		{ "\xE2\x80\x8D", "ZWJ" }, { "\xE2\x80\xAF", "NNBSP" },
+		{ "\xE2\x81\xA0", "WJ" }, { "\xEF\xBB\xBF", "BOM" }
+	};
+	const SpecialCharacterRepresentation* activeRepresentations =
+		_Settings.XmlSrcSpecialCharsStyle() == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ? textLabels : representations;
 
 	for (size_t i = 0; i < _countof(representations); ++i)
 	{
@@ -6515,7 +6585,7 @@ void CMainFrame::ConfigureSourceSpecialCharacterRepresentations()
 		{
 			m_source.SendMessage(SCI_SETREPRESENTATION,
 				reinterpret_cast<WPARAM>(representations[i].character),
-				reinterpret_cast<LPARAM>(representations[i].label));
+				reinterpret_cast<LPARAM>(activeRepresentations[i].label));
 			m_source.SendMessage(SCI_SETREPRESENTATIONAPPEARANCE,
 				reinterpret_cast<WPARAM>(representations[i].character), SC_REPRESENTATION_PLAIN);
 		}

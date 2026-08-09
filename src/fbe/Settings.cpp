@@ -67,6 +67,7 @@ const wchar_t XML_SRC_TAG_HL_KEY[]		= L"XMLSrcTagHL";
 const wchar_t XML_SRC_SHOW_EOL_KEY[]	= L"XMLSrcShowEOL";
 const wchar_t XML_SRC_SHOW_SPACE_KEY[]	= L"XMLSrcShowSpace";
 const wchar_t XML_SRC_SHOW_SPECIAL_CHARS_KEY[] = L"XMLSrcShowSpecialChars";
+const wchar_t XML_SRC_SPECIAL_CHARS_STYLE_KEY[] = L"XMLSrcSpecialCharsStyle";
 const wchar_t FAST_MODE_KEY[]			= L"FastMode";
 const wchar_t FONT_KEY[]				= L"Font";
 const wchar_t SRC_FONT_KEY[]			= L"SrcFont";
@@ -801,6 +802,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(XML_SRC_SHOW_EOL_KEY);
 	properties.push_back(XML_SRC_SHOW_SPACE_KEY);
 	properties.push_back(XML_SRC_SHOW_SPECIAL_CHARS_KEY);
+	properties.push_back(XML_SRC_SPECIAL_CHARS_STYLE_KEY);
 	properties.push_back(FAST_MODE_KEY);
 	properties.push_back(FONT_KEY);
 	properties.push_back(SRC_FONT_KEY);
@@ -936,6 +938,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == XML_SRC_SHOW_SPECIAL_CHARS_KEY)
 	{
 		property = GetStringedProperty(&m_xml_src_showSpecialChars, KEY_BOOL);
+		return true;
+	}
+	else if(sProperty == XML_SRC_SPECIAL_CHARS_STYLE_KEY)
+	{
+		property = GetStringedProperty(&m_xml_src_specialCharsStyle, KEY_INT);
 		return true;
 	}
 	else if(sProperty == FAST_MODE_KEY)
@@ -1219,6 +1226,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == XML_SRC_SHOW_SPECIAL_CHARS_KEY)
 	{
 		m_xml_src_showSpecialChars = StrToBool(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == XML_SRC_SPECIAL_CHARS_STYLE_KEY)
+	{
+		m_xml_src_specialCharsStyle = StrToInt(sValue.GetStringValue()) == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ? XML_SRC_SPECIAL_CHARS_TEXT_LABELS : XML_SRC_SPECIAL_CHARS_WORD_LIKE;
 		return true;
 	}
 	else if(sProperty == FAST_MODE_KEY)
@@ -1731,6 +1743,10 @@ bool CSettings::XmlSrcShowSpecialChars()const
 {
 	return m_xml_src_showSpecialChars;
 }
+DWORD CSettings::XmlSrcSpecialCharsStyle()const
+{
+	return m_xml_src_specialCharsStyle;
+}
 bool CSettings::FastMode()const
 {
 	return m_fast_mode;
@@ -2157,6 +2173,12 @@ void CSettings::SetXmlSrcShowSpecialChars(bool show, bool apply)
 	if(apply)
 		Save();
 }
+void CSettings::SetXmlSrcSpecialCharsStyle(DWORD style, bool apply)
+{
+	m_xml_src_specialCharsStyle = style == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ? XML_SRC_SPECIAL_CHARS_TEXT_LABELS : XML_SRC_SPECIAL_CHARS_WORD_LIKE;
+	if(apply)
+		Save();
+}
 void CSettings::SetFastMode(bool mode,  bool apply)
 {
 	m_fast_mode = mode;
@@ -2471,6 +2493,7 @@ void CSettings::SetDefaults()
 	m_xml_src_showEOL		= false;
 	m_xml_src_showSpace		= false;
 	m_xml_src_showSpecialChars = false;
+	m_xml_src_specialCharsStyle = XML_SRC_SPECIAL_CHARS_WORD_LIKE;
 	m_fast_mode				= false;
 	m_font					= DEFAULT_FONT;
 	m_srcfont				= DEFAULT_SRCFONT;

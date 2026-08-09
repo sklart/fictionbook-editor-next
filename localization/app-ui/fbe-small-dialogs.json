@@ -2373,6 +2373,30 @@
         "bg-BG": "Показвай невидими знаци"
       }
     },
+    "fbe.dialog.idd_setting_next.special_characters_style": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE_LABEL",
+      "translations": {
+        "en-US": "Style:", "ru-RU": "Стиль:", "uk-UA": "Стиль:", "de-DE": "Stil:", "fr-FR": "Style :", "es-ES": "Estilo:", "it-IT": "Stile:", "pl-PL": "Styl:", "pt-PT": "Estilo:", "nl-NL": "Stijl:", "cs-CZ": "Styl:", "bg-BG": "Стил:"
+      }
+    },
+    "fbe.dialog.idd_setting_next.special_characters_style.word_like": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "COMBOBOX",
+      "targetId": "IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE",
+      "translations": {
+        "en-US": "Word-like symbols", "ru-RU": "Символы как в Word", "uk-UA": "Символи як у Word", "de-DE": "Word-ähnliche Symbole", "fr-FR": "Symboles de type Word", "es-ES": "Símbolos como en Word", "it-IT": "Simboli come in Word", "pl-PL": "Symbole jak w Word", "pt-PT": "Símbolos como no Word", "nl-NL": "Symbolen zoals in Word", "cs-CZ": "Symboly jako ve Wordu", "bg-BG": "Символи като в Word"
+      }
+    },
+    "fbe.dialog.idd_setting_next.special_characters_style.text_labels": {
+      "resource": "IDD_SETTING_NEXT",
+      "kind": "COMBOBOX",
+      "targetId": "IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE",
+      "translations": {
+        "en-US": "Text labels", "ru-RU": "Текстовые метки", "uk-UA": "Текстові мітки", "de-DE": "Textbeschriftungen", "fr-FR": "Libellés texte", "es-ES": "Etiquetas de texto", "it-IT": "Etichette di testo", "pl-PL": "Etykiety tekstowe", "pt-PT": "Rótulos de texto", "nl-NL": "Tekstlabels", "cs-CZ": "Textové popisky", "bg-BG": "Текстови етикети"
+      }
+    },
     "fbe.dialog.idd_options.fast_mode": {
       "resource": "IDD_OPTIONS",
       "kind": "CONTROL",

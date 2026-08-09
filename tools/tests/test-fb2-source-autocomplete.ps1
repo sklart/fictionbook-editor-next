@@ -38,11 +38,15 @@ int main() {
     RequireCandidates(autocomplete, "<FictionBook><body></", '/', "body>");
     RequireCandidates(autocomplete, "<section ", ' ', "id= xml:lang=");
     RequireCandidates(autocomplete, "<section id=\"part\" ", ' ', "xml:lang=");
-    RequireCandidates(autocomplete, "<image ", ' ', "alt= id= title= xlink:href= xlink:type=");
-    RequireCandidates(autocomplete, "<a ", ' ', "type= xlink:href= xlink:type=");
+    RequireCandidates(autocomplete, "<image ", ' ', "alt= id= l:href= l:type= title=");
+    RequireCandidates(autocomplete, "<a ", ' ', "l:href= l:type= type=");
+    RequireCandidates(autocomplete, "<a l:", ':', "href= type=");
     RequireCandidates(autocomplete, "<a xlink:", ':', "href= type=");
+    Require(autocomplete.Complete("<a l:href=\"#", '#').needsDocumentIds, "l:href ID completion was not requested");
     Require(autocomplete.Complete("<a xlink:href=\"#", '#').needsDocumentIds, "href ID completion was not requested");
     Require(autocomplete.Complete("<a xlink:href='#", '#').needsDocumentIds, "single-quoted href ID completion was not requested");
+    RequireCandidates(autocomplete, "<FictionBook xmlns:foo=\"http://www.w3.org/1999/xlink\"><image ", ' ', "alt= foo:href= foo:type= id= title=");
+    RequireCandidates(autocomplete, "<FictionBook xmlns:foo=\"http://www.w3.org/1999/xlink\"><image foo:", ':', "href= type=");
     Require(autocomplete.Complete("<FictionBook xmlns:foo=\"http://www.w3.org/1999/xlink\"><image foo:href=\"#", '#').needsDocumentIds, "custom XLink prefix ID completion was not requested");
     Require(!autocomplete.Complete("<section id=\"#", '#').needsDocumentIds, "section id must not request document IDs");
     Require(!autocomplete.Complete("<p style=\"#", '#').needsDocumentIds, "style must not request document IDs");

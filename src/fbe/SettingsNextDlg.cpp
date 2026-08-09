@@ -249,6 +249,14 @@ LRESULT CSettingsNextDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,
 		FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.show_special_characters",
 			L"Show invisible characters"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE_LABEL,
+		FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.special_characters_style", L"Style:"));
+	m_special_chars_style = GetDlgItem(IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE);
+	m_special_chars_style.AddString(FbeLoadRuntimeStringByKey(
+		L"fbe.dialog.idd_setting_next.special_characters_style.word_like", L"Word-like symbols"));
+	m_special_chars_style.AddString(FbeLoadRuntimeStringByKey(
+		L"fbe.dialog.idd_setting_next.special_characters_style.text_labels", L"Text labels"));
+	m_special_chars_style.SetCurSel(static_cast<int>(_Settings.XmlSrcSpecialCharsStyle()));
 	::SendMessage(GetDlgItem(IDC_CREATE_BACKUP_FILE), BM_SETCHECK,
 		_Settings.GetCreateBackupFile() ? BST_CHECKED : BST_UNCHECKED, 0);
 	::SendMessage(GetDlgItem(IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE), BM_SETCHECK,
@@ -395,6 +403,8 @@ LRESULT CSettingsNextDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 	_Settings.SetCreateBackupFile(IsDlgButtonChecked(IDC_CREATE_BACKUP_FILE) == BST_CHECKED);
 	_Settings.SetShowFullPathInWindowTitle(IsDlgButtonChecked(IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE) == BST_CHECKED);
 	_Settings.SetXmlSrcShowSpecialChars(IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED);
+	const int specialCharsStyle = m_special_chars_style.GetCurSel();
+	_Settings.SetXmlSrcSpecialCharsStyle(specialCharsStyle == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ? XML_SRC_SPECIAL_CHARS_TEXT_LABELS : XML_SRC_SPECIAL_CHARS_WORD_LIKE);
 	_Settings.SetXmlSrcThemeId(GetSelectedThemeId(m_source_palette, m_source_theme_ids));
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
