@@ -14,7 +14,7 @@ try {
         $total = [Math]::Max(3, $failures)
         $binaries = [string]::Join('', (0..($total - 1) | ForEach-Object { $value = if($_ -lt $failures) { 'not-base64-!' } else { 'AQID' }; '<binary id="b{0}" content-type="image/png">{1}</binary>' -f $_, $value }))
         $harness = @"
-var messages=[]; var summary=''; var adds=0;
+var messages=[]; var summary=''; var adds=0; var ImagesInfo=[];
 function TraceScript(){} function TraceVerboseOperation(){} function DiagError(){} function FillLists(){}
 function MsgBox(text){messages.push(text);} function apiAddBinary(){adds++;}
 function TraceDiagnosticSummary(code,text){summary=code+';'+text;}

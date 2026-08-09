@@ -13,6 +13,7 @@ var IDNO     = 7;
 
 window.onerror = errorHandler; // document.lvl=0;
 var ImagesInfo = new Array();
+var prevImageShowTimer = null;
 var diagnosticTraceEnabled = false;
 var diagnosticVerboseTraceEnabled = false;
 var diagnosticOperationStage = "J000";
@@ -131,7 +132,29 @@ function apiGetBinary(id)
 }
 
 function OnBinaryChange() {
+ RebuildImagesInfo();
  FillLists();
+}
+
+function RebuildImagesInfo()
+{
+ var binObjects=document.all.binobj.getElementsByTagName("DIV");
+ ImagesInfo.length=0;
+ for(var i=0; i<binObjects.length; ++i)
+ {
+  var binary=binObjects[i];
+  if(binary.all.type.value.search("image") == -1) continue;
+  var dims=window.external.GetImageDimsByData(binary.base64data);
+  if(dims == "") continue;
+  var separator=dims.search("x");
+  if(separator == -1) continue;
+  var imageInfo=new Object();
+  imageInfo.src="fbw-internal:#"+binary.all.id.value;
+  imageInfo.id=binary.all.id.value;
+  imageInfo.width=dims.substring(0, separator);
+  imageInfo.height=dims.substring(separator+1, dims.length);
+  ImagesInfo.push(imageInfo);
+ }
 }
 
 //--------------------------------------
@@ -370,13 +393,23 @@ function ShowPrevImage(source)
 		break;
 	}
 
-	setTimeout('prevImgPanel.style.visibility = "visible"', 500);
+	if(prevImageShowTimer != null) window.clearTimeout(prevImageShowTimer);
+	prevImageShowTimer=window.setTimeout(function() {
+		prevImgPanel.style.visibility = "visible";
+		prevImageShowTimer=null;
+	}, 500);
 }
 
 function HidePrevImage()
 {
 	var prevImgPanel = document.getElementById("prevImgPanel");
 	var prevImg = document.getElementById("prevImg");
+
+	if(prevImageShowTimer != null)
+	{
+		window.clearTimeout(prevImageShowTimer);
+		prevImageShowTimer=null;
+	}
 
 	if(!prevImgPanel || !prevImg) return;
 
@@ -540,10 +573,11 @@ function ShowCoverImage(prntEl,fullImg)
 {
  if (!prntEl) return;
  var list=prntEl.getElementsByTagName("SELECT");
- if (list[0] && list[0].value) 
-  if (fullImg)
-   ShowFullImage("fbw-internal:"+list[0].value);
-   ShowPrevImage("fbw-internal:"+list[0].value);
+ if (!list[0] || !list[0].value) return;
+ if (fullImg)
+  ShowFullImage("fbw-internal:"+list[0].value);
+ else
+  ShowPrevImage("fbw-internal:"+list[0].value);
 }
 
 function TransformXML(xslt, dom)
@@ -915,7 +949,7 @@ function RemoveOuterTags(node)
 function apiCleanUp(className)
 {
 	var divs = document.all.tags("DIV");
-	for(var i=0; i < divs.length; i++)
+	for(var i=divs.length-1; i >= 0; i--)
 	{
 		if (divs[i].className == className)
 			RemoveOuterTags(divs[i]);
@@ -1334,7 +1368,7 @@ function Remove(obj)
   for(var i=0; i<imgs.length; i++)
    if(imgs[i].src==pic_id)
    {
-    imgs[i].src=""; imgs[i].src=pic_id; break; // force image update
+    imgs[i].src=""; imgs[i].src=pic_id; // force image update
    }
 
   // update Cover lists
@@ -1522,7 +1556,7 @@ function MakeTitleInfo(doc,desc,ann,indent)
      Indent(cp,indent+2);
      cp.appendChild(xn);
    }
- if(cp.hasChildNodes)
+ if(cp.hasChildNodes())
  {
    Indent(ti,indent+1); ti.appendChild(cp);
  }
@@ -1638,7 +1672,7 @@ function IsSTBFieldTextExist(sti,desc,doc) {
     if (list.item(i).all.href.value.length>0)
       exist=true;
   }
-  if (cp.hasChildNodes)
+  if (cp.hasChildNodes())
     exist=true;
 
   // lang
@@ -1702,7 +1736,7 @@ function MakeSourceTitleInfo(doc,desc,ann,indent)
 				Indent(cp,indent+2);
 				cp.appendChild(xn);
 			}
-		if (cp.hasChildNodes)
+		if (cp.hasChildNodes())
 		{
 			Indent(sti,indent+1);
 			sti.appendChild(cp);
@@ -1847,6 +1881,7 @@ function GetBinaries(doc)
 function PutBinaries(doc)
 {
  TraceScript("J600", "operation=PutBinaries");
+ ImagesInfo.length=0;
  var failureCount=0; var success=0; var bl=doc.selectNodes("/fb:FictionBook/fb:binary");
  TraceScript("J610", "operation=binary count; count=" + bl.length);
  for(var i=0; i<bl.length; i++)
@@ -1901,7 +1936,7 @@ function GoTo(elem)
  if (!r || !("compareEndPoints" in r)) return;
  r.moveToElementText(elem);
  r.collapse(true);
- if(r.parentElement!==elem && r.move("character",1)==1) r.move("character",-1);
+ if(r.parentElement()!==elem && r.move("character",1)==1) r.move("character",-1);
  r.select();
 }
 //-----------------------------------------------
@@ -2085,7 +2120,7 @@ function IsCode(cp)
 
 function TextIntoHTML(s) {
  if (!s) return "";
- var re0=new RegExp("&");
+ var re0=new RegExp("&","g");
  var re0_="&amp;";
  var re1=new RegExp("<","g");
  var re1_="&lt;";
@@ -2130,9 +2165,6 @@ function AddTitle(cp, check)
 
   var div = document.createElement("DIV");
   div.className = "title";
-
-  var targ = np.tagName;
-  //full = (sel.text == cp.innerText);
 
   var del = false;
 
@@ -2323,7 +2355,7 @@ function InsImage(check, id)
   rng.pasteHTML("<DIV onresizestart='return false' contentEditable='false' class='image' href='#"+id+"'><IMG src='fbw-internal:#"+id+"'></DIV>");
  window.external.EndUndoUnit(document);
 
- return rng.parentElement;
+ return rng.parentElement();
 }
 //-----------------------------------------------
 
@@ -2354,7 +2386,7 @@ function InsInlineImage(check, id)
 
  window.external.EndUndoUnit(document);
 
- return rng.parentElement;
+ return rng.parentElement();
 }
 //-----------------------------------------------
 
@@ -2422,7 +2454,7 @@ function AddEpigraph(cp,check)
   if(txt != "")
   {
     var pwt = document.createElement("P");
-    pwt.innerHTML = txt;
+    pwt.innerText = txt;
     ep.appendChild(pwt);
   }
   else if(pps && pps.length > 0)
@@ -2453,9 +2485,9 @@ function AddEpigraph(cp,check)
 
 	if (pptags.length > 0 && pps.length > 1)
 	{
-          for(pptag in pptags)
+          for(var p=0; p<pptags.length; ++p)
           {
-            if(pptag != upTag)
+            if(pptags[p] != upTag)
             {
               pwt.className = "text-author";
               break;
