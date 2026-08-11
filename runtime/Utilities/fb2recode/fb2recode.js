@@ -168,5 +168,5 @@
     report += "Найдено файлов: "+r.stats.found+"\r\nУже соответствуют: "+r.stats.same+"\r\nПреобразовано: "+r.stats.converted+"\r\nПропущено: "+r.stats.skipped+"\r\nОшибок: "+r.stats.errors+"\r\n"; if(opt.report) { var t=FSO.CreateTextFile(opt.report,true,true); t.Write(report); t.Close(); } if(!opt.quiet) WScript.Echo(report); WScript.Quit(r.stats.errors ? 1 : 0);
   }
   global.FB2Recode = { run:run, processFile:processFile, collectFiles:collectFiles, isCp1251Character:isCp1251Character, normalizeEncoding:normalizeEncoding, usage:usage };
-  if (typeof WScript !== "undefined") cli();
+  if (typeof WScript !== "undefined" && !global.__FB2RECODE_LIBRARY__) cli();
 }(this));
