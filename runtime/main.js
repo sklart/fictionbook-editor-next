@@ -208,11 +208,14 @@ function apiAddBinary(fullpath, id, type, data)
 
 	if(type.search("image") != -1)
 	{
-		var Dims;
+		var Dims = "";
 
 		if(fullpath != "")
 			Dims = window.external.GetImageDimsByPath(fullpath);
-		else
+		// Imported conversions use a logical FB2 filename here, not necessarily
+		// a file that still exists on disk.  Keep the fast path for real files,
+		// but derive dimensions from the just-added data when it cannot be used.
+		if(Dims == "")
 			Dims = window.external.GetImageDimsByData(data);
 
 		if(Dims != "")

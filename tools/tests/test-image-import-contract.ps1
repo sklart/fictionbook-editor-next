@@ -18,6 +18,9 @@ $catalogSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'localization\app
 $catalog = $catalogSource | ConvertFrom-Json
 $nativeHarness = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\image-import-smoke.cpp') -Raw
 $nativeRunner = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\test-image-import-native.ps1') -Raw
+$mainJsSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'runtime\main.js') -Raw
+$apiAddBinarySource = [regex]::Match($mainJsSource, 'function apiAddBinary\([\s\S]*?\r?\n}\r?\n\r?\nfunction GetImageData').Value
+$addImportedBinarySource = [regex]::Match($viewSource, 'HRESULT CFBEView::AddImportedBinary\([\s\S]*?\r?\n}\r?\n\r?\n// images').Value
 
 foreach ($format in @('Jpeg', 'Png', 'Webp', 'Jp2', 'J2k', 'Tiff', 'Bmp', 'Gif', 'Heif')) {
     Assert-True ($importSource -match ('SourceFormat::' + $format)) "Отсутствует поддержка сигнатуры $format."
@@ -50,7 +53,11 @@ Assert-True ($importSource -notmatch 'CreateFile.*TEMP|GetTempPath|dwebp\.exe|op
 Assert-True ($docSource -match 'AddBinaryData') 'Doc должен принимать готовые байты изображения.'
 Assert-True ($viewSource -match 'PrepareDefaultId\(logicalFileName\)') 'ID должен строиться по целевому имени.'
 Assert-True ($viewSource -match 'AddImportedBinary') 'Добавление binary должно использовать общий DOM adapter.'
-Assert-True ($viewSource -match 'body\.Invoke0\(L"OnBinaryChange"\)') 'Новый binary должен пересобирать preview cache и сразу обновлять список изображений и обложек.'
+Assert-True ($apiAddBinarySource -match 'GetImageDimsByPath\(fullpath\)' -and $apiAddBinarySource -match 'if\(Dims == ""\)\s*Dims = window\.external\.GetImageDimsByData\(data\)') 'apiAddBinary должен получать размеры из data, если path отсутствует или не дал результата.'
+Assert-True ($apiAddBinarySource -match 'ImagesInfo\.push\(ImageInfo\)') 'apiAddBinary должен инкрементально добавлять dimensions нового изображения в ImagesInfo.'
+Assert-True ($addImportedBinarySource -notmatch 'body\.Invoke0\(L"OnBinaryChange"\)') 'Добавление нового binary не должно запускать полный rebuild preview cache.'
+Assert-True ($addImportedBinarySource -match 'body\.Invoke0\(L"FillCoverList"\)') 'После добавления binary должны обновляться cover/image lists.'
+Assert-True ($mainJsSource -match 'function OnBinaryChange\(\)\s*\{\s*RebuildImagesInfo\(\);\s*FillLists\(\);\s*\}' -and $mainJsSource -match 'function RebuildImagesInfo\(\)') 'OnBinaryChange должен сохранять полную пересинхронизацию для изменения существующих binary.'
 Assert-True ($viewSource -match 'ImportImageForFb2') 'Вставка изображения должна использовать общий импортёр.'
 Assert-True ($viewSource -match 'body\.Invoke2\(L"InsImage"' -and $viewSource -match 'body\.Invoke2\(L"InsInlineImage"') 'Новый binary должен вставляться существующими путями обычной и inline-картинки.'
 Assert-True ($frameSource -match 'ImportBinary\(fileName') 'Пакетный импорт должен продолжать обработку файлов.'
