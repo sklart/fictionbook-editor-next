@@ -108,6 +108,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $oversizedFixture `
     $singleTiffFixture `
     (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic') `
-    (Join-Path $repoRoot 'tools\tests\fixtures\hdr_cosmos01000_10bit.avif')
+    (Join-Path $repoRoot 'tools\tests\fixtures\sdr_fox_10bit.avif') `
+    (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif')
 if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
 Write-Host 'Native ImageImport smoke-test passed.'

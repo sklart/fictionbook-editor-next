@@ -9,6 +9,7 @@
 #include <webp/mux.h>
 #define OPJ_STATIC
 #include <openjpeg-2.5/openjpeg.h>
+#define LIBHEIF_STATIC_BUILD
 #include <libheif/heif.h>
 
 CAppModule _Module;
@@ -84,6 +85,22 @@ static bool OutputHasColorPixel(const std::vector<BYTE>& bytes)
 	if (bitmap.LockBits(&area, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &locked) != Gdiplus::Ok) return false;
 	bool color = false; for (UINT y = 0; y < bitmap.GetHeight() && !color; ++y) { const BYTE* row = static_cast<const BYTE*>(locked.Scan0) + static_cast<ptrdiff_t>(y) * static_cast<ptrdiff_t>(locked.Stride); for (UINT x = 0; x < bitmap.GetWidth(); ++x) if (abs(int(row[x*4])-int(row[x*4+1])) > 12 || abs(int(row[x*4+1])-int(row[x*4+2])) > 12) { color=true; break; } }
 	bitmap.UnlockBits(&locked); return color;
+}
+
+static bool OutputHasContrast(const std::vector<BYTE>& bytes)
+{
+	HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes.size()); if (!memory) return false;
+	void* raw = GlobalLock(memory); if (!raw) { GlobalFree(memory); return false; }
+	memcpy(raw, bytes.data(), bytes.size()); GlobalUnlock(memory); CComPtr<IStream> stream;
+	if (FAILED(CreateStreamOnHGlobal(memory, TRUE, &stream))) { GlobalFree(memory); return false; }
+	Gdiplus::Image image(stream); if (image.GetLastStatus() != Gdiplus::Ok) return false;
+	Gdiplus::Bitmap bitmap(image.GetWidth(), image.GetHeight(), PixelFormat32bppARGB); Gdiplus::Graphics graphics(&bitmap);
+	if (graphics.DrawImage(&image, 0, 0, image.GetWidth(), image.GetHeight()) != Gdiplus::Ok) return false;
+	Gdiplus::Rect area(0, 0, bitmap.GetWidth(), bitmap.GetHeight()); Gdiplus::BitmapData locked = {};
+	if (bitmap.LockBits(&area, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &locked) != Gdiplus::Ok) return false;
+	BYTE darkest = 255, lightest = 0;
+	for (UINT y = 0; y < bitmap.GetHeight(); ++y) { const BYTE* row = static_cast<const BYTE*>(locked.Scan0) + static_cast<ptrdiff_t>(y) * static_cast<ptrdiff_t>(locked.Stride); for (UINT x = 0; x < bitmap.GetWidth(); ++x) { const BYTE value = static_cast<BYTE>((unsigned(row[x * 4]) + row[x * 4 + 1] + row[x * 4 + 2]) / 3); darkest = min(darkest, value); lightest = max(lightest, value); } }
+	bitmap.UnlockBits(&locked); return lightest - darkest > 48;
 }
 
 static bool TestAnimatedWebpRejection()
@@ -252,6 +269,16 @@ static bool TestHeif10Bit(const wchar_t* path)
 	return heif_image_handle_get_luma_bits_per_pixel(handle.get()) >= 10 && TestHeif(path);
 }
 
+static bool TestTransformedHeif(const wchar_t* path)
+{
+	ImageImportOptions options;
+	ImageImportResult result;
+	CString error;
+	const bool ok = SUCCEEDED(ImportImageForFb2(path, options, result, error)) && result.converted && result.width == 256 && result.height == 512 && OutputHasContrast(result.data);
+	if (!ok) std::wcerr << L"Transformed HEIF: " << result.width << L"x" << result.height << L"; " << error.GetString() << std::endl;
+	return ok;
+}
+
 static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 {
 	ImageImportOptions options;
@@ -312,7 +339,7 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 
 int wmain(int argc, wchar_t** argv)
 {
-	if (argc != 22) return 2;
+	if (argc != 23) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
 
@@ -378,5 +405,6 @@ int wmain(int argc, wchar_t** argv)
 	// The fixture has a 452x462 coded extent and a 451x461 displayed crop.
 	if (!TestHeif(argv[20], 451, 461, true)) return 37;
 	if (!TestHeif10Bit(argv[21])) return 38;
+	if (!TestTransformedHeif(argv[22])) return 39;
 	return 0;
 }
