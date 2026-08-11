@@ -5,7 +5,8 @@
 
 [CmdletBinding()]
 param(
-    [string]$PlatformToolset
+    [string]$PlatformToolset,
+    [string]$OutputDirectory
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +14,12 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
 
 $source = Join-Path $repoRoot 'runtime\Utilities\ArchHandler\archhand.cpp'
-$outputDir = Split-Path -Parent $source
+$outputDir = if ($OutputDirectory) {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
+} else {
+    Join-Path $repoRoot 'out\archhandler\Win32\Release'
+}
+New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 $zipHandler = Join-Path $outputDir 'ZipHandler.exe'
 $rarHandler = Join-Path $outputDir 'RarHandler.exe'
 

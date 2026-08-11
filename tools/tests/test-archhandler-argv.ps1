@@ -13,6 +13,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
 & (Join-Path $repoRoot 'tools\build\build-archhandler.ps1') -PlatformToolset $PlatformToolset
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$handlerDir = Join-Path $repoRoot 'out\archhandler\Win32\Release'
 
 $testDir = Join-Path $repoRoot 'out\tests\archhandler-argv'
 New-Item -ItemType Directory -Force -Path $testDir | Out-Null
@@ -43,7 +44,7 @@ function Invoke-HandlerCase([string]$HandlerName, [string]$Type, [string]$Archiv
     try {
         $env:ARCHHANDLER_TEST_OUTPUT = $report
         $env:ARCHHANDLER_TEST_MODE = '1'
-        & (Join-Path $repoRoot ("runtime\Utilities\ArchHandler\{0}" -f $HandlerName)) --type $Type $Archive
+        & (Join-Path $handlerDir $HandlerName) --type $Type $Archive
         if ($LASTEXITCODE -ne 0) { throw "ArchHandler завершился с кодом $LASTEXITCODE для $Archive" }
         for ($attempt = 0; $attempt -lt 50 -and -not (Test-Path -LiteralPath $report); ++$attempt) { Start-Sleep -Milliseconds 100 }
         if (-not (Test-Path -LiteralPath $report)) { throw "Receiver не получил argv для $Archive" }
