@@ -106,6 +106,7 @@ $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
 & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") @imageImportTestArguments
 & (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") -PlatformToolset $PlatformToolset
+& (Join-Path $repoRoot "tools\tests\test-fb2-check-content-types-base64.ps1")
 if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
 }

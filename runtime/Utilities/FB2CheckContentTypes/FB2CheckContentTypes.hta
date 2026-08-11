@@ -84,25 +84,39 @@ function formatParseError(error, fileName) {
         "Фрагмент: " + error.srcText;
 }
 
-function getBase64Prefix(value, requiredLength) {
-    var result = "", chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    var i, ch;
-    value = String(value || "");
-    for (i = 0; i < value.length && result.length < requiredLength; i++) {
-        ch = value.charAt(i);
-        if (chars.indexOf(ch) >= 0)
-            result += ch;
-        else if (ch != " " && ch != "\t" && ch != "\r" && ch != "\n")
-            throw new Error("Недопустимый символ Base64 в начале данных.");
-    }
-    if (!result.length)
-        throw new Error("Пустой binary.");
-    return result;
+function isBase64Whitespace(ch) {
+    return ch == " " || ch == "\t" || ch == "\r" || ch == "\n";
 }
 
-function decodeBase64Prefix(value, requiredBytes) {
+function validateBase64(value, prefixLength) {
     var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    var encoded = getBase64Prefix(value, Math.ceil(requiredBytes / 3) * 4);
+    var prefix = "", group = "", finished = false, count = 0, i, ch;
+    value = String(value || "");
+    for (i = 0; i < value.length; i++) {
+        ch = value.charAt(i);
+        if (isBase64Whitespace(ch)) continue;
+        if (chars.indexOf(ch) < 0 && ch != "=")
+            throw new Error("Недопустимый символ Base64.");
+        if (finished)
+            throw new Error("Данные Base64 обнаружены после заполнения =.");
+        group += ch;
+        count++;
+        if (prefix.length < prefixLength) prefix += ch;
+        if (group.length == 4) {
+            if (group.charAt(0) == "=" || group.charAt(1) == "=" ||
+                (group.charAt(2) == "=" && group.charAt(3) != "="))
+                throw new Error("Некорректное заполнение Base64.");
+            if (group.charAt(2) == "=" || group.charAt(3) == "=") finished = true;
+            group = "";
+        }
+    }
+    if (!count) throw new Error("Пустой binary.");
+    if (group.length) throw new Error("Неполная группа Base64.");
+    return prefix;
+}
+
+function decodeBase64Prefix(encoded, requiredBytes) {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     var bytes = [], i, a, b, c, d;
     if (encoded.length % 4 != 0)
         throw new Error("Неполная группа Base64 в начале данных.");
@@ -168,7 +182,7 @@ function addActions() {
 
 function fileSelectEvent() {
     var fileName = document.getElementById("f1").value;
-    var started = new Date(), created, xmlDoc, fictionBook, binaries, i, binary, declared, detected, bytes, status;
+    var started = new Date(), created, xmlDoc, fictionBook, binaries, i, binary, declared, detected, bytes, status, base64Valid;
     var matched = 0, mismatched = 0, unknown = 0, damaged = 0;
     clearReport();
     if (!/\.fb2$/i.test(fileName)) {
@@ -197,20 +211,22 @@ function fileSelectEvent() {
     for (i = 0; i < binaries.length; i++) {
         binary = binaries[i];
         declared = normalizeMimeType(binary.getAttribute("content-type"));
+        base64Valid = false;
         try {
-            bytes = decodeBase64Prefix(binary.text, 18);
+            bytes = decodeBase64Prefix(validateBase64(binary.text, Math.ceil(18 / 3) * 4), 18);
+            base64Valid = true;
             detected = detectMimeType(bytes);
-            if (!detected) { status = "Формат не распознан"; unknown++; }
-            else if (!declared) { status = "MIME не указан; обнаружен " + detected; mismatched++; }
-            else if (declared == detected) { status = "Совпадает"; matched++; }
-            else { status = "Не совпадает: обнаружен " + detected; mismatched++; }
+            if (!detected) { status = "Base64: корректен; MIME: формат не распознан"; unknown++; }
+            else if (!declared) { status = "Base64: корректен; MIME: не указан, обнаружен " + detected; mismatched++; }
+            else if (declared == detected) { status = "Base64: корректен; MIME: совпадает"; matched++; }
+            else { status = "Base64: корректен; MIME: не совпадает, обнаружен " + detected; mismatched++; }
         } catch (e) {
             detected = "";
-            status = "Повреждено: " + (e.message || e.description);
+            status = "Base64: повреждено; MIME: не определён (" + (e.message || e.description) + ")";
             damaged++;
         }
-        if (status != "Совпадает" || document.getElementById("showValid").checked)
-            addReportLine("binary " + (i + 1) + "/" + binaries.length + "; id: \"" + binary.getAttribute("id") + "\"; MIME: \"" + declared + "\"; " + status + ".", status == "Совпадает" ? "ok entry" : (detected ? "warning entry" : "error entry"));
+        if (!base64Valid || declared != detected || document.getElementById("showValid").checked)
+            addReportLine("binary " + (i + 1) + "/" + binaries.length + "; id: \"" + binary.getAttribute("id") + "\"; declared MIME: \"" + declared + "\"; detected MIME: \"" + detected + "\"; " + status + ".", base64Valid && declared == detected ? "ok entry" : (detected ? "warning entry" : "error entry"));
     }
     addReportLine("Всего binary: " + binaries.length + ". Совпадает: " + matched + ". Не совпадает: " + mismatched + ". Не распознано: " + unknown + ". Повреждено: " + damaged + ". Время проверки: " + (new Date().getTime() - started.getTime()) + " мс.", "summary");
     addActions();
