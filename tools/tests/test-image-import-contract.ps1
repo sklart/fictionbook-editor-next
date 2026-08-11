@@ -31,7 +31,7 @@ Assert-True ($importSource -match 'flattenTransparentJpeg') 'Принудите�
 Assert-True ($importSource -match 'Color::White') 'Прозрачность при JPEG flatten должна заменяться белым фоном.'
 Assert-True ($importSource -match 'GetFrameCount') 'GIF/TIFF должны проверять число кадров.'
 Assert-True ($importSource -match 'opj_create_decompress') 'JPEG 2000 должен декодироваться через OpenJPEG.'
-Assert-True ($importSource -match 'ComponentByteAt') 'JPEG 2000 sYCC с subsampling должен приводиться к полному RGB-растру.'
+Assert-True ($importSource -match 'ComponentByteAt' -and $importSource -match 'absoluteX' -and $importSource -match 'c\.dx' -and $importSource -match 'c\.x0') 'JPEG 2000 sampling должен учитывать component dx/dy и origin, а не только пропорции raster-size.'
 Assert-True ($importSource -match 'heif_decode_image') 'AVIF/HEIC/HEIF должны декодироваться через libheif.'
 Assert-True ($importSource -match 'heif_check_filetype' -and $importSource -match 'heif_has_compatible_filetype') 'HEIF должен определяться официальным API libheif, включая compatible brands.'
 Assert-True ($importSource -match 'ignore_transformations=0') 'Декодер HEIF должен применять ориентацию контейнера.'

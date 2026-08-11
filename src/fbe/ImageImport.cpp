@@ -186,10 +186,17 @@ BYTE ComponentByte(const opj_image_comp_t& c, size_t offset) { int value=c.data[
 // JPEG 2000 commonly stores Cb/Cr at a lower resolution than Y (sYCC 4:2:0
 // and 4:2:2).  OpenJPEG keeps that sampling geometry in each component rather
 // than upsampling it for callers, so map output pixels back to the component.
-BYTE ComponentByteAt(const opj_image_comp_t& c, UINT x, UINT y, UINT width, UINT height) {
-	const size_t componentX = min(static_cast<size_t>(c.w - 1), static_cast<size_t>(x) * c.w / width);
-	const size_t componentY = min(static_cast<size_t>(c.h - 1), static_cast<size_t>(y) * c.h / height);
-	return ComponentByte(c, componentY * c.w + componentX);
+bool ComponentByteAt(const opj_image_comp_t& c, UINT x, UINT y, OPJ_UINT32 imageX0, OPJ_UINT32 imageY0, BYTE& value) {
+	// Component samples live on their own reference grid.  Mapping by raster
+	// proportions loses component origins and is wrong for non-default dx/dy.
+	const ULONGLONG absoluteX = static_cast<ULONGLONG>(imageX0) + x;
+	const ULONGLONG absoluteY = static_cast<ULONGLONG>(imageY0) + y;
+	if (!c.dx || !c.dy || absoluteX < c.x0 || absoluteY < c.y0) return false;
+	const ULONGLONG componentX = (absoluteX - c.x0) / c.dx;
+	const ULONGLONG componentY = (absoluteY - c.y0) / c.dy;
+	if (componentX >= c.w || componentY >= c.h) return false;
+	value = ComponentByte(c, static_cast<size_t>(componentY * c.w + componentX));
+	return true;
 }
 BYTE ClampByte(int value) { return static_cast<BYTE>(max(0, min(255, value))); }
 HRESULT DecodeJ2k(const std::vector<BYTE>& data, SourceFormat type, const ImageImportOptions& o, ImageImportResult& r, CString& err) {
@@ -202,7 +209,7 @@ HRESULT DecodeJ2k(const std::vector<BYTE>& data, SourceFormat type, const ImageI
 	std::unique_ptr<opj_image_t, void(*)(opj_image_t*)> image(rawImage, opj_image_destroy);
 	if(!ok||!image||image->numcomps<1||image->numcomps>4) { err=ImageMessage(L"fbe.image_import.jp2_invalid", L"Corrupt or unsupported JPEG 2000 image."); return E_FAIL; }
 	UINT w=image->comps[0].w,h=image->comps[0].h; size_t rasterBytes = 0; if(!CheckedRasterSize(w,h,4,rasterBytes)) { err=ImageMessage(L"fbe.image_import.too_large", L"Image is too large."); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); }
-	for(UINT i=0;i<image->numcomps;++i) if(!image->comps[i].data||!image->comps[i].w||!image->comps[i].h||image->comps[i].prec==0||image->comps[i].prec>16) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
+	for(UINT i=0;i<image->numcomps;++i) if(!image->comps[i].data||!image->comps[i].w||!image->comps[i].h||!image->comps[i].dx||!image->comps[i].dy||image->comps[i].prec==0||image->comps[i].prec>16) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
 	if (image->color_space == OPJ_CLRSPC_CMYK) { err=ImageMessage(L"fbe.image_import.jp2_cmyk", L"CMYK JPEG 2000 images are not supported."); return E_NOTIMPL; }
 	const bool unspecifiedGray = image->color_space == OPJ_CLRSPC_UNSPECIFIED && image->numcomps <= 2;
 	if (image->color_space != OPJ_CLRSPC_GRAY && image->color_space != OPJ_CLRSPC_SRGB && image->color_space != OPJ_CLRSPC_SYCC && !unspecifiedGray) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_NOTIMPL; }
@@ -212,7 +219,7 @@ HRESULT DecodeJ2k(const std::vector<BYTE>& data, SourceFormat type, const ImageI
 	if ((color && alphaIndex >= 0 && alphaIndex != 3) || (!color && alphaIndex >= 0 && alphaIndex != 1) || (alphaIndex >= 0 && (image->comps[alphaIndex].w != w || image->comps[alphaIndex].h != h))) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
 	if (!sycc) for (UINT i=0; i<(color ? 3u : 1u); ++i) if (image->comps[i].w != w || image->comps[i].h != h) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
 	r.width=w; r.height=h; r.hasTransparency=false; if (alphaIndex >= 0) for (size_t i=0; i<size_t(w)*h; ++i) if (ComponentByte(image->comps[alphaIndex],i) != 255) { r.hasTransparency=true; break; } bool png=o.outputFormat==ImageOutputFormat::Png || (o.outputFormat==ImageOutputFormat::Auto&&r.hasTransparency); if(o.outputFormat==ImageOutputFormat::Jpeg&&r.hasTransparency&&!o.flattenTransparentJpeg) { err=ImageMessage(L"fbe.image_import.flatten_required", L"This image has transparency and needs confirmation before JPEG conversion."); return E_ABORT; }
-	std::vector<BYTE> pixels(rasterBytes); for(UINT y=0;y<h;++y) for(UINT x=0;x<w;++x) { const size_t i=size_t(y)*w+x; BYTE v=ComponentByteAt(image->comps[0],x,y,w,h); BYTE red=color?ComponentByteAt(image->comps[0],x,y,w,h):v, green=color?ComponentByteAt(image->comps[1],x,y,w,h):v, blue=color?ComponentByteAt(image->comps[2],x,y,w,h):v; if (sycc) { const int y = red, cb = green - 128, cr = blue - 128; red = ClampByte(y + (359 * cr) / 256); green = ClampByte(y - (88 * cb + 183 * cr) / 256); blue = ClampByte(y + (454 * cb) / 256); } BYTE alpha=r.hasTransparency?ComponentByteAt(image->comps[alphaIndex],x,y,w,h):255; pixels[i*4]=blue; pixels[i*4+1]=green; pixels[i*4+2]=red; pixels[i*4+3]=alpha; }
+	std::vector<BYTE> pixels(rasterBytes); for(UINT y=0;y<h;++y) for(UINT x=0;x<w;++x) { const size_t i=size_t(y)*w+x; BYTE red=0, green=0, blue=0, alpha=255; if (!ComponentByteAt(image->comps[0],x,y,image->x0,image->y0,red)) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; } if (color && (!ComponentByteAt(image->comps[1],x,y,image->x0,image->y0,green) || !ComponentByteAt(image->comps[2],x,y,image->x0,image->y0,blue))) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; } if (!color) green=blue=red; if (sycc) { const int luma = red, cb = green - 128, cr = blue - 128; red = ClampByte(luma + (359 * cr) / 256); green = ClampByte(luma - (88 * cb + 183 * cr) / 256); blue = ClampByte(luma + (454 * cb) / 256); } if (r.hasTransparency && !ComponentByteAt(image->comps[alphaIndex],x,y,image->x0,image->y0,alpha)) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; } pixels[i*4]=blue; pixels[i*4+1]=green; pixels[i*4+2]=red; pixels[i*4+3]=alpha; }
 	if (!GetGdiplusSession().Ready()) return E_FAIL;
 	Gdiplus::Bitmap b(w,h,w*4,PixelFormat32bppARGB,pixels.data()); HRESULT hr = SaveBitmap(b,png,o.jpegQuality,r.data,o.flattenTransparentJpeg && !png); if(FAILED(hr)) { err=ImageMessage(hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"fbe.image_import.too_large" : L"fbe.image_import.encode_failed", hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"Image is too large." : L"Could not encode image."); return hr; }
 	r.logicalFileName=TargetName(r.logicalFileName,png); r.mimeType=png?L"image/png":L"image/jpeg"; r.converted=true; return S_OK;
