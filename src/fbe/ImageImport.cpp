@@ -53,7 +53,8 @@ SourceFormat Detect(const std::vector<BYTE>& b) {
 	if (b.size() >= 12 && memcmp(b.data()+4, "ftyp", 4) == 0) {
 		const int length = static_cast<int>(min(b.size(), static_cast<size_t>(INT_MAX)));
 		const heif_filetype_result filetype = heif_check_filetype(b.data(), length);
-		if (filetype == heif_filetype_yes_supported || (filetype == heif_filetype_maybe && heif_has_compatible_filetype(b.data(), length).code == heif_error_Ok)) return SourceFormat::Heif;
+		const bool videoBrand = memcmp(b.data()+8, "isom", 4) == 0 || memcmp(b.data()+8, "mp41", 4) == 0 || memcmp(b.data()+8, "mp42", 4) == 0 || memcmp(b.data()+8, "qt  ", 4) == 0;
+		if (!videoBrand && (filetype == heif_filetype_yes_supported || heif_has_compatible_filetype(b.data(), length).code == heif_error_Ok)) return SourceFormat::Heif;
 	}
 	if (b.size() >= 4 && ((b[0]=='I' && b[1]=='I' && b[2]==42 && b[3]==0) || (b[0]=='M' && b[1]=='M' && b[2]==0 && b[3]==42))) return SourceFormat::Tiff;
 	if (b.size() >= 2 && b[0]=='B' && b[1]=='M') return SourceFormat::Bmp;
