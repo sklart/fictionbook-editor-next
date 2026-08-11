@@ -388,6 +388,15 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 
 int wmain(int argc, wchar_t** argv)
 {
+	if (argc == 4 && wcscmp(argv[1], L"--export") == 0) {
+		ImageImportOptions options; ImageImportResult imported; CString error;
+		if (FAILED(ImportImageForFb2(argv[2], options, imported, error)) || imported.data.empty()) return 40;
+		HANDLE output = CreateFileW(argv[3], GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		DWORD written = 0;
+		const bool ok = output != INVALID_HANDLE_VALUE && WriteFile(output, imported.data.data(), static_cast<DWORD>(imported.data.size()), &written, NULL) && written == imported.data.size();
+		if (output != INVALID_HANDLE_VALUE) CloseHandle(output);
+		return ok ? 0 : 41;
+	}
 	if (argc != 23) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
