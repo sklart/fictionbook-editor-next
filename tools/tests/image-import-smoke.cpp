@@ -45,6 +45,31 @@ static bool HasJpegMagic(const std::vector<BYTE>& bytes)
 	return bytes.size() >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff;
 }
 
+static bool OutputHasTransparentPixel(const std::vector<BYTE>& bytes)
+{
+	HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes.size());
+	if (!memory) return false;
+	void* raw = GlobalLock(memory);
+	if (!raw) { GlobalFree(memory); return false; }
+	memcpy(raw, bytes.data(), bytes.size()); GlobalUnlock(memory);
+	CComPtr<IStream> stream;
+	if (FAILED(CreateStreamOnHGlobal(memory, TRUE, &stream))) { GlobalFree(memory); return false; }
+	Gdiplus::Image image(stream);
+	if (image.GetLastStatus() != Gdiplus::Ok) return false;
+	Gdiplus::Bitmap bitmap(image.GetWidth(), image.GetHeight(), PixelFormat32bppARGB);
+	Gdiplus::Graphics graphics(&bitmap);
+	if (graphics.DrawImage(&image, 0, 0, image.GetWidth(), image.GetHeight()) != Gdiplus::Ok) return false;
+	Gdiplus::Rect area(0, 0, bitmap.GetWidth(), bitmap.GetHeight()); Gdiplus::BitmapData locked = {};
+	if (bitmap.LockBits(&area, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &locked) != Gdiplus::Ok) return false;
+	bool transparent = false;
+	for (UINT y = 0; y < bitmap.GetHeight() && !transparent; ++y) {
+		const BYTE* row = static_cast<const BYTE*>(locked.Scan0) + static_cast<ptrdiff_t>(y) * static_cast<ptrdiff_t>(locked.Stride);
+		for (UINT x = 0; x < bitmap.GetWidth(); ++x) if (row[x * 4 + 3] != 255) { transparent = true; break; }
+	}
+	bitmap.UnlockBits(&locked);
+	return transparent;
+}
+
 static bool TestAnimatedWebpRejection()
 {
 	const BYTE pixels[] = { 0, 0, 255, 255 };
@@ -267,7 +292,7 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestHeif(argv[4])) return 10;
 
 	// Actual alpha, rather than an alpha-channel flag, must select PNG in Auto.
-	if (FAILED(ImportImageForFb2(argv[5], passThrough, result, error)) || !result.converted || !result.hasTransparency || result.mimeType != L"image/png" || !HasPngMagic(result.data)) return 11;
+	if (FAILED(ImportImageForFb2(argv[5], passThrough, result, error)) || !result.converted || !result.hasTransparency || result.mimeType != L"image/png" || !HasPngMagic(result.data) || !OutputHasTransparentPixel(result.data)) return 11;
 	ImageImportOptions forceJpeg;
 	forceJpeg.outputFormat = ImageOutputFormat::Jpeg;
 	if (ImportImageForFb2(argv[5], forceJpeg, result, error) != E_ABORT) return 12;
