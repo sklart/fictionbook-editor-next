@@ -48,6 +48,14 @@ jobs:
         with:
           path: build/hunspell
           key: ${{ runner.os }}-hunspell-release-win32-v143-mt-${{ hashFiles('third_party/hunspell/**', 'tools/build/build-hunspell.ps1') }}
+      - name: Restore image decoder stack cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/aom
+            build/libde265
+            build/libheif
+          key: ${{ runner.os }}-image-decoders-release-win32-v143-${{ hashFiles('third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
       - name: Restore Modern editor runtime cache
         uses: actions/cache@v4
         with:
