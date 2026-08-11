@@ -87,7 +87,9 @@
     else decl = m[0].replace(/\?>$/, " encoding=\"" + displayEncoding(enc) + "\"?>");
     return text.replace(m[0], decl);
   }
-  var CP1251_EXTRA = "€‚ƒ„…†‡ˆ‰Š‹ŒЌŽЏђ‘’“”•–—˜™š›œќžџ ЎўЈ¤Ґ¦§Ё©Є«¬­®Ї°±Ііґµ¶·ё№є»јЅѕї";
+  /* Exact Unicode repertoire of Windows-1251.  Byte 0x98 is undefined and
+     deliberately has no substitute here. */
+  var CP1251_EXTRA = "ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—™љ›њќћџ ЎўЈ¤Ґ¦§Ё©Є«¬­®Ї°±Ііґµ¶·ё№є»јЅѕї";
   function isCp1251Character(ch) {
     var c = ch.charCodeAt(0);
     return c <= 0x7f || (c >= 0x0410 && c <= 0x044f) || CP1251_EXTRA.indexOf(ch) >= 0;
@@ -155,6 +157,6 @@
     r = run(paths,opt,function(s){if(!opt.quiet) WScript.Echo(s);}); for(i=0;i<r.results.length;i++) { x=r.results[i]; report += x.path+"\t"+x.status+(x.message?"\t"+x.stage+": "+x.message:"")+"\r\n"; if(!opt.quiet) WScript.Echo(x.status+": "+x.path+(x.message?" — "+x.stage+": "+x.message:"")); }
     report += "Найдено файлов: "+r.stats.found+"\r\nУже соответствуют: "+r.stats.same+"\r\nПреобразовано: "+r.stats.converted+"\r\nПропущено: "+r.stats.skipped+"\r\nОшибок: "+r.stats.errors+"\r\n"; if(opt.report) { var t=FSO.CreateTextFile(opt.report,true,true); t.Write(report); t.Close(); } if(!opt.quiet) WScript.Echo(report); WScript.Quit(r.stats.errors ? 1 : 0);
   }
-  global.FB2Recode = { run:run, processFile:processFile, collectFiles:collectFiles, normalizeEncoding:normalizeEncoding, usage:usage };
+  global.FB2Recode = { run:run, processFile:processFile, collectFiles:collectFiles, isCp1251Character:isCp1251Character, normalizeEncoding:normalizeEncoding, usage:usage };
   if (typeof WScript !== "undefined") cli();
 }(this));
