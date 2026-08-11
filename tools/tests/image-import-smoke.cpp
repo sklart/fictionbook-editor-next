@@ -9,6 +9,7 @@
 #include <webp/mux.h>
 #define OPJ_STATIC
 #include <openjpeg-2.5/openjpeg.h>
+#include <libheif/heif.h>
 
 CAppModule _Module;
 
@@ -242,6 +243,15 @@ static bool TestHeif(const wchar_t* path, UINT expectedWidth = 0, UINT expectedH
 	return result.converted && (result.mimeType == L"image/jpeg" || result.mimeType == L"image/png") && !result.data.empty() && result.width && result.height && (!expectedWidth || (result.width == expectedWidth && result.height == expectedHeight)) && (!requireColor || OutputHasColorPixel(result.data));
 }
 
+static bool TestHeif10Bit(const wchar_t* path)
+{
+	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free); if (!context) return false;
+	if (heif_context_read_from_file(context.get(), CStringA(path), NULL).code != heif_error_Ok) return false;
+	heif_image_handle* raw = NULL; if (heif_context_get_primary_image_handle(context.get(), &raw).code != heif_error_Ok || !raw) return false;
+	std::unique_ptr<heif_image_handle, void(*)(const heif_image_handle*)> handle(raw, heif_image_handle_release);
+	return heif_image_handle_get_luma_bits_per_pixel(handle.get()) >= 10 && TestHeif(path);
+}
+
 static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 {
 	ImageImportOptions options;
@@ -302,7 +312,7 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 
 int wmain(int argc, wchar_t** argv)
 {
-	if (argc != 21) return 2;
+	if (argc != 22) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
 
@@ -366,5 +376,6 @@ int wmain(int argc, wchar_t** argv)
 	if (ImportImageForFb2(argv[18], passThrough, result, error) != HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE)) return 34;
 	if (FAILED(ImportImageForFb2(argv[19], passThrough, result, error)) || !result.converted || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data) || result.width != 2 || result.height != 2) return 35;
 	if (!TestHeif(argv[20], 0, 0, true)) return 37;
+	if (!TestHeif10Bit(argv[21])) return 38;
 	return 0;
 }

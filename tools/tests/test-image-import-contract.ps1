@@ -86,6 +86,7 @@ Assert-True ($nativeHarness -match 'E_NOTIMPL') 'Native harness должен з�
 Assert-True ($nativeHarness -match 'TestCorruptImages') 'Native harness должен проверять controlled failure повреждённых изображений.'
 Assert-True ($nativeHarness -match 'TestBmffFiletypeClassification') 'Native harness должен отличать HEIF compatible brands от ISO-BMFF video containers.'
 Assert-True ($nativeHarness -match 'OutputHasColorPixel' -and $nativeRunner -match 'rainbow-451x461\.heic') 'Native harness должен проверять сохранение цветных пикселей профильного HEIC fixture.'
+Assert-True ($nativeHarness -match 'TestHeif10Bit' -and $nativeRunner -match 'hdr_cosmos01000_10bit\.avif') 'Native harness должен проверять 10-bit AVIF и конвертацию в 8-bit output.'
 Assert-True ($nativeHarness -match 'argv\[19\].*image/jpeg') 'Native harness должен проверять успешную конвертацию одно-страничного TIFF.'
 Assert-True ($nativeHarness -match 'TestJpeg2000Fixture\(true\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(false\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(true, true\)' -and $nativeHarness -match 'TestJpeg2000SyccSubsampled') 'Native harness должен проверять JP2, raw J2K, alpha JP2 и sYCC subsampling.'
 
