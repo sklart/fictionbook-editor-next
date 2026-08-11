@@ -2976,8 +2976,28 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			rows += row;
 		}
 	};
+	auto appendTableSnapshot = [&](const char* phase)
+	{
+		const sptr_t sourceLength = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> source(static_cast<size_t>(sourceLength) + 1);
+		m_source.SendMessage(SCI_GETTEXT, sourceLength + 1, reinterpret_cast<LPARAM>(source.data()));
+		auto countTag = [&](const char* tag) -> long
+		{
+			long count = 0;
+			for (const char* position = source.data(); (position = strstr(position, tag)) != NULL; ++position)
+				++count;
+			return count;
+		};
+		CStringA row;
+		row.Format("%s:table=%ld;tr=%ld;td=%ld;th=%ld\t%I64u\t0\t0\t0\t0\t%Id\t%Id\t%d\r\n",
+			phase, countTag("<table"), countTag("<tr"), countTag("<td"), countTag("<th"),
+			::GetTickCount64() - start, sourceLength, m_source.SendMessage(SCI_GETLINECOUNT),
+			AU::_ARGS.disable_undo_selection_history ? 0 : 1);
+		rows += row;
+	};
 	ShowView(SOURCE);
 	appendShowSourceProfile("first");
+	appendTableSnapshot("table-source-first");
 	for (int repeat = 1; repeat <= 5; ++repeat)
 	{
 		ShowView(BODY);
@@ -3090,6 +3110,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 					static_cast<unsigned __int64>(memory.reservedBytes), sourceBytes, sourceLines,
 					AU::_ARGS.disable_undo_selection_history ? 0 : 1);
 				rows += row;
+				appendTableSnapshot("table-body-source");
 			}
 		}
 	}
