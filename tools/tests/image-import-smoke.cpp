@@ -70,6 +70,21 @@ static bool OutputHasTransparentPixel(const std::vector<BYTE>& bytes)
 	return transparent;
 }
 
+static bool OutputHasColorPixel(const std::vector<BYTE>& bytes)
+{
+	HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes.size()); if (!memory) return false;
+	void* raw = GlobalLock(memory); if (!raw) { GlobalFree(memory); return false; }
+	memcpy(raw, bytes.data(), bytes.size()); GlobalUnlock(memory); CComPtr<IStream> stream;
+	if (FAILED(CreateStreamOnHGlobal(memory, TRUE, &stream))) { GlobalFree(memory); return false; }
+	Gdiplus::Image image(stream); if (image.GetLastStatus() != Gdiplus::Ok) return false;
+	Gdiplus::Bitmap bitmap(image.GetWidth(), image.GetHeight(), PixelFormat32bppARGB); Gdiplus::Graphics graphics(&bitmap);
+	if (graphics.DrawImage(&image, 0, 0, image.GetWidth(), image.GetHeight()) != Gdiplus::Ok) return false;
+	Gdiplus::Rect area(0, 0, bitmap.GetWidth(), bitmap.GetHeight()); Gdiplus::BitmapData locked = {};
+	if (bitmap.LockBits(&area, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &locked) != Gdiplus::Ok) return false;
+	bool color = false; for (UINT y = 0; y < bitmap.GetHeight() && !color; ++y) { const BYTE* row = static_cast<const BYTE*>(locked.Scan0) + static_cast<ptrdiff_t>(y) * static_cast<ptrdiff_t>(locked.Stride); for (UINT x = 0; x < bitmap.GetWidth(); ++x) if (abs(int(row[x*4])-int(row[x*4+1])) > 12 || abs(int(row[x*4+1])-int(row[x*4+2])) > 12) { color=true; break; } }
+	bitmap.UnlockBits(&locked); return color;
+}
+
 static bool TestAnimatedWebpRejection()
 {
 	const BYTE pixels[] = { 0, 0, 255, 255 };
@@ -218,13 +233,13 @@ static bool TestBmffFiletypeClassification()
 	return true;
 }
 
-static bool TestHeif(const wchar_t* path, UINT expectedWidth = 0, UINT expectedHeight = 0)
+static bool TestHeif(const wchar_t* path, UINT expectedWidth = 0, UINT expectedHeight = 0, bool requireColor = false)
 {
 	ImageImportOptions options;
 	ImageImportResult result;
 	CString error;
 	if (FAILED(ImportImageForFb2(path, options, result, error))) { std::wcerr << error.GetString() << std::endl; return false; }
-	return result.converted && (result.mimeType == L"image/jpeg" || result.mimeType == L"image/png") && !result.data.empty() && result.width && result.height && (!expectedWidth || (result.width == expectedWidth && result.height == expectedHeight));
+	return result.converted && (result.mimeType == L"image/jpeg" || result.mimeType == L"image/png") && !result.data.empty() && result.width && result.height && (!expectedWidth || (result.width == expectedWidth && result.height == expectedHeight)) && (!requireColor || OutputHasColorPixel(result.data));
 }
 
 static bool TestFb2BinaryRoundTrip(const wchar_t* path)
@@ -287,7 +302,7 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 
 int wmain(int argc, wchar_t** argv)
 {
-	if (argc != 20) return 2;
+	if (argc != 21) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
 
@@ -350,5 +365,6 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true) || !TestJpeg2000SyccSubsampled()) return 33;
 	if (ImportImageForFb2(argv[18], passThrough, result, error) != HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE)) return 34;
 	if (FAILED(ImportImageForFb2(argv[19], passThrough, result, error)) || !result.converted || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data) || result.width != 2 || result.height != 2) return 35;
+	if (!TestHeif(argv[20], 0, 0, true)) return 37;
 	return 0;
 }

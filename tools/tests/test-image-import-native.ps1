@@ -106,6 +106,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $animatedGifFixture `
     $jpegPassThroughFixture `
     $oversizedFixture `
-    $singleTiffFixture
+    $singleTiffFixture `
+    (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic')
 if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
 Write-Host 'Native ImageImport smoke-test passed.'
