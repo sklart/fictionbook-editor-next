@@ -375,7 +375,8 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true) || !TestJpeg2000SyccSubsampled()) return 33;
 	if (ImportImageForFb2(argv[18], passThrough, result, error) != HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE)) return 34;
 	if (FAILED(ImportImageForFb2(argv[19], passThrough, result, error)) || !result.converted || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data) || result.width != 2 || result.height != 2) return 35;
-	if (!TestHeif(argv[20], 0, 0, true)) return 37;
+	// The fixture has a 452x462 coded extent and a 451x461 displayed crop.
+	if (!TestHeif(argv[20], 451, 461, true)) return 37;
 	if (!TestHeif10Bit(argv[21])) return 38;
 	return 0;
 }
