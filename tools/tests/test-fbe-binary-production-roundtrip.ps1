@@ -8,6 +8,17 @@ param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
+$schemaPath = Join-Path $PSScriptRoot '..\..\runtime\FictionBook.xsd'
+function Assert-Fb2Schema([string]$Path) {
+    $cache = New-Object -ComObject Msxml2.XMLSchemaCache.6.0
+    $cache.add('http://www.gribuser.ru/xml/fictionbook/2.0', $schemaPath)
+    $document = New-Object -ComObject Msxml2.DOMDocument.6.0
+    $document.async = $false
+    if (-not $document.load($Path)) { throw "MSXML не прочитал сохранённый FB2: $($document.parseError.reason)" }
+    $document.schemas = $cache
+    $validation = $document.validate()
+    if ($validation.errorCode -ne 0) { throw "FictionBook.xsd validation failed: $($validation.reason)" }
+}
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-binary-roundtrip-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
 $fixture = Join-Path $directory 'binary.fb2'
@@ -28,6 +39,7 @@ try {
 
     $xmlText = Get-Content -LiteralPath $fixture -Raw
     if ($xmlText -match 'dt:dt|urn:schemas-microsoft-com:datatypes') { throw 'Production Save записал MSXML datatype metadata.' }
+    Assert-Fb2Schema $fixture
     [xml]$xml = $xmlText
     $namespaces = [Xml.XmlNamespaceManager]::new($xml.NameTable)
     $namespaces.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')

@@ -11,6 +11,17 @@ param(
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
+$schemaPath = Join-Path $PSScriptRoot '..\..\runtime\FictionBook.xsd'
+function Assert-Fb2Schema([string]$Path) {
+    $cache = New-Object -ComObject Msxml2.XMLSchemaCache.6.0
+    $cache.add('http://www.gribuser.ru/xml/fictionbook/2.0', $schemaPath)
+    $document = New-Object -ComObject Msxml2.DOMDocument.6.0
+    $document.async = $false
+    if (-not $document.load($Path)) { throw "MSXML не прочитал сохранённый FB2: $($document.parseError.reason)" }
+    $document.schemas = $cache
+    $validation = $document.validate()
+    if ($validation.errorCode -ne 0) { throw "FictionBook.xsd validation failed: $($validation.reason)" }
+}
 
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-roundtrip-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
@@ -39,6 +50,7 @@ try {
     }
 
     [xml]$saved = Get-Content -LiteralPath $fixture -Raw
+    Assert-Fb2Schema $fixture
     $namespaces = [Xml.XmlNamespaceManager]::new($saved.NameTable)
     $namespaces.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
     $table = $saved.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:table[@id="table-id"]', $namespaces)
@@ -50,6 +62,8 @@ try {
     $reopen = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reopenReport, $fixture) -PassThru
     if (-not $reopen.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopen.Id -Force; throw 'FBE не завершил повторное открытие таблицы.' }
     if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал отчёт повторного открытия таблицы.' }
+    $reopenRows = @(Import-Csv -LiteralPath $reopenReport -Delimiter "`t" | Where-Object { $_.phase -like 'table-*' })
+    if ($reopenRows.Count -lt 1 -or ($reopenRows | Where-Object { $_.phase -notmatch 'table=1;tr=2;td=4;th=1' })) { throw 'Повторное открытие изменило структуру таблицы.' }
     Write-Host "Production table Save -> reopen round-trip passed ($($tableRows.Count) snapshots)."
 }
 finally {
