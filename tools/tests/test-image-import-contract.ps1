@@ -48,5 +48,6 @@ foreach ($key in @('fbe.image_import.read_failed', 'fbe.image_import.heif_decode
 }
 Assert-True ($nativeHarness -match 'TestFb2BinaryRoundTrip') 'Native harness должен проверять FB2 save/reopen round-trip.'
 Assert-True ($nativeHarness -match 'E_NOTIMPL') 'Native harness должен закреплять controlled rejection неподдерживаемых последовательностей.'
+Assert-True ($nativeHarness -match 'TestCorruptImages') 'Native harness должен проверять controlled failure повреждённых изображений.'
 
 Write-Host 'Контракт импорта изображений проверен.'

@@ -99,6 +99,33 @@ static bool TestTransparentWebp()
 	return ok;
 }
 
+static bool TestCorruptImages()
+{
+	static const BYTE jpeg[] = { 0xff, 0xd8, 0xff };
+	static const BYTE png[] = { 0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a };
+	static const BYTE webp[] = { 'R', 'I', 'F', 'F', 4, 0, 0, 0, 'W', 'E', 'B', 'P' };
+	static const BYTE jp2[] = { 0, 0, 0, 12, 'j', 'P', ' ', ' ', 0x0d, 0x0a, 0x87, 0x0a };
+	static const BYTE j2k[] = { 0xff, 0x4f, 0xff, 0x51 };
+	static const BYTE tiff[] = { 'I', 'I', 42, 0 };
+	static const BYTE bmp[] = { 'B', 'M' };
+	static const BYTE gif[] = { 'G', 'I', 'F', '8', '9', 'a' };
+	static const BYTE avif[] = { 0, 0, 0, 16, 'f', 't', 'y', 'p', 'a', 'v', 'i', 'f', 0, 0, 0, 0 };
+	static const BYTE heif[] = { 0, 0, 0, 16, 'f', 't', 'y', 'p', 'h', 'e', 'i', 'c', 0, 0, 0, 0 };
+	struct Fixture { const BYTE* bytes; size_t size; } fixtures[] = {
+		{ jpeg, sizeof(jpeg) }, { png, sizeof(png) }, { webp, sizeof(webp) }, { jp2, sizeof(jp2) }, { j2k, sizeof(j2k) },
+		{ tiff, sizeof(tiff) }, { bmp, sizeof(bmp) }, { gif, sizeof(gif) }, { avif, sizeof(avif) }, { heif, sizeof(heif) }
+	};
+	for (const Fixture& fixture : fixtures) {
+		wchar_t temporaryPath[MAX_PATH] = {};
+		if (!GetTempPathW(_countof(temporaryPath), temporaryPath) || !GetTempFileNameW(temporaryPath, L"fbe", 0, temporaryPath)) return false;
+		std::ofstream stream(temporaryPath, std::ios::binary); stream.write(reinterpret_cast<const char*>(fixture.bytes), static_cast<std::streamsize>(fixture.size)); stream.close();
+		ImageImportOptions options; ImageImportResult result; CString error;
+		const HRESULT hr = ImportImageForFb2(temporaryPath, options, result, error); DeleteFileW(temporaryPath);
+		if (SUCCEEDED(hr) || !result.data.empty()) return false;
+	}
+	return true;
+}
+
 static bool TestHeif(const wchar_t* path, UINT expectedWidth = 0, UINT expectedHeight = 0)
 {
 	ImageImportOptions options;
@@ -223,5 +250,6 @@ int wmain(int argc, wchar_t** argv)
 	std::vector<BYTE> jpegPassThrough;
 	if (!ReadFile(argv[17], jpegPassThrough) || FAILED(ImportImageForFb2(argv[17], passThrough, result, error)) || result.converted || result.mimeType != L"image/jpeg" || result.data != jpegPassThrough || result.logicalFileName.CompareNoCase(L"original.jpeg") != 0) return 29;
 	if (!TestTransparentWebp()) return 30;
+	if (!TestCorruptImages()) return 31;
 	return 0;
 }
