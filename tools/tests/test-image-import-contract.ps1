@@ -55,6 +55,8 @@ Assert-True ($viewSource -match 'PrepareDefaultId\(logicalFileName\)') 'ID до�
 Assert-True ($viewSource -match 'AddImportedBinary') 'Добавление binary должно использовать общий DOM adapter.'
 Assert-True ($apiAddBinarySource -match 'GetImageDimsByPath\(fullpath\)' -and $apiAddBinarySource -match 'if\(Dims == ""\)\s*Dims = window\.external\.GetImageDimsByData\(data\)') 'apiAddBinary должен получать размеры из data, если path отсутствует или не дал результата.'
 Assert-True ($apiAddBinarySource -match 'ImagesInfo\.push\(ImageInfo\)') 'apiAddBinary должен инкрементально добавлять dimensions нового изображения в ImagesInfo.'
+Assert-True ($addImportedBinarySource -notmatch 'V_BSTR\(&args\[3\]\)\s*=\s*logicalFileName') 'AddImportedBinary не должен передавать logical filename как filesystem path.'
+Assert-True ($addImportedBinarySource -match 'V_BSTR\(&args\[3\]\)\s*=\s*::SysAllocString\(L""\)') 'AddImportedBinary должен передавать apiAddBinary пустой source path, чтобы размеры определялись по binary data.'
 Assert-True ($addImportedBinarySource -notmatch 'body\.Invoke0\(L"OnBinaryChange"\)') 'Добавление нового binary не должно запускать полный rebuild preview cache.'
 Assert-True ($addImportedBinarySource -match 'body\.Invoke0\(L"FillCoverList"\)') 'После добавления binary должны обновляться cover/image lists.'
 Assert-True ($mainJsSource -match 'function OnBinaryChange\(\)\s*\{\s*RebuildImagesInfo\(\);\s*FillLists\(\);\s*\}' -and $mainJsSource -match 'function RebuildImagesInfo\(\)') 'OnBinaryChange должен сохранять полную пересинхронизацию для изменения существующих binary.'

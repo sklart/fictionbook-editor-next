@@ -4731,7 +4731,11 @@ HRESULT CFBEView::AddImportedBinary(const BYTE* bytes, size_t size, const CStrin
 	V_VT(&args[1]) = VT_BSTR;
 	V_BSTR(&args[2]) = PrepareDefaultId(logicalFileName);
 	V_VT(&args[2]) = VT_BSTR;
-	V_BSTR(&args[3]) = logicalFileName.AllocSysString();
+	// apiAddBinary's first argument is a real filesystem path, not the FB2
+	// binary name.  Converted imports only have the latter, so force dimension
+	// discovery from the bytes rather than accidentally resolving a same-named
+	// file in the process working directory.
+	V_BSTR(&args[3]) = ::SysAllocString(L"");
 	V_VT(&args[3]) = VT_BSTR;
 	CComDispatchDriver body(Script());
 	_variant_t localId;
