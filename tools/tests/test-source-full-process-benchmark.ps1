@@ -12,10 +12,11 @@ function Assert-Contains([string]$Text, [string]$Pattern, [string]$Description) 
     if ($Text -notmatch $Pattern) { throw "Missing $Description." }
 }
 
-Assert-Contains $argsSource 'xgetopt\(_ARGV,_T\("ducb:"\)' 'benchmark command-line switches'
+Assert-Contains $argsSource 'xgetopt\(_ARGV,_T\("ducb:s"\)' 'benchmark command-line switches'
 Assert-Contains $argsSource "case _T\('b'\)" 'benchmark report path switch'
 Assert-Contains $argsSource "case _T\('u'\)" 'undo selection history switch'
 Assert-Contains $argsSource "case _T\('c'\)" 'Body-to-Source cycle switch'
+Assert-Contains $argsSource "case _T\('s'\)" 'test-mode automatic Save switch'
 Assert-Contains $mainFrame 'GetProcessMemoryInfo' 'full-process private/working-set measurement'
 Assert-Contains $mainFrame 'VirtualQuery' 'full-process committed/reserved measurement'
 Assert-Contains $mainFrame 'source-styled-wrap-word' 'styled Source checkpoint'
