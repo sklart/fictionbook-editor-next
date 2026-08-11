@@ -1345,35 +1345,44 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   // Keep the save transaction fail-closed if normalization or serialization
   // loses a native visual table.  User edits happen before this transaction,
   // so comparing only its input and output cannot reject a deliberate delete.
-  const auto CountNativeVisualTables = [](MSHTML::IHTMLElementPtr root) -> long {
-    if (!root) return 0;
+  struct TableSnapshot { long tables; long rows; long td; long th; };
+  const auto SnapshotNativeTables = [](MSHTML::IHTMLElementPtr root) -> TableSnapshot {
+    TableSnapshot result = {};
+    if (!root) return result;
     MSHTML::IHTMLElementCollectionPtr tables(MSHTML::IHTMLElement2Ptr(root)->getElementsByTagName(L"TABLE"));
-    if (!tables) return 0;
-    long count = 0;
+    if (!tables) return result;
     for (long index = 0; index < tables->length; ++index)
     {
       MSHTML::IHTMLElementPtr table(tables->item(_variant_t(index), _variant_t()));
       if (table && U::scmp(table->className, L"table") == 0)
-        ++count;
+      {
+        ++result.tables;
+        result.rows += MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR")->length;
+        result.td += MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TD")->length;
+        result.th += MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TH")->length;
+      }
     }
-    return count;
+    return result;
   };
 
-  const auto CountSerializedTables = [](MSXML2::IXMLDOMDocument2Ptr document) -> long {
-    if (!document) return 0;
-    MSXML2::IXMLDOMNodeListPtr tables(document->selectNodes(
-      _bstr_t(L"/fb:FictionBook/fb:body//fb:table")));
-    return tables ? tables->length : 0;
+  const auto SnapshotSerializedTables = [](MSXML2::IXMLDOMDocument2Ptr document) -> TableSnapshot {
+    TableSnapshot result = {};
+    if (!document) return result;
+    result.tables = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table"))->length;
+    result.rows = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr"))->length;
+    result.td = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr/fb:td"))->length;
+    result.th = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr/fb:th"))->length;
+    return result;
   };
 
-  const long tablesBeforeNormalize = CountNativeVisualTables(m_body.Document()->body);
+  const TableSnapshot tablesBeforeNormalize = SnapshotNativeTables(m_body.Document()->body);
 
   // normalize body first
   _EDMnr.CleanUpAll();
    m_body.Normalize(m_body.Document()->body);
 
-  const long tablesAfterNormalize = CountNativeVisualTables(m_body.Document()->body);
-  if (tablesAfterNormalize < tablesBeforeNormalize)
+  const TableSnapshot tablesAfterNormalize = SnapshotNativeTables(m_body.Document()->body);
+  if (memcmp(&tablesBeforeNormalize, &tablesAfterNormalize, sizeof(TableSnapshot)) != 0)
   {
     StartupTrace::HResult(L"document", L"D224", E_FAIL, L"native table lost during Normalize");
     _com_issue_error(E_FAIL);
@@ -1440,7 +1449,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   // fetch body elements
   GetBodies(fbw_body,ndoc);
 
-  if (CountSerializedTables(ndoc) < tablesAfterNormalize)
+  const TableSnapshot serializedTables = SnapshotSerializedTables(ndoc);
+  if (memcmp(&tablesAfterNormalize, &serializedTables, sizeof(TableSnapshot)) != 0)
   {
     StartupTrace::HResult(L"document", L"D225", E_FAIL, L"native table lost during CreateDOM");
     _com_issue_error(E_FAIL);
