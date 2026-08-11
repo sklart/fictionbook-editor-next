@@ -400,6 +400,11 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 		return 1;
 	}
 	StartupTrace::Event(L"startup", L"S192", L"main frame created");
+	// WM_POSTCREATE may start the unattended benchmark, which closes the
+	// window when it is done.  Queue it only after CreateEx has returned:
+	// processing it from a nested message loop during WM_CREATE invalidates
+	// the HWND and makes the otherwise successful batch run exit with 1.
+	wndMain.PostMessage(AU::WM_POSTCREATE);
 
 	WINDOWPLACEMENT wpl;
 	if(_Settings.GetWindowPosition(wpl))

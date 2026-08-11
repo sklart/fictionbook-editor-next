@@ -2504,10 +2504,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     UISetCheck(id,style & RBBS_HIDDEN ? FALSE : TRUE);
   }
 
-  // delay resizing
-  PostMessage(AU::WM_POSTCREATE);
-
-  // register object for message filtering and idle updates
+	// register object for message filtering and idle updates
   CMessageLoop* pLoop = _Module.GetMessageLoop();
   ATLASSERT(pLoop != NULL);
   pLoop->AddMessageFilter(this);
@@ -2558,7 +2555,9 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // Restore scripts toolbar layout and position
 	m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
 
-  if (StartupTrace::Enabled() && StartupTrace::IsEnabledByStoredNextLaunchPreference())
+	// An unattended -b run has no user to answer this dialog.  Keep tracing
+	// enabled for the report, but never turn diagnostics into a modal blocker.
+	if (AU::_ARGS.source_memory_benchmark_path.IsEmpty() && StartupTrace::Enabled() && StartupTrace::IsEnabledByStoredNextLaunchPreference())
   {
 	  const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"));
 	  const CString warning(GetDiagnosticTraceText(L"fbe.trace.warning",
@@ -2598,7 +2597,11 @@ LRESULT CMainFrame::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHa
 	}
   KillTimer(RECOVERY_TIMER_ID);
   DestroyAcceleratorTable(m_hAccel);
-  bHandled=FALSE;
+	// WTL's default CFrameWindowImpl handler posts WM_QUIT with code 1 for
+	// every top-level window.  A normal editor close, including a successful
+	// unattended Save, is a successful process termination.
+	::PostQuitMessage(0);
+	bHandled=TRUE;
   return 0;
 }
 
@@ -2714,7 +2717,9 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	_Settings.Close();
 
 	DefWindowProc(WM_CLOSE,0,0);
-	return 1;
+	// A handled, successful close must not be reported as a process failure.
+	// In particular, unattended Save/benchmark runs use WM_CLOSE to finish.
+	return 0;
   }
   return 0;
 }
