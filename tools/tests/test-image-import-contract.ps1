@@ -83,6 +83,7 @@ foreach ($entry in @($catalog.seedStrings.PSObject.Properties | Where-Object { $
 Assert-True ($nativeHarness -match 'TestFb2BinaryRoundTrip') 'Native harness должен проверять FB2 save/reopen round-trip.'
 Assert-True ($nativeHarness -match 'E_NOTIMPL') 'Native harness должен закреплять controlled rejection неподдерживаемых последовательностей.'
 Assert-True ($nativeHarness -match 'TestCorruptImages') 'Native harness должен проверять controlled failure повреждённых изображений.'
+Assert-True ($nativeHarness -match 'TestBmffFiletypeClassification') 'Native harness должен отличать HEIF compatible brands от ISO-BMFF video containers.'
 Assert-True ($nativeHarness -match 'argv\[19\].*image/jpeg') 'Native harness должен проверять успешную конвертацию одно-страничного TIFF.'
 Assert-True ($nativeHarness -match 'TestJpeg2000Fixture\(true\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(false\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(true, true\)' -and $nativeHarness -match 'TestJpeg2000SyccSubsampled') 'Native harness должен проверять JP2, raw J2K, alpha JP2 и sYCC subsampling.'
 

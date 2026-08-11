@@ -202,6 +202,22 @@ static bool TestCorruptImages()
 	return true;
 }
 
+static bool TestBmffFiletypeClassification()
+{
+	const BYTE compatibleHeif[] = { 0,0,0,24, 'f','t','y','p', 'm','i','f','3', 0,0,0,0, 'a','v','i','f', 'm','i','f','1' };
+	const BYTE video[] = { 0,0,0,24, 'f','t','y','p', 'm','p','4','2', 0,0,0,0, 'a','v','i','f', 'm','i','f','1' };
+	struct Fixture { const BYTE* bytes; size_t size; bool heif; } fixtures[] = { { compatibleHeif, sizeof(compatibleHeif), true }, { video, sizeof(video), false } };
+	for (const Fixture& fixture : fixtures) {
+		wchar_t path[MAX_PATH] = {}; if (!GetTempPathW(_countof(path), path) || !GetTempFileNameW(path, L"fbe", 0, path)) return false;
+		std::ofstream stream(path, std::ios::binary); stream.write(reinterpret_cast<const char*>(fixture.bytes), static_cast<std::streamsize>(fixture.size)); stream.close();
+		ImageImportOptions options; ImageImportResult result; CString error;
+		const HRESULT hr = ImportImageForFb2(path, options, result, error); DeleteFileW(path);
+		if (fixture.heif) { if (SUCCEEDED(hr) || error != L"Corrupt or unsupported AVIF/HEIF image.") return false; }
+		else if (SUCCEEDED(hr) || error != L"Unsupported or corrupt image format.") return false;
+	}
+	return true;
+}
+
 static bool TestHeif(const wchar_t* path, UINT expectedWidth = 0, UINT expectedHeight = 0)
 {
 	ImageImportOptions options;
@@ -330,6 +346,7 @@ int wmain(int argc, wchar_t** argv)
 	if (!ReadFile(argv[17], jpegPassThrough) || FAILED(ImportImageForFb2(argv[17], passThrough, result, error)) || result.converted || result.mimeType != L"image/jpeg" || result.data != jpegPassThrough || result.logicalFileName.CompareNoCase(L"original.jpeg") != 0) return 30;
 	if (!TestTransparentWebp()) return 31;
 	if (!TestCorruptImages()) return 32;
+	if (!TestBmffFiletypeClassification()) return 36;
 	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true) || !TestJpeg2000SyccSubsampled()) return 33;
 	if (ImportImageForFb2(argv[18], passThrough, result, error) != HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE)) return 34;
 	if (FAILED(ImportImageForFb2(argv[19], passThrough, result, error)) || !result.converted || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data) || result.width != 2 || result.height != 2) return 35;
