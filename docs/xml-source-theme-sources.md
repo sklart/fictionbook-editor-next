@@ -5,8 +5,8 @@
 Файлы `.fbetheme` в `runtime\Themes` — адаптация общедоступных цветовых палитр к
 23 логическим ролям XML-редактора FBE Next. Это не поставка исходных текстов
 или расширений сторонних редакторов. Для каждой темы в runtime сохраняется
-ссылка на upstream и текст лицензии в `runtime\Themes\licenses\THIRD_PARTY_NOTICES.txt` и
-`runtime\Themes\licenses\MIT.txt`.
+ссылка на upstream и текст лицензии в `THIRD-PARTY-NOTICES.md` и
+`THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt`.
 
 | Набор FBE Next | Upstream | Ревизия на момент импорта | Лицензия |
 | --- | --- | --- | --- |

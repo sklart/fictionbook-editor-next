@@ -3,7 +3,7 @@
 ; Не редактируйте вручную: запускайте tools/localization/export-nsis-installer-fallbacks.ps1.
 
 !macro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK LanguageId
-LicenseLangString License ${LanguageId} "${INPUTDIR}\gpl-3.0.txt"
+LicenseLangString License ${LanguageId} "${INPUTDIR}\LICENSE"
 LangString Plugin_ImportEPUB_SVG ${LanguageId} "SVG covers for ImportEPUB"
 LangString EnglishDict ${LanguageId} "English"
 LangString RussianDict ${LanguageId} "Russian"

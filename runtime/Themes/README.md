@@ -9,4 +9,6 @@ FBE Next читает UTF-8 JSON-файлы с расширением `.fbetheme
 25 вариантов выбора. Высококонтрастные экспериментальные схемы не показываются;
 старые настройки автоматически переводятся в FBE Light или FBE Dark.
 
-Сведения об источниках и лицензиях: `licenses\THIRD_PARTY_NOTICES.txt`.
+Сведения об источниках и лицензиях поставляются с релизом в
+`THIRD-PARTY-NOTICES.md`; полный текст MIT находится в
+`THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt`.

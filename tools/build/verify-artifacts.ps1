@@ -169,8 +169,16 @@ $requiredPortableEntries = @(
     "THIRD-PARTY-LICENSES/Scintilla-Lexilla.txt",
     "THIRD-PARTY-LICENSES/PCRE2.txt",
     "THIRD-PARTY-LICENSES/Hunspell.txt",
+    "THIRD-PARTY-LICENSES/Hunspell-MySpell.txt",
+    "THIRD-PARTY-LICENSES/libwebp.txt",
+    "THIRD-PARTY-LICENSES/OpenJPEG.txt",
+    "THIRD-PARTY-LICENSES/libheif.txt",
+    "THIRD-PARTY-LICENSES/libde265.txt",
+    "THIRD-PARTY-LICENSES/libaom.txt",
+    "THIRD-PARTY-LICENSES/libaom-PATENTS.txt",
     "THIRD-PARTY-LICENSES/LunaSVG.txt",
     "THIRD-PARTY-LICENSES/PlutoVG.txt",
+    "THIRD-PARTY-LICENSES/Theme-palettes-MIT.txt",
     "THIRD-PARTY-LICENSES/UAC.txt",
     "FBE.exe",
     "FBV.exe",
@@ -189,8 +197,7 @@ $requiredPortableEntries = @(
     "Lang/uk-UA/res_ukr.dll",
     "Scintilla.dll",
     "Lexilla.dll",
-    "FictionBook.xsd",
-    "copying.txt"
+    "FictionBook.xsd"
 )
 
 $portableEditorVersions = @{

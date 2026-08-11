@@ -42,8 +42,16 @@ $requiredThirdPartyLicenseFiles = @(
     "Scintilla-Lexilla.txt",
     "PCRE2.txt",
     "Hunspell.txt",
+    "Hunspell-MySpell.txt",
+    "libwebp.txt",
+    "OpenJPEG.txt",
+    "libheif.txt",
+    "libde265.txt",
+    "libaom.txt",
+    "libaom-PATENTS.txt",
     "LunaSVG.txt",
     "PlutoVG.txt",
+    "Theme-palettes-MIT.txt",
     "UAC.txt"
 )
 
@@ -51,7 +59,10 @@ $forbiddenFiles = @(
     "pcre.dll",
     "SciLexer.dll",
     "res_rus.dll",
-    "res_ukr.dll"
+    "res_ukr.dll",
+    "gpl-3.0.txt",
+    "copying.txt",
+    "ThirdPartyNotices.txt"
 )
 
 foreach ($name in $requiredFiles) {
@@ -95,9 +106,7 @@ $requiredThemeFiles = @(
     "Themes\github-light-default.fbetheme",
     "Themes\github-dark-default.fbetheme",
     "Themes\catppuccin-latte.fbetheme",
-    "Themes\catppuccin-mocha.fbetheme",
-    "Themes\licenses\THIRD_PARTY_NOTICES.txt",
-    "Themes\licenses\MIT.txt"
+    "Themes\catppuccin-mocha.fbetheme"
 )
 foreach ($name in $requiredThemeFiles) {
     $path = Join-Path $StageDirectory $name
@@ -108,6 +117,9 @@ foreach ($name in $requiredThemeFiles) {
 $themeFiles = @(Get-ChildItem -LiteralPath (Join-Path $StageDirectory "Themes") -Filter "*.fbetheme" -File)
 if ($themeFiles.Count -ne 21) {
     throw "В staging-каталоге должно быть 21 поставляемая внешняя тема, найдено: $($themeFiles.Count)."
+}
+if (Test-Path -LiteralPath (Join-Path $StageDirectory "Themes\licenses")) {
+    throw "В staging-каталоге не должно быть дублирующего каталога Themes\\licenses."
 }
 foreach ($name in $forbiddenFiles) {
     $path = Join-Path $StageDirectory $name

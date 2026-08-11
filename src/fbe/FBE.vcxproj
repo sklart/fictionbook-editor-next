@@ -69,9 +69,12 @@
       <Message>Copying requisite resources...</Message>
       <Command>if exist "$(TargetDir)GdiPlus.dll" del /Q "$(TargetDir)GdiPlus.dll"
 if exist "$(TargetDir)gdiplus.cat" del /Q "$(TargetDir)gdiplus.cat"
-if exist "$(TargetDir)gdiplus.manifest" del /Q "$(TargetDir)gdiplus.manifest"
-if exist "$(TargetDir)SciLexer.dll" del /Q "$(TargetDir)SciLexer.dll"
-if exist "$(TargetDir)cmd" rd /S /Q "$(TargetDir)cmd"
+  if exist "$(TargetDir)gdiplus.manifest" del /Q "$(TargetDir)gdiplus.manifest"
+  if exist "$(TargetDir)SciLexer.dll" del /Q "$(TargetDir)SciLexer.dll"
+  if exist "$(TargetDir)copying.txt" del /Q "$(TargetDir)copying.txt"
+  if exist "$(TargetDir)ThirdPartyNotices.txt" del /Q "$(TargetDir)ThirdPartyNotices.txt"
+  if exist "$(TargetDir)Themes\licenses" rd /S /Q "$(TargetDir)Themes\licenses"
+  if exist "$(TargetDir)cmd" rd /S /Q "$(TargetDir)cmd"
 robocopy "$(SolutionDir)runtime" "$(TargetDir)." /E /XF FBShell.dll FBV.exe ExportHTML.dll res_rus.dll res_ukr.dll &gt;nul
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 exit /b 0
@@ -147,9 +150,12 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
       <Message>Copying requisite resources...</Message>
       <Command>if exist "$(TargetDir)GdiPlus.dll" del /Q "$(TargetDir)GdiPlus.dll"
 if exist "$(TargetDir)gdiplus.cat" del /Q "$(TargetDir)gdiplus.cat"
-if exist "$(TargetDir)gdiplus.manifest" del /Q "$(TargetDir)gdiplus.manifest"
-if exist "$(TargetDir)SciLexer.dll" del /Q "$(TargetDir)SciLexer.dll"
-if exist "$(TargetDir)cmd" rd /S /Q "$(TargetDir)cmd"
+  if exist "$(TargetDir)gdiplus.manifest" del /Q "$(TargetDir)gdiplus.manifest"
+  if exist "$(TargetDir)SciLexer.dll" del /Q "$(TargetDir)SciLexer.dll"
+  if exist "$(TargetDir)copying.txt" del /Q "$(TargetDir)copying.txt"
+  if exist "$(TargetDir)ThirdPartyNotices.txt" del /Q "$(TargetDir)ThirdPartyNotices.txt"
+  if exist "$(TargetDir)Themes\licenses" rd /S /Q "$(TargetDir)Themes\licenses"
+  if exist "$(TargetDir)cmd" rd /S /Q "$(TargetDir)cmd"
 robocopy "$(SolutionDir)runtime" "$(TargetDir)." /E /XF FBShell.dll FBV.exe ExportHTML.dll res_rus.dll res_ukr.dll &gt;nul
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 exit /b 0

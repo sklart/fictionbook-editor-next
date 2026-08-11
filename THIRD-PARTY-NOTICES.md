@@ -21,6 +21,30 @@ is needed to build the project but is not shipped as a separate component.
 | PlutoVG | 1.3.1 | MIT | LunaSVG raster backend, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/plutovg> |
 | UAC plugin helper | source snapshot (no version metadata) | zlib/libpng license | Build-time UAC support for the NSIS installer | <https://nsis.sourceforge.io/UAC_plug-in> |
 
+## Bundled XML source-editor palettes
+
+The 21 JSON palettes in `runtime/Themes` adapt the names and base colours of
+the following upstream projects to FBE Next's own 23 logical XML-editor roles;
+they are not copies of the upstream extensions' source code.  The palette
+metadata and its adapted colour values are distributed under MIT terms.  The
+complete text is shipped as `THIRD-PARTY-LICENSES/Theme-palettes-MIT.txt`.
+
+| Upstream | Revision used for attribution | Bundled palettes |
+| --- | --- | --- |
+| Microsoft VS Code (<https://github.com/microsoft/vscode>) | main | Dark+, Light Modern, Quiet Light |
+| Solarized (<https://github.com/altercation/solarized>) | master | Solarized Light, Solarized Dark |
+| Gruvbox (<https://github.com/morhetz/gruvbox>) | master | Gruvbox Light Medium, Gruvbox Dark Medium |
+| Everforest (<https://github.com/sainnhe/everforest>) | master | Everforest Light Medium, Everforest Dark Medium |
+| Flexoki (<https://github.com/kepano/flexoki>) | main | Flexoki Light, Flexoki Dark |
+| Dracula Theme (<https://github.com/dracula/dracula-theme>) | master | Dracula |
+| Nord (<https://github.com/nordtheme/nord>) | develop | Nord |
+| Catppuccin for VS Code (<https://github.com/catppuccin/vscode>) | main | Catppuccin Latte, Catppuccin Mocha |
+| Tokyo Night for VS Code (<https://github.com/enkia/tokyo-night-vscode-theme>) | master | Tokyo Night Storm |
+| Ayu for VS Code (<https://github.com/ayu-theme/ayu-vscode>) | master | Ayu Mirage |
+| Rosé Pine for VS Code (<https://github.com/rose-pine/vscode>) | main | Rosé Pine Moon |
+| Night Owl (<https://github.com/sdras/night-owl-vscode-theme>) | main | Night Owl |
+| GitHub Theme for VS Code (<https://github.com/github/github-vscode-theme>) | main | GitHub Light Default, GitHub Dark Default |
+
 ## License texts in source and releases
 
 The repository preserves upstream license material alongside source trees:

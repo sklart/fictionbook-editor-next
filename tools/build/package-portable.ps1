@@ -61,10 +61,24 @@ foreach ($name in @("Scintilla.dll", "Lexilla.dll")) {
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "runtime\*") -Destination $stageDir -Recurse -Force
 
+# Theme attribution is centralised in the package root.  Remove a stale empty
+# directory left by older worktrees before materialising the release layout.
+$legacyThemeLicenseDir = Join-Path $stageDir "Themes\licenses"
+if (Test-Path -LiteralPath $legacyThemeLicenseDir) {
+    Remove-Item -LiteralPath $legacyThemeLicenseDir -Recurse -Force
+}
+
 # Release packages must carry the project license and the notices for every
 # bundled dependency.  Keep the source-of-truth documents at the repository
 # root, then materialize the individual upstream license texts here.
 Copy-Item -LiteralPath (Join-Path $repoRoot "runtime\gpl-3.0.txt") -Destination (Join-Path $stageDir "LICENSE") -Force
+# LICENSE is the canonical English GPL text in a distributable package.  The
+# runtime source copy is needed by the localized installer page, but carrying
+# both files in the portable package would be a byte-for-byte duplicate.
+$legacyEnglishGplPath = Join-Path $stageDir "gpl-3.0.txt"
+if (Test-Path -LiteralPath $legacyEnglishGplPath -PathType Leaf) {
+    Remove-Item -LiteralPath $legacyEnglishGplPath -Force
+}
 Copy-Item -LiteralPath (Join-Path $repoRoot "NOTICE") -Destination (Join-Path $stageDir "NOTICE") -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "THIRD-PARTY-NOTICES.md") -Destination (Join-Path $stageDir "THIRD-PARTY-NOTICES.md") -Force
 $thirdPartyLicenseDir = Join-Path $stageDir "THIRD-PARTY-LICENSES"
@@ -75,8 +89,16 @@ $thirdPartyLicenseFiles = @{
     "Scintilla-Lexilla.txt" = "third_party\scintilla\License.txt"
     "PCRE2.txt" = "third_party\pcre2\LICENCE.md"
     "Hunspell.txt" = "third_party\hunspell\license.hunspell"
+    "Hunspell-MySpell.txt" = "third_party\hunspell\license.myspell"
+    "libwebp.txt" = "third_party\libwebp\COPYING"
+    "OpenJPEG.txt" = "third_party\openjpeg\LICENSE"
+    "libheif.txt" = "third_party\libheif\COPYING"
+    "libde265.txt" = "third_party\libde265\COPYING"
+    "libaom.txt" = "third_party\aom\LICENSE"
+    "libaom-PATENTS.txt" = "third_party\aom\PATENTS"
     "LunaSVG.txt" = "src\import-epub\thirdparty\lunasvg\LICENSE"
     "PlutoVG.txt" = "src\import-epub\thirdparty\lunasvg\plutovg\LICENSE"
+    "Theme-palettes-MIT.txt" = "THIRD-PARTY-LICENSES\Theme-palettes-MIT.txt"
     "UAC.txt" = "third_party\uac\License.txt"
 }
 foreach ($entry in $thirdPartyLicenseFiles.GetEnumerator()) {
@@ -175,6 +197,3 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "tools\build\unregister-modern-prope
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-package.ps1") -PackageDirectory $stageDir
 
 Write-Host "Portable-пакет подготовлен в $stageDir"
-
-
-
