@@ -10,6 +10,8 @@ param(
     # Явный источник EXE/PDB batch-конвертеров конкретного target.
     [string]$BatchOutputDirectory = "",
 
+    [string]$ArchHandlerOutputDirectory = "",
+
     [string]$PackageDirectory = "",
 
     [switch]$RequireWin32PropertyHandler,
@@ -34,8 +36,7 @@ $batchOutputSourceDir = if ([string]::IsNullOrWhiteSpace($BatchOutputDirectory))
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
 }
 $buildFbvVerbMuiScript = Join-Path $PSScriptRoot "build-fbv-verb-mui.ps1"
-$buildArchHandlerScript = Join-Path $PSScriptRoot "build-archhandler.ps1"
-$archHandlerBuildDir = Join-Path $repoRoot "out\archhandler\Win32\$Configuration"
+$archHandlerBuildDir = if ([string]::IsNullOrWhiteSpace($ArchHandlerOutputDirectory)) { Join-Path $repoRoot "out\archhandler\Win32\$Configuration" } else { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchHandlerOutputDirectory) }
 $propertyHandlerRootDir = Join-Path $repoRoot "out\package\shell-build"
 $win32PropertyHandlerSourceDir = Join-Path $propertyHandlerRootDir "Win32\$Configuration"
 $x64PropertyHandlerSourceDir = Join-Path $propertyHandlerRootDir "x64\$Configuration"
@@ -62,8 +63,8 @@ foreach ($name in @("Scintilla.dll", "Lexilla.dll")) {
 
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "runtime\*") -Destination $stageDir -Recurse -Force
-& $buildArchHandlerScript -OutputDirectory $archHandlerBuildDir
 foreach($name in @('ZipHandler.exe', 'RarHandler.exe')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $archHandlerBuildDir $name) -PathType Leaf)) { throw "Не найден заранее собранный ArchHandler artifact: $(Join-Path $archHandlerBuildDir $name)" }
     Copy-Item -LiteralPath (Join-Path $archHandlerBuildDir $name) -Destination (Join-Path $stageDir "Utilities\ArchHandler\$name") -Force
 }
 

@@ -110,6 +110,12 @@ if (-not $SkipBuild) {
     }
     & (Join-Path $PSScriptRoot "build.ps1") @buildArguments
 }
+$archHandlerOutputDirectory = Join-Path $repoRoot "out\archhandler\$CompatibilityTarget\Win32\$Configuration"
+if (-not $SkipBuild) {
+    $archHandlerArguments = @{ OutputDirectory = $archHandlerOutputDirectory }
+    if ($PlatformToolset) { $archHandlerArguments.PlatformToolset = $PlatformToolset }
+    & (Join-Path $PSScriptRoot "build-archhandler.ps1") @archHandlerArguments
+}
 
 if ($SkipBuild -and -not $SkipPropertyHandlerBuild) {
     throw "-SkipBuild запрещает native-компиляцию. Подготовьте property handler заранее и укажите -SkipPropertyHandlerBuild."
@@ -168,6 +174,7 @@ if (-not $SkipReleaseVerification) {
     -Configuration $Configuration `
     -EditorRuntimeDirectory $editorRuntimeDirectory `
     -BatchOutputDirectory $batchOutputDirectory `
+    -ArchHandlerOutputDirectory $archHandlerOutputDirectory `
     -PackageDirectory $portableDir `
     -RequireWin32PropertyHandler `
     -RequireX64ShellExtension `
