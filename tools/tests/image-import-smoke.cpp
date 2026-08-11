@@ -124,6 +124,32 @@ static bool TestJpeg2000Fixture(bool jp2, bool alpha = false)
 	return SUCCEEDED(hr) && result.converted && result.mimeType == (alpha ? L"image/png" : L"image/jpeg") && result.width == 2 && result.height == 2 && result.hasTransparency == alpha && (alpha ? HasPngMagic(result.data) : HasJpegMagic(result.data));
 }
 
+static bool TestJpeg2000SyccSubsampled()
+{
+	opj_image_cmptparm_t components[3] = {};
+	components[0].dx = components[0].dy = 1; components[0].w = components[0].h = 4; components[0].prec = components[0].bpp = 8;
+	for (size_t index = 1; index < _countof(components); ++index) { components[index].dx = components[index].dy = 2; components[index].w = components[index].h = 2; components[index].prec = components[index].bpp = 8; }
+	std::unique_ptr<opj_image_t, void(*)(opj_image_t*)> image(opj_image_create(3, components, OPJ_CLRSPC_SYCC), opj_image_destroy);
+	if (!image) return false;
+	image->x1 = image->y1 = 4;
+	const int luma[] = { 32, 64, 96, 128, 48, 80, 112, 144, 64, 96, 128, 160, 80, 112, 144, 176 };
+	const int cb[] = { 96, 160, 112, 144 }, cr[] = { 144, 96, 128, 176 };
+	for (size_t index = 0; index < _countof(luma); ++index) image->comps[0].data[index] = luma[index];
+	for (size_t index = 0; index < _countof(cb); ++index) { image->comps[1].data[index] = cb[index]; image->comps[2].data[index] = cr[index]; }
+	wchar_t temporaryPath[MAX_PATH] = {};
+	if (!GetTempPathW(_countof(temporaryPath), temporaryPath) || !GetTempFileNameW(temporaryPath, L"fbe", 0, temporaryPath)) return false;
+	DeleteFileW(temporaryPath); CStringA outputPath(temporaryPath);
+	opj_cparameters_t parameters; opj_set_default_encoder_parameters(&parameters);
+	parameters.cod_format = 1; parameters.tcp_numlayers = 1; parameters.cp_disto_alloc = 1; parameters.tcp_rates[0] = 0; parameters.numresolution = 1;
+	std::unique_ptr<opj_codec_t, void(*)(opj_codec_t*)> codec(opj_create_compress(OPJ_CODEC_JP2), opj_destroy_codec);
+	std::unique_ptr<opj_stream_t, void(*)(opj_stream_t*)> stream(opj_stream_create_default_file_stream(outputPath, OPJ_FALSE), opj_stream_destroy);
+	if (!codec || !stream || !opj_setup_encoder(codec.get(), &parameters, image.get()) || !opj_start_compress(codec.get(), image.get(), stream.get()) || !opj_encode(codec.get(), stream.get()) || !opj_end_compress(codec.get(), stream.get())) { DeleteFileW(temporaryPath); return false; }
+	stream.reset();
+	ImageImportOptions options; ImageImportResult result; CString error;
+	const HRESULT hr = ImportImageForFb2(temporaryPath, options, result, error); DeleteFileW(temporaryPath);
+	return SUCCEEDED(hr) && result.converted && result.mimeType == L"image/jpeg" && result.width == 4 && result.height == 4 && HasJpegMagic(result.data);
+}
+
 static bool TestCorruptImages()
 {
 	static const BYTE jpeg[] = { 0xff, 0xd8, 0xff };
@@ -279,7 +305,7 @@ int wmain(int argc, wchar_t** argv)
 	if (!ReadFile(argv[17], jpegPassThrough) || FAILED(ImportImageForFb2(argv[17], passThrough, result, error)) || result.converted || result.mimeType != L"image/jpeg" || result.data != jpegPassThrough || result.logicalFileName.CompareNoCase(L"original.jpeg") != 0) return 30;
 	if (!TestTransparentWebp()) return 31;
 	if (!TestCorruptImages()) return 32;
-	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true)) return 33;
+	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true) || !TestJpeg2000SyccSubsampled()) return 33;
 	if (ImportImageForFb2(argv[18], passThrough, result, error) != HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE)) return 34;
 	return 0;
 }
