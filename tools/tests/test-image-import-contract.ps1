@@ -54,6 +54,6 @@ foreach ($key in @('fbe.image_import.output_auto', 'fbe.image_import.output_jpeg
 Assert-True ($nativeHarness -match 'TestFb2BinaryRoundTrip') 'Native harness должен проверять FB2 save/reopen round-trip.'
 Assert-True ($nativeHarness -match 'E_NOTIMPL') 'Native harness должен закреплять controlled rejection неподдерживаемых последовательностей.'
 Assert-True ($nativeHarness -match 'TestCorruptImages') 'Native harness должен проверять controlled failure повреждённых изображений.'
-Assert-True ($nativeHarness -match 'TestJpeg2000Fixture\(true\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(false\)') 'Native harness должен проверять JP2 и raw J2K.'
+Assert-True ($nativeHarness -match 'TestJpeg2000Fixture\(true\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(false\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(true, true\)') 'Native harness должен проверять JP2, raw J2K и alpha JP2.'
 
 Write-Host 'Контракт импорта изображений проверен.'

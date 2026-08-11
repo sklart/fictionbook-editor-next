@@ -101,14 +101,15 @@ static bool TestTransparentWebp()
 	return ok;
 }
 
-static bool TestJpeg2000Fixture(bool jp2)
+static bool TestJpeg2000Fixture(bool jp2, bool alpha = false)
 {
-	opj_image_cmptparm_t component = {};
-	component.dx = component.dy = 1; component.w = component.h = 2; component.prec = component.bpp = 8;
-	std::unique_ptr<opj_image_t, void(*)(opj_image_t*)> image(opj_image_create(1, &component, OPJ_CLRSPC_GRAY), opj_image_destroy);
+	opj_image_cmptparm_t components[2] = {};
+	for (size_t index = 0; index < (alpha ? 2u : 1u); ++index) { components[index].dx = components[index].dy = 1; components[index].w = components[index].h = 2; components[index].prec = components[index].bpp = 8; }
+	std::unique_ptr<opj_image_t, void(*)(opj_image_t*)> image(opj_image_create(alpha ? 2 : 1, components, OPJ_CLRSPC_GRAY), opj_image_destroy);
 	if (!image) return false;
 	image->x1 = image->y1 = 2;
 	const int pixels[] = { 0, 96, 160, 255 }; for (size_t index = 0; index < _countof(pixels); ++index) image->comps[0].data[index] = pixels[index];
+	if (alpha) { image->comps[1].alpha = 1; const int opacity[] = { 0, 255, 255, 255 }; for (size_t index = 0; index < _countof(opacity); ++index) image->comps[1].data[index] = opacity[index]; }
 	wchar_t temporaryPath[MAX_PATH] = {};
 	if (!GetTempPathW(_countof(temporaryPath), temporaryPath) || !GetTempFileNameW(temporaryPath, L"fbe", 0, temporaryPath)) return false;
 	DeleteFileW(temporaryPath); CStringA outputPath(temporaryPath);
@@ -120,7 +121,7 @@ static bool TestJpeg2000Fixture(bool jp2)
 	stream.reset();
 	ImageImportOptions options; ImageImportResult result; CString error;
 	const HRESULT hr = ImportImageForFb2(temporaryPath, options, result, error); DeleteFileW(temporaryPath);
-	return SUCCEEDED(hr) && result.converted && result.mimeType == L"image/jpeg" && result.width == 2 && result.height == 2 && !result.hasTransparency && HasJpegMagic(result.data);
+	return SUCCEEDED(hr) && result.converted && result.mimeType == (alpha ? L"image/png" : L"image/jpeg") && result.width == 2 && result.height == 2 && result.hasTransparency == alpha && (alpha ? HasPngMagic(result.data) : HasJpegMagic(result.data));
 }
 
 static bool TestCorruptImages()
@@ -275,6 +276,6 @@ int wmain(int argc, wchar_t** argv)
 	if (!ReadFile(argv[17], jpegPassThrough) || FAILED(ImportImageForFb2(argv[17], passThrough, result, error)) || result.converted || result.mimeType != L"image/jpeg" || result.data != jpegPassThrough || result.logicalFileName.CompareNoCase(L"original.jpeg") != 0) return 29;
 	if (!TestTransparentWebp()) return 30;
 	if (!TestCorruptImages()) return 31;
-	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false)) return 32;
+	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true)) return 32;
 	return 0;
 }
