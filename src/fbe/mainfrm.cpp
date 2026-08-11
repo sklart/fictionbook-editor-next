@@ -8,6 +8,7 @@
 #include "CFileDialogEx.h"
 #include "SettingsDlg.h"
 #include "RuntimeLocalization.h"
+#include "ImageImport.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
 #include <string>
@@ -5076,12 +5077,13 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
     return 0;
 
   // Modification by Pilgrim
+	CString imageFilter = ImageImportFileFilter();
   CFileDialogEx	dlg(
     TRUE,
     _T("*"),
     NULL,
 	OFN_ALLOWMULTISELECT | OFN_HIDEREADONLY | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR,
-	L"Supported images (*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff)\0*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff\0All files (*.*)\0*.*\0JPEG (*.jpg;*.jpeg)\0*.jpg;*.jpeg\0PNG (*.png)\0*.png\0WebP (*.webp)\0*.webp\0JPEG 2000 (*.jp2;*.j2k)\0*.jp2;*.j2k\0Bitmap (*.bmp)\0*.bmp\0GIF (*.gif)\0*.gif\0TIFF (*.tif;*.tiff)\0*.tif;*.tiff\0\0"
+	imageFilter
   );  
   wchar_t dlgTitle[MAX_LOAD_STRING + 1];
   FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_BINARIES_FILEDLG, dlgTitle, MAX_LOAD_STRING);
@@ -5108,7 +5110,7 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
 			if (wasConverted) ++converted;
 		} else {
 			CString leaf = fileName.Mid(fileName.ReverseFind(L'\\') + 1);
-			if (error.IsEmpty()) error = L"Не удалось добавить файл";
+			if (error.IsEmpty()) error = FbeLoadRuntimeStringByKey(L"fbe.image_import.add_failed", L"Could not add file.");
 			failures += leaf + L" — " + error + L"\r\n";
 		}
 	}	

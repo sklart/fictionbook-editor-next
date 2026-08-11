@@ -13,6 +13,9 @@ is needed to build the project but is not shipped as a separate component.
 | Hunspell | 1.7.3 | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later | Spell checking, statically linked into FBE | <https://github.com/hunspell/hunspell> |
 | libwebp | 1.6.0 | BSD-3-Clause | Static WebP decoder linked into FBE | <https://chromium.googlesource.com/webm/libwebp> |
 | OpenJPEG | 2.5.4 | BSD-2-Clause | JPEG 2000 decoder build input for FBE | <https://github.com/uclouvain/openjpeg> |
+| libheif | 1.19.8 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
+| libde265 | 1.0.15 | LGPL-2.1-or-later | Static HEVC decoder used by bundled libheif | <https://github.com/strukturag/libde265> |
+| libaom | 3.10.0 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
 | Windows Template Library (WTL) | 10.01 | MS-PL | UI and Windows shell components, compiled into FBE, FBV, and FBShell | <https://sourceforge.net/projects/wtl/> |
 | LunaSVG | 3.5.0 | MIT | EPUB import SVG renderer, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/lunasvg> |
 | PlutoVG | 1.3.1 | MIT | LunaSVG raster backend, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/plutovg> |
@@ -27,6 +30,8 @@ The repository preserves upstream license material alongside source trees:
   if JIT support is enabled);
 - `third_party/hunspell/license.hunspell` and `third_party/hunspell/license.myspell`;
 - `third_party/libwebp/COPYING` and `third_party/openjpeg/LICENSE`;
+- `third_party/libheif/COPYING`, `third_party/libde265/COPYING`, and
+  `third_party/aom/LICENSE` plus `third_party/aom/PATENTS`;
 - `src/import-epub/thirdparty/lunasvg/LICENSE` and
   `src/import-epub/thirdparty/lunasvg/plutovg/LICENSE`;
 - `third_party/uac/License.txt`.

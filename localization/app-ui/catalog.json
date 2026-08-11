@@ -5571,6 +5571,564 @@
         "bg-BG": "Невалиден baseThemeId."
       }
     },
+    "fbe.image_import.invalid_image": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Corrupt or unsupported image.",
+        "ru-RU": "Повреждённое или неподдерживаемое изображение.",
+        "uk-UA": "Пошкоджене або непідтримуване зображення.",
+        "de-DE": "Corrupt or unsupported image.",
+        "fr-FR": "Corrupt or unsupported image.",
+        "es-ES": "Corrupt or unsupported image.",
+        "it-IT": "Corrupt or unsupported image.",
+        "pl-PL": "Corrupt or unsupported image.",
+        "pt-PT": "Corrupt or unsupported image.",
+        "nl-NL": "Corrupt or unsupported image.",
+        "cs-CZ": "Corrupt or unsupported image.",
+        "bg-BG": "Corrupt or unsupported image."
+      }
+    },
+    "fbe.image_import.too_large": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Image is too large.",
+        "ru-RU": "Изображение слишком большое.",
+        "uk-UA": "Зображення надто велике.",
+        "de-DE": "Image is too large.",
+        "fr-FR": "Image is too large.",
+        "es-ES": "Image is too large.",
+        "it-IT": "Image is too large.",
+        "pl-PL": "Image is too large.",
+        "pt-PT": "Image is too large.",
+        "nl-NL": "Image is too large.",
+        "cs-CZ": "Image is too large.",
+        "bg-BG": "Image is too large."
+      }
+    },
+    "fbe.image_import.gif_animated": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Animated GIF is not supported yet.",
+        "ru-RU": "Анимированные GIF пока не поддерживаются.",
+        "uk-UA": "Анімовані GIF поки не підтримуються.",
+        "de-DE": "Animated GIF is not supported yet.",
+        "fr-FR": "Animated GIF is not supported yet.",
+        "es-ES": "Animated GIF is not supported yet.",
+        "it-IT": "Animated GIF is not supported yet.",
+        "pl-PL": "Animated GIF is not supported yet.",
+        "pt-PT": "Animated GIF is not supported yet.",
+        "nl-NL": "Animated GIF is not supported yet.",
+        "cs-CZ": "Animated GIF is not supported yet.",
+        "bg-BG": "Animated GIF is not supported yet."
+      }
+    },
+    "fbe.image_import.tiff_multipage": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Multi-page TIFF is not supported yet.",
+        "ru-RU": "Многостраничные TIFF пока не поддерживаются.",
+        "uk-UA": "Багатосторінкові TIFF поки не підтримуються.",
+        "de-DE": "Multi-page TIFF is not supported yet.",
+        "fr-FR": "Multi-page TIFF is not supported yet.",
+        "es-ES": "Multi-page TIFF is not supported yet.",
+        "it-IT": "Multi-page TIFF is not supported yet.",
+        "pl-PL": "Multi-page TIFF is not supported yet.",
+        "pt-PT": "Multi-page TIFF is not supported yet.",
+        "nl-NL": "Multi-page TIFF is not supported yet.",
+        "cs-CZ": "Multi-page TIFF is not supported yet.",
+        "bg-BG": "Multi-page TIFF is not supported yet."
+      }
+    },
+    "fbe.image_import.orientation_failed": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not apply image orientation.",
+        "ru-RU": "Не удалось применить ориентацию изображения.",
+        "uk-UA": "Не вдалося застосувати орієнтацію зображення.",
+        "de-DE": "Could not apply image orientation.",
+        "fr-FR": "Could not apply image orientation.",
+        "es-ES": "Could not apply image orientation.",
+        "it-IT": "Could not apply image orientation.",
+        "pl-PL": "Could not apply image orientation.",
+        "pt-PT": "Could not apply image orientation.",
+        "nl-NL": "Could not apply image orientation.",
+        "cs-CZ": "Could not apply image orientation.",
+        "bg-BG": "Could not apply image orientation."
+      }
+    },
+    "fbe.image_import.transparency_failed": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not determine image transparency.",
+        "ru-RU": "Не удалось определить прозрачность изображения.",
+        "uk-UA": "Не вдалося визначити прозорість зображення.",
+        "de-DE": "Could not determine image transparency.",
+        "fr-FR": "Could not determine image transparency.",
+        "es-ES": "Could not determine image transparency.",
+        "it-IT": "Could not determine image transparency.",
+        "pl-PL": "Could not determine image transparency.",
+        "pt-PT": "Could not determine image transparency.",
+        "nl-NL": "Could not determine image transparency.",
+        "cs-CZ": "Could not determine image transparency.",
+        "bg-BG": "Could not determine image transparency."
+      }
+    },
+    "fbe.image_import.flatten_required": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "This image has transparency and needs confirmation before JPEG conversion.",
+        "ru-RU": "Изображение содержит прозрачность и требует подтверждения перед преобразованием в JPEG.",
+        "uk-UA": "Зображення містить прозорість і потребує підтвердження перед перетворенням у JPEG.",
+        "de-DE": "This image has transparency and needs confirmation before JPEG conversion.",
+        "fr-FR": "This image has transparency and needs confirmation before JPEG conversion.",
+        "es-ES": "This image has transparency and needs confirmation before JPEG conversion.",
+        "it-IT": "This image has transparency and needs confirmation before JPEG conversion.",
+        "pl-PL": "This image has transparency and needs confirmation before JPEG conversion.",
+        "pt-PT": "This image has transparency and needs confirmation before JPEG conversion.",
+        "nl-NL": "This image has transparency and needs confirmation before JPEG conversion.",
+        "cs-CZ": "This image has transparency and needs confirmation before JPEG conversion.",
+        "bg-BG": "This image has transparency and needs confirmation before JPEG conversion."
+      }
+    },
+    "fbe.image_import.encode_failed": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not encode image.",
+        "ru-RU": "Не удалось закодировать изображение.",
+        "uk-UA": "Не вдалося закодувати зображення.",
+        "de-DE": "Could not encode image.",
+        "fr-FR": "Could not encode image.",
+        "es-ES": "Could not encode image.",
+        "it-IT": "Could not encode image.",
+        "pl-PL": "Could not encode image.",
+        "pt-PT": "Could not encode image.",
+        "nl-NL": "Could not encode image.",
+        "cs-CZ": "Could not encode image.",
+        "bg-BG": "Could not encode image."
+      }
+    },
+    "fbe.image_import.webp_invalid": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Corrupt WebP image.",
+        "ru-RU": "Повреждённое изображение WebP.",
+        "uk-UA": "Пошкоджене зображення WebP.",
+        "de-DE": "Corrupt WebP image.",
+        "fr-FR": "Corrupt WebP image.",
+        "es-ES": "Corrupt WebP image.",
+        "it-IT": "Corrupt WebP image.",
+        "pl-PL": "Corrupt WebP image.",
+        "pt-PT": "Corrupt WebP image.",
+        "nl-NL": "Corrupt WebP image.",
+        "cs-CZ": "Corrupt WebP image.",
+        "bg-BG": "Corrupt WebP image."
+      }
+    },
+    "fbe.image_import.webp_animated": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Animated WebP is not supported yet.",
+        "ru-RU": "Анимированные WebP пока не поддерживаются.",
+        "uk-UA": "Анімовані WebP поки не підтримуються.",
+        "de-DE": "Animated WebP is not supported yet.",
+        "fr-FR": "Animated WebP is not supported yet.",
+        "es-ES": "Animated WebP is not supported yet.",
+        "it-IT": "Animated WebP is not supported yet.",
+        "pl-PL": "Animated WebP is not supported yet.",
+        "pt-PT": "Animated WebP is not supported yet.",
+        "nl-NL": "Animated WebP is not supported yet.",
+        "cs-CZ": "Animated WebP is not supported yet.",
+        "bg-BG": "Animated WebP is not supported yet."
+      }
+    },
+    "fbe.image_import.webp_decode_failed": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not decode WebP image.",
+        "ru-RU": "Не удалось декодировать изображение WebP.",
+        "uk-UA": "Не вдалося декодувати зображення WebP.",
+        "de-DE": "Could not decode WebP image.",
+        "fr-FR": "Could not decode WebP image.",
+        "es-ES": "Could not decode WebP image.",
+        "it-IT": "Could not decode WebP image.",
+        "pl-PL": "Could not decode WebP image.",
+        "pt-PT": "Could not decode WebP image.",
+        "nl-NL": "Could not decode WebP image.",
+        "cs-CZ": "Could not decode WebP image.",
+        "bg-BG": "Could not decode WebP image."
+      }
+    },
+    "fbe.image_import.webp_encode_failed": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not encode WebP image.",
+        "ru-RU": "Не удалось закодировать изображение WebP.",
+        "uk-UA": "Не вдалося закодувати зображення WebP.",
+        "de-DE": "Could not encode WebP image.",
+        "fr-FR": "Could not encode WebP image.",
+        "es-ES": "Could not encode WebP image.",
+        "it-IT": "Could not encode WebP image.",
+        "pl-PL": "Could not encode WebP image.",
+        "pt-PT": "Could not encode WebP image.",
+        "nl-NL": "Could not encode WebP image.",
+        "cs-CZ": "Could not encode WebP image.",
+        "bg-BG": "Could not encode WebP image."
+      }
+    },
+    "fbe.image_import.heif_invalid": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Corrupt or unsupported AVIF/HEIF image.",
+        "ru-RU": "Повреждённое или неподдерживаемое изображение AVIF/HEIF.",
+        "uk-UA": "Пошкоджене або непідтримуване зображення AVIF/HEIF.",
+        "de-DE": "Corrupt or unsupported AVIF/HEIF image.",
+        "fr-FR": "Corrupt or unsupported AVIF/HEIF image.",
+        "es-ES": "Corrupt or unsupported AVIF/HEIF image.",
+        "it-IT": "Corrupt or unsupported AVIF/HEIF image.",
+        "pl-PL": "Corrupt or unsupported AVIF/HEIF image.",
+        "pt-PT": "Corrupt or unsupported AVIF/HEIF image.",
+        "nl-NL": "Corrupt or unsupported AVIF/HEIF image.",
+        "cs-CZ": "Corrupt or unsupported AVIF/HEIF image.",
+        "bg-BG": "Corrupt or unsupported AVIF/HEIF image."
+      }
+    },
+    "fbe.image_import.heif_multiple": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "HEIF image sequences are not supported.",
+        "ru-RU": "Последовательности изображений HEIF не поддерживаются.",
+        "uk-UA": "Послідовності зображень HEIF не підтримуються.",
+        "de-DE": "HEIF image sequences are not supported.",
+        "fr-FR": "HEIF image sequences are not supported.",
+        "es-ES": "HEIF image sequences are not supported.",
+        "it-IT": "HEIF image sequences are not supported.",
+        "pl-PL": "HEIF image sequences are not supported.",
+        "pt-PT": "HEIF image sequences are not supported.",
+        "nl-NL": "HEIF image sequences are not supported.",
+        "cs-CZ": "HEIF image sequences are not supported.",
+        "bg-BG": "HEIF image sequences are not supported."
+      }
+    },
+    "fbe.image_import.heif_decode_failed": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not decode AVIF/HEIF image.",
+        "ru-RU": "Не удалось декодировать изображение AVIF/HEIF.",
+        "uk-UA": "Не вдалося декодувати зображення AVIF/HEIF.",
+        "de-DE": "Could not decode AVIF/HEIF image.",
+        "fr-FR": "Could not decode AVIF/HEIF image.",
+        "es-ES": "Could not decode AVIF/HEIF image.",
+        "it-IT": "Could not decode AVIF/HEIF image.",
+        "pl-PL": "Could not decode AVIF/HEIF image.",
+        "pt-PT": "Could not decode AVIF/HEIF image.",
+        "nl-NL": "Could not decode AVIF/HEIF image.",
+        "cs-CZ": "Could not decode AVIF/HEIF image.",
+        "bg-BG": "Could not decode AVIF/HEIF image."
+      }
+    },
+    "fbe.image_import.jp2_invalid": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Corrupt or unsupported JPEG 2000 image.",
+        "ru-RU": "Повреждённое или неподдерживаемое изображение JPEG 2000.",
+        "uk-UA": "Пошкоджене або непідтримуване зображення JPEG 2000.",
+        "de-DE": "Corrupt or unsupported JPEG 2000 image.",
+        "fr-FR": "Corrupt or unsupported JPEG 2000 image.",
+        "es-ES": "Corrupt or unsupported JPEG 2000 image.",
+        "it-IT": "Corrupt or unsupported JPEG 2000 image.",
+        "pl-PL": "Corrupt or unsupported JPEG 2000 image.",
+        "pt-PT": "Corrupt or unsupported JPEG 2000 image.",
+        "nl-NL": "Corrupt or unsupported JPEG 2000 image.",
+        "cs-CZ": "Corrupt or unsupported JPEG 2000 image.",
+        "bg-BG": "Corrupt or unsupported JPEG 2000 image."
+      }
+    },
+    "fbe.image_import.jp2_structure": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Unsupported JPEG 2000 component structure.",
+        "ru-RU": "Неподдерживаемая структура компонентов JPEG 2000.",
+        "uk-UA": "Непідтримувана структура компонентів JPEG 2000.",
+        "de-DE": "Unsupported JPEG 2000 component structure.",
+        "fr-FR": "Unsupported JPEG 2000 component structure.",
+        "es-ES": "Unsupported JPEG 2000 component structure.",
+        "it-IT": "Unsupported JPEG 2000 component structure.",
+        "pl-PL": "Unsupported JPEG 2000 component structure.",
+        "pt-PT": "Unsupported JPEG 2000 component structure.",
+        "nl-NL": "Unsupported JPEG 2000 component structure.",
+        "cs-CZ": "Unsupported JPEG 2000 component structure.",
+        "bg-BG": "Unsupported JPEG 2000 component structure."
+      }
+    },
+    "fbe.image_import.jp2_cmyk": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "CMYK JPEG 2000 images are not supported.",
+        "ru-RU": "Изображения JPEG 2000 в CMYK не поддерживаются.",
+        "uk-UA": "Зображення JPEG 2000 у CMYK не підтримуються.",
+        "de-DE": "CMYK JPEG 2000 images are not supported.",
+        "fr-FR": "CMYK JPEG 2000 images are not supported.",
+        "es-ES": "CMYK JPEG 2000 images are not supported.",
+        "it-IT": "CMYK JPEG 2000 images are not supported.",
+        "pl-PL": "CMYK JPEG 2000 images are not supported.",
+        "pt-PT": "CMYK JPEG 2000 images are not supported.",
+        "nl-NL": "CMYK JPEG 2000 images are not supported.",
+        "cs-CZ": "CMYK JPEG 2000 images are not supported.",
+        "bg-BG": "CMYK JPEG 2000 images are not supported."
+      }
+    },
+    "fbe.image_import.read_failed": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not read image file.",
+        "ru-RU": "Не удалось прочитать файл изображения.",
+        "uk-UA": "Не вдалося прочитати файл зображення.",
+        "de-DE": "Could not read image file.",
+        "fr-FR": "Could not read image file.",
+        "es-ES": "Could not read image file.",
+        "it-IT": "Could not read image file.",
+        "pl-PL": "Could not read image file.",
+        "pt-PT": "Could not read image file.",
+        "nl-NL": "Could not read image file.",
+        "cs-CZ": "Could not read image file.",
+        "bg-BG": "Could not read image file."
+      }
+    },
+    "fbe.image_import.unsupported": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Unsupported or corrupt image format.",
+        "ru-RU": "Неподдерживаемый или повреждённый формат изображения.",
+        "uk-UA": "Непідтримуваний або пошкоджений формат зображення.",
+        "de-DE": "Unsupported or corrupt image format.",
+        "fr-FR": "Unsupported or corrupt image format.",
+        "es-ES": "Unsupported or corrupt image format.",
+        "it-IT": "Unsupported or corrupt image format.",
+        "pl-PL": "Unsupported or corrupt image format.",
+        "pt-PT": "Unsupported or corrupt image format.",
+        "nl-NL": "Unsupported or corrupt image format.",
+        "cs-CZ": "Unsupported or corrupt image format.",
+        "bg-BG": "Unsupported or corrupt image format."
+      }
+    },
+    "fbe.image_import.filter_supported": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Supported images",
+        "ru-RU": "Поддерживаемые изображения",
+        "uk-UA": "Підтримувані зображення",
+        "de-DE": "Supported images",
+        "fr-FR": "Supported images",
+        "es-ES": "Supported images",
+        "it-IT": "Supported images",
+        "pl-PL": "Supported images",
+        "pt-PT": "Supported images",
+        "nl-NL": "Supported images",
+        "cs-CZ": "Supported images",
+        "bg-BG": "Supported images"
+      }
+    },
+    "fbe.image_import.filter_all": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "All files",
+        "ru-RU": "Все файлы",
+        "uk-UA": "Усі файли",
+        "de-DE": "All files",
+        "fr-FR": "All files",
+        "es-ES": "All files",
+        "it-IT": "All files",
+        "pl-PL": "All files",
+        "pt-PT": "All files",
+        "nl-NL": "All files",
+        "cs-CZ": "All files",
+        "bg-BG": "All files"
+      }
+    },
+    "fbe.image_import.filter_jpeg": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "JPEG",
+        "ru-RU": "JPEG",
+        "uk-UA": "JPEG",
+        "de-DE": "JPEG",
+        "fr-FR": "JPEG",
+        "es-ES": "JPEG",
+        "it-IT": "JPEG",
+        "pl-PL": "JPEG",
+        "pt-PT": "JPEG",
+        "nl-NL": "JPEG",
+        "cs-CZ": "JPEG",
+        "bg-BG": "JPEG"
+      }
+    },
+    "fbe.image_import.filter_png": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "PNG",
+        "ru-RU": "PNG",
+        "uk-UA": "PNG",
+        "de-DE": "PNG",
+        "fr-FR": "PNG",
+        "es-ES": "PNG",
+        "it-IT": "PNG",
+        "pl-PL": "PNG",
+        "pt-PT": "PNG",
+        "nl-NL": "PNG",
+        "cs-CZ": "PNG",
+        "bg-BG": "PNG"
+      }
+    },
+    "fbe.image_import.filter_webp": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "WebP",
+        "ru-RU": "WebP",
+        "uk-UA": "WebP",
+        "de-DE": "WebP",
+        "fr-FR": "WebP",
+        "es-ES": "WebP",
+        "it-IT": "WebP",
+        "pl-PL": "WebP",
+        "pt-PT": "WebP",
+        "nl-NL": "WebP",
+        "cs-CZ": "WebP",
+        "bg-BG": "WebP"
+      }
+    },
+    "fbe.image_import.filter_jpeg2000": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "JPEG 2000",
+        "ru-RU": "JPEG 2000",
+        "uk-UA": "JPEG 2000",
+        "de-DE": "JPEG 2000",
+        "fr-FR": "JPEG 2000",
+        "es-ES": "JPEG 2000",
+        "it-IT": "JPEG 2000",
+        "pl-PL": "JPEG 2000",
+        "pt-PT": "JPEG 2000",
+        "nl-NL": "JPEG 2000",
+        "cs-CZ": "JPEG 2000",
+        "bg-BG": "JPEG 2000"
+      }
+    },
+    "fbe.image_import.filter_bmp": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Bitmap",
+        "ru-RU": "Растровое изображение",
+        "uk-UA": "Растрове зображення",
+        "de-DE": "Bitmap",
+        "fr-FR": "Bitmap",
+        "es-ES": "Bitmap",
+        "it-IT": "Bitmap",
+        "pl-PL": "Bitmap",
+        "pt-PT": "Bitmap",
+        "nl-NL": "Bitmap",
+        "cs-CZ": "Bitmap",
+        "bg-BG": "Bitmap"
+      }
+    },
+    "fbe.image_import.filter_gif": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "GIF",
+        "ru-RU": "GIF",
+        "uk-UA": "GIF",
+        "de-DE": "GIF",
+        "fr-FR": "GIF",
+        "es-ES": "GIF",
+        "it-IT": "GIF",
+        "pl-PL": "GIF",
+        "pt-PT": "GIF",
+        "nl-NL": "GIF",
+        "cs-CZ": "GIF",
+        "bg-BG": "GIF"
+      }
+    },
+    "fbe.image_import.filter_tiff": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "TIFF",
+        "ru-RU": "TIFF",
+        "uk-UA": "TIFF",
+        "de-DE": "TIFF",
+        "fr-FR": "TIFF",
+        "es-ES": "TIFF",
+        "it-IT": "TIFF",
+        "pl-PL": "TIFF",
+        "pt-PT": "TIFF",
+        "nl-NL": "TIFF",
+        "cs-CZ": "TIFF",
+        "bg-BG": "TIFF"
+      }
+    },
+    "fbe.image_import.filter_avif": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "AVIF",
+        "ru-RU": "AVIF",
+        "uk-UA": "AVIF",
+        "de-DE": "AVIF",
+        "fr-FR": "AVIF",
+        "es-ES": "AVIF",
+        "it-IT": "AVIF",
+        "pl-PL": "AVIF",
+        "pt-PT": "AVIF",
+        "nl-NL": "AVIF",
+        "cs-CZ": "AVIF",
+        "bg-BG": "AVIF"
+      }
+    },
+    "fbe.image_import.filter_heif": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "HEIC / HEIF",
+        "ru-RU": "HEIC / HEIF",
+        "uk-UA": "HEIC / HEIF",
+        "de-DE": "HEIC / HEIF",
+        "fr-FR": "HEIC / HEIF",
+        "es-ES": "HEIC / HEIF",
+        "it-IT": "HEIC / HEIF",
+        "pl-PL": "HEIC / HEIF",
+        "pt-PT": "HEIC / HEIF",
+        "nl-NL": "HEIC / HEIF",
+        "cs-CZ": "HEIC / HEIF",
+        "bg-BG": "HEIC / HEIF"
+      }
+    },
     "fbe.theme.file_filter": {
       "component": "fbe.core",
       "runtimeOnly": true,

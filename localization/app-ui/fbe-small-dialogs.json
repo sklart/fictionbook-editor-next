@@ -2354,6 +2354,63 @@
         "bg-BG": "Показвай краища на редове"
       }
     },
+    "fbe.dialog.idd_setting_other.image_import": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Image import",
+        "ru-RU": "Импорт изображений",
+        "uk-UA": "Імпорт зображень",
+        "de-DE": "Bildimport",
+        "fr-FR": "Importation d’image",
+        "es-ES": "Importación de imágenes",
+        "it-IT": "Importazione immagini",
+        "pl-PL": "Import obrazów",
+        "pt-PT": "Importação de imagens",
+        "nl-NL": "Afbeeldingen importeren",
+        "cs-CZ": "Import obrázků",
+        "bg-BG": "Импортиране на изображения"
+      }
+    },
+    "fbe.dialog.idd_setting_other.output_format": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "LTEXT",
+      "targetId": "IDC_STATIC",
+      "translations": {
+        "en-US": "Output format:",
+        "ru-RU": "Формат результата:",
+        "uk-UA": "Формат результату:",
+        "de-DE": "Ausgabeformat:",
+        "fr-FR": "Format de sortie :",
+        "es-ES": "Formato de salida:",
+        "it-IT": "Formato di output:",
+        "pl-PL": "Format wyjściowy:",
+        "pt-PT": "Formato de saída:",
+        "nl-NL": "Uitvoerformaat:",
+        "cs-CZ": "Výstupní formát:",
+        "bg-BG": "Формат на изхода:"
+      }
+    },
+    "fbe.dialog.idd_setting_other.keep_supported": {
+      "resource": "IDD_SETTING_OTHER",
+      "kind": "CONTROL",
+      "targetId": "IDC_IMAGE_IMPORT_KEEP_SUPPORTED",
+      "translations": {
+        "en-US": "Keep JPEG/PNG without recompression",
+        "ru-RU": "Сохранять JPEG/PNG без перекодирования",
+        "uk-UA": "Зберігати JPEG/PNG без перекодування",
+        "de-DE": "JPEG/PNG ohne Neukodierung beibehalten",
+        "fr-FR": "Conserver JPEG/PNG sans réencodage",
+        "es-ES": "Conservar JPEG/PNG sin recodificar",
+        "it-IT": "Mantieni JPEG/PNG senza ricodifica",
+        "pl-PL": "Zachowaj JPEG/PNG bez ponownego kodowania",
+        "pt-PT": "Manter JPEG/PNG sem recodificação",
+        "nl-NL": "JPEG/PNG zonder hercodering behouden",
+        "cs-CZ": "Ponechat JPEG/PNG bez překódování",
+        "bg-BG": "Запазване на JPEG/PNG без прекодиране"
+      }
+    },
     "fbe.dialog.idd_setting_next.show_special_characters": {
       "resource": "IDD_SETTING_NEXT",
       "kind": "CONTROL",

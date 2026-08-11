@@ -14,6 +14,7 @@
 #include "Scintilla.h"
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
+#include "RuntimeLocalization.h"
 #include <vector>
 
 extern CElementDescMnr _EDMnr;
@@ -4014,12 +4015,13 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 
 	if(!_Settings.GetIsInsClearImage())
 	{
+		CString imageFilter = ImageImportFileFilter();
 		CFileDialogEx dlg(
 			TRUE,
 			NULL,
 			NULL,
 			OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR,
-			L"Supported images (*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff)\0*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff\0All files (*.*)\0*.*\0\0"
+			imageFilter
 			);
 
 		wchar_t dlgTitle[MAX_LOAD_STRING + 1];
@@ -4706,10 +4708,45 @@ BSTR CFBEView::PrepareDefaultId(const CString& filename){
 	return newid.AllocSysString();
 }
 
+HRESULT CFBEView::AddImportedBinary(const BYTE* bytes, size_t size, const CString& logicalFileName,
+	const CString& mimeType, _variant_t* checkedId)
+{
+	if (!bytes || !size || size > ULONG_MAX)
+		return E_INVALIDARG;
+	_variant_t args[4];
+	SAFEARRAY* data = SafeArrayCreateVector(VT_UI1, 0, static_cast<ULONG>(size));
+	if (!data)
+		return E_OUTOFMEMORY;
+	void* raw = NULL;
+	HRESULT hr = SafeArrayAccessData(data, &raw);
+	if (FAILED(hr)) {
+		SafeArrayDestroy(data);
+		return hr;
+	}
+	memcpy(raw, bytes, size);
+	SafeArrayUnaccessData(data);
+	V_ARRAY(&args[0]) = data;
+	V_VT(&args[0]) = VT_ARRAY | VT_UI1;
+	V_BSTR(&args[1]) = mimeType.AllocSysString();
+	V_VT(&args[1]) = VT_BSTR;
+	V_BSTR(&args[2]) = PrepareDefaultId(logicalFileName);
+	V_VT(&args[2]) = VT_BSTR;
+	V_BSTR(&args[3]) = logicalFileName.AllocSysString();
+	V_VT(&args[3]) = VT_BSTR;
+	CComDispatchDriver body(Script());
+	_variant_t localId;
+	hr = body.InvokeN(L"apiAddBinary", args, 4, &localId);
+	if (FAILED(hr))
+		return hr;
+	hr = body.Invoke0(L"FillCoverList");
+	if (SUCCEEDED(hr) && checkedId)
+		*checkedId = localId;
+	return hr;
+}
+
 // images
 void CFBEView::AddImage(const CString& filename, bool bInline)
 {
-	_variant_t args[4];
 	ImageImportOptions options;
 	options.outputFormat = static_cast<ImageOutputFormat>(_Settings.GetImageImportFormat());
 	options.jpegQuality = static_cast<int>(_Settings.GetImageImportJpegQuality());
@@ -4717,43 +4754,17 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 	ImageImportResult imported;
 	CString error;
 	HRESULT hr = ImportImageForFb2(filename, options, imported, error);
+	if (hr == E_ABORT && ::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) == IDYES) {
+		options.flattenTransparentJpeg = true;
+		hr = ImportImageForFb2(filename, options, imported, error);
+	}
 	if (FAILED(hr)) { if (!error.IsEmpty()) ::MessageBox(m_hWnd, error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
-	SAFEARRAY* data = SafeArrayCreateVector(VT_UI1, 0, static_cast<ULONG>(imported.data.size()));
-	if (!data) { U::ReportError(E_OUTOFMEMORY); return; }
-	void* raw = NULL; hr = SafeArrayAccessData(data, &raw);
-	if (FAILED(hr)) { SafeArrayDestroy(data); U::ReportError(hr); return; }
-	memcpy(raw, imported.data.data(), imported.data.size()); SafeArrayUnaccessData(data);
-	V_ARRAY(&args[0]) = data; V_VT(&args[0]) = VT_ARRAY | VT_UI1;
-	V_BSTR(&args[3]) = imported.logicalFileName.AllocSysString(); V_VT(&args[3]) = VT_BSTR;
-
-	// Prepare a default ID
-	int cp = filename.ReverseFind(_T('\\'));
-	if (cp < 0)
-		cp = 0;
-	else
-		++cp;
-
-	V_BSTR(&args[2]) = PrepareDefaultId(imported.logicalFileName);
-	V_VT(&args[2]) = VT_BSTR;
-
-	// Try to find out mime type
-	V_BSTR(&args[1]) = imported.mimeType.AllocSysString();
-	V_VT(&args[1]) = VT_BSTR;
-
-	// Stuff the thing into JavaScript
 	try
 	{
 		CComDispatchDriver body(Script());
 		_variant_t checkedId;
-		hr = body.InvokeN(L"apiAddBinary", args, 4, &checkedId);
-
-		if(FAILED(hr))
-			U::ReportError(hr);
-
-		hr = body.Invoke0(L"FillCoverList");
-
-		if(FAILED(hr))
-			U::ReportError(hr);
+		hr = AddImportedBinary(imported.data.data(), imported.data.size(), imported.logicalFileName, imported.mimeType, &checkedId);
+		if (FAILED(hr)) { U::ReportError(hr); return; }
 
 		_variant_t check(false);
 		if (bInline)

@@ -108,6 +108,14 @@ function Assert-PreparedDependencies {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+
+# v145 selects the newest CRT even if VsDevCmd was initialized with an older
+# compiler. That CRT imports GetSystemTimePreciseAsFileTime, absent from
+# Windows 7. Use the VS 2022-compatible toolset unless explicitly overridden.
+if ($CompatibilityTarget -eq "Win7" -and -not $PlatformToolset) {
+    $PlatformToolset = "v143"
+}
+
 $editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
 
 if ($EditorRuntimeOnly) {
@@ -232,6 +240,10 @@ else {
         exit $LASTEXITCODE
     }
     & (Join-Path $repoRoot "tools\build\build-openjpeg.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    & (Join-Path $repoRoot "tools\build\build-libheif.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

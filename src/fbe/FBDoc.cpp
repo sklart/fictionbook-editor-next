@@ -1810,27 +1810,7 @@ BSTR Doc::PrepareDefaultId(const CString& filename){
 // binaries
 HRESULT Doc::AddBinaryData(const BYTE* data, size_t size, const CString& logicalFileName, const CString& mimeType)
 {
-	_variant_t args[4];
-	if (!data || !size || size > ULONG_MAX)
-		return E_INVALIDARG;
-
-	V_BSTR(&args[3]) = logicalFileName.AllocSysString();
-	V_VT(&args[3]) = VT_BSTR;
-	SAFEARRAY* bytes = SafeArrayCreateVector(VT_UI1, 0, static_cast<ULONG>(size));
-	if (!bytes) return E_OUTOFMEMORY;
-	void* bytesData = NULL;
-	HRESULT hr = SafeArrayAccessData(bytes, &bytesData);
-	if (FAILED(hr)) { SafeArrayDestroy(bytes); return hr; }
-	memcpy(bytesData, data, size); SafeArrayUnaccessData(bytes);
-	V_ARRAY(&args[0]) = bytes; V_VT(&args[0]) = VT_ARRAY | VT_UI1;
-	V_BSTR(&args[2]) = PrepareDefaultId(logicalFileName);
-	V_VT(&args[2]) = VT_BSTR;
-	V_BSTR(&args[1]) = mimeType.AllocSysString();
-	V_VT(&args[1]) = VT_BSTR;
-	CComDispatchDriver body(m_body.Script());
-	hr = body.InvokeN(L"apiAddBinary", args, 4);
-	if (FAILED(hr)) return hr;
-	return body.Invoke0(L"FillCoverList");
+	return m_body.AddImportedBinary(data, size, logicalFileName, mimeType);
 }
 
 void Doc::AddBinary(const CString& filename)

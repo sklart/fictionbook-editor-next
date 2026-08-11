@@ -18,12 +18,18 @@ struct ImageImportResult
 	std::vector<BYTE> data;
 	CString logicalFileName;
 	CString mimeType;
+	UINT width;
+	UINT height;
 	bool converted;
-	bool hasAlpha;
-	ImageImportResult() : converted(false), hasAlpha(false) {}
+	bool hasTransparency;
+	ImageImportResult() : width(0), height(0), converted(false), hasTransparency(false) {}
 };
 
 // Reads and validates an image, returning FB2-safe JPEG or PNG bytes.  This
 // layer deliberately has no knowledge of MSHTML, DOM, or binary-id handling.
 HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& options,
 	ImageImportResult& result, CString& errorMessage);
+
+// Localized, double-NUL-terminated Win32 open-file filter shared by both image
+// entry points.  The extensions are intentionally identical in every caller.
+CString ImageImportFileFilter();
