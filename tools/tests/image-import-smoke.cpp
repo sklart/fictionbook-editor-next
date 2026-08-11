@@ -79,6 +79,26 @@ static bool TestAnimatedWebpRejection()
 	return hr == E_NOTIMPL;
 }
 
+static bool TestTransparentWebp()
+{
+	const BYTE pixels[] = { 0, 0, 255, 64 };
+	uint8_t* encoded = NULL;
+	const size_t encodedSize = WebPEncodeRGBA(pixels, 1, 1, 4, 75.0f, &encoded);
+	if (!encodedSize || !encoded) return false;
+	wchar_t temporaryPath[MAX_PATH] = {};
+	if (!GetTempPathW(_countof(temporaryPath), temporaryPath) || !GetTempFileNameW(temporaryPath, L"fbe", 0, temporaryPath)) { WebPFree(encoded); return false; }
+	const CString path(temporaryPath);
+	std::ofstream stream(path, std::ios::binary); stream.write(reinterpret_cast<const char*>(encoded), static_cast<std::streamsize>(encodedSize)); stream.close(); WebPFree(encoded);
+	ImageImportOptions options; ImageImportResult result; CString error;
+	if (FAILED(ImportImageForFb2(path, options, result, error)) || !result.converted || !result.hasTransparency || result.mimeType != L"image/png" || !HasPngMagic(result.data)) { DeleteFileW(path); return false; }
+	options.outputFormat = ImageOutputFormat::Jpeg;
+	if (ImportImageForFb2(path, options, result, error) != E_ABORT) { DeleteFileW(path); return false; }
+	options.flattenTransparentJpeg = true;
+	const bool ok = SUCCEEDED(ImportImageForFb2(path, options, result, error)) && result.mimeType == L"image/jpeg" && HasJpegMagic(result.data);
+	DeleteFileW(path);
+	return ok;
+}
+
 static bool TestHeif(const wchar_t* path, UINT expectedWidth = 0, UINT expectedHeight = 0)
 {
 	ImageImportOptions options;
@@ -202,5 +222,6 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestAnimatedWebpRejection()) return 28;
 	std::vector<BYTE> jpegPassThrough;
 	if (!ReadFile(argv[17], jpegPassThrough) || FAILED(ImportImageForFb2(argv[17], passThrough, result, error)) || result.converted || result.mimeType != L"image/jpeg" || result.data != jpegPassThrough || result.logicalFileName.CompareNoCase(L"original.jpeg") != 0) return 29;
+	if (!TestTransparentWebp()) return 30;
 	return 0;
 }
