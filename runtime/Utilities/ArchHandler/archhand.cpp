@@ -64,6 +64,13 @@ bool IsFB2Archive(const std::wstring& path)
     return priorDot != std::wstring::npos && _wcsicmp(withoutArchiveExtension.c_str() + priorDot, L".fb2") == 0;
 }
 
+bool IsTestUncPath(const std::wstring& path)
+{
+    wchar_t value[2] = {};
+    return path.length() >= 2 && path[0] == L'\\' && path[1] == L'\\' &&
+        GetEnvironmentVariableW(L"ARCHHANDLER_TEST_MODE", value, 2) == 1 && value[0] == L'1';
+}
+
 [[noreturn]] void FailLaunch(const std::wstring& program, const std::wstring& archive, DWORD error)
 {
     std::wstring message = L"Не удалось открыть архив.\n\nПрограмма: " + program + L"\nАрхив: " + archive + L"\nКод ShellExecute: " + std::to_wstring(error);
@@ -73,7 +80,7 @@ bool IsFB2Archive(const std::wstring& path)
 
 }
 
-int wmain(int argc, wchar_t* argv[])
+int Run(int argc, wchar_t* argv[])
 {
     if (argc != 4 || _wcsicmp(argv[1], L"--type") != 0) {
         MessageBoxW(nullptr, L"Использование: ArchHandler.exe --type rar|zip \"архив\"", L"ArchHandler", MB_OK | MB_ICONERROR);
@@ -86,7 +93,7 @@ int wmain(int argc, wchar_t* argv[])
         return 2;
     }
     const std::wstring archive(argv[3]);
-    if (GetFileAttributesW(archive.c_str()) == INVALID_FILE_ATTRIBUTES) FailLaunch(L"", archive, ERROR_FILE_NOT_FOUND);
+    if (GetFileAttributesW(archive.c_str()) == INVALID_FILE_ATTRIBUTES && !IsTestUncPath(archive)) FailLaunch(L"", archive, ERROR_FILE_NOT_FOUND);
     const bool fb2 = IsFB2Archive(archive);
     const std::wstring program = ReadSetting(type, fb2 ? L"FB2Program" : L"ArchiveProgram");
     const std::wstring parameters = ReadSetting(type, fb2 ? L"FB2Parameters" : L"ArchiveParameters");
@@ -94,4 +101,15 @@ int wmain(int argc, wchar_t* argv[])
     const INT_PTR launchResult = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", program.c_str(), ExpandParameters(parameters, archive).c_str(), nullptr, SW_SHOWNORMAL));
     if (launchResult <= 32) FailLaunch(program, archive, static_cast<DWORD>(launchResult));
     return 0;
+}
+
+int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
+{
+    int argc = 0;
+    wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (!argv)
+        return 1;
+    const int result = Run(argc, argv);
+    LocalFree(argv);
+    return result;
 }

@@ -105,6 +105,7 @@ if (-not $SkipCommonChecks) {
 $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
 & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") @imageImportTestArguments
+& (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") -PlatformToolset $PlatformToolset
 if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
 }
