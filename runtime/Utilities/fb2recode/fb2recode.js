@@ -87,12 +87,21 @@
     else decl = m[0].replace(/\?>$/, " encoding=\"" + displayEncoding(enc) + "\"?>");
     return text.replace(m[0], decl);
   }
-  /* Exact Unicode repertoire of Windows-1251.  Byte 0x98 is undefined and
-     deliberately has no substitute here. */
-  var CP1251_EXTRA = "ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—™љ›њќћџ ЎўЈ¤Ґ¦§Ё©Є«¬­®Ї°±Ііґµ¶·ё№є»јЅѕї";
+  /* Exact Unicode repertoire of Windows-1251.  Keep this ASCII-only: WSH
+     determines a .js source encoding from a BOM and older installations can
+     otherwise corrupt characters such as U+040C before this code runs.
+     Byte 0x98 is undefined and deliberately has no substitute here. */
+  var CP1251_EXTRA = [
+    0x0402,0x0403,0x201A,0x0453,0x201E,0x2026,0x2020,0x2021,0x20AC,0x2030,0x0409,0x2039,0x040A,0x040C,0x040B,0x040F,
+    0x0452,0x2018,0x2019,0x201C,0x201D,0x2022,0x2013,0x2014,0x2122,0x0459,0x203A,0x045A,0x045C,0x045B,0x045F,
+    0x00A0,0x040E,0x045E,0x0408,0x00A4,0x0490,0x00A6,0x00A7,0x0401,0x00A9,0x0404,0x00AB,0x00AC,0x00AD,0x00AE,0x0407,
+    0x00B0,0x00B1,0x0406,0x0456,0x0491,0x00B5,0x00B6,0x00B7,0x0451,0x2116,0x0454,0x00BB,0x0458,0x0405,0x0455,0x0457
+  ];
   function isCp1251Character(ch) {
-    var c = ch.charCodeAt(0);
-    return c <= 0x7f || (c >= 0x0410 && c <= 0x044f) || CP1251_EXTRA.indexOf(ch) >= 0;
+    var c = ch.charCodeAt(0), i;
+    if (c <= 0x7f || (c >= 0x0410 && c <= 0x044f)) return true;
+    for (i = 0; i < CP1251_EXTRA.length; i++) if (CP1251_EXTRA[i] === c) return true;
+    return false;
   }
   function unrepresentable(text) {
     var bad = [], i;
@@ -145,7 +154,8 @@
   function run(paths, options, notify) {
     var files = [], i, result, stats = { found:0, same:0, converted:0, skipped:0, errors:0 }, results = [];
     files = collectFiles(paths, options.recursive);
-    stats.found = files.length; for (i = 0; i < files.errors.length; i++) results.push(files.errors[i]);
+    stats.found = files.length;
+    for (i = 0; i < files.errors.length; i++) { results.push(files.errors[i]); stats.errors++; }
     for (i = 0; i < files.length; i++) { if (options.shouldCancel && options.shouldCancel()) { stats.skipped += files.length - i; return { stats:stats, results:results, cancelled:true }; } if (notify) notify("[" + (i + 1) + "/" + files.length + "] " + files[i]); result = processFile(files[i], options); results.push(result); stats[result.status === "same" ? "same" : result.status === "converted" ? "converted" : "errors"]++; }
     return { stats:stats, results:results, cancelled:false };
   }
