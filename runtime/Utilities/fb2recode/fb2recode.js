@@ -87,9 +87,14 @@
     else decl = m[0].replace(/\?>$/, " encoding=\"" + displayEncoding(enc) + "\"?>");
     return text.replace(m[0], decl);
   }
+  var CP1251_EXTRA = "€‚ƒ„…†‡ˆ‰Š‹ŒЌŽЏђ‘’“”•–—˜™š›œќžџ ЎўЈ¤Ґ¦§Ё©Є«¬­®Ї°±Ііґµ¶·ё№є»јЅѕї";
+  function isCp1251Character(ch) {
+    var c = ch.charCodeAt(0);
+    return c <= 0x7f || (c >= 0x0410 && c <= 0x044f) || CP1251_EXTRA.indexOf(ch) >= 0;
+  }
   function unrepresentable(text) {
-    var bad = [], i, c;
-    for (i = 0; i < text.length; i++) { c = text.charCodeAt(i); if (c > 0x7f && !(c >= 0x0400 && c <= 0x045f) && c !== 0x0401 && c !== 0x0451 && c !== 0x2116 && c !== 0x00a0) {
+    var bad = [], i;
+    for (i = 0; i < text.length; i++) { if (!isCp1251Character(text.charAt(i))) {
       if (bad.length < 8) bad.push("'" + text.charAt(i) + "' @ " + (i + 1));
     }}
     return bad;
@@ -130,12 +135,17 @@
       if (recursive) { subs = new Enumerator(f.SubFolders); for (; !subs.atEnd(); subs.moveNext()) collect(subs.item().Path, true, out); } }
     catch (e) { out.errors.push({ status:"error", path:folder, stage:"обход папки", message:e.message, code:1 }); }
   }
+  function collectFiles(paths, recursive) {
+    var files = [], i;
+    files.errors = []; for (i = 0; i < paths.length; i++) { if (FSO.FolderExists(paths[i])) collect(paths[i], recursive, files); else files.push(paths[i]); }
+    return files;
+  }
   function run(paths, options, notify) {
     var files = [], i, result, stats = { found:0, same:0, converted:0, skipped:0, errors:0 }, results = [];
-    files.errors = []; for (i = 0; i < paths.length; i++) { if (FSO.FolderExists(paths[i])) collect(paths[i], options.recursive, files); else files.push(paths[i]); }
+    files = collectFiles(paths, options.recursive);
     stats.found = files.length; for (i = 0; i < files.errors.length; i++) results.push(files.errors[i]);
-    for (i = 0; i < files.length; i++) { if (notify) notify("[" + (i + 1) + "/" + files.length + "] " + files[i]); result = processFile(files[i], options); results.push(result); stats[result.status === "same" ? "same" : result.status === "converted" ? "converted" : "errors"]++; }
-    return { stats:stats, results:results };
+    for (i = 0; i < files.length; i++) { if (options.shouldCancel && options.shouldCancel()) { stats.skipped += files.length - i; return { stats:stats, results:results, cancelled:true }; } if (notify) notify("[" + (i + 1) + "/" + files.length + "] " + files[i]); result = processFile(files[i], options); results.push(result); stats[result.status === "same" ? "same" : result.status === "converted" ? "converted" : "errors"]++; }
+    return { stats:stats, results:results, cancelled:false };
   }
   function usage() { return "fb2recode.js /encoding:utf-8 <file.fb2>\nfb2recode.js /encoding:windows-1251 /dir <folder> [/recursive] [/backup|/no-backup] [/dry-run] [/overwrite] [/report:<file>] [/quiet] [/help]"; }
   function cli() {
@@ -145,6 +155,6 @@
     r = run(paths,opt,function(s){if(!opt.quiet) WScript.Echo(s);}); for(i=0;i<r.results.length;i++) { x=r.results[i]; report += x.path+"\t"+x.status+(x.message?"\t"+x.stage+": "+x.message:"")+"\r\n"; if(!opt.quiet) WScript.Echo(x.status+": "+x.path+(x.message?" — "+x.stage+": "+x.message:"")); }
     report += "Найдено файлов: "+r.stats.found+"\r\nУже соответствуют: "+r.stats.same+"\r\nПреобразовано: "+r.stats.converted+"\r\nПропущено: "+r.stats.skipped+"\r\nОшибок: "+r.stats.errors+"\r\n"; if(opt.report) { var t=FSO.CreateTextFile(opt.report,true,true); t.Write(report); t.Close(); } if(!opt.quiet) WScript.Echo(report); WScript.Quit(r.stats.errors ? 1 : 0);
   }
-  global.FB2Recode = { run:run, processFile:processFile, normalizeEncoding:normalizeEncoding, usage:usage };
+  global.FB2Recode = { run:run, processFile:processFile, collectFiles:collectFiles, normalizeEncoding:normalizeEncoding, usage:usage };
   if (typeof WScript !== "undefined") cli();
 }(this));
