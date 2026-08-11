@@ -7,6 +7,8 @@
 #include <webp/decode.h>
 #include <webp/encode.h>
 #include <webp/mux.h>
+#define OPJ_STATIC
+#include <openjpeg-2.5/openjpeg.h>
 
 CAppModule _Module;
 
@@ -97,6 +99,28 @@ static bool TestTransparentWebp()
 	const bool ok = SUCCEEDED(ImportImageForFb2(path, options, result, error)) && result.mimeType == L"image/jpeg" && HasJpegMagic(result.data);
 	DeleteFileW(path);
 	return ok;
+}
+
+static bool TestJpeg2000Fixture(bool jp2)
+{
+	opj_image_cmptparm_t component = {};
+	component.dx = component.dy = 1; component.w = component.h = 2; component.prec = component.bpp = 8;
+	std::unique_ptr<opj_image_t, void(*)(opj_image_t*)> image(opj_image_create(1, &component, OPJ_CLRSPC_GRAY), opj_image_destroy);
+	if (!image) return false;
+	image->x1 = image->y1 = 2;
+	const int pixels[] = { 0, 96, 160, 255 }; for (size_t index = 0; index < _countof(pixels); ++index) image->comps[0].data[index] = pixels[index];
+	wchar_t temporaryPath[MAX_PATH] = {};
+	if (!GetTempPathW(_countof(temporaryPath), temporaryPath) || !GetTempFileNameW(temporaryPath, L"fbe", 0, temporaryPath)) return false;
+	DeleteFileW(temporaryPath); CStringA outputPath(temporaryPath);
+	opj_cparameters_t parameters; opj_set_default_encoder_parameters(&parameters);
+	parameters.cod_format = jp2 ? 1 : 0; parameters.tcp_numlayers = 1; parameters.cp_disto_alloc = 1; parameters.tcp_rates[0] = 0; parameters.numresolution = 1;
+	std::unique_ptr<opj_codec_t, void(*)(opj_codec_t*)> codec(opj_create_compress(jp2 ? OPJ_CODEC_JP2 : OPJ_CODEC_J2K), opj_destroy_codec);
+	std::unique_ptr<opj_stream_t, void(*)(opj_stream_t*)> stream(opj_stream_create_default_file_stream(outputPath, OPJ_FALSE), opj_stream_destroy);
+	if (!codec || !stream || !opj_setup_encoder(codec.get(), &parameters, image.get()) || !opj_start_compress(codec.get(), image.get(), stream.get()) || !opj_encode(codec.get(), stream.get()) || !opj_end_compress(codec.get(), stream.get())) { DeleteFileW(temporaryPath); return false; }
+	stream.reset();
+	ImageImportOptions options; ImageImportResult result; CString error;
+	const HRESULT hr = ImportImageForFb2(temporaryPath, options, result, error); DeleteFileW(temporaryPath);
+	return SUCCEEDED(hr) && result.converted && result.mimeType == L"image/jpeg" && result.width == 2 && result.height == 2 && !result.hasTransparency && HasJpegMagic(result.data);
 }
 
 static bool TestCorruptImages()
@@ -251,5 +275,6 @@ int wmain(int argc, wchar_t** argv)
 	if (!ReadFile(argv[17], jpegPassThrough) || FAILED(ImportImageForFb2(argv[17], passThrough, result, error)) || result.converted || result.mimeType != L"image/jpeg" || result.data != jpegPassThrough || result.logicalFileName.CompareNoCase(L"original.jpeg") != 0) return 29;
 	if (!TestTransparentWebp()) return 30;
 	if (!TestCorruptImages()) return 31;
+	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false)) return 32;
 	return 0;
 }
