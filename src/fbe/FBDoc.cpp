@@ -913,6 +913,16 @@ static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 		compact.Remove(L'\r');
 		compact.Remove(L'\n');
 
+		// dataType is a temporary MSXML conversion aid.  Leaving it on the
+		// element can make MSXML serialize dt:dt and its datatype namespace,
+		// neither of which belongs in an FB2 document.
+		if (binaryElement != NULL)
+		{
+			// PutdataType is imported as a BSTR setter; a null BSTR is the
+			// native equivalent of `$binary.dataType = $null`.
+			binaryElement->PutdataType(_bstr_t(static_cast<const wchar_t*>(NULL)));
+		}
+
 		// GetBinaries уже создаёт обычный текстовый узел Base64. Повторное
 		// назначение dataType на элементе <binary> несовместимо с частью
 		// версий MSXML6 и возвращает E_INVALIDARG. Заменяем дочерний текстовый
@@ -1331,9 +1341,43 @@ public:
 };
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries) {
+
+  // Keep the save transaction fail-closed if normalization or serialization
+  // loses a native visual table.  User edits happen before this transaction,
+  // so comparing only its input and output cannot reject a deliberate delete.
+  const auto CountNativeVisualTables = [](MSHTML::IHTMLElementPtr root) -> long {
+    if (!root) return 0;
+    MSHTML::IHTMLElementCollectionPtr tables(MSHTML::IHTMLElement2Ptr(root)->getElementsByTagName(L"TABLE"));
+    if (!tables) return 0;
+    long count = 0;
+    for (long index = 0; index < tables->length; ++index)
+    {
+      MSHTML::IHTMLElementPtr table(tables->item(_variant_t(index), _variant_t()));
+      if (table && U::scmp(table->className, L"table") == 0)
+        ++count;
+    }
+    return count;
+  };
+
+  const auto CountSerializedTables = [](MSXML2::IXMLDOMDocument2Ptr document) -> long {
+    if (!document) return 0;
+    MSXML2::IXMLDOMNodeListPtr tables(document->selectNodes(
+      _bstr_t(L"/fb:FictionBook/fb:body//fb:table")));
+    return tables ? tables->length : 0;
+  };
+
+  const long tablesBeforeNormalize = CountNativeVisualTables(m_body.Document()->body);
+
   // normalize body first
   _EDMnr.CleanUpAll();
    m_body.Normalize(m_body.Document()->body);
+
+  const long tablesAfterNormalize = CountNativeVisualTables(m_body.Document()->body);
+  if (tablesAfterNormalize < tablesBeforeNormalize)
+  {
+    StartupTrace::HResult(L"document", L"D224", E_FAIL, L"native table lost during Normalize");
+    _com_issue_error(E_FAIL);
+  }
 
   // create document
   MSXML2::IXMLDOMDocument2Ptr	ndoc(U::CreateDocument(false));
@@ -1395,6 +1439,12 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   // fetch body elements
   GetBodies(fbw_body,ndoc);
+
+  if (CountSerializedTables(ndoc) < tablesAfterNormalize)
+  {
+    StartupTrace::HResult(L"document", L"D225", E_FAIL, L"native table lost during CreateDOM");
+    _com_issue_error(E_FAIL);
+  }
 
   // fetch binaries
   CheckError(body.Invoke1(L"GetBinaries",&args[2]));
