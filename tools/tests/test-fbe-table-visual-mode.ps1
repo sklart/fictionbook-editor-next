@@ -42,6 +42,10 @@ foreach($fragment in @('IsNativeTableBlockName', '!IsNativeTableBlockName(cur_na
     if($viewSource -notlike "*$fragment*") { throw "PackText может вложить TABLE в автоматически созданный P: $fragment" }
 }
 
+foreach($fragment in @('SetTableSpan(const MSHTML::IHTMLElementPtr& cell, const wchar_t* fbName, const wchar_t* htmlName, long span)', 'cell->setAttribute(fbName, attributeValue, 0)', 'cell->setAttribute(htmlName, attributeValue, 0)', 'cell->removeAttribute(fbName, 0)', 'cell->removeAttribute(htmlName, 0)', 'L"fbcolspan", L"colspan"', 'L"fbrowspan", L"rowspan"')) {
+    if($viewSource -notlike "*$fragment*") { throw "Span metadata и HTML layout не синхронизированы: $fragment" }
+}
+
 foreach($fragment in @('SnapshotNativeTables', 'tablesBeforeNormalize', 'D224', 'SnapshotSerializedTables', 'D225', 'm_serialization_unsafe', 'drop-row-after-normalize')) {
     if($source -notlike "*$fragment*") { throw "Нет защиты сохранения от внутренней потери TABLE: $fragment" }
 }
