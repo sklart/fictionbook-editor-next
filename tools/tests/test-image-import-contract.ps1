@@ -50,7 +50,7 @@ Assert-True ($importSource -notmatch 'CreateFile.*TEMP|GetTempPath|dwebp\.exe|op
 Assert-True ($docSource -match 'AddBinaryData') 'Doc должен принимать готовые байты изображения.'
 Assert-True ($viewSource -match 'PrepareDefaultId\(logicalFileName\)') 'ID должен строиться по целевому имени.'
 Assert-True ($viewSource -match 'AddImportedBinary') 'Добавление binary должно использовать общий DOM adapter.'
-Assert-True ($viewSource -match 'body\.Invoke0\(L"FillCoverList"\)') 'Новый binary должен сразу обновлять список изображений и обложек.'
+Assert-True ($viewSource -match 'body\.Invoke0\(L"OnBinaryChange"\)') 'Новый binary должен пересобирать preview cache и сразу обновлять список изображений и обложек.'
 Assert-True ($viewSource -match 'ImportImageForFb2') 'Вставка изображения должна использовать общий импортёр.'
 Assert-True ($viewSource -match 'body\.Invoke2\(L"InsImage"' -and $viewSource -match 'body\.Invoke2\(L"InsInlineImage"') 'Новый binary должен вставляться существующими путями обычной и inline-картинки.'
 Assert-True ($frameSource -match 'ImportBinary\(fileName') 'Пакетный импорт должен продолжать обработку файлов.'

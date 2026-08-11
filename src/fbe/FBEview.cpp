@@ -4738,7 +4738,11 @@ HRESULT CFBEView::AddImportedBinary(const BYTE* bytes, size_t size, const CStrin
 	hr = body.InvokeN(L"apiAddBinary", args, 4, &localId);
 	if (FAILED(hr))
 		return hr;
-	hr = body.Invoke0(L"FillCoverList");
+	// The preview button resolves dimensions through ImagesInfo.  Rebuild that
+	// cache after the DIV is attached, then refresh the cover lists as one UI
+	// operation; FillCoverList alone leaves newly imported images invisible to
+	// the hover preview until the document is reopened.
+	hr = body.Invoke0(L"OnBinaryChange");
 	if (SUCCEEDED(hr) && checkedId)
 		*checkedId = localId;
 	return hr;
