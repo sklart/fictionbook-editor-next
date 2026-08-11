@@ -220,7 +220,7 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 
 int wmain(int argc, wchar_t** argv)
 {
-	if (argc != 18) return 2;
+	if (argc != 19) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
 
@@ -280,5 +280,6 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestTransparentWebp()) return 31;
 	if (!TestCorruptImages()) return 32;
 	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true)) return 33;
+	if (ImportImageForFb2(argv[18], passThrough, result, error) != HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE)) return 34;
 	return 0;
 }

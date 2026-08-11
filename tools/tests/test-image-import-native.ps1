@@ -13,6 +13,10 @@ $testDir = Join-Path $repoRoot 'out\tests\image-import'
 New-Item -ItemType Directory -Force -Path $testDir | Out-Null
 $emptyFixture = Join-Path $testDir 'empty-image.bin'
 [IO.File]::WriteAllBytes($emptyFixture, [byte[]]@())
+$oversizedFixture = Join-Path $testDir 'oversized-image.bin'
+$oversizedStream = [IO.File]::Open($oversizedFixture, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
+try { $oversizedStream.SetLength(64MB + 1) }
+finally { $oversizedStream.Dispose() }
 $avifWithPngExtension = Join-Path $testDir 'actual-avif.png'
 $avifFixture = Join-Path $repoRoot 'third_party\libheif\examples\example.avif'
 Copy-Item -LiteralPath $avifFixture -Destination $avifWithPngExtension -Force
@@ -98,6 +102,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     (Join-Path $repoRoot 'third_party\libheif\examples\example.heic') `
     $transparentPngWithWebpExtension `
     $animatedGifFixture `
-    $jpegPassThroughFixture
+    $jpegPassThroughFixture `
+    $oversizedFixture
 if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
 Write-Host 'Native ImageImport smoke-test passed.'

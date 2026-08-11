@@ -33,6 +33,7 @@ Assert-True ($importSource -match 'opj_create_decompress') 'JPEG 2000 долже
 Assert-True ($importSource -match 'heif_decode_image') 'AVIF/HEIC/HEIF должны декодироваться через libheif.'
 Assert-True ($importSource -match 'get_number_of_top_level_images') 'HEIF sequence не должна молча импортироваться как один кадр.'
 Assert-True ($importSource -match 'kMaxImagePixels') 'Импортёр должен ограничивать опасные размеры.'
+Assert-True ($importSource -match 'ERROR_FILE_TOO_LARGE') 'Файл выше безопасного лимита должен возвращать контролируемую ошибку размера.'
 Assert-True ($importSource -match 'StartupTrace::Event\(L"image-import"') 'Успешный импорт должен оставлять обезличенный диагностический trace.'
 Assert-True ($importSource -match 'StartupTrace::HResult\(L"image-import"') 'Ошибка импорта должна оставлять диагностический trace.'
 Assert-True ($importSource -notmatch 'CreateFile.*TEMP|GetTempPath|dwebp\.exe|opj_decompress') 'Импорт не должен использовать временные файлы или внешние конвертеры.'

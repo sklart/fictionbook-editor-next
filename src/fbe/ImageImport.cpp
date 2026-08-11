@@ -58,10 +58,13 @@ SourceFormat Detect(const std::vector<BYTE>& b) {
 	if (StartsWith(b,gif87,sizeof(gif87)) || StartsWith(b,gif89,sizeof(gif89))) return SourceFormat::Gif;
 	return SourceFormat::Unknown;
 }
-bool ReadBytes(const CString& file, std::vector<BYTE>& data) {
-	CAtlFile f; if (FAILED(f.Create(file, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING))) return false;
-	ULONGLONG n=0; if (FAILED(f.GetSize(n)) || n > ULONG_MAX || n > kMaxSourceBytes) return false;
-	data.resize(static_cast<size_t>(n)); DWORD read=0; return n == 0 || SUCCEEDED(f.Read(data.data(), static_cast<DWORD>(n), read)) && read == n;
+HRESULT ReadBytes(const CString& file, std::vector<BYTE>& data) {
+	CAtlFile f; HRESULT hr = f.Create(file, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING); if (FAILED(hr)) return hr;
+	ULONGLONG n=0; hr = f.GetSize(n); if (FAILED(hr)) return hr;
+	if (n > ULONG_MAX || n > kMaxSourceBytes) return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+	try { data.resize(static_cast<size_t>(n)); } catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+	DWORD read=0; if (n == 0) return S_OK;
+	hr = f.Read(data.data(), static_cast<DWORD>(n), read); return SUCCEEDED(hr) && read == n ? S_OK : FAILED(hr) ? hr : HRESULT_FROM_WIN32(ERROR_READ_FAULT);
 }
 CString TargetName(const CString& file, bool png) { CString r(file); int p=r.ReverseFind(L'\\'); if(p>=0) r=r.Mid(p+1); int dot=r.ReverseFind(L'.'); if(dot>=0) r=r.Left(dot); return r + (png ? L".png" : L".jpg"); }
 CString PassThroughName(const CString& file, SourceFormat type) {
@@ -202,7 +205,7 @@ HRESULT DecodeJ2k(const std::vector<BYTE>& data, SourceFormat type, const ImageI
 
 HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& options, ImageImportResult& result, CString& errorMessage) {
 	result=ImageImportResult(); errorMessage.Empty(); result.logicalFileName=sourceFile;
-	std::vector<BYTE> source; if(!ReadBytes(sourceFile,source)) { errorMessage=ImageMessage(L"fbe.image_import.read_failed", L"Could not read image file."); StartupTrace::HResult(L"image-import", L"I100", HRESULT_FROM_WIN32(ERROR_READ_FAULT), L"stage=read"); return HRESULT_FROM_WIN32(ERROR_READ_FAULT); }
+	std::vector<BYTE> source; HRESULT readResult = ReadBytes(sourceFile,source); if(FAILED(readResult)) { errorMessage = readResult == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? ImageMessage(L"fbe.image_import.too_large", L"Image is too large.") : ImageMessage(L"fbe.image_import.read_failed", L"Could not read image file."); StartupTrace::HResult(L"image-import", L"I100", readResult, L"stage=read"); return readResult; }
 	SourceFormat type=Detect(source); if(type==SourceFormat::Unknown) { errorMessage=ImageMessage(L"fbe.image_import.unsupported", L"Unsupported or corrupt image format."); StartupTrace::HResult(L"image-import", L"I101", E_FAIL, L"source-format=unknown; stage=detect"); return E_FAIL; }
 	const wchar_t* format = type == SourceFormat::Jpeg ? L"jpeg" : type == SourceFormat::Png ? L"png" : type == SourceFormat::Webp ? L"webp" : type == SourceFormat::Jp2 ? L"jp2" : type == SourceFormat::J2k ? L"j2k" : type == SourceFormat::Tiff ? L"tiff" : type == SourceFormat::Bmp ? L"bmp" : type == SourceFormat::Gif ? L"gif" : type == SourceFormat::Avif ? L"avif" : L"heif";
 	auto FinishImport = [&](HRESULT hr) -> HRESULT { CString details; details.Format(L"source-format=%s; width=%u; height=%u; alpha=%d; output=%s; converted=%d", format, result.width, result.height, result.hasTransparency ? 1 : 0, (LPCWSTR)result.mimeType, result.converted ? 1 : 0); if (SUCCEEDED(hr)) StartupTrace::Event(L"image-import", L"I200", details); else StartupTrace::HResult(L"image-import", L"I201", hr, details); return hr; };
