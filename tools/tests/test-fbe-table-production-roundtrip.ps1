@@ -29,6 +29,7 @@ $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-roundtrip-' + [gui
 $fixture = Join-Path $directory 'table.fb2'
 $report = Join-Path $directory 'report.tsv'
 $reopenReport = Join-Path $directory 'reopen.tsv'
+$resaveReport = Join-Path $directory 'resave.tsv'
 try {
     if ($Huge) {
         $rows = [Text.StringBuilder]::new()
@@ -86,7 +87,23 @@ try {
     if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал отчёт повторного открытия таблицы.' }
     $reopenRows = @(Import-Csv -LiteralPath $reopenReport -Delimiter "`t" | Where-Object { $_.phase -like 'table-*' })
     if ($reopenRows.Count -lt 1 -or ($reopenRows | Where-Object { $_.phase -notmatch $expectedCounts })) { throw 'Повторное открытие изменило структуру таблицы.' }
-    Write-Host "Production table Save -> reopen round-trip passed ($($tableRows.Count) snapshots)."
+    $resave = Start-Process -FilePath $FbeExe -ArgumentList @('-s', '-b', $resaveReport, $fixture) -PassThru
+    if (-not $resave.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $resave.Id -Force; throw 'FBE не завершил повторный Save таблицы.' }
+    if ($resave.ExitCode -ne 0) { throw "FBE вернул код $($resave.ExitCode) для повторного Save таблицы." }
+    if (-not (Test-Path -LiteralPath $resaveReport)) { throw 'FBE не записал отчёт повторного Save таблицы.' }
+    [xml]$resaved = Get-Content -LiteralPath $fixture -Raw
+    Assert-Fb2Schema $fixture
+    $resavedNamespaces = [Xml.XmlNamespaceManager]::new($resaved.NameTable)
+    $resavedNamespaces.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+    if ($Huge) {
+        $table = $resaved.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:table', $resavedNamespaces)
+        if ($null -eq $table -or @($table.SelectNodes('fb:tr', $resavedNamespaces)).Count -ne 356 -or @($table.SelectNodes('.//fb:td', $resavedNamespaces)).Count -ne 4984 -or @($table.SelectNodes('.//fb:th', $resavedNamespaces)).Count -ne 0) { throw 'Повторный Save изменил huge table.' }
+    } else {
+        $table = $resaved.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:table[@id="table-id"]', $resavedNamespaces)
+        $cell = if ($table) { $table.SelectSingleNode('fb:tr/fb:td[@id="cell"]', $resavedNamespaces) } else { $null }
+        if ($null -eq $table -or $table.GetAttribute('style') -ne 'border: 1px solid' -or @($table.SelectNodes('fb:tr', $resavedNamespaces)).Count -ne 2 -or @($table.SelectNodes('.//fb:td', $resavedNamespaces)).Count -ne 4 -or @($table.SelectNodes('.//fb:th', $resavedNamespaces)).Count -ne 1 -or $null -eq $cell -or $cell.GetAttribute('colspan') -ne '2' -or $cell.GetAttribute('rowspan') -ne '1' -or $cell.GetAttribute('align') -ne 'right' -or $cell.GetAttribute('valign') -ne 'bottom' -or $cell.InnerXml -notmatch 'strong|emphasis|a') { throw 'Повторный Save изменил семантику таблицы.' }
+    }
+    Write-Host "Production table Save -> reopen -> Save round-trip passed ($($tableRows.Count) snapshots)."
 }
 finally {
     Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue

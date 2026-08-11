@@ -19,11 +19,27 @@ function Assert-Fb2Schema([string]$Path) {
     $validation = $document.validate()
     if ($validation.errorCode -ne 0) { throw "FictionBook.xsd validation failed: $($validation.reason)" }
 }
+function Assert-Binaries([string]$Path, $ExpectedRecords) {
+    $xmlText = Get-Content -LiteralPath $Path -Raw
+    if ($xmlText -match 'dt:dt|urn:schemas-microsoft-com:datatypes') { throw 'Production Save записал MSXML datatype metadata.' }
+    Assert-Fb2Schema $Path
+    [xml]$xml = $xmlText
+    $namespaces = [Xml.XmlNamespaceManager]::new($xml.NameTable)
+    $namespaces.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+    foreach ($expected in $ExpectedRecords) {
+        $binary = $xml.SelectSingleNode(('/fb:FictionBook/fb:binary[@id="{0}"]' -f $expected.Id), $namespaces)
+        if ($null -eq $binary -or $binary.GetAttribute('content-type') -ne $expected.ContentType) { throw "Production Save изменил metadata $($expected.Id)." }
+        $afterBytes = [Convert]::FromBase64String(($binary.InnerText -replace '\s', ''))
+        $afterHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($afterBytes))
+        if ($afterBytes.Length -ne $expected.Length -or $afterHash -ne $expected.Hash) { throw "Production Save изменил decoded binary $($expected.Id)." }
+    }
+}
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-binary-roundtrip-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
 $fixture = Join-Path $directory 'binary.fb2'
 $saveReport = Join-Path $directory 'save.tsv'
 $reopenReport = Join-Path $directory 'reopen.tsv'
+$resaveReport = Join-Path $directory 'resave.tsv'
 $binaryRecords = @()
 $sizes = @(3, 57, 256, 1024, 4097, 8192, 12288, 14336, 16384)
 $contentTypes = @('application/octet-stream', 'application/x-fbe-1', 'application/x-fbe-2', 'application/x-fbe-3', 'application/x-fbe-4', 'application/x-fbe-5', 'application/x-fbe-6', 'application/x-fbe-7', 'application/x-fbe-large')
@@ -46,24 +62,17 @@ try {
     if ($save.ExitCode -ne 0) { throw "FBE вернул код $($save.ExitCode) для production binary Save." }
     if (-not (Test-Path -LiteralPath $saveReport)) { throw 'FBE не записал отчёт production Save.' }
 
-    $xmlText = Get-Content -LiteralPath $fixture -Raw
-    if ($xmlText -match 'dt:dt|urn:schemas-microsoft-com:datatypes') { throw 'Production Save записал MSXML datatype metadata.' }
-    Assert-Fb2Schema $fixture
-    [xml]$xml = $xmlText
-    $namespaces = [Xml.XmlNamespaceManager]::new($xml.NameTable)
-    $namespaces.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
-    foreach ($expected in $binaryRecords) {
-        $binary = $xml.SelectSingleNode(('/fb:FictionBook/fb:binary[@id="{0}"]' -f $expected.Id), $namespaces)
-        if ($null -eq $binary -or $binary.GetAttribute('content-type') -ne $expected.ContentType) { throw "Production Save изменил metadata $($expected.Id)." }
-        $afterBytes = [Convert]::FromBase64String(($binary.InnerText -replace '\s', ''))
-        $afterHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($afterBytes))
-        if ($afterBytes.Length -ne $expected.Length -or $afterHash -ne $expected.Hash) { throw "Production Save изменил decoded binary $($expected.Id)." }
-    }
+    Assert-Binaries $fixture $binaryRecords
 
     $reopen = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reopenReport, $fixture) -PassThru
     if (-not $reopen.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopen.Id -Force; throw 'FBE не завершил повторное открытие saved binary.' }
     if ($reopen.ExitCode -ne 0) { throw "FBE вернул код $($reopen.ExitCode) при повторном открытии binary." }
     if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал отчёт повторного открытия binary.' }
-    Write-Host 'Production binary Save -> reopen round-trip passed.'
+    $resave = Start-Process -FilePath $FbeExe -ArgumentList @('-s', '-b', $resaveReport, $fixture) -PassThru
+    if (-not $resave.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $resave.Id -Force; throw 'FBE не завершил повторный production Save binary.' }
+    if ($resave.ExitCode -ne 0) { throw "FBE вернул код $($resave.ExitCode) для повторного production Save binary." }
+    if (-not (Test-Path -LiteralPath $resaveReport)) { throw 'FBE не записал отчёт повторного production Save binary.' }
+    Assert-Binaries $fixture $binaryRecords
+    Write-Host 'Production binary Save -> reopen -> Save round-trip passed.'
 }
 finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
