@@ -103,7 +103,11 @@ function Assert-PreparedDependencies {
         (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-posix-static.lib"),
         (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib"),
         (Join-Path $repoRoot "build\libwebp\install\$Configuration\lib\libwebp.lib"),
-        (Join-Path $repoRoot "build\openjpeg\install\$Configuration\lib\openjp2.lib")
+        (Join-Path $repoRoot "build\openjpeg\install\$Configuration\lib\openjp2.lib"),
+        (Join-Path $repoRoot "build\libheif\install\$Configuration\include\libheif\heif.h"),
+        (Join-Path $repoRoot "build\libheif\install\$Configuration\lib\heif.lib"),
+        (Join-Path $repoRoot "build\libde265\install\$Configuration\lib\libde265.lib"),
+        (Join-Path $repoRoot "build\aom\install\$Configuration\lib\aom.lib")
     )
     $missing = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
     if ($missing.Count -gt 0) {
