@@ -38,4 +38,12 @@ foreach($fragment in @('Native tables have a deliberately different content mode
     if($viewSource -notlike "*$fragment*") { throw "Нормализация визуального редактора не сохраняет таблицы: $fragment" }
 }
 
+foreach($fragment in @('IsNativeTableBlockName', '!IsNativeTableBlockName(cur_name)', '|| IsNativeTableBlockName(cur_name)')) {
+    if($viewSource -notlike "*$fragment*") { throw "PackText может вложить TABLE в автоматически созданный P: $fragment" }
+}
+
+foreach($fragment in @('CountNativeVisualTables', 'tablesBeforeNormalize', 'D224', 'CountSerializedTables', 'D225')) {
+    if($source -notlike "*$fragment*") { throw "Нет защиты сохранения от внутренней потери TABLE: $fragment" }
+}
+
 Write-Host 'Визуальное представление и обратная сериализация таблиц FBE прошли проверку.'

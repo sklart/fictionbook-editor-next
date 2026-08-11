@@ -68,6 +68,14 @@ static bool IsTableCellElement(const MSHTML::IHTMLElementPtr& element)
 	return (bool)element && (U::scmp(element->tagName, L"TD") == 0 || U::scmp(element->tagName, L"TH") == 0);
 }
 
+// A native table is a structural child of an FB2 visual DIV, just like a
+// paragraph or a nested DIV.  It must never be collected into an implicitly
+// created paragraph by PackText().
+static bool IsNativeTableBlockName(const _bstr_t& name)
+{
+	return U::scmp(name, L"TABLE") == 0;
+}
+
 static MSHTML::IHTMLElementPtr FindTableElement(MSHTML::IHTMLElementPtr element)
 {
 	while (element)
@@ -1083,8 +1091,8 @@ static bool IsStanza(MSHTML::IHTMLDOMNode *node) {
 	return U::scmp(elem->className,L"stanza")==0;
 }
 
-// Move text content in DIV items to P elements, so DIVs can
-// contain P and DIV only
+// Move text content in DIV items to P elements.  Native TABLE is also a
+// structural DIV child and therefore stays outside automatically created P.
 static void PackText(MSHTML::IHTMLElement2Ptr elem, MSHTML::IHTMLDocument2* doc)
 {
 	MSHTML::IHTMLElementCollectionPtr elements(elem->getElementsByTagName(L"DIV"));
@@ -1097,9 +1105,9 @@ static void PackText(MSHTML::IHTMLElement2Ptr elem, MSHTML::IHTMLDocument2* doc)
 		while((bool)cur)
 		{
 			_bstr_t cur_name(cur->nodeName);
-			if (U::scmp(cur_name, L"P") && U::scmp(cur_name, L"DIV"))
+			if (U::scmp(cur_name, L"P") && U::scmp(cur_name, L"DIV") && !IsNativeTableBlockName(cur_name))
 			{
-				// create a paragraph from a run of !P && !DIV
+				// create a paragraph from a run of non-structural nodes
 				MSHTML::IHTMLElementPtr newp(doc->createElement(L"P"));
 				MSHTML::IHTMLDOMNodePtr newn(newp);
 				cur->replaceNode(newn);
@@ -1107,7 +1115,7 @@ static void PackText(MSHTML::IHTMLElement2Ptr elem, MSHTML::IHTMLDocument2* doc)
 				while ((bool)newn->nextSibling)
 				{
 					cur_name = newn->nextSibling->nodeName;
-					if (U::scmp(cur_name, L"P") == 0 || U::scmp(cur_name, L"DIV") == 0)
+					if (U::scmp(cur_name, L"P") == 0 || U::scmp(cur_name, L"DIV") == 0 || IsNativeTableBlockName(cur_name))
 						break;
 					newn->appendChild(newn->nextSibling);
 				}
