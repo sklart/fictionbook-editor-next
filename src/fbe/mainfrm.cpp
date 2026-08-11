@@ -5089,6 +5089,7 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
   FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_BINARIES_FILEDLG, dlgTitle, MAX_LOAD_STRING);
   dlg.m_ofn.lpstrTitle = dlgTitle;
 	dlg.m_ofn.nFilterIndex = 1;
+	dlg.CenterOnOwner();
 
 
   if (dlg.DoModal(*this)==IDOK) {

@@ -4028,6 +4028,7 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 		FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_IMAGE_FILEDLG, dlgTitle, MAX_LOAD_STRING);
 		dlg.m_ofn.lpstrTitle = dlgTitle;
 		dlg.m_ofn.nFilterIndex = 1;
+		dlg.CenterOnOwner();
 
 		if(dlg.DoModal(*this) == IDOK)
 		{

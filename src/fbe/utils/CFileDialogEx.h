@@ -36,7 +36,8 @@ class CFileDialogEx :
 {
 public:
     TCHAR m_szFileName[_MAX_PATH * 1000]; // Потому что по умолчанию маловато будет
-    CSimpleArray<CString> m_FileNames;  
+    CSimpleArray<CString> m_FileNames;
+    bool m_centerOnOwner;
 
     CFileDialogEx(BOOL bOpenFileDialog, 
         LPCTSTR lpszDefExt = NULL,
@@ -49,6 +50,7 @@ public:
         m_szFileName[0] = '\0';
         m_ofn.lpstrFile = m_szFileName;
         m_ofn.nMaxFile = sizeof(m_szFileName); 
+        m_centerOnOwner = false;
     }
 
     virtual ~CFileDialogEx()
@@ -66,6 +68,65 @@ public:
         return (_POSITION_) m_ofn.lpstrFile;
     }
 
+    void CenterOnOwner()
+    {
+        m_centerOnOwner = true;
+    }
+
+    enum { CENTER_ON_OWNER_TIMER_ID = 0x2A1 };
+
+    void OnInitDone(LPOFNOTIFY /*lpon*/)
+    {
+    }
+
+    LRESULT OnDialogInit(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+    {
+        if (m_centerOnOwner)
+            ::SetTimer(m_hWnd, CENTER_ON_OWNER_TIMER_ID, 100, NULL);
+        return 0;
+    }
+
+    LRESULT OnCenterOnOwnerTimer(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+    {
+        if (wParam == CENTER_ON_OWNER_TIMER_ID)
+        {
+            ::KillTimer(m_hWnd, CENTER_ON_OWNER_TIMER_ID);
+            CenterDialogOnOwner();
+        }
+        return 0;
+    }
+    void CenterDialogOnOwner()
+    {
+        if (!m_centerOnOwner || !::IsWindow(m_ofn.hwndOwner))
+            return;
+
+        HWND fileDialog = ::GetParent(m_hWnd);
+        if (!::IsWindow(fileDialog))
+            return;
+
+        RECT dialogRect = {};
+        RECT ownerRect = {};
+        if (!::GetWindowRect(fileDialog, &dialogRect) || !::GetWindowRect(m_ofn.hwndOwner, &ownerRect))
+            return;
+
+        const int dialogWidth = dialogRect.right - dialogRect.left;
+        const int dialogHeight = dialogRect.bottom - dialogRect.top;
+        int x = ownerRect.left + ((ownerRect.right - ownerRect.left) - dialogWidth) / 2;
+        int y = ownerRect.top + ((ownerRect.bottom - ownerRect.top) - dialogHeight) / 2;
+
+        HMONITOR monitor = ::MonitorFromWindow(m_ofn.hwndOwner, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO monitorInfo = { sizeof(monitorInfo) };
+        if (::GetMonitorInfo(monitor, &monitorInfo))
+        {
+            const RECT& workArea = monitorInfo.rcWork;
+            if (x < workArea.left) x = workArea.left;
+            if (y < workArea.top) y = workArea.top;
+            if (x + dialogWidth > workArea.right) x = workArea.right - dialogWidth;
+            if (y + dialogHeight > workArea.bottom) y = workArea.bottom - dialogHeight;
+        }
+
+        ::SetWindowPos(fileDialog, NULL, x, y, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOSIZE | SWP_NOZORDER);
+    }
     CString GetNextPathName(_POSITION_& pos) const
     {
         BOOL bExplorer = m_ofn.Flags & OFN_EXPLORER; // что для WTL завсегда правда
@@ -159,7 +220,10 @@ public:
         return rc;
     }
 
-    DECLARE_EMPTY_MSG_MAP()
+    BEGIN_MSG_MAP(CFileDialogEx)
+        MESSAGE_HANDLER(WM_INITDIALOG, OnDialogInit)
+        MESSAGE_HANDLER(WM_TIMER, OnCenterOnOwnerTimer)
+    END_MSG_MAP()
 };
 
 } // namespace WTL
