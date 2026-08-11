@@ -3002,6 +3002,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		ShowView(BODY);
 		ShowView(SOURCE);
+		appendTableSnapshot("table-unchanged-body-source");
 		CStringA scenario;
 		scenario.Format("unchanged-%d", repeat);
 		appendShowSourceProfile(scenario);
