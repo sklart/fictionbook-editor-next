@@ -6,7 +6,9 @@ original FB2 and makes every later Save fail closed.
 [CmdletBinding()]
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
-    [int]$TimeoutSeconds = 90
+    [int]$TimeoutSeconds = 90,
+    [ValidateSet('drop-row-after-normalize', 'change-colspan-after-normalize')]
+    [string]$Fault = 'drop-row-after-normalize'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,7 +71,7 @@ try {
     $started = Get-Date
     New-Item -Path $traceRegistryPath -Force | Out-Null
     New-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -PropertyType DWord -Value 1 -Force | Out-Null
-    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_FAULT_INJECT = 'drop-row-after-normalize'
+    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_FAULT_INJECT = $Fault
     $process = Start-Process -FilePath $FbeExe -ArgumentList @('-s', '-b', $report, $fixture) -PassThru
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do { Start-Sleep -Milliseconds 200; [TableSafetyDialogCloser]::Dismiss($process.Id); $process.Refresh() } while(-not $process.HasExited -and (Get-Date) -lt $deadline)
@@ -81,7 +83,8 @@ try {
     if(@($rejection).Count -ne 1 -or $rejection.phase -notmatch 'second-save-rejected=1') { throw 'После table serialization failure повторный Save не был запрещён.' }
     $trace = Get-TraceForProcess $process.Id $started
     if(-not $trace) { throw 'Не найден диагностический trace для table safety test.' }
-    foreach($code in @('FI040', 'D224', 'D223', 'D226')) {
+    $faultCode = if($Fault -eq 'change-colspan-after-normalize') { 'FI041' } else { 'FI040' }
+    foreach($code in @($faultCode, 'D224', 'D223', 'D226')) {
         if(-not (Select-String -LiteralPath $trace -SimpleMatch ("code=" + $code) -Quiet)) { throw "Trace не содержит ${code}: $trace" }
     }
     Write-Host 'Table serialization failure safety passed.'

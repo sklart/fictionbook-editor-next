@@ -91,7 +91,7 @@ static CString GetDiagnosticFaultInjection()
 		L"api-load-return-false", L"api-load-exception", L"api-load-private-exception", L"first-set-external",
 		L"second-set-external", L"optional-diagnostic-api-missing", L"navigate-error",
 		L"document-complete-timeout", L"controlled-load-failure+css-restore-failure",
-		L"drop-row-after-normalize"
+		L"drop-row-after-normalize", L"change-colspan-after-normalize"
 	};
 	for (UINT index = 0; index < _countof(allowed); ++index)
 		if (point.CompareNoCase(allowed[index]) == 0)
@@ -1372,6 +1372,19 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
       part.Format(L"T%ld[id=%s;rows=%ld;td=%ld;th=%ld];", result.tables,
         (const wchar_t*)AU::GetAttrB(table, L"id"), rows, td, th);
       result.structure += part;
+	  MSHTML::IHTMLElementCollectionPtr nativeRows(nativeTable->getElementsByTagName(L"TR"));
+	  for (long rowIndex = 0; nativeRows && rowIndex < nativeRows->length; ++rowIndex) {
+		MSHTML::IHTMLElementPtr row(nativeRows->item(_variant_t(rowIndex), _variant_t()));
+		CString rowPart; rowPart.Format(L"R%ld[", rowIndex);
+		for (MSHTML::IHTMLDOMNodePtr node(row ? MSHTML::IHTMLDOMNodePtr(row)->firstChild : 0); node; node = node->nextSibling) {
+			if (node->nodeType != NODE_ELEMENT) continue;
+			MSHTML::IHTMLElementPtr cell(node); if (U::scmp(cell->tagName, L"TD") != 0 && U::scmp(cell->tagName, L"TH") != 0) continue;
+			long colspan = _wtol(AU::GetAttrCS(cell, L"fbcolspan")); if (colspan < 1) colspan = _wtol(AU::GetAttrCS(cell, L"colspan")); if (colspan < 1) colspan = 1;
+			long rowspan = _wtol(AU::GetAttrCS(cell, L"fbrowspan")); if (rowspan < 1) rowspan = _wtol(AU::GetAttrCS(cell, L"rowspan")); if (rowspan < 1) rowspan = 1;
+			CString cellPart; cellPart.Format(L"%s:%ldx%ld,", U::scmp(cell->tagName, L"TH") == 0 ? L"H" : L"D", colspan, rowspan); rowPart += cellPart;
+		}
+		rowPart += L"];"; result.structure += rowPart;
+	  }
     }
     return result;
   };
@@ -1395,6 +1408,17 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
       part.Format(L"T%ld[id=%s;rows=%ld;td=%ld;th=%ld];", tableIndex + 1,
         id ? (const wchar_t*)id->text : L"", rows->length, td->length, th->length);
       result.structure += part;
+	  for (long rowIndex = 0; rowIndex < rows->length; ++rowIndex) {
+		MSXML2::IXMLDOMNodePtr row(rows->item[rowIndex]); CString rowPart; rowPart.Format(L"R%ld[", rowIndex);
+		MSXML2::IXMLDOMNodePtr child(row ? row->firstChild : 0);
+		for (; child; child = child->nextSibling) {
+			if (child->nodeType != NODE_ELEMENT || (wcscmp(child->baseName, L"td") != 0 && wcscmp(child->baseName, L"th") != 0)) continue;
+			MSXML2::IXMLDOMNamedNodeMapPtr cellAttrs(child->attributes); MSXML2::IXMLDOMNodePtr colspanNode(cellAttrs ? cellAttrs->getNamedItem(L"colspan") : 0), rowspanNode(cellAttrs ? cellAttrs->getNamedItem(L"rowspan") : 0);
+			long colspan = colspanNode ? _wtol(colspanNode->text) : 1, rowspan = rowspanNode ? _wtol(rowspanNode->text) : 1; if (colspan < 1) colspan = 1; if (rowspan < 1) rowspan = 1;
+			CString cellPart; cellPart.Format(L"%s:%ldx%ld,", wcscmp(child->baseName, L"th") == 0 ? L"H" : L"D", colspan, rowspan); rowPart += cellPart;
+		}
+		rowPart += L"];"; result.structure += rowPart;
+	  }
     }
     return result;
   };
@@ -1415,6 +1439,18 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     {
       MSHTML::IHTMLDOMNodePtr(row->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(row));
       StartupTrace::HResult(L"fault", L"FI040", S_OK, L"drop-row-after-normalize injected");
+    }
+  }
+
+  if (m_save_transaction_active && GetDiagnosticFaultInjection() == L"change-colspan-after-normalize")
+  {
+    MSHTML::IHTMLElementCollectionPtr cells(MSHTML::IHTMLElement2Ptr(m_body.Document()->body)->getElementsByTagName(L"TD"));
+    MSHTML::IHTMLElementPtr cell(cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : 0);
+    if (cell)
+    {
+      cell->setAttribute(L"fbcolspan", _variant_t(L"2"), 0);
+      cell->setAttribute(L"colspan", _variant_t(L"2"), 0);
+      StartupTrace::HResult(L"fault", L"FI041", S_OK, L"change-colspan-after-normalize injected");
     }
   }
 
