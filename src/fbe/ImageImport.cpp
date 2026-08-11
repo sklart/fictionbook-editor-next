@@ -120,7 +120,9 @@ HRESULT ApplyGdiOrientation(Gdiplus::Image& image) {
 }
 HRESULT DecodeGdi(const std::vector<BYTE>& data, SourceFormat type, const ImageImportOptions& o, ImageImportResult& r, CString& err) {
 	if (!GetGdiplusSession().Ready()) return E_FAIL;
-	HGLOBAL h=GlobalAlloc(GMEM_MOVEABLE,data.size()); if(!h) return E_OUTOFMEMORY; void* p=GlobalLock(h); memcpy(p,data.data(),data.size()); GlobalUnlock(h);
+	HGLOBAL h=GlobalAlloc(GMEM_MOVEABLE,data.size()); if(!h) return E_OUTOFMEMORY;
+	void* p=GlobalLock(h); if(!p) { GlobalFree(h); return E_OUTOFMEMORY; }
+	memcpy(p,data.data(),data.size()); GlobalUnlock(h);
 	CComPtr<IStream> s; HRESULT hr=CreateStreamOnHGlobal(h,TRUE,&s); if(FAILED(hr)) { GlobalFree(h); return hr; }
 	Gdiplus::Image image(s); if(image.GetLastStatus()!=Gdiplus::Ok) { err=ImageMessage(L"fbe.image_import.invalid_image", L"Corrupt or unsupported image."); return E_FAIL; }
 	size_t rasterBytes = 0; if(!CheckedRasterSize(image.GetWidth(), image.GetHeight(), 4, rasterBytes)) { err=ImageMessage(L"fbe.image_import.too_large", L"Image is too large."); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); }
