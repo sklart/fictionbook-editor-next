@@ -79,10 +79,15 @@ function Remove-ObsoleteReleaseArtifacts {
 function Invoke-RequiredProjectBuild {
     param(
         [Parameter(Mandatory)]
-        [string]$ProjectPath
+        [string]$ProjectPath,
+
+        # A few projects share generated inputs with the parallel solution
+        # build.  Rebuild them serially when their release artifact must be
+        # authoritative for the verifier.
+        [switch]$Rebuild
     )
 
-    $target = if ($ForceRebuildRequiredProjects) { "Rebuild" } else { "Build" }
+    $target = if ($ForceRebuildRequiredProjects -or $Rebuild) { "Rebuild" } else { "Build" }
     Write-Host "Сборка релизного бинарника ($target): $ProjectPath"
     $projectProperties = @($properties) + "/p:SolutionDir=$repoRoot\"
     & $msbuild $ProjectPath /m "/t:$target" $projectProperties /v:minimal /nologo
@@ -324,6 +329,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Assert-PreparedDependencies
+
+# ImportEPUB is built by the solution, but its generated resource input can
+# race with the parallel build graph.  A serial final rebuild makes the DLL
+# consumed by the COM/version verifier deterministic.
+Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot "src\import-epub\ImportEPUB.vcxproj") -Rebuild
 
 # Эти проекты не входят в FBE.sln. Остальные результаты даёт единственный
 # solution Build; повторный Rebuild доступен только локально по явному ключу.
