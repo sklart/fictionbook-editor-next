@@ -5104,6 +5104,8 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
 			const CString question = FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?");
 			if (::MessageBox(m_hWnd, question, FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) == IDYES)
 				importResult = m_doc->ImportBinary(fileName, error, &wasConverted, true);
+			else
+				continue;
 		}
 		if (SUCCEEDED(importResult)) {
 			++added;

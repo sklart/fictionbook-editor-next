@@ -19,6 +19,8 @@ const ULONGLONG kMaxSourceBytes = 64ULL * 1024 * 1024;
 const UINT kMaxImageDimension = 16384;
 const size_t kMaxImagePixels = 32000000;
 const size_t kMaxRasterBytes = 128 * 1024 * 1024;
+// The encoded image is copied again into a SAFEARRAY and MSHTML/base64 DOM.
+const size_t kMaxOutputBytes = 64 * 1024 * 1024;
 
 class GdiplusSession {
 	ULONG_PTR token;
@@ -49,9 +51,9 @@ SourceFormat Detect(const std::vector<BYTE>& b) {
 	if (b.size() >= 12 && b[4]=='j' && b[5]=='P' && b[6]==' ' && b[7]==' ' && b[8]==0x0d && b[9]==0x0a && b[10]==0x87 && b[11]==0x0a) return SourceFormat::Jp2;
 	if (StartsWith(b,j2k,sizeof(j2k))) return SourceFormat::J2k;
 	if (b.size() >= 12 && memcmp(b.data()+4, "ftyp", 4) == 0) {
-		const BYTE* brand=b.data()+8;
-		if (memcmp(brand,"avif",4)==0 || memcmp(brand,"avis",4)==0) return SourceFormat::Avif;
-		if (memcmp(brand,"heic",4)==0 || memcmp(brand,"heix",4)==0 || memcmp(brand,"hevc",4)==0 || memcmp(brand,"hevx",4)==0 || memcmp(brand,"mif1",4)==0) return SourceFormat::Heif;
+		const int length = static_cast<int>(min(b.size(), static_cast<size_t>(INT_MAX)));
+		const heif_filetype_result filetype = heif_check_filetype(b.data(), length);
+		if (filetype == heif_filetype_yes_supported || (filetype == heif_filetype_maybe && heif_has_compatible_filetype(b.data(), length).code == heif_error_Ok)) return SourceFormat::Heif;
 	}
 	if (b.size() >= 4 && ((b[0]=='I' && b[1]=='I' && b[2]==42 && b[3]==0) || (b[0]=='M' && b[1]=='M' && b[2]==0 && b[3]==42))) return SourceFormat::Tiff;
 	if (b.size() >= 2 && b[0]=='B' && b[1]=='M') return SourceFormat::Bmp;
@@ -79,23 +81,23 @@ bool GetEncoder(const WCHAR* mime, CLSID& clsid) {
 	std::vector<BYTE> p(bytes); auto e=reinterpret_cast<Gdiplus::ImageCodecInfo*>(p.data()); if (Gdiplus::GetImageEncoders(n,bytes,e)!=Gdiplus::Ok) return false;
 	for(UINT i=0;i<n;++i) if(wcscmp(e[i].MimeType,mime)==0) { clsid=e[i].Clsid; return true; } return false;
 }
-bool SaveBitmap(Gdiplus::Image& image, bool png, int quality, std::vector<BYTE>& out, bool flattenWhite = false) {
-	CComPtr<IStream> stream; if(FAILED(CreateStreamOnHGlobal(NULL, TRUE, &stream))) return false;
-	CLSID clsid; if(!GetEncoder(png ? L"image/png" : L"image/jpeg",clsid)) return false;
+HRESULT SaveBitmap(Gdiplus::Image& image, bool png, int quality, std::vector<BYTE>& out, bool flattenWhite = false) {
+	CComPtr<IStream> stream; HRESULT hr = CreateStreamOnHGlobal(NULL, TRUE, &stream); if(FAILED(hr)) return hr;
+	CLSID clsid; if(!GetEncoder(png ? L"image/png" : L"image/jpeg",clsid)) return E_FAIL;
 	Gdiplus::EncoderParameters ep = {}; ep.Count=1; ULONG q=(ULONG)max(0,min(100,quality)); ep.Parameter[0].Guid=Gdiplus::EncoderQuality; ep.Parameter[0].Type=Gdiplus::EncoderParameterValueTypeLong; ep.Parameter[0].NumberOfValues=1; ep.Parameter[0].Value=&q;
 	if (flattenWhite) {
 		Gdiplus::Bitmap flattened(image.GetWidth(), image.GetHeight(), PixelFormat24bppRGB);
 		Gdiplus::Graphics graphics(&flattened); graphics.Clear(Gdiplus::Color::White);
-		if (graphics.DrawImage(&image, 0, 0, image.GetWidth(), image.GetHeight()) != Gdiplus::Ok || flattened.Save(stream, &clsid, &ep) != Gdiplus::Ok) return false;
-	} else if(image.Save(stream, &clsid, png ? NULL : &ep) != Gdiplus::Ok) return false;
-	HGLOBAL h=NULL; if(FAILED(GetHGlobalFromStream(stream,&h))) return false; SIZE_T n=GlobalSize(h); void* p=GlobalLock(h); if(!p || !n || n>ULONG_MAX) { if(p) GlobalUnlock(h); return false; } out.assign((BYTE*)p,(BYTE*)p+n); GlobalUnlock(h); return true;
+		if (graphics.DrawImage(&image, 0, 0, image.GetWidth(), image.GetHeight()) != Gdiplus::Ok || flattened.Save(stream, &clsid, &ep) != Gdiplus::Ok) return E_FAIL;
+	} else if(image.Save(stream, &clsid, png ? NULL : &ep) != Gdiplus::Ok) return E_FAIL;
+	HGLOBAL h=NULL; if(FAILED(GetHGlobalFromStream(stream,&h))) return E_FAIL; SIZE_T n=GlobalSize(h); void* p=GlobalLock(h); if(!p || !n || n>ULONG_MAX) { if(p) GlobalUnlock(h); return E_FAIL; } if (n > kMaxOutputBytes) { GlobalUnlock(h); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); } out.assign((BYTE*)p,(BYTE*)p+n); GlobalUnlock(h); return S_OK;
 }
 HRESULT BitmapHasTransparency(Gdiplus::Image& image, bool& hasTransparency) {
 	hasTransparency = false;
 	const UINT w=image.GetWidth(), h=image.GetHeight(); size_t bytes = 0; if(!CheckedRasterSize(w, h, 4, bytes)) return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
 	Gdiplus::Bitmap b(w,h,PixelFormat32bppARGB); Gdiplus::Graphics g(&b); if(g.DrawImage(&image,0,0,w,h)!=Gdiplus::Ok) return E_FAIL;
 	Gdiplus::Rect r(0,0,w,h); Gdiplus::BitmapData d={}; if(b.LockBits(&r,Gdiplus::ImageLockModeRead,PixelFormat32bppARGB,&d)!=Gdiplus::Ok) return E_FAIL;
-	for(UINT y=0;y<h&&!hasTransparency;++y) { BYTE* row=(BYTE*)d.Scan0+y*d.Stride; for(UINT x=0;x<w;++x) if(row[x*4+3]!=255) { hasTransparency=true; break; } } b.UnlockBits(&d); return S_OK;
+	for(UINT y=0;y<h&&!hasTransparency;++y) { BYTE* row=static_cast<BYTE*>(d.Scan0)+static_cast<ptrdiff_t>(y)*static_cast<ptrdiff_t>(d.Stride); for(UINT x=0;x<w;++x) if(row[x*4+3]!=255) { hasTransparency=true; break; } } b.UnlockBits(&d); return S_OK;
 }
 HRESULT ApplyGdiOrientation(Gdiplus::Image& image) {
 	const UINT size = image.GetPropertyItemSize(PropertyTagOrientation);
@@ -133,7 +135,7 @@ HRESULT DecodeGdi(const std::vector<BYTE>& data, SourceFormat type, const ImageI
 	hr = ApplyGdiOrientation(image); if (FAILED(hr)) { err=ImageMessage(L"fbe.image_import.orientation_failed", L"Could not apply image orientation."); return hr; }
 	r.width = image.GetWidth(); r.height = image.GetHeight(); hr = BitmapHasTransparency(image, r.hasTransparency); if (FAILED(hr)) { err=ImageMessage(L"fbe.image_import.transparency_failed", L"Could not determine image transparency."); return hr; } bool png=o.outputFormat==ImageOutputFormat::Png || (o.outputFormat==ImageOutputFormat::Auto && r.hasTransparency);
 	if(o.outputFormat==ImageOutputFormat::Jpeg && r.hasTransparency && !o.flattenTransparentJpeg) { err=ImageMessage(L"fbe.image_import.flatten_required", L"This image has transparency and needs confirmation before JPEG conversion."); return E_ABORT; }
-	if(!SaveBitmap(image,png,o.jpegQuality,r.data,o.flattenTransparentJpeg && !png)) { err=ImageMessage(L"fbe.image_import.encode_failed", L"Could not encode image."); return E_FAIL; }
+	hr = SaveBitmap(image,png,o.jpegQuality,r.data,o.flattenTransparentJpeg && !png); if(FAILED(hr)) { err=ImageMessage(hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"fbe.image_import.too_large" : L"fbe.image_import.encode_failed", hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"Image is too large." : L"Could not encode image."); return hr; }
 	r.logicalFileName=TargetName(r.logicalFileName,png); r.mimeType=png?L"image/png":L"image/jpeg"; r.converted=true; return S_OK;
 }
 HRESULT ValidatePassThroughGdi(const std::vector<BYTE>& data, ImageImportResult& r, CString& err) {
@@ -154,7 +156,7 @@ HRESULT DecodeWebp(const std::vector<BYTE>& data, const ImageImportOptions& o, I
 	std::vector<BYTE> pixels(rasterBytes); if(!WebPDecodeBGRAInto(data.data(),data.size(),pixels.data(),pixels.size(),f.width*4)) { err=ImageMessage(L"fbe.image_import.webp_decode_failed", L"Could not decode WebP image."); return E_FAIL; }
 	r.hasTransparency=false; if (f.has_alpha) for (size_t offset=3; offset<pixels.size(); offset+=4) if (pixels[offset] != 255) { r.hasTransparency=true; break; }
 	bool png=o.outputFormat==ImageOutputFormat::Png || (o.outputFormat==ImageOutputFormat::Auto&&r.hasTransparency); if(o.outputFormat==ImageOutputFormat::Jpeg&&r.hasTransparency&&!o.flattenTransparentJpeg) { err=ImageMessage(L"fbe.image_import.flatten_required", L"This image has transparency and needs confirmation before JPEG conversion."); return E_ABORT; }
-	Gdiplus::Bitmap b(f.width,f.height,f.width*4,PixelFormat32bppARGB,pixels.data()); if(!SaveBitmap(b,png,o.jpegQuality,r.data,o.flattenTransparentJpeg && !png)) { err=ImageMessage(L"fbe.image_import.webp_encode_failed", L"Could not encode WebP image."); return E_FAIL; }
+	Gdiplus::Bitmap b(f.width,f.height,f.width*4,PixelFormat32bppARGB,pixels.data()); HRESULT hr = SaveBitmap(b,png,o.jpegQuality,r.data,o.flattenTransparentJpeg && !png); if(FAILED(hr)) { err=ImageMessage(hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"fbe.image_import.too_large" : L"fbe.image_import.webp_encode_failed", hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"Image is too large." : L"Could not encode WebP image."); return hr; }
 	r.logicalFileName=TargetName(r.logicalFileName,png); r.mimeType=png?L"image/png":L"image/jpeg"; r.converted=true; return S_OK;
 }
 HRESULT DecodeHeif(const std::vector<BYTE>& data, const ImageImportOptions& o, ImageImportResult& r, CString& err) {
@@ -163,7 +165,7 @@ HRESULT DecodeHeif(const std::vector<BYTE>& data, const ImageImportOptions& o, I
 	if(heif_context_get_number_of_top_level_images(context.get())!=1) { err=ImageMessage(L"fbe.image_import.heif_multiple",L"HEIF image sequences are not supported."); return E_NOTIMPL; }
 	heif_image_handle* rawHandle=NULL; status=heif_context_get_primary_image_handle(context.get(),&rawHandle); std::unique_ptr<heif_image_handle,void(*)(const heif_image_handle*)> handle(rawHandle,heif_image_handle_release); if(status.code!=heif_error_Ok||!handle) { err=ImageMessage(L"fbe.image_import.heif_invalid",L"Corrupt or unsupported AVIF/HEIF image."); return E_FAIL; }
 	int width=heif_image_handle_get_width(handle.get()),height=heif_image_handle_get_height(handle.get()); size_t rasterBytes=0; if(width<=0||height<=0||!CheckedRasterSize((UINT)width,(UINT)height,4,rasterBytes)) { err=ImageMessage(L"fbe.image_import.too_large",L"Image is too large."); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); }
-	heif_decoding_options* rawOptions=heif_decoding_options_alloc(); std::unique_ptr<heif_decoding_options,void(*)(heif_decoding_options*)> options(rawOptions,heif_decoding_options_free); if(!options) return E_OUTOFMEMORY; options->strict_decoding=1; options->convert_hdr_to_8bit=1;
+	heif_decoding_options* rawOptions=heif_decoding_options_alloc(); std::unique_ptr<heif_decoding_options,void(*)(heif_decoding_options*)> options(rawOptions,heif_decoding_options_free); if(!options) return E_OUTOFMEMORY; options->strict_decoding=1; options->convert_hdr_to_8bit=1; options->ignore_transformations=0;
 	heif_image* rawImage=NULL; status=heif_decode_image(handle.get(),&rawImage,heif_colorspace_RGB,heif_chroma_interleaved_RGBA,options.get()); std::unique_ptr<heif_image,void(*)(const heif_image*)> image(rawImage,heif_image_release); if(status.code!=heif_error_Ok||!image) { err=ImageMessage(L"fbe.image_import.heif_decode_failed",L"Could not decode AVIF/HEIF image."); return E_FAIL; }
 	width=heif_image_get_primary_width(image.get()); height=heif_image_get_primary_height(image.get()); if(width<=0||height<=0||!CheckedRasterSize((UINT)width,(UINT)height,4,rasterBytes)) { err=ImageMessage(L"fbe.image_import.too_large",L"Image is too large."); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); }
 	int stride=0; const uint8_t* plane=heif_image_get_plane_readonly(image.get(),heif_channel_interleaved,&stride); if(!plane||stride<width*4||size_t(stride)>kMaxRasterBytes/size_t(height)) { err=ImageMessage(L"fbe.image_import.heif_decode_failed",L"Could not decode AVIF/HEIF image."); return E_FAIL; }
@@ -171,7 +173,7 @@ HRESULT DecodeHeif(const std::vector<BYTE>& data, const ImageImportOptions& o, I
 	std::vector<BYTE> pixels(rasterBytes); for(int y=0;y<height;++y) { const BYTE* source=plane+size_t(y)*stride; BYTE* target=pixels.data()+size_t(y)*width*4; for(int x=0;x<width;++x) { target[x*4]=source[x*4+2]; target[x*4+1]=source[x*4+1]; target[x*4+2]=source[x*4]; target[x*4+3]=source[x*4+3]; } }
 	r.width=width; r.height=height; r.hasTransparency=false; if(heif_image_handle_has_alpha_channel(handle.get())) for(size_t i=3;i<pixels.size();i+=4) if(pixels[i]!=255) { r.hasTransparency=true; break; }
 	bool png=o.outputFormat==ImageOutputFormat::Png||(o.outputFormat==ImageOutputFormat::Auto&&r.hasTransparency); if(o.outputFormat==ImageOutputFormat::Jpeg&&r.hasTransparency&&!o.flattenTransparentJpeg) { err=ImageMessage(L"fbe.image_import.flatten_required",L"This image has transparency and needs confirmation before JPEG conversion."); return E_ABORT; }
-	if(!GetGdiplusSession().Ready()) return E_FAIL; Gdiplus::Bitmap bitmap(width,height,width*4,PixelFormat32bppARGB,pixels.data()); if(!SaveBitmap(bitmap,png,o.jpegQuality,r.data,o.flattenTransparentJpeg&&!png)) { err=ImageMessage(L"fbe.image_import.encode_failed",L"Could not encode image."); return E_FAIL; }
+	if(!GetGdiplusSession().Ready()) return E_FAIL; Gdiplus::Bitmap bitmap(width,height,width*4,PixelFormat32bppARGB,pixels.data()); HRESULT hr = SaveBitmap(bitmap,png,o.jpegQuality,r.data,o.flattenTransparentJpeg&&!png); if(FAILED(hr)) { err=ImageMessage(hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"fbe.image_import.too_large" : L"fbe.image_import.encode_failed",hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"Image is too large." : L"Could not encode image."); return hr; }
 	r.logicalFileName=TargetName(r.logicalFileName,png); r.mimeType=png?L"image/png":L"image/jpeg"; r.converted=true; return S_OK;
 }
 struct J2kMemory { const BYTE* data; size_t size; size_t pos; };
@@ -202,20 +204,23 @@ HRESULT DecodeJ2k(const std::vector<BYTE>& data, SourceFormat type, const ImageI
 	UINT w=image->comps[0].w,h=image->comps[0].h; size_t rasterBytes = 0; if(!CheckedRasterSize(w,h,4,rasterBytes)) { err=ImageMessage(L"fbe.image_import.too_large", L"Image is too large."); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); }
 	for(UINT i=0;i<image->numcomps;++i) if(!image->comps[i].data||!image->comps[i].w||!image->comps[i].h||image->comps[i].prec==0||image->comps[i].prec>16) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
 	if (image->color_space == OPJ_CLRSPC_CMYK) { err=ImageMessage(L"fbe.image_import.jp2_cmyk", L"CMYK JPEG 2000 images are not supported."); return E_NOTIMPL; }
-	const bool color = image->numcomps >= 3; const bool sycc = color && image->color_space == OPJ_CLRSPC_SYCC;
+	const bool unspecifiedGray = image->color_space == OPJ_CLRSPC_UNSPECIFIED && image->numcomps <= 2;
+	if (image->color_space != OPJ_CLRSPC_GRAY && image->color_space != OPJ_CLRSPC_SRGB && image->color_space != OPJ_CLRSPC_SYCC && !unspecifiedGray) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_NOTIMPL; }
+	const bool color = image->color_space == OPJ_CLRSPC_SRGB || image->color_space == OPJ_CLRSPC_SYCC; const bool sycc = image->color_space == OPJ_CLRSPC_SYCC;
 	int alphaIndex = -1; for (UINT i=0;i<image->numcomps;++i) if (image->comps[i].alpha) { if (alphaIndex >= 0) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; } alphaIndex = static_cast<int>(i); }
-	if ((!color && image->numcomps > 2) || (color && image->numcomps > 3 && alphaIndex < 0)) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
+	if ((!color && (image->numcomps != 1 && !(image->numcomps == 2 && alphaIndex == 1))) || (color && (image->numcomps != 3 && !(image->numcomps == 4 && alphaIndex == 3)))) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
 	if ((color && alphaIndex >= 0 && alphaIndex != 3) || (!color && alphaIndex >= 0 && alphaIndex != 1) || (alphaIndex >= 0 && (image->comps[alphaIndex].w != w || image->comps[alphaIndex].h != h))) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
 	if (!sycc) for (UINT i=0; i<(color ? 3u : 1u); ++i) if (image->comps[i].w != w || image->comps[i].h != h) { err=ImageMessage(L"fbe.image_import.jp2_structure", L"Unsupported JPEG 2000 component structure."); return E_FAIL; }
 	r.width=w; r.height=h; r.hasTransparency=false; if (alphaIndex >= 0) for (size_t i=0; i<size_t(w)*h; ++i) if (ComponentByte(image->comps[alphaIndex],i) != 255) { r.hasTransparency=true; break; } bool png=o.outputFormat==ImageOutputFormat::Png || (o.outputFormat==ImageOutputFormat::Auto&&r.hasTransparency); if(o.outputFormat==ImageOutputFormat::Jpeg&&r.hasTransparency&&!o.flattenTransparentJpeg) { err=ImageMessage(L"fbe.image_import.flatten_required", L"This image has transparency and needs confirmation before JPEG conversion."); return E_ABORT; }
 	std::vector<BYTE> pixels(rasterBytes); for(UINT y=0;y<h;++y) for(UINT x=0;x<w;++x) { const size_t i=size_t(y)*w+x; BYTE v=ComponentByteAt(image->comps[0],x,y,w,h); BYTE red=color?ComponentByteAt(image->comps[0],x,y,w,h):v, green=color?ComponentByteAt(image->comps[1],x,y,w,h):v, blue=color?ComponentByteAt(image->comps[2],x,y,w,h):v; if (sycc) { const int y = red, cb = green - 128, cr = blue - 128; red = ClampByte(y + (359 * cr) / 256); green = ClampByte(y - (88 * cb + 183 * cr) / 256); blue = ClampByte(y + (454 * cb) / 256); } BYTE alpha=r.hasTransparency?ComponentByteAt(image->comps[alphaIndex],x,y,w,h):255; pixels[i*4]=blue; pixels[i*4+1]=green; pixels[i*4+2]=red; pixels[i*4+3]=alpha; }
 	if (!GetGdiplusSession().Ready()) return E_FAIL;
-	Gdiplus::Bitmap b(w,h,w*4,PixelFormat32bppARGB,pixels.data()); if(!SaveBitmap(b,png,o.jpegQuality,r.data,o.flattenTransparentJpeg && !png)) { err=ImageMessage(L"fbe.image_import.encode_failed", L"Could not encode image."); return E_FAIL; }
+	Gdiplus::Bitmap b(w,h,w*4,PixelFormat32bppARGB,pixels.data()); HRESULT hr = SaveBitmap(b,png,o.jpegQuality,r.data,o.flattenTransparentJpeg && !png); if(FAILED(hr)) { err=ImageMessage(hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"fbe.image_import.too_large" : L"fbe.image_import.encode_failed", hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"Image is too large." : L"Could not encode image."); return hr; }
 	r.logicalFileName=TargetName(r.logicalFileName,png); r.mimeType=png?L"image/png":L"image/jpeg"; r.converted=true; return S_OK;
 }
 }
 
 HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& options, ImageImportResult& result, CString& errorMessage) {
+	try {
 	result=ImageImportResult(); errorMessage.Empty(); result.logicalFileName=sourceFile;
 	std::vector<BYTE> source; HRESULT readResult = ReadBytes(sourceFile,source); if(FAILED(readResult)) { errorMessage = readResult == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? ImageMessage(L"fbe.image_import.too_large", L"Image is too large.") : ImageMessage(L"fbe.image_import.read_failed", L"Could not read image file."); StartupTrace::HResult(L"image-import", L"I100", readResult, L"stage=read"); return readResult; }
 	SourceFormat type=Detect(source); if(type==SourceFormat::Unknown) { errorMessage=ImageMessage(L"fbe.image_import.unsupported", L"Unsupported or corrupt image format."); StartupTrace::HResult(L"image-import", L"I101", E_FAIL, L"source-format=unknown; stage=detect"); return E_FAIL; }
@@ -241,6 +246,9 @@ HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& o
 	case SourceFormat::Gif:
 	case SourceFormat::Tiff: return FinishImport(DecodeGdi(source,type,options,result,errorMessage));
 	default: errorMessage=ImageMessage(L"fbe.image_import.unsupported", L"Unsupported or corrupt image format."); return FinishImport(E_FAIL);
+	}
+	} catch (const std::bad_alloc&) {
+		result=ImageImportResult(); errorMessage=ImageMessage(L"fbe.error.out_of_memory", L"Out of memory"); StartupTrace::HResult(L"image-import", L"I102", E_OUTOFMEMORY, L"stage=allocation"); return E_OUTOFMEMORY;
 	}
 }
 

@@ -1817,8 +1817,10 @@ void Doc::AddBinary(const CString& filename)
 {
 	CString error;
 	HRESULT hr = ImportBinary(filename, error);
-	if (hr == E_ABORT && ::MessageBox(NULL, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) == IDYES)
+	if (hr == E_ABORT) {
+		if (::MessageBox(NULL, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) != IDYES) return;
 		hr = ImportBinary(filename, error, NULL, true);
+	}
 	if (FAILED(hr)) {
 		if (!error.IsEmpty()) ::MessageBox(NULL, error, L"FictionBook Editor", MB_OK | MB_ICONERROR);
 		else U::ReportError(hr);

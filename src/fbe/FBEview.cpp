@@ -4754,7 +4754,8 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 	ImageImportResult imported;
 	CString error;
 	HRESULT hr = ImportImageForFb2(filename, options, imported, error);
-	if (hr == E_ABORT && ::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) == IDYES) {
+	if (hr == E_ABORT) {
+		if (::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) != IDYES) return;
 		options.flattenTransparentJpeg = true;
 		hr = ImportImageForFb2(filename, options, imported, error);
 	}
