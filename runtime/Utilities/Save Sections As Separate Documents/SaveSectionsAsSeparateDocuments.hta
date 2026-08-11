@@ -133,6 +133,20 @@ function getXLinkHref(element) {
   return attr ? attr.nodeValue : null;
 }
 
+function validateSavedFictionBook(document1, pathForSaving) {
+  var fso=new ActiveXObject("Scripting.FileSystemObject");
+  var htaPath=unescape(String(location.pathname || "")).replace(/\//g,"\\");
+  var schemaPath, schemaCache, validation;
+  if (/^\\[A-Za-z]:/.test(htaPath)) htaPath=htaPath.substr(1);
+  schemaPath=fso.BuildPath(fso.GetParentFolderName(htaPath),"..\\..\\FictionBook.xsd");
+  if (!fso.FileExists(schemaPath)) throw new Error("Не найдена схема FictionBook.xsd: "+schemaPath);
+  schemaCache=new ActiveXObject("Msxml2.XMLSchemaCache.6.0");
+  schemaCache.add("http://www.gribuser.ru/xml/fictionbook/2.0",schemaPath);
+  document1.schemas=schemaCache;
+  validation=document1.validate();
+  if (validation.errorCode) throw new Error("Сохранённый FB2 не проходит FictionBook.xsd: "+validation.reason);
+}
+
 function saveCheckedXML(document1,pathForSaving) {
   var fso=new ActiveXObject("Scripting.FileSystemObject");
   var folder=fso.GetParentFolderName(pathForSaving);
@@ -154,6 +168,7 @@ function saveCheckedXML(document1,pathForSaving) {
       throw new Error(getParseErrorText(verificationDoc, temporaryPath));
     if (!verificationDoc.selectSingleNode("/fb:FictionBook"))
       throw new Error("В сохранённом файле не найден корневой элемент FictionBook.");
+    validateSavedFictionBook(verificationDoc, temporaryPath);
     /* Keep the previous destination until the verified temporary file has
        replaced it.  MoveFile is atomic within this directory; rollback never
        truncates or deletes the original destination. */
