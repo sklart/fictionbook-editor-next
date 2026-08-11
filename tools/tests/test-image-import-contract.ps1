@@ -19,7 +19,7 @@ $catalog = $catalogSource | ConvertFrom-Json
 $nativeHarness = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\image-import-smoke.cpp') -Raw
 $nativeRunner = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\test-image-import-native.ps1') -Raw
 
-foreach ($format in @('Jpeg', 'Png', 'Webp', 'Jp2', 'J2k', 'Tiff', 'Bmp', 'Gif', 'Avif', 'Heif')) {
+foreach ($format in @('Jpeg', 'Png', 'Webp', 'Jp2', 'J2k', 'Tiff', 'Bmp', 'Gif', 'Heif')) {
     Assert-True ($importSource -match ('SourceFormat::' + $format)) "Отсутствует поддержка сигнатуры $format."
 }
 Assert-True ($importSource -match 'case SourceFormat::Jpeg[\s\S]*case SourceFormat::Png[\s\S]*keepSupportedImages') 'JPEG/PNG должны сохраняться без перекодирования при включённой настройке.'
@@ -32,9 +32,10 @@ Assert-True ($importSource -match 'flattenTransparentJpeg') 'Принудите�
 Assert-True ($importSource -match 'Color::White') 'Прозрачность при JPEG flatten должна заменяться белым фоном.'
 Assert-True ($importSource -match 'GetFrameCount') 'GIF/TIFF должны проверять число кадров.'
 Assert-True ($importSource -match 'opj_create_decompress') 'JPEG 2000 должен декодироваться через OpenJPEG.'
-Assert-True ($importSource -match 'ComponentByteAt' -and $importSource -match 'absoluteX' -and $importSource -match 'c\.dx' -and $importSource -match 'c\.x0') 'JPEG 2000 sampling должен учитывать component dx/dy и origin, а не только пропорции raster-size.'
+Assert-True ($importSource -match 'ComponentByteAt' -and $importSource -match 'SampleAt' -and $importSource -match 'c\.dx' -and $importSource -match 'c\.x0' -and $importSource -match 'imageX0') 'JPEG 2000 sampling должен учитывать component dx/dy и origin, а не только пропорции raster-size.'
 Assert-True ($importSource -match 'heif_decode_image') 'AVIF/HEIC/HEIF должны декодироваться через libheif.'
 Assert-True ($importSource -match 'heif_check_filetype' -and $importSource -match 'heif_has_compatible_filetype') 'HEIF должен определяться официальным API libheif, включая compatible brands.'
+Assert-True ($importSource -notmatch 'SourceFormat::Avif') 'AVIF не должен оставаться недостижимой отдельной веткой после unified libheif detection.'
 Assert-True ($importSource -match 'ignore_transformations=0') 'Декодер HEIF должен применять ориентацию контейнера.'
 Assert-True ($importSource -match 'get_number_of_top_level_images') 'HEIF sequence не должна молча импортироваться как один кадр.'
 Assert-True ($importSource -match 'kMaxImagePixels') 'Импортёр должен ограничивать опасные размеры.'
@@ -84,11 +85,11 @@ foreach ($entry in @($catalog.seedStrings.PSObject.Properties | Where-Object { $
 Assert-True ($nativeHarness -match 'TestFb2BinaryRoundTrip') 'Native harness должен проверять FB2 save/reopen round-trip.'
 Assert-True ($nativeHarness -match 'E_NOTIMPL') 'Native harness должен закреплять controlled rejection неподдерживаемых последовательностей.'
 Assert-True ($nativeHarness -match 'TestCorruptImages') 'Native harness должен проверять controlled failure повреждённых изображений.'
-Assert-True ($nativeHarness -match 'TestBmffFiletypeClassification') 'Native harness должен отличать HEIF compatible brands от ISO-BMFF video containers.'
+Assert-True ($nativeHarness -match 'genericHeif' -and $nativeHarness -match 'malformed' -and $nativeHarness -match 'TestBmffFiletypeClassification') 'Native harness должен проверять HEIF compatible brands, generic ISO-BMFF, video и malformed ftyp.'
 Assert-True ($nativeHarness -match 'OutputHasColorPixel' -and $nativeRunner -match 'rainbow-451x461\.heic') 'Native harness должен проверять сохранение цветных пикселей профильного HEIC fixture.'
 Assert-True ($nativeHarness -match 'TestHeif10Bit' -and $nativeRunner -match 'sdr_fox_10bit\.avif') 'Native harness должен проверять SDR 10-bit AVIF и конвертацию в 8-bit output.'
-Assert-True ($nativeHarness -match 'TestTransformedHeif' -and $nativeRunner -match 'abc_color_irot_alpha_irot\.avif') 'Native harness должен проверять HEIF rotation и размеры после transform.'
+Assert-True ($nativeHarness -match 'TestTransformedHeif' -and $nativeHarness -match 'markerA' -and $nativeHarness -match 'OutputPixelAt' -and $nativeRunner -match 'abc_color_irot_alpha_irot\.avif') 'Native harness должен проверять HEIF rotation по конкретным pixels и размерам после transform.'
 Assert-True ($nativeHarness -match 'argv\[19\].*image/jpeg') 'Native harness должен проверять успешную конвертацию одно-страничного TIFF.'
-Assert-True ($nativeHarness -match 'TestJpeg2000Fixture\(true\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(false\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(true, true\)' -and $nativeHarness -match 'TestJpeg2000SyccSubsampled') 'Native harness должен проверять JP2, raw J2K, alpha JP2 и sYCC subsampling.'
+Assert-True ($nativeHarness -match 'TestJpeg2000Fixture\(true\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(false\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(true, true\)' -and $nativeHarness -match 'TestJpeg2000SyccSubsampled' -and $nativeHarness -match 'TestJpeg2000OriginSampling' -and $nativeHarness -match 'OutputPixelAt') 'Native harness должен проверять JP2/J2K, alpha, sYCC subsampling и component origin по RGB pixels.'
 
 Write-Host 'Контракт импорта изображений проверен.'

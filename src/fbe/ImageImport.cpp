@@ -12,7 +12,7 @@
 
 namespace {
 CString ImageMessage(LPCWSTR key, LPCWSTR fallback) { return FbeLoadRuntimeStringByKey(key, fallback); }
-enum class SourceFormat { Unknown, Jpeg, Png, Webp, Jp2, J2k, Tiff, Bmp, Gif, Avif, Heif };
+enum class SourceFormat { Unknown, Jpeg, Png, Webp, Jp2, J2k, Tiff, Bmp, Gif, Heif };
 // Conservative limits for the 32-bit editor: the importer can otherwise hold
 // source bytes, a BGRA raster, encoder buffers, a SAFEARRAY and DOM data at once.
 const ULONGLONG kMaxSourceBytes = 64ULL * 1024 * 1024;
@@ -53,8 +53,10 @@ SourceFormat Detect(const std::vector<BYTE>& b) {
 	if (b.size() >= 12 && memcmp(b.data()+4, "ftyp", 4) == 0) {
 		const int length = static_cast<int>(min(b.size(), static_cast<size_t>(INT_MAX)));
 		const heif_filetype_result filetype = heif_check_filetype(b.data(), length);
-		const bool videoBrand = memcmp(b.data()+8, "isom", 4) == 0 || memcmp(b.data()+8, "mp41", 4) == 0 || memcmp(b.data()+8, "mp42", 4) == 0 || memcmp(b.data()+8, "qt  ", 4) == 0;
-		if (!videoBrand && (filetype == heif_filetype_yes_supported || heif_has_compatible_filetype(b.data(), length).code == heif_error_Ok)) return SourceFormat::Heif;
+		// The ftyp box alone cannot establish that an ISO-BMFF file is a still
+		// image.  Let libheif parse the complete container and require its primary
+		// image in DecodeHeif; compatible image brands must work with generic majors.
+		if (filetype == heif_filetype_yes_supported || heif_has_compatible_filetype(b.data(), length).code == heif_error_Ok) return SourceFormat::Heif;
 	}
 	if (b.size() >= 4 && ((b[0]=='I' && b[1]=='I' && b[2]==42 && b[3]==0) || (b[0]=='M' && b[1]=='M' && b[2]==0 && b[3]==42))) return SourceFormat::Tiff;
 	if (b.size() >= 2 && b[0]=='B' && b[1]=='M') return SourceFormat::Bmp;
@@ -190,14 +192,21 @@ BYTE ComponentByte(const opj_image_comp_t& c, size_t offset) { int value=c.data[
 bool ComponentByteAt(const opj_image_comp_t& c, UINT x, UINT y, OPJ_UINT32 imageX0, OPJ_UINT32 imageY0, BYTE& value) {
 	// Component samples live on their own reference grid.  Mapping by raster
 	// proportions loses component origins and is wrong for non-default dx/dy.
-	const ULONGLONG absoluteX = static_cast<ULONGLONG>(imageX0) + x;
-	const ULONGLONG absoluteY = static_cast<ULONGLONG>(imageY0) + y;
-	if (!c.dx || !c.dy || absoluteX < c.x0 || absoluteY < c.y0) return false;
-	const ULONGLONG componentX = (absoluteX - c.x0) / c.dx;
-	const ULONGLONG componentY = (absoluteY - c.y0) / c.dy;
-	if (componentX >= c.w || componentY >= c.h) return false;
-	value = ComponentByte(c, static_cast<size_t>(componentY * c.w + componentX));
-	return true;
+	auto SampleAt = [&](ULONGLONG referenceX, ULONGLONG referenceY) -> bool {
+		if (!c.dx || !c.dy || referenceX < c.x0 || referenceY < c.y0) return false;
+		const ULONGLONG componentX = (referenceX - c.x0) / c.dx;
+		const ULONGLONG componentY = (referenceY - c.y0) / c.dy;
+		if (componentX >= c.w || componentY >= c.h) return false;
+		value = ComponentByte(c, static_cast<size_t>(componentY * c.w + componentX));
+		return true;
+	};
+	if (SampleAt(static_cast<ULONGLONG>(imageX0) + x, static_cast<ULONGLONG>(imageY0) + y)) return true;
+	// OpenJPEG can normalize component coordinates to the decoded raster while
+	// retaining the non-zero SIZ image origin separately.  Accept that form only
+	// after the absolute-grid mapping above has proved outside the component.
+	if (!(imageX0 || imageY0)) return false;
+	if (SampleAt(x, y)) return true;
+	return SampleAt(static_cast<ULONGLONG>(c.x0) + x, static_cast<ULONGLONG>(c.y0) + y);
 }
 BYTE ClampByte(int value) { return static_cast<BYTE>(max(0, min(255, value))); }
 HRESULT DecodeJ2k(const std::vector<BYTE>& data, SourceFormat type, const ImageImportOptions& o, ImageImportResult& r, CString& err) {
@@ -232,7 +241,7 @@ HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& o
 	result=ImageImportResult(); errorMessage.Empty(); result.logicalFileName=sourceFile;
 	std::vector<BYTE> source; HRESULT readResult = ReadBytes(sourceFile,source); if(FAILED(readResult)) { errorMessage = readResult == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? ImageMessage(L"fbe.image_import.too_large", L"Image is too large.") : ImageMessage(L"fbe.image_import.read_failed", L"Could not read image file."); StartupTrace::HResult(L"image-import", L"I100", readResult, L"stage=read"); return readResult; }
 	SourceFormat type=Detect(source); if(type==SourceFormat::Unknown) { errorMessage=ImageMessage(L"fbe.image_import.unsupported", L"Unsupported or corrupt image format."); StartupTrace::HResult(L"image-import", L"I101", E_FAIL, L"source-format=unknown; stage=detect"); return E_FAIL; }
-	const wchar_t* format = type == SourceFormat::Jpeg ? L"jpeg" : type == SourceFormat::Png ? L"png" : type == SourceFormat::Webp ? L"webp" : type == SourceFormat::Jp2 ? L"jp2" : type == SourceFormat::J2k ? L"j2k" : type == SourceFormat::Tiff ? L"tiff" : type == SourceFormat::Bmp ? L"bmp" : type == SourceFormat::Gif ? L"gif" : type == SourceFormat::Avif ? L"avif" : L"heif";
+	const wchar_t* format = type == SourceFormat::Jpeg ? L"jpeg" : type == SourceFormat::Png ? L"png" : type == SourceFormat::Webp ? L"webp" : type == SourceFormat::Jp2 ? L"jp2" : type == SourceFormat::J2k ? L"j2k" : type == SourceFormat::Tiff ? L"tiff" : type == SourceFormat::Bmp ? L"bmp" : type == SourceFormat::Gif ? L"gif" : L"heif";
 	auto FinishImport = [&](HRESULT hr) -> HRESULT { CString details; details.Format(L"source-format=%s; width=%u; height=%u; alpha=%d; output=%s; converted=%d", format, result.width, result.height, result.hasTransparency ? 1 : 0, (LPCWSTR)result.mimeType, result.converted ? 1 : 0); if (SUCCEEDED(hr)) StartupTrace::Event(L"image-import", L"I200", details); else StartupTrace::HResult(L"image-import", L"I201", hr, details); return hr; };
 	switch (type) {
 	case SourceFormat::Jpeg:
@@ -248,7 +257,6 @@ HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& o
 	case SourceFormat::Webp: return FinishImport(DecodeWebp(source,options,result,errorMessage));
 	case SourceFormat::Jp2:
 	case SourceFormat::J2k: return FinishImport(DecodeJ2k(source,type,options,result,errorMessage));
-	case SourceFormat::Avif:
 	case SourceFormat::Heif: return FinishImport(DecodeHeif(source,options,result,errorMessage));
 	case SourceFormat::Bmp:
 	case SourceFormat::Gif:

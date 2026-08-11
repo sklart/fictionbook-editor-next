@@ -103,6 +103,18 @@ static bool OutputHasContrast(const std::vector<BYTE>& bytes)
 	bitmap.UnlockBits(&locked); return lightest - darkest > 48;
 }
 
+static bool OutputPixelAt(const std::vector<BYTE>& bytes, UINT x, UINT y, Gdiplus::Color& color)
+{
+	HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, bytes.size()); if (!memory) return false;
+	void* raw = GlobalLock(memory); if (!raw) { GlobalFree(memory); return false; }
+	memcpy(raw, bytes.data(), bytes.size()); GlobalUnlock(memory); CComPtr<IStream> stream;
+	if (FAILED(CreateStreamOnHGlobal(memory, TRUE, &stream))) { GlobalFree(memory); return false; }
+	Gdiplus::Image image(stream); if (image.GetLastStatus() != Gdiplus::Ok || x >= image.GetWidth() || y >= image.GetHeight()) return false;
+	Gdiplus::Bitmap bitmap(image.GetWidth(), image.GetHeight(), PixelFormat32bppARGB); Gdiplus::Graphics graphics(&bitmap);
+	if (graphics.DrawImage(&image, 0, 0, image.GetWidth(), image.GetHeight()) != Gdiplus::Ok) return false;
+	return bitmap.GetPixel(x, y, &color) == Gdiplus::Ok;
+}
+
 static bool TestAnimatedWebpRejection()
 {
 	const BYTE pixels[] = { 0, 0, 255, 255 };
@@ -208,6 +220,32 @@ static bool TestJpeg2000SyccSubsampled()
 	return SUCCEEDED(hr) && result.converted && result.mimeType == L"image/jpeg" && result.width == 4 && result.height == 4 && HasJpegMagic(result.data);
 }
 
+static bool TestJpeg2000OriginSampling()
+{
+	opj_image_cmptparm_t components[3] = {};
+	components[0].dx = components[0].dy = 1; components[0].x0 = 10; components[0].y0 = 20; components[0].w = components[0].h = 4; components[0].prec = components[0].bpp = 8;
+	for (size_t index = 1; index < _countof(components); ++index) { components[index].dx = components[index].dy = 2; components[index].x0 = 10; components[index].y0 = 20; components[index].w = components[index].h = 2; components[index].prec = components[index].bpp = 8; }
+	std::unique_ptr<opj_image_t, void(*)(opj_image_t*)> image(opj_image_create(3, components, OPJ_CLRSPC_SYCC), opj_image_destroy);
+	if (!image) return false;
+	image->x0 = 10; image->y0 = 20; image->x1 = 14; image->y1 = 24;
+	for (size_t index = 0; index < 16; ++index) image->comps[0].data[index] = 128;
+	const int cb[] = { 128, 20, 230, 128 }, cr[] = { 230, 20, 128, 128 };
+	for (size_t index = 0; index < _countof(cb); ++index) { image->comps[1].data[index] = cb[index]; image->comps[2].data[index] = cr[index]; }
+	wchar_t temporaryPath[MAX_PATH] = {};
+	if (!GetTempPathW(_countof(temporaryPath), temporaryPath) || !GetTempFileNameW(temporaryPath, L"fbe", 0, temporaryPath)) return false;
+	DeleteFileW(temporaryPath); CStringA outputPath(temporaryPath); opj_cparameters_t parameters; opj_set_default_encoder_parameters(&parameters);
+	parameters.cod_format = 1; parameters.tcp_numlayers = 1; parameters.cp_disto_alloc = 1; parameters.tcp_rates[0] = 0; parameters.numresolution = 1; parameters.image_offset_x0 = 10; parameters.image_offset_y0 = 20;
+	std::unique_ptr<opj_codec_t, void(*)(opj_codec_t*)> codec(opj_create_compress(OPJ_CODEC_JP2), opj_destroy_codec);
+	std::unique_ptr<opj_stream_t, void(*)(opj_stream_t*)> stream(opj_stream_create_default_file_stream(outputPath, OPJ_FALSE), opj_stream_destroy);
+	if (!codec || !stream || !opj_setup_encoder(codec.get(), &parameters, image.get()) || !opj_start_compress(codec.get(), image.get(), stream.get()) || !opj_encode(codec.get(), stream.get()) || !opj_end_compress(codec.get(), stream.get())) { DeleteFileW(temporaryPath); return false; }
+	stream.reset(); ImageImportOptions options; ImageImportResult result; CString error;
+	const HRESULT hr = ImportImageForFb2(temporaryPath, options, result, error); DeleteFileW(temporaryPath);
+	Gdiplus::Color topLeft, topRight, bottomLeft, bottomRight;
+	const bool ok = SUCCEEDED(hr) && result.converted && result.width == 4 && result.height == 4 && HasJpegMagic(result.data) && OutputPixelAt(result.data, 0, 0, topLeft) && OutputPixelAt(result.data, 3, 0, topRight) && OutputPixelAt(result.data, 0, 3, bottomLeft) && OutputPixelAt(result.data, 3, 3, bottomRight) && topLeft.GetRed() > topLeft.GetBlue() + 50 && topRight.GetGreen() > topRight.GetRed() + 50 && bottomLeft.GetBlue() > bottomLeft.GetRed() + 50 && abs(int(bottomRight.GetRed()) - int(bottomRight.GetGreen())) < 32 && abs(int(bottomRight.GetGreen()) - int(bottomRight.GetBlue())) < 32;
+	if (!ok) std::wcerr << L"JPEG 2000 origin: hr=" << std::hex << hr << L" dimensions=" << std::dec << result.width << L"x" << result.height << L" error=" << error.GetString() << L" pixels=" << topLeft.GetRed() << L"," << topLeft.GetGreen() << L"," << topLeft.GetBlue() << L" / " << topRight.GetRed() << L"," << topRight.GetGreen() << L"," << topRight.GetBlue() << L" / " << bottomLeft.GetRed() << L"," << bottomLeft.GetGreen() << L"," << bottomLeft.GetBlue() << std::endl;
+	return ok;
+}
+
 static bool TestCorruptImages()
 {
 	static const BYTE jpeg[] = { 0xff, 0xd8, 0xff };
@@ -238,15 +276,18 @@ static bool TestCorruptImages()
 static bool TestBmffFiletypeClassification()
 {
 	const BYTE compatibleHeif[] = { 0,0,0,24, 'f','t','y','p', 'm','i','f','3', 0,0,0,0, 'a','v','i','f', 'm','i','f','1' };
-	const BYTE video[] = { 0,0,0,24, 'f','t','y','p', 'm','p','4','2', 0,0,0,0, 'a','v','i','f', 'm','i','f','1' };
-	struct Fixture { const BYTE* bytes; size_t size; bool heif; } fixtures[] = { { compatibleHeif, sizeof(compatibleHeif), true }, { video, sizeof(video), false } };
+	const BYTE genericHeif[] = { 0,0,0,24, 'f','t','y','p', 'i','s','o','m', 0,0,0,0, 'a','v','i','f', 'm','i','f','1' };
+	const BYTE video[] = { 0,0,0,24, 'f','t','y','p', 'm','p','4','2', 0,0,0,0, 'm','p','4','1', 'i','s','o','m' };
+	const BYTE generic[] = { 0,0,0,24, 'f','t','y','p', 'i','s','o','6', 0,0,0,0, 'm','p','4','1', 'i','s','o','m' };
+	const BYTE malformed[] = { 0,0,0,8, 'f','t','y','p', 'a','v','i','f', 0,0,0,0 };
+	struct Fixture { const BYTE* bytes; size_t size; bool heif; } fixtures[] = { { compatibleHeif, sizeof(compatibleHeif), true }, { genericHeif, sizeof(genericHeif), true }, { video, sizeof(video), false }, { generic, sizeof(generic), false }, { malformed, sizeof(malformed), false } };
 	for (const Fixture& fixture : fixtures) {
 		wchar_t path[MAX_PATH] = {}; if (!GetTempPathW(_countof(path), path) || !GetTempFileNameW(path, L"fbe", 0, path)) return false;
 		std::ofstream stream(path, std::ios::binary); stream.write(reinterpret_cast<const char*>(fixture.bytes), static_cast<std::streamsize>(fixture.size)); stream.close();
 		ImageImportOptions options; ImageImportResult result; CString error;
 		const HRESULT hr = ImportImageForFb2(path, options, result, error); DeleteFileW(path);
 		if (fixture.heif) { if (SUCCEEDED(hr) || error != L"Corrupt or unsupported AVIF/HEIF image.") return false; }
-		else if (SUCCEEDED(hr) || error != L"Unsupported or corrupt image format.") return false;
+		else if (SUCCEEDED(hr) || !result.data.empty()) return false;
 	}
 	return true;
 }
@@ -274,8 +315,16 @@ static bool TestTransformedHeif(const wchar_t* path)
 	ImageImportOptions options;
 	ImageImportResult result;
 	CString error;
-	const bool ok = SUCCEEDED(ImportImageForFb2(path, options, result, error)) && result.converted && result.width == 256 && result.height == 512 && OutputHasContrast(result.data);
-	if (!ok) std::wcerr << L"Transformed HEIF: " << result.width << L"x" << result.height << L"; " << error.GetString() << std::endl;
+	const HRESULT hr = ImportImageForFb2(path, options, result, error);
+	Gdiplus::Color markerA, markerB, markerC;
+	// Three known dark source pixels from the asymmetric "abc" layout map to
+	// distinct positions after irot.  Together they reject no rotation, either
+	// wrong quarter-turn, a double rotation and a mirror.
+	const bool darkA = OutputPixelAt(result.data, 105, 394, markerA) && markerA.GetRed() < 96 && markerA.GetGreen() < 96 && markerA.GetBlue() < 96;
+	const bool darkB = OutputPixelAt(result.data, 73, 301, markerB) && markerB.GetRed() < 96 && markerB.GetGreen() < 96 && markerB.GetBlue() < 96;
+	const bool darkC = OutputPixelAt(result.data, 104, 159, markerC) && markerC.GetRed() < 96 && markerC.GetGreen() < 96 && markerC.GetBlue() < 96;
+	const bool ok = SUCCEEDED(hr) && result.converted && result.width == 256 && result.height == 512 && OutputHasContrast(result.data) && darkA && darkB && darkC;
+	if (!ok) std::wcerr << L"Transformed HEIF: " << result.width << L"x" << result.height << L"; markers=" << markerA.GetRed() << L"," << markerB.GetRed() << L"," << markerC.GetRed() << L"; " << error.GetString() << std::endl;
 	return ok;
 }
 
@@ -399,7 +448,7 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestTransparentWebp()) return 31;
 	if (!TestCorruptImages()) return 32;
 	if (!TestBmffFiletypeClassification()) return 36;
-	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true) || !TestJpeg2000SyccSubsampled()) return 33;
+	if (!TestJpeg2000Fixture(true) || !TestJpeg2000Fixture(false) || !TestJpeg2000Fixture(true, true) || !TestJpeg2000SyccSubsampled() || !TestJpeg2000OriginSampling()) return 33;
 	if (ImportImageForFb2(argv[18], passThrough, result, error) != HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE)) return 34;
 	if (FAILED(ImportImageForFb2(argv[19], passThrough, result, error)) || !result.converted || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data) || result.width != 2 || result.height != 2) return 35;
 	// The fixture has a 452x462 coded extent and a 451x461 displayed crop.
