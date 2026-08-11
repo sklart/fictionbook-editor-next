@@ -206,7 +206,7 @@ HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& o
 			HRESULT hr = ValidatePassThroughGdi(source, result, errorMessage);
 			if (FAILED(hr)) return FinishImport(hr);
 			result.data.swap(source); result.mimeType=type==SourceFormat::Jpeg?L"image/jpeg":L"image/png";
-			int p=result.logicalFileName.ReverseFind(L'\\'); if(p>=0) result.logicalFileName=result.logicalFileName.Mid(p+1);
+			result.logicalFileName=TargetName(result.logicalFileName, type==SourceFormat::Png);
 			return FinishImport(S_OK);
 		}
 		return FinishImport(DecodeGdi(source,type,options,result,errorMessage));

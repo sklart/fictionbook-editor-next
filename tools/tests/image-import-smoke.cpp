@@ -4,6 +4,9 @@
 
 #include <fstream>
 #include <iostream>
+#include <webp/decode.h>
+#include <webp/encode.h>
+#include <webp/mux.h>
 
 CAppModule _Module;
 
@@ -40,13 +43,49 @@ static bool HasJpegMagic(const std::vector<BYTE>& bytes)
 	return bytes.size() >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff;
 }
 
-static bool TestHeif(const wchar_t* path)
+static bool TestAnimatedWebpRejection()
+{
+	const BYTE pixels[] = { 0, 0, 255, 255 };
+	uint8_t* encoded = NULL;
+	const size_t encodedSize = WebPEncodeRGBA(pixels, 1, 1, 4, 75.0f, &encoded);
+	if (!encodedSize || !encoded) return false;
+	WebPMux* mux = WebPMuxNew();
+	if (!mux) { WebPFree(encoded); return false; }
+	WebPMuxAnimParams animation = {};
+	const WebPMuxError setup = WebPMuxSetAnimationParams(mux, &animation);
+	WebPMuxFrameInfo frame = {};
+	frame.bitstream.bytes = encoded; frame.bitstream.size = encodedSize;
+	frame.id = WEBP_CHUNK_ANMF; frame.duration = 100;
+	frame.dispose_method = WEBP_MUX_DISPOSE_NONE; frame.blend_method = WEBP_MUX_BLEND;
+	const WebPMuxError first = setup == WEBP_MUX_OK ? WebPMuxPushFrame(mux, &frame, 1) : setup;
+	const WebPMuxError second = first == WEBP_MUX_OK ? WebPMuxPushFrame(mux, &frame, 1) : first;
+	WebPFree(encoded);
+	WebPData data = {};
+	const WebPMuxError assembled = second == WEBP_MUX_OK ? WebPMuxAssemble(mux, &data) : second;
+	WebPMuxDelete(mux);
+	WebPBitstreamFeatures features = {};
+	if (assembled != WEBP_MUX_OK || !data.bytes || !data.size || WebPGetFeatures(data.bytes, data.size, &features) != VP8_STATUS_OK || !features.has_animation) { WebPDataClear(&data); return false; }
+	wchar_t temporaryPath[MAX_PATH] = {};
+	if (!GetTempPathW(_countof(temporaryPath), temporaryPath) || !GetTempFileNameW(temporaryPath, L"fbe", 0, temporaryPath)) { WebPDataClear(&data); return false; }
+	const CString path(temporaryPath);
+	std::ofstream stream(path, std::ios::binary);
+	stream.write(reinterpret_cast<const char*>(data.bytes), static_cast<std::streamsize>(data.size));
+	stream.close(); WebPDataClear(&data);
+	ImageImportOptions options;
+	ImageImportResult result;
+	CString error;
+	const HRESULT hr = ImportImageForFb2(path, options, result, error);
+	DeleteFileW(path);
+	return hr == E_NOTIMPL;
+}
+
+static bool TestHeif(const wchar_t* path, UINT expectedWidth = 0, UINT expectedHeight = 0)
 {
 	ImageImportOptions options;
 	ImageImportResult result;
 	CString error;
 	if (FAILED(ImportImageForFb2(path, options, result, error))) { std::wcerr << error.GetString() << std::endl; return false; }
-	return result.converted && (result.mimeType == L"image/jpeg" || result.mimeType == L"image/png") && !result.data.empty() && result.width && result.height;
+	return result.converted && (result.mimeType == L"image/jpeg" || result.mimeType == L"image/png") && !result.data.empty() && result.width && result.height && (!expectedWidth || (result.width == expectedWidth && result.height == expectedHeight));
 }
 
 static bool TestFb2BinaryRoundTrip(const wchar_t* path)
@@ -109,7 +148,7 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 
 int wmain(int argc, wchar_t** argv)
 {
-	if (argc != 14) return 2;
+	if (argc != 17) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
 
@@ -146,15 +185,20 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestHeif(argv[9])) return 18;
 	ImageImportOptions jpegPipeline;
 	jpegPipeline.keepSupportedImages = false;
-	if (FAILED(ImportImageForFb2(argv[10], jpegPipeline, result, error)) || !result.converted || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data)) return 19;
-	if (!TestHeif(argv[11])) return 20;
-	if (!TestHeif(argv[12])) return 21;
+	if (FAILED(ImportImageForFb2(argv[10], jpegPipeline, result, error)) || !result.converted || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data) || result.width != 2 || result.height != 2) return 19;
+	if (!TestHeif(argv[11], 2, 2)) return 20;
+	if (ImportImageForFb2(argv[12], passThrough, result, error) != E_NOTIMPL) return 21;
 	std::vector<BYTE> transparentPng;
 	if (!ReadFile(argv[13], transparentPng) || FAILED(ImportImageForFb2(argv[13], passThrough, result, error)) || result.converted || !result.hasTransparency || result.mimeType != L"image/png" || result.data != transparentPng) return 22;
 	forceJpeg.keepSupportedImages = false;
 	forceJpeg.flattenTransparentJpeg = false;
 	if (ImportImageForFb2(argv[13], forceJpeg, result, error) != E_ABORT) return 23;
 	forceJpeg.flattenTransparentJpeg = true;
-	if (FAILED(ImportImageForFb2(argv[13], forceJpeg, result, error)) || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data)) return 24;
+	if (FAILED(ImportImageForFb2(argv[13], forceJpeg, result, error)) || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data) || result.width != 2 || result.height != 2) return 24;
+	if (ImportImageForFb2(argv[14], passThrough, result, error) != E_NOTIMPL) return 25;
+	std::vector<BYTE> pngWithWrongExtension;
+	if (!ReadFile(argv[15], pngWithWrongExtension) || FAILED(ImportImageForFb2(argv[15], passThrough, result, error)) || result.mimeType != L"image/png" || result.data != pngWithWrongExtension || result.logicalFileName.Right(4).CompareNoCase(L".png") != 0) return 26;
+	if (ImportImageForFb2(argv[16], passThrough, result, error) != E_NOTIMPL) return 27;
+	if (!TestAnimatedWebpRejection()) return 28;
 	return 0;
 }

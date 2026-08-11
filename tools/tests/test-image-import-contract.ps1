@@ -22,6 +22,7 @@ foreach ($format in @('Jpeg', 'Png', 'Webp', 'Jp2', 'J2k', 'Tiff', 'Bmp', 'Gif',
 Assert-True ($importSource -match 'case SourceFormat::Jpeg[\s\S]*case SourceFormat::Png[\s\S]*keepSupportedImages') 'JPEG/PNG должны сохраняться без перекодирования при включённой настройке.'
 Assert-True ($importSource -match 'image/jpeg') 'Не задан детерминированный MIME JPEG.'
 Assert-True ($importSource -match 'image/png') 'Не задан детерминированный MIME PNG.'
+Assert-True ($importSource -match 'TargetName\(result\.logicalFileName, type==SourceFormat::Png\)') 'Pass-through JPEG/PNG должен нормализовать logical extension по фактическому формату.'
 Assert-True ($importSource -match 'WebPGetFeatures') 'WebP должен проверять свойства до декодирования.'
 Assert-True ($importSource -match 'has_animation') 'Animated WebP должен контролируемо отклоняться.'
 Assert-True ($importSource -match 'flattenTransparentJpeg') 'Принудительный JPEG с alpha должен требовать/выполнять flatten.'
@@ -46,5 +47,6 @@ foreach ($key in @('fbe.image_import.read_failed', 'fbe.image_import.heif_decode
     Assert-True ($catalogSource -match [regex]::Escape($key)) "В runtime-каталоге отсутствует ключ $key."
 }
 Assert-True ($nativeHarness -match 'TestFb2BinaryRoundTrip') 'Native harness должен проверять FB2 save/reopen round-trip.'
+Assert-True ($nativeHarness -match 'E_NOTIMPL') 'Native harness должен закреплять controlled rejection неподдерживаемых последовательностей.'
 
 Write-Host 'Контракт импорта изображений проверен.'

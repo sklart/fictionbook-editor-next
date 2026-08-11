@@ -23,6 +23,8 @@ $jpegFixture = Join-Path $testDir 'generated.jpg'
 $gifFixture = Join-Path $testDir 'generated.gif'
 $tiffFixture = Join-Path $testDir 'generated.tiff'
 $transparentPngFixture = Join-Path $testDir 'transparent.png'
+$transparentPngWithWebpExtension = Join-Path $testDir 'actual-png.webp'
+$animatedGifFixture = Join-Path $testDir 'animated.gif'
 Add-Type -AssemblyName System.Drawing
 $bitmap = [Drawing.Bitmap]::new(2, 2)
 try {
@@ -32,7 +34,22 @@ try {
     $bitmap.SetPixel(1, 1, [Drawing.Color]::White)
     $bitmap.Save($jpegFixture, [Drawing.Imaging.ImageFormat]::Jpeg)
     $bitmap.Save($gifFixture, [Drawing.Imaging.ImageFormat]::Gif)
-    $bitmap.Save($tiffFixture, [Drawing.Imaging.ImageFormat]::Tiff)
+    $tiffCodec = [Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/tiff' }
+    $tiffParameters = [Drawing.Imaging.EncoderParameters]::new(1)
+    $tiffParameters.Param[0] = [Drawing.Imaging.EncoderParameter]::new([Drawing.Imaging.Encoder]::SaveFlag, [long][Drawing.Imaging.EncoderValue]::MultiFrame)
+    $bitmap.Save($tiffFixture, $tiffCodec, $tiffParameters)
+    $secondPage = [Drawing.Bitmap]::new(2, 2)
+    try {
+        $secondPage.SetPixel(0, 0, [Drawing.Color]::Black)
+        $tiffParameters.Param[0] = [Drawing.Imaging.EncoderParameter]::new([Drawing.Imaging.Encoder]::SaveFlag, [long][Drawing.Imaging.EncoderValue]::FrameDimensionPage)
+        $bitmap.SaveAdd($secondPage, $tiffParameters)
+        $tiffParameters.Param[0] = [Drawing.Imaging.EncoderParameter]::new([Drawing.Imaging.Encoder]::SaveFlag, [long][Drawing.Imaging.EncoderValue]::Flush)
+        $bitmap.SaveAdd($tiffParameters)
+    }
+    finally {
+        $secondPage.Dispose()
+        $tiffParameters.Dispose()
+    }
 
     $transparent = [Drawing.Bitmap]::new(2, 2)
     try {
@@ -49,6 +66,9 @@ try {
 finally {
     $bitmap.Dispose()
 }
+Copy-Item -LiteralPath $transparentPngFixture -Destination $transparentPngWithWebpExtension -Force
+# Two 1x1 frames, encoded without relying on an external image utility.
+[IO.File]::WriteAllBytes($animatedGifFixture, [Convert]::FromBase64String('R0lGODlhAQABAIAAAAAAAP///yH/C05FVFNDQVBFMi4wAwEAAAAh+QQECgAAACwAAAAAAQABAAACAkQBACH5BAQKAAAALAAAAAABAAEAAAICTAEAOw=='))
 $exe = Join-Path $testDir 'image-import-smoke.exe'
 $webp = Join-Path $repoRoot "build\libwebp\install\$Configuration"
 $openjpeg = Join-Path $repoRoot "build\openjpeg\install\$Configuration"
@@ -56,7 +76,7 @@ $openjpeg = Join-Path $repoRoot "build\openjpeg\install\$Configuration"
 & cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE `
     "/I$repoRoot\src\fbe" "/I$repoRoot\third_party\wtl" "/I$webp\include" "/I$openjpeg\include" "/I$repoRoot\build\libheif\install\$Configuration\include" `
     (Join-Path $PSScriptRoot 'image-import-smoke.cpp') (Join-Path $repoRoot 'src\fbe\ImageImport.cpp') `
-    "/Fe$exe" "/link" "/SUBSYSTEM:CONSOLE" "/LIBPATH:$webp\lib" "/LIBPATH:$openjpeg\lib" "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib" libwebp.lib openjp2.lib heif.lib libde265.lib aom.lib gdiplus.lib ole32.lib
+    "/Fe$exe" "/link" "/SUBSYSTEM:CONSOLE" "/LIBPATH:$webp\lib" "/LIBPATH:$openjpeg\lib" "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib" libwebpmux.lib libwebp.lib libsharpyuv.lib openjp2.lib heif.lib libde265.lib aom.lib gdiplus.lib ole32.lib
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & $exe `
@@ -72,6 +92,9 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $jpegFixture `
     $gifFixture `
     $tiffFixture `
-    $transparentPngFixture
+    $transparentPngFixture `
+    (Join-Path $repoRoot 'third_party\libheif\examples\example.heic') `
+    $transparentPngWithWebpExtension `
+    $animatedGifFixture
 if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
 Write-Host 'Native ImageImport smoke-test passed.'
