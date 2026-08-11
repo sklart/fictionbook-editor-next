@@ -22,7 +22,7 @@ foreach ($format in @('Jpeg', 'Png', 'Webp', 'Jp2', 'J2k', 'Tiff', 'Bmp', 'Gif',
 Assert-True ($importSource -match 'case SourceFormat::Jpeg[\s\S]*case SourceFormat::Png[\s\S]*keepSupportedImages') 'JPEG/PNG должны сохраняться без перекодирования при включённой настройке.'
 Assert-True ($importSource -match 'image/jpeg') 'Не задан детерминированный MIME JPEG.'
 Assert-True ($importSource -match 'image/png') 'Не задан детерминированный MIME PNG.'
-Assert-True ($importSource -match 'TargetName\(result\.logicalFileName, type==SourceFormat::Png\)') 'Pass-through JPEG/PNG должен нормализовать logical extension по фактическому формату.'
+Assert-True ($importSource -match 'PassThroughName\(result\.logicalFileName, type\)') 'Pass-through должен сохранять корректное исходное имя и исправлять ложное расширение.'
 Assert-True ($importSource -match 'WebPGetFeatures') 'WebP должен проверять свойства до декодирования.'
 Assert-True ($importSource -match 'has_animation') 'Animated WebP должен контролируемо отклоняться.'
 Assert-True ($importSource -match 'flattenTransparentJpeg') 'Принудительный JPEG с alpha должен требовать/выполнять flatten.'

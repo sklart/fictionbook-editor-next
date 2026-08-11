@@ -20,6 +20,7 @@ $truncatedAvif = Join-Path $testDir 'truncated-avif.heic'
 $avifBytes = [IO.File]::ReadAllBytes($avifFixture)
 [IO.File]::WriteAllBytes($truncatedAvif, $avifBytes[0..15])
 $jpegFixture = Join-Path $testDir 'generated.jpg'
+$jpegPassThroughFixture = Join-Path $testDir 'original.jpeg'
 $gifFixture = Join-Path $testDir 'generated.gif'
 $tiffFixture = Join-Path $testDir 'generated.tiff'
 $transparentPngFixture = Join-Path $testDir 'transparent.png'
@@ -67,6 +68,7 @@ finally {
     $bitmap.Dispose()
 }
 Copy-Item -LiteralPath $transparentPngFixture -Destination $transparentPngWithWebpExtension -Force
+Copy-Item -LiteralPath $jpegFixture -Destination $jpegPassThroughFixture -Force
 # Two 1x1 frames, encoded without relying on an external image utility.
 [IO.File]::WriteAllBytes($animatedGifFixture, [Convert]::FromBase64String('R0lGODlhAQABAIAAAAAAAP///yH/C05FVFNDQVBFMi4wAwEAAAAh+QQECgAAACwAAAAAAQABAAACAkQBACH5BAQKAAAALAAAAAABAAEAAAICTAEAOw=='))
 $exe = Join-Path $testDir 'image-import-smoke.exe'
@@ -95,6 +97,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $transparentPngFixture `
     (Join-Path $repoRoot 'third_party\libheif\examples\example.heic') `
     $transparentPngWithWebpExtension `
-    $animatedGifFixture
+    $animatedGifFixture `
+    $jpegPassThroughFixture
 if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
 Write-Host 'Native ImageImport smoke-test passed.'

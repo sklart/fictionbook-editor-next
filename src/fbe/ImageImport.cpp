@@ -64,6 +64,13 @@ bool ReadBytes(const CString& file, std::vector<BYTE>& data) {
 	data.resize(static_cast<size_t>(n)); DWORD read=0; return n == 0 || SUCCEEDED(f.Read(data.data(), static_cast<DWORD>(n), read)) && read == n;
 }
 CString TargetName(const CString& file, bool png) { CString r(file); int p=r.ReverseFind(L'\\'); if(p>=0) r=r.Mid(p+1); int dot=r.ReverseFind(L'.'); if(dot>=0) r=r.Left(dot); return r + (png ? L".png" : L".jpg"); }
+CString PassThroughName(const CString& file, SourceFormat type) {
+	CString name(file); int slash = name.ReverseFind(L'\\'); if (slash >= 0) name = name.Mid(slash + 1);
+	int dot = name.ReverseFind(L'.'); CString extension = dot >= 0 ? name.Mid(dot) : L"";
+	if ((type == SourceFormat::Png && extension.CompareNoCase(L".png") == 0) ||
+		(type == SourceFormat::Jpeg && (extension.CompareNoCase(L".jpg") == 0 || extension.CompareNoCase(L".jpeg") == 0))) return name;
+	return TargetName(name, type == SourceFormat::Png);
+}
 bool GetEncoder(const WCHAR* mime, CLSID& clsid) {
 	UINT n=0, bytes=0; if (Gdiplus::GetImageEncodersSize(&n,&bytes)!=Gdiplus::Ok || !bytes) return false;
 	std::vector<BYTE> p(bytes); auto e=reinterpret_cast<Gdiplus::ImageCodecInfo*>(p.data()); if (Gdiplus::GetImageEncoders(n,bytes,e)!=Gdiplus::Ok) return false;
@@ -206,7 +213,7 @@ HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& o
 			HRESULT hr = ValidatePassThroughGdi(source, result, errorMessage);
 			if (FAILED(hr)) return FinishImport(hr);
 			result.data.swap(source); result.mimeType=type==SourceFormat::Jpeg?L"image/jpeg":L"image/png";
-			result.logicalFileName=TargetName(result.logicalFileName, type==SourceFormat::Png);
+			result.logicalFileName=PassThroughName(result.logicalFileName, type);
 			return FinishImport(S_OK);
 		}
 		return FinishImport(DecodeGdi(source,type,options,result,errorMessage));

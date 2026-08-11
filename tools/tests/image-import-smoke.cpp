@@ -148,7 +148,7 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 
 int wmain(int argc, wchar_t** argv)
 {
-	if (argc != 17) return 2;
+	if (argc != 18) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
 
@@ -200,5 +200,7 @@ int wmain(int argc, wchar_t** argv)
 	if (!ReadFile(argv[15], pngWithWrongExtension) || FAILED(ImportImageForFb2(argv[15], passThrough, result, error)) || result.mimeType != L"image/png" || result.data != pngWithWrongExtension || result.logicalFileName.Right(4).CompareNoCase(L".png") != 0) return 26;
 	if (ImportImageForFb2(argv[16], passThrough, result, error) != E_NOTIMPL) return 27;
 	if (!TestAnimatedWebpRejection()) return 28;
+	std::vector<BYTE> jpegPassThrough;
+	if (!ReadFile(argv[17], jpegPassThrough) || FAILED(ImportImageForFb2(argv[17], passThrough, result, error)) || result.converted || result.mimeType != L"image/jpeg" || result.data != jpegPassThrough || result.logicalFileName.CompareNoCase(L"original.jpeg") != 0) return 29;
 	return 0;
 }
