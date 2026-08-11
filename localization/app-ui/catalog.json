@@ -5578,15 +5578,15 @@
         "en-US": "Corrupt or unsupported image.",
         "ru-RU": "Повреждённое или неподдерживаемое изображение.",
         "uk-UA": "Пошкоджене або непідтримуване зображення.",
-        "de-DE": "Corrupt or unsupported image.",
-        "fr-FR": "Corrupt or unsupported image.",
-        "es-ES": "Corrupt or unsupported image.",
-        "it-IT": "Corrupt or unsupported image.",
-        "pl-PL": "Corrupt or unsupported image.",
-        "pt-PT": "Corrupt or unsupported image.",
-        "nl-NL": "Corrupt or unsupported image.",
-        "cs-CZ": "Corrupt or unsupported image.",
-        "bg-BG": "Corrupt or unsupported image."
+        "de-DE": "Beschädigtes oder nicht unterstütztes Bild.",
+        "fr-FR": "Image corrompue ou non prise en charge.",
+        "es-ES": "Imagen dañada o no compatible.",
+        "it-IT": "Immagine danneggiata o non supportata.",
+        "pl-PL": "Uszkodzony lub nieobsługiwany obraz.",
+        "pt-PT": "Imagem corrompida ou não suportada.",
+        "nl-NL": "Beschadigde of niet-ondersteunde afbeelding.",
+        "cs-CZ": "Poškozený nebo nepodporovaný obrázek.",
+        "bg-BG": "Повредено или неподдържано изображение."
       }
     },
     "fbe.image_import.too_large": {
@@ -5596,15 +5596,15 @@
         "en-US": "Image is too large.",
         "ru-RU": "Изображение слишком большое.",
         "uk-UA": "Зображення надто велике.",
-        "de-DE": "Image is too large.",
-        "fr-FR": "Image is too large.",
-        "es-ES": "Image is too large.",
-        "it-IT": "Image is too large.",
-        "pl-PL": "Image is too large.",
-        "pt-PT": "Image is too large.",
-        "nl-NL": "Image is too large.",
-        "cs-CZ": "Image is too large.",
-        "bg-BG": "Image is too large."
+        "de-DE": "Bild ist zu groß.",
+        "fr-FR": "L’image est trop grande.",
+        "es-ES": "La imagen es demasiado grande.",
+        "it-IT": "L’immagine è troppo grande.",
+        "pl-PL": "Obraz jest zbyt duży.",
+        "pt-PT": "A imagem é demasiado grande.",
+        "nl-NL": "De afbeelding is te groot.",
+        "cs-CZ": "Obrázek je příliš velký.",
+        "bg-BG": "Изображението е твърде голямо."
       }
     },
     "fbe.image_import.gif_animated": {
@@ -5614,15 +5614,15 @@
         "en-US": "Animated GIF is not supported yet.",
         "ru-RU": "Анимированные GIF пока не поддерживаются.",
         "uk-UA": "Анімовані GIF поки не підтримуються.",
-        "de-DE": "Animated GIF is not supported yet.",
-        "fr-FR": "Animated GIF is not supported yet.",
-        "es-ES": "Animated GIF is not supported yet.",
-        "it-IT": "Animated GIF is not supported yet.",
-        "pl-PL": "Animated GIF is not supported yet.",
-        "pt-PT": "Animated GIF is not supported yet.",
-        "nl-NL": "Animated GIF is not supported yet.",
-        "cs-CZ": "Animated GIF is not supported yet.",
-        "bg-BG": "Animated GIF is not supported yet."
+        "de-DE": "Animierte GIFs werden noch nicht unterstützt.",
+        "fr-FR": "Les GIF animés ne sont pas encore pris en charge.",
+        "es-ES": "Los GIF animados aún no son compatibles.",
+        "it-IT": "Le GIF animati non sono ancora supportate.",
+        "pl-PL": "Animowane pliki GIF nie są jeszcze obsługiwane.",
+        "pt-PT": "Os GIF animados ainda não são suportados.",
+        "nl-NL": "Geanimeerde GIF's worden nog niet ondersteund.",
+        "cs-CZ": "Animované GIFy zatím nejsou podporovány.",
+        "bg-BG": "Анимираните GIF файлове все още не се поддържат."
       }
     },
     "fbe.image_import.tiff_multipage": {
@@ -5632,15 +5632,15 @@
         "en-US": "Multi-page TIFF is not supported yet.",
         "ru-RU": "Многостраничные TIFF пока не поддерживаются.",
         "uk-UA": "Багатосторінкові TIFF поки не підтримуються.",
-        "de-DE": "Multi-page TIFF is not supported yet.",
-        "fr-FR": "Multi-page TIFF is not supported yet.",
-        "es-ES": "Multi-page TIFF is not supported yet.",
-        "it-IT": "Multi-page TIFF is not supported yet.",
-        "pl-PL": "Multi-page TIFF is not supported yet.",
-        "pt-PT": "Multi-page TIFF is not supported yet.",
-        "nl-NL": "Multi-page TIFF is not supported yet.",
-        "cs-CZ": "Multi-page TIFF is not supported yet.",
-        "bg-BG": "Multi-page TIFF is not supported yet."
+        "de-DE": "Mehrseitige TIFF-Dateien werden noch nicht unterstützt.",
+        "fr-FR": "Les TIFF multipages ne sont pas encore pris en charge.",
+        "es-ES": "Los TIFF multipágina aún no son compatibles.",
+        "it-IT": "I TIFF multipagina non sono ancora supportati.",
+        "pl-PL": "Wielostronicowe pliki TIFF nie są jeszcze obsługiwane.",
+        "pt-PT": "Os TIFF com várias páginas ainda não são suportados.",
+        "nl-NL": "TIFF-bestanden met meerdere pagina's worden nog niet ondersteund.",
+        "cs-CZ": "Vícestránkové TIFFy zatím nejsou podporovány.",
+        "bg-BG": "Многостраничните TIFF файлове все още не се поддържат."
       }
     },
     "fbe.image_import.orientation_failed": {
@@ -5650,15 +5650,15 @@
         "en-US": "Could not apply image orientation.",
         "ru-RU": "Не удалось применить ориентацию изображения.",
         "uk-UA": "Не вдалося застосувати орієнтацію зображення.",
-        "de-DE": "Could not apply image orientation.",
-        "fr-FR": "Could not apply image orientation.",
-        "es-ES": "Could not apply image orientation.",
-        "it-IT": "Could not apply image orientation.",
-        "pl-PL": "Could not apply image orientation.",
-        "pt-PT": "Could not apply image orientation.",
-        "nl-NL": "Could not apply image orientation.",
-        "cs-CZ": "Could not apply image orientation.",
-        "bg-BG": "Could not apply image orientation."
+        "de-DE": "Die Bildausrichtung konnte nicht angewendet werden.",
+        "fr-FR": "Impossible d’appliquer l’orientation de l’image.",
+        "es-ES": "No se pudo aplicar la orientación de la imagen.",
+        "it-IT": "Impossibile applicare l’orientamento dell’immagine.",
+        "pl-PL": "Nie można zastosować orientacji obrazu.",
+        "pt-PT": "Não foi possível aplicar a orientação da imagem.",
+        "nl-NL": "De afbeeldingsoriëntatie kon niet worden toegepast.",
+        "cs-CZ": "Orientaci obrázku se nepodařilo použít.",
+        "bg-BG": "Ориентацията на изображението не можа да бъде приложена."
       }
     },
     "fbe.image_import.transparency_failed": {
@@ -5668,15 +5668,15 @@
         "en-US": "Could not determine image transparency.",
         "ru-RU": "Не удалось определить прозрачность изображения.",
         "uk-UA": "Не вдалося визначити прозорість зображення.",
-        "de-DE": "Could not determine image transparency.",
-        "fr-FR": "Could not determine image transparency.",
-        "es-ES": "Could not determine image transparency.",
-        "it-IT": "Could not determine image transparency.",
-        "pl-PL": "Could not determine image transparency.",
-        "pt-PT": "Could not determine image transparency.",
-        "nl-NL": "Could not determine image transparency.",
-        "cs-CZ": "Could not determine image transparency.",
-        "bg-BG": "Could not determine image transparency."
+        "de-DE": "Die Bildtransparenz konnte nicht ermittelt werden.",
+        "fr-FR": "Impossible de déterminer la transparence de l’image.",
+        "es-ES": "No se pudo determinar la transparencia de la imagen.",
+        "it-IT": "Impossibile determinare la trasparenza dell’immagine.",
+        "pl-PL": "Nie można określić przezroczystości obrazu.",
+        "pt-PT": "Não foi possível determinar a transparência da imagem.",
+        "nl-NL": "De transparantie van de afbeelding kon niet worden bepaald.",
+        "cs-CZ": "Průhlednost obrázku se nepodařilo zjistit.",
+        "bg-BG": "Прозрачността на изображението не можа да бъде определена."
       }
     },
     "fbe.image_import.flatten_required": {
@@ -5686,15 +5686,15 @@
         "en-US": "This image has transparency and needs confirmation before JPEG conversion.",
         "ru-RU": "Изображение содержит прозрачность и требует подтверждения перед преобразованием в JPEG.",
         "uk-UA": "Зображення містить прозорість і потребує підтвердження перед перетворенням у JPEG.",
-        "de-DE": "This image has transparency and needs confirmation before JPEG conversion.",
-        "fr-FR": "This image has transparency and needs confirmation before JPEG conversion.",
-        "es-ES": "This image has transparency and needs confirmation before JPEG conversion.",
-        "it-IT": "This image has transparency and needs confirmation before JPEG conversion.",
-        "pl-PL": "This image has transparency and needs confirmation before JPEG conversion.",
-        "pt-PT": "This image has transparency and needs confirmation before JPEG conversion.",
-        "nl-NL": "This image has transparency and needs confirmation before JPEG conversion.",
-        "cs-CZ": "This image has transparency and needs confirmation before JPEG conversion.",
-        "bg-BG": "This image has transparency and needs confirmation before JPEG conversion."
+        "de-DE": "Dieses Bild enthält Transparenz und erfordert vor der JPEG-Konvertierung eine Bestätigung.",
+        "fr-FR": "Cette image contient de la transparence et nécessite une confirmation avant la conversion en JPEG.",
+        "es-ES": "Esta imagen tiene transparencia y requiere confirmación antes de convertirla a JPEG.",
+        "it-IT": "Questa immagine ha trasparenza e richiede conferma prima della conversione in JPEG.",
+        "pl-PL": "Ten obraz zawiera przezroczystość i wymaga potwierdzenia przed konwersją do JPEG.",
+        "pt-PT": "Esta imagem tem transparência e requer confirmação antes da conversão para JPEG.",
+        "nl-NL": "Deze afbeelding bevat transparantie en vereist bevestiging vóór de conversie naar JPEG.",
+        "cs-CZ": "Tento obrázek obsahuje průhlednost a před převodem na JPEG vyžaduje potvrzení.",
+        "bg-BG": "Това изображение има прозрачност и изисква потвърждение преди преобразуване в JPEG."
       }
     },
     "fbe.image_import.encode_failed": {
@@ -5704,15 +5704,15 @@
         "en-US": "Could not encode image.",
         "ru-RU": "Не удалось закодировать изображение.",
         "uk-UA": "Не вдалося закодувати зображення.",
-        "de-DE": "Could not encode image.",
-        "fr-FR": "Could not encode image.",
-        "es-ES": "Could not encode image.",
-        "it-IT": "Could not encode image.",
-        "pl-PL": "Could not encode image.",
-        "pt-PT": "Could not encode image.",
-        "nl-NL": "Could not encode image.",
-        "cs-CZ": "Could not encode image.",
-        "bg-BG": "Could not encode image."
+        "de-DE": "Bild konnte nicht kodiert werden.",
+        "fr-FR": "Impossible d’encoder l’image.",
+        "es-ES": "No se pudo codificar la imagen.",
+        "it-IT": "Impossibile codificare l’immagine.",
+        "pl-PL": "Nie można zakodować obrazu.",
+        "pt-PT": "Não foi possível codificar a imagem.",
+        "nl-NL": "De afbeelding kon niet worden gecodeerd.",
+        "cs-CZ": "Obrázek se nepodařilo zakódovat.",
+        "bg-BG": "Изображението не можа да бъде кодирано."
       }
     },
     "fbe.image_import.webp_invalid": {
@@ -5722,15 +5722,15 @@
         "en-US": "Corrupt WebP image.",
         "ru-RU": "Повреждённое изображение WebP.",
         "uk-UA": "Пошкоджене зображення WebP.",
-        "de-DE": "Corrupt WebP image.",
-        "fr-FR": "Corrupt WebP image.",
-        "es-ES": "Corrupt WebP image.",
-        "it-IT": "Corrupt WebP image.",
-        "pl-PL": "Corrupt WebP image.",
-        "pt-PT": "Corrupt WebP image.",
-        "nl-NL": "Corrupt WebP image.",
-        "cs-CZ": "Corrupt WebP image.",
-        "bg-BG": "Corrupt WebP image."
+        "de-DE": "Beschädigtes WebP-Bild.",
+        "fr-FR": "Image WebP corrompue.",
+        "es-ES": "Imagen WebP dañada.",
+        "it-IT": "Immagine WebP danneggiata.",
+        "pl-PL": "Uszkodzony obraz WebP.",
+        "pt-PT": "Imagem WebP corrompida.",
+        "nl-NL": "Beschadigde WebP-afbeelding.",
+        "cs-CZ": "Poškozený obrázek WebP.",
+        "bg-BG": "Повредено WebP изображение."
       }
     },
     "fbe.image_import.webp_animated": {
@@ -5740,15 +5740,15 @@
         "en-US": "Animated WebP is not supported yet.",
         "ru-RU": "Анимированные WebP пока не поддерживаются.",
         "uk-UA": "Анімовані WebP поки не підтримуються.",
-        "de-DE": "Animated WebP is not supported yet.",
-        "fr-FR": "Animated WebP is not supported yet.",
-        "es-ES": "Animated WebP is not supported yet.",
-        "it-IT": "Animated WebP is not supported yet.",
-        "pl-PL": "Animated WebP is not supported yet.",
-        "pt-PT": "Animated WebP is not supported yet.",
-        "nl-NL": "Animated WebP is not supported yet.",
-        "cs-CZ": "Animated WebP is not supported yet.",
-        "bg-BG": "Animated WebP is not supported yet."
+        "de-DE": "Animierte WebP-Bilder werden noch nicht unterstützt.",
+        "fr-FR": "Les images WebP animées ne sont pas encore prises en charge.",
+        "es-ES": "Las imágenes WebP animadas aún no son compatibles.",
+        "it-IT": "Le immagini WebP animate non sono ancora supportate.",
+        "pl-PL": "Animowane obrazy WebP nie są jeszcze obsługiwane.",
+        "pt-PT": "As imagens WebP animadas ainda não são suportadas.",
+        "nl-NL": "Geanimeerde WebP-afbeeldingen worden nog niet ondersteund.",
+        "cs-CZ": "Animované obrázky WebP zatím nejsou podporovány.",
+        "bg-BG": "Анимираните WebP изображения все още не се поддържат."
       }
     },
     "fbe.image_import.webp_decode_failed": {
@@ -5758,15 +5758,15 @@
         "en-US": "Could not decode WebP image.",
         "ru-RU": "Не удалось декодировать изображение WebP.",
         "uk-UA": "Не вдалося декодувати зображення WebP.",
-        "de-DE": "Could not decode WebP image.",
-        "fr-FR": "Could not decode WebP image.",
-        "es-ES": "Could not decode WebP image.",
-        "it-IT": "Could not decode WebP image.",
-        "pl-PL": "Could not decode WebP image.",
-        "pt-PT": "Could not decode WebP image.",
-        "nl-NL": "Could not decode WebP image.",
-        "cs-CZ": "Could not decode WebP image.",
-        "bg-BG": "Could not decode WebP image."
+        "de-DE": "WebP-Bild konnte nicht dekodiert werden.",
+        "fr-FR": "Impossible de décoder l’image WebP.",
+        "es-ES": "No se pudo decodificar la imagen WebP.",
+        "it-IT": "Impossibile decodificare l’immagine WebP.",
+        "pl-PL": "Nie można zdekodować obrazu WebP.",
+        "pt-PT": "Não foi possível descodificar a imagem WebP.",
+        "nl-NL": "De WebP-afbeelding kon niet worden gedecodeerd.",
+        "cs-CZ": "Obrázek WebP se nepodařilo dekódovat.",
+        "bg-BG": "WebP изображението не можа да бъде декодирано."
       }
     },
     "fbe.image_import.webp_encode_failed": {
@@ -5776,15 +5776,15 @@
         "en-US": "Could not encode WebP image.",
         "ru-RU": "Не удалось закодировать изображение WebP.",
         "uk-UA": "Не вдалося закодувати зображення WebP.",
-        "de-DE": "Could not encode WebP image.",
-        "fr-FR": "Could not encode WebP image.",
-        "es-ES": "Could not encode WebP image.",
-        "it-IT": "Could not encode WebP image.",
-        "pl-PL": "Could not encode WebP image.",
-        "pt-PT": "Could not encode WebP image.",
-        "nl-NL": "Could not encode WebP image.",
-        "cs-CZ": "Could not encode WebP image.",
-        "bg-BG": "Could not encode WebP image."
+        "de-DE": "WebP-Bild konnte nicht kodiert werden.",
+        "fr-FR": "Impossible d’encoder l’image WebP.",
+        "es-ES": "No se pudo codificar la imagen WebP.",
+        "it-IT": "Impossibile codificare l’immagine WebP.",
+        "pl-PL": "Nie można zakodować obrazu WebP.",
+        "pt-PT": "Não foi possível codificar a imagem WebP.",
+        "nl-NL": "De WebP-afbeelding kon niet worden gecodeerd.",
+        "cs-CZ": "Obrázek WebP se nepodařilo zakódovat.",
+        "bg-BG": "WebP изображението не можа да бъде кодирано."
       }
     },
     "fbe.image_import.heif_invalid": {
@@ -5794,15 +5794,15 @@
         "en-US": "Corrupt or unsupported AVIF/HEIF image.",
         "ru-RU": "Повреждённое или неподдерживаемое изображение AVIF/HEIF.",
         "uk-UA": "Пошкоджене або непідтримуване зображення AVIF/HEIF.",
-        "de-DE": "Corrupt or unsupported AVIF/HEIF image.",
-        "fr-FR": "Corrupt or unsupported AVIF/HEIF image.",
-        "es-ES": "Corrupt or unsupported AVIF/HEIF image.",
-        "it-IT": "Corrupt or unsupported AVIF/HEIF image.",
-        "pl-PL": "Corrupt or unsupported AVIF/HEIF image.",
-        "pt-PT": "Corrupt or unsupported AVIF/HEIF image.",
-        "nl-NL": "Corrupt or unsupported AVIF/HEIF image.",
-        "cs-CZ": "Corrupt or unsupported AVIF/HEIF image.",
-        "bg-BG": "Corrupt or unsupported AVIF/HEIF image."
+        "de-DE": "Beschädigtes oder nicht unterstütztes AVIF/HEIF-Bild.",
+        "fr-FR": "Image AVIF/HEIF corrompue ou non prise en charge.",
+        "es-ES": "Imagen AVIF/HEIF dañada o no compatible.",
+        "it-IT": "Immagine AVIF/HEIF danneggiata o non supportata.",
+        "pl-PL": "Uszkodzony lub nieobsługiwany obraz AVIF/HEIF.",
+        "pt-PT": "Imagem AVIF/HEIF corrompida ou não suportada.",
+        "nl-NL": "Beschadigde of niet-ondersteunde AVIF/HEIF-afbeelding.",
+        "cs-CZ": "Poškozený nebo nepodporovaný obrázek AVIF/HEIF.",
+        "bg-BG": "Повредено или неподдържано AVIF/HEIF изображение."
       }
     },
     "fbe.image_import.heif_multiple": {
@@ -5812,15 +5812,15 @@
         "en-US": "HEIF image sequences are not supported.",
         "ru-RU": "Последовательности изображений HEIF не поддерживаются.",
         "uk-UA": "Послідовності зображень HEIF не підтримуються.",
-        "de-DE": "HEIF image sequences are not supported.",
-        "fr-FR": "HEIF image sequences are not supported.",
-        "es-ES": "HEIF image sequences are not supported.",
-        "it-IT": "HEIF image sequences are not supported.",
-        "pl-PL": "HEIF image sequences are not supported.",
-        "pt-PT": "HEIF image sequences are not supported.",
-        "nl-NL": "HEIF image sequences are not supported.",
-        "cs-CZ": "HEIF image sequences are not supported.",
-        "bg-BG": "HEIF image sequences are not supported."
+        "de-DE": "HEIF-Bildsequenzen werden nicht unterstützt.",
+        "fr-FR": "Les séquences d’images HEIF ne sont pas prises en charge.",
+        "es-ES": "Las secuencias de imágenes HEIF no son compatibles.",
+        "it-IT": "Le sequenze di immagini HEIF non sono supportate.",
+        "pl-PL": "Sekwencje obrazów HEIF nie są obsługiwane.",
+        "pt-PT": "As sequências de imagens HEIF não são suportadas.",
+        "nl-NL": "HEIF-afbeeldingsreeksen worden niet ondersteund.",
+        "cs-CZ": "Sekvence obrázků HEIF nejsou podporovány.",
+        "bg-BG": "Последователностите от изображения HEIF не се поддържат."
       }
     },
     "fbe.image_import.heif_decode_failed": {
@@ -5830,15 +5830,15 @@
         "en-US": "Could not decode AVIF/HEIF image.",
         "ru-RU": "Не удалось декодировать изображение AVIF/HEIF.",
         "uk-UA": "Не вдалося декодувати зображення AVIF/HEIF.",
-        "de-DE": "Could not decode AVIF/HEIF image.",
-        "fr-FR": "Could not decode AVIF/HEIF image.",
-        "es-ES": "Could not decode AVIF/HEIF image.",
-        "it-IT": "Could not decode AVIF/HEIF image.",
-        "pl-PL": "Could not decode AVIF/HEIF image.",
-        "pt-PT": "Could not decode AVIF/HEIF image.",
-        "nl-NL": "Could not decode AVIF/HEIF image.",
-        "cs-CZ": "Could not decode AVIF/HEIF image.",
-        "bg-BG": "Could not decode AVIF/HEIF image."
+        "de-DE": "AVIF/HEIF-Bild konnte nicht dekodiert werden.",
+        "fr-FR": "Impossible de décoder l’image AVIF/HEIF.",
+        "es-ES": "No se pudo decodificar la imagen AVIF/HEIF.",
+        "it-IT": "Impossibile decodificare l’immagine AVIF/HEIF.",
+        "pl-PL": "Nie można zdekodować obrazu AVIF/HEIF.",
+        "pt-PT": "Não foi possível descodificar a imagem AVIF/HEIF.",
+        "nl-NL": "De AVIF/HEIF-afbeelding kon niet worden gedecodeerd.",
+        "cs-CZ": "Obrázek AVIF/HEIF se nepodařilo dekódovat.",
+        "bg-BG": "AVIF/HEIF изображението не можа да бъде декодирано."
       }
     },
     "fbe.image_import.jp2_invalid": {
@@ -5848,15 +5848,15 @@
         "en-US": "Corrupt or unsupported JPEG 2000 image.",
         "ru-RU": "Повреждённое или неподдерживаемое изображение JPEG 2000.",
         "uk-UA": "Пошкоджене або непідтримуване зображення JPEG 2000.",
-        "de-DE": "Corrupt or unsupported JPEG 2000 image.",
-        "fr-FR": "Corrupt or unsupported JPEG 2000 image.",
-        "es-ES": "Corrupt or unsupported JPEG 2000 image.",
-        "it-IT": "Corrupt or unsupported JPEG 2000 image.",
-        "pl-PL": "Corrupt or unsupported JPEG 2000 image.",
-        "pt-PT": "Corrupt or unsupported JPEG 2000 image.",
-        "nl-NL": "Corrupt or unsupported JPEG 2000 image.",
-        "cs-CZ": "Corrupt or unsupported JPEG 2000 image.",
-        "bg-BG": "Corrupt or unsupported JPEG 2000 image."
+        "de-DE": "Beschädigtes oder nicht unterstütztes JPEG-2000-Bild.",
+        "fr-FR": "Image JPEG 2000 corrompue ou non prise en charge.",
+        "es-ES": "Imagen JPEG 2000 dañada o no compatible.",
+        "it-IT": "Immagine JPEG 2000 danneggiata o non supportata.",
+        "pl-PL": "Uszkodzony lub nieobsługiwany obraz JPEG 2000.",
+        "pt-PT": "Imagem JPEG 2000 corrompida ou não suportada.",
+        "nl-NL": "Beschadigde of niet-ondersteunde JPEG 2000-afbeelding.",
+        "cs-CZ": "Poškozený nebo nepodporovaný obrázek JPEG 2000.",
+        "bg-BG": "Повредено или неподдържано JPEG 2000 изображение."
       }
     },
     "fbe.image_import.jp2_structure": {
@@ -5866,15 +5866,15 @@
         "en-US": "Unsupported JPEG 2000 component structure.",
         "ru-RU": "Неподдерживаемая структура компонентов JPEG 2000.",
         "uk-UA": "Непідтримувана структура компонентів JPEG 2000.",
-        "de-DE": "Unsupported JPEG 2000 component structure.",
-        "fr-FR": "Unsupported JPEG 2000 component structure.",
-        "es-ES": "Unsupported JPEG 2000 component structure.",
-        "it-IT": "Unsupported JPEG 2000 component structure.",
-        "pl-PL": "Unsupported JPEG 2000 component structure.",
-        "pt-PT": "Unsupported JPEG 2000 component structure.",
-        "nl-NL": "Unsupported JPEG 2000 component structure.",
-        "cs-CZ": "Unsupported JPEG 2000 component structure.",
-        "bg-BG": "Unsupported JPEG 2000 component structure."
+        "de-DE": "Nicht unterstützte JPEG-2000-Komponentenstruktur.",
+        "fr-FR": "Structure de composants JPEG 2000 non prise en charge.",
+        "es-ES": "Estructura de componentes JPEG 2000 no compatible.",
+        "it-IT": "Struttura dei componenti JPEG 2000 non supportata.",
+        "pl-PL": "Nieobsługiwana struktura komponentów JPEG 2000.",
+        "pt-PT": "Estrutura de componentes JPEG 2000 não suportada.",
+        "nl-NL": "Niet-ondersteunde JPEG 2000-componentstructuur.",
+        "cs-CZ": "Nepodporovaná struktura komponent JPEG 2000.",
+        "bg-BG": "Неподдържана структура на компонентите на JPEG 2000."
       }
     },
     "fbe.image_import.jp2_cmyk": {
@@ -5884,15 +5884,15 @@
         "en-US": "CMYK JPEG 2000 images are not supported.",
         "ru-RU": "Изображения JPEG 2000 в CMYK не поддерживаются.",
         "uk-UA": "Зображення JPEG 2000 у CMYK не підтримуються.",
-        "de-DE": "CMYK JPEG 2000 images are not supported.",
-        "fr-FR": "CMYK JPEG 2000 images are not supported.",
-        "es-ES": "CMYK JPEG 2000 images are not supported.",
-        "it-IT": "CMYK JPEG 2000 images are not supported.",
-        "pl-PL": "CMYK JPEG 2000 images are not supported.",
-        "pt-PT": "CMYK JPEG 2000 images are not supported.",
-        "nl-NL": "CMYK JPEG 2000 images are not supported.",
-        "cs-CZ": "CMYK JPEG 2000 images are not supported.",
-        "bg-BG": "CMYK JPEG 2000 images are not supported."
+        "de-DE": "CMYK-JPEG-2000-Bilder werden nicht unterstützt.",
+        "fr-FR": "Les images JPEG 2000 CMJN ne sont pas prises en charge.",
+        "es-ES": "Las imágenes JPEG 2000 CMYK no son compatibles.",
+        "it-IT": "Le immagini JPEG 2000 CMYK non sono supportate.",
+        "pl-PL": "Obrazy JPEG 2000 CMYK nie są obsługiwane.",
+        "pt-PT": "As imagens JPEG 2000 CMYK não são suportadas.",
+        "nl-NL": "CMYK-JPEG 2000-afbeeldingen worden niet ondersteund.",
+        "cs-CZ": "Obrázky JPEG 2000 v CMYK nejsou podporovány.",
+        "bg-BG": "JPEG 2000 изображенията в CMYK не се поддържат."
       }
     },
     "fbe.image_import.read_failed": {
@@ -5902,15 +5902,15 @@
         "en-US": "Could not read image file.",
         "ru-RU": "Не удалось прочитать файл изображения.",
         "uk-UA": "Не вдалося прочитати файл зображення.",
-        "de-DE": "Could not read image file.",
-        "fr-FR": "Could not read image file.",
-        "es-ES": "Could not read image file.",
-        "it-IT": "Could not read image file.",
-        "pl-PL": "Could not read image file.",
-        "pt-PT": "Could not read image file.",
-        "nl-NL": "Could not read image file.",
-        "cs-CZ": "Could not read image file.",
-        "bg-BG": "Could not read image file."
+        "de-DE": "Bilddatei konnte nicht gelesen werden.",
+        "fr-FR": "Impossible de lire le fichier image.",
+        "es-ES": "No se pudo leer el archivo de imagen.",
+        "it-IT": "Impossibile leggere il file immagine.",
+        "pl-PL": "Nie można odczytać pliku obrazu.",
+        "pt-PT": "Não foi possível ler o ficheiro de imagem.",
+        "nl-NL": "Het afbeeldingsbestand kon niet worden gelezen.",
+        "cs-CZ": "Soubor obrázku se nepodařilo načíst.",
+        "bg-BG": "Файлът с изображението не можа да бъде прочетен."
       }
     },
     "fbe.image_import.unsupported": {
@@ -5920,15 +5920,15 @@
         "en-US": "Unsupported or corrupt image format.",
         "ru-RU": "Неподдерживаемый или повреждённый формат изображения.",
         "uk-UA": "Непідтримуваний або пошкоджений формат зображення.",
-        "de-DE": "Unsupported or corrupt image format.",
-        "fr-FR": "Unsupported or corrupt image format.",
-        "es-ES": "Unsupported or corrupt image format.",
-        "it-IT": "Unsupported or corrupt image format.",
-        "pl-PL": "Unsupported or corrupt image format.",
-        "pt-PT": "Unsupported or corrupt image format.",
-        "nl-NL": "Unsupported or corrupt image format.",
-        "cs-CZ": "Unsupported or corrupt image format.",
-        "bg-BG": "Unsupported or corrupt image format."
+        "de-DE": "Nicht unterstütztes oder beschädigtes Bildformat.",
+        "fr-FR": "Format d’image non pris en charge ou corrompu.",
+        "es-ES": "Formato de imagen no compatible o dañado.",
+        "it-IT": "Formato immagine non supportato o danneggiato.",
+        "pl-PL": "Nieobsługiwany lub uszkodzony format obrazu.",
+        "pt-PT": "Formato de imagem não suportado ou corrompido.",
+        "nl-NL": "Niet-ondersteund of beschadigd afbeeldingsformaat.",
+        "cs-CZ": "Nepodporovaný nebo poškozený formát obrázku.",
+        "bg-BG": "Неподдържан или повреден формат на изображение."
       }
     },
     "fbe.image_import.filter_supported": {
@@ -5938,15 +5938,15 @@
         "en-US": "Supported images",
         "ru-RU": "Поддерживаемые изображения",
         "uk-UA": "Підтримувані зображення",
-        "de-DE": "Supported images",
-        "fr-FR": "Supported images",
-        "es-ES": "Supported images",
-        "it-IT": "Supported images",
-        "pl-PL": "Supported images",
-        "pt-PT": "Supported images",
-        "nl-NL": "Supported images",
-        "cs-CZ": "Supported images",
-        "bg-BG": "Supported images"
+        "de-DE": "Unterstützte Bilder",
+        "fr-FR": "Images prises en charge",
+        "es-ES": "Imágenes compatibles",
+        "it-IT": "Immagini supportate",
+        "pl-PL": "Obsługiwane obrazy",
+        "pt-PT": "Imagens suportadas",
+        "nl-NL": "Ondersteunde afbeeldingen",
+        "cs-CZ": "Podporované obrázky",
+        "bg-BG": "Поддържани изображения"
       }
     },
     "fbe.image_import.filter_all": {
@@ -5956,15 +5956,15 @@
         "en-US": "All files",
         "ru-RU": "Все файлы",
         "uk-UA": "Усі файли",
-        "de-DE": "All files",
-        "fr-FR": "All files",
-        "es-ES": "All files",
-        "it-IT": "All files",
-        "pl-PL": "All files",
-        "pt-PT": "All files",
-        "nl-NL": "All files",
-        "cs-CZ": "All files",
-        "bg-BG": "All files"
+        "de-DE": "Alle Dateien",
+        "fr-FR": "Tous les fichiers",
+        "es-ES": "Todos los archivos",
+        "it-IT": "Tutti i file",
+        "pl-PL": "Wszystkie pliki",
+        "pt-PT": "Todos os ficheiros",
+        "nl-NL": "Alle bestanden",
+        "cs-CZ": "Všechny soubory",
+        "bg-BG": "Всички файлове"
       }
     },
     "fbe.image_import.filter_jpeg": {
@@ -6047,14 +6047,14 @@
         "ru-RU": "Растровое изображение",
         "uk-UA": "Растрове зображення",
         "de-DE": "Bitmap",
-        "fr-FR": "Bitmap",
-        "es-ES": "Bitmap",
+        "fr-FR": "Image bitmap",
+        "es-ES": "Mapa de bits",
         "it-IT": "Bitmap",
-        "pl-PL": "Bitmap",
+        "pl-PL": "Mapa bitowa",
         "pt-PT": "Bitmap",
         "nl-NL": "Bitmap",
-        "cs-CZ": "Bitmap",
-        "bg-BG": "Bitmap"
+        "cs-CZ": "Rastrový obrázek",
+        "bg-BG": "Растерно изображение"
       }
     },
     "fbe.image_import.filter_gif": {

@@ -15,6 +15,7 @@ $frameSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\mainfrm.cp
 $settingsDialogSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\SettingsOtherDlg.cpp') -Raw
 $projectSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBE.vcxproj') -Raw
 $catalogSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'localization\app-ui\catalog.json') -Raw
+$catalog = $catalogSource | ConvertFrom-Json
 $nativeHarness = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\image-import-smoke.cpp') -Raw
 
 foreach ($format in @('Jpeg', 'Png', 'Webp', 'Jp2', 'J2k', 'Tiff', 'Bmp', 'Gif', 'Avif', 'Heif')) {
@@ -55,6 +56,22 @@ foreach ($key in @('fbe.image_import.read_failed', 'fbe.image_import.heif_decode
 foreach ($key in @('fbe.image_import.output_auto', 'fbe.image_import.output_jpeg', 'fbe.image_import.output_png')) {
     Assert-True ($catalogSource -match [regex]::Escape($key)) "В runtime-каталоге отсутствует ключ настройки $key."
     Assert-True ($settingsDialogSource -match [regex]::Escape($key)) "Диалог настроек не использует локализованный ключ $key."
+}
+$formatOnlyKeys = @(
+    'fbe.image_import.filter_jpeg', 'fbe.image_import.filter_png', 'fbe.image_import.filter_webp',
+    'fbe.image_import.filter_jpeg2000', 'fbe.image_import.filter_bmp', 'fbe.image_import.filter_gif', 'fbe.image_import.filter_tiff',
+    'fbe.image_import.filter_avif', 'fbe.image_import.filter_heif', 'fbe.image_import.output_jpeg',
+    'fbe.image_import.output_png'
+)
+foreach ($entry in @($catalog.seedStrings.PSObject.Properties | Where-Object { $_.Name -like 'fbe.image_import.*' })) {
+    $english = [string]$entry.Value.translations.'en-US'
+    foreach ($language in $catalog.targetLanguages) {
+        $translation = [string]$entry.Value.translations.$language
+        Assert-True (-not [string]::IsNullOrWhiteSpace($translation)) "В $language отсутствует перевод $($entry.Name)."
+        if ($language -ne 'en-US' -and $entry.Name -notin $formatOnlyKeys) {
+            Assert-True ($translation -ne $english) "В $language остался английский fallback для $($entry.Name)."
+        }
+    }
 }
 Assert-True ($nativeHarness -match 'TestFb2BinaryRoundTrip') 'Native harness должен проверять FB2 save/reopen round-trip.'
 Assert-True ($nativeHarness -match 'E_NOTIMPL') 'Native harness должен закреплять controlled rejection неподдерживаемых последовательностей.'
