@@ -43,6 +43,7 @@ try {
 
     $save = Start-Process -FilePath $FbeExe -ArgumentList @('-s', '-b', $saveReport, $fixture) -PassThru
     if (-not $save.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $save.Id -Force; throw 'FBE не завершил production Save.' }
+    if ($save.ExitCode -ne 0) { throw "FBE вернул код $($save.ExitCode) для production binary Save." }
     if (-not (Test-Path -LiteralPath $saveReport)) { throw 'FBE не записал отчёт production Save.' }
 
     $xmlText = Get-Content -LiteralPath $fixture -Raw
@@ -61,6 +62,7 @@ try {
 
     $reopen = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reopenReport, $fixture) -PassThru
     if (-not $reopen.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopen.Id -Force; throw 'FBE не завершил повторное открытие saved binary.' }
+    if ($reopen.ExitCode -ne 0) { throw "FBE вернул код $($reopen.ExitCode) при повторном открытии binary." }
     if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал отчёт повторного открытия binary.' }
     Write-Host 'Production binary Save -> reopen round-trip passed.'
 }

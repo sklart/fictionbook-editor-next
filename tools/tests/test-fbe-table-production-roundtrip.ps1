@@ -54,6 +54,7 @@ try {
     if (-not $Huge) { $arguments = @('-s', '-c', '-b', $report, $fixture) }
     $process = Start-Process -FilePath $FbeExe -ArgumentList $arguments -PassThru
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил table round-trip benchmark.' }
+    if ($process.ExitCode -ne 0) { throw "FBE вернул код $($process.ExitCode) для table round-trip." }
     if (-not (Test-Path -LiteralPath $report)) { throw 'FBE не записал отчёт table round-trip.' }
 
     $rows = Import-Csv -LiteralPath $report -Delimiter "`t"
@@ -81,6 +82,7 @@ try {
 
     $reopen = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reopenReport, $fixture) -PassThru
     if (-not $reopen.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopen.Id -Force; throw 'FBE не завершил повторное открытие таблицы.' }
+    if ($reopen.ExitCode -ne 0) { throw "FBE вернул код $($reopen.ExitCode) при повторном открытии таблицы." }
     if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал отчёт повторного открытия таблицы.' }
     $reopenRows = @(Import-Csv -LiteralPath $reopenReport -Delimiter "`t" | Where-Object { $_.phase -like 'table-*' })
     if ($reopenRows.Count -lt 1 -or ($reopenRows | Where-Object { $_.phase -notmatch $expectedCounts })) { throw 'Повторное открытие изменило структуру таблицы.' }
