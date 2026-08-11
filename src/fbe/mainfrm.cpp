@@ -3120,7 +3120,21 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		ShowView(BODY);
 		if (!m_doc->Save())
 		{
+			// A failed serialization transaction must leave a deterministic
+			// diagnostic trail for the production safety test.  A second Save
+			// verifies that the document has been fail-closed in memory.
+			const bool secondSaveRejected = !m_doc->Save();
+			CStringA row;
+			row.Format("table-save-rejected:second-save-rejected=%d\t%I64u\t0\t0\t0\t0\t0\t0\t%d\r\n",
+				secondSaveRejected ? 1 : 0, ::GetTickCount64() - start,
+				AU::_ARGS.disable_undo_selection_history ? 0 : 1);
+			rows += row;
+			DWORD written = 0;
+			output.Write(rows, static_cast<DWORD>(rows.GetLength()), &written);
 			output.Close();
+			// This is an internal benchmark failure, not an interactive close:
+			// do not enter the dirty-document prompt after Save was rejected.
+			::PostQuitMessage(1);
 			return 0;
 		}
 		ShowView(SOURCE);

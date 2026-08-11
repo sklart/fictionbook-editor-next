@@ -90,7 +90,8 @@ static CString GetDiagnosticFaultInjection()
 		L"get-extended-style", L"inflate-paragraphs", L"css-restore-failure",
 		L"api-load-return-false", L"api-load-exception", L"api-load-private-exception", L"first-set-external",
 		L"second-set-external", L"optional-diagnostic-api-missing", L"navigate-error",
-		L"document-complete-timeout", L"controlled-load-failure+css-restore-failure"
+		L"document-complete-timeout", L"controlled-load-failure+css-restore-failure",
+		L"drop-row-after-normalize"
 	};
 	for (UINT index = 0; index < _countof(allowed); ++index)
 		if (point.CompareNoCase(allowed[index]) == 0)
@@ -208,7 +209,9 @@ Doc::Doc(HWND hWndFrame) :
 //	     m_desc_cp(-1),
 		 m_body_cp(-1),
 	     m_encoding(_T("utf-8")),
-	     m_last_save_error(S_OK)
+	     m_last_save_error(S_OK),
+	     m_serialization_unsafe(false),
+	     m_save_transaction_active(false)
 {
   m_body.SetDocumentFilePathSource(&m_filename, &m_namevalid);
   m_active_docs.Add(this,this);
@@ -1345,22 +1348,30 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   // Keep the save transaction fail-closed if normalization or serialization
   // loses a native visual table.  User edits happen before this transaction,
   // so comparing only its input and output cannot reject a deliberate delete.
-  struct TableSnapshot { long tables; long rows; long td; long th; };
+  struct TableSnapshot {
+    long tables, rows, td, th;
+    CString structure;
+    bool Equals(const TableSnapshot& other) const {
+      return tables == other.tables && rows == other.rows && td == other.td && th == other.th && structure == other.structure;
+    }
+  };
   const auto SnapshotNativeTables = [](MSHTML::IHTMLElementPtr root) -> TableSnapshot {
     TableSnapshot result = {};
     if (!root) return result;
     MSHTML::IHTMLElementCollectionPtr tables(MSHTML::IHTMLElement2Ptr(root)->getElementsByTagName(L"TABLE"));
     if (!tables) return result;
-    for (long index = 0; index < tables->length; ++index)
-    {
+    for (long index = 0; index < tables->length; ++index) {
       MSHTML::IHTMLElementPtr table(tables->item(_variant_t(index), _variant_t()));
-      if (table && U::scmp(table->className, L"table") == 0)
-      {
-        ++result.tables;
-        result.rows += MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR")->length;
-        result.td += MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TD")->length;
-        result.th += MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TH")->length;
-      }
+      if (!table || U::scmp(table->className, L"table") != 0) continue;
+      MSHTML::IHTMLElement2Ptr nativeTable(table);
+      const long rows = nativeTable->getElementsByTagName(L"TR")->length;
+      const long td = nativeTable->getElementsByTagName(L"TD")->length;
+      const long th = nativeTable->getElementsByTagName(L"TH")->length;
+      ++result.tables; result.rows += rows; result.td += td; result.th += th;
+      CString part;
+      part.Format(L"T%ld[id=%s;rows=%ld;td=%ld;th=%ld];", result.tables,
+        (const wchar_t*)AU::GetAttrB(table, L"id"), rows, td, th);
+      result.structure += part;
     }
     return result;
   };
@@ -1368,10 +1379,23 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   const auto SnapshotSerializedTables = [](MSXML2::IXMLDOMDocument2Ptr document) -> TableSnapshot {
     TableSnapshot result = {};
     if (!document) return result;
-    result.tables = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table"))->length;
+    MSXML2::IXMLDOMNodeListPtr tables(document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table")));
+    result.tables = tables->length;
     result.rows = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr"))->length;
     result.td = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr/fb:td"))->length;
     result.th = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr/fb:th"))->length;
+    for (long tableIndex = 0; tableIndex < tables->length; ++tableIndex) {
+      MSXML2::IXMLDOMNodePtr table(tables->item[tableIndex]);
+      MSXML2::IXMLDOMNamedNodeMapPtr attrs(table->attributes);
+      MSXML2::IXMLDOMNodePtr id(attrs ? attrs->getNamedItem(L"id") : 0);
+      MSXML2::IXMLDOMNodeListPtr rows(table->selectNodes(L"fb:tr"));
+      MSXML2::IXMLDOMNodeListPtr td(table->selectNodes(L"fb:tr/fb:td"));
+      MSXML2::IXMLDOMNodeListPtr th(table->selectNodes(L"fb:tr/fb:th"));
+      CString part;
+      part.Format(L"T%ld[id=%s;rows=%ld;td=%ld;th=%ld];", tableIndex + 1,
+        id ? (const wchar_t*)id->text : L"", rows->length, td->length, th->length);
+      result.structure += part;
+    }
     return result;
   };
 
@@ -1381,9 +1405,23 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   _EDMnr.CleanUpAll();
    m_body.Normalize(m_body.Document()->body);
 
-  const TableSnapshot tablesAfterNormalize = SnapshotNativeTables(m_body.Document()->body);
-  if (memcmp(&tablesBeforeNormalize, &tablesAfterNormalize, sizeof(TableSnapshot)) != 0)
+  // Source/Body switches are part of the normal editor transaction. This
+  // fault point models only the destructive Save serialization path.
+  if (m_save_transaction_active && GetDiagnosticFaultInjection() == L"drop-row-after-normalize")
   {
+    MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(m_body.Document()->body)->getElementsByTagName(L"TR"));
+    MSHTML::IHTMLElementPtr row(rows && rows->length ? rows->item(_variant_t(0L), _variant_t()) : 0);
+    if (row && row->parentElement)
+    {
+      MSHTML::IHTMLDOMNodePtr(row->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(row));
+      StartupTrace::HResult(L"fault", L"FI040", S_OK, L"drop-row-after-normalize injected");
+    }
+  }
+
+  const TableSnapshot tablesAfterNormalize = SnapshotNativeTables(m_body.Document()->body);
+  if (!tablesBeforeNormalize.Equals(tablesAfterNormalize))
+  {
+    m_serialization_unsafe = true;
     StartupTrace::HResult(L"document", L"D224", E_FAIL, L"native table lost during Normalize");
     _com_issue_error(E_FAIL);
   }
@@ -1450,8 +1488,9 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   GetBodies(fbw_body,ndoc);
 
   const TableSnapshot serializedTables = SnapshotSerializedTables(ndoc);
-  if (memcmp(&tablesAfterNormalize, &serializedTables, sizeof(TableSnapshot)) != 0)
+  if (!tablesAfterNormalize.Equals(serializedTables))
   {
+    m_serialization_unsafe = true;
     StartupTrace::HResult(L"document", L"D225", E_FAIL, L"native table lost during CreateDOM");
     _com_issue_error(E_FAIL);
   }
@@ -1564,6 +1603,12 @@ static CString CreateTemporaryFileName(const CString& directory, const wchar_t* 
 bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		      int *errline,int *errcol,bool reportAccessDenied)
 {
+	if (m_serialization_unsafe)
+	{
+		m_last_save_error = E_FAIL;
+		StartupTrace::HResult(L"document", L"D226", E_FAIL, L"save blocked after table serialization failure");
+		return false;
+	}
 	m_last_save_error = S_OK;
 	CString trace;
 	trace.Format(L"%s; file-present=%d", fValidateOnly ? L"book validation started" : L"book save started",
@@ -1593,7 +1638,16 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
     rdr->putErrorHandler(eh);
 
     // construct the document
-	MSXML2::IXMLDOMDocument2Ptr	ndoc(CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true));
+	MSXML2::IXMLDOMDocument2Ptr	ndoc;
+	m_save_transaction_active = true;
+	try {
+		ndoc = CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true);
+	}
+	catch (...) {
+		m_save_transaction_active = false;
+		throw;
+	}
+	m_save_transaction_active = false;
 
     // reparse the document
     IStreamPtr	    isp(ndoc);
@@ -1712,6 +1766,14 @@ forcesave:
   catch (_com_error& e) {
 	StartupTrace::Error(L"document", L"D223", fValidateOnly ? L"book validation started" : L"book save started");
 	m_last_save_error = e.Error();
+	if (m_serialization_unsafe && !GetDiagnosticFaultInjection().IsEmpty())
+	{
+		// Fault injection is non-interactive so the pipeline test can assert
+		// fail-closed behaviour without dismissing a production error dialog.
+		::SendMessage(m_frame, AU::WM_SETSTATUSTEXT, 0,
+			(LPARAM)L"Saving is disabled because table serialization changed the document.");
+		return false;
+	}
 	if (reportAccessDenied || (e.Error() != E_ACCESSDENIED && HRESULT_CODE(e.Error()) != ERROR_ACCESS_DENIED))
 		U::ReportError(e);
     return false;

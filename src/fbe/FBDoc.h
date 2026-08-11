@@ -149,6 +149,11 @@ private:
 
   HRESULT      m_last_save_error;
 
+  // A failed table serialization check can mean that Normalize has already
+  // mutated the visual DOM. Do not allow a later Save to overwrite data.
+  bool         m_serialization_unsafe;
+  bool         m_save_transaction_active;
+
   // saving support
   bool	  SaveToFile(const CString& filename,bool fValidateOnly=false,int *errline=NULL,int *errcol=NULL,
                    bool reportAccessDenied=true);

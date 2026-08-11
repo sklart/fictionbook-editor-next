@@ -42,7 +42,7 @@ foreach($fragment in @('IsNativeTableBlockName', '!IsNativeTableBlockName(cur_na
     if($viewSource -notlike "*$fragment*") { throw "PackText может вложить TABLE в автоматически созданный P: $fragment" }
 }
 
-foreach($fragment in @('SnapshotNativeTables', 'tablesBeforeNormalize', 'D224', 'SnapshotSerializedTables', 'D225', 'memcmp')) {
+foreach($fragment in @('SnapshotNativeTables', 'tablesBeforeNormalize', 'D224', 'SnapshotSerializedTables', 'D225', 'm_serialization_unsafe', 'drop-row-after-normalize')) {
     if($source -notlike "*$fragment*") { throw "Нет защиты сохранения от внутренней потери TABLE: $fragment" }
 }
 
