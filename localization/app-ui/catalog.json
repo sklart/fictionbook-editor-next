@@ -6129,6 +6129,31 @@
         "bg-BG": "HEIC / HEIF"
       }
     },
+    "fbe.image_import.output_auto": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Auto", "ru-RU": "Автоматически", "uk-UA": "Автоматично", "de-DE": "Automatisch",
+        "fr-FR": "Automatique", "es-ES": "Automático", "it-IT": "Automatico", "pl-PL": "Automatycznie",
+        "pt-PT": "Automático", "nl-NL": "Automatisch", "cs-CZ": "Automaticky", "bg-BG": "Автоматично"
+      }
+    },
+    "fbe.image_import.output_jpeg": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "JPEG", "ru-RU": "JPEG", "uk-UA": "JPEG", "de-DE": "JPEG", "fr-FR": "JPEG", "es-ES": "JPEG",
+        "it-IT": "JPEG", "pl-PL": "JPEG", "pt-PT": "JPEG", "nl-NL": "JPEG", "cs-CZ": "JPEG", "bg-BG": "JPEG"
+      }
+    },
+    "fbe.image_import.output_png": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "PNG", "ru-RU": "PNG", "uk-UA": "PNG", "de-DE": "PNG", "fr-FR": "PNG", "es-ES": "PNG",
+        "it-IT": "PNG", "pl-PL": "PNG", "pt-PT": "PNG", "nl-NL": "PNG", "cs-CZ": "PNG", "bg-BG": "PNG"
+      }
+    },
     "fbe.theme.file_filter": {
       "component": "fbe.core",
       "runtimeOnly": true,

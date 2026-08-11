@@ -57,7 +57,7 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_SETTINGS_ASKIMAGE, L"fbe.dialog.idd_setting_other.ask_image", L"Ask for non clear image insertion");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_OPTIONS_CLEARIMGS, L"fbe.dialog.idd_setting_other.clear_images", L"Insert clear images");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_CHANGE_KEYB, L"fbe.dialog.idd_setting_other.change_keyboard", L"Change keyboard layout automatically");
-	SetRuntimeSettingsOtherText(m_hWnd, IDC_IMAGE_IMPORT_KEEP_SUPPORTED, L"fbe.dialog.idd_setting_other.image_import_keep_supported", L"Keep JPEG/PNG without recompression");
+	SetRuntimeSettingsOtherText(m_hWnd, IDC_IMAGE_IMPORT_KEEP_SUPPORTED, L"fbe.dialog.idd_setting_other.keep_supported", L"Keep JPEG/PNG without recompression");
 
 	::SendMessage(GetDlgItem(IDC_SETTINGS_ASKIMAGE), BM_SETCHECK, 
 				_Settings.GetInsImageAsking() ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -111,9 +111,9 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	quality.Format(L"%d", static_cast<int>(_Settings.GetJpegQuality()));
 	m_jpeg_quality.SetWindowText(quality);
 	m_updown.SetRange(20, 100);
-	m_image_import_format.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_other.image_import_auto", L"Auto"));
-	m_image_import_format.AddString(L"JPEG");
-	m_image_import_format.AddString(L"PNG");
+	m_image_import_format.AddString(FbeLoadRuntimeStringByKey(L"fbe.image_import.output_auto", L"Auto"));
+	m_image_import_format.AddString(FbeLoadRuntimeStringByKey(L"fbe.image_import.output_jpeg", L"JPEG"));
+	m_image_import_format.AddString(FbeLoadRuntimeStringByKey(L"fbe.image_import.output_png", L"PNG"));
 	m_image_import_format.SetCurSel(_Settings.GetImageImportFormat());
 	quality.Format(L"%d", static_cast<int>(_Settings.GetImageImportJpegQuality()));
 	m_image_import_jpeg_quality.SetWindowText(quality);

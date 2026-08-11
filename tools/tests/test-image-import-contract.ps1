@@ -12,6 +12,7 @@ $importSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\ImageImpo
 $docSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBDoc.cpp') -Raw
 $viewSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBEview.cpp') -Raw
 $frameSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\mainfrm.cpp') -Raw
+$settingsDialogSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\SettingsOtherDlg.cpp') -Raw
 $projectSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBE.vcxproj') -Raw
 $catalogSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'localization\app-ui\catalog.json') -Raw
 $nativeHarness = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\image-import-smoke.cpp') -Raw
@@ -45,6 +46,10 @@ Assert-True ($projectSource -match 'libwebp\.lib') 'libwebp должен быт�
 Assert-True ($projectSource -match 'openjp2\.lib') 'OpenJPEG должен быть статически подключён.'
 foreach ($key in @('fbe.image_import.read_failed', 'fbe.image_import.heif_decode_failed', 'fbe.image_import.filter_supported', 'fbe.image_import.filter_heif')) {
     Assert-True ($catalogSource -match [regex]::Escape($key)) "В runtime-каталоге отсутствует ключ $key."
+}
+foreach ($key in @('fbe.image_import.output_auto', 'fbe.image_import.output_jpeg', 'fbe.image_import.output_png')) {
+    Assert-True ($catalogSource -match [regex]::Escape($key)) "В runtime-каталоге отсутствует ключ настройки $key."
+    Assert-True ($settingsDialogSource -match [regex]::Escape($key)) "Диалог настроек не использует локализованный ключ $key."
 }
 Assert-True ($nativeHarness -match 'TestFb2BinaryRoundTrip') 'Native harness должен проверять FB2 save/reopen round-trip.'
 Assert-True ($nativeHarness -match 'E_NOTIMPL') 'Native harness должен закреплять controlled rejection неподдерживаемых последовательностей.'
