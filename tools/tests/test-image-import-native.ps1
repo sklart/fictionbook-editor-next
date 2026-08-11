@@ -26,6 +26,7 @@ $avifBytes = [IO.File]::ReadAllBytes($avifFixture)
 $jpegFixture = Join-Path $testDir 'generated.jpg'
 $jpegPassThroughFixture = Join-Path $testDir 'original.jpeg'
 $gifFixture = Join-Path $testDir 'generated.gif'
+$singleTiffFixture = Join-Path $testDir 'single-frame.tiff'
 $tiffFixture = Join-Path $testDir 'generated.tiff'
 $transparentPngFixture = Join-Path $testDir 'transparent.png'
 $transparentPngWithWebpExtension = Join-Path $testDir 'actual-png.webp'
@@ -39,6 +40,7 @@ try {
     $bitmap.SetPixel(1, 1, [Drawing.Color]::White)
     $bitmap.Save($jpegFixture, [Drawing.Imaging.ImageFormat]::Jpeg)
     $bitmap.Save($gifFixture, [Drawing.Imaging.ImageFormat]::Gif)
+	$bitmap.Save($singleTiffFixture, [Drawing.Imaging.ImageFormat]::Tiff)
     $tiffCodec = [Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/tiff' }
     $tiffParameters = [Drawing.Imaging.EncoderParameters]::new(1)
     $tiffParameters.Param[0] = [Drawing.Imaging.EncoderParameter]::new([Drawing.Imaging.Encoder]::SaveFlag, [long][Drawing.Imaging.EncoderValue]::MultiFrame)
@@ -103,6 +105,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $transparentPngWithWebpExtension `
     $animatedGifFixture `
     $jpegPassThroughFixture `
-    $oversizedFixture
+    $oversizedFixture `
+    $singleTiffFixture
 if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
 Write-Host 'Native ImageImport smoke-test passed.'
