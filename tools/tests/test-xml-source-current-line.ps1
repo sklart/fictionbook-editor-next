@@ -13,11 +13,14 @@ foreach($id in @('everforest-light-medium','dracula')) { if([string]::IsNullOrWh
 if($colors['everforest-light-medium'] -eq $colors['dracula']) { throw 'Light and dark built-in themes must visibly distinguish currentLine.background.' }
 $settings = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\Settings.cpp")
 $themeSource = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\XmlSourceThemes.cpp")
-$groupResolver = [regex]::Match($settings, 'XmlSrcColorGroup CSettings::GetXmlSrcColorGroup[\s\S]*?\n}\n\nDWORD CSettings::GetXmlSrcStyleColor')
-if(!$groupResolver.Success) { throw 'Cannot inspect XML source color-group resolver.' }
-if($groupResolver.Value -match 'case XML_SRC_STYLE_CURRENT_LINE_BACKGROUND') { throw 'Current-line background must not be mapped to an editable XML color group.' }
-$styleResolver = [regex]::Match($settings, 'DWORD CSettings::GetXmlSrcStyleColor[\s\S]*?\n}\n\nbool CSettings::XmlSrcTagHL')
-if(!$styleResolver.Success -or $styleResolver.Value -notmatch 'GetThemeColor\(GetXmlSrcThemeId\(\), token, color\)' -or $styleResolver.Value -notmatch 'GetXmlSrcThemeColor\(m_xml_src_color_palette, token\)') { throw 'Style resolver must resolve each token from the active theme rather than XML text.' }
+$groupStart = $settings.IndexOf('XmlSrcColorGroup CSettings::GetXmlSrcColorGroup', [StringComparison]::Ordinal)
+$styleStart = $settings.IndexOf('DWORD CSettings::GetXmlSrcStyleColor', [StringComparison]::Ordinal)
+$nextStart = $settings.IndexOf('bool CSettings::XmlSrcTagHL', [StringComparison]::Ordinal)
+if($groupStart -lt 0 -or $styleStart -le $groupStart -or $nextStart -le $styleStart) { throw 'Cannot inspect XML source color-group resolver.' }
+$groupResolver = $settings.Substring($groupStart, $styleStart - $groupStart)
+if($groupResolver -match 'case XML_SRC_STYLE_CURRENT_LINE_BACKGROUND') { throw 'Current-line background must not be mapped to an editable XML color group.' }
+$styleResolver = $settings.Substring($styleStart, $nextStart - $styleStart)
+if($styleResolver -notmatch 'GetThemeColor\(GetXmlSrcThemeId\(\), token, color\)' -or $styleResolver -notmatch 'GetXmlSrcThemeColor\(m_xml_src_color_palette, token\)') { throw 'Style resolver must resolve each token from the active theme rather than XML text.' }
 if($themeSource -notmatch 'color = kBuiltInThemeColors\[GetBuiltInThemeIndex\(normalized\)\]\[token\]') { throw 'Built-in FBE Light/FBE Dark colors are not resolved by token.' }
 $custom = [pscustomobject]@{ format='FictionBookEditorNext.CodeTheme'; formatVersion=1; id='current-line-test'; name='Current line test'; isDark=$true; colors=[pscustomobject]@{'editor.currentLine.background'='#123456'} }
 $roundTrip = $custom | ConvertTo-Json -Depth 4 | ConvertFrom-Json
