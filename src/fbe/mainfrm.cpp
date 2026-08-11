@@ -3114,6 +3114,17 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			}
 		}
 	}
+	if (AU::_ARGS.save_benchmark_document)
+	{
+		ShowView(BODY);
+		if (!m_doc->Save())
+		{
+			output.Close();
+			return 0;
+		}
+		ShowView(SOURCE);
+		appendTableSnapshot("table-after-save");
+	}
 
 	DWORD written = 0;
 	output.Write(rows, static_cast<DWORD>(rows.GetLength()), &written);

@@ -16,7 +16,7 @@ $viewSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBEview.cpp
 
 Assert-True ($docSource -match 'CompactBinaryTextContent') 'Не найдено уплотнение base64 перед сохранением FB2.'
 Assert-True ($docSource -match 'PutdataType.*bin\.base64') 'Перед уплотнением binary должен декодироваться штатным MSXML.'
-Assert-True ($docSource.Contains('static_cast') -and $docSource.Contains('PutdataType')) 'Production-код обязан снять временный MSXML dataType перед сериализацией.'
+Assert-True ($docSource.Contains('PutdataType(_bstr_t(L""))')) 'Production-код обязан снять временный MSXML dataType перед сериализацией.'
 Assert-True ($docSource -match 'createTextNode') 'Для compact base64 должен создаваться текстовый DOM-узел.'
 Assert-True ($docSource -notmatch 'binary->Puttext') 'Для элемента binary нельзя использовать put_text: MSXML6 возвращает E_INVALIDARG.'
 Assert-True ($docSource -match 'if \(compactBinaries\)') 'Уплотнение binary должно выполняться только при сохранении файла.'

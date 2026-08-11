@@ -43,9 +43,10 @@ namespace AU
 		bool start_in_desc_mode;
 		bool disable_undo_selection_history;
 		bool run_source_view_cycles;
+		bool save_benchmark_document;
 		CString source_memory_benchmark_path;
 
-		CmdLineArgs(): start_in_desc_mode(false), disable_undo_selection_history(false), run_source_view_cycles(false) {}
+		CmdLineArgs(): start_in_desc_mode(false), disable_undo_selection_history(false), run_source_view_cycles(false), save_benchmark_document(false) {}
 	};
 	extern CmdLineArgs _ARGS;
 	bool ParseCmdLineArgs();

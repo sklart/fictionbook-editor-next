@@ -918,9 +918,9 @@ static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 		// neither of which belongs in an FB2 document.
 		if (binaryElement != NULL)
 		{
-			// PutdataType is imported as a BSTR setter; a null BSTR is the
-			// native equivalent of `$binary.dataType = $null`.
-			binaryElement->PutdataType(_bstr_t(static_cast<const wchar_t*>(NULL)));
+			// PutdataType is imported as a BSTR setter.  MSXML6 rejects a null
+			// BSTR with E_INVALIDARG; an empty BSTR clears the temporary type.
+			binaryElement->PutdataType(_bstr_t(L""));
 		}
 
 		// GetBinaries уже создаёт обычный текстовый узел Base64. Повторное
