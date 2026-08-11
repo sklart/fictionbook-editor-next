@@ -135,7 +135,10 @@ function getXLinkHref(element) {
 
 function saveCheckedXML(document1,pathForSaving) {
   var fso=new ActiveXObject("Scripting.FileSystemObject");
-  var temporaryPath=pathForSaving+".tmp";
+  var folder=fso.GetParentFolderName(pathForSaving);
+  var temporaryPath=fso.BuildPath(folder,".save-sections-"+(new Date().getTime())+"-"+Math.floor(Math.random()*100000)+".tmp");
+  var parkedPath=temporaryPath+".original";
+  var originalParked=false;
   try {
     var documentChildren=document1.childNodes;
     for (var childIndex=documentChildren.length-1; childIndex>=0; childIndex--) {
@@ -151,11 +154,28 @@ function saveCheckedXML(document1,pathForSaving) {
       throw new Error(getParseErrorText(verificationDoc, temporaryPath));
     if (!verificationDoc.selectSingleNode("/fb:FictionBook"))
       throw new Error("В сохранённом файле не найден корневой элемент FictionBook.");
-    if (fso.FileExists(pathForSaving)) fso.DeleteFile(pathForSaving, true);
-    fso.MoveFile(temporaryPath, pathForSaving);
+    /* Keep the previous destination until the verified temporary file has
+       replaced it.  MoveFile is atomic within this directory; rollback never
+       truncates or deletes the original destination. */
+    if (fso.FileExists(pathForSaving)) { fso.MoveFile(pathForSaving, parkedPath); originalParked=true; }
+    try {
+      var environment=new ActiveXObject("WScript.Shell").Environment("Process");
+      if (environment("FBE_NEXT_TEST_MODE")=="1" && environment("SAVE_SECTIONS_FAIL_REPLACE")=="1")
+        throw new Error("Инъекция ошибки финальной замены.");
+      fso.MoveFile(temporaryPath, pathForSaving);
+    }
+    catch (replaceError) {
+      if (originalParked && !fso.FileExists(pathForSaving)) fso.MoveFile(parkedPath, pathForSaving);
+      originalParked=false;
+      throw replaceError;
+    }
+    if (originalParked && fso.FileExists(parkedPath)) fso.DeleteFile(parkedPath, true);
   }
   catch (e) {
     if (fso.FileExists(temporaryPath)) fso.DeleteFile(temporaryPath, true);
+    if (originalParked && fso.FileExists(parkedPath) && !fso.FileExists(pathForSaving)) {
+      try { fso.MoveFile(parkedPath, pathForSaving); } catch (ignored) {}
+    }
     throw e;
   }
 }
