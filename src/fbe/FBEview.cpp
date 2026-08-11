@@ -189,6 +189,12 @@ static long FindLogicalCell(const LogicalTableGrid& grid, const MSHTML::IHTMLEle
 {
 	for (size_t index = 0; index < grid.cells.size(); ++index) if (grid.cells[index].element == element) return static_cast<long>(index); return -1;
 }
+static const wchar_t* TableCellTagAt(const LogicalTableGrid& grid, long row, long column, const wchar_t* fallback)
+{
+	const long index = grid.At(row, column);
+	return index >= 0 && index < static_cast<long>(grid.cells.size()) && U::scmp(grid.cells[index].element->tagName, L"TH") == 0 ? L"TH" :
+		index >= 0 && index < static_cast<long>(grid.cells.size()) ? L"TD" : fallback;
+}
 static void InsertCellAtLogicalColumn(MSHTML::IHTMLDocument2Ptr document, const LogicalTableGrid& grid, long rowIndex, long column, const wchar_t* tagName)
 {
 	if (rowIndex < 0 || rowIndex >= static_cast<long>(grid.rows.size())) return;
@@ -3944,7 +3950,7 @@ LRESULT CFBEView::OnTableInsertRowAbove(WORD, WORD, HWND, BOOL&)
 		for (long column = 0; column < grid.columns; ++column) {
 			const long above = grid.At(rowIndex - 1, column), below = grid.At(rowIndex, column);
 			if (above >= 0 && above == below && !expanded[above]) { SetTableSpan(grid.cells[above].element, L"fbrowspan", L"rowspan", grid.cells[above].rowspan + 1); expanded[above] = true; }
-			else if (!(above >= 0 && above == below)) MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(L"beforeEnd", CreateTableCell(Document(), cell->tagName));
+			else if (!(above >= 0 && above == below)) MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(L"beforeEnd", CreateTableCell(Document(), TableCellTagAt(grid, rowIndex, column, cell->tagName)));
 		}
 		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"beforeBegin", newRow);
 		EndUndoUnit();
@@ -3972,7 +3978,7 @@ LRESULT CFBEView::OnTableInsertRowBelow(WORD, WORD, HWND, BOOL&)
 		for (long column = 0; column < grid.columns; ++column) {
 			const long above = grid.At(boundary - 1, column), below = grid.At(boundary, column);
 			if (above >= 0 && above == below && !expanded[above]) { SetTableSpan(grid.cells[above].element, L"fbrowspan", L"rowspan", grid.cells[above].rowspan + 1); expanded[above] = true; }
-			else if (!(above >= 0 && above == below)) MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(L"beforeEnd", CreateTableCell(Document(), cell->tagName));
+			else if (!(above >= 0 && above == below)) MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(L"beforeEnd", CreateTableCell(Document(), TableCellTagAt(grid, boundary - 1, column, cell->tagName)));
 		}
 		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", newRow);
 		EndUndoUnit();
@@ -4029,7 +4035,7 @@ static bool InsertTableColumn(CFBEView* view, bool before)
 	for (long rowIndex = 0; rowIndex < static_cast<long>(grid.rows.size()); ++rowIndex) {
 		const long left = grid.At(rowIndex, column - 1), right = grid.At(rowIndex, column);
 		if (left >= 0 && left == right && !expanded[left]) { SetTableSpan(grid.cells[left].element, L"fbcolspan", L"colspan", grid.cells[left].colspan + 1); expanded[left] = true; }
-		else InsertCellAtLogicalColumn(view->Document(), grid, rowIndex, column, selectedCell->tagName);
+		else InsertCellAtLogicalColumn(view->Document(), grid, rowIndex, column, TableCellTagAt(grid, rowIndex, before ? column : column - 1, selectedCell->tagName));
 	}
 	view->EndUndoUnit();
 	return true;

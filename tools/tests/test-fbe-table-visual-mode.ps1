@@ -46,6 +46,10 @@ foreach($fragment in @('SetTableSpan(const MSHTML::IHTMLElementPtr& cell, const 
     if($viewSource -notlike "*$fragment*") { throw "Span metadata и HTML layout не синхронизированы: $fragment" }
 }
 
+foreach($fragment in @('TableCellTagAt', 'TableCellTagAt(grid, rowIndex, column, cell->tagName)', 'TableCellTagAt(grid, boundary - 1, column, cell->tagName)', 'TableCellTagAt(grid, rowIndex, before ? column : column - 1, selectedCell->tagName)')) {
+    if($viewSource -notlike "*$fragment*") { throw "Новые ячейки таблицы не наследуют тип локального соседа: $fragment" }
+}
+
 foreach($fragment in @('SnapshotNativeTables', 'tablesBeforeNormalize', 'D224', 'SnapshotSerializedTables', 'D225', 'm_serialization_unsafe', 'drop-row-after-normalize')) {
     if($source -notlike "*$fragment*") { throw "Нет защиты сохранения от внутренней потери TABLE: $fragment" }
 }
