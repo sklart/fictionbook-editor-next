@@ -16,6 +16,7 @@ $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-roundtrip-' + [gui
 [void](New-Item -ItemType Directory -Path $directory)
 $fixture = Join-Path $directory 'table.fb2'
 $report = Join-Path $directory 'report.tsv'
+$reopenReport = Join-Path $directory 'reopen.tsv'
 try {
     @'
 <?xml version="1.0" encoding="utf-8"?>
@@ -26,17 +27,30 @@ try {
 </FictionBook>
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
 
-    $process = Start-Process -FilePath $FbeExe -ArgumentList @('-c', '-b', $report, $fixture) -PassThru
+    $process = Start-Process -FilePath $FbeExe -ArgumentList @('-s', '-c', '-b', $report, $fixture) -PassThru
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил table round-trip benchmark.' }
     if (-not (Test-Path -LiteralPath $report)) { throw 'FBE не записал отчёт table round-trip.' }
 
     $rows = Import-Csv -LiteralPath $report -Delimiter "`t"
     $tableRows = @($rows | Where-Object { $_.phase -like 'table-*' })
-    if ($tableRows.Count -lt 5) { throw "Недостаточно production table snapshots: $($tableRows.Count)." }
+    if ($tableRows.Count -lt 6) { throw "Недостаточно production table snapshots: $($tableRows.Count)." }
     foreach ($row in $tableRows) {
         if ($row.phase -notmatch 'table=1;tr=2;td=4;th=1') { throw "Table structure changed in $($row.phase)." }
     }
-    Write-Host "Production table round-trip passed ($($tableRows.Count) snapshots)."
+
+    [xml]$saved = Get-Content -LiteralPath $fixture -Raw
+    $namespaces = [Xml.XmlNamespaceManager]::new($saved.NameTable)
+    $namespaces.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+    $table = $saved.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:table[@id="table-id"]', $namespaces)
+    if ($null -eq $table -or $table.GetAttribute('style') -ne 'border: 1px solid') { throw 'Save изменил table id/style.' }
+    if (@($table.SelectNodes('fb:tr', $namespaces)).Count -ne 2 -or @($table.SelectNodes('.//fb:td', $namespaces)).Count -ne 4 -or @($table.SelectNodes('.//fb:th', $namespaces)).Count -ne 1) { throw 'Save изменил структуру table.' }
+    $cell = $table.SelectSingleNode('fb:tr/fb:td[@id="cell"]', $namespaces)
+    if ($null -eq $cell -or $cell.GetAttribute('colspan') -ne '2' -or $cell.GetAttribute('rowspan') -ne '1' -or $cell.GetAttribute('align') -ne 'right' -or $cell.GetAttribute('valign') -ne 'bottom' -or $cell.InnerXml -notmatch 'emphasis|a') { throw 'Save изменил cell attributes or inline markup.' }
+
+    $reopen = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reopenReport, $fixture) -PassThru
+    if (-not $reopen.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopen.Id -Force; throw 'FBE не завершил повторное открытие таблицы.' }
+    if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал отчёт повторного открытия таблицы.' }
+    Write-Host "Production table Save -> reopen round-trip passed ($($tableRows.Count) snapshots)."
 }
 finally {
     Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
