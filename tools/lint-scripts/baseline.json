@@ -1,604 +1,604 @@
 [
   {
     "file": "runtime/HTML/Дополнительные функции.js",
-    "line": 42,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true; // и делаем её реально пустой.",
+    "occurrence": 1
   },
   {
     "file": "runtime/main.js",
-    "line": 1298,
-    "column": 26,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if(elem.tagName==\"P\"){ window.external.inflateBlock(elem)=true; return; }",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/01_Регистр/40_Заглавные и строчные буквы.js",
-    "line": 27,
-    "column": 6,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = \"\";",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/01_Добавить примечание, остаться на его ссылке.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/02_Добавить примечание, введя его текст в окошке.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/03_Добавить примечание, перейти на его раздел.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/06_Добавить последнее примечание, перейти на его раздел.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/07_Перенумеровать примечания.js",
-    "line": 434,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/08_Перенумеровать примечания, удаляя неиспользуемые разделы примечаний.js",
-    "line": 457,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/09_Перенумеровать примечания (расширенная версия).js",
-    "line": 415,
-    "column": 23,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/02_Примечания/39_Унифицировать примечания (при их наличии).js",
-    "line": 1115,
-    "column": 30,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3 == \"\") window.external.inflateBlock(el.lastChild) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/03_Комментарии/02_Добавить комментарий, введя его текст в окошке.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/03_Комментарии/03_Добавить комментарий, перейти на его раздел.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.js",
-    "line": 426,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/03_Комментарии/07_Перенумеровать комментарии.js",
-    "line": 427,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/03_Комментарии/08_Перенумеровать комментарии, удаляя неиспользуемые разделы комментариев.js",
-    "line": 450,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/06_Добавить либо удалить пустые строки возле иллюстраций....js",
-    "line": 49,
-    "column": 3,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(newEmptyLine)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/13_Пустые строки рядом с иллюстрациями.js",
-    "line": 113,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/17_Исключение копий вложенных файлов.js",
-    "line": 144,
-    "column": 60,
     "ruleId": "no-self-assign",
-    "message": "'mImg[j].outerHTML' is assigned to itself."
+    "message": "'mBin[k].all.save.outerHTML' is assigned to itself.",
+    "sourceContext": "mBin[k].all.save.outerHTML=mBin[k].all.save.outerHTML; // для обновления кнопок сохранения иллюстрации (в \"описании документа\")",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/17_Исключение копий вложенных файлов.js",
-    "line": 167,
-    "column": 61,
     "ruleId": "no-self-assign",
-    "message": "'mBin[k].all.save.outerHTML' is assigned to itself."
+    "message": "'mImg[j].outerHTML' is assigned to itself.",
+    "sourceContext": "mImg[j].outerHTML=mImg[j].outerHTML; // для обновления имени в дереве структуры FBE",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/20_Обновить иллюстрации (версия Александра Ка).js",
-    "line": 131,
-    "column": 41,
     "ruleId": "no-self-assign",
-    "message": "'saveButton.outerHTML' is assigned to itself."
+    "message": "'img.outerHTML' is assigned to itself.",
+    "sourceContext": "img.outerHTML = img.outerHTML; // Перезапись раздела \"IMG\".",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/20_Обновить иллюстрации (версия Александра Ка).js",
-    "line": 61,
-    "column": 27,
     "ruleId": "no-self-assign",
-    "message": "'img.outerHTML' is assigned to itself."
+    "message": "'saveButton.outerHTML' is assigned to itself.",
+    "sourceContext": "saveButton.outerHTML = saveButton.outerHTML; // перезаписываем весь раздел",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/25_Коррекция jpg-png.js",
-    "line": 142,
-    "column": 28,
     "ruleId": "no-self-assign",
-    "message": "'mImg[n].outerHTML' is assigned to itself."
+    "message": "'mImg[n].outerHTML' is assigned to itself.",
+    "sourceContext": "mImg[n].outerHTML=mImg[n].outerHTML; // для обновления имени в дереве структуры FBE",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/32_Расставить подписи к иллюстрациям из выделенного фрагмента.js",
-    "line": 490,
-    "column": 13,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = html.charAt(i);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/47_Вставить пустую блочную иллюстрацию по месту курсора.js",
-    "line": 90,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(p) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/49_Расставить маркеры иллюстраций по реперной карте.js",
-    "line": 285,
-    "column": 17,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyP) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/50_Показать миниатюры иллюстраций из документа.js",
-    "line": 1305,
-    "column": 70,
     "ruleId": "no-self-assign",
-    "message": "'allImgs[i].outerHTML' is assigned to itself."
+    "message": "'allImgs[i].outerHTML' is assigned to itself.",
+    "sourceContext": "try { allImgs[i].outerHTML = allImgs[i].outerHTML; } catch(e) {}",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/51_Коррекция jpg-png.js",
-    "line": 164,
-    "column": 28,
     "ruleId": "no-self-assign",
-    "message": "'mImg[n].outerHTML' is assigned to itself."
+    "message": "'mImg[n].outerHTML' is assigned to itself.",
+    "sourceContext": "mImg[n].outerHTML=mImg[n].outerHTML; // для обновления имени в дереве структуры FBE",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/06_Чистка/06_Управляемое исправление разрывов абзацев....js",
-    "line": 206,
-    "column": 7,
     "ruleId": "no-self-assign",
-    "message": "'ptr' is assigned to itself."
+    "message": "'ptr' is assigned to itself.",
+    "sourceContext": "ptr=ptr;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/06_Чистка/71_Кириллица-латиница.js",
-    "line": 116,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/06_Чистка/72_Объединить разорванные абзацы (автоматически).js",
-    "line": 498,
-    "column": 30,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "function isLowerCaseChar(char) {",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/08_Структура разделов/13_Почистить структуру.js",
-    "line": 285,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/08_Структура разделов/21_Добавить секцию в начало книги.js",
-    "line": 86,
-    "column": 2,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(newSection.firstChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/05_Вставить заголовок стиха.js",
-    "line": 12,
-    "column": 4,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(elem)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/40_Расформатировать все стихи.js",
-    "line": 84,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/41_Поверхностно расформатировать все стихи.js",
-    "line": 78,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/50_Разделить ОДИН слипшийся абзац стиха на строки.js",
-    "line": 135,
-    "column": 23,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "function isWhitespace(char) {",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/55_Разделить НЕСКОЛЬКО слипшихся абзацев стиха на строки.js",
-    "line": 152,
-    "column": 23,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "function isWhitespace(char) {",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/56_Создать заголовок размеченного стиха из его первой строки.js",
-    "line": 275,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyP) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/57_Создать подзаголовок размеченного стиха из его первой строки.js",
-    "line": 252,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(subtitleP) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/59_Сформатировать абзац(ы) стихом (расширенная версия).js",
-    "line": 324,
-    "column": 17,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = cleanText.charAt(i);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/11_Сделать подписи к картинкам из их атрибута title/600_Сделать подписи к картинкам из их атрибута title (разметить жирностью).js",
-    "line": 37,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(inserted)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/11_Сделать подписи к картинкам из их атрибута title/601_Сделать подписи к картинкам из их атрибута title (разметить курсивом).js",
-    "line": 37,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(inserted)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/11_Сделать подписи к картинкам из их атрибута title/602_Сделать подписи к картинкам из их атрибута title (разметить как подзаголовок).js",
-    "line": 37,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(inserted)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/11_Сделать подписи к картинкам из их атрибута title/603_Сделать подписи к картинкам из их атрибута title (разметить как подзаголовок с жирностью).js",
-    "line": 37,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(inserted)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/11_Сделать подписи к картинкам из их атрибута title/604_Сделать подписи к картинкам из их атрибута title (разметить как подзаголовок с курсивом).js",
-    "line": 37,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(inserted)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/529_Удалить всё форматирование в заголовках и подзаголовках.js",
-    "line": 155,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/550_Создать заголовок книги (в body) из названия (в описании документа).js",
-    "line": 196,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(newSection.firstChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/616_Диагностика нумерации заголовков.js",
-    "line": 36,
-    "column": 29,
     "ruleId": "no-dupe-keys",
-    "message": "Duplicate key 'два'."
+    "message": "Duplicate key 'два'.",
+    "sourceContext": "'два': 2, 'две': 2, 'два': 2, 'второй': 2, 'вторая': 2, 'второе': 2,",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/650_Расформатировать заголовки.js",
-    "line": 193,
-    "column": 13,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(clonedParagraph) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/705_Вставить пустую строку после структурного элемента или картинки.js",
-    "line": 213,
-    "column": 5,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyLine) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/710_Вставить пустую строку перед структурным элементом или картинкой.js",
-    "line": 278,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyLine) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/715_Разделить заголовок на два по месту установки курсора.js",
-    "line": 233,
-    "column": 9,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyParagraph) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/775_Оставить в заголовках только первый абзац.js",
-    "line": 578,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyP) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/13_Заголовки, подзаголовки, пустые строки/820_Создать заголовок книги из названия v1.1.js",
-    "line": 168,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(newSection.firstChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/14_Цитаты/067_Объединить выделенные подряд идущие цитаты.js",
-    "line": 377,
-    "column": 13,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyP) = true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/14_Цитаты/069_Сформатировать абзац(ы) цитатой (расширенная версия).js",
-    "line": 361,
-    "column": 17,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = cleanText.charAt(i);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/17_Перенос примечаний в скобки/03_Перенести одно примечание в скобки.js",
-    "line": 385,
-    "column": 22,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/18_Мелочи редактирования/01_Вставить заголовок стиха.js",
-    "line": 12,
-    "column": 4,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(elem)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/18_Мелочи редактирования/02_Вставить заголовок body.js",
-    "line": 12,
-    "column": 4,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(elem)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/18_Мелочи редактирования/35_Разночтения Ё-Е.js",
-    "line": 519,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/18_Мелочи редактирования/39_Исправление крякозябров (кривые кодировки).js",
-    "line": 18,
-    "column": 524,
     "ruleId": "no-dupe-keys",
-    "message": "Duplicate key '÷'."
+    "message": "Duplicate key '÷'.",
+    "sourceContext": "sumbol = {\"À\": \"А\",\"Á\": \"Б\",\"Â\": \"В\",\"Ã\": \"Г\",\"Ä\": \"Д\",\"Å\": \"Е\",\"¨\": \"Ё\",\"Æ\": \"Ж\",\"Ç\": \"З\",\"È\": \"И\",\"É\": \"Й\",\"Ê\": \"К\",\"Ë\": \"Л\",\"Ì\": \"М\",\"Í\": \"Н\",\"Î\": \"О\",\"Ï\": \"П\",\"Ð\": \"Р\",\"Ñ\": \"С\",\"Ò\": \"Т\",\"Ó\": \"У\",\"Ô\": \"Ф\",\"Õ\": \"Х\",\"Ö\": \"Ц\",\"÷\": \"Ч\",\"Ø\": \"Ш\",\"Ù\": \"Щ\",\"Ú\": \"Ъ\",\"Û\": \"Ы\",\"Ü\": \"Ь\",\"Ý\": \"Э\",\"Þ\": \"Ю\",\"Ÿ\": \"Я\",\"à\": \"а\",\"á\": \"б\",\"â\": \"в\",\"ã\": \"г\",\"ä\": \"д\",\"å\": \"е\",\"¸\": \"ё\",\"æ\": \"ж\",\"ç\": \"з\",\"è\": \"и\",\"é\": \"й\",\"ê\": \"к\",\"ë\": \"л\",\"ì\": \"м\",\"í\": \"н\",\"î\": \"о\",\"ï\": \"п\",\"ð\": \"р\",\"ñ\": \"с\",\"ò\": \"т\",\"ó\": \"у\",\"ô\": \"ф\",\"õ\": \"х\",\"ö\": \"ц\",\"÷\": \"ч\",\"ø\": \"ш\",\"ù\": \"щ\",\"ú\": \"ъ\",\"û\": \"ы\",\"ü\": \"ь\",\"ý\": \"э\",\"þ\": \"ю\",\"ÿ\": \"я\"};",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/18_Мелочи редактирования/66_Найти и исправить битую кодировку текста.js",
-    "line": 87,
-    "column": 30,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'byte' is reserved"
+    "message": "Parsing error: The keyword 'byte' is reserved",
+    "sourceContext": "function cp1251ToUnicode(byte) {",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/19_Обработка форматирования/58_Расформатировать абзац(ы) от совмещений курсива с жирностью.js",
-    "line": 65,
-    "column": 4,
     "ruleId": "no-unreachable",
-    "message": "Unreachable code."
+    "message": "Unreachable code.",
+    "sourceContext": "return match;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/21_Поиск и замена/36_Стандартизация символов.js",
-    "line": 99,
-    "column": 12,
     "ruleId": null,
-    "message": "Parsing error: Unterminated string constant"
+    "message": "Parsing error: Unterminated string constant",
+    "sourceContext": "M[n++] = [\" \", \"U+2028\", \" \", \"пробел\"];",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/21_Поиск и замена/64_Замена символов по списку из буфера обмена.js",
-    "line": 21,
-    "column": 4,
     "ruleId": null,
-    "message": "Parsing error: Unexpected token else"
+    "message": "Parsing error: Unexpected token else",
+    "sourceContext": "else",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/21_Поиск и замена/86_Вымарывание зачеркнутого текста.js",
-    "line": 198,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = originalText.charAt(i);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/21_Поиск и замена/87_Заменить неразрывные пробелы в выделении.js",
-    "line": 43,
-    "column": 37,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "function createSafeRegexForChar(char) {",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/22_Дескрипшен/00_Изменить дескрипшен - исходный шаблон.js",
-    "line": 722,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(Annotation.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/22_Дескрипшен/01_Изменить дескрипшен - шаблон 1.js",
-    "line": 659,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(Annotation.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/22_Дескрипшен/02_Изменить дескрипшен - шаблон 2.js",
-    "line": 659,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(Annotation.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/22_Дескрипшен/03_Изменить дескрипшен - шаблон 3.js",
-    "line": 659,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(Annotation.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/22_Дескрипшен/04_Изменить дескрипшен - шаблон 4.js",
-    "line": 659,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(Annotation.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/22_Дескрипшен/05_Изменить дескрипшен - шаблон 5.js",
-    "line": 659,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(Annotation.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/22_Дескрипшен/34_Редакция описания документа.js",
-    "line": 236,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/22_Дескрипшен/99_Редакция описания документа.js",
-    "line": 236,
-    "column": 10,
     "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue"
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(History.lastChild)=true;",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/37_Эпиграфы/11_Создать эпиграф из полных абзацев (расширенная версия).js",
-    "line": 149,
-    "column": 15,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = cleanText.charAt(i);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/37_Эпиграфы/13_Найти и разметить неразмеченные эпиграфы.js",
-    "line": 303,
-    "column": 21,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = cleanText.charAt(i);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/37_Эпиграфы/17_Создать эпиграфы из жирных (НЕ-курсивных) абзацев после заголовков.js",
-    "line": 176,
-    "column": 17,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = cleanText.charAt(i);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/37_Эпиграфы/18_Создать эпиграфы из курсивных (НЕ-жирных) абзацев после заголовков.js",
-    "line": 176,
-    "column": 17,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = cleanText.charAt(i);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/37_Эпиграфы/19_Создать эпиграфы из жирно-курсивных абзацев после заголовков.js",
-    "line": 178,
-    "column": 17,
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved"
+    "message": "Parsing error: The keyword 'char' is reserved",
+    "sourceContext": "var char = cleanText.charAt(i);",
+    "occurrence": 1
   }
 ]

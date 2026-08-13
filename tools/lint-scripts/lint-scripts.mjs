@@ -2,6 +2,7 @@ import { ESLint } from "eslint";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createFingerprintEntries, fingerprintKey } from "./fingerprint.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const baselinePath = path.join(root, "tools/lint-scripts/baseline.json");
@@ -13,26 +14,13 @@ function relative(filePath) {
   return path.relative(root, filePath).split(path.sep).join("/");
 }
 
-function entry(filePath, message) {
-  return {
-    file: relative(filePath),
-    line: message.line,
-    column: message.column,
-    ruleId: message.ruleId,
-    message: message.message
-  };
-}
-
-function key(item) {
-  return [item.file, item.line, item.column, item.ruleId, item.message].join("\u0000");
-}
-
-const messages = results.flatMap((result) =>
-  result.messages.map((message) => ({ result, message, entry: entry(result.filePath, message) }))
-);
+const sourceByFile = new Map(results.map((result) => [relative(result.filePath), readFileSync(result.filePath, "utf8")]));
+const rawMessages = results.flatMap((result) => result.messages.map((message) => ({ result, filePath: relative(result.filePath), message })));
+const entries = createFingerprintEntries(rawMessages, sourceByFile);
+const messages = rawMessages.map((item, index) => ({ ...item, entry: entries[index] }));
 
 if (writeBaseline) {
-  const baseline = messages.map(({ entry: item }) => item).sort((left, right) => key(left).localeCompare(key(right)));
+  const baseline = [...entries].sort((left, right) => fingerprintKey(left).localeCompare(fingerprintKey(right)));
   writeFileSync(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
   console.log(`Saved ${baseline.length} existing diagnostics to ${relative(baselinePath)}.`);
   process.exit(0);
@@ -44,8 +32,8 @@ if (!existsSync(baselinePath)) {
 }
 
 const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
-const allowed = new Set(baseline.map(key));
-const unexpected = messages.filter(({ entry: item }) => !allowed.has(key(item)));
+const allowed = new Set(baseline.map(fingerprintKey));
+const unexpected = messages.filter(({ entry: item }) => !allowed.has(fingerprintKey(item)));
 
 if (unexpected.length > 0) {
   const formatter = await eslint.loadFormatter("stylish");

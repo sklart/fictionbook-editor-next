@@ -6,7 +6,8 @@
   "description": "Development checks for FictionBook Editor Next",
   "scripts": {
     "lint:scripts": "node tools/lint-scripts/lint-scripts.mjs",
-    "lint:scripts:baseline": "node tools/lint-scripts/lint-scripts.mjs --write-baseline"
+    "lint:scripts:baseline": "node tools/lint-scripts/lint-scripts.mjs --write-baseline",
+    "test:lint-scripts:fingerprint": "node tools/lint-scripts/test-fingerprint.mjs"
   },
   "devDependencies": {
     "eslint": "9.39.1"
