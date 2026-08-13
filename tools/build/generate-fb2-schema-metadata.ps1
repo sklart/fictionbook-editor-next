@@ -31,6 +31,11 @@ foreach ($file in $schemaFiles) {
 
 function Local-Name([string]$name) { if ($name.Contains(':')) { return $name.Substring($name.IndexOf(':') + 1) }; return $name }
 function Cpp-Escape([string]$value) { return $value.Replace('\\', '\\\\').Replace('"', '\\"') }
+function Get-OrdinalSortedStrings($values) {
+    [string[]]$result = @($values)
+    [Array]::Sort($result, [StringComparer]::Ordinal)
+    return $result
+}
 
 $types = @{}
 $globalElements = @{}
@@ -112,11 +117,11 @@ $lines.Add('')
 $lines.Add('struct Fb2SchemaElementMetadata { const char* name; const char* children; const char* attributes; const char* values; };')
 $lines.Add('')
 $lines.Add('static const Fb2SchemaElementMetadata kFb2SchemaMetadata[] = {')
-foreach ($name in ($metadata.Keys | Sort-Object)) {
+foreach ($name in (Get-OrdinalSortedStrings $metadata.Keys)) {
     $item = $metadata[$name]
-    $children = (($item.Children | Sort-Object) -join ' ')
-    $attributes = (($item.Attributes | Sort-Object) -join ' ')
-    $values = (($item.Values | Sort-Object) -join ' ')
+    $children = ((Get-OrdinalSortedStrings $item.Children) -join ' ')
+    $attributes = ((Get-OrdinalSortedStrings $item.Attributes) -join ' ')
+    $values = ((Get-OrdinalSortedStrings $item.Values) -join ' ')
     $lines.Add(('    {{ "{0}", "{1}", "{2}", "{3}" }},' -f (Cpp-Escape $name), (Cpp-Escape $children), (Cpp-Escape $attributes), (Cpp-Escape $values)))
 }
 $lines.Add('};')

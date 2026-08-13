@@ -165,6 +165,7 @@ Assert-Contains $verifyRelease '-FixtureId preserve-header -Target "0,0" -Operat
 Assert-Contains $verifyRelease '-FixtureId toggle-preserve -Target "0,0" -Operation toggle-header -RuntimeStyle "width: 37px"' "verify-release.ps1: single TD to TH runtime style"
 Assert-Contains $verifyRelease '-FixtureId toggle-preserve-header -Target "0,0" -Operation toggle-header -RuntimeStyle "width: 37px"' "verify-release.ps1: single TH to TD runtime style"
 Assert-Contains $verifyRelease "test-fbe-test-report-diagnostics.ps1" "verify-release.ps1: честный HRESULT в тестовых отчётах"
+Assert-Contains $verifyRelease "test-fb2-schema-metadata-culture.ps1" "verify-release.ps1: culture-независимые метаданные FB2"
 Assert-Contains $verifyRelease "test-image-codec-build-contract.ps1" "verify-release.ps1: image codec VS/CMake contract"
 Assert-Contains $verifyRelease "test-source-scintilla-modern-features.ps1" "verify-release.ps1: modern Scintilla Source contract"
 Assert-Contains $verifyRelease "test-fb2-source-autocomplete.ps1" "verify-release.ps1: behavioral FB2 autocomplete"
