@@ -162,6 +162,8 @@ Assert-Contains $verifyRelease '-FixtureId mixed -Target "1,0:1,2" -Operation ma
 Assert-Contains $verifyRelease '-FixtureId mixed -Target "0,0:2,0" -Operation make-normal' "verify-release.ps1: Make Normal для целого столбца"
 Assert-Contains $verifyRelease '-FixtureId preserve -Target "0,0" -Operation make-header' "verify-release.ps1: preservation TD to TH"
 Assert-Contains $verifyRelease '-FixtureId preserve-header -Target "0,0" -Operation make-normal' "verify-release.ps1: preservation TH to TD"
+Assert-Contains $verifyRelease '-FixtureId toggle-preserve -Target "0,0" -Operation toggle-header -RuntimeStyle "width: 37px"' "verify-release.ps1: single TD to TH runtime style"
+Assert-Contains $verifyRelease '-FixtureId toggle-preserve-header -Target "0,0" -Operation toggle-header -RuntimeStyle "width: 37px"' "verify-release.ps1: single TH to TD runtime style"
 Assert-Contains $verifyRelease "test-fbe-test-report-diagnostics.ps1" "verify-release.ps1: честный HRESULT в тестовых отчётах"
 Assert-Contains $verifyRelease "test-image-codec-build-contract.ps1" "verify-release.ps1: image codec VS/CMake contract"
 Assert-Contains $verifyRelease "test-source-scintilla-modern-features.ps1" "verify-release.ps1: modern Scintilla Source contract"
@@ -191,6 +193,8 @@ if ($commonStart -lt 0 -or $commonEnd -lt 0 -or $archHandlerTest -le $commonEnd)
 Assert-NotContains $fbeView "GetTestLogicalTableColumn" "FBEview.cpp: test-only column override в production handler"
 Assert-Contains $fbeView "DeleteTableLogicalColumnForTest" "FBEview.cpp: isolated test harness helper"
 Assert-Contains $fbeView "DeleteTableLogicalColumn(this, grid" "FBEview.cpp: общий алгоритм удаления logical column"
+Assert-Contains $fbeView "kTableCellReplacementAttributes" "FBEview.cpp: общий набор attributes для TD/TH"
+Assert-NotContains $fbeView 'const wchar_t* const attributes[] = { L"id", L"fbstyle"' "FBEview.cpp: single TD/TH не использует неполный attributes list"
 Assert-NotContains $fbeView "if (iswspace(ch)) continue;" "FBEview.cpp: content hash не игнорирует пробелы"
 Assert-NotContains $fbeView "towlower(ch)" "FBEview.cpp: content hash не игнорирует регистр"
 if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {

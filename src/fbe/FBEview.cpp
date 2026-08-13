@@ -351,6 +351,27 @@ static void CopyTableCellAttribute(const MSHTML::IHTMLElementPtr& source, const 
 		destination->setAttribute(name, value, 0);
 }
 
+// TD/TH replacement must preserve the same visual and FB2-facing cell data,
+// regardless of whether it is initiated by the single-cell toggle or bulk action.
+static const wchar_t* const kTableCellReplacementAttributes[] = {
+	L"id", L"style", L"fbstyle", L"colspan", L"fbcolspan", L"rowspan", L"fbrowspan",
+	L"align", L"fbalign", L"valign", L"fbvalign"
+};
+
+static void CopyTableCellReplacementAttributes(const MSHTML::IHTMLElementPtr& source, const MSHTML::IHTMLElementPtr& destination)
+{
+	for (size_t index = 0; index < _countof(kTableCellReplacementAttributes); ++index)
+		CopyTableCellAttribute(source, destination, kTableCellReplacementAttributes[index]);
+	// MSHTML can keep a runtime CSS declaration in IHTMLStyle without exposing
+	// it through getAttribute(L"style"). Preserve that visual-DOM state too.
+	MSHTML::IHTMLStylePtr sourceStyle(source ? source->style : MSHTML::IHTMLStylePtr());
+	MSHTML::IHTMLStylePtr destinationStyle(destination ? destination->style : MSHTML::IHTMLStylePtr());
+	if (sourceStyle && destinationStyle) {
+		_bstr_t cssText(sourceStyle->cssText);
+		if (cssText.length()) destinationStyle->cssText = (const wchar_t*)cssText;
+	}
+}
+
 static void NotifyWrappedSearch(bool wrapped)
 {
 	if(wrapped)
@@ -4293,8 +4314,7 @@ LRESULT CFBEView::OnTableToggleHeaderCell(WORD, WORD, HWND, BOOL&)
 		const wchar_t* targetName = U::scmp(cell->tagName, L"TH") == 0 ? L"TD" : L"TH";
 		MSHTML::IHTMLElementPtr replacement(CreateTableCell(Document(), targetName));
 		replacement->innerHTML = cell->innerHTML;
-		const wchar_t* const attributes[] = { L"id", L"fbstyle", L"fbcolspan", L"fbrowspan", L"fbalign", L"fbvalign", L"colspan", L"rowspan", L"align", L"valign" };
-		for (size_t index = 0; index < _countof(attributes); ++index) CopyTableCellAttribute(cell, replacement, attributes[index]);
+		CopyTableCellReplacementAttributes(cell, replacement);
 		MSHTML::IHTMLDOMNodePtr(cell->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement), MSHTML::IHTMLDOMNodePtr(cell));
 		std::vector<TableCellReplacement> replacements; TableCellReplacement pair = { replacement, cell }; replacements.push_back(pair);
 		const HRESULT undoResult = AddTableCellToggleUndoUnit(Document(), replacements);
@@ -5073,7 +5093,9 @@ CStringA CFBEView::TableStructuralSnapshot()
 		CStringA snapshot; snapshot.Format("rows=%ld;columns=%ld;", static_cast<long>(grid.rows.size()), grid.columns);
 		for (size_t index = 0; index < grid.cells.size(); ++index) {
 			const LogicalTableCell& cell = grid.cells[index];
-			CString id(AU::GetAttrCS(cell.element, L"id")), style(AU::GetAttrCS(cell.element, L"style")), fbstyle(AU::GetAttrCS(cell.element, L"fbstyle"));
+			CString id(AU::GetAttrCS(cell.element, L"id")), style, fbstyle(AU::GetAttrCS(cell.element, L"fbstyle"));
+			MSHTML::IHTMLStylePtr runtimeStyle(cell.element ? cell.element->style : MSHTML::IHTMLStylePtr());
+			if (runtimeStyle) style = (const wchar_t*)_bstr_t(runtimeStyle->cssText);
 			CString colspan(AU::GetAttrCS(cell.element, L"colspan")), fbcolspan(AU::GetAttrCS(cell.element, L"fbcolspan"));
 			CString rowspan(AU::GetAttrCS(cell.element, L"rowspan")), fbrowspan(AU::GetAttrCS(cell.element, L"fbrowspan"));
 			CString align(AU::GetAttrCS(cell.element, L"align")), fbalign(AU::GetAttrCS(cell.element, L"fbalign"));
@@ -5156,11 +5178,10 @@ static bool GetSelectedTableCells(MSHTML::IHTMLDocument2Ptr document, const MSHT
 static bool ReplaceTableCells(MSHTML::IHTMLDocument2Ptr document, const std::vector<MSHTML::IHTMLElementPtr>& cells, const wchar_t* targetName)
 {
 	std::vector<TableCellReplacement> replacements;
-	const wchar_t* const attributes[] = { L"id", L"style", L"fbstyle", L"fbcolspan", L"fbrowspan", L"fbalign", L"fbvalign", L"colspan", L"rowspan", L"align", L"valign" };
 	for (size_t index = 0; index < cells.size(); ++index) {
 		if (!cells[index] || U::scmp(cells[index]->tagName, targetName) == 0) continue;
 		MSHTML::IHTMLElementPtr replacement(CreateTableCell(document, targetName)); replacement->innerHTML = cells[index]->innerHTML;
-		for (size_t attribute = 0; attribute < _countof(attributes); ++attribute) CopyTableCellAttribute(cells[index], replacement, attributes[attribute]);
+		CopyTableCellReplacementAttributes(cells[index], replacement);
 		MSHTML::IHTMLDOMNodePtr(cells[index]->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement), MSHTML::IHTMLDOMNodePtr(cells[index]));
 		TableCellReplacement pair = { replacement, cells[index] }; replacements.push_back(pair);
 	}

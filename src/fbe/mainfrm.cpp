@@ -3036,6 +3036,18 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			}
 			return m_doc->m_body.SelectTableLogicalRangeForTest(firstRow, firstColumn, lastRow, lastColumn);
 		};
+		auto applyConfiguredRuntimeCellStyle = [&]() -> bool
+		{
+			wchar_t cssText[256] = {};
+			const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_RUNTIME_STYLE", cssText, _countof(cssText));
+			if (!length) return true;
+			if (length >= _countof(cssText)) return false;
+			MSHTML::IHTMLElementPtr cell(m_doc->m_body.SelectionStructTableCon());
+			MSHTML::IHTMLStylePtr style(cell ? cell->style : MSHTML::IHTMLStylePtr());
+			if (!style) return false;
+			style->cssText = cssText;
+			return true;
+		};
 		typedef LRESULT (CFBEView::*TableHandler)(WORD, WORD, HWND, BOOL&);
 		struct Operation { const char* name; TableHandler handler; bool bulk, selectHeaders; };
 		const Operation operations[] = {
@@ -3064,7 +3076,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			wchar_t requestedOperation[64] = {};
 			const DWORD requestedOperationLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_OPERATION", requestedOperation, _countof(requestedOperation));
 			if (requestedOperationLength && (requestedOperationLength >= _countof(requestedOperation) || _stricmp((LPCSTR)CStringA(requestedOperation), operations[index].name) != 0)) continue;
-			if (!selectConfiguredCells(operations[index].bulk, operations[index].selectHeaders)) { output.Close(); ::PostQuitMessage(1); return 0; }
+			if (!selectConfiguredCells(operations[index].bulk, operations[index].selectHeaders) || !applyConfiguredRuntimeCellStyle()) { output.Close(); ::PostQuitMessage(1); return 0; }
 			CStringA phase; phase.Format("%s-before", operations[index].name); appendStructuralPhase(phase);
 			CFBEView::ResetTableGridBuildCountForTest();
 			BOOL handled = FALSE; if (!invokeOperation(operations[index], handled)) { output.Close(); ::PostQuitMessage(1); return 0; }
