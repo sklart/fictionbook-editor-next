@@ -2989,6 +2989,55 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		appendTablePhase("save-1-complete");
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"table-structural"))
+	{
+		const ULONGLONG start = ::GetTickCount64();
+		auto appendStructuralPhase = [&](const char* phase)
+		{
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr rows(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TR") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr td(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementCollectionPtr th(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH") : MSHTML::IHTMLElementCollectionPtr());
+			CStringA row;
+			row.Format("%s\t%I64u\t%ld\t%ld\t%ld\t%ld\r\n", phase, ::GetTickCount64() - start,
+				tables ? tables->length : 0, rows ? rows->length : 0, td ? td->length : 0, th ? th->length : 0);
+			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+		};
+		auto selectFirstCell = [&]() -> bool
+		{
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr cell(cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+			if (!cell) { cells = body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH") : MSHTML::IHTMLElementCollectionPtr(); cell = cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr(); }
+			if (!cell) return false;
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+			range->moveToElementText(cell); range->collapse(VARIANT_TRUE); range->select(); return true;
+		};
+		typedef LRESULT (CFBEView::*TableHandler)(WORD, WORD, HWND, BOOL&);
+		struct Operation { const char* name; TableHandler handler; };
+		const Operation operations[] = {
+			{ "toggle-header", &CFBEView::OnTableToggleHeaderCell }, { "insert-row-above", &CFBEView::OnTableInsertRowAbove },
+			{ "insert-row-below", &CFBEView::OnTableInsertRowBelow }, { "delete-row", &CFBEView::OnTableDeleteRow },
+			{ "insert-column-left", &CFBEView::OnTableInsertColumnLeft }, { "insert-column-right", &CFBEView::OnTableInsertColumnRight },
+			{ "delete-column", &CFBEView::OnTableDeleteColumn }
+		};
+		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
+		for (size_t index = 0; index < _countof(operations); ++index)
+		{
+			if (!selectFirstCell()) { output.Close(); ::PostQuitMessage(1); return 0; }
+			CStringA phase; phase.Format("%s-before", operations[index].name); appendStructuralPhase(phase);
+			BOOL handled = FALSE; (m_doc->m_body.*operations[index].handler)(0, 0, m_doc->m_body, handled);
+			phase.Format("%s-after", operations[index].name); appendStructuralPhase(phase);
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			phase.Format("%s-undo", operations[index].name); appendStructuralPhase(phase);
+			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+			phase.Format("%s-redo", operations[index].name); appendStructuralPhase(phase);
+		}
+		if (!m_doc->Save()) { appendStructuralPhase("save-failed"); output.Close(); ::PostQuitMessage(1); return 0; }
+		appendStructuralPhase("save-complete"); output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
 	if (IsFbeTestScenario(L"binary-roundtrip"))
 	{
 		const ULONGLONG start = ::GetTickCount64();

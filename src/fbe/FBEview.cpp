@@ -68,6 +68,69 @@ static bool IsTableCellElement(const MSHTML::IHTMLElementPtr& element)
 	return (bool)element && (U::scmp(element->tagName, L"TD") == 0 || U::scmp(element->tagName, L"TH") == 0);
 }
 
+// MSHTML tracks attribute and child-list edits in an IMarkupServices undo
+// unit, but not replacement of a table-cell element with a different tag.
+// Keep that replacement as one native IOleUndoUnit so Ctrl+Z/Ctrl+Y retains
+// the exact TD/TH conversion without serialising any editor-only state.
+class CTableCellToggleUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit
+{
+public:
+	BEGIN_COM_MAP(CTableCellToggleUndoUnit)
+		COM_INTERFACE_ENTRY(IOleUndoUnit)
+	END_COM_MAP()
+
+	void Initialize(const MSHTML::IHTMLElementPtr& active, const MSHTML::IHTMLElementPtr& inactive)
+	{
+		m_active = active;
+		m_inactive = inactive;
+	}
+
+	STDMETHOD(Do)(IOleUndoManager* undoManager)
+	{
+		if (!m_active || !m_inactive || !m_active->parentElement) return E_UNEXPECTED;
+		MSHTML::IHTMLDOMNodePtr(m_active->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(m_inactive), MSHTML::IHTMLDOMNodePtr(m_active));
+		MSHTML::IHTMLElementPtr previousActive(m_active);
+		m_active = m_inactive;
+		m_inactive = previousActive;
+		return undoManager ? undoManager->Add(this) : S_OK;
+	}
+
+	STDMETHOD(GetDescription)(BSTR* description)
+	{
+		if (!description) return E_POINTER;
+		*description = ::SysAllocString(L"toggle table header cell");
+		return *description ? S_OK : E_OUTOFMEMORY;
+	}
+
+	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id)
+	{
+		if (!classId || !id) return E_POINTER;
+		*classId = CLSID_NULL; *id = 0;
+		return S_OK;
+	}
+
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+
+private:
+	MSHTML::IHTMLElementPtr m_active;
+	MSHTML::IHTMLElementPtr m_inactive;
+};
+
+static HRESULT AddTableCellToggleUndoUnit(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& active, const MSHTML::IHTMLElementPtr& inactive)
+{
+	IServiceProviderPtr serviceProvider(document);
+	CComPtr<IOleUndoManager> undoManager;
+	if (!serviceProvider || FAILED(serviceProvider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, (void**)&undoManager))) return E_NOINTERFACE;
+	CComObject<CTableCellToggleUndoUnit>* undoUnit = NULL;
+	HRESULT hr = CComObject<CTableCellToggleUndoUnit>::CreateInstance(&undoUnit);
+	if (FAILED(hr)) return hr;
+	undoUnit->AddRef();
+	undoUnit->Initialize(active, inactive);
+	hr = undoManager->Add(undoUnit);
+	undoUnit->Release();
+	return hr;
+}
+
 // A native table is a structural child of an FB2 visual DIV, just like a
 // paragraph or a nested DIV.  It must never be collected into an implicitly
 // created paragraph by PackText().
@@ -4090,13 +4153,16 @@ LRESULT CFBEView::OnTableToggleHeaderCell(WORD, WORD, HWND, BOOL&)
 		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
 		if (!cell || !FindTableElement(cell)) return 0;
 		const wchar_t* targetName = U::scmp(cell->tagName, L"TH") == 0 ? L"TD" : L"TH";
-		BeginUndoUnit(L"toggle table header cell");
 		MSHTML::IHTMLElementPtr replacement(CreateTableCell(Document(), targetName));
 		replacement->innerHTML = cell->innerHTML;
 		const wchar_t* const attributes[] = { L"id", L"fbstyle", L"fbcolspan", L"fbrowspan", L"fbalign", L"fbvalign", L"colspan", L"rowspan", L"align", L"valign" };
 		for (size_t index = 0; index < _countof(attributes); ++index) CopyTableCellAttribute(cell, replacement, attributes[index]);
 		MSHTML::IHTMLDOMNodePtr(cell->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement), MSHTML::IHTMLDOMNodePtr(cell));
-		EndUndoUnit();
+		const HRESULT undoResult = AddTableCellToggleUndoUnit(Document(), replacement, cell);
+		if (FAILED(undoResult)) {
+			MSHTML::IHTMLDOMNodePtr(replacement->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(cell), MSHTML::IHTMLDOMNodePtr(replacement));
+			_com_issue_error(undoResult);
+		}
 		NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
