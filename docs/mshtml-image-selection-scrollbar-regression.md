@@ -15,8 +15,8 @@
 
 ### Windows 7
 
-**PENDING MANUAL VERIFICATION** — проверка будет выполнена отдельно. Это не FAIL и
-не блокирует текущую доработку source-contract regression и release-контура.
+**NOT TESTED — Windows 7 environment unavailable.** Это не FAIL и не блокирует
+автоматические source-contract и release-проверки.
 
 ## Checklist для Windows 7
 
