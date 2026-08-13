@@ -112,6 +112,8 @@ if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToo
 $archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
 if ($ArchHandlerOutputDirectory) { $archHandlerTestArguments.HandlerDirectory = $ArchHandlerOutputDirectory }
 & (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments
+& (Join-Path $repoRoot "tools\tests\test-archhandler-reset-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-archhandler-reset-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-check-content-types-base64.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2recode-cp1251.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2recode-cancel.ps1")
