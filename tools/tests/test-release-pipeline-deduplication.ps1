@@ -166,6 +166,15 @@ Assert-NotContains $verifyRelease "test-release-pipeline-deduplication.ps1" "ver
 Assert-Contains $verifyRelease '-EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")' "verify-release.ps1"
 Assert-Contains $archHandlerArgv "Get-Command cl.exe" "ArchHandler argv test: toolchain для receiver"
 Assert-Contains $archHandlerArgv "Import-VsDevEnvironment.ps1" "ArchHandler argv test: загрузка toolchain"
+Assert-Contains $verifyRelease "target-specific executable" "verify-release.ps1: ArchHandler вне common checks"
+Assert-Contains $verifyRelease 'IncludeNames @("ZipHandler.exe", "RarHandler.exe")' "verify-release.ps1: Win7 imports ArchHandler"
+
+$commonStart = $verifyRelease.IndexOf('if (-not $SkipCommonChecks) {')
+$commonEnd = $verifyRelease.IndexOf("`n}`r`n", $commonStart)
+$archHandlerTest = $verifyRelease.IndexOf('test-archhandler-argv.ps1')
+if ($commonStart -lt 0 -or $commonEnd -lt 0 -or $archHandlerTest -le $commonEnd) {
+    throw "Exact ArchHandler argv test должен выполняться вне блока SkipCommonChecks."
+}
 if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {
     throw "Релизный контур не должен блокироваться накопленным набором кириллических строк; строгая проверка допустима только для отдельных фикстур."
 }

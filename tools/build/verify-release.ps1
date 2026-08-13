@@ -120,9 +120,6 @@ $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
 & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") @imageImportTestArguments
 & (Join-Path $repoRoot "tools\tests\test-image-import-fbe-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-$archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
-if ($ArchHandlerOutputDirectory) { $archHandlerTestArguments.HandlerDirectory = $ArchHandlerOutputDirectory }
-& (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments
 & (Join-Path $repoRoot "tools\tests\test-archhandler-reset-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-archhandler-reset-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-check-content-types-base64.ps1")
@@ -192,6 +189,12 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 }
 
+# ArchHandler является target-specific executable и должен проверяться как для
+# Modern, так и для Win7; нельзя прятать exact artifact argv-test в common block.
+$archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
+if ($ArchHandlerOutputDirectory) { $archHandlerTestArguments.HandlerDirectory = $ArchHandlerOutputDirectory }
+& (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments
+
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1") `
     -EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")
 
@@ -215,6 +218,14 @@ if ($CompatibilityTarget -eq "Win7") {
         -Configuration $Configuration `
         -OutputDirectory $win7EditorRuntimeDir `
         -IncludeNames @("Scintilla.dll", "Lexilla.dll")
+
+    if (-not $ArchHandlerOutputDirectory) {
+        throw "Для Win7 verification требуется target-specific ArchHandler output directory."
+    }
+    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+        -Configuration $Configuration `
+        -OutputDirectory $ArchHandlerOutputDirectory `
+        -IncludeNames @("ZipHandler.exe", "RarHandler.exe")
 }
 
 function Test-BinarySecurityFlags {
