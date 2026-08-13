@@ -10,6 +10,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $viewSource = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBEview.cpp')
+$fixture = Join-Path $RepoRoot 'tools\tests\fixtures\tree-image-scrollbar.fb2'
+if(-not (Test-Path -LiteralPath $fixture -PathType Leaf)) { throw 'Tree image scrollbar regression fixture is missing.' }
+$fixtureText = Get-Content -Raw -LiteralPath $fixture
+if($fixtureText -notmatch '<body>.*<image l:href="#image-1"' -or $fixtureText -notmatch '<binary id="image-1"') {
+    throw 'Regression fixture must contain a body image with an existing binary.'
+}
+if($fixtureText -match '#undefined') { throw 'Regression fixture must not depend on a missing #undefined binary.' }
 
 $start = $viewSource.IndexOf('MSHTML::IHTMLElementPtr CFBEView::SelectionContainerImp()')
 $end = $viewSource.IndexOf('MSHTML::IHTMLElementPtr CFBEView::SelectionAnchor()', $start)
