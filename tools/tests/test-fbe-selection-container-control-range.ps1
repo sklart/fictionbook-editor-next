@@ -26,7 +26,7 @@ foreach($marker in @(
     'IHTMLControlRange::get_length',
     'IHTMLControlRange::item(0)',
     'IHTMLElement::tagName/parentElement',
-    'StartupTrace::HResult')) {
+    'TraceSelectionContainerFailure')) {
     if($body.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) {
         throw "SelectionContainerImp lacks required Control selection handling: $marker"
     }
@@ -36,6 +36,11 @@ if($body -notmatch 'selected->tagName, L"IMG"' -or $body -notmatch 'parent->clas
 }
 if($body -match 'U::ReportError\s*\(') {
     throw 'Best-effort SelectionContainer synchronization must not show a modal COM error.'
+}
+foreach($marker in @('operation=SelectionContainer', 'HRESULT_NAME=', 'documentTree=%s', 'treeImages=%s', 'StartupTrace::HResult')) {
+    if($viewSource.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) {
+        throw "SelectionContainer diagnostics lack required context: $marker"
+    }
 }
 
 Write-Host 'MSHTML Control selection container path uses a safe selected-element query and diagnostic tracing.'

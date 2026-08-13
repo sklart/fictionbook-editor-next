@@ -59,6 +59,25 @@ static bool IsParagraphElement(MSHTML::IHTMLElementPtr elem)
 	return (bool)elem && U::scmp(elem->tagName, L"P") == 0;
 }
 
+static void TraceSelectionContainerFailure(const wchar_t* comOperation, HRESULT result,
+	const wchar_t* selectionType, long controlLength = -1)
+{
+	CString details;
+	details.Format(L"component=MSHTML; operation=SelectionContainer; com-operation=%s; HRESULT=0x%08lX; HRESULT_NAME=%s; selection.type=%s; view=BODY; documentTree=%s; treeImages=%s",
+		comOperation,
+		static_cast<unsigned long>(result),
+		result == E_FAIL ? L"E_FAIL" : L"other",
+		selectionType,
+		_Settings.ViewDocumentTree() ? L"enabled" : L"disabled",
+		_Settings.GetDocTreeItemState(L"Image", true) ? L"enabled" : L"disabled");
+	if (controlLength >= 0)
+	{
+		CString length;
+		length.Format(L"; control.length=%ld", controlLength);
+		details += length;
+	}
+	StartupTrace::HResult(L"mshtml", L"SC100", result, details);
+}
 // The visual view uses native HTML tables.  Keep table mutations here instead
 // of relying on MSHTML's legacy editing commands: those commands may insert
 // HTML that has no FB2 counterpart and do not group a whole operation in one
@@ -1744,30 +1763,35 @@ MSHTML::IHTMLElementPtr CFBEView::SelectionContainerImp()
 	}
 	catch (_com_error& err)
 	{
-		StartupTrace::HResult(L"mshtml", L"SC100", err.Error(),
-			L"component=MSHTML; operation=IHTMLSelectionObject::createRange; selection.type=unknown; view=BODY");
+		TraceSelectionContainerFailure(L"IHTMLSelectionObject::createRange", err.Error(), L"unknown");
 		return MSHTML::IHTMLElementPtr();
 	}
 
+	MSHTML::IHTMLTxtRangePtr range;
 	try
 	{
-		MSHTML::IHTMLTxtRangePtr range(selrange);
-		if (range)
-			return range->parentElement();
+		range = selrange;
 	}
 	catch (_com_error& err)
 	{
-		StartupTrace::HResult(L"mshtml", L"SC101", err.Error(),
-			L"component=MSHTML; operation=IHTMLTxtRange::parentElement; selection.type=Text; view=BODY");
+		TraceSelectionContainerFailure(L"QueryInterface(IHTMLTxtRange)", err.Error(), L"unknown");
 		return MSHTML::IHTMLElementPtr();
+	}
+	if (range)
+	{
+		try { return range->parentElement(); }
+		catch (_com_error& err)
+		{
+			TraceSelectionContainerFailure(L"IHTMLTxtRange::parentElement", err.Error(), L"Text");
+			return MSHTML::IHTMLElementPtr();
+		}
 	}
 
 	MSHTML::IHTMLControlRangePtr controls;
 	try { controls = selrange; }
 	catch (_com_error& err)
 	{
-		StartupTrace::HResult(L"mshtml", L"SC102", err.Error(),
-			L"component=MSHTML; operation=QueryInterface(IHTMLControlRange); selection.type=unknown; view=BODY");
+		TraceSelectionContainerFailure(L"QueryInterface(IHTMLControlRange)", err.Error(), L"unknown");
 		return MSHTML::IHTMLElementPtr();
 	}
 	if (!controls)
@@ -1777,8 +1801,7 @@ MSHTML::IHTMLElementPtr CFBEView::SelectionContainerImp()
 	try { length = controls->length; }
 	catch (_com_error& err)
 	{
-		StartupTrace::HResult(L"mshtml", L"SC103", err.Error(),
-			L"component=MSHTML; operation=IHTMLControlRange::get_length; selection.type=Control; view=BODY");
+		TraceSelectionContainerFailure(L"IHTMLControlRange::get_length", err.Error(), L"Control");
 		return MSHTML::IHTMLElementPtr();
 	}
 	if (length <= 0)
@@ -1788,8 +1811,7 @@ MSHTML::IHTMLElementPtr CFBEView::SelectionContainerImp()
 	try { selected = controls->item(0); }
 	catch (_com_error& err)
 	{
-		StartupTrace::HResult(L"mshtml", L"SC104", err.Error(),
-			L"component=MSHTML; operation=IHTMLControlRange::item(0); selection.type=Control; control.length>0; view=BODY");
+		TraceSelectionContainerFailure(L"IHTMLControlRange::item(0)", err.Error(), L"Control", length);
 		return MSHTML::IHTMLElementPtr();
 	}
 	if (!selected)
@@ -1810,8 +1832,7 @@ MSHTML::IHTMLElementPtr CFBEView::SelectionContainerImp()
 	}
 	catch (_com_error& err)
 	{
-		StartupTrace::HResult(L"mshtml", L"SC105", err.Error(),
-			L"component=MSHTML; operation=IHTMLElement::tagName/parentElement; selection.type=Control; view=BODY");
+		TraceSelectionContainerFailure(L"IHTMLElement::tagName/parentElement", err.Error(), L"Control", length);
 	}
 
 	return MSHTML::IHTMLElementPtr();
