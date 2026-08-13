@@ -31,6 +31,7 @@ try {
         @{ Id='rowspan'; Table='<tr><td rowspan="2">one</td><td>two</td><td>three</td></tr><tr><td>four</td><td>five</td></tr><tr><td>six</td><td>seven</td><td>eight</td></tr>' },
         @{ Id='combined'; Table='<tr><th id="h" colspan="2">head</th><td>one</td></tr><tr><td rowspan="2">two</td><td>three</td><td>four</td></tr><tr><td>five</td><td>six</td></tr>' },
         @{ Id='mixed'; Table='<tr><th>one</th><th>two</th><th>three</th></tr><tr><td>four</td><td>five</td><td>six</td></tr><tr><td>seven</td><td>eight</td><td>nine</td></tr>' },
+        @{ Id='all-header'; Table='<tr><th>one</th><th>two</th></tr><tr><th>three</th><th>four</th></tr>' },
         @{ Id='edge-spans'; Table='<tr><td colspan="2">first</td><td>middle</td><td colspan="2">last</td></tr><tr><td rowspan="2">one</td><td>two</td><td colspan="2" rowspan="2">three</td><td>four</td></tr><tr><td>five</td><td>six</td></tr>' },
         @{ Id='bulk-10x10'; Table=$bulkTable.ToString() }
     )
@@ -45,14 +46,24 @@ try {
         foreach($operation in $(if($Operation){@($Operation)}else{@('toggle-header','insert-row-above','insert-row-below','delete-row','insert-column-left','insert-column-right','delete-column','make-header','make-normal')})) {
             $before=$rows|Where-Object phase -eq "$operation-before"; $after=$rows|Where-Object phase -eq "$operation-after"; $undo=$rows|Where-Object phase -eq "$operation-undo"; $redo=$rows|Where-Object phase -eq "$operation-redo"
             if(@($before,$after,$undo,$redo).Count -ne 4) { throw "Нет live DOM snapshots для $operation ($($case.Id))." }
-            if($SecondOperation -and (@($rows|Where-Object phase -eq "$SecondOperation-second-before").Count -ne 1 -or @($rows|Where-Object phase -eq "$SecondOperation-second-after").Count -ne 1)) { throw "Нет second-operation snapshots для $operation → $SecondOperation ($($case.Id))." }
+            $secondBefore=@($rows|Where-Object phase -eq "$SecondOperation-second-before"); $secondAfter=@($rows|Where-Object phase -eq "$SecondOperation-second-after")
+            if($SecondOperation -and ($secondBefore.Count -ne 1 -or $secondAfter.Count -ne 1)) { throw "Нет second-operation snapshots для $operation → $SecondOperation ($($case.Id))." }
+            if($SecondOperation -and $secondAfter[0].grid_signature -eq $secondBefore[0].grid_signature) { throw "Вторая операция $SecondOperation не изменила semantic grid ($($case.Id))." }
+            if($case.Id -eq 'colspan' -and $operation -eq 'delete-column' -and $SecondOperation) {
+                if($after.grid_signature -match 'logical-colspan=2' -or $after.grid_signature -match 'colspan=2|fbcolspan=2') { throw 'Delete Column не нормализовал colspan=2 до 1.' }
+            }
+            if($case.Id -eq 'rowspan' -and $operation -eq 'delete-row' -and $SecondOperation) {
+                if($after.grid_signature -match 'logical-rowspan=2' -or $after.grid_signature -match 'rowspan=2|fbrowspan=2') { throw 'Delete Row не нормализовал rowspan=2 до 1.' }
+            }
             $signature={ param($row) "$($row.table_count)/$($row.tr_count)/$($row.td_count)/$($row.th_count)" }
             if(-not $SecondOperation -and (&$signature $undo) -ne (&$signature $before)) { throw "Undo не восстановил live DOM для $operation ($($case.Id))." }
             if(-not $SecondOperation -and (&$signature $redo) -ne (&$signature $after)) { throw "Redo не восстановил live DOM для $operation ($($case.Id))." }
-			if($operation -ne 'make-normal' -and (&$signature $after) -eq (&$signature $before) -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил live DOM или semantic grid ($($case.Id))." }
+			$expectChange = -not (($operation -eq 'make-normal' -and $case.Id -notin @('mixed','all-header')) -or ($operation -eq 'make-header' -and $case.Id -eq 'all-header'))
+			if($expectChange -and (&$signature $after) -eq (&$signature $before) -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил live DOM или semantic grid ($($case.Id))." }
+			if(-not $expectChange -and ((&$signature $after) -ne (&$signature $before) -or $after.grid_signature -ne $before.grid_signature)) { throw "Идемпотентная команда $operation изменила DOM ($($case.Id))." }
 			if(-not $SecondOperation -and $undo.grid_signature -ne $before.grid_signature) { throw "Undo не восстановил logical grid для $operation ($($case.Id))." }
 			if(-not $SecondOperation -and $redo.grid_signature -ne $after.grid_signature) { throw "Redo не восстановил logical grid для $operation ($($case.Id))." }
-			if($operation -ne 'make-normal' -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил logical grid ($($case.Id))." }
+			if($expectChange -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил logical grid ($($case.Id))." }
         }
         if(-not ($rows|Where-Object phase -eq 'save-complete')) { throw "Production structural scenario не сохранил документ ($($case.Id))." }
         Assert-Schema $fixture
