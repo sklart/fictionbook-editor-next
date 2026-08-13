@@ -3022,7 +3022,19 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			if (!cells || cells->length < 2) return false;
 			MSHTML::IHTMLElementPtr first(cells->item(_variant_t(0L), _variant_t())), last(cells->item(_variant_t(1L), _variant_t()));
 			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()), end(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
-			range->moveToElementText(first); end->moveToElementText(last); range->setEndPoint(L"EndToEnd", end); range->select(); return true;
+			 range->moveToElementText(first); end->moveToElementText(last); range->setEndPoint(L"EndToEnd", end); range->select(); return true;
+		};
+		auto selectConfiguredCells = [&](bool bulk, bool headers) -> bool
+		{
+			wchar_t target[64] = {};
+			const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_TARGET", target, _countof(target));
+			if (!length || length >= _countof(target)) return bulk ? selectFirstTwoCells(headers) : selectFirstCell();
+			long firstRow = -1, firstColumn = -1, lastRow = -1, lastColumn = -1;
+			if (swscanf_s(target, L"%ld,%ld:%ld,%ld", &firstRow, &firstColumn, &lastRow, &lastColumn) != 4) {
+				if (swscanf_s(target, L"%ld,%ld", &firstRow, &firstColumn) != 2) return false;
+				lastRow = firstRow; lastColumn = firstColumn;
+			}
+			return m_doc->m_body.SelectTableLogicalRangeForTest(firstRow, firstColumn, lastRow, lastColumn);
 		};
 		typedef LRESULT (CFBEView::*TableHandler)(WORD, WORD, HWND, BOOL&);
 		struct Operation { const char* name; TableHandler handler; bool bulk, selectHeaders; };
@@ -3037,7 +3049,10 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
 		for (size_t index = 0; index < _countof(operations); ++index)
 		{
-			if (!(operations[index].bulk ? selectFirstTwoCells(operations[index].selectHeaders) : selectFirstCell())) { output.Close(); ::PostQuitMessage(1); return 0; }
+			wchar_t requestedOperation[64] = {};
+			const DWORD requestedOperationLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_OPERATION", requestedOperation, _countof(requestedOperation));
+			if (requestedOperationLength && (requestedOperationLength >= _countof(requestedOperation) || _stricmp((LPCSTR)CStringA(requestedOperation), operations[index].name) != 0)) continue;
+			if (!selectConfiguredCells(operations[index].bulk, operations[index].selectHeaders)) { output.Close(); ::PostQuitMessage(1); return 0; }
 			CStringA phase; phase.Format("%s-before", operations[index].name); appendStructuralPhase(phase);
 			CFBEView::ResetTableGridBuildCountForTest();
 			BOOL handled = FALSE; (m_doc->m_body.*operations[index].handler)(0, 0, m_doc->m_body, handled);

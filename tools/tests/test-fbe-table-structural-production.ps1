@@ -3,7 +3,7 @@
 Exercises production CFBEView table handlers with live DOM snapshots and Undo/Redo.
 #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts, [string]$Target, [string]$Operation)
 
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
@@ -34,11 +34,11 @@ try {
     foreach($case in $fixtures) {
         $fixture=Join-Path $directory ($case.Id + '.fb2'); $report=Join-Path $directory ($case.Id + '.tsv'); $reopen=Join-Path $directory ($case.Id + '-reopen.tsv')
         ('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>structural table</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>structural-' + $case.Id + '</id><version>1.0</version></document-info></description><body><section><table id="structural">' + $case.Table + '</table></section></body></FictionBook>') | Set-Content -LiteralPath $fixture -Encoding utf8
-        $oldMode=$env:FBE_NEXT_TEST_MODE; $oldScenario=$env:FBE_NEXT_TEST_SCENARIO
-        try { $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='table-structural'; Invoke-Fbe @('-b',$report,$fixture) "table structural handlers ($($case.Id))" }
-        finally { if($null -eq $oldMode){Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_MODE=$oldMode}; if($null -eq $oldScenario){Remove-Item Env:FBE_NEXT_TEST_SCENARIO -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_SCENARIO=$oldScenario} }
+        $oldMode=$env:FBE_NEXT_TEST_MODE; $oldScenario=$env:FBE_NEXT_TEST_SCENARIO; $oldTarget=$env:FBE_NEXT_TEST_TABLE_TARGET; $oldOperation=$env:FBE_NEXT_TEST_TABLE_OPERATION
+        try { $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='table-structural'; if($Target){$env:FBE_NEXT_TEST_TABLE_TARGET=$Target}; if($Operation){$env:FBE_NEXT_TEST_TABLE_OPERATION=$Operation}; Invoke-Fbe @('-b',$report,$fixture) "table structural handlers ($($case.Id))" }
+        finally { foreach($state in @(@('FBE_NEXT_TEST_MODE',$oldMode),@('FBE_NEXT_TEST_SCENARIO',$oldScenario),@('FBE_NEXT_TEST_TABLE_TARGET',$oldTarget),@('FBE_NEXT_TEST_TABLE_OPERATION',$oldOperation))){if($null -eq $state[1]){Remove-Item ("Env:"+$state[0]) -ErrorAction SilentlyContinue}else{Set-Item ("Env:"+$state[0]) $state[1]}} }
         $rows=Import-Csv -LiteralPath $report -Delimiter "`t"
-        foreach($operation in @('toggle-header','insert-row-above','insert-row-below','delete-row','insert-column-left','insert-column-right','delete-column','make-header','make-normal')) {
+        foreach($operation in $(if($Operation){@($Operation)}else{@('toggle-header','insert-row-above','insert-row-below','delete-row','insert-column-left','insert-column-right','delete-column','make-header','make-normal')})) {
             $before=$rows|Where-Object phase -eq "$operation-before"; $after=$rows|Where-Object phase -eq "$operation-after"; $undo=$rows|Where-Object phase -eq "$operation-undo"; $redo=$rows|Where-Object phase -eq "$operation-redo"
             if(@($before,$after,$undo,$redo).Count -ne 4) { throw "Нет live DOM snapshots для $operation ($($case.Id))." }
             $signature={ param($row) "$($row.table_count)/$($row.tr_count)/$($row.td_count)/$($row.th_count)" }

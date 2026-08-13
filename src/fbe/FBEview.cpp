@@ -5008,6 +5008,39 @@ long CFBEView::TableGridBuildCountForTest()
 	return IsTableGridInstrumentationEnabled() ? g_tableGridBuildCount : -1;
 }
 
+bool CFBEView::SelectTableLogicalRangeForTest(long firstRow, long firstColumn, long lastRow, long lastColumn)
+{
+	try {
+		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		LogicalTableGrid grid;
+		if (!body || !BuildLogicalTableGrid(table, grid)) return false;
+		const long first = grid.At(firstRow, firstColumn), last = grid.At(lastRow, lastColumn);
+		if (first < 0 || last < 0) return false;
+		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+		MSHTML::IHTMLTxtRangePtr end(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+		range->moveToElementText(grid.cells[first].element);
+		end->moveToElementText(grid.cells[last].element);
+		range->setEndPoint(L"EndToEnd", end);
+		range->select();
+		return true;
+	}
+	catch (_com_error&) { return false; }
+}
+
+static unsigned long HashNormalizedTableHtml(const CString& html)
+{
+	unsigned long hash = 2166136261u;
+	for (int index = 0; index < html.GetLength(); ++index) {
+		const wchar_t ch = html[index];
+		if (iswspace(ch)) continue;
+		hash ^= static_cast<unsigned long>(towlower(ch));
+		hash *= 16777619u;
+	}
+	return hash;
+}
+
 CStringA CFBEView::TableStructuralSnapshot()
 {
 	try {
@@ -5019,9 +5052,17 @@ CStringA CFBEView::TableStructuralSnapshot()
 		CStringA snapshot; snapshot.Format("rows=%ld;columns=%ld;", static_cast<long>(grid.rows.size()), grid.columns);
 		for (size_t index = 0; index < grid.cells.size(); ++index) {
 			const LogicalTableCell& cell = grid.cells[index];
-			CStringA entry; entry.Format("c%u:%S,%ld,%ld,%ld,%ld,%ld,%ld;", static_cast<unsigned>(index),
-				(const wchar_t*)cell.element->tagName, cell.sourceRow, cell.startColumn, cell.colspan, cell.rowspan,
-				GetTableSpan(cell.element, L"fbcolspan", L"colspan"), GetTableSpan(cell.element, L"fbrowspan", L"rowspan"));
+			CString id(AU::GetAttrCS(cell.element, L"id")), style(AU::GetAttrCS(cell.element, L"style")), fbstyle(AU::GetAttrCS(cell.element, L"fbstyle"));
+			CString colspan(AU::GetAttrCS(cell.element, L"colspan")), fbcolspan(AU::GetAttrCS(cell.element, L"fbcolspan"));
+			CString rowspan(AU::GetAttrCS(cell.element, L"rowspan")), fbrowspan(AU::GetAttrCS(cell.element, L"fbrowspan"));
+			CString align(AU::GetAttrCS(cell.element, L"align")), fbalign(AU::GetAttrCS(cell.element, L"fbalign"));
+			CString valign(AU::GetAttrCS(cell.element, L"valign")), fbvalign(AU::GetAttrCS(cell.element, L"fbvalign"));
+			_bstr_t innerHtml(cell.element->innerHTML);
+			CStringA entry; entry.Format("c%u:id=%S,tag=%S,row=%ld,column=%ld,logical-colspan=%ld,logical-rowspan=%ld,html=%08lX,style=%S,fbstyle=%S,colspan=%S,fbcolspan=%S,rowspan=%S,fbrowspan=%S,align=%S,fbalign=%S,valign=%S,fbvalign=%S;", static_cast<unsigned>(index),
+				(const wchar_t*)id, (const wchar_t*)cell.element->tagName, cell.sourceRow, cell.startColumn, cell.colspan, cell.rowspan,
+				HashNormalizedTableHtml(CString((const wchar_t*)innerHtml)), (const wchar_t*)style, (const wchar_t*)fbstyle,
+				(const wchar_t*)colspan, (const wchar_t*)fbcolspan, (const wchar_t*)rowspan, (const wchar_t*)fbrowspan,
+				(const wchar_t*)align, (const wchar_t*)fbalign, (const wchar_t*)valign, (const wchar_t*)fbvalign);
 			snapshot += entry;
 		}
 		for (long row = 0; row < static_cast<long>(grid.rows.size()); ++row) for (long column = 0; column < grid.columns; ++column) {

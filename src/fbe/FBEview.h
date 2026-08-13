@@ -628,6 +628,7 @@ public:
 	CStringA TableStructuralSnapshot();
 	static void ResetTableGridBuildCountForTest();
 	static long TableGridBuildCountForTest();
+	bool SelectTableLogicalRangeForTest(long firstRow, long firstColumn, long lastRow, long lastColumn);
   MSHTML::IHTMLElementPtr   SelectionsStyleT();
   MSHTML::IHTMLElementPtr	SelectionsStyleTB(_bstr_t& style);
   MSHTML::IHTMLElementPtr   SelectionsStyle();
