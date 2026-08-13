@@ -6,6 +6,7 @@
 #include "Settings.h"
 #include "utils.h"
 #include "StartupTrace.h"
+#include "BinaryFileSave.h"
 
 inline bool IsDiagnosticFaultInjectionEnabled(const wchar_t* point)
 {
@@ -230,7 +231,9 @@ public:
 	}
 
 	STDMETHOD(SaveBinary)(BSTR path, BSTR data, BOOL prompt, BOOL* ret)
-	{	
+	{
+		if (!ret)
+			return E_POINTER;
 		INT_PTR modalResult = IDOK;
 		*ret = false;
 		CString file_name = CString(path);
@@ -257,17 +260,16 @@ public:
 
 		if (modalResult == IDOK)
 		{
-			int len = SysStringByteLen(data);
-			void* buf = (void*)data;
-			HANDLE file = CreateFile(file_name, GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-			if(INVALID_HANDLE_VALUE == file)
+			const DWORD byteCount = SysStringByteLen(data);
+			DWORD error = ERROR_SUCCESS;
+			if (BinaryFileSave::WriteAtomically(file_name, data, byteCount, &error))
+				*ret = true;
+			else
 			{
-				return S_OK;
+				CString message;
+				message.Format(L"SaveBinary failed (error %lu)", error);
+				StartupTrace::Error(L"binary-save", L"B510", message);
 			}
-			DWORD writen = 0;
-			WriteFile(file, buf, len, &writen, 0);
-			CloseHandle(file);
-			*ret = true;
 		}
 		return S_OK;
 	}

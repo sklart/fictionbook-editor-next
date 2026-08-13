@@ -14,6 +14,8 @@
 #include "resource.h"
 #include "Settings.h"
 #include "CFileDialogEx.h"
+#include "StartupTrace.h"
+#include "BinaryFileSave.h"
 
 extern CSettings _Settings;
 
@@ -491,25 +493,29 @@ public:
 		imgSaveDlg.m_ofn.lpstrFilter = L"JPEG files (*.jpg)\0*.jpg\0PNG files (*.png)\0*.png\0All files (*.*)\0*.*\0\0";
 		imgSaveDlg.m_ofn.nFilterIndex = 0;
 		imgSaveDlg.m_ofn.lpstrDefExt = L"jpg";
+		imgSaveDlg.m_ofn.Flags |= OFN_OVERWRITEPROMPT;
 
 		if(imgSaveDlg.DoModal(m_hWnd) == IDOK)
 		{
-			HANDLE imgFile = ::CreateFile(	imgSaveDlg.m_szFileName,
-											GENERIC_WRITE,
-											NULL,
-											NULL,
-											CREATE_ALWAYS,
-											FILE_ATTRIBUTE_NORMAL,
-											NULL);
-			long elnum = 0;
-			void* pData;
-			::SafeArrayPtrOfIndex(data.parray, &elnum, &pData);
-			long size = 0;
-			::SafeArrayGetUBound(data.parray, 1, &size);
-			DWORD written;
-			::WriteFile(imgFile, pData, size, &written, NULL);
-
-			CloseHandle(imgFile);
+			long lowerBound = 0, upperBound = -1;
+			void* bytes = NULL;
+			if ((data.vt & VT_ARRAY) && data.parray != NULL &&
+				::SafeArrayGetLBound(data.parray, 1, &lowerBound) == S_OK &&
+				::SafeArrayGetUBound(data.parray, 1, &upperBound) == S_OK &&
+				upperBound >= lowerBound && ::SafeArrayAccessData(data.parray, &bytes) == S_OK)
+			{
+				const DWORD byteCount = static_cast<DWORD>(upperBound - lowerBound + 1);
+				DWORD error = ERROR_SUCCESS;
+				if (!BinaryFileSave::WriteAtomically(imgSaveDlg.m_szFileName, bytes, byteCount, &error))
+				{
+					CString message;
+					message.Format(L"OnSaveImageAs failed (error %lu)", error);
+					StartupTrace::Error(L"binary-save", L"B511", message);
+				}
+				::SafeArrayUnaccessData(data.parray);
+			}
+			else
+				StartupTrace::Error(L"binary-save", L"B512", L"OnSaveImageAs received invalid binary data");
 		}
 
 		return 0;
