@@ -3058,6 +3058,19 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			BOOL handled = FALSE; (m_doc->m_body.*operations[index].handler)(0, 0, m_doc->m_body, handled);
 			const long gridBuildCalls = CFBEView::TableGridBuildCountForTest();
 			phase.Format("%s-after", operations[index].name); appendStructuralPhase(phase, gridBuildCalls);
+			wchar_t secondOperation[64] = {};
+			const DWORD secondOperationLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_SECOND_OPERATION", secondOperation, _countof(secondOperation));
+			if (secondOperationLength && secondOperationLength < _countof(secondOperation)) {
+				for (size_t secondIndex = 0; secondIndex < _countof(operations); ++secondIndex) {
+					if (_stricmp((LPCSTR)CStringA(secondOperation), operations[secondIndex].name) != 0) continue;
+					if (!selectConfiguredCells(operations[secondIndex].bulk, operations[secondIndex].selectHeaders)) { output.Close(); ::PostQuitMessage(1); return 0; }
+					phase.Format("%s-second-before", operations[secondIndex].name); appendStructuralPhase(phase);
+					CFBEView::ResetTableGridBuildCountForTest();
+					(m_doc->m_body.*operations[secondIndex].handler)(0, 0, m_doc->m_body, handled);
+					phase.Format("%s-second-after", operations[secondIndex].name); appendStructuralPhase(phase, CFBEView::TableGridBuildCountForTest());
+					break;
+				}
+			}
 			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 			phase.Format("%s-undo", operations[index].name); appendStructuralPhase(phase);
 			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
