@@ -265,8 +265,20 @@ static void SetTableSpan(const MSHTML::IHTMLElementPtr& cell, const wchar_t* fbN
 		cell->setAttribute(htmlName, attributeValue, 0);
 	}
 }
+static long g_tableGridBuildCount = 0;
+
+static bool IsTableGridInstrumentationEnabled()
+{
+	static const bool enabled = []() -> bool {
+		wchar_t testMode[4] = {};
+		return ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1';
+	}();
+	return enabled;
+}
+
 static bool BuildLogicalTableGrid(const MSHTML::IHTMLElementPtr& table, LogicalTableGrid& grid)
 {
+	if (IsTableGridInstrumentationEnabled()) ++g_tableGridBuildCount;
 	if (!table) return false;
 	MSHTML::IHTMLElementCollectionPtr tableRows(MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR")); if (!tableRows) return false;
 	for (long rowIndex = 0; rowIndex < tableRows->length; ++rowIndex) {
@@ -4985,6 +4997,16 @@ BSTR CFBEView::PrepareDefaultId(const CString& filename){
 
 static bool GetSelectedTableCells(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& currentCell, std::vector<MSHTML::IHTMLElementPtr>& result);
 static bool ReplaceTableCells(MSHTML::IHTMLDocument2Ptr document, const std::vector<MSHTML::IHTMLElementPtr>& cells, const wchar_t* targetName);
+
+void CFBEView::ResetTableGridBuildCountForTest()
+{
+	if (IsTableGridInstrumentationEnabled()) g_tableGridBuildCount = 0;
+}
+
+long CFBEView::TableGridBuildCountForTest()
+{
+	return IsTableGridInstrumentationEnabled() ? g_tableGridBuildCount : -1;
+}
 
 CStringA CFBEView::TableStructuralSnapshot()
 {

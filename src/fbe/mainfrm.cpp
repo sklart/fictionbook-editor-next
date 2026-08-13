@@ -2992,7 +2992,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	if (IsFbeTestScenario(L"table-structural"))
 	{
 		const ULONGLONG start = ::GetTickCount64();
-		auto appendStructuralPhase = [&](const char* phase)
+		auto appendStructuralPhase = [&](const char* phase, long gridBuildCalls = -1)
 		{
 			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
 			MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
@@ -3000,8 +3000,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			MSHTML::IHTMLElementCollectionPtr td(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD") : MSHTML::IHTMLElementCollectionPtr());
 			MSHTML::IHTMLElementCollectionPtr th(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH") : MSHTML::IHTMLElementCollectionPtr());
 			CStringA row;
-			row.Format("%s\t%I64u\t%ld\t%ld\t%ld\t%ld\t%s\r\n", phase, ::GetTickCount64() - start,
-				tables ? tables->length : 0, rows ? rows->length : 0, td ? td->length : 0, th ? th->length : 0, (LPCSTR)m_doc->m_body.TableStructuralSnapshot());
+			row.Format("%s\t%I64u\t%ld\t%ld\t%ld\t%ld\t%ld\t%s\r\n", phase, ::GetTickCount64() - start,
+				tables ? tables->length : 0, rows ? rows->length : 0, td ? td->length : 0, th ? th->length : 0, gridBuildCalls, (LPCSTR)m_doc->m_body.TableStructuralSnapshot());
 			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
 		auto selectFirstCell = [&]() -> bool
@@ -3033,14 +3033,16 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			{ "delete-column", &CFBEView::OnTableDeleteColumn, false, false }, { "make-header", &CFBEView::OnTableMakeHeaderCells, true, false },
 			{ "make-normal", &CFBEView::OnTableMakeNormalCells, true, true }
 		};
-		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\tgrid_signature\r\n");
+		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\tgrid_build_calls\tgrid_signature\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
 		for (size_t index = 0; index < _countof(operations); ++index)
 		{
 			if (!(operations[index].bulk ? selectFirstTwoCells(operations[index].selectHeaders) : selectFirstCell())) { output.Close(); ::PostQuitMessage(1); return 0; }
 			CStringA phase; phase.Format("%s-before", operations[index].name); appendStructuralPhase(phase);
+			CFBEView::ResetTableGridBuildCountForTest();
 			BOOL handled = FALSE; (m_doc->m_body.*operations[index].handler)(0, 0, m_doc->m_body, handled);
-			phase.Format("%s-after", operations[index].name); appendStructuralPhase(phase);
+			const long gridBuildCalls = CFBEView::TableGridBuildCountForTest();
+			phase.Format("%s-after", operations[index].name); appendStructuralPhase(phase, gridBuildCalls);
 			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 			phase.Format("%s-undo", operations[index].name); appendStructuralPhase(phase);
 			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);

@@ -30,7 +30,9 @@ try {
         $before=$rows|Where-Object phase -eq "$operation-before"; $after=$rows|Where-Object phase -eq "$operation-after"; $undo=$rows|Where-Object phase -eq "$operation-undo"; $redo=$rows|Where-Object phase -eq "$operation-redo"
         if(@($before,$after,$undo,$redo).Count -ne 4) { throw "Неполный benchmark snapshot: $operation." }
         if([int64]$undo.elapsed_ms -lt [int64]$after.elapsed_ms -or [int64]$redo.elapsed_ms -lt [int64]$undo.elapsed_ms) { throw "Некорректная временная последовательность $operation." }
-        [pscustomobject]@{ Operation=$operation; Handler_ms=([int64]$after.elapsed_ms-[int64]$before.elapsed_ms); Undo_ms=([int64]$undo.elapsed_ms-[int64]$after.elapsed_ms); Redo_ms=([int64]$redo.elapsed_ms-[int64]$undo.elapsed_ms) }
+        if([int64]$after.grid_build_calls -lt 0) { throw "Не записано число BuildLogicalTableGrid для $operation." }
+        if($operation -in @('make-header','make-normal') -and [int64]$after.grid_build_calls -gt 4) { throw "Bulk $operation построил logical grid слишком много раз: $($after.grid_build_calls)." }
+        [pscustomobject]@{ Operation=$operation; Handler_ms=([int64]$after.elapsed_ms-[int64]$before.elapsed_ms); Undo_ms=([int64]$undo.elapsed_ms-[int64]$after.elapsed_ms); Redo_ms=([int64]$redo.elapsed_ms-[int64]$undo.elapsed_ms); GridBuildCalls=[int64]$after.grid_build_calls }
     })
     $measurements | Format-Table -AutoSize | Out-Host
     $complete=$rows|Where-Object phase -eq 'save-complete'
