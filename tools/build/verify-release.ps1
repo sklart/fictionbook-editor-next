@@ -95,6 +95,7 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-words-ownerdata-stress.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-selection-container-control-range.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Huge

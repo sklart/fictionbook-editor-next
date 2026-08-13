@@ -138,6 +138,7 @@ Assert-Contains $artifacts 'foreach ($name in @("ExportDOCXBatch.exe", "ExportEP
 Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verify-release.ps1"
 Assert-Contains $verifyRelease "[switch]`$SkipCommonChecks" "verify-release.ps1"
 Assert-Contains $verifyRelease "test-editor-runtime-fingerprint.ps1" "verify-release.ps1: behavioral editor-runtime fingerprint regression"
+Assert-Contains $verifyRelease "test-fbe-selection-container-control-range.ps1" "verify-release.ps1: MSHTML ControlRange selection regression"
 Assert-Contains $verifyRelease "test-image-codec-build-contract.ps1" "verify-release.ps1: image codec VS/CMake contract"
 Assert-Contains $verifyRelease "test-source-scintilla-modern-features.ps1" "verify-release.ps1: modern Scintilla Source contract"
 Assert-Contains $verifyRelease "test-fb2-source-autocomplete.ps1" "verify-release.ps1: behavioral FB2 autocomplete"

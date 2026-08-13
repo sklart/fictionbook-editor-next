@@ -49,5 +49,10 @@ foreach($marker in @('operation=SelectionContainer', 'HRESULT_NAME=', 'documentT
         throw "SelectionContainer diagnostics lack required context: $marker"
     }
 }
+foreach($marker in @('HResultName', 'S_OK', 'E_FAIL', 'E_NOINTERFACE', 'E_POINTER', 'E_INVALIDARG', 'E_UNEXPECTED', 'E_ACCESSDENIED', 'E_OUTOFMEMORY', 'unknown')) {
+    if($viewSource.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) {
+        throw "SelectionContainer diagnostics lack HRESULT symbolic name: $marker"
+    }
+}
 
 Write-Host 'MSHTML Control selection container path uses a safe selected-element query and diagnostic tracing.'

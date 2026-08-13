@@ -59,6 +59,19 @@ static bool IsParagraphElement(MSHTML::IHTMLElementPtr elem)
 	return (bool)elem && U::scmp(elem->tagName, L"P") == 0;
 }
 
+static const wchar_t* HResultName(HRESULT result)
+{
+	if (result == S_OK) return L"S_OK";
+	if (result == E_FAIL) return L"E_FAIL";
+	if (result == E_NOINTERFACE) return L"E_NOINTERFACE";
+	if (result == E_POINTER) return L"E_POINTER";
+	if (result == E_INVALIDARG) return L"E_INVALIDARG";
+	if (result == E_UNEXPECTED) return L"E_UNEXPECTED";
+	if (result == E_ACCESSDENIED) return L"E_ACCESSDENIED";
+	if (result == E_OUTOFMEMORY) return L"E_OUTOFMEMORY";
+	return L"unknown";
+}
+
 static void TraceSelectionContainerFailure(const wchar_t* comOperation, HRESULT result,
 	const wchar_t* selectionType, long controlLength = -1)
 {
@@ -66,7 +79,7 @@ static void TraceSelectionContainerFailure(const wchar_t* comOperation, HRESULT 
 	details.Format(L"component=MSHTML; operation=SelectionContainer; com-operation=%s; HRESULT=0x%08lX; HRESULT_NAME=%s; selection.type=%s; view=BODY; documentTree=%s; treeImages=%s",
 		comOperation,
 		static_cast<unsigned long>(result),
-		result == E_FAIL ? L"E_FAIL" : L"other",
+		HResultName(result),
 		selectionType,
 		_Settings.ViewDocumentTree() ? L"enabled" : L"disabled",
 		_Settings.GetDocTreeItemState(L"Image", true) ? L"enabled" : L"disabled");
