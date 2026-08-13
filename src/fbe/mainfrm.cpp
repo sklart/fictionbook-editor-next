@@ -6792,12 +6792,7 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
   CString validationError;
   ClearSourceValidationAnnotations();
   if (IsSourceActive())
-  {
-    if (IsFbdFile(m_doc->m_filename))
-      fv=m_doc->Validate(line,col);
-    else
-      fv=m_doc->SetXMLAndValidate(m_source,true,line,col,&validationError);// ?? ?????? Source
-  }
+    fv=m_doc->SetXMLAndValidate(m_source,true,line,col,&validationError);// ?? ?????? Source
   else
     fv=m_doc->Validate(line,col);						// ?? ?????? Body
   if (fv) {

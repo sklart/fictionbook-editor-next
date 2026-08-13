@@ -1285,17 +1285,57 @@ static bool IsPristineSyntheticFbdBody(MSHTML::IHTMLElementPtr body)
 {
 	if (!body || U::scmp(AU::GetAttrB(body, L"fbdsynthetic"), L"1") != 0)
 		return false;
-	MSHTML::IHTMLElementCollectionPtr sections(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
-	MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P"));
-	if (!sections || !paragraphs || sections->length != 2 || paragraphs->length != 2)
+	MSHTML::IHTMLElementCollectionPtr children(body->children);
+	if (!children || children->length != 2)
 		return false;
-	MSHTML::IHTMLElementPtr title(sections->item(_variant_t(0L), _variant_t()));
-	MSHTML::IHTMLElementPtr section(sections->item(_variant_t(1L), _variant_t()));
+	MSHTML::IHTMLElementPtr title(children->item(_variant_t(0L), _variant_t()));
+	MSHTML::IHTMLElementPtr section(children->item(_variant_t(1L), _variant_t()));
 	if (!title || !section || U::scmp(title->className, L"title") != 0 ||
-		U::scmp(section->className, L"section") != 0)
+		U::scmp(section->className, L"section") != 0 ||
+		U::scmp(title->tagName, L"DIV") != 0 || U::scmp(section->tagName, L"DIV") != 0)
 		return false;
-	_bstr_t text(body->innerText);
-	return text.length() == 0 || CString(static_cast<const wchar_t*>(text)).Trim().IsEmpty();
+	MSHTML::IHTMLElementCollectionPtr titleChildren(title->children);
+	MSHTML::IHTMLElementCollectionPtr sectionChildren(section->children);
+	if (!titleChildren || !sectionChildren || titleChildren->length != 1 || sectionChildren->length != 1)
+		return false;
+	MSHTML::IHTMLElementPtr titleParagraph(titleChildren->item(_variant_t(0L), _variant_t()));
+	MSHTML::IHTMLElementPtr sectionParagraph(sectionChildren->item(_variant_t(0L), _variant_t()));
+	if (!titleParagraph || !sectionParagraph || U::scmp(titleParagraph->tagName, L"P") != 0 ||
+		U::scmp(sectionParagraph->tagName, L"P") != 0)
+		return false;
+	// The placeholder consists of exactly two DIVs and two empty P elements.
+	// Any inline image/formatting/table/custom element adds another descendant.
+	MSHTML::IHTMLElementCollectionPtr descendants(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"*"));
+	if (!descendants || descendants->length != 4)
+		return false;
+	CString bodyText((const wchar_t*)_bstr_t(body->innerText));
+	CString titleHtml((const wchar_t*)_bstr_t(titleParagraph->innerHTML));
+	CString sectionHtml((const wchar_t*)_bstr_t(sectionParagraph->innerHTML));
+	bodyText.Trim(); titleHtml.Trim(); sectionHtml.Trim();
+	auto hasAttribute = [](MSHTML::IHTMLElementPtr element, const wchar_t* name) {
+		return AU::GetAttrB(element, name).length() != 0;
+	};
+	return bodyText.IsEmpty() && titleHtml.IsEmpty() && sectionHtml.IsEmpty() &&
+		!hasAttribute(title, L"id") && !hasAttribute(section, L"id") &&
+		!hasAttribute(title, L"style") && !hasAttribute(section, L"style") &&
+		!hasAttribute(titleParagraph, L"id") && !hasAttribute(sectionParagraph, L"id") &&
+		!hasAttribute(titleParagraph, L"style") && !hasAttribute(sectionParagraph, L"style");
+}
+
+static bool HasMeaningfulFb2BodyContent(MSXML2::IXMLDOMElementPtr body)
+{
+	if (!body)
+		return false;
+	MSXML2::IXMLDOMNodeListPtr children(body->childNodes);
+	if (!children)
+		return false;
+	for (long index = 0; index < children->length; ++index)
+	{
+		MSXML2::IXMLDOMNodePtr child(children->item[index]);
+		if (child && child->nodeType == NODE_ELEMENT)
+			return true;
+	}
+	return false;
 }
 
 static void EnsureMinimalFb2Body(MSXML2::IXMLDOMDocument2Ptr doc)
@@ -1309,7 +1349,7 @@ static void EnsureMinimalFb2Body(MSXML2::IXMLDOMDocument2Ptr doc)
 		body = doc->createNode(_variant_t(1L), L"body", FBNS);
 		doc->documentElement->appendChild(body);
 	}
-	if (body->hasChildNodes())
+	if (HasMeaningfulFb2BodyContent(body))
 		return;
 	MSXML2::IXMLDOMElementPtr section = doc->createNode(_variant_t(1L), L"section", FBNS);
 	MSXML2::IXMLDOMElementPtr title = doc->createNode(_variant_t(1L), L"title", FBNS);
@@ -1389,6 +1429,21 @@ public:
     return E_FAIL;
   }
 };
+
+static bool ShouldUseFb2SchemaValidation(FictionBookFileType type)
+{
+	return type != FictionBookFileType::Fbd;
+}
+
+static void ConfigureFictionBookSaxReader(MSXML2::ISAXXMLReaderPtr reader,
+	FictionBookFileType type, MSXML2::IXMLDOMSchemaCollection2Ptr& schemas)
+{
+	CheckError(schemas.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
+	schemas->add(FBNS, (const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
+	reader->putFeature(L"schema-validation", ShouldUseFb2SchemaValidation(type) ? VARIANT_TRUE : VARIANT_FALSE);
+	reader->putProperty(L"schemas", schemas.GetInterfacePtr());
+	reader->putFeature(L"exhaustive-errors", VARIANT_TRUE);
+}
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
 	FictionBookFileType targetType) {
@@ -1742,23 +1797,13 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		filename.IsEmpty() ? 0 : 1);
 	StartupTrace::Event(L"document", L"D200", trace);
   try {
-    // create a schema collection
     MSXML2::IXMLDOMSchemaCollection2Ptr	scol;
-    CheckError(scol.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
-
-    // load fictionbook schema
-    scol->add(FBNS,(const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
 
     // create a SAX reader
     MSXML2::ISAXXMLReaderPtr	  rdr;
     CheckError(rdr.CreateInstance(L"Msxml2.SAXXMLReader.6.0"));
 
-    // attach a schema
-    // An FBD file intentionally contains description data only, which is not a
-    // complete FB2 document and therefore must not be checked against the FB2 XSD.
-    rdr->putFeature(L"schema-validation", targetType == FictionBookFileType::Fbd ? VARIANT_FALSE : VARIANT_TRUE);
-    rdr->putProperty(L"schemas",scol.GetInterfacePtr());
-    rdr->putFeature(L"exhaustive-errors",VARIANT_TRUE);
+    ConfigureFictionBookSaxReader(rdr, targetType, scol);
 
     // create an error handler
     CComObject<SAXErrorHandler>	  *ehp;
@@ -2397,21 +2442,14 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 
   // validate it first
   try {
-    // create a schema collection
+    const FictionBookFileType fileType = ResolveFictionBookTargetType(CString(), m_filename);
     MSXML2::IXMLDOMSchemaCollection2Ptr	scol;
-    CheckError(scol.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
-
-    // load fictionbook schema
-    scol->add(FBNS,(const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
 
     // create a SAX reader
     MSXML2::ISAXXMLReaderPtr	  rdr;
     CheckError(rdr.CreateInstance(L"Msxml2.SAXXMLReader.6.0"));
 
-    // attach a schema
-    rdr->putFeature(L"schema-validation",VARIANT_TRUE);
-    rdr->putProperty(L"schemas",scol.GetInterfacePtr());
-    rdr->putFeature(L"exhaustive-errors",VARIANT_TRUE);
+    ConfigureFictionBookSaxReader(rdr, fileType, scol);
 
     // create an error handler
     CComObject<SAXErrorHandler>	  *ehp;
@@ -2486,11 +2524,13 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
       return false;
     }
 
-    if (fValidateOnly)
+	if (fValidateOnly)
 	{
-		wchar_t buf[MAX_LOAD_STRING + 1];
-		FbeLoadString(_Module.GetResourceInstance(), IDS_SB_NO_ERR, buf, MAX_LOAD_STRING);
-		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)buf);
+		CString status = fileType == FictionBookFileType::Fbd
+			? FbeLoadRuntimeStringByKey(L"fbe.status.fbd.validation_not_applicable",
+				L"FBD description is well-formed; FB2 schema validation does not apply.")
+			: FbeLoadRuntimeString(IDS_SB_NO_ERR);
+		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)(const wchar_t*)status);
 		::MessageBeep(MB_OK);
 		return true;
     }
@@ -2671,20 +2711,14 @@ public:
 
 bool Doc::TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr* xml)
 {
+	const FictionBookFileType fileType = ResolveFictionBookTargetType(CString(), m_filename);
 	MSXML2::IXMLDOMSchemaCollection2Ptr	scol;
-    CheckError(scol.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
-
-    // load fictionbook schema
-	scol->add(FBNS,(const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
 
     // create a SAX reader
     MSXML2::ISAXXMLReaderPtr	  rdr;
     CheckError(rdr.CreateInstance(L"Msxml2.SAXXMLReader.6.0"));
 
-    // attach a schema
-    rdr->putFeature(L"schema-validation",VARIANT_TRUE);
-    rdr->putProperty(L"schemas",scol.GetInterfacePtr());
-    rdr->putFeature(L"exhaustive-errors",VARIANT_TRUE);
+    ConfigureFictionBookSaxReader(rdr, fileType, scol);
 
     // create an error handler
     CComObject<SAXErrorHandler>	  *ehp;
