@@ -2940,13 +2940,13 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	return 0;
 }
 
-static bool IsTableRoundTripTestScenario()
+static bool IsFbeTestScenario(const wchar_t* expectedScenario)
 {
 	wchar_t testMode[4] = {}, scenario[32] = {};
 	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
 	const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
 	return testModeLength == 1 && testMode[0] == L'1' &&
-		scenarioLength == wcslen(L"table-roundtrip") && wcscmp(scenario, L"table-roundtrip") == 0;
+		scenarioLength == wcslen(expectedScenario) && wcscmp(scenario, expectedScenario) == 0;
 }
 
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
@@ -2954,7 +2954,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	CAtlFile output;
 	if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))
 		return 0;
-	if (IsTableRoundTripTestScenario())
+	if (IsFbeTestScenario(L"table-roundtrip"))
 	{
 		const ULONGLONG start = ::GetTickCount64();
 		auto appendTablePhase = [&](const char* phase)
@@ -2987,6 +2987,29 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		appendTablePhase("save-1-complete");
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"binary-roundtrip"))
+	{
+		const ULONGLONG start = ::GetTickCount64();
+		auto appendBinaryPhase = [&](const char* phase)
+		{
+			const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+			CStringA row;
+			row.Format("%s\t%I64u\t%I64u\t%I64u\r\n", phase, ::GetTickCount64() - start,
+				static_cast<unsigned __int64>(memory.privateBytes), static_cast<unsigned __int64>(memory.workingSetBytes));
+			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+		};
+		CStringA header("phase\telapsed_ms\tprivate_bytes\tworking_set_bytes\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
+		appendBinaryPhase("open-complete");
+		appendBinaryPhase("save-start");
+		if (!m_doc->Save())
+		{
+			appendBinaryPhase("save-failed;hr=0x80004005;operation=Save");
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		appendBinaryPhase("save-complete");
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 

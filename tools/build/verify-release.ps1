@@ -103,6 +103,7 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-large-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-image-import-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-image-codec-build-contract.ps1")
 $imageImportTestArguments = @{ Configuration = $Configuration }
