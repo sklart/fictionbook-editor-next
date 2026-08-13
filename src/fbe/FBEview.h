@@ -626,6 +626,8 @@ public:
   MSHTML::IHTMLElementPtr   SelectionStructTable();
 	MSHTML::IHTMLElementPtr   SelectionStructTableCon();
 	CStringA TableStructuralSnapshot();
+	static void ResetTableGridBuildCountForTest();
+	static long TableGridBuildCountForTest();
   MSHTML::IHTMLElementPtr   SelectionsStyleT();
   MSHTML::IHTMLElementPtr	SelectionsStyleTB(_bstr_t& style);
   MSHTML::IHTMLElementPtr   SelectionsStyle();
