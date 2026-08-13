@@ -5,15 +5,23 @@
 
 [CmdletBinding()]
 param(
-    [string]$PlatformToolset
+    [string]$PlatformToolset,
+    [string]$HandlerDirectory
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-& (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
-& (Join-Path $repoRoot 'tools\build\build-archhandler.ps1') -PlatformToolset $PlatformToolset
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-$handlerDir = Join-Path $repoRoot 'out\archhandler\Win32\Release'
+if ($HandlerDirectory) {
+    $handlerDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($HandlerDirectory)
+    foreach ($name in @('ZipHandler.exe', 'RarHandler.exe')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $handlerDir $name) -PathType Leaf)) { throw "Не найден prepared ArchHandler artifact: $(Join-Path $handlerDir $name)" }
+    }
+} else {
+    & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
+    & (Join-Path $repoRoot 'tools\build\build-archhandler.ps1') -PlatformToolset $PlatformToolset
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $handlerDir = Join-Path $repoRoot 'out\archhandler\Win32\Release'
+}
 
 $testDir = Join-Path $repoRoot 'out\tests\archhandler-argv'
 New-Item -ItemType Directory -Force -Path $testDir | Out-Null

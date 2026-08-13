@@ -9,6 +9,8 @@ param(
 
     [string]$BatchOutputDirectory,
 
+    [string]$ArchHandlerOutputDirectory,
+
     [switch]$SkipUpdateManifest,
 
     # Исходники, словари и общие статические контракты проверяются один раз
@@ -106,7 +108,9 @@ if (-not $SkipCommonChecks) {
 $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
 & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") @imageImportTestArguments
-& (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") -PlatformToolset $PlatformToolset
+$archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
+if ($ArchHandlerOutputDirectory) { $archHandlerTestArguments.HandlerDirectory = $ArchHandlerOutputDirectory }
+& (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments
 & (Join-Path $repoRoot "tools\tests\test-fb2-check-content-types-base64.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2recode-cp1251.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2recode-cancel.ps1")

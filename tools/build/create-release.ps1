@@ -160,6 +160,7 @@ $verifyReleaseArguments = @{
     CompatibilityTarget = $CompatibilityTarget
     SkipUpdateManifest = $true
     BatchOutputDirectory = $batchOutputDirectory
+    ArchHandlerOutputDirectory = $archHandlerOutputDirectory
 }
 if ($PlatformToolset) {
     $verifyReleaseArguments.PlatformToolset = $PlatformToolset
@@ -180,6 +181,13 @@ if (-not $SkipReleaseVerification) {
     -RequireX64ShellExtension `
     -SkipFbvVerbMuiBuild:$SkipFbvVerbMuiBuild
 & (Join-Path $PSScriptRoot "verify-package-stage.ps1") -StageDirectory $portableDir
+foreach ($name in @('ZipHandler.exe', 'RarHandler.exe')) {
+    $builtArtifact = Join-Path $archHandlerOutputDirectory $name
+    $packagedArtifact = Join-Path $portableDir "Utilities\ArchHandler\$name"
+    if ((Get-FileHash -LiteralPath $builtArtifact -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $packagedArtifact -Algorithm SHA256).Hash) {
+        throw "Упакованный ArchHandler не совпадает с проверенным artifact: $name"
+    }
+}
 
 if ((Test-Path -LiteralPath $artifactsDir) -and -not $PreserveArtifacts) {
     try {
