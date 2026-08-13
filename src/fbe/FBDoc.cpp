@@ -1344,6 +1344,16 @@ public:
 };
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries) {
+	const bool profileTableSerialization = StartupTrace::Enabled();
+	const ULONGLONG profileStarted = profileTableSerialization ? ::GetTickCount64() : 0;
+	auto markTableSerializationPhase = [&](const wchar_t* phase)
+	{
+		if (!profileTableSerialization) return;
+		CString message;
+		message.Format(L"CreateDOM phase=%s; elapsed-ms=%I64u", phase, ::GetTickCount64() - profileStarted);
+		StartupTrace::Event(L"table-profile", L"T300", message);
+	};
+	markTableSerializationPhase(L"start");
 
   // Keep the save transaction fail-closed if normalization or serialization
   // loses a native visual table.  User edits happen before this transaction,
@@ -1423,11 +1433,15 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     return result;
   };
 
+  markTableSerializationPhase(L"native-before-normalize-start");
   const TableSnapshot tablesBeforeNormalize = SnapshotNativeTables(m_body.Document()->body);
+  markTableSerializationPhase(L"native-before-normalize-complete");
 
   // normalize body first
+  markTableSerializationPhase(L"normalize-start");
   _EDMnr.CleanUpAll();
    m_body.Normalize(m_body.Document()->body);
+  markTableSerializationPhase(L"normalize-complete");
 
   // Source/Body switches are part of the normal editor transaction. This
   // fault point models only the destructive Save serialization path.
@@ -1454,7 +1468,9 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     }
   }
 
+  markTableSerializationPhase(L"native-after-normalize-start");
   const TableSnapshot tablesAfterNormalize = SnapshotNativeTables(m_body.Document()->body);
+  markTableSerializationPhase(L"native-after-normalize-complete");
   if (!tablesBeforeNormalize.Equals(tablesAfterNormalize))
   {
     m_serialization_unsafe = true;
@@ -1521,9 +1537,13 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   CheckError(body.InvokeN(L"GetDesc",&args[0],3));
 
   // fetch body elements
+  markTableSerializationPhase(L"get-bodies-start");
   GetBodies(fbw_body,ndoc);
+  markTableSerializationPhase(L"get-bodies-complete");
 
+  markTableSerializationPhase(L"serialized-snapshot-start");
   const TableSnapshot serializedTables = SnapshotSerializedTables(ndoc);
+  markTableSerializationPhase(L"serialized-snapshot-complete");
   if (!tablesAfterNormalize.Equals(serializedTables))
   {
     m_serialization_unsafe = true;
@@ -1532,13 +1552,16 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   }
 
   // fetch binaries
+  markTableSerializationPhase(L"get-binaries-start");
   CheckError(body.Invoke1(L"GetBinaries",&args[2]));
+  markTableSerializationPhase(L"get-binaries-complete");
 
 	// Уплотнение base64 нужно только для записи файла. Переход в Source,
 	// экспорт и скриптовый API должны получать DOM без этой необязательной
 	// операции, чтобы вложение не могло сорвать работу редактора.
 	if (compactBinaries)
 		CompactBinaryTextContent(ndoc);
+	markTableSerializationPhase(L"complete");
 
   Indent(root,ndoc,0);
   return ndoc;
