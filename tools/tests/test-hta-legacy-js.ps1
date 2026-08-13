@@ -17,6 +17,10 @@ foreach($relativePath in $paths) {
 }
 $parser = Join-Path $PSScriptRoot 'hta-legacy-parse.js'
 if(-not (Test-Path -LiteralPath $parser -PathType Leaf)) { throw "Не найден legacy JScript parser: $parser" }
+$parserSource = Get-Content -Raw -LiteralPath $parser
+foreach($contract in @('while ((match = scriptPattern.exec(text)) !== null)', 'count++', 'if (!count)')) {
+    if(-not $parserSource.Contains($contract)) { throw "Парсер должен компилировать все embedded script blocks: $contract" }
+}
 $htaPaths = @($paths | ForEach-Object { Join-Path $repoRoot $_ })
 & cscript.exe //nologo $parser @htaPaths
 if($LASTEXITCODE -ne 0) { throw "Legacy JScript parse завершился с кодом $LASTEXITCODE." }

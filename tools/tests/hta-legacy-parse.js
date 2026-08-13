@@ -8,11 +8,14 @@
         stream = fso.OpenTextFile(path, 1);
         text = stream.ReadAll();
         stream.Close();
-        match = /<script\b[^>]*>([\s\S]*?)<\/script>/ig.exec(text);
-        if (!match) { WScript.Echo("В HTA нет embedded script: " + path); WScript.Quit(3); }
-        // Function construction is compile-only.  The local bindings permit
-        // ordinary HTA top-level assignments (for example window.onload).
-        new Function("window", "document", "alert", match[1]);
+        var scriptPattern = /<script\b[^>]*>([\s\S]*?)<\/script>/ig, count = 0;
+        while ((match = scriptPattern.exec(text)) !== null) {
+            // Function construction is compile-only.  The local bindings permit
+            // ordinary HTA top-level assignments (for example window.onload).
+            new Function("window", "document", "alert", match[1]);
+            count++;
+        }
+        if (!count) { WScript.Echo("В HTA нет embedded script: " + path); WScript.Quit(3); }
     }
     WScript.Echo("Legacy JScript parse passed.");
 }());
