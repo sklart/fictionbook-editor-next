@@ -7,6 +7,7 @@ foreach ($pattern in @('validateSavedFictionBook', 'XMLSchemaCache\.6\.0', 'Fict
     if ($source -notmatch $pattern) { throw "Не найдена обязательная защита Save Sections: $pattern" }
 }
 if ($source -match 'DeleteFile\(pathForSaving') { throw 'Целевой файл нельзя удалять до успешной замены.' }
+if ($source -notmatch 'while \(elementList\.hasChildNodes\(\)\)') { throw 'Список разделов должен вызывать hasChildNodes() перед удалением узла.' }
 
 function Assert-Fb2Schema([string]$Path) {
     $cache = New-Object -ComObject Msxml2.XMLSchemaCache.6.0

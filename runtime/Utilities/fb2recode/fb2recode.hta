@@ -7,7 +7,8 @@
  <script>
  var cancelled=false, running=false, reportDiv;
  function getFolder(){var shell=new ActiveXObject("Shell.Application"),f=shell.BrowseForFolder(0,"Выберите папку",16,0);return f?f.Items().Item().Path:"";}
- function getFile(){var shell=new ActiveXObject("UserAccounts.CommonDialog");shell.Filter="FB2 files|*.fb2";shell.FilterIndex=1;if(shell.ShowOpen())return shell.FileName;return "";}
+ function getFile(){var picker=document.getElementById("filepicker");picker.value="";picker.click();}
+ function setFile(){var picker=document.getElementById("filepicker");if(picker.value)document.getElementById("path").value=picker.value;}
  function line(text,kind){var d=document.createElement("div");d.className=kind||"";d.appendChild(document.createTextNode(text));reportDiv.appendChild(d);reportDiv.scrollTop=reportDiv.scrollHeight;}
  function clearReport(){while(reportDiv.firstChild)reportDiv.removeChild(reportDiv.firstChild);}
  function value(id){return document.getElementById(id).value;}
@@ -20,7 +21,8 @@
  </script>
 </head>
 <body onload="init()"><h2>FB2 Recode</h2>
- <div class="row">Файл или папка: <input id="path" size="55"> <button onclick="document.getElementById('path').value=getFile()">Файл…</button> <button onclick="chooseFolder()">Папка…</button></div>
+ <input id="filepicker" type="file" accept=".fb2" style="position:absolute;left:-10000px;top:-10000px" onchange="setFile()">
+ <div class="row">Файл или папка: <input id="path" size="55"> <button onclick="getFile()">Файл…</button> <button onclick="chooseFolder()">Папка…</button></div>
  <div class="row">Кодировка: <select id="encoding"><option value="utf-8">UTF-8</option><option value="windows-1251">Windows-1251</option></select> <label><input id="recursive" type="checkbox" checked> рекурсивно</label></div>
  <div class="row"><label><input id="backup" type="checkbox" checked> создавать .bak</label> <label><input id="overwrite" type="checkbox"> заменять .bak</label> <label><input id="dryrun" type="checkbox"> только проверить</label> <label><input id="force" type="checkbox"> принудительно заменить непредставимые символы</label></div>
  <div class="row"><button id="start" onclick="process()">Перекодировать</button> <button id="cancel" disabled onclick="cancelled=true">Отменить отчёт</button> <button onclick="copyReport()">Копировать отчёт</button> <button onclick="saveReport()">Сохранить отчёт</button></div>

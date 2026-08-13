@@ -1615,7 +1615,7 @@ function applySettings() {
  }
  selectedElementsCnt=0;
  var elementList=document.getElementById("elementList");
- while (elementList.hasChildNodes) elementList.removeChild(elementList.firstChild);
+  while (elementList.hasChildNodes()) elementList.removeChild(elementList.firstChild);
  elementList.appendChild(table);
  document.getElementById("elementList").style.display="inline-block";
  document.getElementById("inAllInput").value=nCnt;
