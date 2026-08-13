@@ -1445,6 +1445,90 @@ static void ConfigureFictionBookSaxReader(MSXML2::ISAXXMLReaderPtr reader,
 	reader->putFeature(L"exhaustive-errors", VARIANT_TRUE);
 }
 
+static CString FbdStructureValidationMessage(const wchar_t* key, const wchar_t* fallback)
+{
+	return FbeLoadRuntimeStringByKey(key, fallback);
+}
+
+// FBD deliberately is not constrained by the full FB2 schema: description-only
+// documents are valid.  Still, accepting arbitrary well-formed XML here would
+// let a non-FictionBook document enter the FBD editor pipeline.
+static bool ValidateFbdDocumentStructure(MSXML2::IXMLDOMDocument2Ptr document,
+	CString* errorMessage = NULL)
+{
+	if (errorMessage)
+		errorMessage->Empty();
+	MSXML2::IXMLDOMElementPtr root = document ? document->GetdocumentElement() : NULL;
+	if (!root)
+	{
+		if (errorMessage) *errorMessage = FbdStructureValidationMessage(
+			L"fbe.validation.fbd.missing_root", L"FBD document has no root element.");
+		return false;
+	}
+
+	CString rootName;
+	if (root->baseName.length() > 0)
+		rootName = static_cast<const wchar_t*>(root->baseName);
+	else
+		rootName = static_cast<const wchar_t*>(root->nodeName);
+	if (rootName.Compare(L"FictionBook") != 0)
+	{
+		if (errorMessage) *errorMessage = FbdStructureValidationMessage(
+			L"fbe.validation.fbd.wrong_root", L"FBD root element must be FictionBook.");
+		return false;
+	}
+	if (CString(static_cast<const wchar_t*>(root->namespaceURI)).Compare(FBNS) != 0)
+	{
+		if (errorMessage) *errorMessage = FbdStructureValidationMessage(
+			L"fbe.validation.fbd.wrong_namespace", L"FictionBook namespace is invalid.");
+		return false;
+	}
+
+	long descriptions = 0;
+	MSXML2::IXMLDOMNodeListPtr children = root->childNodes;
+	if (children)
+	{
+		for (long index = 0; index < children->length; ++index)
+		{
+			MSXML2::IXMLDOMNodePtr child = children->item[index];
+			if (!child || child->nodeType != MSXML2::NODE_ELEMENT ||
+				CString(static_cast<const wchar_t*>(child->namespaceURI)).Compare(FBNS) != 0)
+				continue;
+			CString childName = child->baseName.length() > 0
+				? CString(static_cast<const wchar_t*>(child->baseName))
+				: CString(static_cast<const wchar_t*>(child->nodeName));
+			if (childName.Compare(L"description") == 0)
+				++descriptions;
+		}
+	}
+	if (descriptions == 0)
+	{
+		if (errorMessage) *errorMessage = FbdStructureValidationMessage(
+			L"fbe.validation.fbd.missing_description", L"FBD is missing the required description element.");
+		return false;
+	}
+	if (descriptions != 1)
+	{
+		if (errorMessage) *errorMessage = FbdStructureValidationMessage(
+			L"fbe.validation.fbd.duplicate_description", L"FBD must contain exactly one description element.");
+		return false;
+	}
+	return true;
+}
+
+static bool ReportFbdStructureValidationFailure(HWND frame, const CString& message,
+	int* errline = NULL, int* errcol = NULL, CString* errorMessage = NULL)
+{
+	if (errline) *errline = 1;
+	if (errcol) *errcol = 1;
+	if (errorMessage) *errorMessage = message;
+	::MessageBeep(MB_ICONERROR);
+	if (frame)
+		::SendMessage(frame, AU::WM_SETSTATUSTEXT, 0, (LPARAM)(const wchar_t*)message);
+	StartupTrace::Warning(L"document", L"D222", L"FBD structural validation failed");
+	return false;
+}
+
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
 	FictionBookFileType targetType) {
 	const bool profileTableSerialization = StartupTrace::Enabled();
@@ -1856,11 +1940,18 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
       return false;
     }
 
+	if (targetType == FictionBookFileType::Fbd)
+	{
+		CString structuralError;
+		if (!ValidateFbdDocumentStructure(ndoc, &structuralError))
+			return ReportFbdStructureValidationFailure(m_frame, structuralError, errline, errcol);
+	}
+
 	if (fValidateOnly)
 	{
 		CString status = targetType == FictionBookFileType::Fbd
 			? FbeLoadRuntimeStringByKey(L"fbe.status.fbd.validation_not_applicable",
-				L"FBD description is well-formed; FB2 schema validation does not apply.")
+				L"FBD structure is valid; full FB2 schema validation does not apply.")
 			: FbeLoadRuntimeString(IDS_SB_NO_ERR);
 		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)(const wchar_t *)status);
 		::MessageBeep(MB_OK);
@@ -2460,7 +2551,7 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
     // construct a document
     MSXML2::IXMLDOMDocument2Ptr	dom;
 
-    if (!fValidateOnly) {
+    if (!fValidateOnly || fileType == FictionBookFileType::Fbd) {
       dom=U::CreateDocument(true);
 
       // construct an xml writer
@@ -2524,11 +2615,18 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
       return false;
     }
 
+	if (fileType == FictionBookFileType::Fbd)
+	{
+		CString structuralError;
+		if (!ValidateFbdDocumentStructure(dom, &structuralError))
+			return ReportFbdStructureValidationFailure(m_frame, structuralError, &errline, &errcol, errorMessage);
+	}
+
 	if (fValidateOnly)
 	{
 		CString status = fileType == FictionBookFileType::Fbd
 			? FbeLoadRuntimeStringByKey(L"fbe.status.fbd.validation_not_applicable",
-				L"FBD description is well-formed; FB2 schema validation does not apply.")
+				L"FBD structure is valid; full FB2 schema validation does not apply.")
 			: FbeLoadRuntimeString(IDS_SB_NO_ERR);
 		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)(const wchar_t*)status);
 		::MessageBeep(MB_OK);
@@ -2765,6 +2863,13 @@ bool Doc::TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr* xml)
 	  }
       return false;
     }
+
+	if (fileType == FictionBookFileType::Fbd)
+	{
+		CString structuralError;
+		if (!ValidateFbdDocumentStructure(*xml, &structuralError))
+			return ReportFbdStructureValidationFailure(m_frame, structuralError);
+	}
 
     // ok, it seems valid, put it into document then
     (*xml)->setProperty(L"SelectionLanguage",L"XPath");

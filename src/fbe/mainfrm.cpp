@@ -5905,6 +5905,15 @@ bool  CMainFrame::SourceToHTML()
 		
 		if(!m_doc->TextToXML(ustr, (MSXML2::IXMLDOMDocument2Ptr*)(&m_saved_xml)))
 		{
+			// TextToXML performs the FBD structural check.  Unlike generic XML
+			// syntax fallback, a structurally invalid FBD must never reach
+			// LoadFromDOM through XmlFromText.
+			if (IsFbdFile(m_doc->m_filename))
+			{
+				delete[] buffer;
+				SysFreeString(ustr);
+				return false;
+			}
 			CComDispatchDriver	body(m_doc->m_body.Script());
 			CComVariant		    args[1];
 			CComVariant		    ret;

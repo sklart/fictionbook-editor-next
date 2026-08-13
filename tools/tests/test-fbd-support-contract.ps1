@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path $PSScriptRoot)
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
 $document = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBDoc.cpp')
+$catalog = Get-Content -Raw -LiteralPath (Join-Path $root 'localization\app-ui\catalog.json') | ConvertFrom-Json
 $xsl = Get-Content -Raw -LiteralPath (Join-Path $root 'runtime\fb2.xsl')
 $installer = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging\nsis\Installer\MakeInstaller.nsi')
 $fixtures = Join-Path $root 'tools\tests\fixtures\fbd'
@@ -24,15 +25,41 @@ if(-not (Test-Path -LiteralPath $invalidFixture)) { throw 'Missing malformed FBD
 $invalidParsed = $true
 try { [xml](Get-Content -Raw -LiteralPath $invalidFixture) | Out-Null } catch { $invalidParsed = $false }
 if($invalidParsed) { throw 'invalid_xml.fbd must not parse.' }
+function Assert-StructurallyInvalidFbd([string]$Fixture, [string]$Reason) {
+  $path = Join-Path $fixtures $Fixture
+  if(-not (Test-Path -LiteralPath $path)) { throw "Missing structural-invalid FBD fixture: $Fixture" }
+  [xml]$xml = Get-Content -Raw -LiteralPath $path
+  $root = $xml.DocumentElement
+  $descriptionCount = @($root.ChildNodes | Where-Object {
+    $_.NodeType -eq [System.Xml.XmlNodeType]::Element -and $_.LocalName -eq 'description' -and $_.NamespaceURI -eq 'http://www.gribuser.ru/xml/fictionbook/2.0'
+  }).Count
+  $valid = $root -and $root.LocalName -eq 'FictionBook' -and
+    $root.NamespaceURI -eq 'http://www.gribuser.ru/xml/fictionbook/2.0' -and $descriptionCount -eq 1
+  if($valid) { throw "Structural-invalid FBD fixture accepted: $Fixture ($Reason)" }
+}
+Assert-StructurallyInvalidFbd 'wrong_root.fbd' 'wrong root'
+Assert-StructurallyInvalidFbd 'wrong_namespace.fbd' 'wrong namespace'
+Assert-StructurallyInvalidFbd 'missing_description.fbd' 'missing description'
+Assert-StructurallyInvalidFbd 'duplicate_description.fbd' 'duplicate description'
 if($mainFrame -notmatch '\*\.fb2;\*\.fbd') { throw 'Open dialog does not expose both FictionBook extensions.' }
 if($mainFrame -notmatch 'FictionBook Description \(\*\.fbd\)') { throw 'Save As does not expose the separate FBD type.' }
 if($mainFrame -notmatch 'dlg\.m_ofn\.nFilterIndex') { throw 'Save As filter selection does not control the target type.' }
 if($xsl -notmatch 'class="body" fbdsynthetic="1"') { throw 'Body-less FBD visual placeholder is not marked synthetic.' }
 if($mainFrame -notmatch 'if \(IsSourceActive\(\)\)\s*fv=m_doc->SetXMLAndValidate') { throw 'F8 source mode must validate current Scintilla text for FBD and FB2.' }
 if($mainFrame -match 'IsFbdFile\(m_doc->m_filename\)\s*\)\s*fv=m_doc->Validate') { throw 'F8 source mode must not validate serialized DOM for FBD.' }
+if($mainFrame -notmatch 'TextToXML[\s\S]{0,800}IsFbdFile\(m_doc->m_filename\)') { throw 'Source to Body must not fall back to XmlFromText after FBD structural validation fails.' }
 if($document -notmatch 'ConfigureFictionBookSaxReader\(rdr, targetType, scol\)' -or
 	$document -notmatch 'ConfigureFictionBookSaxReader\(rdr, fileType, scol\)') { throw 'XML validation policy is not shared by SaveToFile, source validation and TextToXML.' }
 if($document -notmatch 'ShouldUseFb2SchemaValidation' -or $document -notmatch 'type != FictionBookFileType::Fbd') { throw 'FBD must disable only FB2 schema validation.' }
+if($document -notmatch 'ValidateFbdDocumentStructure') { throw 'FBD structural validator is missing.' }
+if($document -notmatch 'rootName\.Compare\(L"FictionBook"\)' -or $document -notmatch 'root->namespaceURI' -or $document -notmatch 'descriptions != 1') { throw 'FBD structural validator must check root, namespace and exactly one description.' }
+if(@([regex]::Matches($document, 'ValidateFbdDocumentStructure\(')).Count -lt 4) { throw 'FBD structural validator must be used by SaveToFile, SetXMLAndValidate and TextToXML.' }
+if($document -notmatch '!fValidateOnly \|\| fileType == FictionBookFileType::Fbd') { throw 'FBD F8 validation must construct a DOM for structural validation.' }
+foreach($key in 'fbe.validation.fbd.missing_root', 'fbe.validation.fbd.wrong_root', 'fbe.validation.fbd.wrong_namespace', 'fbe.validation.fbd.missing_description', 'fbe.validation.fbd.duplicate_description') {
+  $entry = $catalog.seedStrings.PSObject.Properties[$key].Value
+  if($null -eq $entry -or [string]::IsNullOrWhiteSpace([string]$entry.translations.'en-US')) { throw "Missing runtime localization for FBD structural error: $key" }
+}
+if($catalog.seedStrings.'fbe.status.fbd.validation_not_applicable'.translations.'en-US' -notmatch 'structure is valid') { throw 'Successful FBD status must report structural validation.' }
 if($document -notmatch 'HasMeaningfulFb2BodyContent' -or $document -notmatch 'child->nodeType == NODE_ELEMENT') { throw 'FB2 body normalization must ignore whitespace-only nodes.' }
 if($document -notmatch 'descendants->length != 4') { throw 'Synthetic FBD body must be classified structurally.' }
 if($document -notmatch 'fbdsynthetic", 0') { throw 'Modified synthetic body must be promoted before serialization.' }
@@ -41,5 +68,5 @@ if($installer -notmatch 'FictionBook\.Description') { throw 'Installer does not 
 if($installer -match 'FictionBook\.Description\\shell\\Validate') { throw 'FBD must not receive the FB2 Validate shell verb.' }
 if(-not (Test-Path -LiteralPath $checklist)) { throw 'Missing FBD manual integration checklist.' }
 $manual = Get-Content -Raw -LiteralPath $checklist
-foreach($scenario in 'body-less FBD', 'FBD to FB2', 'FB2 to FBD', 'F8', 'association', 'Source', 'inline image', 'empty_body.fbd') { if($manual -notmatch [regex]::Escape($scenario)) { throw "Manual checklist misses scenario: $scenario" } }
+foreach($scenario in 'body-less FBD', 'FBD to FB2', 'FB2 to FBD', 'F8', 'association', 'Source', 'inline image', 'empty_body.fbd', 'wrong_root.fbd', 'wrong_namespace.fbd', 'missing_description.fbd', 'duplicate_description.fbd') { if($manual -notmatch [regex]::Escape($scenario)) { throw "Manual checklist misses scenario: $scenario" } }
 Write-Host 'FBD support contract passed.'

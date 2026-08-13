@@ -5612,18 +5612,58 @@
       "runtimeOnly": true,
       "component": "fbe.core",
       "translations": {
-        "en-US": "FBD description is well-formed; FB2 schema validation does not apply.",
-        "ru-RU": "Описание FBD корректно сформировано; проверка по схеме FB2 неприменима.",
-        "uk-UA": "Опис FBD коректно сформовано; перевірка за схемою FB2 не застосовується.",
-        "de-DE": "Die FBD-Beschreibung ist wohlgeformt; die FB2-Schemavalidierung ist nicht anwendbar.",
-        "fr-FR": "La description FBD est bien formée ; la validation du schéma FB2 ne s’applique pas.",
-        "es-ES": "La descripción FBD está bien formada; la validación del esquema FB2 no se aplica.",
-        "it-IT": "La descrizione FBD è ben formata; la convalida dello schema FB2 non si applica.",
-        "pl-PL": "Opis FBD jest poprawnie zbudowany; walidacja schematu FB2 nie ma zastosowania.",
-        "pt-PT": "A descrição FBD está bem formada; a validação do esquema FB2 não se aplica.",
-        "nl-NL": "De FBD-beschrijving is correct gevormd; FB2-schemavalidatie is niet van toepassing.",
-        "cs-CZ": "Popis FBD je správně vytvořen; ověření podle schématu FB2 se nepoužije.",
-        "bg-BG": "Описанието FBD е правилно оформено; проверката по схемата FB2 не е приложима."
+        "en-US": "FBD structure is valid; full FB2 schema validation does not apply.",
+        "ru-RU": "Структура FBD корректна; проверка по полной схеме FB2 неприменима.",
+        "uk-UA": "Структура FBD коректна; перевірка за повною схемою FB2 не застосовується.",
+        "de-DE": "Die FBD-Struktur ist gültig; die vollständige FB2-Schemavalidierung ist nicht anwendbar.",
+        "fr-FR": "La structure FBD est valide ; la validation complète du schéma FB2 ne s’applique pas.",
+        "es-ES": "La estructura FBD es válida; la validación completa del esquema FB2 no se aplica.",
+        "it-IT": "La struttura FBD è valida; la convalida completa dello schema FB2 non si applica.",
+        "pl-PL": "Struktura FBD jest prawidłowa; pełna walidacja schematu FB2 nie ma zastosowania.",
+        "pt-PT": "A estrutura FBD é válida; a validação completa do esquema FB2 não se aplica.",
+        "nl-NL": "De FBD-structuur is geldig; volledige FB2-schemavalidatie is niet van toepassing.",
+        "cs-CZ": "Struktura FBD je platná; úplné ověření schématu FB2 se nepoužije.",
+        "bg-BG": "Структурата FBD е валидна; пълната проверка по схемата FB2 не е приложима."
+      }
+    },
+    "fbe.validation.fbd.missing_root": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBD document has no root element.", "ru-RU": "В документе FBD отсутствует корневой элемент.", "uk-UA": "У документі FBD відсутній кореневий елемент.", "de-DE": "Das FBD-Dokument hat kein Stammelement.", "fr-FR": "Le document FBD n’a pas d’élément racine.", "es-ES": "El documento FBD no tiene elemento raíz.", "it-IT": "Il documento FBD non ha un elemento radice.", "pl-PL": "Dokument FBD nie ma elementu głównego.", "pt-PT": "O documento FBD não tem elemento raiz.", "nl-NL": "Het FBD-document heeft geen hoofdelement.", "cs-CZ": "Dokument FBD nemá kořenový prvek.", "bg-BG": "Документът FBD няма коренен елемент."
+      }
+    },
+    "fbe.validation.fbd.wrong_root": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBD root element must be FictionBook.", "ru-RU": "Корневой элемент FBD должен быть FictionBook.", "uk-UA": "Кореневим елементом FBD має бути FictionBook.", "de-DE": "Das FBD-Stammelement muss FictionBook sein.", "fr-FR": "L’élément racine FBD doit être FictionBook.", "es-ES": "El elemento raíz FBD debe ser FictionBook.", "it-IT": "L’elemento radice FBD deve essere FictionBook.", "pl-PL": "Element główny FBD musi być FictionBook.", "pt-PT": "O elemento raiz FBD tem de ser FictionBook.", "nl-NL": "Het FBD-hoofdelement moet FictionBook zijn.", "cs-CZ": "Kořenový prvek FBD musí být FictionBook.", "bg-BG": "Коренният елемент на FBD трябва да е FictionBook."
+      }
+    },
+    "fbe.validation.fbd.wrong_namespace": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FictionBook namespace is invalid.", "ru-RU": "Некорректное пространство имён FictionBook.", "uk-UA": "Некоректний простір імен FictionBook.", "de-DE": "Der FictionBook-Namespace ist ungültig.", "fr-FR": "L’espace de noms FictionBook n’est pas valide.", "es-ES": "El espacio de nombres FictionBook no es válido.", "it-IT": "Lo spazio dei nomi FictionBook non è valido.", "pl-PL": "Przestrzeń nazw FictionBook jest nieprawidłowa.", "pt-PT": "O espaço de nomes FictionBook é inválido.", "nl-NL": "De FictionBook-naamruimte is ongeldig.", "cs-CZ": "Obor názvů FictionBook není platný.", "bg-BG": "Пространството от имена FictionBook е невалидно."
+      }
+    },
+    "fbe.validation.fbd.missing_description": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBD is missing the required description element.", "ru-RU": "В FBD отсутствует обязательный элемент description.", "uk-UA": "У FBD відсутній обов’язковий елемент description.", "de-DE": "FBD fehlt das erforderliche Element description.", "fr-FR": "L’élément description obligatoire est absent du FBD.", "es-ES": "Falta el elemento description obligatorio en FBD.", "it-IT": "In FBD manca l’elemento description obbligatorio.", "pl-PL": "W FBD brakuje wymaganego elementu description.", "pt-PT": "Falta no FBD o elemento description obrigatório.", "nl-NL": "Het vereiste description-element ontbreekt in FBD.", "cs-CZ": "Ve FBD chybí povinný prvek description.", "bg-BG": "В FBD липсва задължителният елемент description."
+      }
+    },
+    "fbe.validation.fbd.duplicate_description": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBD must contain exactly one description element.", "ru-RU": "FBD должен содержать ровно один элемент description.", "uk-UA": "FBD має містити рівно один елемент description.", "de-DE": "FBD muss genau ein Element description enthalten.", "fr-FR": "Le FBD doit contenir exactement un élément description.", "es-ES": "FBD debe contener exactamente un elemento description.", "it-IT": "FBD deve contenere esattamente un elemento description.", "pl-PL": "FBD musi zawierać dokładnie jeden element description.", "pt-PT": "O FBD tem de conter exatamente um elemento description.", "nl-NL": "FBD moet precies één description-element bevatten.", "cs-CZ": "FBD musí obsahovat právě jeden prvek description.", "bg-BG": "FBD трябва да съдържа точно един елемент description."
       }
     },
     "fbe.binary_save.failed.caption": {

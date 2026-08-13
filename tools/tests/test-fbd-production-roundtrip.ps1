@@ -24,7 +24,7 @@ function Invoke-FbeBatch([string]$File, [string]$Report, [bool]$Save) {
 }
 
 try {
-    foreach ($fixtureName in 'description_only.fbd', 'with_cover.fbd') {
+    foreach ($fixtureName in 'description_only.fbd', 'with_cover.fbd', 'unicode_metadata.fbd') {
         $file = Join-Path $directory $fixtureName
         Copy-Item -LiteralPath (Join-Path $fixtures $fixtureName) -Destination $file
         Invoke-FbeBatch $file (Join-Path $directory ($fixtureName + '.save.tsv')) $true
@@ -36,6 +36,9 @@ try {
         }
         if ($fixtureName -eq 'with_cover.fbd' -and $text -notmatch 'cover\.jpg') {
             throw 'Production Save потерял ссылку на обложку FBD.'
+        }
+        if ($fixtureName -eq 'unicode_metadata.fbd' -and $text -notmatch 'Zoë|déjà vu') {
+            throw 'Production Save потерял Unicode metadata FBD.'
         }
     }
     Write-Host 'Production FBD Save -> reopen round-trip passed.'
