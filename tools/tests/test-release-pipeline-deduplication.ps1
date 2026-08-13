@@ -183,6 +183,8 @@ if ($commonStart -lt 0 -or $commonEnd -lt 0 -or $archHandlerTest -le $commonEnd)
 Assert-NotContains $fbeView "GetTestLogicalTableColumn" "FBEview.cpp: test-only column override в production handler"
 Assert-Contains $fbeView "DeleteTableLogicalColumnForTest" "FBEview.cpp: isolated test harness helper"
 Assert-Contains $fbeView "DeleteTableLogicalColumn(this, grid" "FBEview.cpp: общий алгоритм удаления logical column"
+Assert-NotContains $fbeView "if (iswspace(ch)) continue;" "FBEview.cpp: content hash не игнорирует пробелы"
+Assert-NotContains $fbeView "towlower(ch)" "FBEview.cpp: content hash не игнорирует регистр"
 if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {
     throw "Релизный контур не должен блокироваться накопленным набором кириллических строк; строгая проверка допустима только для отдельных фикстур."
 }

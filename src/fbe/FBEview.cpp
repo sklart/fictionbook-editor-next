@@ -5056,9 +5056,7 @@ static unsigned long HashNormalizedTableHtml(const CString& html)
 {
 	unsigned long hash = 2166136261u;
 	for (int index = 0; index < html.GetLength(); ++index) {
-		const wchar_t ch = html[index];
-		if (iswspace(ch)) continue;
-		hash ^= static_cast<unsigned long>(towlower(ch));
+		hash ^= static_cast<unsigned long>(html[index]);
 		hash *= 16777619u;
 	}
 	return hash;
