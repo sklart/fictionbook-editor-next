@@ -6,6 +6,7 @@ Exercises production CFBEView table handlers with live DOM snapshots and Undo/Re
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts, [string]$Target, [string]$Operation, [string]$SecondOperation, [string]$FixtureId)
 
 $ErrorActionPreference = 'Stop'
+$requestedOperation = $Operation
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
 $schemaPath = Join-Path $PSScriptRoot '..\..\runtime\FictionBook.xsd'
@@ -64,33 +65,39 @@ try {
             $signature={ param($row) "$($row.table_count)/$($row.tr_count)/$($row.td_count)/$($row.th_count)" }
             if(-not $SecondOperation -and (&$signature $undo) -ne (&$signature $before)) { throw "Undo не восстановил live DOM для $operation ($($case.Id))." }
             if(-not $SecondOperation -and (&$signature $redo) -ne (&$signature $after)) { throw "Redo не восстановил live DOM для $operation ($($case.Id))." }
-			$expectChange = -not (($operation -eq 'make-normal' -and $case.Id -notin @('mixed','all-header','bulk-header-10x10','preserve-header')) -or ($operation -eq 'make-header' -and $case.Id -eq 'all-header'))
-			if($expectChange -and (&$signature $after) -eq (&$signature $before) -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил live DOM или semantic grid ($($case.Id))." }
-			if(-not $expectChange -and ((&$signature $after) -ne (&$signature $before) -or $after.grid_signature -ne $before.grid_signature)) { throw "Идемпотентная команда $operation изменила DOM ($($case.Id))." }
+			$expectChange = if($requestedOperation) {
+				-not (($operation -eq 'make-normal' -and $case.Id -notin @('mixed','all-header','bulk-header-10x10','preserve-header')) -or ($operation -eq 'make-header' -and $case.Id -eq 'all-header'))
+			} else {
+				# В полном сценарии команды выполняются одна за другой над тем же документом:
+				# состояние перед каждой командой уже не равно исходной фикстуре.
+				$null
+			}
+			if($null -ne $expectChange -and $expectChange -and (&$signature $after) -eq (&$signature $before) -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил live DOM или semantic grid ($($case.Id))." }
+			if($null -ne $expectChange -and -not $expectChange -and ((&$signature $after) -ne (&$signature $before) -or $after.grid_signature -ne $before.grid_signature)) { throw "Идемпотентная команда $operation изменила DOM ($($case.Id))." }
 			if(-not $SecondOperation -and $undo.grid_signature -ne $before.grid_signature) { throw "Undo не восстановил logical grid для $operation ($($case.Id))." }
 			if(-not $SecondOperation -and $redo.grid_signature -ne $after.grid_signature) { throw "Redo не восстановил logical grid для $operation ($($case.Id))." }
 			if($expectChange -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил logical grid ($($case.Id))." }
-			if($case.Id -eq 'bulk-10x10' -and $operation -eq 'make-header') {
+			if($requestedOperation -and $case.Id -eq 'bulk-10x10' -and $operation -eq 'make-header') {
 				if([int]$before.td_count -ne 100 -or [int]$before.th_count -ne 0 -or [int]$after.td_count -ne 0 -or [int]$after.th_count -ne 100 -or [int]$undo.td_count -ne 100 -or [int]$undo.th_count -ne 0 -or [int]$redo.td_count -ne 0 -or [int]$redo.th_count -ne 100) { throw '10x10 Make Header не сохранил ожидаемую матрицу TD/TH через Undo/Redo.' }
 			if([int]$after.grid_build_calls -gt 4) { throw "10x10 Make Header построил logical grid слишком много раз: $($after.grid_build_calls)." }
 		}
-			if($case.Id -eq 'bulk-header-10x10' -and $operation -eq 'make-normal') {
+			if($requestedOperation -and $case.Id -eq 'bulk-header-10x10' -and $operation -eq 'make-normal') {
 				if([int]$before.td_count -ne 0 -or [int]$before.th_count -ne 100 -or [int]$after.td_count -ne 100 -or [int]$after.th_count -ne 0 -or [int]$undo.td_count -ne 0 -or [int]$undo.th_count -ne 100 -or [int]$redo.td_count -ne 100 -or [int]$redo.th_count -ne 0) { throw '10x10 Make Normal не сохранил ожидаемую матрицу TD/TH через Undo/Redo.' }
 			if([int]$after.grid_build_calls -gt 4) { throw "10x10 Make Normal построил logical grid слишком много раз: $($after.grid_build_calls)." }
 			}
-			if($case.Id -eq 'mixed' -and $operation -eq 'make-header' -and -not $Target) {
+			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'make-header' -and -not $Target) {
 				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 0 -or [int]$after.th_count -ne 9 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 0 -or [int]$redo.th_count -ne 9) { throw 'Mixed rectangle Make Header не восстановил матрицу TD/TH через Undo/Redo.' }
 			}
-			if($case.Id -eq 'mixed' -and $operation -eq 'make-normal' -and -not $Target) {
+			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'make-normal' -and -not $Target) {
 				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 9 -or [int]$after.th_count -ne 0 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 9 -or [int]$redo.th_count -ne 0) { throw 'Mixed rectangle Make Normal не восстановил матрицу TD/TH через Undo/Redo.' }
 			}
-			if($case.Id -eq 'mixed' -and $operation -eq 'make-header' -and $Target -eq '1,0:1,2') {
+			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'make-header' -and $Target -eq '1,0:1,2') {
 				if([int]$after.td_count -ne 3 -or [int]$after.th_count -ne 6 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 3 -or [int]$redo.th_count -ne 6) { throw 'Make Header для целой логической строки изменил ячейки вне выделения.' }
 			}
-			if($case.Id -eq 'mixed' -and $operation -eq 'make-normal' -and $Target -eq '0,0:2,0') {
+			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'make-normal' -and $Target -eq '0,0:2,0') {
 				if([int]$after.td_count -ne 7 -or [int]$after.th_count -ne 2 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 7 -or [int]$redo.th_count -ne 2) { throw 'Make Normal для целого логического столбца изменил ячейки вне выделения.' }
 			}
-			if(($case.Id -eq 'preserve' -and $operation -eq 'make-header') -or ($case.Id -eq 'preserve-header' -and $operation -eq 'make-normal')) {
+			if($requestedOperation -and (($case.Id -eq 'preserve' -and $operation -eq 'make-header') -or ($case.Id -eq 'preserve-header' -and $operation -eq 'make-normal'))) {
 				$withoutTag = { param($snapshot) $snapshot -replace 'tag=(TD|TH)', 'tag=*' }
 				if((&$withoutTag $before.grid_signature) -ne (&$withoutTag $after.grid_signature)) { throw "TD/TH conversion изменила attributes или content ($($case.Id))." }
 			}

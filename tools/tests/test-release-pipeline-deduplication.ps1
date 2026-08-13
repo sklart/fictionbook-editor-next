@@ -153,6 +153,8 @@ Assert-Contains $verifyRelease '-FixtureId edge-spans -Target "0,3"' "verify-rel
 Assert-Contains $verifyRelease "-SecondOperation insert-column-right" "verify-release.ps1: span second operation"
 Assert-Contains $verifyRelease '-FixtureId bulk-10x10 -Target "0,0:9,9" -Operation make-header' "verify-release.ps1: 100-cell Make Header"
 Assert-Contains $verifyRelease '-FixtureId bulk-header-10x10 -Target "0,0:9,9" -Operation make-normal' "verify-release.ps1: 100-cell Make Normal"
+Assert-Contains $verifyRelease '-FixtureId all-header -Target "0,0" -Operation make-header' "verify-release.ps1: идемпотентный Make Header"
+Assert-Contains $verifyRelease '-FixtureId plain -Target "0,0" -Operation make-normal' "verify-release.ps1: идемпотентный Make Normal"
 Assert-Contains $verifyRelease '-FixtureId mixed -Target "0,0:2,2" -Operation make-header' "verify-release.ps1: mixed Make Header"
 Assert-Contains $verifyRelease '-FixtureId mixed -Target "0,0:2,2" -Operation make-normal' "verify-release.ps1: mixed Make Normal"
 Assert-Contains $verifyRelease '-FixtureId mixed -Target "1,0:1,2" -Operation make-header' "verify-release.ps1: Make Header для целой строки"
