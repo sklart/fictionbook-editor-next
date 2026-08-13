@@ -268,12 +268,16 @@ public:
 				: BinaryFileSave::ExistingFilePolicy::FailIfExists;
 			if (BinaryFileSave::WriteAtomically(file_name, data, byteCount, existingFilePolicy, &error))
 				*ret = true;
-			else if (!(prompt == FALSE && (error == ERROR_FILE_EXISTS || error == ERROR_ALREADY_EXISTS)))
+			else
 			{
 				CString message;
 				message.Format(L"SaveBinary failed (error %lu)", error);
 				StartupTrace::Error(L"binary-save", L"B510", message);
-				ShowBinarySaveFailure(GetActiveWindow(), file_name, error);
+				// Batch callers use prompt=false and must never receive UI.  A
+				// pre-existing target is therefore returned as false like every
+				// other write failure, while still being available in the trace.
+				if (prompt)
+					ShowBinarySaveFailure(GetActiveWindow(), file_name, error);
 			}
 		}
 		return S_OK;

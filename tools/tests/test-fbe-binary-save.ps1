@@ -8,6 +8,7 @@ $helper = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\BinaryFileSave.h')
 $external = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\ExternalHelper.h')
 $view = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\FBEview.h')
 $descriptionScript = Get-Content -Raw (Join-Path $repoRoot 'runtime\main.js')
+$scriptingApi = Get-Content -Raw (Join-Path $repoRoot 'docs\scripting-api.md')
 $releaseVerification = Get-Content -Raw (Join-Path $repoRoot 'tools\build\verify-release.ps1')
 
 function Assert-Contains([string]$Text, [string]$Pattern, [string]$Message) {
@@ -19,7 +20,11 @@ Assert-Contains $external 'OFN_OVERWRITEPROMPT' 'SaveBinary должен зап�
 Assert-Contains $view 'OFN_OVERWRITEPROMPT' 'Контекстное «Сохранить изображение как» должно запрашивать подтверждение замены.'
 Assert-Contains $external 'BinaryFileSave::WriteAtomically\(file_name, data, byteCount, existingFilePolicy, &error\)' 'SaveBinary должен использовать общую запись.'
 Assert-Contains $external 'prompt\s*\?\s*BinaryFileSave::ExistingFilePolicy::ReplaceExisting\s*:\s*BinaryFileSave::ExistingFilePolicy::FailIfExists' 'SaveBinary должен выбирать политику замены по prompt.'
-Assert-Contains $external 'prompt == FALSE\s*&&\s*\(error == ERROR_FILE_EXISTS \|\| error == ERROR_ALREADY_EXISTS\)' 'Ожидающий пакетный file-exists не должен считаться ошибкой.'
+Assert-Contains $external 'else\s*\{\s*CString message;[\s\S]{0,260}StartupTrace::Error\(L"binary-save", L"B510"' 'Любая ошибка SaveBinary должна попасть в диагностику.'
+Assert-Contains $external 'if \(prompt\)\s*ShowBinarySaveFailure\(GetActiveWindow\(\), file_name, error\)' 'prompt=false не должен показывать ошибку сохранения.'
+Assert-Contains $scriptingApi 'При `prompt = true` открывается стандартный диалог Save As' 'Документация должна описывать интерактивный SaveBinary.'
+Assert-Contains $scriptingApi 'Если он уже существует, метод не\s*заменяет его и возвращает `false`' 'Документация должна запрещать замену при prompt=false.'
+Assert-Contains $scriptingApi 'без показа диалога' 'Документация должна фиксировать non-interactive режим prompt=false.'
 Assert-Contains $view 'BinaryFileSave::ExistingFilePolicy::ReplaceExisting' 'Контекстное сохранение должно явно разрешать замену.'
 Assert-Contains $helper 'GetTempFileName' 'Запись должна начинаться с временного файла в каталоге назначения.'
 Assert-Contains $helper 'CREATE_ALWAYS' 'Временный файл должен открываться с семантикой замены.'
