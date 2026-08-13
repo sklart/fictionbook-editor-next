@@ -263,9 +263,12 @@ public:
 		{
 			const DWORD byteCount = SysStringByteLen(data);
 			DWORD error = ERROR_SUCCESS;
-			if (BinaryFileSave::WriteAtomically(file_name, data, byteCount, &error))
+			const BinaryFileSave::ExistingFilePolicy existingFilePolicy = prompt
+				? BinaryFileSave::ExistingFilePolicy::ReplaceExisting
+				: BinaryFileSave::ExistingFilePolicy::FailIfExists;
+			if (BinaryFileSave::WriteAtomically(file_name, data, byteCount, existingFilePolicy, &error))
 				*ret = true;
-			else
+			else if (!(prompt == FALSE && (error == ERROR_FILE_EXISTS || error == ERROR_ALREADY_EXISTS)))
 			{
 				CString message;
 				message.Format(L"SaveBinary failed (error %lu)", error);

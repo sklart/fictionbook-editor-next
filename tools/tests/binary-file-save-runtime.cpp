@@ -49,12 +49,14 @@ int wmain()
 	bool ok = true;
 
 	// Test A: create and byte-for-byte verification.
-	ok = BinaryFileSave::WriteAtomically(target, &first[0], static_cast<DWORD>(first.size()), &error) &&
+	ok = BinaryFileSave::WriteAtomically(target, &first[0], static_cast<DWORD>(first.size()),
+		BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error) &&
 		error == ERROR_SUCCESS && ReadBytes(target, first);
 	if (!ok) Fail(L"Create test failed");
 
 	// Test B: overwrite must replace every byte, not merely the file size.
-	if (ok) ok = BinaryFileSave::WriteAtomically(target, &second[0], static_cast<DWORD>(second.size()), &error) &&
+	if (ok) ok = BinaryFileSave::WriteAtomically(target, &second[0], static_cast<DWORD>(second.size()),
+		BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error) &&
 		error == ERROR_SUCCESS && ReadBytes(target, second);
 	if (!ok) Fail(L"Overwrite test failed");
 
@@ -64,7 +66,8 @@ int wmain()
 	if (ok && lock == INVALID_HANDLE_VALUE) { Fail(L"Could not lock target"); ok = false; }
 	if (ok) {
 		error = ERROR_SUCCESS;
-		const bool writeFailed = !BinaryFileSave::WriteAtomically(target, &first[0], static_cast<DWORD>(first.size()), &error);
+		const bool writeFailed = !BinaryFileSave::WriteAtomically(target, &first[0], static_cast<DWORD>(first.size()),
+			BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error);
 		::CloseHandle(lock);
 		lock = INVALID_HANDLE_VALUE;
 		ok = writeFailed && error != ERROR_SUCCESS && ReadBytes(target, second) && NoTemporaryFiles(directory);
@@ -72,25 +75,55 @@ int wmain()
 	}
 	if (lock != INVALID_HANDLE_VALUE) ::CloseHandle(lock);
 
+	// Test D: a batch export must not replace an existing external file.
+	if (ok) {
+		::DeleteFile(target);
+		error = ERROR_SUCCESS;
+		ok = BinaryFileSave::WriteAtomically(target, &first[0], static_cast<DWORD>(first.size()),
+			BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error) && error == ERROR_SUCCESS;
+		if (ok) {
+			error = ERROR_SUCCESS;
+			const bool writeFailed = !BinaryFileSave::WriteAtomically(target, &second[0], static_cast<DWORD>(second.size()),
+				BinaryFileSave::ExistingFilePolicy::FailIfExists, &error);
+			ok = writeFailed && (error == ERROR_FILE_EXISTS || error == ERROR_ALREADY_EXISTS) &&
+				ReadBytes(target, first) && NoTemporaryFiles(directory);
+		}
+		if (!ok) Fail(L"Fail-if-exists preservation test failed");
+	}
+
+	// Test E: FailIfExists still creates an absent destination.
+	if (ok) {
+		const CString absent = directory + L"\\absent.bin";
+		error = ERROR_SUCCESS;
+		ok = BinaryFileSave::WriteAtomically(absent, &second[0], static_cast<DWORD>(second.size()),
+			BinaryFileSave::ExistingFilePolicy::FailIfExists, &error) &&
+			error == ERROR_SUCCESS && ReadBytes(absent, second);
+		if (!ok) Fail(L"Fail-if-exists create test failed");
+	}
+
 	// Zero bytes are valid; invalid data and an empty destination are not.
 	if (ok) {
 		const CString empty = directory + L"\\empty.bin";
 		error = ERROR_SUCCESS;
-		ok = BinaryFileSave::WriteAtomically(empty, NULL, 0, &error) && error == ERROR_SUCCESS && ReadBytes(empty, std::vector<BYTE>());
+		ok = BinaryFileSave::WriteAtomically(empty, NULL, 0,
+			BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error) && error == ERROR_SUCCESS && ReadBytes(empty, std::vector<BYTE>());
 		if (!ok) Fail(L"Zero-byte test failed");
 	}
 	if (ok) {
 		error = ERROR_SUCCESS;
-		ok = !BinaryFileSave::WriteAtomically(target, NULL, 1, &error) && error == ERROR_INVALID_PARAMETER;
+		ok = !BinaryFileSave::WriteAtomically(target, NULL, 1,
+			BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error) && error == ERROR_INVALID_PARAMETER;
 		if (!ok) Fail(L"Invalid-data test failed");
 	}
 	if (ok) {
 		error = ERROR_SUCCESS;
-		ok = !BinaryFileSave::WriteAtomically(CString(), NULL, 0, &error) && error == ERROR_INVALID_PARAMETER;
+		ok = !BinaryFileSave::WriteAtomically(CString(), NULL, 0,
+			BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error) && error == ERROR_INVALID_PARAMETER;
 		if (!ok) Fail(L"Empty-destination test failed");
 	}
 
 	::DeleteFile(directory + L"\\empty.bin");
+	::DeleteFile(directory + L"\\absent.bin");
 	::DeleteFile(target);
 	::RemoveDirectory(directory);
 	return ok ? 0 : 1;

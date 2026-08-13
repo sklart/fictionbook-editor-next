@@ -5,8 +5,14 @@
 // already exported image.  All APIs used here are available on Windows XP.
 namespace BinaryFileSave
 {
+	enum class ExistingFilePolicy
+	{
+		FailIfExists,
+		ReplaceExisting
+	};
+
 	inline bool WriteAtomically(const CString& destination, const void* data,
-		DWORD byteCount, DWORD* error)
+		DWORD byteCount, ExistingFilePolicy existingFilePolicy, DWORD* error)
 	{
 		if (error)
 			*error = ERROR_SUCCESS;
@@ -68,8 +74,10 @@ namespace BinaryFileSave
 			::CloseHandle(file);
 		}
 
-		if (saved && !::MoveFileEx(temporary, destination,
-			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		DWORD moveFlags = MOVEFILE_WRITE_THROUGH;
+		if (existingFilePolicy == ExistingFilePolicy::ReplaceExisting)
+			moveFlags |= MOVEFILE_REPLACE_EXISTING;
+		if (saved && !::MoveFileEx(temporary, destination, moveFlags))
 		{
 			saved = false;
 			if (error)

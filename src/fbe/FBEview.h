@@ -507,7 +507,8 @@ public:
 			{
 				const DWORD byteCount = static_cast<DWORD>(upperBound - lowerBound + 1);
 				DWORD error = ERROR_SUCCESS;
-				if (!BinaryFileSave::WriteAtomically(imgSaveDlg.m_szFileName, bytes, byteCount, &error))
+				if (!BinaryFileSave::WriteAtomically(imgSaveDlg.m_szFileName, bytes, byteCount,
+					BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error))
 				{
 					CString message;
 					message.Format(L"OnSaveImageAs failed (error %lu)", error);
