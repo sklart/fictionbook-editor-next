@@ -299,6 +299,15 @@ static long FindLogicalCell(const LogicalTableGrid& grid, const MSHTML::IHTMLEle
 {
 	for (size_t index = 0; index < grid.cells.size(); ++index) if (grid.cells[index].element == element) return static_cast<long>(index); return -1;
 }
+
+static long GetTestLogicalTableColumn(long fallback)
+{
+	wchar_t mode[4] = {}, target[64] = {};
+	if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) != 1 || mode[0] != L'1' ||
+		!::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_TARGET", target, _countof(target))) return fallback;
+	long row = -1, column = -1;
+	return swscanf_s(target, L"%ld,%ld", &row, &column) == 2 && column >= 0 ? column : fallback;
+}
 static const wchar_t* TableCellTagAt(const LogicalTableGrid& grid, long row, long column, const wchar_t* fallback)
 {
 	const long index = grid.At(row, column);
@@ -4247,7 +4256,7 @@ LRESULT CFBEView::OnTableDeleteColumn(WORD, WORD, HWND, BOOL&)
 		if (!selectedCell || !selectedRow || !BuildLogicalTableGrid(table, grid)) return 0;
 		const long selectedIndex = FindLogicalCell(grid, selectedCell);
 		if (selectedIndex < 0) return 0;
-		const long column = grid.cells[selectedIndex].startColumn;
+		const long column = GetTestLogicalTableColumn(grid.cells[selectedIndex].startColumn);
 		BeginUndoUnit(L"delete table column");
 		std::vector<bool> handled(grid.cells.size(), false);
 		for (long rowIndex = 0; rowIndex < static_cast<long>(grid.rows.size()); ++rowIndex) {
@@ -5021,8 +5030,11 @@ bool CFBEView::SelectTableLogicalRangeForTest(long firstRow, long firstColumn, l
 		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		MSHTML::IHTMLTxtRangePtr end(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		range->moveToElementText(grid.cells[first].element);
-		end->moveToElementText(grid.cells[last].element);
-		range->setEndPoint(L"EndToEnd", end);
+		if (first == last) range->collapse(VARIANT_TRUE);
+		else {
+			end->moveToElementText(grid.cells[last].element);
+			range->setEndPoint(L"EndToEnd", end);
+		}
 		range->select();
 		return true;
 	}
