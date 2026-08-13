@@ -73,7 +73,13 @@ try {
 			if($case.Id -eq 'bulk-header-10x10' -and $operation -eq 'make-normal') {
 				if([int]$before.td_count -ne 0 -or [int]$before.th_count -ne 100 -or [int]$after.td_count -ne 100 -or [int]$after.th_count -ne 0 -or [int]$undo.td_count -ne 0 -or [int]$undo.th_count -ne 100 -or [int]$redo.td_count -ne 100 -or [int]$redo.th_count -ne 0) { throw '10x10 Make Normal не сохранил ожидаемую матрицу TD/TH через Undo/Redo.' }
 			if([int]$after.grid_build_calls -gt 4) { throw "10x10 Make Normal построил logical grid слишком много раз: $($after.grid_build_calls)." }
-		}
+			}
+			if($case.Id -eq 'mixed' -and $operation -eq 'make-header') {
+				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 0 -or [int]$after.th_count -ne 9 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 0 -or [int]$redo.th_count -ne 9) { throw 'Mixed rectangle Make Header не восстановил матрицу TD/TH через Undo/Redo.' }
+			}
+			if($case.Id -eq 'mixed' -and $operation -eq 'make-normal') {
+				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 9 -or [int]$after.th_count -ne 0 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 9 -or [int]$redo.th_count -ne 0) { throw 'Mixed rectangle Make Normal не восстановил матрицу TD/TH через Undo/Redo.' }
+			}
         }
         if(-not ($rows|Where-Object phase -eq 'save-complete')) { throw "Production structural scenario не сохранил документ ($($case.Id))." }
         Assert-Schema $fixture
