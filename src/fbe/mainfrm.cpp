@@ -6791,9 +6791,13 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
   bool fv;
   CString validationError;
   ClearSourceValidationAnnotations();
-  const bool isFbd = IsFbdFile(m_doc->m_filename);
-  if (IsSourceActive() && !isFbd)
-    fv=m_doc->SetXMLAndValidate(m_source,true,line,col,&validationError);// ?? ?????? Source
+  if (IsSourceActive())
+  {
+    if (IsFbdFile(m_doc->m_filename))
+      fv=m_doc->Validate(line,col);
+    else
+      fv=m_doc->SetXMLAndValidate(m_source,true,line,col,&validationError);// ?? ?????? Source
+  }
   else
     fv=m_doc->Validate(line,col);						// ?? ?????? Body
   if (fv) {
