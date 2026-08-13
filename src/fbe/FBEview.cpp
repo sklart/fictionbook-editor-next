@@ -1732,21 +1732,86 @@ void  CFBEView::GoTo(MSHTML::IHTMLElement *e,bool fScroll) {
 
 MSHTML::IHTMLElementPtr CFBEView::SelectionContainerImp()
 {
+	// MSHTML can briefly expose a Control selection while it is moving focus to
+	// its scrollbar.  The ControlRange parent helper fails with E_FAIL on older MSHTML
+	// versions in that state.  SelectionContainer is only used to synchronize
+	// UI (not to modify the document), so resolve the selected control directly
+	// and leave a diagnostic record if the transient query is unavailable.
+	IDispatchPtr selrange;
 	try
 	{
-		IDispatchPtr selrange(Document()->selection->createRange());
-		MSHTML::IHTMLTxtRangePtr range(selrange);
-		if(range)
-		{
-			return range->parentElement();
-		}
-		MSHTML::IHTMLControlRangePtr coll(selrange);
-		if((bool)coll)
-			return coll->commonParentElement();
+		selrange = Document()->selection->createRange();
 	}
-	catch(_com_error& err)
+	catch (_com_error& err)
 	{
-		U::ReportError(err);
+		StartupTrace::HResult(L"mshtml", L"SC100", err.Error(),
+			L"component=MSHTML; operation=IHTMLSelectionObject::createRange; selection.type=unknown; view=BODY");
+		return MSHTML::IHTMLElementPtr();
+	}
+
+	try
+	{
+		MSHTML::IHTMLTxtRangePtr range(selrange);
+		if (range)
+			return range->parentElement();
+	}
+	catch (_com_error& err)
+	{
+		StartupTrace::HResult(L"mshtml", L"SC101", err.Error(),
+			L"component=MSHTML; operation=IHTMLTxtRange::parentElement; selection.type=Text; view=BODY");
+		return MSHTML::IHTMLElementPtr();
+	}
+
+	MSHTML::IHTMLControlRangePtr controls;
+	try { controls = selrange; }
+	catch (_com_error& err)
+	{
+		StartupTrace::HResult(L"mshtml", L"SC102", err.Error(),
+			L"component=MSHTML; operation=QueryInterface(IHTMLControlRange); selection.type=unknown; view=BODY");
+		return MSHTML::IHTMLElementPtr();
+	}
+	if (!controls)
+		return MSHTML::IHTMLElementPtr();
+
+	long length = 0;
+	try { length = controls->length; }
+	catch (_com_error& err)
+	{
+		StartupTrace::HResult(L"mshtml", L"SC103", err.Error(),
+			L"component=MSHTML; operation=IHTMLControlRange::get_length; selection.type=Control; view=BODY");
+		return MSHTML::IHTMLElementPtr();
+	}
+	if (length <= 0)
+		return MSHTML::IHTMLElementPtr();
+
+	MSHTML::IHTMLElementPtr selected;
+	try { selected = controls->item(0); }
+	catch (_com_error& err)
+	{
+		StartupTrace::HResult(L"mshtml", L"SC104", err.Error(),
+			L"component=MSHTML; operation=IHTMLControlRange::item(0); selection.type=Control; control.length>0; view=BODY");
+		return MSHTML::IHTMLElementPtr();
+	}
+	if (!selected)
+		return MSHTML::IHTMLElementPtr();
+
+	try
+	{
+		// FBE selects the DIV/SPAN.image wrapper for a clicked illustration.
+		// Keep that semantic container for the document tree.  Be defensive for
+		// a raw IMG control selection created by another MSHTML code path.
+		if (U::scmp(selected->tagName, L"IMG") == 0)
+		{
+			MSHTML::IHTMLElementPtr parent(selected->parentElement);
+			if (parent && U::scmp(parent->className, L"image") == 0)
+				return parent;
+		}
+		return selected;
+	}
+	catch (_com_error& err)
+	{
+		StartupTrace::HResult(L"mshtml", L"SC105", err.Error(),
+			L"component=MSHTML; operation=IHTMLElement::tagName/parentElement; selection.type=Control; view=BODY");
 	}
 
 	return MSHTML::IHTMLElementPtr();
