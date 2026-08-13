@@ -3045,6 +3045,18 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			{ "delete-column", &CFBEView::OnTableDeleteColumn, false, false }, { "make-header", &CFBEView::OnTableMakeHeaderCells, true, false },
 			{ "make-normal", &CFBEView::OnTableMakeNormalCells, true, true }
 		};
+		auto invokeOperation = [&](const Operation& operation, BOOL& handled) -> bool
+		{
+			wchar_t target[64] = {};
+			const DWORD targetLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_TARGET", target, _countof(target));
+			long row = -1, column = -1;
+			if (targetLength && targetLength < _countof(target) && strcmp(operation.name, "delete-column") == 0 &&
+				swscanf_s(target, L"%ld,%ld", &row, &column) == 2 && column >= 0) {
+				return m_doc->m_body.DeleteTableLogicalColumnForTest(column);
+			}
+			(m_doc->m_body.*operation.handler)(0, 0, m_doc->m_body, handled);
+			return true;
+		};
 		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\tgrid_build_calls\tgrid_signature\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
 		for (size_t index = 0; index < _countof(operations); ++index)
@@ -3055,7 +3067,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			if (!selectConfiguredCells(operations[index].bulk, operations[index].selectHeaders)) { output.Close(); ::PostQuitMessage(1); return 0; }
 			CStringA phase; phase.Format("%s-before", operations[index].name); appendStructuralPhase(phase);
 			CFBEView::ResetTableGridBuildCountForTest();
-			BOOL handled = FALSE; (m_doc->m_body.*operations[index].handler)(0, 0, m_doc->m_body, handled);
+			BOOL handled = FALSE; if (!invokeOperation(operations[index], handled)) { output.Close(); ::PostQuitMessage(1); return 0; }
 			const long gridBuildCalls = CFBEView::TableGridBuildCountForTest();
 			phase.Format("%s-after", operations[index].name); appendStructuralPhase(phase, gridBuildCalls);
 			wchar_t secondOperation[64] = {};
@@ -3066,7 +3078,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 					if (!selectConfiguredCells(operations[secondIndex].bulk, operations[secondIndex].selectHeaders)) { output.Close(); ::PostQuitMessage(1); return 0; }
 					phase.Format("%s-second-before", operations[secondIndex].name); appendStructuralPhase(phase);
 					CFBEView::ResetTableGridBuildCountForTest();
-					(m_doc->m_body.*operations[secondIndex].handler)(0, 0, m_doc->m_body, handled);
+					if (!invokeOperation(operations[secondIndex], handled)) { output.Close(); ::PostQuitMessage(1); return 0; }
 					phase.Format("%s-second-after", operations[secondIndex].name); appendStructuralPhase(phase, CFBEView::TableGridBuildCountForTest());
 					break;
 				}

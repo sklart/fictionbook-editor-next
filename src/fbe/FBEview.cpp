@@ -300,14 +300,6 @@ static long FindLogicalCell(const LogicalTableGrid& grid, const MSHTML::IHTMLEle
 	for (size_t index = 0; index < grid.cells.size(); ++index) if (grid.cells[index].element == element) return static_cast<long>(index); return -1;
 }
 
-static long GetTestLogicalTableColumn(long fallback)
-{
-	wchar_t mode[4] = {}, target[64] = {};
-	if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) != 1 || mode[0] != L'1' ||
-		!::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_TARGET", target, _countof(target))) return fallback;
-	long row = -1, column = -1;
-	return swscanf_s(target, L"%ld,%ld", &row, &column) == 2 && column >= 0 ? column : fallback;
-}
 static const wchar_t* TableCellTagAt(const LogicalTableGrid& grid, long row, long column, const wchar_t* fallback)
 {
 	const long index = grid.At(row, column);
@@ -4245,6 +4237,36 @@ LRESULT CFBEView::OnTableInsertColumnRight(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+static bool DeleteTableLogicalColumn(CFBEView* view, const LogicalTableGrid& grid, long column)
+{
+	if (!view || column < 0 || column >= grid.columns) return false;
+	view->BeginUndoUnit(L"delete table column");
+	std::vector<bool> handled(grid.cells.size(), false);
+	for (long rowIndex = 0; rowIndex < static_cast<long>(grid.rows.size()); ++rowIndex) {
+		const long owner = grid.At(rowIndex, column);
+		if (owner < 0 || handled[owner]) continue;
+		handled[owner] = true;
+		if (grid.cells[owner].colspan > 1) SetTableSpan(grid.cells[owner].element, L"fbcolspan", L"colspan", grid.cells[owner].colspan - 1);
+		else MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element));
+	}
+	view->EndUndoUnit();
+	return true;
+}
+
+bool CFBEView::DeleteTableLogicalColumnForTest(long column)
+{
+	try {
+		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		LogicalTableGrid grid;
+		if (!BuildLogicalTableGrid(table, grid) || !DeleteTableLogicalColumn(this, grid, column)) return false;
+		NotifyTableStructureChanged(m_frame, m_hWnd);
+		return true;
+	}
+	catch (_com_error&) { return false; }
+}
+
 LRESULT CFBEView::OnTableDeleteColumn(WORD, WORD, HWND, BOOL&)
 {
 	try
@@ -4256,18 +4278,7 @@ LRESULT CFBEView::OnTableDeleteColumn(WORD, WORD, HWND, BOOL&)
 		if (!selectedCell || !selectedRow || !BuildLogicalTableGrid(table, grid)) return 0;
 		const long selectedIndex = FindLogicalCell(grid, selectedCell);
 		if (selectedIndex < 0) return 0;
-		const long column = GetTestLogicalTableColumn(grid.cells[selectedIndex].startColumn);
-		BeginUndoUnit(L"delete table column");
-		std::vector<bool> handled(grid.cells.size(), false);
-		for (long rowIndex = 0; rowIndex < static_cast<long>(grid.rows.size()); ++rowIndex) {
-			const long owner = grid.At(rowIndex, column);
-			if (owner < 0 || handled[owner]) continue;
-			handled[owner] = true;
-			if (grid.cells[owner].colspan > 1) SetTableSpan(grid.cells[owner].element, L"fbcolspan", L"colspan", grid.cells[owner].colspan - 1);
-			else MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element));
-		}
-		EndUndoUnit();
-		NotifyTableStructureChanged(m_frame, m_hWnd);
+		if (DeleteTableLogicalColumn(this, grid, grid.cells[selectedIndex].startColumn)) NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;

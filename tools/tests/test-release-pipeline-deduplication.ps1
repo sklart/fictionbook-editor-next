@@ -35,6 +35,7 @@ $portable = Get-Text "tools\build\package-portable.ps1"
 $artifacts = Get-Text "tools\build\verify-artifacts.ps1"
 $verifyRelease = Get-Text "tools\build\verify-release.ps1"
 $archHandlerArgv = Get-Text "tools\tests\test-archhandler-argv.ps1"
+$fbeView = Get-Text "src\fbe\FBEview.cpp"
 $pcre2Build = Get-Text "tools\build\build-pcre2.ps1"
 $hunspellBuild = Get-Text "tools\build\build-hunspell.ps1"
 $muiBuild = Get-Text "tools\build\build-fbv-verb-mui.ps1"
@@ -175,6 +176,9 @@ $archHandlerTest = $verifyRelease.IndexOf('test-archhandler-argv.ps1')
 if ($commonStart -lt 0 -or $commonEnd -lt 0 -or $archHandlerTest -le $commonEnd) {
     throw "Exact ArchHandler argv test должен выполняться вне блока SkipCommonChecks."
 }
+Assert-NotContains $fbeView "GetTestLogicalTableColumn" "FBEview.cpp: test-only column override в production handler"
+Assert-Contains $fbeView "DeleteTableLogicalColumnForTest" "FBEview.cpp: isolated test harness helper"
+Assert-Contains $fbeView "DeleteTableLogicalColumn(this, grid" "FBEview.cpp: общий алгоритм удаления logical column"
 if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {
     throw "Релизный контур не должен блокироваться накопленным набором кириллических строк; строгая проверка допустима только для отдельных фикстур."
 }
