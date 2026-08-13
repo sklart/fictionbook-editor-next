@@ -10,4 +10,5 @@ Run this checklist against a release build before publishing an installer.
 - Insert an inline image into the synthetic body of a body-less FBD, save, close and reopen it. The image must remain; its element makes the synthetic placeholder a real body.
 - Open `empty_body.fbd`, Save As `*.fb2`, then press F8. The whitespace/empty body must be replaced by a minimal FB2 body that passes the unmodified FB2 schema.
 - In Source, press F8 for `wrong_root.fbd`, `wrong_namespace.fbd`, `missing_description.fbd` and `duplicate_description.fbd`. Each must fail at the source location and must not switch to Body or Description; `invalid_xml.fbd` must still fail as XML syntax.
+- Runtime negative validation is deliberately manual: Batch `-b` only opens, optionally saves and writes a report; it does not invoke Source/F8 validation or expose its result. Do not extend the public batch CLI solely for these cases.
 - Install the optional FBD association over an existing `.fbd` handler, then uninstall. The prior association must be restored. If the handler is changed after installation, uninstall must leave that later association unchanged.

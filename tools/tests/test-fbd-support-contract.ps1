@@ -55,6 +55,9 @@ if($document -notmatch 'ValidateFbdDocumentStructure') { throw 'FBD structural v
 if($document -notmatch 'rootName\.Compare\(L"FictionBook"\)' -or $document -notmatch 'root->namespaceURI' -or $document -notmatch 'descriptions != 1') { throw 'FBD structural validator must check root, namespace and exactly one description.' }
 if(@([regex]::Matches($document, 'ValidateFbdDocumentStructure\(')).Count -lt 4) { throw 'FBD structural validator must be used by SaveToFile, SetXMLAndValidate and TextToXML.' }
 if($document -notmatch '!fValidateOnly \|\| fileType == FictionBookFileType::Fbd') { throw 'FBD F8 validation must construct a DOM for structural validation.' }
+if(@([regex]::Matches($document, 'StartupTrace::\w+\(L"document", L"D222", L"book save completed"\)')).Count -ne 1) { throw 'D222 must remain reserved for the completed book save event.' }
+if($document -match 'D222", L"FBD structural validation failed') { throw 'FBD structural validation must not reuse D222.' }
+if(@([regex]::Matches($document, 'StartupTrace::Warning\(L"document", L"D227", L"FBD structural validation failed"\)')).Count -ne 1) { throw 'D227 must uniquely identify FBD structural validation failure.' }
 foreach($key in 'fbe.validation.fbd.missing_root', 'fbe.validation.fbd.wrong_root', 'fbe.validation.fbd.wrong_namespace', 'fbe.validation.fbd.missing_description', 'fbe.validation.fbd.duplicate_description') {
   $entry = $catalog.seedStrings.PSObject.Properties[$key].Value
   if($null -eq $entry -or [string]::IsNullOrWhiteSpace([string]$entry.translations.'en-US')) { throw "Missing runtime localization for FBD structural error: $key" }
@@ -68,5 +71,5 @@ if($installer -notmatch 'FictionBook\.Description') { throw 'Installer does not 
 if($installer -match 'FictionBook\.Description\\shell\\Validate') { throw 'FBD must not receive the FB2 Validate shell verb.' }
 if(-not (Test-Path -LiteralPath $checklist)) { throw 'Missing FBD manual integration checklist.' }
 $manual = Get-Content -Raw -LiteralPath $checklist
-foreach($scenario in 'body-less FBD', 'FBD to FB2', 'FB2 to FBD', 'F8', 'association', 'Source', 'inline image', 'empty_body.fbd', 'wrong_root.fbd', 'wrong_namespace.fbd', 'missing_description.fbd', 'duplicate_description.fbd') { if($manual -notmatch [regex]::Escape($scenario)) { throw "Manual checklist misses scenario: $scenario" } }
+foreach($scenario in 'body-less FBD', 'FBD to FB2', 'FB2 to FBD', 'F8', 'association', 'Source', 'inline image', 'empty_body.fbd', 'wrong_root.fbd', 'wrong_namespace.fbd', 'missing_description.fbd', 'duplicate_description.fbd', 'Batch `-b`') { if($manual -notmatch [regex]::Escape($scenario)) { throw "Manual checklist misses scenario: $scenario" } }
 Write-Host 'FBD support contract passed.'

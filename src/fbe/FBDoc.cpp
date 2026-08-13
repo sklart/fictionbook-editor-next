@@ -1525,7 +1525,7 @@ static bool ReportFbdStructureValidationFailure(HWND frame, const CString& messa
 	::MessageBeep(MB_ICONERROR);
 	if (frame)
 		::SendMessage(frame, AU::WM_SETSTATUSTEXT, 0, (LPARAM)(const wchar_t*)message);
-	StartupTrace::Warning(L"document", L"D222", L"FBD structural validation failed");
+	StartupTrace::Warning(L"document", L"D227", L"FBD structural validation failed");
 	return false;
 }
 
