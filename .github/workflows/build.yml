@@ -81,18 +81,24 @@ jobs:
       - name: Build FBV Verb MUI
         shell: pwsh
         run: ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release -PlatformToolset v143
+      - name: Build Modern ArchHandler
+        shell: pwsh
+        run: ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Modern/Win32/Release
       - name: Verify Modern binaries
         shell: pwsh
-        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest -BatchOutputDirectory out/target-batches/Modern
+        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest -BatchOutputDirectory out/target-batches/Modern -ArchHandlerOutputDirectory out/archhandler/Modern/Win32/Release
       - name: Build Win7-compatible editor runtime
         shell: pwsh
         run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime -SkipVersionSync
       - name: Build Win7-compatible batch converters
         shell: pwsh
         run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly -SkipDependencies -WarningsAsErrors -SkipVersionSync -BatchOutputDirectory out/target-batches/Win7
+      - name: Build Win7 ArchHandler
+        shell: pwsh
+        run: ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Win7/Win32/Release
       - name: Verify Win7 binaries
         shell: pwsh
-        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Win7 -PlatformToolset v143 -SkipUpdateManifest -SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7
+        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Win7 -PlatformToolset v143 -SkipUpdateManifest -SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7 -ArchHandlerOutputDirectory out/archhandler/Win7/Win32/Release
       - name: Upload compiled inputs
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
@@ -101,6 +107,7 @@ jobs:
           path: |
             out/Release
             out/editor-runtime
+            out/archhandler
             out/package/shell-build
             out/target-batches
           if-no-files-found: error
