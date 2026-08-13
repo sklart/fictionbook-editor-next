@@ -23,7 +23,7 @@ New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 $zipHandler = Join-Path $outputDir 'ZipHandler.exe'
 $rarHandler = Join-Path $outputDir 'RarHandler.exe'
 
-& cl.exe /nologo /std:c++17 /EHsc /W4 /DUNICODE /D_UNICODE $source "/Fe$zipHandler" /link /SUBSYSTEM:WINDOWS Shell32.lib Advapi32.lib User32.lib
+& cl.exe /nologo /std:c++17 /EHsc /W4 /utf-8 /DUNICODE /D_UNICODE $source "/Fe$zipHandler" /link /SUBSYSTEM:WINDOWS Shell32.lib Advapi32.lib User32.lib
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Copy-Item -LiteralPath $zipHandler -Destination $rarHandler -Force
 Write-Host "ArchHandler собран: $zipHandler; $rarHandler"
