@@ -6,7 +6,8 @@ Exercises the real FBE FB2 -> visual DOM -> Source -> visual DOM pipeline.
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 180,
-    [switch]$Huge
+    [switch]$Huge,
+    [switch]$KeepArtifacts
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,7 +31,12 @@ $fixture = Join-Path $directory 'table.fb2'
 $report = Join-Path $directory 'report.tsv'
 $reopenReport = Join-Path $directory 'reopen.tsv'
 $resaveReport = Join-Path $directory 'resave.tsv'
+$completed = $false
 try {
+	$previousTestMode = $env:FBE_NEXT_TEST_MODE
+	$previousScenario = $env:FBE_NEXT_TEST_SCENARIO
+	$env:FBE_NEXT_TEST_MODE = '1'
+	$env:FBE_NEXT_TEST_SCENARIO = 'table-roundtrip'
     if ($Huge) {
         $rows = [Text.StringBuilder]::new()
         for ($row = 0; $row -lt 356; ++$row) {
@@ -51,19 +57,17 @@ try {
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
     }
 
-    $arguments = @('-s', '-b', $report, $fixture)
-    if (-not $Huge) { $arguments = @('-s', '-c', '-b', $report, $fixture) }
+    $arguments = @('-b', $report, $fixture)
     $process = Start-Process -FilePath $FbeExe -ArgumentList $arguments -PassThru
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил table round-trip benchmark.' }
     if ($process.ExitCode -ne 0) { throw "FBE вернул код $($process.ExitCode) для table round-trip." }
     if (-not (Test-Path -LiteralPath $report)) { throw 'FBE не записал отчёт table round-trip.' }
 
     $rows = Import-Csv -LiteralPath $report -Delimiter "`t"
-    $tableRows = @($rows | Where-Object { $_.phase -like 'table-*' })
-    $expectedCounts = if ($Huge) { 'table=1;tr=356;td=4984;th=0' } else { 'table=1;tr=2;td=4;th=1' }
-    if ($tableRows.Count -lt 6) { throw "Недостаточно production table snapshots: $($tableRows.Count)." }
+    $tableRows = @($rows | Where-Object { $_.phase -match '^(source-[0-9]+-complete|body-[0-9]+-complete|save-1-complete)$' })
+    if ($tableRows.Count -lt 11) { throw "Недостаточно production table snapshots: $($tableRows.Count)." }
     foreach ($row in $tableRows) {
-        if ($row.phase -notmatch $expectedCounts) { throw "Table structure changed in $($row.phase)." }
+        if ([int]$row.table_count -ne 1 -or [int]$row.tr_count -ne $(if ($Huge) { 356 } else { 2 }) -or [int]$row.td_count -ne $(if ($Huge) { 4984 } else { 4 }) -or [int]$row.th_count -ne $(if ($Huge) { 0 } else { 1 })) { throw "Table structure changed in $($row.phase)." }
     }
 
     [xml]$saved = Get-Content -LiteralPath $fixture -Raw
@@ -85,12 +89,8 @@ try {
     if (-not $reopen.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopen.Id -Force; throw 'FBE не завершил повторное открытие таблицы.' }
     if ($reopen.ExitCode -ne 0) { throw "FBE вернул код $($reopen.ExitCode) при повторном открытии таблицы." }
     if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал отчёт повторного открытия таблицы.' }
-    $reopenRows = @(Import-Csv -LiteralPath $reopenReport -Delimiter "`t" | Where-Object { $_.phase -like 'table-*' })
-    if ($reopenRows.Count -lt 1 -or ($reopenRows | Where-Object { $_.phase -notmatch $expectedCounts })) { throw 'Повторное открытие изменило структуру таблицы.' }
-    $resave = Start-Process -FilePath $FbeExe -ArgumentList @('-s', '-b', $resaveReport, $fixture) -PassThru
-    if (-not $resave.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $resave.Id -Force; throw 'FBE не завершил повторный Save таблицы.' }
-    if ($resave.ExitCode -ne 0) { throw "FBE вернул код $($resave.ExitCode) для повторного Save таблицы." }
-    if (-not (Test-Path -LiteralPath $resaveReport)) { throw 'FBE не записал отчёт повторного Save таблицы.' }
+    $reopenRows = @(Import-Csv -LiteralPath $reopenReport -Delimiter "`t" | Where-Object { $_.phase -eq 'save-1-complete' })
+    if ($reopenRows.Count -ne 1 -or [int]$reopenRows[0].table_count -ne 1 -or [int]$reopenRows[0].tr_count -ne $(if ($Huge) { 356 } else { 2 }) -or [int]$reopenRows[0].td_count -ne $(if ($Huge) { 4984 } else { 4 }) -or [int]$reopenRows[0].th_count -ne $(if ($Huge) { 0 } else { 1 })) { throw 'Повторное открытие изменило структуру таблицы.' }
     [xml]$resaved = Get-Content -LiteralPath $fixture -Raw
     Assert-Fb2Schema $fixture
     $resavedNamespaces = [Xml.XmlNamespaceManager]::new($resaved.NameTable)
@@ -103,8 +103,12 @@ try {
         $cell = if ($table) { $table.SelectSingleNode('fb:tr/fb:td[@id="cell"]', $resavedNamespaces) } else { $null }
         if ($null -eq $table -or $table.GetAttribute('style') -ne 'border: 1px solid' -or @($table.SelectNodes('fb:tr', $resavedNamespaces)).Count -ne 2 -or @($table.SelectNodes('.//fb:td', $resavedNamespaces)).Count -ne 4 -or @($table.SelectNodes('.//fb:th', $resavedNamespaces)).Count -ne 1 -or $null -eq $cell -or $cell.GetAttribute('colspan') -ne '2' -or $cell.GetAttribute('rowspan') -ne '1' -or $cell.GetAttribute('align') -ne 'right' -or $cell.GetAttribute('valign') -ne 'bottom' -or $cell.InnerXml -notmatch 'strong|emphasis|a') { throw 'Повторный Save изменил семантику таблицы.' }
     }
+    $completed = $true
     Write-Host "Production table Save -> reopen -> Save round-trip passed ($($tableRows.Count) snapshots)."
 }
 finally {
-    Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+	if ($null -eq $previousTestMode) { Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_MODE = $previousTestMode }
+	if ($null -eq $previousScenario) { Remove-Item Env:FBE_NEXT_TEST_SCENARIO -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_SCENARIO = $previousScenario }
+    if ($completed -or -not $KeepArtifacts) { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    else { Write-Host "Артефакты незавершённого TABLE test: $directory" }
 }

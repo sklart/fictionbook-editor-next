@@ -2940,11 +2940,55 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	return 0;
 }
 
+static bool IsTableRoundTripTestScenario()
+{
+	wchar_t testMode[4] = {}, scenario[32] = {};
+	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
+	const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
+	return testModeLength == 1 && testMode[0] == L'1' &&
+		scenarioLength == wcslen(L"table-roundtrip") && wcscmp(scenario, L"table-roundtrip") == 0;
+}
+
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 {
 	CAtlFile output;
 	if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))
 		return 0;
+	if (IsTableRoundTripTestScenario())
+	{
+		const ULONGLONG start = ::GetTickCount64();
+		auto appendTablePhase = [&](const char* phase)
+		{
+			const sptr_t sourceLength = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> source(static_cast<size_t>(sourceLength) + 1);
+			m_source.SendMessage(SCI_GETTEXT, sourceLength + 1, reinterpret_cast<LPARAM>(source.data()));
+			auto countTag = [&](const char* tag) -> long { long count = 0; for (const char* position = source.data(); (position = strstr(position, tag)) != NULL; ++position) ++count; return count; };
+			const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+			CStringA row;
+			row.Format("%s\t%I64u\t%I64u\t%I64u\t%ld\t%ld\t%ld\t%ld\r\n", phase,
+				::GetTickCount64() - start, static_cast<unsigned __int64>(memory.privateBytes), static_cast<unsigned __int64>(memory.workingSetBytes),
+				countTag("<table"), countTag("<tr"), countTag("<td"), countTag("<th"));
+			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+		};
+		CStringA header("phase\telapsed_ms\tprivate_bytes\tworking_set_bytes\ttable_count\ttr_count\ttd_count\tth_count\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
+		appendTablePhase("open-complete");
+		for (int cycle = 1; cycle <= 5; ++cycle)
+		{
+			CStringA phase; phase.Format("source-%d-start", cycle); appendTablePhase(phase);
+			ShowView(SOURCE); phase.Format("source-%d-complete", cycle); appendTablePhase(phase);
+			phase.Format("body-%d-start", cycle); appendTablePhase(phase);
+			ShowView(BODY); phase.Format("body-%d-complete", cycle); appendTablePhase(phase);
+		}
+		appendTablePhase("save-1-start");
+		if (!m_doc->Save())
+		{
+			appendTablePhase("save-1-failed;hr=0x80004005;operation=Save");
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		appendTablePhase("save-1-complete");
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
 
 	CStringA rows("phase\telapsed_ms\tprivate_bytes\tworking_set_bytes\tcommitted_bytes\treserved_bytes\tsource_bytes\tsource_lines\tundo_selection_history\r\n");
 	const ULONGLONG start = ::GetTickCount64();
