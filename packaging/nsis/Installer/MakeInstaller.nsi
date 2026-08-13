@@ -605,6 +605,18 @@ Section /o $(FB2_File_Association) FB2_File_Association_id
   WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
 SectionEnd
 
+Section /o $(FBD_File_Association) FBD_File_Association_id
+  ; FBD is metadata-oriented.  Keep it isolated from FB2-only validation and
+  ; Explorer extensions by assigning a dedicated ProgID.
+  WriteRegStr HKCU "Software\Classes\FictionBook.Description" "" "FictionBook Description"
+  WriteRegStr HKCU "Software\Classes\.fbd" "" "FictionBook.Description"
+  WriteRegStr HKCU "Software\Classes\.fbd" "PerceivedType" "Text"
+  WriteRegStr HKCU "Software\Classes\.fbd" "Content Type" "text/xml"
+  WriteRegStr HKCU "Software\Classes\.fbd\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
+  WriteRegStr HKCU "Software\Classes\FictionBook.Description\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
+  WriteRegStr HKCU "Software\Classes\FictionBook.Description\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
+SectionEnd
+
 Section /o $(FB2_Validate_Command) FB2_Validate_Command_id
   ; Добавляем команду проверки, не отбирая .fb2 у другой читалки.
   WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "" "Validate"
@@ -894,6 +906,7 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${MainSection_id} $(DESC_Main)
   !insertmacro MUI_DESCRIPTION_TEXT ${System_Integration_id} $(DESC_System_Integration)
   !insertmacro MUI_DESCRIPTION_TEXT ${FB2_File_Association_id} $(DESC_FB2_File_Association)
+  !insertmacro MUI_DESCRIPTION_TEXT ${FBD_File_Association_id} $(DESC_FBD_File_Association)
   !insertmacro MUI_DESCRIPTION_TEXT ${FB2_Validate_Command_id} $(DESC_FB2_Validate_Command)
   !insertmacro MUI_DESCRIPTION_TEXT ${FB2_Explorer_Properties_id} $(DESC_FB2_Explorer_Properties)
   !insertmacro MUI_DESCRIPTION_TEXT ${ShCutGroup_id} $(DESC_ShCutGroup)
@@ -967,6 +980,12 @@ Section Uninstall
   DeleteRegValue HKCU "Software\Classes\FictionBook.2" "TileInfo"
   DeleteRegValue HKCU "Software\Classes\FictionBook.2" "Details"
   DeleteRegValue HKCU "Software\Classes\FictionBook.2" "PreviewDetails"
+
+  ; Preserve a later user choice of another FBD handler.
+  ReadRegStr $0 HKCU "Software\Classes\.fbd" ""
+  StrCmp $0 "FictionBook.Description" 0 +4
+    DeleteRegKey HKCU "Software\Classes\.fbd"
+    DeleteRegKey HKCU "Software\Classes\FictionBook.Description"
   
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\Scintilla.dll"

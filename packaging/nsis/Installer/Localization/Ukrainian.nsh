@@ -1,4 +1,6 @@
 ; license 
+LangString FBD_File_Association ${LANG_UKRAINIAN} "Use FBE Next for .fbd description files"
+LangString DESC_FBD_File_Association ${LANG_UKRAINIAN} "Opens .fbd description files in FBE Next and changes their icon."
 LicenseLangString License ${LANG_UKRAINIAN} "${INPUTDIR}\gpl-3.0.ua.txt"
 
 ; components section strings

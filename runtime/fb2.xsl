@@ -108,7 +108,7 @@
 	<!-- bodies -->
 	<xsl:apply-templates select="/f:FictionBook/f:body"/>
 	<xsl:if test="not(/f:FictionBook/f:body)">
-	  <div class="body">
+	  <div class="body" fbdsynthetic="1">
 	    <div class="title">
 	      <p/>
 	    </div>

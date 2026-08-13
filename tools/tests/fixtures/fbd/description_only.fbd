@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>sf</genre><author><first-name>Иван</first-name><last-name>Тестов</last-name></author><book-title>Описание без текста</book-title><annotation><p>Проверка FBD.</p></annotation><lang>ru</lang></title-info><document-info><program-used>FBE Next</program-used><id>fbd-description-only</id><version>1.0</version></document-info><publish-info><book-name>Тестовое издание</book-name></publish-info></description></FictionBook>

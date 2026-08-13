@@ -9,6 +9,7 @@
 #include "SettingsDlg.h"
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
+#include "FictionBookFileType.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
 #include <string>
@@ -956,7 +957,7 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 CString	CMainFrame::GetOpenFileName() 
 {
 	CFileDialog dlg(TRUE, L"fb2", NULL, OFN_HIDEREADONLY|OFN_PATHMUSTEXIST, 
-		L"FictionBook files (*.fb2)\0*.fb2\0All files (*.*)\0*.*\0\0");
+		L"FictionBook files (*.fb2;*.fbd)\0*.fb2;*.fbd\0All files (*.*)\0*.*\0\0");
 	if (dlg.DoModal(*this)==IDOK) return dlg.m_szFileName;
 	return CString();
 }
@@ -1046,11 +1047,13 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	bstr_t filename = m_doc->m_filename;
 	if (!filename || (filename == bstr_t(L"Untitled.fb2")))
 		filename = L"";
+	const bool saveAsFbd = IsFbdFile((const wchar_t*)filename);
 
   CCustomSaveDialog	dlg(FALSE,
-	_Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding(), L"fb2", filename,
+	_Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding(), saveAsFbd ? L"fbd" : L"fb2", filename,
     OFN_HIDEREADONLY|OFN_NOREADONLYRETURN|OFN_OVERWRITEPROMPT| OFN_ENABLETEMPLATE,
-    L"FictionBook files (*.fb2)\0*.fb2\0All files (*.*)\0*.*\0\0");
+    L"FictionBook (*.fb2)\0*.fb2\0FictionBook Description (*.fbd)\0*.fbd\0All files (*.*)\0*.*\0\0");
+  dlg.m_ofn.nFilterIndex = saveAsFbd ? 2 : 1;
   if (dlg.DoModal(*this)==IDOK) {
     encoding=dlg.m_encoding;
     return dlg.m_szFileName;
@@ -3957,7 +3960,7 @@ LRESULT CMainFrame::OnDropFiles(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
   if (!buf.IsEmpty())
   {
 	  ext.SetString(ATLPath::FindExtension(buf));
-	  if (ext.CompareNoCase(L".FB2") == 0 )
+	  if (IsSupportedFictionBookFile(buf))
 	  {
 		if (LoadFile(buf)==OK)
 			m_mru.AddToList(m_doc->m_filename);
@@ -3978,7 +3981,7 @@ LRESULT CMainFrame::OnNavigate(WORD, WORD, HWND, BOOL&)
   if (!url.IsEmpty())
   {
 	  CString ext(ATLPath::FindExtension(url));
-	  if (ext.CompareNoCase(L".FB2") == 0 )
+	  if (IsSupportedFictionBookFile(url))
 	  {
 		if (LoadFile(url)==OK)
 			m_mru.AddToList(m_doc->m_filename);

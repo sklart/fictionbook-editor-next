@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><book-title>Обложка FBD</book-title><coverpage><image l:href="#cover.jpg"/></coverpage><lang>ru</lang></title-info><document-info><id>fbd-cover</id><version>1.0</version></document-info></description><binary id="cover.jpg" content-type="image/jpeg">/9j/2Q==</binary></FictionBook>

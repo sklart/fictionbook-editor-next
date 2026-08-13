@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "ImageImport.h"
+#include "FictionBookFileType.h"
 #include "RuntimeLocalization.h"
 #include "resource.h"
 #include "res1.h"
@@ -1281,7 +1282,7 @@ static MSXML2::IXMLDOMNodePtr  GetDiv(MSHTML::IHTMLElementPtr body,
 
 // fetch bodies
 static void   GetBodies(MSHTML::IHTMLElementPtr	body,
-			MSXML2::IXMLDOMDocument2 *doc)
+			MSXML2::IXMLDOMDocument2 *doc, bool omitSyntheticBody)
 {
   MSHTML::IHTMLElementCollectionPtr children(body->children);
   long			      c_len=children->length;
@@ -1294,6 +1295,10 @@ static void   GetBodies(MSHTML::IHTMLElementPtr	body,
 
 	if (U::scmp(div->tagName,L"DIV")==0 && U::scmp(div->className,L"body")==0)
 	{
+	  // fb2.xsl creates this marked visual container solely so Description-only
+	  // FBD files can enter Body mode.  It has no source counterpart.
+	  if (omitSyntheticBody && U::scmp(AU::GetAttrB(div, L"fbdsynthetic"), L"1") == 0)
+		continue;
       MSXML2::IXMLDOMElementPtr	xb(ProcessDiv(div,doc,1));
       _bstr_t	  bn(AU::GetAttrB(div,L"fbname"));
       if (bn.length()>0)
@@ -1550,7 +1555,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   // fetch body elements
   markTableSerializationPhase(L"get-bodies-start");
-  GetBodies(fbw_body,ndoc);
+	GetBodies(fbw_body, ndoc, IsFbdFile(m_filename));
   markTableSerializationPhase(L"get-bodies-complete");
 
   markTableSerializationPhase(L"serialized-snapshot-start");
