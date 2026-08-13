@@ -1988,6 +1988,24 @@
         "bg-BG": "Думи"
       }
     },
+    "fbe.hotkey.tools.options": {
+      "resourceId": "IDS_HOTKEY_TOOLS_OPTIONS",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Settings",
+        "ru-RU": "Настройки",
+        "uk-UA": "Налаштування",
+        "de-DE": "Einstellungen",
+        "fr-FR": "Paramètres",
+        "es-ES": "Configuración",
+        "it-IT": "Impostazioni",
+        "pl-PL": "Ustawienia",
+        "pt-PT": "Definições",
+        "nl-NL": "Instellingen",
+        "cs-CZ": "Nastavení",
+        "bg-BG": "Настройки"
+      }
+    },
     "fbe.hotkey.wrong": {
       "resourceId": "IDS_HOTKEY_WRONG",
       "component": "fbe.core",

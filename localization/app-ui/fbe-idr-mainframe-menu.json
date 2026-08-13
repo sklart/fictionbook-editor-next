@@ -87,7 +87,7 @@
         "it-IT": "&Salva",
         "pl-PL": "&Zapisz",
         "pt-PT": "&Guardar",
-        "nl-NL": "&Opslaan",
+        "nl-NL": "O&pslaan",
         "cs-CZ": "&Uložit",
         "bg-BG": "&Запази"
       }
@@ -120,11 +120,11 @@
         "de-DE": "&Prüfen",
         "fr-FR": "&Valider",
         "es-ES": "&Validar",
-        "it-IT": "&Convalida",
+        "it-IT": "C&onvalida",
         "pl-PL": "&Sprawdź",
         "pt-PT": "&Validar",
         "nl-NL": "&Valideren",
-        "cs-CZ": "&Ověřit",
+        "cs-CZ": "O&věřit",
         "bg-BG": "&Провери"
       }
     },
@@ -172,7 +172,7 @@
         "ru-RU": "&Экспорт",
         "uk-UA": "&Експорт",
         "de-DE": "&Export",
-        "fr-FR": "&Exporter",
+        "fr-FR": "E&xporter",
         "es-ES": "&Exportar",
         "it-IT": "&Esporta",
         "pl-PL": "&Eksport",
@@ -211,11 +211,11 @@
         "fr-FR": "Documents &récents",
         "es-ES": "Documentos &recientes",
         "it-IT": "Documenti &recenti",
-        "pl-PL": "&Ostatnie dokumenty",
+        "pl-PL": "Os&tatnie dokumenty",
         "pt-PT": "Documentos &recentes",
         "nl-NL": "&Recente documenten",
-        "cs-CZ": "&Nedávné dokumenty",
-        "bg-BG": "&Последни документи"
+        "cs-CZ": "Ne&dávné dokumenty",
+        "bg-BG": "По&следни документи"
       }
     },
     "fbe.menu.idr_mainframe.recent.empty": {
@@ -242,16 +242,16 @@
       "translations": {
         "en-US": "E&xit",
         "ru-RU": "&Выход",
-        "uk-UA": "&Вийти",
+        "uk-UA": "В&ийти",
         "de-DE": "&Beenden",
         "fr-FR": "&Quitter",
         "es-ES": "&Salir",
         "it-IT": "&Esci",
-        "pl-PL": "&Zakończ",
+        "pl-PL": "Z&akończ",
         "pt-PT": "&Sair",
-        "nl-NL": "&Afsluiten",
+        "nl-NL": "A&fsluiten",
         "cs-CZ": "&Konec",
-        "bg-BG": "&Изход"
+        "bg-BG": "Из&ход"
       }
     },
     "fbe.menu.idr_mainframe.popup.edit": {
@@ -267,7 +267,7 @@
         "it-IT": "&Modifica",
         "pl-PL": "&Edycja",
         "pt-PT": "&Editar",
-        "nl-NL": "&Bewerken",
+        "nl-NL": "B&ewerken",
         "cs-CZ": "&Úpravy",
         "bg-BG": "&Редактиране"
       }
@@ -303,8 +303,8 @@
         "it-IT": "&Ripeti",
         "pl-PL": "&Ponów",
         "pt-PT": "&Refazer",
-        "nl-NL": "&Opnieuw",
-        "cs-CZ": "&Znovu",
+        "nl-NL": "O&pnieuw",
+        "cs-CZ": "Z&novu",
         "bg-BG": "&Повтори"
       }
     },
@@ -350,16 +350,16 @@
       "translations": {
         "en-US": "&Paste",
         "ru-RU": "В&ставить",
-        "uk-UA": "В&ставити",
+        "uk-UA": "&Вставити",
         "de-DE": "&Einfügen",
         "fr-FR": "C&oller",
         "es-ES": "&Pegar",
         "it-IT": "&Incolla",
         "pl-PL": "&Wklej",
-        "pt-PT": "&Colar",
-        "nl-NL": "&Plakken",
+        "pt-PT": "C&olar",
+        "nl-NL": "P&lakken",
         "cs-CZ": "&Vložit",
-        "bg-BG": "&Постави"
+        "bg-BG": "По&стави"
       }
     },
     "fbe.menu.idr_mainframe.edit.find": {
@@ -370,13 +370,13 @@
         "ru-RU": "&Найти...",
         "uk-UA": "З&найти...",
         "de-DE": "&Suchen...",
-        "fr-FR": "&Rechercher...",
+        "fr-FR": "R&echercher...",
         "es-ES": "&Buscar...",
         "it-IT": "&Trova...",
         "pl-PL": "&Znajdź...",
         "pt-PT": "&Localizar...",
         "nl-NL": "&Zoeken...",
-        "cs-CZ": "&Najít...",
+        "cs-CZ": "N&ajít...",
         "bg-BG": "&Намери..."
       }
     },
@@ -387,32 +387,32 @@
         "en-US": "Find &next",
         "ru-RU": "Н&айти далее",
         "uk-UA": "Знайти &далі",
-        "de-DE": "&Weitersuchen",
+        "de-DE": "We&itersuchen",
         "fr-FR": "Rechercher le &suivant",
         "es-ES": "Buscar &siguiente",
         "it-IT": "Trova &successivo",
         "pl-PL": "Znajdź &następny",
         "pt-PT": "Localizar &seguinte",
-        "nl-NL": "Volgende &zoeken",
+        "nl-NL": "&Volgende zoeken",
         "cs-CZ": "Najít &další",
-        "bg-BG": "Намери &следващ"
+        "bg-BG": "Н&амери следващ"
       }
     },
     "fbe.menu.idr_mainframe.edit.replace": {
       "kind": "MENUITEM",
       "targetId": "ID_EDIT_REPLACE",
       "translations": {
-        "en-US": "&Replace...",
+        "en-US": "Repl&ace...",
         "ru-RU": "&Заменить...",
         "uk-UA": "&Замінити...",
-        "de-DE": "&Ersetzen...",
-        "fr-FR": "Rem&placer...",
-        "es-ES": "&Reemplazar...",
-        "it-IT": "&Sostituisci...",
-        "pl-PL": "&Zamień...",
-        "pt-PT": "&Substituir...",
-        "nl-NL": "&Vervangen...",
-        "cs-CZ": "&Nahradit...",
+        "de-DE": "Erse&tzen...",
+        "fr-FR": "Re&mplacer...",
+        "es-ES": "R&eemplazar...",
+        "it-IT": "S&ostituisci...",
+        "pl-PL": "Z&amień...",
+        "pt-PT": "S&ubstituir...",
+        "nl-NL": "V&ervangen...",
+        "cs-CZ": "Na&hradit...",
         "bg-BG": "&Замени..."
       }
     },
@@ -422,14 +422,14 @@
       "translations": {
         "en-US": "&Go to note or link",
         "ru-RU": "&Перейти к сноске или к ссылке",
-        "uk-UA": "&Перейти до примітки або до посилання",
+        "uk-UA": "П&ерейти до примітки або до посилання",
         "de-DE": "Zur &Fußnote oder zum Link gehen",
         "fr-FR": "Aller à la &note ou au lien",
         "es-ES": "Ir a la &nota o al enlace",
         "it-IT": "Vai alla &nota o al collegamento",
-        "pl-PL": "Przejdź do &przypisu lub łącza",
+        "pl-PL": "P&rzejdź do przypisu lub łącza",
         "pt-PT": "Ir para &nota ou ligação",
-        "nl-NL": "Ga naar &noot of koppeling",
+        "nl-NL": "&Ga naar noot of koppeling",
         "cs-CZ": "Přejít na &poznámku nebo odkaz",
         "bg-BG": "Отиди на &бележка или връзка"
       }
@@ -438,14 +438,14 @@
       "kind": "MENUITEM",
       "targetId": "ID_GOTO_MATCHTAG",
       "translations": {
-        "en-US": "Go to matching &tag",
+        "en-US": "Go to matc&hing tag",
         "ru-RU": "Перейти к парному &тегу",
-        "uk-UA": "Перейти до парного тегу",
-        "de-DE": "Zum passenden &Tag gehen",
+        "uk-UA": "Перейти до парного &тегу",
+        "de-DE": "&Zum passenden Tag gehen",
         "fr-FR": "Aller à la &balise correspondante",
-        "es-ES": "Ir a la e&tiqueta correspondiente",
-        "it-IT": "Vai al &tag corrispondente",
-        "pl-PL": "Przejdź do pasującego &tagu",
+        "es-ES": "&Ir a la etiqueta correspondiente",
+        "it-IT": "&Vai al tag corrispondente",
+        "pl-PL": "Prz&ejdź do pasującego tagu",
         "pt-PT": "Ir para a &etiqueta correspondente",
         "nl-NL": "Ga naar overeenkomende &tag",
         "cs-CZ": "Přejít na odpovídající &tag",
@@ -458,10 +458,10 @@
       "translations": {
         "en-US": "Go to &wrong tag",
         "ru-RU": "Перейти к о&шибочному тегу",
-        "uk-UA": "Перейти до помилкового тегу",
-        "de-DE": "Zum &fehlerhaften Tag gehen",
-        "fr-FR": "Aller à la balise &erronée",
-        "es-ES": "Ir a la etiqueta &errónea",
+        "uk-UA": "Пе&рейти до помилкового тегу",
+        "de-DE": "Zu&m fehlerhaften Tag gehen",
+        "fr-FR": "A&ller à la balise erronée",
+        "es-ES": "Ir &a la etiqueta errónea",
         "it-IT": "Vai al tag &errato",
         "pl-PL": "Przejdź do &błędnego tagu",
         "pt-PT": "Ir para etiqueta &incorreta",
@@ -492,17 +492,17 @@
       "kind": "MENUITEM",
       "targetId": "ID_EDIT_SPLIT",
       "translations": {
-        "en-US": "S&plit",
+        "en-US": "Spl&it",
         "ru-RU": "Разр&езать",
         "uk-UA": "Розр&ізати",
-        "de-DE": "&Teilen",
-        "fr-FR": "&Scinder",
+        "de-DE": "Teile&n",
+        "fr-FR": "Sc&inder",
         "es-ES": "Di&vidir",
-        "it-IT": "Di&vidi",
+        "it-IT": "&Dividi",
         "pl-PL": "Po&dziel",
         "pt-PT": "Di&vidir",
         "nl-NL": "Spl&itsen",
-        "cs-CZ": "Ro&zdělit",
+        "cs-CZ": "&Rozdělit",
         "bg-BG": "Раз&дели"
       }
     },
@@ -511,17 +511,17 @@
       "targetId": "ID_EDIT_MERGE",
       "translations": {
         "en-US": "&Merge",
-        "ru-RU": "Ск&леить",
+        "ru-RU": "Скле&ить",
         "uk-UA": "&Об’єднати",
-        "de-DE": "&Zusammenführen",
+        "de-DE": "Zus&ammenführen",
         "fr-FR": "&Fusionner",
-        "es-ES": "&Combinar",
+        "es-ES": "C&ombinar",
         "it-IT": "&Unisci",
         "pl-PL": "&Scal",
         "pt-PT": "&Unir",
         "nl-NL": "&Samenvoegen",
         "cs-CZ": "&Sloučit",
-        "bg-BG": "&Обедини"
+        "bg-BG": "Об&едини"
       }
     },
     "fbe.menu.idr_mainframe.edit.remove_outer_section": {
@@ -531,14 +531,14 @@
         "en-US": "Remove &outer section",
         "ru-RU": "&Убрать внешний",
         "uk-UA": "За&брати зовнішній",
-        "de-DE": "Äußeren Abschnitt &entfernen",
-        "fr-FR": "Supprimer la section &externe",
+        "de-DE": "&Äußeren Abschnitt entfernen",
+        "fr-FR": "S&upprimer la section externe",
         "es-ES": "Quitar sección e&xterna",
-        "it-IT": "Rimuovi sezione &esterna",
-        "pl-PL": "Usuń sekcję &zewnętrzną",
-        "pt-PT": "Remover secção &externa",
-        "nl-NL": "Buitenste sectie &verwijderen",
-        "cs-CZ": "Odebrat &vnější oddíl",
+        "it-IT": "Ri&muovi sezione esterna",
+        "pl-PL": "&Usuń sekcję zewnętrzną",
+        "pt-PT": "Re&mover secção externa",
+        "nl-NL": "&Buitenste sectie verwijderen",
+        "cs-CZ": "&Odebrat vnější oddíl",
         "bg-BG": "Премахни &външната секция"
       }
     },
@@ -555,7 +555,7 @@
         "it-IT": "&Visualizza",
         "pl-PL": "&Widok",
         "pt-PT": "&Ver",
-        "nl-NL": "&Beeld",
+        "nl-NL": "Bee&ld",
         "cs-CZ": "&Zobrazení",
         "bg-BG": "&Изглед"
       }
@@ -582,18 +582,7 @@
       "kind": "MENUITEM",
       "targetId": "60162",
       "translations": {
-        "en-US": "Scripts bar",
-        "ru-RU": "Панель скриптов",
-        "uk-UA": "Панель скриптів",
-        "de-DE": "Skriptleiste",
-        "fr-FR": "Barre des scripts",
-        "es-ES": "Barra de scripts",
-        "it-IT": "Barra degli script",
-        "pl-PL": "Pasek skryptów",
-        "pt-PT": "Barra de scripts",
-        "nl-NL": "Scriptbalk",
-        "cs-CZ": "Panel skriptů",
-        "bg-BG": "Лента със скриптове"
+        "en-US": "Scripts &bar", "ru-RU": "Панель &скриптов", "uk-UA": "Панель &скриптів", "de-DE": "S&kriptleiste", "fr-FR": "B&arre des scripts", "es-ES": "B&arra de scripts", "it-IT": "B&arra degli script", "pl-PL": "P&asek skryptów", "pt-PT": "B&arra de scripts", "nl-NL": "&Scriptbalk", "cs-CZ": "P&anel skriptů", "bg-BG": "Л&ента със скриптове"
       }
     },
     "fbe.menu.idr_mainframe.view.links_bar": {
@@ -603,7 +592,7 @@
         "en-US": "Lin&ks bar",
         "ru-RU": "Па&нель ссылок",
         "uk-UA": "Па&нель посилань",
-        "de-DE": "Lin&kleiste",
+        "de-DE": "&Linkleiste",
         "fr-FR": "Barre des &liens",
         "es-ES": "Barra de en&laces",
         "it-IT": "Barra dei co&llegamenti",
@@ -618,7 +607,7 @@
       "kind": "MENUITEM",
       "targetId": "60164",
       "translations": {
-        "en-US": "&Tables bar",
+        "en-US": "Tabl&es bar",
         "ru-RU": "П&анель таблиц",
         "uk-UA": "П&анель таблиць",
         "de-DE": "&Tabellenleiste",
@@ -636,18 +625,18 @@
       "kind": "MENUITEM",
       "targetId": "ID_VIEW_STATUS_BAR",
       "translations": {
-        "en-US": "&Status bar",
-        "ru-RU": "&Строка состояния",
-        "uk-UA": "&Смуга стану",
-        "de-DE": "&Statusleiste",
+        "en-US": "Stat&us bar",
+        "ru-RU": "С&трока состояния",
+        "uk-UA": "С&муга стану",
+        "de-DE": "St&atusleiste",
         "fr-FR": "Barre d’&état",
         "es-ES": "Barra de &estado",
         "it-IT": "Barra di &stato",
         "pl-PL": "Pasek &stanu",
         "pt-PT": "Barra de &estado",
-        "nl-NL": "&Statusbalk",
+        "nl-NL": "St&atusbalk",
         "cs-CZ": "&Stavový řádek",
-        "bg-BG": "&Лента на състоянието"
+        "bg-BG": "Ле&нта на състоянието"
       }
     },
     "fbe.menu.idr_mainframe.view.tree": {
@@ -655,16 +644,16 @@
       "targetId": "ID_VIEW_TREE",
       "translations": {
         "en-US": "Book &structure",
-        "ru-RU": "С&труктура книги",
+        "ru-RU": "Ст&руктура книги",
         "uk-UA": "С&труктура книги",
-        "de-DE": "Buch&struktur",
+        "de-DE": "&Buchstruktur",
         "fr-FR": "&Structure du livre",
         "es-ES": "E&structura del libro",
-        "it-IT": "&Struttura del libro",
-        "pl-PL": "&Struktura książki",
+        "it-IT": "St&ruttura del libro",
+        "pl-PL": "St&ruktura książki",
         "pt-PT": "E&strutura do livro",
-        "nl-NL": "Boek&structuur",
-        "cs-CZ": "&Struktura knihy",
+        "nl-NL": "&Boekstructuur",
+        "cs-CZ": "St&ruktura knihy",
         "bg-BG": "&Структура на книгата"
       }
     },
@@ -675,14 +664,14 @@
         "en-US": "Document &description",
         "ru-RU": "&Описание документа",
         "uk-UA": "&Опис документу",
-        "de-DE": "Dokument&beschreibung",
+        "de-DE": "&Dokumentbeschreibung",
         "fr-FR": "&Description du document",
         "es-ES": "&Descripción del documento",
         "it-IT": "&Descrizione documento",
         "pl-PL": "&Opis dokumentu",
         "pt-PT": "&Descrição do documento",
-        "nl-NL": "Document&beschrijving",
-        "cs-CZ": "&Popis dokumentu",
+        "nl-NL": "&Documentbeschrijving",
+        "cs-CZ": "P&opis dokumentu",
         "bg-BG": "&Описание на документа"
       }
     },
@@ -690,15 +679,15 @@
       "kind": "MENUITEM",
       "targetId": "ID_VIEW_BODY",
       "translations": {
-        "en-US": "&Design",
+        "en-US": "Des&ign",
         "ru-RU": "&Дизайн",
-        "uk-UA": "&Тіло документу",
-        "de-DE": "&Design",
+        "uk-UA": "Т&іло документу",
+        "de-DE": "D&esign",
         "fr-FR": "&Mise en page",
-        "es-ES": "&Diseño",
-        "it-IT": "&Design",
-        "pl-PL": "&Projekt",
-        "pt-PT": "&Design",
+        "es-ES": "D&iseño",
+        "it-IT": "D&esign",
+        "pl-PL": "Pro&jekt",
+        "pt-PT": "Des&ign",
         "nl-NL": "&Ontwerp",
         "cs-CZ": "&Návrh",
         "bg-BG": "&Дизайн"
@@ -708,16 +697,16 @@
       "kind": "MENUITEM",
       "targetId": "ID_VIEW_SOURCE",
       "translations": {
-        "en-US": "&Source",
+        "en-US": "Sour&ce",
         "ru-RU": "&Код",
         "uk-UA": "&Код-сирець",
         "de-DE": "&Quelltext",
-        "fr-FR": "&Source",
+        "fr-FR": "S&ource",
         "es-ES": "&Código fuente",
-        "it-IT": "&Sorgente",
+        "it-IT": "S&orgente",
         "pl-PL": "&Źródło",
         "pt-PT": "&Código-fonte",
-        "nl-NL": "&Bron",
+        "nl-NL": "B&ron",
         "cs-CZ": "&Zdroj",
         "bg-BG": "&Код"
       }
@@ -729,14 +718,14 @@
         "en-US": "&Fast mode",
         "ru-RU": "&Ускоренный режим",
         "uk-UA": "Прискорений &режим",
-        "de-DE": "&Schnellmodus",
+        "de-DE": "S&chnellmodus",
         "fr-FR": "Mode &rapide",
         "es-ES": "Modo &rápido",
-        "it-IT": "Modalità &rapida",
-        "pl-PL": "Tryb &szybki",
+        "it-IT": "&Modalità rapida",
+        "pl-PL": "Tr&yb szybki",
         "pt-PT": "Modo &rápido",
-        "nl-NL": "&Snelle modus",
-        "cs-CZ": "&Rychlý režim",
+        "nl-NL": "S&nelle modus",
+        "cs-CZ": "R&ychlý režim",
         "bg-BG": "&Бърз режим"
       }
     },
@@ -751,7 +740,7 @@
         "fr-FR": "&Insertion",
         "es-ES": "&Insertar",
         "it-IT": "&Inserisci",
-        "pl-PL": "&Wstaw",
+        "pl-PL": "W&staw",
         "pt-PT": "&Inserir",
         "nl-NL": "&Invoegen",
         "cs-CZ": "&Vložit",
@@ -787,7 +776,7 @@
         "fr-FR": "&Titre",
         "es-ES": "&Título",
         "it-IT": "&Titolo",
-        "pl-PL": "&Tytuł",
+        "pl-PL": "T&ytuł",
         "pt-PT": "&Título",
         "nl-NL": "&Titel",
         "cs-CZ": "&Název",
@@ -798,7 +787,7 @@
       "kind": "MENUITEM",
       "targetId": "ID_EDIT_ADD_EPIGRAPH",
       "translations": {
-        "en-US": "&Epigraph",
+        "en-US": "Epi&graph",
         "ru-RU": "&Эпиграф",
         "uk-UA": "&Епіграф",
         "de-DE": "&Epigraph",
@@ -816,7 +805,7 @@
       "kind": "MENUITEM",
       "targetId": "ID_EDIT_ADD_ANN",
       "translations": {
-        "en-US": "&Annotation",
+        "en-US": "An&notation",
         "ru-RU": "&Аннотация",
         "uk-UA": "&Анотація",
         "de-DE": "&Annotation",
@@ -837,15 +826,15 @@
         "en-US": "&Author",
         "ru-RU": "А&втор",
         "uk-UA": "А&втор",
-        "de-DE": "&Autor",
-        "fr-FR": "&Auteur",
-        "es-ES": "&Autor",
-        "it-IT": "&Autore",
-        "pl-PL": "&Autor",
-        "pt-PT": "&Autor",
-        "nl-NL": "&Auteur",
-        "cs-CZ": "&Autor",
-        "bg-BG": "&Автор"
+        "de-DE": "A&utor",
+        "fr-FR": "A&uteur",
+        "es-ES": "A&utor",
+        "it-IT": "A&utore",
+        "pl-PL": "A&utor",
+        "pt-PT": "A&utor",
+        "nl-NL": "A&uteur",
+        "cs-CZ": "A&utor",
+        "bg-BG": "А&втор"
       }
     },
     "fbe.menu.idr_mainframe.insert.image": {
@@ -855,13 +844,13 @@
         "en-US": "&Image",
         "ru-RU": "&Рисунок",
         "uk-UA": "&Малюнок",
-        "de-DE": "&Bild",
+        "de-DE": "B&ild",
         "fr-FR": "&Image",
         "es-ES": "&Imagen",
         "it-IT": "&Immagine",
         "pl-PL": "&Obraz",
         "pt-PT": "&Imagem",
-        "nl-NL": "&Afbeelding",
+        "nl-NL": "A&fbeelding",
         "cs-CZ": "&Obrázek",
         "bg-BG": "&Изображение"
       }
@@ -872,16 +861,16 @@
       "translations": {
         "en-US": "Image in t&ext",
         "ru-RU": "Рисунок в т&екст",
-        "uk-UA": "Малюнок у т&ексті",
-        "de-DE": "Bild im T&ext",
+        "uk-UA": "Ма&люнок у тексті",
+        "de-DE": "Bi&ld im Text",
         "fr-FR": "Image dans le t&exte",
-        "es-ES": "Imagen en t&exto",
-        "it-IT": "Immagine nel t&esto",
-        "pl-PL": "Obraz w t&ekście",
-        "pt-PT": "Imagem no t&exto",
-        "nl-NL": "Afbeelding in t&ekst",
-        "cs-CZ": "Obrázek v t&extu",
-        "bg-BG": "Изображение в т&екст"
+        "es-ES": "I&magen en texto",
+        "it-IT": "I&mmagine nel testo",
+        "pl-PL": "O&braz w tekście",
+        "pt-PT": "I&magem no texto",
+        "nl-NL": "Afbee&lding in tekst",
+        "cs-CZ": "O&brázek v textu",
+        "bg-BG": "Из&ображение в текст"
       }
     },
     "fbe.menu.idr_mainframe.insert.poem": {
@@ -890,7 +879,7 @@
       "translations": {
         "en-US": "&Poem",
         "ru-RU": "&Стихи",
-        "uk-UA": "&Вірш",
+        "uk-UA": "В&ірш",
         "de-DE": "&Gedicht",
         "fr-FR": "&Poème",
         "es-ES": "&Poema",
@@ -898,7 +887,7 @@
         "pl-PL": "&Wiersz",
         "pt-PT": "&Poema",
         "nl-NL": "&Gedicht",
-        "cs-CZ": "&Báseň",
+        "cs-CZ": "B&áseň",
         "bg-BG": "&Стихотворение"
       }
     },
@@ -910,11 +899,11 @@
         "ru-RU": "&Цитата",
         "uk-UA": "&Цитата",
         "de-DE": "&Zitat",
-        "fr-FR": "&Citation",
+        "fr-FR": "Citati&on",
         "es-ES": "&Cita",
-        "it-IT": "&Citazione",
+        "it-IT": "Cita&zione",
         "pl-PL": "&Cytat",
-        "pt-PT": "&Citação",
+        "pt-PT": "Cita&ção",
         "nl-NL": "&Citaat",
         "cs-CZ": "&Citace",
         "bg-BG": "&Цитат"
@@ -924,51 +913,51 @@
       "kind": "MENUITEM",
       "targetId": "ID_INSERT_TABLE",
       "translations": {
-        "en-US": "Ta&ble",
+        "en-US": "Tab&le",
         "ru-RU": "Та&блица",
         "uk-UA": "Та&блиця",
         "de-DE": "Ta&belle",
         "fr-FR": "Ta&bleau",
         "es-ES": "Ta&bla",
         "it-IT": "Ta&bella",
-        "pl-PL": "Ta&bela",
+        "pl-PL": "Tabe&la",
         "pt-PT": "Ta&bela",
         "nl-NL": "Ta&bel",
-        "cs-CZ": "Ta&bulka",
+        "cs-CZ": "Tabu&lka",
         "bg-BG": "Та&блица"
       }
     },
     "fbe.menu.idr_mainframe.table.structure": {
       "kind": "POPUP",
-      "translations": { "en-US": "Table &structure", "ru-RU": "&Структура таблицы", "uk-UA": "Структура &таблиці", "de-DE": "Tabellenstruktur", "fr-FR": "Structure du tableau", "es-ES": "Estructura de tabla", "it-IT": "Struttura tabella", "pl-PL": "Struktura tabeli", "pt-PT": "Estrutura da tabela", "nl-NL": "Tabelstructuur", "cs-CZ": "Struktura tabulky", "bg-BG": "Структура на таблицата" }
+      "translations": { "en-US": "Table &structure", "ru-RU": "Стр&уктура таблицы", "uk-UA": "&Структура таблиці", "de-DE": "Tabelle&nstruktur", "fr-FR": "&Structure du tableau", "es-ES": "E&structura de tabla", "it-IT": "&Struttura tabella", "pl-PL": "&Struktura tabeli", "pt-PT": "E&strutura da tabela", "nl-NL": "Tabel&structuur", "cs-CZ": "&Struktura tabulky", "bg-BG": "Ст&руктура на таблицата" }
     },
     "fbe.menu.idr_mainframe.table.insert_row_above": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_ROW_ABOVE",
-      "translations": { "en-US": "Insert row &above", "ru-RU": "Добавить строку с&верху", "uk-UA": "Додати рядок з&верху", "de-DE": "Zeile oben einfügen", "fr-FR": "Insérer une ligne au-dessus", "es-ES": "Insertar fila encima", "it-IT": "Inserisci riga sopra", "pl-PL": "Wstaw wiersz powyżej", "pt-PT": "Inserir linha acima", "nl-NL": "Rij hierboven invoegen", "cs-CZ": "Vložit řádek nad", "bg-BG": "Вмъкни ред отгоре" }
+      "translations": { "en-US": "Insert row &above", "ru-RU": "Добавить строку с&верху", "uk-UA": "Додати рядок з&верху", "de-DE": "&Zeile oben einfügen", "fr-FR": "&Insérer une ligne au-dessus", "es-ES": "&Insertar fila encima", "it-IT": "&Inserisci riga sopra", "pl-PL": "&Wstaw wiersz powyżej", "pt-PT": "&Inserir linha acima", "nl-NL": "&Rij hierboven invoegen", "cs-CZ": "&Vložit řádek nad", "bg-BG": "&Вмъкни ред отгоре" }
     },
     "fbe.menu.idr_mainframe.table.insert_row_below": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_ROW_BELOW",
-      "translations": { "en-US": "Insert row &below", "ru-RU": "Добавить строку с&низу", "uk-UA": "Додати рядок з&низу", "de-DE": "Zeile unten einfügen", "fr-FR": "Insérer une ligne au-dessous", "es-ES": "Insertar fila debajo", "it-IT": "Inserisci riga sotto", "pl-PL": "Wstaw wiersz poniżej", "pt-PT": "Inserir linha abaixo", "nl-NL": "Rij hieronder invoegen", "cs-CZ": "Vložit řádek pod", "bg-BG": "Вмъкни ред отдолу" }
+      "translations": { "en-US": "Insert row &below", "ru-RU": "Добавить строку с&низу", "uk-UA": "Додати рядок з&низу", "de-DE": "Zeile &unten einfügen", "fr-FR": "Insérer une ligne au-&dessous", "es-ES": "Insertar fila de&bajo", "it-IT": "Inserisci riga &sotto", "pl-PL": "Wstaw wiersz p&oniżej", "pt-PT": "Inserir linha a&baixo", "nl-NL": "Rij &hieronder invoegen", "cs-CZ": "Vložit řádek &pod", "bg-BG": "Вмъкни ред &отдолу" }
     },
     "fbe.menu.idr_mainframe.table.delete_row": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_DELETE_ROW",
-      "translations": { "en-US": "&Delete row", "ru-RU": "&Удалить строку", "uk-UA": "&Видалити рядок", "de-DE": "Zeile löschen", "fr-FR": "Supprimer la ligne", "es-ES": "Eliminar fila", "it-IT": "Elimina riga", "pl-PL": "Usuń wiersz", "pt-PT": "Eliminar linha", "nl-NL": "Rij verwijderen", "cs-CZ": "Odstranit řádek", "bg-BG": "Изтрий ред" }
+      "translations": { "en-US": "&Delete row", "ru-RU": "&Удалить строку", "uk-UA": "В&идалити рядок", "de-DE": "Zeile &löschen", "fr-FR": "&Supprimer la ligne", "es-ES": "&Eliminar fila", "it-IT": "&Elimina riga", "pl-PL": "&Usuń wiersz", "pt-PT": "&Eliminar linha", "nl-NL": "Rij &verwijderen", "cs-CZ": "&Odstranit řádek", "bg-BG": "&Изтрий ред" }
     },
     "fbe.menu.idr_mainframe.table.insert_column_left": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_COLUMN_LEFT",
-      "translations": { "en-US": "Insert column &left", "ru-RU": "Добавить столбец с&лева", "uk-UA": "Додати стовпець з&ліва", "de-DE": "Spalte links einfügen", "fr-FR": "Insérer une colonne à gauche", "es-ES": "Insertar columna a la izquierda", "it-IT": "Inserisci colonna a sinistra", "pl-PL": "Wstaw kolumnę z lewej", "pt-PT": "Inserir coluna à esquerda", "nl-NL": "Kolom links invoegen", "cs-CZ": "Vložit sloupec vlevo", "bg-BG": "Вмъкни колона вляво" }
+      "translations": { "en-US": "Insert column &left", "ru-RU": "Добавить столбец с&лева", "uk-UA": "Додати стовпець з&ліва", "de-DE": "&Spalte links einfügen", "fr-FR": "Insérer une co&lonne à gauche", "es-ES": "Insertar columna a la i&zquierda", "it-IT": "Inserisci &colonna a sinistra", "pl-PL": "Wstaw ko&lumnę z lewej", "pt-PT": "Inserir co&luna à esquerda", "nl-NL": "&Kolom links invoegen", "cs-CZ": "Vložit s&loupec vlevo", "bg-BG": "Вмъкни &колона вляво" }
     },
     "fbe.menu.idr_mainframe.table.insert_column_right": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_INSERT_COLUMN_RIGHT",
-      "translations": { "en-US": "Insert column &right", "ru-RU": "Добавить столбец с&права", "uk-UA": "Додати стовпець з&права", "de-DE": "Spalte rechts einfügen", "fr-FR": "Insérer une colonne à droite", "es-ES": "Insertar columna a la derecha", "it-IT": "Inserisci colonna a destra", "pl-PL": "Wstaw kolumnę z prawej", "pt-PT": "Inserir coluna à direita", "nl-NL": "Kolom rechts invoegen", "cs-CZ": "Vložit sloupec vpravo", "bg-BG": "Вмъкни колона вдясно" }
+      "translations": { "en-US": "Insert column &right", "ru-RU": "Добавить столбец с&права", "uk-UA": "Додати стовпець з&права", "de-DE": "Spalte &rechts einfügen", "fr-FR": "Insérer une colonne à d&roite", "es-ES": "Insertar columna a la &derecha", "it-IT": "Inserisci colonna a &destra", "pl-PL": "Wstaw kolumnę z p&rawej", "pt-PT": "Inserir coluna à &direita", "nl-NL": "K&olom rechts invoegen", "cs-CZ": "Vlo&žit sloupec vpravo", "bg-BG": "В&мъкни колона вдясно" }
     },
     "fbe.menu.idr_mainframe.table.delete_column": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_DELETE_COLUMN",
-      "translations": { "en-US": "Delete &column", "ru-RU": "У&далить столбец", "uk-UA": "Ви&далити стовпець", "de-DE": "Spalte löschen", "fr-FR": "Supprimer la colonne", "es-ES": "Eliminar columna", "it-IT": "Elimina colonna", "pl-PL": "Usuń kolumnę", "pt-PT": "Eliminar coluna", "nl-NL": "Kolom verwijderen", "cs-CZ": "Odstranit sloupec", "bg-BG": "Изтрий колона" }
+      "translations": { "en-US": "Delete &column", "ru-RU": "У&далить столбец", "uk-UA": "Ви&далити стовпець", "de-DE": "Spalte l&öschen", "fr-FR": "Supprimer la &colonne", "es-ES": "Eliminar &columna", "it-IT": "Elimina co&lonna", "pl-PL": "Usuń &kolumnę", "pt-PT": "Eliminar c&oluna", "nl-NL": "Ko&lom verwijderen", "cs-CZ": "Odstranit &sloupec", "bg-BG": "И&зтрий колона" }
     },
     "fbe.menu.idr_mainframe.table.toggle_header_cell": {
       "kind": "MENUITEM", "targetId": "ID_TABLE_TOGGLE_HEADER_CELL",
-      "translations": { "en-US": "Make &header/data cell", "ru-RU": "Сделать ячейкой &заголовка / данных", "uk-UA": "Зробити коміркою &заголовка / даних", "de-DE": "Als Kopf- oder Datenzelle festlegen", "fr-FR": "Définir comme cellule d’en-tête ou de données", "es-ES": "Convertir en celda de encabezado o datos", "it-IT": "Imposta come cella di intestazione o dati", "pl-PL": "Ustaw jako komórkę nagłówka lub danych", "pt-PT": "Definir como célula de cabeçalho ou dados", "nl-NL": "Instellen als kop- of gegevenscel", "cs-CZ": "Nastavit jako záhlaví nebo datovou buňku", "bg-BG": "Задай като заглавна или клетка с данни" }
+      "translations": { "en-US": "Make &header/data cell", "ru-RU": "Сделать ячейкой &заголовка / данных", "uk-UA": "Зробити коміркою &заголовка / даних", "de-DE": "Als Kopf- oder &Datenzelle festlegen", "fr-FR": "Définir comme cellule d’&en-tête ou de données", "es-ES": "C&onvertir en celda de encabezado o datos", "it-IT": "Imposta come cella di i&ntestazione o dati", "pl-PL": "Ustaw jako komórkę &nagłówka lub danych", "pt-PT": "De&finir como célula de cabeçalho ou dados", "nl-NL": "Instellen als kop- of g&egevenscel", "cs-CZ": "Nastavit jako záhlaví nebo &datovou buňku", "bg-BG": "Задай като заглавна или клетка с &данни" }
     },
     "fbe.menu.idr_mainframe.insert.section_image": {
       "kind": "MENUITEM",
@@ -976,32 +965,32 @@
       "translations": {
         "en-US": "Section i&mage",
         "ru-RU": "Р&исунок секции",
-        "uk-UA": "Ма&люнок секції",
-        "de-DE": "Abschnitts&bild",
-        "fr-FR": "Image de &section",
-        "es-ES": "Imagen de &sección",
-        "it-IT": "Immagine di &sezione",
-        "pl-PL": "Obraz &sekcji",
-        "pt-PT": "Imagem da &secção",
-        "nl-NL": "Sectieaf&beelding",
-        "cs-CZ": "Obrázek &oddílu",
-        "bg-BG": "Изображение на &секция"
+        "uk-UA": "Мал&юнок секції",
+        "de-DE": "Ab&schnittsbild",
+        "fr-FR": "I&mage de section",
+        "es-ES": "Ima&gen de sección",
+        "it-IT": "Imma&gine di sezione",
+        "pl-PL": "Ob&raz sekcji",
+        "pt-PT": "Ima&gem da secção",
+        "nl-NL": "Sect&ieafbeelding",
+        "cs-CZ": "Ob&rázek oddílu",
+        "bg-BG": "Изобра&жение на секция"
       }
     },
     "fbe.menu.idr_mainframe.insert.binary": {
       "kind": "MENUITEM",
       "targetId": "ID_EDIT_ADDBINARY",
       "translations": {
-        "en-US": "&Attach",
+        "en-US": "Attac&h",
         "ru-RU": "&Прикрепить",
         "uk-UA": "&Долучити",
-        "de-DE": "&Anhängen",
+        "de-DE": "An&hängen",
         "fr-FR": "&Joindre",
-        "es-ES": "&Adjuntar",
-        "it-IT": "&Allega",
+        "es-ES": "A&djuntar",
+        "it-IT": "A&llega",
         "pl-PL": "&Dołącz",
-        "pt-PT": "&Anexar",
-        "nl-NL": "&Bijvoegen",
+        "pt-PT": "A&nexar",
+        "nl-NL": "Bi&jvoegen",
         "cs-CZ": "&Připojit",
         "bg-BG": "&Прикачи"
       }
@@ -1100,17 +1089,17 @@
       "kind": "MENUITEM",
       "targetId": "ID_STYLE_NOTE",
       "translations": {
-        "en-US": "&Note...",
+        "en-US": "N&ote...",
         "ru-RU": "С&носка...",
         "uk-UA": "При&мітка...",
         "de-DE": "&Fußnote...",
-        "fr-FR": "&Note...",
-        "es-ES": "&Nota...",
-        "it-IT": "&Nota...",
-        "pl-PL": "&Przypis...",
-        "pt-PT": "&Nota...",
-        "nl-NL": "&Noot...",
-        "cs-CZ": "&Poznámka...",
+        "fr-FR": "N&ote...",
+        "es-ES": "N&ota...",
+        "it-IT": "N&ota...",
+        "pl-PL": "P&rzypis...",
+        "pt-PT": "N&ota...",
+        "nl-NL": "Noo&t...",
+        "cs-CZ": "Po&známka...",
         "bg-BG": "&Бележка..."
       }
     },
@@ -1122,32 +1111,32 @@
         "ru-RU": "&Удалить ссылку",
         "uk-UA": "&Видалити посилання",
         "de-DE": "Link &entfernen",
-        "fr-FR": "&Supprimer le lien",
+        "fr-FR": "S&upprimer le lien",
         "es-ES": "&Quitar enlace",
         "it-IT": "&Rimuovi collegamento",
         "pl-PL": "&Usuń łącze",
         "pt-PT": "&Remover ligação",
         "nl-NL": "Koppeling &verwijderen",
-        "cs-CZ": "&Odebrat odkaz",
-        "bg-BG": "&Премахни връзката"
+        "cs-CZ": "O&debrat odkaz",
+        "bg-BG": "П&ремахни връзката"
       }
     },
     "fbe.menu.idr_mainframe.popup.tools": {
       "kind": "POPUP",
       "targetId": "",
       "translations": {
-        "en-US": "&Tools",
+        "en-US": "To&ols",
         "ru-RU": "Се&рвис",
         "uk-UA": "&Інструменти",
-        "de-DE": "&Extras",
+        "de-DE": "E&xtras",
         "fr-FR": "&Outils",
         "es-ES": "&Herramientas",
         "it-IT": "&Strumenti",
         "pl-PL": "&Narzędzia",
-        "pt-PT": "&Ferramentas",
-        "nl-NL": "&Extra",
+        "pt-PT": "Fe&rramentas",
+        "nl-NL": "E&xtra",
         "cs-CZ": "&Nástroje",
-        "bg-BG": "&Инструменти"
+        "bg-BG": "И&нструменти"
       }
     },
     "fbe.menu.idr_mainframe.popup.diagnostics": {
@@ -1208,18 +1197,7 @@
       "kind": "MENUITEM",
       "targetId": "ID_TOOLS_SPELLCHECK",
       "translations": {
-        "en-US": "Spelling...",
-        "ru-RU": "Орфография...",
-        "uk-UA": "Орфографія...",
-        "de-DE": "Rechtschreibung...",
-        "fr-FR": "Orthographe...",
-        "es-ES": "Ortografía...",
-        "it-IT": "Ortografia...",
-        "pl-PL": "Pisownia...",
-        "pt-PT": "Ortografia...",
-        "nl-NL": "Spelling...",
-        "cs-CZ": "Pravopis...",
-        "bg-BG": "Правопис..."
+        "en-US": "&Spelling...", "ru-RU": "Ор&фография...", "uk-UA": "Ор&фографія...", "de-DE": "&Rechtschreibung...", "fr-FR": "O&rthographe...", "es-ES": "O&rtografía...", "it-IT": "O&rtografia...", "pl-PL": "&Pisownia...", "pt-PT": "O&rtografia...", "nl-NL": "S&pelling...", "cs-CZ": "&Pravopis...", "bg-BG": "&Правопис..."
       }
     },
     "fbe.menu.idr_mainframe.tools.diagnostic_trace": {
@@ -1269,14 +1247,14 @@
       "kind": "MENUITEM",
       "targetId": "ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH",
       "translations": {
-        "en-US": "Copy diagnostic log &path", "ru-RU": "Копировать &путь к диагностическому журналу", "uk-UA": "Копіювати &шлях до діагностичного журналу", "de-DE": "&Pfad zum Diagnoseprotokoll kopieren", "fr-FR": "Copier le &chemin du journal de diagnostic", "es-ES": "Copiar la &ruta del registro de diagnóstico", "it-IT": "Copia il &percorso del registro diagnostico", "pl-PL": "Kopiuj &ścieżkę do dziennika diagnostycznego", "pt-PT": "Copiar o &caminho do registo de diagnóstico", "nl-NL": "&Pad naar diagnostisch logboek kopiëren", "cs-CZ": "Kopírovat &cestu k diagnostickému protokolu", "bg-BG": "Копиране на &пътя до диагностичния журнал"
+        "en-US": "Copy diagnostic log &path", "ru-RU": "&Копировать путь к диагностическому журналу", "uk-UA": "Копіювати &шлях до діагностичного журналу", "de-DE": "P&fad zum Diagnoseprotokoll kopieren", "fr-FR": "Copier le &chemin du journal de diagnostic", "es-ES": "Copiar la &ruta del registro de diagnóstico", "it-IT": "Copia il &percorso del registro diagnostico", "pl-PL": "&Kopiuj ścieżkę do dziennika diagnostycznego", "pt-PT": "Copiar o &caminho do registo de diagnóstico", "nl-NL": "&Pad naar diagnostisch logboek kopiëren", "cs-CZ": "Kopírovat &cestu k diagnostickému protokolu", "bg-BG": "&Копиране на пътя до диагностичния журнал"
       }
     },
     "fbe.menu.idr_mainframe.tools.clear_diagnostic_logs": {
       "kind": "MENUITEM",
       "targetId": "ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS",
       "translations": {
-        "en-US": "Clear old diagnostic logs", "ru-RU": "Очистить старые диагностические журналы", "uk-UA": "Очистити старі діагностичні журнали", "de-DE": "Alte Diagnoseprotokolle löschen", "fr-FR": "Effacer les anciens journaux de diagnostic", "es-ES": "Borrar registros de diagnóstico antiguos", "it-IT": "Cancella i vecchi registri diagnostici", "pl-PL": "Wyczyść stare dzienniki diagnostyczne", "pt-PT": "Limpar registos de diagnóstico antigos", "nl-NL": "Oude diagnostische logboeken wissen", "cs-CZ": "Vymazat staré diagnostické protokoly", "bg-BG": "Изчистване на старите диагностични журнали"
+        "en-US": "&Clear old diagnostic logs", "ru-RU": "О&чистить старые диагностические журналы", "uk-UA": "О&чистити старі діагностичні журнали", "de-DE": "A&lte Diagnoseprotokolle löschen", "fr-FR": "&Effacer les anciens journaux de diagnostic", "es-ES": "&Borrar registros de diagnóstico antiguos", "it-IT": "C&ancella i vecchi registri diagnostici", "pl-PL": "&Wyczyść stare dzienniki diagnostyczne", "pt-PT": "&Limpar registos de diagnóstico antigos", "nl-NL": "&Oude diagnostische logboeken wissen", "cs-CZ": "&Vymazat staré diagnostické protokoly", "bg-BG": "&Изчистване на старите диагностични журнали"
       }
     },
     "fbe.menu.idr_mainframe.tools.create_diagnostic_package": {
@@ -1578,13 +1556,13 @@
         "ru-RU": "Спр&авка",
         "uk-UA": "&Довідка",
         "de-DE": "&Hilfe",
-        "fr-FR": "&Aide",
+        "fr-FR": "Aid&e",
         "es-ES": "A&yuda",
         "it-IT": "&Aiuto",
         "pl-PL": "Pomo&c",
         "pt-PT": "A&juda",
         "nl-NL": "&Help",
-        "cs-CZ": "&Nápověda",
+        "cs-CZ": "N&ápověda",
         "bg-BG": "&Помощ"
       }
     },

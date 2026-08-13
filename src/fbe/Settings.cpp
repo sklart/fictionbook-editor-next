@@ -696,6 +696,11 @@ void CSettings::InitHotkeyGroups()
 	CHotkey ToolsWords(L"Words", IDS_HOTKEY_TOOLS_WORDS, FALT, ID_TOOLS_WORDS, U::StringToKeycode(L"W"));
 	tools_hotkeys_group.m_hotkeys.push_back(ToolsWords);
 
+	// Settings: Ctrl+, is a layout-independent physical OEM key and is free
+	// among the built-in defaults.  It remains fully user-configurable.
+	CHotkey ToolsOptions(L"Options", IDS_HOTKEY_TOOLS_OPTIONS, FCONTROL, ID_VIEW_OPTIONS, VK_OEM_COMMA);
+	tools_hotkeys_group.m_hotkeys.push_back(ToolsOptions);
+
 	// Added by SeNS
 	CHotkey ToolsSpell(L"Spell check", IDS_HOTKEY_TOOLS_SPELL, NULL, ID_TOOLS_SPELLCHECK, VK_F7);
 	tools_hotkeys_group.m_hotkeys.push_back(ToolsSpell);

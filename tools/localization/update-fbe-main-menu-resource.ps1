@@ -11,7 +11,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string[]]$Languages = @("ru-RU", "uk-UA")
+    [string[]]$Languages = @("ru-RU", "uk-UA"),
+    [switch]$ValidateMnemonicsOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -141,6 +142,73 @@ $template = @(
         ) }
     ) }
 )
+
+$script:mnemonicErrors = New-Object 'System.Collections.Generic.List[string]'
+
+# These labels have no remaining character that is not already used by an
+# immediate sibling.  Changing their wording solely to manufacture an access
+# key would make established translations worse, so each unavoidable collision
+# is listed explicitly.  Any new collision still fails validation.
+$allowedMnemonicConflicts = @{
+    'de-DE|IDR_MAINFRAME/popup.insert|B|insert.body|insert.table' = 'Tabelle has no unused letter.'
+    'fr-FR|IDR_MAINFRAME/popup.edit|L|edit.goto_wrong_tag|edit.clone' = 'Cloner has no unused letter.'
+    'es-ES|IDR_MAINFRAME/popup.insert|C|insert.body|insert.cite' = 'Cita has no unused letter.'
+    'it-IT|IDR_MAINFRAME/popup.file|E|popup.export|file.exit' = 'Esci has no unused letter.'
+    'pt-PT|IDR_MAINFRAME/popup.edit|L|edit.find|edit.clone' = 'Clonar has no unused letter.'
+    'pt-PT|IDR_MAINFRAME/popup.edit|U|edit.replace|edit.merge' = 'Unir has no unused letter.'
+    'nl-NL|IDR_MAINFRAME/popup.edit|L|edit.paste|edit.clone' = 'Klonen has no unused letter.'
+    'nl-NL|IDR_MAINFRAME/popup.insert|B|insert.body|insert.table' = 'Tabel has no unused letter.'
+}
+
+function Get-MenuMnemonic {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Text, [Parameter(Mandatory)][string]$Context)
+    $markers = @()
+    for ($index = 0; $index -lt $Text.Length; ++$index) {
+        if ($Text[$index] -ne '&') { continue }
+        if ($index + 1 -ge $Text.Length) { throw "Недопустимая мнемоника в ${Context}: '&' в конце строки '$Text'." }
+        if ($Text[$index + 1] -eq '&') { ++$index; continue }
+        if ([char]::IsWhiteSpace($Text[$index + 1])) { throw "Недопустимая мнемоника в ${Context}: '&' перед пробелом в '$Text'." }
+        $markers += [char]::ToUpperInvariant($Text[$index + 1])
+    }
+    if ($markers.Count -ne 1) { $script:mnemonicErrors.Add("Ожидалась ровно одна мнемоника в $Context, получено $($markers.Count): '$Text'."); return '' }
+    return [string]$markers[0]
+}
+
+function Test-MenuMnemonicLevel {
+    param([Parameter(Mandatory)]$Nodes, [Parameter(Mandatory)][string]$Language, [Parameter(Mandatory)][string]$Path)
+    $used = @{}
+    foreach ($node in $Nodes) {
+        if ($node.Type -eq 'SEPARATOR') { continue }
+        $entryProperty = $catalog.strings.PSObject.Properties["fbe.menu.idr_mainframe.$($node.Key)"]
+        if (-not $entryProperty) { throw "В каталоге нет пункта главного меню: $($node.Key)" }
+        $entry = $entryProperty.Value
+        if ($node.Extra -eq 'INACTIVE' -or [string]$entry.targetId -eq 'IDCANCEL') { continue }
+        $text = [string]$entry.translations.PSObject.Properties[$Language].Value
+        $context = "$Language, $Path/$($node.Key)"
+        $mnemonic = Get-MenuMnemonic -Text $text -Context $context
+        if ($used.ContainsKey($mnemonic)) {
+            $conflictKey = "$Language|$Path|$mnemonic|$($used[$mnemonic])|$($node.Key)"
+            if (-not $allowedMnemonicConflicts.ContainsKey($conflictKey)) {
+                $script:mnemonicErrors.Add("Конфликт мнемоники: язык=$Language; меню=$Path; клавиша=$mnemonic; пункты=$($used[$mnemonic]), $($node.Key).")
+            }
+        }
+        $used[$mnemonic] = $node.Key
+    }
+    foreach ($node in $Nodes) {
+        if ($node.Type -eq 'POPUP') { Test-MenuMnemonicLevel -Nodes $node.Children -Language $Language -Path "$Path/$($node.Key)" }
+    }
+}
+
+foreach ($language in $catalog.targetLanguages) {
+    Test-MenuMnemonicLevel -Nodes $template -Language $language -Path 'IDR_MAINFRAME'
+}
+if ($script:mnemonicErrors.Count) {
+    throw ($script:mnemonicErrors -join [Environment]::NewLine)
+}
+if ($ValidateMnemonicsOnly) {
+    Write-Host 'Мнемоники главного меню FBE прошли проверку.'
+    return
+}
 
 function ConvertTo-RcStringLiteral {
     param([AllowNull()][string]$Text)

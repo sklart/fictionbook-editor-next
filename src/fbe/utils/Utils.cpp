@@ -117,6 +117,7 @@ namespace U
 		keycodes.Add(L"[", VK_OEM_4);
 		keycodes.Add(L"]", VK_OEM_6);
 		keycodes.Add(L"\"", VK_OEM_7);
+		keycodes.Add(L",", VK_OEM_COMMA);
 		keycodes.Add(L"<", VK_OEM_COMMA);
 		keycodes.Add(L">", VK_OEM_PERIOD);
 		keycodes.Add(L"-", VK_OEM_MINUS);
