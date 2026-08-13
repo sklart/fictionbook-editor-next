@@ -34,6 +34,7 @@ $release = Get-Text "tools\build\create-release.ps1"
 $portable = Get-Text "tools\build\package-portable.ps1"
 $artifacts = Get-Text "tools\build\verify-artifacts.ps1"
 $verifyRelease = Get-Text "tools\build\verify-release.ps1"
+$archHandlerArgv = Get-Text "tools\tests\test-archhandler-argv.ps1"
 $pcre2Build = Get-Text "tools\build\build-pcre2.ps1"
 $hunspellBuild = Get-Text "tools\build\build-hunspell.ps1"
 $muiBuild = Get-Text "tools\build\build-fbv-verb-mui.ps1"
@@ -161,6 +162,8 @@ Assert-Contains $verifyRelease "фактически поставляемая DL
 Assert-Contains $verifyRelease "Machine = [UInt16]0x8664" "verify-release.ps1: x64 FBShell architecture"
 Assert-NotContains $verifyRelease "test-release-pipeline-deduplication.ps1" "verify-release.ps1: structural regression выполняется только в validate"
 Assert-Contains $verifyRelease '-EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")' "verify-release.ps1"
+Assert-Contains $archHandlerArgv "Get-Command cl.exe" "ArchHandler argv test: toolchain для receiver"
+Assert-Contains $archHandlerArgv "Import-VsDevEnvironment.ps1" "ArchHandler argv test: загрузка toolchain"
 if ($verifyRelease -match 'analyze-product-hardcoded-cyrillic\.ps1"\)\s+-FailOnFindings') {
     throw "Релизный контур не должен блокироваться накопленным набором кириллических строк; строгая проверка допустима только для отдельных фикстур."
 }

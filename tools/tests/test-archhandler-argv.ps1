@@ -11,13 +11,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
+    & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
+}
 if ($HandlerDirectory) {
     $handlerDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($HandlerDirectory)
     foreach ($name in @('ZipHandler.exe', 'RarHandler.exe')) {
         if (-not (Test-Path -LiteralPath (Join-Path $handlerDir $name) -PathType Leaf)) { throw "Не найден prepared ArchHandler artifact: $(Join-Path $handlerDir $name)" }
     }
 } else {
-    & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
     & (Join-Path $repoRoot 'tools\build\build-archhandler.ps1') -PlatformToolset $PlatformToolset
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $handlerDir = Join-Path $repoRoot 'out\archhandler\Win32\Release'
