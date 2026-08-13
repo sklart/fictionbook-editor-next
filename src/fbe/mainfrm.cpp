@@ -3000,8 +3000,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			MSHTML::IHTMLElementCollectionPtr td(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TD") : MSHTML::IHTMLElementCollectionPtr());
 			MSHTML::IHTMLElementCollectionPtr th(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TH") : MSHTML::IHTMLElementCollectionPtr());
 			CStringA row;
-			row.Format("%s\t%I64u\t%ld\t%ld\t%ld\t%ld\r\n", phase, ::GetTickCount64() - start,
-				tables ? tables->length : 0, rows ? rows->length : 0, td ? td->length : 0, th ? th->length : 0);
+			row.Format("%s\t%I64u\t%ld\t%ld\t%ld\t%ld\t%s\r\n", phase, ::GetTickCount64() - start,
+				tables ? tables->length : 0, rows ? rows->length : 0, td ? td->length : 0, th ? th->length : 0, (LPCSTR)m_doc->m_body.TableStructuralSnapshot());
 			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
 		auto selectFirstCell = [&]() -> bool
@@ -3033,7 +3033,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			{ "delete-column", &CFBEView::OnTableDeleteColumn, false, false }, { "make-header", &CFBEView::OnTableMakeHeaderCells, true, false },
 			{ "make-normal", &CFBEView::OnTableMakeNormalCells, true, true }
 		};
-		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\r\n");
+		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\tgrid_signature\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
 		for (size_t index = 0; index < _countof(operations); ++index)
 		{

@@ -4887,6 +4887,30 @@ BSTR CFBEView::PrepareDefaultId(const CString& filename){
 static bool GetSelectedTableCells(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& currentCell, std::vector<MSHTML::IHTMLElementPtr>& result);
 static bool ReplaceTableCells(MSHTML::IHTMLDocument2Ptr document, const std::vector<MSHTML::IHTMLElementPtr>& cells, const wchar_t* targetName);
 
+CStringA CFBEView::TableStructuralSnapshot()
+{
+	try {
+		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		LogicalTableGrid grid;
+		if (!BuildLogicalTableGrid(table, grid)) return CStringA("invalid");
+		CStringA snapshot; snapshot.Format("rows=%ld;columns=%ld;", static_cast<long>(grid.rows.size()), grid.columns);
+		for (size_t index = 0; index < grid.cells.size(); ++index) {
+			const LogicalTableCell& cell = grid.cells[index];
+			CStringA entry; entry.Format("c%u:%S,%ld,%ld,%ld,%ld,%ld,%ld;", static_cast<unsigned>(index),
+				(const wchar_t*)cell.element->tagName, cell.sourceRow, cell.startColumn, cell.colspan, cell.rowspan,
+				GetTableSpan(cell.element, L"fbcolspan", L"colspan"), GetTableSpan(cell.element, L"fbrowspan", L"rowspan"));
+			snapshot += entry;
+		}
+		for (long row = 0; row < static_cast<long>(grid.rows.size()); ++row) for (long column = 0; column < grid.columns; ++column) {
+			CStringA entry; entry.Format("s%ld,%ld=%ld;", row, column, grid.At(row, column)); snapshot += entry;
+		}
+		return snapshot;
+	}
+	catch (_com_error&) { return CStringA("error"); }
+}
+
 static bool MakeSelectedTableCells(CFBEView* view, const wchar_t* targetName)
 {
 	MSHTML::IHTMLElementPtr currentCell(view->SelectionStructTableCon());

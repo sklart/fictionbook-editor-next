@@ -624,7 +624,8 @@ public:
   MSHTML::IHTMLElementPtr   SelectionStructImage();
   MSHTML::IHTMLElementPtr   SelectionStructSection();
   MSHTML::IHTMLElementPtr   SelectionStructTable();
-  MSHTML::IHTMLElementPtr   SelectionStructTableCon();
+	MSHTML::IHTMLElementPtr   SelectionStructTableCon();
+	CStringA TableStructuralSnapshot();
   MSHTML::IHTMLElementPtr   SelectionsStyleT();
   MSHTML::IHTMLElementPtr	SelectionsStyleTB(_bstr_t& style);
   MSHTML::IHTMLElementPtr   SelectionsStyle();
