@@ -29,6 +29,19 @@ function timedValidation(bytes) {
     return { value: value, elapsed: new Date().getTime() - started };
 }
 
+function validateManyBinaries(binaryCount, bytesPerBinary) {
+    var value = makeBase64(bytesPerBinary), values = [], started, i, elapsed;
+    for (i = 0; i < binaryCount; i++) values.push(value);
+    started = new Date().getTime();
+    for (i = 0; i < values.length; i++) valid(values[i]);
+    elapsed = new Date().getTime() - started;
+    values[values.length - 1] = value.substr(0, value.length - 1) + "!";
+    try { valid(values[values.length - 1]); throw new Error("accepted invalid binary near end"); }
+    catch (e) { if (e.message == "accepted invalid binary near end") throw e; }
+    WScript.Echo("Base64 many-binary " + binaryCount + " x " + bytesPerBinary + " bytes: " + elapsed + " ms");
+    return { count: binaryCount, bytes: bytesPerBinary, elapsed: elapsed };
+}
+
 valid("iVBORw0KGgoAAAANSUhEUg== ");
 valid("iVBORw0K\r\nGgoAAAANSUhEUg==");
 var invalidValues = ["", "!", "iVBORw0K!GgoAAAANSUhEUg==", "iVBORw0KGgoAAAANSUhEUg==!", "iVBORw0KGgoAAAANSUhEUg=", "iVBORw0KGgoAAAANSUhEUg===", "iVBORw0KGgoAAAANSUhEU=Q==", "iVBORw0KGgoAAAANSUhEUg==QUJD"];
@@ -46,3 +59,6 @@ for (i = 0; i < sizes.length; ++i) {
     results.push({ bytes: sizes[i], elapsed: sample.elapsed }); previous = results[results.length - 1];
 }
 for (i = 0; i < results.length; ++i) WScript.Echo("Base64 " + results[i].bytes + " bytes: " + results[i].elapsed + " ms");
+var many64KiB = validateManyBinaries(100, 64 * 1024);
+var many4KiB = validateManyBinaries(1000, 4 * 1024);
+if (many4KiB.elapsed > Math.max(1000, many64KiB.elapsed * 8 + 500)) throw new Error("Many-binary Base64 validation is not approximately linear.");
