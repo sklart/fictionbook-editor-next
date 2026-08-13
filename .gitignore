@@ -64,6 +64,8 @@ Thumbs.db
 *.ilk
 *.tlog
 *.lastbuildstate
+*.tlh
+*.tli
 PVS-Studio.stacktrace.txt
 fbe-trace-*.log
 FBE-Diagnostics-*.zip
