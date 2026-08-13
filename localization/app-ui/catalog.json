@@ -5702,22 +5702,22 @@
         "bg-BG": "Файлът не може да бъде записан.\r\n\r\nФайл:\r\n%s\r\n\r\nПричина:\r\n%s (грешка на Windows %lu)"
       }
     },
-    "fbe.binary_save.windows_error": {
+    "fbe.binary_save.unknown_error": {
       "component": "fbe.core",
       "runtimeOnly": true,
       "translations": {
-        "en-US": "Windows error %lu",
-        "ru-RU": "Ошибка Windows %lu",
-        "uk-UA": "Помилка Windows %lu",
-        "de-DE": "Windows-Fehler %lu",
-        "fr-FR": "Erreur Windows %lu",
-        "es-ES": "Error de Windows %lu",
-        "it-IT": "Errore di Windows %lu",
-        "pl-PL": "Błąd systemu Windows %lu",
-        "pt-PT": "Erro do Windows %lu",
-        "nl-NL": "Windows-fout %lu",
-        "cs-CZ": "Chyba systému Windows %lu",
-        "bg-BG": "Грешка на Windows %lu"
+        "en-US": "Unknown Windows error",
+        "ru-RU": "Неизвестная ошибка Windows",
+        "uk-UA": "Невідома помилка Windows",
+        "de-DE": "Unbekannter Windows-Fehler",
+        "fr-FR": "Erreur Windows inconnue",
+        "es-ES": "Error de Windows desconocido",
+        "it-IT": "Errore di Windows sconosciuto",
+        "pl-PL": "Nieznany błąd systemu Windows",
+        "pt-PT": "Erro do Windows desconhecido",
+        "nl-NL": "Onbekende Windows-fout",
+        "cs-CZ": "Neznámá chyba systému Windows",
+        "bg-BG": "Неизвестна грешка на Windows"
       }
     },
     "fbe.image_import.too_large": {

@@ -270,14 +270,16 @@ public:
 				*ret = true;
 			else
 			{
-				CString message;
-				message.Format(L"SaveBinary failed (error %lu)", error);
-				StartupTrace::Error(L"binary-save", L"B510", message);
-				// Batch callers use prompt=false and must never receive UI.  A
-				// pre-existing target is therefore returned as false like every
-				// other write failure, while still being available in the trace.
-				if (prompt)
-					ShowBinarySaveFailure(GetActiveWindow(), file_name, error);
+				const bool expectedExists = !prompt &&
+					(error == ERROR_FILE_EXISTS || error == ERROR_ALREADY_EXISTS);
+				if (!expectedExists)
+				{
+					CString message;
+					message.Format(L"SaveBinary failed (error %lu)", error);
+					StartupTrace::Error(L"binary-save", L"B510", message);
+					if (prompt)
+						ShowBinarySaveFailure(GetActiveWindow(), file_name, error);
+				}
 			}
 		}
 		return S_OK;

@@ -10,7 +10,8 @@ inline void ShowBinarySaveFailure(HWND owner, const CString& destination, DWORD 
 	CString reason = U::Win32ErrMsg(error);
 	reason.TrimRight(L"\r\n");
 	if (reason.IsEmpty())
-		reason = L"Unknown Windows error";
+		reason = FbeLoadRuntimeStringByKey(
+			L"fbe.binary_save.unknown_error", L"Unknown Windows error");
 
 	const CString templateText = FbeLoadRuntimeStringByKey(
 		L"fbe.binary_save.failed.message",
