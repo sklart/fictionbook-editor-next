@@ -56,6 +56,9 @@ Assert-Contains $workflow "validate:" "отдельная job валидации
 Assert-Contains $workflow "build:" "отдельная job сборки"
 Assert-Contains $workflow "package:" "отдельная job упаковки"
 Assert-Contains $workflow "publish:" "отдельная job публикации"
+if ($workflow -notmatch '(?s)package:.*?actions/checkout@v5\s+with:\s+submodules: recursive') {
+    throw "package job обязан checkout'ить submodules: portable package копирует лицензии third_party."
+}
 Assert-Contains $workflow "actions/upload-artifact@v4" "передача результатов между jobs"
 Assert-Contains $workflow "actions/download-artifact@v4" "получение результатов между jobs"
 Assert-Contains $workflow "Restore PCRE2 cache" "независимый PCRE2 cache"
