@@ -5614,7 +5614,70 @@
       "translations": {
         "en-US": "FBD description is well-formed; FB2 schema validation does not apply.",
         "ru-RU": "Описание FBD корректно сформировано; проверка по схеме FB2 неприменима.",
-        "uk-UA": "Опис FBD коректно сформовано; перевірка за схемою FB2 не застосовується."
+        "uk-UA": "Опис FBD коректно сформовано; перевірка за схемою FB2 не застосовується.",
+        "de-DE": "Die FBD-Beschreibung ist wohlgeformt; die FB2-Schemavalidierung ist nicht anwendbar.",
+        "fr-FR": "La description FBD est bien formée ; la validation du schéma FB2 ne s’applique pas.",
+        "es-ES": "La descripción FBD está bien formada; la validación del esquema FB2 no se aplica.",
+        "it-IT": "La descrizione FBD è ben formata; la convalida dello schema FB2 non si applica.",
+        "pl-PL": "Opis FBD jest poprawnie zbudowany; walidacja schematu FB2 nie ma zastosowania.",
+        "pt-PT": "A descrição FBD está bem formada; a validação do esquema FB2 não se aplica.",
+        "nl-NL": "De FBD-beschrijving is correct gevormd; FB2-schemavalidatie is niet van toepassing.",
+        "cs-CZ": "Popis FBD je správně vytvořen; ověření podle schématu FB2 se nepoužije.",
+        "bg-BG": "Описанието FBD е правилно оформено; проверката по схемата FB2 не е приложима."
+      }
+    },
+    "fbe.binary_save.failed.caption": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Save image",
+        "ru-RU": "Сохранение изображения",
+        "uk-UA": "Збереження зображення",
+        "de-DE": "Bild speichern",
+        "fr-FR": "Enregistrer l’image",
+        "es-ES": "Guardar imagen",
+        "it-IT": "Salva immagine",
+        "pl-PL": "Zapisz obraz",
+        "pt-PT": "Guardar imagem",
+        "nl-NL": "Afbeelding opslaan",
+        "cs-CZ": "Uložit obrázek",
+        "bg-BG": "Запазване на изображение"
+      }
+    },
+    "fbe.binary_save.failed.message": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not save the file.\r\n\r\nFile:\r\n%s\r\n\r\nReason:\r\n%s (Windows error %lu)",
+        "ru-RU": "Не удалось сохранить файл.\r\n\r\nФайл:\r\n%s\r\n\r\nПричина:\r\n%s (ошибка Windows %lu)",
+        "uk-UA": "Не вдалося зберегти файл.\r\n\r\nФайл:\r\n%s\r\n\r\nПричина:\r\n%s (помилка Windows %lu)",
+        "de-DE": "Die Datei konnte nicht gespeichert werden.\r\n\r\nDatei:\r\n%s\r\n\r\nGrund:\r\n%s (Windows-Fehler %lu)",
+        "fr-FR": "Impossible d’enregistrer le fichier.\r\n\r\nFichier :\r\n%s\r\n\r\nRaison :\r\n%s (erreur Windows %lu)",
+        "es-ES": "No se pudo guardar el archivo.\r\n\r\nArchivo:\r\n%s\r\n\r\nMotivo:\r\n%s (error de Windows %lu)",
+        "it-IT": "Impossibile salvare il file.\r\n\r\nFile:\r\n%s\r\n\r\nMotivo:\r\n%s (errore di Windows %lu)",
+        "pl-PL": "Nie można zapisać pliku.\r\n\r\nPlik:\r\n%s\r\n\r\nPrzyczyna:\r\n%s (błąd systemu Windows %lu)",
+        "pt-PT": "Não foi possível guardar o ficheiro.\r\n\r\nFicheiro:\r\n%s\r\n\r\nMotivo:\r\n%s (erro do Windows %lu)",
+        "nl-NL": "Het bestand kan niet worden opgeslagen.\r\n\r\nBestand:\r\n%s\r\n\r\nReden:\r\n%s (Windows-fout %lu)",
+        "cs-CZ": "Soubor nelze uložit.\r\n\r\nSoubor:\r\n%s\r\n\r\nDůvod:\r\n%s (chyba systému Windows %lu)",
+        "bg-BG": "Файлът не може да бъде записан.\r\n\r\nФайл:\r\n%s\r\n\r\nПричина:\r\n%s (грешка на Windows %lu)"
+      }
+    },
+    "fbe.binary_save.windows_error": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Windows error %lu",
+        "ru-RU": "Ошибка Windows %lu",
+        "uk-UA": "Помилка Windows %lu",
+        "de-DE": "Windows-Fehler %lu",
+        "fr-FR": "Erreur Windows %lu",
+        "es-ES": "Error de Windows %lu",
+        "it-IT": "Errore di Windows %lu",
+        "pl-PL": "Błąd systemu Windows %lu",
+        "pt-PT": "Erro do Windows %lu",
+        "nl-NL": "Windows-fout %lu",
+        "cs-CZ": "Chyba systému Windows %lu",
+        "bg-BG": "Грешка на Windows %lu"
       }
     },
     "fbe.image_import.too_large": {

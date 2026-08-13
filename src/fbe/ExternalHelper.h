@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "StartupTrace.h"
 #include "BinaryFileSave.h"
+#include "BinarySaveNotification.h"
 
 inline bool IsDiagnosticFaultInjectionEnabled(const wchar_t* point)
 {
@@ -269,6 +270,7 @@ public:
 				CString message;
 				message.Format(L"SaveBinary failed (error %lu)", error);
 				StartupTrace::Error(L"binary-save", L"B510", message);
+				ShowBinarySaveFailure(GetActiveWindow(), file_name, error);
 			}
 		}
 		return S_OK;

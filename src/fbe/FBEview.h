@@ -16,6 +16,7 @@
 #include "CFileDialogEx.h"
 #include "StartupTrace.h"
 #include "BinaryFileSave.h"
+#include "BinarySaveNotification.h"
 
 extern CSettings _Settings;
 
@@ -511,6 +512,7 @@ public:
 					CString message;
 					message.Format(L"OnSaveImageAs failed (error %lu)", error);
 					StartupTrace::Error(L"binary-save", L"B511", message);
+					ShowBinarySaveFailure(m_hWnd, imgSaveDlg.m_szFileName, error);
 				}
 				::SafeArrayUnaccessData(data.parray);
 			}
