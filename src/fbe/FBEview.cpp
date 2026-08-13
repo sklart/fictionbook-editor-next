@@ -72,6 +72,8 @@ static bool IsTableCellElement(const MSHTML::IHTMLElementPtr& element)
 // unit, but not replacement of a table-cell element with a different tag.
 // Keep that replacement as one native IOleUndoUnit so Ctrl+Z/Ctrl+Y retains
 // the exact TD/TH conversion without serialising any editor-only state.
+struct TableCellReplacement { MSHTML::IHTMLElementPtr active, inactive; };
+
 class CTableCellToggleUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit
 {
 public:
@@ -79,19 +81,21 @@ public:
 		COM_INTERFACE_ENTRY(IOleUndoUnit)
 	END_COM_MAP()
 
-	void Initialize(const MSHTML::IHTMLElementPtr& active, const MSHTML::IHTMLElementPtr& inactive)
+	void Initialize(const std::vector<TableCellReplacement>& replacements)
 	{
-		m_active = active;
-		m_inactive = inactive;
+		m_replacements = replacements;
 	}
 
 	STDMETHOD(Do)(IOleUndoManager* undoManager)
 	{
-		if (!m_active || !m_inactive || !m_active->parentElement) return E_UNEXPECTED;
-		MSHTML::IHTMLDOMNodePtr(m_active->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(m_inactive), MSHTML::IHTMLDOMNodePtr(m_active));
-		MSHTML::IHTMLElementPtr previousActive(m_active);
-		m_active = m_inactive;
-		m_inactive = previousActive;
+		for (size_t index = 0; index < m_replacements.size(); ++index) {
+			TableCellReplacement& replacement = m_replacements[index];
+			if (!replacement.active || !replacement.inactive || !replacement.active->parentElement) return E_UNEXPECTED;
+			MSHTML::IHTMLDOMNodePtr(replacement.active->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement.inactive), MSHTML::IHTMLDOMNodePtr(replacement.active));
+			MSHTML::IHTMLElementPtr previousActive(replacement.active);
+			replacement.active = replacement.inactive;
+			replacement.inactive = previousActive;
+		}
 		return undoManager ? undoManager->Add(this) : S_OK;
 	}
 
@@ -112,11 +116,10 @@ public:
 	STDMETHOD(OnNextAdd)() { return S_OK; }
 
 private:
-	MSHTML::IHTMLElementPtr m_active;
-	MSHTML::IHTMLElementPtr m_inactive;
+	std::vector<TableCellReplacement> m_replacements;
 };
 
-static HRESULT AddTableCellToggleUndoUnit(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& active, const MSHTML::IHTMLElementPtr& inactive)
+static HRESULT AddTableCellToggleUndoUnit(MSHTML::IHTMLDocument2Ptr document, const std::vector<TableCellReplacement>& replacements)
 {
 	IServiceProviderPtr serviceProvider(document);
 	CComPtr<IOleUndoManager> undoManager;
@@ -125,7 +128,7 @@ static HRESULT AddTableCellToggleUndoUnit(MSHTML::IHTMLDocument2Ptr document, co
 	HRESULT hr = CComObject<CTableCellToggleUndoUnit>::CreateInstance(&undoUnit);
 	if (FAILED(hr)) return hr;
 	undoUnit->AddRef();
-	undoUnit->Initialize(active, inactive);
+	undoUnit->Initialize(replacements);
 	hr = undoManager->Add(undoUnit);
 	undoUnit->Release();
 	return hr;
@@ -549,6 +552,8 @@ bool CFBEView::CheckCommand(WORD wID) {
   case ID_TABLE_INSERT_COLUMN_RIGHT:
   case ID_TABLE_DELETE_COLUMN:
   case ID_TABLE_TOGGLE_HEADER_CELL:
+	case ID_TABLE_MAKE_HEADER_CELLS:
+	case ID_TABLE_MAKE_NORMAL_CELLS:
 	  return (bool)SelectionStructTableCon();
   case ID_GOTO_FOOTNOTE:
 	  {
@@ -3448,6 +3453,8 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_COLUMN, GetLocalizedMainMenuText(ID_TABLE_DELETE_COLUMN, L"Delete column"));
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_TABLE_TOGGLE_HEADER_CELL, GetLocalizedMainMenuText(ID_TABLE_TOGGLE_HEADER_CELL, L"Toggle header cell"));
+		menu.AppendMenu(MF_STRING, ID_TABLE_MAKE_HEADER_CELLS, GetLocalizedMainMenuText(ID_TABLE_MAKE_HEADER_CELLS, L"Make header cells"));
+		menu.AppendMenu(MF_STRING, ID_TABLE_MAKE_NORMAL_CELLS, GetLocalizedMainMenuText(ID_TABLE_MAKE_NORMAL_CELLS, L"Make normal cells"));
 	}
 
 	if(m_normalize)
@@ -4158,7 +4165,8 @@ LRESULT CFBEView::OnTableToggleHeaderCell(WORD, WORD, HWND, BOOL&)
 		const wchar_t* const attributes[] = { L"id", L"fbstyle", L"fbcolspan", L"fbrowspan", L"fbalign", L"fbvalign", L"colspan", L"rowspan", L"align", L"valign" };
 		for (size_t index = 0; index < _countof(attributes); ++index) CopyTableCellAttribute(cell, replacement, attributes[index]);
 		MSHTML::IHTMLDOMNodePtr(cell->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement), MSHTML::IHTMLDOMNodePtr(cell));
-		const HRESULT undoResult = AddTableCellToggleUndoUnit(Document(), replacement, cell);
+		std::vector<TableCellReplacement> replacements; TableCellReplacement pair = { replacement, cell }; replacements.push_back(pair);
+		const HRESULT undoResult = AddTableCellToggleUndoUnit(Document(), replacements);
 		if (FAILED(undoResult)) {
 			MSHTML::IHTMLDOMNodePtr(replacement->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(cell), MSHTML::IHTMLDOMNodePtr(replacement));
 			_com_issue_error(undoResult);
@@ -4874,6 +4882,90 @@ BSTR CFBEView::PrepareDefaultId(const CString& filename){
 		newid[0]==_T('_')))
 		newid.Insert(0,_T('_'));
 	return newid.AllocSysString();
+}
+
+static bool GetSelectedTableCells(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& currentCell, std::vector<MSHTML::IHTMLElementPtr>& result);
+static bool ReplaceTableCells(MSHTML::IHTMLDocument2Ptr document, const std::vector<MSHTML::IHTMLElementPtr>& cells, const wchar_t* targetName);
+
+static bool MakeSelectedTableCells(CFBEView* view, const wchar_t* targetName)
+{
+	MSHTML::IHTMLElementPtr currentCell(view->SelectionStructTableCon());
+	std::vector<MSHTML::IHTMLElementPtr> cells;
+	return GetSelectedTableCells(view->Document(), currentCell, cells) && ReplaceTableCells(view->Document(), cells, targetName);
+}
+
+LRESULT CFBEView::OnTableMakeHeaderCells(WORD, WORD, HWND, BOOL&)
+{
+	try { if (MakeSelectedTableCells(this, L"TH")) NotifyTableStructureChanged(m_frame, m_hWnd); }
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+LRESULT CFBEView::OnTableMakeNormalCells(WORD, WORD, HWND, BOOL&)
+{
+	try { if (MakeSelectedTableCells(this, L"TD")) NotifyTableStructureChanged(m_frame, m_hWnd); }
+	catch (_com_error& error) { U::ReportError(error); }
+	return 0;
+}
+
+static bool GetSelectedTableCells(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& currentCell, std::vector<MSHTML::IHTMLElementPtr>& result)
+{
+	result.clear();
+	MSHTML::IHTMLElementPtr anchor(FindTableCell(currentCell));
+	try {
+		if (!anchor) {
+			MSHTML::IHTMLTxtRangePtr range(document->selection->createRange());
+			if (range) { range->collapse(VARIANT_TRUE); anchor = FindTableCell(range->parentElement()); }
+		}
+	}
+	catch (_com_error&) { }
+	MSHTML::IHTMLElementPtr table(FindTableElement(anchor));
+	LogicalTableGrid grid;
+	if (!anchor || !table || !BuildLogicalTableGrid(table, grid)) return false;
+	long first = FindLogicalCell(grid, anchor), last = first;
+	try {
+		MSHTML::IHTMLTxtRangePtr selection(document->selection->createRange());
+		MSHTML::IHTMLTxtRangePtr start(selection ? selection->duplicate() : MSHTML::IHTMLTxtRangePtr()), end(selection ? selection->duplicate() : MSHTML::IHTMLTxtRangePtr());
+		if (start && end) {
+			start->collapse(VARIANT_TRUE); end->collapse(VARIANT_FALSE);
+			MSHTML::IHTMLElementPtr firstCell(FindTableCell(start->parentElement())), lastCell(FindTableCell(end->parentElement()));
+			const long selectedFirst = FindLogicalCell(grid, firstCell), selectedLast = FindLogicalCell(grid, lastCell);
+			if (selectedFirst >= 0 && selectedLast >= 0) { first = selectedFirst; last = selectedLast; }
+		}
+	}
+	catch (_com_error&) { }
+	if (first < 0 || last < 0) return false;
+	const LogicalTableCell& firstCell = grid.cells[first]; const LogicalTableCell& lastCell = grid.cells[last];
+	const long rowStart = min(firstCell.sourceRow, lastCell.sourceRow), rowEnd = max(firstCell.sourceRow + firstCell.rowspan - 1, lastCell.sourceRow + lastCell.rowspan - 1);
+	const long colStart = min(firstCell.startColumn, lastCell.startColumn), colEnd = max(firstCell.startColumn + firstCell.colspan - 1, lastCell.startColumn + lastCell.colspan - 1);
+	std::vector<bool> selected(grid.cells.size(), false);
+	for (long row = rowStart; row <= rowEnd; ++row) for (long column = colStart; column <= colEnd; ++column) {
+		const long owner = grid.At(row, column); if (owner >= 0) selected[owner] = true;
+	}
+	for (size_t index = 0; index < grid.cells.size(); ++index) if (selected[index]) result.push_back(grid.cells[index].element);
+	return !result.empty();
+}
+
+static bool ReplaceTableCells(MSHTML::IHTMLDocument2Ptr document, const std::vector<MSHTML::IHTMLElementPtr>& cells, const wchar_t* targetName)
+{
+	std::vector<TableCellReplacement> replacements;
+	const wchar_t* const attributes[] = { L"id", L"fbstyle", L"fbcolspan", L"fbrowspan", L"fbalign", L"fbvalign", L"colspan", L"rowspan", L"align", L"valign" };
+	for (size_t index = 0; index < cells.size(); ++index) {
+		if (!cells[index] || U::scmp(cells[index]->tagName, targetName) == 0) continue;
+		MSHTML::IHTMLElementPtr replacement(CreateTableCell(document, targetName)); replacement->innerHTML = cells[index]->innerHTML;
+		for (size_t attribute = 0; attribute < _countof(attributes); ++attribute) CopyTableCellAttribute(cells[index], replacement, attributes[attribute]);
+		MSHTML::IHTMLDOMNodePtr(cells[index]->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement), MSHTML::IHTMLDOMNodePtr(cells[index]));
+		TableCellReplacement pair = { replacement, cells[index] }; replacements.push_back(pair);
+	}
+	if (replacements.empty()) return false;
+	const HRESULT undoResult = AddTableCellToggleUndoUnit(document, replacements);
+	if (SUCCEEDED(undoResult)) return true;
+	for (size_t index = replacements.size(); index > 0; --index) {
+		TableCellReplacement& pair = replacements[index - 1];
+		if (pair.active && pair.active->parentElement) MSHTML::IHTMLDOMNodePtr(pair.active->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(pair.inactive), MSHTML::IHTMLDOMNodePtr(pair.active));
+	}
+	_com_issue_error(undoResult);
+	return false;
 }
 
 HRESULT CFBEView::AddImportedBinary(const BYTE* bytes, size_t size, const CString& logicalFileName,

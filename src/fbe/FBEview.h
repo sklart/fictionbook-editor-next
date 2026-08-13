@@ -373,6 +373,8 @@ public:
 	COMMAND_ID_HANDLER(ID_TABLE_INSERT_COLUMN_RIGHT, OnTableInsertColumnRight)
 	COMMAND_ID_HANDLER(ID_TABLE_DELETE_COLUMN, OnTableDeleteColumn)
 	COMMAND_ID_HANDLER(ID_TABLE_TOGGLE_HEADER_CELL, OnTableToggleHeaderCell)
+	COMMAND_ID_HANDLER(ID_TABLE_MAKE_HEADER_CELLS, OnTableMakeHeaderCells)
+	COMMAND_ID_HANDLER(ID_TABLE_MAKE_NORMAL_CELLS, OnTableMakeNormalCells)
 
     COMMAND_ID_HANDLER(ID_VIEW_HTML, OnViewHTML)
 	COMMAND_ID_HANDLER(ID_SAVEIMG_AS, OnSaveImageAs)
@@ -521,7 +523,9 @@ public:
   LRESULT OnTableInsertColumnLeft(WORD, WORD, HWND, BOOL&);
   LRESULT OnTableInsertColumnRight(WORD, WORD, HWND, BOOL&);
   LRESULT OnTableDeleteColumn(WORD, WORD, HWND, BOOL&);
-  LRESULT OnTableToggleHeaderCell(WORD, WORD, HWND, BOOL&);
+	LRESULT OnTableToggleHeaderCell(WORD, WORD, HWND, BOOL&);
+	LRESULT OnTableMakeHeaderCells(WORD, WORD, HWND, BOOL&);
+	LRESULT OnTableMakeNormalCells(WORD, WORD, HWND, BOOL&);
 
   bool	CheckCommand(WORD wID);
   bool	CheckSetCommand(WORD wID);

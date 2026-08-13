@@ -3014,19 +3014,30 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 			range->moveToElementText(cell); range->collapse(VARIANT_TRUE); range->select(); return true;
 		};
+		auto selectFirstTwoCells = [&](bool headers) -> bool
+		{
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr cells(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(headers ? L"TH" : L"TD") : MSHTML::IHTMLElementCollectionPtr());
+			if (!cells || cells->length < 2) cells = body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(headers ? L"TD" : L"TH") : MSHTML::IHTMLElementCollectionPtr();
+			if (!cells || cells->length < 2) return false;
+			MSHTML::IHTMLElementPtr first(cells->item(_variant_t(0L), _variant_t())), last(cells->item(_variant_t(1L), _variant_t()));
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()), end(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+			range->moveToElementText(first); end->moveToElementText(last); range->setEndPoint(L"EndToEnd", end); range->select(); return true;
+		};
 		typedef LRESULT (CFBEView::*TableHandler)(WORD, WORD, HWND, BOOL&);
-		struct Operation { const char* name; TableHandler handler; };
+		struct Operation { const char* name; TableHandler handler; bool bulk, selectHeaders; };
 		const Operation operations[] = {
-			{ "toggle-header", &CFBEView::OnTableToggleHeaderCell }, { "insert-row-above", &CFBEView::OnTableInsertRowAbove },
-			{ "insert-row-below", &CFBEView::OnTableInsertRowBelow }, { "delete-row", &CFBEView::OnTableDeleteRow },
-			{ "insert-column-left", &CFBEView::OnTableInsertColumnLeft }, { "insert-column-right", &CFBEView::OnTableInsertColumnRight },
-			{ "delete-column", &CFBEView::OnTableDeleteColumn }
+			{ "toggle-header", &CFBEView::OnTableToggleHeaderCell, false, false }, { "insert-row-above", &CFBEView::OnTableInsertRowAbove, false, false },
+			{ "insert-row-below", &CFBEView::OnTableInsertRowBelow, false, false }, { "delete-row", &CFBEView::OnTableDeleteRow, false, false },
+			{ "insert-column-left", &CFBEView::OnTableInsertColumnLeft, false, false }, { "insert-column-right", &CFBEView::OnTableInsertColumnRight, false, false },
+			{ "delete-column", &CFBEView::OnTableDeleteColumn, false, false }, { "make-header", &CFBEView::OnTableMakeHeaderCells, true, false },
+			{ "make-normal", &CFBEView::OnTableMakeNormalCells, true, true }
 		};
 		CStringA header("phase\telapsed_ms\ttable_count\ttr_count\ttd_count\tth_count\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
 		for (size_t index = 0; index < _countof(operations); ++index)
 		{
-			if (!selectFirstCell()) { output.Close(); ::PostQuitMessage(1); return 0; }
+			if (!(operations[index].bulk ? selectFirstTwoCells(operations[index].selectHeaders) : selectFirstCell())) { output.Close(); ::PostQuitMessage(1); return 0; }
 			CStringA phase; phase.Format("%s-before", operations[index].name); appendStructuralPhase(phase);
 			BOOL handled = FALSE; (m_doc->m_body.*operations[index].handler)(0, 0, m_doc->m_body, handled);
 			phase.Format("%s-after", operations[index].name); appendStructuralPhase(phase);

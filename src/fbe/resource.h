@@ -629,6 +629,8 @@
 #define ID_TABLE_INSERT_COLUMN_RIGHT       32921
 #define ID_TABLE_DELETE_COLUMN             32922
 #define ID_TABLE_TOGGLE_HEADER_CELL        32923
+#define ID_TABLE_MAKE_HEADER_CELLS         32924
+#define ID_TABLE_MAKE_NORMAL_CELLS         32925
 #define ID_EDIT_PASTE2                  0xE525
 #define IDS_ENCODINGS                   61403
 #define IDS_DOCUMENT_TREE_CAPTION       61404
