@@ -40,7 +40,7 @@ LangString Dictionary ${LANG_ENGLISH} " dictionary"
 
 ; components descriptions
 LangString DESC_Main ${LANG_ENGLISH} "FBE application files and libraries."
-LangString DESC_System_Integration ${LANG_ENGLISH} "Optional .fb2 integration with Windows."
+LangString DESC_System_Integration ${LANG_ENGLISH} "Optional .fb2 and .fbd integration with Windows."
 LangString DESC_FB2_File_Association ${LANG_ENGLISH} "Opens .fb2 files in FBE Next and changes their icon."
 LangString DESC_FBD_File_Association ${LANG_ENGLISH} "Opens .fbd description files in FBE Next and changes their icon."
 LangString DESC_FB2_Validate_Command ${LANG_ENGLISH} "Adds a context-menu command to check .fb2 files with FBV."

@@ -4,6 +4,7 @@
 
 !macro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK LanguageId
 LicenseLangString License ${LanguageId} "${INPUTDIR}\LICENSE"
+LangString FBD_File_Association ${LanguageId} "Use FBE Next for .fbd description files"
 LangString Plugin_ImportEPUB_SVG ${LanguageId} "SVG covers for ImportEPUB"
 LangString EnglishDict ${LanguageId} "English"
 LangString RussianDict ${LanguageId} "Russian"
@@ -19,8 +20,9 @@ LangString ItalianDict ${LanguageId} "Italian"
 LangString DownloadingDict ${LanguageId} "Downloading "
 LangString Dictionary ${LanguageId} " dictionary"
 LangString DESC_Main ${LanguageId} "FBE application files and libraries."
-LangString DESC_System_Integration ${LanguageId} "Optional .fb2 integration with Windows."
+LangString DESC_System_Integration ${LanguageId} "Optional .fb2 and .fbd integration with Windows."
 LangString DESC_FB2_File_Association ${LanguageId} "Opens .fb2 files in FBE Next and changes their icon."
+LangString DESC_FBD_File_Association ${LanguageId} "Opens .fbd description files in FBE Next and changes their icon."
 LangString DESC_FB2_Validate_Command ${LanguageId} "Adds a context-menu command to check .fb2 files with FBV."
 LangString DESC_FB2_Explorer_Properties ${LanguageId} "Adds .fb2 properties and cover thumbnails in Explorer. Requires administrator rights."
 LangString DESC_ShCutGroup ${LanguageId} "Install shortcuts."

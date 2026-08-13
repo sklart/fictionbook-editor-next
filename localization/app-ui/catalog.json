@@ -5607,6 +5607,16 @@
         "bg-BG": "Повредено или неподдържано изображение."
       }
     },
+    "fbe.status.fbd.validation_not_applicable": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "FBD description is well-formed; FB2 schema validation does not apply.",
+        "ru-RU": "Описание FBD корректно сформировано; проверка по схеме FB2 неприменима.",
+        "uk-UA": "Опис FBD коректно сформовано; перевірка за схемою FB2 не застосовується."
+      }
+    },
     "fbe.image_import.too_large": {
       "component": "fbe.core",
       "runtimeOnly": true,

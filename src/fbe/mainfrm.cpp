@@ -1050,13 +1050,17 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	const bool saveAsFbd = IsFbdFile((const wchar_t*)filename);
 
   CCustomSaveDialog	dlg(FALSE,
-	_Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding(), saveAsFbd ? L"fbd" : L"fb2", filename,
+	_Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding(), NULL, filename,
     OFN_HIDEREADONLY|OFN_NOREADONLYRETURN|OFN_OVERWRITEPROMPT| OFN_ENABLETEMPLATE,
     L"FictionBook (*.fb2)\0*.fb2\0FictionBook Description (*.fbd)\0*.fbd\0All files (*.*)\0*.*\0\0");
   dlg.m_ofn.nFilterIndex = saveAsFbd ? 2 : 1;
   if (dlg.DoModal(*this)==IDOK) {
     encoding=dlg.m_encoding;
-    return dlg.m_szFileName;
+	CString result(dlg.m_szFileName);
+	FictionBookFileType targetType = dlg.m_ofn.nFilterIndex == 2 ? FictionBookFileType::Fbd :
+		dlg.m_ofn.nFilterIndex == 1 ? FictionBookFileType::Fb2 :
+		ResolveFictionBookTargetType(CString(), m_doc->m_filename);
+	return AddFictionBookExtensionIfMissing(result, targetType);
   }
   return CString();
 }
@@ -6787,7 +6791,8 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
   bool fv;
   CString validationError;
   ClearSourceValidationAnnotations();
-  if (IsSourceActive())
+  const bool isFbd = IsFbdFile(m_doc->m_filename);
+  if (IsSourceActive() && !isFbd)
     fv=m_doc->SetXMLAndValidate(m_source,true,line,col,&validationError);// ?? ?????? Source
   else
     fv=m_doc->Validate(line,col);						// ?? ?????? Body

@@ -1,6 +1,6 @@
 ; license 
-LangString FBD_File_Association ${LANG_UKRAINIAN} "Use FBE Next for .fbd description files"
-LangString DESC_FBD_File_Association ${LANG_UKRAINIAN} "Opens .fbd description files in FBE Next and changes their icon."
+LangString FBD_File_Association ${LANG_UKRAINIAN} "Використовувати FBE Next для файлів опису .fbd"
+LangString DESC_FBD_File_Association ${LANG_UKRAINIAN} "Відкриває файли опису .fbd у FBE Next і змінює їхній значок."
 LicenseLangString License ${LANG_UKRAINIAN} "${INPUTDIR}\gpl-3.0.ua.txt"
 
 ; components section strings
@@ -41,7 +41,7 @@ LangString Dictionary ${LANG_UKRAINIAN} " словник"
 
 ; components descriptions
 LangString DESC_Main ${LANG_UKRAINIAN} "Файли FBE, бібліотеки та службові дані."
-LangString DESC_System_Integration ${LANG_UKRAINIAN} "Необов'язкова інтеграція .fb2 з Windows."
+LangString DESC_System_Integration ${LANG_UKRAINIAN} "Необов'язкова інтеграція .fb2 і .fbd з Windows."
 LangString DESC_FB2_File_Association ${LANG_UKRAINIAN} "Відкриває .fb2 у FBE Next і змінює його значок."
 LangString DESC_FB2_Validate_Command ${LANG_UKRAINIAN} "Додає команду перевірки .fb2 через FBV."
 LangString DESC_FB2_Explorer_Properties ${LANG_UKRAINIAN} "Властивості й мініатюри .fb2 у Провіднику. Потрібні права адміністратора."

@@ -46,6 +46,16 @@
         "uk-UA": "Використовувати FBE Next для .fb2"
       }
     },
+    "nsis.FBD_File_Association": {
+      "source": "Use FBE Next for .fbd description files",
+      "component": "installer.nsi",
+      "nsisName": "FBD_File_Association",
+      "translations": {
+        "en-US": "Use FBE Next for .fbd description files",
+        "ru-RU": "Использовать FBE Next для файлов описания .fbd",
+        "uk-UA": "Використовувати FBE Next для файлів опису .fbd"
+      }
+    },
     "nsis.FB2_Validate_Command": {
       "source": "Add “Check FB2 for errors” command",
       "component": "installer.nsi",
@@ -357,13 +367,13 @@
       }
     },
     "nsis.DESC_System_Integration": {
-      "source": "Optional .fb2 integration with Windows.",
+      "source": "Optional .fb2 and .fbd integration with Windows.",
       "component": "installer.nsi",
       "nsisName": "DESC_System_Integration",
       "translations": {
-        "en-US": "Optional .fb2 integration with Windows.",
-        "ru-RU": "Необязательная интеграция .fb2 с Windows.",
-        "uk-UA": "Необов'язкова інтеграція .fb2 з Windows."
+        "en-US": "Optional .fb2 and .fbd integration with Windows.",
+        "ru-RU": "Необязательная интеграция .fb2 и .fbd с Windows.",
+        "uk-UA": "Необов'язкова інтеграція .fb2 і .fbd з Windows."
       }
     },
     "nsis.DESC_FB2_File_Association": {
@@ -374,6 +384,16 @@
         "en-US": "Opens .fb2 files in FBE Next and changes their icon.",
         "ru-RU": "Открывает .fb2 в FBE Next и меняет его значок.",
         "uk-UA": "Відкриває .fb2 у FBE Next і змінює його значок."
+      }
+    },
+    "nsis.DESC_FBD_File_Association": {
+      "source": "Opens .fbd description files in FBE Next and changes their icon.",
+      "component": "installer.nsi",
+      "nsisName": "DESC_FBD_File_Association",
+      "translations": {
+        "en-US": "Opens .fbd description files in FBE Next and changes their icon.",
+        "ru-RU": "Открывает файлы описания .fbd в FBE Next и меняет их значок.",
+        "uk-UA": "Відкриває файли опису .fbd у FBE Next і змінює їхній значок."
       }
     },
     "nsis.DESC_FB2_Validate_Command": {

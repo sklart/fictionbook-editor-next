@@ -27,3 +27,25 @@ inline bool IsFbdFile(const CString& path)
 {
     return DetectFictionBookFileType(path) == FictionBookFileType::Fbd;
 }
+
+inline FictionBookFileType ResolveFictionBookTargetType(const CString& targetPath,
+    const CString& currentPath)
+{
+    FictionBookFileType type = DetectFictionBookFileType(targetPath);
+    if (type == FictionBookFileType::Unknown)
+        type = DetectFictionBookFileType(currentPath);
+    return type == FictionBookFileType::Unknown ? FictionBookFileType::Fb2 : type;
+}
+
+inline CString FictionBookDefaultExtension(FictionBookFileType type)
+{
+    return type == FictionBookFileType::Fbd ? L".fbd" : L".fb2";
+}
+
+inline CString AddFictionBookExtensionIfMissing(const CString& path,
+    FictionBookFileType type)
+{
+    const int slash = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
+    const int dot = path.ReverseFind(L'.');
+    return dot <= slash ? path + FictionBookDefaultExtension(type) : path;
+}

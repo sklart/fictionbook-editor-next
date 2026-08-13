@@ -10,6 +10,7 @@
 #endif // _MSC_VER > 1000
 
 #include "FBEView.h"
+#include "FictionBookFileType.h"
 
 namespace FB // put all FB2 related stuff into its own namespace
 {
@@ -157,7 +158,8 @@ private:
   // saving support
   bool	  SaveToFile(const CString& filename,bool fValidateOnly=false,int *errline=NULL,int *errcol=NULL,
                    bool reportAccessDenied=true);
-  MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries = true);
+  MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries,
+                                           FictionBookFileType targetType);
 
   // loading support
   void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,

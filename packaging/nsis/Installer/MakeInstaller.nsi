@@ -608,6 +608,15 @@ SectionEnd
 Section /o $(FBD_File_Association) FBD_File_Association_id
   ; FBD is metadata-oriented.  Keep it isolated from FB2-only validation and
   ; Explorer extensions by assigning a dedicated ProgID.
+  ; Remember the original default once, so uninstall can restore it without
+  ; deleting unrelated values from the extension key.
+  ReadRegStr $0 HKCU "Software\Classes\.fbd" ""
+  StrCmp $0 "FictionBook.Description" fbd_association_backup_done
+  ReadRegStr $1 HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured"
+  StrCmp $1 "1" fbd_association_backup_done
+  WriteRegStr HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "PreviousProgId" "$0"
+  WriteRegStr HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured" "1"
+fbd_association_backup_done:
   WriteRegStr HKCU "Software\Classes\FictionBook.Description" "" "FictionBook Description"
   WriteRegStr HKCU "Software\Classes\.fbd" "" "FictionBook.Description"
   WriteRegStr HKCU "Software\Classes\.fbd" "PerceivedType" "Text"
@@ -981,11 +990,27 @@ Section Uninstall
   DeleteRegValue HKCU "Software\Classes\FictionBook.2" "Details"
   DeleteRegValue HKCU "Software\Classes\FictionBook.2" "PreviewDetails"
 
-  ; Preserve a later user choice of another FBD handler.
+  ; Restore the handler selected before FBE, but never remove an extension key
+  ; that was changed after installation.
   ReadRegStr $0 HKCU "Software\Classes\.fbd" ""
-  StrCmp $0 "FictionBook.Description" 0 +4
-    DeleteRegKey HKCU "Software\Classes\.fbd"
-    DeleteRegKey HKCU "Software\Classes\FictionBook.Description"
+  StrCmp $0 "FictionBook.Description" 0 fbd_uninstall_done
+  ReadRegStr $1 HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured"
+  StrCmp $1 "1" 0 fbd_uninstall_clear_default
+  ReadRegStr $1 HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "PreviousProgId"
+  StrCmp $1 "" fbd_uninstall_clear_default
+  WriteRegStr HKCU "Software\Classes\.fbd" "" "$1"
+  Goto fbd_uninstall_remove_owned
+fbd_uninstall_clear_default:
+  DeleteRegValue HKCU "Software\Classes\.fbd" ""
+fbd_uninstall_remove_owned:
+  ReadRegStr $0 HKCU "Software\Classes\.fbd\DefaultIcon" ""
+  StrCmp $0 "$INSTDIR\FBE.exe,0" 0 +2
+    DeleteRegKey HKCU "Software\Classes\.fbd\DefaultIcon"
+  DeleteRegValue HKCU "Software\Classes\.fbd" "PerceivedType"
+  DeleteRegValue HKCU "Software\Classes\.fbd" "Content Type"
+  ; This ProgID is removed only after .fbd no longer points to it.
+  DeleteRegKey HKCU "Software\Classes\FictionBook.Description"
+fbd_uninstall_done:
   
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\Scintilla.dll"

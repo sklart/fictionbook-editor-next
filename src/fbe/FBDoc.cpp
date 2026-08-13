@@ -1281,8 +1281,46 @@ static MSXML2::IXMLDOMNodePtr  GetDiv(MSHTML::IHTMLElementPtr body,
 }
 
 // fetch bodies
-static void   GetBodies(MSHTML::IHTMLElementPtr	body,
-			MSXML2::IXMLDOMDocument2 *doc, bool omitSyntheticBody)
+static bool IsPristineSyntheticFbdBody(MSHTML::IHTMLElementPtr body)
+{
+	if (!body || U::scmp(AU::GetAttrB(body, L"fbdsynthetic"), L"1") != 0)
+		return false;
+	MSHTML::IHTMLElementCollectionPtr sections(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
+	MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P"));
+	if (!sections || !paragraphs || sections->length != 2 || paragraphs->length != 2)
+		return false;
+	MSHTML::IHTMLElementPtr title(sections->item(_variant_t(0L), _variant_t()));
+	MSHTML::IHTMLElementPtr section(sections->item(_variant_t(1L), _variant_t()));
+	if (!title || !section || U::scmp(title->className, L"title") != 0 ||
+		U::scmp(section->className, L"section") != 0)
+		return false;
+	_bstr_t text(body->innerText);
+	return text.length() == 0 || CString(static_cast<const wchar_t*>(text)).Trim().IsEmpty();
+}
+
+static void EnsureMinimalFb2Body(MSXML2::IXMLDOMDocument2Ptr doc)
+{
+	MSXML2::IXMLDOMNodeListPtr bodies(doc->selectNodes(L"/fb:FictionBook/fb:body"));
+	MSXML2::IXMLDOMElementPtr body;
+	if (bodies && bodies->length)
+		body = bodies->item[0];
+	else
+	{
+		body = doc->createNode(_variant_t(1L), L"body", FBNS);
+		doc->documentElement->appendChild(body);
+	}
+	if (body->hasChildNodes())
+		return;
+	MSXML2::IXMLDOMElementPtr section = doc->createNode(_variant_t(1L), L"section", FBNS);
+	MSXML2::IXMLDOMElementPtr title = doc->createNode(_variant_t(1L), L"title", FBNS);
+	MSXML2::IXMLDOMElementPtr paragraph = doc->createNode(_variant_t(1L), L"p", FBNS);
+	title->appendChild(paragraph);
+	section->appendChild(title);
+	body->appendChild(section);
+}
+
+static void GetBodies(MSHTML::IHTMLElementPtr body,
+	MSXML2::IXMLDOMDocument2 *doc, FictionBookFileType targetType)
 {
   MSHTML::IHTMLElementCollectionPtr children(body->children);
   long			      c_len=children->length;
@@ -1297,8 +1335,12 @@ static void   GetBodies(MSHTML::IHTMLElementPtr	body,
 	{
 	  // fb2.xsl creates this marked visual container solely so Description-only
 	  // FBD files can enter Body mode.  It has no source counterpart.
-	  if (omitSyntheticBody && U::scmp(AU::GetAttrB(div, L"fbdsynthetic"), L"1") == 0)
+	  const bool synthetic = U::scmp(AU::GetAttrB(div, L"fbdsynthetic"), L"1") == 0;
+	  const bool pristineSynthetic = synthetic && IsPristineSyntheticFbdBody(div);
+	  if (targetType == FictionBookFileType::Fbd && pristineSynthetic)
 		continue;
+	  if (synthetic && !pristineSynthetic)
+		div->removeAttribute(L"fbdsynthetic", 0);
       MSXML2::IXMLDOMElementPtr	xb(ProcessDiv(div,doc,1));
       _bstr_t	  bn(AU::GetAttrB(div,L"fbname"));
       if (bn.length()>0)
@@ -1348,7 +1390,8 @@ public:
   }
 };
 
-MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries) {
+MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
+	FictionBookFileType targetType) {
 	const bool profileTableSerialization = StartupTrace::Enabled();
 	const ULONGLONG profileStarted = profileTableSerialization ? ::GetTickCount64() : 0;
 	auto markTableSerializationPhase = [&](const wchar_t* phase)
@@ -1555,7 +1598,9 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   // fetch body elements
   markTableSerializationPhase(L"get-bodies-start");
-	GetBodies(fbw_body, ndoc, IsFbdFile(m_filename));
+	GetBodies(fbw_body, ndoc, targetType);
+	if (targetType == FictionBookFileType::Fb2)
+		EnsureMinimalFb2Body(ndoc);
   markTableSerializationPhase(L"get-bodies-complete");
 
   markTableSerializationPhase(L"serialized-snapshot-start");
@@ -1593,7 +1638,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	StartupTrace::Event(L"xml", L"X100", trace);
 	try
 	{
-		MSXML2::IXMLDOMDocument2Ptr result(CreateDOMImp(encoding, compactBinaries));
+		MSXML2::IXMLDOMDocument2Ptr result(CreateDOMImp(encoding, compactBinaries,
+			ResolveFictionBookTargetType(CString(), m_filename)));
 		StartupTrace::Event(L"xml", L"X190", L"CreateDOM completed");
 		return result;
 	}
@@ -1690,6 +1736,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		return false;
 	}
 	m_last_save_error = S_OK;
+	const FictionBookFileType targetType = ResolveFictionBookTargetType(filename, m_filename);
 	CString trace;
 	trace.Format(L"%s; file-present=%d", fValidateOnly ? L"book validation started" : L"book save started",
 		filename.IsEmpty() ? 0 : 1);
@@ -1707,7 +1754,9 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
     CheckError(rdr.CreateInstance(L"Msxml2.SAXXMLReader.6.0"));
 
     // attach a schema
-    rdr->putFeature(L"schema-validation",VARIANT_TRUE);
+    // An FBD file intentionally contains description data only, which is not a
+    // complete FB2 document and therefore must not be checked against the FB2 XSD.
+    rdr->putFeature(L"schema-validation", targetType == FictionBookFileType::Fbd ? VARIANT_FALSE : VARIANT_TRUE);
     rdr->putProperty(L"schemas",scol.GetInterfacePtr());
     rdr->putFeature(L"exhaustive-errors",VARIANT_TRUE);
 
@@ -1721,7 +1770,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	MSXML2::IXMLDOMDocument2Ptr	ndoc;
 	m_save_transaction_active = true;
 	try {
-		ndoc = CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true);
+		ndoc = CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true, targetType);
 	}
 	catch (...) {
 		m_save_transaction_active = false;
@@ -1764,9 +1813,11 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 
 	if (fValidateOnly)
 	{
-		wchar_t buf[MAX_LOAD_STRING + 1];
-		FbeLoadString(_Module.GetResourceInstance(), IDS_SB_NO_ERR, buf, MAX_LOAD_STRING);
-		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)buf);
+		CString status = targetType == FictionBookFileType::Fbd
+			? FbeLoadRuntimeStringByKey(L"fbe.status.fbd.validation_not_applicable",
+				L"FBD description is well-formed; FB2 schema validation does not apply.")
+			: FbeLoadRuntimeString(IDS_SB_NO_ERR);
+		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)(const wchar_t *)status);
 		::MessageBeep(MB_OK);
 		StartupTrace::Event(L"document", L"D221", L"book validation completed without errors");
 		return true;
@@ -1869,7 +1920,8 @@ bool Doc::SaveRecoveryCopy(const CString& filename)
 	try
 	{
 		MSXML2::IXMLDOMDocument2Ptr document(CreateDOMImp(
-			_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true));
+			_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true,
+			ResolveFictionBookTargetType(filename, m_filename)));
 
 		CString directory(filename);
 		const int separator = directory.ReverseFind(L'\\');

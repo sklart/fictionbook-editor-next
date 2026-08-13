@@ -1,6 +1,6 @@
 ; license 
-LangString FBD_File_Association ${LANG_RUSSIAN} "Use FBE Next for .fbd description files"
-LangString DESC_FBD_File_Association ${LANG_RUSSIAN} "Opens .fbd description files in FBE Next and changes their icon."
+LangString FBD_File_Association ${LANG_RUSSIAN} "Использовать FBE Next для файлов описания .fbd"
+LangString DESC_FBD_File_Association ${LANG_RUSSIAN} "Открывает файлы описания .fbd в FBE Next и меняет их значок."
 LicenseLangString License ${LANG_RUSSIAN} "${INPUTDIR}\gpl-3.0.ru.txt"
 
 ; components section strings
@@ -41,7 +41,7 @@ LangString Dictionary ${LANG_RUSSIAN} " словарь"
 
 ; components descriptions
 LangString DESC_Main ${LANG_RUSSIAN} "Файлы FBE, библиотеки и служебные данные."
-LangString DESC_System_Integration ${LANG_RUSSIAN} "Необязательная интеграция .fb2 с Windows."
+LangString DESC_System_Integration ${LANG_RUSSIAN} "Необязательная интеграция .fb2 и .fbd с Windows."
 LangString DESC_FB2_File_Association ${LANG_RUSSIAN} "Открывает .fb2 в FBE Next и меняет его значок."
 LangString DESC_FB2_Validate_Command ${LANG_RUSSIAN} "Добавляет команду проверки .fb2 через FBV."
 LangString DESC_FB2_Explorer_Properties ${LANG_RUSSIAN} "Свойства и миниатюры .fb2 в Проводнике. Нужны права администратора."
