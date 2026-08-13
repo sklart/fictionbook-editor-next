@@ -1364,6 +1364,17 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     bool Equals(const TableSnapshot& other) const {
       return tables == other.tables && rows == other.rows && td == other.td && th == other.th && structure == other.structure;
     }
+	CString Difference(const TableSnapshot& other) const {
+		int firstDifference = 0;
+		const int shared = min(structure.GetLength(), other.structure.GetLength());
+		while (firstDifference < shared && structure[firstDifference] == other.structure[firstDifference]) ++firstDifference;
+		const unsigned int nativeCode = firstDifference < structure.GetLength() ? structure[firstDifference] : 0;
+		const unsigned int serializedCode = firstDifference < other.structure.GetLength() ? other.structure[firstDifference] : 0;
+		CString result;
+		result.Format(L"native=%ld/%ld/%ld/%ld/%d; serialized=%ld/%ld/%ld/%ld/%d; first-difference=%d; chars=%04X/%04X",
+			tables, rows, td, th, structure.GetLength(), other.tables, other.rows, other.td, other.th, other.structure.GetLength(), firstDifference, nativeCode, serializedCode);
+		return result;
+	}
   };
   const auto SnapshotNativeTables = [](MSHTML::IHTMLElementPtr root) -> TableSnapshot {
     TableSnapshot result = {};
@@ -1378,9 +1389,10 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
       const long td = nativeTable->getElementsByTagName(L"TD")->length;
       const long th = nativeTable->getElementsByTagName(L"TH")->length;
       ++result.tables; result.rows += rows; result.td += td; result.th += th;
+	  _bstr_t tableId(table->id);
       CString part;
       part.Format(L"T%ld[id=%s;rows=%ld;td=%ld;th=%ld];", result.tables,
-        (const wchar_t*)AU::GetAttrB(table, L"id"), rows, td, th);
+		tableId.length() ? static_cast<const wchar_t*>(tableId) : L"", rows, td, th);
       result.structure += part;
 	  MSHTML::IHTMLElementCollectionPtr nativeRows(nativeTable->getElementsByTagName(L"TR"));
 	  for (long rowIndex = 0; nativeRows && rowIndex < nativeRows->length; ++rowIndex) {
@@ -1547,7 +1559,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   if (!tablesAfterNormalize.Equals(serializedTables))
   {
     m_serialization_unsafe = true;
-    StartupTrace::HResult(L"document", L"D225", E_FAIL, L"native table lost during CreateDOM");
+	CString difference(L"native table lost during CreateDOM; "); difference += tablesAfterNormalize.Difference(serializedTables);
+    StartupTrace::HResult(L"document", L"D225", E_FAIL, difference);
     _com_issue_error(E_FAIL);
   }
 
@@ -1583,7 +1596,10 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	{
 		StartupTrace::HResult(L"com", L"X191", e.Error(), L"CreateDOM");
 		StartupTrace::Event(L"com", L"X192", trace);
-		U::ReportError(e);
+		// A benchmark/test process has no user to dismiss a modal COM dialog.
+		// The caller writes the phase and HRESULT to its flushed report instead.
+		if (AU::_ARGS.source_memory_benchmark_path.IsEmpty())
+			U::ReportError(e);
 	}
 
 	return NULL;
