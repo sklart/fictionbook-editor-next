@@ -58,9 +58,11 @@ try {
             if($SecondOperation -and $secondAfter[0].grid_signature -eq $secondBefore[0].grid_signature) { throw "Вторая операция $SecondOperation не изменила semantic grid ($($case.Id))." }
             if($case.Id -eq 'colspan' -and $operation -eq 'delete-column' -and $SecondOperation) {
                 if($after.grid_signature -match 'logical-colspan=2' -or $after.grid_signature -match 'colspan=2|fbcolspan=2') { throw 'Delete Column не нормализовал colspan=2 до 1.' }
+				if($after.grid_signature -notmatch 'c0:id=,tag=TD,row=0,column=0,logical-colspan=1,logical-rowspan=1,html=[0-9A-F]+,style=,fbstyle=,colspan=,fbcolspan=,rowspan=,fbrowspan=') { throw 'Delete Column не очистил colspan/fbcolspan после нормализации span=1.' }
             }
             if($case.Id -eq 'rowspan' -and $operation -eq 'delete-row' -and $SecondOperation) {
                 if($after.grid_signature -match 'logical-rowspan=2' -or $after.grid_signature -match 'rowspan=2|fbrowspan=2') { throw 'Delete Row не нормализовал rowspan=2 до 1.' }
+				if($after.grid_signature -notmatch 'c0:id=,tag=TD,row=0,column=0,logical-colspan=1,logical-rowspan=1,html=[0-9A-F]+,style=,fbstyle=,colspan=,fbcolspan=,rowspan=,fbrowspan=') { throw 'Delete Row не очистил rowspan/fbrowspan после нормализации span=1.' }
             }
             $signature={ param($row) "$($row.table_count)/$($row.tr_count)/$($row.td_count)/$($row.th_count)" }
             if(-not $SecondOperation -and (&$signature $undo) -ne (&$signature $before)) { throw "Undo не восстановил live DOM для $operation ($($case.Id))." }
