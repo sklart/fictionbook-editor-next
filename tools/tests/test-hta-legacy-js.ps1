@@ -15,4 +15,9 @@ foreach($relativePath in $paths) {
         if($text -match $forbidden) { throw "В legacy HTA найден неподдерживаемый JScript token [$forbidden]: $relativePath" }
     }
 }
+$parser = Join-Path $PSScriptRoot 'hta-legacy-parse.js'
+if(-not (Test-Path -LiteralPath $parser -PathType Leaf)) { throw "Не найден legacy JScript parser: $parser" }
+$htaPaths = @($paths | ForEach-Object { Join-Path $repoRoot $_ })
+& cscript.exe //nologo $parser @htaPaths
+if($LASTEXITCODE -ne 0) { throw "Legacy JScript parse завершился с кодом $LASTEXITCODE." }
 Write-Host 'Legacy HTA JavaScript compatibility gate passed.'
