@@ -78,11 +78,17 @@ try {
 				if([int]$before.td_count -ne 0 -or [int]$before.th_count -ne 100 -or [int]$after.td_count -ne 100 -or [int]$after.th_count -ne 0 -or [int]$undo.td_count -ne 0 -or [int]$undo.th_count -ne 100 -or [int]$redo.td_count -ne 100 -or [int]$redo.th_count -ne 0) { throw '10x10 Make Normal не сохранил ожидаемую матрицу TD/TH через Undo/Redo.' }
 			if([int]$after.grid_build_calls -gt 4) { throw "10x10 Make Normal построил logical grid слишком много раз: $($after.grid_build_calls)." }
 			}
-			if($case.Id -eq 'mixed' -and $operation -eq 'make-header') {
+			if($case.Id -eq 'mixed' -and $operation -eq 'make-header' -and -not $Target) {
 				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 0 -or [int]$after.th_count -ne 9 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 0 -or [int]$redo.th_count -ne 9) { throw 'Mixed rectangle Make Header не восстановил матрицу TD/TH через Undo/Redo.' }
 			}
-			if($case.Id -eq 'mixed' -and $operation -eq 'make-normal') {
+			if($case.Id -eq 'mixed' -and $operation -eq 'make-normal' -and -not $Target) {
 				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 9 -or [int]$after.th_count -ne 0 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 9 -or [int]$redo.th_count -ne 0) { throw 'Mixed rectangle Make Normal не восстановил матрицу TD/TH через Undo/Redo.' }
+			}
+			if($case.Id -eq 'mixed' -and $operation -eq 'make-header' -and $Target -eq '1,0:1,2') {
+				if([int]$after.td_count -ne 3 -or [int]$after.th_count -ne 6 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 3 -or [int]$redo.th_count -ne 6) { throw 'Make Header для целой логической строки изменил ячейки вне выделения.' }
+			}
+			if($case.Id -eq 'mixed' -and $operation -eq 'make-normal' -and $Target -eq '0,0:2,0') {
+				if([int]$after.td_count -ne 7 -or [int]$after.th_count -ne 2 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 7 -or [int]$redo.th_count -ne 2) { throw 'Make Normal для целого логического столбца изменил ячейки вне выделения.' }
 			}
 			if(($case.Id -eq 'preserve' -and $operation -eq 'make-header') -or ($case.Id -eq 'preserve-header' -and $operation -eq 'make-normal')) {
 				$withoutTag = { param($snapshot) $snapshot -replace 'tag=(TD|TH)', 'tag=*' }
