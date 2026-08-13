@@ -2983,7 +2983,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		appendTablePhase("save-1-start");
 		if (!m_doc->Save())
 		{
-			appendTablePhase("save-1-failed;hr=0x80004005;operation=Save");
+			appendTablePhase("save-1-failed;phase=save-1;operation=Save;actual_hresult=unavailable;symbolic_hresult=unavailable");
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		appendTablePhase("save-1-complete");
@@ -3046,7 +3046,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
 			phase.Format("%s-redo", operations[index].name); appendStructuralPhase(phase);
 		}
-		if (!m_doc->Save()) { appendStructuralPhase("save-failed"); output.Close(); ::PostQuitMessage(1); return 0; }
+		if (!m_doc->Save()) { appendStructuralPhase("save-failed;phase=save;operation=Save;actual_hresult=unavailable;symbolic_hresult=unavailable"); output.Close(); ::PostQuitMessage(1); return 0; }
 		appendStructuralPhase("save-complete"); output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"binary-roundtrip"))
@@ -3066,7 +3066,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		appendBinaryPhase("save-start");
 		if (!m_doc->Save())
 		{
-			appendBinaryPhase("save-failed;hr=0x80004005;operation=Save");
+			appendBinaryPhase("save-failed;phase=save;operation=Save;actual_hresult=unavailable;symbolic_hresult=unavailable");
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		appendBinaryPhase("save-complete");
