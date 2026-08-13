@@ -25,6 +25,7 @@ $directory=Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-structural-'+[guid]:
 try {
     $bulkTable = New-Object Text.StringBuilder
     for($row=0;$row -lt 10;$row++) { [void]$bulkTable.Append('<tr>'); for($column=0;$column -lt 10;$column++) { [void]$bulkTable.Append("<td id=`"bulk-$row-$column`">$row-$column</td>") }; [void]$bulkTable.Append('</tr>') }
+    $bulkHeaderTable = $bulkTable.ToString().Replace('<td ', '<th ').Replace('</td>', '</th>')
     $fixtures = @(
         @{ Id='plain'; Table='<tr><td>one</td><td>two</td><td>three</td></tr><tr><td>four</td><td>five</td><td>six</td></tr><tr><td>seven</td><td>eight</td><td>nine</td></tr>' },
         @{ Id='colspan'; Table='<tr><td colspan="2">one</td><td>two</td></tr><tr><td>three</td><td>four</td><td>five</td></tr><tr><td>six</td><td>seven</td><td>eight</td></tr>' },
@@ -34,6 +35,7 @@ try {
         @{ Id='all-header'; Table='<tr><th>one</th><th>two</th></tr><tr><th>three</th><th>four</th></tr>' },
         @{ Id='edge-spans'; Table='<tr><td colspan="2">first</td><td>middle</td><td colspan="2">last</td></tr><tr><td rowspan="2">one</td><td>two</td><td colspan="2" rowspan="2">three</td><td>four</td></tr><tr><td>five</td><td>six</td></tr>' },
         @{ Id='bulk-10x10'; Table=$bulkTable.ToString() }
+        @{ Id='bulk-header-10x10'; Table=$bulkHeaderTable }
     )
     if($FixtureId) { $fixtures=@($fixtures | Where-Object Id -eq $FixtureId); if($fixtures.Count -ne 1) { throw "Не найден structural fixture: $FixtureId" } }
     foreach($case in $fixtures) {
@@ -58,12 +60,20 @@ try {
             $signature={ param($row) "$($row.table_count)/$($row.tr_count)/$($row.td_count)/$($row.th_count)" }
             if(-not $SecondOperation -and (&$signature $undo) -ne (&$signature $before)) { throw "Undo не восстановил live DOM для $operation ($($case.Id))." }
             if(-not $SecondOperation -and (&$signature $redo) -ne (&$signature $after)) { throw "Redo не восстановил live DOM для $operation ($($case.Id))." }
-			$expectChange = -not (($operation -eq 'make-normal' -and $case.Id -notin @('mixed','all-header')) -or ($operation -eq 'make-header' -and $case.Id -eq 'all-header'))
+			$expectChange = -not (($operation -eq 'make-normal' -and $case.Id -notin @('mixed','all-header','bulk-header-10x10')) -or ($operation -eq 'make-header' -and $case.Id -eq 'all-header'))
 			if($expectChange -and (&$signature $after) -eq (&$signature $before) -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил live DOM или semantic grid ($($case.Id))." }
 			if(-not $expectChange -and ((&$signature $after) -ne (&$signature $before) -or $after.grid_signature -ne $before.grid_signature)) { throw "Идемпотентная команда $operation изменила DOM ($($case.Id))." }
 			if(-not $SecondOperation -and $undo.grid_signature -ne $before.grid_signature) { throw "Undo не восстановил logical grid для $operation ($($case.Id))." }
 			if(-not $SecondOperation -and $redo.grid_signature -ne $after.grid_signature) { throw "Redo не восстановил logical grid для $operation ($($case.Id))." }
 			if($expectChange -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил logical grid ($($case.Id))." }
+			if($case.Id -eq 'bulk-10x10' -and $operation -eq 'make-header') {
+				if([int]$before.td_count -ne 100 -or [int]$before.th_count -ne 0 -or [int]$after.td_count -ne 0 -or [int]$after.th_count -ne 100 -or [int]$undo.td_count -ne 100 -or [int]$undo.th_count -ne 0 -or [int]$redo.td_count -ne 0 -or [int]$redo.th_count -ne 100) { throw '10x10 Make Header не сохранил ожидаемую матрицу TD/TH через Undo/Redo.' }
+			if([int]$after.grid_build_calls -gt 4) { throw "10x10 Make Header построил logical grid слишком много раз: $($after.grid_build_calls)." }
+		}
+			if($case.Id -eq 'bulk-header-10x10' -and $operation -eq 'make-normal') {
+				if([int]$before.td_count -ne 0 -or [int]$before.th_count -ne 100 -or [int]$after.td_count -ne 100 -or [int]$after.th_count -ne 0 -or [int]$undo.td_count -ne 0 -or [int]$undo.th_count -ne 100 -or [int]$redo.td_count -ne 100 -or [int]$redo.th_count -ne 0) { throw '10x10 Make Normal не сохранил ожидаемую матрицу TD/TH через Undo/Redo.' }
+			if([int]$after.grid_build_calls -gt 4) { throw "10x10 Make Normal построил logical grid слишком много раз: $($after.grid_build_calls)." }
+		}
         }
         if(-not ($rows|Where-Object phase -eq 'save-complete')) { throw "Production structural scenario не сохранил документ ($($case.Id))." }
         Assert-Schema $fixture

@@ -106,6 +106,8 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId combined -Target "1,0" -Operation delete-row
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId colspan -Target "0,0" -Operation delete-column -SecondOperation insert-column-right
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId rowspan -Target "0,0" -Operation delete-row -SecondOperation insert-row-below
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId bulk-10x10 -Target "0,0:9,9" -Operation make-header
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId bulk-header-10x10 -Target "0,0:9,9" -Operation make-normal
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Fault change-colspan-after-normalize
