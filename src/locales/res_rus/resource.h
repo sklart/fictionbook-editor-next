@@ -300,6 +300,7 @@
 #define IDS_ABOUT_BUILD_LABEL           320
 #define IDS_ABOUT_UPDATE_NOW            321
 #define IDS_SAVE_ACCESS_DENIED_MSG       322
+#define IDS_HOTKEY_TOOLS_OPTIONS         323
 #define ID_PANE_CHAR                    305
 #define IDB_UPD_CHECK1                  400
 #define IDB_UPD_CHECK2                  401
