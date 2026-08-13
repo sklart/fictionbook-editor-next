@@ -108,6 +108,7 @@ if (-not $SkipCommonChecks) {
 $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
 & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") @imageImportTestArguments
+& (Join-Path $repoRoot "tools\tests\test-image-import-fbe-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 $archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
 if ($ArchHandlerOutputDirectory) { $archHandlerTestArguments.HandlerDirectory = $ArchHandlerOutputDirectory }
 & (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments

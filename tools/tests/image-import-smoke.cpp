@@ -194,6 +194,33 @@ static bool TestJpeg2000Fixture(bool jp2, bool alpha = false)
 	return SUCCEEDED(hr) && result.converted && result.mimeType == (alpha ? L"image/png" : L"image/jpeg") && result.width == 2 && result.height == 2 && result.hasTransparency == alpha && (alpha ? HasPngMagic(result.data) : HasJpegMagic(result.data));
 }
 
+static bool WriteJpeg2000Fixture(const wchar_t* destination)
+{
+	opj_image_cmptparm_t component = {};
+	component.dx = component.dy = 1;
+	component.w = component.h = 2;
+	component.prec = component.bpp = 8;
+	std::unique_ptr<opj_image_t, void(*)(opj_image_t*)> image(opj_image_create(1, &component, OPJ_CLRSPC_GRAY), opj_image_destroy);
+	if (!image) return false;
+	image->x1 = image->y1 = 2;
+	const int pixels[] = { 0, 96, 160, 255 };
+	for (size_t index = 0; index < _countof(pixels); ++index) image->comps[0].data[index] = pixels[index];
+
+	CStringA outputPath(destination);
+	opj_cparameters_t parameters;
+	opj_set_default_encoder_parameters(&parameters);
+	parameters.cod_format = 1;
+	parameters.tcp_numlayers = 1;
+	parameters.cp_disto_alloc = 1;
+	parameters.tcp_rates[0] = 0;
+	parameters.numresolution = 1;
+	std::unique_ptr<opj_codec_t, void(*)(opj_codec_t*)> codec(opj_create_compress(OPJ_CODEC_JP2), opj_destroy_codec);
+	std::unique_ptr<opj_stream_t, void(*)(opj_stream_t*)> stream(opj_stream_create_default_file_stream(outputPath, OPJ_FALSE), opj_stream_destroy);
+	return codec && stream && opj_setup_encoder(codec.get(), &parameters, image.get()) &&
+		opj_start_compress(codec.get(), image.get(), stream.get()) && opj_encode(codec.get(), stream.get()) &&
+		opj_end_compress(codec.get(), stream.get());
+}
+
 static bool TestJpeg2000SyccSubsampled()
 {
 	opj_image_cmptparm_t components[3] = {};
@@ -388,14 +415,28 @@ static bool TestFb2BinaryRoundTrip(const wchar_t* path)
 
 int wmain(int argc, wchar_t** argv)
 {
-	if (argc == 4 && wcscmp(argv[1], L"--export") == 0) {
+	if (argc == 3 && wcscmp(argv[1], L"--make-jp2") == 0)
+		return WriteJpeg2000Fixture(argv[2]) ? 0 : 42;
+	if ((argc == 4 || argc == 5) && wcscmp(argv[1], L"--export") == 0) {
 		ImageImportOptions options; ImageImportResult imported; CString error;
 		if (FAILED(ImportImageForFb2(argv[2], options, imported, error)) || imported.data.empty()) return 40;
 		HANDLE output = CreateFileW(argv[3], GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 		DWORD written = 0;
 		const bool ok = output != INVALID_HANDLE_VALUE && WriteFile(output, imported.data.data(), static_cast<DWORD>(imported.data.size()), &written, NULL) && written == imported.data.size();
 		if (output != INVALID_HANDLE_VALUE) CloseHandle(output);
-		return ok ? 0 : 41;
+		if (!ok) return 41;
+		if (argc == 5) {
+			CStringA mime(CW2A(imported.mimeType, CP_UTF8));
+			CStringA metadata;
+			metadata.Format("mime=%s\r\nconverted=%d\r\nlength=%I64u\r\n", mime.GetString(), imported.converted ? 1 : 0,
+				static_cast<unsigned __int64>(imported.data.size()));
+			HANDLE metadataOutput = CreateFileW(argv[4], GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			written = 0;
+			const bool metadataOk = metadataOutput != INVALID_HANDLE_VALUE && WriteFile(metadataOutput, metadata.GetString(), static_cast<DWORD>(metadata.GetLength()), &written, NULL) && written == metadata.GetLength();
+			if (metadataOutput != INVALID_HANDLE_VALUE) CloseHandle(metadataOutput);
+			if (!metadataOk) return 43;
+		}
+		return 0;
 	}
 	if (argc != 23) return 2;
 	std::vector<BYTE> input;
