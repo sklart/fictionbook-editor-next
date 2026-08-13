@@ -26,6 +26,8 @@ try {
     $bulkTable = New-Object Text.StringBuilder
     for($row=0;$row -lt 10;$row++) { [void]$bulkTable.Append('<tr>'); for($column=0;$column -lt 10;$column++) { [void]$bulkTable.Append("<td id=`"bulk-$row-$column`">$row-$column</td>") }; [void]$bulkTable.Append('</tr>') }
     $bulkHeaderTable = $bulkTable.ToString().Replace('<td ', '<th ').Replace('</td>', '</th>')
+    $preserveTable = '<tr><td id="preserve" style="color: red" fbstyle="preserve-style" colspan="2" fbcolspan="2" rowspan="2" fbrowspan="2" align="center" fbalign="center" valign="top" fbvalign="top"><strong>Foo Bar</strong> <emphasis>MiXeD</emphasis> <a href="#note">Link</a></td><td>companion</td></tr><tr><td>tail</td></tr>'
+    $preserveHeaderTable = $preserveTable.Replace('<td id="preserve"', '<th id="preserve"').Replace('</td><td>companion</td>', '</th><td>companion</td>')
     $fixtures = @(
         @{ Id='plain'; Table='<tr><td>one</td><td>two</td><td>three</td></tr><tr><td>four</td><td>five</td><td>six</td></tr><tr><td>seven</td><td>eight</td><td>nine</td></tr>' },
         @{ Id='colspan'; Table='<tr><td colspan="2">one</td><td>two</td></tr><tr><td>three</td><td>four</td><td>five</td></tr><tr><td>six</td><td>seven</td><td>eight</td></tr>' },
@@ -34,8 +36,10 @@ try {
         @{ Id='mixed'; Table='<tr><th>one</th><th>two</th><th>three</th></tr><tr><td>four</td><td>five</td><td>six</td></tr><tr><td>seven</td><td>eight</td><td>nine</td></tr>' },
         @{ Id='all-header'; Table='<tr><th>one</th><th>two</th></tr><tr><th>three</th><th>four</th></tr>' },
         @{ Id='edge-spans'; Table='<tr><td colspan="2">first</td><td>middle</td><td colspan="2">last</td></tr><tr><td rowspan="2">one</td><td>two</td><td colspan="2" rowspan="2">three</td><td>four</td></tr><tr><td>five</td><td>six</td></tr>' },
-        @{ Id='bulk-10x10'; Table=$bulkTable.ToString() }
-        @{ Id='bulk-header-10x10'; Table=$bulkHeaderTable }
+        @{ Id='bulk-10x10'; Table=$bulkTable.ToString() },
+        @{ Id='bulk-header-10x10'; Table=$bulkHeaderTable },
+        @{ Id='preserve'; Table=$preserveTable },
+        @{ Id='preserve-header'; Table=$preserveHeaderTable }
     )
     if($FixtureId) { $fixtures=@($fixtures | Where-Object Id -eq $FixtureId); if($fixtures.Count -ne 1) { throw "Не найден structural fixture: $FixtureId" } }
     foreach($case in $fixtures) {
@@ -60,7 +64,7 @@ try {
             $signature={ param($row) "$($row.table_count)/$($row.tr_count)/$($row.td_count)/$($row.th_count)" }
             if(-not $SecondOperation -and (&$signature $undo) -ne (&$signature $before)) { throw "Undo не восстановил live DOM для $operation ($($case.Id))." }
             if(-not $SecondOperation -and (&$signature $redo) -ne (&$signature $after)) { throw "Redo не восстановил live DOM для $operation ($($case.Id))." }
-			$expectChange = -not (($operation -eq 'make-normal' -and $case.Id -notin @('mixed','all-header','bulk-header-10x10')) -or ($operation -eq 'make-header' -and $case.Id -eq 'all-header'))
+			$expectChange = -not (($operation -eq 'make-normal' -and $case.Id -notin @('mixed','all-header','bulk-header-10x10','preserve-header')) -or ($operation -eq 'make-header' -and $case.Id -eq 'all-header'))
 			if($expectChange -and (&$signature $after) -eq (&$signature $before) -and $after.grid_signature -eq $before.grid_signature) { throw "Handler $operation не изменил live DOM или semantic grid ($($case.Id))." }
 			if(-not $expectChange -and ((&$signature $after) -ne (&$signature $before) -or $after.grid_signature -ne $before.grid_signature)) { throw "Идемпотентная команда $operation изменила DOM ($($case.Id))." }
 			if(-not $SecondOperation -and $undo.grid_signature -ne $before.grid_signature) { throw "Undo не восстановил logical grid для $operation ($($case.Id))." }
@@ -79,6 +83,10 @@ try {
 			}
 			if($case.Id -eq 'mixed' -and $operation -eq 'make-normal') {
 				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 9 -or [int]$after.th_count -ne 0 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 9 -or [int]$redo.th_count -ne 0) { throw 'Mixed rectangle Make Normal не восстановил матрицу TD/TH через Undo/Redo.' }
+			}
+			if(($case.Id -eq 'preserve' -and $operation -eq 'make-header') -or ($case.Id -eq 'preserve-header' -and $operation -eq 'make-normal')) {
+				$withoutTag = { param($snapshot) $snapshot -replace 'tag=(TD|TH)', 'tag=*' }
+				if((&$withoutTag $before.grid_signature) -ne (&$withoutTag $after.grid_signature)) { throw "TD/TH conversion изменила attributes или content ($($case.Id))." }
 			}
         }
         if(-not ($rows|Where-Object phase -eq 'save-complete')) { throw "Production structural scenario не сохранил документ ($($case.Id))." }

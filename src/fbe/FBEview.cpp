@@ -5156,7 +5156,7 @@ static bool GetSelectedTableCells(MSHTML::IHTMLDocument2Ptr document, const MSHT
 static bool ReplaceTableCells(MSHTML::IHTMLDocument2Ptr document, const std::vector<MSHTML::IHTMLElementPtr>& cells, const wchar_t* targetName)
 {
 	std::vector<TableCellReplacement> replacements;
-	const wchar_t* const attributes[] = { L"id", L"fbstyle", L"fbcolspan", L"fbrowspan", L"fbalign", L"fbvalign", L"colspan", L"rowspan", L"align", L"valign" };
+	const wchar_t* const attributes[] = { L"id", L"style", L"fbstyle", L"fbcolspan", L"fbrowspan", L"fbalign", L"fbvalign", L"colspan", L"rowspan", L"align", L"valign" };
 	for (size_t index = 0; index < cells.size(); ++index) {
 		if (!cells[index] || U::scmp(cells[index]->tagName, targetName) == 0) continue;
 		MSHTML::IHTMLElementPtr replacement(CreateTableCell(document, targetName)); replacement->innerHTML = cells[index]->innerHTML;

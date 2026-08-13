@@ -155,6 +155,8 @@ Assert-Contains $verifyRelease '-FixtureId bulk-10x10 -Target "0,0:9,9" -Operati
 Assert-Contains $verifyRelease '-FixtureId bulk-header-10x10 -Target "0,0:9,9" -Operation make-normal' "verify-release.ps1: 100-cell Make Normal"
 Assert-Contains $verifyRelease '-FixtureId mixed -Target "0,0:2,2" -Operation make-header' "verify-release.ps1: mixed Make Header"
 Assert-Contains $verifyRelease '-FixtureId mixed -Target "0,0:2,2" -Operation make-normal' "verify-release.ps1: mixed Make Normal"
+Assert-Contains $verifyRelease '-FixtureId preserve -Target "0,0" -Operation make-header' "verify-release.ps1: preservation TD to TH"
+Assert-Contains $verifyRelease '-FixtureId preserve-header -Target "0,0" -Operation make-normal' "verify-release.ps1: preservation TH to TD"
 Assert-Contains $verifyRelease "test-fbe-test-report-diagnostics.ps1" "verify-release.ps1: честный HRESULT в тестовых отчётах"
 Assert-Contains $verifyRelease "test-image-codec-build-contract.ps1" "verify-release.ps1: image codec VS/CMake contract"
 Assert-Contains $verifyRelease "test-source-scintilla-modern-features.ps1" "verify-release.ps1: modern Scintilla Source contract"
