@@ -3,7 +3,9 @@
 !ifndef INPUTDIR
 !define INPUTDIR "..\..\..\out\package\FictionBookEditor"
 !endif
+!ifndef PRODUCT_NAME
 !define PRODUCT_NAME "FictionBook Editor Next"
+!endif
 !define PRODUCT_STAGE "Release"
 !define PRODUCT_BUILD "build ${BUILDNUM}"
 !ifdef FBE_WIN7_BUILD
@@ -12,15 +14,22 @@
 !define PRODUCT_COMPATIBILITY_SUFFIX ""
 !endif
 !define PRODUCT_VERSION "${PRODUCT_STAGE} ${PRODUCT_VER_NUM} (${PRODUCT_BUILD})${PRODUCT_COMPATIBILITY_SUFFIX}"
+!ifndef PRODUCT_VENDOR
 !define PRODUCT_VENDOR "FBE Team"
+!endif
 !define PRODUCT_NAME_VERSION "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 !ifndef OUTPUTFILE
 !define OUTPUTFILE "${PRODUCT_NAME_VERSION}.exe"
 !endif
 !define PRODUCT_URL "https://github.com/sklart/fictionbook-editor-next"
 ; Отдельное имя ключа не позволяет FBE Next перезаписывать App Paths старого FBE.
+!ifndef PRODUCT_DIR_REGKEY
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\FictionBookEditorNext.exe"
+!endif
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
+!ifndef PRODUCT_SHORTCUT_NAME
+!define PRODUCT_SHORTCUT_NAME "${PRODUCT_NAME}"
+!endif
 ; SHCTX follows SetShellVarContext: current user by default, all users after
 ; explicit elevation/scope selection.  Do not hard-code HKCU in shared paths.
 !define PRODUCT_UNINST_ROOT_KEY "SHCTX"
@@ -127,6 +136,10 @@ var ICONS_GROUP
 ; Uninstaller confirm page
 !insertmacro MUI_UNPAGE_CONFIRM
 
+; User data is deliberately opt-in. Keeping this as a page instead of a
+; MessageBox also makes a silent uninstall deterministic: it preserves data.
+UninstPage custom un.UserDataPageCreate un.UserDataPageLeave
+
 ; Uninstaller instfile page
 !insertmacro MUI_UNPAGE_INSTFILES
 
@@ -175,6 +188,8 @@ Var DeploymentModePortableRadio
 Var InstallScopeCurrentRadio
 Var InstallScopeAllUsersRadio
 Var ExistingMachineInstall
+Var UninstallUserData
+Var UninstallUserDataCheckbox
 
 Function .onInit
   !insertmacro UAC_PageElevation_OnInit
@@ -186,6 +201,16 @@ Function .onInit
   SetShellVarContext current
   StrCpy $DeploymentMode "installed"
   StrCpy $InstallScope "current"
+  ; Test-only compile definitions make silent installer smoke tests possible
+  ; without interacting with a real FBE Next installation.  They are absent
+  ; from normal release builds and never alter the interactive defaults.
+  !ifdef FBE_DEPLOYMENT_TEST_PORTABLE
+    StrCpy $DeploymentMode "portable"
+  !endif
+  !ifdef FBE_DEPLOYMENT_TEST_ALLUSERS
+    StrCpy $InstallScope "allusers"
+    SetShellVarContext all
+  !endif
   ${IfNot} ${UAC_IsInnerInstance}
     !insertmacro MUI_LANGDLL_DISPLAY
   ${EndIf}
@@ -767,6 +792,7 @@ installed_core_state:
   ; optional system integration is selected
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayName" "${PRODUCT_NAME_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayVersion" "${PRODUCT_VERSION}"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "CoreVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "InstallScope" "$InstallScope"
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "InstallLocation" "$INSTDIR"
 	WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "InstallLocation" "$INSTDIR"
@@ -990,8 +1016,8 @@ Function CreateStartMenuShortcuts
   ${EndIf}
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\FictionBook Editor Next.lnk" "$INSTDIR\FBE.exe"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Uninstall FictionBook Editor Next.lnk" "$INSTDIR\uninst.exe"
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_SHORTCUT_NAME}.lnk" "$INSTDIR\FBE.exe"
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Uninstall ${PRODUCT_SHORTCUT_NAME}.lnk" "$INSTDIR\uninst.exe"
   !insertmacro MUI_STARTMENU_WRITE_END
 FunctionEnd
 
@@ -1000,7 +1026,7 @@ Function CreateDesktopShortcut
     Return
   ${EndIf}
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-  CreateShortCut "$DESKTOP\FictionBook Editor Next.lnk" "$INSTDIR\FBE.exe"
+  CreateShortCut "$DESKTOP\${PRODUCT_SHORTCUT_NAME}.lnk" "$INSTDIR\FBE.exe"
   !insertmacro MUI_STARTMENU_WRITE_END
 FunctionEnd
 
@@ -1151,10 +1177,33 @@ SubSectionEnd
 
 Function un.DeleteShortcuts
   !insertmacro MUI_STARTMENU_GETFOLDER Application $ICONS_GROUP
-  Delete "$DESKTOP\FictionBook Editor Next.lnk"
-  Delete "$SMPROGRAMS\$ICONS_GROUP\Uninstall FictionBook Editor Next.lnk"
-  Delete "$SMPROGRAMS\$ICONS_GROUP\FictionBook Editor Next.lnk"
+  Delete "$DESKTOP\${PRODUCT_SHORTCUT_NAME}.lnk"
+  Delete "$SMPROGRAMS\$ICONS_GROUP\Uninstall ${PRODUCT_SHORTCUT_NAME}.lnk"
+  Delete "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_SHORTCUT_NAME}.lnk"
   RMDir "$SMPROGRAMS\$ICONS_GROUP"
+FunctionEnd
+
+Function un.UserDataPageCreate
+  StrCpy $UninstallUserData "0"
+  nsDialogs::Create 1018
+  Pop $0
+  ${If} $0 == error
+    Abort
+  ${EndIf}
+  ${NSD_CreateLabel} 0 0 100% 20u "$(UninstUserDataTitle)"
+  Pop $0
+  ${NSD_CreateCheckbox} 10u 28u 100% 18u "$(UninstUserDataCheckbox)"
+  Pop $UninstallUserDataCheckbox
+  nsDialogs::Show
+FunctionEnd
+
+Function un.UserDataPageLeave
+  ${NSD_GetState} $UninstallUserDataCheckbox $0
+  ${If} $0 == ${BST_CHECKED}
+    StrCpy $UninstallUserData "1"
+  ${Else}
+    StrCpy $UninstallUserData "0"
+  ${EndIf}
 FunctionEnd
 
 Section Uninstall
@@ -1279,8 +1328,8 @@ fbd_uninstall_done:
 	Delete "$INSTDIR\LICENSE"
 	Delete "$INSTDIR\NOTICE"
 	Delete "$INSTDIR\THIRD-PARTY-NOTICES.md"
-	RMDir /r "$INSTDIR\THIRD-PARTY-LICENSES"
-	RMDir /r "$INSTDIR\Themes\licenses"
+  RMDir /r "$INSTDIR\THIRD-PARTY-LICENSES"
+  RMDir /r "$INSTDIR\Themes"
   Delete "$INSTDIR\InstallerTools\register-sequence-property-schema.ps1"
   Delete "$INSTDIR\InstallerTools\register-modern-property-handler.ps1"
   Delete "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1"
@@ -1331,17 +1380,15 @@ fbd_uninstall_done:
   Delete "$INSTDIR\res_ukr.dll"
   Delete "$INSTDIR\FBE.exe"
 
-; Delete program settings
-  MessageBox MB_YESNO $(UninstAskSettings) IDNO DoNotDelete
-
+; Delete program settings only after the explicit, unchecked opt-in page.
+  ${If} $UninstallUserData == "1"
     Call un.GetUserAppData
     Pop $0
     Delete "$0\FBE Next\Words.xml"
 	RMDir /r "$0\FBE Next"
 
 	DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam\FictionBook Editor Next"
-
-DoNotDelete:
+  ${EndIf}
 
   Call un.DeleteShortcuts
 
@@ -1349,5 +1396,6 @@ DoNotDelete:
 
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_DIR_REGKEY}"
+  DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}"
   SetAutoClose false
 SectionEnd

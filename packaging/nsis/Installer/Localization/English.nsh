@@ -90,4 +90,8 @@ LangString FinishPageText ${LANG_ENGLISH} "FictionBook Editor Next has been inst
 LangString FinishPageRunText ${LANG_ENGLISH} "Run FictionBook Editor Next"
 
 ; uninstall messages
+LangString UninstUserDataTitle ${LANG_ENGLISH} "User data"
+LangString UninstUserDataCheckbox ${LANG_ENGLISH} "Delete settings and user data for the current user"
+; Compatibility seed for historical European fallback overrides. This string is
+; no longer referenced by the uninstaller UI.
 LangString UninstAskSettings ${LANG_ENGLISH} "Would you like to delete all application settings?"

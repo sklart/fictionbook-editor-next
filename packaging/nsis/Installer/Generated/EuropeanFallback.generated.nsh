@@ -63,6 +63,8 @@ LangString UacRetryUninstaller ${LanguageId} "Administrator privileges are requi
 LangString UacAbortUninstaller ${LanguageId} "Removing system integration requires administrator privileges. Uninstall will be aborted."
 LangString UacLogonServiceUninstaller ${LanguageId} "Could not request elevation for uninstall because the logon service is unavailable."
 LangString UacUnknownError ${LanguageId} "Could not elevate privileges. Error code:"
+LangString UninstUserDataTitle ${LanguageId} "User data"
+LangString UninstUserDataCheckbox ${LanguageId} "Delete settings and user data for the current user"
 !macroend
 
 !insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_GERMAN}

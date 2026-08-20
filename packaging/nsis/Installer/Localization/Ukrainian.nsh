@@ -90,4 +90,7 @@ LangString FinishPageText ${LANG_UKRAINIAN} "FictionBook Editor Next успіш�
 LangString FinishPageRunText ${LANG_UKRAINIAN} "Запустити FictionBook Editor Next"
 
 ; uninstall messages
+LangString UninstUserDataTitle ${LANG_UKRAINIAN} "Дані користувача"
+LangString UninstUserDataCheckbox ${LANG_UKRAINIAN} "Видалити налаштування та дані поточного користувача"
+; Compatibility seed for historical European fallback overrides; no longer used by UI.
 LangString UninstAskSettings ${LANG_UKRAINIAN} "Бажаєте видалити файли налаштувань програми?"
