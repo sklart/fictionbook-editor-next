@@ -203,6 +203,9 @@ protected:
   bool			    m_initialized:1;
 
   MSHTML::IHTMLElementPtr   m_cur_sel;
+  MSHTML::IHTMLElementPtr   m_table_selection_anchor;
+  std::vector<MSHTML::IHTMLElementPtr> m_table_selection_cells;
+  bool                      m_table_selection_dragging;
   MSHTML::IHTMLInputTextElementPtr m_cur_input;
   _bstr_t		    m_cur_val;
   bool			    m_form_changed;
@@ -318,7 +321,7 @@ public:
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
     m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-    m_form_changed(false), m_form_cp(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name() { }
+    m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);
@@ -391,6 +394,9 @@ public:
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONSELECTIONCHANGE, OnSelChange, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONCONTEXTMENU, OnContextMenu, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONCLICK, OnClick, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEDOWN, OnMouseDown, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEMOVE, OnMouseMove, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEUP, OnMouseUp, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYDOWN, OnKeyDown, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONFOCUSIN, OnFocusIn, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONPASTE, OnRealPaste, &EventInfo)
@@ -705,6 +711,9 @@ public:
   void __stdcall	  OnSelChange(IDispatch *evt);
   VARIANT_BOOL __stdcall  OnContextMenu(IDispatch *evt);
   VARIANT_BOOL __stdcall  OnClick(IDispatch *evt);
+	VARIANT_BOOL __stdcall  OnMouseDown(IDispatch *evt);
+	VARIANT_BOOL __stdcall  OnMouseMove(IDispatch *evt);
+	VARIANT_BOOL __stdcall  OnMouseUp(IDispatch *evt);
   VARIANT_BOOL __stdcall  OnKeyDown(IDispatch *evt);
   void __stdcall	  OnFocusIn(IDispatch *evt);
 

@@ -380,6 +380,102 @@
     <None Include="res\FBE2.ico">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="res\insert_column_left.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\insert_column_right.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\delete_row.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\delete_column.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\make_header_cells.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\make_normal_cells.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\insert_row_above.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\insert_row_below.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table-actions\insert_column_left.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table-actions\insert_column_right.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table-actions\insert_row_above.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table-actions\insert_row_below.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table-actions\delete_row.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table-actions\delete_column.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table-actions\make_header_cells.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table-actions\make_normal_cells.svg">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_insert_row_above.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_insert_row_below.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_delete_row.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_insert_column_left.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_insert_column_right.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_delete_column.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_make_header_cells.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_make_normal_cells.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_insert_row_above_disabled.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_insert_row_below_disabled.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_delete_row_disabled.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_insert_column_left_disabled.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_insert_column_right_disabled.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_delete_column_disabled.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_make_header_cells_disabled.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\table_toolbar_make_normal_cells_disabled.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
     <None Include="res\green.bmp">
       <Filter>Resource Files</Filter>
     </None>

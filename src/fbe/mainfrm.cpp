@@ -23,6 +23,107 @@ namespace
 {
 const int SCRIPT_COMMAND_COUNT = 999;
 
+static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE module,
+	UINT bitmapResourceId, UINT commandId)
+{
+	HBITMAP bitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId),
+		IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+	if(bitmap == NULL)
+		return false;
+
+	const BOOL added = commandBar.AddBitmap(bitmap, commandId);
+	::DeleteObject(bitmap);
+	return added != FALSE;
+}
+
+static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId,
+	COLORREF maskColor = RGB(192, 192, 192))
+{
+	HBITMAP bitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId),
+		IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+	if (bitmap == NULL) return -1;
+	HIMAGELIST imageList = toolbar.GetImageList();
+	const int imageIndex = imageList != NULL ? ::ImageList_AddMasked(imageList, bitmap, maskColor) : -1;
+	::DeleteObject(bitmap);
+	return imageIndex;
+}
+
+static CString StripMenuMnemonics(const CString& text)
+{
+	CString result;
+	for (int index = 0; index < text.GetLength(); ++index)
+	{
+		if (text[index] != L'&') { result += text[index]; continue; }
+		if (index + 1 < text.GetLength() && text[index + 1] == L'&') result += text[++index];
+	}
+	return result;
+}
+
+struct TableToolbarCommand
+{
+	UINT bitmapResourceId;
+	UINT disabledBitmapResourceId;
+	UINT commandId;
+	LPCWSTR localizationKey;
+	LPCWSTR fallbackText;
+};
+
+static const TableToolbarCommand kTableToolbarCommands[] =
+{
+	{ IDB_TABLE_TOOLBAR_INSERT_ROW_ABOVE, IDB_TABLE_TOOLBAR_INSERT_ROW_ABOVE_DISABLED, ID_TABLE_INSERT_ROW_ABOVE, L"fbe.menu.idr_mainframe.table.insert_row_above", L"Insert row above" },
+	{ IDB_TABLE_TOOLBAR_INSERT_ROW_BELOW, IDB_TABLE_TOOLBAR_INSERT_ROW_BELOW_DISABLED, ID_TABLE_INSERT_ROW_BELOW, L"fbe.menu.idr_mainframe.table.insert_row_below", L"Insert row below" },
+	{ IDB_TABLE_TOOLBAR_DELETE_ROW, IDB_TABLE_TOOLBAR_DELETE_ROW_DISABLED, ID_TABLE_DELETE_ROW, L"fbe.menu.idr_mainframe.table.delete_row", L"Delete row" },
+	{ IDB_TABLE_TOOLBAR_INSERT_COLUMN_LEFT, IDB_TABLE_TOOLBAR_INSERT_COLUMN_LEFT_DISABLED, ID_TABLE_INSERT_COLUMN_LEFT, L"fbe.menu.idr_mainframe.table.insert_column_left", L"Insert column left" },
+	{ IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT, IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT_DISABLED, ID_TABLE_INSERT_COLUMN_RIGHT, L"fbe.menu.idr_mainframe.table.insert_column_right", L"Insert column right" },
+	{ IDB_TABLE_TOOLBAR_DELETE_COLUMN, IDB_TABLE_TOOLBAR_DELETE_COLUMN_DISABLED, ID_TABLE_DELETE_COLUMN, L"fbe.menu.idr_mainframe.table.delete_column", L"Delete column" },
+	{ IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS, IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS_DISABLED, ID_TABLE_MAKE_HEADER_CELLS, L"fbe.menu.idr_mainframe.table.make_header_cells", L"Make header cells" },
+	{ IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS, IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS_DISABLED, ID_TABLE_MAKE_NORMAL_CELLS, L"fbe.menu.idr_mainframe.table.make_normal_cells", L"Make normal cells" },
+};
+
+// A process launched elevated (for example from an administrator Visual
+// Studio) does not use per-user COM registrations.  The bundled export DLLs
+// live next to FBE.exe, so fall back to their class factory directly when
+// CoCreateInstance cannot see the HKCU registration.
+static HRESULT CreateBundledExportPluginInstance(const CLSID& clsid, IUnknownPtr& instance)
+{
+	HRESULT result = instance.CreateInstance(clsid);
+	if(result != REGDB_E_CLASSNOTREG)
+		return result;
+
+	static const CLSID exportHtmlClsid = { 0xC3098839, 0xEF69, 0x4DE5, { 0xB2, 0x7D, 0x1E, 0x80, 0x05, 0x1C, 0xA8, 0x43 } };
+	static const CLSID exportDocxClsid = { 0x09B5ABFF, 0x177E, 0x4C03, { 0x98, 0xD0, 0x9E, 0xF4, 0xE1, 0xC9, 0xDB, 0x56 } };
+	static const CLSID exportEpubClsid = { 0x36FCFB2D, 0xC3D8, 0x4B81, { 0xAB, 0xC1, 0x5A, 0x09, 0xCA, 0x84, 0x65, 0x15 } };
+	LPCWSTR fileName = NULL;
+	if(::InlineIsEqualGUID(clsid, exportHtmlClsid))
+		fileName = L"ExportHTML.dll";
+	else if(::InlineIsEqualGUID(clsid, exportDocxClsid))
+		fileName = L"ExportDOCX.dll";
+	else if(::InlineIsEqualGUID(clsid, exportEpubClsid))
+		fileName = L"ExportEPUB.dll";
+	if(fileName == NULL)
+		return result;
+
+	HMODULE module = ::LoadLibrary(U::GetProgDirFile(fileName));
+	if(module == NULL)
+		return HRESULT_FROM_WIN32(::GetLastError());
+
+	typedef HRESULT (STDAPICALLTYPE* DllGetClassObjectProc)(REFCLSID, REFIID, LPVOID*);
+	DllGetClassObjectProc getClassObject = reinterpret_cast<DllGetClassObjectProc>(
+		::GetProcAddress(module, "DllGetClassObject"));
+	if(getClassObject == NULL)
+		return E_NOINTERFACE;
+
+	CComPtr<IClassFactory> factory;
+	result = getClassObject(clsid, IID_IClassFactory, reinterpret_cast<void**>(&factory));
+	if(FAILED(result))
+		return result;
+	IUnknown* localInstance = NULL;
+	result = factory->CreateInstance(NULL, IID_IUnknown, reinterpret_cast<void**>(&localInstance));
+	if(SUCCEEDED(result))
+		instance.Attach(localInstance);
+	return result;
+}
+
 struct ScriptCommandId
 {
 	CString relativePath;
@@ -1505,6 +1606,8 @@ BOOL CMainFrame::OnIdle()
 		UIUpdateViewCmd(view, ID_TABLE_INSERT_COLUMN_RIGHT);
 		UIUpdateViewCmd(view, ID_TABLE_DELETE_COLUMN);
 		UIUpdateViewCmd(view, ID_TABLE_TOGGLE_HEADER_CELL);
+		UIUpdateViewCmd(view, ID_TABLE_MAKE_HEADER_CELLS);
+		UIUpdateViewCmd(view, ID_TABLE_MAKE_NORMAL_CELLS);
 		UIUpdateViewCmd(view, ID_GOTO_FOOTNOTE);
 		UIUpdateViewCmd(view, ID_GOTO_REFERENCE);
 		UIUpdateViewCmd(view, ID_EDIT_MERGE);
@@ -1884,6 +1987,25 @@ BOOL CMainFrame::OnIdle()
 	}
 	else UIEnable(ID_TOOLS_SPELLCHECK, false, true);
 
+	const bool tableCommandEnabled = m_current_view == BODY && m_doc && m_doc->m_body.SelectionStructTableCon();
+	const UINT tableCommands[] = {
+		ID_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_BELOW, ID_TABLE_DELETE_ROW,
+		ID_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_DELETE_COLUMN,
+		ID_TABLE_MAKE_HEADER_CELLS, ID_TABLE_MAKE_NORMAL_CELLS
+	};
+	for (size_t index = 0; index < _countof(tableCommands); ++index) {
+		UIEnable(tableCommands[index], tableCommandEnabled);
+		m_CmdToolbar.EnableButton(tableCommands[index], tableCommandEnabled);
+		if(m_table_toolbar_image_indices[index] >= 0 && m_table_toolbar_disabled_image_indices[index] >= 0)
+		{
+			TBBUTTONINFO info = {};
+			info.cbSize = sizeof(info);
+			info.dwMask = TBIF_IMAGE;
+			info.iImage = tableCommandEnabled ? m_table_toolbar_image_indices[index] : m_table_toolbar_disabled_image_indices[index];
+			m_CmdToolbar.SetButtonInfo(tableCommands[index], &info);
+		}
+	}
+
 	// update UI
 	UIUpdateToolBar();
 
@@ -2182,12 +2304,59 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   SetMenu(NULL);
   // load command bar images
   m_MenuBar.LoadImages(IDR_MAINFRAME_SMALL);
+  const HINSTANCE applicationModule = ATL::_AtlBaseModule.GetModuleInstance();
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_ABOVE);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_INSERT_ROW_BELOW, ID_TABLE_INSERT_ROW_BELOW);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_LEFT);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_INSERT_COLUMN_RIGHT);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_DELETE_ROW, ID_TABLE_DELETE_ROW);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_DELETE_COLUMN, ID_TABLE_DELETE_COLUMN);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_MAKE_HEADER_CELLS, ID_TABLE_MAKE_HEADER_CELLS);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TABLE_MAKE_NORMAL_CELLS, ID_TABLE_MAKE_NORMAL_CELLS);
 
   m_CmdToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_MAINFRAME, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
   m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
   InitToolBar(m_CmdToolbar, IDR_MAINFRAME);
+  for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+  {
+    m_table_toolbar_image_indices[index] = -1;
+    m_table_toolbar_disabled_image_indices[index] = -1;
+  }
+  for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+  {
+    const TableToolbarCommand& command = kTableToolbarCommands[index];
+    const int imageIndex = AddToolbarBitmapFromModule(m_CmdToolbar, applicationModule, command.bitmapResourceId);
+    m_table_toolbar_image_indices[index] = imageIndex;
+	  m_table_toolbar_disabled_image_indices[index] = AddToolbarBitmapFromModule(m_CmdToolbar, applicationModule,
+		command.disabledBitmapResourceId, RGB(255, 255, 255));
+    if (imageIndex < 0) continue;
+    TBBUTTON button = {};
+    button.iBitmap = imageIndex;
+    button.idCommand = command.commandId;
+    button.fsState = TBSTATE_ENABLED;
+    button.fsStyle = TBSTYLE_BUTTON;
+    button.iString = 1;
+	AddToolbarButton(m_CmdToolbar, button, StripMenuMnemonics(FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText)));
+  }
   // Restore commands toolbar layout and position
 	m_CmdToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
+  for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+  {
+    if (m_table_toolbar_image_indices[index] < 0) continue;
+    TBBUTTONINFO info = {};
+    info.cbSize = sizeof(info);
+    info.dwMask = TBIF_IMAGE;
+    info.iImage = m_table_toolbar_image_indices[index];
+    m_CmdToolbar.SetButtonInfo(kTableToolbarCommands[index].commandId, &info);
+  }
   UIAddToolBar(m_CmdToolbar);
 
   m_ScriptsToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
@@ -4271,7 +4440,7 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 		try
 		{
 			IUnknownPtr unk;
-			HRESULT pluginHr = unk.CreateInstance(pluginClsid);
+			HRESULT pluginHr = CreateBundledExportPluginInstance(pluginClsid, unk);
 			TracePluginDiagnostic(L"Export", pluginClsid, L"CreateInstance", pluginHr, 0);
 			CheckError(pluginHr);
 

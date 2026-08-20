@@ -181,6 +181,8 @@ public:
 
 	CCommandBarCtrl	m_MenuBar;			// menu bar
 	CToolBarCtrl	m_CmdToolbar;		// commands toolbar
+	int			m_table_toolbar_image_indices[8];
+	int			m_table_toolbar_disabled_image_indices[8];
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
 	CReBarCtrl		m_rebar;			// toolbars
 	CComboBox		m_id_box;
@@ -312,9 +314,14 @@ public:
     m_source_selection_transferred(false), m_source_selection_start(0),
 		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL)
 	// added by SeNS
-	{ 
+	{
 		strINS[0] = L'\0';
 		strOVR[0] = L'\0';
+		for(int index = 0; index < 8; ++index)
+		{
+			m_table_toolbar_image_indices[index] = -1;
+			m_table_toolbar_disabled_image_indices[index] = -1;
+		}
 		if (_Settings.GetUseSpellChecker())
 		{
 			m_Speller = new CSpeller(U::GetProgDir()+L"dict\\");

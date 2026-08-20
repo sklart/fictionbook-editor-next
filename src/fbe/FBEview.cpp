@@ -206,6 +206,30 @@ static MSHTML::IHTMLElementPtr FindTableCell(MSHTML::IHTMLElementPtr element)
 	return MSHTML::IHTMLElementPtr();
 }
 
+static bool SelectTableCellRange(const MSHTML::IHTMLDocument2Ptr& document,
+	const MSHTML::IHTMLElementPtr& firstCell, const MSHTML::IHTMLElementPtr& lastCell)
+{
+	try
+	{
+		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
+		if (!body || !firstCell || !lastCell || FindTableElement(firstCell) != FindTableElement(lastCell)) return false;
+		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+		MSHTML::IHTMLTxtRangePtr end(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+		if (!range || !end) return false;
+		range->moveToElementText(firstCell);
+		if (firstCell != lastCell)
+		{
+			end->moveToElementText(lastCell);
+			range->setEndPoint(L"EndToEnd", end);
+		}
+		else
+			range->collapse(VARIANT_TRUE);
+		range->select();
+		return true;
+	}
+	catch (const _com_error&) { return false; }
+}
+
 static void GetDirectTableCells(const MSHTML::IHTMLElementPtr& row, std::vector<MSHTML::IHTMLElementPtr>& cells)
 {
 	cells.clear();
@@ -298,6 +322,52 @@ static bool BuildLogicalTableGrid(const MSHTML::IHTMLElementPtr& table, LogicalT
 static long FindLogicalCell(const LogicalTableGrid& grid, const MSHTML::IHTMLElementPtr& element)
 {
 	for (size_t index = 0; index < grid.cells.size(); ++index) if (grid.cells[index].element == element) return static_cast<long>(index); return -1;
+}
+
+static bool GetTableCellRectangle(const MSHTML::IHTMLElementPtr& firstCell,
+	const MSHTML::IHTMLElementPtr& lastCell, std::vector<MSHTML::IHTMLElementPtr>& result)
+{
+	result.clear();
+	MSHTML::IHTMLElementPtr table(FindTableElement(firstCell));
+	if (!table || table != FindTableElement(lastCell)) return false;
+	LogicalTableGrid grid;
+	if (!BuildLogicalTableGrid(table, grid)) return false;
+	const long first = FindLogicalCell(grid, firstCell), last = FindLogicalCell(grid, lastCell);
+	if (first < 0 || last < 0) return false;
+	const LogicalTableCell& a = grid.cells[first]; const LogicalTableCell& b = grid.cells[last];
+	const long rowStart = min(a.sourceRow, b.sourceRow), rowEnd = max(a.sourceRow + a.rowspan - 1, b.sourceRow + b.rowspan - 1);
+	const long columnStart = min(a.startColumn, b.startColumn), columnEnd = max(a.startColumn + a.colspan - 1, b.startColumn + b.colspan - 1);
+	std::vector<bool> selected(grid.cells.size(), false);
+	for (long row = rowStart; row <= rowEnd; ++row) for (long column = columnStart; column <= columnEnd; ++column) {
+		const long owner = grid.At(row, column); if (owner >= 0) selected[owner] = true;
+	}
+	for (size_t index = 0; index < grid.cells.size(); ++index) if (selected[index]) result.push_back(grid.cells[index].element);
+	return !result.empty();
+}
+
+static void SetTableCellHighlight(const MSHTML::IHTMLElementPtr& cell, const wchar_t* color)
+{
+	try {
+		IDispatchPtr dispatch(cell);
+		OLECHAR* propertyName = L"runtimeStyle";
+		DISPID propertyId = DISPID_UNKNOWN;
+		if (!dispatch || FAILED(dispatch->GetIDsOfNames(IID_NULL, &propertyName, 1, LOCALE_USER_DEFAULT, &propertyId))) return;
+		DISPPARAMS arguments = {};
+		_variant_t runtimeStyle;
+		if (FAILED(dispatch->Invoke(propertyId, IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_PROPERTYGET, &arguments, &runtimeStyle, NULL, NULL)) || runtimeStyle.vt != VT_DISPATCH) return;
+		MSHTML::IHTMLStylePtr style;
+		style = runtimeStyle.pdispVal;
+		if (style) style->backgroundColor = color;
+	}
+	catch (const _com_error&) { }
+}
+
+static void UpdateTableCellHighlights(std::vector<MSHTML::IHTMLElementPtr>& previous,
+	const std::vector<MSHTML::IHTMLElementPtr>& current)
+{
+	for (size_t index = 0; index < previous.size(); ++index) SetTableCellHighlight(previous[index], L"");
+	previous = current;
+	for (size_t index = 0; index < previous.size(); ++index) SetTableCellHighlight(previous[index], L"#B8D6FB");
 }
 
 static const wchar_t* TableCellTagAt(const LogicalTableGrid& grid, long row, long column, const wchar_t* fallback)
@@ -2041,9 +2111,14 @@ MSHTML::IHTMLElementPtr	  CFBEView::SelectionStructTableCon() {
     MSHTML::IHTMLElementPtr   cur(SelectionContainer());
     while (cur) {
       if (U::scmp(cur->className,L"th")==0 || U::scmp(cur->className,L"td")==0)
-		return cur;
+	return cur;
       cur=cur->parentElement;
     }
+	MSHTML::IHTMLTxtRangePtr range(Document()->selection->createRange());
+	if (range) {
+		range->collapse(VARIANT_TRUE);
+		return FindTableCell(range->parentElement());
+	}
   }
   catch (_com_error&) {
   }
@@ -3590,7 +3665,8 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	{
 		// Right-click does not reliably move the MSHTML selection.  Retain the
 		// clicked cell so the command modifies the cell the menu was opened on.
-		m_cur_sel = contextCell;
+		if (m_table_selection_cells.empty())
+			m_cur_sel = contextCell;
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_ABOVE, GetLocalizedMainMenuText(ID_TABLE_INSERT_ROW_ABOVE, L"Insert row above"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_ROW_BELOW, GetLocalizedMainMenuText(ID_TABLE_INSERT_ROW_BELOW, L"Insert row below"));
@@ -3726,6 +3802,48 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 	oe->returnValue = VARIANT_FALSE;
 
 	return VARIANT_TRUE;
+}
+
+VARIANT_BOOL CFBEView::OnMouseDown(IDispatch* evt)
+{
+	MSHTML::IHTMLEventObjPtr eventObject(evt);
+	if (!eventObject || eventObject->button != 1) return VARIANT_FALSE;
+	m_table_selection_dragging = false;
+	if (m_table_selection_anchor) m_table_selection_anchor.Release();
+	UpdateTableCellHighlights(m_table_selection_cells, std::vector<MSHTML::IHTMLElementPtr>());
+	MSHTML::IHTMLElementPtr source(eventObject->srcElement);
+	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
+	if (!cell) return VARIANT_FALSE;
+	m_table_selection_anchor = cell;
+	m_table_selection_dragging = true;
+	return VARIANT_FALSE;
+}
+
+VARIANT_BOOL CFBEView::OnMouseMove(IDispatch* evt)
+{
+	if (!m_table_selection_dragging || !m_table_selection_anchor) return VARIANT_FALSE;
+	MSHTML::IHTMLEventObjPtr eventObject(evt);
+	MSHTML::IHTMLElementPtr source(eventObject ? eventObject->srcElement : NULL);
+	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
+	std::vector<MSHTML::IHTMLElementPtr> cells;
+	if (!cell || cell == m_table_selection_anchor || !GetTableCellRectangle(m_table_selection_anchor, cell, cells) || !SelectTableCellRange(Document(), m_table_selection_anchor, cell)) return VARIANT_FALSE;
+	UpdateTableCellHighlights(m_table_selection_cells, cells);
+	eventObject->cancelBubble = VARIANT_TRUE;
+	eventObject->returnValue = VARIANT_FALSE;
+	return VARIANT_TRUE;
+}
+
+VARIANT_BOOL CFBEView::OnMouseUp(IDispatch* evt)
+{
+	if (!m_table_selection_dragging) return VARIANT_FALSE;
+	MSHTML::IHTMLEventObjPtr eventObject(evt);
+	MSHTML::IHTMLElementPtr source(eventObject ? eventObject->srcElement : NULL);
+	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
+	std::vector<MSHTML::IHTMLElementPtr> cells;
+	if (cell && cell != m_table_selection_anchor && GetTableCellRectangle(m_table_selection_anchor, cell, cells) && SelectTableCellRange(Document(), m_table_selection_anchor, cell)) UpdateTableCellHighlights(m_table_selection_cells, cells);
+	m_table_selection_dragging = false;
+	m_table_selection_anchor.Release();
+	return VARIANT_FALSE;
 }
 
 bool CFBEView::MoveTableCell(bool reverse)

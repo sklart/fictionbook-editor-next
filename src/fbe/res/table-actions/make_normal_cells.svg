@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.1"
+   width="38.022999"
+   height="39.155998"
+   viewBox="0 0 38.022999 39.155998"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs1" />
+  <title
+     id="title1">FBE Next vector icon (make_normal_cells)</title>
+  <desc
+     id="desc1">Table icon in MS Word-like style: make selected cells ordinary cells.</desc>
+  <g
+     id="table_base">
+    <rect
+       id="outer_frame"
+       x="2.0815194"
+       y="2.0815194"
+       width="33.791908"
+       height="34.924999"
+       rx="2.8159926"
+       style="fill:#525969;stroke:#525969;stroke-width:0.231" />
+    <rect
+       id="table_background"
+       x="3.5338509"
+       y="3.7523644"
+       width="30.52"
+       height="31.58"
+       rx="2.2"
+       style="fill:#f4f7fc;stroke:none" />
+    <!-- base cell fills -->
+    <rect
+       id="cell_r1c1"
+       x="4.25"
+       y="4.48"
+       width="8.75"
+       height="9.0500002"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+    <rect
+       id="cell_r1c2"
+       x="14.63"
+       y="4.48"
+       width="8.7299995"
+       height="9.0500002"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+    <rect
+       id="cell_r1c3"
+       x="25.01"
+       y="4.48"
+       width="8.1000004"
+       height="9.0500002"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+    <rect
+       id="cell_r2c1"
+       x="4.25"
+       y="15.05"
+       width="8.75"
+       height="9.0500002"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+    <rect
+       id="cell_r2c2"
+       x="14.63"
+       y="15.05"
+       width="8.7299995"
+       height="9.0500002"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+    <rect
+       id="cell_r2c3"
+       x="25.01"
+       y="15.05"
+       width="8.1000004"
+       height="9.0500002"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+    <rect
+       id="cell_r3c1"
+       x="4.25"
+       y="25.639999"
+       width="8.75"
+       height="8.8500004"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+    <rect
+       id="cell_r3c2"
+       x="14.63"
+       y="25.639999"
+       width="8.7299995"
+       height="8.8500004"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+    <rect
+       id="cell_r3c3"
+       x="25.01"
+       y="25.639999"
+       width="8.1000004"
+       height="8.8500004"
+       rx="0.94999999"
+       style="fill:#f4f7fc;stroke:none" />
+  </g>
+  <g
+     id="grid">
+    <line
+       id="grid_v1"
+       x1="13.64843"
+       y1="3.7523644"
+       x2="13.64843"
+       y2="35.332359"
+       style="stroke:#677084;stroke-width:1.22;stroke-linecap:butt" />
+    <line
+       id="grid_v2"
+       x1="24.335302"
+       y1="3.7523644"
+       x2="24.335302"
+       y2="35.332359"
+       style="stroke:#677084;stroke-width:1.22;stroke-linecap:butt" />
+    <line
+       id="grid_h1"
+       x1="3.5338509"
+       y1="14.252364"
+       x2="34.053856"
+       y2="14.252364"
+       style="stroke:#677084;stroke-width:1.22;stroke-linecap:butt" />
+    <line
+       id="grid_h2"
+       x1="3.5338509"
+       y1="24.835699"
+       x2="34.053856"
+       y2="24.835699"
+       style="stroke:#677084;stroke-width:1.22;stroke-linecap:butt" />
+  </g>
+  <g
+     id="selection">
+    <rect
+       id="selection_outline"
+       x="4.02"
+       y="4.1500001"
+       width="29.549999"
+       height="9.5"
+       rx="1.55"
+       style="fill:none;stroke:#316fda;stroke-width:1.34" />
+    <rect
+       id="normal_band"
+       x="5.3000002"
+       y="5.3000002"
+       width="27"
+       height="0.72000003"
+       rx="0.36000001"
+       style="opacity:0.6;fill:#677084;stroke:none" />
+  </g>
+  <g
+     id="badge"
+     transform="matrix(2.2322581,0,0,2.1086628,1.659343,10.759944)">
+    <g
+       id="badge_group">
+      <rect
+         id="badge_bg"
+         x="2.75"
+         y="0.64999998"
+         width="9.6999998"
+         height="5.0999999"
+         rx="1.45"
+         style="fill:#ffffff;stroke:#316fda;stroke-width:0.6" />
+      <text
+         id="badge_text"
+         x="7.5999999"
+         y="4.1799998"
+         style="font-weight:700;font-size:2.9px;font-family:Arial, sans-serif;text-anchor:middle;fill:#316fda">TD</text>
+    </g>
+  </g>
+  <metadata
+     id="metadata1">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>FBE Next vector icon (make_normal_cells)</dc:title>
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/by-sa/4.0/" />
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>sklart</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:date>2026/08/20</dc:date>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/by-sa/4.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#Notice" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#Attribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+        <cc:requires
+           rdf:resource="http://creativecommons.org/ns#ShareAlike" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>
