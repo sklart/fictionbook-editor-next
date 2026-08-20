@@ -1067,46 +1067,6 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 	SectionEnd
 SectionGroupEnd
 
-Function VerifyPluginRegistration
-  SectionGetFlags ${ExportHTML_Plugin_id} $1
-  IntOp $1 $1 & ${SF_SELECTED}
-  ${If} $1 = 0
-    Goto verify_export_docx
-  ${EndIf}
-  ClearErrors
-  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{C3098839-EF69-4DE5-B27D-1E80051CA843}" "Type"
-  ${If} $0 != "Export"
-    DetailPrint "ExportHTML plugin registration was not found after RegDll."
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportHTML не зарегистрировался. Установка продолжена, но экспорт в HTML будет недоступен. Проверьте журнал установки и повторите установку."
-  ${EndIf}
-
-verify_export_docx:
-  SectionGetFlags ${ExportDOCX_Plugin_id} $1
-  IntOp $1 $1 & ${SF_SELECTED}
-  ${If} $1 = 0
-    Goto verify_export_epub
-  ${EndIf}
-  ClearErrors
-  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "Type"
-  ${If} $0 != "Export"
-    DetailPrint "ExportDOCX plugin registration was not found after RegDll."
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportDOCX не зарегистрировался. Установка продолжена, но экспорт в DOCX будет недоступен. Проверьте журнал установки и повторите установку."
-  ${EndIf}
-
-verify_export_epub:
-  SectionGetFlags ${ExportEPUB_Plugin_id} $1
-  IntOp $1 $1 & ${SF_SELECTED}
-  ${If} $1 = 0
-    Return
-  ${EndIf}
-  ClearErrors
-  ReadRegStr $0 HKCU "Software\FBETeam\FictionBook Editor Next\Plugins\{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "Type"
-  ${If} $0 != "Export"
-    DetailPrint "ExportEPUB plugin registration was not found after RegDll."
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Плагин ExportEPUB не зарегистрировался. Установка продолжена, но экспорт в EPUB будет недоступен. Проверьте журнал установки и повторите установку."
-  ${EndIf}
-FunctionEnd
-
 Section !$(Scripts) Scripts_id
 ;Scripts and dependances
 	SetOutPath "$INSTDIR\Scripts"
