@@ -41,8 +41,11 @@ foreach ($file in $files) {
     }
 
     $menuItemCount = ([regex]::Matches($text, '(?m)^\s*MENUITEM\s+"')).Count
-    if ($menuItemCount -ne 69) {
-        throw "Ожидалось 69 MENUITEM в $($file.Language), получено $menuItemCount."
+    # Табличное подменю содержит отдельные команды для преобразования
+    # ячеек заголовка и обычных ячеек, поэтому в утверждённом ресурсе 70
+    # пунктов MENUITEM.
+    if ($menuItemCount -ne 70) {
+        throw "Ожидалось 70 MENUITEM в $($file.Language), получено $menuItemCount."
     }
 
     $popupCount = ([regex]::Matches($text, '(?m)^\s*POPUP\s+"')).Count
@@ -56,7 +59,7 @@ foreach ($file in $files) {
         throw "В $($file.Language) отсутствует вложенное подменю Диагностика."
     }
 
-    foreach ($id in @('ID_FILE_OPEN','ID_FILE_SAVE','ID_EDIT_REPLACE','ID_VIEW_BODY','ID_INSERT_TABLE','ID_TABLE_INSERT_ROW_ABOVE','ID_TABLE_INSERT_ROW_BELOW','ID_TABLE_DELETE_ROW','ID_TABLE_INSERT_COLUMN_LEFT','ID_TABLE_INSERT_COLUMN_RIGHT','ID_TABLE_DELETE_COLUMN','ID_TABLE_TOGGLE_HEADER_CELL','ID_STYLE_LINK','ID_TOOLS_SPELLCHECK','ID_TOOLS_DIAGNOSTIC_TRACE','ID_TOOLS_OPEN_DIAGNOSTIC_LOG','ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER','ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH','ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS','ID_APP_ABOUT')) {
+    foreach ($id in @('ID_FILE_OPEN','ID_FILE_SAVE','ID_EDIT_REPLACE','ID_VIEW_BODY','ID_INSERT_TABLE','ID_TABLE_INSERT_ROW_ABOVE','ID_TABLE_INSERT_ROW_BELOW','ID_TABLE_DELETE_ROW','ID_TABLE_INSERT_COLUMN_LEFT','ID_TABLE_INSERT_COLUMN_RIGHT','ID_TABLE_DELETE_COLUMN','ID_TABLE_MAKE_HEADER_CELLS','ID_TABLE_MAKE_NORMAL_CELLS','ID_STYLE_LINK','ID_TOOLS_SPELLCHECK','ID_TOOLS_DIAGNOSTIC_TRACE','ID_TOOLS_OPEN_DIAGNOSTIC_LOG','ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER','ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH','ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS','ID_APP_ABOUT')) {
         if ($text -notmatch [regex]::Escape($id)) {
             throw "В generated MENU-файле $($file.Language) нет $id."
         }
