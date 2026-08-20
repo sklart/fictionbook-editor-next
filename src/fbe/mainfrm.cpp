@@ -13,6 +13,7 @@
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
 #include "..\\common\\DeploymentContext.h"
+#include "..\\common\\RuntimeLocalizationCommon.h"
 #include <string>
 #include <vector>
 #include <psapi.h>
@@ -94,29 +95,69 @@ static bool IsTableToolbarCommand(UINT commandId)
 // Studio) does not use per-user COM registrations.  The bundled export DLLs
 // live next to FBE.exe, so fall back to their class factory directly when
 // CoCreateInstance cannot see the HKCU registration.
+struct BundledPluginMetadata
+{
+	CString type, module, clsidText, menuText, menuKey;
+	CLSID clsid;
+};
+
+static bool ReadBundledPluginString(const std::wstring& json, size_t objectStart, const wchar_t* name, CString& value)
+{
+	size_t valueStart = 0; std::wstring result;
+	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, objectStart, name, valueStart) || !FbeRuntimeLocalization::JsonParseString(json, valueStart, result) || result.empty()) return false;
+	value = result.c_str(); return true;
+}
+
+static const std::vector<BundledPluginMetadata>& BundledPluginCatalog()
+{
+	static std::vector<BundledPluginMetadata> entries; static bool initialized = false;
+	if(initialized) return entries;
+	initialized = true;
+	std::wstring json; const CString path = U::GetProgDirFile(L"Plugins\\plugins.json");
+	if(!FbeRuntimeLocalization::ReadUtf8TextFile(path, json)) return entries;
+	size_t array = 0;
+	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, 0, L"plugins", array)) return entries;
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, array);
+	if(array >= json.size() || json[array++] != L'[') return entries;
+	for(;;) {
+		FbeRuntimeLocalization::JsonSkipWhitespace(json, array);
+		if(array >= json.size() || json[array] == L']') break;
+		const size_t object = array;
+		if(!FbeRuntimeLocalization::JsonSkipValue(json, array)) { entries.clear(); return entries; }
+		BundledPluginMetadata entry = {};
+		if(ReadBundledPluginString(json, object, L"type", entry.type) && ReadBundledPluginString(json, object, L"module", entry.module) && ReadBundledPluginString(json, object, L"clsid", entry.clsidText) && ReadBundledPluginString(json, object, L"menu", entry.menuText) && ReadBundledPluginString(json, object, L"menuKey", entry.menuKey) && ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) == S_OK) entries.push_back(entry);
+		FbeRuntimeLocalization::JsonSkipWhitespace(json, array);
+		if(array < json.size() && json[array] == L',') { ++array; continue; }
+		if(array < json.size() && json[array] == L']') break;
+		entries.clear(); return entries;
+	}
+	return entries;
+}
+
+static const BundledPluginMetadata* FindBundledPlugin(const CLSID& clsid)
+{
+	const std::vector<BundledPluginMetadata>& entries = BundledPluginCatalog();
+	for(size_t index = 0; index < entries.size(); ++index) if(::InlineIsEqualGUID(entries[index].clsid, clsid)) return &entries[index];
+	return NULL;
+}
+
+static const BundledPluginMetadata* FindBundledPlugin(const CString& clsidText)
+{
+	CLSID clsid = {};
+	return ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(clsidText)), &clsid) == S_OK ? FindBundledPlugin(clsid) : NULL;
+}
+
 static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& instance)
 {
-	HRESULT result = instance.CreateInstance(clsid);
-	if(result != REGDB_E_CLASSNOTREG)
-		return result;
+	// Bundled entries are trusted only from the package beside FBE.exe.  Never
+	// let a stale/foreign CLSID registration intercept their activation.
+	HRESULT result = E_NOINTERFACE;
 
-	static const CLSID exportHtmlClsid = { 0xC3098839, 0xEF69, 0x4DE5, { 0xB2, 0x7D, 0x1E, 0x80, 0x05, 0x1C, 0xA8, 0x43 } };
-	static const CLSID exportDocxClsid = { 0x09B5ABFF, 0x177E, 0x4C03, { 0x98, 0xD0, 0x9E, 0xF4, 0xE1, 0xC9, 0xDB, 0x56 } };
-	static const CLSID exportEpubClsid = { 0x36FCFB2D, 0xC3D8, 0x4B81, { 0xAB, 0xC1, 0x5A, 0x09, 0xCA, 0x84, 0x65, 0x15 } };
-	static const CLSID importEpubClsid = { 0x3C19F5A2, 0x2EC8, 0x4EC7, { 0xB7, 0xA9, 0xF4, 0x91, 0x0B, 0x4C, 0xDD, 0x82 } };
-	LPCWSTR fileName = NULL;
-	if(::InlineIsEqualGUID(clsid, exportHtmlClsid))
-		fileName = L"ExportHTML.dll";
-	else if(::InlineIsEqualGUID(clsid, exportDocxClsid))
-		fileName = L"ExportDOCX.dll";
-	else if(::InlineIsEqualGUID(clsid, exportEpubClsid))
-		fileName = L"ExportEPUB.dll";
-	else if(::InlineIsEqualGUID(clsid, importEpubClsid))
-		fileName = L"ImportEPUB.dll";
-	if(fileName == NULL)
-		return result;
+	const BundledPluginMetadata* plugin = FindBundledPlugin(clsid);
+	if(plugin == NULL)
+		return instance.CreateInstance(clsid); // external legacy plug-in
 
-	const CString path = U::GetProgDirFile(fileName);
+	const CString path = U::GetProgDirFile(plugin->module);
 	HMODULE module = ::LoadLibraryEx(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
 	if(module == NULL && ::GetLastError() == ERROR_INVALID_PARAMETER)
 		module = ::LoadLibrary(path);
@@ -142,18 +183,13 @@ static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& inst
 
 static void AddBundledPluginCatalog(HMENU menu, const TCHAR* type, UINT commandBase, CSimpleArray<CLSID>& plugins)
 {
-	struct Entry { const TCHAR* type; CLSID clsid; const TCHAR* menu; };
-	static const Entry entries[] = {
-		{ L"Import", { 0x3C19F5A2, 0x2EC8, 0x4EC7, { 0xB7, 0xA9, 0xF4, 0x91, 0x0B, 0x4C, 0xDD, 0x82 } }, L"Import EPUB" },
-		{ L"Export", { 0xC3098839, 0xEF69, 0x4DE5, { 0xB2, 0x7D, 0x1E, 0x80, 0x05, 0x1C, 0xA8, 0x43 } }, L"Export HTML" },
-		{ L"Export", { 0x09B5ABFF, 0x177E, 0x4C03, { 0x98, 0xD0, 0x9E, 0xF4, 0xE1, 0xC9, 0xDB, 0x56 } }, L"Export DOCX" },
-		{ L"Export", { 0x36FCFB2D, 0xC3D8, 0x4B81, { 0xAB, 0xC1, 0x5A, 0x09, 0xCA, 0x84, 0x65, 0x15 } }, L"Export EPUB" }
-	};
-	for(size_t index = 0; index < _countof(entries); ++index)
+	const std::vector<BundledPluginMetadata>& entries = BundledPluginCatalog();
+	for(size_t index = 0; index < entries.size(); ++index)
 	{
 		if(::lstrcmpi(entries[index].type, type) != 0) continue;
 		plugins.Add(entries[index].clsid);
-		::AppendMenu(menu, MF_STRING, commandBase + plugins.GetSize() - 1, entries[index].menu);
+		const CString text = FbeLoadRuntimeStringByKey(entries[index].menuKey, entries[index].menuText);
+		::AppendMenu(menu, MF_STRING, commandBase + plugins.GetSize() - 1, text);
 	}
 }
 
@@ -612,23 +648,8 @@ static void TraceMainFrameHotkey(const MSG* message)
 
 static CString LocalizeBundledPluginMenuText(const CString& clsidText, const CString& fallback)
 {
-	CString normalized(clsidText);
-	normalized.MakeUpper();
-
-	LPCWSTR key = NULL;
-	if(normalized == L"{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}")
-		key = L"fbe.plugin.import_epub.menu";
-	else if(normalized == L"{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}")
-		key = L"fbe.plugin.export_docx.menu";
-	else if(normalized == L"{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}")
-		key = L"fbe.plugin.export_epub.menu";
-	else if(normalized == L"{C3098839-EF69-4DE5-B27D-1E80051CA843}")
-		key = L"fbe.plugin.export_html.menu";
-
-	if(key == NULL)
-		return fallback;
-
-	return FbeLoadRuntimeStringByKey(key, fallback);
+	const BundledPluginMetadata* plugin = FindBundledPlugin(clsidText);
+	return plugin == NULL ? fallback : FbeLoadRuntimeStringByKey(plugin->menuKey, fallback);
 }
 
 // Обновляет уже существующие пункты встроенных плагинов. При смене языка не

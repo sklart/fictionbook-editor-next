@@ -52,6 +52,7 @@ RequestExecutionLevel user
 !include "Sections.nsh"
 !include "x64.nsh"
 !include "FileFunc.nsh"
+!include "nsDialogs.nsh"
 
 !define MUI_ABORTWARNING
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
@@ -68,9 +69,15 @@ RequestExecutionLevel user
 !insertmacro MUI_PAGE_LICENSE $(License)
 LicenseForceSelection radiobuttons
 
+; Deployment choice must happen before components and elevation.  Portable is
+; an extraction path: it never reaches optional integration or uninstall code.
+Page custom DeploymentModePageCreate DeploymentModePageLeave
+Page custom InstallScopePageCreate InstallScopePageLeave
+
 ; Components page
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW ComponentsPageShow
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE ComponentsPageLeave
+!define MUI_PAGE_CUSTOMFUNCTION_PRE ComponentsPagePre
 ; Компактная разметка оставляет больше ширины для дерева компонентов.
 ; Высота поля описания увеличивается в ComponentsPageShow.
 !define MUI_COMPONENTSPAGE_SMALLDESC
@@ -81,6 +88,7 @@ LicenseForceSelection radiobuttons
 
 ; Start menu page
 var ICONS_GROUP
+!define MUI_PAGE_CUSTOMFUNCTION_PRE StartMenuPagePre
 !define MUI_STARTMENUPAGE_NODISABLE
 !define MUI_STARTMENUPAGE_DEFAULTFOLDER "${PRODUCT_NAME}"
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT "${PRODUCT_UNINST_ROOT_KEY}"
@@ -145,9 +153,19 @@ var ICONS_GROUP
 Name "${PRODUCT_NAME_VERSION}"
 OutFile "${OUTPUTFILE}"
 InstallDir "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
-InstallDirRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_DIR_REGKEY}" ""
+; InstallDirRegKey accepts only physical hives.  The custom scope page selects
+; Program Files for All Users; HKCU preserves the current-user default here.
+InstallDirRegKey HKCU "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
 ShowUnInstDetails show
+
+Var DeploymentMode
+Var InstallScope
+Var DeploymentModeInstallRadio
+Var DeploymentModePortableRadio
+Var InstallScopeCurrentRadio
+Var InstallScopeAllUsersRadio
+Var ExistingMachineInstall
 
 Function .onInit
   !insertmacro UAC_PageElevation_OnInit
@@ -157,6 +175,8 @@ Function .onInit
     Quit
   ${EndIf}
   SetShellVarContext current
+  StrCpy $DeploymentMode "installed"
+  StrCpy $InstallScope "current"
   ${IfNot} ${UAC_IsInnerInstance}
     !insertmacro MUI_LANGDLL_DISPLAY
   ${EndIf}
@@ -169,6 +189,86 @@ FunctionEnd
 
 Function GuiInit
   !insertmacro UAC_PageElevation_OnGuiInit
+FunctionEnd
+
+Function DeploymentModePageCreate
+  nsDialogs::Create 1018
+  Pop $0
+  ${If} $0 == error
+    Abort
+  ${EndIf}
+  ${NSD_CreateLabel} 0 0 100% 20u "$(DeploymentModeTitle)"
+  Pop $0
+  ${NSD_CreateRadioButton} 10u 28u 100% 12u "$(DeploymentModeInstalled)"
+  Pop $DeploymentModeInstallRadio
+  ${NSD_CreateRadioButton} 10u 48u 100% 12u "$(DeploymentModePortable)"
+  Pop $DeploymentModePortableRadio
+  ${If} $DeploymentMode == "portable"
+    ${NSD_Check} $DeploymentModePortableRadio
+  ${Else}
+    ${NSD_Check} $DeploymentModeInstallRadio
+  ${EndIf}
+  nsDialogs::Show
+FunctionEnd
+
+Function DeploymentModePageLeave
+  ${NSD_GetState} $DeploymentModePortableRadio $0
+  ${If} $0 == ${BST_CHECKED}
+    StrCpy $DeploymentMode "portable"
+    StrCpy $InstallScope "current"
+    SetShellVarContext current
+    StrCpy $INSTDIR "$EXEDIR\${PRODUCT_NAME} Portable"
+  ${Else}
+    StrCpy $DeploymentMode "installed"
+  ${EndIf}
+FunctionEnd
+
+Function InstallScopePageCreate
+  ${If} $DeploymentMode == "portable"
+    Abort
+  ${EndIf}
+  nsDialogs::Create 1018
+  Pop $0
+  ${If} $0 == error
+    Abort
+  ${EndIf}
+  ${NSD_CreateLabel} 0 0 100% 20u "$(InstallScopeTitle)"
+  Pop $0
+  ${NSD_CreateRadioButton} 10u 28u 100% 12u "$(InstallScopeCurrent)"
+  Pop $InstallScopeCurrentRadio
+  ${NSD_CreateRadioButton} 10u 48u 100% 12u "$(InstallScopeAllUsers)"
+  Pop $InstallScopeAllUsersRadio
+  ${If} $InstallScope == "allusers"
+    ${NSD_Check} $InstallScopeAllUsersRadio
+  ${Else}
+    ${NSD_Check} $InstallScopeCurrentRadio
+  ${EndIf}
+  nsDialogs::Show
+FunctionEnd
+
+Function InstallScopePageLeave
+  ${NSD_GetState} $InstallScopeAllUsersRadio $0
+  ${If} $0 == ${BST_CHECKED}
+    StrCpy $InstallScope "allusers"
+    SetShellVarContext all
+    StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
+  ${Else}
+    StrCpy $InstallScope "current"
+    SetShellVarContext current
+    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+  ${EndIf}
+FunctionEnd
+
+Function ComponentsPagePre
+  ${If} $DeploymentMode == "portable"
+    Abort
+  ${EndIf}
+FunctionEnd
+
+Function StartMenuPagePre
+  ${If} $DeploymentMode == "portable"
+    Abort
+  ${EndIf}
 FunctionEnd
 
 Function CheckMSXMLVersion
@@ -236,9 +336,35 @@ Function un.onInit
     SetErrorLevel 0x666666
     Quit
   ${EndIf}
+  ; Discover scope before reading SHCTX state.  A machine uninstall can be
+  ; started by a non-administrator, so HKCU must not shadow its HKLM record.
+  ReadRegStr $ExistingMachineInstall HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  StrCmp $ExistingMachineInstall "" un_current_scope
+  SetShellVarContext all
+  Goto un_scope_ready
+un_current_scope:
   SetShellVarContext current
+un_scope_ready:
   ${IfNot} ${UAC_IsInnerInstance}
     !insertmacro MUI_LANGDLL_DISPLAY
+  ${EndIf}
+
+  ${If} $ExistingMachineInstall != ""
+  ${AndIfNot} ${UAC_IsAdmin}
+    !insertmacro UAC_PageElevation_RunElevated
+    ${If} $2 = 0x666666
+      MessageBox MB_OK|MB_ICONEXCLAMATION $(UacAbortUninstaller)
+      Abort
+    ${ElseIf} $0 = 1223
+      Abort
+    ${ElseIf} $0 = 1062
+      MessageBox MB_OK|MB_ICONSTOP $(UacLogonServiceUninstaller)
+      Abort
+    ${ElseIf} $0 <> 0
+      MessageBox MB_OK|MB_ICONSTOP "$(UacUnknownError) $0"
+      Abort
+    ${EndIf}
+    Quit
   ${EndIf}
 
   ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "${PRODUCT_SYSTEM_INTEGRATION_REGVAL}"
@@ -551,8 +677,10 @@ nthere:
   Delete "$INSTDIR\bg-BG\FBVVerbResources.dll.mui"
   Delete "$INSTDIR\pt-PT\FBVVerbResources.dll.mui"
   Delete "$INSTDIR\nl-NL\FBVVerbResources.dll.mui"
+  StrCmp $DeploymentMode "portable" skip_shell_mui
   SetOutPath "$INSTDIR\Lang\Shell"
   File "${INPUTDIR}\Lang\Shell\FBVVerbResources.dll"
+skip_shell_mui:
   SetOutPath "$INSTDIR"
   File /nonfatal "${INPUTDIR}\*.reg"
   File "${INPUTDIR}\gpl-3.0.ru.txt"
@@ -563,12 +691,27 @@ nthere:
 	File "${INPUTDIR}\THIRD-PARTY-NOTICES.md"
 	SetOutPath "$INSTDIR\THIRD-PARTY-LICENSES"
 	File /r "${INPUTDIR}\THIRD-PARTY-LICENSES\*.*"
-	SetOutPath "$INSTDIR"
+  SetOutPath "$INSTDIR"
 
+  StrCmp $DeploymentMode "portable" portable_core_done installed_core_state
+portable_core_done:
+  FileOpen $0 "$INSTDIR\portable.ini" w
+  FileWrite $0 "[Portable]$\r$\nDataPath=Data$\r$\n"
+  FileClose $0
+  CreateDirectory "$INSTDIR\Data\Settings"
+  CreateDirectory "$INSTDIR\Data\Logs"
+  CreateDirectory "$INSTDIR\Data\Diagnostics"
+  CreateDirectory "$INSTDIR\Data\Recovery"
+  CreateDirectory "$INSTDIR\Data\Cache"
+  CreateDirectory "$INSTDIR\Data\Temp"
+  Goto main_section_done
+
+installed_core_state:
   ; uninstall info must exist for any successful installation, not only when
   ; optional system integration is selected
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayName" "${PRODUCT_NAME_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayVersion" "${PRODUCT_VERSION}"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "InstallScope" "$InstallScope"
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "InstallLocation" "$INSTDIR"
 	WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "InstallLocation" "$INSTDIR"
 	WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "CoreVersion" "${PRODUCT_VERSION}"
@@ -584,6 +727,7 @@ nthere:
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "EstimatedSize" $0
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "InstallDir" "$INSTDIR"
 
+main_section_done:
   SetAutoClose false
 SectionEnd
 
@@ -709,6 +853,24 @@ SectionGroupEnd
 
 
 Function ComponentsPageLeave
+  ${If} $InstallScope == "allusers"
+  ${AndIfNot} ${UAC_IsAdmin}
+    !insertmacro UAC_PageElevation_RunElevated
+    ${If} $2 = 0x666666
+      MessageBox MB_OK|MB_ICONEXCLAMATION $(UacAbortInstaller)
+      Abort
+    ${ElseIf} $0 = 1223
+      Abort
+    ${ElseIf} $0 = 1062
+      MessageBox MB_OK|MB_ICONSTOP $(UacLogonServiceInstaller)
+      Abort
+    ${ElseIf} $0 <> 0
+      MessageBox MB_OK|MB_ICONSTOP "$(UacUnknownError) $0"
+      Abort
+    ${EndIf}
+    Quit
+  ${EndIf}
+
   SectionGetFlags ${FB2_Explorer_Properties_id} $0
   IntOp $0 $0 & ${SF_SELECTED}
   ${If} $0 = 0
@@ -755,6 +917,9 @@ Function ComponentsPageShow
 FunctionEnd
 
 Function CreateStartMenuShortcuts
+  ${If} $DeploymentMode == "portable"
+    Return
+  ${EndIf}
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\FictionBook Editor Next.lnk" "$INSTDIR\FBE.exe"
@@ -763,6 +928,9 @@ Function CreateStartMenuShortcuts
 FunctionEnd
 
 Function CreateDesktopShortcut
+  ${If} $DeploymentMode == "portable"
+    Return
+  ${EndIf}
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   CreateShortCut "$DESKTOP\FictionBook Editor Next.lnk" "$INSTDIR\FBE.exe"
   !insertmacro MUI_STARTMENU_WRITE_END

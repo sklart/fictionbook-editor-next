@@ -4,6 +4,12 @@
 
 !macro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK LanguageId
 LicenseLangString License ${LanguageId} "${INPUTDIR}\LICENSE"
+LangString DeploymentModeTitle ${LanguageId} "Deployment type"
+LangString DeploymentModeInstalled ${LanguageId} "Install FictionBook Editor Next"
+LangString DeploymentModePortable ${LanguageId} "Create a portable copy"
+LangString InstallScopeTitle ${LanguageId} "Installation scope"
+LangString InstallScopeCurrent ${LanguageId} "Only for the current user"
+LangString InstallScopeAllUsers ${LanguageId} "For all users of this computer"
 LangString FBD_File_Association ${LanguageId} "Use FBE Next for .fbd description files"
 LangString Plugin_ImportEPUB_SVG ${LanguageId} "SVG covers for ImportEPUB"
 LangString EnglishDict ${LanguageId} "English"

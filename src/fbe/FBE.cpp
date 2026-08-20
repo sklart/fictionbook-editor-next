@@ -24,6 +24,7 @@
 #include "StartupTrace.h"
 #include "RuntimeLocalization.h"
 #include "ExternalHelper.h"
+#include "..\\common\\DeploymentContext.h"
 
 // typelib interfaces
 #include "FBE.h"
@@ -50,6 +51,43 @@ END_OBJECT_MAP()
 
 CSettings _Settings;
 CSimpleArray<CString> _ARGV;
+
+static std::wstring EscapeJson(const std::wstring& value)
+{
+	std::wstring escaped;
+	for (std::wstring::const_iterator it = value.begin(); it != value.end(); ++it)
+	{
+		if (*it == L'\\' || *it == L'\"') escaped += L'\\';
+		escaped += *it;
+	}
+	return escaped;
+}
+
+static void WriteStandardError(const wchar_t* text)
+{
+	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, text, -1, NULL, 0, NULL, NULL);
+	if (bytes <= 1) return;
+	std::vector<char> output(bytes);
+	::WideCharToMultiByte(CP_UTF8, 0, text, -1, &output[0], bytes, NULL, NULL);
+	DWORD written = 0;
+	::WriteFile(::GetStdHandle(STD_ERROR_HANDLE), &output[0], bytes - 1, &written, NULL);
+}
+
+static bool PrintRuntimePaths()
+{
+	if (!DeploymentContext::HasCommandLineSwitch(L"--print-runtime-paths")) return false;
+	const wchar_t* mode = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? L"Portable" : L"Installed";
+	const std::wstring executableDirectory = EscapeJson(DeploymentContext::ExecutableDirectory());
+	const std::wstring dataRoot = EscapeJson(DeploymentContext::DataRoot());
+	const std::wstring settingsDirectory = EscapeJson(DeploymentContext::SettingsDirectory());
+	const std::wstring diagnosticsDirectory = EscapeJson(DeploymentContext::DiagnosticsDirectory());
+	const std::wstring recoveryDirectory = EscapeJson(DeploymentContext::RecoveryDirectory());
+	CString json; json.Format(L"{\"mode\":\"%s\",\"executableDirectory\":\"%s\",\"resourceRoot\":\"%s\",\"dataRoot\":\"%s\",\"settingsDirectory\":\"%s\",\"diagnosticsDirectory\":\"%s\",\"recoveryDirectory\":\"%s\",\"registryPersistenceAllowed\":%s}\r\n", mode, executableDirectory.c_str(), executableDirectory.c_str(), dataRoot.c_str(), settingsDirectory.c_str(), diagnosticsDirectory.c_str(), recoveryDirectory.c_str(), DeploymentContext::RegistryPersistenceAllowed() ? L"true" : L"false");
+	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, json, -1, NULL, 0, NULL, NULL); std::vector<char> output(bytes);
+	::WideCharToMultiByte(CP_UTF8, 0, json, -1, &output[0], bytes, NULL, NULL); DWORD written = 0;
+	::WriteFile(::GetStdHandle(STD_OUTPUT_HANDLE), &output[0], bytes - 1, &written, NULL);
+	return true;
+}
 
 static void ConfigureDllSearchPath()
 {
@@ -505,6 +543,12 @@ Scintilla::ILexer5* CreateEditorLexer(const char* name)
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow)
 {
 	int nRet=1;
+	if (DeploymentContext::HasInvalidModeOverride())
+	{
+		WriteStandardError(L"FBE: --portable and --installed cannot be used together.\r\n");
+		return 2;
+	}
+	if (PrintRuntimePaths()) return 0;
 
   ConfigureDllSearchPath();
   StartupTrace::Start();

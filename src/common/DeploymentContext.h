@@ -4,6 +4,8 @@
 // bundled plug-ins can use the same rules without adding another link-time
 // dependency to the legacy projects.
 #include <windows.h>
+#include <shellapi.h>
+#include <shlobj.h>
 #include <cwctype>
 #include <string>
 
@@ -23,19 +25,12 @@ namespace DeploymentContext
 
     inline bool HasCommandLineSwitch(const wchar_t* name)
     {
-        // The switches are diagnostic/test overrides.  Require a token
-        // boundary so a path containing "--portable" is not interpreted.
-        const std::wstring command(::GetCommandLineW());
-        const std::wstring token(name);
-        std::wstring::size_type position = command.find(token);
-        while (position != std::wstring::npos)
-        {
-            const bool left = position == 0 || iswspace(command[position - 1]) || command[position - 1] == L'"';
-            const std::wstring::size_type end = position + token.length();
-            const bool right = end == command.length() || iswspace(command[end]) || command[end] == L'"';
-            if (left && right) return true;
-            position = command.find(token, end);
-        }
+        int count = 0; LPWSTR* arguments = ::CommandLineToArgvW(::GetCommandLineW(), &count);
+        if (arguments == NULL) return false;
+        bool found = false;
+        for (int index = 1; index < count; ++index) if (::lstrcmpiW(arguments[index], name) == 0) { found = true; break; }
+        ::LocalFree(arguments);
+        if (found) return true;
         return false;
     }
 
@@ -59,11 +54,9 @@ namespace DeploymentContext
         wchar_t value[32768] = L"Data";
         const std::wstring marker = root + L"portable.ini";
         ::GetPrivateProfileStringW(L"Portable", L"DataPath", L"Data", value, _countof(value), marker.c_str());
-        // Relative values are rooted at the executable; absolute values are
-        // intentionally accepted for an explicitly configured portable copy.
         std::wstring path(value);
-        if (path.empty()) path = L"Data";
-        if (!(path.size() > 1 && path[1] == L':') && !(path.size() > 1 && path[0] == L'\\' && path[1] == L'\\')) path = root + path;
+        if (path.empty() || path.find(L"..") != std::wstring::npos || path.find_first_of(L":/\\") != std::wstring::npos) path = L"Data";
+        path = root + path;
         if (path.back() != L'\\') path += L'\\';
         return path;
     }
@@ -72,11 +65,18 @@ namespace DeploymentContext
     {
         if (CurrentMode() == Mode::Portable) return DataRoot() + L"Settings\\";
         wchar_t localAppData[MAX_PATH] = {};
-        if (::GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, _countof(localAppData)) == 0) return std::wstring();
+        if (FAILED(::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, localAppData))) return std::wstring();
         return std::wstring(localAppData) + L"\\FBE Next\\";
     }
 
     inline std::wstring DiagnosticsDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Diagnostics\\" : SettingsDirectory() + L"Diagnostics\\"; }
     inline std::wstring RecoveryDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Recovery\\" : SettingsDirectory() + L"Recovery\\"; }
+    inline std::wstring LogsDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Logs\\" : SettingsDirectory() + L"Logs\\"; }
+    inline std::wstring CacheDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Cache\\" : SettingsDirectory() + L"Cache\\"; }
+    inline std::wstring TempDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Temp\\" : SettingsDirectory() + L"Temp\\"; }
+    inline std::wstring MutableContentRoot() { return CurrentMode() == Mode::Portable ? DataRoot() : SettingsDirectory(); }
+    inline std::wstring UserDictionariesDirectory() { return MutableContentRoot() + L"Dictionaries\\"; }
+    inline std::wstring UserThemesDirectory() { return MutableContentRoot() + L"Themes\\"; }
+    inline std::wstring UserScriptsDirectory() { return MutableContentRoot() + L"Scripts\\"; }
     inline bool RegistryPersistenceAllowed() { return CurrentMode() == Mode::Installed; }
 }

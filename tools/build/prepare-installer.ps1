@@ -16,6 +16,7 @@ if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Recurse 
 New-Item -ItemType Directory -Path $output | Out-Null
 Copy-Item -Path (Join-Path $core '*') -Destination $output -Recurse -Force
 Copy-Item -Path (Join-Path $integration '*') -Destination $output -Recurse -Force
+& (Join-Path $repoRoot 'tools\tests\test-core-identity.ps1') -CoreDirectory $core -CandidateDirectory $output -CandidateName 'installer input'
 $uacThirdPartyDir = Join-Path $repoRoot 'third_party\uac'; $uacNsisDir = Join-Path $repoRoot 'packaging\nsis\NSIS'
 if (Test-Path -LiteralPath $uacThirdPartyDir) {
     $pluginDir = Join-Path $uacNsisDir 'Plugins\x86-unicode'; New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null

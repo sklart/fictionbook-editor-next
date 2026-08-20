@@ -11,7 +11,7 @@ $section = $manifest.($Kind.ToLowerInvariant())
 foreach ($name in @($section.required)) { if (-not (Test-Path -LiteralPath (Join-Path $stage $name))) { throw "$Kind stage misses required item: $name" } }
 foreach ($name in @($section.forbidden)) { if (Test-Path -LiteralPath (Join-Path $stage $name)) { throw "$Kind stage contains forbidden item: $name" } }
 if ($Kind -eq 'Portable') {
-    foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','Scintilla.dll','Lexilla.dll')) {
+    foreach ($name in @($manifest.core.required)) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $name) -PathType Leaf)) { throw "Portable stage misses Core file: $name" }
     }
 }

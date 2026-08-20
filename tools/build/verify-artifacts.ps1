@@ -58,7 +58,7 @@ if ($CompatibilityTarget -eq "All" -and
 
     $modernPortable = Join-Path $ArtifactsDirectory "Modern\FictionBookEditorNext-$version-$architecture-portable.zip"
     $win7Portable = Join-Path $ArtifactsDirectory "Win7\FictionBookEditorNext-$version-win7-$architecture-portable.zip"
-    foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll", "FBShell64.dll", "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll")) {
+    foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll")) {
         if ((Get-ProfileZipEntrySha256 $modernPortable $name) -ne (Get-ProfileZipEntrySha256 $win7Portable $name)) {
             throw "Общий файл '$name' различается между Modern и Win7 portable-пакетами."
         }
@@ -190,9 +190,13 @@ $requiredPortableEntries = @(
     "ExportDOCXBatch.exe",
     "ExportEPUBBatch.exe",
     "ImportEPUBBatch.exe",
-    "FBE.Sequence.propdesc",
-    "FBShell.dll",
-    "FBShell64.dll",
+    "portable.ini",
+    "Data/Settings/.keep",
+    "Data/Logs/.keep",
+    "Data/Diagnostics/.keep",
+    "Data/Recovery/.keep",
+    "Data/Cache/.keep",
+    "Data/Temp/.keep",
     "Lang/ru-RU/res_rus.dll",
     "Lang/uk-UA/res_ukr.dll",
     "Scintilla.dll",
@@ -290,7 +294,7 @@ if ($CompatibilityTarget -eq "All") {
     # исключены: они намеренно пересобираются с API-уровнем Windows 7.
     $commonPortableEntries = @(
         "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
-        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll", "FBShell64.dll",
+        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll",
         "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll"
     )
     foreach ($name in $commonPortableEntries) {

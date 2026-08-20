@@ -5,6 +5,12 @@ LicenseLangString License ${LANG_RUSSIAN} "${INPUTDIR}\gpl-3.0.ru.txt"
 
 ; components section strings
 LangString Main ${LANG_RUSSIAN} "Файлы программы"
+LangString DeploymentModeTitle ${LANG_RUSSIAN} "Тип развёртывания"
+LangString DeploymentModeInstalled ${LANG_RUSSIAN} "Установить FictionBook Editor Next"
+LangString DeploymentModePortable ${LANG_RUSSIAN} "Создать портативную копию"
+LangString InstallScopeTitle ${LANG_RUSSIAN} "Область установки"
+LangString InstallScopeCurrent ${LANG_RUSSIAN} "Только для текущего пользователя"
+LangString InstallScopeAllUsers ${LANG_RUSSIAN} "Для всех пользователей компьютера"
 LangString System_Integration ${LANG_RUSSIAN} "Системная интеграция"
 LangString FB2_File_Association ${LANG_RUSSIAN} "Сделать FBE Next приложением для .fb2"
 LangString FB2_Validate_Command ${LANG_RUSSIAN} "Команда «Проверить FB2 на ошибки»"

@@ -7,7 +7,9 @@
       "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "Scintilla.dll", "Lexilla.dll",
       "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Plugins\\plugins.json"
     ],
-    "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools"]
+    "optional": [],
+    "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools"],
+    "runtimeDirectories": ["Lang", "Plugins", "Themes", "Scripts", "Utilities"]
   },
   "integration": {
     "required": [
@@ -16,10 +18,17 @@
       "InstallerTools\\register-modern-property-handler.ps1",
       "InstallerTools\\unregister-modern-property-handler.ps1",
       "Lang\\Shell\\FBVVerbResources.dll"
-    ]
+    ],
+    "optional": []
   },
   "portable": {
     "required": ["portable.ini", "Data"],
+    "optional": [],
     "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "Lang\\Shell"]
+  },
+  "symbols": { "required": [], "optional": [] },
+  "compatibilitySpecific": {
+    "Modern": [],
+    "Win7": ["Scintilla.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe"]
   }
 }

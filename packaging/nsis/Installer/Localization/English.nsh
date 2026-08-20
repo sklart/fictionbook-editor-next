@@ -3,6 +3,12 @@ LicenseLangString License ${LANG_ENGLISH} "${INPUTDIR}\LICENSE"
 
 ; components section strings
 LangString Main ${LANG_ENGLISH} "Program files"
+LangString DeploymentModeTitle ${LANG_ENGLISH} "Deployment type"
+LangString DeploymentModeInstalled ${LANG_ENGLISH} "Install FictionBook Editor Next"
+LangString DeploymentModePortable ${LANG_ENGLISH} "Create a portable copy"
+LangString InstallScopeTitle ${LANG_ENGLISH} "Installation scope"
+LangString InstallScopeCurrent ${LANG_ENGLISH} "Only for the current user"
+LangString InstallScopeAllUsers ${LANG_ENGLISH} "For all users of this computer"
 LangString System_Integration ${LANG_ENGLISH} "System integration"
 LangString FB2_File_Association ${LANG_ENGLISH} "Use FBE Next for .fb2 files"
 LangString FBD_File_Association ${LANG_ENGLISH} "Use FBE Next for .fbd description files"

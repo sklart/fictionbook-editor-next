@@ -5,6 +5,12 @@ LicenseLangString License ${LANG_UKRAINIAN} "${INPUTDIR}\gpl-3.0.ua.txt"
 
 ; components section strings
 LangString Main ${LANG_UKRAINIAN} "Файли програми"
+LangString DeploymentModeTitle ${LANG_UKRAINIAN} "Тип розгортання"
+LangString DeploymentModeInstalled ${LANG_UKRAINIAN} "Встановити FictionBook Editor Next"
+LangString DeploymentModePortable ${LANG_UKRAINIAN} "Створити портативну копію"
+LangString InstallScopeTitle ${LANG_UKRAINIAN} "Область встановлення"
+LangString InstallScopeCurrent ${LANG_UKRAINIAN} "Лише для поточного користувача"
+LangString InstallScopeAllUsers ${LANG_UKRAINIAN} "Для всіх користувачів комп’ютера"
 LangString System_Integration ${LANG_UKRAINIAN} "Системна інтеграція"
 LangString FB2_File_Association ${LANG_UKRAINIAN} "Використовувати FBE Next для .fb2"
 LangString FB2_Validate_Command ${LANG_UKRAINIAN} "Команда «Перевірити FB2 на помилки»"

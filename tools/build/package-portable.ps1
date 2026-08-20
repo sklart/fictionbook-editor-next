@@ -22,6 +22,11 @@ Copy-Item -Path (Join-Path $core '*') -Destination $output -Recurse -Force
 [Portable]
 DataPath=Data
 "@ | Set-Content -LiteralPath (Join-Path $output 'portable.ini') -Encoding utf8NoBOM
-foreach ($name in @('Settings','Logs','Diagnostics','Recovery','Cache','Temp')) { New-Item -ItemType Directory -Path (Join-Path $output "Data\\$name") -Force | Out-Null }
+foreach ($name in @('Settings','Logs','Diagnostics','Recovery','Cache','Temp')) {
+    $directory = Join-Path $output "Data\\$name"; New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    # Empty directories are otherwise omitted by Compress-Archive.
+    Set-Content -LiteralPath (Join-Path $directory '.keep') -Value '' -Encoding ascii
+}
 & (Join-Path $PSScriptRoot 'verify-package-stage.ps1') -Kind Portable -StageDirectory $output
+& (Join-Path $repoRoot 'tools\tests\test-core-identity.ps1') -CoreDirectory $core -CandidateDirectory $output -CandidateName 'portable payload'
 Write-Host "Portable package prepared: $output"
