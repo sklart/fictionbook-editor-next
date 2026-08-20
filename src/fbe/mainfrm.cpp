@@ -62,7 +62,6 @@ static CString StripMenuMnemonics(const CString& text)
 struct TableToolbarCommand
 {
 	UINT bitmapResourceId;
-	UINT disabledBitmapResourceId;
 	UINT commandId;
 	LPCWSTR localizationKey;
 	LPCWSTR fallbackText;
@@ -70,15 +69,25 @@ struct TableToolbarCommand
 
 static const TableToolbarCommand kTableToolbarCommands[] =
 {
-	{ IDB_TABLE_TOOLBAR_INSERT_ROW_ABOVE, IDB_TABLE_TOOLBAR_INSERT_ROW_ABOVE_DISABLED, ID_TABLE_INSERT_ROW_ABOVE, L"fbe.menu.idr_mainframe.table.insert_row_above", L"Insert row above" },
-	{ IDB_TABLE_TOOLBAR_INSERT_ROW_BELOW, IDB_TABLE_TOOLBAR_INSERT_ROW_BELOW_DISABLED, ID_TABLE_INSERT_ROW_BELOW, L"fbe.menu.idr_mainframe.table.insert_row_below", L"Insert row below" },
-	{ IDB_TABLE_TOOLBAR_DELETE_ROW, IDB_TABLE_TOOLBAR_DELETE_ROW_DISABLED, ID_TABLE_DELETE_ROW, L"fbe.menu.idr_mainframe.table.delete_row", L"Delete row" },
-	{ IDB_TABLE_TOOLBAR_INSERT_COLUMN_LEFT, IDB_TABLE_TOOLBAR_INSERT_COLUMN_LEFT_DISABLED, ID_TABLE_INSERT_COLUMN_LEFT, L"fbe.menu.idr_mainframe.table.insert_column_left", L"Insert column left" },
-	{ IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT, IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT_DISABLED, ID_TABLE_INSERT_COLUMN_RIGHT, L"fbe.menu.idr_mainframe.table.insert_column_right", L"Insert column right" },
-	{ IDB_TABLE_TOOLBAR_DELETE_COLUMN, IDB_TABLE_TOOLBAR_DELETE_COLUMN_DISABLED, ID_TABLE_DELETE_COLUMN, L"fbe.menu.idr_mainframe.table.delete_column", L"Delete column" },
-	{ IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS, IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS_DISABLED, ID_TABLE_MAKE_HEADER_CELLS, L"fbe.menu.idr_mainframe.table.make_header_cells", L"Make header cells" },
-	{ IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS, IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS_DISABLED, ID_TABLE_MAKE_NORMAL_CELLS, L"fbe.menu.idr_mainframe.table.make_normal_cells", L"Make normal cells" },
+	{ IDB_TABLE_TOOLBAR_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_ABOVE, L"fbe.menu.idr_mainframe.table.insert_row_above", L"Insert row above" },
+	{ IDB_TABLE_TOOLBAR_INSERT_ROW_BELOW, ID_TABLE_INSERT_ROW_BELOW, L"fbe.menu.idr_mainframe.table.insert_row_below", L"Insert row below" },
+	{ IDB_TABLE_TOOLBAR_DELETE_ROW, ID_TABLE_DELETE_ROW, L"fbe.menu.idr_mainframe.table.delete_row", L"Delete row" },
+	{ IDB_TABLE_TOOLBAR_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_LEFT, L"fbe.menu.idr_mainframe.table.insert_column_left", L"Insert column left" },
+	{ IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT, ID_TABLE_INSERT_COLUMN_RIGHT, L"fbe.menu.idr_mainframe.table.insert_column_right", L"Insert column right" },
+	{ IDB_TABLE_TOOLBAR_DELETE_COLUMN, ID_TABLE_DELETE_COLUMN, L"fbe.menu.idr_mainframe.table.delete_column", L"Delete column" },
+	{ IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS, ID_TABLE_MAKE_HEADER_CELLS, L"fbe.menu.idr_mainframe.table.make_header_cells", L"Make header cells" },
+	{ IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS, ID_TABLE_MAKE_NORMAL_CELLS, L"fbe.menu.idr_mainframe.table.make_normal_cells", L"Make normal cells" },
 };
+
+static bool IsTableToolbarCommand(UINT commandId)
+{
+	for(size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+	{
+		if(kTableToolbarCommands[index].commandId == commandId)
+			return true;
+	}
+	return false;
+}
 
 // A process launched elevated (for example from an administrator Visual
 // Studio) does not use per-user COM registrations.  The bundled export DLLs
@@ -1996,14 +2005,6 @@ BOOL CMainFrame::OnIdle()
 	for (size_t index = 0; index < _countof(tableCommands); ++index) {
 		UIEnable(tableCommands[index], tableCommandEnabled);
 		m_CmdToolbar.EnableButton(tableCommands[index], tableCommandEnabled);
-		if(m_table_toolbar_image_indices[index] >= 0 && m_table_toolbar_disabled_image_indices[index] >= 0)
-		{
-			TBBUTTONINFO info = {};
-			info.cbSize = sizeof(info);
-			info.dwMask = TBIF_IMAGE;
-			info.iImage = tableCommandEnabled ? m_table_toolbar_image_indices[index] : m_table_toolbar_disabled_image_indices[index];
-			m_CmdToolbar.SetButtonInfo(tableCommands[index], &info);
-		}
 	}
 
 	// update UI
@@ -2328,15 +2329,12 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
   {
     m_table_toolbar_image_indices[index] = -1;
-    m_table_toolbar_disabled_image_indices[index] = -1;
   }
   for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
   {
     const TableToolbarCommand& command = kTableToolbarCommands[index];
     const int imageIndex = AddToolbarBitmapFromModule(m_CmdToolbar, applicationModule, command.bitmapResourceId);
     m_table_toolbar_image_indices[index] = imageIndex;
-	  m_table_toolbar_disabled_image_indices[index] = AddToolbarBitmapFromModule(m_CmdToolbar, applicationModule,
-		command.disabledBitmapResourceId);
     if (imageIndex < 0) continue;
     TBBUTTON button = {};
     button.iBitmap = imageIndex;
@@ -3597,6 +3595,29 @@ LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 	ATL::Checked::wcsncpy_s(pDispInfo->szText, _countof(pDispInfo->szText), text, _TRUNCATE);
 	return 0;
 }
+
+LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled)
+{
+	if(pnmh->hwndFrom != m_CmdToolbar.m_hWnd)
+	{
+		bHandled = FALSE;
+		return 0;
+	}
+
+	const NMTBCUSTOMDRAW* customDraw = reinterpret_cast<const NMTBCUSTOMDRAW*>(pnmh);
+	if(customDraw->nmcd.dwDrawStage == CDDS_PREPAINT)
+		return CDRF_NOTIFYITEMDRAW;
+
+	if(customDraw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT &&
+		(customDraw->nmcd.uItemState & CDIS_DISABLED) != 0 &&
+		IsTableToolbarCommand(static_cast<UINT>(customDraw->nmcd.dwItemSpec)))
+	{
+		return TBCDRF_BLENDICON | TBCDRF_NOETCHEDEFFECT;
+	}
+
+	return CDRF_DODEFAULT;
+}
+
 void CMainFrame::RefreshLocalizedToolbarButtonTexts(CToolBarCtrl& toolbar)
 {
 	if(!toolbar.IsWindow())

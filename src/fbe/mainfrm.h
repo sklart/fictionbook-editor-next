@@ -182,7 +182,6 @@ public:
 	CCommandBarCtrl	m_MenuBar;			// menu bar
 	CToolBarCtrl	m_CmdToolbar;		// commands toolbar
 	int			m_table_toolbar_image_indices[8];
-	int			m_table_toolbar_disabled_image_indices[8];
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
 	CReBarCtrl		m_rebar;			// toolbars
 	CComboBox		m_id_box;
@@ -320,7 +319,6 @@ public:
 		for(int index = 0; index < 8; ++index)
 		{
 			m_table_toolbar_image_indices[index] = -1;
-			m_table_toolbar_disabled_image_indices[index] = -1;
 		}
 		if (_Settings.GetUseSpellChecker())
 		{
@@ -666,6 +664,7 @@ public:
 		NOTIFY_CODE_HANDLER(SCN_CHARADDED, OnSciCharAdded)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOA, OnRuntimeToolTipTextA)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnRuntimeToolTipTextW)
+		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCommandToolbarCustomDraw)
 
 		// tree pane
 		COMMAND_ID_HANDLER(ID_PANE_CLOSE, OnViewTree)
@@ -697,6 +696,7 @@ public:
   LRESULT OnSettingChange(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
+	LRESULT OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled);
 
 
   int m_selBandID;

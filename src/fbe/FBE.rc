@@ -523,14 +523,6 @@ IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT BITMAP       "res\\table_toolbar_insert_co
 IDB_TABLE_TOOLBAR_DELETE_COLUMN BITMAP             "res\\table_toolbar_delete_column.bmp"
 IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS BITMAP         "res\\table_toolbar_make_header_cells.bmp"
 IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS BITMAP         "res\\table_toolbar_make_normal_cells.bmp"
-IDB_TABLE_TOOLBAR_INSERT_ROW_ABOVE_DISABLED BITMAP "res\\table_toolbar_insert_row_above_disabled.bmp"
-IDB_TABLE_TOOLBAR_INSERT_ROW_BELOW_DISABLED BITMAP "res\\table_toolbar_insert_row_below_disabled.bmp"
-IDB_TABLE_TOOLBAR_DELETE_ROW_DISABLED BITMAP       "res\\table_toolbar_delete_row_disabled.bmp"
-IDB_TABLE_TOOLBAR_INSERT_COLUMN_LEFT_DISABLED BITMAP "res\\table_toolbar_insert_column_left_disabled.bmp"
-IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT_DISABLED BITMAP "res\\table_toolbar_insert_column_right_disabled.bmp"
-IDB_TABLE_TOOLBAR_DELETE_COLUMN_DISABLED BITMAP    "res\\table_toolbar_delete_column_disabled.bmp"
-IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS_DISABLED BITMAP "res\\table_toolbar_make_header_cells_disabled.bmp"
-IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS_DISABLED BITMAP "res\\table_toolbar_make_normal_cells_disabled.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //

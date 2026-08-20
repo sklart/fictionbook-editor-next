@@ -493,14 +493,6 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <None Include="res\table_toolbar_delete_column.bmp" />
     <None Include="res\table_toolbar_make_header_cells.bmp" />
     <None Include="res\table_toolbar_make_normal_cells.bmp" />
-    <None Include="res\table_toolbar_insert_row_above_disabled.bmp" />
-    <None Include="res\table_toolbar_insert_row_below_disabled.bmp" />
-    <None Include="res\table_toolbar_delete_row_disabled.bmp" />
-    <None Include="res\table_toolbar_insert_column_left_disabled.bmp" />
-    <None Include="res\table_toolbar_insert_column_right_disabled.bmp" />
-    <None Include="res\table_toolbar_delete_column_disabled.bmp" />
-    <None Include="res\table_toolbar_make_header_cells_disabled.bmp" />
-    <None Include="res\table_toolbar_make_normal_cells_disabled.bmp" />
     <None Include="res\green.bmp" />
     <None Include="res\html.bmp" />
     <None Include="res\Icon_02.bmp" />
