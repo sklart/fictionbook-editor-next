@@ -16,10 +16,19 @@ $pluginSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\export-h
 if ($pluginSource -notmatch 'dlg\.m_ofn\.nFilterIndex\s*=\s*4') {
     throw 'Автономный HTML должен быть выбранным по умолчанию форматом сохранения.'
 }
+if ($pluginSource -notmatch 'proc->put_input\(variant_t\(\(IDispatch\*\)source\)\)') {
+    throw 'Экспорт должен передавать в XSLT подготовленную копию FB2-документа.'
+}
+
+$sourceXslPath = Join-Path $repoRoot 'src\export-html\html.xsl'
+$runtimeXslPath = Join-Path $repoRoot 'runtime\html.xsl'
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $sourceXslPath).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath $runtimeXslPath).Hash) {
+    throw 'runtime/html.xsl должен совпадать с исходным XSL экспортера.'
+}
 
 $xsl = New-Object -ComObject Msxml2.DOMDocument.6.0
 $xsl.async = $false
-if (-not $xsl.load((Join-Path $repoRoot 'src\export-html\html.xsl'))) {
+if (-not $xsl.load($runtimeXslPath)) {
     throw $xsl.parseError.reason
 }
 

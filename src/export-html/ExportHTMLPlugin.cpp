@@ -135,7 +135,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 
 		// * setup input
 		RemoveServiceMarkers(source);
-		CheckError(proc->put_input(variant_t(doc)));
+		CheckError(proc->put_input(variant_t((IDispatch*)source)));
 
 		// * install template parameters
 		CheckError(proc->addParameter(bstr_t(L"includedesc"), variant_t(dlg.m_includedesc), _bstr_t()));
