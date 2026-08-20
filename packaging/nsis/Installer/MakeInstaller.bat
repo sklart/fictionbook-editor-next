@@ -21,10 +21,14 @@ IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 "%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\tools\localization\export-nsis-installer-fallbacks.ps1"
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
-SET "MAKENSIS=%ProgramFiles(x86)%\NSIS\Unicode\makensis.exe"
+IF DEFINED FBE_MAKENSIS (
+  SET "MAKENSIS=%FBE_MAKENSIS%"
+) ELSE (
+  SET "MAKENSIS=%ProgramFiles(x86)%\NSIS\Unicode\makensis.exe"
+)
 IF NOT EXIST "%MAKENSIS%" (
   ECHO ОШИБКА: не найден Unicode-вариант NSIS: "%MAKENSIS%"
-  ECHO Установите NSIS Unicode. Обычный makensis.exe не подходит: он искажает UTF-8 строки установщика.
+  ECHO Установите NSIS Unicode или задайте FBE_MAKENSIS. Обычный makensis.exe не подходит: он искажает UTF-8 строки установщика.
   EXIT /B 1
 )
 SET "INPUTDIR=%REPO_ROOT%\out\package\FictionBookEditor"
