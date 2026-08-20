@@ -959,6 +959,14 @@
       "kind": "MENUITEM", "targetId": "ID_TABLE_TOGGLE_HEADER_CELL",
       "translations": { "en-US": "Make &header/data cell", "ru-RU": "Сделать ячейкой &заголовка / данных", "uk-UA": "Зробити коміркою &заголовка / даних", "de-DE": "Als Kopf- oder &Datenzelle festlegen", "fr-FR": "Définir comme cellule d’&en-tête ou de données", "es-ES": "C&onvertir en celda de encabezado o datos", "it-IT": "Imposta come cella di i&ntestazione o dati", "pl-PL": "Ustaw jako komórkę &nagłówka lub danych", "pt-PT": "De&finir como célula de cabeçalho ou dados", "nl-NL": "Instellen als kop- of g&egevenscel", "cs-CZ": "Nastavit jako záhlaví nebo &datovou buňku", "bg-BG": "Задай като заглавна или клетка с &данни" }
     },
+    "fbe.menu.idr_mainframe.table.make_header_cells": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_MAKE_HEADER_CELLS",
+      "translations": { "en-US": "Make h&eader cells", "ru-RU": "Сделать ячейками за&головка", "uk-UA": "Зробити комірками за&головка", "de-DE": "Als Ko&pfzellen festlegen", "fr-FR": "Définir comme cellules d’en&tête", "es-ES": "Convertir en celdas de e&ncabezado", "it-IT": "Imposta co&me celle d’intestazione", "pl-PL": "Ustaw jako komórki nagł&ówka", "pt-PT": "Definir como células de cabeçal&ho", "nl-NL": "Instellen als kop&cellen", "cs-CZ": "Nastavit jako zá&hlaví buněk", "bg-BG": "Задай като заглав&ни клетки" }
+    },
+    "fbe.menu.idr_mainframe.table.make_normal_cells": {
+      "kind": "MENUITEM", "targetId": "ID_TABLE_MAKE_NORMAL_CELLS",
+      "translations": { "en-US": "Make &normal cells", "ru-RU": "Сделать &обычными ячейками", "uk-UA": "Зробити звичайними комірка&ми", "de-DE": "Als &normale Zellen festlegen", "fr-FR": "Définir comme cellules &normales", "es-ES": "Convertir en celdas nor&males", "it-IT": "Imposta come celle &normali", "pl-PL": "Ustaw jako &zwykłe komórki", "pt-PT": "Definir como células &normais", "nl-NL": "Instellen als &normale cellen", "cs-CZ": "Nastavit jako &běžné buňky", "bg-BG": "Задай като обикновени к&летки" }
+    },
     "fbe.menu.idr_mainframe.insert.section_image": {
       "kind": "MENUITEM",
       "targetId": "ID_EDIT_ADD_IMAGE",

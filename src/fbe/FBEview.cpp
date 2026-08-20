@@ -334,6 +334,21 @@ static MSHTML::IHTMLElementPtr CreateTableRowLike(MSHTML::IHTMLDocument2Ptr docu
 
 static CString GetLocalizedMainMenuText(UINT commandId, const wchar_t* fallback)
 {
+	const wchar_t* runtimeKey = NULL;
+	switch (commandId)
+	{
+	case ID_TABLE_INSERT_ROW_ABOVE: runtimeKey = L"fbe.menu.idr_mainframe.table.insert_row_above"; break;
+	case ID_TABLE_INSERT_ROW_BELOW: runtimeKey = L"fbe.menu.idr_mainframe.table.insert_row_below"; break;
+	case ID_TABLE_DELETE_ROW: runtimeKey = L"fbe.menu.idr_mainframe.table.delete_row"; break;
+	case ID_TABLE_INSERT_COLUMN_LEFT: runtimeKey = L"fbe.menu.idr_mainframe.table.insert_column_left"; break;
+	case ID_TABLE_INSERT_COLUMN_RIGHT: runtimeKey = L"fbe.menu.idr_mainframe.table.insert_column_right"; break;
+	case ID_TABLE_DELETE_COLUMN: runtimeKey = L"fbe.menu.idr_mainframe.table.delete_column"; break;
+	case ID_TABLE_MAKE_HEADER_CELLS: runtimeKey = L"fbe.menu.idr_mainframe.table.make_header_cells"; break;
+	case ID_TABLE_MAKE_NORMAL_CELLS: runtimeKey = L"fbe.menu.idr_mainframe.table.make_normal_cells"; break;
+	}
+	if (runtimeKey != NULL)
+		return FbeLoadRuntimeStringByKey(runtimeKey, fallback);
+
 	CMenu mainMenu;
 	if (mainMenu.LoadMenu(IDR_MAINFRAME))
 	{
@@ -3585,7 +3600,6 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 		menu.AppendMenu(MF_STRING, ID_TABLE_INSERT_COLUMN_RIGHT, GetLocalizedMainMenuText(ID_TABLE_INSERT_COLUMN_RIGHT, L"Insert column right"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_DELETE_COLUMN, GetLocalizedMainMenuText(ID_TABLE_DELETE_COLUMN, L"Delete column"));
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, ID_TABLE_TOGGLE_HEADER_CELL, GetLocalizedMainMenuText(ID_TABLE_TOGGLE_HEADER_CELL, L"Toggle header cell"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_MAKE_HEADER_CELLS, GetLocalizedMainMenuText(ID_TABLE_MAKE_HEADER_CELLS, L"Make header cells"));
 		menu.AppendMenu(MF_STRING, ID_TABLE_MAKE_NORMAL_CELLS, GetLocalizedMainMenuText(ID_TABLE_MAKE_NORMAL_CELLS, L"Make normal cells"));
 	}

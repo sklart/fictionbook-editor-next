@@ -107,7 +107,8 @@ $template = @(
             @{ Type = "MENUITEM"; Key = "table.insert_column_right" },
             @{ Type = "MENUITEM"; Key = "table.delete_column" },
             @{ Type = "SEPARATOR" },
-            @{ Type = "MENUITEM"; Key = "table.toggle_header_cell" }
+            @{ Type = "MENUITEM"; Key = "table.make_header_cells" },
+            @{ Type = "MENUITEM"; Key = "table.make_normal_cells" }
         ) },
         @{ Type = "MENUITEM"; Key = "insert.section_image" },
         @{ Type = "SEPARATOR" },

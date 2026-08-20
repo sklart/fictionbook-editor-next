@@ -83,6 +83,8 @@ foreach ($requiredKey in @(
     'fbe.menu.idr_mainframe.popup.edit',
     'fbe.menu.idr_mainframe.popup.view',
     'fbe.menu.idr_mainframe.popup.insert',
+    'fbe.menu.idr_mainframe.table.make_header_cells',
+    'fbe.menu.idr_mainframe.table.make_normal_cells',
     'fbe.menu.idr_mainframe.popup.style',
     'fbe.menu.idr_mainframe.popup.tools',
     'fbe.menu.idr_mainframe.popup.diagnostics',

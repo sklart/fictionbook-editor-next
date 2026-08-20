@@ -12,7 +12,7 @@ foreach ($path in @("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-
 }
 
 $notices = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "THIRD-PARTY-NOTICES.md")
-foreach ($component in @("Scintilla | 5.6.5", "Lexilla | 5.5.2", "PCRE2 | 10.47", "Hunspell | 1.7.3", "libwebp | 1.6.0", "OpenJPEG | 2.5.4", "libheif | 1.23.1", "libde265 | 1.1.0", "libaom | 3.14.1", "Windows Template Library (WTL) | 10.01", "LunaSVG | 3.5.0", "PlutoVG | 1.3.1")) {
+foreach ($component in @("Scintilla | 5.6.6", "Lexilla | 5.5.3", "PCRE2 | 10.47", "Hunspell | 1.7.3", "libwebp | 1.6.0", "OpenJPEG | 2.5.4", "libheif | 1.23.1", "libde265 | 1.1.0", "libaom | 3.14.1", "Windows Template Library (WTL) | 10.01", "LunaSVG | 3.5.0", "PlutoVG | 1.3.1")) {
     if (-not $notices.Contains($component)) {
         throw "В THIRD-PARTY-NOTICES.md отсутствует актуальная запись: $component"
     }

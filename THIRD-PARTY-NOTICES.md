@@ -7,8 +7,8 @@ is needed to build the project but is not shipped as a separate component.
 
 | Component | Version in this tree | License | Use | Upstream |
 | --- | --- | --- | --- | --- |
-| Scintilla | 5.6.5 | Scintilla License (permissive) | XML source editor; `Scintilla.dll` is bundled | <https://www.scintilla.org/> |
-| Lexilla | 5.5.2 | Scintilla License (permissive) | Lexers for Scintilla; `Lexilla.dll` is bundled | <https://www.scintilla.org/Lexilla.html> |
+| Scintilla | 5.6.6 | Scintilla License (permissive) | XML source editor; `Scintilla.dll` is bundled | <https://www.scintilla.org/> |
+| Lexilla | 5.5.3 | Scintilla License (permissive) | Lexers for Scintilla; `Lexilla.dll` is bundled | <https://www.scintilla.org/Lexilla.html> |
 | PCRE2 | 10.47 | BSD-3-Clause with PCRE2 exception | Regular-expression backend, statically linked into FBE | <https://github.com/PCRE2Project/pcre2> |
 | Hunspell | 1.7.3 | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later | Spell checking, statically linked into FBE | <https://github.com/hunspell/hunspell> |
 | libwebp | 1.6.0 | BSD-3-Clause | Static WebP decoder linked into FBE | <https://chromium.googlesource.com/webm/libwebp> |

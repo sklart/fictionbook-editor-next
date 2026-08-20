@@ -590,6 +590,8 @@
 #define ID_TABLE_INSERT_COLUMN_RIGHT       32921
 #define ID_TABLE_DELETE_COLUMN             32922
 #define ID_TABLE_TOGGLE_HEADER_CELL        32923
+#define ID_TABLE_MAKE_HEADER_CELLS         32924
+#define ID_TABLE_MAKE_NORMAL_CELLS         32925
 #define ID_ADD_IMAGE                    32902
 #define ID_SAVEIMG_AS                   32904
 #define ID_TOOLS_SPELLCHECK             32905
@@ -646,7 +648,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        255
-#define _APS_NEXT_COMMAND_VALUE         32916
+#define _APS_NEXT_COMMAND_VALUE         32926
 #define _APS_NEXT_CONTROL_VALUE         1152
 #define _APS_NEXT_SYMED_VALUE           133
 #endif

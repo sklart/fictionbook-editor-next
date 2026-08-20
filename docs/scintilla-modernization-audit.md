@@ -1,10 +1,10 @@
 # Аудит модернизации Scintilla/Lexilla
 
-Дата аудита: 2026-08-09. База: Scintilla 5.6.5, Lexilla 5.5.2.
+Дата аудита: 2026-08-14. База: Scintilla 5.6.6, Lexilla 5.5.3.
 
 ## Текущее решение
 
-| Возможность | В 5.6.5 | Применение в FBE до аудита | Решение | Обоснование и риск | Win7 |
+| Возможность | В 5.6.6 | Применение в FBE до аудита | Решение | Обоснование и риск | Win7 |
 | --- | --- | --- | --- | --- | --- |
 | `SCI_SETCOMMANDEVENTS` | Да | Не задавалась | Внедрено: `FALSE` | Source-команды FBE маршрутизирует сам; карта сообщений обрабатывает только `SCN_MODIFIED`, `SCN_MARGINCLICK`, `SCN_UPDATEUI`. Устраняет ненужные legacy command events. | Не влияет |
 | `SCI_SETMODEVENTMASK` | Да | Не задавалась | Внедрено: `SC_MOD_CHANGEFOLD` | Единственный обработчик `SCN_MODIFIED` нужен для fold state. Modified/save state запрашивается через `SCI_GETMODIFY`, поэтому текстовые notifications не требуются. | Не влияет |

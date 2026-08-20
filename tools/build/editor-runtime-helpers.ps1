@@ -87,7 +87,8 @@ function Assert-LexillaSubmoduleCheckout {
         return
     }
 
-    $expectedCommit = & $git.Source -C $RepositoryRoot rev-parse HEAD:third_party/lexilla 2>$null
+    # Update workflow builds a staged submodule update before its parent commit exists.
+    $expectedCommit = & $git.Source -C $RepositoryRoot rev-parse :third_party/lexilla 2>$null
     if ($LASTEXITCODE -ne 0) {
         throw "Не удалось прочитать gitlink Lexilla из текущего репозитория."
     }
