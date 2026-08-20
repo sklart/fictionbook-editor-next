@@ -2431,7 +2431,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	AddToolbarButton(m_CmdToolbar, button, StripMenuMnemonics(FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText)));
   }
   // Restore commands toolbar layout and position
-	m_CmdToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
+	if (DeploymentContext::RegistryPersistenceAllowed())
+		m_CmdToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
   for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
   {
     if (m_table_toolbar_image_indices[index] < 0) continue;
@@ -2813,7 +2814,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   else UIEnable(ID_TOOLS_SPELLCHECK, false, true);
 
   // Restore scripts toolbar layout and position
-	m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
+	if (DeploymentContext::RegistryPersistenceAllowed())
+		m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
 
 	// An unattended -b run has no user to answer this dialog.  Keep tracing
 	// enabled for the report, but never turn diagnostics into a modal blocker.
@@ -2970,8 +2972,11 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
     }
 
 	// Save toolbar layout
-	 m_CmdToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
-	 m_ScriptsToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
+	if (DeploymentContext::RegistryPersistenceAllowed())
+	{
+		m_CmdToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
+		m_ScriptsToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
+	}
 
     _Settings.SetToolbarsSettings(tbs);
 	_Settings.SaveHotkeyGroups();
