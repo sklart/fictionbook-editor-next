@@ -925,9 +925,6 @@ public:
     BEGIN_MSG_MAP(CDocxSettingsDialog) //-V1048
         //-V1048
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog) //-V1048
-        MESSAGE_HANDLER(WM_CTLCOLORSTATIC, OnCtlColor)
-        MESSAGE_HANDLER(WM_CTLCOLORBTN, OnCtlColor)
-        MESSAGE_HANDLER(WM_CTLCOLORDLG, OnCtlColorDlg)
         NOTIFY_HANDLER(IDC_SETTINGS_TAB, TCN_SELCHANGE, OnTabChanged)
         COMMAND_ID_HANDLER(IDOK, OnOK)
         COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
@@ -1086,18 +1083,6 @@ private:
         ShowSettingsTab(0);
         CenterWindow(GetParent());
         return TRUE;
-    }
-
-    LRESULT OnCtlColorDlg(UINT, WPARAM, LPARAM, BOOL&) {
-        return reinterpret_cast<LRESULT>(::GetSysColorBrush(COLOR_BTNFACE));
-    }
-
-    LRESULT OnCtlColor(UINT, WPARAM wParam, LPARAM, BOOL&) {
-        HDC hdc = reinterpret_cast<HDC>(wParam);
-        if (hdc != NULL) {
-            ::SetBkMode(hdc, TRANSPARENT);
-        }
-        return reinterpret_cast<LRESULT>(::GetSysColorBrush(COLOR_BTNFACE));
     }
 
     LRESULT OnOK(WORD, WORD, HWND, BOOL&) {
@@ -3667,5 +3652,4 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
     }
     return S_OK;
 }
-
 

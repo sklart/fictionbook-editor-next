@@ -2336,7 +2336,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     const int imageIndex = AddToolbarBitmapFromModule(m_CmdToolbar, applicationModule, command.bitmapResourceId);
     m_table_toolbar_image_indices[index] = imageIndex;
 	  m_table_toolbar_disabled_image_indices[index] = AddToolbarBitmapFromModule(m_CmdToolbar, applicationModule,
-		command.disabledBitmapResourceId, RGB(255, 255, 255));
+		command.disabledBitmapResourceId);
     if (imageIndex < 0) continue;
     TBBUTTON button = {};
     button.iBitmap = imageIndex;
