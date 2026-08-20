@@ -193,6 +193,10 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-portable-deployment-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-paths-cli.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-copies-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-portable-registry-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-librusec-genres-portable.ps1")
+& (Join-Path $repoRoot "tools\tests\test-portable-atomic-persistence.ps1")
+& (Join-Path $repoRoot "tools\tests\test-mode-aware-updater.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-export.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-output-layout.ps1") -Configuration $Configuration -OutputDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-lang-overlay.ps1")
@@ -207,6 +211,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-installer-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-components-page-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-deployment-modes.ps1")
+& (Join-Path $repoRoot "tools\tests\test-nsis-ownership-safe-uninstall.ps1")
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 }

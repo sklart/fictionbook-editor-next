@@ -29,11 +29,20 @@
 !define FB2_PROPERTY_HANDLER_CLSID "{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}"
 !define FBE_SEQUENCE_SCHEMA_FILE "FBE.Sequence.propdesc"
 !define FBE_SHELL_SHARED_DIR "$%ProgramData%\FictionBook Editor Next\Shell"
+!define FBE_LEGACY_SHELL_SHARED_DIR "$%ProgramData%\FictionBook Editor\Shell"
 !define FB2_INFOTIP_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;System.Size"
 !define FB2_TILEINFO_PROPERTIES "prop:System.Author;System.Title"
 !define FB2_DETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
 !define FB2_PREVIEWDETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
 !define FB2_SYSTEM_ASSOC_KEY "Software\Classes\SystemFileAssociations\.fb2"
+; RegDll writes the optional legacy plugin registrations per user.  Before an
+; uninstaller invokes DllUnregisterServer, make sure that the well-known CLSID
+; has not since been redirected to another copy.
+!macro UnregisterLegacyPluginIfOwned CLSID DLL
+  ReadRegStr $0 HKCU "Software\Classes\CLSID\${CLSID}\InprocServer32" ""
+  StrCmp $0 "$INSTDIR\${DLL}" 0 +2
+    UnRegDll "$INSTDIR\${DLL}"
+!macroend
 ManifestDPIAware true
 SetCompressor /SOLID lzma
 
@@ -256,6 +265,24 @@ Function InstallScopePageLeave
     StrCpy $InstallScope "current"
     SetShellVarContext current
     StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+  ${EndIf}
+  Call CheckOtherScopeConflict
+FunctionEnd
+
+Function CheckOtherScopeConflict
+  ; Installed copies are single-scope by design.  Portable copies never reach
+  ; this page and may coexist freely with either installed scope.
+  ${If} $DeploymentMode == "portable"
+    Return
+  ${EndIf}
+  ${If} $InstallScope == "allusers"
+    ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  ${Else}
+    ReadRegStr $0 HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  ${EndIf}
+  ${If} $0 != ""
+    MessageBox MB_OK|MB_ICONEXCLAMATION "$(InstallScopeConflict)$\r$\n$\r$\n$0"
+    Abort
   ${EndIf}
 FunctionEnd
 
@@ -626,6 +653,35 @@ remove_key_x64:
 remove_key_win32:
 FunctionEnd
 
+Function MigrateLegacySharedShell
+  ; Builds before the Next namespace used the old ProgramData directory.  The
+  ; unregister helper first proves that all relevant registry values still
+  ; reference this legacy DLL; a foreign or newer registration is left alone.
+  ${If} ${RunningX64}
+    IfFileExists "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell64.dll" 0 migrate_legacy_win32
+    Delete "$TEMP\FBE-migrate-legacy-shell-status.ini"
+    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1" -DllPath "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell64.dll" -Platform x64 -StatusFilePath "$TEMP\FBE-migrate-legacy-shell-status.ini"' $0
+    ReadINIStr $1 "$TEMP\FBE-migrate-legacy-shell-status.ini" "Shell" "Result"
+    StrCmp $1 "ok" 0 migrate_legacy_done
+    Delete "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell64.dll"
+    Delete "${FBE_LEGACY_SHELL_SHARED_DIR}\FBE.Sequence.propdesc"
+    RMDir "${FBE_LEGACY_SHELL_SHARED_DIR}"
+    Goto migrate_legacy_done
+  ${EndIf}
+
+migrate_legacy_win32:
+  IfFileExists "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell.dll" 0 migrate_legacy_done
+  Delete "$TEMP\FBE-migrate-legacy-shell-status.ini"
+  ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1" -DllPath "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell.dll" -Platform Win32 -StatusFilePath "$TEMP\FBE-migrate-legacy-shell-status.ini"' $0
+  ReadINIStr $1 "$TEMP\FBE-migrate-legacy-shell-status.ini" "Shell" "Result"
+  StrCmp $1 "ok" 0 migrate_legacy_done
+  Delete "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell.dll"
+  Delete "${FBE_LEGACY_SHELL_SHARED_DIR}\FBE.Sequence.propdesc"
+  RMDir "${FBE_LEGACY_SHELL_SHARED_DIR}"
+
+migrate_legacy_done:
+FunctionEnd
+
 Section !$(Main) MainSection_id
   SectionIn RO
   ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" CurrentVersion
@@ -721,6 +777,13 @@ installed_core_state:
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "NoModify" 1
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "NoRepair" 1
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "${PRODUCT_SYSTEM_INTEGRATION_REGVAL}" 0
+  ; Component state is deliberately kept next to the uninstall record.  The
+  ; uninstaller must never infer ownership solely from a well-known CLSID or
+  ; ProgID: another installed instance may have claimed it after this setup.
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "AssociationRegistered" 0
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "ValidateVerbInstalled" 0
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "PropertyHandlerInstalled" 0
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "LegacyComInstalled" 0
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "UninstallString" "$INSTDIR\uninst.exe"
   WriteUninstaller "$INSTDIR\uninst.exe"
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
@@ -751,6 +814,7 @@ Section /o $(FB2_File_Association) FB2_File_Association_id
   WriteRegStr SHCTX "Software\Classes\.fb2\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
   WriteRegStr SHCTX "Software\Classes\FictionBook.2\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
   WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "AssociationRegistered" 1
 SectionEnd
 
 Section /o $(FBD_File_Association) FBD_File_Association_id
@@ -772,6 +836,7 @@ fbd_association_backup_done:
   WriteRegStr SHCTX "Software\Classes\.fbd\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
   WriteRegStr SHCTX "Software\Classes\FictionBook.Description\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
   WriteRegStr SHCTX "Software\Classes\FictionBook.Description\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "AssociationRegistered" 1
 SectionEnd
 
 Section /o $(FB2_Validate_Command) FB2_Validate_Command_id
@@ -786,6 +851,7 @@ Section /o $(FB2_Validate_Command) FB2_Validate_Command_id
   WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Validate" "MUIVerb" '@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2'
   WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
   WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ValidateVerbInstalled" 1
 SectionEnd
 
 Section /o $(FB2_Explorer_Properties) FB2_Explorer_Properties_id
@@ -843,10 +909,12 @@ fbshell64_done:
   File /nonfatal "${INPUTDIR}\InstallerTools\register-modern-property-handler.ps1"
   File /nonfatal "${INPUTDIR}\InstallerTools\unregister-modern-property-handler.ps1"
   SetOutPath "$INSTDIR"
+  Call MigrateLegacySharedShell
   Call RegisterFbePropertySchema
   Call RegisterModernPropertyHandler
 
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "${PRODUCT_SYSTEM_INTEGRATION_REGVAL}" 1
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "PropertyHandlerInstalled" 1
 SectionEnd
 
 SectionGroupEnd
@@ -981,7 +1049,7 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 		RegDll "$INSTDIR\ExportHTML.dll"
 		RegDll "$INSTDIR\ExportDOCX.dll"
 		RegDll "$INSTDIR\ExportEPUB.dll"
-		WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "LegacyComInstalled" 1
+		WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "LegacyComInstalled" 1
 	SectionEnd
 
 	Section /o $(Plugin_BatchConverters) BatchConverters_id
@@ -1133,45 +1201,58 @@ Section Uninstall
 
   Call un.CheckFBERunning
 
-  ; remove typelib entry
-  DeleteRegKey HKCR "Interface\{7269066E-2089-4408-B3F3-E8D75984D5A6}"
-  DeleteRegKey HKCR "TypeLib\{37B16C7D-4400-4D7D-AA35-14C74E265EA4}"
-
-
-  Call un.UnregisterModernPropertyHandler
-  Call un.UnregisterFbePropertySchema
-  Delete "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
-  Delete "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
-  Delete "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
-  RMDir "${FBE_SHELL_SHARED_DIR}"
+  ; Shared shell registration is removed only when this setup installed it.
+  ; The helper additionally verifies every CLSID and DLL path before changing
+  ; the registry, which protects a newer installation from an old uninstaller.
+  ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "PropertyHandlerInstalled"
+  ${If} $0 = 1
+    Call un.UnregisterModernPropertyHandler
+    Call un.UnregisterFbePropertySchema
+    Delete "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
+    Delete "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
+    Delete "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
+    RMDir "${FBE_SHELL_SHARED_DIR}"
+  ${EndIf}
 
   ; Only the explicitly selected legacy component performs COM registration.
-  ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "LegacyComInstalled"
+  ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "LegacyComInstalled"
   ${If} $0 = 1
-    UnRegDll "$INSTDIR\ImportEPUB.dll"
-    UnRegDll "$INSTDIR\ExportHTML.dll"
-    UnRegDll "$INSTDIR\ExportDOCX.dll"
-    UnRegDll "$INSTDIR\ExportEPUB.dll"
+    !insertmacro UnregisterLegacyPluginIfOwned "{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}" "ImportEPUB.dll"
+    !insertmacro UnregisterLegacyPluginIfOwned "{C3098839-EF69-4DE5-B27D-1E80051CA843}" "ExportHTML.dll"
+    !insertmacro UnregisterLegacyPluginIfOwned "{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "ExportDOCX.dll"
+    !insertmacro UnregisterLegacyPluginIfOwned "{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "ExportEPUB.dll"
   ${EndIf}
 
   ; Remove only associations and verbs that still belong to this instance.
-  ReadRegStr $0 SHCTX "Software\Classes\FictionBook.2\shell\Edit\Command" ""
-  StrCmp $0 '"$INSTDIR\FBE.exe" "%1"' 0 +2
-    DeleteRegKey SHCTX "Software\Classes\FictionBook.2\shell\Edit"
-  ReadRegStr $0 SHCTX "Software\Classes\FictionBook.2\shell\Validate\Command" ""
-  StrCmp $0 '"$INSTDIR\FBV.exe" "%1"' 0 +2
-    DeleteRegKey SHCTX "Software\Classes\FictionBook.2\shell\Validate"
-  ReadRegStr $0 SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate\Command" ""
-  StrCmp $0 '"$INSTDIR\FBV.exe" "%1"' 0 +2
-    DeleteRegKey SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate"
-  ReadRegStr $0 SHCTX "Software\Classes\.fb2\DefaultIcon" ""
-  StrCmp $0 "$INSTDIR\FBE.exe,0" 0 integration_cleanup_done
-  DeleteRegKey SHCTX "Software\Classes\.fb2\DefaultIcon"
-  DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "InfoTip"
-  DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "TileInfo"
-  DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "Details"
-  DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "PreviewDetails"
+  ReadRegDWORD $1 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "AssociationRegistered"
+  ${If} $1 = 1
+    ReadRegStr $0 SHCTX "Software\Classes\FictionBook.2\shell\Edit\Command" ""
+    StrCmp $0 '"$INSTDIR\FBE.exe" "%1"' 0 +2
+      DeleteRegKey SHCTX "Software\Classes\FictionBook.2\shell\Edit"
+    ReadRegStr $0 SHCTX "Software\Classes\.fb2\DefaultIcon" ""
+    StrCmp $0 "$INSTDIR\FBE.exe,0" 0 integration_cleanup_done
+    DeleteRegKey SHCTX "Software\Classes\.fb2\DefaultIcon"
+    DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "InfoTip"
+    DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "TileInfo"
+    DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "Details"
+    DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "PreviewDetails"
+  ${EndIf}
 integration_cleanup_done:
+
+  ReadRegDWORD $1 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ValidateVerbInstalled"
+  ${If} $1 = 1
+    ReadRegStr $0 SHCTX "Software\Classes\FictionBook.2\shell\Validate\Command" ""
+    StrCmp $0 '"$INSTDIR\FBV.exe" "%1"' 0 +2
+      DeleteRegKey SHCTX "Software\Classes\FictionBook.2\shell\Validate"
+    ReadRegStr $0 SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate\Command" ""
+    StrCmp $0 '"$INSTDIR\FBV.exe" "%1"' 0 +2
+      DeleteRegKey SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate"
+  ${EndIf}
+
+  ReadRegDWORD $1 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "AssociationRegistered"
+  ${If} $1 <> 1
+    Goto fbd_uninstall_done
+  ${EndIf}
 
   ; Restore the handler selected before FBE, but never remove an extension key
   ; that was changed after installation.

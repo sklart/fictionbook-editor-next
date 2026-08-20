@@ -354,10 +354,29 @@ static void LoadGenres()
 {
 	FILE *fp;
   CString file_name = _Settings.GetLocalizedGenresFileName();
+  CString legacy_file_name;
+  // New portable payloads publish the descriptive Librusec names.  Keep the
+  // historical *_L names as a fallback for unpacked older copies.
+  if (_Settings.GetEffectiveInterfaceLanguageID() == FBE_INTERFACE_LANGUAGE_RUSSIAN) {
+    file_name = L"genres.rus.librusec.txt";
+    legacy_file_name = L"genres.rus.txt_L";
+  } else if (_Settings.GetEffectiveInterfaceLanguageID() != FBE_INTERFACE_LANGUAGE_UKRAINIAN) {
+    file_name = L"genres.librusec.txt";
+    legacy_file_name = L"genres.txt_L";
+  }
   // Modification by Pilgrim 
   try{
 	fp=_tfopen(U::GetProgDirFile(file_name), _T("rb"));
   }catch(...){
+  }
+
+  if (!fp && !legacy_file_name.IsEmpty()) {
+    try {
+      fp = _tfopen(U::GetProgDirFile(legacy_file_name), _T("rb"));
+      if (fp)
+        file_name = legacy_file_name;
+    } catch (...) {
+    }
   }
 
   if(!fp){

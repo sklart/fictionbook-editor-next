@@ -2,6 +2,7 @@
 #include "Utils.h"
 #include "AboutBox.h"
 #include "RuntimeLocalization.h"
+#include "../common/DeploymentContext.h"
 #include "../version.h"
 
 namespace
@@ -28,6 +29,13 @@ namespace
 			static_cast<const wchar_t*>(version),
 			static_cast<const wchar_t*>(version));
 		return path.CompareNoCase(expectedUrl) == 0;
+	}
+
+	CString GetPortableUpdateUrl(const CString& setupUrl)
+	{
+		CString url(setupUrl);
+		url.Replace(L"-setup.exe", L"-portable.zip");
+		return url;
 	}
 
 	int GetMaximumDownloadSize(const CString& url)
@@ -440,6 +448,14 @@ LRESULT CAboutDlg::OnUpdate(WORD, WORD wID, HWND, BOOL&)
 {
 	if (!m_UpdateURL.IsEmpty())
 	{
+		// A portable copy must never download and execute the installed setup.
+		// The same release is offered as a ZIP in the browser, leaving its
+		// Data directory and deployment mode under the user's control.
+		if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable)
+		{
+			ShellExecute(m_hWnd, L"open", GetPortableUpdateUrl(m_UpdateURL), NULL, NULL, SW_SHOWNORMAL);
+			return 0L;
+		}
 		m_UpdateButton.ShowWindow(SW_HIDE);
 		DeleteAllDownload();
 

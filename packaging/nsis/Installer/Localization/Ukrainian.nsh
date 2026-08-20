@@ -11,6 +11,7 @@ LangString DeploymentModePortable ${LANG_UKRAINIAN} "Створити порта
 LangString InstallScopeTitle ${LANG_UKRAINIAN} "Область встановлення"
 LangString InstallScopeCurrent ${LANG_UKRAINIAN} "Лише для поточного користувача"
 LangString InstallScopeAllUsers ${LANG_UKRAINIAN} "Для всіх користувачів комп’ютера"
+LangString InstallScopeConflict ${LANG_UKRAINIAN} "FictionBook Editor Next уже встановлено для іншої області користувачів. Спочатку видаліть або оновіть те встановлення, а потім знову запустіть цей інсталятор. Налаштування не буде видалено."
 LangString System_Integration ${LANG_UKRAINIAN} "Системна інтеграція"
 LangString FB2_File_Association ${LANG_UKRAINIAN} "Використовувати FBE Next для .fb2"
 LangString FB2_Validate_Command ${LANG_UKRAINIAN} "Команда «Перевірити FB2 на помилки»"

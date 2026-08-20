@@ -2533,7 +2533,13 @@ void CSettings::SaveWords()
 		pXMLDoc->insertBefore(pXMLProcessingNode,vtObject);
 
 		CString fileName(U::GetSettingsDir()+WORDS_XML_FILE);
-		pXMLDoc->save(fileName.AllocSysString());
+		CString temporaryFile(fileName + L".tmp");
+		::DeleteFileW(temporaryFile);
+		if (pXMLDoc->save(temporaryFile.AllocSysString()) == S_OK)
+		{
+			if (!::MoveFileExW(temporaryFile, fileName, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+				::DeleteFileW(temporaryFile);
+		}
 	}
 }
 

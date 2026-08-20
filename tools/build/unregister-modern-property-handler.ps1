@@ -166,6 +166,64 @@ function Test-ComClassRegistrationExists {
     }
 }
 
+function Test-RegistryDefaultValue {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$ExpectedValue
+    )
+
+    $baseKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+        [Microsoft.Win32.RegistryHive]::LocalMachine,
+        (Get-RegistryView)
+    )
+    try {
+        $key = $baseKey.OpenSubKey($Path, $false)
+        if ($null -eq $key) { return $false }
+        try {
+            $actual = $key.GetValue('', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+            return [string]::Equals([string]$actual, $ExpectedValue, [System.StringComparison]::OrdinalIgnoreCase)
+        }
+        finally { $key.Dispose() }
+    }
+    finally { $baseKey.Dispose() }
+}
+
+function Test-ComClassRegistrationOwned {
+    param(
+        [Parameter(Mandatory)][string]$Clsid,
+        [Parameter(Mandatory)][string]$ExpectedDllPath
+    )
+
+    $baseKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+        [Microsoft.Win32.RegistryHive]::LocalMachine,
+        (Get-RegistryView)
+    )
+    try {
+        $key = $baseKey.OpenSubKey("$(Get-ComClassRegistryPath -Clsid $Clsid)\InprocServer32", $false)
+        if ($null -eq $key) { return $false }
+        try {
+            $actual = $key.GetValue('', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+            return [string]::Equals([string]$actual, $ExpectedDllPath, [System.StringComparison]::OrdinalIgnoreCase)
+        }
+        finally { $key.Dispose() }
+    }
+    finally { $baseKey.Dispose() }
+}
+
+function Test-ModernRegistrationOwned {
+    param(
+        [Parameter(Mandatory)][string]$PropertyHandlerClsid,
+        [Parameter(Mandatory)][string]$ThumbnailProviderClsid,
+        [Parameter(Mandatory)][string]$ExpectedDllPath
+    )
+
+    return (Test-RegistryDefaultValue -Path 'SOFTWARE\Microsoft\Windows\CurrentVersion\PropertySystem\PropertyHandlers\.fb2' -ExpectedValue $PropertyHandlerClsid) -and
+        (Test-RegistryDefaultValue -Path 'SOFTWARE\Classes\.fb2\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}' -ExpectedValue $ThumbnailProviderClsid) -and
+        (Test-RegistryDefaultValue -Path 'SOFTWARE\Classes\FictionBook.2\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}' -ExpectedValue $ThumbnailProviderClsid) -and
+        (Test-ComClassRegistrationOwned -Clsid $PropertyHandlerClsid -ExpectedDllPath $ExpectedDllPath) -and
+        (Test-ComClassRegistrationOwned -Clsid $ThumbnailProviderClsid -ExpectedDllPath $ExpectedDllPath)
+}
+
 function Remove-PropertyHandlerRegistration {
     $registryView = if ($Platform -eq "x64") {
         [Microsoft.Win32.RegistryView]::Registry64
@@ -293,6 +351,15 @@ try {
     $thumbnailProviderClsid = "{4F99D1F0-5D76-4B9C-9D3D-9E6B8B4C7E31}"
     $regsvr32ExitCode = 0
     $regsvr32FailureMessage = ""
+
+    # A shared CLSID or extension may legitimately be replaced by a newer
+    # instance.  Never let an older uninstaller erase that instance's shell
+    # registration merely because it knows the same identifiers.
+    if (-not (Test-ModernRegistrationOwned -PropertyHandlerClsid $propertyHandlerClsid -ThumbnailProviderClsid $thumbnailProviderClsid -ExpectedDllPath $DllPath)) {
+        Write-Status -Result "skipped" -Step "ownership" -Code "FOREIGN_REGISTRATION" -Message "Modern shell registration no longer points to this installation; it was left untouched."
+        Write-Host "Modern shell registration belongs to another installation; skipping cleanup."
+        return
+    }
 
     if (Test-Path -LiteralPath $DllPath -PathType Leaf) {
         $regsvr32 = Get-RegSvr32Path

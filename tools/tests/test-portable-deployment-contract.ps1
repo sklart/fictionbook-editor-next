@@ -10,7 +10,7 @@ function Lacks([string]$text, [string]$needle, [string]$what) { if ($text.IndexO
 $context = Text 'src\common\DeploymentContext.h'
 foreach ($item in @('enum class Mode', 'portable.ini', '--portable', '--installed', 'HasInvalidModeOverride', 'CommandLineToArgvW', 'DataPath', 'find_first_of', 'SettingsDirectory', 'SHGetFolderPathW', 'DiagnosticsDirectory', 'RecoveryDirectory', 'RegistryPersistenceAllowed')) { Has $context $item 'DeploymentContext' }
 $settings = Text 'src\fbe\Settings.cpp'; Has $settings 'RegistryPersistenceAllowed()' 'Portable settings'; Has $settings 'm_key.Create(HKEY_CURRENT_USER' 'Installed settings compatibility'
-$locale = Text 'src\fbe\RuntimeLocalization.cpp'; Has $locale 'DeploymentContext::SettingsDirectory()' 'Portable locale'
+$locale = Text 'src\fbe\RuntimeLocalization.cpp'; Has $locale 'DeploymentContext::SettingsDirectory()' 'Portable locale'; Has $locale 'MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH' 'Atomic portable locale'
 $trace = Text 'src\fbe\StartupTrace.cpp'; Has $trace 'DeploymentContext::DiagnosticsDirectory()' 'Portable diagnostics'; Has $trace 'RegistryPersistenceAllowed()' 'Portable trace preference'
 $frame = Text 'src\fbe\mainfrm.cpp'; Has $frame 'ReadPortableMru' 'Portable MRU read'; Has $frame 'WritePortableMru' 'Portable MRU write'; Has $frame 'MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH' 'Atomic portable MRU'; Has $frame 'RegistryPersistenceAllowed()' 'Registry-free portable MRU'
 Has $frame 'let a stale/foreign CLSID registration intercept' 'Bundled plugin local-first activation'

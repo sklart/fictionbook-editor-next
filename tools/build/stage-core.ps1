@@ -34,6 +34,13 @@ foreach ($name in @('ZipHandler.exe','RarHandler.exe')) {
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Path $stage | Out-Null
 Copy-Item -Path (Join-Path $repoRoot 'runtime\*') -Destination $stage -Recurse -Force
+# Current Librusec catalog names are shipped alongside the historical *_L
+# aliases.  The executable accepts both while older manual installations keep
+# working, but every newly staged portable payload must expose the current
+# names directly.
+foreach ($entry in @{ 'genres.txt_L' = 'genres.librusec.txt'; 'genres.rus.txt_L' = 'genres.rus.librusec.txt' }.GetEnumerator()) {
+    Copy-Item -LiteralPath (Join-Path $stage $entry.Key) -Destination (Join-Path $stage $entry.Value) -Force
+}
 foreach ($name in @('FBShell.dll','FBShell64.dll','FBE.Sequence.propdesc')) { Remove-Item -LiteralPath (Join-Path $stage $name) -Force -ErrorAction SilentlyContinue }
 foreach ($name in @('Scintilla.dll','Lexilla.dll')) { Copy-Item -LiteralPath (Join-Path $editorRuntime $name) -Destination $stage -Force }
 foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $buildOutput $name) -Destination $stage -Force }

@@ -134,8 +134,18 @@ bool CXMLSerializer::SaveResults(const _variant_t& xml)
 	nodeMap->setNamedItem(encAttrib);
 	nodeMap->removeNamedItem(L"standalone");
 
-	if(m_doc->save(_bstr_t(m_sFile)) != S_OK)
+	// Settings and hotkey files are mutable user state.  Write a complete
+	// document beside the destination first, then atomically publish it so an
+	// interrupted save cannot leave a truncated XML file behind.
+	const CString temporaryFile = m_sFile + L".tmp";
+	::DeleteFileW(temporaryFile);
+	if(m_doc->save(_bstr_t(temporaryFile)) != S_OK)
 		return false;
+	if(!::MoveFileExW(temporaryFile, m_sFile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	{
+		::DeleteFileW(temporaryFile);
+		return false;
+	}
 
 	return true;
 }

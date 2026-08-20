@@ -24,23 +24,25 @@ NSIS больше не нужно.
 .\tools\build\verify-release.ps1 -Configuration Release
 ```
 
-2. Подготовить portable staging:
+2. Подготовить Core и portable staging:
 
 ```powershell
-.\tools\build\package-portable.ps1 -Configuration Release
+.\tools\build\stage-core.ps1 -Configuration Release -OutputDirectory .\out\stage\Core
+.\tools\build\package-portable.ps1 -CoreDirectory .\out\stage\Core -OutputDirectory .\out\stage\Portable
 ```
 
-Это создаёт папку `out\package\FictionBookEditor`.
+Portable содержит только Core и создаёт `portable.ini` с локальной структурой `Data`. Shell/property-handler Integration в него не попадает.
 
 Дополнительно в staging автоматически попадает:
 
 - основной `Win32`-набор приложения;
 - `ShellExtensions\x64\FBShell.dll` для современного `64-bit Explorer`.
 
-3. Подготовить NSIS input:
+3. Подготовить Integration и NSIS input:
 
 ```powershell
-.\tools\build\prepare-installer.ps1 -Configuration Release
+.\tools\build\stage-integration.ps1 -Configuration Release -OutputDirectory .\out\stage\Integration
+.\tools\build\prepare-installer.ps1 -CoreDirectory .\out\stage\Core -IntegrationDirectory .\out\stage\Integration -OutputDirectory .\out\package\FictionBookEditor
 ```
 
 Эта команда:
@@ -88,6 +90,12 @@ handler для `.fb2`.
 
 Повышение прав теперь запрашивается не всегда, а только если пользователь
 оставляет включённой опцию `Системная интеграция`.
+
+Installer предлагает Current User, All Users и Portable режимы. Установленные
+копии разных scope не устанавливаются параллельно: setup просит сначала удалить
+или обновить существующую копию, не удаляя пользовательские настройки. Uninstall
+удаляет shell/COM registrations только когда они всё ещё указывают на текущую
+установку.
 
 Итоговые артефакты попадают в `out\artifacts`.
 

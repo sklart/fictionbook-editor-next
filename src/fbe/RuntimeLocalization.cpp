@@ -197,14 +197,26 @@ static bool WritePublishedRuntimeLocaleName(const wchar_t* localeName)
 	if (bytes <= 1)
 		return false;
 
-	HANDLE file = ::CreateFileW(localePath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	CPath temporaryPath(localePath);
+	temporaryPath += L".tmp";
+	HANDLE file = ::CreateFileW(temporaryPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH, NULL);
 	if (file == INVALID_HANDLE_VALUE)
 		return false;
 
 	DWORD written = 0;
-	const BOOL ok = ::WriteFile(file, utf8, static_cast<DWORD>(bytes - 1), &written, NULL);
+	const BOOL ok = ::WriteFile(file, utf8, static_cast<DWORD>(bytes - 1), &written, NULL) &&
+		::FlushFileBuffers(file);
 	::CloseHandle(file);
-	return ok && written == static_cast<DWORD>(bytes - 1);
+	if (!ok || written != static_cast<DWORD>(bytes - 1)) {
+		::DeleteFileW(temporaryPath);
+		return false;
+	}
+	if (!::MoveFileExW(temporaryPath, localePath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+		::DeleteFileW(temporaryPath);
+		return false;
+	}
+	return true;
 }
 
 
