@@ -741,16 +741,16 @@ Section /o $(FB2_File_Association) FB2_File_Association_id
   Call RegisterTlb
 
   ; Создаём FB2 ProgID.
-  WriteRegStr HKCU "Software\Classes\FictionBook.2" "" "FictionBook"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\CurVer" "" "FictionBook.2"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2" "" "FictionBook"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2\CurVer" "" "FictionBook.2"
 
   ; Создаём тип файла FB2.
-  WriteRegStr HKCU "Software\Classes\.fb2" "" "FictionBook.2"
-  WriteRegStr HKCU "Software\Classes\.fb2" "PerceivedType" "Text"
-  WriteRegStr HKCU "Software\Classes\.fb2" "Content Type" "text/xml"
-  WriteRegStr HKCU "Software\Classes\.fb2\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
+  WriteRegStr SHCTX "Software\Classes\.fb2" "" "FictionBook.2"
+  WriteRegStr SHCTX "Software\Classes\.fb2" "PerceivedType" "Text"
+  WriteRegStr SHCTX "Software\Classes\.fb2" "Content Type" "text/xml"
+  WriteRegStr SHCTX "Software\Classes\.fb2\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
 SectionEnd
 
 Section /o $(FBD_File_Association) FBD_File_Association_id
@@ -758,44 +758,44 @@ Section /o $(FBD_File_Association) FBD_File_Association_id
   ; Explorer extensions by assigning a dedicated ProgID.
   ; Remember the original default once, so uninstall can restore it without
   ; deleting unrelated values from the extension key.
-  ReadRegStr $0 HKCU "Software\Classes\.fbd" ""
+  ReadRegStr $0 SHCTX "Software\Classes\.fbd" ""
   StrCmp $0 "FictionBook.Description" fbd_association_backup_done
-  ReadRegStr $1 HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured"
+  ReadRegStr $1 SHCTX "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured"
   StrCmp $1 "1" fbd_association_backup_done
-  WriteRegStr HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "PreviousProgId" "$0"
-  WriteRegStr HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured" "1"
+  WriteRegStr SHCTX "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "PreviousProgId" "$0"
+  WriteRegStr SHCTX "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured" "1"
 fbd_association_backup_done:
-  WriteRegStr HKCU "Software\Classes\FictionBook.Description" "" "FictionBook Description"
-  WriteRegStr HKCU "Software\Classes\.fbd" "" "FictionBook.Description"
-  WriteRegStr HKCU "Software\Classes\.fbd" "PerceivedType" "Text"
-  WriteRegStr HKCU "Software\Classes\.fbd" "Content Type" "text/xml"
-  WriteRegStr HKCU "Software\Classes\.fbd\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
-  WriteRegStr HKCU "Software\Classes\FictionBook.Description\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
-  WriteRegStr HKCU "Software\Classes\FictionBook.Description\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
+  WriteRegStr SHCTX "Software\Classes\FictionBook.Description" "" "FictionBook Description"
+  WriteRegStr SHCTX "Software\Classes\.fbd" "" "FictionBook.Description"
+  WriteRegStr SHCTX "Software\Classes\.fbd" "PerceivedType" "Text"
+  WriteRegStr SHCTX "Software\Classes\.fbd" "Content Type" "text/xml"
+  WriteRegStr SHCTX "Software\Classes\.fbd\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.Description\DefaultIcon" "" "$INSTDIR\FBE.exe,0"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.Description\shell\Edit\Command" "" '"$INSTDIR\FBE.exe" "%1"'
 SectionEnd
 
 Section /o $(FB2_Validate_Command) FB2_Validate_Command_id
   ; Добавляем команду проверки, не отбирая .fb2 у другой читалки.
-  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "" "Validate"
-  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "MUIVerb" '@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2'
-  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
-  WriteRegStr HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
+  WriteRegStr SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "" "Validate"
+  WriteRegStr SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "MUIVerb" '@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2'
+  WriteRegStr SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
+  WriteRegStr SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
 
   ; Сохраняем совместимость для систем, где .fb2 явно связан с FictionBook.2.
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "" "Validate"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "MUIVerb" '@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2'
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Validate" "" "Validate"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Validate" "MUIVerb" '@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2'
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Validate" "Icon" '"$INSTDIR\FBV.exe",0'
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2\shell\Validate\Command" "" '"$INSTDIR\FBV.exe" "%1"'
 SectionEnd
 
 Section /o $(FB2_Explorer_Properties) FB2_Explorer_Properties_id
   ; Создаём FB2 ProgID только для shell-строк метаданных; .fb2 здесь не ассоциируем.
-  WriteRegStr HKCU "Software\Classes\FictionBook.2" "" "FictionBook"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2\CurVer" "" "FictionBook.2"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2" "InfoTip" "${FB2_INFOTIP_PROPERTIES}"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2" "TileInfo" "${FB2_TILEINFO_PROPERTIES}"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2" "Details" "${FB2_DETAILS_PROPERTIES}"
-  WriteRegStr HKCU "Software\Classes\FictionBook.2" "PreviewDetails" "${FB2_PREVIEWDETAILS_PROPERTIES}"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2" "" "FictionBook"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2\CurVer" "" "FictionBook.2"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2" "InfoTip" "${FB2_INFOTIP_PROPERTIES}"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2" "TileInfo" "${FB2_TILEINFO_PROPERTIES}"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2" "Details" "${FB2_DETAILS_PROPERTIES}"
+  WriteRegStr SHCTX "Software\Classes\FictionBook.2" "PreviewDetails" "${FB2_PREVIEWDETAILS_PROPERTIES}"
 
   ; Современный обработчик свойств для Win32/x64 Проводника.
   SetOutPath "${FBE_SHELL_SHARED_DIR}"
@@ -1133,9 +1133,6 @@ Section Uninstall
 
   Call un.CheckFBERunning
 
-  ; remove registry keys
-  DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
-  DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}"
   ; remove typelib entry
   DeleteRegKey HKCR "Interface\{7269066E-2089-4408-B3F3-E8D75984D5A6}"
   DeleteRegKey HKCR "TypeLib\{37B16C7D-4400-4D7D-AA35-14C74E265EA4}"
@@ -1157,36 +1154,45 @@ Section Uninstall
     UnRegDll "$INSTDIR\ExportEPUB.dll"
   ${EndIf}
 
-  ; remove verbs; TODO: check if these really point to FBE
-  DeleteRegKey HKCU "Software\Classes\FictionBook.2\shell\Edit"
-  DeleteRegKey HKCU "Software\Classes\FictionBook.2\shell\Validate"
-  DeleteRegKey HKCU "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate"
-  DeleteRegKey HKCU "Software\Classes\.fb2\DefaultIcon"
-  DeleteRegValue HKCU "Software\Classes\FictionBook.2" "InfoTip"
-  DeleteRegValue HKCU "Software\Classes\FictionBook.2" "TileInfo"
-  DeleteRegValue HKCU "Software\Classes\FictionBook.2" "Details"
-  DeleteRegValue HKCU "Software\Classes\FictionBook.2" "PreviewDetails"
+  ; Remove only associations and verbs that still belong to this instance.
+  ReadRegStr $0 SHCTX "Software\Classes\FictionBook.2\shell\Edit\Command" ""
+  StrCmp $0 '"$INSTDIR\FBE.exe" "%1"' 0 +2
+    DeleteRegKey SHCTX "Software\Classes\FictionBook.2\shell\Edit"
+  ReadRegStr $0 SHCTX "Software\Classes\FictionBook.2\shell\Validate\Command" ""
+  StrCmp $0 '"$INSTDIR\FBV.exe" "%1"' 0 +2
+    DeleteRegKey SHCTX "Software\Classes\FictionBook.2\shell\Validate"
+  ReadRegStr $0 SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate\Command" ""
+  StrCmp $0 '"$INSTDIR\FBV.exe" "%1"' 0 +2
+    DeleteRegKey SHCTX "${FB2_SYSTEM_ASSOC_KEY}\shell\Validate"
+  ReadRegStr $0 SHCTX "Software\Classes\.fb2\DefaultIcon" ""
+  StrCmp $0 "$INSTDIR\FBE.exe,0" 0 integration_cleanup_done
+  DeleteRegKey SHCTX "Software\Classes\.fb2\DefaultIcon"
+  DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "InfoTip"
+  DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "TileInfo"
+  DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "Details"
+  DeleteRegValue SHCTX "Software\Classes\FictionBook.2" "PreviewDetails"
+integration_cleanup_done:
 
   ; Restore the handler selected before FBE, but never remove an extension key
   ; that was changed after installation.
-  ReadRegStr $0 HKCU "Software\Classes\.fbd" ""
+  ReadRegStr $0 SHCTX "Software\Classes\.fbd" ""
   StrCmp $0 "FictionBook.Description" 0 fbd_uninstall_done
-  ReadRegStr $1 HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured"
+  ReadRegStr $1 SHCTX "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "Captured"
   StrCmp $1 "1" 0 fbd_uninstall_clear_default
-  ReadRegStr $1 HKCU "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "PreviousProgId"
+  ReadRegStr $1 SHCTX "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}\FbdAssociation" "PreviousProgId"
   StrCmp $1 "" fbd_uninstall_clear_default
-  WriteRegStr HKCU "Software\Classes\.fbd" "" "$1"
+  WriteRegStr SHCTX "Software\Classes\.fbd" "" "$1"
   Goto fbd_uninstall_remove_owned
 fbd_uninstall_clear_default:
-  DeleteRegValue HKCU "Software\Classes\.fbd" ""
+  DeleteRegValue SHCTX "Software\Classes\.fbd" ""
 fbd_uninstall_remove_owned:
-  ReadRegStr $0 HKCU "Software\Classes\.fbd\DefaultIcon" ""
+  ReadRegStr $0 SHCTX "Software\Classes\.fbd\DefaultIcon" ""
   StrCmp $0 "$INSTDIR\FBE.exe,0" 0 +2
-    DeleteRegKey HKCU "Software\Classes\.fbd\DefaultIcon"
-  DeleteRegValue HKCU "Software\Classes\.fbd" "PerceivedType"
-  DeleteRegValue HKCU "Software\Classes\.fbd" "Content Type"
+    DeleteRegKey SHCTX "Software\Classes\.fbd\DefaultIcon"
+  DeleteRegValue SHCTX "Software\Classes\.fbd" "PerceivedType"
+  DeleteRegValue SHCTX "Software\Classes\.fbd" "Content Type"
   ; This ProgID is removed only after .fbd no longer points to it.
-  DeleteRegKey HKCU "Software\Classes\FictionBook.Description"
+  DeleteRegKey SHCTX "Software\Classes\FictionBook.Description"
 fbd_uninstall_done:
   
   Delete "$INSTDIR\uninst.exe"
