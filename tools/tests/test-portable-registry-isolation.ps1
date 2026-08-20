@@ -1,7 +1,8 @@
 <#
-Exercises the real portable command-line path while comparing all FBE-owned
-HKCU locations before and after it.  --print-runtime-paths must not initialise
-the profile, register bundled plugins, or touch file-association state.
+Exercises both the portable command-line and GUI startup paths while comparing
+all FBE-owned HKCU locations before and after them. Neither path may initialise
+the registry profile, register the embedded typelib or bundled plugins, or touch
+file-association state.
 #>
 [CmdletBinding()]
 param([string]$FbeExecutable)
@@ -24,6 +25,7 @@ $keys = @(
     'HKCU\Software\FBETeam\FictionBook Editor Next',
     'HKCU\Software\Classes\FictionBook.2',
     'HKCU\Software\Classes\.fb2',
+    'HKCU\Software\Classes\TypeLib\{37B16C7D-4400-4D7D-AA35-14C74E265EA4}',
     'HKCU\Software\Classes\CLSID\{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}',
     'HKCU\Software\Classes\CLSID\{C3098839-EF69-4DE5-B27D-1E80051CA843}',
     'HKCU\Software\Classes\CLSID\{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}',
@@ -45,4 +47,23 @@ foreach ($key in $keys) {
     if ($after -cne $before[$key]) { throw "Portable runtime CLI changed FBE-owned registry state: $key" }
 }
 
-Write-Host 'Portable registry isolation behavior passed.'
+$guiProcess = Start-Process -FilePath $FbeExecutable -ArgumentList @('--portable') -WorkingDirectory (Split-Path -Parent $FbeExecutable) -PassThru
+try {
+    Start-Sleep -Seconds 5
+    $guiProcess.Refresh()
+    if ($guiProcess.HasExited) { throw "Portable GUI exited during startup with $($guiProcess.ExitCode)." }
+}
+finally {
+    $guiProcess.Refresh()
+    if (-not $guiProcess.HasExited) {
+        $guiProcess.CloseMainWindow() | Out-Null
+        if (-not $guiProcess.WaitForExit(10000)) { Stop-Process -Id $guiProcess.Id -Force }
+    }
+}
+
+foreach ($key in $keys) {
+    $after = Get-RegistrySnapshot $key
+    if ($after -cne $before[$key]) { throw "Portable GUI startup changed FBE-owned registry state: $key" }
+}
+
+Write-Host 'Portable CLI and GUI registry isolation behavior passed.'

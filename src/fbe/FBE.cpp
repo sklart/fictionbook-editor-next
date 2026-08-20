@@ -268,6 +268,15 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 }
 static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 {
+	// A portable launch must not inspect or repair the registered typelib.  The
+	// editor loads its embedded typelib directly (REGKIND_NONE), so registration
+	// is neither necessary nor compatible with portable registry isolation.
+	if (!DeploymentContext::RegistryPersistenceAllowed())
+	{
+		StartupTrace::Event(L"typelib", L"TL101", L"portable launch: per-user typelib registration skipped");
+		return S_OK;
+	}
+
 	StartupTrace::Event(L"typelib", L"TL100", L"registered FBELib validation started");
 	const CString modulePath = U::GetModulePath();
 	if(modulePath.IsEmpty()) return HRESULT_FROM_WIN32(::GetLastError());
@@ -596,8 +605,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 
   StartupTrace::Event(L"startup", L"S130", L"type library validation started");
 
-  // Installed builds are registered by NSIS. Portable builds register only
-  // for the current user, and only when the type library is not available.
+  // Installed builds are registered by NSIS and can repair a stale per-user
+  // typelib registration.  Portable builds use the embedded typelib only.
   hRes = EnsureTypeLibraryRegisteredForCurrentUser();
   if (FAILED(hRes))
     ATLTRACE(L"Unable to register the FBE type library: 0x%08X\n", hRes);
