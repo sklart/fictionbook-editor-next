@@ -17,6 +17,60 @@ namespace
 	const size_t MAX_CRASH_REPORTS = 10;
 	wchar_t g_crashDirectory[MAX_PATH] = {};
 
+	CString CaptureExceptionStack(EXCEPTION_POINTERS* exceptionInfo)
+	{
+		if (!exceptionInfo || !exceptionInfo->ContextRecord)
+			return L"unavailable";
+
+		HANDLE process = ::GetCurrentProcess();
+		::SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_FAIL_CRITICAL_ERRORS);
+		if (!::SymInitialize(process, NULL, TRUE))
+			return L"symbol initialization failed";
+
+		CONTEXT context = *exceptionInfo->ContextRecord;
+		STACKFRAME64 frame = {};
+		DWORD machineType = 0;
+#if defined(_M_IX86)
+		machineType = IMAGE_FILE_MACHINE_I386;
+		frame.AddrPC.Offset = context.Eip;
+		frame.AddrFrame.Offset = context.Ebp;
+		frame.AddrStack.Offset = context.Esp;
+#elif defined(_M_X64)
+		machineType = IMAGE_FILE_MACHINE_AMD64;
+		frame.AddrPC.Offset = context.Rip;
+		frame.AddrFrame.Offset = context.Rsp;
+		frame.AddrStack.Offset = context.Rsp;
+#else
+		::SymCleanup(process);
+		return L"unsupported architecture";
+#endif
+		frame.AddrPC.Mode = AddrModeFlat;
+		frame.AddrFrame.Mode = AddrModeFlat;
+		frame.AddrStack.Mode = AddrModeFlat;
+
+		CString result;
+		for (unsigned int index = 0; index < 24; ++index)
+		{
+			SYMBOL_INFO_PACKAGE symbol = {};
+			symbol.si.SizeOfStruct = sizeof(SYMBOL_INFO);
+			symbol.si.MaxNameLen = MAX_SYM_NAME;
+			DWORD64 displacement = 0;
+			CString line;
+			if (::SymFromAddr(process, frame.AddrPC.Offset, &displacement, &symbol.si))
+				line.Format(L"#%u %S+0x%I64X [0x%I64X]", index, symbol.si.Name, displacement, frame.AddrPC.Offset);
+			else
+				line.Format(L"#%u [0x%I64X]", index, frame.AddrPC.Offset);
+			result += line + L"\r\n";
+
+			if (!::StackWalk64(machineType, process, ::GetCurrentThread(), &frame, &context,
+				NULL, ::SymFunctionTableAccess64, ::SymGetModuleBase64, NULL) || frame.AddrPC.Offset == 0)
+				break;
+		}
+
+		::SymCleanup(process);
+		return result.IsEmpty() ? CString(L"unavailable") : result;
+	}
+
 	void CleanupOldReports(const CString& crashDirectory)
 	{
 		std::vector<CString> reportNames;
@@ -79,6 +133,7 @@ namespace
 			? exceptionInfo->ExceptionRecord->ExceptionCode : 0;
 		const void* exceptionAddress = exceptionInfo && exceptionInfo->ExceptionRecord
 			? exceptionInfo->ExceptionRecord->ExceptionAddress : NULL;
+		const CString exceptionStack(CaptureExceptionStack(exceptionInfo));
 
 		StartupTrace::CrashTraceSnapshot traceSnapshot = {};
 		const bool snapshotAvailable = StartupTrace::TryGetCrashTraceSnapshot(traceSnapshot);
@@ -112,6 +167,9 @@ namespace
 		line.Format(L"Last script failure stage: %s\r\n", snapshotAvailable ? traceSnapshot.lastScriptFailureStage : unknown); text += line;
 		line.Format(L"Last HRESULT failure: %s\r\n", snapshotAvailable ? traceSnapshot.lastHResultFailure : unknown); text += line;
 		line.Format(L"Last dispatch failure: %s\r\n", snapshotAvailable ? traceSnapshot.lastDispatchFailure : unknown); text += line;
+		text += L"Crash stack:\r\n";
+		text += exceptionStack;
+		if (exceptionStack.Right(2) != L"\r\n") text += L"\r\n";
 
 		const WORD bom = 0xFEFF;
 		DWORD written = 0;

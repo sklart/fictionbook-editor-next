@@ -550,50 +550,46 @@ public:
    LRESULT OnTbGetButtonInfo(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHandled*/)
    {
       LPTBNOTIFY lpTbNotify = (LPTBNOTIFY) pnmh;
-	  if (lpTbNotify)
+	  if (!lpTbNotify || lpTbNotify->iItem < 0)
+		  return FALSE;
 	  try {
 		  CToolBarCtrl tb = lpTbNotify->hdr.hwndFrom;
-		  if (tb)
+		  if (!tb || !::IsWindow(tb)) return FALSE;
+		  const int idx = m_aButtons.FindKey((int)lpTbNotify->hdr.hwndFrom);
+		  if (idx < 0) return FALSE;
+
+		  TBBUTTONS aButtons = m_aButtons.GetValueAt(idx);
+		  if (lpTbNotify->iItem >= aButtons.GetSize()) return FALSE;
+
+		  TCHAR szBuff[256] = { 0 };
+		  LPCTSTR pstr = szBuff;
+		  TBBUTTON btn = aButtons[lpTbNotify->iItem];
+		  if (btn.iString)
 		  {
-			  int idx = m_aButtons.FindKey((int)lpTbNotify->hdr.hwndFrom);
-			  if (idx > -1)
-			  {
-				  TBBUTTONS aButtons = m_aButtons.GetValueAt(idx);
-				  // The toolbar requests information about buttons that we don't know of...
-				  if( lpTbNotify->iItem >= aButtons.GetSize() ) return FALSE;
-				  // Locate tooltip text and copy second half of it.
-				  // This is the same code as CFrameWindowImplBase uses, despite how 
-				  // dangerous it may look...
-				  TCHAR szBuff[256] = { 0 };
-				  LPCTSTR pstr = szBuff;
-				  TBBUTTON btn = aButtons[lpTbNotify->iItem];
-
+			  const int textIndex = m_BtnText.FindKey(btn.idCommand);
+			  if (textIndex < 0) return FALSE;
+			  pstr = m_BtnText.GetValueAt(textIndex);
+			  // TBN_GETBUTTONINFO supplies the text buffer.  Do not grow the
+			  // toolbar string pool while common controls enumerate buttons.
+			  btn.iString = -1;
+		  }
+		  else
+		  {
 			#if (_ATL_VER < 0x0700)
-				  int nRet = ::LoadString(_Module.GetResourceInstance(), btn.idCommand, szBuff, 255);
+			  const int nRet = ::LoadString(_Module.GetResourceInstance(), btn.idCommand, szBuff, 255);
 			#else
-				  int nRet = ATL::AtlLoadString(btn.idCommand, szBuff, 255);
+			  const int nRet = ATL::AtlLoadString(btn.idCommand, szBuff, 255);
 			#endif
-				  if (btn.iString)
-				  {
-					  pstr = m_BtnText.GetValueAt(m_BtnText.FindKey(btn.idCommand));
-					  btn.iString = tb.AddStrings(pstr);
-					  lpTbNotify->tbButton = btn;
-				  }
-				  else	
-				  {
-					  for(int i = 0; i < nRet; i++)
-						 if(szBuff[i] == _T('\n')) 
-						 {
-							pstr = szBuff + i + 1;
-							break;
-						 }
-
-					  lpTbNotify->tbButton = btn;
-					  ::lstrcpyn(lpTbNotify->pszText, pstr, lpTbNotify->cchText);
-					  lpTbNotify->cchText = ::lstrlen(pstr);
-				  }
+			  for (int i = 0; i < nRet; ++i)
+			  {
+				  if (szBuff[i] == _T('\n')) { pstr = szBuff + i + 1; break; }
 			  }
 		  }
+
+		  lpTbNotify->tbButton = btn;
+		  if (lpTbNotify->pszText && lpTbNotify->cchText > 0)
+			  ::lstrcpyn(lpTbNotify->pszText, pstr, lpTbNotify->cchText);
+		  lpTbNotify->cchText = ::lstrlen(pstr);
 	  }
 	  catch (...) { return FALSE; }
       return TRUE;
