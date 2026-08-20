@@ -20,6 +20,11 @@ function Invoke-Fbe([string[]]$Arguments, [string]$Name) {
     $process=Start-Process -FilePath $FbeExe -ArgumentList $Arguments -PassThru
     if(-not $process.WaitForExit($TimeoutSeconds*1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил $Name." }
     if($process.ExitCode -ne 0) { throw "FBE вернул код $($process.ExitCode): $Name." }
+    # MSHTML/common controls may finish tearing down their UI just after the
+    # batch process exits.  The structural suite starts many GUI instances;
+    # leave a small process-lifecycle gap before the next one to avoid a
+    # cross-process teardown race without retrying or weakening any scenario.
+    Start-Sleep -Seconds 1
 }
 $directory=Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-structural-'+[guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
