@@ -82,7 +82,13 @@ static bool PrintRuntimePaths()
 	const std::wstring settingsDirectory = EscapeJson(DeploymentContext::SettingsDirectory());
 	const std::wstring diagnosticsDirectory = EscapeJson(DeploymentContext::DiagnosticsDirectory());
 	const std::wstring recoveryDirectory = EscapeJson(DeploymentContext::RecoveryDirectory());
-	CString json; json.Format(L"{\"mode\":\"%s\",\"executableDirectory\":\"%s\",\"resourceRoot\":\"%s\",\"dataRoot\":\"%s\",\"settingsDirectory\":\"%s\",\"diagnosticsDirectory\":\"%s\",\"recoveryDirectory\":\"%s\",\"registryPersistenceAllowed\":%s}\r\n", mode, executableDirectory.c_str(), executableDirectory.c_str(), dataRoot.c_str(), settingsDirectory.c_str(), diagnosticsDirectory.c_str(), recoveryDirectory.c_str(), DeploymentContext::RegistryPersistenceAllowed() ? L"true" : L"false");
+	const std::wstring logsDirectory = EscapeJson(DeploymentContext::LogsDirectory());
+	const std::wstring cacheDirectory = EscapeJson(DeploymentContext::CacheDirectory());
+	const std::wstring tempDirectory = EscapeJson(DeploymentContext::TempDirectory());
+	const std::wstring dictionariesDirectory = EscapeJson(DeploymentContext::UserDictionariesDirectory());
+	const std::wstring themesDirectory = EscapeJson(DeploymentContext::UserThemesDirectory());
+	const std::wstring scriptsDirectory = EscapeJson(DeploymentContext::UserScriptsDirectory());
+	CString json; json.Format(L"{\"mode\":\"%s\",\"executableDirectory\":\"%s\",\"resourceRoot\":\"%s\",\"dataRoot\":\"%s\",\"settingsDirectory\":\"%s\",\"diagnosticsDirectory\":\"%s\",\"recoveryDirectory\":\"%s\",\"logsDirectory\":\"%s\",\"cacheDirectory\":\"%s\",\"tempDirectory\":\"%s\",\"dictionariesDirectory\":\"%s\",\"themesDirectory\":\"%s\",\"scriptsDirectory\":\"%s\",\"registryPersistenceAllowed\":%s}\r\n", mode, executableDirectory.c_str(), executableDirectory.c_str(), dataRoot.c_str(), settingsDirectory.c_str(), diagnosticsDirectory.c_str(), recoveryDirectory.c_str(), logsDirectory.c_str(), cacheDirectory.c_str(), tempDirectory.c_str(), dictionariesDirectory.c_str(), themesDirectory.c_str(), scriptsDirectory.c_str(), DeploymentContext::RegistryPersistenceAllowed() ? L"true" : L"false");
 	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, json, -1, NULL, 0, NULL, NULL); std::vector<char> output(bytes);
 	::WideCharToMultiByte(CP_UTF8, 0, json, -1, &output[0], bytes, NULL, NULL); DWORD written = 0;
 	::WriteFile(::GetStdHandle(STD_OUTPUT_HANDLE), &output[0], bytes - 1, &written, NULL);

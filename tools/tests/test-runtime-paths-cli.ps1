@@ -21,6 +21,9 @@ $installed = (Invoke-RuntimePaths @('--print-runtime-paths') 0).Stdout | Convert
 if ($installed.mode -ne 'Installed' -or -not $installed.registryPersistenceAllowed -or [string]::IsNullOrWhiteSpace($installed.settingsDirectory)) { throw 'Installed runtime paths are invalid.' }
 $portable = (Invoke-RuntimePaths @('--portable', '--print-runtime-paths') 0).Stdout | ConvertFrom-Json
 if ($portable.mode -ne 'Portable' -or $portable.registryPersistenceAllowed -or -not $portable.dataRoot.EndsWith('\Data\')) { throw 'Portable runtime paths are invalid.' }
+foreach ($pair in @{ logsDirectory = 'Logs'; cacheDirectory = 'Cache'; tempDirectory = 'Temp'; dictionariesDirectory = 'Dictionaries'; themesDirectory = 'Themes'; scriptsDirectory = 'Scripts' }.GetEnumerator()) {
+    if (-not $portable.($pair.Key).EndsWith("\$($pair.Value)\")) { throw "Portable $($pair.Key) is invalid." }
+}
 $conflict = Invoke-RuntimePaths @('--portable', '--installed', '--print-runtime-paths') 2
 if ($conflict.Stderr -notmatch 'cannot be used together') { throw 'Conflicting mode diagnostic is missing.' }
 Write-Host 'Runtime paths CLI behavior passed.'
