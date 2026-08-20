@@ -2,6 +2,7 @@
 #include "resource.h"
 #include "RuntimeLocalization.h"
 #include "..\common\RuntimeLocalizationCommon.h"
+#include "..\common\DeploymentContext.h"
 
 #include <map>
 #include <string>
@@ -169,13 +170,11 @@ static const wchar_t kRuntimeLocaleFileName[] = L"interface-locale.txt";
 
 static bool GetRuntimeLocaleFilePath(CPath& localePath)
 {
-	wchar_t localAppData[MAX_PATH] = {};
-	const DWORD length = ::GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, _countof(localAppData));
-	if (length == 0 || length >= _countof(localAppData))
-		return false;
-
-	localePath = localAppData;
-	localePath.Append(L"FBE Next");
+	// DeploymentContext preserves the installed %LOCALAPPDATA%\FBE Next path
+	// while portable copies use Data\Settings beside FBE.exe.
+	const std::wstring settingsDirectory = DeploymentContext::SettingsDirectory();
+	if (settingsDirectory.empty()) return false;
+	localePath = settingsDirectory.c_str();
 	localePath.Append(kRuntimeLocaleFileName);
 	return true;
 }

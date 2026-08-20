@@ -78,6 +78,9 @@ $architecture = $Platform.ToLowerInvariant()
 $artifactCompatibility = if ($CompatibilityTarget -eq "Win7") { "win7-" } else { "" }
 $artifactsDir = Join-Path $repoRoot ("out\artifacts\{0}" -f $CompatibilityTarget)
 $portableDir = Join-Path $repoRoot ("out\package\{0}\FictionBookEditor" -f $CompatibilityTarget)
+$coreDir = Join-Path $repoRoot ("out\stage\Core\{0}" -f $CompatibilityTarget)
+$integrationDir = Join-Path $repoRoot ("out\stage\Integration\{0}" -f $CompatibilityTarget)
+$installerInputDir = Join-Path $repoRoot ("out\package\{0}\InstallerInput" -f $CompatibilityTarget)
 $symbolsDir = Join-Path $repoRoot ("out\package\{0}\symbols" -f $CompatibilityTarget)
 $editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
 $batchOutputDirectory = if ($BatchOutputDirectory) {
@@ -171,16 +174,18 @@ if ($SkipCommonChecks) {
 if (-not $SkipReleaseVerification) {
     & (Join-Path $PSScriptRoot "verify-release.ps1") @verifyReleaseArguments
 }
-& (Join-Path $PSScriptRoot "package-portable.ps1") `
+& (Join-Path $PSScriptRoot "stage-core.ps1") `
     -Configuration $Configuration `
     -EditorRuntimeDirectory $editorRuntimeDirectory `
     -BatchOutputDirectory $batchOutputDirectory `
     -ArchHandlerOutputDirectory $archHandlerOutputDirectory `
-    -PackageDirectory $portableDir `
-    -RequireWin32PropertyHandler `
-    -RequireX64ShellExtension `
-    -SkipFbvVerbMuiBuild:$SkipFbvVerbMuiBuild
-& (Join-Path $PSScriptRoot "verify-package-stage.ps1") -StageDirectory $portableDir
+    -OutputDirectory $coreDir
+& (Join-Path $PSScriptRoot "stage-integration.ps1") `
+    -Configuration $Configuration `
+    -OutputDirectory $integrationDir
+& (Join-Path $PSScriptRoot "package-portable.ps1") `
+    -CoreDirectory $coreDir `
+    -OutputDirectory $portableDir
 foreach ($name in @('ZipHandler.exe', 'RarHandler.exe')) {
     $builtArtifact = Join-Path $archHandlerOutputDirectory $name
     $packagedArtifact = Join-Path $portableDir "Utilities\ArchHandler\$name"
@@ -291,10 +296,9 @@ Compress-Archive -Path (Join-Path $symbolsDir "*") -DestinationPath $symbolsZip 
 
 if (-not $SkipInstaller) {
     & (Join-Path $PSScriptRoot "prepare-installer.ps1") `
-        -Configuration $Configuration `
-        -SkipPortablePackage `
-        -SkipPackageVerification `
-        -PortableDirectory $portableDir
+        -CoreDirectory $coreDir `
+        -IntegrationDirectory $integrationDir `
+        -OutputDirectory $installerInputDir
 
     $makensisCandidates = @(
         (Join-Path ${env:ProgramFiles(x86)} "NSIS\Unicode\makensis.exe"),
@@ -318,7 +322,7 @@ if (-not $SkipInstaller) {
         $makensisArguments = @(
             '/X!addincludedir ..\NSIS',
             '/X!addplugindir /x86-unicode ..\NSIS',
-            ('/DINPUTDIR=' + $portableDir),
+            ('/DINPUTDIR=' + $installerInputDir),
             ('/DOUTPUTFILE=' + $setupArtifact)
         )
         if ($CompatibilityTarget -eq "Win7") {

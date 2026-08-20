@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "..\\common\\DeploymentContext.h"
 #include "XmlSourceThemes.h"
 
 enum KEY_TYPE
@@ -217,7 +218,10 @@ void CSettings::Init()
 	const TCHAR* appname = L"FictionBook Editor Next";
 	m_key_path = L"Software\\FBETeam\\";
 	m_key_path += appname;
-	m_key.Create(HKEY_CURRENT_USER, m_key_path);
+	// Portable copies deliberately retain a key path for legacy readers but do
+	// not create an FBE-owned registry branch or persist settings there.
+	if (DeploymentContext::RegistryPersistenceAllowed())
+		m_key.Create(HKEY_CURRENT_USER, m_key_path);
 }
 
 void CSettings::InitHotkeyGroups()

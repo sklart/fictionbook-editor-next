@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "plugins": [
+    { "id": "import-epub", "type": "Import", "module": "ImportEPUB.dll", "clsid": "{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}", "activation": "local-com" },
+    { "id": "export-html", "type": "Export", "module": "ExportHTML.dll", "clsid": "{C3098839-EF69-4DE5-B27D-1E80051CA843}", "activation": "local-com" },
+    { "id": "export-docx", "type": "Export", "module": "ExportDOCX.dll", "clsid": "{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}", "activation": "local-com" },
+    { "id": "export-epub", "type": "Export", "module": "ExportEPUB.dll", "clsid": "{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}", "activation": "local-com" }
+  ]
+}

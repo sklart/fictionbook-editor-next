@@ -2,6 +2,7 @@
 
 #include "StartupTrace.h"
 #include "utils.h"
+#include "..\\common\\DeploymentContext.h"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -110,7 +111,7 @@ namespace
 
 	CString FindCrashTextForSession(const CString& currentLog)
 	{
-		const CString directory(U::GetSettingsDir() + L"Crashes\\"); WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"FBENext-crash-*.txt", &find); if (search == INVALID_HANDLE_VALUE) return CString();
+		const CString directory(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"Crashes\\"); WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"FBENext-crash-*.txt", &find); if (search == INVALID_HANDLE_VALUE) return CString();
 		WIN32_FILE_ATTRIBUTE_DATA traceData = {}; if (!::GetFileAttributesEx(currentLog, GetFileExInfoStandard, &traceData)) { ::FindClose(search); return CString(); }
 		const int pidMarker = currentLog.Find(L"-pid"); const int extension = currentLog.ReverseFind(L'.');
 		if (pidMarker < 0 || extension <= pidMarker) { ::FindClose(search); return CString(); }

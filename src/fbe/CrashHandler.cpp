@@ -6,6 +6,7 @@
 #include "CrashHandler.h"
 #include "StartupTrace.h"
 #include "utils.h"
+#include "..\\common\\DeploymentContext.h"
 #include "../version.h"
 
 #define FBE_WIDEN_TEXT_INNER(value) L##value
@@ -171,7 +172,9 @@ namespace
 
 void CrashDiagnostics::Initialize()
 {
-	const CString crashDirectory(U::GetSettingsDir() + L"Crashes\\");
+	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
+	::CreateDirectory(diagnosticsDirectory, NULL);
+	const CString crashDirectory(diagnosticsDirectory + L"Crashes\\");
 	if (!::CreateDirectory(crashDirectory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS)
 		return;
 

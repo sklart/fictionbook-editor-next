@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "core": {
+    "required": [
+      "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
+      "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe",
+      "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "Scintilla.dll", "Lexilla.dll",
+      "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Plugins\\plugins.json"
+    ],
+    "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools"]
+  },
+  "integration": {
+    "required": [
+      "FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc",
+      "InstallerTools\\register-sequence-property-schema.ps1",
+      "InstallerTools\\register-modern-property-handler.ps1",
+      "InstallerTools\\unregister-modern-property-handler.ps1",
+      "Lang\\Shell\\FBVVerbResources.dll"
+    ]
+  },
+  "portable": {
+    "required": ["portable.ini", "Data"],
+    "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "Lang\\Shell"]
+  }
+}

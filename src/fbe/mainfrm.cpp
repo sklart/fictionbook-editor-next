@@ -12,6 +12,7 @@
 #include "FictionBookFileType.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
+#include "..\\common\\DeploymentContext.h"
 #include <string>
 #include <vector>
 #include <psapi.h>
@@ -93,7 +94,7 @@ static bool IsTableToolbarCommand(UINT commandId)
 // Studio) does not use per-user COM registrations.  The bundled export DLLs
 // live next to FBE.exe, so fall back to their class factory directly when
 // CoCreateInstance cannot see the HKCU registration.
-static HRESULT CreateBundledExportPluginInstance(const CLSID& clsid, IUnknownPtr& instance)
+static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& instance)
 {
 	HRESULT result = instance.CreateInstance(clsid);
 	if(result != REGDB_E_CLASSNOTREG)
@@ -102,6 +103,7 @@ static HRESULT CreateBundledExportPluginInstance(const CLSID& clsid, IUnknownPtr
 	static const CLSID exportHtmlClsid = { 0xC3098839, 0xEF69, 0x4DE5, { 0xB2, 0x7D, 0x1E, 0x80, 0x05, 0x1C, 0xA8, 0x43 } };
 	static const CLSID exportDocxClsid = { 0x09B5ABFF, 0x177E, 0x4C03, { 0x98, 0xD0, 0x9E, 0xF4, 0xE1, 0xC9, 0xDB, 0x56 } };
 	static const CLSID exportEpubClsid = { 0x36FCFB2D, 0xC3D8, 0x4B81, { 0xAB, 0xC1, 0x5A, 0x09, 0xCA, 0x84, 0x65, 0x15 } };
+	static const CLSID importEpubClsid = { 0x3C19F5A2, 0x2EC8, 0x4EC7, { 0xB7, 0xA9, 0xF4, 0x91, 0x0B, 0x4C, 0xDD, 0x82 } };
 	LPCWSTR fileName = NULL;
 	if(::InlineIsEqualGUID(clsid, exportHtmlClsid))
 		fileName = L"ExportHTML.dll";
@@ -109,10 +111,15 @@ static HRESULT CreateBundledExportPluginInstance(const CLSID& clsid, IUnknownPtr
 		fileName = L"ExportDOCX.dll";
 	else if(::InlineIsEqualGUID(clsid, exportEpubClsid))
 		fileName = L"ExportEPUB.dll";
+	else if(::InlineIsEqualGUID(clsid, importEpubClsid))
+		fileName = L"ImportEPUB.dll";
 	if(fileName == NULL)
 		return result;
 
-	HMODULE module = ::LoadLibrary(U::GetProgDirFile(fileName));
+	const CString path = U::GetProgDirFile(fileName);
+	HMODULE module = ::LoadLibraryEx(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+	if(module == NULL && ::GetLastError() == ERROR_INVALID_PARAMETER)
+		module = ::LoadLibrary(path);
 	if(module == NULL)
 		return HRESULT_FROM_WIN32(::GetLastError());
 
@@ -131,6 +138,54 @@ static HRESULT CreateBundledExportPluginInstance(const CLSID& clsid, IUnknownPtr
 	if(SUCCEEDED(result))
 		instance.Attach(localInstance);
 	return result;
+}
+
+static void AddBundledPluginCatalog(HMENU menu, const TCHAR* type, UINT commandBase, CSimpleArray<CLSID>& plugins)
+{
+	struct Entry { const TCHAR* type; CLSID clsid; const TCHAR* menu; };
+	static const Entry entries[] = {
+		{ L"Import", { 0x3C19F5A2, 0x2EC8, 0x4EC7, { 0xB7, 0xA9, 0xF4, 0x91, 0x0B, 0x4C, 0xDD, 0x82 } }, L"Import EPUB" },
+		{ L"Export", { 0xC3098839, 0xEF69, 0x4DE5, { 0xB2, 0x7D, 0x1E, 0x80, 0x05, 0x1C, 0xA8, 0x43 } }, L"Export HTML" },
+		{ L"Export", { 0x09B5ABFF, 0x177E, 0x4C03, { 0x98, 0xD0, 0x9E, 0xF4, 0xE1, 0xC9, 0xDB, 0x56 } }, L"Export DOCX" },
+		{ L"Export", { 0x36FCFB2D, 0xC3D8, 0x4B81, { 0xAB, 0xC1, 0x5A, 0x09, 0xCA, 0x84, 0x65, 0x15 } }, L"Export EPUB" }
+	};
+	for(size_t index = 0; index < _countof(entries); ++index)
+	{
+		if(::lstrcmpi(entries[index].type, type) != 0) continue;
+		plugins.Add(entries[index].clsid);
+		::AppendMenu(menu, MF_STRING, commandBase + plugins.GetSize() - 1, entries[index].menu);
+	}
+}
+
+static CString PortableMruPath()
+{
+	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"MRU.xml";
+}
+
+static void ReadPortableMru(CRecentDocumentList& list)
+{
+	const CString path = PortableMruPath();
+	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) return;
+	const DWORD length = ::GetFileSize(file, NULL);
+	if(length == INVALID_FILE_SIZE || length > 64 * 1024) { ::CloseHandle(file); return; }
+	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
+	const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
+	if(!ok || (read % sizeof(wchar_t)) != 0) return;
+	int position = 0; CString line;
+	while(position >= 0) { line = CString(&text[0]).Tokenize(L"\n", position); line.Trim(); if(!line.IsEmpty()) list.AddToList(line); }
+}
+
+static void WritePortableMru(const CRecentDocumentList& list)
+{
+	const CString directory(DeploymentContext::SettingsDirectory().c_str());
+	if(!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return;
+	const CString path = PortableMruPath(), temporary = path + L".tmp";
+	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) return;
+	for(int index = 0; index < list.m_arrDocs.GetSize(); ++index) { const CString line = CString(list.m_arrDocs[index].szDocName) + L"\r\n"; DWORD written = 0; if(!::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) || written != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) { ::CloseHandle(file); ::DeleteFile(temporary); return; } }
+	::FlushFileBuffers(file); ::CloseHandle(file);
+	if(!::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) ::DeleteFile(temporary);
 }
 
 struct ScriptCommandId
@@ -2177,10 +2232,13 @@ void CMainFrame::AddStaticText(CCustomStatic &st, HWND toolbarHwnd, int id, cons
 void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist)
 {
 	CRegKey rk;
-
+	AddBundledPluginCatalog(hMenu, type, cmdbase, plist);
+	int ncmd = plist.GetSize();
 	if(rk.Open(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Plugins") != ERROR_SUCCESS)
+	{
+		if(ncmd > 0) ::RemoveMenu(hMenu, 0, MF_BYPOSITION);
 		return;
-	int ncmd = 0;
+	}
 	for(int i = 0; ncmd < 20; ++i)
 	{
 		CString name;
@@ -2201,6 +2259,10 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 		CLSID clsid;
 		if(::CLSIDFromString((TCHAR*)(const TCHAR *)name, &clsid) != NOERROR)
 			continue;
+		bool alreadyBundled = false;
+		for(int existing = 0; existing < plist.GetSize(); ++existing)
+			if(::InlineIsEqualGUID(plist[existing], clsid)) { alreadyBundled = true; break; }
+		if(alreadyBundled) continue;
 
 		// all checks pass, add to menu and remember clsid
 		plist.Add(clsid);
@@ -2266,7 +2328,10 @@ void CMainFrame::InitPlugins()
 
 	sub = ::GetSubMenu(file, 9);
 	m_mru.SetMenuHandle(sub);
-	m_mru.ReadFromRegistry(_Settings.GetKeyPath());
+	if (DeploymentContext::RegistryPersistenceAllowed())
+		m_mru.ReadFromRegistry(_Settings.GetKeyPath());
+	else
+		ReadPortableMru(m_mru);
 	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
 	StartupTrace::Event(L"plugin", L"P160", L"MRU initialized");
 
@@ -2865,7 +2930,10 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
     wpl.length=sizeof(wpl);
     GetWindowPlacement(&wpl);
 	_Settings.SetWindowPosition(wpl);
-    m_mru.WriteToRegistry(_Settings.GetKeyPath());
+	if (DeploymentContext::RegistryPersistenceAllowed())
+		m_mru.WriteToRegistry(_Settings.GetKeyPath());
+	else
+		WritePortableMru(m_mru);
     // save toolbars state
     CString tbs;
     REBARBANDINFO  rbi;
@@ -4377,7 +4445,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
     TracePluginDiagnostic(L"Import", pluginClsid, L"begin", S_OK, 0);
     try {
       IUnknownPtr			    unk;
-      HRESULT pluginHr = unk.CreateInstance(pluginClsid);
+		HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
       TracePluginDiagnostic(L"Import", pluginClsid, L"CreateInstance", pluginHr, 0);
       CheckError(pluginHr);
 
@@ -4461,7 +4529,7 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 		try
 		{
 			IUnknownPtr unk;
-			HRESULT pluginHr = CreateBundledExportPluginInstance(pluginClsid, unk);
+			HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
 			TracePluginDiagnostic(L"Export", pluginClsid, L"CreateInstance", pluginHr, 0);
 			CheckError(pluginHr);
 

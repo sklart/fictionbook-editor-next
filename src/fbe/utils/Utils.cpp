@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "..\\common\\DeploymentContext.h"
 
 #include <deque>
 #include "utils.h"
@@ -421,6 +422,13 @@ CString	Win32ErrMsg(DWORD code) {
 // fix Vista/Windows 7 issues
 CString GetSettingsDir()
 {
+	if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable)
+	{
+		const CString portableSettings(DeploymentContext::SettingsDirectory().c_str());
+		if (portableSettings.IsEmpty() || !::CreateDirectory(portableSettings, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS)
+			return CString();
+		return portableSettings;
+	}
 	wchar_t szPath[MAX_PATH];
 	if ( SUCCEEDED( SHGetFolderPath( NULL, CSIDL_LOCAL_APPDATA, NULL, 0, szPath ) ) )
 	{

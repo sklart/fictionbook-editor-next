@@ -21,12 +21,14 @@
 ; Отдельное имя ключа не позволяет FBE Next перезаписывать App Paths старого FBE.
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\FictionBookEditorNext.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
-!define PRODUCT_UNINST_ROOT_KEY "HKCU"
+; SHCTX follows SetShellVarContext: current user by default, all users after
+; explicit elevation/scope selection.  Do not hard-code HKCU in shared paths.
+!define PRODUCT_UNINST_ROOT_KEY "SHCTX"
 !define PRODUCT_STARTMENU_REGVAL "NSIS:StartMenuDir"
 !define PRODUCT_SYSTEM_INTEGRATION_REGVAL "SystemIntegrationInstalled"
 !define FB2_PROPERTY_HANDLER_CLSID "{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}"
 !define FBE_SEQUENCE_SCHEMA_FILE "FBE.Sequence.propdesc"
-!define FBE_SHELL_SHARED_DIR "$%ProgramData%\FictionBook Editor\Shell"
+!define FBE_SHELL_SHARED_DIR "$%ProgramData%\FictionBook Editor Next\Shell"
 !define FB2_INFOTIP_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;System.Size"
 !define FB2_TILEINFO_PROPERTIES "prop:System.Author;System.Title"
 !define FB2_DETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
@@ -568,6 +570,8 @@ nthere:
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayName" "${PRODUCT_NAME_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "InstallLocation" "$INSTDIR"
+	WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "InstallLocation" "$INSTDIR"
+	WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "CoreVersion" "${PRODUCT_VERSION}"
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayIcon" "$INSTDIR\FBE.exe,0"
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "Publisher" "${PRODUCT_VENDOR}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "URLInfoAbout" "${PRODUCT_URL}"
@@ -780,7 +784,6 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 		Section $(Plugin_ImportEPUB) ImportEPUB_Plugin_id
 			SetOutPath "$INSTDIR"
 			File "${INPUTDIR}\ImportEPUB.dll"
-			RegDll "$INSTDIR\ImportEPUB.dll"
 		SectionEnd
 		Section /o $(Plugin_ImportEPUB_SVG) ImportEPUB_SVG_id
 			SetOutPath "$INSTDIR"
@@ -792,22 +795,25 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 		Section $(Plugin_ExportHTML) ExportHTML_Plugin_id
 			SetOutPath "$INSTDIR"
 			File "${INPUTDIR}\ExportHTML.dll"
-			RegDll "$INSTDIR\ExportHTML.dll"
 		SectionEnd
 		Section $(Plugin_ExportDOCX) ExportDOCX_Plugin_id
 			SetOutPath "$INSTDIR"
 			File "${INPUTDIR}\ExportDOCX.dll"
-			RegDll "$INSTDIR\ExportDOCX.dll"
 		SectionEnd
 		Section $(Plugin_ExportEPUB) ExportEPUB_Plugin_id
 			SetOutPath "$INSTDIR"
 			File "${INPUTDIR}\ExportEPUB.dll"
-			RegDll "$INSTDIR\ExportEPUB.dll"
 		SectionEnd
 	SectionGroupEnd
 
-	Section -VerifyExportPlugins VerifyExportPlugins_id
-		Call VerifyPluginRegistration
+	; The editor activates bundled plug-ins via their local class factories.
+	; Registry COM remains available only for external legacy consumers.
+	Section /o "Legacy COM compatibility" LegacyComCompatibility_id
+		RegDll "$INSTDIR\ImportEPUB.dll"
+		RegDll "$INSTDIR\ExportHTML.dll"
+		RegDll "$INSTDIR\ExportDOCX.dll"
+		RegDll "$INSTDIR\ExportEPUB.dll"
+		WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "LegacyComInstalled" 1
 	SectionEnd
 
 	Section /o $(Plugin_BatchConverters) BatchConverters_id
@@ -974,11 +980,14 @@ Section Uninstall
   Delete "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
   RMDir "${FBE_SHELL_SHARED_DIR}"
 
-  ; remove plugin
-  UnRegDll "$INSTDIR\ImportEPUB.dll"
-  UnRegDll "$INSTDIR\ExportHTML.dll"
-  UnRegDll "$INSTDIR\ExportDOCX.dll"
-  UnRegDll "$INSTDIR\ExportEPUB.dll"
+  ; Only the explicitly selected legacy component performs COM registration.
+  ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "LegacyComInstalled"
+  ${If} $0 = 1
+    UnRegDll "$INSTDIR\ImportEPUB.dll"
+    UnRegDll "$INSTDIR\ExportHTML.dll"
+    UnRegDll "$INSTDIR\ExportDOCX.dll"
+    UnRegDll "$INSTDIR\ExportEPUB.dll"
+  ${EndIf}
 
   ; remove verbs; TODO: check if these really point to FBE
   DeleteRegKey HKCU "Software\Classes\FictionBook.2\shell\Edit"

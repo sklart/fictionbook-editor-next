@@ -2,6 +2,7 @@
 
 #include "StartupTrace.h"
 #include "utils.h"
+#include "..\\common\\DeploymentContext.h"
 #include "../version.h"
 #include <algorithm>
 #include <vector>
@@ -457,6 +458,8 @@ namespace
 
 	const wchar_t* DetectDeployment(const CString& executablePath)
 	{
+		if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable)
+			return L"portable";
 		const HKEY roots[] = { HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE };
 		const REGSAM views[] = { KEY_WOW64_32KEY, KEY_WOW64_64KEY };
 		bool foundOtherInstalledLocation = false;
@@ -558,28 +561,34 @@ void WriteEnvironmentHeader()
 		for (size_t index = 0; index < _countof(modules); ++index) StartupTrace::Event(L"environment", L"E011", DescribeDiagnosticModule(modules[index]));
 		StartupTrace::Event(L"environment", L"E010", details);
 	}
-	bool TryGetNextLaunchPreference(bool& enabled) { DWORD value = 0, size = sizeof(value); if (::RegGetValue(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, diagnosticTraceRegistryValue, RRF_RT_REG_DWORD, NULL, &value, &size) != ERROR_SUCCESS) return false; enabled = value != 0; return true; }
+	bool TryGetNextLaunchPreference(bool& enabled) { if (!DeploymentContext::RegistryPersistenceAllowed()) { const CString marker = CString(DeploymentContext::DataRoot().c_str()) + L"portable.ini"; enabled = ::GetPrivateProfileInt(L"Diagnostics", L"TraceNextLaunch", 0, marker) != 0; return true; } DWORD value = 0, size = sizeof(value); if (::RegGetValue(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, diagnosticTraceRegistryValue, RRF_RT_REG_DWORD, NULL, &value, &size) != ERROR_SUCCESS) return false; enabled = value != 0; return true; }
 	bool IsTraceEnabled(const wchar_t* variable) { wchar_t value[8] = {}; DWORD n = ::GetEnvironmentVariable(variable, value, _countof(value)); return n && n < _countof(value) && !(n == 1 && value[0] == L'0'); }
 }
 
 bool StartupTrace::IsEnabledForNextLaunch() { bool enabled = false; return TryGetNextLaunchPreference(enabled) ? enabled : IsTraceEnabled(L"FBE_NEXT_TRACE"); }
 bool StartupTrace::IsEnabledByStoredNextLaunchPreference() { bool enabled = false; return TryGetNextLaunchPreference(enabled) && enabled; }
-bool StartupTrace::SetEnabledForNextLaunch(bool enabled) { HKEY key = NULL; if (::RegCreateKeyEx(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &key, NULL) != ERROR_SUCCESS) return false; DWORD value = enabled ? 1 : 0; LONG result = ::RegSetValueEx(key, diagnosticTraceRegistryValue, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value)); ::RegCloseKey(key); return result == ERROR_SUCCESS; }
+bool StartupTrace::SetEnabledForNextLaunch(bool enabled) { if (!DeploymentContext::RegistryPersistenceAllowed()) { const CString marker = CString(DeploymentContext::DataRoot().c_str()) + L"portable.ini"; return ::WritePrivateProfileString(L"Diagnostics", L"TraceNextLaunch", enabled ? L"1" : L"0", marker) != FALSE; } HKEY key = NULL; if (::RegCreateKeyEx(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &key, NULL) != ERROR_SUCCESS) return false; DWORD value = enabled ? 1 : 0; LONG result = ::RegSetValueEx(key, diagnosticTraceRegistryValue, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value)); ::RegCloseKey(key); return result == ERROR_SUCCESS; }
 
 void StartupTrace::Start()
 {
 	if (!IsEnabledForNextLaunch()) return;
 	::InitializeCriticalSection(&traceLock); traceLockInitialized = true;
 	wchar_t base[MAX_PATH] = {};
-	const bool haveLocalAppData = SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, base));
+	const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
+	const bool haveLocalAppData = !portable && SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, base));
 	SYSTEMTIME time = {}; ::GetLocalTime(&time);
 	bool opened = false;
-	if (haveLocalAppData)
+	if (portable)
+	{
+		CString directory(DeploymentContext::DiagnosticsDirectory().c_str()); directory.TrimRight(L"\\");
+		opened = OpenTraceFile(directory, time);
+	}
+	else if (haveLocalAppData)
 	{
 		CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next\\Diagnostics";
 		opened = OpenTraceFile(directory, time);
 	}
-	if (!opened)
+	if (!opened && !portable)
 	{
 		const DWORD primaryError = ::GetLastError();
 		if (!::GetTempPath(_countof(base), base)) { lastWriteError = primaryError; return; }
