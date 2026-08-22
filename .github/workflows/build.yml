@@ -143,6 +143,7 @@ jobs:
           $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true; SkipPropertyHandlerBuild = $true; SkipFbvVerbMuiBuild = $true; SkipReleaseVerification = $true; SkipArtifactVerification = $true; SkipVersionSync = $true; BatchOutputDirectory = "out/target-batches/Modern" }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
+            $arguments.FullValidation = $true
             if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true }
           }
           ./tools/build/create-release.ps1 @arguments

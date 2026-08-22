@@ -164,6 +164,7 @@ Assert-Contains $verifyRelease "[switch]`$FullValidation" "verify-release.ps1: e
 Assert-Contains $verifyRelease "`$RunTableTests -or `$FullValidation" "verify-release.ps1: table suite FAST/FULL guard"
 Assert-Contains $workflow "GITHUB_REF_TYPE -eq 'tag'" "workflow: tag validation selects FULL"
 Assert-Contains $workflow "`$arguments.FullValidation = `$true" "workflow: tag passes FullValidation"
+Assert-Contains $workflow "`$arguments.FullValidation = `$true" "workflow: tag Modern package passes FullValidation"
 Assert-Contains $release "[switch]`$FullValidation" "create-release.ps1: release validation can request FULL"
 Assert-Contains $verifyRelease "test-editor-runtime-fingerprint.ps1" "verify-release.ps1: behavioral editor-runtime fingerprint regression"
 Assert-Contains $verifyRelease "test-fbe-selection-container-control-range.ps1" "verify-release.ps1: MSHTML ControlRange selection regression"
