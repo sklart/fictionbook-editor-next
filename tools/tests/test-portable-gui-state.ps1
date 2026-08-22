@@ -60,6 +60,10 @@ foreach ($path in @(
 )) { if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Portable GUI did not persist $path." } }
 if ((Get-Content -Raw -LiteralPath (Join-Path $settings 'Words.xml')) -notmatch 'portable-state-sentinel') { throw 'Words sentinel was not persisted.' }
 if ((Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'MRU.xml')) -notmatch 'portable-state-sentinel\.fb2') { throw 'MRU sentinel was not persisted.' }
+$hotkeysXml = Get-Content -Raw -LiteralPath (Join-Path $settings 'Hotkeys.xml')
+if ($hotkeysXml -notmatch '<Name>Words</Name>\s*<Accel>13;135</Accel>') { throw 'Hotkeys exact sentinel Ctrl+Shift+F24 was not persisted.' }
+$settingsXml = Get-Content -Raw -LiteralPath (Join-Path $settings 'Settings.xml')
+if ($settingsXml -notmatch '<Toolbars>[^<]*60160,\d+,731;') { throw 'Toolbar exact sentinel width for the first rebar band was not persisted.' }
 $persistedSnapshot = Get-FileTreeSnapshot $data
 
 Invoke-PortableStateScenario 'portable-state-read'

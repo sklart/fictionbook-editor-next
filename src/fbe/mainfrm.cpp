@@ -2897,7 +2897,6 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   }
 
   m_need_title_update = true;
-  RunPortableStateTestScenario();
   StartupTrace::Event(L"mainframe", L"M199", L"OnCreate completed");
   return 0;
 }
@@ -3256,6 +3255,7 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	delete[] lpaccelNew;
 
 	FillMenuWithHkeys(m_MenuBar.GetMenu());
+	RunPortableStateTestScenario();
 	if (!AU::_ARGS.source_memory_benchmark_path.IsEmpty())
 		PostMessage(AU::WM_SOURCE_MEMORY_BENCHMARK);
 	return 0;
@@ -3281,6 +3281,21 @@ static bool WritePortableStateTestText(const CString& path, const char* text)
 	return ok;
 }
 
+static bool HasPortableStateToolbarWidth(const CString& settings, UINT bandId, int expectedWidth)
+{
+	int position = 0;
+	CString entry = settings.Tokenize(L";", position);
+	while (!entry.IsEmpty())
+	{
+		int id = 0, style = 0, width = 0;
+		if (_stscanf(entry, L"%d,%d,%d", &id, &style, &width) == 3 &&
+			id == static_cast<int>(bandId))
+			return width == expectedWidth;
+		entry = settings.Tokenize(L";", position);
+	}
+	return false;
+}
+
 void CMainFrame::RunPortableStateTestScenario()
 {
 	if (!IsFbeTestScenario(L"portable-state-write") && !IsFbeTestScenario(L"portable-state-read"))
@@ -3291,6 +3306,10 @@ void CMainFrame::RunPortableStateTestScenario()
 	const CString diagnosticsMarker(diagnosticsDirectory + L"portable-state-sentinel.txt");
 	const CString recoveryMarker(GetRecoveryFileName());
 	const CString reportPath(diagnosticsDirectory + L"portable-state-report.txt");
+	const WORD portableStateHotkeyFlags = FVIRTKEY | FCONTROL | FSHIFT;
+	const WORD portableStateHotkeyKey = VK_F24;
+	const int portableStateToolbarWidth = 731;
+	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
 	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
@@ -3309,10 +3328,21 @@ void CMainFrame::RunPortableStateTestScenario()
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
 		_Settings.m_words.push_back(WordsItem(L"portable-state-sentinel", 17));
 		m_mru.AddToList(U::GetProgDirFile(L"portable-state-sentinel.fb2"));
+		if (CHotkeysGroup* tools = _Settings.GetGroupByName(L"Tools"))
+			if (CHotkey* hotkey = _Settings.GetHotkeyByName(L"Words", *tools))
+			{
+				hotkey->m_accel.fVirt = portableStateHotkeyFlags;
+				hotkey->m_accel.key = portableStateHotkeyKey;
+				_Settings.SaveHotkeyGroups();
+			}
 		if (m_rebar.GetBandCount() > 0)
 		{
-			REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_SIZE | RBBIM_STYLE;
-			m_rebar.GetBandInfo(0, &band); band.cx += 17; m_rebar.SetBandInfo(0, &band);
+			REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_ID | RBBIM_SIZE | RBBIM_STYLE;
+			if (m_rebar.GetBandInfo(0, &band) && band.wID == portableStateToolbarBandId)
+			{
+				band.cx = portableStateToolbarWidth;
+				m_rebar.SetBandInfo(0, &band);
+			}
 		}
 		WritePortableStateTestText(diagnosticsMarker, "portable-state-diagnostics\n");
 		WritePortableStateTestText(recoveryMarker, "portable-state-recovery\n");
@@ -3323,13 +3353,17 @@ void CMainFrame::RunPortableStateTestScenario()
 		bool wordFound = false, mruFound = false;
 		for (size_t index = 0; index < _Settings.m_words.size(); ++index)
 			if (_Settings.m_words[index].m_word == L"portable-state-sentinel" && _Settings.m_words[index].m_count == 17) wordFound = true;
-		const bool hotkeys = !_Settings.m_hotkey_groups.empty();
+		CHotkeysGroup* tools = _Settings.GetGroupByName(L"Tools");
+		CHotkey* hotkey = tools ? _Settings.GetHotkeyByName(L"Words", *tools) : NULL;
+		const bool hotkeys = hotkey != NULL && hotkey->m_accel.fVirt == portableStateHotkeyFlags &&
+			hotkey->m_accel.key == portableStateHotkeyKey;
 		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index)
 			if (CString(m_mru.m_arrDocs[index].szDocName).Find(L"portable-state-sentinel.fb2") >= 0) mruFound = true;
 		const bool settings = _Settings.GetShowFullPathInWindowTitle();
 		const bool locale = _Settings.GetInterfaceLocaleName() == L"ru-RU";
 		const bool scripts = _Settings.GetScriptsFolder().CompareNoCase(scriptsDirectory) == 0;
-		const bool toolbar = !_Settings.GetToolbarsSettings().IsEmpty();
+		const bool toolbar = HasPortableStateToolbarWidth(_Settings.GetToolbarsSettings(),
+			portableStateToolbarBandId, portableStateToolbarWidth);
 		const bool diagnostics = ::GetFileAttributes(diagnosticsMarker) != INVALID_FILE_ATTRIBUTES;
 		const bool recovery = ::GetFileAttributes(recoveryMarker) != INVALID_FILE_ATTRIBUTES;
 		CStringA report;

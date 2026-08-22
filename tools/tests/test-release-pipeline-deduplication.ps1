@@ -162,9 +162,23 @@ Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verif
 Assert-Contains $verifyRelease "[switch]`$SkipCommonChecks" "verify-release.ps1"
 Assert-Contains $verifyRelease "[switch]`$FullValidation" "verify-release.ps1: explicit FULL mode"
 Assert-Contains $verifyRelease "`$RunTableTests -or `$FullValidation" "verify-release.ps1: table suite FAST/FULL guard"
-Assert-Contains $workflow "GITHUB_REF_TYPE -eq 'tag'" "workflow: tag validation selects FULL"
-Assert-Contains $workflow "`$arguments.FullValidation = `$true" "workflow: tag passes FullValidation"
-Assert-Contains $workflow "`$arguments.FullValidation = `$true" "workflow: tag Modern package passes FullValidation"
+$verifyModernStep = $workflow.IndexOf('- name: Verify Modern binaries')
+$packageModernStep = $workflow.IndexOf('- name: Create Modern release artifacts without compiling')
+$verifyTagGuard = $workflow.IndexOf("if (`$env:GITHUB_REF_TYPE -eq 'tag')", $verifyModernStep)
+$verifyFullValidation = $workflow.IndexOf('$arguments.FullValidation = $true', $verifyTagGuard)
+$verifyInvocation = $workflow.IndexOf('./tools/build/verify-release.ps1 @arguments', $verifyTagGuard)
+if ($verifyModernStep -lt 0 -or $packageModernStep -lt 0 -or $verifyTagGuard -lt $verifyModernStep -or
+    $verifyFullValidation -lt $verifyTagGuard -or $verifyFullValidation -ge $packageModernStep -or
+    $verifyInvocation -lt $verifyFullValidation -or $verifyInvocation -ge $packageModernStep) {
+    throw 'Build/tag verification must pass FullValidation in its own Verify Modern binaries block.'
+}
+$packageTagGuard = $workflow.IndexOf('if ($env:GITHUB_REF_TYPE -eq "tag")', $packageModernStep)
+$packageFullValidation = $workflow.IndexOf('$arguments.FullValidation = $true', $packageTagGuard)
+$packageInvocation = $workflow.IndexOf('./tools/build/create-release.ps1 @arguments', $packageTagGuard)
+if ($packageTagGuard -lt $packageModernStep -or $packageFullValidation -lt $packageTagGuard -or
+    $packageInvocation -lt $packageFullValidation -or $verifyFullValidation -eq $packageFullValidation) {
+    throw 'Modern package/tag creation must pass its own distinct FullValidation occurrence to create-release.'
+}
 Assert-Contains $release "[switch]`$FullValidation" "create-release.ps1: release validation can request FULL"
 Assert-Contains $release 'test-portable-package-smoke.ps1' "create-release.ps1: materialized portable smoke"
 Assert-Contains $release 'test-bundled-plugin-local-activation.ps1' "create-release.ps1: materialized portable plugins"
