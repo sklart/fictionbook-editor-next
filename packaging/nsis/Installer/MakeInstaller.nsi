@@ -738,13 +738,21 @@ Function WriteDeploymentScopeTestProbe
   FileClose $0
 FunctionEnd
 
+!ifdef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+; MUI pages remain declared above; these no-op callbacks let the probe compile
+; without parsing production payload and integration sections below.
+Function ComponentsPageLeave
+FunctionEnd
+Function ComponentsPageShow
+FunctionEnd
+Section "Deployment scope probe"
+  Call WriteDeploymentScopeTestProbe
+  SetErrorLevel 0
+  Quit
+SectionEnd
+!else
 Section !$(Main) MainSection_id
   SectionIn RO
-  !ifdef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
-    Call WriteDeploymentScopeTestProbe
-    SetErrorLevel 0
-    Quit
-  !endif
   ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" CurrentVersion
   StrCmp $0 "" 0 nthere
   MessageBox MB_OK|MB_ICONSTOP $(ErrNTCurrentVersion)
@@ -1438,3 +1446,4 @@ fbd_uninstall_done:
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}"
   SetAutoClose false
 SectionEnd
+!endif

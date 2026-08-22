@@ -5,12 +5,8 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $installerDirectory = Join-Path $root 'packaging\nsis\Installer'
-$inputDirectory = Join-Path $root 'out\package\FictionBookEditor'
 $testRoot = Join-Path $root 'out\tests\nsis-install-scopes'
 
-if (-not (Test-Path -LiteralPath $inputDirectory -PathType Container)) {
-    throw "NSIS scope smoke requires prepared installer input: $inputDirectory"
-}
 $makensis = & (Join-Path $root 'tools\build\resolve-nsis.ps1')
 if ($LASTEXITCODE -ne 0 -or -not $makensis) { throw 'Unable to resolve makensis for NSIS scope smoke.' }
 
@@ -35,7 +31,6 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines) {
     $arguments = @(
         '/X!addincludedir ..\NSIS',
         '/X!addplugindir /x86-unicode ..\NSIS',
-        ('/DINPUTDIR=' + $inputDirectory),
         ('/DOUTPUTFILE=' + $setup),
         '/DFBE_DEPLOYMENT_TEST_SCOPE_PROBE=1',
         ('/DFBE_DEPLOYMENT_TEST_ROOT=' + $directory)
