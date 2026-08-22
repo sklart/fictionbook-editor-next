@@ -158,6 +158,23 @@ else {
     }
 }
 
+# Shell-команда FBV использует отдельный MUI-host. Он не входит в FBE.sln,
+# поэтому обязан собираться здесь до verify-release и stage-integration.
+if (-not $SkipFbvVerbMuiBuild) {
+    $fbvVerbMuiBuildArguments = @{ Configuration = $Configuration }
+    if ($PlatformToolset) {
+        $fbvVerbMuiBuildArguments.PlatformToolset = $PlatformToolset
+    }
+    & (Join-Path $PSScriptRoot "build-fbv-verb-mui.ps1") @fbvVerbMuiBuildArguments
+}
+else {
+    $fbvVerbMuiHost = Join-Path $repoRoot "out\$Configuration\Lang\Shell\FBVVerbResources.dll"
+    if (-not (Test-Path -LiteralPath $fbvVerbMuiHost -PathType Leaf)) {
+        throw "Нельзя пропустить сборку FBV Verb MUI: отсутствует $fbvVerbMuiHost"
+    }
+    Write-Host "Повторная сборка FBV Verb MUI пропущена: используется подготовленный ресурс."
+}
+
 $verifyReleaseArguments = @{
     Configuration = $Configuration
     CompatibilityTarget = $CompatibilityTarget
