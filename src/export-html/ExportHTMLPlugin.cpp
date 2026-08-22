@@ -80,16 +80,6 @@ void RemoveServiceMarkers(IXMLDOMDocument2Ptr source)
 	}
 }
 
-bool SupportsEmbeddedImages(IXMLDOMDocument2Ptr document)
-{
-	document->setProperty(bstr_t(L"SelectionLanguage"), variant_t(L"XPath"));
-	IXMLDOMNodePtr parameter;
-	CheckError(document->selectSingleNode(
-		bstr_t(L"//*[local-name()='param' and namespace-uri()='http://www.w3.org/1999/XSL/Transform' and @name='embedimages']"),
-		&parameter));
-	return parameter != NULL;
-}
-
 }
 
 HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)

@@ -7,7 +7,7 @@ $fixture = Join-Path ([IO.Path]::GetTempPath()) "fbe-provenance-$PID"
 $common = Join-Path $fixture 'common'
 try {
     New-Item -ItemType Directory -Force -Path (Join-Path $common 'Lang\ru-RU'),(Join-Path $common 'Lang\uk-UA') | Out-Null
-    foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','Lang/ru-RU/res_rus.dll','Lang/uk-UA/res_ukr.dll')) {
+    foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','html.xsl','Lang/ru-RU/res_rus.dll','Lang/uk-UA/res_ukr.dll')) {
         Set-Content -LiteralPath (Join-Path $common $name) -Value "fixture:$name" -Encoding ASCII
     }
     $provenance = Join-Path $fixture 'provenance'

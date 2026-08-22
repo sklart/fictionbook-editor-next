@@ -27,7 +27,7 @@ function Get-SourcePath([string]$Directory, [string]$Name) {
     return Join-Path $Directory $Name
 }
 
-$commonNames = @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','Lang/ru-RU/res_rus.dll','Lang/uk-UA/res_ukr.dll')
+$commonNames = @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','html.xsl','Lang/ru-RU/res_rus.dll','Lang/uk-UA/res_ukr.dll')
 $profileNames = @('Scintilla.dll','Lexilla.dll')
 if ($Kind -ne 'CommonCore') { $profileNames += @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe','Utilities/ArchHandler/ZipHandler.exe','Utilities/ArchHandler/RarHandler.exe') }
 

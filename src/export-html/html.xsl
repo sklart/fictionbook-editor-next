@@ -94,6 +94,7 @@
 	</X:if>
       </head>
       <body>
+        <X:if test="$saveimages">
         <X:choose>
           <X:when test="string-length(/F:FictionBook/F:description/F:title-info/F:coverpage/F:image/@L:href)">
             <div class="center">
@@ -116,7 +117,8 @@
               </img>
             </div>
           </X:when>
-        </X:choose>					
+        </X:choose>
+        </X:if>
 	<!-- image from the first body -->
 	<X:apply-templates select="/F:FictionBook/F:body[1]/F:image[1]" mode="first"/>
 	<!-- title from the first body -->

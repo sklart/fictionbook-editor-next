@@ -2,6 +2,16 @@
 
 #include "utils.h"
 
+inline bool SupportsEmbeddedImages(IXMLDOMDocument2Ptr document)
+{
+	document->setProperty(bstr_t(L"SelectionLanguage"), variant_t(L"XPath"));
+	IXMLDOMNodePtr parameter;
+	CheckError(document->selectSingleNode(
+		bstr_t(L"//*[local-name()='param' and namespace-uri()='http://www.w3.org/1999/XSL/Transform' and @name='embedimages']"),
+		&parameter));
+	return parameter != NULL;
+}
+
 struct ExportHtmlTemplateSelection
 {
 	CString path;
@@ -10,7 +20,34 @@ struct ExportHtmlTemplateSelection
 
 inline bool ExportHtmlPathsEqual(const CString& left, const CString& right)
 {
-	return left.CompareNoCase(right) == 0;
+	if (left.IsEmpty() || right.IsEmpty())
+		return left.IsEmpty() && right.IsEmpty();
+
+	auto normalize = [](const CString& path) {
+		DWORD length = ::GetFullPathName(path, 0, NULL, NULL);
+		if (length == 0)
+			return path;
+		CString normalized;
+		wchar_t* buffer = normalized.GetBuffer(length);
+		DWORD written = ::GetFullPathName(path, length, buffer, NULL);
+		normalized.ReleaseBuffer(written == 0 ? 0 : written);
+		return written == 0 ? path : normalized;
+	};
+	return normalize(left).CompareNoCase(normalize(right)) == 0;
+}
+
+inline ExportHtmlTemplateSelection ResolveExportHtmlTemplateState(const CString& bundled, const CString& stored,
+	bool hasUseCustom, bool useCustom, bool templateExists, bool legacyBundled)
+{
+	ExportHtmlTemplateSelection result;
+	if ((hasUseCustom && useCustom && templateExists) || (!hasUseCustom && templateExists && !legacyBundled)) {
+		result.path = stored;
+		result.custom = true;
+		return result;
+	}
+	result.path = bundled;
+	result.custom = false;
+	return result;
 }
 
 inline bool ExportHtmlLooksLikeOldBundledTemplate(const CString& path)
@@ -27,7 +64,6 @@ inline bool ExportHtmlLooksLikeOldBundledTemplate(const CString& path)
 
 inline ExportHtmlTemplateSelection ResolveExportHtmlTemplate(CRegKey& settings)
 {
-	ExportHtmlTemplateSelection result;
 	const CString bundled = U::GetProgDirFile(L"html.xsl");
 	const CString stored = U::QuerySV(settings, L"Template", L"");
 	DWORD useCustom = 0;
@@ -35,9 +71,9 @@ inline ExportHtmlTemplateSelection ResolveExportHtmlTemplate(CRegKey& settings)
 	const bool exists = !stored.IsEmpty() && ::GetFileAttributes(stored) != INVALID_FILE_ATTRIBUTES;
 	const bool legacyBundled = ExportHtmlPathsEqual(stored, bundled) || ExportHtmlLooksLikeOldBundledTemplate(stored);
 
-	if ((hasUseCustom && useCustom != 0 && exists) || (!hasUseCustom && exists && !legacyBundled)) {
-		result.path = stored;
-		result.custom = true;
+	ExportHtmlTemplateSelection result = ResolveExportHtmlTemplateState(bundled, stored,
+		hasUseCustom, useCustom != 0, exists, legacyBundled);
+	if (result.custom) {
 		if (!hasUseCustom)
 			settings.SetDWORDValue(L"UseCustomTemplate", 1);
 		return result;

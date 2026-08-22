@@ -22,6 +22,12 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $outputDir = Join-Path $repoRoot "out\$Configuration"
+$runtimeXsl = Join-Path $repoRoot 'runtime\html.xsl'
+$stagedXsl = Join-Path $outputDir 'html.xsl'
+if (-not (Test-Path -LiteralPath $stagedXsl -PathType Leaf)) { throw "Staged runtime is stale: missing html.xsl at $stagedXsl" }
+if ((Get-FileHash -LiteralPath $runtimeXsl -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $stagedXsl -Algorithm SHA256).Hash) {
+    throw "Staged runtime is stale: html.xsl differs from runtime/html.xsl."
+}
 $batchOutputDir = if ($BatchOutputDirectory) {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
 } else {
@@ -195,6 +201,8 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-html-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-standalone.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-selection.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-html-template-resolver-native.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-html-modes.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-docx-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-epub-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-localization-resources.ps1")
