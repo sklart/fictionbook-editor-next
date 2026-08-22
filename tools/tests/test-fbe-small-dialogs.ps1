@@ -18,7 +18,7 @@ $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json -Depth 
 $expectedLanguages = @('en-US','ru-RU','uk-UA','de-DE','fr-FR','es-ES','it-IT','pl-PL','pt-PT','nl-NL','cs-CZ','bg-BG')
 if ((Compare-Object -ReferenceObject $expectedLanguages -DifferenceObject @($catalog.targetLanguages)).Count -ne 0) { throw "Набор языков каталога малых диалогов FBE не совпадает с ожидаемым." }
 $entries = @($catalog.strings.PSObject.Properties)
-$expectedEntryCount = 161
+$expectedEntryCount = 164
 if ($entries.Count -ne $expectedEntryCount) { throw "Ожидалось $expectedEntryCount строк малых диалогов FBE, получено $($entries.Count)." }
 foreach ($entry in $entries) { foreach ($language in $expectedLanguages) { $translation = $entry.Value.translations.PSObject.Properties[$language]; if (-not $translation -or [string]::IsNullOrWhiteSpace([string]$translation.Value)) { throw "У строки $($entry.Name) нет перевода для $language." } } }
 & (Join-Path $repoRoot "tools\localization\update-fbe-small-dialog-resources.ps1")

@@ -506,6 +506,14 @@ enum XmlSrcStyleToken
 	XML_SRC_STYLE_TOKEN_COUNT,
 };
 
+// Librusec is an alternative genre taxonomy, not a forced replacement for
+// the normal locale-specific catalog.
+enum class GenreCatalog
+{
+	Standard,
+	Librusec,
+};
+
 class CSettings : public ISerializable, public IObjectFactory
 {
 	CRegKey		m_key;
@@ -561,6 +569,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_restore_file_position;
 
 	DWORD		m_interface_lang_id;
+	GenreCatalog	m_genre_catalog;
 
 	bool		m_need_restart;
 
@@ -683,6 +692,10 @@ public:
 	CString GetInterfaceLanguageDllName()const;
 	CString GetInterfaceLocaleName()const;
 	CString GetLocalizedGenresFileName()const;
+	GenreCatalog GetGenreCatalog()const;
+	CString GetGenreCatalogFileName()const;
+	CString GetGenreCatalogLegacyFileName()const;
+	CString ResolveGenreCatalogFileName()const;
 	CString GetInterfaceLanguageName()const;
 	CString GetScriptsFolder() const;
 	CString GetDefaultScriptsFolder();
@@ -724,6 +737,7 @@ public:
 	void	SetWindowPosition(const WINDOWPLACEMENT& wpl,  bool apply = false);
 	void	SetRestoreFilePosition(bool restore, bool apply = false);	
 	void	SetInterfaceLanguage(DWORD Language, bool apply = false);
+	void	SetGenreCatalog(GenreCatalog catalog, bool apply = false);
 	void	SetScriptsFolder(const CString& fullpath, bool apply = false);
 	void	SetInsImageAsking(const bool value, bool apply = false);
 	void	SetIsInsClearImage(const bool value, bool apply = false);

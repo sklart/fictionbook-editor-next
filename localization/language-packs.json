@@ -52,6 +52,7 @@
         ],
         "genres": [
           "genres.rus.txt",
+          "genres.rus.librusec.txt",
           "genres.rus.txt_L"
         ],
         "xslt": [

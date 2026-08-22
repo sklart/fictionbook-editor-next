@@ -80,6 +80,7 @@ $knownRepoAssets = @(
     "gpl-3.0.ru.txt",
     "gpl-3.0.ua.txt",
     "genres.rus.txt",
+    "genres.rus.librusec.txt",
     "genres.rus.txt_L",
     "genres.ukr.txt",
     "rus.xsl",

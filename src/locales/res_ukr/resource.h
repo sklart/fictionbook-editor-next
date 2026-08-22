@@ -641,6 +641,8 @@
 #define IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE_LABEL 1152
 #define IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE       1153
 #define IDC_OPTIONS_SOURCE_THEME_ACTIONS     1149
+#define IDC_OPTIONS_GENRE_CATALOG_LABEL       1154
+#define IDC_GENRE_CATALOG                     1155
 
 // Next default values for new objects
 // 

@@ -2492,6 +2492,30 @@
         "bg-BG": "Език:"
       }
     },
+    "fbe.dialog.idd_options.genre_catalog": {
+      "resource": "IDD_OPTIONS",
+      "kind": "LTEXT",
+      "targetId": "IDC_OPTIONS_GENRE_CATALOG_LABEL",
+      "translations": {
+        "en-US": "Genre catalog:", "ru-RU": "Каталог жанров:", "uk-UA": "Каталог жанрів:", "de-DE": "Genrekatalog:", "fr-FR": "Catalogue de genres :", "es-ES": "Catálogo de géneros:", "it-IT": "Catalogo generi:", "pl-PL": "Katalog gatunków:", "pt-PT": "Catálogo de géneros:", "nl-NL": "Genre-catalogus:", "cs-CZ": "Katalog žánrů:", "bg-BG": "Каталог с жанрове:"
+      }
+    },
+    "fbe.dialog.idd_options.genre_catalog.standard": {
+      "resource": "IDD_OPTIONS",
+      "kind": "COMBOBOX",
+      "targetId": "IDC_GENRE_CATALOG",
+      "translations": {
+        "en-US": "Standard", "ru-RU": "Стандартный", "uk-UA": "Стандартний", "de-DE": "Standard", "fr-FR": "Standard", "es-ES": "Estándar", "it-IT": "Standard", "pl-PL": "Standardowy", "pt-PT": "Padrão", "nl-NL": "Standaard", "cs-CZ": "Standardní", "bg-BG": "Стандартен"
+      }
+    },
+    "fbe.dialog.idd_options.genre_catalog.librusec": {
+      "resource": "IDD_OPTIONS",
+      "kind": "COMBOBOX",
+      "targetId": "IDC_GENRE_CATALOG",
+      "translations": {
+        "en-US": "Librusec", "ru-RU": "Либрусек", "uk-UA": "Лібрусек", "de-DE": "Librusec", "fr-FR": "Librusec", "es-ES": "Librusec", "it-IT": "Librusec", "pl-PL": "Librusec", "pt-PT": "Librusec", "nl-NL": "Librusec", "cs-CZ": "Librusec", "bg-BG": "Либрусек"
+      }
+    },
     "fbe.dialog.idd_options.spell_checking": {
       "resource": "IDD_OPTIONS",
       "kind": "GROUPBOX",

@@ -70,6 +70,7 @@ LRESULT COptDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
   m_fontsize=GetDlgItem(IDC_FONT_SIZE);
   m_fast_mode = GetDlgItem(IDC_FAST_MODE); 
   m_lang = GetDlgItem(IDC_LANG);
+  m_genre_catalog = GetDlgItem(IDC_GENRE_CATALOG);
   m_lang.SetDroppedWidth(320);
   // SeNS
   m_usespell_check = GetDlgItem(IDC_USESPELLCHECKER);
@@ -103,6 +104,10 @@ LRESULT COptDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	}
   }
   m_lang.SetCurSel(selectedLanguageIndex);
+
+  m_genre_catalog.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.genre_catalog.standard", L"Standard"));
+  m_genre_catalog.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.genre_catalog.librusec", L"Librusec"));
+  m_genre_catalog.SetCurSel(_Settings.GetGenreCatalog() == GenreCatalog::Librusec ? 1 : 0);
 
   // get font list
   CSimpleArray<CString> installedFonts;
@@ -157,6 +162,7 @@ LRESULT COptDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
   SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_BODY_GROUP, L"fbe.dialog.idd_options.font_group", L"Body");
   SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_SOURCE_GROUP, L"fbe.dialog.idd_options.source_view", L"XML source editor");
   SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_LANGUAGE_LABEL, L"fbe.dialog.idd_options.language", L"Language:");
+  SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_GENRE_CATALOG_LABEL, L"fbe.dialog.idd_options.genre_catalog", L"Genre catalog:");
   SetRuntimeDialogItemText(m_hWnd, IDC_WRAP, L"fbe.dialog.idd_options.wrap_lines", L"Wrap lines");
   SetRuntimeDialogItemText(m_hWnd, IDC_SYNTAXHL, L"fbe.dialog.idd_options.syntax_highlight", L"Syntax highlighting");
   SetRuntimeDialogItemText(m_hWnd, IDC_SHOWEOL, L"fbe.dialog.idd_options.show_eol", L"Show end of line marks");
@@ -259,6 +265,8 @@ LRESULT COptDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
 	FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());
 	FbeResetRuntimeLocalization();
   }
+
+  _Settings.SetGenreCatalog(m_genre_catalog.GetCurSel() == 1 ? GenreCatalog::Librusec : GenreCatalog::Standard);
 
   return 0;
 }

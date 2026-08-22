@@ -96,6 +96,21 @@ static bool PrintRuntimePaths()
 	return true;
 }
 
+static bool PrintGenreCatalog()
+{
+	if (!DeploymentContext::HasCommandLineSwitch(L"--print-genre-catalog")) return false;
+	const CString catalog = _Settings.GetGenreCatalog() == GenreCatalog::Librusec ? L"Librusec" : L"Standard";
+	const CString primary = _Settings.GetGenreCatalogFileName();
+	const CString legacy = _Settings.GetGenreCatalogLegacyFileName();
+	const CString resolved = _Settings.ResolveGenreCatalogFileName();
+	CString json;
+	json.Format(L"{\"catalog\":\"%s\",\"primaryFile\":\"%s\",\"legacyFile\":\"%s\",\"resolvedFile\":\"%s\"}\r\n", catalog, primary, legacy, resolved);
+	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, json, -1, NULL, 0, NULL, NULL); std::vector<char> output(bytes);
+	::WideCharToMultiByte(CP_UTF8, 0, json, -1, &output[0], bytes, NULL, NULL); DWORD written = 0;
+	::WriteFile(::GetStdHandle(STD_OUTPUT_HANDLE), &output[0], bytes - 1, &written, NULL);
+	return true;
+}
+
 static void ConfigureDllSearchPath()
 {
 	// Keep the current working directory out of the legacy DLL search order.
@@ -619,6 +634,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   // initialize registry settings
   U::InitSettings();
   StartupTrace::Event(L"startup", L"S140", L"settings initialized");
+  if (PrintGenreCatalog()) { _Module.Term(); ::OleUninitialize(); StartupTrace::Finish(); return 0; }
   CrashDiagnostics::Initialize();
   StartupTrace::Event(L"startup", L"S150", L"crash diagnostics initialized");
 

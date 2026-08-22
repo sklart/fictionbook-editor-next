@@ -79,6 +79,7 @@ const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
 const wchar_t SCRIPT_COMMAND_IDS_KEY[] = L"ScriptCommandIds";
 const wchar_t RESTORE_FILE_POS_KEY[]	= L"RestoreFilePosition";
 const wchar_t INTERFACE_LANG_KEY[]		= L"IntefaceLangID";
+const wchar_t GENRE_CATALOG_KEY[]       = L"GenreCatalog";
 const wchar_t SCRIPTS_FOLDER_KEY[]		= L"ScriptsFolder";
 
 // Added by SeNS
@@ -826,6 +827,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(SCRIPT_COMMAND_IDS_KEY);
 	properties.push_back(RESTORE_FILE_POS_KEY);
 	properties.push_back(INTERFACE_LANG_KEY);
+	properties.push_back(GENRE_CATALOG_KEY);
 	properties.push_back(SCRIPTS_FOLDER_KEY);
 	// SeNS
 	properties.push_back(USESPELLER_CHECK_KEY);
@@ -1010,6 +1012,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == INTERFACE_LANG_KEY)
 	{
 		property = GetStringedProperty(&m_interface_lang_id, KEY_INT);
+		return true;
+	}
+	else if(sProperty == GENRE_CATALOG_KEY)
+	{
+		property = m_genre_catalog == GenreCatalog::Librusec ? L"Librusec" : L"Standard";
 		return true;
 	}
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
@@ -1306,6 +1313,12 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == INTERFACE_LANG_KEY)
 	{
 		m_interface_lang_id = NormalizeInterfaceLanguageID(StrToInt(sValue.GetStringValue()));
+		return true;
+	}
+	else if(sProperty == GENRE_CATALOG_KEY)
+	{
+		m_genre_catalog = sValue.GetStringValue().CompareNoCase(L"Librusec") == 0
+			? GenreCatalog::Librusec : GenreCatalog::Standard;
 		return true;
 	}
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
@@ -2044,6 +2057,58 @@ CString CSettings::GetLocalizedGenresFileName()const
 	}
 }
 
+GenreCatalog CSettings::GetGenreCatalog()const
+{
+	return m_genre_catalog;
+}
+
+CString CSettings::GetGenreCatalogFileName()const
+{
+	if(m_genre_catalog != GenreCatalog::Librusec)
+		return GetLocalizedGenresFileName();
+
+	// There is no Ukrainian Librusec payload. Keep the selection explicit and
+	// deliberately fall back to the localized standard list.
+	switch(GetEffectiveInterfaceLanguageID())
+	{
+	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
+		return L"genres.rus.librusec.txt";
+	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
+		return L"genres.ukr.txt";
+	default:
+		return L"genres.librusec.txt";
+	}
+}
+
+CString CSettings::GetGenreCatalogLegacyFileName()const
+{
+	if(m_genre_catalog != GenreCatalog::Librusec)
+		return CString();
+
+	switch(GetEffectiveInterfaceLanguageID())
+	{
+	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
+		return L"genres.rus.txt_L";
+	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
+		return CString();
+	default:
+		return L"genres.txt_L";
+	}
+}
+
+CString CSettings::ResolveGenreCatalogFileName()const
+{
+	const CString primary = GetGenreCatalogFileName();
+	if(::GetFileAttributes(U::GetProgDirFile(primary)) != INVALID_FILE_ATTRIBUTES)
+		return primary;
+
+	const CString legacy = GetGenreCatalogLegacyFileName();
+	if(!legacy.IsEmpty() && ::GetFileAttributes(U::GetProgDirFile(legacy)) != INVALID_FILE_ATTRIBUTES)
+		return legacy;
+
+	return primary;
+}
+
 CString CSettings::GetInterfaceLanguageName()const
 {
 	switch(GetEffectiveInterfaceLanguageID())
@@ -2333,6 +2398,16 @@ void CSettings::SetInterfaceLanguage(DWORD lang_id, bool apply)
 	}
 }
 
+void CSettings::SetGenreCatalog(GenreCatalog catalog, bool apply)
+{
+	if(m_genre_catalog != catalog)
+	{
+		m_genre_catalog = catalog;
+		if(apply)
+			Save();
+	}
+}
+
 void CSettings::SetScriptsFolder(const CString& fullpath, bool apply)
 {
 	if(apply)
@@ -2572,6 +2647,7 @@ void CSettings::SetDefaults()
 	m_script_command_ids.Empty();
 	m_restore_file_position	= false;
 	m_interface_lang_id		= FBE_INTERFACE_LANGUAGE_AUTO;
+	m_genre_catalog			= GenreCatalog::Standard;
 	m_scripts_folder		= GetDefaultScriptsFolder();
 	m_insimage_ask			= true;
 	m_ins_clear_image		= false;

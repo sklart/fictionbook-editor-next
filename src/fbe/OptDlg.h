@@ -21,6 +21,7 @@ public:
   CComboBox	    m_srcfonts;
   CComboBox	    m_fontsize;
   CComboBox		m_lang;
+  CComboBox		m_genre_catalog;
 
   CString	    m_face;
   int		    m_fsz_val;
