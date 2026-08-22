@@ -27,6 +27,11 @@ $batchOutputDir = if ($BatchOutputDirectory) {
 } else {
     $outputDir
 }
+$archHandlerOutputDir = if ($ArchHandlerOutputDirectory) {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchHandlerOutputDirectory)
+} else {
+    Join-Path $repoRoot "out\archhandler\$CompatibilityTarget\Win32\$Configuration"
+}
 $batchNames = @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")
 function Get-ReleaseOutputPath([string]$Name) {
     $directory = if ($Name -in $batchNames) { $batchOutputDir } else { $outputDir }
@@ -50,7 +55,7 @@ $expectedVersion = $versionMatch.Groups["version"].Value
     -Configuration $Configuration -CommonDirectory $outputDir
 & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind $CompatibilityTarget `
     -Configuration $Configuration -ProfileDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget") `
-    -BatchDirectory $batchOutputDir -ArchHandlerDirectory $ArchHandlerOutputDirectory
+    -BatchDirectory $batchOutputDir -ArchHandlerDirectory $archHandlerOutputDir
 
 $requiredFiles = @(
     "FBE.exe",
@@ -233,7 +238,7 @@ if ($PlatformToolset) {
 # ArchHandler является target-specific executable и должен проверяться как для
 # Modern, так и для Win7; нельзя прятать exact artifact argv-test в common block.
 $archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
-if ($ArchHandlerOutputDirectory) { $archHandlerTestArguments.HandlerDirectory = $ArchHandlerOutputDirectory }
+$archHandlerTestArguments.HandlerDirectory = $archHandlerOutputDir
 & (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments
 
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1") `
@@ -260,12 +265,9 @@ if ($CompatibilityTarget -eq "Win7") {
         -OutputDirectory $win7EditorRuntimeDir `
         -IncludeNames @("Scintilla.dll", "Lexilla.dll")
 
-    if (-not $ArchHandlerOutputDirectory) {
-        throw "Для Win7 verification требуется target-specific ArchHandler output directory."
-    }
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
         -Configuration $Configuration `
-        -OutputDirectory $ArchHandlerOutputDirectory `
+        -OutputDirectory $archHandlerOutputDir `
         -IncludeNames @("ZipHandler.exe", "RarHandler.exe")
 }
 
