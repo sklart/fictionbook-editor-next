@@ -22,6 +22,11 @@ foreach ($path in @($buildOutput, $editorRuntime, $batchOutput, $archOutput)) {
     if (-not (Test-Path -LiteralPath $path -PathType Container)) { throw "Не найден подготовленный input Core: $path" }
 }
 if ($commonCore -and -not (Test-Path -LiteralPath $commonCore -PathType Container)) { throw "Не найден общий Core payload: $commonCore" }
+$commonSource = if ($commonCore) { $commonCore } else { $buildOutput }
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
+    -Configuration $Configuration -CommonDirectory $commonSource
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind $CompatibilityTarget `
+    -Configuration $Configuration -ProfileDirectory $editorRuntime -BatchDirectory $batchOutput -ArchHandlerDirectory $archOutput
 foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
     if (-not (Test-Path -LiteralPath (Join-Path $buildOutput $name) -PathType Leaf)) { throw "Не найден Core artifact: $name" }
 }

@@ -325,6 +325,15 @@ if ($BatchConvertersOnly) {
 
 Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
+# A partial or interrupted build must never leave the previous ImportEPUB
+# output looking authoritative. Only the Modern common build owns this set.
+if ($CompatibilityTarget -eq 'Modern') {
+    $commonOutput = Join-Path $repoRoot "out\$Configuration"
+    foreach ($name in @('ImportEPUB.dll', 'ImportEPUB.pdb', 'ImportEPUB.lib', 'ImportEPUB.exp')) {
+        Remove-Item -LiteralPath (Join-Path $commonOutput $name) -Force -ErrorAction SilentlyContinue
+    }
+}
+
 & $msbuild (Join-Path $repoRoot "FBE.sln") /m /t:Build `
     $properties /v:minimal /nologo
 
@@ -359,3 +368,8 @@ Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Conf
 
 Confirm-FbeLocalizedResourceLibraries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 Remove-ObsoleteRootLanguageDirectories -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+
+if ($CompatibilityTarget -eq 'Modern') {
+    & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind CommonCore `
+        -Configuration $Configuration -CommonDirectory (Join-Path $repoRoot "out\$Configuration") -PlatformToolset $PlatformToolset
+}

@@ -120,6 +120,13 @@ if (-not $SkipBuild) {
     & (Join-Path $PSScriptRoot "build-archhandler.ps1") @archHandlerArguments
 }
 
+if (-not $SkipBuild) {
+    & (Join-Path $PSScriptRoot "build-provenance.ps1") -Action Write -Kind $CompatibilityTarget `
+        -Configuration $Configuration -ProfileDirectory $editorRuntimeDirectory `
+        -BatchDirectory $batchOutputDirectory -ArchHandlerDirectory $archHandlerOutputDirectory `
+        -PlatformToolset $PlatformToolset
+}
+
 if ($SkipBuild -and -not $SkipPropertyHandlerBuild) {
     throw "-SkipBuild запрещает native-компиляцию. Подготовьте property handler заранее и укажите -SkipPropertyHandlerBuild."
 }

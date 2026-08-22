@@ -43,6 +43,15 @@ if (-not $versionMatch.Success) {
 }
 
 $expectedVersion = $versionMatch.Groups["version"].Value
+
+# Fail before the long GUI suite if this invocation is looking at a stale or
+# partially rebuilt common/profile payload.
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
+    -Configuration $Configuration -CommonDirectory $outputDir
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind $CompatibilityTarget `
+    -Configuration $Configuration -ProfileDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget") `
+    -BatchDirectory $batchOutputDir -ArchHandlerDirectory $ArchHandlerOutputDirectory
+
 $requiredFiles = @(
     "FBE.exe",
     "FBV.exe",
@@ -81,6 +90,7 @@ $requiredSymbols = @(
 )
 
 if (-not $SkipCommonChecks) {
+& (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-line-number-margin.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-updateui-notification.ps1")
