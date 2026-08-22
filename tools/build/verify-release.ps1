@@ -15,7 +15,11 @@ param(
 
     # Исходники, словари и общие статические контракты проверяются один раз
     # на Modern-этапе; Win7 повторяет только проверки своих бинарников.
-    [switch]$SkipCommonChecks
+    [switch]$SkipCommonChecks,
+
+    # Local diagnostic runs may omit the long table suite.  Release validation
+    # must not use this switch.
+    [switch]$SkipTableChecks
 )
 
 $ErrorActionPreference = "Stop"
@@ -121,9 +125,13 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-selection-container-control-range.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")
+if ($SkipTableChecks) {
+    Write-Warning "Table checks skipped by explicit -SkipTableChecks request; this is not release validation."
+} else {
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-table-toolbar-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-toolbar-rendering.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Huge
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
@@ -148,6 +156,7 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Fault change-colspan-after-normalize
+}
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-test-report-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
@@ -203,6 +212,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-selection.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-resolver-native.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-modes.ps1")
+& (Join-Path $repoRoot "tools\tests\test-export-html-images-e2e.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-export-docx-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-epub-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-localization-resources.ps1")

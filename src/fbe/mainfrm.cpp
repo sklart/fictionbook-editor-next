@@ -3445,6 +3445,77 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		appendBinaryPhase("save-complete");
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"table-toolbar-rendering"))
+	{
+		// This is deliberately a UI-level probe.  The toolbar state and the
+		// pixels it paints are recorded independently, so a disabled command is
+		// never confused with an enabled command rendered as disabled.
+		auto selectElement = [&](const wchar_t* tag, long index) -> bool
+		{
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr elements(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(tag) : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr element(elements && elements->length > index ? elements->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
+			if (!element) return false;
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+			range->moveToElementText(element); range->collapse(VARIANT_TRUE); range->select();
+			return true;
+		};
+		auto updateTableCommands = [&]()
+		{
+			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+				UIEnable(kTableToolbarCommands[index].commandId, m_doc->m_body.CheckCommand(kTableToolbarCommands[index].commandId));
+			UIUpdateToolBar();
+			m_CmdToolbar.Invalidate(); m_CmdToolbar.UpdateWindow();
+		};
+		auto chromaPixels = [&](const RECT& rect) -> long
+		{
+			HDC source = ::GetDC(m_CmdToolbar); if (!source) return -1;
+			RECT client = {}; ::GetClientRect(m_CmdToolbar, &client);
+			HDC memory = ::CreateCompatibleDC(source); HBITMAP bitmap = ::CreateCompatibleBitmap(source, client.right, client.bottom);
+			HGDIOBJ old = memory && bitmap ? ::SelectObject(memory, bitmap) : NULL;
+			if (!memory || !bitmap || !old || !::PrintWindow(m_CmdToolbar, memory, PW_CLIENTONLY)) { if (old) ::SelectObject(memory, old); if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); ::ReleaseDC(m_CmdToolbar, source); return -1; }
+			long chroma = 0;
+			for (int y = rect.top; y < rect.bottom; ++y) for (int x = rect.left; x < rect.right; ++x) { const COLORREF pixel = ::GetPixel(memory, x, y); const int r = GetRValue(pixel), g = GetGValue(pixel), b = GetBValue(pixel); if (max(r, max(g, b)) - min(r, min(g, b)) >= 32) ++chroma; }
+			::SelectObject(memory, old); ::DeleteObject(bitmap); ::DeleteDC(memory); ::ReleaseDC(m_CmdToolbar, source); return chroma;
+		};
+		auto appendPhase = [&](const char* phase)
+		{
+			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+			{
+				const UINT command = kTableToolbarCommands[index].commandId;
+				RECT rect = {}; const bool hasRect = m_CmdToolbar.GetItemRect(m_CmdToolbar.CommandToIndex(command), &rect) != FALSE;
+				const DWORD state = static_cast<DWORD>(m_CmdToolbar.SendMessage(TB_GETSTATE, command, 0));
+				const int image = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, command, 0));
+				CStringA row; row.Format("%s\t%u\t%lu\t%d\t%d\t%d\t%d\t%ld\r\n", phase, command, state,
+					(state & TBSTATE_ENABLED) != 0 ? 1 : 0, (state & TBSTATE_CHECKED) != 0 ? 1 : 0,
+					(state & TBSTATE_HIDDEN) != 0 ? 1 : 0, image, hasRect ? chromaPixels(rect) : -1);
+				DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+			}
+			output.Flush();
+		};
+		CStringA header("phase\tcommand_id\ttb_state\tenabled\tchecked\thidden\timage_index\tchroma_pixels\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		ShowView(BODY);
+		if (!selectElement(L"P", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		updateTableCommands(); appendPhase("outside-1");
+		if (!selectElement(L"TD", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		updateTableCommands(); appendPhase("inside-1");
+		if (!selectElement(L"TD", 1)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		updateTableCommands(); appendPhase("inside-multi");
+		if (!selectElement(L"P", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		updateTableCommands(); appendPhase("outside-2");
+		if (!selectElement(L"TH", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		updateTableCommands(); appendPhase("inside-2");
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"export-html"))
+	{
+		// The plugin itself receives deterministic options through its test-only
+		// environment hook; activation and Export still follow the normal FBE
+		// local-COM production path.
+		BOOL handled = FALSE;
+		OnToolsExport(0, ID_EXPORT_BASE, m_hWnd, handled);
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
 
 	CStringA rows("phase\telapsed_ms\tprivate_bytes\tworking_set_bytes\tcommitted_bytes\treserved_bytes\tsource_bytes\tsource_lines\tundo_selection_history\r\n");
 	const ULONGLONG start = ::GetTickCount64();
@@ -4639,7 +4710,10 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 			if(epl)
 			{
 				m_last_plugin = wID + ID_EXPORT_BASE;
-				MSXML2::IXMLDOMDocument2Ptr dom(m_doc->CreateDOM(m_doc->m_encoding));
+				// Export consumes the in-memory binary payload directly.  Compacting
+				// it is only a Save-to-FB2 optimization and can strip MSXML's typed
+				// binary representation before the export plugin receives it.
+				MSXML2::IXMLDOMDocument2Ptr dom(m_doc->CreateDOM(m_doc->m_encoding, false));
 				_bstr_t filename;
 				if(m_doc->m_namevalid)
 				{

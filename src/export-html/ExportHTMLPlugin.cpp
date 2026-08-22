@@ -93,12 +93,25 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		// * construct doc pointer
 		IXMLDOMDocument2Ptr	    source(doc);
 		// Work on a private DOM copy: export cleanup must not modify the open book.
-		IXMLDOMNodePtr sourceCopy;
-		CheckError(source->cloneNode(VARIANT_TRUE, &sourceCopy));
-		CheckError(sourceCopy->QueryInterface(IID_PPV_ARGS(&source)));
+		// cloneNode returns a generic node wrapper.  MSXML's XSL processor can
+		// then lose the document-owned key() index used by html.xsl for FB2
+		// binaries.  Round-trip through a private DOM keeps the editor document
+		// untouched while retaining a real document owner for the transform.
+		CComBSTR sourceXml;
+		CheckError(source->get_xml(&sourceXml));
+		IXMLDOMDocument2Ptr sourceCopy(U::CreateDocument(false));
+		VARIANT_BOOL sourceLoaded = VARIANT_FALSE;
+		CheckError(sourceCopy->loadXML(sourceXml, &sourceLoaded));
+		if (sourceLoaded != VARIANT_TRUE)
+			return S_FALSE;
+		source = sourceCopy;
 		CheckError(source->setProperty(bstr_t(L"SelectionLanguage"), variant_t(L"XPath")));
 		CheckError(source->setProperty(bstr_t(L"SelectionNamespaces"),
 			variant_t(L"xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0'")));
+		wchar_t testDomPath[MAX_PATH] = {};
+		const DWORD testDomPathLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_DOM_PATH", testDomPath, _countof(testDomPath));
+		if (testDomPathLength > 0 && testDomPathLength < _countof(testDomPath))
+			CheckError(source->save(_variant_t(testDomPath)));
 
 		// * ask the user where he wants his html
 		CString strFilter;
@@ -111,8 +124,21 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		// The portable, self-contained document is the safest default: it cannot
 		// lose its CSS or images when moved to another folder or machine.
 		dlg.m_ofn.nFilterIndex = 4;
-		if (dlg.DoModal((HWND)hWnd) != IDOK)
+		wchar_t testModeEnabled[4] = {}, testScenario[32] = {}, testOutput[MAX_PATH] = {};
+		const bool deterministicTestExport = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testModeEnabled, _countof(testModeEnabled)) == 1 &&
+			testModeEnabled[0] == L'1' && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", testScenario, _countof(testScenario)) == wcslen(L"export-html") &&
+			wcscmp(testScenario, L"export-html") == 0;
+		const DWORD testOutputLength = deterministicTestExport ? ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_PATH", testOutput, _countof(testOutput)) : 0;
+		if (testOutputLength > 0 && testOutputLength < _countof(testOutput)) {
+			wchar_t testMode[8] = {};
+			const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_MODE", testMode, _countof(testMode));
+			dlg.m_ofn.nFilterIndex = testModeLength ? max(1, min(4, _wtoi(testMode))) : 4;
+			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), testOutput, _TRUNCATE);
+			dlg.m_template = U::GetProgDirFile(L"html.xsl");
+			dlg.m_usingCustomTemplate = false;
+		} else if (dlg.DoModal((HWND)hWnd) != IDOK) {
 			return S_FALSE;
+		}
 		bool    fMIME = dlg.m_ofn.nFilterIndex == 2;
 		bool    fExternalImages = dlg.m_ofn.nFilterIndex == 1;
 		bool    fEmbeddedImages = dlg.m_ofn.nFilterIndex == 4;
@@ -127,7 +153,11 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		}
 
 		// * load template
-		IXMLDOMDocument2Ptr	    tdoc(U::CreateDocument(true));
+		// MSXML does not reliably populate XSL key() indexes for a stylesheet
+		// loaded through FreeThreadedDOMDocument.  html.xsl resolves FB2 binary
+		// nodes through key('binary-by-id', ...), so use the regular DOM that the
+		// processor contract expects.
+		IXMLDOMDocument2Ptr	    tdoc(U::CreateDocument(false));
 		if (!U::LoadXml(tdoc, dlg.m_template))
 			return S_FALSE;
 		if (fEmbeddedImages && dlg.m_usingCustomTemplate && !SupportsEmbeddedImages(tdoc)) {
