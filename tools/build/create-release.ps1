@@ -24,6 +24,7 @@ param(
     [switch]$SkipArtifactVerification,
     [switch]$SkipReleaseVerification,
     [switch]$SkipVersionSync,
+    [switch]$FullValidation,
     [switch]$ValidateUpdateManifest,
     [switch]$Prerelease,
     [string]$ReleaseTag
@@ -195,6 +196,9 @@ if ($PlatformToolset) {
 if ($SkipCommonChecks) {
     $verifyReleaseArguments.SkipCommonChecks = $true
 }
+if ($FullValidation) {
+    $verifyReleaseArguments.FullValidation = $true
+}
 if (-not $SkipReleaseVerification) {
     & (Join-Path $PSScriptRoot "verify-release.ps1") @verifyReleaseArguments
 }
@@ -275,6 +279,12 @@ if ($CompatibilityTarget -eq 'Modern') {
     & (Join-Path $repoRoot 'tools\tests\test-portable-package-smoke.ps1') `
         -PackageDirectory $portableDir `
         -PortableZip $portableZip
+    & (Join-Path $repoRoot 'tools\tests\test-bundled-plugin-local-activation.ps1') `
+        -Configuration $Configuration `
+        -RuntimeDirectory $portableDir
+    if ($FullValidation) {
+        & (Join-Path $repoRoot 'tools\tests\test-portable-gui-state.ps1') -PackageDirectory $portableDir
+    }
 }
 
 if (Test-Path -LiteralPath $symbolsDir) {

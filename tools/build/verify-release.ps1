@@ -19,7 +19,11 @@ param(
 
     # Table regressions are intentionally opt-in while portable finalization is
     # in progress. They remain available for their dedicated test contour.
-    [switch]$RunTableTests
+    [switch]$RunTableTests,
+
+    # FAST is the default validation contour. FULL adds GUI, production,
+    # stress, benchmark and table regressions for a manual/release gate.
+    [switch]$FullValidation
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,6 +62,7 @@ if (-not $versionMatch.Success) {
 }
 
 $expectedVersion = $versionMatch.Groups["version"].Value
+$runTables = $RunTableTests -or $FullValidation
 
 # Fail before the long GUI suite if this invocation is looking at a stale or
 # partially rebuilt common/profile payload.
@@ -112,7 +117,6 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-source-updateui-notification.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-scintilla-modern-features.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbd-support-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbd-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata-culture.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-source-structural-context.ps1") -CompatibilityTarget Modern
@@ -120,13 +124,9 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-source-eol-annotations.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-special-representations.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-allocate-lines.ps1")
-& (Join-Path $repoRoot "tools\tests\test-source-full-process-benchmark.ps1")
-& (Join-Path $repoRoot "tools\tests\test-words-ownerdata-stress.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-selection-container-control-range.ps1")
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")
-if ($RunTableTests) {
+if ($runTables) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-table-toolbar-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-toolbar-rendering.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
@@ -155,21 +155,18 @@ if ($RunTableTests) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Fault change-colspan-after-normalize
 } else {
-    Write-Host "Table checks are not run by default; use -RunTableTests to enable them."
+    Write-Host "Table checks are not run by default; use -RunTableTests or -FullValidation to enable them."
 }
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-test-report-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save-runtime.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-& (Join-Path $repoRoot "tools\tests\test-fbe-large-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-image-import-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-image-codec-build-contract.ps1")
 $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
 & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") @imageImportTestArguments
-& (Join-Path $repoRoot "tools\tests\test-image-import-fbe-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-archhandler-reset-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-archhandler-reset-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-check-content-types-base64.ps1")
@@ -212,7 +209,6 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-selection.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-resolver-native.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-modes.ps1")
-& (Join-Path $repoRoot "tools\tests\test-export-html-images-e2e.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-export-docx-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-epub-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-localization-resources.ps1")
@@ -230,10 +226,9 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-portable-deployment-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-paths-cli.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-copies-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
-& (Join-Path $repoRoot "tools\tests\test-portable-registry-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
-& (Join-Path $repoRoot "tools\tests\test-librusec-genres-portable.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-atomic-persistence.ps1")
 & (Join-Path $repoRoot "tools\tests\test-mode-aware-updater.ps1")
+& (Join-Path $repoRoot "tools\tests\test-mode-aware-updater-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-export.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-output-layout.ps1") -Configuration $Configuration -OutputDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-lang-overlay.ps1")
@@ -252,6 +247,21 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-uninstall-user-data.ps1")
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
+}
+
+if ($FullValidation -and -not $SkipCommonChecks) {
+    Write-Host 'Running FULL GUI, production, stress and benchmark validation.'
+    & (Join-Path $repoRoot "tools\tests\test-fbd-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-source-full-process-benchmark.ps1")
+    & (Join-Path $repoRoot "tools\tests\test-words-ownerdata-stress.ps1")
+    & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
+    & (Join-Path $repoRoot "tools\tests\test-fbe-selection-container-control-range.ps1")
+    & (Join-Path $repoRoot "tools\tests\test-fbe-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-fbe-large-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-image-import-fbe-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-export-html-images-e2e.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-portable-registry-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-librusec-genres-portable.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 }
 
 # ArchHandler является target-specific executable и должен проверяться как для

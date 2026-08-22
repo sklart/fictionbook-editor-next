@@ -76,7 +76,7 @@ Assert-Contains $workflow "pcre2-release-win32-v143-vs2022" "ключ PCRE2 cach
 Assert-Contains $workflow "-hunspell-release-win32-v143-mt-" "ключ Hunspell cache включает toolset/properties"
 Assert-Contains $workflow "ReusePreparedPcre2 = `$true" "PCRE2 reuse на exact cache hit"
 Assert-Contains $workflow "github.event_name != 'pull_request'" "compiled artifact не загружается для PR"
-Assert-Contains $workflow "-BatchOutputDirectory out/target-batches/Modern" "явный Modern batch output в CI"
+Assert-Contains $workflow "BatchOutputDirectory = 'out/target-batches/Modern'" "явный Modern batch output в CI"
 Assert-Contains $workflow "-BatchOutputDirectory out/target-batches/Win7" "явный Win7 batch output в CI"
 Assert-Contains $workflow "Verify Modern binaries" "Modern verification"
 Assert-Contains $workflow "Verify Win7 binaries" "Win7 verification"
@@ -91,7 +91,7 @@ Assert-Contains $workflow "Build Modern ArchHandler" "сборка Modern ArchHa
 Assert-Contains $workflow "Build Win7 ArchHandler" "сборка Win7 ArchHandler в build job"
 Assert-Contains $workflow "-OutputDirectory out/archhandler/Modern/Win32/Release" "target-specific Modern ArchHandler"
 Assert-Contains $workflow "-OutputDirectory out/archhandler/Win7/Win32/Release" "target-specific Win7 ArchHandler"
-Assert-Contains $workflow "-ArchHandlerOutputDirectory out/archhandler/Modern/Win32/Release" "проверка Modern поставляемого ArchHandler"
+Assert-Contains $workflow "ArchHandlerOutputDirectory = 'out/archhandler/Modern/Win32/Release'" "проверка Modern поставляемого ArchHandler"
 Assert-Contains $workflow "-ArchHandlerOutputDirectory out/archhandler/Win7/Win32/Release" "проверка Win7 поставляемого ArchHandler"
 Assert-Contains $workflow "out/archhandler" "передача ArchHandler между build и package jobs"
 Assert-Contains $workflow "verify-nsis-layout.ps1" "однократная проверка NSIS в validate"
@@ -127,7 +127,7 @@ Assert-Contains $scintilla '"[17.0,18.0)"' "build-scintilla.ps1: v143 фикси
 Assert-Contains $release "[switch]`$SkipPropertyHandlerBuild" "create-release.ps1"
 Assert-Contains $release "[switch]`$SkipFbvVerbMuiBuild" "create-release.ps1"
 Assert-Contains $release "[switch]`$Prerelease" "create-release.ps1"
-Assert-Contains $release "-EditorRuntimeDirectory `$editorRuntimeDirectory" "create-release.ps1"
+Assert-Contains $release "EditorRuntimeDirectory = `$editorRuntimeDirectory" "create-release.ps1"
 Assert-Contains $release "[switch]`$SkipCommonChecks" "create-release.ps1"
 Assert-Contains $release "[switch]`$SkipArtifactVerification" "create-release.ps1: финальная verification управляется CI"
 Assert-Contains $release "[switch]`$SkipReleaseVerification" "create-release.ps1: package не повторяет compile-dependent verification"
@@ -160,6 +160,11 @@ Assert-NotContains $lunaAdapter "thirdparty\lunasvg\lib\Win32" "ImportEPUBLunaSV
 Assert-Contains $artifacts 'foreach ($name in @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe"))' "verify-artifacts.ps1"
 Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verify-release.ps1"
 Assert-Contains $verifyRelease "[switch]`$SkipCommonChecks" "verify-release.ps1"
+Assert-Contains $verifyRelease "[switch]`$FullValidation" "verify-release.ps1: explicit FULL mode"
+Assert-Contains $verifyRelease "`$RunTableTests -or `$FullValidation" "verify-release.ps1: table suite FAST/FULL guard"
+Assert-Contains $workflow "GITHUB_REF_TYPE -eq 'tag'" "workflow: tag validation selects FULL"
+Assert-Contains $workflow "`$arguments.FullValidation = `$true" "workflow: tag passes FullValidation"
+Assert-Contains $release "[switch]`$FullValidation" "create-release.ps1: release validation can request FULL"
 Assert-Contains $verifyRelease "test-editor-runtime-fingerprint.ps1" "verify-release.ps1: behavioral editor-runtime fingerprint regression"
 Assert-Contains $verifyRelease "test-fbe-selection-container-control-range.ps1" "verify-release.ps1: MSHTML ControlRange selection regression"
 Assert-Contains $verifyRelease "test-fbe-table-structural-performance.ps1" "verify-release.ps1: benchmark logical grid"
@@ -204,6 +209,21 @@ $archHandlerTest = $verifyRelease.IndexOf('test-archhandler-argv.ps1')
 if ($commonStart -lt 0 -or $commonEnd -lt 0 -or $archHandlerTest -le $commonEnd) {
     throw "Exact ArchHandler argv test должен выполняться вне блока SkipCommonChecks."
 }
+$fullStart = $verifyRelease.IndexOf('if ($FullValidation -and -not $SkipCommonChecks) {')
+if ($fullStart -lt 0) { throw 'verify-release.ps1 must have an explicit FULL-only block.' }
+foreach ($heavyTest in @(
+    'test-fbd-production-roundtrip.ps1', 'test-source-full-process-benchmark.ps1',
+    'test-words-ownerdata-stress.ps1', 'test-fbe-body-source-selection-transfer.ps1',
+    'test-fbe-selection-container-control-range.ps1', 'test-fbe-binary-production-roundtrip.ps1',
+    'test-fbe-large-binary-production-roundtrip.ps1', 'test-image-import-fbe-roundtrip.ps1',
+    'test-export-html-images-e2e.ps1', 'test-portable-registry-isolation.ps1')) {
+    if ($verifyRelease.IndexOf($heavyTest) -lt $fullStart) { throw "$heavyTest must not run in FAST validation." }
+}
+Assert-Contains $release 'test-portable-gui-state.ps1' "create-release.ps1: FULL portable GUI state"
+Assert-Contains $release 'test-bundled-plugin-local-activation.ps1' "create-release.ps1: portable payload plugin activation"
+Assert-Contains $artifacts 'Data/Scripts/.keep' "verify-artifacts.ps1: portable Scripts directory"
+Assert-Contains $artifacts 'Data/Dictionaries/.keep' "verify-artifacts.ps1: portable Dictionaries directory"
+Assert-Contains $artifacts 'Data/Themes/.keep' "verify-artifacts.ps1: portable Themes directory"
 Assert-NotContains $fbeView "GetTestLogicalTableColumn" "FBEview.cpp: test-only column override в production handler"
 Assert-Contains $fbeView "DeleteTableLogicalColumnForTest" "FBEview.cpp: isolated test harness helper"
 Assert-Contains $fbeView "DeleteTableLogicalColumn(this, grid" "FBEview.cpp: общий алгоритм удаления logical column"

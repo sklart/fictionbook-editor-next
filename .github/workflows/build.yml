@@ -86,7 +86,10 @@ jobs:
         run: ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Modern/Win32/Release
       - name: Verify Modern binaries
         shell: pwsh
-        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Modern -PlatformToolset v143 -SkipUpdateManifest -BatchOutputDirectory out/target-batches/Modern -ArchHandlerOutputDirectory out/archhandler/Modern/Win32/Release
+        run: |
+          $arguments = @{ Configuration = 'Release'; CompatibilityTarget = 'Modern'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches/Modern'; ArchHandlerOutputDirectory = 'out/archhandler/Modern/Win32/Release' }
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.FullValidation = $true }
+          ./tools/build/verify-release.ps1 @arguments
       - name: Build Win7-compatible editor runtime
         shell: pwsh
         run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime -SkipVersionSync
