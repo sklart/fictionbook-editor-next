@@ -243,6 +243,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-installer-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-components-page-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-deployment-modes.ps1")
+& (Join-Path $repoRoot "tools\tests\test-nsis-install-scopes.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-ownership-safe-uninstall.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-uninstall-user-data.ps1")
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir

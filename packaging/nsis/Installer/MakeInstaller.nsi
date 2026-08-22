@@ -212,6 +212,10 @@ Function .onInit
     StrCpy $InstallScope "allusers"
     SetShellVarContext all
   !endif
+  !ifdef FBE_DEPLOYMENT_TEST_ROOT
+    ; The scope smoke redirects only its test probe, never a release install.
+    StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
+  !endif
   ${IfNot} ${UAC_IsInnerInstance}
     !insertmacro MUI_LANGDLL_DISPLAY
   ${EndIf}
@@ -708,8 +712,39 @@ migrate_legacy_win32:
 migrate_legacy_done:
 FunctionEnd
 
+Function WriteDeploymentScopeTestProbe
+  CreateDirectory "$INSTDIR"
+  FileOpen $0 "$INSTDIR\deployment-scope.txt" w
+  FileWrite $0 "DeploymentMode=$DeploymentMode$\r$\nInstallScope=$InstallScope$\r$\nInstallPath=$INSTDIR$\r$\n"
+  ${If} $InstallScope == "allusers"
+    FileWrite $0 "UninstallRegistryRoot=HKLM$\r$\nProductionPath=$PROGRAMFILES32\${PRODUCT_NAME}$\r$\n"
+  ${Else}
+    FileWrite $0 "UninstallRegistryRoot=HKCU$\r$\nProductionPath=$LOCALAPPDATA\Programs\${PRODUCT_NAME}$\r$\n"
+  ${EndIf}
+  ${If} $DeploymentMode == "portable"
+    FileOpen $1 "$INSTDIR\portable.ini" w
+    FileWrite $1 "[Portable]$\r$\nDataPath=Data$\r$\n"
+    FileClose $1
+    CreateDirectory "$INSTDIR\Data\Settings"
+    CreateDirectory "$INSTDIR\Data\Scripts"
+    CreateDirectory "$INSTDIR\Data\Dictionaries"
+    CreateDirectory "$INSTDIR\Data\Themes"
+    CreateDirectory "$INSTDIR\Data\Logs"
+    CreateDirectory "$INSTDIR\Data\Diagnostics"
+    CreateDirectory "$INSTDIR\Data\Recovery"
+    CreateDirectory "$INSTDIR\Data\Cache"
+    CreateDirectory "$INSTDIR\Data\Temp"
+  ${EndIf}
+  FileClose $0
+FunctionEnd
+
 Section !$(Main) MainSection_id
   SectionIn RO
+  !ifdef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+    Call WriteDeploymentScopeTestProbe
+    SetErrorLevel 0
+    Quit
+  !endif
   ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" CurrentVersion
   StrCmp $0 "" 0 nthere
   MessageBox MB_OK|MB_ICONSTOP $(ErrNTCurrentVersion)
@@ -781,6 +816,9 @@ portable_core_done:
   FileWrite $0 "[Portable]$\r$\nDataPath=Data$\r$\n"
   FileClose $0
   CreateDirectory "$INSTDIR\Data\Settings"
+  CreateDirectory "$INSTDIR\Data\Scripts"
+  CreateDirectory "$INSTDIR\Data\Dictionaries"
+  CreateDirectory "$INSTDIR\Data\Themes"
   CreateDirectory "$INSTDIR\Data\Logs"
   CreateDirectory "$INSTDIR\Data\Diagnostics"
   CreateDirectory "$INSTDIR\Data\Recovery"

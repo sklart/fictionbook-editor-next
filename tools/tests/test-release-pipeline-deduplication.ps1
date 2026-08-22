@@ -162,6 +162,7 @@ Assert-Contains $verifyRelease 'analyze-product-hardcoded-cyrillic.ps1")' "verif
 Assert-Contains $verifyRelease "[switch]`$SkipCommonChecks" "verify-release.ps1"
 Assert-Contains $verifyRelease "[switch]`$FullValidation" "verify-release.ps1: explicit FULL mode"
 Assert-Contains $verifyRelease "`$RunTableTests -or `$FullValidation" "verify-release.ps1: table suite FAST/FULL guard"
+Assert-Contains $verifyRelease 'test-nsis-install-scopes.ps1' "verify-release.ps1: FAST NSIS install-scope smoke"
 $verifyModernStep = $workflow.IndexOf('- name: Verify Modern binaries')
 $packageModernStep = $workflow.IndexOf('- name: Create Modern release artifacts without compiling')
 $verifyTagGuard = $workflow.IndexOf("if (`$env:GITHUB_REF_TYPE -eq 'tag')", $verifyModernStep)
