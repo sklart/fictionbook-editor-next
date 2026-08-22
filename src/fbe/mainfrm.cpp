@@ -38,15 +38,69 @@ static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE
 	return added != FALSE;
 }
 
-static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId,
-	COLORREF maskColor = RGB(192, 192, 192))
+static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId)
 {
-	HBITMAP bitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId),
+	HBITMAP colorBitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId),
 		IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
-	if (bitmap == NULL) return -1;
+	if (colorBitmap == NULL) return -1;
+
+	DIBSECTION bitmapSection = {};
+	if (::GetObject(colorBitmap, sizeof(bitmapSection), &bitmapSection) != sizeof(bitmapSection) ||
+		bitmapSection.dsBm.bmWidth != 24 || bitmapSection.dsBmih.biHeight == 0 ||
+		(bitmapSection.dsBmih.biHeight < 0 ? -bitmapSection.dsBmih.biHeight : bitmapSection.dsBmih.biHeight) != 24 ||
+		bitmapSection.dsBm.bmBitsPixel != 24 || bitmapSection.dsBm.bmBits == NULL ||
+		bitmapSection.dsBm.bmWidthBytes < 24 * 3)
+	{
+		::DeleteObject(colorBitmap);
+		return -1;
+	}
+
 	HIMAGELIST imageList = toolbar.GetImageList();
-	const int imageIndex = imageList != NULL ? ::ImageList_AddMasked(imageList, bitmap, maskColor) : -1;
-	::DeleteObject(bitmap);
+	HDC maskDc = ::CreateCompatibleDC(NULL);
+	HBITMAP maskBitmap = ::CreateBitmap(24, 24, 1, 1, NULL);
+	if (imageList == NULL || maskDc == NULL || maskBitmap == NULL)
+	{
+		if (maskDc != NULL) ::DeleteDC(maskDc);
+		if (maskBitmap != NULL) ::DeleteObject(maskBitmap);
+		::DeleteObject(colorBitmap);
+		return -1;
+	}
+
+	HGDIOBJ oldMaskBitmap = ::SelectObject(maskDc, maskBitmap);
+	const bool topDown = bitmapSection.dsBmih.biHeight < 0;
+	BYTE* const bits = static_cast<BYTE*>(bitmapSection.dsBm.bmBits);
+	int transparentPixelCount = 0;
+	int maskOneCount = 0;
+	int normalizedBackgroundCount = 0;
+	int blackPixelCount = 0;
+	for (int y = 0; y < 24; ++y)
+	{
+		BYTE* const row = bits + (topDown ? y : 23 - y) * bitmapSection.dsBm.bmWidthBytes;
+		for (int x = 0; x < 24; ++x)
+		{
+			BYTE* const pixel = row + x * 3;
+			const bool transparent = pixel[0] == 192 && pixel[1] == 192 && pixel[2] == 192;
+			if (transparent)
+			{
+				pixel[0] = 0;
+				pixel[1] = 0;
+				pixel[2] = 0;
+				++transparentPixelCount;
+				++maskOneCount;
+			}
+			::SetPixel(maskDc, x, y, transparent ? RGB(255, 255, 255) : RGB(0, 0, 0));
+			if (pixel[0] == 192 && pixel[1] == 192 && pixel[2] == 192) ++normalizedBackgroundCount;
+			if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) ++blackPixelCount;
+		}
+	}
+	::SelectObject(maskDc, oldMaskBitmap);
+	::DeleteDC(maskDc);
+
+	const bool normalized = transparentPixelCount > 0 && transparentPixelCount == maskOneCount &&
+		normalizedBackgroundCount == 0 && blackPixelCount >= transparentPixelCount;
+	const int imageIndex = normalized ? ::ImageList_Add(imageList, colorBitmap, maskBitmap) : -1;
+	::DeleteObject(maskBitmap);
+	::DeleteObject(colorBitmap);
 	return imageIndex;
 }
 
@@ -83,9 +137,9 @@ static const TableToolbarCommand kTableToolbarCommands[] =
 
 static bool IsTableToolbarCommand(UINT commandId)
 {
-	for(size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
 	{
-		if(kTableToolbarCommands[index].commandId == commandId)
+		if (kTableToolbarCommands[index].commandId == commandId)
 			return true;
 	}
 	return false;
@@ -2080,7 +2134,6 @@ BOOL CMainFrame::OnIdle()
 	};
 	for (size_t index = 0; index < _countof(tableCommands); ++index) {
 		UIEnable(tableCommands[index], tableCommandEnabled);
-		m_CmdToolbar.EnableButton(tableCommands[index], tableCommandEnabled);
 	}
 
 	// update UI
@@ -2412,8 +2465,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   m_CmdToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_MAINFRAME, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
   m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
   InitToolBar(m_CmdToolbar, IDR_MAINFRAME);
-  for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
-  {
+	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+	{
     m_table_toolbar_image_indices[index] = -1;
   }
   for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
@@ -2428,9 +2481,9 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     button.fsState = TBSTATE_ENABLED;
     button.fsStyle = TBSTYLE_BUTTON;
     button.iString = 1;
-	AddToolbarButton(m_CmdToolbar, button, StripMenuMnemonics(FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText)));
-  }
-  // Restore commands toolbar layout and position
+		AddToolbarButton(m_CmdToolbar, button, StripMenuMnemonics(FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText)));
+	}
+	// Restore commands toolbar layout and position
 	if (DeploymentContext::RegistryPersistenceAllowed())
 		m_CmdToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
   for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
@@ -3692,21 +3745,45 @@ LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 
 LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled)
 {
-	if(pnmh->hwndFrom != m_CmdToolbar.m_hWnd)
+	if (pnmh->hwndFrom != m_CmdToolbar.m_hWnd)
 	{
 		bHandled = FALSE;
 		return 0;
 	}
 
-	const NMTBCUSTOMDRAW* customDraw = reinterpret_cast<const NMTBCUSTOMDRAW*>(pnmh);
-	if(customDraw->nmcd.dwDrawStage == CDDS_PREPAINT)
+	NMTBCUSTOMDRAW* customDraw = reinterpret_cast<NMTBCUSTOMDRAW*>(pnmh);
+	if (customDraw->nmcd.dwDrawStage == CDDS_PREPAINT)
 		return CDRF_NOTIFYITEMDRAW;
 
-	if(customDraw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT &&
-		(customDraw->nmcd.uItemState & CDIS_DISABLED) != 0 &&
-		IsTableToolbarCommand(static_cast<UINT>(customDraw->nmcd.dwItemSpec)))
+	if (customDraw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
 	{
-		return TBCDRF_BLENDICON | TBCDRF_NOETCHEDEFFECT;
+		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
+		if (IsTableToolbarCommand(commandId) &&
+			(customDraw->nmcd.uItemState & (CDIS_DISABLED | CDIS_GRAYED)) != 0)
+		{
+			const int imageIndex = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, commandId, 0));
+			HIMAGELIST imageList = m_CmdToolbar.GetImageList();
+			if (imageIndex < 0 || imageList == NULL)
+				return CDRF_DODEFAULT;
+
+			const RECT& rect = customDraw->nmcd.rc;
+			::DrawThemeParentBackground(m_CmdToolbar.m_hWnd, customDraw->nmcd.hdc, &rect);
+			IMAGELISTDRAWPARAMS draw = {};
+			draw.cbSize = sizeof(draw);
+			draw.himl = imageList;
+			draw.i = imageIndex;
+			draw.hdcDst = customDraw->nmcd.hdc;
+			draw.x = rect.left + (rect.right - rect.left - 24) / 2;
+			draw.y = rect.top + (rect.bottom - rect.top - 24) / 2;
+			draw.cx = 24;
+			draw.cy = 24;
+			draw.rgbBk = CLR_NONE;
+			draw.rgbFg = CLR_NONE;
+			draw.fStyle = ILD_TRANSPARENT;
+			draw.fState = ILS_SATURATE;
+			::ImageList_DrawIndirect(&draw);
+			return CDRF_SKIPDEFAULT;
+		}
 	}
 
 	return CDRF_DODEFAULT;
