@@ -193,6 +193,7 @@ if (-not $SkipReleaseVerification) {
 }
 $stageCoreArguments = @{
     Configuration = $Configuration
+    CompatibilityTarget = $CompatibilityTarget
     EditorRuntimeDirectory = $editorRuntimeDirectory
     BatchOutputDirectory = $batchOutputDirectory
     ArchHandlerOutputDirectory = $archHandlerOutputDirectory

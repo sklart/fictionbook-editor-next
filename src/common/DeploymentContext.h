@@ -12,6 +12,7 @@
 namespace DeploymentContext
 {
     enum class Mode { Installed, Portable };
+    enum class CompatibilityTarget { Modern, Win7 };
 
     inline std::wstring ExecutableDirectory()
     {
@@ -46,6 +47,21 @@ namespace DeploymentContext
     }
 
     inline bool HasInvalidModeOverride() { return HasCommandLineSwitch(L"--portable") && HasCommandLineSwitch(L"--installed"); }
+
+    inline CompatibilityTarget CurrentCompatibilityTarget()
+    {
+        wchar_t value[32] = L"Modern";
+        const std::wstring marker = ExecutableDirectory() + L"deployment.ini";
+        ::GetPrivateProfileStringW(L"Deployment", L"CompatibilityTarget", L"Modern", value, _countof(value), marker.c_str());
+        // Unknown or malformed metadata must not make a package silently look
+        // like a Win7 profile. Modern is the compatible fail-safe default.
+        return ::lstrcmpiW(value, L"Win7") == 0 ? CompatibilityTarget::Win7 : CompatibilityTarget::Modern;
+    }
+
+    inline const wchar_t* CompatibilityTargetName()
+    {
+        return CurrentCompatibilityTarget() == CompatibilityTarget::Win7 ? L"Win7" : L"Modern";
+    }
 
     inline std::wstring DataRoot()
     {

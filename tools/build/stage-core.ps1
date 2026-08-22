@@ -2,6 +2,7 @@
 param(
     [string]$Configuration = 'Release',
     [Parameter(Mandatory)][string]$OutputDirectory,
+    [ValidateSet('Modern', 'Win7')][string]$CompatibilityTarget = 'Modern',
     [string]$EditorRuntimeDirectory = '',
     [string]$BatchOutputDirectory = '',
     [string]$ArchHandlerOutputDirectory = '',
@@ -36,6 +37,11 @@ foreach ($name in @('ZipHandler.exe','RarHandler.exe')) {
 
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Path $stage | Out-Null
+@(
+    '[Deployment]',
+    "CompatibilityTarget=$CompatibilityTarget",
+    'Architecture=Win32'
+) | Set-Content -LiteralPath (Join-Path $stage 'deployment.ini') -Encoding ASCII
 Copy-Item -Path (Join-Path $repoRoot 'runtime\*') -Destination $stage -Recurse -Force
 # Current Librusec catalog names are shipped alongside the historical *_L
 # aliases.  The executable accepts both while older manual installations keep

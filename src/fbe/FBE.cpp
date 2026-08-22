@@ -77,6 +77,7 @@ static bool PrintRuntimePaths()
 {
 	if (!DeploymentContext::HasCommandLineSwitch(L"--print-runtime-paths")) return false;
 	const wchar_t* mode = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? L"Portable" : L"Installed";
+	const wchar_t* compatibilityTarget = DeploymentContext::CompatibilityTargetName();
 	const std::wstring executableDirectory = EscapeJson(DeploymentContext::ExecutableDirectory());
 	const std::wstring dataRoot = EscapeJson(DeploymentContext::DataRoot());
 	const std::wstring settingsDirectory = EscapeJson(DeploymentContext::SettingsDirectory());
@@ -88,7 +89,7 @@ static bool PrintRuntimePaths()
 	const std::wstring dictionariesDirectory = EscapeJson(DeploymentContext::UserDictionariesDirectory());
 	const std::wstring themesDirectory = EscapeJson(DeploymentContext::UserThemesDirectory());
 	const std::wstring scriptsDirectory = EscapeJson(DeploymentContext::UserScriptsDirectory());
-	CString json; json.Format(L"{\"mode\":\"%s\",\"executableDirectory\":\"%s\",\"resourceRoot\":\"%s\",\"dataRoot\":\"%s\",\"settingsDirectory\":\"%s\",\"diagnosticsDirectory\":\"%s\",\"recoveryDirectory\":\"%s\",\"logsDirectory\":\"%s\",\"cacheDirectory\":\"%s\",\"tempDirectory\":\"%s\",\"dictionariesDirectory\":\"%s\",\"themesDirectory\":\"%s\",\"scriptsDirectory\":\"%s\",\"registryPersistenceAllowed\":%s}\r\n", mode, executableDirectory.c_str(), executableDirectory.c_str(), dataRoot.c_str(), settingsDirectory.c_str(), diagnosticsDirectory.c_str(), recoveryDirectory.c_str(), logsDirectory.c_str(), cacheDirectory.c_str(), tempDirectory.c_str(), dictionariesDirectory.c_str(), themesDirectory.c_str(), scriptsDirectory.c_str(), DeploymentContext::RegistryPersistenceAllowed() ? L"true" : L"false");
+	CString json; json.Format(L"{\"mode\":\"%s\",\"compatibilityTarget\":\"%s\",\"architecture\":\"Win32\",\"executableDirectory\":\"%s\",\"resourceRoot\":\"%s\",\"dataRoot\":\"%s\",\"settingsDirectory\":\"%s\",\"diagnosticsDirectory\":\"%s\",\"recoveryDirectory\":\"%s\",\"logsDirectory\":\"%s\",\"cacheDirectory\":\"%s\",\"tempDirectory\":\"%s\",\"dictionariesDirectory\":\"%s\",\"themesDirectory\":\"%s\",\"scriptsDirectory\":\"%s\",\"registryPersistenceAllowed\":%s}\r\n", mode, compatibilityTarget, executableDirectory.c_str(), executableDirectory.c_str(), dataRoot.c_str(), settingsDirectory.c_str(), diagnosticsDirectory.c_str(), recoveryDirectory.c_str(), logsDirectory.c_str(), cacheDirectory.c_str(), tempDirectory.c_str(), dictionariesDirectory.c_str(), themesDirectory.c_str(), scriptsDirectory.c_str(), DeploymentContext::RegistryPersistenceAllowed() ? L"true" : L"false");
 	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, json, -1, NULL, 0, NULL, NULL); std::vector<char> output(bytes);
 	::WideCharToMultiByte(CP_UTF8, 0, json, -1, &output[0], bytes, NULL, NULL); DWORD written = 0;
 	::WriteFile(::GetStdHandle(STD_OUTPUT_HANDLE), &output[0], bytes - 1, &written, NULL);

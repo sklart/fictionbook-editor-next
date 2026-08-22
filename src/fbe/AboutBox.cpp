@@ -23,8 +23,12 @@ namespace
 			path = path.Left(queryPosition);
 
 		CString expectedUrl;
+		const bool win7 = DeploymentContext::CurrentCompatibilityTarget() == DeploymentContext::CompatibilityTarget::Win7;
+		const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
 		expectedUrl.Format(
-			L"%sv%s/FictionBookEditorNext-%s-win32-setup.exe",
+			portable
+				? (win7 ? L"%sv%s/FictionBookEditorNext-%s-win7-win32-portable.zip" : L"%sv%s/FictionBookEditorNext-%s-win32-portable.zip")
+				: (win7 ? L"%sv%s/FictionBookEditorNext-%s-win7-win32-setup.exe" : L"%sv%s/FictionBookEditorNext-%s-win32-setup.exe"),
 			FBE_RELEASE_DOWNLOAD_PREFIX,
 			static_cast<const wchar_t*>(version),
 			static_cast<const wchar_t*>(version));
@@ -36,6 +40,43 @@ namespace
 		CString url(setupUrl);
 		url.Replace(L"-setup.exe", L"-portable.zip");
 		return url;
+	}
+
+	bool GetUniqueNodeText(const MSXML2::IXMLDOMElementPtr& root, const wchar_t* name, CString& value);
+
+	bool GetUniqueChildElement(
+		const MSXML2::IXMLDOMElementPtr& root,
+		const wchar_t* name,
+		MSXML2::IXMLDOMElementPtr& value)
+	{
+		value = nullptr;
+		if (!root) return false;
+		MSXML2::IXMLDOMNodeListPtr nodes = root->childNodes;
+		if (!nodes) return false;
+		for (long i = 0; i < nodes->length; ++i)
+		{
+			MSXML2::IXMLDOMNodePtr node = nodes->item[i];
+			if (!node || node->nodeType != MSXML2::NODE_ELEMENT) continue;
+			CString nodeName = node->baseName.length() > 0 ? static_cast<const wchar_t*>(node->baseName) : static_cast<const wchar_t*>(node->nodeName);
+			if (nodeName.CompareNoCase(name) != 0) continue;
+			if (value) return false;
+			value = node;
+		}
+		return value != nullptr;
+	}
+
+	bool GetProfileArtifact(
+		const MSXML2::IXMLDOMElementPtr& root,
+		CString& url,
+		CString& sha256)
+	{
+		MSXML2::IXMLDOMElementPtr artifacts;
+		const wchar_t* profile = DeploymentContext::CurrentCompatibilityTarget() == DeploymentContext::CompatibilityTarget::Win7 ? L"Win7" : L"Modern";
+		MSXML2::IXMLDOMElementPtr profileNode;
+		if (!GetUniqueChildElement(root, L"Artifacts", artifacts) || !GetUniqueChildElement(artifacts, profile, profileNode)) return false;
+		const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
+		return GetUniqueNodeText(profileNode, portable ? L"PortableUrl" : L"SetupUrl", url) &&
+			GetUniqueNodeText(profileNode, portable ? L"PortableSHA256" : L"SetupSHA256", sha256);
 	}
 
 	int GetMaximumDownloadSize(const CString& url)
@@ -707,8 +748,14 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 				}
 				const bool rootOk = rootName.CompareNoCase(L"FBE") == 0;
 				bool versionOk = rootOk && GetUniqueNodeText(root, L"Version", availableVersion);
-				bool urlOk = rootOk && GetUniqueNodeText(root, L"DownloadUrl", updateURL);
-				bool shaOk = rootOk && GetUniqueNodeText(root, L"SHA256", updateSHA256);
+				bool urlOk = rootOk && GetProfileArtifact(root, updateURL, updateSHA256);
+				bool shaOk = urlOk;
+				const bool profileManifest = urlOk;
+				if (!profileManifest)
+				{
+					urlOk = rootOk && GetUniqueNodeText(root, L"DownloadUrl", updateURL);
+					shaOk = rootOk && GetUniqueNodeText(root, L"SHA256", updateSHA256);
+				}
 
 				if ((!versionOk || !urlOk || !shaOk) && rootOk)
 				{
@@ -751,8 +798,9 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 							path = path.Left(queryPosition);
 						const CString extension(ATLPath::FindExtension(path));
 
+						const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
 						if (IsTrustedUpdateUrl(updateURL, availableVersion) &&
-							extension.CompareNoCase(L".exe") == 0 &&
+							extension.CompareNoCase(portable ? L".zip" : L".exe") == 0 &&
 							IsSHA256(updateSHA256))
 						{
 							m_UpdateReady = true;
