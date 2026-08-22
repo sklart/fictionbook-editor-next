@@ -28,6 +28,7 @@
 #define IDS_CUSTOM_SAVE_CUSTOM_CSS       122
 #define IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH  123
 #define IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT 124
+#define IDS_ERROR_EMBEDDED_IMAGES_TEMPLATE 125
 #define IDC_BROWSE                      1001
 #define IDC_TEMPLATE                    1002
 #define IDC_DOCINFO                     1003

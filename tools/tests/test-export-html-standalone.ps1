@@ -36,11 +36,11 @@ $source = New-Object -ComObject Msxml2.DOMDocument.6.0
 $source.async = $false
 $fb2 = @'
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
-  <description><title-info><book-title>Standalone test</book-title><annotation><p>Annotation</p></annotation><coverpage><image l:href="#cover"/></coverpage></title-info></description>
-  <body><section id="chapter"><title><p>Chapter</p></title><p><a type="note" l:href="#note-1">1</a></p><image l:href="#cover"/><table><tr><th>Head</th><td colspan="2">Cell</td></tr></table></section></body>
+  <description><title-info><book-title>Standalone test</book-title><annotation><p>Annotation</p></annotation><coverpage><image l:href="#image1.png"/></coverpage></title-info></description>
+  <body><section id="chapter"><title><p>Chapter</p></title><p><a type="note" l:href="#note-1">1</a></p><image l:href="#image1.png"/><image l:href="#image2.jpg"/><table><tr><th>Head</th><td colspan="2">Cell</td></tr></table></section></body>
   <body name="notes"><section id="note-1"><p>Note text</p></section></body>
-  <binary id="cover" content-type="image/png">iVBOR
-    w0KGgo=</binary>
+  <binary id="image1.png" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAF/gL+MZ7M0QAAAABJRU5ErkJggg==</binary>
+  <binary id="image2.jpg" content-type="image/jpeg">/9j/2Q==</binary>
 </FictionBook>
 '@
 if (-not $source.loadXML($fb2)) {
@@ -60,7 +60,6 @@ $processor.addParameter('imagemaxheight', 480, '')
 $html = [string] $processor.output
 
 foreach ($expected in @(
-    'data:image/png;base64,iVBORw0KGgo=',
     'body { color: rgb(1, 2, 3); }',
 	'max-width: 640px',
 	'max-height: 480px',
@@ -81,5 +80,21 @@ foreach ($expected in @(
 if ($html -match '_files/') {
     throw 'Автономный HTML не должен ссылаться на каталог _files.'
 }
+if ($html -match 'src="(?:image1\.png|image2\.jpg)"') {
+    throw 'Автономный HTML не должен содержать внешние ссылки на FB2 binary.'
+}
+$images = [regex]::Matches($html, 'src="(?<uri>data:(?<mime>image/(?:png|jpeg));base64,(?<data>[^"]+))"')
+if ($images.Count -ne 3) { throw "Ожидалось 3 data URI изображений, получено $($images.Count)." }
+$seen = @{}
+foreach ($image in $images) {
+    $base64 = $image.Groups['data'].Value
+    if ($base64 -match '\s') { throw 'Base64 data URI содержит пробел или перенос строки.' }
+    $bytes = [Convert]::FromBase64String($base64)
+    $mime = $image.Groups['mime'].Value
+    if ($mime -eq 'image/png' -and -not ([BitConverter]::ToString($bytes, 0, 8) -eq '89-50-4E-47-0D-0A-1A-0A')) { throw 'PNG data URI не имеет сигнатуру PNG.' }
+    if ($mime -eq 'image/jpeg' -and -not ($bytes[0] -eq 0xFF -and $bytes[1] -eq 0xD8)) { throw 'JPEG data URI не имеет сигнатуру JPEG.' }
+    $seen[$mime] = $true
+}
+if (-not $seen['image/png'] -or -not $seen['image/jpeg']) { throw 'Не получены оба ожидаемых MIME-типа изображений.' }
 
 Write-Host 'Автономный ExportHTML прошёл проверку.'

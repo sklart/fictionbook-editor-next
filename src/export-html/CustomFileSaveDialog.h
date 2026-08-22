@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RuntimeLocalization.h"
+#include "TemplateResolver.h"
 
 class CCustomSaveDialog : public CFileDialogImpl<CCustomSaveDialog>
 {
@@ -8,6 +9,7 @@ public:
 	HWND	      m_hDlg;
 	HWND	      m_hToolTip;
 	CString     m_template;
+	bool        m_usingCustomTemplate;
 	CString     m_customCss;
 	CString     m_tooltipTemplate;
 	CString     m_tooltipBrowseTemplate;
@@ -25,7 +27,7 @@ public:
 		LPCTSTR lpszFilter = NULL,
 		HWND hWndParent = NULL)
 		: CFileDialogImpl<CCustomSaveDialog>(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, hWndParent),
-		m_hDlg(NULL), m_hToolTip(NULL), m_includedesc(true), m_tocdepth(1), m_imageMaxWidth(0), m_imageMaxHeight(0)
+		m_hDlg(NULL), m_hToolTip(NULL), m_usingCustomTemplate(false), m_includedesc(true), m_tocdepth(1), m_imageMaxWidth(0), m_imageMaxHeight(0)
 	{
 		m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_CUSTOMSAVEDLG);
 	}
@@ -54,7 +56,9 @@ public:
 		m_hDlg = hWnd;
 
 		// read saved template name
-		m_template = U::QuerySV(_Settings, _T("Template"), U::GetProgDirFile(_T("html.xsl")));
+		ExportHtmlTemplateSelection selection = ResolveExportHtmlTemplate(_Settings);
+		m_template = selection.path;
+		m_usingCustomTemplate = selection.custom;
 		SetDlgItemText(IDC_TEMPLATE, m_template);
 		m_customCss = U::QuerySV(_Settings, _T("CustomCss"), _T(""));
 		SetDlgItemText(IDC_CUSTOM_CSS, m_customCss);
@@ -125,7 +129,13 @@ public:
 
 	BOOL OnFileOK(LPOFNOTIFY on) {
 		m_template = U::GetWindowText(::GetDlgItem(m_hDlg, IDC_TEMPLATE));
-		_Settings.SetStringValue(_T("Template"), m_template);
+		const CString bundled = U::GetProgDirFile(_T("html.xsl"));
+		m_usingCustomTemplate = !ExportHtmlPathsEqual(m_template, bundled);
+		_Settings.SetDWORDValue(_T("UseCustomTemplate"), m_usingCustomTemplate ? 1 : 0);
+		if (m_usingCustomTemplate)
+			_Settings.SetStringValue(_T("Template"), m_template);
+		else
+			_Settings.DeleteValue(_T("Template"));
 		m_customCss = U::GetWindowText(::GetDlgItem(m_hDlg, IDC_CUSTOM_CSS));
 		_Settings.SetStringValue(_T("CustomCss"), m_customCss);
 		m_includedesc = ::SendDlgItemMessage(m_hDlg, IDC_DOCINFO, BM_GETCHECK, 0, 0) == BST_CHECKED;

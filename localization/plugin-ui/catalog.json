@@ -450,6 +450,25 @@
         "bg-BG": "Неизвестна грешка %x"
       }
     },
+    "export_html.runtime.error_embedded_images_template": {
+      "source": "The selected XSL template does not support embedded images for self-contained HTML. Choose the bundled template or another compatible export format.",
+      "component": "export-html.runtime",
+      "resourceId": "IDS_ERROR_EMBEDDED_IMAGES_TEMPLATE",
+      "translations": {
+        "en-US": "The selected XSL template does not support embedded images for self-contained HTML. Choose the bundled template or another compatible export format.",
+        "ru-RU": "Выбранный XSL-шаблон не поддерживает встраивание изображений в автономный HTML. Выберите штатный шаблон или другой совместимый формат экспорта.",
+        "uk-UA": "Вибраний XSL-шаблон не підтримує вбудовування зображень в автономний HTML. Виберіть штатний шаблон або інший сумісний формат експорту.",
+        "de-DE": "Die gewählte XSL-Vorlage unterstützt keine eingebetteten Bilder für eigenständiges HTML. Wählen Sie die mitgelieferte Vorlage oder ein anderes kompatibles Exportformat.",
+        "fr-FR": "Le modèle XSL sélectionné ne prend pas en charge les images incorporées pour le HTML autonome. Choisissez le modèle fourni ou un autre format d’exportation compatible.",
+        "es-ES": "La plantilla XSL seleccionada no admite imágenes incrustadas para HTML autónomo. Elija la plantilla incluida u otro formato de exportación compatible.",
+        "it-IT": "Il modello XSL selezionato non supporta immagini incorporate per HTML autonomo. Scegliere il modello incluso o un altro formato di esportazione compatibile.",
+        "pl-PL": "Wybrany szablon XSL nie obsługuje osadzonych obrazów w samodzielnym HTML. Wybierz dołączony szablon lub inny zgodny format eksportu.",
+        "pt-PT": "O modelo XSL selecionado não suporta imagens incorporadas em HTML autónomo. Escolha o modelo incluído ou outro formato de exportação compatível.",
+        "nl-NL": "De geselecteerde XSL-sjabloon ondersteunt geen ingesloten afbeeldingen voor zelfstandige HTML. Kies de meegeleverde sjabloon of een andere compatibele exportindeling.",
+        "cs-CZ": "Vybraná šablona XSL nepodporuje vložené obrázky pro samostatné HTML. Vyberte dodanou šablonu nebo jiný kompatibilní formát exportu.",
+        "bg-BG": "Избраният XSL шаблон не поддържа вградени изображения за самостоятелен HTML. Изберете вградения шаблон или друг съвместим формат за експортиране."
+      }
+    },
     "export_epub.runtime.unknown_error": {
       "source": "Unknown error",
       "component": "export-epub.runtime",

@@ -80,6 +80,16 @@ void RemoveServiceMarkers(IXMLDOMDocument2Ptr source)
 	}
 }
 
+bool SupportsEmbeddedImages(IXMLDOMDocument2Ptr document)
+{
+	document->setProperty(bstr_t(L"SelectionLanguage"), variant_t(L"XPath"));
+	IXMLDOMNodePtr parameter;
+	CheckError(document->selectSingleNode(
+		bstr_t(L"//*[local-name()='param' and namespace-uri()='http://www.w3.org/1999/XSL/Transform' and @name='embedimages']"),
+		&parameter));
+	return parameter != NULL;
+}
+
 }
 
 HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
@@ -113,6 +123,10 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		dlg.m_ofn.nFilterIndex = 4;
 		if (dlg.DoModal((HWND)hWnd) != IDOK)
 			return S_FALSE;
+		bool    fMIME = dlg.m_ofn.nFilterIndex == 2;
+		bool    fExternalImages = dlg.m_ofn.nFilterIndex == 1;
+		bool    fEmbeddedImages = dlg.m_ofn.nFilterIndex == 4;
+		bool    fImages = fExternalImages || fMIME || fEmbeddedImages;
 		CString customCss;
 		if (!LoadUtf8TextFile(dlg.m_customCss, customCss)) {
 			strMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, (LPCTSTR)dlg.m_customCss,
@@ -126,6 +140,12 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		IXMLDOMDocument2Ptr	    tdoc(U::CreateDocument(true));
 		if (!U::LoadXml(tdoc, dlg.m_template))
 			return S_FALSE;
+		if (fEmbeddedImages && dlg.m_usingCustomTemplate && !SupportsEmbeddedImages(tdoc)) {
+			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML,
+				LoadExportHtmlString(IDS_ERROR_EMBEDDED_IMAGES_TEMPLATE),
+				NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+			return S_FALSE;
+		}
 		IXSLTemplatePtr	    tmpl(U::CreateTemplate());
 		CheckError(tmpl->putref_stylesheet(tdoc));
 
@@ -147,11 +167,6 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 
 		// 1 = HTML and an adjacent resource folder, 2 = MHT,
 		// 3 = HTML without images, 4 = self-contained HTML with data: URIs.
-		bool    fMIME = dlg.m_ofn.nFilterIndex == 2;
-		bool    fExternalImages = dlg.m_ofn.nFilterIndex == 1;
-		bool    fEmbeddedImages = dlg.m_ofn.nFilterIndex == 4;
-		bool    fImages = fExternalImages || fMIME || fEmbeddedImages;
-
 		CString dfile(dlg.m_szFileName);
 
 		// * open the file

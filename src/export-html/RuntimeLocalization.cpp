@@ -36,7 +36,8 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 	{ IDS_CUSTOM_SAVE_CUSTOM_CSS, L"export_html.dialog.save.custom_css" },
 	{ IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH, L"export_html.dialog.save.image_max_width" },
 	{ IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT, L"export_html.dialog.save.image_max_height" },
-    { IDS_UNKNOWN_ERROR, L"export_html.runtime.unknown_error" },
+	{ IDS_UNKNOWN_ERROR, L"export_html.runtime.unknown_error" },
+	{ IDS_ERROR_EMBEDDED_IMAGES_TEMPLATE, L"export_html.runtime.error_embedded_images_template" },
 };
 
 static std::map<UINT, CStringW> g_runtimeStrings;
