@@ -20,7 +20,8 @@
 - `test-pcre2.ps1` — базовые regex-кейсы текущего runtime.
 - `test-pcre2-wrapper.ps1` — проверка wrapper-поведения режима `Дизайн`.
 - `test-pcre2-replace.ps1` — сценарии замены и backreference.
-- `test-spellcheck-dictionaries.ps1` — smoke орфографии и словарей.
+- `test-spellcheck-dictionaries.ps1` — manifest/SHA-256, кодировки и native
+  Hunspell 1.7.3 spell/suggest smoke для bundled dictionaries.
 - `test-fbe-startup.ps1` — GUI startup smoke.
 
 Практическое правило:

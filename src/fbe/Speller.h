@@ -268,7 +268,7 @@ protected:
 
 	bool m_Enabled;
 	bool m_HighlightMisspells;
-	int m_prevY, m_codePage, m_numAphChanged;
+	int m_prevY, m_codePage;
 	HWND m_frame;
 	SPELL_LANG m_Lang;
 	CSimpleArray<DICT> m_Dictionaries;

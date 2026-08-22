@@ -236,7 +236,7 @@ UINT CSpeller::DetectDictionaryCodePage(Hunhandle* dict, UINT fallbackCodePage)
 CSpeller::CSpeller(CString dictPath):
 	m_prevSelRange(nullptr), m_spell_dlg(nullptr), m_Enabled(true),
 	m_HighlightMisspells(false), m_prevY(0), m_codePage(CP_UTF8),
-	m_numAphChanged(0), m_frame(nullptr), m_Lang(LANG_EN),
+	m_frame(nullptr), m_Lang(LANG_EN),
 	m_menuSuggestions(nullptr), m_DictPath(dictPath),
 	m_CustomDictCodepage(CP_UTF8), splitter(nullptr)
 {
@@ -251,8 +251,9 @@ CSpeller::CSpeller(CString dictPath):
 	 m_Dictionaries[LANG_RU].handle = LoadDictionary(dictPath, dicts[LANG_RU].name);
 	 m_Dictionaries[LANG_RU].codepage = DetectDictionaryCodePage(m_Dictionaries[LANG_RU].handle, m_Dictionaries[LANG_RU].codepage);
 
-	// don't split on apostrophes
-	splitter = new CSplitter(L"'�\u0301");
+	// Keep ASCII, typographic, and modifier-letter apostrophes inside tokens.
+	// The complete English and Ukrainian word must reach Hunspell.
+	splitter = new CSplitter(L"'’ʼ\u0301");
 }
 
 //
@@ -422,7 +423,6 @@ void CSpeller::Replace(int nIndex)
 	try
 	{ 
 		CString replace = (*m_menuSuggestions)[nIndex];
-		if (m_numAphChanged) replace.Replace(L"'", L"�");
 		 replace = replace + addSpace; 
 		_bstr_t b = replace.AllocSysString();
 		range->put_text(b);
@@ -437,7 +437,6 @@ void CSpeller::Replace(CString word)
 {
 	if (m_selRange)
 	{
-		if (m_numAphChanged) word.Replace(L"'", L"�");
 		_bstr_t b = word.AllocSysString();
 		m_selRange->put_text(b);
 	}
@@ -567,8 +566,10 @@ SPELL_RESULT CSpeller::SpellCheck(CString word)
 		if (splitter->AlphaExceptions().Find(word[word.GetLength()-1]) > -1)
 			checkWord.Delete(word.GetLength()-1);
 
-		// replace aphostrophes (dictionaries understand only regular ' aphostrophe
-		m_numAphChanged = checkWord.Replace(L"�", L"'");
+		// Normalise Unicode apostrophes for dictionaries which use ASCII apostrophe.
+		// Do not rewrite suggestions: their upstream representation is valid text.
+		checkWord.Replace(L"’", L"'");
+		checkWord.Replace(L"ʼ", L"'");
 		// remove all soft hyphens
 		checkWord.Replace(L"\u00AD", L"");
 		// remove accent
@@ -1025,8 +1026,6 @@ void CSpeller::ContinueDocumentCheck()
 			case SPELL_CHANGEALL:
 			{
 				CString replaceStr = m_ChangeWordsTo[m_ChangeWords.Find(word)];
-				// replace aphostrophes back
-				if (m_numAphChanged) replaceStr.Replace(L"'", L"�");
 				BeginUndoUnit(L"replace word");
 				b = replaceStr.AllocSysString();
 				m_selRange->put_text(b);

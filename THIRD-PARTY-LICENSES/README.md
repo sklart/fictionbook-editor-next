@@ -1,7 +1,7 @@
 # Third-party license files in release packages
 
-`tools/build/package-portable.ps1` copies the applicable upstream license
-texts into this directory when a portable package is built.  The files are:
+`tools/build/stage-core.ps1` creates the complete license layout in Core;
+Portable and Installer consume that Core unchanged. The files are:
 
 | File | Source in this repository |
 | --- | --- |
@@ -20,6 +20,9 @@ texts into this directory when a portable package is built.  The files are:
 | `Theme-palettes-MIT.txt` | adapted XML palette attribution and MIT text |
 | `UAC.txt` | `third_party/uac/License.txt` |
 | `WTL-MS-PL.txt` | license identifier and canonical source for WTL |
+| `Dictionary-en_US.txt` | English Speller Database / SCOWL 2026.02.25 release notice and license |
+| `Dictionary-ru_RU.txt` | Goudron Russian Hunspell Dictionary 1.0.8 MPL-2.0 license |
+| `Dictionary-uk_UA.txt` | VESUM / dict_uk 6.8.0 Hunspell-distribution MPL-1.1 notice |
 
 PCRE2's `deps/sljit/LICENSE` must additionally be included when the PCRE2 JIT
 is enabled in a release build.  The current FBE build does not enable it.

@@ -1,0 +1,33 @@
+{
+  "en_US": {
+    "project": "English Speller Database / SCOWL",
+    "repository": "https://github.com/en-wl/wordlist",
+    "version": "2026.02.25",
+    "upstreamTag": "rel-2026.02.25",
+    "upstreamCommit": "7e99eda",
+    "encoding": "UTF-8",
+    "dicEntries": 47551,
+    "affSha256": "526E1DC32D1C0E8806DD72809C017B5546F2104B08B9424A4C47311ACA526CCA",
+    "dicSha256": "AB012AE86CE4B46B60DB5B150869288DE9C4A87BC747911764E582125B1B961E"
+  },
+  "ru_RU": {
+    "project": "Goudron Russian Hunspell Dictionary",
+    "repository": "https://github.com/Goudron/ru-spelling-dictionary",
+    "version": "1.0.8",
+    "upstreamTag": "v1.0.8",
+    "encoding": "KOI8-R",
+    "dicEntries": 575475,
+    "affSha256": "E8DC652231A2C0C34B04D9C9ACC63F801C20111865F05E57091C3DC81C786136",
+    "dicSha256": "B565654F9942FEA6C5A7AC0F748E2FB0E33B49EFF5F951720D5F7B0350D65B77"
+  },
+  "uk_UA": {
+    "project": "VESUM / dict_uk",
+    "repository": "https://github.com/brown-uk/dict_uk",
+    "version": "6.8.0",
+    "upstreamTag": "v6.8.0",
+    "encoding": "UTF-8",
+    "dicEntries": 352081,
+    "affSha256": "AC1F2D3D94FCA08600930DB8B68A34E9CC9EAAF1373C836EC12673890BA1CC87",
+    "dicSha256": "AFEF72417783A94BAFD43CE880C9E0CD8C9D7962BA841E8471F24DB79FFE09B4"
+  }
+}

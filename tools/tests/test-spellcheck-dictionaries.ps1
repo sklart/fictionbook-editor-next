@@ -42,7 +42,7 @@ if (-not (Test-Path -LiteralPath $dictDir -PathType Container)) {
 $expectedDictionaryEncodings = @{
     "de_DE" = "ISO8859-1"
     "en_US" = "UTF-8"
-    "ru_RU" = "UTF-8"
+    "ru_RU" = "KOI8-R"
     "uk_UA" = "UTF-8"
 }
 
@@ -64,8 +64,24 @@ foreach ($dictionaryName in $expectedDictionaryEncodings.Keys) {
     }
 }
 
+$manifestPath = Join-Path $repoRoot "runtime\dict\sources.json"
+if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Не найден manifest происхождения словарей: $manifestPath" }
+$manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+foreach ($dictionaryName in @("en_US", "ru_RU", "uk_UA")) {
+    $entry = $manifest.$dictionaryName
+    if (-not $entry) { throw "В sources.json отсутствует $dictionaryName" }
+    $runtimeAff = Join-Path $repoRoot "runtime\dict\$dictionaryName.aff"
+    $runtimeDic = Join-Path $repoRoot "runtime\dict\$dictionaryName.dic"
+    if ((Get-FileHash -LiteralPath $runtimeAff -Algorithm SHA256).Hash -ne $entry.affSha256) { throw "SHA-256 aff не совпадает с sources.json: $dictionaryName" }
+    if ((Get-FileHash -LiteralPath $runtimeDic -Algorithm SHA256).Hash -ne $entry.dicSha256) { throw "SHA-256 dic не совпадает с sources.json: $dictionaryName" }
+    if ((Get-DictionaryEncoding -AffPath $runtimeAff) -ne $entry.encoding) { throw "SET aff не совпадает с sources.json: $dictionaryName" }
+    $firstLine = [System.IO.File]::ReadLines($runtimeDic) | Select-Object -First 1
+    if ($firstLine -ne [string]$entry.dicEntries) { throw "Count в dic не совпадает с sources.json: $dictionaryName" }
+}
+
 $spellerHeader = Read-SourceFile "src\fbe\Speller.h"
 $spellerSource = Read-SourceFile "src\fbe\Speller.cpp"
+$spellerUtf8 = Get-Content -Raw -Encoding utf8 -LiteralPath (Join-Path $repoRoot "src\fbe\Speller.cpp")
 
 if (-not $spellerHeader.Contains("DetectDictionaryCodePage(Hunhandle* dict, UINT fallbackCodePage);")) {
     throw (Get-ThirdPartyText -Base64 "0JIgU3BlbGxlci5oINC+0YLRgdGD0YLRgdGC0LLRg9C10YIg0L7QsdGK0Y/QstC70LXQvdC40LUgaGVscGVyLdGE0YPQvdC60YbQuNC4INC00LvRjyDQvtC/0YDQtdC00LXQu9C10L3QuNGPINC60L7QtNC+0LLQvtC5INGB0YLRgNCw0L3QuNGG0Ysg0YHQu9C+0LLQsNGA0Y8u")
@@ -81,5 +97,25 @@ $helperCalls = ([regex]::Matches(
 if ($helperCalls -lt 3) {
     throw (Format-ThirdPartyText "0J7QttC40LTQsNC70L7RgdGMINC60LDQuiDQvNC40L3QuNC80YPQvCAzINCy0YvQt9C+0LLQsCDQvtC/0YDQtdC00LXQu9C10L3QuNGPINC60L7QtNC+0LLQvtC5INGB0YLRgNCw0L3QuNGG0Ysg0YHQu9C+0LLQsNGA0Y8sINC90LDQudC00LXQvdC+OiB7MH0u" $helperCalls)
 }
+
+foreach ($apostrophe in @("’", "ʼ")) {
+    if (-not $spellerUtf8.Contains($apostrophe)) {
+        throw "Speller tokenizer не сохраняет Unicode-apostrophe U+$([int][char]$apostrophe)."
+    }
+}
+
+& (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
+$testDir = Join-Path $repoRoot "out\tests"
+New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+$smokeExe = Join-Path $testDir "spellcheck-dictionary-smoke.exe"
+& cl.exe /nologo /EHsc /std:c++17 /utf-8 /MT /DHUNSPELL_STATIC `
+    "/I$(Join-Path $repoRoot 'build\hunspell\include')" `
+    "/I$(Join-Path $repoRoot 'third_party\hunspell\src\hunspell')" `
+    (Join-Path $PSScriptRoot "spellcheck-dictionary-smoke.cpp") `
+    (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib") `
+    /link "/OUT:$smokeExe"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& $smokeExe $dictDir
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host (Get-ThirdPartyText -Base64 "0J/RgNC+0LLQtdGA0LrQsCDRgNC10LPRgNC10YHRgdC40Lgg0YHQu9C+0LLQsNGA0LXQuSDQvtGA0YTQvtCz0YDQsNGE0LjQuCDQv9GA0L7RiNC70LAg0YPRgdC/0LXRiNC90L4u")

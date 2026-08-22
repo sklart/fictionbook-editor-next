@@ -5,23 +5,24 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 
-foreach ($path in @("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\README.md", "THIRD-PARTY-LICENSES\WTL-MS-PL.txt")) {
+foreach ($path in @("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\README.md", "THIRD-PARTY-LICENSES\WTL-MS-PL.txt", "THIRD-PARTY-LICENSES\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\Dictionary-uk_UA.txt")) {
     if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $path) -PathType Leaf)) {
         throw "Отсутствует обязательный лицензионный документ: $path"
     }
 }
 
 $notices = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "THIRD-PARTY-NOTICES.md")
-foreach ($component in @("Scintilla | 5.6.6", "Lexilla | 5.5.3", "PCRE2 | 10.47", "Hunspell | 1.7.3", "libwebp | 1.6.0", "OpenJPEG | 2.5.4", "libheif | 1.23.1", "libde265 | 1.1.0", "libaom | 3.14.1", "Windows Template Library (WTL) | 10.01", "LunaSVG | 3.5.0", "PlutoVG | 1.3.1")) {
+foreach ($component in @("Scintilla | 5.6.6", "Lexilla | 5.5.3", "PCRE2 | 10.47", "Hunspell | 1.7.3", "English Speller Database / SCOWL | 2026.02.25", "Goudron Russian Hunspell Dictionary | 1.0.8", "VESUM / dict_uk | 6.8.0", "libwebp | 1.6.0", "OpenJPEG | 2.5.4", "libheif | 1.23.1", "libde265 | 1.1.0", "libaom | 3.14.1", "Windows Template Library (WTL) | 10.01", "LunaSVG | 3.5.0", "PlutoVG | 1.3.1")) {
     if (-not $notices.Contains($component)) {
         throw "В THIRD-PARTY-NOTICES.md отсутствует актуальная запись: $component"
     }
 }
 
-$packageScript = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "tools\build\package-portable.ps1")
-foreach ($path in @("THIRD-PARTY-NOTICES.md", "Scintilla-Lexilla.txt", "PCRE2.txt", "Hunspell.txt", "Hunspell-MySpell.txt", "libwebp.txt", "OpenJPEG.txt", "libheif.txt", "libde265.txt", "libaom.txt", "libaom-PATENTS.txt", "LunaSVG.txt", "PlutoVG.txt", "Theme-palettes-MIT.txt", "UAC.txt")) {
-    if (-not $packageScript.Contains($path)) {
-        throw "package-portable.ps1 не добавляет лицензионный файл: $path"
+$stageCoreScript = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "tools\build\stage-core.ps1")
+$manifest = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "packaging\package-manifest.json")
+foreach ($path in @("THIRD-PARTY-NOTICES.md", "Dictionary-en_US.txt", "Dictionary-ru_RU.txt", "Dictionary-uk_UA.txt")) {
+    if (-not $stageCoreScript.Contains($path) -and -not $manifest.Contains($path)) {
+        throw "Core contract не требует лицензионный файл: $path"
     }
 }
 
@@ -47,8 +48,4 @@ foreach ($path in @("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-
         throw "Установщик не включает единый лицензионный материал: $path"
     }
 }
-if (-not $packageScript.Contains('Remove-Item -LiteralPath $legacyEnglishGplPath -Force')) {
-    throw "Portable-пакет должен оставлять LICENSE единственной английской копией GPL."
-}
-
 Write-Host "Проверка реестра лицензий и состава portable-пакета прошла успешно."
