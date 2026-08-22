@@ -34,15 +34,27 @@ if (-not $xsl.load($runtimeXslPath)) {
 
 $source = New-Object -ComObject Msxml2.DOMDocument.6.0
 $source.async = $false
-$fb2 = @'
+$jpegStream = New-Object IO.MemoryStream
+$jpegBitmap = New-Object Drawing.Bitmap 1, 1
+try {
+    $jpegBitmap.SetPixel(0, 0, [Drawing.Color]::DarkSlateBlue)
+    $jpegBitmap.Save($jpegStream, [Drawing.Imaging.ImageFormat]::Jpeg)
+    $jpegBase64 = [Convert]::ToBase64String($jpegStream.ToArray())
+}
+finally {
+    $jpegBitmap.Dispose()
+    $jpegStream.Dispose()
+}
+
+$fb2 = @"
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
   <description><title-info><book-title>Standalone test</book-title><annotation><p>Annotation</p></annotation><coverpage><image l:href="#image1.png"/></coverpage></title-info></description>
   <body><section id="chapter"><title><p>Chapter</p></title><p><a type="note" l:href="#note-1">1</a></p><image l:href="#image1.png"/><image l:href="#image2.jpg"/><table><tr><th>Head</th><td colspan="2">Cell</td></tr></table></section></body>
   <body name="notes"><section id="note-1"><p>Note text</p></section></body>
   <binary id="image1.png" content-type="image/png">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAF/gL+MZ7M0QAAAABJRU5ErkJggg==</binary>
-  <binary id="image2.jpg" content-type="image/jpeg">/9j/2Q==</binary>
+  <binary id="image2.jpg" content-type="image/jpeg">$jpegBase64</binary>
 </FictionBook>
-'@
+"@
 if (-not $source.loadXML($fb2)) {
     throw $source.parseError.reason
 }

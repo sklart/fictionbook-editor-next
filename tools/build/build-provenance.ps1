@@ -38,7 +38,7 @@ if ($Action -eq 'Write') {
     }
     else {
         foreach ($name in $profileNames) {
-            $source = if ($name -like 'Export*Batch.exe') { Get-SourcePath $BatchDirectory $name }
+            $source = if ($name -like '*Batch.exe') { Get-SourcePath $BatchDirectory $name }
                 elseif ($name -like 'Utilities/*') { Get-SourcePath $ArchHandlerDirectory (Split-Path $name -Leaf) }
                 else { Get-SourcePath $ProfileDirectory $name }
             $artifacts[$name] = Get-FileDigest $source $name
@@ -56,7 +56,7 @@ $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 foreach ($property in $manifest.artifacts.PSObject.Properties) {
     $name = $property.Name
     $source = if ($Kind -eq 'CommonCore') { Get-SourcePath $CommonDirectory $name }
-        elseif ($name -like 'Export*Batch.exe') { Get-SourcePath $BatchDirectory $name }
+        elseif ($name -like '*Batch.exe') { Get-SourcePath $BatchDirectory $name }
         elseif ($name -like 'Utilities/*') { Get-SourcePath $ArchHandlerDirectory (Split-Path $name -Leaf) }
         else { Get-SourcePath $ProfileDirectory $name }
     $actual = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash

@@ -15,7 +15,7 @@ inline bool ExportHtmlPathsEqual(const CString& left, const CString& right)
 
 inline bool ExportHtmlLooksLikeOldBundledTemplate(const CString& path)
 {
-	if (path.IsEmpty() || path.Right(9).CompareNoCase(L"html.xsl") != 0)
+	if (path.IsEmpty() || path.Right(8).CompareNoCase(L"html.xsl") != 0)
 		return false;
 	int slash = path.ReverseFind(L'\\');
 	if (slash < 0)
