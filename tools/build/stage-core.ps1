@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$EditorRuntimeDirectory = '',
     [string]$BatchOutputDirectory = '',
-    [string]$ArchHandlerOutputDirectory = ''
+    [string]$ArchHandlerOutputDirectory = '',
+    [string]$CommonCoreDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,11 +14,13 @@ $buildOutput = Join-Path $repoRoot "out\$Configuration"
 $editorRuntime = if ($EditorRuntimeDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EditorRuntimeDirectory) } else { Join-Path $repoRoot 'runtime' }
 $batchOutput = if ($BatchOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory) } else { $buildOutput }
 $archOutput = if ($ArchHandlerOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchHandlerOutputDirectory) } else { Join-Path $repoRoot "out\archhandler\Win32\$Configuration" }
+$commonCore = if ($CommonCoreDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($CommonCoreDirectory) } else { '' }
 $stage = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 
 foreach ($path in @($buildOutput, $editorRuntime, $batchOutput, $archOutput)) {
     if (-not (Test-Path -LiteralPath $path -PathType Container)) { throw "Не найден подготовленный input Core: $path" }
 }
+if ($commonCore -and -not (Test-Path -LiteralPath $commonCore -PathType Container)) { throw "Не найден общий Core payload: $commonCore" }
 foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
     if (-not (Test-Path -LiteralPath (Join-Path $buildOutput $name) -PathType Leaf)) { throw "Не найден Core artifact: $name" }
 }
@@ -44,12 +47,24 @@ foreach ($entry in @{ 'genres.txt_L' = 'genres.librusec.txt'; 'genres.rus.txt_L'
 foreach ($name in @('FBShell.dll','FBShell64.dll','FBE.Sequence.propdesc')) { Remove-Item -LiteralPath (Join-Path $stage $name) -Force -ErrorAction SilentlyContinue }
 foreach ($name in @('Scintilla.dll','Lexilla.dll')) { Copy-Item -LiteralPath (Join-Path $editorRuntime $name) -Destination $stage -Force }
 foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $buildOutput $name) -Destination $stage -Force }
+if ($commonCore) {
+    # Win7-профиль меняет только editor runtime и batch-конвертеры. Общие
+    # приложения, плагины и локализованные Win32-ресурсы берём из Modern.
+    foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
+        Copy-Item -LiteralPath (Join-Path $commonCore $name) -Destination $stage -Force
+    }
+}
 foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) { Copy-Item -LiteralPath (Join-Path $batchOutput $name) -Destination $stage -Force }
 foreach ($entry in @{ 'ru-RU' = 'res_rus.dll'; 'uk-UA' = 'res_ukr.dll' }.GetEnumerator()) {
     $source = Join-Path $buildOutput "Lang\\$($entry.Key)\\$($entry.Value)"
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Не найден Core localization artifact: $source" }
     $destination = Join-Path $stage "Lang\\$($entry.Key)"; New-Item -ItemType Directory -Path $destination -Force | Out-Null
     Copy-Item -LiteralPath $source -Destination $destination -Force
+}
+if ($commonCore) {
+    foreach ($entry in @{ 'ru-RU' = 'res_rus.dll'; 'uk-UA' = 'res_ukr.dll' }.GetEnumerator()) {
+        Copy-Item -LiteralPath (Join-Path $commonCore "Lang\\$($entry.Key)\\$($entry.Value)") -Destination (Join-Path $stage "Lang\\$($entry.Key)") -Force
+    }
 }
 $archDestination = Join-Path $stage 'Utilities\ArchHandler'; New-Item -ItemType Directory -Path $archDestination -Force | Out-Null
 foreach ($name in @('ZipHandler.exe','RarHandler.exe')) { Copy-Item -LiteralPath (Join-Path $archOutput $name) -Destination $archDestination -Force }
@@ -59,6 +74,11 @@ foreach ($entry in @{ 'ru-RU' = 'res_rus.dll'; 'uk-UA' = 'res_ukr.dll' }.GetEnum
     $source = Join-Path $buildOutput "Lang\\$($entry.Key)\\$($entry.Value)"
     $destination = Join-Path $stage "Lang\\$($entry.Key)"; New-Item -ItemType Directory -Path $destination -Force | Out-Null
     Copy-Item -LiteralPath $source -Destination $destination -Force
+}
+if ($commonCore) {
+    foreach ($entry in @{ 'ru-RU' = 'res_rus.dll'; 'uk-UA' = 'res_ukr.dll' }.GetEnumerator()) {
+        Copy-Item -LiteralPath (Join-Path $commonCore "Lang\\$($entry.Key)\\$($entry.Value)") -Destination (Join-Path $stage "Lang\\$($entry.Key)") -Force
+    }
 }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'runtime\gpl-3.0.txt') -Destination (Join-Path $stage 'LICENSE') -Force
 Remove-Item -LiteralPath (Join-Path $stage 'gpl-3.0.txt') -Force -ErrorAction SilentlyContinue

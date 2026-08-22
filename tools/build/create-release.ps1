@@ -191,12 +191,25 @@ if ($SkipCommonChecks) {
 if (-not $SkipReleaseVerification) {
     & (Join-Path $PSScriptRoot "verify-release.ps1") @verifyReleaseArguments
 }
+$stageCoreArguments = @{
+    Configuration = $Configuration
+    EditorRuntimeDirectory = $editorRuntimeDirectory
+    BatchOutputDirectory = $batchOutputDirectory
+    ArchHandlerOutputDirectory = $archHandlerOutputDirectory
+    OutputDirectory = $coreDir
+}
+if ($CompatibilityTarget -eq "Win7") {
+    $stageCoreArguments.CommonCoreDirectory = Join-Path $repoRoot "out\stage\Core\Modern"
+}
+& (Join-Path $PSScriptRoot "stage-core.ps1") @stageCoreArguments
+<#
 & (Join-Path $PSScriptRoot "stage-core.ps1") `
     -Configuration $Configuration `
     -EditorRuntimeDirectory $editorRuntimeDirectory `
     -BatchOutputDirectory $batchOutputDirectory `
     -ArchHandlerOutputDirectory $archHandlerOutputDirectory `
     -OutputDirectory $coreDir
+#>
 & (Join-Path $PSScriptRoot "stage-integration.ps1") `
     -Configuration $Configuration `
     -OutputDirectory $integrationDir
