@@ -48,7 +48,7 @@ if ($PortableZip) {
     $archive = [IO.Compression.ZipFile]::OpenRead($zip)
     try {
         $entries = @($archive.Entries.FullName)
-        foreach ($required in @('portable.ini','Data/')) { if (-not ($entries | Where-Object { $_ -eq $required -or $_.StartsWith($required) })) { throw "ZIP misses $required" } }
+        foreach ($required in @('portable.ini','Data/','Data/Settings/','Data/Scripts/','Data/Dictionaries/','Data/Themes/','Data/Logs/','Data/Diagnostics/','Data/Recovery/','Data/Cache/','Data/Temp/')) { if (-not ($entries | Where-Object { $_ -eq $required -or $_.StartsWith($required) })) { throw "ZIP misses $required" } }
         if ($entries | Where-Object { $_ -match '(^|/)(FBShell(64)?\\.dll|FBE\\.Sequence\\.propdesc|uninst\\.exe)$|(^|/)InstallerTools/' -or $_ -match '\\.(pdb|obj|lib|exp)$' }) { throw 'ZIP contains forbidden integration or build artifacts.' }
     } finally { $archive.Dispose() }
     $extracted = Join-Path $testRoot 'ZIP распаковка'
