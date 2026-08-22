@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Guards native bitmap and UpdateUI integration for table toolbar buttons.
+Guards table toolbar image-list, UpdateUI and disabled drawing integration.
 #>
 [CmdletBinding()]
 param()
@@ -25,10 +25,14 @@ if (-not $bitmapHelper.Success -or
 foreach ($forbidden in @('TB_ADDBITMAP', 'ImageList_AddMasked', 'ImageList_Replace', 'TB_SETIMAGELIST', 'SetImageList')) {
     if ($bitmapHelper.Value.Contains($forbidden)) { throw "Table toolbar bitmap helper must not use $forbidden." }
 }
+if ($bitmapHelper.Value.Contains('maskOneCount')) { throw 'Table toolbar bitmap helper must not retain the redundant mask-one counter.' }
 
 if ($cpp -notmatch '(?s)LRESULT CMainFrame::OnCommandToolbarCustomDraw\(.*?pnmh->hwndFrom != m_CmdToolbar\.m_hWnd.*?IsTableToolbarCommand\(commandId\).*?TB_GETBITMAP.*?DrawThemeParentBackground.*?ILS_SATURATE.*?ImageList_DrawIndirect.*?CDRF_SKIPDEFAULT' -or
     $header -notmatch 'NOTIFY_CODE_HANDLER\(NM_CUSTOMDRAW, OnCommandToolbarCustomDraw\)') {
     throw 'Table toolbar custom draw must grayscale only disabled table icons with ImageList_DrawIndirect.'
+}
+if ($cpp -notmatch 'ImageList_DrawIndirect\(&draw\) \? CDRF_SKIPDEFAULT : CDRF_DODEFAULT') {
+    throw 'Table toolbar custom draw must fall back to native painting when ImageList_DrawIndirect fails.'
 }
 foreach ($forbidden in @('TBCDRF_BLENDICON', 'TBCDRF_NOETCHEDEFFECT', 'DrawState', 'SetDisabledImageList', 'TB_SETDISABLEDIMAGELIST')) {
     if ($cpp.Contains($forbidden) -or $header.Contains($forbidden)) { throw "Forbidden table toolbar drawing workaround remains: $forbidden." }

@@ -70,7 +70,6 @@ static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, U
 	const bool topDown = bitmapSection.dsBmih.biHeight < 0;
 	BYTE* const bits = static_cast<BYTE*>(bitmapSection.dsBm.bmBits);
 	int transparentPixelCount = 0;
-	int maskOneCount = 0;
 	int normalizedBackgroundCount = 0;
 	int blackPixelCount = 0;
 	for (int y = 0; y < 24; ++y)
@@ -86,7 +85,6 @@ static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, U
 				pixel[1] = 0;
 				pixel[2] = 0;
 				++transparentPixelCount;
-				++maskOneCount;
 			}
 			::SetPixel(maskDc, x, y, transparent ? RGB(255, 255, 255) : RGB(0, 0, 0));
 			if (pixel[0] == 192 && pixel[1] == 192 && pixel[2] == 192) ++normalizedBackgroundCount;
@@ -96,8 +94,8 @@ static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, U
 	::SelectObject(maskDc, oldMaskBitmap);
 	::DeleteDC(maskDc);
 
-	const bool normalized = transparentPixelCount > 0 && transparentPixelCount == maskOneCount &&
-		normalizedBackgroundCount == 0 && blackPixelCount >= transparentPixelCount;
+	const bool normalized = transparentPixelCount > 0 && normalizedBackgroundCount == 0 &&
+		blackPixelCount >= transparentPixelCount;
 	const int imageIndex = normalized ? ::ImageList_Add(imageList, colorBitmap, maskBitmap) : -1;
 	::DeleteObject(maskBitmap);
 	::DeleteObject(colorBitmap);
@@ -3781,8 +3779,7 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 			draw.rgbFg = CLR_NONE;
 			draw.fStyle = ILD_TRANSPARENT;
 			draw.fState = ILS_SATURATE;
-			::ImageList_DrawIndirect(&draw);
-			return CDRF_SKIPDEFAULT;
+			return ::ImageList_DrawIndirect(&draw) ? CDRF_SKIPDEFAULT : CDRF_DODEFAULT;
 		}
 	}
 
