@@ -1,4 +1,5 @@
 !define /date BUILDNUM "%d %b"
+Unicode true
 !include "version.nsh"
 !ifndef INPUTDIR
 !define INPUTDIR "..\..\..\out\package\FictionBookEditor"

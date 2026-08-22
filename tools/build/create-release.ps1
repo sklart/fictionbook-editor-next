@@ -330,18 +330,7 @@ if (-not $SkipInstaller) {
         -IntegrationDirectory $integrationDir `
         -OutputDirectory $installerInputDir
 
-    # Обычный NSIS не подходит: он не гарантирует корректную обработку UTF-8
-    # строк установщика. FBE_MAKENSIS позволяет CI/локальной сборке явно
-    # указать подготовленный Unicode-компилятор, не меняя системную установку.
-    $makensisCandidates = @(
-        $env:FBE_MAKENSIS,
-        (Join-Path ${env:ProgramFiles(x86)} "NSIS\Unicode\makensis.exe")
-    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-    $makensis = $makensisCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-
-    if (-not $makensis) {
-        throw "Не найден Unicode makensis.exe. Установите NSIS Unicode или задайте FBE_MAKENSIS."
-    }
+    $makensis = & (Join-Path $PSScriptRoot 'resolve-nsis.ps1')
 
     $installerDir = Join-Path $repoRoot "packaging\nsis\Installer"
     Get-ChildItem -LiteralPath $installerDir -Filter "FictionBook Editor Next Release $version*.exe" |

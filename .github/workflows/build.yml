@@ -133,6 +133,7 @@ jobs:
           if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
             choco install nsis --no-progress --yes
           }
+          ./tools/build/resolve-nsis.ps1 | Out-Null
       - name: Create Modern release artifacts without compiling
         shell: pwsh
         run: |
