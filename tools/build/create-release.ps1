@@ -268,6 +268,15 @@ function Set-ManifestNodeValue {
 
 Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath $portableZip -CompressionLevel Optimal
 
+# The portable acceptance scenario is exercised against the materialised
+# payload and its freshly created ZIP. Win7 validation is intentionally kept
+# in its dedicated compatibility contour.
+if ($CompatibilityTarget -eq 'Modern') {
+    & (Join-Path $repoRoot 'tools\tests\test-portable-package-smoke.ps1') `
+        -PackageDirectory $portableDir `
+        -PortableZip $portableZip
+}
+
 if (Test-Path -LiteralPath $symbolsDir) {
     Remove-PathWithRetry -LiteralPath $symbolsDir
 }
