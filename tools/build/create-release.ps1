@@ -371,48 +371,8 @@ $checksumLines = foreach ($file in $artifactFiles) {
     "{0}  {1}" -f $hash.Hash, $file.Name
 }
 [IO.File]::WriteAllLines($checksumsPath, $checksumLines, [Text.Encoding]::ASCII)
-if (-not $SkipInstaller -and $CompatibilityTarget -eq "Modern" -and -not $Prerelease) {
-    $setupHash = (Get-FileHash -LiteralPath $setupArtifact -Algorithm SHA256).Hash
-    $updateManifestPath = Join-Path $repoRoot "update.xml"
-    [xml]$manifest = Get-Content -Raw -LiteralPath $updateManifestPath
-    if (-not $manifest.FBE) {
-        throw "Файл update.xml должен содержать корневой элемент <FBE>."
-    }
-
-    Set-ManifestNodeValue -Document $manifest -NodeName "Name" `
-        -Value "FictionBook Editor Next Release $version"
-    Set-ManifestNodeValue -Document $manifest -NodeName "Date" `
-        -Value (Get-Date -Format "dd-MM-yyyy")
-    Set-ManifestNodeValue -Document $manifest -NodeName "Version" `
-        -Value $version
-    Set-ManifestNodeValue -Document $manifest -NodeName "Beta" `
-        -Value "false"
-    Set-ManifestNodeValue -Document $manifest -NodeName "DownloadUrl" `
-        -Value "https://github.com/sklart/fictionbook-editor-next/releases/download/v$version/FictionBookEditorNext-$version-win32-setup.exe"
-    Set-ManifestNodeValue -Document $manifest -NodeName "SHA256" `
-        -Value $setupHash
-
-    $settings = New-Object System.Xml.XmlWriterSettings
-    $settings.Encoding = [Text.UTF8Encoding]::new($false)
-    $settings.Indent = $true
-    $settings.IndentChars = "`t"
-    $settings.NewLineChars = "`r`n"
-    $settings.NewLineHandling = [System.Xml.NewLineHandling]::Replace
-
-    $writer = [System.Xml.XmlWriter]::Create($updateManifestPath, $settings)
-    try {
-        $manifest.Save($writer)
-    }
-    finally {
-        $writer.Dispose()
-    }
-}
-
 if ($ValidateUpdateManifest) {
-    if ($Prerelease) {
-        throw "Предварительный выпуск не должен проверять или изменять update.xml."
-    }
-    & (Join-Path $repoRoot "tools\version\sync-version.ps1") -ValidateUpdateManifest
+    throw "Проверка published update.xml не является частью materialization artifacts. Используйте tools\\build\\new-update-manifest-candidate.ps1 после Modern и Win7 artifacts."
 }
 
 $verifyArtifactArguments = @{

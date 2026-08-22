@@ -140,7 +140,7 @@ jobs:
           $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true; SkipPropertyHandlerBuild = $true; SkipFbvVerbMuiBuild = $true; SkipReleaseVerification = $true; SkipArtifactVerification = $true; SkipVersionSync = $true; BatchOutputDirectory = "out/target-batches/Modern" }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
-            if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true } else { $arguments.ValidateUpdateManifest = $true }
+            if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true }
           }
           ./tools/build/create-release.ps1 @arguments
       - name: Create Win7 release artifacts without compiling
@@ -150,13 +150,17 @@ jobs:
       - name: Verify all release archives
         shell: pwsh
         run: ./tools/build/verify-artifacts.ps1 -Platform Win32 -CompatibilityTarget All
+      - name: Create update manifest candidate
+        if: github.ref_type == 'tag' && !contains(github.ref_name, '-')
+        shell: pwsh
+        run: ./tools/build/new-update-manifest-candidate.ps1 -ArtifactsRoot out/artifacts -OutputPath out/release/update.xml
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: FictionBookEditorNext-${{ github.sha }}-release
           path: |
             out/artifacts
-            update.xml
+            out/release/update.xml
           if-no-files-found: error
           retention-days: 14
 
@@ -213,7 +217,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $manifestContent = [IO.File]::ReadAllText("update.xml", [Text.UTF8Encoding]::new($false))
+          $manifestContent = [IO.File]::ReadAllText("out/release/update.xml", [Text.UTF8Encoding]::new($false))
           $encodedContent = [Convert]::ToBase64String([Text.UTF8Encoding]::new($false).GetBytes($manifestContent))
           $remoteFile = gh api "repos/${{ github.repository }}/contents/update.xml?ref=master" | ConvertFrom-Json
           if ($remoteFile.content) {

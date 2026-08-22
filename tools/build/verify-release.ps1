@@ -90,6 +90,7 @@ $requiredSymbols = @(
 )
 
 if (-not $SkipCommonChecks) {
+& (Join-Path $repoRoot "tools\tests\test-update-manifest-candidate.ps1")
 & (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-line-number-margin.ps1")
