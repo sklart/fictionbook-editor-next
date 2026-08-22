@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "core": {
     "required": [
-      "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
+      "FBE.exe", "FBV.exe", "ExportHTML.dll", "html.xsl", "ExportDOCX.dll", "ExportEPUB.dll",
       "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe",
       "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "Scintilla.dll", "Lexilla.dll",
       "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Plugins\\plugins.json",

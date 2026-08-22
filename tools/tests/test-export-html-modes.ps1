@@ -17,9 +17,9 @@ $xml = @"
 if (-not $source.loadXML($xml)) { throw $source.parseError.reason }
 function Transform([bool]$save,[bool]$embed) { $template=New-Object -ComObject Msxml2.XSLTemplate.6.0;$template.stylesheet=$xsl;$p=$template.createProcessor();$p.input=$source;$p.addParameter('saveimages',$save,'');$p.addParameter('embedimages',$embed,'');[void]$p.transform();return [string]$p.output }
 $complete=Transform $true $false
-if ($complete -notmatch '<img class="cover"' -or $complete -notmatch 'src="cover\.png"' -or $complete -notmatch 'src="body\.png"' -or $complete -match 'data:image/') { throw 'Complete HTML image mode regressed.' }
+if ([regex]::Matches($complete,'<img\b').Count -ne 3 -or $complete -notmatch '<img class="cover"' -or $complete -notmatch 'src="cover\.png"' -or $complete -notmatch 'src="body\.png"' -or $complete -notmatch 'src="body\.jpg"' -or $complete -match 'data:image/') { throw 'Complete HTML image mode regressed.' }
 $htmlOnly=Transform $false $false
 if ([regex]::Matches($htmlOnly,'<img\b').Count -ne 0 -or $htmlOnly -match 'class="cover"') { throw 'HTML-only mode must not emit cover or body images.' }
 $standalone=Transform $true $true
-if ($standalone -notmatch 'data:image/png;base64,' -or $standalone -notmatch 'data:image/jpeg;base64,' -or $standalone -match 'src="(?:cover|body)\.(?:png|jpg)"') { throw 'Self-contained HTML image mode regressed.' }
+if ([regex]::Matches($standalone,'<img\b').Count -ne 3 -or [regex]::Matches($standalone,'data:image/(?:png|jpeg);base64,').Count -ne 3 -or [regex]::Matches($standalone,'data:image/png;base64,').Count -ne 2 -or [regex]::Matches($standalone,'data:image/jpeg;base64,').Count -ne 1 -or $standalone -match 'src="(?:cover|body)\.(?:png|jpg)"') { throw 'Self-contained HTML image mode regressed.' }
 Write-Host 'ExportHTML mode regression passed.'

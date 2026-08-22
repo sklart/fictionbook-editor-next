@@ -27,7 +27,7 @@ $commonSource = if ($commonCore) { $commonCore } else { $buildOutput }
     -Configuration $Configuration -CommonDirectory $commonSource
 & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind $CompatibilityTarget `
     -Configuration $Configuration -ProfileDirectory $editorRuntime -BatchDirectory $batchOutput -ArchHandlerDirectory $archOutput
-foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
+foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','html.xsl','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
     if (-not (Test-Path -LiteralPath (Join-Path $commonSource $name) -PathType Leaf)) { throw "Не найден Core artifact: $name" }
 }
 foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) {
@@ -57,7 +57,7 @@ foreach ($entry in @{ 'genres.txt_L' = 'genres.librusec.txt'; 'genres.rus.txt_L'
 }
 foreach ($name in @('FBShell.dll','FBShell64.dll','FBE.Sequence.propdesc')) { Remove-Item -LiteralPath (Join-Path $stage $name) -Force -ErrorAction SilentlyContinue }
 foreach ($name in @('Scintilla.dll','Lexilla.dll')) { Copy-Item -LiteralPath (Join-Path $editorRuntime $name) -Destination $stage -Force }
-foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $stage -Force }
+foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','html.xsl','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $stage -Force }
 foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) { Copy-Item -LiteralPath (Join-Path $batchOutput $name) -Destination $stage -Force }
 foreach ($entry in @{ 'ru-RU' = 'res_rus.dll'; 'uk-UA' = 'res_ukr.dll' }.GetEnumerator()) {
     $source = Join-Path $commonSource "Lang\\$($entry.Key)\\$($entry.Value)"

@@ -2,14 +2,21 @@
 
 #include "utils.h"
 
-inline bool SupportsEmbeddedImages(IXMLDOMDocument2Ptr document)
+inline bool SupportsGlobalXslParameter(IXMLDOMDocument2Ptr document, LPCWSTR name)
 {
 	document->setProperty(bstr_t(L"SelectionLanguage"), variant_t(L"XPath"));
 	IXMLDOMNodePtr parameter;
+	CString xpath;
+	xpath.Format(L"/*[(local-name()='stylesheet' or local-name()='transform') and namespace-uri()='http://www.w3.org/1999/XSL/Transform']/*[local-name()='param' and namespace-uri()='http://www.w3.org/1999/XSL/Transform' and @name='%s']", name);
 	CheckError(document->selectSingleNode(
-		bstr_t(L"//*[local-name()='param' and namespace-uri()='http://www.w3.org/1999/XSL/Transform' and @name='embedimages']"),
+		bstr_t(static_cast<LPCWSTR>(xpath)),
 		&parameter));
 	return parameter != NULL;
+}
+
+inline bool SupportsEmbeddedImages(IXMLDOMDocument2Ptr document)
+{
+	return SupportsGlobalXslParameter(document, L"embedimages");
 }
 
 struct ExportHtmlTemplateSelection
@@ -23,17 +30,7 @@ inline bool ExportHtmlPathsEqual(const CString& left, const CString& right)
 	if (left.IsEmpty() || right.IsEmpty())
 		return left.IsEmpty() && right.IsEmpty();
 
-	auto normalize = [](const CString& path) {
-		DWORD length = ::GetFullPathName(path, 0, NULL, NULL);
-		if (length == 0)
-			return path;
-		CString normalized;
-		wchar_t* buffer = normalized.GetBuffer(length);
-		DWORD written = ::GetFullPathName(path, length, buffer, NULL);
-		normalized.ReleaseBuffer(written == 0 ? 0 : written);
-		return written == 0 ? path : normalized;
-	};
-	return normalize(left).CompareNoCase(normalize(right)) == 0;
+	return U::GetFullPathName(left).CompareNoCase(U::GetFullPathName(right)) == 0;
 }
 
 inline ExportHtmlTemplateSelection ResolveExportHtmlTemplateState(const CString& bundled, const CString& stored,
@@ -52,12 +49,12 @@ inline ExportHtmlTemplateSelection ResolveExportHtmlTemplateState(const CString&
 
 inline bool ExportHtmlLooksLikeOldBundledTemplate(const CString& path)
 {
-	if (path.IsEmpty() || path.Right(8).CompareNoCase(L"html.xsl") != 0)
+	const int backslash = path.ReverseFind(L'\\');
+	const int slash = path.ReverseFind(L'/');
+	const int separator = backslash > slash ? backslash : slash;
+	if (path.IsEmpty() || separator < 0 || path.Mid(separator + 1).CompareNoCase(L"html.xsl") != 0)
 		return false;
-	int slash = path.ReverseFind(L'\\');
-	if (slash < 0)
-		return false;
-	const CString directory = path.Left(slash + 1);
+	const CString directory = path.Left(separator + 1);
 	return ::GetFileAttributes(directory + L"ExportHTML.dll") != INVALID_FILE_ATTRIBUTES ||
 		::GetFileAttributes(directory + L"FBE.exe") != INVALID_FILE_ATTRIBUTES;
 }
