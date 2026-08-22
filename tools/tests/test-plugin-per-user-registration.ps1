@@ -27,6 +27,7 @@ $html = Get-SourceText 'src\export-html\ExportHTML.cpp'
 $epub = Get-SourceText 'src\export-epub\ExportEPUB.cpp'
 $docx = Get-SourceText 'src\export-docx\ExportDOCX.cpp'
 $installer = Get-SourceText 'packaging\nsis\Installer\MakeInstaller.bat'
+$nsisResolver = Get-SourceText 'tools\build\resolve-nsis.ps1'
 
 foreach ($plugin in @(
     @{ Name = 'ExportHTML'; Text = $html },
@@ -43,10 +44,13 @@ if ($docx.IndexOf('HKEY_CLASSES_ROOT') -ge 0) {
     throw 'ExportDOCX не должен записывать COM-класс в HKEY_CLASSES_ROOT при обычной установке.'
 }
 
-Assert-Contains $installer 'NSIS\Unicode\makensis.exe' 'Путь к Unicode NSIS'
-Assert-Contains $installer 'IF NOT EXIST "%MAKENSIS%" (' 'Обязательная проверка Unicode NSIS'
-if ($installer.IndexOf('SET "MAKENSIS=%ProgramFiles(x86)%\NSIS\makensis.exe"') -ge 0) {
-    throw 'Установщик не должен откатываться к не-Unicode makensis.exe.'
+Assert-Contains $installer 'resolve-nsis.ps1' 'Единый резолвер NSIS'
+Assert-Contains $installer '/X"!addplugindir /x86-unicode %NSIS_INCLUDE_DIR%"' 'Unicode-каталог NSIS plugins'
+Assert-Contains $nsisResolver "[version]'3.12'" 'Минимальная версия NSIS'
+Assert-Contains $nsisResolver 'FBE_MAKENSIS' 'Явно заданный путь makensis'
+Assert-Contains $nsisResolver 'Plugins\x86-unicode\UAC.dll' 'Обязательный Unicode UAC plugin'
+if ($installer.IndexOf('NSIS\Unicode\makensis.exe', [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+    throw 'Установщик не должен требовать устаревший путь NSIS\\Unicode\\makensis.exe.'
 }
 
 Write-Host 'Проверка пользовательской регистрации экспортных плагинов прошла успешно.'
