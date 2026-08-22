@@ -20,6 +20,7 @@
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
+static bool IsFbeTestScenario(const wchar_t* expectedScenario);
 
 namespace
 {
@@ -2896,6 +2897,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   }
 
   m_need_title_update = true;
+  RunPortableStateTestScenario();
   StartupTrace::Event(L"mainframe", L"M199", L"OnCreate completed");
   return 0;
 }
@@ -3045,7 +3047,7 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 
 CString CMainFrame::GetRecoveryFileName()
 {
-	CString directory(U::GetSettingsDir() + L"Recovery\\");
+	CString directory(DeploymentContext::RecoveryDirectory().c_str());
 	::CreateDirectory(directory, NULL);
 	return directory + L"Recovery.fb2";
 }
@@ -3266,6 +3268,77 @@ static bool IsFbeTestScenario(const wchar_t* expectedScenario)
 	const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
 	return testModeLength == 1 && testMode[0] == L'1' &&
 		scenarioLength == wcslen(expectedScenario) && wcscmp(scenario, expectedScenario) == 0;
+}
+
+static bool WritePortableStateTestText(const CString& path, const char* text)
+{
+	HANDLE file = ::CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) return false;
+	DWORD written = 0;
+	const DWORD length = static_cast<DWORD>(strlen(text));
+	const bool ok = ::WriteFile(file, text, length, &written, NULL) != FALSE && written == length;
+	::CloseHandle(file);
+	return ok;
+}
+
+void CMainFrame::RunPortableStateTestScenario()
+{
+	if (!IsFbeTestScenario(L"portable-state-write") && !IsFbeTestScenario(L"portable-state-read"))
+		return;
+
+	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
+	const CString scriptsDirectory(DeploymentContext::UserScriptsDirectory().c_str());
+	const CString diagnosticsMarker(diagnosticsDirectory + L"portable-state-sentinel.txt");
+	const CString recoveryMarker(GetRecoveryFileName());
+	const CString reportPath(diagnosticsDirectory + L"portable-state-report.txt");
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable)
+	{
+		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
+		PostMessage(WM_CLOSE);
+		return;
+	}
+
+	::CreateDirectory(scriptsDirectory, NULL);
+	if (IsFbeTestScenario(L"portable-state-write"))
+	{
+		// These deterministic mutations go through the same settings, MRU,
+		// toolbar and recovery code that normal UI actions persist on close.
+		_Settings.SetSplitterPos(271);
+		_Settings.SetShowFullPathInWindowTitle(true);
+		_Settings.SetInterfaceLanguage(FBE_INTERFACE_LANGUAGE_RUSSIAN);
+		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		_Settings.m_words.push_back(WordsItem(L"portable-state-sentinel", 17));
+		m_mru.AddToList(U::GetProgDirFile(L"portable-state-sentinel.fb2"));
+		if (m_rebar.GetBandCount() > 0)
+		{
+			REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_SIZE | RBBIM_STYLE;
+			m_rebar.GetBandInfo(0, &band); band.cx += 17; m_rebar.SetBandInfo(0, &band);
+		}
+		WritePortableStateTestText(diagnosticsMarker, "portable-state-diagnostics\n");
+		WritePortableStateTestText(recoveryMarker, "portable-state-recovery\n");
+		WritePortableStateTestText(reportPath, "phase=write\nresult=pass\n");
+	}
+	else
+	{
+		bool wordFound = false, mruFound = false;
+		for (size_t index = 0; index < _Settings.m_words.size(); ++index)
+			if (_Settings.m_words[index].m_word == L"portable-state-sentinel" && _Settings.m_words[index].m_count == 17) wordFound = true;
+		const bool hotkeys = !_Settings.m_hotkey_groups.empty();
+		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index)
+			if (CString(m_mru.m_arrDocs[index].szDocName).Find(L"portable-state-sentinel.fb2") >= 0) mruFound = true;
+		const bool settings = _Settings.GetShowFullPathInWindowTitle();
+		const bool locale = _Settings.GetInterfaceLocaleName() == L"ru-RU";
+		const bool scripts = _Settings.GetScriptsFolder().CompareNoCase(scriptsDirectory) == 0;
+		const bool toolbar = !_Settings.GetToolbarsSettings().IsEmpty();
+		const bool diagnostics = ::GetFileAttributes(diagnosticsMarker) != INVALID_FILE_ATTRIBUTES;
+		const bool recovery = ::GetFileAttributes(recoveryMarker) != INVALID_FILE_ATTRIBUTES;
+		CStringA report;
+		report.Format("phase=read\nsettings=%d\nhotkeys=%d\nwords=%d\nlocale=%d\nmru=%d\ntoolbar=%d\nscripts=%d\ndiagnostics=%d\nrecovery=%d\nresult=%s\n",
+			settings, hotkeys, wordFound, locale, mruFound, toolbar, scripts, diagnostics, recovery,
+			settings && hotkeys && wordFound && locale && mruFound && toolbar && scripts && diagnostics && recovery ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
+	}
+	PostMessage(WM_CLOSE);
 }
 
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)

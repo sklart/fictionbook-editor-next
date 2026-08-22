@@ -361,6 +361,7 @@ public:
   FILE_OP_STATUS	  LoadFile(const wchar_t *initfilename=NULL);
   CString GetRecoveryFileName();
   void DeleteRecoveryFile();
+  void RunPortableStateTestScenario();
   void TryRestoreRecovery();
   bool SaveRecoveryNow();
   bool SaveSourceRecoveryCopy(const CString& filename);

@@ -25,6 +25,8 @@
 #include "RuntimeLocalization.h"
 #include "ExternalHelper.h"
 #include "..\\common\\DeploymentContext.h"
+#include "UpdateArtifact.h"
+#include "../version.h"
 
 // typelib interfaces
 #include "FBE.h"
@@ -90,6 +92,24 @@ static bool PrintRuntimePaths()
 	const std::wstring themesDirectory = EscapeJson(DeploymentContext::UserThemesDirectory());
 	const std::wstring scriptsDirectory = EscapeJson(DeploymentContext::UserScriptsDirectory());
 	CString json; json.Format(L"{\"mode\":\"%s\",\"compatibilityTarget\":\"%s\",\"architecture\":\"Win32\",\"executableDirectory\":\"%s\",\"resourceRoot\":\"%s\",\"dataRoot\":\"%s\",\"settingsDirectory\":\"%s\",\"diagnosticsDirectory\":\"%s\",\"recoveryDirectory\":\"%s\",\"logsDirectory\":\"%s\",\"cacheDirectory\":\"%s\",\"tempDirectory\":\"%s\",\"dictionariesDirectory\":\"%s\",\"themesDirectory\":\"%s\",\"scriptsDirectory\":\"%s\",\"registryPersistenceAllowed\":%s}\r\n", mode, compatibilityTarget, executableDirectory.c_str(), executableDirectory.c_str(), dataRoot.c_str(), settingsDirectory.c_str(), diagnosticsDirectory.c_str(), recoveryDirectory.c_str(), logsDirectory.c_str(), cacheDirectory.c_str(), tempDirectory.c_str(), dictionariesDirectory.c_str(), themesDirectory.c_str(), scriptsDirectory.c_str(), DeploymentContext::RegistryPersistenceAllowed() ? L"true" : L"false");
+	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, json, -1, NULL, 0, NULL, NULL); std::vector<char> output(bytes);
+	::WideCharToMultiByte(CP_UTF8, 0, json, -1, &output[0], bytes, NULL, NULL); DWORD written = 0;
+	::WriteFile(::GetStdHandle(STD_OUTPUT_HANDLE), &output[0], bytes - 1, &written, NULL);
+	return true;
+}
+
+static bool PrintUpdateArtifact()
+{
+	if (!DeploymentContext::HasCommandLineSwitch(L"--print-update-artifact")) return false;
+	const UpdateArtifact artifact = SelectUpdateArtifact(
+		DeploymentContext::CurrentMode(),
+		DeploymentContext::CurrentCompatibilityTarget(),
+		FBE_VERSION_WSTRING);
+	CString json;
+	json.Format(L"{\"type\":\"%s\",\"fileName\":\"%s\",\"extension\":\"%s\"}\r\n",
+		artifact.kind == UpdateArtifact::Kind::Portable ? L"Portable" : L"Setup",
+		static_cast<const wchar_t*>(artifact.fileName),
+		artifact.kind == UpdateArtifact::Kind::Portable ? L".zip" : L".exe");
 	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, json, -1, NULL, 0, NULL, NULL); std::vector<char> output(bytes);
 	::WideCharToMultiByte(CP_UTF8, 0, json, -1, &output[0], bytes, NULL, NULL); DWORD written = 0;
 	::WriteFile(::GetStdHandle(STD_OUTPUT_HANDLE), &output[0], bytes - 1, &written, NULL);
@@ -580,6 +600,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 		return 2;
 	}
 	if (PrintRuntimePaths()) return 0;
+	if (PrintUpdateArtifact()) return 0;
 
   ConfigureDllSearchPath();
   StartupTrace::Start();

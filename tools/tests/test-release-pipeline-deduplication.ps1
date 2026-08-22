@@ -166,6 +166,8 @@ Assert-Contains $workflow "GITHUB_REF_TYPE -eq 'tag'" "workflow: tag validation 
 Assert-Contains $workflow "`$arguments.FullValidation = `$true" "workflow: tag passes FullValidation"
 Assert-Contains $workflow "`$arguments.FullValidation = `$true" "workflow: tag Modern package passes FullValidation"
 Assert-Contains $release "[switch]`$FullValidation" "create-release.ps1: release validation can request FULL"
+Assert-Contains $release 'test-portable-package-smoke.ps1' "create-release.ps1: materialized portable smoke"
+Assert-Contains $release 'test-bundled-plugin-local-activation.ps1' "create-release.ps1: materialized portable plugins"
 Assert-Contains $verifyRelease "test-editor-runtime-fingerprint.ps1" "verify-release.ps1: behavioral editor-runtime fingerprint regression"
 Assert-Contains $verifyRelease "test-fbe-selection-container-control-range.ps1" "verify-release.ps1: MSHTML ControlRange selection regression"
 Assert-Contains $verifyRelease "test-fbe-table-structural-performance.ps1" "verify-release.ps1: benchmark logical grid"
@@ -222,6 +224,9 @@ foreach ($heavyTest in @(
 }
 Assert-Contains $release 'test-portable-gui-state.ps1' "create-release.ps1: FULL portable GUI state"
 Assert-Contains $release 'test-bundled-plugin-local-activation.ps1' "create-release.ps1: portable payload plugin activation"
+$portableGuiStart = $release.IndexOf('if ($FullValidation)', $release.IndexOf('test-bundled-plugin-local-activation.ps1'))
+$portableGuiTest = $release.IndexOf('test-portable-gui-state.ps1')
+if ($portableGuiStart -lt 0 -or $portableGuiTest -le $portableGuiStart) { throw 'Portable GUI-state must run only under FullValidation.' }
 Assert-Contains $artifacts 'Data/Scripts/.keep' "verify-artifacts.ps1: portable Scripts directory"
 Assert-Contains $artifacts 'Data/Dictionaries/.keep' "verify-artifacts.ps1: portable Dictionaries directory"
 Assert-Contains $artifacts 'Data/Themes/.keep' "verify-artifacts.ps1: portable Themes directory"

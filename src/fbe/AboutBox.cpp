@@ -3,6 +3,7 @@
 #include "AboutBox.h"
 #include "RuntimeLocalization.h"
 #include "../common/DeploymentContext.h"
+#include "UpdateArtifact.h"
 #include "../version.h"
 
 namespace
@@ -23,15 +24,15 @@ namespace
 			path = path.Left(queryPosition);
 
 		CString expectedUrl;
-		const bool win7 = DeploymentContext::CurrentCompatibilityTarget() == DeploymentContext::CompatibilityTarget::Win7;
-		const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
+		const UpdateArtifact artifact = SelectUpdateArtifact(
+			DeploymentContext::CurrentMode(),
+			DeploymentContext::CurrentCompatibilityTarget(),
+			version);
 		expectedUrl.Format(
-			portable
-				? (win7 ? L"%sv%s/FictionBookEditorNext-%s-win7-win32-portable.zip" : L"%sv%s/FictionBookEditorNext-%s-win32-portable.zip")
-				: (win7 ? L"%sv%s/FictionBookEditorNext-%s-win7-win32-setup.exe" : L"%sv%s/FictionBookEditorNext-%s-win32-setup.exe"),
+			L"%sv%s/%s",
 			FBE_RELEASE_DOWNLOAD_PREFIX,
 			static_cast<const wchar_t*>(version),
-			static_cast<const wchar_t*>(version));
+			static_cast<const wchar_t*>(artifact.fileName));
 		return path.CompareNoCase(expectedUrl) == 0;
 	}
 
@@ -74,9 +75,12 @@ namespace
 		const wchar_t* profile = DeploymentContext::CurrentCompatibilityTarget() == DeploymentContext::CompatibilityTarget::Win7 ? L"Win7" : L"Modern";
 		MSXML2::IXMLDOMElementPtr profileNode;
 		if (!GetUniqueChildElement(root, L"Artifacts", artifacts) || !GetUniqueChildElement(artifacts, profile, profileNode)) return false;
-		const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
-		return GetUniqueNodeText(profileNode, portable ? L"PortableUrl" : L"SetupUrl", url) &&
-			GetUniqueNodeText(profileNode, portable ? L"PortableSHA256" : L"SetupSHA256", sha256);
+		const UpdateArtifact artifact = SelectUpdateArtifact(
+			DeploymentContext::CurrentMode(),
+			DeploymentContext::CurrentCompatibilityTarget(),
+			FBE_VERSION_WSTRING);
+		return GetUniqueNodeText(profileNode, artifact.manifestUrlElement, url) &&
+			GetUniqueNodeText(profileNode, artifact.manifestSha256Element, sha256);
 	}
 
 	int GetMaximumDownloadSize(const CString& url)
