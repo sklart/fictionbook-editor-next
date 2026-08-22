@@ -22,7 +22,7 @@ Copy-Item -Path (Join-Path $core '*') -Destination $output -Recurse -Force
 [Portable]
 DataPath=Data
 "@ | Set-Content -LiteralPath (Join-Path $output 'portable.ini') -Encoding utf8NoBOM
-foreach ($name in @('Settings','Logs','Diagnostics','Recovery','Cache','Temp')) {
+foreach ($name in @('Settings','Scripts','Dictionaries','Themes','Logs','Diagnostics','Recovery','Cache','Temp')) {
     $directory = Join-Path $output "Data\\$name"; New-Item -ItemType Directory -Path $directory -Force | Out-Null
     # Empty directories are otherwise omitted by Compress-Archive.
     Set-Content -LiteralPath (Join-Path $directory '.keep') -Value '' -Encoding ascii

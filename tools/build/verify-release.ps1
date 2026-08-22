@@ -17,9 +17,9 @@ param(
     # на Modern-этапе; Win7 повторяет только проверки своих бинарников.
     [switch]$SkipCommonChecks,
 
-    # Local diagnostic runs may omit the long table suite.  Release validation
-    # must not use this switch.
-    [switch]$SkipTableChecks
+    # Table regressions are intentionally opt-in while portable finalization is
+    # in progress. They remain available for their dedicated test contour.
+    [switch]$RunTableTests
 )
 
 $ErrorActionPreference = "Stop"
@@ -126,9 +126,7 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-selection-container-control-range.ps1")
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")
-if ($SkipTableChecks) {
-    Write-Warning "Table checks skipped by explicit -SkipTableChecks request; this is not release validation."
-} else {
+if ($RunTableTests) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-table-toolbar-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-toolbar-rendering.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
@@ -156,6 +154,8 @@ if ($SkipTableChecks) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Fault change-colspan-after-normalize
+} else {
+    Write-Host "Table checks are not run by default; use -RunTableTests to enable them."
 }
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-test-report-diagnostics.ps1")

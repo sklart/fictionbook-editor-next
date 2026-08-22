@@ -25,6 +25,9 @@
 .\tools\build\verify-release.ps1 -Configuration Release
 ```
 
+Table-regression suite намеренно opt-in и для обычной portable-проверки не
+запускается. Если она нужна отдельно, передайте `-RunTableTests`.
+
 2. При необходимости отдельно перепроверить манифест обновления:
 
 ```powershell

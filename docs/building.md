@@ -203,6 +203,22 @@ msbuild FBE.sln /m /t:Build /p:Configuration=Release /p:Platform=Win32
 .\tools\build\package-portable.ps1
 ```
 
+Portable-архив не требует установки: распакуйте его и запускайте `FBE.exe`.
+Все изменяемые данные portable-версии лежат рядом с программой в `Data`
+(`Settings`, `Scripts`, `Dictionaries`, `Themes`, журналы и recovery); она не
+использует `%LOCALAPPDATA%\FBE Next`, не регистрирует COM-плагины и не меняет
+ассоциации файлов. Папку portable можно переносить целиком, включая `Data`.
+Bundled plugins активируются из `Plugins\plugins.json` локально, без
+регистрации. Modern portable предназначен для современных Windows; Win7
+portable — отдельный compatibility-профиль и проверяется отдельным контуром.
+
+Проверка релиза по умолчанию не запускает длительный набор table-regression
+tests. Для его явного включения используйте `-RunTableTests`:
+
+```powershell
+.\tools\build\verify-release.ps1 -RunTableTests
+```
+
 Основное приложение остаётся 32-битным, поскольку использует legacy-компоненты
 Windows и существующую Win32-интеграцию.
 
