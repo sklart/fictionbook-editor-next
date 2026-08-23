@@ -253,7 +253,7 @@ CSpeller::CSpeller(CString dictPath):
 
 	// Keep ASCII, typographic, and modifier-letter apostrophes inside tokens.
 	// The complete English and Ukrainian word must reach Hunspell.
-	splitter = new CSplitter(L"'’ʼ\u0301");
+	splitter = new CSplitter(L"'\x2019\x02BC\u0301");
 }
 
 //
@@ -422,7 +422,7 @@ void CSpeller::Replace(int nIndex)
 	if (addSpace.Right(1) == L" ") addSpace.SetString(L" "); else addSpace.SetString(L"");
 	try
 	{ 
-		CString replace = (*m_menuSuggestions)[nIndex];
+		CString replace = FbeRestoreSourceApostropheStyle(m_CurrentSpellWord, (*m_menuSuggestions)[nIndex]);
 		 replace = replace + addSpace; 
 		_bstr_t b = replace.AllocSysString();
 		range->put_text(b);
@@ -437,6 +437,7 @@ void CSpeller::Replace(CString word)
 {
 	if (m_selRange)
 	{
+		word = FbeRestoreSourceApostropheStyle(m_CurrentSpellWord, word);
 		_bstr_t b = word.AllocSysString();
 		m_selRange->put_text(b);
 	}
@@ -461,7 +462,7 @@ void CSpeller::AddToDictionary()
 	{
 		Hunhandle* currDict = GetDictionary(word);
 		// add to Hunspell's runtime dictionary
-		CT2A str (word, m_codePage);
+		CStringA str = FbeEncodeDictionaryWord(word, m_codePage);
 		Hunspell_add(currDict, str);
 		// add to custom dictionary
 		m_CustomDict.Add(word);
@@ -476,7 +477,7 @@ void CSpeller::AddToDictionary(CString word)
 {
 	Hunhandle* currDict = GetDictionary(word);
 	// add to Hunspell's runtime dictionary
-	CT2A str (word, m_codePage);
+	CStringA str = FbeEncodeDictionaryWord(word, m_codePage);
 	Hunspell_add(currDict, str);
 	// add to custom dictionary
 	m_CustomDict.Add(word);
@@ -538,7 +539,7 @@ CStrings* CSpeller::GetSuggestions(CString word)
 	char** p = list;
 	for (int i=0; i<listLength; i++)
 	{
-		CString s( CA2CT (*p, m_codePage));
+		CString s = FbeDecodeDictionaryWord(*p, m_codePage);
 		suggestions->Add(s);
 		p++;
 	}
@@ -566,10 +567,9 @@ SPELL_RESULT CSpeller::SpellCheck(CString word)
 		if (splitter->AlphaExceptions().Find(word[word.GetLength()-1]) > -1)
 			checkWord.Delete(word.GetLength()-1);
 
+		m_CurrentSpellWord = word;
 		// Normalise Unicode apostrophes for dictionaries which use ASCII apostrophe.
-		// Do not rewrite suggestions: their upstream representation is valid text.
-		checkWord.Replace(L"’", L"'");
-		checkWord.Replace(L"ʼ", L"'");
+		checkWord = FbeNormalizeDictionaryApostrophes(checkWord);
 		// remove all soft hyphens
 		checkWord.Replace(L"\u00AD", L"");
 		// remove accent
@@ -578,7 +578,7 @@ SPELL_RESULT CSpeller::SpellCheck(CString word)
 		if (currDict == m_Dictionaries[LANG_RU].handle) checkWord.Replace(L"�", L"�");
 
 		// encode string to the dictionary encoding 
-		CT2A str (checkWord, m_codePage);
+		CStringA str = FbeEncodeDictionaryWord(checkWord, m_codePage);
 
 		try { spellResult = (SPELL_RESULT) Hunspell_spell(currDict, str);  }
 		catch(...) { spellResult = SPELL_OK; }
@@ -857,50 +857,12 @@ void CSpeller::CheckCurrentPage()
 //
 void CSpeller::LoadCustomDict()
 {
-	USES_CONVERSION;
-
-	m_CustomDict.RemoveAll();
-
-	CString str;
-	char buf[256];
-	if (ATLPath::FileExists(m_CustomDictPath))
-	try 
-	{
-		std::ifstream load;
-		load.open(m_CustomDictPath);
-		if (load.is_open())
-		{
-			do
-			{
-				load.getline(&buf[0], sizeof(buf), '\n');
-				str.SetString(CA2W(buf, m_CustomDictCodepage));
-				if (!str.IsEmpty()) m_CustomDict.Add (str);
-			}
-			while (!str.IsEmpty());
-		}
-		load.close();
-	}
-	catch (...) {}
+	FbeLoadCustomDictionary(m_CustomDictPath, m_CustomDictCodepage, m_CustomDict);
 }
 
 void CSpeller::SaveCustomDict()
 {
-	try
-	{
-		std::ofstream save;
-		save.open(m_CustomDictPath, std::ios_base::out | std::ios_base::trunc );
-		if (save.is_open())
-			for (int i=0; i<m_CustomDict.GetSize(); i++)
-			{
-				CString word(m_CustomDict[i]);
-				// remove all soft hyphens
-				word.Replace(L"\u00AD", L"");
-				CT2A str (word, m_CustomDictCodepage);
-				save << str << '\n';
-			}
-		save.close();
-	}
-	catch (...) {}
+	FbeSaveCustomDictionary(m_CustomDictPath, m_CustomDictCodepage, m_CustomDict);
 }
 
 void CSpeller::StartDocumentCheck(MSHTML::IMarkupServices2Ptr undoSrv)
@@ -1025,7 +987,7 @@ void CSpeller::ContinueDocumentCheck()
 		{
 			case SPELL_CHANGEALL:
 			{
-				CString replaceStr = m_ChangeWordsTo[m_ChangeWords.Find(word)];
+				CString replaceStr = FbeRestoreSourceApostropheStyle(word, m_ChangeWordsTo[m_ChangeWords.Find(word)]);
 				BeginUndoUnit(L"replace word");
 				b = replaceStr.AllocSysString();
 				m_selRange->put_text(b);

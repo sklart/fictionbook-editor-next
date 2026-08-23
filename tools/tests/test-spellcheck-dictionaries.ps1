@@ -81,7 +81,6 @@ foreach ($dictionaryName in @("en_US", "ru_RU", "uk_UA")) {
 
 $spellerHeader = Read-SourceFile "src\fbe\Speller.h"
 $spellerSource = Read-SourceFile "src\fbe\Speller.cpp"
-$spellerUtf8 = Get-Content -Raw -Encoding utf8 -LiteralPath (Join-Path $repoRoot "src\fbe\Speller.cpp")
 
 if (-not $spellerHeader.Contains("DetectDictionaryCodePage(Hunhandle* dict, UINT fallbackCodePage);")) {
     throw (Get-ThirdPartyText -Base64 "0JIgU3BlbGxlci5oINC+0YLRgdGD0YLRgdGC0LLRg9C10YIg0L7QsdGK0Y/QstC70LXQvdC40LUgaGVscGVyLdGE0YPQvdC60YbQuNC4INC00LvRjyDQvtC/0YDQtdC00LXQu9C10L3QuNGPINC60L7QtNC+0LLQvtC5INGB0YLRgNCw0L3QuNGG0Ysg0YHQu9C+0LLQsNGA0Y8u")
@@ -98,20 +97,23 @@ if ($helperCalls -lt 3) {
     throw (Format-ThirdPartyText "0J7QttC40LTQsNC70L7RgdGMINC60LDQuiDQvNC40L3QuNC80YPQvCAzINCy0YvQt9C+0LLQsCDQvtC/0YDQtdC00LXQu9C10L3QuNGPINC60L7QtNC+0LLQvtC5INGB0YLRgNCw0L3QuNGG0Ysg0YHQu9C+0LLQsNGA0Y8sINC90LDQudC00LXQvdC+OiB7MH0u" $helperCalls)
 }
 
-foreach ($apostrophe in @("’", "ʼ")) {
-    if (-not $spellerUtf8.Contains($apostrophe)) {
-        throw "Speller tokenizer не сохраняет Unicode-apostrophe U+$([int][char]$apostrophe)."
-    }
-}
-
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 $testDir = Join-Path $repoRoot "out\tests"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 $smokeExe = Join-Path $testDir "spellcheck-dictionary-smoke.exe"
-& cl.exe /nologo /EHsc /std:c++17 /utf-8 /MT /DHUNSPELL_STATIC `
+& cl.exe /nologo /EHsc /std:c++17 /DUNICODE /D_UNICODE /MT `
+    "/I$(Join-Path $repoRoot 'third_party\wtl')" `
+    "/I$(Join-Path $repoRoot 'src\fbe')" `
+    "/Fo$(Join-Path $testDir 'spellcheck-splitter.obj')" /c `
+    (Join-Path $repoRoot "src\fbe\Splitter.cpp")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& cl.exe /nologo /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE /MT /DHUNSPELL_STATIC `
     "/I$(Join-Path $repoRoot 'build\hunspell\include')" `
     "/I$(Join-Path $repoRoot 'third_party\hunspell\src\hunspell')" `
+    "/I$(Join-Path $repoRoot 'src\fbe')" `
     (Join-Path $PSScriptRoot "spellcheck-dictionary-smoke.cpp") `
+    (Join-Path $testDir "spellcheck-splitter.obj") `
     (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib") `
     /link "/OUT:$smokeExe"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

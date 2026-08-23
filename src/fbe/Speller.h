@@ -7,6 +7,8 @@
 #include "utils.h"
 #include "ModelessDialog.h"
 #include "Splitter.h"
+#include "SpellText.h"
+#include "CustomDictionaryIO.h"
 
 // Hunspell API function prototypes
 #ifdef __cplusplus
@@ -281,6 +283,7 @@ protected:
 	HIGHLIGHTS m_ElementHighlights;
 
 	CString m_DictPath;
+	CString m_CurrentSpellWord;
 	CString m_CustomDictPath;
 	DWORD	m_CustomDictCodepage;
 	Hunhandle* LoadDictionary(CString dictPath, CString dictName);

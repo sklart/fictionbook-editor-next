@@ -425,6 +425,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <ClInclude Include="SettingsNextDlg.h" />
     <ClInclude Include="SettingsWordsDlg.h" />
     <ClInclude Include="Speller.h" />
+    <ClInclude Include="SpellText.h" />
+    <ClInclude Include="CustomDictionaryIO.h" />
     <ClInclude Include="Splitter.h" />
     <ClInclude Include="StartupTrace.h" />
     <ClInclude Include="stdafx.h" />

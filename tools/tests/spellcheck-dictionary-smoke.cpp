@@ -1,5 +1,10 @@
 #include <windows.h>
+#include <atlstr.h>
+#include <atlcoll.h>
 #include <hunspell.h>
+#include "SpellText.h"
+#include "CustomDictionaryIO.h"
+#include "Splitter.h"
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -42,6 +47,67 @@ static void ReportSpell(Hunhandle* dict, const wchar_t* word, UINT cp, const cha
     std::cout << group << " " << Encode(word, CP_UTF8) << "=" << Hunspell_spell(dict, encoded.c_str()) << "\n";
 }
 
+static bool ProductionTokenizerSmoke() {
+    CSplitter splitter(L"'’ʼ\u0301");
+    for (const wchar_t* expected : { L"don't", L"don’t", L"під'їзд", L"під’їзд", L"підʼїзд" }) {
+        CString source(expected);
+        CWords words;
+        splitter.Split(&source, &words);
+        if (words.GetSize() != 1 || words.GetValueAt(0) != expected) {
+            std::cerr << "production tokenizer split an apostrophe word\n";
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool ProductionApostropheRestoreSmoke() {
+    return FbeRestoreSourceApostropheStyle(L"don’t", L"don't") == L"don’t" &&
+        FbeRestoreSourceApostropheStyle(L"підʼїзд", L"під'їзд") == L"підʼїзд" &&
+        FbeRestoreSourceApostropheStyle(L"don't", L"don't") == L"don't";
+}
+
+static bool ProductionCustomDictionarySmoke() {
+    wchar_t path[MAX_PATH];
+    if (!GetTempPathW(_countof(path), path) || !GetTempFileNameW(path, L"fbe", 0, path)) return false;
+    DeleteFileW(path);
+    CSimpleArray<CString> original;
+    const CString word(L"тестКириллица");
+    original.Add(word);
+    FbeSaveCustomDictionary(path, CP_UTF8, original);
+    CSimpleArray<CString> restored;
+    FbeLoadCustomDictionary(path, CP_UTF8, restored);
+    const CStringA utf8 = FbeEncodeDictionaryWord(word, CP_UTF8);
+    const CStringA koi8r = FbeEncodeDictionaryWord(word, 20866);
+    const bool ok = restored.GetSize() == 1 && restored[0] == word && utf8 != koi8r;
+    DeleteFileW(path);
+    return ok;
+}
+
+static bool ProductionKoi8rRoundTrip(Hunhandle* dict) {
+    bool ok = true;
+    for (const wchar_t* expected : { L"собака", L"ёлка", L"ёжик", L"всё" }) {
+        CString unicode(expected);
+        const CStringA encoded = FbeEncodeDictionaryWord(unicode, 20866);
+        const CString roundTrip = FbeDecodeDictionaryWord(encoded, 20866);
+        if (roundTrip != unicode || !Hunspell_spell(dict, encoded)) {
+            std::cerr << "production KOI8-R round trip failed\n";
+            ok = false;
+        }
+    }
+    const CStringA typo = FbeEncodeDictionaryWord(CString(L"собка"), 20866);
+    char** list = nullptr;
+    const int count = Hunspell_suggest(dict, &list, typo);
+    bool found = false;
+    for (int i = 0; i < count; ++i) {
+        const CString suggestion = FbeDecodeDictionaryWord(list[i], 20866);
+        if (suggestion == L"собака") found = true;
+        if (suggestion.Find(L"�") >= 0) ok = false;
+    }
+    Hunspell_free_list(dict, &list, count);
+    return ok && found;
+}
+
 static bool TestDictionary(const std::string& directory, const char* name, const char* encoding, UINT cp) {
     const std::string base = directory + "\\" + name;
     const auto started = std::chrono::steady_clock::now();
@@ -63,10 +129,12 @@ static bool TestDictionary(const std::string& directory, const char* name, const
         // Confirmed against Goudron 1.0.8 with bundled Hunspell 1.7.3.
         for (const wchar_t* word : { L"компьютерр", L"редакторр", L"литератуура", L"молокоо", L"жирафф" }) ok &= Spell(dict, word, cp, false);
         ok &= HasSuggestion(dict, L"собка", L"собака", cp);
+        ok &= ProductionKoi8rRoundTrip(dict);
     } else {
         for (const wchar_t* word : { L"Україна", L"український", L"Київ", L"ґрунт", L"література", L"редактор", L"під'їзд", L"підʼїзд" }) ok &= Spell(dict, word, cp, true);
         for (const wchar_t* word : { L"украйінський", L"Києв", L"ґрунтт" }) ok &= Spell(dict, word, cp, false);
-        // dict_uk ICONV deliberately strips Latin characters; record this upstream behavior.
+        // Record the current upstream dict_uk ICONV behavior for Latin-only words.
+        // Do not treat it as an FBE-specific contract; upstream issue #306 remains open.
         for (const wchar_t* word : { L"hello", L"foobar", L"Microsoft", L"London", L"ChatGPT", L"qwerty" }) std::cout << "uk_UA ICONV " << Encode(word, CP_UTF8) << "=" << Hunspell_spell(dict, Encode(word, CP_UTF8).c_str()) << "\n";
     }
     const auto completed = std::chrono::steady_clock::now();
@@ -80,7 +148,8 @@ static bool TestDictionary(const std::string& directory, const char* name, const
 
 int main(int argc, char** argv) {
     if (argc != 2) return 2;
-    bool ok = TestDictionary(argv[1], "en_US", "UTF-8", CP_UTF8);
+    bool ok = ProductionTokenizerSmoke() && ProductionApostropheRestoreSmoke() && ProductionCustomDictionarySmoke();
+    ok &= TestDictionary(argv[1], "en_US", "UTF-8", CP_UTF8);
     ok &= TestDictionary(argv[1], "ru_RU", "KOI8-R", 20866);
     ok &= TestDictionary(argv[1], "uk_UA", "UTF-8", CP_UTF8);
     return ok ? 0 : 1;

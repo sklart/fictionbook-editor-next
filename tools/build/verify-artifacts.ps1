@@ -30,6 +30,15 @@ if (-not $ArtifactsDirectory) {
     $ArtifactsDirectory = Join-Path $repoRoot "out\artifacts"
 }
 $ArtifactsDirectory = (Resolve-Path -LiteralPath $ArtifactsDirectory).Path
+$dictionarySources = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'runtime\dict\sources.json') | ConvertFrom-Json
+$dictionaryArchiveHashes = [ordered]@{
+    'dict/en_US.aff' = $dictionarySources.en_US.affSha256
+    'dict/en_US.dic' = $dictionarySources.en_US.dicSha256
+    'dict/ru_RU.aff' = $dictionarySources.ru_RU.affSha256
+    'dict/ru_RU.dic' = $dictionarySources.ru_RU.dicSha256
+    'dict/uk_UA.aff' = $dictionarySources.uk_UA.affSha256
+    'dict/uk_UA.dic' = $dictionarySources.uk_UA.dicSha256
+}
 
 if ($CompatibilityTarget -eq "All" -and
     (Test-Path -LiteralPath (Join-Path $ArtifactsDirectory "Modern") -PathType Container) -and
@@ -58,6 +67,16 @@ if ($CompatibilityTarget -eq "All" -and
 
     $modernPortable = Join-Path $ArtifactsDirectory "Modern\FictionBookEditorNext-$version-$architecture-portable.zip"
     $win7Portable = Join-Path $ArtifactsDirectory "Win7\FictionBookEditorNext-$version-win7-$architecture-portable.zip"
+    foreach ($entry in $dictionaryArchiveHashes.GetEnumerator()) {
+        $modernHash = Get-ProfileZipEntrySha256 $modernPortable $entry.Key
+        $win7Hash = Get-ProfileZipEntrySha256 $win7Portable $entry.Key
+        if ($modernHash -ne $entry.Value -or $win7Hash -ne $entry.Value) {
+            throw "Словарь '$($entry.Key)' в portable-архиве не совпадает с runtime/dict/sources.json."
+        }
+        if ($modernHash -ne $win7Hash) {
+            throw "Словарь '$($entry.Key)' различается между Modern и Win7 portable-пакетами."
+        }
+    }
     foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll")) {
         if ((Get-ProfileZipEntrySha256 $modernPortable $name) -ne (Get-ProfileZipEntrySha256 $win7Portable $name)) {
             throw "Общий файл '$name' различается между Modern и Win7 portable-пакетами."
@@ -258,6 +277,12 @@ foreach ($profile in $artifactProfiles) {
             throw "В архиве $portableName отсутствует обязательный файл '$name'."
         }
     }
+    foreach ($entry in $dictionaryArchiveHashes.GetEnumerator()) {
+        $actualHash = Get-ZipEntrySha256 -Path $portablePath -EntryName $entry.Key
+        if ($actualHash -ne $entry.Value) {
+            throw "Словарь '$($entry.Key)' в архиве $portableName не совпадает с runtime/dict/sources.json."
+        }
+    }
 
     $portableVersionStage = Join-Path ([IO.Path]::GetTempPath()) "FBE-editor-versions-$PID-$($profile.Label)"
     New-Item -ItemType Directory -Path $portableVersionStage | Out-Null
@@ -310,6 +335,7 @@ if ($CompatibilityTarget -eq "All") {
         "ImportEPUB.dll", "ImportEPUBLunaSVG.dll",
         "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll"
     )
+    $commonPortableEntries += @($dictionaryArchiveHashes.Keys)
     foreach ($name in $commonPortableEntries) {
         $modernHash = Get-ZipEntrySha256 -Path $modernPortablePath -EntryName $name
         $win7Hash = Get-ZipEntrySha256 -Path $win7PortablePath -EntryName $name

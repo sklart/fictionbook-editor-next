@@ -249,6 +249,12 @@
     <ClInclude Include="Speller.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SpellText.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CustomDictionaryIO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Splitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
