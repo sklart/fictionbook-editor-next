@@ -39,6 +39,55 @@ static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE
 	return added != FALSE;
 }
 
+static bool ImageListHasMaskPlane(HIMAGELIST imageList)
+{
+	if (imageList == NULL || ::ImageList_GetImageCount(imageList) <= 0) return false;
+	IMAGEINFO imageInfo = {};
+	return ::ImageList_GetImageInfo(imageList, 0, &imageInfo) != FALSE && imageInfo.hbmMask != NULL;
+}
+
+static bool EnsureToolbarImageListHasMask(CToolBarCtrl& toolbar)
+{
+	HIMAGELIST imageList = toolbar.GetImageList();
+	if (imageList == NULL) return false;
+
+	const bool hasMaskPlane = ImageListHasMaskPlane(imageList);
+	CString trace;
+	trace.Format(L"mask-bitmap-present=%d; image-count=%d", hasMaskPlane ? 1 : 0, ::ImageList_GetImageCount(imageList));
+	StartupTrace::Event(L"toolbar", L"TB210", trace);
+	if (hasMaskPlane) return true;
+
+	int imageWidth = 0, imageHeight = 0;
+	const int imageCount = ::ImageList_GetImageCount(imageList);
+	if (imageCount < 0 || !::ImageList_GetIconSize(imageList, &imageWidth, &imageHeight) || imageWidth <= 0 || imageHeight <= 0)
+		return false;
+
+	HIMAGELIST maskedImageList = ::ImageList_Create(imageWidth, imageHeight, ILC_COLOR32 | ILC_MASK, imageCount, 8);
+	if (maskedImageList == NULL) return false;
+	for (int index = 0; index < imageCount; ++index)
+	{
+		HICON icon = ::ImageList_GetIcon(imageList, index, ILD_NORMAL);
+		const int copiedIndex = icon != NULL ? ::ImageList_AddIcon(maskedImageList, icon) : -1;
+		if (icon != NULL) ::DestroyIcon(icon);
+		if (copiedIndex != index)
+		{
+			::ImageList_Destroy(maskedImageList);
+			return false;
+		}
+	}
+
+	HIMAGELIST previousImageList = reinterpret_cast<HIMAGELIST>(toolbar.SendMessage(TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(maskedImageList)));
+	if (previousImageList != imageList)
+	{
+		toolbar.SendMessage(TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(imageList));
+		::ImageList_Destroy(maskedImageList);
+		return false;
+	}
+	::ImageList_Destroy(previousImageList);
+	StartupTrace::Event(L"toolbar", L"TB211", L"image list rebuilt with ILC_MASK; existing image indices preserved");
+	return true;
+}
+
 static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId)
 {
 	HBITMAP colorBitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId),
@@ -56,49 +105,13 @@ static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, U
 		return -1;
 	}
 
-	HIMAGELIST imageList = toolbar.GetImageList();
-	HDC maskDc = ::CreateCompatibleDC(NULL);
-	HBITMAP maskBitmap = ::CreateBitmap(24, 24, 1, 1, NULL);
-	if (imageList == NULL || maskDc == NULL || maskBitmap == NULL)
+	if (!EnsureToolbarImageListHasMask(toolbar))
 	{
-		if (maskDc != NULL) ::DeleteDC(maskDc);
-		if (maskBitmap != NULL) ::DeleteObject(maskBitmap);
 		::DeleteObject(colorBitmap);
 		return -1;
 	}
 
-	HGDIOBJ oldMaskBitmap = ::SelectObject(maskDc, maskBitmap);
-	const bool topDown = bitmapSection.dsBmih.biHeight < 0;
-	BYTE* const bits = static_cast<BYTE*>(bitmapSection.dsBm.bmBits);
-	int transparentPixelCount = 0;
-	int normalizedBackgroundCount = 0;
-	int blackPixelCount = 0;
-	for (int y = 0; y < 24; ++y)
-	{
-		BYTE* const row = bits + (topDown ? y : 23 - y) * bitmapSection.dsBm.bmWidthBytes;
-		for (int x = 0; x < 24; ++x)
-		{
-			BYTE* const pixel = row + x * 3;
-			const bool transparent = pixel[0] == 192 && pixel[1] == 192 && pixel[2] == 192;
-			if (transparent)
-			{
-				pixel[0] = 0;
-				pixel[1] = 0;
-				pixel[2] = 0;
-				++transparentPixelCount;
-			}
-			::SetPixel(maskDc, x, y, transparent ? RGB(255, 255, 255) : RGB(0, 0, 0));
-			if (pixel[0] == 192 && pixel[1] == 192 && pixel[2] == 192) ++normalizedBackgroundCount;
-			if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) ++blackPixelCount;
-		}
-	}
-	::SelectObject(maskDc, oldMaskBitmap);
-	::DeleteDC(maskDc);
-
-	const bool normalized = transparentPixelCount > 0 && normalizedBackgroundCount == 0 &&
-		blackPixelCount >= transparentPixelCount;
-	const int imageIndex = normalized ? ::ImageList_Add(imageList, colorBitmap, maskBitmap) : -1;
-	::DeleteObject(maskBitmap);
+	const int imageIndex = ::ImageList_AddMasked(toolbar.GetImageList(), colorBitmap, RGB(192, 192, 192));
 	::DeleteObject(colorBitmap);
 	return imageIndex;
 }
@@ -3602,6 +3615,20 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			for (int y = rect.top; y < rect.bottom; ++y) for (int x = rect.left; x < rect.right; ++x) { const COLORREF pixel = ::GetPixel(memory, x, y); const int r = GetRValue(pixel), g = GetGValue(pixel), b = GetBValue(pixel); if (max(r, max(g, b)) - min(r, min(g, b)) >= 32) ++chroma; }
 			::SelectObject(memory, old); ::DeleteObject(bitmap); ::DeleteDC(memory); ::ReleaseDC(m_CmdToolbar, source); return chroma;
 		};
+		auto imageBlackPixels = [&](const RECT& rect) -> long
+		{
+			HDC source = ::GetDC(m_CmdToolbar); if (!source) return -1;
+			RECT client = {}; ::GetClientRect(m_CmdToolbar, &client);
+			HDC memory = ::CreateCompatibleDC(source); HBITMAP bitmap = ::CreateCompatibleBitmap(source, client.right, client.bottom);
+			HGDIOBJ old = memory && bitmap ? ::SelectObject(memory, bitmap) : NULL;
+			if (!memory || !bitmap || !old || !::PrintWindow(m_CmdToolbar, memory, PW_CLIENTONLY)) { if (old) ::SelectObject(memory, old); if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); ::ReleaseDC(m_CmdToolbar, source); return -1; }
+			const int left = rect.left + (rect.right - rect.left - 24) / 2;
+			const int top = rect.top + (rect.bottom - rect.top - 24) / 2;
+			long black = 0;
+			for (int y = top; y < top + 24; ++y) for (int x = left; x < left + 24; ++x) if (::GetPixel(memory, x, y) == RGB(0, 0, 0)) ++black;
+			::SelectObject(memory, old); ::DeleteObject(bitmap); ::DeleteDC(memory); ::ReleaseDC(m_CmdToolbar, source); return black;
+		};
+		const bool imageListHasMask = ImageListHasMaskPlane(m_CmdToolbar.GetImageList());
 		auto appendPhase = [&](const char* phase)
 		{
 			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
@@ -3610,14 +3637,15 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 				RECT rect = {}; const bool hasRect = m_CmdToolbar.GetItemRect(m_CmdToolbar.CommandToIndex(command), &rect) != FALSE;
 				const DWORD state = static_cast<DWORD>(m_CmdToolbar.SendMessage(TB_GETSTATE, command, 0));
 				const int image = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, command, 0));
-				CStringA row; row.Format("%s\t%u\t%lu\t%d\t%d\t%d\t%d\t%ld\r\n", phase, command, state,
+				CStringA row; row.Format("%s\t%u\t%lu\t%d\t%d\t%d\t%d\t%ld\t%d\t%ld\r\n", phase, command, state,
 					(state & TBSTATE_ENABLED) != 0 ? 1 : 0, (state & TBSTATE_CHECKED) != 0 ? 1 : 0,
-					(state & TBSTATE_HIDDEN) != 0 ? 1 : 0, image, hasRect ? chromaPixels(rect) : -1);
+					(state & TBSTATE_HIDDEN) != 0 ? 1 : 0, image, hasRect ? chromaPixels(rect) : -1,
+					imageListHasMask ? 1 : 0, hasRect ? imageBlackPixels(rect) : -1);
 				DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 			}
 			output.Flush();
 		};
-		CStringA header("phase\tcommand_id\ttb_state\tenabled\tchecked\thidden\timage_index\tchroma_pixels\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		CStringA header("phase\tcommand_id\ttb_state\tenabled\tchecked\thidden\timage_index\tchroma_pixels\timage_list_has_mask\timage_black_pixels\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		ShowView(BODY);
 		if (!selectElement(L"P", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
 		updateTableCommands(); appendPhase("outside-1");

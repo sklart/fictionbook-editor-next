@@ -15,14 +15,15 @@ if (-not $bitmapHelper.Success -or
     $bitmapHelper.Value -notmatch 'LoadImage\(module, MAKEINTRESOURCE\(bitmapResourceId\)' -or
     $bitmapHelper.Value -notmatch 'toolbar\.GetImageList\(\)' -or
 	$bitmapHelper.Value -notmatch 'DIBSECTION bitmapSection' -or
-    $bitmapHelper.Value -notmatch 'CreateBitmap\(24, 24, 1, 1, NULL\)' -or
-	$bitmapHelper.Value -notmatch 'pixel\[0\] == 192 && pixel\[1\] == 192 && pixel\[2\] == 192' -or
-	$bitmapHelper.Value -notmatch 'pixel\[0\] = 0;' -or
-	$bitmapHelper.Value -notmatch 'SetPixel\(maskDc, x, y, transparent \? RGB\(255, 255, 255\) : RGB\(0, 0, 0\)\)' -or
-    $bitmapHelper.Value -notmatch 'ImageList_Add\(imageList, colorBitmap, maskBitmap\)') {
-    throw 'Table toolbar bitmap helper must append a normalized 24x24 color bitmap with an explicit 1-bpp RGB(192,192,192) mask.'
+    $bitmapHelper.Value -notmatch 'EnsureToolbarImageListHasMask\(toolbar\)' -or
+    $bitmapHelper.Value -notmatch 'ImageList_AddMasked\(toolbar\.GetImageList\(\), colorBitmap, RGB\(192, 192, 192\)\)') {
+    throw 'Table toolbar bitmap helper must append a 24x24 bitmap through an ILC_MASK-capable image list and the RGB(192,192,192) mask key.'
 }
-foreach ($forbidden in @('TB_ADDBITMAP', 'ImageList_AddMasked', 'ImageList_Replace', 'TB_SETIMAGELIST', 'SetImageList')) {
+if ($bitmapHelper.Value -match 'pixel\[[012]\]\s*=\s*0') { throw 'Table toolbar transparency-key pixels must not be rewritten to visible black.' }
+if ($cpp -notmatch '(?s)static bool ImageListHasMaskPlane\(.*?ImageList_GetImageInfo.*?hbmMask.*?static bool EnsureToolbarImageListHasMask\(.*?ImageListHasMaskPlane\(imageList\).*?ImageList_Create\(.*?ILC_MASK.*?ImageList_GetIcon.*?TB_SETIMAGELIST.*?existing image indices preserved') {
+    throw 'Table toolbar must retain existing image indices when it upgrades an image list to ILC_MASK.'
+}
+foreach ($forbidden in @('TB_ADDBITMAP', 'ImageList_Replace', 'SetDisabledImageList', 'TB_SETDISABLEDIMAGELIST')) {
     if ($bitmapHelper.Value.Contains($forbidden)) { throw "Table toolbar bitmap helper must not use $forbidden." }
 }
 if ($bitmapHelper.Value.Contains('maskOneCount')) { throw 'Table toolbar bitmap helper must not retain the redundant mask-one counter.' }
