@@ -10,7 +10,9 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath (Join-Path $repoRoot 'update.xml') -Feed StableFeed
 & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath (Join-Path $repoRoot 'update-prerelease.xml') -Feed PrereleaseFeed
 
-$fixture = Join-Path $repoRoot 'out\tests\update-manifest-negative.xml'
+$fixtureDirectory = Join-Path $repoRoot 'out\tests'
+New-Item -ItemType Directory -Path $fixtureDirectory -Force | Out-Null
+$fixture = Join-Path $fixtureDirectory 'update-manifest-negative.xml'
 function Get-ArtifactUrl([string]$Tag, [string]$FileName, [string]$AssetHost = 'github.com/sklart/fictionbook-editor-next') {
     return "https://$AssetHost/releases/download/$Tag/$FileName"
 }
