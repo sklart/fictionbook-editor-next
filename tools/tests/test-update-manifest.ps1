@@ -44,20 +44,26 @@ function New-SchemaV2Manifest([hashtable]$Case) {
 "@
 }
 
+$baseline = @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0' }
+[IO.File]::WriteAllText($fixture, (New-SchemaV2Manifest $baseline), [Text.UTF8Encoding]::new($false))
+& (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $fixture -Feed PrereleaseFeed
+
 foreach ($case in @(
-    @{ Version = '3.2.0-rc.1'; Tag = 'v3.2.0-rc.1'; Type = 'stable'; Beta = 'false'; Base = '3.2.0' },
-    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0' },
-    @{ Version = '3.2.0-rc.01'; Tag = 'v3.2.0-rc.01'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0' },
-    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.3'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0' },
-    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'true'; Base = '3.2.0' },
-    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; Artifact = 'wrong.exe' },
-    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; UrlTag = 'v3.2.0-rc.3' },
-    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'false'; Base = '3.2.0'; Host = 'github.com/example/other' }
+    @{ Version = '3.2.0-rc.1'; Tag = 'v3.2.0-rc.1'; Type = 'stable'; Beta = 'false'; Base = '3.2.0'; ExpectedError = 'ReleaseType' },
+    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = 'ReleaseType' },
+    @{ Version = '3.2.0-rc.01'; Tag = 'v3.2.0-rc.01'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = 'Version' },
+    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.3'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = 'Version.*ReleaseTag' },
+    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'true'; Base = '3.2.0'; ExpectedError = 'Beta' },
+    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; Artifact = 'wrong.exe'; ExpectedError = 'Modern/Setup URL' },
+    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; UrlTag = 'v3.2.0-rc.3'; ExpectedError = 'Modern/Setup URL' },
+    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'false'; Base = '3.2.0'; Host = 'github.com/example/other'; ExpectedError = 'доверенным URL' }
 )) {
     [IO.File]::WriteAllText($fixture, (New-SchemaV2Manifest $case), [Text.UTF8Encoding]::new($false))
     $accepted = $false
-    try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $fixture -Feed Any; $accepted = $true } catch { }
+    $message = $null
+    try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $fixture -Feed Any; $accepted = $true } catch { $message = $_.Exception.Message }
     if ($accepted) { throw "Validator accepted invalid manifest case $($case.Version) / $($case.Type)." }
+    if ($message -notmatch $case.ExpectedError) { throw "Validator rejected $($case.Version) / $($case.Type) for an unexpected reason: $message" }
 }
 
 $legacyPrerelease = Join-Path $repoRoot 'out\tests\update-manifest-legacy-prerelease.xml'
@@ -76,7 +82,9 @@ $legacyPrereleaseContent = @"
 "@
 [IO.File]::WriteAllText($legacyPrerelease, $legacyPrereleaseContent, [Text.UTF8Encoding]::new($false))
 $accepted = $false
-try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $legacyPrerelease -Feed PrereleaseFeed; $accepted = $true } catch { }
+$message = $null
+try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $legacyPrerelease -Feed PrereleaseFeed; $accepted = $true } catch { $message = $_.Exception.Message }
 if ($accepted) { throw 'Validator accepted a prerelease manifest without <Artifacts>.' }
+if ($message -notmatch [regex]::Escape('Prerelease manifest обязан содержать <Artifacts>.')) { throw "Validator rejected legacy prerelease for an unexpected reason: $message" }
 
 Write-Host "Проверка update.xml прошла успешно."
