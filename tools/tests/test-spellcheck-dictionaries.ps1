@@ -74,6 +74,10 @@ foreach ($dictionaryName in @("en_US", "ru_RU", "uk_UA")) {
     $runtimeDic = Join-Path $repoRoot "runtime\dict\$dictionaryName.dic"
     if ((Get-FileHash -LiteralPath $runtimeAff -Algorithm SHA256).Hash -ne $entry.affSha256) { throw "SHA-256 aff не совпадает с sources.json: $dictionaryName" }
     if ((Get-FileHash -LiteralPath $runtimeDic -Algorithm SHA256).Hash -ne $entry.dicSha256) { throw "SHA-256 dic не совпадает с sources.json: $dictionaryName" }
+    $stagedAff = Join-Path $dictDir "$dictionaryName.aff"
+    $stagedDic = Join-Path $dictDir "$dictionaryName.dic"
+    if ((Get-FileHash -LiteralPath $stagedAff -Algorithm SHA256).Hash -ne $entry.affSha256) { throw "SHA-256 staged aff не совпадает с sources.json: $dictionaryName" }
+    if ((Get-FileHash -LiteralPath $stagedDic -Algorithm SHA256).Hash -ne $entry.dicSha256) { throw "SHA-256 staged dic не совпадает с sources.json: $dictionaryName" }
     if ((Get-DictionaryEncoding -AffPath $runtimeAff) -ne $entry.encoding) { throw "SET aff не совпадает с sources.json: $dictionaryName" }
     $firstLine = [System.IO.File]::ReadLines($runtimeDic) | Select-Object -First 1
     if ($firstLine -ne [string]$entry.dicEntries) { throw "Count в dic не совпадает с sources.json: $dictionaryName" }

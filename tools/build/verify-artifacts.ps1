@@ -32,6 +32,7 @@ if (-not $ArtifactsDirectory) {
 $ArtifactsDirectory = (Resolve-Path -LiteralPath $ArtifactsDirectory).Path
 $dictionarySources = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'runtime\dict\sources.json') | ConvertFrom-Json
 $dictionaryArchiveHashes = [ordered]@{
+    'dict/sources.json' = (Get-FileHash -LiteralPath (Join-Path $repoRoot 'runtime\dict\sources.json') -Algorithm SHA256).Hash
     'dict/en_US.aff' = $dictionarySources.en_US.affSha256
     'dict/en_US.dic' = $dictionarySources.en_US.dicSha256
     'dict/ru_RU.aff' = $dictionarySources.ru_RU.affSha256

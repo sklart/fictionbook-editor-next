@@ -5,6 +5,11 @@
 
 // Small text operations shared by CSpeller and its native regression tests.
 // They deliberately contain no Hunspell or UI state.
+inline LPCWSTR FbeSpellAlphaExceptions()
+{
+	return L"'\x2019\x02BC\u0301";
+}
+
 inline CString FbeNormalizeDictionaryApostrophes(CString word)
 {
 	word.Replace(L"\x2019", L"'");

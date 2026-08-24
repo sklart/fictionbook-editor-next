@@ -253,7 +253,7 @@ CSpeller::CSpeller(CString dictPath):
 
 	// Keep ASCII, typographic, and modifier-letter apostrophes inside tokens.
 	// The complete English and Ukrainian word must reach Hunspell.
-	splitter = new CSplitter(L"'\x2019\x02BC\u0301");
+	splitter = new CSplitter(FbeSpellAlphaExceptions());
 }
 
 //
@@ -602,8 +602,7 @@ SPELL_RESULT CSpeller::SpellCheck(CString word)
 				else
 				{
 					// check in custom dictionary
-					nIdx = m_CustomDict.Find(word);
-					if (nIdx > -1) spellResult = SPELL_OK;
+					if (FbeCustomDictionaryContains(m_CustomDict, word)) spellResult = SPELL_OK;
 				}
 			}
 		}

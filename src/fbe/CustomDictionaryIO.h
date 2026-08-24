@@ -6,6 +6,11 @@
 #include <fstream>
 #include "SpellText.h"
 
+inline bool FbeCustomDictionaryContains(const CSimpleArray<CString>& words, const CString& word)
+{
+	return words.Find(word) >= 0;
+}
+
 inline void FbeLoadCustomDictionary(const CString& path, UINT codePage, CSimpleArray<CString>& words)
 {
 	words.RemoveAll();

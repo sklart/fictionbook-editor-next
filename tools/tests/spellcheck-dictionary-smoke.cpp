@@ -6,7 +6,10 @@
 #include "CustomDictionaryIO.h"
 #include "Splitter.h"
 #include <chrono>
+#include <fstream>
+#include <initializer_list>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -48,7 +51,7 @@ static void ReportSpell(Hunhandle* dict, const wchar_t* word, UINT cp, const cha
 }
 
 static bool ProductionTokenizerSmoke() {
-    CSplitter splitter(L"'’ʼ\u0301");
+    CSplitter splitter(FbeSpellAlphaExceptions());
     for (const wchar_t* expected : { L"don't", L"don’t", L"під'їзд", L"під’їзд", L"підʼїзд" }) {
         CString source(expected);
         CWords words;
@@ -68,20 +71,42 @@ static bool ProductionApostropheRestoreSmoke() {
 }
 
 static bool ProductionCustomDictionarySmoke() {
-    wchar_t path[MAX_PATH];
-    if (!GetTempPathW(_countof(path), path) || !GetTempFileNameW(path, L"fbe", 0, path)) return false;
-    DeleteFileW(path);
+    wchar_t tempDirectory[MAX_PATH];
+    wchar_t tempFile[MAX_PATH];
+    if (!GetTempPathW(_countof(tempDirectory), tempDirectory) ||
+        !GetTempFileNameW(tempDirectory, L"fbe", 0, tempFile)) return false;
+    DeleteFileW(tempFile);
     CSimpleArray<CString> original;
-    const CString word(L"тестКириллица");
+    const CString word(L"фбеспеллеруникальный");
     original.Add(word);
-    FbeSaveCustomDictionary(path, CP_UTF8, original);
+    FbeSaveCustomDictionary(tempFile, CP_UTF8, original);
+    original.RemoveAll();
+    std::ifstream input(tempFile, std::ios::binary);
+    const std::vector<char> bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    CStringA expected = FbeEncodeDictionaryWord(word, CP_UTF8);
+    expected += '\n';
     CSimpleArray<CString> restored;
-    FbeLoadCustomDictionary(path, CP_UTF8, restored);
+    FbeLoadCustomDictionary(tempFile, CP_UTF8, restored);
     const CStringA utf8 = FbeEncodeDictionaryWord(word, CP_UTF8);
     const CStringA koi8r = FbeEncodeDictionaryWord(word, 20866);
-    const bool ok = restored.GetSize() == 1 && restored[0] == word && utf8 != koi8r;
-    DeleteFileW(path);
+    const bool ok = bytes == std::vector<char>(expected.GetString(), expected.GetString() + expected.GetLength()) &&
+        utf8 != koi8r && restored.GetSize() == 1 && restored[0] == word &&
+        FbeCustomDictionaryContains(restored, word) &&
+        !FbeCustomDictionaryContains(restored, L"фбеспеллеруникальная");
+    DeleteFileW(tempFile);
     return ok;
+}
+
+static bool ProductionApostropheSpellFlow(Hunhandle* dict, UINT cp, const std::initializer_list<const wchar_t*> words) {
+    for (const wchar_t* source : words) {
+        const CString normalized = FbeNormalizeDictionaryApostrophes(CString(source));
+        const CStringA encoded = FbeEncodeDictionaryWord(normalized, cp);
+        if (encoded.IsEmpty() || !Hunspell_spell(dict, encoded)) {
+            std::cerr << "production apostrophe spell flow failed\n";
+            return false;
+        }
+    }
+    return true;
 }
 
 static bool ProductionKoi8rRoundTrip(Hunhandle* dict) {
@@ -117,9 +142,9 @@ static bool TestDictionary(const std::string& directory, const char* name, const
     bool ok = std::string(Hunspell_get_dic_encoding(dict)) == encoding;
     if (std::string(name) == "en_US") {
         ok &= Spell(dict, L"computer", cp, true) && Spell(dict, L"literature", cp, true) && Spell(dict, L"dictionary", cp, true) && Spell(dict, L"editor", cp, true);
-        ok &= Spell(dict, L"ChatGPT", cp, true) && Spell(dict, L"codebase", cp, true) && Spell(dict, L"Kyiv", cp, true);
+        ok &= Spell(dict, L"ChatGPT", cp, true) && Spell(dict, L"LLM", cp, true) && Spell(dict, L"codebase", cp, true) && Spell(dict, L"tokenize", cp, true) && Spell(dict, L"tokenization", cp, true) && Spell(dict, L"influencer", cp, true) && Spell(dict, L"doomscrolling", cp, true) && Spell(dict, L"staycation", cp, true) && Spell(dict, L"Kyiv", cp, true);
         ok &= Spell(dict, L"recieve", cp, false) && Spell(dict, L"definately", cp, false) && Spell(dict, L"teh", cp, false);
-        ok &= Spell(dict, L"don't", cp, true) && Spell(dict, L"don’t", cp, true);
+        ok &= ProductionApostropheSpellFlow(dict, cp, { L"don't", L"don’t", L"donʼt" });
         const std::string customWord = Encode(L"FbeCustomUnicode", cp);
         ok &= Hunspell_add(dict, customWord.c_str()) == 0 && Spell(dict, L"FbeCustomUnicode", cp, true);
     } else if (std::string(name) == "ru_RU") {
@@ -131,7 +156,8 @@ static bool TestDictionary(const std::string& directory, const char* name, const
         ok &= HasSuggestion(dict, L"собка", L"собака", cp);
         ok &= ProductionKoi8rRoundTrip(dict);
     } else {
-        for (const wchar_t* word : { L"Україна", L"український", L"Київ", L"ґрунт", L"література", L"редактор", L"під'їзд", L"підʼїзд" }) ok &= Spell(dict, word, cp, true);
+        for (const wchar_t* word : { L"Україна", L"український", L"Київ", L"ґрунт", L"література", L"редактор" }) ok &= Spell(dict, word, cp, true);
+        ok &= ProductionApostropheSpellFlow(dict, cp, { L"під'їзд", L"під’їзд", L"підʼїзд" });
         for (const wchar_t* word : { L"украйінський", L"Києв", L"ґрунтт" }) ok &= Spell(dict, word, cp, false);
         // Record the current upstream dict_uk ICONV behavior for Latin-only words.
         // Do not treat it as an FBE-specific contract; upstream issue #306 remains open.
