@@ -25,7 +25,7 @@ $outputByLanguage = @{
 }
 function ConvertTo-RcStringLiteral { param([AllowNull()][string]$Text) if ($null -eq $Text) { return "" } return $Text.Replace('"','""') }
 function Get-Text { param([string]$Key,[string]$Language)
-    $fullKey="fbe.dialog.$Key"
+    $fullKey=if($Key.StartsWith('fbe.')){$Key}else{"fbe.dialog.$Key"}
     $entry=$catalog.strings.PSObject.Properties[$fullKey]
     if(-not $entry){ throw "В каталоге нет строки: $fullKey" }
     $tr=$entry.Value.translations.PSObject.Properties[$Language]
@@ -91,24 +91,25 @@ foreach($language in $Languages){
     $l.Add('    PUSHBUTTON      "' + (Get-Text 'idd_tools_settings.cancel' $language) + '",IDCANCEL,279,348,55,15')
     $l.Add("END")
     $l.Add("")
-    $l.Add("IDD_ABOUTBOX DIALOGEX 0, 0, 300, 151")
+    $l.Add("IDD_ABOUTBOX DIALOGEX 0, 0, 420, 151")
     $l.Add("STYLE DS_SETFONT | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME")
     $l.Add('CAPTION "' + (Get-Text 'idd_aboutbox.caption' $language) + '"')
     $l.Add('FONT 9, "Tahoma", 0, 0, 0x0')
     $l.Add("BEGIN")
-    $l.Add('    DEFPUSHBUTTON   "' + (Get-Text 'idd_aboutbox.ok' $language) + '",IDOK,249,133,44,14')
+    $l.Add('    DEFPUSHBUTTON   "' + (Get-Text 'idd_aboutbox.ok' $language) + '",IDOK,369,133,44,14')
     $l.Add('    CONTROL         248,IDC_AB_STATIC_BANNER,"Static",SS_BITMAP | SS_NOTIFY | NOT WS_VISIBLE,6,6,56,123,WS_EX_CLIENTEDGE')
     $l.Add('    CONTROL         "",IDC_AB_BANNER,"Static",SS_OWNERDRAW | SS_NOTIFY | NOT WS_VISIBLE,6,6,57,123,WS_EX_CLIENTEDGE')
     $l.Add('    ICON            IDR_MAINFRAME,IDC_STATIC_AB_APPICON,73,8,20,20')
-    $l.Add('    EDITTEXT        IDC_STATIC_AB_APPNAMEVER,99,8,191,12,ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP')
-    $l.Add('    LTEXT           "' + (Get-Text 'idd_aboutbox.build' $language) + '",IDC_STATIC_BUILD,101,20,40,8')
-    $l.Add('    EDITTEXT        IDC_BUILDSTAMP,142,20,148,12,ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP')
+    $l.Add('    EDITTEXT        IDC_STATIC_AB_APPNAMEVER,99,8,311,12,ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP')
+    $l.Add('    LTEXT           "' + (Get-Text 'idd_aboutbox.build' $language) + '",IDC_STATIC_BUILD,101,20,15,8')
+    $l.Add('    EDITTEXT        IDC_BUILDSTAMP,123,20,286,12,ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP')
     $l.Add('    CONTROL         "' + (Get-Text 'idd_aboutbox.link' $language) + '",IDC_SYSLINK_AB_LINKS,')
-    $l.Add('                    "SysLink",0x0,101,32,188,8')
-    $l.Add('    EDITTEXT        IDC_CONTRIBS,70,51,223,77,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_WANTRETURN | NOT WS_BORDER | WS_VSCROLL | NOT WS_TABSTOP,WS_EX_STATICEDGE')
-    $l.Add('    CONTROL         "Static",IDC_TEXT_STATUS,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,24,137,180,8')
+    $l.Add('                    "SysLink",0x0,101,32,308,8')
+    $l.Add('    EDITTEXT        IDC_CONTRIBS,70,51,343,77,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_WANTRETURN | NOT WS_BORDER | WS_VSCROLL | NOT WS_TABSTOP,WS_EX_STATICEDGE')
+    $l.Add('    CONTROL         "Static",IDC_TEXT_STATUS,"Static",SS_LEFT | WS_GROUP,24,133,210,20')
     $l.Add('    CONTROL         400,IDC_PIC_UPDATE,"Static",SS_BITMAP,9,136,9,9')
-    $l.Add('    PUSHBUTTON      "' + (Get-Text 'idd_aboutbox.update' $language) + '",IDC_UPDATE,195,133,49,14,NOT WS_VISIBLE')
+    $l.Add('    PUSHBUTTON      "' + (Get-Text 'idd_aboutbox.update' $language) + '",IDC_UPDATE,315,136,49,14,NOT WS_VISIBLE')
+    $l.Add('    PUSHBUTTON      "' + (Get-Text 'fbe.about.whats_new' $language) + '",IDC_WHATS_NEW,240,136,70,14,NOT WS_VISIBLE')
     $l.Add("END")
     $l.Add("")
     $l.Add("IDD_CUSTOMSAVEDLG DIALOGEX 0, 0, 415, 18")

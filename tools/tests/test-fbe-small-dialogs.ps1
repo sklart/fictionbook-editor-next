@@ -76,6 +76,9 @@ foreach($file in $files){
 	if($generatedText -notmatch 'IDD_TOOLS_SETTINGS DIALOGEX 0, 0, 340, 371' -or $generatedText -notmatch 'IDC_TAB_CTRL,"SysTabControl32",0x0,0,0,339,342') {
 		throw "В generated малых диалогов $($file.Language) недостаточная высота окна настроек для FBE Next."
 	}
+	if($generatedText -match 'IDD_ABOUTBOX DIALOGEX 0, 0, 300, 151' -or $generatedText -notmatch 'IDD_ABOUTBOX DIALOGEX 0, 0, 420, 151' -or $generatedText -notmatch 'IDC_TEXT_STATUS,"Static",SS_LEFT \| WS_GROUP,24,133,210,20' -or $generatedText -notmatch 'IDC_WHATS_NEW,240,136,70,14' -or $generatedText -notmatch 'IDC_UPDATE,315,136,49,14') {
+		throw "В generated About $($file.Language) отсутствует актуальная разметка update-кнопок."
+	}
 	$resourceHeader = Get-Content -Raw -LiteralPath (Join-Path (Split-Path -Parent $file.Rc) 'resource.h')
 	if($resourceHeader -notmatch '#define\s+IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS\s+1145'){
 		throw "В resource.h локали $($file.Language) отсутствует идентификатор IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS."
