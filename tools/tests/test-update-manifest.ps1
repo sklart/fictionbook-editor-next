@@ -11,7 +11,39 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath (Join-Path $repoRoot 'update-prerelease.xml') -Feed PrereleaseFeed
 
 $fixture = Join-Path $repoRoot 'out\tests\update-manifest-negative.xml'
-$source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'update.xml')
+function Get-ArtifactUrl([string]$Tag, [string]$FileName, [string]$AssetHost = 'github.com/sklart/fictionbook-editor-next') {
+    return "https://$AssetHost/releases/download/$Tag/$FileName"
+}
+
+function New-SchemaV2Manifest([hashtable]$Case) {
+    $base = $Case.Base
+    $tag = $Case.Tag
+    $assetHost = 'github.com/sklart/fictionbook-editor-next'
+    $modernSetup = Get-ArtifactUrl $tag "FictionBookEditorNext-$base-win32-setup.exe" $assetHost
+    $modernPortable = Get-ArtifactUrl $tag "FictionBookEditorNext-$base-win32-portable.zip" $assetHost
+    $win7Setup = Get-ArtifactUrl $tag "FictionBookEditorNext-$base-win7-win32-setup.exe" $assetHost
+    $win7Portable = Get-ArtifactUrl $tag "FictionBookEditorNext-$base-win7-win32-portable.zip" $assetHost
+    if ($Case.ContainsKey('Artifact')) { $modernSetup = Get-ArtifactUrl $tag $Case.Artifact $assetHost }
+    if ($Case.ContainsKey('UrlTag')) { $modernSetup = Get-ArtifactUrl $Case.UrlTag "FictionBookEditorNext-$base-win32-setup.exe" $assetHost }
+    if ($Case.ContainsKey('Host')) { $modernSetup = Get-ArtifactUrl $tag "FictionBookEditorNext-$base-win32-setup.exe" $Case.Host }
+    $hash = [string]::new('A', 64)
+@"
+<?xml version="1.0" encoding="utf-8"?>
+<FBE>
+    <Name>FictionBook Editor Next Release $($Case.Version)</Name>
+    <Date>22-08-2026</Date>
+    <Version>$($Case.Version)</Version>
+    <ReleaseTag>$tag</ReleaseTag>
+    <ReleaseType>$($Case.Type)</ReleaseType>
+    <Beta>$($Case.Beta)</Beta>
+    <Artifacts>
+        <Modern><SetupUrl>$modernSetup</SetupUrl><SetupSHA256>$hash</SetupSHA256><PortableUrl>$modernPortable</PortableUrl><PortableSHA256>$hash</PortableSHA256></Modern>
+        <Win7><SetupUrl>$win7Setup</SetupUrl><SetupSHA256>$hash</SetupSHA256><PortableUrl>$win7Portable</PortableUrl><PortableSHA256>$hash</PortableSHA256></Win7>
+    </Artifacts>
+</FBE>
+"@
+}
+
 foreach ($case in @(
     @{ Version = '3.2.0-rc.1'; Tag = 'v3.2.0-rc.1'; Type = 'stable'; Beta = 'false'; Base = '3.2.0' },
     @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0' },
@@ -22,19 +54,26 @@ foreach ($case in @(
     @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; UrlTag = 'v3.2.0-rc.3' },
     @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'false'; Base = '3.2.0'; Host = 'github.com/example/other' }
 )) {
-    $urlTag = if ($case.UrlTag) { $case.UrlTag } else { $case.Tag }
-    $artifact = if ($case.Artifact) { $case.Artifact } else { "FictionBookEditorNext-$($case.Base)-win32-setup.exe" }
-    $assetHost = if ($case.Host) { $case.Host } else { 'github.com/sklart/fictionbook-editor-next' }
-    $url = "https://$assetHost/releases/download/$urlTag/$artifact"
-    $content = $source -replace '<Version>[^<]+</Version>', "<Version>$($case.Version)</Version>" -replace '<ReleaseTag>[^<]+</ReleaseTag>', "<ReleaseTag>$($case.Tag)</ReleaseTag>" -replace '<ReleaseType>[^<]+</ReleaseType>', "<ReleaseType>$($case.Type)</ReleaseType>" -replace '<Beta>[^<]+</Beta>', "<Beta>$($case.Beta)</Beta>" -replace '<DownloadUrl>[^<]+</DownloadUrl>', "<DownloadUrl>$url</DownloadUrl>"
-    [IO.File]::WriteAllText($fixture, $content, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($fixture, (New-SchemaV2Manifest $case), [Text.UTF8Encoding]::new($false))
     $accepted = $false
     try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $fixture -Feed Any; $accepted = $true } catch { }
     if ($accepted) { throw "Validator accepted invalid manifest case $($case.Version) / $($case.Type)." }
 }
 
 $legacyPrerelease = Join-Path $repoRoot 'out\tests\update-manifest-legacy-prerelease.xml'
-$legacyPrereleaseContent = $source -replace '(?s)\s*<Artifacts>.*?</Artifacts>', '' -replace '<Version>[^<]+</Version>', '<Version>3.2.0-rc.2</Version>' -replace '<ReleaseTag>[^<]+</ReleaseTag>', '<ReleaseTag>v3.2.0-rc.2</ReleaseTag>' -replace '<ReleaseType>[^<]+</ReleaseType>', '<ReleaseType>prerelease</ReleaseType>' -replace '<Beta>[^<]+</Beta>', '<Beta>true</Beta>' -replace '<DownloadUrl>[^<]+</DownloadUrl>', '<DownloadUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.2.0-rc.2/FictionBookEditorNext-3.2.0-win32-setup.exe</DownloadUrl>'
+$legacyPrereleaseContent = @"
+<?xml version="1.0" encoding="utf-8"?>
+<FBE>
+    <Name>FictionBook Editor Next Release 3.2.0-rc.2</Name>
+    <Date>22-08-2026</Date>
+    <Version>3.2.0-rc.2</Version>
+    <ReleaseTag>v3.2.0-rc.2</ReleaseTag>
+    <ReleaseType>prerelease</ReleaseType>
+    <Beta>true</Beta>
+    <DownloadUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.2.0-rc.2/FictionBookEditorNext-3.2.0-win32-setup.exe</DownloadUrl>
+    <SHA256>$([string]::new('A', 64))</SHA256>
+</FBE>
+"@
 [IO.File]::WriteAllText($legacyPrerelease, $legacyPrereleaseContent, [Text.UTF8Encoding]::new($false))
 $accepted = $false
 try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $legacyPrerelease -Feed PrereleaseFeed; $accepted = $true } catch { }
