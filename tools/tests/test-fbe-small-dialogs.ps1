@@ -18,7 +18,7 @@ $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json -Depth 
 $expectedLanguages = @('en-US','ru-RU','uk-UA','de-DE','fr-FR','es-ES','it-IT','pl-PL','pt-PT','nl-NL','cs-CZ','bg-BG')
 if ((Compare-Object -ReferenceObject $expectedLanguages -DifferenceObject @($catalog.targetLanguages)).Count -ne 0) { throw "Набор языков каталога малых диалогов FBE не совпадает с ожидаемым." }
 $entries = @($catalog.strings.PSObject.Properties)
-$expectedEntryCount = 164
+$expectedEntryCount = 171
 if ($entries.Count -ne $expectedEntryCount) { throw "Ожидалось $expectedEntryCount строк малых диалогов FBE, получено $($entries.Count)." }
 foreach ($entry in $entries) { foreach ($language in $expectedLanguages) { $translation = $entry.Value.translations.PSObject.Properties[$language]; if (-not $translation -or [string]::IsNullOrWhiteSpace([string]$translation.Value)) { throw "У строки $($entry.Name) нет перевода для $language." } } }
 & (Join-Path $repoRoot "tools\localization\update-fbe-small-dialog-resources.ps1")
@@ -67,12 +67,21 @@ foreach($file in $files){
 	foreach($imageImportControl in @('IDC_IMAGE_IMPORT_FORMAT','IDC_IMAGE_IMPORT_JPEG_QUALITY','IDC_IMAGE_IMPORT_JPEG_SPIN','IDC_IMAGE_IMPORT_KEEP_SUPPORTED')) {
 		if($generatedText -notmatch $imageImportControl) { throw "В generated малых диалогов $($file.Language) нет $imageImportControl." }
 	}
-	if($generatedText -notmatch 'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE'){
-		throw "В generated малых диалогов $($file.Language) нет выбора стиля невидимых символов FBE Next."
+    if($generatedText -notmatch 'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE'){
+        throw "В generated малых диалогов $($file.Language) нет выбора стиля невидимых символов FBE Next."
+    }
+	if($generatedText -notmatch 'IDD_SETTING_NEXT DIALOGEX 0, 0, 330, 320' -or $generatedText -notmatch 'IDC_UPDATE_CHANNEL,88,124,184,50') {
+		throw "В generated малых диалогов $($file.Language) нет блока выбора канала обновлений FBE Next."
+	}
+	if($generatedText -notmatch 'IDD_TOOLS_SETTINGS DIALOGEX 0, 0, 340, 371' -or $generatedText -notmatch 'IDC_TAB_CTRL,"SysTabControl32",0x0,0,0,339,342') {
+		throw "В generated малых диалогов $($file.Language) недостаточная высота окна настроек для FBE Next."
 	}
 	$resourceHeader = Get-Content -Raw -LiteralPath (Join-Path (Split-Path -Parent $file.Rc) 'resource.h')
 	if($resourceHeader -notmatch '#define\s+IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS\s+1145'){
 		throw "В resource.h локали $($file.Language) отсутствует идентификатор IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS."
+	}
+	foreach($updateId in @('IDC_UPDATE_CHANNEL\s+1156','IDC_FBE_NEXT_UPDATES_GROUP\s+1157','IDC_UPDATE_CHANNEL_LABEL\s+1158','IDC_WHATS_NEW\s+1159')) {
+		if($resourceHeader -notmatch ('#define\s+' + $updateId)) { throw "В resource.h локали $($file.Language) отсутствует $updateId." }
 	}
 	if($resourceHeader -notmatch '#define\s+IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE\s+1153'){
 		throw "В resource.h локали $($file.Language) отсутствует идентификатор IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE."
