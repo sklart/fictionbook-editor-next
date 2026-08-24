@@ -15,11 +15,13 @@ Require (-not $candidate.Contains('ReleaseNotes')) 'Candidate manifest не до
 Require ($workflow.Contains('if: github.ref_type == ''tag''')) 'Candidate manifest обязан создаваться для каждого release tag.'
 Require ($workflow.Contains('update-prerelease.xml')) 'Workflow обязан публиковать prerelease feed.'
 Require ($workflow.Contains("@('update.xml', 'update-prerelease.xml')")) 'Stable release обязан публиковать оба feed.'
-$existing = $workflow.IndexOf('$arguments = @("release", "edit", $releaseTag)')
+$existing = $workflow.IndexOf('gh release view $releaseTag')
 $create = $workflow.IndexOf('$arguments = @("release", "create", $releaseTag, "--verify-tag", "--notes-file"')
 Require ($existing -ge 0 -and $create -gt $existing) 'Workflow обязан различать existing и new GitHub Release.'
 $existingBlock = $workflow.Substring($existing, $create - $existing)
 Require (-not $existingBlock.Contains('--notes-file')) 'Повторная публикация не должна перезаписывать GitHub Release body.'
+Require (-not $existingBlock.Contains('$arguments = @("release", "edit", $releaseTag)')) 'Existing stable release не должен вызывать пустой gh release edit.'
+Require ($existingBlock.Contains('gh release edit $releaseTag --prerelease=true')) 'Existing prerelease должен сохранять prerelease flag.'
 Require ($workflow.IndexOf('gh release upload $releaseTag', $create) -gt $create) 'Assets должны загружаться после создания release.'
 Require ($workflow.IndexOf('Synchronize update manifests') -gt $workflow.IndexOf('gh release upload $releaseTag')) 'Feed должен обновляться только после upload assets.'
 Write-Host 'Проверка update/release pipeline прошла успешно.'

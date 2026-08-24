@@ -9,16 +9,17 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $PSScriptRoot 'UpdateVersion.ps1')
 if (-not $ArtifactsRoot) { $ArtifactsRoot = Join-Path $repoRoot 'out\artifacts' }
 if (-not $OutputPath) { $OutputPath = Join-Path $repoRoot 'out\release\update.xml' }
 $versionText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\version.h')
 $match = [regex]::Match($versionText, '#define\s+FBE_VERSION_STRING\s+"(?<version>\d+\.\d+\.\d+)"')
 if (-not $match.Success) { throw 'Не найден FBE_VERSION_STRING.' }
 $version = $match.Groups['version'].Value
-if ($ReleaseTag -notmatch '^v(?<releaseVersion>\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)$') { throw "Недопустимый release tag: $ReleaseTag" }
-$releaseVersion = $Matches.releaseVersion
-if ($releaseVersion -notmatch ('^' + [regex]::Escape($version) + '(?:-|$)')) { throw "ReleaseTag $ReleaseTag не соответствует base version $version." }
-$releaseType = if ($releaseVersion.Contains('-')) { 'prerelease' } else { 'stable' }
+if (-not (Test-FbeReleaseTag $ReleaseTag)) { throw "Недопустимый release tag: $ReleaseTag" }
+$releaseVersion = $ReleaseTag.Substring(1)
+if ((Get-FbeBaseVersion $releaseVersion) -ne $version) { throw "ReleaseTag $ReleaseTag не соответствует base version $version." }
+$releaseType = if (Test-FbePrereleaseVersion $releaseVersion) { 'prerelease' } else { 'stable' }
 $root = (Resolve-Path -LiteralPath $ArtifactsRoot).Path
 
 function Get-ArtifactMetadata([string]$Profile, [string]$Name) {

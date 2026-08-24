@@ -774,6 +774,8 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 					(releaseType.CompareNoCase(L"stable") == 0 || releaseType.CompareNoCase(L"prerelease") == 0) &&
 					((releaseType.CompareNoCase(L"stable") == 0 && beta.CompareNoCase(L"false") == 0) ||
 					 (releaseType.CompareNoCase(L"prerelease") == 0 && beta.CompareNoCase(L"true") == 0)) &&
+					((releaseType.CompareNoCase(L"stable") == 0 && !IsPrereleaseUpdateVersion(availableVersion)) ||
+					 (releaseType.CompareNoCase(L"prerelease") == 0 && IsPrereleaseUpdateVersion(availableVersion))) &&
 					(_Settings.GetUpdateChannel() != UpdateChannel::Stable || releaseType.CompareNoCase(L"stable") == 0))
 				{
 					trace.Format(
@@ -951,12 +953,14 @@ LRESULT CAboutDlg::OnResizeOpenGLWindow(UINT, WPARAM, LPARAM, BOOL&)
 		btn.ShowWindow(SW_HIDE);
 		btn.EnableWindow(FALSE);
 
-		m_SaveBtnState = GetDlgItem(IDC_UPDATE).IsWindowVisible();
-		if (m_SaveBtnState)
-		{
-			GetDlgItem(IDC_UPDATE).ShowWindow(SW_HIDE);
-			GetDlgItem(IDC_UPDATE).EnableWindow(FALSE);
-		}
+		m_SaveUpdateBtnState = GetDlgItem(IDC_UPDATE).IsWindowVisible();
+		m_SaveWhatsNewBtnState = GetDlgItem(IDC_WHATS_NEW).IsWindowVisible();
+		m_SaveUpdateBtnEnabled = GetDlgItem(IDC_UPDATE).IsWindowEnabled();
+		m_SaveWhatsNewBtnEnabled = GetDlgItem(IDC_WHATS_NEW).IsWindowEnabled();
+		GetDlgItem(IDC_UPDATE).ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_UPDATE).EnableWindow(FALSE);
+		GetDlgItem(IDC_WHATS_NEW).ShowWindow(SW_HIDE);
+		GetDlgItem(IDC_WHATS_NEW).EnableWindow(FALSE);
 
 		GetDlgItem(IDC_PIC_UPDATE).ShowWindow(SW_HIDE);
 		GetDlgItem(IDC_TEXT_STATUS).ShowWindow(SW_HIDE);
@@ -996,10 +1000,15 @@ LRESULT CAboutDlg::OnResizeOpenGLWindow(UINT, WPARAM, LPARAM, BOOL&)
 		btn.ShowWindow(SW_SHOW);
 		btn.EnableWindow(TRUE);
 
-		if (m_SaveBtnState)
+		if (m_SaveUpdateBtnState)
 		{
 			GetDlgItem(IDC_UPDATE).ShowWindow(SW_SHOW);
-			GetDlgItem(IDC_UPDATE).EnableWindow(TRUE);
+			GetDlgItem(IDC_UPDATE).EnableWindow(m_SaveUpdateBtnEnabled);
+		}
+		if (m_SaveWhatsNewBtnState)
+		{
+			GetDlgItem(IDC_WHATS_NEW).ShowWindow(SW_SHOW);
+			GetDlgItem(IDC_WHATS_NEW).EnableWindow(m_SaveWhatsNewBtnEnabled);
 		}
 
 		GetDlgItem(IDC_PIC_UPDATE).ShowWindow(SW_SHOW);

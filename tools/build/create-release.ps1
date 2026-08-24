@@ -31,6 +31,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'UpdateVersion.ps1')
 
 function Remove-PathWithRetry {
     param(
@@ -69,13 +70,13 @@ if (-not $versionMatch.Success) {
 $version = $versionMatch.Groups["version"].Value
 
 if ($ReleaseTag) {
-    if ($ReleaseTag -notmatch '^v(?<release>\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)$') {
+    if (-not (Test-FbeReleaseTag $ReleaseTag)) {
         throw "Недопустимый тег релиза: $ReleaseTag"
     }
-    $releaseVersion = $Matches.release
-    $releaseBaseVersion = $releaseVersion -replace '-.*$', ''
+    $releaseVersion = $ReleaseTag.Substring(1)
+    $releaseBaseVersion = Get-FbeBaseVersion $releaseVersion
     if ($releaseBaseVersion -ne $version) { throw "Тег релиза '$ReleaseTag' не совпадает с базовой версией '$version'." }
-    $tagIsPrerelease = $releaseVersion.Contains('-')
+    $tagIsPrerelease = Test-FbePrereleaseVersion $releaseVersion
     if ($Prerelease -ne $tagIsPrerelease) { throw 'Параметр Prerelease должен соответствовать ReleaseTag.' }
 }
 elseif ($Prerelease) { throw "Для предварительного выпуска требуется тег с суффиксом, например v$version-rc.1." }

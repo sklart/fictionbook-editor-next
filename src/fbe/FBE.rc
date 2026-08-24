@@ -421,10 +421,10 @@ BEGIN
     CONTROL         "<a href=""https://github.com/sklart/fictionbook-editor-next"">https://github.com/sklart/fictionbook-editor-next</a>",IDC_SYSLINK_AB_LINKS,
                     "SysLink",0x0,101,32,308,8
     EDITTEXT        IDC_CONTRIBS,70,51,343,77,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_WANTRETURN | NOT WS_BORDER | WS_VSCROLL | NOT WS_TABSTOP,WS_EX_STATICEDGE
-    CONTROL         "Static",IDC_TEXT_STATUS,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,24,137,334,8
+    CONTROL         "Static",IDC_TEXT_STATUS,"Static",SS_LEFT | WS_GROUP,24,133,210,20
     CONTROL         400,IDC_PIC_UPDATE,"Static",SS_BITMAP,9,136,9,9
-      PUSHBUTTON      "Update now",IDC_UPDATE,315,133,49,14,NOT WS_VISIBLE
-      PUSHBUTTON      "What's new...",IDC_WHATS_NEW,240,133,70,14,NOT WS_VISIBLE
+      PUSHBUTTON      "Update now",IDC_UPDATE,315,136,49,14,NOT WS_VISIBLE
+      PUSHBUTTON      "What's new...",IDC_WHATS_NEW,240,136,70,14,NOT WS_VISIBLE
 END
 
 IDD_ADDIMAGE DIALOGEX 0, 0, 147, 66

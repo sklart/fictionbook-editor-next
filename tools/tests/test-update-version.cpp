@@ -16,16 +16,24 @@ int wmain()
 {
 	if (GetUpdateManifestUrl(UpdateChannel::Stable).Find(L"/update.xml") < 0 ||
 		GetUpdateManifestUrl(UpdateChannel::Prerelease).Find(L"/update-prerelease.xml") < 0) return 1;
-    const wchar_t* invalid[] = { L"3", L"3.1", L"3.1.", L"v3.1.0", L"3.1.0-", L"3.1.0-rc..1" };
+    const wchar_t* invalid[] = { L"3", L"3.1", L"3.1.", L"v3.1.0", L"3.1.0-", L"3.1.0-rc..1", L"3.1.0-rc.01", L"3.1.0-01", L"03.1.0", L"3.01.0", L"3.1.00" };
     for (int i = 0; i < _countof(invalid); ++i)
         if (IsValidUpdateVersion(invalid[i])) return 1;
+    const wchar_t* valid[] = { L"3.1.0-alpha", L"3.1.0-alpha.1", L"3.1.0-beta.2", L"3.1.0-rc.10", L"3.1.0+build.1", L"3.1.0-rc.2+build.7" };
+    for (int i = 0; i < _countof(valid); ++i)
+        if (!IsValidUpdateVersion(valid[i])) return 1;
     if (!IsValidUpdateVersion(L"3.1.0-rc.2+build.7")) return 1;
+    if (!IsPrereleaseUpdateVersion(L"3.1.0-rc.2+build.7") || IsPrereleaseUpdateVersion(L"3.1.0+build.7")) return 1;
     if (GetUpdateBaseVersion(L"3.1.0-rc.2") != L"3.1.0") return 1;
     return ExpectCompare(L"3.0.7", L"3.0.7", 0) ||
         ExpectCompare(L"3.0.8", L"3.0.7", 1) ||
         ExpectCompare(L"3.1.0", L"3.0.9", 1) ||
-        ExpectCompare(L"3.1.0-beta.1", L"3.1.0-beta.2", -1) ||
-        ExpectCompare(L"3.1.0-beta.2", L"3.1.0-rc.1", -1) ||
+        ExpectCompare(L"3.1.0-alpha", L"3.1.0-alpha.1", -1) ||
+        ExpectCompare(L"3.1.0-alpha.1", L"3.1.0-alpha.beta", -1) ||
+        ExpectCompare(L"3.1.0-alpha.beta", L"3.1.0-beta", -1) ||
+        ExpectCompare(L"3.1.0-beta", L"3.1.0-beta.2", -1) ||
+        ExpectCompare(L"3.1.0-beta.2", L"3.1.0-beta.11", -1) ||
+        ExpectCompare(L"3.1.0-beta.11", L"3.1.0-rc.1", -1) ||
         ExpectCompare(L"3.1.0-rc.1", L"3.1.0-rc.2", -1) ||
         ExpectCompare(L"3.1.0-rc.2", L"3.1.0", -1) ||
         ExpectCompare(L"3.1.0-rc.10", L"3.1.0-rc.2", 1) ||

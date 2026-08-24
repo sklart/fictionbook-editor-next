@@ -52,6 +52,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'UpdateVersion.ps1')
 
 function Remove-ObsoleteReleaseArtifacts {
     param(
@@ -292,7 +293,7 @@ $versionHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\version
 $baseMatch = [regex]::Match($versionHeader, '#define\s+FBE_VERSION_STRING\s+"(?<version>\d+\.\d+\.\d+)"')
 if (-not $baseMatch.Success) { throw 'Не найден FBE_VERSION_STRING.' }
 if (-not $ReleaseVersion) { $ReleaseVersion = $baseMatch.Groups['version'].Value }
-if ($ReleaseVersion -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$') {
+if (-not (Test-FbeSemVer $ReleaseVersion)) {
     throw "Недопустимая release version: $ReleaseVersion"
 }
 $releaseBaseVersion = $ReleaseVersion -replace '[-+].*$', ''

@@ -7,25 +7,26 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'UpdateVersion.ps1')
 function Require([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
 function Get-One([xml]$Document, [string]$Name) {
     $nodes = @($Document.FBE.SelectNodes($Name))
     Require ($nodes.Count -eq 1) "Ожидался один <$Name>."
     return [string]$nodes[0].InnerText
 }
-function Test-SemVer([string]$Value) { return $Value -match '^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$' }
 
 [xml]$document = Get-Content -Raw -LiteralPath $ManifestPath
 Require ($null -ne $document.SelectSingleNode('/FBE')) 'Корневой элемент должен быть <FBE>.'
 Require ($null -eq $document.FBE.ReleaseNotes -and $null -eq $document.FBE.ReleaseNotesUrl) 'Manifest не должен содержать Release Notes или управляемый URL.'
 $date = Get-One $document 'Date'
 try { [void][DateTime]::ParseExact($date, 'dd-MM-yyyy', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None) } catch { throw 'Date должен иметь формат dd-MM-yyyy.' }
-$version = Get-One $document 'Version'; Require (Test-SemVer $version) 'Version не является допустимым SemVer.'
-$tag = Get-One $document 'ReleaseTag'; Require ($tag -match '^v\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') 'ReleaseTag недопустим.'
+$version = Get-One $document 'Version'; Require (Test-FbeSemVer $version) 'Version не является допустимым SemVer.'
+$tag = Get-One $document 'ReleaseTag'; Require (Test-FbeReleaseTag $tag) 'ReleaseTag недопустим.'
 Require ($tag.Substring(1) -eq $version) 'Version должен совпадать с ReleaseTag без v.'
 if ($ExpectedReleaseTag) { Require ($tag -eq $ExpectedReleaseTag) "ReleaseTag должен быть $ExpectedReleaseTag." }
 $type = Get-One $document 'ReleaseType'; Require ($type -in @('stable', 'prerelease')) 'ReleaseType должен быть stable или prerelease.'
 $beta = Get-One $document 'Beta'; Require (($type -eq 'stable' -and $beta -eq 'false') -or ($type -eq 'prerelease' -and $beta -eq 'true')) 'Beta не согласован с ReleaseType.'
+Require (($type -eq 'stable' -and -not (Test-FbePrereleaseVersion $version)) -or ($type -eq 'prerelease' -and (Test-FbePrereleaseVersion $version))) 'ReleaseType не согласован с prerelease suffix Version.'
 if ($Feed -eq 'StableFeed') { Require ($type -eq 'stable') 'Стабильный feed не может содержать prerelease.' }
 $base = $version -replace '[-+].*$', ''
 $profiles = @{

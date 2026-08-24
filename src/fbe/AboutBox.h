@@ -122,7 +122,10 @@ private:
 	CTransparentBitmap m_UpdatePict;
 	long m_TotalDownloadSize;
 	int m_retCode;
-	BOOL m_SaveBtnState;
+	BOOL m_SaveUpdateBtnState;
+	BOOL m_SaveWhatsNewBtnState;
+	BOOL m_SaveUpdateBtnEnabled;
+	BOOL m_SaveWhatsNewBtnEnabled;
 	bool m_bAllowResize;
 	CString m_AboutCaption;
 

@@ -60,6 +60,7 @@ namespace
 
 bool IsValidUpdateVersion(const CString& value) { CString base, prerelease; return Parse(value, base, prerelease); }
 bool IsValidReleaseTag(const CString& value) { return value.GetLength() > 1 && value[0] == L'v' && IsValidUpdateVersion(value.Mid(1)); }
+bool IsPrereleaseUpdateVersion(const CString& value) { CString base, prerelease; return Parse(value, base, prerelease) && !prerelease.IsEmpty(); }
 CString GetUpdateBaseVersion(const CString& value) { CString base, prerelease; return Parse(value, base, prerelease) ? base : CString(); }
 
 int CompareUpdateVersions(const CString& left, const CString& right)

@@ -215,9 +215,9 @@ jobs:
           gh release view $releaseTag 2>$null | Out-Null
           if ($LASTEXITCODE -eq 0) {
             # Existing release body is the authoritative, possibly manually edited notes.
-            $arguments = @("release", "edit", $releaseTag)
-            if ($releaseTag -match '^v\d+\.\d+\.\d+-') { $arguments += "--prerelease" }
-            gh @arguments
+            if ($releaseTag -match '^v\d+\.\d+\.\d+-') {
+              gh release edit $releaseTag --prerelease=true
+            }
           } else {
             $arguments = @("release", "create", $releaseTag, "--verify-tag", "--notes-file", "out/RELEASE_NOTES.md")
             if ($releaseTag -match '^v\d+\.\d+\.\d+-') { $arguments += "--prerelease" }
