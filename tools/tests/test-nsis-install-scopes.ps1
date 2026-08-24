@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $installerDirectory = Join-Path $root 'packaging\nsis\Installer'
 $testRoot = Join-Path $root 'out\tests\nsis-install-scopes'
+$inputDirectory = Join-Path $testRoot 'input'
 
 $makensis = & (Join-Path $root 'tools\build\resolve-nsis.ps1')
 if ($LASTEXITCODE -ne 0 -or -not $makensis) { throw 'Unable to resolve makensis for NSIS scope smoke.' }
@@ -31,6 +32,7 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines) {
     $arguments = @(
         '/X!addincludedir ..\NSIS',
         '/X!addplugindir /x86-unicode ..\NSIS',
+        ('/DINPUTDIR=' + $inputDirectory),
         ('/DOUTPUTFILE=' + $setup),
         '/DFBE_DEPLOYMENT_TEST_SCOPE_PROBE=1',
         ('/DFBE_DEPLOYMENT_TEST_ROOT=' + $directory)
@@ -53,6 +55,10 @@ $registryKeys = @(
 $before = @{}; foreach ($key in $registryKeys) { $before[$key] = Get-RegistrySnapshot $key }
 
 Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $inputDirectory -Force | Out-Null
+foreach ($license in @('LICENSE', 'gpl-3.0.ru.txt', 'gpl-3.0.ua.txt')) {
+    Set-Content -LiteralPath (Join-Path $inputDirectory $license) -Value 'NSIS deployment scope test fixture.' -Encoding ASCII
+}
 $current = Invoke-ScopeProbe 'current' @()
 if ($current.State.DeploymentMode -ne 'installed' -or $current.State.InstallScope -ne 'current' -or
     $current.State.UninstallRegistryRoot -ne 'HKCU' -or $current.State.ProductionPath -notmatch '\\Programs\\FictionBook Editor Next$') {

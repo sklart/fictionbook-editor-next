@@ -3655,6 +3655,10 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			if (!element) return false;
 			m_doc->m_body.SetFocus();
 			m_doc->m_body.GoTo(element, false);
+			// Keep the test caret off an element boundary; MSHTML can report the preceding container there.
+			MSHTML::IHTMLTxtRangePtr range(m_doc->m_body.Document()->selection->createRange());
+			if (!range || range->move(L"character", 1) != 1) return false;
+			range->select();
 			return true;
 		};
 		auto updateTableCommands = [&]()
