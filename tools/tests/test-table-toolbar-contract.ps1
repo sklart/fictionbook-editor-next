@@ -56,12 +56,33 @@ foreach ($required in @('TBIF_IMAGE', 'm_table_toolbar_image_indices[index]', 'D
 
 $bitmapPaths = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe\res') -Filter 'table_toolbar_*.bmp'
 if ($bitmapPaths.Count -ne 8) { throw "Expected 8 table toolbar bitmaps, found $($bitmapPaths.Count)." }
+$disabledBitmapPaths = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe\res') -Filter 'table_toolbar_*_disabled.bmp'
+if ($disabledBitmapPaths.Count -ne 0) { throw 'Disabled table toolbar bitmaps must not be present; disabled rendering is generated programmatically.' }
 foreach ($path in $bitmapPaths) {
     $bytes = [IO.File]::ReadAllBytes($path.FullName)
-    if ($bytes.Length -lt 26) { throw "$($path.Name) is not a valid bitmap." }
+    if ($bytes.Length -lt 54 -or $bytes[0] -ne [byte][char]'B' -or $bytes[1] -ne [byte][char]'M') { throw "$($path.Name) is not a valid BMP." }
     $width = [BitConverter]::ToInt32($bytes, 18)
-    $height = [Math]::Abs([BitConverter]::ToInt32($bytes, 22))
+    $signedHeight = [BitConverter]::ToInt32($bytes, 22)
+    $height = [Math]::Abs($signedHeight)
     if ($width -ne 24 -or $height -ne 24) { throw "$($path.Name) must be 24x24, got ${width}x${height}." }
+    $bitCount = [BitConverter]::ToInt16($bytes, 28)
+    if ($bitCount -ne 24) { throw "$($path.Name) must be a 24-bpp BMP, got $bitCount bpp." }
+
+    $pixelOffset = [BitConverter]::ToInt32($bytes, 10)
+    $rowStride = [int]([Math]::Ceiling(($width * $bitCount) / 32.0) * 4)
+    if ($pixelOffset -lt 54 -or $pixelOffset + ($rowStride * $height) -gt $bytes.Length) { throw "$($path.Name) has invalid BMP pixel data." }
+    $hasTransparentKey = $false
+    for ($y = 0; $y -lt $height -and -not $hasTransparentKey; $y++) {
+        $rowStart = $pixelOffset + ($y * $rowStride)
+        for ($x = 0; $x -lt $width; $x++) {
+            $pixelStart = $rowStart + ($x * 3)
+            if ($bytes[$pixelStart] -eq 192 -and $bytes[$pixelStart + 1] -eq 192 -and $bytes[$pixelStart + 2] -eq 192) {
+                $hasTransparentKey = $true
+                break
+            }
+        }
+    }
+    if (-not $hasTransparentKey) { throw "$($path.Name) must contain RGB(192,192,192) toolbar transparency-key pixels." }
 }
 
 Write-Host 'Table toolbar native bitmap and UpdateUI contract passed.'
