@@ -49,14 +49,14 @@ $baseline = @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease';
 & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $fixture -Feed PrereleaseFeed
 
 foreach ($case in @(
-    @{ Version = '3.2.0-rc.1'; Tag = 'v3.2.0-rc.1'; Type = 'stable'; Beta = 'false'; Base = '3.2.0'; ExpectedError = 'ReleaseType' },
-    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = 'ReleaseType' },
-    @{ Version = '3.2.0-rc.01'; Tag = 'v3.2.0-rc.01'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = 'Version' },
-    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.3'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = 'Version.*ReleaseTag' },
-    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'true'; Base = '3.2.0'; ExpectedError = 'Beta' },
-    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; Artifact = 'wrong.exe'; ExpectedError = 'Modern/Setup URL' },
-    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; UrlTag = 'v3.2.0-rc.3'; ExpectedError = 'Modern/Setup URL' },
-    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'false'; Base = '3.2.0'; Host = 'github.com/example/other'; ExpectedError = 'доверенным URL' }
+    @{ Version = '3.2.0-rc.1'; Tag = 'v3.2.0-rc.1'; Type = 'stable'; Beta = 'false'; Base = '3.2.0'; ExpectedError = [regex]::Escape('ReleaseType не согласован с prerelease suffix Version.') },
+    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = [regex]::Escape('ReleaseType не согласован с prerelease suffix Version.') },
+    @{ Version = '3.2.0-rc.01'; Tag = 'v3.2.0-rc.01'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = [regex]::Escape('Version не является допустимым SemVer.') },
+    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.3'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; ExpectedError = [regex]::Escape('Version должен совпадать с ReleaseTag без v.') },
+    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'true'; Base = '3.2.0'; ExpectedError = [regex]::Escape('Beta не согласован с ReleaseType.') },
+    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; Artifact = 'wrong.exe'; ExpectedError = [regex]::Escape('Modern/Setup URL не является доверенным URL ожидаемого артефакта.') },
+    @{ Version = '3.2.0-rc.2'; Tag = 'v3.2.0-rc.2'; Type = 'prerelease'; Beta = 'true'; Base = '3.2.0'; UrlTag = 'v3.2.0-rc.3'; ExpectedError = [regex]::Escape('Modern/Setup URL не является доверенным URL ожидаемого артефакта.') },
+    @{ Version = '3.2.0'; Tag = 'v3.2.0'; Type = 'stable'; Beta = 'false'; Base = '3.2.0'; Host = 'github.com/example/other'; ExpectedError = [regex]::Escape('Modern/Setup URL не является доверенным URL ожидаемого артефакта.') }
 )) {
     [IO.File]::WriteAllText($fixture, (New-SchemaV2Manifest $case), [Text.UTF8Encoding]::new($false))
     $accepted = $false
