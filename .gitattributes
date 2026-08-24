@@ -8,3 +8,5 @@ runtime/HTML/**/*.html text eol=crlf
 runtime/HTML/**/*.htm text eol=crlf
 runtime/HTML/**/*.css text eol=crlf
 src/fbe/generated/Fb2SchemaMetadata.h text eol=lf
+runtime/dict/*.aff -text
+runtime/dict/*.dic -text
