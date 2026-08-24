@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Continue'
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$outDir = Join-Path $scriptDir 'out\Release'
-if (-not (Test-Path -LiteralPath $outDir)) { $outDir = Join-Path $scriptDir 'out' }
+$repoRoot = (Resolve-Path (Join-Path $scriptDir '..\..')).Path
+$outDir = Join-Path $repoRoot 'out\Release'
+if (-not (Test-Path -LiteralPath $outDir)) { $outDir = Join-Path $repoRoot 'out' }
 $reportPath = Join-Path $scriptDir 'CHECK_DEPENDENCIES_REPORT.txt'
 $lines = New-Object System.Collections.Generic.List[string]
 $clsid = '{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}'
@@ -77,8 +78,8 @@ Show-File (Join-Path $outDir 'ImportEPUBLunaSVG.dll') $false
 Say ''
 
 Say '=== LunaSVG static libraries ==='
-foreach ($lib in @('thirdparty\lunasvg\lib\Win32\Release\plutovg.lib','thirdparty\lunasvg\lib\Win32\Release\lunasvg.lib')) {
-    $p = Join-Path $scriptDir $lib
+foreach ($lib in @('build\lib\lunasvg\Win32\Release\plutovg.lib','build\lib\lunasvg\Win32\Release\lunasvg.lib')) {
+    $p = Join-Path $repoRoot $lib
     if (Test-Path -LiteralPath $p) { Say ('OK:      ' + $lib) Green } else { Say ('MISSING: ' + $lib) Yellow }
 }
 Say ''

@@ -14,8 +14,8 @@ if not defined MSBUILD if exist "C:\Program Files\Microsoft Visual Studio\2022\E
 if not defined MSBUILD if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
 if not defined MSBUILD set "MSBUILD=msbuild.exe"
 
-set "LUNASVG_LIB=%~dp0thirdparty\lunasvg\lib\Win32\Release\lunasvg.lib"
-set "PLUTOVG_LIB=%~dp0thirdparty\lunasvg\lib\Win32\Release\plutovg.lib"
+set "LUNASVG_LIB=%~dp0..\..\build\lib\lunasvg\Win32\Release\lunasvg.lib"
+set "PLUTOVG_LIB=%~dp0..\..\build\lib\lunasvg\Win32\Release\plutovg.lib"
 
 if not exist "%LUNASVG_LIB%" (
   echo LunaSVG static libraries were not found. Building them first...

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2025 Samuel Ugochukwu <sammycageagle@gmail.com>
+ * Copyright (c) 2020-2026 Samuel Ugochukwu <sammycageagle@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,7 @@ extern "C" {
 
 #define PLUTOVG_VERSION_MAJOR 1
 #define PLUTOVG_VERSION_MINOR 3
-#define PLUTOVG_VERSION_MICRO 1
+#define PLUTOVG_VERSION_MICRO 3
 
 #define PLUTOVG_VERSION_ENCODE(major, minor, micro) (((major) * 10000) + ((minor) * 100) + ((micro) * 1))
 #define PLUTOVG_VERSION PLUTOVG_VERSION_ENCODE(PLUTOVG_VERSION_MAJOR, PLUTOVG_VERSION_MINOR, PLUTOVG_VERSION_MICRO)
