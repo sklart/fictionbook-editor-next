@@ -12,6 +12,7 @@ is needed to build the project but is not shipped as a separate component.
 | PCRE2 | 10.47 | BSD-3-Clause with PCRE2 exception | Regular-expression backend, statically linked into FBE | <https://github.com/PCRE2Project/pcre2> |
 | Hunspell | 1.7.3 | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later | Spell checking, statically linked into FBE | <https://github.com/hunspell/hunspell> |
 | English Speller Database / SCOWL | 2026.02.25 | SCOWL permissive license; BSD license for the affix file | Bundled English (`en_US`) spell-check dictionary | <https://github.com/en-wl/wordlist> |
+| igerman98 / frami German Hunspell Dictionary | 20161207+frami20170109 | GPL-2.0 OR GPL-3.0 | Bundled German (`de_DE`) spell-check dictionary | <https://github.com/LibreOffice/dictionaries> |
 | Goudron Russian Hunspell Dictionary | 1.0.8 | MPL-2.0 | Bundled Russian (`ru_RU`) spell-check dictionary | <https://github.com/Goudron/ru-spelling-dictionary> |
 | VESUM / dict_uk | 6.8.0 | MPL-1.1 (Hunspell distribution) | Bundled Ukrainian (`uk_UA`) spell-check dictionary | <https://github.com/brown-uk/dict_uk> |
 | libwebp | 1.6.0 | BSD-3-Clause | Static WebP decoder linked into FBE | <https://chromium.googlesource.com/webm/libwebp> |

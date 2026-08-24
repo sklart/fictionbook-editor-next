@@ -7,8 +7,8 @@
       "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "Scintilla.dll", "Lexilla.dll",
       "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Plugins\\plugins.json",
       "genres.txt", "genres.rus.txt", "genres.ukr.txt", "genres.librusec.txt", "genres.rus.librusec.txt",
-      "dict\\en_US.aff", "dict\\en_US.dic", "dict\\ru_RU.aff", "dict\\ru_RU.dic", "dict\\uk_UA.aff", "dict\\uk_UA.dic", "dict\\sources.json",
-      "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
+      "dict\\de_DE.aff", "dict\\de_DE.dic", "dict\\en_US.aff", "dict\\en_US.dic", "dict\\ru_RU.aff", "dict\\ru_RU.dic", "dict\\uk_UA.aff", "dict\\uk_UA.dic", "dict\\sources.json",
+      "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
     ],
     "optional": [],
     "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools"],

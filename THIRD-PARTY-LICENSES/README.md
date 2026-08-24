@@ -21,6 +21,7 @@ Portable and Installer consume that Core unchanged. The files are:
 | `UAC.txt` | `third_party/uac/License.txt` |
 | `WTL-MS-PL.txt` | license identifier and canonical source for WTL |
 | `Dictionary-en_US.txt` | English Speller Database / SCOWL 2026.02.25 release notice and license |
+| `Dictionary-de_DE.txt` | igerman98 / frami German Hunspell Dictionary 20161207+frami20170109 GPL-2.0 OR GPL-3.0 license |
 | `Dictionary-ru_RU.txt` | Goudron Russian Hunspell Dictionary 1.0.8 MPL-2.0 license |
 | `Dictionary-uk_UA.txt` | VESUM / dict_uk 6.8.0 Hunspell-distribution MPL-1.1 notice |
 

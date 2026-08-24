@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 
-foreach ($path in @("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\README.md", "THIRD-PARTY-LICENSES\WTL-MS-PL.txt", "THIRD-PARTY-LICENSES\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\Dictionary-uk_UA.txt")) {
+foreach ($path in @("LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\README.md", "THIRD-PARTY-LICENSES\WTL-MS-PL.txt", "THIRD-PARTY-LICENSES\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\Dictionary-uk_UA.txt")) {
     if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $path) -PathType Leaf)) {
         throw "Отсутствует обязательный лицензионный документ: $path"
     }
@@ -20,7 +20,7 @@ foreach ($component in @("Scintilla | 5.6.6", "Lexilla | 5.5.3", "PCRE2 | 10.47"
 
 $stageCoreScript = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "tools\build\stage-core.ps1")
 $manifest = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "packaging\package-manifest.json")
-foreach ($path in @("THIRD-PARTY-NOTICES.md", "Dictionary-en_US.txt", "Dictionary-ru_RU.txt", "Dictionary-uk_UA.txt")) {
+foreach ($path in @("THIRD-PARTY-NOTICES.md", "Dictionary-de_DE.txt", "Dictionary-en_US.txt", "Dictionary-ru_RU.txt", "Dictionary-uk_UA.txt")) {
     if (-not $stageCoreScript.Contains($path) -and -not $manifest.Contains($path)) {
         throw "Core contract не требует лицензионный файл: $path"
     }

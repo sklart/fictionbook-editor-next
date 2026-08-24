@@ -1,4 +1,16 @@
 {
+  "de_DE": {
+    "project": "igerman98 / frami German Hunspell Dictionary",
+    "repository": "https://github.com/LibreOffice/dictionaries",
+    "version": "20161207+frami20170109",
+    "upstreamCommit": "32b006a2c22a4ac7e8ed3f03346f7b3d85a970a4",
+    "upstreamAffPath": "de/de_DE_frami.aff",
+    "upstreamDicPath": "de/de_DE_frami.dic",
+    "encoding": "ISO8859-1",
+    "dicEntries": 258200,
+    "affSha256": "646BF3333AC69C23E9D794533EE5241D6F755C359E8FE10A648F87613743D594",
+    "dicSha256": "4CA3C958B0E5545910999BC246F668840BF8EDE3DF8E5E6790D05EDD5A586C38"
+  },
   "en_US": {
     "project": "English Speller Database / SCOWL",
     "repository": "https://github.com/en-wl/wordlist",

@@ -67,7 +67,7 @@ foreach ($dictionaryName in $expectedDictionaryEncodings.Keys) {
 $manifestPath = Join-Path $repoRoot "runtime\dict\sources.json"
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Не найден manifest происхождения словарей: $manifestPath" }
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-foreach ($dictionaryName in @("en_US", "ru_RU", "uk_UA")) {
+foreach ($dictionaryName in @("de_DE", "en_US", "ru_RU", "uk_UA")) {
     $entry = $manifest.$dictionaryName
     if (-not $entry) { throw "В sources.json отсутствует $dictionaryName" }
     $runtimeAff = Join-Path $repoRoot "runtime\dict\$dictionaryName.aff"
@@ -123,5 +123,21 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $smokeExe $dictDir
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Keep the German upgrade probes empirical: compare the bundled frami 2017
+# dictionary with the former FBE de_DE dictionary from the documented base.
+$legacyArchive = Join-Path ([IO.Path]::GetTempPath()) "fbe-de_DE-2009-$PID.zip"
+$legacyRoot = Join-Path ([IO.Path]::GetTempPath()) "fbe-de_DE-2009-$PID"
+try {
+    & git -C $repoRoot archive --format=zip --output=$legacyArchive 2513ee9f3509c8a519c224a605434fcc5e213fcf runtime/dict/de_DE.aff runtime/dict/de_DE.dic
+    if ($LASTEXITCODE -ne 0) { throw "Не удалось извлечь прежний de_DE для upgrade probes." }
+    Expand-Archive -LiteralPath $legacyArchive -DestinationPath $legacyRoot
+    & $smokeExe $dictDir (Join-Path $legacyRoot 'runtime\dict')
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+finally {
+    Remove-Item -LiteralPath $legacyArchive -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $legacyRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 Write-Host (Get-ThirdPartyText -Base64 "0J/RgNC+0LLQtdGA0LrQsCDRgNC10LPRgNC10YHRgdC40Lgg0YHQu9C+0LLQsNGA0LXQuSDQvtGA0YTQvtCz0YDQsNGE0LjQuCDQv9GA0L7RiNC70LAg0YPRgdC/0LXRiNC90L4u")

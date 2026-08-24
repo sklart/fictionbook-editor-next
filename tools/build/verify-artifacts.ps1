@@ -33,6 +33,8 @@ $ArtifactsDirectory = (Resolve-Path -LiteralPath $ArtifactsDirectory).Path
 $dictionarySources = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'runtime\dict\sources.json') | ConvertFrom-Json
 $dictionaryArchiveHashes = [ordered]@{
     'dict/sources.json' = (Get-FileHash -LiteralPath (Join-Path $repoRoot 'runtime\dict\sources.json') -Algorithm SHA256).Hash
+    'dict/de_DE.aff' = $dictionarySources.de_DE.affSha256
+    'dict/de_DE.dic' = $dictionarySources.de_DE.dicSha256
     'dict/en_US.aff' = $dictionarySources.en_US.affSha256
     'dict/en_US.dic' = $dictionarySources.en_US.dicSha256
     'dict/ru_RU.aff' = $dictionarySources.ru_RU.affSha256
@@ -187,6 +189,7 @@ $requiredPortableEntries = @(
     "THIRD-PARTY-LICENSES/README.md",
     "THIRD-PARTY-LICENSES/WTL-MS-PL.txt",
     "THIRD-PARTY-LICENSES/Dictionary-en_US.txt",
+    "THIRD-PARTY-LICENSES/Dictionary-de_DE.txt",
     "THIRD-PARTY-LICENSES/Dictionary-ru_RU.txt",
     "THIRD-PARTY-LICENSES/Dictionary-uk_UA.txt",
     "THIRD-PARTY-LICENSES/Scintilla-Lexilla.txt",
@@ -215,6 +218,8 @@ $requiredPortableEntries = @(
     "ImportEPUBBatch.exe",
     "dict/en_US.aff",
     "dict/en_US.dic",
+    "dict/de_DE.aff",
+    "dict/de_DE.dic",
     "dict/ru_RU.aff",
     "dict/ru_RU.dic",
     "dict/uk_UA.aff",
