@@ -34,6 +34,11 @@ if ($cpp -notmatch '(?s)LRESULT CMainFrame::OnCommandToolbarCustomDraw\(.*?pnmh-
 if ($cpp -notmatch 'ImageList_DrawIndirect\(&draw\) \? CDRF_SKIPDEFAULT : CDRF_DODEFAULT') {
     throw 'Table toolbar custom draw must fall back to native painting when ImageList_DrawIndirect fails.'
 }
+if ($cpp -notmatch '(?s)GetRuntimeToolbarToolTipText\(UINT commandId\).*?kTableToolbarCommands.*?FbeLoadRuntimeStringByKey\(command\.localizationKey, command\.fallbackText\)' -or
+    $cpp -notmatch '(?s)OnRuntimeToolTipTextA.*?GetRuntimeToolbarToolTipText\(static_cast<UINT>\(idCtrl\)\)' -or
+    $cpp -notmatch '(?s)OnRuntimeToolTipTextW.*?GetRuntimeToolbarToolTipText\(static_cast<UINT>\(idCtrl\)\)') {
+    throw 'Table toolbar tooltips must use the runtime-localized command captions in both ANSI and Unicode notifications.'
+}
 foreach ($forbidden in @('TBCDRF_BLENDICON', 'TBCDRF_NOETCHEDEFFECT', 'DrawState', 'SetDisabledImageList', 'TB_SETDISABLEDIMAGELIST')) {
     if ($cpp.Contains($forbidden) -or $header.Contains($forbidden)) { throw "Forbidden table toolbar drawing workaround remains: $forbidden." }
 }

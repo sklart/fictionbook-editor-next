@@ -144,6 +144,23 @@ static bool IsTableToolbarCommand(UINT commandId)
 	return false;
 }
 
+static CString GetRuntimeToolbarToolTipText(UINT commandId)
+{
+	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+	{
+		const TableToolbarCommand& command = kTableToolbarCommands[index];
+		if (command.commandId == commandId)
+			return FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText);
+	}
+
+	wchar_t resourceText[MAX_LOAD_STRING + 1];
+	if (!FbeLoadString(_Module.GetResourceInstance(), commandId, resourceText, MAX_LOAD_STRING))
+		return CString();
+
+	const wchar_t* text = wcschr(resourceText, L'\n');
+	return (text != NULL) ? text + 1 : resourceText;
+}
+
 // A process launched elevated (for example from an administrator Visual
 // Studio) does not use per-user COM registrations.  The bundled export DLLs
 // live next to FBE.exe, so fall back to their class factory directly when
@@ -3884,15 +3901,13 @@ LRESULT CMainFrame::OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 		return 0;
 	}
 
-	wchar_t wideText[MAX_LOAD_STRING + 1];
-	if(!FbeLoadString(_Module.GetResourceInstance(), idCtrl, wideText, MAX_LOAD_STRING))
+	const CString text = GetRuntimeToolbarToolTipText(static_cast<UINT>(idCtrl));
+	if (text.IsEmpty())
 	{
 		bHandled = FALSE;
 		return 0;
 	}
 
-	const wchar_t* text = wcschr(wideText, L'\n');
-	text = (text != NULL) ? text + 1 : wideText;
 	::WideCharToMultiByte(CP_ACP, 0, text, -1, pDispInfo->szText, _countof(pDispInfo->szText), NULL, NULL);
 	return 0;
 }
@@ -3906,15 +3921,13 @@ LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 		return 0;
 	}
 
-	wchar_t wideText[MAX_LOAD_STRING + 1];
-	if(!FbeLoadString(_Module.GetResourceInstance(), idCtrl, wideText, MAX_LOAD_STRING))
+	const CString text = GetRuntimeToolbarToolTipText(static_cast<UINT>(idCtrl));
+	if (text.IsEmpty())
 	{
 		bHandled = FALSE;
 		return 0;
 	}
 
-	const wchar_t* text = wcschr(wideText, L'\n');
-	text = (text != NULL) ? text + 1 : wideText;
 	ATL::Checked::wcsncpy_s(pDispInfo->szText, _countof(pDispInfo->szText), text, _TRUNCATE);
 	return 0;
 }
