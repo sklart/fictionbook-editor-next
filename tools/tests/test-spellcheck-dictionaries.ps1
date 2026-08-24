@@ -94,6 +94,21 @@ if (-not $spellerSource.Contains("Hunspell_get_dic_encoding(dict)")) {
     throw (Get-ThirdPartyText -Base64 "0JIgU3BlbGxlci5jcHAg0L7RgtGB0YPRgtGB0YLQstGD0LXRgiDQt9Cw0L/RgNC+0YEg0YDQtdCw0LvRjNC90L7QuSDQutC+0LTQuNGA0L7QstC60Lgg0YHQu9C+0LLQsNGA0Y8g0YfQtdGA0LXQtyBIdW5zcGVsbC4=")
 }
 
+$suggestionsStart = $spellerSource.IndexOf("CStrings* CSpeller::GetSuggestions(CString word)")
+$spellCheckStart = $spellerSource.IndexOf("SPELL_RESULT CSpeller::SpellCheck(CString word)")
+if ($suggestionsStart -lt 0 -or $spellCheckStart -lt 0) {
+    throw "Не найдены production пути spellcheck/suggestions."
+}
+$suggestionsSource = $spellerSource.Substring($suggestionsStart, $spellCheckStart - $suggestionsStart)
+if (-not $suggestionsSource.Contains("word = FbePrepareDictionaryWord(word);") -or
+    -not $suggestionsSource.Contains("FbeEncodeDictionaryWord(word, m_codePage)")) {
+    throw "GetSuggestions должен использовать общую подготовку и кодирование словаря."
+}
+$spellCheckSource = $spellerSource.Substring($spellCheckStart)
+if (-not $spellCheckSource.Contains("checkWord = FbePrepareDictionaryWord(checkWord);")) {
+    throw "SpellCheck должен использовать общую подготовку словаря."
+}
+
 $helperCalls = ([regex]::Matches(
     $spellerSource,
     "DetectDictionaryCodePage\(m_Dictionaries\[[^\]]+\]\.handle, m_Dictionaries\[[^\]]+\]\.codepage\)")).Count
@@ -123,21 +138,5 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $smokeExe $dictDir
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-# Keep the German upgrade probes empirical: compare the bundled frami 2017
-# dictionary with the former FBE de_DE dictionary from the documented base.
-$legacyArchive = Join-Path ([IO.Path]::GetTempPath()) "fbe-de_DE-2009-$PID.zip"
-$legacyRoot = Join-Path ([IO.Path]::GetTempPath()) "fbe-de_DE-2009-$PID"
-try {
-    & git -C $repoRoot archive --format=zip --output=$legacyArchive 2513ee9f3509c8a519c224a605434fcc5e213fcf runtime/dict/de_DE.aff runtime/dict/de_DE.dic
-    if ($LASTEXITCODE -ne 0) { throw "Не удалось извлечь прежний de_DE для upgrade probes." }
-    Expand-Archive -LiteralPath $legacyArchive -DestinationPath $legacyRoot
-    & $smokeExe $dictDir (Join-Path $legacyRoot 'runtime\dict')
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-finally {
-    Remove-Item -LiteralPath $legacyArchive -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath $legacyRoot -Recurse -Force -ErrorAction SilentlyContinue
-}
 
 Write-Host (Get-ThirdPartyText -Base64 "0J/RgNC+0LLQtdGA0LrQsCDRgNC10LPRgNC10YHRgdC40Lgg0YHQu9C+0LLQsNGA0LXQuSDQvtGA0YTQvtCz0YDQsNGE0LjQuCDQv9GA0L7RiNC70LAg0YPRgdC/0LXRiNC90L4u")

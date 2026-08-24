@@ -17,6 +17,16 @@ inline CString FbeNormalizeDictionaryApostrophes(CString word)
 	return word;
 }
 
+// Transformations shared by spell and suggestion requests before a word is
+// encoded for Hunspell.  Keep language-specific spell-only adjustments at the
+// call site.
+inline CString FbePrepareDictionaryWord(CString word)
+{
+	word = FbeNormalizeDictionaryApostrophes(word);
+	word.Replace(L"\u00AD", L"");
+	return word;
+}
+
 inline CString FbeRestoreSourceApostropheStyle(const CString& source, CString replacement)
 {
 	wchar_t apostrophe = L'\0';

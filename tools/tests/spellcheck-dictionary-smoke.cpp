@@ -103,7 +103,7 @@ static bool ProductionCustomDictionarySmoke() {
 
 static bool ProductionApostropheSpellFlow(Hunhandle* dict, UINT cp, const std::initializer_list<const wchar_t*> words) {
     for (const wchar_t* source : words) {
-        const CString normalized = FbeNormalizeDictionaryApostrophes(CString(source));
+        const CString normalized = FbePrepareDictionaryWord(CString(source));
         const CStringA encoded = FbeEncodeDictionaryWord(normalized, cp);
         if (encoded.IsEmpty() || !Hunspell_spell(dict, encoded)) {
             std::cerr << "production apostrophe spell flow failed\n";
@@ -111,6 +111,24 @@ static bool ProductionApostropheSpellFlow(Hunhandle* dict, UINT cp, const std::i
         }
     }
     return true;
+}
+
+static bool ProductionApostropheSuggestionFlow(Hunhandle* dict, UINT cp, const wchar_t* source, const wchar_t* expected, const wchar_t* restoredExpected) {
+    const CString prepared = FbePrepareDictionaryWord(CString(source));
+    const CStringA encoded = FbeEncodeDictionaryWord(prepared, cp);
+    char** list = nullptr;
+    const int count = Hunspell_suggest(dict, &list, encoded);
+    bool found = false;
+    for (int i = 0; i < count; ++i) {
+        const CString suggestion = FbeDecodeDictionaryWord(list[i], cp);
+        if (suggestion == expected) {
+            found = FbeRestoreSourceApostropheStyle(source, suggestion) == restoredExpected;
+            break;
+        }
+    }
+    Hunspell_free_list(dict, &list, count);
+    if (!found) std::cerr << "production apostrophe suggestion flow failed\n";
+    return found;
 }
 
 static bool ProductionKoi8rRoundTrip(Hunhandle* dict) {
@@ -137,25 +155,6 @@ static bool ProductionKoi8rRoundTrip(Hunhandle* dict) {
     return ok && found;
 }
 
-static bool GermanUpgradeProbes(const std::string& oldDirectory, const std::string& newDirectory) {
-    const std::string oldBase = oldDirectory + "\\de_DE";
-    const std::string newBase = newDirectory + "\\de_DE";
-    Hunhandle* oldDict = Hunspell_create((oldBase + ".aff").c_str(), (oldBase + ".dic").c_str());
-    Hunhandle* newDict = Hunspell_create((newBase + ".aff").c_str(), (newBase + ".dic").c_str());
-    if (!oldDict || !newDict) return false;
-    bool ok = true;
-    for (const wchar_t* word : { L"Abbiegerspur", L"Abgeltungssteuer", L"Abgasgräting", L"Aasvogel" }) {
-        const std::string encoded = Encode(word, 28591);
-        if (Hunspell_spell(oldDict, encoded.c_str()) || !Hunspell_spell(newDict, encoded.c_str())) {
-            std::cerr << "German upgrade probe did not distinguish old and new dictionary: " << Encode(word, CP_UTF8) << "\n";
-            ok = false;
-        }
-    }
-    Hunspell_destroy(oldDict);
-    Hunspell_destroy(newDict);
-    return ok;
-}
-
 static bool TestDictionary(const std::string& directory, const char* name, const char* encoding, UINT cp) {
     const std::string base = directory + "\\" + name;
     const auto started = std::chrono::steady_clock::now();
@@ -168,6 +167,9 @@ static bool TestDictionary(const std::string& directory, const char* name, const
         ok &= Spell(dict, L"ChatGPT", cp, true) && Spell(dict, L"LLM", cp, true) && Spell(dict, L"codebase", cp, true) && Spell(dict, L"tokenize", cp, true) && Spell(dict, L"tokenization", cp, true) && Spell(dict, L"influencer", cp, true) && Spell(dict, L"doomscrolling", cp, true) && Spell(dict, L"staycation", cp, true) && Spell(dict, L"Kyiv", cp, true);
         ok &= Spell(dict, L"recieve", cp, false) && Spell(dict, L"definately", cp, false) && Spell(dict, L"teh", cp, false);
         ok &= ProductionApostropheSpellFlow(dict, cp, { L"don't", L"don’t", L"donʼt" });
+        ok &= ProductionApostropheSuggestionFlow(dict, cp, L"don'tt", L"don't", L"don't");
+        ok &= ProductionApostropheSuggestionFlow(dict, cp, L"don’tt", L"don't", L"don’t");
+        ok &= ProductionApostropheSuggestionFlow(dict, cp, L"donʼtt", L"don't", L"donʼt");
         const std::string customWord = Encode(L"FbeCustomUnicode", cp);
         ok &= Hunspell_add(dict, customWord.c_str()) == 0 && Spell(dict, L"FbeCustomUnicode", cp, true);
     } else if (std::string(name) == "ru_RU") {
@@ -181,12 +183,13 @@ static bool TestDictionary(const std::string& directory, const char* name, const
     } else if (std::string(name) == "uk_UA") {
         for (const wchar_t* word : { L"Україна", L"український", L"Київ", L"ґрунт", L"література", L"редактор" }) ok &= Spell(dict, word, cp, true);
         ok &= ProductionApostropheSpellFlow(dict, cp, { L"під'їзд", L"під’їзд", L"підʼїзд" });
+        ok &= ProductionApostropheSuggestionFlow(dict, cp, L"підʼїз", L"під'їзд", L"підʼїзд");
         for (const wchar_t* word : { L"украйінський", L"Києв", L"ґрунтт" }) ok &= Spell(dict, word, cp, false);
         // Record the current upstream dict_uk ICONV behavior for Latin-only words.
         // Do not treat it as an FBE-specific contract; upstream issue #306 remains open.
         for (const wchar_t* word : { L"hello", L"foobar", L"Microsoft", L"London", L"ChatGPT", L"qwerty" }) std::cout << "uk_UA ICONV " << Encode(word, CP_UTF8) << "=" << Hunspell_spell(dict, Encode(word, CP_UTF8).c_str()) << "\n";
     } else if (std::string(name) == "de_DE") {
-        for (const wchar_t* word : { L"Deutschland", L"Wörterbuch", L"Straße", L"Fußball", L"größer", L"Überraschung" }) ok &= Spell(dict, word, cp, true);
+        for (const wchar_t* word : { L"Deutschland", L"Wörterbuch", L"Straße", L"Fußball", L"größer", L"Überraschung", L"Abbiegerspur", L"Abgeltungssteuer", L"Abgasgräting", L"Aasvogel" }) ok &= Spell(dict, word, cp, true);
         for (const wchar_t* word : { L"Deutchland", L"Wörterbuh", L"Fußbaal" }) ok &= Spell(dict, word, cp, false);
         ok &= HasSuggestion(dict, L"Deutchland", L"Deutschland", cp);
     } else {
@@ -202,12 +205,11 @@ static bool TestDictionary(const std::string& directory, const char* name, const
 }
 
 int main(int argc, char** argv) {
-    if (argc != 2 && argc != 3) return 2;
+    if (argc != 2) return 2;
     bool ok = ProductionTokenizerSmoke() && ProductionApostropheRestoreSmoke() && ProductionCustomDictionarySmoke();
     ok &= TestDictionary(argv[1], "en_US", "UTF-8", CP_UTF8);
     ok &= TestDictionary(argv[1], "ru_RU", "KOI8-R", 20866);
     ok &= TestDictionary(argv[1], "uk_UA", "UTF-8", CP_UTF8);
     ok &= TestDictionary(argv[1], "de_DE", "ISO8859-1", 28591);
-    if (argc == 3) ok &= GermanUpgradeProbes(argv[2], argv[1]);
     return ok ? 0 : 1;
 }

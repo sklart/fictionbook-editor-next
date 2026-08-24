@@ -517,16 +517,15 @@ Hunhandle* CSpeller::GetDictionary(CString word)
 //
 CStrings* CSpeller::GetSuggestions(CString word)
 {
-	// remove all soft hyphens
-	word.Replace(L"\u00AD", L"");
+	word = FbePrepareDictionaryWord(word);
 
 	CStrings* suggestions = new CStrings();
 	Hunhandle* currDict = GetDictionary(word);
 	if (!currDict)
 		return suggestions;
 
-	// encode string to the dictionary encoding 
-	CT2A str (word, m_codePage);
+	// Encode using the same normalized input path as SpellCheck.
+	CStringA str = FbeEncodeDictionaryWord(word, m_codePage);
 	char **list = NULL;
 	int listLength = 0;
 
@@ -568,10 +567,7 @@ SPELL_RESULT CSpeller::SpellCheck(CString word)
 			checkWord.Delete(word.GetLength()-1);
 
 		m_CurrentSpellWord = word;
-		// Normalise Unicode apostrophes for dictionaries which use ASCII apostrophe.
-		checkWord = FbeNormalizeDictionaryApostrophes(checkWord);
-		// remove all soft hyphens
-		checkWord.Replace(L"\u00AD", L"");
+		checkWord = FbePrepareDictionaryWord(checkWord);
 		// remove accent
 		checkWord.Replace(L"\u0301", L"");
 		// special case for Russian letter "�"
