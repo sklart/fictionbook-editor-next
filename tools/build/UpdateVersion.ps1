@@ -32,5 +32,6 @@ function Get-FbeBaseVersion {
 
 function Test-FbePrereleaseVersion {
     param([Parameter(Mandatory)][string]$Version)
-    return (Test-FbeSemVer $Version) -and $Version -match '-[^+]+(?:\+|$)'
+    $match = [regex]::Match($Version, '^(?<core>[^-+]+)(?:-(?<pre>[^+]+))?(?:\+(?<meta>.+))?$')
+    return $match.Success -and (Test-FbeSemVer $Version) -and $match.Groups['pre'].Success
 }

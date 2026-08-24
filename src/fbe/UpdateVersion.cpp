@@ -33,6 +33,7 @@ namespace
 			int pos = 0; CString item;
 			while (!(item = metadata.Tokenize(L".", pos)).IsEmpty()) if (!IsIdentifier(item)) return false;
 			value = value.Left(plus);
+			if (value.IsEmpty() || value.Find(L"..") >= 0 || value[0] == L'.' || value[value.GetLength() - 1] == L'.') return false;
 		}
 		const int dash = value.Find(L'-');
 		base = dash < 0 ? value : value.Left(dash);

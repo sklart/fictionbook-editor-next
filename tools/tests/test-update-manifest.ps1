@@ -33,4 +33,11 @@ foreach ($case in @(
     if ($accepted) { throw "Validator accepted invalid manifest case $($case.Version) / $($case.Type)." }
 }
 
+$legacyPrerelease = Join-Path $repoRoot 'out\tests\update-manifest-legacy-prerelease.xml'
+$legacyPrereleaseContent = $source -replace '<Version>[^<]+</Version>', '<Version>3.2.0-rc.2</Version>' -replace '<ReleaseTag>[^<]+</ReleaseTag>', '<ReleaseTag>v3.2.0-rc.2</ReleaseTag>' -replace '<ReleaseType>[^<]+</ReleaseType>', '<ReleaseType>prerelease</ReleaseType>' -replace '<Beta>[^<]+</Beta>', '<Beta>true</Beta>' -replace '<DownloadUrl>[^<]+</DownloadUrl>', '<DownloadUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.2.0-rc.2/FictionBookEditorNext-3.2.0-win32-setup.exe</DownloadUrl>'
+[IO.File]::WriteAllText($legacyPrerelease, $legacyPrereleaseContent, [Text.UTF8Encoding]::new($false))
+$accepted = $false
+try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $legacyPrerelease -Feed PrereleaseFeed; $accepted = $true } catch { }
+if ($accepted) { throw 'Validator accepted a prerelease manifest without <Artifacts>.' }
+
 Write-Host "Проверка update.xml прошла успешно."

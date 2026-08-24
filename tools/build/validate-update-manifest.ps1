@@ -35,6 +35,7 @@ $profiles = @{
 }
 $hasArtifacts = $null -ne $document.FBE.Artifacts
 if (-not $hasArtifacts) {
+    Require ($type -eq 'stable') 'Prerelease manifest обязан содержать <Artifacts>.'
     $legacyUrl = Get-One $document 'DownloadUrl'; $legacyHash = Get-One $document 'SHA256'
     Require ($legacyHash -match '^[0-9A-Fa-f]{64}$') 'Legacy SHA256 недопустим.'
     $legacyExpected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/FictionBookEditorNext-$base-win32-setup.exe"
