@@ -4,7 +4,12 @@
 #include "RuntimeLocalization.h"
 #include "../common/DeploymentContext.h"
 #include "UpdateArtifact.h"
+#include "UpdateVersion.h"
+#include "UpdateChannel.h"
+#include "Settings.h"
 #include "../version.h"
+
+extern CSettings _Settings;
 
 namespace
 {
@@ -16,24 +21,22 @@ namespace
 		return url.Left(8).CompareNoCase(L"https://") == 0;
 	}
 
-	bool IsTrustedUpdateUrl(const CString& url, const CString& version)
+	bool IsTrustedUpdateUrl(const CString& url, const CString& releaseTag, const CString& baseVersion)
 	{
-		CString path(url);
-		const int queryPosition = path.FindOneOf(L"?#");
-		if (queryPosition >= 0)
-			path = path.Left(queryPosition);
+		if (!IsHttpsUrl(url) || url.FindOneOf(L"?#") >= 0)
+			return false;
 
 		CString expectedUrl;
 		const UpdateArtifact artifact = SelectUpdateArtifact(
 			DeploymentContext::CurrentMode(),
 			DeploymentContext::CurrentCompatibilityTarget(),
-			version);
+			baseVersion);
 		expectedUrl.Format(
-			L"%sv%s/%s",
+			L"%s%s/%s",
 			FBE_RELEASE_DOWNLOAD_PREFIX,
-			static_cast<const wchar_t*>(version),
+			static_cast<const wchar_t*>(releaseTag),
 			static_cast<const wchar_t*>(artifact.fileName));
-		return path.CompareNoCase(expectedUrl) == 0;
+		return url.CompareNoCase(expectedUrl) == 0;
 	}
 
 	CString GetPortableUpdateUrl(const CString& setupUrl)
@@ -114,34 +117,6 @@ namespace
 		return true;
 	}
 
-	bool IsVersion(const CString& value)
-	{
-		CString trimmed(value);
-		trimmed.Trim();
-		if (trimmed.IsEmpty())
-			return false;
-
-		int dots = 0;
-		bool hasDigitInPart = false;
-		for (int i = 0; i < trimmed.GetLength(); ++i)
-		{
-			const wchar_t ch = trimmed[i];
-			if (ch == L'.')
-			{
-				if (!hasDigitInPart)
-					return false;
-				hasDigitInPart = false;
-				++dots;
-				if (dots > 2)
-					return false;
-				continue;
-			}
-			if (ch < L'0' || ch > L'9')
-				return false;
-			hasDigitInPart = true;
-		}
-		return dots == 2 && hasDigitInPart;
-	}
 
 	bool GetUniqueNodeText(
 		const MSXML2::IXMLDOMElementPtr& root,
@@ -338,25 +313,6 @@ namespace
 		return FCCrypt::Get_SHA256(data.data(), length);
 	}
 
-	bool IsNewerVersion(const CString& availableVersion)
-	{
-		int availablePosition = 0;
-		int currentPosition = 0;
-		CString currentVersion(FBE_VERSION_WSTRING);
-
-		for (int part = 0; part < 4; ++part)
-		{
-			CString availablePart = availableVersion.Tokenize(L".", availablePosition);
-			CString currentPart = currentVersion.Tokenize(L".", currentPosition);
-			const int available = availablePart.IsEmpty() ? 0 : _wtoi(availablePart);
-			const int current = currentPart.IsEmpty() ? 0 : _wtoi(currentPart);
-
-			if (available != current)
-				return available > current;
-		}
-
-		return false;
-	}
 }
 
 LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
@@ -398,6 +354,9 @@ LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_UpdateButton = GetDlgItem(IDC_UPDATE);
 	m_UpdateButton.SetWindowText(FbeLoadRuntimeString(IDS_ABOUT_UPDATE_NOW));
 	m_UpdateButton.ShowWindow(SW_HIDE);
+	m_WhatsNewButton = GetDlgItem(IDC_WHATS_NEW);
+	m_WhatsNewButton.SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.about.whats_new", L"What's new..."));
+	m_WhatsNewButton.ShowWindow(SW_HIDE);
 
 	m_AnimIdx = 0;
 	m_UpdatePict.SubclassWindow(GetDlgItem(IDC_PIC_UPDATE));
@@ -472,13 +431,17 @@ void CAboutDlg::CheckUpdate()
 {
     DeleteAllDownload();
     SetDlgItemText(IDC_TEXT_STATUS, m_sCheckingUpdate);
-	AppendUpdateTrace(L"start manifest check");
+	m_UpdateManifestURL = GetUpdateManifestUrl(_Settings.GetUpdateChannel());
+	CString startTrace; startTrace.Format(L"start manifest check: channel=%s manifest=%s",
+		_Settings.GetUpdateChannel() == UpdateChannel::Prerelease ? L"prerelease" : L"stable", m_UpdateManifestURL.GetString());
+	AppendUpdateTrace(startTrace);
     
-	HTTP_SEND_HEADER ht = PrepareHeader(FBE_UPDATE_MANIFEST_URL);
+	HTTP_SEND_HEADER ht = PrepareHeader(m_UpdateManifestURL);
 	
 	m_UpdateReady = false;
 	m_UpdateURL.Empty();
 	m_UpdateSHA256.Empty();
+	m_UpdateReleaseTag.Empty();
 	m_DownloadedSHA256.Empty();
 	m_TotalDownloadSize = 0;
 
@@ -487,6 +450,16 @@ void CAboutDlg::CheckUpdate()
 
 	int   nTaskID = AddDownload(ht);
     m_monitor.reset (new CDownloadMonitor(m_hWnd, nTaskID));
+}
+
+LRESULT CAboutDlg::OnWhatsNew(WORD, WORD, HWND, BOOL&)
+{
+	if (IsValidReleaseTag(m_UpdateReleaseTag)) {
+		CString url(FBE_PROJECT_URL); url += L"/releases/tag/"; url += m_UpdateReleaseTag;
+		if (reinterpret_cast<INT_PTR>(ShellExecute(m_hWnd, L"open", url, NULL, NULL, SW_SHOWNORMAL)) > 32) return 0;
+	}
+	SetDlgItemText(IDC_TEXT_STATUS, FbeLoadRuntimeStringByKey(L"fbe.about.release_page_failed", L"Unable to open release page"));
+	return 0;
 }
 
 LRESULT CAboutDlg::OnUpdate(WORD, WORD wID, HWND, BOOL&)
@@ -715,7 +688,7 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
     FinishUpdateStatus (pTask);
 
 	// process XML update file
-	if (pTask->GetURL().CompareNoCase(FBE_UPDATE_MANIFEST_URL) == 0)
+	if (pTask->GetURL().CompareNoCase(m_UpdateManifestURL) == 0)
 	{
 		bool manifestHandled = false;
 		try
@@ -740,6 +713,9 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 			{
 				MSXML2::IXMLDOMElementPtr root = xmlDoc->GetdocumentElement();
 				CString availableVersion;
+				CString releaseTag;
+				CString releaseType;
+				CString beta;
 				CString updateURL;
 				CString updateSHA256;
 				CString rootName;
@@ -752,6 +728,9 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 				}
 				const bool rootOk = rootName.CompareNoCase(L"FBE") == 0;
 				bool versionOk = rootOk && GetUniqueNodeText(root, L"Version", availableVersion);
+				bool releaseTagOk = rootOk && GetUniqueNodeText(root, L"ReleaseTag", releaseTag);
+				bool releaseTypeOk = rootOk && GetUniqueNodeText(root, L"ReleaseType", releaseType);
+				bool betaOk = rootOk && GetUniqueNodeText(root, L"Beta", beta);
 				bool urlOk = rootOk && GetProfileArtifact(root, updateURL, updateSHA256);
 				bool shaOk = urlOk;
 				const bool profileManifest = urlOk;
@@ -760,6 +739,8 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 					urlOk = rootOk && GetUniqueNodeText(root, L"DownloadUrl", updateURL);
 					shaOk = rootOk && GetUniqueNodeText(root, L"SHA256", updateSHA256);
 				}
+				// Legacy manifests predate ReleaseTag and describe stable releases only.
+				if (!releaseTagOk && versionOk) { releaseTag.Format(L"v%s", availableVersion.GetString()); releaseTagOk = true; releaseType = L"stable"; releaseTypeOk = true; beta = L"false"; betaOk = true; }
 
 				if ((!versionOk || !urlOk || !shaOk) && rootOk)
 				{
@@ -779,14 +760,21 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 					versionOk ? 1 : 0,
 					urlOk ? 1 : 0,
 					shaOk ? 1 : 0,
-					IsVersion(availableVersion) ? 1 : 0);
+					IsValidUpdateVersion(availableVersion) ? 1 : 0);
 				AppendUpdateTrace(trace);
 
 				if (rootOk &&
 					versionOk &&
 					urlOk &&
 					shaOk &&
-					IsVersion(availableVersion))
+					releaseTagOk && releaseTypeOk && betaOk &&
+					IsValidUpdateVersion(availableVersion) &&
+					IsValidReleaseTag(releaseTag) &&
+					releaseTag.Mid(1) == availableVersion &&
+					(releaseType.CompareNoCase(L"stable") == 0 || releaseType.CompareNoCase(L"prerelease") == 0) &&
+					((releaseType.CompareNoCase(L"stable") == 0 && beta.CompareNoCase(L"false") == 0) ||
+					 (releaseType.CompareNoCase(L"prerelease") == 0 && beta.CompareNoCase(L"true") == 0)) &&
+					(_Settings.GetUpdateChannel() != UpdateChannel::Stable || releaseType.CompareNoCase(L"stable") == 0))
 				{
 					trace.Format(
 						L"manifest parsed: version=%s url=%s sha256=%s",
@@ -794,7 +782,12 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 						updateURL.GetString(),
 						updateSHA256.GetString());
 					AppendUpdateTrace(trace);
-					if (IsNewerVersion(availableVersion))
+					trace.Format(L"channel=%s manifest=%s current=%S available=%s releaseTag=%s releaseType=%s",
+						_Settings.GetUpdateChannel() == UpdateChannel::Prerelease ? L"prerelease" : L"stable",
+						m_UpdateManifestURL.GetString(), build_release_version, availableVersion.GetString(),
+						releaseTag.GetString(), releaseType.GetString());
+					AppendUpdateTrace(trace);
+					if (CompareUpdateVersions(availableVersion, CString(build_release_version)) > 0)
 					{
 						CString path = updateURL;
 						const int queryPosition = path.FindOneOf(L"?#");
@@ -803,16 +796,24 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 						const CString extension(ATLPath::FindExtension(path));
 
 						const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
-						if (IsTrustedUpdateUrl(updateURL, availableVersion) &&
+						const CString baseVersion = GetUpdateBaseVersion(availableVersion);
+						if (IsTrustedUpdateUrl(updateURL, releaseTag, baseVersion) &&
 							extension.CompareNoCase(portable ? L".zip" : L".exe") == 0 &&
 							IsSHA256(updateSHA256))
 						{
 							m_UpdateReady = true;
 							m_UpdateURL = updateURL;
 							m_UpdateSHA256 = updateSHA256;
-							SetDlgItemText(IDC_TEXT_STATUS, m_sNewVersionAvailable);
+							m_UpdateReleaseTag = releaseTag;
+							CString newVersionStatus;
+							newVersionStatus.Format(FbeLoadRuntimeStringByKey(
+								L"fbe.about.new_version_available", L"A new version %s of FBE is available."),
+								availableVersion.GetString());
+							SetDlgItemText(IDC_TEXT_STATUS, newVersionStatus);
 							m_UpdatePict.SetBitmap(m_StatusBitmaps[1]);
 							m_UpdateButton.ShowWindow(SW_SHOW);
+							m_WhatsNewButton.ShowWindow(SW_SHOW);
+							AppendUpdateTrace(L"updateAvailable=1");
 							manifestHandled = true;
 						}
 						else
@@ -825,6 +826,7 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 					else 
 					{
 						AppendUpdateTrace(L"manifest accepted: current version is latest");
+						AppendUpdateTrace(L"updateAvailable=0");
 						SetDlgItemText (IDC_TEXT_STATUS, m_sHaveLatestVersion);
 						m_UpdatePict.SetBitmap(m_StatusBitmaps[0]);
 						manifestHandled = true;
@@ -893,7 +895,9 @@ HTTP_SEND_HEADER CAboutDlg::PrepareHeader(const CString& url)
 {
 	HTTP_SEND_HEADER ht;
     ht.m_url = url;
-    ht.m_user_agent = L"FictionBookEditorNext/" FBE_VERSION_WSTRING;
+	CString userAgent;
+	userAgent.Format(L"FictionBookEditorNext/%S", build_release_version);
+    ht.m_user_agent = userAgent;
     ht.m_start = 0;
     ht.m_header.Empty();
     ht.m_open_flag = INTERNET_FLAG_RELOAD |

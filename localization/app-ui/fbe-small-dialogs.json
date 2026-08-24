@@ -2744,6 +2744,34 @@
         "bg-BG": "Показвай пълния път до файла в заглавието на прозореца"
       }
     },
+    "fbe.dialog.idd_setting_next.updates": {
+      "resource": "IDD_SETTING_NEXT", "kind": "GROUPBOX", "targetId": "IDC_FBE_NEXT_UPDATES_GROUP",
+      "translations": { "en-US": "Updates", "ru-RU": "Обновления", "uk-UA": "Оновлення", "de-DE": "Updates", "fr-FR": "Mises à jour", "es-ES": "Actualizaciones", "it-IT": "Aggiornamenti", "pl-PL": "Aktualizacje", "pt-PT": "Atualizações", "nl-NL": "Updates", "cs-CZ": "Aktualizace", "bg-BG": "Актуализации" }
+    },
+    "fbe.dialog.idd_setting_next.update_channel": {
+      "resource": "IDD_SETTING_NEXT", "kind": "LTEXT", "targetId": "IDC_UPDATE_CHANNEL_LABEL",
+      "translations": { "en-US": "Update channel:", "ru-RU": "Канал обновлений:", "uk-UA": "Канал оновлень:", "de-DE": "Update channel:", "fr-FR": "Canal de mise à jour :", "es-ES": "Canal de actualización:", "it-IT": "Canale di aggiornamento:", "pl-PL": "Kanał aktualizacji:", "pt-PT": "Canal de atualização:", "nl-NL": "Updatekanaal:", "cs-CZ": "Kanál aktualizací:", "bg-BG": "Канал за актуализации:" }
+    },
+    "fbe.dialog.idd_setting_next.update_channel.stable": {
+      "resource": "IDD_SETTING_NEXT", "kind": "COMBOBOX", "targetId": "IDC_UPDATE_CHANNEL",
+      "translations": { "en-US": "Stable versions (recommended)", "ru-RU": "Стабильные версии (рекомендуется)", "uk-UA": "Стабільні версії (рекомендовано)", "de-DE": "Stable versions (recommended)", "fr-FR": "Versions stables (recommandé)", "es-ES": "Versiones estables (recomendado)", "it-IT": "Versioni stabili (consigliato)", "pl-PL": "Wersje stabilne (zalecane)", "pt-PT": "Versões estáveis (recomendado)", "nl-NL": "Stabiele versies (aanbevolen)", "cs-CZ": "Stabilní verze (doporučeno)", "bg-BG": "Стабилни версии (препоръчително)" }
+    },
+    "fbe.dialog.idd_setting_next.update_channel.prerelease": {
+      "resource": "IDD_SETTING_NEXT", "kind": "COMBOBOX", "targetId": "IDC_UPDATE_CHANNEL",
+      "translations": { "en-US": "Prerelease versions (Beta / RC)", "ru-RU": "Предварительные версии (Beta / RC)", "uk-UA": "Попередні версії (Beta / RC)", "de-DE": "Prerelease versions (Beta / RC)", "fr-FR": "Versions préliminaires (Beta / RC)", "es-ES": "Versiones preliminares (Beta / RC)", "it-IT": "Versioni preliminari (Beta / RC)", "pl-PL": "Wersje wstępne (Beta / RC)", "pt-PT": "Versões de pré-lançamento (Beta / RC)", "nl-NL": "Vooruitgaveversies (Beta / RC)", "cs-CZ": "Předběžné verze (Beta / RC)", "bg-BG": "Предварителни версии (Beta / RC)" }
+    },
+    "fbe.about.whats_new": {
+      "resource": "IDD_ABOUTBOX", "kind": "CONTROL", "targetId": "IDC_WHATS_NEW",
+      "translations": { "en-US": "What's new...", "ru-RU": "Что нового...", "uk-UA": "Що нового...", "de-DE": "What's new...", "fr-FR": "Nouveautés...", "es-ES": "Novedades...", "it-IT": "Novità...", "pl-PL": "Co nowego...", "pt-PT": "Novidades...", "nl-NL": "Wat is nieuw...", "cs-CZ": "Co je nového...", "bg-BG": "Какво е ново..." }
+    },
+    "fbe.about.new_version_available": {
+      "resource": "IDD_ABOUTBOX", "kind": "CONTROL", "targetId": "IDC_TEXT_STATUS",
+      "translations": { "en-US": "A new version %s of FBE is available.", "ru-RU": "Доступна новая версия FBE %s.", "uk-UA": "Доступна нова версія FBE %s.", "de-DE": "A new version %s of FBE is available.", "fr-FR": "Une nouvelle version %s de FBE est disponible.", "es-ES": "Hay disponible una nueva versión %s de FBE.", "it-IT": "È disponibile una nuova versione %s di FBE.", "pl-PL": "Dostępna jest nowa wersja FBE %s.", "pt-PT": "Está disponível uma nova versão %s do FBE.", "nl-NL": "Een nieuwe versie %s van FBE is beschikbaar.", "cs-CZ": "Je k dispozici nová verze FBE %s.", "bg-BG": "Налична е нова версия на FBE %s." }
+    },
+    "fbe.about.release_page_failed": {
+      "resource": "IDD_ABOUTBOX", "kind": "CONTROL", "targetId": "IDC_TEXT_STATUS",
+      "translations": { "en-US": "Unable to open release page", "ru-RU": "Не удалось открыть страницу релиза", "uk-UA": "Не вдалося відкрити сторінку випуску", "de-DE": "Unable to open release page", "fr-FR": "Impossible d’ouvrir la page de publication", "es-ES": "No se pudo abrir la página de publicación", "it-IT": "Impossibile aprire la pagina della release", "pl-PL": "Nie można otworzyć strony wydania", "pt-PT": "Não foi possível abrir a página da versão", "nl-NL": "Kan de releasepagina niet openen", "cs-CZ": "Nelze otevřít stránku vydání", "bg-BG": "Страницата на изданието не може да бъде отворена" }
+    },
     "fbe.dialog.idd_setting_next.source_code": {
       "resource": "IDD_SETTING_NEXT",
       "kind": "GROUPBOX",

@@ -72,48 +72,7 @@ function Write-Utf8FileIfChanged {
 Write-Utf8FileIfChanged -Path $versionNsh -Content $nsh
 
 if ($ValidateUpdateManifest) {
-    [xml]$manifest = Get-Content -Raw -LiteralPath $updateManifest
-    if (-not $manifest.FBE) {
-        throw "update.xml должен содержать корневой элемент <FBE>"
-    }
-
-    $publishedName = [string]$manifest.FBE.Name
-    if ($publishedName -ne $expectedManifestName) {
-        throw "Поле Name в update.xml должно быть равно '$expectedManifestName'"
-    }
-
-    $publishedDate = [string]$manifest.FBE.Date
-    if (-not (Test-ManifestDateFormat -Value $publishedDate)) {
-        throw "Поле Date в update.xml должно использовать формат dd-MM-yyyy"
-    }
-
-    $publishedVersion = [string]$manifest.FBE.Version
-
-    if ($publishedVersion -ne $version) {
-        throw "В update.xml опубликована версия $publishedVersion, а в src/version.h указана $version"
-    }
-
-    $beta = [string]$manifest.FBE.Beta
-    if ($beta -notin @("false", "true")) {
-        throw "Поле Beta в update.xml должно быть либо 'false', либо 'true'"
-    }
-    if ($beta -ne "false") {
-        throw "Для текущего релизного процесса поле Beta в update.xml должно оставаться 'false'"
-    }
-
-    $downloadUrl = [string]$manifest.FBE.DownloadUrl
-    if (-not $downloadUrl.Equals($expectedDownloadUrl, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Поле DownloadUrl в update.xml должно быть равно '$expectedDownloadUrl'"
-    }
-
-    if (-not $downloadUrl.EndsWith(".exe", [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Поле DownloadUrl в update.xml должно указывать на исполняемый установщик"
-    }
-
-    $sha256 = [string]$manifest.FBE.SHA256
-    if ($sha256 -notmatch '^[0-9a-fA-F]{64}$') {
-        throw "Поле SHA256 в update.xml должно содержать ровно 64 шестнадцатеричных символа"
-    }
+    & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $updateManifest -Feed StableFeed
 }
 
 Write-Host "Версия FictionBook Editor Next: $version"

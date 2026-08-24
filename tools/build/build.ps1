@@ -44,6 +44,10 @@ param(
     # В CI обязателен, чтобы Modern и Win7 никогда не делили OutDir.
     [string]$BatchOutputDirectory,
 
+    # Полная SemVer-identity tagged build (например, 3.2.0-rc.2).
+    # Numeric VERSIONINFO остаётся основанным на src/version.h.
+    [string]$ReleaseVersion,
+
     [switch]$WarningsAsErrors
 )
 
@@ -284,6 +288,18 @@ $properties = @(
 $buildCommit = (& git -C $repoRoot rev-parse --short=12 HEAD 2>$null | Select-Object -First 1)
 if(-not $buildCommit) { $buildCommit = 'unknown' }
 $properties += "/p:FbeBuildCommit=$buildCommit"
+$versionHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\version.h')
+$baseMatch = [regex]::Match($versionHeader, '#define\s+FBE_VERSION_STRING\s+"(?<version>\d+\.\d+\.\d+)"')
+if (-not $baseMatch.Success) { throw 'Не найден FBE_VERSION_STRING.' }
+if (-not $ReleaseVersion) { $ReleaseVersion = $baseMatch.Groups['version'].Value }
+if ($ReleaseVersion -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$') {
+    throw "Недопустимая release version: $ReleaseVersion"
+}
+$releaseBaseVersion = $ReleaseVersion -replace '[-+].*$', ''
+if ($releaseBaseVersion -ne $baseMatch.Groups['version'].Value) {
+    throw "Release version $ReleaseVersion не соответствует базовой версии $($baseMatch.Groups['version'].Value)."
+}
+$properties += "/p:FbeReleaseVersion=$ReleaseVersion"
 
 if ($BatchOutputDirectory) {
     $BatchOutputDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)

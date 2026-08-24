@@ -307,12 +307,10 @@ NSIS-установщик и файл контрольных сумм:
 - `FictionBookEditorNext-<version>-win32-symbols.zip`;
 - `SHA256SUMS.txt`.
 
-Для уже собранных бинарников используйте `-SkipBuild`. Перед публикацией релиза
-добавьте `-ValidateUpdateManifest`, чтобы версия в `update.xml` совпадала с
-`src\version.h`.
-Тег вида `v3.0.0` запускает тот же сценарий в GitHub Actions. Перед публикацией
-проверяются соответствие тега исходной версии и версия в `update.xml`, после чего
-ZIP, установщик и контрольные суммы прикрепляются к GitHub Release.
+Для уже собранных бинарников используйте `-SkipBuild`. Candidate manifest
+проверяется отдельно через `tools\build\validate-update-manifest.ps1`; опубликованный
+feed намеренно не обязан совпадать с текущей версией исходников. Теги
+`v3.0.0` и `v3.0.0-rc.1` запускают соответствующий сценарий GitHub Actions.
 
 Практический пошаговый сценарий выпуска собран в
 [docs/release-checklist.md](D:\Download\FBeditor\docs\release-checklist.md).

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "UpdateChannel.h"
+
 // Shared by SettingsNext and CMainFrame; must target the main window.
 #define WM_FBE_APPLY_XML_SOURCE_THEME (WM_APP + 0x145)
 
@@ -579,6 +581,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_ins_clear_image;
 	bool		m_create_backup_file;
 	bool		m_show_full_path_in_window_title;
+	UpdateChannel m_update_channel;
 
 	bool		m_show_words_excls;
 
@@ -704,6 +707,7 @@ public:
 	bool	GetIsInsClearImage()const;
 	bool	GetCreateBackupFile()const;
 	bool	GetShowFullPathInWindowTitle()const;
+	UpdateChannel GetUpdateChannel() const;
 	bool	GetShowWordsExcls()const;
 	bool	GetWordsDlgPosition(WINDOWPLACEMENT &wpl)const;
 
@@ -743,6 +747,7 @@ public:
 	void	SetIsInsClearImage(const bool value, bool apply = false);
 	void	SetCreateBackupFile(const bool value, bool apply = false);
 	void	SetShowFullPathInWindowTitle(const bool value, bool apply = false);
+	void	SetUpdateChannel(UpdateChannel channel, bool apply = false);
 	void	SetDocTreeItemState(const CString& item, bool state);
 	void	SetShowWordsExcls(const bool value, bool apply = false);
 	void	SetWordsDlgPosition(const WINDOWPLACEMENT& wpl,  bool apply = false);

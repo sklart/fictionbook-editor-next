@@ -1,0 +1,61 @@
+<# Validates an update manifest without tying a checked-in feed to src/version.h. #>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)] [string]$ManifestPath,
+    [string]$ExpectedReleaseTag,
+    [ValidateSet('StableFeed', 'PrereleaseFeed', 'Any')] [string]$Feed = 'Any'
+)
+
+$ErrorActionPreference = 'Stop'
+function Require([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
+function Get-One([xml]$Document, [string]$Name) {
+    $nodes = @($Document.FBE.SelectNodes($Name))
+    Require ($nodes.Count -eq 1) "Ожидался один <$Name>."
+    return [string]$nodes[0].InnerText
+}
+function Test-SemVer([string]$Value) { return $Value -match '^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$' }
+
+[xml]$document = Get-Content -Raw -LiteralPath $ManifestPath
+Require ($null -ne $document.SelectSingleNode('/FBE')) 'Корневой элемент должен быть <FBE>.'
+Require ($null -eq $document.FBE.ReleaseNotes -and $null -eq $document.FBE.ReleaseNotesUrl) 'Manifest не должен содержать Release Notes или управляемый URL.'
+$date = Get-One $document 'Date'
+try { [void][DateTime]::ParseExact($date, 'dd-MM-yyyy', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None) } catch { throw 'Date должен иметь формат dd-MM-yyyy.' }
+$version = Get-One $document 'Version'; Require (Test-SemVer $version) 'Version не является допустимым SemVer.'
+$tag = Get-One $document 'ReleaseTag'; Require ($tag -match '^v\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') 'ReleaseTag недопустим.'
+Require ($tag.Substring(1) -eq $version) 'Version должен совпадать с ReleaseTag без v.'
+if ($ExpectedReleaseTag) { Require ($tag -eq $ExpectedReleaseTag) "ReleaseTag должен быть $ExpectedReleaseTag." }
+$type = Get-One $document 'ReleaseType'; Require ($type -in @('stable', 'prerelease')) 'ReleaseType должен быть stable или prerelease.'
+$beta = Get-One $document 'Beta'; Require (($type -eq 'stable' -and $beta -eq 'false') -or ($type -eq 'prerelease' -and $beta -eq 'true')) 'Beta не согласован с ReleaseType.'
+if ($Feed -eq 'StableFeed') { Require ($type -eq 'stable') 'Стабильный feed не может содержать prerelease.' }
+$base = $version -replace '[-+].*$', ''
+$profiles = @{
+    Modern = @{ Setup = "FictionBookEditorNext-$base-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win32-portable.zip" }
+    Win7 = @{ Setup = "FictionBookEditorNext-$base-win7-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win7-win32-portable.zip" }
+}
+$hasArtifacts = $null -ne $document.FBE.Artifacts
+if (-not $hasArtifacts) {
+    $legacyUrl = Get-One $document 'DownloadUrl'; $legacyHash = Get-One $document 'SHA256'
+    Require ($legacyHash -match '^[0-9A-Fa-f]{64}$') 'Legacy SHA256 недопустим.'
+    $legacyExpected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/FictionBookEditorNext-$base-win32-setup.exe"
+    Require ($legacyUrl -ceq $legacyExpected) 'Legacy DownloadUrl не является доверенным URL ожидаемого артефакта.'
+    Write-Host "Проверен legacy manifest: $ManifestPath"
+    return
+}
+foreach ($profile in $profiles.Keys) {
+    $profileNode = $document.FBE.Artifacts.$profile
+    Require ($null -ne $profileNode) "Отсутствует Artifacts/$profile."
+    foreach ($kind in @('Setup', 'Portable')) {
+        $url = [string]$profileNode.($kind + 'Url'); $hash = [string]$profileNode.($kind + 'SHA256')
+        Require ($hash -match '^[0-9A-Fa-f]{64}$') "$profile/$kind SHA256 недопустим."
+        $expected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/$($profiles[$profile][$kind])"
+        Require ($url -ceq $expected) "$profile/$kind URL не является доверенным URL ожидаемого артефакта."
+    }
+}
+if ($type -eq 'prerelease') { Require ($null -eq $document.FBE.DownloadUrl -and $null -eq $document.FBE.SHA256) 'Prerelease manifest не должен выдавать legacy setup как универсальный artifact.' }
+if ($type -eq 'stable' -and $document.FBE.DownloadUrl) {
+    $legacyUrl = [string]$document.FBE.DownloadUrl; $legacyHash = [string]$document.FBE.SHA256
+    Require ($legacyHash -match '^[0-9A-Fa-f]{64}$') 'Legacy SHA256 недопустим.'
+    $legacyExpected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/FictionBookEditorNext-$base-win32-setup.exe"
+    Require ($legacyUrl -ceq $legacyExpected) 'Legacy DownloadUrl не является доверенным URL ожидаемого артефакта.'
+}
+Write-Host "Манифест обновления проверен: $ManifestPath"

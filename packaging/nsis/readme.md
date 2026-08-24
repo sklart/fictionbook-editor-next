@@ -70,7 +70,7 @@ Portable содержит только Core и создаёт `portable.ini` с 
 сценарий:
 
 ```powershell
-.\tools\build\create-release.ps1 -Configuration Release -Platform Win32 -ValidateUpdateManifest
+.\tools\build\create-release.ps1 -Configuration Release -Platform Win32
 ```
 
 Он автоматически:

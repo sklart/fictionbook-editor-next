@@ -68,13 +68,17 @@ if (-not $versionMatch.Success) {
 
 $version = $versionMatch.Groups["version"].Value
 
-if ($ReleaseTag -and $ReleaseTag -ne "v$version" -and
-    (-not $Prerelease -or -not $ReleaseTag.StartsWith("v$version-", [StringComparison]::OrdinalIgnoreCase))) {
-    throw "Тег релиза '$ReleaseTag' не совпадает с версией исходников 'v$version'."
+if ($ReleaseTag) {
+    if ($ReleaseTag -notmatch '^v(?<release>\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)$') {
+        throw "Недопустимый тег релиза: $ReleaseTag"
+    }
+    $releaseVersion = $Matches.release
+    $releaseBaseVersion = $releaseVersion -replace '-.*$', ''
+    if ($releaseBaseVersion -ne $version) { throw "Тег релиза '$ReleaseTag' не совпадает с базовой версией '$version'." }
+    $tagIsPrerelease = $releaseVersion.Contains('-')
+    if ($Prerelease -ne $tagIsPrerelease) { throw 'Параметр Prerelease должен соответствовать ReleaseTag.' }
 }
-if ($Prerelease -and -not $ReleaseTag) {
-    throw "Для предварительного выпуска требуется тег с суффиксом, например v$version-rc.1."
-}
+elseif ($Prerelease) { throw "Для предварительного выпуска требуется тег с суффиксом, например v$version-rc.1." }
 $architecture = $Platform.ToLowerInvariant()
 $artifactCompatibility = if ($CompatibilityTarget -eq "Win7") { "win7-" } else { "" }
 $artifactsDir = Join-Path $repoRoot ("out\artifacts\{0}" -f $CompatibilityTarget)
@@ -112,6 +116,9 @@ if (-not $SkipBuild) {
     if ($WarningsAsErrors) {
         $buildArguments.WarningsAsErrors = $true
     }
+	if ($ReleaseTag) {
+		$buildArguments.ReleaseVersion = $releaseVersion
+	}
     & (Join-Path $PSScriptRoot "build.ps1") @buildArguments
 }
 $archHandlerOutputDirectory = Join-Path $repoRoot "out\archhandler\$CompatibilityTarget\Win32\$Configuration"

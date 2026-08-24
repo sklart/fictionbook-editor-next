@@ -15,5 +15,7 @@
     L"https://github.com/sklart/fictionbook-editor-next/releases/download/"
 #define FBE_BUILD_NAME FBE_PRODUCT_NAME " Release " FBE_VERSION_STRING
 
-#define FBE_UPDATE_MANIFEST_URL \
+#define FBE_UPDATE_MANIFEST_STABLE_URL \
     L"https://raw.githubusercontent.com/sklart/fictionbook-editor-next/master/update.xml"
+#define FBE_UPDATE_MANIFEST_PRERELEASE_URL \
+    L"https://raw.githubusercontent.com/sklart/fictionbook-editor-next/master/update-prerelease.xml"

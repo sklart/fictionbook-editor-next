@@ -555,6 +555,10 @@
 #define IDC_OPTIONS_SOURCE_THEME_ACTIONS     1149
 #define IDC_OPTIONS_GENRE_CATALOG_LABEL       1154
 #define IDC_GENRE_CATALOG                     1155
+#define IDC_UPDATE_CHANNEL                    1156
+#define IDC_FBE_NEXT_UPDATES_GROUP            1157
+#define IDC_UPDATE_CHANNEL_LABEL              1158
+#define IDC_WHATS_NEW                         1159
 #define ID_SCRIPT_BASE                  9000
 #define ID_EDIT_INS_SYMBOL              10000
 #define ID_NEXT_ITEM                    32772

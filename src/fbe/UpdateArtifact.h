@@ -18,7 +18,7 @@ struct UpdateArtifact
 inline UpdateArtifact SelectUpdateArtifact(
 	DeploymentContext::Mode mode,
 	DeploymentContext::CompatibilityTarget target,
-	const CString& version)
+	const CString& baseVersion)
 {
 	const bool portable = mode == DeploymentContext::Mode::Portable;
 	const bool win7 = target == DeploymentContext::CompatibilityTarget::Win7;
@@ -28,7 +28,7 @@ inline UpdateArtifact SelectUpdateArtifact(
 		portable
 			? (win7 ? L"FictionBookEditorNext-%s-win7-win32-portable.zip" : L"FictionBookEditorNext-%s-win32-portable.zip")
 			: (win7 ? L"FictionBookEditorNext-%s-win7-win32-setup.exe" : L"FictionBookEditorNext-%s-win32-setup.exe"),
-		static_cast<const wchar_t*>(version));
+		static_cast<const wchar_t*>(baseVersion));
 	artifact.manifestUrlElement = portable ? L"PortableUrl" : L"SetupUrl";
 	artifact.manifestSha256Element = portable ? L"PortableSHA256" : L"SetupSHA256";
 	return artifact;

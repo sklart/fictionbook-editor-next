@@ -103,6 +103,7 @@ const wchar_t SCRIPTS_HKEY_ERR_NTF[]	= L"ScrHkErrDialog";
 const wchar_t INS_CLEAR_IMAGE[]			= L"InsClearImage";
 const wchar_t CREATE_BACKUP_FILE_KEY[]		= L"CreateBackupFile";
 const wchar_t SHOW_FULL_PATH_IN_WINDOW_TITLE_KEY[] = L"ShowFullPathInWindowTitle";
+const wchar_t UPDATE_CHANNEL_KEY[] = L"UpdateChannel";
 const wchar_t WINDOW_POSITION[]			= L"WindowPosition";
 const wchar_t WORDS_DLG_POSITION[]		= L"WordsDlgPosition";
 const wchar_t SHOW_WORDS_EXCLUSIONS[]	= L"ShowWordsExclusions";
@@ -848,6 +849,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(INS_CLEAR_IMAGE);
 	properties.push_back(CREATE_BACKUP_FILE_KEY);
 	properties.push_back(SHOW_FULL_PATH_IN_WINDOW_TITLE_KEY);
+	properties.push_back(UPDATE_CHANNEL_KEY);
 	properties.push_back(WINDOW_POSITION);
 	properties.push_back(WORDS_DLG_POSITION);
 	properties.push_back(SHOW_WORDS_EXCLUSIONS);
@@ -1097,6 +1099,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == SHOW_FULL_PATH_IN_WINDOW_TITLE_KEY)
 	{
 		property = GetStringedProperty(&m_show_full_path_in_window_title, KEY_BOOL);
+		return true;
+	}
+	else if(sProperty == UPDATE_CHANNEL_KEY)
+	{
+		property = m_update_channel == UpdateChannel::Prerelease ? L"prerelease" : L"stable";
 		return true;
 	}
 	else if(sProperty == WORDS_DLG_POSITION)
@@ -1399,6 +1406,12 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == SHOW_FULL_PATH_IN_WINDOW_TITLE_KEY)
 	{
 		m_show_full_path_in_window_title = StrToBool(sValue);
+		return true;
+	}
+	else if(sProperty == UPDATE_CHANNEL_KEY)
+	{
+		m_update_channel = sValue.GetStringValue().CompareNoCase(L"prerelease") == 0
+			? UpdateChannel::Prerelease : UpdateChannel::Stable;
 		return true;
 	}
 	else if(sProperty == SHOW_WORDS_EXCLUSIONS)
@@ -2175,6 +2188,11 @@ bool CSettings::GetShowFullPathInWindowTitle() const
 	return m_show_full_path_in_window_title;
 }
 
+UpdateChannel CSettings::GetUpdateChannel() const
+{
+	return m_update_channel;
+}
+
 bool CSettings::GetShowWordsExcls() const
 {
 	return m_show_words_excls;
@@ -2447,6 +2465,12 @@ void CSettings::SetShowFullPathInWindowTitle(bool show, bool apply)
 		Save();
 }
 
+void CSettings::SetUpdateChannel(UpdateChannel channel, bool apply)
+{
+	m_update_channel = channel == UpdateChannel::Prerelease ? UpdateChannel::Prerelease : UpdateChannel::Stable;
+	if(apply) Save();
+}
+
 void CSettings::SetShowWordsExcls(bool show, bool apply)
 {
 	m_show_words_excls = show;
@@ -2653,6 +2677,7 @@ void CSettings::SetDefaults()
 	m_ins_clear_image		= false;
 	m_create_backup_file		= true;
 	m_show_full_path_in_window_title = false;
+	m_update_channel = UpdateChannel::Stable;
 	m_show_words_excls		= true;
 	// added by SeNS
 	m_usespell_check		= true;

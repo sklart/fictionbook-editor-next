@@ -115,7 +115,7 @@ exit /b 0
       <AdditionalIncludeDirectories>$(SolutionDir)third_party\wtl;extras;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PreLinkEvent>
-      <Command>cl /nologo /c /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
+<Command>cl /nologo /c /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" /DFBE_BUILD_RELEASE_VERSION=\"$(FbeReleaseVersion)\" /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
     </PreLinkEvent>
     <Link>
       <GenerateManifest>false</GenerateManifest>
@@ -195,7 +195,7 @@ exit /b 0
       <AdditionalIncludeDirectories>$(SolutionDir)third_party\wtl;extras;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PreLinkEvent>
-      <Command>cl /nologo /c /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
+<Command>cl /nologo /c /DFBE_BUILD_COMMIT=\"$(FbeBuildCommit)\" /DFBE_BUILD_RELEASE_VERSION=\"$(FbeReleaseVersion)\" /Fo"$(IntDir)buildstamp.obj" buildstamp.c</Command>
     </PreLinkEvent>
     <Link>
       <GenerateManifest>false</GenerateManifest>
@@ -227,6 +227,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AboutBox.cpp" />
+	<ClCompile Include="UpdateVersion.cpp" />
     <ClCompile Include="apputils.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

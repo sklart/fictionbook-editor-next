@@ -246,6 +246,16 @@ LRESULT CSettingsNextDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_COLORS_RESET,
 		FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.source_colors_reset",
 			L"Restore theme colors"));
+	::SetDlgItemText(m_hWnd, IDC_FBE_NEXT_UPDATES_GROUP,
+		FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.updates", L"Updates"));
+	::SetDlgItemText(m_hWnd, IDC_UPDATE_CHANNEL_LABEL,
+		FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.update_channel", L"Update channel:"));
+	m_update_channel = GetDlgItem(IDC_UPDATE_CHANNEL);
+	m_update_channel.AddString(FbeLoadRuntimeStringByKey(
+		L"fbe.dialog.idd_setting_next.update_channel.stable", L"Stable versions (recommended)"));
+	m_update_channel.AddString(FbeLoadRuntimeStringByKey(
+		L"fbe.dialog.idd_setting_next.update_channel.prerelease", L"Prerelease versions (Beta / RC)"));
+	m_update_channel.SetCurSel(_Settings.GetUpdateChannel() == UpdateChannel::Prerelease ? 1 : 0);
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,
 		FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.show_special_characters",
 			L"Show invisible characters"));
@@ -402,6 +412,7 @@ LRESULT CSettingsNextDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 {
 	_Settings.SetCreateBackupFile(IsDlgButtonChecked(IDC_CREATE_BACKUP_FILE) == BST_CHECKED);
 	_Settings.SetShowFullPathInWindowTitle(IsDlgButtonChecked(IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE) == BST_CHECKED);
+	_Settings.SetUpdateChannel(m_update_channel.GetCurSel() == 1 ? UpdateChannel::Prerelease : UpdateChannel::Stable);
 	_Settings.SetXmlSrcShowSpecialChars(IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED);
 	const int specialCharsStyle = m_special_chars_style.GetCurSel();
 	_Settings.SetXmlSrcSpecialCharsStyle(specialCharsStyle == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ? XML_SRC_SPECIAL_CHARS_TEXT_LABELS : XML_SRC_SPECIAL_CHARS_WORD_LIKE);

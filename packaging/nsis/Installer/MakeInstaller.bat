@@ -9,7 +9,7 @@ SET "POWERSHELL_EXE=pwsh.exe"
 WHERE /Q "%POWERSHELL_EXE%"
 IF ERRORLEVEL 1 SET "POWERSHELL_EXE=powershell.exe"
 
-"%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\tools\version\sync-version.ps1" -ValidateUpdateManifest
+"%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\tools\version\sync-version.ps1"
 IF ERRORLEVEL 1 EXIT /B %ERRORLEVEL%
 
 "%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%REPO_ROOT%\tools\build\prepare-installer.ps1"

@@ -14,6 +14,7 @@ extern "C"
 {
 	extern const char* build_timestamp;
 	extern const char* build_name;
+	extern const char* build_release_version;
 };
 
 using namespace std;
@@ -97,6 +98,7 @@ public:
 		COMMAND_ID_HANDLER(IDOK, OnCloseCmd)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCloseCmd)
 		COMMAND_ID_HANDLER(IDC_UPDATE, OnUpdate)
+		COMMAND_ID_HANDLER(IDC_WHATS_NEW, OnWhatsNew)
 		NOTIFY_HANDLER(IDC_SYSLINK_AB_LINKS, NM_CLICK, OnNMClickSyslinkAbLinks)
 	END_MSG_MAP()
 
@@ -109,9 +111,12 @@ private:
 	bool m_UpdateReady;
 	CString m_UpdateURL;
 	CString m_UpdateSHA256;
+	CString m_UpdateManifestURL;
+	CString m_UpdateReleaseTag;
 	CString m_DownloadedSHA256;
 	int m_AnimIdx;
 	CButton m_UpdateButton;
+	CButton m_WhatsNewButton;
 	CBitmap m_AnimBitmaps[ANIM_SIZE];
 	CBitmap m_StatusBitmaps[3];
 	CTransparentBitmap m_UpdatePict;
@@ -140,6 +145,7 @@ private:
 	LRESULT OnResizeOpenGLWindow(UINT, WPARAM, LPARAM, BOOL&);
 
     LRESULT OnUpdate(WORD, WORD wID, HWND, BOOL&);
+	LRESULT OnWhatsNew(WORD, WORD wID, HWND, BOOL&);
 	HTTP_SEND_HEADER PrepareHeader(const CString& url);
 
     bool AcceptReceivedData (FCHttpDownload* pTask) ;
@@ -147,4 +153,3 @@ private:
     virtual void OnAfterDownloadConnected (FCHttpDownload* pTask) ;
     virtual void OnAfterDownloadFinish (FCHttpDownload* pTask) ;
 };
-

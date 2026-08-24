@@ -42,7 +42,7 @@ Table-regression suite намеренно opt-in и для обычной portab
 1. Запустить полный сценарий выпуска:
 
 ```powershell
-.\tools\build\create-release.ps1 -Configuration Release -Platform Win32 -ValidateUpdateManifest
+.\tools\build\create-release.ps1 -Configuration Release -Platform Win32
 ```
 
 2. После завершения проверить содержимое `out\artifacts`:
@@ -79,6 +79,10 @@ Table-regression suite намеренно opt-in и для обычной portab
 
 ## Что проверить перед публикацией GitHub Release
 
+Для тега `vX.Y.Z-beta.N` или `vX.Y.Z-rc.N` workflow публикует GitHub prerelease и обновляет только `update-prerelease.xml`. Для `vX.Y.Z` он обновляет оба feed: `update.xml` и `update-prerelease.xml`. Candidate manifest создаётся с `-ReleaseTag`; имена файлов остаются с базовой версией.
+
+Описание GitHub Release — единственный актуальный источник пользовательских примечаний. `new-release-notes.ps1` задаёт лишь исходный текст для нового release; повторный workflow не передаёт `--notes-file` существующему release и сохраняет ручные правки body.
+
 1. Тег должен иметь вид `v<version>`, например `v3.0.0`.
 2. `DownloadUrl` в `update.xml` должен указывать на тот же тег и имя
    установщика.
@@ -90,6 +94,6 @@ Table-regression suite намеренно opt-in и для обычной portab
 
 - `verify-release.ps1` завершился с ошибкой;
 - `test-update-manifest.ps1` не проходит;
-- `create-release.ps1 -ValidateUpdateManifest` не проходит;
+- `validate-update-manifest.ps1` не проходит для candidate manifest;
 - `update.xml` не совпадает по версии, URL или SHA-256 с собранным установщиком;
 - ручные регрессионные проверки выявили падение или явную несовместимость.
