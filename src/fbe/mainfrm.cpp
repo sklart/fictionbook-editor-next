@@ -3659,8 +3659,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		};
 		auto updateTableCommands = [&]()
 		{
+			// Exercise the same table-context gate as the regular idle update.
+			// CheckCommand is intentionally broader and can report that a command
+			// is structurally valid before the selection context is refreshed.
+			const bool tableCommandEnabled = m_current_view == BODY && m_doc->m_body.SelectionStructTableCon();
 			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
-				UIEnable(kTableToolbarCommands[index].commandId, m_doc->m_body.CheckCommand(kTableToolbarCommands[index].commandId));
+				UIEnable(kTableToolbarCommands[index].commandId, tableCommandEnabled);
 			UIUpdateToolBar();
 			m_CmdToolbar.Invalidate(); m_CmdToolbar.UpdateWindow();
 		};
