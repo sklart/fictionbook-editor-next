@@ -7,7 +7,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 foreach ($version in @('3.2.0', '3.2.0-beta.1', '3.2.0-rc.10', '3.2.0-alpha.beta', '3.2.0-0.3.7', '3.2.0-x.7.z.92', '3.2.0+build.1', '3.2.0+build-foo', '3.2.0+build.foo-bar', '3.2.0-rc.2+build.42', '3.2.0-rc.1+build-foo')) {
     if (-not (Test-FbeSemVer $version)) { throw "PowerShell SemVer rejected valid version: $version" }
 }
-foreach ($version in @('03.2.0', '3.02.0', '3.2.00', '3.2', '3.2.0.1', '3.2.0-', '3.2.0+', '3.2.0.+build.1', '3.2.0-rc.+build.1', '3.2.0-rc..1+build.1', '3.2.0-rc.', '3.2.0-.rc', '3.2.0-rc..1', '3.2.0-rc.01', '3.2.0-01', '3.2.0-rc/1', '3.2.0-rc\1', '3.2.0-rc_1', '3.2.0+build..1', '3.2.0+build/')) {
+foreach ($version in @('03.2.0', '3.02.0', '3.2.00', '3.2', '3.2.0.1', '3.2.0-', '3.2.0+', '3.2.0+.build', '3.2.0-.rc+build', '3.2.0.+build.1', '3.2.0-rc.+build.1', '3.2.0-rc..1+build.1', '3.2.0-rc.', '3.2.0-.rc', '3.2.0-rc..1', '3.2.0-rc.01', '3.2.0-01', '3.2.0-rc/1', '3.2.0-rc\1', '3.2.0-rc_1', '3.2.0+build..1', '3.2.0+build/')) {
     if (Test-FbeSemVer $version) { throw "PowerShell SemVer accepted invalid version: $version" }
 }
 foreach ($tag in @('v3.2.0', 'v3.2.0-rc.1', 'v3.2.0-beta.12')) { if (-not (Test-FbeReleaseTag $tag)) { throw "ReleaseTag rejected: $tag" } }

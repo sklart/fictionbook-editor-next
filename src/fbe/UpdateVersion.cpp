@@ -29,7 +29,7 @@ namespace
 		const int plus = value.Find(L'+');
 		if (plus >= 0) {
 			CString metadata = value.Mid(plus + 1);
-			if (metadata.IsEmpty()) return false;
+			if (metadata.IsEmpty() || metadata.Find(L"..") >= 0 || metadata[0] == L'.' || metadata[metadata.GetLength() - 1] == L'.') return false;
 			int pos = 0; CString item;
 			while (!(item = metadata.Tokenize(L".", pos)).IsEmpty()) if (!IsIdentifier(item)) return false;
 			value = value.Left(plus);
@@ -38,6 +38,7 @@ namespace
 		const int dash = value.Find(L'-');
 		base = dash < 0 ? value : value.Left(dash);
 		prerelease = dash < 0 ? CString() : value.Mid(dash + 1);
+		if (!prerelease.IsEmpty() && (prerelease.Find(L"..") >= 0 || prerelease[0] == L'.' || prerelease[prerelease.GetLength() - 1] == L'.')) return false;
 		int pos = 0; CString part; int count = 0;
 		while (!(part = base.Tokenize(L".", pos)).IsEmpty()) {
 			if (!IsDigits(part) || (part.GetLength() > 1 && part[0] == L'0')) return false;

@@ -16,7 +16,7 @@ int wmain()
 {
 	if (GetUpdateManifestUrl(UpdateChannel::Stable).Find(L"/update.xml") < 0 ||
 		GetUpdateManifestUrl(UpdateChannel::Prerelease).Find(L"/update-prerelease.xml") < 0) return 1;
-    const wchar_t* invalid[] = { L"3", L"3.1", L"3.1.", L"v3.1.0", L"3.1.0-", L"3.1.0.+build.1", L"3.1.0-rc.+build.1", L"3.1.0-rc..1+build.1", L"3.1.0-rc..1", L"3.1.0-rc.01", L"3.1.0-01", L"03.1.0", L"3.01.0", L"3.1.00" };
+    const wchar_t* invalid[] = { L"3", L"3.1", L"3.1.", L"v3.1.0", L"3.1.0-", L"3.1.0-.rc", L"3.1.0+.build", L"3.1.0-.rc+build", L"3.1.0.+build.1", L"3.1.0-rc.+build.1", L"3.1.0-rc..1+build.1", L"3.1.0-rc..1", L"3.1.0-rc.01", L"3.1.0-01", L"03.1.0", L"3.01.0", L"3.1.00" };
     for (int i = 0; i < _countof(invalid); ++i)
         if (IsValidUpdateVersion(invalid[i])) return 1;
     const wchar_t* valid[] = { L"3.1.0-alpha", L"3.1.0-alpha.1", L"3.1.0-beta.2", L"3.1.0-rc.10", L"3.1.0+build.1", L"3.1.0+build-foo", L"3.1.0+build.foo-bar", L"3.1.0-rc.2+build.7", L"3.1.0-rc.1+build-foo" };
