@@ -3654,6 +3654,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			MSHTML::IHTMLElementPtr element(elements && elements->length > index ? elements->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
 			if (!element) return false;
 			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+			m_doc->m_body.SetFocus();
 			range->moveToElementText(element); range->collapse(VARIANT_TRUE); range->select();
 			return true;
 		};
