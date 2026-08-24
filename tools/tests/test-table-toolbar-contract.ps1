@@ -15,16 +15,27 @@ if (-not $bitmapHelper.Success -or
     $bitmapHelper.Value -notmatch 'LoadImage\(module, MAKEINTRESOURCE\(bitmapResourceId\)' -or
     $bitmapHelper.Value -notmatch 'toolbar\.GetImageList\(\)' -or
 	$bitmapHelper.Value -notmatch 'DIBSECTION bitmapSection' -or
-    $bitmapHelper.Value -notmatch 'EnsureToolbarImageListHasMask\(toolbar\)' -or
     $bitmapHelper.Value -notmatch 'ImageList_AddMasked\(toolbar\.GetImageList\(\), colorBitmap, RGB\(192, 192, 192\)\)') {
-    throw 'Table toolbar bitmap helper must append a 24x24 bitmap through an ILC_MASK-capable image list and the RGB(192,192,192) mask key.'
+    throw 'Table toolbar bitmap helper must append a 24x24 bitmap through the owned image list and the RGB(192,192,192) mask key.'
 }
 if ($bitmapHelper.Value -match 'pixel\[[012]\]\s*=\s*0') { throw 'Table toolbar transparency-key pixels must not be rewritten to visible black.' }
-if ($cpp -notmatch '(?s)static bool ImageListHasMaskPlane\(.*?ImageList_GetImageInfo.*?hbmMask.*?static bool EnsureToolbarImageListHasMask\(.*?ImageListHasMaskPlane\(imageList\).*?ImageList_Create\(.*?ILC_MASK.*?ImageList_GetIcon.*?TB_SETIMAGELIST.*?existing image indices preserved') {
-    throw 'Table toolbar must retain existing image indices when it upgrades an image list to ILC_MASK.'
+if ($cpp -notmatch '(?s)static HWND CreateCommandToolbarCtrl\(.*?FindResource\(.*?RT_TOOLBAR.*?ownedImages\.Create\(24, 24, ILC_COLOR32 \| ILC_MASK.*?ImageList_LoadImage\(.*?CopyToolbarImages\(ownedImages, sourceImages, standardImageCount\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS') {
+    throw 'Command toolbar must create one application-owned ILC_COLOR32|ILC_MASK image list from the RT_TOOLBAR strip before adding buttons.'
+}
+if ($cpp -match 'EnsureToolbarImageListHasMask') {
+    throw 'Delayed command-toolbar image-list reconstruction must not remain.'
+}
+if ($header -notmatch 'CImageList\s+m_commandToolbarImages') {
+    throw 'CMainFrame must explicitly own the command toolbar image list.'
+}
+if ($cpp -notmatch '(?s)m_CmdToolbar = CreateCommandToolbarCtrl\(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME.*?InitToolBar\(m_CmdToolbar, IDR_MAINFRAME\)') {
+    throw 'The owned image list must be installed during command toolbar creation while InitToolBar retains customization metadata.'
+}
+if ($cpp -notmatch '(?s)LRESULT CMainFrame::OnDestroy\(.*?m_CmdToolbar\.SetImageList\(NULL\).*?m_commandToolbarImages\.Destroy\(\)') {
+    throw 'OnDestroy must detach the owned image list before destroying it.'
 }
 foreach ($forbidden in @('TB_ADDBITMAP', 'ImageList_Replace', 'SetDisabledImageList', 'TB_SETDISABLEDIMAGELIST')) {
-    if ($bitmapHelper.Value.Contains($forbidden)) { throw "Table toolbar bitmap helper must not use $forbidden." }
+    if ($cpp.Contains($forbidden)) { throw "Command toolbar implementation must not use $forbidden." }
 }
 if ($bitmapHelper.Value.Contains('maskOneCount')) { throw 'Table toolbar bitmap helper must not retain the redundant mask-one counter.' }
 

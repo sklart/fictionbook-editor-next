@@ -39,53 +39,109 @@ static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE
 	return added != FALSE;
 }
 
+struct ToolbarResourceData
+{
+	WORD version;
+	WORD width;
+	WORD height;
+	WORD itemCount;
+	WORD* Items() { return reinterpret_cast<WORD*>(this + 1); }
+};
+
+// Kept solely for the unattended rendering probe: creation itself never
+// reconstructs an image list after the toolbar is populated.
 static bool ImageListHasMaskPlane(HIMAGELIST imageList)
 {
-	if (imageList == NULL || ::ImageList_GetImageCount(imageList) <= 0) return false;
 	IMAGEINFO imageInfo = {};
-	return ::ImageList_GetImageInfo(imageList, 0, &imageInfo) != FALSE && imageInfo.hbmMask != NULL;
+	return imageList != NULL && ::ImageList_GetImageInfo(imageList, 0, &imageInfo) != FALSE && imageInfo.hbmMask != NULL;
 }
 
-static bool EnsureToolbarImageListHasMask(CToolBarCtrl& toolbar)
+static bool CopyToolbarImages(HIMAGELIST destination, HIMAGELIST source, int imageCount)
 {
-	HIMAGELIST imageList = toolbar.GetImageList();
-	if (imageList == NULL) return false;
-
-	const bool hasMaskPlane = ImageListHasMaskPlane(imageList);
-	CString trace;
-	trace.Format(L"mask-bitmap-present=%d; image-count=%d", hasMaskPlane ? 1 : 0, ::ImageList_GetImageCount(imageList));
-	StartupTrace::Event(L"toolbar", L"TB210", trace);
-	if (hasMaskPlane) return true;
-
-	int imageWidth = 0, imageHeight = 0;
-	const int imageCount = ::ImageList_GetImageCount(imageList);
-	if (imageCount < 0 || !::ImageList_GetIconSize(imageList, &imageWidth, &imageHeight) || imageWidth <= 0 || imageHeight <= 0)
-		return false;
-
-	HIMAGELIST maskedImageList = ::ImageList_Create(imageWidth, imageHeight, ILC_COLOR32 | ILC_MASK, imageCount, 8);
-	if (maskedImageList == NULL) return false;
 	for (int index = 0; index < imageCount; ++index)
 	{
-		HICON icon = ::ImageList_GetIcon(imageList, index, ILD_NORMAL);
-		const int copiedIndex = icon != NULL ? ::ImageList_AddIcon(maskedImageList, icon) : -1;
+		HICON icon = ::ImageList_GetIcon(source, index, ILD_NORMAL);
+		const int copiedIndex = icon != NULL ? ::ImageList_AddIcon(destination, icon) : -1;
 		if (icon != NULL) ::DestroyIcon(icon);
-		if (copiedIndex != index)
+		if (copiedIndex != index) return false;
+	}
+	return true;
+}
+
+static HWND CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId,
+	DWORD style = ATL_SIMPLE_TOOLBAR_STYLE, UINT controlId = ATL_IDW_TOOLBAR)
+{
+	HINSTANCE module = _Module.GetResourceInstance();
+	HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR);
+	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
+	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
+	if (toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != 24 || toolbarData->height != 24)
+		return NULL;
+
+	ATL::CTempBuffer<TBBUTTON, _WTL_STACK_ALLOC_THRESHOLD> buttonsBuffer;
+	TBBUTTON* buttons = buttonsBuffer.Allocate(toolbarData->itemCount);
+	if (buttons == NULL) return NULL;
+
+	int standardImageCount = 0;
+	for (int index = 0; index < toolbarData->itemCount; ++index)
+	{
+		TBBUTTON& button = buttons[index];
+		::ZeroMemory(&button, sizeof(button));
+		const WORD commandId = toolbarData->Items()[index];
+		if (commandId != 0)
 		{
-			::ImageList_Destroy(maskedImageList);
-			return false;
+			button.iBitmap = standardImageCount++;
+			button.idCommand = commandId;
+			button.fsState = TBSTATE_ENABLED;
+			button.fsStyle = BTNS_BUTTON;
+		}
+		else
+		{
+			button.iBitmap = 8;
+			button.fsStyle = BTNS_SEP;
 		}
 	}
 
-	HIMAGELIST previousImageList = reinterpret_cast<HIMAGELIST>(toolbar.SendMessage(TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(maskedImageList)));
-	if (previousImageList != imageList)
+	HWND window = ::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, style, 0, 0, 100, 100, parent,
+		(HMENU)LongToHandle(controlId), module, NULL);
+	if (window == NULL) return NULL;
+	::SendMessage(window, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
+
+	if (!ownedImages.Create(24, 24, ILC_COLOR32 | ILC_MASK, standardImageCount + 8, 8))
 	{
-		toolbar.SendMessage(TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(imageList));
-		::ImageList_Destroy(maskedImageList);
-		return false;
+		::DestroyWindow(window);
+		return NULL;
 	}
-	::ImageList_Destroy(previousImageList);
-	StartupTrace::Event(L"toolbar", L"TB211", L"image list rebuilt with ILC_MASK; existing image indices preserved");
-	return true;
+	HIMAGELIST sourceImages = ::ImageList_LoadImage(module, MAKEINTRESOURCE(toolbarResourceId), 24, 1, CLR_DEFAULT,
+		IMAGE_BITMAP, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
+	const bool copied = sourceImages != NULL && ::ImageList_GetImageCount(sourceImages) >= standardImageCount &&
+		CopyToolbarImages(ownedImages, sourceImages, standardImageCount);
+	if (sourceImages != NULL) ::ImageList_Destroy(sourceImages);
+	if (!copied)
+	{
+		ownedImages.Destroy();
+		::DestroyWindow(window);
+		return NULL;
+	}
+
+	const HIMAGELIST previousImages = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(static_cast<HIMAGELIST>(ownedImages))));
+	if (previousImages != NULL || ::SendMessage(window, TB_ADDBUTTONS, toolbarData->itemCount, reinterpret_cast<LPARAM>(buttons)) == FALSE)
+	{
+		::SendMessage(window, TB_SETIMAGELIST, 0, 0);
+		ownedImages.Destroy();
+		::DestroyWindow(window);
+		return NULL;
+	}
+
+	CFontHandle font = reinterpret_cast<HFONT>(::SendMessage(window, WM_GETFONT, 0, 0));
+	if (font.IsNull()) font = reinterpret_cast<HFONT>(::GetStockObject(SYSTEM_FONT));
+	LOGFONT logFont = {};
+	font.GetLogFont(logFont);
+	const WORD buttonHeight = __max(toolbarData->height, static_cast<WORD>(abs(logFont.lfHeight)));
+	::SendMessage(window, TB_SETBITMAPSIZE, 0, MAKELONG(toolbarData->width, buttonHeight));
+	::SendMessage(window, TB_SETBUTTONSIZE, 0, MAKELONG(toolbarData->width + 7, buttonHeight + 7));
+	StartupTrace::Event(L"toolbar", L"TB210", L"command-toolbar image list created; 24x24; ILC_COLOR32|ILC_MASK");
+	return window;
 }
 
 static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId)
@@ -100,12 +156,6 @@ static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, U
 		(bitmapSection.dsBmih.biHeight < 0 ? -bitmapSection.dsBmih.biHeight : bitmapSection.dsBmih.biHeight) != 24 ||
 		bitmapSection.dsBm.bmBitsPixel != 24 || bitmapSection.dsBm.bmBits == NULL ||
 		bitmapSection.dsBm.bmWidthBytes < 24 * 3)
-	{
-		::DeleteObject(colorBitmap);
-		return -1;
-	}
-
-	if (!EnsureToolbarImageListHasMask(toolbar))
 	{
 		::DeleteObject(colorBitmap);
 		return -1;
@@ -2491,9 +2541,17 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TABLE_MAKE_NORMAL_CELLS, ID_TABLE_MAKE_NORMAL_CELLS);
 
-  m_CmdToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_MAINFRAME, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
-  m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
-  InitToolBar(m_CmdToolbar, IDR_MAINFRAME);
+	m_CmdToolbar = CreateCommandToolbarCtrl(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME,
+		ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+	if (!m_CmdToolbar || !InitToolBar(m_CmdToolbar, IDR_MAINFRAME))
+	{
+		StartupTrace::Error(L"toolbar", L"TB209", L"failed to create the application-owned command toolbar image list");
+		if (m_CmdToolbar) m_CmdToolbar.SetImageList(NULL);
+		m_commandToolbarImages.Destroy();
+		if (m_CmdToolbar) m_CmdToolbar.DestroyWindow();
+		return -1;
+	}
+	m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
 	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
 	{
     m_table_toolbar_image_indices[index] = -1;
@@ -2941,6 +2999,8 @@ LRESULT CMainFrame::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHa
 	}
   KillTimer(RECOVERY_TIMER_ID);
   DestroyAcceleratorTable(m_hAccel);
+	if (::IsWindow(m_CmdToolbar)) m_CmdToolbar.SetImageList(NULL);
+	m_commandToolbarImages.Destroy();
 	// WTL's default CFrameWindowImpl handler posts WM_QUIT with code 1 for
 	// every top-level window.  A normal editor close, including a successful
 	// unattended Save, is a successful process termination.

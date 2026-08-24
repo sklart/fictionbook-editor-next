@@ -181,6 +181,7 @@ public:
 
 	CCommandBarCtrl	m_MenuBar;			// menu bar
 	CToolBarCtrl	m_CmdToolbar;		// commands toolbar
+	CImageList		m_commandToolbarImages;	// application-owned command toolbar image list
 	int			m_table_toolbar_image_indices[8];
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
 	CReBarCtrl		m_rebar;			// toolbars
