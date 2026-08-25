@@ -613,6 +613,15 @@ static HANDLE TryOpen(bool pfx,const wchar_t *mid,const wchar_t *last) {
   xfilename += last;
   return ::CreateFileW(xfilename, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
 }
+
+static bool IsAbsoluteFilePath(const wchar_t* path)
+{
+  if (path == NULL || path[0] == L'\0')
+    return false;
+  if (path[0] == L'\\' && path[1] == L'\\')
+    return true;
+  return path[1] == L':' && (path[2] == L'\\' || path[2] == L'/');
+}
 HRESULT	ScriptLoad(const wchar_t *filename) {
   if (!g_script)
     return E_FAIL;
@@ -620,12 +629,21 @@ HRESULT	ScriptLoad(const wchar_t *filename) {
   HRESULT   hr;
 
   // open file and try to load it in memory
-  HANDLE    hFile;
-  if ((hFile = TryOpen(false,NULL,filename)) == INVALID_HANDLE_VALUE &&
-      (hFile = TryOpen(true,NULL,filename)) == INVALID_HANDLE_VALUE &&
-      (hFile = TryOpen(true,L"..\\",filename)) == INVALID_HANDLE_VALUE)
+  HANDLE hFile = TryOpen(false, NULL, filename);
+  DWORD code = hFile == INVALID_HANDLE_VALUE ? GetLastError() : ERROR_SUCCESS;
+  // Only relative script names may be resolved next to FBE.exe. Retrying an
+  // absolute path with an executable-directory prefix creates an invalid
+  // composite path and hides the original actionable error as 0x7B.
+  if (hFile == INVALID_HANDLE_VALUE && !IsAbsoluteFilePath(filename))
   {
-    DWORD   code = GetLastError();
+    hFile = TryOpen(true, NULL, filename);
+    if (hFile == INVALID_HANDLE_VALUE)
+      hFile = TryOpen(true, L"..\\", filename);
+    if (hFile == INVALID_HANDLE_VALUE)
+      code = GetLastError();
+  }
+  if (hFile == INVALID_HANDLE_VALUE)
+  {
     wchar_t em[256];
     FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,0,code,0,em,sizeof(em)/sizeof(em[0]),0);
 	FbeScriptDiagnostics::ShowLoad(GetActiveWindow(), filename, em, HRESULT_FROM_WIN32(code));

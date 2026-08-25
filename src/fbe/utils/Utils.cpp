@@ -1531,6 +1531,12 @@ void InitSettingsHotkeyGroups()
 #ifndef NO_EXTRN_SETTINGS
 	void SaveFileSelectedPos(const CString& filename, int pos)
 	{
+		// A portable copy persists its own state beside FBE.exe.  In particular,
+		// closing an untouched document must not create the legacy Documents key
+		// under the installed application's HKCU profile.
+		if (!DeploymentContext::RegistryPersistenceAllowed())
+			return;
+
 		CRegKey rk;
 		rk.Create(HKEY_CURRENT_USER, _Settings.GetKeyPath() + _T("\\Documents"));
 		rk.SetValue(pos, filename);
