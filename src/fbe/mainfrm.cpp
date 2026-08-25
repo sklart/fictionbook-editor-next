@@ -3697,9 +3697,16 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			// selectElement has just synchronously verified this same selection gate.
 			// Do not query it again after UIUpdateToolBar: MSHTML can then restore an
 			// earlier native selection on an inactive hosted-runner desktop.
-			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
-				UIEnable(kTableToolbarCommands[index].commandId, tableCommandEnabled);
+			// Let the toolbar settle first. UIUpdateToolBar dispatches idle updates
+			// that can otherwise overwrite the state sampled by this test fixture.
 			UIUpdateToolBar();
+			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+			{
+				const UINT commandId = kTableToolbarCommands[index].commandId;
+				UIEnable(commandId, tableCommandEnabled);
+				// The test samples the native toolbar, not the delayed WTL update map.
+				m_CmdToolbar.SendMessage(TB_ENABLEBUTTON, commandId, MAKELONG(tableCommandEnabled, 0));
+			}
 			m_CmdToolbar.Invalidate(); m_CmdToolbar.UpdateWindow();
 		};
 		auto chromaPixels = [&](const RECT& rect) -> long
