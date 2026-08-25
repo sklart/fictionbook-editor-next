@@ -129,6 +129,7 @@ jobs:
             out/archhandler
             out/package/shell-build
             out/target-batches
+            out/build-provenance
           if-no-files-found: error
           retention-days: 3
 
