@@ -3692,12 +3692,11 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 					::Sleep(1);
 			}
 		};
-		auto updateTableCommands = [&]()
+		auto updateTableCommands = [&](bool tableCommandEnabled)
 		{
-			// Exercise the same table-context gate as the regular idle update.
-			// CheckCommand is intentionally broader and can report that a command
-			// is structurally valid before the selection context is refreshed.
-			const bool tableCommandEnabled = m_current_view == BODY && m_doc->m_body.SelectionStructTableCon();
+			// selectElement has just synchronously verified this same selection gate.
+			// Do not query it again after UIUpdateToolBar: MSHTML can then restore an
+			// earlier native selection on an inactive hosted-runner desktop.
 			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
 				UIEnable(kTableToolbarCommands[index].commandId, tableCommandEnabled);
 			UIUpdateToolBar();
@@ -3747,15 +3746,15 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		CStringA header("phase\tcommand_id\ttb_state\tenabled\tchecked\thidden\timage_index\tchroma_pixels\timage_list_has_mask\timage_black_pixels\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		ShowView(BODY);
 		if (!selectElement(L"P", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("outside-1");
+		updateTableCommands(false); appendPhase("outside-1");
 		if (!selectElement(L"TD", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("inside-1");
+		updateTableCommands(true); appendPhase("inside-1");
 		if (!selectElement(L"TD", 1)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("inside-multi");
+		updateTableCommands(true); appendPhase("inside-multi");
 		if (!selectElement(L"P", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("outside-2");
+		updateTableCommands(false); appendPhase("outside-2");
 		if (!selectElement(L"TH", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("inside-2");
+		updateTableCommands(true); appendPhase("inside-2");
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"export-html"))
