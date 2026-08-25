@@ -3654,10 +3654,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			MSHTML::IHTMLElementPtr element(elements && elements->length > index ? elements->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
 			if (!element) return false;
 			m_doc->m_body.SetFocus();
-			m_doc->m_body.GoTo(element, false);
-			// Keep the test caret off an element boundary; MSHTML can report the preceding container there.
-			MSHTML::IHTMLTxtRangePtr range(m_doc->m_body.Document()->selection->createRange());
-			if (!range || range->move(L"character", 1) != 1) return false;
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+			if (!range) return false;
+			range->moveToElementText(element);
+			range->collapse(VARIANT_TRUE);
+			// Keep the test caret inside the target element rather than on its boundary.
+			if (range->move(L"character", 1) != 1) return false;
 			range->select();
 			return true;
 		};
