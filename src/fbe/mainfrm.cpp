@@ -3661,7 +3661,36 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			// Keep the test caret inside the target element rather than on its boundary.
 			if (range->move(L"character", 1) != 1) return false;
 			range->select();
-			return true;
+
+			// MSHTML can publish the new selection asynchronously. Wait until
+			// SelectionStructTableCon observes the context required by this phase
+			// before the toolbar state is sampled.
+			const bool expectTableContext = _wcsicmp(tag, L"TD") == 0 || _wcsicmp(tag, L"TH") == 0;
+			const ULONGLONG deadline = ::GetTickCount64() + 1000;
+			for (;;)
+			{
+				const bool hasTableContext = (bool)m_doc->m_body.SelectionStructTableCon();
+				if (hasTableContext == expectTableContext)
+					return true;
+				if (::GetTickCount64() >= deadline)
+					return false;
+
+				MSG msg = {};
+				bool pumpedMessage = false;
+				while (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+				{
+					if (msg.message == WM_QUIT)
+					{
+						::PostQuitMessage(static_cast<int>(msg.wParam));
+						return false;
+					}
+					::TranslateMessage(&msg);
+					::DispatchMessage(&msg);
+					pumpedMessage = true;
+				}
+				if (!pumpedMessage)
+					::Sleep(1);
+			}
 		};
 		auto updateTableCommands = [&]()
 		{
