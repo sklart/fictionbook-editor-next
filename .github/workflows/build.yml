@@ -197,7 +197,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: FictionBookEditorNext-${{ github.sha }}-release
-          path: .
+          # The uploaded paths have `out` as their common ancestor. Restore
+          # into it so later steps consistently use out/artifacts and
+          # out/release/update.xml.
+          path: out
       - name: Prepare human-readable release notes
         shell: pwsh
         run: ./tools/build/new-release-notes.ps1 -Version "${{ github.ref_name }}" -OutputPath out/RELEASE_NOTES.md
