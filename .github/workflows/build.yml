@@ -92,6 +92,11 @@ jobs:
       - name: Write Modern build provenance
         shell: pwsh
         run: ./tools/build/build-provenance.ps1 -Action Write -Kind Modern -Configuration Release -ProfileDirectory out/editor-runtime/Modern -BatchDirectory out/target-batches/Modern -ArchHandlerDirectory out/archhandler/Modern/Win32/Release -PlatformToolset v143
+      - name: Ensure NSIS 3.12
+        shell: pwsh
+        run: |
+          choco upgrade nsis --version=3.12.0 --no-progress --yes
+          ./tools/build/resolve-nsis.ps1 | Out-Null
       - name: Verify Modern binaries
         shell: pwsh
         run: |
@@ -141,12 +146,10 @@ jobs:
         with:
           name: FictionBookEditorNext-${{ github.sha }}-compiled
           path: out
-      - name: Install NSIS
+      - name: Ensure NSIS 3.12
         shell: pwsh
         run: |
-          if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
-            choco install nsis --no-progress --yes
-          }
+          choco upgrade nsis --version=3.12.0 --no-progress --yes
           ./tools/build/resolve-nsis.ps1 | Out-Null
       - name: Create Modern release artifacts without compiling
         shell: pwsh
