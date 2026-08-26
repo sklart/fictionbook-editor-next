@@ -70,7 +70,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_spellingPage->Create(m_hWnd);
 	m_otherPage = new CSettingsOtherDlg;
 	m_otherPage->Create(m_hWnd);
-	m_sourcePage = new CSettingsNextDlg;
+	m_sourcePage = new CSettingsSourcePage;
 	m_sourcePage->Create(m_hWnd);
 	m_hotkeysPage = new CSettingsHotkeysDlg;
 	m_hotkeysPage->Create(m_hWnd);

@@ -11,6 +11,7 @@
 #include "SettingsGeneralPage.h"
 #include "SettingsEditorPage.h"
 #include "SettingsSpellingPage.h"
+#include "SettingsSourcePage.h"
 
 enum class SettingsPageId
 {
@@ -35,7 +36,7 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	CSettingsEditorPage* m_editorPage;
 	CSettingsSpellingPage* m_spellingPage;
 	CSettingsOtherDlg* m_otherPage;
-	CSettingsNextDlg* m_sourcePage;
+	CSettingsSourcePage* m_sourcePage;
 	CSettingsHotkeysDlg* m_hotkeysPage;
 	CSettingsWordsDlg* m_wordsPage;
 	CWindow* m_pages[static_cast<int>(SettingsPageId::Count)];

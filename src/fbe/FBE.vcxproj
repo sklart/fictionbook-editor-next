@@ -316,6 +316,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <ClCompile Include="SettingsGeneralPage.cpp" />
     <ClCompile Include="SettingsEditorPage.cpp" />
     <ClCompile Include="SettingsSpellingPage.cpp" />
+    <ClCompile Include="SettingsSourcePage.cpp" />
     <ClCompile Include="SettingsDlg.cpp" />
     <ClCompile Include="SettingsHotkeysDlg.cpp" />
     <ClCompile Include="SettingsOtherDlg.cpp" />
@@ -428,6 +429,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <ClInclude Include="SettingsGeneralPage.h" />
     <ClInclude Include="SettingsEditorPage.h" />
     <ClInclude Include="SettingsSpellingPage.h" />
+    <ClInclude Include="SettingsSourcePage.h" />
     <ClInclude Include="SettingsDlg.h" />
     <ClInclude Include="SettingsHotkeysDlg.h" />
     <ClInclude Include="SettingsOtherDlg.h" />
