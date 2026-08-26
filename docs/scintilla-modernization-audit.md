@@ -52,7 +52,7 @@ Harness генерирует XML, делает один warm-up и семь из
 
 ## Source load / `SCI_ALLOCATELINES` benchmark
 
-Методика: `tools/tests/test-scintilla.ps1 -EditorRuntimeDirectory .\out\editor-runtime\Modern -RunAllocateLinesBenchmark`. Для каждого размера создаётся новый Scintilla control; замеряется `SCI_APPENDTEXT` XML с плотными строками, один warm-up и семь измерений. В варианте preallocated время включает `SCI_ALLOCATELINES`, а smoke подтверждает равенство длины и числа строк.
+Методика: `tools/tests/test-scintilla.ps1 -EditorRuntimeDirectory .\out\editor-runtime -RunAllocateLinesBenchmark`. Для каждого размера создаётся новый Scintilla control; замеряется `SCI_APPENDTEXT` XML с плотными строками, один warm-up и семь измерений. В варианте preallocated время включает `SCI_ALLOCATELINES`, а smoke подтверждает равенство длины и числа строк.
 
 | Path | XML bytes | Median, ms | Min, ms | Max, ms |
 | --- | ---: | ---: | ---: | ---: |
@@ -65,7 +65,7 @@ Harness генерирует XML, делает один warm-up и семь из
 
 ## Source memory benchmark
 
-Методика: `tools/tests/test-scintilla.ps1 -EditorRuntimeDirectory .\out\editor-runtime\Modern -RunMemoryBenchmark`. Каждый размер запускается в отдельном процессе. Baseline снимается после создания входной UTF-8 строки, поэтому `text delta` отражает только Scintilla document + line indices, а `style delta` — добавочную private committed memory после полного XML lexing (`SCI_COLOURISE`). Это не измерение полного FBE process working set: DOM, Body view, conversion buffer и UI в него не входят.
+Методика: `tools/tests/test-scintilla.ps1 -EditorRuntimeDirectory .\out\editor-runtime -RunMemoryBenchmark`. Каждый размер запускается в отдельном процессе. Baseline снимается после создания входной UTF-8 строки, поэтому `text delta` отражает только Scintilla document + line indices, а `style delta` — добавочную private committed memory после полного XML lexing (`SCI_COLOURISE`). Это не измерение полного FBE process working set: DOM, Body view, conversion buffer и UI в него не входят.
 
 | XML bytes | Text + line indices, MiB | XML styling, MiB | Scintilla total, MiB |
 | ---: | ---: | ---: | ---: |

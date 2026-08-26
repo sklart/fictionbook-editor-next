@@ -35,3 +35,13 @@ function Test-FbePrereleaseVersion {
     $match = [regex]::Match($Version, '^(?<core>[^-+]+)(?:-(?<pre>[^+]+))?(?:\+(?<meta>.+))?$')
     return $match.Success -and (Test-FbeSemVer $Version) -and $match.Groups['pre'].Success
 }
+
+function Test-FbeLegacy308MigrationRequired {
+    <#
+    The only released client that still selects a Win7 profile is v3.0.8-rc.1.
+    Keep its compatibility bridge deliberately narrow: all 3.0.8 releases may
+    publish byte-identical legacy aliases, while future release lines may not.
+    #>
+    param([Parameter(Mandatory)][string]$Version)
+    return (Get-FbeBaseVersion $Version) -eq '3.0.8'
+}

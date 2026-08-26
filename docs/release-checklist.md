@@ -58,17 +58,10 @@ Table-regression suite намеренно opt-in и для обычной portab
 
 ## Что теперь делается автоматически
 
-При создании установщика сценарий выпуска сам синхронизирует в
-[update.xml](D:\Download\FBeditor\update.xml):
-
-- `Name`;
-- `Date`;
-- `Version`;
-- `Beta`;
-- `DownloadUrl`;
-- `SHA256`.
-
-Ручное редактирование этих полей перед обычным релизом не требуется.
+Создание артефактов не меняет опубликованные `update.xml` и
+`update-prerelease.xml`. Для tag workflow создаёт candidate manifest в
+`out\release\update.xml`; только publish job после фактической публикации
+обновляет соответствующий feed.
 
 Также автоматически делается следующее:
 
@@ -77,6 +70,10 @@ Table-regression suite намеренно opt-in и для обычной portab
 - собираются ZIP portable, ZIP symbols и NSIS-установщик;
 - записываются SHA-256 в `out\artifacts\SHA256SUMS.txt`.
 
+Для релизов линии 3.0.8 дополнительно могут появиться `-win7-` setup и portable
+файлы. Это временные byte-identical aliases универсальных артефактов для
+обновления опубликованного `v3.0.8-rc.1`, а не второй build или пакет.
+
 ## Что проверить перед публикацией GitHub Release
 
 Для тега `vX.Y.Z-beta.N` или `vX.Y.Z-rc.N` workflow публикует GitHub prerelease и обновляет только `update-prerelease.xml`. Для `vX.Y.Z` он обновляет оба feed: `update.xml` и `update-prerelease.xml`. Candidate manifest создаётся с `-ReleaseTag`; имена файлов остаются с базовой версией.
@@ -84,9 +81,11 @@ Table-regression suite намеренно opt-in и для обычной portab
 Описание GitHub Release — единственный актуальный источник пользовательских примечаний. `new-release-notes.ps1` задаёт лишь исходный текст для нового release; повторный workflow не передаёт `--notes-file` существующему release и сохраняет ручные правки body.
 
 1. Тег должен иметь вид `v<version>`, например `v3.0.0`.
-2. `DownloadUrl` в `update.xml` должен указывать на тот же тег и имя
-   установщика.
-3. `SHA256` в `update.xml` должен совпадать с установщиком из `out\artifacts`.
+2. Candidate manifest должен пройти `validate-update-manifest.ps1`; после
+   публикации `DownloadUrl` и `SHA256` stable feed должны ссылаться на setup
+   того же тега.
+3. `SHA256` в опубликованном stable feed должен совпадать с установщиком из
+   `out\artifacts`.
 4. Архив `*-symbols.zip` нужно сохранить вместе с релизом для разбора будущих
    minidump.
 

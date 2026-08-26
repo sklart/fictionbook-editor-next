@@ -40,10 +40,34 @@ if (-not $hasArtifacts) {
     Write-Host "Проверен legacy manifest: $ManifestPath"
     return
 }
-if ($document.FBE.Artifacts.Modern -or $document.FBE.Artifacts.Win7) {
-    # Published 3.0.8-rc.1 uses the former profile schema.  It remains
-    # readable only as a migration input; newly generated manifests use the
-    # flat unified nodes below.
+function Test-ArtifactPair {
+    param(
+        [Parameter(Mandatory)] $Node,
+        [Parameter(Mandatory)][hashtable]$Names,
+        [Parameter(Mandatory)][string]$Label
+    )
+    foreach ($kind in @('Setup', 'Portable')) {
+        $url = [string]$Node.($kind + 'Url'); $hash = [string]$Node.($kind + 'SHA256')
+        Require ($hash -match '^[0-9A-Fa-f]{64}$') "$Label $kind SHA256 недопустим."
+        $expected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/$($Names[$kind])"
+        Require ($url -ceq $expected) "$Label $kind URL не является доверенным URL ожидаемого артефакта."
+    }
+}
+
+$hasUnifiedNodes = $null -ne $document.FBE.Artifacts.SetupUrl -or
+    $null -ne $document.FBE.Artifacts.SetupSHA256 -or
+    $null -ne $document.FBE.Artifacts.PortableUrl -or
+    $null -ne $document.FBE.Artifacts.PortableSHA256
+$hasLegacyNodes = $null -ne $document.FBE.Artifacts.Modern -or $null -ne $document.FBE.Artifacts.Win7
+Require ($hasUnifiedNodes -or $hasLegacyNodes) 'Artifacts должен содержать unified или legacy migration nodes.'
+
+if ($hasUnifiedNodes) {
+    Test-ArtifactPair -Node $document.FBE.Artifacts -Names $artifacts -Label 'Unified artifact'
+}
+
+if ($hasLegacyNodes) {
+    # Published 3.0.8-rc.1 uses the former profile schema. It is also emitted
+    # only as a temporary migration bridge alongside validated unified nodes.
     $legacyProfiles = @{
         Modern = @{ Setup = "FictionBookEditorNext-$base-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win32-portable.zip" }
         Win7 = @{ Setup = "FictionBookEditorNext-$base-win7-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win7-win32-portable.zip" }
@@ -51,21 +75,8 @@ if ($document.FBE.Artifacts.Modern -or $document.FBE.Artifacts.Win7) {
     foreach ($profile in $legacyProfiles.Keys) {
         $node = $document.FBE.Artifacts.$profile
         Require ($null -ne $node) "Отсутствует legacy Artifacts/$profile."
-        foreach ($kind in @('Setup', 'Portable')) {
-            $url = [string]$node.($kind + 'Url'); $hash = [string]$node.($kind + 'SHA256')
-            Require ($hash -match '^[0-9A-Fa-f]{64}$') "Legacy $profile/$kind SHA256 недопустим."
-            $expected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/$($legacyProfiles[$profile][$kind])"
-            Require ($url -ceq $expected) "Legacy $profile/$kind URL не является доверенным URL ожидаемого артефакта."
-        }
+        Test-ArtifactPair -Node $node -Names $legacyProfiles[$profile] -Label "Legacy $profile"
     }
-    Write-Host "Проверен legacy profile manifest: $ManifestPath"
-    return
-}
-foreach ($kind in @('Setup', 'Portable')) {
-    $url = [string]$document.FBE.Artifacts.($kind + 'Url'); $hash = [string]$document.FBE.Artifacts.($kind + 'SHA256')
-    Require ($hash -match '^[0-9A-Fa-f]{64}$') "$kind SHA256 недопустим."
-    $expected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/$($artifacts[$kind])"
-    Require ($url -ceq $expected) "$kind URL не является доверенным URL ожидаемого артефакта."
 }
 if ($type -eq 'prerelease') { Require ($null -eq $document.FBE.DownloadUrl -and $null -eq $document.FBE.SHA256) 'Prerelease manifest не должен выдавать legacy setup как универсальный artifact.' }
 if ($type -eq 'stable' -and $document.FBE.DownloadUrl) {

@@ -2,18 +2,31 @@
 param(
     [ValidateSet('Win32')][string]$Platform = 'Win32',
     [string]$ArtifactsDirectory,
-    [switch]$SkipInstaller,
+    [string]$ReleaseTag,
     [switch]$AllowLegacyWin7Aliases
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $PSScriptRoot 'UpdateVersion.ps1')
 if (-not $ArtifactsDirectory) { $ArtifactsDirectory = Join-Path $repoRoot 'out\artifacts' }
 $ArtifactsDirectory = (Resolve-Path -LiteralPath $ArtifactsDirectory).Path
 $versionText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\version.h')
 $match = [regex]::Match($versionText, 'FBE_VERSION_STRING\s+"(?<version>\d+\.\d+\.\d+)"')
 if (-not $match.Success) { throw 'Не найден FBE_VERSION_STRING.' }
 $version = $match.Groups['version'].Value
+$releaseVersion = if ($ReleaseTag) {
+    if (-not (Test-FbeReleaseTag $ReleaseTag)) { throw "Недопустимый release tag: $ReleaseTag" }
+    $ReleaseTag.Substring(1)
+} else { $version }
+if ((Get-FbeBaseVersion $releaseVersion) -ne $version) { throw "ReleaseTag $ReleaseTag не соответствует базовой версии $version." }
+$legacy308MigrationRequired = -not [string]::IsNullOrWhiteSpace($ReleaseTag) -and (Test-FbeLegacy308MigrationRequired $releaseVersion)
+if ($AllowLegacyWin7Aliases -and -not $legacy308MigrationRequired) {
+    throw 'Legacy Win7 aliases допустимы только для migration series 3.0.8.'
+}
+if ($legacy308MigrationRequired -and -not $AllowLegacyWin7Aliases) {
+    throw 'Для migration series 3.0.8 необходимо явно разрешить legacy Win7 aliases.'
+}
 $architecture = $Platform.ToLowerInvariant()
 $expected = @(
     "FictionBookEditorNext-$version-$architecture-setup.exe",
@@ -62,7 +75,9 @@ try {
     $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('/', '\').TrimEnd('\') })
     $manifest = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'packaging\package-manifest.json') | ConvertFrom-Json
     foreach ($required in @($manifest.core.required) + @($manifest.portable.required)) {
-        if ($entries -notcontains $required) { throw "Portable archive is missing required file: $required" }
+        if ($entries -notcontains $required -and -not ($entries | Where-Object { $_ -like "$required\*" })) {
+            throw "Portable archive is missing required file or directory: $required"
+        }
     }
     foreach ($directory in @($manifest.core.runtimeDirectories)) {
         if (-not ($entries | Where-Object { $_ -like "$directory\*" })) { throw "Portable archive is missing runtime directory: $directory" }
@@ -78,7 +93,17 @@ try {
 finally { $archive.Dispose() }
 $symbolArchive = [IO.Compression.ZipFile]::OpenRead($symbolsZip)
 try {
-    if (-not ($symbolArchive.Entries | Where-Object { $_.FullName -match '\.pdb$' })) { throw 'Symbols archive contains no PDB files.' }
+    $symbolEntries = @($symbolArchive.Entries | ForEach-Object { $_.FullName.Replace('/', '\').TrimStart('\') })
+    $requiredSymbols = @(
+        'FBE.pdb', 'FBV.pdb', 'ExportHTML.pdb', 'ExportDOCX.pdb', 'ExportEPUB.pdb',
+        'ImportEPUB.pdb', 'ImportEPUBLunaSVG.pdb', 'ExportDOCXBatch.pdb',
+        'ExportEPUBBatch.pdb', 'ImportEPUBBatch.pdb',
+        'FBShell.propertyhandler.win32.pdb', 'FBShell.propertyhandler.x64.pdb'
+    )
+    foreach ($symbol in $requiredSymbols) {
+        if ($symbolEntries -notcontains $symbol) { throw "Symbols archive is missing required PDB: $symbol" }
+    }
+    if ($symbolEntries | Where-Object { $_ -match '\.(obj|lib|exp)$' }) { throw 'Symbols archive contains build artifacts.' }
 }
 finally { $symbolArchive.Dispose() }
 Write-Host "Unified release artifacts verified: $ArtifactsDirectory"

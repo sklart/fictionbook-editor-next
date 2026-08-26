@@ -101,7 +101,6 @@ $requiredSymbols = @(
     "FBShell.pdb"
 )
 
-if ($true) {
 & (Join-Path $repoRoot "tools\tests\test-update-manifest-candidate.ps1")
 & (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
@@ -251,7 +250,6 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-uninstall-user-data.ps1")
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
-}
 
 if ($FullValidation) {
     Write-Host 'Running FULL GUI, production, stress and benchmark validation.'
@@ -276,35 +274,31 @@ $archHandlerTestArguments.HandlerDirectory = $archHandlerOutputDir
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1") `
     -EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime")
 
-if ($true) {
-    # Every binary in the single release must pass the Windows 7 import gate.
-    $sharedReleaseFiles = @(
-        "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
-        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll"
-    )
-    if ($true) {
-        & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
-            -Configuration $Configuration `
-            -OutputDirectory $outputDir `
-            -IncludeNames $sharedReleaseFiles
-    }
+# Every binary in the single release must pass the Windows 7 import gate.
+$sharedReleaseFiles = @(
+    "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
+    "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll"
+)
+& (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+    -Configuration $Configuration `
+    -OutputDirectory $outputDir `
+    -IncludeNames $sharedReleaseFiles
 
-    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
-        -Configuration $Configuration `
-        -OutputDirectory $batchOutputDir `
-        -IncludeNames @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")
+& (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+    -Configuration $Configuration `
+    -OutputDirectory $batchOutputDir `
+    -IncludeNames @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")
 
-    $win7EditorRuntimeDir = Join-Path $repoRoot "out\editor-runtime"
-    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
-        -Configuration $Configuration `
-        -OutputDirectory $win7EditorRuntimeDir `
-        -IncludeNames @("Scintilla.dll", "Lexilla.dll")
+$editorRuntimeDir = Join-Path $repoRoot "out\editor-runtime"
+& (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+    -Configuration $Configuration `
+    -OutputDirectory $editorRuntimeDir `
+    -IncludeNames @("Scintilla.dll", "Lexilla.dll")
 
-    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
-        -Configuration $Configuration `
-        -OutputDirectory $archHandlerOutputDir `
-        -IncludeNames @("ZipHandler.exe", "RarHandler.exe")
-}
+& (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+    -Configuration $Configuration `
+    -OutputDirectory $archHandlerOutputDir `
+    -IncludeNames @("ZipHandler.exe", "RarHandler.exe")
 
 function Test-BinarySecurityFlags {
     param(
@@ -391,12 +385,10 @@ foreach ($propertyHandler in @(
         if ($info.FileVersion -ne $expectedVersion -or $info.ProductVersion -ne $expectedVersion) {
             throw "$path имеет версии File='$($info.FileVersion)', Product='$($info.ProductVersion)'; ожидалось '$expectedVersion'."
         }
-        if ($true) {
-            & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
-                -Configuration $Configuration `
-                -OutputDirectory $directory `
-                -IncludeNames @("FBShell.dll")
-        }
+        & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+            -Configuration $Configuration `
+            -OutputDirectory $directory `
+            -IncludeNames @("FBShell.dll")
     }
 
 foreach ($name in $forbiddenFiles) {

@@ -133,7 +133,7 @@ function Invoke-NativeTool {
     }
 }
 
-& $importVsDevEnvironmentScript -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
+& $importVsDevEnvironmentScript -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset -VcVarsVersion '14.44'
 
 $muirctPath = Get-ChildItem (Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin") -Recurse -Filter "muirct.exe" |
     Sort-Object FullName -Descending |

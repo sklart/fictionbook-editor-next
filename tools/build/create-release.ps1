@@ -11,7 +11,6 @@ param(
     [switch]$SkipUpx,
     [switch]$WarningsAsErrors,
     [switch]$SkipBuild,
-    [switch]$SkipInstaller,
     [switch]$PreserveArtifacts,
     # Общие property handler и MUI уже подготовлены современным этапом.
     [switch]$SkipPropertyHandlerBuild,
@@ -64,6 +63,7 @@ if (-not $versionMatch.Success) {
 }
 
 $version = $versionMatch.Groups["version"].Value
+$legacy308MigrationRequired = $false
 
 if ($ReleaseTag) {
     if (-not (Test-FbeReleaseTag $ReleaseTag)) {
@@ -74,6 +74,7 @@ if ($ReleaseTag) {
     if ($releaseBaseVersion -ne $version) { throw "Тег релиза '$ReleaseTag' не совпадает с базовой версией '$version'." }
     $tagIsPrerelease = Test-FbePrereleaseVersion $releaseVersion
     if ($Prerelease -ne $tagIsPrerelease) { throw 'Параметр Prerelease должен соответствовать ReleaseTag.' }
+    $legacy308MigrationRequired = Test-FbeLegacy308MigrationRequired $releaseVersion
 }
 elseif ($Prerelease) { throw "Для предварительного выпуска требуется тег с суффиксом, например v$version-rc.1." }
 $architecture = $Platform.ToLowerInvariant()
@@ -270,16 +271,14 @@ Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath $portableZi
 
 # The portable acceptance scenario is exercised against the materialised
 # payload and its freshly created ZIP.
-if ($true) {
-    & (Join-Path $repoRoot 'tools\tests\test-portable-package-smoke.ps1') `
-        -PackageDirectory $portableDir `
-        -PortableZip $portableZip
-    & (Join-Path $repoRoot 'tools\tests\test-bundled-plugin-local-activation.ps1') `
-        -Configuration $Configuration `
-        -RuntimeDirectory $portableDir
-    if ($FullValidation) {
-        & (Join-Path $repoRoot 'tools\tests\test-portable-gui-state.ps1') -PackageDirectory $portableDir
-    }
+& (Join-Path $repoRoot 'tools\tests\test-portable-package-smoke.ps1') `
+    -PackageDirectory $portableDir `
+    -PortableZip $portableZip
+& (Join-Path $repoRoot 'tools\tests\test-bundled-plugin-local-activation.ps1') `
+    -Configuration $Configuration `
+    -RuntimeDirectory $portableDir
+if ($FullValidation) {
+    & (Join-Path $repoRoot 'tools\tests\test-portable-gui-state.ps1') -PackageDirectory $portableDir
 }
 
 if (Test-Path -LiteralPath $symbolsDir) {
@@ -334,8 +333,7 @@ handler для 64-bit Explorer.
 )
 Compress-Archive -Path (Join-Path $symbolsDir "*") -DestinationPath $symbolsZip -CompressionLevel Optimal
 
-if (-not $SkipInstaller) {
-    & (Join-Path $PSScriptRoot "prepare-installer.ps1") `
+& (Join-Path $PSScriptRoot "prepare-installer.ps1") `
         -CoreDirectory $coreDir `
         -IntegrationDirectory $integrationDir `
         -OutputDirectory $installerInputDir
@@ -367,12 +365,11 @@ if (-not $SkipInstaller) {
         Pop-Location
     }
 
-    if (-not (Test-Path -LiteralPath $setupArtifact)) {
-        throw "NSIS завершился без создания инсталлятора по пути $setupArtifact."
-    }
+if (-not (Test-Path -LiteralPath $setupArtifact)) {
+    throw "NSIS завершился без создания инсталлятора по пути $setupArtifact."
 }
 
-if ($Prerelease) {
+if ($legacy308MigrationRequired) {
     # Compatibility bridge for the published v3.0.8-rc.1 Win7 updater.
     # These are copies, never separately built artifacts.
     Copy-Item -LiteralPath $setupArtifact -Destination $legacyWin7Setup -Force
@@ -398,10 +395,8 @@ $verifyArtifactArguments = @{
     Platform = $Platform
     ArtifactsDirectory = $artifactsDir
 }
-if ($Prerelease) { $verifyArtifactArguments.AllowLegacyWin7Aliases = $true }
-if ($SkipInstaller) {
-    $verifyArtifactArguments.SkipInstaller = $true
-}
+if ($ReleaseTag) { $verifyArtifactArguments.ReleaseTag = $ReleaseTag }
+if ($legacy308MigrationRequired) { $verifyArtifactArguments.AllowLegacyWin7Aliases = $true }
 if (-not $SkipArtifactVerification) {
     & (Join-Path $PSScriptRoot "verify-artifacts.ps1") @verifyArtifactArguments
 }

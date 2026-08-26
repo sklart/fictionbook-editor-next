@@ -20,6 +20,7 @@ if (-not (Test-FbeReleaseTag $ReleaseTag)) { throw "Недопустимый rel
 $releaseVersion = $ReleaseTag.Substring(1)
 if ((Get-FbeBaseVersion $releaseVersion) -ne $version) { throw "ReleaseTag $ReleaseTag не соответствует base version $version." }
 $releaseType = if (Test-FbePrereleaseVersion $releaseVersion) { 'prerelease' } else { 'stable' }
+$legacy308MigrationRequired = Test-FbeLegacy308MigrationRequired $releaseVersion
 $root = (Resolve-Path -LiteralPath $ArtifactsRoot).Path
 
 function Get-ArtifactMetadata([string]$Name) {
@@ -32,7 +33,7 @@ $setup = Get-ArtifactMetadata "FictionBookEditorNext-$version-win32-setup.exe"
 $portable = Get-ArtifactMetadata "FictionBookEditorNext-$version-win32-portable.zip"
 $legacyWin7Setup = $null
 $legacyWin7Portable = $null
-if ($releaseType -eq 'prerelease') {
+if ($legacy308MigrationRequired) {
     # Transitional aliases are byte-identical copies for the already released
     # 3.0.8-rc.1 Win7 updater. They are not a second build profile.
     $legacyWin7Setup = Get-ArtifactMetadata "FictionBookEditorNext-$version-win7-win32-setup.exe"
@@ -52,7 +53,7 @@ $artifacts = $document.CreateElement('Artifacts'); [void]$fbe.AppendChild($artif
 foreach ($pair in @(@('SetupUrl', $setup.Url), @('SetupSHA256', $setup.Hash), @('PortableUrl', $portable.Url), @('PortableSHA256', $portable.Hash))) {
     $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$artifacts.AppendChild($node)
 }
-if ($releaseType -eq 'prerelease') {
+if ($legacy308MigrationRequired) {
     $modern = $document.CreateElement('Modern'); [void]$artifacts.AppendChild($modern)
     $win7 = $document.CreateElement('Win7'); [void]$artifacts.AppendChild($win7)
     foreach ($pair in @(@('SetupUrl', $setup.Url), @('SetupSHA256', $setup.Hash), @('PortableUrl', $portable.Url), @('PortableSHA256', $portable.Hash))) {

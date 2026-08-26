@@ -14,6 +14,7 @@ foreach ($tag in @('v3.2.0', 'v3.2.0-rc.1', 'v3.2.0-beta.12')) { if (-not (Test-
 foreach ($tag in @('3.2.0', 'v', 'v3.2', 'v03.2.0', 'v3.2.0-rc.01', 'v3.2.0/rc.1', 'v3.2.0-rc..1')) { if (Test-FbeReleaseTag $tag) { throw "Invalid ReleaseTag accepted: $tag" } }
 if ((Get-FbeBaseVersion '3.2.0-rc.2+build.4') -ne '3.2.0' -or (Get-FbeBaseVersion '3.2.0') -ne '3.2.0' -or (Get-FbeBaseVersion 'bad')) { throw 'Get-FbeBaseVersion contract failed.' }
 if ((Test-FbePrereleaseVersion '3.2.0') -or (Test-FbePrereleaseVersion '3.2.0+build.1') -or (Test-FbePrereleaseVersion '3.2.0+build-foo') -or (Test-FbePrereleaseVersion '3.2.0+build.foo-bar') -or -not (Test-FbePrereleaseVersion '3.2.0-beta.1') -or -not (Test-FbePrereleaseVersion '3.2.0-rc.2+build.1') -or -not (Test-FbePrereleaseVersion '3.2.0-rc.1+build-foo')) { throw 'Test-FbePrereleaseVersion contract failed.' }
+if (-not (Test-FbeLegacy308MigrationRequired '3.0.8-rc.2') -or -not (Test-FbeLegacy308MigrationRequired '3.0.8') -or (Test-FbeLegacy308MigrationRequired '3.0.9') -or (Test-FbeLegacy308MigrationRequired '4.0.0-rc.1')) { throw 'Legacy 3.0.8 migration policy contract failed.' }
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (-not $vs) { throw 'Не найдены C++ build tools.' }

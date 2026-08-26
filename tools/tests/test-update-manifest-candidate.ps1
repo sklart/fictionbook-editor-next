@@ -25,10 +25,26 @@ $stableCandidate = Join-Path $fixture 'update-stable.xml'
 & (Join-Path $root 'tools\build\validate-update-manifest.ps1') -ManifestPath $stableCandidate -ExpectedReleaseTag "v$version" -Feed StableFeed
 [xml]$stableManifest = Get-Content -Raw -LiteralPath $stableCandidate
 if ([string]::IsNullOrWhiteSpace([string]$stableManifest.FBE.DownloadUrl)) { throw 'Stable candidate must retain legacy setup fields.' }
-$tampered = Join-Path $fixture 'update-tampered.xml'
-$content = Get-Content -Raw -LiteralPath $stableCandidate
-[IO.File]::WriteAllText($tampered, $content.Replace('github.com/sklart/fictionbook-editor-next', 'github.com/example/other'), [Text.UTF8Encoding]::new($false))
-$accepted = $false
-try { & (Join-Path $root 'tools\build\validate-update-manifest.ps1') -ManifestPath $tampered -Feed StableFeed; $accepted = $true } catch { }
-if ($accepted) { throw 'Manifest validator accepted an untrusted artifact URL.' }
+if ($null -eq $stableManifest.FBE.Artifacts.Modern -or $null -eq $stableManifest.FBE.Artifacts.Win7) { throw '3.0.8 stable candidate must retain the rc.1 migration nodes.' }
+if ($stableManifest.FBE.Artifacts.Win7.SetupSHA256 -ne $stableManifest.FBE.Artifacts.SetupSHA256) { throw 'Stable Win7 alias must be byte-identical to universal setup.' }
+
+function Assert-ValidatorRejects([string]$Name, [scriptblock]$Mutate) {
+    [xml]$copy = Get-Content -Raw -LiteralPath $candidate
+    & $Mutate $copy
+    $path = Join-Path $fixture "negative-$Name.xml"
+    $copy.Save($path)
+    $accepted = $false
+    try { & (Join-Path $root 'tools\build\validate-update-manifest.ps1') -ManifestPath $path -Feed PrereleaseFeed; $accepted = $true } catch { }
+    if ($accepted) { throw "Mixed-schema validator accepted invalid unified $Name." }
+}
+
+Assert-ValidatorRejects 'setup-url' { param($xml) $xml.FBE.Artifacts.SetupUrl = 'https://github.com/example/other/releases/download/v3.0.8-rc.2/FictionBookEditorNext-3.0.8-win32-setup.exe' }
+Assert-ValidatorRejects 'portable-url' { param($xml) $xml.FBE.Artifacts.PortableUrl = 'https://github.com/example/other/releases/download/v3.0.8-rc.2/FictionBookEditorNext-3.0.8-win32-portable.zip' }
+Assert-ValidatorRejects 'setup-hash' { param($xml) $xml.FBE.Artifacts.SetupSHA256 = 'invalid' }
+Assert-ValidatorRejects 'portable-hash' { param($xml) $xml.FBE.Artifacts.PortableSHA256 = 'invalid' }
+
+. (Join-Path $root 'tools\build\UpdateVersion.ps1')
+if (-not (Test-FbeLegacy308MigrationRequired '3.0.8-rc.2') -or -not (Test-FbeLegacy308MigrationRequired '3.0.8') -or (Test-FbeLegacy308MigrationRequired '3.0.9') -or (Test-FbeLegacy308MigrationRequired '3.1.0-rc.1')) {
+    throw 'Legacy migration policy must be limited to the 3.0.8 release line.'
+}
 Write-Host 'Update manifest candidate behavior passed.'
