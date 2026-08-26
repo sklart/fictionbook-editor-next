@@ -4,6 +4,23 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$retiredArtifactPattern = 'res_(rus|ukr)\.(dll|pdb)'
+
+function Find-RetiredArtifactReferences([string]$Path) {
+    $items = if ((Get-Item -LiteralPath $Path).PSIsContainer) {
+        Get-ChildItem -LiteralPath $Path -Recurse -File
+    }
+    else {
+        Get-Item -LiteralPath $Path
+    }
+
+    foreach ($item in $items) {
+        foreach ($match in (Select-String -LiteralPath $item.FullName -Pattern $retiredArtifactPattern -AllMatches)) {
+            '{0}:{1}:{2}' -f $match.Path, $match.LineNumber, $match.Line.Trim()
+        }
+    }
+}
+
 foreach ($legacyDirectory in @('src\locales\res_rus', 'src\locales\res_ukr')) {
     if (Test-Path -LiteralPath (Join-Path $repoRoot $legacyDirectory)) {
         throw "Retired FBE locale project directory still exists: $legacyDirectory"
@@ -12,14 +29,14 @@ foreach ($legacyDirectory in @('src\locales\res_rus', 'src\locales\res_ukr')) {
 $paths = @('src\fbe', 'FBE.sln', 'localization\language-packs.json')
 foreach ($relative in $paths) {
     $path = Join-Path $repoRoot $relative
-    $matches = @(rg -n 'res_(rus|ukr)\.(dll|pdb)' $path)
+    $matches = @(Find-RetiredArtifactReferences $path)
     if ($matches.Count) { throw "Retired FBE locale DLL/PDB reference found in ${relative}:`n$($matches -join "`n")" }
 }
 
 $buildFiles = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tools\build') -File |
     Where-Object { $_.Name -ne 'verify-release.ps1' })
 foreach ($file in $buildFiles) {
-    $matches = @(rg -n 'res_(rus|ukr)\.(dll|pdb)' $file.FullName)
+    $matches = @(Find-RetiredArtifactReferences $file.FullName)
     if ($matches.Count) { throw "Retired FBE locale DLL/PDB reference found in build script $($file.Name):`n$($matches -join "`n")" }
 }
 
