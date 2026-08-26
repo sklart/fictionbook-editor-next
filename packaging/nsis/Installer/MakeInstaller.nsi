@@ -816,6 +816,11 @@ skip_shell_mui:
 	File "${INPUTDIR}\THIRD-PARTY-NOTICES.md"
 	SetOutPath "$INSTDIR\THIRD-PARTY-LICENSES"
 	File /r "${INPUTDIR}\THIRD-PARTY-LICENSES\*.*"
+  ; Bundled plug-ins are discovered from this local manifest. The DLLs are
+  ; optional components below, but the catalog itself is part of the editor
+  ; runtime and must always be installed.
+  SetOutPath "$INSTDIR\Plugins"
+  File "${INPUTDIR}\Plugins\plugins.json"
   SetOutPath "$INSTDIR"
 
   StrCmp $DeploymentMode "portable" portable_core_done installed_core_state
@@ -1114,16 +1119,6 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 			File "${INPUTDIR}\ExportEPUB.dll"
 		SectionEnd
 	SectionGroupEnd
-
-	; The editor activates bundled plug-ins via their local class factories.
-	; Registry COM remains available only for external legacy consumers.
-	Section /o "Legacy COM compatibility" LegacyComCompatibility_id
-		RegDll "$INSTDIR\ImportEPUB.dll"
-		RegDll "$INSTDIR\ExportHTML.dll"
-		RegDll "$INSTDIR\ExportDOCX.dll"
-		RegDll "$INSTDIR\ExportEPUB.dll"
-		WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "LegacyComInstalled" 1
-	SectionEnd
 
 	Section /o $(Plugin_BatchConverters) BatchConverters_id
 		SetOutPath "$INSTDIR"

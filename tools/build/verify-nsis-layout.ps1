@@ -44,6 +44,13 @@ if ($nsiText -notmatch [regex]::Escape('SetOutPath "$INSTDIR\Lang\Shell"') -or
     $nsiText -notmatch [regex]::Escape('File "${INPUTDIR}\Lang\Shell\FBVVerbResources.dll"')) {
     throw "MakeInstaller.nsi должен устанавливать MUI-host shell-команды в Lang\\Shell."
 }
+if ($nsiText -notmatch [regex]::Escape('SetOutPath "$INSTDIR\Plugins"') -or
+    $nsiText -notmatch [regex]::Escape('File "${INPUTDIR}\Plugins\plugins.json"')) {
+    throw "MakeInstaller.nsi должен устанавливать манифест bundled plug-ins в Plugins\\plugins.json."
+}
+if ($nsiText -match [regex]::Escape('Section /o "Legacy COM compatibility"')) {
+    throw "MakeInstaller.nsi больше не должен предлагать компонент Legacy COM compatibility."
+}
 if ($nsiText -notmatch [regex]::Escape('@$INSTDIR\Lang\Shell\FBVVerbResources.dll,-109;v2')) {
     throw "MUIVerb shell-команды должен ссылаться на модуль в Lang\\Shell."
 }

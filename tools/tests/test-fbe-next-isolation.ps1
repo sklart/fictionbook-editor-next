@@ -71,8 +71,9 @@ foreach ($name in $expectedGuids.Keys) {
 }
 
 $installer = Get-ProjectText 'packaging\nsis\Installer\MakeInstaller.nsi'
-Assert-Contains $installer 'Legacy COM compatibility' 'Опциональная legacy COM-совместимость установщика'
-Assert-Contains $installer 'The editor activates bundled plug-ins via their local class factories' 'Core-установка не зависит от RegDll'
+Assert-NotContains $installer 'RegDll "$INSTDIR\ImportEPUB.dll"' 'Core-установка не зависит от RegDll'
+Assert-Contains $installer 'File "${INPUTDIR}\Plugins\plugins.json"' 'Установщик кладёт манифест bundled plug-ins'
+Assert-NotContains $installer 'Section /o "Legacy COM compatibility"' 'Установщик не предлагает устаревшую COM-совместимость'
 Assert-Contains $installer 'DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam\FictionBook Editor Next"' 'Удаление ключей Next деинсталлятором'
 Assert-Contains $installer 'App Paths\FictionBookEditorNext.exe' 'Изолированный ключ App Paths FBE Next'
 Assert-NotContains $installer 'DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam"' 'Деинсталлятор Next'
