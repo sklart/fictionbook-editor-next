@@ -313,6 +313,9 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     </ClCompile>
     <ClCompile Include="script.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="SettingsGeneralPage.cpp" />
+    <ClCompile Include="SettingsEditorPage.cpp" />
+    <ClCompile Include="SettingsSpellingPage.cpp" />
     <ClCompile Include="SettingsDlg.cpp" />
     <ClCompile Include="SettingsHotkeysDlg.cpp" />
     <ClCompile Include="SettingsOtherDlg.cpp" />
@@ -422,6 +425,9 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <ClInclude Include="SearchReplace.h" />
     <ClInclude Include="XMLSerializer\Serializable.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="SettingsGeneralPage.h" />
+    <ClInclude Include="SettingsEditorPage.h" />
+    <ClInclude Include="SettingsSpellingPage.h" />
     <ClInclude Include="SettingsDlg.h" />
     <ClInclude Include="SettingsHotkeysDlg.h" />
     <ClInclude Include="SettingsOtherDlg.h" />

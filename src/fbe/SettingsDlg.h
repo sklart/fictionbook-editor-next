@@ -8,6 +8,22 @@
 #include "SettingsNextDlg.h"
 #include "SettingsHotkeysDlg.h"
 #include "SettingsWordsDlg.h"
+#include "SettingsGeneralPage.h"
+#include "SettingsEditorPage.h"
+#include "SettingsSpellingPage.h"
+
+enum class SettingsPageId
+{
+	General,
+	Editor,
+	Source,
+	Images,
+	Spelling,
+	Keyboard,
+	Words,
+	Advanced,
+	Count
+};
 
 // CSettingsDlg
 
@@ -15,12 +31,26 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 {
 	CListBox m_navigation;
 	COptDlg* m_optionsPage;
+	CSettingsGeneralPage* m_generalPage;
+	CSettingsEditorPage* m_editorPage;
+	CSettingsSpellingPage* m_spellingPage;
 	CSettingsOtherDlg* m_otherPage;
 	CSettingsNextDlg* m_sourcePage;
 	CSettingsHotkeysDlg* m_hotkeysPage;
 	CSettingsWordsDlg* m_wordsPage;
-	CWindow* m_pages[8];
-	int m_currentPage;
+	CWindow* m_pages[static_cast<int>(SettingsPageId::Count)];
+	SettingsPageId m_currentPage;
+	CRect m_navigationRect;
+	CSize m_minimumWindowSize;
+	int m_pageLeft;
+	int m_pageTop;
+	int m_pageRightMargin;
+	int m_pageBottomMargin;
+	int m_buttonWidth;
+	int m_buttonHeight;
+	int m_buttonGap;
+	int m_buttonBottomMargin;
+	int m_navigationBottomGap;
 
 public:
 	CSettingsDlg();
@@ -48,7 +78,8 @@ END_MSG_MAP()
 	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
 private:
-	void SelectPage(int page);
+	void SelectPage(SettingsPageId page);
 	void LayoutControls(int width, int height);
 	CRect GetPageRect();
+	static int PageIndex(SettingsPageId page);
 };

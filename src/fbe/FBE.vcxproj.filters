@@ -99,6 +99,15 @@
     <ClCompile Include="Settings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SettingsGeneralPage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingsEditorPage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingsSpellingPage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="SettingsDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -230,6 +239,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Settings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingsGeneralPage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingsEditorPage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingsSpellingPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SettingsDlg.h">
