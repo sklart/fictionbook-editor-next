@@ -9130,14 +9130,14 @@ void CMainFrame::UpdateStatusBar()
 		const int line = m_source.SendMessage(SCI_LINEFROMPOSITION, caret);
 		const int lineStart = m_source.SendMessage(SCI_POSITIONFROMLINE, line);
 		const int column = m_source.SendMessage(SCI_COUNTCHARACTERS, lineStart, caret);
-		CString format;
-		FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_POSITION, format, MAX_LOAD_STRING);
-		position.Format(format, line + 1, column + 1);
+		wchar_t positionFormat[MAX_LOAD_STRING + 1] = {};
+		FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_POSITION, positionFormat, MAX_LOAD_STRING);
+		position.Format(positionFormat, line + 1, column + 1);
 		const int selectionStart = m_source.SendMessage(SCI_GETSELECTIONSTART);
 		const int selectionEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
 		if (selectionStart != selectionEnd)
 		{
-			CString selectionFormat;
+			wchar_t selectionFormat[MAX_LOAD_STRING + 1] = {};
 			FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_SELECTION, selectionFormat, MAX_LOAD_STRING);
 			selection.Format(selectionFormat, m_source.SendMessage(SCI_COUNTCHARACTERS, selectionStart, selectionEnd));
 		}

@@ -1,4 +1,4 @@
-﻿﻿#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "Utils.h"
 #include "AboutBox.h"
 #include "RuntimeLocalization.h"
