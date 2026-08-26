@@ -6,7 +6,7 @@ param(
     [ValidateSet("Win32")]
     [string]$Platform = "Win32",
 
-    [string]$PlatformToolset,
+    [string]$PlatformToolset = 'v143',
 
     [switch]$SkipUpx,
     [switch]$WarningsAsErrors,
@@ -288,6 +288,7 @@ New-Item -ItemType Directory -Path $symbolsDir | Out-Null
 
 $symbolNames = @(
     "FBE.pdb",
+    "FBV.pdb",
     "ExportHTML.pdb",
     "ExportDOCX.pdb",
     "ExportEPUB.pdb",

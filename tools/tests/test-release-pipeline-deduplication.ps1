@@ -19,6 +19,9 @@ $artifacts = Text 'tools\build\verify-artifacts.ps1'
 $stage = Text 'tools\build\stage-core.ps1'
 $fingerprint = Text 'tools\build\editor-runtime-helpers.ps1'
 $migration = Text 'tools\build\UpdateVersion.ps1'
+$archHandler = Text 'tools\build\build-archhandler.ps1'
+$propertyHandler = Text 'tools\build\build-experimental-property-handler.ps1'
+$fbvMui = Text 'tools\build\build-fbv-verb-mui.ps1'
 
 foreach ($needle in @('validate:', 'build:', 'package:', 'publish:', 'Restore universal editor runtime cache', 'Build Release Win32', 'Build ArchHandler', 'Write Runtime build provenance', 'Verify universal release binaries', 'Create release artifacts without compiling', 'Verify release archives')) { Require $workflow $needle 'workflow' }
 foreach ($needle in @('CompatibilityTarget', 'EditorRuntimeOnly', 'BatchConvertersOnly', 'Restore Modern editor runtime cache', 'Restore Win7 editor runtime cache', 'Build Modern', 'Build Win7', 'target-batches/Modern', 'target-batches/Win7', 'archhandler/Modern', 'archhandler/Win7', 'artifacts/Modern', 'artifacts/Win7')) { Forbid $workflow $needle 'workflow' }
@@ -33,6 +36,13 @@ Require $verify 'out\archhandler\Win32' 'verify-release.ps1'
 Require $workflow 'Test-FbeLegacy308MigrationRequired' 'workflow migration verification'
 Require $release 'Test-FbeLegacy308MigrationRequired' 'create-release migration policy'
 Require $migration 'Test-FbeLegacy308MigrationRequired' 'central migration policy'
+Require $workflow 'test-legacy308-migration-policy.ps1' 'workflow migration policy test'
 Require $artifacts 'Test-FbeLegacy308MigrationRequired' 'artifact verification migration policy'
 foreach ($needle in @('FBE.pdb', 'FBV.pdb', 'FBShell.propertyhandler.win32.pdb', 'FBShell.propertyhandler.x64.pdb')) { Require $artifacts $needle 'symbols verification' }
+foreach ($script in @(@{ Text = $release; Name = 'create-release.ps1' }, @{ Text = $verify; Name = 'verify-release.ps1' }, @{ Text = $archHandler; Name = 'build-archhandler.ps1' }, @{ Text = $propertyHandler; Name = 'build-experimental-property-handler.ps1' }, @{ Text = $fbvMui; Name = 'build-fbv-verb-mui.ps1' })) {
+    Require $script.Text "PlatformToolset = 'v143'" $script.Name
+}
+foreach ($script in @(@{ Text = $archHandler; Name = 'build-archhandler.ps1' }, @{ Text = $propertyHandler; Name = 'build-experimental-property-handler.ps1' }, @{ Text = $fbvMui; Name = 'build-fbv-verb-mui.ps1' })) {
+    Require $script.Text "VcVarsVersion '14.44'" $script.Name
+}
 Write-Host 'Unified release pipeline contract passed.'

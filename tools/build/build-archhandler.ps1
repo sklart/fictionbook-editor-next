@@ -5,7 +5,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$PlatformToolset,
+    [string]$PlatformToolset = 'v143',
     [string]$OutputDirectory
 )
 

@@ -2,7 +2,9 @@
 
 ## Требования
 
-- Visual Studio 2026 с компонентами разработки классических приложений на C++.
+- Visual Studio 2022 с компонентами разработки классических приложений на C++;
+  release scripts используют `PlatformToolset=v143` и требуют установленный
+  VC Tools `14.44`.
 - Windows 10/11 SDK.
 
 Собранные бинарники поддерживают Windows 7 SP1 и новее. Windows XP и Vista
@@ -179,6 +181,12 @@ UPX 5.1.1 хранится в `tools/upx`. Hunspell подключён как Gi
 ```powershell
 .\tools\build\build.ps1 -PlatformToolset v143 -SkipUpx -WarningsAsErrors
 ```
+
+Это также локальный release-контур по умолчанию: `build.ps1`,
+`create-release.ps1`, `verify-release.ps1`, ArchHandler, FBShell property
+handler и FBV MUI используют v143, а native release binaries и Scintilla/Lexilla
+инициализируются через `vcvars_ver=14.44`. Не заменяйте этот набор на более
+новый VC Tools без отдельной проверки Windows 7 imports.
 
 Параметр `-WarningsAsErrors` запрещает появление новых предупреждений
 компилятора. Предупреждения legacy-заголовков WTL подавлены только на границе

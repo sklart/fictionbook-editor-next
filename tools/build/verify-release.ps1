@@ -2,7 +2,7 @@
 param(
     [string]$Configuration = "Release",
 
-    [string]$PlatformToolset,
+    [string]$PlatformToolset = 'v143',
 
     [string]$BatchOutputDirectory,
 

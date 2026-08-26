@@ -5,7 +5,11 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $version = ([regex]::Match((Get-Content -Raw (Join-Path $root 'src\version.h')), 'FBE_VERSION_STRING\s+"(?<v>\d+\.\d+\.\d+)"')).Groups['v'].Value
-if ($version -ne '3.0.8') { throw 'This migration fixture is intentionally scoped to the 3.0.8 release line.' }
+. (Join-Path $root 'tools\build\UpdateVersion.ps1')
+if (-not (Test-FbeLegacy308MigrationRequired $version)) {
+    Write-Host "3.0.8 migration artifact fixture skipped for version $version."
+    return
+}
 $fixture = Join-Path $root 'out\tests\legacy308-artifact-migration'
 Remove-Item -LiteralPath $fixture -Force -Recurse -ErrorAction SilentlyContinue
 $payload = Join-Path $fixture 'portable'

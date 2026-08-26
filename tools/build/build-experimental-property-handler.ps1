@@ -6,7 +6,7 @@ param(
     [ValidateSet("Win32", "x64")]
     [string]$Platform = "Win32",
 
-    [string]$PlatformToolset,
+    [string]$PlatformToolset = 'v143',
 
     [string]$OutputDirectory = "",
 

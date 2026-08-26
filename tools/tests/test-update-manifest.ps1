@@ -17,4 +17,13 @@ $hash = [string]::new('A', 64)
 $accepted = $false
 try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $fixture -Feed PrereleaseFeed; $accepted = $true } catch { }
 if ($accepted) { throw 'Validator accepted an untrusted unified artifact URL.' }
+
+$futureMigrationFixture = Join-Path $repoRoot 'out\tests\update-manifest-future-legacy.xml'
+@"
+<?xml version="1.0" encoding="utf-8"?>
+<FBE><Name>FBE</Name><Date>22-08-2026</Date><Version>3.0.9-rc.1</Version><ReleaseTag>v3.0.9-rc.1</ReleaseTag><ReleaseType>prerelease</ReleaseType><Beta>true</Beta><Artifacts><SetupUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9-rc.1/FictionBookEditorNext-3.0.9-win32-setup.exe</SetupUrl><SetupSHA256>$hash</SetupSHA256><PortableUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9-rc.1/FictionBookEditorNext-3.0.9-win32-portable.zip</PortableUrl><PortableSHA256>$hash</PortableSHA256><Modern><SetupUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9-rc.1/FictionBookEditorNext-3.0.9-win32-setup.exe</SetupUrl><SetupSHA256>$hash</SetupSHA256><PortableUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9-rc.1/FictionBookEditorNext-3.0.9-win32-portable.zip</PortableUrl><PortableSHA256>$hash</PortableSHA256></Modern><Win7><SetupUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9-rc.1/FictionBookEditorNext-3.0.9-win7-win32-setup.exe</SetupUrl><SetupSHA256>$hash</SetupSHA256><PortableUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9-rc.1/FictionBookEditorNext-3.0.9-win7-win32-portable.zip</PortableUrl><PortableSHA256>$hash</PortableSHA256></Win7></Artifacts></FBE>
+"@ | Set-Content -LiteralPath $futureMigrationFixture -Encoding UTF8
+$accepted = $false
+try { & (Join-Path $repoRoot 'tools\build\validate-update-manifest.ps1') -ManifestPath $futureMigrationFixture -Feed PrereleaseFeed; $accepted = $true } catch { }
+if ($accepted) { throw 'Validator accepted legacy migration nodes outside the 3.0.8 migration line.' }
 Write-Host 'Unified update manifest validation passed.'
