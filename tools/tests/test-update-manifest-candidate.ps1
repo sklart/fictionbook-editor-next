@@ -9,12 +9,15 @@ $fixture = Join-Path $root 'out\tests\update-manifest-candidate'
 Remove-Item -LiteralPath $fixture -Force -Recurse -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $fixture -Force | Out-Null
 foreach ($name in @("FictionBookEditorNext-$version-win32-setup.exe", "FictionBookEditorNext-$version-win32-portable.zip")) { Set-Content -LiteralPath (Join-Path $fixture $name) -Value $name -NoNewline }
+Copy-Item -LiteralPath (Join-Path $fixture "FictionBookEditorNext-$version-win32-setup.exe") -Destination (Join-Path $fixture "FictionBookEditorNext-$version-win7-win32-setup.exe")
+Copy-Item -LiteralPath (Join-Path $fixture "FictionBookEditorNext-$version-win32-portable.zip") -Destination (Join-Path $fixture "FictionBookEditorNext-$version-win7-win32-portable.zip")
 $trackedManifest = Join-Path $root 'update.xml'; $before = [IO.File]::ReadAllBytes($trackedManifest)
 $candidate = Join-Path $fixture 'update.xml'
 & (Join-Path $root 'tools\build\new-update-manifest-candidate.ps1') -ArtifactsRoot $fixture -OutputPath $candidate -ReleaseTag "v$version-rc.2"
 if ([Convert]::ToBase64String($before) -ne [Convert]::ToBase64String([IO.File]::ReadAllBytes($trackedManifest))) { throw 'Candidate generation changed tracked update.xml.' }
 [xml]$manifest = Get-Content -Raw -LiteralPath $candidate
 if (-not $manifest.FBE.Artifacts -or [string]::IsNullOrWhiteSpace($manifest.FBE.Artifacts.SetupSHA256) -or [string]::IsNullOrWhiteSpace($manifest.FBE.Artifacts.PortableSHA256)) { throw 'Candidate lacks unified artifact metadata.' }
+if ($manifest.FBE.Artifacts.Modern.SetupSHA256 -ne $manifest.FBE.Artifacts.SetupSHA256 -or $manifest.FBE.Artifacts.Win7.SetupSHA256 -ne $manifest.FBE.Artifacts.SetupSHA256 -or $manifest.FBE.Artifacts.Win7.PortableSHA256 -ne $manifest.FBE.Artifacts.PortableSHA256) { throw 'Prerelease migration aliases must be byte-identical to unified artifacts.' }
 if ($manifest.FBE.Version -ne "$version-rc.2" -or $manifest.FBE.ReleaseTag -ne "v$version-rc.2" -or $manifest.FBE.ReleaseType -ne 'prerelease') { throw 'Candidate must preserve prerelease identity separately from artifact base version.' }
 & (Join-Path $root 'tools\build\validate-update-manifest.ps1') -ManifestPath $candidate -ExpectedReleaseTag "v$version-rc.2" -Feed PrereleaseFeed
 $stableCandidate = Join-Path $fixture 'update-stable.xml'

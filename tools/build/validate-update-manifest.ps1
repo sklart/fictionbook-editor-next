@@ -40,6 +40,27 @@ if (-not $hasArtifacts) {
     Write-Host "Проверен legacy manifest: $ManifestPath"
     return
 }
+if ($document.FBE.Artifacts.Modern -or $document.FBE.Artifacts.Win7) {
+    # Published 3.0.8-rc.1 uses the former profile schema.  It remains
+    # readable only as a migration input; newly generated manifests use the
+    # flat unified nodes below.
+    $legacyProfiles = @{
+        Modern = @{ Setup = "FictionBookEditorNext-$base-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win32-portable.zip" }
+        Win7 = @{ Setup = "FictionBookEditorNext-$base-win7-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win7-win32-portable.zip" }
+    }
+    foreach ($profile in $legacyProfiles.Keys) {
+        $node = $document.FBE.Artifacts.$profile
+        Require ($null -ne $node) "Отсутствует legacy Artifacts/$profile."
+        foreach ($kind in @('Setup', 'Portable')) {
+            $url = [string]$node.($kind + 'Url'); $hash = [string]$node.($kind + 'SHA256')
+            Require ($hash -match '^[0-9A-Fa-f]{64}$') "Legacy $profile/$kind SHA256 недопустим."
+            $expected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/$($legacyProfiles[$profile][$kind])"
+            Require ($url -ceq $expected) "Legacy $profile/$kind URL не является доверенным URL ожидаемого артефакта."
+        }
+    }
+    Write-Host "Проверен legacy profile manifest: $ManifestPath"
+    return
+}
 foreach ($kind in @('Setup', 'Portable')) {
     $url = [string]$document.FBE.Artifacts.($kind + 'Url'); $hash = [string]$document.FBE.Artifacts.($kind + 'SHA256')
     Require ($hash -match '^[0-9A-Fa-f]{64}$') "$kind SHA256 недопустим."

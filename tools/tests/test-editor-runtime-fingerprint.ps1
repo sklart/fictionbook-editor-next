@@ -12,14 +12,12 @@ function Assert-Result {
 
 function New-Fingerprint {
     param(
-        [string]$CompatibilityTarget = 'Modern',
         [string]$PlatformToolset = 'v143',
         [string]$VCToolsVersion = '14.44.35207',
         [string]$ScintillaVersion = '5.6.6',
         [string]$LexillaVersion = '5.5.3'
     )
     return [pscustomobject]@{
-        compatibilityTarget = $CompatibilityTarget
         platformToolset = $PlatformToolset
         vcToolsVersion = $VCToolsVersion
         scintillaVersion = $ScintillaVersion
@@ -27,7 +25,7 @@ function New-Fingerprint {
     }
 }
 
-$expected = @{ CompatibilityTarget = 'Modern'; PlatformToolset = 'v143'; VCToolsVersion = '14.44.35207'; ScintillaVersion = '5.6.6'; LexillaVersion = '5.5.3' }
+$expected = @{ PlatformToolset = 'v143'; VCToolsVersion = '14.44.35207'; ScintillaVersion = '5.6.6'; LexillaVersion = '5.5.3' }
 $valid = New-Fingerprint
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint $valid @expected) $true 'valid'
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (New-Fingerprint -ScintillaVersion '5.6.4') @expected) $false 'stale Scintilla'
@@ -38,14 +36,11 @@ $missingLexilla = New-Fingerprint; $missingLexilla.PSObject.Properties.Remove('l
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint $missingLexilla @expected) $false 'missing Lexilla version'
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (New-Fingerprint -PlatformToolset 'v142') @expected) $false 'wrong toolset'
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (New-Fingerprint -VCToolsVersion '14.45.10000') @expected) $false 'wrong VCToolsVersion'
-Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (New-Fingerprint -CompatibilityTarget 'Win7') @expected) $false 'wrong compatibility target'
 Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (ConvertFrom-EditorRuntimeFingerprintJson -Json '{broken') @expected) $false 'corrupt JSON'
 
-$win7Expected = @{ CompatibilityTarget = 'Win7'; PlatformToolset = 'v143'; VCToolsVersion = '14.44.35207'; ScintillaVersion = '5.6.6'; LexillaVersion = '5.5.3' }
-Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint (New-Fingerprint -CompatibilityTarget 'Win7') @win7Expected) $true 'valid Win7 toolchain'
-$win7WrongSeries = New-Fingerprint -CompatibilityTarget 'Win7' -VCToolsVersion '14.45.10000'
-$win7WrongExpected = @{ CompatibilityTarget = 'Win7'; PlatformToolset = 'v143'; VCToolsVersion = '14.45.10000'; ScintillaVersion = '5.6.6'; LexillaVersion = '5.5.3' }
-Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint $win7WrongSeries @win7WrongExpected) $false 'Win7 requires 14.44'
+$wrongSeries = New-Fingerprint -VCToolsVersion '14.45.10000'
+$wrongSeriesExpected = @{ PlatformToolset = 'v143'; VCToolsVersion = '14.45.10000'; ScintillaVersion = '5.6.6'; LexillaVersion = '5.5.3' }
+Assert-Result (Test-EditorRuntimeFingerprint -Fingerprint $wrongSeries @wrongSeriesExpected) $false 'universal runtime requires VC Tools 14.44'
 
 Assert-Result (Test-SubmoduleCommitMatch -ExpectedCommit 'abc' -ActualCommit 'abc') $true 'matching submodule commit'
 Assert-Result (Test-SubmoduleCommitMatch -ExpectedCommit 'abc' -ActualCommit 'def') $false 'stale submodule commit'

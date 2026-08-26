@@ -1,7 +1,5 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Modern', 'Win7')]
-    [string]$CompatibilityTarget = 'Modern'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -10,7 +8,7 @@ $temporary = Join-Path ([System.IO.Path]::GetTempPath()) ('Fb2SourceAutocomplete
 New-Item -ItemType Directory -Path $temporary -Force | Out-Null
 try {
     $toolchainArguments = @{ Arch = 'x86'; HostArch = 'x64' }
-    if ($CompatibilityTarget -eq 'Win7') { $toolchainArguments.VcVarsVersion = '14.44' }
+    $toolchainArguments.VcVarsVersion = '14.44'
     & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') @toolchainArguments
     $sourcePath = Join-Path $temporary 'autocomplete-test.cpp'
     $exePath = Join-Path $temporary 'autocomplete-test.exe'

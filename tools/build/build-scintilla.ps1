@@ -44,9 +44,7 @@ if ($VcVarsVersion) {
         Write-Host "Scintilla/Lexilla: используется vcvars_ver=$VcVarsVersion."
     }
     catch {
-        Write-Warning "Не удалось включить vcvars_ver=$VcVarsVersion для Scintilla/Lexilla: $($_.Exception.Message)"
-        Write-Warning "Продолжаю со стандартной средой Visual Studio."
-        . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
+        throw "Для универсального Win7+ runtime требуется VC Tools ${VcVarsVersion}: $($_.Exception.Message)"
     }
 }
 else {
@@ -134,7 +132,9 @@ foreach ($build in @(
 )) {
     $makeArguments = @("/nologo", "/f", $build.Makefile, "QUIET=1")
     if ($build.Directory -eq "third_party\scintilla\win32") {
-        $makeArguments += "ADD_DEFINE=-DFBE_SCINTILLA_WINVER=0x0601"
+        # Scintilla consumes the normal Windows SDK target macros; the former
+        # FBE_SCINTILLA_WINVER name was not referenced by upstream sources.
+        $makeArguments += "ADD_DEFINE=-DWINVER=0x0601 -D_WIN32_WINNT=0x0601"
     }
 
     Push-Location (Join-Path $repoRoot $build.Directory)

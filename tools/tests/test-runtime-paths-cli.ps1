@@ -18,9 +18,9 @@ function Invoke-RuntimePaths([string[]]$Arguments, [int]$ExpectedExitCode) {
 }
 
 $installed = (Invoke-RuntimePaths @('--print-runtime-paths') 0).Stdout | ConvertFrom-Json
-if ($installed.mode -ne 'Installed' -or $installed.compatibilityTarget -ne 'Modern' -or $installed.architecture -ne 'Win32' -or -not $installed.registryPersistenceAllowed -or [string]::IsNullOrWhiteSpace($installed.settingsDirectory)) { throw 'Installed runtime paths are invalid.' }
+if ($installed.mode -ne 'Installed' -or $installed.architecture -ne 'Win32' -or -not $installed.registryPersistenceAllowed -or [string]::IsNullOrWhiteSpace($installed.settingsDirectory)) { throw 'Installed runtime paths are invalid.' }
 $portable = (Invoke-RuntimePaths @('--portable', '--print-runtime-paths') 0).Stdout | ConvertFrom-Json
-if ($portable.mode -ne 'Portable' -or $portable.compatibilityTarget -ne 'Modern' -or $portable.architecture -ne 'Win32' -or $portable.registryPersistenceAllowed -or -not $portable.dataRoot.EndsWith('\Data\')) { throw 'Portable runtime paths are invalid.' }
+if ($portable.mode -ne 'Portable' -or $portable.architecture -ne 'Win32' -or $portable.registryPersistenceAllowed -or -not $portable.dataRoot.EndsWith('\Data\')) { throw 'Portable runtime paths are invalid.' }
 foreach ($pair in @{ logsDirectory = 'Logs'; cacheDirectory = 'Cache'; tempDirectory = 'Temp'; dictionariesDirectory = 'Dictionaries'; themesDirectory = 'Themes'; scriptsDirectory = 'Scripts' }.GetEnumerator()) {
     if (-not $portable.($pair.Key).EndsWith("\$($pair.Value)\")) { throw "Portable $($pair.Key) is invalid." }
 }

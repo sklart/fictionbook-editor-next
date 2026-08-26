@@ -60,20 +60,15 @@ jobs:
             build/libde265
             build/libheif
           key: ${{ runner.os }}-image-decoders-release-win32-v143-${{ hashFiles('third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
-      - name: Restore Modern editor runtime cache
+      - name: Restore universal editor runtime cache
         uses: actions/cache@v4
         with:
-          path: out/editor-runtime/Modern
-          key: ${{ runner.os }}-editor-runtime-modern-win32-v143-${{ hashFiles('third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-scintilla.ps1') }}
-      - name: Restore Win7 editor runtime cache
-        uses: actions/cache@v4
-        with:
-          path: out/editor-runtime/Win7
-          key: ${{ runner.os }}-editor-runtime-win7-win32-v143-vc144-${{ hashFiles('third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-scintilla.ps1') }}
-      - name: Build Release Win32 modern
+          path: out/editor-runtime
+          key: ${{ runner.os }}-editor-runtime-win32-v143-vc144-${{ hashFiles('third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-scintilla.ps1', 'tools/build/editor-runtime-helpers.ps1') }}
+      - name: Build Release Win32
         shell: pwsh
         run: |
-          $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; CompatibilityTarget = 'Modern'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; ReuseEditorRuntime = $true; SkipVersionSync = $true; BatchOutputDirectory = 'out/target-batches/Modern' }
+          $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; ReuseEditorRuntime = $true; SkipVersionSync = $true; BatchOutputDirectory = 'out/target-batches' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.ReleaseVersion = $env:GITHUB_REF_NAME.Substring(1) }
           if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
           ./tools/build/build.ps1 @arguments
@@ -86,38 +81,23 @@ jobs:
       - name: Build FBV Verb MUI
         shell: pwsh
         run: ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release -PlatformToolset v143
-      - name: Build Modern ArchHandler
+      - name: Build ArchHandler
         shell: pwsh
-        run: ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Modern/Win32/Release
-      - name: Write Modern build provenance
+        run: ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Win32/Release
+      - name: Write Runtime build provenance
         shell: pwsh
-        run: ./tools/build/build-provenance.ps1 -Action Write -Kind Modern -Configuration Release -ProfileDirectory out/editor-runtime/Modern -BatchDirectory out/target-batches/Modern -ArchHandlerDirectory out/archhandler/Modern/Win32/Release -PlatformToolset v143
+        run: ./tools/build/build-provenance.ps1 -Action Write -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches -ArchHandlerDirectory out/archhandler/Win32/Release -PlatformToolset v143
       - name: Ensure NSIS 3.12
         shell: pwsh
         run: |
           choco upgrade nsis --version=3.12.0 --no-progress --yes
           ./tools/build/resolve-nsis.ps1 | Out-Null
-      - name: Verify Modern binaries
+      - name: Verify universal release binaries
         shell: pwsh
         run: |
-          $arguments = @{ Configuration = 'Release'; CompatibilityTarget = 'Modern'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches/Modern'; ArchHandlerOutputDirectory = 'out/archhandler/Modern/Win32/Release' }
+          $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches'; ArchHandlerOutputDirectory = 'out/archhandler/Win32/Release' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.FullValidation = $true }
           ./tools/build/verify-release.ps1 @arguments
-      - name: Build Win7-compatible editor runtime
-        shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -EditorRuntimeOnly -ReuseEditorRuntime -SkipVersionSync
-      - name: Build Win7-compatible batch converters
-        shell: pwsh
-        run: ./tools/build/build.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -BatchConvertersOnly -SkipDependencies -WarningsAsErrors -SkipVersionSync -BatchOutputDirectory out/target-batches/Win7
-      - name: Build Win7 ArchHandler
-        shell: pwsh
-        run: ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Win7/Win32/Release
-      - name: Write Win7 build provenance
-        shell: pwsh
-        run: ./tools/build/build-provenance.ps1 -Action Write -Kind Win7 -Configuration Release -ProfileDirectory out/editor-runtime/Win7 -BatchDirectory out/target-batches/Win7 -ArchHandlerDirectory out/archhandler/Win7/Win32/Release -PlatformToolset v143
-      - name: Verify Win7 binaries
-        shell: pwsh
-        run: ./tools/build/verify-release.ps1 -Configuration Release -CompatibilityTarget Win7 -PlatformToolset v143 -SkipUpdateManifest -SkipCommonChecks -BatchOutputDirectory out/target-batches/Win7 -ArchHandlerOutputDirectory out/archhandler/Win7/Win32/Release
       - name: Upload compiled inputs
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
@@ -152,23 +132,19 @@ jobs:
         run: |
           choco upgrade nsis --version=3.12.0 --no-progress --yes
           ./tools/build/resolve-nsis.ps1 | Out-Null
-      - name: Create Modern release artifacts without compiling
+      - name: Create release artifacts without compiling
         shell: pwsh
         run: |
-          $arguments = @{ Configuration = "Release"; Platform = "Win32"; CompatibilityTarget = "Modern"; PlatformToolset = "v143"; SkipBuild = $true; SkipPropertyHandlerBuild = $true; SkipFbvVerbMuiBuild = $true; SkipReleaseVerification = $true; SkipArtifactVerification = $true; SkipVersionSync = $true; BatchOutputDirectory = "out/target-batches/Modern" }
+          $arguments = @{ Configuration = "Release"; Platform = "Win32"; PlatformToolset = "v143"; SkipBuild = $true; SkipPropertyHandlerBuild = $true; SkipFbvVerbMuiBuild = $true; SkipReleaseVerification = $true; SkipArtifactVerification = $true; SkipVersionSync = $true; BatchOutputDirectory = "out/target-batches" }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
             $arguments.FullValidation = $true
             if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true }
           }
           ./tools/build/create-release.ps1 @arguments
-      - name: Create Win7 release artifacts without compiling
+      - name: Verify release archives
         shell: pwsh
-        run: |
-          ./tools/build/create-release.ps1 -Configuration Release -Platform Win32 -CompatibilityTarget Win7 -PlatformToolset v143 -SkipBuild -PreserveArtifacts -SkipPropertyHandlerBuild -SkipFbvVerbMuiBuild -SkipCommonChecks -SkipReleaseVerification -SkipArtifactVerification -SkipVersionSync -BatchOutputDirectory out/target-batches/Win7
-      - name: Verify all release archives
-        shell: pwsh
-        run: ./tools/build/verify-artifacts.ps1 -Platform Win32 -CompatibilityTarget All
+        run: ./tools/build/verify-artifacts.ps1 -Platform Win32
       - name: Create update manifest candidate
         if: github.ref_type == 'tag'
         shell: pwsh

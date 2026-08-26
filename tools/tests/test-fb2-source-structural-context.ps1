@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([ValidateSet('Modern','Win7')][string]$CompatibilityTarget = 'Modern')
+param()
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -7,7 +7,7 @@ $temporary = Join-Path ([IO.Path]::GetTempPath()) ('Fb2StructuralContext.' + [gu
 New-Item -ItemType Directory -Path $temporary -Force | Out-Null
 try {
     $toolchainArguments = @{ Arch = 'x86'; HostArch = 'x64' }
-    if ($CompatibilityTarget -eq 'Win7') { $toolchainArguments.VcVarsVersion = '14.44' }
+    $toolchainArguments.VcVarsVersion = '14.44'
     & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') @toolchainArguments
     $sourcePath = Join-Path $temporary 'structural-context-test.cpp'; $exePath = Join-Path $temporary 'structural-context-test.exe'
     @'

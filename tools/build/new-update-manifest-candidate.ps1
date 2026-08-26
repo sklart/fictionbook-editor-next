@@ -30,6 +30,17 @@ function Get-ArtifactMetadata([string]$Name) {
 
 $setup = Get-ArtifactMetadata "FictionBookEditorNext-$version-win32-setup.exe"
 $portable = Get-ArtifactMetadata "FictionBookEditorNext-$version-win32-portable.zip"
+$legacyWin7Setup = $null
+$legacyWin7Portable = $null
+if ($releaseType -eq 'prerelease') {
+    # Transitional aliases are byte-identical copies for the already released
+    # 3.0.8-rc.1 Win7 updater. They are not a second build profile.
+    $legacyWin7Setup = Get-ArtifactMetadata "FictionBookEditorNext-$version-win7-win32-setup.exe"
+    $legacyWin7Portable = Get-ArtifactMetadata "FictionBookEditorNext-$version-win7-win32-portable.zip"
+    if ($legacyWin7Setup.Hash -ne $setup.Hash -or $legacyWin7Portable.Hash -ne $portable.Hash) {
+        throw 'Legacy Win7 migration aliases must be byte-identical to universal artifacts.'
+    }
+}
 
 $document = New-Object Xml.XmlDocument
 $declaration = $document.CreateXmlDeclaration('1.0', 'utf-8', $null); [void]$document.AppendChild($declaration)
@@ -40,6 +51,16 @@ foreach ($pair in @(@('Name', "FictionBook Editor Next Release $releaseVersion")
 $artifacts = $document.CreateElement('Artifacts'); [void]$fbe.AppendChild($artifacts)
 foreach ($pair in @(@('SetupUrl', $setup.Url), @('SetupSHA256', $setup.Hash), @('PortableUrl', $portable.Url), @('PortableSHA256', $portable.Hash))) {
     $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$artifacts.AppendChild($node)
+}
+if ($releaseType -eq 'prerelease') {
+    $modern = $document.CreateElement('Modern'); [void]$artifacts.AppendChild($modern)
+    $win7 = $document.CreateElement('Win7'); [void]$artifacts.AppendChild($win7)
+    foreach ($pair in @(@('SetupUrl', $setup.Url), @('SetupSHA256', $setup.Hash), @('PortableUrl', $portable.Url), @('PortableSHA256', $portable.Hash))) {
+        $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$modern.AppendChild($node)
+    }
+    foreach ($pair in @(@('SetupUrl', $legacyWin7Setup.Url), @('SetupSHA256', $legacyWin7Setup.Hash), @('PortableUrl', $legacyWin7Portable.Url), @('PortableSHA256', $legacyWin7Portable.Hash))) {
+        $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$win7.AppendChild($node)
+    }
 }
 # Keep legacy setup fields for v3.0.7 and other released clients.
 if ($releaseType -eq 'stable') {

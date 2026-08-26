@@ -14,6 +14,6 @@ Remove-Item -LiteralPath $output -Force -ErrorAction SilentlyContinue
 $process = Start-Process -FilePath $FbeExecutable -ArgumentList @('--portable', '--print-update-artifact') -Wait -PassThru -NoNewWindow -RedirectStandardOutput $output
 if ($process.ExitCode -ne 0) { throw "Production artifact selector exited with $($process.ExitCode)." }
 $artifact = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
-if ($artifact.type -ne 'Portable' -or $artifact.extension -ne '.zip' -or $artifact.fileName -notmatch '-win32-portable\.zip$') { throw "Modern portable selected the wrong artifact: $($artifact | ConvertTo-Json -Compress)" }
-if ($artifact.fileName -match 'setup\.exe') { throw 'Modern portable selector chose setup.exe.' }
-Write-Host 'Modern portable updater production selector chose the portable ZIP (no download).'
+if ($artifact.type -ne 'Portable' -or $artifact.extension -ne '.zip' -or $artifact.fileName -notmatch '-win32-portable\.zip$') { throw "Portable mode selected the wrong artifact: $($artifact | ConvertTo-Json -Compress)" }
+if ($artifact.fileName -match 'setup\.exe|win7-win32') { throw 'Portable selector chose a non-unified portable artifact.' }
+Write-Host 'Portable updater production selector chose the unified ZIP (no download).'

@@ -35,9 +35,8 @@ if ($nsiText -notmatch [regex]::Escape('!define MUI_STARTMENUPAGE_DEFAULTFOLDER 
     throw "Папка меню Пуск по умолчанию должна называться FictionBook Editor Next без номера версии."
 }
 
-if ($nsiText -notmatch 'FBE_WIN7_BUILD' -or
-    $nsiText -notmatch 'Windows 7 compatible') {
-    throw "MakeInstaller.nsi должен явно маркировать Win7-compatible установщик."
+if ($nsiText -notmatch 'Windows 7 compatible') {
+    throw "MakeInstaller.nsi должен маркировать единый Windows 7-compatible установщик."
 }
 
 if ($nsiText -notmatch [regex]::Escape('SetOutPath "$INSTDIR\Lang\Shell"') -or
@@ -76,8 +75,8 @@ if (-not (Test-Path -LiteralPath $languageFallbackGenerator)) {
 }
 
 $createReleaseText = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot "create-release.ps1")
-if ($createReleaseText -notmatch [regex]::Escape('/DFBE_WIN7_BUILD=1')) {
-    throw "create-release.ps1 должен передавать /DFBE_WIN7_BUILD=1 при сборке Win7-инсталлятора."
+if ($createReleaseText -match [regex]::Escape('/DFBE_WIN7_BUILD=1')) {
+    throw "Единый installer не должен получать специальный Win7 build flag."
 }
 
 Write-Host "Проверка структуры NSIS-контура прошла успешно."

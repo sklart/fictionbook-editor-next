@@ -2,9 +2,6 @@
 param(
     [string]$Configuration = "Release",
 
-    [ValidateSet("Modern", "Win7")]
-    [string]$CompatibilityTarget = "Modern",
-
     [string]$PlatformToolset,
 
     [string]$BatchOutputDirectory,
@@ -12,10 +9,6 @@ param(
     [string]$ArchHandlerOutputDirectory,
 
     [switch]$SkipUpdateManifest,
-
-    # Исходники, словари и общие статические контракты проверяются один раз
-    # на Modern-этапе; Win7 повторяет только проверки своих бинарников.
-    [switch]$SkipCommonChecks,
 
     # Table regressions are intentionally opt-in while portable finalization is
     # in progress. They remain available for their dedicated test contour.
@@ -44,7 +37,7 @@ $batchOutputDir = if ($BatchOutputDirectory) {
 $archHandlerOutputDir = if ($ArchHandlerOutputDirectory) {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchHandlerOutputDirectory)
 } else {
-    Join-Path $repoRoot "out\archhandler\$CompatibilityTarget\Win32\$Configuration"
+    Join-Path $repoRoot "out\archhandler\Win32\$Configuration"
 }
 $batchNames = @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")
 function Get-ReleaseOutputPath([string]$Name) {
@@ -64,16 +57,11 @@ if (-not $versionMatch.Success) {
 $expectedVersion = $versionMatch.Groups["version"].Value
 $runTables = $RunTableTests -or $FullValidation
 
-# Fail before the long GUI suite if this invocation is looking at a stale or
-# partially rebuilt common/profile payload.  The Win7 stage deliberately reuses
-# the Modern common payload, so its target-only validation must not compare the
-# shared out\Release directory after a local Win7 build.
-if (-not $SkipCommonChecks) {
-    & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
-        -Configuration $Configuration -CommonDirectory $outputDir
-}
-& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind $CompatibilityTarget `
-    -Configuration $Configuration -ProfileDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget") `
+# Fail before the long GUI suite if this invocation is looking at stale output.
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
+    -Configuration $Configuration -CommonDirectory $outputDir
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind Runtime `
+    -Configuration $Configuration -ProfileDirectory (Join-Path $repoRoot "out\editor-runtime") `
     -BatchDirectory $batchOutputDir -ArchHandlerDirectory $archHandlerOutputDir
 
 $requiredFiles = @(
@@ -113,7 +101,7 @@ $requiredSymbols = @(
     "FBShell.pdb"
 )
 
-if (-not $SkipCommonChecks) {
+if ($true) {
 & (Join-Path $repoRoot "tools\tests\test-update-manifest-candidate.ps1")
 & (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
@@ -123,8 +111,8 @@ if (-not $SkipCommonChecks) {
 & (Join-Path $repoRoot "tools\tests\test-fbd-support-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata-culture.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fb2-source-structural-context.ps1") -CompatibilityTarget Modern
-& (Join-Path $repoRoot "tools\tests\test-fb2-source-autocomplete.ps1") -CompatibilityTarget Modern
+& (Join-Path $repoRoot "tools\tests\test-fb2-source-structural-context.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fb2-source-autocomplete.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-eol-annotations.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-special-representations.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-allocate-lines.ps1")
@@ -265,7 +253,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 }
 
-if ($FullValidation -and -not $SkipCommonChecks) {
+if ($FullValidation) {
     Write-Host 'Running FULL GUI, production, stress and benchmark validation.'
     & (Join-Path $repoRoot "tools\tests\test-fbd-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-source-full-process-benchmark.ps1")
@@ -280,28 +268,25 @@ if ($FullValidation -and -not $SkipCommonChecks) {
     & (Join-Path $repoRoot "tools\tests\test-librusec-genres-portable.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 }
 
-# ArchHandler является target-specific executable и должен проверяться как для
-# Modern, так и для Win7; нельзя прятать exact artifact argv-test в common block.
+# ArchHandler is part of the single release and is tested from its staged output.
 $archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
 $archHandlerTestArguments.HandlerDirectory = $archHandlerOutputDir
 & (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments
 
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1") `
-    -EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")
+    -EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime")
 
-if ($CompatibilityTarget -eq "Win7") {
-    # The canonical Win7 stage reuses the already verified Modern common core.
-    # Do not inspect its FBE/FBV/plugin binaries as if they had been rebuilt
-    # for Win7; only target-specific outputs belong to this validation pass.
-    $sharedWin7Files = @(
+if ($true) {
+    # Every binary in the single release must pass the Windows 7 import gate.
+    $sharedReleaseFiles = @(
         "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
         "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll"
     )
-    if (-not $SkipCommonChecks) {
+    if ($true) {
         & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
             -Configuration $Configuration `
             -OutputDirectory $outputDir `
-            -IncludeNames $sharedWin7Files
+            -IncludeNames $sharedReleaseFiles
     }
 
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
@@ -309,7 +294,7 @@ if ($CompatibilityTarget -eq "Win7") {
         -OutputDirectory $batchOutputDir `
         -IncludeNames @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe")
 
-    $win7EditorRuntimeDir = Join-Path $repoRoot "out\editor-runtime\Win7"
+    $win7EditorRuntimeDir = Join-Path $repoRoot "out\editor-runtime"
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
         -Configuration $Configuration `
         -OutputDirectory $win7EditorRuntimeDir `
@@ -406,7 +391,7 @@ foreach ($propertyHandler in @(
         if ($info.FileVersion -ne $expectedVersion -or $info.ProductVersion -ne $expectedVersion) {
             throw "$path имеет версии File='$($info.FileVersion)', Product='$($info.ProductVersion)'; ожидалось '$expectedVersion'."
         }
-        if ($CompatibilityTarget -eq "Win7") {
+        if ($true) {
             & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
                 -Configuration $Configuration `
                 -OutputDirectory $directory `

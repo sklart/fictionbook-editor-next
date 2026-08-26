@@ -237,6 +237,8 @@ $portableZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architec
 $symbolsZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-symbols.zip"
 $setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-setup.exe"
 $checksumsPath = Join-Path $artifactsDir "SHA256SUMS.txt"
+$legacyWin7Setup = Join-Path $artifactsDir "FictionBookEditorNext-$version-win7-$architecture-setup.exe"
+$legacyWin7Portable = Join-Path $artifactsDir "FictionBookEditorNext-$version-win7-$architecture-portable.zip"
 
 foreach ($artifactPath in @($portableZip, $symbolsZip)) {
     if (Test-Path -LiteralPath $artifactPath) {
@@ -370,6 +372,18 @@ if (-not $SkipInstaller) {
     }
 }
 
+if ($Prerelease) {
+    # Compatibility bridge for the published v3.0.8-rc.1 Win7 updater.
+    # These are copies, never separately built artifacts.
+    Copy-Item -LiteralPath $setupArtifact -Destination $legacyWin7Setup -Force
+    Copy-Item -LiteralPath $portableZip -Destination $legacyWin7Portable -Force
+    foreach ($pair in @(@($setupArtifact, $legacyWin7Setup), @($portableZip, $legacyWin7Portable))) {
+        if ((Get-FileHash -LiteralPath $pair[0] -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $pair[1] -Algorithm SHA256).Hash) {
+            throw 'Legacy Win7 migration alias does not match the universal artifact.'
+        }
+    }
+}
+
 $artifactFiles = Get-ChildItem -LiteralPath $artifactsDir -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" } | Sort-Object Name
 $checksumLines = foreach ($file in $artifactFiles) {
     $hash = Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256
@@ -384,6 +398,7 @@ $verifyArtifactArguments = @{
     Platform = $Platform
     ArtifactsDirectory = $artifactsDir
 }
+if ($Prerelease) { $verifyArtifactArguments.AllowLegacyWin7Aliases = $true }
 if ($SkipInstaller) {
     $verifyArtifactArguments.SkipInstaller = $true
 }

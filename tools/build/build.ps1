@@ -172,8 +172,15 @@ function Remove-ObsoleteRootLanguageDirectories {
 }
 
 if ($ReusePreparedPcre2) {
-    Assert-PreparedDependencies
-    Write-Host "Подготовка PCRE2 и Hunspell пропущена: используются проверенные общие библиотеки."
+    $pcreInputs = @(
+        (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"),
+        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-8-static.lib"),
+        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-posix-static.lib")
+    )
+    if (@($pcreInputs | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) }).Count -gt 0) {
+        throw 'PCRE2 cache was reported as reusable, but its required files are missing.'
+    }
+    Write-Host "Используется только проверенный PCRE2 cache; остальные зависимости будут подготовлены отдельно."
 }
 else {
     Write-Host "Подготовка PCRE2..."
@@ -181,24 +188,16 @@ else {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
-    Write-Host "Подготовка generated Hunspell project/header..."
-    & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset -PrepareOnly
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-    & (Join-Path $repoRoot "tools\build\build-libwebp.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-    & (Join-Path $repoRoot "tools\build\build-openjpeg.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-    & (Join-Path $repoRoot "tools\build\build-libheif.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
 }
+Write-Host "Подготовка generated Hunspell project/header..."
+& (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset -PrepareOnly
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& (Join-Path $repoRoot "tools\build\build-libwebp.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& (Join-Path $repoRoot "tools\build\build-openjpeg.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& (Join-Path $repoRoot "tools\build\build-libheif.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
