@@ -29,7 +29,7 @@
   <PropertyGroup>
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
     <OutDir Condition="'$(BatchOutputDirectory)'!=''">$(BatchOutputDirectory)</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ImportEPUBBatch\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>ImportEPUBBatch</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>
@@ -58,7 +58,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;UNICODE;_UNICODE;STRICT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_CONSOLE;UNICODE;_UNICODE;STRICT;_CRT_SECURE_NO_WARNINGS;WINVER=0x0601;_WIN32_WINNT=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -94,8 +94,5 @@
   <ItemGroup>
     <ResourceCompile Include="ImportEPUBBatch.rc" />
   </ItemGroup>
-  <ItemDefinitionGroup Condition="'$(CompatibilityTarget)'=='Win7'">
-    <ClCompile><PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>
-  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

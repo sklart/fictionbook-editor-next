@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('Write', 'Validate')][string]$Action,
-    [ValidateSet('CommonCore', 'Modern', 'Win7')][string]$Kind,
+    [ValidateSet('CommonCore', 'Runtime')][string]$Kind,
     [string]$Configuration = 'Release',
     [string]$CommonDirectory,
     [string]$ProfileDirectory,

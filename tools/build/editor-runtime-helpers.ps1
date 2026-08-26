@@ -38,7 +38,6 @@ function ConvertFrom-EditorRuntimeFingerprintJson {
 function Test-EditorRuntimeFingerprint {
     param(
         [object]$Fingerprint,
-        [Parameter(Mandatory)][string]$CompatibilityTarget,
         [Parameter(Mandatory)][string]$PlatformToolset,
         [Parameter(Mandatory)][string]$VCToolsVersion,
         [Parameter(Mandatory)][string]$ScintillaVersion,
@@ -46,7 +45,6 @@ function Test-EditorRuntimeFingerprint {
     )
 
     if ($null -eq $Fingerprint -or
-        $Fingerprint.compatibilityTarget -ne $CompatibilityTarget -or
         $Fingerprint.platformToolset -ne $PlatformToolset -or
         [string]::IsNullOrWhiteSpace([string]$Fingerprint.vcToolsVersion) -or
         $Fingerprint.vcToolsVersion -ne $VCToolsVersion -or
@@ -56,7 +54,7 @@ function Test-EditorRuntimeFingerprint {
         $Fingerprint.lexillaVersion -ne $LexillaVersion) {
         return $false
     }
-    if ($CompatibilityTarget -eq "Win7" -and -not ([string]$Fingerprint.vcToolsVersion).StartsWith("14.44")) {
+    if (-not ([string]$Fingerprint.vcToolsVersion).StartsWith("14.44")) {
         return $false
     }
     return $true

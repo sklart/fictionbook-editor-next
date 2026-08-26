@@ -11,24 +11,9 @@ param(
     [ValidateSet("Win32")]
     [string]$Platform = "Win32",
 
-    [ValidateSet("Modern", "Win7")]
-    [string]$CompatibilityTarget = "Modern",
-
-    [string]$PlatformToolset,
+    [string]$PlatformToolset = "v143",
 
     [switch]$SkipUpx,
-
-    # Собрать только Scintilla/Lexilla для указанного варианта Windows.
-    # Используется release-конвейером после уже выполненной общей сборки.
-    [switch]$EditorRuntimeOnly,
-
-    # Повторно собрать только консольные пакетные конвертеры для выбранного
-    # варианта Windows, сохранив остальные общие релизные бинарники.
-    [switch]$BatchConvertersOnly,
-
-    # Использовать уже подготовленные PCRE2/Hunspell. Режим предназначен для
-    # второго (Win7) этапа одного release-конвейера.
-    [switch]$SkipDependencies,
 
     # Диагностический локальный режим. CI всегда полагается на корректный
     # граф MSBuild и не выполняет повторную полную пересборку проектов.
@@ -40,8 +25,6 @@ param(
 
     [switch]$SkipVersionSync,
 
-    # Явный target-specific каталог для EXE/PDB пакетных конвертеров.
-    # В CI обязателен, чтобы Modern и Win7 никогда не делили OutDir.
     [string]$BatchOutputDirectory,
 
     # Полная SemVer-identity tagged build (например, 3.2.0-rc.2).
@@ -123,35 +106,16 @@ function Assert-PreparedDependencies {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 
-# v145 selects the newest CRT even if VsDevCmd was initialized with an older
-# compiler. That CRT imports GetSystemTimePreciseAsFileTime, absent from
-# Windows 7. Use the VS 2022-compatible toolset unless explicitly overridden.
-if ($CompatibilityTarget -eq "Win7" -and -not $PlatformToolset) {
-    $PlatformToolset = "v143"
-}
-
-$editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
-
-if ($EditorRuntimeOnly) {
-    . (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `
-        -CompatibilityTarget $CompatibilityTarget `
-        -PlatformToolset $PlatformToolset `
-        -OutputDirectory $editorRuntimeDirectory `
-        -ReusePreparedRuntime:$ReuseEditorRuntime
-    Write-Host "Собраны только целевые DLL редактора для ${CompatibilityTarget}: $editorRuntimeDirectory"
-    return
-}
+# Use VS 2022 v143 and VC 14.44: newer CRTs import
+# GetSystemTimePreciseAsFileTime, which is absent from Windows 7.
+$editorRuntimeDirectory = Join-Path $repoRoot "out\editor-runtime"
 
 if (-not $SkipVersionSync) {
     & (Join-Path $repoRoot "tools\version\sync-version.ps1")
 }
 
-# Общая среда компилятора нужна и PCRE2/Hunspell, и прямым MSBuild-вызовам
-# batch-проектов. Для Win7 фиксируем тот же toolset, что и runtime.
-$vsEnvironmentArguments = @{ Arch = "x86"; HostArch = "x64"; PlatformToolset = $PlatformToolset }
-if ($CompatibilityTarget -eq "Win7") {
-    $vsEnvironmentArguments.VcVarsVersion = "14.44"
-}
+# Universal release always uses the Win7-compatible VC 14.44 toolset.
+$vsEnvironmentArguments = @{ Arch = "x86"; HostArch = "x64"; PlatformToolset = $PlatformToolset; VcVarsVersion = "14.44" }
 & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") @vsEnvironmentArguments
 
 $pcre2BuildScript = Join-Path $repoRoot "tools\build\build-pcre2.ps1"
@@ -207,7 +171,7 @@ function Remove-ObsoleteRootLanguageDirectories {
     }
 }
 
-if ($SkipDependencies) {
+if ($ReusePreparedPcre2) {
     Assert-PreparedDependencies
     Write-Host "Подготовка PCRE2 и Hunspell пропущена: используются проверенные общие библиотеки."
 }
@@ -256,8 +220,7 @@ if (-not $msbuild) {
 
 $properties = @(
     "/p:Configuration=$Configuration",
-    "/p:Platform=$Platform",
-    "/p:CompatibilityTarget=$CompatibilityTarget"
+    "/p:Platform=$Platform"
 )
 $buildCommit = (& git -C $repoRoot rev-parse --short=12 HEAD 2>$null | Select-Object -First 1)
 if(-not $buildCommit) { $buildCommit = 'unknown' }
@@ -293,22 +256,7 @@ if ($WarningsAsErrors) {
     $properties += "/p:TreatWarningAsError=true"
 }
 
-if ($BatchConvertersOnly) {
-    foreach ($batchProject in @(
-        "src\\export-docx\\ExportDOCXBatch.vcxproj",
-        "src\\export-epub\\ExportEPUBBatch.vcxproj",
-        "src\\import-epub\\ImportEPUBBatch.vcxproj"
-    )) {
-        Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot $batchProject)
-    }
-
-    $batchOutputText = if ($BatchOutputDirectory) { " в $BatchOutputDirectory" } else { " в стандартный out\\$Configuration" }
-    Write-Host "Собраны только пакетные конвертеры для ${CompatibilityTarget}$batchOutputText."
-    return
-}
-
 . (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `
-    -CompatibilityTarget $CompatibilityTarget `
     -PlatformToolset $PlatformToolset `
     -OutputDirectory $editorRuntimeDirectory `
     -ReusePreparedRuntime:$ReuseEditorRuntime
@@ -316,12 +264,10 @@ if ($BatchConvertersOnly) {
 Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
 # A partial or interrupted build must never leave the previous ImportEPUB
-# output looking authoritative. Only the Modern common build owns this set.
-if ($CompatibilityTarget -eq 'Modern') {
-    $commonOutput = Join-Path $repoRoot "out\$Configuration"
-    foreach ($name in @('ImportEPUB.dll', 'ImportEPUB.pdb', 'ImportEPUB.lib', 'ImportEPUB.exp')) {
-        Remove-Item -LiteralPath (Join-Path $commonOutput $name) -Force -ErrorAction SilentlyContinue
-    }
+# output looking authoritative.
+$commonOutput = Join-Path $repoRoot "out\$Configuration"
+foreach ($name in @('ImportEPUB.dll', 'ImportEPUB.pdb', 'ImportEPUB.lib', 'ImportEPUB.exp')) {
+    Remove-Item -LiteralPath (Join-Path $commonOutput $name) -Force -ErrorAction SilentlyContinue
 }
 
 & $msbuild (Join-Path $repoRoot "FBE.sln") /m /t:Build `
@@ -358,7 +304,7 @@ Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Conf
 
 Remove-ObsoleteRootLanguageDirectories -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
-if ($CompatibilityTarget -eq 'Modern') {
+if ($true) {
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind CommonCore `
         -Configuration $Configuration -CommonDirectory (Join-Path $repoRoot "out\$Configuration") -PlatformToolset $PlatformToolset
 }

@@ -5,10 +5,7 @@
 
 [CmdletBinding()]
 param(
-    [ValidateSet("Modern", "Win7")]
-    [string]$CompatibilityTarget = "Modern",
-
-    [string]$PlatformToolset,
+    [string]$PlatformToolset = "v143",
 
     [string]$VcVarsVersion,
 
@@ -25,7 +22,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $editorRuntimeDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-    Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
+    Join-Path $repoRoot "out\editor-runtime"
 } else {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 }
@@ -33,7 +30,7 @@ $runtimeDir = Join-Path $repoRoot "runtime"
 $fingerprintPath = Join-Path $editorRuntimeDir "fbe-editor-runtime-fingerprint.json"
 . (Join-Path $PSScriptRoot "editor-runtime-helpers.ps1")
 
-if ($CompatibilityTarget -eq "Win7" -and -not $VcVarsVersion) {
+if (-not $VcVarsVersion) {
     $VcVarsVersion = "14.44"
 }
 
@@ -47,10 +44,6 @@ if ($VcVarsVersion) {
         Write-Host "Scintilla/Lexilla: используется vcvars_ver=$VcVarsVersion."
     }
     catch {
-        if ($CompatibilityTarget -eq "Win7") {
-            throw
-        }
-
         Write-Warning "Не удалось включить vcvars_ver=$VcVarsVersion для Scintilla/Lexilla: $($_.Exception.Message)"
         Write-Warning "Продолжаю со стандартной средой Visual Studio."
         . (Join-Path $PSScriptRoot "Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
@@ -77,7 +70,6 @@ function Test-PreparedRuntimeFingerprint {
     $fingerprint = ConvertFrom-EditorRuntimeFingerprintJson -Json (Get-Content -Raw -LiteralPath $fingerprintPath)
     return Test-EditorRuntimeFingerprint `
         -Fingerprint $fingerprint `
-        -CompatibilityTarget $CompatibilityTarget `
         -PlatformToolset $PlatformToolset `
         -VCToolsVersion $env:VCToolsVersion `
         -ScintillaVersion $scintillaVersion `
@@ -86,7 +78,7 @@ function Test-PreparedRuntimeFingerprint {
 
 if ($ReusePreparedRuntime -and (Test-PreparedRuntimeFingerprint)) {
     foreach ($name in @("Scintilla.dll", "Lexilla.dll")) { Copy-Item -LiteralPath (Join-Path $editorRuntimeDir $name) -Destination $runtimeDir -Force }
-    Write-Host "Scintilla/Lexilla: validated editor runtime cache hit ($CompatibilityTarget, toolset=$PlatformToolset)."
+    Write-Host "Scintilla/Lexilla: validated universal editor runtime cache hit (toolset=$PlatformToolset)."
     return
 }
 if ($ReusePreparedRuntime) { Write-Host "Editor runtime cache fingerprint не соответствует текущему toolchain; выполняется rebuild." }
@@ -131,7 +123,7 @@ $resourceCompiler = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
 if (-not $resourceCompiler) {
     throw "Не найден rc.exe из Windows SDK."
 }
-Write-Host "Scintilla/Lexilla toolchain: target=$CompatibilityTarget; PlatformToolset=$PlatformToolset; cl.exe=$((Get-Command cl.exe -ErrorAction Stop).Source); VCToolsVersion=$env:VCToolsVersion; nmake.exe=$nmake; rc.exe=$($resourceCompiler.FullName)"
+Write-Host "Scintilla/Lexilla universal Win7+ toolchain: PlatformToolset=$PlatformToolset; cl.exe=$((Get-Command cl.exe -ErrorAction Stop).Source); VCToolsVersion=$env:VCToolsVersion; nmake.exe=$nmake; rc.exe=$($resourceCompiler.FullName)"
 $requiredToolDirectories = @($compilerBinDirectory, $resourceCompiler.Directory.FullName)
 $env:Path = (($requiredToolDirectories + @($env:Path)) | Select-Object -Unique) -join ';'
 [Environment]::SetEnvironmentVariable("Path", $env:Path, "Process")
@@ -141,7 +133,7 @@ foreach ($build in @(
     @{ Directory = "third_party\lexilla\src"; Makefile = "lexilla.mak" }
 )) {
     $makeArguments = @("/nologo", "/f", $build.Makefile, "QUIET=1")
-    if ($CompatibilityTarget -eq "Win7" -and $build.Directory -eq "third_party\scintilla\win32") {
+    if ($build.Directory -eq "third_party\scintilla\win32") {
         $makeArguments += "ADD_DEFINE=-DFBE_SCINTILLA_WINVER=0x0601"
     }
 
@@ -172,12 +164,11 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll
     -Destination (Join-Path $editorRuntimeDir "Lexilla.dll") -Force
 
 [ordered]@{
-    compatibilityTarget = $CompatibilityTarget
     platformToolset = $PlatformToolset
     vcToolsVersion = $env:VCToolsVersion
     scintillaVersion = $scintillaVersion
     lexillaVersion = $lexillaVersion
 } | ConvertTo-Json | Set-Content -LiteralPath $fingerprintPath -Encoding UTF8
 
-Write-Host "Scintilla $scintillaVersion и Lexilla $lexillaVersion подготовлены в $runtimeDir ($CompatibilityTarget)."
+Write-Host "Scintilla $scintillaVersion и Lexilla $lexillaVersion подготовлены в $runtimeDir (universal Win7+)."
 Write-Host "Целевые DLL редактора сохранены в $editorRuntimeDir."

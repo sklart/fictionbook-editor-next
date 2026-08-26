@@ -22,16 +22,14 @@ if ((Get-FbeBaseVersion $releaseVersion) -ne $version) { throw "ReleaseTag $Rele
 $releaseType = if (Test-FbePrereleaseVersion $releaseVersion) { 'prerelease' } else { 'stable' }
 $root = (Resolve-Path -LiteralPath $ArtifactsRoot).Path
 
-function Get-ArtifactMetadata([string]$Profile, [string]$Name) {
-    $path = Join-Path $root "$Profile\$Name"
+function Get-ArtifactMetadata([string]$Name) {
+    $path = Join-Path $root $Name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Не найден release artifact для update manifest: $path" }
     return @{ Url = "https://github.com/sklart/fictionbook-editor-next/releases/download/$ReleaseTag/$Name"; Hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash }
 }
 
-$modernSetup = Get-ArtifactMetadata Modern "FictionBookEditorNext-$version-win32-setup.exe"
-$modernPortable = Get-ArtifactMetadata Modern "FictionBookEditorNext-$version-win32-portable.zip"
-$win7Setup = Get-ArtifactMetadata Win7 "FictionBookEditorNext-$version-win7-win32-setup.exe"
-$win7Portable = Get-ArtifactMetadata Win7 "FictionBookEditorNext-$version-win7-win32-portable.zip"
+$setup = Get-ArtifactMetadata "FictionBookEditorNext-$version-win32-setup.exe"
+$portable = Get-ArtifactMetadata "FictionBookEditorNext-$version-win32-portable.zip"
 
 $document = New-Object Xml.XmlDocument
 $declaration = $document.CreateXmlDeclaration('1.0', 'utf-8', $null); [void]$document.AppendChild($declaration)
@@ -40,16 +38,12 @@ foreach ($pair in @(@('Name', "FictionBook Editor Next Release $releaseVersion")
     $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$fbe.AppendChild($node)
 }
 $artifacts = $document.CreateElement('Artifacts'); [void]$fbe.AppendChild($artifacts)
-foreach ($profile in @(@('Modern', $modernSetup, $modernPortable), @('Win7', $win7Setup, $win7Portable))) {
-    $profileNode = $document.CreateElement($profile[0]); [void]$artifacts.AppendChild($profileNode)
-    foreach ($pair in @(@('SetupUrl', $profile[1].Url), @('SetupSHA256', $profile[1].Hash), @('PortableUrl', $profile[2].Url), @('PortableSHA256', $profile[2].Hash))) {
-        $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$profileNode.AppendChild($node)
-    }
+foreach ($pair in @(@('SetupUrl', $setup.Url), @('SetupSHA256', $setup.Hash), @('PortableUrl', $portable.Url), @('PortableSHA256', $portable.Hash))) {
+    $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$artifacts.AppendChild($node)
 }
-# Keep the Modern setup fields for already released clients that predate
-# schema-v2. Prerelease clients need SemVer support and therefore use Artifacts.
+# Keep legacy setup fields for v3.0.7 and other released clients.
 if ($releaseType -eq 'stable') {
-    foreach ($pair in @(@('DownloadUrl', $modernSetup.Url), @('SHA256', $modernSetup.Hash))) {
+    foreach ($pair in @(@('DownloadUrl', $setup.Url), @('SHA256', $setup.Hash))) {
         $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$fbe.AppendChild($node)
     }
 }

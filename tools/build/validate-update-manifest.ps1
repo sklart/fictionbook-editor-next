@@ -29,10 +29,7 @@ $beta = Get-One $document 'Beta'; Require (($type -eq 'stable' -and $beta -eq 'f
 Require (($type -eq 'stable' -and -not (Test-FbePrereleaseVersion $version)) -or ($type -eq 'prerelease' -and (Test-FbePrereleaseVersion $version))) 'ReleaseType не согласован с prerelease suffix Version.'
 if ($Feed -eq 'StableFeed') { Require ($type -eq 'stable') 'Стабильный feed не может содержать prerelease.' }
 $base = $version -replace '[-+].*$', ''
-$profiles = @{
-    Modern = @{ Setup = "FictionBookEditorNext-$base-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win32-portable.zip" }
-    Win7 = @{ Setup = "FictionBookEditorNext-$base-win7-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win7-win32-portable.zip" }
-}
+$artifacts = @{ Setup = "FictionBookEditorNext-$base-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win32-portable.zip" }
 $hasArtifacts = $null -ne $document.FBE.Artifacts
 if (-not $hasArtifacts) {
     Require ($type -eq 'stable') 'Prerelease manifest обязан содержать <Artifacts>.'
@@ -43,15 +40,11 @@ if (-not $hasArtifacts) {
     Write-Host "Проверен legacy manifest: $ManifestPath"
     return
 }
-foreach ($profile in $profiles.Keys) {
-    $profileNode = $document.FBE.Artifacts.$profile
-    Require ($null -ne $profileNode) "Отсутствует Artifacts/$profile."
-    foreach ($kind in @('Setup', 'Portable')) {
-        $url = [string]$profileNode.($kind + 'Url'); $hash = [string]$profileNode.($kind + 'SHA256')
-        Require ($hash -match '^[0-9A-Fa-f]{64}$') "$profile/$kind SHA256 недопустим."
-        $expected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/$($profiles[$profile][$kind])"
-        Require ($url -ceq $expected) "$profile/$kind URL не является доверенным URL ожидаемого артефакта."
-    }
+foreach ($kind in @('Setup', 'Portable')) {
+    $url = [string]$document.FBE.Artifacts.($kind + 'Url'); $hash = [string]$document.FBE.Artifacts.($kind + 'SHA256')
+    Require ($hash -match '^[0-9A-Fa-f]{64}$') "$kind SHA256 недопустим."
+    $expected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/$($artifacts[$kind])"
+    Require ($url -ceq $expected) "$kind URL не является доверенным URL ожидаемого артефакта."
 }
 if ($type -eq 'prerelease') { Require ($null -eq $document.FBE.DownloadUrl -and $null -eq $document.FBE.SHA256) 'Prerelease manifest не должен выдавать legacy setup как универсальный artifact.' }
 if ($type -eq 'stable' -and $document.FBE.DownloadUrl) {

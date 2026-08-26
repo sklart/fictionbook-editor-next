@@ -2,11 +2,9 @@
 param(
     [string]$Configuration = 'Release',
     [Parameter(Mandatory)][string]$OutputDirectory,
-    [ValidateSet('Modern', 'Win7')][string]$CompatibilityTarget = 'Modern',
     [string]$EditorRuntimeDirectory = '',
     [string]$BatchOutputDirectory = '',
-    [string]$ArchHandlerOutputDirectory = '',
-    [string]$CommonCoreDirectory = ''
+    [string]$ArchHandlerOutputDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,17 +13,15 @@ $buildOutput = Join-Path $repoRoot "out\$Configuration"
 $editorRuntime = if ($EditorRuntimeDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EditorRuntimeDirectory) } else { Join-Path $repoRoot 'runtime' }
 $batchOutput = if ($BatchOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory) } else { $buildOutput }
 $archOutput = if ($ArchHandlerOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchHandlerOutputDirectory) } else { Join-Path $repoRoot "out\archhandler\Win32\$Configuration" }
-$commonCore = if ($CommonCoreDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($CommonCoreDirectory) } else { '' }
 $stage = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 
 foreach ($path in @($buildOutput, $editorRuntime, $batchOutput, $archOutput)) {
     if (-not (Test-Path -LiteralPath $path -PathType Container)) { throw "Не найден подготовленный input Core: $path" }
 }
-if ($commonCore -and -not (Test-Path -LiteralPath $commonCore -PathType Container)) { throw "Не найден общий Core payload: $commonCore" }
-$commonSource = if ($commonCore) { $commonCore } else { $buildOutput }
+$commonSource = $buildOutput
 & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
     -Configuration $Configuration -CommonDirectory $commonSource
-& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind $CompatibilityTarget `
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind Runtime `
     -Configuration $Configuration -ProfileDirectory $editorRuntime -BatchDirectory $batchOutput -ArchHandlerDirectory $archOutput
 foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','html.xsl','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
     if (-not (Test-Path -LiteralPath (Join-Path $commonSource $name) -PathType Leaf)) { throw "Не найден Core artifact: $name" }
@@ -42,11 +38,6 @@ foreach ($name in @('ZipHandler.exe','RarHandler.exe')) {
 
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Path $stage | Out-Null
-@(
-    '[Deployment]',
-    "CompatibilityTarget=$CompatibilityTarget",
-    'Architecture=Win32'
-) | Set-Content -LiteralPath (Join-Path $stage 'deployment.ini') -Encoding ASCII
 Copy-Item -Path (Join-Path $repoRoot 'runtime\*') -Destination $stage -Recurse -Force
 # Current Librusec catalog names are shipped alongside the historical *_L
 # aliases.  The executable accepts both while older manual installations keep

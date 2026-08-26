@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+﻿﻿#include "stdafx.h"
 #include "Utils.h"
 #include "AboutBox.h"
 #include "RuntimeLocalization.h"
@@ -29,7 +29,6 @@ namespace
 		CString expectedUrl;
 		const UpdateArtifact artifact = SelectUpdateArtifact(
 			DeploymentContext::CurrentMode(),
-			DeploymentContext::CurrentCompatibilityTarget(),
 			baseVersion);
 		expectedUrl.Format(
 			L"%s%s/%s",
@@ -69,21 +68,18 @@ namespace
 		return value != nullptr;
 	}
 
-	bool GetProfileArtifact(
+	bool GetArtifact(
 		const MSXML2::IXMLDOMElementPtr& root,
 		CString& url,
 		CString& sha256)
 	{
 		MSXML2::IXMLDOMElementPtr artifacts;
-		const wchar_t* profile = DeploymentContext::CurrentCompatibilityTarget() == DeploymentContext::CompatibilityTarget::Win7 ? L"Win7" : L"Modern";
-		MSXML2::IXMLDOMElementPtr profileNode;
-		if (!GetUniqueChildElement(root, L"Artifacts", artifacts) || !GetUniqueChildElement(artifacts, profile, profileNode)) return false;
+		if (!GetUniqueChildElement(root, L"Artifacts", artifacts)) return false;
 		const UpdateArtifact artifact = SelectUpdateArtifact(
 			DeploymentContext::CurrentMode(),
-			DeploymentContext::CurrentCompatibilityTarget(),
 			FBE_VERSION_WSTRING);
-		return GetUniqueNodeText(profileNode, artifact.manifestUrlElement, url) &&
-			GetUniqueNodeText(profileNode, artifact.manifestSha256Element, sha256);
+		return GetUniqueNodeText(artifacts, artifact.manifestUrlElement, url) &&
+			GetUniqueNodeText(artifacts, artifact.manifestSha256Element, sha256);
 	}
 
 	int GetMaximumDownloadSize(const CString& url)
@@ -732,7 +728,7 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 				bool releaseTagOk = rootOk && GetUniqueNodeText(root, L"ReleaseTag", releaseTag);
 				bool releaseTypeOk = rootOk && GetUniqueNodeText(root, L"ReleaseType", releaseType);
 				bool betaOk = rootOk && GetUniqueNodeText(root, L"Beta", beta);
-				bool urlOk = rootOk && GetProfileArtifact(root, updateURL, updateSHA256);
+				bool urlOk = rootOk && GetArtifact(root, updateURL, updateSHA256);
 				bool shaOk = urlOk;
 				const bool profileManifest = urlOk;
 				if (!profileManifest)

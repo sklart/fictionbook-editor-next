@@ -6,9 +6,6 @@ param(
     [ValidateSet("Win32")]
     [string]$Platform = "Win32",
 
-    [ValidateSet("Modern", "Win7")]
-    [string]$CompatibilityTarget = "Modern",
-
     [string]$PlatformToolset,
 
     [switch]$SkipUpx,
@@ -19,7 +16,6 @@ param(
     # Общие property handler и MUI уже подготовлены современным этапом.
     [switch]$SkipPropertyHandlerBuild,
     [switch]$SkipFbvVerbMuiBuild,
-    [switch]$SkipCommonChecks,
     [string]$BatchOutputDirectory,
     [switch]$SkipArtifactVerification,
     [switch]$SkipReleaseVerification,
@@ -81,14 +77,13 @@ if ($ReleaseTag) {
 }
 elseif ($Prerelease) { throw "Для предварительного выпуска требуется тег с суффиксом, например v$version-rc.1." }
 $architecture = $Platform.ToLowerInvariant()
-$artifactCompatibility = if ($CompatibilityTarget -eq "Win7") { "win7-" } else { "" }
-$artifactsDir = Join-Path $repoRoot ("out\artifacts\{0}" -f $CompatibilityTarget)
-$portableDir = Join-Path $repoRoot ("out\package\{0}\FictionBookEditor" -f $CompatibilityTarget)
-$coreDir = Join-Path $repoRoot ("out\stage\Core\{0}" -f $CompatibilityTarget)
-$integrationDir = Join-Path $repoRoot ("out\stage\Integration\{0}" -f $CompatibilityTarget)
-$installerInputDir = Join-Path $repoRoot ("out\package\{0}\InstallerInput" -f $CompatibilityTarget)
-$symbolsDir = Join-Path $repoRoot ("out\package\{0}\symbols" -f $CompatibilityTarget)
-$editorRuntimeDirectory = Join-Path $repoRoot ("out\editor-runtime\{0}" -f $CompatibilityTarget)
+$artifactsDir = Join-Path $repoRoot "out\artifacts"
+$portableDir = Join-Path $repoRoot "out\package\FictionBookEditor"
+$coreDir = Join-Path $repoRoot "out\stage\Core"
+$integrationDir = Join-Path $repoRoot "out\stage\Integration"
+$installerInputDir = Join-Path $repoRoot "out\package\InstallerInput"
+$symbolsDir = Join-Path $repoRoot "out\package\symbols"
+$editorRuntimeDirectory = Join-Path $repoRoot "out\editor-runtime"
 $batchOutputDirectory = if ($BatchOutputDirectory) {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
 } else {
@@ -105,7 +100,6 @@ if (-not $SkipBuild) {
     $buildArguments = @{
         Configuration = $Configuration
         Platform = $Platform
-        CompatibilityTarget = $CompatibilityTarget
         BatchOutputDirectory = $batchOutputDirectory
     }
     if ($PlatformToolset) {
@@ -122,7 +116,7 @@ if (-not $SkipBuild) {
 	}
     & (Join-Path $PSScriptRoot "build.ps1") @buildArguments
 }
-$archHandlerOutputDirectory = Join-Path $repoRoot "out\archhandler\$CompatibilityTarget\Win32\$Configuration"
+$archHandlerOutputDirectory = Join-Path $repoRoot "out\archhandler\Win32\$Configuration"
 if (-not $SkipBuild) {
     $archHandlerArguments = @{ OutputDirectory = $archHandlerOutputDirectory }
     if ($PlatformToolset) { $archHandlerArguments.PlatformToolset = $PlatformToolset }
@@ -130,7 +124,7 @@ if (-not $SkipBuild) {
 }
 
 if (-not $SkipBuild) {
-    & (Join-Path $PSScriptRoot "build-provenance.ps1") -Action Write -Kind $CompatibilityTarget `
+    & (Join-Path $PSScriptRoot "build-provenance.ps1") -Action Write -Kind Runtime `
         -Configuration $Configuration -ProfileDirectory $editorRuntimeDirectory `
         -BatchDirectory $batchOutputDirectory -ArchHandlerDirectory $archHandlerOutputDirectory `
         -PlatformToolset $PlatformToolset
@@ -193,16 +187,12 @@ else {
 
 $verifyReleaseArguments = @{
     Configuration = $Configuration
-    CompatibilityTarget = $CompatibilityTarget
     SkipUpdateManifest = $true
     BatchOutputDirectory = $batchOutputDirectory
     ArchHandlerOutputDirectory = $archHandlerOutputDirectory
 }
 if ($PlatformToolset) {
     $verifyReleaseArguments.PlatformToolset = $PlatformToolset
-}
-if ($SkipCommonChecks) {
-    $verifyReleaseArguments.SkipCommonChecks = $true
 }
 if ($FullValidation) {
     $verifyReleaseArguments.FullValidation = $true
@@ -212,14 +202,10 @@ if (-not $SkipReleaseVerification) {
 }
 $stageCoreArguments = @{
     Configuration = $Configuration
-    CompatibilityTarget = $CompatibilityTarget
     EditorRuntimeDirectory = $editorRuntimeDirectory
     BatchOutputDirectory = $batchOutputDirectory
     ArchHandlerOutputDirectory = $archHandlerOutputDirectory
     OutputDirectory = $coreDir
-}
-if ($CompatibilityTarget -eq "Win7") {
-    $stageCoreArguments.CommonCoreDirectory = Join-Path $repoRoot "out\stage\Core\Modern"
 }
 & (Join-Path $PSScriptRoot "stage-core.ps1") @stageCoreArguments
 & (Join-Path $PSScriptRoot "stage-integration.ps1") `
@@ -247,9 +233,9 @@ if ((Test-Path -LiteralPath $artifactsDir) -and -not $PreserveArtifacts) {
 }
 New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
 
-$portableZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$artifactCompatibility$architecture-portable.zip"
-$symbolsZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$artifactCompatibility$architecture-symbols.zip"
-$setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$version-$artifactCompatibility$architecture-setup.exe"
+$portableZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-portable.zip"
+$symbolsZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-symbols.zip"
+$setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-setup.exe"
 $checksumsPath = Join-Path $artifactsDir "SHA256SUMS.txt"
 
 foreach ($artifactPath in @($portableZip, $symbolsZip)) {
@@ -281,9 +267,8 @@ function Set-ManifestNodeValue {
 Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath $portableZip -CompressionLevel Optimal
 
 # The portable acceptance scenario is exercised against the materialised
-# payload and its freshly created ZIP. Win7 validation is intentionally kept
-# in its dedicated compatibility contour.
-if ($CompatibilityTarget -eq 'Modern') {
+# payload and its freshly created ZIP.
+if ($true) {
     & (Join-Path $repoRoot 'tools\tests\test-portable-package-smoke.ps1') `
         -PackageDirectory $portableDir `
         -PortableZip $portableZip
@@ -370,9 +355,6 @@ if (-not $SkipInstaller) {
             ('/DINPUTDIR=' + $installerInputDir),
             ('/DOUTPUTFILE=' + $setupArtifact)
         )
-        if ($CompatibilityTarget -eq "Win7") {
-            $makensisArguments += '/DFBE_WIN7_BUILD=1'
-        }
         $makensisArguments += 'MakeInstaller.nsi'
         & $makensis @makensisArguments
         if ($LASTEXITCODE -ne 0) {
@@ -395,15 +377,14 @@ $checksumLines = foreach ($file in $artifactFiles) {
 }
 [IO.File]::WriteAllLines($checksumsPath, $checksumLines, [Text.Encoding]::ASCII)
 if ($ValidateUpdateManifest) {
-    throw "Проверка published update.xml не является частью materialization artifacts. Используйте tools\\build\\new-update-manifest-candidate.ps1 после Modern и Win7 artifacts."
+    throw "Проверка published update.xml не является частью materialization artifacts. Используйте tools\\build\\new-update-manifest-candidate.ps1 после создания единого набора artifacts."
 }
 
 $verifyArtifactArguments = @{
     Platform = $Platform
     ArtifactsDirectory = $artifactsDir
-    CompatibilityTarget = $CompatibilityTarget
 }
-if ($SkipInstaller -and -not ($PreserveArtifacts -and $CompatibilityTarget -eq "Win7")) {
+if ($SkipInstaller) {
     $verifyArtifactArguments.SkipInstaller = $true
 }
 if (-not $SkipArtifactVerification) {

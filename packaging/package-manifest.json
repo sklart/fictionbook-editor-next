@@ -29,9 +29,5 @@
     "optional": [],
     "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "Lang\\Shell"]
   },
-  "symbols": { "required": [], "optional": [] },
-  "compatibilitySpecific": {
-    "Modern": [],
-    "Win7": ["Scintilla.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe"]
-  }
+  "symbols": { "required": [], "optional": [] }
 }

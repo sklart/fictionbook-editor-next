@@ -73,17 +73,17 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
     <OutDir Condition="'$(BatchOutputDirectory)'!=''">$(BatchOutputDirectory)</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
     <OutDir Condition="'$(BatchOutputDirectory)'!=''">$(BatchOutputDirectory)</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\$(CompatibilityTarget)\</IntDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -105,7 +105,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;UNICODE;_UNICODE;WINVER=0x0601;_WIN32_WINNT=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -175,8 +175,5 @@
   <ItemGroup>
     <ClInclude Include="DocxQuality.h" />
   </ItemGroup>
-  <ItemDefinitionGroup Condition="'$(CompatibilityTarget)'=='Win7'">
-    <ClCompile><PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>
-  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
