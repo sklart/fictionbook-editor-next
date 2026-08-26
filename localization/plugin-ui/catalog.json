@@ -203,8 +203,32 @@
         "bg-BG": "Максимална дълбочина на заглавията, включени в генерираното съдържание."
       }
     },
-    "export_html.runtime.menu_name": {
+    "export_html.tooltip.custom_css": {
+      "source": "Optional CSS file linked from generated HTML.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_CUSTOM_CSS",
+      "translations": { "en-US": "Optional CSS file linked from generated HTML.", "ru-RU": "Необязательный файл CSS, подключаемый к создаваемому HTML.", "uk-UA": "Необов’язковий CSS-файл, підключений до створеного HTML.", "de-DE": "Optionale CSS-Datei für das erzeugte HTML.", "fr-FR": "Fichier CSS facultatif lié au HTML généré.", "es-ES": "Archivo CSS opcional vinculado al HTML generado.", "it-IT": "File CSS facoltativo collegato all’HTML generato.", "pl-PL": "Opcjonalny plik CSS dołączany do wygenerowanego HTML.", "pt-PT": "Ficheiro CSS opcional ligado ao HTML criado.", "nl-NL": "Optioneel CSS-bestand gekoppeld aan de gemaakte HTML.", "cs-CZ": "Volitelný soubor CSS připojený k vytvořenému HTML.", "bg-BG": "Незадължителен CSS файл, свързан със създадения HTML." }
+    },
+    "export_html.tooltip.browse_css": {
+      "source": "Select a CSS file to link from the generated HTML.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_BROWSE_CSS",
+      "translations": { "en-US": "Select a CSS file to link from the generated HTML.", "ru-RU": "Выбрать файл CSS для подключения к создаваемому HTML.", "uk-UA": "Вибрати CSS-файл для підключення до створеного HTML.", "de-DE": "CSS-Datei für das erzeugte HTML auswählen.", "fr-FR": "Sélectionner un fichier CSS pour le HTML généré.", "es-ES": "Seleccionar un archivo CSS para el HTML generado.", "it-IT": "Seleziona un file CSS per l’HTML generato.", "pl-PL": "Wybierz plik CSS dla wygenerowanego HTML.", "pt-PT": "Selecionar um ficheiro CSS para o HTML criado.", "nl-NL": "Selecteer een CSS-bestand voor de gemaakte HTML.", "cs-CZ": "Vyberte soubor CSS pro vytvořené HTML.", "bg-BG": "Изберете CSS файл за създадения HTML." }
+    },
+    "export_html.tooltip.image_max_width": {
+      "source": "Maximum image width in pixels. 0 keeps the original width.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_IMAGE_MAX_WIDTH",
+      "translations": { "en-US": "Maximum image width in pixels. 0 keeps the original width.", "ru-RU": "Максимальная ширина изображений в пикселях. 0 сохраняет исходную ширину.", "uk-UA": "Максимальна ширина зображень у пікселях. 0 зберігає початкову ширину.", "de-DE": "Maximale Bildbreite in Pixeln. 0 behält die ursprüngliche Breite bei.", "fr-FR": "Largeur maximale en pixels. 0 conserve la largeur d’origine.", "es-ES": "Ancho máximo en píxeles. 0 conserva el ancho original.", "it-IT": "Larghezza massima in pixel. 0 mantiene la larghezza originale.", "pl-PL": "Maksymalna szerokość w pikselach. 0 zachowuje pierwotną szerokość.", "pt-PT": "Largura máxima em píxeis. 0 mantém a largura original.", "nl-NL": "Maximale breedte in pixels. 0 behoudt de oorspronkelijke breedte.", "cs-CZ": "Maximální šířka v pixelech. 0 zachová původní šířku.", "bg-BG": "Максимална ширина в пиксели. 0 запазва първоначалната ширина." }
+    },
+    "export_html.tooltip.image_max_height": {
+      "source": "Maximum image height in pixels. 0 keeps the original height.",
+      "component": "export-html.tooltip",
+      "resourceId": "IDS_TOOLTIP_IMAGE_MAX_HEIGHT",
+      "translations": { "en-US": "Maximum image height in pixels. 0 keeps the original height.", "ru-RU": "Максимальная высота изображений в пикселях. 0 сохраняет исходную высоту.", "uk-UA": "Максимальна висота зображень у пікселях. 0 зберігає початкову висоту.", "de-DE": "Maximale Bildhöhe in Pixeln. 0 behält die ursprüngliche Höhe bei.", "fr-FR": "Hauteur maximale en pixels. 0 conserve la hauteur d’origine.", "es-ES": "Alto máximo en píxeles. 0 conserva el alto original.", "it-IT": "Altezza massima in pixel. 0 mantiene l’altezza originale.", "pl-PL": "Maksymalna wysokość w pikselach. 0 zachowuje pierwotną wysokość.", "pt-PT": "Altura máxima em píxeis. 0 mantém a altura original.", "nl-NL": "Maximale hoogte in pixels. 0 behoudt de oorspronkelijke hoogte.", "cs-CZ": "Maximální výška v pixelech. 0 zachová původní výšku.", "bg-BG": "Максимална височина в пиксели. 0 запазва първоначалната височина." }
+    },
       "source": "Export HTML",
+    "export_html.runtime.menu_name": {
       "component": "export-html.runtime",
       "resourceId": "IDR_EXPORTHTML",
       "translations": {
@@ -4431,18 +4455,18 @@
       "component": "export-docx.tooltip",
       "resourceId": "IDS_TOOLTIP_TOC_DEPTH",
       "translations": {
-        "en-US": "Maximum heading depth included in the automatic Word table of contents: from 1 to 4.",
-        "ru-RU": "Максимальная глубина заголовков, попадающих в автоматическое оглавление Word: от 1 до 4.",
-        "uk-UA": "Максимальна глибина заголовків, що входять до автоматичного змісту Word: від 1 до 4.",
-        "de-DE": "Maximale Überschriftentiefe im automatischen Word-Inhaltsverzeichnis: von 1 bis 4.",
-        "fr-FR": "Profondeur maximale des titres inclus dans la table des matières automatique de Word : de 1 à 4.",
-        "es-ES": "Profundidad máxima de encabezados incluida en el índice automático de Word: de 1 a 4.",
-        "it-IT": "Profondità massima dei titoli inclusi nell’indice automatico di Word: da 1 a 4.",
-        "pl-PL": "Maksymalna głębokość nagłówków w automatycznym spisie treści Word: od 1 do 4.",
-        "pt-PT": "Profundidade máxima dos títulos incluídos no índice automático do Word: de 1 a 4.",
-        "nl-NL": "Maximale kopdiepte in de automatische Word-inhoudsopgave: van 1 tot 4.",
-        "cs-CZ": "Maximální hloubka nadpisů zahrnutých do automatického obsahu Wordu: od 1 do 4.",
-        "bg-BG": "Максимална дълбочина на заглавията в автоматичното съдържание на Word: от 1 до 4."
+        "en-US": "Maximum heading depth included in the automatic Word table of contents: from 1 to 6.",
+        "ru-RU": "Максимальная глубина заголовков, попадающих в автоматическое оглавление Word: от 1 до 6.",
+        "uk-UA": "Максимальна глибина заголовків, що входять до автоматичного змісту Word: від 1 до 6.",
+        "de-DE": "Maximale Überschriftentiefe im automatischen Word-Inhaltsverzeichnis: von 1 bis 6.",
+        "fr-FR": "Profondeur maximale des titres inclus dans la table des matières automatique de Word : de 1 à 6.",
+        "es-ES": "Profundidad máxima de encabezados incluida en el índice automático de Word: de 1 a 6.",
+        "it-IT": "Profondità massima dei titoli inclusi nell’indice automatico di Word: da 1 a 6.",
+        "pl-PL": "Maksymalna głębokość nagłówków w automatycznym spisie treści Word: od 1 do 6.",
+        "pt-PT": "Profundidade máxima dos títulos incluídos no índice automático do Word: de 1 a 6.",
+        "nl-NL": "Maximale kopdiepte in de automatische Word-inhoudsopgave: van 1 tot 6.",
+        "cs-CZ": "Maximální hloubka nadpisů zahrnutých do automatického obsahu Wordu: od 1 do 6.",
+        "bg-BG": "Максимална дълбочина на заглавията в автоматичното съдържание на Word: от 1 до 6."
       }
     },
     "export_docx.tooltip.create_bookmarks": {

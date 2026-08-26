@@ -39,10 +39,12 @@ Assert-Contains $rc 'IDD_SETTING_NEXT DIALOGEX 0, 0, 330, 320' 'Settings Next di
 Assert-Contains $rc 'IDC_UPDATE_CHANNEL,88,124,184,50' 'Update-channel selector geometry changed.'
 Assert-Contains $rc 'IDD_TOOLS_SETTINGS DIALOGEX 0, 0, 340, 371' 'Settings container dimensions changed.'
 Assert-Contains $rc 'IDC_TAB_CTRL,"SysTabControl32",0x0,0,0,339,342' 'Settings tab geometry changed.'
-Assert-Contains $rc 'IDD_ABOUTBOX DIALOGEX 0, 0, 420, 151' 'About dimensions changed.'
-Assert-Contains $rc 'IDC_TEXT_STATUS,"Static",SS_LEFT \| WS_GROUP,24,133,210,20' 'About status geometry changed.'
-Assert-Contains $rc 'IDC_WHATS_NEW,240,136,70,14' 'About What''s New button geometry changed.'
-Assert-Contains $rc 'IDC_UPDATE,315,136,49,14' 'About update button geometry changed.'
+Assert-Contains $rc 'IDD_ABOUTBOX DIALOGEX 0, 0, 420, 165' 'About dimensions changed.'
+Assert-Contains $rc 'LTEXT           "Build",IDC_STATIC_BUILD,101,20,40,8' 'About build label must fit localized text.'
+Assert-Contains $rc 'EDITTEXT        IDC_CONTRIBS,70,51,343,91' 'About contributors area must use increased height.'
+Assert-Contains $rc 'IDC_TEXT_STATUS,"Static",SS_LEFT \| WS_GROUP,24,147,210,20' 'About status geometry changed.'
+Assert-Contains $rc 'IDC_WHATS_NEW,240,150,70,14' 'About What''s New button geometry changed.'
+Assert-Contains $rc 'IDC_UPDATE,315,150,49,14' 'About update button geometry changed.'
 
 foreach ($control in @(
     'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS\s+1145',

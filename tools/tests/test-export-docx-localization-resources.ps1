@@ -25,6 +25,15 @@ if (-not (Test-Path -LiteralPath $generatedRcPath)) {
 }
 $generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
 
+$imagesGroup = [regex]::Match($rc, 'GROUPBOX\s+"Изображения и структура",IDC_GRP_IMAGES,18,36,394,(?<height>\d+)')
+$hyperlinks = [regex]::Match($rc, 'CONTROL\s+"Преобразовывать гиперссылки",IDC_EXPORT_HYPERLINKS,"Button",[^\r\n]*,30,(?<top>\d+),240,(?<height>\d+)')
+if (-not $imagesGroup.Success -or -not $hyperlinks.Success) {
+    throw "Не найдены элементы главной страницы настроек ExportDOCX для проверки разметки."
+}
+if (36 + [int]$imagesGroup.Groups["height"].Value -lt [int]$hyperlinks.Groups["top"].Value + [int]$hyperlinks.Groups["height"].Value + 4) {
+    throw "Рамка «Изображения и структура» не оставляет нижнего отступа для настройки гиперссылок."
+}
+
 if ($rc -notmatch '#include\s+"ExportDOCXStrings\.generated\.rc2"') {
     throw "ExportDOCX.rc не подключает ExportDOCXStrings.generated.rc2."
 }

@@ -15,6 +15,10 @@ public:
 	CString     m_tooltipBrowseTemplate;
 	CString     m_tooltipDocInfo;
 	CString     m_tooltipTocDepth;
+	CString     m_tooltipCustomCss;
+	CString     m_tooltipBrowseCss;
+	CString     m_tooltipImageMaxWidth;
+	CString     m_tooltipImageMaxHeight;
 	bool	      m_includedesc;
 	int	      m_tocdepth;
 	int	      m_imageMaxWidth;
@@ -98,6 +102,16 @@ public:
 			pt.x + rc_std.right - rc_std.left + 10, pt.y,
 			rc_my.right - rc_my.left, rc_my.bottom - rc_my.top, TRUE);
 
+		hCB = ::GetDlgItem(m_hDlg, IDC_CUSTOM_CSS);
+		::GetWindowRect(hCB, &rc_my);
+		POINT cssPt = { rc_my.left, rc_my.top };
+		::ScreenToClient(m_hDlg, &cssPt);
+		::MoveWindow(hCB, cssPt.x, cssPt.y, rc_std.right - rc_std.left, rc_my.bottom - rc_my.top, TRUE);
+		hCB = ::GetDlgItem(m_hDlg, IDC_BROWSE_CSS);
+		::GetWindowRect(hCB, &rc_my);
+		::MoveWindow(hCB, cssPt.x + rc_std.right - rc_std.left + 10, cssPt.y,
+			rc_my.right - rc_my.left, rc_my.bottom - rc_my.top, TRUE);
+
 		return 0;
 	}
 
@@ -167,10 +181,23 @@ public:
 		m_tooltipBrowseTemplate = LoadExportHtmlString(IDS_TOOLTIP_BROWSE_TEMPLATE);
 		m_tooltipDocInfo = LoadExportHtmlString(IDS_TOOLTIP_DOCINFO);
 		m_tooltipTocDepth = LoadExportHtmlString(IDS_TOOLTIP_TOC_DEPTH);
+		m_tooltipCustomCss = LoadExportHtmlString(IDS_TOOLTIP_CUSTOM_CSS);
+		m_tooltipBrowseCss = LoadExportHtmlString(IDS_TOOLTIP_BROWSE_CSS);
+		m_tooltipImageMaxWidth = LoadExportHtmlString(IDS_TOOLTIP_IMAGE_MAX_WIDTH);
+		m_tooltipImageMaxHeight = LoadExportHtmlString(IDS_TOOLTIP_IMAGE_MAX_HEIGHT);
 		AddTooltip(IDC_TEMPLATE, m_tooltipTemplate);
+		AddTooltip(IDC_TEMPLATE_LABEL, m_tooltipTemplate);
 		AddTooltip(IDC_BROWSE, m_tooltipBrowseTemplate);
 		AddTooltip(IDC_DOCINFO, m_tooltipDocInfo);
 		AddTooltip(IDC_TOCDEPTH, m_tooltipTocDepth);
+		AddTooltip(IDC_TOC_DEPTH_LABEL, m_tooltipTocDepth);
+		AddTooltip(IDC_CUSTOM_CSS, m_tooltipCustomCss);
+		AddTooltip(IDC_CUSTOM_CSS_LABEL, m_tooltipCustomCss);
+		AddTooltip(IDC_BROWSE_CSS, m_tooltipBrowseCss);
+		AddTooltip(IDC_IMAGE_MAX_WIDTH, m_tooltipImageMaxWidth);
+		AddTooltip(IDC_IMAGE_MAX_WIDTH_LABEL, m_tooltipImageMaxWidth);
+		AddTooltip(IDC_IMAGE_MAX_HEIGHT, m_tooltipImageMaxHeight);
+		AddTooltip(IDC_IMAGE_MAX_HEIGHT_LABEL, m_tooltipImageMaxHeight);
 	}
 
 	void AddTooltip(UINT controlId, CString& text) {

@@ -115,7 +115,7 @@ FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     CONTROL         "",IDC_SETTINGS_TAB,"SysTabControl32",WS_TABSTOP,7,7,416,228
 
-    GROUPBOX        "Изображения и структура",IDC_GRP_IMAGES,18,36,394,190
+    GROUPBOX        "Изображения и структура",IDC_GRP_IMAGES,18,36,394,198
     CONTROL         "Экспортировать изображения",IDC_EXPORT_IMAGES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,54,220,10
     CONTROL         "Экспортировать обложку",IDC_EXPORT_COVER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,70,220,10
     CONTROL         "Ограничивать ширину изображений",IDC_LIMIT_IMAGE_WIDTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,86,220,10
@@ -220,5 +220,4 @@ END
 
 #endif    // Russian user interface resources
 /////////////////////////////////////////////////////////////////////////////
-
 

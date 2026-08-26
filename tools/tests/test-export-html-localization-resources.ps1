@@ -71,6 +71,10 @@ $requiredResourceIds = @(
     "IDS_TOOLTIP_BROWSE_TEMPLATE",
     "IDS_TOOLTIP_DOCINFO",
     "IDS_TOOLTIP_TOC_DEPTH",
+    "IDS_TOOLTIP_CUSTOM_CSS",
+    "IDS_TOOLTIP_BROWSE_CSS",
+    "IDS_TOOLTIP_IMAGE_MAX_WIDTH",
+    "IDS_TOOLTIP_IMAGE_MAX_HEIGHT",
     "IDS_CUSTOM_SAVE_TEMPLATE_LABEL",
     "IDS_CUSTOM_SAVE_INCLUDE_DESC",
     "IDS_CUSTOM_SAVE_TOC_DEPTH",
@@ -80,6 +84,15 @@ $requiredResourceIds = @(
 	"IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH",
 	"IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT"
 )
+
+foreach ($tooltipControl in @(
+    "IDC_TEMPLATE", "IDC_BROWSE", "IDC_DOCINFO", "IDC_TOCDEPTH",
+    "IDC_CUSTOM_CSS", "IDC_BROWSE_CSS", "IDC_IMAGE_MAX_WIDTH", "IDC_IMAGE_MAX_HEIGHT"
+)) {
+    if ($dialog -notmatch [regex]::Escape("AddTooltip($tooltipControl,")) {
+        throw "Для настройки ExportHTML отсутствует всплывающая подсказка: $tooltipControl"
+    }
+}
 
 $requiredLanguageBlocks = @(
     "LANG_RUSSIAN",
