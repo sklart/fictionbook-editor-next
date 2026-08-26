@@ -2222,6 +2222,42 @@
         "bg-BG": "ЗАМ"
       }
     },
+    "fbe.status.position": {
+      "resourceId": "IDS_STATUS_POSITION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Ln %d, Col %d",
+        "ru-RU": "Стр %d, поз %d",
+        "uk-UA": "Ряд %d, поз %d",
+        "de-DE": "Zeile %d, Spalte %d",
+        "fr-FR": "Lig. %d, col. %d",
+        "es-ES": "Lín. %d, col. %d",
+        "it-IT": "Riga %d, col. %d",
+        "pl-PL": "Wiersz %d, kol. %d",
+        "pt-PT": "Lin. %d, col. %d",
+        "nl-NL": "Regel %d, kol. %d",
+        "cs-CZ": "Řádek %d, sloupec %d",
+        "bg-BG": "Ред %d, кол. %d"
+      }
+    },
+    "fbe.status.selection": {
+      "resourceId": "IDS_STATUS_SELECTION",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Sel: %d",
+        "ru-RU": "Выд: %d",
+        "uk-UA": "Вид: %d",
+        "de-DE": "Ausw.: %d",
+        "fr-FR": "Sél. : %d",
+        "es-ES": "Selec.: %d",
+        "it-IT": "Selez.: %d",
+        "pl-PL": "Zazn.: %d",
+        "pt-PT": "Seleção: %d",
+        "nl-NL": "Sel.: %d",
+        "cs-CZ": "Výběr: %d",
+        "bg-BG": "Изб.: %d"
+      }
+    },
     "fbe.hotkey.edit.add_epigraph": {
       "resourceId": "IDS_HOTKEY_EDIT_ADD_EPIGRAPH",
       "component": "fbe.core",

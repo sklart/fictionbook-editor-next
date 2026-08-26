@@ -256,6 +256,11 @@ public:
   int			  m_want_focus; // focus this control when idle
 
   CString		  m_status_msg; // message to be posted to frame's status line
+  CString       m_status_context;
+  CString       m_status_transient;
+  DWORD         m_status_transient_expiration;
+  enum ValidationStatus { VALIDATION_UNKNOWN, VALIDATION_VALID, VALIDATION_INVALID };
+  ValidationStatus m_validation_status;
 
   bool			  m_restore_pos_cmdline;
   
@@ -312,7 +317,8 @@ public:
     m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_file_age(0), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
     m_source_selection_transferred(false), m_source_selection_start(0),
-		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL)
+		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL),
+        m_status_transient_expiration(0), m_validation_status(VALIDATION_UNKNOWN)
 	// added by SeNS
 	{
 		strINS[0] = L'\0';
@@ -943,9 +949,10 @@ public:
   void ChangeNBSP(MSHTML::IHTMLElementPtr elem);
   void RemoveLastUndo();
 
-  LRESULT OnEdChange(WORD, WORD, HWND hWnd, BOOL& b) {
+	LRESULT OnEdChange(WORD, WORD, HWND hWnd, BOOL& b) {
     StopIncSearch(true);
-	m_doc_changed=true;
+		m_doc_changed=true;
+    ResetValidationStatus();
     m_cb_updated=false;
 
 	// added by SeNS: update 
@@ -1036,7 +1043,10 @@ public:
     if (scn.updated & SC_UPDATE_LINE_COUNT)
 		UpdateSourceLineNumberMargin(false);
     if (scn.updated & SC_UPDATE_TEXT)
+    {
 		ClearSourceValidationAnnotations();
+        ResetValidationStatus();
+    }
     if (scn.updated & (SC_UPDATE_SELECTION | SC_UPDATE_TEXT))
 		SciUpdateUI(false);
 	return 0;
@@ -1147,6 +1157,7 @@ public:
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL& bHandled)
 	{
 		UpdateViewSizeInfo();
+		UpdateStatusBarLayout();
 		if (_Settings.GetShowFullPathInWindowTitle() && m_doc && m_doc->m_namevalid)
 			m_need_title_update = true;
 		bHandled = FALSE;
@@ -1159,7 +1170,17 @@ public:
 	bool LoadToScintilla(CString filename);
 
 	// added by SeNS: issue #127
-	void DisplayCharCode();
+  void DisplayCharCode();
+  void UpdateStatusBar();
+  void UpdateStatusBarLayout();
+  bool CurrentOverwriteMode() const;
+  void RefreshStatusMainPane();
+  void SetValidationStatus(ValidationStatus status);
+  void ResetValidationStatus();
+  void ResetStatusForDocument();
+  void SetStatusContext(const CString& text);
+  void SetTransientStatus(const CString& text);
+  CString GetStatusValidationText() const;
 };
 
 int	StartScript(CMainFrame* mainframe);

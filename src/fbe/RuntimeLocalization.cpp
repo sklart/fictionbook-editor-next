@@ -180,6 +180,8 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 	{ IDS_DOC_TREE_CLEANUP, L"fbe.document_tree.cleanup" },
 	{ IDS_PANE_INS, L"fbe.status.insert_mode" },
 	{ IDS_PANE_OVR, L"fbe.status.overwrite_mode" },
+	{ IDS_STATUS_POSITION, L"fbe.status.position" },
+	{ IDS_STATUS_SELECTION, L"fbe.status.selection" },
 	{ IDS_DMS_AUTHOR, L"fbe.dms.author_nickname" },
 	{ IDS_DMS_CI, L"fbe.dms.custom_info" },
 	{ IDS_DMS_DI, L"fbe.dms.document_info" },

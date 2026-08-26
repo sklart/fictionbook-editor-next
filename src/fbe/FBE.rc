@@ -996,6 +996,8 @@ BEGIN
     ID_VIEW_TREE            "Show or hide the document tree\nToggle document tree"
     IDS_PANE_INS            "INS"
     IDS_PANE_OVR            "OVR"
+    IDS_STATUS_POSITION     "Ln %d, Col %d"
+    IDS_STATUS_SELECTION    "Sel: %d"
     IDS_DOC_TREE_CLEANUP    "Clean"
     IDS_HOTKEY_FILE_OPEN    "Open"
     IDS_HOTKEY_FILE_SAVE    "Save"

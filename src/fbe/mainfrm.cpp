@@ -1382,10 +1382,7 @@ bool	CMainFrame::DiscardChanges() {
 }
 
 void  CMainFrame::SetIsText() {
-  if (m_is_fail)
-    m_status.SetText(ID_DEFAULT_PANE,L"Failing Incremental Search: "+m_is_str);
-  else
-    m_status.SetText(ID_DEFAULT_PANE,L"Incremental Search: "+m_is_str);
+  RefreshStatusMainPane();
 }
 
 void  CMainFrame::StopIncSearch(bool fCancel) {
@@ -1397,6 +1394,7 @@ void  CMainFrame::StopIncSearch(bool fCancel) {
     m_doc->m_body.CancelIncSearch();
   else
     m_doc->m_body.StopIncSearch();
+  RefreshStatusMainPane();
 }
 
 CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
@@ -1421,9 +1419,11 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     CString filename(GetSaveFileName(encoding));
     if (filename.IsEmpty())
       return CANCELLED;
+    const bool wasFbd = IsFbdFile(m_doc->m_filename);
     m_doc->m_encoding=encoding;
     if (m_doc->Save(filename)) {
       m_doc->m_filename=filename;
+	  if (wasFbd != IsFbdFile(filename)) ResetValidationStatus();
 	  U::SetCurrentDirectoryToFile(filename);
       m_doc->m_namevalid=true;
       m_mru.AddToList(filename);
@@ -1431,6 +1431,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	  if(IsSourceActive())
 		  m_source.SendMessage(SCI_SETSAVEPOINT);
       DeleteRecoveryFile();
+	  UpdateStatusBar();
       return OK;
     }
     return FAIL;
@@ -1492,6 +1493,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename)
   delete m_doc;
   m_doc=doc;
   m_bad_xml = false;
+  ResetStatusForDocument();
   return OK;
 }
 
@@ -1695,7 +1697,7 @@ BOOL CMainFrame::OnIdle()
 		}
 
 		m_last_sci_ovr = m_source.SendMessage(SCI_GETOVERTYPE);
-		m_status.SetPaneText(ID_PANE_INS, m_last_sci_ovr ? strOVR : strINS);
+		m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
 
 	RefreshLocalizedToolbarButtonTexts(m_CmdToolbar);
 	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
@@ -1807,7 +1809,8 @@ BOOL CMainFrame::OnIdle()
 
 		if (m_sel_changed && /*GetCurView()*/m_current_view != DESC)
 		{
-			m_status.SetPaneText(ID_DEFAULT_PANE, m_doc->m_body.SelPath());
+			SetStatusContext(m_doc->m_body.SelPath());
+			UpdateStatusBar();
 
 			// update links and IDs
 			try
@@ -2244,8 +2247,13 @@ BOOL CMainFrame::OnIdle()
 	// install a posted status line message
 	if(!m_status_msg.IsEmpty())
 	{
-		m_status.SetPaneText(ID_DEFAULT_PANE, m_status_msg);
+		SetTransientStatus(m_status_msg);
 		m_status_msg.Empty();
+	}
+	if (!m_status_transient.IsEmpty() && static_cast<LONG>(::GetTickCount() - m_status_transient_expiration) >= 0)
+	{
+		m_status_transient.Empty();
+		RefreshStatusMainPane();
 	}
 
 	// see if we need to update title
@@ -2712,20 +2720,25 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   int panes[] =
   {
 	  ID_DEFAULT_PANE,
+	  ID_PANE_POSITION,
+	  ID_PANE_SELECTION,
 	  ID_PANE_CHAR,
-	  399,
+	  ID_PANE_ENCODING,
+	  ID_PANE_VALIDATION,
 	  ID_PANE_INS
   };
   m_status.SetPanes(panes, sizeof(panes)/sizeof(panes[0]));
   m_current_dpi = GetWindowDpi(m_hWnd);
-  m_status.SetPaneWidth (ID_PANE_CHAR, MulDiv(60, m_current_dpi, 96));
+  m_status.SetPaneText(ID_PANE_POSITION, L"");
+  m_status.SetPaneText(ID_PANE_SELECTION, L"");
   m_status.SetPaneText(ID_PANE_CHAR, L"");
-  m_status.SetPaneWidth (399, MulDiv(20, m_current_dpi, 96));
-  m_status.SetPaneWidth (ID_PANE_INS, MulDiv(30, m_current_dpi, 96));
+  m_status.SetPaneText(ID_PANE_ENCODING, L"");
+  m_status.SetPaneText(ID_PANE_VALIDATION, L"");
 
 	// load insert/overwrite abbreviations  
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_INS, strINS, MAX_LOAD_STRING);
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_OVR, strOVR, MAX_LOAD_STRING);
+	UpdateStatusBar();
 
   // create splitter
   m_hWndClient = m_splitter.Create(m_hWnd,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
@@ -3257,15 +3270,13 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 		SetSciStyles();
 		UpdateSourceLineNumberMargin(true);
 	}
-	m_status.SetPaneWidth(ID_PANE_CHAR, MulDiv(60, newDpi, 96));
-	m_status.SetPaneWidth(399, MulDiv(20, newDpi, 96));
-	m_status.SetPaneWidth(ID_PANE_INS, MulDiv(30, newDpi, 96));
 	if (splitterPosition >= 0)
 		m_splitter.SetSplitterPos(MulDiv(splitterPosition, newDpi, oldDpi));
 
 	m_rebar.SendMessage(WM_SIZE);
 	m_status.SendMessage(WM_SIZE);
 	UpdateLayout();
+	UpdateStatusBarLayout();
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_FRAME);
 	return 0;
 }
@@ -4200,10 +4211,11 @@ void CMainFrame::RefreshLocalizedToolbarCaptions()
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_INS, strINS, MAX_LOAD_STRING);
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_OVR, strOVR, MAX_LOAD_STRING);
 
-	m_status.SetPaneText(ID_PANE_INS, m_last_sci_ovr ? strOVR : strINS);
+	m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
 
 	RefreshLocalizedToolbarButtonTexts(m_CmdToolbar);
 	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
+	UpdateStatusBar();
 }
 
 void CMainFrame::RefreshLocalizedMainFrameUi()
@@ -4661,6 +4673,7 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   AttachDocument(doc);
   delete m_doc;
   m_doc=doc;
+  ResetStatusForDocument();
 
   return 0;
 }
@@ -7176,7 +7189,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 			  if(m_source_selection_transferred && (bool)m_body_selection)
 				m_body_selection->select();
 			}
-			m_status.SetPaneText(ID_PANE_INS, m_last_ie_ovr ? strOVR : strINS);
+			m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
 
 			if (m_Speller) 
 				m_Speller->SetDocumentLanguage();
@@ -7230,7 +7243,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	m_th_allign_caption.SetEnabled(false);
 	m_valign_caption.SetEnabled(false);	
 
-	m_status.SetPaneText(ID_DEFAULT_PANE,_T(""));
+	SetStatusContext(_T(""));
 	{
 			CComDispatchDriver	body(m_doc->m_body.Script());
 			CComVariant		    args[1];
@@ -7262,8 +7275,8 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 			body.Invoke0(L"SaveBodyScroll");
 		}
 	}
-	m_status.SetPaneText(ID_PANE_CHAR, L"");
-	m_status.SetPaneText(ID_PANE_INS, m_last_sci_ovr ? strOVR : strINS);
+	SetStatusContext(L"");
+	m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
 
 	RefreshLocalizedToolbarButtonTexts(m_CmdToolbar);
 	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
@@ -7271,6 +7284,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
   }
   m_last_view = m_current_view;
   m_current_view = vt;
+	UpdateStatusBar();
   if(!(prev == SOURCE && vt == BODY))
 	RestoreSelection();
   m_view.SetFocus();
@@ -7457,9 +7471,11 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
     fv=m_doc->Validate(line,col);						// ?? ?????? Body
   if (fv) {
     ClearSourceValidationAnnotations();
+    SetValidationStatus(VALIDATION_VALID);
     return 0;
   }
   if (!fv) {
+    SetValidationStatus(VALIDATION_INVALID);
     ShowView(SOURCE);
     ShowSourceValidationAnnotation(line, col, validationError);
     // have to jump through the hoops to move to required column
@@ -7707,6 +7723,7 @@ void CMainFrame::ShowSourceValidationAnnotation(int line, int column, const CStr
 
 bool CMainFrame::SciUpdateUI(bool gotoTag)
 {
+	UpdateStatusBar();
 	if (_Settings.XmlSrcTagHL() || gotoTag)
 	{
 		XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
@@ -8993,36 +9010,203 @@ bool CMainFrame::LoadToScintilla(CString filename)
 	return result;
 }
 
-// Added by SeNS: issue (wish) #127
-void CMainFrame::DisplayCharCode()
+namespace {
+bool FirstCodePoint(const wchar_t* text, int length, unsigned int& codePoint)
 {
+	if (!text || length <= 0)
+		return false;
+	const unsigned int first = static_cast<unsigned int>(text[0]);
+	if (first >= 0xD800 && first <= 0xDBFF)
+	{
+		if (length <= 1) return false;
+		const unsigned int second = static_cast<unsigned int>(text[1]);
+		if (second >= 0xDC00 && second <= 0xDFFF)
+		{
+			codePoint = 0x10000 + ((first - 0xD800) << 10) + second - 0xDC00;
+			return true;
+		}
+	}
+	if (first >= 0xDC00 && first <= 0xDFFF)
+		return false;
+	codePoint = first;
+	return true;
+}
+
+CString CharacterInspectorText(unsigned int codePoint)
+{
+	CString text;
+	text.Format(L"U+%04X  &#%u;", codePoint, codePoint);
+	return text;
+}
+}
+
+bool CMainFrame::CurrentOverwriteMode() const
+{
+	return m_current_view == SOURCE ? m_last_sci_ovr :
+		m_current_view == BODY ? m_last_ie_ovr : false;
+}
+
+void CMainFrame::RefreshStatusMainPane()
+{
+	if (!m_status.IsWindow()) return;
+	if (m_incsearch)
+		m_status.SetPaneText(ID_DEFAULT_PANE, m_is_fail ? L"Failing Incremental Search: " + m_is_str : L"Incremental Search: " + m_is_str);
+	else if (!m_status_transient.IsEmpty() && static_cast<LONG>(::GetTickCount() - m_status_transient_expiration) < 0)
+		m_status.SetPaneText(ID_DEFAULT_PANE, m_status_transient);
+	else
+		m_status.SetPaneText(ID_DEFAULT_PANE, m_status_context);
+}
+
+void CMainFrame::SetValidationStatus(ValidationStatus status)
+{
+	if (m_validation_status == status) return;
+	m_validation_status = status;
+	if (m_status.IsWindow()) m_status.SetPaneText(ID_PANE_VALIDATION, m_doc ? GetStatusValidationText() : L"");
+	UpdateStatusBarLayout();
+}
+
+void CMainFrame::ResetValidationStatus()
+{
+	SetValidationStatus(VALIDATION_UNKNOWN);
+}
+
+void CMainFrame::ResetStatusForDocument()
+{
+	m_status_context.Empty();
+	m_status_transient.Empty();
+	m_status_transient_expiration = 0;
+	ResetValidationStatus();
+	RefreshStatusMainPane();
+	UpdateStatusBar();
+}
+
+void CMainFrame::SetStatusContext(const CString& text)
+{
+	m_status_context = text;
+	RefreshStatusMainPane();
+}
+
+void CMainFrame::SetTransientStatus(const CString& text)
+{
+	m_status_transient = text;
+	m_status_transient_expiration = ::GetTickCount() + 5000;
+	RefreshStatusMainPane();
+}
+
+CString CMainFrame::GetStatusValidationText() const
+{
+	const bool fbd = m_doc && IsFbdFile(m_doc->m_filename);
+	const wchar_t* type = fbd ? L"FBD" : L"FB2";
+	const wchar_t* state = m_validation_status == VALIDATION_VALID ? L"OK" :
+		m_validation_status == VALIDATION_INVALID ? L"!" : L"?";
+	CString text;
+	text.Format(L"%s: %s", type, state);
+	return text;
+}
+
+void CMainFrame::UpdateStatusBarLayout()
+{
+	if (!m_status.IsWindow())
+		return;
+	CClientDC dc(m_status);
+	HFONT font = m_status.GetFont();
+	HFONT oldFont = font ? dc.SelectFont(font) : NULL;
+	const int padding = MulDiv(12, m_current_dpi ? m_current_dpi : 96, 96);
+	auto measure = [&](UINT pane) -> int {
+		CString text;
+		m_status.GetPaneText(pane, text);
+		if (text.IsEmpty()) return 0;
+		SIZE size = {};
+		dc.GetTextExtent(text, text.GetLength(), &size);
+		return size.cx + padding;
+	};
+	int position = measure(ID_PANE_POSITION), selection = measure(ID_PANE_SELECTION);
+	int character = measure(ID_PANE_CHAR), encoding = measure(ID_PANE_ENCODING);
+	int validation = measure(ID_PANE_VALIDATION), insertMode = measure(ID_PANE_INS);
+	CRect rc;
+	m_status.GetClientRect(&rc);
+	const int defaultMinimum = MulDiv(120, m_current_dpi ? m_current_dpi : 96, 96);
+	int available = rc.Width() - defaultMinimum - insertMode;
+	auto hideIfNeeded = [&](int& width) { if (available < position + selection + character + encoding + validation) width = 0; };
+	hideIfNeeded(selection); hideIfNeeded(encoding); hideIfNeeded(validation); hideIfNeeded(character);
+	m_status.SetPaneWidth(ID_PANE_POSITION, position);
+	m_status.SetPaneWidth(ID_PANE_SELECTION, selection);
+	m_status.SetPaneWidth(ID_PANE_CHAR, character);
+	m_status.SetPaneWidth(ID_PANE_ENCODING, encoding);
+	m_status.SetPaneWidth(ID_PANE_VALIDATION, validation);
+	m_status.SetPaneWidth(ID_PANE_INS, insertMode);
+	if (oldFont) dc.SelectFont(oldFont);
+}
+
+void CMainFrame::UpdateStatusBar()
+{
+	if (!m_status.IsWindow())
+		return;
+	CString position, selection, character, encoding;
+	if (m_doc && !m_doc->m_encoding.IsEmpty())
+		encoding = m_doc->m_encoding;
 	if (m_current_view == SOURCE)
 	{
-		// The long complicated way to get unicode character from Scintilla!
-		char buf[5] = {0,0,0,0,0};
-		int pos = m_source.SendMessage(SCI_GETCURRENTPOS);
-		buf[0] = static_cast<char>(m_source.SendMessage(SCI_GETCHARAT, pos));
-		int len = UTF8_CHAR_LEN(buf[0]);
-		for (int i = 1; i < len; ++i)
-			buf[i] = static_cast<char>(m_source.SendMessage(SCI_GETCHARAT, pos+i));
-		CA2W str (buf, CP_UTF8);
-		CString s;
-		s.Format(L"  U+%.4X", str[0]);
-		m_status.SetPaneText(ID_PANE_CHAR, s);
-	}
-	else if (m_current_view == BODY)
-	{
-		// added by SeNS: issue (wish) #127
-		CString s(L"");
-		MSHTML::IHTMLTxtRangePtr sel(m_doc->m_body.Document()->selection->createRange());
-		if (sel)
+		const int caret = m_source.SendMessage(SCI_GETCURRENTPOS);
+		const int line = m_source.SendMessage(SCI_LINEFROMPOSITION, caret);
+		const int lineStart = m_source.SendMessage(SCI_POSITIONFROMLINE, line);
+		const int column = m_source.SendMessage(SCI_COUNTCHARACTERS, lineStart, caret);
+		CString format;
+		FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_POSITION, format, MAX_LOAD_STRING);
+		position.Format(format, line + 1, column + 1);
+		const int selectionStart = m_source.SendMessage(SCI_GETSELECTIONSTART);
+		const int selectionEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
+		if (selectionStart != selectionEnd)
 		{
-			sel->expand(L"character");
-			s.SetString(sel->text);
-			if (!s.IsEmpty())
-				s.Format(L"  U+%.4X", static_cast<unsigned int>(s[0]));
+			CString selectionFormat;
+			FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_SELECTION, selectionFormat, MAX_LOAD_STRING);
+			selection.Format(selectionFormat, m_source.SendMessage(SCI_COUNTCHARACTERS, selectionStart, selectionEnd));
 		}
-		m_status.SetPaneText(ID_PANE_CHAR, s);
+		int inspectedPosition = selectionStart != selectionEnd ? selectionStart :
+			(caret > 0 ? m_source.SendMessage(SCI_POSITIONBEFORE, caret) : -1);
+		if (inspectedPosition >= 0 && inspectedPosition < m_source.SendMessage(SCI_GETLENGTH))
+		{
+			char bytes[5] = {};
+			for (int i = 0; i < 4; ++i) bytes[i] = static_cast<char>(m_source.SendMessage(SCI_GETCHARAT, inspectedPosition + i));
+			const int byteCount = UTF8_CHAR_LEN(bytes[0]);
+			if (byteCount > 0 && byteCount <= 4)
+			{
+				CA2W wide(bytes, CP_UTF8);
+				unsigned int codePoint = 0;
+				if (FirstCodePoint(wide, ::lstrlenW(wide), codePoint)) character = CharacterInspectorText(codePoint);
+			}
+		}
 	}
-	else m_status.SetPaneText(ID_PANE_CHAR, L"");
+	else if (m_current_view == BODY && m_doc && m_doc->m_body.Document())
+	{
+		try
+		{
+			MSHTML::IHTMLTxtRangePtr range(m_doc->m_body.Document()->selection->createRange());
+			if (!range) throw _com_error(E_NOINTERFACE);
+			MSHTML::IHTMLTxtRangePtr copy(range->duplicate());
+			if (!copy) throw _com_error(E_NOINTERFACE);
+			CString text;
+			text.SetString(copy->text);
+			if (text.IsEmpty())
+			{
+				if (copy->moveStart(L"character", -1) < 0)
+					text.SetString(copy->text);
+			}
+			unsigned int codePoint = 0;
+			if (FirstCodePoint(text, text.GetLength(), codePoint)) character = CharacterInspectorText(codePoint);
+		}
+		catch (const _com_error&) { character.Empty(); }
+	}
+	m_status.SetPaneText(ID_PANE_POSITION, position);
+	m_status.SetPaneText(ID_PANE_SELECTION, selection);
+	m_status.SetPaneText(ID_PANE_CHAR, character);
+	m_status.SetPaneText(ID_PANE_ENCODING, encoding);
+	m_status.SetPaneText(ID_PANE_VALIDATION, m_doc ? GetStatusValidationText() : L"");
+	m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
+	UpdateStatusBarLayout();
+}
+
+void CMainFrame::DisplayCharCode()
+{
+	UpdateStatusBar();
 }

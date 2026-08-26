@@ -316,6 +316,12 @@
 #define IDS_SAVE_ACCESS_DENIED_MSG       322
 #define IDS_HOTKEY_TOOLS_OPTIONS          323
 #define ID_PANE_CHAR                    305
+#define ID_PANE_POSITION                324
+#define ID_PANE_SELECTION               325
+#define ID_PANE_ENCODING                326
+#define ID_PANE_VALIDATION              327
+#define IDS_STATUS_POSITION             328
+#define IDS_STATUS_SELECTION            329
 #define IDB_UPD_CHECK1                  400
 #define IDB_UPD_CHECK2                  401
 #define IDB_UPD_CHECK3                  402
