@@ -121,6 +121,11 @@ foreach ($catalog in @($appCatalog, $appMainMenuCatalog, $appSecondaryMenuCatalo
     $strings = if ($catalog.ContainsKey('seedStrings')) { $catalog['seedStrings'] } else { $catalog['strings'] }
     foreach ($key in @($strings.Keys | Sort-Object)) {
         $entry = $strings[$key]
+        # Catalogs may keep a scalar source label next to translation entries.
+        # It is metadata, not a runtime string with a component/translations map.
+        if ($entry -isnot [System.Collections.IDictionary]) {
+            continue
+        }
         $component = if ($entry.ContainsKey('component')) { $entry['component'] } else { $null }
         $module = Get-ModuleName -Key $key -Component $component
         if ($null -eq $module) {
