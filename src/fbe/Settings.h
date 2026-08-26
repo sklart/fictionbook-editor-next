@@ -692,7 +692,6 @@ public:
 	bool	GetWindowPosition(WINDOWPLACEMENT& wpl)const;
 	DWORD	GetInterfaceLanguageID()const;
 	DWORD GetEffectiveInterfaceLanguageID()const;
-	CString GetInterfaceLanguageDllName()const;
 	CString GetInterfaceLocaleName()const;
 	CString GetLocalizedGenresFileName()const;
 	GenreCatalog GetGenreCatalog()const;

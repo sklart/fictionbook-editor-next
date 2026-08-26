@@ -20,6 +20,7 @@ const CString Tokens(L" .,?�!��\r\n\t\"������:;<>(){}[]\u00A0\
 // spell check dialog initialisation
 LRESULT CSpellDialog::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
+	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SPELL_CHECK);
 	m_BadWord = GetDlgItem(IDC_SPELL_BEDWORD);
 	m_Replacement = GetDlgItem(IDC_SPELL_REPLACEMENT);
 	m_Suggestions = GetDlgItem(IDC_SPELL_SUGG_LIST);

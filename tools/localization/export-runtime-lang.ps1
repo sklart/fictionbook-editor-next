@@ -1,5 +1,5 @@
-# Экспортирует runtime-локализацию в JSON-файлы Lang/<язык>/<модуль>.json.
-# Эти файлы являются будущим внешним слоем локализации поверх встроенных ресурсов.
+# Экспортирует production runtime-локализацию в JSON-файлы Lang/<язык>/<модуль>.json.
+# Встроенные английские ресурсы остаются structural/emergency fallback.
 [CmdletBinding()]
 param(
     [string] $RepositoryRoot,

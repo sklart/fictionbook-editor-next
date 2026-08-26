@@ -581,7 +581,6 @@ static ProcessMemorySnapshot GetProcessMemorySnapshot()
 }
 
 extern CSettings _Settings;
-extern HINSTANCE resLib;
 
 static void TracePluginDiagnostic(const wchar_t* type, const CLSID& clsid, const wchar_t* operation, HRESULT result, int domReturned)
 {
@@ -977,38 +976,6 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 	ApplyRuntimeMenuCommandTexts(menu);
 }
 
-static void ReloadInterfaceResourceInstance()
-{
-	const CString dllName = _Settings.GetInterfaceLanguageDllName();
-	if(dllName.IsEmpty())
-	{
-		resLib = NULL;
-		ATL::_AtlBaseModule.SetResourceInstance(ATL::_AtlBaseModule.GetModuleInstance());
-		return;
-	}
-
-	// Созданные Win32-окна и меню могут ещё обращаться к ресурсам прежней DLL.
-	// Не выгружаем её до завершения процесса: это исключает use-after-free при
-	// переключении языка и стоит лишь двух небольших resource DLL.
-	static HINSTANCE russianResources = NULL;
-	static HINSTANCE ukrainianResources = NULL;
-	HINSTANCE* cachedResource = NULL;
-	if(dllName.CompareNoCase(L"Lang\\ru-RU\\res_rus.dll") == 0)
-		cachedResource = &russianResources;
-	else if(dllName.CompareNoCase(L"Lang\\uk-UA\\res_ukr.dll") == 0)
-		cachedResource = &ukrainianResources;
-
-	if(cachedResource != NULL && *cachedResource == NULL)
-		*cachedResource = ::LoadLibrary(U::GetProgDir() + dllName);
-
-	resLib = cachedResource != NULL ? *cachedResource : NULL;
-
-	if(resLib)
-		ATL::_AtlBaseModule.SetResourceInstance(resLib);
-	else
-		ATL::_AtlBaseModule.SetResourceInstance(ATL::_AtlBaseModule.GetModuleInstance());
-}
-
 // Снимок параметров, которые действительно требуют перенастройки редактора.
 // Смена только языка не должна повторно инициализировать MSHTML, Scintilla и
 // проверку орфографии: это заметно задерживает интерфейс и не влияет на их работу.
@@ -1312,6 +1279,7 @@ public:
 
   LRESULT OnInitDialog(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam) {
     m_hDlg=hWnd;
+    FbeApplyRuntimeDialogLocalization(hWnd, IDD_CUSTOMSAVEDLG);
 
     TCHAR   buf[1024];
 
@@ -4821,7 +4789,6 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 	{
 		if(previousInterfaceLanguage != _Settings.GetInterfaceLanguageID())
 		{
-			ReloadInterfaceResourceInstance();
 			FbeResetRuntimeLocalization();
 			RefreshLocalizedMainFrameUi();
 		}
@@ -5055,7 +5022,6 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 	{
 		if(previousInterfaceLanguage != _Settings.GetInterfaceLanguageID())
 		{
-			ReloadInterfaceResourceInstance();
 			FbeResetRuntimeLocalization();
 			RefreshLocalizedMainFrameUi();
 		}

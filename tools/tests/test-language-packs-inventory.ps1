@@ -74,8 +74,6 @@ foreach ($entry in $languages) {
 }
 
 $knownRepoAssets = @(
-    "Lang/ru-RU/res_rus.dll",
-    "Lang/uk-UA/res_ukr.dll",
     "gpl-3.0.txt",
     "gpl-3.0.ru.txt",
     "gpl-3.0.ua.txt",

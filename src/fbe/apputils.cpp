@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "res1.h"
+#include "RuntimeLocalization.h"
 
 #include "utils.h"
 #include "apputils.h"
@@ -129,6 +130,7 @@ public:
   END_MSG_MAP()
 
   LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
+    FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_INPUTBOX);
     DoDataExchange(FALSE);  // Populate the controls
     SetDlgItemText(IDC_PROMPT,m_prompt);
     SetWindowText(m_title);

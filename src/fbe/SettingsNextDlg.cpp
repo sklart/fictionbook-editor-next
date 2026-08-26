@@ -22,14 +22,20 @@ static CString GetThemeDisplayName(const XmlSourceThemeInfo& theme)
 			L"fbe.dialog.idd_setting_next.source_palette.system", L"Automatic — follow Windows theme");
 	if(theme.id.CompareNoCase(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT)) == 0)
 		return FbeLoadRuntimeStringByKey(
-			L"fbe.dialog.idd_setting_next.source_palette.fbe_light", L"FBE Light");
+			L"fbe.dialog.idd_setting_next.source_palette.contrast", L"Contrast");
 	if(theme.id.CompareNoCase(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_DARK)) == 0)
 		return FbeLoadRuntimeStringByKey(
-			L"fbe.dialog.idd_setting_next.source_palette.fbe_dark", L"FBE Dark");
+			L"fbe.dialog.idd_setting_next.source_palette.dark", L"Dark");
+	if(theme.id.CompareNoCase(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_LIGHT)) == 0)
+		return FbeLoadRuntimeStringByKey(
+			L"fbe.dialog.idd_setting_next.source_palette.high_contrast_light", L"High contrast light");
+	if(theme.id.CompareNoCase(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_HIGH_CONTRAST_DARK)) == 0)
+		return FbeLoadRuntimeStringByKey(
+			L"fbe.dialog.idd_setting_next.source_palette.high_contrast_dark", L"High contrast dark");
 
 	if(theme.id.CompareNoCase(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_HISTORICAL)) == 0)
 		return FbeLoadRuntimeStringByKey(
-			L"fbe.dialog.idd_setting_next.source_palette.historical", L"Historical FBE");
+			L"fbe.dialog.idd_setting_next.source_palette.classic", L"Classic");
 	return theme.name;
 }
 static const int kSourceColorControls[] = {

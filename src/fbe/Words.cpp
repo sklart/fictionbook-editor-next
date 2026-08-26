@@ -7,6 +7,7 @@
 #include "FBEView.h"
 #include "FBDoc.h"
 #include "Words.h"
+#include "RuntimeLocalization.h"
 
 #include "Settings.h"
 
@@ -339,6 +340,8 @@ public:
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	{
+		FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_WORDS);
+
 		m_btn_showhide_excls = GetDlgItem(IDC_CHECK_SHOWHIDE_EXCLS);
 		m_btn_showhide_excls.EnableWindow(m_showhide_excls);
 		m_btn_showhide_excls.SetCheck(m_showhide_excls);

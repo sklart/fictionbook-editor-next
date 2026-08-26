@@ -10,9 +10,10 @@
   runtime-контур `Lang/<locale>/<module>.json`. Встроенные Win32-ресурсы
   остаются безопасным запасным вариантом, поэтому отсутствие или повреждение
   внешнего пакета не мешает запуску.
-- Для русского и украинского дополнительно сохраняются исторические resource
-  DLL `res_rus.dll` и `res_ukr.dll`. Они используются как встроенный Win32
-  fallback и размещаются внутри соответствующих каталогов `Lang`.
+- FBE locale resource DLL отсутствуют. FBE всегда использует собственные
+  английские structural/fallback resources; русский, украинский и остальные
+  десять языков получают пользовательский текст одинаково — из
+  `Lang/<locale>/fbe.json`.
 - Команда проверки FB2 в контекстном меню Windows локализуется через MUI-модуль
   `FBVVerbResources.dll` и спутниковые `.mui`-файлы. MUI-файлы располагаются
   в `Lang\Shell\<locale>\FBVVerbResources.dll.mui`, а нейтральный host-модуль
@@ -23,6 +24,17 @@
   - `src/export-epub/ExportEPUB.rc`;
   - `src/import-epub/ImportEPUB.rc`;
   - `src/export-html/ExportHTML.rc`.
+
+### Завершённый аудит retired FBE locale resources
+
+Перед удалением русско- и украинско-язычных resource-проектов были сверены их
+resource IDs с `src/fbe/FBE.rc`. Все 47 bitmap/icon/manifest файлов имели
+соответствие в нейтральном FBE resource set; 45 совпадали побайтно. Отличались
+только исторические `Toolbar.bmp` и manifest, но оба resource ID присутствуют
+в `FBE.exe` и загружаются как structural resources из него. Уникальных
+locale-specific графических, toolbar, icon или manifest ресурсов, нужных для
+работы FBE, не обнаружено. Shell MUI в этот аудит не входит и остаётся
+независимым Windows-контуром.
 
 ## Целевые языки
 
@@ -128,10 +140,8 @@ FBE. В настройке всегда доступен пункт `Опред�
 `en-US`. Такой файл нужен для отдельных процессов вроде FBV, которые могут
 запускаться не из FBE.
 
-Для русского и украинского сохраняется историческая модель resource DLL, но
-она больше не ограничивает остальные языки: общий JSON-контур покрывает
-генерируемые меню, диалоги и runtime-строки всех 12 языков. Отдельные resource
-DLL для каждого нового языка не требуются.
+Для всех 12 языков действует один JSON-контур, покрывающий меню, диалоги и
+runtime-строки. Отдельные FBE resource DLL не требуются.
 
 Проверяемый контракт этой схемы лежит в `localization/runtime/contract.json`,
 описание — в `localization/runtime/README.md`, smoke-тест —
@@ -144,7 +154,8 @@ DLL для каждого нового языка не требуются.
 `localization/app-ui/catalog.json`. Он задаёт стабильные ключи, переводы и
 источники генерации Win32-ресурсов:
 
-- FBE продолжает использовать `src/locales/res_rus` и `src/locales/res_ukr`;
+- FBE использует `src/fbe/FBE.rc` только как английский structural/fallback
+  resource source, а внешние переводы — как runtime JSON;
 - FBV продолжает использовать `src/fbv/FBV.rc`;
 - shell-команда проверки FB2 остаётся на MUI-модели;
 - каталог `localization/app-ui` задаёт целевые языки, существующие источники и

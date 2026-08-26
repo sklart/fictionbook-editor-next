@@ -37,9 +37,6 @@
       "defaultInstall": true,
       "required": false,
       "assets": {
-        "fbeResources": [
-          "Lang/ru-RU/res_rus.dll"
-        ],
         "fbvMui": [
           "Lang/Shell/ru-RU/FBVVerbResources.dll.mui"
         ],
@@ -67,9 +64,6 @@
       "defaultInstall": true,
       "required": false,
       "assets": {
-        "fbeResources": [
-          "Lang/uk-UA/res_ukr.dll"
-        ],
         "fbvMui": [
           "Lang/Shell/uk-UA/FBVVerbResources.dll.mui"
         ],

@@ -318,6 +318,7 @@ namespace
 LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
 	m_bAllowResize = false;
+	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_ABOUTBOX);
 	SetWindowText(FbeLoadRuntimeString(IDS_ABOUT_WINDOW_CAPTION));
 	SetDlgItemText(IDC_STATIC_BUILD, FbeLoadRuntimeString(IDS_ABOUT_BUILD_LABEL));
 

@@ -50,8 +50,10 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_DESCRIPTION, L"fbe.dialog.idd_hotkeys.description", L"Description");
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEYS_GROUPS, L"fbe.dialog.idd_hotkeys.groups", L"Groups:");
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEYS, L"fbe.dialog.idd_hotkeys.commands", L"Commands:");
+	SetRuntimeHotkeysText(m_hWnd, IDC_HOTKEYS_SHORTCUT_LABEL, L"fbe.dialog.idd_hotkeys.shortcut", L"Shortcut:");
 	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_DEFAULT, L"fbe.dialog.idd_hotkeys.default", L"Default");
 	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_HOTKEY_DELETE, L"fbe.dialog.idd_hotkeys.delete", L"Delete");
+	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_ACTIONS, L"fbe.dialog.idd_hotkeys.actions", L"Actions");
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_COLLISION, L"fbe.dialog.idd_hotkeys.collision", L"Collision");
 	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_HOTKEY_ASSIGN, L"fbe.dialog.idd_hotkeys.assign", L"Assign");
 

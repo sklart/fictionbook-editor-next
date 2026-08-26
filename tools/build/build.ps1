@@ -207,33 +207,6 @@ function Remove-ObsoleteRootLanguageDirectories {
     }
 }
 
-function Confirm-FbeLocalizedResourceLibraries {
-    param(
-        [Parameter(Mandatory)]
-        [string]$OutputDirectory
-    )
-
-    $localizedLibraries = @{
-        "ru-RU" = "res_rus.dll"
-        "uk-UA" = "res_ukr.dll"
-    }
-
-    foreach ($locale in $localizedLibraries.Keys) {
-        $libraryName = $localizedLibraries[$locale]
-        $localizedPath = Join-Path $OutputDirectory "Lang\\$locale\\$libraryName"
-        if (-not (Test-Path -LiteralPath $localizedPath -PathType Leaf)) {
-            throw "Не найдена DLL локализованных ресурсов FBE: $localizedPath"
-        }
-
-        $legacyRootPath = Join-Path $OutputDirectory $libraryName
-        if (Test-Path -LiteralPath $legacyRootPath -PathType Leaf) {
-            Remove-Item -LiteralPath $legacyRootPath -Force
-            Write-Host "Удалена устаревшая корневая копия DLL локализации: $legacyRootPath"
-        }
-    }
-
-    Write-Host "Локализованные DLL FBE проверены в каталоге Lang."
-}
 if ($SkipDependencies) {
     Assert-PreparedDependencies
     Write-Host "Подготовка PCRE2 и Hunspell пропущена: используются проверенные общие библиотеки."
@@ -383,7 +356,6 @@ foreach ($requiredProject in @(
 
 Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
-Confirm-FbeLocalizedResourceLibraries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 Remove-ObsoleteRootLanguageDirectories -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
 if ($CompatibilityTarget -eq 'Modern') {

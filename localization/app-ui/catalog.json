@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "description": "Стартовый каталог подготовки локализации основного интерфейса FBE, FBV и будущих языковых пакетов установщика. Пока не является runtime-источником ресурсов.",
+  "description": "Production-каталог runtime JSON-локализации интерфейса FBE, FBV и поставляемых языковых пакетов.",
   "targetLanguages": [
     "en-US",
     "ru-RU",
@@ -17,16 +17,16 @@
   ],
   "components": {
     "fbe.core": {
-      "kind": "win32-resource-dll",
+      "kind": "runtime-json",
       "sources": {
-        "ru-RU": "src/locales/res_rus/FBE.rc",
-        "uk-UA": "src/locales/res_ukr/FBE.rc"
+        "neutral": "src/fbe/FBE.rc",
+        "dialogs": "localization/app-ui/fbe-small-dialogs.json",
+        "menus": "localization/app-ui/fbe-idr-mainframe-menu.json"
       },
       "runtimeArtifacts": [
-        "res_rus.dll",
-        "res_ukr.dll"
+        "Lang/<locale>/fbe.json"
       ],
-      "notes": "Основной интерфейс FBE сейчас локализуется ресурсными DLL. Каталог фиксирует будущий Weblate-friendly слой поверх существующих .rc."
+      "notes": "FBE.exe содержит английские structural/fallback resources; пользовательские строки загружаются из runtime JSON для всех 12 языков."
     },
     "fbv.core": {
       "kind": "win32-resource",
@@ -50,15 +50,15 @@
       "notes": "Подпись команды проверки FB2 в Проводнике уже локализуется через MUIVerb."
     },
     "installer.language_packs": {
-      "kind": "future-installer-components",
+      "kind": "installer-components",
       "sources": {
         "installer": "packaging/nsis/Installer/MakeInstaller.nsi"
       },
       "runtimeArtifacts": [
-        "res_*.dll",
+        "Lang/<locale>/*.json",
         "*.mui"
       ],
-      "notes": "Будущий контур: дать пользователю возможность не устанавливать ненужные языковые ресурсы."
+      "notes": "Установщик поставляет runtime JSON и независимые Shell MUI assets."
     }
   },
   "seedStrings": {

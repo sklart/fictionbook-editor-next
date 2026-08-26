@@ -177,31 +177,6 @@ foreach ($resourceName in $requiredFbeResources) {
     }
 }
 
-$localizedFbeResourceFiles = @(
-    @{
-        ResourceFile = "src\locales\res_rus\FBE.rc"
-        GeneratedFile = "src\locales\res_rus\FBEStrings.generated.rc2"
-    },
-    @{
-        ResourceFile = "src\locales\res_ukr\FBE.rc"
-        GeneratedFile = "src\locales\res_ukr\FBEStrings.generated.rc2"
-    }
-)
-
-foreach ($resourcePair in $localizedFbeResourceFiles) {
-    $resourceText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $resourcePair.ResourceFile)
-    $generatedText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $resourcePair.GeneratedFile)
-    if ($resourceText -notmatch '#include\s+"FBEStrings\.generated\.rc2"') {
-        throw "В $($resourcePair.ResourceFile) не подключён FBEStrings.generated.rc2."
-    }
-
-    foreach ($resourceName in $requiredGeneratedFbeStringResources) {
-        if ($generatedText -notmatch [regex]::Escape($resourceName)) {
-            throw "В $($resourcePair.GeneratedFile) не найден обязательный ресурс $resourceName."
-        }
-    }
-}
-
 foreach ($resourceName in $requiredFbeResources) {
     if ($resourceName -notin $fbeCatalogResources) {
         Write-Warning "FBE-ресурс $resourceName ещё не заведён в localization/app-ui/catalog.json."

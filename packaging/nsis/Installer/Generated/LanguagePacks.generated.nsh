@@ -18,8 +18,6 @@ SectionGroup $(LanguagePacksGroup) LanguagePacksGroup_id
 
   Section "Русский (ru-RU)" LanguagePack_ru_RU
     ; required=False; defaultInstall=True; installerLanguage=Russian
-    SetOutPath "$INSTDIR\Lang\ru-RU"
-    File /nonfatal "${INPUTDIR}\Lang\ru-RU\res_rus.dll"
     SetOutPath "$INSTDIR\Lang\Shell\ru-RU"
     File /nonfatal "${INPUTDIR}\Lang\Shell\ru-RU\FBVVerbResources.dll.mui"
     SetOutPath "$INSTDIR\Lang\ru-RU"
@@ -28,8 +26,6 @@ SectionGroup $(LanguagePacksGroup) LanguagePacksGroup_id
 
   Section "Українська (uk-UA)" LanguagePack_uk_UA
     ; required=False; defaultInstall=True; installerLanguage=Ukrainian
-    SetOutPath "$INSTDIR\Lang\uk-UA"
-    File /nonfatal "${INPUTDIR}\Lang\uk-UA\res_ukr.dll"
     SetOutPath "$INSTDIR\Lang\Shell\uk-UA"
     File /nonfatal "${INPUTDIR}\Lang\Shell\uk-UA\FBVVerbResources.dll.mui"
     SetOutPath "$INSTDIR\Lang\uk-UA"

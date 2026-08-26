@@ -38,7 +38,7 @@ try {
         }
     }
 
-    foreach ($asset in @("Lang\ru-RU\res_rus.dll", "Lang\uk-UA\res_ukr.dll", "Lang\Shell\en-US\FBVVerbResources.dll.mui", "Lang\Shell\ru-RU\FBVVerbResources.dll.mui", "Lang\Shell\uk-UA\FBVVerbResources.dll.mui", "Lang\en-US", "Lang\ru-RU", "Lang\uk-UA")) {
+    foreach ($asset in @("Lang\Shell\en-US\FBVVerbResources.dll.mui", "Lang\Shell\ru-RU\FBVVerbResources.dll.mui", "Lang\Shell\uk-UA\FBVVerbResources.dll.mui", "Lang\en-US", "Lang\ru-RU", "Lang\uk-UA")) {
         if ($text -notmatch [regex]::Escape($asset)) {
             throw "В generated .nsh отсутствует ожидаемый ресурс: $asset"
         }

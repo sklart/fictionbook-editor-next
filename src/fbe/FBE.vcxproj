@@ -77,7 +77,7 @@ if exist "$(TargetDir)gdiplus.cat" del /Q "$(TargetDir)gdiplus.cat"
   if exist "$(TargetDir)ThirdPartyNotices.txt" del /Q "$(TargetDir)ThirdPartyNotices.txt"
   if exist "$(TargetDir)Themes\licenses" rd /S /Q "$(TargetDir)Themes\licenses"
   if exist "$(TargetDir)cmd" rd /S /Q "$(TargetDir)cmd"
-robocopy "$(SolutionDir)runtime" "$(TargetDir)." /E /XF FBShell.dll FBV.exe ExportHTML.dll res_rus.dll res_ukr.dll &gt;nul
+robocopy "$(SolutionDir)runtime" "$(TargetDir)." /E /XF FBShell.dll FBV.exe ExportHTML.dll &gt;nul
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 exit /b 0
 </Command>
@@ -158,7 +158,7 @@ if exist "$(TargetDir)gdiplus.cat" del /Q "$(TargetDir)gdiplus.cat"
   if exist "$(TargetDir)ThirdPartyNotices.txt" del /Q "$(TargetDir)ThirdPartyNotices.txt"
   if exist "$(TargetDir)Themes\licenses" rd /S /Q "$(TargetDir)Themes\licenses"
   if exist "$(TargetDir)cmd" rd /S /Q "$(TargetDir)cmd"
-robocopy "$(SolutionDir)runtime" "$(TargetDir)." /E /XF FBShell.dll FBV.exe ExportHTML.dll res_rus.dll res_ukr.dll &gt;nul
+robocopy "$(SolutionDir)runtime" "$(TargetDir)." /E /XF FBShell.dll FBV.exe ExportHTML.dll &gt;nul
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 exit /b 0
 </Command>

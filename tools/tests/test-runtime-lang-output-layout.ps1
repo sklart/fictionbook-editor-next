@@ -58,29 +58,9 @@ foreach ($locale in $locales) {
     }
 }
 
-foreach ($resourcePath in @(
-    (Join-Path $langRoot "ru-RU\\res_rus.dll"),
-    (Join-Path $langRoot "uk-UA\\res_ukr.dll")
-)) {
-    if (-not (Test-Path -LiteralPath $resourcePath -PathType Leaf)) {
-        throw "В Lang отсутствует DLL локализованных ресурсов FBE: $resourcePath"
-    }
-}
-
-foreach ($symbolPath in @(
-    (Join-Path $langRoot "ru-RU\\res_rus.pdb"),
-    (Join-Path $langRoot "uk-UA\\res_ukr.pdb")
-)) {
-    if (-not (Test-Path -LiteralPath $symbolPath -PathType Leaf)) {
-        throw "Рядом с DLL локализованных ресурсов отсутствует PDB: $symbolPath"
-    }
-}
-
-foreach ($legacyRootResource in @("res_rus.dll", "res_ukr.dll", "res_rus.pdb", "res_ukr.pdb")) {
-    $legacyRootPath = Join-Path $OutputDirectory $legacyRootResource
-    if (Test-Path -LiteralPath $legacyRootPath -PathType Leaf) {
-        throw "В корне каталога результатов не должна находиться устаревшая DLL локализации: $legacyRootPath"
-    }
+foreach ($obsolete in @("ru-RU\\res_rus.dll", "uk-UA\\res_ukr.dll", "ru-RU\\res_rus.pdb", "uk-UA\\res_ukr.pdb")) {
+    $path = Join-Path $langRoot $obsolete
+    if (Test-Path -LiteralPath $path -PathType Leaf) { throw "Устаревший FBE locale artifact не должен присутствовать: $path" }
 }
 
 Write-Host "Runtime-локализация в каталоге результатов размещена корректно."

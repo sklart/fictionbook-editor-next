@@ -81,9 +81,7 @@ if ($buildScriptText -notlike "*export-runtime-lang.ps1*" -or $buildScriptText -
 }
 
 $fbeRcText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\FBE.rc")
-$generatedDialogText = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\locales\res_rus\FBESmallDialogs.generated.rc2")) + "`n" +
-    (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\locales\res_ukr\FBESmallDialogs.generated.rc2"))
-if ($fbeRcText -match 'IDC_LANG[^\r\n]*CBS_SORT' -or $generatedDialogText -match 'IDC_LANG[^\r\n]*CBS_SORT') {
+if ($fbeRcText -match 'IDC_LANG[^\r\n]*CBS_SORT') {
     throw "ComboBox выбора языка не должен использовать CBS_SORT: пункт 'Определяется системой' обязан оставаться первым."
 }
 if ($optDlgText -notmatch "m_lang\.SetDroppedWidth\((3[0-9]{2}|[4-9][0-9]{2,})\)") {
@@ -105,7 +103,6 @@ foreach ($pattern in @(
     "m_status.SetPaneText(ID_PANE_INS, m_last_sci_ovr ? strOVR : strINS)",
     "m_document_tree.RefreshLocalizedTitle()",
     "RefreshLocalizedMenuCaptions()",
-    "ReloadInterfaceResourceInstance()",
     "m_Speller->EndDocumentCheck()"
 )) {
     if ($mainFrameText -notlike "*$pattern*") {

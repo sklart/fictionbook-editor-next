@@ -80,7 +80,7 @@ if ($CompatibilityTarget -eq "All" -and
             throw "Словарь '$($entry.Key)' различается между Modern и Win7 portable-пакетами."
         }
     }
-    foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll")) {
+    foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll")) {
         if ((Get-ProfileZipEntrySha256 $modernPortable $name) -ne (Get-ProfileZipEntrySha256 $win7Portable $name)) {
             throw "Общий файл '$name' различается между Modern и Win7 portable-пакетами."
         }
@@ -235,8 +235,6 @@ $requiredPortableEntries = @(
     "Data/Recovery/.keep",
     "Data/Cache/.keep",
     "Data/Temp/.keep",
-    "Lang/ru-RU/res_rus.dll",
-    "Lang/uk-UA/res_ukr.dll",
     "Scintilla.dll",
     "Lexilla.dll",
     "FictionBook.xsd"
@@ -268,9 +266,7 @@ $expectedSymbolEntries = @(
     "FBShell.propertyhandler.win32.pdb",
     "FBShell.propertyhandler.x64.pdb",
     "FBShell.x64.pdb",
-    "README.txt",
-    "res_rus.pdb",
-    "res_ukr.pdb"
+    "README.txt"
 ) | Sort-Object
 
 foreach ($profile in $artifactProfiles) {
@@ -338,8 +334,7 @@ if ($CompatibilityTarget -eq "All") {
     # исключены: они намеренно пересобираются с API-уровнем Windows 7.
     $commonPortableEntries = @(
         "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
-        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll",
-        "Lang/ru-RU/res_rus.dll", "Lang/uk-UA/res_ukr.dll"
+        "ImportEPUB.dll", "ImportEPUBLunaSVG.dll"
     )
     $commonPortableEntries += @($dictionaryArchiveHashes.Keys)
     foreach ($name in $commonPortableEntries) {

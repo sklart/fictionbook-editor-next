@@ -1996,19 +1996,6 @@ DWORD CSettings::GetEffectiveInterfaceLanguageID()const
 	return NormalizeInterfaceLanguageID(PRIMARYLANGID(GetUserDefaultLangID()));
 }
 
-CString CSettings::GetInterfaceLanguageDllName()const
-{
-	switch(GetEffectiveInterfaceLanguageID())
-	{
-	case FBE_INTERFACE_LANGUAGE_RUSSIAN:
-		return L"Lang\\ru-RU\\res_rus.dll";
-	case FBE_INTERFACE_LANGUAGE_UKRAINIAN:
-		return L"Lang\\uk-UA\\res_ukr.dll";
-	default:
-		return L"";
-	}
-}
-
 CString CSettings::GetInterfaceLocaleName()const
 {
 	if(m_interface_lang_id == FBE_INTERFACE_LANGUAGE_AUTO)

@@ -43,6 +43,7 @@ static HMODULE LoadSystemLibrary(LPCTSTR fileName)
 LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
+	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_TOOLS_SETTINGS);
 	m_tab_ctrl = this->GetDlgItem(IDC_TAB_CTRL);
 
 	TC_ITEM TabItem;

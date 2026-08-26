@@ -59,21 +59,10 @@ foreach ($name in @('FBShell.dll','FBShell64.dll','FBE.Sequence.propdesc')) { Re
 foreach ($name in @('Scintilla.dll','Lexilla.dll')) { Copy-Item -LiteralPath (Join-Path $editorRuntime $name) -Destination $stage -Force }
 foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','html.xsl','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $stage -Force }
 foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) { Copy-Item -LiteralPath (Join-Path $batchOutput $name) -Destination $stage -Force }
-foreach ($entry in @{ 'ru-RU' = 'res_rus.dll'; 'uk-UA' = 'res_ukr.dll' }.GetEnumerator()) {
-    $source = Join-Path $commonSource "Lang\\$($entry.Key)\\$($entry.Value)"
-    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Не найден Core localization artifact: $source" }
-    $destination = Join-Path $stage "Lang\\$($entry.Key)"; New-Item -ItemType Directory -Path $destination -Force | Out-Null
-    Copy-Item -LiteralPath $source -Destination $destination -Force
-}
 $archDestination = Join-Path $stage 'Utilities\ArchHandler'; New-Item -ItemType Directory -Path $archDestination -Force | Out-Null
 foreach ($name in @('ZipHandler.exe','RarHandler.exe')) { Copy-Item -LiteralPath (Join-Path $archOutput $name) -Destination $archDestination -Force }
 foreach ($name in @('custom.dic','Hotkeys.xml','languages.txt','root_genres.xml','Words.xml')) { Copy-Item -LiteralPath (Join-Path $repoRoot $name) -Destination $stage -Force }
 & (Join-Path $repoRoot 'tools\localization\export-runtime-lang.ps1') -RepositoryRoot $repoRoot -OutputDirectory (Join-Path $stage 'Lang') -Clean
-foreach ($entry in @{ 'ru-RU' = 'res_rus.dll'; 'uk-UA' = 'res_ukr.dll' }.GetEnumerator()) {
-    $source = Join-Path $commonSource "Lang\\$($entry.Key)\\$($entry.Value)"
-    $destination = Join-Path $stage "Lang\\$($entry.Key)"; New-Item -ItemType Directory -Path $destination -Force | Out-Null
-    Copy-Item -LiteralPath $source -Destination $destination -Force
-}
 Copy-Item -LiteralPath (Join-Path $repoRoot 'runtime\gpl-3.0.txt') -Destination (Join-Path $stage 'LICENSE') -Force
 Remove-Item -LiteralPath (Join-Path $stage 'gpl-3.0.txt') -Force -ErrorAction SilentlyContinue
 Copy-Item -LiteralPath (Join-Path $repoRoot 'NOTICE') -Destination $stage -Force

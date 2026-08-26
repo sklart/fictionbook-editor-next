@@ -65,9 +65,13 @@ $expectedVersion = $versionMatch.Groups["version"].Value
 $runTables = $RunTableTests -or $FullValidation
 
 # Fail before the long GUI suite if this invocation is looking at a stale or
-# partially rebuilt common/profile payload.
-& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
-    -Configuration $Configuration -CommonDirectory $outputDir
+# partially rebuilt common/profile payload.  The Win7 stage deliberately reuses
+# the Modern common payload, so its target-only validation must not compare the
+# shared out\Release directory after a local Win7 build.
+if (-not $SkipCommonChecks) {
+    & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
+        -Configuration $Configuration -CommonDirectory $outputDir
+}
 & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind $CompatibilityTarget `
     -Configuration $Configuration -ProfileDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget") `
     -BatchDirectory $batchOutputDir -ArchHandlerDirectory $archHandlerOutputDir
@@ -90,7 +94,9 @@ $requiredFiles = @(
 $forbiddenFiles = @(
     "pcre.dll",
     "res_rus.dll",
-    "res_ukr.dll"
+    "res_ukr.dll",
+    "res_rus.pdb",
+    "res_ukr.pdb"
 )
 
 $requiredSymbols = @(
@@ -104,9 +110,7 @@ $requiredSymbols = @(
     "ExportDOCXBatch.pdb",
     "ExportEPUBBatch.pdb",
     "ImportEPUBBatch.pdb",
-    "FBShell.pdb",
-    "Lang\\ru-RU\\res_rus.pdb",
-    "Lang\\uk-UA\\res_ukr.pdb"
+    "FBShell.pdb"
 )
 
 if (-not $SkipCommonChecks) {
@@ -173,7 +177,6 @@ if ($env:GITHUB_ACTIONS -eq "true") {
 } else {
     Write-Host "Table checks are not run by default; use -RunTableTests or -FullValidation to enable them."
 }
-& (Join-Path $repoRoot "tools\tests\test-fbe-script-error-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-test-report-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save.ps1")
@@ -217,8 +220,6 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-product-hardcoded-cyrillic-audit.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-notes-format.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-localization-catalog.ps1")
-& (Join-Path $repoRoot "tools\tests\test-app-localization-catalog.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbv-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-standalone.ps1")
@@ -229,13 +230,10 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-epub-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-localization-export.ps1")
-& (Join-Path $repoRoot "tools\tests\test-localization-win32-resource-fragments.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-catalog.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-generated-resource.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-connected-resource.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-secondary-menus.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-small-dialogs.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-rc-ui-literals-inventory.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-mnemonics.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-runtime-dialog-coverage.ps1")
+& (Join-Path $repoRoot "tools\tests\test-no-fbe-locale-resource-dll.ps1")
 & (Join-Path $repoRoot "tools\tests\test-localization-runtime-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-next-isolation.ps1")
@@ -410,15 +408,6 @@ foreach ($propertyHandler in @(
         }
     }
 
-foreach ($name in @("Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll")) {
-    $path = Get-ReleaseOutputPath $name
-    if (-not (Test-Path -LiteralPath $path)) {
-        throw "Отсутствует обязательный результат сборки: $path"
-    }
-
-    Test-BinarySecurityFlags -Path $path
-}
-
 foreach ($name in $forbiddenFiles) {
     $path = Join-Path $outputDir $name
     if (Test-Path -LiteralPath $path) {
@@ -436,7 +425,7 @@ foreach ($name in $requiredSymbols) {
     }
 }
 
-foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll")) {
+foreach ($name in @("FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "FBShell.dll")) {
     $path = Get-ReleaseOutputPath $name
     $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($path)
 
@@ -461,8 +450,6 @@ $requiredFileDescriptions = @{
     "ExportEPUBBatch.exe" = "FictionBook Editor EPUB batch export utility"
     "ImportEPUBBatch.exe" = "FictionBook Editor EPUB batch import utility"
     "FBShell.dll" = "FictionBook Editor shell property handler"
-    "Lang\\ru-RU\\res_rus.dll" = "FictionBook Editor Russian resources"
-    "Lang\\uk-UA\\res_ukr.dll" = "FictionBook Editor Ukrainian resources"
 }
 
 foreach ($entry in $requiredFileDescriptions.GetEnumerator()) {

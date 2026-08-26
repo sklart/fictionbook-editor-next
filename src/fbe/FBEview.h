@@ -12,6 +12,7 @@
 #endif // _MSC_VER >= 1000
 
 #include "resource.h"
+#include "RuntimeLocalization.h"
 #include "Settings.h"
 #include "CFileDialogEx.h"
 #include "StartupTrace.h"
@@ -51,6 +52,7 @@ public:
 	END_DDX_MAP()
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
+		FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_TABLE);
 		m_nRows = 1;
 		m_nColumns = 2;
 		m_bTitle = true;
@@ -117,6 +119,7 @@ public:
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	{
+		FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_ADDIMAGE);
 		::CenterChildWindow(GetParent(), m_hWnd);
 		CButton btn = GetDlgItem(IDC_ADDIMAGE_ASKAGAIN);
 		btn.SetCheck(!_Settings.GetInsImageAsking());

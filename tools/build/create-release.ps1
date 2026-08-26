@@ -310,14 +310,10 @@ $symbolNames = @(
     "ExportDOCXBatch.pdb",
     "ExportEPUBBatch.pdb",
     "ImportEPUBBatch.pdb",
-    "FBShell.pdb",
-    "res_rus.pdb",
-    "res_ukr.pdb"
+    "FBShell.pdb"
 )
 foreach ($name in $symbolNames) {
     $symbolSourcePath = switch ($name) {
-        "res_rus.pdb" { Join-Path $repoRoot "out\$Configuration\Lang\ru-RU\$name"; break }
-        "res_ukr.pdb" { Join-Path $repoRoot "out\$Configuration\Lang\uk-UA\$name"; break }
         default {
             $symbolSourceDirectory = if ($name -in @("ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")) { $batchOutputDirectory } else { Join-Path $repoRoot "out\$Configuration" }
             Join-Path $symbolSourceDirectory $name

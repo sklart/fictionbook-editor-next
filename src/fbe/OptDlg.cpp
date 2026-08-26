@@ -171,6 +171,7 @@ LRESULT COptDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
   SetRuntimeDialogItemText(m_hWnd, IDC_BACKGROUNDSPELLCHECK, L"fbe.dialog.idd_options.background_spell_check", L"Highlight misspelled words");
   SetRuntimeDialogItemText(m_hWnd, IDC_USESPELLCHECKER, L"fbe.dialog.idd_options.use_spellchecker", L"Use spellchecker");
   SetRuntimeDialogItemText(m_hWnd, IDS_SPELL_CUSTOM_DICT, L"fbe.dialog.idd_options.custom_dict", L"Custom dictionary:");
+	SetRuntimeDialogItemText(m_hWnd, IDC_DICTPATH, L"fbe.dialog.idd_options.dict_browse", L"..");
   SetRuntimeDialogItemText(m_hWnd, IDC_SHOWLINENUMBERS, L"fbe.dialog.idd_options.show_line_numbers", L"Show line numbers");
   SetRuntimeDialogItemText(m_hWnd, IDC_TAGHL, L"fbe.dialog.idd_options.tag_highlight", L"Highlight matched tags");
   SetRuntimeDialogItemText(m_hWnd, IDC_OPTIONS_SOURCE_FONT, L"fbe.dialog.idd_options.source_font", L"Editor font:");

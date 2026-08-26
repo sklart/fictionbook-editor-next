@@ -96,7 +96,7 @@
     "fbe.dialog.idd_table.rows_label": {
       "resource": "IDD_TABLE",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_TABLE_ROWS_LABEL",
       "translations": {
         "en-US": "Number of table rows <tr><td></td></tr>:",
         "ru-RU": "Число строк таблицы <tr><td></td></tr>:",
@@ -115,7 +115,7 @@
     "fbe.dialog.idd_table.columns_label": {
       "resource": "IDD_TABLE",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_TABLE_COLUMNS_LABEL",
       "translations": {
         "en-US": "Columns:",
         "ru-RU": "Столбцов:",
@@ -495,7 +495,7 @@
     "fbe.dialog.idd_customsavedlg.encoding": {
       "resource": "IDD_CUSTOMSAVEDLG",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_CUSTOM_SAVE_ENCODING_LABEL",
       "translations": {
         "en-US": "Encoding:",
         "ru-RU": "Кодировка:",
@@ -666,7 +666,7 @@
     "fbe.dialog.idd_hotkeys.shortcut": {
       "resource": "IDD_HOTKEYS",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_HOTKEYS_SHORTCUT_LABEL",
       "translations": {
         "en-US": "Shortcut:",
         "ru-RU": "Клавиша:",
@@ -723,7 +723,7 @@
     "fbe.dialog.idd_hotkeys.actions": {
       "resource": "IDD_HOTKEYS",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_STATIC_HOTKEY_ACTIONS",
       "translations": {
         "en-US": "Actions",
         "ru-RU": "Действия",
@@ -1255,7 +1255,7 @@
     "fbe.dialog.idd_spell_check.not_in_dictionary": {
       "resource": "IDD_SPELL_CHECK",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SPELL_NOT_IN_DICTIONARY",
       "translations": {
         "en-US": "Not in dictionary:",
         "ru-RU": "Нет в словаре:",
@@ -1274,7 +1274,7 @@
     "fbe.dialog.idd_spell_check.replace_with": {
       "resource": "IDD_SPELL_CHECK",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SPELL_CHANGE_TO",
       "translations": {
         "en-US": "Replace with:",
         "ru-RU": "Заменить на:",
@@ -1293,7 +1293,7 @@
     "fbe.dialog.idd_spell_check.suggestions": {
       "resource": "IDD_SPELL_CHECK",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SPELL_SUGGESTIONS",
       "translations": {
         "en-US": "Suggestions:",
         "ru-RU": "Варианты:",
@@ -1540,7 +1540,7 @@
     "fbe.dialog.idd_words.actions": {
       "resource": "IDD_WORDS",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_WORDS_ACTIONS_GROUP",
       "translations": {
         "en-US": "Actions",
         "ru-RU": "Действия",
@@ -1559,7 +1559,7 @@
     "fbe.dialog.idd_words.selection": {
       "resource": "IDD_WORDS",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_WORDS_SELECTION_GROUP",
       "translations": {
         "en-US": "Selection",
         "ru-RU": "Выделение",
@@ -1787,7 +1787,7 @@
     "fbe.dialog.idd_setting_other.main_settings": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_SAVE_GROUP",
       "translations": {
         "en-US": "Main settings",
         "ru-RU": "Общие настройки",
@@ -1806,7 +1806,7 @@
     "fbe.dialog.idd_setting_other.encoding": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_ENCODING",
       "translations": {
         "en-US": "Encoding:",
         "ru-RU": "Кодировка:",
@@ -1844,7 +1844,7 @@
     "fbe.dialog.idd_setting_other.window_mode": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_OPEN_GROUP",
       "translations": {
         "en-US": "Window mode",
         "ru-RU": "Режим окна",
@@ -1882,7 +1882,7 @@
     "fbe.dialog.idd_setting_other.scripts_folder": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_SCRIPTS",
       "translations": {
         "en-US": "Scripts folder",
         "ru-RU": "Папка скриптов",
@@ -1939,7 +1939,7 @@
     "fbe.dialog.idd_setting_other.images": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_DIALOGS",
       "translations": {
         "en-US": "Images",
         "ru-RU": "Рисунки",
@@ -1977,7 +1977,7 @@
     "fbe.dialog.idd_setting_other.thumbnails": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_IMAGES",
       "translations": {
         "en-US": "Thumbnails",
         "ru-RU": "Миниатюры",
@@ -2015,7 +2015,7 @@
     "fbe.dialog.idd_setting_other.nbsp": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_NBSP",
       "translations": {
         "en-US": "Non-breaking spaces",
         "ru-RU": "Неразрывные пробелы",
@@ -2034,7 +2034,7 @@
     "fbe.dialog.idd_setting_other.nbsp_char": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_NBSP_LABEL",
       "translations": {
         "en-US": "Replacement character:",
         "ru-RU": "Заменяющий символ:",
@@ -2053,7 +2053,7 @@
     "fbe.dialog.idd_setting_other.keyboard": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_KEYBOARD",
       "translations": {
         "en-US": "Keyboard settings",
         "ru-RU": "Настройки клавиатуры",
@@ -2091,7 +2091,7 @@
     "fbe.dialog.idd_setting_other.image_settings": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_PASTE",
       "translations": {
         "en-US": "Image settings, %%",
         "ru-RU": "Параметры изображений, %%",
@@ -2110,7 +2110,7 @@
     "fbe.dialog.idd_setting_other.format": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_FORMAT",
       "translations": {
         "en-US": "Format:",
         "ru-RU": "Формат:",
@@ -2129,7 +2129,7 @@
     "fbe.dialog.idd_setting_other.jpeg_quality": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_QUALITY",
       "translations": {
         "en-US": "JPEG quality:",
         "ru-RU": "Качество JPEG:",
@@ -2148,7 +2148,7 @@
     "fbe.dialog.idd_setting_other.layout": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_CHANGE_TO",
       "translations": {
         "en-US": "Layout:",
         "ru-RU": "Раскладка:",
@@ -2167,7 +2167,7 @@
     "fbe.dialog.idd_options.foreground_color": {
       "resource": "IDD_OPTIONS",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_FOREGROUND_COLOR",
       "translations": {
         "en-US": "Text color:",
         "ru-RU": "Цвет текста:",
@@ -2186,7 +2186,7 @@
     "fbe.dialog.idd_options.background_color": {
       "resource": "IDD_OPTIONS",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_BACKGROUND_COLOR",
       "translations": {
         "en-US": "Background:",
         "ru-RU": "Цвет фона:",
@@ -2205,7 +2205,7 @@
     "fbe.dialog.idd_options.font": {
       "resource": "IDD_OPTIONS",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_BODY_FONT",
       "translations": {
         "en-US": "Font:",
         "ru-RU": "Шрифт:",
@@ -2224,7 +2224,7 @@
     "fbe.dialog.idd_options.font_size": {
       "resource": "IDD_OPTIONS",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_FONT_SIZE",
       "translations": {
         "en-US": "Font size:",
         "ru-RU": "Размер шрифта:",
@@ -2243,7 +2243,7 @@
     "fbe.dialog.idd_options.interface": {
       "resource": "IDD_OPTIONS",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_INTERFACE_GROUP",
       "translations": {
         "en-US": "Interface",
         "ru-RU": "Интерфейс",
@@ -2262,7 +2262,7 @@
     "fbe.dialog.idd_options.font_group": {
       "resource": "IDD_OPTIONS",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_BODY_GROUP",
       "translations": {
         "en-US": "Font",
         "ru-RU": "Шрифт",
@@ -2281,7 +2281,7 @@
     "fbe.dialog.idd_options.source_view": {
       "resource": "IDD_OPTIONS",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_SOURCE_GROUP",
       "translations": {
         "en-US": "Source view",
         "ru-RU": "Исходный текст",
@@ -2357,7 +2357,7 @@
     "fbe.dialog.idd_setting_other.image_import": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_IMPORT",
       "translations": {
         "en-US": "Image import",
         "ru-RU": "Импорт изображений",
@@ -2376,7 +2376,7 @@
     "fbe.dialog.idd_setting_other.output_format": {
       "resource": "IDD_SETTING_OTHER",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_SETTINGS_OTHER_OUTPUT",
       "translations": {
         "en-US": "Output format:",
         "ru-RU": "Формат результата:",
@@ -2476,7 +2476,7 @@
     "fbe.dialog.idd_options.language": {
       "resource": "IDD_OPTIONS",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_LANGUAGE_LABEL",
       "translations": {
         "en-US": "Language:",
         "ru-RU": "Язык:",
@@ -2519,7 +2519,7 @@
     "fbe.dialog.idd_options.spell_checking": {
       "resource": "IDD_OPTIONS",
       "kind": "GROUPBOX",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_SPELLCHECK_GROUP",
       "translations": {
         "en-US": "Spell checking",
         "ru-RU": "Проверка орфографии",
@@ -2652,7 +2652,7 @@
     "fbe.dialog.idd_options.source_font": {
       "resource": "IDD_OPTIONS",
       "kind": "LTEXT",
-      "targetId": "IDC_STATIC",
+      "targetId": "IDC_OPTIONS_SOURCE_FONT",
       "translations": {
         "en-US": "Font:",
         "ru-RU": "Шрифт:",
@@ -2998,101 +2998,6 @@
         "nl-NL": "Zoals in het systeem",
         "cs-CZ": "Podle systému",
         "bg-BG": "Както в системата"
-      }
-    },
-    "fbe.dialog.idd_setting_next.source_palette.fbe_light": {
-      "resource": "IDD_SETTING_NEXT",
-      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
-      "property": "label",
-      "translations": {
-        "en-US": "FBE Light",
-        "ru-RU": "FBE Light",
-        "uk-UA": "FBE Light",
-        "de-DE": "FBE Light",
-        "fr-FR": "FBE Light",
-        "es-ES": "FBE Light",
-        "it-IT": "FBE Light",
-        "pl-PL": "FBE Light",
-        "pt-PT": "FBE Light",
-        "nl-NL": "FBE Light",
-        "cs-CZ": "FBE Light",
-        "bg-BG": "FBE Light"
-      }
-    },
-    "fbe.dialog.idd_setting_next.source_palette.fbe_dark": {
-      "resource": "IDD_SETTING_NEXT",
-      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
-      "property": "label",
-      "translations": {
-        "en-US": "FBE Dark",
-        "ru-RU": "FBE Dark",
-        "uk-UA": "FBE Dark",
-        "de-DE": "FBE Dark",
-        "fr-FR": "FBE Dark",
-        "es-ES": "FBE Dark",
-        "it-IT": "FBE Dark",
-        "pl-PL": "FBE Dark",
-        "pt-PT": "FBE Dark",
-        "nl-NL": "FBE Dark",
-        "cs-CZ": "FBE Dark",
-        "bg-BG": "FBE Dark"
-      }
-    },
-    "fbe.dialog.idd_setting_next.source_palette.high_contrast_light": {
-      "resource": "IDD_SETTING_NEXT",
-      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
-      "property": "label",
-      "translations": {
-        "en-US": "FBE High Contrast Light",
-        "ru-RU": "FBE: высокая контрастность, светлая",
-        "uk-UA": "FBE: висока контрастність, світла",
-        "de-DE": "FBE hoher Kontrast, hell",
-        "fr-FR": "FBE contraste élevé clair",
-        "es-ES": "FBE alto contraste claro",
-        "it-IT": "FBE contrasto elevato chiaro",
-        "pl-PL": "FBE: wysoki kontrast, jasny",
-        "pt-PT": "FBE alto contraste claro",
-        "nl-NL": "FBE hoog contrast licht",
-        "cs-CZ": "FBE: vysoký kontrast, světlý",
-        "bg-BG": "FBE: висок контраст, светъл"
-      }
-    },
-    "fbe.dialog.idd_setting_next.source_palette.high_contrast_dark": {
-      "resource": "IDD_SETTING_NEXT",
-      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
-      "property": "label",
-      "translations": {
-        "en-US": "FBE High Contrast Dark",
-        "ru-RU": "FBE: высокая контрастность, тёмная",
-        "uk-UA": "FBE: висока контрастність, темна",
-        "de-DE": "FBE hoher Kontrast, dunkel",
-        "fr-FR": "FBE contraste élevé sombre",
-        "es-ES": "FBE alto contraste oscuro",
-        "it-IT": "FBE contrasto elevato scuro",
-        "pl-PL": "FBE: wysoki kontrast, ciemny",
-        "pt-PT": "FBE alto contraste escuro",
-        "nl-NL": "FBE hoog contrast donker",
-        "cs-CZ": "FBE: vysoký kontrast, tmavý",
-        "bg-BG": "FBE: висок контраст, тъмен"
-      }
-    },
-    "fbe.dialog.idd_setting_next.source_palette.historical": {
-      "resource": "IDD_SETTING_NEXT",
-      "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
-      "property": "label",
-      "translations": {
-        "en-US": "Historical FBE",
-        "ru-RU": "Историческая FBE",
-        "uk-UA": "Історична FBE",
-        "de-DE": "Historisches FBE",
-        "fr-FR": "FBE historique",
-        "es-ES": "FBE histórico",
-        "it-IT": "FBE storico",
-        "pl-PL": "Historyczny FBE",
-        "pt-PT": "FBE histórico",
-        "nl-NL": "Historische FBE",
-        "cs-CZ": "Historické FBE",
-        "bg-BG": "Исторически FBE"
       }
     },
     "fbe.dialog.idd_setting_next.source_palette.dark": {

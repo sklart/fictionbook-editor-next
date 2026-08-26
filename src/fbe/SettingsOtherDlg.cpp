@@ -29,6 +29,7 @@ CSettingsOtherDlg::~CSettingsOtherDlg()
 LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsOtherDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
+	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTING_OTHER);
 	m_keep = GetDlgItem(IDC_KEEP);
 	m_def_enc = GetDlgItem(IDC_DEFAULT_ENC);
 	m_restore_pos = GetDlgItem(IDC_RESTORE_POS);

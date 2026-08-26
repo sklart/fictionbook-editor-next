@@ -70,7 +70,7 @@ $modules = @($moduleFiles.Keys | Sort-Object)
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.show_full_path_in_window_title'; Expected = 'Показывать полный путь к файлу в заголовке окна' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.source_code'; Expected = 'Исходный код' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.source_palette'; Expected = 'Тема подсветки:' },
-        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.source_palette.classic'; Expected = 'Классическая' },
+        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.source_palette.contrast'; Expected = 'Контрастная' },
         @{ Path = Join-Path (Join-Path $langRoot 'en-US') 'fbv.json'; Key = 'fbv.validation.no_errors' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.menu.idr_mainframe.popup.file'; Expected = '&Datei' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.menu.idr_document_tree.view'; Expected = '&Zum Element gehen' },

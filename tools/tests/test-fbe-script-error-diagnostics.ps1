@@ -10,8 +10,6 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $scriptSource = Get-Content -Raw -Encoding Default -LiteralPath (Join-Path $repoRoot 'src\fbe\script.cpp')
 $diagnostics = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptDiagnostics.h')
 $resources = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\resource.h')
-$russianResourceIds = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\locales\res_rus\resource.h')
-$ukrainianResourceIds = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\locales\res_ukr\resource.h')
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'localization\app-ui\catalog.json')
 
 foreach ($contract in @(
@@ -25,8 +23,7 @@ foreach ($contract in @(
     @{ Text = 'IDS_SCRIPT_PARSE_DIAGNOSTIC_MSG'; Source = $resources; Name = 'ресурс синтаксической ошибки' },
     @{ Text = 'IDS_SCRIPT_RUNTIME_DIAGNOSTIC_MSG'; Source = $resources; Name = 'ресурс ошибки выполнения' },
     @{ Text = 'IDS_SCRIPT_LOAD_DIAGNOSTIC_MSG'; Source = $resources; Name = 'ресурс ошибки загрузки' },
-    @{ Text = 'IDS_SCRIPT_CLOSE_DETAILS'; Source = $russianResourceIds; Name = 'идентификатор в русской resource DLL' },
-    @{ Text = 'IDS_SCRIPT_CLOSE_DETAILS'; Source = $ukrainianResourceIds; Name = 'идентификатор в украинской resource DLL' },
+    @{ Text = 'IDS_SCRIPT_CLOSE_DETAILS'; Source = $resources; Name = 'встроенный английский fallback identifier' },
     @{ Text = 'fbe.script.diagnostic_parse'; Source = $catalog; Name = 'JSON-локализация синтаксической ошибки' },
     @{ Text = 'fbe.script.copy_details'; Source = $catalog; Name = 'JSON-локализация кнопки копирования' }
 )) {

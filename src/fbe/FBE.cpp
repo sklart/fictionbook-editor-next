@@ -444,8 +444,6 @@ static void ParseCommandLine(LPTSTR cmd, CSimpleArray<CString>& args)
 	}
 }
 
-HINSTANCE resLib;
-
 static bool IsMainFrameCreateFaultEnabled()
 {
 	if (!StartupTrace::Enabled()) return false;
@@ -463,10 +461,8 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 	_Module.AddMessageLoop(&theLoop);
 	CMainFrame wndMain;
 
-	resLib = LoadApplicationLibrary(_Settings.GetInterfaceLanguageDllName());
-	if(resLib)
-	ATL::_AtlBaseModule.SetResourceInstance(resLib);
-	else
+	// FBE always uses its own English structural resources.  User-visible text
+	// is layered from Lang/<locale>/fbe.json by RuntimeLocalization.
 	ATL::_AtlBaseModule.SetResourceInstance(ATL::_AtlBaseModule.GetModuleInstance());
 
 	FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName());

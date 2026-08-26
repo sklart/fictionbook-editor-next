@@ -13,6 +13,80 @@ struct RuntimeStringBinding {
 	const wchar_t* key;
 };
 
+struct RuntimeDialogBinding {
+	UINT dialogId;
+	UINT controlId; // 0 means the dialog caption.
+	const wchar_t* key;
+};
+
+// Binding metadata only; fbe-small-dialogs.json remains the source of all
+// translations.  Every control below has a stable resource ID (never
+// IDC_STATIC), so an English dialog template can be localized at runtime.
+static const RuntimeDialogBinding g_runtimeDialogBindings[] = {
+	{ IDD_TABLE, 0, L"fbe.dialog.idd_table.caption" },
+	{ IDD_TABLE, IDOK, L"fbe.dialog.idd_table.ok" },
+	{ IDD_TABLE, IDCANCEL, L"fbe.dialog.idd_table.cancel" },
+	{ IDD_TABLE, IDC_TABLE_ROWS_LABEL, L"fbe.dialog.idd_table.rows_label" },
+	{ IDD_TABLE, IDC_TABLE_COLUMNS_LABEL, L"fbe.dialog.idd_table.columns_label" },
+	{ IDD_TABLE, IDC_CHECK_TABLE_TITLE, L"fbe.dialog.idd_table.header_row" },
+	{ IDD_INPUTBOX, 0, L"fbe.dialog.idd_inputbox.caption" },
+	{ IDD_INPUTBOX, IDC_PROMPT, L"fbe.dialog.idd_inputbox.prompt" },
+	{ IDD_INPUTBOX, IDYES, L"fbe.dialog.idd_inputbox.yes" },
+	{ IDD_INPUTBOX, IDNO, L"fbe.dialog.idd_inputbox.no" },
+	{ IDD_INPUTBOX, IDCANCEL, L"fbe.dialog.idd_inputbox.cancel" },
+	{ IDD_ADDIMAGE, 0, L"fbe.dialog.idd_addimage.caption" },
+	{ IDD_ADDIMAGE, IDYES, L"fbe.dialog.idd_addimage.yes" },
+	{ IDD_ADDIMAGE, IDCANCEL, L"fbe.dialog.idd_addimage.no" },
+	{ IDD_ADDIMAGE, IDC_ADDIMAGE_ASKAGAIN, L"fbe.dialog.idd_addimage.ask_again" },
+	{ IDD_ADDIMAGE, IDS_ADD_CLEARIMG_TEXT, L"fbe.dialog.idd_addimage.text" },
+	{ IDD_TOOLS_SETTINGS, 0, L"fbe.dialog.idd_tools_settings.caption" },
+	{ IDD_TOOLS_SETTINGS, IDOK, L"fbe.dialog.idd_tools_settings.ok" },
+	{ IDD_TOOLS_SETTINGS, IDCANCEL, L"fbe.dialog.idd_tools_settings.cancel" },
+	{ IDD_SPELL_CHECK, IDC_SPELL_NOT_IN_DICTIONARY, L"fbe.dialog.idd_spell_check.not_in_dictionary" },
+	{ IDD_SPELL_CHECK, IDC_SPELL_CHANGE_TO, L"fbe.dialog.idd_spell_check.replace_with" },
+	{ IDD_SPELL_CHECK, IDC_SPELL_SUGGESTIONS, L"fbe.dialog.idd_spell_check.suggestions" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_SAVE_GROUP, L"fbe.dialog.idd_setting_other.main_settings" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_ENCODING, L"fbe.dialog.idd_setting_other.encoding" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_OPEN_GROUP, L"fbe.dialog.idd_setting_other.window_mode" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_SCRIPTS, L"fbe.dialog.idd_setting_other.scripts_folder" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_DIALOGS, L"fbe.dialog.idd_setting_other.images" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_IMAGES, L"fbe.dialog.idd_setting_other.thumbnails" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_IMPORT, L"fbe.dialog.idd_setting_other.image_import" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_OUTPUT, L"fbe.dialog.idd_setting_other.output_format" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_IMPORT_QUALITY, L"fbe.dialog.idd_setting_other.jpeg_quality" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_NBSP, L"fbe.dialog.idd_setting_other.nbsp" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_NBSP_LABEL, L"fbe.dialog.idd_setting_other.nbsp_char" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_KEYBOARD, L"fbe.dialog.idd_setting_other.keyboard" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_PASTE, L"fbe.dialog.idd_setting_other.image_settings" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_FORMAT, L"fbe.dialog.idd_setting_other.format" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_QUALITY, L"fbe.dialog.idd_setting_other.jpeg_quality" },
+	{ IDD_SETTING_OTHER, IDC_SETTINGS_OTHER_CHANGE_TO, L"fbe.dialog.idd_setting_other.layout" },
+	{ IDD_CUSTOMSAVEDLG, IDC_CUSTOM_SAVE_ENCODING_LABEL, L"fbe.dialog.idd_customsavedlg.encoding" },
+	{ IDD_ABOUTBOX, 0, L"fbe.dialog.idd_aboutbox.caption" },
+	{ IDD_ABOUTBOX, IDOK, L"fbe.dialog.idd_aboutbox.ok" },
+	{ IDD_ABOUTBOX, IDC_STATIC_BUILD, L"fbe.dialog.idd_aboutbox.build" },
+	{ IDD_ABOUTBOX, IDC_SYSLINK_AB_LINKS, L"fbe.dialog.idd_aboutbox.link" },
+	{ IDD_ABOUTBOX, IDC_UPDATE, L"fbe.dialog.idd_aboutbox.update" },
+	{ IDD_WORDS, 0, L"fbe.dialog.idd_words.caption" },
+	{ IDD_WORDS, IDC_WLIST, L"fbe.dialog.idd_words.list" },
+	{ IDD_WORDS, IDOK, L"fbe.dialog.idd_words.ok" },
+	{ IDD_WORDS, IDCANCEL, L"fbe.dialog.idd_words.cancel" },
+	{ IDD_WORDS, IDC_CHECK_SHOWHIDE_EXCLS, L"fbe.dialog.idd_words.show_hide_exclusions" },
+	{ IDD_WORDS, IDC_WORDS_ACTIONS_GROUP, L"fbe.dialog.idd_words.actions" },
+	{ IDD_WORDS, IDC_WORDS_SELECTION_GROUP, L"fbe.dialog.idd_words.selection" },
+	{ IDD_WORDS, IDC_BUTTON_DESEL, L"fbe.dialog.idd_words.deselect" },
+	{ IDD_WORDS, IDC_BUTTON_REMOVEHLREPL, L"fbe.dialog.idd_words.remove_replacement" },
+	{ IDD_WORDS, IDC_BUTTON_ADDHLTOEXCLS, L"fbe.dialog.idd_words.add_to_exclusions" },
+	{ IDD_WORDS, IDC_BUTTON_SELALL, L"fbe.dialog.idd_words.select_all" },
+	{ IDD_WORDS, IDC_BUTTON_SETHLREPL, L"fbe.dialog.idd_words.set_replacement" },
+	{ IDD_WORDS, IDC_BUTTON_SELALLREPL, L"fbe.dialog.idd_words.select_all_replacements" },
+	{ IDD_WORDS, IDC_WORDS_FR_GBOX_CURWORD, L"fbe.dialog.idd_words.current_word" },
+	{ IDD_WORDS, IDC_WORDS_FR_TEXT_WORD, L"fbe.dialog.idd_words.word" },
+	{ IDD_WORDS, IDC_WORDS_FR_TEXT_REPL, L"fbe.dialog.idd_words.replacement" },
+	{ IDD_WORDS, IDC_WORDS_FR_BTN_FIND, L"fbe.dialog.idd_words.find" },
+	{ IDD_WORDS, IDC_WORDS_FR_BTN_REPL, L"fbe.dialog.idd_words.replace" },
+};
+
 static const RuntimeStringBinding g_runtimeStringBindings[] = {
 	{ IDS_UPDATE_CHECK, L"fbe.update.checking" },
 	{ IDS_UPDATE_DOWNLOADERROR, L"fbe.update.download_error" },
@@ -273,6 +347,29 @@ CString FbeLoadRuntimeStringByKey(LPCWSTR key, LPCWSTR fallback)
 		return it->second;
 
     return fallback != NULL ? CString(fallback) : CString();
+}
+
+void FbeApplyRuntimeDialogLocalization(HWND dialog, UINT dialogId)
+{
+	if (dialog == NULL)
+		return;
+
+	for (size_t index = 0; index < _countof(g_runtimeDialogBindings); ++index)
+	{
+		const RuntimeDialogBinding& binding = g_runtimeDialogBindings[index];
+		if (binding.dialogId != dialogId)
+			continue;
+		const CString text = FbeLoadRuntimeStringByKey(binding.key);
+		if (text.IsEmpty())
+			continue;
+		if (binding.controlId == 0)
+			::SetWindowText(dialog, text);
+		else {
+			HWND control = ::GetDlgItem(dialog, binding.controlId);
+			if (control != NULL)
+				::SetWindowText(control, text);
+		}
+	}
 }
 
 bool FbeIsRuntimeLocaleInstalled(LPCWSTR localeName)
