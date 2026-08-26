@@ -31,6 +31,7 @@
 #include "SearchReplace.h"
 #include "DocumentTree.h"
 #include "Speller.h"
+#include "StatusBarUnicode.h"
 
 #if _MSC_VER >= 1000
 #pragma once
@@ -244,6 +245,7 @@ public:
   bool			  m_need_title_update:1;
   bool            m_recovery_written:1;
   UINT            m_current_dpi;
+  bool            m_status_layout_posted;
 
   MSXML2::IXMLDOMDocumentPtr		m_saved_xml;
 
@@ -317,7 +319,7 @@ public:
     m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_file_age(0), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
     m_source_selection_transferred(false), m_source_selection_start(0),
-		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL),
+		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL), m_status_layout_posted(false),
         m_status_transient_expiration(0), m_validation_status(VALIDATION_UNKNOWN)
 	// added by SeNS
 	{
@@ -542,6 +544,7 @@ public:
 		MESSAGE_HANDLER(WM_CHAR, OnChar)
 		MESSAGE_HANDLER(WM_COMMAND, OnPreCommand)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_APP + 41, OnDeferredStatusBarLayout)
 
 		// tree view notifications
 		COMMAND_CODE_HANDLER(IDN_TREE_CLICK, OnTreeClick)
@@ -1157,12 +1160,13 @@ public:
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL& bHandled)
 	{
 		UpdateViewSizeInfo();
-		UpdateStatusBarLayout();
+		if (!m_status_layout_posted) { m_status_layout_posted = true; PostMessage(WM_APP + 41); }
 		if (_Settings.GetShowFullPathInWindowTitle() && m_doc && m_doc->m_namevalid)
 			m_need_title_update = true;
 		bHandled = FALSE;
 		return 0;
 	}
+	LRESULT OnDeferredStatusBarLayout(UINT, WPARAM, LPARAM, BOOL&) { m_status_layout_posted = false; UpdateStatusBarLayout(); return 0; }
 
 	// added by SeNS: incorrect XML file flag
 	bool m_bad_xml;

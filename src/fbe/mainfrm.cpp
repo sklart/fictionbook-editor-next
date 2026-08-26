@@ -9011,27 +9011,6 @@ bool CMainFrame::LoadToScintilla(CString filename)
 }
 
 namespace {
-bool FirstCodePoint(const wchar_t* text, int length, unsigned int& codePoint)
-{
-	if (!text || length <= 0)
-		return false;
-	const unsigned int first = static_cast<unsigned int>(text[0]);
-	if (first >= 0xD800 && first <= 0xDBFF)
-	{
-		if (length <= 1) return false;
-		const unsigned int second = static_cast<unsigned int>(text[1]);
-		if (second >= 0xDC00 && second <= 0xDFFF)
-		{
-			codePoint = 0x10000 + ((first - 0xD800) << 10) + second - 0xDC00;
-			return true;
-		}
-	}
-	if (first >= 0xDC00 && first <= 0xDFFF)
-		return false;
-	codePoint = first;
-	return true;
-}
-
 CString CharacterInspectorText(unsigned int codePoint)
 {
 	CString text;
@@ -9173,7 +9152,7 @@ void CMainFrame::UpdateStatusBar()
 			{
 				CA2W wide(bytes, CP_UTF8);
 				unsigned int codePoint = 0;
-				if (FirstCodePoint(wide, ::lstrlenW(wide), codePoint)) character = CharacterInspectorText(codePoint);
+				if (FBEStatusBar::FirstCodePoint(wide, ::lstrlenW(wide), codePoint)) character = CharacterInspectorText(codePoint);
 			}
 		}
 	}
@@ -9193,7 +9172,7 @@ void CMainFrame::UpdateStatusBar()
 					text.SetString(copy->text);
 			}
 			unsigned int codePoint = 0;
-			if (FirstCodePoint(text, text.GetLength(), codePoint)) character = CharacterInspectorText(codePoint);
+			if (FBEStatusBar::FirstCodePoint(text, text.GetLength(), codePoint)) character = CharacterInspectorText(codePoint);
 		}
 		catch (const _com_error&) { character.Empty(); }
 	}

@@ -8,6 +8,7 @@ param()
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $main = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\mainfrm.cpp")
+$unicode = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\StatusBarUnicode.h")
 $header = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\mainfrm.h")
 $resources = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\resource.h")
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $root "localization\app-ui\catalog.json") | ConvertFrom-Json
@@ -21,7 +22,7 @@ if ($main -match "SetPaneWidth\s*\(\s*399\b" -or $main -match "\b399\s*,\s*ID_PA
 foreach ($api in @("SCI_COUNTCHARACTERS", "SCI_POSITIONBEFORE", "SCI_LINEFROMPOSITION", "SCI_POSITIONFROMLINE")) {
     if ($main -notmatch $api) { throw "Unicode-aware Scintilla API is missing: $api" }
 }
-if ($main -notmatch "FirstCodePoint" -or $main -notmatch "0x10000") {
+if ($unicode -notmatch "FirstCodePoint" -or $unicode -notmatch "0x10000") {
     throw "Supplementary UTF-16 code point handling is missing."
 }
 if ($main -notmatch "&#%u;") { throw "Decimal XML character reference is missing." }
@@ -39,6 +40,9 @@ foreach ($key in @("fbe.status.position", "fbe.status.selection")) {
     if ($null -eq $entry) { throw "Missing localization key: $key" }
     foreach ($locale in @("en-US", "ru-RU", "uk-UA", "de-DE", "fr-FR", "es-ES", "it-IT", "pl-PL", "pt-PT", "nl-NL", "cs-CZ", "bg-BG")) {
         if ([string]::IsNullOrWhiteSpace([string]$entry.translations.$locale)) { throw "Missing $locale translation for $key" }
+		$placeholders = [regex]::Matches([string]$entry.translations.$locale, '(?<!%)%[di]').Count
+		$expected = if ($key -eq 'fbe.status.position') { 2 } else { 1 }
+		if ($placeholders -ne $expected) { throw "$locale translation for $key has $placeholders integer placeholders; expected $expected." }
     }
 }
 Write-Host "Contextual status bar contract passed."
