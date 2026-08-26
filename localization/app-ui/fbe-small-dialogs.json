@@ -80,7 +80,7 @@
       "targetId": "IDCANCEL",
       "translations": {
         "en-US": "Cancel",
-        "ru-RU": "Cancel",
+        "ru-RU": "Отмена",
         "uk-UA": "Скасувати",
         "de-DE": "Abbrechen",
         "fr-FR": "Annuler",
@@ -1505,7 +1505,7 @@
       "targetId": "IDCANCEL",
       "translations": {
         "en-US": "Cancel",
-        "ru-RU": "Cancel",
+        "ru-RU": "Отмена",
         "uk-UA": "Скасувати",
         "de-DE": "Abbrechen",
         "fr-FR": "Annuler",

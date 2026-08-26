@@ -577,7 +577,7 @@ void  ReportError(_com_error& e) {
   }
   CString cpt(FbeLoadRuntimeString(IDS_COM_ERR_CPT));
   StartupTrace::ComException(L"utils", L"U110", e.Error(), NULL, e.ErrorInfo(),
-    L"ReportError(_com_error)");
+    L"operation=ReportError(_com_error)");
   ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
   VBErr = true;
 }

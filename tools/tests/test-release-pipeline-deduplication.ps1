@@ -224,6 +224,7 @@ Assert-Contains $archHandlerArgv "Import-VsDevEnvironment.ps1" "ArchHandler argv
 Assert-Contains $archHandlerBuild "/utf-8" "ArchHandler: Unicode-сообщения собираются с UTF-8"
 Assert-Contains $verifyRelease "target-specific executable" "verify-release.ps1: ArchHandler вне common checks"
 Assert-Contains $verifyRelease 'IncludeNames @("ZipHandler.exe", "RarHandler.exe")' "verify-release.ps1: Win7 imports ArchHandler"
+Assert-Contains $verifyRelease 'if (-not $SkipCommonChecks) {' "verify-release.ps1: Win7 common imports respect target-only validation"
 
 $commonStart = $verifyRelease.IndexOf('if (-not $SkipCommonChecks) {')
 $commonEnd = $verifyRelease.IndexOf("`n}`r`n", $commonStart)

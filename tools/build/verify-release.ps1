@@ -233,6 +233,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-mnemonics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-dialog-coverage.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-dialog-layout-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-no-fbe-locale-resource-dll.ps1")
 & (Join-Path $repoRoot "tools\tests\test-localization-runtime-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")
@@ -289,14 +290,19 @@ $archHandlerTestArguments.HandlerDirectory = $archHandlerOutputDir
     -EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime\$CompatibilityTarget")
 
 if ($CompatibilityTarget -eq "Win7") {
+    # The canonical Win7 stage reuses the already verified Modern common core.
+    # Do not inspect its FBE/FBV/plugin binaries as if they had been rebuilt
+    # for Win7; only target-specific outputs belong to this validation pass.
     $sharedWin7Files = @(
         "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
         "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll"
     )
-    & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
-        -Configuration $Configuration `
-        -OutputDirectory $outputDir `
-        -IncludeNames $sharedWin7Files
+    if (-not $SkipCommonChecks) {
+        & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
+            -Configuration $Configuration `
+            -OutputDirectory $outputDir `
+            -IncludeNames $sharedWin7Files
+    }
 
     & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
         -Configuration $Configuration `
