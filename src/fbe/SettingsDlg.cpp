@@ -3,10 +3,6 @@
 #include "stdafx.h"
 #include "Settings.h"
 #include "SettingsDlg.h"
-#include "SettingsOtherDlg.h"
-#include "SettingsNextDlg.h"
-#include "SettingsHotkeysDlg.h"
-#include "SettingsWordsDlg.h"
 #include "RuntimeLocalization.h"
 #include "res1.h"
 
@@ -14,8 +10,11 @@ extern CSettings _Settings;
 
 // CSettingsDlg
 
-CSettingsDlg::CSettingsDlg()
+CSettingsDlg::CSettingsDlg() :
+	m_optionsPage(NULL), m_otherPage(NULL), m_sourcePage(NULL),
+	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(-1)
 {
+	ZeroMemory(m_pages, sizeof(m_pages));
 }
 
 CSettingsDlg::~CSettingsDlg()
@@ -44,52 +43,42 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 {
 	CAxDialogImpl<CSettingsDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_TOOLS_SETTINGS);
-	m_tab_ctrl = this->GetDlgItem(IDC_TAB_CTRL);
+	m_navigation = GetDlgItem(IDC_SETTINGS_NAV);
+	const struct { LPCWSTR key; LPCWSTR fallback; } navigationItems[] = {
+		{ L"fbe.settings.nav.general", L"General" },
+		{ L"fbe.settings.nav.editor", L"Editor" },
+		{ L"fbe.settings.nav.source", L"Source code" },
+		{ L"fbe.settings.nav.images", L"Images" },
+		{ L"fbe.settings.nav.spelling", L"Spelling" },
+		{ L"fbe.settings.nav.keyboard", L"Keyboard" },
+		{ L"fbe.settings.nav.words", L"Words" },
+		{ L"fbe.settings.nav.advanced", L"Advanced" }
+	};
+	for(int i = 0; i < _countof(navigationItems); ++i)
+		m_navigation.AddString(FbeLoadRuntimeStringByKey(navigationItems[i].key, navigationItems[i].fallback));
 
-	TC_ITEM TabItem;
-	TabItem.mask = TCIF_TEXT; 
-	wchar_t buf[MAX_LOAD_STRING + 1];
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_SETTINGS_VIEW_CAPTION, buf, MAX_LOAD_STRING))
-		TabItem.pszText = buf;
-	m_tab_ctrl.InsertItem(0, &TabItem);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_SETTINGS_OTHER_CAPTION, buf, MAX_LOAD_STRING))
-		TabItem.pszText = buf;
-	m_tab_ctrl.InsertItem(1, &TabItem);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_SETTINGS_HOTKEYS_CAPTION, buf, MAX_LOAD_STRING))
-		TabItem.pszText = buf;
-	m_tab_ctrl.InsertItem(2, &TabItem);
-	if(FbeLoadString(_Module.GetResourceInstance(), IDS_SETTINGS_WORDS_CAPTION, buf, MAX_LOAD_STRING))
-		TabItem.pszText = buf;
-	m_tab_ctrl.InsertItem(3, &TabItem);
-	CString nextCaption = FbeLoadRuntimeStringByKey(L"fbe.settings.next.caption", L"FBE Next settings");
-	TabItem.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(nextCaption));
-	m_tab_ctrl.InsertItem(4, &TabItem);
+	m_optionsPage = new COptDlg;
+	m_optionsPage->ShowDialog(m_hWnd);
+	m_otherPage = new CSettingsOtherDlg;
+	m_otherPage->Create(m_hWnd);
+	m_sourcePage = new CSettingsNextDlg;
+	m_sourcePage->Create(m_hWnd);
+	m_hotkeysPage = new CSettingsHotkeysDlg;
+	m_hotkeysPage->Create(m_hWnd);
+	m_wordsPage = new CSettingsWordsDlg;
+	m_wordsPage->Create(m_hWnd);
 
-	CRect rect;
-	m_tab_ctrl.GetWindowRect(rect);
-	m_tab_ctrl.ScreenToClient(rect);
-	m_tab_ctrl.AdjustRect(FALSE, rect);
-	
-	COptDlg* pPage1;
-	pPage1 = new COptDlg;
-	pPage1->ShowDialog(m_tab_ctrl);
-	this->AddTabPage(0, pPage1, rect);
-
-	CSettingsOtherDlg* pPage2 = new CSettingsOtherDlg;
-	pPage2->Create(m_tab_ctrl);
-	this->AddTabPage(1, pPage2, rect);
-
-	CSettingsHotkeysDlg* pPage3 = new CSettingsHotkeysDlg;
-	pPage3->Create(m_tab_ctrl);
-	this->AddTabPage(2, pPage3, rect);
-
-	CSettingsWordsDlg* pPage4 = new CSettingsWordsDlg;
-	pPage4->Create(m_tab_ctrl);
-	this->AddTabPage(3, pPage4, rect);
-
-	CSettingsNextDlg* pPage5 = new CSettingsNextDlg;
-	pPage5->Create(m_tab_ctrl);
-	this->AddTabPage(4, pPage5, rect);
+	// This host migration deliberately reuses the stable page implementations.
+	// The following mapping is an interim compatibility layer while controls are
+	// moved into dedicated logical pages in subsequent migration stages.
+	m_pages[0] = m_optionsPage;
+	m_pages[1] = m_optionsPage;
+	m_pages[2] = m_sourcePage;
+	m_pages[3] = m_otherPage;
+	m_pages[4] = m_optionsPage;
+	m_pages[5] = m_hotkeysPage;
+	m_pages[6] = m_wordsPage;
+	m_pages[7] = m_otherPage;
 
 	HMODULE hThemeDll = LoadSystemLibrary(_T("UxTheme.dll"));
 	if (hThemeDll != NULL)
@@ -97,13 +86,18 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		PFNENABLETHEMEDIALOGTEXTURE pEnableThemeDialogTexture = (PFNENABLETHEMEDIALOGTEXTURE)GetProcAddress(hThemeDll, "EnableThemeDialogTexture");
 		if(pEnableThemeDialogTexture)
 		{
-			pEnableThemeDialogTexture(*pPage1, ETDT_USETABTEXTURE);
-			pEnableThemeDialogTexture(*pPage2, ETDT_USETABTEXTURE);
-			pEnableThemeDialogTexture(*pPage5, ETDT_USETABTEXTURE);
+			pEnableThemeDialogTexture(*m_optionsPage, ETDT_USETABTEXTURE);
+			pEnableThemeDialogTexture(*m_otherPage, ETDT_USETABTEXTURE);
+			pEnableThemeDialogTexture(*m_sourcePage, ETDT_USETABTEXTURE);
 		}
 		FreeLibrary(hThemeDll);
 	}	
 
+	CRect client;
+	GetClientRect(client);
+	LayoutControls(client.Width(), client.Height());
+	m_navigation.SetCurSel(0);
+	SelectPage(0);
 	return 1;
 }
 
@@ -111,28 +105,14 @@ LRESULT CSettingsDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
 {
 	if(GetFocus() == GetDlgItem(IDOK))
 	{
-		CWindow* pWnd;
-		TC_ITEM tci;
-		tci.mask = TCIF_PARAM;
-		int cnt = m_tab_ctrl.GetItemCount();
-		for (int i = cnt - 1; i >= 0; i--)
-		{ 
-			m_tab_ctrl.GetItem(i, &tci);
-			pWnd = (CWindow*)tci.lParam;
-			if(pWnd)
-			{
-				pWnd->SendMessage(WM_COMMAND, MAKELONG(IDOK, 0), 0);
-			}
-		}	
+		CWindow* uniquePages[] = { m_optionsPage, m_otherPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
+		for(int i = _countof(uniquePages) - 1; i >= 0; --i)
+			uniquePages[i]->SendMessage(WM_COMMAND, MAKELONG(IDOK, 0), 0);
 		EndDialog(wID);
 	}
 	else
 	{
-		int nTab = m_tab_ctrl.GetCurSel(); 
-		TC_ITEM tci; 
-		tci.mask = TCIF_PARAM; 
-		m_tab_ctrl.GetItem(nTab, &tci); 
-		CWindow* pWnd = (CWindow*)tci.lParam; 
+		CWindow* pWnd = m_currentPage >= 0 ? m_pages[m_currentPage] : NULL;
 		if(pWnd)
 		{
 			pWnd->SendMessage(WM_COMMAND, MAKELONG(IDOK, 0), 0);
@@ -145,37 +125,22 @@ LRESULT CSettingsDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
 
 LRESULT CSettingsDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
-	int nTab = m_tab_ctrl.GetCurSel();
 	int lres = 1;
 
-	if(nTab != 3)
+	if(m_currentPage != 6)
 	{
 		if(_Settings.m_initial_scripts_folder != _Settings.GetScriptsFolder())
 		{
 			_Settings.SetScriptsFolder(_Settings.m_initial_scripts_folder, true);
 		}
 
-		CWindow* pWnd;
-		TC_ITEM tci;
-		tci.mask = TCIF_PARAM;
-		int cnt = m_tab_ctrl.GetItemCount();
-		for (int i = cnt - 1; i >= 0; i--)
-		{ 
-			m_tab_ctrl.GetItem(i, &tci);
-			pWnd = (CWindow*)tci.lParam;
-			if(pWnd)
-			{
-				pWnd->SendMessage(WM_COMMAND, MAKELONG(IDCANCEL, 0), 0);
-			}
-		}
+		CWindow* uniquePages[] = { m_optionsPage, m_otherPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
+		for(int i = _countof(uniquePages) - 1; i >= 0; --i)
+			uniquePages[i]->SendMessage(WM_COMMAND, MAKELONG(IDCANCEL, 0), 0);
 	}
 	else
 	{
-		TC_ITEM tci; 
-		tci.mask = TCIF_PARAM;
-
-		m_tab_ctrl.GetItem(nTab, &tci); 
-		CWindow* pWnd = (CWindow*)tci.lParam; 
+		CWindow* pWnd = m_pages[6];
 		if(pWnd)
 		{
 			lres = pWnd->SendMessage(WM_COMMAND, MAKELONG(IDCANCEL, 0), 0);
@@ -188,57 +153,62 @@ LRESULT CSettingsDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 	return 0;
 }
 
-LRESULT CSettingsDlg::OnSelchangeTab(int idCtrl, LPNMHDR pnmh, BOOL& bHandled) 
-{ 	
-	int nTab = m_tab_ctrl.GetCurSel(); 
-	TC_ITEM tci; 
-	tci.mask = TCIF_PARAM; 
-	m_tab_ctrl.GetItem(nTab, &tci); 
-	CWindow* pWnd = (CWindow*)tci.lParam; 
-	if(pWnd)
-		pWnd->ShowWindow(SW_SHOW); 
-	bHandled = false; 
+LRESULT CSettingsDlg::OnNavigationChanged(WORD, WORD, HWND, BOOL&)
+{
+	SelectPage(m_navigation.GetCurSel());
 	return 0;
-} 
+}
 
-LRESULT CSettingsDlg::OnSelchangingTab(int idCtrl, LPNMHDR pnmh, BOOL& bHandled) 
-{ 
-	int nTab = m_tab_ctrl.GetCurSel(); 
-	TC_ITEM tci; 
-	tci.mask = TCIF_PARAM; 
-	m_tab_ctrl.GetItem(nTab, &tci); 
-	CWindow* pWnd = (CWindow*)tci.lParam; 
-	int res = 0;
-	if(pWnd)
-		res = pWnd->ShowWindow(SW_HIDE); 
-	bHandled = false; 
+LRESULT CSettingsDlg::OnSize(UINT, WPARAM, LPARAM lParam, BOOL&)
+{
+	LayoutControls(LOWORD(lParam), HIWORD(lParam));
+	return 0;
+}
+
+LRESULT CSettingsDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
+{
+	MINMAXINFO* minMax = reinterpret_cast<MINMAXINFO*>(lParam);
+	minMax->ptMinTrackSize.x = 430;
+	minMax->ptMinTrackSize.y = 320;
 	return 0;
 }
 
 LRESULT CSettingsDlg::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) 
 {	
-	CWindow* pWnd;	
-	TC_ITEM tci; 
-	tci.mask = TCIF_PARAM; 
-	int cnt = m_tab_ctrl.GetItemCount();
-	for (int i = cnt - 1; i>=0; i--) 
-	{ 
-		m_tab_ctrl.GetItem(i, &tci); 
-		pWnd = (CWindow*)tci.lParam;		
-		if(pWnd)
-		{
-			pWnd->DestroyWindow(); 
-			delete (CModelessDialogImpl<CWindow>*)pWnd; 
-		}
-	} 
+	if(m_optionsPage) { m_optionsPage->DestroyWindow(); delete m_optionsPage; m_optionsPage = NULL; }
+	if(m_otherPage) { m_otherPage->DestroyWindow(); delete m_otherPage; m_otherPage = NULL; }
+	if(m_sourcePage) { m_sourcePage->DestroyWindow(); delete m_sourcePage; m_sourcePage = NULL; }
+	if(m_hotkeysPage) { m_hotkeysPage->DestroyWindow(); delete m_hotkeysPage; m_hotkeysPage = NULL; }
+	if(m_wordsPage) { m_wordsPage->DestroyWindow(); delete m_wordsPage; m_wordsPage = NULL; }
 	return 0;
 }
 
-void CSettingsDlg::AddTabPage(const int index, CWindow* pDialog, const CRect& rect)
+CRect CSettingsDlg::GetPageRect()
 {
-	TC_ITEM TabItem;
-	TabItem.mask = TCIF_PARAM; 	
-	TabItem.lParam = (LPARAM)(CWindow*)pDialog; 
-	m_tab_ctrl.SetItem(index, &TabItem);
-	pDialog->MoveWindow(rect.left, rect.top, rect.Width(), rect.Height(), SWP_NOSIZE | SWP_NOZORDER); 
+	CRect client;
+	GetClientRect(client);
+	return CRect(118, 10, client.right - 10, client.bottom - 42);
+}
+
+void CSettingsDlg::SelectPage(int page)
+{
+	if(page < 0 || page >= _countof(m_pages) || !m_pages[page])
+		return;
+	if(m_currentPage >= 0 && m_pages[m_currentPage] != m_pages[page])
+		m_pages[m_currentPage]->ShowWindow(SW_HIDE);
+	m_currentPage = page;
+	CRect rect = GetPageRect();
+	m_pages[page]->MoveWindow(rect);
+	m_pages[page]->ShowWindow(SW_SHOW);
+}
+
+void CSettingsDlg::LayoutControls(int width, int height)
+{
+	if(!m_navigation.IsWindow())
+		return;
+	m_navigation.MoveWindow(10, 10, 100, height - 52);
+	GetDlgItem(IDOK).MoveWindow(width - 130, height - 30, 55, 15);
+	GetDlgItem(IDCANCEL).MoveWindow(width - 65, height - 30, 55, 15);
+	if(m_currentPage >= 0 && m_pages[m_currentPage])
+		m_pages[m_currentPage]->MoveWindow(GetPageRect());
 }

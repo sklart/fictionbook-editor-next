@@ -697,6 +697,7 @@
 #define IDC_FBE_NEXT_SAVING_GROUP       1129
 #define IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE 1130
 #define IDC_FBE_NEXT_WINDOW_TITLE_GROUP 1131
+#define IDC_SETTINGS_NAV                1625
 
 // Next default values for new objects
 // 
@@ -705,7 +706,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        257
 #define _APS_NEXT_COMMAND_VALUE         32926
-#define _APS_NEXT_CONTROL_VALUE         1625
+#define _APS_NEXT_CONTROL_VALUE         1626
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

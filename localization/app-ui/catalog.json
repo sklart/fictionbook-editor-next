@@ -3302,6 +3302,86 @@
         "bg-BG": "Не са открити грешки."
       }
     },
+    "fbe.settings.nav.general": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "General", "ru-RU": "Общие", "uk-UA": "Загальні", "de-DE": "Allgemein",
+        "fr-FR": "Général", "es-ES": "General", "it-IT": "Generali", "pl-PL": "Ogólne",
+        "pt-PT": "Geral", "nl-NL": "Algemeen", "cs-CZ": "Obecné", "bg-BG": "Общи"
+      }
+    },
+    "fbe.settings.nav.editor": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Editor", "ru-RU": "Редактор", "uk-UA": "Редактор", "de-DE": "Editor",
+        "fr-FR": "Éditeur", "es-ES": "Editor", "it-IT": "Editor", "pl-PL": "Edytor",
+        "pt-PT": "Editor", "nl-NL": "Editor", "cs-CZ": "Editor", "bg-BG": "Редактор"
+      }
+    },
+    "fbe.settings.nav.source": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Source code", "ru-RU": "Исходный код", "uk-UA": "Вихідний код", "de-DE": "Quellcode",
+        "fr-FR": "Code source", "es-ES": "Código fuente", "it-IT": "Codice sorgente", "pl-PL": "Kod źródłowy",
+        "pt-PT": "Código-fonte", "nl-NL": "Broncode", "cs-CZ": "Zdrojový kód", "bg-BG": "Изходен код"
+      }
+    },
+    "fbe.settings.nav.images": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Images", "ru-RU": "Изображения", "uk-UA": "Зображення", "de-DE": "Bilder",
+        "fr-FR": "Images", "es-ES": "Imágenes", "it-IT": "Immagini", "pl-PL": "Obrazy",
+        "pt-PT": "Imagens", "nl-NL": "Afbeeldingen", "cs-CZ": "Obrázky", "bg-BG": "Изображения"
+      }
+    },
+    "fbe.settings.nav.spelling": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Spelling", "ru-RU": "Орфография", "uk-UA": "Правопис", "de-DE": "Rechtschreibung",
+        "fr-FR": "Orthographe", "es-ES": "Ortografía", "it-IT": "Ortografia", "pl-PL": "Pisownia",
+        "pt-PT": "Ortografia", "nl-NL": "Spelling", "cs-CZ": "Pravopis", "bg-BG": "Правопис"
+      }
+    },
+    "fbe.settings.nav.keyboard": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Keyboard", "ru-RU": "Клавиатура", "uk-UA": "Клавіатура", "de-DE": "Tastatur",
+        "fr-FR": "Clavier", "es-ES": "Teclado", "it-IT": "Tastiera", "pl-PL": "Klawiatura",
+        "pt-PT": "Teclado", "nl-NL": "Toetsenbord", "cs-CZ": "Klávesnice", "bg-BG": "Клавиатура"
+      }
+    },
+    "fbe.settings.nav.words": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Words", "ru-RU": "Слова", "uk-UA": "Слова", "de-DE": "Wörter",
+        "fr-FR": "Mots", "es-ES": "Palabras", "it-IT": "Parole", "pl-PL": "Słowa",
+        "pt-PT": "Palavras", "nl-NL": "Woorden", "cs-CZ": "Slova", "bg-BG": "Думи"
+      }
+    },
+    "fbe.settings.nav.advanced": {
+      "resourceId": "",
+      "runtimeOnly": true,
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Advanced", "ru-RU": "Дополнительно", "uk-UA": "Додатково", "de-DE": "Erweitert",
+        "fr-FR": "Avancé", "es-ES": "Avanzado", "it-IT": "Avanzate", "pl-PL": "Zaawansowane",
+        "pt-PT": "Avançado", "nl-NL": "Geavanceerd", "cs-CZ": "Pokročilé", "bg-BG": "Разширени"
+      }
+    },
     "fbe.settings.next.caption": {
       "resourceId": "",
       "runtimeOnly": true,
