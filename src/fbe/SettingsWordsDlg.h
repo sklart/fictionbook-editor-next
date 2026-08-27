@@ -21,6 +21,7 @@ public:
 	DWORD m_ct;
 	int m_editidx;
 	bool m_editActive;
+	bool m_wordsDirty;
 
 	// This is the dialog's staged data model.  The owner-data ListView only
 	// asks this vector for visible rows; it never owns a Word item itself.

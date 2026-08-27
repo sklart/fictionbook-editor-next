@@ -29,7 +29,7 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 }
 LRESULT CSettingsAdvancedPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
-	Commit();
+	if(Validate()) Commit();
 	return 0;
 }
 bool CSettingsAdvancedPage::Validate()

@@ -90,6 +90,7 @@ const wchar_t CUSTOM_DICT_CODEPAGE_KEY[]= L"CustomDictCodePage";
 const wchar_t NBSPCHAR_KEY[]			= L"NBSPChar";
 const wchar_t CHANGE_KEYBD_CHECK_KEY[]	= L"ChangeKeybLayout";
 const wchar_t KEYB_LAYOUT_KEY[]			= L"KeyboardLayout";
+const wchar_t KEYB_LAYOUT_ID_KEY[]		= L"KeyboardLayoutId";
 const wchar_t SHOW_LINE_NUMBERS_KEY[]	= L"XMLSrcShowLineNumbers";
 const wchar_t IMAGE_TYPE_KEY[]			= L"PasteImageType";
 const wchar_t JPEG_QUALITY_KEY[]		= L"JpegQuality";
@@ -236,6 +237,9 @@ static CString NormalizeScriptsFolderPath(CString path)
 		path += L"\\";
 	return path;
 }
+
+static DWORD NormalizeImageType(DWORD value) { return value <= 1 ? value : 1; }
+static DWORD NormalizeJpegQuality(DWORD value) { return value >= 20 && value <= 100 ? value : 75; }
 
 void CSettings::InitHotkeyGroups()
 {
@@ -849,6 +853,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(NBSPCHAR_KEY);
 	properties.push_back(CHANGE_KEYBD_CHECK_KEY);
 	properties.push_back(KEYB_LAYOUT_KEY);
+	properties.push_back(KEYB_LAYOUT_ID_KEY);
 	properties.push_back(SHOW_LINE_NUMBERS_KEY);
 	properties.push_back(IMAGE_TYPE_KEY);
 	properties.push_back(JPEG_QUALITY_KEY);
@@ -1110,6 +1115,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == SHOW_FULL_PATH_IN_WINDOW_TITLE_KEY)
 	{
 		property = GetStringedProperty(&m_show_full_path_in_window_title, KEY_BOOL);
+		return true;
+	}
+	else if(sProperty == KEYB_LAYOUT_ID_KEY)
+	{
+		property = m_keyboard_layout_id;
 		return true;
 	}
 	else if(sProperty == UPDATE_CHANNEL_KEY)
@@ -1387,12 +1397,12 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == IMAGE_TYPE_KEY)
 	{
-		m_image_type = StrToInt(sValue.GetStringValue());
+		m_image_type = NormalizeImageType(StrToInt(sValue.GetStringValue()));
 		return true;
 	}
 	else if(sProperty == JPEG_QUALITY_KEY)
 	{
-		m_jpeg_quality = StrToInt(sValue.GetStringValue());
+		m_jpeg_quality = NormalizeJpegQuality(StrToInt(sValue.GetStringValue()));
 		return true;
 	}
 	else if(sProperty == IMAGE_IMPORT_FORMAT_KEY) { m_image_import_format = min(2u, StrToInt(sValue.GetStringValue())); return true; }
@@ -1417,6 +1427,12 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == SHOW_FULL_PATH_IN_WINDOW_TITLE_KEY)
 	{
 		m_show_full_path_in_window_title = StrToBool(sValue);
+		return true;
+	}
+	else if(sProperty == KEYB_LAYOUT_ID_KEY)
+	{
+		CString id(sValue.GetStringValue()); id.Trim(); id.MakeUpper();
+		m_keyboard_layout_id = id.GetLength() == 8 && id.SpanIncluding(L"0123456789ABCDEF").GetLength() == 8 ? id : CString();
 		return true;
 	}
 	else if(sProperty == UPDATE_CHANNEL_KEY)
@@ -2068,6 +2084,8 @@ CString CSettings::GetLocalizedGenresFileName()const
 	}
 }
 
+CString CSettings::GetKeyboardLayoutId() const { return m_keyboard_layout_id; }
+
 GenreCatalog CSettings::GetGenreCatalog()const
 {
 	return m_genre_catalog;
@@ -2537,6 +2555,14 @@ void CSettings::SetKeybLayout(const DWORD value, bool apply)
 	if (apply) Save();
 }
 
+void CSettings::SetKeyboardLayoutId(const CString& value, bool apply)
+{
+	CString id(value); id.Trim(); id.MakeUpper();
+	if(id.GetLength() == 8 && id.SpanIncluding(L"0123456789ABCDEF").GetLength() == 8)
+		m_keyboard_layout_id = id;
+	if(apply) Save();
+}
+
 void CSettings::SetXMLSrcShowLineNumbers(const bool value, bool apply)
 {
 	m_show_line_numbers = value;
@@ -2545,13 +2571,13 @@ void CSettings::SetXMLSrcShowLineNumbers(const bool value, bool apply)
 
 void CSettings::SetImageType(const DWORD value, bool apply)
 {
-	m_image_type = value <= 1 ? value : 1;
+	m_image_type = NormalizeImageType(value);
 	if (apply) Save();
 }
 
 void CSettings::SetJpegQuality(const DWORD value, bool apply)
 {
-	m_jpeg_quality = value;
+	m_jpeg_quality = NormalizeJpegQuality(value);
 	if (apply) Save();
 }
 

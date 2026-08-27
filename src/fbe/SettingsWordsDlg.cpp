@@ -70,7 +70,7 @@ static int (*g_compare_funcs[])(const void*, const void*) =
 };
 
 // CSettingsWordsDlg
-CSettingsWordsDlg::CSettingsWordsDlg() : m_sort(0), m_sel_all(false), m_ct(0), m_editidx(-1), m_editActive(false)
+CSettingsWordsDlg::CSettingsWordsDlg() : m_sort(0), m_sel_all(false), m_ct(0), m_editidx(-1), m_editActive(false), m_wordsDirty(false)
 {
 	// Keep edits cancelable without coupling the view to persistent settings.
 	m_words = _Settings.m_words;
@@ -329,6 +329,7 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 			wi.m_prc_idx = m_list_words.GetItemCount() + 1;
 
 			m_words.push_back(wi);
+			m_wordsDirty = true;
 			// In owner-data mode the control owns no per-row items.  Changing the
 			// item count makes the new model row visible on demand.
 			m_list_words.SetItemCount(static_cast<int>(m_words.size()));
@@ -430,6 +431,7 @@ LRESULT CSettingsWordsDlg::OnBnClickedButtonRemovesel(WORD /*wNotifyCode*/, WORD
 			if(!remove[i])
 				kept.push_back(m_words[i]);
 		m_words.swap(kept);
+		m_wordsDirty = true;
 		m_list_words.SetItemCount(static_cast<int>(m_words.size()));
 		m_sel_all = false;
 		m_chk_all.SetCheck(BST_UNCHECKED);
@@ -443,6 +445,7 @@ void CSettingsWordsDlg::RemoveWord(int index)
 	if(index < 0 || index >= static_cast<int>(m_words.size()))
 		return;
 	m_words.erase(m_words.begin() + index);
+	m_wordsDirty = true;
 	m_list_words.SetItemCount(static_cast<int>(m_words.size()));
 }
 
@@ -517,8 +520,11 @@ bool CSettingsWordsDlg::Validate()
 void CSettingsWordsDlg::Commit()
 {
 	_Settings.SetShowWordsExcls(m_show_words_excls.GetCheck() != 0);
-	_Settings.m_words = m_words;
-	_Settings.SaveWords();
+	if(m_wordsDirty)
+	{
+		_Settings.m_words = m_words;
+		_Settings.SaveWords();
+	}
 }
 
 bool CSettingsWordsDlg::CancelChanges()

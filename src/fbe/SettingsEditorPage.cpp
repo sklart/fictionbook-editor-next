@@ -60,7 +60,9 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_nbspCharacter.AddString(L"\u25AB");
 	m_nbspCharacter.AddString(L"\u25E6");
 	m_nbspCharacter.AddString(L"\u00A0");
-	m_nbspCharacter.SelectString(0, _Settings.GetNBSPChar());
+	int nbspIndex = m_nbspCharacter.SelectString(0, _Settings.GetNBSPChar());
+	if(nbspIndex == CB_ERR) nbspIndex = m_nbspCharacter.AddString(_Settings.GetNBSPChar());
+	m_nbspCharacter.SetCurSel(nbspIndex);
 	return 1;
 }
 
@@ -81,6 +83,7 @@ bool CSettingsEditorPage::Validate()
 		m_fontSize.SetFocus();
 		return false;
 	}
+	if(U::GetWindowText(m_nbspCharacter).IsEmpty()) { MessageBeep(MB_ICONERROR); m_nbspCharacter.SetFocus(); return false; }
 	return true;
 }
 
