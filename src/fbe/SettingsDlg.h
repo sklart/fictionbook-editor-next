@@ -4,7 +4,7 @@
 
 #include "resource.h"
 #include "SettingsAdvancedPage.h"
-#include "SettingsOtherDlg.h"
+#include "SettingsImagesPage.h"
 #include "SettingsHotkeysDlg.h"
 #include "SettingsWordsDlg.h"
 #include "SettingsGeneralPage.h"
@@ -34,7 +34,7 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	CSettingsGeneralPage* m_generalPage;
 	CSettingsEditorPage* m_editorPage;
 	CSettingsSpellingPage* m_spellingPage;
-	CSettingsOtherDlg* m_otherPage;
+	CSettingsImagesPage* m_imagesPage;
 	CSettingsSourcePage* m_sourcePage;
 	CSettingsHotkeysDlg* m_hotkeysPage;
 	CSettingsWordsDlg* m_wordsPage;

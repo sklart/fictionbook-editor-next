@@ -11,7 +11,7 @@ extern CSettings _Settings;
 // CSettingsDlg
 
 CSettingsDlg::CSettingsDlg() :
-	m_advancedPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_otherPage(NULL), m_sourcePage(NULL),
+	m_advancedPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_imagesPage(NULL), m_sourcePage(NULL),
 	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(SettingsPageId::Count),
 	m_pageLeft(0), m_pageTop(0), m_pageRightMargin(0), m_pageBottomMargin(0),
 	m_buttonWidth(0), m_buttonHeight(0), m_buttonGap(0), m_buttonBottomMargin(0),
@@ -68,8 +68,8 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_editorPage->Create(m_hWnd);
 	m_spellingPage = new CSettingsSpellingPage;
 	m_spellingPage->Create(m_hWnd);
-	m_otherPage = new CSettingsOtherDlg;
-	m_otherPage->Create(m_hWnd);
+	m_imagesPage = new CSettingsImagesPage;
+	m_imagesPage->Create(m_hWnd);
 	m_sourcePage = new CSettingsSourcePage;
 	m_sourcePage->Create(m_hWnd);
 	m_hotkeysPage = new CSettingsHotkeysDlg;
@@ -77,13 +77,10 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_wordsPage = new CSettingsWordsDlg;
 	m_wordsPage->Create(m_hWnd);
 
-	// This host migration deliberately reuses the stable page implementations.
-	// The following mapping is an interim compatibility layer while controls are
-	// moved into dedicated logical pages in subsequent migration stages.
 	m_pages[PageIndex(SettingsPageId::General)] = m_generalPage;
 	m_pages[PageIndex(SettingsPageId::Editor)] = m_editorPage;
 	m_pages[PageIndex(SettingsPageId::Source)] = m_sourcePage;
-	m_pages[PageIndex(SettingsPageId::Images)] = m_otherPage;
+	m_pages[PageIndex(SettingsPageId::Images)] = m_imagesPage;
 	m_pages[PageIndex(SettingsPageId::Spelling)] = m_spellingPage;
 	m_pages[PageIndex(SettingsPageId::Keyboard)] = m_hotkeysPage;
 	m_pages[PageIndex(SettingsPageId::Words)] = m_wordsPage;
@@ -96,7 +93,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		if(pEnableThemeDialogTexture)
 		{
 			pEnableThemeDialogTexture(*m_advancedPage, ETDT_USETABTEXTURE);
-			pEnableThemeDialogTexture(*m_otherPage, ETDT_USETABTEXTURE);
+			pEnableThemeDialogTexture(*m_imagesPage, ETDT_USETABTEXTURE);
 			pEnableThemeDialogTexture(*m_sourcePage, ETDT_USETABTEXTURE);
 		}
 		FreeLibrary(hThemeDll);
@@ -132,7 +129,7 @@ LRESULT CSettingsDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
 {
 	if(GetFocus() == GetDlgItem(IDOK))
 	{
-		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_advancedPage, m_otherPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
+		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_advancedPage, m_imagesPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
 		for(int i = _countof(uniquePages) - 1; i >= 0; --i)
 			uniquePages[i]->SendMessage(WM_COMMAND, MAKELONG(IDOK, 0), 0);
 		EndDialog(wID);
@@ -161,7 +158,7 @@ LRESULT CSettingsDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 			_Settings.SetScriptsFolder(_Settings.m_initial_scripts_folder, true);
 		}
 
-		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_advancedPage, m_otherPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
+		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_advancedPage, m_imagesPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
 		for(int i = _countof(uniquePages) - 1; i >= 0; --i)
 			uniquePages[i]->SendMessage(WM_COMMAND, MAKELONG(IDCANCEL, 0), 0);
 	}
@@ -208,7 +205,7 @@ LRESULT CSettingsDlg::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 	if(m_generalPage) { m_generalPage->DestroyWindow(); delete m_generalPage; m_generalPage = NULL; }
 	if(m_editorPage) { m_editorPage->DestroyWindow(); delete m_editorPage; m_editorPage = NULL; }
 	if(m_spellingPage) { m_spellingPage->DestroyWindow(); delete m_spellingPage; m_spellingPage = NULL; }
-	if(m_otherPage) { m_otherPage->DestroyWindow(); delete m_otherPage; m_otherPage = NULL; }
+	if(m_imagesPage) { m_imagesPage->DestroyWindow(); delete m_imagesPage; m_imagesPage = NULL; }
 	if(m_sourcePage) { m_sourcePage->DestroyWindow(); delete m_sourcePage; m_sourcePage = NULL; }
 	if(m_hotkeysPage) { m_hotkeysPage->DestroyWindow(); delete m_hotkeysPage; m_hotkeysPage = NULL; }
 	if(m_wordsPage) { m_wordsPage->DestroyWindow(); delete m_wordsPage; m_wordsPage = NULL; }

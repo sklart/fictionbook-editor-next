@@ -42,7 +42,7 @@ foreach ($generatedMenu in @("IDR_MAINFRAME", "IDR_DOCUMENT_TREE", "IDR_TOOLBAR_
         throw "$generatedMenu больше не должен быть в ручном инвентаре: FBE MENU подключены из generated .rc2."
     }
 }
-foreach ($generatedDialog in @("IDD_TABLE", "IDD_INPUTBOX", "IDD_ADDIMAGE", "IDD_TOOLS_SETTINGS", "IDD_ABOUTBOX", "IDD_CUSTOMSAVEDLG", "IDD_SETTINGS_WORDS", "IDD_HOTKEYS", "IDD_FIND", "IDD_REPLACE", "IDD_SPELL_CHECK", "IDD_WORDS", "IDD_SETTING_OTHER", "IDD_SETTINGS_GENERAL", "IDD_SETTINGS_SOURCE", "IDD_SETTINGS_ADVANCED")) {
+foreach ($generatedDialog in @("IDD_TABLE", "IDD_INPUTBOX", "IDD_ADDIMAGE", "IDD_TOOLS_SETTINGS", "IDD_ABOUTBOX", "IDD_CUSTOMSAVEDLG", "IDD_SETTINGS_WORDS", "IDD_HOTKEYS", "IDD_FIND", "IDD_REPLACE", "IDD_SPELL_CHECK", "IDD_WORDS", "IDD_SETTINGS_GENERAL", "IDD_SETTINGS_SOURCE", "IDD_SETTINGS_IMAGES", "IDD_SETTINGS_ADVANCED")) {
     if ($resources -contains $generatedDialog) {
         throw "$generatedDialog больше не должен быть в ручном инвентаре: малые DIALOGEX подключены из generated .rc2."
     }

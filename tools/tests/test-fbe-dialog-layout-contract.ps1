@@ -29,7 +29,7 @@ function Get-Dialog([string]$DialogId) {
 
 Assert-Contains $rc 'COMBOBOX\s+IDC_LANG,\d+,\d+,1[0-9]{2},\d+' 'IDC_LANG must remain wide enough for translated locale names.'
 
-foreach ($dialogId in @('IDD_TOOLS_SETTINGS', 'IDD_SETTING_OTHER', 'IDD_HOTKEYS', 'IDD_SETTINGS_WORDS', 'IDD_SETTINGS_GENERAL', 'IDD_SETTINGS_SOURCE', 'IDD_SETTINGS_ADVANCED')) {
+foreach ($dialogId in @('IDD_TOOLS_SETTINGS', 'IDD_HOTKEYS', 'IDD_SETTINGS_WORDS', 'IDD_SETTINGS_GENERAL', 'IDD_SETTINGS_SOURCE', 'IDD_SETTINGS_IMAGES', 'IDD_SETTINGS_ADVANCED')) {
     $dialog = Get-Dialog $dialogId
     Assert-Contains $dialog 'FONT 8, "Tahoma", 400, 0, 0x1' "$dialogId must use Tahoma 8."
     if ($dialog -match 'DS_FIXEDSYS') { throw "$dialogId must not use DS_FIXEDSYS." }
@@ -39,7 +39,7 @@ $sourceDialog = Get-Dialog 'IDD_SETTINGS_SOURCE'
 $generalDialog = Get-Dialog 'IDD_SETTINGS_GENERAL'
 $advancedDialog = Get-Dialog 'IDD_SETTINGS_ADVANCED'
 $hotkeysDialog = Get-Dialog 'IDD_HOTKEYS'
-$otherDialog = Get-Dialog 'IDD_SETTING_OTHER'
+$imagesDialog = Get-Dialog 'IDD_SETTINGS_IMAGES'
 Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 330, 320' 'Source page dimensions changed.'
 foreach ($control in @('IDC_SRCFONT', 'IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', 'IDC_SHOWEOL', 'IDC_SHOWWHITESPACE', 'IDC_SHOWLINENUMBERS', 'IDC_OPTIONS_SOURCE_PALETTE', 'IDC_OPTIONS_SOURCE_PREVIEW')) {
     Assert-Contains $sourceDialog $control "Source control missing from IDD_SETTINGS_SOURCE: $control"
@@ -53,8 +53,15 @@ foreach ($control in @('IDC_DEFAULT_SCRIPTS_FOLDER', 'IDC_SCRIPTS_FOLDER_PATH', 
 }
 foreach ($control in @('IDC_SETTINGS_OTHER_KEYBOARD', 'IDC_CHANGE_KEYB', 'IDC_SETTINGS_OTHER_CHANGE_TO', 'IDC_KEYB_LAYOUT')) {
     Assert-Contains $hotkeysDialog $control "Keyboard-layout control missing from IDD_HOTKEYS: $control"
-    if ($otherDialog -match $control) { throw "Keyboard-layout control must not remain in IDD_SETTING_OTHER: $control" }
+    if ($imagesDialog -match $control) { throw "Keyboard-layout control must not be in IDD_SETTINGS_IMAGES: $control" }
 }
+foreach ($control in @('IDC_SETTINGS_ASKIMAGE', 'IDC_OPTIONS_CLEARIMGS', 'IDC_SETTINGS_OTHER_PASTE', 'IDC_SETTINGS_OTHER_FORMAT', 'IDC_IMAGETYPE', 'IDC_SETTINGS_OTHER_QUALITY', 'IDC_JPEGQUALITY', 'IDC_JPEGSPIN', 'IDC_SETTINGS_OTHER_IMPORT', 'IDC_SETTINGS_OTHER_OUTPUT', 'IDC_IMAGE_IMPORT_FORMAT', 'IDC_SETTINGS_OTHER_IMPORT_QUALITY', 'IDC_IMAGE_IMPORT_JPEG_QUALITY', 'IDC_IMAGE_IMPORT_JPEG_SPIN', 'IDC_IMAGE_IMPORT_KEEP_SUPPORTED')) {
+    Assert-Contains $imagesDialog $control "Image control missing from IDD_SETTINGS_IMAGES: $control"
+}
+foreach ($control in @('IDC_KEEP', 'IDC_DEFAULT_ENC', 'IDC_RESTORE_POS', 'IDC_SETTINGS_OTHER_NBSP', 'IDC_SETTINGS_OTHER_NBSP_LABEL', 'IDC_NBSP_CHAR')) {
+    if ($imagesDialog -match $control) { throw "General or Editor control must not be in IDD_SETTINGS_IMAGES: $control" }
+}
+if ($rc -match ('(?m)^IDD_SETTING' + '_OTHER DIALOGEX')) { throw 'Legacy Other dialog must be removed.' }
 Assert-Contains $generalDialog 'IDC_UPDATE_CHANNEL,82,223,180,55' 'Update-channel selector geometry changed in IDD_SETTINGS_GENERAL.'
 foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE', 'IDC_UPDATE_CHANNEL')) {
     Assert-Contains $generalDialog $control "General control missing from IDD_SETTINGS_GENERAL: $control"

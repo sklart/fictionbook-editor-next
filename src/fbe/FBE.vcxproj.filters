@@ -111,13 +111,13 @@
     <ClCompile Include="SettingsSourcePage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+	<ClCompile Include="SettingsImagesPage.cpp">
+	  <Filter>Source Files</Filter>
+	</ClCompile>
     <ClCompile Include="SettingsDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SettingsHotkeysDlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SettingsOtherDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SettingsWordsDlg.cpp">
@@ -253,13 +253,13 @@
     <ClInclude Include="SettingsSourcePage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+	<ClInclude Include="SettingsImagesPage.h">
+	  <Filter>Header Files</Filter>
+	</ClInclude>
     <ClInclude Include="SettingsDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SettingsHotkeysDlg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SettingsOtherDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SettingsWordsDlg.h">

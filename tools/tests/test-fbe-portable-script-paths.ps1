@@ -34,7 +34,7 @@ $settings = Get-ProjectText 'src\fbe\Settings.cpp'
 Assert-Contains $settings 'CompareNoCase(GetDefaultScriptsFolder())' 'Сравнение пути Scripts без изменения регистра'
 Assert-NotContains $settings 'path.MakeLower();' 'Путь стандартного каталога Scripts'
 
-$settingsDialog = Get-ProjectText 'src\fbe\SettingsOtherDlg.cpp'
+$settingsDialog = Get-ProjectText 'src\fbe\SettingsAdvancedPage.cpp'
 Assert-NotContains $settingsDialog 'folderPath.MakeLower();' 'Выбор пользовательского каталога Scripts'
 
 $mainFrame = Get-ProjectText 'src\fbe\mainfrm.cpp'

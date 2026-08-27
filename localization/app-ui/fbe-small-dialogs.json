@@ -30,11 +30,11 @@
     "IDD_REPLACE",
     "IDD_SPELL_CHECK",
     "IDD_WORDS",
-    "IDD_SETTING_OTHER",
     "IDD_SETTINGS_GENERAL",
     "IDD_SETTINGS_EDITOR",
     "IDD_SETTINGS_SPELLING",
     "IDD_SETTINGS_SOURCE",
+    "IDD_SETTINGS_IMAGES",
     "IDD_SETTINGS_ADVANCED"  ],
   "resourceType": "DIALOGEX",
   "strings": {
@@ -1797,46 +1797,8 @@
         "bg-BG": "Замени"
       }
     },
-    "fbe.dialog.idd_setting_other.main_settings": {
-      "resource": "IDD_SETTING_OTHER",
-      "kind": "GROUPBOX",
-      "targetId": "IDC_SETTINGS_OTHER_SAVE_GROUP",
-      "translations": {
-        "en-US": "Main settings",
-        "ru-RU": "Общие настройки",
-        "uk-UA": "Загальні налаштування",
-        "de-DE": "Allgemeine Einstellungen",
-        "fr-FR": "Paramètres généraux",
-        "es-ES": "Opciones generales",
-        "it-IT": "Impostazioni generali",
-        "pl-PL": "Ustawienia ogólne",
-        "pt-PT": "Definições gerais",
-        "nl-NL": "Algemene instellingen",
-        "cs-CZ": "Obecná nastavení",
-        "bg-BG": "Общи настройки"
-      }
-    },
-    "fbe.dialog.idd_setting_other.encoding": {
-      "resource": "IDD_SETTING_OTHER",
-      "kind": "LTEXT",
-      "targetId": "IDC_SETTINGS_OTHER_ENCODING",
-      "translations": {
-        "en-US": "Encoding:",
-        "ru-RU": "Кодировка:",
-        "uk-UA": "Кодування:",
-        "de-DE": "Kodierung:",
-        "fr-FR": "Encodage :",
-        "es-ES": "Codificación:",
-        "it-IT": "Codifica:",
-        "pl-PL": "Kodowanie:",
-        "pt-PT": "Codificação:",
-        "nl-NL": "Codering:",
-        "cs-CZ": "Kódování:",
-        "bg-BG": "Кодировка:"
-      }
-    },
     "fbe.dialog.idd_setting_other.keep_manual": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_GENERAL",
       "kind": "CONTROL",
       "targetId": "IDC_KEEP",
       "translations": {
@@ -1854,27 +1816,8 @@
         "bg-BG": "Запази ръчно форматиране"
       }
     },
-    "fbe.dialog.idd_setting_other.window_mode": {
-      "resource": "IDD_SETTING_OTHER",
-      "kind": "GROUPBOX",
-      "targetId": "IDC_SETTINGS_OTHER_OPEN_GROUP",
-      "translations": {
-        "en-US": "Window mode",
-        "ru-RU": "Режим окна",
-        "uk-UA": "Режим вікна",
-        "de-DE": "Fenstermodus",
-        "fr-FR": "Mode fenêtre",
-        "es-ES": "Modo de ventana",
-        "it-IT": "Modalità finestra",
-        "pl-PL": "Tryb okna",
-        "pt-PT": "Modo de janela",
-        "nl-NL": "Venstermodus",
-        "cs-CZ": "Režim okna",
-        "bg-BG": "Режим на прозореца"
-      }
-    },
     "fbe.dialog.idd_setting_other.restore_position": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_GENERAL",
       "kind": "CONTROL",
       "targetId": "IDC_RESTORE_POS",
       "translations": {
@@ -1950,7 +1893,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.images": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "GROUPBOX",
       "targetId": "IDC_SETTINGS_OTHER_DIALOGS",
       "translations": {
@@ -1969,7 +1912,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.ask_image": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "CONTROL",
       "targetId": "IDC_SETTINGS_ASKIMAGE",
       "translations": {
@@ -1987,27 +1930,8 @@
         "bg-BG": "Питай преди празно изображение"
       }
     },
-    "fbe.dialog.idd_setting_other.thumbnails": {
-      "resource": "IDD_SETTING_OTHER",
-      "kind": "GROUPBOX",
-      "targetId": "IDC_SETTINGS_OTHER_IMAGES",
-      "translations": {
-        "en-US": "Thumbnails",
-        "ru-RU": "Миниатюры",
-        "uk-UA": "Мініатюри",
-        "de-DE": "Miniaturen",
-        "fr-FR": "Miniatures",
-        "es-ES": "Miniaturas",
-        "it-IT": "Miniature",
-        "pl-PL": "Miniatury",
-        "pt-PT": "Miniaturas",
-        "nl-NL": "Miniaturen",
-        "cs-CZ": "Miniatury",
-        "bg-BG": "Миниатюри"
-      }
-    },
     "fbe.dialog.idd_setting_other.clear_images": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "CONTROL",
       "targetId": "IDC_OPTIONS_CLEARIMGS",
       "translations": {
@@ -2026,7 +1950,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.nbsp": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_EDITOR",
       "kind": "GROUPBOX",
       "targetId": "IDC_SETTINGS_OTHER_NBSP",
       "translations": {
@@ -2045,7 +1969,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.nbsp_char": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_EDITOR",
       "kind": "LTEXT",
       "targetId": "IDC_SETTINGS_OTHER_NBSP_LABEL",
       "translations": {
@@ -2102,7 +2026,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.image_settings": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "GROUPBOX",
       "targetId": "IDC_SETTINGS_OTHER_PASTE",
       "translations": {
@@ -2121,7 +2045,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.format": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "LTEXT",
       "targetId": "IDC_SETTINGS_OTHER_FORMAT",
       "translations": {
@@ -2140,7 +2064,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.jpeg_quality": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "LTEXT",
       "targetId": "IDC_SETTINGS_OTHER_QUALITY",
       "translations": {
@@ -2368,7 +2292,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.image_import": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "GROUPBOX",
       "targetId": "IDC_SETTINGS_OTHER_IMPORT",
       "translations": {
@@ -2387,7 +2311,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.output_format": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "LTEXT",
       "targetId": "IDC_SETTINGS_OTHER_OUTPUT",
       "translations": {
@@ -2406,7 +2330,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.keep_supported": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_SETTINGS_IMAGES",
       "kind": "CONTROL",
       "targetId": "IDC_IMAGE_IMPORT_KEEP_SUPPORTED",
       "translations": {

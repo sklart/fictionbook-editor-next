@@ -306,12 +306,12 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <ClCompile Include="script.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="SettingsGeneralPage.cpp" />
+	<ClCompile Include="SettingsImagesPage.cpp" />
     <ClCompile Include="SettingsEditorPage.cpp" />
     <ClCompile Include="SettingsSpellingPage.cpp" />
     <ClCompile Include="SettingsSourcePage.cpp" />
     <ClCompile Include="SettingsDlg.cpp" />
     <ClCompile Include="SettingsHotkeysDlg.cpp" />
-    <ClCompile Include="SettingsOtherDlg.cpp" />
     <ClCompile Include="SettingsWordsDlg.cpp" />
     <ClCompile Include="Speller.cpp" />
     <ClCompile Include="Splitter.cpp" />
@@ -418,12 +418,12 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <ClInclude Include="XMLSerializer\Serializable.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="SettingsGeneralPage.h" />
+	<ClInclude Include="SettingsImagesPage.h" />
     <ClInclude Include="SettingsEditorPage.h" />
     <ClInclude Include="SettingsSpellingPage.h" />
     <ClInclude Include="SettingsSourcePage.h" />
     <ClInclude Include="SettingsDlg.h" />
     <ClInclude Include="SettingsHotkeysDlg.h" />
-    <ClInclude Include="SettingsOtherDlg.h" />
     <ClInclude Include="SettingsWordsDlg.h" />
     <ClInclude Include="Speller.h" />
     <ClInclude Include="SpellText.h" />
