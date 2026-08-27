@@ -136,6 +136,11 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 LRESULT CSettingsDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
+	const HWND globalOk = GetDlgItem(IDOK);
+	if(hWndCtl != globalOk && m_currentPage == SettingsPageId::Words &&
+		m_wordsPage && m_wordsPage->HandleDefaultAction())
+		return 0;
+
 	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
 		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->Validate()) { SelectPage(static_cast<SettingsPageId>(i)); return 0; }
 	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
