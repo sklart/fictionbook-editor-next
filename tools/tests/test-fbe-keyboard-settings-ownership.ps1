@@ -61,5 +61,11 @@ foreach ($pattern in @(
         throw "SettingsHotkeysDlg.cpp does not own required keyboard-layout behavior: $pattern"
     }
 }
+if ($hotkeys -notmatch 'GetKeyboardLayoutList\(0, NULL\)' -or $hotkeys -match 'HKL\s+layouts\s*\[\s*16\s*\]') {
+    throw 'Keyboard layouts must be enumerated dynamically.'
+}
+if ($hotkeys -notmatch 'SetItemData\(item, klid\)') {
+    throw 'Keyboard UI must preserve a concrete layout identifier.'
+}
 
 Write-Host 'Keyboard-layout settings ownership passed.'

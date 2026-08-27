@@ -65,6 +65,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_language.SetDroppedWidth(320);
 	const DWORD currentLanguage = _Settings.GetInterfaceLanguageID();
 	int selectedLanguage = 0;
+	bool currentLanguagePresent = false;
 	wchar_t text[MAX_LOAD_STRING + 1];
 	for(int i = 0; i < _countof(kInterfaceLanguages); ++i)
 	{
@@ -74,8 +75,18 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		{
 			const int item = m_language.AddString(text);
 			m_language.SetItemData(item, kInterfaceLanguages[i].languageId);
-			if(kInterfaceLanguages[i].languageId == currentLanguage) selectedLanguage = item;
+			if(kInterfaceLanguages[i].languageId == currentLanguage) { selectedLanguage = item; currentLanguagePresent = true; }
 		}
+	}
+	if(!currentLanguagePresent)
+	{
+		for(int i = 0; i < _countof(kInterfaceLanguages); ++i)
+			if(kInterfaceLanguages[i].languageId == currentLanguage && FbeLoadString(_Module.GetResourceInstance(), kInterfaceLanguages[i].stringId, text, MAX_LOAD_STRING))
+			{
+				selectedLanguage = m_language.AddString(text);
+				m_language.SetItemData(selectedLanguage, currentLanguage);
+				break;
+			}
 	}
 	m_language.SetCurSel(selectedLanguage);
 	m_genreCatalog.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.genre_catalog.standard", L"Standard"));
@@ -92,7 +103,9 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 			encoding += length;
 		}
 	}
-	m_defaultEncoding.SelectString(0, _Settings.GetDefaultEncoding());
+	int encodingIndex = m_defaultEncoding.SelectString(0, _Settings.GetDefaultEncoding());
+	if(encodingIndex == CB_ERR) encodingIndex = m_defaultEncoding.AddString(_Settings.GetDefaultEncoding());
+	m_defaultEncoding.SetCurSel(encodingIndex);
 	m_keepEncoding.SetCheck(_Settings.KeepEncoding() ? BST_CHECKED : BST_UNCHECKED);
 	m_restorePosition.SetCheck(_Settings.RestoreFilePosition() ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(IDC_CREATE_BACKUP_FILE, _Settings.GetCreateBackupFile() ? BST_CHECKED : BST_UNCHECKED);
@@ -117,9 +130,8 @@ LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
 bool CSettingsGeneralPage::Validate() { return true; }
 void CSettingsGeneralPage::Commit()
 {
-	CString encoding;
-	m_defaultEncoding.GetLBText(m_defaultEncoding.GetCurSel(), encoding);
-	_Settings.SetDefaultEncoding(encoding);
+	const int encodingIndex = m_defaultEncoding.GetCurSel();
+	if(encodingIndex != CB_ERR) { CString encoding; m_defaultEncoding.GetLBText(encodingIndex, encoding); _Settings.SetDefaultEncoding(encoding); }
 	_Settings.SetKeepEncoding(m_keepEncoding.GetCheck() == BST_CHECKED);
 	_Settings.SetRestoreFilePosition(m_restorePosition.GetCheck() == BST_CHECKED);
 	_Settings.SetCreateBackupFile(IsDlgButtonChecked(IDC_CREATE_BACKUP_FILE) == BST_CHECKED);

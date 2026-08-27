@@ -23,7 +23,7 @@ LRESULT CSettingsImagesPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_clearImages.EnableWindow(m_askImage.GetCheck() != BST_CHECKED);
 	m_imageType.AddString(L"PNG");
 	m_imageType.AddString(L"JPEG");
-	m_imageType.SetCurSel(_Settings.GetImageType());
+	m_imageType.SetCurSel(_Settings.GetImageType() <= 1 ? _Settings.GetImageType() : 1);
 	CString quality;
 	quality.Format(L"%d", static_cast<int>(_Settings.GetJpegQuality()));
 	m_jpegQuality.SetWindowText(quality);
@@ -36,6 +36,8 @@ LRESULT CSettingsImagesPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_imageImportJpegQuality.SetWindowText(quality);
 	m_imageImportJpegSpin.SetRange(1, 100);
 	m_imageImportKeepSupported.SetCheck(_Settings.GetImageImportKeepSupported() ? BST_CHECKED : BST_UNCHECKED);
+	UpdatePasteDependencies();
+	UpdateImportDependencies();
 	return 1;
 }
 
@@ -73,7 +75,22 @@ LRESULT CSettingsImagesPage::OnAskImage(WORD, WORD, HWND, BOOL&)
 {
 	const bool askImage = m_askImage.GetCheck() == BST_CHECKED;
 	m_clearImages.EnableWindow(!askImage);
-	if(askImage)
-		m_clearImages.SetCheck(BST_UNCHECKED);
 	return 0;
 }
+
+void CSettingsImagesPage::UpdatePasteDependencies()
+{
+	const BOOL jpeg = m_imageType.GetCurSel() == 1;
+	m_jpegQuality.EnableWindow(jpeg); m_jpegSpin.EnableWindow(jpeg);
+	GetDlgItem(IDC_SETTINGS_OTHER_QUALITY).EnableWindow(jpeg);
+}
+
+void CSettingsImagesPage::UpdateImportDependencies()
+{
+	const BOOL usesJpegQuality = m_imageImportFormat.GetCurSel() != 2;
+	m_imageImportJpegQuality.EnableWindow(usesJpegQuality); m_imageImportJpegSpin.EnableWindow(usesJpegQuality);
+	GetDlgItem(IDC_SETTINGS_OTHER_IMPORT_QUALITY).EnableWindow(usesJpegQuality);
+}
+
+LRESULT CSettingsImagesPage::OnPasteFormatChanged(WORD, WORD, HWND, BOOL&) { UpdatePasteDependencies(); return 0; }
+LRESULT CSettingsImagesPage::OnImportFormatChanged(WORD, WORD, HWND, BOOL&) { UpdateImportDependencies(); return 0; }

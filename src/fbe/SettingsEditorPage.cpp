@@ -44,12 +44,13 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	CSimpleArray<CString> installedFonts;
 	HDC display = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
 	LOGFONT logFont = {};
-	logFont.lfCharSet = ANSI_CHARSET;
+	logFont.lfCharSet = DEFAULT_CHARSET;
 	::EnumFontFamiliesEx(display, &logFont, reinterpret_cast<FONTENUMPROC>(EnumFontProc), reinterpret_cast<LPARAM>(&installedFonts), 0);
 	::DeleteDC(display);
 	for(int i = 0; i < installedFonts.GetSize(); ++i) m_fonts.AddString(installedFonts[i]);
 	int fontIndex = m_fonts.FindStringExact(0, _Settings.GetFont());
-	m_fonts.SetCurSel(fontIndex >= 0 ? fontIndex : 0);
+	if(fontIndex < 0) fontIndex = m_fonts.AddString(_Settings.GetFont());
+	m_fonts.SetCurSel(fontIndex);
 	const int fontSizes[] = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72 };
 	CString value;
 	value.Format(_T("%d"), _Settings.GetFontSize());

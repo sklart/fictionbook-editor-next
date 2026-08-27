@@ -17,11 +17,18 @@ BEGIN_MSG_MAP(CSettingsImagesPage)
 	COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 	COMMAND_HANDLER(IDC_SETTINGS_ASKIMAGE, BN_CLICKED, OnAskImage)
+	COMMAND_HANDLER(IDC_IMAGETYPE, CBN_SELCHANGE, OnPasteFormatChanged)
+	COMMAND_HANDLER(IDC_IMAGE_IMPORT_FORMAT, CBN_SELCHANGE, OnImportFormatChanged)
 	CHAIN_MSG_MAP(CAxDialogImpl<CSettingsImagesPage>)
 END_MSG_MAP()
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnAskImage(WORD, WORD, HWND, BOOL&);
+	LRESULT OnPasteFormatChanged(WORD, WORD, HWND, BOOL&);
+	LRESULT OnImportFormatChanged(WORD, WORD, HWND, BOOL&);
 	bool Validate(); void Commit(); bool CancelChanges();
+private:
+	void UpdatePasteDependencies();
+	void UpdateImportDependencies();
 };

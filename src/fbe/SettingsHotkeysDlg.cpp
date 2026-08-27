@@ -80,11 +80,38 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_changeKeyb = GetDlgItem(IDC_CHANGE_KEYB);
 	m_keybLayout = GetDlgItem(IDC_KEYB_LAYOUT);
 	m_changeKeyb.SetCheck(_Settings.GetChangeKeybLayout());
-	TCHAR name[255]; HKL layouts[16]; int count = GetKeyboardLayoutList(16, layouts);
-	for(int i = 0; i < count; ++i) { LCID locale = MAKELCID((LANGID)((UINT)layouts[i] & 0xffff), SORT_DEFAULT); GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, 255); m_keybLayout.AddString(name); m_keybLayout.SetItemData(i, locale); }
-	for(int i = 0; i < count; ++i) if(m_keybLayout.GetItemData(i) == _Settings.GetKeybLayout()) { m_keybLayout.SetCurSel(i); break; }
+	TCHAR name[255]; const int layoutCount = GetKeyboardLayoutList(0, NULL);
+	std::vector<HKL> layouts(layoutCount > 0 ? layoutCount : 0);
+	const int count = layouts.empty() ? 0 : GetKeyboardLayoutList(static_cast<int>(layouts.size()), &layouts[0]);
+	for(int i = 0; i < count; ++i)
+	{
+		const DWORD klid = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(layouts[i]));
+		LCID locale = MAKELCID((LANGID)(klid & 0xffff), SORT_DEFAULT);
+		GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, _countof(name));
+		CString label; label.Format(L"%s (%08X)", name, klid);
+		const int item = m_keybLayout.AddString(label);
+		m_keybLayout.SetItemData(item, klid);
+	}
+	for(int i = 0; i < count; ++i)
+		if(m_keybLayout.GetItemData(i) == _Settings.GetKeybLayout() ||
+			(static_cast<DWORD>(m_keybLayout.GetItemData(i)) & 0xffff) == _Settings.GetKeybLayout())
+		{ m_keybLayout.SetCurSel(i); break; }
+	UpdateKeyboardLayoutDependencies();
 	ClearAndSet();
 
+	return 0;
+}
+
+void CSettingsHotkeysDlg::UpdateKeyboardLayoutDependencies()
+{
+	const BOOL enabled = m_changeKeyb.GetCheck() == BST_CHECKED;
+	m_keybLayout.EnableWindow(enabled);
+	GetDlgItem(IDC_SETTINGS_OTHER_CHANGE_TO).EnableWindow(enabled);
+}
+
+LRESULT CSettingsHotkeysDlg::OnChangeKeyboardLayout(WORD, WORD, HWND, BOOL&)
+{
+	UpdateKeyboardLayoutDependencies();
 	return 0;
 }
 

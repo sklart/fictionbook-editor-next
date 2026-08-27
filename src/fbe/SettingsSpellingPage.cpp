@@ -24,12 +24,28 @@ void CSettingsSpellingPage::UpdateDependencies() { const BOOL enabled = m_enable
 LRESULT CSettingsSpellingPage::OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&) { UpdateDependencies(); return 0; }
 LRESULT CSettingsSpellingPage::OnClickedOK(WORD, WORD, HWND, BOOL&) { if(Validate()) Commit(); return 0; }
 LRESULT CSettingsSpellingPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return CancelChanges() ? 0 : 1; }
-bool CSettingsSpellingPage::Validate() { return true; }
+bool CSettingsSpellingPage::Validate()
+{
+	if(m_enabled.GetCheck() != BST_CHECKED)
+		return true;
+	CString path; m_dictionary.GetWindowText(path); path.Trim();
+	if(path.IsEmpty())
+		return true;
+	const DWORD attributes = ::GetFileAttributes(path);
+	if(attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY))
+	{
+		MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false;
+	}
+	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) { MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false; }
+	::CloseHandle(file);
+	return true;
+}
 void CSettingsSpellingPage::Commit() { _Settings.SetUseSpellChecker(m_enabled.GetCheck() == BST_CHECKED); _Settings.SetHighlightMisspells(m_highlight.GetCheck() == BST_CHECKED); CString path; m_dictionary.GetWindowText(path); _Settings.SetCustomDict(path); }
 bool CSettingsSpellingPage::CancelChanges() { return true; }
 LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 {
 	wchar_t path[_MAX_PATH] = {}; m_dictionary.GetWindowText(path, _countof(path));
-	OPENFILENAME dialog = {}; dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = m_hWnd; dialog.hInstance = _Module.m_hInst; dialog.lpstrDefExt = L"dic"; dialog.lpstrFilter = L"Dictionaries (*.dic)\0*.dic\0All files (*.*)\0*.*\0\0"; dialog.lpstrFile = path; dialog.nMaxFile = _countof(path); dialog.Flags = OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY;
+	OPENFILENAME dialog = {}; dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = m_hWnd; dialog.hInstance = _Module.m_hInst; dialog.lpstrDefExt = L"dic"; dialog.lpstrFilter = L"Dictionaries (*.dic)\0*.dic\0All files (*.*)\0*.*\0\0"; dialog.lpstrFile = path; dialog.nMaxFile = _countof(path); dialog.Flags = OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
 	if(GetOpenFileName(&dialog)) m_dictionary.SetWindowText(path); return 0;
 }
