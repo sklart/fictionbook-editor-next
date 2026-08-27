@@ -235,6 +235,19 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyDelete(WORD wNotifyCode, WOR
 
 LRESULT CSettingsHotkeysDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
+	if(Validate()) Commit();
+	return 0;
+}
+
+LRESULT CSettingsHotkeysDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+{
+	CancelChanges();
+	return 0;
+}
+
+bool CSettingsHotkeysDlg::Validate() { return true; }
+void CSettingsHotkeysDlg::Commit()
+{
 	_Settings.SetChangeKeybLayout(m_changeKeyb.GetCheck() == BST_CHECKED);
 	if(m_keybLayout.GetCurSel() >= 0) _Settings.SetKeybLayout(m_keybLayout.GetItemData(m_keybLayout.GetCurSel()));
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)
@@ -251,21 +264,9 @@ LRESULT CSettingsHotkeysDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCt
 		}
 	}
 	
-	EndDialog(wID);
-	return 0;
 }
 
-LRESULT CSettingsHotkeysDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
-{
-	_Settings.m_hotkey_groups = m_initHkGroups;
-
-	EndDialog(wID);
-	return 0;
-}
-
-bool CSettingsHotkeysDlg::Validate() { return true; }
-void CSettingsHotkeysDlg::Commit() { BOOL handled = FALSE; OnClickedOK(0, IDOK, NULL, handled); }
-bool CSettingsHotkeysDlg::CancelChanges() { BOOL handled = FALSE; OnClickedCancel(0, IDCANCEL, NULL, handled); return true; }
+bool CSettingsHotkeysDlg::CancelChanges() { _Settings.m_hotkey_groups = m_initHkGroups; return true; }
 
 LRESULT CSettingsHotkeysDlg::OnEditSetFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {

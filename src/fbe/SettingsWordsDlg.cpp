@@ -70,7 +70,7 @@ static int (*g_compare_funcs[])(const void*, const void*) =
 };
 
 // CSettingsWordsDlg
-CSettingsWordsDlg::CSettingsWordsDlg() : m_sort(0), m_sel_all(false), m_ct(0), m_editidx(-1)
+CSettingsWordsDlg::CSettingsWordsDlg() : m_sort(0), m_sel_all(false), m_ct(0), m_editidx(-1), m_editActive(false)
 {
 	// Keep edits cancelable without coupling the view to persistent settings.
 	m_words = _Settings.m_words;
@@ -238,6 +238,7 @@ LRESULT CSettingsWordsDlg::OnListClick(int id, NMHDR *hdr, BOOL&)
 	m_list_words.ClientToScreen(&rci);
 	ScreenToClient(&rci);
 	m_edit.SetWindowPos(NULL, rci.left, rci.top, rci.right - rci.left, rci.bottom - rci.top + 5, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+	m_editActive = true;
 	m_edit.SetSel(w->m_word.GetLength(), w->m_word.GetLength());
 	m_edit.SetFocus();
 
@@ -245,7 +246,7 @@ LRESULT CSettingsWordsDlg::OnListClick(int id, NMHDR *hdr, BOOL&)
 }
 
 LRESULT CSettingsWordsDlg::OnEditLVDefocused(int id, NMHDR *hdr, BOOL&)
-{	
+{
 	m_edit.ShowWindow(SW_HIDE);
 
 	return 0;
@@ -442,49 +443,70 @@ void CSettingsWordsDlg::RemoveWord(int index)
 
 LRESULT CSettingsWordsDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
 {
-	if(GetFocus() == m_edit)
-	{
-		CString edWord = U::GetWindowText(m_edit);
-
-		if(m_words[m_editidx].m_word != edWord.Trim())
-		{
-			if(AddNewWord(edWord, true))
-			{
-				RemoveWord(m_editidx);
-				AddNewWord(edWord);
-			}
-		}
-
-		m_edit.ShowWindow(SW_HIDE);
-	}
-	else if(GetFocus() == m_edt_new)
-	{
-		SendMessage(WM_COMMAND, MAKEWPARAM(IDC_BUTTON_ADD, BN_CLICKED), (LPARAM)m_btn_add.m_hWnd);
-	}
-	else
-	{
-		_Settings.SetShowWordsExcls(m_show_words_excls.GetCheck() != 0);
-
-		_Settings.m_words.clear();
-		_Settings.m_words = m_words;
-
-		_Settings.SaveWords();
-	}
-
+	if(Validate()) Commit();
 	return 0;
 }
 
 LRESULT CSettingsWordsDlg::OnCancel(WORD, WORD wID, HWND, BOOL&)
 {
-	if(GetFocus() == m_edit)
-	{
-		m_edit.ShowWindow(SW_HIDE);
-		return 0;
-	}
-
-	return 1;
+	return CancelChanges() ? 1 : 0;
 }
 
-bool CSettingsWordsDlg::Validate() { return true; }
-void CSettingsWordsDlg::Commit() { BOOL handled = FALSE; OnOK(0, IDOK, NULL, handled); }
-bool CSettingsWordsDlg::CancelChanges() { BOOL handled = FALSE; return OnCancel(0, IDCANCEL, NULL, handled) != 0; }
+bool CSettingsWordsDlg::FinishInlineEdit()
+{
+	if(!m_editActive)
+		return true;
+	if(m_editidx < 0 || m_editidx >= static_cast<int>(m_words.size()))
+		return false;
+
+	CString editedWord = U::GetWindowText(m_edit);
+	editedWord.Trim();
+	if(m_words[m_editidx].m_word != editedWord)
+	{
+		if(!AddNewWord(editedWord, true))
+			return false;
+		RemoveWord(m_editidx);
+		if(!AddNewWord(editedWord))
+			return false;
+	}
+	m_edit.ShowWindow(SW_HIDE);
+	m_editActive = false;
+	m_editidx = -1;
+	return true;
+}
+
+bool CSettingsWordsDlg::FinishNewWord()
+{
+	CString newWord = U::GetWindowText(m_edt_new);
+	newWord.Trim();
+	if(newWord.IsEmpty())
+		return true;
+	if(!AddNewWord(newWord))
+		return false;
+	m_edt_new.SetWindowText(L"");
+	return true;
+}
+
+bool CSettingsWordsDlg::Validate()
+{
+	return FinishInlineEdit() && FinishNewWord();
+}
+
+void CSettingsWordsDlg::Commit()
+{
+	_Settings.SetShowWordsExcls(m_show_words_excls.GetCheck() != 0);
+	_Settings.m_words = m_words;
+	_Settings.SaveWords();
+}
+
+bool CSettingsWordsDlg::CancelChanges()
+{
+	if(m_editActive && GetFocus() == m_edit)
+	{
+		m_edit.ShowWindow(SW_HIDE);
+		m_editActive = false;
+		m_editidx = -1;
+		return false;
+	}
+	return true;
+}

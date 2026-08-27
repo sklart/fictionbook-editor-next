@@ -417,6 +417,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <ClInclude Include="SearchReplace.h" />
     <ClInclude Include="XMLSerializer\Serializable.h" />
     <ClInclude Include="Settings.h" />
+	<ClInclude Include="SettingsPageLifecycle.h" />
     <ClInclude Include="SettingsGeneralPage.h" />
 	<ClInclude Include="SettingsImagesPage.h" />
     <ClInclude Include="SettingsEditorPage.h" />

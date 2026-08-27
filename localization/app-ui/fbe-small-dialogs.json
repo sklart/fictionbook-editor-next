@@ -1823,16 +1823,16 @@
       "translations": {
         "en-US": "Restore document position",
         "ru-RU": "Восстанавливать позицию в документе",
-        "uk-UA": "Відновлювати положення вікна",
-        "de-DE": "Fensterposition wiederherstellen",
-        "fr-FR": "Restaurer la position de la fenêtre",
-        "es-ES": "Restaurar posición de ventana",
-        "it-IT": "Ripristina posizione finestra",
-        "pl-PL": "Przywracaj położenie okna",
-        "pt-PT": "Restaurar posição da janela",
-        "nl-NL": "Vensterpositie herstellen",
-        "cs-CZ": "Obnovit polohu okna",
-        "bg-BG": "Възстановявай позицията"
+        "uk-UA": "Відновлювати позицію в документі",
+        "de-DE": "Dokumentposition wiederherstellen",
+        "fr-FR": "Restaurer la position dans le document",
+        "es-ES": "Restaurar la posición en el documento",
+        "it-IT": "Ripristina la posizione nel documento",
+        "pl-PL": "Przywracaj pozycję w dokumencie",
+        "pt-PT": "Restaurar a posição no documento",
+        "nl-NL": "Positie in document herstellen",
+        "cs-CZ": "Obnovit pozici v dokumentu",
+        "bg-BG": "Възстановявай позицията в документа"
       }
     },
     "fbe.dialog.idd_setting_other.scripts_folder": {
@@ -1937,16 +1937,16 @@
       "translations": {
         "en-US": "Insert empty images",
         "ru-RU": "Вставлять пустые изображения",
-        "uk-UA": "Очищати кеш зображень",
-        "de-DE": "Bildcache leeren",
-        "fr-FR": "Vider le cache des images",
-        "es-ES": "Limpiar caché de imágenes",
-        "it-IT": "Svuota cache immagini",
-        "pl-PL": "Czyść pamięć obrazów",
-        "pt-PT": "Limpar cache de imagens",
-        "nl-NL": "Afbeeldingscache wissen",
-        "cs-CZ": "Vyčistit mezipaměť obrázků",
-        "bg-BG": "Изчиствай кеша"
+        "uk-UA": "Вставляти порожні зображення",
+        "de-DE": "Leere Bilder einfügen",
+        "fr-FR": "Insérer des images vides",
+        "es-ES": "Insertar imágenes vacías",
+        "it-IT": "Inserisci immagini vuote",
+        "pl-PL": "Wstawiaj puste obrazy",
+        "pt-PT": "Inserir imagens vazias",
+        "nl-NL": "Lege afbeeldingen invoegen",
+        "cs-CZ": "Vkládat prázdné obrázky",
+        "bg-BG": "Вмъквай празни изображения"
       }
     },
     "fbe.dialog.idd_setting_other.nbsp": {
@@ -1975,16 +1975,16 @@
       "translations": {
         "en-US": "Display character:",
         "ru-RU": "Отображаемый символ:",
-        "uk-UA": "Символ заміни:",
-        "de-DE": "Ersatzzeichen:",
-        "fr-FR": "Caractère de remplacement :",
-        "es-ES": "Carácter de reemplazo:",
-        "it-IT": "Carattere sostitutivo:",
-        "pl-PL": "Znak zastępczy:",
-        "pt-PT": "Carácter de substituição:",
-        "nl-NL": "Vervangend teken:",
-        "cs-CZ": "Náhradní znak:",
-        "bg-BG": "Заместващ знак:"
+        "uk-UA": "Відображуваний символ:",
+        "de-DE": "Anzuzeigendes Zeichen:",
+        "fr-FR": "Caractère à afficher :",
+        "es-ES": "Carácter mostrado:",
+        "it-IT": "Carattere visualizzato:",
+        "pl-PL": "Wyświetlany znak:",
+        "pt-PT": "Carácter a apresentar:",
+        "nl-NL": "Weergegeven teken:",
+        "cs-CZ": "Zobrazovaný znak:",
+        "bg-BG": "Показван символ:"
       }
     },
     "fbe.dialog.idd_setting_other.keyboard": {
@@ -2032,16 +2032,16 @@
       "translations": {
         "en-US": "Paste images as",
         "ru-RU": "Вставлять изображения как",
-        "uk-UA": "Параметри зображень, %%",
-        "de-DE": "Bildeinstellungen, %%",
-        "fr-FR": "Paramètres d’image, %%",
-        "es-ES": "Opciones de imagen, %%",
-        "it-IT": "Impostazioni immagine, %%",
-        "pl-PL": "Ustawienia obrazów, %%",
-        "pt-PT": "Definições de imagem, %%",
-        "nl-NL": "Afbeeldingsinstellingen, %%",
-        "cs-CZ": "Nastavení obrázků, %%",
-        "bg-BG": "Настройки на изображения, %%"
+        "uk-UA": "Вставляти зображення як",
+        "de-DE": "Bilder einfügen als",
+        "fr-FR": "Coller les images en tant que",
+        "es-ES": "Pegar imágenes como",
+        "it-IT": "Incolla immagini come",
+        "pl-PL": "Wklejaj obrazy jako",
+        "pt-PT": "Colar imagens como",
+        "nl-NL": "Afbeeldingen plakken als",
+        "cs-CZ": "Vkládat obrázky jako",
+        "bg-BG": "Поставяй изображения като"
       }
     },
     "fbe.dialog.idd_setting_other.format": {

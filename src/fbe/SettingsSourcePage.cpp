@@ -413,6 +413,19 @@ void CSettingsSourcePage::UpdateSourceThemeDisplay()
 }
 LRESULT CSettingsSourcePage::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
+	if(Validate()) Commit();
+	return 0;
+}
+
+LRESULT CSettingsSourcePage::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+{
+	CancelChanges();
+	return 0;
+}
+
+bool CSettingsSourcePage::Validate() { return true; }
+void CSettingsSourcePage::Commit()
+{
 	_Settings.SetXmlSrcShowSpecialChars(IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED);
 	_Settings.SetSrcFont(U::GetWindowText(m_srcfonts));
 	_Settings.SetXmlSrcWrap(m_src_wrap.GetCheck() != 0); _Settings.SetXmlSrcSyntaxHL(m_src_hl.GetCheck() != 0); _Settings.SetXmlSrcTagHL(m_src_taghl.GetCheck() != 0); _Settings.SetXmlSrcShowEOL(m_src_eol.GetCheck() != 0); _Settings.SetXmlSrcShowSpace(m_src_whitespace.GetCheck() != 0); _Settings.SetXMLSrcShowLineNumbers(m_src_line_numbers.GetCheck() != 0);
@@ -425,19 +438,9 @@ LRESULT CSettingsSourcePage::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCt
 		_Settings.SetXmlSrcColor(static_cast<XmlSrcColorGroup>(i),
 			m_source_color_custom[i] ? m_source_colors[i].GetColor() : XML_SRC_COLOR_DEFAULT);
 	}
-	EndDialog(wID);
-	return 0;
 }
 
-LRESULT CSettingsSourcePage::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
-{
-	EndDialog(wID);
-	return 0;
-}
-
-bool CSettingsSourcePage::Validate() { return true; }
-void CSettingsSourcePage::Commit() { BOOL handled = FALSE; OnClickedOK(0, IDOK, NULL, handled); }
-bool CSettingsSourcePage::CancelChanges() { BOOL handled = FALSE; OnClickedCancel(0, IDCANCEL, NULL, handled); return true; }
+bool CSettingsSourcePage::CancelChanges() { return true; }
 
 LRESULT CSettingsSourcePage::OnSourcePaletteChanged(WORD, WORD, HWND, BOOL&)
 {

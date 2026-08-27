@@ -105,6 +105,18 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CSettingsGeneralPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
+	if(Validate()) Commit();
+	return 0;
+}
+
+LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
+{
+	return CancelChanges() ? 0 : 1;
+}
+
+bool CSettingsGeneralPage::Validate() { return true; }
+void CSettingsGeneralPage::Commit()
+{
 	CString encoding;
 	m_defaultEncoding.GetLBText(m_defaultEncoding.GetCurSel(), encoding);
 	_Settings.SetDefaultEncoding(encoding);
@@ -125,14 +137,5 @@ LRESULT CSettingsGeneralPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 			FbeResetRuntimeLocalization();
 		}
 	}
-	return 0;
 }
-
-LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
-{
-	return 0;
-}
-
-bool CSettingsGeneralPage::Validate() { return true; }
-void CSettingsGeneralPage::Commit() { BOOL handled = FALSE; OnClickedOK(0, IDOK, NULL, handled); }
 bool CSettingsGeneralPage::CancelChanges() { return true; }
