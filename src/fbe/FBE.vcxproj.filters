@@ -90,7 +90,7 @@
     <ClCompile Include="mainfrm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="OptDlg.cpp">
+    <ClCompile Include="SettingsAdvancedPage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="script.cpp">
@@ -217,7 +217,7 @@
     <ClInclude Include="ModelessDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OptDlg.h">
+    <ClInclude Include="SettingsAdvancedPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="res1.h">

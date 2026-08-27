@@ -19,7 +19,6 @@
 #include "FBEView.h"
 #include "FBDoc.h"
 #include "TreeView.h"
-#include "OptDlg.h"
 #include "ContainerWnd.h"
 #include "Scintilla.h"
 #include "SciLexer.h"

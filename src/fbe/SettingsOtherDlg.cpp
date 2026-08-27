@@ -18,7 +18,7 @@ static void SetRuntimeSettingsOtherText(HWND dialog, int controlId, LPCWSTR key,
 
 // CSettingsOtherDlg
 
-CSettingsOtherDlg::CSettingsOtherDlg() : m_scripts_switched(false)
+CSettingsOtherDlg::CSettingsOtherDlg()
 {
 }
 
@@ -33,9 +33,6 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	m_keep = GetDlgItem(IDC_KEEP);
 	m_def_enc = GetDlgItem(IDC_DEFAULT_ENC);
 	m_restore_pos = GetDlgItem(IDC_RESTORE_POS);
-	m_def_scripts_fld = GetDlgItem(IDC_DEFAULT_SCRIPTS_FOLDER);
-	m_scripts_folder = GetDlgItem(IDC_SCRIPTS_FOLDER_PATH);
-	m_scripts_folder_sel = GetDlgItem(IDC_SELECT_SCRIPTS_FOLDER_BUTTON);
 
 	// added by SeNS
 	m_nbsp_char = GetDlgItem(IDC_NBSP_CHAR);
@@ -53,8 +50,6 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_KEEP, L"fbe.dialog.idd_setting_other.keep_manual", L"Keep manual");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_RESTORE_POS, L"fbe.dialog.idd_setting_other.restore_position", L"Restore position");
-	SetRuntimeSettingsOtherText(m_hWnd, IDC_DEFAULT_SCRIPTS_FOLDER, L"fbe.dialog.idd_setting_other.default_scripts_folder", L"Default folder");
-	SetRuntimeSettingsOtherText(m_hWnd, IDC_SELECT_SCRIPTS_FOLDER_BUTTON, L"fbe.dialog.idd_setting_other.browse", L"...");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_SETTINGS_ASKIMAGE, L"fbe.dialog.idd_setting_other.ask_image", L"Ask for non clear image insertion");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_OPTIONS_CLEARIMGS, L"fbe.dialog.idd_setting_other.clear_images", L"Insert clear images");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_CHANGE_KEYB, L"fbe.dialog.idd_setting_other.change_keyboard", L"Change keyboard layout automatically");
@@ -88,12 +83,6 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	m_keep.SetCheck(_Settings.KeepEncoding() ? BST_CHECKED : BST_UNCHECKED);
 	m_restore_pos.SetCheck(_Settings.RestoreFilePosition() ? BST_CHECKED : BST_UNCHECKED);
 
-	_Settings.m_initial_scripts_folder = _Settings.GetScriptsFolder();
-	m_def_scripts_fld.SetCheck(_Settings.IsDefaultScriptsFolder());
-	m_scripts_folder.SetWindowText(_Settings.m_initial_scripts_folder);
-	m_scripts_folder.SetReadOnly(_Settings.IsDefaultScriptsFolder());
-	m_scripts_folder_sel.EnableWindow(!_Settings.IsDefaultScriptsFolder());
-	m_scripts_switched = _Settings.IsDefaultScriptsFolder();
 
 	// added by SeNS
 	// Используем Unicode-экранирование: исходный файл исторически собирался
@@ -143,8 +132,6 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 			break;
 		}
 	
-	m_scripts_fld_dlg_msg = FbeLoadCString(IDS_CHOOSE_SCRIPTS_FLD);
-
 	return 1;
 }
 
@@ -157,14 +144,6 @@ LRESULT CSettingsOtherDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl,
 	_Settings.SetKeepEncoding(m_keep.GetState() != 0);
 	_Settings.SetRestoreFilePosition(m_restore_pos.GetState() != 0);
 	
-	CString folderPath;
-	m_scripts_folder.GetWindowText(folderPath);
-	_Settings.SetScriptsFolder(folderPath.IsEmpty() ? _Settings.GetDefaultScriptsFolder() : folderPath, true);
-
-	if(_Settings.m_initial_scripts_folder != _Settings.GetScriptsFolder())
-	{
-		_Settings.SetNeedRestart();
-	}
 
 	_Settings.SetInsImageAsking(IsDlgButtonChecked(IDC_SETTINGS_ASKIMAGE) != 0);
 	_Settings.SetIsInsClearImage(IsDlgButtonChecked(IDC_OPTIONS_CLEARIMGS) != 0);
@@ -194,46 +173,6 @@ LRESULT CSettingsOtherDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWnd
 	return 0;
 }
 
-LRESULT CSettingsOtherDlg::OnBnClickedDefaultScriptsFolder(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
-{
-	if(!m_scripts_switched)
-	{
-		CString path;
-		m_scripts_folder.GetWindowText(path);
-		if(path.CompareNoCase(_Settings.GetDefaultScriptsFolder()) != 0)
-		{
-			m_scripts_folder.SetWindowText(_Settings.GetDefaultScriptsFolder());
-		}
-		
-		_Settings.SetScriptsFolder(_Settings.GetDefaultScriptsFolder(), true);
-		m_scripts_folder.SetReadOnly(true);
-		m_scripts_folder_sel.EnableWindow(false);
-	}
-	else
-	{
-		m_scripts_folder.SetReadOnly(false);
-		m_scripts_folder_sel.EnableWindow(true);
-	}
-
-	m_scripts_switched = !m_scripts_switched;
-	return 0;
-}
-
-LRESULT CSettingsOtherDlg::OnBnClickedSelectScriptsFolderButton(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
-{
-	CFolderDialog fldDlg(NULL, m_scripts_fld_dlg_msg, BIF_NEWDIALOGSTYLE | BIF_RETURNONLYFSDIRS);
-	if (fldDlg.DoModal(*this) == IDOK)
-	{
-		CString folderPath(fldDlg.m_szFolderPath);
-		if(!(folderPath.ReverseFind(L'\\') == (folderPath.GetLength() - 1)))
-		{
-			folderPath.Append(L"\\");
-		}
-
-		m_scripts_folder.SetWindowText(folderPath);
-	}
-	return 0;
-}
 LRESULT CSettingsOtherDlg::OnBnClickedSettingsAskimage(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
 	::EnableWindow(GetDlgItem(IDC_OPTIONS_CLEARIMGS), !IsDlgButtonChecked(IDC_SETTINGS_ASKIMAGE));

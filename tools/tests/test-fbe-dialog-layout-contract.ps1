@@ -29,7 +29,7 @@ function Get-Dialog([string]$DialogId) {
 
 Assert-Contains $rc 'COMBOBOX\s+IDC_LANG,\d+,\d+,1[0-9]{2},\d+' 'IDC_LANG must remain wide enough for translated locale names.'
 
-foreach ($dialogId in @('IDD_TOOLS_SETTINGS', 'IDD_OPTIONS', 'IDD_SETTING_OTHER', 'IDD_HOTKEYS', 'IDD_SETTINGS_WORDS', 'IDD_SETTINGS_GENERAL', 'IDD_SETTINGS_SOURCE')) {
+foreach ($dialogId in @('IDD_TOOLS_SETTINGS', 'IDD_SETTING_OTHER', 'IDD_HOTKEYS', 'IDD_SETTINGS_WORDS', 'IDD_SETTINGS_GENERAL', 'IDD_SETTINGS_SOURCE', 'IDD_SETTINGS_ADVANCED')) {
     $dialog = Get-Dialog $dialogId
     Assert-Contains $dialog 'FONT 8, "Tahoma", 400, 0, 0x1' "$dialogId must use Tahoma 8."
     if ($dialog -match 'DS_FIXEDSYS') { throw "$dialogId must not use DS_FIXEDSYS." }
@@ -37,12 +37,17 @@ foreach ($dialogId in @('IDD_TOOLS_SETTINGS', 'IDD_OPTIONS', 'IDD_SETTING_OTHER'
 
 $sourceDialog = Get-Dialog 'IDD_SETTINGS_SOURCE'
 $generalDialog = Get-Dialog 'IDD_SETTINGS_GENERAL'
+$advancedDialog = Get-Dialog 'IDD_SETTINGS_ADVANCED'
 Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 330, 320' 'Source page dimensions changed.'
 foreach ($control in @('IDC_SRCFONT', 'IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', 'IDC_SHOWEOL', 'IDC_SHOWWHITESPACE', 'IDC_SHOWLINENUMBERS', 'IDC_OPTIONS_SOURCE_PALETTE', 'IDC_OPTIONS_SOURCE_PREVIEW')) {
     Assert-Contains $sourceDialog $control "Source control missing from IDD_SETTINGS_SOURCE: $control"
 }
 foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE', 'IDC_UPDATE_CHANNEL')) {
     if ($sourceDialog -match $control) { throw "General control must not be in IDD_SETTINGS_SOURCE: $control" }
+}
+foreach ($control in @('IDC_DEFAULT_SCRIPTS_FOLDER', 'IDC_SCRIPTS_FOLDER_PATH', 'IDC_SELECT_SCRIPTS_FOLDER_BUTTON', 'IDC_FAST_MODE')) {
+    Assert-Contains $advancedDialog $control "Advanced control missing: $control"
+    if ($generalDialog -match $control) { throw "Advanced control must not be in General: $control" }
 }
 Assert-Contains $generalDialog 'IDC_UPDATE_CHANNEL,82,223,180,55' 'Update-channel selector geometry changed in IDD_SETTINGS_GENERAL.'
 foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE', 'IDC_UPDATE_CHANNEL')) {

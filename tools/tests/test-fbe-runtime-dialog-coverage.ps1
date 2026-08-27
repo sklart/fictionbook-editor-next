@@ -26,8 +26,10 @@ $consumers = @{
     IDD_WORDS = @{ File = 'src\fbe\Words.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_WORDS\)' }
     IDD_SETTING_OTHER = @{ File = 'src\fbe\SettingsOtherDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTING_OTHER\)' }
     IDD_SETTINGS_GENERAL = @{ File = 'src\fbe\SettingsGeneralPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_GENERAL\)' }
-    IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\SettingsSourcePage.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
-    IDD_OPTIONS = @{ File = 'src\fbe\OptDlg.cpp'; Invocation = 'SetRuntimeDialogItemText' }
+    IDD_SETTINGS_EDITOR = @{ File = 'src\fbe\SettingsEditorPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_EDITOR\)' }
+    IDD_SETTINGS_SPELLING = @{ File = 'src\fbe\SettingsSpellingPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SPELLING\)' }
+    IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\SettingsSourcePage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SOURCE\)' }
+    IDD_SETTINGS_ADVANCED = @{ File = 'src\fbe\SettingsAdvancedPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_ADVANCED\)' }
 }
 
 foreach ($resource in $catalog.resources) {

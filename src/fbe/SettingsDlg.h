@@ -3,7 +3,7 @@
 #pragma once
 
 #include "resource.h"
-#include "OptDlg.h"
+#include "SettingsAdvancedPage.h"
 #include "SettingsOtherDlg.h"
 #include "SettingsHotkeysDlg.h"
 #include "SettingsWordsDlg.h"
@@ -30,7 +30,7 @@ enum class SettingsPageId
 class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 {
 	CListBox m_navigation;
-	COptDlg* m_optionsPage;
+	CSettingsAdvancedPage* m_advancedPage;
 	CSettingsGeneralPage* m_generalPage;
 	CSettingsEditorPage* m_editorPage;
 	CSettingsSpellingPage* m_spellingPage;

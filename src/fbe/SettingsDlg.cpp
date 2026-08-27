@@ -11,7 +11,7 @@ extern CSettings _Settings;
 // CSettingsDlg
 
 CSettingsDlg::CSettingsDlg() :
-	m_optionsPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_otherPage(NULL), m_sourcePage(NULL),
+	m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_otherPage(NULL), m_sourcePage(NULL),
 	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(SettingsPageId::Count),
 	m_pageLeft(0), m_pageTop(0), m_pageRightMargin(0), m_pageBottomMargin(0),
 	m_buttonWidth(0), m_buttonHeight(0), m_buttonGap(0), m_buttonBottomMargin(0),
@@ -62,8 +62,8 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 	m_generalPage = new CSettingsGeneralPage;
 	m_generalPage->Create(m_hWnd);
-	m_optionsPage = new COptDlg;
-	m_optionsPage->ShowDialog(m_hWnd);
+	m_advancedPage = new CSettingsAdvancedPage;
+	m_advancedPage->Create(m_hWnd);
 	m_editorPage = new CSettingsEditorPage;
 	m_editorPage->Create(m_hWnd);
 	m_spellingPage = new CSettingsSpellingPage;
@@ -87,7 +87,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_pages[PageIndex(SettingsPageId::Spelling)] = m_spellingPage;
 	m_pages[PageIndex(SettingsPageId::Keyboard)] = m_hotkeysPage;
 	m_pages[PageIndex(SettingsPageId::Words)] = m_wordsPage;
-	m_pages[PageIndex(SettingsPageId::Advanced)] = m_otherPage;
+	m_pages[PageIndex(SettingsPageId::Advanced)] = m_advancedPage;
 
 	HMODULE hThemeDll = LoadSystemLibrary(_T("UxTheme.dll"));
 	if (hThemeDll != NULL)
@@ -95,7 +95,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		PFNENABLETHEMEDIALOGTEXTURE pEnableThemeDialogTexture = (PFNENABLETHEMEDIALOGTEXTURE)GetProcAddress(hThemeDll, "EnableThemeDialogTexture");
 		if(pEnableThemeDialogTexture)
 		{
-			pEnableThemeDialogTexture(*m_optionsPage, ETDT_USETABTEXTURE);
+			pEnableThemeDialogTexture(*m_advancedPage, ETDT_USETABTEXTURE);
 			pEnableThemeDialogTexture(*m_otherPage, ETDT_USETABTEXTURE);
 			pEnableThemeDialogTexture(*m_sourcePage, ETDT_USETABTEXTURE);
 		}
@@ -132,7 +132,7 @@ LRESULT CSettingsDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
 {
 	if(GetFocus() == GetDlgItem(IDOK))
 	{
-		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_optionsPage, m_otherPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
+		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_advancedPage, m_otherPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
 		for(int i = _countof(uniquePages) - 1; i >= 0; --i)
 			uniquePages[i]->SendMessage(WM_COMMAND, MAKELONG(IDOK, 0), 0);
 		EndDialog(wID);
@@ -161,7 +161,7 @@ LRESULT CSettingsDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, 
 			_Settings.SetScriptsFolder(_Settings.m_initial_scripts_folder, true);
 		}
 
-		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_optionsPage, m_otherPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
+		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_advancedPage, m_otherPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
 		for(int i = _countof(uniquePages) - 1; i >= 0; --i)
 			uniquePages[i]->SendMessage(WM_COMMAND, MAKELONG(IDCANCEL, 0), 0);
 	}
@@ -204,7 +204,7 @@ LRESULT CSettingsDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
 
 LRESULT CSettingsDlg::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) 
 {	
-	if(m_optionsPage) { m_optionsPage->DestroyWindow(); delete m_optionsPage; m_optionsPage = NULL; }
+	if(m_advancedPage) { m_advancedPage->DestroyWindow(); delete m_advancedPage; m_advancedPage = NULL; }
 	if(m_generalPage) { m_generalPage->DestroyWindow(); delete m_generalPage; m_generalPage = NULL; }
 	if(m_editorPage) { m_editorPage->DestroyWindow(); delete m_editorPage; m_editorPage = NULL; }
 	if(m_spellingPage) { m_spellingPage->DestroyWindow(); delete m_spellingPage; m_spellingPage = NULL; }
