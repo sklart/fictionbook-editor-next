@@ -28,11 +28,18 @@ bool CSettingsSpellingPage::Validate()
 {
 	if(m_enabled.GetCheck() != BST_CHECKED)
 		return true;
-	CString path; m_dictionary.GetWindowText(path); path.Trim();
-	if(path.IsEmpty())
+	CString storedPath; m_dictionary.GetWindowText(storedPath); storedPath.Trim();
+	if(storedPath.IsEmpty())
 		return true;
+	const CString path = U::ResolveUserDataFile(storedPath);
 	const DWORD attributes = ::GetFileAttributes(path);
-	if(attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY))
+	if(attributes == INVALID_FILE_ATTRIBUTES)
+	{
+		CString directory(path); ::PathRemoveFileSpec(directory.GetBuffer()); directory.ReleaseBuffer();
+		if(::GetFileAttributes(directory) != INVALID_FILE_ATTRIBUTES) return true;
+		MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false;
+	}
+	if(attributes & FILE_ATTRIBUTE_DIRECTORY)
 	{
 		MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false;
 	}
@@ -41,7 +48,7 @@ bool CSettingsSpellingPage::Validate()
 	::CloseHandle(file);
 	return true;
 }
-void CSettingsSpellingPage::Commit() { _Settings.SetUseSpellChecker(m_enabled.GetCheck() == BST_CHECKED); _Settings.SetHighlightMisspells(m_highlight.GetCheck() == BST_CHECKED); CString path; m_dictionary.GetWindowText(path); _Settings.SetCustomDict(path); }
+void CSettingsSpellingPage::Commit() { _Settings.SetUseSpellChecker(m_enabled.GetCheck() == BST_CHECKED); _Settings.SetHighlightMisspells(m_highlight.GetCheck() == BST_CHECKED); CString path; m_dictionary.GetWindowText(path); path.Trim(); _Settings.SetCustomDict(path); }
 bool CSettingsSpellingPage::CancelChanges() { return true; }
 LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 {

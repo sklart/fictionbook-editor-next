@@ -2916,8 +2916,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // Change keyboard layout
   if (_Settings.GetChangeKeybLayout())
   {
-	  CString layout;
-	  layout.Format(L"%08x", _Settings.GetKeybLayout());
+	  CString layout = _Settings.GetKeyboardLayoutId();
+	  if(layout.IsEmpty()) layout.Format(L"%08x", _Settings.GetKeybLayout());
 	  const HKL loadedLayout = LoadKeyboardLayout(layout,KLF_ACTIVATE);
 	  ATLASSERT(loadedLayout != NULL);
   }

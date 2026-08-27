@@ -142,6 +142,7 @@ namespace U // place all utilities into their own namespace
   CString GetProgDir();
   CString GetSettingsDir();
   CString GetUserDataFile(const CString& filename, const CString& legacyDir = CString());
+	CString ResolveUserDataFile(const CString& filename);
   CString GetDocTReeScriptsDir();
   CString GetProgDirFile(const CString& filename);
   CString GetCBString(HWND hCB,int idx);

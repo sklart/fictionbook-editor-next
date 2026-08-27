@@ -9,6 +9,18 @@
 
 extern CSettings _Settings;
 
+static CString GetKeyboardLayoutId(HKL layout, HKL originalLayout)
+{
+	wchar_t name[KL_NAMELENGTH] = {};
+	if(::ActivateKeyboardLayout(layout, 0) && ::GetKeyboardLayoutName(name))
+	{
+		::ActivateKeyboardLayout(originalLayout, 0);
+		return CString(name);
+	}
+	::ActivateKeyboardLayout(originalLayout, 0);
+	return CString();
+}
+
 static void SetRuntimeHotkeysText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR fallback)
 {
 	const CString text = FbeLoadRuntimeStringByKey(key, fallback);
@@ -80,22 +92,25 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_changeKeyb = GetDlgItem(IDC_CHANGE_KEYB);
 	m_keybLayout = GetDlgItem(IDC_KEYB_LAYOUT);
 	m_changeKeyb.SetCheck(_Settings.GetChangeKeybLayout());
-	TCHAR name[255]; const int layoutCount = GetKeyboardLayoutList(0, NULL);
+	TCHAR name[255] = {}; const HKL originalLayout = GetKeyboardLayout(GetCurrentThreadId()); const int layoutCount = GetKeyboardLayoutList(0, NULL);
 	std::vector<HKL> layouts(layoutCount > 0 ? layoutCount : 0);
 	const int count = layouts.empty() ? 0 : GetKeyboardLayoutList(static_cast<int>(layouts.size()), &layouts[0]);
 	for(int i = 0; i < count; ++i)
 	{
-		const DWORD klid = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(layouts[i]));
-		LCID locale = MAKELCID((LANGID)(klid & 0xffff), SORT_DEFAULT);
+		const DWORD legacyHkl = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(layouts[i]));
+		const CString klid = GetKeyboardLayoutId(layouts[i], originalLayout);
+		LCID locale = MAKELCID((LANGID)(legacyHkl & 0xffff), SORT_DEFAULT);
 		GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, _countof(name));
-		CString label; label.Format(L"%s (%08X)", name, klid);
+		CString label; label.Format(L"%s — %s", name[0] ? name : L"Keyboard layout", klid.IsEmpty() ? L"Unavailable" : klid.GetString());
 		const int item = m_keybLayout.AddString(label);
-		m_keybLayout.SetItemData(item, klid);
+		m_keybLayout.SetItemData(item, legacyHkl);
+		m_keyboardLayoutIds.push_back(klid);
 	}
 	for(int i = 0; i < count; ++i)
-		if(m_keybLayout.GetItemData(i) == _Settings.GetKeybLayout() ||
-			(static_cast<DWORD>(m_keybLayout.GetItemData(i)) & 0xffff) == _Settings.GetKeybLayout())
+		if(m_keyboardLayoutIds[i] == _Settings.GetKeyboardLayoutId() ||
+			(_Settings.GetKeyboardLayoutId().IsEmpty() && m_keybLayout.GetItemData(i) == _Settings.GetKeybLayout()))
 		{ m_keybLayout.SetCurSel(i); break; }
+	if(m_keybLayout.GetCurSel() < 0 && count > 0) m_keybLayout.SetCurSel(0);
 	UpdateKeyboardLayoutDependencies();
 	ClearAndSet();
 
@@ -272,11 +287,18 @@ LRESULT CSettingsHotkeysDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hW
 	return 0;
 }
 
-bool CSettingsHotkeysDlg::Validate() { return true; }
+bool CSettingsHotkeysDlg::Validate()
+{
+	if(m_changeKeyb.GetCheck() == BST_CHECKED && (m_keybLayout.GetCurSel() < 0 || m_keyboardLayoutIds[m_keybLayout.GetCurSel()].IsEmpty()))
+	{
+		MessageBeep(MB_ICONERROR); m_keybLayout.SetFocus(); return false;
+	}
+	return true;
+}
 void CSettingsHotkeysDlg::Commit()
 {
 	_Settings.SetChangeKeybLayout(m_changeKeyb.GetCheck() == BST_CHECKED);
-	if(m_keybLayout.GetCurSel() >= 0) _Settings.SetKeybLayout(m_keybLayout.GetItemData(m_keybLayout.GetCurSel()));
+	if(m_keybLayout.GetCurSel() >= 0) { _Settings.SetKeybLayout(m_keybLayout.GetItemData(m_keybLayout.GetCurSel())); _Settings.SetKeyboardLayoutId(m_keyboardLayoutIds[m_keybLayout.GetCurSel()]); }
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)
 	{
 		for(unsigned int j = 0; j < _Settings.m_hotkey_groups.at(i).m_hotkeys.size(); ++j)

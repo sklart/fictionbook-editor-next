@@ -64,8 +64,8 @@ foreach ($pattern in @(
 if ($hotkeys -notmatch 'GetKeyboardLayoutList\(0, NULL\)' -or $hotkeys -match 'HKL\s+layouts\s*\[\s*16\s*\]') {
     throw 'Keyboard layouts must be enumerated dynamically.'
 }
-if ($hotkeys -notmatch 'SetItemData\(item, klid\)') {
-    throw 'Keyboard UI must preserve a concrete layout identifier.'
+if ($hotkeys -notmatch 'GetKeyboardLayoutName' -or $hotkeys -notmatch 'SetKeyboardLayoutId\(' -or $hotkeys -match 'const DWORD klid') {
+    throw 'Keyboard UI must resolve and persist a string KLID rather than casting HKL.'
 }
 
 Write-Host 'Keyboard-layout settings ownership passed.'

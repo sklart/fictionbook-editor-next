@@ -460,6 +460,11 @@ CString GetUserDataFile(const CString& filename, const CString& legacyDir)
 	}
 	return destination;
 }
+
+CString ResolveUserDataFile(const CString& filename)
+{
+	return filename.IsEmpty() || !PathIsRelative(filename) ? filename : GetSettingsDir() + filename;
+}
 CString GetModulePath(HMODULE module)
 {
   DWORD capacity=MAX_PATH;
