@@ -213,12 +213,12 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_srcfonts = GetDlgItem(IDC_SRCFONT);
 	CSimpleArray<CString> fonts;
 	HDC display = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
-	LOGFONT logFont = {}; logFont.lfCharSet = ANSI_CHARSET;
+	LOGFONT logFont = {}; logFont.lfCharSet = DEFAULT_CHARSET;
 	::EnumFontFamiliesEx(display, &logFont, reinterpret_cast<FONTENUMPROC>(EnumSourceFontProc), reinterpret_cast<LPARAM>(&fonts), 0);
 	::DeleteDC(display);
 	for(int i = 0; i < fonts.GetSize(); ++i) m_srcfonts.AddString(fonts[i]);
 	int sourceFont = m_srcfonts.FindStringExact(0, _Settings.GetSrcFont());
-	if(sourceFont < 0) sourceFont = 0;
+	if(sourceFont < 0) sourceFont = m_srcfonts.AddString(_Settings.GetSrcFont());
 	m_srcfonts.SetCurSel(sourceFont);
 	m_src_wrap = GetDlgItem(IDC_WRAP); m_src_hl = GetDlgItem(IDC_SYNTAXHL); m_src_taghl = GetDlgItem(IDC_TAGHL);
 	m_src_eol = GetDlgItem(IDC_SHOWEOL); m_src_whitespace = GetDlgItem(IDC_SHOWWHITESPACE); m_src_line_numbers = GetDlgItem(IDC_SHOWLINENUMBERS);
@@ -276,6 +276,7 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_special_chars_style.SetCurSel(static_cast<int>(_Settings.XmlSrcSpecialCharsStyle()));
 	::SendMessage(GetDlgItem(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS), BM_SETCHECK,
 		_Settings.XmlSrcShowSpecialChars() ? BST_CHECKED : BST_UNCHECKED, 0);
+	UpdateSpecialCharactersDependencies();
 
 	const CString currentThemeId = _Settings.GetXmlSrcThemeId();
 
@@ -441,6 +442,19 @@ void CSettingsSourcePage::Commit()
 }
 
 bool CSettingsSourcePage::CancelChanges() { return true; }
+
+void CSettingsSourcePage::UpdateSpecialCharactersDependencies()
+{
+	const BOOL enabled = IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED;
+	m_special_chars_style.EnableWindow(enabled);
+	GetDlgItem(IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE_LABEL).EnableWindow(enabled);
+}
+
+LRESULT CSettingsSourcePage::OnSpecialCharactersChanged(WORD, WORD, HWND, BOOL&)
+{
+	UpdateSpecialCharactersDependencies();
+	return 0;
+}
 
 LRESULT CSettingsSourcePage::OnSourcePaletteChanged(WORD, WORD, HWND, BOOL&)
 {

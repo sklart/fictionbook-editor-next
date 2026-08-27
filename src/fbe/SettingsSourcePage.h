@@ -33,6 +33,7 @@ BEGIN_MSG_MAP(CSettingsSourcePage)
 	COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_PALETTE, CBN_SELCHANGE, OnSourcePaletteChanged)
+	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS, BN_CLICKED, OnSpecialCharactersChanged)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_COLORS_RESET, BN_CLICKED, OnResetSourceColors)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_THEME_ACTIONS, BN_CLICKED, OnThemeActions)
 	NOTIFY_HANDLER(IDC_OPTIONS_SOURCE_COLOR_TEXT, CPN_SELENDOK, OnSourceColorChanged)
@@ -48,6 +49,7 @@ END_MSG_MAP()
 	LRESULT OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnSourcePaletteChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
+	LRESULT OnSpecialCharactersChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnResetSourceColors(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnThemeActions(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnSourceColorChanged(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
@@ -58,5 +60,6 @@ END_MSG_MAP()
 	void UpdateSourceColorTooltips();
 	void UpdateSourceThemeDisplay();
 	void InvalidateSourcePreview();
+	void UpdateSpecialCharactersDependencies();
 	bool Validate(); void Commit(); bool CancelChanges();
 };

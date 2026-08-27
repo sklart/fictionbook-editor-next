@@ -226,6 +226,17 @@ void CSettings::Init()
 		m_key.Create(HKEY_CURRENT_USER, m_key_path);
 }
 
+static CString NormalizeScriptsFolderPath(CString path)
+{
+	path.Trim();
+	path.Replace(L'/', L'\\');
+	while(path.GetLength() > 3 && path.Right(1) == L"\\")
+		path.Delete(path.GetLength() - 1);
+	if(!path.IsEmpty() && path.Right(1) != L"\\")
+		path += L"\\";
+	return path;
+}
+
 void CSettings::InitHotkeyGroups()
 {
 	// File group hotkeys
@@ -1330,7 +1341,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
 	{
-		m_scripts_folder = sValue.GetStringValue();
+		m_scripts_folder = NormalizeScriptsFolderPath(sValue.GetStringValue());
 		return true;
 	}
 	// SeNS
@@ -2415,11 +2426,12 @@ void CSettings::SetGenreCatalog(GenreCatalog catalog, bool apply)
 
 void CSettings::SetScriptsFolder(const CString& fullpath, bool apply)
 {
+	const CString normalized = NormalizeScriptsFolderPath(fullpath);
 	if(apply)
 	{
-		if(m_scripts_folder != fullpath)
+		if(m_scripts_folder.CompareNoCase(normalized) != 0)
 		{
-			m_scripts_folder = fullpath;
+			m_scripts_folder = normalized;
 		}
 	}
 }
@@ -2533,7 +2545,7 @@ void CSettings::SetXMLSrcShowLineNumbers(const bool value, bool apply)
 
 void CSettings::SetImageType(const DWORD value, bool apply)
 {
-	m_image_type = value;
+	m_image_type = value <= 1 ? value : 1;
 	if (apply) Save();
 }
 

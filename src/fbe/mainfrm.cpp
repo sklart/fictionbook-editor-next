@@ -998,6 +998,7 @@ struct EditorConfigurationSnapshot
 	bool sourceShowEol;
 	bool sourceShowWhitespace;
 	bool sourceShowSpecialChars;
+	DWORD sourceSpecialCharsStyle;
 	bool sourceShowLineNumbers;
 	bool fastMode;
 	bool useSpellChecker;
@@ -1015,6 +1016,7 @@ struct EditorConfigurationSnapshot
 			sourceWrap == other.sourceWrap && sourceSyntaxHighlight == other.sourceSyntaxHighlight &&
 			sourceTagHighlight == other.sourceTagHighlight && sourceShowEol == other.sourceShowEol &&
 			sourceShowWhitespace == other.sourceShowWhitespace && sourceShowSpecialChars == other.sourceShowSpecialChars &&
+			sourceSpecialCharsStyle == other.sourceSpecialCharsStyle &&
 			sourceShowLineNumbers == other.sourceShowLineNumbers &&
 			fastMode == other.fastMode && useSpellChecker == other.useSpellChecker &&
 			highlightMisspells == other.highlightMisspells;
@@ -1042,6 +1044,7 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	snapshot.sourceShowEol = _Settings.XmlSrcShowEOL();
 	snapshot.sourceShowWhitespace = _Settings.XmlSrcShowSpace();
 	snapshot.sourceShowSpecialChars = _Settings.XmlSrcShowSpecialChars();
+	snapshot.sourceSpecialCharsStyle = _Settings.XmlSrcSpecialCharsStyle();
 	snapshot.sourceShowLineNumbers = _Settings.XMLSrcShowLineNumbers();
 	snapshot.fastMode = _Settings.FastMode();
 	snapshot.useSpellChecker = _Settings.GetUseSpellChecker();

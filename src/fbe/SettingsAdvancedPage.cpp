@@ -32,7 +32,20 @@ LRESULT CSettingsAdvancedPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 	Commit();
 	return 0;
 }
-bool CSettingsAdvancedPage::Validate() { return true; }
+bool CSettingsAdvancedPage::Validate()
+{
+	if(m_scriptsSwitched)
+		return true;
+	CString folder; m_scriptsFolder.GetWindowText(folder); folder.Trim();
+	const DWORD attributes = folder.IsEmpty() ? INVALID_FILE_ATTRIBUTES : ::GetFileAttributes(folder);
+	if(attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY))
+	{
+		MessageBeep(MB_ICONERROR);
+		m_scriptsFolder.SetFocus();
+		return false;
+	}
+	return true;
+}
 void CSettingsAdvancedPage::Commit()
 {
 	CString folder; m_scriptsFolder.GetWindowText(folder);
@@ -51,6 +64,6 @@ LRESULT CSettingsAdvancedPage::OnDefaultScriptsFolder(WORD, WORD, HWND, BOOL&)
 LRESULT CSettingsAdvancedPage::OnSelectScriptsFolder(WORD, WORD, HWND, BOOL&)
 {
 	CFolderDialog dialog(NULL, FbeLoadCString(IDS_CHOOSE_SCRIPTS_FLD), BIF_NEWDIALOGSTYLE | BIF_RETURNONLYFSDIRS);
-	if(dialog.DoModal(*this) == IDOK) { CString folder(dialog.m_szFolderPath); if(folder.ReverseFind(L'\\') != folder.GetLength() - 1) folder.Append(L"\\"); m_scriptsFolder.SetWindowText(folder); }
+	if(dialog.DoModal(*this) == IDOK) { CString folder(dialog.m_szFolderPath); m_scriptsFolder.SetWindowText(folder); }
 	return 0;
 }

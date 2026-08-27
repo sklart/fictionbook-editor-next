@@ -226,6 +226,11 @@ LRESULT CSettingsWordsDlg::OnListClick(int id, NMHDR *hdr, BOOL&)
 		m_edit.ShowWindow(SW_HIDE);
 		return 0;
 	}
+	if(m_editActive && !FinishInlineEdit())
+	{
+		m_edit.SetFocus();
+		return 0;
+	}
 
 	m_editidx = ai->iItem;
 

@@ -25,4 +25,11 @@ if(-not $cancelChanges.Success -or $cancelChanges.Groups['body'].Value -notmatch
 $advanced = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsAdvancedPage.cpp')
 if($advanced -notmatch 'm_initialScriptsFolder\s*=\s*_Settings\.GetScriptsFolder\(\)' -or $advanced -notmatch 'm_initialScriptsFolder\s*!=\s*_Settings\.GetScriptsFolder\(\)') { throw 'Advanced page must own its scripts-folder initial snapshot.' }
 if($advanced -match 'm_initial_scripts_folder') { throw 'Advanced page still uses the global scripts-folder snapshot.' }
+$advancedHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsAdvancedPage.h')
+$settingsImplementation = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\Settings.cpp')
+if($advanced -notmatch 'GetFileAttributes\(' -or $advanced -notmatch 'm_scriptsFolder\.SetFocus') { throw 'Advanced scripts folder validation is missing.' }
+if($settingsImplementation -notmatch 'NormalizeScriptsFolderPath' -or $settingsImplementation -notmatch 'SetScriptsFolder[\s\S]*?NormalizeScriptsFolderPath') { throw 'Scripts folder is not normalized centrally.' }
+if($words -notmatch '(?s)OnListClick.*?m_editActive\s*&&\s*!FinishInlineEdit\(\).*?m_edit\.SetFocus') { throw 'Starting another Words inline edit must finish the previous edit.' }
+$mainFrame = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
+if($mainFrame -notmatch 'sourceSpecialCharsStyle' -or $mainFrame -notmatch 'snapshot\.sourceSpecialCharsStyle\s*=\s*_Settings\.XmlSrcSpecialCharsStyle\(\)') { throw 'Source special-character style is missing from editor change detection.' }
 Write-Host 'Settings lifecycle contract passed.'

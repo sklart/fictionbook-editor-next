@@ -40,6 +40,7 @@ Assert-Contains $resourceHeader 'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE' 'FBE Ne
 Assert-Contains $nextDialog 'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS' 'FBE Next special-character control use'
 Assert-Contains $nextDialog 'SetXmlSrcShowSpecialChars' 'FBE Next special-character setting save'
 Assert-Contains $nextDialog 'SetXmlSrcSpecialCharsStyle' 'FBE Next special-character style setting save'
+Assert-Contains $mainFrame 'sourceSpecialCharsStyle' 'editor configuration snapshot special-character style'
 Assert-Contains $catalog 'fbe\.dialog\.idd_setting_next\.show_special_characters' 'localized FBE Next special-character label'
 Assert-Contains $catalog 'fbe\.dialog\.idd_setting_next\.special_characters_style' 'localized FBE Next special-character style labels'
 
