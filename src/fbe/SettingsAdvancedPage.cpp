@@ -29,16 +29,22 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 }
 LRESULT CSettingsAdvancedPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
+	Commit();
+	return 0;
+}
+bool CSettingsAdvancedPage::Validate() { return true; }
+void CSettingsAdvancedPage::Commit()
+{
 	CString folder; m_scriptsFolder.GetWindowText(folder);
 	_Settings.SetScriptsFolder(folder.IsEmpty() ? _Settings.GetDefaultScriptsFolder() : folder, true);
 	if(_Settings.m_initial_scripts_folder != _Settings.GetScriptsFolder()) _Settings.SetNeedRestart();
 	_Settings.SetFastMode(m_fastMode.GetCheck() == BST_CHECKED);
-	return 0;
 }
 LRESULT CSettingsAdvancedPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
+bool CSettingsAdvancedPage::CancelChanges() { return true; }
 LRESULT CSettingsAdvancedPage::OnDefaultScriptsFolder(WORD, WORD, HWND, BOOL&)
 {
-	if(!m_scriptsSwitched) { m_scriptsFolder.SetWindowText(_Settings.GetDefaultScriptsFolder()); _Settings.SetScriptsFolder(_Settings.GetDefaultScriptsFolder(), true); m_scriptsFolder.SetReadOnly(true); m_selectScriptsFolder.EnableWindow(false); }
+	if(!m_scriptsSwitched) { m_scriptsFolder.SetWindowText(_Settings.GetDefaultScriptsFolder()); m_scriptsFolder.SetReadOnly(true); m_selectScriptsFolder.EnableWindow(false); }
 	else { m_scriptsFolder.SetReadOnly(false); m_selectScriptsFolder.EnableWindow(true); }
 	m_scriptsSwitched = !m_scriptsSwitched; return 0;
 }

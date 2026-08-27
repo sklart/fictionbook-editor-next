@@ -263,6 +263,10 @@ LRESULT CSettingsHotkeysDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hW
 	return 0;
 }
 
+bool CSettingsHotkeysDlg::Validate() { return true; }
+void CSettingsHotkeysDlg::Commit() { BOOL handled = FALSE; OnClickedOK(0, IDOK, NULL, handled); }
+bool CSettingsHotkeysDlg::CancelChanges() { BOOL handled = FALSE; OnClickedCancel(0, IDCANCEL, NULL, handled); return true; }
+
 LRESULT CSettingsHotkeysDlg::OnEditSetFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
 	m_editHotkey.SetWindowText(NULL);

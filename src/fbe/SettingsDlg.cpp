@@ -18,6 +18,7 @@ CSettingsDlg::CSettingsDlg() :
 	m_navigationBottomGap(0)
 {
 	ZeroMemory(m_pages, sizeof(m_pages));
+	ZeroMemory(m_pageLifecycle, sizeof(m_pageLifecycle));
 }
 
 CSettingsDlg::~CSettingsDlg()
@@ -85,6 +86,14 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_pages[PageIndex(SettingsPageId::Keyboard)] = m_hotkeysPage;
 	m_pages[PageIndex(SettingsPageId::Words)] = m_wordsPage;
 	m_pages[PageIndex(SettingsPageId::Advanced)] = m_advancedPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::General)] = m_generalPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::Editor)] = m_editorPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::Source)] = m_sourcePage;
+	m_pageLifecycle[PageIndex(SettingsPageId::Images)] = m_imagesPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::Spelling)] = m_spellingPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::Keyboard)] = m_hotkeysPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::Words)] = m_wordsPage;
+	m_pageLifecycle[PageIndex(SettingsPageId::Advanced)] = m_advancedPage;
 
 	HMODULE hThemeDll = LoadSystemLibrary(_T("UxTheme.dll"));
 	if (hThemeDll != NULL)
@@ -127,52 +136,19 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 LRESULT CSettingsDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
-	if(GetFocus() == GetDlgItem(IDOK))
-	{
-		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_advancedPage, m_imagesPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
-		for(int i = _countof(uniquePages) - 1; i >= 0; --i)
-			uniquePages[i]->SendMessage(WM_COMMAND, MAKELONG(IDOK, 0), 0);
-		EndDialog(wID);
-	}
-	else
-	{
-		CWindow* pWnd = m_currentPage != SettingsPageId::Count ? m_pages[PageIndex(m_currentPage)] : NULL;
-		if(pWnd)
-		{
-			pWnd->SendMessage(WM_COMMAND, MAKELONG(IDOK, 0), 0);
-			pWnd->ShowWindow(SW_SHOW);
-		}
-	}
-
+	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
+		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->Validate()) { SelectPage(static_cast<SettingsPageId>(i)); return 0; }
+	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
+		if(m_pageLifecycle[i]) m_pageLifecycle[i]->Commit();
+	EndDialog(IDOK);
 	return 0;
 }
 
 LRESULT CSettingsDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
-	int lres = 1;
-
-	if(m_currentPage != SettingsPageId::Words)
-	{
-		if(_Settings.m_initial_scripts_folder != _Settings.GetScriptsFolder())
-		{
-			_Settings.SetScriptsFolder(_Settings.m_initial_scripts_folder, true);
-		}
-
-		CWindow* uniquePages[] = { m_generalPage, m_editorPage, m_spellingPage, m_advancedPage, m_imagesPage, m_sourcePage, m_hotkeysPage, m_wordsPage };
-		for(int i = _countof(uniquePages) - 1; i >= 0; --i)
-			uniquePages[i]->SendMessage(WM_COMMAND, MAKELONG(IDCANCEL, 0), 0);
-	}
-	else
-	{
-		CWindow* pWnd = m_pages[PageIndex(SettingsPageId::Words)];
-		if(pWnd)
-		{
-			lres = pWnd->SendMessage(WM_COMMAND, MAKELONG(IDCANCEL, 0), 0);
-		}
-	}
-
-	if(lres)
-		EndDialog(wID);
+	for(int i = _countof(m_pageLifecycle) - 1; i >= 0; --i)
+		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->CancelChanges()) { SelectPage(static_cast<SettingsPageId>(i)); return 0; }
+	EndDialog(IDCANCEL);
 
 	return 0;
 }

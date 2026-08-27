@@ -3,9 +3,10 @@
 
 #include "resource.h"
 #include "Settings.h"
+#include "SettingsPageLifecycle.h"
 
 // CSettingsWordsDlg
-class CSettingsWordsDlg : public CDialogImpl<CSettingsWordsDlg>
+class CSettingsWordsDlg : public CDialogImpl<CSettingsWordsDlg>, public ISettingsPage
 {
 public:
 	CListViewCtrl		m_list_words;
@@ -59,4 +60,5 @@ public:
 	LRESULT OnBnClickedButtonAdd(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBnClickedCheckSelall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBnClickedButtonRemovesel(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	bool Validate(); void Commit(); bool CancelChanges();
 };

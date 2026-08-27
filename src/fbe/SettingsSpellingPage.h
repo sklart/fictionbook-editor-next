@@ -1,8 +1,9 @@
 #pragma once
 #include <atlhost.h>
 #include "resource.h"
+#include "SettingsPageLifecycle.h"
 
-class CSettingsSpellingPage : public CAxDialogImpl<CSettingsSpellingPage>
+class CSettingsSpellingPage : public CAxDialogImpl<CSettingsSpellingPage>, public ISettingsPage
 {
 	CButton m_enabled;
 	CButton m_highlight;
@@ -22,6 +23,7 @@ public:
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnBrowseDictionary(WORD, WORD, HWND, BOOL&);
+	bool Validate(); void Commit(); bool CancelChanges();
 private:
 	void UpdateDependencies();
 };

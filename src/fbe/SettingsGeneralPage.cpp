@@ -132,3 +132,7 @@ LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
 {
 	return 0;
 }
+
+bool CSettingsGeneralPage::Validate() { return true; }
+void CSettingsGeneralPage::Commit() { BOOL handled = FALSE; OnClickedOK(0, IDOK, NULL, handled); }
+bool CSettingsGeneralPage::CancelChanges() { return true; }

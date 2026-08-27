@@ -39,6 +39,7 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	CSettingsHotkeysDlg* m_hotkeysPage;
 	CSettingsWordsDlg* m_wordsPage;
 	CWindow* m_pages[static_cast<int>(SettingsPageId::Count)];
+	ISettingsPage* m_pageLifecycle[static_cast<int>(SettingsPageId::Count)];
 	SettingsPageId m_currentPage;
 	CRect m_navigationRect;
 	CSize m_minimumWindowSize;

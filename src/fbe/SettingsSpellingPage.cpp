@@ -24,6 +24,9 @@ void CSettingsSpellingPage::UpdateDependencies() { const BOOL enabled = m_enable
 LRESULT CSettingsSpellingPage::OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&) { UpdateDependencies(); return 0; }
 LRESULT CSettingsSpellingPage::OnClickedOK(WORD, WORD, HWND, BOOL&) { _Settings.SetUseSpellChecker(m_enabled.GetCheck() == BST_CHECKED); _Settings.SetHighlightMisspells(m_highlight.GetCheck() == BST_CHECKED); CString path; m_dictionary.GetWindowText(path); _Settings.SetCustomDict(path); return 0; }
 LRESULT CSettingsSpellingPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
+bool CSettingsSpellingPage::Validate() { return true; }
+void CSettingsSpellingPage::Commit() { BOOL handled = FALSE; OnClickedOK(0, IDOK, NULL, handled); }
+bool CSettingsSpellingPage::CancelChanges() { return true; }
 LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 {
 	wchar_t path[_MAX_PATH] = {}; m_dictionary.GetWindowText(path, _countof(path));

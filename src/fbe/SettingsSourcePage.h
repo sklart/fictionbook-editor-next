@@ -7,8 +7,9 @@
 #include <vector>
 #include "resource.h"
 #include "Settings.h"
+#include "SettingsPageLifecycle.h"
 
-class CSettingsSourcePage : public CAxDialogImpl<CSettingsSourcePage>
+class CSettingsSourcePage : public CAxDialogImpl<CSettingsSourcePage>, public ISettingsPage
 {
     CComboBox m_source_palette;
     CComboBox m_special_chars_style;
@@ -57,4 +58,5 @@ END_MSG_MAP()
 	void UpdateSourceColorTooltips();
 	void UpdateSourceThemeDisplay();
 	void InvalidateSourcePreview();
+	bool Validate(); void Commit(); bool CancelChanges();
 };

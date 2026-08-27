@@ -2,8 +2,9 @@
 
 #include <atlhost.h>
 #include "resource.h"
+#include "SettingsPageLifecycle.h"
 
-class CSettingsAdvancedPage : public CAxDialogImpl<CSettingsAdvancedPage>
+class CSettingsAdvancedPage : public CAxDialogImpl<CSettingsAdvancedPage>, public ISettingsPage
 {
 	CButton m_defaultScriptsFolder, m_fastMode;
 	CEdit m_scriptsFolder;
@@ -24,4 +25,5 @@ END_MSG_MAP()
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnDefaultScriptsFolder(WORD, WORD, HWND, BOOL&);
 	LRESULT OnSelectScriptsFolder(WORD, WORD, HWND, BOOL&);
+	bool Validate(); void Commit(); bool CancelChanges();
 };

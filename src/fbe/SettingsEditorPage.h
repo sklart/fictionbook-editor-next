@@ -3,8 +3,9 @@
 #include <atlhost.h>
 #include <ColorButton.h>
 #include "resource.h"
+#include "SettingsPageLifecycle.h"
 
-class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>
+class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public ISettingsPage
 {
 	CColorButton m_foreground;
 	CColorButton m_background;
@@ -24,4 +25,5 @@ public:
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
+	bool Validate(); void Commit(); bool CancelChanges();
 };

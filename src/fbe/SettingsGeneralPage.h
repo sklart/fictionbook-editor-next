@@ -2,8 +2,9 @@
 
 #include <atlhost.h>
 #include "resource.h"
+#include "SettingsPageLifecycle.h"
 
-class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>
+class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public ISettingsPage
 {
 	CComboBox m_language;
 	CComboBox m_genreCatalog;
@@ -25,4 +26,5 @@ public:
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
+	bool Validate(); void Commit(); bool CancelChanges();
 };

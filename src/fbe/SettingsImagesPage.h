@@ -2,8 +2,9 @@
 
 #include <atlhost.h>
 #include "resource.h"
+#include "SettingsPageLifecycle.h"
 
-class CSettingsImagesPage : public CAxDialogImpl<CSettingsImagesPage>
+class CSettingsImagesPage : public CAxDialogImpl<CSettingsImagesPage>, public ISettingsPage
 {
 	CButton m_askImage, m_clearImages, m_imageImportKeepSupported;
 	CComboBox m_imageType, m_imageImportFormat;
@@ -22,4 +23,5 @@ END_MSG_MAP()
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnAskImage(WORD, WORD, HWND, BOOL&);
+	bool Validate(); void Commit(); bool CancelChanges();
 };

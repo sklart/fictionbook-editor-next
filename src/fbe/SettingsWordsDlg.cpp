@@ -484,3 +484,7 @@ LRESULT CSettingsWordsDlg::OnCancel(WORD, WORD wID, HWND, BOOL&)
 
 	return 1;
 }
+
+bool CSettingsWordsDlg::Validate() { return true; }
+void CSettingsWordsDlg::Commit() { BOOL handled = FALSE; OnOK(0, IDOK, NULL, handled); }
+bool CSettingsWordsDlg::CancelChanges() { BOOL handled = FALSE; return OnCancel(0, IDCANCEL, NULL, handled) != 0; }

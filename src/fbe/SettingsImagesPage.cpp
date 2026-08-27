@@ -41,6 +41,22 @@ LRESULT CSettingsImagesPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CSettingsImagesPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
+	if(!Validate()) return 0;
+	Commit();
+	return 0;
+}
+
+bool CSettingsImagesPage::Validate()
+{
+	const int pasteQuality = m_jpegSpin.GetPos();
+	const int importQuality = m_imageImportJpegSpin.GetPos();
+	if(pasteQuality < 20 || pasteQuality > 100) { MessageBeep(MB_ICONERROR); m_jpegQuality.SetFocus(); return false; }
+	if(importQuality < 1 || importQuality > 100) { MessageBeep(MB_ICONERROR); m_imageImportJpegQuality.SetFocus(); return false; }
+	return true;
+}
+
+void CSettingsImagesPage::Commit()
+{
 	_Settings.SetInsImageAsking(m_askImage.GetCheck() == BST_CHECKED);
 	_Settings.SetIsInsClearImage(m_clearImages.GetCheck() == BST_CHECKED);
 	_Settings.SetImageType(m_imageType.GetCurSel());
@@ -48,10 +64,10 @@ LRESULT CSettingsImagesPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 	_Settings.SetImageImportFormat(m_imageImportFormat.GetCurSel());
 	_Settings.SetImageImportJpegQuality(m_imageImportJpegSpin.GetPos());
 	_Settings.SetImageImportKeepSupported(m_imageImportKeepSupported.GetCheck() == BST_CHECKED);
-	return 0;
 }
 
 LRESULT CSettingsImagesPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
+bool CSettingsImagesPage::CancelChanges() { return true; }
 
 LRESULT CSettingsImagesPage::OnAskImage(WORD, WORD, HWND, BOOL&)
 {

@@ -65,14 +65,29 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CSettingsEditorPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
+	if(!Validate()) return 0;
+	Commit();
+	return 0;
+}
+
+bool CSettingsEditorPage::Validate()
+{
 	CString sizeText(U::GetWindowText(m_fontSize));
 	int size = 0;
 	if(_stscanf(sizeText, _T("%d"), &size) != 1 || size < 6 || size > 72)
 	{
 		MessageBeep(MB_ICONERROR);
 		m_fontSize.SetFocus();
-		return 0;
+		return false;
 	}
+	return true;
+}
+
+void CSettingsEditorPage::Commit()
+{
+	CString sizeText(U::GetWindowText(m_fontSize));
+	int size = 0;
+	_stscanf(sizeText, _T("%d"), &size);
 	_Settings.SetColorBG(m_background.GetColor());
 	_Settings.SetColorFG(m_foreground.GetColor());
 	_Settings.SetFont(U::GetWindowText(m_fonts));
@@ -80,7 +95,7 @@ LRESULT CSettingsEditorPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 	CString character;
 	m_nbspCharacter.GetWindowText(character);
 	_Settings.SetNBSPChar(character);
-	return 0;
 }
 
 LRESULT CSettingsEditorPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
+bool CSettingsEditorPage::CancelChanges() { return true; }

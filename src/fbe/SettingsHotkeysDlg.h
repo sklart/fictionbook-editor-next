@@ -4,6 +4,7 @@
 #include "resource.h"
 #include <atlhost.h>
 #include <vector>
+#include "SettingsPageLifecycle.h"
 
 class CHotkey;
 class CHotkeysGroup;
@@ -58,7 +59,7 @@ struct hkIndex
 };
 
 // CSettingsHotkeysDlg
-class CSettingsHotkeysDlg: public CAxDialogImpl<CSettingsHotkeysDlg>
+class CSettingsHotkeysDlg: public CAxDialogImpl<CSettingsHotkeysDlg>, public ISettingsPage
 {
 public:
 	CListBox	m_hkGroups;
@@ -118,4 +119,5 @@ public:
 	int		GetTextLen(CString text);
 	bool	Test();
 	void	ClearAndSet();
+	bool Validate(); void Commit(); bool CancelChanges();
 };

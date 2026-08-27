@@ -435,6 +435,10 @@ LRESULT CSettingsSourcePage::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hW
 	return 0;
 }
 
+bool CSettingsSourcePage::Validate() { return true; }
+void CSettingsSourcePage::Commit() { BOOL handled = FALSE; OnClickedOK(0, IDOK, NULL, handled); }
+bool CSettingsSourcePage::CancelChanges() { BOOL handled = FALSE; OnClickedCancel(0, IDCANCEL, NULL, handled); return true; }
+
 LRESULT CSettingsSourcePage::OnSourcePaletteChanged(WORD, WORD, HWND, BOOL&)
 {
 	const CString themeId = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
