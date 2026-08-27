@@ -15,6 +15,12 @@ static CString ThemeString(LPCWSTR key, LPCWSTR fallback)
 	return FbeLoadRuntimeStringByKey(key, fallback);
 }
 
+static int __stdcall EnumSourceFontProc(const ENUMLOGFONTEX* font, const NEWTEXTMETRICEX*, DWORD, LPARAM data)
+{
+	static_cast<CSimpleArray<CString>*>(reinterpret_cast<void*>(data))->Add(font->elfLogFont.lfFaceName);
+	return TRUE;
+}
+
 static CString GetThemeDisplayName(const XmlSourceThemeInfo& theme)
 {
 	if(theme.id.CompareNoCase(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_SYSTEM)) == 0)
@@ -195,6 +201,20 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 {
 	CAxDialogImpl<CSettingsSourcePage>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 	m_source_palette = GetDlgItem(IDC_OPTIONS_SOURCE_PALETTE);
+	m_srcfonts = GetDlgItem(IDC_SRCFONT);
+	CSimpleArray<CString> fonts;
+	HDC display = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
+	LOGFONT logFont = {}; logFont.lfCharSet = ANSI_CHARSET;
+	::EnumFontFamiliesEx(display, &logFont, reinterpret_cast<FONTENUMPROC>(EnumSourceFontProc), reinterpret_cast<LPARAM>(&fonts), 0);
+	::DeleteDC(display);
+	for(int i = 0; i < fonts.GetSize(); ++i) m_srcfonts.AddString(fonts[i]);
+	int sourceFont = m_srcfonts.FindStringExact(0, _Settings.GetSrcFont());
+	if(sourceFont < 0) sourceFont = 0;
+	m_srcfonts.SetCurSel(sourceFont);
+	m_src_wrap = GetDlgItem(IDC_WRAP); m_src_hl = GetDlgItem(IDC_SYNTAXHL); m_src_taghl = GetDlgItem(IDC_TAGHL);
+	m_src_eol = GetDlgItem(IDC_SHOWEOL); m_src_whitespace = GetDlgItem(IDC_SHOWWHITESPACE); m_src_line_numbers = GetDlgItem(IDC_SHOWLINENUMBERS);
+	m_src_wrap.SetCheck(_Settings.XmlSrcWrap()); m_src_hl.SetCheck(_Settings.XmlSrcSyntaxHL()); m_src_taghl.SetCheck(_Settings.XmlSrcTagHL());
+	m_src_eol.SetCheck(_Settings.XmlSrcShowEOL()); m_src_whitespace.SetCheck(_Settings.XmlSrcShowSpace()); m_src_line_numbers.SetCheck(_Settings.XMLSrcShowLineNumbers());
 	m_source_palette.SetDroppedWidth(250);
 	m_source_tooltips.Create(m_hWnd);
 	m_source_tooltips.SetMaxTipWidth(320);
@@ -385,6 +405,8 @@ void CSettingsSourcePage::UpdateSourceThemeDisplay()
 LRESULT CSettingsSourcePage::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
 	_Settings.SetXmlSrcShowSpecialChars(IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED);
+	_Settings.SetSrcFont(U::GetWindowText(m_srcfonts));
+	_Settings.SetXmlSrcWrap(m_src_wrap.GetCheck() != 0); _Settings.SetXmlSrcSyntaxHL(m_src_hl.GetCheck() != 0); _Settings.SetXmlSrcTagHL(m_src_taghl.GetCheck() != 0); _Settings.SetXmlSrcShowEOL(m_src_eol.GetCheck() != 0); _Settings.SetXmlSrcShowSpace(m_src_whitespace.GetCheck() != 0); _Settings.SetXMLSrcShowLineNumbers(m_src_line_numbers.GetCheck() != 0);
 	const int specialCharsStyle = m_special_chars_style.GetCurSel();
 	_Settings.SetXmlSrcSpecialCharsStyle(specialCharsStyle == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ? XML_SRC_SPECIAL_CHARS_TEXT_LABELS : XML_SRC_SPECIAL_CHARS_WORD_LIKE);
 	_Settings.SetXmlSrcThemeId(GetSelectedThemeId(m_source_palette, m_source_theme_ids));

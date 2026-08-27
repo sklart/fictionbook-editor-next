@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "resource.h"
 #include "res1.h"
 
@@ -227,23 +227,12 @@ LRESULT COptDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
   _Settings.SetColorBG(m_bg.GetColor());
   _Settings.SetColorFG(m_fg.GetColor());
 
-  // save source font face
-  m_face=U::GetWindowText(m_srcfonts);
-  _Settings.SetSrcFont(m_face);
-
   // save body font face
   m_face=U::GetWindowText(m_fonts);
   _Settings.SetFont(m_face);
 
   // save zoom
   _Settings.SetFontSize(m_fsz_val);
-
-  _Settings.SetXmlSrcWrap(m_src_wrap.GetCheck() != 0);
-  _Settings.SetXmlSrcSyntaxHL(m_src_hl.GetCheck() != 0);
-  _Settings.SetXmlSrcTagHL(m_src_taghl.GetCheck() != 0);
-  _Settings.SetXmlSrcShowEOL(m_src_eol.GetCheck() != 0);
-  _Settings.SetXmlSrcShowSpace(m_src_whitespace.GetCheck() != 0);
-  _Settings.SetXMLSrcShowLineNumbers(m_src_line_numbers.GetCheck() != 0);
 
   _Settings.SetFastMode(m_fast_mode.GetCheck() != 0);  
   _Settings.SetUseSpellChecker(m_usespell_check.GetCheck() != 0); // SeNS

@@ -57,9 +57,9 @@ foreach($requiredPalette in @(
 
 foreach($requiredLocalizationKey in @(
     "source_palette.system",
-    "source_palette.fbe_light",
-    "source_palette.fbe_dark",
-    "source_palette.historical"
+    "source_palette.contrast",
+    "source_palette.dark",
+    "source_palette.classic"
 )) {
     if($dialogLocalization -notlike "*$requiredLocalizationKey*") {
         throw "В JSON-локализации отсутствует название палитры: $requiredLocalizationKey."
@@ -155,7 +155,7 @@ foreach($requiredText in @(
 if($colorButtonHeader.IndexOf('return m_clrCurrent;', [System.StringComparison]::Ordinal) -lt 0) {
     throw 'CColorButton::GetColor must expose CLR_DEFAULT instead of a rendered fallback color.'
 }
-$settingsDialog = Read-ProjectFile "src\fbe\SettingsNextDlg.cpp"
+$settingsDialog = Read-ProjectFile "src\fbe\SettingsSourcePage.cpp"
 foreach($requiredText in @(
     'OFN_ALLOWMULTISELECT',
     'SaveThemeAsUser',
@@ -168,7 +168,7 @@ foreach($requiredText in @(
     'ResolveSourceTokenColor(sourceId'
 )) {
     if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
-        throw "В SettingsNextDlg.cpp отсутствует обязательный сценарий тем: $requiredText"
+        throw "В SettingsSourcePage.cpp отсутствует обязательный сценарий тем: $requiredText"
     }
 }
 
@@ -189,11 +189,11 @@ foreach($requiredText in @(
 # nodes в полном цикле визуального редактирования. Поэтому UI-элементов и
 # обработчиков для них быть не должно.
 if($settingsDialog -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
-    throw 'В SettingsNextDlg.cpp остался мёртвый UI-код XML-комментариев.'
+    throw 'В SettingsSourcePage.cpp остался мёртвый UI-код XML-комментариев.'
 }
-$settingsHeader = Read-ProjectFile "src\fbe\SettingsNextDlg.h"
+$settingsHeader = Read-ProjectFile "src\fbe\SettingsSourcePage.h"
 if($settingsHeader -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
-    throw 'В SettingsNextDlg.h остался обработчик XML-комментариев.'
+    throw 'В SettingsSourcePage.h остался обработчик XML-комментариев.'
 }
 if($settingsDialog -like '*<!--*') {
     throw 'В предпросмотре не должен отображаться XML-комментарий до подтверждения сохранности модели документа.'

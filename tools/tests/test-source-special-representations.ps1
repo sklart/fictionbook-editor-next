@@ -17,7 +17,7 @@ function Assert-Contains([string]$Text, [string]$Pattern, [string]$Description) 
 $settingsHeader = Get-Text 'src\fbe\Settings.h'
 $settings = Get-Text 'src\fbe\Settings.cpp'
 $mainFrame = Get-Text 'src\fbe\mainfrm.cpp'
-$nextDialog = Get-Text 'src\fbe\SettingsNextDlg.cpp'
+$nextDialog = Get-Text 'src\fbe\SettingsSourcePage.cpp'
 $resourceHeader = Get-Text 'src\fbe\resource.h'
 $catalog = Get-Text 'localization\app-ui\fbe-small-dialogs.json'
 

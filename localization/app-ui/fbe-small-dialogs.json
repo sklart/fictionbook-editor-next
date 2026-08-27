@@ -31,7 +31,7 @@
     "IDD_SPELL_CHECK",
     "IDD_WORDS",
     "IDD_SETTING_OTHER",
-    "IDD_SETTING_NEXT",
+    "IDD_SETTINGS_SOURCE",
     "IDD_OPTIONS"
   ],
   "resourceType": "DIALOGEX",
@@ -2412,7 +2412,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.show_special_characters": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "CONTROL",
       "targetId": "IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS",
       "translations": {
@@ -2431,7 +2431,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.special_characters_style": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "LTEXT",
       "targetId": "IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE_LABEL",
       "translations": {
@@ -2439,7 +2439,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.special_characters_style.word_like": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "COMBOBOX",
       "targetId": "IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE",
       "translations": {
@@ -2447,7 +2447,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.special_characters_style.text_labels": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "COMBOBOX",
       "targetId": "IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE",
       "translations": {
@@ -2669,7 +2669,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.saving": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "GROUPBOX",
       "targetId": "IDC_FBE_NEXT_SAVING_GROUP",
       "translations": {
@@ -2688,7 +2688,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.create_backup_file": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "CONTROL",
       "targetId": "IDC_CREATE_BACKUP_FILE",
       "translations": {
@@ -2707,7 +2707,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.window_title": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "GROUPBOX",
       "targetId": "IDC_FBE_NEXT_WINDOW_TITLE_GROUP",
       "translations": {
@@ -2726,7 +2726,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.show_full_path_in_window_title": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "CONTROL",
       "targetId": "IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE",
       "translations": {
@@ -2745,19 +2745,19 @@
       }
     },
     "fbe.dialog.idd_setting_next.updates": {
-      "resource": "IDD_SETTING_NEXT", "kind": "GROUPBOX", "targetId": "IDC_FBE_NEXT_UPDATES_GROUP",
+      "resource": "IDD_SETTINGS_SOURCE", "kind": "GROUPBOX", "targetId": "IDC_FBE_NEXT_UPDATES_GROUP",
       "translations": { "en-US": "Updates", "ru-RU": "Обновления", "uk-UA": "Оновлення", "de-DE": "Updates", "fr-FR": "Mises à jour", "es-ES": "Actualizaciones", "it-IT": "Aggiornamenti", "pl-PL": "Aktualizacje", "pt-PT": "Atualizações", "nl-NL": "Updates", "cs-CZ": "Aktualizace", "bg-BG": "Актуализации" }
     },
     "fbe.dialog.idd_setting_next.update_channel": {
-      "resource": "IDD_SETTING_NEXT", "kind": "LTEXT", "targetId": "IDC_UPDATE_CHANNEL_LABEL",
+      "resource": "IDD_SETTINGS_SOURCE", "kind": "LTEXT", "targetId": "IDC_UPDATE_CHANNEL_LABEL",
       "translations": { "en-US": "Update channel:", "ru-RU": "Канал обновлений:", "uk-UA": "Канал оновлень:", "de-DE": "Update channel:", "fr-FR": "Canal de mise à jour :", "es-ES": "Canal de actualización:", "it-IT": "Canale di aggiornamento:", "pl-PL": "Kanał aktualizacji:", "pt-PT": "Canal de atualização:", "nl-NL": "Updatekanaal:", "cs-CZ": "Kanál aktualizací:", "bg-BG": "Канал за актуализации:" }
     },
     "fbe.dialog.idd_setting_next.update_channel.stable": {
-      "resource": "IDD_SETTING_NEXT", "kind": "COMBOBOX", "targetId": "IDC_UPDATE_CHANNEL",
+      "resource": "IDD_SETTINGS_SOURCE", "kind": "COMBOBOX", "targetId": "IDC_UPDATE_CHANNEL",
       "translations": { "en-US": "Stable versions (recommended)", "ru-RU": "Стабильные версии (рекомендуется)", "uk-UA": "Стабільні версії (рекомендовано)", "de-DE": "Stable versions (recommended)", "fr-FR": "Versions stables (recommandé)", "es-ES": "Versiones estables (recomendado)", "it-IT": "Versioni stabili (consigliato)", "pl-PL": "Wersje stabilne (zalecane)", "pt-PT": "Versões estáveis (recomendado)", "nl-NL": "Stabiele versies (aanbevolen)", "cs-CZ": "Stabilní verze (doporučeno)", "bg-BG": "Стабилни версии (препоръчително)" }
     },
     "fbe.dialog.idd_setting_next.update_channel.prerelease": {
-      "resource": "IDD_SETTING_NEXT", "kind": "COMBOBOX", "targetId": "IDC_UPDATE_CHANNEL",
+      "resource": "IDD_SETTINGS_SOURCE", "kind": "COMBOBOX", "targetId": "IDC_UPDATE_CHANNEL",
       "translations": { "en-US": "Prerelease versions (Beta / RC)", "ru-RU": "Предварительные версии (Beta / RC)", "uk-UA": "Попередні версії (Beta / RC)", "de-DE": "Prerelease versions (Beta / RC)", "fr-FR": "Versions préliminaires (Beta / RC)", "es-ES": "Versiones preliminares (Beta / RC)", "it-IT": "Versioni preliminari (Beta / RC)", "pl-PL": "Wersje wstępne (Beta / RC)", "pt-PT": "Versões de pré-lançamento (Beta / RC)", "nl-NL": "Vooruitgaveversies (Beta / RC)", "cs-CZ": "Předběžné verze (Beta / RC)", "bg-BG": "Предварителни версии (Beta / RC)" }
     },
     "fbe.about.whats_new": {
@@ -2773,7 +2773,7 @@
       "translations": { "en-US": "Unable to open release page", "ru-RU": "Не удалось открыть страницу релиза", "uk-UA": "Не вдалося відкрити сторінку випуску", "de-DE": "Unable to open release page", "fr-FR": "Impossible d’ouvrir la page de publication", "es-ES": "No se pudo abrir la página de publicación", "it-IT": "Impossibile aprire la pagina della release", "pl-PL": "Nie można otworzyć strony wydania", "pt-PT": "Não foi possível abrir a página da versão", "nl-NL": "Kan de releasepagina niet openen", "cs-CZ": "Nelze otevřít stránku vydání", "bg-BG": "Страницата на изданието не може да бъде отворена" }
     },
     "fbe.dialog.idd_setting_next.source_code": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "GROUPBOX",
       "targetId": "IDC_FBE_NEXT_SOURCE_CODE_GROUP",
       "translations": {
@@ -2811,7 +2811,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_palette": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "LTEXT",
       "targetId": "IDC_OPTIONS_SOURCE_PALETTE_LABEL",
       "translations": {
@@ -2830,7 +2830,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_color_text": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "LTEXT",
       "targetId": "IDC_OPTIONS_SOURCE_COLOR_TEXT_LABEL",
       "translations": {
@@ -2849,7 +2849,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_color_tag": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "LTEXT",
       "targetId": "IDC_OPTIONS_SOURCE_COLOR_TAG_LABEL",
       "translations": {
@@ -2868,7 +2868,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_color_attribute": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "LTEXT",
       "targetId": "IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE_LABEL",
       "translations": {
@@ -2887,7 +2887,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_color_string": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "LTEXT",
       "targetId": "IDC_OPTIONS_SOURCE_COLOR_STRING_LABEL",
       "translations": {
@@ -2906,7 +2906,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_color_background": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "LTEXT",
       "targetId": "IDC_OPTIONS_SOURCE_COLOR_BACKGROUND_LABEL",
       "translations": {
@@ -2925,7 +2925,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_colors_reset": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "PUSHBUTTON",
       "targetId": "IDC_OPTIONS_SOURCE_COLORS_RESET",
       "translations": {
@@ -2944,7 +2944,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_palette.classic": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "VALUE",
       "targetId": "IDC_OPTIONS_SOURCE_PALETTE",
       "translations": {
@@ -2963,7 +2963,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_palette.contrast": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "VALUE",
       "targetId": "IDC_OPTIONS_SOURCE_PALETTE",
       "translations": {
@@ -2982,7 +2982,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_palette.system": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "control_id": "IDC_FBE_NEXT_SOURCE_PALETTE",
       "property": "label",
       "translations": {
@@ -3001,7 +3001,7 @@
       }
     },
     "fbe.dialog.idd_setting_next.source_palette.dark": {
-      "resource": "IDD_SETTING_NEXT",
+      "resource": "IDD_SETTINGS_SOURCE",
       "kind": "VALUE",
       "targetId": "IDC_OPTIONS_SOURCE_PALETTE",
       "translations": {
