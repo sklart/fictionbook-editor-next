@@ -57,7 +57,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_COLLISION, L"fbe.dialog.idd_hotkeys.collision", L"Collision");
 	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_HOTKEY_ASSIGN, L"fbe.dialog.idd_hotkeys.assign", L"Assign");
 	SetRuntimeHotkeysText(m_hWnd, IDC_SETTINGS_OTHER_KEYBOARD, L"fbe.dialog.idd_setting_other.keyboard", L"Keyboard layout");
-	SetRuntimeHotkeysText(m_hWnd, IDC_CHANGE_KEYB, L"fbe.dialog.idd_setting_other.change_keyboard", L"Change on input");
+	SetRuntimeHotkeysText(m_hWnd, IDC_CHANGE_KEYB, L"fbe.dialog.idd_setting_other.change_keyboard", L"Change layout on startup");
 	SetRuntimeHotkeysText(m_hWnd, IDC_SETTINGS_OTHER_CHANGE_TO, L"fbe.dialog.idd_setting_other.layout", L"Change to:");
 
 	m_hkGroups = GetDlgItem(IDC_LIST_HOTKEYS_GROUPS);

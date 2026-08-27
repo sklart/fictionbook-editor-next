@@ -2087,18 +2087,18 @@
       "kind": "CONTROL",
       "targetId": "IDC_CHANGE_KEYB",
       "translations": {
-        "en-US": "Change on input",
-        "ru-RU": "Менять при вводе",
-        "uk-UA": "Змінювати під час вводу",
-        "de-DE": "Beim Eingeben wechseln",
-        "fr-FR": "Changer à la saisie",
-        "es-ES": "Cambiar al escribir",
-        "it-IT": "Cambia durante input",
-        "pl-PL": "Zmieniaj przy wpisie",
-        "pt-PT": "Alterar ao escrever",
-        "nl-NL": "Wijzigen bij invoer",
-        "cs-CZ": "Měnit při zadávání",
-        "bg-BG": "Променяй при въвеждане"
+        "en-US": "Change layout on startup",
+        "ru-RU": "Менять раскладку при запуске",
+        "uk-UA": "Змінювати розкладку під час запуску",
+        "de-DE": "Tastaturlayout beim Start ändern",
+        "fr-FR": "Changer la disposition au démarrage",
+        "es-ES": "Cambiar la distribución al iniciar",
+        "it-IT": "Cambia il layout all’avvio",
+        "pl-PL": "Zmieniaj układ przy uruchomieniu",
+        "pt-PT": "Alterar o esquema no arranque",
+        "nl-NL": "Indeling wijzigen bij opstarten",
+        "cs-CZ": "Změnit rozložení při spuštění",
+        "bg-BG": "Променяй подредбата при стартиране"
       }
     },
     "fbe.dialog.idd_setting_other.image_settings": {
