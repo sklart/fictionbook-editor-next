@@ -36,7 +36,6 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 
 	// added by SeNS
 	m_nbsp_char = GetDlgItem(IDC_NBSP_CHAR);
-	m_change_keyb = GetDlgItem(IDC_CHANGE_KEYB);
 
 	m_image_type = GetDlgItem(IDC_IMAGETYPE);
 	m_jpeg_quality = GetDlgItem(IDC_JPEGQUALITY);
@@ -46,13 +45,11 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	m_image_import_updown = GetDlgItem(IDC_IMAGE_IMPORT_JPEG_SPIN);
 	m_image_import_keep_supported = GetDlgItem(IDC_IMAGE_IMPORT_KEEP_SUPPORTED);
 
-	m_keyb_layout = GetDlgItem(IDC_KEYB_LAYOUT);
 
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_KEEP, L"fbe.dialog.idd_setting_other.keep_manual", L"Keep manual");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_RESTORE_POS, L"fbe.dialog.idd_setting_other.restore_position", L"Restore position");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_SETTINGS_ASKIMAGE, L"fbe.dialog.idd_setting_other.ask_image", L"Ask for non clear image insertion");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_OPTIONS_CLEARIMGS, L"fbe.dialog.idd_setting_other.clear_images", L"Insert clear images");
-	SetRuntimeSettingsOtherText(m_hWnd, IDC_CHANGE_KEYB, L"fbe.dialog.idd_setting_other.change_keyboard", L"Change keyboard layout automatically");
 	SetRuntimeSettingsOtherText(m_hWnd, IDC_IMAGE_IMPORT_KEEP_SUPPORTED, L"fbe.dialog.idd_setting_other.keep_supported", L"Keep JPEG/PNG without recompression");
 
 	::SendMessage(GetDlgItem(IDC_SETTINGS_ASKIMAGE), BM_SETCHECK, 
@@ -92,7 +89,6 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	m_nbsp_char.AddString(L"\u25E6");  // ◦
 	m_nbsp_char.AddString(L"\u00A0");  // original nbsp
 	m_nbsp_char.SelectString (0, _Settings.GetNBSPChar());
-	m_change_keyb.SetCheck(_Settings.GetChangeKeybLayout());
 
 	m_image_type.AddString(L"PNG");
 	m_image_type.AddString(L"JPEG");
@@ -110,27 +106,6 @@ LRESULT CSettingsOtherDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	m_image_import_updown.SetRange(1, 100);
 	m_image_import_keep_supported.SetCheck(_Settings.GetImageImportKeepSupported() ? BST_CHECKED : BST_UNCHECKED);
 
-	// process keyboard layouts
-	TCHAR name[255];
-	HKL hLayouts[16];
-	int nLayouts = GetKeyboardLayoutList(16, &hLayouts[0]);
-	for (int i=0; i<nLayouts; i++)
-	{
-        // bottom 16 bit of HKL is LANGID
-		LANGID language = (LANGID)(((UINT)hLayouts[i]) & 0x0000FFFF);
-		LCID locale = MAKELCID(language, SORT_DEFAULT);
-		GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, 255);
-		CString layoutName(name);
-		m_keyb_layout.AddString(layoutName);
-		m_keyb_layout.SetItemData(i, locale);
-	}
-	m_keyb_layout.SetCurSel(0);
-	for (int i=0; i<nLayouts; i++)
-		if (m_keyb_layout.GetItemData(i) == _Settings.GetKeybLayout())
-		{
-			m_keyb_layout.SetCurSel(i);
-			break;
-		}
 	
 	return 1;
 }
@@ -152,7 +127,6 @@ LRESULT CSettingsOtherDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl,
 	CString s;
 	m_nbsp_char.GetWindowText (s);
 	_Settings.SetNBSPChar(s);
-	_Settings.SetChangeKeybLayout(IsDlgButtonChecked(IDC_CHANGE_KEYB) != 0);
 
 	_Settings.SetImageType(m_image_type.GetCurSel());
 	_Settings.SetJpegQuality(m_updown.GetPos());
@@ -160,8 +134,6 @@ LRESULT CSettingsOtherDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl,
 	_Settings.SetImageImportJpegQuality(m_image_import_updown.GetPos());
 	_Settings.SetImageImportKeepSupported(m_image_import_keep_supported.GetCheck() == BST_CHECKED);
 
-	int n = m_keyb_layout.GetCurSel();
-	_Settings.SetKeybLayout(m_keyb_layout.GetItemData(n));
 
 	EndDialog(wID);
 	return 0;

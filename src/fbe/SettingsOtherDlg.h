@@ -18,7 +18,6 @@ class CSettingsOtherDlg :
 
 	// added by SeNS
 	CComboBox   m_nbsp_char;
-	CButton		m_change_keyb;
 	CComboBox	m_image_type;
 	CUpDownCtrl	m_updown;
 	CEdit		m_jpeg_quality;
@@ -26,7 +25,6 @@ class CSettingsOtherDlg :
 	CEdit		m_image_import_jpeg_quality;
 	CUpDownCtrl	m_image_import_updown;
 	CButton		m_image_import_keep_supported;
-	CComboBox	m_keyb_layout;
 
 
 public:

@@ -38,6 +38,17 @@
     "IDD_SETTINGS_ADVANCED"  ],
   "resourceType": "DIALOGEX",
   "strings": {
+    "fbe.settings.advanced.group": {
+      "resource": "IDD_SETTINGS_ADVANCED",
+      "kind": "GROUPBOX",
+      "targetId": "IDC_OPTIONS_INTERFACE_GROUP",
+      "translations": {
+        "en-US": "Advanced", "ru-RU": "Расширенные", "uk-UA": "Додаткові",
+        "de-DE": "Erweitert", "fr-FR": "Avancé", "es-ES": "Avanzado",
+        "it-IT": "Avanzate", "pl-PL": "Zaawansowane", "pt-PT": "Avançadas",
+        "nl-NL": "Geavanceerd", "cs-CZ": "Pokročilé", "bg-BG": "Разширени"
+      }
+    },
     "fbe.dialog.idd_table.caption": {
       "resource": "IDD_TABLE",
       "kind": "CAPTION",
@@ -2053,7 +2064,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.keyboard": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_HOTKEYS",
       "kind": "GROUPBOX",
       "targetId": "IDC_SETTINGS_OTHER_KEYBOARD",
       "translations": {
@@ -2072,7 +2083,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.change_keyboard": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_HOTKEYS",
       "kind": "CONTROL",
       "targetId": "IDC_CHANGE_KEYB",
       "translations": {
@@ -2148,7 +2159,7 @@
       }
     },
     "fbe.dialog.idd_setting_other.layout": {
-      "resource": "IDD_SETTING_OTHER",
+      "resource": "IDD_HOTKEYS",
       "kind": "LTEXT",
       "targetId": "IDC_SETTINGS_OTHER_CHANGE_TO",
       "translations": {
@@ -2280,23 +2291,23 @@
         "bg-BG": "Шрифт"
       }
     },
-    "fbe.dialog.idd_options.source_view": {
+    "fbe.dialog.idd_settings_source.theme": {
       "resource": "IDD_SETTINGS_SOURCE",
       "kind": "GROUPBOX",
       "targetId": "IDC_OPTIONS_SOURCE_GROUP",
       "translations": {
-        "en-US": "Source view",
-        "ru-RU": "Исходный текст",
-        "uk-UA": "Вихідний текст",
-        "de-DE": "Quelltextansicht",
-        "fr-FR": "Vue source",
-        "es-ES": "Vista de código",
-        "it-IT": "Vista sorgente",
-        "pl-PL": "Widok źródła",
-        "pt-PT": "Vista de código",
-        "nl-NL": "Bronweergave",
-        "cs-CZ": "Zobrazení zdroje",
-        "bg-BG": "Изходен текст"
+        "en-US": "Theme",
+        "ru-RU": "Тема",
+        "uk-UA": "Тема",
+        "de-DE": "Thema",
+        "fr-FR": "Thème",
+        "es-ES": "Tema",
+        "it-IT": "Tema",
+        "pl-PL": "Motyw",
+        "pt-PT": "Tema",
+        "nl-NL": "Thema",
+        "cs-CZ": "Motiv",
+        "bg-BG": "Тема"
       }
     },
     "fbe.dialog.idd_options.wrap_lines": {

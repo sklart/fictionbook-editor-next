@@ -13,6 +13,7 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	::SetDlgItemText(m_hWnd, IDC_DEFAULT_SCRIPTS_FOLDER, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_other.default_scripts_folder", L"Default folder"));
 	::SetDlgItemText(m_hWnd, IDC_SELECT_SCRIPTS_FOLDER_BUTTON, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_other.browse", L"..."));
 	::SetDlgItemText(m_hWnd, IDC_FAST_MODE, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.fast_mode", L"Fast mode"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_INTERFACE_GROUP, FbeLoadRuntimeStringByKey(L"fbe.settings.advanced.group", L"Advanced"));
 	m_defaultScriptsFolder = GetDlgItem(IDC_DEFAULT_SCRIPTS_FOLDER);
 	m_scriptsFolder = GetDlgItem(IDC_SCRIPTS_FOLDER_PATH);
 	m_selectScriptsFolder = GetDlgItem(IDC_SELECT_SCRIPTS_FOLDER_BUTTON);

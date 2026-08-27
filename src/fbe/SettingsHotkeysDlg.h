@@ -64,6 +64,8 @@ public:
 	CListBox	m_hkGroups;
 	CListBox	m_hotkeys;
 	CAccelEdit	m_editHotkey;
+	CButton m_changeKeyb;
+	CComboBox m_keybLayout;
 
 	CSimpleMap<CString, CHotkey*>	m_mapHotkeys;
 	std::vector<CHotkeysGroup>	m_initHkGroups;

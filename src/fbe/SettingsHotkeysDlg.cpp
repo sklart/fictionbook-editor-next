@@ -56,6 +56,9 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_ACTIONS, L"fbe.dialog.idd_hotkeys.actions", L"Actions");
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_COLLISION, L"fbe.dialog.idd_hotkeys.collision", L"Collision");
 	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_HOTKEY_ASSIGN, L"fbe.dialog.idd_hotkeys.assign", L"Assign");
+	SetRuntimeHotkeysText(m_hWnd, IDC_SETTINGS_OTHER_KEYBOARD, L"fbe.dialog.idd_setting_other.keyboard", L"Keyboard layout");
+	SetRuntimeHotkeysText(m_hWnd, IDC_CHANGE_KEYB, L"fbe.dialog.idd_setting_other.change_keyboard", L"Change on input");
+	SetRuntimeHotkeysText(m_hWnd, IDC_SETTINGS_OTHER_CHANGE_TO, L"fbe.dialog.idd_setting_other.layout", L"Change to:");
 
 	m_hkGroups = GetDlgItem(IDC_LIST_HOTKEYS_GROUPS);
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)
@@ -74,6 +77,12 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_hotkeys.SetCurSel(m_selHk);
 
 	m_editHotkey.SubclassWindow(GetDlgItem(IDC_EDIT_HOTKEY));
+	m_changeKeyb = GetDlgItem(IDC_CHANGE_KEYB);
+	m_keybLayout = GetDlgItem(IDC_KEYB_LAYOUT);
+	m_changeKeyb.SetCheck(_Settings.GetChangeKeybLayout());
+	TCHAR name[255]; HKL layouts[16]; int count = GetKeyboardLayoutList(16, layouts);
+	for(int i = 0; i < count; ++i) { LCID locale = MAKELCID((LANGID)((UINT)layouts[i] & 0xffff), SORT_DEFAULT); GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, 255); m_keybLayout.AddString(name); m_keybLayout.SetItemData(i, locale); }
+	for(int i = 0; i < count; ++i) if(m_keybLayout.GetItemData(i) == _Settings.GetKeybLayout()) { m_keybLayout.SetCurSel(i); break; }
 	ClearAndSet();
 
 	return 0;
@@ -226,6 +235,8 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyDelete(WORD wNotifyCode, WOR
 
 LRESULT CSettingsHotkeysDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 {
+	_Settings.SetChangeKeybLayout(m_changeKeyb.GetCheck() == BST_CHECKED);
+	if(m_keybLayout.GetCurSel() >= 0) _Settings.SetKeybLayout(m_keybLayout.GetItemData(m_keybLayout.GetCurSel()));
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)
 	{
 		for(unsigned int j = 0; j < _Settings.m_hotkey_groups.at(i).m_hotkeys.size(); ++j)

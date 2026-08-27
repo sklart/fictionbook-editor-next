@@ -38,6 +38,8 @@ foreach ($dialogId in @('IDD_TOOLS_SETTINGS', 'IDD_SETTING_OTHER', 'IDD_HOTKEYS'
 $sourceDialog = Get-Dialog 'IDD_SETTINGS_SOURCE'
 $generalDialog = Get-Dialog 'IDD_SETTINGS_GENERAL'
 $advancedDialog = Get-Dialog 'IDD_SETTINGS_ADVANCED'
+$hotkeysDialog = Get-Dialog 'IDD_HOTKEYS'
+$otherDialog = Get-Dialog 'IDD_SETTING_OTHER'
 Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 330, 320' 'Source page dimensions changed.'
 foreach ($control in @('IDC_SRCFONT', 'IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', 'IDC_SHOWEOL', 'IDC_SHOWWHITESPACE', 'IDC_SHOWLINENUMBERS', 'IDC_OPTIONS_SOURCE_PALETTE', 'IDC_OPTIONS_SOURCE_PREVIEW')) {
     Assert-Contains $sourceDialog $control "Source control missing from IDD_SETTINGS_SOURCE: $control"
@@ -48,6 +50,10 @@ foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_T
 foreach ($control in @('IDC_DEFAULT_SCRIPTS_FOLDER', 'IDC_SCRIPTS_FOLDER_PATH', 'IDC_SELECT_SCRIPTS_FOLDER_BUTTON', 'IDC_FAST_MODE')) {
     Assert-Contains $advancedDialog $control "Advanced control missing: $control"
     if ($generalDialog -match $control) { throw "Advanced control must not be in General: $control" }
+}
+foreach ($control in @('IDC_SETTINGS_OTHER_KEYBOARD', 'IDC_CHANGE_KEYB', 'IDC_SETTINGS_OTHER_CHANGE_TO', 'IDC_KEYB_LAYOUT')) {
+    Assert-Contains $hotkeysDialog $control "Keyboard-layout control missing from IDD_HOTKEYS: $control"
+    if ($otherDialog -match $control) { throw "Keyboard-layout control must not remain in IDD_SETTING_OTHER: $control" }
 }
 Assert-Contains $generalDialog 'IDC_UPDATE_CHANNEL,82,223,180,55' 'Update-channel selector geometry changed in IDD_SETTINGS_GENERAL.'
 foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE', 'IDC_UPDATE_CHANNEL')) {

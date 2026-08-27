@@ -201,7 +201,7 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 {
 	CAxDialogImpl<CSettingsSourcePage>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_SOURCE);
-	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_GROUP, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.source_view", L"Theme"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_GROUP, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_settings_source.theme", L"Theme"));
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_FONT, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.source_font", L"Editor font:"));
 	::SetDlgItemText(m_hWnd, IDC_WRAP, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.wrap_lines", L"Wrap lines"));
 	::SetDlgItemText(m_hWnd, IDC_SYNTAXHL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.syntax_highlight", L"Syntax highlighting"));

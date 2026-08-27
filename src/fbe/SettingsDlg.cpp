@@ -11,7 +11,7 @@ extern CSettings _Settings;
 // CSettingsDlg
 
 CSettingsDlg::CSettingsDlg() :
-	m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_otherPage(NULL), m_sourcePage(NULL),
+	m_advancedPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_otherPage(NULL), m_sourcePage(NULL),
 	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(SettingsPageId::Count),
 	m_pageLeft(0), m_pageTop(0), m_pageRightMargin(0), m_pageBottomMargin(0),
 	m_buttonWidth(0), m_buttonHeight(0), m_buttonGap(0), m_buttonBottomMargin(0),
