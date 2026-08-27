@@ -59,6 +59,7 @@ public:
 	bool AddNewWord(CString&, bool test = false);
 	bool FinishInlineEdit();
 	bool FinishNewWord();
+	bool HandleDefaultAction();
 	void RemoveWord(int);
 	LRESULT OnBnClickedButtonAdd(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBnClickedCheckSelall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);

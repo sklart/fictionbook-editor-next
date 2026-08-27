@@ -753,8 +753,6 @@ public:
 
 	void	SetNeedRestart();
 
-	CString	m_initial_scripts_folder;
-
 	// added by SeNS
 	void	SetUseSpellChecker(const bool value, bool apply = false);
 	void	SetHighlightMisspells(const bool value, bool apply = false);

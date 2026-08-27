@@ -443,7 +443,7 @@ void CSettingsWordsDlg::RemoveWord(int index)
 
 LRESULT CSettingsWordsDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
 {
-	if(Validate()) Commit();
+	HandleDefaultAction();
 	return 0;
 }
 
@@ -485,6 +485,23 @@ bool CSettingsWordsDlg::FinishNewWord()
 		return false;
 	m_edt_new.SetWindowText(L"");
 	return true;
+}
+
+bool CSettingsWordsDlg::HandleDefaultAction()
+{
+	if(m_editActive)
+	{
+		if(!FinishInlineEdit())
+			m_edit.SetFocus();
+		return true;
+	}
+	if(GetFocus() == m_edt_new)
+	{
+		if(!FinishNewWord())
+			m_edt_new.SetFocus();
+		return true;
+	}
+	return false;
 }
 
 bool CSettingsWordsDlg::Validate()

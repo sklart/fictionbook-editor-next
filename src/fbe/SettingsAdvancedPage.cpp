@@ -18,9 +18,9 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_scriptsFolder = GetDlgItem(IDC_SCRIPTS_FOLDER_PATH);
 	m_selectScriptsFolder = GetDlgItem(IDC_SELECT_SCRIPTS_FOLDER_BUTTON);
 	m_fastMode = GetDlgItem(IDC_FAST_MODE);
-	_Settings.m_initial_scripts_folder = _Settings.GetScriptsFolder();
+	m_initialScriptsFolder = _Settings.GetScriptsFolder();
 	m_defaultScriptsFolder.SetCheck(_Settings.IsDefaultScriptsFolder());
-	m_scriptsFolder.SetWindowText(_Settings.m_initial_scripts_folder);
+	m_scriptsFolder.SetWindowText(m_initialScriptsFolder);
 	m_scriptsFolder.SetReadOnly(_Settings.IsDefaultScriptsFolder());
 	m_selectScriptsFolder.EnableWindow(!_Settings.IsDefaultScriptsFolder());
 	m_scriptsSwitched = _Settings.IsDefaultScriptsFolder();
@@ -37,7 +37,7 @@ void CSettingsAdvancedPage::Commit()
 {
 	CString folder; m_scriptsFolder.GetWindowText(folder);
 	_Settings.SetScriptsFolder(folder.IsEmpty() ? _Settings.GetDefaultScriptsFolder() : folder, true);
-	if(_Settings.m_initial_scripts_folder != _Settings.GetScriptsFolder()) _Settings.SetNeedRestart();
+	if(m_initialScriptsFolder != _Settings.GetScriptsFolder()) _Settings.SetNeedRestart();
 	_Settings.SetFastMode(m_fastMode.GetCheck() == BST_CHECKED);
 }
 LRESULT CSettingsAdvancedPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
