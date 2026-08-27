@@ -25,6 +25,7 @@ $consumers = @{
     IDD_SPELL_CHECK = @{ File = 'src\fbe\Speller.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SPELL_CHECK\)' }
     IDD_WORDS = @{ File = 'src\fbe\Words.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_WORDS\)' }
     IDD_SETTING_OTHER = @{ File = 'src\fbe\SettingsOtherDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTING_OTHER\)' }
+    IDD_SETTINGS_GENERAL = @{ File = 'src\fbe\SettingsGeneralPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_GENERAL\)' }
     IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\SettingsSourcePage.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
     IDD_OPTIONS = @{ File = 'src\fbe\OptDlg.cpp'; Invocation = 'SetRuntimeDialogItemText' }
 }

@@ -120,9 +120,6 @@
     <ClCompile Include="SettingsOtherDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsNextDlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="SettingsWordsDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -263,9 +260,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SettingsOtherDlg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SettingsNextDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SettingsWordsDlg.h">

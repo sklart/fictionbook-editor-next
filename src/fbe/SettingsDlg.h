@@ -5,7 +5,6 @@
 #include "resource.h"
 #include "OptDlg.h"
 #include "SettingsOtherDlg.h"
-#include "SettingsNextDlg.h"
 #include "SettingsHotkeysDlg.h"
 #include "SettingsWordsDlg.h"
 #include "SettingsGeneralPage.h"

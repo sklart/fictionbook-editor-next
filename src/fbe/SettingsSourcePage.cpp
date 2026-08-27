@@ -1,4 +1,4 @@
-// SettingsNextDlg.cpp : реализация вкладки параметров FBE Next.
+// SettingsSourcePage.cpp : Source settings page implementation.
 
 #include "stdafx.h"
 #include "SettingsSourcePage.h"
@@ -200,6 +200,14 @@ static bool IsHighContrastEnabled()
 LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsSourcePage>::OnInitDialog(uMsg, wParam, lParam, bHandled);
+	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_SOURCE);
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_FONT, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.source_font", L"Editor font:"));
+	::SetDlgItemText(m_hWnd, IDC_WRAP, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.wrap_lines", L"Wrap lines"));
+	::SetDlgItemText(m_hWnd, IDC_SYNTAXHL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.syntax_highlight", L"Syntax highlighting"));
+	::SetDlgItemText(m_hWnd, IDC_TAGHL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight", L"Highlight matched tags"));
+	::SetDlgItemText(m_hWnd, IDC_SHOWEOL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.show_eol", L"Show end of line marks"));
+	::SetDlgItemText(m_hWnd, IDC_SHOWWHITESPACE, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.show_whitespace", L"Show white spaces"));
+	::SetDlgItemText(m_hWnd, IDC_SHOWLINENUMBERS, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.show_line_numbers", L"Show line numbers"));
 	m_source_palette = GetDlgItem(IDC_OPTIONS_SOURCE_PALETTE);
 	m_srcfonts = GetDlgItem(IDC_SRCFONT);
 	CSimpleArray<CString> fonts;

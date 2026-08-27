@@ -1,4 +1,4 @@
-// SettingsNextDlg.h : вкладка параметров, относящихся к FBE Next.
+// SettingsSourcePage.h : Source settings page declaration.
 
 #pragma once
 

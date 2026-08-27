@@ -204,7 +204,6 @@
 #define IDS_WORDS_WLIST_WORD            250
 #define IDS_HOTKEY_SYMBOL_DIVISION_SIGN 251
 #define IDD_SETTINGS_WORDS              251
-#define IDD_SETTING_NEXT                256
 #define IDD_SETTINGS_GENERAL            257
 #define IDD_SETTINGS_EDITOR             258
 #define IDD_SETTINGS_SPELLING           259
