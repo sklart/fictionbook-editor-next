@@ -4,6 +4,7 @@
 #include "resource.h"
 #include "Settings.h"
 #include "SettingsPageLifecycle.h"
+#include "SettingsTooltips.h"
 
 // CSettingsWordsDlg
 class CSettingsWordsDlg : public CDialogImpl<CSettingsWordsDlg>, public ISettingsPage
@@ -15,6 +16,7 @@ public:
 	CEdit				m_edit;
 	CButton				m_chk_all;
 	CButton				m_show_words_excls;
+	CSettingsTooltips	m_tooltips;
 
 	int m_sort;
 	bool m_sel_all;

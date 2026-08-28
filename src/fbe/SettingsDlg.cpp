@@ -25,24 +25,6 @@ CSettingsDlg::~CSettingsDlg()
 {
 }
 
-typedef BOOL (__stdcall *PFNISTHEMEACTIVE)();
-typedef HRESULT (__stdcall *PFNENABLETHEMEDIALOGTEXTURE)(HWND hwnd, DWORD dwFlags);
-
-static HMODULE LoadSystemLibrary(LPCTSTR fileName)
-{
-	TCHAR systemDirectory[MAX_PATH];
-	const UINT length = ::GetSystemDirectory(systemDirectory, _countof(systemDirectory));
-	if (length == 0 || length >= _countof(systemDirectory))
-		return NULL;
-
-	CString libraryPath(systemDirectory);
-	if (libraryPath.Right(1) != _T("\\"))
-		libraryPath += _T("\\");
-	libraryPath += fileName;
-
-	return ::LoadLibrary(libraryPath);
-}
-
 LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
@@ -94,19 +76,6 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_pageLifecycle[PageIndex(SettingsPageId::Keyboard)] = m_hotkeysPage;
 	m_pageLifecycle[PageIndex(SettingsPageId::Words)] = m_wordsPage;
 	m_pageLifecycle[PageIndex(SettingsPageId::Advanced)] = m_advancedPage;
-
-	HMODULE hThemeDll = LoadSystemLibrary(_T("UxTheme.dll"));
-	if (hThemeDll != NULL)
-	{
-		PFNENABLETHEMEDIALOGTEXTURE pEnableThemeDialogTexture = (PFNENABLETHEMEDIALOGTEXTURE)GetProcAddress(hThemeDll, "EnableThemeDialogTexture");
-		if(pEnableThemeDialogTexture)
-		{
-			pEnableThemeDialogTexture(*m_advancedPage, ETDT_USETABTEXTURE);
-			pEnableThemeDialogTexture(*m_imagesPage, ETDT_USETABTEXTURE);
-			pEnableThemeDialogTexture(*m_sourcePage, ETDT_USETABTEXTURE);
-		}
-		FreeLibrary(hThemeDll);
-	}	
 
 	CRect client;
 	GetClientRect(client);

@@ -21,6 +21,7 @@ BEGIN_MSG_MAP(CSettingsAdvancedPage)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 	COMMAND_HANDLER(IDC_DEFAULT_SCRIPTS_FOLDER, BN_CLICKED, OnDefaultScriptsFolder)
 	COMMAND_HANDLER(IDC_SELECT_SCRIPTS_FOLDER_BUTTON, BN_CLICKED, OnSelectScriptsFolder)
+	COMMAND_HANDLER(IDC_SCRIPTS_FOLDER_PATH, EN_CHANGE, OnScriptsFolderChanged)
 	CHAIN_MSG_MAP(CAxDialogImpl<CSettingsAdvancedPage>)
 END_MSG_MAP()
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
@@ -28,5 +29,7 @@ END_MSG_MAP()
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnDefaultScriptsFolder(WORD, WORD, HWND, BOOL&);
 	LRESULT OnSelectScriptsFolder(WORD, WORD, HWND, BOOL&);
+	LRESULT OnScriptsFolderChanged(WORD, WORD, HWND, BOOL&);
+	void UpdateScriptsFolderTooltip();
 	bool Validate(); void Commit(); bool CancelChanges();
 };

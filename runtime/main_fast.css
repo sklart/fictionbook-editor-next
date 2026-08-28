@@ -149,6 +149,27 @@ div#fbw_body div.body {
 	margin: 0px;
 }
 
+/* Keep the document structure intact in fast mode. Native table elements
+   need the same cell boundaries and wrapping rules as the full stylesheet. */
+div#fbw_body table.table {
+	border-collapse: collapse;
+	border: solid 1px #808080;
+	margin: 0.5em 0;
+	max-width: 100%;
+}
+div#fbw_body table.table th,
+div#fbw_body table.table td {
+	border: solid 1px #808080;
+	padding: 0.25em 0.4em;
+	vertical-align: top;
+	text-indent: 0;
+	word-wrap: break-word;
+}
+div#fbw_body table.table th {
+	background-color: #E6E6E6;
+	font-weight: bold;
+}
+
 div.section{
 }
 div.cite{
@@ -291,4 +312,3 @@ span.image{
 	clear: both;
 	text-align: center;
 }
-

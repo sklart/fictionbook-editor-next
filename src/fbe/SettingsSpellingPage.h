@@ -16,8 +16,9 @@ public:
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
-		COMMAND_HANDLER(IDC_USESPELLCHECKER, BN_CLICKED, OnSpellcheckerChanged)
-		COMMAND_HANDLER(IDC_DICTPATH, BN_CLICKED, OnBrowseDictionary)
+	COMMAND_HANDLER(IDC_USESPELLCHECKER, BN_CLICKED, OnSpellcheckerChanged)
+	COMMAND_HANDLER(IDC_DICTPATH, BN_CLICKED, OnBrowseDictionary)
+	COMMAND_HANDLER(IDC_CUSTOM_DICT, EN_CHANGE, OnDictionaryChanged)
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsSpellingPage>)
 	END_MSG_MAP()
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
@@ -25,7 +26,9 @@ public:
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnBrowseDictionary(WORD, WORD, HWND, BOOL&);
+	LRESULT OnDictionaryChanged(WORD, WORD, HWND, BOOL&);
 	bool Validate(); void Commit(); bool CancelChanges();
 private:
 	void UpdateDependencies();
+	void UpdateDictionaryTooltip();
 };

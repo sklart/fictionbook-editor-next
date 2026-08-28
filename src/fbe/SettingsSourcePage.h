@@ -8,6 +8,7 @@
 #include "resource.h"
 #include "Settings.h"
 #include "SettingsPageLifecycle.h"
+#include "SettingsTooltips.h"
 
 class CSettingsSourcePage : public CAxDialogImpl<CSettingsSourcePage>, public ISettingsPage
 {
@@ -15,7 +16,7 @@ class CSettingsSourcePage : public CAxDialogImpl<CSettingsSourcePage>, public IS
     CComboBox m_special_chars_style;
     CComboBox m_srcfonts;
     CButton m_src_wrap, m_src_hl, m_src_taghl, m_src_eol, m_src_whitespace, m_src_line_numbers;
-    CToolTipCtrl m_source_tooltips;
+    CSettingsTooltips m_source_tooltips;
     std::vector<CString> m_source_theme_ids;
     std::vector<CString> m_source_theme_display_names;
     std::vector<CString> m_source_theme_names;
@@ -29,7 +30,6 @@ public:
 BEGIN_MSG_MAP(CSettingsSourcePage)
 	MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 	MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
-	MESSAGE_RANGE_HANDLER(WM_MOUSEFIRST, WM_MOUSELAST, OnMouseMessage)
 	COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_PALETTE, CBN_SELCHANGE, OnSourcePaletteChanged)
@@ -54,7 +54,6 @@ END_MSG_MAP()
 	LRESULT OnThemeActions(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnSourceColorChanged(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnDrawItem(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-	LRESULT OnMouseMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	void ReloadSourceThemes(const CString& selectedThemeId);
 	void LoadSourceThemeControlsFromSettings();
 	void UpdateSourceColorTooltips();

@@ -5,6 +5,7 @@
 #include <atlhost.h>
 #include <vector>
 #include "SettingsPageLifecycle.h"
+#include "SettingsTooltips.h"
 
 class CHotkey;
 class CHotkeysGroup;
@@ -67,6 +68,7 @@ public:
 	CAccelEdit	m_editHotkey;
 	CButton m_changeKeyb;
 	CComboBox m_keybLayout;
+	CSettingsTooltips m_tooltips;
 	std::vector<CString> m_keyboardLayoutIds;
 
 	CSimpleMap<CString, CHotkey*>	m_mapHotkeys;

@@ -29,6 +29,7 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_scriptsFolder.SetReadOnly(_Settings.IsDefaultScriptsFolder());
 	m_selectScriptsFolder.EnableWindow(!_Settings.IsDefaultScriptsFolder());
 	m_scriptsSwitched = _Settings.IsDefaultScriptsFolder();
+	UpdateScriptsFolderTooltip();
 	m_fastMode.SetCheck(_Settings.FastMode());
 	return 1;
 }
@@ -63,7 +64,7 @@ bool CSettingsAdvancedPage::Validate()
 void CSettingsAdvancedPage::Commit()
 {
 	CString folder; m_scriptsFolder.GetWindowText(folder); folder = NormalizeScriptsFolderStoredPath(folder);
-	_Settings.SetScriptsFolder(folder.IsEmpty() ? _Settings.GetDefaultScriptsFolder() : folder, true);
+	_Settings.SetScriptsFolder(m_scriptsSwitched || folder.IsEmpty() ? _Settings.GetDefaultScriptsFolderStored() : folder, true);
 	if(m_initialScriptsFolder.CompareNoCase(_Settings.GetResolvedScriptsFolder()) != 0) _Settings.SetNeedRestart();
 	_Settings.SetFastMode(m_fastMode.GetCheck() == BST_CHECKED);
 }
@@ -71,13 +72,30 @@ LRESULT CSettingsAdvancedPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return
 bool CSettingsAdvancedPage::CancelChanges() { return true; }
 LRESULT CSettingsAdvancedPage::OnDefaultScriptsFolder(WORD, WORD, HWND, BOOL&)
 {
-	if(!m_scriptsSwitched) { m_scriptsFolder.SetWindowText(_Settings.GetDefaultScriptsFolder()); m_scriptsFolder.SetReadOnly(true); m_selectScriptsFolder.EnableWindow(false); }
+	if(!m_scriptsSwitched) { m_scriptsFolder.SetWindowText(_Settings.GetDefaultScriptsFolderStored()); m_scriptsFolder.SetReadOnly(true); m_selectScriptsFolder.EnableWindow(false); }
 	else { m_scriptsFolder.SetReadOnly(false); m_selectScriptsFolder.EnableWindow(true); }
-	m_scriptsSwitched = !m_scriptsSwitched; return 0;
+	m_scriptsSwitched = !m_scriptsSwitched; UpdateScriptsFolderTooltip(); return 0;
 }
 LRESULT CSettingsAdvancedPage::OnSelectScriptsFolder(WORD, WORD, HWND, BOOL&)
 {
 	CFolderDialog dialog(NULL, FbeLoadCString(IDS_CHOOSE_SCRIPTS_FLD), BIF_NEWDIALOGSTYLE | BIF_RETURNONLYFSDIRS);
-	if(dialog.DoModal(*this) == IDOK) { CString folder(dialog.m_szFolderPath); m_scriptsFolder.SetWindowText(folder); }
+	if(dialog.DoModal(*this) == IDOK) { CString folder(dialog.m_szFolderPath); m_scriptsFolder.SetWindowText(folder); UpdateScriptsFolderTooltip(); }
 	return 0;
+}
+LRESULT CSettingsAdvancedPage::OnScriptsFolderChanged(WORD, WORD, HWND, BOOL&)
+{
+	UpdateScriptsFolderTooltip();
+	return 0;
+}
+void CSettingsAdvancedPage::UpdateScriptsFolderTooltip()
+{
+	CString stored; m_scriptsFolder.GetWindowText(stored);
+	stored = NormalizeScriptsFolderStoredPath(stored);
+	const CString resolved = ResolveScriptsFolderPath(stored);
+	CString text;
+	if(!stored.IsEmpty() && stored.CompareNoCase(resolved) != 0)
+		text.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.advanced.scripts_folder_dynamic", L"Stored: %s\nActual path: %s"), stored.GetString(), resolved.GetString());
+	else
+		text.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.advanced.scripts_folder_absolute", L"Path: %s"), resolved.GetString());
+	m_tooltips.UpdateText(m_scriptsFolder, text);
 }

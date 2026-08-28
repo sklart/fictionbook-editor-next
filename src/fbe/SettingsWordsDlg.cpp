@@ -99,6 +99,14 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 
 	m_edt_new = GetDlgItem(IDC_EDIT_NEW);
 	m_chk_all = GetDlgItem(IDC_CHECK_SELALL);
+	m_btn_add = GetDlgItem(IDC_BUTTON_ADD);
+	m_tooltips.Initialize(m_hWnd);
+	m_tooltips.Add(m_list_words, L"fbe.settings.tooltip.words.list", L"Words excluded from the Words dialog. The count shows how many times each word was encountered.");
+	m_tooltips.Add(m_edt_new, L"fbe.settings.tooltip.words.new", L"Enter a word to exclude, then press Add or Enter.");
+	m_tooltips.Add(m_btn_add, L"fbe.settings.tooltip.words.add", L"Add the entered word to the exclusion list.");
+	m_tooltips.Add(m_chk_all, L"fbe.settings.tooltip.words.select_all", L"Select or clear every word in the list.");
+	m_tooltips.Add(GetDlgItem(IDC_BUTTON_REMOVESEL), L"fbe.settings.tooltip.words.remove", L"Remove the selected words from the exclusion list.");
+	m_tooltips.Add(GetDlgItem(IDC_CHECK_SHOW_EXCLUSIONS), L"fbe.settings.tooltip.words.show_exclusions", L"Show excluded words in the Words dialog.");
 
 	SetRuntimeSettingsWordsText(m_hWnd, IDC_BUTTON_ADD, L"fbe.dialog.idd_settings_words.add", L"Add");
 	SetRuntimeSettingsWordsText(m_hWnd, IDC_STATIC_WORDS_CHEVRON, L"fbe.dialog.idd_settings_words.group", L"Words");

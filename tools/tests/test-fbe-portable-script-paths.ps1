@@ -33,9 +33,13 @@ Assert-NotContains $scriptLoader 'strlcatW(' 'Загрузка пользова�
 $settings = Get-ProjectText 'src\fbe\Settings.cpp'
 Assert-Contains $settings 'CompareNoCase(GetDefaultScriptsFolder())' 'Сравнение пути Scripts без изменения регистра'
 Assert-NotContains $settings 'path.MakeLower();' 'Путь стандартного каталога Scripts'
+Assert-Contains $settings 'GetDefaultScriptsFolderStored' 'Отдельное portable-friendly хранимое значение Scripts'
+Assert-Contains $settings 'm_scripts_folder		= GetDefaultScriptsFolderStored();' 'Значение Scripts по умолчанию хранится относительно каталога FBE'
 
 $settingsDialog = Get-ProjectText 'src\fbe\SettingsAdvancedPage.cpp'
 Assert-NotContains $settingsDialog 'folderPath.MakeLower();' 'Выбор пользовательского каталога Scripts'
+Assert-Contains $settingsDialog '_Settings.GetDefaultScriptsFolderStored()' 'Default folder не превращается в абсолютный путь в Settings'
+Assert-Contains $settingsDialog 'm_initialScriptsFolder.CompareNoCase(_Settings.GetResolvedScriptsFolder())' 'Перезапуск сравнивает канонические resolved-пути'
 
 $mainFrame = Get-ProjectText 'src\fbe\mainfrm.cpp'
 Assert-Contains $mainFrame 'Каталог пользовательских скриптов' 'Диагностический журнал Scripts'

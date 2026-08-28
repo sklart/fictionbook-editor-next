@@ -24,7 +24,7 @@ LRESULT CSettingsSpellingPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_DICTPATH, L"fbe.dialog.idd_options.dict_browse", L"Browse...");
 	m_enabled.SetCheck(_Settings.GetUseSpellChecker() ? BST_CHECKED : BST_UNCHECKED);
 	m_highlight.SetCheck(_Settings.GetHighlightMisspells() ? BST_CHECKED : BST_UNCHECKED);
-	m_dictionary.SetWindowText(_Settings.GetCustomDict()); UpdateDependencies(); return 1;
+	m_dictionary.SetWindowText(_Settings.GetCustomDict()); UpdateDictionaryTooltip(); UpdateDependencies(); return 1;
 }
 void CSettingsSpellingPage::UpdateDependencies() { const BOOL enabled = m_enabled.GetCheck() == BST_CHECKED; m_highlight.EnableWindow(enabled); m_dictionary.EnableWindow(enabled); GetDlgItem(IDC_DICTPATH).EnableWindow(enabled); }
 LRESULT CSettingsSpellingPage::OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&) { UpdateDependencies(); return 0; }
@@ -66,5 +66,21 @@ LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 	wchar_t path[_MAX_PATH] = {}; m_dictionary.GetWindowText(path, _countof(path));
 	CString filter = FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.filter.dictionary", L"Dictionaries (*.dic)"); filter += L'\0'; filter += L"*.dic"; filter += L'\0'; filter += FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.filter.all_files", L"All files (*.*)"); filter += L'\0'; filter += L"*.*"; filter += L'\0'; filter += L'\0';
 	OPENFILENAME dialog = {}; dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = m_hWnd; dialog.hInstance = _Module.m_hInst; dialog.lpstrDefExt = L"dic"; dialog.lpstrFilter = filter; dialog.lpstrFile = path; dialog.nMaxFile = _countof(path); dialog.Flags = OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
-	if(GetOpenFileName(&dialog)) m_dictionary.SetWindowText(path); return 0;
+	if(GetOpenFileName(&dialog)) { m_dictionary.SetWindowText(path); UpdateDictionaryTooltip(); } return 0;
+}
+LRESULT CSettingsSpellingPage::OnDictionaryChanged(WORD, WORD, HWND, BOOL&)
+{
+	UpdateDictionaryTooltip();
+	return 0;
+}
+void CSettingsSpellingPage::UpdateDictionaryTooltip()
+{
+	CString stored; m_dictionary.GetWindowText(stored); stored.Trim();
+	const CString resolved = U::ResolveUserDataFile(stored);
+	CString text;
+	if(!stored.IsEmpty() && stored.CompareNoCase(resolved) != 0)
+		text.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.spelling.custom_dictionary_dynamic", L"Stored: %s\nActual path: %s"), stored.GetString(), resolved.GetString());
+	else
+		text.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.tooltip.spelling.custom_dictionary_absolute", L"Path: %s"), resolved.GetString());
+	m_tooltips.UpdateText(m_dictionary, text);
 }

@@ -707,6 +707,7 @@ public:
 	CString GetScriptsFolder() const;
 	CString GetScriptsFolderStored() const;
 	CString GetResolvedScriptsFolder() const;
+	CString GetDefaultScriptsFolderStored() const;
 	CString GetDefaultScriptsFolder();
 	bool	IsDefaultScriptsFolder();
 	bool	GetInsImageAsking()const;

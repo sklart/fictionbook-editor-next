@@ -225,16 +225,15 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_src_wrap.SetCheck(_Settings.XmlSrcWrap()); m_src_hl.SetCheck(_Settings.XmlSrcSyntaxHL()); m_src_taghl.SetCheck(_Settings.XmlSrcTagHL());
 	m_src_eol.SetCheck(_Settings.XmlSrcShowEOL()); m_src_whitespace.SetCheck(_Settings.XmlSrcShowSpace()); m_src_line_numbers.SetCheck(_Settings.XMLSrcShowLineNumbers());
 	m_source_palette.SetDroppedWidth(250);
-	m_source_tooltips.Create(m_hWnd);
-	m_source_tooltips.SetMaxTipWidth(320);
-	m_source_tooltips.AddTool(m_source_palette, ThemeString(L"fbe.theme.tooltip.palette", L"Choose a built-in or user source highlighting theme.").GetString());
-	m_source_tooltips.AddTool(GetDlgItem(IDC_OPTIONS_SOURCE_THEME_ACTIONS), ThemeString(L"fbe.theme.tooltip.actions", L"Import, export, save a copy, or delete a user theme.").GetString());
-	m_source_tooltips.AddTool(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_TEXT), ThemeString(L"fbe.theme.tooltip.text", L"XML plain text color.").GetString());
-	m_source_tooltips.AddTool(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_TAG), ThemeString(L"fbe.theme.tooltip.tag", L"XML tag names and delimiters color.").GetString());
-	m_source_tooltips.AddTool(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE), ThemeString(L"fbe.theme.tooltip.attribute", L"XML attribute names color.").GetString());
-	m_source_tooltips.AddTool(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_STRING), ThemeString(L"fbe.theme.tooltip.value", L"XML attribute values color.").GetString());
-	m_source_tooltips.AddTool(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_BACKGROUND), ThemeString(L"fbe.theme.tooltip.background", L"Source editor and preview background color.").GetString());
-	m_source_tooltips.AddTool(GetDlgItem(IDC_OPTIONS_SOURCE_COLORS_RESET), ThemeString(L"fbe.theme.tooltip.reset", L"Remove manual overrides and restore the selected theme colors.").GetString());
+	m_source_tooltips.Initialize(m_hWnd);
+	m_source_tooltips.Add(m_source_palette, L"fbe.theme.tooltip.palette", L"Choose a built-in or user source highlighting theme.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_THEME_ACTIONS), L"fbe.theme.tooltip.actions", L"Import, export, save a copy, or delete a user theme.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_TEXT), L"fbe.theme.tooltip.text", L"XML plain text color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_TAG), L"fbe.theme.tooltip.tag", L"XML tag names and delimiters color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE), L"fbe.theme.tooltip.attribute", L"XML attribute names color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_STRING), L"fbe.theme.tooltip.value", L"XML attribute values color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_BACKGROUND), L"fbe.theme.tooltip.background", L"Source editor and preview background color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLORS_RESET), L"fbe.theme.tooltip.reset", L"Remove manual overrides and restore the selected theme colors.");
 
 
 	const CString paletteText = FbeLoadRuntimeStringByKey(
@@ -342,7 +341,7 @@ void CSettingsSourcePage::UpdateSourceColorTooltips()
 			colorText.Format(ThemeString(L"fbe.theme.current_color", L"Current color: #%02X%02X%02X"),
 				GetRValue(color), GetGValue(color), GetBValue(color));
 		const CString text = label + L". " + colorText;
-		m_source_tooltips.UpdateTipText(text.GetString(), GetDlgItem(kSourceColorControls[i]));
+		m_source_tooltips.UpdateText(GetDlgItem(kSourceColorControls[i]), text);
 	}
 }
 
@@ -684,17 +683,6 @@ void CSettingsSourcePage::InvalidateSourcePreview()
 		::InvalidateRect(preview, NULL, TRUE);
 }
 
-LRESULT CSettingsSourcePage::OnMouseMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
-{
-	MSG message = {};
-	message.hwnd = m_hWnd;
-	message.message = uMsg;
-	message.wParam = wParam;
-	message.lParam = lParam;
-	m_source_tooltips.RelayEvent(&message);
-	bHandled = FALSE;
-	return 0;
-}
 LRESULT CSettingsSourcePage::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 {
 	DRAWITEMSTRUCT* drawItem = reinterpret_cast<DRAWITEMSTRUCT*>(lParam);

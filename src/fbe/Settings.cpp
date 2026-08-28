@@ -2194,9 +2194,14 @@ CString CSettings::GetResolvedScriptsFolder() const
 	return ResolveScriptsFolderPath(m_scripts_folder);
 }
 
+CString CSettings::GetDefaultScriptsFolderStored() const
+{
+	return NormalizeScriptsFolderStoredPath(DEFAULT_SCRIPTS_FOLDER);
+}
+
 CString CSettings::GetDefaultScriptsFolder()
 {
-	return U::GetProgDir() + DEFAULT_SCRIPTS_FOLDER + L"\\";
+	return ResolveScriptsFolderPath(GetDefaultScriptsFolderStored());
 }
 
 bool CSettings::IsDefaultScriptsFolder()
@@ -2715,7 +2720,7 @@ void CSettings::SetDefaults()
 	m_restore_file_position	= false;
 	m_interface_lang_id		= FBE_INTERFACE_LANGUAGE_AUTO;
 	m_genre_catalog			= GenreCatalog::Standard;
-	m_scripts_folder		= GetDefaultScriptsFolder();
+	m_scripts_folder		= GetDefaultScriptsFolderStored();
 	m_insimage_ask			= true;
 	m_ins_clear_image		= false;
 	m_create_backup_file		= true;
