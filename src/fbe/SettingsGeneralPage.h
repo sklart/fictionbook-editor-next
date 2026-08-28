@@ -3,6 +3,7 @@
 #include <atlhost.h>
 #include "resource.h"
 #include "SettingsPageLifecycle.h"
+#include "SettingsTooltips.h"
 
 class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public ISettingsPage
 {
@@ -12,6 +13,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CButton m_keepEncoding;
 	CButton m_restorePosition;
 	CComboBox m_updateChannel;
+	CSettingsTooltips m_tooltips;
 
 public:
 	enum { IDD = IDD_SETTINGS_GENERAL };

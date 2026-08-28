@@ -96,7 +96,8 @@ static bool ProductionCustomDictionarySmoke() {
         std::equal(wordBytes.begin(), wordBytes.end(), bytes.begin()) && validEol &&
         utf8 != koi8r && restored.GetSize() == 1 && restored[0] == word &&
         FbeCustomDictionaryContains(restored, word) &&
-        !FbeCustomDictionaryContains(restored, L"фбеспеллеруникальная");
+        !FbeCustomDictionaryContains(restored, L"фбеспеллеруникальная") &&
+        !ATLPath::FileExists(CString(tempFile) + L".tmp");
     DeleteFileW(tempFile);
     return ok;
 }

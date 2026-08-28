@@ -3,6 +3,7 @@
 #include <atlhost.h>
 #include "resource.h"
 #include "SettingsPageLifecycle.h"
+#include "SettingsTooltips.h"
 
 class CSettingsAdvancedPage : public CAxDialogImpl<CSettingsAdvancedPage>, public ISettingsPage
 {
@@ -11,6 +12,7 @@ class CSettingsAdvancedPage : public CAxDialogImpl<CSettingsAdvancedPage>, publi
 	CButton m_selectScriptsFolder;
 	bool m_scriptsSwitched;
 	CString m_initialScriptsFolder;
+	CSettingsTooltips m_tooltips;
 public:
 	enum { IDD = IDD_SETTINGS_ADVANCED };
 BEGIN_MSG_MAP(CSettingsAdvancedPage)

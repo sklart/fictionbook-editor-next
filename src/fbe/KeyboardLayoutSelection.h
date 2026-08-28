@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -16,7 +17,7 @@ enum class KeyboardLayoutSelectionKind
 
 struct KeyboardLayoutEntry
 {
-	DWORD legacyHkl;
+	uint32_t legacyHkl;
 	std::wstring klid;
 };
 
@@ -26,7 +27,22 @@ struct KeyboardLayoutSelection
 	int index;
 };
 
-inline KeyboardLayoutSelection ResolveKeyboardLayoutSelection(const std::wstring& storedKlid, DWORD legacyValue, DWORD activeLayout, const std::vector<KeyboardLayoutEntry>& layouts)
+inline std::wstring ResolveLegacyKeyboardLayoutId(uint32_t legacyValue)
+{
+	if(legacyValue == 0)
+		return std::wstring();
+	const wchar_t digits[] = L"0123456789abcdef";
+	std::wstring id(L"00000000");
+	uint32_t languageId = legacyValue & 0xffff;
+	for(int index = 7; index >= 4; --index)
+	{
+		id[index] = digits[languageId & 0xf];
+		languageId >>= 4;
+	}
+	return id;
+}
+
+inline KeyboardLayoutSelection ResolveKeyboardLayoutSelection(const std::wstring& storedKlid, uint32_t legacyValue, uint32_t activeLayout, const std::vector<KeyboardLayoutEntry>& layouts)
 {
 	if(!storedKlid.empty())
 	{

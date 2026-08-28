@@ -17,6 +17,14 @@ LRESULT CSettingsImagesPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_imageImportJpegQuality = GetDlgItem(IDC_IMAGE_IMPORT_JPEG_QUALITY);
 	m_imageImportJpegSpin = GetDlgItem(IDC_IMAGE_IMPORT_JPEG_SPIN);
 	m_imageImportKeepSupported = GetDlgItem(IDC_IMAGE_IMPORT_KEEP_SUPPORTED);
+	m_tooltips.Initialize(m_hWnd);
+	m_tooltips.Add(m_askImage, L"fbe.settings.tooltip.images.ask_empty", L"Asks for confirmation before creating an empty image container.");
+	m_tooltips.Add(m_clearImages, L"fbe.settings.tooltip.images.empty_image", L"Creates an empty image when inserting an image placeholder.");
+	m_tooltips.Add(m_imageType, L"fbe.settings.tooltip.images.paste_format", L"Selects the format used when an inserted image is converted.");
+	m_tooltips.Add(m_jpegQuality, L"fbe.settings.tooltip.images.paste_quality", L"JPEG quality used only when the inserted image is converted to JPEG.");
+	m_tooltips.Add(m_imageImportFormat, L"fbe.settings.tooltip.images.import_format", L"Selects the output format used when importing images.");
+	m_tooltips.Add(m_imageImportJpegQuality, L"fbe.settings.tooltip.images.import_quality", L"JPEG quality is used only when the selected import format produces JPEG.");
+	m_tooltips.Add(m_imageImportKeepSupported, L"fbe.settings.tooltip.images.keep_supported", L"Keeps supported JPEG and PNG images without re-encoding when possible.");
 
 	m_askImage.SetCheck(_Settings.GetInsImageAsking() ? BST_CHECKED : BST_UNCHECKED);
 	m_clearImages.SetCheck(_Settings.GetIsInsClearImage() ? BST_CHECKED : BST_UNCHECKED);

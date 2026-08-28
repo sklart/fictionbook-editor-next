@@ -7,6 +7,7 @@
 #include "AboutBox.h"
 #include "CFileDialogEx.h"
 #include "SettingsDlg.h"
+#include "KeyboardLayoutSelection.h"
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
@@ -2917,7 +2918,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   if (_Settings.GetChangeKeybLayout())
   {
 	  CString layout = _Settings.GetKeyboardLayoutId();
-	  if(layout.IsEmpty() && _Settings.GetKeybLayout() != 0) layout.Format(L"%08x", _Settings.GetKeybLayout());
+	  if(layout.IsEmpty()) layout = ResolveLegacyKeyboardLayoutId(_Settings.GetKeybLayout()).c_str();
 	  if(!layout.IsEmpty() && !LoadKeyboardLayout(layout, KLF_ACTIVATE))
 		  StartupTrace::Warning(L"startup", L"ST126", L"Configured keyboard layout could not be loaded.");
 	}

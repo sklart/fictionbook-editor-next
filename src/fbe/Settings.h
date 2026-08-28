@@ -10,6 +10,7 @@
 #include <vector>
 
 CString ResolveScriptsFolderPath(const CString& path);
+CString NormalizeScriptsFolderStoredPath(const CString& path);
 
 #include "resource.h"
 #include "res1.h"
@@ -704,6 +705,8 @@ public:
 	CString ResolveGenreCatalogFileName()const;
 	CString GetInterfaceLanguageName()const;
 	CString GetScriptsFolder() const;
+	CString GetScriptsFolderStored() const;
+	CString GetResolvedScriptsFolder() const;
 	CString GetDefaultScriptsFolder();
 	bool	IsDefaultScriptsFolder();
 	bool	GetInsImageAsking()const;

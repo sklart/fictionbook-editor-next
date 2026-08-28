@@ -4,6 +4,7 @@
 #include <ColorButton.h>
 #include "resource.h"
 #include "SettingsPageLifecycle.h"
+#include "SettingsTooltips.h"
 
 class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public ISettingsPage
 {
@@ -12,6 +13,7 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 	CComboBox m_fonts;
 	CComboBox m_fontSize;
 	CComboBox m_nbspCharacter;
+	CSettingsTooltips m_tooltips;
 
 public:
 	enum { IDD = IDD_SETTINGS_EDITOR };

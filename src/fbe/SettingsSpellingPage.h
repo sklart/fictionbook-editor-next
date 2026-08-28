@@ -2,12 +2,14 @@
 #include <atlhost.h>
 #include "resource.h"
 #include "SettingsPageLifecycle.h"
+#include "SettingsTooltips.h"
 
 class CSettingsSpellingPage : public CAxDialogImpl<CSettingsSpellingPage>, public ISettingsPage
 {
 	CButton m_enabled;
 	CButton m_highlight;
 	CEdit m_dictionary;
+	CSettingsTooltips m_tooltips;
 public:
 	enum { IDD = IDD_SETTINGS_SPELLING };
 	BEGIN_MSG_MAP(CSettingsSpellingPage)

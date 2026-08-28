@@ -3,6 +3,7 @@
 #include <atlhost.h>
 #include "resource.h"
 #include "SettingsPageLifecycle.h"
+#include "SettingsTooltips.h"
 
 class CSettingsImagesPage : public CAxDialogImpl<CSettingsImagesPage>, public ISettingsPage
 {
@@ -10,6 +11,7 @@ class CSettingsImagesPage : public CAxDialogImpl<CSettingsImagesPage>, public IS
 	CComboBox m_imageType, m_imageImportFormat;
 	CUpDownCtrl m_jpegSpin, m_imageImportJpegSpin;
 	CEdit m_jpegQuality, m_imageImportJpegQuality;
+	CSettingsTooltips m_tooltips;
 public:
 	enum { IDD = IDD_SETTINGS_IMAGES };
 BEGIN_MSG_MAP(CSettingsImagesPage)

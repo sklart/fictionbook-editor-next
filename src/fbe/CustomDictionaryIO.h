@@ -35,10 +35,12 @@ inline void FbeLoadCustomDictionary(const CString& path, UINT codePage, CSimpleA
 
 inline bool FbeSaveCustomDictionary(const CString& path, UINT codePage, const CSimpleArray<CString>& words)
 {
+	const CString temporaryPath = path + L".tmp";
 	try
 	{
+		::DeleteFile(temporaryPath);
 		std::ofstream output;
-		output.open(path, std::ios_base::out | std::ios_base::trunc);
+		output.open(temporaryPath, std::ios_base::out | std::ios_base::trunc);
 		if (!output.is_open())
 			return false;
 		for (int i = 0; i < words.GetSize(); ++i)
@@ -48,7 +50,15 @@ inline bool FbeSaveCustomDictionary(const CString& path, UINT codePage, const CS
 			output << FbeEncodeDictionaryWord(word, codePage) << '\n';
 		}
 		output.flush();
-		return output.good();
+		const bool written = output.good();
+		output.close();
+		if(!written || !output.good()) { ::DeleteFile(temporaryPath); return false; }
+		const bool replacingExisting = ::GetFileAttributes(path) != INVALID_FILE_ATTRIBUTES;
+		const BOOL moved = replacingExisting
+			? ::ReplaceFile(path, temporaryPath, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS, NULL, NULL)
+			: ::MoveFileEx(temporaryPath, path, MOVEFILE_WRITE_THROUGH);
+		if(!moved) { ::DeleteFile(temporaryPath); return false; }
+		return true;
 	}
-	catch (...) { return false; }
+	catch (...) { ::DeleteFile(temporaryPath); return false; }
 }

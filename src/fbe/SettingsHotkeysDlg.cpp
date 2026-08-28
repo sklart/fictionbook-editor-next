@@ -105,10 +105,11 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	std::vector<KeyboardLayoutEntry> keyboardLayouts;
 	for(int i = 0; i < count; ++i)
 	{
+		name[0] = L'\0';
 		const DWORD legacyHkl = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(layouts[i]));
 		const CString klid = GetKeyboardLayoutId(layouts[i], originalLayout);
 		LCID locale = MAKELCID((LANGID)(legacyHkl & 0xffff), SORT_DEFAULT);
-		GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, _countof(name));
+		if(!GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, _countof(name))) name[0] = L'\0';
 		CString label; label.Format(L"%s — %s", name[0] ? name : FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.keyboard_layout", L"Keyboard layout").GetString(), klid.IsEmpty() ? FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.unavailable", L"Unavailable").GetString() : klid.GetString());
 		const int item = m_keybLayout.AddString(label);
 		m_keybLayout.SetItemData(item, legacyHkl);

@@ -28,6 +28,12 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_fonts = GetDlgItem(IDC_FONT);
 	m_fontSize = GetDlgItem(IDC_FONT_SIZE);
 	m_nbspCharacter = GetDlgItem(IDC_NBSP_CHAR);
+	m_tooltips.Initialize(m_hWnd);
+	m_tooltips.Add(m_fonts, L"fbe.settings.tooltip.editor.font", L"Font used in the visual editor.");
+	m_tooltips.Add(m_fontSize, L"fbe.settings.tooltip.editor.font_size", L"Font size used in the visual editor.");
+	m_tooltips.Add(m_foreground, L"fbe.settings.tooltip.editor.foreground", L"Text color in the visual editor.");
+	m_tooltips.Add(m_background, L"fbe.settings.tooltip.editor.background", L"Background color in the visual editor.");
+	m_tooltips.Add(m_nbspCharacter, L"fbe.settings.tooltip.editor.nbsp", L"Changes only the visual representation of non-breaking spaces; document content is not changed.");
 	m_background.SetDefaultColor(::GetSysColor(COLOR_WINDOW));
 	m_foreground.SetDefaultColor(::GetSysColor(COLOR_WINDOWTEXT));
 	m_background.SetColor(_Settings.GetColorBG());
@@ -39,7 +45,7 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_OPTIONS_FOREGROUND_COLOR, L"fbe.dialog.idd_options.foreground_color", L"Text color:");
 	SetText(m_hWnd, IDC_OPTIONS_BACKGROUND_COLOR, L"fbe.dialog.idd_options.background_color", L"Background:");
 	SetText(m_hWnd, IDC_SETTINGS_OTHER_NBSP, L"fbe.dialog.idd_setting_other.nbsp", L"Non-breaking space");
-	SetText(m_hWnd, IDC_SETTINGS_OTHER_NBSP_LABEL, L"fbe.dialog.idd_setting_other.nbsp_char", L"Display character:");
+	SetText(m_hWnd, IDC_SETTINGS_OTHER_NBSP_LABEL, L"fbe.dialog.idd_setting_other.nbsp_char", L"Display as:");
 
 	CSimpleArray<CString> installedFonts;
 	HDC display = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);

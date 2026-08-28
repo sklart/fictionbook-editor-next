@@ -227,18 +227,25 @@ void CSettings::Init()
 		m_key.Create(HKEY_CURRENT_USER, m_key_path);
 }
 
-CString ResolveScriptsFolderPath(const CString& storedPath)
+CString NormalizeScriptsFolderStoredPath(const CString& sourcePath)
 {
-	CString path(storedPath);
+	CString path(sourcePath);
 	path.Trim();
 	path.Replace(L'/', L'\\');
-	if(!path.IsEmpty() && ::PathIsRelative(path))
-		path = U::GetProgDir() + path;
 	while(path.GetLength() > 3 && path.Right(1) == L"\\")
 		path.Delete(path.GetLength() - 1);
 	if(!path.IsEmpty() && path.Right(1) != L"\\")
 		path += L"\\";
 	return path;
+}
+
+CString ResolveScriptsFolderPath(const CString& storedPath)
+{
+	CString path = NormalizeScriptsFolderStoredPath(storedPath);
+	if(!path.IsEmpty() && ::PathIsRelative(path)) path = U::GetProgDir() + path;
+	wchar_t canonical[MAX_PATH] = {};
+	if(!path.IsEmpty() && ::PathCanonicalize(canonical, path)) path = canonical;
+	return NormalizeScriptsFolderStoredPath(path);
 }
 
 static DWORD NormalizeImageType(DWORD value) { return value <= 1 ? value : 1; }
@@ -1354,7 +1361,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
 	{
-		m_scripts_folder = ResolveScriptsFolderPath(sValue.GetStringValue());
+		m_scripts_folder = NormalizeScriptsFolderStoredPath(sValue.GetStringValue());
 		return true;
 	}
 	// SeNS
@@ -2174,7 +2181,17 @@ CString CSettings::GetInterfaceLanguageName()const
 
 CString CSettings::GetScriptsFolder() const
 {
+	return GetResolvedScriptsFolder();
+}
+
+CString CSettings::GetScriptsFolderStored() const
+{
 	return m_scripts_folder;
+}
+
+CString CSettings::GetResolvedScriptsFolder() const
+{
+	return ResolveScriptsFolderPath(m_scripts_folder);
 }
 
 CString CSettings::GetDefaultScriptsFolder()
@@ -2184,7 +2201,7 @@ CString CSettings::GetDefaultScriptsFolder()
 
 bool CSettings::IsDefaultScriptsFolder()
 {
-	return GetScriptsFolder().CompareNoCase(GetDefaultScriptsFolder()) == 0;
+	return GetResolvedScriptsFolder().CompareNoCase(GetDefaultScriptsFolder()) == 0;
 }
 
 bool CSettings::GetInsImageAsking() const
@@ -2447,7 +2464,7 @@ void CSettings::SetGenreCatalog(GenreCatalog catalog, bool apply)
 
 void CSettings::SetScriptsFolder(const CString& fullpath, bool apply)
 {
-	const CString normalized = ResolveScriptsFolderPath(fullpath);
+	const CString normalized = NormalizeScriptsFolderStoredPath(fullpath);
 	if(m_scripts_folder.CompareNoCase(normalized) != 0)
 	{
 		m_scripts_folder = normalized;
