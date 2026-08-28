@@ -8,6 +8,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $hotkeys = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SettingsHotkeysDlg.cpp')
+$migration = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\KeyboardLayoutSelection.h')
 
 foreach ($setter in @('SetChangeKeybLayout', 'SetKeybLayout')) {
     $writers = @(
@@ -67,8 +68,11 @@ if ($hotkeys -notmatch 'GetKeyboardLayoutList\(0, NULL\)' -or $hotkeys -match 'H
 if ($hotkeys -notmatch 'GetKeyboardLayoutName' -or $hotkeys -notmatch 'SetKeyboardLayoutId\(' -or $hotkeys -match 'const DWORD klid') {
     throw 'Keyboard UI must resolve and persist a string KLID rather than casting HKL.'
 }
-if ($hotkeys -notmatch 'storedId \+ L" — unavailable"' -or $hotkeys -notmatch 'matches == 1' -or $hotkeys -notmatch 'activeMatch') {
+if ($hotkeys -notmatch 'KeyboardLayoutSelection' -or $hotkeys -notmatch 'UnavailableKlid' -or $migration -notmatch 'languageMatches == 1' -or $migration -notmatch 'activeLanguageMatch') {
     throw 'Keyboard legacy migration must preserve unavailable IDs and avoid arbitrary same-language choices.'
+}
+if ($migration -notmatch 'legacyValue != 0' -or $migration -notmatch 'UnresolvedLegacy' -or $migration -notmatch 'CurrentDefault') {
+    throw 'An unresolved legacy layout must not fall back to an unrelated active layout.'
 }
 
 Write-Host 'Keyboard-layout settings ownership passed.'

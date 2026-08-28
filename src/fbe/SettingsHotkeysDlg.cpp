@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 #include "SettingsHotkeysDlg.h"
+#include "KeyboardLayoutSelection.h"
 #include "utils.h"
 #include "Settings.h"
 #include "res1.h"
@@ -9,15 +10,21 @@
 
 extern CSettings _Settings;
 
+class KeyboardLayoutRestore
+{
+public:
+	explicit KeyboardLayoutRestore(HKL originalLayout) : m_originalLayout(originalLayout) { }
+	~KeyboardLayoutRestore() { if(m_originalLayout != NULL) ::ActivateKeyboardLayout(m_originalLayout, 0); }
+private:
+	HKL m_originalLayout;
+};
+
 static CString GetKeyboardLayoutId(HKL layout, HKL originalLayout)
 {
+	KeyboardLayoutRestore restore(originalLayout);
 	wchar_t name[KL_NAMELENGTH] = {};
 	if(::ActivateKeyboardLayout(layout, 0) && ::GetKeyboardLayoutName(name))
-	{
-		::ActivateKeyboardLayout(originalLayout, 0);
 		return CString(name);
-	}
-	::ActivateKeyboardLayout(originalLayout, 0);
 	return CString();
 }
 
@@ -92,39 +99,27 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_changeKeyb = GetDlgItem(IDC_CHANGE_KEYB);
 	m_keybLayout = GetDlgItem(IDC_KEYB_LAYOUT);
 	m_changeKeyb.SetCheck(_Settings.GetChangeKeybLayout());
-	TCHAR name[255] = {}; const HKL originalLayout = GetKeyboardLayout(GetCurrentThreadId()); const int layoutCount = GetKeyboardLayoutList(0, NULL);
+	TCHAR name[255] = {}; const HKL originalLayout = GetKeyboardLayout(GetCurrentThreadId()); const DWORD activeLayout = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(originalLayout)); const int layoutCount = GetKeyboardLayoutList(0, NULL);
 	std::vector<HKL> layouts(layoutCount > 0 ? layoutCount : 0);
 	const int count = layouts.empty() ? 0 : GetKeyboardLayoutList(static_cast<int>(layouts.size()), &layouts[0]);
+	std::vector<KeyboardLayoutEntry> keyboardLayouts;
 	for(int i = 0; i < count; ++i)
 	{
 		const DWORD legacyHkl = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(layouts[i]));
 		const CString klid = GetKeyboardLayoutId(layouts[i], originalLayout);
 		LCID locale = MAKELCID((LANGID)(legacyHkl & 0xffff), SORT_DEFAULT);
 		GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, _countof(name));
-		CString label; label.Format(L"%s — %s", name[0] ? name : L"Keyboard layout", klid.IsEmpty() ? L"Unavailable" : klid.GetString());
+		CString label; label.Format(L"%s — %s", name[0] ? name : FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.keyboard_layout", L"Keyboard layout").GetString(), klid.IsEmpty() ? FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.unavailable", L"Unavailable").GetString() : klid.GetString());
 		const int item = m_keybLayout.AddString(label);
 		m_keybLayout.SetItemData(item, legacyHkl);
 		m_keyboardLayoutIds.push_back(klid);
+		keyboardLayouts.push_back({ legacyHkl, std::wstring(klid.GetString()) });
 	}
-	int selection = -1;
 	const CString storedId = _Settings.GetKeyboardLayoutId();
-	if(!storedId.IsEmpty())
-	{
-		for(int i = 0; i < count; ++i) if(m_keyboardLayoutIds[i] == storedId) { selection = i; break; }
-		if(selection < 0) { selection = m_keybLayout.AddString(storedId + L" — unavailable"); m_keybLayout.SetItemData(selection, 0); m_keyboardLayoutIds.push_back(storedId); }
-	}
-	else
-	{
-		const DWORD legacy = _Settings.GetKeybLayout();
-		for(int i = 0; i < count; ++i) if(m_keybLayout.GetItemData(i) == legacy) { selection = i; break; }
-		if(selection < 0 && legacy != 0)
-		{
-			int matches = 0, activeMatch = -1, onlyMatch = -1;
-			for(int i = 0; i < count; ++i) if((static_cast<DWORD>(m_keybLayout.GetItemData(i)) & 0xffff) == (legacy & 0xffff)) { ++matches; onlyMatch = i; if(m_keybLayout.GetItemData(i) == reinterpret_cast<DWORD_PTR>(originalLayout)) activeMatch = i; }
-			selection = activeMatch >= 0 ? activeMatch : (matches == 1 ? onlyMatch : -1);
-		}
-		if(selection < 0) for(int i = 0; i < count; ++i) if(m_keybLayout.GetItemData(i) == reinterpret_cast<DWORD_PTR>(originalLayout)) { selection = i; break; }
-	}
+	const KeyboardLayoutSelection layoutSelection = ResolveKeyboardLayoutSelection(std::wstring(storedId.GetString()), _Settings.GetKeybLayout(), activeLayout, keyboardLayouts);
+	int selection = layoutSelection.index;
+	if(layoutSelection.kind == KeyboardLayoutSelectionKind::UnavailableKlid) { selection = m_keybLayout.AddString(storedId + L" — " + FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.unavailable", L"Unavailable")); m_keybLayout.SetItemData(selection, 0); m_keyboardLayoutIds.push_back(storedId); }
+	if(layoutSelection.kind == KeyboardLayoutSelectionKind::UnresolvedLegacy) { CString label; label.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.legacy_unresolved", L"Legacy layout %04x — unresolved"), _Settings.GetKeybLayout() & 0xffff); selection = m_keybLayout.AddString(label); m_keybLayout.SetItemData(selection, 0); m_keyboardLayoutIds.push_back(CString()); }
 	if(selection >= 0) m_keybLayout.SetCurSel(selection);
 	UpdateKeyboardLayoutDependencies();
 	ClearAndSet();
@@ -313,7 +308,7 @@ bool CSettingsHotkeysDlg::Validate()
 void CSettingsHotkeysDlg::Commit()
 {
 	_Settings.SetChangeKeybLayout(m_changeKeyb.GetCheck() == BST_CHECKED);
-	if(m_keybLayout.GetCurSel() >= 0) { _Settings.SetKeybLayout(m_keybLayout.GetItemData(m_keybLayout.GetCurSel())); _Settings.SetKeyboardLayoutId(m_keyboardLayoutIds[m_keybLayout.GetCurSel()]); }
+	if(m_keybLayout.GetCurSel() >= 0 && m_keybLayout.GetItemData(m_keybLayout.GetCurSel()) != 0 && !m_keyboardLayoutIds[m_keybLayout.GetCurSel()].IsEmpty()) { _Settings.SetKeybLayout(m_keybLayout.GetItemData(m_keybLayout.GetCurSel())); _Settings.SetKeyboardLayoutId(m_keyboardLayoutIds[m_keybLayout.GetCurSel()]); }
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)
 	{
 		for(unsigned int j = 0; j < _Settings.m_hotkey_groups.at(i).m_hotkeys.size(); ++j)
