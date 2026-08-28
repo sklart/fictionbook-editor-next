@@ -31,6 +31,7 @@
 #include "DocumentTree.h"
 #include "Speller.h"
 #include "StatusBarUnicode.h"
+#include "StatusBarText.h"
 
 #if _MSC_VER >= 1000
 #pragma once

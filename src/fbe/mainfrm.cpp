@@ -9053,6 +9053,7 @@ CString SourceBreadcrumb(HWND source, int caret)
 	Fb2SourceStructuralContextResolver resolver;
 	const Fb2SourceStructuralContext context = resolver.Resolve(reader, static_cast<std::size_t>(caret), 0);
 	CString result;
+	if(context.breadcrumbTruncated) result = L"…";
 	for(std::vector<std::string>::const_iterator item = context.breadcrumb.begin(); item != context.breadcrumb.end(); ++item) {
 		CA2W name(item->c_str(), CP_UTF8);
 		result += L"/";
@@ -9069,14 +9070,7 @@ int SourceSelectionWordCount(HWND source, int start, int end)
 	range.chrg.cpMin = start; range.chrg.cpMax = end; range.lpstrText = &text[0];
 	::SendMessage(source, SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range));
 	const sptr_t length = static_cast<sptr_t>(strlen(text.data()));
-	int words = 0; bool inWord = false;
-	for(sptr_t i = 0; i < length; ++i) {
-		const unsigned char c = static_cast<unsigned char>(text[static_cast<std::size_t>(i)]);
-		const bool word = c >= 0x80 || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
-		if(word && !inWord) ++words;
-		inWord = word;
-	}
-	return words;
+	return FBEStatusBar::CountUtf8Words(std::string(text.data(), static_cast<std::size_t>(length)));
 }
 }
 
@@ -9288,7 +9282,10 @@ void CMainFrame::UpdateStatusBar()
 			wchar_t selectionFormat[MAX_LOAD_STRING + 1] = {};
 			FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_SELECTION, selectionFormat, MAX_LOAD_STRING);
 			const int selectedChars = m_source.SendMessage(SCI_COUNTCHARACTERS, selectionStart, selectionEnd);
-			const int selectedLines = m_source.SendMessage(SCI_LINEFROMPOSITION, selectionEnd) - m_source.SendMessage(SCI_LINEFROMPOSITION, selectionStart) + 1;
+			const int startLine = m_source.SendMessage(SCI_LINEFROMPOSITION, selectionStart);
+			const int endLine = m_source.SendMessage(SCI_LINEFROMPOSITION, selectionEnd);
+			const bool endAtLineStart = selectionEnd == m_source.SendMessage(SCI_POSITIONFROMLINE, endLine);
+			const int selectedLines = FBEStatusBar::SelectionLineCount(startLine, endLine, endAtLineStart);
 			selection.Format(selectionFormat, selectedChars, SourceSelectionWordCount(m_source.m_hWnd, selectionStart, selectionEnd), selectedLines);
 		}
 		int inspectedPosition = selectionStart != selectionEnd ? selectionStart :

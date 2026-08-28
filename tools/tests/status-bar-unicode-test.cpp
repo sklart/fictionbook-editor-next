@@ -1,4 +1,5 @@
 #include "StatusBarUnicode.h"
+#include "StatusBarText.h"
 static bool Expect(const wchar_t* value, int length, unsigned int expected)
 {
 	unsigned int codePoint = 0;
@@ -19,5 +20,9 @@ int main()
 	unsigned int ignored = 0;
 	if (FBEStatusBar::FirstCodePoint(high, 1, ignored) || FBEStatusBar::FirstCodePoint(low, 1, ignored) ||
 		FBEStatusBar::FirstCodePoint(invalid1, 2, ignored) || FBEStatusBar::FirstCodePoint(invalid2, 2, ignored)) return 3;
+	if (FBEStatusBar::CountUtf8Words("Hello world") != 2 || FBEStatusBar::CountUtf8Words(u8"Привет мир") != 2 ||
+		FBEStatusBar::CountUtf8Words(u8"слово—слово") != 2 || FBEStatusBar::CountUtf8Words(u8"😀") != 0 ||
+		FBEStatusBar::CountUtf8Words("one two") != 2) return 4;
+	if (FBEStatusBar::SelectionLineCount(2, 3, true) != 1 || FBEStatusBar::SelectionLineCount(2, 3, false) != 2) return 5;
 	return 0;
 }

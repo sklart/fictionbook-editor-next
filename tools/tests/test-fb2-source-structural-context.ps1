@@ -38,6 +38,7 @@ int main() {
 	 Fb2SourceStructuralContext breadcrumb = Resolve("<FictionBook><body><section><title>Text", 0, 17); Need(breadcrumb.breadcrumb.size() == 4 && breadcrumb.breadcrumb[0] == "FictionBook" && breadcrumb.breadcrumb[3] == "title", "breadcrumb");
 	 Need(Resolve("<FictionBook><body><section></section>", 0, 17).breadcrumb.size() == 2, "breadcrumb after close");
  Reader near(std::string(4*1024*1024, 'x') + "<section><", 31); Fb2SourceStructuralContextResolver resolver(32*1024); Need(resolver.Resolve(near, near.text.size(), '<').parentElement == "section", "near fixture parent"); Need(near.bytes < near.text.size(), "near context read whole document");
+ Reader budget(std::string(8*1024*1024, 'x') + "<section><title>Text", 31); Fb2SourceStructuralContextResolver limited(32*1024); Fb2SourceStructuralContext result=limited.Resolve(budget,budget.text.size(),0); Need(result.breadcrumbTruncated && result.breadcrumb.size() == 2 && result.breadcrumb[0] == "section", "breadcrumb budget result"); Need(budget.bytes <= 512*1024, "breadcrumb read budget");
  return 0;
 }
 '@ | Set-Content -LiteralPath $sourcePath -Encoding utf8

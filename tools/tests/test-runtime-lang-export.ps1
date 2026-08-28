@@ -76,7 +76,7 @@ $modules = @($moduleFiles.Keys | Sort-Object)
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.menu.idr_document_tree.view'; Expected = '&Zum Element gehen' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.menu.idr_toolbar_menu.customize'; Expected = 'Symbolleiste anpassen...' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_options.wrap_lines'; Expected = 'Zeilen umbrechen' },
-        @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_setting_other.restore_position'; Expected = 'Fensterposition wiederherstellen' },
+        @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_setting_other.restore_position'; Expected = 'Dokumentposition wiederherstellen' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_settings_words.select_all'; Expected = 'Alle auswählen' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_hotkeys.assign'; Expected = 'Zuweisen' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_find.caption'; Expected = 'Suchen' },

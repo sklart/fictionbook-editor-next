@@ -10,8 +10,9 @@ struct Fb2SourceStructuralContext
 	std::string parentElement;
 	std::string closingElement;
 	std::vector<std::string> breadcrumb;
+	bool breadcrumbTruncated;
 	bool suppressed;
-	Fb2SourceStructuralContext() : suppressed(false) {}
+	Fb2SourceStructuralContext() : breadcrumbTruncated(false), suppressed(false) {}
 };
 
 // This narrow read-only interface keeps Scintilla and WTL out of parser logic.

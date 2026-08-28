@@ -26,10 +26,10 @@ public:
 		for(std::size_t i = 0; i < value.size(); ++i) { char c; if(!ByteAt(end - value.size() + i, c) || c != value[i]) return false; }
 		return true;
 	}
-	bool FindBackward(std::size_t before, const char* token, std::size_t& found)
+	bool FindBackward(std::size_t before, const char* token, std::size_t& found, std::size_t minimum = 0)
 	{
 		std::string value(token);
-		while(before >= value.size()) {
+		while(before >= value.size() && before > minimum) {
 			if(MatchesBefore(before, token)) { found = before - value.size(); return true; }
 			--before;
 		}
@@ -65,11 +65,11 @@ bool ParseTag(const std::string& tag, std::string& name, bool& closing, bool& se
 	selfClosing = !closing && tag[last] == '/'; return true;
 }
 
-bool PreviousTag(BackwardReader& reader, std::size_t& cursor, std::string& tag)
+bool PreviousTag(BackwardReader& reader, std::size_t& cursor, std::string& tag, std::size_t minimum = 0)
 {
-	while(cursor > 0) {
-		std::size_t end; if(!reader.FindBackward(cursor, ">", end)) return false;
-		std::size_t start; if(!reader.FindBackward(end, "<", start)) { cursor = end; continue; }
+	while(cursor > minimum) {
+		std::size_t end; if(!reader.FindBackward(cursor, ">", end, minimum)) return false;
+		std::size_t start; if(!reader.FindBackward(end, "<", start, minimum)) { cursor = end; continue; }
 		char previous;
 		if(start > 0 && reader.ByteAt(start - 1, previous) && (previous == '\'' || previous == '"')) { cursor = start; continue; }
 		const std::string candidate = reader.Range(start, end + 1);
@@ -111,18 +111,19 @@ std::string ResolveParent(BackwardReader& reader, std::size_t cursor)
 	return "";
 }
 
-std::vector<std::string> ResolveBreadcrumb(BackwardReader& reader, std::size_t cursor)
+std::vector<std::string> ResolveBreadcrumb(BackwardReader& reader, std::size_t cursor, std::size_t minimum, bool& truncated)
 {
 	std::vector<std::string> expected, reverse;
-	while(cursor > 0) {
+	while(cursor > minimum) {
 		SkipClosedSpecial(reader, cursor);
-		std::string tag; if(!PreviousTag(reader, cursor, tag)) break;
+		std::string tag; if(!PreviousTag(reader, cursor, tag, minimum)) break;
 		std::string name; bool closing, selfClosing;
 		if(!ParseTag(tag, name, closing, selfClosing) || selfClosing) continue;
 		if(closing) { expected.push_back(name); continue; }
 		if(!expected.empty()) { if(expected.back() != name) return std::vector<std::string>(); expected.pop_back(); continue; }
 		reverse.push_back(name);
 	}
+	truncated = cursor > 0;
 	return std::vector<std::string>(reverse.rbegin(), reverse.rend());
 }
 
@@ -147,7 +148,11 @@ Fb2SourceStructuralContext Fb2SourceStructuralContextResolver::Resolve(const Fb2
 	Fb2SourceStructuralContext context; if(caret > source.Length()) caret = source.Length();
 	BackwardReader reader(source, m_chunkSize);
 	context.localBeforeCaret = LocalBeforeCaret(reader, caret);
-	if(character == 0) context.breadcrumb = ResolveBreadcrumb(reader, caret);
+	if(character == 0) {
+		const std::size_t kBreadcrumbBudget = 256 * 1024;
+		const std::size_t minimum = caret > kBreadcrumbBudget ? caret - kBreadcrumbBudget : 0;
+		context.breadcrumb = ResolveBreadcrumb(reader, caret, minimum, context.breadcrumbTruncated);
+	}
 	if(character == '<' && !context.localBeforeCaret.empty()) context.parentElement = ResolveParent(reader, caret - 1);
 	if(character == '/' && context.localBeforeCaret == "</" && caret >= 2) context.closingElement = ResolveParent(reader, caret - 2);
 	if((character == '<' && context.parentElement.empty()) || (character == '/' && context.closingElement.empty()))

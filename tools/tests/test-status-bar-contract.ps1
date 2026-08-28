@@ -54,4 +54,10 @@ foreach ($contract in @("StatusPaneAt", "ToggleStatusPaneVisibility", "OnStatusB
 	if ($main -notmatch $contract -or $header -notmatch $contract) { throw "Missing status bar interaction: $contract" }
 }
 if ($main -notmatch "SourceBreadcrumb") { throw "Missing SOURCE breadcrumb integration." }
+foreach ($interaction in @("OnStatusBarClick[\s\S]*OnFileValidate", "SCI_SETOVERTYPE", "ExecCommand\(IDM_OVERWRITE\)", "SetClipboardData\(CF_UNICODETEXT", "SetStatusBarPanes\(panes, true\)")) {
+	if ($main -notmatch $interaction) { throw "Missing status bar interaction behavior: $interaction" }
+}
+foreach ($contract in @("CountUtf8Words", "SelectionLineCount", "breadcrumbTruncated", "SCI_POSITIONFROMLINE")) {
+	if ($main -notmatch $contract -and $header -notmatch $contract) { throw "Missing status bar stability contract: $contract" }
+}
 Write-Host "Contextual status bar contract passed."
