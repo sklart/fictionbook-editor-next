@@ -609,6 +609,7 @@ public:
 		COMMAND_ID_HANDLER(ATL_IDW_BAND_FIRST+7, OnViewToolBar)
 		COMMAND_ID_HANDLER(ATL_IDW_BAND_FIRST+8, OnViewToolBar)
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
+		COMMAND_RANGE_HANDLER(ID_STATUS_PANE_POSITION, ID_STATUS_PANE_INSERT_MODE, OnStatusPaneVisibility)
 		COMMAND_ID_HANDLER(ID_VIEW_FASTMODE, OnViewFastMode)
 		COMMAND_ID_HANDLER(ID_VIEW_TREE, OnViewTree)
 		COMMAND_ID_HANDLER(ID_VIEW_DESC, OnViewDesc)
@@ -672,6 +673,9 @@ public:
 		NOTIFY_CODE_HANDLER(SCN_MARGINCLICK, OnSciMarginClick)
 		NOTIFY_CODE_HANDLER(SCN_UPDATEUI, OnSciUpdateUI)
 		NOTIFY_CODE_HANDLER(SCN_CHARADDED, OnSciCharAdded)
+		NOTIFY_CODE_HANDLER(NM_CLICK, OnStatusBarClick)
+		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnStatusBarDoubleClick)
+		NOTIFY_CODE_HANDLER(NM_RCLICK, OnStatusBarRightClick)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCommandToolbarCustomDraw)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOA, OnRuntimeToolTipTextA)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnRuntimeToolTipTextW)
@@ -846,6 +850,10 @@ public:
 
   LRESULT OnViewToolBar(WORD, WORD, HWND, BOOL&);
   LRESULT OnViewStatusBar(WORD, WORD, HWND, BOOL&);
+  LRESULT OnStatusPaneVisibility(WORD, WORD, HWND, BOOL&);
+  LRESULT OnStatusBarClick(int, LPNMHDR, BOOL&);
+  LRESULT OnStatusBarDoubleClick(int, LPNMHDR, BOOL&);
+  LRESULT OnStatusBarRightClick(int, LPNMHDR, BOOL&);
   LRESULT OnViewFastMode(WORD, WORD, HWND, BOOL&);
   LRESULT OnViewTree(WORD, WORD, HWND, BOOL&);
   LRESULT OnViewDesc(WORD, WORD, HWND, BOOL&) {
@@ -1184,6 +1192,8 @@ public:
   void SetStatusContext(const CString& text);
   void SetTransientStatus(const CString& text);
   CString GetStatusValidationText() const;
+  UINT StatusPaneAt(POINT point) const;
+  void ToggleStatusPaneVisibility(UINT command);
 };
 
 int	StartScript(CMainFrame* mainframe);

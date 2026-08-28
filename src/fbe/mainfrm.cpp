@@ -9021,11 +9021,62 @@ bool CMainFrame::LoadToScintilla(CString filename)
 }
 
 namespace {
+class StatusBarScintillaTextReader : public Fb2SourceTextReader
+{
+public:
+	explicit StatusBarScintillaTextReader(HWND source) : m_source(source) {}
+	std::size_t Length() const { return static_cast<std::size_t>(::SendMessage(m_source, SCI_GETLENGTH, 0, 0)); }
+	void Read(std::size_t position, std::size_t length, std::string& text) const
+	{
+		text.assign(length, '\0');
+		Sci_TextRange range = {};
+		range.chrg.cpMin = static_cast<sptr_t>(position);
+		range.chrg.cpMax = static_cast<sptr_t>(position + length);
+		range.lpstrText = &text[0];
+		::SendMessage(m_source, SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range));
+		text.resize(strlen(text.c_str()));
+	}
+private:
+	HWND m_source;
+};
+
 CString CharacterInspectorText(unsigned int codePoint)
 {
 	CString text;
 	text.Format(L"U+%04X  &#%u;", codePoint, codePoint);
 	return text;
+}
+
+CString SourceBreadcrumb(HWND source, int caret)
+{
+	StatusBarScintillaTextReader reader(source);
+	Fb2SourceStructuralContextResolver resolver;
+	const Fb2SourceStructuralContext context = resolver.Resolve(reader, static_cast<std::size_t>(caret), 0);
+	CString result;
+	for(std::vector<std::string>::const_iterator item = context.breadcrumb.begin(); item != context.breadcrumb.end(); ++item) {
+		CA2W name(item->c_str(), CP_UTF8);
+		result += L"/";
+		result += static_cast<LPCWSTR>(name);
+	}
+	return result;
+}
+
+int SourceSelectionWordCount(HWND source, int start, int end)
+{
+	if(start >= end) return 0;
+	std::vector<char> text(static_cast<std::size_t>(end - start) + 1, '\0');
+	Sci_TextRange range = {};
+	range.chrg.cpMin = start; range.chrg.cpMax = end; range.lpstrText = &text[0];
+	::SendMessage(source, SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range));
+	const sptr_t length = static_cast<sptr_t>(strlen(text.data()));
+	int words = 0; bool inWord = false;
+	for(sptr_t i = 0; i < length; ++i) {
+		const unsigned char c = static_cast<unsigned char>(text[static_cast<std::size_t>(i)]);
+		const bool word = c >= 0x80 || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
+		if(word && !inWord) ++words;
+		inWord = word;
+	}
+	return words;
 }
 }
 
@@ -9093,6 +9144,85 @@ CString CMainFrame::GetStatusValidationText() const
 	return text;
 }
 
+UINT CMainFrame::StatusPaneAt(POINT point) const
+{
+	const UINT panes[] = { ID_PANE_POSITION, ID_PANE_SELECTION, ID_PANE_CHAR, ID_PANE_ENCODING, ID_PANE_VALIDATION, ID_PANE_INS };
+	for(size_t i = 0; i < sizeof(panes) / sizeof(panes[0]); ++i) {
+		CRect rect;
+		if(m_status.GetPaneRect(panes[i], &rect) && rect.PtInRect(point)) return panes[i];
+	}
+	return 0;
+}
+
+void CMainFrame::ToggleStatusPaneVisibility(UINT command)
+{
+	const DWORD bits[] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20 };
+	if(command < ID_STATUS_PANE_POSITION || command > ID_STATUS_PANE_INSERT_MODE) return;
+	DWORD panes = _Settings.StatusBarPanes() ^ bits[command - ID_STATUS_PANE_POSITION];
+	_Settings.SetStatusBarPanes(panes, true);
+	UpdateStatusBarLayout();
+}
+
+LRESULT CMainFrame::OnStatusPaneVisibility(WORD, WORD command, HWND, BOOL&)
+{
+	ToggleStatusPaneVisibility(command);
+	return 0;
+}
+
+LRESULT CMainFrame::OnStatusBarClick(int, LPNMHDR hdr, BOOL& bHandled)
+{
+	if(hdr->hwndFrom != m_status) { bHandled = FALSE; return 0; }
+	const UINT pane = StatusPaneAt(reinterpret_cast<LPNMMOUSE>(hdr)->pt);
+	if(pane == ID_PANE_VALIDATION) OnFileValidate(0, ID_FILE_VALIDATE, NULL, bHandled);
+	return 0;
+}
+
+LRESULT CMainFrame::OnStatusBarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
+{
+	if(hdr->hwndFrom != m_status) { bHandled = FALSE; return 0; }
+	const UINT pane = StatusPaneAt(reinterpret_cast<LPNMMOUSE>(hdr)->pt);
+	if(pane == ID_PANE_INS) {
+		if(m_current_view == SOURCE) {
+			m_source.SendMessage(SCI_SETOVERTYPE, !CurrentOverwriteMode());
+			m_last_sci_ovr = m_source.SendMessage(SCI_GETOVERTYPE) != 0;
+		} else if(m_current_view == BODY && m_doc) m_doc->m_body.ExecCommand(IDM_OVERWRITE);
+		UpdateStatusBar();
+	} else if(pane == ID_PANE_CHAR) {
+		CString text; m_status.GetPaneText(ID_PANE_CHAR, text);
+		const int begin = text.Find(L"&#"), end = text.Find(L';', begin);
+		if(begin >= 0 && end > begin && ::OpenClipboard(m_hWnd)) {
+			const CString reference = text.Mid(begin, end - begin + 1);
+			const SIZE_T bytes = static_cast<SIZE_T>(reference.GetLength() + 1) * sizeof(wchar_t);
+			HGLOBAL memory = ::GlobalAlloc(GMEM_MOVEABLE, bytes);
+			if(memory) {
+				memcpy(::GlobalLock(memory), static_cast<LPCWSTR>(reference), bytes);
+				::GlobalUnlock(memory); ::EmptyClipboard();
+				if(!::SetClipboardData(CF_UNICODETEXT, memory)) ::GlobalFree(memory);
+			}
+			::CloseClipboard();
+		}
+	}
+	return 0;
+}
+
+LRESULT CMainFrame::OnStatusBarRightClick(int, LPNMHDR hdr, BOOL& bHandled)
+{
+	if(hdr->hwndFrom != m_status) { bHandled = FALSE; return 0; }
+	CMenu menu; menu.CreatePopupMenu();
+	const UINT commands[] = { ID_STATUS_PANE_POSITION, ID_STATUS_PANE_SELECTION, ID_STATUS_PANE_CHARACTER, ID_STATUS_PANE_ENCODING, ID_STATUS_PANE_VALIDATION, ID_STATUS_PANE_INSERT_MODE };
+	const UINT strings[] = { IDS_STATUS_PANE_POSITION, IDS_STATUS_PANE_SELECTION, IDS_STATUS_PANE_CHARACTER, IDS_STATUS_PANE_ENCODING, IDS_STATUS_PANE_VALIDATION, IDS_STATUS_PANE_INSERT_MODE };
+	const DWORD panes = _Settings.StatusBarPanes();
+	for(size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); ++i) {
+		wchar_t label[MAX_LOAD_STRING + 1] = {};
+		FbeLoadString(_Module.GetResourceInstance(), strings[i], label, MAX_LOAD_STRING);
+		menu.AppendMenu(MF_STRING | (panes & (1 << i) ? MF_CHECKED : MF_UNCHECKED), commands[i], label);
+	}
+	POINT point = reinterpret_cast<LPNMMOUSE>(hdr)->pt; m_status.ClientToScreen(&point);
+	const UINT command = menu.TrackPopupMenu(TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y, m_hWnd);
+	ToggleStatusPaneVisibility(command);
+	return 0;
+}
+
 void CMainFrame::UpdateStatusBarLayout()
 {
 	if (!m_status.IsWindow())
@@ -9112,11 +9242,18 @@ void CMainFrame::UpdateStatusBarLayout()
 	int position = measure(ID_PANE_POSITION), selection = measure(ID_PANE_SELECTION);
 	int character = measure(ID_PANE_CHAR), encoding = measure(ID_PANE_ENCODING);
 	int validation = measure(ID_PANE_VALIDATION), insertMode = measure(ID_PANE_INS);
+	const DWORD visible = _Settings.StatusBarPanes();
+	if(!(visible & 0x01)) position = 0;
+	if(!(visible & 0x02)) selection = 0;
+	if(!(visible & 0x04)) character = 0;
+	if(!(visible & 0x08)) encoding = 0;
+	if(!(visible & 0x10)) validation = 0;
+	if(!(visible & 0x20)) insertMode = 0;
 	CRect rc;
 	m_status.GetClientRect(&rc);
 	const int defaultMinimum = MulDiv(120, m_current_dpi ? m_current_dpi : 96, 96);
 	int available = rc.Width() - defaultMinimum - insertMode;
-	auto hideIfNeeded = [&](int& width) { if (available < position + selection + character + encoding + validation) width = 0; };
+	auto hideIfNeeded = [&](int& width) { if (width && available < position + selection + character + encoding + validation) width = 0; };
 	hideIfNeeded(selection); hideIfNeeded(encoding); hideIfNeeded(validation); hideIfNeeded(character);
 	m_status.SetPaneWidth(ID_PANE_POSITION, position);
 	m_status.SetPaneWidth(ID_PANE_SELECTION, selection);
@@ -9142,14 +9279,17 @@ void CMainFrame::UpdateStatusBar()
 		const int column = m_source.SendMessage(SCI_COUNTCHARACTERS, lineStart, caret);
 		wchar_t positionFormat[MAX_LOAD_STRING + 1] = {};
 		FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_POSITION, positionFormat, MAX_LOAD_STRING);
-		position.Format(positionFormat, line + 1, column + 1);
+		position.Format(positionFormat, line + 1, m_source.SendMessage(SCI_GETLINECOUNT), column + 1);
+		SetStatusContext(SourceBreadcrumb(m_source.m_hWnd, caret));
 		const int selectionStart = m_source.SendMessage(SCI_GETSELECTIONSTART);
 		const int selectionEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
 		if (selectionStart != selectionEnd)
 		{
 			wchar_t selectionFormat[MAX_LOAD_STRING + 1] = {};
 			FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_SELECTION, selectionFormat, MAX_LOAD_STRING);
-			selection.Format(selectionFormat, m_source.SendMessage(SCI_COUNTCHARACTERS, selectionStart, selectionEnd));
+			const int selectedChars = m_source.SendMessage(SCI_COUNTCHARACTERS, selectionStart, selectionEnd);
+			const int selectedLines = m_source.SendMessage(SCI_LINEFROMPOSITION, selectionEnd) - m_source.SendMessage(SCI_LINEFROMPOSITION, selectionStart) + 1;
+			selection.Format(selectionFormat, selectedChars, SourceSelectionWordCount(m_source.m_hWnd, selectionStart, selectionEnd), selectedLines);
 		}
 		int inspectedPosition = selectionStart != selectionEnd ? selectionStart :
 			(caret > 0 ? m_source.SendMessage(SCI_POSITIONBEFORE, caret) : -1);
@@ -9176,6 +9316,20 @@ void CMainFrame::UpdateStatusBar()
 			if (!copy) throw _com_error(E_NOINTERFACE);
 			CString text;
 			text.SetString(copy->text);
+			if (!text.IsEmpty())
+			{
+				wchar_t selectionFormat[MAX_LOAD_STRING + 1] = {};
+				FbeLoadString(_Module.GetResourceInstance(), IDS_STATUS_SELECTION, selectionFormat, MAX_LOAD_STRING);
+				int words = 0, lines = 1; bool inWord = false;
+				for (int i = 0; i < text.GetLength(); ++i) {
+					const wchar_t c = text[i];
+					const bool word = iswalnum(c) || c == L'_';
+					if (word && !inWord) ++words;
+					inWord = word;
+					if (c == L'\n') ++lines;
+				}
+				selection.Format(selectionFormat, text.GetLength(), words, lines);
+			}
 			if (text.IsEmpty())
 			{
 				if (copy->moveStart(L"character", -1) < 0)

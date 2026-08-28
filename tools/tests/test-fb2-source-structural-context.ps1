@@ -35,6 +35,8 @@ int main() {
  Need(Resolve("<?test x='<fake>' " + deep + "<", '<', 31).suppressed, "deep PI suppression");
  Need(Resolve("<!-- <fake></fake> -->\n<section title=\"1 > 0\">" + deep + "</", '/', 7).closingElement == "section", "comment and quoted greater-than");
  Need(Resolve("<section title='1 > 0'>" + deep + "</", '/', 13).closingElement == "section", "single quote greater-than");
+	 Fb2SourceStructuralContext breadcrumb = Resolve("<FictionBook><body><section><title>Text", 0, 17); Need(breadcrumb.breadcrumb.size() == 4 && breadcrumb.breadcrumb[0] == "FictionBook" && breadcrumb.breadcrumb[3] == "title", "breadcrumb");
+	 Need(Resolve("<FictionBook><body><section></section>", 0, 17).breadcrumb.size() == 2, "breadcrumb after close");
  Reader near(std::string(4*1024*1024, 'x') + "<section><", 31); Fb2SourceStructuralContextResolver resolver(32*1024); Need(resolver.Resolve(near, near.text.size(), '<').parentElement == "section", "near fixture parent"); Need(near.bytes < near.text.size(), "near context read whole document");
  return 0;
 }

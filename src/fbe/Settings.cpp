@@ -73,6 +73,7 @@ const wchar_t FAST_MODE_KEY[]			= L"FastMode";
 const wchar_t FONT_KEY[]				= L"Font";
 const wchar_t SRC_FONT_KEY[]			= L"SrcFont";
 const wchar_t VIEW_STATUS_BAR_KEY[]		= L"ViewStatusBar";
+const wchar_t STATUS_BAR_PANES_KEY[]		= L"StatusBarPanes";
 const wchar_t VIEW_DOCUMENT_TREE_KEY[]	= L"ViewDocumentTree";
 const wchar_t SPLITTER_POS_KEY[]		= L"SplitterPos";
 const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
@@ -847,6 +848,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(FONT_KEY);
 	properties.push_back(SRC_FONT_KEY);
 	properties.push_back(VIEW_STATUS_BAR_KEY);
+	properties.push_back(STATUS_BAR_PANES_KEY);
 	properties.push_back(VIEW_DOCUMENT_TREE_KEY);
 	properties.push_back(SPLITTER_POS_KEY);
 	properties.push_back(TOOLBARS_SETTINGS_KEY);
@@ -1040,6 +1042,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == INTERFACE_LANG_KEY)
 	{
 		property = GetStringedProperty(&m_interface_lang_id, KEY_INT);
+		return true;
+	}
+	else if(sProperty == STATUS_BAR_PANES_KEY)
+	{
+		property = GetStringedProperty(&m_status_bar_panes, KEY_INT);
 		return true;
 	}
 	else if(sProperty == GENRE_CATALOG_KEY)
@@ -1351,6 +1358,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == INTERFACE_LANG_KEY)
 	{
 		m_interface_lang_id = NormalizeInterfaceLanguageID(StrToInt(sValue.GetStringValue()));
+		return true;
+	}
+	else if(sProperty == STATUS_BAR_PANES_KEY)
+	{
+		m_status_bar_panes = StrToInt(sValue.GetStringValue());
 		return true;
 	}
 	else if(sProperty == GENRE_CATALOG_KEY)
@@ -2094,6 +2106,11 @@ CString CSettings::GetLocalizedGenresFileName()const
 	}
 }
 
+DWORD CSettings::StatusBarPanes()const
+{
+	return m_status_bar_panes;
+}
+
 CString CSettings::GetKeyboardLayoutId() const { return m_keyboard_layout_id; }
 
 GenreCatalog CSettings::GetGenreCatalog()const
@@ -2457,6 +2474,13 @@ void CSettings::SetInterfaceLanguage(DWORD lang_id, bool apply)
 	}
 }
 
+void CSettings::SetStatusBarPanes(DWORD panes, bool apply)
+{
+	m_status_bar_panes = panes;
+	if(apply)
+		Save();
+}
+
 void CSettings::SetGenreCatalog(GenreCatalog catalog, bool apply)
 {
 	if(m_genre_catalog != catalog)
@@ -2713,6 +2737,7 @@ void CSettings::SetDefaults()
 	m_font					= DEFAULT_FONT;
 	m_srcfont				= DEFAULT_SRCFONT;
 	m_view_status_bar		= true;
+	m_status_bar_panes		= 0x3f;
 	m_view_doc_tree			= true;
 	m_splitter_pos			= 200;
 	m_toolbars_settings.Empty();

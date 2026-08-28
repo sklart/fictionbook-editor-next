@@ -227,8 +227,8 @@
       "resourceId": "IDS_TOOLTIP_IMAGE_MAX_HEIGHT",
       "translations": { "en-US": "Maximum image height in pixels. 0 keeps the original height.", "ru-RU": "Максимальная высота изображений в пикселях. 0 сохраняет исходную высоту.", "uk-UA": "Максимальна висота зображень у пікселях. 0 зберігає початкову висоту.", "de-DE": "Maximale Bildhöhe in Pixeln. 0 behält die ursprüngliche Höhe bei.", "fr-FR": "Hauteur maximale en pixels. 0 conserve la hauteur d’origine.", "es-ES": "Alto máximo en píxeles. 0 conserva el alto original.", "it-IT": "Altezza massima in pixel. 0 mantiene l’altezza originale.", "pl-PL": "Maksymalna wysokość w pikselach. 0 zachowuje pierwotną wysokość.", "pt-PT": "Altura máxima em píxeis. 0 mantém a altura original.", "nl-NL": "Maximale hoogte in pixels. 0 behoudt de oorspronkelijke hoogte.", "cs-CZ": "Maximální výška v pixelech. 0 zachová původní výšku.", "bg-BG": "Максимална височина в пиксели. 0 запазва първоначалната височина." }
     },
-      "source": "Export HTML",
     "export_html.runtime.menu_name": {
+      "source": "Export HTML",
       "component": "export-html.runtime",
       "resourceId": "IDR_EXPORTHTML",
       "translations": {

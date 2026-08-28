@@ -41,6 +41,12 @@ if (-not $installationPath) {
 
 $vsDevCmd = Join-Path $installationPath "Common7\Tools\VsDevCmd.bat"
 $vcVarsVersionArgument = if ($VcVarsVersion) { " -vcvars_ver=$VcVarsVersion" } else { "" }
+# A Codex/CI process can already inherit a different Visual Studio environment.
+# VsDevCmd otherwise treats that installation as active and leaves its ATL paths
+# ahead of the selected toolset.
+foreach ($name in @("VSINSTALLDIR", "VCINSTALLDIR", "VCToolsInstallDir", "VCToolsRedistDir", "VisualStudioVersion", "VSCMD_VER", "VSCMD_ARG_app_plat", "VSCMD_ARG_HOST_ARCH", "VSCMD_ARG_TGT_ARCH")) {
+    Remove-Item -LiteralPath ("Env:" + $name) -ErrorAction SilentlyContinue
+}
 $environment = & cmd.exe /d /s /c "`"$vsDevCmd`" -arch=$Arch -host_arch=$HostArch$vcVarsVersionArgument >nul && set"
 if ($LASTEXITCODE -ne 0) {
     if ($VcVarsVersion) {

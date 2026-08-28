@@ -19,7 +19,7 @@ foreach ($pane in @("ID_PANE_POSITION", "ID_PANE_SELECTION", "ID_PANE_CHAR", "ID
 if ($main -match "SetPaneWidth\s*\(\s*399\b" -or $main -match "\b399\s*,\s*ID_PANE_INS") {
     throw "The historical magic status pane ID 399 is still used."
 }
-foreach ($api in @("SCI_COUNTCHARACTERS", "SCI_POSITIONBEFORE", "SCI_LINEFROMPOSITION", "SCI_POSITIONFROMLINE")) {
+foreach ($api in @("SCI_COUNTCHARACTERS", "SCI_POSITIONBEFORE", "SCI_LINEFROMPOSITION", "SCI_POSITIONFROMLINE", "SCI_GETLINECOUNT")) {
     if ($main -notmatch $api) { throw "Unicode-aware Scintilla API is missing: $api" }
 }
 if ($unicode -notmatch "FirstCodePoint" -or $unicode -notmatch "0x10000") {
@@ -41,8 +41,17 @@ foreach ($key in @("fbe.status.position", "fbe.status.selection")) {
     foreach ($locale in @("en-US", "ru-RU", "uk-UA", "de-DE", "fr-FR", "es-ES", "it-IT", "pl-PL", "pt-PT", "nl-NL", "cs-CZ", "bg-BG")) {
         if ([string]::IsNullOrWhiteSpace([string]$entry.translations.$locale)) { throw "Missing $locale translation for $key" }
 		$placeholders = [regex]::Matches([string]$entry.translations.$locale, '(?<!%)%[di]').Count
-		$expected = if ($key -eq 'fbe.status.position') { 2 } else { 1 }
+		$expected = 3
 		if ($placeholders -ne $expected) { throw "$locale translation for $key has $placeholders integer placeholders; expected $expected." }
     }
 }
+foreach ($key in @("fbe.status_pane.position", "fbe.status_pane.selection", "fbe.status_pane.character", "fbe.status_pane.encoding", "fbe.status_pane.validation", "fbe.status_pane.insert_mode")) {
+	$entry = $catalog.seedStrings.$key
+	if ($null -eq $entry) { throw "Missing localization key: $key" }
+	if (@($entry.translations.PSObject.Properties).Count -ne 12) { throw "$key must have translations for all 12 locales." }
+}
+foreach ($contract in @("StatusPaneAt", "ToggleStatusPaneVisibility", "OnStatusBarDoubleClick")) {
+	if ($main -notmatch $contract -or $header -notmatch $contract) { throw "Missing status bar interaction: $contract" }
+}
+if ($main -notmatch "SourceBreadcrumb") { throw "Missing SOURCE breadcrumb integration." }
 Write-Host "Contextual status bar contract passed."

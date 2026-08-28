@@ -2,12 +2,14 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 struct Fb2SourceStructuralContext
 {
 	std::string localBeforeCaret;
 	std::string parentElement;
 	std::string closingElement;
+	std::vector<std::string> breadcrumb;
 	bool suppressed;
 	Fb2SourceStructuralContext() : suppressed(false) {}
 };

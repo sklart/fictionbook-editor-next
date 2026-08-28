@@ -111,6 +111,21 @@ std::string ResolveParent(BackwardReader& reader, std::size_t cursor)
 	return "";
 }
 
+std::vector<std::string> ResolveBreadcrumb(BackwardReader& reader, std::size_t cursor)
+{
+	std::vector<std::string> expected, reverse;
+	while(cursor > 0) {
+		SkipClosedSpecial(reader, cursor);
+		std::string tag; if(!PreviousTag(reader, cursor, tag)) break;
+		std::string name; bool closing, selfClosing;
+		if(!ParseTag(tag, name, closing, selfClosing) || selfClosing) continue;
+		if(closing) { expected.push_back(name); continue; }
+		if(!expected.empty()) { if(expected.back() != name) return std::vector<std::string>(); expected.pop_back(); continue; }
+		reverse.push_back(name);
+	}
+	return std::vector<std::string>(reverse.rbegin(), reverse.rend());
+}
+
 std::string LocalBeforeCaret(BackwardReader& reader, std::size_t caret)
 {
 	std::size_t start; if(!reader.FindBackward(caret, "<", start)) return "";
@@ -132,6 +147,7 @@ Fb2SourceStructuralContext Fb2SourceStructuralContextResolver::Resolve(const Fb2
 	Fb2SourceStructuralContext context; if(caret > source.Length()) caret = source.Length();
 	BackwardReader reader(source, m_chunkSize);
 	context.localBeforeCaret = LocalBeforeCaret(reader, caret);
+	if(character == 0) context.breadcrumb = ResolveBreadcrumb(reader, caret);
 	if(character == '<' && !context.localBeforeCaret.empty()) context.parentElement = ResolveParent(reader, caret - 1);
 	if(character == '/' && context.localBeforeCaret == "</" && caret >= 2) context.closingElement = ResolveParent(reader, caret - 2);
 	if((character == '<' && context.parentElement.empty()) || (character == '/' && context.closingElement.empty()))

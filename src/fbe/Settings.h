@@ -548,6 +548,7 @@ class CSettings : public ISerializable, public IObjectFactory
 
 	bool		m_fast_mode;
 	bool		m_view_status_bar;
+	DWORD		m_status_bar_panes;
 	bool		m_view_doc_tree;
 
 	// added by SeNS
@@ -659,6 +660,7 @@ public:
 	DWORD XmlSrcSpecialCharsStyle()const;
 	bool FastMode()const;
 	bool ViewStatusBar()const;
+	DWORD StatusBarPanes()const;
 	bool ViewDocumentTree()const;
 	bool RestoreFilePosition()const;
 
@@ -740,6 +742,7 @@ public:
 	void	SetFont(const CString& font, bool apply = false);
 	void	SetSrcFont(const CString& font, bool apply = false);
 	void	SetViewStatusBar(bool view,  bool apply = false);
+	void	SetStatusBarPanes(DWORD panes, bool apply = false);
 	void	SetViewDocumentTree(bool view,  bool apply = false);
 	void	SetSplitterPos(DWORD pos,  bool apply = false);
 	void	SetToolbarsSettings(CString& settings,  bool apply = false);
