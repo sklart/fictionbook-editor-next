@@ -26,6 +26,8 @@ static bool IsFbeTestScenario(const wchar_t* expectedScenario);
 namespace
 {
 const int SCRIPT_COMMAND_COUNT = 999;
+const int SCRIPT_FOLDER_MENU_ID_BASE = 10000;
+const int SCRIPT_FOLDER_MENU_ID_COUNT = 999;
 
 static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE module,
 	UINT bitmapResourceId, UINT commandId)
@@ -2477,7 +2479,8 @@ void CMainFrame::InitPlugins()
 
 	if(m_scripts.GetSize())
 	{
-		AddScriptsSubMenu(scripts, L"0", m_scripts);
+		int nextFolderMenuId = 1;
+		AddScriptsSubMenu(scripts, L"0", m_scripts, nextFolderMenuId);
 	}
 	else
 	{
@@ -8685,7 +8688,7 @@ void CMainFrame::AssignScriptCommandIds()
 		_Settings.SetScriptCommandIds(SerializeScriptCommandIds(ids));
 }
 
-void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray<ScrInfo>& scripts)
+void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray<ScrInfo>& scripts, int& nextFolderMenuId)
 {
 	MENUITEMINFO mi;
 	int menupos = 0;
@@ -8707,11 +8710,13 @@ void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray
 		{
 			if(scripts[i].isFolder)
 			{
+				if(nextFolderMenuId > SCRIPT_FOLDER_MENU_ID_COUNT)
+					continue;
 				mi.fMask |= MIIM_SUBMENU | MIIM_ID;
 				mi.hSubMenu = CreateMenu();
-				mi.wID = 0;
+				mi.wID = SCRIPT_FOLDER_MENU_ID_BASE + nextFolderMenuId++;
 				scripts[i].wID = -1;
-				AddScriptsSubMenu(mi.hSubMenu, scripts[i].id, scripts);
+				AddScriptsSubMenu(mi.hSubMenu, scripts[i].id, scripts, nextFolderMenuId);
 			}
 			else
 			{
