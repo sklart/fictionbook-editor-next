@@ -89,8 +89,8 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 
 //	m_list_words.InsertColumn(0, L"%", LVCFMT_CENTER | LVCFMT_IMAGE, IMG_STAT_WIDTH + 10);
 
-	header = FbeLoadCString(IDS_SETTINGS_WLIST_COUNTED);
-	m_list_words.InsertColumn(0, header, LVCFMT_LEFT, 60);
+	header = FbeLoadRuntimeStringByKey(L"fbe.settings.words.encountered", L"Encountered (saved)");
+	m_list_words.InsertColumn(0, header, LVCFMT_LEFT, 80);
 
 	header = FbeLoadCString(IDS_SETTINGS_WLIST_WORD);
 	m_list_words.InsertColumn(1, header, LVCFMT_LEFT, wcWidth);
@@ -113,6 +113,7 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	SetRuntimeSettingsWordsText(m_hWnd, IDC_CHECK_SHOW_EXCLUSIONS, L"fbe.dialog.idd_settings_words.show_exclusions", L"Show exclusions");
 	SetRuntimeSettingsWordsText(m_hWnd, IDC_CHECK_SELALL, L"fbe.dialog.idd_settings_words.select_all", L"Select all");
 	SetRuntimeSettingsWordsText(m_hWnd, IDC_BUTTON_REMOVESEL, L"fbe.dialog.idd_settings_words.remove_selected", L"Remove selected");
+	SetRuntimeSettingsWordsText(m_hWnd, IDC_STATIC_WORDS_NEW_WORD, L"fbe.dialog.idd_settings_words.new_word", L"New word:");
 
 	// this unuseful code dramatically slowdown application! must be removed
 //	CreateStatBitmaps();

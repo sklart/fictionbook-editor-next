@@ -40,7 +40,14 @@ $generalDialog = Get-Dialog 'IDD_SETTINGS_GENERAL'
 $advancedDialog = Get-Dialog 'IDD_SETTINGS_ADVANCED'
 $hotkeysDialog = Get-Dialog 'IDD_HOTKEYS'
 $imagesDialog = Get-Dialog 'IDD_SETTINGS_IMAGES'
-Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 330, 320' 'Source page dimensions changed.'
+Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 300, 320' 'Source page must fit the Settings content area.'
+foreach ($row in @(
+    'IDC_WRAP,"Button".*?,14,38,120,10[\s\S]*?IDC_SYNTAXHL,"Button".*?,142,38,136,10',
+    'IDC_TAGHL,"Button".*?,14,54,166,10[\s\S]*?IDC_SHOWEOL,"Button".*?,186,54,94,10',
+    'IDC_SHOWWHITESPACE,"Button".*?,14,70,130,10[\s\S]*?IDC_SHOWLINENUMBERS,"Button".*?,150,70,130,10'
+)) {
+    Assert-Contains $sourceDialog $row 'Source checkboxes must use three stable rows.'
+}
 foreach ($control in @('IDC_SRCFONT', 'IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', 'IDC_SHOWEOL', 'IDC_SHOWWHITESPACE', 'IDC_SHOWLINENUMBERS', 'IDC_OPTIONS_SOURCE_PALETTE', 'IDC_OPTIONS_SOURCE_PREVIEW')) {
     Assert-Contains $sourceDialog $control "Source control missing from IDD_SETTINGS_SOURCE: $control"
 }

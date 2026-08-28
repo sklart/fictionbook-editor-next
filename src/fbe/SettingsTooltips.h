@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atlctrls.h>
+#include <map>
 #include "RuntimeLocalization.h"
 
 class CSettingsTooltips
@@ -19,8 +20,9 @@ public:
 	{
 		if(control != NULL)
 		{
-			const CString text = FbeLoadRuntimeStringByKey(key, fallback);
-			CToolInfo toolInfo(TTF_SUBCLASS, control, 0, NULL, text);
+			CString& text = m_texts[control];
+			text = FbeLoadRuntimeStringByKey(key, fallback);
+			CToolInfo toolInfo(TTF_SUBCLASS, control, 0, NULL, text.GetBuffer());
 			m_tooltips.AddTool(&toolInfo);
 		}
 	}
@@ -28,9 +30,13 @@ public:
 	void UpdateText(HWND control, const CString& text)
 	{
 		if(control != NULL)
-			m_tooltips.UpdateTipText(text, control);
+		{
+			m_texts[control] = text;
+			m_tooltips.UpdateTipText(m_texts[control].GetString(), control);
+		}
 	}
 
 private:
 	CToolTipCtrl m_tooltips;
+	std::map<HWND, CString> m_texts;
 };

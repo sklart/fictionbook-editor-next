@@ -233,7 +233,21 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE), L"fbe.theme.tooltip.attribute", L"XML attribute names color.");
 	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_STRING), L"fbe.theme.tooltip.value", L"XML attribute values color.");
 	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_BACKGROUND), L"fbe.theme.tooltip.background", L"Source editor and preview background color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_TEXT_LABEL), L"fbe.theme.tooltip.text", L"XML plain text color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_TAG_LABEL), L"fbe.theme.tooltip.tag", L"XML tag names and delimiters color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE_LABEL), L"fbe.theme.tooltip.attribute", L"XML attribute names color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_STRING_LABEL), L"fbe.theme.tooltip.value", L"XML attribute values color.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLOR_BACKGROUND_LABEL), L"fbe.theme.tooltip.background", L"Source editor and preview background color.");
 	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_COLORS_RESET), L"fbe.theme.tooltip.reset", L"Remove manual overrides and restore the selected theme colors.");
+	m_source_tooltips.Add(m_srcfonts, L"fbe.settings.tooltip.source.font", L"Font used in the source-code editor.");
+	m_source_tooltips.Add(m_src_wrap, L"fbe.settings.tooltip.source.wrap", L"Wraps long source-code lines instead of scrolling horizontally.");
+	m_source_tooltips.Add(m_src_hl, L"fbe.settings.tooltip.source.syntax", L"Highlights XML syntax in the source-code editor.");
+	m_source_tooltips.Add(m_src_taghl, L"fbe.settings.tooltip.source.tags", L"Highlights the matching XML tag at the caret.");
+	m_source_tooltips.Add(m_src_eol, L"fbe.settings.tooltip.source.eol", L"Shows end-of-line marks in source code.");
+	m_source_tooltips.Add(m_src_whitespace, L"fbe.settings.tooltip.source.whitespace", L"Shows spaces and other whitespace characters.");
+	m_source_tooltips.Add(m_src_line_numbers, L"fbe.settings.tooltip.source.line_numbers", L"Shows line numbers in the source-code editor.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS), L"fbe.settings.tooltip.source.invisible", L"Shows invisible formatting characters in the source-code editor.");
+	m_source_tooltips.Add(GetDlgItem(IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE), L"fbe.settings.tooltip.source.special_style", L"Chooses how invisible characters are displayed.");
 
 
 	const CString paletteText = FbeLoadRuntimeStringByKey(

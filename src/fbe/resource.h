@@ -701,6 +701,7 @@
 #define IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE 1130
 #define IDC_FBE_NEXT_WINDOW_TITLE_GROUP 1131
 #define IDC_SETTINGS_NAV                1625
+#define IDC_STATIC_WORDS_NEW_WORD       1626
 
 // Next default values for new objects
 // 

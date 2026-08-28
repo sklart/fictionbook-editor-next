@@ -23,6 +23,7 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_defaultScriptsFolder, L"fbe.settings.tooltip.advanced.default_scripts_folder", L"Uses the standard Scripts folder for this installation or portable copy.");
 	m_tooltips.Add(m_selectScriptsFolder, L"fbe.settings.tooltip.advanced.browse", L"Choose a folder containing user scripts.");
 	m_tooltips.Add(m_fastMode, L"fbe.settings.tooltip.advanced.fast_mode", L"Uses the application's reduced-feature fast mode.");
+	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_SCRIPTS), L"fbe.settings.tooltip.advanced.scripts_folder", L"Folder from which FictionBook Editor Next loads user scripts.");
 	m_initialScriptsFolder = _Settings.GetResolvedScriptsFolder();
 	m_defaultScriptsFolder.SetCheck(_Settings.IsDefaultScriptsFolder());
 	m_scriptsFolder.SetWindowText(_Settings.GetScriptsFolderStored());

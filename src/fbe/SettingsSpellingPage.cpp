@@ -17,6 +17,7 @@ LRESULT CSettingsSpellingPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_highlight, L"fbe.settings.tooltip.spelling.background", L"Marks possible spelling errors while editing.");
 	m_tooltips.Add(m_dictionary, L"fbe.settings.tooltip.spelling.custom_dictionary", L"File of additional words that should be treated as correct.");
 	m_tooltips.Add(GetDlgItem(IDC_DICTPATH), L"fbe.settings.tooltip.spelling.browse", L"Choose a custom dictionary file.");
+	m_tooltips.Add(GetDlgItem(IDS_SPELL_CUSTOM_DICT), L"fbe.settings.tooltip.spelling.custom_dictionary", L"File of additional words that should be treated as correct.");
 	SetText(m_hWnd, IDC_OPTIONS_SPELLCHECK_GROUP, L"fbe.dialog.idd_options.spell_checking", L"Spelling");
 	SetText(m_hWnd, IDC_USESPELLCHECKER, L"fbe.dialog.idd_options.use_spellchecker", L"Use spellchecker");
 	SetText(m_hWnd, IDC_BACKGROUNDSPELLCHECK, L"fbe.dialog.idd_options.background_spell_check", L"Highlight misspelled words");
