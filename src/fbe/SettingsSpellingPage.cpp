@@ -6,6 +6,7 @@
 extern CSettings _Settings;
 
 namespace { void SetText(HWND window, int id, LPCWSTR key, LPCWSTR fallback) { ::SetDlgItemText(window, id, FbeLoadRuntimeStringByKey(key, fallback)); } }
+namespace { void DictionaryError(HWND owner, LPCWSTR key, LPCWSTR fallback) { MessageBeep(MB_ICONERROR); ::MessageBox(owner, FbeLoadRuntimeStringByKey(key, fallback), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR); } }
 
 LRESULT CSettingsSpellingPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
@@ -38,15 +39,18 @@ bool CSettingsSpellingPage::Validate()
 		CString directory(path); ::PathRemoveFileSpec(directory.GetBuffer()); directory.ReleaseBuffer();
 		const DWORD directoryAttributes = ::GetFileAttributes(directory);
 		if(directoryAttributes != INVALID_FILE_ATTRIBUTES && (directoryAttributes & FILE_ATTRIBUTE_DIRECTORY)) return true;
-		MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false;
+		DictionaryError(m_hWnd, L"fbe.settings.spelling.parent_missing", L"The custom dictionary parent directory does not exist."); m_dictionary.SetFocus(); return false;
 	}
 	if(attributes & FILE_ATTRIBUTE_DIRECTORY)
 	{
-		MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false;
+		DictionaryError(m_hWnd, L"fbe.settings.spelling.path_is_directory", L"The selected custom dictionary path is a directory."); m_dictionary.SetFocus(); return false;
 	}
-	if(attributes & FILE_ATTRIBUTE_READONLY) { MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false; }
+	if(attributes & FILE_ATTRIBUTE_READONLY) { DictionaryError(m_hWnd, L"fbe.settings.spelling.read_only", L"The custom dictionary is read-only."); m_dictionary.SetFocus(); return false; }
 	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) { MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false; }
+	if(file == INVALID_HANDLE_VALUE) { DictionaryError(m_hWnd, L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read."); m_dictionary.SetFocus(); return false; }
+	::CloseHandle(file);
+	file = ::CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) { DictionaryError(m_hWnd, L"fbe.settings.spelling.write_failed", L"The custom dictionary cannot be written."); m_dictionary.SetFocus(); return false; }
 	::CloseHandle(file);
 	return true;
 }
@@ -55,6 +59,7 @@ bool CSettingsSpellingPage::CancelChanges() { return true; }
 LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 {
 	wchar_t path[_MAX_PATH] = {}; m_dictionary.GetWindowText(path, _countof(path));
-	OPENFILENAME dialog = {}; dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = m_hWnd; dialog.hInstance = _Module.m_hInst; dialog.lpstrDefExt = L"dic"; dialog.lpstrFilter = L"Dictionaries (*.dic)\0*.dic\0All files (*.*)\0*.*\0\0"; dialog.lpstrFile = path; dialog.nMaxFile = _countof(path); dialog.Flags = OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+	CString filter = FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.filter.dictionary", L"Dictionaries (*.dic)"); filter += L'\0'; filter += L"*.dic"; filter += L'\0'; filter += FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.filter.all_files", L"All files (*.*)"); filter += L'\0'; filter += L"*.*"; filter += L'\0'; filter += L'\0';
+	OPENFILENAME dialog = {}; dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = m_hWnd; dialog.hInstance = _Module.m_hInst; dialog.lpstrDefExt = L"dic"; dialog.lpstrFilter = filter; dialog.lpstrFile = path; dialog.nMaxFile = _countof(path); dialog.Flags = OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 	if(GetOpenFileName(&dialog)) m_dictionary.SetWindowText(path); return 0;
 }

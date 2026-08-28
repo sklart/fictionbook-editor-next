@@ -33,20 +33,22 @@ inline void FbeLoadCustomDictionary(const CString& path, UINT codePage, CSimpleA
 	catch (...) {}
 }
 
-inline void FbeSaveCustomDictionary(const CString& path, UINT codePage, const CSimpleArray<CString>& words)
+inline bool FbeSaveCustomDictionary(const CString& path, UINT codePage, const CSimpleArray<CString>& words)
 {
 	try
 	{
 		std::ofstream output;
 		output.open(path, std::ios_base::out | std::ios_base::trunc);
 		if (!output.is_open())
-			return;
+			return false;
 		for (int i = 0; i < words.GetSize(); ++i)
 		{
 			CString word(words[i]);
 			word.Replace(L"\u00AD", L"");
 			output << FbeEncodeDictionaryWord(word, codePage) << '\n';
 		}
+		output.flush();
+		return output.good();
 	}
-	catch (...) {}
+	catch (...) { return false; }
 }

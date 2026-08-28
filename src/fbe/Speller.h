@@ -290,7 +290,7 @@ protected:
 	UINT DetectDictionaryCodePage(Hunhandle* dict, UINT fallbackCodePage);
 	Hunhandle* GetDictionary(CString word);
 	void LoadCustomDict();
-	void SaveCustomDict();
+	bool SaveCustomDict();
 	MSHTML::IHTMLTxtRangePtr GetSelWordRange();
 	CString GetSelWord();
 
