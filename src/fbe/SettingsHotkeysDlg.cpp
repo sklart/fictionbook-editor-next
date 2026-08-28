@@ -121,7 +121,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 		const CString klid = GetKeyboardLayoutId(layouts[i], originalLayout);
 		LCID locale = MAKELCID((LANGID)(legacyHkl & 0xffff), SORT_DEFAULT);
 		if(!GetLocaleInfo(locale, LOCALE_SLANGUAGE, name, _countof(name))) name[0] = L'\0';
-		CString label; label.Format(L"%s — %s", name[0] ? name : FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.keyboard_layout", L"Keyboard layout").GetString(), klid.IsEmpty() ? FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.unavailable", L"Unavailable").GetString() : klid.GetString());
+		CString label; label.Format(L"%s \x2014 %s", name[0] ? name : FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.keyboard_layout", L"Keyboard layout").GetString(), klid.IsEmpty() ? FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.unavailable", L"Unavailable").GetString() : klid.GetString());
 		const int item = m_keybLayout.AddString(label);
 		m_keybLayout.SetItemData(item, legacyHkl);
 		m_keyboardLayoutIds.push_back(klid);
@@ -130,7 +130,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	const CString storedId = _Settings.GetKeyboardLayoutId();
 	const KeyboardLayoutSelection layoutSelection = ResolveKeyboardLayoutSelection(std::wstring(storedId.GetString()), _Settings.GetKeybLayout(), activeLayout, keyboardLayouts);
 	int selection = layoutSelection.index;
-	if(layoutSelection.kind == KeyboardLayoutSelectionKind::UnavailableKlid) { selection = m_keybLayout.AddString(storedId + L" — " + FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.unavailable", L"Unavailable")); m_keybLayout.SetItemData(selection, 0); m_keyboardLayoutIds.push_back(storedId); }
+	if(layoutSelection.kind == KeyboardLayoutSelectionKind::UnavailableKlid) { selection = m_keybLayout.AddString(storedId + L" \x2014 " + FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.unavailable", L"Unavailable")); m_keybLayout.SetItemData(selection, 0); m_keyboardLayoutIds.push_back(storedId); }
 	if(layoutSelection.kind == KeyboardLayoutSelectionKind::UnresolvedLegacy) { CString label; label.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.legacy_unresolved", L"Legacy layout %04x — unresolved"), _Settings.GetKeybLayout() & 0xffff); selection = m_keybLayout.AddString(label); m_keybLayout.SetItemData(selection, 0); m_keyboardLayoutIds.push_back(CString()); }
 	if(selection >= 0) m_keybLayout.SetCurSel(selection);
 	UpdateKeyboardLayoutDependencies();

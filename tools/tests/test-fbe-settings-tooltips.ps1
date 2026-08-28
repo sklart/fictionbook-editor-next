@@ -6,7 +6,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $tooltips = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsTooltips.h')
 
 foreach($contract in @(
-	'm_tooltips\.Create\(owner\)',
+	'm_tooltips\.Create\(owner,\s*NULL,\s*NULL,\s*WS_POPUP\s*\|\s*TTS_ALWAYSTIP\)',
 	'ATLASSERT\(m_tooltips\.IsWindow\(\)\)',
 	'm_tooltips\.Activate\(TRUE\)',
 	'CToolInfo\s+toolInfo\(TTF_SUBCLASS,\s*control,\s*0,\s*NULL,\s*text\.GetBuffer\(\)\)',
