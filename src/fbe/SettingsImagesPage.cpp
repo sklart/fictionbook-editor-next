@@ -29,6 +29,8 @@ LRESULT CSettingsImagesPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_DIALOGS), L"fbe.settings.tooltip.images.empty_image", L"Creates an empty image when inserting an image placeholder.");
 	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_QUALITY), L"fbe.settings.tooltip.images.paste_quality", L"JPEG quality used only when the inserted image is converted to JPEG.");
 	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_IMPORT_QUALITY), L"fbe.settings.tooltip.images.import_quality", L"JPEG quality is used only when the selected import format produces JPEG.");
+	m_tooltips.AddDisabledControlArea(m_jpegQuality, L"fbe.settings.tooltip.images.paste_quality", L"JPEG quality used only when the inserted image is converted to JPEG.");
+	m_tooltips.AddDisabledControlArea(m_imageImportJpegQuality, L"fbe.settings.tooltip.images.import_quality", L"JPEG quality is used only when the selected import format produces JPEG.");
 
 	m_askImage.SetCheck(_Settings.GetInsImageAsking() ? BST_CHECKED : BST_UNCHECKED);
 	m_clearImages.SetCheck(_Settings.GetIsInsClearImage() ? BST_CHECKED : BST_UNCHECKED);

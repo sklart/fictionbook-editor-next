@@ -10,7 +10,9 @@ foreach($contract in @(
 	'ATLASSERT\(m_tooltips\.IsWindow\(\)\)',
 	'm_tooltips\.Activate\(TRUE\)',
 	'CToolInfo\s+toolInfo\(TTF_SUBCLASS,\s*control,\s*0,\s*NULL,\s*text\.GetBuffer\(\)\)',
-	'm_tooltips\.AddTool\(&toolInfo\)'))
+	'm_tooltips\.AddTool\(&toolInfo\)',
+	'AddDisabledControlArea',
+	'CToolInfo\s+toolInfo\(TTF_SUBCLASS,\s*m_owner,\s*id,\s*&rect,\s*text\.GetBuffer\(\)\)'))
 {
 	if($tooltips -notmatch $contract) { throw "Missing Settings tooltip delivery contract: $contract" }
 }

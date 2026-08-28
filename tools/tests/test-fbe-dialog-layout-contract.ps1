@@ -40,6 +40,7 @@ $generalDialog = Get-Dialog 'IDD_SETTINGS_GENERAL'
 $advancedDialog = Get-Dialog 'IDD_SETTINGS_ADVANCED'
 $hotkeysDialog = Get-Dialog 'IDD_HOTKEYS'
 $imagesDialog = Get-Dialog 'IDD_SETTINGS_IMAGES'
+$wordsDialog = Get-Dialog 'IDD_SETTINGS_WORDS'
 Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 300, 320' 'Source page must fit the Settings content area.'
 foreach ($row in @(
     'IDC_WRAP,"Button".*?,14,38,120,10[\s\S]*?IDC_SYNTAXHL,"Button".*?,142,38,136,10',
@@ -70,6 +71,9 @@ foreach ($control in @('IDC_KEEP', 'IDC_DEFAULT_ENC', 'IDC_RESTORE_POS', 'IDC_SE
 }
 if ($rc -match ('(?m)^IDD_SETTING' + '_OTHER DIALOGEX')) { throw 'Legacy Other dialog must be removed.' }
 Assert-Contains $generalDialog 'IDC_UPDATE_CHANNEL,82,223,180,55' 'Update-channel selector geometry changed in IDD_SETTINGS_GENERAL.'
+Assert-Contains $wordsDialog 'IDC_STATIC_WORDS_NEW_WORD,18,151,60,9' 'Words new-word label must stay aligned with the input row.'
+Assert-Contains $wordsDialog 'IDC_EDIT_NEW,78,149,105,14' 'Words input must follow its label on the same row.'
+Assert-Contains $wordsDialog 'IDC_BUTTON_ADD,194,149,50,14' 'Words Add button must share the new-word row.'
 foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE', 'IDC_UPDATE_CHANNEL')) {
     Assert-Contains $generalDialog $control "General control missing from IDD_SETTINGS_GENERAL: $control"
 }

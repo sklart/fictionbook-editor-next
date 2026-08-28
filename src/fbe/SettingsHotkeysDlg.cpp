@@ -108,6 +108,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_tooltips.Add(m_changeKeyb, L"fbe.settings.tooltip.hotkeys.change_layout", L"Changes the keyboard layout when FictionBook Editor Next starts.");
 	m_tooltips.Add(m_keybLayout, L"fbe.settings.tooltip.hotkeys.layout", L"Keyboard layout used at startup when layout switching is enabled.");
 	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_CHANGE_TO), L"fbe.settings.tooltip.hotkeys.layout_disabled", L"Available after enabling Change layout on startup.");
+	m_tooltips.AddDisabledControlArea(m_keybLayout, L"fbe.settings.tooltip.hotkeys.layout_disabled", L"Available after enabling Change layout on startup.");
 	m_changeKeyb.SetCheck(_Settings.GetChangeKeybLayout());
 	TCHAR name[255] = {}; const HKL originalLayout = GetKeyboardLayout(GetCurrentThreadId()); const DWORD activeLayout = static_cast<DWORD>(reinterpret_cast<ULONG_PTR>(originalLayout)); const int layoutCount = GetKeyboardLayoutList(0, NULL);
 	std::vector<HKL> layouts(layoutCount > 0 ? layoutCount : 0);
