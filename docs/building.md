@@ -161,7 +161,7 @@ legacy-инициализации MSHTML и проверяет, что восс�
 
 - NSIS для создания установщика.
 
-UPX 5.1.1 хранится в `tools/upx`. Hunspell подключён как Git submodule в
+UPX 5.2.1 хранится в `tools/upx`. Hunspell подключён как Git submodule в
 `third_party/hunspell`.
 
 Для отдельной пересборки только статической библиотеки Hunspell используйте:
