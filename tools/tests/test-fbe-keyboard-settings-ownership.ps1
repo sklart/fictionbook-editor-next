@@ -67,5 +67,8 @@ if ($hotkeys -notmatch 'GetKeyboardLayoutList\(0, NULL\)' -or $hotkeys -match 'H
 if ($hotkeys -notmatch 'GetKeyboardLayoutName' -or $hotkeys -notmatch 'SetKeyboardLayoutId\(' -or $hotkeys -match 'const DWORD klid') {
     throw 'Keyboard UI must resolve and persist a string KLID rather than casting HKL.'
 }
+if ($hotkeys -notmatch 'storedId \+ L" — unavailable"' -or $hotkeys -notmatch 'matches == 1' -or $hotkeys -notmatch 'activeMatch') {
+    throw 'Keyboard legacy migration must preserve unavailable IDs and avoid arbitrary same-language choices.'
+}
 
 Write-Host 'Keyboard-layout settings ownership passed.'

@@ -106,11 +106,26 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 		m_keybLayout.SetItemData(item, legacyHkl);
 		m_keyboardLayoutIds.push_back(klid);
 	}
-	for(int i = 0; i < count; ++i)
-		if(m_keyboardLayoutIds[i] == _Settings.GetKeyboardLayoutId() ||
-			(_Settings.GetKeyboardLayoutId().IsEmpty() && m_keybLayout.GetItemData(i) == _Settings.GetKeybLayout()))
-		{ m_keybLayout.SetCurSel(i); break; }
-	if(m_keybLayout.GetCurSel() < 0 && count > 0) m_keybLayout.SetCurSel(0);
+	int selection = -1;
+	const CString storedId = _Settings.GetKeyboardLayoutId();
+	if(!storedId.IsEmpty())
+	{
+		for(int i = 0; i < count; ++i) if(m_keyboardLayoutIds[i] == storedId) { selection = i; break; }
+		if(selection < 0) { selection = m_keybLayout.AddString(storedId + L" — unavailable"); m_keybLayout.SetItemData(selection, 0); m_keyboardLayoutIds.push_back(storedId); }
+	}
+	else
+	{
+		const DWORD legacy = _Settings.GetKeybLayout();
+		for(int i = 0; i < count; ++i) if(m_keybLayout.GetItemData(i) == legacy) { selection = i; break; }
+		if(selection < 0 && legacy != 0)
+		{
+			int matches = 0, activeMatch = -1, onlyMatch = -1;
+			for(int i = 0; i < count; ++i) if((static_cast<DWORD>(m_keybLayout.GetItemData(i)) & 0xffff) == (legacy & 0xffff)) { ++matches; onlyMatch = i; if(m_keybLayout.GetItemData(i) == reinterpret_cast<DWORD_PTR>(originalLayout)) activeMatch = i; }
+			selection = activeMatch >= 0 ? activeMatch : (matches == 1 ? onlyMatch : -1);
+		}
+		if(selection < 0) for(int i = 0; i < count; ++i) if(m_keybLayout.GetItemData(i) == reinterpret_cast<DWORD_PTR>(originalLayout)) { selection = i; break; }
+	}
+	if(selection >= 0) m_keybLayout.SetCurSel(selection);
 	UpdateKeyboardLayoutDependencies();
 	ClearAndSet();
 
@@ -289,7 +304,7 @@ LRESULT CSettingsHotkeysDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hW
 
 bool CSettingsHotkeysDlg::Validate()
 {
-	if(m_changeKeyb.GetCheck() == BST_CHECKED && (m_keybLayout.GetCurSel() < 0 || m_keyboardLayoutIds[m_keybLayout.GetCurSel()].IsEmpty()))
+	if(m_changeKeyb.GetCheck() == BST_CHECKED && (m_keybLayout.GetCurSel() < 0 || m_keyboardLayoutIds[m_keybLayout.GetCurSel()].IsEmpty() || m_keybLayout.GetItemData(m_keybLayout.GetCurSel()) == 0))
 	{
 		MessageBeep(MB_ICONERROR); m_keybLayout.SetFocus(); return false;
 	}

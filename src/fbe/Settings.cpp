@@ -231,6 +231,8 @@ static CString NormalizeScriptsFolderPath(CString path)
 {
 	path.Trim();
 	path.Replace(L'/', L'\\');
+	if(!path.IsEmpty() && ::PathIsRelative(path))
+		path = U::GetProgDir() + path;
 	while(path.GetLength() > 3 && path.Right(1) == L"\\")
 		path.Delete(path.GetLength() - 1);
 	if(!path.IsEmpty() && path.Right(1) != L"\\")
@@ -2711,6 +2713,8 @@ void CSettings::SetDefaults()
 	m_custom_dict_codepage	= 1251;
 	m_nbsp_char				= L"\u00A0";
 	m_change_kbd_layout_check = false;
+	m_keyb_layout = 0;
+	m_keyboard_layout_id.Empty();
 	m_show_line_numbers		= false;
 	m_image_type			= 1;
 	m_jpeg_quality			= 75;

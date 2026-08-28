@@ -2917,9 +2917,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   if (_Settings.GetChangeKeybLayout())
   {
 	  CString layout = _Settings.GetKeyboardLayoutId();
-	  if(layout.IsEmpty()) layout.Format(L"%08x", _Settings.GetKeybLayout());
-	  const HKL loadedLayout = LoadKeyboardLayout(layout,KLF_ACTIVATE);
-	  ATLASSERT(loadedLayout != NULL);
+	  if(layout.IsEmpty() && _Settings.GetKeybLayout() != 0) layout.Format(L"%08x", _Settings.GetKeybLayout());
+	  if(!layout.IsEmpty()) LoadKeyboardLayout(layout, KLF_ACTIVATE);
   }
   
   // added by SeNS: create blank document, and load incorrect XML to Scintilla
