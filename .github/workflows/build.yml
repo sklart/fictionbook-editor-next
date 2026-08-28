@@ -33,6 +33,8 @@ jobs:
           ./tools/tests/test-legacy308-artifact-migration.ps1
           ./tools/tests/test-update-version.ps1
           ./tools/tests/test-buildstamp-fallback.ps1
+          ./tools/tests/test-fbe-script-command-ids.ps1
+          ./tools/tests/test-fbe-script-folder-icons.ps1
           ./tools/build/verify-nsis-layout.ps1
 
   build:

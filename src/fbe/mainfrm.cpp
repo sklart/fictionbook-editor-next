@@ -26,8 +26,11 @@ static bool IsFbeTestScenario(const wchar_t* expectedScenario);
 namespace
 {
 const int SCRIPT_COMMAND_COUNT = 999;
-const int SCRIPT_FOLDER_MENU_ID_BASE = 10000;
+const int SCRIPT_FOLDER_MENU_ID_BASE = ID_EDIT_INS_SYMBOL + 101;
 const int SCRIPT_FOLDER_MENU_ID_COUNT = 999;
+static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < SCRIPT_FOLDER_MENU_ID_BASE, "Script and folder menu IDs overlap");
+static_assert(SCRIPT_FOLDER_MENU_ID_BASE > ID_EDIT_INS_SYMBOL + 100, "Folder menu IDs overlap symbol commands");
+static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT_ITEM, "Folder menu IDs overlap regular commands");
 
 static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE module,
 	UINT bitmapResourceId, UINT commandId)
@@ -8710,11 +8713,9 @@ void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray
 		{
 			if(scripts[i].isFolder)
 			{
-				if(nextFolderMenuId > SCRIPT_FOLDER_MENU_ID_COUNT)
-					continue;
 				mi.fMask |= MIIM_SUBMENU | MIIM_ID;
 				mi.hSubMenu = CreateMenu();
-				mi.wID = SCRIPT_FOLDER_MENU_ID_BASE + nextFolderMenuId++;
+				mi.wID = nextFolderMenuId <= SCRIPT_FOLDER_MENU_ID_COUNT ? SCRIPT_FOLDER_MENU_ID_BASE + nextFolderMenuId++ : 0;
 				scripts[i].wID = -1;
 				AddScriptsSubMenu(mi.hSubMenu, scripts[i].id, scripts, nextFolderMenuId);
 			}
@@ -8741,7 +8742,7 @@ void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray
 					AddTbButton(m_ScriptsToolbar, scripts[i].name, mi.wID, TBSTATE_ENABLED, (HICON)scripts[i].picture);
 			}
 
-			switch(scripts[i].pictType)
+			if(!scripts[i].isFolder || mi.wID != 0) switch(scripts[i].pictType)
 			{
 				case CMainFrame::BITMAP:
 					m_MenuBar.AddBitmap((HBITMAP)scripts[i].picture, mi.wID);
