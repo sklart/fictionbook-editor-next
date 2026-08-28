@@ -2482,7 +2482,7 @@ void CMainFrame::InitPlugins()
 
 	if(m_scripts.GetSize())
 	{
-		int nextFolderMenuId = 1;
+		int nextFolderMenuId = 0;
 		AddScriptsSubMenu(scripts, L"0", m_scripts, nextFolderMenuId);
 	}
 	else
@@ -8715,7 +8715,7 @@ void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray
 			{
 				mi.fMask |= MIIM_SUBMENU | MIIM_ID;
 				mi.hSubMenu = CreateMenu();
-				mi.wID = nextFolderMenuId <= SCRIPT_FOLDER_MENU_ID_COUNT ? SCRIPT_FOLDER_MENU_ID_BASE + nextFolderMenuId++ : 0;
+				mi.wID = nextFolderMenuId < SCRIPT_FOLDER_MENU_ID_COUNT ? SCRIPT_FOLDER_MENU_ID_BASE + nextFolderMenuId++ : 0;
 				scripts[i].wID = -1;
 				AddScriptsSubMenu(mi.hSubMenu, scripts[i].id, scripts, nextFolderMenuId);
 			}
