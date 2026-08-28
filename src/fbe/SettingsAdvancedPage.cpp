@@ -36,11 +36,20 @@ bool CSettingsAdvancedPage::Validate()
 {
 	if(m_scriptsSwitched)
 		return true;
-	CString folder; m_scriptsFolder.GetWindowText(folder); folder.Trim();
+	CString folder; m_scriptsFolder.GetWindowText(folder); folder = ResolveScriptsFolderPath(folder);
 	const DWORD attributes = folder.IsEmpty() ? INVALID_FILE_ATTRIBUTES : ::GetFileAttributes(folder);
-	if(attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY))
+	if(attributes == INVALID_FILE_ATTRIBUTES)
 	{
 		MessageBeep(MB_ICONERROR);
+		const DWORD error = ::GetLastError();
+		::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(error == ERROR_ACCESS_DENIED ? L"fbe.settings.advanced.folder_access_failed" : L"fbe.settings.advanced.folder_missing", error == ERROR_ACCESS_DENIED ? L"The scripts folder cannot be accessed." : L"The scripts folder does not exist."), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+		m_scriptsFolder.SetFocus();
+		return false;
+	}
+	if(!(attributes & FILE_ATTRIBUTE_DIRECTORY))
+	{
+		MessageBeep(MB_ICONERROR);
+		::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.settings.advanced.folder_not_directory", L"The selected scripts path is not a folder."), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
 		m_scriptsFolder.SetFocus();
 		return false;
 	}
@@ -48,7 +57,7 @@ bool CSettingsAdvancedPage::Validate()
 }
 void CSettingsAdvancedPage::Commit()
 {
-	CString folder; m_scriptsFolder.GetWindowText(folder);
+	CString folder; m_scriptsFolder.GetWindowText(folder); folder = ResolveScriptsFolderPath(folder);
 	_Settings.SetScriptsFolder(folder.IsEmpty() ? _Settings.GetDefaultScriptsFolder() : folder, true);
 	if(m_initialScriptsFolder != _Settings.GetScriptsFolder()) _Settings.SetNeedRestart();
 	_Settings.SetFastMode(m_fastMode.GetCheck() == BST_CHECKED);

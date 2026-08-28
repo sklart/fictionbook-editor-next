@@ -227,8 +227,9 @@ void CSettings::Init()
 		m_key.Create(HKEY_CURRENT_USER, m_key_path);
 }
 
-static CString NormalizeScriptsFolderPath(CString path)
+CString ResolveScriptsFolderPath(const CString& storedPath)
 {
+	CString path(storedPath);
 	path.Trim();
 	path.Replace(L'/', L'\\');
 	if(!path.IsEmpty() && ::PathIsRelative(path))
@@ -1353,7 +1354,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
 	{
-		m_scripts_folder = NormalizeScriptsFolderPath(sValue.GetStringValue());
+		m_scripts_folder = ResolveScriptsFolderPath(sValue.GetStringValue());
 		return true;
 	}
 	// SeNS
@@ -2446,14 +2447,12 @@ void CSettings::SetGenreCatalog(GenreCatalog catalog, bool apply)
 
 void CSettings::SetScriptsFolder(const CString& fullpath, bool apply)
 {
-	const CString normalized = NormalizeScriptsFolderPath(fullpath);
-	if(apply)
+	const CString normalized = ResolveScriptsFolderPath(fullpath);
+	if(m_scripts_folder.CompareNoCase(normalized) != 0)
 	{
-		if(m_scripts_folder.CompareNoCase(normalized) != 0)
-		{
-			m_scripts_folder = normalized;
-		}
+		m_scripts_folder = normalized;
 	}
+	if(apply) Save();
 }
 
 void CSettings::SetInsImageAsking(bool ask, bool apply)

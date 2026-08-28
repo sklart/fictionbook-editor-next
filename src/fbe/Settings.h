@@ -9,6 +9,8 @@
 #include <map>
 #include <vector>
 
+CString ResolveScriptsFolderPath(const CString& path);
+
 #include "resource.h"
 #include "res1.h"
 #include "utils.h"
