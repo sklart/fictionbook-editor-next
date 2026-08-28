@@ -522,7 +522,13 @@ void CSettingsWordsDlg::Commit()
 	_Settings.SetShowWordsExcls(m_show_words_excls.GetCheck() != 0);
 	if(m_wordsDirty)
 	{
-		_Settings.m_words = m_words;
+		std::vector<WordsItem> persistentWords = m_words;
+		std::sort(persistentWords.begin(), persistentWords.end(), [](const WordsItem& left, const WordsItem& right)
+		{
+			const int comparison = left.m_word.CompareNoCase(right.m_word);
+			return comparison != 0 ? comparison < 0 : left.m_word < right.m_word;
+		});
+		_Settings.m_words = persistentWords;
 		_Settings.SaveWords();
 	}
 }

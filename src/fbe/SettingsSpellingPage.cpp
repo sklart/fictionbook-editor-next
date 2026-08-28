@@ -36,13 +36,15 @@ bool CSettingsSpellingPage::Validate()
 	if(attributes == INVALID_FILE_ATTRIBUTES)
 	{
 		CString directory(path); ::PathRemoveFileSpec(directory.GetBuffer()); directory.ReleaseBuffer();
-		if(::GetFileAttributes(directory) != INVALID_FILE_ATTRIBUTES) return true;
+		const DWORD directoryAttributes = ::GetFileAttributes(directory);
+		if(directoryAttributes != INVALID_FILE_ATTRIBUTES && (directoryAttributes & FILE_ATTRIBUTE_DIRECTORY)) return true;
 		MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false;
 	}
 	if(attributes & FILE_ATTRIBUTE_DIRECTORY)
 	{
 		MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false;
 	}
+	if(attributes & FILE_ATTRIBUTE_READONLY) { MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false; }
 	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(file == INVALID_HANDLE_VALUE) { MessageBeep(MB_ICONERROR); m_dictionary.SetFocus(); return false; }
 	::CloseHandle(file);
@@ -53,6 +55,6 @@ bool CSettingsSpellingPage::CancelChanges() { return true; }
 LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 {
 	wchar_t path[_MAX_PATH] = {}; m_dictionary.GetWindowText(path, _countof(path));
-	OPENFILENAME dialog = {}; dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = m_hWnd; dialog.hInstance = _Module.m_hInst; dialog.lpstrDefExt = L"dic"; dialog.lpstrFilter = L"Dictionaries (*.dic)\0*.dic\0All files (*.*)\0*.*\0\0"; dialog.lpstrFile = path; dialog.nMaxFile = _countof(path); dialog.Flags = OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+	OPENFILENAME dialog = {}; dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = m_hWnd; dialog.hInstance = _Module.m_hInst; dialog.lpstrDefExt = L"dic"; dialog.lpstrFilter = L"Dictionaries (*.dic)\0*.dic\0All files (*.*)\0*.*\0\0"; dialog.lpstrFile = path; dialog.nMaxFile = _countof(path); dialog.Flags = OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 	if(GetOpenFileName(&dialog)) m_dictionary.SetWindowText(path); return 0;
 }

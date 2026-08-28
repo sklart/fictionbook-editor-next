@@ -17,6 +17,7 @@ $validate = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::Validate\s*\(\)\s*
 if(-not $commit.Success -or $commit.Groups['body'].Value -match 'GetFocus\s*\(') { throw 'Words Commit must not depend on focus.' }
 foreach($text in @('SetShowWordsExcls', '_Settings.m_words', 'SaveWords')) { if($commit.Groups['body'].Value -notlike "*$text*") { throw "Words Commit lacks $text." } }
 if($commit.Groups['body'].Value -notmatch 'if\s*\(m_wordsDirty\)') { throw 'Words Commit must not rewrite Words.xml without a model change.' }
+if($commit.Groups['body'].Value -notmatch 'persistentWords' -or $commit.Groups['body'].Value -notmatch 'CompareNoCase') { throw 'Words persistence must use a canonical order independent of the list view sort.' }
 if(-not $validate.Success -or $validate.Groups['body'].Value -notmatch 'FinishInlineEdit\(\)' -or $validate.Groups['body'].Value -notmatch 'FinishNewWord\(\)' -or $validate.Groups['body'].Value -match 'SaveWords|_Settings\.m_words') { throw 'Words Validate must finish staged edits without persisting words.' }
 $defaultAction = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::HandleDefaultAction\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 $cancelChanges = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::CancelChanges\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
@@ -24,12 +25,15 @@ if(-not $defaultAction.Success -or $words -notmatch '(?s)LRESULT\s+CSettingsWord
 if($defaultAction.Groups['body'].Value -match 'SaveWords|_Settings\.m_words|Commit\s*\(') { throw 'Words local default action must not persist settings.' }
 if(-not $cancelChanges.Success -or $cancelChanges.Groups['body'].Value -notmatch '(?s)m_editActive.*?GetFocus\s*\(\)\s*==\s*m_edit.*?return false') { throw 'Words CancelChanges must preserve the inline-editor Esc veto.' }
 $advanced = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsAdvancedPage.cpp')
+$spelling = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsSpellingPage.cpp')
 if($advanced -notmatch 'm_initialScriptsFolder\s*=\s*_Settings\.GetScriptsFolder\(\)' -or $advanced -notmatch 'm_initialScriptsFolder\s*!=\s*_Settings\.GetScriptsFolder\(\)') { throw 'Advanced page must own its scripts-folder initial snapshot.' }
 if($advanced -match 'm_initial_scripts_folder') { throw 'Advanced page still uses the global scripts-folder snapshot.' }
 $advancedHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsAdvancedPage.h')
 $settingsImplementation = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\Settings.cpp')
 if($advanced -notmatch 'GetFileAttributes\(' -or $advanced -notmatch 'm_scriptsFolder\.SetFocus') { throw 'Advanced scripts folder validation is missing.' }
 if($settingsImplementation -notmatch 'NormalizeScriptsFolderPath' -or $settingsImplementation -notmatch 'SetScriptsFolder[\s\S]*?NormalizeScriptsFolderPath') { throw 'Scripts folder is not normalized centrally.' }
+if($settingsImplementation -notmatch '(?s)PathIsRelative\(path\).*?U::GetProgDir') { throw 'Relative scripts folders must resolve independently of the process current directory.' }
+if($spelling -notmatch 'ResolveUserDataFile' -or $spelling -notmatch 'FILE_ATTRIBUTE_DIRECTORY' -or $spelling -notmatch 'FILE_ATTRIBUTE_READONLY' -or $spelling -notmatch 'OFN_NOCHANGEDIR') { throw 'Custom dictionary validation must resolve paths consistently and reject unsuitable files.' }
 if($words -notmatch '(?s)OnListClick.*?m_editActive\s*&&\s*!FinishInlineEdit\(\).*?m_edit\.SetFocus') { throw 'Starting another Words inline edit must finish the previous edit.' }
 if($words -notmatch 'm_wordsDirty\s*=\s*true') { throw 'Words mutations must mark the staged model dirty.' }
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
