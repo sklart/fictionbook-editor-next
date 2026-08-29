@@ -9,10 +9,11 @@ enum Action { NoAction, Validate, ToggleSourceOverwrite, ToggleBodyOverwrite, Co
 inline unsigned PaneBit(Pane pane) { return 1u << static_cast<unsigned>(pane); }
 inline unsigned TogglePaneVisibility(unsigned visible, Pane pane) { return visible ^ PaneBit(pane); }
 
-inline void ApplyPaneVisibility(unsigned visible, int available, int widths[PaneCount])
+inline void ApplyPaneVisibility(unsigned visible, int totalAvailable, int widths[PaneCount])
 {
 	for(int pane = Position; pane < PaneCount; ++pane)
 		if(!(visible & PaneBit(static_cast<Pane>(pane)))) widths[pane] = 0;
+	const int available = totalAvailable - widths[InsertMode];
 	auto total = [&]() { return widths[Position] + widths[Selection] + widths[Character] + widths[Encoding] + widths[Validation]; };
 	const Pane autoHideOrder[] = { Selection, Encoding, Validation, Character };
 	for(int i = 0; i < sizeof(autoHideOrder) / sizeof(autoHideOrder[0]) && total() > available; ++i)

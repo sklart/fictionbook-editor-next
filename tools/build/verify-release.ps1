@@ -236,6 +236,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-status-bar-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-status-bar-unicode.ps1")
+& (Join-Path $repoRoot "tools\tests\test-status-bar-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbv-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-runtime-lang-overlay.ps1")

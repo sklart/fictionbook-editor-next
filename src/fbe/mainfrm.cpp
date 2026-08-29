@@ -9244,7 +9244,7 @@ void CMainFrame::UpdateStatusBarLayout()
 	CRect rc;
 	m_status.GetClientRect(&rc);
 	const int defaultMinimum = MulDiv(120, m_current_dpi ? m_current_dpi : 96, 96);
-	FBEStatusBar::ApplyPaneVisibility(_Settings.StatusBarPanes(), rc.Width() - defaultMinimum - widths[FBEStatusBar::InsertMode], widths);
+	FBEStatusBar::ApplyPaneVisibility(_Settings.StatusBarPanes(), rc.Width() - defaultMinimum, widths);
 	m_status.SetPaneWidth(ID_PANE_POSITION, widths[FBEStatusBar::Position]);
 	m_status.SetPaneWidth(ID_PANE_SELECTION, widths[FBEStatusBar::Selection]);
 	m_status.SetPaneWidth(ID_PANE_CHAR, widths[FBEStatusBar::Character]);
