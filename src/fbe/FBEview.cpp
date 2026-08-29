@@ -55,6 +55,19 @@ static AU::ReMatches ExecuteSearchRegExp(AU::RegExp re, MSHTML::IHTMLTxtRangePtr
 	return ExecuteSearchRegExp(re, CString(static_cast<const wchar_t*>(rangeText)));
 }
 
+static UINT GetSearchWindowDpi(HWND window)
+{
+	typedef UINT (WINAPI* GetDpiForWindowProc)(HWND);
+	HMODULE user32 = ::GetModuleHandle(L"user32.dll");
+	GetDpiForWindowProc getDpiForWindow = user32
+		? reinterpret_cast<GetDpiForWindowProc>(::GetProcAddress(user32, "GetDpiForWindow")) : NULL;
+	if(getDpiForWindow) return getDpiForWindow(window);
+	HDC dc = ::GetDC(window);
+	const UINT dpi = dc ? static_cast<UINT>(::GetDeviceCaps(dc, LOGPIXELSY)) : 96;
+	if(dc) ::ReleaseDC(window, dc);
+	return dpi ? dpi : 96;
+}
+
 static bool IsParagraphElement(MSHTML::IHTMLElementPtr elem)
 {
 	return (bool)elem && U::scmp(elem->tagName, L"P") == 0;
@@ -2588,28 +2601,36 @@ void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
 		MSHTML::IHTMLElement2Ptr scrollElement(MSHTML::IHTMLDocument3Ptr(Document())->documentElement);
 		if(!matchRect || !scrollElement || scrollElement->clientHeight <= 0) return;
 
-		unsigned dpi = 96;
-		HDC dc = ::GetDC(m_hWnd);
-		if(dc) { dpi = static_cast<unsigned>(::GetDeviceCaps(dc, LOGPIXELSY)); ::ReleaseDC(m_hWnd, dc); }
-		FBESearchViewport::PlacementInput input = {
-			scrollElement->scrollTop, scrollElement->scrollHeight, scrollElement->clientHeight, matchRect->top,
-			FBESearchViewport::PreferredMatchTop(scrollElement->clientHeight, dpi), 0, 0,
-			FBESearchViewport::MinimumContextTopForDpi(dpi) / 4, false };
+		RECT viewportPixels = {};
+		::GetClientRect(m_hWnd, &viewportPixels);
+		const long viewportWidth = viewportPixels.right - viewportPixels.left;
+		const long viewportHeight = viewportPixels.bottom - viewportPixels.top;
+		POINT viewportTopLeft = { viewportPixels.left, viewportPixels.top };
+		POINT viewportBottomRight = { viewportPixels.right, viewportPixels.bottom };
+		::ClientToScreen(m_hWnd, &viewportTopLeft);
+		::ClientToScreen(m_hWnd, &viewportBottomRight);
 
-		RECT viewport = {};
-		::GetClientRect(m_hWnd, &viewport);
-		::ClientToScreen(m_hWnd, reinterpret_cast<POINT*>(&viewport.left));
-		::ClientToScreen(m_hWnd, reinterpret_cast<POINT*>(&viewport.right));
-		HWND dialog = NULL;
-		if(m_find_dlg && ::IsWindowVisible(m_find_dlg->m_hWnd)) dialog = m_find_dlg->m_hWnd;
-		else if(m_replace_dlg && ::IsWindowVisible(m_replace_dlg->m_hWnd)) dialog = m_replace_dlg->m_hWnd;
-		RECT dialogRect = {};
-		if(dialog && ::GetWindowRect(dialog, &dialogRect) && dialogRect.right > viewport.left && dialogRect.left < viewport.right && dialogRect.bottom > viewport.top && dialogRect.top < viewport.bottom)
+		std::vector<FBESearchViewport::Rect> obstructions;
+		HWND dialogs[] = { m_find_dlg ? m_find_dlg->m_hWnd : NULL, m_replace_dlg ? m_replace_dlg->m_hWnd : NULL };
+		for(unsigned index = 0; index < _countof(dialogs); ++index)
 		{
-			input.obstructionOverlapsViewport = true;
-			input.obstructionTop = dialogRect.top - viewport.top;
-			input.obstructionBottom = dialogRect.bottom - viewport.top;
+			RECT dialogRect = {};
+			if(!dialogs[index] || !::IsWindowVisible(dialogs[index]) || !::GetWindowRect(dialogs[index], &dialogRect)) continue;
+			if(dialogRect.right <= viewportTopLeft.x || dialogRect.left >= viewportBottomRight.x || dialogRect.bottom <= viewportTopLeft.y || dialogRect.top >= viewportBottomRight.y) continue;
+			FBESearchViewport::Rect obstruction = {
+				FBESearchViewport::ScaleToViewport(dialogRect.left - viewportTopLeft.x, viewportWidth, scrollElement->clientWidth),
+				FBESearchViewport::ScaleToViewport(dialogRect.top - viewportTopLeft.y, viewportHeight, scrollElement->clientHeight),
+				FBESearchViewport::ScaleToViewport(dialogRect.right - viewportTopLeft.x, viewportWidth, scrollElement->clientWidth),
+				FBESearchViewport::ScaleToViewport(dialogRect.bottom - viewportTopLeft.y, viewportHeight, scrollElement->clientHeight) };
+			obstructions.push_back(obstruction);
 		}
+		const UINT dpi = GetSearchWindowDpi(m_hWnd);
+		FBESearchViewport::Rect match = { matchRect->left, matchRect->top, matchRect->right, matchRect->bottom };
+		FBESearchViewport::PlacementInput input = {
+			scrollElement->scrollTop, scrollElement->scrollHeight, scrollElement->clientHeight, match,
+			FBESearchViewport::PreferredMatchTop(scrollElement->clientHeight, dpi),
+			FBESearchViewport::MinimumContextTopForDpi(dpi) / 4,
+			obstructions.empty() ? NULL : &obstructions[0], static_cast<unsigned>(obstructions.size()) };
 		scrollElement->scrollTop = FBESearchViewport::ScrollTopForMatch(input);
 	}
 	catch(const _com_error&) { }
