@@ -54,6 +54,15 @@ $systemPath = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32
 # PowerShell 7 can retain both PATH and Path in its process environment.  cmd.exe
 # may emit the stale, long variant after VsDevCmd finishes, so remove every
 # spelling before starting the child shell.
+$originalPathEntry = Get-ChildItem Env: |
+    Where-Object { $_.Name -ceq "Path" } |
+    Select-Object -First 1
+if (-not $originalPathEntry) {
+    $originalPathEntry = Get-ChildItem Env: |
+        Where-Object { $_.Name -ieq "Path" } |
+        Select-Object -First 1
+}
+$originalPath = if ($originalPathEntry) { $originalPathEntry.Value } else { "" }
 Get-ChildItem Env: |
     Where-Object { $_.Name -ieq "Path" } |
     ForEach-Object { Remove-Item -LiteralPath ("Env:" + $_.Name) -ErrorAction SilentlyContinue }
@@ -86,6 +95,13 @@ foreach ($line in $environment) {
             $line.Substring($separator + 1),
             "Process")
     }
+}
+
+# Keep command-line tools provided by the runner (git, pwsh, etc.) available
+# to the build after importing the short VS PATH.  Writing one canonical Path
+# here avoids the duplicate PATH/Path pair that broke the cmd.exe invocation.
+if ($originalPath) {
+    [Environment]::SetEnvironmentVariable("Path", ($env:Path + ";" + $originalPath), "Process")
 }
 
 [Environment]::SetEnvironmentVariable($sentinelName, "1", "Process")
