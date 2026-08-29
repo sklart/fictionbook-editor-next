@@ -11,6 +11,7 @@
 
 #include "FBEView.h"
 #include "SearchReplace.h"
+#include "SearchViewportPosition.h"
 #include "Scintilla.h"
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
@@ -2571,9 +2572,47 @@ void CFBEView::SelMatch(MSHTML::IHTMLTxtRange *tr,AU::ReMatch rm)
 	if (!rm->Length)
 		SetFocus();
 	tr->select();
+	PositionFoundRange(tr);
 	m_fo.ClearMatch();
 	m_fo.match = new AU::IMatch2(*rm);
 	m_fo.hasMatch = true;
+}
+
+void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
+{
+	try
+	{
+		if(!range || !Document()) return;
+		MSHTML::IHTMLTextRangeMetrics2Ptr rangeMetrics(range);
+		MSHTML::IHTMLRectPtr matchRect(rangeMetrics ? rangeMetrics->getBoundingClientRect() : MSHTML::IHTMLRectPtr());
+		MSHTML::IHTMLElement2Ptr scrollElement(MSHTML::IHTMLDocument3Ptr(Document())->documentElement);
+		if(!matchRect || !scrollElement || scrollElement->clientHeight <= 0) return;
+
+		unsigned dpi = 96;
+		HDC dc = ::GetDC(m_hWnd);
+		if(dc) { dpi = static_cast<unsigned>(::GetDeviceCaps(dc, LOGPIXELSY)); ::ReleaseDC(m_hWnd, dc); }
+		FBESearchViewport::PlacementInput input = {
+			scrollElement->scrollTop, scrollElement->scrollHeight, scrollElement->clientHeight, matchRect->top,
+			FBESearchViewport::PreferredMatchTop(scrollElement->clientHeight, dpi), 0, 0,
+			FBESearchViewport::MinimumContextTopForDpi(dpi) / 4, false };
+
+		RECT viewport = {};
+		::GetClientRect(m_hWnd, &viewport);
+		::ClientToScreen(m_hWnd, reinterpret_cast<POINT*>(&viewport.left));
+		::ClientToScreen(m_hWnd, reinterpret_cast<POINT*>(&viewport.right));
+		HWND dialog = NULL;
+		if(m_find_dlg && ::IsWindowVisible(m_find_dlg->m_hWnd)) dialog = m_find_dlg->m_hWnd;
+		else if(m_replace_dlg && ::IsWindowVisible(m_replace_dlg->m_hWnd)) dialog = m_replace_dlg->m_hWnd;
+		RECT dialogRect = {};
+		if(dialog && ::GetWindowRect(dialog, &dialogRect) && dialogRect.right > viewport.left && dialogRect.left < viewport.right && dialogRect.bottom > viewport.top && dialogRect.top < viewport.bottom)
+		{
+			input.obstructionOverlapsViewport = true;
+			input.obstructionTop = dialogRect.top - viewport.top;
+			input.obstructionBottom = dialogRect.bottom - viewport.top;
+		}
+		scrollElement->scrollTop = FBESearchViewport::ScrollTopForMatch(input);
+	}
+	catch(const _com_error&) { }
 }
 
 bool CFBEView::DoSearchRegexp(bool fMore)
@@ -2770,6 +2809,7 @@ bool CFBEView::DoSearchStd(bool fMore)
 		{
 			// ok, found
 			sel->select();
+			PositionFoundRange(sel);
 			return true;
 		}
 
@@ -2781,6 +2821,7 @@ bool CFBEView::DoSearchStd(bool fMore)
 		{
 			// found
 			sel->select();
+			PositionFoundRange(sel);
 			MessageBeep(MB_ICONASTERISK);
 			return true;
 		}

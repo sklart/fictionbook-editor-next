@@ -280,6 +280,7 @@ protected:
 	int TextOffset(MSHTML::IHTMLTxtRange *rng, AU::ReMatch rm, CString txt = L"", CString htmlTxt = L"");
 
 	void SelMatch(MSHTML::IHTMLTxtRange* tr, AU::ReMatch rm);
+	void PositionFoundRange(MSHTML::IHTMLTxtRange* range);
 	MSHTML::IHTMLElementPtr SelectionContainerImp();
 
 public:
