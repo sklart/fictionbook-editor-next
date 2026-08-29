@@ -47,7 +47,18 @@ $vcVarsVersionArgument = if ($VcVarsVersion) { " -vcvars_ver=$VcVarsVersion" } e
 foreach ($name in @("VSINSTALLDIR", "VCINSTALLDIR", "VCToolsInstallDir", "VCToolsRedistDir", "VisualStudioVersion", "VSCMD_VER", "VSCMD_ARG_app_plat", "VSCMD_ARG_HOST_ARCH", "VSCMD_ARG_TGT_ARCH")) {
     Remove-Item -LiteralPath ("Env:" + $name) -ErrorAction SilentlyContinue
 }
-$environment = & cmd.exe /d /s /c "`"$vsDevCmd`" -arch=$Arch -host_arch=$HostArch$vcVarsVersionArgument >nul && set"
+# GitHub-hosted runners can accumulate a PATH longer than cmd.exe can expand
+# while VsDevCmd appends its own tool directories.  Start the batch file from
+# a minimal system PATH; the resulting VS environment is then imported below.
+$systemPath = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem"
+# PowerShell 7 can retain both PATH and Path in its process environment.  cmd.exe
+# may emit the stale, long variant after VsDevCmd finishes, so remove every
+# spelling before starting the child shell.
+Get-ChildItem Env: |
+    Where-Object { $_.Name -ieq "Path" } |
+    ForEach-Object { Remove-Item -LiteralPath ("Env:" + $_.Name) -ErrorAction SilentlyContinue }
+[Environment]::SetEnvironmentVariable("Path", $systemPath, "Process")
+$environment = & cmd.exe /d /s /c "set `"PATH=$systemPath`" && call `"$vsDevCmd`" -arch=$Arch -host_arch=$HostArch$vcVarsVersionArgument >nul && set"
 if ($LASTEXITCODE -ne 0) {
     if ($VcVarsVersion) {
         throw "Не удалось инициализировать среду сборки Visual Studio для $Arch с vcvars_ver=$VcVarsVersion."

@@ -37,6 +37,9 @@ jobs:
           ./tools/tests/test-fbe-script-folder-icons.ps1
           ./tools/tests/test-fbe-settings-tooltips.ps1
           ./tools/build/verify-nsis-layout.ps1
+      - name: Test VsDevCmd with a long PATH
+        shell: pwsh
+        run: ./tools/tests/test-vsdev-environment-long-path.ps1
 
   build:
     needs: validate
