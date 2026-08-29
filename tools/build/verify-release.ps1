@@ -238,6 +238,8 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-status-bar-unicode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-status-bar-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-search-viewport-position.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbv-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-import-epub-runtime-lang-overlay.ps1")
