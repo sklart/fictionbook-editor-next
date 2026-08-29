@@ -89,8 +89,8 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 
 //	m_list_words.InsertColumn(0, L"%", LVCFMT_CENTER | LVCFMT_IMAGE, IMG_STAT_WIDTH + 10);
 
-	header = FbeLoadRuntimeStringByKey(L"fbe.settings.words.encountered", L"Encountered (saved)");
-	m_list_words.InsertColumn(0, header, LVCFMT_LEFT, 80);
+	header = FbeLoadRuntimeStringByKey(L"fbe.settings.words.encountered", L"Encountered");
+	m_list_words.InsertColumn(0, header, LVCFMT_LEFT, 92);
 
 	header = FbeLoadCString(IDS_SETTINGS_WLIST_WORD);
 	m_list_words.InsertColumn(1, header, LVCFMT_LEFT, wcWidth);

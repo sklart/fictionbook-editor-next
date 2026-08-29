@@ -43,7 +43,7 @@
       "kind": "GROUPBOX",
       "targetId": "IDC_OPTIONS_INTERFACE_GROUP",
       "translations": {
-        "en-US": "Advanced", "ru-RU": "Расширенные", "uk-UA": "Додаткові",
+        "en-US": "Performance", "ru-RU": "Производительность", "uk-UA": "Продуктивність",
         "de-DE": "Erweitert", "fr-FR": "Avancé", "es-ES": "Avanzado",
         "it-IT": "Avanzate", "pl-PL": "Zaawansowane", "pt-PT": "Avançadas",
         "nl-NL": "Geavanceerd", "cs-CZ": "Pokročilé", "bg-BG": "Разширени"
@@ -587,7 +587,7 @@
       "targetId": "IDC_CHECK_SELALL",
       "translations": {
         "en-US": "Select all",
-        "ru-RU": "Выделить все",
+        "ru-RU": "Выделить всё",
         "uk-UA": "Вибрати все",
         "de-DE": "Alle auswählen",
         "fr-FR": "Tout sélectionner",
@@ -606,7 +606,7 @@
       "targetId": "IDC_BUTTON_REMOVESEL",
       "translations": {
         "en-US": "Remove selected",
-        "ru-RU": "Убрать выделенные",
+        "ru-RU": "Удалить выделенные",
         "uk-UA": "Видалити вибрані",
         "de-DE": "Ausgewählte entfernen",
         "fr-FR": "Supprimer la sélection",
@@ -682,7 +682,7 @@
       "targetId": "IDC_HOTKEYS_SHORTCUT_LABEL",
       "translations": {
         "en-US": "Shortcut:",
-        "ru-RU": "Клавиша:",
+        "ru-RU": "Сочетание клавиш:",
         "uk-UA": "Клавіша:",
         "de-DE": "Tastenkürzel:",
         "fr-FR": "Raccourci :",
@@ -1859,8 +1859,8 @@
       "kind": "CONTROL",
       "targetId": "IDC_DEFAULT_SCRIPTS_FOLDER",
       "translations": {
-        "en-US": "Default path",
-        "ru-RU": "Путь по умолчанию",
+        "en-US": "Use the standard Scripts folder",
+        "ru-RU": "Использовать стандартную папку Scripts",
         "uk-UA": "Типовий шлях",
         "de-DE": "Standardpfad",
         "fr-FR": "Chemin par défaut",
@@ -1973,8 +1973,8 @@
       "kind": "LTEXT",
       "targetId": "IDC_SETTINGS_OTHER_NBSP_LABEL",
       "translations": {
-        "en-US": "Display character:",
-        "ru-RU": "Отображаемый символ:",
+        "en-US": "Display as:",
+        "ru-RU": "Отображать как:",
         "uk-UA": "Відображуваний символ:",
         "de-DE": "Anzuzeigendes Zeichen:",
         "fr-FR": "Caractère à afficher :",
@@ -2201,8 +2201,8 @@
       "kind": "GROUPBOX",
       "targetId": "IDC_OPTIONS_BODY_GROUP",
       "translations": {
-        "en-US": "Font",
-        "ru-RU": "Шрифт",
+        "en-US": "Editor",
+        "ru-RU": "Редактор",
         "uk-UA": "Шрифт",
         "de-DE": "Schrift",
         "fr-FR": "Police",
@@ -2497,7 +2497,7 @@
       "targetId": "IDC_USESPELLCHECKER",
       "translations": {
         "en-US": "Use spell checker",
-        "ru-RU": "Использовать орфографию",
+        "ru-RU": "Использовать проверку орфографии",
         "uk-UA": "Використовувати правопис",
         "de-DE": "Rechtschreibprüfung verwenden",
         "fr-FR": "Utiliser le correcteur",
@@ -2610,8 +2610,8 @@
       "kind": "GROUPBOX",
       "targetId": "IDC_FBE_NEXT_SAVING_GROUP",
       "translations": {
-        "en-US": "Saving",
-        "ru-RU": "Сохранение",
+        "en-US": "Backup",
+        "ru-RU": "Резервная копия",
         "uk-UA": "Збереження",
         "de-DE": "Speichern",
         "fr-FR": "Enregistrement",
@@ -3009,7 +3009,7 @@
     "fbe.settings.tooltip.hotkeys.change_layout": { "resource": "IDD_HOTKEYS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Changes the keyboard layout when FictionBook Editor Next starts.", "ru-RU": "Меняет раскладку клавиатуры при запуске FictionBook Editor Next." } },
     "fbe.settings.tooltip.hotkeys.layout": { "resource": "IDD_HOTKEYS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Keyboard layout used at startup when layout switching is enabled.", "ru-RU": "Раскладка, используемая при запуске, когда переключение раскладки включено." } },
     "fbe.settings.tooltip.hotkeys.layout_disabled": { "resource": "IDD_HOTKEYS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Available after enabling Change layout on startup.", "ru-RU": "Доступно после включения «Менять раскладку при запуске»." } },
-    "fbe.settings.tooltip.words.list": { "resource": "IDD_SETTINGS_WORDS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Words excluded from the Words dialog. The count shows how many times each word was encountered.", "ru-RU": "Слова, исключённые из диалога «Слова». Счётчик показывает, сколько раз встретилось каждое слово." } },
+    "fbe.settings.tooltip.words.list": { "resource": "IDD_SETTINGS_WORDS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Words excluded from the Words dialog. Encountered is the persisted per-word count stored in Words.xml; Settings does not reset it.", "ru-RU": "Слова, исключённые из диалога «Слова». «Встречалось» — сохранённый в Words.xml счётчик для каждого слова; окно настроек его не сбрасывает." } },
     "fbe.settings.tooltip.words.new": { "resource": "IDD_SETTINGS_WORDS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Enter a word to exclude, then press Add or Enter.", "ru-RU": "Введите слово для исключения и нажмите «Добавить» или Enter." } },
     "fbe.settings.tooltip.words.add": { "resource": "IDD_SETTINGS_WORDS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Add the entered word to the exclusion list.", "ru-RU": "Добавить введённое слово в список исключений." } },
     "fbe.settings.tooltip.words.select_all": { "resource": "IDD_SETTINGS_WORDS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Select or clear every word in the list.", "ru-RU": "Выделить или снять выделение со всех слов в списке." } },
@@ -3031,6 +3031,6 @@
     "fbe.settings.tooltip.source.invisible": { "resource": "IDD_SETTINGS_SOURCE", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Shows invisible formatting characters in the source-code editor.", "ru-RU": "Показывает невидимые символы форматирования в редакторе исходного кода." } },
     "fbe.settings.tooltip.source.special_style": { "resource": "IDD_SETTINGS_SOURCE", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Chooses how invisible characters are displayed.", "ru-RU": "Выбирает способ отображения невидимых символов." } },
     "fbe.dialog.idd_settings_words.new_word": { "resource": "IDD_SETTINGS_WORDS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "New word:", "ru-RU": "Новое слово:" } },
-    "fbe.settings.words.encountered": { "resource": "IDD_SETTINGS_WORDS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Encountered (saved)", "ru-RU": "Встречалось (сохранено)" } }
+    "fbe.settings.words.encountered": { "resource": "IDD_SETTINGS_WORDS", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Encountered", "ru-RU": "Встречалось" } }
   }
 }

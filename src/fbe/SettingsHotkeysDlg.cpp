@@ -35,6 +35,16 @@ static void SetRuntimeHotkeysText(HWND dialog, int controlId, LPCWSTR key, LPCWS
 		::SetDlgItemText(dialog, controlId, text);
 }
 
+static CString GetHotkeyDisplayName(const CHotkey& hotkey)
+{
+	return hotkey.m_name_resource_id ? FbeLoadRuntimeString(hotkey.m_name_resource_id, hotkey.m_name) : hotkey.m_name;
+}
+
+static CString GetHotkeyGroupDisplayName(const CHotkeysGroup& group)
+{
+	return group.m_name_resource_id ? FbeLoadRuntimeString(group.m_name_resource_id, group.m_name) : group.m_name;
+}
+
 // CSettingsHotkeysDlg
 CSettingsHotkeysDlg::CSettingsHotkeysDlg(): m_count(0), m_accel(),
 											m_initHkGroups(_Settings.m_hotkey_groups),
@@ -81,7 +91,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 
 	m_hkGroups = GetDlgItem(IDC_LIST_HOTKEYS_GROUPS);
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)
-		m_hkGroups.AddString(_Settings.m_hotkey_groups[i].m_name);
+		m_hkGroups.AddString(GetHotkeyGroupDisplayName(_Settings.m_hotkey_groups[i]));
 
 	m_hkGroups.SetCurSel(m_selGr);
 
@@ -90,7 +100,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	{
 		// changed by SeNS: do not show empty hotkeys
 //		if (!_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i].m_name.IsEmpty())
-			m_hotkeys.AddString(_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i].m_name);
+			m_hotkeys.AddString(GetHotkeyDisplayName(_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i]));
 	}
 
 	m_hotkeys.SetCurSel(m_selHk);
@@ -173,7 +183,8 @@ LRESULT CSettingsHotkeysDlg::OnGroupsSelChange(WORD wNotifyCode, WORD wID, HWND 
 	int maxExt = 0;
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups[m_selGr].m_hotkeys.size(); ++i)
 	{
-		int iExt = GetTextLen(_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i].m_name);
+		const CString displayName = GetHotkeyDisplayName(_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i]);
+		int iExt = GetTextLen(displayName);
 		if(iExt > maxExt)
 		{
 			m_hotkeys.SetHorizontalExtent(iExt);
@@ -183,7 +194,7 @@ LRESULT CSettingsHotkeysDlg::OnGroupsSelChange(WORD wNotifyCode, WORD wID, HWND 
 
 		// changed by SeNS: do not show empty hotkeys
 //		if (!_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i].m_name.IsEmpty())
-			m_hotkeys.AddString(_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i].m_name);
+			m_hotkeys.AddString(displayName);
 	}
 
 	m_hotkeys.SetCurSel(0);
@@ -259,9 +270,9 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonDefault(WORD wNotifyCode, WORD wID
 					MAX_LOAD_STRING + 1);
 
 		CString collCmdName;
-		collCmdName += _Settings.m_hotkey_groups[index.group].m_name;
+		collCmdName += GetHotkeyGroupDisplayName(_Settings.m_hotkey_groups[index.group]);
 		collCmdName += L'\\';
-		collCmdName += _Settings.m_hotkey_groups[index.group].m_hotkeys[index.hotkey].m_name;
+		collCmdName += GetHotkeyDisplayName(_Settings.m_hotkey_groups[index.group].m_hotkeys[index.hotkey]);
 
 		CString collDefCmdMsg;
 		collDefCmdMsg.Format(collDefMsg, collCmdName);
@@ -357,9 +368,9 @@ bool CSettingsHotkeysDlg::Test()
 	if(index.group != -1 && index.hotkey != -1)
 	{
 		CString collCmdName;
-		collCmdName += _Settings.m_hotkey_groups[index.group].m_name;
+		collCmdName += GetHotkeyGroupDisplayName(_Settings.m_hotkey_groups[index.group]);
 		collCmdName += L'\\';
-		collCmdName += _Settings.m_hotkey_groups[index.group].m_hotkeys[index.hotkey].m_name;
+		collCmdName += GetHotkeyDisplayName(_Settings.m_hotkey_groups[index.group].m_hotkeys[index.hotkey]);
 
 		FbeLoadString(_Module.GetResourceInstance(),
 			IDS_HOTKEY_ASSIGN_COLLISION,

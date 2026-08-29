@@ -127,14 +127,15 @@ class CHotkey : public ISerializable, public IObjectFactory
 public:
 	CString m_name;
 	CString m_reg_name;
+	UINT m_name_resource_id;
 	ACCEL m_accel;
 	ACCEL m_def_accel;
 	CString m_desc;
 	wchar_t m_char_val; // value for symbol hotkey
 
-	CHotkey() : m_accel(), m_def_accel(), m_char_val(0) {}
+	CHotkey() : m_name_resource_id(0), m_accel(), m_def_accel(), m_char_val(0) {}
 
-	CHotkey(CString reg_name, int IDS_CMD_NAME, WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_reg_name(reg_name), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
+	CHotkey(CString reg_name, int IDS_CMD_NAME, WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_reg_name(reg_name), m_name_resource_id(IDS_CMD_NAME), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
 	{
 		m_name = FbeLoadCString(IDS_CMD_NAME);
 
@@ -145,7 +146,7 @@ public:
 		m_accel = m_def_accel;
 	}
 
-	CHotkey(CString reg_name, int IDS_CMD_NAME, CString uchar,  WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_reg_name(reg_name), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
+	CHotkey(CString reg_name, int IDS_CMD_NAME, CString uchar,  WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_reg_name(reg_name), m_name_resource_id(IDS_CMD_NAME), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
 	{
 		m_name = FbeLoadCString(IDS_CMD_NAME);
 		m_name += uchar;
@@ -157,7 +158,7 @@ public:
 		m_accel = m_def_accel;
 	}
 
-	CHotkey(CString reg_name, CString name, wchar_t symbol,  WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_name(name), m_reg_name(reg_name), m_accel(), m_def_accel(), m_desc(descr), m_char_val(symbol)
+	CHotkey(CString reg_name, CString name, wchar_t symbol,  WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_name(name), m_reg_name(reg_name), m_name_resource_id(0), m_accel(), m_def_accel(), m_desc(descr), m_char_val(symbol)
 	{
 
 
@@ -168,7 +169,7 @@ public:
 		m_accel = m_def_accel;
 	}
 
-	CHotkey(CString reg_name, CString cmd_name, WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_name(cmd_name), m_reg_name(reg_name), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
+	CHotkey(CString reg_name, CString cmd_name, WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_name(cmd_name), m_reg_name(reg_name), m_name_resource_id(0), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
 	{
 
 		m_def_accel.fVirt = FVIRTKEY | fVirt;
@@ -281,14 +282,15 @@ class CHotkeysGroup : public ISerializable, public IObjectFactory
 public:
 	CString m_name;
 	CString m_reg_name;
+	UINT m_name_resource_id;
 	std::vector<CHotkey> m_hotkeys;
 
 	CHotkey m_hotkey_factory;
 	std::vector<void*> m_ptr_hotkeys;
 
-	CHotkeysGroup() = default;
+	CHotkeysGroup() : m_name_resource_id(0) {}
 
-	CHotkeysGroup(CString reg_name, int IDS_GROUP_NAME) : m_reg_name(reg_name)
+	CHotkeysGroup(CString reg_name, int IDS_GROUP_NAME) : m_reg_name(reg_name), m_name_resource_id(IDS_GROUP_NAME)
 	{
 		m_name = FbeLoadCString(IDS_GROUP_NAME);
 	}
