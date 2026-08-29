@@ -32,6 +32,7 @@
 #include "Speller.h"
 #include "StatusBarUnicode.h"
 #include "StatusBarText.h"
+#include "StatusBarBehavior.h"
 
 #if _MSC_VER >= 1000
 #pragma once

@@ -9150,9 +9150,9 @@ UINT CMainFrame::StatusPaneAt(POINT point) const
 
 void CMainFrame::ToggleStatusPaneVisibility(UINT command)
 {
-	const DWORD bits[] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20 };
 	if(command < ID_STATUS_PANE_POSITION || command > ID_STATUS_PANE_INSERT_MODE) return;
-	DWORD panes = _Settings.StatusBarPanes() ^ bits[command - ID_STATUS_PANE_POSITION];
+	const FBEStatusBar::Pane pane = static_cast<FBEStatusBar::Pane>(command - ID_STATUS_PANE_POSITION);
+	DWORD panes = FBEStatusBar::TogglePaneVisibility(_Settings.StatusBarPanes(), pane);
 	_Settings.SetStatusBarPanes(panes, true);
 	UpdateStatusBarLayout();
 }
@@ -9167,7 +9167,8 @@ LRESULT CMainFrame::OnStatusBarClick(int, LPNMHDR hdr, BOOL& bHandled)
 {
 	if(hdr->hwndFrom != m_status) { bHandled = FALSE; return 0; }
 	const UINT pane = StatusPaneAt(reinterpret_cast<LPNMMOUSE>(hdr)->pt);
-	if(pane == ID_PANE_VALIDATION) OnFileValidate(0, ID_FILE_VALIDATE, NULL, bHandled);
+	if(FBEStatusBar::ClickAction(pane == ID_PANE_VALIDATION ? FBEStatusBar::Validation : FBEStatusBar::Position) == FBEStatusBar::Validate)
+		OnFileValidate(0, ID_FILE_VALIDATE, NULL, bHandled);
 	return 0;
 }
 
@@ -9175,21 +9176,24 @@ LRESULT CMainFrame::OnStatusBarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
 {
 	if(hdr->hwndFrom != m_status) { bHandled = FALSE; return 0; }
 	const UINT pane = StatusPaneAt(reinterpret_cast<LPNMMOUSE>(hdr)->pt);
-	if(pane == ID_PANE_INS) {
-		if(m_current_view == SOURCE) {
+	const FBEStatusBar::Action action = FBEStatusBar::DoubleClickAction(
+		pane == ID_PANE_INS ? FBEStatusBar::InsertMode : pane == ID_PANE_CHAR ? FBEStatusBar::Character : FBEStatusBar::Position,
+		m_current_view == SOURCE, m_current_view == BODY && m_doc != NULL);
+	if(action == FBEStatusBar::ToggleSourceOverwrite) {
 			m_source.SendMessage(SCI_SETOVERTYPE, !CurrentOverwriteMode());
 			m_last_sci_ovr = m_source.SendMessage(SCI_GETOVERTYPE) != 0;
-		} else if(m_current_view == BODY && m_doc) m_doc->m_body.ExecCommand(IDM_OVERWRITE);
 		UpdateStatusBar();
-	} else if(pane == ID_PANE_CHAR) {
+	} else if(action == FBEStatusBar::ToggleBodyOverwrite) {
+		m_doc->m_body.ExecCommand(IDM_OVERWRITE);
+		UpdateStatusBar();
+	} else if(action == FBEStatusBar::CopyUnicodeReference) {
 		CString text; m_status.GetPaneText(ID_PANE_CHAR, text);
-		const int begin = text.Find(L"&#"), end = text.Find(L';', begin);
-		if(begin >= 0 && end > begin && ::OpenClipboard(m_hWnd)) {
-			const CString reference = text.Mid(begin, end - begin + 1);
-			const SIZE_T bytes = static_cast<SIZE_T>(reference.GetLength() + 1) * sizeof(wchar_t);
+		const std::wstring reference = FBEStatusBar::DecimalXmlReference(static_cast<LPCWSTR>(text));
+		if(!reference.empty() && ::OpenClipboard(m_hWnd)) {
+			const SIZE_T bytes = static_cast<SIZE_T>(reference.length() + 1) * sizeof(wchar_t);
 			HGLOBAL memory = ::GlobalAlloc(GMEM_MOVEABLE, bytes);
 			if(memory) {
-				memcpy(::GlobalLock(memory), static_cast<LPCWSTR>(reference), bytes);
+				memcpy(::GlobalLock(memory), reference.c_str(), bytes);
 				::GlobalUnlock(memory); ::EmptyClipboard();
 				if(!::SetClipboardData(CF_UNICODETEXT, memory)) ::GlobalFree(memory);
 			}
@@ -9233,28 +9237,20 @@ void CMainFrame::UpdateStatusBarLayout()
 		dc.GetTextExtent(text, text.GetLength(), &size);
 		return size.cx + padding;
 	};
-	int position = measure(ID_PANE_POSITION), selection = measure(ID_PANE_SELECTION);
-	int character = measure(ID_PANE_CHAR), encoding = measure(ID_PANE_ENCODING);
-	int validation = measure(ID_PANE_VALIDATION), insertMode = measure(ID_PANE_INS);
-	const DWORD visible = _Settings.StatusBarPanes();
-	if(!(visible & 0x01)) position = 0;
-	if(!(visible & 0x02)) selection = 0;
-	if(!(visible & 0x04)) character = 0;
-	if(!(visible & 0x08)) encoding = 0;
-	if(!(visible & 0x10)) validation = 0;
-	if(!(visible & 0x20)) insertMode = 0;
+	int widths[FBEStatusBar::PaneCount] = {
+		measure(ID_PANE_POSITION), measure(ID_PANE_SELECTION), measure(ID_PANE_CHAR),
+		measure(ID_PANE_ENCODING), measure(ID_PANE_VALIDATION), measure(ID_PANE_INS)
+	};
 	CRect rc;
 	m_status.GetClientRect(&rc);
 	const int defaultMinimum = MulDiv(120, m_current_dpi ? m_current_dpi : 96, 96);
-	int available = rc.Width() - defaultMinimum - insertMode;
-	auto hideIfNeeded = [&](int& width) { if (width && available < position + selection + character + encoding + validation) width = 0; };
-	hideIfNeeded(selection); hideIfNeeded(encoding); hideIfNeeded(validation); hideIfNeeded(character);
-	m_status.SetPaneWidth(ID_PANE_POSITION, position);
-	m_status.SetPaneWidth(ID_PANE_SELECTION, selection);
-	m_status.SetPaneWidth(ID_PANE_CHAR, character);
-	m_status.SetPaneWidth(ID_PANE_ENCODING, encoding);
-	m_status.SetPaneWidth(ID_PANE_VALIDATION, validation);
-	m_status.SetPaneWidth(ID_PANE_INS, insertMode);
+	FBEStatusBar::ApplyPaneVisibility(_Settings.StatusBarPanes(), rc.Width() - defaultMinimum - widths[FBEStatusBar::InsertMode], widths);
+	m_status.SetPaneWidth(ID_PANE_POSITION, widths[FBEStatusBar::Position]);
+	m_status.SetPaneWidth(ID_PANE_SELECTION, widths[FBEStatusBar::Selection]);
+	m_status.SetPaneWidth(ID_PANE_CHAR, widths[FBEStatusBar::Character]);
+	m_status.SetPaneWidth(ID_PANE_ENCODING, widths[FBEStatusBar::Encoding]);
+	m_status.SetPaneWidth(ID_PANE_VALIDATION, widths[FBEStatusBar::Validation]);
+	m_status.SetPaneWidth(ID_PANE_INS, widths[FBEStatusBar::InsertMode]);
 	if (oldFont) dc.SelectFont(oldFont);
 }
 
