@@ -66,7 +66,7 @@ $modules = @($moduleFiles.Keys | Sort-Object)
     $checks = @(
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.about.caption' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.settings.next.caption'; Expected = 'Настройки FBE Next' },
-        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.saving'; Expected = 'Сохранение' },
+        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.saving'; Expected = 'Резервная копия' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.show_full_path_in_window_title'; Expected = 'Показывать полный путь к файлу в заголовке окна' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.source_code'; Expected = 'Исходный код' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.dialog.idd_setting_next.source_palette'; Expected = 'Тема подсветки:' },
