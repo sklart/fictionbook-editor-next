@@ -28,6 +28,22 @@
 Table-regression suite намеренно opt-in и для обычной portable-проверки не
 запускается. Если она нужна отдельно, передайте `-RunTableTests`.
 
+3. При изменениях `FBShell.dll` или `FBE.Sequence.propdesc` выполнить elevated
+integration gate в двух Windows/MUI окружениях. Этот тест устанавливает
+регистрацию штатными shell-скриптами, регистрирует schema и проверяет реальные
+`IPropertyDescription::GetDisplayName()` для всех шести `FBE.*` properties:
+
+```powershell
+# На русской Windows/MUI:
+.	ools	ests	est-fbe-shell-localization-installed.ps1 -ExpectedLanguage ru
+
+# На английской Windows/MUI:
+.	ools	ests	est-fbe-shell-localization-installed.ps1 -ExpectedLanguage en
+```
+
+Это отдельный release/manual gate: один процесс CI не может надёжно сменить
+язык MUI, который использует Windows Property System.
+
 2. При необходимости отдельно перепроверить манифест обновления:
 
 ```powershell
