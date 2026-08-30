@@ -116,5 +116,18 @@ int main()
 	Need(FindXmlNodeTextPosition(xml, L"Exact duplicate", 0,
 		nestedOuter, nestedScope.end) == -1,
 		"ambiguous caret fallback safely refuses outer nested section");
+
+	const std::wstring nodeTextCases = L"<section><p>unique node</p><p>repeat</p><p>repeat</p><p>aaaa</p></section>";
+	const int nodeScopeStart = 0;
+	const int nodeScopeEnd = static_cast<int>(nodeTextCases.size());
+	Need(FindXmlNodeTextPosition(nodeTextCases, L"unique node", 3,
+		nodeScopeStart, nodeScopeEnd) == At(nodeTextCases, L"unique node") + 3,
+		"unique scoped node-text match");
+	Need(FindXmlNodeTextPosition(nodeTextCases, L"repeat", 0,
+		nodeScopeStart, nodeScopeEnd) == -1,
+		"two ordinary node-text matches safely refuse");
+	Need(FindXmlNodeTextPosition(nodeTextCases, L"aaa", 0,
+		nodeScopeStart, nodeScopeEnd) == -1,
+		"overlapping node-text matches safely refuse");
 	return 0;
 }

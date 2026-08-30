@@ -138,9 +138,8 @@ inline int FindXmlNodeTextPosition(const std::wstring& sourceXml,
 	if (nodeText.empty() || textPosition < 0 || scopeStart < 0 ||
 		scopeEnd > static_cast<int>(sourceXml.size()) || scopeStart >= scopeEnd)
 		return -1;
-	std::vector<int> matchedPositions;
-	int result = -1;
-	for (int position = scopeStart, matched = 0; position < scopeEnd;)
+	std::vector<MappedCharacter> visibleCharacters;
+	for (int position = scopeStart; position < scopeEnd;)
 	{
 		if (sourceXml[position] == L'<')
 		{
@@ -162,29 +161,24 @@ inline int FindXmlNodeTextPosition(const std::wstring& sourceXml,
 		}
 		for (size_t index = 0; index < decoded.size(); ++index)
 		{
-			const wchar_t character = decoded[index];
-			if (character == nodeText[matched])
-			{
-				matchedPositions.push_back(position);
-				++matched;
-				if (matched == static_cast<int>(nodeText.size()))
-				{
-					const int candidate = textPosition < static_cast<int>(matchedPositions.size())
-						? matchedPositions[textPosition] : nextPosition;
-					if (result >= 0) return -1;
-					result = candidate;
-					matchedPositions.clear();
-					matched = 0;
-				}
-			}
-			else
-			{
-				matchedPositions.clear();
-				matched = character == nodeText[0] ? 1 : 0;
-				if (matched) matchedPositions.push_back(position);
-			}
+			visibleCharacters.push_back({ decoded[index], position, nextPosition });
 		}
 		position = nextPosition;
+	}
+	int result = -1;
+	// Try every start rather than restarting only after a complete match.  This
+	// deliberately sees overlapping candidates, e.g. "aaa" in "aaaa".
+	for (size_t start = 0; start + nodeText.size() <= visibleCharacters.size(); ++start)
+	{
+		size_t offset = 0;
+		while (offset < nodeText.size() &&
+			visibleCharacters[start + offset].character == nodeText[offset]) ++offset;
+		if (offset != nodeText.size()) continue;
+		const int candidate = textPosition < static_cast<int>(nodeText.size())
+			? visibleCharacters[start + textPosition].start
+			: visibleCharacters[start + nodeText.size() - 1].end;
+		if (result >= 0) return -1;
+		result = candidate;
 	}
 	return result;
 }
