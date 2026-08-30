@@ -14,6 +14,9 @@ var IDNO     = 7;
 window.onerror = errorHandler; // document.lvl=0;
 var ImagesInfo = new Array();
 var prevImageShowTimer = null;
+// The note preview lives outside fbw_body, so showing it never changes the
+// editable book DOM (and consequently does not create an Undo entry).
+var notePreviewState = { panel: null, link: null, showTimer: null, hideTimer: null };
 var diagnosticTraceEnabled = false;
 var diagnosticVerboseTraceEnabled = false;
 var diagnosticOperationStage = "J000";
@@ -537,6 +540,205 @@ function HidePrevImage()
 	prevImgPanel.style.visibility = "hidden";
 }
 
+// ---------------------------------------------------------------------------
+// Note link preview.  Event delegation is deliberate here: Body is rebuilt by
+// TransformXML and a book may contain a very large number of note links.
+
+function NotePreviewEvent(e)
+{
+	return e || window.event;
+}
+
+function IsNotePreviewLink(element)
+{
+	if(!element || element.nodeType != 1 || String(element.tagName).toLowerCase() != "a") return false;
+	var className = " " + String(element.className || "") + " ";
+	if(className.indexOf(" note ") == -1) return false;
+	var href = element.getAttribute("href");
+	return href && String(href).charAt(0) == "#";
+}
+
+function GetNotePreviewLink(element, body)
+{
+	if(element && element.nodeType != 1) element = element.parentNode;
+	while(element && element != body)
+	{
+		if(IsNotePreviewLink(element)) return element;
+		element = element.parentNode;
+	}
+	return IsNotePreviewLink(body) ? body : null;
+}
+
+function GetNotePreviewRect(element)
+{
+	if(!element) return null;
+	if(element.getBoundingClientRect) return element.getBoundingClientRect();
+	var left = 0, top = 0, current = element;
+	while(current) { left += current.offsetLeft || 0; top += current.offsetTop || 0; current = current.offsetParent; }
+	return { left: left, top: top, right: left + (element.offsetWidth || 0), bottom: top + (element.offsetHeight || 0) };
+}
+
+function GetNotePreviewVerticalAlign(element, body)
+{
+	var current = element;
+	while(current && current != body)
+	{
+		var tag = String(current.tagName || "").toLowerCase();
+		if(tag == "sup") return "super";
+		if(tag == "sub") return "sub";
+		var align = current.currentStyle ? current.currentStyle.verticalAlign : (window.getComputedStyle ? window.getComputedStyle(current, null).verticalAlign : current.style.verticalAlign);
+		if(align == "super" || align == "sub") return align;
+		current = current.parentNode;
+	}
+	return "";
+}
+
+function PointInNotePreviewRect(x, y, rect, align)
+{
+	// The narrow horizontal allowance makes a small superscript practical to
+	// target, while the one-sided vertical allowance avoids opening notes while
+	// the pointer simply crosses ordinary text.
+	var horizontalPadding = 4;
+	var towardLinePadding = 6;
+	var top = rect.top - 2, bottom = rect.bottom + 2;
+	if(align == "super") bottom += towardLinePadding;
+	if(align == "sub") top -= towardLinePadding;
+	return x >= rect.left - horizontalPadding && x <= rect.right + horizontalPadding && y >= top && y <= bottom;
+}
+
+function NotePreviewDistance(x, y, rect)
+{
+	var dx = x < rect.left ? rect.left - x : (x > rect.right ? x - rect.right : 0);
+	var dy = y < rect.top ? rect.top - y : (y > rect.bottom ? y - rect.bottom : 0);
+	return dx * dx + dy * dy;
+}
+
+function FindNotePreviewLinkAt(body, x, y, eventTarget)
+{
+	var direct = GetNotePreviewLink(eventTarget, body);
+	if(direct) return direct;
+
+	var links = body.getElementsByTagName("A"), closest = null, closestDistance = -1;
+	for(var i = 0; i < links.length; ++i)
+	{
+		var link = links[i];
+		if(!IsNotePreviewLink(link)) continue;
+		var rect = GetNotePreviewRect(link);
+		if(!rect || !PointInNotePreviewRect(x, y, rect, GetNotePreviewVerticalAlign(link, body))) continue;
+		var distance = NotePreviewDistance(x, y, rect);
+		if(closestDistance == -1 || distance < closestDistance)
+		{
+			closest = link;
+			closestDistance = distance;
+		}
+	}
+	return closest;
+}
+
+function GetNotePreviewScrollLeft()
+{
+	return (document.documentElement && document.documentElement.scrollLeft) || document.body.scrollLeft || 0;
+}
+
+function GetNotePreviewScrollTop()
+{
+	return (document.documentElement && document.documentElement.scrollTop) || document.body.scrollTop || 0;
+}
+
+function EnsureNotePreviewPanel()
+{
+	var panel = notePreviewState.panel || document.getElementById("fbNotePreview");
+	if(panel) { notePreviewState.panel = panel; return panel; }
+	panel = document.createElement("DIV");
+	panel.id = "fbNotePreview";
+	panel.className = "fb-note-preview";
+	panel.contentEditable = false;
+	panel.style.visibility = "hidden";
+	panel.onmouseenter = function() { if(notePreviewState.hideTimer != null) { window.clearTimeout(notePreviewState.hideTimer); notePreviewState.hideTimer = null; } };
+	panel.onmouseleave = function() { ScheduleNotePreviewHide(); };
+	panel.onmousedown = function(e) { e = NotePreviewEvent(e); e.returnValue = false; if(e.preventDefault) e.preventDefault(); return false; };
+	panel.onclick = panel.onmousedown;
+	document.body.appendChild(panel);
+	notePreviewState.panel = panel;
+	return panel;
+}
+
+function PositionNotePreview(panel, link)
+{
+	var rect = GetNotePreviewRect(link);
+	if(!rect) return;
+	var docElement = document.documentElement;
+	var viewportWidth = (docElement && docElement.clientWidth) || document.body.clientWidth;
+	var viewportHeight = (docElement && docElement.clientHeight) || document.body.clientHeight;
+	var scrollLeft = GetNotePreviewScrollLeft(), scrollTop = GetNotePreviewScrollTop();
+	var margin = 8, gap = 6;
+	panel.style.width = Math.min(420, Math.max(160, viewportWidth - margin * 2)) + "px";
+	panel.style.maxHeight = Math.max(80, Math.min(300, viewportHeight - margin * 2)) + "px";
+	var panelWidth = panel.offsetWidth, panelHeight = panel.offsetHeight;
+	var left = rect.left + (rect.right - rect.left - panelWidth) / 2;
+	left = Math.max(margin, Math.min(left, viewportWidth - panelWidth - margin));
+	var top = rect.top - panelHeight - gap;
+	if(top < margin) top = rect.bottom + gap;
+	top = Math.max(margin, Math.min(top, viewportHeight - panelHeight - margin));
+	panel.style.left = Math.round(left + scrollLeft) + "px";
+	panel.style.top = Math.round(top + scrollTop) + "px";
+}
+
+function ShowNotePreview(link)
+{
+	if(!link || notePreviewState.link != link) return;
+	var panel = EnsureNotePreviewPanel();
+	var href = String(link.getAttribute("href") || "");
+	var id = href.substring(1), target = id ? document.getElementById(id) : null;
+	panel.innerHTML = "";
+	if(target)
+	{
+		for(var child = target.firstChild; child; child = child.nextSibling) panel.appendChild(child.cloneNode(true));
+	}
+	else
+	{
+		panel.appendChild(document.createTextNode("Примечание не найдено"));
+	}
+	PositionNotePreview(panel, link);
+	panel.style.visibility = "visible";
+}
+
+function ScheduleNotePreview(link)
+{
+	if(notePreviewState.hideTimer != null) { window.clearTimeout(notePreviewState.hideTimer); notePreviewState.hideTimer = null; }
+	if(notePreviewState.link == link) return;
+	if(notePreviewState.showTimer != null) window.clearTimeout(notePreviewState.showTimer);
+	notePreviewState.link = link;
+	notePreviewState.showTimer = window.setTimeout(function() { notePreviewState.showTimer = null; ShowNotePreview(link); }, 500);
+}
+
+function HideNotePreview()
+{
+	if(notePreviewState.showTimer != null) { window.clearTimeout(notePreviewState.showTimer); notePreviewState.showTimer = null; }
+	notePreviewState.link = null;
+	if(notePreviewState.panel) notePreviewState.panel.style.visibility = "hidden";
+}
+
+function ScheduleNotePreviewHide()
+{
+	if(notePreviewState.hideTimer != null) window.clearTimeout(notePreviewState.hideTimer);
+	// Leave enough time to cross the small gap between the link and its popup.
+	notePreviewState.hideTimer = window.setTimeout(function() { notePreviewState.hideTimer = null; HideNotePreview(); }, 250);
+}
+
+function InitNotePreview(body)
+{
+	if(!body || body.notePreviewHandlersAttached) return;
+	body.notePreviewHandlersAttached = true;
+	body.onmousemove = function(e) {
+		e = NotePreviewEvent(e);
+		var link = FindNotePreviewLinkAt(body, e.clientX, e.clientY, e.target || e.srcElement);
+		if(link) ScheduleNotePreview(link); else ScheduleNotePreviewHide();
+	};
+	body.onmouseleave = function() { ScheduleNotePreviewHide(); };
+	body.onkeydown = function(e) { e = NotePreviewEvent(e); if((e.keyCode || e.which) == 27) HideNotePreview(); };
+}
+
 function ShowFullImage(source)
 {
 	HidePrevImage();
@@ -731,9 +933,12 @@ function TransformXML(xslt, dom)
 	proc.transform();
 	TraceScript("J582", "operation=body output");
 	TraceScript("J590", "operation=body.innerHTML");
+	HideNotePreview();
 	body.innerHTML=proc.output;
 	TraceScript("J595", "operation=InflateParagraphs");
 	window.external.InflateParagraphs(body);
+	// One delegated handler set is enough for all current and future note links.
+	InitNotePreview(body);
 	TraceScript("J597", "operation=document properties");
 	document.urlprefix="fbw-internal:";
 	TraceScript("J599", "operation=TransformXML success");
