@@ -1817,10 +1817,10 @@ static void CommitRecoveryFile(const CString& temporaryFile, const CString& dest
 		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
 }
-static void CommitSavedFile(const CString& temporaryFile, const CString& destinationFile, bool createBackupFile)
+static void CommitSavedFile(const CString& temporaryFile, const CString& destinationFile, bool createBackupFile, bool* preserveTemporaryFileOnFailure)
 {
 	const bool existed = ::GetFileAttributes(destinationFile) != INVALID_FILE_ATTRIBUTES;
-	FbeBackupFileCommit::CommitSavedFile(temporaryFile, destinationFile, createBackupFile);
+	FbeBackupFileCommit::CommitSavedFile(temporaryFile, destinationFile, createBackupFile, ::ReplaceFileW, preserveTemporaryFileOnFailure);
 	const CString backupFile = destinationFile + L".bak";
 	TraceDocumentEvent(existed ? L"D211" : L"D210", existed && createBackupFile ? L"book save backup created" : L"book save replacing existing file",
 		existed && createBackupFile ? backupFile : destinationFile);
@@ -1972,11 +1972,12 @@ forcesave:
       _com_issue_errorex(hr,ndoc,__uuidof(ndoc));
     }
 
+	bool preserveTemporaryFile = false;
 	try {
-		CommitSavedFile(buf, filename, _Settings.GetCreateBackupFile());
+		CommitSavedFile(buf, filename, _Settings.GetCreateBackupFile(), &preserveTemporaryFile);
 	}
 	catch (...) {
-		::DeleteFile(buf);
+		if (!preserveTemporaryFile) ::DeleteFile(buf);
 		throw;
 	}
 
