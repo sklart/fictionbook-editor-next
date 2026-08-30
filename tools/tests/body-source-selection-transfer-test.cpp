@@ -37,17 +37,22 @@ int main()
 		L"<FictionBook><body name='main'><section id='one'><title><p>Repeated phrase</p></title>"
 		L"<p>Repeated <emphasis>phrase</emphasis> A</p><poem><stanza><v>line one</v><v>line two</v></stanza></poem>"
 		L"<table><tr><td><p>cell text</p></td></tr></table></section>"
-		L"<section id='two'><p>Repeated <strong>phrase</strong> B</p>"
+		L"<section id='two'><p>Repeated <strong>phrase</strong> B</p><p>Exact duplicate</p>"
 		L"<p>space&#160;hex&#xA0;shy&#173;zwsp&#x200B;narrow&#x202F;emoji &#x1F600;</p>"
-		L"<p>first paragraph</p><p>Repeated <a xlink:href='#x'>phrase</a> C</p></section></body>"
-		L"<body name='notes'><section id='note'><p>Repeated phrase A</p></section></body></FictionBook>";
+		L"<p>first paragraph</p><p>Repeated <a xlink:href='#x'>phrase</a> C</p></section>"
+		L"<section id='three'><p>Exact duplicate</p></section></body>"
+		L"<body name='notes'><section id='note'><p>Repeated phrase A</p><p>Exact duplicate</p></section></body></FictionBook>";
 
 	const int sectionOne = At(xml, L"<section id='one'>");
 	const int sectionTwo = At(xml, L"<section id='two'>");
 	const int notes = At(xml, L"<body name='notes'>");
 	const int firstPhrase = At(xml, L"Repeated <emphasis>");
 	const int secondPhrase = At(xml, L"Repeated <strong>");
-	const int notePhrase = At(xml, L"Repeated phrase A</p></section></body>");
+	const int notePhrase = At(xml, L"Repeated phrase A</p><p>Exact duplicate");
+	const int secondDuplicate = static_cast<int>(xml.find(L"Exact duplicate", sectionTwo));
+	const int thirdDuplicate = static_cast<int>(xml.find(L"Exact duplicate", At(xml, L"<section id='three'>")));
+	const int noteDuplicate = static_cast<int>(xml.find(L"Exact duplicate", notes));
+	Need(secondDuplicate >= 0 && thirdDuplicate >= 0 && noteDuplicate >= 0, "duplicate fixture positions");
 
 	// Body -> Source: duplicate text is resolved by the DOM-derived expected
 	// position inside the matching structural region, never by first global hit.
@@ -58,6 +63,9 @@ int main()
 	XmlTextRange note = Match(xml, L"Repeated phrase A", L"<body name='notes'>", L"</body>", notePhrase);
 	Need(note.start == notePhrase, "notes body is independent from main body");
 	Need(note.start != first.start && second.start != first.start, "duplicate phrase positions stay distinct");
+	XmlTextRange exactSecond = Match(xml, L"Exact duplicate", L"<body name='main'>", L"</body>", secondDuplicate);
+	Need(exactSecond.start == secondDuplicate && exactSecond.start != thirdDuplicate,
+		"second identical phrase selected by expected structural position");
 
 	// Inline markup, title, poem/stanza/v, table and paragraph-spanning text all
 	// retain source boundaries while tags themselves are not selectable text.
@@ -77,5 +85,12 @@ int main()
 	Need(!FindVisibleXmlTextRange(xml, L"emphasis", sectionOne, sectionTwo, firstPhrase, ambiguous),
 		"markup-only source selection safely refuses transfer");
 	Need(!FindVisibleXmlTextRange(xml, L"", sectionOne, sectionTwo, firstPhrase, ambiguous), "empty selection remains caret-only");
+	// Caret-only fallback has no selected text.  Its XML-node text lookup is
+	// constrained to the DOM-selected section (and then body), so neither the
+	// next main-body section nor an identical note can win.
+	XmlTextRange caretMain = Match(xml, L"Exact duplicate", L"<section id='two'>", L"</section>", secondDuplicate);
+	XmlTextRange caretNotes = Match(xml, L"Exact duplicate", L"<body name='notes'>", L"</body>", noteDuplicate);
+	Need(caretMain.start == secondDuplicate && caretNotes.start == noteDuplicate,
+		"caret-only body scopes keep identical text in its own body");
 	return 0;
 }

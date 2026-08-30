@@ -6149,9 +6149,11 @@ static CString ExtractXmlDeclarationEncoding(const CString& xmlText)
 // Возвращает позицию символа отображаемого текста XML-узла в Source. Теги и
 // сущности XML пропускаются, поэтому форматирование Source не влияет на поиск.
 static int FindXmlNodeTextPosition(const CString& sourceXml,
-	MSXML2::IXMLDOMNodePtr xmlNode, int textPosition)
+	MSXML2::IXMLDOMNodePtr xmlNode, int textPosition, int scopeStart,
+	int scopeEnd)
 {
-	if (!(bool)xmlNode || textPosition < 0)
+	if (!(bool)xmlNode || textPosition < 0 || scopeStart < 0 ||
+		scopeEnd > sourceXml.GetLength() || scopeStart >= scopeEnd)
 		return -1;
 
 	bstr_t nodeTextValue(xmlNode->text);
@@ -6161,12 +6163,12 @@ static int FindXmlNodeTextPosition(const CString& sourceXml,
 
 	std::vector<int> matchedPositions;
 	matchedPositions.reserve(nodeText.GetLength());
-	for (int position = 0, matched = 0; position < sourceXml.GetLength();)
+	for (int position = scopeStart, matched = 0; position < scopeEnd;)
 	{
 		if (sourceXml[position] == L'<')
 		{
 			const int tagEnd = sourceXml.Find(L'>', position + 1);
-			if (tagEnd < 0)
+			if (tagEnd < 0 || tagEnd >= scopeEnd)
 				return -1;
 			position = tagEnd + 1;
 			continue;
@@ -6230,10 +6232,10 @@ static bool FindVisibleXmlTextRange(const CString& sourceXml,
 	return true;
 }
 
-static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,
-	int& bodyStart, int& bodyEnd)
+static bool FindEnclosingXmlElementRange(const CString& sourceXml, int position,
+	const wchar_t* elementName, int& elementStart, int& elementEnd)
 {
-	bodyStart = bodyEnd = -1;
+	elementStart = elementEnd = -1;
 	int depth = 0;
 	int matchingStart = -1;
 	for (int current = 0; current < sourceXml.GetLength();)
@@ -6248,25 +6250,32 @@ static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,
 		if (closing) name.Delete(0);
 		const int nameEnd = name.FindOneOf(L" \t\r\n/");
 		if (nameEnd >= 0) name = name.Left(nameEnd);
-		const bool bodyTag = name.CompareNoCase(L"body") == 0;
-		if (bodyTag && !closing)
+		const bool matchingTag = name.CompareNoCase(elementName) == 0;
+		if (matchingTag && !closing)
 		{
 			if (depth == 0) matchingStart = tagStart;
 			++depth;
 		}
-		else if (bodyTag && closing && depth > 0)
+		else if (matchingTag && closing && depth > 0)
 		{
 			--depth;
 			if (depth == 0 && position >= matchingStart && position <= tagEnd)
 			{
-				bodyStart = matchingStart;
-				bodyEnd = tagEnd + 1;
+				elementStart = matchingStart;
+				elementEnd = tagEnd + 1;
 				return true;
 			}
 		}
 		current = tagEnd + 1;
 	}
 	return false;
+}
+
+static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,
+	int& bodyStart, int& bodyEnd)
+{
+	return FindEnclosingXmlElementRange(sourceXml, position, L"body",
+		bodyStart, bodyEnd);
 }
 
 // Преобразует фрагмент Source в отображаемый текст для поиска в Body.
@@ -6339,13 +6348,14 @@ static CString ExtractVisibleXmlText(const CString& sourceFragment)
 // диапазона не работает в MSHTML из-за разных представлений перевода строки.
 static MSHTML::IHTMLTxtRangePtr FindBodyTextRange(
 	MSHTML::IHTMLBodyElementPtr htmlBody, MSHTML::IHTMLElementPtr htmlScope,
-	const CString& visibleText)
+	MSHTML::IHTMLElementPtr expectedStartElement, const CString& visibleText)
 {
 	if (!(bool)htmlBody || !(bool)htmlScope || visibleText.IsEmpty())
 		return MSHTML::IHTMLTxtRangePtr();
 
 	MSHTML::IHTMLTxtRangePtr wholeRange = htmlBody->createTextRange();
-	if ((bool)wholeRange) wholeRange->moveToElementText(htmlScope);
+	if ((bool)wholeRange)
+		wholeRange->moveToElementText(expectedStartElement ? expectedStartElement : htmlScope);
 	if ((bool)wholeRange && wholeRange->findText((const wchar_t*)visibleText,
 		1073741824, 0) == VARIANT_TRUE)
 		return wholeRange;
@@ -6373,7 +6383,8 @@ static MSHTML::IHTMLTxtRangePtr FindBodyTextRange(
 		endAnchor = endAnchor.Right(anchorLength);
 
 	MSHTML::IHTMLTxtRangePtr startRange = htmlBody->createTextRange();
-	if ((bool)startRange) startRange->moveToElementText(htmlScope);
+	if ((bool)startRange)
+		startRange->moveToElementText(expectedStartElement ? expectedStartElement : htmlScope);
 	if (!(bool)startRange ||
 		startRange->findText((const wchar_t*)startAnchor, 1073741824, 0) != VARIANT_TRUE)
 		return MSHTML::IHTMLTxtRangePtr();
@@ -6600,6 +6611,9 @@ bool  CMainFrame::SourceToHTML()
 
 	MSXML2::IXMLDOMElementPtr selectedElementBegin;
 	MSXML2::IXMLDOMElementPtr selectedElementEnd;
+	U::DomPath fallback_begin_path;
+	U::DomPath fallback_scope_path;
+	bool fallback_path_available = false;
 	if(selection_path_available)
 	{
 		selectedElementBegin = path_begin.GetNodeFromXMLDOM(m_saved_xml);
@@ -6622,6 +6636,22 @@ bool  CMainFrame::SourceToHTML()
 		}
 
 		selection_path_available = (bool)body;
+		if(selection_path_available)
+		{
+			MSXML2::IXMLDOMNodePtr scopeNode = selectedElementBegin;
+			for(MSXML2::IXMLDOMNodePtr parent = scopeNode->parentNode;
+				(bool)parent && parent != body; parent = parent->parentNode)
+			{
+				if(U::scmp(parent->nodeName, L"section") == 0)
+				{
+					scopeNode = parent;
+					break;
+				}
+			}
+			fallback_path_available =
+				fallback_begin_path.CreatePathFromXMLDOM(body, selectedElementBegin) &&
+				fallback_scope_path.CreatePathFromXMLDOM(body, scopeNode);
+		}
 		if(selection_path_available && !selectionCrossesParagraph)
 		{
 			selection_path_available = path_begin.CreatePathFromXMLDOM(body, selectedElementBegin);
@@ -6702,6 +6732,7 @@ bool  CMainFrame::SourceToHTML()
 	if(!m_source_selection_transferred && !selectedSourceText.IsEmpty())
 	{
 		MSHTML::IHTMLElementPtr htmlScope;
+		MSHTML::IHTMLElementPtr expectedStartElement;
 		MSHTML::IHTMLDOMNodePtr root = m_doc->m_body.Document()->body;
 		if(root) root = root->firstChild; // <DIV id = fbw_desc>
 		if(root) root = root->nextSibling; // <DIV id = fbw_body>
@@ -6712,14 +6743,22 @@ bool  CMainFrame::SourceToHTML()
 			MSHTML::IHTMLElementPtr element(root);
 			if((bool)element && U::scmp(element->className, L"body") == 0)
 			{
-				if(htmlBodyIndex == 0) { htmlScope = element; break; }
+				if(htmlBodyIndex == 0)
+				{
+					if(fallback_path_available)
+					{
+						htmlScope = fallback_scope_path.GetNodeFromHTMLDOM(root);
+						expectedStartElement = fallback_begin_path.GetNodeFromHTMLDOM(root);
+					}
+					break;
+				}
 				if(htmlBodyIndex > 0) --htmlBodyIndex;
 			}
 			root = root->nextSibling;
 		}
 		MSHTML::IHTMLBodyElementPtr htmlBody(m_doc->m_body.Document()->body);
 		MSHTML::IHTMLTxtRangePtr range = FindBodyTextRange(htmlBody, htmlScope,
-			selectedSourceText);
+			expectedStartElement, selectedSourceText);
 		if((bool)range)
 		{
 			m_body_selection = range;
@@ -6940,6 +6979,8 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		bool hasBodySelectionText = false;
 		int bodyStart = -1;
 		int bodyEnd = -1;
+		int caretScopeStart = -1;
+		int caretScopeEnd = -1;
 		if((bool)m_body_selection)
 		{
 			const CString selectedText((const wchar_t*)m_body_selection->text);
@@ -6968,17 +7009,32 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		{
 			beginPosition = selection_begin_path.GetNodeFromText(src, selection_begin_char);
 			endPosition = selection_end_path.GetNodeFromText(src, selection_end_char);
+			int bodyAnchor = beginPosition;
+			if(bodyAnchor < 0)
+				bodyAnchor = selection_begin_path.GetNodeFromText(src, 0);
+			if(bodyAnchor >= 0)
+			{
+				FindEnclosingXmlBodyRange(srcText, bodyAnchor, bodyStart, bodyEnd);
+				if(!FindEnclosingXmlElementRange(srcText, bodyAnchor, L"section",
+					caretScopeStart, caretScopeEnd))
+				{
+					caretScopeStart = bodyStart;
+					caretScopeEnd = bodyEnd;
+				}
+			}
 		}
 
 		// Старый DomPath не всегда умеет пройти от XML-документа к узлу
 		// отображаемого текста. Сам узел уже получен из DOM, поэтому при
 		// таком отказе сопоставляем позицию по его XML-представлению.
-		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_begin && beginPosition <= 0)
+		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_begin &&
+			beginPosition < 0 && caretScopeStart >= 0)
 			beginPosition = FindXmlNodeTextPosition(srcText, xml_selected_begin,
-				selection_begin_char);
-		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_end && endPosition <= 0)
+				selection_begin_char, caretScopeStart, caretScopeEnd);
+		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_end &&
+			endPosition < 0 && caretScopeStart >= 0)
 			endPosition = FindXmlNodeTextPosition(srcText, xml_selected_end,
-				selection_end_char);
+				selection_end_char, caretScopeStart, caretScopeEnd);
 
 		if(beginPosition >= 0 && endPosition >= 0)
 		{
