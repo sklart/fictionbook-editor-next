@@ -1360,6 +1360,25 @@
         "bg-BG": "Игнорирай всички"
       }
     },
+    "fbe.spelling.menu.more_suggestions": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "More suggestions",
+        "ru-RU": "Ещё варианты",
+        "uk-UA": "Більше варіантів",
+        "de-DE": "Weitere Vorschläge",
+        "fr-FR": "Autres suggestions",
+        "es-ES": "Más sugerencias",
+        "it-IT": "Altri suggerimenti",
+        "pl-PL": "Więcej propozycji",
+        "pt-PT": "Mais sugestões",
+        "nl-NL": "Meer suggesties",
+        "cs-CZ": "Další návrhy",
+        "bg-BG": "Още предложения"
+      }
+    },
     "fbe.dialog.idd_spell_check.change": {
       "resource": "IDD_SPELL_CHECK",
       "kind": "PUSHBUTTON",

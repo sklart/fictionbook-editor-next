@@ -31,6 +31,9 @@ const int SCRIPT_COMMAND_COUNT = 999;
 const int SCRIPT_FOLDER_MENU_ID_BASE = ID_EDIT_INS_SYMBOL + 101;
 const int SCRIPT_FOLDER_MENU_ID_COUNT = 999;
 static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < SCRIPT_FOLDER_MENU_ID_BASE, "Script and folder menu IDs overlap");
+static_assert(ID_LAST_PLUGIN < ID_SPELL_REPLACE_FIRST, "Plug-in and spell suggestion command IDs overlap");
+static_assert(ID_SCRIPT_BASE + 999 < ID_SPELL_REPLACE_FIRST, "Script and spell suggestion command IDs overlap");
+static_assert(ID_SPELL_REPLACE_LAST < 0xffff, "Spell suggestion command IDs must fit in WM_COMMAND");
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE > ID_EDIT_INS_SYMBOL + 100, "Folder menu IDs overlap symbol commands");
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT_ITEM, "Folder menu IDs overlap regular commands");
 

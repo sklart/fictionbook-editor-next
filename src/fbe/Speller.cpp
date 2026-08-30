@@ -68,12 +68,17 @@ LRESULT CSpellDialog::UpdateData()
 {
 	m_BadWord.SetWindowText (m_sBadWord);
 	m_Suggestions.ResetContent();
+	m_Replacement.SetWindowText(L"");
+	m_sReplacement.Empty();
 	if (m_strSuggestions)
 		for (int i=0; i<m_strSuggestions->GetSize(); i++)
 		{
 			m_Suggestions.AddString((*m_strSuggestions)[i]);
-			if (!i) m_Replacement.SetWindowText ((*m_strSuggestions)[i]);
 		}
+	if (m_strSuggestions && m_strSuggestions->GetSize() > 0) {
+		m_Suggestions.SetCurSel(0);
+		m_Replacement.SetWindowText((*m_strSuggestions)[0]);
+	}
 
 	if(m_Speller->GetUndoState())
 		GetDlgItem(IDC_SPELL_UNDO).EnableWindow(TRUE);
@@ -395,21 +400,30 @@ void CSpeller::AppendSpellMenu (HMENU menu)
 		CStrings* suggestions = GetSuggestions(word);
 		delete m_menuSuggestions;
 		m_menuSuggestions = suggestions;
-		int numSuggestions = m_menuSuggestions->GetSize();
-		// limit up to 8 suggestion
-		if (numSuggestions > 8) numSuggestions = 8;
+		const int suggestionCount = m_menuSuggestions->GetSize();
+		// Bundled Hunspell limits suggest() to MAXSUGGESTION (15), well inside
+		// the reserved command range.  Do not trim or reorder this list.
+		const int numSuggestions = suggestionCount;
 
 		::AppendMenu(menu, MF_SEPARATOR, 0, NULL);
-		for (int i=0; i<numSuggestions; i++)
-			::AppendMenu(menu, MF_STRING, IDC_SPELL_REPLACE+i, (*m_menuSuggestions)[i]);
+		const int primarySuggestionCount = numSuggestions < 8 ? numSuggestions : 8;
+		for (int i=0; i<primarySuggestionCount; i++)
+			::AppendMenu(menu, MF_STRING, ID_SPELL_REPLACE_FIRST+i, (*m_menuSuggestions)[i]);
+		if (numSuggestions > primarySuggestionCount) {
+			HMENU moreMenu = ::CreatePopupMenu();
+			for (int i=primarySuggestionCount; i<numSuggestions; i++)
+				::AppendMenu(moreMenu, MF_STRING, ID_SPELL_REPLACE_FIRST+i, (*m_menuSuggestions)[i]);
+			CString moreLabel = FbeLoadRuntimeStringByKey(L"fbe.spelling.menu.more_suggestions", L"More suggestions");
+			::AppendMenu(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(moreMenu), moreLabel);
+		}
 		if (numSuggestions > 0)
 			::AppendMenu(menu, MF_SEPARATOR, 0, NULL);
 
 		CString itemName;
-		itemName = FbeLoadCString(IDC_SPELL_IGNOREALL);
+		itemName = FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.ignore_all", L"Ignore all");
 		::AppendMenu(menu, MF_STRING, IDC_SPELL_IGNOREALL, itemName);
 
-		itemName = FbeLoadCString(IDC_SPELL_ADD2DICT);
+		itemName = FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.add", L"Add to dictionary");
 		::AppendMenu(menu, MF_STRING, IDC_SPELL_ADD2DICT, itemName);
 	}
 }
@@ -419,6 +433,7 @@ void CSpeller::AppendSpellMenu (HMENU menu)
 //
 void CSpeller::Replace(int nIndex)
 {
+	if (m_menuSuggestions == nullptr || nIndex < 0 || nIndex >= m_menuSuggestions->GetSize()) return;
 	MSHTML::IHTMLTxtRangePtr range = GetSelWordRange();
 	CString addSpace = range->text;
 	if (addSpace.Right(1) == L" ") addSpace.SetString(L" "); else addSpace.SetString(L"");

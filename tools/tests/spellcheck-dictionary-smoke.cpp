@@ -180,6 +180,7 @@ static bool TestDictionary(const std::string& directory, const char* name, const
         // Confirmed against Goudron 1.0.8 with bundled Hunspell 1.7.3.
         for (const wchar_t* word : { L"компьютерр", L"редакторр", L"литератуура", L"молокоо", L"жирафф" }) ok &= Spell(dict, word, cp, false);
         ok &= HasSuggestion(dict, L"собка", L"собака", cp);
+        ok &= HasSuggestion(dict, L"корета", L"карета", cp);
         ok &= ProductionKoi8rRoundTrip(dict);
     } else if (std::string(name) == "uk_UA") {
         for (const wchar_t* word : { L"Україна", L"український", L"Київ", L"ґрунт", L"література", L"редактор" }) ok &= Spell(dict, word, cp, true);

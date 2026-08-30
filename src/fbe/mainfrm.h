@@ -589,14 +589,7 @@ public:
 		// popup menu (speller addons)
 		COMMAND_ID_HANDLER(IDC_SPELL_IGNOREALL, OnSpellIgnoreAll)
 		COMMAND_ID_HANDLER(IDC_SPELL_ADD2DICT, OnSpellAddToDict)
-		COMMAND_ID_HANDLER(IDC_SPELL_REPLACE, OnSpellReplace)
-		COMMAND_ID_HANDLER(IDC_SPELL_REPLACE+1, OnSpellReplace)
-		COMMAND_ID_HANDLER(IDC_SPELL_REPLACE+2, OnSpellReplace)
-		COMMAND_ID_HANDLER(IDC_SPELL_REPLACE+3, OnSpellReplace)
-		COMMAND_ID_HANDLER(IDC_SPELL_REPLACE+4, OnSpellReplace)
-		COMMAND_ID_HANDLER(IDC_SPELL_REPLACE+5, OnSpellReplace)
-		COMMAND_ID_HANDLER(IDC_SPELL_REPLACE+6, OnSpellReplace)
-		COMMAND_ID_HANDLER(IDC_SPELL_REPLACE+7, OnSpellReplace)
+		COMMAND_RANGE_HANDLER(ID_SPELL_REPLACE_FIRST, ID_SPELL_REPLACE_LAST, OnSpellReplace)
 
 		COMMAND_ID_HANDLER(ID_VER_ADVANCE, OnVersionAdvance)
 
@@ -828,7 +821,7 @@ public:
 		if (m_Speller)
 		{
 			m_doc->m_body.BeginUndoUnit(L"replace word");
-			m_Speller->Replace (wID - IDC_SPELL_REPLACE);
+			m_Speller->Replace (wID - ID_SPELL_REPLACE_FIRST);
 			m_doc->m_body.EndUndoUnit();
 		}
 		return 0; 

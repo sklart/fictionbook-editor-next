@@ -356,6 +356,10 @@
 #define IDB_UPD_CHECK23                 422
 #define IDB_UPD_CHECK24                 423
 #define IDC_SPELL_REPLACE               500
+// Dynamic Hunspell suggestions: a range isolated from FBE commands, plug-ins,
+// scripts and the high string-resource IDs (61403+).
+#define ID_SPELL_REPLACE_FIRST          33000
+#define ID_SPELL_REPLACE_LAST           60000
 #define ID_VER_ADVANCE                  550
 #define IDS_MB_OK                       600
 #define IDS_MB_CANCEL                   601

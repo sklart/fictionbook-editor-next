@@ -85,6 +85,12 @@ foreach ($dictionaryName in @("de_DE", "en_US", "ru_RU", "uk_UA")) {
 
 $spellerHeader = Read-SourceFile "src\fbe\Speller.h"
 $spellerSource = Read-SourceFile "src\fbe\Speller.cpp"
+$mainFrameSource = Read-SourceFile "src\fbe\mainfrm.h"
+$mainFrameImplementation = Read-SourceFile "src\fbe\mainfrm.cpp"
+$resourceHeader = Read-SourceFile "src\fbe\resource.h"
+$resourceScript = Read-SourceFile "src\fbe\FBE.rc"
+$spellDialogLocalization = Get-Content -LiteralPath (Join-Path $repoRoot "localization\app-ui\fbe-small-dialogs.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+$expectedMoreSuggestionsRu = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("0JXRidGRINCy0LDRgNC40LDQvdGC0Ys="))
 
 if (-not $spellerHeader.Contains("DetectDictionaryCodePage(Hunhandle* dict, UINT fallbackCodePage);")) {
     throw (Get-ThirdPartyText -Base64 "0JIgU3BlbGxlci5oINC+0YLRgdGD0YLRgdGC0LLRg9C10YIg0L7QsdGK0Y/QstC70LXQvdC40LUgaGVscGVyLdGE0YPQvdC60YbQuNC4INC00LvRjyDQvtC/0YDQtdC00LXQu9C10L3QuNGPINC60L7QtNC+0LLQvtC5INGB0YLRgNCw0L3QuNGG0Ysg0YHQu9C+0LLQsNGA0Y8u")
@@ -107,6 +113,50 @@ if (-not $suggestionsSource.Contains("word = FbePrepareDictionaryWord(word);") -
 $spellCheckSource = $spellerSource.Substring($spellCheckStart)
 if (-not $spellCheckSource.Contains("checkWord = FbePrepareDictionaryWord(checkWord);")) {
     throw "SpellCheck должен использовать общую подготовку словаря."
+}
+
+if ($resourceScript -match 'IDC_SPELL_SUGG_LIST[^\r\n]*LBS_SORT') {
+    throw "IDC_SPELL_SUGG_LIST must preserve the raw Hunspell suggestion order."
+}
+if ($spellerSource -notmatch 'm_Suggestions\.ResetContent\(\);[\s\S]*m_Replacement\.SetWindowText\(L""\);' -or
+    $spellerSource -notmatch 'm_Suggestions\.SetCurSel\(0\);[\s\S]*m_Replacement\.SetWindowText\(\(\*m_strSuggestions\)\[0\]\);') {
+    throw "Spell dialog must clear replacement and select the first raw suggestion."
+}
+if ($mainFrameSource -notmatch 'COMMAND_RANGE_HANDLER\(ID_SPELL_REPLACE_FIRST, ID_SPELL_REPLACE_LAST, OnSpellReplace\)' -or
+    $mainFrameSource -match 'COMMAND_ID_HANDLER\(IDC_SPELL_REPLACE\+') {
+    throw "Spell popup suggestions must use one safe command-ID range handler."
+}
+if ($resourceHeader -notmatch '#define ID_SPELL_REPLACE_FIRST\s+33000' -or
+    $resourceHeader -notmatch '#define ID_SPELL_REPLACE_LAST\s+60000') {
+    throw "Spell suggestion command range collides with another resource ID."
+}
+$suggestionIdCollisions = @(
+    [regex]::Matches($resourceHeader, '(?m)^#define\s+(?<name>\w+)\s+(?<id>\d+)\b') |
+        Where-Object {
+            $id = [int]$_.Groups['id'].Value
+            $name = $_.Groups['name'].Value
+            $id -ge 33000 -and $id -le 60000 -and
+                $name -ne 'ID_SPELL_REPLACE_FIRST' -and $name -ne 'ID_SPELL_REPLACE_LAST'
+        })
+if ($suggestionIdCollisions.Count -ne 0 -or
+    $mainFrameImplementation -notmatch 'ID_LAST_PLUGIN < ID_SPELL_REPLACE_FIRST' -or
+    $mainFrameImplementation -notmatch 'ID_SCRIPT_BASE \+ 999 < ID_SPELL_REPLACE_FIRST' -or
+    $mainFrameSource -notmatch 'm_Speller->Replace\s*\(wID - ID_SPELL_REPLACE_FIRST\)') {
+    throw "Spell suggestion command range must not overlap FBE, plug-in or script commands."
+}
+if ($spellerSource -notmatch 'primarySuggestionCount = numSuggestions < 8 \? numSuggestions : 8' -or
+    $spellerSource -notmatch 'const int numSuggestions = suggestionCount;' -or
+    $spellerSource -notmatch 'if \(numSuggestions > primarySuggestionCount\)' -or
+    $spellerSource -notmatch 'CreatePopupMenu\(\)' -or
+    $spellerSource -notmatch 'for \(int i=primarySuggestionCount; i<numSuggestions; i\+\+\)' -or
+    $spellerSource -notmatch 'FbeRestoreSourceApostropheStyle\(m_CurrentSpellWord, \(\*m_menuSuggestions\)\[nIndex\]\)') {
+    throw "Spell popup must retain all post-eighth suggestions and restore apostrophe style."
+}
+if ($spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.spelling\.menu\.more_suggestions"' -or
+    $spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.dialog\.idd_spell_check\.ignore_all"' -or
+    $spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.dialog\.idd_spell_check\.add"' -or
+    $spellDialogLocalization.strings.'fbe.spelling.menu.more_suggestions'.translations.'ru-RU' -ne $expectedMoreSuggestionsRu) {
+    throw "Spell popup labels must use runtime localization, including Russian More suggestions."
 }
 
 $helperCalls = ([regex]::Matches(
