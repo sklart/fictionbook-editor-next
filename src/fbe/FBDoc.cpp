@@ -17,6 +17,7 @@
 #include "Settings.h"
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
+#include "BackupFileCommit.h"
 #include <new>
 #include <vector>
 
@@ -1818,48 +1819,11 @@ static void CommitRecoveryFile(const CString& temporaryFile, const CString& dest
 }
 static void CommitSavedFile(const CString& temporaryFile, const CString& destinationFile, bool createBackupFile)
 {
-	HANDLE temporaryHandle = ::CreateFile(temporaryFile, GENERIC_WRITE, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (temporaryHandle == INVALID_HANDLE_VALUE)
-		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
-
-	const BOOL flushed = ::FlushFileBuffers(temporaryHandle);
-	const DWORD flushError = flushed ? ERROR_SUCCESS : ::GetLastError();
-	::CloseHandle(temporaryHandle);
-	if (!flushed)
-		throw _com_error(HRESULT_FROM_WIN32(flushError));
-
-	const DWORD attributes = ::GetFileAttributes(destinationFile);
-	if (attributes == INVALID_FILE_ATTRIBUTES)
-	{
-		const DWORD attributesError = ::GetLastError();
-		if (attributesError != ERROR_FILE_NOT_FOUND && attributesError != ERROR_PATH_NOT_FOUND)
-			throw _com_error(HRESULT_FROM_WIN32(attributesError));
-
-		if (!::MoveFileEx(temporaryFile, destinationFile, MOVEFILE_WRITE_THROUGH))
-			throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
-		TraceDocumentEvent(L"D210", L"book save created new file without backup", destinationFile);
-		return;
-	}
-
-	CString backupFile;
-	LPCWSTR backupFilePath = NULL;
-	if (createBackupFile)
-	{
-		backupFile = destinationFile + L".bak";
-		if (!::DeleteFile(backupFile))
-		{
-			const DWORD backupError = ::GetLastError();
-			if (backupError != ERROR_FILE_NOT_FOUND)
-				throw _com_error(HRESULT_FROM_WIN32(backupError));
-		}
-		backupFilePath = backupFile;
-	}
-
-	if (!::ReplaceFile(destinationFile, temporaryFile, backupFilePath, 0, NULL, NULL))
-		throw _com_error(HRESULT_FROM_WIN32(::GetLastError()));
-	TraceDocumentEvent(L"D211", createBackupFile ? L"book save backup created" : L"book save replacing existing file",
-		createBackupFile ? backupFile : destinationFile);
+	const bool existed = ::GetFileAttributes(destinationFile) != INVALID_FILE_ATTRIBUTES;
+	FbeBackupFileCommit::CommitSavedFile(temporaryFile, destinationFile, createBackupFile);
+	const CString backupFile = destinationFile + L".bak";
+	TraceDocumentEvent(existed ? L"D211" : L"D210", existed && createBackupFile ? L"book save backup created" : L"book save replacing existing file",
+		existed && createBackupFile ? backupFile : destinationFile);
 }
 
 static CString CreateTemporaryFileName(const CString& directory, const wchar_t* prefix)
