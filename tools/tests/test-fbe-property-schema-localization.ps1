@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$RegisterSchema,
+    [switch]$Installed,
     [ValidateSet('ru', 'en')]
     [string]$ExpectedLanguage
 )
@@ -49,7 +50,7 @@ foreach ($entry in $labels.GetEnumerator()) {
     $entry.Value.en = $matches[1].Groups['label'].Value
 }
 
-if ($RegisterSchema) {
+if ($RegisterSchema -or $Installed) {
     $language = if ($ExpectedLanguage) { $ExpectedLanguage } elseif ([Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -eq 'ru') { 'ru' } else { 'en' }
     foreach ($entry in $labels.GetEnumerator()) {
         $displayName = [FbePropertyDescriptionProbe]::DisplayName($entry.Key)

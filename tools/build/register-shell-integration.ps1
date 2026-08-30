@@ -112,7 +112,7 @@ Ensure-RegistryDefaultValue `
 Ensure-RegistryDefaultValue `
     -Path $thumbnailProviderInprocRegistryKey `
     -Value $fbshellPath
-Set-ItemProperty -Path $thumbnailProviderInprocRegistryKey -Name "ThreadingModel" -Value "Apartment"
+Set-ItemProperty -Path $thumbnailProviderInprocRegistryKey -Name "ThreadingModel" -Value "Both"
 New-Item -Path $thumbnailProviderProgrammableRegistryKey -Force | Out-Null
 Write-Host "Проверена COM-регистрация CLSID thumbnail provider."
 
@@ -134,6 +134,6 @@ if (-not $NoRestartExplorer) {
     Start-Process explorer.exe
 }
 
-Write-Host "Экспериментальный modern shell-контур зарегистрирован."
+Write-Host "Modern shell integration is registered."
 Write-Host "Для ручной GUI-проверки свойств используйте docs/property-handler-manual-test.md."
 Write-Host "Для ручной GUI-проверки миниатюр используйте docs/thumbnail-provider-manual-test.md."

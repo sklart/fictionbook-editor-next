@@ -38,6 +38,6 @@ if ($ShellDllPath) { $registrationArguments.ShellDllPath = $ShellDllPath }
 
 # GetDisplayName resolves the installed schema's @FBShell.dll,-201..-206 labels.
 & (Join-Path $repoRoot 'tools\tests\test-fbe-property-schema-localization.ps1') `
-    -RegisterSchema -ExpectedLanguage $ExpectedLanguage
+    -Installed -ExpectedLanguage $ExpectedLanguage
 
 Write-Host "Installed FBE shell localization integration test passed for $ExpectedLanguage."
