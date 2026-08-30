@@ -262,38 +262,46 @@ function RebuildImagesInfo()
 
 function BuildBinaryControls(div, fullpath, id, type, data)
 {
- div.innerHTML = '<button id="del" ' +
+ var html='<button id="del" ' +
                  'onmouseover="HighlightBorder(this.parentNode, true, \'solid\', \'2px\', \'#FF0000\');" ' +
                  'onmouseout="HighlightBorder(this.parentNode, false);" ' +
                  'onclick="Remove(this.parentNode);" unselectable="on">&#x72;</button>';
+ var dims="";
  if(IsImageBinaryType(type))
  {
-  var imghref = "fbw-internal:#" + id;
-  div.innerHTML += '<button id="show"' +
+  html += '<button id="show"' +
   'onmouseover="ShowImageOfBin(this.parentNode,\'prev\');"' +
   'onmouseout="HidePrevImage();"' +
   'onclick="ShowImageOfBin(this.parentNode,\'full\');"' +
   'unselectable="on">&#x4e;</button>';
-  div.innerHTML += '<button id="save"' +
-  'onclick="SaveImage(\'' + imghref + '\');"' +
+  html += '<button id="save"' +
+  'onclick="SaveBinary(this.parentNode);"' +
   'unselectable="on">&#xcd;</button>';
  }
 
- div.innerHTML += '<label unselectable="on">ID:</label><input type="text" maxlength="256" id="id" style="width:20em;"><label unselectable="on">Type:</label><input type="text" style="width:8em;" maxlength="256" id="type" value="">';
- div.innerHTML += '<label unselectable="on">Size:</label><input type="text" disabled id="size" style="width:5em;" value="' + window.external.GetBinarySize(data) + '">';
+ html += '<label unselectable="on">ID:</label><input type="text" maxlength="256" id="id" style="width:20em;"><label unselectable="on">Type:</label><input type="text" style="width:8em;" maxlength="256" id="type" value="">';
+ html += '<label unselectable="on">Size:</label><input type="text" disabled id="size" style="width:5em;" value="' + window.external.GetBinarySize(data) + '">';
 
  if(IsImageBinaryType(type))
  {
-  var Dims = fullpath != "" ? window.external.GetImageDimsByPath(fullpath) : "";
-  if(Dims == "") Dims = window.external.GetImageDimsByData(data);
-  if(Dims != "") div.innerHTML += '<label unselectable="on">w*h:</label><input type="text" disabled id="dims" style="width:6em;" value="' + Dims + '">';
+  dims = fullpath != "" ? window.external.GetImageDimsByPath(fullpath) : "";
+  if(dims == "") dims = window.external.GetImageDimsByData(data);
+  if(dims != "") html += '<label unselectable="on">w*h:</label><input type="text" disabled id="dims" style="width:6em;" value="' + dims + '">';
  }
 
+ div.innerHTML=html;
  div.all.id.value=id;
  div.all.type.value=type;
  div.all.id.setAttribute("oldId",id);
  div.all.id.onchange=OnBinaryChange;
  div.all.type.onchange=OnBinaryChange;
+ return dims;
+}
+
+function SaveBinary(binary)
+{
+ var id=GetBinaryInput(binary, "id");
+ if(id) SaveImage("fbw-internal:#"+id.value);
 }
 
 function apiAddBinary(fullpath, id, type, data)
@@ -321,25 +329,15 @@ function apiAddBinary(fullpath, id, type, data)
 
 	var div = document.createElement("DIV");
 
-	BuildBinaryControls(div, fullpath, curid, type, data);
+	var dims=BuildBinaryControls(div, fullpath, curid, type, data);
 	if(IsImageBinaryType(type))
 	{
 		var imghref = "fbw-internal:#" + curid;
-		var Dims = "";
 
-		if(fullpath != "")
-			Dims = window.external.GetImageDimsByPath(fullpath);
-		// Imported conversions use a logical FB2 filename here, not necessarily
-		// a file that still exists on disk.  Keep the fast path for real files,
-		// but derive dimensions from the just-added data when it cannot be used.
-		if(Dims == "")
-			Dims = window.external.GetImageDimsByData(data);
-
-		if(Dims != "")
+		if(dims != "")
 			{
-				var imgWidth = Dims.substring(0, Dims.search("x"));
-				var imgHeight = Dims.substring(Dims.search("x") + 1, Dims.length);
-				div.innerHTML += '<label unselectable="on">w*h:</label><input type="text" disabled id="dims" style="width:6em;" value="' + imgWidth +'x' + imgHeight + '">';
+				var imgWidth = dims.substring(0, dims.search("x"));
+				var imgHeight = dims.substring(dims.search("x") + 1, dims.length);
 
 				var ImageInfo = new Object();
 				ImageInfo.src = imghref;

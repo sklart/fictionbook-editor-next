@@ -20,6 +20,7 @@ $nativeHarness = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\imag
 $nativeRunner = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\test-image-import-native.ps1') -Raw
 $mainJsSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'runtime\main.js') -Raw
 $apiAddBinarySource = [regex]::Match($mainJsSource, 'function apiAddBinary\([\s\S]*?\r?\n}\r?\n\r?\nfunction GetImageData').Value
+$binaryControlsSource = [regex]::Match($mainJsSource, 'function BuildBinaryControls\([\s\S]*?\r?\n}\r?\n\r?\nfunction SaveBinary').Value
 $addImportedBinarySource = [regex]::Match($viewSource, 'HRESULT CFBEView::AddImportedBinary\([\s\S]*?\r?\n}\r?\n\r?\n// images').Value
 
 foreach ($format in @('Jpeg', 'Png', 'Webp', 'Jp2', 'J2k', 'Tiff', 'Bmp', 'Gif', 'Heif')) {
@@ -53,7 +54,7 @@ Assert-True ($importSource -notmatch 'CreateFile.*TEMP|GetTempPath|dwebp\.exe|op
 Assert-True ($docSource -match 'AddBinaryData') 'Doc должен принимать готовые байты изображения.'
 Assert-True ($viewSource -match 'PrepareDefaultId\(logicalFileName\)') 'ID должен строиться по целевому имени.'
 Assert-True ($viewSource -match 'AddImportedBinary') 'Добавление binary должно использовать общий DOM adapter.'
-Assert-True ($apiAddBinarySource -match 'GetImageDimsByPath\(fullpath\)' -and $apiAddBinarySource -match 'if\(Dims == ""\)\s*Dims = window\.external\.GetImageDimsByData\(data\)') 'apiAddBinary должен получать размеры из data, если path отсутствует или не дал результата.'
+Assert-True ($binaryControlsSource -match 'GetImageDimsByPath\(fullpath\)' -and $binaryControlsSource -match 'if\(dims == ""\) dims = window\.external\.GetImageDimsByData\(data\)') 'Binary controls должны получать размеры из data, если path отсутствует или не дал результата.'
 Assert-True ($apiAddBinarySource -match 'ImagesInfo\.push\(ImageInfo\)') 'apiAddBinary должен инкрементально добавлять dimensions нового изображения в ImagesInfo.'
 Assert-True ($addImportedBinarySource -notmatch 'V_BSTR\(&args\[3\]\)\s*=\s*logicalFileName') 'AddImportedBinary не должен передавать logical filename как filesystem path.'
 Assert-True ($addImportedBinarySource -match 'V_BSTR\(&args\[3\]\)\s*=\s*::SysAllocString\(L""\)') 'AddImportedBinary должен передавать apiAddBinary пустой source path, чтобы размеры определялись по binary data.'
