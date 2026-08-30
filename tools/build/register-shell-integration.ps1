@@ -66,7 +66,7 @@ function Ensure-RegistryDefaultValue {
 }
 
 if (-not (Test-IsAdministrator)) {
-    throw "Для регистрации экспериментального shell-контура нужны права администратора."
+    throw "Для регистрации shell-интеграции нужны права администратора."
 }
 
 if (-not $SkipBuild) {
@@ -82,7 +82,7 @@ if (-not (Test-Path -LiteralPath $fbshellPath -PathType Leaf)) {
     throw "Не найден FBShell.dll: $fbshellPath"
 }
 
-Write-Host "Регистрация экспериментального modern shell-контура через regsvr32:"
+Write-Host "Регистрация shell-интеграции через regsvr32:"
 Write-Host "  $fbshellPath"
 
 & (Get-RegSvr32Path -Platform $Platform) /s $fbshellPath
