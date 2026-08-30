@@ -911,11 +911,15 @@ static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 		if (binaryElement != NULL)
 			binaryElement->PutdataType(_bstr_t(L"bin.base64"));
 		_bstr_t encoded(binary->Gettext());
-		CString compact((const wchar_t*)encoded);
-		compact.Remove(L' ');
-		compact.Remove(L'\t');
-		compact.Remove(L'\r');
-		compact.Remove(L'\n');
+		const CString source((const wchar_t*)encoded);
+		CString compact;
+		compact.Preallocate(source.GetLength());
+		for (int character = 0; character < source.GetLength(); ++character)
+		{
+			const wchar_t value = source[character];
+			if (value != L' ' && value != L'\t' && value != L'\r' && value != L'\n')
+				compact.AppendChar(value);
+		}
 
 		// dataType is a temporary MSXML conversion aid.  Leaving it on the
 		// element can make MSXML serialize dt:dt and its datatype namespace,

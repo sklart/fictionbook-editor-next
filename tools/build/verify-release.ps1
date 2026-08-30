@@ -267,6 +267,7 @@ if ($FullValidation) {
     & (Join-Path $repoRoot "tools\tests\test-fbe-selection-container-control-range.ps1")
     & (Join-Path $repoRoot "tools\tests\test-fbe-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-large-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-fbe-many-binaries-production-stress.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-image-import-fbe-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-export-html-images-e2e.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-portable-registry-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")

@@ -26,10 +26,14 @@ function Assert-Binaries([string]$Path, $ExpectedRecords) {
     [xml]$xml = $xmlText
     $namespaces = [Xml.XmlNamespaceManager]::new($xml.NameTable)
     $namespaces.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
+    if ($null -eq $xml.SelectSingleNode('//fb:image[@*[local-name()="href"]="#cover-part-01.jpg"]', $namespaces)) {
+        throw 'Production Save изменил xlink:href для binary id с тире.'
+    }
     foreach ($expected in $ExpectedRecords) {
         $binary = $xml.SelectSingleNode(('/fb:FictionBook/fb:binary[@id="{0}"]' -f $expected.Id), $namespaces)
         if ($null -eq $binary -or $binary.GetAttribute('content-type') -ne $expected.ContentType) { throw "Production Save изменил metadata $($expected.Id)." }
-        $afterBytes = [Convert]::FromBase64String(($binary.InnerText -replace '\s', ''))
+        if ($binary.InnerText -match '[ \r\n\t]') { throw "Production Save оставил whitespace в Base64 $($expected.Id)." }
+        $afterBytes = [Convert]::FromBase64String($binary.InnerText)
         $afterHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($afterBytes))
         if ($afterBytes.Length -ne $expected.Length -or $afterHash -ne $expected.Hash) { throw "Production Save изменил decoded binary $($expected.Id)." }
     }
@@ -42,19 +46,20 @@ $reopenReport = Join-Path $directory 'reopen.tsv'
 $resaveReport = Join-Path $directory 'resave.tsv'
 $binaryRecords = @()
 $sizes = @(3, 57, 256, 1024, 4097, 8192, 12288, 14336, 16384)
-$contentTypes = @('application/octet-stream', 'application/x-fbe-1', 'application/x-fbe-2', 'application/x-fbe-3', 'application/x-fbe-4', 'application/x-fbe-5', 'application/x-fbe-6', 'application/x-fbe-7', 'application/x-fbe-large')
+$contentTypes = @('image/jpeg', 'application/x-fbe-1', 'application/x-fbe-2', 'application/x-fbe-3', 'application/x-fbe-4', 'application/x-fbe-5', 'application/x-fbe-6', 'application/x-fbe-7', 'application/x-fbe-large')
 for ($index = 0; $index -lt $sizes.Count; ++$index) {
     $bytes = [byte[]]::new($sizes[$index])
     for ($offset = 0; $offset -lt $bytes.Length; ++$offset) { $bytes[$offset] = [byte](($index * 29 + $offset) % 256) }
     $base64 = [Convert]::ToBase64String($bytes)
     if ($index -eq 1) { $base64 = [regex]::Replace($base64, '.{64}', '$0' + "`r`n") }
-    $binaryRecords += [pscustomobject]@{ Id = "payload-$index"; ContentType = $contentTypes[$index]; Length = $bytes.Length; Hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)); Base64 = $base64 }
+    $id = if ($index -eq 0) { 'cover-part-01.jpg' } else { "payload-$index" }
+    $binaryRecords += [pscustomobject]@{ Id = $id; ContentType = $contentTypes[$index]; Length = $bytes.Length; Hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)); Base64 = $base64 }
 }
 $binaryMarkup = [string]::Join('', @($binaryRecords | ForEach-Object { '<binary id="{0}" content-type="{1}">{2}</binary>' -f $_.Id, $_.ContentType, $_.Base64 }))
 try {
     @"
 <?xml version="1.0" encoding="utf-8"?>
-<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>binary</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>binary-test</id><version>1.0</version></document-info></description><body><section><p>Binary fixture.</p></section></body>$binaryMarkup</FictionBook>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>binary</book-title><lang>en</lang><coverpage><image l:href="#cover-part-01.jpg"/></coverpage></title-info><document-info><program-used>test</program-used><id>binary-test</id><version>1.0</version></document-info></description><body><section><p>Binary fixture.</p></section></body>$binaryMarkup</FictionBook>
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
 
     $save = Start-Process -FilePath $FbeExe -ArgumentList @('-s', '-b', $saveReport, $fixture) -PassThru
