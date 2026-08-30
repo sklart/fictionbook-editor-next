@@ -184,6 +184,7 @@ if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
 }
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot "tools\tests\test-spell-visible-paragraphs.ps1")
 $pcre2TestArguments = @{
     Configuration = $Configuration
     UsePreparedPcre2 = $true

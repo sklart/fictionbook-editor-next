@@ -160,6 +160,10 @@ Assert-Contains $spellerSource "GetNextParagraph(elem, m_fbw_body);" `
     "проверка видимой области должна обходить соседние DOM-абзацы"
 Assert-NotContains $spellerSource "MSHTML::IHTMLElementCollectionPtr paras" `
     "проверка видимой области не должна собирать все абзацы длинного документа"
+Assert-NotContains $spellerSource "getElementsByTagName" `
+    "проверка видимой области не должна выполнять глобальный DOM-обход абзацев"
+Assert-Contains $spellerSource "endElem || checked < fallbackParagraphLimit" `
+    "граница видимой области должна отменять fallback-лимит абзацев"
 Assert-NotContains $mainFrame "IsHTMLChanged()" `
     "обработчик изменения не должен пересчитывать все HTML-элементы документа"
 Assert-NotContains $viewHeader "bool IsHTMLChanged()" `

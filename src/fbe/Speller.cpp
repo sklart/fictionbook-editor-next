@@ -5,6 +5,7 @@
 #include <fstream>
 #include "FBE.h"
 #include "Speller.h"
+#include "SpellParagraphTraversal.h"
 #include "RuntimeLocalization.h"
 #include "StartupTrace.h"
 
@@ -704,29 +705,19 @@ static MSHTML::IHTMLElementPtr GetNextParagraph(
 	MSHTML::IHTMLElementPtr element,
 	MSHTML::IHTMLElementPtr documentBody)
 {
-	MSHTML::IHTMLDOMNodePtr node(element);
-	MSHTML::IHTMLDOMNodePtr body(documentBody);
-
-	while (node && node != body)
+	struct Accessor
 	{
-		if (node->nextSibling)
-			node = node->nextSibling;
-		else
+		MSHTML::IHTMLDOMNodePtr FirstChild(MSHTML::IHTMLDOMNodePtr node) const { return node->firstChild; }
+		MSHTML::IHTMLDOMNodePtr NextSibling(MSHTML::IHTMLDOMNodePtr node) const { return node->nextSibling; }
+		MSHTML::IHTMLDOMNodePtr Parent(MSHTML::IHTMLDOMNodePtr node) const { return node->parentNode; }
+		bool IsParagraph(MSHTML::IHTMLDOMNodePtr node) const
 		{
-			node = node->parentNode;
-			while (node && node != body && !node->nextSibling)
-				node = node->parentNode;
-			if (!node || node == body)
-				break;
-			node = node->nextSibling;
+			MSHTML::IHTMLElementPtr candidate(node);
+			return candidate && U::scmp(candidate->tagName, L"P") == 0;
 		}
-
-		MSHTML::IHTMLElementPtr candidate(node);
-		if (candidate && U::scmp(candidate->tagName, L"P") == 0)
-			return candidate;
-	}
-
-	return MSHTML::IHTMLElementPtr();
+	};
+	return MSHTML::IHTMLElementPtr(FbeNextParagraphInDocumentOrder(
+		MSHTML::IHTMLDOMNodePtr(element), MSHTML::IHTMLDOMNodePtr(documentBody), Accessor()));
 }
 
 //
@@ -813,10 +804,10 @@ void CSpeller::CheckCurrentPage()
 	if (!elem)
 		return;
 
-	// ��������� ������ ������� ������. ���� ������ ������� �� ����������,
-	// ���� ��������� ����� ��������� �������. ����� ���������� � �������� P,
-	// ������� ��� ��������� �� ������� �� ����� �������.
-	for (int checked = 0; elem && checked < 20; ++checked)
+	// If the visible bottom paragraph is known, visit every paragraph through it.
+	// A bounded fallback is used only when hit-testing cannot determine it.
+	const int fallbackParagraphLimit = 96;
+	for (int checked = 0; elem && (endElem || checked < fallbackParagraphLimit); ++checked)
 	{
 		currNum = MSHTML::IHTMLUniqueNamePtr(elem)->uniqueNumber;
 		
