@@ -83,12 +83,13 @@ void QueryProperty(IPropertyStore* propertyStore, const wchar_t* canonicalName)
 
 int wmain(int argc, wchar_t* argv[])
 {
-    if (argc != 2) {
-        std::wcerr << L"Использование: fb2-shell-properties-query.exe <fb2-file>\n";
+    if (argc < 2 || argc > 3) {
+        std::wcerr << L"Использование: fb2-shell-properties-query.exe <fb2-file> [sta|mta]\n";
         return 10;
     }
 
-    HRESULT hr = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool mta = argc == 3 && _wcsicmp(argv[2], L"mta") == 0;
+    HRESULT hr = ::CoInitializeEx(nullptr, mta ? COINIT_MULTITHREADED : COINIT_APARTMENTTHREADED);
     if (FAILED(hr)) {
         std::wcerr << L"Ошибка CoInitializeEx: 0x" << std::hex << hr << std::dec << L"\n";
         return 11;

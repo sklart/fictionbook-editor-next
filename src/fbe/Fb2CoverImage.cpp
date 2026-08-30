@@ -6,6 +6,11 @@
 #include <atlstr.h>
 #include <comdef.h>
 #include <vector>
+#include <xmllite.h>
+#include <wincrypt.h>
+
+#pragma comment(lib, "xmllite.lib")
+#pragma comment(lib, "crypt32.lib")
 
 #import <msxml6.dll> named_guids rename_namespace("MSXML2") exclude("ISequentialStream", "_FILETIME")
 
@@ -269,7 +274,7 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
     }
 }
 
-bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecodedBytes, ATL::CString* errorMessage)
+bool TryReadStreamDomFallback(IStream* stream, CoverImage& coverImage, size_t maximumDecodedBytes, ATL::CString* errorMessage)
 {
     coverImage.Clear();
     if (errorMessage != nullptr)
@@ -339,5 +344,57 @@ bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecode
     }
 }
 
-} // namespace FB2CoverImage
+bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecodedBytes, ATL::CString* errorMessage)
+{
+    coverImage.Clear();
+    if (errorMessage != nullptr) errorMessage->Empty();
+    if (stream == nullptr || maximumDecodedBytes == 0) return false;
+    CComPtr<IXmlReader> reader;
+    HRESULT hr = ::CreateXmlReader(__uuidof(IXmlReader), reinterpret_cast<void**>(&reader), nullptr);
+    if (FAILED(hr) || FAILED(reader->SetInput(stream))) return false;
 
+    int depth = 0, descriptionDepth = -1, titleInfoDepth = -1, binaryDepth = -1;
+    bool matchedBinary = false;
+    ATL::CString base64;
+    const size_t maximumBase64Characters = ((maximumDecodedBytes + 2) / 3) * 4 + 8;
+    auto getAttribute = [&](const wchar_t* expected) {
+        ATL::CString value;
+        if (SUCCEEDED(reader->MoveToFirstAttribute())) {
+            do { const wchar_t* name = nullptr; UINT nameLength = 0; reader->GetLocalName(&name, &nameLength);
+                if (wcslen(expected) == nameLength && wcsncmp(name, expected, nameLength) == 0) { const wchar_t* text = nullptr; UINT textLength = 0; reader->GetValue(&text, &textLength); value.SetString(text, textLength); break; }
+            } while (SUCCEEDED(reader->MoveToNextAttribute()));
+            reader->MoveToElement();
+        }
+        NormalizeWhitespace(value); return value;
+    };
+    XmlNodeType type;
+    while (S_OK == (hr = reader->Read(&type))) {
+        if (type == XmlNodeType_Element) {
+            const wchar_t* name = nullptr; UINT length = 0; reader->GetLocalName(&name, &length); ++depth;
+            const auto named = [&](const wchar_t* expected) { return wcslen(expected) == length && wcsncmp(name, expected, length) == 0; };
+            if (named(L"description")) descriptionDepth = depth;
+            else if (depth == descriptionDepth + 1 && named(L"title-info")) titleInfoDepth = depth;
+            else if (depth == titleInfoDepth + 2 && named(L"image")) { coverImage.href = getAttribute(L"href"); if (!coverImage.href.IsEmpty() && coverImage.href[0] == L'#') coverImage.href.Delete(0); coverImage.binaryId = coverImage.href; NormalizeWhitespace(coverImage.binaryId); }
+            else if (named(L"binary") && !coverImage.binaryId.IsEmpty() && getAttribute(L"id") == coverImage.binaryId) { matchedBinary = true; binaryDepth = depth; coverImage.contentType = getAttribute(L"content-type"); }
+            if (reader->IsEmptyElement()) --depth;
+        } else if ((type == XmlNodeType_Text || type == XmlNodeType_Whitespace) && matchedBinary) {
+            const wchar_t* text = nullptr; UINT length = 0; reader->GetValue(&text, &length);
+            if (static_cast<size_t>(base64.GetLength()) + length > maximumBase64Characters) { if (errorMessage != nullptr) *errorMessage = L"Cover base64 exceeds the configured safety limit."; return false; }
+            base64.Append(text, length);
+        } else if (type == XmlNodeType_EndElement) {
+            if (matchedBinary && depth == binaryDepth) {
+                DWORD byteCount = 0;
+                if (!::CryptStringToBinaryW(base64, base64.GetLength(), CRYPT_STRING_BASE64, nullptr, &byteCount, nullptr, nullptr) || byteCount == 0 || byteCount > maximumDecodedBytes) { if (errorMessage != nullptr) *errorMessage = L"Cover base64 is invalid or exceeds the configured safety limit."; return false; }
+                coverImage.bytes.resize(byteCount);
+                if (!::CryptStringToBinaryW(base64, base64.GetLength(), CRYPT_STRING_BASE64, coverImage.bytes.data(), &byteCount, nullptr, nullptr)) { coverImage.Clear(); return false; }
+                return true;
+            }
+            --depth;
+        }
+    }
+    if (errorMessage != nullptr) *errorMessage = coverImage.binaryId.IsEmpty() ? L"FB2 cover reference was not found." : L"Cover binary was not found.";
+    coverImage.Clear();
+    return false;
+}
+
+} // namespace FB2CoverImage

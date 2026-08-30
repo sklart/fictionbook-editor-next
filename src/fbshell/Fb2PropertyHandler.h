@@ -9,7 +9,7 @@
 EXTERN_C const GUID CLSID_Fb2PropertyHandler;
 
 class Fb2PropertyHandler :
-    public CComObjectRootEx<CComSingleThreadModel>,
+    public CComObjectRootEx<CComMultiThreadModel>,
     public CComCoClass<Fb2PropertyHandler, &CLSID_Fb2PropertyHandler>,
     public IPropertyStore,
     public IPropertyStoreCapabilities,

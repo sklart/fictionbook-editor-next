@@ -77,7 +77,9 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-& $testExe $FilePath
-if ($LASTEXITCODE -ne 0) {
-    throw "Запрос shell-свойств завершился с кодом $LASTEXITCODE."
+foreach ($apartment in @('sta', 'mta')) {
+    & $testExe $FilePath $apartment
+    if ($LASTEXITCODE -ne 0) {
+        throw "Запрос shell-свойств ($apartment) завершился с кодом $LASTEXITCODE."
+    }
 }

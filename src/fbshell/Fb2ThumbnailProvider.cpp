@@ -102,34 +102,6 @@ bool IsMissingCoverError(const ATL::CString& errorMessage)
         errorMessage.Find(L"Cover binary was not found") == 0;
 }
 
-class TempFileScope {
-public:
-    TempFileScope()
-    {
-        m_path.Empty();
-    }
-    ~TempFileScope()
-    {
-        Cleanup();
-    }
-    void SetPath(const wchar_t* path)
-    {
-        m_path = path;
-    }
-    const wchar_t* GetPath() const
-    {
-        return m_path;
-    }
-    void Cleanup()
-    {
-        if (!m_path.IsEmpty()) {
-            ::DeleteFileW(m_path);
-            m_path.Empty();
-        }
-    }
-private:
-    ATL::CString m_path;
-};
 HRESULT SeekStreamToStart(IStream* stream)
 {
     if (stream == nullptr)
@@ -148,64 +120,6 @@ ULONGLONG GetStreamSizeOrZero(IStream* stream)
         return 0;
 
     return static_cast<ULONGLONG>(stat.cbSize.QuadPart);
-}
-HRESULT CopyStreamToTempFile(IStream* stream, TempFileScope& tempFile)
-{
-    if (stream == nullptr)
-        return E_POINTER;
-    wchar_t tempDirectory[MAX_PATH] = { 0 };
-    const DWORD tempDirectoryLength = ::GetTempPathW(_countof(tempDirectory), tempDirectory);
-    if (tempDirectoryLength == 0 || tempDirectoryLength >= _countof(tempDirectory)) {
-        return HRESULT_FROM_WIN32(::GetLastError());
-    }
-    wchar_t tempFilePath[MAX_PATH] = { 0 };
-    if (::GetTempFileNameW(tempDirectory, L"FBE", 0, tempFilePath) == 0) {
-        return HRESULT_FROM_WIN32(::GetLastError());
-    }
-    AppendThumbnailTraceFormat(L"Thumbnail provider temporary file created: %ls", tempFilePath);
-    HANDLE fileHandle = ::CreateFileW(
-        tempFilePath,
-        GENERIC_WRITE,
-        0,
-        nullptr,
-        CREATE_ALWAYS,
-        FILE_ATTRIBUTE_TEMPORARY,
-        nullptr);
-    if (fileHandle == INVALID_HANDLE_VALUE) {
-        const HRESULT hr = HRESULT_FROM_WIN32(::GetLastError());
-        ::DeleteFileW(tempFilePath);
-        return hr;
-    }
-    tempFile.SetPath(tempFilePath);
-    const ULONGLONG inputStreamSize = GetStreamSizeOrZero(stream);
-    AppendThumbnailTraceFormat(L"Input FB2 stream size: %llu bytes", inputStreamSize);
-    const HRESULT seekHr = SeekStreamToStart(stream);
-    if (FAILED(seekHr)) {
-        ::CloseHandle(fileHandle);
-        return seekHr;
-    }
-    BYTE buffer[64 * 1024];
-    ULONGLONG totalCopiedBytes = 0;
-    while (true) {
-        ULONG bytesRead = 0;
-        const HRESULT readHr = stream->Read(buffer, sizeof(buffer), &bytesRead);
-        if (FAILED(readHr)) {
-            ::CloseHandle(fileHandle);
-            return readHr;
-        }
-        if (bytesRead == 0)
-            break;
-        DWORD bytesWritten = 0;
-        if (!::WriteFile(fileHandle, buffer, bytesRead, &bytesWritten, nullptr) || bytesWritten != bytesRead) {
-            const HRESULT writeHr = HRESULT_FROM_WIN32(::GetLastError());
-            ::CloseHandle(fileHandle);
-            return writeHr;
-        }
-        totalCopiedBytes += bytesWritten;
-    }
-    ::CloseHandle(fileHandle);
-    AppendThumbnailTraceFormat(L"Copied to temporary FB2 file: %llu bytes", totalCopiedBytes);
-    return S_OK;
 }
 HRESULT BuildThumbnailFromStream(IStream* stream, UINT requestedEdge, HBITMAP* bitmap, WTS_ALPHATYPE* alphaType)
 {
@@ -296,4 +210,3 @@ STDMETHODIMP Fb2ThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* bitmap, WTS_AL
     AppendThumbnailTraceFormat(L"GetThumbnail finished with HRESULT: 0x%08X", static_cast<unsigned int>(thumbnailHr));
     return thumbnailHr;
 }
-

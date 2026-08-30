@@ -5,6 +5,9 @@
 #include <atlcomcli.h>
 #include <atlstr.h>
 #include <comdef.h>
+#include <xmllite.h>
+
+#pragma comment(lib, "xmllite.lib")
 
 #import <msxml6.dll> named_guids rename_namespace("MSXML2") exclude("ISequentialStream", "_FILETIME")
 
@@ -303,7 +306,7 @@ bool TryRead(const wchar_t* filePath, Metadata& metadata, ATL::CString* errorMes
     }
 }
 
-bool TryReadStream(IStream* stream, Metadata& metadata, ATL::CString* errorMessage)
+bool TryReadStreamDomFallback(IStream* stream, Metadata& metadata, ATL::CString* errorMessage)
 {
     metadata.Clear();
     if (errorMessage != nullptr)
@@ -373,6 +376,109 @@ bool TryReadStream(IStream* stream, Metadata& metadata, ATL::CString* errorMessa
             *errorMessage = FormatComError(error);
         return false;
     }
+}
+
+bool TryReadStream(IStream* stream, Metadata& metadata, ATL::CString* errorMessage)
+{
+    metadata.Clear();
+    if (errorMessage != nullptr)
+        errorMessage->Empty();
+    if (stream == nullptr)
+        return false;
+
+    CComPtr<IXmlReader> reader;
+    HRESULT hr = ::CreateXmlReader(__uuidof(IXmlReader), reinterpret_cast<void**>(&reader), nullptr);
+    if (FAILED(hr) || FAILED(reader->SetInput(stream))) {
+        if (errorMessage != nullptr) *errorMessage = L"XmlLite could not open the FB2 stream.";
+        return false;
+    }
+
+    enum class Field { None, Title, Genre, Keywords, Language, SourceLanguage, FirstName, MiddleName, LastName, Nickname, DocumentDate, DocumentId, DocumentVersion };
+    int descriptionDepth = -1, titleInfoDepth = -1, documentInfoDepth = -1, authorDepth = -1, depth = 0;
+    bool documentAuthor = false, haveDescription = false;
+    Field field = Field::None;
+    ATL::CString text, firstName, middleName, lastName, nickname;
+    std::vector<ATL::CString>* authorValues = nullptr;
+    ATL::CString* authorText = nullptr;
+    auto appendAuthor = [&]() {
+        ATL::CString author = JoinNonEmpty(firstName, middleName, lastName);
+        if (author.IsEmpty()) author = nickname;
+        NormalizeWhitespace(author);
+        if (!author.IsEmpty() && authorValues != nullptr) {
+            authorValues->push_back(author);
+            if (!authorText->IsEmpty()) *authorText += L", ";
+            *authorText += author;
+        }
+    };
+    auto getAttribute = [&](const wchar_t* name) {
+        ATL::CString value;
+        if (SUCCEEDED(reader->MoveToFirstAttribute())) {
+            do {
+                const wchar_t* localName = nullptr; UINT length = 0;
+                if (SUCCEEDED(reader->GetLocalName(&localName, &length)) && wcslen(name) == length && wcsncmp(localName, name, length) == 0) {
+                    const wchar_t* attrValue = nullptr; UINT attrLength = 0;
+                    if (SUCCEEDED(reader->GetValue(&attrValue, &attrLength))) value.SetString(attrValue, attrLength);
+                    break;
+                }
+            } while (SUCCEEDED(reader->MoveToNextAttribute()));
+            reader->MoveToElement();
+        }
+        NormalizeWhitespace(value);
+        return value;
+    };
+
+    XmlNodeType type;
+    while (S_OK == (hr = reader->Read(&type))) {
+        if (type == XmlNodeType_Element) {
+            const wchar_t* name = nullptr; UINT length = 0; reader->GetLocalName(&name, &length);
+            ++depth;
+            const auto named = [&](const wchar_t* expected) { return wcslen(expected) == length && wcsncmp(name, expected, length) == 0; };
+            if (named(L"description")) { descriptionDepth = depth; haveDescription = true; }
+            else if (depth == descriptionDepth + 1 && named(L"title-info")) titleInfoDepth = depth;
+            else if (descriptionDepth >= 0 && named(L"document-info")) documentInfoDepth = depth;
+            else if (((titleInfoDepth >= 0 && depth == titleInfoDepth + 1) || documentInfoDepth >= 0) && named(L"author")) {
+                authorDepth = depth; documentAuthor = documentInfoDepth >= 0;
+                firstName.Empty(); middleName.Empty(); lastName.Empty(); nickname.Empty();
+                authorValues = documentAuthor ? &metadata.documentAuthorValues : &metadata.authorValues;
+                authorText = documentAuthor ? &metadata.documentAuthors : &metadata.authors;
+            } else if (depth == titleInfoDepth + 1 && named(L"sequence")) {
+                ATL::CString sequence = getAttribute(L"name"), number = getAttribute(L"number");
+                if (!sequence.IsEmpty()) { if (!metadata.sequence.IsEmpty()) metadata.sequence += L"; "; metadata.sequence += sequence; if (!number.IsEmpty()) { metadata.sequence += L" ["; metadata.sequence += number; metadata.sequence += L']'; } }
+            } else {
+                text.Empty(); field = Field::None;
+                if (depth == titleInfoDepth + 1) {
+                    if (named(L"book-title")) field = Field::Title; else if (named(L"genre")) field = Field::Genre; else if (named(L"keywords")) field = Field::Keywords; else if (named(L"lang")) field = Field::Language; else if (named(L"src-lang")) field = Field::SourceLanguage;
+                } else if (documentInfoDepth >= 0) {
+                    if (named(L"date")) { field = Field::DocumentDate; metadata.documentDateValue = getAttribute(L"value"); } else if (named(L"id")) field = Field::DocumentId; else if (named(L"version")) field = Field::DocumentVersion;
+                } else if (authorDepth >= 0 && depth == authorDepth + 1) {
+                    if (named(L"first-name")) field = Field::FirstName; else if (named(L"middle-name")) field = Field::MiddleName; else if (named(L"last-name")) field = Field::LastName; else if (named(L"nickname")) field = Field::Nickname;
+                }
+            }
+            if (reader->IsEmptyElement()) { --depth; if (authorDepth == depth + 1) { appendAuthor(); authorDepth = -1; } }
+        } else if ((type == XmlNodeType_Text || type == XmlNodeType_Whitespace) && field != Field::None) {
+            const wchar_t* value = nullptr; UINT length = 0; if (SUCCEEDED(reader->GetValue(&value, &length))) text.Append(value, length);
+        } else if (type == XmlNodeType_EndElement) {
+            const wchar_t* name = nullptr; UINT length = 0; reader->GetLocalName(&name, &length);
+            NormalizeWhitespace(text);
+            switch (field) { case Field::Title: metadata.title = text; break; case Field::Genre: if (!text.IsEmpty()) { if (!metadata.genres.IsEmpty()) metadata.genres += L", "; metadata.genres += text; } break; case Field::Keywords: metadata.keywords = text; break; case Field::Language: metadata.language = text; break; case Field::SourceLanguage: metadata.sourceLanguage = text; break; case Field::FirstName: firstName = text; break; case Field::MiddleName: middleName = text; break; case Field::LastName: lastName = text; break; case Field::Nickname: nickname = text; break; case Field::DocumentDate: metadata.documentDate = text; break; case Field::DocumentId: metadata.documentId = text; break; case Field::DocumentVersion: metadata.documentVersion = text; break; default: break; }
+            field = Field::None;
+            if (length == 6 && wcsncmp(name, L"author", 6) == 0 && (authorDepth == depth || documentInfoDepth >= 0)) {
+                if (documentInfoDepth >= 0) {
+                    ATL::CString author = JoinNonEmpty(firstName, middleName, lastName);
+                    if (author.IsEmpty()) author = nickname;
+                    NormalizeWhitespace(author);
+                    if (!author.IsEmpty()) { metadata.documentAuthorValues.push_back(author); if (!metadata.documentAuthors.IsEmpty()) metadata.documentAuthors += L", "; metadata.documentAuthors += author; }
+                } else appendAuthor();
+                authorDepth = -1;
+            }
+            if (titleInfoDepth == depth && length == 10 && wcsncmp(name, L"title-info", 10) == 0) titleInfoDepth = -1;
+            if (documentInfoDepth == depth && length == 13 && wcsncmp(name, L"document-info", 13) == 0) documentInfoDepth = -1;
+            if (descriptionDepth == depth && length == 11 && wcsncmp(name, L"description", 11) == 0) return haveDescription;
+            --depth;
+        }
+    }
+    if (errorMessage != nullptr) *errorMessage = L"FB2 description is incomplete or malformed.";
+    return false;
 }
 
 } // namespace FB2Metadata

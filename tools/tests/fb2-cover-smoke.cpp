@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <atlstr.h>
+#include <shlwapi.h>
 #include <iostream>
 #include <vector>
 
@@ -80,6 +81,13 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectEqual(L"contentType", coverImage.contentType, L"image/png") && success;
     success = ExpectTrue(L"bytes.notEmpty", !coverImage.bytes.empty()) && success;
     success = ExpectPngSignature(coverImage.bytes) && success;
+
+    CComPtr<IStream> coverStream;
+    FB2CoverImage::CoverImage streamCoverImage;
+    const HRESULT streamHr = ::SHCreateStreamOnFileEx(argv[1], STGM_READ | STGM_SHARE_DENY_NONE, FILE_ATTRIBUTE_NORMAL, FALSE, nullptr, &coverStream);
+    success = ExpectTrue(L"stream.open", SUCCEEDED(streamHr)) && success;
+    success = ExpectTrue(L"stream.read", SUCCEEDED(streamHr) && FB2CoverImage::TryReadStream(coverStream, streamCoverImage, 32U * 1024U * 1024U, &errorMessage)) && success;
+    success = ExpectPngSignature(streamCoverImage.bytes) && success;
 
     FB2CoverImage::CoverImage brokenCoverImage;
     CString brokenErrorMessage;

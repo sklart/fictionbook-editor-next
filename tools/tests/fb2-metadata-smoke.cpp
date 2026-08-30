@@ -308,7 +308,7 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectTextEqual(
         L"descriptor.author.fallbackDisplayName",
         FB2Shell::GetPropertyFallbackDisplayName(FB2Shell::PropertyId::Author),
-        L"Автор") && success;
+        L"Author") && success;
     success = ExpectTextEqual(
         L"descriptor.author.displayNameSource",
         FB2Shell::GetPropertyDisplayNameSourceName(FB2Shell::PropertyId::Author),
@@ -375,7 +375,7 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectTextEqual(
         L"descriptor.documentVersion.fallbackDisplayName",
         FB2Shell::GetPropertyFallbackDisplayName(FB2Shell::PropertyId::DocumentVersion),
-        L"FBE:Версия документа") && success;
+        L"FBE:Document version") && success;
     success = ExpectTextEqual(
         L"descriptor.documentVersion.mappingStatus",
         FB2Shell::GetPropertyMappingStatusName(FB2Shell::PropertyId::DocumentVersion),

@@ -17,7 +17,7 @@ New-Item -ItemType Directory -Path $testDir -Force | Out-Null
     "/Fo$($testDir)\\" `
     (Join-Path $repoRoot "src\fbe\Fb2CoverImage.cpp") `
     (Join-Path $PSScriptRoot "fb2-cover-smoke.cpp") `
-    "/link" "/SUBSYSTEM:CONSOLE" "ole32.lib" "oleaut32.lib" "comsuppw.lib" "/OUT:$testExe"
+    "/link" "/SUBSYSTEM:CONSOLE" "ole32.lib" "oleaut32.lib" "comsuppw.lib" "shlwapi.lib" "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

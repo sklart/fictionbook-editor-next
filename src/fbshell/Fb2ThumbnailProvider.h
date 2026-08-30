@@ -5,7 +5,7 @@
 #include "resource.h"
 EXTERN_C const GUID CLSID_Fb2ThumbnailProvider;
 class Fb2ThumbnailProvider :
-    public CComObjectRootEx<CComSingleThreadModel>,
+    public CComObjectRootEx<CComMultiThreadModel>,
     public CComCoClass<Fb2ThumbnailProvider, &CLSID_Fb2ThumbnailProvider>,
     public IInitializeWithStream,
     public IThumbnailProvider
