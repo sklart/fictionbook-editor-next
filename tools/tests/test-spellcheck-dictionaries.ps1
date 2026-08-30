@@ -88,6 +88,7 @@ $spellerSource = Read-SourceFile "src\fbe\Speller.cpp"
 $mainFrameSource = Read-SourceFile "src\fbe\mainfrm.h"
 $mainFrameImplementation = Read-SourceFile "src\fbe\mainfrm.cpp"
 $resourceHeader = Read-SourceFile "src\fbe\resource.h"
+$res1Header = Read-SourceFile "src\fbe\res1.h"
 $resourceScript = Read-SourceFile "src\fbe\FBE.rc"
 $spellDialogLocalization = Get-Content -LiteralPath (Join-Path $repoRoot "localization\app-ui\fbe-small-dialogs.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 $expectedMoreSuggestionsRu = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("0JXRidGRINCy0LDRgNC40LDQvdGC0Ys="))
@@ -127,25 +128,46 @@ if ($mainFrameSource -notmatch 'COMMAND_RANGE_HANDLER\(ID_SPELL_REPLACE_FIRST, I
     throw "Spell popup suggestions must use one safe command-ID range handler."
 }
 if ($resourceHeader -notmatch '#define ID_SPELL_REPLACE_FIRST\s+33000' -or
-    $resourceHeader -notmatch '#define ID_SPELL_REPLACE_LAST\s+60000') {
+    $resourceHeader -notmatch '#define ID_SPELL_REPLACE_LAST\s+33031' -or
+    $resourceHeader -notmatch '#define _APS_NEXT_COMMAND_VALUE\s+33032') {
     throw "Spell suggestion command range collides with another resource ID."
 }
-$suggestionIdCollisions = @(
-    [regex]::Matches($resourceHeader, '(?m)^#define\s+(?<name>\w+)\s+(?<id>\d+)\b') |
-        Where-Object {
-            $id = [int]$_.Groups['id'].Value
-            $name = $_.Groups['name'].Value
-            $id -ge 33000 -and $id -le 60000 -and
-                $name -ne 'ID_SPELL_REPLACE_FIRST' -and $name -ne 'ID_SPELL_REPLACE_LAST'
+function Get-NumericResourceMacros([string]$Text) {
+    return @([regex]::Matches($Text, '(?m)^#define\s+(?<name>\w+)\s+(?<value>0x[0-9A-Fa-f]+|\d+)\b') |
+        ForEach-Object {
+            $valueText = $_.Groups['value'].Value
+            [PSCustomObject]@{
+                Name = $_.Groups['name'].Value
+                Value = if ($valueText.StartsWith('0x', [StringComparison]::OrdinalIgnoreCase)) {
+                    [Convert]::ToInt32($valueText.Substring(2), 16)
+                } else {
+                    [int]$valueText
+                }
+            }
         })
+}
+$allSpellResourceMacros = @(
+    Get-NumericResourceMacros $resourceHeader
+    Get-NumericResourceMacros $res1Header
+)
+$suggestionIdCollisions = @($allSpellResourceMacros | Where-Object {
+    $_.Value -ge 33000 -and $_.Value -le 33031 -and
+        $_.Name -ne 'ID_SPELL_REPLACE_FIRST' -and $_.Name -ne 'ID_SPELL_REPLACE_LAST'
+})
+$resourceMacros = Get-NumericResourceMacros $resourceHeader
+$paste2 = @($resourceMacros | Where-Object { $_.Name -eq 'ID_EDIT_PASTE2' } | Select-Object -First 1)
 if ($suggestionIdCollisions.Count -ne 0 -or
+    $paste2.Count -ne 1 -or ($paste2[0].Value -ge 33000 -and $paste2[0].Value -le 33031) -or
+    $res1Header -notmatch '#define ID_SCI_COLLAPSE_BASE\s+40000' -or 33031 -ge 40000 -or
     $mainFrameImplementation -notmatch 'ID_LAST_PLUGIN < ID_SPELL_REPLACE_FIRST' -or
     $mainFrameImplementation -notmatch 'ID_SCRIPT_BASE \+ 999 < ID_SPELL_REPLACE_FIRST' -or
+    $mainFrameImplementation -notmatch 'ID_SPELL_REPLACE_LAST < ID_SCI_COLLAPSE_BASE' -or
     $mainFrameSource -notmatch 'm_Speller->Replace\s*\(wID - ID_SPELL_REPLACE_FIRST\)') {
     throw "Spell suggestion command range must not overlap FBE, plug-in or script commands."
 }
 if ($spellerSource -notmatch 'primarySuggestionCount = numSuggestions < 8 \? numSuggestions : 8' -or
     $spellerSource -notmatch 'const int numSuggestions = suggestionCount;' -or
+    $spellerSource -notmatch 'if \(suggestionCount > commandCapacity\)' -or
     $spellerSource -notmatch 'if \(numSuggestions > primarySuggestionCount\)' -or
     $spellerSource -notmatch 'CreatePopupMenu\(\)' -or
     $spellerSource -notmatch 'for \(int i=primarySuggestionCount; i<numSuggestions; i\+\+\)' -or
@@ -154,9 +176,15 @@ if ($spellerSource -notmatch 'primarySuggestionCount = numSuggestions < 8 \? num
 }
 if ($spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.spelling\.menu\.more_suggestions"' -or
     $spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.dialog\.idd_spell_check\.ignore_all"' -or
-    $spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.dialog\.idd_spell_check\.add"' -or
-    $spellDialogLocalization.strings.'fbe.spelling.menu.more_suggestions'.translations.'ru-RU' -ne $expectedMoreSuggestionsRu) {
+    $spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.spelling\.menu\.add_to_dictionary"' -or
+    $spellDialogLocalization.strings.'fbe.spelling.menu.more_suggestions'.translations.'ru-RU' -ne $expectedMoreSuggestionsRu -or
+    $null -eq $spellDialogLocalization.strings.'fbe.spelling.menu.add_to_dictionary' -or
+    (@($spellDialogLocalization.targetLanguages | Where-Object { -not $spellDialogLocalization.strings.'fbe.spelling.menu.add_to_dictionary'.translations.$_ }).Count -ne 0)) {
     throw "Spell popup labels must use runtime localization, including Russian More suggestions."
+}
+$hunspellHeader = Get-Content -LiteralPath (Join-Path $repoRoot 'third_party\hunspell\src\hunspell\hunspell.hxx') -Raw
+if ($hunspellHeader -notmatch '#define MAXSUGGESTION\s+15' -or (33031 - 33000 + 1) -lt 15) {
+    throw "Spell suggestion command range is too small for bundled Hunspell."
 }
 
 $helperCalls = ([regex]::Matches(

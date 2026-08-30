@@ -401,8 +401,13 @@ void CSpeller::AppendSpellMenu (HMENU menu)
 		delete m_menuSuggestions;
 		m_menuSuggestions = suggestions;
 		const int suggestionCount = m_menuSuggestions->GetSize();
+		const int commandCapacity = ID_SPELL_REPLACE_LAST - ID_SPELL_REPLACE_FIRST + 1;
 		// Bundled Hunspell limits suggest() to MAXSUGGESTION (15), well inside
 		// the reserved command range.  Do not trim or reorder this list.
+		if (suggestionCount > commandCapacity) {
+			ATLASSERT(FALSE);
+			return;
+		}
 		const int numSuggestions = suggestionCount;
 
 		::AppendMenu(menu, MF_SEPARATOR, 0, NULL);
@@ -423,7 +428,7 @@ void CSpeller::AppendSpellMenu (HMENU menu)
 		itemName = FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.ignore_all", L"Ignore all");
 		::AppendMenu(menu, MF_STRING, IDC_SPELL_IGNOREALL, itemName);
 
-		itemName = FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.add", L"Add to dictionary");
+		itemName = FbeLoadRuntimeStringByKey(L"fbe.spelling.menu.add_to_dictionary", L"Add to dictionary");
 		::AppendMenu(menu, MF_STRING, IDC_SPELL_ADD2DICT, itemName);
 	}
 }

@@ -356,10 +356,10 @@
 #define IDB_UPD_CHECK23                 422
 #define IDB_UPD_CHECK24                 423
 #define IDC_SPELL_REPLACE               500
-// Dynamic Hunspell suggestions: a range isolated from FBE commands, plug-ins,
-// scripts and the high string-resource IDs (61403+).
+// Dynamic Hunspell suggestions: isolated from FBE commands, plug-ins, scripts
+// and Scintilla's command range beginning at 40000.
 #define ID_SPELL_REPLACE_FIRST          33000
-#define ID_SPELL_REPLACE_LAST           60000
+#define ID_SPELL_REPLACE_LAST           33031
 #define ID_VER_ADVANCE                  550
 #define IDS_MB_OK                       600
 #define IDS_MB_CANCEL                   601
@@ -725,7 +725,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        261
-#define _APS_NEXT_COMMAND_VALUE         32926
+#define _APS_NEXT_COMMAND_VALUE         33032
 #define _APS_NEXT_CONTROL_VALUE         1626
 #define _APS_NEXT_SYMED_VALUE           133
 #endif

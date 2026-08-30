@@ -1379,6 +1379,25 @@
         "bg-BG": "Още предложения"
       }
     },
+    "fbe.spelling.menu.add_to_dictionary": {
+      "resource": "IDD_SPELL_CHECK",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Add to dictionary",
+        "ru-RU": "Добавить в словарь",
+        "uk-UA": "Додати до словника",
+        "de-DE": "Zum Wörterbuch hinzufügen",
+        "fr-FR": "Ajouter au dictionnaire",
+        "es-ES": "Añadir al diccionario",
+        "it-IT": "Aggiungi al dizionario",
+        "pl-PL": "Dodaj do słownika",
+        "pt-PT": "Adicionar ao dicionário",
+        "nl-NL": "Toevoegen aan woordenboek",
+        "cs-CZ": "Přidat do slovníku",
+        "bg-BG": "Добавяне в речника"
+      }
+    },
     "fbe.dialog.idd_spell_check.change": {
       "resource": "IDD_SPELL_CHECK",
       "kind": "PUSHBUTTON",
