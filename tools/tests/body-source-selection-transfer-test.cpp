@@ -5,6 +5,8 @@
 #include "BodySourceSelectionTransfer.h"
 
 using FBEBodySourceTransfer::FindVisibleXmlTextRange;
+using FBEBodySourceTransfer::FindXmlNodeTextPosition;
+using FBEBodySourceTransfer::FindEnclosingXmlElementRange;
 using FBEBodySourceTransfer::XmlTextRange;
 
 static void Need(bool value, const char* message)
@@ -41,6 +43,8 @@ int main()
 		L"<p>space&#160;hex&#xA0;shy&#173;zwsp&#x200B;narrow&#x202F;emoji &#x1F600;</p>"
 		L"<p>first paragraph</p><p>Repeated <a xlink:href='#x'>phrase</a> C</p></section>"
 		L"<section id='three'><p>Exact duplicate</p></section></body>"
+		L"<body name='nested'><section id='outer'><section id='a'><p>Exact duplicate</p></section>"
+		L"<section id='b'><p>Exact duplicate</p></section></section></body>"
 		L"<body name='notes'><section id='note'><p>Repeated phrase A</p><p>Exact duplicate</p></section></body></FictionBook>";
 
 	const int sectionOne = At(xml, L"<section id='one'>");
@@ -52,6 +56,12 @@ int main()
 	const int secondDuplicate = static_cast<int>(xml.find(L"Exact duplicate", sectionTwo));
 	const int thirdDuplicate = static_cast<int>(xml.find(L"Exact duplicate", At(xml, L"<section id='three'>")));
 	const int noteDuplicate = static_cast<int>(xml.find(L"Exact duplicate", notes));
+	const int nestedOuter = At(xml, L"<section id='outer'>");
+	const int nestedA = At(xml, L"<section id='a'>");
+	const int nestedB = At(xml, L"<section id='b'>");
+	const int nestedBDuplicate = static_cast<int>(xml.find(L"Exact duplicate", nestedB));
+	const int nestedBEnd = static_cast<int>(xml.find(L"</section>", nestedB)) +
+		static_cast<int>(std::wstring(L"</section>").size());
 	Need(secondDuplicate >= 0 && thirdDuplicate >= 0 && noteDuplicate >= 0, "duplicate fixture positions");
 
 	// Body -> Source: duplicate text is resolved by the DOM-derived expected
@@ -92,5 +102,19 @@ int main()
 	XmlTextRange caretNotes = Match(xml, L"Exact duplicate", L"<body name='notes'>", L"</body>", noteDuplicate);
 	Need(caretMain.start == secondDuplicate && caretNotes.start == noteDuplicate,
 		"caret-only body scopes keep identical text in its own body");
+
+	// This calls the same scoped helper used by the production caret fallback.
+	// The closest enclosing nested section must be b, not outer or a.
+	XmlTextRange nestedScope = { -1, -1 };
+	Need(FindEnclosingXmlElementRange(xml, nestedBDuplicate, L"section", nestedScope),
+		"nested section scope");
+	Need(nestedScope.start == nestedB && nestedScope.end == nestedBEnd,
+		"deepest nested section is selected");
+	Need(FindXmlNodeTextPosition(xml, L"Exact duplicate", 0,
+		nestedScope.start, nestedScope.end) == nestedBDuplicate,
+		"caret fallback maps nested section b");
+	Need(FindXmlNodeTextPosition(xml, L"Exact duplicate", 0,
+		nestedOuter, nestedScope.end) == -1,
+		"ambiguous caret fallback safely refuses outer nested section");
 	return 0;
 }

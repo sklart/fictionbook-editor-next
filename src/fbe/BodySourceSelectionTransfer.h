@@ -89,6 +89,106 @@ struct MappedCharacter
 	int end;
 };
 
+inline bool FindEnclosingXmlElementRange(const std::wstring& sourceXml,
+	int position, const std::wstring& elementName, XmlTextRange& result)
+{
+	result.start = result.end = -1;
+	std::vector<int> starts;
+	for (int current = 0; current < static_cast<int>(sourceXml.size());)
+	{
+		const size_t tagStart = sourceXml.find(L'<', static_cast<size_t>(current));
+		if (tagStart == std::wstring::npos) break;
+		const size_t tagEnd = sourceXml.find(L'>', tagStart + 1);
+		if (tagEnd == std::wstring::npos) return false;
+		std::wstring name = sourceXml.substr(tagStart + 1, tagEnd - tagStart - 1);
+		const size_t first = name.find_first_not_of(L" \t\r\n");
+		if (first == std::wstring::npos) return false;
+		name.erase(0, first);
+		const bool closing = name[0] == L'/';
+		if (closing) name.erase(0, 1);
+		const size_t nameEnd = name.find_first_of(L" \t\r\n/");
+		if (nameEnd != std::wstring::npos) name.erase(nameEnd);
+		bool matching = name.size() == elementName.size();
+		for (size_t index = 0; matching && index < name.size(); ++index)
+			matching = towlower(name[index]) == towlower(elementName[index]);
+		if (matching && !closing) starts.push_back(static_cast<int>(tagStart));
+		else if (matching && closing && !starts.empty())
+		{
+			const int start = starts.back();
+			starts.pop_back();
+			// The first completed range containing the position is deepest.
+			if (position >= start && position <= static_cast<int>(tagEnd))
+			{
+				result.start = start;
+				result.end = static_cast<int>(tagEnd) + 1;
+				return true;
+			}
+		}
+		current = static_cast<int>(tagEnd) + 1;
+	}
+	return false;
+}
+
+// Maps a character offset in an XML DOM node's text back to serialized XML.
+// The caller must supply the DOM-derived scope; duplicate node text outside it
+// is deliberately invisible, and duplicate text inside it fails safely.
+inline int FindXmlNodeTextPosition(const std::wstring& sourceXml,
+	const std::wstring& nodeText, int textPosition, int scopeStart, int scopeEnd)
+{
+	if (nodeText.empty() || textPosition < 0 || scopeStart < 0 ||
+		scopeEnd > static_cast<int>(sourceXml.size()) || scopeStart >= scopeEnd)
+		return -1;
+	std::vector<int> matchedPositions;
+	int result = -1;
+	for (int position = scopeStart, matched = 0; position < scopeEnd;)
+	{
+		if (sourceXml[position] == L'<')
+		{
+			const size_t tagEnd = sourceXml.find(L'>', static_cast<size_t>(position + 1));
+			if (tagEnd == std::wstring::npos || tagEnd >= static_cast<size_t>(scopeEnd)) return -1;
+			position = static_cast<int>(tagEnd) + 1;
+			continue;
+		}
+		std::wstring decoded(1, sourceXml[position]);
+		int nextPosition = position + 1;
+		if (sourceXml[position] == L'&')
+		{
+			const size_t entityEnd = sourceXml.find(L';', static_cast<size_t>(position + 1));
+			if (entityEnd != std::wstring::npos && entityEnd < static_cast<size_t>(scopeEnd))
+			{
+				const std::wstring entity = sourceXml.substr(position, entityEnd - position + 1);
+				if (DecodeXmlCharacterReference(entity, decoded)) nextPosition = static_cast<int>(entityEnd) + 1;
+			}
+		}
+		for (size_t index = 0; index < decoded.size(); ++index)
+		{
+			const wchar_t character = decoded[index];
+			if (character == nodeText[matched])
+			{
+				matchedPositions.push_back(position);
+				++matched;
+				if (matched == static_cast<int>(nodeText.size()))
+				{
+					const int candidate = textPosition < static_cast<int>(matchedPositions.size())
+						? matchedPositions[textPosition] : nextPosition;
+					if (result >= 0) return -1;
+					result = candidate;
+					matchedPositions.clear();
+					matched = 0;
+				}
+			}
+			else
+			{
+				matchedPositions.clear();
+				matched = character == nodeText[0] ? 1 : 0;
+				if (matched) matchedPositions.push_back(position);
+			}
+		}
+		position = nextPosition;
+	}
+	return result;
+}
+
 inline bool FindVisibleXmlTextRange(const std::wstring& sourceXml,
 	const std::wstring& visibleText, int scopeStart, int scopeEnd,
 	int expectedStart, XmlTextRange& result)

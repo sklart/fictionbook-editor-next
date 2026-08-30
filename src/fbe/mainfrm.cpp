@@ -6152,67 +6152,11 @@ static int FindXmlNodeTextPosition(const CString& sourceXml,
 	MSXML2::IXMLDOMNodePtr xmlNode, int textPosition, int scopeStart,
 	int scopeEnd)
 {
-	if (!(bool)xmlNode || textPosition < 0 || scopeStart < 0 ||
-		scopeEnd > sourceXml.GetLength() || scopeStart >= scopeEnd)
-		return -1;
-
+	if (!(bool)xmlNode) return -1;
 	bstr_t nodeTextValue(xmlNode->text);
-	CString nodeText((const wchar_t*)nodeTextValue);
-	if (nodeText.IsEmpty())
-		return -1;
-
-	std::vector<int> matchedPositions;
-	matchedPositions.reserve(nodeText.GetLength());
-	for (int position = scopeStart, matched = 0; position < scopeEnd;)
-	{
-		if (sourceXml[position] == L'<')
-		{
-			const int tagEnd = sourceXml.Find(L'>', position + 1);
-			if (tagEnd < 0 || tagEnd >= scopeEnd)
-				return -1;
-			position = tagEnd + 1;
-			continue;
-		}
-
-		wchar_t sourceCharacter = sourceXml[position];
-		int nextPosition = position + 1;
-		if (sourceCharacter == L'&')
-		{
-			const int entityEnd = sourceXml.Find(L';', position + 1);
-			if (entityEnd >= 0)
-			{
-				const CString entity = sourceXml.Mid(position, entityEnd - position + 1);
-				std::wstring decoded;
-				if (FBEBodySourceTransfer::DecodeXmlCharacterReference(
-					std::wstring((const wchar_t*)entity), decoded) && decoded.size() == 1)
-				{
-					sourceCharacter = decoded[0];
-					nextPosition = entityEnd + 1;
-				}
-			}
-		}
-
-		if (sourceCharacter == nodeText[matched])
-		{
-			matchedPositions.push_back(position);
-			++matched;
-			if (matched == nodeText.GetLength())
-			{
-				if (textPosition < static_cast<int>(matchedPositions.size()))
-					return matchedPositions[textPosition];
-				return nextPosition;
-			}
-		}
-		else
-		{
-			matchedPositions.clear();
-			matched = 0;
-		}
-
-		position = nextPosition;
-	}
-
-	return -1;
+	return FBEBodySourceTransfer::FindXmlNodeTextPosition(
+		std::wstring((const wchar_t*)sourceXml),
+		std::wstring((const wchar_t*)nodeTextValue), textPosition, scopeStart, scopeEnd);
 }
 
 // Text refines the exact Source boundaries, while the DOM path supplies both
@@ -6235,40 +6179,13 @@ static bool FindVisibleXmlTextRange(const CString& sourceXml,
 static bool FindEnclosingXmlElementRange(const CString& sourceXml, int position,
 	const wchar_t* elementName, int& elementStart, int& elementEnd)
 {
-	elementStart = elementEnd = -1;
-	int depth = 0;
-	int matchingStart = -1;
-	for (int current = 0; current < sourceXml.GetLength();)
-	{
-		const int tagStart = sourceXml.Find(L'<', current);
-		if (tagStart < 0) break;
-		const int tagEnd = sourceXml.Find(L'>', tagStart + 1);
-		if (tagEnd < 0) return false;
-		CString name = sourceXml.Mid(tagStart + 1, tagEnd - tagStart - 1);
-		name.TrimLeft();
-		const bool closing = !name.IsEmpty() && name[0] == L'/';
-		if (closing) name.Delete(0);
-		const int nameEnd = name.FindOneOf(L" \t\r\n/");
-		if (nameEnd >= 0) name = name.Left(nameEnd);
-		const bool matchingTag = name.CompareNoCase(elementName) == 0;
-		if (matchingTag && !closing)
-		{
-			if (depth == 0) matchingStart = tagStart;
-			++depth;
-		}
-		else if (matchingTag && closing && depth > 0)
-		{
-			--depth;
-			if (depth == 0 && position >= matchingStart && position <= tagEnd)
-			{
-				elementStart = matchingStart;
-				elementEnd = tagEnd + 1;
-				return true;
-			}
-		}
-		current = tagEnd + 1;
-	}
-	return false;
+	FBEBodySourceTransfer::XmlTextRange range = { -1, -1 };
+	if (!FBEBodySourceTransfer::FindEnclosingXmlElementRange(
+		std::wstring((const wchar_t*)sourceXml), position, elementName, range))
+		return false;
+	elementStart = range.start;
+	elementEnd = range.end;
+	return true;
 }
 
 static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,
