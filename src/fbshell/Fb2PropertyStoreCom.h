@@ -32,8 +32,7 @@ public:
 private:
     ~Fb2PropertyStoreCom();
 
-    HRESULT InitializeFromFile(const wchar_t* filePath);
-    HRESULT SaveStreamToTemporaryFile(IStream* stream, ATL::CString& filePath) const;
+    HRESULT InitializeFromStream(IStream* stream);
 
 private:
     LONG m_referenceCount;

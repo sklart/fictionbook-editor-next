@@ -33,6 +33,11 @@ bool Fb2PropertyStoreCache::LoadFromMetadata(const FB2Metadata::Metadata& metada
         entry.propertyId = propertyId;
         entry.propertyKey = propertyKey;
         entry.value = value;
+        if (propertyId == FB2Shell::PropertyId::Author) {
+            entry.values = metadata.authorValues.empty()
+                ? metadata.documentAuthorValues
+                : metadata.authorValues;
+        }
         m_entries.push_back(entry);
     }
 
@@ -69,6 +74,14 @@ HRESULT Fb2PropertyStoreCache::GetValue(const PROPERTYKEY& propertyKey, PROPVARI
     const Entry* entry = FindByPropertyKey(propertyKey);
     if (entry == nullptr)
         return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+
+    if (entry->propertyId == FB2Shell::PropertyId::Author && !entry->values.empty()) {
+        std::vector<PCWSTR> authors;
+        authors.reserve(entry->values.size());
+        for (const ATL::CString& author : entry->values)
+            authors.push_back(author);
+        return ::InitPropVariantFromStringVector(authors.data(), static_cast<ULONG>(authors.size()), &value);
+    }
 
     return ::InitPropVariantFromString(entry->value, &value);
 }

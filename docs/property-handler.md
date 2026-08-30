@@ -18,25 +18,25 @@ property-handler контур для `.fb2`, не подмешивая его в
 Это сделано специально, чтобы:
 
 - не ломать legacy-поставку;
-- не включать experimental handler случайно;
+- не включать shell handler случайно;
 - иметь отдельный управляемый путь для ручной проверки на GUI.
 
-## Как включить experimental handler в сборку
+## Как включить shell handler в сборку
 
 Для этого добавлен отдельный build-скрипт:
 
 ```powershell
-.\tools\build\build-experimental-property-handler.ps1 -Configuration Release -Platform x64
+.\tools\build\build-shell-integration.ps1 -Configuration Release -Platform x64
 ```
 
 Он собирает проект с MSBuild-свойством:
 
-- `ExperimentalPropertyHandler=true`
+- `ShellIntegration=true`
 
 И важно: этот скрипт собирает **только**
 `src/fbshell/FBShell.vcxproj`, а не весь `FBE.sln`.
 
-Это сделано специально, чтобы experimental-проверка property handler не
+Это сделано специально, чтобы проверка property handler не
 зависела от отдельных старых ошибок в других проектах решения.
 
 Для реальной проверки в современном 64-битном Проводнике приоритетен именно
@@ -46,7 +46,7 @@ property-handler контур для `.fb2`, не подмешивая его в
 
 При таком режиме в `src/fbshell/FBShell.cpp` активируется compile-time флаг:
 
-- `FBE_ENABLE_EXPERIMENTAL_PROPERTY_HANDLER`
+- `FBE_ENABLE_PROPERTY_HANDLER`
 
 И новый класс попадает в `OBJECT_MAP` DLL.
 
@@ -64,12 +64,12 @@ property-handler контур для `.fb2`, не подмешивая его в
 
 Для управляемого эксперимента добавлены отдельные скрипты:
 
-- `tools/build/register-experimental-property-handler.ps1`
-- `tools/build/unregister-experimental-property-handler.ps1`
+- `tools/build/register-shell-integration.ps1`
+- `tools/build/unregister-shell-integration.ps1`
 
 И отдельный чеклист GUI-проверки:
 
-- `docs/experimental-property-handler-manual-test.md`
+- `docs/property-handler-manual-test.md`
 
 Сами скрипты используют схему регистрации, описанную в Microsoft Learn:
 
@@ -84,6 +84,6 @@ property-handler контур для `.fb2`, не подмешивая его в
 Он даёт управляемую развилку:
 
 - обычная сборка остаётся стабильной;
-- experimental-сценарий можно включить только явно;
+- shell-сценарий включён в штатную сборку;
 - дальнейшие проверки modern property handler не смешиваются с legacy
   `ColumnProvider`.

@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <objidl.h>
+#include <shlwapi.h>
 #include <atlstr.h>
 #include <iostream>
 #include <vector>
@@ -76,6 +77,15 @@ int wmain(int argc, wchar_t* argv[])
     const bool ok = FB2Metadata::TryRead(argv[1], metadata, &errorMessage);
     if (!ok) {
         std::wcerr << L"Не удалось прочитать метаданные FB2: "
+                   << static_cast<const wchar_t*>(errorMessage) << L"\n";
+        ::CoUninitialize();
+        return 1;
+    }
+
+    CComPtr<IStream> inputStream;
+    HRESULT streamHr = ::SHCreateStreamOnFileEx(argv[1], STGM_READ | STGM_SHARE_DENY_NONE, FILE_ATTRIBUTE_NORMAL, FALSE, nullptr, &inputStream);
+    if (FAILED(streamHr) || !FB2Metadata::TryReadStream(inputStream, metadata, &errorMessage)) {
+        std::wcerr << L"Не удалось прочитать метаданные FB2 напрямую из IStream: "
                    << static_cast<const wchar_t*>(errorMessage) << L"\n";
         ::CoUninitialize();
         return 1;
@@ -217,10 +227,14 @@ int wmain(int argc, wchar_t* argv[])
     PROPVARIANT propertyValue;
     hr = propertyStore.GetValue(PKEY_Author, propertyValue);
     success = ExpectHResultSuccess(L"propertyStore.author.hr", hr) && success;
-    success = ExpectTextEqual(
+    success = ExpectTrue(
+        L"propertyStore.author.type",
+        SUCCEEDED(hr) && propertyValue.vt == (VT_VECTOR | VT_LPWSTR)) && success;
+    success = ExpectTrue(
         L"propertyStore.author.value",
-        SUCCEEDED(hr) ? propertyValue.pwszVal : nullptr,
-        L"Codex Smoke") && success;
+        SUCCEEDED(hr) && propertyValue.calpwstr.cElems == 1 &&
+        propertyValue.calpwstr.pElems != nullptr &&
+        wcscmp(propertyValue.calpwstr.pElems[0], L"Codex Smoke") == 0) && success;
     ::PropVariantClear(&propertyValue);
 
     hr = propertyStore.GetValue(PKEY_Title, propertyValue);

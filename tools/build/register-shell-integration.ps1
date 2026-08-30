@@ -70,7 +70,7 @@ if (-not (Test-IsAdministrator)) {
 }
 
 if (-not $SkipBuild) {
-    & (Join-Path $repoRoot "tools\build\build-experimental-property-handler.ps1") `
+    & (Join-Path $repoRoot "tools\build\build-shell-integration.ps1") `
         -Configuration $Configuration `
         -Platform $Platform
     if ($LASTEXITCODE -ne 0) {
@@ -108,7 +108,7 @@ if (-not (Test-Path -LiteralPath $thumbnailProviderClsidRegistryKey)) {
 
 Ensure-RegistryDefaultValue `
     -Path $thumbnailProviderClsidRegistryKey `
-    -Value "FictionBook Modern Thumbnail Provider (Experimental)"
+    -Value "FictionBook Thumbnail Provider"
 Ensure-RegistryDefaultValue `
     -Path $thumbnailProviderInprocRegistryKey `
     -Value $fbshellPath
@@ -135,5 +135,5 @@ if (-not $NoRestartExplorer) {
 }
 
 Write-Host "Экспериментальный modern shell-контур зарегистрирован."
-Write-Host "Для ручной GUI-проверки свойств используйте docs/experimental-property-handler-manual-test.md."
-Write-Host "Для ручной GUI-проверки миниатюр используйте docs/experimental-thumbnail-provider-manual-test.md."
+Write-Host "Для ручной GUI-проверки свойств используйте docs/property-handler-manual-test.md."
+Write-Host "Для ручной GUI-проверки миниатюр используйте docs/thumbnail-provider-manual-test.md."

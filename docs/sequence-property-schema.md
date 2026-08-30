@@ -39,7 +39,7 @@ property schema книжных полей.
 - `PKEY_FBE_Sequence`, `PKEY_FBE_Genre`,
   `PKEY_FBE_DocumentVersion`, `PKEY_FBE_DocumentDate` уже подключены в
   published-набор modern property handler;
-- отдельная experimental-сборка `FBShell.dll` с этими ключами уже успешно
+- отдельная shell-сборка `FBShell.dll` с этими ключами уже успешно
   собирается;
 - отображение `Sequence` уже подтверждено на реальной машине в Проводнике;
 - schema-файл уже включён в общий staging и в штатный NSIS-установщик;
@@ -48,7 +48,7 @@ property schema книжных полей.
 
 ## Что изменилось дальше
 
-После успешной ручной проверки experimental-контура следующий шаг уже внесён в
+После успешной ручной проверки shell-контура следующий шаг уже внесён в
 кодовую базу:
 
 - `FBE.Sequence.propdesc` теперь попадает в общий staging `out\package`;

@@ -20,12 +20,12 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 $fbshellProject = Join-Path $repoRoot "src\fbshell\FBShell.vcxproj"
-$experimentalOutDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+$shellOutDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     Join-Path $repoRoot "out\package\shell-build\$Platform\$Configuration"
 } else {
     $OutputDirectory
 }
-$experimentalIntDir = if ([string]::IsNullOrWhiteSpace($IntermediateDirectory)) {
+$shellIntDir = if ([string]::IsNullOrWhiteSpace($IntermediateDirectory)) {
     Join-Path $repoRoot "build\obj\fbshell\property-handler\$Platform\$Configuration"
 } else {
     $IntermediateDirectory
@@ -53,9 +53,9 @@ $properties = @(
     "/p:Configuration=$Configuration",
     "/p:Platform=$Platform",
     "/p:SolutionDir=$repoRoot\",
-    "/p:ExperimentalPropertyHandler=true",
-    "/p:OutDir=$experimentalOutDir\",
-    "/p:IntDir=$experimentalIntDir\"
+    "/p:ShellIntegration=true",
+    "/p:OutDir=$shellOutDir\",
+    "/p:IntDir=$shellIntDir\"
 )
 
 $properties += "/p:EnableUpx=false"
@@ -76,4 +76,4 @@ Write-Host "В неё сейчас входят:"
 Write-Host "  - обработчик свойств для .fb2;"
 Write-Host "  - обработчик миниатюр для обложек .fb2."
 Write-Host "Собирался только проект src\fbshell\FBShell.vcxproj, без полного FBE.sln."
-Write-Host "Результат сборки: $experimentalOutDir"
+Write-Host "Результат сборки: $shellOutDir"

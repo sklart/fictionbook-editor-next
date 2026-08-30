@@ -1,8 +1,8 @@
 ﻿#include "stdafx.h"
-#if defined(FBE_ENABLE_EXPERIMENTAL_PROPERTY_HANDLER)
+#if defined(FBE_ENABLE_PROPERTY_HANDLER)
 #include "Fb2PropertyHandler.h"
 #endif
-#if defined(FBE_ENABLE_EXPERIMENTAL_THUMBNAIL_PROVIDER)
+#if defined(FBE_ENABLE_THUMBNAIL_PROVIDER)
 #include "Fb2ThumbnailProvider.h"
 #endif
 
@@ -13,10 +13,10 @@ DEFINE_GUID(FMTID_FB,
 CComModule _Module;
 
 BEGIN_OBJECT_MAP(ObjectMap)
-#if defined(FBE_ENABLE_EXPERIMENTAL_PROPERTY_HANDLER)
+#if defined(FBE_ENABLE_PROPERTY_HANDLER)
   OBJECT_ENTRY(CLSID_Fb2PropertyHandler, Fb2PropertyHandler)
 #endif
-#if defined(FBE_ENABLE_EXPERIMENTAL_THUMBNAIL_PROVIDER)
+#if defined(FBE_ENABLE_THUMBNAIL_PROVIDER)
   OBJECT_ENTRY(CLSID_Fb2ThumbnailProvider, Fb2ThumbnailProvider)
 #endif
 END_OBJECT_MAP()

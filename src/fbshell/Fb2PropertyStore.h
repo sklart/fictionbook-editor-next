@@ -14,6 +14,7 @@ public:
         FB2Shell::PropertyId propertyId;
         PROPERTYKEY propertyKey;
         ATL::CString value;
+        std::vector<ATL::CString> values;
     };
 
     void Clear();

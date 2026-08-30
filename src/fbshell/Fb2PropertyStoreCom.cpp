@@ -8,23 +8,6 @@
 
 namespace FBShellModern {
 
-namespace {
-
-HRESULT WriteBufferToFile(HANDLE fileHandle, const BYTE* buffer, DWORD bytesToWrite)
-{
-    DWORD totalWritten = 0;
-    while (totalWritten < bytesToWrite) {
-        DWORD bytesWritten = 0;
-        if (!::WriteFile(fileHandle, buffer + totalWritten, bytesToWrite - totalWritten, &bytesWritten, nullptr))
-            return HRESULT_FROM_WIN32(::GetLastError());
-        totalWritten += bytesWritten;
-    }
-
-    return S_OK;
-}
-
-} // namespace
-
 Fb2PropertyStoreCom::Fb2PropertyStoreCom() :
     m_referenceCount(1),
     m_initialized(false)
@@ -145,91 +128,22 @@ STDMETHODIMP Fb2PropertyStoreCom::Initialize(IStream* stream, DWORD)
     if (m_initialized)
         return HRESULT_FROM_WIN32(ERROR_ALREADY_INITIALIZED);
 
-    ATL::CString temporaryFilePath;
-    HRESULT hr = SaveStreamToTemporaryFile(stream, temporaryFilePath);
-    if (FAILED(hr))
-        return hr;
-
-    hr = InitializeFromFile(temporaryFilePath);
-    ::DeleteFile(temporaryFilePath);
+    const HRESULT hr = InitializeFromStream(stream);
     if (SUCCEEDED(hr))
         m_initialized = true;
 
     return hr;
 }
 
-HRESULT Fb2PropertyStoreCom::InitializeFromFile(const wchar_t* filePath)
+HRESULT Fb2PropertyStoreCom::InitializeFromStream(IStream* stream)
 {
     FB2Metadata::Metadata metadata;
     CString errorMessage;
-    if (!FB2Metadata::TryRead(filePath, metadata, &errorMessage))
+    if (!FB2Metadata::TryReadStream(stream, metadata, &errorMessage))
         return HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
 
     if (!m_cache.LoadFromMetadata(metadata))
         return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
-
-    return S_OK;
-}
-
-HRESULT Fb2PropertyStoreCom::SaveStreamToTemporaryFile(IStream* stream, ATL::CString& filePath) const
-{
-    filePath.Empty();
-
-    LARGE_INTEGER streamOrigin = {};
-    HRESULT hr = stream->Seek(streamOrigin, STREAM_SEEK_SET, nullptr);
-    if (FAILED(hr))
-        return hr;
-
-    wchar_t temporaryDirectory[MAX_PATH] = {};
-    const DWORD tempPathLength = ::GetTempPath(_countof(temporaryDirectory), temporaryDirectory);
-    if (tempPathLength == 0 || tempPathLength >= _countof(temporaryDirectory))
-        return HRESULT_FROM_WIN32(::GetLastError());
-
-    wchar_t temporaryFileName[MAX_PATH] = {};
-    if (!::GetTempFileName(temporaryDirectory, L"fbe", 0, temporaryFileName))
-        return HRESULT_FROM_WIN32(::GetLastError());
-
-    filePath = temporaryFileName;
-
-    HANDLE fileHandle = ::CreateFile(
-        temporaryFileName,
-        GENERIC_WRITE,
-        0,
-        nullptr,
-        CREATE_ALWAYS,
-        FILE_ATTRIBUTE_TEMPORARY,
-        nullptr);
-    if (fileHandle == INVALID_HANDLE_VALUE) {
-        const HRESULT fileError = HRESULT_FROM_WIN32(::GetLastError());
-        ::DeleteFile(temporaryFileName);
-        return fileError;
-    }
-
-    BYTE buffer[4096] = {};
-    HRESULT readHr = S_OK;
-    for (;;) {
-        ULONG bytesRead = 0;
-        readHr = stream->Read(buffer, sizeof(buffer), &bytesRead);
-        if (FAILED(readHr))
-            break;
-
-        if (bytesRead == 0) {
-            readHr = S_OK;
-            break;
-        }
-
-        readHr = WriteBufferToFile(fileHandle, buffer, bytesRead);
-        if (FAILED(readHr))
-            break;
-    }
-
-    ::CloseHandle(fileHandle);
-
-    if (FAILED(readHr)) {
-        ::DeleteFile(temporaryFileName);
-        filePath.Empty();
-        return readHr;
-    }
 
     return S_OK;
 }

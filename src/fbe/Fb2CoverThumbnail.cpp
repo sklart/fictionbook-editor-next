@@ -11,6 +11,9 @@
 
 namespace {
 
+const int kMaximumSourceImageDimension = 16384;
+const long long kMaximumSourceImagePixels = 64000000LL;
+
 HRESULT CreateStreamFromBytes(const std::vector<unsigned char>& bytes, IStream** stream)
 {
     if (stream == nullptr)
@@ -133,6 +136,12 @@ bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL
 
     image.width = decodedImage.GetWidth();
     image.height = decodedImage.GetHeight();
+    if (image.width > kMaximumSourceImageDimension || image.height > kMaximumSourceImageDimension ||
+        static_cast<long long>(image.width) * image.height > kMaximumSourceImagePixels) {
+        if (errorMessage != nullptr)
+            *errorMessage = L"Cover image dimensions exceed the thumbnail safety limit.";
+        return false;
+    }
     image.bitmap = decodedImage.Detach();
 
     if (image.bitmap == nullptr || image.width <= 0 || image.height <= 0) {
@@ -253,4 +262,3 @@ bool TryResizeToFit(const DecodedImage& sourceImage, unsigned int maxEdge, Decod
 }
 
 } // namespace FB2CoverThumbnail
-

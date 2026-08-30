@@ -1,6 +1,6 @@
-# Ручная проверка experimental thumbnail provider
+# Ручная проверка thumbnail provider
 
-Этот документ нужен для управляемой GUI-проверки experimental thumbnail
+Этот документ нужен для управляемой GUI-проверки thumbnail
 provider для `.fb2`, который читает встроенную обложку книги и отдаёт её в
 Проводник как миниатюру.
 
@@ -11,7 +11,7 @@ provider для `.fb2`, который читает встроенную обл�
 - внутренний reader обложки: `src/fbe/Fb2CoverImage.*`;
 - внутренний decoder изображения обложки через локальный `ATL::CImage`:
   `src/fbe/Fb2CoverThumbnail.*`;
-- experimental COM-класс thumbnail provider:
+- COM-класс thumbnail provider:
   `src/fbshell/Fb2ThumbnailProvider.*`.
 
 Smoke-проверки для подготовительного слоя:
@@ -26,7 +26,7 @@ Smoke-проверки для подготовительного слоя:
 Скрипт регистрации нужно запускать из PowerShell с правами администратора.
 
 ```powershell
-.\tools\build\register-experimental-property-handler.ps1 -Configuration Release -Platform x64
+.\tools\build\register-shell-integration.ps1 -Configuration Release -Platform x64
 ```
 
 Этот сценарий сейчас регистрирует сразу оба экспериментальных компонента:
@@ -41,7 +41,7 @@ Smoke-проверки для подготовительного слоя:
 ```
 
 Если shell API уже видит миниатюру, а в окне Проводника всё ещё остаётся
-старый пустой значок, после регистрации experimental shell-контура имеет смысл
+старый пустой значок, после регистрации shell-контура имеет смысл
 отдельно сбросить thumbnail cache:
 
 ```powershell
@@ -184,7 +184,7 @@ gate. На части систем он может возвращать отка
 ## Откат после проверки
 
 ```powershell
-.\tools\build\unregister-experimental-property-handler.ps1 -Configuration Release -Platform x64
+.\tools\build\unregister-shell-integration.ps1 -Configuration Release -Platform x64
 ```
 
 ## Что фиксировать по результатам

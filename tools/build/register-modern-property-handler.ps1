@@ -281,7 +281,7 @@ function Ensure-ThumbnailProviderComRegistration {
     Write-Host "COM-класс thumbnail provider не зарегистрирован в ожидаемый DLL; достраиваем регистрацию вручную."
     Set-ComClassRegistrationFallback `
         -Clsid $ThumbnailProviderClsid `
-        -DisplayName "FictionBook Modern Thumbnail Provider (Experimental)" `
+        -DisplayName "FictionBook Thumbnail Provider" `
         -ThreadingModel "Apartment" `
         -ModulePath $DllPath
 
@@ -315,7 +315,7 @@ try {
         }
         else {
             Write-Host "regsvr32 failed; applying fallback COM registration for the property handler class."
-            Set-ComClassRegistrationFallback -Clsid $PropertyHandlerClsid -DisplayName "FictionBook Modern Property Handler (Experimental)" -ThreadingModel "Both" -ModulePath $DllPath
+            Set-ComClassRegistrationFallback -Clsid $PropertyHandlerClsid -DisplayName "FictionBook Property Handler" -ThreadingModel "Apartment" -ModulePath $DllPath
 
             if (-not (Get-ComClassRegistrationState -Clsid $PropertyHandlerClsid -ExpectedDllPath $DllPath)) {
                 Write-Status -Result "error" -Step "regsvr32" -Code ("EXIT_{0}" -f $regsvr32ExitCode) -Message $message

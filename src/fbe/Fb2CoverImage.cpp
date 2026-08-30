@@ -269,6 +269,75 @@ bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* erro
     }
 }
 
-} // namespace FB2CoverImage
+bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecodedBytes, ATL::CString* errorMessage)
+{
+    coverImage.Clear();
+    if (errorMessage != nullptr)
+        errorMessage->Empty();
+    if (stream == nullptr || maximumDecodedBytes == 0) {
+        if (errorMessage != nullptr)
+            *errorMessage = L"Cover stream or size limit is not valid.";
+        return false;
+    }
+    try {
+        LARGE_INTEGER origin = {};
+        if (FAILED(stream->Seek(origin, STREAM_SEEK_SET, nullptr)))
+            return false;
+        MSXML2::IXMLDOMDocument2Ptr document;
+        HRESULT hr = document.CreateInstance(__uuidof(MSXML2::DOMDocument60));
+        if (FAILED(hr))
+            return false;
+        document->async = VARIANT_FALSE;
+        document->validateOnParse = VARIANT_FALSE;
+        document->resolveExternals = VARIANT_FALSE;
+        document->setProperty(_bstr_t(L"SelectionLanguage"), _variant_t(L"XPath"));
+        document->setProperty(_bstr_t(L"SelectionNamespaces"), _variant_t(kSelectionNamespaces));
+        CComQIPtr<IPersistStreamInit> persistentDocument(document);
+        if (!persistentDocument || FAILED(persistentDocument->Load(stream)))
+            return false;
 
+        coverImage.href = GetNodeText(document->selectSingleNode(_bstr_t(L"/fb:FictionBook/fb:description/fb:title-info/fb:coverpage/fb:image/@l:href")));
+        coverImage.binaryId = coverImage.href;
+        if (!coverImage.binaryId.IsEmpty() && coverImage.binaryId[0] == L'#')
+            coverImage.binaryId.Delete(0);
+        NormalizeWhitespace(coverImage.binaryId);
+        if (coverImage.binaryId.IsEmpty()) {
+            if (errorMessage != nullptr) *errorMessage = L"FB2 cover reference was not found.";
+            return false;
+        }
+        MSXML2::IXMLDOMNodeListPtr binaries = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:binary"));
+        MSXML2::IXMLDOMNodePtr matched;
+        if (binaries != nullptr) for (long i = 0; i < binaries->length; ++i) {
+            MSXML2::IXMLDOMNodePtr node = binaries->item[i];
+            if (GetAttributeText(node, L"id") == coverImage.binaryId) {
+                matched = node;
+                coverImage.contentType = GetAttributeText(node, L"content-type");
+                break;
+            }
+        }
+        if (matched == nullptr) {
+            if (errorMessage != nullptr) errorMessage->Format(L"Cover binary with id '%s' was not found.", static_cast<const wchar_t*>(coverImage.binaryId));
+            return false;
+        }
+        ATL::CString localError;
+        if (!ExtractBinaryBytes(matched, coverImage.bytes, localError) || coverImage.bytes.empty()) {
+            coverImage.Clear();
+            if (errorMessage != nullptr) *errorMessage = localError;
+            return false;
+        }
+        if (coverImage.bytes.size() > maximumDecodedBytes) {
+            coverImage.Clear();
+            if (errorMessage != nullptr) *errorMessage = L"Cover binary exceeds the configured safety limit.";
+            return false;
+        }
+        return true;
+    }
+    catch (const _com_error& error) {
+        coverImage.Clear();
+        if (errorMessage != nullptr) *errorMessage = FormatComError(error);
+        return false;
+    }
+}
+
+} // namespace FB2CoverImage
 

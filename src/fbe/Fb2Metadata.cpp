@@ -106,6 +106,22 @@ ATL::CString ReadAuthors(MSXML2::IXMLDOMNodePtr contextNode)
     return authors;
 }
 
+std::vector<ATL::CString> ReadAuthorValues(MSXML2::IXMLDOMNodePtr contextNode)
+{
+    std::vector<ATL::CString> result;
+    if (contextNode == nullptr)
+        return result;
+    MSXML2::IXMLDOMNodeListPtr authorNodes = contextNode->selectNodes(_bstr_t(L"fb:author"));
+    if (authorNodes == nullptr)
+        return result;
+    for (long index = 0; index < authorNodes->length; ++index) {
+        ATL::CString author = ReadAuthor(authorNodes->item[index]);
+        if (!author.IsEmpty())
+            result.push_back(author);
+    }
+    return result;
+}
+
 ATL::CString ReadGenres(MSXML2::IXMLDOMNodePtr titleInfoNode)
 {
     ATL::CString genres;
@@ -182,12 +198,14 @@ void Metadata::Clear()
 {
     title.Empty();
     authors.Empty();
+    authorValues.clear();
     genres.Empty();
     keywords.Empty();
     language.Empty();
     sourceLanguage.Empty();
     sequence.Empty();
     documentAuthors.Empty();
+    documentAuthorValues.clear();
     documentDate.Empty();
     documentDateValue.Empty();
     documentId.Empty();
@@ -255,6 +273,7 @@ bool TryRead(const wchar_t* filePath, Metadata& metadata, ATL::CString* errorMes
 
         metadata.title = SelectText(titleInfo, L"fb:book-title");
         metadata.authors = ReadAuthors(titleInfo);
+        metadata.authorValues = ReadAuthorValues(titleInfo);
         metadata.genres = ReadGenres(titleInfo);
         metadata.keywords = SelectText(titleInfo, L"fb:keywords");
         metadata.language = SelectText(titleInfo, L"fb:lang");
@@ -262,6 +281,7 @@ bool TryRead(const wchar_t* filePath, Metadata& metadata, ATL::CString* errorMes
         metadata.sequence = ReadSequence(titleInfo);
 
         metadata.documentAuthors = ReadAuthors(documentInfo);
+        metadata.documentAuthorValues = ReadAuthorValues(documentInfo);
         metadata.documentDate = SelectText(documentInfo, L"fb:date");
         metadata.documentId = SelectText(documentInfo, L"fb:id");
         metadata.documentVersion = SelectText(documentInfo, L"fb:version");
@@ -274,6 +294,78 @@ bool TryRead(const wchar_t* filePath, Metadata& metadata, ATL::CString* errorMes
             }
         }
 
+        return true;
+    }
+    catch (const _com_error& error) {
+        if (errorMessage != nullptr)
+            *errorMessage = FormatComError(error);
+        return false;
+    }
+}
+
+bool TryReadStream(IStream* stream, Metadata& metadata, ATL::CString* errorMessage)
+{
+    metadata.Clear();
+    if (errorMessage != nullptr)
+        errorMessage->Empty();
+    if (stream == nullptr) {
+        if (errorMessage != nullptr)
+            *errorMessage = L"FB2 stream is not specified.";
+        return false;
+    }
+
+    try {
+        LARGE_INTEGER origin = {};
+        HRESULT hr = stream->Seek(origin, STREAM_SEEK_SET, nullptr);
+        if (FAILED(hr)) {
+            if (errorMessage != nullptr)
+                errorMessage->Format(L"Failed to seek FB2 stream: 0x%08X", static_cast<unsigned int>(hr));
+            return false;
+        }
+
+        MSXML2::IXMLDOMDocument2Ptr document;
+        hr = document.CreateInstance(__uuidof(MSXML2::DOMDocument60));
+        if (FAILED(hr))
+            return false;
+        document->async = VARIANT_FALSE;
+        document->validateOnParse = VARIANT_FALSE;
+        document->resolveExternals = VARIANT_FALSE;
+        document->setProperty(_bstr_t(L"SelectionLanguage"), _variant_t(L"XPath"));
+        document->setProperty(_bstr_t(L"SelectionNamespaces"), _variant_t(kSelectionNamespaces));
+
+        CComQIPtr<IPersistStreamInit> persistentDocument(document);
+        if (!persistentDocument || FAILED(persistentDocument->Load(stream))) {
+            if (errorMessage != nullptr)
+                *errorMessage = L"MSXML could not load the FB2 stream.";
+            return false;
+        }
+
+        MSXML2::IXMLDOMNodePtr titleInfo = document->selectSingleNode(_bstr_t(L"/fb:FictionBook/fb:description/fb:title-info"));
+        MSXML2::IXMLDOMNodePtr documentInfo = document->selectSingleNode(_bstr_t(L"/fb:FictionBook/fb:description/fb:document-info"));
+        if (titleInfo == nullptr && documentInfo == nullptr) {
+            if (errorMessage != nullptr)
+                *errorMessage = L"Neither title-info nor document-info was found in FB2.";
+            return false;
+        }
+
+        metadata.title = SelectText(titleInfo, L"fb:book-title");
+        metadata.authors = ReadAuthors(titleInfo);
+        metadata.authorValues = ReadAuthorValues(titleInfo);
+        metadata.genres = ReadGenres(titleInfo);
+        metadata.keywords = SelectText(titleInfo, L"fb:keywords");
+        metadata.language = SelectText(titleInfo, L"fb:lang");
+        metadata.sourceLanguage = SelectText(titleInfo, L"fb:src-lang");
+        metadata.sequence = ReadSequence(titleInfo);
+        metadata.documentAuthors = ReadAuthors(documentInfo);
+        metadata.documentAuthorValues = ReadAuthorValues(documentInfo);
+        metadata.documentDate = SelectText(documentInfo, L"fb:date");
+        metadata.documentId = SelectText(documentInfo, L"fb:id");
+        metadata.documentVersion = SelectText(documentInfo, L"fb:version");
+        if (documentInfo != nullptr) {
+            MSXML2::IXMLDOMNodePtr dateNode = documentInfo->selectSingleNode(_bstr_t(L"fb:date"));
+            if (dateNode != nullptr && dateNode->attributes != nullptr)
+                metadata.documentDateValue = GetNodeText(dateNode->attributes->getNamedItem(_bstr_t(L"value")));
+        }
         return true;
     }
     catch (const _com_error& error) {

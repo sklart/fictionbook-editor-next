@@ -13,6 +13,7 @@
 DEFINE_GUID(CLSID_Fb2ThumbnailProvider,
 0x4f99d1f0, 0x5d76, 0x4b9c, 0x9d, 0x3d, 0x9e, 0x6b, 0x8b, 0x4c, 0x7e, 0x31);
 namespace {
+#if defined(_DEBUG) || defined(FBE_ENABLE_SHELL_DIAGNOSTICS)
 void AppendThumbnailTraceLine(const wchar_t* line)
 {
     if (line == nullptr)
@@ -75,6 +76,9 @@ void AppendThumbnailTraceLine(const wchar_t* line)
     ::WriteFile(fileHandle, utf8Buffer, static_cast<DWORD>(converted - 1), &bytesWritten, nullptr);
     ::CloseHandle(fileHandle);
 }
+#else
+void AppendThumbnailTraceLine(const wchar_t*) {}
+#endif
 
 void AppendThumbnailTraceFormat(const wchar_t* format, ...)
 {
@@ -209,19 +213,16 @@ HRESULT BuildThumbnailFromStream(IStream* stream, UINT requestedEdge, HBITMAP* b
         return E_POINTER;
     *bitmap = nullptr;
     *alphaType = WTSAT_UNKNOWN;
-    TempFileScope tempFile;
-    const HRESULT copyHr = CopyStreamToTempFile(stream, tempFile);
-    if (FAILED(copyHr)) {
-        AppendThumbnailTraceFormat(L"CopyStreamToTempFile failed: 0x%08X", static_cast<unsigned int>(copyHr));
-        return copyHr;
-    }
-
-    AppendThumbnailTraceFormat(L"Reading cover from temporary FB2 started: %ls", tempFile.GetPath());
+    const ULONGLONG inputSize = GetStreamSizeOrZero(stream);
+    const ULONGLONG maximumFb2Bytes = 256ULL * 1024ULL * 1024ULL;
+    if (inputSize > maximumFb2Bytes)
+        return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
 
     FB2CoverImage::CoverImage coverImage;
     ATL::CString coverError;
-    if (!FB2CoverImage::TryRead(tempFile.GetPath(), coverImage, &coverError)) {
-        AppendThumbnailTraceFormat(L"FB2CoverImage::TryRead failed: %ls", static_cast<const wchar_t*>(coverError));
+    const size_t maximumCoverBytes = 32U * 1024U * 1024U;
+    if (!FB2CoverImage::TryReadStream(stream, coverImage, maximumCoverBytes, &coverError)) {
+        AppendThumbnailTraceFormat(L"FB2CoverImage::TryReadStream failed: %ls", static_cast<const wchar_t*>(coverError));
         return IsMissingCoverError(coverError)
             ? HRESULT_FROM_WIN32(ERROR_NOT_FOUND)
             : HRESULT_FROM_WIN32(ERROR_BAD_FORMAT);
@@ -295,6 +296,4 @@ STDMETHODIMP Fb2ThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* bitmap, WTS_AL
     AppendThumbnailTraceFormat(L"GetThumbnail finished with HRESULT: 0x%08X", static_cast<unsigned int>(thumbnailHr));
     return thumbnailHr;
 }
-
-
 

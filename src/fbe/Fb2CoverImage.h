@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atlstr.h>
+#include <objidl.h>
 #include <vector>
 
 namespace FB2CoverImage {
@@ -16,5 +17,6 @@ struct CoverImage {
 };
 
 bool TryRead(const wchar_t* filePath, CoverImage& coverImage, ATL::CString* errorMessage = nullptr);
+bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecodedBytes, ATL::CString* errorMessage = nullptr);
 
 } // namespace FB2CoverImage

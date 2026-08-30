@@ -2,12 +2,12 @@ HKCR
 {
   NoRemove CLSID
   {
-    ForceRemove {D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42} = s 'FictionBook Modern Property Handler (Experimental)'
+    ForceRemove {D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42} = s 'FictionBook Property Handler'
     {
       ForceRemove 'Programmable'
       InprocServer32 = s '%MODULE%'
       {
-        val ThreadingModel = s 'Both'
+        val ThreadingModel = s 'Apartment'
       }
     }
   }

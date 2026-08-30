@@ -162,7 +162,7 @@ else {
             $propertyHandlerBuildArguments.PlatformToolset = $PlatformToolset
         }
 
-        & (Join-Path $PSScriptRoot "build-experimental-property-handler.ps1") @propertyHandlerBuildArguments
+        & (Join-Path $PSScriptRoot "build-shell-integration.ps1") @propertyHandlerBuildArguments
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }

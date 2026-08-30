@@ -47,6 +47,16 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
+STRINGTABLE
+BEGIN
+    IDS_FBE_SEQUENCE_LABEL "FBE:Серия"
+    IDS_FBE_GENRE_LABEL "FBE:Жанр"
+    IDS_FBE_DOCUMENT_VERSION_LABEL "FBE:Версия документа"
+    IDS_FBE_DOCUMENT_DATE_LABEL "FBE:Дата документа"
+    IDS_FBE_KEYWORDS_LABEL "FBE:Ключевые слова"
+    IDS_FBE_DOCUMENT_ID_LABEL "FBE:Идентификатор документа"
+END
+
 #endif    // Russian resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -67,6 +77,16 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 IDR_FB2PROPERTYHANDLER   REGISTRY                "Fb2PropertyHandler.rgs"
 IDR_FB2THUMBNAILPROVIDER REGISTRY                "Fb2ThumbnailProvider.rgs"
+
+STRINGTABLE
+BEGIN
+    IDS_FBE_SEQUENCE_LABEL "FBE:Series"
+    IDS_FBE_GENRE_LABEL "FBE:Genre"
+    IDS_FBE_DOCUMENT_VERSION_LABEL "FBE:Document version"
+    IDS_FBE_DOCUMENT_DATE_LABEL "FBE:Document date"
+    IDS_FBE_KEYWORDS_LABEL "FBE:Keywords"
+    IDS_FBE_DOCUMENT_ID_LABEL "FBE:Document ID"
+END
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -780,7 +780,7 @@ ew[]/delete` и ранние `return` с потерей cleanup;
 - [x] Включить сборку и упаковку modern property handler для `Win32` и `x64` в релизный контур `create-release.ps1` и `out\package`.
 - [x] Встроить в NSIS elevated-регистрацию modern property handler для `Win32 Explorer` и `64-bit Explorer`.
 - [x] Подтвердить smoke-проверкой, что `setup.exe` и `uninst.exe` корректно ставят и снимают modern property handler.
-- [x] Дотянуть штатный installer-helper до experimental thumbnail-контура, чтобы обычный `setup.exe` регистрировал thumbnail provider для `.fb2` и `FictionBook.2`.
+- [x] Дотянуть штатный installer-helper до thumbnail-контура, чтобы обычный `setup.exe` регистрировал thumbnail provider для `.fb2` и `FictionBook.2`.
 - [x] Расширить installer smoke-проверку так, чтобы она отдельно контролировала регистрацию и снятие thumbnail provider наряду с property handler и schema.
 - [x] Дотянуть проверку shell-контура до реальной COM-активации thumbnail provider: контролировать не только `ShellEx`, но и `CLSID\...\InprocServer32`, чтобы ловить сбои вида `CoCreateInstance -> 0x80040154`.
 - [x] Починить диагностический вывод `fb2-shell-properties-query.cpp`, чтобы пустое свойство не обрывало весь последующий дамп shell-значений на проблемных реальных книгах.
@@ -804,7 +804,7 @@ ew[]/delete` и ранние `return` с потерей cleanup;
         от legacy `IconExtractor`.
   - [ ] Добавить smoke-тест на `.fb2` с валидной JPEG/PNG-обложкой и на
         битый/неполный `coverpage`.
-  - [ ] Подготовить experimental modern thumbnail provider поверх отдельного
+  - [ ] Подготовить modern thumbnail provider поверх отдельного
         COM-класса и `IInitializeWithStream`.
   - [ ] Для декодирования обложек использовать современный системный
         image-стек Windows вместо bundled `zlib/libpng/libjpeg`.
@@ -829,8 +829,8 @@ ew[]/delete` и ранние `return` с потерей cleanup;
 - [x] Подготовить внутренний кэш значений будущего `IPropertyStore` для MVP-полей.
 - [x] Подготовить тестируемый COM-каркас `IPropertyStore + IInitializeWithStream` без регистрации в системе.
 - [x] Подготовить отдельный экспериментальный класс `Fb2PropertyHandler` как будущую точку входа modern property handler.
-- [x] Подготовить compile-time флаг для отдельной experimental-сборки modern property handler.
-- [x] Подготовить отдельные скрипты регистрации/отката experimental property handler и чеклист ручной GUI-проверки.
+- [x] Подготовить compile-time флаг для штатной shell-сборки modern property handler.
+- [x] Подготовить отдельные скрипты регистрации/отката property handler и чеклист ручной GUI-проверки.
 - [x] Исследовать современный property-handler контур для Windows 10/11 вместо старого `IColumnProvider`.
 - [x] Сделать прототип modern property handler для 2-3 полей.
 - [x] Перевести `Genre`, `DocumentVersion`, `DocumentDate` в FBE-specific
@@ -898,7 +898,7 @@ ew[]/delete` и ранние `return` с потерей cleanup;
 Детальный план: `docs/fbshell-roadmap.md`.
 Текущая таблица маппинга свойств: `docs/fb2-property-mapping.md`.
 Отдельный план по серии книги: `docs/sequence-property-schema-plan.md`.
-Экспериментальная регистрация schema: `docs/sequence-property-schema-experimental.md`.
+Регистрация schema: `docs/sequence-property-schema.md`.
 Отдельный план по thumbnail provider: `docs/thumbnail-provider-plan.md`.
 
 ### Отдельный хвост по `Validate`
@@ -920,12 +920,12 @@ ew[]/delete` и ранние `return` с потерей cleanup;
   - локально завернуть COM/file resources в небольшие RAII-обёртки, чтобы уменьшить количество ручного cleanup-кода;
   - по возможности сократить прямую ручную работу с `ListView`/Win32 API там, где это не ломает текущую архитектуру и поведение.
 
-Текущий статус experimental thumbnail provider:
+Текущий статус thumbnail provider:
 
 - [x] Внутренний reader обложки `Fb2CoverImage.*`.
 - [x] Внутренний decoder обложки через локальный `ATL::CImage`
       `Fb2CoverThumbnail.*`.
-- [x] Experimental COM-класс thumbnail provider в `src/fbshell`.
+- [x] COM-класс thumbnail provider в `src/fbshell`.
 - [x] Автоматические smoke-проверки COM-контура для `png`, `jpeg`, `bmp`.
 - [x] Автоматические negative-сценарии:
       битая base64-обложка, отсутствие `coverpage`, отсутствие нужного
@@ -1010,10 +1010,10 @@ ot found`, `IgnoreCase` и zero-length regex.
         `tools\build\create-release.ps1`, включая автоматически
         генерируемый `README.txt` для пакета debug symbols.
   - [x] Довести до русского единообразия сообщения в скриптах
-        experimental property handler
-        (`build-experimental-property-handler.ps1`,
-        `register-experimental-property-handler.ps1`,
-        `unregister-experimental-property-handler.ps1`).
+        property handler
+        (`build-shell-integration.ps1`,
+        `register-shell-integration.ps1`,
+        `unregister-shell-integration.ps1`).
   - [x] Перевести на русский оставшиеся активные сообщения и табличный вывод
         в `package-portable.ps1` и
         `tools\tests\check-fbe-specific-properties.ps1`.

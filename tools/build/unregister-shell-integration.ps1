@@ -81,7 +81,7 @@ if (Test-Path -LiteralPath $thumbnailProviderProgIdRegistryKey) {
 
 if (Test-Path -LiteralPath $thumbnailProviderClsidRegistryKey) {
     Remove-Item -LiteralPath $thumbnailProviderClsidRegistryKey -Recurse -Force
-    Write-Host "Удалён CLSID experimental thumbnail provider."
+    Write-Host "Удалён CLSID thumbnail provider."
 }
 
 if (-not $NoRestartExplorer) {

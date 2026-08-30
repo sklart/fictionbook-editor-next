@@ -1,4 +1,4 @@
-# Ручная проверка experimental property handler
+# Ручная проверка property handler
 
 Этот документ нужен для управляемой GUI-проверки нового modern property
 handler для `.fb2`.
@@ -24,10 +24,10 @@ handler для `.fb2`.
 
 Оба скрипта регистрации требуют запуска из PowerShell с правами администратора.
 
-Собрать и зарегистрировать experimental handler:
+Собрать и зарегистрировать property handler:
 
 ```powershell
-.\tools\build\register-experimental-property-handler.ps1 -Configuration Release
+.\tools\build\register-shell-integration.ps1 -Configuration Release
 ```
 
 Если нужно отдельно проверить FBE-specific свойства (`FBE:Ключевые слова`,
@@ -61,7 +61,7 @@ tooltip/плитки/сведения.
 Откатить регистрацию после проверки:
 
 ```powershell
-.\tools\build\unregister-experimental-property-handler.ps1 -Configuration Release
+.\tools\build\unregister-shell-integration.ps1 -Configuration Release
 ```
 
 ## Что именно проверять
@@ -135,7 +135,7 @@ FBE-specific поля намеренно показываются с префи�
 После проверки обязательно снять регистрацию:
 
 ```powershell
-.\tools\build\unregister-experimental-property-handler.ps1 -Configuration Release
+.\tools\build\unregister-shell-integration.ps1 -Configuration Release
 ```
 
 Если отдельно регистрировалась schema для `Sequence`, её тоже нужно снять:

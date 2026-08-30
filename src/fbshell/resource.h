@@ -5,6 +5,12 @@
 #define IDI_FB2                         101
 #define IDR_FB2PROPERTYHANDLER          102
 #define IDR_FB2THUMBNAILPROVIDER        103
+#define IDS_FBE_SEQUENCE_LABEL          201
+#define IDS_FBE_GENRE_LABEL             202
+#define IDS_FBE_DOCUMENT_VERSION_LABEL  203
+#define IDS_FBE_DOCUMENT_DATE_LABEL     204
+#define IDS_FBE_KEYWORDS_LABEL          205
+#define IDS_FBE_DOCUMENT_ID_LABEL       206
 
 // Next default values for new objects
 // 

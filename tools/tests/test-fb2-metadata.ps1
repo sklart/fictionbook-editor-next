@@ -21,7 +21,7 @@ New-Item -ItemType Directory -Path $testDir -Force | Out-Null
     (Join-Path $repoRoot "src\fbshell\Fb2PropertyKeys.cpp") `
     (Join-Path $repoRoot "src\fbshell\Fb2PropertyStore.cpp") `
     (Join-Path $PSScriptRoot "fb2-metadata-smoke.cpp") `
-    "/link" "/SUBSYSTEM:CONSOLE" "ole32.lib" "oleaut32.lib" "comsuppw.lib" "propsys.lib" "/OUT:$testExe"
+    "/link" "/SUBSYSTEM:CONSOLE" "ole32.lib" "oleaut32.lib" "comsuppw.lib" "propsys.lib" "shlwapi.lib" "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
@@ -38,4 +38,3 @@ finally {
 }
 
 Write-Host "Smoke-тест чтения метаданных FB2 прошёл успешно."
-

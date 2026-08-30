@@ -8,7 +8,7 @@
       formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
       propID="2">
       <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
-      <labelInfo label="FBE:Серия" hideLabel="false" />
+      <labelInfo label="@FBShell.dll,-201" hideLabel="false" />
       <typeInfo
         type="String"
         multipleValues="false"
@@ -23,7 +23,7 @@
       formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
       propID="3">
       <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
-      <labelInfo label="FBE:Жанр" hideLabel="false" />
+      <labelInfo label="@FBShell.dll,-202" hideLabel="false" />
       <typeInfo
         type="String"
         multipleValues="false"
@@ -38,7 +38,7 @@
       formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
       propID="4">
       <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
-      <labelInfo label="FBE:Версия документа" hideLabel="false" />
+      <labelInfo label="@FBShell.dll,-203" hideLabel="false" />
       <typeInfo
         type="String"
         multipleValues="false"
@@ -53,7 +53,7 @@
       formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
       propID="5">
       <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
-      <labelInfo label="FBE:Дата документа" hideLabel="false" />
+      <labelInfo label="@FBShell.dll,-204" hideLabel="false" />
       <typeInfo
         type="String"
         multipleValues="false"
@@ -68,7 +68,7 @@
       formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
       propID="6">
       <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
-      <labelInfo label="FBE:Ключевые слова" hideLabel="false" />
+      <labelInfo label="@FBShell.dll,-205" hideLabel="false" />
       <typeInfo
         type="String"
         multipleValues="false"
@@ -83,7 +83,7 @@
       formatID="{7D94E5B1-6A2E-4F54-A52B-63C72BD49A11}"
       propID="7">
       <searchInfo inInvertedIndex="false" isColumn="true" maxSize="4096" />
-      <labelInfo label="FBE:Идентификатор документа" hideLabel="false" />
+      <labelInfo label="@FBShell.dll,-206" hideLabel="false" />
       <typeInfo
         type="String"
         multipleValues="false"
