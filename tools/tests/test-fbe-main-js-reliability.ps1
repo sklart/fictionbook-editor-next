@@ -12,7 +12,11 @@ foreach($required in @(
     'if(r.parentElement()!==elem',
     'return rng.parentElement();',
     'var re0=new RegExp("&","g");',
-    'ImagesInfo.length=0;'
+    'ImagesInfo.length=0;',
+    'function UpdateBinaryReferences(oldId, newId)',
+    'function BinaryIsReferenced(id)',
+    'A binary with this ID already exists.',
+    'cannot be deleted.'
 )) {
     if(-not $source.Contains($required)) { throw "Missing main.js reliability fix: $required" }
 }

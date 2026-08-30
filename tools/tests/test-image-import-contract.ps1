@@ -59,7 +59,7 @@ Assert-True ($addImportedBinarySource -notmatch 'V_BSTR\(&args\[3\]\)\s*=\s*logi
 Assert-True ($addImportedBinarySource -match 'V_BSTR\(&args\[3\]\)\s*=\s*::SysAllocString\(L""\)') 'AddImportedBinary должен передавать apiAddBinary пустой source path, чтобы размеры определялись по binary data.'
 Assert-True ($addImportedBinarySource -notmatch 'body\.Invoke0\(L"OnBinaryChange"\)') 'Добавление нового binary не должно запускать полный rebuild preview cache.'
 Assert-True ($addImportedBinarySource -match 'body\.Invoke0\(L"FillCoverList"\)') 'После добавления binary должны обновляться cover/image lists.'
-Assert-True ($mainJsSource -match 'function OnBinaryChange\(\)\s*\{\s*RebuildImagesInfo\(\);\s*FillLists\(\);\s*\}' -and $mainJsSource -match 'function RebuildImagesInfo\(\)') 'OnBinaryChange должен сохранять полную пересинхронизацию для изменения существующих binary.'
+Assert-True ($mainJsSource -match 'function OnBinaryChange\(\)[\s\S]*?RebuildImagesInfo\(\);\s*FillLists\(\);' -and $mainJsSource -match 'function RebuildImagesInfo\(\)') 'OnBinaryChange должен сохранять полную пересинхронизацию для изменения существующих binary.'
 Assert-True ($viewSource -match 'ImportImageForFb2') 'Вставка изображения должна использовать общий импортёр.'
 Assert-True ($viewSource -match 'body\.Invoke2\(L"InsImage"' -and $viewSource -match 'body\.Invoke2\(L"InsInlineImage"') 'Новый binary должен вставляться существующими путями обычной и inline-картинки.'
 Assert-True ($frameSource -match 'ImportBinary\(fileName') 'Пакетный импорт должен продолжать обработку файлов.'

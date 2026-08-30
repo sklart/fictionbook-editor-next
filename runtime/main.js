@@ -131,7 +131,106 @@ function apiGetBinary(id)
  }
 }
 
-function OnBinaryChange() {
+function IsImageBinaryType(type)
+{
+ return String(type || "").toLowerCase().indexOf("image/")==0;
+}
+
+function GetBinaryInput(binary, name)
+{
+ if(!binary || !binary.all) return null;
+ return binary.all[name] || null;
+}
+
+function BinaryIdExists(id, exceptBinary)
+{
+ var binObjects=document.all.binobj.getElementsByTagName("DIV");
+ for(var i=0; i<binObjects.length; ++i)
+ {
+  if(binObjects[i] != exceptBinary && GetBinaryInput(binObjects[i], "id").value == id) return true;
+ }
+ return false;
+}
+
+function IsBinaryReferenceValue(value, id)
+{
+ return value == "#"+id || value == "fbw-internal:#"+id;
+}
+
+function UpdateBinaryReferences(oldId, newId)
+{
+ var elements=document.getElementsByTagName("*");
+ for(var i=0; i<elements.length; ++i)
+ {
+  var element=elements[i];
+  var href=element.getAttribute ? element.getAttribute("href") : null;
+  if(href == null && element.href) href=element.href;
+  if(IsBinaryReferenceValue(href, oldId))
+  {
+   if(element.setAttribute) element.setAttribute("href", "#"+newId);
+   else element.href="#"+newId;
+  }
+
+  var src=element.getAttribute ? element.getAttribute("src") : null;
+  if(src == null && element.src) src=element.src;
+  if(IsBinaryReferenceValue(src, oldId))
+  {
+   if(element.setAttribute) element.setAttribute("src", "fbw-internal:#"+newId);
+   element.src="fbw-internal:#"+newId;
+  }
+ }
+
+ var lists=document.getElementsByTagName("SELECT");
+ for(var j=0; j<lists.length; ++j)
+  if(lists[j].value == "#"+oldId) lists[j].value="#"+newId;
+}
+
+function BinaryIsReferenced(id)
+{
+ var elements=document.getElementsByTagName("*");
+ for(var i=0; i<elements.length; ++i)
+ {
+  var element=elements[i];
+  var href=element.getAttribute ? element.getAttribute("href") : null;
+  var src=element.getAttribute ? element.getAttribute("src") : null;
+  if(href == null && element.href) href=element.href;
+  if(src == null && element.src) src=element.src;
+  if(IsBinaryReferenceValue(href, id) || IsBinaryReferenceValue(src, id)) return true;
+ }
+
+ var lists=document.getElementsByTagName("SELECT");
+ for(var j=0; j<lists.length; ++j)
+  if(lists[j].value == "#"+id) return true;
+ return false;
+}
+
+function OnBinaryChange()
+{
+ var input=window.event ? window.event.srcElement : null;
+ var binary=input ? input.parentNode : null;
+ if(!input || !binary) { RebuildImagesInfo(); FillLists(); return; }
+
+ var idInput=GetBinaryInput(binary, "id");
+ var typeInput=GetBinaryInput(binary, "type");
+ if(input == idInput)
+ {
+  var oldId=idInput.getAttribute("oldId");
+  if(oldId == null) oldId=idInput.value;
+  var newId=String(idInput.value).replace(/^\s+|\s+$/g, "");
+  if(newId == "" || BinaryIdExists(newId, binary))
+  {
+   idInput.value=oldId;
+   MsgBox(newId == "" ? "Binary ID must not be empty." : "A binary with this ID already exists.");
+   return;
+  }
+  idInput.value=newId;
+  if(oldId != newId) UpdateBinaryReferences(oldId, newId);
+  idInput.setAttribute("oldId", newId);
+ }
+ else if(input == typeInput)
+ {
+  BuildBinaryControls(binary, "", idInput.value, typeInput.value, binary.base64data);
+ }
  RebuildImagesInfo();
  FillLists();
 }
@@ -143,7 +242,7 @@ function RebuildImagesInfo()
  for(var i=0; i<binObjects.length; ++i)
  {
   var binary=binObjects[i];
-  if(binary.all.type.value.search("image") == -1) continue;
+  if(!IsImageBinaryType(binary.all.type.value)) continue;
   var dims=window.external.GetImageDimsByData(binary.base64data);
   if(dims == "") continue;
   var separator=dims.search("x");
@@ -160,6 +259,42 @@ function RebuildImagesInfo()
 //--------------------------------------
 // Adds a binary object.
 // Don't forget to call FillCoverList() when you have finished adding objects!
+
+function BuildBinaryControls(div, fullpath, id, type, data)
+{
+ div.innerHTML = '<button id="del" ' +
+                 'onmouseover="HighlightBorder(this.parentNode, true, \'solid\', \'2px\', \'#FF0000\');" ' +
+                 'onmouseout="HighlightBorder(this.parentNode, false);" ' +
+                 'onclick="Remove(this.parentNode);" unselectable="on">&#x72;</button>';
+ if(IsImageBinaryType(type))
+ {
+  var imghref = "fbw-internal:#" + id;
+  div.innerHTML += '<button id="show"' +
+  'onmouseover="ShowImageOfBin(this.parentNode,\'prev\');"' +
+  'onmouseout="HidePrevImage();"' +
+  'onclick="ShowImageOfBin(this.parentNode,\'full\');"' +
+  'unselectable="on">&#x4e;</button>';
+  div.innerHTML += '<button id="save"' +
+  'onclick="SaveImage(\'' + imghref + '\');"' +
+  'unselectable="on">&#xcd;</button>';
+ }
+
+ div.innerHTML += '<label unselectable="on">ID:</label><input type="text" maxlength="256" id="id" style="width:20em;"><label unselectable="on">Type:</label><input type="text" style="width:8em;" maxlength="256" id="type" value="">';
+ div.innerHTML += '<label unselectable="on">Size:</label><input type="text" disabled id="size" style="width:5em;" value="' + window.external.GetBinarySize(data) + '">';
+
+ if(IsImageBinaryType(type))
+ {
+  var Dims = fullpath != "" ? window.external.GetImageDimsByPath(fullpath) : "";
+  if(Dims == "") Dims = window.external.GetImageDimsByData(data);
+  if(Dims != "") div.innerHTML += '<label unselectable="on">w*h:</label><input type="text" disabled id="dims" style="width:6em;" value="' + Dims + '">';
+ }
+
+ div.all.id.value=id;
+ div.all.type.value=type;
+ div.all.id.setAttribute("oldId",id);
+ div.all.id.onchange=OnBinaryChange;
+ div.all.type.onchange=OnBinaryChange;
+}
 
 function apiAddBinary(fullpath, id, type, data)
 {
@@ -186,28 +321,10 @@ function apiAddBinary(fullpath, id, type, data)
 
 	var div = document.createElement("DIV");
 
-	div.innerHTML = '<button id="del" ' +
-					'onmouseover="HighlightBorder(this.parentNode, true, \'solid\', \'2px\', \'#FF0000\');" ' +
-					'onmouseout="HighlightBorder(this.parentNode, false);" ' +
-					'onclick="Remove(this.parentNode);" unselectable="on">&#x72;</button>';
-	if(type.search("image") != -1)
+	BuildBinaryControls(div, fullpath, curid, type, data);
+	if(IsImageBinaryType(type))
 	{
 		var imghref = "fbw-internal:#" + curid;
-		div.innerHTML += '<button id="show"' +
-		'onmouseover="ShowImageOfBin(this.parentNode,\'prev\');"' +
-		'onmouseout="HidePrevImage();"' +
-		'onclick="ShowImageOfBin(this.parentNode,\'full\');"' +
-		'unselectable="on">&#x4e;</button>';
-		div.innerHTML += '<button id="save"' +
-		'onclick="SaveImage(\'' + imghref + '\');"' +
-		'unselectable="on">&#xcd;</button>';
-	}
-
-	div.innerHTML += '<label unselectable="on">ID:</label><input type="text" maxlength="256" id="id" style="width:20em;"><label unselectable="on">Type:</label><input type="text" style="width:8em;" maxlength="256" id="type" value="">';
-	div.innerHTML += '<label unselectable="on">Size:</label><input type="text" disabled id="size" style="width:5em;" value="' + window.external.GetBinarySize(data) + '">';
-
-	if(type.search("image") != -1)
-	{
 		var Dims = "";
 
 		if(fullpath != "")
@@ -234,12 +351,7 @@ function apiAddBinary(fullpath, id, type, data)
 			}
 	}
 
-	div.all.id.value = curid;
-	div.all.type.value = type;
 	div.base64data = data;
-	//div.all.id.setAttribute("oldId",curid);
-	div.all.id.onchange=OnBinaryChange;
-        div.all.type.onchange=OnBinaryChange;
 
 	document.all.binobj.appendChild(div);
 	// PutSpacers(document.all.binobj);
@@ -1334,7 +1446,14 @@ function Remove(obj)
 
 	if(obj.base64data != null) // this is a binary object
 	{
-		if(obj.all.type.value.search("image") != -1)
+		pic_id = GetBinaryInput(obj, "id").value;
+		if(BinaryIsReferenced(pic_id))
+		{
+			MsgBox("This binary is still used by the book or its cover and cannot be deleted.");
+			return;
+		}
+
+		if(IsImageBinaryType(obj.all.type.value))
 		{
 			var idx = -1;
 			for(var i = 0; i < ImagesInfo.length; ++i)
@@ -1350,10 +1469,6 @@ function Remove(obj)
 				ImagesInfo.splice(idx, 1);
 		}
 
-		var inpts = obj.getElementsByTagName("input");
-
-		if(inpts[0].id=="id") pic_id = inpts[0].value; else
-		if(inpts[1].id=="id") pic_id = inpts[1].value;
 	}
 
  // delete

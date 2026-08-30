@@ -169,6 +169,8 @@ if ($env:GITHUB_ACTIONS -eq "true") {
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save-runtime.ps1")
 & (Join-Path $repoRoot "tools\tests\test-image-import-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-main-js-reliability.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-main-js-binary-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-image-codec-build-contract.ps1")
 $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
