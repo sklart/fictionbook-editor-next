@@ -24,6 +24,7 @@ jobs:
       - name: Check generated version files and pipeline structure
         shell: pwsh
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           ./tools/version/sync-version.ps1
           git diff --exit-code -- packaging/nsis/Installer/version.nsh
           ./tools/tests/test-release-pipeline-deduplication.ps1
@@ -36,10 +37,13 @@ jobs:
           ./tools/tests/test-fbe-script-command-ids.ps1
           ./tools/tests/test-fbe-script-folder-icons.ps1
           ./tools/tests/test-fbe-settings-tooltips.ps1
+          ./tools/tests/test-ci-build-contract.ps1
           ./tools/build/verify-nsis-layout.ps1
       - name: Test VsDevCmd with a long PATH
         shell: pwsh
-        run: ./tools/tests/test-vsdev-environment-long-path.ps1
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-vsdev-environment-long-path.ps1
 
   build:
     needs: validate
@@ -76,6 +80,7 @@ jobs:
       - name: Build Release Win32
         shell: pwsh
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; ReuseEditorRuntime = $true; SkipVersionSync = $true; BatchOutputDirectory = 'out/target-batches' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.ReleaseVersion = $env:GITHUB_REF_NAME.Substring(1) }
           if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
@@ -83,34 +88,54 @@ jobs:
       - name: Run keyboard layout C++ regression
         shell: pwsh
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           $vsDevCmd = "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
           cmd.exe /d /s /c "`"$vsDevCmd`" -arch=x86 -host_arch=x64 -vcvars_ver=14.44 >nul && pwsh -NoProfile -ExecutionPolicy Bypass -File .\tools\tests\test-fbe-keyboard-layout-selection-cpp.ps1"
       - name: Run filesystem backup regression
         shell: pwsh
-        run: ./tools/tests/test-fbe-backup-file-commit.ps1
-      - name: Build Win32 property handler
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-fbe-backup-file-commit.ps1
+      - name: Build Win32 shell integration
         shell: pwsh
-        run: ./tools/build/build-experimental-property-handler.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143
-      - name: Build x64 property handler
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/build-shell-integration.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143
+      - name: Build x64 shell integration
         shell: pwsh
-        run: ./tools/build/build-experimental-property-handler.ps1 -Configuration Release -Platform x64 -PlatformToolset v143
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/build-shell-integration.ps1 -Configuration Release -Platform x64 -PlatformToolset v143
+      - name: Verify shell integration build outputs
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-ci-build-contract.ps1 -RequireArtifacts
       - name: Build FBV Verb MUI
         shell: pwsh
-        run: ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release -PlatformToolset v143
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release -PlatformToolset v143
       - name: Build ArchHandler
         shell: pwsh
-        run: ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Win32/Release
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Win32/Release
       - name: Write Runtime build provenance
         shell: pwsh
-        run: ./tools/build/build-provenance.ps1 -Action Write -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches -ArchHandlerDirectory out/archhandler/Win32/Release -PlatformToolset v143
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/build-provenance.ps1 -Action Write -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches -ArchHandlerDirectory out/archhandler/Win32/Release -PlatformToolset v143
       - name: Ensure NSIS 3.12
         shell: pwsh
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           choco upgrade nsis --version=3.12.0 --no-progress --yes
           ./tools/build/resolve-nsis.ps1 | Out-Null
       - name: Verify universal release binaries
         shell: pwsh
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches'; ArchHandlerOutputDirectory = 'out/archhandler/Win32/Release' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.FullValidation = $true }
           ./tools/build/verify-release.ps1 @arguments
@@ -146,11 +171,13 @@ jobs:
       - name: Ensure NSIS 3.12
         shell: pwsh
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           choco upgrade nsis --version=3.12.0 --no-progress --yes
           ./tools/build/resolve-nsis.ps1 | Out-Null
       - name: Create release artifacts without compiling
         shell: pwsh
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           $arguments = @{ Configuration = "Release"; Platform = "Win32"; PlatformToolset = "v143"; SkipBuild = $true; SkipPropertyHandlerBuild = $true; SkipFbvVerbMuiBuild = $true; SkipReleaseVerification = $true; SkipArtifactVerification = $true; SkipVersionSync = $true; BatchOutputDirectory = "out/target-batches" }
           if ($env:GITHUB_REF_TYPE -eq "tag") {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
@@ -161,6 +188,7 @@ jobs:
       - name: Verify release archives
         shell: pwsh
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           $arguments = @{ Platform = 'Win32' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') {
             $arguments.ReleaseTag = $env:GITHUB_REF_NAME
@@ -173,7 +201,9 @@ jobs:
       - name: Create update manifest candidate
         if: github.ref_type == 'tag'
         shell: pwsh
-        run: ./tools/build/new-update-manifest-candidate.ps1 -ArtifactsRoot out/artifacts -OutputPath out/release/update.xml -ReleaseTag "${{ github.ref_name }}"
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/new-update-manifest-candidate.ps1 -ArtifactsRoot out/artifacts -OutputPath out/release/update.xml -ReleaseTag "${{ github.ref_name }}"
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -204,12 +234,15 @@ jobs:
           path: out
       - name: Prepare human-readable release notes
         shell: pwsh
-        run: ./tools/build/new-release-notes.ps1 -Version "${{ github.ref_name }}" -OutputPath out/RELEASE_NOTES.md
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/new-release-notes.ps1 -Version "${{ github.ref_name }}" -OutputPath out/RELEASE_NOTES.md
       - name: Publish GitHub release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           $releaseTag = "${{ github.ref_name }}"
           $assets = @(Get-ChildItem out/artifacts -Recurse -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" })
           if ($assets.Count -eq 0) { throw "Не найдены файлы для публикации release." }
@@ -240,6 +273,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          ./tools/build/Initialize-CiUtf8.ps1
           $manifestContent = [IO.File]::ReadAllText("out/release/update.xml", [Text.UTF8Encoding]::new($false))
           $encodedContent = [Convert]::ToBase64String([Text.UTF8Encoding]::new($false).GetBytes($manifestContent))
           $feeds = if ('${{ github.ref_name }}' -match '^v\d+\.\d+\.\d+-') { @('update-prerelease.xml') } else { @('update.xml', 'update-prerelease.xml') }
