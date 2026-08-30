@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [switch]$RegisterSchema
+    [switch]$RegisterSchema,
+    [ValidateSet('ru', 'en')]
+    [string]$ExpectedLanguage
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,10 +31,30 @@ public static class FbePropertyDescriptionProbe {
 '@
 }
 
-$expected = if (([Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -eq 'ru')) { @{ 'FBE.Sequence'='FBE:Серия'; 'FBE.Genre'='FBE:Жанр' } } else { @{ 'FBE.Sequence'='FBE:Series'; 'FBE.Genre'='FBE:Genre' } }
-foreach ($name in $expected.Keys) {
-    $displayName = [FbePropertyDescriptionProbe]::DisplayName($name)
-    if ($displayName -ne $expected[$name]) { throw "${name}: expected '$($expected[$name])', got '$displayName'." }
+$labels = [ordered]@{
+    'FBE.Sequence'        = @{ Id = 201; Resource = 'IDS_FBE_SEQUENCE_LABEL' }
+    'FBE.Genre'           = @{ Id = 202; Resource = 'IDS_FBE_GENRE_LABEL' }
+    'FBE.DocumentVersion' = @{ Id = 203; Resource = 'IDS_FBE_DOCUMENT_VERSION_LABEL' }
+    'FBE.DocumentDate'    = @{ Id = 204; Resource = 'IDS_FBE_DOCUMENT_DATE_LABEL' }
+    'FBE.Keywords'        = @{ Id = 205; Resource = 'IDS_FBE_KEYWORDS_LABEL' }
+    'FBE.DocumentId'      = @{ Id = 206; Resource = 'IDS_FBE_DOCUMENT_ID_LABEL' }
+}
+$schemaText = Get-Content -Raw -LiteralPath $schemaPath
+$resourceText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbshell\FBShell.rc')
+foreach ($entry in $labels.GetEnumerator()) {
+    if ($schemaText -notmatch ([regex]::Escape("name=`"$($entry.Key)`"") + '[\s\S]*?' + [regex]::Escape("label=`"@FBShell.dll,-$($entry.Value.Id)`""))) { throw "Schema resource mapping is missing for $($entry.Key)." }
+    $matches = [regex]::Matches($resourceText, ('(?m)^\s*' + [regex]::Escape($entry.Value.Resource) + '\s+"(?<label>[^"]+)"'))
+    if ($matches.Count -ne 2) { throw "RU/EN resource contract is missing for $($entry.Key)." }
+    $entry.Value.ru = $matches[0].Groups['label'].Value
+    $entry.Value.en = $matches[1].Groups['label'].Value
 }
 
-Write-Host 'Проверка локализованных FBE.* property labels прошла.'
+if ($RegisterSchema) {
+    $language = if ($ExpectedLanguage) { $ExpectedLanguage } elseif ([Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName -eq 'ru') { 'ru' } else { 'en' }
+    foreach ($entry in $labels.GetEnumerator()) {
+        $displayName = [FbePropertyDescriptionProbe]::DisplayName($entry.Key)
+        if ($displayName -ne $entry.Value[$language]) { throw "$($entry.Key): expected '$($entry.Value[$language])', got '$displayName'." }
+    }
+}
+
+Write-Host 'FBE property-label localization contract passed.'

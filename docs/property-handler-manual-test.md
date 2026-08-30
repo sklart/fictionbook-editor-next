@@ -37,6 +37,13 @@ handler для `.fb2`.
 
 ```powershell
 .\tools\build\register-sequence-property-schema.ps1
+
+# Проверка установленной schema и MUI-строк для текущего языка Windows.
+.\tools\tests\test-fbe-property-schema-localization.ps1 -RegisterSchema
+
+# RU и EN проверяются в соответствующих Windows/MUI окружениях:
+.\tools\tests\test-fbe-property-schema-localization.ps1 -RegisterSchema -ExpectedLanguage ru
+.\tools\tests\test-fbe-property-schema-localization.ps1 -RegisterSchema -ExpectedLanguage en
 ```
 
 Быстро посмотреть текущее состояние published FBE-specific свойств можно и без

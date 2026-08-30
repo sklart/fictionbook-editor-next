@@ -212,6 +212,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-release-notes-format.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-localization-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbv-localization-resources.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-property-schema-localization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-localization-resources.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-standalone.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-template-selection.ps1")
