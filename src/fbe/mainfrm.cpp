@@ -919,6 +919,22 @@ static int FindTopLevelMenuPositionByCommand(HMENU menu, UINT commandId)
 	return -1;
 }
 
+static bool MenuContainsScriptCommand(HMENU menu)
+{
+	if(menu == NULL)
+		return false;
+	const int count = ::GetMenuItemCount(menu);
+	for(int position = 0; position < count; ++position)
+	{
+		const UINT commandId = ::GetMenuItemID(menu, position);
+		if(commandId >= ID_SCRIPT_BASE && commandId < ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
+			return true;
+		if(MenuContainsScriptCommand(::GetSubMenu(menu, position)))
+			return true;
+	}
+	return false;
+}
+
 static int FindTopLevelScriptsMenuPosition(HMENU menu)
 {
 	if(menu == NULL)
@@ -927,7 +943,11 @@ static int FindTopLevelScriptsMenuPosition(HMENU menu)
 	for(int position = 0; position < count; ++position)
 	{
 		HMENU subMenu = ::GetSubMenu(menu, position);
-		if(subMenu != NULL && ::GetMenuItemID(subMenu, 0) == IDCANCEL)
+		if(subMenu == NULL)
+			continue;
+		if(::GetMenuItemID(subMenu, 0) == IDCANCEL)
+			return position;
+		if(MenuContainsScriptCommand(subMenu))
 			return position;
 	}
 	return -1;
@@ -1687,23 +1707,23 @@ BOOL CMainFrame::OnIdle()
 
 		if(m_source.SendMessage(SCI_CANUNDO))
 		{
-			UISetText(ID_EDIT_UNDO, L"&Undo");
+			UISetText(ID_EDIT_UNDO, FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.undo", L"&Undo"));
 			UIEnable(ID_EDIT_UNDO, 1);
 		}
 		else
 		{
-			UISetText(ID_EDIT_UNDO, L"Can't undo");
+			UISetText(ID_EDIT_UNDO, FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.undo", L"&Undo"));
 			UIEnable(ID_EDIT_UNDO, 0);
 		}
 
 		if(m_source.SendMessage(SCI_CANREDO))
 		{
-			UISetText(ID_EDIT_REDO, L"&Redo");
+			UISetText(ID_EDIT_REDO, FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.redo", L"&Redo"));
 			UIEnable(ID_EDIT_REDO, 1);
 		}
 		else
 		{
-			UISetText(ID_EDIT_REDO, L"Can't redo");
+			UISetText(ID_EDIT_REDO, FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.redo", L"&Redo"));
 			UIEnable(ID_EDIT_REDO, 0);
 		}
 
@@ -2493,6 +2513,7 @@ void CMainFrame::InitPlugins()
 		FbeLoadString(_Module.GetResourceInstance(), IDS_NO_SCRIPTS, buf, MAX_LOAD_STRING);
 		AppendMenu(scripts, MF_STRING | MF_DISABLED | MF_GRAYED, IDCANCEL, buf);
 	}
+	ApplyRuntimeMainFrameMenuLocalization(ManMenu);
 }
 
 LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)

@@ -109,12 +109,16 @@ foreach ($requiredKey in @(
 }
 
 $resourceText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
+$frameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $helpDiagnostics = '(?s)POPUP "&Help"\s+BEGIN.*?POPUP "&Diagnostics"\s+BEGIN.*?ID_TOOLS_DIAGNOSTIC_TRACE.*?ID_TOOLS_OPEN_DIAGNOSTIC_LOG.*?ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER.*?ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH.*?ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS.*?END.*?END'
 if ($resourceText -notmatch $helpDiagnostics) {
     throw 'Пять команд диагностики должны быть в подменю Справка → Диагностика.'
 }
 if ([regex]::Matches($resourceText, 'ID_TOOLS_(DIAGNOSTIC_TRACE|OPEN_DIAGNOSTIC_LOG|OPEN_DIAGNOSTIC_FOLDER|COPY_DIAGNOSTIC_LOG_PATH|CLEAR_DIAGNOSTIC_LOGS)').Count -ne 5) {
     throw 'Каждая команда диагностики должна присутствовать в главном меню ровно один раз.'
+}
+foreach($required in @('static bool MenuContainsScriptCommand(HMENU menu)', 'commandId >= ID_SCRIPT_BASE && commandId < ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT', 'ApplyRuntimeMainFrameMenuLocalization(ManMenu);', 'FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.undo", L"&Undo")', 'FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.redo", L"&Redo")')) {
+    if($frameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Runtime main-menu localization is missing: $required" }
 }
 Write-Host "Каталог главного меню FBE прошёл проверку."
 Write-Host "  Файл: $catalogPath"
