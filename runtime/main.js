@@ -136,6 +136,11 @@ function IsImageBinaryType(type)
  return String(type || "").toLowerCase().indexOf("image/")==0;
 }
 
+function LocalizedBinaryMessage(key)
+{
+ return window.external.GetLocalizedString(key);
+}
+
 function GetBinaryInput(binary, name)
 {
  if(!binary || !binary.all) return null;
@@ -220,7 +225,7 @@ function OnBinaryChange()
   if(newId == "" || BinaryIdExists(newId, binary))
   {
    idInput.value=oldId;
-   MsgBox(newId == "" ? "Binary ID must not be empty." : "A binary with this ID already exists.");
+   MsgBox(newId == "" ? LocalizedBinaryMessage("fbe.binary.id.empty") : LocalizedBinaryMessage("fbe.binary.id.duplicate"));
    return;
   }
   idInput.value=newId;
@@ -1447,7 +1452,7 @@ function Remove(obj)
 		pic_id = GetBinaryInput(obj, "id").value;
 		if(BinaryIsReferenced(pic_id))
 		{
-			MsgBox("This binary is still used by the book or its cover and cannot be deleted.");
+			MsgBox(LocalizedBinaryMessage("fbe.binary.delete.referenced"));
 			return;
 		}
 

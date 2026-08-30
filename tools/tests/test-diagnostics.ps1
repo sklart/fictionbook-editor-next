@@ -31,6 +31,7 @@ $tests = @(
     'test-fbe-js-globals.ps1',
     'test-fbe-main-js-reliability.ps1',
     'test-fbe-main-js-binary-behavior.ps1',
+    'test-fbe-binary-editor-localization.ps1',
     'test-fbe-main-js-line-endings.ps1',
     'test-fbe-typelib-diagnostics.ps1',
     'test-fbe-typelib-runtime.ps1',

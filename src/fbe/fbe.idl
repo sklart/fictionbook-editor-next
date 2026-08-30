@@ -80,5 +80,6 @@ library FBELib
 	[id(28), helpstring("method GetDocumentDirectory")] HRESULT GetDocumentDirectory([out, retval] BSTR* directory);
 	[id(29), helpstring("method IsDiagnosticTraceEnabled")] HRESULT IsDiagnosticTraceEnabled([out, retval] BOOL* enabled);
 	[id(30), helpstring("method TraceScript")] HRESULT TraceScript([in] BSTR code, [in] BSTR message);
+	[id(31), helpstring("method GetLocalizedString")] HRESULT GetLocalizedString([in] BSTR key, [out, retval] BSTR* text);
   };
 };

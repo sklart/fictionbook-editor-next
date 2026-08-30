@@ -8,6 +8,7 @@
 #include "StartupTrace.h"
 #include "BinaryFileSave.h"
 #include "BinarySaveNotification.h"
+#include "RuntimeLocalization.h"
 
 inline bool IsDiagnosticFaultInjectionEnabled(const wchar_t* point)
 {
@@ -392,6 +393,14 @@ public:
 	{
 		CString sbtext(text);
 		::SendMessage(_Settings.GetMainWindow(), AU::WM_SETSTATUSTEXT, 0, (LPARAM) (LPCTSTR) sbtext.GetBuffer());
+		return S_OK;
+	}
+
+	STDMETHOD(GetLocalizedString)(BSTR key, BSTR* text)
+	{
+		if (!text) return E_POINTER;
+		const CString localized = FbeLoadRuntimeStringByKey(key, L"");
+		*text = localized.AllocSysString();
 		return S_OK;
 	}
 };

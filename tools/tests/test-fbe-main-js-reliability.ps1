@@ -15,10 +15,15 @@ foreach($required in @(
     'ImagesInfo.length=0;',
     'function UpdateBinaryReferences(oldId, newId)',
     'function BinaryIsReferenced(id)',
-    'A binary with this ID already exists.',
-    'cannot be deleted.'
+    'function LocalizedBinaryMessage(key)',
+    'fbe.binary.id.empty',
+    'fbe.binary.id.duplicate',
+    'fbe.binary.delete.referenced'
 )) {
     if(-not $source.Contains($required)) { throw "Missing main.js reliability fix: $required" }
+}
+foreach($hardcoded in @('Binary ID must not be empty.', 'A binary with this ID already exists.', 'This binary is still used by the book or its cover and cannot be deleted.')) {
+    if($source.Contains($hardcoded)) { throw "Binary editor message must be localized, not hardcoded: $hardcoded" }
 }
 if($source -notmatch 'else\s+ShowPrevImage\("fbw-internal:"\+list\[0\]\.value\);') { throw 'ShowCoverImage must use preview mode only when requested.' }
 if($source -match 'setTimeout\s*\(\s*[\x27\x22]') { throw 'Image preview must not use a string timer.' }

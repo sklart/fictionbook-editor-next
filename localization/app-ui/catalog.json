@@ -6407,6 +6407,21 @@
         "it-IT": "PNG", "pl-PL": "PNG", "pt-PT": "PNG", "nl-NL": "PNG", "cs-CZ": "PNG", "bg-BG": "PNG"
       }
     },
+    "fbe.binary.id.empty": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": { "en-US": "Binary ID must not be empty.", "ru-RU": "Идентификатор binary не может быть пустым.", "uk-UA": "Ідентифікатор binary не може бути порожнім.", "de-DE": "Die Binary-ID darf nicht leer sein.", "fr-FR": "L’identifiant binaire ne doit pas être vide.", "es-ES": "El identificador binario no puede estar vacío.", "it-IT": "L’ID binario non può essere vuoto.", "pl-PL": "Identyfikator binary nie może być pusty.", "pt-PT": "O ID binário não pode estar vazio.", "nl-NL": "De binaire ID mag niet leeg zijn.", "cs-CZ": "ID binárního objektu nesmí být prázdné.", "bg-BG": "Идентификаторът на binary не може да е празен." }
+    },
+    "fbe.binary.id.duplicate": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": { "en-US": "A binary with this ID already exists.", "ru-RU": "Binary с таким идентификатором уже существует.", "uk-UA": "Binary з таким ідентифікатором уже існує.", "de-DE": "Ein Binary-Objekt mit dieser ID existiert bereits.", "fr-FR": "Un objet binaire avec cet identifiant existe déjà.", "es-ES": "Ya existe un objeto binario con este identificador.", "it-IT": "Esiste già un oggetto binario con questo ID.", "pl-PL": "Obiekt binary o tym identyfikatorze już istnieje.", "pt-PT": "Já existe um objeto binário com este ID.", "nl-NL": "Er bestaat al een binair object met deze ID.", "cs-CZ": "Binární objekt s tímto ID již existuje.", "bg-BG": "Вече съществува binary с този идентификатор." }
+    },
+    "fbe.binary.delete.referenced": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": { "en-US": "This binary is still used by the book or its cover and cannot be deleted.", "ru-RU": "Этот binary всё ещё используется в книге или её обложке и не может быть удалён.", "uk-UA": "Цей binary досі використовується в книзі або її обкладинці й не може бути видалений.", "de-DE": "Dieses Binary-Objekt wird noch vom Buch oder seinem Cover verwendet und kann nicht gelöscht werden.", "fr-FR": "Cet objet binaire est encore utilisé par le livre ou sa couverture et ne peut pas être supprimé.", "es-ES": "Este objeto binario todavía lo usa el libro o su portada y no se puede eliminar.", "it-IT": "Questo oggetto binario è ancora usato dal libro o dalla copertina e non può essere eliminato.", "pl-PL": "Ten obiekt binary jest nadal używany przez książkę lub okładkę i nie może zostać usunięty.", "pt-PT": "Este objeto binário ainda é utilizado pelo livro ou pela capa e não pode ser eliminado.", "nl-NL": "Dit binaire object wordt nog gebruikt door het boek of de omslag en kan niet worden verwijderd.", "cs-CZ": "Tento binární objekt stále používá kniha nebo její obálka a nelze jej odstranit.", "bg-BG": "Този binary все още се използва от книгата или корицата и не може да бъде изтрит." }
+    },
     "fbe.theme.file_filter": {
       "component": "fbe.core",
       "runtimeOnly": true,
