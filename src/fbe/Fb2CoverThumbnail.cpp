@@ -6,13 +6,41 @@
 #include <atlbase.h>
 #include <atlstr.h>
 #include <cstring>
+#include <wincodec.h>
 
 #include "atlimage.h"
 
 namespace {
 
+#pragma comment(lib, "windowscodecs.lib")
+
 const int kMaximumSourceImageDimension = 16384;
 const long long kMaximumSourceImagePixels = 64000000LL;
+
+bool HasSafeImageDimensions(IStream* stream, ATL::CString* errorMessage)
+{
+    CComPtr<IWICImagingFactory> factory;
+    HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
+    if (FAILED(hr))
+        return false;
+    LARGE_INTEGER origin = {};
+    if (FAILED(stream->Seek(origin, STREAM_SEEK_SET, nullptr)))
+        return false;
+    CComPtr<IWICBitmapDecoder> decoder;
+    hr = factory->CreateDecoderFromStream(stream, nullptr, WICDecodeMetadataCacheOnDemand, &decoder);
+    if (FAILED(hr))
+        return false;
+    CComPtr<IWICBitmapFrameDecode> frame;
+    hr = decoder->GetFrame(0, &frame);
+    UINT width = 0, height = 0;
+    if (FAILED(hr) || FAILED(frame->GetSize(&width, &height)) || width == 0 || height == 0 ||
+        width > kMaximumSourceImageDimension || height > kMaximumSourceImageDimension ||
+        static_cast<long long>(width) * height > kMaximumSourceImagePixels) {
+        if (errorMessage != nullptr) *errorMessage = L"Cover image dimensions exceed the thumbnail safety limit.";
+        return false;
+    }
+    return SUCCEEDED(stream->Seek(origin, STREAM_SEEK_SET, nullptr));
+}
 
 HRESULT CreateStreamFromBytes(const std::vector<unsigned char>& bytes, IStream** stream)
 {
@@ -125,6 +153,9 @@ bool TryDecode(const std::vector<unsigned char>& bytes, DecodedImage& image, ATL
             errorMessage->Format(L"Failed to create a stream from cover bytes: 0x%08X", static_cast<unsigned int>(hr));
         return false;
     }
+
+    if (!HasSafeImageDimensions(stream, errorMessage))
+        return false;
 
     ATL::CImage decodedImage;
     hr = decodedImage.Load(stream);

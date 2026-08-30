@@ -18,7 +18,11 @@
     <document-info>
       <author>
         <first-name>Codex</first-name>
+        <middle-name>Middle</middle-name>
         <last-name>Editor</last-name>
+      </author>
+      <author>
+        <nickname>Metadata Bot</nickname>
       </author>
       <program-used>FictionBookEditor</program-used>
       <date value="2026-06-12">12.06.2026</date>

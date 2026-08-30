@@ -98,7 +98,10 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectEqual(L"language", metadata.language, L"ru") && success;
     success = ExpectEqual(L"sourceLanguage", metadata.sourceLanguage, L"en") && success;
     success = ExpectEqual(L"sequence", metadata.sequence, L"Shell Series [2]") && success;
-    success = ExpectEqual(L"documentAuthors", metadata.documentAuthors, L"Codex Editor") && success;
+    success = ExpectEqual(L"documentAuthors", metadata.documentAuthors, L"Codex Middle Editor, Metadata Bot") && success;
+    success = ExpectTrue(L"documentAuthorValues", metadata.documentAuthorValues.size() == 2 &&
+        metadata.documentAuthorValues[0] == L"Codex Middle Editor" &&
+        metadata.documentAuthorValues[1] == L"Metadata Bot") && success;
     success = ExpectEqual(L"documentDate", metadata.documentDate, L"12.06.2026") && success;
     success = ExpectEqual(L"documentDateValue", metadata.documentDateValue, L"2026-06-12") && success;
     success = ExpectEqual(L"documentId", metadata.documentId, L"fb2-metadata-smoke-test") && success;
