@@ -182,6 +182,9 @@ if ($spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.spelling\.menu\.
     (@($spellDialogLocalization.targetLanguages | Where-Object { -not $spellDialogLocalization.strings.'fbe.spelling.menu.add_to_dictionary'.translations.$_ }).Count -ne 0)) {
     throw "Spell popup labels must use runtime localization, including Russian More suggestions."
 }
+if ($mainFrameImplementation -notmatch 'FindTopLevelMenuPositionByCommand\(helpMenu, ID_TOOLS_DIAGNOSTIC_TRACE\)') {
+    throw "Nested Diagnostics popup must use its runtime localization key."
+}
 $hunspellHeader = Get-Content -LiteralPath (Join-Path $repoRoot 'third_party\hunspell\src\hunspell\hunspell.hxx') -Raw
 if ($hunspellHeader -notmatch '#define MAXSUGGESTION\s+15' -or (33031 - 33000 + 1) -lt 15) {
     throw "Spell suggestion command range is too small for bundled Hunspell."

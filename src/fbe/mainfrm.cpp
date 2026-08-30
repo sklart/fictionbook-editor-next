@@ -978,7 +978,7 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 	{
 		SetRuntimeMenuItemTextByPosition(menu, helpPosition, L"fbe.menu.idr_mainframe.popup.help");
 		HMENU helpMenu = ::GetSubMenu(menu, helpPosition);
-		const int diagnosticsPosition = FindMenuPositionByCommand(helpMenu, ID_TOOLS_DIAGNOSTIC_TRACE);
+		const int diagnosticsPosition = FindTopLevelMenuPositionByCommand(helpMenu, ID_TOOLS_DIAGNOSTIC_TRACE);
 		if(diagnosticsPosition >= 0)
 			SetRuntimeMenuItemTextByPosition(helpMenu, diagnosticsPosition, L"fbe.menu.idr_mainframe.popup.diagnostics");
 	}

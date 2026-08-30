@@ -82,6 +82,8 @@ $modules = @($moduleFiles.Keys | Sort-Object)
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_find.caption'; Expected = 'Suchen' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_replace.caption'; Expected = 'Ersetzen' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'fbe.json'; Key = 'fbe.dialog.idd_spell_check.ignore_all'; Expected = 'Alle ignorieren' },
+        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.spelling.menu.add_to_dictionary'; Expected = 'Добавить в словарь' },
+        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.menu.idr_mainframe.popup.diagnostics'; Expected = 'Диа&гностика' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'export-epub.json'; Key = 'export_epub.content.navigation_title' },
         @{ Path = Join-Path (Join-Path $langRoot 'uk-UA') 'import-epub.json'; Key = 'import_epub.options.title' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'export-docx.json'; Key = 'export_docx.dialog.settings.export_cover'; Expected = 'Cover exportieren' },
