@@ -21,6 +21,7 @@
 #include <psapi.h>
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
+static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 static bool IsFbeTestScenario(const wchar_t* expectedScenario);
 
@@ -3293,6 +3294,12 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 }
 LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
+	if (wParam == IMAGE_IMPORT_TEST_TIMER_ID)
+	{
+		KillTimer(IMAGE_IMPORT_TEST_TIMER_ID);
+		PostMessage(AU::WM_SOURCE_MEMORY_BENCHMARK);
+		return 0;
+	}
 	if (wParam != RECOVERY_TIMER_ID)
 	{
 		bHandled = FALSE;
@@ -3608,6 +3615,118 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		}
 		if (!m_doc->Save()) { appendStructuralPhase("save-failed;phase=save;operation=Save;actual_hresult=unavailable;symbolic_hresult=unavailable"); output.Close(); ::PostQuitMessage(1); return 0; }
 		appendStructuralPhase("save-complete"); output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"binary-import-image"))
+	{
+		static bool imageImportRunnerQueued = false;
+		if (!imageImportRunnerQueued)
+		{
+			imageImportRunnerQueued = true;
+			output.Close();
+			SetTimer(IMAGE_IMPORT_TEST_TIMER_ID, 250);
+			return 0;
+		}
+		const ULONGLONG start = ::GetTickCount64();
+		auto appendImportPhase = [&](const char* phase)
+		{
+			const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+			CStringA row;
+			row.Format("%s\t%I64u\t%I64u\t%I64u\r\n", phase, ::GetTickCount64() - start,
+				static_cast<unsigned __int64>(memory.privateBytes), static_cast<unsigned __int64>(memory.workingSetBytes));
+			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+		};
+		CStringA header("phase\telapsed_ms\tprivate_bytes\tworking_set_bytes\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
+
+		wchar_t imagePath[MAX_PATH] = {};
+		const DWORD imagePathLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_PATH", imagePath, _countof(imagePath));
+		if (imagePathLength == 0 || imagePathLength >= _countof(imagePath) || ::GetFileAttributes(imagePath) == INVALID_FILE_ATTRIBUTES)
+		{
+			appendImportPhase("import-failed;phase=import;reason=image-path");
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+
+		appendImportPhase("open-complete");
+		appendImportPhase("import-start");
+		// Exercise the same image-import route as the UI, including the generated
+		// binary id and apiAddBinary call, rather than constructing FB2 XML here.
+		::ShowWindow(m_hWnd, SW_RESTORE);
+		::SetForegroundWindow(m_hWnd);
+		m_doc->m_body.SetFocus();
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		auto isSectionDiv = [](const MSHTML::IHTMLElementPtr& element) -> bool
+		{
+			if (!element) return false;
+			const _bstr_t tagName(element->tagName);
+			const _bstr_t className(element->className);
+			const wchar_t* const tagText = tagName;
+			const wchar_t* const classText = className;
+			return tagText && classText && _wcsicmp(tagText, L"DIV") == 0 && _wcsicmp(classText, L"section") == 0;
+		};
+		MSHTML::IHTMLElementPtr paragraph;
+		for (long index = 0; paragraphs && index < paragraphs->length && !paragraph; ++index)
+		{
+			MSHTML::IHTMLElementPtr candidate(paragraphs->item(_variant_t(index), _variant_t()));
+			for (MSHTML::IHTMLElementPtr ancestor(candidate); ancestor; ancestor = ancestor->parentElement)
+			{
+				if (isSectionDiv(ancestor))
+				{
+					paragraph = candidate;
+					break;
+				}
+			}
+		}
+		MSHTML::IHTMLTxtRangePtr range(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		if (!range || !paragraph)
+		{
+			appendImportPhase("import-failed;phase=import;reason=section-range");
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		range->moveToElementText(paragraph);
+		range->collapse(VARIANT_TRUE);
+		// Keep the test caret inside the paragraph rather than on its boundary;
+		// InsImage then resolves its enclosing section just like a UI insertion.
+		if (range->move(L"character", 1) != 1)
+		{
+			appendImportPhase("import-failed;phase=import;reason=section-caret");
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		range->select();
+		auto selectionIsInSection = [&]() -> bool
+		{
+			MSHTML::IHTMLTxtRangePtr selected(m_doc->m_body.Document()->selection->createRange());
+			MSHTML::IHTMLElementPtr element(selected ? selected->parentElement() : MSHTML::IHTMLElementPtr());
+			while (element && !isSectionDiv(element)) element = element->parentElement;
+			return isSectionDiv(element);
+		};
+		const ULONGLONG selectionDeadline = ::GetTickCount64() + 1000;
+		while (!selectionIsInSection() && ::GetTickCount64() < selectionDeadline)
+		{
+			MSG message = {};
+			if (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
+			{
+				if (message.message == WM_QUIT) { ::PostQuitMessage(static_cast<int>(message.wParam)); break; }
+				::TranslateMessage(&message);
+				::DispatchMessage(&message);
+			}
+			else ::Sleep(1);
+		}
+		if (!selectionIsInSection())
+		{
+			appendImportPhase("import-failed;phase=import;reason=section-selection");
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		m_doc->m_body.AddImage(imagePath, true);
+		appendImportPhase("import-complete");
+		appendImportPhase("save-start");
+		if (!m_doc->Save())
+		{
+			appendImportPhase("save-failed;phase=save;operation=Save;actual_hresult=unavailable;symbolic_hresult=unavailable");
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		appendImportPhase("save-complete");
+		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"binary-roundtrip"))
 	{
