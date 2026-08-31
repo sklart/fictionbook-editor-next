@@ -19,6 +19,7 @@
 #include "..\\common\\RuntimeLocalizationCommon.h"
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <psapi.h>
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
@@ -378,6 +379,119 @@ static void WritePortableMru(const CRecentDocumentList& list)
 	for(int index = 0; index < list.m_arrDocs.GetSize(); ++index) { const CString line = CString(list.m_arrDocs[index].szDocName) + L"\r\n"; DWORD written = 0; if(!::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) || written != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) { ::CloseHandle(file); ::DeleteFile(temporary); return; } }
 	::FlushFileBuffers(file); ::CloseHandle(file);
 	if(!::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) ::DeleteFile(temporary);
+}
+
+struct PortableToolbarItem
+{
+	bool separator;
+	int command;
+	int width;
+	CString relativePath;
+};
+
+static CString PortableToolbarsPath()
+{
+	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"Toolbars.xml";
+}
+
+static CString XmlEscape(const CString& value)
+{
+	CString escaped(value);
+	escaped.Replace(L"&", L"&amp;");
+	escaped.Replace(L"\"", L"&quot;");
+	escaped.Replace(L"<", L"&lt;");
+	escaped.Replace(L">", L"&gt;");
+	return escaped;
+}
+
+static CString XmlUnescape(const CString& value)
+{
+	CString unescaped(value);
+	unescaped.Replace(L"&quot;", L"\"");
+	unescaped.Replace(L"&lt;", L"<");
+	unescaped.Replace(L"&gt;", L">");
+	unescaped.Replace(L"&amp;", L"&");
+	return unescaped;
+}
+
+static bool ReadPortableToolbars(std::vector<PortableToolbarItem>& commands,
+	std::vector<PortableToolbarItem>& scripts, CString& lastScript)
+{
+	const CString path = PortableToolbarsPath();
+	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) return false;
+	const DWORD length = ::GetFileSize(file, NULL);
+	if(length == INVALID_FILE_SIZE || length > 256 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return false; }
+	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
+	const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
+	if(!ok || read != length) return false;
+
+	CString content(&text[0]);
+	int cursor = 0;
+	CString active;
+	while(cursor >= 0)
+	{
+		const int start = content.Find(L'<', cursor);
+		if(start < 0) break;
+		const int end = content.Find(L'>', start + 1);
+		if(end < 0) break;
+		CString tag = content.Mid(start + 1, end - start - 1);
+		cursor = end + 1;
+		if(tag.Left(8) == L"Toolbar ")
+		{
+			active = tag.Find(L"name=\"Command\"") >= 0 ? L"Command" :
+				tag.Find(L"name=\"Scripts\"") >= 0 ? L"Scripts" : CString();
+			continue;
+		}
+		if(tag.Left(8) == L"/Toolbar") { active.Empty(); continue; }
+		if(active.IsEmpty())
+		{
+			if(tag.Left(10) == L"LastScript")
+			{
+				const int value = tag.Find(L"path=\"");
+				if(value >= 0) { const int tail = tag.Find(L'\"', value + 6); if(tail > value) lastScript = XmlUnescape(tag.Mid(value + 6, tail - value - 6)); }
+			}
+			continue;
+		}
+		PortableToolbarItem item = {};
+		if(tag.Left(9) == L"Separator")
+		{
+			item.separator = true;
+			const int width = tag.Find(L"width=\"");
+			if(width >= 0) item.width = _wtoi(tag.Mid(width + 7));
+		}
+		else if(tag.Left(7) == L"Command")
+		{
+			item.command = _wtoi(tag.Mid(tag.Find(L"id=\"") + 4));
+		}
+		else if(tag.Left(6) == L"Script")
+		{
+			const int value = tag.Find(L"path=\"");
+			if(value < 0) continue;
+			const int tail = tag.Find(L'\"', value + 6);
+			if(tail < 0) continue;
+			item.relativePath = XmlUnescape(tag.Mid(value + 6, tail - value - 6));
+		}
+		else continue;
+		(active == L"Command" ? commands : scripts).push_back(item);
+	}
+	return !commands.empty() || !scripts.empty();
+}
+
+static bool WritePortableToolbarsText(const CString& text)
+{
+	const CString directory(DeploymentContext::SettingsDirectory().c_str());
+	if(!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return false;
+	const CString path = PortableToolbarsPath(), temporary = path + L".tmp";
+	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) return false;
+	DWORD written = 0;
+	const DWORD bytes = static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
+	const bool ok = ::WriteFile(file, text, bytes, &written, NULL) != FALSE && written == bytes;
+	if(ok) ::FlushFileBuffers(file);
+	::CloseHandle(file);
+	if(!ok || !::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) { ::DeleteFile(temporary); return false; }
+	return true;
 }
 
 struct ScriptCommandId
@@ -2403,6 +2517,105 @@ void CMainFrame::AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand, 
 	tb.AutoSize();
 }
 
+void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
+{
+	if(DeploymentContext::RegistryPersistenceAllowed()) return;
+	std::vector<PortableToolbarItem> commands, scripts;
+	CString lastScript;
+	if(!ReadPortableToolbars(commands, scripts, lastScript)) return;
+	const std::vector<PortableToolbarItem>& saved = scriptsToolbar ? scripts : commands;
+	if(saved.empty()) return;
+
+	CToolBarCtrl target = toolbar;
+	const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(toolbar)));
+	if(catalogIndex < 0) return;
+	TBBUTTONS catalog = m_aButtons.GetValueAt(catalogIndex);
+	std::vector<TBBUTTON> restored;
+	for(size_t index = 0; index < saved.size(); ++index)
+	{
+		const PortableToolbarItem& item = saved[index];
+		if(item.separator)
+		{
+			TBBUTTON separator = {};
+			separator.iBitmap = item.width > 0 ? item.width : 8;
+			separator.fsStyle = TBSTYLE_SEP;
+			restored.push_back(separator);
+			continue;
+		}
+
+		int command = item.command;
+		if(!item.relativePath.IsEmpty())
+		{
+			command = 0;
+			for(int scriptIndex = 0; scriptIndex < m_scripts.GetSize(); ++scriptIndex)
+				if(!m_scripts[scriptIndex].isFolder && m_scripts[scriptIndex].relativePath == item.relativePath && m_scripts[scriptIndex].wID > 0)
+				{
+					command = ID_SCRIPT_BASE + m_scripts[scriptIndex].wID;
+					break;
+				}
+		}
+		if(command == 0) continue; // deleted script or obsolete command
+		for(int buttonIndex = 0; buttonIndex < catalog.GetSize(); ++buttonIndex)
+			if(catalog[buttonIndex].idCommand == command)
+			{
+				restored.push_back(catalog[buttonIndex]);
+				break;
+			}
+	}
+	if(restored.empty()) return;
+	while(target.GetButtonCount() > 0) target.DeleteButton(0);
+	target.AddButtons(static_cast<int>(restored.size()), &restored[0]);
+	target.AutoSize();
+
+	if(scriptsToolbar && !lastScript.IsEmpty())
+		for(int scriptIndex = 0; scriptIndex < m_scripts.GetSize(); ++scriptIndex)
+			if(!m_scripts[scriptIndex].isFolder && m_scripts[scriptIndex].relativePath == lastScript)
+			{
+				m_last_script = &m_scripts[scriptIndex];
+				break;
+			}
+}
+
+void CMainFrame::SavePortableToolbarLayout()
+{
+	if(DeploymentContext::RegistryPersistenceAllowed()) return;
+	CString xml(L"<Toolbars version=\"1\">\r\n");
+	auto appendToolbar = [&](const wchar_t* name, HWND toolbar, bool scriptsToolbar)
+	{
+		xml.AppendFormat(L"  <Toolbar name=\"%s\">\r\n", name);
+		CToolBarCtrl source = toolbar;
+		for(int index = 0; index < source.GetButtonCount(); ++index)
+		{
+			TBBUTTON button = {};
+			if(!source.GetButton(index, &button)) continue;
+			if((button.fsStyle & TBSTYLE_SEP) != 0)
+			{
+				xml.AppendFormat(L"    <Separator width=\"%d\" />\r\n", button.iBitmap);
+				continue;
+			}
+			if(scriptsToolbar && button.idCommand >= ID_SCRIPT_BASE + 1 && button.idCommand <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
+			{
+				const int scriptId = button.idCommand - ID_SCRIPT_BASE;
+				for(int scriptIndex = 0; scriptIndex < m_scripts.GetSize(); ++scriptIndex)
+					if(!m_scripts[scriptIndex].isFolder && m_scripts[scriptIndex].wID == scriptId)
+					{
+						xml.AppendFormat(L"    <Script path=\"%s\" />\r\n", XmlEscape(m_scripts[scriptIndex].relativePath));
+						break;
+					}
+			}
+			else if(button.idCommand != 0)
+				xml.AppendFormat(L"    <Command id=\"%d\" />\r\n", button.idCommand);
+		}
+		xml.Append(L"  </Toolbar>\r\n");
+	};
+	appendToolbar(L"Command", m_CmdToolbar, false);
+	appendToolbar(L"Scripts", m_ScriptsToolbar, true);
+	if(m_last_script != NULL && !m_last_script->relativePath.IsEmpty())
+		xml.AppendFormat(L"  <LastScript path=\"%s\" />\r\n", XmlEscape(m_last_script->relativePath));
+	xml.Append(L"</Toolbars>\r\n");
+	WritePortableToolbarsText(xml);
+}
+
 static void SubclassBox(HWND hWnd, RECT& rc, const int pos, CComboBox& box, DWORD dwStyle, CCustomEdit& custedit, const int resID, HFONT& hFont)
 {
 	  ::SendMessage(hWnd, TB_GETITEMRECT, pos, (LPARAM)&rc);
@@ -2429,6 +2642,14 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 	CRegKey rk;
 	AddBundledPluginCatalog(hMenu, type, cmdbase, plist);
 	int ncmd = plist.GetSize();
+	// A portable copy must be self-contained: bundled entries above are loaded
+	// from Plugins\\plugins.json, but legacy per-user registrations belong only
+	// to an installed copy on this Windows profile.
+	if(!DeploymentContext::RegistryPersistenceAllowed())
+	{
+		if(ncmd > 0) ::RemoveMenu(hMenu, 0, MF_BYPOSITION);
+		return;
+	}
 	if(rk.Open(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Plugins") != ERROR_SUCCESS)
 	{
 		if(ncmd > 0) ::RemoveMenu(hMenu, 0, MF_BYPOSITION);
@@ -2495,6 +2716,7 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 
 void CMainFrame::InitPlugins()
 {
+	ReleaseScriptResources();
 	if (StartupTrace::Enabled())
 	{
 		StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
@@ -2507,8 +2729,7 @@ void CMainFrame::InitPlugins()
 		StartupTrace::Event(L"plugin", L"P110", trace);
 	}
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
-	QuickScriptsSort(m_scripts, 0, m_scripts.GetSize() - 1);
-	UpScriptsFolders(m_scripts);
+	SortScripts();
 	AssignScriptCommandIds();
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
 
@@ -2620,6 +2841,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	// Restore commands toolbar layout and position
 	if (DeploymentContext::RegistryPersistenceAllowed())
 		m_CmdToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
+	else
+		RestorePortableToolbarLayout(m_CmdToolbar, false);
   for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
   {
     if (m_table_toolbar_image_indices[index] < 0) continue;
@@ -3019,9 +3242,11 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   }
   else UIEnable(ID_TOOLS_SPELLCHECK, false, true);
 
-  // Restore scripts toolbar layout and position
+	// Restore scripts toolbar layout and position
 	if (DeploymentContext::RegistryPersistenceAllowed())
 		m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
+	else
+		RestorePortableToolbarLayout(m_ScriptsToolbar, true);
 
 	// An unattended -b run has no user to answer this dialog.  Keep tracing
 	// enabled for the report, but never turn diagnostics into a modal blocker.
@@ -3186,6 +3411,8 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 		m_CmdToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
 		m_ScriptsToolbar.SaveState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
 	}
+	else
+		SavePortableToolbarLayout();
 
     _Settings.SetToolbarsSettings(tbs);
 	_Settings.SaveHotkeyGroups();
@@ -4721,6 +4948,7 @@ public:
 
 CMainFrame::~CMainFrame()
 { 
+	ReleaseScriptResources();
 	delete m_doc; 
 	if((bool)m_saved_xml)
 	{
@@ -8811,6 +9039,7 @@ void CMainFrame::CollectScripts(CString path, TCHAR* mask, int lastid, CString r
 						}
 
 						folder.name = name;
+						folder.relativePath = NormalizeScriptRelativePath(_Settings.GetScriptsFolder(), path + fd.cFileName);
 
 						CString temp;
 						temp.Format(L"_%d", lastid);
@@ -9035,61 +9264,74 @@ void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray
 	}
 }
 
-void CMainFrame::QuickScriptsSort(CSimpleArray<ScrInfo>& scripts, int min, int max)
+void CMainFrame::ReleaseScriptResources()
 {
-	int i, j;
-	ScrInfo mid, tmp;
+	// InitPlugins may be requested more than once.  Return the physical scripts
+	// toolbar and its customization catalog to the resource baseline before the
+	// next scan, otherwise every scan appends another copy of icon scripts.
+	if(::IsWindow(m_ScriptsToolbar))
 	{
-		if (min < max)
+		const int defaultsIndex = m_aDefaultButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(m_ScriptsToolbar.m_hWnd)));
+		const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(m_ScriptsToolbar.m_hWnd)));
+		if(defaultsIndex >= 0 && catalogIndex >= 0)
 		{
-			mid = scripts[min];
-			i = min - 1;
-			j = max + 1;
-			while(i < j)
-			{
-				do
-				{
-					i++;
-
-				} while(!(scripts[i].order.CompareNoCase(mid.order.GetBuffer()) >= 0));
-				do
-				{
-					j--;
-				} while(!(scripts[j].order.CompareNoCase(mid.order.GetBuffer()) <= 0));
-				if(i < j)
-				{
-					tmp = scripts[i];
-					scripts[i] = scripts[j];
-					scripts[j] = tmp;
-				}
-			}
-
-			QuickScriptsSort(scripts, min, j);
-			QuickScriptsSort(scripts, j + 1, max);
+			TBBUTTONS defaults = m_aDefaultButtons.GetValueAt(defaultsIndex);
+			while(m_ScriptsToolbar.GetButtonCount() > 0) m_ScriptsToolbar.DeleteButton(0);
+			if(defaults.GetSize() > 0) m_ScriptsToolbar.AddButtons(defaults.GetSize(), defaults.GetData());
+			m_aButtons.SetAt(static_cast<int>(reinterpret_cast<INT_PTR>(m_ScriptsToolbar.m_hWnd)), defaults);
+			m_ScriptsToolbar.AutoSize();
 		}
+	}
+	for(int i = 0; i < m_scripts.GetSize(); ++i)
+	{
+		ScrInfo& script = m_scripts[i];
+		if(script.picture != NULL)
+		{
+			if(script.pictType == BITMAP)
+				::DeleteObject(static_cast<HBITMAP>(script.picture));
+			else if(script.pictType == ICON)
+				::DestroyIcon(static_cast<HICON>(script.picture));
+		}
+		script.picture = NULL;
+		script.pictType = NO_PICT;
+	}
+	for(int i = 0; i < m_scripts_images.GetSize(); ++i)
+		if(m_scripts_images.GetValueAt(i) != NULL)
+			::DeleteObject(m_scripts_images.GetValueAt(i));
+	m_scripts_images.RemoveAll();
+	m_scripts.RemoveAll();
+	m_last_script = NULL;
+	for(int index = m_BtnText.GetSize() - 1; index >= 0; --index)
+	{
+		const int command = m_BtnText.GetKeyAt(index);
+		if(command >= ID_SCRIPT_BASE + 1 && command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
+			m_BtnText.RemoveAt(index);
+	}
+
+	for(size_t groupIndex = 0; groupIndex < _Settings.m_hotkey_groups.size(); ++groupIndex)
+	{
+		CHotkeysGroup& group = _Settings.m_hotkey_groups[groupIndex];
+		if(group.m_reg_name != L"Scripts") continue;
+		group.m_hotkeys.clear();
 	}
 }
 
-void CMainFrame::UpScriptsFolders(CSimpleArray<ScrInfo>& scripts)
+void CMainFrame::SortScripts()
 {
-	for(int i = 0; i < scripts.GetSize(); ++i)
+	std::vector<ScrInfo> sorted;
+	sorted.reserve(m_scripts.GetSize());
+	for(int i = 0; i < m_scripts.GetSize(); ++i)
+		sorted.push_back(m_scripts[i]);
+	std::sort(sorted.begin(), sorted.end(), [](const ScrInfo& left, const ScrInfo& right)
 	{
-		if(!scripts[i].isFolder)
-		{
-			for(int j = i; j < scripts.GetSize(); ++j)
-			{
-				if(scripts[j].isFolder)
-				{
-					for(int k = j; k > i; --k)
-					{
-						ScrInfo tmp = scripts[k-1];
-						scripts[k-1] = scripts[k];
-						scripts[k] = tmp;
-					}
-				}
-			}
-		}
-	}
+		if(left.isFolder != right.isFolder)
+			return left.isFolder;
+		const int order = left.order.CompareNoCase(right.order);
+		if(order != 0) return order < 0;
+		return left.relativePath.CompareNoCase(right.relativePath) < 0;
+	});
+	for(int i = 0; i < static_cast<int>(sorted.size()); ++i)
+		m_scripts[i] = sorted[i];
 }
 
 void CMainFrame::InitScriptHotkey(CMainFrame::ScrInfo& script)
@@ -9099,12 +9341,14 @@ void CMainFrame::InitScriptHotkey(CMainFrame::ScrInfo& script)
 	{
 		if(hotkey_groups.at(i).m_reg_name == L"Scripts")
 		{
-			CHotkey ScriptsHotkey(script.path,
+			// relativePath is the persistent script identity.  An absolute path
+			// breaks portable hotkeys as soon as the package is moved.
+			CHotkey ScriptsHotkey(script.relativePath,
 				script.name,
 				NULL,
 				ID_SCRIPT_BASE + script.wID,
 				NULL,
-				script.path);
+				script.relativePath);
 			hotkey_groups.at(i).m_hotkeys.push_back(ScriptsHotkey);
 		}
 	}

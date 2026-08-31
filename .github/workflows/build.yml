@@ -35,6 +35,7 @@ jobs:
           ./tools/tests/test-update-version.ps1
           ./tools/tests/test-buildstamp-fallback.ps1
           ./tools/tests/test-fbe-script-command-ids.ps1
+          ./tools/tests/test-portable-scripts-infrastructure.ps1
           ./tools/tests/test-fbe-script-folder-icons.ps1
           ./tools/tests/test-fbe-settings-tooltips.ps1
           ./tools/tests/test-ci-build-contract.ps1

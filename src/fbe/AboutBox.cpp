@@ -219,20 +219,10 @@ namespace
 
 	void AppendUpdateTrace(const CString& line)
 	{
-		wchar_t localAppData[MAX_PATH] = {};
-		const DWORD envLength = ::GetEnvironmentVariableW(
-			L"LOCALAPPDATA",
-			localAppData,
-			_countof(localAppData));
-		if (envLength == 0 || envLength >= _countof(localAppData))
-			return;
+		const CString directory(DeploymentContext::LogsDirectory().c_str());
+		::SHCreateDirectoryExW(NULL, directory, NULL);
 
-		CString directory(localAppData);
-		directory += L"\\FBE Next";
-		::CreateDirectoryW(directory, nullptr);
-
-		CString path(directory);
-		path += L"\\update-check-trace.log";
+		const CString path(directory + L"update-check-trace.log");
 
 		HANDLE file = ::CreateFileW(
 			path,

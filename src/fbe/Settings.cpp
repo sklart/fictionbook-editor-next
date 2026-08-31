@@ -1651,6 +1651,7 @@ void CSettings::LoadHotkeyGroups()
 
 	ser.Deserialize(&group, objects);
 
+	bool migratedLegacyScriptHotkey = false;
 	for(unsigned int i = 0; i < objects.size(); ++i)
 	{
 		group = *(CHotkeysGroup*)objects[i];
@@ -1658,7 +1659,33 @@ void CSettings::LoadHotkeyGroups()
 		{
 			for(unsigned int j = 0; j < group.m_hotkeys.size(); ++j)
 			{
-				if(CHotkey* foundHk = GetHotkeyByName(group.m_hotkeys[j].m_reg_name, *foundGr))
+				CHotkey* foundHk = GetHotkeyByName(group.m_hotkeys[j].m_reg_name, *foundGr);
+				// Versions before the portable script identity used an absolute
+				// path as the XML key.  Map it to an already discovered script's
+				// relative key while loading, then write the portable form back.
+				if(foundHk == NULL && group.m_reg_name == L"Scripts")
+				{
+					const CString scriptsRoot = GetScriptsFolder();
+					const CString legacyPath = group.m_hotkeys[j].m_reg_name;
+					wchar_t rootBuffer[MAX_PATH] = {}, pathBuffer[MAX_PATH] = {};
+					if(::GetFullPathName(scriptsRoot, _countof(rootBuffer), rootBuffer, NULL) > 0 &&
+						::GetFullPathName(legacyPath, _countof(pathBuffer), pathBuffer, NULL) > 0)
+					{
+						CString root(rootBuffer), fullPath(pathBuffer);
+						while(root.GetLength() > 3 && (root[root.GetLength() - 1] == L'\\' || root[root.GetLength() - 1] == L'/'))
+							root.Delete(root.GetLength() - 1, 1);
+						if(fullPath.GetLength() > root.GetLength() && fullPath.Left(root.GetLength()).CompareNoCase(root) == 0 &&
+							(fullPath[root.GetLength()] == L'\\' || fullPath[root.GetLength()] == L'/'))
+						{
+							CString relativePath = fullPath.Mid(root.GetLength() + 1);
+							relativePath.Replace(L'\\', L'/');
+							relativePath.MakeLower();
+							foundHk = GetHotkeyByName(relativePath, *foundGr);
+							migratedLegacyScriptHotkey = foundHk != NULL;
+						}
+					}
+				}
+				if(foundHk != NULL)
 				{
 					foundHk->m_accel.fVirt = group.m_hotkeys[j].m_accel.fVirt;
 					foundHk->m_accel.key = group.m_hotkeys[j].m_accel.key;
@@ -1666,6 +1693,8 @@ void CSettings::LoadHotkeyGroups()
 			}
 		}
 	}
+	if(migratedLegacyScriptHotkey)
+		SaveHotkeyGroups();
 
 	for(unsigned int i = 0; i < m_hotkey_groups.size(); ++i)
 	{

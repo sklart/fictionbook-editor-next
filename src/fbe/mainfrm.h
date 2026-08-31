@@ -320,9 +320,11 @@ public:
   int GrabScripts(CString, TCHAR*, CString);
 	void AddScriptsSubMenu(HMENU, CString, CSimpleArray<ScrInfo>&, int&);
 	void AssignScriptCommandIds();
-  void QuickScriptsSort(CSimpleArray<ScrInfo>&, int, int);
-  void UpScriptsFolders(CSimpleArray<ScrInfo>&);
-  ScrInfo* m_last_script;
+	void ReleaseScriptResources();
+	void SortScripts();
+	void RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar);
+	void SavePortableToolbarLayout();
+	ScrInfo* m_last_script;
   void InitScriptHotkey(CMainFrame::ScrInfo&);
 
   // contruction/destruction

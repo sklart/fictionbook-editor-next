@@ -239,6 +239,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-next-isolation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-portable-deployment-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-portable-scripts-infrastructure.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-paths-cli.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-copies-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-atomic-persistence.ps1")

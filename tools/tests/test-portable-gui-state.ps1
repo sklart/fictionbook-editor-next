@@ -54,7 +54,7 @@ $data = Join-Path $testRoot 'Data'
 $settings = Join-Path $data 'Settings'
 foreach ($path in @(
     (Join-Path $settings 'Settings.xml'), (Join-Path $settings 'Hotkeys.xml'),
-    (Join-Path $settings 'Words.xml'), (Join-Path $settings 'MRU.xml'),
+    (Join-Path $settings 'Words.xml'), (Join-Path $settings 'MRU.xml'), (Join-Path $settings 'Toolbars.xml'),
     (Join-Path $data 'Diagnostics\portable-state-sentinel.txt'),
     (Join-Path $data 'Recovery\Recovery.fb2')
 )) { if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Portable GUI did not persist $path." } }
@@ -64,6 +64,8 @@ $hotkeysXml = Get-Content -Raw -LiteralPath (Join-Path $settings 'Hotkeys.xml')
 if ($hotkeysXml -notmatch '<Name>Words</Name>\s*<Accel>13;135</Accel>') { throw 'Hotkeys exact sentinel Ctrl+Shift+F24 was not persisted.' }
 $settingsXml = Get-Content -Raw -LiteralPath (Join-Path $settings 'Settings.xml')
 if ($settingsXml -notmatch '<Toolbars>[^<]*60160,\d+,731;') { throw 'Toolbar exact sentinel width for the first rebar band was not persisted.' }
+$portableToolbarsXml = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
+if ($portableToolbarsXml -notmatch '<Toolbars version="1">' -or $portableToolbarsXml -notmatch '<Toolbar name="Command">' -or $portableToolbarsXml -notmatch '<Toolbar name="Scripts">') { throw 'Portable toolbar layout was not persisted as versioned structured data.' }
 $persistedSnapshot = Get-FileTreeSnapshot $data
 
 Invoke-PortableStateScenario 'portable-state-read'
