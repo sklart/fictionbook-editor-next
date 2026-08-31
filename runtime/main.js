@@ -722,17 +722,39 @@ function EnsureNotePreviewPanel()
 	return panel;
 }
 
+function GetNotePreviewBodyStyle()
+{
+	var body = document.getElementById("fbw_body"), style = null, fallback = null;
+	try { style = body && (body.currentStyle || (window.getComputedStyle ? window.getComputedStyle(body, null) : null)); } catch(ignore) {}
+	try { fallback = document.body && (document.body.currentStyle || (window.getComputedStyle ? window.getComputedStyle(document.body, null) : null)); } catch(ignore) {}
+	function value(name, defaultValue) {
+		var result = "";
+		try { result = style ? String(style[name] || "") : ""; } catch(ignore) {}
+		if(!result || result == "transparent") try { result = fallback ? String(fallback[name] || "") : ""; } catch(ignore) {}
+		return result && result != "transparent" ? result : defaultValue;
+	}
+	return {
+		background: value("backgroundColor", "#ffffff"),
+		color: value("color", "#000000"),
+		fontFamily: value("fontFamily", ""),
+		fontSize: value("fontSize", "")
+	};
+}
+
+function ApplyNotePreviewBodyStyle(panel)
+{
+	var style = GetNotePreviewBodyStyle();
+	panel.style.backgroundColor = style.background;
+	panel.style.color = style.color;
+	if(style.fontFamily) panel.style.fontFamily = style.fontFamily;
+	if(style.fontSize) panel.style.fontSize = style.fontSize;
+	return style;
+}
+
 function GetNotePreviewColors()
 {
-	var body = document.getElementById("fbw_body"), background = "", color = "";
-	try { background = body && body.currentStyle ? body.currentStyle.backgroundColor : ""; } catch(ignore) {}
-	try { color = body && body.currentStyle ? body.currentStyle.color : ""; } catch(ignore) {}
-	if(!background || background == "transparent") try { background = document.body.currentStyle.backgroundColor; } catch(ignore) {}
-	if(!color || color == "transparent") try { color = document.body.currentStyle.color; } catch(ignore) {}
-	return {
-		background: background && background != "transparent" ? background : "#ffffff",
-		color: color && color != "transparent" ? color : "#000000"
-	};
+	var style = GetNotePreviewBodyStyle();
+	return { background: style.background, color: style.color };
 }
 
 function NotePreviewHasClass(node, className)
@@ -871,9 +893,9 @@ function ShowNotePreview(link)
 		panel.appendChild(document.createTextNode("Примечание не найдено"));
 	}
 	panel.style.visibility = "hidden";
-	var colors = GetNotePreviewColors();
-	panel.style.backgroundColor = colors.background;
-	panel.style.color = colors.color;
+	// Fit starts from 100%; copy Body typography first so 100% is the actual
+	// editor font size rather than the document/default popup font.
+	ApplyNotePreviewBodyStyle(panel);
 	PositionNotePreview(panel, link, FitNotePreview(panel, link));
 	panel.style.visibility = "visible";
 	TraceNotePreviewEvent("J613", "operation=notePreview; stage=popup-visible");

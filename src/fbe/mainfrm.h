@@ -1016,7 +1016,7 @@ public:
 
   LRESULT OnGoToFootnote(WORD wNotifyCode, WORD wID, HWND hWndCtl)
   {
-	  if (!m_doc->m_body.GoToFootnote(false))
+	  if (!m_doc->m_body.ReturnToLinkNavigationOrigin() && !m_doc->m_body.GoToFootnote(false))
 		m_doc->m_body.GoToReference(false);
 	  return 0;
   }

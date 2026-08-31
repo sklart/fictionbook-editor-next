@@ -218,7 +218,9 @@ protected:
   CString           m_last_browser_event;
   ULONGLONG         m_navigation_started;
   bool              m_navigation_failed;
-  long              m_navigation_status;
+	long              m_navigation_status;
+	CString            m_link_navigation_target_id;
+	long               m_link_navigation_origin_ordinal;
 
   static _ATL_FUNC_INFO DocumentCompleteInfo;
   static _ATL_FUNC_INFO BeforeNavigateInfo;
@@ -325,7 +327,7 @@ public:
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
     m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-    m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name() { }
+    m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_link_navigation_origin_ordinal(-1), m_find_dlg(0), m_replace_dlg(0), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);
@@ -677,6 +679,8 @@ public:
   long				InsertCode();
   bool				GoToFootnote(bool fCheck);
   bool				GoToReference(bool fCheck);
+	bool				ReturnToLinkNavigationOrigin();
+	void				ClearLinkNavigationHistory();
   MSHTML::IHTMLTxtRangePtr	SetSelection(MSHTML::IHTMLElementPtr begin, MSHTML::IHTMLElementPtr end, int begin_pos, int end_pos);
   int				GetRelationalCharPos(MSHTML::IHTMLDOMNodePtr node, int pos);
   int				GetRealCharPos(MSHTML::IHTMLDOMNodePtr node, int pos);

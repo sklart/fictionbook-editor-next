@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include "LinkNavigation.h"
 #include "ImageImport.h"
 #include "res1.h"
 
@@ -3502,6 +3503,9 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
 bool CFBEView::Init()
 {
   StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
+	// Init is called after a full MSHTML/TransformXML rebuild.  Link navigation
+	// origins are document-DOM scoped and must never survive that replacement.
+	ClearLinkNavigationHistory();
   if (!m_browser)
   {
     StartupTrace::Error(L"webbrowser", L"WB200", L"IWebBrowser2 unavailable");
@@ -3806,10 +3810,80 @@ LRESULT CFBEView::OnSelectElement(WORD, WORD wID, HWND, BOOL&) {
   return 0;
 }
 
+static MSHTML::IHTMLElementPtr FindNearestLinkElement(MSHTML::IHTMLElementPtr element,
+	MSHTML::IHTMLElementPtr body)
+{
+	while(element && element != body)
+	{
+		if(!U::scmp(element->tagName, L"A")) return element;
+		element = element->parentElement;
+	}
+	return body && !U::scmp(body->tagName, L"A") ? body : MSHTML::IHTMLElementPtr();
+}
+
+static CString GetInternalLinkTargetId(MSHTML::IHTMLElementPtr link)
+{
+	if(!link) return CString();
+	const std::wstring target = FBELinkNavigation::GetInternalTargetId(
+		static_cast<LPCWSTR>(AU::GetAttrCS(link, L"href")));
+	return CString(target.c_str());
+}
+
+static long GetLinkTargetOrdinal(MSHTML::IHTMLDocument2Ptr document,
+	MSHTML::IHTMLElementPtr link, const CString& targetId)
+{
+	if(!document || !link || targetId.IsEmpty()) return -1;
+	MSHTML::IHTMLElement2Ptr body(document->body);
+	MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
+	if(!links) return -1;
+	long ordinal = 0;
+	for(long i = 0; i < links->length; ++i)
+	{
+		MSHTML::IHTMLElementPtr candidate(links->item(i));
+		if(GetInternalLinkTargetId(candidate) != targetId) continue;
+		if(candidate == link) return ordinal;
+		++ordinal;
+	}
+	return -1;
+}
+
+static void HideNotePreview(CFBEView& view)
+{
+	try { CComDispatchDriver(view.Script()).Invoke0(L"HideNotePreview"); }
+	catch(const _com_error&) { }
+}
+
+void CFBEView::ClearLinkNavigationHistory()
+{
+	m_link_navigation_target_id.Empty();
+	m_link_navigation_origin_ordinal = -1;
+}
+
+bool CFBEView::ReturnToLinkNavigationOrigin()
+{
+	if(m_link_navigation_target_id.IsEmpty() || m_link_navigation_origin_ordinal < 0 || !Document()) return false;
+	MSHTML::IHTMLElement2Ptr body(Document()->body);
+	MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
+	if(!links) { ClearLinkNavigationHistory(); return false; }
+	long ordinal = 0;
+	for(long i = 0; i < links->length; ++i)
+	{
+		MSHTML::IHTMLElementPtr link(links->item(i));
+		if(GetInternalLinkTargetId(link) != m_link_navigation_target_id) continue;
+		if(ordinal++ != m_link_navigation_origin_ordinal) continue;
+		ClearLinkNavigationHistory();
+		GoTo(link);
+		return true;
+	}
+	ClearLinkNavigationHistory();
+	return false;
+}
+
 VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 {
 	MSHTML::IHTMLEventObjPtr oe(evt);
-	MSHTML::IHTMLElementPtr elem(oe->srcElement);	
+	if(!oe) return VARIANT_FALSE;
+	MSHTML::IHTMLElementPtr elem(oe->srcElement);
 
   	m_startMatch = m_endMatch = 0;
 
@@ -3834,36 +3908,46 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 		return VARIANT_TRUE;
 	}
 
-	if (U::scmp(elem->tagName,L"A"))
-	{
+	const bool ctrlClick = oe->ctrlKey == VARIANT_TRUE;
+	const bool altClick = oe->altKey == VARIANT_TRUE;
+	if((!ctrlClick && !altClick) || oe->shiftKey == VARIANT_TRUE)
 		return VARIANT_FALSE;
+
+	MSHTML::IHTMLElementPtr link = FindNearestLinkElement(elem, Document()->body);
+	if(!link) return VARIANT_FALSE;
+	CString href(AU::GetAttrCS(link, L"href"));
+	CString targetId(GetInternalLinkTargetId(link));
+	if(!targetId.IsEmpty())
+	{
+		MSHTML::IHTMLElementPtr target(Document()->all->item(static_cast<LPCWSTR>(targetId)));
+		// Ctrl+Click consumes broken internal links too: MSHTML must not try a
+		// browser fragment navigation after the target was known to be absent.
+		if(target)
+		{
+			m_link_navigation_target_id = targetId;
+			m_link_navigation_origin_ordinal = GetLinkTargetOrdinal(Document(), link, targetId);
+			HideNotePreview(*this);
+			GoTo(target);
+		}
+		oe->cancelBubble = VARIANT_TRUE;
+		oe->returnValue = VARIANT_FALSE;
+		return VARIANT_TRUE;
 	}
-	/*else
+	if(ctrlClick && FBELinkNavigation::IsExternalHttpUrl(static_cast<LPCWSTR>(href)))
 	{
-	  ::SendMessage(m_frame, WM_COMMAND, MAKELONG(IDC_HREF, IDN_WANTFOCUS), (LPARAM)m_hWnd);
-	  return VARIANT_FALSE;
-	}*/
-
-	if(oe->altKey!=VARIANT_TRUE || oe->shiftKey==VARIANT_TRUE || oe->ctrlKey==VARIANT_TRUE)
-		return VARIANT_FALSE;
-
-	CString sref(AU::GetAttrCS(elem, L"href"));
-	if(sref.IsEmpty() || sref[0] != L'#')
-		return VARIANT_FALSE;
-
-	sref.Delete(0);
-
-	MSHTML::IHTMLElementPtr targ(Document()->all->item((const wchar_t*)sref));
-
-	if(!(bool)targ)
-		return VARIANT_FALSE;
-
-	GoTo(targ);
-	
-	oe->cancelBubble = VARIANT_TRUE;
-	oe->returnValue = VARIANT_FALSE;
-
-	return VARIANT_TRUE;
+		HideNotePreview(*this);
+		::ShellExecuteW(m_hWnd, L"open", static_cast<LPCWSTR>(href), NULL, NULL, SW_SHOWNORMAL);
+		oe->cancelBubble = VARIANT_TRUE;
+		oe->returnValue = VARIANT_FALSE;
+		return VARIANT_TRUE;
+	}
+	if(ctrlClick && FBELinkNavigation::IsBlockedUrl(static_cast<LPCWSTR>(href)))
+	{
+		oe->cancelBubble = VARIANT_TRUE;
+		oe->returnValue = VARIANT_FALSE;
+		return VARIANT_TRUE;
+	}
+	return VARIANT_FALSE;
 }
 
 VARIANT_BOOL CFBEView::OnMouseDown(IDispatch* evt)

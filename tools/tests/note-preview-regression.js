@@ -127,8 +127,15 @@ assert.match(css, /div#fbNotePreview\{[\s\S]*border: 1px solid #808080;/, "previ
 assert.match(css, /div#fbNotePreview p\{[\s\S]*text-align: left;/, "preview paragraphs must not inherit justified book text");
 
 const originalGetElementById = document.getElementById;
-document.getElementById = id => id === "fbw_body" ? { currentStyle: { backgroundColor: "#20242a", color: "#e8edf2" } } : null;
+document.getElementById = id => id === "fbw_body" ? { currentStyle: {
+  backgroundColor: "#20242a", color: "#e8edf2", fontFamily: "Georgia", fontSize: "18px"
+} } : null;
 assert.deepStrictEqual(GetNotePreviewColors(), { background: "#20242a", color: "#e8edf2" }, "dark Body colors must be copied to the popup");
+const themedPanel = { style: {} };
+ApplyNotePreviewBodyStyle(themedPanel);
+assert.deepStrictEqual(themedPanel.style, {
+  backgroundColor: "#20242a", color: "#e8edf2", fontFamily: "Georgia", fontSize: "18px"
+}, "popup must inherit Body background, text color, family and size");
 document.getElementById = originalGetElementById;
 
 const previewItems = [];
@@ -140,10 +147,19 @@ const previewChild = { nodeType: 1, attributes: [{ nodeName: "id", specified: tr
   cloneNode() { return { nodeType: 1, attributes: [{ nodeName: "id", specified: true }], firstChild: null,
     removeAttribute(name) { this.attributes = this.attributes.filter(attribute => attribute.nodeName !== name); } }; } };
 const noteTarget = { firstChild: previewChild };
-document.getElementById = id => id === "n1" ? noteTarget : null;
+const bodyStyle = { currentStyle: { backgroundColor: "#20242a", color: "#e8edf2", fontFamily: "Georgia", fontSize: "18px" } };
+document.getElementById = id => id === "n1" ? noteTarget : (id === "fbw_body" ? bodyStyle : null);
 notePreviewState.panel = previewPanel;
 notePreviewState.link = superLink;
+const originalFitNotePreview = FitNotePreview;
+let fitReceivedBodyStyle = false;
+FitNotePreview = panel => {
+  fitReceivedBodyStyle = panel.style.fontFamily === "Georgia" && panel.style.fontSize === "18px";
+	return originalFitNotePreview(panel, superLink);
+};
 ShowNotePreview(superLink);
+FitNotePreview = originalFitNotePreview;
+assert(fitReceivedBodyStyle, "Body typography must be applied before FitNotePreview");
 assert.strictEqual(previewItems.length, 1, "existing target must be previewed");
 assert.strictEqual(previewItems[0].attributes.length, 0, "preview clone must not retain IDs");
 assert.strictEqual(previewPanel.style.overflow, "hidden", "short notes must remain compact without a scrollbar");
