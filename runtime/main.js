@@ -554,8 +554,26 @@ function IsNotePreviewLink(element)
 	if(!element || element.nodeType != 1 || String(element.tagName).toLowerCase() != "a") return false;
 	var className = " " + String(element.className || "") + " ";
 	if(className.indexOf(" note ") == -1) return false;
-	var href = element.getAttribute("href");
-	return href && String(href).charAt(0) == "#";
+	return GetNotePreviewTargetId(element) != "";
+}
+
+function GetNotePreviewTargetId(link)
+{
+	if(!link) return "";
+	var hrefs = [], href = "";
+	try { href = link.getAttribute("href", 2); } catch(ignore) {}
+	hrefs.push(href);
+	try { hrefs.push(link.href); } catch(ignore) {}
+	try { hrefs.push(link.hash); } catch(ignore) {}
+	for(var i = 0; i < hrefs.length; ++i)
+	{
+		href = String(hrefs[i] || "");
+		var hash = href.lastIndexOf("#");
+		if(hash == -1 || hash == href.length - 1) continue;
+		var id = href.substring(hash + 1);
+		try { return decodeURIComponent(id); } catch(ignore) { return id; }
+	}
+	return "";
 }
 
 function GetNotePreviewLink(element, body)
@@ -615,14 +633,28 @@ function NotePreviewDistance(x, y, rect)
 
 function FindNotePreviewLinkAt(body, x, y, eventTarget)
 {
-	var direct = GetNotePreviewLink(eventTarget, body);
-	if(direct) return direct;
+	var candidates = [], direct = GetNotePreviewLink(eventTarget, body);
+	if(direct) candidates.push(direct);
 
-	var links = body.getElementsByTagName("A"), closest = null, closestDistance = -1;
-	for(var i = 0; i < links.length; ++i)
+	// MSHTML returns the element actually painted at a point.  Probe a small
+	// neighbourhood instead of walking every link in the book: superscripts
+	// are reached above the pointer and subscripts below it.
+	if(document.elementFromPoint)
 	{
-		var link = links[i];
-		if(!IsNotePreviewLink(link)) continue;
+		var offsets = [ [0, 0], [-4, 0], [4, 0], [0, -4], [0, 4], [0, -8], [0, 8], [-4, -6], [4, -6], [-4, 6], [4, 6] ];
+		for(var i = 0; i < offsets.length; ++i)
+		{
+			var element = document.elementFromPoint(x + offsets[i][0], y + offsets[i][1]);
+			var link = GetNotePreviewLink(element, body), known = false;
+			for(var j = 0; link && j < candidates.length; ++j) if(candidates[j] == link) { known = true; break; }
+			if(link && !known) candidates.push(link);
+		}
+	}
+
+	var closest = null, closestDistance = -1;
+	for(var candidateIndex = 0; candidateIndex < candidates.length; ++candidateIndex)
+	{
+		var link = candidates[candidateIndex];
 		var rect = GetNotePreviewRect(link);
 		if(!rect || !PointInNotePreviewRect(x, y, rect, GetNotePreviewVerticalAlign(link, body))) continue;
 		var distance = NotePreviewDistance(x, y, rect);
@@ -688,12 +720,16 @@ function ShowNotePreview(link)
 {
 	if(!link || notePreviewState.link != link) return;
 	var panel = EnsureNotePreviewPanel();
-	var href = String(link.getAttribute("href") || "");
-	var id = href.substring(1), target = id ? document.getElementById(id) : null;
+	var id = GetNotePreviewTargetId(link), target = id ? document.getElementById(id) : null;
 	panel.innerHTML = "";
 	if(target)
 	{
-		for(var child = target.firstChild; child; child = child.nextSibling) panel.appendChild(child.cloneNode(true));
+		for(var child = target.firstChild; child; child = child.nextSibling)
+		{
+			var clone = child.cloneNode(true);
+			SanitizeNotePreviewNode(clone);
+			panel.appendChild(clone);
+		}
 	}
 	else
 	{
@@ -701,6 +737,21 @@ function ShowNotePreview(link)
 	}
 	PositionNotePreview(panel, link);
 	panel.style.visibility = "visible";
+}
+
+function SanitizeNotePreviewNode(node)
+{
+	if(!node || node.nodeType != 1) return;
+	var attributes = node.attributes;
+	for(var i = attributes.length - 1; i >= 0; --i)
+	{
+		var name = String(attributes[i].name || attributes[i].nodeName || "").toLowerCase();
+		if(name == "id" || name == "contenteditable" || name == "unselectable" || name == "tabindex" ||
+			name == "hidefocus" || name == "spellcheck" || name.indexOf("on") == 0)
+			node.removeAttribute(attributes[i].name || attributes[i].nodeName);
+	}
+	node.contentEditable = false;
+	for(var child = node.firstChild; child; child = child.nextSibling) SanitizeNotePreviewNode(child);
 }
 
 function ScheduleNotePreview(link)
@@ -715,13 +766,14 @@ function ScheduleNotePreview(link)
 function HideNotePreview()
 {
 	if(notePreviewState.showTimer != null) { window.clearTimeout(notePreviewState.showTimer); notePreviewState.showTimer = null; }
+	if(notePreviewState.hideTimer != null) { window.clearTimeout(notePreviewState.hideTimer); notePreviewState.hideTimer = null; }
 	notePreviewState.link = null;
 	if(notePreviewState.panel) notePreviewState.panel.style.visibility = "hidden";
 }
 
 function ScheduleNotePreviewHide()
 {
-	if(notePreviewState.hideTimer != null) window.clearTimeout(notePreviewState.hideTimer);
+	if(notePreviewState.hideTimer != null) return;
 	// Leave enough time to cross the small gap between the link and its popup.
 	notePreviewState.hideTimer = window.setTimeout(function() { notePreviewState.hideTimer = null; HideNotePreview(); }, 250);
 }
