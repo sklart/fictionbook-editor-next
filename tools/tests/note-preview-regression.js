@@ -19,6 +19,7 @@ global.window = {
 global.notePreviewState = { panel: null, link: null, showTimer: null, hideTimer: null };
 global.TraceDiagnosticEvent = (code, text) => traceStages.push(`${code}:${text}`);
 global.document = {
+  location: { href: "file:///book.fb2" },
   documentElement: { clientWidth: 800, clientHeight: 600, scrollLeft: 0, scrollTop: 0 },
   body: { clientWidth: 800, clientHeight: 600, scrollLeft: 0, scrollTop: 0 },
   elementFromPoint: () => null,
@@ -40,6 +41,8 @@ assert.strictEqual(GetNotePreviewTargetId(link("#n1", "file:///book.fb2#n1", "#n
 assert.strictEqual(GetNotePreviewTargetId(link(null, "file:///book.fb2#n1", "#n1")), "n1");
 assert.strictEqual(GetNotePreviewTargetId(link("", "", "#n1")), "n1");
 assert.strictEqual(GetNotePreviewTargetId(link("#", "file:///book.fb2#", "")), "");
+assert.strictEqual(GetNotePreviewTargetId(link("fbw-internal:#n1", "", "")), "n1");
+assert.strictEqual(GetNotePreviewTargetId(link("https://example.com/page#n1", "https://example.com/page#n1", "#n1")), "", "external URLs must not be previewed");
 assert(IsNotePreviewLink(link("file:///book.fb2#n1", "file:///book.fb2#n1", "#n1")));
 
 const body = { nodeType: 1, tagName: "DIV", getElementsByTagName: () => { throw new Error("O(N) link scan"); } };
@@ -68,6 +71,22 @@ SanitizeNotePreviewNode(child);
 assert.deepStrictEqual(child.attributes.map(attribute => attribute.nodeName), ["onmouseover", "class"], "MSHTML nodeName attributes must be sanitized safely");
 assert.strictEqual(child.contentEditable, false);
 
+const appended = [];
+function previewNode(tagName, className) {
+  return { nodeType: 1, tagName, className: className || "", nextSibling: null,
+    cloneNode() { return { nodeType: 1, attributes: [], firstChild: null, removeAttribute() {} }; } };
+}
+const title = previewNode("DIV", "title");
+const paragraph = previewNode("P");
+title.nextSibling = paragraph;
+AppendNotePreviewContent({ appendChild(item) { appended.push(item); } }, { firstChild: title });
+assert.strictEqual(appended.length, 1, "only an immediate section title may be omitted from preview content");
+
+const longPanel = { style: {}, offsetWidth: 420, offsetHeight: 420, scrollHeight: 1000 };
+FitNotePreview(longPanel, superLink);
+assert.strictEqual(longPanel.style.fontSize, "80%", "font size is reduced before scrolling a long note");
+assert.strictEqual(longPanel.style.overflow, "auto", "scrollbar is the final fallback for a long note");
+
 const previewItems = [];
 const previewPanel = { style: {}, offsetWidth: 200, offsetHeight: 80,
   appendChild(item) { previewItems.push(item); } };
@@ -83,6 +102,7 @@ notePreviewState.link = superLink;
 ShowNotePreview(superLink);
 assert.strictEqual(previewItems.length, 1, "existing target must be previewed");
 assert.strictEqual(previewItems[0].attributes.length, 0, "preview clone must not retain IDs");
+assert.strictEqual(previewPanel.style.overflow, "hidden", "short notes must remain compact without a scrollbar");
 const brokenLink = link("#missing", "file:///book.fb2#missing", "#missing");
 notePreviewState.link = brokenLink;
 ShowNotePreview(brokenLink);

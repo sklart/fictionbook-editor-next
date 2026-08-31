@@ -560,20 +560,47 @@ function IsNotePreviewLink(element)
 function GetNotePreviewTargetId(link)
 {
 	if(!link) return "";
-	var hrefs = [], href = "";
-	try { href = link.getAttribute("href", 2); } catch(ignore) {}
-	hrefs.push(href);
-	try { hrefs.push(link.href); } catch(ignore) {}
-	try { hrefs.push(link.hash); } catch(ignore) {}
-	for(var i = 0; i < hrefs.length; ++i)
-	{
-		href = String(hrefs[i] || "");
-		var hash = href.lastIndexOf("#");
-		if(hash == -1 || hash == href.length - 1) continue;
-		var id = href.substring(hash + 1);
-		try { return decodeURIComponent(id); } catch(ignore) { return id; }
-	}
+	var href = "";
+	try { href = String(link.getAttribute("href", 2) || ""); } catch(ignore) {}
+	var id = GetLocalNotePreviewFragment(href);
+	if(id != "") return id;
+	// MSHTML's getAttribute(..., 2) is the primary path.  Properties are
+	// fallbacks only, and absolute URLs must name this exact document.
+	try { href = String(link.href || ""); } catch(ignore) { href = ""; }
+	var expandedHref = href;
+	id = GetLocalNotePreviewFragment(expandedHref);
+	if(id != "") return id;
+	try { href = String(link.hash || ""); } catch(ignore) { href = ""; }
+	if(!expandedHref && href.charAt(0) == "#") return DecodeNotePreviewFragment(href.substring(1));
 	return "";
+}
+
+function DecodeNotePreviewFragment(fragment)
+{
+	if(!fragment) return "";
+	try { return decodeURIComponent(fragment); } catch(ignore) { return fragment; }
+}
+
+function GetNotePreviewDocumentUrl()
+{
+	var href = "";
+	try { href = String(document.location.href || ""); } catch(ignore) {}
+	if(!href) try { href = String(window.location.href || ""); } catch(ignore) {}
+	var hash = href.indexOf("#");
+	return hash == -1 ? href : href.substring(0, hash);
+}
+
+function GetLocalNotePreviewFragment(href)
+{
+	href = String(href || "");
+	if(!href) return "";
+	if(href.indexOf("fbw-internal:#") == 0) return DecodeNotePreviewFragment(href.substring(14));
+	if(href.charAt(0) == "#") return DecodeNotePreviewFragment(href.substring(1));
+	var hash = href.lastIndexOf("#");
+	if(hash == -1 || hash == href.length - 1) return "";
+	var documentUrl = GetNotePreviewDocumentUrl();
+	if(!documentUrl || href.substring(0, hash) != documentUrl) return "";
+	return DecodeNotePreviewFragment(href.substring(hash + 1));
 }
 
 function GetNotePreviewLink(element, body)
@@ -695,22 +722,84 @@ function EnsureNotePreviewPanel()
 	return panel;
 }
 
-function PositionNotePreview(panel, link)
+function GetNotePreviewBackground()
+{
+	var body = document.getElementById("fbw_body"), color = "";
+	try { color = body && body.currentStyle ? body.currentStyle.backgroundColor : ""; } catch(ignore) {}
+	if(!color || color == "transparent") try { color = document.body.currentStyle.backgroundColor; } catch(ignore) {}
+	return color && color != "transparent" ? color : "#ffffff";
+}
+
+function NotePreviewHasClass(node, className)
+{
+	return (" " + String(node.className || "") + " ").indexOf(" " + className + " ") != -1;
+}
+
+function AppendNotePreviewContent(panel, target)
+{
+	for(var child = target.firstChild; child; child = child.nextSibling)
+	{
+		// A section title is navigation context rather than the note itself.
+		// Only this immediate title DIV is skipped: the first paragraph stays.
+		if(child.nodeType == 1 && String(child.tagName).toLowerCase() == "div" && NotePreviewHasClass(child, "title")) continue;
+		var clone = child.cloneNode(true);
+		SanitizeNotePreviewNode(clone);
+		panel.appendChild(clone);
+	}
+}
+
+function FitNotePreview(panel, link)
+{
+	var rect = GetNotePreviewRect(link), docElement = document.documentElement;
+	var viewportWidth = (docElement && docElement.clientWidth) || document.body.clientWidth;
+	var viewportHeight = (docElement && docElement.clientHeight) || document.body.clientHeight;
+	var margin = 8, gap = 6;
+	var above = rect ? rect.top - margin - gap : viewportHeight / 2;
+	var below = rect ? viewportHeight - rect.bottom - margin - gap : viewportHeight / 2;
+	var maxHeight = Math.max(80, Math.min(Math.round(viewportHeight * 0.70), Math.max(above, below)));
+	var maxWidth = Math.max(160, Math.min(viewportWidth - margin * 2, Math.round(viewportWidth * 0.75)));
+	var widths = [420, 500, 560, 600], fonts = [100, 95, 90, 85, 80];
+	var lastWidth = Math.min(widths[0], maxWidth), lastFont = fonts[fonts.length - 1];
+	panel.style.width = "auto";
+	panel.style.height = "auto";
+	panel.style.maxHeight = "none";
+	panel.style.overflow = "hidden";
+	for(var fontIndex = 0; fontIndex < fonts.length; ++fontIndex)
+	{
+		panel.style.fontSize = fonts[fontIndex] + "%";
+		for(var widthIndex = 0; widthIndex < widths.length; ++widthIndex)
+		{
+			var width = Math.min(widths[widthIndex], maxWidth);
+			if(widthIndex && width == lastWidth) continue;
+			panel.style.width = width + "px";
+			var naturalHeight = panel.scrollHeight || panel.offsetHeight;
+			lastWidth = width; lastFont = fonts[fontIndex];
+			if(naturalHeight <= maxHeight)
+			{
+				panel.style.maxHeight = maxHeight + "px";
+				return { margin: margin, gap: gap, viewportWidth: viewportWidth, viewportHeight: viewportHeight };
+			}
+		}
+	}
+	panel.style.width = lastWidth + "px";
+	panel.style.fontSize = lastFont + "%";
+	panel.style.maxHeight = maxHeight + "px";
+	panel.style.overflow = "auto";
+	return { margin: margin, gap: gap, viewportWidth: viewportWidth, viewportHeight: viewportHeight };
+}
+
+function PositionNotePreview(panel, link, fit)
 {
 	var rect = GetNotePreviewRect(link);
 	if(!rect) return;
-	var docElement = document.documentElement;
-	var viewportWidth = (docElement && docElement.clientWidth) || document.body.clientWidth;
-	var viewportHeight = (docElement && docElement.clientHeight) || document.body.clientHeight;
+	var viewportWidth = fit.viewportWidth, viewportHeight = fit.viewportHeight;
 	var scrollLeft = GetNotePreviewScrollLeft(), scrollTop = GetNotePreviewScrollTop();
-	var margin = 8, gap = 6;
-	panel.style.width = Math.min(420, Math.max(160, viewportWidth - margin * 2)) + "px";
-	panel.style.maxHeight = Math.max(80, Math.min(300, viewportHeight - margin * 2)) + "px";
+	var margin = fit.margin, gap = fit.gap;
 	var panelWidth = panel.offsetWidth, panelHeight = panel.offsetHeight;
 	var left = rect.left + (rect.right - rect.left - panelWidth) / 2;
 	left = Math.max(margin, Math.min(left, viewportWidth - panelWidth - margin));
-	var top = rect.top - panelHeight - gap;
-	if(top < margin) top = rect.bottom + gap;
+	var above = rect.top - margin - gap, below = viewportHeight - rect.bottom - margin - gap;
+	var top = above >= below ? rect.top - panelHeight - gap : rect.bottom + gap;
 	top = Math.max(margin, Math.min(top, viewportHeight - panelHeight - margin));
 	panel.style.left = Math.round(left + scrollLeft) + "px";
 	panel.style.top = Math.round(top + scrollTop) + "px";
@@ -721,25 +810,43 @@ function ShowNotePreview(link)
 	if(!link || notePreviewState.link != link) return;
 	var panel = EnsureNotePreviewPanel();
 	var id = GetNotePreviewTargetId(link), target = id ? document.getElementById(id) : null;
-	TraceDiagnosticEvent("J611", "operation=notePreview; stage=target-resolved; found=" + (target ? 1 : 0));
+	TraceNotePreviewEvent("J611", "operation=notePreview; stage=target-resolved; found=" + (target ? 1 : 0));
 	panel.innerHTML = "";
 	if(target)
 	{
-		for(var child = target.firstChild; child; child = child.nextSibling)
-		{
-			var clone = child.cloneNode(true);
-			SanitizeNotePreviewNode(clone);
-			panel.appendChild(clone);
-		}
-		TraceDiagnosticEvent("J612", "operation=notePreview; stage=clone-sanitized");
+		AppendNotePreviewContent(panel, target);
+		TraceNotePreviewEvent("J612", "operation=notePreview; stage=clone-sanitized");
 	}
 	else
 	{
 		panel.appendChild(document.createTextNode("Примечание не найдено"));
 	}
-	PositionNotePreview(panel, link);
+	panel.style.visibility = "hidden";
+	panel.style.backgroundColor = GetNotePreviewBackground();
+	PositionNotePreview(panel, link, FitNotePreview(panel, link));
 	panel.style.visibility = "visible";
-	TraceDiagnosticEvent("J613", "operation=notePreview; stage=popup-visible");
+	TraceNotePreviewEvent("J613", "operation=notePreview; stage=popup-visible");
+}
+
+function TraceNotePreviewEvent(code, message)
+{
+	// Mouse movement is deliberately verbose-only and must not continuously
+	// replace diagnosticLastTraceEvent.  Do not route this through
+	// TraceDiagnosticEvent, which intentionally updates that global marker.
+	if(typeof diagnosticVerboseTraceEnabled == "undefined")
+	{
+		// Stand-alone regression harnesses provide only this minimal sink.
+		if(typeof TraceDiagnosticEvent == "function") TraceDiagnosticEvent(code, message);
+		return;
+	}
+	SetDiagnosticOperationStage(code);
+	if(!diagnosticVerboseTraceEnabled || !diagnosticTraceEnabled || diagnosticTraceBridgeState == -1) return;
+	try
+	{
+		window.external.TraceScript(code, message);
+		diagnosticTraceBridgeState = 1;
+	}
+	catch(ignore) { diagnosticTraceBridgeState = -1; }
 }
 
 function SanitizeNotePreviewNode(node)
@@ -767,7 +874,7 @@ function ScheduleNotePreview(link)
 	if(notePreviewState.link == link) return;
 	if(notePreviewState.showTimer != null) window.clearTimeout(notePreviewState.showTimer);
 	notePreviewState.link = link;
-	TraceDiagnosticEvent("J610", "operation=notePreview; stage=hover-detected");
+	TraceNotePreviewEvent("J610", "operation=notePreview; stage=hover-detected");
 	notePreviewState.showTimer = window.setTimeout(function() { notePreviewState.showTimer = null; ShowNotePreview(link); }, 500);
 }
 

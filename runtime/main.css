@@ -295,25 +295,23 @@ a.note{
 	font-size: 75%;
 }
 
-/* Created by main.js outside the editable fbw_body.  It is deliberately
-   bounded and scrollable so a long note cannot obscure the editing surface. */
+/* Created by main.js outside the editable fbw_body.  Size and background are
+   selected by main.js from the current document before the popup is shown. */
 div#fbNotePreview{
 	visibility: hidden;
 	position: absolute;
 	z-index: 1000;
 	box-sizing: border-box;
-	padding: 0.55em 0.7em;
-	border: 1px solid #7F9DB8;
-	border-radius: 3px;
-	background: #FFFFE1;
+	padding: 0.4em 0.55em;
+	border: 1px solid #808080;
+	background: #ffffff;
 	color: #000;
-	box-shadow: 1px 2px 5px rgba(0,0,0,0.35);
-	overflow: auto;
+	overflow: hidden;
 	line-height: normal;
 	text-align: left;
 }
 div#fbNotePreview p{
-	margin: 0 0 0.55em 0;
+	margin: 0 0 0.4em 0;
 	text-indent: 0;
 }
 div#fbNotePreview p:last-child{
