@@ -22,8 +22,12 @@ $migration = Text 'tools\build\UpdateVersion.ps1'
 $archHandler = Text 'tools\build\build-archhandler.ps1'
 $propertyHandler = Text 'tools\build\build-shell-integration.ps1'
 $fbvMui = Text 'tools\build\build-fbv-verb-mui.ps1'
+$pluginUpgradeSmoke = Text 'tools\tests\test-bundled-plugin-upgrade-uninstall.ps1'
 
 foreach ($needle in @('validate:', 'build:', 'package:', 'publish:', 'Restore universal editor runtime cache', 'Build Release Win32', 'Build ArchHandler', 'Write Runtime build provenance', 'Verify universal release binaries', 'Create release artifacts without compiling', 'Verify release archives')) { Require $workflow $needle 'workflow' }
+Require $workflow 'Smoke bundled plugin upgrade and uninstall' 'workflow installer smoke'
+Require $workflow 'test-bundled-plugin-upgrade-uninstall.ps1' 'workflow installer smoke invocation'
+foreach ($needle in @('Synthetic plugin upgrade installer', 'Synthetic plugin upgrade uninstaller', 'plugins.json', 'PluginSourceDirectory')) { Require $pluginUpgradeSmoke $needle 'bundled plugin upgrade smoke' }
 foreach ($needle in @('CompatibilityTarget', 'EditorRuntimeOnly', 'BatchConvertersOnly', 'Restore Modern editor runtime cache', 'Restore Win7 editor runtime cache', 'Build Modern', 'Build Win7', 'target-batches/Modern', 'target-batches/Win7', 'archhandler/Modern', 'archhandler/Win7', 'artifacts/Modern', 'artifacts/Win7')) { Forbid $workflow $needle 'workflow' }
 foreach ($needle in @('CompatibilityTarget', 'EditorRuntimeOnly', 'BatchConvertersOnly')) { Forbid $build $needle 'build.ps1' }
 foreach ($needle in @('CompatibilityTarget', 'CommonCoreDirectory', 'deployment.ini')) { Forbid $stage $needle 'stage-core.ps1' }

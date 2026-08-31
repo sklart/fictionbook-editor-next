@@ -139,6 +139,26 @@ jobs:
           $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches'; ArchHandlerOutputDirectory = 'out/archhandler/Win32/Release' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.FullValidation = $true }
           ./tools/build/verify-release.ps1 @arguments
+      - name: Smoke bundled plugin upgrade and uninstall
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          $testRoot = 'out/tests/bundled-plugin-installer-smoke'
+          $repoRoot = (Get-Location).Path
+          ./tools/build/stage-core.ps1 -Configuration Release -OutputDirectory "$testRoot/Core" -EditorRuntimeDirectory out/editor-runtime -BatchOutputDirectory out/target-batches -ArchHandlerOutputDirectory out/archhandler/Win32/Release
+          ./tools/build/stage-integration.ps1 -Configuration Release -OutputDirectory "$testRoot/Integration"
+          ./tools/build/prepare-installer.ps1 -CoreDirectory "$testRoot/Core" -IntegrationDirectory "$testRoot/Integration" -OutputDirectory "$testRoot/Input"
+          $makensis = ./tools/build/resolve-nsis.ps1
+          $installerDirectory = Join-Path $PWD 'packaging/nsis/Installer'
+          $setup = Join-Path $PWD "$testRoot/setup.exe"
+          $input = Join-Path $repoRoot "$testRoot/Input"
+          Push-Location $installerDirectory
+          try {
+            & $makensis '/X!addincludedir ..\NSIS' '/X!addplugindir /x86-unicode ..\NSIS' ('/DINPUTDIR=' + $input) ('/DOUTPUTFILE=' + $setup) 'MakeInstaller.nsi'
+            if ($LASTEXITCODE -ne 0) { throw "makensis failed for bundled plugin upgrade smoke: $LASTEXITCODE" }
+          }
+          finally { Pop-Location }
+          ./tools/tests/test-bundled-plugin-upgrade-uninstall.ps1 -InstallerPath $setup -PluginSourceDirectory "$testRoot/Input/Plugins" -TestDirectory "$testRoot/run"
       - name: Upload compiled inputs
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
