@@ -24,6 +24,23 @@ foreach ($name in $pluginDllNames + $pluginSymbolNames) {
     }
 }
 
+# Plugin projects themselves write Release|Win32 artifacts into Plugins.  The
+# final build-script normalization remains a compatibility guard, but must not
+# be the only thing preventing an interrupted build from leaving a flat tree.
+$pluginProjects = @(
+    'src\export-html\ExportHTML.vcxproj',
+    'src\export-docx\ExportDOCX.vcxproj',
+    'src\export-epub\ExportEPUB.vcxproj',
+    'src\import-epub\ImportEPUB.vcxproj',
+    'src\import-epub\ImportEPUBLunaSVG.vcxproj'
+)
+foreach ($project in $pluginProjects) {
+    $content = Get-Content -LiteralPath (Join-Path $repoRoot $project) -Raw
+    if ($content -notmatch '(?s)Condition="''\$\(Configuration\)\|\$\(Platform\)''==''Release\|Win32''".*?<OutDir>[^<]*out\\\$\(Configuration\)\\Plugins\\</OutDir>') {
+        throw "Release plugin project does not output directly to Plugins: $project"
+    }
+}
+
 # Batch utilities are executable tools, not plugins.  They and their symbols
 # deliberately stay in the development output root while their DLL probes use
 # the sibling Plugins directory first.

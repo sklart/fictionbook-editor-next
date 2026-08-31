@@ -80,7 +80,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
+    <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\Plugins\</OutDir>
     <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\export-docx\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
@@ -263,6 +263,5 @@
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
-
 
 

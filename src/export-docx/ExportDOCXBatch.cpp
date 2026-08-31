@@ -448,12 +448,12 @@ static std::wstring FindExportDll(const std::wstring& explicitPath)
 
     const std::array<std::wstring, 7> candidates = {
         JoinPath(exeDir, L"Plugins\\ExportDOCX.dll"),
+        JoinPath(cwd, L"Plugins\\ExportDOCX.dll"),
         JoinPath(exeDir, L"ExportDOCX.dll"),
         JoinPath(cwd, L"ExportDOCX.dll"),
-        JoinPath(cwd, L"out\\Release\\ExportDOCX.dll"),
-        JoinPath(cwd, L"out\\Win32\\Release\\ExportDOCX.dll"),
-        JoinPath(exeDir, L"..\\..\\out\\Release\\ExportDOCX.dll"),
-        JoinPath(exeDir, L"..\\..\\out\\Win32\\Release\\ExportDOCX.dll")
+        JoinPath(cwd, L"out\\Release\\Plugins\\ExportDOCX.dll"),
+        JoinPath(cwd, L"out\\Win32\\Release\\Plugins\\ExportDOCX.dll"),
+        JoinPath(exeDir, L"..\\..\\out\\Release\\Plugins\\ExportDOCX.dll")
     };
 
     for (const auto& c : candidates) {

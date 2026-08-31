@@ -76,7 +76,7 @@
     <IntDir>$(SolutionDir)build\obj\export-epub\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)out\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)out\$(Configuration)\Plugins\</OutDir>
     <IntDir>$(SolutionDir)build\obj\export-epub\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>

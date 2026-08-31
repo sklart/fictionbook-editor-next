@@ -312,8 +312,13 @@ foreach ($requiredProject in @(
 New-Item -ItemType Directory -Force -Path $pluginOutput | Out-Null
 foreach ($name in $bundledPluginDlls + $bundledPluginSymbols) {
     $source = Join-Path $commonOutput $name
-    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Не найден bundled plugin artifact: $source" }
-    Move-Item -LiteralPath $source -Destination (Join-Path $pluginOutput $name) -Force
+    $destination = Join-Path $pluginOutput $name
+    if (Test-Path -LiteralPath $source -PathType Leaf) {
+        Move-Item -LiteralPath $source -Destination $destination -Force
+    }
+    elseif (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+        throw "Не найден bundled plugin artifact: $destination"
+    }
 }
 
 Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")

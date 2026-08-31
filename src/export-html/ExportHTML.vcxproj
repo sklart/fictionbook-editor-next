@@ -76,7 +76,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)out\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)out\$(Configuration)\Plugins\</OutDir>
     <IntDir>$(SolutionDir)build\obj\export-html\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
