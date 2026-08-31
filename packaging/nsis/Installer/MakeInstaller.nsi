@@ -762,6 +762,19 @@ nthere:
   Call CheckIEVersion
   Call CheckFBERunning
 
+  ; Version 3.0.8 moved bundled plug-ins into Plugins.  On upgrade remove a
+  ; registration only when it still belongs to this exact old installation;
+  ; foreign or redirected CLSIDs must remain untouched.
+  !insertmacro UnregisterLegacyPluginIfOwned "{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}" "ImportEPUB.dll"
+  !insertmacro UnregisterLegacyPluginIfOwned "{C3098839-EF69-4DE5-B27D-1E80051CA843}" "ExportHTML.dll"
+  !insertmacro UnregisterLegacyPluginIfOwned "{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "ExportDOCX.dll"
+  !insertmacro UnregisterLegacyPluginIfOwned "{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "ExportEPUB.dll"
+  Delete "$INSTDIR\ImportEPUB.dll"
+  Delete "$INSTDIR\ExportHTML.dll"
+  Delete "$INSTDIR\ExportDOCX.dll"
+  Delete "$INSTDIR\ExportEPUB.dll"
+  Delete "$INSTDIR\ImportEPUBLunaSVG.dll"
+
   SetOutPath "$INSTDIR"
   File "${INPUTDIR}\symbols.ini"
   File "${INPUTDIR}\blank.fb2"
@@ -1364,6 +1377,8 @@ fbd_uninstall_done:
   Delete "$INSTDIR\Plugins\ExportDOCX.dll"
   Delete "$INSTDIR\Plugins\ExportEPUB.dll"
   Delete "$INSTDIR\Plugins\ImportEPUBLunaSVG.dll"
+  Delete "$INSTDIR\Plugins\plugins.json"
+  RMDir "$INSTDIR\Plugins"
   Delete "$INSTDIR\gdiplus.manifest"
   Delete "$INSTDIR\gdiplus.dll"
   Delete "$INSTDIR\gdiplus.cat"
