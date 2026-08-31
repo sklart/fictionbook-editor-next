@@ -237,23 +237,6 @@ static bool IsTableToolbarCommand(UINT commandId)
 	return false;
 }
 
-static CString GetRuntimeToolbarToolTipText(UINT commandId)
-{
-	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
-	{
-		const TableToolbarCommand& command = kTableToolbarCommands[index];
-		if (command.commandId == commandId)
-			return FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText);
-	}
-
-	wchar_t resourceText[MAX_LOAD_STRING + 1];
-	if (!FbeLoadString(_Module.GetResourceInstance(), commandId, resourceText, MAX_LOAD_STRING))
-		return CString();
-
-	const wchar_t* text = wcschr(resourceText, L'\n');
-	return (text != NULL) ? text + 1 : resourceText;
-}
-
 // A process launched elevated (for example from an administrator Visual
 // Studio) does not use per-user COM registrations.  The bundled export DLLs
 // live next to plugins.json, so fall back to their class factory directly when
@@ -723,6 +706,26 @@ static LPCWSTR FindRuntimeMainFrameMenuCommandKey(UINT commandId)
 			return kMainFrameMenuCommandBindings[i].key;
 	}
 	return NULL;
+}
+
+static CString GetRuntimeToolbarToolTipText(UINT commandId)
+{
+	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+	{
+		const TableToolbarCommand& command = kTableToolbarCommands[index];
+		if (command.commandId == commandId)
+			return FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText);
+	}
+
+	wchar_t resourceText[MAX_LOAD_STRING + 1] = {};
+	if (!FbeLoadString(_Module.GetResourceInstance(), commandId, resourceText, MAX_LOAD_STRING))
+		return CString();
+
+	const wchar_t* fallback = wcschr(resourceText, L'\n');
+	fallback = (fallback != NULL) ? fallback + 1 : resourceText;
+	const LPCWSTR key = FindRuntimeMainFrameMenuCommandKey(commandId);
+	const CString localized = key != NULL ? FbeLoadRuntimeStringByKey(key, fallback) : CString(fallback);
+	return StripMenuMnemonics(localized);
 }
 
 static LPCWSTR GetCommandTraceSource(LPARAM lParam)

@@ -51,6 +51,9 @@ if ($cpp -notmatch '(?s)GetRuntimeToolbarToolTipText\(UINT commandId\).*?kTableT
     $cpp -notmatch '(?s)OnRuntimeToolTipTextW.*?GetRuntimeToolbarToolTipText\(static_cast<UINT>\(idCtrl\)\)') {
     throw 'Table toolbar tooltips must use the runtime-localized command captions in both ANSI and Unicode notifications.'
 }
+if ($cpp -notmatch '(?s)GetRuntimeToolbarToolTipText\(UINT commandId\).*?FindRuntimeMainFrameMenuCommandKey\(commandId\).*?FbeLoadRuntimeStringByKey\(key, fallback\).*?StripMenuMnemonics') {
+    throw 'Regular command-toolbar tooltips must use the same runtime-localized menu key instead of an English string-table fallback.'
+}
 foreach ($forbidden in @('TBCDRF_BLENDICON', 'TBCDRF_NOETCHEDEFFECT', 'DrawState', 'SetDisabledImageList', 'TB_SETDISABLEDIMAGELIST')) {
     if ($cpp.Contains($forbidden) -or $header.Contains($forbidden)) { throw "Forbidden table toolbar drawing workaround remains: $forbidden." }
 }

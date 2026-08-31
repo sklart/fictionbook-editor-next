@@ -119,10 +119,21 @@ public:
       }
       return 0;
 	}
-	
+
+	LRESULT OnSetFont(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
+	{
+		// UiMetrics owns this HFONT. Keep only the current borrowed handle and
+		// let the Static superclass update its own font state as well.
+		m_font = reinterpret_cast<HFONT>(wParam);
+		Invalidate();
+		bHandled = FALSE;
+		return 0;
+	}
+
 	void SetFont(HFONT pFont)
 	{
-		m_font = pFont;
+		ATLASSERT(IsWindow());
+		::SendMessage(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(pFont), TRUE);
 	}
 
 	void SetEnabled(bool Enabled = true)
@@ -133,6 +144,7 @@ public:
 
 	BEGIN_MSG_MAP(CCustomStatic)
 		//MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_SETFONT, OnSetFont)
 		MESSAGE_HANDLER(WM_PAINT, OnPaint)
 	END_MSG_MAP()
 };	

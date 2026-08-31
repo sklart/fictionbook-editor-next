@@ -7,6 +7,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $metricsHeader = Get-Content -LiteralPath (Join-Path $root 'src\fbe\UiMetrics.h') -Raw
 $metricsSource = Get-Content -LiteralPath (Join-Path $root 'src\fbe\UiMetrics.cpp') -Raw
 $mainFrame = Get-Content -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp') -Raw
+$mainFrameHeader = Get-Content -LiteralPath (Join-Path $root 'src\fbe\mainfrm.h') -Raw
 
 function Require([string]$Text, [string]$Pattern, [string]$Description) {
     if ($Text -notmatch $Pattern) { throw "UiMetrics contract missing: $Description" }
@@ -26,5 +27,10 @@ Require $mainFrame 'm_MenuBar\.AttachMenu\(GetMenu\(\)\);[\s\S]{0,200}UiMetrics:
 Require $mainFrame 'SetDialogFontForToolbarRow\(m_hWndLinksBar\);[\s\S]{0,500}WM_GETFONT' 'links row receives DialogFont before WM_GETFONT'
 Require $mainFrame 'SetDialogFontForToolbarRow\(m_hWndTableBar\);' 'first table row receives DialogFont'
 Require $mainFrame 'SetDialogFontForToolbarRow\(m_hWndTableBar2\);' 'second table row receives DialogFont'
+Require $mainFrameHeader 'LRESULT\s+OnSetFont\([^\)]*WPARAM wParam[^\)]*BOOL& bHandled\)' 'CCustomStatic WM_SETFONT handler'
+Require $mainFrameHeader 'm_font\s*=\s*reinterpret_cast<HFONT>\(wParam\)' 'CCustomStatic updates its borrowed font handle'
+Require $mainFrameHeader 'MESSAGE_HANDLER\(WM_SETFONT, OnSetFont\)' 'CCustomStatic WM_SETFONT message map'
+Require $mainFrameHeader 'bHandled\s*=\s*FALSE' 'CCustomStatic chains WM_SETFONT to the Static superclass'
+Require $mainFrameHeader 'SendMessage\(m_hWnd, WM_SETFONT' 'CCustomStatic SetFont uses the WM_SETFONT path'
 
 Write-Host 'UiMetrics and toolbar geometry contract passed.'
