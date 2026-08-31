@@ -10,12 +10,14 @@ assert(begin >= 0 && end > begin, "note preview implementation must be present")
 let timeoutId = 0;
 let timeoutCalls = 0;
 let clearCalls = 0;
+const traceStages = [];
 global.window = {
   setTimeout: () => { timeoutCalls += 1; return ++timeoutId; },
   clearTimeout: () => { clearCalls += 1; },
   getComputedStyle: () => ({ verticalAlign: "" })
 };
 global.notePreviewState = { panel: null, link: null, showTimer: null, hideTimer: null };
+global.TraceDiagnosticEvent = (code, text) => traceStages.push(`${code}:${text}`);
 global.document = {
   documentElement: { clientWidth: 800, clientHeight: 600, scrollLeft: 0, scrollTop: 0 },
   body: { clientWidth: 800, clientHeight: 600, scrollLeft: 0, scrollTop: 0 },
@@ -57,20 +59,23 @@ assert.strictEqual(timeoutCalls, 1, "hide timer must not restart on every mousem
 ScheduleNotePreview(superLink);
 assert(clearCalls >= 1 && notePreviewState.hideTimer === null, "returning to a note cancels pending hide");
 
-const child = { nodeType: 1, attributes: [{ name: "id" }, { name: "onclick" }, { name: "contenteditable" }, { name: "class" }], firstChild: null,
-  removeAttribute(name) { this.attributes = this.attributes.filter(attribute => attribute.name !== name); } };
+const child = { nodeType: 1, attributes: [
+  { nodeName: "id", specified: true }, { nodeName: "onclick", specified: true },
+  { nodeName: "onmouseover", specified: false }, { nodeName: "contenteditable", specified: true },
+  { nodeName: "class", specified: true }], firstChild: null,
+  removeAttribute(name) { this.attributes = this.attributes.filter(attribute => attribute.nodeName !== name); } };
 SanitizeNotePreviewNode(child);
-assert.deepStrictEqual(child.attributes.map(attribute => attribute.name), ["class"]);
+assert.deepStrictEqual(child.attributes.map(attribute => attribute.nodeName), ["onmouseover", "class"], "MSHTML nodeName attributes must be sanitized safely");
 assert.strictEqual(child.contentEditable, false);
 
 const previewItems = [];
 const previewPanel = { style: {}, offsetWidth: 200, offsetHeight: 80,
   appendChild(item) { previewItems.push(item); } };
 Object.defineProperty(previewPanel, "innerHTML", { set: () => { previewItems.length = 0; } });
-const previewChild = { nodeType: 1, attributes: [{ name: "id" }], firstChild: null, nextSibling: null,
-  removeAttribute(name) { this.attributes = this.attributes.filter(attribute => attribute.name !== name); },
-  cloneNode() { return { nodeType: 1, attributes: [{ name: "id" }], firstChild: null,
-    removeAttribute(name) { this.attributes = this.attributes.filter(attribute => attribute.name !== name); } }; } };
+const previewChild = { nodeType: 1, attributes: [{ nodeName: "id", specified: true }], firstChild: null, nextSibling: null,
+  removeAttribute(name) { this.attributes = this.attributes.filter(attribute => attribute.nodeName !== name); },
+  cloneNode() { return { nodeType: 1, attributes: [{ nodeName: "id", specified: true }], firstChild: null,
+    removeAttribute(name) { this.attributes = this.attributes.filter(attribute => attribute.nodeName !== name); } }; } };
 const noteTarget = { firstChild: previewChild };
 document.getElementById = id => id === "n1" ? noteTarget : null;
 notePreviewState.panel = previewPanel;
@@ -82,5 +87,9 @@ const brokenLink = link("#missing", "file:///book.fb2#missing", "#missing");
 notePreviewState.link = brokenLink;
 ShowNotePreview(brokenLink);
 assert.strictEqual(previewItems[0].text, "Примечание не найдено", "broken target must remain non-fatal");
+assert(traceStages.some(stage => stage.includes("hover-detected")));
+assert(traceStages.some(stage => stage.includes("target-resolved")));
+assert(traceStages.some(stage => stage.includes("clone-sanitized")));
+assert(traceStages.some(stage => stage.includes("popup-visible")));
 
 console.log("note preview regression tests passed");

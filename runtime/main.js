@@ -721,6 +721,7 @@ function ShowNotePreview(link)
 	if(!link || notePreviewState.link != link) return;
 	var panel = EnsureNotePreviewPanel();
 	var id = GetNotePreviewTargetId(link), target = id ? document.getElementById(id) : null;
+	TraceDiagnosticEvent("J611", "operation=notePreview; stage=target-resolved; found=" + (target ? 1 : 0));
 	panel.innerHTML = "";
 	if(target)
 	{
@@ -730,6 +731,7 @@ function ShowNotePreview(link)
 			SanitizeNotePreviewNode(clone);
 			panel.appendChild(clone);
 		}
+		TraceDiagnosticEvent("J612", "operation=notePreview; stage=clone-sanitized");
 	}
 	else
 	{
@@ -737,6 +739,7 @@ function ShowNotePreview(link)
 	}
 	PositionNotePreview(panel, link);
 	panel.style.visibility = "visible";
+	TraceDiagnosticEvent("J613", "operation=notePreview; stage=popup-visible");
 }
 
 function SanitizeNotePreviewNode(node)
@@ -745,12 +748,16 @@ function SanitizeNotePreviewNode(node)
 	var attributes = node.attributes;
 	for(var i = attributes.length - 1; i >= 0; --i)
 	{
-		var name = String(attributes[i].name || attributes[i].nodeName || "").toLowerCase();
+		var attribute = attributes[i];
+		if(!attribute || (typeof attribute.specified != "undefined" && !attribute.specified)) continue;
+		var name = String(attribute.nodeName || "").toLowerCase();
 		if(name == "id" || name == "contenteditable" || name == "unselectable" || name == "tabindex" ||
 			name == "hidefocus" || name == "spellcheck" || name.indexOf("on") == 0)
-			node.removeAttribute(attributes[i].name || attributes[i].nodeName);
+		{
+			try { node.removeAttribute(attribute.nodeName); } catch(ignore) {}
+		}
 	}
-	node.contentEditable = false;
+	try { node.contentEditable = false; } catch(ignore) {}
 	for(var child = node.firstChild; child; child = child.nextSibling) SanitizeNotePreviewNode(child);
 }
 
@@ -760,6 +767,7 @@ function ScheduleNotePreview(link)
 	if(notePreviewState.link == link) return;
 	if(notePreviewState.showTimer != null) window.clearTimeout(notePreviewState.showTimer);
 	notePreviewState.link = link;
+	TraceDiagnosticEvent("J610", "operation=notePreview; stage=hover-detected");
 	notePreviewState.showTimer = window.setTimeout(function() { notePreviewState.showTimer = null; ShowNotePreview(link); }, 500);
 }
 
