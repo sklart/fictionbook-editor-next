@@ -240,11 +240,11 @@ static CString GetRuntimeToolbarToolTipText(UINT commandId)
 
 // A process launched elevated (for example from an administrator Visual
 // Studio) does not use per-user COM registrations.  The bundled export DLLs
-// live next to FBE.exe, so fall back to their class factory directly when
+// live next to plugins.json, so fall back to their class factory directly when
 // CoCreateInstance cannot see the HKCU registration.
 struct BundledPluginMetadata
 {
-	CString type, module, clsidText, menuText, menuKey;
+	CString type, module, modulePath, clsidText, menuText, menuKey;
 	CLSID clsid;
 };
 
@@ -255,12 +255,22 @@ static bool ReadBundledPluginString(const std::wstring& json, size_t objectStart
 	value = result.c_str(); return true;
 }
 
+static bool IsBundledPluginModuleName(const CString& value)
+{
+	// "module" is intentionally a file name relative to plugins.json.  Do not
+	// accept paths that could escape the shipped Plugins directory.
+	return !value.IsEmpty() && value.Find(L'\\') < 0 && value.Find(L'/') < 0 && value.Find(L':') < 0;
+}
+
 static const std::vector<BundledPluginMetadata>& BundledPluginCatalog()
 {
 	static std::vector<BundledPluginMetadata> entries; static bool initialized = false;
 	if(initialized) return entries;
 	initialized = true;
 	std::wstring json; const CString path = U::GetProgDirFile(L"Plugins\\plugins.json");
+	const int directoryEnd = path.ReverseFind(L'\\');
+	if(directoryEnd < 0) return entries;
+	const CString directory = path.Left(directoryEnd + 1);
 	if(!FbeRuntimeLocalization::ReadUtf8TextFile(path, json)) return entries;
 	size_t array = 0;
 	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, 0, L"plugins", array)) return entries;
@@ -272,7 +282,7 @@ static const std::vector<BundledPluginMetadata>& BundledPluginCatalog()
 		const size_t object = array;
 		if(!FbeRuntimeLocalization::JsonSkipValue(json, array)) { entries.clear(); return entries; }
 		BundledPluginMetadata entry = {};
-		if(ReadBundledPluginString(json, object, L"type", entry.type) && ReadBundledPluginString(json, object, L"module", entry.module) && ReadBundledPluginString(json, object, L"clsid", entry.clsidText) && ReadBundledPluginString(json, object, L"menu", entry.menuText) && ReadBundledPluginString(json, object, L"menuKey", entry.menuKey) && ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) == S_OK) entries.push_back(entry);
+		if(ReadBundledPluginString(json, object, L"type", entry.type) && ReadBundledPluginString(json, object, L"module", entry.module) && IsBundledPluginModuleName(entry.module) && ReadBundledPluginString(json, object, L"clsid", entry.clsidText) && ReadBundledPluginString(json, object, L"menu", entry.menuText) && ReadBundledPluginString(json, object, L"menuKey", entry.menuKey) && ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) == S_OK) { entry.modulePath = directory + entry.module; entries.push_back(entry); }
 		FbeRuntimeLocalization::JsonSkipWhitespace(json, array);
 		if(array < json.size() && json[array] == L',') { ++array; continue; }
 		if(array < json.size() && json[array] == L']') break;
@@ -304,10 +314,10 @@ static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& inst
 	if(plugin == NULL)
 		return instance.CreateInstance(clsid); // external legacy plug-in
 
-	const CString path = U::GetProgDirFile(plugin->module);
+	const CString& path = plugin->modulePath;
 	HMODULE module = ::LoadLibraryEx(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
 	if(module == NULL && ::GetLastError() == ERROR_INVALID_PARAMETER)
-		module = ::LoadLibrary(path);
+		module = ::LoadLibraryEx(path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 	if(module == NULL)
 		return HRESULT_FROM_WIN32(::GetLastError());
 

@@ -46,9 +46,11 @@ Copy-Item -Path (Join-Path $repoRoot 'runtime\*') -Destination $stage -Recurse -
 foreach ($entry in @{ 'genres.txt_L' = 'genres.librusec.txt'; 'genres.rus.txt_L' = 'genres.rus.librusec.txt' }.GetEnumerator()) {
     Copy-Item -LiteralPath (Join-Path $stage $entry.Key) -Destination (Join-Path $stage $entry.Value) -Force
 }
-foreach ($name in @('FBShell.dll','FBShell64.dll','FBE.Sequence.propdesc')) { Remove-Item -LiteralPath (Join-Path $stage $name) -Force -ErrorAction SilentlyContinue }
+foreach ($name in @('FBShell.dll','FBShell64.dll','FBE.Sequence.propdesc','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Remove-Item -LiteralPath (Join-Path $stage $name) -Force -ErrorAction SilentlyContinue }
 foreach ($name in @('Scintilla.dll','Lexilla.dll')) { Copy-Item -LiteralPath (Join-Path $editorRuntime $name) -Destination $stage -Force }
-foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','html.xsl','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $stage -Force }
+foreach ($name in @('FBE.exe','FBV.exe','html.xsl')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $stage -Force }
+$pluginsDestination = Join-Path $stage 'Plugins'; New-Item -ItemType Directory -Path $pluginsDestination -Force | Out-Null
+foreach ($name in @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $pluginsDestination -Force }
 foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) { Copy-Item -LiteralPath (Join-Path $batchOutput $name) -Destination $stage -Force }
 $archDestination = Join-Path $stage 'Utilities\ArchHandler'; New-Item -ItemType Directory -Path $archDestination -Force | Out-Null
 foreach ($name in @('ZipHandler.exe','RarHandler.exe')) { Copy-Item -LiteralPath (Join-Path $archOutput $name) -Destination $archDestination -Force }

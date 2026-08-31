@@ -29,7 +29,11 @@ $manifestPath = Join-Path $root 'runtime\Plugins\plugins.json'
 $plugins = @((Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json).plugins)
 foreach ($plugin in $plugins) {
     if ($plugin.activation -ne 'local-com') { continue }
-    $path = Join-Path $RuntimeDirectory $plugin.module
+    # Release payloads resolve module names relative to plugins.json.  Keep
+    # the flat development output fallback because out\Release is deliberately
+    # not reshaped by this packaging change.
+    $path = Join-Path (Join-Path $RuntimeDirectory 'Plugins') $plugin.module
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $path = Join-Path $RuntimeDirectory $plugin.module }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Не найден bundled plug-in: $path" }
     & $testExecutable $path $plugin.clsid
     if ($LASTEXITCODE -ne 0) { throw "Локальная активация $($plugin.module) завершилась с кодом $LASTEXITCODE." }

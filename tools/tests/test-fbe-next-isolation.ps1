@@ -71,14 +71,27 @@ foreach ($name in $expectedGuids.Keys) {
 }
 
 $installer = Get-ProjectText 'packaging\nsis\Installer\MakeInstaller.nsi'
-Assert-NotContains $installer 'RegDll "$INSTDIR\ImportEPUB.dll"' 'Core-установка не зависит от RegDll'
+Assert-NotContains $installer 'RegDll "$INSTDIR\Plugins\ImportEPUB.dll"' 'Core-установка не зависит от RegDll'
 Assert-Contains $installer 'File "${INPUTDIR}\Plugins\plugins.json"' 'Установщик кладёт манифест bundled plug-ins'
+Assert-Contains $installer 'File "${INPUTDIR}\Plugins\ImportEPUB.dll"' 'Установщик кладёт bundled DLL в Plugins'
 Assert-NotContains $installer 'Section /o "Legacy COM compatibility"' 'Установщик не предлагает устаревшую COM-совместимость'
 Assert-Contains $installer 'DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam\FictionBook Editor Next"' 'Удаление ключей Next деинсталлятором'
 Assert-Contains $installer 'App Paths\FictionBookEditorNext.exe' 'Изолированный ключ App Paths FBE Next'
 Assert-NotContains $installer 'DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam"' 'Деинсталлятор Next'
 Assert-NotContains $installer '$0\FBE\Hotkeys.xml' 'Деинсталлятор Next не удаляет горячие клавиши старого FBE'
 Assert-NotContains $installer '$0\FBE\Settings.xml' 'Деинсталлятор Next не удаляет настройки старого FBE'
+
+$packageManifest = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'packaging\package-manifest.json') | ConvertFrom-Json
+foreach ($name in @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll')) {
+    if ($packageManifest.core.required -notcontains "Plugins\$name") { throw "Core manifest does not require Plugins\\$name." }
+    if ($packageManifest.core.required -contains $name) { throw "Core manifest still permits root plugin DLL: $name." }
+    if ($packageManifest.core.forbidden -notcontains $name) { throw "Core manifest does not forbid root plugin DLL: $name." }
+}
+$stageCore = Get-ProjectText 'tools\build\stage-core.ps1'
+Assert-Contains $stageCore '$pluginsDestination = Join-Path $stage' 'Staging создаёт Plugins-каталог'
+Assert-Contains $stageCore 'Destination $pluginsDestination' 'Staging кладёт DLL плагинов в Plugins'
+$repair = Get-ProjectText 'tools\build\repair-local-plugin-registration.ps1'
+Assert-Contains $repair "Join-Path `$developmentDirectory 'Plugins'" 'Repair предпочитает packaged Plugins-каталог'
 
 Write-Host 'Изоляция пользовательских данных и реестра FBE Next прошла проверку.'
 Write-Host '  Каталог данных: %LOCALAPPDATA%\FBE Next'

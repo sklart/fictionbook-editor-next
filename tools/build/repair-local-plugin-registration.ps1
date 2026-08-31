@@ -1,4 +1,6 @@
-# Восстанавливает COM-регистрацию плагинов FBE для локальной сборки из out\<Configuration>.
+# Восстанавливает COM-регистрацию плагинов FBE для локальной сборки. В staged
+# runtime DLL лежат в Plugins; плоский out\<Configuration> остаётся fallback
+# только для development-сборки.
 # Полезно при ручном запуске out\Release\FBE.exe, когда Windows ещё помнит старые пути
 # к установленным или Debug-версиям Export/Import DLL.
 [CmdletBinding()]
@@ -22,7 +24,9 @@ else {
 }
 
 if ([string]::IsNullOrWhiteSpace($PluginDirectory)) {
-    $PluginDirectory = Join-Path $RepositoryRoot "out\$Configuration"
+    $developmentDirectory = Join-Path $RepositoryRoot "out\$Configuration"
+    $packagedDirectory = Join-Path $developmentDirectory 'Plugins'
+    $PluginDirectory = if (Test-Path -LiteralPath $packagedDirectory -PathType Container) { $packagedDirectory } else { $developmentDirectory }
 }
 $PluginDirectory = (Resolve-Path $PluginDirectory).Path
 

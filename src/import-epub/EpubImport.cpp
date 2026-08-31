@@ -2007,6 +2007,12 @@ namespace
 
         const CStringW moduleDir = DirectoryOfCurrentModule();
         CStringW adapterPath = CombinePathLocal(moduleDir, L"ImportEPUBLunaSVG.dll");
+        // ImportEPUB.dll is shipped in Plugins, where the first probe finds
+        // its helper.  ImportEPUBBatch.exe intentionally remains in the
+        // program directory, so its identical importer code also probes the
+        // packaged Plugins directory without relying on the current directory.
+        if (!FileExists(adapterPath))
+            adapterPath = CombinePathLocal(CombinePathLocal(moduleDir, L"Plugins"), L"ImportEPUBLunaSVG.dll");
         if (!FileExists(adapterPath))
         {
             warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SVG_ADAPTER_MISSING, L"SVG not converted: ImportEPUBLunaSVG.dll is missing near ImportEPUB.dll/ImportEPUBBatch.exe. A bitmap placeholder will be created: ") + svgPath + L"\r\n";

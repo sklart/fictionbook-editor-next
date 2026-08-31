@@ -119,7 +119,7 @@ void PrintUsage()
         L"  --flat-output            Put all EPUB files directly into output folder.\n"
         L"  --report-csv [path]      Write CSV report. Optional path after the switch.\n"
         L"  --report-log [path]      Write text log. Optional path after the switch.\n"
-        L"  --dll <path>             Path to ExportEPUB.dll. Default: next to EXE.\n"
+        L"  --dll <path>             Path to ExportEPUB.dll. Default: Plugins next to EXE.\n"
         L"  --no-cover-page          Do not create separate cover.xhtml page.\n"
         L"  --no-annotation-page     Do not create separate annotation page.\n"
         L"  --no-ncx-fallback        Do not add NCX fallback to EPUB 3.\n"
@@ -397,7 +397,8 @@ bool ParseArgs(int argc, wchar_t** argv, Options& opt)
         return false;
     }
     if (opt.dllPath.empty()) {
-        opt.dllPath = ExeDirectory() / L"ExportEPUB.dll";
+        const fs::path packagedPlugin = ExeDirectory() / L"Plugins" / L"ExportEPUB.dll";
+        opt.dllPath = fs::exists(packagedPlugin) ? packagedPlugin : ExeDirectory() / L"ExportEPUB.dll";
     }
     return true;
 }

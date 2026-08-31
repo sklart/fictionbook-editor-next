@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "core": {
     "required": [
-      "FBE.exe", "FBV.exe", "ExportHTML.dll", "html.xsl", "ExportDOCX.dll", "ExportEPUB.dll",
-      "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "ExportDOCXBatch.exe",
+      "FBE.exe", "FBV.exe", "html.xsl", "ExportDOCXBatch.exe",
       "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "Scintilla.dll", "Lexilla.dll",
-      "Plugins\\plugins.json",
+      "Plugins\\plugins.json", "Plugins\\ExportHTML.dll", "Plugins\\ExportDOCX.dll",
+      "Plugins\\ExportEPUB.dll", "Plugins\\ImportEPUB.dll", "Plugins\\ImportEPUBLunaSVG.dll",
       "genres.txt", "genres.rus.txt", "genres.ukr.txt", "genres.librusec.txt", "genres.rus.librusec.txt",
       "dict\\de_DE.aff", "dict\\de_DE.dic", "dict\\en_US.aff", "dict\\en_US.dic", "dict\\ru_RU.aff", "dict\\ru_RU.dic", "dict\\uk_UA.aff", "dict\\uk_UA.dic", "dict\\sources.json",
       "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
     ],
     "optional": [],
-    "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Lang\\ru-RU\\res_rus.pdb", "Lang\\uk-UA\\res_ukr.pdb"],
+    "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Lang\\ru-RU\\res_rus.pdb", "Lang\\uk-UA\\res_ukr.pdb"],
     "runtimeDirectories": ["Lang", "Plugins", "Themes", "Scripts", "Utilities"]
   },
   "integration": {

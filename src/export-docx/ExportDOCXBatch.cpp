@@ -446,7 +446,8 @@ static std::wstring FindExportDll(const std::wstring& explicitPath)
     std::wstring exeDir = GetModuleDirectory();
     std::wstring cwd = GetCurrentDirectoryString();
 
-    const std::array<std::wstring, 6> candidates = {
+    const std::array<std::wstring, 7> candidates = {
+        JoinPath(exeDir, L"Plugins\\ExportDOCX.dll"),
         JoinPath(exeDir, L"ExportDOCX.dll"),
         JoinPath(cwd, L"ExportDOCX.dll"),
         JoinPath(cwd, L"out\\Release\\ExportDOCX.dll"),
@@ -1617,7 +1618,7 @@ static void Usage()
     PrintLine(L"  -Dll <path>       use the specified ExportDOCX.dll");
     PrintLine(L"  -Log <path>       write the CSV log to the specified file");
     PrintLine(L"");
-    PrintLine(L"By default, the DLL is searched next to the EXE, in the current directory, and in out\\Release.");
+    PrintLine(L"By default, the DLL is searched in Plugins next to the EXE, next to the EXE, in the current directory, and in out\\Release.");
 }
 
 static void ShowInteractiveLaunchHelp()
@@ -1963,7 +1964,7 @@ int wmain(int argc, wchar_t** argv)
             if (!opt.dllPath.empty()) {
                 PrintLine(L"The specified ExportDOCX.dll was not found: " + opt.dllPath);
             } else {
-                PrintLine(L"ExportDOCX.dll was not found. Build Release|Win32 first, or place the DLL next to ExportDOCXBatch.exe.");
+                PrintLine(L"ExportDOCX.dll was not found. Build Release|Win32 first, or place it in Plugins next to ExportDOCXBatch.exe.");
             }
             return 1;
         }

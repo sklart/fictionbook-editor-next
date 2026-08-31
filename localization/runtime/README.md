@@ -13,10 +13,12 @@ shell-команда Проводника использует отдельны�
 FictionBook Editor Next\
   FBE.exe
   FBV.exe
-  ExportHTML.dll
-  ExportDOCX.dll
-  ExportEPUB.dll
-  ImportEPUB.dll
+  Plugins\
+    ExportHTML.dll
+    ExportDOCX.dll
+    ExportEPUB.dll
+    ImportEPUB.dll
+    ImportEPUBLunaSVG.dll
 
   Lang\
     en-US\

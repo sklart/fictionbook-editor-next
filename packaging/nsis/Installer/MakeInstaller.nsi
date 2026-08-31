@@ -1096,27 +1096,27 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 ; Plugins
 	SectionGroup /e !$(ImportPluginsGroup) ImportPluginsGroup_id
 		Section $(Plugin_ImportEPUB) ImportEPUB_Plugin_id
-			SetOutPath "$INSTDIR"
-			File "${INPUTDIR}\ImportEPUB.dll"
+			SetOutPath "$INSTDIR\Plugins"
+			File "${INPUTDIR}\Plugins\ImportEPUB.dll"
 		SectionEnd
 		Section /o $(Plugin_ImportEPUB_SVG) ImportEPUB_SVG_id
-			SetOutPath "$INSTDIR"
-			File "${INPUTDIR}\ImportEPUBLunaSVG.dll"
+			SetOutPath "$INSTDIR\Plugins"
+			File "${INPUTDIR}\Plugins\ImportEPUBLunaSVG.dll"
 		SectionEnd
 	SectionGroupEnd
 
 	SectionGroup /e !$(ExportPluginsGroup) ExportPluginsGroup_id
 		Section $(Plugin_ExportHTML) ExportHTML_Plugin_id
-			SetOutPath "$INSTDIR"
-			File "${INPUTDIR}\ExportHTML.dll"
+			SetOutPath "$INSTDIR\Plugins"
+			File "${INPUTDIR}\Plugins\ExportHTML.dll"
 		SectionEnd
 		Section $(Plugin_ExportDOCX) ExportDOCX_Plugin_id
-			SetOutPath "$INSTDIR"
-			File "${INPUTDIR}\ExportDOCX.dll"
+			SetOutPath "$INSTDIR\Plugins"
+			File "${INPUTDIR}\Plugins\ExportDOCX.dll"
 		SectionEnd
 		Section $(Plugin_ExportEPUB) ExportEPUB_Plugin_id
-			SetOutPath "$INSTDIR"
-			File "${INPUTDIR}\ExportEPUB.dll"
+			SetOutPath "$INSTDIR\Plugins"
+			File "${INPUTDIR}\Plugins\ExportEPUB.dll"
 		SectionEnd
 	SectionGroupEnd
 
@@ -1129,9 +1129,10 @@ SectionGroup /e !$(PluginsGroup) PluginsGroup_id
 		; Консольные batch-конвертеры используют те же библиотеки, что и GUI-плагины.
 		; Копируем зависимости здесь тоже, чтобы секция была самодостаточной, даже если
 		; пользователь не выбрал соответствующие GUI-плагины.
-		File "${INPUTDIR}\ExportDOCX.dll"
-		File "${INPUTDIR}\ExportEPUB.dll"
-		File "${INPUTDIR}\ImportEPUB.dll"
+		SetOutPath "$INSTDIR\Plugins"
+		File "${INPUTDIR}\Plugins\ExportDOCX.dll"
+		File "${INPUTDIR}\Plugins\ExportEPUB.dll"
+		File "${INPUTDIR}\Plugins\ImportEPUB.dll"
 	SectionEnd
 SectionGroupEnd
 
@@ -1268,10 +1269,10 @@ Section Uninstall
   ; Only the explicitly selected legacy component performs COM registration.
   ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "LegacyComInstalled"
   ${If} $0 = 1
-    !insertmacro UnregisterLegacyPluginIfOwned "{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}" "ImportEPUB.dll"
-    !insertmacro UnregisterLegacyPluginIfOwned "{C3098839-EF69-4DE5-B27D-1E80051CA843}" "ExportHTML.dll"
-    !insertmacro UnregisterLegacyPluginIfOwned "{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "ExportDOCX.dll"
-    !insertmacro UnregisterLegacyPluginIfOwned "{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "ExportEPUB.dll"
+    !insertmacro UnregisterLegacyPluginIfOwned "{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}" "Plugins\ImportEPUB.dll"
+    !insertmacro UnregisterLegacyPluginIfOwned "{C3098839-EF69-4DE5-B27D-1E80051CA843}" "Plugins\ExportHTML.dll"
+    !insertmacro UnregisterLegacyPluginIfOwned "{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "Plugins\ExportDOCX.dll"
+    !insertmacro UnregisterLegacyPluginIfOwned "{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "Plugins\ExportEPUB.dll"
   ${EndIf}
 
   ; Remove only associations and verbs that still belong to this instance.
@@ -1358,6 +1359,11 @@ fbd_uninstall_done:
   Delete "$INSTDIR\ExportEPUBBatch.exe"
   Delete "$INSTDIR\ImportEPUBBatch.exe"
   Delete "$INSTDIR\ImportEPUBLunaSVG.dll"
+  Delete "$INSTDIR\Plugins\ImportEPUB.dll"
+  Delete "$INSTDIR\Plugins\ExportHTML.dll"
+  Delete "$INSTDIR\Plugins\ExportDOCX.dll"
+  Delete "$INSTDIR\Plugins\ExportEPUB.dll"
+  Delete "$INSTDIR\Plugins\ImportEPUBLunaSVG.dll"
   Delete "$INSTDIR\gdiplus.manifest"
   Delete "$INSTDIR\gdiplus.dll"
   Delete "$INSTDIR\gdiplus.cat"
