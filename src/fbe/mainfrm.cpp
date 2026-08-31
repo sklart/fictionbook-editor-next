@@ -7422,8 +7422,6 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 			  if (!SourceToHTML())
 				return;
 			  m_source.SendMessage(SCI_SETSAVEPOINT);
-			  if(m_source_selection_transferred && (bool)m_body_selection)
-				m_body_selection->select();
 			}
 			m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
 
@@ -7528,7 +7526,9 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 		(bool)m_body_selection)
 	{
 		// Activating the MSHTML host can clear its visual highlight.  Apply the
-		// already mapped range after the final focus assignment, not before it.
+		// already mapped range once, after the final focus assignment.  MSHTML
+		// can stop extending a new drag-selection when the same IHTMLTxtRange is
+		// selected both before and after the host gains focus.
 		m_body_selection->select();
 	}
 	if(vt == SOURCE && m_body_selection_transferred)

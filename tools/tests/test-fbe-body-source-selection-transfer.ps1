@@ -56,10 +56,8 @@ Assert-Contains $source 'bool selection_path_available = path_begin.CreatePathFr
     'переход Source → Body должен проверять преобразование позиции в DOM-путь'
 Assert-Contains $source 'm_source_selection_transferred = (bool)m_body_selection;' `
     'переход Source → Body должен фиксировать успешное создание HTML-выделения'
-Assert-Contains $source 'if(m_source_selection_transferred && (bool)m_body_selection)' `
-    'переход Source → Body должен применять только подтверждённое выделение'
 Assert-Contains $source 'm_body_selection->select();' `
-    'после активации Body должно восстанавливаться перенесённое выделение'
+	'после активации Body должно восстанавливаться перенесённое выделение'
 Assert-Contains $source 'ExtractVisibleXmlText(selectedSourceXml)' `
     'при переходе Source → Body выделение должно преобразовываться в отображаемый текст'
 Assert-Contains $source 'FindBodyTextRange(htmlBody,' `
@@ -73,7 +71,7 @@ Assert-Contains $source 'htmlScope = element;' `
 Assert-Contains $source 'MSHTML::IHTMLElementPtr refinedScope' `
 	'DomPath может только уточнять область поиска fallback, а не отключать её'
 Assert-Contains $source 'vt == BODY && prev == SOURCE && m_source_selection_transferred' `
-	'после окончательной установки фокуса Body должно повторно применяться перенесённое выделение'
+	'после окончательной установки фокуса Body должно применяться только подтверждённое перенесённое выделение'
 
 Assert-Contains $source 'FindXmlNodeTextPosition(srcText, xml_selected_begin' `
     'при отказе DomPath переход Body → Source должен использовать XML выбранного узла'
