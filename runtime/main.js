@@ -584,7 +584,10 @@ function DecodeNotePreviewFragment(fragment)
 function GetNotePreviewDocumentUrl()
 {
 	var href = "";
-	try { href = String(document.location.href || ""); } catch(ignore) {}
+	// In legacy MSHTML document.location can be an about:blank host URL while
+	// document.URL still contains the document URL used to expand link.href.
+	try { href = String(document.URL || ""); } catch(ignore) {}
+	if(!href) try { href = String(document.location.href || ""); } catch(ignore) {}
 	if(!href) try { href = String(window.location.href || ""); } catch(ignore) {}
 	var hash = href.indexOf("#");
 	return hash == -1 ? href : href.substring(0, hash);
@@ -969,15 +972,32 @@ function ScheduleNotePreviewHide()
 	notePreviewState.hideTimer = window.setTimeout(function() { notePreviewState.hideTimer = null; HideNotePreview(); }, 250);
 }
 
+function IsInsideNotePreviewBody(body, element)
+{
+	for(var current = element; current; current = current.parentNode)
+		if(current == body) return true;
+	return false;
+}
+
+function HandleNotePreviewMouseMove(body, e)
+{
+	e = NotePreviewEvent(e);
+	var target = e && (e.target || e.srcElement);
+	if(!e || !IsInsideNotePreviewBody(body, target)) return;
+	var link = FindNotePreviewLinkAt(body, e.clientX, e.clientY, target);
+	if(link) ScheduleNotePreview(link); else ScheduleNotePreviewHide();
+}
+
 function InitNotePreview(body)
 {
 	if(!body || body.notePreviewHandlersAttached) return;
 	body.notePreviewHandlersAttached = true;
-	body.onmousemove = function(e) {
-		e = NotePreviewEvent(e);
-		var link = FindNotePreviewLinkAt(body, e.clientX, e.clientY, e.target || e.srcElement);
-		if(link) ScheduleNotePreview(link); else ScheduleNotePreviewHide();
-	};
+	var onMouseMove = function(e) { HandleNotePreviewMouseMove(body, e); };
+	body.onmousemove = onMouseMove;
+	// A document-level Events2 sink can prevent an element property handler
+	// from seeing mousemove on older MSHTML hosts. attachEvent coexists with
+	// that sink and preserves delegated preview handling without per-link hooks.
+	try { if(document.attachEvent) document.attachEvent("onmousemove", onMouseMove); } catch(ignore) {}
 	body.onmouseleave = function() { ScheduleNotePreviewHide(); };
 	body.onkeydown = function(e) { e = NotePreviewEvent(e); if((e.keyCode || e.which) == 27) HideNotePreview(); };
 }

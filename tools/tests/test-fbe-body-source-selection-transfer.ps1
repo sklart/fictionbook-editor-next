@@ -47,6 +47,10 @@ Assert-Contains $source 'PostMessage(m_source, SCI_SCROLLCARET' `
     'после завершения смены режима Source должен отложенно прокручиваться к выделению'
 Assert-Contains $source 'FindVisibleXmlTextRange(srcText, selectedText' `
     'переход Body → Source должен сначала сопоставлять фактически выделенный текст'
+Assert-Contains $source 'FindXmlBodyRangeByIndex(srcText, selected_body_index, bodyStart, bodyEnd)' `
+    'переход Body → Source при отказе DomPath должен ограничить fallback соответствующим XML body'
+Assert-Contains $source 'FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd,' `
+    'переход Body → Source должен применять безопасный text fallback в границах body'
 
 Assert-Contains $source 'SCI_GETSELECTIONSTART' `
     'переход Source → Body должен читать начало выделения Scintilla'

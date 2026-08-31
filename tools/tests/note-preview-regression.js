@@ -44,6 +44,11 @@ assert.strictEqual(GetNotePreviewTargetId(link("", "", "#n1")), "n1");
 assert.strictEqual(GetNotePreviewTargetId(link("#", "file:///book.fb2#", "")), "");
 assert.strictEqual(GetNotePreviewTargetId(link("fbw-internal:#n1", "", "")), "n1");
 assert.strictEqual(GetNotePreviewTargetId(link("https://example.com/page#n1", "https://example.com/page#n1", "#n1")), "", "external URLs must not be previewed");
+document.URL = "file:///book.fb2";
+document.location.href = "about:blank";
+assert.strictEqual(GetNotePreviewTargetId(link("", "file:///book.fb2#n1", "#n1")), "n1", "MSHTML document.URL must resolve an expanded local note URL");
+delete document.URL;
+document.location.href = "file:///book.fb2";
 assert(IsNotePreviewLink(link("file:///book.fb2#n1", "file:///book.fb2#n1", "#n1")));
 
 const body = { nodeType: 1, tagName: "DIV", getElementsByTagName: () => { throw new Error("O(N) link scan"); } };
@@ -62,6 +67,14 @@ ScheduleNotePreviewHide();
 assert.strictEqual(timeoutCalls, 1, "hide timer must not restart on every mousemove");
 ScheduleNotePreview(superLink);
 assert(clearCalls >= 1 && notePreviewState.hideTimer === null, "returning to a note cancels pending hide");
+
+let attachedDocumentMouseMove = null;
+document.attachEvent = (name, handler) => { if(name === "onmousemove") attachedDocumentMouseMove = handler; };
+InitNotePreview(body);
+assert(attachedDocumentMouseMove, "legacy MSHTML must receive a delegated document mousemove fallback");
+attachedDocumentMouseMove({ clientX: 15, clientY: 110, srcElement: superLink });
+assert.strictEqual(notePreviewState.link, superLink, "document-level fallback must preserve note hover detection");
+delete document.attachEvent;
 
 const child = { nodeType: 1, attributes: [
   { nodeName: "id", specified: true }, { nodeName: "onclick", specified: true },

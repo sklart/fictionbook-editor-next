@@ -2129,10 +2129,15 @@ MSHTML::IHTMLElementPtr	  CFBEView::SelectionStructTableCon() {
 	return cur;
       cur=cur->parentElement;
     }
+	// A command-bar click can make createRange() unavailable before the command
+	// is routed.  The mouse handler records this exact cell, so prefer it before
+	// querying that transient MSHTML selection state.
+	if (m_table_selection_anchor) return m_table_selection_anchor;
 	MSHTML::IHTMLTxtRangePtr range(Document()->selection->createRange());
 	if (range) {
 		range->collapse(VARIANT_TRUE);
-		return FindTableCell(range->parentElement());
+		MSHTML::IHTMLElementPtr cell(FindTableCell(range->parentElement()));
+		if (cell) return cell;
 	}
   }
   catch (_com_error&) {
@@ -3965,42 +3970,53 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 VARIANT_BOOL CFBEView::OnMouseDown(IDispatch* evt)
 {
 	MSHTML::IHTMLEventObjPtr eventObject(evt);
-	if (!eventObject || eventObject->button != 1) return VARIANT_FALSE;
+	if (!eventObject || eventObject->button != 1) return VARIANT_TRUE;
 	m_table_selection_dragging = false;
 	if (m_table_selection_anchor) m_table_selection_anchor.Release();
 	UpdateTableCellHighlights(m_table_selection_cells, std::vector<MSHTML::IHTMLElementPtr>());
 	MSHTML::IHTMLElementPtr source(eventObject->srcElement);
 	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
-	if (!cell) return VARIANT_FALSE;
+	// The document event signature returns VT_BOOL: VARIANT_FALSE cancels the
+	// native MSHTML gesture.  Outside tables (and inside one cell) preserve the
+	// editor's normal text selection, double-click and Shift-click behaviour.
+	if (!cell) return VARIANT_TRUE;
 	m_table_selection_anchor = cell;
 	m_table_selection_dragging = true;
-	return VARIANT_FALSE;
+	return VARIANT_TRUE;
 }
 
 VARIANT_BOOL CFBEView::OnMouseMove(IDispatch* evt)
 {
-	if (!m_table_selection_dragging || !m_table_selection_anchor) return VARIANT_FALSE;
+	if (!m_table_selection_dragging || !m_table_selection_anchor) return VARIANT_TRUE;
 	MSHTML::IHTMLEventObjPtr eventObject(evt);
+	if (!eventObject) return VARIANT_TRUE;
 	MSHTML::IHTMLElementPtr source(eventObject ? eventObject->srcElement : NULL);
 	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
 	std::vector<MSHTML::IHTMLElementPtr> cells;
-	if (!cell || cell == m_table_selection_anchor || !GetTableCellRectangle(m_table_selection_anchor, cell, cells) || !SelectTableCellRange(Document(), m_table_selection_anchor, cell)) return VARIANT_FALSE;
+	if (!cell || cell == m_table_selection_anchor || !GetTableCellRectangle(m_table_selection_anchor, cell, cells) || !SelectTableCellRange(Document(), m_table_selection_anchor, cell)) return VARIANT_TRUE;
 	UpdateTableCellHighlights(m_table_selection_cells, cells);
 	eventObject->cancelBubble = VARIANT_TRUE;
 	eventObject->returnValue = VARIANT_FALSE;
-	return VARIANT_TRUE;
+	return VARIANT_FALSE;
 }
 
 VARIANT_BOOL CFBEView::OnMouseUp(IDispatch* evt)
 {
-	if (!m_table_selection_dragging) return VARIANT_FALSE;
+	if (!m_table_selection_dragging) return VARIANT_TRUE;
 	MSHTML::IHTMLEventObjPtr eventObject(evt);
 	MSHTML::IHTMLElementPtr source(eventObject ? eventObject->srcElement : NULL);
 	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
 	std::vector<MSHTML::IHTMLElementPtr> cells;
-	if (cell && cell != m_table_selection_anchor && GetTableCellRectangle(m_table_selection_anchor, cell, cells) && SelectTableCellRange(Document(), m_table_selection_anchor, cell)) UpdateTableCellHighlights(m_table_selection_cells, cells);
+	bool tableSelectionHandled = !m_table_selection_cells.empty();
+	if (cell && cell != m_table_selection_anchor && GetTableCellRectangle(m_table_selection_anchor, cell, cells) && SelectTableCellRange(Document(), m_table_selection_anchor, cell))
+	{
+		UpdateTableCellHighlights(m_table_selection_cells, cells);
+		tableSelectionHandled = true;
+	}
 	m_table_selection_dragging = false;
-	m_table_selection_anchor.Release();
+	if (!tableSelectionHandled || !eventObject) return VARIANT_TRUE;
+	eventObject->cancelBubble = VARIANT_TRUE;
+	eventObject->returnValue = VARIANT_FALSE;
 	return VARIANT_FALSE;
 }
 

@@ -6441,6 +6441,42 @@ static int FindXmlBodyIndexAtPosition(const CString& sourceXml, int position)
 	return currentBody;
 }
 
+// Resolve the complete serialized range of one top-level FB2 body.  This is
+// deliberately independent of DomPath: a native MSHTML text selection can be
+// perfectly valid even when DomPath cannot represent one of its inline nodes.
+static bool FindXmlBodyRangeByIndex(const CString& sourceXml, int targetIndex,
+	int& bodyStart, int& bodyEnd)
+{
+	bodyStart = bodyEnd = -1;
+	if(targetIndex < 0) return false;
+	int bodyIndex = 0;
+	for(int tagStart = sourceXml.Find(L'<'); tagStart >= 0;)
+	{
+		const int tagEnd = sourceXml.Find(L'>', tagStart + 1);
+		if(tagEnd < 0) break;
+		CString tag = sourceXml.Mid(tagStart + 1, tagEnd - tagStart - 1);
+		tag.TrimLeft();
+		const bool closing = !tag.IsEmpty() && tag[0] == L'/';
+		if(closing) tag.Delete(0);
+		const int nameEnd = tag.FindOneOf(L" \t\r\n/");
+		CString name = nameEnd >= 0 ? tag.Left(nameEnd) : tag;
+		const int namespaceSeparator = name.ReverseFind(L':');
+		if(namespaceSeparator >= 0) name = name.Mid(namespaceSeparator + 1);
+		if(name.CompareNoCase(L"body") == 0)
+		{
+			if(!closing && bodyIndex++ == targetIndex)
+				bodyStart = tagStart;
+			else if(closing && bodyStart >= 0)
+			{
+				bodyEnd = tagEnd + 1;
+				return true;
+			}
+		}
+		tagStart = sourceXml.Find(L'<', tagEnd + 1);
+	}
+	return false;
+}
+
 // Преобразует фрагмент Source в отображаемый текст для поиска в Body.
 static CString ExtractVisibleXmlText(const CString& sourceFragment)
 {
@@ -6967,6 +7003,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	bool selection_path_available = false;
 
 	int bodies_count = 0;
+	int selected_body_index = -1;
 	// ????? HTML
 	// ?????????? ???? ?? ??????????? ????????
 	if(saveSelection)
@@ -7012,6 +7049,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 				}
 				else
 				{
+					selected_body_index = bodies_count;
 					selection_path_available = selection_begin_path.CreatePathFromHTMLDOM(root, selectedBeginElement);
 					one_element = selectedBeginElement == selectedEndElement;
 					if(one_element)
@@ -7167,6 +7205,15 @@ bool CMainFrame::ShowSource(bool saveSelection)
 					FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd,
 						expectedBegin, beginPosition, endPosition);
 				}
+			}
+			// DomPath is positional refinement, not a prerequisite for a native
+			// Body selection.  The selected FB2 body remains a safe base scope;
+			// FindVisibleXmlTextRange refuses ambiguous repeated text within it.
+			if(hasBodySelectionText && (beginPosition < 0 || endPosition < 0) &&
+				FindXmlBodyRangeByIndex(srcText, selected_body_index, bodyStart, bodyEnd))
+			{
+				FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd,
+					-1, beginPosition, endPosition);
 			}
 		}
 
