@@ -63,7 +63,17 @@ Assert-Contains $source 'm_body_selection->select();' `
 Assert-Contains $source 'ExtractVisibleXmlText(selectedSourceXml)' `
     'при переходе Source → Body выделение должно преобразовываться в отображаемый текст'
 Assert-Contains $source 'FindBodyTextRange(htmlBody,' `
-    'при отказе DOM-пути Source → Body должен искать текстовый диапазон в Body'
+	'при отказе DOM-пути Source → Body должен искать текстовый диапазон в Body'
+Assert-Contains $source 'FindXmlBodyIndexAtPosition(sourceText, selectedPosBegin)' `
+	'при отказе DomPath Source → Body должен определять соответствующий XML body по позиции Source'
+Assert-Contains $source 'int htmlBodyIndex = selected_body_index >= 0 ? selected_body_index : 0;' `
+	'fallback Source → Body должен иметь безопасный основной body даже без DomPath'
+Assert-Contains $source 'htmlScope = element;' `
+	'соответствующий HTML body должен быть базовой областью поиска fallback'
+Assert-Contains $source 'MSHTML::IHTMLElementPtr refinedScope' `
+	'DomPath может только уточнять область поиска fallback, а не отключать её'
+Assert-Contains $source 'vt == BODY && prev == SOURCE && m_source_selection_transferred' `
+	'после окончательной установки фокуса Body должно повторно применяться перенесённое выделение'
 
 Assert-Contains $source 'FindXmlNodeTextPosition(srcText, xml_selected_begin' `
     'при отказе DomPath переход Body → Source должен использовать XML выбранного узла'

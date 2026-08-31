@@ -6411,6 +6411,36 @@ static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,
 		bodyStart, bodyEnd);
 }
 
+// DomPath may fail for a valid Source position (for example inside inline
+// markup).  The body ordinal is still available from the source XML and is
+// sufficient to constrain the fallback search to the matching visual body.
+static int FindXmlBodyIndexAtPosition(const CString& sourceXml, int position)
+{
+	int currentBody = -1;
+	int bodyCount = 0;
+	for(int tagStart = sourceXml.Find(L'<'); tagStart >= 0 && tagStart <= position;)
+	{
+		const int tagEnd = sourceXml.Find(L'>', tagStart + 1);
+		if(tagEnd < 0) break;
+		CString tag = sourceXml.Mid(tagStart + 1, tagEnd - tagStart - 1);
+		tag.TrimLeft();
+		const bool closing = !tag.IsEmpty() && tag[0] == L'/';
+		if(closing) tag.Delete(0);
+		const int nameEnd = tag.FindOneOf(L" \t\r\n/");
+		CString name = nameEnd >= 0 ? tag.Left(nameEnd) : tag;
+		const int namespaceSeparator = name.ReverseFind(L':');
+		if(namespaceSeparator >= 0) name = name.Mid(namespaceSeparator + 1);
+		if(name.CompareNoCase(L"body") == 0)
+		{
+			if(closing) currentBody = -1;
+			else currentBody = bodyCount++;
+		}
+		if(tagEnd >= position) break;
+		tagStart = sourceXml.Find(L'<', tagEnd + 1);
+	}
+	return currentBody;
+}
+
 // Преобразует фрагмент Source в отображаемый текст для поиска в Body.
 static CString ExtractVisibleXmlText(const CString& sourceFragment)
 {
@@ -6626,6 +6656,7 @@ bool  CMainFrame::SourceToHTML()
 		selectedPosEnd = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosEnd,NULL,0);
 	}
 	CString sourceText(ustr);
+	selected_body_index = FindXmlBodyIndexAtPosition(sourceText, selectedPosBegin);
 	if (!one_pos)
 	{
 		selectedPosBegin = SkipXmlMarkupForward(sourceText, selectedPosBegin);
@@ -6870,7 +6901,7 @@ bool  CMainFrame::SourceToHTML()
 		if(root) root = root->firstChild; // <DIV id = fbw_desc>
 		if(root) root = root->nextSibling; // <DIV id = fbw_body>
 		if(root) root = root->firstChild;
-		int htmlBodyIndex = selected_body_index;
+		int htmlBodyIndex = selected_body_index >= 0 ? selected_body_index : 0;
 		while(root)
 		{
 			MSHTML::IHTMLElementPtr element(root);
@@ -6878,9 +6909,14 @@ bool  CMainFrame::SourceToHTML()
 			{
 				if(htmlBodyIndex == 0)
 				{
+					// The corresponding HTML body is always the base fallback
+					// scope.  A DomPath, when available, may only narrow it.
+					htmlScope = element;
 					if(fallback_path_available)
 					{
-						htmlScope = fallback_scope_path.GetNodeFromHTMLDOM(root);
+						MSHTML::IHTMLElementPtr refinedScope =
+							fallback_scope_path.GetNodeFromHTMLDOM(root);
+						if((bool)refinedScope) htmlScope = refinedScope;
 						expectedStartElement = fallback_begin_path.GetNodeFromHTMLDOM(root);
 					}
 					break;
@@ -7485,9 +7521,16 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
   m_last_view = m_current_view;
   m_current_view = vt;
 	UpdateStatusBar();
-  if(!(prev == SOURCE && vt == BODY))
-	RestoreSelection();
+	if(!(prev == SOURCE && vt == BODY))
+		RestoreSelection();
   m_view.SetFocus();
+	if(vt == BODY && prev == SOURCE && m_source_selection_transferred &&
+		(bool)m_body_selection)
+	{
+		// Activating the MSHTML host can clear its visual highlight.  Apply the
+		// already mapped range after the final focus assignment, not before it.
+		m_body_selection->select();
+	}
 	if(vt == SOURCE && m_body_selection_transferred)
 	{
 		// Source получает фокус и окончательный размер только в конце смены

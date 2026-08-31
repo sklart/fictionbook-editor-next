@@ -52,6 +52,7 @@ int main()
 	const int notes = At(xml, L"<body name='notes'>");
 	const int firstPhrase = At(xml, L"Repeated <emphasis>");
 	const int secondPhrase = At(xml, L"Repeated <strong>");
+	const int linkPhrase = At(xml, L"Repeated <a xlink:href='#x'>");
 	const int notePhrase = At(xml, L"Repeated phrase A</p><p>Exact duplicate");
 	const int secondDuplicate = static_cast<int>(xml.find(L"Exact duplicate", sectionTwo));
 	const int thirdDuplicate = static_cast<int>(xml.find(L"Exact duplicate", At(xml, L"<section id='three'>")));
@@ -81,6 +82,10 @@ int main()
 	// retain source boundaries while tags themselves are not selectable text.
 	Need(Match(xml, L"Repeated phrase A", L"<section id='one'>", L"</section>", firstPhrase).end > first.start,
 		"inline emphasis selection");
+	Need(Match(xml, L"Repeated phrase C", L"<section id='two'>", L"</section>", linkPhrase).start == linkPhrase,
+		"inline link selection");
+	Need(Match(xml, L"Exact duplicate", L"<section id='three'>", L"</section>", thirdDuplicate).start == thirdDuplicate,
+		"ordinary text selection");
 	Need(Match(xml, L"Repeated phrase", L"<title>", L"</title>", At(xml, L"<title>")).start == At(xml, L"Repeated phrase</p></title>"), "title selection");
 	Need(Match(xml, L"line one", L"<poem>", L"</poem>", At(xml, L"line one")).start == At(xml, L"line one"), "poem selection");
 	Need(Match(xml, L"cell text", L"<table>", L"</table>", At(xml, L"cell text")).start == At(xml, L"cell text"), "table selection");
