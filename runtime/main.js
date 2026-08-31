@@ -722,12 +722,17 @@ function EnsureNotePreviewPanel()
 	return panel;
 }
 
-function GetNotePreviewBackground()
+function GetNotePreviewColors()
 {
-	var body = document.getElementById("fbw_body"), color = "";
-	try { color = body && body.currentStyle ? body.currentStyle.backgroundColor : ""; } catch(ignore) {}
-	if(!color || color == "transparent") try { color = document.body.currentStyle.backgroundColor; } catch(ignore) {}
-	return color && color != "transparent" ? color : "#ffffff";
+	var body = document.getElementById("fbw_body"), background = "", color = "";
+	try { background = body && body.currentStyle ? body.currentStyle.backgroundColor : ""; } catch(ignore) {}
+	try { color = body && body.currentStyle ? body.currentStyle.color : ""; } catch(ignore) {}
+	if(!background || background == "transparent") try { background = document.body.currentStyle.backgroundColor; } catch(ignore) {}
+	if(!color || color == "transparent") try { color = document.body.currentStyle.color; } catch(ignore) {}
+	return {
+		background: background && background != "transparent" ? background : "#ffffff",
+		color: color && color != "transparent" ? color : "#000000"
+	};
 }
 
 function NotePreviewHasClass(node, className)
@@ -748,6 +753,30 @@ function AppendNotePreviewContent(panel, target)
 	}
 }
 
+function GetNotePreviewBaseFontSize(panel)
+{
+	var fontSize = "", match, value;
+	try { fontSize = String(document.getElementById("fbw_body").currentStyle.fontSize || ""); } catch(ignore) {}
+	if(!fontSize) try { fontSize = String(panel.currentStyle.fontSize || ""); } catch(ignore) {}
+	match = /([0-9.]+)\s*(px|pt)?/i.exec(fontSize);
+	if(!match) return 16;
+	value = parseFloat(match[1]);
+	if(!value || value < 1) return 16;
+	return String(match[2] || "").toLowerCase() == "pt" ? value * 96 / 72 : value;
+}
+
+function GetNotePreviewFontPercents(panel)
+{
+	var candidates = [100, 95, 90, 85, 80], result = [], baseFontSize = GetNotePreviewBaseFontSize(panel);
+	for(var i = 0; i < candidates.length; ++i)
+	{
+		// A relative percentage alone can make text illegibly small in a body
+		// with a small user font.  Never reduce it below 11 CSS pixels.
+		if(candidates[i] == 100 || baseFontSize * candidates[i] / 100 >= 11) result.push(candidates[i]);
+	}
+	return result;
+}
+
 function FitNotePreview(panel, link)
 {
 	var rect = GetNotePreviewRect(link), docElement = document.documentElement;
@@ -758,11 +787,13 @@ function FitNotePreview(panel, link)
 	var below = rect ? viewportHeight - rect.bottom - margin - gap : viewportHeight / 2;
 	var maxHeight = Math.max(80, Math.min(Math.round(viewportHeight * 0.70), Math.max(above, below)));
 	var maxWidth = Math.max(160, Math.min(viewportWidth - margin * 2, Math.round(viewportWidth * 0.75)));
-	var widths = [420, 500, 560, 600], fonts = [100, 95, 90, 85, 80];
-	var lastWidth = Math.min(widths[0], maxWidth), lastFont = fonts[fonts.length - 1];
+	var widths = [280, 340, 420, 500, 560, 600];
+	var lastWidth = Math.min(widths[0], maxWidth);
 	panel.style.width = "auto";
 	panel.style.height = "auto";
 	panel.style.maxHeight = "none";
+	panel.style.fontSize = "100%";
+	var fonts = GetNotePreviewFontPercents(panel), lastFont = fonts[fonts.length - 1];
 	panel.style.overflow = "hidden";
 	for(var fontIndex = 0; fontIndex < fonts.length; ++fontIndex)
 	{
@@ -822,7 +853,9 @@ function ShowNotePreview(link)
 		panel.appendChild(document.createTextNode("Примечание не найдено"));
 	}
 	panel.style.visibility = "hidden";
-	panel.style.backgroundColor = GetNotePreviewBackground();
+	var colors = GetNotePreviewColors();
+	panel.style.backgroundColor = colors.background;
+	panel.style.color = colors.color;
 	PositionNotePreview(panel, link, FitNotePreview(panel, link));
 	panel.style.visibility = "visible";
 	TraceNotePreviewEvent("J613", "operation=notePreview; stage=popup-visible");

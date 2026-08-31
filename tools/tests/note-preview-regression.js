@@ -87,6 +87,36 @@ FitNotePreview(longPanel, superLink);
 assert.strictEqual(longPanel.style.fontSize, "80%", "font size is reduced before scrolling a long note");
 assert.strictEqual(longPanel.style.overflow, "auto", "scrollbar is the final fallback for a long note");
 
+const compactPanel = { style: {}, offsetWidth: 280, offsetHeight: 40, scrollHeight: 40 };
+FitNotePreview(compactPanel, superLink);
+assert.strictEqual(compactPanel.style.width, "280px", "short notes must use the compact first width");
+assert.strictEqual(compactPanel.style.fontSize, "100%", "a short note keeps the normal font size");
+
+const fitAttempts = [];
+const expandingPanel = { style: {}, offsetWidth: 500, offsetHeight: 300 };
+Object.defineProperty(expandingPanel, "scrollHeight", { get() {
+  fitAttempts.push(`${this.style.fontSize}:${this.style.width}`);
+  return Number.parseInt(this.style.width, 10) >= 500 ? 300 : 1000;
+} });
+FitNotePreview(expandingPanel, superLink);
+assert.strictEqual(expandingPanel.style.width, "500px");
+assert.strictEqual(expandingPanel.style.fontSize, "100%", "popup must widen before reducing its font");
+assert(fitAttempts.indexOf("100%:500px") >= 0 && fitAttempts.every(attempt => !attempt.startsWith("95%")), "all fitting widths are tried at normal font size first");
+
+const minimumFontPanel = { style: {}, currentStyle: { fontSize: "12px" }, offsetWidth: 600, offsetHeight: 420, scrollHeight: 1000 };
+FitNotePreview(minimumFontPanel, superLink);
+assert.strictEqual(minimumFontPanel.style.fontSize, "95%", "absolute font minimum prevents further shrinking");
+assert(12 * Number.parseInt(minimumFontPanel.style.fontSize, 10) / 100 >= 11, "font must not fall below the absolute minimum");
+minimumFontPanel.scrollHeight = 40;
+FitNotePreview(minimumFontPanel, superLink);
+assert.strictEqual(minimumFontPanel.style.fontSize, "100%", "a following short note resets a previous reduced font size");
+assert.strictEqual(minimumFontPanel.style.width, "280px");
+
+const originalGetElementById = document.getElementById;
+document.getElementById = id => id === "fbw_body" ? { currentStyle: { backgroundColor: "#20242a", color: "#e8edf2" } } : null;
+assert.deepStrictEqual(GetNotePreviewColors(), { background: "#20242a", color: "#e8edf2" }, "dark Body colors must be copied to the popup");
+document.getElementById = originalGetElementById;
+
 const previewItems = [];
 const previewPanel = { style: {}, offsetWidth: 200, offsetHeight: 80,
   appendChild(item) { previewItems.push(item); } };

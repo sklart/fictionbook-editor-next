@@ -303,7 +303,7 @@ div#fbNotePreview{
 	z-index: 1000;
 	box-sizing: border-box;
 	padding: 0.4em 0.55em;
-	border: 1px solid #808080;
+	border: none;
 	background: #ffffff;
 	color: #000;
 	overflow: hidden;
