@@ -57,6 +57,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
 	<ClCompile Include="UpdateVersion.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="UiMetrics.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="DiagnosticPackage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -211,6 +212,7 @@
     <ClInclude Include="mainfrm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+	<ClInclude Include="UiMetrics.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="MemProtocol.h">
       <Filter>Header Files</Filter>
     </ClInclude>

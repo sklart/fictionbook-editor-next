@@ -229,7 +229,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AboutBox.cpp" />
-	<ClCompile Include="UpdateVersion.cpp" />
+    <ClCompile Include="UpdateVersion.cpp" />
+	<ClCompile Include="UiMetrics.cpp" />
     <ClCompile Include="apputils.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -406,6 +407,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-8-static.lib;libwebp.lib
     <ClInclude Include="GLLogo.h" />
     <ClInclude Include="ImageImport.h" />
     <ClInclude Include="mainfrm.h" />
+	<ClInclude Include="UiMetrics.h" />
     <ClInclude Include="MemProtocol.h" />
     <ClInclude Include="ModelessDialog.h" />
     <ClInclude Include="SettingsAdvancedPage.h" />

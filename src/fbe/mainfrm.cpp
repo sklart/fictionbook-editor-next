@@ -13,6 +13,7 @@
 #include "FictionBookFileType.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
+#include "UiMetrics.h"
 #include "BodySourceSelectionTransfer.h"
 #include "..\\common\\DeploymentContext.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
@@ -145,13 +146,14 @@ static HWND CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT 
 		return NULL;
 	}
 
+	::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
 	CFontHandle font = reinterpret_cast<HFONT>(::SendMessage(window, WM_GETFONT, 0, 0));
-	if (font.IsNull()) font = reinterpret_cast<HFONT>(::GetStockObject(SYSTEM_FONT));
+	if (font.IsNull()) font = UiMetrics::DialogFont();
 	LOGFONT logFont = {};
 	font.GetLogFont(logFont);
-	const WORD buttonHeight = __max(toolbarData->height, static_cast<WORD>(abs(logFont.lfHeight)));
+	const WORD buttonHeight = static_cast<WORD>(__max(UiMetrics::ToolbarHeight(), abs(logFont.lfHeight) + UiMetrics::NormalGap()));
 	::SendMessage(window, TB_SETBITMAPSIZE, 0, MAKELONG(toolbarData->width, buttonHeight));
-	::SendMessage(window, TB_SETBUTTONSIZE, 0, MAKELONG(toolbarData->width + 7, buttonHeight + 7));
+	::SendMessage(window, TB_SETBUTTONSIZE, 0, MAKELONG(__max(UiMetrics::IconSize(), static_cast<int>(toolbarData->width)) + UiMetrics::NormalGap(), buttonHeight));
 	StartupTrace::Event(L"toolbar", L"TB210", L"command-toolbar image list created; 24x24; ILC_COLOR32|ILC_MASK");
 	return window;
 }
@@ -2524,11 +2526,13 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
   StartupTrace::Event(L"mainframe", L"M100", L"OnCreate started");
   StartupTrace::Event(L"settings", L"G100", L"application settings applied");
+	UiMetrics::UpdateForWindow(m_hWnd);
   m_ctrl_tab = false;
 
   // create command bar window
   m_MenuBar.SetAlphaImages(true);
-  HWND hWndCmdBar = m_MenuBar.Create(m_hWnd, rcDefault, NULL, ATL_SIMPLE_CMDBAR_PANE_STYLE);
+	HWND hWndCmdBar = m_MenuBar.Create(m_hWnd, rcDefault, NULL, ATL_SIMPLE_CMDBAR_PANE_STYLE);
+	::SendMessage(hWndCmdBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
   // attach menu
   ApplyRuntimeMainFrameMenuLocalization(GetMenu());
   m_MenuBar.AttachMenu(GetMenu());
@@ -2598,6 +2602,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   UIAddToolBar(m_CmdToolbar);
 
   m_ScriptsToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+	::SendMessage(m_ScriptsToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
   m_ScriptsToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
   InitToolBar(m_ScriptsToolbar, IDR_SCRIPTS);
   UIAddToolBar(m_ScriptsToolbar);
@@ -2765,6 +2770,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	  ID_PANE_INS
   };
   m_status.SetPanes(panes, sizeof(panes)/sizeof(panes[0]));
+	m_status.SetFont(UiMetrics::DialogFont());
   m_current_dpi = GetWindowDpi(m_hWnd);
   m_status.SetPaneText(ID_PANE_POSITION, L"");
   m_status.SetPaneText(ID_PANE_SELECTION, L"");
@@ -3019,6 +3025,7 @@ LRESULT CMainFrame::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHa
   DestroyAcceleratorTable(m_hAccel);
 	if (::IsWindow(m_CmdToolbar)) m_CmdToolbar.SetImageList(NULL);
 	m_commandToolbarImages.Destroy();
+	UiMetrics::Shutdown();
 	// WTL's default CFrameWindowImpl handler posts WM_QUIT with code 1 for
 	// every top-level window.  A normal editor close, including a successful
 	// unattended Save, is a successful process termination.
@@ -3267,6 +3274,11 @@ void CMainFrame::TryRestoreRecovery()
 
 LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 {
+	UiMetrics::UpdateForWindow(m_hWnd);
+	if (::IsWindow(m_MenuBar)) ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if (::IsWindow(m_CmdToolbar)) ::SendMessage(m_CmdToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if (::IsWindow(m_ScriptsToolbar)) ::SendMessage(m_ScriptsToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if (m_doc)
 		m_doc->ApplyConfChanges();
 	if (m_source.IsWindow())
@@ -3301,6 +3313,11 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	}
 
 	m_current_dpi = newDpi;
+	UiMetrics::UpdateForWindow(m_hWnd);
+	if (::IsWindow(m_MenuBar)) ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if (::IsWindow(m_CmdToolbar)) ::SendMessage(m_CmdToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if (::IsWindow(m_ScriptsToolbar)) ::SendMessage(m_ScriptsToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if(m_source.IsWindow())
 	{
 		SetupSci();

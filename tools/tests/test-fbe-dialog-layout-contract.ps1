@@ -31,9 +31,12 @@ Assert-Contains $rc 'COMBOBOX\s+IDC_LANG,\d+,\d+,1[0-9]{2},\d+' 'IDC_LANG must r
 
 foreach ($dialogId in @('IDD_TOOLS_SETTINGS', 'IDD_HOTKEYS', 'IDD_SETTINGS_WORDS', 'IDD_SETTINGS_GENERAL', 'IDD_SETTINGS_SOURCE', 'IDD_SETTINGS_IMAGES', 'IDD_SETTINGS_ADVANCED')) {
     $dialog = Get-Dialog $dialogId
-    Assert-Contains $dialog 'FONT 8, "Tahoma", 400, 0, 0x1' "$dialogId must use Tahoma 8."
+    Assert-Contains $dialog 'FONT 8, "MS Shell Dlg 2", 400, 0, 0x1' "$dialogId must use the Windows dialog font alias."
     if ($dialog -match 'DS_FIXEDSYS') { throw "$dialogId must not use DS_FIXEDSYS." }
 }
+
+if ($rc -match '"Tahoma"') { throw 'FBE resource dialogs must not hard-code Tahoma.' }
+if ($rc -match 'DS_FIXEDSYS') { throw 'FBE resource dialogs must use the Windows dialog font, not a fixed system font.' }
 
 $sourceDialog = Get-Dialog 'IDD_SETTINGS_SOURCE'
 $generalDialog = Get-Dialog 'IDD_SETTINGS_GENERAL'
