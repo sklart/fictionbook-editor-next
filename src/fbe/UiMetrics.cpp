@@ -2,6 +2,7 @@
 #include "UiMetrics.h"
 
 HFONT UiMetrics::s_dialogFont = NULL;
+HFONT UiMetrics::s_menuFont = NULL;
 UINT UiMetrics::s_dpi = 96;
 
 UINT UiMetrics::GetDpi(HWND window)
@@ -19,23 +20,35 @@ UINT UiMetrics::GetDpi(HWND window)
 	return dpi ? dpi : 96;
 }
 
-void UiMetrics::EnsureFont()
+void UiMetrics::EnsureFonts()
 {
-	if(s_dialogFont != NULL)
+	if(s_dialogFont != NULL && s_menuFont != NULL)
 		return;
 
 	NONCLIENTMETRICS metrics = {};
 	metrics.cbSize = sizeof(metrics);
-	LOGFONTW font = {};
-	if(::SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0))
-		font = metrics.lfMessageFont;
+	typedef BOOL (WINAPI* SystemParametersInfoForDpiProc)(UINT, UINT, PVOID, UINT, UINT);
+	HMODULE user32 = ::GetModuleHandle(L"user32.dll");
+	SystemParametersInfoForDpiProc systemParametersInfoForDpi = user32
+		? reinterpret_cast<SystemParametersInfoForDpiProc>(::GetProcAddress(user32, "SystemParametersInfoForDpi")) : NULL;
+	const BOOL metricsRead = systemParametersInfoForDpi != NULL
+		? systemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0, s_dpi)
+		: ::SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0);
+	LOGFONTW dialogFont = {};
+	LOGFONTW menuFont = {};
+	if(metricsRead)
+	{
+		dialogFont = metrics.lfMessageFont;
+		menuFont = metrics.lfMenuFont;
+	}
 	else
 	{
 		HFONT defaultFont = static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
-		if(defaultFont != NULL)
-			::GetObjectW(defaultFont, sizeof(font), &font);
+		if(defaultFont != NULL) ::GetObjectW(defaultFont, sizeof(dialogFont), &dialogFont);
+		menuFont = dialogFont;
 	}
-	s_dialogFont = ::CreateFontIndirectW(&font);
+	if(s_dialogFont == NULL) s_dialogFont = ::CreateFontIndirectW(&dialogFont);
+	if(s_menuFont == NULL) s_menuFont = ::CreateFontIndirectW(&menuFont);
 }
 
 void UiMetrics::UpdateForWindow(HWND window)
@@ -46,8 +59,13 @@ void UiMetrics::UpdateForWindow(HWND window)
 		::DeleteObject(s_dialogFont);
 		s_dialogFont = NULL;
 	}
+	if(s_menuFont != NULL)
+	{
+		::DeleteObject(s_menuFont);
+		s_menuFont = NULL;
+	}
 	s_dpi = dpi;
-	EnsureFont();
+	EnsureFonts();
 }
 
 void UiMetrics::Shutdown()
@@ -57,12 +75,23 @@ void UiMetrics::Shutdown()
 		::DeleteObject(s_dialogFont);
 		s_dialogFont = NULL;
 	}
+	if(s_menuFont != NULL)
+	{
+		::DeleteObject(s_menuFont);
+		s_menuFont = NULL;
+	}
 }
 
 HFONT UiMetrics::DialogFont()
 {
-	EnsureFont();
+	EnsureFonts();
 	return s_dialogFont != NULL ? s_dialogFont : static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
+}
+
+HFONT UiMetrics::MenuFont()
+{
+	EnsureFonts();
+	return s_menuFont != NULL ? s_menuFont : DialogFont();
 }
 
 int UiMetrics::Scale(int px)

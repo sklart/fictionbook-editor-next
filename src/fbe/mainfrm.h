@@ -187,6 +187,9 @@ public:
 	int			m_table_toolbar_image_indices[8];
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
 	CReBarCtrl		m_rebar;			// toolbars
+	HWND			m_hWndLinksBar = NULL;
+	HWND			m_hWndTableBar = NULL;
+	HWND			m_hWndTableBar2 = NULL;
 	CComboBox		m_id_box;
 	CComboBox		m_href_box;
 	CComboBox		m_image_title_box;

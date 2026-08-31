@@ -81,6 +81,24 @@ static bool CopyToolbarImages(HIMAGELIST destination, HIMAGELIST source, int ima
 	return true;
 }
 
+static BOOL CALLBACK SetDialogFontForToolbarChild(HWND window, LPARAM)
+{
+	::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	return TRUE;
+}
+
+static void SetDialogFontForToolbarRow(HWND window, bool includeChildren = false)
+{
+	if(window == NULL) return;
+	::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if(includeChildren) ::EnumChildWindows(window, SetDialogFontForToolbarChild, 0);
+}
+
+static void AutoSizeToolbar(HWND window)
+{
+	if(window != NULL) ::SendMessage(window, TB_AUTOSIZE, 0, 0);
+}
+
 static HWND CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId,
 	DWORD style = ATL_SIMPLE_TOOLBAR_STYLE, UINT controlId = ATL_IDW_TOOLBAR)
 {
@@ -146,14 +164,12 @@ static HWND CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT 
 		return NULL;
 	}
 
-	::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	CFontHandle font = reinterpret_cast<HFONT>(::SendMessage(window, WM_GETFONT, 0, 0));
-	if (font.IsNull()) font = UiMetrics::DialogFont();
-	LOGFONT logFont = {};
-	font.GetLogFont(logFont);
-	const WORD buttonHeight = static_cast<WORD>(__max(UiMetrics::ToolbarHeight(), abs(logFont.lfHeight) + UiMetrics::NormalGap()));
-	::SendMessage(window, TB_SETBITMAPSIZE, 0, MAKELONG(toolbarData->width, buttonHeight));
-	::SendMessage(window, TB_SETBUTTONSIZE, 0, MAKELONG(__max(UiMetrics::IconSize(), static_cast<int>(toolbarData->width)) + UiMetrics::NormalGap(), buttonHeight));
+	SetDialogFontForToolbarRow(window);
+	// The image list is 24x24. Keep bitmap geometry fixed until the artwork
+	// itself is DPI-aware, otherwise comctl32 reserves blank space below icons.
+	::SendMessage(window, TB_SETBITMAPSIZE, 0, MAKELONG(24, 24));
+	::SendMessage(window, TB_SETBUTTONSIZE, 0, MAKELONG(toolbarData->width + 7, toolbarData->height + 7));
+	AutoSizeToolbar(window);
 	StartupTrace::Event(L"toolbar", L"TB210", L"command-toolbar image list created; 24x24; ILC_COLOR32|ILC_MASK");
 	return window;
 }
@@ -2542,10 +2558,11 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // create command bar window
   m_MenuBar.SetAlphaImages(true);
 	HWND hWndCmdBar = m_MenuBar.Create(m_hWnd, rcDefault, NULL, ATL_SIMPLE_CMDBAR_PANE_STYLE);
-	::SendMessage(hWndCmdBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
   // attach menu
   ApplyRuntimeMainFrameMenuLocalization(GetMenu());
   m_MenuBar.AttachMenu(GetMenu());
+	::SendMessage(hWndCmdBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+	m_MenuBar.AutoSize();
   // remove old menu
   SetMenu(NULL);
   // load command bar images
@@ -2612,18 +2629,24 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   UIAddToolBar(m_CmdToolbar);
 
   m_ScriptsToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
-	::SendMessage(m_ScriptsToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	SetDialogFontForToolbarRow(m_ScriptsToolbar);
   m_ScriptsToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
   InitToolBar(m_ScriptsToolbar, IDR_SCRIPTS);
   UIAddToolBar(m_ScriptsToolbar);
 
-  HWND hWndLinksBar = CreateWindowEx(0, TOOLBARCLASSNAME, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST, 0, 0, 100, 100, 
+	m_hWndLinksBar = CreateWindowEx(0, TOOLBARCLASSNAME, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST, 0, 0, 100, 100,
 	  m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
    
-  HWND hWndTableBar = CreateWindowEx(0, TOOLBARCLASSNAME, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST , 0, 0, 100, 100, 
+	m_hWndTableBar = CreateWindowEx(0, TOOLBARCLASSNAME, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST , 0, 0, 100, 100,
 	  m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
-  HWND hWndTableBar2 = CreateWindowEx(0, TOOLBARCLASSNAME, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST, 0, 0, 100, 100,
+	m_hWndTableBar2 = CreateWindowEx(0, TOOLBARCLASSNAME, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST, 0, 0, 100, 100,
 	  m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+	SetDialogFontForToolbarRow(m_hWndLinksBar);
+	SetDialogFontForToolbarRow(m_hWndTableBar);
+	SetDialogFontForToolbarRow(m_hWndTableBar2);
+	HWND hWndLinksBar = m_hWndLinksBar;
+	HWND hWndTableBar = m_hWndTableBar;
+	HWND hWndTableBar2 = m_hWndTableBar2;
   
   wchar_t buf[MAX_LOAD_STRING + 1];
   HFONT hFont = (HFONT)::SendMessage(hWndLinksBar, WM_GETFONT, 0, 0);
@@ -2707,6 +2730,11 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   AddTbButton(hWndTableBar2, L"12345678");
 
   CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
+	AutoSizeToolbar(m_CmdToolbar);
+	AutoSizeToolbar(m_ScriptsToolbar);
+	AutoSizeToolbar(hWndLinksBar);
+	AutoSizeToolbar(hWndTableBar);
+	AutoSizeToolbar(hWndTableBar2);
   
   AddSimpleReBarBand(hWndCmdBar, 0, TRUE, 0);
   AddSimpleReBarBand(m_CmdToolbar, 0, TRUE, 0, FALSE);
@@ -2715,6 +2743,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   AddSimpleReBarBand(hWndTableBar, 0, TRUE, 0, TRUE) ;
   AddSimpleReBarBand(hWndTableBar2, 0, TRUE, 0, TRUE);
   m_rebar = m_hWndToolBar;
+	m_rebar.SendMessage(WM_SIZE);
   StartupTrace::Event(L"mainframe", L"M110", L"menus and toolbars created");
 
   // add editor controls  
@@ -3285,9 +3314,16 @@ void CMainFrame::TryRestoreRecovery()
 LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 {
 	UiMetrics::UpdateForWindow(m_hWnd);
-	if (::IsWindow(m_MenuBar)) ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	if (::IsWindow(m_CmdToolbar)) ::SendMessage(m_CmdToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	if (::IsWindow(m_ScriptsToolbar)) ::SendMessage(m_ScriptsToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if (::IsWindow(m_MenuBar)) { ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE); m_MenuBar.AutoSize(); }
+	if (::IsWindow(m_CmdToolbar)) { SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
+	if (::IsWindow(m_ScriptsToolbar)) { SetDialogFontForToolbarRow(m_ScriptsToolbar); AutoSizeToolbar(m_ScriptsToolbar); }
+	SetDialogFontForToolbarRow(m_hWndLinksBar, true);
+	SetDialogFontForToolbarRow(m_hWndTableBar, true);
+	SetDialogFontForToolbarRow(m_hWndTableBar2, true);
+	AutoSizeToolbar(m_hWndLinksBar);
+	AutoSizeToolbar(m_hWndTableBar);
+	AutoSizeToolbar(m_hWndTableBar2);
+	if (::IsWindow(m_rebar)) m_rebar.SendMessage(WM_SIZE);
 	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if (m_doc)
 		m_doc->ApplyConfChanges();
@@ -3324,9 +3360,15 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 
 	m_current_dpi = newDpi;
 	UiMetrics::UpdateForWindow(m_hWnd);
-	if (::IsWindow(m_MenuBar)) ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	if (::IsWindow(m_CmdToolbar)) ::SendMessage(m_CmdToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	if (::IsWindow(m_ScriptsToolbar)) ::SendMessage(m_ScriptsToolbar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	if (::IsWindow(m_MenuBar)) { ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE); m_MenuBar.AutoSize(); }
+	if (::IsWindow(m_CmdToolbar)) { SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
+	if (::IsWindow(m_ScriptsToolbar)) { SetDialogFontForToolbarRow(m_ScriptsToolbar); AutoSizeToolbar(m_ScriptsToolbar); }
+	SetDialogFontForToolbarRow(m_hWndLinksBar, true);
+	SetDialogFontForToolbarRow(m_hWndTableBar, true);
+	SetDialogFontForToolbarRow(m_hWndTableBar2, true);
+	AutoSizeToolbar(m_hWndLinksBar);
+	AutoSizeToolbar(m_hWndTableBar);
+	AutoSizeToolbar(m_hWndTableBar2);
 	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if(m_source.IsWindow())
 	{

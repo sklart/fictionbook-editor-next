@@ -9,6 +9,7 @@ public:
 	static void Shutdown();
 
 	static HFONT DialogFont();
+	static HFONT MenuFont();
 	static int Scale(int px);
 	static int SmallGap();
 	static int NormalGap();
@@ -17,9 +18,10 @@ public:
 	static int ToolbarHeight();
 
 private:
-	static void EnsureFont();
+	static void EnsureFonts();
 	static UINT GetDpi(HWND window);
 
 	static HFONT s_dialogFont;
+	static HFONT s_menuFont;
 	static UINT s_dpi;
 };

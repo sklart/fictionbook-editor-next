@@ -121,6 +121,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-source-allocate-lines.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-ui-metrics-contract.ps1")
 if ($runTables) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-table-toolbar-contract.ps1")
