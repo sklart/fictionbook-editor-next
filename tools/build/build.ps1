@@ -265,8 +265,14 @@ Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configur
 # A partial or interrupted build must never leave the previous ImportEPUB
 # output looking authoritative.
 $commonOutput = Join-Path $repoRoot "out\$Configuration"
-foreach ($name in @('ImportEPUB.dll', 'ImportEPUB.pdb', 'ImportEPUB.lib', 'ImportEPUB.exp')) {
+$bundledPluginDlls = @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll')
+$bundledPluginSymbols = @('ExportHTML.pdb', 'ExportDOCX.pdb', 'ExportEPUB.pdb', 'ImportEPUB.pdb', 'ImportEPUBLunaSVG.pdb')
+$pluginOutput = Join-Path $commonOutput 'Plugins'
+foreach ($name in $bundledPluginDlls + $bundledPluginSymbols + @('ImportEPUB.lib', 'ImportEPUB.exp')) {
     Remove-Item -LiteralPath (Join-Path $commonOutput $name) -Force -ErrorAction SilentlyContinue
+    if ($name -in ($bundledPluginDlls + $bundledPluginSymbols)) {
+        Remove-Item -LiteralPath (Join-Path $pluginOutput $name) -Force -ErrorAction SilentlyContinue
+    }
 }
 
 & $msbuild (Join-Path $repoRoot "FBE.sln") /m /t:Build `
@@ -297,6 +303,17 @@ foreach ($requiredProject in @(
     "src\import-epub\ImportEPUBLunaSVG.vcxproj"
 )) {
     Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot $requiredProject)
+}
+
+# Development output uses the same runtime layout as a package.  Keep LIB and
+# EXP build artifacts in out\<Configuration>, but move shipped plugin DLLs and
+# matching PDBs beside plugins.json so direct local launches and diagnostics
+# exercise the packaged layout too.
+New-Item -ItemType Directory -Force -Path $pluginOutput | Out-Null
+foreach ($name in $bundledPluginDlls + $bundledPluginSymbols) {
+    $source = Join-Path $commonOutput $name
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Не найден bundled plugin artifact: $source" }
+    Move-Item -LiteralPath $source -Destination (Join-Path $pluginOutput $name) -Force
 }
 
 Remove-ObsoleteReleaseArtifacts -OutputDirectory (Join-Path $repoRoot "out\$Configuration")

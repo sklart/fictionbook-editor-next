@@ -35,7 +35,7 @@ if ([Environment]::Is64BitProcess) {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 
 if ([string]::IsNullOrWhiteSpace($DllPath)) {
-    $DllPath = Join-Path $repoRoot "out\$Configuration\ExportEPUB.dll"
+    $DllPath = Join-Path $repoRoot "out\$Configuration\Plugins\ExportEPUB.dll"
 }
 $DllPath = (Resolve-Path -LiteralPath $DllPath).Path
 

@@ -8,15 +8,19 @@ $common = Join-Path $fixture 'common'
 $runtime = Join-Path $fixture 'runtime'
 $batch = Join-Path $fixture 'batch'
 $arch = Join-Path $fixture 'arch'
+$pluginNames = @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')
 try {
     New-Item -ItemType Directory -Force -Path $common | Out-Null
-    foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','html.xsl')) {
-        Set-Content -LiteralPath (Join-Path $common $name) -Value "fixture:$name" -Encoding ASCII
+    $commonPlugins = Join-Path $common 'Plugins'
+    New-Item -ItemType Directory -Force -Path $commonPlugins | Out-Null
+    foreach ($name in @('FBE.exe','FBV.exe','html.xsl') + $pluginNames) {
+        $path = if ($name -in $pluginNames) { Join-Path $commonPlugins $name } else { Join-Path $common $name }
+        Set-Content -LiteralPath $path -Value "fixture:$name" -Encoding ASCII
     }
     $provenance = Join-Path $fixture 'provenance'
     & (Join-Path $root 'tools\build\build-provenance.ps1') -Action Write -Kind CommonCore -CommonDirectory $common -ProvenanceDirectory $provenance
     & (Join-Path $root 'tools\build\build-provenance.ps1') -Action Validate -Kind CommonCore -CommonDirectory $common -ProvenanceDirectory $provenance
-    Add-Content -LiteralPath (Join-Path $common 'ImportEPUB.dll') -Value 'tampered' -Encoding ASCII
+    Add-Content -LiteralPath (Join-Path $commonPlugins 'ImportEPUB.dll') -Value 'tampered' -Encoding ASCII
     try {
         & (Join-Path $root 'tools\build\build-provenance.ps1') -Action Validate -Kind CommonCore -CommonDirectory $common -ProvenanceDirectory $provenance
         throw 'Tampered ImportEPUB.dll was accepted.'

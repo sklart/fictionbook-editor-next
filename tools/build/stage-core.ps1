@@ -19,12 +19,16 @@ foreach ($path in @($buildOutput, $editorRuntime, $batchOutput, $archOutput)) {
     if (-not (Test-Path -LiteralPath $path -PathType Container)) { throw "Не найден подготовленный input Core: $path" }
 }
 $commonSource = $buildOutput
+$commonPlugins = Join-Path $commonSource 'Plugins'
 & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
     -Configuration $Configuration -CommonDirectory $commonSource
 & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind Runtime `
     -Configuration $Configuration -ProfileDirectory $editorRuntime -BatchDirectory $batchOutput -ArchHandlerDirectory $archOutput
-foreach ($name in @('FBE.exe','FBV.exe','ExportHTML.dll','html.xsl','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
+foreach ($name in @('FBE.exe','FBV.exe','html.xsl')) {
     if (-not (Test-Path -LiteralPath (Join-Path $commonSource $name) -PathType Leaf)) { throw "Не найден Core artifact: $name" }
+}
+foreach ($name in @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $commonPlugins $name) -PathType Leaf)) { throw "Не найден Core plugin artifact: $name" }
 }
 foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) {
     if (-not (Test-Path -LiteralPath (Join-Path $batchOutput $name) -PathType Leaf)) { throw "Не найден Core batch artifact: $name" }
@@ -50,7 +54,7 @@ foreach ($name in @('FBShell.dll','FBShell64.dll','FBE.Sequence.propdesc','Expor
 foreach ($name in @('Scintilla.dll','Lexilla.dll')) { Copy-Item -LiteralPath (Join-Path $editorRuntime $name) -Destination $stage -Force }
 foreach ($name in @('FBE.exe','FBV.exe','html.xsl')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $stage -Force }
 $pluginsDestination = Join-Path $stage 'Plugins'; New-Item -ItemType Directory -Path $pluginsDestination -Force | Out-Null
-foreach ($name in @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $pluginsDestination -Force }
+foreach ($name in @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $commonPlugins $name) -Destination $pluginsDestination -Force }
 foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) { Copy-Item -LiteralPath (Join-Path $batchOutput $name) -Destination $stage -Force }
 $archDestination = Join-Path $stage 'Utilities\ArchHandler'; New-Item -ItemType Directory -Path $archDestination -Force | Out-Null
 foreach ($name in @('ZipHandler.exe','RarHandler.exe')) { Copy-Item -LiteralPath (Join-Path $archOutput $name) -Destination $archDestination -Force }

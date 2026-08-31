@@ -27,14 +27,20 @@ function Get-SourcePath([string]$Directory, [string]$Name) {
     return Join-Path $Directory $Name
 }
 
+function Get-CommonSourcePath([string]$Directory, [string]$Name) {
+    if ($Name -in $pluginNames) { return Join-Path (Join-Path $Directory 'Plugins') $Name }
+    return Get-SourcePath $Directory $Name
+}
+
 $commonNames = @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','html.xsl')
+$pluginNames = @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')
 $profileNames = @('Scintilla.dll','Lexilla.dll')
 if ($Kind -ne 'CommonCore') { $profileNames += @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe','Utilities/ArchHandler/ZipHandler.exe','Utilities/ArchHandler/RarHandler.exe') }
 
 if ($Action -eq 'Write') {
     $artifacts = [ordered]@{}
     if ($Kind -eq 'CommonCore') {
-        foreach ($name in $commonNames) { $artifacts[$name] = Get-FileDigest (Get-SourcePath $CommonDirectory $name) $name }
+        foreach ($name in $commonNames) { $artifacts[$name] = Get-FileDigest (Get-CommonSourcePath $CommonDirectory $name) $name }
     }
     else {
         foreach ($name in $profileNames) {
@@ -55,7 +61,7 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Build p
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 foreach ($property in $manifest.artifacts.PSObject.Properties) {
     $name = $property.Name
-    $source = if ($Kind -eq 'CommonCore') { Get-SourcePath $CommonDirectory $name }
+    $source = if ($Kind -eq 'CommonCore') { Get-CommonSourcePath $CommonDirectory $name }
         elseif ($name -like '*Batch.exe') { Get-SourcePath $BatchDirectory $name }
         elseif ($name -like 'Utilities/*') { Get-SourcePath $ArchHandlerDirectory (Split-Path $name -Leaf) }
         else { Get-SourcePath $ProfileDirectory $name }

@@ -13,7 +13,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $repoRootPath = $repoRoot.Path
 
 if (-not $DllPath) {
-    $DllPath = Join-Path $repoRootPath "out\$Configuration\ImportEPUB.dll"
+    $DllPath = Join-Path $repoRootPath "out\$Configuration\Plugins\ImportEPUB.dll"
 }
 
 $DllPath = [IO.Path]::GetFullPath($DllPath)

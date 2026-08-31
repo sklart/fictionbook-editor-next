@@ -40,8 +40,10 @@ $archHandlerOutputDir = if ($ArchHandlerOutputDirectory) {
     Join-Path $repoRoot "out\archhandler\Win32\$Configuration"
 }
 $batchNames = @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")
+$pluginDllNames = @("ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll")
+$pluginSymbolNames = @("ExportHTML.pdb", "ExportDOCX.pdb", "ExportEPUB.pdb", "ImportEPUB.pdb", "ImportEPUBLunaSVG.pdb")
 function Get-ReleaseOutputPath([string]$Name) {
-    $directory = if ($Name -in $batchNames) { $batchOutputDir } else { $outputDir }
+    $directory = if ($Name -in $batchNames) { $batchOutputDir } elseif ($Name -in ($pluginDllNames + $pluginSymbolNames)) { Join-Path $outputDir 'Plugins' } else { $outputDir }
     return Join-Path $directory $Name
 }
 $versionHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\version.h")
@@ -63,6 +65,8 @@ $runTables = $RunTableTests -or $FullValidation
 & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind Runtime `
     -Configuration $Configuration -ProfileDirectory (Join-Path $repoRoot "out\editor-runtime") `
     -BatchDirectory $batchOutputDir -ArchHandlerDirectory $archHandlerOutputDir
+& (Join-Path $repoRoot 'tools\tests\test-development-plugin-layout.ps1') `
+    -Configuration $Configuration -OutputDirectory $outputDir
 
 $requiredFiles = @(
     "FBE.exe",
@@ -289,8 +293,8 @@ $archHandlerTestArguments.HandlerDirectory = $archHandlerOutputDir
 
 # Every binary in the single release must pass the Windows 7 import gate.
 $sharedReleaseFiles = @(
-    "FBE.exe", "FBV.exe", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll",
-    "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "FBShell.dll"
+    "FBE.exe", "FBV.exe", "Plugins\ExportHTML.dll", "Plugins\ExportDOCX.dll", "Plugins\ExportEPUB.dll",
+    "Plugins\ImportEPUB.dll", "Plugins\ImportEPUBLunaSVG.dll", "FBShell.dll"
 )
 & (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
     -Configuration $Configuration `
