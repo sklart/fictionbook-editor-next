@@ -777,6 +777,21 @@ function GetNotePreviewFontPercents(panel)
 	return result;
 }
 
+function GetNotePreviewNaturalHeight(panel)
+{
+	var height = panel.scrollHeight || panel.offsetHeight || 0;
+	// MSHTML can under-report scrollHeight while a hidden absolute DIV is being
+	// laid out.  Its child P/EM line boxes are already accurate, so include the
+	// bottom-most direct child before deciding that a note fits without scroll.
+	for(var child = panel.firstChild; child; child = child.nextSibling)
+	{
+		if(child.nodeType != 1) continue;
+		var bottom = (child.offsetTop || 0) + (child.offsetHeight || 0);
+		if(bottom > height) height = bottom;
+	}
+	return height;
+}
+
 function FitNotePreview(panel, link)
 {
 	var rect = GetNotePreviewRect(link), docElement = document.documentElement;
@@ -803,11 +818,14 @@ function FitNotePreview(panel, link)
 			var width = Math.min(widths[widthIndex], maxWidth);
 			if(widthIndex && width == lastWidth) continue;
 			panel.style.width = width + "px";
-			var naturalHeight = panel.scrollHeight || panel.offsetHeight;
+			var naturalHeight = GetNotePreviewNaturalHeight(panel);
 			lastWidth = width; lastFont = fonts[fontIndex];
-			if(naturalHeight <= maxHeight)
+			// Leave a couple of pixels for MSHTML's late line-box rounding so the
+			// final italic word (for example "Прим. ред.") cannot be clipped.
+			if(naturalHeight + 2 <= maxHeight)
 			{
 				panel.style.maxHeight = maxHeight + "px";
+				panel.style.overflow = "hidden";
 				return { margin: margin, gap: gap, viewportWidth: viewportWidth, viewportHeight: viewportHeight };
 			}
 		}
@@ -897,7 +915,9 @@ function SanitizeNotePreviewNode(node)
 			try { node.removeAttribute(attribute.nodeName); } catch(ignore) {}
 		}
 	}
-	try { node.contentEditable = false; } catch(ignore) {}
+	// The panel itself is contentEditable=false.  Do not set this property on
+	// every cloned descendant: legacy MSHTML can stop painting text in nested
+	// inline elements (notably EM) after that mutation.
 	for(var child = node.firstChild; child; child = child.nextSibling) SanitizeNotePreviewNode(child);
 }
 

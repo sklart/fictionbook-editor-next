@@ -3,6 +3,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 const source = fs.readFileSync("runtime/main.js", "utf8");
+const css = fs.readFileSync("runtime/main.css", "utf8");
 const begin = source.indexOf("function NotePreviewEvent");
 const end = source.indexOf("function ShowFullImage", begin);
 assert(begin >= 0 && end > begin, "note preview implementation must be present");
@@ -69,7 +70,10 @@ const child = { nodeType: 1, attributes: [
   removeAttribute(name) { this.attributes = this.attributes.filter(attribute => attribute.nodeName !== name); } };
 SanitizeNotePreviewNode(child);
 assert.deepStrictEqual(child.attributes.map(attribute => attribute.nodeName), ["onmouseover", "class"], "MSHTML nodeName attributes must be sanitized safely");
-assert.strictEqual(child.contentEditable, false);
+assert.notStrictEqual(child.contentEditable, true, "read-only ownership belongs to the popup, not every inline clone");
+const emphasis = { nodeType: 1, attributes: [], firstChild: null, nextSibling: null, removeAttribute() {} };
+SanitizeNotePreviewNode({ nodeType: 1, attributes: [], firstChild: emphasis, removeAttribute() {} });
+assert.strictEqual(emphasis.contentEditable, undefined, "nested emphasis must not receive an MSHTML-breaking contentEditable mutation");
 
 const appended = [];
 function previewNode(tagName, className) {
@@ -91,6 +95,7 @@ const compactPanel = { style: {}, offsetWidth: 280, offsetHeight: 40, scrollHeig
 FitNotePreview(compactPanel, superLink);
 assert.strictEqual(compactPanel.style.width, "280px", "short notes must use the compact first width");
 assert.strictEqual(compactPanel.style.fontSize, "100%", "a short note keeps the normal font size");
+assert.strictEqual(compactPanel.style.overflow, "hidden", "a fitting note remains compact without a scrollbar");
 
 const fitAttempts = [];
 const expandingPanel = { style: {}, offsetWidth: 500, offsetHeight: 300 };
@@ -111,6 +116,15 @@ minimumFontPanel.scrollHeight = 40;
 FitNotePreview(minimumFontPanel, superLink);
 assert.strictEqual(minimumFontPanel.style.fontSize, "100%", "a following short note resets a previous reduced font size");
 assert.strictEqual(minimumFontPanel.style.width, "280px");
+
+const roundingPanel = { style: {}, offsetWidth: 600, offsetHeight: 420, scrollHeight: 420 };
+FitNotePreview(roundingPanel, superLink);
+assert.strictEqual(roundingPanel.style.overflow, "auto", "a near-limit note must scroll rather than clip its final line");
+assert.strictEqual(GetNotePreviewNaturalHeight({ scrollHeight: 40, offsetHeight: 40,
+  firstChild: { nodeType: 1, offsetTop: 12, offsetHeight: 68, nextSibling: null } }), 80,
+  "MSHTML child line boxes must extend the measured preview height");
+assert.match(css, /div#fbNotePreview\{[\s\S]*border: 1px solid #808080;/, "preview needs a subtle boundary");
+assert.match(css, /div#fbNotePreview p\{[\s\S]*text-align: left;/, "preview paragraphs must not inherit justified book text");
 
 const originalGetElementById = document.getElementById;
 document.getElementById = id => id === "fbw_body" ? { currentStyle: { backgroundColor: "#20242a", color: "#e8edf2" } } : null;
