@@ -88,13 +88,13 @@ assert.strictEqual(appended.length, 1, "only an immediate section title may be o
 
 const longPanel = { style: {}, offsetWidth: 420, offsetHeight: 420, scrollHeight: 1000 };
 FitNotePreview(longPanel, superLink);
-assert.strictEqual(longPanel.style.fontSize, "80%", "font size is reduced before scrolling a long note");
+assert.strictEqual(longPanel.style.fontSize, "12.8px", "font size is reduced before scrolling a long note");
 assert.strictEqual(longPanel.style.overflow, "auto", "scrollbar is the final fallback for a long note");
 
 const compactPanel = { style: {}, offsetWidth: 280, offsetHeight: 40, scrollHeight: 40 };
 FitNotePreview(compactPanel, superLink);
 assert.strictEqual(compactPanel.style.width, "280px", "short notes must use the compact first width");
-assert.strictEqual(compactPanel.style.fontSize, "100%", "a short note keeps the normal font size");
+assert.strictEqual(compactPanel.style.fontSize, "16px", "a short note keeps the normal font size");
 assert.strictEqual(compactPanel.style.overflow, "hidden", "a fitting note remains compact without a scrollbar");
 
 const fitAttempts = [];
@@ -105,16 +105,16 @@ Object.defineProperty(expandingPanel, "scrollHeight", { get() {
 } });
 FitNotePreview(expandingPanel, superLink);
 assert.strictEqual(expandingPanel.style.width, "500px");
-assert.strictEqual(expandingPanel.style.fontSize, "100%", "popup must widen before reducing its font");
-assert(fitAttempts.indexOf("100%:500px") >= 0 && fitAttempts.every(attempt => !attempt.startsWith("95%")), "all fitting widths are tried at normal font size first");
+assert.strictEqual(expandingPanel.style.fontSize, "16px", "popup must widen before reducing its font");
+assert(fitAttempts.indexOf("16px:500px") >= 0 && fitAttempts.every(attempt => !attempt.startsWith("15.2px")), "all fitting widths are tried at normal font size first");
 
 const minimumFontPanel = { style: {}, currentStyle: { fontSize: "12px" }, offsetWidth: 600, offsetHeight: 420, scrollHeight: 1000 };
 FitNotePreview(minimumFontPanel, superLink);
-assert.strictEqual(minimumFontPanel.style.fontSize, "95%", "absolute font minimum prevents further shrinking");
-assert(12 * Number.parseInt(minimumFontPanel.style.fontSize, 10) / 100 >= 11, "font must not fall below the absolute minimum");
+assert.strictEqual(minimumFontPanel.style.fontSize, "11.4px", "absolute font minimum prevents further shrinking");
+assert(Number.parseFloat(minimumFontPanel.style.fontSize) >= 11, "font must not fall below the absolute minimum");
 minimumFontPanel.scrollHeight = 40;
 FitNotePreview(minimumFontPanel, superLink);
-assert.strictEqual(minimumFontPanel.style.fontSize, "100%", "a following short note resets a previous reduced font size");
+assert.strictEqual(minimumFontPanel.style.fontSize, "12px", "a following short note resets a previous reduced font size");
 assert.strictEqual(minimumFontPanel.style.width, "280px");
 
 const roundingPanel = { style: {}, offsetWidth: 600, offsetHeight: 420, scrollHeight: 420 };
@@ -136,6 +136,17 @@ ApplyNotePreviewBodyStyle(themedPanel);
 assert.deepStrictEqual(themedPanel.style, {
   backgroundColor: "#20242a", color: "#e8edf2", fontFamily: "Georgia", fontSize: "18px"
 }, "popup must inherit Body background, text color, family and size");
+assert.deepStrictEqual(GetNotePreviewFontSizes(themedPanel), [18, 17.1, 16.2, 15.3, 14.4],
+  "font fit steps must be resolved from the Body 18px size");
+const bodySizedFitAttempts = [];
+const bodySizedPanel = { style: {}, currentStyle: { fontSize: "18px" }, offsetWidth: 600, offsetHeight: 420 };
+Object.defineProperty(bodySizedPanel, "scrollHeight", { get() {
+  bodySizedFitAttempts.push(this.style.fontSize);
+  return this.style.fontSize === "17.1px" ? 40 : 1000;
+} });
+FitNotePreview(bodySizedPanel, superLink);
+assert.strictEqual(bodySizedFitAttempts[0], "18px", "first fit must use the exact Body pixel size");
+assert.strictEqual(bodySizedPanel.style.fontSize, "17.1px", "95% fit must resolve to 17.1px from Body 18px");
 document.getElementById = originalGetElementById;
 
 const previewItems = [];

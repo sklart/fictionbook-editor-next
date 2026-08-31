@@ -21,7 +21,14 @@ inline std::wstring Lower(const std::wstring& value)
 	return result;
 }
 
-inline std::wstring GetInternalTargetId(const std::wstring& source)
+inline std::wstring WithoutFragment(const std::wstring& value)
+{
+	const std::wstring::size_type fragment = value.rfind(L'#');
+	return fragment == std::wstring::npos ? value : value.substr(0, fragment);
+}
+
+inline std::wstring GetInternalTargetId(const std::wstring& source,
+	const std::wstring& currentDocumentUrl = std::wstring())
 {
 	const std::wstring href = Trim(source);
 	const std::wstring lower = Lower(href);
@@ -29,12 +36,15 @@ inline std::wstring GetInternalTargetId(const std::wstring& source)
 	const std::wstring internalPrefix = L"fbw-internal:#";
 	if(lower.compare(0, internalPrefix.size(), internalPrefix) == 0 && href.size() > internalPrefix.size())
 		return href.substr(internalPrefix.size());
-	// MSHTML sometimes expands a local fragment to file:///...#id.  Only file:
-	// URLs are accepted here; http(s) fragments are external navigation.
+	// MSHTML sometimes expands a local fragment to file:///...#id.  Accept it
+	// only when the document part matches the currently edited document.
 	if(lower.compare(0, 5, L"file:") == 0)
 	{
 		const std::wstring::size_type fragment = href.rfind(L'#');
-		if(fragment != std::wstring::npos && fragment + 1 < href.size()) return href.substr(fragment + 1);
+		if(fragment != std::wstring::npos && fragment + 1 < href.size() &&
+			!currentDocumentUrl.empty() &&
+			Lower(WithoutFragment(href)) == Lower(WithoutFragment(Trim(currentDocumentUrl))))
+			return href.substr(fragment + 1);
 	}
 	return std::wstring();
 }

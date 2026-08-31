@@ -3821,11 +3821,23 @@ static MSHTML::IHTMLElementPtr FindNearestLinkElement(MSHTML::IHTMLElementPtr el
 	return body && !U::scmp(body->tagName, L"A") ? body : MSHTML::IHTMLElementPtr();
 }
 
-static CString GetInternalLinkTargetId(MSHTML::IHTMLElementPtr link)
+static MSHTML::IHTMLElementPtr GetEditableBody(MSHTML::IHTMLDocument2Ptr document)
 {
-	if(!link) return CString();
+	return document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr();
+}
+
+static CString GetInternalLinkTargetId(MSHTML::IHTMLDocument2Ptr document, MSHTML::IHTMLElementPtr link)
+{
+	if(!document || !link) return CString();
+	CString documentUrl;
+	try
+	{
+		MSHTML::IHTMLDocument4Ptr document4(document);
+		if(document4) documentUrl = static_cast<LPCWSTR>(document4->URLUnencoded);
+	}
+	catch(const _com_error&) { }
 	const std::wstring target = FBELinkNavigation::GetInternalTargetId(
-		static_cast<LPCWSTR>(AU::GetAttrCS(link, L"href")));
+		static_cast<LPCWSTR>(AU::GetAttrCS(link, L"href")), static_cast<LPCWSTR>(documentUrl));
 	return CString(target.c_str());
 }
 
@@ -3833,14 +3845,14 @@ static long GetLinkTargetOrdinal(MSHTML::IHTMLDocument2Ptr document,
 	MSHTML::IHTMLElementPtr link, const CString& targetId)
 {
 	if(!document || !link || targetId.IsEmpty()) return -1;
-	MSHTML::IHTMLElement2Ptr body(document->body);
+	MSHTML::IHTMLElement2Ptr body(GetEditableBody(document));
 	MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
 	if(!links) return -1;
 	long ordinal = 0;
 	for(long i = 0; i < links->length; ++i)
 	{
 		MSHTML::IHTMLElementPtr candidate(links->item(i));
-		if(GetInternalLinkTargetId(candidate) != targetId) continue;
+		if(GetInternalLinkTargetId(document, candidate) != targetId) continue;
 		if(candidate == link) return ordinal;
 		++ordinal;
 	}
@@ -3862,14 +3874,14 @@ void CFBEView::ClearLinkNavigationHistory()
 bool CFBEView::ReturnToLinkNavigationOrigin()
 {
 	if(m_link_navigation_target_id.IsEmpty() || m_link_navigation_origin_ordinal < 0 || !Document()) return false;
-	MSHTML::IHTMLElement2Ptr body(Document()->body);
+	MSHTML::IHTMLElement2Ptr body(GetEditableBody(Document()));
 	MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
 	if(!links) { ClearLinkNavigationHistory(); return false; }
 	long ordinal = 0;
 	for(long i = 0; i < links->length; ++i)
 	{
 		MSHTML::IHTMLElementPtr link(links->item(i));
-		if(GetInternalLinkTargetId(link) != m_link_navigation_target_id) continue;
+		if(GetInternalLinkTargetId(Document(), link) != m_link_navigation_target_id) continue;
 		if(ordinal++ != m_link_navigation_origin_ordinal) continue;
 		ClearLinkNavigationHistory();
 		GoTo(link);
@@ -3913,10 +3925,10 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 	if((!ctrlClick && !altClick) || oe->shiftKey == VARIANT_TRUE)
 		return VARIANT_FALSE;
 
-	MSHTML::IHTMLElementPtr link = FindNearestLinkElement(elem, Document()->body);
+	MSHTML::IHTMLElementPtr link = FindNearestLinkElement(elem, GetEditableBody(Document()));
 	if(!link) return VARIANT_FALSE;
 	CString href(AU::GetAttrCS(link, L"href"));
-	CString targetId(GetInternalLinkTargetId(link));
+	CString targetId(GetInternalLinkTargetId(Document(), link));
 	if(!targetId.IsEmpty())
 	{
 		MSHTML::IHTMLElementPtr target(Document()->all->item(static_cast<LPCWSTR>(targetId)));

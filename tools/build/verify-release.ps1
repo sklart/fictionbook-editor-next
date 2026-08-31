@@ -176,6 +176,8 @@ if ($env:GITHUB_ACTIONS -eq "true") {
 & (Join-Path $repoRoot "tools\tests\test-image-import-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-js-reliability.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-js-binary-behavior.ps1")
+& (Join-Path $repoRoot "tools\tests\test-note-preview-regression.ps1")
+& (Join-Path $repoRoot "tools\tests\test-link-navigation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-editor-localization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-image-codec-build-contract.ps1")
 $imageImportTestArguments = @{ Configuration = $Configuration }

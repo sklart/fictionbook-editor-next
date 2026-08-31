@@ -787,14 +787,16 @@ function GetNotePreviewBaseFontSize(panel)
 	return String(match[2] || "").toLowerCase() == "pt" ? value * 96 / 72 : value;
 }
 
-function GetNotePreviewFontPercents(panel)
+function GetNotePreviewFontSizes(panel)
 {
 	var candidates = [100, 95, 90, 85, 80], result = [], baseFontSize = GetNotePreviewBaseFontSize(panel);
 	for(var i = 0; i < candidates.length; ++i)
 	{
 		// A relative percentage alone can make text illegibly small in a body
-		// with a small user font.  Never reduce it below 11 CSS pixels.
-		if(candidates[i] == 100 || baseFontSize * candidates[i] / 100 >= 11) result.push(candidates[i]);
+		// with a small user font.  Always write the resolved value in px so that
+		// 95% is precisely relative to fbw_body rather than an inherited popup font.
+		var size = Math.round(baseFontSize * candidates[i]) / 100;
+		if(candidates[i] == 100 || size >= 11) result.push(size);
 	}
 	return result;
 }
@@ -829,12 +831,11 @@ function FitNotePreview(panel, link)
 	panel.style.width = "auto";
 	panel.style.height = "auto";
 	panel.style.maxHeight = "none";
-	panel.style.fontSize = "100%";
-	var fonts = GetNotePreviewFontPercents(panel), lastFont = fonts[fonts.length - 1];
+	var fonts = GetNotePreviewFontSizes(panel), lastFont = fonts[fonts.length - 1];
 	panel.style.overflow = "hidden";
 	for(var fontIndex = 0; fontIndex < fonts.length; ++fontIndex)
 	{
-		panel.style.fontSize = fonts[fontIndex] + "%";
+		panel.style.fontSize = fonts[fontIndex] + "px";
 		for(var widthIndex = 0; widthIndex < widths.length; ++widthIndex)
 		{
 			var width = Math.min(widths[widthIndex], maxWidth);
@@ -853,7 +854,7 @@ function FitNotePreview(panel, link)
 		}
 	}
 	panel.style.width = lastWidth + "px";
-	panel.style.fontSize = lastFont + "%";
+	panel.style.fontSize = lastFont + "px";
 	panel.style.maxHeight = maxHeight + "px";
 	panel.style.overflow = "auto";
 	return { margin: margin, gap: gap, viewportWidth: viewportWidth, viewportHeight: viewportHeight };

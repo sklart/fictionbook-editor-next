@@ -17,6 +17,8 @@ try {
     $view = Get-Content -Raw (Join-Path $root 'src\fbe\FBEview.cpp')
     foreach($contract in @(
         'FindNearestLinkElement',
+		'GetEditableBody',
+        'FindNearestLinkElement(elem, GetEditableBody(Document()))',
         'element = element->parentElement;',
         'const bool ctrlClick = oe->ctrlKey == VARIANT_TRUE;',
         'm_link_navigation_origin_ordinal = GetLinkTargetOrdinal',
