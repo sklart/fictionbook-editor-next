@@ -48,6 +48,12 @@ assert.strictEqual(GetNotePreviewTargetId(link("https://example.com/page#n1", "h
 document.URL = "file:///book.fb2";
 document.location.href = "about:blank";
 assert.strictEqual(GetNotePreviewTargetId(link("", "file:///book.fb2#n1", "#n1")), "n1", "MSHTML document.URL must resolve an expanded local note URL");
+document.URL = "file:///D:/Download/FBeditor/out/Release/main.html";
+document.location.href = "about:blank";
+assert.strictEqual(GetNotePreviewTargetId(link("", "FILE:///d%3A/Download/FBeditor/out/Release/main.html#n1", "#n1")), "n1",
+  "MSHTML file URL spellings for the current document must resolve a note target");
+assert.strictEqual(GetNotePreviewTargetId(link("", "file:///D:/Download/other.html#n1", "#n1")), "",
+  "a different file document must remain external");
 delete document.URL;
 document.location.href = "file:///book.fb2";
 assert(IsNotePreviewLink(link("file:///book.fb2#n1", "file:///book.fb2#n1", "#n1")));

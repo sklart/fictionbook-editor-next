@@ -583,14 +583,36 @@ function DecodeNotePreviewFragment(fragment)
 
 function GetNotePreviewDocumentUrl()
 {
-	var href = "";
-	// In legacy MSHTML document.location can be an about:blank host URL while
-	// document.URL still contains the document URL used to expand link.href.
-	try { href = String(document.URL || ""); } catch(ignore) {}
-	if(!href) try { href = String(document.location.href || ""); } catch(ignore) {}
-	if(!href) try { href = String(window.location.href || ""); } catch(ignore) {}
-	var hash = href.indexOf("#");
-	return hash == -1 ? href : href.substring(0, hash);
+	var urls = GetNotePreviewDocumentUrls();
+	return urls.length ? urls[0] : "";
+}
+
+function GetNotePreviewDocumentUrls()
+{
+	var urls = [];
+	function add(value) {
+		value = String(value || "");
+		var hash = value.indexOf("#");
+		if(hash != -1) value = value.substring(0, hash);
+		// about:blank is the temporary host page used before FBE navigates to
+		// main.html.  It must not make an actual file: link look external.
+		if(!value || value.toLowerCase() == "about:blank") return;
+		for(var i = 0; i < urls.length; ++i) if(NormalizeNotePreviewUrl(urls[i]) == NormalizeNotePreviewUrl(value)) return;
+		urls.push(value);
+	}
+	// Legacy MSHTML can expose a different usable spelling through URL and
+	// location.href.  Retain both and compare normalized document parts below.
+	try { add(document.URL); } catch(ignore) {}
+	try { add(document.location.href); } catch(ignore) {}
+	try { add(window.location.href); } catch(ignore) {}
+	return urls;
+}
+
+function NormalizeNotePreviewUrl(url)
+{
+	url = String(url || "").replace(/\\/g, "/");
+	try { url = decodeURIComponent(url); } catch(ignore) {}
+	return url.toLowerCase();
 }
 
 function GetLocalNotePreviewFragment(href)
@@ -601,9 +623,11 @@ function GetLocalNotePreviewFragment(href)
 	if(href.charAt(0) == "#") return DecodeNotePreviewFragment(href.substring(1));
 	var hash = href.lastIndexOf("#");
 	if(hash == -1 || hash == href.length - 1) return "";
-	var documentUrl = GetNotePreviewDocumentUrl();
-	if(!documentUrl || href.substring(0, hash) != documentUrl) return "";
-	return DecodeNotePreviewFragment(href.substring(hash + 1));
+	var linkDocumentUrl = href.substring(0, hash), documentUrls = GetNotePreviewDocumentUrls();
+	for(var i = 0; i < documentUrls.length; ++i)
+		if(NormalizeNotePreviewUrl(linkDocumentUrl) == NormalizeNotePreviewUrl(documentUrls[i]))
+			return DecodeNotePreviewFragment(href.substring(hash + 1));
+	return "";
 }
 
 function GetNotePreviewLink(element, body)
@@ -954,7 +978,10 @@ function ScheduleNotePreview(link)
 	if(notePreviewState.showTimer != null) window.clearTimeout(notePreviewState.showTimer);
 	notePreviewState.link = link;
 	TraceNotePreviewEvent("J610", "operation=notePreview; stage=hover-detected");
-	notePreviewState.showTimer = window.setTimeout(function() { notePreviewState.showTimer = null; ShowNotePreview(link); }, 500);
+	notePreviewState.showTimer = window.setTimeout(function() {
+		notePreviewState.showTimer = null;
+		ShowNotePreview(link);
+	}, 500);
 }
 
 function HideNotePreview()
