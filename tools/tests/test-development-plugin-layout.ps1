@@ -2,13 +2,17 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = 'Release',
-    [string]$OutputDirectory
+    [string]$OutputDirectory,
+    [string]$BatchOutputDirectory
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repoRoot "out\$Configuration" }
 $OutputDirectory = (Resolve-Path -LiteralPath $OutputDirectory).Path
+$BatchOutputDirectory = if ($BatchOutputDirectory) {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory)
+} else { $OutputDirectory }
 $pluginsDirectory = Join-Path $OutputDirectory 'Plugins'
 $pluginDllNames = @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')
 $pluginSymbolNames = @('ExportHTML.pdb','ExportDOCX.pdb','ExportEPUB.pdb','ImportEPUB.pdb','ImportEPUBLunaSVG.pdb')
@@ -42,11 +46,11 @@ foreach ($project in $pluginProjects) {
 }
 
 # Batch utilities are executable tools, not plugins.  They and their symbols
-# deliberately stay in the development output root while their DLL probes use
-# the sibling Plugins directory first.
+# deliberately stay in their configured development output directory while
+# their DLL probes use the sibling Plugins directory first.
 foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe','ExportDOCXBatch.pdb','ExportEPUBBatch.pdb','ImportEPUBBatch.pdb')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $OutputDirectory $name) -PathType Leaf)) {
-        throw "Batch converter artifact is missing from development output root: $name"
+    if (-not (Test-Path -LiteralPath (Join-Path $BatchOutputDirectory $name) -PathType Leaf)) {
+        throw "Batch converter artifact is missing from development output directory: $name"
     }
 }
 

@@ -34,13 +34,17 @@ $setup = Get-ArtifactMetadata "FictionBookEditorNext-$assetVersion-win32-setup.e
 $portable = Get-ArtifactMetadata "FictionBookEditorNext-$assetVersion-win32-portable.zip"
 $legacyWin7Setup = $null
 $legacyWin7Portable = $null
+$legacySetup = $null
+$legacyPortable = $null
 if ($legacy308MigrationRequired) {
-    # Transitional aliases are byte-identical copies for the already released
-    # 3.0.8-rc.1 Win7 updater. They are not a second build profile.
-    $legacyWin7Setup = Get-ArtifactMetadata "FictionBookEditorNext-$assetVersion-win7-win32-setup.exe"
-    $legacyWin7Portable = Get-ArtifactMetadata "FictionBookEditorNext-$assetVersion-win7-win32-portable.zip"
-    if ($legacyWin7Setup.Hash -ne $setup.Hash -or $legacyWin7Portable.Hash -ne $portable.Hash) {
-        throw 'Legacy Win7 migration aliases must be byte-identical to universal artifacts.'
+    # The v3.0.8-rc.1 updater expects base-version profile names.
+    $legacyAssetVersion = Get-FbeBaseVersion $releaseVersion
+    $legacySetup = Get-ArtifactMetadata "FictionBookEditorNext-$legacyAssetVersion-win32-setup.exe"
+    $legacyPortable = Get-ArtifactMetadata "FictionBookEditorNext-$legacyAssetVersion-win32-portable.zip"
+    $legacyWin7Setup = Get-ArtifactMetadata "FictionBookEditorNext-$legacyAssetVersion-win7-win32-setup.exe"
+    $legacyWin7Portable = Get-ArtifactMetadata "FictionBookEditorNext-$legacyAssetVersion-win7-win32-portable.zip"
+    if ($legacySetup.Hash -ne $setup.Hash -or $legacyPortable.Hash -ne $portable.Hash -or $legacyWin7Setup.Hash -ne $setup.Hash -or $legacyWin7Portable.Hash -ne $portable.Hash) {
+        throw 'Legacy migration aliases must be byte-identical to canonical artifacts.'
     }
 }
 
@@ -57,7 +61,7 @@ foreach ($pair in @(@('SetupUrl', $setup.Url), @('SetupSHA256', $setup.Hash), @(
 if ($legacy308MigrationRequired) {
     $modern = $document.CreateElement('Modern'); [void]$artifacts.AppendChild($modern)
     $win7 = $document.CreateElement('Win7'); [void]$artifacts.AppendChild($win7)
-    foreach ($pair in @(@('SetupUrl', $setup.Url), @('SetupSHA256', $setup.Hash), @('PortableUrl', $portable.Url), @('PortableSHA256', $portable.Hash))) {
+    foreach ($pair in @(@('SetupUrl', $legacySetup.Url), @('SetupSHA256', $legacySetup.Hash), @('PortableUrl', $legacyPortable.Url), @('PortableSHA256', $legacyPortable.Hash))) {
         $node = $document.CreateElement($pair[0]); $node.InnerText = $pair[1]; [void]$modern.AppendChild($node)
     }
     foreach ($pair in @(@('SetupUrl', $legacyWin7Setup.Url), @('SetupSHA256', $legacyWin7Setup.Hash), @('PortableUrl', $legacyWin7Portable.Url), @('PortableSHA256', $legacyWin7Portable.Hash))) {

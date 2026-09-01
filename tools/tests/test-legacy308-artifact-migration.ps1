@@ -49,12 +49,45 @@ foreach ($name in @('FBE.pdb', 'FBV.pdb', 'ExportHTML.pdb', 'ExportDOCX.pdb', 'E
 }
 $symbols = Join-Path $fixture "FictionBookEditorNext-$assetVersion-win32-symbols.zip"
 Compress-Archive -Path (Join-Path $symbolsRoot '*') -DestinationPath $symbols -CompressionLevel Optimal
-foreach ($pair in @(@($setup, "FictionBookEditorNext-$assetVersion-win7-win32-setup.exe"), @($portable, "FictionBookEditorNext-$assetVersion-win7-win32-portable.zip"))) {
-    Copy-Item -LiteralPath $pair[0] -Destination (Join-Path $fixture $pair[1])
-}
+$legacySetup = Join-Path $fixture "FictionBookEditorNext-$version-win32-setup.exe"
+$legacyPortable = Join-Path $fixture "FictionBookEditorNext-$version-win32-portable.zip"
+Copy-Item -LiteralPath $setup -Destination $legacySetup
+Copy-Item -LiteralPath $portable -Destination $legacyPortable
+Copy-Item -LiteralPath $legacySetup -Destination (Join-Path $fixture "FictionBookEditorNext-$version-win7-win32-setup.exe")
+Copy-Item -LiteralPath $legacyPortable -Destination (Join-Path $fixture "FictionBookEditorNext-$version-win7-win32-portable.zip")
 $checksums = Get-ChildItem -LiteralPath $fixture -File | Sort-Object Name | ForEach-Object {
     "{0}  {1}" -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash, $_.Name
 }
 [IO.File]::WriteAllLines((Join-Path $fixture 'SHA256SUMS.txt'), @($checksums), [Text.Encoding]::ASCII)
 & (Join-Path $root 'tools\build\verify-artifacts.ps1') -Platform Win32 -ArtifactsDirectory $fixture -ReleaseTag "v$releaseVersion" -AllowLegacyWin7Aliases
-Write-Host '3.0.8 prerelease migration artifact fixture passed.'
+$candidate = Join-Path $fixture 'update.xml'
+& (Join-Path $root 'tools\build\new-update-manifest-candidate.ps1') -ArtifactsRoot $fixture -OutputPath $candidate -ReleaseTag "v$releaseVersion"
+& (Join-Path $root 'tools\build\validate-update-manifest.ps1') -ManifestPath $candidate -ExpectedReleaseTag "v$releaseVersion" -Feed PrereleaseFeed
+[xml]$migrationManifest = Get-Content -Raw -LiteralPath $candidate
+if ($migrationManifest.FBE.Artifacts.SetupUrl -notlike "*$assetVersion-win32-setup.exe" -or
+    $migrationManifest.FBE.Artifacts.Modern.SetupUrl -notlike "*$version-win32-setup.exe" -or
+    $migrationManifest.FBE.Artifacts.Win7.SetupUrl -notlike "*$version-win7-win32-setup.exe" -or
+    $migrationManifest.FBE.Artifacts.Modern.SetupSHA256 -ne $migrationManifest.FBE.Artifacts.SetupSHA256 -or
+    $migrationManifest.FBE.Artifacts.Win7.PortableSHA256 -ne $migrationManifest.FBE.Artifacts.PortableSHA256) {
+    throw 'v3.0.8-rc.1 compatibility updater did not receive the expected base-version aliases.'
+}
+
+# Stable 3.0.8 must continue to validate independently of the prerelease
+# fixture; its canonical setup/portable names are already the base aliases.
+$stableFixture = Join-Path $root 'out\tests\legacy308-artifact-migration-stable'
+Remove-Item -LiteralPath $stableFixture -Force -Recurse -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $stableFixture -Force | Out-Null
+$stableSetup = Join-Path $stableFixture "FictionBookEditorNext-$version-win32-setup.exe"
+$stablePortable = Join-Path $stableFixture "FictionBookEditorNext-$version-win32-portable.zip"
+$stableSymbols = Join-Path $stableFixture "FictionBookEditorNext-$version-win32-symbols.zip"
+Copy-Item -LiteralPath $setup -Destination $stableSetup
+Copy-Item -LiteralPath $portable -Destination $stablePortable
+Copy-Item -LiteralPath $symbols -Destination $stableSymbols
+Copy-Item -LiteralPath $stableSetup -Destination (Join-Path $stableFixture "FictionBookEditorNext-$version-win7-win32-setup.exe")
+Copy-Item -LiteralPath $stablePortable -Destination (Join-Path $stableFixture "FictionBookEditorNext-$version-win7-win32-portable.zip")
+$stableChecksums = Get-ChildItem -LiteralPath $stableFixture -File | Sort-Object Name | ForEach-Object {
+    "{0}  {1}" -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash, $_.Name
+}
+[IO.File]::WriteAllLines((Join-Path $stableFixture 'SHA256SUMS.txt'), @($stableChecksums), [Text.Encoding]::ASCII)
+& (Join-Path $root 'tools\build\verify-artifacts.ps1') -Platform Win32 -ArtifactsDirectory $stableFixture -ReleaseTag "v$version" -AllowLegacyWin7Aliases
+Write-Host '3.0.8 prerelease migration and stable artifact fixtures passed.'

@@ -73,9 +73,10 @@ if ($hasLegacyNodes) {
     # Published 3.0.8-rc.1 uses the former profile schema. It is also emitted
     # only as a temporary migration bridge alongside validated unified nodes.
     Require (Test-FbeLegacy308MigrationRequired $version) 'Legacy Modern/Win7 nodes допустимы только для migration-линии 3.0.8.'
+    $legacyAssetVersion = Get-FbeBaseVersion $version
     $legacyProfiles = @{
-        Modern = @{ Setup = "FictionBookEditorNext-$assetVersion-win32-setup.exe"; Portable = "FictionBookEditorNext-$assetVersion-win32-portable.zip" }
-        Win7 = @{ Setup = "FictionBookEditorNext-$assetVersion-win7-win32-setup.exe"; Portable = "FictionBookEditorNext-$assetVersion-win7-win32-portable.zip" }
+        Modern = @{ Setup = "FictionBookEditorNext-$legacyAssetVersion-win32-setup.exe"; Portable = "FictionBookEditorNext-$legacyAssetVersion-win32-portable.zip" }
+        Win7 = @{ Setup = "FictionBookEditorNext-$legacyAssetVersion-win7-win32-setup.exe"; Portable = "FictionBookEditorNext-$legacyAssetVersion-win7-win32-portable.zip" }
     }
     foreach ($profile in $legacyProfiles.Keys) {
         $node = $document.FBE.Artifacts.$profile

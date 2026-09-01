@@ -242,6 +242,8 @@ $setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-$a
 $checksumsPath = Join-Path $artifactsDir "SHA256SUMS.txt"
 $legacyWin7Setup = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-win7-$architecture-setup.exe"
 $legacyWin7Portable = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-win7-$architecture-portable.zip"
+$legacySetup = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-setup.exe"
+$legacyPortable = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-portable.zip"
 
 foreach ($artifactPath in @($portableZip, $symbolsZip)) {
     if (Test-Path -LiteralPath $artifactPath) {
@@ -373,13 +375,15 @@ if (-not (Test-Path -LiteralPath $setupArtifact)) {
 }
 
 if ($legacy308MigrationRequired) {
-    # Compatibility bridge for the published v3.0.8-rc.1 Win7 updater.
-    # These are copies, never separately built artifacts.
-    Copy-Item -LiteralPath $setupArtifact -Destination $legacyWin7Setup -Force
-    Copy-Item -LiteralPath $portableZip -Destination $legacyWin7Portable -Force
-    foreach ($pair in @(@($setupArtifact, $legacyWin7Setup), @($portableZip, $legacyWin7Portable))) {
+    # Compatibility bridge for the published v3.0.8-rc.1 updater.  Its
+    # profile-specific code expects base-version names; new clients use the
+    # canonical prerelease names above.  All aliases are copies, never builds.
+    foreach ($pair in @(@($setupArtifact, $legacySetup), @($portableZip, $legacyPortable), @($setupArtifact, $legacyWin7Setup), @($portableZip, $legacyWin7Portable))) {
+        if ($pair[0] -ne $pair[1]) { Copy-Item -LiteralPath $pair[0] -Destination $pair[1] -Force }
+    }
+    foreach ($pair in @(@($setupArtifact, $legacySetup), @($portableZip, $legacyPortable), @($setupArtifact, $legacyWin7Setup), @($portableZip, $legacyWin7Portable))) {
         if ((Get-FileHash -LiteralPath $pair[0] -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $pair[1] -Algorithm SHA256).Hash) {
-            throw 'Legacy Win7 migration alias does not match the universal artifact.'
+            throw 'Legacy migration alias does not match the canonical artifact.'
         }
     }
 }

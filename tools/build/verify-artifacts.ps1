@@ -29,6 +29,7 @@ if ($legacy308MigrationRequired -and -not $AllowLegacyWin7Aliases) {
 }
 $architecture = $Platform.ToLowerInvariant()
 $assetVersion = Get-FbeAssetVersion $releaseVersion
+$legacyAssetVersion = Get-FbeBaseVersion $releaseVersion
 $expected = @(
     "FictionBookEditorNext-$assetVersion-$architecture-setup.exe",
     "FictionBookEditorNext-$assetVersion-$architecture-portable.zip",
@@ -37,10 +38,13 @@ $expected = @(
 )
 if ($AllowLegacyWin7Aliases) {
     $expected += @(
-        "FictionBookEditorNext-$assetVersion-win7-$architecture-setup.exe",
-        "FictionBookEditorNext-$assetVersion-win7-$architecture-portable.zip"
+        "FictionBookEditorNext-$legacyAssetVersion-$architecture-setup.exe",
+        "FictionBookEditorNext-$legacyAssetVersion-$architecture-portable.zip",
+        "FictionBookEditorNext-$legacyAssetVersion-win7-$architecture-setup.exe",
+        "FictionBookEditorNext-$legacyAssetVersion-win7-$architecture-portable.zip"
     )
 }
+$expected = @($expected | Select-Object -Unique)
 $actual = @(Get-ChildItem -LiteralPath $ArtifactsDirectory -File | Select-Object -ExpandProperty Name | Sort-Object)
 if (($actual -join '|') -ne (($expected | Sort-Object) -join '|')) {
     throw "Ожидается ровно один unified release: $($expected -join ', '). Получено: $($actual -join ', ')."
@@ -57,8 +61,10 @@ foreach ($name in $expected | Where-Object { $_ -ne 'SHA256SUMS.txt' }) {
 }
 if ($AllowLegacyWin7Aliases) {
     foreach ($pair in @(
-        @("FictionBookEditorNext-$assetVersion-$architecture-setup.exe", "FictionBookEditorNext-$assetVersion-win7-$architecture-setup.exe"),
-        @("FictionBookEditorNext-$assetVersion-$architecture-portable.zip", "FictionBookEditorNext-$assetVersion-win7-$architecture-portable.zip")
+        @("FictionBookEditorNext-$assetVersion-$architecture-setup.exe", "FictionBookEditorNext-$legacyAssetVersion-$architecture-setup.exe"),
+        @("FictionBookEditorNext-$assetVersion-$architecture-portable.zip", "FictionBookEditorNext-$legacyAssetVersion-$architecture-portable.zip"),
+        @("FictionBookEditorNext-$assetVersion-$architecture-setup.exe", "FictionBookEditorNext-$legacyAssetVersion-win7-$architecture-setup.exe"),
+        @("FictionBookEditorNext-$assetVersion-$architecture-portable.zip", "FictionBookEditorNext-$legacyAssetVersion-win7-$architecture-portable.zip")
     )) {
         if ((Get-FileHash -LiteralPath (Join-Path $ArtifactsDirectory $pair[0]) -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath (Join-Path $ArtifactsDirectory $pair[1]) -Algorithm SHA256).Hash) {
             throw "Legacy migration alias is not byte-identical: $($pair[1])"

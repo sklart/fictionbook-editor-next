@@ -66,7 +66,7 @@ $runTables = $RunTableTests -or $FullValidation
     -Configuration $Configuration -ProfileDirectory (Join-Path $repoRoot "out\editor-runtime") `
     -BatchDirectory $batchOutputDir -ArchHandlerDirectory $archHandlerOutputDir
 & (Join-Path $repoRoot 'tools\tests\test-development-plugin-layout.ps1') `
-    -Configuration $Configuration -OutputDirectory $outputDir
+    -Configuration $Configuration -OutputDirectory $outputDir -BatchOutputDirectory $batchOutputDir
 
 $requiredFiles = @(
     "FBE.exe",
