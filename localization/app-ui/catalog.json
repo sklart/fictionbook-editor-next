@@ -62,6 +62,16 @@
     }
   },
   "seedStrings": {
+    "fbe.save_as.encoding": {
+      "resourceId": "IFileDialogCustomize",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Encoding:", "ru-RU": "Кодировка:", "uk-UA": "Кодування:",
+        "de-DE": "Kodierung:", "fr-FR": "Encodage :", "es-ES": "Codificación:",
+        "it-IT": "Codifica:", "pl-PL": "Kodowanie:", "pt-PT": "Codificação:",
+        "nl-NL": "Codering:", "cs-CZ": "Kódování:", "bg-BG": "Кодировка:"
+      }
+    },
     "fbe.about.caption": {
       "resourceId": "IDD_ABOUTBOX",
       "component": "fbe.core",

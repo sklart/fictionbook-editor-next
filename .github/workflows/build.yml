@@ -40,6 +40,7 @@ jobs:
           ./tools/tests/test-fbe-script-folder-icons.ps1
           ./tools/tests/test-fbe-settings-tooltips.ps1
           ./tools/tests/test-ci-build-contract.ps1
+          ./tools/tests/test-modern-file-dialog-contract.ps1
           ./tools/build/verify-nsis-layout.ps1
       - name: Test VsDevCmd with a long PATH
         shell: pwsh
