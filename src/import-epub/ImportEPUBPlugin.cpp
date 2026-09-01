@@ -6,6 +6,7 @@
 #include "ImportOptionsDialog.h"
 #include "resource.h"
 #include "RuntimeLocalization.h"
+#include "..\\common\\ModernFileDialog.h"
 
 // {3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}
 extern const CLSID CLSID_ImportEPUBPlugin =
@@ -239,49 +240,13 @@ namespace
     {
         outPath.Empty();
 
-        CComPtr<IFileOpenDialog> dialog;
-        HRESULT hr = dialog.CoCreateInstance(CLSID_FileOpenDialog);
-        if (FAILED(hr))
-            return SelectEpubFileLegacy(owner, outPath, options);
-
-        DWORD existingOptions = 0;
-        if (SUCCEEDED(dialog->GetOptions(&existingOptions)))
-        {
-            dialog->SetOptions(existingOptions | FOS_FILEMUSTEXIST | FOS_PATHMUSTEXIST | FOS_FORCEFILESYSTEM);
-        }
-
-        dialog->SetTitle(LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_TITLE, L"Import EPUB"));
-        dialog->SetOkButtonLabel(LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"Open..."));
-        dialog->SetFileNameLabel(LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILE_LABEL, L"EPUB file:"));
-        dialog->SetDefaultExtension(L"epub");
-
         const COMDLG_FILTERSPEC filters[] =
         {
             { L"EPUB files (*.epub)", L"*.epub" },
             { L"All files (*.*)", L"*.*" }
         };
-        dialog->SetFileTypes(static_cast<UINT>(_countof(filters)), filters);
-        dialog->SetFileTypeIndex(1);
-
-        CComPtr<IFileDialogCustomize> customize;
-        if (SUCCEEDED(dialog->QueryInterface(IID_PPV_ARGS(&customize))))
-        {
-            // Keep the import options entry visually compact and consistent with
-            // the export plugins: only one button, without an additional group
-            // caption or explanatory text in the file picker itself. Detailed
-            // explanations remain in tooltips inside the settings dialog.
-            //
-            // Note: the modern Windows IFileOpenDialog places custom controls in
-            // its bottom custom-control area. The button is intentionally added
-            // without StartVisualGroup/AddText so it does not create the extra
-            // two-line block that was visible above the file name field.
-            customize->AddPushButton(
-                IDC_FILEDLG_SETTINGS_BUTTON,
-                LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_SETTINGS_BUTTON, L"Import settings..."));
-        }
-
         CComObject<COpenDialogEvents>* rawEvents = nullptr;
-        hr = CComObject<COpenDialogEvents>::CreateInstance(&rawEvents);
+        HRESULT hr = CComObject<COpenDialogEvents>::CreateInstance(&rawEvents);
         if (FAILED(hr) || !rawEvents)
             return SelectEpubFileLegacy(owner, outPath, options);
 
@@ -294,34 +259,27 @@ namespace
         if (FAILED(hr))
             return SelectEpubFileLegacy(owner, outPath, options);
 
-        DWORD cookie = 0;
-        if (SUCCEEDED(dialog->Advise(events, &cookie)))
-        {
-            hr = dialog->Show(owner);
-            dialog->Unadvise(cookie);
-        }
-        else
-        {
-            hr = dialog->Show(owner);
-        }
-
-        if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+        ModernFileDialog::Request request;
+        request.fileMustExist = true;
+        request.pathMustExist = true;
+        request.title = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_TITLE, L"Import EPUB");
+        request.okButtonLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"Open...");
+        request.fileNameLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILE_LABEL, L"EPUB file:");
+        request.defaultExtension = L"epub";
+        request.filters = filters;
+        request.filterCount = _countof(filters);
+        request.filterIndex = 1;
+        request.events = events;
+        request.customize = [](IFileDialogCustomize* customize) {
+            return customize->AddPushButton(IDC_FILEDLG_SETTINGS_BUTTON,
+                LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_SETTINGS_BUTTON, L"Import settings..."));
+        };
+        const ModernFileDialog::Result result = ModernFileDialog::Show(owner, request);
+        if (result.outcome == ModernFileDialog::Outcome::Cancelled)
             return false;
-        if (FAILED(hr))
+        if (result.outcome != ModernFileDialog::Outcome::Accepted)
             return SelectEpubFileLegacy(owner, outPath, options);
-
-        CComPtr<IShellItem> item;
-        hr = dialog->GetResult(&item);
-        if (FAILED(hr) || !item)
-            return false;
-
-        PWSTR filePath = nullptr;
-        hr = item->GetDisplayName(SIGDN_FILESYSPATH, &filePath);
-        if (FAILED(hr) || !filePath)
-            return false;
-
-        outPath = filePath;
-        CoTaskMemFree(filePath);
+        outPath = result.paths.front().c_str();
         return !outPath.IsEmpty();
     }
 

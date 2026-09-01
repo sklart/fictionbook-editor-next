@@ -18,8 +18,8 @@ function Assert-Contains([string]$Text, [string]$Pattern, [string]$Message) {
 }
 
 Assert-Contains $descriptionScript 'window\.external\.SaveBinary\([^\r\n]+,\s*1\)' 'Кнопка «Сохранить» описания должна вызывать SaveBinary с диалогом.'
-Assert-Contains $external 'OFN_OVERWRITEPROMPT' 'SaveBinary должен запрашивать подтверждение замены.'
-Assert-Contains $view 'OFN_OVERWRITEPROMPT' 'Контекстное «Сохранить изображение как» должно запрашивать подтверждение замены.'
+Assert-Contains $external 'request\.overwritePrompt\s*=\s*true' 'SaveBinary должен запрашивать подтверждение замены.'
+Assert-Contains $view 'request\.overwritePrompt\s*=\s*true' 'Контекстное «Сохранить изображение как» должно запрашивать подтверждение замены.'
 Assert-Contains $external 'BinaryFileSave::WriteAtomically\(file_name, data, byteCount, existingFilePolicy, &error\)' 'SaveBinary должен использовать общую запись.'
 Assert-Contains $external 'prompt\s*\?\s*BinaryFileSave::ExistingFilePolicy::ReplaceExisting\s*:\s*BinaryFileSave::ExistingFilePolicy::FailIfExists' 'SaveBinary должен выбирать политику замены по prompt.'
 Assert-Contains $external 'const bool expectedExists\s*=\s*!prompt\s*&&\s*\(\s*error == ERROR_FILE_EXISTS\s*\|\|\s*error == ERROR_ALREADY_EXISTS\s*\)' 'Batch FILE_EXISTS должен быть распознан как ожидаемый результат.'

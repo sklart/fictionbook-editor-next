@@ -17,7 +17,6 @@ $consumers = @{
     IDD_ADDIMAGE = @{ File = 'src\fbe\FBEview.h'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_ADDIMAGE\)' }
     IDD_TOOLS_SETTINGS = @{ File = 'src\fbe\SettingsDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_TOOLS_SETTINGS\)' }
     IDD_ABOUTBOX = @{ File = 'src\fbe\AboutBox.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_ABOUTBOX\)' }
-    IDD_CUSTOMSAVEDLG = @{ File = 'src\fbe\mainfrm.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(hWnd,\s*IDD_CUSTOMSAVEDLG\)' }
     IDD_SETTINGS_WORDS = @{ File = 'src\fbe\SettingsWordsDlg.cpp'; Invocation = 'SetRuntimeSettingsWordsText' }
     IDD_HOTKEYS = @{ File = 'src\fbe\SettingsHotkeysDlg.cpp'; Invocation = 'SetRuntimeHotkeysText' }
     IDD_FIND = @{ File = 'src\fbe\SearchReplace.h'; Invocation = 'SetRuntimeDialogTitle' }

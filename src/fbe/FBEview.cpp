@@ -4648,23 +4648,17 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 	if(!_Settings.GetIsInsClearImage())
 	{
 		CString imageFilter = ImageImportFileFilter();
-		CFileDialogEx dlg(
-			TRUE,
-			NULL,
-			NULL,
-			OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR,
-			imageFilter
-			);
+		const COMDLG_FILTERSPEC filters[] = { { L"Image files", imageFilter } };
 
 		wchar_t dlgTitle[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_IMAGE_FILEDLG, dlgTitle, MAX_LOAD_STRING);
-		dlg.m_ofn.lpstrTitle = dlgTitle;
-		dlg.m_ofn.nFilterIndex = 1;
-		dlg.CenterOnOwner();
-
-		if(dlg.DoModal(*this) == IDOK)
+		ModernFileDialog::Request request;
+		request.fileMustExist = true; request.pathMustExist = true; request.title = dlgTitle;
+		request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+		const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
+		if(dialogResult.outcome == ModernFileDialog::Outcome::Accepted)
 		{
-			AddImage(dlg.m_szFileName, bInline);
+			AddImage(dialogResult.paths.front().c_str(), bInline);
 		}
 	}
 	else

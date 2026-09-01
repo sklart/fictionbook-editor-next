@@ -5,7 +5,7 @@
 
 #include "MainFrm.h"
 #include "AboutBox.h"
-#include "CFileDialogEx.h"
+#include "..\\common\\ModernFileDialog.h"
 #include "SettingsDlg.h"
 #include "KeyboardLayoutSelection.h"
 #include "RuntimeLocalization.h"
@@ -1429,110 +1429,80 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 
 CString	CMainFrame::GetOpenFileName() 
 {
-	CFileDialog dlg(TRUE, L"fb2", NULL, OFN_HIDEREADONLY|OFN_PATHMUSTEXIST, 
-		L"FictionBook files (*.fb2;*.fbd)\0*.fb2;*.fbd\0All files (*.*)\0*.*\0\0");
-	if (dlg.DoModal(*this)==IDOK) return dlg.m_szFileName;
+	const COMDLG_FILTERSPEC filters[] = {
+		{ L"FictionBook files (*.fb2;*.fbd)", L"*.fb2;*.fbd" },
+		{ L"All files (*.*)", L"*.*" }
+	};
+	ModernFileDialog::Request request;
+	request.fileMustExist = true;
+	request.pathMustExist = true;
+	request.defaultExtension = L"fb2";
+	request.filters = filters;
+	request.filterCount = _countof(filters);
+	request.filterIndex = 1;
+	const ModernFileDialog::Result result = ModernFileDialog::Show(m_hWnd, request);
+	if (result.outcome == ModernFileDialog::Outcome::Accepted) return result.paths.front().c_str();
 	return CString();
 }
-
-class CCustomSaveDialog : public CFileDialogImpl<CCustomSaveDialog>
-{
-public:
-  HWND	      m_hDlg;
-  CString     m_encoding;
-
-  CCustomSaveDialog(BOOL bOpenFileDialog, // TRUE for FileOpen, FALSE for FileSaveAs
-    const CString& encoding,
-    LPCTSTR lpszDefExt = NULL,
-    LPCTSTR lpszFileName = NULL,
-    DWORD dwFlags = OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
-    LPCTSTR lpszFilter = NULL,
-    HWND hWndParent = NULL)
-    : CFileDialogImpl<CCustomSaveDialog>(bOpenFileDialog, lpszDefExt, lpszFileName, dwFlags, lpszFilter, hWndParent),
-      m_hDlg(NULL),
-      m_encoding(encoding)
-  {
-    m_ofn.lpTemplateName=MAKEINTRESOURCE(IDD_CUSTOMSAVEDLG);
-  }
-
-  BEGIN_MSG_MAP(CCustomSaveDialog)
-    if (uMsg==WM_INITDIALOG)
-      return OnInitDialog(hWnd,uMsg,wParam,lParam);
-
-    MESSAGE_HANDLER(WM_SIZE, OnSize);
-
-    CHAIN_MSG_MAP(CFileDialogImpl<CCustomSaveDialog>)
-  END_MSG_MAP()
-
-  LRESULT OnInitDialog(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam) {
-    m_hDlg=hWnd;
-    FbeApplyRuntimeDialogLocalization(hWnd, IDD_CUSTOMSAVEDLG);
-
-    TCHAR   buf[1024];
-
-    if (FbeLoadString(_Module.GetResourceInstance(),IDS_ENCODINGS,buf,sizeof(buf)/sizeof(buf[0]))==0)
-      return TRUE;
-
-    TCHAR   *cp=buf;
-    while (*cp) {
-      size_t len=_tcscspn(cp,L",");
-      if (cp[len])
-	cp[len++]= L'\0';
-      if (*cp)
-	::SendDlgItemMessage(hWnd,IDC_ENCODING,CB_ADDSTRING,0,(LPARAM)cp);
-      cp+=len;
-    }
-
-    //::SetDlgItemText(hWnd,IDC_ENCODING,m_encoding);
-	::SendMessage(::GetDlgItem(hWnd, IDC_ENCODING), CB_SELECTSTRING, 0, (LPARAM)m_encoding.GetBuffer());	
-
-	return TRUE;
-  }
-
-  LRESULT OnSize(UINT uMsg,WPARAM wParam,LPARAM lParam,BOOL& bHandled) {
-    // make combobox the same size as std controls
-    RECT    rc_std,rc_my,rc_static, rc_static_my;
-    HWND    hCB=::GetDlgItem(m_hDlg,IDC_ENCODING);
-	HWND    hST=::GetDlgItem(m_hDlg,IDC_STATIC);
-    ::GetWindowRect(hCB,&rc_my);
-    ::GetWindowRect(GetFileDialogWindow().GetDlgItem(cmb1),&rc_std);
-
-	::GetWindowRect(hST,&rc_static_my);
-	::GetWindowRect(GetFileDialogWindow().GetDlgItem(stc2),&rc_static);
-
-    POINT   pt={rc_std.left,rc_my.top};
-	POINT   pt1={rc_static.left,rc_static_my.top};
-    ::ScreenToClient(m_hDlg,&pt);
-	::ScreenToClient(m_hDlg,&pt1);
-
-	::MoveWindow(hST,pt1.x,pt1.y,rc_static_my.right-rc_static_my.left,rc_my.bottom-rc_my.top,TRUE);
-    ::MoveWindow(hCB,pt.x,pt.y,rc_std.right-rc_std.left,rc_my.bottom-rc_my.top,TRUE);
-
-    return 0;
-  }
-  
-  BOOL OnFileOK(LPOFNOTIFY on) {
-    m_encoding=U::GetWindowText(::GetDlgItem(m_hDlg,IDC_ENCODING));    
-    return TRUE;
-  }
-};
 
 CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	bstr_t filename = m_doc->m_filename;
 	if (!filename || (filename == bstr_t(L"Untitled.fb2")))
 		filename = L"";
 	const bool saveAsFbd = IsFbdFile((const wchar_t*)filename);
-
-  CCustomSaveDialog	dlg(FALSE,
-	_Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding(), NULL, filename,
-    OFN_HIDEREADONLY|OFN_NOREADONLYRETURN|OFN_OVERWRITEPROMPT| OFN_ENABLETEMPLATE,
-    L"FictionBook (*.fb2)\0*.fb2\0FictionBook Description (*.fbd)\0*.fbd\0All files (*.*)\0*.*\0\0");
-  dlg.m_ofn.nFilterIndex = saveAsFbd ? 2 : 1;
-  if (dlg.DoModal(*this)==IDOK) {
-    encoding=dlg.m_encoding;
-	CString result(dlg.m_szFileName);
-	FictionBookFileType targetType = dlg.m_ofn.nFilterIndex == 2 ? FictionBookFileType::Fbd :
-		dlg.m_ofn.nFilterIndex == 1 ? FictionBookFileType::Fb2 :
+	const COMDLG_FILTERSPEC filters[] = {
+		{ L"FictionBook (*.fb2)", L"*.fb2" },
+		{ L"FictionBook Description (*.fbd)", L"*.fbd" },
+		{ L"All files (*.*)", L"*.*" }
+	};
+	CString selectedEncoding = _Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding();
+	wchar_t encodingBuffer[1024] = {};
+	FbeLoadString(_Module.GetResourceInstance(), IDS_ENCODINGS, encodingBuffer, _countof(encodingBuffer));
+	CString encodingList(encodingBuffer);
+	ModernFileDialog::Request request;
+	request.save = true;
+	request.pathMustExist = true;
+	request.overwritePrompt = true;
+	request.defaultExtension = L"fb2";
+	request.initialFileName = static_cast<const wchar_t*>(filename);
+	request.filters = filters;
+	request.filterCount = _countof(filters);
+	request.filterIndex = saveAsFbd ? 2 : 1;
+	request.customize = [&encodingList, &selectedEncoding](IFileDialogCustomize* customize) -> HRESULT {
+		const DWORD controlId = 1001;
+		HRESULT hr = customize->AddComboBox(controlId);
+		if (FAILED(hr)) return hr;
+		int index = 0, selectedIndex = 0;
+		CString remaining(encodingList);
+		while (!remaining.IsEmpty()) {
+			const int comma = remaining.Find(L',');
+			const CString item = comma >= 0 ? remaining.Left(comma) : remaining;
+			remaining = comma >= 0 ? remaining.Mid(comma + 1) : CString();
+			if (!item.IsEmpty()) {
+				customize->AddControlItem(controlId, ++index, item);
+				if (item == selectedEncoding) selectedIndex = index;
+			}
+		}
+		return customize->SetSelectedControlItem(controlId, selectedIndex ? selectedIndex : 1);
+	};
+	request.readCustomization = [&encodingList, &selectedEncoding](IFileDialogCustomize* customize) {
+		DWORD selected = 0;
+		if (!customize || FAILED(customize->GetSelectedControlItem(1001, &selected))) return;
+		int index = 0;
+		CString remaining(encodingList);
+		while (!remaining.IsEmpty()) {
+			const int comma = remaining.Find(L',');
+			const CString item = comma >= 0 ? remaining.Left(comma) : remaining;
+			remaining = comma >= 0 ? remaining.Mid(comma + 1) : CString();
+			if (!item.IsEmpty() && ++index == static_cast<int>(selected)) { selectedEncoding = item; return; }
+		}
+	};
+	const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
+	if (dialogResult.outcome == ModernFileDialog::Outcome::Accepted) {
+		encoding = selectedEncoding;
+		CString result(dialogResult.paths.front().c_str());
+		FictionBookFileType targetType = dialogResult.filterIndex == 2 ? FictionBookFileType::Fbd :
+			dialogResult.filterIndex == 1 ? FictionBookFileType::Fb2 :
 		ResolveFictionBookTargetType(CString(), m_doc->m_filename);
 	return AddFictionBookExtensionIfMissing(result, targetType);
   }
@@ -6565,26 +6535,23 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
 
   // Modification by Pilgrim
 	CString imageFilter = ImageImportFileFilter();
-  CFileDialogEx	dlg(
-    TRUE,
-    _T("*"),
-    NULL,
-	OFN_ALLOWMULTISELECT | OFN_HIDEREADONLY | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR,
-	imageFilter
-  );  
+	const COMDLG_FILTERSPEC filters[] = { { L"Image files", imageFilter } };
   wchar_t dlgTitle[MAX_LOAD_STRING + 1];
   FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_BINARIES_FILEDLG, dlgTitle, MAX_LOAD_STRING);
-  dlg.m_ofn.lpstrTitle = dlgTitle;
-	dlg.m_ofn.nFilterIndex = 1;
-	dlg.CenterOnOwner();
-
-
-  if (dlg.DoModal(*this)==IDOK) {
-	_POSITION_ pos = dlg.GetStartPosition();
+	ModernFileDialog::Request request;
+	request.allowMultiSelect = true;
+	request.fileMustExist = true;
+	request.pathMustExist = true;
+	request.title = dlgTitle;
+	request.filters = filters;
+	request.filterCount = _countof(filters);
+	request.filterIndex = 1;
+	const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
+	if (dialogResult.outcome == ModernFileDialog::Outcome::Accepted) {
 	int added = 0, converted = 0;
 	CString failures;
-	while(pos) {
-		CString fileName(dlg.GetNextPathName(pos));
+	for (const std::wstring& path : dialogResult.paths) {
+		CString fileName(path.c_str());
 		CString error;
 		bool wasConverted = false;
 		HRESULT importResult = m_doc->ImportBinary(fileName, error, &wasConverted);

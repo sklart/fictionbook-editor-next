@@ -14,7 +14,7 @@
 #include "resource.h"
 #include "RuntimeLocalization.h"
 #include "Settings.h"
-#include "CFileDialogEx.h"
+#include "..\\common\\ModernFileDialog.h"
 #include "StartupTrace.h"
 #include "BinaryFileSave.h"
 #include "BinarySaveNotification.h"
@@ -498,18 +498,15 @@ public:
 			return 0;
 		}
 
-		CFileDialog imgSaveDlg(FALSE, NULL, src);
-		if(!m_file_path.IsEmpty())
-			imgSaveDlg.m_ofn.lpstrInitialDir = m_file_path;
-
-		// add file types
-		imgSaveDlg.m_ofn.lpstrFilter = L"JPEG files (*.jpg)\0*.jpg\0PNG files (*.png)\0*.png\0All files (*.*)\0*.*\0\0";
-		imgSaveDlg.m_ofn.nFilterIndex = 0;
-		imgSaveDlg.m_ofn.lpstrDefExt = L"jpg";
-		imgSaveDlg.m_ofn.Flags |= OFN_OVERWRITEPROMPT;
-
-		if(imgSaveDlg.DoModal(m_hWnd) == IDOK)
+		const COMDLG_FILTERSPEC filters[] = { { L"JPEG files (*.jpg)", L"*.jpg" }, { L"PNG files (*.png)", L"*.png" }, { L"All files (*.*)", L"*.*" } };
+		ModernFileDialog::Request request;
+		request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
+		request.defaultExtension = L"jpg"; request.initialFileName = src;
+		request.initialFolder = m_file_path; request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+		const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
+		if(dialogResult.outcome == ModernFileDialog::Outcome::Accepted)
 		{
+			const CString outputPath(dialogResult.paths.front().c_str());
 			long lowerBound = 0, upperBound = -1;
 			void* bytes = NULL;
 			if ((data.vt & VT_ARRAY) && data.parray != NULL &&
@@ -519,13 +516,13 @@ public:
 			{
 				const DWORD byteCount = static_cast<DWORD>(upperBound - lowerBound + 1);
 				DWORD error = ERROR_SUCCESS;
-				if (!BinaryFileSave::WriteAtomically(imgSaveDlg.m_szFileName, bytes, byteCount,
+				if (!BinaryFileSave::WriteAtomically(outputPath, bytes, byteCount,
 					BinaryFileSave::ExistingFilePolicy::ReplaceExisting, &error))
 				{
 					CString message;
 					message.Format(L"OnSaveImageAs failed (error %lu)", error);
 					StartupTrace::Error(L"binary-save", L"B511", message);
-					ShowBinarySaveFailure(m_hWnd, imgSaveDlg.m_szFileName, error);
+					ShowBinarySaveFailure(m_hWnd, outputPath, error);
 				}
 				::SafeArrayUnaccessData(data.parray);
 			}

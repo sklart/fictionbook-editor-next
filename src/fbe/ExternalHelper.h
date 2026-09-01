@@ -9,6 +9,7 @@
 #include "BinaryFileSave.h"
 #include "BinarySaveNotification.h"
 #include "RuntimeLocalization.h"
+#include "..\\common\\ModernFileDialog.h"
 
 inline bool IsDiagnosticFaultInjectionEnabled(const wchar_t* point)
 {
@@ -245,19 +246,14 @@ public:
 			CString fname = ATLPath::FindFileName(file_name );
 			CString fpath(file_name);
 			fpath = fpath.Left(file_name.GetLength()-fname.GetLength());
-			CFileDialog imgSaveDlg(FALSE, NULL, fname);
-			imgSaveDlg.m_ofn.lpstrInitialDir = fpath;
-
-			// add file types
-			imgSaveDlg.m_ofn.lpstrFilter = L"JPEG files (*.jpg)\0*.jpg\0PNG files (*.png)\0*.png\0All files (*.*)\0*.*\0\0";
-			imgSaveDlg.m_ofn.nFilterIndex = 0;
-			imgSaveDlg.m_ofn.lpstrDefExt = L"jpg";
-
-			// Замена существующей картинки должна подтверждаться стандартным
-			// диалогом, а не блокироваться последующим CREATE_NEW.
-			imgSaveDlg.m_ofn.Flags |= OFN_OVERWRITEPROMPT;
-			modalResult = imgSaveDlg.DoModal(NULL);
-			file_name.SetString(imgSaveDlg.m_szFileName);
+			const COMDLG_FILTERSPEC filters[] = { { L"JPEG files (*.jpg)", L"*.jpg" }, { L"PNG files (*.png)", L"*.png" }, { L"All files (*.*)", L"*.*" } };
+			ModernFileDialog::Request request;
+			request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
+			request.defaultExtension = L"jpg"; request.initialFileName = fname; request.initialFolder = fpath;
+			request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+			const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(NULL, request);
+			modalResult = dialogResult.outcome == ModernFileDialog::Outcome::Accepted ? IDOK : IDCANCEL;
+			if (modalResult == IDOK) file_name = dialogResult.paths.front().c_str();
 		}
 
 		if (modalResult == IDOK)

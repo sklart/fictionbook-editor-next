@@ -55,7 +55,6 @@ static const RuntimeDialogBinding g_runtimeDialogBindings[] = {
 	{ IDD_SETTINGS_IMAGES, IDC_SETTINGS_OTHER_OUTPUT, L"fbe.dialog.idd_setting_other.output_format" },
 	{ IDD_SETTINGS_IMAGES, IDC_SETTINGS_OTHER_IMPORT_QUALITY, L"fbe.dialog.idd_setting_other.jpeg_quality" },
 	{ IDD_SETTINGS_IMAGES, IDC_IMAGE_IMPORT_KEEP_SUPPORTED, L"fbe.dialog.idd_setting_other.keep_supported" },
-	{ IDD_CUSTOMSAVEDLG, IDC_CUSTOM_SAVE_ENCODING_LABEL, L"fbe.dialog.idd_customsavedlg.encoding" },
 	{ IDD_ABOUTBOX, 0, L"fbe.dialog.idd_aboutbox.caption" },
 	{ IDD_ABOUTBOX, IDOK, L"fbe.dialog.idd_aboutbox.ok" },
 	{ IDD_ABOUTBOX, IDC_STATIC_BUILD, L"fbe.dialog.idd_aboutbox.build" },

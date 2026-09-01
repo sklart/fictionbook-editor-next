@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "description": "Weblate-friendly seed-каталог малых DIALOGEX-диалогов FBE: IDD_TABLE, IDD_INPUTBOX, IDD_ADDIMAGE, IDD_TOOLS_SETTINGS, IDD_ABOUTBOX, IDD_CUSTOMSAVEDLG.",
+  "description": "Weblate-friendly seed-каталог малых DIALOGEX-диалогов FBE: IDD_TABLE, IDD_INPUTBOX, IDD_ADDIMAGE, IDD_TOOLS_SETTINGS, IDD_ABOUTBOX.",
   "targetLanguages": [
     "en-US",
     "ru-RU",
@@ -23,7 +23,6 @@
     "IDD_ADDIMAGE",
     "IDD_TOOLS_SETTINGS",
     "IDD_ABOUTBOX",
-    "IDD_CUSTOMSAVEDLG",
     "IDD_SETTINGS_WORDS",
     "IDD_HOTKEYS",
     "IDD_FIND",
@@ -503,25 +502,6 @@
         "nl-NL": "Bijwerken",
         "cs-CZ": "Aktualizovat",
         "bg-BG": "Обновяване"
-      }
-    },
-    "fbe.dialog.idd_customsavedlg.encoding": {
-      "resource": "IDD_CUSTOMSAVEDLG",
-      "kind": "LTEXT",
-      "targetId": "IDC_CUSTOM_SAVE_ENCODING_LABEL",
-      "translations": {
-        "en-US": "Encoding:",
-        "ru-RU": "Кодировка:",
-        "uk-UA": "Кодування:",
-        "de-DE": "Kodierung:",
-        "fr-FR": "Encodage :",
-        "es-ES": "Codificación:",
-        "it-IT": "Codifica:",
-        "pl-PL": "Kodowanie:",
-        "pt-PT": "Codificação:",
-        "nl-NL": "Codering:",
-        "cs-CZ": "Kódování:",
-        "bg-BG": "Кодировка:"
       }
     },
     "fbe.dialog.idd_settings_words.add": {
