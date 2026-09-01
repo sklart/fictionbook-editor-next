@@ -71,7 +71,7 @@
     <ClInclude Include="dllmain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CustomFileSaveDialog.h">
+    <ClInclude Include="HtmlExportOptionsDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RuntimeLocalization.h">

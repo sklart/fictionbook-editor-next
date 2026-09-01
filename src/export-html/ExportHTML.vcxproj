@@ -207,7 +207,7 @@
     <None Include="ExportHTMLPlugin.rgs" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CustomFileSaveDialog.h" />
+    <ClInclude Include="HtmlExportOptionsDialog.h" />
     <ClInclude Include="dllmain.h" />
     <ClInclude Include="ExportHTMLPlugin.h" />
     <ClInclude Include="ExportHTML_i.h" />

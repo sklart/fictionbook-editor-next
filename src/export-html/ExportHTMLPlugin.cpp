@@ -2,7 +2,8 @@
 #include "ExportHTMLPlugin.h"
 
 #include "utils.h"
-#include "CustomFileSaveDialog.h"
+#include "HtmlExportOptionsDialog.h"
+#include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
 
 #include <vector>
@@ -114,13 +115,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			CheckError(source->save(_variant_t(testDomPath)));
 
 		// * ask the user where he wants his html
-		CString strFilter;
-		strFilter = LoadExportHtmlString(IDS_SAVE_FILE_FILTER);
-		strFilter.Replace(_T('|'), _T('\0'));
-		CCustomSaveDialog	    dlg(FALSE, _T("html"), filename,
-			OFN_HIDEREADONLY | OFN_NOREADONLYRETURN | OFN_OVERWRITEPROMPT | OFN_ENABLETEMPLATE,
-			strFilter
-			);
+		struct HtmlExportDialogState { struct { UINT nFilterIndex; } m_ofn; wchar_t m_szFileName[MAX_PATH]; CString m_template, m_customCss; bool m_usingCustomTemplate, m_includedesc; int m_tocdepth, m_imageMaxWidth, m_imageMaxHeight; } dlg = {};
 		// The portable, self-contained document is the safest default: it cannot
 		// lose its CSS or images when moved to another folder or machine.
 		dlg.m_ofn.nFilterIndex = 4;
@@ -136,8 +131,19 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), testOutput, _TRUNCATE);
 			dlg.m_template = U::GetProgDirFile(L"html.xsl");
 			dlg.m_usingCustomTemplate = false;
-		} else if (dlg.DoModal((HWND)hWnd) != IDOK) {
-			return S_FALSE;
+		} else {
+			CHtmlExportOptionsDialog options;
+			if (options.DoModal((HWND)hWnd) != IDOK) return S_FALSE;
+			dlg.m_template = options.m_template; dlg.m_customCss = options.m_customCss; dlg.m_usingCustomTemplate = options.m_usingCustomTemplate;
+			dlg.m_includedesc = options.m_includedesc; dlg.m_tocdepth = options.m_tocdepth; dlg.m_imageMaxWidth = options.m_imageMaxWidth; dlg.m_imageMaxHeight = options.m_imageMaxHeight;
+			const COMDLG_FILTERSPEC filters[] = { { L"HTML with external images (*.html)", L"*.html" }, { L"MHT (*.mht)", L"*.mht" }, { L"HTML without images (*.html)", L"*.html" }, { L"Self-contained HTML (*.html)", L"*.html" } };
+			ModernFileDialog::Request request;
+			request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"html";
+			request.initialFileName = filename ? filename : L""; request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 4;
+			const ModernFileDialog::Result result = ModernFileDialog::Show((HWND)hWnd, request);
+			if (result.outcome != ModernFileDialog::Outcome::Accepted) return S_FALSE;
+			dlg.m_ofn.nFilterIndex = result.filterIndex;
+			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), result.paths.front().c_str(), _TRUNCATE);
 		}
 		bool    fMIME = dlg.m_ofn.nFilterIndex == 2;
 		bool    fExternalImages = dlg.m_ofn.nFilterIndex == 1;
