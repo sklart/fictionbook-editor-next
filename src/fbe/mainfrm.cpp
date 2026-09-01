@@ -415,8 +415,11 @@ static CString XmlUnescape(const CString& value)
 }
 
 static bool ReadPortableToolbars(std::vector<PortableToolbarItem>& commands,
-	std::vector<PortableToolbarItem>& scripts, CString& lastScript)
+	std::vector<PortableToolbarItem>& scripts, CString& lastScript,
+	bool& commandToolbarPresent, bool& scriptsToolbarPresent)
 {
+	commandToolbarPresent = false;
+	scriptsToolbarPresent = false;
 	const CString path = PortableToolbarsPath();
 	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(file == INVALID_HANDLE_VALUE) return false;
@@ -427,6 +430,8 @@ static bool ReadPortableToolbars(std::vector<PortableToolbarItem>& commands,
 	if(!ok || read != length) return false;
 
 	CString content(&text[0]);
+	if(content.Find(L"<Toolbars version=\"1\">") < 0 || content.Find(L"</Toolbars>") < 0)
+		return false;
 	int cursor = 0;
 	CString active;
 	while(cursor >= 0)
@@ -441,6 +446,8 @@ static bool ReadPortableToolbars(std::vector<PortableToolbarItem>& commands,
 		{
 			active = tag.Find(L"name=\"Command\"") >= 0 ? L"Command" :
 				tag.Find(L"name=\"Scripts\"") >= 0 ? L"Scripts" : CString();
+			if(active == L"Command") commandToolbarPresent = true;
+			if(active == L"Scripts") scriptsToolbarPresent = true;
 			continue;
 		}
 		if(tag.Left(8) == L"/Toolbar") { active.Empty(); continue; }
@@ -475,7 +482,7 @@ static bool ReadPortableToolbars(std::vector<PortableToolbarItem>& commands,
 		else continue;
 		(active == L"Command" ? commands : scripts).push_back(item);
 	}
-	return !commands.empty() || !scripts.empty();
+	return commandToolbarPresent || scriptsToolbarPresent;
 }
 
 static bool WritePortableToolbarsText(const CString& text)
@@ -2521,10 +2528,11 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 {
 	if(DeploymentContext::RegistryPersistenceAllowed()) return;
 	std::vector<PortableToolbarItem> commands, scripts;
-	CString lastScript;
-	if(!ReadPortableToolbars(commands, scripts, lastScript)) return;
+	CString lastScript; bool commandToolbarPresent = false, scriptsToolbarPresent = false;
+	if(!ReadPortableToolbars(commands, scripts, lastScript, commandToolbarPresent, scriptsToolbarPresent)) return;
+	const bool toolbarPresent = scriptsToolbar ? scriptsToolbarPresent : commandToolbarPresent;
+	if(!toolbarPresent) return;
 	const std::vector<PortableToolbarItem>& saved = scriptsToolbar ? scripts : commands;
-	if(saved.empty()) return;
 
 	CToolBarCtrl target = toolbar;
 	const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(toolbar)));
@@ -2562,9 +2570,8 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 				break;
 			}
 	}
-	if(restored.empty()) return;
 	while(target.GetButtonCount() > 0) target.DeleteButton(0);
-	target.AddButtons(static_cast<int>(restored.size()), &restored[0]);
+	if(!restored.empty()) target.AddButtons(static_cast<int>(restored.size()), &restored[0]);
 	target.AutoSize();
 
 	if(scriptsToolbar && !lastScript.IsEmpty())
@@ -3674,7 +3681,7 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 static bool IsFbeTestScenario(const wchar_t* expectedScenario)
 {
-	wchar_t testMode[4] = {}, scenario[32] = {};
+	wchar_t testMode[4] = {}, scenario[64] = {};
 	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
 	const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
 	return testModeLength == 1 && testMode[0] == L'1' &&
@@ -3709,7 +3716,13 @@ static bool HasPortableStateToolbarWidth(const CString& settings, UINT bandId, i
 
 void CMainFrame::RunPortableStateTestScenario()
 {
-	if (!IsFbeTestScenario(L"portable-state-write") && !IsFbeTestScenario(L"portable-state-read"))
+	const bool ordinaryWrite = IsFbeTestScenario(L"portable-state-write");
+	const bool ordinaryRead = IsFbeTestScenario(L"portable-state-read");
+	const bool emptyToolbarWrite = IsFbeTestScenario(L"portable-toolbar-empty-write");
+	const bool emptyToolbarRead = IsFbeTestScenario(L"portable-toolbar-empty-read");
+	const bool scriptsReload = IsFbeTestScenario(L"portable-scripts-reload");
+	const bool legacyHotkeyRead = IsFbeTestScenario(L"portable-legacy-hotkey-read");
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !scriptsReload && !legacyHotkeyRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -3729,7 +3742,43 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 
 	::CreateDirectory(scriptsDirectory, NULL);
-	if (IsFbeTestScenario(L"portable-state-write"))
+	if (emptyToolbarWrite)
+	{
+		while(m_CmdToolbar.GetButtonCount() > 0) m_CmdToolbar.DeleteButton(0);
+		while(m_ScriptsToolbar.GetButtonCount() > 0) m_ScriptsToolbar.DeleteButton(0);
+		m_CmdToolbar.AutoSize();
+		m_ScriptsToolbar.AutoSize();
+		WritePortableStateTestText(reportPath, "phase=toolbar-empty-write\nresult=pass\n");
+	}
+	else if (emptyToolbarRead)
+	{
+		const bool empty = m_CmdToolbar.GetButtonCount() == 0 && m_ScriptsToolbar.GetButtonCount() == 0;
+		CStringA report;
+		report.Format("phase=toolbar-empty-read\nempty-toolbar=%d\nresult=%s\n", empty, empty ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
+	}
+	else if (scriptsReload)
+	{
+		const DWORD before = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+		InitPlugins();
+		InitPlugins();
+		InitPlugins();
+		const DWORD after = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+		CStringA report;
+		report.Format("phase=scripts-reload\ngdi-before=%lu\ngdi-after=%lu\ngdi-stable=%d\nresult=%s\n",
+			before, after, after <= before, after <= before ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
+	}
+	else if (legacyHotkeyRead)
+	{
+		CHotkeysGroup* scripts = _Settings.GetGroupByName(L"Scripts");
+		CHotkey* foo = scripts ? _Settings.GetHotkeyByName(L"foo.js", *scripts) : NULL;
+		const bool migrated = foo != NULL && foo->m_accel.fVirt == (FVIRTKEY | FCONTROL) && foo->m_accel.key == VK_F9;
+		CStringA report;
+		report.Format("phase=legacy-hotkey-read\nlegacy-hotkey=%d\nresult=%s\n", migrated, migrated ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
+	}
+	else if (ordinaryWrite)
 	{
 		// These deterministic mutations go through the same settings, MRU,
 		// toolbar and recovery code that normal UI actions persist on close.
@@ -3759,7 +3808,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		WritePortableStateTestText(recoveryMarker, "portable-state-recovery\n");
 		WritePortableStateTestText(reportPath, "phase=write\nresult=pass\n");
 	}
-	else
+	else if (ordinaryRead)
 	{
 		bool wordFound = false, mruFound = false;
 		for (size_t index = 0; index < _Settings.m_words.size(); ++index)

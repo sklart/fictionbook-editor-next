@@ -1665,25 +1665,27 @@ void CSettings::LoadHotkeyGroups()
 				// relative key while loading, then write the portable form back.
 				if(foundHk == NULL && group.m_reg_name == L"Scripts")
 				{
-					const CString scriptsRoot = GetScriptsFolder();
-					const CString legacyPath = group.m_hotkeys[j].m_reg_name;
-					wchar_t rootBuffer[MAX_PATH] = {}, pathBuffer[MAX_PATH] = {};
-					if(::GetFullPathName(scriptsRoot, _countof(rootBuffer), rootBuffer, NULL) > 0 &&
-						::GetFullPathName(legacyPath, _countof(pathBuffer), pathBuffer, NULL) > 0)
+					CString legacyPath(group.m_hotkeys[j].m_reg_name);
+					legacyPath.Replace(L'\\', L'/');
+					legacyPath.MakeLower();
+					CHotkey* matchedHotkey = NULL;
+					for(unsigned int candidateIndex = 0; candidateIndex < foundGr->m_hotkeys.size(); ++candidateIndex)
 					{
-						CString root(rootBuffer), fullPath(pathBuffer);
-						while(root.GetLength() > 3 && (root[root.GetLength() - 1] == L'\\' || root[root.GetLength() - 1] == L'/'))
-							root.Delete(root.GetLength() - 1, 1);
-						if(fullPath.GetLength() > root.GetLength() && fullPath.Left(root.GetLength()).CompareNoCase(root) == 0 &&
-							(fullPath[root.GetLength()] == L'\\' || fullPath[root.GetLength()] == L'/'))
+						CString relativePath(foundGr->m_hotkeys[candidateIndex].m_reg_name);
+						relativePath.Replace(L'\\', L'/');
+						relativePath.MakeLower();
+						const bool matches = legacyPath == relativePath ||
+							(legacyPath.GetLength() > relativePath.GetLength() &&
+							legacyPath.Right(relativePath.GetLength()) == relativePath &&
+							legacyPath[legacyPath.GetLength() - relativePath.GetLength() - 1] == L'/');
+						if(matches)
 						{
-							CString relativePath = fullPath.Mid(root.GetLength() + 1);
-							relativePath.Replace(L'\\', L'/');
-							relativePath.MakeLower();
-							foundHk = GetHotkeyByName(relativePath, *foundGr);
-							migratedLegacyScriptHotkey = foundHk != NULL;
+							if(matchedHotkey != NULL) { matchedHotkey = NULL; break; } // ambiguous suffix: do not guess
+							matchedHotkey = &foundGr->m_hotkeys[candidateIndex];
 						}
 					}
+					foundHk = matchedHotkey;
+					migratedLegacyScriptHotkey |= foundHk != NULL;
 				}
 				if(foundHk != NULL)
 				{
