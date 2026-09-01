@@ -8,4 +8,6 @@ bool IsValidUpdateVersion(const CString& value);
 bool IsValidReleaseTag(const CString& value);
 bool IsPrereleaseUpdateVersion(const CString& value);
 CString GetUpdateBaseVersion(const CString& value);
+// Asset filenames retain prerelease identity but omit SemVer build metadata.
+CString GetUpdateAssetVersion(const CString& value);
 int CompareUpdateVersions(const CString& left, const CString& right);

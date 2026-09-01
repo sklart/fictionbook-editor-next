@@ -25,6 +25,9 @@ int wmain()
     if (!IsValidUpdateVersion(L"3.1.0-rc.2+build.7")) return 1;
     if (!IsPrereleaseUpdateVersion(L"3.1.0-rc.2+build.7") || !IsPrereleaseUpdateVersion(L"3.1.0-rc.1+build-foo") || IsPrereleaseUpdateVersion(L"3.1.0+build.7") || IsPrereleaseUpdateVersion(L"3.1.0+build-foo") || IsPrereleaseUpdateVersion(L"3.1.0+build.foo-bar")) return 1;
     if (GetUpdateBaseVersion(L"3.1.0-rc.2") != L"3.1.0") return 1;
+	if (GetUpdateAssetVersion(L"3.1.0-rc.2+build.7") != L"3.1.0-rc.2" ||
+		GetUpdateAssetVersion(L"3.1.0+build.7") != L"3.1.0" ||
+		!GetUpdateAssetVersion(L"bad").IsEmpty()) return 1;
     return ExpectCompare(L"3.0.7", L"3.0.7", 0) ||
         ExpectCompare(L"3.0.8", L"3.0.7", 1) ||
         ExpectCompare(L"3.1.0", L"3.0.9", 1) ||

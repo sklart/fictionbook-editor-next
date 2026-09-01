@@ -40,6 +40,9 @@ Require $verify 'out\archhandler\Win32' 'verify-release.ps1'
 Require $workflow 'Test-FbeLegacy308MigrationRequired' 'workflow migration verification'
 Require $release 'Test-FbeLegacy308MigrationRequired' 'create-release migration policy'
 Require $migration 'Test-FbeLegacy308MigrationRequired' 'central migration policy'
+foreach ($script in @(@{ Text = $release; Name = 'create-release.ps1' }, @{ Text = $artifacts; Name = 'verify-artifacts.ps1' })) {
+    Require $script.Text 'Get-FbeAssetVersion' $script.Name
+}
 Require $workflow 'test-legacy308-migration-policy.ps1' 'workflow migration policy test'
 Require $artifacts 'Test-FbeLegacy308MigrationRequired' 'artifact verification migration policy'
 foreach ($needle in @('FBE.pdb', 'FBV.pdb', 'FBShell.propertyhandler.win32.pdb', 'FBShell.propertyhandler.x64.pdb')) { Require $artifacts $needle 'symbols verification' }

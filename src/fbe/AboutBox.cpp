@@ -21,7 +21,7 @@ namespace
 		return url.Left(8).CompareNoCase(L"https://") == 0;
 	}
 
-	bool IsTrustedUpdateUrl(const CString& url, const CString& releaseTag, const CString& baseVersion)
+	bool IsTrustedUpdateUrl(const CString& url, const CString& releaseTag, const CString& assetVersion)
 	{
 		if (!IsHttpsUrl(url) || url.FindOneOf(L"?#") >= 0)
 			return false;
@@ -29,7 +29,7 @@ namespace
 		CString expectedUrl;
 		const UpdateArtifact artifact = SelectUpdateArtifact(
 			DeploymentContext::CurrentMode(),
-			baseVersion);
+			assetVersion);
 		expectedUrl.Format(
 			L"%s%s/%s",
 			FBE_RELEASE_DOWNLOAD_PREFIX,
@@ -785,8 +785,8 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 						const CString extension(ATLPath::FindExtension(path));
 
 						const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
-						const CString baseVersion = GetUpdateBaseVersion(availableVersion);
-						if (IsTrustedUpdateUrl(updateURL, releaseTag, baseVersion) &&
+						const CString assetVersion = GetUpdateAssetVersion(availableVersion);
+						if (IsTrustedUpdateUrl(updateURL, releaseTag, assetVersion) &&
 							extension.CompareNoCase(portable ? L".zip" : L".exe") == 0 &&
 							IsSHA256(updateSHA256))
 						{

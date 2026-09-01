@@ -28,16 +28,17 @@ if ($legacy308MigrationRequired -and -not $AllowLegacyWin7Aliases) {
     throw 'Для migration series 3.0.8 необходимо явно разрешить legacy Win7 aliases.'
 }
 $architecture = $Platform.ToLowerInvariant()
+$assetVersion = Get-FbeAssetVersion $releaseVersion
 $expected = @(
-    "FictionBookEditorNext-$version-$architecture-setup.exe",
-    "FictionBookEditorNext-$version-$architecture-portable.zip",
-    "FictionBookEditorNext-$version-$architecture-symbols.zip",
+    "FictionBookEditorNext-$assetVersion-$architecture-setup.exe",
+    "FictionBookEditorNext-$assetVersion-$architecture-portable.zip",
+    "FictionBookEditorNext-$assetVersion-$architecture-symbols.zip",
     'SHA256SUMS.txt'
 )
 if ($AllowLegacyWin7Aliases) {
     $expected += @(
-        "FictionBookEditorNext-$version-win7-$architecture-setup.exe",
-        "FictionBookEditorNext-$version-win7-$architecture-portable.zip"
+        "FictionBookEditorNext-$assetVersion-win7-$architecture-setup.exe",
+        "FictionBookEditorNext-$assetVersion-win7-$architecture-portable.zip"
     )
 }
 $actual = @(Get-ChildItem -LiteralPath $ArtifactsDirectory -File | Select-Object -ExpandProperty Name | Sort-Object)
@@ -56,8 +57,8 @@ foreach ($name in $expected | Where-Object { $_ -ne 'SHA256SUMS.txt' }) {
 }
 if ($AllowLegacyWin7Aliases) {
     foreach ($pair in @(
-        @("FictionBookEditorNext-$version-$architecture-setup.exe", "FictionBookEditorNext-$version-win7-$architecture-setup.exe"),
-        @("FictionBookEditorNext-$version-$architecture-portable.zip", "FictionBookEditorNext-$version-win7-$architecture-portable.zip")
+        @("FictionBookEditorNext-$assetVersion-$architecture-setup.exe", "FictionBookEditorNext-$assetVersion-win7-$architecture-setup.exe"),
+        @("FictionBookEditorNext-$assetVersion-$architecture-portable.zip", "FictionBookEditorNext-$assetVersion-win7-$architecture-portable.zip")
     )) {
         if ((Get-FileHash -LiteralPath (Join-Path $ArtifactsDirectory $pair[0]) -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath (Join-Path $ArtifactsDirectory $pair[1]) -Algorithm SHA256).Hash) {
             throw "Legacy migration alias is not byte-identical: $($pair[1])"
@@ -68,8 +69,8 @@ if ((Get-Item -LiteralPath (Join-Path $ArtifactsDirectory $expected[0])).Length 
     throw 'Setup artifact is empty.'
 }
 Add-Type -AssemblyName System.IO.Compression
-$portableZip = Join-Path $ArtifactsDirectory "FictionBookEditorNext-$version-$architecture-portable.zip"
-$symbolsZip = Join-Path $ArtifactsDirectory "FictionBookEditorNext-$version-$architecture-symbols.zip"
+$portableZip = Join-Path $ArtifactsDirectory "FictionBookEditorNext-$assetVersion-$architecture-portable.zip"
+$symbolsZip = Join-Path $ArtifactsDirectory "FictionBookEditorNext-$assetVersion-$architecture-symbols.zip"
 $archive = [IO.Compression.ZipFile]::OpenRead($portableZip)
 try {
     $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace('/', '\').TrimEnd('\') })

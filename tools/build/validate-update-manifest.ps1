@@ -28,14 +28,18 @@ $type = Get-One $document 'ReleaseType'; Require ($type -in @('stable', 'prerele
 $beta = Get-One $document 'Beta'; Require (($type -eq 'stable' -and $beta -eq 'false') -or ($type -eq 'prerelease' -and $beta -eq 'true')) 'Beta не согласован с ReleaseType.'
 Require (($type -eq 'stable' -and -not (Test-FbePrereleaseVersion $version)) -or ($type -eq 'prerelease' -and (Test-FbePrereleaseVersion $version))) 'ReleaseType не согласован с prerelease suffix Version.'
 if ($Feed -eq 'StableFeed') { Require ($type -eq 'stable') 'Стабильный feed не может содержать prerelease.' }
-$base = $version -replace '[-+].*$', ''
-$artifacts = @{ Setup = "FictionBookEditorNext-$base-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win32-portable.zip" }
+$assetVersion = if ($version -eq '3.0.8-rc.1') {
+    # This already published prerelease used the former base-version names.
+    # New prereleases always retain their suffix in the asset filename.
+    Get-FbeBaseVersion $version
+} else { Get-FbeAssetVersion $version }
+$artifacts = @{ Setup = "FictionBookEditorNext-$assetVersion-win32-setup.exe"; Portable = "FictionBookEditorNext-$assetVersion-win32-portable.zip" }
 $hasArtifacts = $null -ne $document.FBE.Artifacts
 if (-not $hasArtifacts) {
     Require ($type -eq 'stable') 'Prerelease manifest обязан содержать <Artifacts>.'
     $legacyUrl = Get-One $document 'DownloadUrl'; $legacyHash = Get-One $document 'SHA256'
     Require ($legacyHash -match '^[0-9A-Fa-f]{64}$') 'Legacy SHA256 недопустим.'
-    $legacyExpected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/FictionBookEditorNext-$base-win32-setup.exe"
+    $legacyExpected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/FictionBookEditorNext-$assetVersion-win32-setup.exe"
     Require ($legacyUrl -ceq $legacyExpected) 'Legacy DownloadUrl не является доверенным URL ожидаемого артефакта.'
     Write-Host "Проверен legacy manifest: $ManifestPath"
     return
@@ -70,8 +74,8 @@ if ($hasLegacyNodes) {
     # only as a temporary migration bridge alongside validated unified nodes.
     Require (Test-FbeLegacy308MigrationRequired $version) 'Legacy Modern/Win7 nodes допустимы только для migration-линии 3.0.8.'
     $legacyProfiles = @{
-        Modern = @{ Setup = "FictionBookEditorNext-$base-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win32-portable.zip" }
-        Win7 = @{ Setup = "FictionBookEditorNext-$base-win7-win32-setup.exe"; Portable = "FictionBookEditorNext-$base-win7-win32-portable.zip" }
+        Modern = @{ Setup = "FictionBookEditorNext-$assetVersion-win32-setup.exe"; Portable = "FictionBookEditorNext-$assetVersion-win32-portable.zip" }
+        Win7 = @{ Setup = "FictionBookEditorNext-$assetVersion-win7-win32-setup.exe"; Portable = "FictionBookEditorNext-$assetVersion-win7-win32-portable.zip" }
     }
     foreach ($profile in $legacyProfiles.Keys) {
         $node = $document.FBE.Artifacts.$profile
@@ -83,7 +87,7 @@ if ($type -eq 'prerelease') { Require ($null -eq $document.FBE.DownloadUrl -and 
 if ($type -eq 'stable' -and $document.FBE.DownloadUrl) {
     $legacyUrl = [string]$document.FBE.DownloadUrl; $legacyHash = [string]$document.FBE.SHA256
     Require ($legacyHash -match '^[0-9A-Fa-f]{64}$') 'Legacy SHA256 недопустим.'
-    $legacyExpected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/FictionBookEditorNext-$base-win32-setup.exe"
+    $legacyExpected = "https://github.com/sklart/fictionbook-editor-next/releases/download/$tag/FictionBookEditorNext-$assetVersion-win32-setup.exe"
     Require ($legacyUrl -ceq $legacyExpected) 'Legacy DownloadUrl не является доверенным URL ожидаемого артефакта.'
 }
 Write-Host "Манифест обновления проверен: $ManifestPath"

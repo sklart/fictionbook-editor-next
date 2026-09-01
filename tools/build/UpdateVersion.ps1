@@ -30,6 +30,14 @@ function Get-FbeBaseVersion {
     return ($Version -split '[-+]', 2)[0]
 }
 
+function Get-FbeAssetVersion {
+    param([Parameter(Mandatory)][string]$Version)
+    # Asset names identify the exact release candidate, while SemVer build
+    # metadata is intentionally not part of a public filename.
+    if (-not (Test-FbeSemVer $Version)) { throw "Недопустимая версия для asset: $Version" }
+    return ($Version -replace '\+.*$', '')
+}
+
 function Test-FbePrereleaseVersion {
     param([Parameter(Mandatory)][string]$Version)
     $match = [regex]::Match($Version, '^(?<core>[^-+]+)(?:-(?<pre>[^+]+))?(?:\+(?<meta>.+))?$')

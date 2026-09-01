@@ -20,6 +20,7 @@ if (-not (Test-FbeReleaseTag $ReleaseTag)) { throw "Недопустимый rel
 $releaseVersion = $ReleaseTag.Substring(1)
 if ((Get-FbeBaseVersion $releaseVersion) -ne $version) { throw "ReleaseTag $ReleaseTag не соответствует base version $version." }
 $releaseType = if (Test-FbePrereleaseVersion $releaseVersion) { 'prerelease' } else { 'stable' }
+$assetVersion = Get-FbeAssetVersion $releaseVersion
 $legacy308MigrationRequired = Test-FbeLegacy308MigrationRequired $releaseVersion
 $root = (Resolve-Path -LiteralPath $ArtifactsRoot).Path
 
@@ -29,15 +30,15 @@ function Get-ArtifactMetadata([string]$Name) {
     return @{ Url = "https://github.com/sklart/fictionbook-editor-next/releases/download/$ReleaseTag/$Name"; Hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash }
 }
 
-$setup = Get-ArtifactMetadata "FictionBookEditorNext-$version-win32-setup.exe"
-$portable = Get-ArtifactMetadata "FictionBookEditorNext-$version-win32-portable.zip"
+$setup = Get-ArtifactMetadata "FictionBookEditorNext-$assetVersion-win32-setup.exe"
+$portable = Get-ArtifactMetadata "FictionBookEditorNext-$assetVersion-win32-portable.zip"
 $legacyWin7Setup = $null
 $legacyWin7Portable = $null
 if ($legacy308MigrationRequired) {
     # Transitional aliases are byte-identical copies for the already released
     # 3.0.8-rc.1 Win7 updater. They are not a second build profile.
-    $legacyWin7Setup = Get-ArtifactMetadata "FictionBookEditorNext-$version-win7-win32-setup.exe"
-    $legacyWin7Portable = Get-ArtifactMetadata "FictionBookEditorNext-$version-win7-win32-portable.zip"
+    $legacyWin7Setup = Get-ArtifactMetadata "FictionBookEditorNext-$assetVersion-win7-win32-setup.exe"
+    $legacyWin7Portable = Get-ArtifactMetadata "FictionBookEditorNext-$assetVersion-win7-win32-portable.zip"
     if ($legacyWin7Setup.Hash -ne $setup.Hash -or $legacyWin7Portable.Hash -ne $portable.Hash) {
         throw 'Legacy Win7 migration aliases must be byte-identical to universal artifacts.'
     }

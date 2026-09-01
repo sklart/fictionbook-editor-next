@@ -63,6 +63,7 @@ if (-not $versionMatch.Success) {
 }
 
 $version = $versionMatch.Groups["version"].Value
+$releaseVersion = $version
 $legacy308MigrationRequired = $false
 
 if ($ReleaseTag) {
@@ -78,6 +79,7 @@ if ($ReleaseTag) {
 }
 elseif ($Prerelease) { throw "Для предварительного выпуска требуется тег с суффиксом, например v$version-rc.1." }
 $architecture = $Platform.ToLowerInvariant()
+$assetVersion = Get-FbeAssetVersion $releaseVersion
 $artifactsDir = Join-Path $repoRoot "out\artifacts"
 $portableDir = Join-Path $repoRoot "out\package\FictionBookEditor"
 $coreDir = Join-Path $repoRoot "out\stage\Core"
@@ -234,12 +236,12 @@ if ((Test-Path -LiteralPath $artifactsDir) -and -not $PreserveArtifacts) {
 }
 New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
 
-$portableZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-portable.zip"
-$symbolsZip = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-symbols.zip"
-$setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-setup.exe"
+$portableZip = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-$architecture-portable.zip"
+$symbolsZip = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-$architecture-symbols.zip"
+$setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-$architecture-setup.exe"
 $checksumsPath = Join-Path $artifactsDir "SHA256SUMS.txt"
-$legacyWin7Setup = Join-Path $artifactsDir "FictionBookEditorNext-$version-win7-$architecture-setup.exe"
-$legacyWin7Portable = Join-Path $artifactsDir "FictionBookEditorNext-$version-win7-$architecture-portable.zip"
+$legacyWin7Setup = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-win7-$architecture-setup.exe"
+$legacyWin7Portable = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-win7-$architecture-portable.zip"
 
 foreach ($artifactPath in @($portableZip, $symbolsZip)) {
     if (Test-Path -LiteralPath $artifactPath) {
@@ -317,9 +319,9 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "out\package\shell-build\x64\$Config
     -Destination (Join-Path $symbolsDir "FBShell.x64.pdb") -Force
 
 $symbolReadme = @"
-Отладочные символы FictionBook Editor Next $version
+Отладочные символы FictionBook Editor Next $releaseVersion
 
-Эти PDB-файлы соответствуют бинарникам релиза $version $architecture.
+Эти PDB-файлы соответствуют бинарникам релиза $releaseVersion $architecture.
 FBShell.propertyhandler.win32.pdb соответствует поставляемому modern property
 handler для Win32 Explorer на x86.
 FBShell.propertyhandler.x64.pdb соответствует поставляемому modern property
@@ -402,5 +404,5 @@ if (-not $SkipArtifactVerification) {
     & (Join-Path $PSScriptRoot "verify-artifacts.ps1") @verifyArtifactArguments
 }
 
-Write-Host "Артефакты релиза для версии ${version}:"
+Write-Host "Артефакты релиза для версии ${releaseVersion}:"
 Get-ChildItem -LiteralPath $artifactsDir -File | Select-Object Name, Length | Format-Table -AutoSize
