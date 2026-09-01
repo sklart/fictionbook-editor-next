@@ -107,6 +107,7 @@ $requiredSymbols = @(
 
 & (Join-Path $repoRoot "tools\tests\test-update-manifest-candidate.ps1")
 & (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")
+& (Join-Path $repoRoot "tools\tests\test-resource-id-safety.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-line-number-margin.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-updateui-notification.ps1")
@@ -145,6 +146,9 @@ if ($env:GITHUB_ACTIONS -eq "true") {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Huge
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','delete-row','insert-column-left','insert-column-right','delete-column')) {
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId plain -Operation $commandRouteOperation -RouteThroughFrame
+}
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId plain -Target "1,1" -Operation insert-column-left
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId edge-spans -Target "0,3" -Operation delete-column
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId rowspan -Target "1,0" -Operation insert-row-below

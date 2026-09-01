@@ -4,6 +4,7 @@ import vm from "node:vm";
 
 const source = fs.readFileSync("runtime/main.js", "utf8");
 const css = fs.readFileSync("runtime/main.css", "utf8");
+const fastCss = fs.readFileSync("runtime/main_fast.css", "utf8");
 const begin = source.indexOf("function NotePreviewEvent");
 const end = source.indexOf("function ShowFullImage", begin);
 assert(begin >= 0 && end > begin, "note preview implementation must be present");
@@ -138,6 +139,10 @@ assert.strictEqual(GetNotePreviewNaturalHeight({ scrollHeight: 40, offsetHeight:
   "MSHTML child line boxes must extend the measured preview height");
 assert.match(css, /div#fbNotePreview\{[\s\S]*border: 1px solid #808080;/, "preview needs a subtle boundary");
 assert.match(css, /div#fbNotePreview p\{[\s\S]*text-align: left;/, "preview paragraphs must not inherit justified book text");
+for (const property of ["visibility: hidden", "position: absolute", "z-index: 1000", "box-sizing: border-box", "background: #ffffff", "color: #000", "border: 1px solid #808080", "overflow: hidden", "line-height: normal", "text-align: left"]) {
+  assert(fastCss.includes(property), `Fast Mode preview must include ${property}`);
+}
+assert.match(fastCss, /div#fbNotePreview p\{[\s\S]*text-align: left;/, "Fast Mode preview paragraphs must not inherit justified text");
 
 const originalGetElementById = document.getElementById;
 document.getElementById = id => id === "fbw_body" ? { currentStyle: {

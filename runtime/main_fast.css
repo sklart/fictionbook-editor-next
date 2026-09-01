@@ -257,6 +257,34 @@ a.note{
 	vertical-align: super;
 	color: blue;	
 }
+
+/* main.js creates this outside fbw_body.  Keep Fast Mode's popup geometry
+   equivalent to main.css: otherwise a visible panel remains in normal flow. */
+div#fbNotePreview{
+	visibility: hidden;
+	position: absolute;
+	z-index: 1000;
+	box-sizing: border-box;
+	padding: 0.4em 0.55em;
+	border: 1px solid #808080;
+	background: #ffffff;
+	color: #000;
+	overflow: hidden;
+	line-height: normal;
+	text-align: left;
+	white-space: normal;
+	word-spacing: normal;
+	letter-spacing: normal;
+}
+div#fbNotePreview p{
+	margin: 0 0 0.4em 0;
+	text-indent: 0;
+	text-align: left;
+	word-spacing: normal;
+}
+div#fbNotePreview p:last-child{
+	margin-bottom: 0;
+}
 div.table {
 	padding-left:0.4em;
 	border-left: solid 1px;

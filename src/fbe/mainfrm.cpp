@@ -4006,14 +4006,16 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			return true;
 		};
 		typedef LRESULT (CFBEView::*TableHandler)(WORD, WORD, HWND, BOOL&);
-		struct Operation { const char* name; TableHandler handler; bool bulk, selectHeaders; };
+		struct Operation { const char* name; UINT command; TableHandler handler; bool bulk, selectHeaders; };
 		const Operation operations[] = {
-			{ "toggle-header", &CFBEView::OnTableToggleHeaderCell, false, false }, { "insert-row-above", &CFBEView::OnTableInsertRowAbove, false, false },
-			{ "insert-row-below", &CFBEView::OnTableInsertRowBelow, false, false }, { "delete-row", &CFBEView::OnTableDeleteRow, false, false },
-			{ "insert-column-left", &CFBEView::OnTableInsertColumnLeft, false, false }, { "insert-column-right", &CFBEView::OnTableInsertColumnRight, false, false },
-			{ "delete-column", &CFBEView::OnTableDeleteColumn, false, false }, { "make-header", &CFBEView::OnTableMakeHeaderCells, true, false },
-			{ "make-normal", &CFBEView::OnTableMakeNormalCells, true, true }
+			{ "toggle-header", ID_TABLE_TOGGLE_HEADER_CELL, &CFBEView::OnTableToggleHeaderCell, false, false }, { "insert-row-above", ID_TABLE_INSERT_ROW_ABOVE, &CFBEView::OnTableInsertRowAbove, false, false },
+			{ "insert-row-below", ID_TABLE_INSERT_ROW_BELOW, &CFBEView::OnTableInsertRowBelow, false, false }, { "delete-row", ID_TABLE_DELETE_ROW, &CFBEView::OnTableDeleteRow, false, false },
+			{ "insert-column-left", ID_TABLE_INSERT_COLUMN_LEFT, &CFBEView::OnTableInsertColumnLeft, false, false }, { "insert-column-right", ID_TABLE_INSERT_COLUMN_RIGHT, &CFBEView::OnTableInsertColumnRight, false, false },
+			{ "delete-column", ID_TABLE_DELETE_COLUMN, &CFBEView::OnTableDeleteColumn, false, false }, { "make-header", ID_TABLE_MAKE_HEADER_CELLS, &CFBEView::OnTableMakeHeaderCells, true, false },
+			{ "make-normal", ID_TABLE_MAKE_NORMAL_CELLS, &CFBEView::OnTableMakeNormalCells, true, true }
 		};
+		wchar_t routeThroughFrame[4] = {};
+		const bool useCommandRoute = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TABLE_ROUTE", routeThroughFrame, _countof(routeThroughFrame)) == 1 && routeThroughFrame[0] == L'1';
 		auto invokeOperation = [&](const Operation& operation, BOOL& handled) -> bool
 		{
 			wchar_t target[64] = {};
@@ -4022,6 +4024,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			if (targetLength && targetLength < _countof(target) && strcmp(operation.name, "delete-column") == 0 &&
 				swscanf_s(target, L"%ld,%ld", &row, &column) == 2 && column >= 0) {
 				return m_doc->m_body.DeleteTableLogicalColumnForTest(column);
+			}
+			if(useCommandRoute)
+			{
+				m_doc->m_body.SetFocus();
+				::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(operation.command, 0), 0);
+				return true;
 			}
 			(m_doc->m_body.*operation.handler)(0, 0, m_doc->m_body, handled);
 			return true;

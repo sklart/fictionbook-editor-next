@@ -688,12 +688,6 @@
 #define ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER   32913
 #define ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH 32914
 #define ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS    32915
-#define ID_STATUS_PANE_POSITION           32916
-#define ID_STATUS_PANE_SELECTION          32917
-#define ID_STATUS_PANE_CHARACTER          32918
-#define ID_STATUS_PANE_ENCODING           32919
-#define ID_STATUS_PANE_VALIDATION         32920
-#define ID_STATUS_PANE_INSERT_MODE        32921
 #define ID_TOOLS_CREATE_DIAGNOSTIC_PACKAGE 32916
 #define ID_TABLE_INSERT_ROW_ABOVE          32917
 #define ID_TABLE_INSERT_ROW_BELOW          32918
@@ -704,6 +698,14 @@
 #define ID_TABLE_TOGGLE_HEADER_CELL        32923
 #define ID_TABLE_MAKE_HEADER_CELLS         32924
 #define ID_TABLE_MAKE_NORMAL_CELLS         32925
+// Status-pane menu commands must not overlap table actions.  32926-32931 are
+// the last free contiguous range before dynamic spell suggestions (33000+).
+#define ID_STATUS_PANE_POSITION           32926
+#define ID_STATUS_PANE_SELECTION          32927
+#define ID_STATUS_PANE_CHARACTER          32928
+#define ID_STATUS_PANE_ENCODING           32929
+#define ID_STATUS_PANE_VALIDATION         32930
+#define ID_STATUS_PANE_INSERT_MODE        32931
 #define ID_EDIT_PASTE2                  0xE525
 #define IDS_ENCODINGS                   61403
 #define IDS_DOCUMENT_TREE_CAPTION       61404
@@ -726,7 +728,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        261
 #define _APS_NEXT_COMMAND_VALUE         33032
-#define _APS_NEXT_CONTROL_VALUE         1626
+#define _APS_NEXT_CONTROL_VALUE         1627
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif
