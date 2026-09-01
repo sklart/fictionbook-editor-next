@@ -262,9 +262,9 @@ namespace
         ModernFileDialog::Request request;
         request.fileMustExist = true;
         request.pathMustExist = true;
-        request.title = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_TITLE, L"Import EPUB");
-        request.okButtonLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"Open...");
-        request.fileNameLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILE_LABEL, L"EPUB file:");
+        request.title = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_TITLE, L"Import EPUB").GetString();
+        request.okButtonLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"Open...").GetString();
+        request.fileNameLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILE_LABEL, L"EPUB file:").GetString();
         request.defaultExtension = L"epub";
         request.filters = filters;
         request.filterCount = _countof(filters);

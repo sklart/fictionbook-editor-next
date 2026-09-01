@@ -4647,15 +4647,20 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 
 	if(!_Settings.GetIsInsClearImage())
 	{
-		CString imageFilter = ImageImportFileFilter();
-		const COMDLG_FILTERSPEC filters[] = { { L"Image files", imageFilter } };
+		const std::vector<ImageImportFileType> imageTypes = ImageImportFileTypes();
+		std::vector<COMDLG_FILTERSPEC> filters;
+		filters.reserve(imageTypes.size());
+		for (const ImageImportFileType& type : imageTypes)
+			filters.push_back({ type.displayName.GetString(), type.wildcard.GetString() });
 
 		wchar_t dlgTitle[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_IMAGE_FILEDLG, dlgTitle, MAX_LOAD_STRING);
 		ModernFileDialog::Request request;
 		request.fileMustExist = true; request.pathMustExist = true; request.title = dlgTitle;
-		request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+		request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = 1;
 		const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
+		if (dialogResult.outcome == ModernFileDialog::Outcome::Failed)
+			StartupTrace::HResult(L"file-dialog", L"FD104", dialogResult.error, L"Insert image dialog");
 		if(dialogResult.outcome == ModernFileDialog::Outcome::Accepted)
 		{
 			AddImage(dialogResult.paths.front().c_str(), bInline);

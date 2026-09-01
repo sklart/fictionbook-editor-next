@@ -12,8 +12,8 @@ enum class Outcome { Accepted, Cancelled, Failed };
 
 struct Request {
     bool save = false, allowMultiSelect = false, fileMustExist = false, pathMustExist = false, overwritePrompt = false;
-    LPCWSTR title = nullptr, okButtonLabel = nullptr, fileNameLabel = nullptr, defaultExtension = nullptr;
-    LPCWSTR initialFileName = nullptr, initialFolder = nullptr;
+    std::wstring title, okButtonLabel, fileNameLabel, defaultExtension;
+    std::wstring initialFileName, initialFolder;
     const COMDLG_FILTERSPEC* filters = nullptr; UINT filterCount = 0, filterIndex = 0;
     IFileDialogEvents* events = nullptr;
     std::function<HRESULT(IFileDialogCustomize*)> customize;
@@ -49,16 +49,16 @@ inline Result Show(HWND owner, const Request& request) {
     if (request.pathMustExist) options |= FOS_PATHMUSTEXIST;
     if (request.overwritePrompt) options |= FOS_OVERWRITEPROMPT;
     if (FAILED(hr = dialog->SetOptions(options))) { result.error = hr; return result; }
-    if (request.title) dialog->SetTitle(request.title);
-    if (request.okButtonLabel) dialog->SetOkButtonLabel(request.okButtonLabel);
-    if (request.fileNameLabel) dialog->SetFileNameLabel(request.fileNameLabel);
-    if (request.defaultExtension) dialog->SetDefaultExtension(request.defaultExtension);
-    if (request.initialFileName) dialog->SetFileName(request.initialFileName);
+    if (!request.title.empty()) dialog->SetTitle(request.title.c_str());
+    if (!request.okButtonLabel.empty()) dialog->SetOkButtonLabel(request.okButtonLabel.c_str());
+    if (!request.fileNameLabel.empty()) dialog->SetFileNameLabel(request.fileNameLabel.c_str());
+    if (!request.defaultExtension.empty()) dialog->SetDefaultExtension(request.defaultExtension.c_str());
+    if (!request.initialFileName.empty()) dialog->SetFileName(request.initialFileName.c_str());
     if (request.filters && request.filterCount && FAILED(hr = dialog->SetFileTypes(request.filterCount, request.filters))) { result.error = hr; return result; }
     if (request.filterIndex && FAILED(hr = dialog->SetFileTypeIndex(request.filterIndex))) { result.error = hr; return result; }
-    if (request.initialFolder && *request.initialFolder) {
+    if (!request.initialFolder.empty()) {
         IShellItem* rawFolder = nullptr;
-        if (SUCCEEDED(CreateShellItemFromPath(request.initialFolder, &rawFolder))) {
+        if (SUCCEEDED(CreateShellItemFromPath(request.initialFolder.c_str(), &rawFolder))) {
             CComPtr<IShellItem> folder;
             folder.Attach(rawFolder);
             dialog->SetFolder(folder);

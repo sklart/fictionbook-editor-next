@@ -249,9 +249,11 @@ public:
 			const COMDLG_FILTERSPEC filters[] = { { L"JPEG files (*.jpg)", L"*.jpg" }, { L"PNG files (*.png)", L"*.png" }, { L"All files (*.*)", L"*.*" } };
 			ModernFileDialog::Request request;
 			request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
-			request.defaultExtension = L"jpg"; request.initialFileName = fname; request.initialFolder = fpath;
+			request.defaultExtension = L"jpg"; request.initialFileName = fname.GetString(); request.initialFolder = fpath.GetString();
 			request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
 			const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(NULL, request);
+			if (dialogResult.outcome == ModernFileDialog::Outcome::Failed)
+				StartupTrace::HResult(L"file-dialog", L"FD106", dialogResult.error, L"SaveBinary dialog");
 			modalResult = dialogResult.outcome == ModernFileDialog::Outcome::Accepted ? IDOK : IDCANCEL;
 			if (modalResult == IDOK) file_name = dialogResult.paths.front().c_str();
 		}

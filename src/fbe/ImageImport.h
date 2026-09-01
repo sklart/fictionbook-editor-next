@@ -30,6 +30,11 @@ struct ImageImportResult
 HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& options,
 	ImageImportResult& result, CString& errorMessage);
 
-// Localized, double-NUL-terminated Win32 open-file filter shared by both image
-// entry points.  The extensions are intentionally identical in every caller.
+struct ImageImportFileType {
+	CString displayName;
+	CString wildcard;
+};
+
+std::vector<ImageImportFileType> ImageImportFileTypes();
+// Localized, double-NUL-terminated Win32 open-file filter for legacy callers.
 CString ImageImportFileFilter();

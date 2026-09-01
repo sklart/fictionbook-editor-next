@@ -501,9 +501,11 @@ public:
 		const COMDLG_FILTERSPEC filters[] = { { L"JPEG files (*.jpg)", L"*.jpg" }, { L"PNG files (*.png)", L"*.png" }, { L"All files (*.*)", L"*.*" } };
 		ModernFileDialog::Request request;
 		request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
-		request.defaultExtension = L"jpg"; request.initialFileName = src;
-		request.initialFolder = m_file_path; request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+		request.defaultExtension = L"jpg"; request.initialFileName = src.GetString();
+		request.initialFolder = m_file_path.GetString(); request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
 		const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
+		if (dialogResult.outcome == ModernFileDialog::Outcome::Failed)
+			StartupTrace::HResult(L"file-dialog", L"FD105", dialogResult.error, L"Save image dialog");
 		if(dialogResult.outcome == ModernFileDialog::Outcome::Accepted)
 		{
 			const CString outputPath(dialogResult.paths.front().c_str());

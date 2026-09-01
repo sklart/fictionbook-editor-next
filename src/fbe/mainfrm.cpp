@@ -1441,6 +1441,8 @@ CString	CMainFrame::GetOpenFileName()
 	request.filterCount = _countof(filters);
 	request.filterIndex = 1;
 	const ModernFileDialog::Result result = ModernFileDialog::Show(m_hWnd, request);
+	if (result.outcome == ModernFileDialog::Outcome::Failed)
+		StartupTrace::HResult(L"file-dialog", L"FD101", result.error, L"Open FictionBook dialog");
 	if (result.outcome == ModernFileDialog::Outcome::Accepted) return result.paths.front().c_str();
 	return CString();
 }
@@ -1469,8 +1471,11 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	request.filterCount = _countof(filters);
 	request.filterIndex = saveAsFbd ? 2 : 1;
 	request.customize = [&encodingList, &selectedEncoding](IFileDialogCustomize* customize) -> HRESULT {
+		const DWORD labelId = 1000;
 		const DWORD controlId = 1001;
-		HRESULT hr = customize->AddComboBox(controlId);
+		HRESULT hr = customize->AddText(labelId, FbeLoadRuntimeStringByKey(L"fbe.save_as.encoding", L"Encoding:"));
+		if (FAILED(hr)) return hr;
+		hr = customize->AddComboBox(controlId);
 		if (FAILED(hr)) return hr;
 		int index = 0, selectedIndex = 0;
 		CString remaining(encodingList);
@@ -1498,6 +1503,8 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 		}
 	};
 	const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
+	if (dialogResult.outcome == ModernFileDialog::Outcome::Failed)
+		StartupTrace::HResult(L"file-dialog", L"FD102", dialogResult.error, L"Save FictionBook dialog");
 	if (dialogResult.outcome == ModernFileDialog::Outcome::Accepted) {
 		encoding = selectedEncoding;
 		CString result(dialogResult.paths.front().c_str());
@@ -6534,8 +6541,11 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
     return 0;
 
   // Modification by Pilgrim
-	CString imageFilter = ImageImportFileFilter();
-	const COMDLG_FILTERSPEC filters[] = { { L"Image files", imageFilter } };
+	const std::vector<ImageImportFileType> imageTypes = ImageImportFileTypes();
+	std::vector<COMDLG_FILTERSPEC> filters;
+	filters.reserve(imageTypes.size());
+	for (const ImageImportFileType& type : imageTypes)
+		filters.push_back({ type.displayName.GetString(), type.wildcard.GetString() });
   wchar_t dlgTitle[MAX_LOAD_STRING + 1];
   FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_BINARIES_FILEDLG, dlgTitle, MAX_LOAD_STRING);
 	ModernFileDialog::Request request;
@@ -6543,10 +6553,12 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
 	request.fileMustExist = true;
 	request.pathMustExist = true;
 	request.title = dlgTitle;
-	request.filters = filters;
-	request.filterCount = _countof(filters);
+	request.filters = filters.data();
+	request.filterCount = static_cast<UINT>(filters.size());
 	request.filterIndex = 1;
 	const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
+	if (dialogResult.outcome == ModernFileDialog::Outcome::Failed)
+		StartupTrace::HResult(L"file-dialog", L"FD103", dialogResult.error, L"Add binary dialog");
 	if (dialogResult.outcome == ModernFileDialog::Outcome::Accepted) {
 	int added = 0, converted = 0;
 	CString failures;

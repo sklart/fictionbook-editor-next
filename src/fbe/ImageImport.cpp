@@ -268,7 +268,7 @@ HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& o
 	}
 }
 
-CString ImageImportFileFilter() {
+std::vector<ImageImportFileType> ImageImportFileTypes() {
 	struct Filter { LPCWSTR key; LPCWSTR fallback; LPCWSTR pattern; };
 	static const Filter filters[] = {
 		{ L"fbe.image_import.filter_supported", L"Supported images", L"*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff;*.avif;*.heic;*.heif" },
@@ -283,12 +283,24 @@ CString ImageImportFileFilter() {
 		, { L"fbe.image_import.filter_avif", L"AVIF", L"*.avif" }
 		, { L"fbe.image_import.filter_heif", L"HEIC / HEIF", L"*.heic;*.heif" }
 	};
-	CString result;
+	std::vector<ImageImportFileType> result;
+	result.reserve(_countof(filters));
 	for (size_t index = 0; index < _countof(filters); ++index) {
-		CString caption = ImageMessage(filters[index].key, filters[index].fallback);
-		result += caption + L" (" + filters[index].pattern + L")";
+		ImageImportFileType type;
+		type.displayName = ImageMessage(filters[index].key, filters[index].fallback) + L" (" + filters[index].pattern + L")";
+		type.wildcard = filters[index].pattern;
+		result.push_back(type);
+	}
+	return result;
+}
+
+CString ImageImportFileFilter() {
+	const std::vector<ImageImportFileType> filters = ImageImportFileTypes();
+	CString result;
+	for (const ImageImportFileType& filter : filters) {
+		result += filter.displayName;
 		result.AppendChar(L'\0');
-		result += filters[index].pattern;
+		result += filter.wildcard;
 		result.AppendChar(L'\0');
 	}
 	result.AppendChar(L'\0');
