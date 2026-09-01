@@ -20,6 +20,9 @@ Must $frame 'CHotkey ScriptsHotkey\(script\.relativePath' 'Script hotkey identit
 MustNot $frame 'CHotkey ScriptsHotkey\(script\.path' 'Absolute script path must not be persisted as hotkey identity'
 Must $settings 'migratedLegacyScriptHotkey \|= foundHk != NULL' 'Legacy migrations accumulate across entries'
 Must $settings 'legacyPath\.Right\(relativePath\.GetLength\(\)\) == relativePath' 'Moved portable hotkey is matched by relative path suffix'
+Must $settings 'int longestSuffixLength = -1' 'Legacy hotkey migration tracks the most specific suffix'
+Must $settings 'suffixLength > longestSuffixLength' 'Longer nested script suffix wins over basename'
+Must $settings 'suffixLength == longestSuffixLength' 'Only equal best suffixes are ambiguous'
 Must $settings 'ambiguous suffix: do not guess' 'Ambiguous legacy hotkeys are not migrated'
 Must $settings 'SaveHotkeyGroups\(\)' 'Legacy hotkey migration writes portable identity back'
 
@@ -47,6 +50,9 @@ Must $frame 'continue; // deleted script or obsolete command' 'Deleted saved scr
 Must $frame 'bool& commandToolbarPresent, bool& scriptsToolbarPresent' 'Toolbar reader distinguishes missing section from an empty section'
 Must $frame 'if\(!toolbarPresent\) return;' 'Missing toolbar section keeps default layout'
 Must $frame 'while\(target\.GetButtonCount\(\) > 0\) target\.DeleteButton\(0\);' 'Explicit empty toolbar clears the default layout'
+Must $frame 'portable-toolbar-layout-write' 'GUI scenario customizes a non-empty portable toolbar'
+Must $frame 'portable-toolbar-layout-read' 'GUI scenario checks non-empty portable toolbar after restart'
+Must $frame 'relativePath == L"foo\.js"' 'Scripts toolbar E2E locates script by stable relative path'
 
 Must $frame 'if\(!DeploymentContext::RegistryPersistenceAllowed\(\)\)' 'Portable legacy plugin gate'
 Must $frame 'AddBundledPluginCatalog\(hMenu, type, cmdbase, plist\);' 'Bundled plugins remain available'

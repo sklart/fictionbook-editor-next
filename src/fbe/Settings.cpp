@@ -1669,6 +1669,8 @@ void CSettings::LoadHotkeyGroups()
 					legacyPath.Replace(L'\\', L'/');
 					legacyPath.MakeLower();
 					CHotkey* matchedHotkey = NULL;
+					int longestSuffixLength = -1;
+					bool ambiguousLongestSuffix = false;
 					for(unsigned int candidateIndex = 0; candidateIndex < foundGr->m_hotkeys.size(); ++candidateIndex)
 					{
 						CString relativePath(foundGr->m_hotkeys[candidateIndex].m_reg_name);
@@ -1680,11 +1682,20 @@ void CSettings::LoadHotkeyGroups()
 							legacyPath[legacyPath.GetLength() - relativePath.GetLength() - 1] == L'/');
 						if(matches)
 						{
-							if(matchedHotkey != NULL) { matchedHotkey = NULL; break; } // ambiguous suffix: do not guess
-							matchedHotkey = &foundGr->m_hotkeys[candidateIndex];
+							const int suffixLength = relativePath.GetLength();
+							if(suffixLength > longestSuffixLength)
+							{
+								// A nested relative path is more specific than its basename.
+								// Keep only the longest match; equal best matches remain unsafe.
+								longestSuffixLength = suffixLength;
+								matchedHotkey = &foundGr->m_hotkeys[candidateIndex];
+								ambiguousLongestSuffix = false;
+							}
+							else if(suffixLength == longestSuffixLength)
+								ambiguousLongestSuffix = true; // ambiguous suffix: do not guess
 						}
 					}
-					foundHk = matchedHotkey;
+					foundHk = ambiguousLongestSuffix ? NULL : matchedHotkey;
 					migratedLegacyScriptHotkey |= foundHk != NULL;
 				}
 				if(foundHk != NULL)

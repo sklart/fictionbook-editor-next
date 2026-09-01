@@ -3720,9 +3720,11 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool ordinaryRead = IsFbeTestScenario(L"portable-state-read");
 	const bool emptyToolbarWrite = IsFbeTestScenario(L"portable-toolbar-empty-write");
 	const bool emptyToolbarRead = IsFbeTestScenario(L"portable-toolbar-empty-read");
+	const bool toolbarLayoutWrite = IsFbeTestScenario(L"portable-toolbar-layout-write");
+	const bool toolbarLayoutRead = IsFbeTestScenario(L"portable-toolbar-layout-read");
 	const bool scriptsReload = IsFbeTestScenario(L"portable-scripts-reload");
 	const bool legacyHotkeyRead = IsFbeTestScenario(L"portable-legacy-hotkey-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !scriptsReload && !legacyHotkeyRead)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !scriptsReload && !legacyHotkeyRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -3742,6 +3744,34 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 
 	::CreateDirectory(scriptsDirectory, NULL);
+	auto catalogButton = [&](HWND toolbar, int ordinal, TBBUTTON& button) -> bool
+	{
+		const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(toolbar)));
+		if(catalogIndex < 0) return false;
+		TBBUTTONS catalog = m_aButtons.GetValueAt(catalogIndex);
+		int found = 0;
+		for(int index = 0; index < catalog.GetSize(); ++index)
+			if((catalog[index].fsStyle & TBSTYLE_SEP) == 0 && catalog[index].idCommand != 0)
+				if(found++ == ordinal) { button = catalog[index]; return true; }
+		return false;
+	};
+	auto catalogButtonByCommand = [&](HWND toolbar, int command, TBBUTTON& button) -> bool
+	{
+		const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(toolbar)));
+		if(catalogIndex < 0) return false;
+		TBBUTTONS catalog = m_aButtons.GetValueAt(catalogIndex);
+		for(int index = 0; index < catalog.GetSize(); ++index)
+			if(catalog[index].idCommand == command) { button = catalog[index]; return true; }
+		return false;
+	};
+	auto hasButtons = [](CToolBarCtrl& toolbar, const TBBUTTON& first, const TBBUTTON& second, const TBBUTTON& third) -> bool
+	{
+		TBBUTTON current = {};
+		return toolbar.GetButtonCount() == 3 &&
+			toolbar.GetButton(0, &current) && current.idCommand == first.idCommand &&
+			toolbar.GetButton(1, &current) && (current.fsStyle & TBSTYLE_SEP) != 0 && current.iBitmap == second.iBitmap &&
+			toolbar.GetButton(2, &current) && current.idCommand == third.idCommand;
+	};
 	if (emptyToolbarWrite)
 	{
 		while(m_CmdToolbar.GetButtonCount() > 0) m_CmdToolbar.DeleteButton(0);
@@ -3755,6 +3785,47 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool empty = m_CmdToolbar.GetButtonCount() == 0 && m_ScriptsToolbar.GetButtonCount() == 0;
 		CStringA report;
 		report.Format("phase=toolbar-empty-read\nempty-toolbar=%d\nresult=%s\n", empty, empty ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
+	}
+	else if (toolbarLayoutWrite || toolbarLayoutRead)
+	{
+		TBBUTTON commandFirst = {}, commandAdded = {}, scriptButton = {}, lastScriptButton = {}, separator = {};
+		separator.iBitmap = 13;
+		separator.fsStyle = TBSTYLE_SEP;
+		const bool commandCatalogReady = catalogButton(m_CmdToolbar, 0, commandFirst) &&
+			catalogButton(m_CmdToolbar, 2, commandAdded);
+		int scriptCommand = 0;
+		for(int index = 0; index < m_scripts.GetSize(); ++index)
+			if(!m_scripts[index].isFolder && m_scripts[index].relativePath == L"foo.js")
+			{
+				scriptCommand = ID_SCRIPT_BASE + m_scripts[index].wID;
+				break;
+			}
+		const bool scriptsCatalogReady = scriptCommand != 0 &&
+			catalogButtonByCommand(m_ScriptsToolbar, scriptCommand, scriptButton) &&
+			catalogButtonByCommand(m_ScriptsToolbar, ID_LAST_SCRIPT, lastScriptButton);
+		const bool catalogReady = commandCatalogReady && scriptsCatalogReady;
+		if(toolbarLayoutWrite && catalogReady)
+		{
+			// This mirrors a real customization: remove a default command, add a
+			// different one, and retain the resulting order on both toolbar rows.
+			while(m_CmdToolbar.GetButtonCount() > 0) m_CmdToolbar.DeleteButton(0);
+			m_CmdToolbar.AddButton(&commandAdded);
+			m_CmdToolbar.AddButton(&separator);
+			m_CmdToolbar.AddButton(&commandFirst);
+			while(m_ScriptsToolbar.GetButtonCount() > 0) m_ScriptsToolbar.DeleteButton(0);
+			m_ScriptsToolbar.AddButton(&scriptButton);
+			m_ScriptsToolbar.AddButton(&separator);
+			m_ScriptsToolbar.AddButton(&lastScriptButton);
+			m_CmdToolbar.AutoSize();
+			m_ScriptsToolbar.AutoSize();
+		}
+		const bool commandLayout = catalogReady && hasButtons(m_CmdToolbar, commandAdded, separator, commandFirst);
+		const bool scriptsLayout = catalogReady && hasButtons(m_ScriptsToolbar, scriptButton, separator, lastScriptButton);
+		CStringA report;
+		report.Format("phase=toolbar-layout-%s\nnonempty-command=%d\nnonempty-scripts=%d\nresult=%s\n",
+			toolbarLayoutWrite ? "write" : "read", commandLayout, scriptsLayout,
+			commandLayout && scriptsLayout ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 	}
 	else if (scriptsReload)
@@ -3772,7 +3843,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	else if (legacyHotkeyRead)
 	{
 		CHotkeysGroup* scripts = _Settings.GetGroupByName(L"Scripts");
-		CHotkey* foo = scripts ? _Settings.GetHotkeyByName(L"foo.js", *scripts) : NULL;
+		CHotkey* foo = scripts ? _Settings.GetHotkeyByName(L"tools/foo.js", *scripts) : NULL;
 		const bool migrated = foo != NULL && foo->m_accel.fVirt == (FVIRTKEY | FCONTROL) && foo->m_accel.key == VK_F9;
 		CStringA report;
 		report.Format("phase=legacy-hotkey-read\nlegacy-hotkey=%d\nresult=%s\n", migrated, migrated ? "pass" : "fail");

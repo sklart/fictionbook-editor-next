@@ -89,10 +89,15 @@ $scriptTemplate = Get-ChildItem -LiteralPath (Join-Path $root 'runtime\Scripts')
     Select-Object -First 1
 if ($null -eq $scriptTemplate) { throw 'Could not locate a valid script fixture with Run().' }
 Copy-Item -LiteralPath $scriptTemplate.FullName -Destination (Join-Path $data 'Scripts\foo.js') -Force
+New-Item -ItemType Directory -Path (Join-Path $data 'Scripts\tools') -Force | Out-Null
+Copy-Item -LiteralPath $scriptTemplate.FullName -Destination (Join-Path $data 'Scripts\tools\foo.js') -Force
+$iconTemplate = Get-ChildItem -LiteralPath (Join-Path $root 'runtime\Scripts') -Recurse -Filter '*.ico' | Select-Object -First 1
+if ($null -eq $iconTemplate) { throw 'Could not locate a script icon fixture.' }
+Copy-Item -LiteralPath $iconTemplate.FullName -Destination (Join-Path $data 'Scripts\foo.ico') -Force
 $legacyHotkeys = Get-Content -Raw -LiteralPath (Join-Path $settings 'Hotkeys.xml')
 $legacyScriptEntries = @"
 <Hotkeys>
-    <Hotkey><Name>E:\BeforeMove\Scripts\foo.js</Name><Accel>9;120</Accel></Hotkey>
+    <Hotkey><Name>E:\BeforeMove\Scripts\tools\foo.js</Name><Accel>9;120</Accel></Hotkey>
     <Hotkey><Name>E:\BeforeMove\Scripts\missing.js</Name><Accel>9;121</Accel></Hotkey>
 </Hotkeys>
 "@
@@ -104,7 +109,19 @@ Invoke-PortableStateScenario 'portable-legacy-hotkey-read'
 $legacyReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
 if ($legacyReport -notmatch '(?m)^legacy-hotkey=1$' -or $legacyReport -notmatch '(?m)^result=pass$') { throw "Moved portable legacy hotkey was not migrated:`n$legacyReport" }
 $migratedHotkeys = Get-Content -Raw -LiteralPath (Join-Path $settings 'Hotkeys.xml')
-if ($migratedHotkeys -notmatch '<Name>foo\.js</Name>' -or $migratedHotkeys -match 'BeforeMove|missing\.js') { throw 'Legacy Hotkeys.xml was not rewritten with only the valid relative script key.' }
+if ($migratedHotkeys -notmatch '<Name>tools/foo\.js</Name>' -or $migratedHotkeys -match 'BeforeMove|missing\.js') { throw 'Legacy Hotkeys.xml did not choose the longest valid relative script suffix.' }
+
+# Exercise a real non-empty customization: the application removes one command,
+# adds another and changes order.  The scripts row must persist foo.js by its
+# portable relative path, rather than the per-run command ID.
+Invoke-PortableStateScenario 'portable-toolbar-layout-write'
+$nonEmptyWriteReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
+if ($nonEmptyWriteReport -notmatch '(?m)^nonempty-command=1$' -or $nonEmptyWriteReport -notmatch '(?m)^nonempty-scripts=1$' -or $nonEmptyWriteReport -notmatch '(?m)^result=pass$') { throw "Could not create non-empty portable toolbar fixture:`n$nonEmptyWriteReport" }
+$nonEmptyToolbars = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
+if ($nonEmptyToolbars -notmatch '(?s)<Toolbar name="Scripts">.*?<Script path="foo\.js"\s*/>.*?</Toolbar>') { throw 'Scripts toolbar did not persist its script by relativePath.' }
+Invoke-PortableStateScenario 'portable-toolbar-layout-read'
+$nonEmptyReadReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
+if ($nonEmptyReadReport -notmatch '(?m)^nonempty-command=1$' -or $nonEmptyReadReport -notmatch '(?m)^nonempty-scripts=1$' -or $nonEmptyReadReport -notmatch '(?m)^result=pass$') { throw "Non-empty portable toolbar layout was not restored exactly after restart:`n$nonEmptyReadReport" }
 
 # An explicitly empty toolbar is a valid customization, not a missing/corrupt
 # settings file.  Verify it survives a second real application start.
