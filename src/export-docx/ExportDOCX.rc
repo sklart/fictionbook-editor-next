@@ -176,13 +176,6 @@ BEGIN
     PUSHBUTTON      "Отмена",IDCANCEL,373,258,50,14
 END
 
-IDD_DOCX_FILE_OPTIONS DIALOGEX 0, 0, 276, 24
-STYLE DS_SETFONT | WS_CHILD | WS_CLIPSIBLINGS
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
-BEGIN
-    PUSHBUTTON      "Настройки экспорта DOCX...",IDC_FILEDLG_SETTINGS,84,5,122,14
-END
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // Icon
@@ -204,9 +197,6 @@ BEGIN
     IDD_DOCX_SETTINGS, DIALOG
     BEGIN
     END
-    IDD_DOCX_FILE_OPTIONS, DIALOG
-    BEGIN
-    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -220,4 +210,3 @@ END
 
 #endif    // Russian user interface resources
 /////////////////////////////////////////////////////////////////////////////
-

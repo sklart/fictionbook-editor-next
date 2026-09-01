@@ -5,6 +5,7 @@
 
 #include "utils.h"
 #include "RuntimeLocalization.h"
+#include "..\\common\\ModernFileDialog.h"
 
 #include <vector>
 #include <string>
@@ -1429,51 +1430,36 @@ private:
     }
 };
 
-class CDocxSaveDialog : public CFileDialog {
+class ATL_NO_VTABLE CDocxFileDialogEvents :
+    public CComObjectRootEx<CComSingleThreadModel>,
+    public IFileDialogEvents,
+    public IFileDialogControlEvents {
 public:
-    CDocxSaveDialog(LPCTSTR defaultName, LPCTSTR filter, DocxExportSettings& settings)
-        : CFileDialog(FALSE, _T("docx"), defaultName,
-            OFN_HIDEREADONLY | OFN_NOREADONLYRETURN | OFN_OVERWRITEPROMPT,
-            filter),
-          m_settings(settings)
-    {
-        m_ofn.Flags |= OFN_EXPLORER | OFN_ENABLEHOOK | OFN_ENABLETEMPLATE;
-        m_ofn.hInstance = g_hInstance;
-        m_ofn.lpTemplateName = MAKEINTRESOURCE(IDD_DOCX_FILE_OPTIONS);
-        m_ofn.lpfnHook = HookProc;
-        m_ofn.lCustData = reinterpret_cast<LPARAM>(this);
+    BEGIN_COM_MAP(CDocxFileDialogEvents)
+        COM_INTERFACE_ENTRY(IFileDialogEvents)
+        COM_INTERFACE_ENTRY(IFileDialogControlEvents)
+    END_COM_MAP()
+    void Init(HWND owner, DocxExportSettings* settings) { m_owner = owner; m_settings = settings; }
+    STDMETHOD(OnFileOk)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnFolderChanging)(IFileDialog*, IShellItem*) { return S_OK; }
+    STDMETHOD(OnFolderChange)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnSelectionChange)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnShareViolation)(IFileDialog*, IShellItem*, FDE_SHAREVIOLATION_RESPONSE* response) { if (response) *response = FDESVR_DEFAULT; return S_OK; }
+    STDMETHOD(OnTypeChange)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnOverwrite)(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE* response) { if (response) *response = FDEOR_DEFAULT; return S_OK; }
+    STDMETHOD(OnItemSelected)(IFileDialogCustomize*, DWORD, DWORD) { return S_OK; }
+    STDMETHOD(OnCheckButtonToggled)(IFileDialogCustomize*, DWORD, BOOL) { return S_OK; }
+    STDMETHOD(OnControlActivating)(IFileDialogCustomize*, DWORD) { return S_OK; }
+    STDMETHOD(OnButtonClicked)(IFileDialogCustomize*, DWORD controlId) {
+        if (controlId == IDC_FILEDLG_SETTINGS && m_settings) {
+            CDocxSettingsDialog dialog(*m_settings);
+            dialog.DoModal(m_owner);
+        }
+        return S_OK;
     }
-
 private:
-    DocxExportSettings& m_settings;
-
-    static void RestoreSaveButtonText(HWND hDlg) {
-        HWND hParent = ::GetParent(hDlg);
-        if (hParent != NULL)
-            ::SetDlgItemText(hParent, IDOK, LoadDocxString(IDS_DOCX_SAVE_BUTTON, L"&Save"));
-    }
-
-    static UINT_PTR CALLBACK HookProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-        CDocxSaveDialog* self = reinterpret_cast<CDocxSaveDialog*>(::GetWindowLongPtr(hDlg, GWLP_USERDATA));
-
-        if (uMsg == WM_INITDIALOG) {
-            OPENFILENAME* ofn = reinterpret_cast<OPENFILENAME*>(lParam);
-            self = ofn ? reinterpret_cast<CDocxSaveDialog*>(ofn->lCustData) : NULL;
-            ::SetWindowLongPtr(hDlg, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
-            ::SetDlgItemTextW(hDlg, IDC_FILEDLG_SETTINGS, LoadExportDocxStringByKey(L"export_docx.dialog.file_options.settings_button", L"Export DOCX settings..."));
-            RestoreSaveButtonText(hDlg);
-            return TRUE;
-        }
-
-        if (self != NULL && uMsg == WM_COMMAND && LOWORD(wParam) == IDC_FILEDLG_SETTINGS) {
-            CDocxSettingsDialog dlg(self->m_settings);
-            dlg.DoModal(::GetParent(hDlg));
-            RestoreSaveButtonText(hDlg);
-            return TRUE;
-        }
-
-        return FALSE;
-    }
+    HWND m_owner = nullptr;
+    DocxExportSettings* m_settings = nullptr;
 };
 
 WORD ReadBE16(const BYTE* p) { return static_cast<WORD>((p[0] << 8) | p[1]); }
@@ -3608,17 +3594,33 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         if (dot >= 0) outName.Delete(dot, outName.GetLength() - dot);
         outName += _T(".docx");
 
-        CString strFilter(LoadDocxString(IDS_SAVE_FILE_FILTER, L"Word document (*.docx)|*.docx|"));
-        strFilter.Replace(_T('|'), _T('\0'));
-        CDocxSaveDialog dlg(outName, strFilter, settings);
-        dlg.m_ofn.nFilterIndex = 1;
-        if (dlg.DoModal(hwndParent) != IDOK)
+        const COMDLG_FILTERSPEC filters[] = { { L"Word document (*.docx)", L"*.docx" } };
+        CComObject<CDocxFileDialogEvents>* rawEvents = nullptr;
+        HRESULT dialogHr = CComObject<CDocxFileDialogEvents>::CreateInstance(&rawEvents);
+        if (FAILED(dialogHr) || !rawEvents) return S_FALSE;
+        rawEvents->AddRef(); rawEvents->Init(hwndParent, &settings);
+        CComPtr<IFileDialogEvents> events;
+        dialogHr = rawEvents->QueryInterface(IID_PPV_ARGS(&events));
+        rawEvents->Release();
+        if (FAILED(dialogHr)) return S_FALSE;
+        ModernFileDialog::Request request;
+        request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
+        request.defaultExtension = L"docx"; request.initialFileName = outName.GetString();
+        request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+        request.events = events;
+        request.customize = [](IFileDialogCustomize* customize) {
+            return customize->AddPushButton(IDC_FILEDLG_SETTINGS,
+                LoadExportDocxStringByKey(L"export_docx.dialog.file_options.settings_button", L"Export DOCX settings..."));
+        };
+        const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(hwndParent, request);
+        if (dialogResult.outcome != ModernFileDialog::Outcome::Accepted)
             return S_FALSE;
+		const CString outputPath(dialogResult.paths.front().c_str());
 
         CZipStoreWriter zip;
-        if (!zip.Open(dlg.m_szFileName)) {
+		if (!zip.Open(outputPath)) {
             CString msg;
-            msg.Format(IDS_ERROR_OPEN_FILE, dlg.m_szFileName, static_cast<LPCTSTR>(U::Win32ErrMsg(::GetLastError())));
+			msg.Format(IDS_ERROR_OPEN_FILE, outputPath, static_cast<LPCTSTR>(U::Win32ErrMsg(::GetLastError())));
             AtlTaskDialog(hwndParent, static_cast<UINT>(IDR_EXPORTDOCX), static_cast<LPCTSTR>(msg), static_cast<LPCTSTR>(NULL), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return S_FALSE;
         }
@@ -3627,8 +3629,8 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         builder.Build(zip);
         zip.Close();
         if (settings.createReport) {
-            CStringW reportName = MakeReportFileName(CStringW(dlg.m_szFileName));
-            WriteUtf8TextFile(reportName, builder.ReportText(CStringW(dlg.m_szFileName)));
+            CStringW reportName = MakeReportFileName(CStringW(outputPath));
+            WriteUtf8TextFile(reportName, builder.ReportText(CStringW(outputPath)));
         }
         if (settings.validateDocx) {
             CStringW warnings = builder.ValidationWarnings();
@@ -3639,7 +3641,7 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
             }
         }
         if (settings.openAfterExport) {
-            ::ShellExecuteW(hwndParent, L"open", dlg.m_szFileName, NULL, NULL, SW_SHOWNORMAL);
+            ::ShellExecuteW(hwndParent, L"open", outputPath, NULL, NULL, SW_SHOWNORMAL);
         }
     }
     catch (_com_error& e) {
@@ -3652,4 +3654,3 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
     }
     return S_OK;
 }
-

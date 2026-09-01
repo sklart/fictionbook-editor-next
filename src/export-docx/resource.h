@@ -7,7 +7,6 @@
 #define IDS_ERROR_CREATE_DIRECTORY      103
 #define IDI_MAINICON                    104
 #define IDD_DOCX_SETTINGS               201
-#define IDD_DOCX_FILE_OPTIONS          202
 #define IDS_ERROR_WRITE_FILE            104
 #define IDS_ERROR_WRITE_FILE2           105
 #define IDS_WARNING_FILE_ALREADY_EXISTS 106
@@ -215,5 +214,4 @@
 #define _APS_NEXT_SYMED_VALUE           102
 #endif
 #endif
-
 
