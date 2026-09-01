@@ -16,6 +16,17 @@
     "bg-BG"
   ],
   "strings": {
+    "export_html.dialog.options.title": {
+      "source": "HTML export options",
+      "component": "export-html.dialog.options",
+      "resourceId": "IDS_HTML_EXPORT_OPTIONS_TITLE",
+      "translations": {
+        "en-US": "HTML export options", "ru-RU": "Параметры экспорта HTML", "uk-UA": "Параметри експорту HTML",
+        "de-DE": "HTML-Exportoptionen", "fr-FR": "Options d’export HTML", "es-ES": "Opciones de exportación HTML",
+        "it-IT": "Opzioni di esportazione HTML", "pl-PL": "Opcje eksportu HTML", "pt-PT": "Opções de exportação HTML",
+        "nl-NL": "HTML-exportopties", "cs-CZ": "Možnosti exportu HTML", "bg-BG": "Настройки за експортиране на HTML"
+      }
+    },
     "export_html.dialog.save.template_label": {
       "source": "XSL Template:",
       "component": "export-html.dialog.save",

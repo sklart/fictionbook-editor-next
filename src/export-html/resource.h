@@ -33,6 +33,7 @@
 #define IDS_TOOLTIP_BROWSE_CSS          127
 #define IDS_TOOLTIP_IMAGE_MAX_WIDTH     128
 #define IDS_TOOLTIP_IMAGE_MAX_HEIGHT    129
+#define IDS_HTML_EXPORT_OPTIONS_TITLE   130
 #define IDC_BROWSE                      1001
 #define IDC_TEMPLATE                    1002
 #define IDC_DOCINFO                     1003
