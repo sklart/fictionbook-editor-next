@@ -22,7 +22,8 @@ param(
     [switch]$FullValidation,
     [switch]$ValidateUpdateManifest,
     [switch]$Prerelease,
-    [string]$ReleaseTag
+    [string]$ReleaseTag,
+    [switch]$PrintArtifactPlan
 )
 
 $ErrorActionPreference = "Stop"
@@ -80,6 +81,24 @@ if ($ReleaseTag) {
 elseif ($Prerelease) { throw "Для предварительного выпуска требуется тег с суффиксом, например v$version-rc.1." }
 $architecture = $Platform.ToLowerInvariant()
 $assetVersion = Get-FbeAssetVersion $releaseVersion
+$legacyAssetVersion = Get-FbeBaseVersion $releaseVersion
+$releaseArtifactNames = [ordered]@{
+    Setup = "FictionBookEditorNext-$assetVersion-$architecture-setup.exe"
+    Portable = "FictionBookEditorNext-$assetVersion-$architecture-portable.zip"
+    Symbols = "FictionBookEditorNext-$assetVersion-$architecture-symbols.zip"
+}
+if ($legacy308MigrationRequired) {
+    # The published v3.0.8-rc.1 updater resolves profile artifacts by base
+    # version.  New clients consume only the canonical names above.
+    $releaseArtifactNames.LegacySetup = "FictionBookEditorNext-$legacyAssetVersion-$architecture-setup.exe"
+    $releaseArtifactNames.LegacyPortable = "FictionBookEditorNext-$legacyAssetVersion-$architecture-portable.zip"
+    $releaseArtifactNames.LegacyWin7Setup = "FictionBookEditorNext-$legacyAssetVersion-win7-$architecture-setup.exe"
+    $releaseArtifactNames.LegacyWin7Portable = "FictionBookEditorNext-$legacyAssetVersion-win7-$architecture-portable.zip"
+}
+if ($PrintArtifactPlan) {
+    $releaseArtifactNames.GetEnumerator() | ForEach-Object { "{0}={1}" -f $_.Key, $_.Value }
+    return
+}
 $artifactsDir = Join-Path $repoRoot "out\artifacts"
 $portableDir = Join-Path $repoRoot "out\package\FictionBookEditor"
 $coreDir = Join-Path $repoRoot "out\stage\Core"
@@ -236,14 +255,14 @@ if ((Test-Path -LiteralPath $artifactsDir) -and -not $PreserveArtifacts) {
 }
 New-Item -ItemType Directory -Path $artifactsDir -Force | Out-Null
 
-$portableZip = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-$architecture-portable.zip"
-$symbolsZip = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-$architecture-symbols.zip"
-$setupArtifact = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-$architecture-setup.exe"
+$portableZip = Join-Path $artifactsDir $releaseArtifactNames.Portable
+$symbolsZip = Join-Path $artifactsDir $releaseArtifactNames.Symbols
+$setupArtifact = Join-Path $artifactsDir $releaseArtifactNames.Setup
 $checksumsPath = Join-Path $artifactsDir "SHA256SUMS.txt"
-$legacyWin7Setup = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-win7-$architecture-setup.exe"
-$legacyWin7Portable = Join-Path $artifactsDir "FictionBookEditorNext-$assetVersion-win7-$architecture-portable.zip"
-$legacySetup = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-setup.exe"
-$legacyPortable = Join-Path $artifactsDir "FictionBookEditorNext-$version-$architecture-portable.zip"
+$legacyWin7Setup = if ($legacy308MigrationRequired) { Join-Path $artifactsDir $releaseArtifactNames.LegacyWin7Setup }
+$legacyWin7Portable = if ($legacy308MigrationRequired) { Join-Path $artifactsDir $releaseArtifactNames.LegacyWin7Portable }
+$legacySetup = if ($legacy308MigrationRequired) { Join-Path $artifactsDir $releaseArtifactNames.LegacySetup }
+$legacyPortable = if ($legacy308MigrationRequired) { Join-Path $artifactsDir $releaseArtifactNames.LegacyPortable }
 
 foreach ($artifactPath in @($portableZip, $symbolsZip)) {
     if (Test-Path -LiteralPath $artifactPath) {

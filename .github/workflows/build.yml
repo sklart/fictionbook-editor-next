@@ -32,6 +32,7 @@ jobs:
           ./tools/tests/test-update-manifest.ps1
           ./tools/tests/test-legacy308-migration-policy.ps1
           ./tools/tests/test-legacy308-artifact-migration.ps1
+          ./tools/tests/test-create-release-alias-names.ps1
           ./tools/tests/test-update-version.ps1
           ./tools/tests/test-buildstamp-fallback.ps1
           ./tools/tests/test-fbe-script-command-ids.ps1
