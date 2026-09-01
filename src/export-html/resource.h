@@ -4,6 +4,7 @@
 //
 #define IDR_EXPORTHTML                  101
 #define IDD_CUSTOMSAVEDLG               102
+#define IDD_HTML_EXPORT_OPTIONS         103
 #define IDS_ERROR_OPEN_FILE             102
 #define IDS_ERROR_CREATE_DIRECTORY      103
 #define IDI_MAINICON                    104

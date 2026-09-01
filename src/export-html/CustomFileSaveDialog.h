@@ -3,6 +3,59 @@
 #include "RuntimeLocalization.h"
 #include "TemplateResolver.h"
 
+// Standalone options UI used by the staged modern-dialog migration.  It does
+// not depend on an OPENFILENAME child window and persists only after OK.
+class CHtmlExportOptionsDialog : public CDialogImpl<CHtmlExportOptionsDialog>
+{
+public:
+    enum { IDD = IDD_HTML_EXPORT_OPTIONS };
+    CString m_template, m_customCss;
+    bool m_usingCustomTemplate = false, m_includedesc = true;
+    int m_tocdepth = 1, m_imageMaxWidth = 0, m_imageMaxHeight = 0;
+
+    BEGIN_MSG_MAP(CHtmlExportOptionsDialog)
+        MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+        COMMAND_ID_HANDLER(IDC_BROWSE, OnBrowse)
+        COMMAND_ID_HANDLER(IDC_BROWSE_CSS, OnBrowseCss)
+        COMMAND_ID_HANDLER(IDOK, OnOk)
+        COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
+    END_MSG_MAP()
+
+    LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
+        ExportHtmlTemplateSelection selection = ResolveExportHtmlTemplate(_Settings);
+        m_template = selection.path; m_usingCustomTemplate = selection.custom;
+        m_customCss = U::QuerySV(_Settings, _T("CustomCss"), _T(""));
+        m_includedesc = U::QueryIV(_Settings, _T("IncludeDesc"), 1) != 0;
+        m_tocdepth = U::QueryIV(_Settings, _T("TOCDepth"), 1);
+        m_imageMaxWidth = U::QueryIV(_Settings, _T("ImageMaxWidth"), 0);
+        m_imageMaxHeight = U::QueryIV(_Settings, _T("ImageMaxHeight"), 0);
+        SetDlgItemText(IDC_TEMPLATE, m_template); SetDlgItemText(IDC_CUSTOM_CSS, m_customCss);
+        CheckDlgButton(IDC_DOCINFO, m_includedesc ? BST_CHECKED : BST_UNCHECKED);
+        SetDlgItemInt(IDC_TOCDEPTH, m_tocdepth, FALSE); SetDlgItemInt(IDC_IMAGE_MAX_WIDTH, m_imageMaxWidth, FALSE); SetDlgItemInt(IDC_IMAGE_MAX_HEIGHT, m_imageMaxHeight, FALSE);
+        SetDlgItemText(IDC_TEMPLATE_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL));
+        SetDlgItemText(IDC_DOCINFO, LoadExportHtmlString(IDS_CUSTOM_SAVE_INCLUDE_DESC));
+        SetDlgItemText(IDC_TOC_DEPTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH));
+        SetDlgItemText(IDC_CUSTOM_CSS_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_CUSTOM_CSS));
+        SetDlgItemText(IDC_IMAGE_MAX_WIDTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH));
+        SetDlgItemText(IDC_IMAGE_MAX_HEIGHT_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT));
+        CenterWindow(GetParent()); return TRUE;
+    }
+    LRESULT OnBrowse(WORD, WORD, HWND, BOOL&) { CFileDialog dlg(TRUE, _T("xsl")); if (dlg.DoModal(m_hWnd) == IDOK) SetDlgItemText(IDC_TEMPLATE, dlg.m_szFileName); return 0; }
+    LRESULT OnBrowseCss(WORD, WORD, HWND, BOOL&) { CFileDialog dlg(TRUE, _T("css")); if (dlg.DoModal(m_hWnd) == IDOK) SetDlgItemText(IDC_CUSTOM_CSS, dlg.m_szFileName); return 0; }
+    LRESULT OnOk(WORD, WORD, HWND, BOOL&) {
+        m_template = U::GetWindowText(GetDlgItem(IDC_TEMPLATE));
+        const CString bundled = U::GetProgDirFile(_T("html.xsl")); m_usingCustomTemplate = !ExportHtmlPathsEqual(m_template, bundled);
+        _Settings.SetDWORDValue(_T("UseCustomTemplate"), m_usingCustomTemplate ? 1 : 0);
+        if (m_usingCustomTemplate) _Settings.SetStringValue(_T("Template"), m_template); else _Settings.DeleteValue(_T("Template"));
+        m_customCss = U::GetWindowText(GetDlgItem(IDC_CUSTOM_CSS)); _Settings.SetStringValue(_T("CustomCss"), m_customCss);
+        m_includedesc = IsDlgButtonChecked(IDC_DOCINFO) == BST_CHECKED; _Settings.SetDWORDValue(_T("IncludeDesc"), m_includedesc);
+        m_tocdepth = min(10, static_cast<int>(GetDlgItemInt(IDC_TOCDEPTH, NULL, FALSE))); _Settings.SetDWORDValue(_T("TOCDepth"), m_tocdepth);
+        m_imageMaxWidth = min(10000, static_cast<int>(GetDlgItemInt(IDC_IMAGE_MAX_WIDTH, NULL, FALSE))); m_imageMaxHeight = min(10000, static_cast<int>(GetDlgItemInt(IDC_IMAGE_MAX_HEIGHT, NULL, FALSE)));
+        _Settings.SetDWORDValue(_T("ImageMaxWidth"), m_imageMaxWidth); _Settings.SetDWORDValue(_T("ImageMaxHeight"), m_imageMaxHeight); EndDialog(IDOK); return 0;
+    }
+    LRESULT OnCancel(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }
+};
+
 class CCustomSaveDialog : public CFileDialogImpl<CCustomSaveDialog>
 {
 public:
