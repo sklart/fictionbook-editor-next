@@ -142,6 +142,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			request.initialFileName = filename ? filename : L""; request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 4;
 			const ModernFileDialog::Result result = ModernFileDialog::Show((HWND)hWnd, request);
 			if (result.outcome != ModernFileDialog::Outcome::Accepted) return S_FALSE;
+			options.Persist();
 			dlg.m_ofn.nFilterIndex = result.filterIndex;
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), result.paths.front().c_str(), _TRUNCATE);
 		}
