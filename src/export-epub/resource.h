@@ -12,7 +12,6 @@
 #define IDI_BATCHICON                   111
 #define IDS_ERROR_UNKNOWN                112
 #define IDD_EXPORT_OPTIONS              109
-#define IDD_SAVE_DIALOG_EXTRA           110
 #define IDS_TOOLTIP_NCX_FALLBACK        200
 #define IDS_TOOLTIP_COVER_PAGE          201
 #define IDS_TOOLTIP_ANNOTATION_PAGE     202

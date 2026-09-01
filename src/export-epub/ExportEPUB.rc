@@ -108,15 +108,6 @@ BEGIN
 END
 
 
-IDD_SAVE_DIALOG_EXTRA DIALOGEX 0, 0, 250, 24
-STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
-FONT 8, "MS Shell Dlg"
-BEGIN
-    // Align the button with the standard file name / file type fields of the
-    // Explorer-style Save As dialog instead of keeping it at the left edge.
-    PUSHBUTTON      "Настройки экспорта...", IDC_BUTTON_EXPORT_OPTIONS, 72, 5, 118, 14
-END
-
 STRINGTABLE
 BEGIN
     IDS_SAVE_FILE_FILTER       "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub||"

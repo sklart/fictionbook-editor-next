@@ -3,6 +3,7 @@
 
 #include "FbeEpubExport.h"
 #include "RuntimeLocalization.h"
+#include "..\\common\\ModernFileDialog.h"
 
 #include <Shlwapi.h>
 #include <Shellapi.h>
@@ -2517,76 +2518,29 @@ fbe::epub::EpubVersion VersionFromFilterIndex(DWORD filterIndex)
     return (filterIndex == 2) ? fbe::epub::EpubVersion::Epub2 : fbe::epub::EpubVersion::Epub3;
 }
 
-struct SaveDialogContext {
-    ExportPluginSettings* settings = nullptr;
-    fbe::epub::EpubVersion currentVersion = fbe::epub::EpubVersion::Epub3;
-    std::wstring saveButtonText;
+class ATL_NO_VTABLE CEpubFileDialogEvents :
+    public CComObjectRootEx<CComSingleThreadModel>, public IFileDialogEvents, public IFileDialogControlEvents {
+public:
+    BEGIN_COM_MAP(CEpubFileDialogEvents)
+        COM_INTERFACE_ENTRY(IFileDialogEvents)
+        COM_INTERFACE_ENTRY(IFileDialogControlEvents)
+    END_COM_MAP()
+    void Init(HWND owner, ExportPluginSettings* settings, fbe::epub::EpubVersion version) { m_owner = owner; m_settings = settings; m_version = version; }
+    fbe::epub::EpubVersion Version() const { return m_version; }
+    STDMETHOD(OnFileOk)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnFolderChanging)(IFileDialog*, IShellItem*) { return S_OK; }
+    STDMETHOD(OnFolderChange)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnSelectionChange)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnShareViolation)(IFileDialog*, IShellItem*, FDE_SHAREVIOLATION_RESPONSE* r) { if (r) *r = FDESVR_DEFAULT; return S_OK; }
+    STDMETHOD(OnOverwrite)(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE* r) { if (r) *r = FDEOR_DEFAULT; return S_OK; }
+    STDMETHOD(OnTypeChange)(IFileDialog* dialog) { UINT index = 1; if (SUCCEEDED(dialog->GetFileTypeIndex(&index))) m_version = VersionFromFilterIndex(index); return S_OK; }
+    STDMETHOD(OnItemSelected)(IFileDialogCustomize*, DWORD, DWORD) { return S_OK; }
+    STDMETHOD(OnCheckButtonToggled)(IFileDialogCustomize*, DWORD, BOOL) { return S_OK; }
+    STDMETHOD(OnControlActivating)(IFileDialogCustomize*, DWORD) { return S_OK; }
+    STDMETHOD(OnButtonClicked)(IFileDialogCustomize*, DWORD id) { if (id == IDC_BUTTON_EXPORT_OPTIONS && m_settings) AskExportOptions(m_owner, *m_settings, m_version); return S_OK; }
+private:
+    HWND m_owner = nullptr; ExportPluginSettings* m_settings = nullptr; fbe::epub::EpubVersion m_version = fbe::epub::EpubVersion::Epub3;
 };
-
-void RestoreCommonSaveButtonText(HWND commonDialog, SaveDialogContext* ctx)
-{
-    if (commonDialog == nullptr || ctx == nullptr || ctx->saveButtonText.empty()) {
-        return;
-    }
-    HWND okButton = GetDlgItem(commonDialog, IDOK);
-    if (okButton != nullptr) {
-        SetWindowTextW(okButton, ctx->saveButtonText.c_str());
-    }
-}
-
-UINT_PTR CALLBACK SaveDialogHookProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    auto* ctx = reinterpret_cast<SaveDialogContext*>(GetWindowLongPtr(hwnd, DWLP_USER));
-
-    switch (msg) {
-    case WM_INITDIALOG: {
-        auto* ofn = reinterpret_cast<OPENFILENAME*>(lParam);
-        auto* initCtx = ofn ? reinterpret_cast<SaveDialogContext*>(ofn->lCustData) : nullptr;
-        SetWindowLongPtr(hwnd, DWLP_USER, reinterpret_cast<LONG_PTR>(initCtx));
-        SetDlgItemString(hwnd, IDC_BUTTON_EXPORT_OPTIONS, IDS_SAVE_DIALOG_BUTTON_EXPORT_OPTIONS);
-
-        if (initCtx != nullptr && ofn != nullptr) {
-            initCtx->currentVersion = VersionFromFilterIndex(ofn->nFilterIndex);
-        }
-        return TRUE;
-    }
-
-    case WM_NOTIFY: {
-        auto* notify = reinterpret_cast<OFNOTIFY*>(lParam);
-        if (notify != nullptr && notify->hdr.code == CDN_TYPECHANGE &&
-            notify->lpOFN != nullptr && ctx != nullptr) {
-            ctx->currentVersion = VersionFromFilterIndex(notify->lpOFN->nFilterIndex);
-        }
-        break;
-    }
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDC_BUTTON_EXPORT_OPTIONS && HIWORD(wParam) == BN_CLICKED) {
-            if (ctx != nullptr && ctx->settings != nullptr) {
-                HWND parent = GetParent(hwnd);
-                if (parent == nullptr) parent = hwnd;
-
-                // Do not close the Save As dialog. The settings dialog is opened only
-                // when the user explicitly presses the extra button. Some common-dialog
-                // implementations reset the standard IDOK button text to "OK" after a
-                // nested modal dialog; save and restore the original localized caption
-                // (usually the localized Save button label).
-                wchar_t okText[128] = {};
-                HWND okButton = GetDlgItem(parent, IDOK);
-                if (okButton != nullptr && GetWindowTextW(okButton, okText, static_cast<int>(_countof(okText))) > 0) {
-                    ctx->saveButtonText = okText;
-                }
-
-                AskExportOptions(parent, *ctx->settings, ctx->currentVersion);
-                RestoreCommonSaveButtonText(parent, ctx);
-            }
-            return TRUE;
-        }
-        break;
-    }
-
-    return FALSE;
-}
 
 bool AskOutputFile(HWND owner,
                    BSTR filename,
@@ -2595,40 +2549,27 @@ bool AskOutputFile(HWND owner,
                    CString& outPath,
                    fbe::epub::EpubVersion& version)
 {
-    CString filter(LoadExportEpubString(IDS_SAVE_FILE_FILTER, L"EPUB files (*.epub)|*.epub|All files (*.*)|*.*|"));
-    filter.Replace(L'|', L'\0');
-
     CString proposed = DefaultOutputFileName(filename, source, owner);
-
-    wchar_t fileName[32768] = {};
-    wcsncpy_s(fileName, proposed, _TRUNCATE);
-
-    SaveDialogContext dialogCtx;
-    dialogCtx.settings = &settings;
-    dialogCtx.currentVersion = version;
-
-    OPENFILENAME ofn = {};
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = owner;
-    ofn.hInstance = _AtlBaseModule.GetResourceInstance();
-    ofn.lpTemplateName = MAKEINTRESOURCEW(IDD_SAVE_DIALOG_EXTRA);
-    ofn.lpfnHook = SaveDialogHookProc;
-    ofn.lCustData = reinterpret_cast<LPARAM>(&dialogCtx);
-    ofn.lpstrFilter = filter;
-    ofn.lpstrFile = fileName;
-    ofn.nMaxFile = _countof(fileName);
-    ofn.lpstrDefExt = L"epub";
-    ofn.Flags = OFN_HIDEREADONLY | OFN_NOREADONLYRETURN | OFN_OVERWRITEPROMPT |
-                OFN_PATHMUSTEXIST | OFN_EXPLORER | OFN_ENABLEHOOK | OFN_ENABLETEMPLATE |
-                OFN_ENABLESIZING;
-    ofn.nFilterIndex = (version == fbe::epub::EpubVersion::Epub2) ? 2 : 1; // EPUB 3 by default.
-
-    if (!GetSaveFileName(&ofn)) {
-        return false;
-    }
-
-    outPath = fileName;
-    version = VersionFromFilterIndex(ofn.nFilterIndex);
+    const COMDLG_FILTERSPEC filters[] = { { L"EPUB 3 (*.epub)", L"*.epub" }, { L"EPUB 2 (*.epub)", L"*.epub" }, { L"All files (*.*)", L"*.*" } };
+    CComObject<CEpubFileDialogEvents>* rawEvents = nullptr;
+    HRESULT hr = CComObject<CEpubFileDialogEvents>::CreateInstance(&rawEvents);
+    if (FAILED(hr) || !rawEvents) return false;
+    rawEvents->AddRef(); rawEvents->Init(owner, &settings, version);
+    CComPtr<IFileDialogEvents> events;
+    hr = rawEvents->QueryInterface(IID_PPV_ARGS(&events));
+    if (FAILED(hr)) { rawEvents->Release(); return false; }
+    ModernFileDialog::Request request;
+    request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
+    request.defaultExtension = L"epub"; request.initialFileName = proposed.GetString();
+    request.filters = filters; request.filterCount = _countof(filters);
+    request.filterIndex = version == fbe::epub::EpubVersion::Epub2 ? 2 : 1;
+    request.events = events;
+    request.customize = [](IFileDialogCustomize* customize) { return customize->AddPushButton(IDC_BUTTON_EXPORT_OPTIONS, LoadExportEpubString(IDS_SAVE_DIALOG_BUTTON_EXPORT_OPTIONS, L"Export options...")); };
+    const ModernFileDialog::Result result = ModernFileDialog::Show(owner, request);
+    version = rawEvents->Version(); rawEvents->Release();
+    if (result.outcome != ModernFileDialog::Outcome::Accepted) return false;
+    version = VersionFromFilterIndex(result.filterIndex);
+    outPath = result.paths.front().c_str();
     return true;
 }
 
