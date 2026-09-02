@@ -8,7 +8,7 @@ Require 'STDMETHOD\(OnTypeChange\)' 'ExportEPUB must handle selected filter chan
 Require 'm_version = VersionFromFilterIndex\(index\)' 'EPUB type-change must update export version.'
 Require 'version = VersionFromFilterIndex\(result\.filterIndex\)' 'Accepted filter must determine final EPUB version.'
 Require 'LoadExportEpubString\(IDS_SAVE_FILE_FILTER' 'EPUB filters must come from runtime localization.'
-if ($resource -notmatch 'IDS_SAVE_FILE_FILTER\s+"EPUB 3 \(\*\.epub\)\|\*\.epub\|EPUB 2 \(\*\.epub\)\|\*\.epub\|All files \(\*\.\*\)\|\*\.\*\|"') { throw 'Embedded EPUB filter resource must contain three filter pairs.' }
+if ($source -notmatch 'LoadExportEpubString\(IDS_SAVE_FILE_FILTER,\s*\r?\n?\s*L"EPUB 3 \(\*\.epub\)\|\*\.epub\|EPUB 2 \(\*\.epub\)\|\*\.epub\|All files \(\*\.\*\)\|\*\.\*\|"') { throw 'EPUB filter fallback must contain three filter pairs.' }
 if ($source.Contains('L"Все файлы (*.*)"')) { throw 'Russian hardcoded EPUB filter caption remains.' }
 foreach ($legacy in @('OPENFILENAME', 'OFN_ENABLEHOOK', 'OFN_ENABLETEMPLATE', 'SaveDialogHookProc')) { if ($source.Contains($legacy)) { throw "Legacy EPUB dialog token remains: $legacy" } }
 if ($resource.Contains('IDD_SAVE_DIALOG_EXTRA')) { throw 'Unused EPUB save-dialog resource remains.' }
