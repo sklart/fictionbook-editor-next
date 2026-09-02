@@ -18,7 +18,7 @@ jobs:
   validate:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - name: Check generated version files and pipeline structure
@@ -56,23 +56,23 @@ jobs:
     needs: validate
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 1
       - name: Restore PCRE2 cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: pcre2-cache
         with:
           path: build/pcre2
           key: ${{ runner.os }}-pcre2-release-win32-v143-vs2022-${{ hashFiles('third_party/pcre2/**', 'tools/build/build-pcre2.ps1') }}
       - name: Restore Hunspell cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build/hunspell
           key: ${{ runner.os }}-hunspell-release-win32-v143-mt-${{ hashFiles('third_party/hunspell/**', 'tools/build/build-hunspell.ps1') }}
       - name: Restore image decoder stack cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             build/aom
@@ -80,7 +80,7 @@ jobs:
             build/libheif
           key: ${{ runner.os }}-image-decoders-release-win32-v143-${{ hashFiles('third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
       - name: Restore universal editor runtime cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: out/editor-runtime
           key: ${{ runner.os }}-editor-runtime-win32-v143-vc144-${{ hashFiles('third_party/scintilla/**', 'third_party/lexilla/**', 'tools/build/build-scintilla.ps1', 'tools/build/editor-runtime-helpers.ps1') }}
@@ -168,7 +168,7 @@ jobs:
           ./tools/tests/test-bundled-plugin-upgrade-uninstall.ps1 -InstallerPath $setup -PluginSourceDirectory "$testRoot/Input/Plugins" -TestDirectory "$testRoot/run"
       - name: Upload compiled inputs
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: FictionBookEditorNext-${{ github.sha }}-compiled
           path: |
@@ -186,12 +186,12 @@ jobs:
     needs: build
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 1
       - name: Download compiled inputs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: FictionBookEditorNext-${{ github.sha }}-compiled
           path: out
@@ -232,7 +232,7 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/new-update-manifest-candidate.ps1 -ArtifactsRoot out/artifacts -OutputPath out/release/update.xml -ReleaseTag "${{ github.ref_name }}"
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: FictionBookEditorNext-${{ github.sha }}-release
           path: |
@@ -248,11 +248,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: FictionBookEditorNext-${{ github.sha }}-release
           # The uploaded paths have `out` as their common ancestor. Restore
