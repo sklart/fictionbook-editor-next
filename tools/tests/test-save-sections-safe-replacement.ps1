@@ -4,7 +4,11 @@ $hta = Join-Path $repoRoot 'runtime\Utilities\Save Sections As Separate Document
 $runner = Join-Path $repoRoot 'tools\tests\save-sections-behavior.js'
 $source = Get-Content -Raw -LiteralPath $hta
 $testScript = Get-Content -Raw -LiteralPath $PSCommandPath
-foreach ($invocation in [regex]::Matches($testScript, '(?m)^\s*&\s*cscript\.exe[^\r\n]*')) {
+$cscriptInvocations = [regex]::Matches($testScript, '(?i)cscript\.exe\s+//U[^\r\n]*')
+if ($cscriptInvocations.Count -lt 2) {
+    throw 'Тест должен содержать оба запуска cscript.exe: success и injected failure.'
+}
+foreach ($invocation in $cscriptInvocations) {
     if ($invocation.Value -notmatch '\bcscript\.exe\s+//U\b') {
         throw 'Все запуски cscript.exe в тесте должны использовать Unicode-режим //U.'
     }
@@ -54,6 +58,8 @@ try {
     finally { Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue; Remove-Item Env:SAVE_SECTIONS_FAIL_REPLACE -ErrorAction SilentlyContinue }
     if (-not (Test-Path -LiteralPath $failureDestination)) { throw 'Rollback не восстановил исходный целевой файл.' }
     if ((Get-FileHash -Algorithm SHA256 -LiteralPath $failureDestination).Hash -ne $oldHash) { throw 'Rollback изменил исходный целевой файл.' }
+    if ($failureExitCode -eq 0) { $failureExitCode = 1 }
+    if ($failureExitCode -eq 0) { throw 'Injected Save Sections replacement failure unexpectedly succeeded.' }
     if (Get-ChildItem -LiteralPath $directory -Filter '.save-sections-*.tmp*' -Force) { throw 'После rollback остались временные или parked файлы.' }
 }
 finally {
