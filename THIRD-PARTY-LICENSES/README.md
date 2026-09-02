@@ -23,7 +23,7 @@ Portable and Installer consume that Core unchanged. The files are:
 | `Dictionary-en_US.txt` | English Speller Database / SCOWL 2026.02.25 release notice and license |
 | `Dictionary-de_DE.txt` | igerman98 / frami German Hunspell Dictionary 20161207+frami20170109 GPL-2.0 OR GPL-3.0 license |
 | `Dictionary-ru_RU.txt` | Goudron Russian Hunspell Dictionary 1.0.8 MPL-2.0 license |
-| `Dictionary-uk_UA.txt` | VESUM / dict_uk 6.8.0 Hunspell-distribution MPL-1.1 notice |
+| `Dictionary-uk_UA.txt` | VESUM / dict_uk 6.8.5 Hunspell-distribution MPL-1.1 notice |
 
 PCRE2's `deps/sljit/LICENSE` must additionally be included when the PCRE2 JIT
 is enabled in a release build.  The current FBE build does not enable it.

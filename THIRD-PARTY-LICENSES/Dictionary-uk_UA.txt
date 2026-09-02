@@ -1,5 +1,5 @@
-VESUM / dict_uk 6.8.0 Hunspell distribution
-Source: https://github.com/brown-uk/dict_uk (tag v6.8.0)
+VESUM / dict_uk 6.8.5 Hunspell distribution
+Source: https://github.com/brown-uk/dict_uk (tag v6.8.5)
 Upstream distr/hunspell/README.md states that this distribution is MPL 1.1.
 
                           MOZILLA PUBLIC LICENSE

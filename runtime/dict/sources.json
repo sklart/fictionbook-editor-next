@@ -35,11 +35,12 @@
   "uk_UA": {
     "project": "VESUM / dict_uk",
     "repository": "https://github.com/brown-uk/dict_uk",
-    "version": "6.8.0",
-    "upstreamTag": "v6.8.0",
+    "version": "6.8.5",
+    "upstreamTag": "v6.8.5",
+    "variant": "nolat",
     "encoding": "UTF-8",
-    "dicEntries": 352081,
-    "affSha256": "AC1F2D3D94FCA08600930DB8B68A34E9CC9EAAF1373C836EC12673890BA1CC87",
-    "dicSha256": "AFEF72417783A94BAFD43CE880C9E0CD8C9D7962BA841E8471F24DB79FFE09B4"
+    "dicEntries": 352876,
+    "affSha256": "3222E8D5F88FD1DB291A74C59E8FC5541BB2CC3D3AC29C6882DF4F3DBB051A32",
+    "dicSha256": "B73062ADA50324D2575121C9734C18789D67EB4502AF6AE12ED62DEF7D0528B4"
   }
 }
