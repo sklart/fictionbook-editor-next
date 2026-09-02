@@ -97,6 +97,8 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
     { IDS_IMPORT_PLUGIN_FILEDLG_FILE_LABEL, L"import_epub.plugin.filedlg_file_label" },
     { IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"import_epub.plugin.filedlg_open_button" },
     { IDS_IMPORT_PLUGIN_FILEDLG_SETTINGS_BUTTON, L"import_epub.plugin.filedlg_settings_button" },
+    { IDS_IMPORT_PLUGIN_FILEDLG_FILTER_EPUB, L"import_epub.plugin.filedlg_filter_epub" },
+    { IDS_IMPORT_PLUGIN_FILEDLG_FILTER_ALL, L"import_epub.plugin.filedlg_filter_all" },
     { IDS_IMPORT_PLUGIN_FILEDLG_TITLE, L"import_epub.plugin.filedlg_title" },
     { IDS_IMPORT_PLUGIN_STAGE_CONVERT, L"import_epub.plugin.stage_convert" },
     { IDS_IMPORT_PLUGIN_STAGE_CREATE_DOM, L"import_epub.plugin.stage_create_dom" },

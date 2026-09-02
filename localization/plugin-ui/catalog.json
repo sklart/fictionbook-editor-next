@@ -6916,6 +6916,16 @@
       },
       "source": "Import settings..."
     },
+    "import_epub.plugin.filedlg_filter_epub": {
+      "component": "import-epub.plugin", "resourceId": "IDS_IMPORT_PLUGIN_FILEDLG_FILTER_EPUB",
+      "translations": { "en-US": "EPUB files (*.epub)", "ru-RU": "Файлы EPUB (*.epub)", "uk-UA": "Файли EPUB (*.epub)", "de-DE": "EPUB-Dateien (*.epub)", "fr-FR": "Fichiers EPUB (*.epub)", "es-ES": "Archivos EPUB (*.epub)", "it-IT": "File EPUB (*.epub)", "pl-PL": "Pliki EPUB (*.epub)", "pt-PT": "Ficheiros EPUB (*.epub)", "nl-NL": "EPUB-bestanden (*.epub)", "cs-CZ": "Soubory EPUB (*.epub)", "bg-BG": "EPUB файлове (*.epub)" },
+      "source": "EPUB files (*.epub)"
+    },
+    "import_epub.plugin.filedlg_filter_all": {
+      "component": "import-epub.plugin", "resourceId": "IDS_IMPORT_PLUGIN_FILEDLG_FILTER_ALL",
+      "translations": { "en-US": "All files (*.*)", "ru-RU": "Все файлы (*.*)", "uk-UA": "Усі файли (*.*)", "de-DE": "Alle Dateien (*.*)", "fr-FR": "Tous les fichiers (*.*)", "es-ES": "Todos los archivos (*.*)", "it-IT": "Tutti i file (*.*)", "pl-PL": "Wszystkie pliki (*.*)", "pt-PT": "Todos os ficheiros (*.*)", "nl-NL": "Alle bestanden (*.*)", "cs-CZ": "Všechny soubory (*.*)", "bg-BG": "Всички файлове (*.*)" },
+      "source": "All files (*.*)"
+    },
     "import_epub.plugin.error_msxml_create": {
       "component": "import-epub.plugin",
       "resourceId": "IDS_IMPORT_PLUGIN_ERROR_MSXML_CREATE",

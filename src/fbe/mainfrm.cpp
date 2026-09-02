@@ -1473,7 +1473,7 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	request.customize = [&encodingList, &selectedEncoding](IFileDialogCustomize* customize) -> HRESULT {
 		const DWORD labelId = 1000;
 		const DWORD controlId = 1001;
-		HRESULT hr = customize->AddText(labelId, FbeLoadRuntimeStringByKey(L"fbe.save_as.encoding", L"Encoding:"));
+		HRESULT hr = customize->StartVisualGroup(labelId, FbeLoadRuntimeStringByKey(L"fbe.save_as.encoding", L"Encoding:").GetString());
 		if (FAILED(hr)) return hr;
 		hr = customize->AddComboBox(controlId);
 		if (FAILED(hr)) return hr;
@@ -1488,7 +1488,9 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 				if (item == selectedEncoding) selectedIndex = index;
 			}
 		}
-		return customize->SetSelectedControlItem(controlId, selectedIndex ? selectedIndex : 1);
+		hr = customize->SetSelectedControlItem(controlId, selectedIndex ? selectedIndex : 1);
+		if (FAILED(hr)) return hr;
+		return customize->EndVisualGroup();
 	};
 	request.readCustomization = [&encodingList, &selectedEncoding](IFileDialogCustomize* customize) {
 		DWORD selected = 0;

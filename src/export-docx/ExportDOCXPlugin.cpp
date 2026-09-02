@@ -3598,7 +3598,10 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         if (dot >= 0) outName.Delete(dot, outName.GetLength() - dot);
         outName += _T(".docx");
 
-        const COMDLG_FILTERSPEC filters[] = { { L"Word document (*.docx)", L"*.docx" } };
+        CString localizedFilter = LoadExportDocxStringByKey(L"export_docx.runtime.save_file_filter", L"Word document (*.docx)|*.docx|");
+        const int separator = localizedFilter.Find(L'|');
+        const std::wstring filterCaption((separator >= 0 ? localizedFilter.Left(separator) : localizedFilter).GetString());
+        const COMDLG_FILTERSPEC filters[] = { { filterCaption.c_str(), L"*.docx" } };
         CComObject<CDocxFileDialogEvents>* rawEvents = nullptr;
         HRESULT dialogHr = CComObject<CDocxFileDialogEvents>::CreateInstance(&rawEvents);
         if (FAILED(dialogHr) || !rawEvents) return S_FALSE;

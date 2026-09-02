@@ -213,7 +213,11 @@ namespace
         OPENFILENAMEW ofn = {};
         ofn.lStructSize = sizeof(ofn);
         ofn.hwndOwner = owner;
-        ofn.lpstrFilter = L"EPUB files (*.epub)\0*.epub\0All files (*.*)\0*.*\0";
+        const CString epubFilter = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILTER_EPUB, L"EPUB files (*.epub)");
+        const CString allFilter = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILTER_ALL, L"All files (*.*)");
+        CString filter = epubFilter; filter.AppendChar(L'\0'); filter += L"*.epub"; filter.AppendChar(L'\0');
+        filter += allFilter; filter.AppendChar(L'\0'); filter += L"*.*"; filter.AppendChar(L'\0'); filter.AppendChar(L'\0');
+        ofn.lpstrFilter = filter;
         ofn.lpstrFile = buffer;
         ofn.nMaxFile = _countof(buffer);
         ofn.lpstrDefExt = L"epub";
@@ -240,11 +244,9 @@ namespace
     {
         outPath.Empty();
 
-        const COMDLG_FILTERSPEC filters[] =
-        {
-            { L"EPUB files (*.epub)", L"*.epub" },
-            { L"All files (*.*)", L"*.*" }
-        };
+        const std::wstring epubFilter = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILTER_EPUB, L"EPUB files (*.epub)").GetString();
+        const std::wstring allFilter = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILTER_ALL, L"All files (*.*)").GetString();
+        const COMDLG_FILTERSPEC filters[] = { { epubFilter.c_str(), L"*.epub" }, { allFilter.c_str(), L"*.*" } };
         CComObject<COpenDialogEvents>* rawEvents = nullptr;
         HRESULT hr = CComObject<COpenDialogEvents>::CreateInstance(&rawEvents);
         if (FAILED(hr) || !rawEvents)
