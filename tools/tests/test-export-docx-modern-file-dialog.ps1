@@ -3,6 +3,8 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw (Join-Path $root 'src\export-docx\ExportDOCXPlugin.cpp')
 $resource = Get-Content -Raw (Join-Path $root 'src\export-docx\ExportDOCX.rc')
 if ($source -notmatch 'ModernFileDialog::Show') { throw 'ExportDOCX does not use ModernFileDialog.' }
+if ($source.Contains('L"Документ Word (*.docx)|*.docx|"')) { throw 'DOCX filter must not use a Russian hardcoded fallback.' }
+if ($source -notmatch 'LoadExportDocxStringByKey\(L"export_docx\.runtime\.save_file_filter",\s*L"Word document') { throw 'DOCX filter must use the English runtime fallback.' }
 if ($source -notmatch 'AddPushButton\(IDC_FILEDLG_SETTINGS') { throw 'ExportDOCX settings button was not migrated.' }
 foreach ($legacy in @('CDocxSaveDialog', 'OFN_ENABLEHOOK', 'OFN_ENABLETEMPLATE', 'OPENFILENAME')) {
     if ($source.Contains($legacy)) { throw "ExportDOCX still contains legacy file-dialog token: $legacy" }
