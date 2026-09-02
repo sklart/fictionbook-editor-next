@@ -1,4 +1,4 @@
- <!-- v.1.0 — Создание файла — Александр Ка (05.05.2026)
+﻿ <!-- v.1.0 — Создание файла — Александр Ка (05.05.2026)
          v.1.1 — Фиксация размера шрифта — Александр Ка (14.05.2026) -->
 
  <HTML>
@@ -23,19 +23,21 @@
 	 text-align: left;
 	 }
  BUTTON {
+         overflow: visible;
+	 width: 80;
 	 height=26;
-	 padding: 1px 4px 1px 4px;
-	 margin: 0 3px 10px 3px;
+	 padding: 1 10 1 10;
+	 margin: 0 5 7 5;
 	 font-size: 13px;
 	 background: #EDEDEF;
 	 }
  </STYLE>
  </HEAD>
 
- <BODY id=htmlBody>
+ <BODY id=htmlBody onkeydown=keyDown(event)>
  <DIV id=htmlDiv style=" padding: 5px 15px 20px 30px;">
  </DIV>
- <DIV id=buttons style="text-align: right; padding: 0 5px 0 15px">
+ <DIV id=buttons style="text-align: right; padding: 0 0 0 10px">
  </DIV>
 
 <SCRIPT>
@@ -85,7 +87,7 @@
 
  var titleArg = arg[0];   //  Заголовок окна.
  if (titleArg)                              //  Если он есть...
-         document.title = titleArg+"                                                                                                                                                                                                       ";   //  то добавляем его.
+         document.title = titleArg+"                                                                                                                                                                                                                                                                          ";   //  то добавляем его.
 
  var M = arg[1];          //  Массив строк и их форматов.
 
@@ -241,6 +243,25 @@
          }
 
 
+ //  Функция обработки события -- нажатие клавиши в облоcти html-окна
+
+ function keyDown(ev) {
+         var ev = ev || window.event;
+         switch (ev.keyCode) {
+                 case 27:  window.close();   break;           //  Esc --  "Закрыть окно"
+                 }
+         }
+
+
 </SCRIPT>
 </BODY>
 </HTML>
+
+
+
+
+
+
+
+
+

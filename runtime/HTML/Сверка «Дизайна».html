@@ -1,0 +1,1764 @@
+ <!-- Создание файла — Александр Ка (05.05.2026) -->
+
+ <HTML>
+ <HEAD>
+ <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <STYLE type="text/css">
+ #fbw_body { padding: 0; margin: 0.2em 0.2em 0 0.2em; width: 99%; border: none; text-align: justify; text-indent: 3em; }
+ #fbw_body div{ margin: 0.5em 0 0.5em 0; padding: 0 0 0 0.5em; border-left: solid 1px; }
+ #fbw_body div.body { padding: 0; margin: 0; border: none; }
+ div.section{ border-color: #173; }
+ div.cite{ color: #421; background: #EDC; text-indent: 1.5em; }
+ div.epigraph{ color: #116; background: #DDF; font-size: 90%; text-indent: 5em; }
+ div.annotation{ color: #042; text-indent: 0; }
+ div.history{ color: #B23; }
+ div.poem{ color: #111; text-align: left; text-indent: 0; }
+ div.stanza{ border-color: #FF1493; font-size: 105%;}
+ div.title{ font-size: 160%; border-color: #173; background: #173; color: #FFE6C6; text-align: center; text-indent: 0; }
+ p.subtitle{ color: #145; text-align: center; font-size: 130%; text-indent: 0; }
+ p.text-author{color: #B62242; text-align: right; letter-spacing: 1px; text-indent: 0; border-top: 1 dotted #BB9; }
+ span.code{ font-family: Consolas; background: #DDD; }
+ a.note{ vertical-align: super; color: blue; font-size: 75%; }
+ div.table { border-color: #09A; text-align: left; text-indent: 0; }
+ #fbw_body div.image{ padding: 0; border: none; clear: both; text-align: center; text-indent: 0; }
+ img{ margin: 0; padding: 0; border: none; }
+ span.image{ text-indent: 0; }
+
+ BODY#mainElem {
+	 background: #DEDEE2;
+	 margin: 0;
+	 padding: 0 0 129 0;
+	 font-family: Arial, Tahoma;
+	 font-size: 13px;
+	 }
+ BUTTON {
+	 width: 110px;
+	 height: 26;
+	 margin: 10 3 0 3;
+	 padding: 1px;
+	 font-size: 13px;
+	 background: #EDEDEF;
+	 }
+ FONT {
+	 font-size: 100%;
+	 }
+
+ P{
+	 margin: 0 0.5em 0.2em 0.5em;
+	 }
+
+ </STYLE>
+ </HEAD>
+
+ <BODY id=mainElem onkeydown=keyDown(event)>
+ <DIV style="padding: 2 15 4 7; text-align: left; border-bottom: 1 solid #999; background: #DFDFDF;">
+	 <FIELDSET style="width: 201; padding: 3 0 3 0; vertical-align: bottom; text-align: center;">
+	 <LEGEND style="margin: 0 0 0 12; padding: 0 3 3 15; text-indent: -12; color: #545454" align=center>Основной шрифт</LEGEND>
+	 <SELECT id="fontName" onchange=selFontFamily(this.value) style="width: 144; margin: 0 0 0 0; padding: 0 3 0 3; background: #F4F5F9;">
+		 <optgroup label="С засечками">
+		 <option value="Bookman Old Style">Bookman Old Style</option>
+		 <option value="Cambria">Cambria</option>
+		 <option value="Palatino Linotype">Palatino Linotype</option>
+		 <optgroup label="Без засечек">
+		 <option value="Arial Unicode MS">Arial Unicode MS</option>
+		 <option value="Calibri">Calibri</option>
+		 <option value="Candara">Candara</option>
+		 <option value="Segoe UI">Segoe UI</option>
+		 <option value="Tahoma">Tahoma</option>
+		 <option value="Trebuchet MS">Trebuchet MS</option>
+		 <optgroup label="Моноширинный">
+		 <option value="Consolas">Consolas</option>
+	 </SELECT>
+	 <SELECT id="fontSize" onchange=selFontSize(this.value) style="margin: 0 0 0 2; padding: 0 3 0 3; background: #F4F5F9;">
+		 <option value="9">9</option>
+		 <option value="10">10</option>
+		 <option value="11">11</option>
+		 <option value="12">12</option>
+		 <option value="13">13</option>
+		 <option value="14">14</option>
+		 <option value="15">15</option>
+		 <option value="16">16</option>
+		 <option value="18">18</option>
+		 <option value="20">20</option>
+		 <option value="22">22</option>
+		 <option value="24">24</option>
+	 </SELECT>
+	 </FIELDSET>
+	  
+	 <FIELDSET style="width: 125; padding: 3 0 3 0; vertical-align: bottom; text-align: center;">
+	 <LEGEND style="margin: 0 0 0 12; padding: 0 3 3 15; text-indent: -12; color: #545454" align=center>Фон</LEGEND>
+	 <INPUT id="blockBackground" value="" onblur="selectBackground(this.value, 0)" onkeydown="keyDownBackg(event, this.value)" style="width: 115; padding-left: 3; font-size: 13; background: #F4F5F9;">
+	 </FIELDSET>
+	  
+	 <FIELDSET style="width: 175; padding: 3 0 3 0; vertical-align: bottom; text-align: center;">
+	 <LEGEND style="margin: 0 0 0 12; padding: 0 3 3 15; text-indent: -12; color: #545454" align=center>Метод / Детализация</LEGEND>
+	 <SELECT id="blockMetod" onchange="metod = +blockMetod.value;" style="margin: 0; padding: 0 3 0 3; background: #F4F5F9;">
+		 <option value="0">Точный</option>
+		 <option value="1">Быстрый</option>
+		 <option value="2">Очень быстрый</option>
+	 </SELECT>
+	 <SELECT id="blockMinSim" onchange="minSim = +blockMinSim.value;" style="margin: 0; padding: 0 3 0 3; background: #F4F5F9;">
+		 <option value="1">1</option>
+		 <option value="2">2</option>
+		 <option value="3">3</option>
+		 <option value="4">4</option>
+		 <option value="5">5</option>
+		 <option value="6">6</option>
+		 <option value="8">8</option>
+		 <option value="10">10</option>
+		 <option value="12">12</option>
+		 <option value="15">15</option>
+		 <option value="20">20</option>
+	 </SELECT>
+	 </FIELDSET>
+	  
+	 <FIELDSET style="width: 158; padding: 3 0 3 0; vertical-align: bottom; text-align: center;">
+	 <LEGEND style="margin: 0 0 0 12; padding: 0 3 3 15; text-indent: -12; color: #545454" align=center>Навигация</LEGEND>
+	 <BUTTON id=b13 onclick=button_X(13) style="width: 20px; height: 22px; margin: 0;">
+		 <SPAN style="display: block; margin: -5 0 0 -2; font-size: 17px; color: #333; font-family: Webdings;">3</SPAN>
+	 </BUTTON>
+	 <INPUT type="text" id=blockCount onmousedown=selectCount(0) onblur=selectCount(2) onkeydown=keyDownCount(event) value="1" style="width: 95px; height: 22px; margin: 0 6 0 1; font-size: 13px; background: #F4F5F9; text-align: center;"></INPUT>
+	 <BUTTON id=b14 onclick=button_X(14) style="width: 20px; height: 22px; margin: 0;">
+		 <SPAN style="display: block; margin: -5 0 0 -2; font-size: 17px; color: #333; font-family: Webdings;">4</SPAN>
+	 </BUTTON>
+	 </FIELDSET>
+
+
+
+	 <FIELDSET style="width: 300px; padding: 0; border: none; text-align: right; position: absolute; top: 14; right: 15;">
+	 <BUTTON id=b15 onclick=button_X(15) style="width: 28px; height: 28px; margin: 0 0 0 10;">
+		 <SPAN style="display: block; margin: -8 0 0 -1; font-size: 24px; color: #222; font-family: Arial Unicode MS;">↻</SPAN>
+	 </BUTTON>
+	 <BUTTON id=b16 onclick=button_X(16) style="width: 28px; height: 28px; margin: 0 0 0 10;">
+		 <SPAN style="display: block; margin: -8 0 0 -1; font-size: 24px; color: #222; font-family: Arial Unicode MS;">⇅</SPAN>
+	 </BUTTON>
+	 <BUTTON id=b17 onclick=button_X(17) style="width: 32px; height: 28px; margin: 0 0 0 10; display: none;">
+		 <SPAN style="display: block; margin: -10 0 0 -1; font-size: 27px; color: #222; font-family: Arial Unicode MS;">↶</SPAN>
+	 </BUTTON>
+	 <BUTTON id=b18 onclick=button_X(18) style="width: 32px; height: 28px; margin: 0 0 0 5; display: none;">
+		 <SPAN style="display: block; margin: -10 0 0 -1; font-size: 27px; color: #222; font-family: Arial Unicode MS;">↷</SPAN>
+	 </BUTTON>
+	 <BUTTON id=b19 onclick=button_X(19) style="width: 28px; height: 28px; margin: 0 0 0 25;">
+		 <SPAN style="display: block; margin: -5 0 0 -1; font-size: 21px; color: #333; font-family: Arial Unicode MS;">?</SPAN>
+	 </BUTTON>
+	 </FIELDSET>
+ </DIV>
+ <TABLE cellspacing=0 cellpadding=0 style="width: 100%; background: #D3D2D4; border-top: 1 solid #FFF; table-layout: fixed;">
+	 <TR>
+		 <TD id="td_FileName1" style="width: 50%;">
+			 <P class=ttl style="margin: 3 0 1 30; padding: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-indent: 0px; text-align: left; letter-spacing: 1px; font-size: 12px; font-weight: 700; color: #333;"></P>
+		 </TD>
+		 <TD id="td_FileName2" style="width: 50%;">
+			 <P class=ttl style="margin: 3 0 1 30; padding: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-indent: 0px; text-align: left; letter-spacing: 1px; font-size: 12px; font-weight: 700; color: #333;"></P>
+		 </TD>
+		 <TD style="width: 15;">
+		 </TD>
+	 </TR>
+ </TABLE>
+ <DIV style="width: 100%; height: 5; border-top: 1px solid #CBC8CE; background: #B8B6BA; border-bottom: 2px solid #888689; font-size: 0; text-align: center; margin: 0; padding: 0;">
+ </DIV>
+ <DIV id="blockFiles" style="height: 100%; margin: 0; padding: 0; overflow: auto; text-align: center; resize: both;">
+		 <TABLE cellspacing=0 cellpadding=0 style="vertical-align: top; width: 100%; table-layout: fixed; font-family: Cambria, Bookman Old Style, Calibri, Segoe UI;">
+			 <TR id=fbw_body style="vertical-align: top;">
+				 <TD style="width: 10;">
+				 </TD>
+				 <TD id="td_File1" style="width: 50%;">
+					 <DIV contentEditable=true style="margin: 0; padding: 7 12 7 7; overflow: hidden; border-left: 1 solid #777; border-right: 1 solid #777;"></DIV>
+				 </TD>
+				 <TD style="width: 10;">
+				 </TD>
+				 <TD id="td_File2" style="width: 50%;">
+					 <DIV contentEditable=true style="margin: 0; padding: 7 12 7 7; overflow: hidden; border-left: 1 solid #777; border-right: 1 solid #777;"></DIV>
+				 </TD>
+				 <TD style="width: 10;">
+				 </TD>
+			 </TR>
+		 </TABLE>
+ </DIV>
+ <DIV style="width: 100%; height: 48; font-size: 13px; background: #D7D6D8; font-family: Arial, Tahoma;">
+	 <DIV style="width: 100%; height: 5; border-top: 1px solid #888689; background: #B8B6BA; border-bottom: 2px solid #CBC8CE; font-size: 0;">
+	 </DIV>
+	 <DIV style="position: absolute; bottom: 7; left: 15;">
+		 <SPAN id=miniStat style="font-size: 13px; color: 333;"></SPAN>
+	 </DIV>
+	 <DIV style="position: absolute; bottom: 9; right: 15;">
+		 <BUTTON id=b2 onclick=button_X(2) right>Сохранить</BUTTON>
+		 <BUTTON id=b3 onclick=button_X(3) right>Выход</BUTTON>
+	 </DIV>
+ </DIV>
+
+<script>
+
+
+///////////////   Сохранение всех id местных элементов
+
+ var mainElem = document.getElementById("mainElem");    //  Основной блок HTML.
+ var b2 = document.getElementById("b2");    //  Сохранить.
+ var b3 = document.getElementById("b3");    //  Выход.
+ var b13 = document.getElementById("b13");    //  Предыдущее отличие.
+ var b14 = document.getElementById("b14");    //  Следующее отличие.
+ var b15 = document.getElementById("b15");    //  Повторить сверку.
+ var b16 = document.getElementById("b16");    //  Выравнять строки.
+// var b17 = document.getElementById("b17");    //  Отменить.
+// var b18 = document.getElementById("b18");    //  Вернуть.
+ var b19 = document.getElementById("b19");    //  Справка.
+ var blockBackground = document.getElementById("blockBackground");    //  Блок выбора фона для текстов книг.
+ var blockCount = document.getElementById("blockCount");    //  Блок поля счетчика.
+ var blockFiles = document.getElementById("blockFiles");          //  Блок с прокруткой для текстов книг.
+ var blockMetod = document.getElementById("blockMetod");     //  Блок выбора метода сверки.
+ var blockMinSim = document.getElementById("blockMinSim");    //  Блок выбора минимального размера внутренних совпадающих участков (детализация).
+ var fbw_body = document.getElementById("fbw_body");       //  Блок с текстами книг.
+ var fontName = document.getElementById("fontName");      //  Блок выбора имени шрифта.
+ var fontSize = document.getElementById("fontSize");             //  Список размеров шрифта.
+ var miniStat = document.getElementById("miniStat");    //  Элемент с мини-статистикой.
+ var td_File1 = document.getElementById("td_File1");    //  Ячейка с текстом 1-й книги.
+ var td_File2 = document.getElementById("td_File2");    //  Ячейка с текстом 2-й книги.
+ var td_FileName1 = document.getElementById("td_FileName1");    //  Ячейка с именем текста 1-й книги.
+ var td_FileName2 = document.getElementById("td_FileName2");    //  Ячейка с именем текста 2-й книги.
+
+
+
+///////////////   Получение данных, отправленных из основного скрипта
+
+ var arg = window.dialogArguments;        //  Сохранение импортного массива.
+
+ var command_FBE = arg[0];                             //  Встроенные операции в FBE.
+ var mem = arg[1].replace(/^.+\t\t/g, "").replace(/<IMG src="[^"]*/g, "$&Портим картинки");   //  "fbw_body" первого файла.
+ var txtName1 = arg[1].substring(0, arg[1].search(/\t\t/));                                                                 //  Имя 1-го файла.
+ var doc2 = arg[2];                //  "Документ" 2-го файла.
+ var txtName2 = arg[3];     //  Имя 2-го файла.
+ var nbspEntity = arg[4];       //  Символ неразрывного пробела, принятый в FBE.
+ var font_family = arg[5];      //  Имя шрифта.
+ var font_size = arg[6];           //  Размер шрифта.
+ var fon = arg[7];                //  Цвет фона.
+ var metod = arg[8];         //  Метод сверки.
+ var minSim = arg[9];                //  Минимальный размер совпадающего участка (детализация).
+ var mainMinSim = arg[10];   //  Минимальный размер совпадающего участка (при сверке индексов строк).
+ var ScriptName = arg[11];       //  Имя скрипта.
+ var hints = arg[12];                  //  Показ подсказок (0/1).
+ var txtPosition = arg[13];      //  Расположение текстов (0/1).
+
+
+
+///////////////   Основные изменения HTML
+
+ //  Указание заголовка окна
+ document.title = " " + ScriptName + "                                                                                                                                                                                                                                                                    ";   //  Заголовок.
+
+ if (txtPosition == 0) {      //  Если выбран порядок  --  дубль • финальный текст...
+         td_FileName1.firstChild.setAttribute("id","fileName1");    //  то сохраняем обычный порядок.
+         td_FileName2.firstChild.setAttribute("id","fileName2");
+         td_File1.firstChild.setAttribute("id","blockFile1");
+         td_File2.firstChild.setAttribute("id","blockFile2");
+         }
+     else {      //  Если выбран порядок  --  финальный текст • дубль...
+         td_FileName1.firstChild.setAttribute("id","fileName2");    //  то изменяем порядок.
+         td_FileName2.firstChild.setAttribute("id","fileName1");
+         td_File1.firstChild.setAttribute("id","blockFile2");
+         td_File2.firstChild.setAttribute("id","blockFile1");
+         }
+
+ var blockFile1 = document.getElementById("blockFile1");        //  Блок для текста 1-й книги.
+ var blockFile2 = document.getElementById("blockFile2");        //  Блок для текста 2-й книги.
+ var fileName1 = document.getElementById("fileName1");     //  Элемент для имени текста 1-й книги.
+ var fileName2 = document.getElementById("fileName2");     //  Элемент для имени текста 2-й книги.
+
+
+
+///////////////   Отображение подсказок
+
+ if (hints == 1) {          //  Если включено отображение подсказок -- Добавляем их.
+         b2.title = " Сохранить изменения финального текста в FBE (Ctrl+S) ";
+         b3.title = " Закрыть скрипт (Esc) ";
+         b13.title = " Предыдущее отличие (F3) ";
+         b14.title = " Следующее отличие (F4) ";
+         b15.title = " Выполнить повторную сверку (F5) ";
+         b16.title = " Выровнять строки (F7) ";
+         b19.title = " Справка (F1) ";
+         }
+
+
+
+///////////////   Основные переменные
+
+ var Ts=0;    //  Начало времени вычислений.
+ var fbwBody2 = doc2.getElementById("fbw_body");   //  Элемент с html-текстом открытой книги.
+ var firstRun = true;                 //  Флаг первого запуска.
+ var count_difference = 0;     //  Счетчик отличий.
+ var firstLine = [];       //  Элемент первой строки в видимой области, и её расположение.
+ var winInfo;               //  Окно справки.
+ var otvet;                    //  Ответ пользователя.
+ var changeBook = false;    //  Флаг выполнения сохранения книги.
+ var exit = false;    //  Флаг подтверждения выхода (false -- не подтверждено).
+
+ var k;     //  Счетчики циклов.
+ var h;
+ var q;
+ var u;
+
+ var rS;    //  Результаты детального поиска.
+
+ var mPEdit;             //  Элементы строк редактируемого файла (в FBE).
+ var rePreSeve = new RegExp("(<P(?: [^<>]+)?>)(.*?)</P>", "g");               //  Поиск строк в тексте с тегами (для обработки и сохранения текста).
+ var reDelMarg = new RegExp(" style=\"MARGIN-TOP: [^\"]+\"|MARGIN-TOP: [^\"]+", "g");   //  Поиск в теге строки стиля отступа (для удаления и сохранения текста).
+
+ var mFont = blockFile2.getElementsByTagName("FONT");      //  Массив с элементами "FONT" во 2-м тексте (синхронизируемый, т.е. обновлять его не надо).
+ var lengthMFont;         //  Длина массива с элементами "FONT".
+ var countFont = 0;     //  Счетчик текущего номера элементами "FONT" (отсчет начинается с "1").
+ var startFont;          //  Исходный элемент "FONT".
+ var mBlockFont = [];  //  Массив с внестрочными элементами "FONT".
+ var tagBlockFont = "<FONT style=\"box-sizing: content-box; height: 7; width=7; overflow: hidden; clear: both; background: #B8F;\"></FONT>";
+ var checkFon = false;  //  Индикатор проверки фона на ошибки (false -- не проверенное или ошибочное значение).
+ var defaultFon = "rgb(244, 241, 232)";    //  Значение фона по умолчанию.
+
+ fontName.getElementsByTagName("OPTION")[font_family].selected = true;    //  Выбор заданного шрифта   в   Блоке выбора имени шрифта.
+ selFontFamily(fontName.value);                               //  Применение заданного шрифта в текстах книг.
+
+ fontSize.getElementsByTagName("OPTION")[font_size].selected = true;     //  Выбор заданного шрифта   в   Блоке выбора размера шрифта.
+ selFontSize(fontSize.value);                               //  Применение заданного размера шрифта в текстах книг.
+
+ blockBackground.value = fon;       //  Выбор заданного фона   в   Блоке выбора фона для текстов книг.
+ selectBackground(fon, 1);               //  Применение заданного фона в текстах книг.
+
+ blockMetod.getElementsByTagName("OPTION")[metod].selected = true;    //  Выбор заданного метода   в   Блоке выбора метода сверки.
+
+ blockMinSim.getElementsByTagName("OPTION")[minSim].selected = true;    //  Выбор заданной детализации   в   Блоке выбора метода сверки.
+ minSim = blockMinSim.value;                         //  Установка заданной детализации для скрипта.
+
+ //  Чистка строк от лишних форматов и символов.
+ var reClear0 = new RegExp("</?FONT[^<>]*>", "g");              //  Чистка всего текста от лишних тегов "FONT".   //  * Удаление.
+ var reClear1 = new RegExp("</?(BR|FONT)[^<>]*>", "g");   //  Чистка строк от лишних форматов.   //  * Удаление.
+
+ fileName1.innerHTML = z1(".:::: ") + txtName1 + z1(" ::: ") + "дубль" + z1(" ::::.");                             //  Запись имени 1-го файла.
+ fileName2.innerHTML = z2(".:::: ") + txtName2 + z2(" ::: ") + "финальный текст" + z2(" ::::.");    //  Запись имени 2-го файла.
+
+function z1(txt) { return '<FONT  style="color: #B33;">' + txt + '</FONT>'; }    //  Функции форматирования в записи имени файлов.
+function z2(txt) { return '<FONT  style="color: #180;">' + txt + '</FONT>'; }
+
+ blockFile1.innerHTML = mem.replace(reClear0, "");                                       //  Вставка в окно "fbw_body" 1-го файла.
+ blockFile2.innerHTML = fbwBody2.innerHTML.replace(reClear0, "");    //  Вставка в окно "fbw_body" 2-го файла.
+
+
+
+///////////////   Переменные для сверки
+
+ var txt1;                  //  Исходный текст строки из 1-го текста.
+ var txt2;                 //  Исходный текст строки из 2-го текста.
+ var mTxt1 = [];    //  Массив раздробленного текста из строки 1-го текста.
+ var mTxt2 = [];    //  Массив раздробленного текста из строки 2-го текста.
+ var mCharMP1 = [];    //  Массив раздробленного текста из индексов 1-го текста.
+ var mCharMP2 = [];   //  Массив раздробленного текста из индексов 2-го текста.
+ var order = true;   //  Соблюдение порядка frag1 -> frag2.
+ var frag1;            //  1-й фрагмент для сравнения.
+ var frag2;            //  2-й фрагмент для сравнения.
+ var subFrag;           //  Потенциальный участок.
+ var subTxt;             //  Дополнительный потенциальный участок.
+ var pos1;        //  Позиция потенциального участка для 1-го текста.
+ var pos2;       //  Позиция потенциального участка для 2-го текста.
+
+ var mTag1 = [];    //  Массив тегов 1-й строки  (для хранения временно удаленных тегов).
+ var mTag2 = [];    //  Массив тегов 2-й строки  (для хранения временно удаленных тегов).
+ var reTag = new RegExp("<[^<>]*>", "g");    //  Поиск тегов  (для удаления из строки и хранения в массивах).
+
+ var L1;            //  Меньшее значение.
+ var L2;            //  Большее значение.
+ var LMidi;        //  Значение средней длины участка.
+ var mR = [];       //  Массив с данными потенциальных участков.
+ var mRR = [];       //  Массив с данными потенциальных участков.
+ var LBest;                //  Максимальная длина найденных совпадающих участков.
+ var LParent = [];     //  Массив длин родительских совпадающих участков.
+
+ var mP1 = blockFile1.getElementsByTagName("P");   //  Элементы строк текста 1-й книги.
+ var mP2 = blockFile2.getElementsByTagName("P");   //  Элементы строк текста 2-й книги.
+ var mPSort = [];    //  Массив сортированных строк с их координатами.
+ var str;                      //  Текст отдельной строки.
+ var elSort;                //  Элемент сортированного массива.
+ var mChar1=[];     //  Массив индексов строк 1-го массива.
+ var mChar2=[];     //  Массив индексов строк 2-го массива.
+ var charMP1;    //  Строка из индексов строк текста 1-й книги.
+ var charMP2;    //  Строка из индексов строк текста 2-й книги.
+ var Length_0;    //  Общее число участков из совпадающих/несовпадающих индексов строк.
+ var Length_1;    //  Число индексов строк отдельного участка в тексте 1-й книги.
+ var Length_2;    //  Число индексов строк отдельного участка в тексте 2-й книги.
+ var ind1 = 0;    //  Счетчик строк текста 1-й книги.
+ var ind2 = 0;    //  Счетчик строк текста 2-й книги.
+
+ var top1;     //  Расстояние до верхнего края окна   строки из 1-го текста  (для выравнивания строк).
+ var top2;     //  Расстояние до верхнего края окна   строки из 2-го текста  (для выравнивания строк).
+
+
+
+///////////////   Регулярные выражения для коррекции тегов <FONT> (добавленных сверкой строк).
+
+         //  Поиск соседних тегов.   При конфликте тегов -- добавление тегов  <FONT>
+ var re01 = new RegExp("(<[^<>]+>)([^<>]*)(<[^<>]+>)", "g");
+
+         //  Объединение примыкающих элементов  FONT.
+ var re02 = new RegExp("</FONT><FONT>", "g");
+ var re02_ = "";
+
+         //  Поиск примыкающих элементов  FONT (через другой тег)   и   удаление лишних.
+ var re03 = new RegExp("<FONT></FONT>((<[^<>]+>)+?<FONT>)", "g");
+ var re03_ = "$1";
+ var re04 = new RegExp("(</FONT>(<[^<>]+>)+?)<FONT></FONT>", "g");
+ var re04_ = "$1";
+
+         //  Изменение стиля элемента FONT с одним символом ударения -- добавление красной узкой линии.
+ var re05 = new RegExp("<FONT>("+String.fromCharCode(769)+")</FONT>", "g");
+ var re05_ = '<FONT style="padding-left: 2; background: #E33;">$1</FONT>';
+
+         //  Изменение стиля пустого элемента FONT -- добавление синей узкой линии.
+ var re06 = new RegExp("<FONT></FONT>", "g");                                                     //  Для пустой строки.
+ var re06_ = '<FONT style="width=2; overflow: hidden; background: #39F;"></FONT>';
+
+         //  Добавление стандартного стиля для оставшихся элементов.
+ var re07 = new RegExp("<FONT>", "g");
+ var re07_ = '<FONT style=" background: #E66; color: #000;">';
+
+
+
+///////////////   Коррекция пустых строк в текстах html-окна
+
+ for (k=mP1.length-1; k>=0; k--)     //  Цикл для строк 1-го текста.
+         if (mP1[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                 mP1[k].innerHTML = "";                             //  то удаляем его
+                 command_FBE.inflateBlock(mP1[k])=true;     //  и нормализуем пустую строку.
+                 }
+
+ for (k=mP2.length-1; k>=0; k--)     //  Цикл для строк 2-го текста.
+         if (mP2[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                 mP2[k].innerHTML = "";                             //  то удаляем его
+                 command_FBE.inflateBlock(mP2[k])=true;     //  и нормализуем пустую строку.
+                 }
+
+
+
+///////////////   Запуск функции сверки текстов (полная сверка)
+
+compareMain(true);
+
+
+
+
+///////////////   СВЕРКА :  Сверка текстов
+
+ function compareMain(mode) {
+
+ Ts = new Date().getTime();     //  Отмечаем время начала вычислений.
+
+ if (! firstRun) {       //  Если это не первая сверка...
+         firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+         count_difference = 0;      //  Обнуляем счетчик отличий.
+         }
+
+ for (k=mBlockFont.length-1;  k>=0;  k--)    //  Цикл для внестрочных элементов "FONT".
+         mBlockFont[k].removeNode(true);     //  Удаляем все элементы.
+
+ if (mP1.length == 0) {             //  Если в тексте 1-й книги нет строк...
+         otvet = command_FBE.AskYesNo(" ::: Ошибка: Первый файл не содержит строк :::   \n Скрипт не сможет выполнить сверку.   \n\n Закрыть скрипт?");
+         if (otvet) {           //  Если выбран выход из скрипта...
+                 window.returnValue = [-1, changeBook, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
+                 window.close();            //  Закрываем html-окно.
+                 }
+         return;                 //  Выходим из функции.
+         }
+
+ if (mP2.length == 0) {             //  Если во тексте 2-й книги нет строк...
+         otvet = command_FBE.AskYesNo(" ::: Ошибка: Второй файл не содержит строк :::   \n Скрипт не сможет выполнить сверку.   \n\n Закрыть скрипт?");
+         if (otvet) {           //  Если выбран выход из скрипта...
+                 window.returnValue = [-1, changeBook, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
+                 window.close();            //  Закрываем html-окно.
+                 }
+         return;                 //  Выходим из функции.
+         }
+
+
+         //  Получение строк из индексов строк текстов 1-й и 2-й книг
+
+ mPSort = [];     //  Массив сортированных строк с их координатами.
+
+         //  Отправка строк 1-го текста в сортированный массив строк.
+LBL:
+ for (k=mP1.length-1; k>=0; k--) {     //  Цикл для строк текста.
+         L1 = -1;                                 //  Сбрасываем минимальную позицию.
+         L2 = mPSort.length;        //  Сбрасываем максимальную позицию.
+         str = mP1[k].innerText;            //  Получаем текст очередной строки.
+         while (L2-L1 > 1) {                                  //  Цикл для поиска позиции строки в сортированном ряде строк.
+                 LMidi = Math.floor((L2+L1)/2);        //  Получаем среднюю позицию в сортированном ряде строк.
+                 if (str == mPSort[LMidi][0]) {            //  Если текущая строка совпадает со строкой на средней позиции...
+                         mPSort[LMidi].push(1+":"+k);     //  Добавляем координаты строки.
+                         continue LBL;                                      //  Переходим к следующей строке.
+                         }
+                 if (str > mPSort[LMidi][0])      //  Если текущая строка больше строки на средней позиции...
+                         L1 = LMidi;             //  то смещаем минимальную позицию на место средней позиции.
+                     else  L2 = LMidi;      //  Если меньше -- смещаем максимальную позицию на место средней позиции.
+                 }
+         //  Как только между минимальной и максимальной позицией не останется ни одной строки...
+         mPSort.splice(L2, 0, [str, 1+":"+k]);    //  Вставляем текущую строку и её координаты между этими позициями.
+         }
+
+         //  Отправка строк 2-го текста в сортированный массив строк.
+LBL:
+ for (k=mP2.length-1; k>=0; k--) {     //  Цикл для строк текста.
+         L1 = -1;                                 //  Сбрасываем минимальную позицию.
+         L2 = mPSort.length;        //  Сбрасываем максимальную позицию.
+         str = mP2[k].innerText;            //  Получаем текст очередной строки.
+         while (L2-L1 > 1) {                                  //  Цикл для поиска позиции строки в сортированном ряде строк.
+                 LMidi = Math.floor((L2+L1)/2);      //  Получаем среднюю позицию в сортированном ряде строк.
+                 if (str == mPSort[LMidi][0]) {           //  Если текущая строка совпадает со строкой на средней позиции...
+                         mPSort[LMidi].push(2+":"+k);     //  Добавляем координаты строки.
+                         continue LBL;                                      //  Переходим к следующей строке.
+                         }
+                 if (str > mPSort[LMidi][0])      //  Если текущая строка больше строки на средней позиции...
+                         L1 = LMidi;             //  то смещаем минимальную позицию на место средней позиции.
+                     else  L2 = LMidi;      //  Если меньше -- смещаем максимальную позицию на место средней позиции.
+                 }
+         //  Как только между минимальной и максимальной позицией не останется ни одной строки...
+         mPSort.splice(L2, 0, [str, 2+":"+k]);    //  Вставляем текущую строку и её координаты между этими позициями.
+         }
+
+
+ if (mPSort.length > 65535) {             //  Если количество элементов сортированного массива превышает допустимое значение...
+         otvet = command_FBE.AskYesNo(" ::: Ошибка: Превышено предельное количество разнообразных строк на "+Math.round((mPSort.length / 65535 - 1) * 100000) / 1000+"% :::   \n Скрипт не сможет выполнить сверку.   \n\n* Для уменьшения количества различающихся строк, попробуйте обработать оба файла глобальными скриптами:   \n Почистить структуру, Стандартизация символов, Кириллица-латиница, Текст-корректор и т. п.   \n\n Закрыть скрипт?");
+         if (otvet) {           //  Если выбран выход из скрипта...
+                 window.returnValue = [-1, changeBook, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
+                 window.close();            //  Закрываем html-окно.
+                 }
+         return;                 //  Выходим из функции.
+         }
+
+
+ mChar1=[];     //  Очищаем массив индексов строк 1-го массива.
+ mChar2=[];     //  Очищаем массив индексов строк 2-го массива.
+
+ for (k=mPSort.length-1; k>=0; k--) {      //  Цикл для сортированного массива.
+         elSort = mPSort[k];                  //  Получаем очередной элемент сортированного массива.
+         for (h=elSort.length-1; h>=1; h--) {            //  Цикл для одного элемента сортированного массива.
+                 if (elSort[h].replace(/:.+$/, "") == "1")                          //  Если координата указывает на первый текст книги...
+                         mChar1[+elSort[h].replace(/^.+:/, "")] = String.fromCharCode(k+1);        //  то добавляем индекс в массив для текста 1-й книги.
+                     else  mChar2[+elSort[h].replace(/^.+:/, "")] = String.fromCharCode(k+1);      //  Иначе -- добавляем индекс в массив для текста 2-й книги.
+                 }
+         }
+
+ mPSort = [];     //  Очищаем массив сортированных строк с их координатами.
+
+ charMP1 = mChar1.join("");    //  Получаем строку из индексов строк 1-го текста.
+ charMP2 = mChar2.join("");    //  Получаем строку из индексов строк 2-го текста.
+
+ mChar1=[];     //  Очищаем массив индексов строк 1-го массива.
+ mChar2=[];     //  Очищаем массив индексов строк 2-го массива.
+
+
+         //  Сверка строк
+
+ compareTxt();    //  Получение двух массивов совпадающих/несовпадающих участков из строк, состоящих из индексов.
+
+ ind1 = 0;    //  Обнуляем счетчик строк 1-го текста.
+ ind2 = 0;    //  Обнуляем счетчик строк 2-го текста.
+
+ Length_0 = mCharMP1.length;    //  Получаем длину массива из участков совпадающих/несовпадающих индексов строк.
+
+ for (q=0;  q<Length_0;  q++) {               //  Цикл для участков совпадающих/несовпадающих индексов строк.
+         Length_1 = mCharMP1[q].length;     //  Длина очередного участка из 1-го текста.
+         Length_2 = mCharMP2[q].length;     //  Длина очередного участка из 1-го текста.
+         if (q % 2 == 1) {                  //  Если рассматриваются несовпадающие участки...
+                 if (Length_1 == Length_2) {     //  Если количество строк в двух участках равны...
+                         if (mode)                                           //  Если выполняется полная сверка...
+                                 for (u=0; u<Length_1;  u++) {            //  Цикл для строк несовпадающего участка.
+                                         compareStr(mP1[ind1], mP2[ind2]);    //  Выполняем сверку двух строк.
+                                         ind1++;      //  Увеличиваем счетчик строк 1-го текста.
+                                         ind2++;      //  Увеличиваем счетчик строк 2-го текста.
+                                         }
+                             else {            //  Если выполняется только выравнивание строк...
+                                 ind1 += Length_1;      //  Увеличиваем счетчик строк 1-го текста.
+                                 ind2 += Length_1;      //  Увеличиваем счетчик строк 2-го текста.
+                                 if (Length_1)    //  Если длина участка не нулевая...
+                                         count_difference++;    //  Увеличиваем счетчик отличий (это добавляется базовое отличие).
+                                 }
+                         }
+                     else {                                    //  Если количество строк в двух участках НЕ равны...
+
+                         for (u=0; u<Length_1;  u++) {         //  Цикл для строк несовпадающего участка из текста 1-й книги.
+                                 if (mP1[ind1].style.marginTop  &&  mP1[ind1].style.marginTop != "0")    //  Если есть верхний отступ строки...
+                                         mP1[ind1].style.marginTop = "0";                                       //  то обнуляем его.
+                                 str = addFont(mP1[ind1].innerHTML);    //  Добавляем тег <FONT>.
+                                 if (str != mP1[ind1].innerHTML)    //  Если полученный результат не совпадает с текстом строки...
+                                         mP1[ind1].innerHTML = str;    //  то перезаписываем строку.
+                                 ind1++;      //  Увеличиваем счетчик строк 1-го текста.
+                                 }
+
+                         for (u=0; u<Length_2;  u++) {         //  Цикл для строк несовпадающего участка из текста 2-й книги.
+                                 if (mP2[ind2].style.marginTop  &&  mP2[ind2].style.marginTop != "0")    //  Если есть верхний отступ строки...
+                                         mP2[ind2].style.marginTop = "0";                                       //  то обнуляем его.
+                                 str = addFont(mP2[ind2].innerHTML);    //  Добавляем тег <FONT>.
+                                 if (str != mP2[ind2].innerHTML)    //  Если полученный результат не совпадает с текстом строки...
+                                         mP2[ind2].innerHTML = str;    //  то перезаписываем строку.
+                                 ind2++;      //  Увеличиваем счетчик строк 2-го текста.
+                                 }
+
+                         if (Length_1 == 0) {      //  Если в 1-м участке нет строк...
+                                 if (mP1[ind1]) {             //  Если есть следующая строка...
+                                         mP1[ind1].insertAdjacentHTML("beforeBegin", tagBlockFont);     //  то добавляем перед ней внестрочный элемент FONT.
+                                         mBlockFont.push(mP1[ind1].previousSibling);     //  и сохраняем его в массиве.
+                                         }
+                                     else {             //  Если нет следующей строки...
+                                         mP1[ind1-1].insertAdjacentHTML("afterEnd", tagBlockFont);     //  то добавляем после предыдущей строки внестрочный элемент FONT.
+                                         mBlockFont.push(mP1[ind1-1].nextSibling);      //  и сохраняем его в массиве.
+                                         }
+                                 }
+
+                         if (Length_2 == 0) {      //  Если во 2-м участке нет строк...
+                                 if (mP2[ind2]) {             //  Если есть следующая строка...
+                                         mP2[ind2].insertAdjacentHTML("beforeBegin", tagBlockFont);     //  то добавляем перед ней внестрочный элемент FONT.
+                                         mBlockFont.push(mP2[ind2].previousSibling);      //  и сохраняем его в массиве.
+                                         }
+                                     else {             //  Если нет следующей строки...
+                                         mP2[ind2-1].insertAdjacentHTML("afterEnd", tagBlockFont);     //  то добавляем после предыдущей строки внестрочный элемент FONT.
+                                         mBlockFont.push(mP2[ind2-1].nextSibling);      //  и сохраняем его в массиве.
+                                         }
+                                 }
+                         count_difference++;    //  Увеличиваем счетчик отличий (это добавляется базовое отличие).
+                         }
+                 }
+         if (q % 2 == 0) {       //  Если рассматриваются совпадающие участки...
+                 if (firstRun) {           //  Если это первая сверка...
+                         ind1 += Length_1;      //  Увеличиваем счетчик строк 1-го текста.
+                         ind2 += Length_1;      //  Увеличиваем счетчик строк 2-го текста.
+                         continue;         //  Переходим к обработке следующего участка.
+                         }
+                 for (u=0; u<Length_1;  u++) {         //  Цикл для строк совпадающих участков.
+                         str = mP1[ind1].innerHTML.replace(reClear1, "");    //  Очищаем строку из 1-го текста.
+                         if (str != mP1[ind1].innerHTML)    //  Если полученный результат не совпадает с текстом строки...
+                                 mP1[ind1].innerHTML = str;    //  то перезаписываем строку.
+                         str = mP2[ind2].innerHTML.replace(reClear1, "");    //  Очищаем строку из 2-го текста.
+                         if (str != mP2[ind2].innerHTML)    //  Если полученный результат не совпадает с текстом строки...
+                                 mP2[ind2].innerHTML = str;    //  то перезаписываем строку.
+                         ind1++;      //  Увеличиваем счетчик строк 1-го текста.
+                         ind2++;      //  Увеличиваем счетчик строк 2-го текста.
+                         }
+                 }
+         }
+
+ if (! firstRun) {     //  Если это не первый запуск сверки...
+         flushTxt2();     //  Запускаем выравнивание текста после повторной сверки.  // * Выравнивание после первой сверки выполняется после полной загрузки HTML.
+         blockFiles.scrollTop += firstLine[0].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки (первая строка в видимой области).
+         }
+
+ //  Добавляем запись с мини-статистикой сверки.
+ if (mode)     //  * Для разных режимов -- разный вид записи.
+         miniStat.innerHTML = "Найдено " + count_difference + pad(count_difference, [" отличие", " отличия", " отличий"]) + " за " + time(new Date().getTime() - Ts);
+     else  miniStat.innerHTML = "При выравнивании строк найдено " + count_difference + pad(count_difference, [" базовое отличие", " базовых отличия", " базовых отличий"]) + " за " + time(new Date().getTime() - Ts);
+
+
+ lengthMFont = mFont.length;           //  Получаем количество несовпадающих участков (отличий).
+ if ((countFont+"").search(/^\d+$/) == -1  ||  countFont > lengthMFont)    //  Если счетчик отличий некорректен,  или превышает общее количество отличий...
+         countFont = lengthMFont;                  //  То изменяем его на общее количество отличий.
+ blockCount.value = countFont + " / " + lengthMFont;      //  Вписываем результат в блок счетчика отличий.  // * Может быть лучше обнулять счетчик???
+ }
+
+
+
+
+
+///////////////   СВЕРКА ДВУХ СТРОК :  Получение первого несовпадающего участка (общий алгоритм для всех методов)
+
+ function compareStr(elem1, elem2) {
+
+ txt1 = elem1.innerHTML.replace(reClear1, "");    //  Получение текста двух строк.
+ txt2 = elem2.innerHTML.replace(reClear1, "");
+
+ txt1 = txt1.replace(/&nbsp;/g, " ").replace(/&lt;/g, "\t").replace(/&gt;/g, "\r").replace(/&shy;/g, "­").replace(/&amp;/g, "&");    //  Временная замена html-кодов на символы.
+ txt2 = txt2.replace(/&nbsp;/g, " ").replace(/&lt;/g, "\t").replace(/&gt;/g, "\r").replace(/&shy;/g, "­").replace(/&amp;/g, "&");
+ //  * Здесь необходимо чтобы символы "&lt;" и "&gt;" не были похожи на "<" и ">" в тегах, и при этом оставались уникальными.
+
+ mTag1 = [];     //  Очищаем массивы для хранения тегов.
+ mTag2 = [];
+
+ for (reTag.lastIndex = 0;  (rS = reTag.exec(txt1)) != null;  reTag.lastIndex = rS.index) {     //  Цикл для тегов в 1-й строке.
+         txt1 = txt1.substring(0, rS.index) + txt1.substring(reTag.lastIndex);        //  Удаляем тег из строки.
+         mTag1.push([rS[0], rS.index]);              //  Добавляем удаленный тег в массив.
+         }
+
+ for (reTag.lastIndex = 0;  (rS = reTag.exec(txt2)) != null;  reTag.lastIndex = rS.index) {     //  Цикл для тегов во 2-й строке.
+         txt2 = txt2.substring(0, rS.index) + txt2.substring(reTag.lastIndex);        //  Удаляем тег из строки.
+         mTag2.push([rS[0], rS.index]);              //  Добавляем удаленный тег в массив.
+         }
+
+
+ //  1-3 МЕТОД :  Получение первого несовпадающего участка
+
+ mTxt1 = [];       //  Очищаем массивы текста для новых результатов.
+ mTxt2 = [];
+
+ if (txt1.length < txt2.length) {    //  Если найденный текст меньше заменяемого...
+         order = true;          //  то сохраняем порядок фрагментов.
+         frag1 = txt1;
+         frag2 = txt2;
+         }
+     else {               //  А если больше...
+         order = false;                    //  то изменяем порядок фрагментов.
+         frag1 = txt2;
+         frag2 = txt1;
+         }
+
+ L1 = 0;                         //  Исходное значение  для наименьшей длины участка.
+ L2 = frag1.length+1;   //  Исходное значение  для наибольшей длины участка.
+ LBest = 0;                 //  Лучшая длина участка.
+
+ while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+         LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+         if (frag1.substring(0, LMidi) == frag2.substring(0, LMidi)) {      //  Если участки средней длины совпадают (в начале фрагментов)...
+                 L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                 LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                 }
+             else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+         }
+
+ mTxt1[0] = frag1.substring(0, LBest) + "<FONT>";   //  Добавляем текст 1-го совпадающего участка в массивы с результатами.
+ mTxt2[0] = mTxt1[0];
+
+ frag1 = frag1.substring(LBest);    //  Убираем из фрагментов полученный участок.
+ frag2 = frag2.substring(LBest);
+
+ L1 = 0;                         //  Исходное значение  для наименьшей длины участка.
+ L2 = frag1.length+1;   //  Исходное значение  для наибольшей длины участка.
+ LBest = 0;                 //  Лучшая длина участка.
+
+ while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+         LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+         if (frag1.substring(frag1.length - LMidi) == frag2.substring(frag2.length - LMidi)) {      //  Если участки средней длины совпадают (в конце фрагментов)...
+                 L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                 LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                 }
+             else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+         }
+
+ if (order) {                                    //  Если порядок сверки обычный...
+         mTxt1[1] = frag1.substring(0, frag1.length - LBest);   //  то добавляем в массивы текст несовпадающих участков в обычном порядке.
+         mTxt2[1] = frag2.substring(0, frag2.length - LBest);
+         }
+     else {                                    //  Если порядок сверки обратный...
+         mTxt1[1] = frag2.substring(0, frag2.length - LBest);   //  то добавляем в массивы текст несовпадающих участков в обратном порядке.
+         mTxt2[1] = frag1.substring(0, frag1.length - LBest);
+         }
+
+ mTxt1[2] = "</FONT>" + frag1.substring(frag1.length - LBest);   //  Добавляем текст 2-го совпадающего участка в массивы с результатами.
+ mTxt2[2] = mTxt1[2];
+
+ switch (metod) {     //  Выбор метода сверки.   // * 2 -- Очень быстрая сверка -- обработка по этому методу уже выполнена.
+     case 0:
+         compareBest(elem1, elem2);     //  Точная сверка.
+         break;
+     case 1:
+         compareFast(elem1, elem2);     //  Быстрая сверка.
+         break;
+         }
+
+ count_difference += (mTxt1.length - 1)/2;     //  Увеличиваем счетчик отличий.
+
+ //  Преобразуем массивы в текст,   восстанавливаем html-коды, теги,   корректируем теги сверки   и добавляем полученный текст в html.
+ str = correction(mTxt1, mTag1);      //  Строка из 1-го текста.
+ if (str != elem1.innerHTML)
+         elem1.innerHTML = str;
+ str = correction(mTxt2, mTag2);      //  Строка из 2-го текста.
+ if (str != elem2.innerHTML)
+         elem2.innerHTML = str;
+ }
+
+
+
+///////////////   СВЕРКА ДВУХ СТРОК :  Быстрый метод сверки
+
+ function compareFast(elem1, elem2) {
+
+ //  * Метод с фиксированной минимальной длиной совпадающего текста. Фиксация имеет недостаток -- если скрипт найдет в начале 1-й строки короткий участок, который совпадет с участком в конце 2-й строки, то скрипт выберет эти участки, и тем самым "обрубит" дальнейший поиск новых участков. Поэтому, для очень длинных строк, минимум следует увеличивать хотя бы до 5.
+
+ for (k=1; ; k=k+2) {      //  Запускаем цикл для текстов несовпадающих участков из массива с финальными результатами.
+
+         if ((mTxt1[k].length + ":" + mTxt2[k].length).search(/^0:|:0$|^1:1$|^1:2$|^2:1$/) != -1)
+         //  Если один из участков нулевой длины, или оба состоят из 1 символа, или один участок - 1 символ, а другой - 2 символа...
+                 break;                          //  Прерываем основной цикл.
+
+         if (mTxt1[k].length < mTxt2[k].length) {    //  Если очередной несовпадающий участок из найденного текста меньше чем из заменяемого...
+                 order = true;          //  то сохраняем порядок фрагментов.
+                 frag1 = mTxt1[k];
+                 frag2 = mTxt2[k];
+                 }
+             else {               //  А если больше...
+                 order = false;                    //  то изменяем порядок фрагментов.
+                 frag1 = mTxt2[k];
+                 frag2 = mTxt1[k];
+                 }
+
+         mR = [];    //  Очищаем массив с результатами разделения одного несовпадающего участка.
+
+       LBL:
+         for (pos1 = 0;  pos1 <= frag1.length - minSim;  pos1++) {   //  Запускаем цикл для позиции суб-фрагмента в 1-м фрагменте.
+                 subTxt = frag1.substring(pos1, pos1 + minSim);       //  Получаем суб-фрагмент минимальной длины на текущей позиции.
+                 if (frag2.indexOf(subTxt) != -1) {        //  Если текст суб-фрагмента можно найти во 2-м фрагменте, т.е. это совпадающий участок...
+                         pos2 = frag2.indexOf(subTxt);           //  Получаем позицию суб-фрагмента во 2-м фрагменте.
+                         //  Получаем суб. фрагменты, внутри которых можно будет расширить найденный совпадающий участок минимальной длины.
+                         subFrag1 = frag1.substring(pos1);    //  Получаем текст 1-го суб-фрагмента.
+                         subFrag2 = frag2.substring(pos2);    //  Получаем текст 2-го суб-фрагмента.  //  * В начале обоих располагается совпадающий участок.
+
+                         L1 = minSim - 1;                    //  Исходное значение  для наименьшей длины участка.
+                         L2 = subFrag1.length+1;    //  Исходное значение  для наибольшей длины участка.
+                         LBest = 0;                      //  Исходное значение  для лучшей длины участка.
+
+                         while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+                                 LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+                                 if (subFrag1.substring(0, LMidi) == subFrag2.substring(0, LMidi)) {      //  Если участки средней длины совпадают (в начале фрагментов).
+                                         L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                                         LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                                         }
+                                     else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+                                 }
+
+                         subFrag = frag1.substring(pos1, pos1 + LBest);       //  Получаем текст совпадающего участка максимальной длины для текущей позиции.
+
+                         mR[0] = pos1;  mR[1] = pos2;  mR[2] = LBest;   //  Сохраняем результат
+                         break;                                                                                    //  Прерываем цикл поиска совпадающих участков.
+                         }
+                 }
+
+         if (mR.length == 0)     //  Если цикл поиска совпадающего участка ничего не нашел...
+                 break;            //  то прерываем основной цикл.
+
+         if (order) {                                    //  Если порядок сверки обычный -- добавляем в массивы текст трех участков в обычном порядке (с заменой последнего участка).
+                 mTxt1.splice(k, 1,   frag1.substring(0, mR[0]),     "</FONT>" + frag1.substring(mR[0], mR[0] + mR[2]) + "<FONT>",     frag1.substring(mR[0] + mR[2]));
+                 mTxt2.splice(k, 1,   frag2.substring(0, mR[1]),    "</FONT>" + frag2.substring(mR[1], mR[1] + mR[2]) + "<FONT>",    frag2.substring(mR[1] + mR[2]));
+                 }
+             else {                                    //  Если порядок сверки обратный -- добавляем в массивы текст трех участков в обратном порядке (с заменой последнего участка).
+                 mTxt1.splice(k, 1,   frag2.substring(0, mR[1]),    "</FONT>" + frag2.substring(mR[1], mR[1] + mR[2]) + "<FONT>",    frag2.substring(mR[1] + mR[2]));
+                 mTxt2.splice(k, 1,   frag1.substring(0, mR[0]),     "</FONT>" + frag1.substring(mR[0], mR[0] + mR[2]) + "<FONT>",     frag1.substring(mR[0] + mR[2]));
+                 }
+         }
+ }
+
+
+
+///////////////   СВЕРКА ДВУХ СТРОК :  Точный метод сверки
+
+function compareBest(elem1, elem2) {
+
+ //  * Отличительная особенность метода в том, что алгоритм в первую очередь ищет совпадающие участки текста максимальной длины. Таким способом несовпадающий участок может быть раздроблен на три участка: один совпадающий и два несовпадающих. Эти два, в свою очередь, тоже могут быть раздроблены тем же способом на три участка... и так далее, до до тех пор, пока скрипт не сможет найти совпадающий участок ни в одном несовпадающем участке.
+
+ LParent = [, mTxt1[1].length];    //  Добавляем первое значение в массив длин родительских совпадающих участков (для k=1).
+ //  * mTxt1[1] -- это несовпадающий участок, необходим для заполнения первого значения. Все следующие значения будут получены из совпадающих участков.
+
+LBL1:
+ for (k=1; ; ) {      //  Запускаем цикл для текстов несовпадающих участков из массива с финальными результатами.
+
+         if (mTxt1[k].length < mTxt2[k].length) {    //  Если очередной несовпадающий участок из найденного текста меньше чем из заменяемого...
+                 order = true;          //  то сохраняем порядок фрагментов.
+                 frag1 = mTxt1[k];
+                 frag2 = mTxt2[k];
+                 }
+             else {               //  А если больше...
+                 order = false;                    //  то изменяем порядок фрагментов.
+                 frag1 = mTxt2[k];
+                 frag2 = mTxt1[k];
+                 }
+
+         L1 = minSim-1;                    //  Исходное значение  для наименьшей длины участка.
+         L2 = Math.min(LParent[k], frag1.length)+1;    //  Исходное значение  для наибольшей длины участка.  // * Не может привышать длину родительского совпадающего участка.
+         mRR = [];             //  Очищаем массив результата  с  совпадающем участком   максимальной   длины.
+
+         while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+                 LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+                 mR = [];             //  Очищаем массив результата  с  совпадающем участком   заданной   длины.
+
+LBL2:
+                 for (pos1 = 0;  pos1 <= frag1.length - LMidi;  pos1++) {        //  Запускаем цикл для позиции суб-фрагмента в 1-м фрагменте.
+                         subFrag = frag1.substring(pos1, pos1 + LMidi);          //  Получаем суб-фрагмент заданной длины на текущей позиции.
+
+                         if ((frag2.indexOf(subFrag)) != -1) {                                   //  Если текст суб-фрагмента можно найти во 2-м фрагменте, т.е. это совпадающий участок...
+                                 pos2 = frag2.indexOf(subFrag);           //  Получаем позицию суб-фрагмента во 2-м фрагменте.
+
+                                 //  Сохраняем промежуточный результат.
+                                 mR[0] = pos1;     //  Позиция совпадающего участка в 1-м фрагменте.
+                                 mR[1] = pos2;     //  Позиция совпадающего участка во 2-м фрагменте.
+                                 mR[2] = LMidi;    //  Длина совпадающего участка без обрывка тега, которого здесь и не было (для выделения FONT).
+                                 mR[3] = LMidi;     //  Вся длина совпадающего участка (для максимальной длины дочерних совпадающих участков).
+                                 break;         //  Прерываем цикл поиска совпадающего участка заданной длины.
+                                 }
+                         }
+
+                 if (mR.length != 0) {    //  Если цикл выдал результат...
+                         L1=LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                         for (h=0; h<=4; h++)  mRR[h] = mR[h];    //  Сохраняем промежуточный результат.
+                         }
+                     else                //  Если нет результата...
+                         L2=LMidi;               //  Изменяем наибольшую длину на среднее значение.
+                 }
+
+         if (mRR.length == 0) {              //  Если основной цикл для поиска совпадающего участка максимальной длины ничего не выдал...
+
+                 while (mTxt1[(k=k+2)] != undefined) {             //  Проверяем в массиве  наличие следующего несовпадающего участка.
+                         if ((mTxt1[k].length + ":" + mTxt2[k].length).search(/^0:|:0$|^1:1$|^1:2$|^2:1$/) == -1)
+                         //  Если участки не из тех, где...  или один из участков нулевой длины, или оба состоят из 1 символа, или один участок - 1 символ, а другой - 2 символа...
+                                 continue LBL1;           //  то переходим к очередному дроблению несовпадающего участка.
+                         }
+                 break;           //  Если следующий участок так и не найден  --  Прерываем основной цикл.
+                 }
+
+             else {            //  Если основной цикл выдал результаты...
+
+                 if (order) {                                    //  Если порядок сверки обычный -- добавляем в массивы текст трех участков в обычном порядке (с заменой обработанного участка).
+                         mTxt1.splice(k, 1,   frag1.substring(0, mRR[0]),     "</FONT>" + frag1.substring(mRR[0], mRR[0] + mRR[2]) + "<FONT>",     frag1.substring(mRR[0] + mRR[2]));
+                         mTxt2.splice(k, 1,   frag2.substring(0, mRR[1]),    "</FONT>" + frag2.substring(mRR[1], mRR[1] + mRR[2]) + "<FONT>",    frag2.substring(mRR[1] + mRR[2]));
+                         }
+                     else {                                    //  Если порядок сверки обратный -- добавляем в массивы текст трех участков в обратном порядке (с заменой обработанного участка).
+                         mTxt1.splice(k, 1,   frag2.substring(0, mRR[1]),    "</FONT>" + frag2.substring(mRR[1], mRR[1] + mRR[2]) + "<FONT>",    frag2.substring(mRR[1] + mRR[2]));
+                         mTxt2.splice(k, 1,   frag1.substring(0, mRR[0]),     "</FONT>" + frag1.substring(mRR[0], mRR[0] + mRR[2]) + "<FONT>",     frag1.substring(mRR[0] + mRR[2]));
+                         }
+
+                 LParent.splice(k, 1,   mRR[3], undefined, mRR[3]);    //  Добавляем значения в массив длин родительских совпадающих участков.
+                 //  * Указывается длина нового совпадающего участка для двух новых несовпадающих участков (в них невозможно найти совпадающие участки большей длины).
+                 }
+         }
+ }
+
+
+
+///////////////   СВЕРКА ДВУХ СТРОК :  Сборка текста строки, возвращение тегов, коррекция тегов <FONT>.
+
+ function correction(mTxt, mTag) {
+         var rS;                 //  Результат детального поиска.
+         var k;                       //  Счетчик цикла.
+         var styleTxt = "";        //  Сборная строка с форматами <FONT> сверки.
+
+         for (k=0; k<mTxt.length; k++)      //  Запускаем цикл для участков текста.
+                 styleTxt += mTxt[k];         //  Собираем участки в одну строку.
+
+         for (k=mTag.length-1; k>=0; k--) {              //  Запускаем цикл для сохраненных тегов.
+                 var reAddTag = new RegExp("^(?:(?:<[^<>]*>)*[^<>]){"+mTag[k][1]+"}");      //  Создаем рег. выражение для восстановления тега.
+                 styleTxt = styleTxt.replace(reAddTag, "$&"+mTag[k][0]);                                          //  Возвращаем тег в строку.
+                 }
+
+         //  Восстанавливаем коды символов
+         styleTxt = styleTxt.replace(/&/g, "&amp;").replace(/ /g, nbspEntity).replace(/\t/g, "&lt;").replace(/\r/g, "&gt;").replace(/­/g, "&shy;");
+
+         //  Поиск соседних тегов.   При конфликте тегов -- добавление тегов  <FONT>
+         for (re01.lastIndex = 0;   (rS = re01.exec(styleTxt)) != null; )    //  Запускаем цикл для детального поиска соседних тегов.
+                 if (rS[1] == "<FONT>"  &&  rS[3] != "</FONT>") {                   //  Если нет пары для начального тега <FONT>...
+                         styleTxt = styleTxt.substring(0, rS.index) + rS[1] + rS[2] + "</FONT>" + rS[3] + "<FONT>" + styleTxt.substring(re01.lastIndex);
+                         //  То добавляем два тега  </FONT> и <FONT>  вокруг второго местного тега (не FONT).
+                         re01.lastIndex += 7;   //  Корректируем начало поиска следующих соседних тегов.
+                         }
+
+         //  Объединение примыкающих элементов  FONT.
+         styleTxt = styleTxt.replace(re02, re02_);
+
+         //  Поиск примыкающих элементов  FONT (через другой тег)   и   удаление лишних.
+         while (styleTxt.search(re03) != -1)
+                 styleTxt = styleTxt.replace(re03, re03_);
+         while (styleTxt.search(re04) != -1)
+                 styleTxt = styleTxt.replace(re04, re04_);
+
+         //  Изменение стиля элемента FONT с одним символом ударения -- добавление красной узкой линии (re05).
+         //  Изменение стиля пустого элемента FONT -- добавление синей узкой линии (re06).
+         //  Добавление стандартного стиля для оставшихся элементов (re07).
+         styleTxt = styleTxt.replace(re05, re05_).replace(re06, re06_).replace(re07, re07_);
+
+         return styleTxt;    //  Возвращаем готовый текст.
+         }
+
+
+
+
+
+///////////////   СВЕРКА ТЕКСТОВ :  Создание сортированного массива
+
+ function cort(M, numFile) {
+        LBL:
+         for (k=M.length-1; k>=0; k--) {     //  Цикл для строк текста.
+                 L1 = -1;                               //  Сбрасываем минимальную позицию.
+                 L2 = mPSort.length;       //  Сбрасываем максимальную позицию.
+                 str = M[k].innerText;    //  Получаем текст очередной строки.
+                 while (L2-L1 > 1) {                         //  Цикл для поиска позиции строки в сортированном ряде строк.
+                         LMidi = Math.floor((L2+L1)/2);      //  Получаем среднюю позицию в сортированном ряде строк.
+                         if (str == mPSort[LMidi][0]) {           //  Если текущая строка совпадает со строкой на средней позиции...
+                                 mPSort[LMidi].push(numFile+":"+k);     //  Добавляем координаты ещё одной строки.
+                                 continue LBL;                                                    //  Переходим к следующей строке.
+                                 }
+                         if (str > mPSort[LMidi][0])      //  Если текущая строка больше строки на средней позиции...
+                                 L1 = LMidi;             //  то смещаем минимальную позицию на место средней позиции.
+                             else  L2 = LMidi;      //  Если меньше -- смещаем максимальную позицию на место средней позиции.
+                         }
+                 //  Как только между минимальной и максимальной позицией не останется ни одной строки...
+                 mPSort.splice(L2, 0, [str, numFile+":"+k]);    //  Вставляем текущую строку и её координаты между этими позициями.
+                 }
+         }
+
+
+
+
+///////////////   СВЕРКА ТЕКСТОВ :  Сверка индексов строк
+
+ function compareTxt() {
+
+ mCharMP1 = [];       //  Очищаем массивы текста для новых результатов.
+ mCharMP2 = [];
+
+
+//   Поиск первого несовпадающего участка
+
+ if (charMP1.length < charMP2.length) {    //  Если 1-й текст меньше 2-го...
+         order = true;          //  то сохраняем порядок фрагментов.
+         frag1 = charMP1;
+         frag2 = charMP2;
+         }
+     else {               //  А если больше...
+         order = false;                    //  то изменяем порядок фрагментов.
+         frag1 = charMP2;
+         frag2 = charMP1;
+         }
+
+ L1 = 0;   //  Исходное значение  для наименьшей длины участка.
+ L2 = frag1.length+1;   //  Исходное значение  для наибольшей длины участка.
+ LBest = 0;                       //  Лучшая длина участка.
+
+ while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+         LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+         if (frag1.substring(0, LMidi) == frag2.substring(0, LMidi)) {      //  Если участки средней длины совпадают (в начале фрагментов)...
+                 L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                 LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                 }
+             else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+         }
+
+ subFrag = frag1.substring(0, LBest);       //  Получаем текст 1-го совпадающего участка.
+ if ((rS = /<[^<>]*$/.exec(subFrag)) != null)     //  Если в текст попал обрывок тега...
+         LBest -= rS[0].length;                              //  то сокращаем длину полученного участка.
+
+ mCharMP1[0] = frag1.substring(0, LBest);   //  Добавляем текст 1-го совпадающего участка в массивы с результатами.
+ mCharMP2[0] = mCharMP1[0];
+
+ frag1 = frag1.substring(LBest);    //  Убираем из фрагментов полученный участок.
+ frag2 = frag2.substring(LBest);
+
+ L1 = 0;                               //  Исходное значение  для наименьшей длины участка.
+ L2 = frag1.length+1;   //  Исходное значение  для наибольшей длины участка.
+ LBest = 0;                       //  Лучшая длина участка.
+
+ while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+         LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+         if (frag1.substring(frag1.length - LMidi) == frag2.substring(frag2.length - LMidi)) {      //  Если участки средней длины совпадают (в конце фрагментов)...
+                 L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                 LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                 }
+             else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+         }
+
+ if (order) {                                    //  Если порядок сверки обычный...
+         mCharMP1[1] = frag1.substring(0, frag1.length - LBest);   //  то добавляем в массивы текст несовпадающих участков в обычном порядке.
+         mCharMP2[1] = frag2.substring(0, frag2.length - LBest);
+         }
+     else {                                    //  Если порядок сверки обратный...
+         mCharMP1[1] = frag2.substring(0, frag2.length - LBest);   //  то добавляем в массивы текст несовпадающих участков в обратном порядке.
+         mCharMP2[1] = frag1.substring(0, frag1.length - LBest);
+         }
+
+ mCharMP1[2] = frag1.substring(frag1.length - LBest);   //  Добавляем текст 2-го совпадающего участка в массивы с результатами.
+ mCharMP2[2] = mCharMP1[2];
+
+
+//   Основная часть сверки
+
+ LParent = [, mCharMP1[1].length];    //  Добавляем первое значение в массив длин родительских совпадающих участков (для k=1).
+ //  * mCharMP1[1] -- это несовпадающий участок, необходим для заполнения первого значения. Все следующие значения будут получены из совпадающих участков.
+
+LBL1:
+ for (k=1; ; ) {      //  Запускаем цикл для текстов несовпадающих участков из массива с финальными результатами.
+
+         if (mCharMP1[k].length < mCharMP2[k].length) {    //  Если очередной несовпадающий участок из найденного текста меньше чем из заменяемого...
+                 order = true;          //  то сохраняем порядок фрагментов.
+                 frag1 = mCharMP1[k];
+                 frag2 = mCharMP2[k];
+                 }
+             else {               //  А если больше...
+                 order = false;                    //  то изменяем порядок фрагментов.
+                 frag1 = mCharMP2[k];
+                 frag2 = mCharMP1[k];
+                 }
+
+         L1 = mainMinSim-1;                    //  Исходное значение  для наименьшей длины участка.
+         L2 = Math.min(LParent[k], frag1.length)+1;    //  Исходное значение  для наибольшей длины участка.  // * Не может превышать длину родительского совпадающего участка.
+         mRR = [];             //  Очищаем массив результата  с  совпадающем участком   максимальной   длины.
+
+         while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+                 LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+                 mR = [];             //  Очищаем массив результата  с  совпадающем участком   заданной   длины.
+
+LBL2:
+                 for (pos1 = 0;  pos1 <= frag1.length - LMidi;  pos1++) {        //  Запускаем цикл для позиции суб-фрагмента в 1-м фрагменте.
+                         subFrag = frag1.substring(pos1, pos1 + LMidi);          //  Получаем суб-фрагмент заданной длины на текущей позиции.
+
+                         if ((frag2.indexOf(subFrag)) != -1) {                                   //  Если текст суб-фрагмента можно найти во 2-м фрагменте, т.е. это совпадающий участок...
+
+                                 //  Сохраняем промежуточный результат.
+                                 mR[0] = pos1;     //  Позиция совпадающего участка в 1-м фрагменте.
+                                 mR[1] = frag2.indexOf(subFrag);     //  Позиция совпадающего участка во 2-м фрагменте.
+                                 mR[2] = LMidi;    //  Длина совпадающего участка без обрывка тега, которого здесь и не было (для выделения FONT).
+                                 mR[3] = LMidi;     //  Вся длина совпадающего участка (для максимальной длины дочерних совпадающих участков).
+                                 break;         //  Прерываем цикл поиска совпадающего участка заданной длины.
+                                 }
+                         }
+
+                 if (mR.length != 0) {    //  Если цикл выдал результат...
+                         L1=LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                         for (h=0; h<=4; h++)  mRR[h] = mR[h];    //  Сохраняем промежуточный результат.
+                         }
+                     else                //  Если нет результата...
+                         L2=LMidi;               //  Изменяем наибольшую длину на среднее значение.
+                 }
+
+         if (mRR.length == 0) {              //  Если основной цикл для поиска совпадающего участка максимальной длины ничего не выдал...
+
+                 while (mCharMP1[(k=k+2)] != undefined) {             //  Проверяем в массиве  наличие следующего несовпадающего участка.
+                         if ((mCharMP1[k].length + ":" + mCharMP2[k].length).search(/^0:|:0$|^1:1$|^1:2$|^2:1$/) == -1)
+                         //  Если участки не из тех, где...  или один из участков нулевой длины, или оба состоят из 1 символа, или один участок - 1 символ, а другой - 2 символа...
+                                 continue LBL1;           //  то переходим к очередному дроблению несовпадающего участка.
+                         }
+                 break;           //  Если следующий участок так и не найден  --  Прерываем основной цикл.
+                 }
+
+             else {            //  Если основной цикл выдал результаты...
+
+                 if (order) {                                    //  Если порядок сверки обычный -- добавляем в массивы текст трех участков в обычном порядке (с заменой обработанного участка).
+                         mCharMP1.splice(k, 1,   frag1.substring(0, mRR[0]),     frag1.substring(mRR[0], mRR[0] + mRR[2]),     frag1.substring(mRR[0] + mRR[2]));
+                         mCharMP2.splice(k, 1,   frag2.substring(0, mRR[1]),    frag2.substring(mRR[1], mRR[1] + mRR[2]),    frag2.substring(mRR[1] + mRR[2]));
+                         }
+                     else {                                    //  Если порядок сверки обратный -- добавляем в массивы текст трех участков в обратном порядке (с заменой обработанного участка).
+                         mCharMP1.splice(k, 1,   frag2.substring(0, mRR[1]),    frag2.substring(mRR[1], mRR[1] + mRR[2]),    frag2.substring(mRR[1] + mRR[2]));
+                         mCharMP2.splice(k, 1,   frag1.substring(0, mRR[0]),     frag1.substring(mRR[0], mRR[0] + mRR[2]),     frag1.substring(mRR[0] + mRR[2]));
+                         }
+
+                 LParent.splice(k, 1,   mRR[3], undefined, mRR[3]);    //  Добавляем значения в массив длин родительских совпадающих участков.
+                 //  * Указывается длина нового совпадающего участка для двух новых несовпадающих участков (в них невозможно найти совпадающие участки большей длины).
+                 }
+         }
+ }
+
+
+
+
+///////////////   СВЕРКА ТЕКСТОВ :  Добавление тегов <FONT> для участков с разным количеством строк.
+
+ function addFont(styleTxt) {
+         styleTxt = styleTxt.replace(reClear1, "");
+         if (styleTxt.replace(/<[^<>]+>/g, "") != "")       //  Если строка содержит текст -- выделяем всю строку обычным способом.
+                 return  "<FONT style=\"background: #E8E; color: #000;\">" + styleTxt + "</FONT>";
+         if (styleTxt == "")       //  Если строка пустая -- добавляем узкую линию.
+                 return "<FONT style=\"width=2; overflow: hidden; background: #84F\"></FONT>";
+         //  В остальных случаях -- если строка содержит только теги -- добавляем фон с полями.
+         return "<FONT style=\"padding: 3; background: #D7D\">" + styleTxt + "</FONT>";
+         }
+
+
+
+
+///////////////   СВЕРКА ТЕКСТОВ :  Выравнивание всех строк (для первой обработки)
+
+ function flushTxt1() {
+         ind1 = 0;     //  Обнуляем счетчик строк 1-го текста.
+         ind2 = 0;     //  Обнуляем счетчик строк 2-го текста.
+         Length_0 = mCharMP1.length;     //  Получаем длину массива из участков совпадающих/несовпадающих индексов строк.
+
+         for (q=0;  q<Length_0;  q++) {               //  Цикл для участков совпадающих/несовпадающих индексов строк.
+                 Length_1 = mCharMP1[q].length;     //  Длина очередного участка из 1-го текста.
+                 Length_2 = mCharMP2[q].length;     //  Длина очередного участка из 2-го текста.
+                 if (Length_1 == Length_2) {     //  Если количество строк в двух участках равны...
+                         for (u=0; u<Length_1;  u++) {      //  Цикл для строк несовпадающего участка.
+                                 top1 = mP1[ind1].offsetTop;    //  Получаем расстояние от 1-й строки до верхней границы родительского элемента.
+                                 top2 = mP2[ind2].offsetTop;    //  Получаем расстояние от 2-й строки до верхней границы родительского элемента.
+                                 if (top1 > top2 + 1) {                              //  Если 1-я строка ниже 2-й   более чем на 1 пиксель...
+                                         mP2[ind2].style.marginTop = "100";                               //  Добавляем крупный отступ для 2-й строки (чтобы точно знать суммарное значение отступа).
+                                         mP2[ind2].style.marginTop = (100 + top1 - mP2[ind2].offsetTop) + "px";    //  Выравниваем две строки.
+                                         }
+                                 if (top1 < top2 - 1) {                              //  Если 1-я строка выше 2-й   более чем на 1 пиксель...
+                                         mP1[ind1].style.marginTop = "100";                               //  Добавляем крупный отступ для 1-й строки (чтобы точно знать суммарное значение отступа).
+                                         mP1[ind1].style.marginTop = (100 + top2 - mP1[ind1].offsetTop) + "px";    //  Выравниваем две строки.
+                                         }
+                                 ind1++;      //  Увеличиваем счетчик строк 1-го текста.
+                                 ind2++;      //  Увеличиваем счетчик строк 2-го текста.
+                                 }
+                         }
+                     else {                 //  Если количество строк в двух участках НЕ равны...
+                         ind1+=Length_1;      //  Увеличиваем счетчики строк без выравнивания.
+                         ind2+=Length_2;
+                         }
+                 }
+         }
+
+
+
+
+///////////////   СВЕРКА ТЕКСТОВ :  Выравнивание всех строк (для повторной обработки)
+
+ function flushTxt2() {
+         ind1 = 0;     //  Обнуляем счетчик строк 1-го текста.
+         ind2 = 0;     //  Обнуляем счетчик строк 1-го текста.
+         Length_0 = mCharMP1.length;     //  Получаем длину массива из участков совпадающих/несовпадающих индексов строк.
+
+         for (q=0;  q<Length_0;  q++) {               //  Цикл для участков совпадающих/несовпадающих индексов строк.
+                 Length_1 = mCharMP1[q].length;     //  Длина очередного участка из 1-го текста.
+                 Length_2 = mCharMP2[q].length;     //  Длина очередного участка из 2-го текста.
+                 if (Length_1 == Length_2) {     //  Если количество строк в двух участках равны...
+                         for (u=0; u<Length_1;  u++) {      //  Цикл для строк текущего участка.
+                                 top1 = mP1[ind1].offsetTop;    //  Получаем расстояние от 1-й строки до верхней границы родительского элемента.
+                                 top2 = mP2[ind2].offsetTop;    //  Получаем расстояние от 2-й строки до верхней границы родительского элемента.
+                                 if (Math.abs(top1-top2) > 1) {           //  Если 1-я строка ниже/выше 2-й   более чем на 1 пиксель...
+                                         if (mP1[ind1].style.marginTop) {       //  Если ранее добавлялся отступ для 1-й строки...
+                                                 mP1[ind1].style.marginTop = "0";      //  то удаляем его
+                                                 top1 = mP1[ind1].offsetTop;                //  и получаем расстояние от 1-й строки до верхней границы родительского элемента.
+                                                 }
+                                         if (mP2[ind2].style.marginTop) {       //  Если ранее добавлялся отступ для 2-й строки...
+                                                 mP2[ind2].style.marginTop = "0";      //  то удаляем его
+                                                 top2 = mP2[ind2].offsetTop;                //  и получаем расстояние от 2-й строки до верхней границы родительского элемента.
+                                                 }
+                                         if (top1 > top2+1) {                              //  Если 1-я строка ниже 2-й   более чем на 1 пиксель...
+                                                 mP2[ind2].style.marginTop = "100";                               //  Добавляем крупный отступ для 2-й строки (чтобы точно знать суммарное значение отступа).
+                                                 mP2[ind2].style.marginTop = (100 + top1 - mP2[ind2].offsetTop) + "px";    //  Выравниваем две строки.
+                                                 }
+                                         if (top1 < top2-1) {                              //  Если 1-я строка выше 2-й   более чем на 1 пиксель...
+                                                 mP1[ind1].style.marginTop = "100";                               //  Добавляем крупный отступ для 1-й строки (чтобы точно знать суммарное значение отступа).
+                                                 mP1[ind1].style.marginTop = (100 + top2 - mP1[ind1].offsetTop) + "px";    //  Выравниваем две строки.
+                                                 }
+                                         }
+                                 ind1++;      //  Увеличиваем счетчик строк 1-го текста.
+                                 ind2++;      //  Увеличиваем счетчик строк 2-го текста.
+                                 }
+                         }
+                     else {                 //  Если количество строк в двух участках НЕ равны...
+                         ind1+=Length_1;      //  Увеличиваем счетчики строк без выравнивания.
+                         ind2+=Length_2;
+                         }
+                 }
+         }
+
+
+
+
+
+
+
+
+//////////////////////////////////    ФУНКЦИИ    //////////////////////////////////
+
+///////////////   Функция, которая включается после загрузки окна
+
+ window.onload = function() {
+         flushTxt1();       //  Выравниваем строки.
+         mainElem.focus();          //  Устанавливаем фокус на основной блок.
+         //  Добавляем запись о времени выполнения сверки.
+         miniStat.innerHTML = "Найдено " + count_difference + pad(count_difference, [" отличие", " отличия", " отличий"]) + " за " + time(new Date().getTime() - Ts);
+         firstRun = false;       //  Отмечаем, что первая сверка завершена.
+         }
+
+
+///////////////   Функция, которая включается перед закрытием окна
+
+ window.onunload = function() {
+         if (!exit) {     //  Если нет подтверждения выхода...
+                 var mTxt = [
+                     ["Закрытие скрипта",, "17 жирный центр линия#444 #444 (Cambria, Georgia, Liberation Serif)"],
+                     ["Возможно остались не сохраненные изменения",, "13 жирный курсив центр #444 (Cambria, Georgia, Liberation Serif)"],  [],
+                     ["Сохранить изменения?",, "17 фон#335EA8 #FFF"],  []];
+                 otvet = window.showModalDialog( "АК-скрипт - Сообщение.html", ["Сверка «Дизайна»", mTxt, "Сохранить", "Закрыть без сохранения", 1],
+                         "dialogHeight: 160px; dialogWidth: 500px; help: No; resizable: Yes; status: No");
+                 if (otvet == 1)             //  Если выбрано сохранение...
+                         button_X(2);       //  то сохраняем текст.
+                 }
+         window.returnValue = [1, changeBook, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем данные обработки.
+         }
+
+
+///////////////   Функция изменения имени шрифта
+
+ function selFontFamily(txt) {
+         if (! firstRun)         //  Если это не первый запуск...
+                 firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+         blockFile1.style.fontFamily = txt;    //  Изменяем шрифт в 1-м тексте.
+         blockFile2.style.fontFamily = txt;    //  Изменяем шрифт во 2-м тексте.
+         if (! firstRun)         //  Если это не первый запуск...
+                 blockFiles.scrollTop += firstLine[0].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки.
+         }
+
+
+///////////////   Функция изменения размера шрифта
+
+ function selFontSize(num) {
+         if (! firstRun)         //  Если это не первый запуск...
+                 firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+         blockFile1.style.fontSize = num+"pt";    //  Изменяем размер шрифта в 1-м тексте.
+         blockFile2.style.fontSize = num+"pt";    //  Изменяем размер шрифта во 2-м тексте.
+         if (! firstRun)         //  Если это не первый запуск...
+                 blockFiles.scrollTop += firstLine[0].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки.
+         }
+
+
+///////////////   Функция поиска первой строки в видимой области
+
+ function findElem() {
+         var h1 = blockFiles.getBoundingClientRect().top;     //  Получаем отступ поля с текстами   от верхнего края окна.
+         var h2 = blockFiles.getBoundingClientRect().bottom;     //  Получаем отступ нижнего края поля с текстами   от верхнего края окна.
+         var hEl;           //  Отступ элемента строки   от верхнего края окна.
+
+         L1 = -1;                                 //  Сбрасываем минимальный индекс элемента.
+         L2 = mP2.length;             //  Сбрасываем максимальный индекс элемента.
+         while (L2-L1 > 1) {                                  //  Цикл для поиска подходящей строки.
+                 LMidi = Math.floor((L2+L1)/2);      //  Получаем среднюю позицию элемента.
+                 if (mP2[LMidi].getBoundingClientRect().top < h1)        //  Если текущий элемент строки выше верхней границы текстового поля...
+                         L1 = LMidi;             //  то смещаем минимальный индекс элемента на место средней позиции.
+                     else  L2 = LMidi;      //  Если ниже -- смещаем максимальный индекс элемента на место средней позиции.
+                 }
+         //  Как только минимальный и максимальный индекс встанут рядом...
+         if (L2 != mP2.length  &&  ((hEl = mP2[L2].getBoundingClientRect().top) < h2  ||  L2 == 0))    //  Если полученный элемент стоит выше нижней границы текстового поля...
+                 return  [mP2[L2],  hEl, L2];                                               //  то возвращаем данные найденного элемента.
+            else   return  [mP2[L1],  mP2[L1].getBoundingClientRect().top, L1];     //  Ниже -- возвращаем данные предыдущего элемента.
+         }
+
+
+///////////////   Функция коррекции счетчика
+
+ function selectCount(mode) {
+         if (mode == 0) {                           //  Если выделяется поле ввода...
+                 if (blockCount.value.search(/ \/ /) != -1)     //  Если в тексте есть разделитель...
+                         blockCount.value = blockCount.value.replace(/ \/ .+/g, "");    //  то удаляем разделитель и общее количество отличий.
+                 return;          //  Выходим из функции.
+                 }
+         lengthMFont = mFont.length;           //  Получаем общее количество выделений.
+         if (mode == 2) {                           //  Если снимается выделение с поля...
+                 blockCount.value = countFont + " / " + lengthMFont;     //  то возвращаем в поле значение счетчика
+                 return;                                                                //  и выходим из функции.
+                 }
+         //  Если в текстовом поле нажат "Enter"...
+         if (blockCount.value.search(/^\d+$/) != -1  &&  +blockCount.value <= lengthMFont)    //  Если введенная запись в поле счетчика отличий корректна...
+                 countFont = +blockCount.value;                //  то изменяем счетчик текущего номера отличия.
+             else
+                 blockCount.value = countFont;    //  Иначе -- заменяем некорректную запись на старую.
+         if (lengthMFont < 1  ||  countFont < 1)    //  Если выбрано нулевое отличие,   или отличий нет...
+                 return;                                                        //  то выходим из функции.
+         if (startFont)        //  Если есть элемент с исходным выделением...
+                 startFont.style.border = "none";     //  то удаляем у него рамку.
+         startFont = mFont[countFont-1];                 //  Делаем выбранный элемент   исходным.
+         startFont.style.border = "2 solid #14E";    //  Добавляем рамку.
+         GoTo3(mFont[countFont-1]);    //  Переход на выбранный элемент.
+         }
+
+
+
+
+///////////////   Функция изменения фона
+
+ function selectBackground(txt, mode) {
+         if (mode == 0) {                           //  Если с поля снято выделение...
+                 if (blockBackground.value != fon) {      //  Если значение фона изменено...
+                         if (checkFon)         //  Если предыдущий фон прошел проверку...
+                                 blockBackground.value = fon;       //  то восстанавливаем значение предыдущего фона.
+                             else         //  Если не прошел...
+                                 blockBackground.value = defaultFon;       //  то выбираем фон по умолчанию.
+                         }
+                 return;
+                 }
+         //  Если нажата клавиша "Enter"...
+         try {
+                 blockFile1.style.background = txt;      //  Добавляем параметры фона для 1-го текста.
+                 blockFile2.style.background = txt;      //  Добавляем параметры фона для 2-го текста.
+                 fon = txt;                   //  Сохраняем выбранный фон.
+                 checkFon = true;    //  Отмечаем, что фон правильный.
+                 }
+         catch(e) {        //  Если изменение параметров вызывает ошибку...
+                 if (checkFon) {         //  Если предыдущий фон прошел проверку...
+                         blockFile1.style.background = fon;      //  Добавляем параметры предыдущего фона для 1-го текста.
+                         blockFile2.style.background = fon;      //  Добавляем параметры предыдущего фона для 2-го текста.
+                         blockBackground.value = fon;       //  Выбираем предыдущий фон   в   Блоке выбора фона для текстов книг.
+                         //  Сообщаем об этом.
+                         alert(" ::: Ошибка ввода параметров фона :::   \n\n Недопустимое значение:   " + txt + "   \n\n Будет применено предыдущее значение фона.   ");
+                         }
+                     else {        //  Если не прошел...
+                         blockFile1.style.background = defaultFon;      //  Добавляем параметры фона по умолчанию для 1-го текста.
+                         blockFile2.style.background = defaultFon;      //  Добавляем параметры фона по умолчанию для 2-го текста.
+                         blockBackground.value = defaultFon;       //  Выбираем фон по умолчанию   в   Блоке выбора фона для текстов книг.
+                         //  Сообщаем об этом.
+                         alert(" ::: Ошибка ввода параметров фона :::   \n\n Недопустимое значение:   " + txt + "   \n\n Будет применено значение фона по умолчанию.   ");
+                         }
+                 }
+         }
+
+
+
+
+///////////////   Функции реакции на нажатие клавиш
+
+ //  Функция обработки события -- нажатие клавиши в поле ввода параметров фона
+ function keyDownBackg(ev, txt) {
+         var ev = ev || window.event;
+         if (ev.keyCode == 13)  selectBackground(txt, 1);           //  "Enter" в поле выбора фона --  Симуляция потери фокуса для этого поля.
+         }
+
+ //  Функция обработки события -- нажатие клавиши в поле счетчика отличий
+ function keyDownCount(ev) {
+         var ev = ev || window.event;
+         if (ev.keyCode == 13)  selectCount(1);           //  "Enter" в поле счетчика отличий --  запускаем функцию изменения счетчика.
+         }
+
+ //  Функция обработки события -- нажатие клавиши в области html-окна
+ function keyDown(ev) {
+         var ev = ev || window.event;
+         switch (ev.keyCode) {
+                 case 27:  button_X(3);   break;           //  Esc --  "Выход"
+                 case 83:  if (ev.ctrlKey)  button_X(2);   break;    //  Ctrl+S --  "Сохранить"
+                 case 112:  button_X(19);   break;     //  F1 --  "Справка"
+                 case 114:  button_X(13);   break;     //  F3 --  "Предыдущее отличие"
+                 case 115:  button_X(14);   break;    //  F4 --  "Следующее отличие"
+                 case 116:  button_X(15);  break;     //  F5 --  "Обновить"
+                 case 118:  button_X(16);  break;     //  F7 --  "Выравнять строки"
+     //            case 119:  button_X(17);  break;     //  F8 --  "Отменить"
+     //            case 120:  button_X(18);  break;     //  F9 --  "Вернуть"
+             //    default:  alert("\n key    " + ev.key + "\n keyCode    " + ev.keyCode + "\n location    " + ev.location + "\n shiftKey      " + ev.shiftKey + "\n ctrlKey    " + ev.ctrlKey + "\n altKey      " + ev.altKey + "\n repeat     " + ev.repeat);
+                 }
+         }
+
+
+
+
+///////////////   Функция, реагирующая на нажатие кнопок
+
+ function button_X(num) {
+         if (num == 2) {                              //  "Сохранить"
+                 for (k=mBlockFont.length-1;  k>=0;  k--)    //  Цикл для внестрочных элементов "FONT".
+                         mBlockFont[k].removeNode(true);     //  Удаляем все элементы.
+                 str = blockFile2.innerHTML;      //  Получаем текст открытой книги.
+                 for (rePreSeve.lastIndex = 0;  (rS = rePreSeve.exec(str)) != null;  rePreSeve.lastIndex = rS.index + 8) {    //  Цикл поиска отдельных строк (с тегами обрамления).
+                         if (rS[2] != "") {                         //  Если строка не пустая...
+                                 rS[2] = rS[2].replace(reClear1, "");    //  Очищаем её от лишнего.
+                                 if (rS[2] == "")                        //  Если строка стала пустой...
+                                         rS[2] = "&nbsp;";          //  то вставляем код неразрывного пробела.
+                                 }
+                         //  Удаляем в начальном теге <P> стиль отступа,   и возвращаем все результаты в строку.
+                         str = str.substring(0, rS.index) + rS[1].replace(reDelMarg, "") + rS[2] + "</P>" + str.substring(rePreSeve.lastIndex);
+                         }
+                 fbwBody2.innerHTML = str;     //  Сохраняем текст с очищенными строками книге, открытой в FBE.
+                 mPEdit = fbwBody2.getElementsByTagName("P");   //  Получаем элементы строк редактируемого файла.
+                 for (k=mPEdit.length-1; k>=0; k--)           //  Цикл для строк редактируемого текста.
+                         if (mPEdit[k].innerHTML == "&nbsp;") {      //  Если строка содержит только неразрывный пробел...
+                                 mPEdit[k].innerHTML = "";                                    //  то удаляем его
+                                 command_FBE.inflateBlock(mPEdit[k])=true;    //  и нормализуем пустую строку.
+                                 }
+
+                 miniStat.innerHTML = "Все изменения сохранены в программе «FictionBook Editor»";    //  Отправляем текст в мини-статистику.
+                 changeBook = true;       //  Отмечаем выполнение сохранения.
+                 }
+
+         if (num == 3) {                              //  "Выход"
+                 var mTxt = [
+                     ["Закрытие скрипта",, "17 жирный центр линия#444 #444 (Cambria, Georgia, Liberation Serif)"],
+                     ["Возможно остались не сохраненные изменения",, "13 жирный курсив центр #444 (Cambria, Georgia, Liberation Serif)"],  [],
+                     ["Сохранить изменения?",, "17 фон#335EA8 #FFF"],  []];
+                 otvet = window.showModalDialog( "АК-скрипт - Сообщение.html", ["Сверка «Дизайна»", mTxt, "Сохранить", "Закрыть без сохранения", "Отменить закрытие", 1],
+                         "dialogHeight: 160px; dialogWidth: 500px; help: No; resizable: Yes; status: No");
+                 if (otvet == 1) {            //  Если выбрано сохранение...
+                         button_X(2);       //  то сохраняем текст.
+                         }
+                 if (otvet == 3) {           //  Если выбрана отмена выхода из скрипта...
+                         return;
+                         }
+                 exit = true;
+                 window.close();            //  Закрываем html-окно.
+                 }
+
+         if (num == 13) {                              //  "Предыдущее отличие"
+                 lengthMFont = mFont.length;    //  Получаем количество отличий.
+                 if  (lengthMFont < 1) {                  //  Если отличий нет...
+                         blockCount.value = "0 / 0";    //  то записываем результаты в поле счетчика отличий.
+                         return;                                            //  и выходим из функции.
+                         }
+                 countFont = prevFont();                            //  Получаем предыдущий элемент.
+                 blockCount.value = countFont + " / " + lengthMFont;    //  Записываем результаты в поле счетчика отличий.
+                 if (startFont)                    //  Если есть элемент с исходным выделением...
+                         startFont.style.border = "none";     //  то удаляем у него рамку.
+                 startFont = mFont[countFont-1];                 //  Делаем предыдущий элемент   исходным.
+                 startFont.style.border = "2 solid #14E";    //  Добавляем рамку.
+                 GoTo3(mFont[countFont-1]);    //  Переход на выбранный элемент.
+                 }
+
+         if (num == 14) {                              //  "Следующее отличие"
+                 lengthMFont = mFont.length;    //  Получаем количество отличий.
+                 if  (lengthMFont < 1) {                 //  Если отличий нет...
+                         blockCount.value = "0 / 0";    //  то записываем результаты в поле счетчика отличий.
+                         return;                                            //  и выходим из функции.
+                         }
+                 countFont = nextFont();                             //  Получаем следующий элемент.
+                 blockCount.value = countFont + " / " + lengthMFont;    //  Записываем результаты в поле счетчика отличий.
+                 if (startFont)                    //  Если есть элемент с исходным выделением...
+                         startFont.style.border = "none";     //  то удаляем у него рамку.
+                 startFont = mFont[countFont-1];                 //  Делаем следующий элемент   исходным.
+                 startFont.style.border = "2 solid #14E";    //  Добавляем рамку.
+                 GoTo3(mFont[countFont-1]);    //  Переход на выбранный элемент.
+                 }
+
+         if (num == 15)                              //  "Обновить"
+                 compareMain(true);            //  Запускаем сверку текстов.
+
+         if (num == 16)                              //  "Выравнять строки"
+                 compareMain(false);            //  Запускаем выравнивание строк текстов.
+
+         if (num == 19) {                              //  "Справка"
+                 info();              //  Запускаем функцию открытия/закрытия окна справки.
+// window.clipboardData.setData("text", blockFile2.innerHTML);   //  Отправка текста в буфер обмена.
+                 }
+         }
+
+
+
+
+///////////////   Функция умного поиска предыдущего отличия
+
+ function prevFont() {
+
+         var h1 = blockFiles.getBoundingClientRect().top;           //  Получаем отступ поля с текстами   от верхнего края окна.
+         var h2 = blockFiles.getBoundingClientRect().bottom;   //  Получаем отступ нижнего края поля с текстами   от верхнего края окна.
+         var h3 = h1 + (h2 - h1)*0.3;                                                     //  Получаем отступ линии просмотра   от верхнего края окна.
+         var hEl;           //  Отступ элемента строки   от верхнего края окна.
+
+         try {                      //  Если есть корректный исходный элемент <FONT>...
+                 hEl = startFont.getBoundingClientRect().top;     //  Определяем высоту исходного выделения элемента <FONT>.
+                 if (hEl > h1  &&  hEl < h2) {           //  Если выделение находится в области просмотра, то не меняем порядок перехода:
+                         if  (countFont < 2)                    //  Если нет предыдущего элемента <FONT>...
+                                 return lengthMFont;        //  то возвращаем последний элемент.
+                             else  return countFont - 1;      //  Иначе -- возвращаем предыдущий элемент.
+                         }
+                 }
+         catch(e) {}
+
+         //  Ищем новый исходный элемент <FONT> в области просмотра.
+         L1 = -1;                                 //  Сбрасываем минимальный индекс элемента.
+         L2 = lengthMFont;             //  Сбрасываем максимальный индекс элемента.
+         while (L2-L1 > 1) {                                  //  Цикл для поиска подходящего элемента.
+                 LMidi = Math.floor((L2+L1)/2);      //  Получаем среднюю позицию элемента.
+                 if (mFont[LMidi].getBoundingClientRect().top < h3)        //  Если текущий элемент выше нижней границы текстового поля...
+                         L1 = LMidi;             //  то смещаем минимальный индекс элемента на место средней позиции.
+                     else  L2 = LMidi;      //  Если ниже -- смещаем максимальный индекс элемента на место средней позиции.
+                 }
+         //  Как только минимальный и максимальный индекс встанут рядом...
+         if (L1 >= 0)    //  Если минимальный элемент существует...
+                 return  L1+1;     //  то возвращаем номер минимального элемента.
+         return  lengthMFont;     //  Иначе -- возвращаем номер последнего элемента.
+         }
+
+
+
+
+///////////////   Функция умного поиска следующего отличия
+
+ function nextFont() {
+
+         var h1 = blockFiles.getBoundingClientRect().top;           //  Получаем отступ поля с текстами   от верхнего края окна.
+         var h2 = blockFiles.getBoundingClientRect().bottom;   //  Получаем отступ нижнего края поля с текстами   от верхнего края окна.
+         var h3 = h1 + (h2 - h1)*0.3;                                                     //  Получаем отступ линии просмотра   от верхнего края окна.
+         var hEl;           //  Отступ элемента строки   от верхнего края окна.
+
+         try {                      //  Если есть корректный исходный элемент <FONT>...
+                 hEl = startFont.getBoundingClientRect().top;     //  Определяем высоту исходного выделения элемента <FONT>.
+                 if (hEl > h1  &&  hEl < h2) {           //  Если выделение находится в области просмотра, то не меняем порядок перехода:
+                         if  (countFont >= lengthMFont)   //  Если нет следующего элемента <FONT>...
+                                 return 1;                                      //  то возвращаем первый элемент.
+                             else  return countFont + 1;      //  Иначе -- возвращаем следующий элемент.
+                         }
+                 }
+         catch(e) {}
+
+         //  Ищем новый исходный элемент <FONT> в области просмотра.
+         L1 = -1;                                 //  Сбрасываем минимальный индекс элемента.
+         L2 = lengthMFont;             //  Сбрасываем максимальный индекс элемента.
+         while (L2-L1 > 1) {                                  //  Цикл для поиска подходящего элемента.
+                 LMidi = Math.floor((L2+L1)/2);      //  Получаем среднюю позицию элемента.
+                 if (mFont[LMidi].getBoundingClientRect().top < h3)        //  Если текущий элемент выше нижней границы текстового поля...
+                         L1 = LMidi;             //  то смещаем минимальный индекс элемента на место средней позиции.
+                     else  L2 = LMidi;      //  Если ниже -- смещаем максимальный индекс элемента на место средней позиции.
+                 }
+         //  Как только минимальный и максимальный индекс встанут рядом...
+         if (L2 < lengthMFont)    //  Если максимальный элемент существует...
+                 return  L2+1;     //  то возвращаем номер максимального элемента.
+         return  1;     //  Иначе -- возвращаем номер первого элемента.
+         }
+
+
+
+
+///////////////   Функция для открытия/закрытия окна справки
+
+function info() {
+
+ if (winInfo  &&  !winInfo.closed) {    //  Если окно уже открыто...
+         winInfo.close();    //  то закрываем его
+         return;   //  и выходим из функции.
+         }
+
+ //   Создаем текст справки.
+ var mTxt = [
+     ["Справка",, "24 центр #1A544F (Cambria, Georgia, Liberation Serif)"],
+     [],
+     ["• Сверка проводится только для текста строк режима «B» (Дизайн). Форматирование игнорируется.",, "14 #191919"],
+     [" ",, "3"],
+     ["• Красные и синие выделения применяются для обозначения подробностей построчной сверки.",, "14 #191919"],
+     ["<FONT style=\"background: #E66\"> </FONT> Красным – отличающиеся символы.",, "14 #191919"],
+     ["<FONT style=\"width=2; overflow: hidden; background: #E33\">  </FONT> Тонкой красной линией – знак ударения.",, "14 #191919"],
+     ["<FONT style=\"width=2; overflow: hidden; background: #39F\">  </FONT> Тонкой синей линией – отсутствующие символы и пустые строки.",, "14 #191919"],
+     [" ",, "3"],
+     ["• Сиреневым и фиолетовым цветом выделяются строки, которые не подходят для подробной сверки.",, "14 #191919"],
+     ["<FONT style=\"background: #E8E\"> </FONT> Сиреневым – текст строк.",, "14 #191919"],
+     ["<FONT style=\"width=2; overflow: hidden; background: #84F\"> </FONT> Тонкой фиолетовой линией – пустые строки.",, "14 #191919"],
+     ["<FONT style=\"height: 7; width=7; margin-bottom: 3; overflow: hidden; background: #B8F;\"> </FONT> Фиолетовой точкой 7×7 пикселей – отсутствующие строки.",, "14 #191919"],
+     [" ",, "3"],
+     ["• Строки исключаются из построчной сверки, если количество строк в несовпадающем участке дубля отличается от количества строк параллельного участка в финальном тексте. Для полноценной сверки таких участков, можно вручную разбить или объединить подходящие строки, либо добавить пустые строки, и тем самым выровнять их количество. Если же таких участков слишком много, то тексты перед сверкой следует привести к одному стандарту, предварительно обработав их подходящими скриптами. Например, «Чисткой структуры» или «Текст-корректором».",, "14 #191919"],
+     [],
+     ["  Особенности",, "16 разрядка жирный #222 фон#CCC"],
+     [" ",, "7"],
+     ["• При сверке, строки текста выравниваются, и могут возникнуть большие поля между строк, которые только похожи на пустые строки.",, "14 #191919"],
+     [" ",, "3"],
+     ["• Иллюстрации из файла-дубля не отображаются.",, "14 #191919"],
+     [" ",, "3"],
+     ["• Перед запуском окна сверки, буфер обмена автоматически очищается от данных скрипта. То есть, скрипту он больше не нужен.",, "14 #191919"],
+     [" ",, "3"],
+     ["• Фиолетовый маркер-точка, обозначающий отсутствие строк, располагается вне элементов <P>, поэтому добавлять текст рядом с ним не рекомендуется.",, "14 #191919"],
+     [],
+     ["  Управление",, "16 разрядка жирный #222 фон#CCC"],
+     [" ",, "7"],
+     ["• "+z4("Основной шрифт")+" — Здесь можно изменить имя и размер шрифта, которые используются для отображения текстов книг.",, "14 #191919"],
+     [" ",, "7"],
+     ["• "+z4("Фон")+" — Здесь можно изменить параметры фона. Допускаются любые разрешённые в html параметры. Можно указать цвет, например "+z("#EED")+",  "+z("#F4F1E8")+", "+z("rgb(244, 241, 232)")+". Фоновое изображение, например, "+z("url(G:/Фон/05.png) center top")+", "+z("url(G:/Фото/Лёд.jpg) no-repeat fixed")+". И другие форматы.",, "14 #191919"],
+     ["Для применения введённого фона, следует нажать клавишу «Enter».",, "14 #191919"],
+     [" ",, "7"],
+     ["• "+z4("Метод / Детализация")+" — Здесь можно выбрать метод сверки, и минимальный размер внутренних совпадающих участков.",, "14 #191919"],
+     ["Выбор метода влияет на качество и скорость обработки текста. Заметить разницу между методами можно только на сложных текстах, где в одной строке оказываются несколько отличий.",, "14 #191919"],
+     ["Выбор детализации больше всего влияет на быстрый метод — при повышении размера, увеличивается качество сверки. На качество точного метода детализация влияет очень слабо. На очень быстрый — никак не влияет, поскольку этот метод находит не более одного отличия в строке, и внутренние совпадающие участки не ищет.",, "14 #191919"],
+     [" ",, "7"],
+     ["• "+z4("Навигация")+" — Управление навигацией осуществляется кнопками:",, "14 #191919"],
+     [z7("3")+" — "+z5("F3")+" — Предыдущее отличие.",, "14 #191919"],
+     [z7("4")+" — "+z5("F4")+" — Следующее отличие.",, "14 #191919"],
+     ["Кроме того, можно вписать номер отличия в поле счётчика и перейти к нему, нажав «Enter».",, "14 #191919"],
+     ["Кнопки для перехода к следующему и предыдущему отличию работают в двух режимах. Если в видимой области есть выделенное отличие, то переход осуществляется в традиционном порядке. Если же скрипт не находит выделенное отличие, то за точку отсчёта принимается воображаемое выделение, которое расположено немного выше середины поля с текстом.",, "14 #191919"],
+     [" ",, "7"],
+     ["• "+z4("Основное управление"),, "14 #191919"],
+     [z6("↻")+" — "+z5("F5")+" — Выполнить повторную сверку.",, "14 #191919"],
+     [z6("⇅")+" — "+z5("F7")+" — Выровнять строки.",, "14 #191919"],
+     [z6("?")+" — "+z5("F1")+" — Открыть/закрыть это окно.",, "14 #191919"],
+     [" ",, "7"],
+     ["• "+z4("Сохранить")+" — "+z5("Ctrl+S")+" — Сохранить изменения финального текста в «FictionBook Editor».",, "14 #191919"],
+     [" ",, "3"],
+     ["• "+z4("Выход")+" — Закрыть скрипт.",, "14 #191919"],
+     [" ",, "3"],
+     [z3("×")+" — <I>системная кнопка</I> — Прервать выполнение всех операций.",, "14 #191919"],
+     [],
+     ["  P.S.",, "16 разрядка жирный #222 фон#CCC"],
+     [" ",, "7"],
+     ["При редакции текстов, можно использовать системные комбинации:",, "14 #191919"],
+     [" ",, "3"],
+     [z5("Ctrl+Z")+" — Отменить.",, "14 #191919"],
+     [z5("Ctrl+Y")+" — Вернуть.",, "14 #191919"],
+     [z5("Ctrl+I")+" — Добавить/удалить курсив.",, "14 #191919"],
+     [z5("Ctrl+B")+" — Добавить/удалить жирность.",, "14 #191919"],
+     [" ",, "3"],
+     ["... и другие горячие клавиши.",, "14 #191919"],
+
+
+     []
+     ];
+
+ //  Запускаем окно справки.
+ winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", ["Сверка «Дизайна»", mTxt, "Закрыть", 0],
+     "dialogHeight: 600px; dialogWidth: 800px; help: No; resizable: Yes; status: No");
+ }
+
+
+///////////////   Функции добавления стиля выделения в окне справки
+
+function z(txt) {
+         return '<FONT contentEditable=true style="font-size: 13px; font-weight: bold; color: #222; background-color: #DDD; border-left: 1px solid #BBB; border-top: 1px solid #BBB; border-right: 1px solid #FFF; border-bottom: 1px solid #FFF; padding: 0 3 0 3; font-family: Consolas, Cambria;">' + txt + '</FONT>';
+         }
+
+function z3(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+function z4(txt) {
+         return '<FONT  style="font-weight: bold; color: #404040;">' + txt + '</FONT>';
+         }
+
+function z5(txt) {
+         return '<FONT  style="font-weight: bold; color: #222; background-color: #E3E3E3; border-left: 1px solid #FFF; border-top: 1px solid #FFF; border-right: 1px solid #333; border-bottom: 1px solid #333; padding: 0 3 0 3; font-family: Cambria, Georgia, Liberation Serif;">' + txt + '</FONT>';
+         }
+
+function z6(txt) {
+         return '<FONT  style="font-size: 15px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Arial Unicode MS;">' + txt + '</FONT>';
+         }
+
+function z7(txt) {
+         return '<FONT  style="font-size: 11px; background: #F4F4F4; font-weight: bold; padding: 0 3 0 3; border: 1px solid #CCCCCC; font-family: Webdings;">' + txt + '</FONT>';
+         }
+
+
+
+///////////////   Функция выбора типа окончания в зависимости от числа
+
+ function pad(num, M) {         //  * Исходные данные: "Число".
+         var m1 = num%10;          //  Последняя цифра.
+         var m2 = num%100 - m1;   //  Десятки.
+         if (m2 == 10)  return M[2];            //  Если предпоследняя цифра это 1  --  возвращаем тип окончания "2" (114 метров).
+         if (m1==1)  return M[0];                      //  Если последняя цифра это 1  --  возвращаем тип окончания "0" (101 метр).
+         if (m1>=2 && m1<=4)  return  M[1];     //  Если последняя цифра это 2, 3 или 4  --  то возвращаем тип окончания "1" (102 метра).
+         return M[2];          //  В остальных случаях возвращаем тип окончания "2" (114 метров).
+         }
+
+
+
+///////////////   Функция конвертации времени  (мс  => мин., с)
+
+function time(T) {   //  * Исходные данные: "Промежуток времени (в миллисекундах)".
+         var tempus="";    //  Начальное значение для результата.
+         var min  = Math.floor(T/60000);   //  Получение минут.
+         var secD = (T%60000)/1000;    //  Получение секунд с дробной частью.
+         var sec = Math.floor(secD);    //  Получение секунд.
+         if (min==0)          //  Если в промежутке времени "0" минут...
+                 //  то результат приравниваем к первым 5 символам секунд (с дробной частью), удаляем последние нули (из дробной части), и заменяем точку на запятую.
+                 return   (+(secD+"").replace(/(.{1,5}).*/g, "$1")+"").replace(".", ",")+" сек";
+             else              //  Если же минут больше "0"...
+                 return   min+" мин" + (sec != 0  ?  tempus+=" "+ sec+" с"  :  "");    //  Если же минут больше "0" -- то результат = число минут + число секунд (если они есть).
+         }
+
+
+
+///////////////   Функция перехода к элементу книги
+
+function GoTo3(elem) {
+         if (!elem)  return;   //  Если элемент удален  --  выходим из функции.
+
+         var wH = blockFiles.clientHeight;   //  Высота текстового поля.
+         var h1 = blockFiles.getBoundingClientRect().top;
+         var b=elem.getBoundingClientRect();                   //  Получение координат элемента.
+         var elemHeight=b.bottom-b.top;                  //  Высота элемента (в пикселях).
+         var elemTop = b.top;                  //  Отступ элемента от верхнего края текстового поля.
+
+         if (elemHeight <= wH)          //  Если высота элемента меньше высоты текстового поля...
+                 blockFiles.scrollTop += elemTop - 3 - Math.round((wH-elemHeight)*0.3 + h1);   //  то выставляем элемент согласно указанному расположению,
+             else  blockFiles.scrollTop += elemTop - 3 - h1;       //  а если нет - то выставляем элемент почти впритык к верхнему краю.
+
+         /*
+         var r=document.selection.createRange();
+         if (!r || !("compareEndPoints" in r)) return;
+         r.moveToElementText(elem);
+         r.collapse(true);
+         if(r.parentElement!==elem && r.move("character",1)==1) r.move("character",-1);
+         r.select(); */
+         }
+
+</SCRIPT>
+</BODY>
+</HTML>
+
+
+
