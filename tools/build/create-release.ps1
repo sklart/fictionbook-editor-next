@@ -322,16 +322,37 @@ $symbolNames = @(
     "ImportEPUBBatch.pdb",
     "FBShell.pdb"
 )
+
+$pluginSymbolNames = @(
+    "ExportHTML.pdb",
+    "ExportDOCX.pdb",
+    "ExportEPUB.pdb",
+    "ImportEPUB.pdb",
+    "ImportEPUBLunaSVG.pdb"
+)
+
+$batchSymbolNames = @(
+    "ExportDOCXBatch.pdb",
+    "ExportEPUBBatch.pdb",
+    "ImportEPUBBatch.pdb"
+)
+
 foreach ($name in $symbolNames) {
-    $symbolSourcePath = switch ($name) {
-        default {
-            $symbolSourceDirectory = if ($name -in @("ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")) { $batchOutputDirectory } else { Join-Path $repoRoot "out\$Configuration" }
-            Join-Path $symbolSourceDirectory $name
-        }
+    $symbolSourceDirectory = if ($name -in $pluginSymbolNames) {
+        Join-Path $repoRoot "out\$Configuration\Plugins"
     }
+    elseif ($name -in $batchSymbolNames) {
+        $batchOutputDirectory
+    }
+    else {
+        Join-Path $repoRoot "out\$Configuration"
+    }
+
+    $symbolSourcePath = Join-Path $symbolSourceDirectory $name
     Copy-Item -LiteralPath $symbolSourcePath `
         -Destination $symbolsDir -Force
 }
+
 Copy-Item -LiteralPath (Join-Path $repoRoot "out\package\shell-build\Win32\$Configuration\FBShell.pdb") `
     -Destination (Join-Path $symbolsDir "FBShell.propertyhandler.win32.pdb") -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "out\package\shell-build\x64\$Configuration\FBShell.pdb") `
