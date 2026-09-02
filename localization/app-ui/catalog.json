@@ -5739,6 +5739,15 @@
         "bg-BG": "Повредено или неподдържано изображение."
       }
     },
+    "fbe.image.open_button": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Open", "ru-RU": "Открыть", "uk-UA": "Відкрити", "de-DE": "Öffnen",
+        "fr-FR": "Ouvrir", "es-ES": "Abrir", "it-IT": "Apri", "pl-PL": "Otwórz",
+        "pt-PT": "Abrir", "nl-NL": "Openen", "cs-CZ": "Otevřít", "bg-BG": "Отваряне"
+      }
+    },
     "fbe.status.fbd.validation_not_applicable": {
       "resourceId": "",
       "runtimeOnly": true,
@@ -6198,8 +6207,8 @@
       "component": "fbe.core",
       "runtimeOnly": true,
       "translations": {
-        "en-US": "Supported images",
-        "ru-RU": "Поддерживаемые изображения",
+        "en-US": "Images",
+        "ru-RU": "Изображения",
         "uk-UA": "Підтримувані зображення",
         "de-DE": "Unterstützte Bilder",
         "fr-FR": "Images prises en charge",

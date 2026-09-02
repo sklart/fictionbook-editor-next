@@ -4654,9 +4654,11 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 			filters.push_back({ type.displayName.GetString(), type.wildcard.GetString() });
 
 		wchar_t dlgTitle[MAX_LOAD_STRING + 1];
-		FbeLoadString(_Module.GetResourceInstance(), IDS_ADD_IMAGE_FILEDLG, dlgTitle, MAX_LOAD_STRING);
+		const CString localizedTitle = FbeLoadRuntimeStringByKey(L"fbe.image.choose_file", L"Choose image");
+		wcsncpy_s(dlgTitle, _countof(dlgTitle), localizedTitle.GetString(), _TRUNCATE);
 		ModernFileDialog::Request request;
 		request.fileMustExist = true; request.pathMustExist = true; request.title = dlgTitle;
+		request.okButtonLabel = FbeLoadRuntimeStringByKey(L"fbe.image.open_button", L"Open").GetString();
 		request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = 1;
 		const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
 		if (dialogResult.outcome == ModernFileDialog::Outcome::Failed)

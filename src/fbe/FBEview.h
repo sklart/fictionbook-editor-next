@@ -120,6 +120,9 @@ public:
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_ADDIMAGE);
+		::SetWindowText(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.caption", L"Image insertion"));
+		::SetDlgItemText(m_hWnd, IDYES, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.yes", L"Insert"));
+		::SetDlgItemText(m_hWnd, IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_inputbox.cancel", L"Cancel"));
 		::CenterChildWindow(GetParent(), m_hWnd);
 		CButton btn = GetDlgItem(IDC_ADDIMAGE_ASKAGAIN);
 		btn.SetCheck(!_Settings.GetInsImageAsking());

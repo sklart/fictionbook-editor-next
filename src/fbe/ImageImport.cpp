@@ -271,7 +271,7 @@ HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& o
 std::vector<ImageImportFileType> ImageImportFileTypes() {
 	struct Filter { LPCWSTR key; LPCWSTR fallback; LPCWSTR pattern; };
 	static const Filter filters[] = {
-		{ L"fbe.image_import.filter_supported", L"Supported images", L"*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff;*.avif;*.heic;*.heif" },
+		{ L"fbe.image_import.filter_supported", L"Images", L"*.jpg;*.jpeg;*.png;*.webp;*.jp2;*.j2k;*.bmp;*.gif;*.tif;*.tiff;*.avif;*.heic;*.heif" },
 		{ L"fbe.image_import.filter_all", L"All files", L"*.*" },
 		{ L"fbe.image_import.filter_jpeg", L"JPEG", L"*.jpg;*.jpeg" },
 		{ L"fbe.image_import.filter_png", L"PNG", L"*.png" },

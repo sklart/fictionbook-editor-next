@@ -37,6 +37,10 @@ static void SetRuntimeHotkeysText(HWND dialog, int controlId, LPCWSTR key, LPCWS
 
 static CString GetHotkeyDisplayName(const CHotkey& hotkey)
 {
+	if (hotkey.m_reg_name.CompareNoCase(L"Add to dictionary") == 0)
+		return FbeLoadRuntimeStringByKey(L"fbe.spelling.menu.add_to_dictionary", hotkey.m_name);
+	if (hotkey.m_reg_name.CompareNoCase(L"Ignore All") == 0)
+		return FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.ignore_all", hotkey.m_name);
 	return hotkey.m_name_resource_id ? FbeLoadRuntimeString(hotkey.m_name_resource_id, hotkey.m_name) : hotkey.m_name;
 }
 
@@ -180,22 +184,15 @@ LRESULT CSettingsHotkeysDlg::OnGroupsSelChange(WORD wNotifyCode, WORD wID, HWND 
 	m_selGr = m_hkGroups.GetCurSel();
 	m_hotkeys.ResetContent();
 
-	int maxExt = 0;
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups[m_selGr].m_hotkeys.size(); ++i)
 	{
 		const CString displayName = GetHotkeyDisplayName(_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i]);
-		int iExt = GetTextLen(displayName);
-		if(iExt > maxExt)
-		{
-			m_hotkeys.SetHorizontalExtent(iExt);
-			maxExt = iExt;
-		}
-		else m_hotkeys.SetHorizontalExtent(maxExt);
 
 		// changed by SeNS: do not show empty hotkeys
 //		if (!_Settings.m_hotkey_groups[m_selGr].m_hotkeys[i].m_name.IsEmpty())
 			m_hotkeys.AddString(displayName);
 	}
+	m_hotkeys.SetHorizontalExtent(0);
 
 	m_hotkeys.SetCurSel(0);
 	m_selHk = m_hotkeys.GetCurSel();

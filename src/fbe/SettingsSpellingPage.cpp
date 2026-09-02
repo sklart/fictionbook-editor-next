@@ -2,6 +2,8 @@
 #include "SettingsSpellingPage.h"
 #include "Settings.h"
 #include "RuntimeLocalization.h"
+#include "..\\common\\ModernFileDialog.h"
+#include "StartupTrace.h"
 
 extern CSettings _Settings;
 
@@ -67,10 +69,19 @@ void CSettingsSpellingPage::Commit() { _Settings.SetUseSpellChecker(m_enabled.Ge
 bool CSettingsSpellingPage::CancelChanges() { return true; }
 LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 {
-	wchar_t path[_MAX_PATH] = {}; m_dictionary.GetWindowText(path, _countof(path));
-	CString filter = FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.filter.dictionary", L"Dictionaries (*.dic)"); filter += L'\0'; filter += L"*.dic"; filter += L'\0'; filter += FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.filter.all_files", L"All files (*.*)"); filter += L'\0'; filter += L"*.*"; filter += L'\0'; filter += L'\0';
-	OPENFILENAME dialog = {}; dialog.lStructSize = sizeof(dialog); dialog.hwndOwner = m_hWnd; dialog.hInstance = _Module.m_hInst; dialog.lpstrDefExt = L"dic"; dialog.lpstrFilter = filter; dialog.lpstrFile = path; dialog.nMaxFile = _countof(path); dialog.Flags = OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
-	if(GetOpenFileName(&dialog)) { m_dictionary.SetWindowText(path); UpdateDictionaryTooltip(); } return 0;
+	CString current; m_dictionary.GetWindowText(current); current.Trim();
+	const std::wstring dicCaption = std::wstring(FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.filter.dictionary", L"Dictionaries (*.dic)"));
+	const std::wstring allCaption = std::wstring(FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.filter.all_files", L"All files (*.*)"));
+	const COMDLG_FILTERSPEC filters[] = { { dicCaption.c_str(), L"*.dic" }, { allCaption.c_str(), L"*.*" } };
+	ModernFileDialog::Request request;
+	request.title = FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.browse_title", L"Choose custom dictionary").GetString();
+	request.defaultExtension = L"dic"; request.fileMustExist = true; request.pathMustExist = true;
+	request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+	request.initialFileName = current.GetString();
+	const ModernFileDialog::Result result = ModernFileDialog::Show(m_hWnd, request);
+	if(result.outcome == ModernFileDialog::Outcome::Accepted && !result.paths.empty()) { m_dictionary.SetWindowText(result.paths.front().c_str()); UpdateDictionaryTooltip(); }
+	else if(result.outcome == ModernFileDialog::Outcome::Failed) StartupTrace::HResult(L"file-dialog", L"FD106", result.error, L"Browse custom dictionary");
+	return 0;
 }
 LRESULT CSettingsSpellingPage::OnDictionaryChanged(WORD, WORD, HWND, BOOL&)
 {
