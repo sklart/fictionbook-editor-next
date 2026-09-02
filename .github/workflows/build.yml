@@ -44,6 +44,7 @@ jobs:
           ./tools/tests/test-export-html-options-dialog.ps1
           ./tools/tests/test-export-docx-modern-file-dialog.ps1
           ./tools/tests/test-export-epub-modern-file-dialog.ps1
+          ./tools/tests/test-import-epub-modern-file-dialog-owner.ps1
           ./tools/build/verify-nsis-layout.ps1
       - name: Test VsDevCmd with a long PATH
         shell: pwsh

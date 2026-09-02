@@ -163,9 +163,10 @@ namespace
         {
             if (controlId == IDC_FILEDLG_SETTINGS_BUTTON && m_options)
             {
-                HWND owner = GetActiveWindow();
-                if (!owner)
-                    owner = m_owner;
+                HWND owner = m_owner;
+                CComPtr<IOleWindow> fileDialogWindow;
+                if (customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialogWindow))) && fileDialogWindow)
+                    fileDialogWindow->GetWindow(&owner);
 
                 // Cancel in the settings dialog only closes that settings dialog.
                 // It does not cancel file selection. This is less surprising than
