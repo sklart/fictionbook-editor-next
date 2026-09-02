@@ -179,6 +179,8 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 	{ IDS_HOTKEY_PLUGINS_LAST_PLUGIN, L"fbe.hotkey.plugins.last_plugin" },
 	{ IDS_HOTKEY_TOOLS_SPELL, L"fbe.hotkey.tools.spell" },
 	{ IDS_HOTKEY_TOOLS_SPELLHIGHLIGHT, L"fbe.hotkey.tools.spell_highlight" },
+	{ IDS_HOTKEY_TOOLS_ADD_TO_DICTIONARY, L"fbe.hotkey.tools.add_to_dictionary" },
+	{ IDS_HOTKEY_TOOLS_IGNORE_ALL, L"fbe.hotkey.tools.ignore_all" },
 	{ IDS_HOTKEY_TREEVIEW, L"fbe.hotkey.treeview.toggle" },
 	{ IDS_HOTKEY_ASSIGN_COLLISION, L"fbe.hotkey.assign.collision" },
 	{ IDS_HOTKEY_ASSIGN_NO_COLLISION, L"fbe.hotkey.assign.no_collision" },

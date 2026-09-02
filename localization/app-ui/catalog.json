@@ -2016,6 +2016,26 @@
         "bg-BG": "Настройки"
       }
     },
+    "fbe.hotkey.tools.add_to_dictionary": {
+      "resourceId": "IDS_HOTKEY_TOOLS_ADD_TO_DICTIONARY",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Add to dictionary", "ru-RU": "Добавить в словарь", "uk-UA": "Додати до словника",
+        "de-DE": "Zum Wörterbuch hinzufügen", "fr-FR": "Ajouter au dictionnaire", "es-ES": "Añadir al diccionario",
+        "it-IT": "Aggiungi al dizionario", "pl-PL": "Dodaj do słownika", "pt-PT": "Adicionar ao dicionário",
+        "nl-NL": "Toevoegen aan woordenboek", "cs-CZ": "Přidat do slovníku", "bg-BG": "Добавяне в речника"
+      }
+    },
+    "fbe.hotkey.tools.ignore_all": {
+      "resourceId": "IDS_HOTKEY_TOOLS_IGNORE_ALL",
+      "component": "fbe.core",
+      "translations": {
+        "en-US": "Ignore all", "ru-RU": "Игнорировать все", "uk-UA": "Ігнорувати все",
+        "de-DE": "Alle ignorieren", "fr-FR": "Tout ignorer", "es-ES": "Omitir todo",
+        "it-IT": "Ignora tutto", "pl-PL": "Ignoruj wszystkie", "pt-PT": "Ignorar tudo",
+        "nl-NL": "Alles negeren", "cs-CZ": "Ignorovat vše", "bg-BG": "Игнорирай всички"
+      }
+    },
     "fbe.hotkey.wrong": {
       "resourceId": "IDS_HOTKEY_WRONG",
       "component": "fbe.core",

@@ -317,6 +317,8 @@
 #define IDS_ABOUT_UPDATE_NOW            321
 #define IDS_SAVE_ACCESS_DENIED_MSG       322
 #define IDS_HOTKEY_TOOLS_OPTIONS          323
+#define IDS_HOTKEY_TOOLS_ADD_TO_DICTIONARY 336
+#define IDS_HOTKEY_TOOLS_IGNORE_ALL        337
 #define ID_PANE_CHAR                    305
 #define ID_PANE_POSITION                324
 #define ID_PANE_SELECTION               325

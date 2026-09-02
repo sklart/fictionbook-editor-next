@@ -740,10 +740,10 @@ void CSettings::InitHotkeyGroups()
 	CHotkey ToolsSpellHighlight(L"Toggle highlight", IDS_HOTKEY_TOOLS_SPELLHIGHLIGHT, FSHIFT, ID_TOOLS_SPELLCHECK_HIGHLIGHT, VK_F7);
 	tools_hotkeys_group.m_hotkeys.push_back(ToolsSpellHighlight);
 
-	CHotkey ToolsSpellAddToDict(L"Add to dictionary", IDC_SPELL_ADD2DICT, NULL, IDC_SPELL_ADD2DICT, NULL);
+	CHotkey ToolsSpellAddToDict(L"Add to dictionary", IDS_HOTKEY_TOOLS_ADD_TO_DICTIONARY, NULL, IDC_SPELL_ADD2DICT, NULL);
 	tools_hotkeys_group.m_hotkeys.push_back(ToolsSpellAddToDict);
 
-	CHotkey ToolsSpellIgnore(L"Ignore", IDC_SPELL_IGNOREALL, NULL, IDC_SPELL_IGNOREALL, NULL);
+	CHotkey ToolsSpellIgnore(L"Ignore", IDS_HOTKEY_TOOLS_IGNORE_ALL, NULL, IDC_SPELL_IGNOREALL, NULL);
 	tools_hotkeys_group.m_hotkeys.push_back(ToolsSpellIgnore);
 
 	// Symbols group hotkeys

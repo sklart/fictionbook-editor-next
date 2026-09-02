@@ -16,6 +16,6 @@ if ($catalog -notmatch '"fbe\.image\.open_button"') { throw 'Image Open localiza
 $hotkeys = Read 'src\fbe\SettingsHotkeysDlg.cpp'
 $settings = Read 'src\fbe\Settings.cpp'
 if ($hotkeys -match 'CompareNoCase\(L"Add to dictionary"|CompareNoCase\(L"Ignore All"') { throw 'Hotkey display names must not depend on registration-name comparisons.' }
-if ($settings -notmatch 'ToolsSpellAddToDict\(L"Add to dictionary",\s*IDC_SPELL_ADD2DICT' -or $settings -notmatch 'ToolsSpellIgnore\(L"Ignore",\s*IDC_SPELL_IGNOREALL') { throw 'Spelling hotkeys must have stable localization resource IDs.' }
+if ($settings -notmatch 'ToolsSpellAddToDict\(L"Add to dictionary",\s*IDS_HOTKEY_TOOLS_ADD_TO_DICTIONARY' -or $settings -notmatch 'ToolsSpellIgnore\(L"Ignore",\s*IDS_HOTKEY_TOOLS_IGNORE_ALL') { throw 'Spelling hotkeys must have dedicated localization resource IDs.' }
 if (($catalog + $smallDialogs) -notmatch 'fbe\.spelling\.menu\.add_to_dictionary' -or ($catalog + $smallDialogs) -notmatch 'fbe\.dialog\.idd_spell_check\.ignore_all') { throw 'Spelling hotkey localization keys are missing.' }
 Write-Host 'Modern dialog UI localization contract passed.'
