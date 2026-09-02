@@ -30,8 +30,12 @@ $generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\plugin-ui\catalog.json")
 
 if ($pluginCpp -match 'FILEDLG_OPEN_BUTTON|filedlg_open_button') { throw "Старая подпись кнопки Import EPUB ещё используется." }
-if ($pluginCpp -notmatch 'IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON[\s\S]*LoadPluginString' -or
-    $pluginCpp -notmatch 'request\.okButtonLabel\s*=\s*LoadPluginString\(IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON') { throw "Новая подпись кнопки импорта не используется во всех местах." }
+if ($pluginCpp -notmatch 'request\.okButtonLabel\s*=\s*LoadPluginString\(IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON') {
+    throw "request.okButtonLabel не использует подпись кнопки импорта."
+}
+if ($pluginCpp -notmatch 'SetOkButtonLabel\(\s*LoadPluginString\(IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON') {
+    throw "SetOkButtonLabel не использует подпись кнопки импорта."
+}
 if ($catalog -notmatch 'import_epub\.plugin\.filedlg_import_button' -or
     $catalog -notmatch '"ru-RU":\s*"Импортировать"' -or
     $catalog -notmatch '"en-US":\s*"Import"') { throw "Переводы кнопки импорта EPUB отсутствуют." }

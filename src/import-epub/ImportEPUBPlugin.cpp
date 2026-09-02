@@ -187,7 +187,7 @@ namespace
 
                 // Some Windows builds reset the standard OK button text after
                 // a nested modal dialog is opened from a custom file-dialog
-                // control. Restore the standard open-style caption immediately.
+                // control. Restore the custom import button caption immediately.
                 if (customize)
                 {
                     CComPtr<IFileDialog> fileDialog;
