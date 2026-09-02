@@ -27,6 +27,14 @@ if (-not (Test-Path -LiteralPath $generatedRcPath)) {
     throw "Сгенерированный файл строк ImportEPUB не найден: $generatedRcPath"
 }
 $generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
+$catalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\plugin-ui\catalog.json")
+
+if ($pluginCpp -match 'FILEDLG_OPEN_BUTTON|filedlg_open_button') { throw "Старая подпись кнопки Import EPUB ещё используется." }
+if ($pluginCpp -notmatch 'IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON[\s\S]*LoadPluginString' -or
+    $pluginCpp -notmatch 'request\.okButtonLabel\s*=\s*LoadPluginString\(IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON') { throw "Новая подпись кнопки импорта не используется во всех местах." }
+if ($catalog -notmatch 'import_epub\.plugin\.filedlg_import_button' -or
+    $catalog -notmatch '"ru-RU":\s*"Импортировать"' -or
+    $catalog -notmatch '"en-US":\s*"Import"') { throw "Переводы кнопки импорта EPUB отсутствуют." }
 
 if ($rc -notmatch '#include\s+"ImportEPUBStrings\.generated\.rc2"') {
     throw "ImportEPUB.rc не подключает ImportEPUBStrings.generated.rc2."

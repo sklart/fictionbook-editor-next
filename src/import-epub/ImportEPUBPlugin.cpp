@@ -193,7 +193,7 @@ namespace
                     CComPtr<IFileDialog> fileDialog;
                     if (SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialog))) && fileDialog)
                         fileDialog->SetOkButtonLabel(
-                            LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"Open..."));
+                            LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON, L"Import"));
                 }
             }
             return S_OK;
@@ -273,7 +273,7 @@ namespace
         request.fileMustExist = true;
         request.pathMustExist = true;
         request.title = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_TITLE, L"Import EPUB").GetString();
-        request.okButtonLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON, L"Open...").GetString();
+        request.okButtonLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON, L"Import").GetString();
         request.fileNameLabel = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILE_LABEL, L"EPUB file:").GetString();
         request.defaultExtension = L"epub";
         request.filters = filters;

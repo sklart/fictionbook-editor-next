@@ -6875,25 +6875,25 @@
       },
       "source": "Import EPUB"
     },
-    "import_epub.plugin.filedlg_open_button": {
+    "import_epub.plugin.filedlg_import_button": {
       "component": "import-epub.plugin",
-      "resourceId": "IDS_IMPORT_PLUGIN_FILEDLG_OPEN_BUTTON",
+      "resourceId": "IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON",
       "comment": "Строка основного COM-плагина ImportEPUB.",
       "translations": {
-        "en-US": "Open...",
-        "ru-RU": "Открыть...",
-        "uk-UA": "Відкрити...",
-        "de-DE": "Öffnen...",
-        "fr-FR": "Ouvrir...",
-        "es-ES": "Abrir...",
-        "it-IT": "Apri...",
-        "pl-PL": "Otwórz...",
-        "pt-PT": "Abrir...",
-        "nl-NL": "Openen...",
-        "cs-CZ": "Otevřít...",
-        "bg-BG": "Отваряне..."
+        "en-US": "Import",
+        "ru-RU": "Импортировать",
+        "uk-UA": "Імпортувати",
+        "de-DE": "Importieren",
+        "fr-FR": "Importer",
+        "es-ES": "Importar",
+        "it-IT": "Importa",
+        "pl-PL": "Importuj",
+        "pt-PT": "Importar",
+        "nl-NL": "Importeren",
+        "cs-CZ": "Importovat",
+        "bg-BG": "Импортиране"
       },
-      "source": "Open..."
+      "source": "Import"
     },
     "import_epub.plugin.filedlg_file_label": {
       "component": "import-epub.plugin",
