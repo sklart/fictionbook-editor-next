@@ -35,10 +35,15 @@ if ($cpp -match 'AddTooltip\([^,]+,\s*[^,]+,\s*IDC_[A-Z0-9_]+,\s*L"') {
 if ($cpp -notmatch 'AddTooltipString\([^,]+,\s*[^,]+,\s*IDC_CHECK_NCX_FALLBACK,\s*IDS_TOOLTIP_NCX_FALLBACK') {
     throw "ExportEPUBPlugin.cpp не использует ресурсные tooltip-строки."
 }
-if ($cpp -notmatch 'ApplyExportOptionsDialogText\(hwnd\)' -or
-    $cpp -notmatch 'SetDlgItemString\([^,]+,\s*IDC_BUTTON_EXPORT_OPTIONS,\s*IDS_SAVE_DIALOG_BUTTON_EXPORT_OPTIONS') {
-    throw "ExportEPUBPlugin.cpp не применяет ресурсные подписи окна настроек и save-dialog."
+
+if ($cpp -notmatch 'ApplyExportOptionsDialogText\(hwnd\)') {
+    throw "ExportEPUBPlugin.cpp не применяет ресурсные подписи окна настроек."
 }
+
+if ($cpp -notmatch 'customize->AddPushButton\(IDC_BUTTON_EXPORT_OPTIONS,\s*LoadExportEpubString\(IDS_SAVE_DIALOG_BUTTON_EXPORT_OPTIONS') {
+    throw "ExportEPUBPlugin.cpp не использует ресурсную подпись кнопки параметров modern save-dialog."
+}
+
 if ($cpp -match 'result\.warnings\.emplace_back\(L"[А-Яа-яЁё]' -or
     $cpp -match 'w\s*<<\s*L"[А-Яа-яЁё][^"]*"' -or
     $cpp -match 'text\s*\+=\s*L"\\n[А-Яа-яЁё]') {
