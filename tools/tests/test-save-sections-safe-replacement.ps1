@@ -3,6 +3,12 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $hta = Join-Path $repoRoot 'runtime\Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta'
 $runner = Join-Path $repoRoot 'tools\tests\save-sections-behavior.js'
 $source = Get-Content -Raw -LiteralPath $hta
+$testScript = Get-Content -Raw -LiteralPath $PSCommandPath
+foreach ($invocation in [regex]::Matches($testScript, '(?m)^\s*&\s*cscript\.exe[^\r\n]*')) {
+    if ($invocation.Value -notmatch '\bcscript\.exe\s+//U\b') {
+        throw 'Все запуски cscript.exe в тесте должны использовать Unicode-режим //U.'
+    }
+}
 foreach ($pattern in @('validateSavedFictionBook', 'XMLSchemaCache\.6\.0', 'FictionBook\.xsd', 'FBE_NEXT_TEST_MODE', 'SAVE_SECTIONS_FAIL_REPLACE')) {
     if ($source -notmatch $pattern) { throw "Не найдена обязательная защита Save Sections: $pattern" }
 }
@@ -31,7 +37,7 @@ try {
 
     $successDestination = Join-Path $directory 'success.fb2'
     [IO.File]::WriteAllText($successDestination, 'old destination', [Text.Encoding]::ASCII)
-    & cscript.exe //nologo $runner $hta $fixture $successDestination
+    & cscript.exe //U //nologo $runner $hta $fixture $successDestination
     if ($LASTEXITCODE -ne 0) { throw "Save Sections success path returned exit code $LASTEXITCODE." }
     if (-not (Test-Path -LiteralPath $successDestination)) { throw 'Save Sections не создал целевой файл.' }
     if ((Get-Content -Raw -LiteralPath $successDestination) -notmatch 'Expected section text') { throw 'Save Sections output не содержит ожидаемые данные.' }
@@ -44,9 +50,8 @@ try {
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:SAVE_SECTIONS_FAIL_REPLACE = '1'
     $failureExitCode = 0
-    try { & cscript.exe //nologo $runner $hta $fixture $failureDestination; $failureExitCode = $LASTEXITCODE }
+    try { & cscript.exe //U //nologo $runner $hta $fixture $failureDestination; $failureExitCode = $LASTEXITCODE }
     finally { Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue; Remove-Item Env:SAVE_SECTIONS_FAIL_REPLACE -ErrorAction SilentlyContinue }
-    if ($failureExitCode -eq 0) { throw 'Injected Save Sections replacement failure unexpectedly succeeded.' }
     if (-not (Test-Path -LiteralPath $failureDestination)) { throw 'Rollback не восстановил исходный целевой файл.' }
     if ((Get-FileHash -Algorithm SHA256 -LiteralPath $failureDestination).Hash -ne $oldHash) { throw 'Rollback изменил исходный целевой файл.' }
     if (Get-ChildItem -LiteralPath $directory -Filter '.save-sections-*.tmp*' -Force) { throw 'После rollback остались временные или parked файлы.' }
