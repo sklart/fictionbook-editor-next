@@ -1450,10 +1450,14 @@ public:
     STDMETHOD(OnItemSelected)(IFileDialogCustomize*, DWORD, DWORD) { return S_OK; }
     STDMETHOD(OnCheckButtonToggled)(IFileDialogCustomize*, DWORD, BOOL) { return S_OK; }
     STDMETHOD(OnControlActivating)(IFileDialogCustomize*, DWORD) { return S_OK; }
-    STDMETHOD(OnButtonClicked)(IFileDialogCustomize*, DWORD controlId) {
+    STDMETHOD(OnButtonClicked)(IFileDialogCustomize* customize, DWORD controlId) {
         if (controlId == IDC_FILEDLG_SETTINGS && m_settings) {
+            HWND owner = m_owner;
+            CComPtr<IOleWindow> fileDialogWindow;
+            if (customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialogWindow))) && fileDialogWindow)
+                fileDialogWindow->GetWindow(&owner);
             CDocxSettingsDialog dialog(*m_settings);
-            dialog.DoModal(m_owner);
+            dialog.DoModal(owner);
         }
         return S_OK;
     }
@@ -3613,8 +3617,12 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
                 LoadExportDocxStringByKey(L"export_docx.dialog.file_options.settings_button", L"Export DOCX settings..."));
         };
         const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(hwndParent, request);
-        if (dialogResult.outcome != ModernFileDialog::Outcome::Accepted)
+        if (dialogResult.outcome == ModernFileDialog::Outcome::Cancelled)
             return S_FALSE;
+        if (dialogResult.outcome == ModernFileDialog::Outcome::Failed) {
+            ModernFileDialog::TraceFailure(L"Export DOCX save dialog", dialogResult.error);
+            return S_FALSE;
+        }
 		const CString outputPath(dialogResult.paths.front().c_str());
 
         CZipStoreWriter zip;

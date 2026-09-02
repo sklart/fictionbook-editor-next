@@ -136,12 +136,18 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			if (options.DoModal((HWND)hWnd) != IDOK) return S_FALSE;
 			dlg.m_template = options.m_template; dlg.m_customCss = options.m_customCss; dlg.m_usingCustomTemplate = options.m_usingCustomTemplate;
 			dlg.m_includedesc = options.m_includedesc; dlg.m_tocdepth = options.m_tocdepth; dlg.m_imageMaxWidth = options.m_imageMaxWidth; dlg.m_imageMaxHeight = options.m_imageMaxHeight;
-			const COMDLG_FILTERSPEC filters[] = { { L"HTML with external images (*.html)", L"*.html" }, { L"MHT (*.mht)", L"*.mht" }, { L"HTML without images (*.html)", L"*.html" }, { L"Self-contained HTML (*.html)", L"*.html" } };
+			std::vector<CString> filterLabels, filterPatterns;
+			std::vector<COMDLG_FILTERSPEC> filters;
+			BuildHtmlModernFileTypes(LoadExportHtmlString(IDS_SAVE_FILE_FILTER), filterLabels, filterPatterns, filters);
 			ModernFileDialog::Request request;
 			request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"html";
-			request.initialFileName = filename ? filename : L""; request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 4;
+			request.initialFileName = filename ? filename : L""; request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = 4;
 			const ModernFileDialog::Result result = ModernFileDialog::Show((HWND)hWnd, request);
-			if (result.outcome != ModernFileDialog::Outcome::Accepted) return S_FALSE;
+			if (result.outcome == ModernFileDialog::Outcome::Cancelled) return S_FALSE;
+			if (result.outcome == ModernFileDialog::Outcome::Failed) {
+				ModernFileDialog::TraceFailure(L"Export HTML save dialog", result.error);
+				return S_FALSE;
+			}
 			options.Persist();
 			dlg.m_ofn.nFilterIndex = result.filterIndex;
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), result.paths.front().c_str(), _TRUNCATE);

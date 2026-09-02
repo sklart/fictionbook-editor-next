@@ -2537,7 +2537,7 @@ public:
     STDMETHOD(OnItemSelected)(IFileDialogCustomize*, DWORD, DWORD) { return S_OK; }
     STDMETHOD(OnCheckButtonToggled)(IFileDialogCustomize*, DWORD, BOOL) { return S_OK; }
     STDMETHOD(OnControlActivating)(IFileDialogCustomize*, DWORD) { return S_OK; }
-    STDMETHOD(OnButtonClicked)(IFileDialogCustomize*, DWORD id) { if (id == IDC_BUTTON_EXPORT_OPTIONS && m_settings) AskExportOptions(m_owner, *m_settings, m_version); return S_OK; }
+    STDMETHOD(OnButtonClicked)(IFileDialogCustomize* customize, DWORD id) { if (id == IDC_BUTTON_EXPORT_OPTIONS && m_settings) { HWND owner = m_owner; CComPtr<IOleWindow> fileDialogWindow; if (customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialogWindow))) && fileDialogWindow) fileDialogWindow->GetWindow(&owner); AskExportOptions(owner, *m_settings, m_version); } return S_OK; }
 private:
     HWND m_owner = nullptr; ExportPluginSettings* m_settings = nullptr; fbe::epub::EpubVersion m_version = fbe::epub::EpubVersion::Epub3;
 };
@@ -2567,7 +2567,11 @@ bool AskOutputFile(HWND owner,
     request.customize = [](IFileDialogCustomize* customize) { return customize->AddPushButton(IDC_BUTTON_EXPORT_OPTIONS, LoadExportEpubString(IDS_SAVE_DIALOG_BUTTON_EXPORT_OPTIONS, L"Export options...")); };
     const ModernFileDialog::Result result = ModernFileDialog::Show(owner, request);
     version = rawEvents->Version(); rawEvents->Release();
-    if (result.outcome != ModernFileDialog::Outcome::Accepted) return false;
+    if (result.outcome == ModernFileDialog::Outcome::Cancelled) return false;
+    if (result.outcome == ModernFileDialog::Outcome::Failed) {
+        ModernFileDialog::TraceFailure(L"Export EPUB save dialog", result.error);
+        return false;
+    }
     version = VersionFromFilterIndex(result.filterIndex);
     outPath = result.paths.front().c_str();
     return true;

@@ -16,7 +16,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $rcPath = Join-Path $repoRoot "src\export-html\ExportHTML.rc"
 $generatedRcPath = Join-Path $repoRoot "src\export-html\ExportHTMLStrings.generated.rc2"
-$dialogPath = Join-Path $repoRoot "src\export-html\CustomFileSaveDialog.h"
+$dialogPath = Join-Path $repoRoot "src\export-html\HtmlExportOptionsDialog.h"
 
 $rc = Get-Content -Raw -LiteralPath $rcPath
 if (-not (Test-Path -LiteralPath $generatedRcPath)) {
@@ -40,16 +40,17 @@ foreach ($controlId in @("IDC_TEMPLATE_LABEL", "IDC_TOC_DEPTH_LABEL")) {
 }
 
 foreach ($expectedCall in @(
-    "SetDlgItemText(IDC_TEMPLATE_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL))",
-    "SetDlgItemText(IDC_DOCINFO, LoadExportHtmlString(IDS_CUSTOM_SAVE_INCLUDE_DESC))",
-    "SetDlgItemText(IDC_TOC_DEPTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH))",
-	"SetDlgItemText(IDC_CUSTOM_CSS_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_CUSTOM_CSS))",
-	"SetDlgItemText(IDC_IMAGE_MAX_WIDTH_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH))",
-	"SetDlgItemText(IDC_IMAGE_MAX_HEIGHT_LABEL, LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT))",
-    "LoadExportHtmlString(IDS_OPEN_TEMPLATE_FILTER)"
+    "SetDlgItemText(IDC_TEMPLATE_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_TEMPLATE_LABEL))",
+    "SetDlgItemText(IDC_DOCINFO,LoadExportHtmlString(IDS_CUSTOM_SAVE_INCLUDE_DESC))",
+    "SetDlgItemText(IDC_TOC_DEPTH_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_TOC_DEPTH))",
+	"SetDlgItemText(IDC_CUSTOM_CSS_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_CUSTOM_CSS))",
+	"SetDlgItemText(IDC_IMAGE_MAX_WIDTH_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH))",
+	"SetDlgItemText(IDC_IMAGE_MAX_HEIGHT_LABEL,LoadExportHtmlString(IDS_CUSTOM_SAVE_IMAGE_MAX_HEIGHT))",
+    "LoadExportHtmlString(IDS_OPEN_TEMPLATE_FILTER)",
+    "LoadExportHtmlString(IDS_OPEN_CSS_FILTER)"
 )) {
     if ($dialog -notmatch [regex]::Escape($expectedCall)) {
-        throw "CustomFileSaveDialog.h не применяет локализованную строку: $expectedCall"
+        throw "HtmlExportOptionsDialog.h не применяет локализованную строку: $expectedCall"
     }
 }
 
@@ -79,6 +80,7 @@ $requiredResourceIds = @(
     "IDS_CUSTOM_SAVE_INCLUDE_DESC",
     "IDS_CUSTOM_SAVE_TOC_DEPTH",
     "IDS_OPEN_TEMPLATE_FILTER",
+	"IDS_OPEN_CSS_FILTER",
     "IDS_UNKNOWN_ERROR",
 	"IDS_CUSTOM_SAVE_CUSTOM_CSS",
 	"IDS_CUSTOM_SAVE_IMAGE_MAX_WIDTH",

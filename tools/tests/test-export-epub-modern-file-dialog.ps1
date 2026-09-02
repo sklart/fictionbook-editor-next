@@ -9,4 +9,6 @@ Require 'm_version = VersionFromFilterIndex\(index\)' 'EPUB type-change must upd
 Require 'version = VersionFromFilterIndex\(result\.filterIndex\)' 'Accepted filter must determine final EPUB version.'
 foreach ($legacy in @('OPENFILENAME', 'OFN_ENABLEHOOK', 'OFN_ENABLETEMPLATE', 'SaveDialogHookProc')) { if ($source.Contains($legacy)) { throw "Legacy EPUB dialog token remains: $legacy" } }
 if ($resource.Contains('IDD_SAVE_DIALOG_EXTRA')) { throw 'Unused EPUB save-dialog resource remains.' }
+if ($source -notmatch 'fileDialogWindow->GetWindow\(&owner\)') { throw 'EPUB settings dialog must use the active file-dialog owner.' }
+if ($source -notmatch 'Outcome::Cancelled' -or $source -notmatch 'Outcome::Failed' -or $source -notmatch 'TraceFailure\(L"Export EPUB save dialog"') { throw 'EPUB must distinguish Cancelled and Failed file-dialog outcomes.' }
 Write-Host 'ExportEPUB modern file dialog contract passed.'

@@ -21,6 +21,14 @@ struct Request {
 };
 struct Result { Outcome outcome = Outcome::Failed; HRESULT error = E_FAIL; UINT filterIndex = 0; std::vector<std::wstring> paths; };
 
+inline void TraceFailure(const wchar_t* operation, HRESULT error) {
+    wchar_t message[256] = {};
+    _snwprintf_s(message, _countof(message), _TRUNCATE,
+        L"ModernFileDialog failed: %s; hr=0x%08lX\n", operation ? operation : L"file dialog",
+        static_cast<unsigned long>(error));
+    ::OutputDebugStringW(message);
+}
+
 inline void AppendPath(IShellItem* item, std::vector<std::wstring>& paths) {
     PWSTR path = nullptr;
     if (item && SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) { paths.push_back(path); CoTaskMemFree(path); }

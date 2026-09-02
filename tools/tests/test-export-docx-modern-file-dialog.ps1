@@ -8,4 +8,6 @@ foreach ($legacy in @('CDocxSaveDialog', 'OFN_ENABLEHOOK', 'OFN_ENABLETEMPLATE',
     if ($source.Contains($legacy)) { throw "ExportDOCX still contains legacy file-dialog token: $legacy" }
 }
 if ($resource.Contains('IDD_DOCX_FILE_OPTIONS')) { throw 'Unused DOCX file-dialog resource remains.' }
+if ($source -notmatch 'fileDialogWindow->GetWindow\(&owner\)') { throw 'DOCX settings dialog must use the active file-dialog owner.' }
+if ($source -notmatch 'Outcome::Cancelled' -or $source -notmatch 'Outcome::Failed' -or $source -notmatch 'TraceFailure\(L"Export DOCX save dialog"') { throw 'DOCX must distinguish Cancelled and Failed file-dialog outcomes.' }
 Write-Host 'ExportDOCX modern file dialog contract passed.'

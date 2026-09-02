@@ -138,6 +138,25 @@
         "bg-BG": "XSL шаблони (*.xsl;*.xslt)|*.xsl;*.xslt|Всички файлове (*.*)|*.*|"
       }
     },
+    "export_html.dialog.options.css_filter": {
+      "source": "CSS files (*.css)|*.css|All files (*.*)|*.*|",
+      "component": "export-html.dialog.options",
+      "resourceId": "IDS_OPEN_CSS_FILTER",
+      "translations": {
+        "en-US": "CSS files (*.css)|*.css|All files (*.*)|*.*|",
+        "ru-RU": "Файлы CSS (*.css)|*.css|Все файлы (*.*)|*.*|",
+        "uk-UA": "Файли CSS (*.css)|*.css|Усі файли (*.*)|*.*|",
+        "de-DE": "CSS-Dateien (*.css)|*.css|Alle Dateien (*.*)|*.*|",
+        "fr-FR": "Fichiers CSS (*.css)|*.css|Tous les fichiers (*.*)|*.*|",
+        "es-ES": "Archivos CSS (*.css)|*.css|Todos los archivos (*.*)|*.*|",
+        "it-IT": "File CSS (*.css)|*.css|Tutti i file (*.*)|*.*|",
+        "pl-PL": "Pliki CSS (*.css)|*.css|Wszystkie pliki (*.*)|*.*|",
+        "pt-PT": "Ficheiros CSS (*.css)|*.css|Todos os ficheiros (*.*)|*.*|",
+        "nl-NL": "CSS-bestanden (*.css)|*.css|Alle bestanden (*.*)|*.*|",
+        "cs-CZ": "Soubory CSS (*.css)|*.css|Všechny soubory (*.*)|*.*|",
+        "bg-BG": "CSS файлове (*.css)|*.css|Всички файлове (*.*)|*.*|"
+      }
+    },
     "export_html.tooltip.template": {
       "source": "Path to the XSL template used to transform FB2 into HTML.",
       "component": "export-html.tooltip",
