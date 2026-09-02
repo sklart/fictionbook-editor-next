@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $dialog = Get-Content -Raw (Join-Path $root 'src\common\ModernFileDialog.h')
+$diagnostic = Get-Content -Raw (Join-Path $root 'src\common\DiagnosticLog.h')
 $images = Get-Content -Raw (Join-Path $root 'src\fbe\ImageImport.cpp')
 $main = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
 $view = Get-Content -Raw (Join-Path $root 'src\fbe\FBEview.cpp')
@@ -13,4 +14,9 @@ Require $images 'L"\*\.jpg;\*\.jpeg;\*\.png;\*\.webp;\*\.jp2;\*\.j2k;\*\.bmp;\*\
 Require $main 'filters\.push_back\(\{ type\.displayName\.GetString\(\), type\.wildcard\.GetString\(\) \}\)' 'Binary picker must use wildcard image specs.'
 Require $view 'filters\.push_back\(\{ type\.displayName\.GetString\(\), type\.wildcard\.GetString\(\) \}\)' 'Image picker must use wildcard image specs.'
 if ($main -match 'ImageImportFileFilter\(\).*COMDLG_FILTERSPEC' -or $view -match 'ImageImportFileFilter\(\).*COMDLG_FILTERSPEC') { throw 'Legacy NUL-delimited image filter passed to modern dialog.' }
+if ($dialog -match 'std::wofstream|modern-file-dialog\.log') { throw 'ModernFileDialog must not own a separate file logger.' }
+Require $dialog 'DiagnosticLog\.h' 'ModernFileDialog must include the common diagnostic API.'
+Require $diagnostic 'SHCreateDirectoryExW' 'Common diagnostics must create the directory recursively.'
+Require $diagnostic 'hr=0x' 'Common diagnostics must record HRESULT.'
+Require $diagnostic 'operation=' 'Common diagnostics must record the operation.'
 Write-Host 'Modern file dialog contract passed.'

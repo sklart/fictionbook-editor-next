@@ -145,7 +145,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			const ModernFileDialog::Result result = ModernFileDialog::Show((HWND)hWnd, request);
 			if (result.outcome == ModernFileDialog::Outcome::Cancelled) return S_FALSE;
 			if (result.outcome == ModernFileDialog::Outcome::Failed) {
-				ModernFileDialog::LogFailure(L"Export HTML save dialog", result.error);
+				FbeDiagnostic::HResult(L"file-dialog", L"FD203", result.error, L"Export HTML save dialog");
 				return S_FALSE;
 			}
 			options.Persist();

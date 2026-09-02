@@ -3620,7 +3620,7 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         if (dialogResult.outcome == ModernFileDialog::Outcome::Cancelled)
             return S_FALSE;
         if (dialogResult.outcome == ModernFileDialog::Outcome::Failed) {
-            ModernFileDialog::LogFailure(L"Export DOCX save dialog", dialogResult.error);
+            FbeDiagnostic::HResult(L"file-dialog", L"FD201", dialogResult.error, L"Export DOCX save dialog");
             return S_FALSE;
         }
 		const CString outputPath(dialogResult.paths.front().c_str());

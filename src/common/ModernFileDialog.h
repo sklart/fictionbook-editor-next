@@ -3,8 +3,8 @@
 #include <shobjidl.h>
 #include <shlobj.h>
 #include <atlbase.h>
+#include "DiagnosticLog.h"
 #include <functional>
-#include <fstream>
 #include <string>
 #include <vector>
 
@@ -21,29 +21,6 @@ struct Request {
     std::function<void(IFileDialogCustomize*)> readCustomization;
 };
 struct Result { Outcome outcome = Outcome::Failed; HRESULT error = E_FAIL; UINT filterIndex = 0; std::vector<std::wstring> paths; };
-
-inline void LogFailure(const wchar_t* operation, HRESULT error) {
-    wchar_t base[MAX_PATH] = {};
-    CString path;
-    if (SUCCEEDED(::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL,
-        SHGFP_TYPE_CURRENT, base))) {
-        path = base;
-        path.TrimRight(L"\\");
-        path += L"\\FBE Next\\Diagnostics";
-        ::CreateDirectoryW(path, NULL);
-        path += L"\\modern-file-dialog.log";
-    } else {
-        wchar_t temp[MAX_PATH] = {};
-        if (!::GetTempPathW(_countof(temp), temp)) return;
-        path = temp;
-        path.TrimRight(L"\\");
-        path += L"\\modern-file-dialog.log";
-    }
-    std::wofstream log(path.GetString(), std::ios::app);
-    if (log)
-        log << L"ModernFileDialog; operation=" << (operation ? operation : L"file dialog")
-            << L"; hr=0x" << std::hex << static_cast<unsigned long>(error) << std::endl;
-}
 
 inline void AppendPath(IShellItem* item, std::vector<std::wstring>& paths) {
     PWSTR path = nullptr;

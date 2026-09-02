@@ -10,6 +10,6 @@ Require 'version = VersionFromFilterIndex\(result\.filterIndex\)' 'Accepted filt
 foreach ($legacy in @('OPENFILENAME', 'OFN_ENABLEHOOK', 'OFN_ENABLETEMPLATE', 'SaveDialogHookProc')) { if ($source.Contains($legacy)) { throw "Legacy EPUB dialog token remains: $legacy" } }
 if ($resource.Contains('IDD_SAVE_DIALOG_EXTRA')) { throw 'Unused EPUB save-dialog resource remains.' }
 if ($source -notmatch 'fileDialogWindow->GetWindow\(&owner\)') { throw 'EPUB settings dialog must use the active file-dialog owner.' }
-if ($source -notmatch 'Outcome::Cancelled' -or $source -notmatch 'Outcome::Failed' -or $source -notmatch 'LogFailure\(L"Export EPUB save dialog"') { throw 'EPUB must distinguish Cancelled and Failed file-dialog outcomes.' }
+if ($source -notmatch 'Outcome::Cancelled' -or $source -notmatch 'Outcome::Failed' -or $source -notmatch 'FbeDiagnostic::HResult\(L"file-dialog"') { throw 'EPUB must distinguish Cancelled and Failed file-dialog outcomes.' }
 if ($source.Contains('ModernFileDialog::TraceFailure')) { throw 'EPUB dialog errors must not use the temporary dialog logger.' }
 Write-Host 'ExportEPUB modern file dialog contract passed.'
