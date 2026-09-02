@@ -43,7 +43,8 @@ Assert-StructurallyInvalidFbd 'missing_description.fbd' 'missing description'
 Assert-StructurallyInvalidFbd 'duplicate_description.fbd' 'duplicate description'
 if($mainFrame -notmatch '\*\.fb2;\*\.fbd') { throw 'Open dialog does not expose both FictionBook extensions.' }
 if($mainFrame -notmatch 'FictionBook Description \(\*\.fbd\)') { throw 'Save As does not expose the separate FBD type.' }
-if($mainFrame -notmatch 'dlg\.m_ofn\.nFilterIndex') { throw 'Save As filter selection does not control the target type.' }
+if($mainFrame -notmatch 'request\.filterIndex\s*=\s*saveAsFbd\s*\?\s*2\s*:\s*1' -or
+   $mainFrame -notmatch 'dialogResult\.filterIndex\s*==\s*2\s*\?\s*FictionBookFileType::Fbd') { throw 'Save As filter selection does not control the target type.' }
 if($xsl -notmatch 'class="body" fbdsynthetic="1"') { throw 'Body-less FBD visual placeholder is not marked synthetic.' }
 if($mainFrame -notmatch 'if \(IsSourceActive\(\)\)\s*fv=m_doc->SetXMLAndValidate') { throw 'F8 source mode must validate current Scintilla text for FBD and FB2.' }
 if($mainFrame -match 'IsFbdFile\(m_doc->m_filename\)\s*\)\s*fv=m_doc->Validate') { throw 'F8 source mode must not validate serialized DOM for FBD.' }
