@@ -165,8 +165,15 @@ namespace
             {
                 HWND owner = m_owner;
                 CComPtr<IOleWindow> fileDialogWindow;
-                if (customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialogWindow))) && fileDialogWindow)
-                    fileDialogWindow->GetWindow(&owner);
+                HWND dialogOwner = nullptr;
+                if (customize &&
+                    SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialogWindow))) &&
+                    fileDialogWindow &&
+                    SUCCEEDED(fileDialogWindow->GetWindow(&dialogOwner)) &&
+                    dialogOwner)
+                {
+                    owner = dialogOwner;
+                }
 
                 // Cancel in the settings dialog only closes that settings dialog.
                 // It does not cancel file selection. This is less surprising than
