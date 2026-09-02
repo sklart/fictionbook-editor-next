@@ -7,6 +7,8 @@ Require 'ModernFileDialog::Show' 'ExportEPUB does not use ModernFileDialog.'
 Require 'STDMETHOD\(OnTypeChange\)' 'ExportEPUB must handle selected filter changes.'
 Require 'm_version = VersionFromFilterIndex\(index\)' 'EPUB type-change must update export version.'
 Require 'version = VersionFromFilterIndex\(result\.filterIndex\)' 'Accepted filter must determine final EPUB version.'
+Require 'LoadExportEpubString\(IDS_SAVE_FILE_FILTER' 'EPUB filters must come from runtime localization.'
+if ($source.Contains('L"Все файлы (*.*)"')) { throw 'Russian hardcoded EPUB filter caption remains.' }
 foreach ($legacy in @('OPENFILENAME', 'OFN_ENABLEHOOK', 'OFN_ENABLETEMPLATE', 'SaveDialogHookProc')) { if ($source.Contains($legacy)) { throw "Legacy EPUB dialog token remains: $legacy" } }
 if ($resource.Contains('IDD_SAVE_DIALOG_EXTRA')) { throw 'Unused EPUB save-dialog resource remains.' }
 if ($source -notmatch 'fileDialogWindow->GetWindow\(&owner\)') { throw 'EPUB settings dialog must use the active file-dialog owner.' }

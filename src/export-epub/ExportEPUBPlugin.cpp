@@ -2550,7 +2550,29 @@ bool AskOutputFile(HWND owner,
                    fbe::epub::EpubVersion& version)
 {
     CString proposed = DefaultOutputFileName(filename, source, owner);
-    const COMDLG_FILTERSPEC filters[] = { { L"EPUB 3 (*.epub)", L"*.epub" }, { L"EPUB 2 (*.epub)", L"*.epub" }, { L"Все файлы (*.*)", L"*.*" } };
+    const CString serialized = LoadExportEpubString(IDS_SAVE_FILE_FILTER,
+        L"EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|All files (*.*)|*.*|");
+    std::vector<CString> filterLabels;
+    std::vector<CString> filterPatterns;
+    int position = 0;
+    while (position >= 0) {
+        const int labelEnd = serialized.Find(L'|', position);
+        if (labelEnd < 0) break;
+        const int patternStart = labelEnd + 1;
+        const int patternEnd = serialized.Find(L'|', patternStart);
+        if (patternEnd < 0) break;
+        CString label = serialized.Mid(position, labelEnd - position);
+        CString pattern = serialized.Mid(patternStart, patternEnd - patternStart);
+        if (label.IsEmpty() || pattern.IsEmpty()) break;
+        filterLabels.push_back(label);
+        filterPatterns.push_back(pattern);
+        position = patternEnd + 1;
+    }
+    if (filterLabels.size() < 3) return false;
+    std::vector<COMDLG_FILTERSPEC> filters;
+    filters.reserve(filterLabels.size());
+    for (size_t i = 0; i < filterLabels.size(); ++i)
+        filters.push_back({ filterLabels[i].GetString(), filterPatterns[i].GetString() });
     CComObject<CEpubFileDialogEvents>* rawEvents = nullptr;
     HRESULT hr = CComObject<CEpubFileDialogEvents>::CreateInstance(&rawEvents);
     if (FAILED(hr) || !rawEvents) return false;
@@ -2561,7 +2583,7 @@ bool AskOutputFile(HWND owner,
     ModernFileDialog::Request request;
     request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
     request.defaultExtension = L"epub"; request.initialFileName = proposed.GetString();
-    request.filters = filters; request.filterCount = _countof(filters);
+    request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size());
     request.filterIndex = version == fbe::epub::EpubVersion::Epub2 ? 2 : 1;
     request.events = events;
     request.customize = [](IFileDialogCustomize* customize) { return customize->AddPushButton(IDC_BUTTON_EXPORT_OPTIONS, LoadExportEpubString(IDS_SAVE_DIALOG_BUTTON_EXPORT_OPTIONS, L"Export options...")); };

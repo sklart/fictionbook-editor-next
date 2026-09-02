@@ -16,6 +16,25 @@
     "bg-BG"
   ],
   "strings": {
+    "export_epub.runtime.save_file_filter": {
+      "source": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|All files (*.*)|*.*|",
+      "component": "export-epub.runtime",
+      "resourceId": "IDS_SAVE_FILE_FILTER",
+      "translations": {
+        "en-US": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|All files (*.*)|*.*|",
+        "ru-RU": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Все файлы (*.*)|*.*|",
+        "uk-UA": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Усі файли (*.*)|*.*|",
+        "de-DE": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Alle Dateien (*.*)|*.*|",
+        "fr-FR": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Tous les fichiers (*.*)|*.*|",
+        "es-ES": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Todos los archivos (*.*)|*.*|",
+        "it-IT": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Tutti i file (*.*)|*.*|",
+        "pl-PL": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Wszystkie pliki (*.*)|*.*|",
+        "pt-PT": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Todos os ficheiros (*.*)|*.*|",
+        "nl-NL": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Alle bestanden (*.*)|*.*|",
+        "cs-CZ": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Všechny soubory (*.*)|*.*|",
+        "bg-BG": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|Всички файлове (*.*)|*.*|"
+      }
+    },
     "export_html.dialog.options.title": {
       "source": "HTML export options",
       "component": "export-html.dialog.options",
