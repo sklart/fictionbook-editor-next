@@ -110,7 +110,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_SAVE_FILE_FILTER       "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub||"
+    IDS_SAVE_FILE_FILTER       "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|All files (*.*)|*.*|"
     IDS_ERROR_EXPORT_FAILED    "Не удалось экспортировать EPUB.\n\n%s"
     IDS_ERROR_INVALID_DOCUMENT "FBE передал некорректный XML-документ."
     IDS_ERROR_NO_CHAPTERS      "В книге не найден текст для экспорта."
