@@ -5,6 +5,6 @@ if ($source.Contains('GetActiveWindow()')) { throw 'Import EPUB settings owner m
 if ($source -notmatch 'IOleWindow[\s\S]*GetWindow\(&dialogOwner\)') { throw 'Import EPUB settings must use the active file-dialog HWND.' }
 if ($source -notmatch 'HWND owner = m_owner') { throw 'Import EPUB owner fallback is missing.' }
 if ($source -notmatch 'SUCCEEDED\(fileDialogWindow->GetWindow\(&dialogOwner\)\)') { throw 'Import EPUB must check GetWindow result.' }
-if ($source -notmatch 'dialogOwner\)') { throw 'Import EPUB must reject a null dialog owner.' }
+if ($source -notmatch '&&\s*dialogOwner') { throw 'Import EPUB must reject a null dialog owner.' }
 if ($source -notmatch 'ShowImportOptionsDialog\(owner, edited\)') { throw 'Import EPUB settings dialog call is missing.' }
 Write-Host 'Import EPUB modern file dialog owner contract passed.'

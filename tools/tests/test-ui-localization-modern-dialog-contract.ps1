@@ -15,7 +15,10 @@ $smallDialogs = Read 'localization\app-ui\fbe-small-dialogs.json'
 if ($catalog -notmatch '"fbe\.image\.open_button"') { throw 'Image Open localization key is missing.' }
 $hotkeys = Read 'src\fbe\SettingsHotkeysDlg.cpp'
 $settings = Read 'src\fbe\Settings.cpp'
+$runtime = Read 'src\fbe\RuntimeLocalization.cpp'
 if ($hotkeys -match 'CompareNoCase\(L"Add to dictionary"|CompareNoCase\(L"Ignore All"') { throw 'Hotkey display names must not depend on registration-name comparisons.' }
 if ($settings -notmatch 'ToolsSpellAddToDict\(L"Add to dictionary",\s*IDS_HOTKEY_TOOLS_ADD_TO_DICTIONARY' -or $settings -notmatch 'ToolsSpellIgnore\(L"Ignore",\s*IDS_HOTKEY_TOOLS_IGNORE_ALL') { throw 'Spelling hotkeys must have dedicated localization resource IDs.' }
-if (($catalog + $smallDialogs) -notmatch 'fbe\.spelling\.menu\.add_to_dictionary' -or ($catalog + $smallDialogs) -notmatch 'fbe\.dialog\.idd_spell_check\.ignore_all') { throw 'Spelling hotkey localization keys are missing.' }
+if (($catalog + $smallDialogs) -notmatch 'fbe\.hotkey\.tools\.add_to_dictionary' -or ($catalog + $smallDialogs) -notmatch 'fbe\.hotkey\.tools\.ignore_all') { throw 'Spelling hotkey localization keys are missing.' }
+if ($runtime -notmatch 'IDS_HOTKEY_TOOLS_ADD_TO_DICTIONARY,\s*L"fbe\.hotkey\.tools\.add_to_dictionary"' -or $runtime -notmatch 'IDS_HOTKEY_TOOLS_IGNORE_ALL,\s*L"fbe\.hotkey\.tools\.ignore_all"') { throw 'Spelling hotkey IDs are missing from g_runtimeStringBindings.' }
+if (($catalog + $smallDialogs) -notmatch '"ru-RU"\s*:\s*"Добавить в словарь"' -or ($catalog + $smallDialogs) -notmatch '"ru-RU"\s*:\s*"Игнорировать все"') { throw 'Russian spelling hotkey translations are missing.' }
 Write-Host 'Modern dialog UI localization contract passed.'
