@@ -37,10 +37,6 @@ static void SetRuntimeHotkeysText(HWND dialog, int controlId, LPCWSTR key, LPCWS
 
 static CString GetHotkeyDisplayName(const CHotkey& hotkey)
 {
-	if (hotkey.m_reg_name.CompareNoCase(L"Add to dictionary") == 0)
-		return FbeLoadRuntimeStringByKey(L"fbe.spelling.menu.add_to_dictionary", hotkey.m_name);
-	if (hotkey.m_reg_name.CompareNoCase(L"Ignore All") == 0)
-		return FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.ignore_all", hotkey.m_name);
 	return hotkey.m_name_resource_id ? FbeLoadRuntimeString(hotkey.m_name_resource_id, hotkey.m_name) : hotkey.m_name;
 }
 

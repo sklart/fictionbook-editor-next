@@ -11,5 +11,11 @@ if ($image -notmatch 'fbe\.image\.open_button') { throw 'Image picker must local
 $rc = Read 'src\fbe\FBE.rc'
 if ($rc -notmatch 'IDD_ADDIMAGE DIALOGEX 0, 0, 220, 78') { throw 'Empty-image dialog must have a wider layout.' }
 $catalog = Read 'localization\app-ui\catalog.json'
+$smallDialogs = Read 'localization\app-ui\fbe-small-dialogs.json'
 if ($catalog -notmatch '"fbe\.image\.open_button"') { throw 'Image Open localization key is missing.' }
+$hotkeys = Read 'src\fbe\SettingsHotkeysDlg.cpp'
+$settings = Read 'src\fbe\Settings.cpp'
+if ($hotkeys -match 'CompareNoCase\(L"Add to dictionary"|CompareNoCase\(L"Ignore All"') { throw 'Hotkey display names must not depend on registration-name comparisons.' }
+if ($settings -notmatch 'ToolsSpellAddToDict\(L"Add to dictionary",\s*IDC_SPELL_ADD2DICT' -or $settings -notmatch 'ToolsSpellIgnore\(L"Ignore",\s*IDC_SPELL_IGNOREALL') { throw 'Spelling hotkeys must have stable localization resource IDs.' }
+if (($catalog + $smallDialogs) -notmatch 'fbe\.spelling\.menu\.add_to_dictionary' -or ($catalog + $smallDialogs) -notmatch 'fbe\.dialog\.idd_spell_check\.ignore_all') { throw 'Spelling hotkey localization keys are missing.' }
 Write-Host 'Modern dialog UI localization contract passed.'
