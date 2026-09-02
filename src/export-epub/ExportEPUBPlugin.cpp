@@ -2569,7 +2569,7 @@ bool AskOutputFile(HWND owner,
     version = rawEvents->Version(); rawEvents->Release();
     if (result.outcome == ModernFileDialog::Outcome::Cancelled) return false;
     if (result.outcome == ModernFileDialog::Outcome::Failed) {
-        ModernFileDialog::TraceFailure(L"Export EPUB save dialog", result.error);
+        ModernFileDialog::LogFailure(L"Export EPUB save dialog", result.error);
         return false;
     }
     version = VersionFromFilterIndex(result.filterIndex);

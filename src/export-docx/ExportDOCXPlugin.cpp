@@ -3620,7 +3620,7 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         if (dialogResult.outcome == ModernFileDialog::Outcome::Cancelled)
             return S_FALSE;
         if (dialogResult.outcome == ModernFileDialog::Outcome::Failed) {
-            ModernFileDialog::TraceFailure(L"Export DOCX save dialog", dialogResult.error);
+            ModernFileDialog::LogFailure(L"Export DOCX save dialog", dialogResult.error);
             return S_FALSE;
         }
 		const CString outputPath(dialogResult.paths.front().c_str());
