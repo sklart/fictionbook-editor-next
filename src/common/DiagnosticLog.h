@@ -40,7 +40,8 @@ inline void HResult(const wchar_t* category, const wchar_t* code, HRESULT error,
         while (!directory.empty() && directory.back() == L'\\') directory.pop_back();
         directory += L"\\FBE Next Diagnostics";
     }
-    if (FAILED(::SHCreateDirectoryExW(nullptr, directory.c_str(), nullptr)) && ::GetLastError() != ERROR_ALREADY_EXISTS)
+    const int result = ::SHCreateDirectoryExW(nullptr, directory.c_str(), nullptr);
+    if (result != ERROR_SUCCESS && result != ERROR_ALREADY_EXISTS && result != ERROR_FILE_EXISTS)
         return;
 
     SYSTEMTIME now = {};

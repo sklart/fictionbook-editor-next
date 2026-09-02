@@ -19,4 +19,7 @@ Require $dialog 'DiagnosticLog\.h' 'ModernFileDialog must include the common dia
 Require $diagnostic 'SHCreateDirectoryExW' 'Common diagnostics must create the directory recursively.'
 Require $diagnostic 'hr=0x' 'Common diagnostics must record HRESULT.'
 Require $diagnostic 'operation=' 'Common diagnostics must record the operation.'
+if ($diagnostic -match 'FAILED\(::SHCreateDirectoryExW') { throw 'SHCreateDirectoryExW returns a Win32 code, not HRESULT.' }
+Require $diagnostic 'const int result = ::SHCreateDirectoryExW' 'Directory creation must inspect the Win32 return code explicitly.'
+Require $diagnostic 'result != ERROR_SUCCESS.*result != ERROR_ALREADY_EXISTS.*result != ERROR_FILE_EXISTS' 'Directory creation must accept all successful Win32 return codes.'
 Write-Host 'Modern file dialog contract passed.'
