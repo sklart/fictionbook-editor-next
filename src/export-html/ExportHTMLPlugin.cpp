@@ -133,21 +133,38 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			dlg.m_usingCustomTemplate = false;
 		} else {
 			CHtmlExportOptionsDialog options;
-			if (options.DoModal((HWND)hWnd) != IDOK) return S_FALSE;
-			dlg.m_template = options.m_template; dlg.m_customCss = options.m_customCss; dlg.m_usingCustomTemplate = options.m_usingCustomTemplate;
-			dlg.m_includedesc = options.m_includedesc; dlg.m_tocdepth = options.m_tocdepth; dlg.m_imageMaxWidth = options.m_imageMaxWidth; dlg.m_imageMaxHeight = options.m_imageMaxHeight;
+			options.LoadSettings();
 			std::vector<CString> filterLabels, filterPatterns;
 			std::vector<COMDLG_FILTERSPEC> filters;
 			BuildHtmlModernFileTypes(LoadExportHtmlString(IDS_SAVE_FILE_FILTER), filterLabels, filterPatterns, filters);
+			CComObject<CHtmlFileDialogEvents>* rawEvents = nullptr;
+			HRESULT eventHr = CComObject<CHtmlFileDialogEvents>::CreateInstance(&rawEvents);
+			if (FAILED(eventHr) || !rawEvents) return S_FALSE;
+			rawEvents->AddRef();
+			rawEvents->owner = (HWND)hWnd;
+			rawEvents->options = &options;
+			CComPtr<IFileDialogEvents> events;
+			eventHr = rawEvents->QueryInterface(IID_PPV_ARGS(&events));
+			rawEvents->Release();
+			if (FAILED(eventHr)) return S_FALSE;
 			ModernFileDialog::Request request;
 			request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"html";
 			request.initialFileName = filename ? filename : L""; request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = 4;
+			request.events = events;
+			request.customize = [](IFileDialogCustomize* customize) {
+				CString button = LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE);
+				button += L"...";
+				return customize->AddPushButton(CHtmlFileDialogEvents::SettingsButtonId,
+					button);
+			};
 			const ModernFileDialog::Result result = ModernFileDialog::Show((HWND)hWnd, request);
 			if (result.outcome == ModernFileDialog::Outcome::Cancelled) return S_FALSE;
 			if (result.outcome == ModernFileDialog::Outcome::Failed) {
 				FbeDiagnostic::HResult(L"file-dialog", L"FD203", result.error, L"Export HTML save dialog");
 				return S_FALSE;
 			}
+			dlg.m_template = options.m_template; dlg.m_customCss = options.m_customCss; dlg.m_usingCustomTemplate = options.m_usingCustomTemplate;
+			dlg.m_includedesc = options.m_includedesc; dlg.m_tocdepth = options.m_tocdepth; dlg.m_imageMaxWidth = options.m_imageMaxWidth; dlg.m_imageMaxHeight = options.m_imageMaxHeight;
 			options.Persist();
 			dlg.m_ofn.nFilterIndex = result.filterIndex;
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), result.paths.front().c_str(), _TRUNCATE);

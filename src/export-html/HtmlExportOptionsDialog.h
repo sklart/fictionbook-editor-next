@@ -36,6 +36,7 @@ class CHtmlExportOptionsDialog : public CDialogImpl<CHtmlExportOptionsDialog> {
 public:
     enum { IDD = IDD_HTML_EXPORT_OPTIONS };
     CString m_template, m_customCss; HWND m_tooltip = NULL; std::vector<CString> m_tooltipTexts; bool m_usingCustomTemplate = false, m_includedesc = true; int m_tocdepth = 1, m_imageMaxWidth = 0, m_imageMaxHeight = 0;
+    void LoadSettings() { ExportHtmlTemplateSelection s = ResolveExportHtmlTemplate(_Settings); m_template=s.path; m_usingCustomTemplate=s.custom; m_customCss=U::QuerySV(_Settings,_T("CustomCss"),_T("")); m_includedesc=U::QueryIV(_Settings,_T("IncludeDesc"),1)!=0; m_tocdepth=U::QueryIV(_Settings,_T("TOCDepth"),1); m_imageMaxWidth=U::QueryIV(_Settings,_T("ImageMaxWidth"),0); m_imageMaxHeight=U::QueryIV(_Settings,_T("ImageMaxHeight"),0); }
     BEGIN_MSG_MAP(CHtmlExportOptionsDialog)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
         COMMAND_ID_HANDLER(IDC_BROWSE, OnBrowse) COMMAND_ID_HANDLER(IDC_BROWSE_CSS, OnBrowseCss)
@@ -51,4 +52,32 @@ public:
     LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&) { if (m_tooltip) { ::DestroyWindow(m_tooltip); m_tooltip = NULL; } return 0; }
     void InitTooltips() { m_tooltipTexts.reserve(8); m_tooltip = ::CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL, WS_POPUP|TTS_ALWAYSTIP|TTS_NOPREFIX, CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,m_hWnd,NULL,_Module.GetModuleInstance(),NULL); if (!m_tooltip) return; AddTooltip(IDC_TEMPLATE, IDS_TOOLTIP_TEMPLATE); AddTooltip(IDC_BROWSE, IDS_TOOLTIP_BROWSE_TEMPLATE); AddTooltip(IDC_DOCINFO, IDS_TOOLTIP_DOCINFO); AddTooltip(IDC_TOCDEPTH, IDS_TOOLTIP_TOC_DEPTH); AddTooltip(IDC_CUSTOM_CSS, IDS_TOOLTIP_CUSTOM_CSS); AddTooltip(IDC_BROWSE_CSS, IDS_TOOLTIP_BROWSE_CSS); AddTooltip(IDC_IMAGE_MAX_WIDTH, IDS_TOOLTIP_IMAGE_MAX_WIDTH); AddTooltip(IDC_IMAGE_MAX_HEIGHT, IDS_TOOLTIP_IMAGE_MAX_HEIGHT); }
     void AddTooltip(UINT id, UINT textId) { HWND control=GetDlgItem(id); if (!control) return; m_tooltipTexts.push_back(LoadExportHtmlString(textId)); CString& text=m_tooltipTexts.back(); if (text.IsEmpty()) return; TOOLINFO ti={}; ti.cbSize=sizeof(ti);ti.uFlags=TTF_IDISHWND|TTF_SUBCLASS;ti.hwnd=m_hWnd;ti.uId=reinterpret_cast<UINT_PTR>(control);ti.lpszText=const_cast<LPTSTR>((LPCTSTR)text);::SendMessage(m_tooltip,TTM_ADDTOOL,0,reinterpret_cast<LPARAM>(&ti)); }
+};
+
+class CHtmlFileDialogEvents : public CComObjectRootEx<CComSingleThreadModel>, public IFileDialogEvents, public IFileDialogControlEvents {
+public:
+    static const DWORD SettingsButtonId = 2001;
+    BEGIN_COM_MAP(CHtmlFileDialogEvents)
+        COM_INTERFACE_ENTRY(IFileDialogEvents)
+        COM_INTERFACE_ENTRY(IFileDialogControlEvents)
+    END_COM_MAP()
+    HWND owner = NULL; CHtmlExportOptionsDialog* options = NULL;
+    STDMETHOD(OnFileOk)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnFolderChanging)(IFileDialog*, IShellItem*) { return S_OK; }
+    STDMETHOD(OnFolderChange)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnSelectionChange)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnShareViolation)(IFileDialog*, IShellItem*, FDE_SHAREVIOLATION_RESPONSE* r) { if (r) *r = FDESVR_DEFAULT; return S_OK; }
+    STDMETHOD(OnTypeChange)(IFileDialog*) { return S_OK; }
+    STDMETHOD(OnOverwrite)(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE* r) { if (r) *r = FDEOR_DEFAULT; return S_OK; }
+    STDMETHOD(OnItemSelected)(IFileDialogCustomize*, DWORD, DWORD) { return S_OK; }
+    STDMETHOD(OnCheckButtonToggled)(IFileDialogCustomize*, DWORD, BOOL) { return S_OK; }
+    STDMETHOD(OnControlActivating)(IFileDialogCustomize*, DWORD) { return S_OK; }
+    STDMETHOD(OnButtonClicked)(IFileDialogCustomize* customize, DWORD id) {
+        if (id == SettingsButtonId && options) {
+            HWND dialogOwner = owner; CComPtr<IOleWindow> window;
+            if (customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&window)))) window->GetWindow(&dialogOwner);
+            options->DoModal(dialogOwner);
+        }
+        return S_OK;
+    }
 };
