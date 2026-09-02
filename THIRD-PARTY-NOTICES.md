@@ -9,7 +9,7 @@ is needed to build the project but is not shipped as a separate component.
 | --- | --- | --- | --- | --- |
 | Scintilla | 5.6.6 | Scintilla License (permissive) | XML source editor; `Scintilla.dll` is bundled | <https://www.scintilla.org/> |
 | Lexilla | 5.5.3 | Scintilla License (permissive) | Lexers for Scintilla; `Lexilla.dll` is bundled | <https://www.scintilla.org/Lexilla.html> |
-| PCRE2 | 10.47 | BSD-3-Clause with PCRE2 exception | Regular-expression backend, statically linked into FBE | <https://github.com/PCRE2Project/pcre2> |
+| PCRE2 | 10.48 | BSD-3-Clause with PCRE2 exception | Regular-expression backend, statically linked into FBE | <https://github.com/PCRE2Project/pcre2> |
 | Hunspell | 1.7.3 | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later | Spell checking, statically linked into FBE | <https://github.com/hunspell/hunspell> |
 | English Speller Database / SCOWL | 2026.02.25 | SCOWL permissive license; BSD license for the affix file | Bundled English (`en_US`) spell-check dictionary | <https://github.com/en-wl/wordlist> |
 | igerman98 / frami German Hunspell Dictionary | 20161207+frami20170109 | GPL-2.0 OR GPL-3.0 | Bundled German (`de_DE`) spell-check dictionary | <https://github.com/LibreOffice/dictionaries> |
@@ -17,9 +17,9 @@ is needed to build the project but is not shipped as a separate component.
 | VESUM / dict_uk | 6.8.5 | MPL-1.1 (Hunspell distribution) | Bundled Ukrainian (`uk_UA`) spell-check dictionary | <https://github.com/brown-uk/dict_uk> |
 | libwebp | 1.6.0 | BSD-3-Clause | Static WebP decoder linked into FBE | <https://chromium.googlesource.com/webm/libwebp> |
 | OpenJPEG | 2.5.4 | BSD-2-Clause | JPEG 2000 decoder build input for FBE | <https://github.com/uclouvain/openjpeg> |
-| libheif | 1.23.1 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
+| libheif | 1.23.3 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
 | libde265 | 1.1.1 | LGPL-2.1-or-later | Static HEVC decoder used by bundled libheif | <https://github.com/strukturag/libde265> |
-| libaom | 3.14.1 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
+| libaom | 3.15.0 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
 | Windows Template Library (WTL) | 10.01 | MS-PL | UI and Windows shell components, compiled into FBE, FBV, and FBShell | <https://sourceforge.net/projects/wtl/> |
 | LunaSVG | 3.5.0 | MIT | EPUB import SVG renderer, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/lunasvg> |
 | PlutoVG | 1.3.3 | MIT | LunaSVG raster backend, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/plutovg> |
