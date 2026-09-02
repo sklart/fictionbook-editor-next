@@ -2550,7 +2550,7 @@ bool AskOutputFile(HWND owner,
                    fbe::epub::EpubVersion& version)
 {
     CString proposed = DefaultOutputFileName(filename, source, owner);
-    const COMDLG_FILTERSPEC filters[] = { { L"EPUB 3 (*.epub)", L"*.epub" }, { L"EPUB 2 (*.epub)", L"*.epub" }, { L"All files (*.*)", L"*.*" } };
+    const COMDLG_FILTERSPEC filters[] = { { L"EPUB 3 (*.epub)", L"*.epub" }, { L"EPUB 2 (*.epub)", L"*.epub" }, { L"Все файлы (*.*)", L"*.*" } };
     CComObject<CEpubFileDialogEvents>* rawEvents = nullptr;
     HRESULT hr = CComObject<CEpubFileDialogEvents>::CreateInstance(&rawEvents);
     if (FAILED(hr) || !rawEvents) return false;
