@@ -246,14 +246,24 @@ function Get-GitLinkCommit {
 
     $repoRoot = Get-ThirdPartyRepoRoot
     $gitPath = $RelativePath -replace '\\', '/'
-    $lines = Invoke-GitCapture -WorkingDirectory $repoRoot -Arguments @('ls-tree', 'HEAD', '--', $gitPath)
-    $line = ($lines | Select-Object -First 1)
 
+    # Read the gitlink from the index rather than HEAD.
+    # This makes staged submodule updates visible before they are committed,
+    # while still working in CI without initializing the submodule.
+    $lines = Invoke-GitCapture -WorkingDirectory $repoRoot -Arguments @(
+        'ls-files', '--stage', '--', $gitPath
+    )
+
+    $line = ($lines | Select-Object -First 1)
     if (-not $line) { return $null }
 
-    $match = [regex]::Match([string]$line, '^\d+\s+commit\s+([0-9a-fA-F]{40,64})\s+')
+    $match = [regex]::Match(
+        [string]$line,
+        '^160000\s+([0-9a-fA-F]{40,64})\s+\d+\s+'
+    )
+
     if (-not $match.Success) {
-        throw "Path is not a git submodule in HEAD: $RelativePath"
+        throw "Path is not a git submodule in the index: $RelativePath"
     }
 
     return $match.Groups[1].Value.ToLowerInvariant()
