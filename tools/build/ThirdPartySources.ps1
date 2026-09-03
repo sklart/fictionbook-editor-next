@@ -179,6 +179,25 @@ function Get-GitRemoteTagRecords {
     return $result
 }
 
+function Get-VersionTextFromTagMatch {
+    param([Parameter(Mandatory)][System.Text.RegularExpressions.Match]$Match)
+
+    if (-not $Match.Success -or $Match.Groups.Count -lt 2) { return $null }
+
+    $parts = @()
+    for ($index = 1; $index -lt $Match.Groups.Count; $index++) {
+        $group = $Match.Groups[$index]
+        if ($group.Success -and -not [string]::IsNullOrWhiteSpace($group.Value)) {
+            $parts += $group.Value
+        }
+    }
+
+    if ($parts.Count -eq 0) { return $null }
+    if ($parts.Count -eq 1) { return $parts[0] }
+
+    return ($parts -join '.')
+}
+
 function Get-LatestStableGitRelease {
     param(
         [Parameter(Mandatory)][string]$RepositoryUrl,
@@ -190,7 +209,8 @@ function Get-LatestStableGitRelease {
         $match = [regex]::Match($record.Tag, $TagPattern)
         if (-not $match.Success) { continue }
 
-        $versionText = $match.Groups[1].Value
+        $versionText = Get-VersionTextFromTagMatch -Match $match
+        if (-not $versionText) { continue }
         try { $comparison = [version]$versionText }
         catch { continue }
 
@@ -251,12 +271,14 @@ function Get-StableTagForCommit {
         $match = [regex]::Match($record.Tag, $TagPattern)
         if (-not $match.Success) { continue }
 
-        try { $comparison = [version]$match.Groups[1].Value }
+        $versionText = Get-VersionTextFromTagMatch -Match $match
+        if (-not $versionText) { continue }
+        try { $comparison = [version]$versionText }
         catch { continue }
 
         [pscustomobject]@{
             Tag = $record.Tag
-            Version = $match.Groups[1].Value
+            Version = $versionText
             Comparison = $comparison
         }
     }
@@ -326,32 +348,7 @@ function Get-DependencyCatalog {
                 [pscustomobject]@{ Tag=$releaseMatch.Groups[1].Value; Version=$releaseMatch.Groups[1].Value; Commit=$null; ZipUrl=$zipMatch.Value; Source='scintilla.org' }
             }
         }
-        [pscustomobject]@{
-            Name = 'lexilla'
-            DisplayName = 'Lexilla'
-            Repository = 'ScintillaOrg/lexilla'
-            RepositoryUrl = 'https://github.com/ScintillaOrg/lexilla.git'
-            LocalPath = Join-Path $repoRoot 'third_party\lexilla'
-            RelativePath = 'third_party\lexilla'
-            ValidationPaths = @('version.txt', 'src\lexilla.mak', 'include\Lexilla.h')
-            Kind = 'ReplaceTree'
-            UpdateMode = 'Manual'
-            Optional = $false
-            VersionReader = {
-                param($entry)
-                $versionFile = Join-Path $entry.LocalPath 'version.txt'
-                if (-not (Test-Path -LiteralPath $versionFile)) { throw "version.txt not found: $versionFile" }
-                Convert-ScintillaStyleVersion -RawVersion (Get-Content -LiteralPath $versionFile -Raw)
-            }
-            RemoteInfoReader = {
-                param($entry)
-                $content = Get-RemoteTextContent -Uri 'https://www.scintilla.org/LexillaDownload.html'
-                $releaseMatch = [regex]::Match($content, 'Release\s+(\d+\.\d+\.\d+)')
-                $zipMatch = [regex]::Match($content, 'https://www\.scintilla\.org/lexilla\d+\.zip')
-                if (-not $releaseMatch.Success -or -not $zipMatch.Success) { throw 'Could not parse Lexilla download page.' }
-                [pscustomobject]@{ Tag=$releaseMatch.Groups[1].Value; Version=$releaseMatch.Groups[1].Value; Commit=$null; ZipUrl=$zipMatch.Value; Source='scintilla.org' }
-            }
-        }
+        (New-GitSubmoduleDependency -Name 'lexilla' -DisplayName 'Lexilla' -RelativePath 'third_party\lexilla' -RepositoryUrl 'https://github.com/ScintillaOrg/lexilla.git' -TagPattern '^rel-(\d+)-(\d+)-(\d+)$' -ValidationPaths @('version.txt','src\lexilla.mak','include\Lexilla.h'))
         (New-GitSubmoduleDependency -Name 'pcre2' -DisplayName 'PCRE2' -RelativePath 'third_party\pcre2' -RepositoryUrl 'https://github.com/PCRE2Project/pcre2.git' -TagPattern '^pcre2-(\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','src\pcre2.h.generic'))
         (New-GitSubmoduleDependency -Name 'hunspell' -DisplayName 'Hunspell' -RelativePath 'third_party\hunspell' -RepositoryUrl 'https://github.com/hunspell/hunspell.git' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('configure.ac','src\hunspell\hunspell.cxx'))
         [pscustomobject]@{

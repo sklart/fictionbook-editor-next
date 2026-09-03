@@ -17,13 +17,6 @@ jobs:
           fetch-depth: 1
           submodules: false
 
-      # Only Lexilla needs files from its working tree to read version.txt.
-      # Other managed submodules are checked from the parent repository gitlinks,
-      # so cloning all of them would only make this lightweight job slower.
-      - name: Initialize Lexilla for local version check
-        shell: pwsh
-        run: git submodule update --init --depth 1 -- third_party/lexilla
-
       - name: Check third-party libraries and dictionaries
         shell: pwsh
         run: .\tools\build\check-third-party-updates.ps1 -WarnOnUpdate
