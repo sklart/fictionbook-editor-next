@@ -1,78 +1,115 @@
 <#
 .SYNOPSIS
-Проверяет локальные и upstream-версии выбранных сторонних зависимостей.
+Checks local and upstream versions of all managed third-party dependencies and dictionaries.
 #>
 
 [CmdletBinding()]
 param(
-    [ValidateSet("all", "scintilla", "lexilla", "pcre2", "hunspell", "wtl")]
-    [string[]]$Dependency = @("all")
+    [string[]]$Dependency = @('all'),
+    [switch]$WarnOnUpdate,
+    [switch]$FailOnUpdate
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot "ThirdPartySources.ps1")
+. (Join-Path $PSScriptRoot 'ThirdPartySources.ps1')
+. (Join-Path $PSScriptRoot 'DictionarySources.ps1')
 
-function Resolve-DependenciesToCheck {
-    param(
-        [string[]]$Selected
-    )
 
-    if ($Selected -contains "all") {
-        return Get-DependencyCatalog
+function Write-UpdateWarning {
+    param([Parameter(Mandatory)][string]$Message)
+
+    if ($env:GITHUB_ACTIONS -eq 'true') {
+        $escaped = $Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+        Write-Host ("::warning title=Third-party update::{0}" -f $escaped)
     }
-
-    return $Selected | ForEach-Object { Get-DependencyEntry -Name $_ }
+    else {
+        Write-Warning $Message
+    }
 }
 
-$dependencies = Resolve-DependenciesToCheck -Selected $Dependency
-$results = foreach ($entry in $dependencies) {
+function Resolve-ItemsToCheck {
+    param([string[]]$Selected)
+
+    if ($Selected -contains 'all') {
+        return @((Get-DependencyCatalog)) + @((Get-DictionaryCatalog))
+    }
+
+    $resolved = foreach ($name in $Selected) {
+        if ($name -match '^(dict-)?(en_US|ru_RU|uk_UA|de_DE)$') {
+            Get-DictionaryEntry -Name $name
+            continue
+        }
+
+        try {
+            Get-DependencyEntry -Name $name
+        }
+        catch {
+            try { Get-DictionaryEntry -Name $name }
+            catch { throw "Unknown dependency or dictionary: $name" }
+        }
+    }
+
+    return @($resolved)
+}
+
+$items = Resolve-ItemsToCheck -Selected $Dependency
+$results = foreach ($entry in $items) {
     try {
-        Get-DependencyUpdateInfo -Dependency $entry
+        if ($entry.Kind -eq 'Dictionary') { Get-DictionaryUpdateInfo -DictionaryEntry $entry }
+        else { Get-DependencyUpdateInfo -Dependency $entry }
     }
     catch {
         [pscustomobject]@{
-            Name = $entry.Name
-            DisplayName = $entry.DisplayName
-            Repository = $entry.Repository
-            LocalPath = $entry.LocalPath
-            LocalVersion = $null
-            RemoteVersion = $null
-            RemoteTag = $null
-            RemoteZipUrl = $null
-            RemoteSource = $null
-            Status = "Error"
-            Error = $_.Exception.Message
+            Name=$entry.Name; DisplayName=$entry.DisplayName; Repository=$entry.Repository; LocalPath=$entry.LocalPath
+            LocalVersion=$null; LocalCommit=$null; RemoteVersion=$null; RemoteTag=$null; RemoteCommit=$null
+            RemoteZipUrl=$null; RemoteSource=$null; Status='Error'; Kind=$entry.Kind; UpdateMode=$entry.UpdateMode; Error=$_.Exception.Message
         }
     }
 }
 
 $results |
     Select-Object `
-        @{ Name = (Get-ThirdPartyText -Base64 "0JfQsNCy0LjRgdC40LzQvtGB0YLRjA=="); Expression = { $_.DisplayName } }, `
-        @{ Name = (Get-ThirdPartyText -Base64 "0JvQvtC60LDQu9GM0L3QsNGPINCy0LXRgNGB0LjRjw=="); Expression = { $_.LocalVersion } }, `
-        @{ Name = (Get-ThirdPartyText -Base64 "0KPQtNCw0LvRkdC90L3QsNGPINCy0LXRgNGB0LjRjw=="); Expression = { $_.RemoteVersion } }, `
-        @{ Name = (Get-ThirdPartyText -Base64 "0KHRgtCw0YLRg9GB"); Expression = { Get-DependencyStatusDisplay -Status $_.Status } }, `
-        @{ Name = (Get-ThirdPartyText -Base64 "0KPQtNCw0LvRkdC90L3Ri9C5INGC0LXQsw=="); Expression = { $_.RemoteTag } }, `
-        @{ Name = (Get-ThirdPartyText -Base64 "0JjRgdGC0L7Rh9C90LjQuiB1cHN0cmVhbS3QstC10YDRgdC40Lg="); Expression = { $_.RemoteSource } } |
+        @{Name='Dependency';Expression={$_.DisplayName}}, `
+        @{Name='Local';Expression={$_.LocalVersion}}, `
+        @{Name='Latest';Expression={$_.RemoteVersion}}, `
+        @{Name='Status';Expression={Get-DependencyStatusDisplay -Status $_.Status}}, `
+        @{Name='Tag';Expression={$_.RemoteTag}}, `
+        @{Name='Source';Expression={$_.RemoteSource}} |
     Format-Table -AutoSize
 
-$errors = $results | Where-Object { $_.Status -eq "Error" }
-if ($errors) {
-    Write-Host ""
-    Write-Host (Get-ThirdPartyText -Base64 "0J7RiNC40LHQutC4INC/0YDQvtCy0LXRgNC60Lg6")
-    foreach ($item in $errors) {
-        Write-Warning ("{0}: {1}" -f $item.DisplayName, $item.Error)
-    }
-
+$errors = @($results | Where-Object { $_.Status -eq 'Error' })
+if ($errors.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Check errors:'
+    foreach ($item in $errors) { Write-Warning ("{0}: {1}" -f $item.DisplayName,$item.Error) }
     exit 1
 }
 
-$updates = $results | Where-Object { $_.Status -eq "UpdateAvailable" }
-Write-Host ""
-if ($updates) {
-    Write-Host (Format-ThirdPartyText "0JTQvtGB0YLRg9C/0L3RiyDQvtCx0L3QvtCy0LvQtdC90LjRjzogezB9" (($updates.DisplayName) -join ", "))
+$updates = @($results | Where-Object { $_.Status -eq 'UpdateAvailable' })
+$reviews = @($results | Where-Object { $_.Status -eq 'NeedsReview' })
+$notInstalled = @($results | Where-Object { $_.Status -eq 'NotInstalled' })
+
+Write-Host ''
+if ($updates.Count -gt 0) {
+    $updateMessage = 'Updates available: {0}' -f (($updates.DisplayName) -join ', ')
+    if ($WarnOnUpdate) { Write-UpdateWarning -Message $updateMessage }
+    else { Write-Host $updateMessage }
 }
 else {
-    Write-Host (Get-ThirdPartyText -Base64 "0JLRgdC1INC/0YDQvtCy0LXRgNC10L3QvdGL0LUg0LfQsNCy0LjRgdC40LzQvtGB0YLQuCDRg9C20LUg0LDQutGC0YPQsNC70YzQvdGLLg==")
+    Write-Host 'No stable upstream updates found for installed dependencies.'
+}
+
+if ($reviews.Count -gt 0) {
+    $reviewMessage = 'Manual review required: {0}' -f (($reviews.DisplayName) -join ', ')
+    if ($WarnOnUpdate) { Write-UpdateWarning -Message $reviewMessage }
+    else { Write-Warning $reviewMessage }
+}
+
+if ($notInstalled.Count -gt 0) {
+    Write-Host ('Optional/not installed: {0}' -f (($notInstalled.DisplayName) -join ', '))
+}
+
+if ($FailOnUpdate -and ($updates.Count -gt 0 -or $reviews.Count -gt 0)) {
+    exit 2
 }

@@ -1,234 +1,187 @@
 <#
 .SYNOPSIS
-Безопасно раскладывает уже скачанное обновление выбранной зависимости в third_party через staging и backup.
+Safely applies a selected dependency update.
+Git submodules are updated by moving the submodule HEAD to the latest stable tagged commit; vendored trees use staging + backup.
 #>
 
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "High")]
+[CmdletBinding(SupportsShouldProcess=$true,ConfirmImpact='High')]
 param(
-    [Parameter(Mandatory)]
-    [ValidateSet("scintilla", "lexilla", "pcre2", "hunspell", "wtl")]
-    [string]$Dependency,
-
+    [Parameter(Mandatory)][string]$Dependency,
     [string]$SourcePath,
-
     [string]$DownloadedRoot,
-
     [string]$BackupRoot,
-
     [string]$StagingRoot,
-
+    [switch]$Stage,
     [switch]$Force
 )
 
-$ErrorActionPreference = "Stop"
-
-. (Join-Path $PSScriptRoot "ThirdPartySources.ps1")
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'ThirdPartySources.ps1')
 
 $repoRoot = Get-ThirdPartyRepoRoot
 $entry = Get-DependencyEntry -Name $Dependency
+if (-not $DownloadedRoot) { $DownloadedRoot = Join-Path $repoRoot 'tmp\third-party-updates' }
+if (-not $BackupRoot) { $BackupRoot = Join-Path $repoRoot 'tmp\third-party-backups' }
+if (-not $StagingRoot) { $StagingRoot = Join-Path $repoRoot 'tmp\third-party-staging' }
 
-if (-not $DownloadedRoot) {
-    $DownloadedRoot = Join-Path $repoRoot "tmp\third-party-updates"
+function New-SafeTimestamp { return (Get-Date).ToString('yyyyMMdd-HHmmss') }
+
+function Save-SubmoduleApplyMetadata {
+    param($DependencyEntry,[string]$PreviousCommit,$Info,[bool]$Staged)
+    New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
+    [pscustomobject]@{
+        Dependency=$DependencyEntry.Name; DisplayName=$DependencyEntry.DisplayName; PreviousCommit=$PreviousCommit
+        NewCommit=$Info.RemoteCommit; NewVersion=$Info.RemoteVersion; NewTag=$Info.RemoteTag; Staged=$Staged; AppliedAt=(Get-Date).ToString('s')
+    } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $BackupRoot ("{0}-last-apply.json" -f $DependencyEntry.Name)) -Encoding UTF8
 }
 
-if (-not $BackupRoot) {
-    $BackupRoot = Join-Path $repoRoot "tmp\third-party-backups"
-}
+function Apply-GitSubmoduleUpdate {
+    param([Parameter(Mandatory)]$DependencyEntry)
 
-if (-not $StagingRoot) {
-    $StagingRoot = Join-Path $repoRoot "tmp\third-party-staging"
+    $info = Get-DependencyUpdateInfo -Dependency $DependencyEntry
+    if ($info.Status -eq 'UpToDate' -and -not $Force) {
+        Write-Host ("{0} is already current ({1})." -f $DependencyEntry.DisplayName,$info.RemoteVersion)
+        return
+    }
+    if (-not $info.RemoteCommit) { throw "No tagged upstream commit resolved for $($DependencyEntry.DisplayName)." }
+
+    $relativePath = $DependencyEntry.RelativePath -replace '\\','/'
+    $localPath = $DependencyEntry.LocalPath
+    $operation = "checkout $($info.RemoteTag) ($($info.RemoteCommit)) in submodule $relativePath"
+    if (-not $PSCmdlet.ShouldProcess($relativePath,$operation)) { return }
+
+    Invoke-GitCapture -WorkingDirectory $repoRoot -Arguments @('submodule','update','--init','--',$relativePath) | Out-Null
+    if (-not (Test-Path -LiteralPath $localPath)) { throw "Submodule directory was not initialized: $localPath" }
+
+    $dirty = @(Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('status','--porcelain'))
+    if ($dirty.Count -gt 0 -and -not $Force) {
+        throw "Submodule contains local changes: $relativePath. Commit/stash them first or use -Force deliberately."
+    }
+
+    $previousCommit = ([string](Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('rev-parse','HEAD') | Select-Object -First 1)).Trim().ToLowerInvariant()
+    Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('fetch','--tags','--force','origin') | Out-Null
+    Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('checkout','--detach',$info.RemoteCommit) | Out-Null
+    $actual = ([string](Invoke-GitCapture -WorkingDirectory $localPath -Arguments @('rev-parse','HEAD') | Select-Object -First 1)).Trim().ToLowerInvariant()
+    if ($actual -ne $info.RemoteCommit.ToLowerInvariant()) {
+        throw "Submodule verification failed: expected $($info.RemoteCommit), got $actual"
+    }
+
+    $staged = $false
+    if ($Stage) {
+        Invoke-GitCapture -WorkingDirectory $repoRoot -Arguments @('add','--',$relativePath) | Out-Null
+        $staged = $true
+    }
+    Save-SubmoduleApplyMetadata -DependencyEntry $DependencyEntry -PreviousCommit $previousCommit -Info $info -Staged $staged
+
+    Write-Host ("Updated: {0} -> {1} ({2})" -f $DependencyEntry.DisplayName,$info.RemoteVersion,$info.RemoteTag)
+    Write-Host ("Previous commit: {0}" -f $previousCommit)
+    Write-Host ("New commit:      {0}" -f $actual)
+    if (-not $Stage) { Write-Host ("Stage gitlink with: git add -- {0}" -f $relativePath) }
+    Write-Host ('Rollback submodule HEAD with: git -C "{0}" checkout --detach {1}' -f $localPath,$previousCommit)
 }
 
 function Get-DirectoryVersionFromName {
-    param(
-        [Parameter(Mandatory)]
-        [string]$DirectoryName,
-
-        [Parameter(Mandatory)]
-        [string]$Prefix
-    )
-
-    if ($DirectoryName -notlike "$Prefix-*") {
-        return $null
-    }
-
+    param([Parameter(Mandatory)][string]$DirectoryName,[Parameter(Mandatory)][string]$Prefix)
+    if ($DirectoryName -notlike "$Prefix-*") { return $null }
     $versionText = $DirectoryName.Substring($Prefix.Length + 1)
-    try {
-        return [version]$versionText
-    }
-    catch {
-        return $null
-    }
+    try { return [version]$versionText } catch { return $null }
 }
 
 function Resolve-SourceDirectory {
-    param(
-        [Parameter(Mandatory)]
-        $DependencyEntry,
+    param($DependencyEntry,[string]$ExplicitPath,[string]$DownloadsPath)
+    if ($ExplicitPath) { return (Resolve-Path -LiteralPath $ExplicitPath).Path }
+    if (-not (Test-Path -LiteralPath $DownloadsPath)) { throw "Downloaded updates directory not found: $DownloadsPath" }
 
-        [string]$ExplicitPath,
-
-        [Parameter(Mandatory)]
-        [string]$DownloadsPath
-    )
-
-    if ($ExplicitPath) {
-        return (Resolve-Path -LiteralPath $ExplicitPath).Path
-    }
-
-    if (-not (Test-Path -LiteralPath $DownloadsPath)) {
-        throw "Ne naiden katalog so skachannymi obnovleniyami: $DownloadsPath"
-    }
-
-    $candidates =
-        Get-ChildItem -LiteralPath $DownloadsPath -Directory |
+    $best = Get-ChildItem -LiteralPath $DownloadsPath -Directory |
         Where-Object { $_.Name -like "$($DependencyEntry.Name)-*" } |
-        ForEach-Object {
-            [pscustomobject]@{
-                FullName = $_.FullName
-                Name = $_.Name
-                Version = Get-DirectoryVersionFromName -DirectoryName $_.Name -Prefix $DependencyEntry.Name
-                LastWriteTime = $_.LastWriteTime
-            }
-        } |
+        ForEach-Object { [pscustomobject]@{ FullName=$_.FullName; Version=(Get-DirectoryVersionFromName -DirectoryName $_.Name -Prefix $DependencyEntry.Name); LastWriteTime=$_.LastWriteTime } } |
         Where-Object { $_.Version -ne $null } |
-        Sort-Object Version, LastWriteTime -Descending
+        Sort-Object Version,LastWriteTime -Descending |
+        Select-Object -First 1
 
-    $best = $candidates | Select-Object -First 1
-    if (-not $best) {
-        throw "Ne naiden skachannyj katalog dlya $($DependencyEntry.DisplayName) v $DownloadsPath"
-    }
-
+    if (-not $best) { throw "No downloaded source directory found for $($DependencyEntry.DisplayName) in $DownloadsPath" }
     return $best.FullName
 }
 
 function Resolve-SourceLayout {
-    param(
-        [Parameter(Mandatory)]
-        $DependencyEntry,
-
-        [Parameter(Mandatory)]
-        [string]$CandidatePath
-    )
-
+    param($DependencyEntry,[string]$CandidatePath)
     try {
         Assert-DependencySourceTree -Dependency $DependencyEntry -Path $CandidatePath
         return $CandidatePath
     }
     catch {
         if ($DependencyEntry.SourceSubdirectory) {
-            $nestedPath = Join-Path $CandidatePath $DependencyEntry.SourceSubdirectory
-            if (Test-Path -LiteralPath $nestedPath) {
-                Assert-DependencySourceTree -Dependency $DependencyEntry -Path $nestedPath
-                return $nestedPath
+            $nested = Join-Path $CandidatePath $DependencyEntry.SourceSubdirectory
+            if (Test-Path -LiteralPath $nested) {
+                Assert-DependencySourceTree -Dependency $DependencyEntry -Path $nested
+                return $nested
             }
         }
-
-        $subdirectories = Get-ChildItem -LiteralPath $CandidatePath -Directory -ErrorAction Stop
-        if ($subdirectories.Count -eq 1) {
-            $nestedPath = $subdirectories[0].FullName
-            Assert-DependencySourceTree -Dependency $DependencyEntry -Path $nestedPath
-            return $nestedPath
+        $subdirs = @(Get-ChildItem -LiteralPath $CandidatePath -Directory -ErrorAction Stop)
+        if ($subdirs.Count -eq 1) {
+            Assert-DependencySourceTree -Dependency $DependencyEntry -Path $subdirs[0].FullName
+            return $subdirs[0].FullName
         }
-
         throw
     }
 }
 
-function New-SafeTimestamp {
-    return (Get-Date).ToString("yyyyMMdd-HHmmss")
-}
+function Apply-ReplaceTreeUpdate {
+    param([Parameter(Mandatory)]$DependencyEntry)
 
-$sourceDirectory = Resolve-SourceDirectory -DependencyEntry $entry -ExplicitPath $SourcePath -DownloadsPath $DownloadedRoot
-$sourceDirectory = Resolve-SourceLayout -DependencyEntry $entry -CandidatePath $sourceDirectory
+    $sourceDirectory = Resolve-SourceDirectory -DependencyEntry $DependencyEntry -ExplicitPath $SourcePath -DownloadsPath $DownloadedRoot
+    $sourceDirectory = Resolve-SourceLayout -DependencyEntry $DependencyEntry -CandidatePath $sourceDirectory
 
-$sourceVersion = Get-LocalDependencyVersion -Dependency ([pscustomobject]@{
-    VersionReader = $entry.VersionReader
-    LocalPath = $sourceDirectory
-})
-
-$targetDirectory = $entry.LocalPath
-$currentVersion = $null
-if (Test-Path -LiteralPath $targetDirectory) {
-    Assert-DependencySourceTree -Dependency $entry -Path $targetDirectory
-    $currentVersion = Get-LocalDependencyVersion -Dependency $entry
-}
-
-if ($currentVersion -and $currentVersion -eq $sourceVersion -and -not $Force) {
-    throw (Format-ThirdPartyText "0JLQtdGA0YHQuNGPIHswfSB7MX0g0YPQttC1INGA0LDQt9C70L7QttC10L3QsCDQsiB0aGlyZF9wYXJ0eS4g0JTQu9GPINC/0L7QstGC0L7RgNC90L7QuSDRgNCw0YHQutC70LDQtNC60Lgg0YPQutCw0LbQuNGC0LUgLUZvcmNlLg==" $entry.DisplayName, $sourceVersion)
-}
-
-New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
-New-Item -ItemType Directory -Path $StagingRoot -Force | Out-Null
-
-$timestamp = New-SafeTimestamp
-$stagingDirectory = Join-Path $StagingRoot ("{0}-{1}-{2}" -f $entry.Name, $sourceVersion, $timestamp)
-$backupDirectory = if ($currentVersion) {
-    Join-Path $BackupRoot ("{0}-{1}-{2}" -f $entry.Name, $currentVersion, $timestamp)
-}
-else {
-    Join-Path $BackupRoot ("{0}-empty-{1}" -f $entry.Name, $timestamp)
-}
-
-$operationDescription = "{0} {1} -> {2}" -f $entry.DisplayName, $sourceVersion, $targetDirectory
-if (-not $PSCmdlet.ShouldProcess($targetDirectory, $operationDescription)) {
-    return
-}
-
-Copy-Item -LiteralPath $sourceDirectory -Destination $stagingDirectory -Recurse -Force
-Assert-DependencySourceTree -Dependency $entry -Path $stagingDirectory
-
-$backupCreated = $false
-$targetMoved = $false
-$deploymentFinished = $false
-
-try {
+    $sourceEntry = [pscustomobject]@{ Kind=$DependencyEntry.Kind; VersionReader=$DependencyEntry.VersionReader; LocalPath=$sourceDirectory }
+    $sourceVersion = Get-LocalDependencyVersion -Dependency $sourceEntry
+    $targetDirectory = $DependencyEntry.LocalPath
+    $currentVersion = $null
     if (Test-Path -LiteralPath $targetDirectory) {
-        Move-Item -LiteralPath $targetDirectory -Destination $backupDirectory
-        $backupCreated = $true
-        $targetMoved = $true
+        Assert-DependencySourceTree -Dependency $DependencyEntry -Path $targetDirectory
+        $currentVersion = Get-LocalDependencyVersion -Dependency $DependencyEntry
+    }
+    if ($currentVersion -and $currentVersion -eq $sourceVersion -and -not $Force) {
+        throw "$($DependencyEntry.DisplayName) $sourceVersion is already installed. Use -Force only for intentional re-apply."
     }
 
-    Move-Item -LiteralPath $stagingDirectory -Destination $targetDirectory
-    $deploymentFinished = $true
-}
-catch {
-    if (-not $deploymentFinished -and $backupCreated -and -not (Test-Path -LiteralPath $targetDirectory) -and (Test-Path -LiteralPath $backupDirectory)) {
-        Move-Item -LiteralPath $backupDirectory -Destination $targetDirectory -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
+    New-Item -ItemType Directory -Path $StagingRoot -Force | Out-Null
+    $timestamp = New-SafeTimestamp
+    $stagingDirectory = Join-Path $StagingRoot ("{0}-{1}-{2}" -f $DependencyEntry.Name,$sourceVersion,$timestamp)
+    $backupDirectory = if ($currentVersion) { Join-Path $BackupRoot ("{0}-{1}-{2}" -f $DependencyEntry.Name,$currentVersion,$timestamp) } else { Join-Path $BackupRoot ("{0}-empty-{1}" -f $DependencyEntry.Name,$timestamp) }
+
+    if (-not $PSCmdlet.ShouldProcess($targetDirectory,("{0} {1} -> {2}" -f $DependencyEntry.DisplayName,$sourceVersion,$targetDirectory))) { return }
+
+    Copy-Item -LiteralPath $sourceDirectory -Destination $stagingDirectory -Recurse -Force
+    Assert-DependencySourceTree -Dependency $DependencyEntry -Path $stagingDirectory
+
+    $backupCreated = $false
+    $deployed = $false
+    try {
+        if (Test-Path -LiteralPath $targetDirectory) {
+            Move-Item -LiteralPath $targetDirectory -Destination $backupDirectory
+            $backupCreated = $true
+        }
+        Move-Item -LiteralPath $stagingDirectory -Destination $targetDirectory
+        $deployed = $true
+    }
+    catch {
+        if (-not $deployed -and $backupCreated -and -not (Test-Path -LiteralPath $targetDirectory) -and (Test-Path -LiteralPath $backupDirectory)) {
+            Move-Item -LiteralPath $backupDirectory -Destination $targetDirectory -ErrorAction SilentlyContinue
+        }
+        throw
+    }
+    finally {
+        if (Test-Path -LiteralPath $stagingDirectory) { Remove-Item -LiteralPath $stagingDirectory -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    throw
-}
-finally {
-    if ((Test-Path -LiteralPath $stagingDirectory) -and ($deploymentFinished -or $targetMoved)) {
-        Remove-Item -LiteralPath $stagingDirectory -Recurse -Force -ErrorAction SilentlyContinue
-    }
-}
-
-Assert-DependencySourceTree -Dependency $entry -Path $targetDirectory
-$finalVersion = Get-LocalDependencyVersion -Dependency $entry
-
-$result = [pscustomobject]@{
-    Dependency = $entry.Name
-    DisplayName = $entry.DisplayName
-    PreviousVersion = $currentVersion
-    NewVersion = $finalVersion
-    SourcePath = $sourceDirectory
-    TargetPath = $targetDirectory
-    BackupPath = if ($backupCreated) { $backupDirectory } else { $null }
-    AppliedAt = (Get-Date).ToString("s")
+    Assert-DependencySourceTree -Dependency $DependencyEntry -Path $targetDirectory
+    $finalVersion = Get-LocalDependencyVersion -Dependency $DependencyEntry
+    Write-Host ("Installed: {0} {1}" -f $DependencyEntry.DisplayName,$finalVersion)
+    if ($currentVersion) { Write-Host "Previous version: $currentVersion" }
+    Write-Host "Backup: $backupDirectory"
 }
 
-$result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $BackupRoot ("{0}-last-apply.json" -f $entry.Name)) -Encoding UTF8
-
-Write-Host (Format-ThirdPartyText "0KDQsNC30LvQvtC20LXQvdC+OiB7MH0gezF9" $entry.DisplayName, $finalVersion)
-if ($currentVersion) {
-    Write-Host (Format-ThirdPartyText "0J/RgNC10LTRi9C00YPRidCw0Y8g0LLQtdGA0YHQuNGPOiB7MH0=" $currentVersion)
-}
-Write-Host (Format-ThirdPartyText "0JjRgdGC0L7Rh9C90LjQujogezB9" $sourceDirectory)
-Write-Host (Format-ThirdPartyText "0KDQtdC30LXRgNCy0L3QsNGPINC60L7Qv9C40Y86IHswfQ==" $backupDirectory)
-Write-Host ""
-Write-Host (Get-ThirdPartyText -Base64 "0KDQtdC60L7QvNC10L3QtNGD0LXQvNGL0LUg0YHQu9C10LTRg9GO0YnQuNC1INGI0LDQs9C4Og==")
-Write-Host (Get-ThirdPartyText -Base64 "ICAxLiDQn9GA0L7QstC10YDQuNGC0YwgZGlmZiDQsiB0aGlyZF9wYXJ0eSDQuCDRgdCy0Y/Qt9Cw0L3QvdGL0LUgcmVsZWFzZSBub3RlcyB1cHN0cmVhbS4=")
-Write-Host (Get-ThirdPartyText -Base64 "ICAyLiDQn9C10YDQtdGB0L7QsdGA0LDRgtGMINC30LDQstC40YHQuNC80L7RgdGC0Ywg0LjQu9C4INCy0LXRgdGMINC/0YDQvtC10LrRgi4=")
-Write-Host (Get-ThirdPartyText -Base64 "ICAzLiDQn9GA0L7QudGC0Lgg0YHQvtC+0YLQstC10YLRgdGC0LLRg9GO0YnQuNC1IHNtb2tlL3JlZ3Jlc3Npb24t0L/RgNC+0LLQtdGA0LrQuC4=")
+if ($entry.UpdateMode -eq 'GitSubmodule') { Apply-GitSubmoduleUpdate -DependencyEntry $entry }
+elseif ($entry.UpdateMode -eq 'ReplaceTree') { Apply-ReplaceTreeUpdate -DependencyEntry $entry }
+else { throw "Automatic apply is not supported for $($entry.DisplayName) (mode: $($entry.UpdateMode))." }
