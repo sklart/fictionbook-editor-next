@@ -6,6 +6,7 @@ Common helpers for checking, downloading and applying third-party dependency upd
 The catalog supports three dependency types:
   * ReplaceTree   - vendored source tree replaced from an upstream archive;
   * GitSubmodule  - repository gitlink is compared with the latest stable upstream tag;
+  * VendoredTree  - vendored source tree checked in place; updates are applied manually when FBE-specific files must be preserved.
   * OptionalTree  - optional vendored dependency; absence is reported as NotInstalled.
 #>
 
@@ -13,6 +14,9 @@ The catalog supports three dependency types:
 param()
 
 $ErrorActionPreference = 'Stop'
+
+# Avoid querying the same upstream twice in one checker run (latest tag + local gitlink tag).
+$script:GitRemoteTagCache = @{}
 
 function Get-ThirdPartyText {
     param([Parameter(Mandatory)][string]$Base64)
@@ -145,6 +149,10 @@ function Get-CMakeProjectVersion {
 function Get-GitRemoteTagRecords {
     param([Parameter(Mandatory)][string]$RepositoryUrl)
 
+    if ($script:GitRemoteTagCache.ContainsKey($RepositoryUrl)) {
+        return @($script:GitRemoteTagCache[$RepositoryUrl])
+    }
+
     $lines = Invoke-GitCapture -Arguments @('ls-remote', '--tags', $RepositoryUrl)
     $records = @{}
 
@@ -166,26 +174,9 @@ function Get-GitRemoteTagRecords {
         }
     }
 
-    return @($records.Values)
-}
-
-function Get-VersionTextFromTagMatch {
-    param([Parameter(Mandatory)][System.Text.RegularExpressions.Match]$Match)
-
-    if (-not $Match.Success -or $Match.Groups.Count -lt 2) { return $null }
-
-    $parts = @()
-    for ($index = 1; $index -lt $Match.Groups.Count; $index++) {
-        $group = $Match.Groups[$index]
-        if ($group.Success -and -not [string]::IsNullOrWhiteSpace($group.Value)) {
-            $parts += $group.Value
-        }
-    }
-
-    if ($parts.Count -eq 0) { return $null }
-    if ($parts.Count -eq 1) { return $parts[0] }
-
-    return ($parts -join '.')
+    $result = @($records.Values)
+    $script:GitRemoteTagCache[$RepositoryUrl] = $result
+    return $result
 }
 
 function Get-LatestStableGitRelease {
@@ -199,8 +190,7 @@ function Get-LatestStableGitRelease {
         $match = [regex]::Match($record.Tag, $TagPattern)
         if (-not $match.Success) { continue }
 
-        $versionText = Get-VersionTextFromTagMatch -Match $match
-        if (-not $versionText) { continue }
+        $versionText = $match.Groups[1].Value
         try { $comparison = [version]$versionText }
         catch { continue }
 
@@ -261,14 +251,12 @@ function Get-StableTagForCommit {
         $match = [regex]::Match($record.Tag, $TagPattern)
         if (-not $match.Success) { continue }
 
-        $versionText = Get-VersionTextFromTagMatch -Match $match
-        if (-not $versionText) { continue }
-        try { $comparison = [version]$versionText }
+        try { $comparison = [version]$match.Groups[1].Value }
         catch { continue }
 
         [pscustomobject]@{
             Tag = $record.Tag
-            Version = $versionText
+            Version = $match.Groups[1].Value
             Comparison = $comparison
         }
     }
@@ -338,7 +326,32 @@ function Get-DependencyCatalog {
                 [pscustomobject]@{ Tag=$releaseMatch.Groups[1].Value; Version=$releaseMatch.Groups[1].Value; Commit=$null; ZipUrl=$zipMatch.Value; Source='scintilla.org' }
             }
         }
-        (New-GitSubmoduleDependency -Name 'lexilla' -DisplayName 'Lexilla' -RelativePath 'third_party\lexilla' -RepositoryUrl 'https://github.com/ScintillaOrg/lexilla.git' -TagPattern '^rel-(\d+)-(\d+)-(\d+)$' -ValidationPaths @('version.txt','src\lexilla.mak','include\Lexilla.h'))
+        [pscustomobject]@{
+            Name = 'lexilla'
+            DisplayName = 'Lexilla'
+            Repository = 'ScintillaOrg/lexilla'
+            RepositoryUrl = 'https://github.com/ScintillaOrg/lexilla.git'
+            LocalPath = Join-Path $repoRoot 'third_party\lexilla'
+            RelativePath = 'third_party\lexilla'
+            ValidationPaths = @('version.txt', 'src\lexilla.mak', 'include\Lexilla.h')
+            Kind = 'ReplaceTree'
+            UpdateMode = 'Manual'
+            Optional = $false
+            VersionReader = {
+                param($entry)
+                $versionFile = Join-Path $entry.LocalPath 'version.txt'
+                if (-not (Test-Path -LiteralPath $versionFile)) { throw "version.txt not found: $versionFile" }
+                Convert-ScintillaStyleVersion -RawVersion (Get-Content -LiteralPath $versionFile -Raw)
+            }
+            RemoteInfoReader = {
+                param($entry)
+                $content = Get-RemoteTextContent -Uri 'https://www.scintilla.org/LexillaDownload.html'
+                $releaseMatch = [regex]::Match($content, 'Release\s+(\d+\.\d+\.\d+)')
+                $zipMatch = [regex]::Match($content, 'https://www\.scintilla\.org/lexilla\d+\.zip')
+                if (-not $releaseMatch.Success -or -not $zipMatch.Success) { throw 'Could not parse Lexilla download page.' }
+                [pscustomobject]@{ Tag=$releaseMatch.Groups[1].Value; Version=$releaseMatch.Groups[1].Value; Commit=$null; ZipUrl=$zipMatch.Value; Source='scintilla.org' }
+            }
+        }
         (New-GitSubmoduleDependency -Name 'pcre2' -DisplayName 'PCRE2' -RelativePath 'third_party\pcre2' -RepositoryUrl 'https://github.com/PCRE2Project/pcre2.git' -TagPattern '^pcre2-(\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','src\pcre2.h.generic'))
         (New-GitSubmoduleDependency -Name 'hunspell' -DisplayName 'Hunspell' -RelativePath 'third_party\hunspell' -RepositoryUrl 'https://github.com/hunspell/hunspell.git' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('configure.ac','src\hunspell\hunspell.cxx'))
         [pscustomobject]@{
@@ -395,12 +408,12 @@ function Get-DependencyCatalog {
             DisplayName = 'LunaSVG'
             Repository = 'sammycage/lunasvg'
             RepositoryUrl = 'https://github.com/sammycage/lunasvg.git'
-            LocalPath = $(if ($env:FBE_LUNASVG_PATH) { $env:FBE_LUNASVG_PATH } else { Join-Path $repoRoot 'third_party\lunasvg' })
-            RelativePath = 'third_party\lunasvg'
-            ValidationPaths = @('CMakeLists.txt','include')
-            Kind = 'OptionalTree'
+            LocalPath = Join-Path $repoRoot 'src\import-epub\thirdparty\lunasvg'
+            RelativePath = 'src\import-epub\thirdparty\lunasvg'
+            ValidationPaths = @('CMakeLists.txt','include\lunasvg.h','source\lunasvg.cpp','lunasvg.vcxproj','plutovg.vcxproj')
+            Kind = 'VendoredTree'
             UpdateMode = 'Manual'
-            Optional = $true
+            Optional = $false
             TagPattern = '^v?(\d+\.\d+\.\d+)$'
             VersionReader = {
                 param($entry)
@@ -413,15 +426,15 @@ function Get-DependencyCatalog {
         }
         [pscustomobject]@{
             Name = 'plutovg'
-            DisplayName = 'PlutoVG'
+            DisplayName = 'PlutoVG (vendored by LunaSVG)'
             Repository = 'sammycage/plutovg'
             RepositoryUrl = 'https://github.com/sammycage/plutovg.git'
-            LocalPath = $(if ($env:FBE_PLUTOVG_PATH) { $env:FBE_PLUTOVG_PATH } else { Join-Path $repoRoot 'third_party\plutovg' })
-            RelativePath = 'third_party\plutovg'
-            ValidationPaths = @('CMakeLists.txt','include')
-            Kind = 'OptionalTree'
+            LocalPath = Join-Path $repoRoot 'src\import-epub\thirdparty\lunasvg\plutovg'
+            RelativePath = 'src\import-epub\thirdparty\lunasvg\plutovg'
+            ValidationPaths = @('CMakeLists.txt','include\plutovg.h','source\plutovg-canvas.c')
+            Kind = 'VendoredTree'
             UpdateMode = 'Manual'
-            Optional = $true
+            Optional = $false
             TagPattern = '^v?(\d+\.\d+\.\d+)$'
             VersionReader = {
                 param($entry)

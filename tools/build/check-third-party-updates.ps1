@@ -12,21 +12,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+if ($WarnOnUpdate -and $FailOnUpdate) {
+    throw 'Use either -WarnOnUpdate or -FailOnUpdate, not both.'
+}
+
 . (Join-Path $PSScriptRoot 'ThirdPartySources.ps1')
 . (Join-Path $PSScriptRoot 'DictionarySources.ps1')
-
-
-function Write-UpdateWarning {
-    param([Parameter(Mandatory)][string]$Message)
-
-    if ($env:GITHUB_ACTIONS -eq 'true') {
-        $escaped = $Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
-        Write-Host ("::warning title=Third-party update::{0}" -f $escaped)
-    }
-    else {
-        Write-Warning $Message
-    }
-}
 
 function Resolve-ItemsToCheck {
     param([string[]]$Selected)
@@ -91,25 +82,37 @@ $reviews = @($results | Where-Object { $_.Status -eq 'NeedsReview' })
 $notInstalled = @($results | Where-Object { $_.Status -eq 'NotInstalled' })
 
 Write-Host ''
-if ($updates.Count -gt 0) {
-    $updateMessage = 'Updates available: {0}' -f (($updates.DisplayName) -join ', ')
-    if ($WarnOnUpdate) { Write-UpdateWarning -Message $updateMessage }
-    else { Write-Host $updateMessage }
-}
-else {
-    Write-Host 'No stable upstream updates found for installed dependencies.'
-}
+if ($updates.Count -gt 0) { Write-Host ('Updates available: {0}' -f (($updates.DisplayName) -join ', ')) }
+else { Write-Host 'No stable upstream updates found for installed dependencies.' }
 
 if ($reviews.Count -gt 0) {
-    $reviewMessage = 'Manual review required: {0}' -f (($reviews.DisplayName) -join ', ')
-    if ($WarnOnUpdate) { Write-UpdateWarning -Message $reviewMessage }
-    else { Write-Warning $reviewMessage }
+    Write-Warning ('Manual review required: {0}' -f (($reviews.DisplayName) -join ', '))
 }
 
 if ($notInstalled.Count -gt 0) {
     Write-Host ('Optional/not installed: {0}' -f (($notInstalled.DisplayName) -join ', '))
 }
 
+if ($WarnOnUpdate) {
+    foreach ($item in $updates) {
+        $message = '{0}: local {1}, latest {2} ({3})' -f $item.DisplayName,$item.LocalVersion,$item.RemoteVersion,$item.RemoteTag
+        Write-Warning $message
+        if ($env:GITHUB_ACTIONS -eq 'true') {
+            Write-Host ('::warning title=Third-party update available::{0}' -f $message)
+        }
+    }
+
+    foreach ($item in $reviews) {
+        $message = '{0}: manual review required (local {1}, upstream {2}, tag {3})' -f $item.DisplayName,$item.LocalVersion,$item.RemoteVersion,$item.RemoteTag
+        Write-Warning $message
+        if ($env:GITHUB_ACTIONS -eq 'true') {
+            Write-Host ('::warning title=Third-party manual review::{0}' -f $message)
+        }
+    }
+}
+
 if ($FailOnUpdate -and ($updates.Count -gt 0 -or $reviews.Count -gt 0)) {
     exit 2
 }
+
+exit 0
