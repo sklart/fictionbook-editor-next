@@ -21,6 +21,17 @@ if (-not (Test-Path -LiteralPath $catalogPath)) {
     throw "Не найден каталог локализации FBE/FBV: $catalogPath"
 }
 
+# ConvertFrom-Json accepts some non-standard JSON. Validate the catalog with
+# Python's strict RFC 8259 parser first, so trailing commas cannot enter CI.
+$python = Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
+if (-not $python) {
+    throw "Для строгой проверки JSON требуется python."
+}
+& $python -c "import json, sys; json.load(open(sys.argv[1], encoding='utf-8'))" $catalogPath
+if ($LASTEXITCODE -ne 0) {
+    throw "catalog.json не является строгим JSON."
+}
+
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json -Depth 20
 
 $requiredLanguages = @(
