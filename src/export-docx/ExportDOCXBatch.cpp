@@ -7,6 +7,7 @@
 #define NOMINMAX
 #endif
 #include "targetver.h"
+#include "../version.h"
 #include <windows.h>
 #include <msxml6.h>
 #include <shlobj.h>
@@ -1621,15 +1622,42 @@ static void Usage()
     PrintLine(L"By default, the DLL is searched in Plugins next to the EXE, next to the EXE, in the current directory, and in out\\Release.");
 }
 
+static bool IsDetachedInteractiveConsole()
+{
+    DWORD mode = 0;
+    HANDLE input = ::GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE output = ::GetStdHandle(STD_OUTPUT_HANDLE);
+    if (input == INVALID_HANDLE_VALUE || output == INVALID_HANDLE_VALUE ||
+        !::GetConsoleMode(input, &mode) || !::GetConsoleMode(output, &mode)) {
+        return false;
+    }
+
+    DWORD processIds[2] = {};
+    const DWORD count = ::GetConsoleProcessList(processIds, _countof(processIds));
+    HWND consoleWindow = ::GetConsoleWindow();
+    return count == 1 && processIds[0] == ::GetCurrentProcessId() && consoleWindow && ::IsWindowVisible(consoleWindow);
+}
+
+static void WaitForInteractiveKey()
+{
+    INPUT_RECORD record = {};
+    DWORD read = 0;
+    HANDLE input = ::GetStdHandle(STD_INPUT_HANDLE);
+    while (::ReadConsoleInputW(input, &record, 1, &read) && read == 1) {
+        if (record.EventType == KEY_EVENT && record.Event.KeyEvent.bKeyDown)
+            return;
+    }
+}
+
 static void ShowInteractiveLaunchHelp()
 {
-    ::MessageBoxW(
-        nullptr,
-        L"Это консольный пакетный конвертер FB2 в DOCX.\r\n\r\n"
-        L"Запустите ExportDOCXBatch.exe из командной строки или PowerShell, "
-        L"указав входной и выходной путь. Для полного списка параметров используйте -Help.",
-        L"ExportDOCXBatch",
-        MB_OK | MB_ICONINFORMATION);
+    PrintLine(L"ExportDOCXBatch " FBE_VERSION_WSTRING);
+    Usage();
+    PrintLine(L"");
+    if (!IsDetachedInteractiveConsole())
+        return;
+    PrintLine(L"Нажмите любую клавишу для выхода...");
+    WaitForInteractiveKey();
 }
 
 static int NonNegativeInt(const std::wstring& value)

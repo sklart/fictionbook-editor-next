@@ -23,7 +23,10 @@ if ($pluginProject -notmatch '<ClCompile Include="EpubImport\.cpp"') { throw 'Im
 if ($batchSource -match 'BuildFb2XmlFromEpub|GetLastEpubImportRuntimeStats|#include "EpubImport\.h"') { throw 'ImportEPUBBatch still uses the importer C++ API.' }
 if ($batchSource -notmatch 'LoadLibraryW' -or $batchSource -notmatch 'GetProcAddress' -or $batchSource -notmatch 'Plugins' -or $batchSource -notmatch 'ImportEPUB\.dll') { throw 'ImportEPUBBatch does not dynamically load Plugins\ImportEPUB.dll.' }
 if ($batchSource -notmatch 'was not found' -or $batchSource -notmatch 'same Win32/x86 architecture' -or $batchSource -notmatch 'does not export ImportEPUB_BuildFb2XmlW') { throw 'ImportEPUBBatch is missing a required DLL load diagnostic.' }
-if ($apiHeader -notmatch 'extern "C"' -or $apiHeader -notmatch 'HRESULT WINAPI ImportEPUB_BuildFb2XmlW' -or $apiHeader -notmatch 'ImportEpubRuntimeStatsV1') { throw 'The stable C ImportEPUB ABI declaration is incomplete.' }
+if ($apiHeader -notmatch 'extern "C"' -or $apiHeader -notmatch 'HRESULT WINAPI ImportEPUB_BuildFb2XmlW' -or $apiHeader -notmatch 'BSTR\* fb2Xml' -or $apiHeader -notmatch 'BSTR\* errorText' -or $apiHeader -notmatch 'ImportEpubRuntimeStatsV1') { throw 'The stable BSTR-based C ImportEPUB ABI declaration is incomplete.' }
+if ($batchSource -match 'requiredFb2Cch|ERROR_INSUFFICIENT_BUFFER|fb2Buffer') { throw 'ImportEPUBBatch retains the two-pass output-buffer ABI.' }
+if (([regex]::Matches($batchSource, 'g_importEpubBuild\(inputPath')).Count -ne 1) { throw 'ImportEPUBBatch must dispatch exactly one DLL import per EPUB.' }
+if ($batchSource -notmatch 'SysFreeString\(apiFb2\)' -or $batchSource -notmatch 'SysFreeString\(apiError\)') { throw 'ImportEPUBBatch does not release BSTR results with SysFreeString.' }
 if ($def -notmatch '(?m)^\s*ImportEPUB_BuildFb2XmlW\s*$') { throw 'ImportEPUB.def does not export ImportEPUB_BuildFb2XmlW.' }
 
 if ($DllPath) {
@@ -41,7 +44,7 @@ if ($BatchPath -or $SmokeEpubPath) {
 
     $testDirectory = Join-Path $root 'out\tests\import-epub-batch-dll-abi'
     New-Item -ItemType Directory -Force -Path $testDirectory | Out-Null
-    $normalOutput = Join-Path $testDirectory 'normal-plugin-load.fb2'
+    $normalOutput = Join-Path $testDirectory ('normal-plugin-load-' + [guid]::NewGuid().ToString('N') + '.fb2')
     & $BatchPath $SmokeEpubPath $normalOutput
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $normalOutput -PathType Leaf)) { throw 'Batch EPUB-to-FB2 smoke test through Plugins\ImportEPUB.dll failed.' }
 

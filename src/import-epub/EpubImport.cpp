@@ -4965,18 +4965,9 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
 
 namespace
 {
-    void CopyImportEpubApiText(const CStringW& source, wchar_t* destination, DWORD destinationCch, DWORD* requiredCch)
+    BSTR AllocateImportEpubApiText(const CStringW& source)
     {
-        const DWORD required = static_cast<DWORD>(source.GetLength()) + 1;
-        if (requiredCch)
-            *requiredCch = required;
-        if (destination && destinationCch)
-        {
-            const DWORD copied = (required <= destinationCch) ? required - 1 : destinationCch - 1;
-            if (copied)
-                memcpy(destination, source.GetString(), static_cast<size_t>(copied) * sizeof(wchar_t));
-            destination[copied] = L'\0';
-        }
+        return SysAllocStringLen(source.GetString(), static_cast<UINT>(source.GetLength()));
     }
 
     EpubImportOptions ImportEpubOptionsFromApi(const ImportEpubOptionsV1& source)
@@ -5015,18 +5006,14 @@ namespace
 extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     LPCWSTR epubPath,
     const ImportEpubOptionsV1* apiOptions,
-    wchar_t* fb2XmlBuffer,
-    DWORD fb2XmlBufferCch,
-    DWORD* requiredFb2XmlCch,
+    BSTR* apiFb2Xml,
     ImportEpubRuntimeStatsV1* apiRuntimeStats,
-    wchar_t* errorBuffer,
-    DWORD errorBufferCch,
-    DWORD* requiredErrorCch)
+    BSTR* apiErrorText)
 {
-    if (requiredFb2XmlCch)
-        *requiredFb2XmlCch = 0;
-    if (requiredErrorCch)
-        *requiredErrorCch = 0;
+    if (!apiFb2Xml || !apiErrorText)
+        return E_POINTER;
+    *apiFb2Xml = nullptr;
+    *apiErrorText = nullptr;
     if (!epubPath || !*epubPath || (apiOptions && (apiOptions->cbSize < sizeof(ImportEpubOptionsV1) || apiOptions->version != IMPORT_EPUB_API_VERSION)) ||
         (apiRuntimeStats && apiRuntimeStats->cbSize < sizeof(ImportEpubRuntimeStatsV1)))
         return E_INVALIDARG;
@@ -5042,20 +5029,19 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     catch (...)
     {
         errorText = L"ImportEPUB encountered an unexpected internal error.";
-        CopyImportEpubApiText(errorText, errorBuffer, errorBufferCch, requiredErrorCch);
-        return E_FAIL;
+        *apiErrorText = AllocateImportEpubApiText(errorText);
+        return *apiErrorText ? E_FAIL : E_OUTOFMEMORY;
     }
 
     if (!converted)
     {
-        CopyImportEpubApiText(errorText, errorBuffer, errorBufferCch, requiredErrorCch);
-        return E_FAIL;
+        *apiErrorText = AllocateImportEpubApiText(errorText);
+        return *apiErrorText ? E_FAIL : E_OUTOFMEMORY;
     }
 
-    CopyImportEpubApiText(fb2Xml, fb2XmlBuffer, fb2XmlBufferCch, requiredFb2XmlCch);
-    CopyImportEpubApiText(CStringW(), errorBuffer, errorBufferCch, requiredErrorCch);
-    if (!fb2XmlBuffer || fb2XmlBufferCch < static_cast<DWORD>(fb2Xml.GetLength()) + 1)
-        return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+    *apiFb2Xml = AllocateImportEpubApiText(fb2Xml);
+    if (!*apiFb2Xml)
+        return E_OUTOFMEMORY;
 
     if (apiRuntimeStats)
     {
@@ -5065,7 +5051,7 @@ extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
         apiRuntimeStats->svgConverted = stats.svgConverted;
         apiRuntimeStats->svgPlaceholders = stats.svgPlaceholders;
         apiRuntimeStats->svgSkipped = stats.svgSkipped;
-        CopyImportEpubApiText(stats.svgBackend, apiRuntimeStats->svgBackend, IMPORT_EPUB_SVG_BACKEND_CCH, nullptr);
+        wcsncpy_s(apiRuntimeStats->svgBackend, stats.svgBackend, _TRUNCATE);
     }
     return S_OK;
 }

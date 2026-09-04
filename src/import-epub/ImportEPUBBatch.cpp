@@ -36,7 +36,7 @@ namespace
         }
     };
 
-    typedef HRESULT (WINAPI* ImportEpubBuildFunc)(LPCWSTR, const ImportEpubOptionsV1*, wchar_t*, DWORD, DWORD*, ImportEpubRuntimeStatsV1*, wchar_t*, DWORD, DWORD*);
+    typedef HRESULT (WINAPI* ImportEpubBuildFunc)(LPCWSTR, const ImportEpubOptionsV1*, BSTR*, ImportEpubRuntimeStatsV1*, BSTR*);
     HMODULE g_importEpubDll = nullptr;
     ImportEpubBuildFunc g_importEpubBuild = nullptr;
 
@@ -121,6 +121,8 @@ namespace
         }
     };
 
+    void PrintVersion();
+
     void PrintUsage()
     {
         ConsolePrintf(L"ImportEPUBBatch.exe input.epub output.fb2 [options]\n");
@@ -178,15 +180,42 @@ namespace
         ConsolePrintf(L"  --max-files <N>      Process only first N EPUB files; useful for smoke tests\n");
     }
 
+    bool IsDetachedInteractiveConsole()
+    {
+        DWORD mode = 0;
+        HANDLE input = ::GetStdHandle(STD_INPUT_HANDLE);
+        HANDLE output = ::GetStdHandle(STD_OUTPUT_HANDLE);
+        if (input == INVALID_HANDLE_VALUE || output == INVALID_HANDLE_VALUE ||
+            !::GetConsoleMode(input, &mode) || !::GetConsoleMode(output, &mode))
+            return false;
+
+        DWORD processIds[2] = {};
+        const DWORD count = ::GetConsoleProcessList(processIds, _countof(processIds));
+        HWND consoleWindow = ::GetConsoleWindow();
+        return count == 1 && processIds[0] == ::GetCurrentProcessId() && consoleWindow && ::IsWindowVisible(consoleWindow);
+    }
+
+    void WaitForInteractiveKey()
+    {
+        INPUT_RECORD record = {};
+        DWORD read = 0;
+        HANDLE input = ::GetStdHandle(STD_INPUT_HANDLE);
+        while (::ReadConsoleInputW(input, &record, 1, &read) && read == 1)
+        {
+            if (record.EventType == KEY_EVENT && record.Event.KeyEvent.bKeyDown)
+                return;
+        }
+    }
+
     void ShowInteractiveLaunchHelp()
     {
-        ::MessageBoxW(
-            nullptr,
-            L"Это консольный пакетный конвертер EPUB в FB2.\r\n\r\n"
-            L"Запустите ImportEPUBBatch.exe из командной строки или PowerShell, "
-            L"указав входной и выходной путь. Для полного списка параметров используйте --help.",
-            L"ImportEPUBBatch",
-            MB_OK | MB_ICONINFORMATION);
+        PrintVersion();
+        PrintUsage();
+        ConsolePrintf(L"\n");
+        if (!IsDetachedInteractiveConsole())
+            return;
+        ConsolePrintf(L"Нажмите любую клавишу для выхода...\n");
+        WaitForInteractiveKey();
     }
 
     void PrintVersion()
@@ -1335,30 +1364,24 @@ namespace
         statsSummary.Empty();
         quality = Fb2QualityStats();
         const ImportEpubOptionsV1 apiOptions = MakeImportEpubApiOptions(options);
-        DWORD requiredFb2Cch = 0;
-        DWORD requiredErrorCch = 0;
-        wchar_t apiError[32768] = {};
-        HRESULT hr = g_importEpubBuild(inputPath, &apiOptions, nullptr, 0, &requiredFb2Cch, nullptr, apiError, _countof(apiError), &requiredErrorCch);
-        if (hr != HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER) || requiredFb2Cch == 0)
-        {
-            error = apiError;
-            if (error.IsEmpty())
-                error.Format(L"ImportEPUB.dll failed: 0x%08lX", static_cast<unsigned long>(hr));
-            return false;
-        }
-
-        std::vector<wchar_t> fb2Buffer(requiredFb2Cch);
+        BSTR apiFb2 = nullptr;
+        BSTR apiError = nullptr;
         ImportEpubRuntimeStatsV1 runtimeStats = {};
         runtimeStats.cbSize = sizeof(runtimeStats);
-        hr = g_importEpubBuild(inputPath, &apiOptions, &fb2Buffer[0], requiredFb2Cch, &requiredFb2Cch, &runtimeStats, apiError, _countof(apiError), &requiredErrorCch);
+        HRESULT hr = g_importEpubBuild(inputPath, &apiOptions, &apiFb2, &runtimeStats, &apiError);
         if (FAILED(hr))
         {
-            error = apiError;
+            if (apiError)
+                error = apiError;
+            SysFreeString(apiFb2);
+            SysFreeString(apiError);
             if (error.IsEmpty())
                 error.Format(L"ImportEPUB.dll failed: 0x%08lX", static_cast<unsigned long>(hr));
             return false;
         }
-        fb2 = &fb2Buffer[0];
+        fb2 = apiFb2;
+        SysFreeString(apiFb2);
+        SysFreeString(apiError);
         quality = AnalyzeFb2Quality(fb2);
         quality.svgImages = runtimeStats.svgImages;
         quality.svgConverted = runtimeStats.svgConverted;
@@ -1790,13 +1813,13 @@ namespace
 
 int wmain(int argc, wchar_t** argv)
 {
+    InitializeConsoleOutput();
     if (argc == 1)
     {
         ShowInteractiveLaunchHelp();
         return 0;
     }
 
-    InitializeConsoleOutput();
     if (argc == 2 && CStringW(argv[1]).CompareNoCase(L"--help") == 0)
     {
         PrintUsage();

@@ -67,6 +67,8 @@ $runTables = $RunTableTests -or $FullValidation
     -BatchDirectory $batchOutputDir -ArchHandlerDirectory $archHandlerOutputDir
 & (Join-Path $repoRoot 'tools\tests\test-development-plugin-layout.ps1') `
     -Configuration $Configuration -OutputDirectory $outputDir -BatchOutputDirectory $batchOutputDir
+& (Join-Path $repoRoot 'tools\tests\test-import-epub-batch-dll-abi.ps1')
+& (Join-Path $repoRoot 'tools\tests\test-batch-interactive-launch.ps1')
 
 $requiredFiles = @(
     "FBE.exe",

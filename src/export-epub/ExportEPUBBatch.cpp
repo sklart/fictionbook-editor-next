@@ -135,15 +135,42 @@ void PrintUsage()
         L"  ExportEPUBBatch.exe --input \"D:\\Books\" --output \"D:\\EPUB\" --version 3 --recursive --start-index 1001 --max-files 1000\n";
 }
 
+bool IsDetachedInteractiveConsole()
+{
+    DWORD mode = 0;
+    HANDLE input = ::GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE output = ::GetStdHandle(STD_OUTPUT_HANDLE);
+    if (input == INVALID_HANDLE_VALUE || output == INVALID_HANDLE_VALUE ||
+        !::GetConsoleMode(input, &mode) || !::GetConsoleMode(output, &mode)) {
+        return false;
+    }
+
+    DWORD processIds[2] = {};
+    const DWORD count = ::GetConsoleProcessList(processIds, _countof(processIds));
+    HWND consoleWindow = ::GetConsoleWindow();
+    return count == 1 && processIds[0] == ::GetCurrentProcessId() && consoleWindow && ::IsWindowVisible(consoleWindow);
+}
+
+void WaitForInteractiveKey()
+{
+    INPUT_RECORD record = {};
+    DWORD read = 0;
+    HANDLE input = ::GetStdHandle(STD_INPUT_HANDLE);
+    while (::ReadConsoleInputW(input, &record, 1, &read) && read == 1) {
+        if (record.EventType == KEY_EVENT && record.Event.KeyEvent.bKeyDown)
+            return;
+    }
+}
+
 void ShowInteractiveLaunchHelp()
 {
-    ::MessageBoxW(
-        nullptr,
-        L"Это консольный пакетный конвертер FB2 в EPUB.\r\n\r\n"
-        L"Запустите ExportEPUBBatch.exe из командной строки или PowerShell "
-        L"с параметром --input. Для полного списка параметров используйте --help.",
-        L"ExportEPUBBatch",
-        MB_OK | MB_ICONINFORMATION);
+    PrintVersion();
+    PrintUsage();
+    std::wcout << L"\n";
+    if (!IsDetachedInteractiveConsole())
+        return;
+    std::wcout << L"Нажмите любую клавишу для выхода...\n";
+    WaitForInteractiveKey();
 }
 
 std::wstring ToLower(std::wstring s)

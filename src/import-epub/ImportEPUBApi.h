@@ -55,22 +55,16 @@ typedef struct ImportEpubRuntimeStatsV1
     wchar_t svgBackend[IMPORT_EPUB_SVG_BACKEND_CCH];
 } ImportEpubRuntimeStatsV1;
 
-// Converts epubPath to FB2 XML using the ImportEPUB runtime.  Call once with
-// fb2XmlBuffer == NULL and fb2XmlBufferCch == 0 to obtain *requiredFb2XmlCch
-// (including its terminating NUL), then call again with caller-owned storage.
-// Error text follows the same caller-owned-buffer rule.  A failed conversion
-// returns a failed HRESULT; ERROR_INSUFFICIENT_BUFFER means a supplied buffer
-// was too small.  No C++ object, exception, or allocation crosses the ABI.
+// Converts epubPath to FB2 XML using the ImportEPUB runtime.  On return, the
+// caller owns *fb2Xml and *errorText and releases either non-null value with
+// SysFreeString.  BSTR uses the system allocator, so no CRT or C++ allocation
+// crosses the ABI.  A failed conversion returns a failed HRESULT and errorText.
 HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
     LPCWSTR epubPath,
     const ImportEpubOptionsV1* options,
-    wchar_t* fb2XmlBuffer,
-    DWORD fb2XmlBufferCch,
-    DWORD* requiredFb2XmlCch,
+    BSTR* fb2Xml,
     ImportEpubRuntimeStatsV1* runtimeStats,
-    wchar_t* errorBuffer,
-    DWORD errorBufferCch,
-    DWORD* requiredErrorCch);
+    BSTR* errorText);
 
 #ifdef __cplusplus
 }
