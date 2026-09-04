@@ -11,9 +11,9 @@
 #define PCRE2_CODE_UNIT_WIDTH 16
 #define PCRE2_STATIC
 #include "pcre2.h"
+#include "RegexPcre2MatchLoop.h"
 
 typedef CSimpleArray<CString> CStrings;
-static PCRE2_SIZE AdvanceUtf16CodePoint(const CString& subject, PCRE2_SIZE offset);
 
 struct ISubMatches {
 public:
@@ -87,60 +87,28 @@ public:
 			return matches;
 		}
 
-		int rc = 0;
-		PCRE2_SIZE offset = 0;
-		uint32_t globalOptions = 0;
-		while (true)
-		{
-			rc = pcre2_match(
-				re,
-				reinterpret_cast<PCRE2_SPTR>(static_cast<LPCWSTR>(sourceString)),
-				static_cast<PCRE2_SIZE>(sourceString.GetLength()),
-				offset,
-				globalOptions,
-				matchData,
-				NULL);
-			if (rc == PCRE2_ERROR_NOMATCH) {
-				if ((globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0) {
-					offset = AdvanceUtf16CodePoint(sourceString, offset);
-					globalOptions = 0;
-					if (offset <= static_cast<PCRE2_SIZE>(sourceString.GetLength()))
-						continue;
-				}
-				break;
-			}
-			if (rc < 0)
-				break;
-			PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData);
-			const bool retryAtEmptyMatch = (globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0 && offset == ovector[0];
-			if (retryAtEmptyMatch) {
-				offset = AdvanceUtf16CodePoint(sourceString, offset);
-				globalOptions = 0;
-				if (offset <= static_cast<PCRE2_SIZE>(sourceString.GetLength()))
-					continue;
-				break;
-			}
-			if (ovector[1] >= ovector[0])
+		AU::RegexPcre2::ForEachMatch(
+			re,
+			reinterpret_cast<PCRE2_SPTR>(static_cast<LPCWSTR>(sourceString)),
+			static_cast<PCRE2_SIZE>(sourceString.GetLength()),
+			Global == VARIANT_TRUE,
+			matchData,
+			NULL,
+			[&matches, &sourceString](int rc, PCRE2_SIZE* ovector)
 			{
-				CString str(static_cast<LPCWSTR>(sourceString) + ovector[0], static_cast<int>(ovector[1] - ovector[0]));
-				IMatch2* item = new IMatch2(str, static_cast<int>(ovector[0]));
-
-					for (int i = 1; i < rc; i++)
-					{
-						const PCRE2_SIZE groupStart = ovector[i * 2];
-						const PCRE2_SIZE groupEnd = ovector[i * 2 + 1];
-						if (groupStart != PCRE2_UNSET && groupEnd != PCRE2_UNSET)
-						{
-						item->AddSubMatch(CString(static_cast<LPCWSTR>(sourceString) + groupStart, static_cast<int>(groupEnd - groupStart)));
-						}
-					}
-
-					matches->AddItem(item);
-
-			}
-			if (!Global || !pcre2_next_match(matchData, &offset, &globalOptions))
-				break;
-		}
+				CString str(static_cast<LPCWSTR>(sourceString) + ovector[0],
+					static_cast<int>(ovector[1] - ovector[0]));
+				IMatch2 item(str, static_cast<int>(ovector[0]));
+				for (int i = 1; i < rc; i++)
+				{
+					const PCRE2_SIZE groupStart = ovector[i * 2];
+					const PCRE2_SIZE groupEnd = ovector[i * 2 + 1];
+					if (groupStart != PCRE2_UNSET && groupEnd != PCRE2_UNSET)
+						item.AddSubMatch(CString(static_cast<LPCWSTR>(sourceString) + groupStart,
+							static_cast<int>(groupEnd - groupStart)));
+				}
+				matches->AddItem(&item);
+			});
 
 		pcre2_match_data_free(matchData);
 		pcre2_code_free(re);
@@ -179,20 +147,6 @@ static void ApplyCaseMap(TCHAR* text, int start, int len, DWORD flags)
 
 	if (flags == LCMAP_LOWERCASE)
 		CharLowerBuff(text + start, len);
-}
-
-static PCRE2_SIZE AdvanceUtf16CodePoint(const CString& subject, PCRE2_SIZE offset)
-{
-	const PCRE2_SIZE length = static_cast<PCRE2_SIZE>(subject.GetLength());
-	if (offset >= length)
-		return length + 1;
-	const wchar_t first = static_cast<LPCWSTR>(subject)[offset++];
-	if (first >= 0xd800 && first <= 0xdbff && offset < length) {
-		const wchar_t second = static_cast<LPCWSTR>(subject)[offset];
-		if (second >= 0xdc00 && second <= 0xdfff)
-			++offset;
-	}
-	return offset;
 }
 
 static CString GetSM(ISubMatches* sm, int idx)

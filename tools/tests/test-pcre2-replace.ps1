@@ -35,6 +35,7 @@ function Convert-ToUtf8Hex([string]$Text) {
 
 & cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE `
     "/I$(Join-Path $repoRoot "third_party\wtl")" `
+    "/I$(Join-Path $repoRoot "src\fbe")" `
     "/I$(Join-Path $installDir "include")" `
     "/Fo$(Join-Path $testDir "pcre2-replace-smoke.obj")" `
     (Join-Path $PSScriptRoot "pcre2-replace-smoke.cpp") `

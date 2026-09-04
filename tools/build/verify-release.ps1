@@ -208,6 +208,7 @@ if ($PlatformToolset) {
     $pcre2TestArguments.PlatformToolset = $PlatformToolset
 }
 & (Join-Path $repoRoot "tools\tests\test-pcre2.ps1") @pcre2TestArguments
+& (Join-Path $repoRoot "tools\tests\test-pcre2-match-loop.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-wrapper.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-replace.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-cache.ps1") @pcre2TestArguments
