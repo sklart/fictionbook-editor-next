@@ -10,6 +10,24 @@ function Require([string]$text, [string]$needle, [string]$where) {
 function Forbid([string]$text, [string]$needle, [string]$where) {
     if ($text.Contains($needle)) { throw "$where contains obsolete '$needle'." }
 }
+function Get-BlockEnd([string]$text, [int]$start, [string]$where) {
+    $open = $text.IndexOf('{', $start)
+    if ($open -lt 0) { throw "$where has no opening block brace." }
+    $depth = 0
+    for ($index = $open; $index -lt $text.Length; ++$index) {
+        if ($text[$index] -eq '{') { ++$depth }
+        elseif ($text[$index] -eq '}') {
+            --$depth
+            if ($depth -eq 0) { return $index }
+        }
+    }
+    throw "$where has no closing block brace."
+}
+function Get-OccurrenceCount([string]$text, [string]$needle) {
+    $count = 0; $position = 0
+    while (($position = $text.IndexOf($needle, $position, [StringComparison]::Ordinal)) -ge 0) { ++$count; $position += $needle.Length }
+    return $count
+}
 
 $workflow = Text '.github\workflows\build.yml'
 $build = Text 'tools\build\build.ps1'
@@ -42,16 +60,24 @@ foreach ($test in @('test-fbe-table-visual-mode.ps1', 'test-table-toolbar-contra
 foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-table-production-roundtrip.ps1', 'test-fbe-table-structural-performance.ps1', 'test-fbe-table-failure-safety.ps1', 'test-fbe-spellcheck-local-edit-performance.ps1')) { Require $verify $test 'verify-release FULL contour' }
 Forbid $verify 'QUARANTINED table-toolbar-rendering failure' 'verify-release.ps1'
 Require $verify 'test-archhandler-pe-contract.ps1' 'verify-release ArchHandler contract'
-$tableContourStart = $verify.IndexOf('if ($runTables)')
-$fullContourStart = $verify.IndexOf('if ($FullValidation)')
+$tableContourStart = $verify.IndexOf('if ($runTables) {')
+$fullContourStart = $verify.IndexOf('if ($FullValidation) {')
 if ($tableContourStart -lt 0 -or $fullContourStart -lt 0) { throw 'verify-release.ps1 must retain explicit table and FULL contours.' }
+$tableContourEnd = Get-BlockEnd $verify $tableContourStart 'table contour'
+$fullContourEnd = Get-BlockEnd $verify $fullContourStart 'FULL contour'
 foreach ($test in @('test-fbe-table-visual-mode.ps1', 'test-table-toolbar-contract.ps1', 'test-fbe-script-document-path-api.ps1', 'test-fbe-backup-settings.ps1', 'test-fbe-auto-url-detect.ps1', 'test-xml-source-themes.ps1', 'test-xml-source-current-line.ps1', 'test-fbe-filename-state.ps1', 'test-fbe-source-xml-declaration.ps1')) {
-    if ($verify.IndexOf($test) -ge $tableContourStart -or $verify.IndexOf($test) -ge $fullContourStart) { throw "$test must remain in the FAST portion of verify-release.ps1." }
+    $position = $verify.IndexOf($test)
+    if ($position -lt 0 -or $position -ge $tableContourStart -or $position -ge $fullContourStart) { throw "$test must remain before both table and FULL contours." }
+    if ((Get-OccurrenceCount $verify $test) -ne 1) { throw "$test must be invoked exactly once in FAST." }
 }
 foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-table-production-roundtrip.ps1', 'test-fbe-table-structural-performance.ps1', 'test-fbe-table-failure-safety.ps1')) {
-    if ($verify.IndexOf($test) -lt $tableContourStart) { throw "$test must remain inside the table contour." }
+    $position = $verify.IndexOf($test)
+    if ($position -le $tableContourStart -or $position -ge $tableContourEnd) { throw "$test must remain strictly inside the table contour." }
 }
-if ($verify.IndexOf('test-fbe-spellcheck-local-edit-performance.ps1') -lt $fullContourStart) { throw 'Spellcheck local-edit production regression must remain FULL-only.' }
+$spellcheckProductionTest = 'test-fbe-spellcheck-local-edit-performance.ps1'
+$spellcheckPosition = $verify.IndexOf($spellcheckProductionTest)
+if ($spellcheckPosition -le $fullContourStart -or $spellcheckPosition -ge $fullContourEnd -or (Get-OccurrenceCount $verify $spellcheckProductionTest) -ne 1) { throw 'Spellcheck local-edit production regression must be invoked exactly once strictly inside FULL.' }
+if ((Get-OccurrenceCount $verify 'test-fbe-table-toolbar-rendering.ps1') -ne 1) { throw 'Table toolbar rendering must be invoked exactly once.' }
 Require $workflow 'Test-FbeLegacy308MigrationRequired' 'workflow migration verification'
 Require $release 'Test-FbeLegacy308MigrationRequired' 'create-release migration policy'
 Require $migration 'Test-FbeLegacy308MigrationRequired' 'central migration policy'
