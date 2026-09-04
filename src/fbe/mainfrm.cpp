@@ -13,6 +13,7 @@
 #include "FictionBookFileType.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
+#include "PluginManager.h"
 #include "UiMetrics.h"
 #include "BodySourceSelectionTransfer.h"
 #include "XmlDeclaration.h"
@@ -30,11 +31,15 @@ static bool IsFbeTestScenario(const wchar_t* expectedScenario);
 
 namespace
 {
+static PluginManager g_pluginManager;
 const int SCRIPT_COMMAND_COUNT = 999;
 const int SCRIPT_FOLDER_MENU_ID_BASE = ID_EDIT_INS_SYMBOL + 101;
 const int SCRIPT_FOLDER_MENU_ID_COUNT = 999;
 static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < SCRIPT_FOLDER_MENU_ID_BASE, "Script and folder menu IDs overlap");
 static_assert(ID_LAST_PLUGIN < ID_SPELL_REPLACE_FIRST, "Plug-in and spell suggestion command IDs overlap");
+static_assert(ID_PLUGIN_EXPORT_LAST < ID_PLUGIN_IMPORT_FIRST, "Import and export command ranges overlap");
+static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < ID_PLUGIN_IMPORT_FIRST, "Plug-in and script command ranges overlap");
+static_assert(ID_PLUGIN_EXPORT_LAST < ID_LAST_SCRIPT, "Plug-in and regular command ranges overlap");
 static_assert(ID_SCRIPT_BASE + 999 < ID_SPELL_REPLACE_FIRST, "Script and spell suggestion command IDs overlap");
 static_assert(ID_SPELL_REPLACE_LAST < ID_SCI_COLLAPSE_BASE, "Scintilla and spell suggestion command IDs overlap");
 static_assert(ID_SPELL_REPLACE_LAST < 0xffff, "Spell suggestion command IDs must fit in WM_COMMAND");
@@ -239,109 +244,14 @@ static bool IsTableToolbarCommand(UINT commandId)
 	return false;
 }
 
-// A process launched elevated (for example from an administrator Visual
-// Studio) does not use per-user COM registrations.  The bundled export DLLs
-// live next to plugins.json, so fall back to their class factory directly when
-// CoCreateInstance cannot see the HKCU registration.
-struct BundledPluginMetadata
-{
-	CString type, module, modulePath, clsidText, menuText, menuKey;
-	CLSID clsid;
-};
-
-static bool ReadBundledPluginString(const std::wstring& json, size_t objectStart, const wchar_t* name, CString& value)
-{
-	size_t valueStart = 0; std::wstring result;
-	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, objectStart, name, valueStart) || !FbeRuntimeLocalization::JsonParseString(json, valueStart, result) || result.empty()) return false;
-	value = result.c_str(); return true;
-}
-
-static bool IsBundledPluginModuleName(const CString& value)
-{
-	// "module" is intentionally a file name relative to plugins.json.  Do not
-	// accept paths that could escape the shipped Plugins directory.
-	return !value.IsEmpty() && value.Find(L'\\') < 0 && value.Find(L'/') < 0 && value.Find(L':') < 0;
-}
-
-static const std::vector<BundledPluginMetadata>& BundledPluginCatalog()
-{
-	static std::vector<BundledPluginMetadata> entries; static bool initialized = false;
-	if(initialized) return entries;
-	initialized = true;
-	std::wstring json; const CString path = U::GetProgDirFile(L"Plugins\\plugins.json");
-	const int directoryEnd = path.ReverseFind(L'\\');
-	if(directoryEnd < 0) return entries;
-	const CString directory = path.Left(directoryEnd + 1);
-	if(!FbeRuntimeLocalization::ReadUtf8TextFile(path, json)) return entries;
-	size_t array = 0;
-	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, 0, L"plugins", array)) return entries;
-	FbeRuntimeLocalization::JsonSkipWhitespace(json, array);
-	if(array >= json.size() || json[array++] != L'[') return entries;
-	for(;;) {
-		FbeRuntimeLocalization::JsonSkipWhitespace(json, array);
-		if(array >= json.size() || json[array] == L']') break;
-		const size_t object = array;
-		if(!FbeRuntimeLocalization::JsonSkipValue(json, array)) { entries.clear(); return entries; }
-		BundledPluginMetadata entry = {};
-		if(ReadBundledPluginString(json, object, L"type", entry.type) && ReadBundledPluginString(json, object, L"module", entry.module) && IsBundledPluginModuleName(entry.module) && ReadBundledPluginString(json, object, L"clsid", entry.clsidText) && ReadBundledPluginString(json, object, L"menu", entry.menuText) && ReadBundledPluginString(json, object, L"menuKey", entry.menuKey) && ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) == S_OK) { entry.modulePath = directory + entry.module; entries.push_back(entry); }
-		FbeRuntimeLocalization::JsonSkipWhitespace(json, array);
-		if(array < json.size() && json[array] == L',') { ++array; continue; }
-		if(array < json.size() && json[array] == L']') break;
-		entries.clear(); return entries;
-	}
-	return entries;
-}
-
-static const BundledPluginMetadata* FindBundledPlugin(const CLSID& clsid)
-{
-	const std::vector<BundledPluginMetadata>& entries = BundledPluginCatalog();
-	for(size_t index = 0; index < entries.size(); ++index) if(::InlineIsEqualGUID(entries[index].clsid, clsid)) return &entries[index];
-	return NULL;
-}
-
-static const BundledPluginMetadata* FindBundledPlugin(const CString& clsidText)
-{
-	CLSID clsid = {};
-	return ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(clsidText)), &clsid) == S_OK ? FindBundledPlugin(clsid) : NULL;
-}
-
 static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& instance)
 {
-	// Bundled entries are trusted only from the package beside FBE.exe.  Never
-	// let a stale/foreign CLSID registration intercept their activation.
-	HRESULT result = E_NOINTERFACE;
-
-	const BundledPluginMetadata* plugin = FindBundledPlugin(clsid);
-	if(plugin == NULL)
-		return instance.CreateInstance(clsid); // external legacy plug-in
-
-	const CString& path = plugin->modulePath;
-	HMODULE module = ::LoadLibraryEx(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
-	if(module == NULL && ::GetLastError() == ERROR_INVALID_PARAMETER)
-		module = ::LoadLibraryEx(path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
-	if(module == NULL)
-		return HRESULT_FROM_WIN32(::GetLastError());
-
-	typedef HRESULT (STDAPICALLTYPE* DllGetClassObjectProc)(REFCLSID, REFIID, LPVOID*);
-	DllGetClassObjectProc getClassObject = reinterpret_cast<DllGetClassObjectProc>(
-		::GetProcAddress(module, "DllGetClassObject"));
-	if(getClassObject == NULL)
-		return E_NOINTERFACE;
-
-	CComPtr<IClassFactory> factory;
-	result = getClassObject(clsid, IID_IClassFactory, reinterpret_cast<void**>(&factory));
-	if(FAILED(result))
-		return result;
-	IUnknown* localInstance = NULL;
-	result = factory->CreateInstance(NULL, IID_IUnknown, reinterpret_cast<void**>(&localInstance));
-	if(SUCCEEDED(result))
-		instance.Attach(localInstance);
-	return result;
+	return g_pluginManager.CreateInstance(clsid, instance);
 }
 
 static void AddBundledPluginCatalog(HMENU menu, const TCHAR* type, UINT commandBase, CSimpleArray<CLSID>& plugins)
 {
-	const std::vector<BundledPluginMetadata>& entries = BundledPluginCatalog();
+	const std::vector<PluginDescriptor>& entries = g_pluginManager.GetPlugins();
 	for(size_t index = 0; index < entries.size(); ++index)
 	{
 		if(::lstrcmpi(entries[index].type, type) != 0) continue;
@@ -945,7 +855,10 @@ static void TraceMainFrameHotkey(const MSG* message)
 
 static CString LocalizeBundledPluginMenuText(const CString& clsidText, const CString& fallback)
 {
-	const BundledPluginMetadata* plugin = FindBundledPlugin(clsidText);
+	CLSID clsid = {};
+	if(::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(clsidText)), &clsid) != S_OK)
+		return fallback;
+	const PluginDescriptor* plugin = g_pluginManager.FindBundledPlugin(clsid);
 	return plugin == NULL ? fallback : FbeLoadRuntimeStringByKey(plugin->menuKey, fallback);
 }
 
@@ -962,7 +875,8 @@ static void RefreshBundledPluginMenuTexts(HMENU menu, const TCHAR* type, UINT co
 		return;
 
 	int commandOffset = 0;
-	for(int registryIndex = 0; commandOffset < 20; ++registryIndex)
+	const int commandCapacity = static_cast<int>(ID_PLUGIN_EXPORT_LAST - commandBase + 1);
+	for(int registryIndex = 0; commandOffset < commandCapacity; ++registryIndex)
 	{
 		CString clsidText;
 		DWORD size = 128;
@@ -2642,7 +2556,8 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 		if(ncmd > 0) ::RemoveMenu(hMenu, 0, MF_BYPOSITION);
 		return;
 	}
-	for(int i = 0; ncmd < 20; ++i)
+	const int commandCapacity = static_cast<int>((cmdbase == ID_IMPORT_BASE ? ID_PLUGIN_IMPORT_LAST : ID_PLUGIN_EXPORT_LAST) - cmdbase + 1);
+	for(int i = 0; ncmd < commandCapacity; ++i)
 	{
 		CString name;
 		DWORD size = 128; // enough for GUIDs
@@ -2703,6 +2618,7 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 
 void CMainFrame::InitPlugins()
 {
+	g_pluginManager.DiscoverBundledPlugins();
 	ReleaseScriptResources();
 	if (StartupTrace::Enabled())
 	{
@@ -5457,7 +5373,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
       _bstr_t	    filename;
       if (ipl) 
 	  {
-		m_last_plugin = wID + ID_EXPORT_BASE;
+		m_last_plugin = wID + ID_IMPORT_BASE;
 		BSTR	bs=NULL;
 		HRESULT hr=ipl->Import((long)m_hWnd,&bs,&obj);
 		TracePluginDiagnostic(L"Import", pluginClsid, L"Import", hr, obj ? 1 : 0);

@@ -379,8 +379,13 @@
 #define IDB_HTML                        706
 #define IDB_PRC                         707
 #define IDB_TEXT                        708
-#define ID_EXPORT_BASE                  860
-#define ID_IMPORT_BASE                  880
+#define ID_PLUGIN_IMPORT_FIRST          30000
+#define ID_PLUGIN_IMPORT_LAST           30127
+#define ID_PLUGIN_EXPORT_FIRST          30200
+#define ID_PLUGIN_EXPORT_LAST           30327
+// Compatibility names used by the command routing code.
+#define ID_EXPORT_BASE                  ID_PLUGIN_EXPORT_FIRST
+#define ID_IMPORT_BASE                  ID_PLUGIN_IMPORT_FIRST
 #define ID_SEL_BASE                     900
 #define IDC_INPUT                       1000
 #define IDC_PROMPT                      1001
