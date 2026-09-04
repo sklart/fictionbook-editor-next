@@ -217,6 +217,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-plugin-missing-module.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-command-ranges.ps1")
 & (Join-Path $repoRoot "tools\tests\test-last-plugin-routing.ps1")
+& (Join-Path $repoRoot "tools\tests\test-plugin-v2-abi.ps1") -Configuration $Configuration
 # В исходниках ещё есть накопленный исторический набор строк, который будет
 # переноситься в JSON-локализации поэтапно. В release-контуре аудит остаётся
 # видимым, но не должен блокировать выпуск до фиксации отдельного эталона.
