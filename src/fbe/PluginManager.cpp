@@ -2,7 +2,6 @@
 #include "PluginManager.h"
 #include "RuntimeLocalization.h"
 #include "StartupTrace.h"
-#include "utils\\utils.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
 
 namespace {
@@ -55,7 +54,7 @@ void PluginManager::DiscoverBundledPlugins() {
 		if (array >= json.size() || json[array] == L']') break;
 		const size_t object = array;
 		if (!FbeRuntimeLocalization::JsonSkipValue(json, array)) { m_plugins.clear(); Trace(L"manifest-invalid"); return; }
-		PluginDescriptor entry = {}; entry.source = PluginSource::Bundled;
+		PluginDescriptor entry = {};
 		const bool fields = ReadString(json, object, L"id", entry.id) && ReadString(json, object, L"type", entry.type) &&
 			ReadString(json, object, L"module", entry.module) && ReadString(json, object, L"clsid", entry.clsidText) &&
 			ReadString(json, object, L"menu", entry.menu) && ReadString(json, object, L"menuKey", entry.menuKey) &&
@@ -79,32 +78,13 @@ void PluginManager::DiscoverBundledPlugins() {
 	}
 	Trace(L"manifest-loaded");
 }
-void PluginManager::DiscoverLegacyPlugins(const CString& registryPath) {
-	CRegKey pluginsKey;
-	if (pluginsKey.Open(HKEY_CURRENT_USER, registryPath + L"\\Plugins") != ERROR_SUCCESS) return;
-	for (int index = 0;; ++index) {
-		CString clsidText; DWORD size = 128; FILETIME writeTime = {};
-		TCHAR* buffer = clsidText.GetBuffer(size);
-		if (::RegEnumKeyEx(pluginsKey, index, buffer, &size, 0, 0, 0, &writeTime) != ERROR_SUCCESS) { clsidText.ReleaseBuffer(); break; }
-		clsidText.ReleaseBuffer(size); CRegKey key;
-		if (key.Open(pluginsKey, clsidText) != ERROR_SUCCESS) continue;
-		PluginDescriptor entry = {}; entry.source = PluginSource::LegacyRegistry; entry.clsidText = clsidText;
-		entry.type = U::QuerySV(key, L"Type"); entry.menu = U::QuerySV(key, L"Menu"); entry.icon = U::QuerySV(key, L"Icon");
-		if ((entry.type != L"Import" && entry.type != L"Export") || entry.menu.IsEmpty() ||
-			::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) != S_OK) continue;
-		bool duplicate = false;
-		for (size_t i = 0; i < m_plugins.size(); ++i) if (SameGuid(m_plugins[i].clsid, entry.clsid)) { duplicate = true; break; }
-		if (duplicate) { Trace(L"duplicate-plugin-skipped", entry.clsidText); continue; }
-		m_plugins.push_back(entry); Trace(L"legacy-plugin-discovered", entry.clsidText);
-	}
-}
-const PluginDescriptor* PluginManager::FindBundledPlugin(const CLSID& clsid) const {
-	for (size_t i = 0; i < m_plugins.size(); ++i) if (::InlineIsEqualGUID(m_plugins[i].clsid, clsid)) return &m_plugins[i];
+const PluginDescriptor* PluginManager::FindPlugin(const CLSID& clsid) const {
+	for (size_t i = 0; i < m_plugins.size(); ++i) if (SameGuid(m_plugins[i].clsid, clsid)) return &m_plugins[i];
 	return NULL;
 }
 HRESULT PluginManager::CreateInstance(const CLSID& clsid, IUnknownPtr& instance) {
-	const PluginDescriptor* plugin = FindBundledPlugin(clsid);
-	if (plugin == NULL) return instance.CreateInstance(clsid);
+	const PluginDescriptor* plugin = FindPlugin(clsid);
+	if (plugin == NULL) { Trace(L"plugin-skipped", L"unknown-clsid"); return REGDB_E_CLASSNOTREG; }
 	HMODULE module = NULL; std::map<CString, HMODULE>::iterator cached = m_modules.find(plugin->modulePath);
 	if (cached != m_modules.end()) module = cached->second;
 	else {

@@ -1,12 +1,4 @@
-<#
-.SYNOPSIS
-Проверяет регистрацию экспортных плагинов без прав администратора.
-
-.DESCRIPTION
-Установщик FBE Next не требует повышения прав для обычной установки.
-Поэтому COM-классы экспортных плагинов должны записываться в
-HKCU\Software\Classes, а NSIS-скрипт обязан собираться Unicode-вариантом.
-#>
+<# Verifies that Plugin Host no longer depends on per-user COM registration. #>
 [CmdletBinding()]
 param()
 
@@ -29,20 +21,8 @@ $docx = Get-SourceText 'src\export-docx\ExportDOCX.cpp'
 $installer = Get-SourceText 'packaging\nsis\Installer\MakeInstaller.bat'
 $nsisResolver = Get-SourceText 'tools\build\resolve-nsis.ps1'
 
-foreach ($plugin in @(
-    @{ Name = 'ExportHTML'; Text = $html },
-    @{ Name = 'ExportEPUB'; Text = $epub }
-)) {
-    Assert-Contains $plugin.Text 'STDAPI DllRegisterServer(void)' "Регистрация $($plugin.Name)"
-    Assert-Contains $plugin.Text 'STDAPI DllUnregisterServer(void)' "Снятие регистрации $($plugin.Name)"
-    Assert-Contains $plugin.Text 'ATL::AtlSetPerUserRegistration(true);' "Пользовательская COM-регистрация $($plugin.Name)"
-}
-
-Assert-Contains $docx 'HKEY_CURRENT_USER,' 'Пользовательская COM-регистрация ExportDOCX'
-Assert-Contains $docx 'Software\\Classes\\CLSID' 'Раздел Classes ExportDOCX'
-if ($docx.IndexOf('HKEY_CLASSES_ROOT') -ge 0) {
-    throw 'ExportDOCX не должен записывать COM-класс в HKEY_CLASSES_ROOT при обычной установке.'
-}
+$pluginHost = Get-SourceText 'src\fbe\PluginManager.cpp'
+if ($pluginHost -match 'CoCreateInstance|RegEnumKeyEx|DiscoverLegacyPlugins') { throw 'Plugin Host must not use registry COM activation or discovery.' }
 
 Assert-Contains $installer 'resolve-nsis.ps1' 'Единый резолвер NSIS'
 Assert-Contains $installer '/X"!addplugindir /x86-unicode %NSIS_INCLUDE_DIR%"' 'Unicode-каталог NSIS plugins'
@@ -53,4 +33,4 @@ if ($installer.IndexOf('NSIS\Unicode\makensis.exe', [StringComparison]::OrdinalI
     throw 'Установщик не должен требовать устаревший путь NSIS\\Unicode\\makensis.exe.'
 }
 
-Write-Host 'Проверка пользовательской регистрации экспортных плагинов прошла успешно.'
+Write-Host 'Plugin Host does not depend on per-user plugin registration.'

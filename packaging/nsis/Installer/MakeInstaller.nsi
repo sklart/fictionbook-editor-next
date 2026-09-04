@@ -45,6 +45,14 @@ Unicode true
 !define FB2_DETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
 !define FB2_PREVIEWDETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
 !define FB2_SYSTEM_ASSOC_KEY "Software\Classes\SystemFileAssociations\.fb2"
+; Upgrade migration only: remove a registration made by an older FBE Next
+; version when, and only when, it still points at the old root DLL.
+!macro UnregisterPreviousBundledPluginIfOwned CLSID DLL
+  IfFileExists "$INSTDIR\${DLL}" 0 +3
+  ReadRegStr $0 HKCU "Software\Classes\CLSID\${CLSID}\InprocServer32" ""
+  StrCmp $0 "$INSTDIR\${DLL}" 0 +2
+    UnRegDll "$INSTDIR\${DLL}"
+!macroend
 ManifestDPIAware true
 SetCompressor /SOLID lzma
 
@@ -754,6 +762,10 @@ nthere:
   Call CheckIEVersion
   Call CheckFBERunning
 
+  !insertmacro UnregisterPreviousBundledPluginIfOwned "{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}" "ImportEPUB.dll"
+  !insertmacro UnregisterPreviousBundledPluginIfOwned "{C3098839-EF69-4DE5-B27D-1E80051CA843}" "ExportHTML.dll"
+  !insertmacro UnregisterPreviousBundledPluginIfOwned "{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "ExportDOCX.dll"
+  !insertmacro UnregisterPreviousBundledPluginIfOwned "{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "ExportEPUB.dll"
   Delete "$INSTDIR\ImportEPUB.dll"
   Delete "$INSTDIR\ExportHTML.dll"
   Delete "$INSTDIR\ExportDOCX.dll"

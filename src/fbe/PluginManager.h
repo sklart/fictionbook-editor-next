@@ -3,26 +3,21 @@
 #include <vector>
 #include <map>
 
-enum class PluginSource { Bundled, LegacyRegistry };
-
 struct PluginDescriptor
 {
-	CString id, type, module, modulePath, clsidText, menu, menuKey, activation, icon;
+	CString id, type, module, modulePath, clsidText, menu, menuKey, activation;
 	CLSID clsid;
-	PluginSource source;
 };
 
-// Owns the bundled manifest and its modules for the lifetime of FBE.  Legacy
-// registrations intentionally remain COM activated and are added by the UI.
+// Owns the bundled manifest and its locally loaded modules for FBE's lifetime.
 class PluginManager
 {
 public:
 	PluginManager();
 	~PluginManager();
 	void DiscoverBundledPlugins();
-	void DiscoverLegacyPlugins(const CString& registryPath);
 	const std::vector<PluginDescriptor>& GetPlugins() const { return m_plugins; }
-	const PluginDescriptor* FindBundledPlugin(const CLSID& clsid) const;
+	const PluginDescriptor* FindPlugin(const CLSID& clsid) const;
 	HRESULT CreateInstance(const CLSID& clsid, IUnknownPtr& instance);
 
 private:

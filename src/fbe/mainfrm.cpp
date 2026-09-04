@@ -855,7 +855,7 @@ static void RefreshBundledPluginMenuTexts(HMENU menu, const TCHAR* type, UINT co
 	{
 		const PluginDescriptor& plugin = plugins[index];
 		if(plugin.type != type) continue;
-		const CString text = plugin.source == PluginSource::Bundled ? FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu) : plugin.menu;
+		const CString text = FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu);
 		MENUITEMINFO itemInfo = {};
 		itemInfo.cbSize = sizeof(itemInfo);
 		itemInfo.fMask = MIIM_STRING;
@@ -2507,7 +2507,7 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 		const PluginDescriptor& plugin = plugins[index];
 		if(plugin.type != type) continue;
 		const int command = cmdbase + plist.GetSize();
-		const CString menu = plugin.source == PluginSource::Bundled ? FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu) : plugin.menu;
+		const CString menu = FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu);
 		plist.Add(plugin.clsid);
 		::AppendMenu(hMenu, MF_STRING, command, menu);
 		CString hs = menu;
@@ -2540,8 +2540,6 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 void CMainFrame::InitPlugins()
 {
 	g_pluginManager.DiscoverBundledPlugins();
-	if(DeploymentContext::RegistryPersistenceAllowed())
-		g_pluginManager.DiscoverLegacyPlugins(_Settings.GetKeyPath());
 	ReleaseScriptResources();
 	if (StartupTrace::Enabled())
 	{
