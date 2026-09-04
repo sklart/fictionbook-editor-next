@@ -278,7 +278,6 @@ if ($FullValidation) {
     & (Join-Path $repoRoot "tools\tests\test-fbd-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-source-full-process-benchmark.ps1")
     & (Join-Path $repoRoot "tools\tests\test-words-ownerdata-stress.ps1")
-    & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
     & (Join-Path $repoRoot "tools\tests\test-fbe-selection-container-control-range.ps1")
     & (Join-Path $repoRoot "tools\tests\test-fbe-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-large-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")

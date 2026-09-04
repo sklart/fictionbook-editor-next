@@ -15,6 +15,7 @@
 #include "StartupTrace.h"
 #include "UiMetrics.h"
 #include "BodySourceSelectionTransfer.h"
+#include "XmlDeclaration.h"
 #include "..\\common\\DeploymentContext.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
 #include <string>
@@ -4206,10 +4207,11 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		// Set the same settings gate used by OnEdChange, but do not trigger a
 		// viewport-wide highlight pass before the local-edit measurement.
 		_Settings.SetHighlightMisspells(true);
+		m_Speller->ResetTestDiagnostics();
 		BOOL handled = FALSE;
 		OnEdChange(0, 0, NULL, handled);
 		CStringA row;
-		row.Format("paragraph_count\t%ld\r\nchecked_paragraphs\t%ld\r\n", paragraphs->length, m_Speller->GetLastCheckElementParagraphCount());
+		row.Format("paragraph_count\t%ld\r\ncheck_element_calls\t%ld\r\nvisited_paragraphs\t%ld\r\n", paragraphs->length, m_Speller->GetTestCheckElementCalls(), m_Speller->GetTestVisitedParagraphs());
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close();
 		// The fixture is intentionally edited in memory only; terminate the
 		// unattended message loop without opening the normal dirty-document UI.
@@ -6687,49 +6689,7 @@ LRESULT CMainFrame::OnChar(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 
 static CString ExtractXmlDeclarationEncoding(const CString& xmlText)
 {
-	const int declStart = xmlText.Find(L"<?xml");
-	if (declStart < 0)
-		return CString();
-
-	const int declEnd = xmlText.Find(L"?>", declStart);
-	if (declEnd < 0)
-		return CString();
-
-	CString decl = xmlText.Mid(declStart, declEnd - declStart + 2);
-	CString declLower(decl);
-	declLower.MakeLower();
-
-	int encPos = declLower.Find(L"encoding");
-	if (encPos < 0)
-		return CString();
-
-	encPos = decl.Find(L"=", encPos);
-	if (encPos < 0)
-		return CString();
-
-	++encPos;
-	while (encPos < decl.GetLength() &&
-		(decl[encPos] == L' ' || decl[encPos] == L'\t' ||
-		 decl[encPos] == L'\r' || decl[encPos] == L'\n'))
-	{
-		++encPos;
-	}
-
-	if (encPos >= decl.GetLength())
-		return CString();
-
-	const wchar_t quote = decl[encPos];
-	if (quote != L'"' && quote != L'\'')
-		return CString();
-
-	const int valueStart = encPos + 1;
-	const int valueEnd = decl.Find(quote, valueStart);
-	if (valueEnd <= valueStart)
-		return CString();
-
-	CString encoding = decl.Mid(valueStart, valueEnd - valueStart);
-	encoding.Trim();
-	return encoding;
+	return CString(FbeExtractXmlDeclarationEncoding(std::wstring(static_cast<const wchar_t*>(xmlText))).c_str());
 }
 
 // Возвращает позицию символа отображаемого текста XML-узла в Source. Теги и

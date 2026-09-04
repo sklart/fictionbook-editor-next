@@ -19,7 +19,6 @@ BEGIN
             VALUE "FileVersion", FBE_VERSION_STRING "\0"
             VALUE "InternalName", "ArchHandler\0"
             VALUE "LegalCopyright", "Copyright (c) FictionBook Editor Next contributors\0"
-            VALUE "OriginalFilename", "ZipHandler.exe\0"
             VALUE "ProductName", FBE_PRODUCT_NAME "\0"
             VALUE "ProductVersion", FBE_VERSION_STRING "\0"
         END

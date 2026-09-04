@@ -14,15 +14,19 @@
 
 Локальный запуск: `pwsh ./tools/build/verify-release.ps1 -Configuration Release -FullValidation`.
 
-`-RunTableTests` запускает только тяжёлый table subset без остальных FULL сценариев. Это удобно для локальной диагностики таблиц.
+`-RunTableTests` запускает только тяжёлый table subset без остальных FULL сценариев: `pwsh ./tools/build/verify-release.ps1 -Configuration Release -RunTableTests`.
 
 ## Tables
 
 FAST содержит статические/transform contracts. FULL содержит toolbar rendering и production round-trip (включая Huge), structural operations, performance, failure safety и fault injection. Ни один table test не подавляет ошибку: toolbar rendering является строгим blocker.
 
+Отдельный toolbar smoke: `pwsh ./tools/tests/test-fbe-table-toolbar-rendering.ps1 -FbeExe ./out/Release/FBE.exe`.
+
 ## CI-special
 
 Workflow отдельно строит и проверяет ArchHandler из `out\archhandler\Win32\Release`: `test-archhandler-pe-contract.ps1` читает фактический PE32 GUI artifact, VERSIONINFO, embedded asInvoker manifest, ASLR и DEP. Installer upgrade/uninstall, shell/property-handler и keyboard-layout native checks также вызываются специализированными workflow steps.
+
+Локальный PE contract: `pwsh ./tools/tests/test-archhandler-pe-contract.ps1 -HandlerDirectory ./out/archhandler/Win32/Release`.
 
 ## Installer, shell, portable и plugins
 
@@ -31,6 +35,8 @@ Installer/shell tests используют staged package, а portable tests п�
 ## Manual/diagnostic
 
 `test-diagnostics.ps1`, shell thumbnail dump/prime, отдельные fixture inspectors и corpus tools — диагностические входы, а не неявное покрытие release gate. Перед удалением такого файла следует проверить его ссылки в PowerShell wrappers, workflow и документации.
+
+Файловая backup regression запускается отдельно: `pwsh ./tools/tests/test-fbe-backup-file-commit.ps1`.
 
 ## Карта и self-test
 

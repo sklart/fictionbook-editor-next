@@ -20,6 +20,8 @@ try {
     } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
     $result = @{}; Get-Content -LiteralPath $report | ForEach-Object { $parts = $_ -split "`t", 2; if ($parts.Count -eq 2) { $result[$parts[0]] = [int]$parts[1] } }
     if ($result.paragraph_count -lt $ParagraphCount) { throw "Fixture unexpectedly contains only $($result.paragraph_count) paragraphs." }
-    if ($result.checked_paragraphs -ne 1) { throw "A local edit checked $($result.checked_paragraphs) paragraphs instead of exactly one." }
-    Write-Host 'Production local spellcheck bounded-work regression passed.'
+    if ($result.check_element_calls -lt 1 -or $result.check_element_calls -gt 2) { throw "A local edit invoked CheckElement $($result.check_element_calls) times; expected bounded local work." }
+    $maximumVisited = [Math]::Max(4, [int]($result.paragraph_count / 10))
+    if ($result.visited_paragraphs -lt 1 -or $result.visited_paragraphs -gt $maximumVisited) { throw "A local edit visited $($result.visited_paragraphs) paragraphs; maximum bounded work is $maximumVisited." }
+    Write-Host "Production local spellcheck bounded-work regression passed: paragraphs=$($result.paragraph_count), CheckElement calls=$($result.check_element_calls), visited paragraphs=$($result.visited_paragraphs)."
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

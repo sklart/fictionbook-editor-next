@@ -46,6 +46,7 @@ foreach ($name in 'ZipHandler.exe', 'RarHandler.exe') {
     $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($path)
     if ($info.FileVersion -ne $version -or $info.ProductVersion -ne $version) { throw "$name version metadata does not match $version." }
     if ([string]::IsNullOrWhiteSpace($info.FileDescription) -or [string]::IsNullOrWhiteSpace($info.ProductName)) { throw "$name has incomplete VERSIONINFO." }
+    if (-not [string]::IsNullOrWhiteSpace($info.OriginalFilename) -and $info.OriginalFilename -ne $name) { throw "$name has misleading OriginalFilename '$($info.OriginalFilename)'." }
     $manifest = Join-Path ([IO.Path]::GetTempPath()) ("fbe-archhandler-$PID-$name.manifest")
     try {
         & $mt -nologo "-inputresource:$path;#1" "-out:$manifest"

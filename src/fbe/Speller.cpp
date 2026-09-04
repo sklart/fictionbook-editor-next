@@ -242,7 +242,7 @@ UINT CSpeller::DetectDictionaryCodePage(Hunhandle* dict, UINT fallbackCodePage)
 //
 CSpeller::CSpeller(CString dictPath):
 	m_prevSelRange(nullptr), m_spell_dlg(nullptr), m_Enabled(true),
-	m_HighlightMisspells(false), m_lastCheckElementParagraphCount(0), m_prevY(0), m_codePage(CP_UTF8),
+	m_HighlightMisspells(false), m_testCheckElementCalls(0), m_testVisitedParagraphs(0), m_prevY(0), m_codePage(CP_UTF8),
 	m_frame(nullptr), m_Lang(LANG_EN),
 	m_menuSuggestions(nullptr), m_DictPath(dictPath),
 	m_CustomDictCodepage(CP_UTF8), splitter(nullptr)
@@ -745,19 +745,14 @@ static MSHTML::IHTMLElementPtr GetNextParagraph(
 //
 void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 {
-	// The counter is read only by the isolated FBE_NEXT_TEST_MODE scenario.
-	// A local document edit must spellcheck its containing paragraph, never a
-	// whole section; keeping it here makes that algorithmic contract observable.
 	wchar_t testMode[2] = {};
 	const bool collectDiagnostic = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1';
-	if (collectDiagnostic)
-		m_lastCheckElementParagraphCount = 0;
+	if (collectDiagnostic) ++m_testCheckElementCalls;
 	CWords words;
 	elem = GetParagraphContainer(elem);
 	if (!elem)
 		return;
-	if (collectDiagnostic)
-		m_lastCheckElementParagraphCount = 1;
+	if (collectDiagnostic) ++m_testVisitedParagraphs;
 
 	CString html = elem->innerHTML;
 	if (html.Find(L"<DIV") >= 0) return;
@@ -838,6 +833,9 @@ void CSpeller::CheckCurrentPage()
 	const int fallbackParagraphLimit = 96;
 	for (int checked = 0; elem && (endElem || checked < fallbackParagraphLimit); ++checked)
 	{
+		wchar_t testMode[2] = {};
+		if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1')
+			++m_testVisitedParagraphs;
 		currNum = MSHTML::IHTMLUniqueNamePtr(elem)->uniqueNumber;
 		
 		// Getting uniqueNumber from IHTMLUniqueName interface changes
