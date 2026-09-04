@@ -13,9 +13,10 @@ $sources = @(
 foreach ($relativePath in $sources) {
     $source = Get-Content -Raw -LiteralPath (Join-Path $root $relativePath)
     if ($source -match 'MessageBoxW\s*\(') { throw "$relativePath still displays a MessageBox for interactive Batch help." }
-    foreach ($required in @('ShowInteractiveLaunchHelp', 'PrintUsage|Usage\(', 'GetConsoleMode', 'GetConsoleProcessList', 'GetConsoleWindow', 'IsWindowVisible', 'ReadConsoleInputW', 'Нажмите любую клавишу для выхода')) {
+    foreach ($required in @('ShowInteractiveLaunchHelp', 'PrintUsage|Usage\(', 'GetConsoleMode', 'GetConsoleProcessList', 'ReadConsoleInputW', 'Нажмите любую клавишу для выхода')) {
         if ($source -notmatch $required) { throw "$relativePath is missing interactive console behavior: $required" }
     }
+    if ($source -match 'GetConsoleWindow|IsWindowVisible') { throw "$relativePath must not require a visible console window for interactive Batch help." }
     if ($source -match 'system\s*\(\s*"pause|cmd\s*/k|wt\.exe') { throw "$relativePath uses a prohibited pause launcher." }
 }
 

@@ -67,7 +67,6 @@ $runTables = $RunTableTests -or $FullValidation
     -BatchDirectory $batchOutputDir -ArchHandlerDirectory $archHandlerOutputDir
 & (Join-Path $repoRoot 'tools\tests\test-development-plugin-layout.ps1') `
     -Configuration $Configuration -OutputDirectory $outputDir -BatchOutputDirectory $batchOutputDir
-& (Join-Path $repoRoot 'tools\tests\test-import-epub-batch-dll-abi.ps1')
 & (Join-Path $repoRoot 'tools\tests\test-batch-interactive-launch.ps1')
 
 $requiredFiles = @(
@@ -215,6 +214,10 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-pcre2-replace.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-cache.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-export-epub-cyrillic.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot 'tools\tests\test-import-epub-batch-dll-abi.ps1') `
+    -DllPath (Join-Path $outputDir 'Plugins\ImportEPUB.dll') `
+    -BatchPath (Join-Path $batchOutputDir 'ImportEPUBBatch.exe') `
+    -SmokeEpubPath (Join-Path $repoRoot 'out\tests\export-epub-cyrillic\fb2-metadata-cyrillic-smoke.epub')
 & (Join-Path $repoRoot "tools\tests\test-export-epub-xhtml11.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-plugin-mojibake.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-static-runtime.ps1")

@@ -147,8 +147,7 @@ bool IsDetachedInteractiveConsole()
 
     DWORD processIds[2] = {};
     const DWORD count = ::GetConsoleProcessList(processIds, _countof(processIds));
-    HWND consoleWindow = ::GetConsoleWindow();
-    return count == 1 && processIds[0] == ::GetCurrentProcessId() && consoleWindow && ::IsWindowVisible(consoleWindow);
+    return count == 1 && processIds[0] == ::GetCurrentProcessId();
 }
 
 void WaitForInteractiveKey()

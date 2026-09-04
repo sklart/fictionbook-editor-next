@@ -5,7 +5,7 @@ Verifies the C ABI boundary between ImportEPUBBatch and ImportEPUB.dll.
 [CmdletBinding()]
 param(
     [string]$DllPath,
-    [string]$DumpbinPath = 'dumpbin.exe',
+    [string]$DumpbinPath,
     [string]$BatchPath,
     [string]$SmokeEpubPath
 )
@@ -31,7 +31,21 @@ if ($def -notmatch '(?m)^\s*ImportEPUB_BuildFb2XmlW\s*$') { throw 'ImportEPUB.de
 
 if ($DllPath) {
     if (-not (Test-Path -LiteralPath $DllPath -PathType Leaf)) { throw "ImportEPUB DLL not found: $DllPath" }
-    $dumpbin = Get-Command $DumpbinPath -ErrorAction SilentlyContinue
+    $dumpbin = if ($DumpbinPath) { Get-Command $DumpbinPath -ErrorAction SilentlyContinue } else { Get-Command dumpbin.exe -ErrorAction SilentlyContinue }
+    if (-not $dumpbin -and -not $DumpbinPath) {
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+        if (Test-Path -LiteralPath $vswhere) {
+            $installation = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
+            if ($installation) {
+                $dumpbinCandidate = Get-ChildItem -LiteralPath (Join-Path $installation 'VC\Tools\MSVC') -Directory -ErrorAction SilentlyContinue |
+                    Sort-Object Name -Descending |
+                    ForEach-Object { Join-Path $_.FullName 'bin\Hostx86\x86\dumpbin.exe' } |
+                    Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+                    Select-Object -First 1
+                if ($dumpbinCandidate) { $dumpbin = Get-Command $dumpbinCandidate -ErrorAction SilentlyContinue }
+            }
+        }
+    }
     if (-not $dumpbin) { throw "dumpbin.exe is required to inspect the built ImportEPUB export: $DumpbinPath" }
     $exports = & $dumpbin.Source /exports $DllPath 2>&1
     if ($LASTEXITCODE -ne 0 -or (($exports -join "`n") -notmatch 'ImportEPUB_BuildFb2XmlW')) { throw 'Built ImportEPUB.dll does not expose ImportEPUB_BuildFb2XmlW.' }
