@@ -45,14 +45,6 @@ Unicode true
 !define FB2_DETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
 !define FB2_PREVIEWDETAILS_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size"
 !define FB2_SYSTEM_ASSOC_KEY "Software\Classes\SystemFileAssociations\.fb2"
-; RegDll writes the optional legacy plugin registrations per user.  Before an
-; uninstaller invokes DllUnregisterServer, make sure that the well-known CLSID
-; has not since been redirected to another copy.
-!macro UnregisterLegacyPluginIfOwned CLSID DLL
-  ReadRegStr $0 HKCU "Software\Classes\CLSID\${CLSID}\InprocServer32" ""
-  StrCmp $0 "$INSTDIR\${DLL}" 0 +2
-    UnRegDll "$INSTDIR\${DLL}"
-!macroend
 ManifestDPIAware true
 SetCompressor /SOLID lzma
 
@@ -762,13 +754,6 @@ nthere:
   Call CheckIEVersion
   Call CheckFBERunning
 
-  ; Version 3.0.8 moved bundled plug-ins into Plugins.  On upgrade remove a
-  ; registration only when it still belongs to this exact old installation;
-  ; foreign or redirected CLSIDs must remain untouched.
-  !insertmacro UnregisterLegacyPluginIfOwned "{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}" "ImportEPUB.dll"
-  !insertmacro UnregisterLegacyPluginIfOwned "{C3098839-EF69-4DE5-B27D-1E80051CA843}" "ExportHTML.dll"
-  !insertmacro UnregisterLegacyPluginIfOwned "{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "ExportDOCX.dll"
-  !insertmacro UnregisterLegacyPluginIfOwned "{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "ExportEPUB.dll"
   Delete "$INSTDIR\ImportEPUB.dll"
   Delete "$INSTDIR\ExportHTML.dll"
   Delete "$INSTDIR\ExportDOCX.dll"
@@ -874,7 +859,6 @@ installed_core_state:
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "AssociationRegistered" 0
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "ValidateVerbInstalled" 0
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "PropertyHandlerInstalled" 0
-  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "LegacyComInstalled" 0
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "UninstallString" "$INSTDIR\uninst.exe"
   WriteUninstaller "$INSTDIR\uninst.exe"
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
@@ -1277,15 +1261,6 @@ Section Uninstall
     Delete "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
     Delete "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
     RMDir "${FBE_SHELL_SHARED_DIR}"
-  ${EndIf}
-
-  ; Only the explicitly selected legacy component performs COM registration.
-  ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "LegacyComInstalled"
-  ${If} $0 = 1
-    !insertmacro UnregisterLegacyPluginIfOwned "{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}" "Plugins\ImportEPUB.dll"
-    !insertmacro UnregisterLegacyPluginIfOwned "{C3098839-EF69-4DE5-B27D-1E80051CA843}" "Plugins\ExportHTML.dll"
-    !insertmacro UnregisterLegacyPluginIfOwned "{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}" "Plugins\ExportDOCX.dll"
-    !insertmacro UnregisterLegacyPluginIfOwned "{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}" "Plugins\ExportEPUB.dll"
   ${EndIf}
 
   ; Remove only associations and verbs that still belong to this instance.

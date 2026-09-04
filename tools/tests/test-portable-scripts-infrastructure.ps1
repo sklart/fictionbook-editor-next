@@ -54,8 +54,9 @@ Must $frame 'portable-toolbar-layout-write' 'GUI scenario customizes a non-empty
 Must $frame 'portable-toolbar-layout-read' 'GUI scenario checks non-empty portable toolbar after restart'
 Must $frame 'relativePath == L"foo\.js"' 'Scripts toolbar E2E locates script by stable relative path'
 
-Must $frame 'if\(!DeploymentContext::RegistryPersistenceAllowed\(\)\)' 'Portable legacy plugin gate'
-Must $frame 'AddBundledPluginCatalog\(hMenu, type, cmdbase, plist\);' 'Bundled plugins remain available'
+Must $frame 'if\(DeploymentContext::RegistryPersistenceAllowed\(\)\)' 'Portable legacy plugin gate'
+Must $frame 'g_pluginManager\.DiscoverLegacyPlugins' 'Legacy plugins are discovered outside CMainFrame'
+Must $frame 'g_pluginManager\.GetPlugins\(\)' 'Bundled plugins remain available through PluginManager'
 Must $about 'DeploymentContext::LogsDirectory\(\)' 'Update trace uses deployment-specific log directory'
 MustNot $about 'LOCALAPPDATA' 'Update trace must not hardcode LocalAppData'
 

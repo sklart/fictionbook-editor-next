@@ -7,7 +7,7 @@ enum class PluginSource { Bundled, LegacyRegistry };
 
 struct PluginDescriptor
 {
-	CString id, type, module, modulePath, clsidText, menu, menuKey, activation;
+	CString id, type, module, modulePath, clsidText, menu, menuKey, activation, icon;
 	CLSID clsid;
 	PluginSource source;
 };
@@ -20,6 +20,7 @@ public:
 	PluginManager();
 	~PluginManager();
 	void DiscoverBundledPlugins();
+	void DiscoverLegacyPlugins(const CString& registryPath);
 	const std::vector<PluginDescriptor>& GetPlugins() const { return m_plugins; }
 	const PluginDescriptor* FindBundledPlugin(const CLSID& clsid) const;
 	HRESULT CreateInstance(const CLSID& clsid, IUnknownPtr& instance);

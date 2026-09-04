@@ -13,28 +13,19 @@ function Require([string]$Text, [string]$Needle, [string]$Description) {
     }
 }
 
-foreach ($state in @('InstallScope', 'InstallLocation', 'CoreVersion', 'AssociationRegistered', 'ValidateVerbInstalled', 'PropertyHandlerInstalled', 'LegacyComInstalled')) {
+foreach ($state in @('InstallScope', 'InstallLocation', 'CoreVersion', 'AssociationRegistered', 'ValidateVerbInstalled', 'PropertyHandlerInstalled')) {
     Require $nsis ('"' + $state + '"') "NSIS installer state"
 }
 
 Require $nsis 'ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "PropertyHandlerInstalled"' 'Property-handler uninstall state gate'
 Require $nsis 'ReadRegDWORD $1 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "AssociationRegistered"' 'Association uninstall state gate'
 Require $nsis 'ReadRegDWORD $1 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ValidateVerbInstalled"' 'Validate-verb uninstall state gate'
-Require $nsis '!macro UnregisterLegacyPluginIfOwned CLSID DLL' 'Legacy COM ownership helper'
-Require $nsis 'ReadRegStr $0 HKCU "Software\Classes\CLSID\${CLSID}\InprocServer32" ""' 'Legacy COM path check'
+if ($nsis -match 'LegacyComInstalled|UnregisterLegacyPluginIfOwned|\bRegDll\b') { throw 'Dead bundled Legacy COM installer state remains.' }
 $upgradeStart = $nsis.IndexOf('Call CheckFBERunning', [StringComparison]::Ordinal)
 $upgradeEnd = $nsis.IndexOf('SetOutPath "$INSTDIR"', $upgradeStart, [StringComparison]::Ordinal)
 if ($upgradeStart -lt 0 -or $upgradeEnd -le $upgradeStart) { throw 'Не найден upgrade cleanup до копирования Core.' }
 $upgrade = $nsis.Substring($upgradeStart, $upgradeEnd - $upgradeStart)
-foreach ($plugin in @(
-    @{ Clsid = '{3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}'; Dll = 'ImportEPUB.dll' },
-    @{ Clsid = '{C3098839-EF69-4DE5-B27D-1E80051CA843}'; Dll = 'ExportHTML.dll' },
-    @{ Clsid = '{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}'; Dll = 'ExportDOCX.dll' },
-    @{ Clsid = '{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}'; Dll = 'ExportEPUB.dll' }
-)) {
-    Require $upgrade ('!insertmacro UnregisterLegacyPluginIfOwned "' + $plugin.Clsid + '" "' + $plugin.Dll + '"') "Legacy COM upgrade cleanup: $($plugin.Dll)"
-    Require $upgrade ('Delete "$INSTDIR\' + $plugin.Dll + '"') "Legacy plugin root cleanup: $($plugin.Dll)"
-}
+foreach ($dll in 'ImportEPUB.dll','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll') { Require $upgrade ('Delete "$INSTDIR\' + $dll + '"') "Legacy plugin root cleanup: $dll" }
 Require $upgrade 'Delete "$INSTDIR\ImportEPUBLunaSVG.dll"' 'Legacy SVG helper root cleanup'
 Require $nsis 'Delete "$INSTDIR\Plugins\plugins.json"' 'Plugin manifest uninstall cleanup'
 Require $nsis 'RMDir "$INSTDIR\Plugins"' 'Empty Plugins directory uninstall cleanup'

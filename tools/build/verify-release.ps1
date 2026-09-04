@@ -213,6 +213,10 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-plugin-mojibake.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-static-runtime.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-per-user-registration.ps1")
+& (Join-Path $repoRoot "tools\tests\test-plugin-manifest-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-plugin-missing-module.ps1")
+& (Join-Path $repoRoot "tools\tests\test-plugin-command-ranges.ps1")
+& (Join-Path $repoRoot "tools\tests\test-last-plugin-routing.ps1")
 # В исходниках ещё есть накопленный исторический набор строк, который будет
 # переноситься в JSON-локализации поэтапно. В release-контуре аудит остаётся
 # видимым, но не должен блокировать выпуск до фиксации отдельного эталона.

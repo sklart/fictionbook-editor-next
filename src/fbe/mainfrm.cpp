@@ -37,7 +37,7 @@ const int SCRIPT_FOLDER_MENU_ID_BASE = ID_EDIT_INS_SYMBOL + 101;
 const int SCRIPT_FOLDER_MENU_ID_COUNT = 999;
 static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < SCRIPT_FOLDER_MENU_ID_BASE, "Script and folder menu IDs overlap");
 static_assert(ID_LAST_PLUGIN < ID_SPELL_REPLACE_FIRST, "Plug-in and spell suggestion command IDs overlap");
-static_assert(ID_PLUGIN_EXPORT_LAST < ID_PLUGIN_IMPORT_FIRST, "Import and export command ranges overlap");
+static_assert(ID_PLUGIN_IMPORT_LAST < ID_PLUGIN_EXPORT_FIRST, "Import and export command ranges overlap");
 static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < ID_PLUGIN_IMPORT_FIRST, "Plug-in and script command ranges overlap");
 static_assert(ID_PLUGIN_EXPORT_LAST < ID_LAST_SCRIPT, "Plug-in and regular command ranges overlap");
 static_assert(ID_SCRIPT_BASE + 999 < ID_SPELL_REPLACE_FIRST, "Script and spell suggestion command IDs overlap");
@@ -247,18 +247,6 @@ static bool IsTableToolbarCommand(UINT commandId)
 static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& instance)
 {
 	return g_pluginManager.CreateInstance(clsid, instance);
-}
-
-static void AddBundledPluginCatalog(HMENU menu, const TCHAR* type, UINT commandBase, CSimpleArray<CLSID>& plugins)
-{
-	const std::vector<PluginDescriptor>& entries = g_pluginManager.GetPlugins();
-	for(size_t index = 0; index < entries.size(); ++index)
-	{
-		if(::lstrcmpi(entries[index].type, type) != 0) continue;
-		plugins.Add(entries[index].clsid);
-		const CString text = FbeLoadRuntimeStringByKey(entries[index].menuKey, entries[index].menuText);
-		::AppendMenu(menu, MF_STRING, commandBase + plugins.GetSize() - 1, text);
-	}
 }
 
 static CString PortableMruPath()
@@ -853,15 +841,6 @@ static void TraceMainFrameHotkey(const MSG* message)
 	}
 }
 
-static CString LocalizeBundledPluginMenuText(const CString& clsidText, const CString& fallback)
-{
-	CLSID clsid = {};
-	if(::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(clsidText)), &clsid) != S_OK)
-		return fallback;
-	const PluginDescriptor* plugin = g_pluginManager.FindBundledPlugin(clsid);
-	return plugin == NULL ? fallback : FbeLoadRuntimeStringByKey(plugin->menuKey, fallback);
-}
-
 // Обновляет уже существующие пункты встроенных плагинов. При смене языка не
 // нужно заново создавать плагины, скрипты, значки меню и кнопки toolbar: такой
 // путь накапливал GDI-ресурсы и добавлял повторные элементы интерфейса.
@@ -869,33 +848,14 @@ static void RefreshBundledPluginMenuTexts(HMENU menu, const TCHAR* type, UINT co
 {
 	if(menu == NULL)
 		return;
-
-	CRegKey pluginsKey;
-	if(pluginsKey.Open(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Plugins") != ERROR_SUCCESS)
-		return;
-
 	int commandOffset = 0;
-	const int commandCapacity = static_cast<int>(ID_PLUGIN_EXPORT_LAST - commandBase + 1);
-	for(int registryIndex = 0; commandOffset < commandCapacity; ++registryIndex)
+	const int commandCapacity = static_cast<int>((commandBase == ID_IMPORT_BASE ? ID_PLUGIN_IMPORT_LAST : ID_PLUGIN_EXPORT_LAST) - commandBase + 1);
+	const std::vector<PluginDescriptor>& plugins = g_pluginManager.GetPlugins();
+	for(size_t index = 0; index < plugins.size() && commandOffset < commandCapacity; ++index)
 	{
-		CString clsidText;
-		DWORD size = 128;
-		TCHAR* buffer = clsidText.GetBuffer(size);
-		FILETIME writeTime = {};
-		if(::RegEnumKeyEx(pluginsKey, registryIndex, buffer, &size, 0, 0, 0, &writeTime) != ERROR_SUCCESS)
-			break;
-		clsidText.ReleaseBuffer(size);
-
-		CRegKey pluginKey;
-		if(pluginKey.Open(pluginsKey, clsidText) != ERROR_SUCCESS)
-			continue;
-
-		const CString pluginType(U::QuerySV(pluginKey, L"Type"));
-		const CString fallback(U::QuerySV(pluginKey, L"Menu"));
-		if(pluginType.IsEmpty() || fallback.IsEmpty() || pluginType != type)
-			continue;
-
-		const CString text = LocalizeBundledPluginMenuText(clsidText, fallback);
+		const PluginDescriptor& plugin = plugins[index];
+		if(plugin.type != type) continue;
+		const CString text = plugin.source == PluginSource::Bundled ? FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu) : plugin.menu;
 		MENUITEMINFO itemInfo = {};
 		itemInfo.cbSize = sizeof(itemInfo);
 		itemInfo.fMask = MIIM_STRING;
@@ -2540,56 +2500,21 @@ void CMainFrame::AddStaticText(CCustomStatic &st, HWND toolbarHwnd, int id, cons
 
 void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist)
 {
-	CRegKey rk;
-	AddBundledPluginCatalog(hMenu, type, cmdbase, plist);
-	int ncmd = plist.GetSize();
-	// A portable copy must be self-contained: bundled entries above are loaded
-	// from Plugins\\plugins.json, but legacy per-user registrations belong only
-	// to an installed copy on this Windows profile.
-	if(!DeploymentContext::RegistryPersistenceAllowed())
-	{
-		if(ncmd > 0) ::RemoveMenu(hMenu, 0, MF_BYPOSITION);
-		return;
-	}
-	if(rk.Open(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Plugins") != ERROR_SUCCESS)
-	{
-		if(ncmd > 0) ::RemoveMenu(hMenu, 0, MF_BYPOSITION);
-		return;
-	}
 	const int commandCapacity = static_cast<int>((cmdbase == ID_IMPORT_BASE ? ID_PLUGIN_IMPORT_LAST : ID_PLUGIN_EXPORT_LAST) - cmdbase + 1);
-	for(int i = 0; ncmd < commandCapacity; ++i)
+	const std::vector<PluginDescriptor>& plugins = g_pluginManager.GetPlugins();
+	for(size_t index = 0; index < plugins.size() && plist.GetSize() < commandCapacity; ++index)
 	{
-		CString name;
-		DWORD size = 128; // enough for GUIDs
-		TCHAR* cp = name.GetBuffer(size);
-		FILETIME ft;
-		if(::RegEnumKeyEx(rk, i, cp, &size, 0, 0, 0, &ft) != ERROR_SUCCESS)
-			break;
-		name.ReleaseBuffer(size);
-		CRegKey pk;
-		if(pk.Open(rk, name) != ERROR_SUCCESS)
-			continue;
-		CString pt(U::QuerySV(pk, L"Type"));
-		CString ms(U::QuerySV(pk, L"Menu"));
-		if(pt.IsEmpty() || ms.IsEmpty() || pt != type)
-			continue;
-		ms = LocalizeBundledPluginMenuText(name, ms);
-		CLSID clsid;
-		if(::CLSIDFromString((TCHAR*)(const TCHAR *)name, &clsid) != NOERROR)
-			continue;
-		bool alreadyBundled = false;
-		for(int existing = 0; existing < plist.GetSize(); ++existing)
-			if(::InlineIsEqualGUID(plist[existing], clsid)) { alreadyBundled = true; break; }
-		if(alreadyBundled) continue;
-
-		// all checks pass, add to menu and remember clsid
-		plist.Add(clsid);
-		::AppendMenu(hMenu, MF_STRING, cmdbase + ncmd, ms);
-		CString hs = ms;
+		const PluginDescriptor& plugin = plugins[index];
+		if(plugin.type != type) continue;
+		const int command = cmdbase + plist.GetSize();
+		const CString menu = plugin.source == PluginSource::Bundled ? FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu) : plugin.menu;
+		plist.Add(plugin.clsid);
+		::AppendMenu(hMenu, MF_STRING, command, menu);
+		CString hs = menu;
 		hs.Remove(L'&');
-		InitPluginHotkey(name, cmdbase + ncmd, pt + CString(L" | ") + hs);
+		InitPluginHotkey(plugin.clsidText, command, plugin.type + CString(L" | ") + hs);
 		// check if an icon is available
-		CString icon(U::QuerySV(pk, L"Icon"));
+		CString icon(plugin.icon);
 		if(!icon.IsEmpty())
 		{
 			int cp = icon.ReverseFind(L',');
@@ -2603,22 +2528,20 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 			HICON hIcon;
 			if(::ExtractIconEx(icon, iconID, NULL, &hIcon, 1) > 0 && hIcon)
 			{
-				m_MenuBar.AddIcon(hIcon, cmdbase + ncmd);
+				m_MenuBar.AddIcon(hIcon, command);
 				::DestroyIcon(hIcon);
 			}
 		}
-		++ncmd;
 	}
-
-	// Не подхватываем legacy Haali/FBE plugins из HKLM: Next использует только
-	// собственную per-user ветку, чтобы не смешивать две установленные версии.
-	if(ncmd > 0) // delete placeholder from menu
+	if(plist.GetSize() > 0) // delete placeholder from menu
 	::RemoveMenu(hMenu, 0, MF_BYPOSITION);
 }
 
 void CMainFrame::InitPlugins()
 {
 	g_pluginManager.DiscoverBundledPlugins();
+	if(DeploymentContext::RegistryPersistenceAllowed())
+		g_pluginManager.DiscoverLegacyPlugins(_Settings.GetKeyPath());
 	ReleaseScriptResources();
 	if (StartupTrace::Enabled())
 	{

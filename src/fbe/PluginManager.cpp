@@ -2,6 +2,7 @@
 #include "PluginManager.h"
 #include "RuntimeLocalization.h"
 #include "StartupTrace.h"
+#include "utils\\utils.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
 
 namespace {
@@ -12,11 +13,19 @@ bool ReadString(const std::wstring& json, size_t object, const wchar_t* name, CS
 	value = result.c_str(); return true;
 }
 bool SafeModuleName(const CString& value) {
-	return !value.IsEmpty() && value.Find(L"..") < 0 && value.FindOneOf(L"\\\\/:") < 0;
+	return !value.IsEmpty() && value.Find(L"..") < 0 && value.FindOneOf(L"\\\\/:") < 0 && value.Right(4).CompareNoCase(L".dll") == 0;
 }
+bool SameGuid(const CLSID& first, const CLSID& second) { return ::InlineIsEqualGUID(first, second) != FALSE; }
 bool IsRegularFile(const CString& path) {
 	const DWORD attributes = ::GetFileAttributes(path);
 	return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+bool IsSchemaVersionOne(const std::wstring& json, size_t valueStart) {
+	// JSON number grammar is deliberately not coerced: v1 is the integer token 1.
+	if (valueStart >= json.size() || json[valueStart] != L'1') return false;
+	size_t end = valueStart + 1;
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, end);
+	return end < json.size() && (json[end] == L',' || json[end] == L'}');
 }
 }
 
@@ -36,8 +45,7 @@ void PluginManager::DiscoverBundledPlugins() {
 	if (!FbeRuntimeLocalization::ReadUtf8TextFile(manifest, json)) { Trace(L"manifest-invalid"); return; }
 	size_t schema = 0; FbeRuntimeLocalization::JsonSkipWhitespace(json, schema);
 	if (!FbeRuntimeLocalization::JsonFindObjectMember(json, schema, L"schemaVersion", schema) ||
-		schema >= json.size() || json[schema] != L'1' ||
-		(schema + 1 < json.size() && json[schema + 1] >= L'0' && json[schema + 1] <= L'9')) { Trace(L"unsupported-schema"); return; }
+		!IsSchemaVersionOne(json, schema)) { Trace(L"unsupported-schema"); return; }
 	size_t array = 0;
 	if (!FbeRuntimeLocalization::JsonFindObjectMember(json, 0, L"plugins", array)) { Trace(L"manifest-invalid"); return; }
 	FbeRuntimeLocalization::JsonSkipWhitespace(json, array);
@@ -52,10 +60,12 @@ void PluginManager::DiscoverBundledPlugins() {
 			ReadString(json, object, L"module", entry.module) && ReadString(json, object, L"clsid", entry.clsidText) &&
 			ReadString(json, object, L"menu", entry.menu) && ReadString(json, object, L"menuKey", entry.menuKey) &&
 			ReadString(json, object, L"activation", entry.activation);
+		const bool validClsid = ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) == S_OK;
 		bool duplicate = false;
-		for (size_t i = 0; i < m_plugins.size(); ++i) duplicate |= m_plugins[i].id == entry.id || m_plugins[i].module == entry.module || m_plugins[i].clsidText == entry.clsidText;
+		for (size_t i = 0; validClsid && i < m_plugins.size(); ++i)
+			duplicate |= m_plugins[i].id == entry.id || m_plugins[i].module.CompareNoCase(entry.module) == 0 || SameGuid(m_plugins[i].clsid, entry.clsid);
 		if (!fields || (entry.type != L"Import" && entry.type != L"Export") || entry.activation != L"local-com" ||
-			!SafeModuleName(entry.module) || ::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) != S_OK || duplicate) {
+			!SafeModuleName(entry.module) || !validClsid || duplicate) {
 			Trace(duplicate ? L"duplicate-plugin-skipped" : L"plugin-skipped", entry.id); }
 		else {
 			entry.modulePath = U::GetProgDirFile(L"Plugins\\") + entry.module;
@@ -68,6 +78,25 @@ void PluginManager::DiscoverBundledPlugins() {
 		m_plugins.clear(); Trace(L"manifest-invalid"); return;
 	}
 	Trace(L"manifest-loaded");
+}
+void PluginManager::DiscoverLegacyPlugins(const CString& registryPath) {
+	CRegKey pluginsKey;
+	if (pluginsKey.Open(HKEY_CURRENT_USER, registryPath + L"\\Plugins") != ERROR_SUCCESS) return;
+	for (int index = 0;; ++index) {
+		CString clsidText; DWORD size = 128; FILETIME writeTime = {};
+		TCHAR* buffer = clsidText.GetBuffer(size);
+		if (::RegEnumKeyEx(pluginsKey, index, buffer, &size, 0, 0, 0, &writeTime) != ERROR_SUCCESS) { clsidText.ReleaseBuffer(); break; }
+		clsidText.ReleaseBuffer(size); CRegKey key;
+		if (key.Open(pluginsKey, clsidText) != ERROR_SUCCESS) continue;
+		PluginDescriptor entry = {}; entry.source = PluginSource::LegacyRegistry; entry.clsidText = clsidText;
+		entry.type = U::QuerySV(key, L"Type"); entry.menu = U::QuerySV(key, L"Menu"); entry.icon = U::QuerySV(key, L"Icon");
+		if ((entry.type != L"Import" && entry.type != L"Export") || entry.menu.IsEmpty() ||
+			::CLSIDFromString(const_cast<LPOLESTR>(static_cast<LPCWSTR>(entry.clsidText)), &entry.clsid) != S_OK) continue;
+		bool duplicate = false;
+		for (size_t i = 0; i < m_plugins.size(); ++i) if (SameGuid(m_plugins[i].clsid, entry.clsid)) { duplicate = true; break; }
+		if (duplicate) { Trace(L"duplicate-plugin-skipped", entry.clsidText); continue; }
+		m_plugins.push_back(entry); Trace(L"legacy-plugin-discovered", entry.clsidText);
+	}
 }
 const PluginDescriptor* PluginManager::FindBundledPlugin(const CLSID& clsid) const {
 	for (size_t i = 0; i < m_plugins.size(); ++i) if (::InlineIsEqualGUID(m_plugins[i].clsid, clsid)) return &m_plugins[i];
@@ -88,7 +117,8 @@ HRESULT PluginManager::CreateInstance(const CLSID& clsid, IUnknownPtr& instance)
 	GetClassObject getClassObject = reinterpret_cast<GetClassObject>(::GetProcAddress(module, "DllGetClassObject"));
 	if (getClassObject == NULL) return E_NOINTERFACE;
 	CComPtr<IClassFactory> factory; HRESULT result = getClassObject(clsid, IID_IClassFactory, reinterpret_cast<void**>(&factory));
-	if (FAILED(result)) return result; Trace(L"class-factory-created", plugin->id);
+	if (FAILED(result)) return result;
+	Trace(L"class-factory-created", plugin->id);
 	IUnknown* raw = NULL; result = factory->CreateInstance(NULL, IID_IUnknown, reinterpret_cast<void**>(&raw));
 	if (SUCCEEDED(result)) { instance.Attach(raw); Trace(L"instance-created", plugin->id); }
 	return result;
