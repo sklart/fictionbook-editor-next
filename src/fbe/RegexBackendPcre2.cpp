@@ -117,7 +117,7 @@ bool RegexBackend::Execute(
 	{
 		errorText = cacheAllocationError
 			? FbeLoadRuntimeStringByKey(
-				L"fbe.regex.error.allocation", L"Failed to allocate PCRE2 match data.")
+				L"fbe.regex.error.allocation", L"Failed to allocate PCRE2 resources.")
 			: BuildCompileErrorText(errorNumber, errorOffset);
 		return false;
 	}
@@ -132,7 +132,7 @@ bool RegexBackend::Execute(
 		if (matchData != NULL)
 			pcre2_match_data_free(matchData);
 		errorText = FbeLoadRuntimeStringByKey(
-			L"fbe.regex.error.allocation", L"Failed to allocate PCRE2 match data.");
+			L"fbe.regex.error.allocation", L"Failed to allocate PCRE2 resources.");
 		return false;
 	}
 	pcre2_set_match_limit(matchContext, kRegexMatchLimit);

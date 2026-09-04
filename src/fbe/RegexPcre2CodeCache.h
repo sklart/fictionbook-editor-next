@@ -3,6 +3,7 @@
 // Immutable compiled patterns are safe to share between searches. Match data
 // and contexts intentionally remain per-search in RegexBackendPcre2.cpp.
 #include <atlstr.h>
+#include <cstring>
 #include <list>
 #include <new>
 #include <windows.h>
@@ -62,6 +63,24 @@ private:
 	volatile LONG m_references;
 };
 
+class CriticalSectionGuard {
+public:
+	explicit CriticalSectionGuard(CRITICAL_SECTION& lock) : m_lock(lock)
+	{
+		EnterCriticalSection(&m_lock);
+	}
+	~CriticalSectionGuard()
+	{
+		LeaveCriticalSection(&m_lock);
+	}
+
+private:
+	CriticalSectionGuard(const CriticalSectionGuard&);
+	CriticalSectionGuard& operator=(const CriticalSectionGuard&);
+
+	CRITICAL_SECTION& m_lock;
+};
+
 inline pcre2_code* CodeLease::Get() const
 {
 	return m_code != NULL ? m_code->Get() : NULL;
@@ -89,6 +108,14 @@ public:
 		DeleteCriticalSection(&m_lock);
 	}
 
+#if defined(PCRE2_CODE_CACHE_TESTING)
+	void FailNextEntryAllocationForTesting()
+	{
+		CriticalSectionGuard guard(m_lock);
+		m_failNextEntryAllocation = true;
+	}
+#endif
+
 	bool Acquire(
 		const CString& pattern,
 		uint32_t compileOptions,
@@ -100,14 +127,13 @@ public:
 		lease.Reset();
 		if (allocationError != NULL)
 			*allocationError = false;
-		EnterCriticalSection(&m_lock);
+		CriticalSectionGuard guard(m_lock);
 		for (std::list<Entry>::iterator it = m_entries.begin(); it != m_entries.end(); ++it) {
-			if (it->CompileOptions == compileOptions && it->Pattern == pattern) {
+			if (it->CompileOptions == compileOptions && SamePattern(it->Pattern, pattern)) {
 				it->Code->AddRef();
 				lease.Attach(it->Code);
 				m_entries.splice(m_entries.begin(), m_entries, it);
 				++m_hits;
-				LeaveCriticalSection(&m_lock);
 				return true;
 			}
 		}
@@ -124,7 +150,6 @@ public:
 			if (allocationError != NULL && errorNumber != NULL &&
 				*errorNumber == PCRE2_ERROR_NOMEMORY)
 				*allocationError = true;
-			LeaveCriticalSection(&m_lock);
 			return false;
 		}
 
@@ -133,17 +158,23 @@ public:
 			pcre2_code_free(code);
 			if (allocationError != NULL)
 				*allocationError = true;
-			LeaveCriticalSection(&m_lock);
 			return false;
 		}
 		try {
+#if defined(PCRE2_CODE_CACHE_TESTING)
+			if (m_failNextEntryAllocation) {
+				m_failNextEntryAllocation = false;
+				throw std::bad_alloc();
+			}
+#endif
 			m_entries.push_front(Entry(pattern, compileOptions, compiledCode));
 		}
-		catch (const std::bad_alloc&) {
+		catch (...) {
+			// CString/ATL may report OOM through an exception type other than
+			// std::bad_alloc; the compiled code is still solely owned here.
 			compiledCode->Release();
 			if (allocationError != NULL)
 				*allocationError = true;
-			LeaveCriticalSection(&m_lock);
 			return false;
 		}
 		compiledCode->AddRef();
@@ -154,27 +185,24 @@ public:
 			evicted->Release();
 			++m_evictions;
 		}
-		LeaveCriticalSection(&m_lock);
 		return true;
 	}
 
 	CodeCacheStatistics GetStatistics()
 	{
-		EnterCriticalSection(&m_lock);
+		CriticalSectionGuard guard(m_lock);
 		CodeCacheStatistics statistics = {
 			m_hits, m_misses, m_evictions, static_cast<unsigned int>(m_entries.size())
 		};
-		LeaveCriticalSection(&m_lock);
 		return statistics;
 	}
 
 	void Clear()
 	{
-		EnterCriticalSection(&m_lock);
+		CriticalSectionGuard guard(m_lock);
 		for (std::list<Entry>::iterator it = m_entries.begin(); it != m_entries.end(); ++it)
 			it->Code->Release();
 		m_entries.clear();
-		LeaveCriticalSection(&m_lock);
 	}
 
 private:
@@ -187,6 +215,16 @@ private:
 		CompiledCode* Code;
 	};
 
+	static bool SamePattern(const CString& left, const CString& right)
+	{
+		const int length = left.GetLength();
+		return length == right.GetLength() &&
+			(length == 0 || memcmp(
+				static_cast<LPCWSTR>(left),
+				static_cast<LPCWSTR>(right),
+				static_cast<size_t>(length) * sizeof(wchar_t)) == 0);
+	}
+
 	CompiledCodeCache(const CompiledCodeCache&);
 	CompiledCodeCache& operator=(const CompiledCodeCache&);
 
@@ -196,6 +234,9 @@ private:
 	unsigned int m_hits;
 	unsigned int m_misses;
 	unsigned int m_evictions;
+#if defined(PCRE2_CODE_CACHE_TESTING)
+	bool m_failNextEntryAllocation = false;
+#endif
 };
 
 }

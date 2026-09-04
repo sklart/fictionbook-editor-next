@@ -45,6 +45,59 @@ static double ElapsedMilliseconds(LARGE_INTEGER start, LARGE_INTEGER frequency)
 		static_cast<double>(frequency.QuadPart);
 }
 
+static bool MeasureBaseline(
+	const Scenario& scenario,
+	uint32_t options,
+	int iterations,
+	LARGE_INTEGER frequency,
+	double& milliseconds,
+	unsigned int& matches)
+{
+	matches = 0;
+	LARGE_INTEGER start;
+	QueryPerformanceCounter(&start);
+	for (int run = 0; run < iterations; ++run) {
+		int errorNumber = 0;
+		PCRE2_SIZE errorOffset = 0;
+		pcre2_code* code = pcre2_compile(
+			reinterpret_cast<PCRE2_SPTR>(scenario.Pattern),
+			static_cast<PCRE2_SIZE>(wcslen(scenario.Pattern)), options,
+			&errorNumber, &errorOffset, NULL);
+		if (code == NULL)
+			return false;
+		matches += FindAll(code, scenario.Subject);
+		pcre2_code_free(code);
+	}
+	milliseconds = ElapsedMilliseconds(start, frequency);
+	return true;
+}
+
+static bool MeasureCache(
+	const Scenario& scenario,
+	uint32_t options,
+	int iterations,
+	LARGE_INTEGER frequency,
+	double& milliseconds,
+	unsigned int& matches)
+{
+	CompiledCodeCache cache(48);
+	matches = 0;
+	LARGE_INTEGER start;
+	QueryPerformanceCounter(&start);
+	for (int run = 0; run < iterations; ++run) {
+		int errorNumber = 0;
+		PCRE2_SIZE errorOffset = 0;
+		bool allocationError = false;
+		CodeLease lease;
+		if (!cache.Acquire(CString(scenario.Pattern), options, &errorNumber,
+			&errorOffset, &allocationError, lease))
+			return false;
+		matches += FindAll(lease.Get(), scenario.Subject);
+	}
+	milliseconds = ElapsedMilliseconds(start, frequency);
+	return true;
+}
+
 int wmain()
 {
 	std::wstring largeText;
@@ -57,45 +110,40 @@ int wmain()
 	scenarios.push_back({ L"groups", L"([A-Z][a-z]+)\\s+([A-Z][a-z]+)\\s+([0-9]{4})", L"John Smith 2026" });
 	scenarios.push_back({ L"complex", L"(?:(?:https?)://)?([a-z0-9-]+(?:\\.[a-z0-9-]+)+)(?::([0-9]{2,5}))?(?:/[^\\s]*)?", L"https://example.org:8443/a/b?q=1" });
 
-	const uint32_t options = PCRE2_UTF | PCRE2_UCP;
+	// Keep this identical to the production baseline: UCP and JIT are off.
+	const uint32_t options = PCRE2_UTF;
 	const int iterations = 20;
 	LARGE_INTEGER frequency;
 	QueryPerformanceFrequency(&frequency);
 
-	wprintf(L"scenario;baseline_ms;cache_ms;matches\n");
+	// Warm up PCRE2 and the allocator before timing either implementation.
 	for (std::vector<Scenario>::const_iterator it = scenarios.begin(); it != scenarios.end(); ++it) {
-		unsigned int matches = 0;
-		LARGE_INTEGER start;
-		QueryPerformanceCounter(&start);
-		for (int run = 0; run < iterations; ++run) {
-			int errorNumber = 0;
-			PCRE2_SIZE errorOffset = 0;
-			pcre2_code* code = pcre2_compile(
-				reinterpret_cast<PCRE2_SPTR>(it->Pattern),
-				static_cast<PCRE2_SIZE>(wcslen(it->Pattern)), options,
-				&errorNumber, &errorOffset, NULL);
-			if (code == NULL)
-				return 1;
-			matches += FindAll(code, it->Subject);
-			pcre2_code_free(code);
-		}
-		const double baselineMilliseconds = ElapsedMilliseconds(start, frequency);
+		double ignoredMilliseconds = 0;
+		unsigned int ignoredMatches = 0;
+		if (!MeasureBaseline(*it, options, 1, frequency, ignoredMilliseconds, ignoredMatches) ||
+			!MeasureCache(*it, options, 1, frequency, ignoredMilliseconds, ignoredMatches))
+			return 1;
+	}
 
-		CompiledCodeCache cache(48);
-		QueryPerformanceCounter(&start);
-		for (int run = 0; run < iterations; ++run) {
-			int errorNumber = 0;
-			PCRE2_SIZE errorOffset = 0;
-			bool allocationError = false;
-			CodeLease lease;
-			if (!cache.Acquire(CString(it->Pattern), options, &errorNumber,
-				&errorOffset, &allocationError, lease))
-				return 2;
-			matches += FindAll(lease.Get(), it->Subject);
+	wprintf(L"scenario;baseline_ms;cache_ms;baseline_matches;cache_matches\n");
+	for (std::vector<Scenario>::const_iterator it = scenarios.begin(); it != scenarios.end(); ++it) {
+		double baselineMilliseconds = 0;
+		double cacheMilliseconds = 0;
+		unsigned int baselineMatches = 0;
+		unsigned int cacheMatches = 0;
+		if (!MeasureBaseline(*it, options, iterations, frequency,
+			baselineMilliseconds, baselineMatches))
+			return 2;
+		if (!MeasureCache(*it, options, iterations, frequency,
+			cacheMilliseconds, cacheMatches))
+			return 3;
+		if (baselineMatches != cacheMatches) {
+			wprintf(L"Match-count mismatch for %s: baseline=%u cache=%u\n",
+				it->Name, baselineMatches, cacheMatches);
+			return 4;
 		}
-		const double cacheMilliseconds = ElapsedMilliseconds(start, frequency);
-		wprintf(L"%s;%.3f;%.3f;%u\n", it->Name, baselineMilliseconds,
-			cacheMilliseconds, matches);
+		wprintf(L"%s;%.3f;%.3f;%u;%u\n", it->Name, baselineMilliseconds,
+			cacheMilliseconds, baselineMatches, cacheMatches);
 	}
 	return 0;
 }

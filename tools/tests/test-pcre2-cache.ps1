@@ -29,7 +29,7 @@ $testExe = Join-Path $testDir "pcre2-cache-smoke.exe"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 $clArguments = @(
-    "/nologo", "/EHsc", "/std:c++17", "/MT", "/DUNICODE", "/D_UNICODE",
+    "/nologo", "/EHsc", "/std:c++17", "/MT", "/DUNICODE", "/D_UNICODE", "/DPCRE2_CODE_CACHE_TESTING",
     "/I$(Join-Path $repoRoot "third_party\wtl")",
     "/I$(Join-Path $repoRoot "src\fbe")",
     "/I$(Join-Path $installDir "include")",
