@@ -5388,6 +5388,7 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 			{
 				CComQIPtr<IFBEExportPlugin2> exportV2(unk);
 				if (!exportV2) { TracePluginDiagnostic(L"Export", pluginClsid, L"QueryInterfaceV2", E_NOINTERFACE, 0); return 0; }
+				m_last_plugin = wID + ID_EXPORT_BASE;
 				MSXML2::IXMLDOMDocument2Ptr dom(m_doc->CreateDOM(m_doc->m_encoding, false));
 				CComPtr<IFBEPluginHost> host; CComPtr<IFBEDocumentSnapshot> snapshot;
 				CheckError(FbePluginApiV2::CreateHost(m_hWnd, _Settings.GetInterfaceLanguageName(), &host));

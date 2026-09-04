@@ -54,5 +54,8 @@ HRESULT FbePluginApiV2::CreateHost(HWND owner, LPCWSTR locale, IFBEPluginHost** 
 }
 HRESULT FbePluginApiV2::CreateSnapshot(MSXML2::IXMLDOMDocument2* document, LPCWSTR sourcePath, LPCWSTR encoding, IFBEDocumentSnapshot** snapshot) {
     if (!snapshot) return E_POINTER; *snapshot = NULL; if (!document) return E_INVALIDARG; CComObject<DocumentSnapshot>* result = NULL; HRESULT hr = CComObject<DocumentSnapshot>::CreateInstance(&result); if (FAILED(hr)) return hr;
-    result->AddRef(); result->m_xml = static_cast<BSTR>(document->xml); result->m_path = sourcePath ? sourcePath : L""; result->m_encoding = encoding ? encoding : L"utf-8"; *snapshot = result; StartupTrace::Event(L"plugin", L"P211", L"plugin-snapshot-created"); return S_OK;
+    result->AddRef(); result->m_xml = static_cast<BSTR>(document->xml);
+    if (result->m_xml.Left(5).CompareNoCase(L"<?xml") == 0) { const int end = result->m_xml.Find(L"?>"); if (end >= 0) result->m_xml = result->m_xml.Mid(end + 2); }
+    result->m_xml = CString(L"<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n") + result->m_xml;
+    result->m_path = sourcePath ? sourcePath : L""; result->m_encoding = L"utf-8"; *snapshot = result; StartupTrace::Event(L"plugin", L"P211", L"plugin-snapshot-created"); return S_OK;
 }
