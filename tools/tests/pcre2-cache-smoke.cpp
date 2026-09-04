@@ -118,22 +118,44 @@ int wmain()
 		return 12;
 	}
 
-	CompiledCodeCache oomCache(2);
-	oomCache.FailNextEntryAllocationForTesting();
-	CodeLease failedAllocation;
+	CompiledCodeCache invalidPatternCache(2);
+	CodeLease invalidPattern;
 	int errorNumber = 0;
 	PCRE2_SIZE errorOffset = 0;
 	bool allocationError = false;
+	if (invalidPatternCache.Acquire(CString(L"("), commonOptions, &errorNumber, &errorOffset,
+		&allocationError, invalidPattern) || allocationError) {
+		printf("Invalid pattern was accepted or reported as an allocation error.\n");
+		return 13;
+	}
+	statistics = invalidPatternCache.GetStatistics();
+	if (statistics.Entries != 0) {
+		printf("Invalid pattern was added to the cache.\n");
+		return 14;
+	}
+	CodeLease validAfterInvalid;
+	if (!Acquire(invalidPatternCache, CString(L"valid"), commonOptions, validAfterInvalid) ||
+		!CheckMatch(validAfterInvalid.Get(), CString(L"valid"))) {
+		printf("Cache did not recover after an invalid pattern.\n");
+		return 15;
+	}
+
+	CompiledCodeCache oomCache(2);
+	oomCache.FailNextEntryAllocationForTesting();
+	CodeLease failedAllocation;
+	errorNumber = 0;
+	errorOffset = 0;
+	allocationError = false;
 	if (oomCache.Acquire(CString(L"oom"), commonOptions, &errorNumber, &errorOffset,
 		&allocationError, failedAllocation) || !allocationError || failedAllocation.Get() != NULL) {
 		printf("Cache entry allocation failure was not reported safely.\n");
-		return 13;
+		return 16;
 	}
 	CodeLease afterOom;
 	if (!Acquire(oomCache, CString(L"oom"), commonOptions, afterOom) ||
 		!CheckMatch(afterOom.Get(), CString(L"oom"))) {
 		printf("Cache lock or ownership was not recovered after allocation failure.\n");
-		return 14;
+		return 17;
 	}
 
 	printf("PCRE2 compiled-code cache smoke test passed.\n");

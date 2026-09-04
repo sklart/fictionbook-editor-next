@@ -3,6 +3,7 @@
 // Immutable compiled patterns are safe to share between searches. Match data
 // and contexts intentionally remain per-search in RegexBackendPcre2.cpp.
 #include <atlstr.h>
+#include <atlexcept.h>
 #include <cstring>
 #include <list>
 #include <new>
@@ -169,9 +170,15 @@ public:
 #endif
 			m_entries.push_front(Entry(pattern, compileOptions, compiledCode));
 		}
-		catch (...) {
-			// CString/ATL may report OOM through an exception type other than
-			// std::bad_alloc; the compiled code is still solely owned here.
+		catch (const std::bad_alloc&) {
+			compiledCode->Release();
+			if (allocationError != NULL)
+				*allocationError = true;
+			return false;
+		}
+		catch (const ATL::CAtlException& exception) {
+			if (exception.m_hr != E_OUTOFMEMORY)
+				throw;
 			compiledCode->Release();
 			if (allocationError != NULL)
 				*allocationError = true;
