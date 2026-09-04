@@ -15,7 +15,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 
 $installDir = Join-Path $repoRoot "build\pcre2\install\$Configuration"
 if ($UsePreparedPcre2) {
-    foreach ($path in @((Join-Path $installDir "include\pcre2.h"), (Join-Path $installDir "lib\pcre2-8-static.lib"))) {
+    foreach ($path in @((Join-Path $installDir "include\pcre2.h"), (Join-Path $installDir "lib\pcre2-16-static.lib"))) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Не найдена подготовленная PCRE2-зависимость: $path" }
     }
 } else {
@@ -39,7 +39,7 @@ function Convert-ToUtf8Hex([string]$Text) {
     (Join-Path $PSScriptRoot "pcre2-smoke.cpp") `
     "/link" "/SUBSYSTEM:CONSOLE" `
     "/LIBPATH:$(Join-Path $installDir "lib")" `
-    "pcre2-8-static.lib" "/OUT:$testExe"
+    "pcre2-16-static.lib" "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

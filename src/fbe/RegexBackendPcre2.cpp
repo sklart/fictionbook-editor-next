@@ -1,16 +1,18 @@
 #include "stdafx.h"
 
-#include "apputils.h"
 #include "RegexBackend.h"
 
-#define PCRE2_CODE_UNIT_WIDTH 8
+#define PCRE2_CODE_UNIT_WIDTH 16
 #define PCRE2_STATIC
 #include "pcre2.h"
 
 namespace AU {
 namespace {
 
-const int kRegexOvectorCount = 300;
+// Keep PCRE2's documented defaults. Setting them explicitly makes the UI
+// protection independent of a future PCRE2 build-time configuration change.
+const uint32_t kRegexMatchLimit = 10000000;
+const uint32_t kRegexDepthLimit = 10000000;
 
 static CString BuildPcre2ErrorText(int errorNumber)
 {
@@ -22,7 +24,24 @@ static CString BuildPcre2ErrorText(int errorNumber)
 	if (result < 0)
 		return CString(L"Unknown PCRE2 error.");
 
-	return CString(CA2T(reinterpret_cast<const char*>(buffer), CP_UTF8));
+	return CString(reinterpret_cast<const wchar_t*>(buffer));
+}
+
+CString BuildCompileErrorText(int errorNumber, PCRE2_SIZE errorOffset)
+{
+	CString errorText;
+	errorText.Format(L"Ошибка регулярного выражения в позиции %llu: %s",
+		static_cast<unsigned long long>(errorOffset),
+		static_cast<LPCWSTR>(BuildPcre2ErrorText(errorNumber)));
+	return errorText;
+}
+
+CString BuildMatchErrorText(int errorNumber)
+{
+	CString errorText;
+	errorText.Format(L"Ошибка выполнения регулярного выражения: %s",
+		static_cast<LPCWSTR>(BuildPcre2ErrorText(errorNumber)));
+	return errorText;
 }
 
 uint32_t BuildCompileOptions(const RegexBackend::Options& options)
@@ -45,95 +64,97 @@ bool RegexBackend::Execute(
 	uint32_t compileOptions;
 	int errorNumber = 0;
 	PCRE2_SIZE errorOffset = 0;
-	int rc, offset, char_offset;
+	int rc;
+	PCRE2_SIZE offset = 0;
+	uint32_t globalOptions = 0;
 
 	matches.RemoveAll();
 	errorText.Empty();
 
 	compileOptions = BuildCompileOptions(options);
 
-	CT2A pat(options.Pattern, CP_UTF8);
 	pcre2_code* re = pcre2_compile(
-		reinterpret_cast<PCRE2_SPTR>(static_cast<LPCSTR>(pat)),
-		PCRE2_ZERO_TERMINATED,
+		reinterpret_cast<PCRE2_SPTR>(static_cast<LPCWSTR>(options.Pattern)),
+		static_cast<PCRE2_SIZE>(options.Pattern.GetLength()),
 		compileOptions,
 		&errorNumber,
 		&errorOffset,
 		NULL);
 	if (re == NULL)
 	{
-		errorText = BuildPcre2ErrorText(errorNumber);
+		errorText = BuildCompileErrorText(errorNumber, errorOffset);
 		return false;
 	}
 
-	CT2A subj(sourceString, CP_UTF8);
-	const int subjectLength = strlen(subj);
-	pcre2_match_data* matchData = pcre2_match_data_create(kRegexOvectorCount / 3, NULL);
-	if (matchData == NULL)
+	pcre2_match_data* matchData = pcre2_match_data_create_from_pattern(re, NULL);
+	pcre2_match_context* matchContext = pcre2_match_context_create(NULL);
+	if (matchData == NULL || matchContext == NULL)
 	{
+		if (matchContext != NULL)
+			pcre2_match_context_free(matchContext);
+		if (matchData != NULL)
+			pcre2_match_data_free(matchData);
 		pcre2_code_free(re);
 		errorText = L"Failed to allocate PCRE2 match data.";
 		return false;
 	}
+	pcre2_set_match_limit(matchContext, kRegexMatchLimit);
+	pcre2_set_depth_limit(matchContext, kRegexDepthLimit);
 
-	offset = char_offset = 0;
-
-	do
+	while (true)
 	{
 		rc = pcre2_match(
 			re,
-			reinterpret_cast<PCRE2_SPTR>(static_cast<LPCSTR>(subj)),
-			subjectLength,
+			reinterpret_cast<PCRE2_SPTR>(static_cast<LPCWSTR>(sourceString)),
+			static_cast<PCRE2_SIZE>(sourceString.GetLength()),
 			offset,
-			0,
+			globalOptions,
 			matchData,
-			NULL);
+			matchContext);
 
-		if (rc > 0)
+		if (rc == PCRE2_ERROR_NOMATCH)
+			break;
+		if (rc < 0)
 		{
-			PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData);
-			char* substring_start = const_cast<char*>(static_cast<LPCSTR>(subj)) + ovector[0];
-			int substring_length = static_cast<int>(ovector[1] - ovector[0]);
-			if (substring_length >= 0)
-			{
-				CStringA utf8Match(substring_start, substring_length);
-				while (offset < static_cast<int>(ovector[0]))
-				{
-					offset += UTF8_CHAR_LEN(subj[offset]);
-					char_offset++;
-				}
-
-				RegexBackend::MatchData item;
-				item.Value = CString(CA2T(utf8Match, CP_UTF8));
-				item.FirstIndex = char_offset;
-
-				for (int i = 1; i < rc; i++)
-				{
-					const PCRE2_SIZE groupStart = ovector[i * 2];
-					const PCRE2_SIZE groupEnd = ovector[i * 2 + 1];
-					if (groupStart != PCRE2_UNSET && groupEnd != PCRE2_UNSET)
-					{
-						substring_start = const_cast<char*>(static_cast<LPCSTR>(subj)) + groupStart;
-						substring_length = static_cast<int>(groupEnd - groupStart);
-						CStringA utf8SubMatch(substring_start, substring_length);
-						item.SubMatches.Add(CString(CA2T(utf8SubMatch, CP_UTF8)));
-					}
-				}
-				matches.Add(item);
-				char_offset += item.Value.GetLength();
-				offset = static_cast<int>(ovector[1]);
-				if (ovector[0] == ovector[1])
-				{
-					offset++;
-					char_offset++;
-				}
-
-				if (!options.Global)
-					break;
-			}
+			errorText = BuildMatchErrorText(rc);
+			pcre2_match_context_free(matchContext);
+			pcre2_match_data_free(matchData);
+			pcre2_code_free(re);
+			return false;
 		}
-	} while (rc > 0);
 
+		const bool retryAtEmptyMatch =
+			(globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0 && offset == pcre2_get_ovector_pointer(matchData)[0];
+		PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData);
+		const PCRE2_SIZE matchStart = ovector[0];
+		const PCRE2_SIZE matchEnd = ovector[1];
+		// The legacy wrapper advanced by one UTF-16 code unit after an empty
+		// result. pcre2_next_match first retries the same position with
+		// NOTEMPTY_ATSTART; suppress that retry's non-empty result to retain the
+		// established IRegExp2 collection semantics while delegating advancement.
+		if (!retryAtEmptyMatch && matchEnd >= matchStart)
+		{
+			RegexBackend::MatchData item;
+			item.Value = CString(static_cast<LPCWSTR>(sourceString) + matchStart,
+				static_cast<int>(matchEnd - matchStart));
+			item.FirstIndex = static_cast<int>(matchStart);
+
+			for (int i = 1; i < rc; i++)
+			{
+				const PCRE2_SIZE groupStart = ovector[i * 2];
+				const PCRE2_SIZE groupEnd = ovector[i * 2 + 1];
+				if (groupStart != PCRE2_UNSET && groupEnd != PCRE2_UNSET)
+					item.SubMatches.Add(CString(static_cast<LPCWSTR>(sourceString) + groupStart,
+						static_cast<int>(groupEnd - groupStart)));
+			}
+			matches.Add(item);
+		}
+
+		if (!options.Global || !pcre2_next_match(matchData, &offset, &globalOptions))
+			break;
+	}
+
+	pcre2_match_context_free(matchContext);
 	pcre2_match_data_free(matchData);
 	pcre2_code_free(re);
 
@@ -141,4 +162,3 @@ bool RegexBackend::Execute(
 }
 
 }
-

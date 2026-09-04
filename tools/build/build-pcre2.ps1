@@ -204,9 +204,7 @@ function Copy-Pcre2RequiredFile {
 function Assert-Pcre2Prepared {
     $requiredPaths = @(
         (Join-Path $installDir "include\pcre2.h"),
-        (Join-Path $installDir "include\pcre2posix.h"),
-        (Join-Path $installDir "lib\pcre2-8-static.lib"),
-        (Join-Path $installDir "lib\pcre2-posix-static.lib")
+        (Join-Path $installDir "lib\pcre2-16-static.lib")
     )
 
     $missingPaths = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_) })
@@ -255,8 +253,8 @@ try {
         "-D", "CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>",
         "-D", "BUILD_SHARED_LIBS=OFF",
         "-D", "BUILD_STATIC_LIBS=ON",
-        "-D", "PCRE2_BUILD_PCRE2_8=ON",
-        "-D", "PCRE2_BUILD_PCRE2_16=OFF",
+        "-D", "PCRE2_BUILD_PCRE2_8=OFF",
+        "-D", "PCRE2_BUILD_PCRE2_16=ON",
         "-D", "PCRE2_BUILD_PCRE2_32=OFF",
         "-D", "PCRE2_BUILD_PCRE2GREP=OFF",
         "-D", "PCRE2_BUILD_TESTS=OFF",
@@ -273,7 +271,7 @@ try {
         throw "Конфигурация PCRE2 завершилась с кодом $exitCode."
     }
 
-    foreach ($target in @("pcre2-8-static", "pcre2-posix-static")) {
+    foreach ($target in @("pcre2-16-static")) {
         Write-Host "PCRE2: сборка цели $target"
         $buildArgs = @("--build", $buildDir, "--config", $Configuration, "--target", $target)
         $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $buildArgs -QuietOutput:$Quiet
@@ -294,18 +292,10 @@ try {
         (Join-Path $sourceDir "src\pcre2.h"),
         (Join-Path $sourceDir "pcre2.h")
     )
-    Copy-Pcre2RequiredFile -FileName "pcre2posix.h" -DestinationDirectory (Join-Path $installDir "include") -CandidatePaths @(
-        (Join-Path $buildDir "interface\pcre2posix.h"),
-        (Join-Path $sourceDir "src\pcre2posix.h"),
-        (Join-Path $sourceDir "pcre2posix.h")
-    )
-    Copy-Pcre2RequiredFile -FileName "pcre2-8-static.lib" -DestinationDirectory (Join-Path $installDir "lib") -CandidatePaths @(
-        (Join-Path $buildDir "$Configuration\pcre2-8-static.lib"),
-        (Join-Path $buildDir "pcre2-8-static.lib")
-    )
-    Copy-Pcre2RequiredFile -FileName "pcre2-posix-static.lib" -DestinationDirectory (Join-Path $installDir "lib") -CandidatePaths @(
-        (Join-Path $buildDir "$Configuration\pcre2-posix-static.lib"),
-        (Join-Path $buildDir "pcre2-posix-static.lib")
+    Copy-Pcre2RequiredFile -FileName "pcre2-16-static.lib" -DestinationDirectory (Join-Path $installDir "lib") -CandidatePaths @(
+        (Join-Path $buildDir "$Configuration\pcre2-16-static.lib"),
+        (Join-Path $buildDir "$Configuration\pcre2-16-staticd.lib"),
+        (Join-Path $buildDir "pcre2-16-static.lib")
     )
 
     Assert-Pcre2Prepared

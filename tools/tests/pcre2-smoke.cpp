@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 
-#define PCRE2_CODE_UNIT_WIDTH 8
+#define PCRE2_CODE_UNIT_WIDTH 16
 #define PCRE2_STATIC
 #include "pcre2.h"
 
@@ -40,6 +40,20 @@ static std::string DecodeHex(const char* text)
 	return decoded;
 }
 
+static std::wstring Utf8ToWide(const std::string& text)
+{
+	if (text.empty())
+		return std::wstring();
+	const int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+		text.data(), static_cast<int>(text.size()), NULL, 0);
+	if (length <= 0)
+		return std::wstring();
+	std::wstring wide(length, L'\0');
+	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(),
+		static_cast<int>(text.size()), &wide[0], length);
+	return wide;
+}
+
 static uint32_t ParseOptions(const std::string& optionsText)
 {
 	uint32_t options = 0;
@@ -52,7 +66,7 @@ static uint32_t ParseOptions(const std::string& optionsText)
 	return options;
 }
 
-static bool MatchPattern(const char* pattern, const char* subject, uint32_t options)
+static bool MatchPattern(const wchar_t* pattern, const wchar_t* subject, uint32_t options)
 {
 	int errorNumber = 0;
 	PCRE2_SIZE errorOffset = 0;
@@ -70,7 +84,7 @@ static bool MatchPattern(const char* pattern, const char* subject, uint32_t opti
 	const int rc = pcre2_match(
 		re,
 		reinterpret_cast<PCRE2_SPTR>(subject),
-		std::strlen(subject),
+		std::wcslen(subject),
 		0,
 		0,
 		matchData,
@@ -89,8 +103,8 @@ int main(int argc, char* argv[])
 		return 10;
 	}
 
-	const std::string pattern = DecodeHex(argv[1]);
-	const std::string subject = DecodeHex(argv[2]);
+	const std::wstring pattern = Utf8ToWide(DecodeHex(argv[1]));
+	const std::wstring subject = Utf8ToWide(DecodeHex(argv[2]));
 	if (pattern.empty())
 		return 11;
 

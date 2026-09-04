@@ -328,6 +328,118 @@
         "note": "FirstIndex должен считаться в символах, а не в UTF-8 байтах, даже после перевода строки."
       },
       {
+        "id": "pcre_wrapper_utf16_non_bmp_emoji_offset",
+        "subject": "A😀B",
+        "pattern": "B",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "B",
+        "expectedFirstIndex": 3,
+        "expectedFirstSubMatchCount": 0,
+        "note": "FirstIndex использует UTF-16 code units: emoji занимает две позиции."
+      },
+      {
+        "id": "pcre_wrapper_utf16_non_bmp_music_and_deseret",
+        "subject": "😀 𝄞 𐐀 B",
+        "pattern": "B",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "B",
+        "expectedFirstIndex": 9,
+        "expectedFirstSubMatchCount": 0,
+        "note": "Смещения после нескольких non-BMP символов остаются UTF-16-совместимыми."
+      },
+      {
+        "id": "pcre_wrapper_many_capture_groups",
+        "subject": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pattern": "(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)(a)",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expectedFirstIndex": 0,
+        "expectedFirstSubMatchCount": 101,
+        "expectedFirstSubMatchValue": "a",
+        "note": "Match data создаётся из pattern и не ограничивает число групп 100 слотами."
+      },
+      {
+        "id": "pcre_wrapper_global_word_boundaries",
+        "subject": "ab",
+        "pattern": "\\b",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 2,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 0,
+        "note": "pcre2_next_match корректно обходит zero-length границы слова."
+      },
+      {
+        "id": "pcre_wrapper_global_start_anchor",
+        "subject": "ab",
+        "pattern": "^",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 0,
+        "note": "Глобальный поиск якоря начала не возвращает дублей."
+      },
+      {
+        "id": "pcre_wrapper_global_end_anchor",
+        "subject": "ab",
+        "pattern": "$",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 2,
+        "note": "Глобальный поиск якоря конца не зацикливается."
+      },
+      {
+        "id": "pcre_wrapper_global_a_star",
+        "subject": "ab",
+        "pattern": "a*",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 3,
+        "expectedFirstValue": "a",
+        "expectedFirstIndex": 0,
+        "note": "Смешанные непустые и пустые совпадения сохраняют legacy-semantics."
+      },
+      {
+        "id": "pcre_wrapper_global_lookahead",
+        "subject": "foo",
+        "pattern": "(?=foo)",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 0,
+        "note": "Zero-length positive lookahead не зацикливается."
+      },
+      {
+        "id": "pcre_wrapper_global_lookbehind",
+        "subject": "foo",
+        "pattern": "(?<=foo)",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 1,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 3,
+        "note": "Zero-length positive lookbehind возвращает UTF-16 offset в конце subject."
+      },
+      {
         "id": "pcre_wrapper_multiline_capture_group",
         "subject": "alpha\nbeta\ngamma",
         "pattern": "^(beta)$",
@@ -489,4 +601,3 @@
     ]
   }
 }
-

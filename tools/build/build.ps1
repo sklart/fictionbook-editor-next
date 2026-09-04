@@ -87,8 +87,7 @@ function Invoke-RequiredProjectBuild {
 function Assert-PreparedDependencies {
     $requiredPaths = @(
         (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"),
-        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-8-static.lib"),
-        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-posix-static.lib"),
+        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-16-static.lib"),
         (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib"),
         (Join-Path $repoRoot "build\libwebp\install\$Configuration\lib\libwebp.lib"),
         (Join-Path $repoRoot "build\openjpeg\install\$Configuration\lib\openjp2.lib"),
@@ -174,8 +173,7 @@ function Remove-ObsoleteRootLanguageDirectories {
 if ($ReusePreparedPcre2) {
     $pcreInputs = @(
         (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"),
-        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-8-static.lib"),
-        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-posix-static.lib")
+        (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-16-static.lib")
     )
     if (@($pcreInputs | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) }).Count -gt 0) {
         throw 'PCRE2 cache was reported as reusable, but its required files are missing.'

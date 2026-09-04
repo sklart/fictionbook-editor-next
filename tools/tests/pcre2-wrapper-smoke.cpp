@@ -6,11 +6,9 @@
 #include "atlstr.h"
 #include "atlcoll.h"
 
-#define PCRE2_CODE_UNIT_WIDTH 8
+#define PCRE2_CODE_UNIT_WIDTH 16
 #define PCRE2_STATIC
 #include "pcre2.h"
-
-#define UTF8_CHAR_LEN( byte ) (( 0xE5000000 >> (( byte >> 3 ) & 0x1e )) & 3 ) + 1
 
 typedef CSimpleArray<CString> CStrings;
 
@@ -60,19 +58,17 @@ public:
 
 	IMatchCollection* Execute(CString sourceString)
 	{
-#define OVECCOUNT 300
 		uint32_t options = IgnoreCase ? PCRE2_CASELESS : 0;
 		options |= PCRE2_UTF;
 		if (Multiline)
 			options |= PCRE2_MULTILINE;
 
 		IMatchCollection* matches = new IMatchCollection();
-		CT2A pat(Pattern, CP_UTF8);
 		int errorNumber = 0;
 		PCRE2_SIZE errorOffset = 0;
 		pcre2_code* re = pcre2_compile(
-			reinterpret_cast<PCRE2_SPTR>(static_cast<LPCSTR>(pat)),
-			PCRE2_ZERO_TERMINATED,
+			reinterpret_cast<PCRE2_SPTR>(static_cast<LPCWSTR>(Pattern)),
+			static_cast<PCRE2_SIZE>(Pattern.GetLength()),
 			options,
 			&errorNumber,
 			&errorOffset,
@@ -80,42 +76,34 @@ public:
 		if (!re)
 			return matches;
 
-		CT2A subj(sourceString, CP_UTF8);
-		const int subjectLength = static_cast<int>(std::strlen(subj));
-		pcre2_match_data* matchData = pcre2_match_data_create(OVECCOUNT / 3, NULL);
+		pcre2_match_data* matchData = pcre2_match_data_create_from_pattern(re, NULL);
 		if (!matchData)
 		{
 			pcre2_code_free(re);
 			return matches;
 		}
 
-		int rc = 0, offset = 0, char_offset = 0;
-		do
+		int rc = 0;
+		PCRE2_SIZE offset = 0;
+		uint32_t globalOptions = 0;
+		while (true)
 		{
 			rc = pcre2_match(
 				re,
-				reinterpret_cast<PCRE2_SPTR>(static_cast<LPCSTR>(subj)),
-				subjectLength,
+				reinterpret_cast<PCRE2_SPTR>(static_cast<LPCWSTR>(sourceString)),
+				static_cast<PCRE2_SIZE>(sourceString.GetLength()),
 				offset,
-				0,
+				globalOptions,
 				matchData,
 				NULL);
-			if (rc > 0)
+			if (rc < 0)
+				break;
+			PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData);
+			const bool retryAtEmptyMatch = (globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0 && offset == ovector[0];
+			if (!retryAtEmptyMatch && ovector[1] >= ovector[0])
 			{
-				PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData);
-				char* substring_start = const_cast<char*>(static_cast<LPCSTR>(subj)) + ovector[0];
-				int substring_length = static_cast<int>(ovector[1] - ovector[0]);
-				if (substring_length >= 0)
-				{
-					CStringA utf8Match(substring_start, substring_length);
-					while (offset < static_cast<int>(ovector[0]))
-					{
-						offset += UTF8_CHAR_LEN(subj[offset]);
-						char_offset++;
-					}
-
-					CString str = CString(CA2T(utf8Match, CP_UTF8));
-					IMatch2* item = new IMatch2(str, char_offset);
+				CString str(static_cast<LPCWSTR>(sourceString) + ovector[0], static_cast<int>(ovector[1] - ovector[0]));
+				IMatch2* item = new IMatch2(str, static_cast<int>(ovector[0]));
 
 					for (int i = 1; i < rc; i++)
 					{
@@ -123,27 +111,16 @@ public:
 						const PCRE2_SIZE groupEnd = ovector[i * 2 + 1];
 						if (groupStart != PCRE2_UNSET && groupEnd != PCRE2_UNSET)
 						{
-							substring_start = const_cast<char*>(static_cast<LPCSTR>(subj)) + groupStart;
-							substring_length = static_cast<int>(groupEnd - groupStart);
-							CStringA utf8SubMatch(substring_start, substring_length);
-							item->AddSubMatch(CString(CA2T(utf8SubMatch, CP_UTF8)));
+						item->AddSubMatch(CString(static_cast<LPCWSTR>(sourceString) + groupStart, static_cast<int>(groupEnd - groupStart)));
 						}
 					}
 
 					matches->AddItem(item);
-					char_offset += str.GetLength();
-					offset = static_cast<int>(ovector[1]);
-					if (ovector[0] == ovector[1])
-					{
-						offset++;
-						char_offset++;
-					}
-				}
 
-				if (!Global)
-					break;
 			}
-		} while (rc > 0);
+			if (!Global || !pcre2_next_match(matchData, &offset, &globalOptions))
+				break;
+		}
 
 		pcre2_match_data_free(matchData);
 		pcre2_code_free(re);
