@@ -2,6 +2,9 @@
 #include "PluginManager.h"
 #include "RuntimeLocalization.h"
 #include "StartupTrace.h"
+#include "apputils.h"
+#include "utils\\utils.h"
+#include "FBE.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
 
 namespace {
@@ -102,4 +105,13 @@ HRESULT PluginManager::CreateInstance(const CLSID& clsid, IUnknownPtr& instance)
 	IUnknown* raw = NULL; result = factory->CreateInstance(NULL, IID_IUnknown, reinterpret_cast<void**>(&raw));
 	if (SUCCEEDED(result)) { instance.Attach(raw); Trace(L"instance-created", plugin->id); }
 	return result;
+}
+HRESULT PluginManager::NegotiateApi(const CLSID& clsid, IUnknown* instance, PluginApiGeneration& generation) {
+	generation = PluginApiV1Fallback; const PluginDescriptor* plugin = FindPlugin(clsid); if (plugin == NULL || instance == NULL) return E_INVALIDARG;
+	CComPtr<IFBEPluginInfo2> info; if (FAILED(instance->QueryInterface(IID_IFBEPluginInfo2, reinterpret_cast<void**>(&info)))) { Trace(L"plugin-api-v1-fallback", plugin->id); return S_OK; }
+	CComBSTR pluginId; ULONG apiVersion = 0; HRESULT hr = info->GetPluginId(&pluginId); if (SUCCEEDED(hr)) hr = info->GetApiVersion(&apiVersion);
+	if (FAILED(hr) || pluginId == NULL || plugin->id.Compare(static_cast<LPCWSTR>(pluginId)) != 0 || apiVersion != 2) { Trace(L"plugin-info-mismatch", plugin->id); return E_ACCESSDENIED; }
+	if (plugin->type == L"Export") { CComPtr<IFBEExportPlugin2> api; hr = instance->QueryInterface(IID_IFBEExportPlugin2, reinterpret_cast<void**>(&api)); }
+	else { CComPtr<IFBEImportPlugin2> api; hr = instance->QueryInterface(IID_IFBEImportPlugin2, reinterpret_cast<void**>(&api)); }
+	if (FAILED(hr)) { Trace(L"plugin-operation-failed", plugin->id); return hr; } generation = PluginApiV2Detected; Trace(L"plugin-api-v2-detected", plugin->id); return S_OK;
 }

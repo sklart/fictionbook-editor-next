@@ -283,6 +283,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="RegexBackendPcre2.cpp" />
     <ClCompile Include="RuntimeLocalization.cpp" />
 	<ClCompile Include="PluginManager.cpp" />
+	<ClCompile Include="PluginApiV2.cpp" />
     <ClCompile Include="XmlSourceThemes.cpp" />
     <ClCompile Include="FBEview.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>

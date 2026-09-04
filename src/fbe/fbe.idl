@@ -33,6 +33,42 @@ library FBELib
     [id(1), helpstring("method Export")] HRESULT Export([in] long hWnd,[in] BSTR filename,[in] IDispatch *document);
   };
 
+  [object, uuid(8B261B99-2842-42B3-9CE2-0E745897B714), pointer_default(unique)]
+  interface IFBEPluginInfo2 : IUnknown
+  {
+    HRESULT GetPluginId([out] BSTR* value);
+    HRESULT GetPluginVersion([out] BSTR* value);
+    HRESULT GetApiVersion([out] ULONG* value);
+    HRESULT GetCapabilities([out] ULONGLONG* value);
+  };
+
+  [object, uuid(8A1C1E23-1B04-4A03-A66D-5C043D64A918), pointer_default(unique)]
+  interface IFBEProgressSink : IUnknown { HRESULT Report([in] ULONG completed, [in] ULONG total, [in] BSTR stage); };
+  [object, uuid(53C61B95-63C2-449B-AF03-6A7F85C57D8A), pointer_default(unique)]
+  interface IFBECancellationToken : IUnknown { HRESULT IsCancellationRequested([out] BOOL* cancelled); };
+  [object, uuid(5A624ED2-8418-448E-94E8-12D0BCA6F3E3), pointer_default(unique)]
+  interface IFBEDocumentSnapshot : IUnknown
+  {
+    HRESULT OpenXmlStream([out] IStream** stream);
+    HRESULT GetSourceFilePath([out] BSTR* path);
+    HRESULT GetEncoding([out] BSTR* encoding);
+  };
+  [object, uuid(CE40BDDD-5A69-4439-A463-33B88164B0D0), pointer_default(unique)]
+  interface IFBEPluginHost : IUnknown
+  {
+    HRESULT GetHostVersion([out] BSTR* version);
+    HRESULT GetUiLocale([out] BSTR* locale);
+    HRESULT GetOwnerWindow([out] LONGLONG* hwnd);
+    HRESULT GetProgressSink([out] IFBEProgressSink** sink);
+    HRESULT GetCancellationToken([out] IFBECancellationToken** token);
+    HRESULT ReportMessage([in] LONG severity, [in] BSTR code, [in] BSTR message);
+    HRESULT Trace([in] BSTR eventName, [in] BSTR detail);
+  };
+  [object, uuid(387B8B64-28D3-4C52-8C2F-5F8ECF31A8C1), pointer_default(unique)]
+  interface IFBEImportPlugin2 : IUnknown { HRESULT Import([in] IFBEPluginHost* host, [out] BSTR* suggestedFileName, [out] IStream** fb2Xml); };
+  [object, uuid(B65F97B9-D9CD-430E-80E2-2E010CB2C7D8), pointer_default(unique)]
+  interface IFBEExportPlugin2 : IUnknown { HRESULT Export([in] IFBEPluginHost* host, [in] BSTR sourceFileName, [in] IFBEDocumentSnapshot* document); };
+
   [
     object,
     uuid(7269066E-2089-4408-B3F3-E8D75984D5A6),

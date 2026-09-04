@@ -62,6 +62,55 @@ typedef interface IFBEExportPlugin IFBEExportPlugin;
 #endif 	/* __IFBEExportPlugin_FWD_DEFINED__ */
 
 
+#ifndef __IFBEPluginInfo2_FWD_DEFINED__
+#define __IFBEPluginInfo2_FWD_DEFINED__
+typedef interface IFBEPluginInfo2 IFBEPluginInfo2;
+
+#endif 	/* __IFBEPluginInfo2_FWD_DEFINED__ */
+
+
+#ifndef __IFBEProgressSink_FWD_DEFINED__
+#define __IFBEProgressSink_FWD_DEFINED__
+typedef interface IFBEProgressSink IFBEProgressSink;
+
+#endif 	/* __IFBEProgressSink_FWD_DEFINED__ */
+
+
+#ifndef __IFBECancellationToken_FWD_DEFINED__
+#define __IFBECancellationToken_FWD_DEFINED__
+typedef interface IFBECancellationToken IFBECancellationToken;
+
+#endif 	/* __IFBECancellationToken_FWD_DEFINED__ */
+
+
+#ifndef __IFBEDocumentSnapshot_FWD_DEFINED__
+#define __IFBEDocumentSnapshot_FWD_DEFINED__
+typedef interface IFBEDocumentSnapshot IFBEDocumentSnapshot;
+
+#endif 	/* __IFBEDocumentSnapshot_FWD_DEFINED__ */
+
+
+#ifndef __IFBEPluginHost_FWD_DEFINED__
+#define __IFBEPluginHost_FWD_DEFINED__
+typedef interface IFBEPluginHost IFBEPluginHost;
+
+#endif 	/* __IFBEPluginHost_FWD_DEFINED__ */
+
+
+#ifndef __IFBEImportPlugin2_FWD_DEFINED__
+#define __IFBEImportPlugin2_FWD_DEFINED__
+typedef interface IFBEImportPlugin2 IFBEImportPlugin2;
+
+#endif 	/* __IFBEImportPlugin2_FWD_DEFINED__ */
+
+
+#ifndef __IFBEExportPlugin2_FWD_DEFINED__
+#define __IFBEExportPlugin2_FWD_DEFINED__
+typedef interface IFBEExportPlugin2 IFBEExportPlugin2;
+
+#endif 	/* __IFBEExportPlugin2_FWD_DEFINED__ */
+
+
 #ifndef __IExternalHelper_FWD_DEFINED__
 #define __IExternalHelper_FWD_DEFINED__
 typedef interface IExternalHelper IExternalHelper;
@@ -264,6 +313,733 @@ EXTERN_C const IID IID_IFBEExportPlugin;
 #endif 	/* __IFBEExportPlugin_INTERFACE_DEFINED__ */
 
 
+#ifndef __IFBEPluginInfo2_INTERFACE_DEFINED__
+#define __IFBEPluginInfo2_INTERFACE_DEFINED__
+
+/* interface IFBEPluginInfo2 */
+/* [unique][uuid][object] */ 
+
+
+EXTERN_C const IID IID_IFBEPluginInfo2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("8B261B99-2842-42B3-9CE2-0E745897B714")
+    IFBEPluginInfo2 : public IUnknown
+    {
+    public:
+        virtual HRESULT STDMETHODCALLTYPE GetPluginId( 
+            /* [out] */ BSTR *value) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetPluginVersion( 
+            /* [out] */ BSTR *value) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetApiVersion( 
+            /* [out] */ ULONG *value) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetCapabilities( 
+            /* [out] */ ULONGLONG *value) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IFBEPluginInfo2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IFBEPluginInfo2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IFBEPluginInfo2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IFBEPluginInfo2 * This);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginInfo2, GetPluginId)
+        HRESULT ( STDMETHODCALLTYPE *GetPluginId )( 
+            IFBEPluginInfo2 * This,
+            /* [out] */ BSTR *value);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginInfo2, GetPluginVersion)
+        HRESULT ( STDMETHODCALLTYPE *GetPluginVersion )( 
+            IFBEPluginInfo2 * This,
+            /* [out] */ BSTR *value);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginInfo2, GetApiVersion)
+        HRESULT ( STDMETHODCALLTYPE *GetApiVersion )( 
+            IFBEPluginInfo2 * This,
+            /* [out] */ ULONG *value);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginInfo2, GetCapabilities)
+        HRESULT ( STDMETHODCALLTYPE *GetCapabilities )( 
+            IFBEPluginInfo2 * This,
+            /* [out] */ ULONGLONG *value);
+        
+        END_INTERFACE
+    } IFBEPluginInfo2Vtbl;
+
+    interface IFBEPluginInfo2
+    {
+        CONST_VTBL struct IFBEPluginInfo2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IFBEPluginInfo2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IFBEPluginInfo2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IFBEPluginInfo2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IFBEPluginInfo2_GetPluginId(This,value)	\
+    ( (This)->lpVtbl -> GetPluginId(This,value) ) 
+
+#define IFBEPluginInfo2_GetPluginVersion(This,value)	\
+    ( (This)->lpVtbl -> GetPluginVersion(This,value) ) 
+
+#define IFBEPluginInfo2_GetApiVersion(This,value)	\
+    ( (This)->lpVtbl -> GetApiVersion(This,value) ) 
+
+#define IFBEPluginInfo2_GetCapabilities(This,value)	\
+    ( (This)->lpVtbl -> GetCapabilities(This,value) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IFBEPluginInfo2_INTERFACE_DEFINED__ */
+
+
+#ifndef __IFBEProgressSink_INTERFACE_DEFINED__
+#define __IFBEProgressSink_INTERFACE_DEFINED__
+
+/* interface IFBEProgressSink */
+/* [unique][uuid][object] */ 
+
+
+EXTERN_C const IID IID_IFBEProgressSink;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("8A1C1E23-1B04-4A03-A66D-5C043D64A918")
+    IFBEProgressSink : public IUnknown
+    {
+    public:
+        virtual HRESULT STDMETHODCALLTYPE Report( 
+            /* [in] */ ULONG completed,
+            /* [in] */ ULONG total,
+            /* [in] */ BSTR stage) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IFBEProgressSinkVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IFBEProgressSink * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IFBEProgressSink * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IFBEProgressSink * This);
+        
+        DECLSPEC_XFGVIRT(IFBEProgressSink, Report)
+        HRESULT ( STDMETHODCALLTYPE *Report )( 
+            IFBEProgressSink * This,
+            /* [in] */ ULONG completed,
+            /* [in] */ ULONG total,
+            /* [in] */ BSTR stage);
+        
+        END_INTERFACE
+    } IFBEProgressSinkVtbl;
+
+    interface IFBEProgressSink
+    {
+        CONST_VTBL struct IFBEProgressSinkVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IFBEProgressSink_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IFBEProgressSink_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IFBEProgressSink_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IFBEProgressSink_Report(This,completed,total,stage)	\
+    ( (This)->lpVtbl -> Report(This,completed,total,stage) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IFBEProgressSink_INTERFACE_DEFINED__ */
+
+
+#ifndef __IFBECancellationToken_INTERFACE_DEFINED__
+#define __IFBECancellationToken_INTERFACE_DEFINED__
+
+/* interface IFBECancellationToken */
+/* [unique][uuid][object] */ 
+
+
+EXTERN_C const IID IID_IFBECancellationToken;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("53C61B95-63C2-449B-AF03-6A7F85C57D8A")
+    IFBECancellationToken : public IUnknown
+    {
+    public:
+        virtual HRESULT STDMETHODCALLTYPE IsCancellationRequested( 
+            /* [out] */ BOOL *cancelled) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IFBECancellationTokenVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IFBECancellationToken * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IFBECancellationToken * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IFBECancellationToken * This);
+        
+        DECLSPEC_XFGVIRT(IFBECancellationToken, IsCancellationRequested)
+        HRESULT ( STDMETHODCALLTYPE *IsCancellationRequested )( 
+            IFBECancellationToken * This,
+            /* [out] */ BOOL *cancelled);
+        
+        END_INTERFACE
+    } IFBECancellationTokenVtbl;
+
+    interface IFBECancellationToken
+    {
+        CONST_VTBL struct IFBECancellationTokenVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IFBECancellationToken_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IFBECancellationToken_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IFBECancellationToken_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IFBECancellationToken_IsCancellationRequested(This,cancelled)	\
+    ( (This)->lpVtbl -> IsCancellationRequested(This,cancelled) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IFBECancellationToken_INTERFACE_DEFINED__ */
+
+
+#ifndef __IFBEDocumentSnapshot_INTERFACE_DEFINED__
+#define __IFBEDocumentSnapshot_INTERFACE_DEFINED__
+
+/* interface IFBEDocumentSnapshot */
+/* [unique][uuid][object] */ 
+
+
+EXTERN_C const IID IID_IFBEDocumentSnapshot;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("5A624ED2-8418-448E-94E8-12D0BCA6F3E3")
+    IFBEDocumentSnapshot : public IUnknown
+    {
+    public:
+        virtual HRESULT STDMETHODCALLTYPE OpenXmlStream( 
+            /* [out] */ IStream **stream) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetSourceFilePath( 
+            /* [out] */ BSTR *path) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetEncoding( 
+            /* [out] */ BSTR *encoding) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IFBEDocumentSnapshotVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IFBEDocumentSnapshot * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IFBEDocumentSnapshot * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IFBEDocumentSnapshot * This);
+        
+        DECLSPEC_XFGVIRT(IFBEDocumentSnapshot, OpenXmlStream)
+        HRESULT ( STDMETHODCALLTYPE *OpenXmlStream )( 
+            IFBEDocumentSnapshot * This,
+            /* [out] */ IStream **stream);
+        
+        DECLSPEC_XFGVIRT(IFBEDocumentSnapshot, GetSourceFilePath)
+        HRESULT ( STDMETHODCALLTYPE *GetSourceFilePath )( 
+            IFBEDocumentSnapshot * This,
+            /* [out] */ BSTR *path);
+        
+        DECLSPEC_XFGVIRT(IFBEDocumentSnapshot, GetEncoding)
+        HRESULT ( STDMETHODCALLTYPE *GetEncoding )( 
+            IFBEDocumentSnapshot * This,
+            /* [out] */ BSTR *encoding);
+        
+        END_INTERFACE
+    } IFBEDocumentSnapshotVtbl;
+
+    interface IFBEDocumentSnapshot
+    {
+        CONST_VTBL struct IFBEDocumentSnapshotVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IFBEDocumentSnapshot_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IFBEDocumentSnapshot_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IFBEDocumentSnapshot_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IFBEDocumentSnapshot_OpenXmlStream(This,stream)	\
+    ( (This)->lpVtbl -> OpenXmlStream(This,stream) ) 
+
+#define IFBEDocumentSnapshot_GetSourceFilePath(This,path)	\
+    ( (This)->lpVtbl -> GetSourceFilePath(This,path) ) 
+
+#define IFBEDocumentSnapshot_GetEncoding(This,encoding)	\
+    ( (This)->lpVtbl -> GetEncoding(This,encoding) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IFBEDocumentSnapshot_INTERFACE_DEFINED__ */
+
+
+#ifndef __IFBEPluginHost_INTERFACE_DEFINED__
+#define __IFBEPluginHost_INTERFACE_DEFINED__
+
+/* interface IFBEPluginHost */
+/* [unique][uuid][object] */ 
+
+
+EXTERN_C const IID IID_IFBEPluginHost;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("CE40BDDD-5A69-4439-A463-33B88164B0D0")
+    IFBEPluginHost : public IUnknown
+    {
+    public:
+        virtual HRESULT STDMETHODCALLTYPE GetHostVersion( 
+            /* [out] */ BSTR *version) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetUiLocale( 
+            /* [out] */ BSTR *locale) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetOwnerWindow( 
+            /* [out] */ LONGLONG *hwnd) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetProgressSink( 
+            /* [out] */ IFBEProgressSink **sink) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetCancellationToken( 
+            /* [out] */ IFBECancellationToken **token) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE ReportMessage( 
+            /* [in] */ LONG severity,
+            /* [in] */ BSTR code,
+            /* [in] */ BSTR message) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE Trace( 
+            /* [in] */ BSTR eventName,
+            /* [in] */ BSTR detail) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IFBEPluginHostVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IFBEPluginHost * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IFBEPluginHost * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IFBEPluginHost * This);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginHost, GetHostVersion)
+        HRESULT ( STDMETHODCALLTYPE *GetHostVersion )( 
+            IFBEPluginHost * This,
+            /* [out] */ BSTR *version);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginHost, GetUiLocale)
+        HRESULT ( STDMETHODCALLTYPE *GetUiLocale )( 
+            IFBEPluginHost * This,
+            /* [out] */ BSTR *locale);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginHost, GetOwnerWindow)
+        HRESULT ( STDMETHODCALLTYPE *GetOwnerWindow )( 
+            IFBEPluginHost * This,
+            /* [out] */ LONGLONG *hwnd);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginHost, GetProgressSink)
+        HRESULT ( STDMETHODCALLTYPE *GetProgressSink )( 
+            IFBEPluginHost * This,
+            /* [out] */ IFBEProgressSink **sink);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginHost, GetCancellationToken)
+        HRESULT ( STDMETHODCALLTYPE *GetCancellationToken )( 
+            IFBEPluginHost * This,
+            /* [out] */ IFBECancellationToken **token);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginHost, ReportMessage)
+        HRESULT ( STDMETHODCALLTYPE *ReportMessage )( 
+            IFBEPluginHost * This,
+            /* [in] */ LONG severity,
+            /* [in] */ BSTR code,
+            /* [in] */ BSTR message);
+        
+        DECLSPEC_XFGVIRT(IFBEPluginHost, Trace)
+        HRESULT ( STDMETHODCALLTYPE *Trace )( 
+            IFBEPluginHost * This,
+            /* [in] */ BSTR eventName,
+            /* [in] */ BSTR detail);
+        
+        END_INTERFACE
+    } IFBEPluginHostVtbl;
+
+    interface IFBEPluginHost
+    {
+        CONST_VTBL struct IFBEPluginHostVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IFBEPluginHost_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IFBEPluginHost_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IFBEPluginHost_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IFBEPluginHost_GetHostVersion(This,version)	\
+    ( (This)->lpVtbl -> GetHostVersion(This,version) ) 
+
+#define IFBEPluginHost_GetUiLocale(This,locale)	\
+    ( (This)->lpVtbl -> GetUiLocale(This,locale) ) 
+
+#define IFBEPluginHost_GetOwnerWindow(This,hwnd)	\
+    ( (This)->lpVtbl -> GetOwnerWindow(This,hwnd) ) 
+
+#define IFBEPluginHost_GetProgressSink(This,sink)	\
+    ( (This)->lpVtbl -> GetProgressSink(This,sink) ) 
+
+#define IFBEPluginHost_GetCancellationToken(This,token)	\
+    ( (This)->lpVtbl -> GetCancellationToken(This,token) ) 
+
+#define IFBEPluginHost_ReportMessage(This,severity,code,message)	\
+    ( (This)->lpVtbl -> ReportMessage(This,severity,code,message) ) 
+
+#define IFBEPluginHost_Trace(This,eventName,detail)	\
+    ( (This)->lpVtbl -> Trace(This,eventName,detail) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IFBEPluginHost_INTERFACE_DEFINED__ */
+
+
+#ifndef __IFBEImportPlugin2_INTERFACE_DEFINED__
+#define __IFBEImportPlugin2_INTERFACE_DEFINED__
+
+/* interface IFBEImportPlugin2 */
+/* [unique][uuid][object] */ 
+
+
+EXTERN_C const IID IID_IFBEImportPlugin2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("387B8B64-28D3-4C52-8C2F-5F8ECF31A8C1")
+    IFBEImportPlugin2 : public IUnknown
+    {
+    public:
+        virtual HRESULT STDMETHODCALLTYPE Import( 
+            /* [in] */ IFBEPluginHost *host,
+            /* [out] */ BSTR *suggestedFileName,
+            /* [out] */ IStream **fb2Xml) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IFBEImportPlugin2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IFBEImportPlugin2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IFBEImportPlugin2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IFBEImportPlugin2 * This);
+        
+        DECLSPEC_XFGVIRT(IFBEImportPlugin2, Import)
+        HRESULT ( STDMETHODCALLTYPE *Import )( 
+            IFBEImportPlugin2 * This,
+            /* [in] */ IFBEPluginHost *host,
+            /* [out] */ BSTR *suggestedFileName,
+            /* [out] */ IStream **fb2Xml);
+        
+        END_INTERFACE
+    } IFBEImportPlugin2Vtbl;
+
+    interface IFBEImportPlugin2
+    {
+        CONST_VTBL struct IFBEImportPlugin2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IFBEImportPlugin2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IFBEImportPlugin2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IFBEImportPlugin2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IFBEImportPlugin2_Import(This,host,suggestedFileName,fb2Xml)	\
+    ( (This)->lpVtbl -> Import(This,host,suggestedFileName,fb2Xml) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IFBEImportPlugin2_INTERFACE_DEFINED__ */
+
+
+#ifndef __IFBEExportPlugin2_INTERFACE_DEFINED__
+#define __IFBEExportPlugin2_INTERFACE_DEFINED__
+
+/* interface IFBEExportPlugin2 */
+/* [unique][uuid][object] */ 
+
+
+EXTERN_C const IID IID_IFBEExportPlugin2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("B65F97B9-D9CD-430E-80E2-2E010CB2C7D8")
+    IFBEExportPlugin2 : public IUnknown
+    {
+    public:
+        virtual HRESULT STDMETHODCALLTYPE Export( 
+            /* [in] */ IFBEPluginHost *host,
+            /* [in] */ BSTR sourceFileName,
+            /* [in] */ IFBEDocumentSnapshot *document) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IFBEExportPlugin2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IFBEExportPlugin2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IFBEExportPlugin2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IFBEExportPlugin2 * This);
+        
+        DECLSPEC_XFGVIRT(IFBEExportPlugin2, Export)
+        HRESULT ( STDMETHODCALLTYPE *Export )( 
+            IFBEExportPlugin2 * This,
+            /* [in] */ IFBEPluginHost *host,
+            /* [in] */ BSTR sourceFileName,
+            /* [in] */ IFBEDocumentSnapshot *document);
+        
+        END_INTERFACE
+    } IFBEExportPlugin2Vtbl;
+
+    interface IFBEExportPlugin2
+    {
+        CONST_VTBL struct IFBEExportPlugin2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IFBEExportPlugin2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IFBEExportPlugin2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IFBEExportPlugin2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IFBEExportPlugin2_Export(This,host,sourceFileName,document)	\
+    ( (This)->lpVtbl -> Export(This,host,sourceFileName,document) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IFBEExportPlugin2_INTERFACE_DEFINED__ */
+
+
 #ifndef __IExternalHelper_INTERFACE_DEFINED__
 #define __IExternalHelper_INTERFACE_DEFINED__
 
@@ -395,6 +1171,10 @@ EXTERN_C const IID IID_IExternalHelper;
         virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE TraceScript( 
             /* [in] */ BSTR code,
             /* [in] */ BSTR message) = 0;
+        
+        virtual /* [helpstring][id] */ HRESULT STDMETHODCALLTYPE GetLocalizedString( 
+            /* [in] */ BSTR key,
+            /* [retval][out] */ BSTR *text) = 0;
         
     };
     
@@ -640,6 +1420,12 @@ EXTERN_C const IID IID_IExternalHelper;
             /* [in] */ BSTR code,
             /* [in] */ BSTR message);
         
+        DECLSPEC_XFGVIRT(IExternalHelper, GetLocalizedString)
+        /* [helpstring][id] */ HRESULT ( STDMETHODCALLTYPE *GetLocalizedString )( 
+            IExternalHelper * This,
+            /* [in] */ BSTR key,
+            /* [retval][out] */ BSTR *text);
+        
         END_INTERFACE
     } IExternalHelperVtbl;
 
@@ -768,6 +1554,9 @@ EXTERN_C const IID IID_IExternalHelper;
 
 #define IExternalHelper_TraceScript(This,code,message)	\
     ( (This)->lpVtbl -> TraceScript(This,code,message) ) 
+
+#define IExternalHelper_GetLocalizedString(This,key,text)	\
+    ( (This)->lpVtbl -> GetLocalizedString(This,key,text) ) 
 
 #endif /* COBJMACROS */
 

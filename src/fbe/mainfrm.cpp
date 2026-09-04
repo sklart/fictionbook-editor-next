@@ -14,6 +14,7 @@
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
 #include "PluginManager.h"
+#include "PluginApiV2.h"
 #include "UiMetrics.h"
 #include "BodySourceSelectionTransfer.h"
 #include "XmlDeclaration.h"
@@ -5283,9 +5284,17 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
     TracePluginDiagnostic(L"Import", pluginClsid, L"begin", S_OK, 0);
     try {
       IUnknownPtr			    unk;
-		HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
+      HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
       TracePluginDiagnostic(L"Import", pluginClsid, L"CreateInstance", pluginHr, 0);
       CheckError(pluginHr);
+	  PluginApiGeneration apiGeneration = PluginApiV1Fallback;
+	  pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk, apiGeneration);
+	  TracePluginDiagnostic(L"Import", pluginClsid, L"NegotiateApi", pluginHr, apiGeneration == PluginApiV2Detected ? 1 : 0);
+	  CheckError(pluginHr);
+	  // No bundled importer advertises v2 yet.  Do not accidentally call its
+	  // v1 ABI after a successful v2 negotiation; import migration is a later
+	  // block and needs the stream-to-editor load path.
+	  if (apiGeneration == PluginApiV2Detected) { TracePluginDiagnostic(L"Import", pluginClsid, L"plugin-operation-failed", E_NOTIMPL, 0); return 0; }
 
       CComQIPtr<IFBEImportPlugin>	    ipl(unk);
       TracePluginDiagnostic(L"Import", pluginClsid, L"QueryInterface", ipl ? S_OK : E_NOINTERFACE, 0);
@@ -5370,6 +5379,26 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 			HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
 			TracePluginDiagnostic(L"Export", pluginClsid, L"CreateInstance", pluginHr, 0);
 			CheckError(pluginHr);
+			PluginApiGeneration apiGeneration = PluginApiV1Fallback;
+			pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk, apiGeneration);
+			TracePluginDiagnostic(L"Export", pluginClsid, L"NegotiateApi", pluginHr, apiGeneration == PluginApiV2Detected ? 1 : 0);
+			CheckError(pluginHr);
+
+			if (apiGeneration == PluginApiV2Detected)
+			{
+				CComQIPtr<IFBEExportPlugin2> exportV2(unk);
+				if (!exportV2) { TracePluginDiagnostic(L"Export", pluginClsid, L"QueryInterfaceV2", E_NOINTERFACE, 0); return 0; }
+				MSXML2::IXMLDOMDocument2Ptr dom(m_doc->CreateDOM(m_doc->m_encoding, false));
+				CComPtr<IFBEPluginHost> host; CComPtr<IFBEDocumentSnapshot> snapshot;
+				CheckError(FbePluginApiV2::CreateHost(m_hWnd, _Settings.GetInterfaceLanguageName(), &host));
+				CheckError(FbePluginApiV2::CreateSnapshot(dom, m_doc->m_namevalid ? m_doc->m_filename.GetString() : L"", m_doc->m_encoding, &snapshot));
+				_bstr_t filename = m_doc->m_namevalid ? static_cast<LPCWSTR>(m_doc->m_filename) : L"";
+				HRESULT exportResult = exportV2->Export(host, filename, snapshot);
+				TracePluginDiagnostic(L"Export", pluginClsid, L"ExportV2", exportResult, 0);
+				CheckError(exportResult);
+				TracePluginDiagnostic(L"Export", pluginClsid, L"completed", S_OK, 0);
+				return 0;
+			}
 
 			CComQIPtr<IFBEExportPlugin> epl(unk);
 			TracePluginDiagnostic(L"Export", pluginClsid, L"QueryInterface", epl ? S_OK : E_NOINTERFACE, 0);
