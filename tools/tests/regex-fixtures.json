@@ -416,6 +416,39 @@
         "note": "Смешанные непустые и пустые совпадения сохраняют legacy-semantics."
       },
       {
+        "id": "pcre_wrapper_empty_alternative_advances_one_character",
+        "subject": "ab",
+        "pattern": "(?:|ab)",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 3,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 0,
+        "expectedMatches": [
+          { "value": "", "firstIndex": 0, "subMatches": [] },
+          { "value": "", "firstIndex": 1, "subMatches": [] },
+          { "value": "", "firstIndex": 2, "subMatches": [] }
+        ],
+        "note": "Подавленный retry не должен перепрыгивать через позицию 1."
+      },
+      {
+        "id": "pcre_wrapper_empty_alternative_advances_surrogate_pair",
+        "subject": "😀",
+        "pattern": "(?:|😀)",
+        "ignoreCase": false,
+        "global": true,
+        "multiline": false,
+        "expectedCount": 2,
+        "expectedFirstValue": "",
+        "expectedFirstIndex": 0,
+        "expectedMatches": [
+          { "value": "", "firstIndex": 0, "subMatches": [] },
+          { "value": "", "firstIndex": 2, "subMatches": [] }
+        ],
+        "note": "После пустого match surrogate pair продвигается сразу на две UTF-16 единицы."
+      },
+      {
         "id": "pcre_wrapper_global_lookahead",
         "subject": "foo",
         "pattern": "(?=foo)",

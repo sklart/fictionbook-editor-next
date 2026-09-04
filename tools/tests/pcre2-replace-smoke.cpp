@@ -13,6 +13,7 @@
 #include "pcre2.h"
 
 typedef CSimpleArray<CString> CStrings;
+static PCRE2_SIZE AdvanceUtf16CodePoint(const CString& subject, PCRE2_SIZE offset);
 
 struct ISubMatches {
 public:
@@ -99,11 +100,27 @@ public:
 				globalOptions,
 				matchData,
 				NULL);
+			if (rc == PCRE2_ERROR_NOMATCH) {
+				if ((globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0) {
+					offset = AdvanceUtf16CodePoint(sourceString, offset);
+					globalOptions = 0;
+					if (offset <= static_cast<PCRE2_SIZE>(sourceString.GetLength()))
+						continue;
+				}
+				break;
+			}
 			if (rc < 0)
 				break;
 			PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData);
 			const bool retryAtEmptyMatch = (globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0 && offset == ovector[0];
-			if (!retryAtEmptyMatch && ovector[1] >= ovector[0])
+			if (retryAtEmptyMatch) {
+				offset = AdvanceUtf16CodePoint(sourceString, offset);
+				globalOptions = 0;
+				if (offset <= static_cast<PCRE2_SIZE>(sourceString.GetLength()))
+					continue;
+				break;
+			}
+			if (ovector[1] >= ovector[0])
 			{
 				CString str(static_cast<LPCWSTR>(sourceString) + ovector[0], static_cast<int>(ovector[1] - ovector[0]));
 				IMatch2* item = new IMatch2(str, static_cast<int>(ovector[0]));
@@ -162,6 +179,20 @@ static void ApplyCaseMap(TCHAR* text, int start, int len, DWORD flags)
 
 	if (flags == LCMAP_LOWERCASE)
 		CharLowerBuff(text + start, len);
+}
+
+static PCRE2_SIZE AdvanceUtf16CodePoint(const CString& subject, PCRE2_SIZE offset)
+{
+	const PCRE2_SIZE length = static_cast<PCRE2_SIZE>(subject.GetLength());
+	if (offset >= length)
+		return length + 1;
+	const wchar_t first = static_cast<LPCWSTR>(subject)[offset++];
+	if (first >= 0xd800 && first <= 0xdbff && offset < length) {
+		const wchar_t second = static_cast<LPCWSTR>(subject)[offset];
+		if (second >= 0xdc00 && second <= 0xdfff)
+			++offset;
+	}
+	return offset;
 }
 
 static CString GetSM(ISubMatches* sm, int idx)

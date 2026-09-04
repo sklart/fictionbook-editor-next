@@ -11,6 +11,7 @@
 #include "pcre2.h"
 
 typedef CSimpleArray<CString> CStrings;
+static PCRE2_SIZE AdvanceUtf16CodePoint(const CString& subject, PCRE2_SIZE offset);
 
 struct ISubMatches {
 public:
@@ -96,11 +97,27 @@ public:
 				globalOptions,
 				matchData,
 				NULL);
+			if (rc == PCRE2_ERROR_NOMATCH) {
+				if ((globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0) {
+					offset = AdvanceUtf16CodePoint(sourceString, offset);
+					globalOptions = 0;
+					if (offset <= static_cast<PCRE2_SIZE>(sourceString.GetLength()))
+						continue;
+				}
+				break;
+			}
 			if (rc < 0)
 				break;
 			PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData);
 			const bool retryAtEmptyMatch = (globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0 && offset == ovector[0];
-			if (!retryAtEmptyMatch && ovector[1] >= ovector[0])
+			if (retryAtEmptyMatch) {
+				offset = AdvanceUtf16CodePoint(sourceString, offset);
+				globalOptions = 0;
+				if (offset <= static_cast<PCRE2_SIZE>(sourceString.GetLength()))
+					continue;
+				break;
+			}
+			if (ovector[1] >= ovector[0])
 			{
 				CString str(static_cast<LPCWSTR>(sourceString) + ovector[0], static_cast<int>(ovector[1] - ovector[0]));
 				IMatch2* item = new IMatch2(str, static_cast<int>(ovector[0]));
@@ -139,6 +156,20 @@ static int HexValue(char ch)
 	return -1;
 }
 
+static PCRE2_SIZE AdvanceUtf16CodePoint(const CString& subject, PCRE2_SIZE offset)
+{
+	const PCRE2_SIZE length = static_cast<PCRE2_SIZE>(subject.GetLength());
+	if (offset >= length)
+		return length + 1;
+	const wchar_t first = static_cast<LPCWSTR>(subject)[offset++];
+	if (first >= 0xd800 && first <= 0xdbff && offset < length) {
+		const wchar_t second = static_cast<LPCWSTR>(subject)[offset];
+		if (second >= 0xdc00 && second <= 0xdfff)
+			++offset;
+	}
+	return offset;
+}
+
 static std::string DecodeHex(const char* text)
 {
 	std::string decoded;
@@ -166,9 +197,44 @@ static bool ParseBool(const char* text)
 	return std::strcmp(text, "1") == 0;
 }
 
+static std::string CStringToUtf8(const CString& text)
+{
+	return std::string(CT2A(text, CP_UTF8));
+}
+
+static std::string EncodeHex(const std::string& text)
+{
+	static const char digits[] = "0123456789abcdef";
+	std::string result;
+	result.reserve(text.size() * 2);
+	for (size_t i = 0; i < text.size(); ++i) {
+		const unsigned char value = static_cast<unsigned char>(text[i]);
+		result.push_back(digits[value >> 4]);
+		result.push_back(digits[value & 15]);
+	}
+	return result;
+}
+
+static std::string SerializeMatches(IMatchCollection* matches)
+{
+	std::string result;
+	for (long index = 0; matches != NULL && index < matches->GetCount(); ++index) {
+		if (index != 0) result += ';';
+		IMatch2* match = matches->GetItem(index);
+		result += EncodeHex(CStringToUtf8(match->GetValue()));
+		result += '@' + std::to_string(match->GetFirstIndex()) + '@';
+		ISubMatches* groups = match->GetSubMatches();
+		for (long group = 0; groups != NULL && group < groups->GetCount(); ++group) {
+			if (group != 0) result += ',';
+			result += EncodeHex(CStringToUtf8(groups->GetItem(group)));
+		}
+	}
+	return result;
+}
+
 int main(int argc, char* argv[])
 {
-	if (argc != 12)
+	if (argc != 13)
 		return 30;
 
 	const std::string subject = DecodeHex(argv[1]);
@@ -182,6 +248,7 @@ int main(int argc, char* argv[])
 	const bool expectedCompileError = ParseBool(argv[9]);
 	const int expectedFirstSubMatchCount = std::atoi(argv[10]);
 	const std::string expectedFirstSubMatchValue = DecodeHex(argv[11]);
+	const std::string expectedCollection = argv[12];
 
 	if (pattern.empty())
 		return 31;
@@ -229,6 +296,9 @@ int main(int argc, char* argv[])
 				return 7;
 		}
 	}
+
+	if (!expectedCollection.empty() && SerializeMatches(matches) != expectedCollection)
+		return 8;
 
 	return 0;
 }

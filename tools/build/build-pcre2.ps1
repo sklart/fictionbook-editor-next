@@ -86,6 +86,10 @@ $toolsetSuffix = if ($PlatformToolset) { $PlatformToolset } else { "default-tool
 $buildDir = Join-Path $buildRoot "$Configuration-$generatorSuffix-$toolsetSuffix"
 $metadataPath = Join-Path $installDir "fbe-pcre2-fingerprint.json"
 $mutexName = "Global\FBeditor-build-pcre2-$Configuration-$generatorSuffix-$toolsetSuffix"
+$pcre2Commit = (git -C $sourceDir rev-parse HEAD).Trim()
+$pcre2CodeUnitWidth = 16
+$pcre2Unicode = $true
+$pcre2Jit = $false
 
 Write-Host "PCRE2: конфигурация $Configuration"
 Write-Host "PCRE2: PlatformToolset = $PlatformToolset"
@@ -227,8 +231,11 @@ function Test-PreparedPcre2Fingerprint {
         throw "PCRE2 cache не содержит fingerprint: $metadataPath"
     }
     $metadata = Get-Content -Raw -LiteralPath $metadataPath | ConvertFrom-Json
-    if ($metadata.configuration -ne $Configuration -or $metadata.generator -ne $generator -or $metadata.platformToolset -ne $PlatformToolset) {
-        throw "PCRE2 cache имеет несовместимый fingerprint (configuration/generator/toolset)."
+    if ($metadata.configuration -ne $Configuration -or $metadata.generator -ne $generator -or
+        $metadata.platformToolset -ne $PlatformToolset -or $metadata.commit -ne $pcre2Commit -or
+        $metadata.codeUnitWidth -ne $pcre2CodeUnitWidth -or $metadata.unicode -ne $pcre2Unicode -or
+        $metadata.jit -ne $pcre2Jit) {
+        throw "PCRE2 cache имеет несовместимый fingerprint (configuration/generator/toolset/commit/width/unicode/jit)."
     }
 }
 
@@ -299,7 +306,15 @@ try {
     )
 
     Assert-Pcre2Prepared
-    [ordered]@{ configuration = $Configuration; generator = $generator; platformToolset = $PlatformToolset } |
+    [ordered]@{
+        configuration = $Configuration
+        generator = $generator
+        platformToolset = $PlatformToolset
+        commit = $pcre2Commit
+        codeUnitWidth = $pcre2CodeUnitWidth
+        unicode = $pcre2Unicode
+        jit = $pcre2Jit
+    } |
         ConvertTo-Json | Set-Content -LiteralPath $metadataPath -Encoding UTF8
     Write-Host "PCRE2 подготовлен в каталоге $installDir"
 }

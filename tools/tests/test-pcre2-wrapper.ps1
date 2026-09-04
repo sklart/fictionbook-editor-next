@@ -33,6 +33,19 @@ function Convert-ToUtf8Hex([string]$Text) {
     return -join ($bytes | ForEach-Object { $_.ToString("x2") })
 }
 
+function Convert-ExpectedMatchCollection($Matches) {
+    if ($null -eq $Matches) { return "" }
+    $items = @()
+    foreach ($match in @($Matches)) {
+        $subMatches = @()
+        if ($null -ne $match.subMatches) {
+            $subMatches = @($match.subMatches | ForEach-Object { Convert-ToUtf8Hex ([string]$_) })
+        }
+        $items += "$(Convert-ToUtf8Hex ([string]$match.value))@$([int]$match.firstIndex)@$($subMatches -join ',')"
+    }
+    return ($items -join ';')
+}
+
 & cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE `
     "/I$(Join-Path $repoRoot "third_party\wtl")" `
     "/I$(Join-Path $installDir "include")" `
@@ -74,7 +87,8 @@ foreach ($case in $fixtures.pcre.wrapper) {
         ([string]$case.expectedFirstIndex),
         ($(if ($case.expectedCompileError) { "1" } else { "0" })),
         ([string]$expectedFirstSubMatchCount),
-        (Convert-ToUtf8Hex $expectedFirstSubMatchValue)
+        (Convert-ToUtf8Hex $expectedFirstSubMatchValue),
+        (Convert-ExpectedMatchCollection $case.expectedMatches)
     )
 
     Push-Location $testDir

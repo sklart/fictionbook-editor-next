@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "RegexBackend.h"
+#include "RuntimeLocalization.h"
 
 #define PCRE2_CODE_UNIT_WIDTH 16
 #define PCRE2_STATIC
@@ -22,7 +23,7 @@ static CString BuildPcre2ErrorText(int errorNumber)
 		buffer,
 		sizeof(buffer) / sizeof(buffer[0]));
 	if (result < 0)
-		return CString(L"Unknown PCRE2 error.");
+		return FbeLoadRuntimeStringByKey(L"fbe.regex.error.unknown", L"Unknown PCRE2 error.");
 
 	return CString(reinterpret_cast<const wchar_t*>(buffer));
 }
@@ -30,7 +31,8 @@ static CString BuildPcre2ErrorText(int errorNumber)
 CString BuildCompileErrorText(int errorNumber, PCRE2_SIZE errorOffset)
 {
 	CString errorText;
-	errorText.Format(L"Ошибка регулярного выражения в позиции %llu: %s",
+	errorText.Format(FbeLoadRuntimeStringByKey(
+		L"fbe.regex.error.compile", L"Regular expression error at position %llu: %s"),
 		static_cast<unsigned long long>(errorOffset),
 		static_cast<LPCWSTR>(BuildPcre2ErrorText(errorNumber)));
 	return errorText;
@@ -38,10 +40,34 @@ CString BuildCompileErrorText(int errorNumber, PCRE2_SIZE errorOffset)
 
 CString BuildMatchErrorText(int errorNumber)
 {
+	LPCWSTR key = L"fbe.regex.error.match";
+	LPCWSTR fallback = L"Regular expression matching failed: %s";
+	if (errorNumber == PCRE2_ERROR_MATCHLIMIT) {
+		key = L"fbe.regex.error.match_limit";
+		fallback = L"Regular expression match limit exceeded: %s";
+	}
+	else if (errorNumber == PCRE2_ERROR_DEPTHLIMIT) {
+		key = L"fbe.regex.error.depth_limit";
+		fallback = L"Regular expression depth limit exceeded: %s";
+	}
 	CString errorText;
-	errorText.Format(L"Ошибка выполнения регулярного выражения: %s",
+	errorText.Format(FbeLoadRuntimeStringByKey(key, fallback),
 		static_cast<LPCWSTR>(BuildPcre2ErrorText(errorNumber)));
 	return errorText;
+}
+
+PCRE2_SIZE AdvanceUtf16CodePoint(const CString& subject, PCRE2_SIZE offset)
+{
+	const PCRE2_SIZE length = static_cast<PCRE2_SIZE>(subject.GetLength());
+	if (offset >= length)
+		return length + 1;
+	const wchar_t first = static_cast<LPCWSTR>(subject)[offset++];
+	if (first >= 0xd800 && first <= 0xdbff && offset < length) {
+		const wchar_t second = static_cast<LPCWSTR>(subject)[offset];
+		if (second >= 0xdc00 && second <= 0xdfff)
+			++offset;
+	}
+	return offset;
 }
 
 uint32_t BuildCompileOptions(const RegexBackend::Options& options)
@@ -95,7 +121,8 @@ bool RegexBackend::Execute(
 		if (matchData != NULL)
 			pcre2_match_data_free(matchData);
 		pcre2_code_free(re);
-		errorText = L"Failed to allocate PCRE2 match data.";
+		errorText = FbeLoadRuntimeStringByKey(
+			L"fbe.regex.error.allocation", L"Failed to allocate PCRE2 match data.");
 		return false;
 	}
 	pcre2_set_match_limit(matchContext, kRegexMatchLimit);
@@ -112,8 +139,15 @@ bool RegexBackend::Execute(
 			matchData,
 			matchContext);
 
-		if (rc == PCRE2_ERROR_NOMATCH)
+		if (rc == PCRE2_ERROR_NOMATCH) {
+			if ((globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0) {
+				offset = AdvanceUtf16CodePoint(sourceString, offset);
+				globalOptions = 0;
+				if (offset <= static_cast<PCRE2_SIZE>(sourceString.GetLength()))
+					continue;
+			}
 			break;
+		}
 		if (rc < 0)
 		{
 			errorText = BuildMatchErrorText(rc);
@@ -123,16 +157,22 @@ bool RegexBackend::Execute(
 			return false;
 		}
 
-		const bool retryAtEmptyMatch =
-			(globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0 && offset == pcre2_get_ovector_pointer(matchData)[0];
 		PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData);
 		const PCRE2_SIZE matchStart = ovector[0];
 		const PCRE2_SIZE matchEnd = ovector[1];
-		// The legacy wrapper advanced by one UTF-16 code unit after an empty
-		// result. pcre2_next_match first retries the same position with
-		// NOTEMPTY_ATSTART; suppress that retry's non-empty result to retain the
-		// established IRegExp2 collection semantics while delegating advancement.
-		if (!retryAtEmptyMatch && matchEnd >= matchStart)
+		const bool retryAtEmptyMatch =
+			(globalOptions & PCRE2_NOTEMPTY_ATSTART) != 0 && offset == matchStart;
+		if (retryAtEmptyMatch) {
+			// Preserve FBE's legacy empty-match collection. Do not advance to the
+			// end of this non-empty retry; continue after one UTF-16 code point from
+			// the preceding empty-match position.
+			offset = AdvanceUtf16CodePoint(sourceString, offset);
+			globalOptions = 0;
+			if (offset <= static_cast<PCRE2_SIZE>(sourceString.GetLength()))
+				continue;
+			break;
+		}
+		if (matchEnd >= matchStart)
 		{
 			RegexBackend::MatchData item;
 			item.Value = CString(static_cast<LPCWSTR>(sourceString) + matchStart,
@@ -150,7 +190,10 @@ bool RegexBackend::Execute(
 			matches.Add(item);
 		}
 
-		if (!options.Global || !pcre2_next_match(matchData, &offset, &globalOptions))
+		if (!options.Global)
+			break;
+
+		if (!pcre2_next_match(matchData, &offset, &globalOptions))
 			break;
 	}
 

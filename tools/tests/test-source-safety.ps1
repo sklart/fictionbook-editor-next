@@ -111,11 +111,13 @@ $appRegexSources = @(
     Read-SourceFile "src\fbe\RegexBackendPcre2.cpp"
 ) -join "`n"
 Assert-Contains $appRegexSources "compileOptions |= PCRE2_UTF;" `
-    "PCRE2 searches must stay in UTF-8 mode"
+	"PCRE2 searches must stay in UTF mode / PCRE2-16 UTF mode"
 Assert-Contains $appRegexSources "compileOptions |= PCRE2_MULTILINE;" `
     "PCRE2 multiline mode must be forwarded to the compiled pattern"
 Assert-Contains $appRegexSources "if (!options.Global)" `
-    "regex wrapper must stop after the first match when Global is disabled"
+	"regex wrapper must stop after the first match when Global is disabled"
+Assert-Contains $appRegexSources "if (!pcre2_next_match(matchData, &offset, &globalOptions))" `
+	"global regex matching must delegate offset advancement to PCRE2"
 Assert-NotContains $appRegexSources "char dst[0xFFFF]" `
     "regex match extraction must not depend on a fixed-size temporary buffer"
 

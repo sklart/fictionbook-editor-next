@@ -13,12 +13,12 @@ IMatchCollection* BuildMatchCollection(const CSimpleArray<RegexBackend::MatchDat
 	for (int matchIndex = 0; matchIndex < backendMatches.GetSize(); ++matchIndex)
 	{
 		const RegexBackend::MatchData& backendMatch = backendMatches[matchIndex];
-		IMatch2* item = new IMatch2(backendMatch.Value, backendMatch.FirstIndex);
+		IMatch2 item(backendMatch.Value, backendMatch.FirstIndex);
 
 		for (int subMatchIndex = 0; subMatchIndex < backendMatch.SubMatches.GetSize(); ++subMatchIndex)
-			item->AddSubMatch(backendMatch.SubMatches[subMatchIndex]);
+			item.AddSubMatch(backendMatch.SubMatches[subMatchIndex]);
 
-		matches->AddItem(item);
+		matches->AddItem(&item);
 	}
 
 	return matches;
@@ -62,4 +62,3 @@ IMatchCollection* IRegExp2::Execute(CString sourceString)
 }
 
 }
-
