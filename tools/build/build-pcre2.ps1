@@ -89,7 +89,7 @@ $mutexName = "Global\FBeditor-build-pcre2-$Configuration-$generatorSuffix-$tools
 $pcre2Commit = (git -C $sourceDir rev-parse HEAD).Trim()
 $pcre2CodeUnitWidth = 16
 $pcre2Unicode = $true
-$pcre2Jit = $false
+$pcre2Jit = $true
 
 Write-Host "PCRE2: конфигурация $Configuration"
 Write-Host "PCRE2: PlatformToolset = $PlatformToolset"
@@ -266,7 +266,7 @@ try {
         "-D", "PCRE2_BUILD_PCRE2GREP=OFF",
         "-D", "PCRE2_BUILD_TESTS=OFF",
         "-D", "PCRE2_SUPPORT_UNICODE=ON",
-        "-D", "PCRE2_SUPPORT_JIT=OFF"
+        "-D", "PCRE2_SUPPORT_JIT=ON"
     )
     if ($PlatformToolset) {
         $configureArgs += @("-T", $PlatformToolset)

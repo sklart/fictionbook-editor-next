@@ -19,7 +19,9 @@ const size_t kRegexCodeCacheCapacity = 48;
 
 // The cache owns one reference per entry; each Execute() keeps an independent
 // lease so eviction can never free code while PCRE2 is matching with it.
-RegexPcre2::CompiledCodeCache g_regexCodeCache(kRegexCodeCacheCapacity);
+// Benchmarking did not show a stable JIT gain for FBE searches. Keep the
+// prepared-code cache enabled and leave optional JIT support for a later pass.
+RegexPcre2::CompiledCodeCache g_regexCodeCache(kRegexCodeCacheCapacity, false);
 
 static CString BuildPcre2ErrorText(int errorNumber)
 {

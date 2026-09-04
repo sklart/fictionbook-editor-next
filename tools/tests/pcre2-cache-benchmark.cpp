@@ -75,12 +75,13 @@ static bool MeasureBaseline(
 static bool MeasureCache(
 	const Scenario& scenario,
 	uint32_t options,
+	bool enableJit,
 	int iterations,
 	LARGE_INTEGER frequency,
 	double& milliseconds,
 	unsigned int& matches)
 {
-	CompiledCodeCache cache(48);
+	CompiledCodeCache cache(48, enableJit);
 	matches = 0;
 	LARGE_INTEGER start;
 	QueryPerformanceCounter(&start);
@@ -110,7 +111,7 @@ int wmain()
 	scenarios.push_back({ L"groups", L"([A-Z][a-z]+)\\s+([A-Z][a-z]+)\\s+([0-9]{4})", L"John Smith 2026" });
 	scenarios.push_back({ L"complex", L"(?:(?:https?)://)?([a-z0-9-]+(?:\\.[a-z0-9-]+)+)(?::([0-9]{2,5}))?(?:/[^\\s]*)?", L"https://example.org:8443/a/b?q=1" });
 
-	// Keep this identical to the production baseline: UCP and JIT are off.
+	// UCP remains off. The third mode below enables JIT only for cache misses.
 	const uint32_t options = PCRE2_UTF;
 	const int iterations = 20;
 	LARGE_INTEGER frequency;
@@ -121,29 +122,35 @@ int wmain()
 		double ignoredMilliseconds = 0;
 		unsigned int ignoredMatches = 0;
 		if (!MeasureBaseline(*it, options, 1, frequency, ignoredMilliseconds, ignoredMatches) ||
-			!MeasureCache(*it, options, 1, frequency, ignoredMilliseconds, ignoredMatches))
+			!MeasureCache(*it, options, false, 1, frequency, ignoredMilliseconds, ignoredMatches) ||
+			!MeasureCache(*it, options, true, 1, frequency, ignoredMilliseconds, ignoredMatches))
 			return 1;
 	}
 
-	wprintf(L"scenario;baseline_ms;cache_ms;baseline_matches;cache_matches\n");
+	wprintf(L"scenario;baseline_ms;cache_ms;cache_jit_ms;baseline_matches;cache_matches;cache_jit_matches\n");
 	for (std::vector<Scenario>::const_iterator it = scenarios.begin(); it != scenarios.end(); ++it) {
 		double baselineMilliseconds = 0;
 		double cacheMilliseconds = 0;
+		double cacheJitMilliseconds = 0;
 		unsigned int baselineMatches = 0;
 		unsigned int cacheMatches = 0;
+		unsigned int cacheJitMatches = 0;
 		if (!MeasureBaseline(*it, options, iterations, frequency,
 			baselineMilliseconds, baselineMatches))
 			return 2;
-		if (!MeasureCache(*it, options, iterations, frequency,
+		if (!MeasureCache(*it, options, false, iterations, frequency,
 			cacheMilliseconds, cacheMatches))
 			return 3;
-		if (baselineMatches != cacheMatches) {
-			wprintf(L"Match-count mismatch for %s: baseline=%u cache=%u\n",
-				it->Name, baselineMatches, cacheMatches);
+		if (!MeasureCache(*it, options, true, iterations, frequency,
+			cacheJitMilliseconds, cacheJitMatches))
 			return 4;
+		if (baselineMatches != cacheMatches || baselineMatches != cacheJitMatches) {
+			wprintf(L"Match-count mismatch for %s: baseline=%u cache=%u cache+jit=%u\n",
+				it->Name, baselineMatches, cacheMatches, cacheJitMatches);
+			return 5;
 		}
-		wprintf(L"%s;%.3f;%.3f;%u;%u\n", it->Name, baselineMilliseconds,
-			cacheMilliseconds, baselineMatches, cacheMatches);
+		wprintf(L"%s;%.3f;%.3f;%.3f;%u;%u;%u\n", it->Name, baselineMilliseconds,
+			cacheMilliseconds, cacheJitMilliseconds, baselineMatches, cacheMatches, cacheJitMatches);
 	}
 	return 0;
 }

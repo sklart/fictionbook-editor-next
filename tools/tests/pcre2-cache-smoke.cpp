@@ -40,7 +40,7 @@ static bool CheckMatch(pcre2_code* code, const CString& subject)
 int wmain()
 {
 	const uint32_t commonOptions = PCRE2_UTF;
-	CompiledCodeCache cache(2);
+	CompiledCodeCache cache(2, true);
 	CodeLease alpha;
 	if (!Acquire(cache, CString(L"(alpha)"), commonOptions, alpha) ||
 		!CheckMatch(alpha.Get(), CString(L"alpha")))
@@ -51,7 +51,8 @@ int wmain()
 	if (!Acquire(cache, CString(L"(alpha)"), commonOptions, alphaHit))
 		return 2;
 	CodeCacheStatistics statistics = cache.GetStatistics();
-	if (statistics.Misses != 1 || statistics.Hits != 1 || statistics.Entries != 1) {
+	if (statistics.Misses != 1 || statistics.Hits != 1 || statistics.Entries != 1 ||
+		statistics.JitCompiles != 1 || statistics.JitFallbacks != 0) {
 		printf("Cache hit statistics are incorrect.\n");
 		return 3;
 	}
@@ -100,7 +101,7 @@ int wmain()
 		return 10;
 	}
 
-	CompiledCodeCache embeddedNulCache(4);
+	CompiledCodeCache embeddedNulCache(4, true);
 	const CString patternWithNulB(L"a\0b", 3);
 	const CString patternWithNulC(L"a\0c", 3);
 	CodeLease nulB;
@@ -118,6 +119,21 @@ int wmain()
 		return 12;
 	}
 
+	CompiledCodeCache jitFallbackCache(2, true);
+	CodeLease jitFallback;
+	// PCRE2 documents \C in UTF mode as unsupported by JIT, while the
+	// ordinary matcher still supports it in this build.
+	if (!Acquire(jitFallbackCache, CString(L"\\C"), commonOptions, jitFallback) ||
+		!CheckMatch(jitFallback.Get(), CString(L"f"))) {
+		printf("JIT fallback pattern did not use ordinary matching.\n");
+		return 13;
+	}
+	statistics = jitFallbackCache.GetStatistics();
+	if (statistics.JitCompiles != 0 || statistics.JitFallbacks != 1) {
+		printf("JIT-unsupported pattern did not record a fallback.\n");
+		return 14;
+	}
+
 	CompiledCodeCache invalidPatternCache(2);
 	CodeLease invalidPattern;
 	int errorNumber = 0;
@@ -126,18 +142,18 @@ int wmain()
 	if (invalidPatternCache.Acquire(CString(L"("), commonOptions, &errorNumber, &errorOffset,
 		&allocationError, invalidPattern) || allocationError) {
 		printf("Invalid pattern was accepted or reported as an allocation error.\n");
-		return 13;
+		return 15;
 	}
 	statistics = invalidPatternCache.GetStatistics();
 	if (statistics.Entries != 0) {
 		printf("Invalid pattern was added to the cache.\n");
-		return 14;
+		return 16;
 	}
 	CodeLease validAfterInvalid;
 	if (!Acquire(invalidPatternCache, CString(L"valid"), commonOptions, validAfterInvalid) ||
 		!CheckMatch(validAfterInvalid.Get(), CString(L"valid"))) {
 		printf("Cache did not recover after an invalid pattern.\n");
-		return 15;
+		return 17;
 	}
 
 	CompiledCodeCache oomCache(2);
@@ -149,13 +165,13 @@ int wmain()
 	if (oomCache.Acquire(CString(L"oom"), commonOptions, &errorNumber, &errorOffset,
 		&allocationError, failedAllocation) || !allocationError || failedAllocation.Get() != NULL) {
 		printf("Cache entry allocation failure was not reported safely.\n");
-		return 16;
+		return 18;
 	}
 	CodeLease afterOom;
 	if (!Acquire(oomCache, CString(L"oom"), commonOptions, afterOom) ||
 		!CheckMatch(afterOom.Get(), CString(L"oom"))) {
 		printf("Cache lock or ownership was not recovered after allocation failure.\n");
-		return 17;
+		return 19;
 	}
 
 	printf("PCRE2 compiled-code cache smoke test passed.\n");

@@ -25,6 +25,8 @@ struct CodeCacheStatistics {
 	unsigned int Misses;
 	unsigned int Evictions;
 	unsigned int Entries;
+	unsigned int JitCompiles;
+	unsigned int JitFallbacks;
 };
 
 class CompiledCode;
@@ -97,8 +99,9 @@ inline void CodeLease::Reset()
 
 class CompiledCodeCache {
 public:
-	explicit CompiledCodeCache(size_t capacity)
-		: m_capacity(capacity), m_hits(0), m_misses(0), m_evictions(0)
+	explicit CompiledCodeCache(size_t capacity, bool enableJit = false)
+		: m_capacity(capacity), m_enableJit(enableJit), m_hits(0), m_misses(0),
+		m_evictions(0), m_jitCompiles(0), m_jitFallbacks(0)
 	{
 		InitializeCriticalSection(&m_lock);
 	}
@@ -153,6 +156,14 @@ public:
 				*allocationError = true;
 			return false;
 		}
+		if (m_enableJit) {
+			// JIT failure is deliberately non-fatal: pcre2_match() keeps using
+			// the normal compiled code and the UI sees no new error.
+			if (pcre2_jit_compile(code, PCRE2_JIT_COMPLETE) == 0)
+				++m_jitCompiles;
+			else
+				++m_jitFallbacks;
+		}
 
 		CompiledCode* compiledCode = new(std::nothrow) CompiledCode(code);
 		if (compiledCode == NULL) {
@@ -199,7 +210,8 @@ public:
 	{
 		CriticalSectionGuard guard(m_lock);
 		CodeCacheStatistics statistics = {
-			m_hits, m_misses, m_evictions, static_cast<unsigned int>(m_entries.size())
+			m_hits, m_misses, m_evictions, static_cast<unsigned int>(m_entries.size()),
+			m_jitCompiles, m_jitFallbacks
 		};
 		return statistics;
 	}
@@ -236,11 +248,14 @@ private:
 	CompiledCodeCache& operator=(const CompiledCodeCache&);
 
 	const size_t m_capacity;
+	const bool m_enableJit;
 	CRITICAL_SECTION m_lock;
 	std::list<Entry> m_entries;
 	unsigned int m_hits;
 	unsigned int m_misses;
 	unsigned int m_evictions;
+	unsigned int m_jitCompiles;
+	unsigned int m_jitFallbacks;
 #if defined(PCRE2_CODE_CACHE_TESTING)
 	bool m_failNextEntryAllocation = false;
 #endif
