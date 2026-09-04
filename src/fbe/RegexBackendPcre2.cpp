@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "RegexBackend.h"
+#include "RegexPcre2CodeCache.h"
 #include "RuntimeLocalization.h"
 
 #define PCRE2_CODE_UNIT_WIDTH 16
@@ -14,6 +15,11 @@ namespace {
 // protection independent of a future PCRE2 build-time configuration change.
 const uint32_t kRegexMatchLimit = 10000000;
 const uint32_t kRegexDepthLimit = 10000000;
+const size_t kRegexCodeCacheCapacity = 48;
+
+// The cache owns one reference per entry; each Execute() keeps an independent
+// lease so eviction can never free code while PCRE2 is matching with it.
+RegexPcre2::CompiledCodeCache g_regexCodeCache(kRegexCodeCacheCapacity);
 
 static CString BuildPcre2ErrorText(int errorNumber)
 {
@@ -90,6 +96,7 @@ bool RegexBackend::Execute(
 	uint32_t compileOptions;
 	int errorNumber = 0;
 	PCRE2_SIZE errorOffset = 0;
+	bool cacheAllocationError = false;
 	int rc;
 	PCRE2_SIZE offset = 0;
 	uint32_t globalOptions = 0;
@@ -99,18 +106,22 @@ bool RegexBackend::Execute(
 
 	compileOptions = BuildCompileOptions(options);
 
-	pcre2_code* re = pcre2_compile(
-		reinterpret_cast<PCRE2_SPTR>(static_cast<LPCWSTR>(options.Pattern)),
-		static_cast<PCRE2_SIZE>(options.Pattern.GetLength()),
+	RegexPcre2::CodeLease codeLease;
+	if (!g_regexCodeCache.Acquire(
+		options.Pattern,
 		compileOptions,
 		&errorNumber,
 		&errorOffset,
-		NULL);
-	if (re == NULL)
+		&cacheAllocationError,
+		codeLease))
 	{
-		errorText = BuildCompileErrorText(errorNumber, errorOffset);
+		errorText = cacheAllocationError
+			? FbeLoadRuntimeStringByKey(
+				L"fbe.regex.error.allocation", L"Failed to allocate PCRE2 match data.")
+			: BuildCompileErrorText(errorNumber, errorOffset);
 		return false;
 	}
+	pcre2_code* re = codeLease.Get();
 
 	pcre2_match_data* matchData = pcre2_match_data_create_from_pattern(re, NULL);
 	pcre2_match_context* matchContext = pcre2_match_context_create(NULL);
@@ -120,7 +131,6 @@ bool RegexBackend::Execute(
 			pcre2_match_context_free(matchContext);
 		if (matchData != NULL)
 			pcre2_match_data_free(matchData);
-		pcre2_code_free(re);
 		errorText = FbeLoadRuntimeStringByKey(
 			L"fbe.regex.error.allocation", L"Failed to allocate PCRE2 match data.");
 		return false;
@@ -153,7 +163,6 @@ bool RegexBackend::Execute(
 			errorText = BuildMatchErrorText(rc);
 			pcre2_match_context_free(matchContext);
 			pcre2_match_data_free(matchData);
-			pcre2_code_free(re);
 			return false;
 		}
 
@@ -199,8 +208,6 @@ bool RegexBackend::Execute(
 
 	pcre2_match_context_free(matchContext);
 	pcre2_match_data_free(matchData);
-	pcre2_code_free(re);
-
 	return true;
 }
 

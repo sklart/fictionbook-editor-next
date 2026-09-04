@@ -414,6 +414,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="res1.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="RegexBackend.h" />
+    <ClInclude Include="RegexPcre2CodeCache.h" />
     <ClInclude Include="RuntimeLocalization.h" />
     <ClInclude Include="XmlSourceThemes.h" />
     <ClInclude Include="SearchReplace.h" />
