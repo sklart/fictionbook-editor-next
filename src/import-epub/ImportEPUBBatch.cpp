@@ -1,6 +1,5 @@
 ﻿#include "stdafx.h"
-#include "EpubImport.h"
-#include "RuntimeLocalization.h"
+#include "ImportEPUBApi.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -8,12 +7,39 @@
 #include <set>
 #include <string>
 
-// У console-конвертера нет DllMain, поэтому экземпляр модуля и runtime-строки
-// инициализируются явно в wmain().
-HINSTANCE g_hInstance = nullptr;
-
 namespace
 {
+    enum ConsoleEpubSvgConversionMode
+    {
+        SVG_IMPORT_KEEP = 0,
+        SVG_IMPORT_CONVERT_PNG = 1,
+        SVG_IMPORT_CONVERT_JPEG = 2,
+        SVG_IMPORT_SKIP = 3
+    };
+
+    struct ConsoleImportOptions
+    {
+        bool importCover, importImages, importNotes, useNavigationTitles, repairEncoding, skipServicePages;
+        bool importTables, importLists, importPoemsEpigraphs, importSubtitles, splitSectionsByHeadings, preserveLinks;
+        bool cleanTypography, importPageBreaks, skipHiddenElements, validateResult, addDiagnosticSection, writeImportLog;
+        bool saveFb2Copy, useCssSemanticClasses, removeFootnoteBacklinks, removeServiceSections, writeLogOnWarnings;
+        bool saveIntermediateFb2OnError, keepTempOnError;
+        int svgConversionMode;
+
+        ConsoleImportOptions()
+            : importCover(true), importImages(true), importNotes(true), useNavigationTitles(true), repairEncoding(true), skipServicePages(true)
+            , importTables(true), importLists(true), importPoemsEpigraphs(true), importSubtitles(true), splitSectionsByHeadings(true), preserveLinks(true)
+            , cleanTypography(true), importPageBreaks(true), skipHiddenElements(true), validateResult(true), addDiagnosticSection(false), writeImportLog(false)
+            , saveFb2Copy(false), useCssSemanticClasses(true), removeFootnoteBacklinks(true), removeServiceSections(true), writeLogOnWarnings(true)
+            , saveIntermediateFb2OnError(false), keepTempOnError(false), svgConversionMode(SVG_IMPORT_CONVERT_PNG)
+        {
+        }
+    };
+
+    typedef HRESULT (WINAPI* ImportEpubBuildFunc)(LPCWSTR, const ImportEpubOptionsV1*, wchar_t*, DWORD, DWORD*, ImportEpubRuntimeStatsV1*, wchar_t*, DWORD, DWORD*);
+    HMODULE g_importEpubDll = nullptr;
+    ImportEpubBuildFunc g_importEpubBuild = nullptr;
+
     void ConsoleWrite(const CStringW& text)
     {
         if (text.IsEmpty())
@@ -73,7 +99,7 @@ namespace
         int maxFiles;
         CStringW reportPath;
         CStringW childReportPath;
-        EpubImportOptions importOptions;
+        ConsoleImportOptions importOptions;
 
         ConsoleOptions()
             : batchMode(false)
@@ -171,7 +197,7 @@ namespace
 
     void ResetDefaultConsoleImportOptions(ConsoleOptions& options)
     {
-        options.importOptions = EpubImportOptions();
+        options.importOptions = ConsoleImportOptions();
         options.importOptions.saveFb2Copy = false;
         options.importOptions.writeImportLog = false;
     }
@@ -402,6 +428,80 @@ namespace
             buffer.resize(buffer.size() * 2);
         }
         return CStringW(&buffer[0], static_cast<int>(len));
+    }
+
+    CStringW CurrentDirectoryPath()
+    {
+        DWORD needed = GetCurrentDirectoryW(0, nullptr);
+        if (!needed)
+            return CStringW();
+        std::vector<wchar_t> buffer(needed);
+        DWORD length = GetCurrentDirectoryW(static_cast<DWORD>(buffer.size()), &buffer[0]);
+        return length ? CStringW(&buffer[0], static_cast<int>(length)) : CStringW();
+    }
+
+    CStringW FindImportEpubDll()
+    {
+        const CStringW exeDir = DirectoryOfLocal(CurrentExePath());
+        const CStringW cwd = CurrentDirectoryPath();
+        const CStringW candidates[] = {
+            CombinePathLocal(exeDir, L"Plugins\\ImportEPUB.dll"),
+            CombinePathLocal(cwd, L"Plugins\\ImportEPUB.dll"),
+            CombinePathLocal(exeDir, L"ImportEPUB.dll"),
+            CombinePathLocal(cwd, L"ImportEPUB.dll"),
+            CombinePathLocal(cwd, L"out\\Release\\Plugins\\ImportEPUB.dll"),
+            CombinePathLocal(cwd, L"out\\Win32\\Release\\Plugins\\ImportEPUB.dll"),
+            CombinePathLocal(exeDir, L"..\\..\\out\\Release\\Plugins\\ImportEPUB.dll")
+        };
+        for (const CStringW& candidate : candidates)
+        {
+            if (FileExistsLocal(candidate))
+                return candidate;
+        }
+        return CStringW();
+    }
+
+    bool LoadImportEpubRuntime(CStringW& error)
+    {
+        CStringW dllPath = FindImportEpubDll();
+        if (dllPath.IsEmpty())
+        {
+            error = L"ImportEPUB.dll was not found. Place it in Plugins next to ImportEPUBBatch.exe.";
+            return false;
+        }
+        g_importEpubDll = LoadLibraryW(dllPath);
+        if (!g_importEpubDll)
+        {
+            error.Format(L"Could not load ImportEPUB.dll (%s). Check that the EXE and DLL have the same Win32/x86 architecture. Win32 error: %lu", dllPath.GetString(), GetLastError());
+            return false;
+        }
+        g_importEpubBuild = reinterpret_cast<ImportEpubBuildFunc>(GetProcAddress(g_importEpubDll, "ImportEPUB_BuildFb2XmlW"));
+        if (!g_importEpubBuild)
+        {
+            error.Format(L"ImportEPUB.dll does not export ImportEPUB_BuildFb2XmlW. Win32 error: %lu", GetLastError());
+            FreeLibrary(g_importEpubDll);
+            g_importEpubDll = nullptr;
+            return false;
+        }
+        return true;
+    }
+
+    ImportEpubOptionsV1 MakeImportEpubApiOptions(const ConsoleImportOptions& source)
+    {
+        ImportEpubOptionsV1 result = {};
+        result.cbSize = sizeof(result);
+        result.version = IMPORT_EPUB_API_VERSION;
+        result.importCover = source.importCover; result.importImages = source.importImages; result.importNotes = source.importNotes;
+        result.useNavigationTitles = source.useNavigationTitles; result.repairEncoding = source.repairEncoding; result.skipServicePages = source.skipServicePages;
+        result.importTables = source.importTables; result.importLists = source.importLists; result.importPoemsEpigraphs = source.importPoemsEpigraphs;
+        result.importSubtitles = source.importSubtitles; result.splitSectionsByHeadings = source.splitSectionsByHeadings; result.preserveLinks = source.preserveLinks;
+        result.cleanTypography = source.cleanTypography; result.importPageBreaks = source.importPageBreaks; result.skipHiddenElements = source.skipHiddenElements;
+        result.validateResult = source.validateResult; result.addDiagnosticSection = source.addDiagnosticSection; result.writeImportLog = source.writeImportLog;
+        result.saveFb2Copy = source.saveFb2Copy; result.useCssSemanticClasses = source.useCssSemanticClasses; result.removeFootnoteBacklinks = source.removeFootnoteBacklinks;
+        result.removeServiceSections = source.removeServiceSections; result.writeLogOnWarnings = source.writeLogOnWarnings;
+        result.saveIntermediateFb2OnError = source.saveIntermediateFb2OnError; result.keepTempOnError = source.keepTempOnError;
+        result.svgConversionMode = source.svgConversionMode;
+        return result;
     }
 
     bool ReadUtf8ConsoleFile(const CStringW& path, CStringW& text)
@@ -1228,17 +1328,38 @@ namespace
         return true;
     }
 
-    bool ConvertOneFile(const CStringW& inputPath, const CStringW& outputPath, const EpubImportOptions& options, bool dryRun, bool collectStats, CStringW& error, CStringW& statsSummary, Fb2QualityStats& quality)
+    bool ConvertOneFile(const CStringW& inputPath, const CStringW& outputPath, const ConsoleImportOptions& options, bool dryRun, bool collectStats, CStringW& error, CStringW& statsSummary, Fb2QualityStats& quality)
     {
         CStringW fb2;
         error.Empty();
         statsSummary.Empty();
         quality = Fb2QualityStats();
-        bool ok = BuildFb2XmlFromEpub(inputPath, options, fb2, error);
-        if (!ok)
+        const ImportEpubOptionsV1 apiOptions = MakeImportEpubApiOptions(options);
+        DWORD requiredFb2Cch = 0;
+        DWORD requiredErrorCch = 0;
+        wchar_t apiError[32768] = {};
+        HRESULT hr = g_importEpubBuild(inputPath, &apiOptions, nullptr, 0, &requiredFb2Cch, nullptr, apiError, _countof(apiError), &requiredErrorCch);
+        if (hr != HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER) || requiredFb2Cch == 0)
+        {
+            error = apiError;
+            if (error.IsEmpty())
+                error.Format(L"ImportEPUB.dll failed: 0x%08lX", static_cast<unsigned long>(hr));
             return false;
+        }
+
+        std::vector<wchar_t> fb2Buffer(requiredFb2Cch);
+        ImportEpubRuntimeStatsV1 runtimeStats = {};
+        runtimeStats.cbSize = sizeof(runtimeStats);
+        hr = g_importEpubBuild(inputPath, &apiOptions, &fb2Buffer[0], requiredFb2Cch, &requiredFb2Cch, &runtimeStats, apiError, _countof(apiError), &requiredErrorCch);
+        if (FAILED(hr))
+        {
+            error = apiError;
+            if (error.IsEmpty())
+                error.Format(L"ImportEPUB.dll failed: 0x%08lX", static_cast<unsigned long>(hr));
+            return false;
+        }
+        fb2 = &fb2Buffer[0];
         quality = AnalyzeFb2Quality(fb2);
-        EpubImportRuntimeStats runtimeStats = GetLastEpubImportRuntimeStats();
         quality.svgImages = runtimeStats.svgImages;
         quality.svgConverted = runtimeStats.svgConverted;
         quality.svgPlaceholders = runtimeStats.svgPlaceholders;
@@ -1676,9 +1797,6 @@ int wmain(int argc, wchar_t** argv)
     }
 
     InitializeConsoleOutput();
-    g_hInstance = ::GetModuleHandleW(nullptr);
-    InitImportEpubRuntimeStrings();
-
     if (argc == 2 && CStringW(argv[1]).CompareNoCase(L"--help") == 0)
     {
         PrintUsage();
@@ -1700,6 +1818,14 @@ int wmain(int argc, wchar_t** argv)
     {
         ConsolePrintf(L"COM initialization failed: 0x%08lX\n", hr);
         return 3;
+    }
+
+    CStringW runtimeError;
+    if (!LoadImportEpubRuntime(runtimeError))
+    {
+        ConsolePrintf(L"%s\n", runtimeError.GetString());
+        CoUninitialize();
+        return 1;
     }
 
     ConsoleOptions options;
@@ -1734,6 +1860,9 @@ int wmain(int argc, wchar_t** argv)
     else
         rc = RunSingle(inputPath, outputPath, options);
 
+    FreeLibrary(g_importEpubDll);
+    g_importEpubDll = nullptr;
+    g_importEpubBuild = nullptr;
     CoUninitialize();
     return rc;
 }

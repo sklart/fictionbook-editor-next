@@ -1,6 +1,7 @@
 LIBRARY "ImportEPUB"
 
 EXPORTS
+    ImportEPUB_BuildFb2XmlW
     DllCanUnloadNow     PRIVATE
     DllGetClassObject   PRIVATE
     DllRegisterServer   PRIVATE

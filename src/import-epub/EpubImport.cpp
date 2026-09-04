@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "MsxmlImport.h"
 #include "EpubImport.h"
+#include "ImportEPUBApi.h"
 #include "resource.h"
 #include "RuntimeLocalization.h"
 
@@ -4960,4 +4961,111 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     log.Add(L"Import completed.");
     log.SaveIfRequested(epubPath, options.writeLogOnWarnings && !warning.IsEmpty());
     return true;
+}
+
+namespace
+{
+    void CopyImportEpubApiText(const CStringW& source, wchar_t* destination, DWORD destinationCch, DWORD* requiredCch)
+    {
+        const DWORD required = static_cast<DWORD>(source.GetLength()) + 1;
+        if (requiredCch)
+            *requiredCch = required;
+        if (destination && destinationCch)
+        {
+            const DWORD copied = (required <= destinationCch) ? required - 1 : destinationCch - 1;
+            if (copied)
+                memcpy(destination, source.GetString(), static_cast<size_t>(copied) * sizeof(wchar_t));
+            destination[copied] = L'\0';
+        }
+    }
+
+    EpubImportOptions ImportEpubOptionsFromApi(const ImportEpubOptionsV1& source)
+    {
+        EpubImportOptions result;
+        result.importCover = source.importCover != 0;
+        result.importImages = source.importImages != 0;
+        result.importNotes = source.importNotes != 0;
+        result.useNavigationTitles = source.useNavigationTitles != 0;
+        result.repairEncoding = source.repairEncoding != 0;
+        result.skipServicePages = source.skipServicePages != 0;
+        result.importTables = source.importTables != 0;
+        result.importLists = source.importLists != 0;
+        result.importPoemsEpigraphs = source.importPoemsEpigraphs != 0;
+        result.importSubtitles = source.importSubtitles != 0;
+        result.splitSectionsByHeadings = source.splitSectionsByHeadings != 0;
+        result.preserveLinks = source.preserveLinks != 0;
+        result.cleanTypography = source.cleanTypography != 0;
+        result.importPageBreaks = source.importPageBreaks != 0;
+        result.skipHiddenElements = source.skipHiddenElements != 0;
+        result.validateResult = source.validateResult != 0;
+        result.addDiagnosticSection = source.addDiagnosticSection != 0;
+        result.writeImportLog = source.writeImportLog != 0;
+        result.saveFb2Copy = source.saveFb2Copy != 0;
+        result.useCssSemanticClasses = source.useCssSemanticClasses != 0;
+        result.removeFootnoteBacklinks = source.removeFootnoteBacklinks != 0;
+        result.removeServiceSections = source.removeServiceSections != 0;
+        result.writeLogOnWarnings = source.writeLogOnWarnings != 0;
+        result.saveIntermediateFb2OnError = source.saveIntermediateFb2OnError != 0;
+        result.keepTempOnError = source.keepTempOnError != 0;
+        result.svgConversionMode = source.svgConversionMode;
+        return result;
+    }
+}
+
+extern "C" HRESULT WINAPI ImportEPUB_BuildFb2XmlW(
+    LPCWSTR epubPath,
+    const ImportEpubOptionsV1* apiOptions,
+    wchar_t* fb2XmlBuffer,
+    DWORD fb2XmlBufferCch,
+    DWORD* requiredFb2XmlCch,
+    ImportEpubRuntimeStatsV1* apiRuntimeStats,
+    wchar_t* errorBuffer,
+    DWORD errorBufferCch,
+    DWORD* requiredErrorCch)
+{
+    if (requiredFb2XmlCch)
+        *requiredFb2XmlCch = 0;
+    if (requiredErrorCch)
+        *requiredErrorCch = 0;
+    if (!epubPath || !*epubPath || (apiOptions && (apiOptions->cbSize < sizeof(ImportEpubOptionsV1) || apiOptions->version != IMPORT_EPUB_API_VERSION)) ||
+        (apiRuntimeStats && apiRuntimeStats->cbSize < sizeof(ImportEpubRuntimeStatsV1)))
+        return E_INVALIDARG;
+
+    CStringW fb2Xml;
+    CStringW errorText;
+    bool converted = false;
+    try
+    {
+        const EpubImportOptions options = apiOptions ? ImportEpubOptionsFromApi(*apiOptions) : EpubImportOptions();
+        converted = BuildFb2XmlFromEpub(CStringW(epubPath), options, fb2Xml, errorText);
+    }
+    catch (...)
+    {
+        errorText = L"ImportEPUB encountered an unexpected internal error.";
+        CopyImportEpubApiText(errorText, errorBuffer, errorBufferCch, requiredErrorCch);
+        return E_FAIL;
+    }
+
+    if (!converted)
+    {
+        CopyImportEpubApiText(errorText, errorBuffer, errorBufferCch, requiredErrorCch);
+        return E_FAIL;
+    }
+
+    CopyImportEpubApiText(fb2Xml, fb2XmlBuffer, fb2XmlBufferCch, requiredFb2XmlCch);
+    CopyImportEpubApiText(CStringW(), errorBuffer, errorBufferCch, requiredErrorCch);
+    if (!fb2XmlBuffer || fb2XmlBufferCch < static_cast<DWORD>(fb2Xml.GetLength()) + 1)
+        return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+
+    if (apiRuntimeStats)
+    {
+        const EpubImportRuntimeStats stats = GetLastEpubImportRuntimeStats();
+        apiRuntimeStats->version = IMPORT_EPUB_API_VERSION;
+        apiRuntimeStats->svgImages = stats.svgImages;
+        apiRuntimeStats->svgConverted = stats.svgConverted;
+        apiRuntimeStats->svgPlaceholders = stats.svgPlaceholders;
+        apiRuntimeStats->svgSkipped = stats.svgSkipped;
+        CopyImportEpubApiText(stats.svgBackend, apiRuntimeStats->svgBackend, IMPORT_EPUB_SVG_BACKEND_CCH, nullptr);
+    }
+    return S_OK;
 }

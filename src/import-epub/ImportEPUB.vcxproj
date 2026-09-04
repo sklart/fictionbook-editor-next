@@ -133,6 +133,7 @@
 
   <ItemGroup>
     <ClInclude Include="EpubImport.h" />
+    <ClInclude Include="ImportEPUBApi.h" />
     <ClInclude Include="FBEPluginInterfaces.h" />
     <ClInclude Include="ImportEPUBModule.h" />
     <ClInclude Include="ImportEPUBPlugin.h" />
