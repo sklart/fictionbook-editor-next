@@ -4182,6 +4182,39 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		appendBinaryPhase("save-complete");
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"spellcheck-local-edit"))
+	{
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()) : MSHTML::IHTMLElementPtr());
+		if (!body || !paragraph || !m_Speller)
+		{
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		m_doc->m_body.SetFocus();
+		MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
+		if (!range) { output.Close(); ::PostQuitMessage(1); return 0; }
+		range->moveToElementText(paragraph);
+		range->collapse(VARIANT_TRUE);
+		if (range->move(L"character", 1) != 1) { output.Close(); ::PostQuitMessage(1); return 0; }
+		range->select();
+		_bstr_t paragraphText(paragraph->innerText);
+		CString editedText(static_cast<const wchar_t*>(paragraphText));
+		editedText += L" localedit";
+		paragraph->innerText = _bstr_t(static_cast<const wchar_t*>(editedText));
+		m_Speller->SetEnabled(true);
+		// Set the same settings gate used by OnEdChange, but do not trigger a
+		// viewport-wide highlight pass before the local-edit measurement.
+		_Settings.SetHighlightMisspells(true);
+		BOOL handled = FALSE;
+		OnEdChange(0, 0, NULL, handled);
+		CStringA row;
+		row.Format("paragraph_count\t%ld\r\nchecked_paragraphs\t%ld\r\n", paragraphs->length, m_Speller->GetLastCheckElementParagraphCount());
+		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close();
+		// The fixture is intentionally edited in memory only; terminate the
+		// unattended message loop without opening the normal dirty-document UI.
+		::PostQuitMessage(0); return 0;
+	}
 	if (IsFbeTestScenario(L"table-toolbar-rendering"))
 	{
 		// This is deliberately a UI-level probe.  The toolbar state and the

@@ -120,30 +120,21 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fb2-source-autocomplete.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-eol-annotations.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-special-representations.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-source-xml-declaration.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-allocate-lines.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-ui-metrics-contract.ps1")
-if ($runTables) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-table-toolbar-contract.ps1")
-# TEMPORARY QUARANTINE: the hosted windows-2022 desktop intermittently reports
-# stale native toolbar state although the same scenario passes repeated local
-# runs. Keep executing the probe in Actions for diagnostics, but do not let
-# this environment-specific UI failure block a release. Local FullValidation
-# remains strict. Remove this quarantine after the hosted-runner cause is fixed.
-if ($env:GITHUB_ACTIONS -eq "true") {
-    try {
-        & (Join-Path $repoRoot "tools\tests\test-fbe-table-toolbar-rendering.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-    } catch {
-        if ($_.Exception.Message -notmatch '^Command \d+ remained enabled outside a table\.$') {
-            throw
-        }
-        Write-Warning ("QUARANTINED table-toolbar-rendering failure: " + $_.Exception.Message)
-    }
-} else {
-    & (Join-Path $repoRoot "tools\tests\test-fbe-table-toolbar-rendering.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-}
+& (Join-Path $repoRoot "tools\tests\test-ui-metrics-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-script-document-path-api.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-backup-settings.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-auto-url-detect.ps1")
+& (Join-Path $repoRoot "tools\tests\test-xml-source-themes.ps1")
+& (Join-Path $repoRoot "tools\tests\test-xml-source-current-line.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-filename-state.ps1")
+if ($runTables) {
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-toolbar-rendering.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Huge
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
@@ -172,7 +163,7 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Fault change-colspan-after-normalize
 } else {
-    Write-Host "Table checks are not run by default; use -RunTableTests or -FullValidation to enable them."
+    Write-Host "Table production checks are not run by default; use -RunTableTests or -FullValidation to enable them."
 }
 & (Join-Path $repoRoot "tools\tests\test-fbe-test-report-diagnostics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-serialization.ps1")
@@ -293,6 +284,7 @@ if ($FullValidation) {
     & (Join-Path $repoRoot "tools\tests\test-fbe-large-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-many-binaries-production-stress.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-image-import-generated-id-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-local-edit-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-image-import-fbe-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-export-html-images-e2e.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-portable-registry-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
@@ -302,6 +294,7 @@ if ($FullValidation) {
 # ArchHandler is part of the single release and is tested from its staged output.
 $archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
 $archHandlerTestArguments.HandlerDirectory = $archHandlerOutputDir
+& (Join-Path $repoRoot "tools\tests\test-archhandler-pe-contract.ps1") @archHandlerTestArguments
 & (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments
 
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1") `

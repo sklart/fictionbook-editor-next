@@ -1,129 +1,37 @@
-# Карта тестовых контуров
+# Тестовые контуры
 
-Этот файл фиксирует, какие сценарии в `tools/tests` входят в активный
-контур проверки проекта, а какие используются точечно для диагностики,
-ручных проверок или исторического сравнения.
+Проект собирает один универсальный Win32 runtime для Windows 7 SP1+; отдельных Modern/Win7 деревьев, batch-профилей и ArchHandler артефактов нет.
 
-Цель документа — не дать случайно удалить нужный smoke/regression-сценарий
-во время дальнейшей cleanup-ревизии `tools/tests`.
+## FAST
 
-## 1. Базовый release-gate
+Обычный `tools/build/verify-release.ps1` — обязательный PR/master gate. Он проверяет staging/layout `out\Release` и `out\Release\Plugins`, безопасность PE и импорты Win7, локализацию, dictionaries, PCRE2, batch-конвертеры и контракты редактора. В него также входят дешёвые table contracts `test-fbe-table-visual-mode.ps1` и `test-table-toolbar-contract.ps1`, а также contracts scripting document path, backup settings, AutoUrlDetect, XML themes, current line, filename state и XML declaration.
 
-Эти сценарии относятся к основному build/test-контуру и должны считаться
-первым кандидатом на обязательный прогон после заметных изменений в runtime,
-релизной упаковке или редакторных зависимостях.
+Локальный запуск: `pwsh ./tools/build/verify-release.ps1 -Configuration Release`.
 
-- `test-source-safety.ps1` — защита исходников и release-артефактов от
-  опасных регрессий упаковки.
-- `test-update-manifest.ps1` — проверка `update.xml`.
-- `test-scintilla.ps1` — smoke/regression по редакторному движку.
-- `test-pcre2.ps1` — базовые regex-кейсы текущего runtime.
-- `test-pcre2-wrapper.ps1` — проверка wrapper-поведения режима `Дизайн`.
-- `test-pcre2-replace.ps1` — сценарии замены и backreference.
-- `test-spellcheck-dictionaries.ps1` — manifest/SHA-256, кодировки и native
-  Hunspell 1.7.3 spell/suggest smoke для bundled dictionaries.
-- `test-fbe-startup.ps1` — GUI startup smoke.
+## FULL
 
-Практическое правило:
+`-FullValidation` добавляет настоящие GUI/production round-trip, huge binary и table fixtures, structural table matrix, toolbar rendering, performance, fault-injection, portable isolation и stress tests. В этом контуре выполняется `test-fbe-spellcheck-local-edit-performance.ps1`: реальный FBE редактирует последний абзац длинной section, а test-only diagnostic counter доказывает bounded work spellcheck.
 
-- после обновления `Scintilla` / `Lexilla` / `PCRE2` / `Hunspell` этот набор
-  нужно считать минимальным обязательным;
-- если менялся только installer/layout, часть этого набора можно запускать
-  выборочно, но `test-source-safety.ps1` и `test-update-manifest.ps1`
-  остаются обязательными.
+Локальный запуск: `pwsh ./tools/build/verify-release.ps1 -Configuration Release -FullValidation`.
 
-## 2. Shell / installer release-gate
+`-RunTableTests` запускает только тяжёлый table subset без остальных FULL сценариев. Это удобно для локальной диагностики таблиц.
 
-Эти сценарии обязательны, если менялись shell-регистрация, installer-helper,
-`FBShell`, `FBV`-verb, staging `out/package` или NSIS-контур.
+## Tables
 
-- `test-fbe-specific-installer.ps1` — end-to-end install/uninstall smoke для
-  schema, property handler, thumbnail provider и shell-verb `Validate`.
-- `check-fbe-shell-registration-consistency.ps1` — согласованность shell-
-  строк и регистрационных ожиданий.
-- `check-fbe-specific-properties.ps1` — published FBE-specific properties.
-- `check-fb2-shell-surfaces.ps1` — быстрая сводка по shell-поверхностям
-  `.fb2`.
-- `test-fbv-verb-muiverb.ps1` — проверка локализованного `MUIVerb` через
-  `SHLoadIndirectString`.
+FAST содержит статические/transform contracts. FULL содержит toolbar rendering и production round-trip (включая Huge), structural operations, performance, failure safety и fault injection. Ни один table test не подавляет ошибку: toolbar rendering является строгим blocker.
 
-Практическое правило:
+## CI-special
 
-- для обычных изменений только в `src/fbe` эти тесты не являются
-  повседневным блокером;
-- для любого изменения в shell/installer-контуре именно они становятся
-  главным release-gate.
+Workflow отдельно строит и проверяет ArchHandler из `out\archhandler\Win32\Release`: `test-archhandler-pe-contract.ps1` читает фактический PE32 GUI artifact, VERSIONINFO, embedded asInvoker manifest, ASLR и DEP. Installer upgrade/uninstall, shell/property-handler и keyboard-layout native checks также вызываются специализированными workflow steps.
 
-## 3. Thumbnail / shell-диагностика
+## Installer, shell, portable и plugins
 
-Это активный и нужный контур, но он не весь одинаково обязателен в каждом
-релизе. Его удобно делить на автоматический минимум и расширенную ручную
-диагностику.
+Installer/shell tests используют staged package, а portable tests проверяют изоляцию Settings/registry/copies. Plugins всегда проверяются в современном `Plugins` layout; ImportEPUB batch smoke загружает `Plugins\ImportEPUB.dll`.
 
-### 3.1. Автоматический минимум
+## Manual/diagnostic
 
-- `test-fb2-thumbnail-provider.ps1` — прямой COM smoke provider.
-- `test-fb2-thumbnail-provider-cocreate.ps1` — системная COM-активация.
-- `test-fb2-shell-thumbnail.ps1` — shell API thumbnail smoke.
-- `test-fb2-shell-thumbnail-matrix.ps1` — сводный сценарий: прямой COM,
-  `CoCreateInstance`, shell API, forced extraction и negative cases.
+`test-diagnostics.ps1`, shell thumbnail dump/prime, отдельные fixture inspectors и corpus tools — диагностические входы, а не неявное покрытие release gate. Перед удалением такого файла следует проверить его ссылки в PowerShell wrappers, workflow и документации.
 
-Если нужно быстро понять, жив ли весь thumbnail-контур, канонический вход —
-это именно `test-fb2-shell-thumbnail-matrix.ps1`.
+## Карта и self-test
 
-### 3.2. Расширенная диагностика
-
-- `test-fb2-shell-thumbnail-dump.ps1` — forced dump thumbnail в `.bmp` для
-  анализа реального изображения.
-- `test-fb2-shell-thumbnail-prime.ps1` — адресный прогрев / проверка shell
-  cache для проблемных книг.
-- `test-fbshell-loader.ps1` — низкоуровневая проверка загрузки `FBShell.dll`.
-- `test-fb2-cover.ps1` — smoke reader-а embedded cover.
-- `test-fb2-cover-thumbnail.ps1` — smoke декодирования / ресайза cover image.
-
-Практическое правило:
-
-- `dump` и `prime` — это диагностические шаги, а не обязательный release-gate;
-- `cover`-сценарии полезны как локальный низкоуровневый разбор, когда нужно
-  понять, проблема в reader/decoder или уже в shell-контуре Windows.
-
-## 4. Metadata / property handler диагностика
-
-- `test-fb2-metadata.ps1` — внутреннее чтение метаданных `.fb2`.
-- `test-fb2-shell-properties.ps1` — запрос shell-свойств у конкретной книги.
-
-Эти сценарии особенно полезны, когда smoke-fixture работает, а часть реальных
-книг всё ещё возвращает пустые или неожиданные свойства.
-
-## 5. Validate / FBV контур
-
-- `test-fbv-fixture.ps1` — pre-flight проверка XSD-валидного fixture.
-
-Сейчас это не большой автоматический набор, а точечный контрольный шаг перед
-ручной shell-проверкой `Validate` через Explorer.
-
-## 6. Fixture и C++ helper-файлы
-
-Файлы `*.fb2`, `regex-fixtures.json` и `*.cpp` внутри `tools/tests` не стоит
-оценивать только по прямым ссылкам из PowerShell-скриптов. Значительная часть
-`*.cpp` используется как исходник для ad-hoc smoke-сборки, а fixture-файлы —
-как воспроизводимые эталоны для ручной и автоматической проверки.
-
-Поэтому перед удалением любого файла из `tools/tests` нужно проверить три
-вещи:
-
-1. Есть ли прямые ссылки в `docs`, `PROJECT_STATUS.md`, `tools/build` и
-   PowerShell-обвязках.
-2. Не играет ли файл роль fixture для ручной GUI-проверки.
-3. Не перекрыт ли его сценарий более новым тестом полностью, а не частично.
-
-## 8. Что уже можно считать упорядоченным
-
-На текущем этапе из `tools/tests` уже убраны:
-
-- три старых промежуточных `IThumbnailCache` smoke-файла;
-- неиспользуемая ad-hoc пара `fb2-cover-inspect.cpp` /
-  `test-fb2-cover-inspect.ps1`.
-
-Дальше cleanup имеет смысл делать только точечно и после сверки с этим
-документом.
+`test-release-pipeline-deduplication.ps1` закрепляет единый pipeline, отсутствие устаревшей Modern/Win7 матрицы и обязательные FAST/FULL контуры. Полный список активных release tests является последовательностью вызовов в `tools/build/verify-release.ps1`; наличие файла само по себе не означает, что он входит в gate.

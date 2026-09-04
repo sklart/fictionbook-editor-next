@@ -1,0 +1,31 @@
+#include "../../../src/version.h"
+#include <winres.h>
+
+1 VERSIONINFO
+ FILEVERSION FBE_VERSION_NUMBER
+ PRODUCTVERSION FBE_VERSION_NUMBER
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+ FILEFLAGS 0x0L
+ FILEOS VOS__WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "FictionBook Editor Next contributors\0"
+            VALUE "FileDescription", "FictionBook Editor archive handler\0"
+            VALUE "FileVersion", FBE_VERSION_STRING "\0"
+            VALUE "InternalName", "ArchHandler\0"
+            VALUE "LegalCopyright", "Copyright (c) FictionBook Editor Next contributors\0"
+            VALUE "OriginalFilename", "ZipHandler.exe\0"
+            VALUE "ProductName", FBE_PRODUCT_NAME "\0"
+            VALUE "ProductVersion", FBE_VERSION_STRING "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

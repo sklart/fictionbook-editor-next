@@ -128,6 +128,11 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Win32/Release
+      - name: Verify ArchHandler PE contract
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-archhandler-pe-contract.ps1 -PlatformToolset v143 -HandlerDirectory out/archhandler/Win32/Release
       - name: Write Runtime build provenance
         shell: pwsh
         run: |

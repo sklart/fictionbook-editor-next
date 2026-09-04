@@ -207,6 +207,7 @@ public:
 
 	void CheckScroll();
 	void CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID);
+	long GetLastCheckElementParagraphCount() const { return m_lastCheckElementParagraphCount; }
 	void CheckCurrentPage();
 	// main function
 	SPELL_RESULT SpellCheck(CString word);
@@ -270,6 +271,7 @@ protected:
 
 	bool m_Enabled;
 	bool m_HighlightMisspells;
+	long m_lastCheckElementParagraphCount;
 	int m_prevY, m_codePage;
 	HWND m_frame;
 	SPELL_LANG m_Lang;

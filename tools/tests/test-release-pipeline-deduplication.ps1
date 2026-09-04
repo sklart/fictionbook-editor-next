@@ -25,6 +25,7 @@ $fbvMui = Text 'tools\build\build-fbv-verb-mui.ps1'
 $pluginUpgradeSmoke = Text 'tools\tests\test-bundled-plugin-upgrade-uninstall.ps1'
 
 foreach ($needle in @('validate:', 'build:', 'package:', 'publish:', 'Restore universal editor runtime cache', 'Build Release Win32', 'Build ArchHandler', 'Write Runtime build provenance', 'Verify universal release binaries', 'Create release artifacts without compiling', 'Verify release archives')) { Require $workflow $needle 'workflow' }
+Require $workflow 'Verify ArchHandler PE contract' 'workflow ArchHandler PE validation'
 Require $workflow 'Smoke bundled plugin upgrade and uninstall' 'workflow installer smoke'
 Require $workflow 'test-bundled-plugin-upgrade-uninstall.ps1' 'workflow installer smoke invocation'
 foreach ($needle in @('Synthetic plugin upgrade installer', 'Synthetic plugin upgrade uninstaller', 'plugins.json', 'PluginSourceDirectory')) { Require $pluginUpgradeSmoke $needle 'bundled plugin upgrade smoke' }
@@ -37,6 +38,10 @@ foreach ($needle in @('CompatibilityTarget', 'artifacts\\Modern', 'artifacts\\Wi
 Require $verify 'check-win7-imports.ps1' 'verify-release.ps1'
 Require $verify 'out\editor-runtime' 'verify-release.ps1'
 Require $verify 'out\archhandler\Win32' 'verify-release.ps1'
+foreach ($test in @('test-fbe-table-visual-mode.ps1', 'test-table-toolbar-contract.ps1', 'test-fbe-script-document-path-api.ps1', 'test-fbe-backup-settings.ps1', 'test-fbe-auto-url-detect.ps1', 'test-xml-source-themes.ps1', 'test-xml-source-current-line.ps1', 'test-fbe-filename-state.ps1', 'test-fbe-source-xml-declaration.ps1')) { Require $verify $test 'verify-release FAST contour' }
+foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-table-production-roundtrip.ps1', 'test-fbe-table-structural-performance.ps1', 'test-fbe-table-failure-safety.ps1', 'test-fbe-spellcheck-local-edit-performance.ps1')) { Require $verify $test 'verify-release FULL contour' }
+Forbid $verify 'QUARANTINED table-toolbar-rendering failure' 'verify-release.ps1'
+Require $verify 'test-archhandler-pe-contract.ps1' 'verify-release ArchHandler contract'
 Require $workflow 'Test-FbeLegacy308MigrationRequired' 'workflow migration verification'
 Require $release 'Test-FbeLegacy308MigrationRequired' 'create-release migration policy'
 Require $migration 'Test-FbeLegacy308MigrationRequired' 'central migration policy'
