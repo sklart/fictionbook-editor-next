@@ -1,0 +1,344 @@
+{
+  "schema_version": 1,
+  "corpora": [
+    {
+      "id": "ru_classic_cc0",
+      "name": "Русская классика Imperius/ru-classic",
+      "loader": "hf_text_stream",
+      "repo_id": "Imperius/ru-classic",
+      "split": "train",
+      "aggregate_small_records": true,
+      "aggregate_target_words": 5000,
+      "source_url": "https://huggingface.co/datasets/Imperius/ru-classic",
+      "license": "CC0-1.0; underlying public-domain works",
+      "license_note": "Для проверки орфографии используется ненормализованный текст: различие е/ё не устраняется.",
+      "purpose": "Основной чистый корпус русской прозы XIX — начала XX века",
+      "quality_tier": "clean_classics",
+      "min_cyrillic_ratio": 0.55,
+      "min_chunk_words": 80,
+      "max_chunk_words": 1200,
+      "profiles": {
+        "smoke": {
+          "max_source_records": 30000,
+          "max_chunks": 80
+        },
+        "standard": {
+          "max_source_records": 300000,
+          "max_chunks": 2500
+        },
+        "full": {
+          "max_source_records": null,
+          "max_chunks": null
+        }
+      },
+      "filename": "corpus_clean.txt",
+      "encoding": "utf-8",
+      "encoding_errors": "strict"
+    },
+    {
+      "id": "ruheritage_wikisource",
+      "name": "RuHeritage-Corpus на основе Русской Викитеки",
+      "loader": "hf_stream",
+      "repo_id": "maxzt/RuHeritage-Corpus",
+      "split": "train",
+      "text_field": "text",
+      "title_field": "title",
+      "author_field": "author",
+      "source_url_field": "source_url",
+      "metadata_fields": [
+        "word_count"
+      ],
+      "source_url": "https://huggingface.co/datasets/maxzt/RuHeritage-Corpus",
+      "license": "CC BY 4.0 for compilation; underlying texts declared public domain by dataset author",
+      "license_note": "При распространении производного корпуса требуется указать автора/источник сборки; URL исходной страницы сохраняется в каждой записи.",
+      "purpose": "Широкий литературный корпус с метаданными произведений и ссылками на Викитеку",
+      "quality_tier": "curated_wikisource",
+      "min_cyrillic_ratio": 0.55,
+      "min_chunk_words": 80,
+      "max_chunk_words": 1200,
+      "profiles": {
+        "smoke": {
+          "max_source_records": 80,
+          "max_chunks": 150
+        },
+        "standard": {
+          "max_source_records": 3000,
+          "max_chunks": 5000
+        },
+        "full": {
+          "max_source_records": null,
+          "max_chunks": null
+        }
+      }
+    },
+    {
+      "id": "wikisource_translations",
+      "name": "Русские переводы зарубежной литературы из Викитеки",
+      "loader": "wikisource_categories",
+      "api": "https://ru.wikisource.org/w/api.php",
+      "categories": [
+        "Переводы с английского языка",
+        "Переводы с французского языка",
+        "Переводы с немецкого языка"
+      ],
+      "candidate_factor": 50,
+      "source_url": "https://ru.wikisource.org/",
+      "license": "CC BY-SA (Wikimedia terms); individual underlying works may be public domain",
+      "license_note": "Для каждой страницы сохраняются URL, revision_id, дата ревизии и категории. При публикации производного набора нужно сохранить атрибуцию и условия ShareAlike.",
+      "purpose": "Отдельный контур русской переводной литературы",
+      "quality_tier": "translated_wikisource",
+      "min_cyrillic_ratio": 0.55,
+      "min_chunk_words": 40,
+      "max_chunk_words": 1200,
+      "profiles": {
+        "smoke": {
+          "pages_per_category": 10,
+          "max_chunks": 120
+        },
+        "standard": {
+          "pages_per_category": 120,
+          "max_chunks": 1500
+        },
+        "full": {
+          "pages_per_category": 600,
+          "max_chunks": 8000
+        }
+      },
+      "request_delay_seconds": 0.35,
+      "parse_request_delay_seconds": 0.8,
+      "min_document_chars": 200,
+      "require_nonempty": true,
+      "min_document_words": 40,
+      "excluded_page_categories": [
+        "Списки переводов",
+        "Страницы значений",
+        "Индексные страницы"
+      ]
+    },
+    {
+      "id": "russian_pd_ocr",
+      "name": "PleIAs Russian-PD",
+      "loader": "hf_stream",
+      "repo_id": "PleIAs/Russian-PD",
+      "split": "train",
+      "text_field": "text",
+      "title_field": "title",
+      "author_field": "creator",
+      "metadata_fields": [
+        "date",
+        "identifier",
+        "word_count"
+      ],
+      "source_url": "https://huggingface.co/datasets/PleIAs/Russian-PD",
+      "license": "Public domain according to dataset card",
+      "license_note": "Это OCR-стресс-корпус, а не эталон корректной орфографии. Его результаты нельзя смешивать с чистой классикой.",
+      "purpose": "Проверка производительности, устойчивости и поведения на OCR-шуме и дореформенной лексике",
+      "quality_tier": "ocr_stress",
+      "min_cyrillic_ratio": 0.45,
+      "min_chunk_words": 80,
+      "max_chunk_words": 1200,
+      "profiles": {
+        "smoke": {
+          "max_source_records": 5,
+          "max_chunks": 80
+        },
+        "standard": {
+          "max_source_records": 100,
+          "max_chunks": 1800
+        },
+        "full": {
+          "max_source_records": 1000,
+          "max_chunks": 18000
+        }
+      }
+    },
+    {
+      "id": "ai_forever_spellcheck",
+      "name": "Russian Spellcheck Benchmark",
+      "loader": "benchmark_files",
+      "repo_id": "ai-forever/spellcheck_benchmark",
+      "files": [
+        "data/RUSpellRU/train.json",
+        "data/RUSpellRU/test.json",
+        "data/MultidomainGold/train.json",
+        "data/MultidomainGold/test.json",
+        "data/MultidomainGold/literature/test.json",
+        "data/MedSpellchecker/test.json",
+        "data/GitHubTypoCorpusRu/test.json"
+      ],
+      "source_url": "https://huggingface.co/datasets/ai-forever/spellcheck_benchmark",
+      "license": "MIT",
+      "license_note": "Используется для проверки обнаружения реальных опечаток и качества подсказок, а не как корпус правильного литературного текста.",
+      "purpose": "Размеченные пары предложений с ошибками и исправлениями",
+      "quality_tier": "annotated_typos"
+    },
+    {
+      "id": "rnc_morphological_standard",
+      "name": "НКРЯ: Морфологический стандарт",
+      "loader": "rnc_morphological_standard",
+      "relative_path": "morphological-standard/extracted",
+      "purpose": "Эталонный тест ложных отклонений на вручную размеченных словоформах современного русского языка",
+      "quality_tier": "annotated_clean",
+      "license_note": "Локально лицензированный набор. Исходные тексты и производный token-level JSONL не должны коммититься или распространяться; допустимость публикации агрегированной статистики определяется лицензионным соглашением НКРЯ.",
+      "profiles": {
+        "smoke": {
+          "max_source_files": 60
+        },
+        "standard": {
+          "max_source_files": null
+        },
+        "full": {
+          "max_source_files": null
+        }
+      },
+      "source_url": "https://ruscorpora.ru/page/corpora-datasets/",
+      "license": "RNC offline dataset; use subject to the signed RNC license agreement",
+      "require_nonempty": true
+    },
+    {
+      "id": "rnc_syntagrus",
+      "name": "НКРЯ: СинТагРус",
+      "loader": "rnc_syntagrus",
+      "relative_path": "syntagrus/extracted/syntagrus/SynTagRus2022",
+      "purpose": "Независимый размеченный корпус для проверки покрытия нормативной современной русской лексики",
+      "quality_tier": "annotated_clean",
+      "license_note": "Локально лицензированный набор. Исходные тексты и производный token-level JSONL не должны коммититься или распространяться; используйте только в рамках условий соглашения НКРЯ.",
+      "profiles": {
+        "smoke": {
+          "max_source_files": 80
+        },
+        "standard": {
+          "max_source_files": null
+        },
+        "full": {
+          "max_source_files": null
+        }
+      },
+      "source_url": "https://ruscorpora.ru/page/corpora-datasets/",
+      "license": "RNC offline dataset; use subject to the signed RNC license agreement",
+      "require_nonempty": true
+    },
+    {
+      "id": "rnc_diachronic_pre_soviet",
+      "name": "НКРЯ: диахронический дореволюционный срез",
+      "loader": "rnc_diachronic_gzip",
+      "relative_path": "diachronic/rnc_pre-soviet.txt.gz",
+      "period": "pre-soviet",
+      "purpose": "Покрытие русской лексики дореволюционного периода; не является gold-эталоном орфографической корректности",
+      "quality_tier": "diachronic_coverage",
+      "license_note": "Локально лицензированный набор. Используется только для агрегированной статистики покрытия; исходные предложения не распространяются.",
+      "aggregate_target_words": 5000,
+      "encoding": "utf-8",
+      "min_cyrillic_ratio": 0.45,
+      "min_chunk_words": 80,
+      "max_chunk_words": 1200,
+      "profiles": {
+        "smoke": {
+          "max_chunks": 100
+        },
+        "standard": {
+          "max_chunks": 1000
+        },
+        "full": {
+          "max_chunks": null
+        }
+      },
+      "source_url": "https://ruscorpora.ru/page/corpora-datasets/",
+      "license": "RNC offline dataset; use subject to the signed RNC license agreement",
+      "require_nonempty": true,
+      "dedupe_scope": "corpus"
+    },
+    {
+      "id": "rnc_diachronic_soviet",
+      "name": "НКРЯ: диахронический советский срез",
+      "loader": "rnc_diachronic_gzip",
+      "relative_path": "diachronic/rnc_soviet.txt.gz",
+      "period": "soviet",
+      "purpose": "Покрытие русской лексики советского периода; не является gold-эталоном орфографической корректности",
+      "quality_tier": "diachronic_coverage",
+      "license_note": "Локально лицензированный набор. Используется только для агрегированной статистики покрытия; исходные предложения не распространяются.",
+      "aggregate_target_words": 5000,
+      "encoding": "utf-8",
+      "min_cyrillic_ratio": 0.45,
+      "min_chunk_words": 80,
+      "max_chunk_words": 1200,
+      "profiles": {
+        "smoke": {
+          "max_chunks": 100
+        },
+        "standard": {
+          "max_chunks": 1000
+        },
+        "full": {
+          "max_chunks": null
+        }
+      },
+      "source_url": "https://ruscorpora.ru/page/corpora-datasets/",
+      "license": "RNC offline dataset; use subject to the signed RNC license agreement",
+      "require_nonempty": true,
+      "dedupe_scope": "corpus"
+    },
+    {
+      "id": "rnc_diachronic_post_soviet",
+      "name": "НКРЯ: диахронический постсоветский срез",
+      "loader": "rnc_diachronic_gzip",
+      "relative_path": "diachronic/rnc_post-soviet.txt.gz",
+      "period": "post-soviet",
+      "purpose": "Покрытие современной постсоветской русской лексики; не является gold-эталоном орфографической корректности",
+      "quality_tier": "diachronic_coverage",
+      "license_note": "Локально лицензированный набор. Используется только для агрегированной статистики покрытия; исходные предложения не распространяются.",
+      "aggregate_target_words": 5000,
+      "encoding": "utf-8",
+      "min_cyrillic_ratio": 0.45,
+      "min_chunk_words": 80,
+      "max_chunk_words": 1200,
+      "profiles": {
+        "smoke": {
+          "max_chunks": 100
+        },
+        "standard": {
+          "max_chunks": 1000
+        },
+        "full": {
+          "max_chunks": null
+        }
+      },
+      "source_url": "https://ruscorpora.ru/page/corpora-datasets/",
+      "license": "RNC offline dataset; use subject to the signed RNC license agreement",
+      "require_nonempty": true,
+      "dedupe_scope": "corpus"
+    },
+    {
+      "id": "rnc_multilingual_ru",
+      "name": "НКРЯ: русская часть мультиязычного датасета",
+      "loader": "rnc_multilingual_json",
+      "relative_path": "multilingual/extracted/многоязычный_датасет_полный.json",
+      "purpose": "Дополнительный тест покрытия русских оригинальных и переводных художественных фрагментов",
+      "quality_tier": "parallel_translation_coverage",
+      "license_note": "Локально лицензированный набор. Из параллельного JSON используется только поле ru; подготовленные тексты не распространяются.",
+      "aggregate_target_words": 5000,
+      "encoding": "utf-8-sig",
+      "min_cyrillic_ratio": 0.55,
+      "min_chunk_words": 40,
+      "max_chunk_words": 1200,
+      "profiles": {
+        "smoke": {
+          "max_source_records": 4000,
+          "max_chunks": 100
+        },
+        "standard": {
+          "max_source_records": null,
+          "max_chunks": null
+        },
+        "full": {
+          "max_source_records": null,
+          "max_chunks": null
+        }
+      },
+      "source_url": "https://ruscorpora.ru/page/corpora-datasets/",
+      "license": "RNC offline dataset; use subject to the signed RNC license agreement",
+      "require_nonempty": true,
+      "dedupe_scope": "corpus"
+    }
+  ]
+}

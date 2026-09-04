@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+data/prepared/
+data/prepared-*/
+data/downloads/
+data/cache/
+results/
+results-*/
+results*/
+author-analysis/
+.cache/
+*.log
+spellcheck-review.fb2
+annotated-disagreements.csv
+corpora.local.json

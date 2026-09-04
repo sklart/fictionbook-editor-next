@@ -1,0 +1,1 @@
+{"corpus_id":"sample_typos","source":"На улице бежала сабака.","correction":"На улице бежала собака.","domain":"fixture","typo_cases":[{"wrong":"сабака","correct":"собака"}]}
