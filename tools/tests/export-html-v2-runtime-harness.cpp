@@ -270,6 +270,9 @@ int wmain(int argc, wchar_t **argv) {
 #endif
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", L"1");
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", FBE_TEST_SCENARIO);
+#ifdef FBE_TEST_EXPORT_EPUB
+  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_EPUB_VERSION", L"3");
+#endif
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_MODE", L"4");
   SetEnvironmentVariableW(FBE_TEST_CANCEL, 0);
   SetEnvironmentVariableW(FBE_TEST_FAIL, 0);
