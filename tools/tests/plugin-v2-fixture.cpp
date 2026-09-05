@@ -28,9 +28,10 @@ public:
         HRESULT hr = host->GetHostVersion(&version); if (SUCCEEDED(hr)) hr = host->GetUiLocale(&locale); if (SUCCEEDED(hr)) hr = host->GetOwnerWindow(&hwnd);
         IFBEProgressSink* progress = NULL; IFBECancellationToken* cancellation = NULL; IStream* stream = NULL;
         if (SUCCEEDED(hr)) hr = host->GetProgressSink(&progress); if (SUCCEEDED(hr)) hr = host->GetCancellationToken(&cancellation); if (SUCCEEDED(hr)) hr = document->GetEncoding(&encoding); if (SUCCEEDED(hr)) hr = document->OpenXmlStream(&stream);
-        BOOL cancelled = TRUE; if (SUCCEEDED(hr)) hr = cancellation->IsCancellationRequested(&cancelled); if (SUCCEEDED(hr)) hr = progress->Report(1, 1, SysAllocString(L"test"));
-        char bytes[64] = {}; ULONG read = 0; if (SUCCEEDED(hr)) hr = stream->Read(bytes, sizeof(bytes), &read);
-        if (SUCCEEDED(hr) && (!version || !locale || !hwnd || cancelled || !encoding || _wcsicmp(encoding, L"utf-8") || read < 5 || memcmp(bytes, "<?xml", 5))) hr = E_FAIL;
+        BOOL cancelled = TRUE; if (SUCCEEDED(hr)) hr = cancellation->IsCancellationRequested(&cancelled); BSTR stage = SysAllocString(L"test"); if (SUCCEEDED(hr) && !stage) hr = E_OUTOFMEMORY; if (SUCCEEDED(hr)) hr = progress->Report(1, 1, stage); if (stage) SysFreeString(stage);
+        char bytes[256] = {}; ULONG read = 0; if (SUCCEEDED(hr)) hr = stream->Read(bytes, sizeof(bytes), &read);
+        const char hello[] = "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"; bool utf8 = false; for (ULONG n = 0; n + sizeof(hello) - 1 <= read; ++n) if (!memcmp(bytes + n, hello, sizeof(hello) - 1)) { utf8 = true; break; }
+        if (SUCCEEDED(hr) && (!version || !locale || !hwnd || cancelled || !encoding || _wcsicmp(encoding, L"utf-8") || read < 5 || memcmp(bytes, "<?xml", 5) || !utf8)) hr = E_FAIL;
         if (version) SysFreeString(version); if (locale) SysFreeString(locale); if (encoding) SysFreeString(encoding); if (progress) progress->Release(); if (cancellation) cancellation->Release(); if (stream) stream->Release(); return hr;
     }
 };
