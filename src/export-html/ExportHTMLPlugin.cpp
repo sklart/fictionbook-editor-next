@@ -83,6 +83,37 @@ void RemoveServiceMarkers(IXMLDOMDocument2Ptr source)
 
 }
 
+STDMETHODIMP CExportHTMLPlugin::GetPluginId(BSTR* value)
+{
+	if (!value) return E_POINTER; *value = ::SysAllocString(L"export-html"); return *value ? S_OK : E_OUTOFMEMORY;
+}
+STDMETHODIMP CExportHTMLPlugin::GetPluginVersion(BSTR* value)
+{
+	if (!value) return E_POINTER; *value = ::SysAllocString(L"3.0.8"); return *value ? S_OK : E_OUTOFMEMORY;
+}
+STDMETHODIMP CExportHTMLPlugin::GetApiVersion(ULONG* value) { if (!value) return E_POINTER; *value = 2; return S_OK; }
+STDMETHODIMP CExportHTMLPlugin::GetCapabilities(ULONGLONG* value) { if (!value) return E_POINTER; *value = 0; return S_OK; }
+
+STDMETHODIMP CExportHTMLPlugin::Export(IFBEPluginHost* host, BSTR filename, IFBEDocumentSnapshot* document)
+{
+	if (!host || !document) return E_POINTER;
+	LONGLONG ownerValue = 0; HRESULT hr = host->GetOwnerWindow(&ownerValue); if (FAILED(hr)) return hr;
+	BSTR hostVersion = NULL, hostLocale = NULL;
+	hr = host->GetHostVersion(&hostVersion); if (SUCCEEDED(hr)) hr = host->GetUiLocale(&hostLocale);
+	if (hostVersion) ::SysFreeString(hostVersion); if (hostLocale) ::SysFreeString(hostLocale);
+	if (FAILED(hr)) return hr;
+	CComPtr<IFBECancellationToken> cancellation; hr = host->GetCancellationToken(&cancellation); if (FAILED(hr)) return hr;
+	BOOL cancelled = FALSE; hr = cancellation->IsCancellationRequested(&cancelled); if (FAILED(hr) || cancelled) return FAILED(hr) ? hr : HRESULT_FROM_WIN32(ERROR_CANCELLED);
+	CComPtr<IStream> stream; hr = document->OpenXmlStream(&stream); if (FAILED(hr)) return hr;
+	IXMLDOMDocument2Ptr source(U::CreateDocument(false)); VARIANT_BOOL loaded = VARIANT_FALSE;
+	hr = source->load(_variant_t((IUnknown*)stream), &loaded); if (FAILED(hr) || loaded != VARIANT_TRUE) { host->ReportMessage(2, CComBSTR(L"xml-load"), CComBSTR(L"snapshot XML could not be loaded")); return FAILED(hr) ? hr : E_FAIL; }
+	CComPtr<IFBEProgressSink> progress; if (SUCCEEDED(host->GetProgressSink(&progress))) progress->Report(0, 1, CComBSTR(L"export-html"));
+	hr = Export(static_cast<long>(ownerValue), filename, source);
+	if (progress) progress->Report(1, 1, CComBSTR(L"export-html"));
+	if (FAILED(hr)) host->ReportMessage(2, CComBSTR(L"export-failed"), CComBSTR(L"ExportHTML failed"));
+	return hr;
+}
+
 HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 {
 	InitExportHtmlRuntimeStrings();
