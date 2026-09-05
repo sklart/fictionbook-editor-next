@@ -8857,6 +8857,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 }
 void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 {
+	const VIEW_TYPE activeView = m_current_view;
 	CWaitCursor hourglass;
 	LONG visible = false;
 
@@ -8958,6 +8959,9 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	_Settings.SaveHotkeyGroups();
 	_Settings.Save();
 	_Settings.SaveWords();
+	// Rebuilding source-editor styles must not replace the active visual editor.
+	if(activeView == BODY && m_doc)
+		m_view.ActivateWnd(m_doc->m_body);
 
 	
 
