@@ -66,3 +66,13 @@ Thumbs.db
 PVS-Studio.stacktrace.txt
 fbe-trace-*.log
 FBE-Diagnostics-*.zip
+
+# Local ABI harness and CI diagnostics; authoritative logs live under /out/.
+/plugin-v2-fixture.exp
+/plugin-v2-fixture.lib
+/ci-current.log
+/ci-failure.log
+/ci-latest.log
+
+# ExportHTML native intermediate output is generated outside source control.
+/src/export-html/build/

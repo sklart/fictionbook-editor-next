@@ -19,6 +19,7 @@ $rcPath = Join-Path $repoRoot "src\import-epub\ImportEPUB.rc"
 $cppPath = Join-Path $repoRoot "src\import-epub\ImportOptionsDialog.cpp"
 $pluginCppPath = Join-Path $repoRoot "src\import-epub\ImportEPUBPlugin.cpp"
 $generatedRcPath = Join-Path $repoRoot "src\import-epub\ImportEPUBStrings.generated.rc2"
+$projectPath = Join-Path $repoRoot "src\import-epub\ImportEPUB.vcxproj"
 
 $rc = Get-Content -Raw -LiteralPath $rcPath
 $cpp = Get-Content -Raw -LiteralPath $cppPath
@@ -28,6 +29,17 @@ if (-not (Test-Path -LiteralPath $generatedRcPath)) {
 }
 $generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\plugin-ui\catalog.json")
+$project = Get-Content -Raw -LiteralPath $projectPath
+
+if ($project -match '<PreBuildEvent>') {
+    throw 'ImportEPUB resource generation must not be an unconditional PreBuildEvent.'
+}
+if ($project -notmatch 'Target Name="GenerateImportEpubLocalizedResources"' -or
+    $project -notmatch 'BeforeTargets="ResourceCompile"' -or
+    $project -notmatch 'Inputs="[^"]*catalog\.json;[^"]*update-import-epub-resource-strings\.ps1"' -or
+    $project -notmatch 'Outputs="[^"]*ImportEPUBStrings\.generated\.rc2"') {
+    throw 'ImportEPUB resource generation must declare one incremental MSBuild producer with explicit inputs and output.'
+}
 
 if ($pluginCpp -match 'FILEDLG_OPEN_BUTTON|filedlg_open_button') { throw "Старая подпись кнопки Import EPUB ещё используется." }
 if ($pluginCpp -notmatch 'request\.okButtonLabel\s*=\s*LoadPluginString\(IDS_IMPORT_PLUGIN_FILEDLG_IMPORT_BUTTON') {

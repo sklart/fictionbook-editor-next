@@ -3,6 +3,17 @@
 Этот документ отделяет проведённые проверки от непроведённых. Он не заменяет
 release notes и должен обновляться при новом authoritative прогоне.
 
+## Последующие исправления аудита
+
+После `0b62e29e` изолирован FULL-сценарий отказа сохранения: он запускает
+portable-копию FBE в `out/tests` и не использует пользовательские HKCU
+настройки или регистрацию COM. Также удалены tracked локальные результаты
+сборки, а ABI fixture направляет OBJ/PDB/LIB/EXP в `out/tests`. Эти точечные
+скрипты и contract-проверка общего API выполнены локально. Генерация
+ImportEPUB resources переведена с unconditional PreBuildEvent на
+инкрементальную MSBuild-цель с явными входами/выходом; экспортные потребители
+получают общий COM API только от `FBEContracts`.
+
 ## Подтверждено локально
 
 - Evaluated MSBuild policy: собственные проекты используют `v143`, а прямые
@@ -38,6 +49,21 @@ FAST- и полный `-FullValidation` контуры: подтверждены
 COM/ABI, PCRE2, plugins, portable/NSIS-контракты, Huge structural tables,
 fail-closed Save, image/EPUB/HTML E2E и Win7 import gate. Полная проверка
 завершилась успешной проверкой релиза 3.0.8.
+
+После замечаний аудита повторно выполнены `test-fbe-table-failure-safety.ps1`
+для обоих fault-вариантов, `test-fbe-contract-generation.ps1`,
+`test-first-party-msbuild-policy.ps1`, `test-import-epub-localization-resources.ps1`,
+`test-release-test-catalog.ps1` и `test-no-tracked-local-build-artifacts.ps1`.
+Новый FULL запуск `verify-release.ps1 -Configuration Release -FullValidation`
+завершился успешно; его stdout/stderr сохранены в
+`out/tests/audit-verify-full.log` и `out/tests/audit-verify-full.err.log`.
+Повторный штатный `build.ps1` завершился с валидным CommonCore provenance
+(`out/tests/audit-repeat-build.log`): ImportEPUB выполнялся через `Build` и
+не запускал повторную компиляцию плагина. Полный clean/parallel прогон после
+последней правки графа ImportEPUB подтверждён также MSBuild
+`FBE.sln /m /t:Rebuild` (журнал `out/tests/audit-clean-solution.log`);
+после него contract generation и политика отсутствия tracked локальных
+артефактов прошли повторно.
 
 После полной проверки штатный `create-release.ps1` сформировал и проверил
 актуальные `FictionBookEditorNext-3.0.8-win32-portable.zip`, setup.exe,

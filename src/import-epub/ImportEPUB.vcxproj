@@ -82,9 +82,6 @@
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
-    <PreBuildEvent>
-      <Command>pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\tools\localization\update-import-epub-resource-strings.ps1" -Quiet</Command>
-    </PreBuildEvent>
     <Link>
       <AdditionalDependencies>comdlg32.lib;comctl32.lib;ole32.lib;oleaut32.lib;uuid.lib;rpcrt4.lib;shlwapi.lib;shell32.lib;gdiplus.lib;comsuppwd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
@@ -116,9 +113,6 @@
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
-    <PreBuildEvent>
-      <Command>pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\tools\localization\update-import-epub-resource-strings.ps1" -Quiet</Command>
-    </PreBuildEvent>
     <Link>
       <AdditionalDependencies>comdlg32.lib;comctl32.lib;ole32.lib;oleaut32.lib;uuid.lib;rpcrt4.lib;shlwapi.lib;shell32.lib;gdiplus.lib;comsuppw.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
@@ -221,4 +215,13 @@
   <ItemGroup>
     <None Include="PVS_STUDIO_NOTES.txt" />
   </ItemGroup>
+
+  <!-- The generated RC2 is a ResourceCompile input.  Declaring its producer here
+       avoids a project-wide pre-build action and makes parallel/no-op builds safe. -->
+  <Target Name="GenerateImportEpubLocalizedResources"
+          BeforeTargets="ResourceCompile"
+          Inputs="$(MSBuildProjectDirectory)\..\..\localization\plugin-ui\catalog.json;$(MSBuildProjectDirectory)\..\..\tools\localization\update-import-epub-resource-strings.ps1"
+          Outputs="$(MSBuildProjectDirectory)\ImportEPUBStrings.generated.rc2">
+    <Exec Command="pwsh.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\tools\localization\update-import-epub-resource-strings.ps1&quot; -CatalogPath &quot;$(MSBuildProjectDirectory)\..\..\localization\plugin-ui\catalog.json&quot; -OutputPath &quot;$(MSBuildProjectDirectory)\ImportEPUBStrings.generated.rc2&quot; -Quiet" />
+  </Target>
 </Project>

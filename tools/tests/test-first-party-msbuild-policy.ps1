@@ -59,13 +59,19 @@ foreach ($case in @(
     @{ Project = 'src\export-epub\ExportEPUBBatch.vcxproj'; Configuration = 'Release'; Platform = 'x64' },
     @{ Project = 'src\import-epub\ImportEPUBLunaSVG.vcxproj'; Configuration = 'Release'; Platform = 'Win32' }
 )) {
-    $output = & $msbuild (Join-Path $repoRoot $case.Project) "/p:Configuration=$($case.Configuration)" "/p:Platform=$($case.Platform)" '/getProperty:PlatformToolset;FbeRepoRoot;SolutionDir' /nologo
+    $output = & $msbuild (Join-Path $repoRoot $case.Project) "/p:Configuration=$($case.Configuration)" "/p:Platform=$($case.Platform)" '/getProperty:PlatformToolset;VCToolsVersion;VCToolsInstallDir;FbeRepoRoot;SolutionDir' /nologo
     if ($LASTEXITCODE -ne 0) {
         throw "MSBuild property evaluation failed: $($case.Project)"
     }
     $properties = (($output -join "`n") | ConvertFrom-Json).Properties
     if ($properties.PlatformToolset -ne 'v143') {
         throw "Unexpected toolset for $($case.Project): $($properties.PlatformToolset)"
+    }
+    if ([string]::IsNullOrWhiteSpace($properties.VCToolsVersion) -or -not $properties.VCToolsVersion.StartsWith('14.44')) {
+        throw "Universal Win7 build must evaluate VC Tools 14.44 for $($case.Project): $($properties.VCToolsVersion)"
+    }
+    if ([string]::IsNullOrWhiteSpace($properties.VCToolsInstallDir) -or -not (Test-Path -LiteralPath (Join-Path $properties.VCToolsInstallDir 'bin') -PathType Container)) {
+        throw "MSBuild did not resolve an installed VC compiler directory for $($case.Project): $($properties.VCToolsInstallDir)"
     }
     if ($properties.FbeRepoRoot.TrimEnd('\') -ne $repoRoot.TrimEnd('\')) {
         throw "Unexpected repository root for $($case.Project): $($properties.FbeRepoRoot)"

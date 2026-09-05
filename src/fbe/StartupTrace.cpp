@@ -565,7 +565,7 @@ void WriteEnvironmentHeader()
 	bool IsTraceEnabled(const wchar_t* variable) { wchar_t value[8] = {}; DWORD n = ::GetEnvironmentVariable(variable, value, _countof(value)); return n && n < _countof(value) && !(n == 1 && value[0] == L'0'); }
 }
 
-bool StartupTrace::IsEnabledForNextLaunch() { bool enabled = false; return TryGetNextLaunchPreference(enabled) ? enabled : IsTraceEnabled(L"FBE_NEXT_TRACE"); }
+bool StartupTrace::IsEnabledForNextLaunch() { bool enabled = false; return IsTraceEnabled(L"FBE_NEXT_TRACE") || (TryGetNextLaunchPreference(enabled) && enabled); }
 bool StartupTrace::IsEnabledByStoredNextLaunchPreference() { bool enabled = false; return TryGetNextLaunchPreference(enabled) && enabled; }
 bool StartupTrace::SetEnabledForNextLaunch(bool enabled) { if (!DeploymentContext::RegistryPersistenceAllowed()) { const CString marker = CString(DeploymentContext::DataRoot().c_str()) + L"portable.ini"; return ::WritePrivateProfileString(L"Diagnostics", L"TraceNextLaunch", enabled ? L"1" : L"0", marker) != FALSE; } HKEY key = NULL; if (::RegCreateKeyEx(HKEY_CURRENT_USER, diagnosticTraceRegistryPath, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &key, NULL) != ERROR_SUCCESS) return false; DWORD value = enabled ? 1 : 0; LONG result = ::RegSetValueEx(key, diagnosticTraceRegistryValue, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value)); ::RegCloseKey(key); return result == ERROR_SUCCESS; }
 

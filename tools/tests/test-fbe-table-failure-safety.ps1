@@ -14,19 +14,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-failure-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$directory = Join-Path $repositoryRoot ('out\tests\fbe table failure ' + [guid]::NewGuid().ToString('N'))
+$runtime = Join-Path $directory 'runtime'
 $fixture = Join-Path $directory 'table.fb2'
 $report = Join-Path $directory 'report.tsv'
-$traceDirectories = @((Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics'), (Join-Path $env:TEMP 'FBE Next Diagnostics'))
-$traceRegistryPath = 'HKCU:\Software\FBETeam\FictionBook Editor Next\Diagnostics'
-$traceRegistryValue = 'TraceNextLaunch'
-$previousTraceRegistryValue = $null
-$hadTraceRegistryValue = $false
-if(Test-Path -LiteralPath $traceRegistryPath) {
-    $existing = Get-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -ErrorAction SilentlyContinue
-    if($null -ne $existing) { $hadTraceRegistryValue = $true; $previousTraceRegistryValue = [int]$existing.$traceRegistryValue }
-}
+$portableIni = Join-Path $runtime 'portable.ini'
+$traceDirectories = @(Join-Path $runtime 'Data\Diagnostics')
 
 Add-Type @"
 using System;
@@ -63,19 +57,23 @@ function Get-TraceForProcess([int]$ProcessId, [datetime]$NotBefore) {
 }
 
 try {
+    # Never use installed mode here: --installed would involve the developer's
+    # per-user settings and registry.  A complete copy gives FBE a private
+    # executable/Data root and also exercises paths containing spaces.
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $runtime -Recurse -Force
+    "[Portable]`r`nDataPath=Data`r`n`r`n[Diagnostics]`r`nTraceNextLaunch=1`r`n" |
+        Set-Content -LiteralPath $portableIni -Encoding utf8NoBOM
 @'
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>fault</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>fault-table-test</id><version>1.0</version></document-info></description><body><section><table id="fault-table"><tr><td>one</td><td>two</td></tr><tr><td>three</td><td>four</td></tr></table></section></body></FictionBook>
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
     $originalHash = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
     $started = Get-Date
-    New-Item -Path $traceRegistryPath -Force | Out-Null
-    New-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -PropertyType DWord -Value 1 -Force | Out-Null
-    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_FAULT_INJECT = $Fault
-    # out\\Release can also contain portable.ini after packaging tests.  This
-    # scenario stores its one-launch trace preference in HKCU, so pin the
-    # tested process to installed mode instead of inheriting that marker.
-    $process = Start-Process -FilePath $FbeExe -ArgumentList @('--installed', '-s', '-b', $report, $fixture) -PassThru
+    $previousTrace = $env:FBE_NEXT_TRACE
+    $env:FBE_NEXT_TRACE = '1'; $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_FAULT_INJECT = $Fault
+    $process = Start-Process -FilePath (Join-Path $runtime 'FBE.exe') -WorkingDirectory $runtime `
+        -ArgumentList @('-s', '-b', ('"{0}"' -f $report), ('"{0}"' -f $fixture)) -PassThru
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do { Start-Sleep -Milliseconds 200; [TableSafetyDialogCloser]::Dismiss($process.Id); $process.Refresh() } while(-not $process.HasExited -and (Get-Date) -lt $deadline)
     if(-not $process.HasExited) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил test-only table safety pipeline.' }
@@ -94,11 +92,7 @@ try {
 }
 finally {
     Remove-Item Env:FBE_NEXT_TEST_MODE,Env:FBE_NEXT_FAULT_INJECT -ErrorAction SilentlyContinue
-    if($hadTraceRegistryValue) {
-        New-Item -Path $traceRegistryPath -Force | Out-Null
-        New-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -PropertyType DWord -Value $previousTraceRegistryValue -Force | Out-Null
-    } else {
-        Remove-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -ErrorAction SilentlyContinue
-    }
-    Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+    if ($null -eq $previousTrace) { Remove-Item Env:FBE_NEXT_TRACE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TRACE = $previousTrace }
+    # Keep this isolated directory for failed-run diagnostics; it never holds
+    # user state and is covered by /out/ in .gitignore.
 }

@@ -15,7 +15,11 @@ foreach ($path in @($contractProject, $contractIdl)) {
         throw "FBE contract input is missing: $path"
     }
 }
-foreach ($obsoletePath in @('src\fbe\fbe.idl', 'src\fbe\FBE.h', 'src\fbe\FBE_i.c', 'src\fbe\FBE.tlb')) {
+foreach ($obsoletePath in @(
+    'src\fbe\fbe.idl', 'src\fbe\FBE.h', 'src\fbe\FBE_i.c', 'src\fbe\FBE.tlb',
+    'src\export-docx\fbe.h', 'src\export-docx\fbe_i.c',
+    'src\export-epub\fbe.h', 'src\export-epub\fbe_i.c'
+)) {
     if (Test-Path -LiteralPath (Join-Path $repoRoot $obsoletePath)) {
         throw "Generated FBE contract artifact remains in a product source directory: $obsoletePath"
     }
@@ -27,13 +31,20 @@ foreach ($needle in @('Midl Include="fbe.idl"', '$(FbeApiOutputDirectory)FBE.h',
         throw "FBEContracts project does not declare expected generated output: $needle"
     }
 }
-foreach ($consumer in @('src\fbe\FBE.vcxproj', 'src\import-epub\ImportEPUB.vcxproj', 'src\import-epub\ImportEPUBBatch.vcxproj')) {
+foreach ($consumer in @('src\fbe\FBE.vcxproj', 'src\import-epub\ImportEPUB.vcxproj', 'src\import-epub\ImportEPUBBatch.vcxproj', 'src\export-html\ExportHTML.vcxproj', 'src\export-docx\ExportDOCX.vcxproj', 'src\export-epub\ExportEPUB.vcxproj')) {
     $consumerText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $consumer)
     if (-not $consumerText.Contains('{A6F27D46-6116-4A85-A1E5-8C68E79E5B4D}')) {
         throw "Contract consumer does not reference FBEContracts: $consumer"
     }
     if (-not $consumerText.Contains('$(FbeApiOutputDirectory)')) {
         throw "Contract consumer does not include the generated API directory: $consumer"
+    }
+}
+
+foreach ($producer in @('src\export-html\ExportHTML.vcxproj', 'src\export-docx\ExportDOCX.vcxproj', 'src\export-epub\ExportEPUB.vcxproj')) {
+    $producerText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $producer)
+    if ($producerText.Contains('Midl Include="..\contracts\fbe.idl"')) {
+        throw "Contract consumer independently generates fbe.idl: $producer"
     }
 }
 

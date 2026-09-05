@@ -111,6 +111,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-resource-id-safety.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
+& (Join-Path $repoRoot "tools\tests\test-no-tracked-local-build-artifacts.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-line-number-margin.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-updateui-notification.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-scintilla-modern-features.ps1")

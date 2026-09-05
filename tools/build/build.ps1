@@ -282,10 +282,11 @@ if ($LASTEXITCODE -ne 0) {
 
 Assert-PreparedDependencies
 
-# ImportEPUB is built by the solution, but its generated resource input can
-# race with the parallel build graph.  A serial final rebuild makes the DLL
-# consumed by the COM/version verifier deterministic.
-Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot "src\import-epub\ImportEPUB.vcxproj") -Rebuild
+# ImportEPUB owns its localized resource input through an incremental
+# ResourceCompile target and is built by the solution graph.  Do not rebuild it here: that
+# obscures dependency mistakes and defeats a no-op build.  The explicit
+# -ForceRebuildRequiredProjects diagnostic mode remains available.
+Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot "src\import-epub\ImportEPUB.vcxproj")
 
 # Эти проекты не входят в FBE.sln. Остальные результаты даёт единственный
 # solution Build; повторный Rebuild доступен только локально по явному ключу.
