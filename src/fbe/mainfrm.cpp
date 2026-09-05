@@ -3836,6 +3836,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		CStringA header("phase\tkind\tid\tcustom_path\tlayout\tcolor_bg\r\n"); DWORD written = 0;
 		output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		auto marker = [&](const char* phase) { CStringA row; row.Format("%s\t\t\t\t\t\r\n", phase); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); };
+		marker("scenario-entered");
 		auto fromEnvironment = [](const wchar_t* name) -> CString { wchar_t value[1024] = {}; const DWORD length = ::GetEnvironmentVariable(name, value, _countof(value)); return length && length < _countof(value) ? CString(value) : CString(); };
 		auto append = [&](const char* phase) {
 			CStringA kind(CW2A(_Settings.GetEditorBackgroundKind(), CP_UTF8)), id(CW2A(_Settings.GetEditorBackgroundId(), CP_UTF8));
@@ -3843,15 +3845,15 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			row.Format("%s\t%s\t%s\t%s\t%s\t%lu\r\n", phase, kind.GetString(), id.GetString(), custom.GetString(), layout.GetString(), static_cast<unsigned long>(_Settings.GetColorBG()));
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
-		append("loaded");
-		if(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_SEED") == L"1") { _Settings.Save(); _Settings.Load(); append("seeded"); }
+		marker("settings-loaded"); marker("report-opened"); append("loaded"); marker("initial-row-written");
+		const bool seed = fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_SEED") == L"1";
 		const CString kind = fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_KIND");
 		if(!kind.IsEmpty()) {
 			_Settings.SetEditorBackgroundKind(kind); _Settings.SetEditorBackgroundId(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_ID"));
 			_Settings.SetEditorBackgroundCustomPath(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_PATH")); _Settings.SetEditorBackgroundLayout(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_LAYOUT"));
-			_Settings.Save(); _Settings.Load(); append("roundtrip");
 		}
-		output.Close(); PostMessage(WM_CLOSE); return 0;
+		if(seed || !kind.IsEmpty()) { marker("before-settings-save"); _Settings.Save(); marker("after-settings-save"); append(seed ? "seeded" : "saved"); marker(seed ? "seeded-row-written" : "saved-row-written"); }
+		marker("before-close"); marker("close-requested"); output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{
