@@ -32,6 +32,7 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_backgroundImage = GetDlgItem(IDC_EDITOR_BACKGROUND_IMAGE);
 	m_backgroundLayout = GetDlgItem(IDC_EDITOR_BACKGROUND_LAYOUT);
 	m_backgroundPreview = GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW);
+	m_backgroundPreviewText = GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW_TEXT);
 	m_customBackgroundPath = _Settings.GetEditorBackgroundCustomPath();
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_fonts, L"fbe.settings.tooltip.editor.font", L"Font used in the visual editor.");
@@ -42,6 +43,7 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_backgroundImage, L"fbe.settings.tooltip.editor.background_image", L"An optional local image used behind the editor text.");
 	m_tooltips.Add(m_backgroundLayout, L"fbe.settings.tooltip.editor.background_layout", L"How the selected background image is placed.");
 	m_tooltips.Add(m_backgroundPreview, L"fbe.settings.tooltip.editor.background_preview", L"Preview of the selected editor background.");
+	m_tooltips.Add(m_backgroundPreviewText, L"fbe.settings.tooltip.editor.background_preview", L"Preview of the selected editor background.");
 	m_background.SetDefaultColor(::GetSysColor(COLOR_WINDOW));
 	m_foreground.SetDefaultColor(::GetSysColor(COLOR_WINDOWTEXT));
 	m_background.SetColor(_Settings.GetColorBG());
@@ -163,6 +165,12 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	if(!path.IsEmpty()) { CImage image; if(SUCCEEDED(image.Load(path))) bitmap = image.Detach(); }
 	HBITMAP old = m_backgroundPreview.SetBitmap(bitmap);
 	if(old) ::DeleteObject(old);
+	CString imageName, layoutName;
+	if(index >= 0) m_backgroundImage.GetLBText(index, imageName);
+	const int layout = m_backgroundLayout.GetCurSel(); if(layout >= 0) m_backgroundLayout.GetLBText(layout, layoutName);
+	CString summary;
+	summary.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_summary", L"Background: %s\r\nLayout: %s"), imageName.GetString(), layoutName.GetString());
+	m_backgroundPreviewText.SetWindowText(summary);
 }
 
 LRESULT CSettingsEditorPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }

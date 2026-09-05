@@ -17,6 +17,7 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 	CComboBox m_backgroundImage;
 	CComboBox m_backgroundLayout;
 	CStatic m_backgroundPreview;
+	CStatic m_backgroundPreviewText;
 	std::vector<EditorBackgroundDescriptor> m_builtInBackgrounds;
 	CString m_customBackgroundPath;
 	CSettingsTooltips m_tooltips;
@@ -29,6 +30,7 @@ public:
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_BROWSE, BN_CLICKED, OnBrowseBackground)
 		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_IMAGE, CBN_SELCHANGE, OnBackgroundSelectionChanged)
+		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_LAYOUT, CBN_SELCHANGE, OnBackgroundSelectionChanged)
 		REFLECT_NOTIFICATIONS()
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsEditorPage>)
 	END_MSG_MAP()
