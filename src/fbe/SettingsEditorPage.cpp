@@ -31,8 +31,7 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_nbspCharacter = GetDlgItem(IDC_NBSP_CHAR);
 	m_backgroundImage = GetDlgItem(IDC_EDITOR_BACKGROUND_IMAGE);
 	m_backgroundLayout = GetDlgItem(IDC_EDITOR_BACKGROUND_LAYOUT);
-	m_backgroundPreview = GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW);
-	m_backgroundPreviewText = GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW_TEXT);
+	m_backgroundPreview.SubclassWindow(GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW));
 	m_customBackgroundPath = _Settings.GetEditorBackgroundCustomPath();
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_fonts, L"fbe.settings.tooltip.editor.font", L"Font used in the visual editor.");
@@ -43,7 +42,6 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_backgroundImage, L"fbe.settings.tooltip.editor.background_image", L"An optional local image used behind the editor text.");
 	m_tooltips.Add(m_backgroundLayout, L"fbe.settings.tooltip.editor.background_layout", L"How the selected background image is placed.");
 	m_tooltips.Add(m_backgroundPreview, L"fbe.settings.tooltip.editor.background_preview", L"Preview of the selected editor background.");
-	m_tooltips.Add(m_backgroundPreviewText, L"fbe.settings.tooltip.editor.background_preview", L"Preview of the selected editor background.");
 	m_background.SetDefaultColor(::GetSysColor(COLOR_WINDOW));
 	m_foreground.SetDefaultColor(::GetSysColor(COLOR_WINDOWTEXT));
 	m_background.SetColor(_Settings.GetColorBG());
@@ -155,6 +153,7 @@ LRESULT CSettingsEditorPage::OnBrowseBackground(WORD, WORD, HWND, BOOL&)
 }
 
 LRESULT CSettingsEditorPage::OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
+LRESULT CSettingsEditorPage::OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
 
 void CSettingsEditorPage::UpdateBackgroundPreview()
 {
@@ -163,14 +162,34 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	else if(index == static_cast<int>(m_builtInBackgrounds.size() + 1) && EditorBackgrounds::IsSupportedLocalImage(m_customBackgroundPath)) path = m_customBackgroundPath;
 	HBITMAP bitmap = NULL;
 	if(!path.IsEmpty()) { CImage image; if(SUCCEEDED(image.Load(path))) bitmap = image.Detach(); }
-	HBITMAP old = m_backgroundPreview.SetBitmap(bitmap);
-	if(old) ::DeleteObject(old);
-	CString imageName, layoutName;
-	if(index >= 0) m_backgroundImage.GetLBText(index, imageName);
-	const int layout = m_backgroundLayout.GetCurSel(); if(layout >= 0) m_backgroundLayout.GetLBText(layout, layoutName);
-	CString summary;
-	summary.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_summary", L"Background: %s\r\nLayout: %s"), imageName.GetString(), layoutName.GetString());
-	m_backgroundPreviewText.SetWindowText(summary);
+	CString text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_text", L"Sample editor text\r\nThe quick brown fox.");
+	CString sizeText(U::GetWindowText(m_fontSize)); int size = 12; _stscanf(sizeText, L"%d", &size);
+	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, m_foreground.GetColor(), m_background.GetColor(), text);
+}
+
+void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground, COLORREF background, const CString& text)
+{
+	if(m_bitmap) ::DeleteObject(m_bitmap); m_bitmap = bitmap;
+	if(m_font) ::DeleteObject(m_font); m_font = ::CreateFont(-::MulDiv(size, 96, 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, face);
+	m_foreground = foreground; m_background = background; m_text = text; Invalidate();
+}
+
+LRESULT CEditorBackgroundPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
+{
+	CPaintDC dc(m_hWnd); RECT rc; GetClientRect(&rc);
+	HBRUSH brush = m_bitmap ? ::CreatePatternBrush(m_bitmap) : ::CreateSolidBrush(m_background);
+	::FillRect(dc, &rc, brush); ::DeleteObject(brush);
+	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, m_foreground);
+	HFONT old = m_font ? static_cast<HFONT>(::SelectObject(dc, m_font)) : NULL;
+	RECT text = rc; ::InflateRect(&text, -6, -3); ::DrawText(dc, m_text, -1, &text, DT_LEFT | DT_VCENTER | DT_WORDBREAK);
+	if(old) ::SelectObject(dc, old); ::FrameRect(dc, &rc, static_cast<HBRUSH>(::GetStockObject(GRAY_BRUSH))); return 0;
+}
+
+LRESULT CEditorBackgroundPreview::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
+{
+	if(m_bitmap) { ::DeleteObject(m_bitmap); m_bitmap = NULL; }
+	if(m_font) { ::DeleteObject(m_font); m_font = NULL; }
+	return 0;
 }
 
 LRESULT CSettingsEditorPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
