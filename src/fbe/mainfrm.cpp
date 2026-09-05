@@ -3834,16 +3834,17 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"editor-background-settings"))
 	{
-		CStringA header("phase\tkind\tid\tcustom_path\tlayout\r\n"); DWORD written = 0;
+		CStringA header("phase\tkind\tid\tcustom_path\tlayout\tcolor_bg\r\n"); DWORD written = 0;
 		output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto fromEnvironment = [](const wchar_t* name) -> CString { wchar_t value[1024] = {}; const DWORD length = ::GetEnvironmentVariable(name, value, _countof(value)); return length && length < _countof(value) ? CString(value) : CString(); };
 		auto append = [&](const char* phase) {
 			CStringA kind(CW2A(_Settings.GetEditorBackgroundKind(), CP_UTF8)), id(CW2A(_Settings.GetEditorBackgroundId(), CP_UTF8));
 			CStringA custom(CW2A(_Settings.GetEditorBackgroundCustomPath(), CP_UTF8)), layout(CW2A(_Settings.GetEditorBackgroundLayout(), CP_UTF8)), row;
-			row.Format("%s\t%s\t%s\t%s\t%s\r\n", phase, kind.GetString(), id.GetString(), custom.GetString(), layout.GetString());
+			row.Format("%s\t%s\t%s\t%s\t%s\t%lu\r\n", phase, kind.GetString(), id.GetString(), custom.GetString(), layout.GetString(), static_cast<unsigned long>(_Settings.GetColorBG()));
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
 		append("loaded");
+		if(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_SEED") == L"1") { _Settings.Save(); _Settings.Load(); append("seeded"); }
 		const CString kind = fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_KIND");
 		if(!kind.IsEmpty()) {
 			_Settings.SetEditorBackgroundKind(kind); _Settings.SetEditorBackgroundId(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_ID"));
