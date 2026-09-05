@@ -3868,7 +3868,11 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			_Settings.SetEditorBackgroundCustomPath(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_PATH")); _Settings.SetEditorBackgroundLayout(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_LAYOUT"));
 		}
 		if(seed || !kind.IsEmpty()) { marker("before-settings-save"); _Settings.Save(); marker("after-settings-save"); append(seed ? "seeded" : "saved"); marker(seed ? "seeded-row-written" : "saved-row-written"); }
-		marker("before-close"); marker("close-requested"); output.Close(); PostMessage(WM_CLOSE); return 0;
+		marker("before-close"); marker("close-requested"); output.Close();
+		// This is a self-contained test-only path.  Settings are already saved;
+		// quitting the loop directly avoids a modal close path in an unattended
+		// GUI session after the deterministic completion report was written.
+		::PostQuitMessage(0); return 0;
 	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{

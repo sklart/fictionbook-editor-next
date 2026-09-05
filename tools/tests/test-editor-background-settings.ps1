@@ -11,8 +11,22 @@ function Invoke-Fbe([string]$Name, [hashtable]$Environment) {
     try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='editor-background-settings'
         $p=Start-Process -FilePath $portableExe -ArgumentList @('-b',$report,'--portable',$fixture) -WorkingDirectory $portable -PassThru
-        if(-not $p.WaitForExit($TimeoutSeconds*1000)) { Stop-Process -Id $p.Id -Force; throw "$Name timed out." }
-        if($p.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "$Name did not produce a report." }
+        $watch=[Diagnostics.Stopwatch]::StartNew(); $completionObserved=$false; $completionGraceMilliseconds=10000; $reportText=''
+        while($true) {
+            if(Test-Path -LiteralPath $report) { $reportText=Get-Content -LiteralPath $report -Raw -ErrorAction SilentlyContinue; if($reportText -match '(?m)^close-requested\t') { $completionObserved=$true } }
+            $p.Refresh()
+            if($p.HasExited) { break }
+            if($completionObserved -and $watch.ElapsedMilliseconds -ge $completionGraceMilliseconds) {
+                Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+                throw "$Name completed its test-only report but did not exit within $completionGraceMilliseconds ms. Artifacts: $root; report: $reportText"
+            }
+            if($watch.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
+                Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+                throw "$Name timed out before test-only completion. Artifacts: $root; report: $reportText"
+            }
+            Start-Sleep -Milliseconds 100
+        }
+        if($p.ExitCode -ne 0 -or -not $completionObserved) { throw "$Name exited without a test-only completion report. Artifacts: $root; exit=$($p.ExitCode); report: $reportText" }
         return @(Import-Csv -LiteralPath $report -Delimiter "`t")
     } finally { foreach($key in $Environment.Keys) { [Environment]::SetEnvironmentVariable($key,$old[$key],'Process') }; $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
 }

@@ -108,6 +108,7 @@ $requiredSymbols = @(
 
 & (Join-Path $repoRoot "tools\tests\test-update-manifest-candidate.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-test-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-release-test-catalog-table-matrix.ps1")
 & (Join-Path $repoRoot "tools\tests\test-build-provenance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-resource-id-safety.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-safety.ps1")
@@ -121,6 +122,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fb2-common-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-first-party-msbuild-policy.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-contract-generation.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot "tools\tests\test-export-plugin-x64-rejection.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-fbe-plugin-host-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-source-helpers-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-search-boundary.ps1")

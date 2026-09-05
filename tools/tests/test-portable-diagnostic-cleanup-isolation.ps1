@@ -1,5 +1,5 @@
-<# Exercises real portable trace retention and explicit cleanup without touching
-   the user's diagnostic sessions. #>
+<# Exercises real portable trace retention and explicit cleanup while verifying
+   that the existing user diagnostics tree remains byte-for-byte unchanged. #>
 [CmdletBinding()]
 param([string]$FbeExecutable)
 
@@ -11,17 +11,12 @@ $sourceDirectory = Split-Path -Parent $FbeExecutable
 $testRoot = Join-Path $root 'out\tests\portable-diagnostic-cleanup-isolation'
 $portableDiagnostics = Join-Path $testRoot 'Data\Diagnostics'
 $userDiagnostics = Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics'
-$token = Get-Random -Minimum 100000000 -Maximum 999999999
-$userFiles = @(
-    (Join-Path $userDiagnostics "fbe-trace-20000101-000001-001-pid$token.log")
-    (Join-Path $userDiagnostics "fbe-trace-20000101-000002-002-pid$($token + 1).log")
-)
-$userDirectoryExisted = Test-Path -LiteralPath $userDiagnostics -PathType Container
 
-function Get-FileHashSnapshot([string]$Path) {
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '<absent>' }
-    $item = Get-Item -LiteralPath $Path
-    return "$($item.Length)|$((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash)"
+function Get-FileTreeSnapshot([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) { return '<absent>' }
+    return (Get-ChildItem -LiteralPath $Path -Recurse -File | Sort-Object FullName | ForEach-Object {
+        "$($_.FullName)|$($_.Length)|$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash)"
+    }) -join "`n"
 }
 
 try {
@@ -38,10 +33,9 @@ try {
         Set-Content -LiteralPath (Join-Path $portableDiagnostics $name) -Value "portable-session-$number" -Encoding ascii
     }
 
-    New-Item -ItemType Directory -Force -Path $userDiagnostics | Out-Null
-    Set-Content -LiteralPath $userFiles[0] -Value "user-session-one-$token" -Encoding ascii
-    Set-Content -LiteralPath $userFiles[1] -Value "user-session-two-$token" -Encoding ascii
-    $userBefore = @{}; foreach ($path in $userFiles) { $userBefore[$path] = Get-FileHashSnapshot $path }
+    # Local FULL runs never seed or create user diagnostics.  The complete
+    # existing tree is compared after the real portable cleanup scenario.
+    $userBefore = Get-FileTreeSnapshot $userDiagnostics
 
     $oldMode, $oldScenario, $oldTrace = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE
     try {
@@ -57,14 +51,8 @@ try {
     if ($report -notmatch '(?m)^portable=1$' -or $report -notmatch '(?m)^result=pass$') { throw "Portable diagnostic cleanup failed:`n$report" }
     if ((Get-ChildItem -LiteralPath $portableDiagnostics -Filter 'fbe-trace-20200101-*.log' -File).Count -ne 0) { throw 'Completed portable diagnostic sessions were not removed.' }
     if ((Get-ChildItem -LiteralPath $portableDiagnostics -Filter 'fbe-trace-*.log' -File).Count -ne 1) { throw 'Portable cleanup did not preserve exactly the active trace session.' }
-    foreach ($path in $userFiles) {
-        if ((Get-FileHashSnapshot $path) -cne $userBefore[$path]) { throw "Portable cleanup changed user diagnostic trace: $path" }
-    }
+    if ((Get-FileTreeSnapshot $userDiagnostics) -cne $userBefore) { throw 'Portable cleanup changed user diagnostic traces.' }
     Write-Host 'Portable diagnostic cleanup isolation behavior passed.'
 }
 finally {
-    foreach ($path in $userFiles) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
-    if (-not $userDirectoryExisted -and (Test-Path -LiteralPath $userDiagnostics -PathType Container) -and -not (Get-ChildItem -LiteralPath $userDiagnostics -Force | Select-Object -First 1)) {
-        Remove-Item -LiteralPath $userDiagnostics -Force -ErrorAction SilentlyContinue
-    }
 }

@@ -34,7 +34,7 @@
 | HTML-плагин | `src/export-html/ExportHTML.vcxproj` | контракт FBE и экспортный COM-плагин | Win32; `Plugins/ExportHTML.dll` |
 | DOCX-плагин | `src/export-docx/ExportDOCX.vcxproj` и Batch-проект | контракт FBE, экспорт | Win32; `Plugins/ExportDOCX.dll` |
 | EPUB-плагин | `src/export-epub/ExportEPUB.vcxproj` и Batch-проект | контракт FBE, экспорт | Win32; `Plugins/ExportEPUB.dll` |
-| EPUB-импорт | `src/import-epub/ImportEPUB.vcxproj`, Batch и LunaSVG adapter | контракт FBE, импорт | Win32/x64; `Plugins/ImportEPUB.dll` |
+| EPUB-импорт | `src/import-epub/ImportEPUB.vcxproj`, Batch и LunaSVG adapter | контракт FBE, импорт | Win32; `Plugins/ImportEPUB.dll` |
 | ArchHandler | `tools/build/build-archhandler.ps1` | вспомогательная shell-интеграция | Win32 output в `out/archhandler` |
 
 Основной solution включает FBE, FBShell, FBV и плагины. Batch-проекты,
