@@ -3,6 +3,8 @@
 #include "stdafx.h"
 #include "ExportDOCXPlugin.h"
 
+#include "..\\version.h"
+
 #include "utils.h"
 #include "RuntimeLocalization.h"
 #include "..\\common\\ModernFileDialog.h"
@@ -15,6 +17,16 @@
 #include <utility>
 
 namespace {
+
+bool IsExportDocxHeadlessTest()
+{
+    wchar_t mode[4] = {};
+    wchar_t scenario[32] = {};
+    return ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) == 1 &&
+        wcscmp(mode, L"1") == 0 &&
+        ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) > 0 &&
+        wcscmp(scenario, L"export-docx") == 0;
+}
 
 CStringW LoadDocxString(UINT stringId, LPCWSTR fallback)
 {
@@ -3581,9 +3593,100 @@ extern "C" __declspec(dllexport) HRESULT WINAPI ExportFB2FileToDOCX(LPCWSTR fb2P
     return result;
 }
 
+STDMETHODIMP CExportDOCXPlugin::GetPluginId(BSTR *value)
+{
+    if (!value) return E_POINTER;
+    *value = ::SysAllocString(L"export-docx");
+    return *value ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CExportDOCXPlugin::GetPluginVersion(BSTR *value)
+{
+    if (!value) return E_POINTER;
+    *value = ::SysAllocString(FBE_VERSION_WSTRING);
+    return *value ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CExportDOCXPlugin::GetApiVersion(ULONG *value)
+{
+    if (!value) return E_POINTER;
+    *value = 2;
+    return S_OK;
+}
+
+STDMETHODIMP CExportDOCXPlugin::GetCapabilities(ULONGLONG *value)
+{
+    if (!value) return E_POINTER;
+    *value = 0;
+    return S_OK;
+}
+
+STDMETHODIMP CExportDOCXPlugin::Export(IFBEPluginHost *host, BSTR filename, IFBEDocumentSnapshot *document)
+{
+    if (!host || !document) return E_INVALIDARG;
+
+    LONGLONG owner = 0;
+    HRESULT hr = host->GetOwnerWindow(&owner);
+    if (FAILED(hr)) return hr;
+
+    CComPtr<IFBECancellationToken> cancellation;
+    hr = host->GetCancellationToken(&cancellation);
+    if (FAILED(hr)) return hr;
+    BOOL cancelled = FALSE;
+    if (cancellation && SUCCEEDED(cancellation->IsCancellationRequested(&cancelled)) && cancelled)
+        return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+
+    CComPtr<IStream> stream;
+    hr = document->OpenXmlStream(&stream);
+    if (FAILED(hr) || !stream) return FAILED(hr) ? hr : E_FAIL;
+
+    IXMLDOMDocument2Ptr source;
+    hr = source.CreateInstance(L"Msxml2.DOMDocument.6.0");
+    if (FAILED(hr) || source == NULL) return FAILED(hr) ? hr : E_FAIL;
+    source->put_async(VARIANT_FALSE);
+    source->put_validateOnParse(VARIANT_FALSE);
+    source->put_resolveExternals(VARIANT_FALSE);
+    VARIANT_BOOL loaded = VARIANT_FALSE;
+    hr = source->load(_variant_t((IUnknown*)stream), &loaded);
+    if (FAILED(hr) || loaded != VARIANT_TRUE) {
+        host->ReportMessage(2, CComBSTR(L"xml-load"), CComBSTR(L"snapshot XML could not be loaded"));
+        return FAILED(hr) ? hr : E_FAIL;
+    }
+
+    CComPtr<IFBEProgressSink> progress;
+    if (SUCCEEDED(host->GetProgressSink(&progress)) && progress)
+        progress->Report(0, 1, CComBSTR(L"exporting"));
+
+    CComPtr<IDispatch> dispatch;
+    hr = source->QueryInterface(IID_PPV_ARGS(&dispatch));
+    if (SUCCEEDED(hr))
+        hr = ExportCore(static_cast<long>(owner), filename, dispatch);
+
+    if (SUCCEEDED(hr)) {
+        if (progress) progress->Report(1, 1, CComBSTR(L"exported"));
+    } else if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
+        host->ReportMessage(2, CComBSTR(L"export-failed"), CComBSTR(L"ExportDOCX failed"));
+    }
+    return hr;
+}
+
 HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 {
+    const HRESULT result = ExportCore(hWnd, filename, doc);
+    return FAILED(result) ? S_FALSE : result;
+}
+
+HRESULT CExportDOCXPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
+{
     InitExportDocxRuntimeStrings();
+
+    if (IsExportDocxHeadlessTest()) {
+        wchar_t value[4] = {};
+        if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_DOCX_FAIL", value, _countof(value)) == 1 && wcscmp(value, L"1") == 0)
+            return E_FAIL;
+        if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_DOCX_CANCEL", value, _countof(value)) == 1 && wcscmp(value, L"1") == 0)
+            return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+    }
 
     HWND hwndParent = static_cast<HWND>(LongToHandle(hWnd));
     try {
@@ -3598,18 +3701,25 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         if (dot >= 0) outName.Delete(dot, outName.GetLength() - dot);
         outName += _T(".docx");
 
+        CString outputPath;
+        if (IsExportDocxHeadlessTest()) {
+            wchar_t testPath[MAX_PATH] = {};
+            if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_DOCX_PATH", testPath, _countof(testPath)) == 0)
+                return E_FAIL;
+            outputPath = testPath;
+        } else {
         CString localizedFilter = LoadExportDocxStringByKey(L"export_docx.runtime.save_file_filter", L"Word document (*.docx)|*.docx|");
         const int separator = localizedFilter.Find(L'|');
         const std::wstring filterCaption((separator >= 0 ? localizedFilter.Left(separator) : localizedFilter).GetString());
         const COMDLG_FILTERSPEC filters[] = { { filterCaption.c_str(), L"*.docx" } };
         CComObject<CDocxFileDialogEvents>* rawEvents = nullptr;
         HRESULT dialogHr = CComObject<CDocxFileDialogEvents>::CreateInstance(&rawEvents);
-        if (FAILED(dialogHr) || !rawEvents) return S_FALSE;
+        if (FAILED(dialogHr) || !rawEvents) return E_FAIL;
         rawEvents->AddRef(); rawEvents->Init(hwndParent, &settings);
         CComPtr<IFileDialogEvents> events;
         dialogHr = rawEvents->QueryInterface(IID_PPV_ARGS(&events));
         rawEvents->Release();
-        if (FAILED(dialogHr)) return S_FALSE;
+        if (FAILED(dialogHr)) return dialogHr;
         ModernFileDialog::Request request;
         request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
         request.defaultExtension = L"docx"; request.initialFileName = outName.GetString();
@@ -3621,23 +3731,27 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
         };
         const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(hwndParent, request);
         if (dialogResult.outcome == ModernFileDialog::Outcome::Cancelled)
-            return S_FALSE;
+            return HRESULT_FROM_WIN32(ERROR_CANCELLED);
         if (dialogResult.outcome == ModernFileDialog::Outcome::Failed) {
             FbeDiagnostic::HResult(L"file-dialog", L"FD201", dialogResult.error, L"Export DOCX save dialog");
-            return S_FALSE;
+            return FAILED(dialogResult.error) ? dialogResult.error : E_FAIL;
         }
-		const CString outputPath(dialogResult.paths.front().c_str());
+		outputPath = dialogResult.paths.front().c_str();
+        }
 
         CZipStoreWriter zip;
 		if (!zip.Open(outputPath)) {
             CString msg;
 			msg.Format(IDS_ERROR_OPEN_FILE, outputPath, static_cast<LPCTSTR>(U::Win32ErrMsg(::GetLastError())));
             AtlTaskDialog(hwndParent, static_cast<UINT>(IDR_EXPORTDOCX), static_cast<LPCTSTR>(msg), static_cast<LPCTSTR>(NULL), TDCBF_OK_BUTTON, TD_ERROR_ICON);
-            return S_FALSE;
+            return HRESULT_FROM_WIN32(::GetLastError());
         }
 
         CDocxBuilder builder(source, settings);
-        builder.Build(zip);
+        if (!builder.Build(zip)) {
+            zip.Close();
+            return E_FAIL;
+        }
         zip.Close();
         if (settings.createReport) {
             CStringW reportName = MakeReportFileName(CStringW(outputPath));
@@ -3657,11 +3771,11 @@ HRESULT CExportDOCXPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
     }
     catch (_com_error& e) {
         U::ReportError(e);
-        return S_FALSE;
+        return e.Error();
     }
     catch (...) {
         AtlTaskDialog(hwndParent, static_cast<UINT>(IDR_EXPORTDOCX), _T("Unexpected DOCX export error."), static_cast<LPCTSTR>(NULL), TDCBF_OK_BUTTON, TD_ERROR_ICON);
-        return S_FALSE;
+        return E_FAIL;
     }
     return S_OK;
 }

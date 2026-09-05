@@ -220,6 +220,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-plugin-v2-abi.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-html-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-epub-v2-runtime.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot "tools\tests\test-export-docx-v2-runtime.ps1") -Configuration $Configuration
 # В исходниках ещё есть накопленный исторический набор строк, который будет
 # переноситься в JSON-локализации поэтапно. В release-контуре аудит остаётся
 # видимым, но не должен блокировать выпуск до фиксации отдельного эталона.

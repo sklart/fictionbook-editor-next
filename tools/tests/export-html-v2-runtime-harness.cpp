@@ -11,6 +11,13 @@ typedef HRESULT(STDAPICALLTYPE *GetClassObject)(REFCLSID, REFIID, void **);
 #define FBE_TEST_PATH L"FBE_NEXT_TEST_EXPORT_EPUB_PATH"
 #define FBE_TEST_CANCEL L"FBE_NEXT_TEST_EXPORT_EPUB_CANCEL"
 #define FBE_TEST_FAIL L"FBE_NEXT_TEST_EXPORT_EPUB_FAIL"
+#elif defined(FBE_TEST_EXPORT_DOCX)
+#define FBE_TEST_CLSID L"{09B5ABFF-177E-4C03-98D0-9EF4E1C9DB56}"
+#define FBE_TEST_PLUGIN_ID L"export-docx"
+#define FBE_TEST_SCENARIO L"export-docx"
+#define FBE_TEST_PATH L"FBE_NEXT_TEST_EXPORT_DOCX_PATH"
+#define FBE_TEST_CANCEL L"FBE_NEXT_TEST_EXPORT_DOCX_CANCEL"
+#define FBE_TEST_FAIL L"FBE_NEXT_TEST_EXPORT_DOCX_FAIL"
 #else
 #define FBE_TEST_CLSID L"{C3098839-EF69-4DE5-B27D-1E80051CA843}"
 #define FBE_TEST_PLUGIN_ID L"export-html"
@@ -263,8 +270,10 @@ int wmain(int argc, wchar_t **argv) {
                       std::to_wstring(GetCurrentProcessId());
   CreateDirectoryW(root.c_str(), 0);
   std::wstring good = root + L"\\ok";
-#ifdef FBE_TEST_EXPORT_EPUB
+#if defined(FBE_TEST_EXPORT_EPUB)
   good += L".epub";
+#elif defined(FBE_TEST_EXPORT_DOCX)
+  good += L".docx";
 #else
   good += L".html";
 #endif
@@ -291,7 +300,7 @@ int wmain(int argc, wchar_t **argv) {
   ReadFile(file, out, sizeof(out) - 1, &n, 0);
   CloseHandle(file);
   out[n] = 0;
-#ifdef FBE_TEST_EXPORT_EPUB
+#if defined(FBE_TEST_EXPORT_EPUB) || defined(FBE_TEST_EXPORT_DOCX)
   if (n < 4 || memcmp(out, "PK\x03\x04", 4))
 #else
   if (!strstr(out, "Привет, мир") && !strstr(out, "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82\x2C\x20\xD0\xBC\xD0\xB8\xD1\x80"))
@@ -348,6 +357,8 @@ int wmain(int argc, wchar_t **argv) {
 #ifdef FBE_TEST_EXPORT_EPUB
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_EPUB_VERSION", 0);
   std::wcout << L"EPUB3=" << good << L"\nEPUB2=" << (root + L"\\ok-epub2.epub") << L"\n";
+#elif defined(FBE_TEST_EXPORT_DOCX)
+  std::wcout << L"DOCX=" << good << L"\n";
 #else
   DeleteFileW(good.c_str());
   RemoveDirectoryW(root.c_str());
