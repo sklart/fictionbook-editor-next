@@ -322,6 +322,18 @@ int wmain(int argc, wchar_t **argv) {
 #endif
   snap->Release();
   host->Release();
+#ifdef FBE_TEST_EXPORT_DOCX
+  std::wstring blocked = root + L"\\missing-output-directory\\blocked.docx";
+  SetEnvironmentVariableW(FBE_TEST_PATH, blocked.c_str());
+  host = new Host;
+  snap = new Snapshot;
+  h = Call(e, host, snap);
+  if (!FAILED(h) || h == S_OK || !host->messages || !host->noDone())
+    return 16;
+  snap->Release();
+  host->Release();
+  SetEnvironmentVariableW(FBE_TEST_PATH, good.c_str());
+#endif
   SetEnvironmentVariableW(FBE_TEST_FAIL, L"1");
   host = new Host;
   snap = new Snapshot;

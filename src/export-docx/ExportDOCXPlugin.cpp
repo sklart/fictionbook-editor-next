@@ -3633,8 +3633,11 @@ STDMETHODIMP CExportDOCXPlugin::Export(IFBEPluginHost *host, BSTR filename, IFBE
     hr = host->GetCancellationToken(&cancellation);
     if (FAILED(hr)) return hr;
     BOOL cancelled = FALSE;
-    if (cancellation && SUCCEEDED(cancellation->IsCancellationRequested(&cancelled)) && cancelled)
-        return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+    if (cancellation) {
+        hr = cancellation->IsCancellationRequested(&cancelled);
+        if (FAILED(hr)) return hr;
+        if (cancelled) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+    }
 
     CComPtr<IStream> stream;
     hr = document->OpenXmlStream(&stream);
@@ -3741,10 +3744,12 @@ HRESULT CExportDOCXPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 
         CZipStoreWriter zip;
 		if (!zip.Open(outputPath)) {
+            const DWORD error = ::GetLastError();
             CString msg;
-			msg.Format(IDS_ERROR_OPEN_FILE, outputPath, static_cast<LPCTSTR>(U::Win32ErrMsg(::GetLastError())));
-            AtlTaskDialog(hwndParent, static_cast<UINT>(IDR_EXPORTDOCX), static_cast<LPCTSTR>(msg), static_cast<LPCTSTR>(NULL), TDCBF_OK_BUTTON, TD_ERROR_ICON);
-            return HRESULT_FROM_WIN32(::GetLastError());
+			msg.Format(IDS_ERROR_OPEN_FILE, outputPath, static_cast<LPCTSTR>(U::Win32ErrMsg(error)));
+            if (!IsExportDocxHeadlessTest())
+                AtlTaskDialog(hwndParent, static_cast<UINT>(IDR_EXPORTDOCX), static_cast<LPCTSTR>(msg), static_cast<LPCTSTR>(NULL), TDCBF_OK_BUTTON, TD_ERROR_ICON);
+            return error ? HRESULT_FROM_WIN32(error) : E_FAIL;
         }
 
         CDocxBuilder builder(source, settings);
