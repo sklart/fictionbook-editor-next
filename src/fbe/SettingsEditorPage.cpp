@@ -164,7 +164,14 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	if(!path.IsEmpty()) { CImage image; if(SUCCEEDED(image.Load(path))) bitmap = image.Detach(); }
 	CString text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_text", L"Sample editor text\r\nThe quick brown fox.");
 	CString sizeText(U::GetWindowText(m_fontSize)); int size = 12; _stscanf(sizeText, L"%d", &size);
-	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, m_foreground.GetColor(), m_background.GetColor(), text);
+	COLORREF foreground = m_foreground.GetColor();
+	COLORREF background = m_background.GetColor();
+	// CLR_DEFAULT is a ColorButton sentinel, not an actual COLORREF.  The
+	// preview must render the same system defaults as the editor instead of
+	// interpreting that sentinel as black.
+	if(foreground == CLR_DEFAULT) foreground = ::GetSysColor(COLOR_WINDOWTEXT);
+	if(background == CLR_DEFAULT) background = ::GetSysColor(COLOR_WINDOW);
+	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, foreground, background, text);
 }
 
 void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground, COLORREF background, const CString& text)
