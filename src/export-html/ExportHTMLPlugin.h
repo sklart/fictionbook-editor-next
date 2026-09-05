@@ -29,6 +29,11 @@ public:
 	STDMETHODIMP GetApiVersion(ULONG* value);
 	STDMETHODIMP GetCapabilities(ULONGLONG* value);
 	STDMETHODIMP Export(IFBEPluginHost* host, BSTR filename, IFBEDocumentSnapshot* document);
+
+private:
+	// Returns S_OK, ERROR_CANCELLED, or the actual failure HRESULT.  ABI
+	// adapters below intentionally retain their respective legacy/v2 contracts.
+	HRESULT ExportCore(long hWnd, BSTR filename, IDispatch* doc);
 };
 
 OBJECT_ENTRY_AUTO(__uuidof(ExportHTMLPlugin), CExportHTMLPlugin)

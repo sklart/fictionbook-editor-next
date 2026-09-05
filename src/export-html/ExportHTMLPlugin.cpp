@@ -109,13 +109,22 @@ STDMETHODIMP CExportHTMLPlugin::Export(IFBEPluginHost* host, BSTR filename, IFBE
 	IXMLDOMDocument2Ptr source(U::CreateDocument(false)); VARIANT_BOOL loaded = VARIANT_FALSE;
 	hr = source->load(_variant_t((IUnknown*)stream), &loaded); if (FAILED(hr) || loaded != VARIANT_TRUE) { host->ReportMessage(2, CComBSTR(L"xml-load"), CComBSTR(L"snapshot XML could not be loaded")); return FAILED(hr) ? hr : E_FAIL; }
 	CComPtr<IFBEProgressSink> progress; if (SUCCEEDED(host->GetProgressSink(&progress))) progress->Report(0, 1, CComBSTR(L"export-html"));
-	hr = Export(static_cast<long>(ownerValue), filename, source);
+	hr = ExportCore(static_cast<long>(ownerValue), filename, source);
 	if (SUCCEEDED(hr) && progress) progress->Report(1, 1, CComBSTR(L"export-html"));
-	if (FAILED(hr)) host->ReportMessage(2, CComBSTR(L"export-failed"), CComBSTR(L"ExportHTML failed"));
+	if (FAILED(hr) && hr != HRESULT_FROM_WIN32(ERROR_CANCELLED))
+		host->ReportMessage(2, CComBSTR(L"export-failed"), CComBSTR(L"ExportHTML failed"));
 	return hr;
 }
 
-HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
+HRESULT CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
+{
+	// v1 historically treats both a dialog cancellation and an export error as
+	// a non-exceptional, non-success result.  Keep that observable contract.
+	const HRESULT result = ExportCore(hWnd, filename, doc);
+	return FAILED(result) ? S_FALSE : result;
+}
+
+HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 {
 	InitExportHtmlRuntimeStrings();
 
