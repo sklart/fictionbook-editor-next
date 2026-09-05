@@ -15,7 +15,7 @@
 #include "FBDoc.h"
 #include "Scintilla.h"
 #include "Settings.h"
-#include "EditorBackgrounds.h"
+#include "settings\\EditorBackgrounds.h"
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
 #include "BackupFileCommit.h"

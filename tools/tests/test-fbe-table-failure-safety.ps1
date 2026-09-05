@@ -72,7 +72,10 @@ try {
     New-Item -Path $traceRegistryPath -Force | Out-Null
     New-ItemProperty -LiteralPath $traceRegistryPath -Name $traceRegistryValue -PropertyType DWord -Value 1 -Force | Out-Null
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_FAULT_INJECT = $Fault
-    $process = Start-Process -FilePath $FbeExe -ArgumentList @('-s', '-b', $report, $fixture) -PassThru
+    # out\\Release can also contain portable.ini after packaging tests.  This
+    # scenario stores its one-launch trace preference in HKCU, so pin the
+    # tested process to installed mode instead of inheriting that marker.
+    $process = Start-Process -FilePath $FbeExe -ArgumentList @('--installed', '-s', '-b', $report, $fixture) -PassThru
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do { Start-Sleep -Milliseconds 200; [TableSafetyDialogCloser]::Dismiss($process.Id); $process.Refresh() } while(-not $process.HasExited -and (Get-Date) -lt $deadline)
     if(-not $process.HasExited) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил test-only table safety pipeline.' }

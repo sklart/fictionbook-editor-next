@@ -26,9 +26,9 @@
 Сейчас для `Sequence` уже существует устойчивая внутренняя база:
 
 - reader читает `title-info/sequence`:
-  [Fb2Metadata.cpp](D:\Download\FBeditor\src\fbe\Fb2Metadata.cpp)
+  [Fb2Metadata.cpp](D:\Download\FBeditor\src\common\fb2\Fb2Metadata.cpp)
 - внутренняя модель хранит `PropertyId::Sequence`:
-  [Fb2ShellProperties.h](D:\Download\FBeditor\src\fbe\Fb2ShellProperties.h)
+  [Fb2ShellProperties.h](D:\Download\FBeditor\src\common\fb2\Fb2ShellProperties.h)
 - в таблице маппинга поле уже помечено как `fbe-specific`:
   [fb2-property-mapping.md](D:\Download\FBeditor\docs\fb2-property-mapping.md)
 

@@ -43,7 +43,7 @@ Windows, а не уже готовый зарегистрированный ко
 
 У нас уже есть полезная основа из modern property handler:
 
-- `src\fbe\Fb2Metadata.*` как безопасная точка входа в чтение `.fb2`;
+- `src\common\fb2\Fb2Metadata.*` как безопасная точка входа в чтение `.fb2`;
 - `src\fbshell\Fb2PropertyStoreCom.*` как рабочий COM-каркас с
   `IInitializeWithStream`;
 - готовый сценарий сохранения входного `IStream` во временный файл;

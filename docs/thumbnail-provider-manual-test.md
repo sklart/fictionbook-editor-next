@@ -8,9 +8,9 @@ provider для `.fb2`, который читает встроенную обл�
 
 К моменту этой проверки уже готовы:
 
-- внутренний reader обложки: `src/fbe/Fb2CoverImage.*`;
+- внутренний reader обложки: `src/common/fb2/Fb2CoverImage.*`;
 - внутренний decoder изображения обложки через локальный `ATL::CImage`:
-  `src/fbe/Fb2CoverThumbnail.*`;
+  `src/common/fb2/Fb2CoverThumbnail.*`;
 - COM-класс thumbnail provider:
   `src/fbshell/Fb2ThumbnailProvider.*`.
 

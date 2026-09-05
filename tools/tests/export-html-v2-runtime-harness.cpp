@@ -1,4 +1,4 @@
-#include "../../src/fbe/FBE.h"
+#include "FBE.h"
 #include <iostream>
 #include <oleauto.h>
 #include <string>

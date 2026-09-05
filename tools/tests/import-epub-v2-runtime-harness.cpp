@@ -1,4 +1,4 @@
-#include "../../src/fbe/FBE.h"
+#include "FBE.h"
 #include <windows.h>
 #include <oleauto.h>
 #include <msxml6.h>

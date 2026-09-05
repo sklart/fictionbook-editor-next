@@ -42,7 +42,7 @@ int main() {
  return 0;
 }
 '@ | Set-Content -LiteralPath $sourcePath -Encoding utf8
-    & cl.exe /nologo /EHsc /std:c++17 /utf-8 /MT "/I$repoRoot\src\fbe" "/Fe:$exePath" $sourcePath (Join-Path $repoRoot 'src\fbe\Fb2SourceStructuralContext.cpp')
+    & cl.exe /nologo /EHsc /std:c++17 /utf-8 /MT "/I$repoRoot\src\fbe\source" "/Fe:$exePath" $sourcePath (Join-Path $repoRoot 'src\fbe\source\Fb2SourceStructuralContext.cpp')
     if ($LASTEXITCODE -ne 0) { throw 'Structural context test did not compile.' }
     & $exePath
     if ($LASTEXITCODE -ne 0) { throw 'Structural context test failed.' }

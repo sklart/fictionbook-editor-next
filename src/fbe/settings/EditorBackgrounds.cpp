@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "EditorBackgrounds.h"
-#include "RuntimeLocalization.h"
-#include "utils.h"
-#include "..\\common\\RuntimeLocalizationCommon.h"
+#include "..\\RuntimeLocalization.h"
+#include "..\\utils\\utils.h"
+#include "..\\..\\common\\RuntimeLocalizationCommon.h"
 #include <string>
 
 namespace {

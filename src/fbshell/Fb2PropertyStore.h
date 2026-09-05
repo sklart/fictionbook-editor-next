@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "Fb2PropertyKeys.h"
-#include "..\fbe\Fb2Metadata.h"
+#include "..\common\fb2\Fb2Metadata.h"
 
 namespace FBShellModern {
 

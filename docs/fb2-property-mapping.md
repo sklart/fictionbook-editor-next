@@ -114,6 +114,6 @@ FBE хранит только:
 
 ## Связанные файлы
 
-- кодовая таблица дескрипторов: `src/fbe/Fb2ShellProperties.h`
-- реализация текущих статусов и кандидатов: `src/fbe/Fb2ShellProperties.cpp`
+- кодовая таблица дескрипторов: `src/common/fb2/Fb2ShellProperties.h`
+- реализация текущих статусов и кандидатов: `src/common/fb2/Fb2ShellProperties.cpp`
 - общий roadmap shell-переработки: `docs/fbshell-roadmap.md`

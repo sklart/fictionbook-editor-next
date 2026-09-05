@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "Fb2CoverThumbnail.h"
 
 #include <windows.h>
@@ -8,7 +7,7 @@
 #include <cstring>
 #include <wincodec.h>
 
-#include "atlimage.h"
+#include "..\win32\atlimage.h"
 
 namespace {
 
@@ -21,15 +20,21 @@ bool HasSafeImageDimensions(IStream* stream, ATL::CString* errorMessage)
 {
     CComPtr<IWICImagingFactory> factory;
     HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
-    if (FAILED(hr))
+    if (FAILED(hr)) {
+        if (errorMessage != nullptr) *errorMessage = L"The Windows image stack could not be initialized.";
         return false;
+    }
     LARGE_INTEGER origin = {};
-    if (FAILED(stream->Seek(origin, STREAM_SEEK_SET, nullptr)))
+    if (FAILED(stream->Seek(origin, STREAM_SEEK_SET, nullptr))) {
+        if (errorMessage != nullptr) *errorMessage = L"The cover image stream could not be rewound.";
         return false;
+    }
     CComPtr<IWICBitmapDecoder> decoder;
     hr = factory->CreateDecoderFromStream(stream, nullptr, WICDecodeMetadataCacheOnDemand, &decoder);
-    if (FAILED(hr))
+    if (FAILED(hr)) {
+        if (errorMessage != nullptr) *errorMessage = L"The Windows image stack could not inspect the cover image.";
         return false;
+    }
     CComPtr<IWICBitmapFrameDecode> frame;
     hr = decoder->GetFrame(0, &frame);
     UINT width = 0, height = 0;
@@ -39,7 +44,11 @@ bool HasSafeImageDimensions(IStream* stream, ATL::CString* errorMessage)
         if (errorMessage != nullptr) *errorMessage = L"Cover image dimensions exceed the thumbnail safety limit.";
         return false;
     }
-    return SUCCEEDED(stream->Seek(origin, STREAM_SEEK_SET, nullptr));
+    if (FAILED(stream->Seek(origin, STREAM_SEEK_SET, nullptr))) {
+        if (errorMessage != nullptr) *errorMessage = L"The cover image stream could not be rewound.";
+        return false;
+    }
+    return true;
 }
 
 HRESULT CreateStreamFromBytes(const std::vector<unsigned char>& bytes, IStream** stream)

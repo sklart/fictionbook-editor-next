@@ -24,7 +24,7 @@ $testExe = Join-Path $testDir "pcre2-match-loop-smoke.exe"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 $clArguments = @(
     "/nologo", "/EHsc", "/std:c++17", "/MT",
-    "/I$(Join-Path $repoRoot "src\fbe")",
+    "/I$(Join-Path $repoRoot "src\fbe\search")",
     "/I$(Join-Path $installDir "include")",
     "/Fo$(Join-Path $testDir "pcre2-match-loop-smoke.obj")",
     (Join-Path $PSScriptRoot "pcre2-match-loop-smoke.cpp"),

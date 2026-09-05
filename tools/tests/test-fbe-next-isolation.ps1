@@ -88,8 +88,15 @@ foreach ($name in @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'Impor
     if ($packageManifest.core.forbidden -notcontains $name) { throw "Core manifest does not forbid root plugin DLL: $name." }
 }
 $stageCore = Get-ProjectText 'tools\build\stage-core.ps1'
-Assert-Contains $stageCore '$pluginsDestination = Join-Path $stage' 'Staging создаёт Plugins-каталог'
-Assert-Contains $stageCore 'Destination $pluginsDestination' 'Staging кладёт DLL плагинов в Plugins'
+Assert-Contains $stageCore "PackageLayout.ps1" 'Staging подключает авторитетную карту раскладки'
+Assert-Contains $stageCore 'Copy-FbePackageLayoutEntries -Entries $layout.core.copy' 'Staging применяет карту раскладки'
+$packageLayout = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'packaging\layout.json') | ConvertFrom-Json
+foreach ($name in @('ExportHTML.dll', 'ExportDOCX.dll', 'ExportEPUB.dll', 'ImportEPUB.dll', 'ImportEPUBLunaSVG.dll')) {
+    $entry = @($packageLayout.core.copy | Where-Object { $_.destination -eq "Plugins/$name" })
+    if ($entry.Count -ne 1 -or $entry[0].sourceRoot -ne 'commonPlugins') {
+        throw "Package layout does not stage bundled plugin from commonPlugins: $name."
+    }
+}
 $repair = Get-ProjectText 'tools\build\repair-local-plugin-registration.ps1'
 Assert-Contains $repair "Join-Path `$developmentDirectory 'Plugins'" 'Repair предпочитает packaged Plugins-каталог'
 

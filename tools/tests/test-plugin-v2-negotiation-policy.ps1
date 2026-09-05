@@ -4,7 +4,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$manager = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\PluginManager.cpp')
+$manager = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\plugins\PluginManager.cpp')
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
 $importPrecompiledHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\import-epub\stdafx.h')
 $solution = Get-Content -Raw -LiteralPath (Join-Path $root 'FBE.sln')
@@ -21,9 +21,9 @@ if ($mainFrame -notmatch 'importV2->Import\(' -or $mainFrame -notmatch 'exportV2
 foreach ($legacyHostToken in @('PluginApiGeneration', 'PluginApiV1Fallback', 'PluginApiV2Detected', 'plugin-api-v1-fallback', 'IFBEImportPlugin\b', 'IFBEExportPlugin\b')) {
     if (($manager + "`n" + $mainFrame) -match $legacyHostToken) { throw "Dead host-side legacy plugin path remains: $legacyHostToken" }
 }
-if ($importPrecompiledHeader -notmatch '#include\s+"\.\.\\\\fbe\\\\FBE\.h"') { throw 'ImportEPUB no longer uses the generated FBE.h contract.' }
+if ($importPrecompiledHeader -notmatch '#include\s+"FBE\.h"') { throw 'ImportEPUB no longer uses the generated FBE.h contract.' }
 $importProject = [regex]::Match($solution, '(?ms)^Project\([^\r\n]+\) = "ImportEPUB".*?^EndProject\s*$').Value
-if ($importProject -notmatch '\{E1B04471-3393-4970-93ED-FB6A57BCDA8B\}\s*=\s*\{E1B04471-3393-4970-93ED-FB6A57BCDA8B\}') { throw 'ImportEPUB must depend on FBE so MIDL generates FBE.h before compilation.' }
+if ($importProject -notmatch '\{A6F27D46-6116-4A85-A1E5-8C68E79E5B4D\}\s*=\s*\{A6F27D46-6116-4A85-A1E5-8C68E79E5B4D\}') { throw 'ImportEPUB must depend on FBEContracts so MIDL generates FBE.h before compilation.' }
 foreach ($plugin in @($manifest.plugins)) {
     if ($plugin.type -notin 'Import','Export') { throw "Unexpected bundled plugin type: $($plugin.type)" }
 }

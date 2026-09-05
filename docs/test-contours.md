@@ -41,3 +41,11 @@ Installer/shell tests используют staged package, а portable tests п�
 ## Карта и self-test
 
 `test-release-pipeline-deduplication.ps1` закрепляет единый pipeline, отсутствие устаревшей Modern/Win7 матрицы и обязательные FAST/FULL контуры. Полный список активных release tests является последовательностью вызовов в `tools/build/verify-release.ps1`; наличие файла само по себе не означает, что он входит в gate.
+
+Машинно-читаемый каталог строится из этой последовательности, поэтому не
+создаёт второй редактируемый список: `pwsh ./tools/tests/get-release-test-catalog.ps1 -AsJson`.
+Он содержит stable ID, путь, компонент, FAST/FULL/TABLE-контур и фактические
+invocation. `test-release-test-catalog.ps1` проверяет, что все перечисленные
+сценарии существуют и имеют базовые метаданные. Для перечисления выбранного
+множества без запуска используйте `-Contour FAST`, `-Contour FULL` или
+`-Id release.plugin-v2-abi`; неизвестный ID считается ошибкой.

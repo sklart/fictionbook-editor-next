@@ -1,0 +1,68 @@
+<# Emits a machine-readable catalog derived from verify-release.ps1. #>
+[CmdletBinding()]
+param(
+    [switch]$AsJson,
+    [switch]$Validate,
+    [ValidateSet('FAST', 'FULL', 'TABLE')][string[]]$Contour = @(),
+    [string[]]$Id = @()
+)
+
+$ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$verifyPath = Join-Path $repoRoot 'tools\build\verify-release.ps1'
+$lines = Get-Content -LiteralPath $verifyPath
+$entries = @{}
+$tableDepth = 0
+$fullDepth = 0
+
+function Get-Component([string]$FileName) {
+    if ($FileName -match '^test-fb2') { return 'fb2' }
+    if ($FileName -match '^test-(plugin|export|import)') { return 'plugins' }
+    if ($FileName -match '^test-(nsis|portable|runtime|language|localization)') { return 'packaging-localization' }
+    if ($FileName -match '^test-(archhandler|scintilla|pcre2)') { return 'native-dependencies' }
+    return 'editor'
+}
+
+for ($index = 0; $index -lt $lines.Count; $index++) {
+    $line = $lines[$index]
+    if ($line -match '^\s*if \(\$runTables\)') { $tableDepth = 1; continue }
+    if ($line -match '^\s*if \(\$FullValidation\)') { $fullDepth = 1; continue }
+    $currentContour = if ($tableDepth -gt 0) { 'TABLE' } elseif ($fullDepth -gt 0) { 'FULL' } else { 'FAST' }
+    $match = [regex]::Match($line, 'tools\\tests\\(?<name>test-[A-Za-z0-9-]+\.ps1)')
+    if ($match.Success) {
+        $name = $match.Groups['name'].Value
+        $entryId = 'release.' + [IO.Path]::GetFileNameWithoutExtension($name).Substring(5)
+        if (-not $entries.ContainsKey($entryId)) {
+            $entries[$entryId] = [pscustomobject][ordered]@{ id = $entryId; path = ('tools/tests/' + $name); component = Get-Component $name; contours = @(); invocations = @(); fixtures = @(); requirements = @(); required = $true; timeoutSeconds = $null; isolation = 'declared-by-test' }
+        }
+        $entry = $entries[$entryId]
+        if ($entry.contours -notcontains $currentContour) { $entry.contours += $currentContour }
+        if ($line -match 'FbeExe|FbeExecutable') { if ($entry.requirements -notcontains 'gui') { $entry.requirements += 'gui' } }
+        if ($name -match 'pcre2|scintilla|image-import-native|plugin-v2') { if ($entry.requirements -notcontains 'native-toolchain') { $entry.requirements += 'native-toolchain' } }
+        $entry.invocations += [pscustomobject][ordered]@{ line = $index + 1; command = $line.Trim() }
+    }
+    if ($tableDepth -gt 0) { $tableDepth += ([regex]::Matches($line, '\{').Count - [regex]::Matches($line, '\}').Count) }
+    if ($fullDepth -gt 0) { $fullDepth += ([regex]::Matches($line, '\{').Count - [regex]::Matches($line, '\}').Count) }
+}
+
+$catalog = [ordered]@{ schemaVersion = 1; generatedFrom = 'tools/build/verify-release.ps1'; tests = @($entries.Values | Sort-Object id) }
+if ($Validate) {
+    if ($catalog.tests.Count -eq 0) { throw 'Release test catalog is empty.' }
+    $ids = @{}
+    foreach ($entry in $catalog.tests) {
+        if ($ids.ContainsKey($entry.id)) { throw "Duplicate release test ID: $($entry.id)" }
+        $ids[$entry.id] = $true
+        if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $entry.path) -PathType Leaf)) { throw "Catalog refers to a missing test script: $($entry.path)" }
+        if ($entry.contours.Count -eq 0 -or $entry.invocations.Count -eq 0) { throw "Catalog entry is incomplete: $($entry.id)" }
+    }
+}
+$selectedTests = @($catalog.tests)
+if ($Contour.Count -gt 0) { $selectedTests = @($selectedTests | Where-Object { @($_.contours | Where-Object { $_ -in $Contour }).Count -gt 0 }) }
+if ($Id.Count -gt 0) {
+    $knownIds = @($catalog.tests | ForEach-Object id)
+    foreach ($requestedId in $Id) { if ($requestedId -notin $knownIds) { throw "Unknown release test ID: $requestedId" } }
+    $selectedTests = @($selectedTests | Where-Object { $_.id -in $Id })
+}
+$selectedCatalog = [ordered]@{ schemaVersion = $catalog.schemaVersion; generatedFrom = $catalog.generatedFrom; selection = [ordered]@{ contours = @($Contour); ids = @($Id) }; tests = $selectedTests }
+if ($AsJson) { $selectedCatalog | ConvertTo-Json -Depth 7 }
+else { $selectedTests | Select-Object id, path, component, contours, required, requirements }

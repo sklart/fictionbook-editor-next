@@ -13,6 +13,46 @@
       <UniqueIdentifier>{b1ca92e5-588b-4574-bb31-44c2f60a6c7b}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
     </Filter>
+    <Filter Include="Source Files\Plugins">
+      <UniqueIdentifier>{91f402a4-3a1a-4f77-962a-64afb55b9165}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Plugins">
+      <UniqueIdentifier>{558232dd-45aa-4a65-9ebd-b38ea4dd5603}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Source Files\XML Source">
+      <UniqueIdentifier>{b4d410e9-d495-4519-8c92-2c8d2e1e748a}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Header Files\XML Source">
+      <UniqueIdentifier>{0e8a785f-f95c-40e1-a99e-f967a51bb02e}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Search">
+      <UniqueIdentifier>{1128c08a-cd1e-4a38-a38b-2d3d1dcb3d99}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Search">
+      <UniqueIdentifier>{bd27fdce-8c2b-4c0f-a9ba-141546642c50}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Settings">
+      <UniqueIdentifier>{c2d1fb0c-d40e-4d46-a575-555cbff5fcf7}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Settings">
+      <UniqueIdentifier>{f4cd727b-3b5e-4dd2-b690-7180d6152a2f}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Common\FB2">
+      <UniqueIdentifier>{6e19bc6f-a09c-43ba-88b7-0d6d5cdb3d33}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Common\Win32">
+      <UniqueIdentifier>{7b2f0f10-cdd3-4732-992e-2fc0ab94bd4f}</UniqueIdentifier>
+      <Extensions>h</Extensions>
+    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{0bbc609e-4d9f-4d7f-81d8-e1fbece798f6}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
@@ -82,9 +122,13 @@
     <ClCompile Include="RuntimeLocalization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PluginManager.cpp"><Filter>Source Files</Filter></ClCompile>
-	<ClCompile Include="EditorBackgrounds.cpp"><Filter>Source Files</Filter></ClCompile>
-	<ClCompile Include="PluginApiV2.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="plugins\PluginManager.cpp"><Filter>Source Files\Plugins</Filter></ClCompile>
+	<ClCompile Include="source\Fb2SourceAutocomplete.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
+	<ClCompile Include="source\Fb2SourceStructuralContext.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
+	<ClCompile Include="search\RegexBackend.cpp"><Filter>Source Files\Search</Filter></ClCompile>
+	<ClCompile Include="search\RegexBackendPcre2.cpp"><Filter>Source Files\Search</Filter></ClCompile>
+	<ClCompile Include="settings\EditorBackgrounds.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
+	<ClCompile Include="plugins\PluginApiV2.cpp"><Filter>Source Files\Plugins</Filter></ClCompile>
     <ClCompile Include="XmlSourceThemes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -157,17 +201,18 @@
     <ClCompile Include="extras\ColorButton.cpp">
       <Filter>extras</Filter>
     </ClCompile>
-    <ClCompile Include="Fb2CoverImage.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\common\fb2\Fb2CoverImage.cpp">
+      <Filter>Common\FB2</Filter>
     </ClCompile>
-    <ClCompile Include="Fb2CoverThumbnail.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\common\fb2\Fb2CoverThumbnail.cpp">
+      <Filter>Common\FB2</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Midl Include="fbe.idl">
-      <Filter>Source Files</Filter>
-    </Midl>
+    <ClCompile Include="..\common\fb2\Fb2Metadata.cpp">
+      <Filter>Common\FB2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\fb2\Fb2ShellProperties.cpp">
+      <Filter>Common\FB2</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AboutBox.h">
@@ -176,8 +221,8 @@
     <ClInclude Include="apputils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="atlimage.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\common\win32\atlimage.h">
+      <Filter>Common\Win32</Filter>
     </ClInclude>
     <ClInclude Include="utils\CFileDialogEx.h">
       <Filter>Header Files</Filter>
@@ -234,9 +279,14 @@
     <ClInclude Include="RuntimeLocalization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-	<ClInclude Include="PluginManager.h"><Filter>Header Files</Filter></ClInclude>
-	<ClInclude Include="EditorBackgrounds.h"><Filter>Header Files</Filter></ClInclude>
-	<ClInclude Include="PluginApiV2.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="plugins\PluginManager.h"><Filter>Header Files\Plugins</Filter></ClInclude>
+	<ClInclude Include="source\Fb2SourceAutocomplete.h"><Filter>Header Files\XML Source</Filter></ClInclude>
+	<ClInclude Include="source\Fb2SourceStructuralContext.h"><Filter>Header Files\XML Source</Filter></ClInclude>
+	<ClInclude Include="search\RegexBackend.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\RegexPcre2CodeCache.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\RegexPcre2MatchLoop.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="settings\EditorBackgrounds.h"><Filter>Header Files\Settings</Filter></ClInclude>
+	<ClInclude Include="plugins\PluginApiV2.h"><Filter>Header Files\Plugins</Filter></ClInclude>
     <ClInclude Include="XmlSourceThemes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -309,11 +359,17 @@
     <ClInclude Include="XMLSerializer\XMLSerializer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Fb2CoverImage.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\common\fb2\Fb2CoverImage.h">
+      <Filter>Common\FB2</Filter>
     </ClInclude>
-    <ClInclude Include="Fb2CoverThumbnail.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\common\fb2\Fb2CoverThumbnail.h">
+      <Filter>Common\FB2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\fb2\Fb2Metadata.h">
+      <Filter>Common\FB2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\fb2\Fb2ShellProperties.h">
+      <Filter>Common\FB2</Filter>
     </ClInclude>
     <ClInclude Include="$(SolutionDir)third_party\wtl\atlapp.h">
       <Filter>Header Files\WTL</Filter>

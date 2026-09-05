@@ -6,8 +6,8 @@
 #include <comdef.h>
 #include <stdio.h>
 #include "Fb2ThumbnailProvider.h"
-#include "..\fbe\Fb2CoverImage.h"
-#include "..\fbe\Fb2CoverThumbnail.h"
+#include "..\common\fb2\Fb2CoverImage.h"
+#include "..\common\fb2\Fb2CoverThumbnail.h"
 #include <initguid.h>
 // {4F99D1F0-5D76-4B9C-9D3D-9E6B8B4C7E31}
 DEFINE_GUID(CLSID_Fb2ThumbnailProvider,

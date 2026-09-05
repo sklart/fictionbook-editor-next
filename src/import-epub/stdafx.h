@@ -1,7 +1,7 @@
 #pragma once
 
 // ImportEPUB is a small ATL/COM in-process plugin for Fiction Book Editor.
-// It implements IFBEImportPlugin from fbe/FBE.h and is loaded by FBE via
+// It implements IFBEImportPlugin from the generated FBE API contract and is loaded by FBE via
 // CoCreateInstance using the CLSID written to the FBE Plugins registry key.
 
 #ifndef UNICODE
@@ -32,4 +32,4 @@
 // The generated API header is the single ABI source for both legacy and v2
 // plugin interfaces.  The old local declaration is intentionally no longer
 // used, so this DLL cannot drift from the host vtable definitions.
-#include "..\\fbe\\FBE.h"
+#include "FBE.h"

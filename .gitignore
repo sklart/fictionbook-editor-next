@@ -18,9 +18,6 @@
 /third_party/lexilla/bin/*.pdb
 /third_party/lexilla/src/obj/
 /third_party/lexilla/src/vc140.pdb
-/src/fbe/FBE.h
-/src/fbe/FBE.tlb
-/src/fbe/FBE_i.c
 /src/export-html/ExportHTML_i.c
 /src/export-html/ExportHTML_i.h
 /src/export-html/fbe.h

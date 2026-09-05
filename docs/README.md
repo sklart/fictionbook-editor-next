@@ -6,6 +6,8 @@
 - [Контуры тестирования](test-contours.md) — FAST, FULL и диагностические проверки.
 - [Чек-лист выпуска](release-checklist.md) — подготовка и верификация артефактов.
 - [Карта структуры репозитория](architecture/repository-layout.md) — компоненты, границы и граф сборки.
+- [Runtime и упаковка](architecture/runtime-packaging.md) — происхождение файлов и staging-карта.
+- [Статус верификации](architecture/verification-status.md) — проведённые проверки и ограничения среды.
 
 ## Тематические документы
 

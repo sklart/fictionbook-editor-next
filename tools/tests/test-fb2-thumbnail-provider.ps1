@@ -17,12 +17,12 @@ $missingBinaryFixture = Join-Path $PSScriptRoot "fb2-cover-missing-binary.fb2"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DUNICODE /D_UNICODE /MD /W3 `
-    "/I$(Join-Path $repoRoot "src\fbe")" `
+    "/I$(Join-Path $repoRoot "src\common\win32")" `
     "/I$(Join-Path $repoRoot "src\fbshell")" `
     "/I$(Join-Path $repoRoot "third_party\wtl")" `
     "/Fo$($testDir)\\" `
-    (Join-Path $repoRoot "src\fbe\Fb2CoverImage.cpp") `
-    (Join-Path $repoRoot "src\fbe\Fb2CoverThumbnail.cpp") `
+    (Join-Path $repoRoot "src\common\fb2\Fb2CoverImage.cpp") `
+    (Join-Path $repoRoot "src\common\fb2\Fb2CoverThumbnail.cpp") `
     (Join-Path $repoRoot "src\fbshell\AtlImageStatics.cpp") `
     (Join-Path $repoRoot "src\fbshell\Fb2ThumbnailProvider.cpp") `
     (Join-Path $PSScriptRoot "fb2-thumbnail-provider-smoke.cpp") `
@@ -43,4 +43,3 @@ finally {
 }
 
 Write-Host "Smoke-тест COM thumbnail provider прошёл успешно."
-

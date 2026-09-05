@@ -75,6 +75,14 @@ static int   xgetopt(
 CmdLineArgs   _ARGS;
 
 bool  ParseCmdLineArgs() {
+  // DeploymentContext reads these switches directly from the process command
+  // line.  Remove them before the legacy short-option parser sees the leading
+  // "--" as its end-of-options marker; otherwise --portable/--installed is
+  // accidentally treated as a document name.
+  for (int index = _ARGV.GetSize() - 1; index >= 0; --index)
+    if (_ARGV[index].CompareNoCase(L"--portable") == 0 ||
+        _ARGV[index].CompareNoCase(L"--installed") == 0)
+      _ARGV.RemoveAt(index);
   const TCHAR	*arg,*state=NULL;
   int		argp=0;
   int		ch;

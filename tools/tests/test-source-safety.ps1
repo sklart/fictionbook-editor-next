@@ -107,9 +107,9 @@ Assert-NotContains $utilsSource "exedir[p-1]!=_T('\')" `
 
 $appRegexSources = @(
     Read-SourceFile "src\fbe\apputils.cpp"
-    Read-SourceFile "src\fbe\RegexBackend.cpp"
-    Read-SourceFile "src\fbe\RegexBackendPcre2.cpp"
-    Read-SourceFile "src\fbe\RegexPcre2MatchLoop.h"
+    Read-SourceFile "src\fbe\search\RegexBackend.cpp"
+    Read-SourceFile "src\fbe\search\RegexBackendPcre2.cpp"
+    Read-SourceFile "src\fbe\search\RegexPcre2MatchLoop.h"
 ) -join "`n"
 Assert-Contains $appRegexSources "compileOptions |= PCRE2_UTF;" `
 	"PCRE2 searches must stay in UTF mode / PCRE2-16 UTF mode"

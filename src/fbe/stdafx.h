@@ -38,7 +38,7 @@
 #include <atlcoll.h>
 #include <atlfile.h>
 #include <atlcomtime.h>
-#include "atlimage.h"
+#include "..\common\win32\atlimage.h"
 
 #include <shellapi.h>
 

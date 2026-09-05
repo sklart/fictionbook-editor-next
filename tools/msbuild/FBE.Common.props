@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    Explicitly imported by first-party C++ projects only.  Do not add this
+    import to vendored or generated projects under third_party and build.
+  -->
+  <PropertyGroup>
+    <FbeRepoRoot Condition="'$(FbeRepoRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..'))</FbeRepoRoot>
+    <!-- MSBuild sets SolutionDir to the project directory for a standalone
+         .vcxproj invocation.  First-party project paths are repository based. -->
+    <SolutionDir>$(FbeRepoRoot)\</SolutionDir>
+    <FbePlatformToolset Condition="'$(FbePlatformToolset)' == '' and '$(PlatformToolset)' != ''">$(PlatformToolset)</FbePlatformToolset>
+    <FbePlatformToolset Condition="'$(FbePlatformToolset)' == ''">v143</FbePlatformToolset>
+    <FbeGeneratedRoot>$(FbeRepoRoot)\build\generated\</FbeGeneratedRoot>
+    <FbeApiOutputDirectory>$(FbeGeneratedRoot)$(Platform)\$(Configuration)\fbe-api\</FbeApiOutputDirectory>
+  </PropertyGroup>
+</Project>

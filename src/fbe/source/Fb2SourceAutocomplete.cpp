@@ -1,5 +1,5 @@
 #include "Fb2SourceAutocomplete.h"
-#include "generated/Fb2SchemaMetadata.h"
+#include "..\\generated\\Fb2SchemaMetadata.h"
 #include <algorithm>
 #include <set>
 #include <sstream>

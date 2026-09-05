@@ -2,7 +2,7 @@
 #include <oleauto.h>
 #include <vector>
 #include <iostream>
-#include "../../src/fbe/FBE.h"
+#include "FBE.h"
 typedef HRESULT (WINAPI* CreateFixture)(int, IUnknown**);
 
 class Progress : public IFBEProgressSink { LONG r = 1; public: bool called = false;

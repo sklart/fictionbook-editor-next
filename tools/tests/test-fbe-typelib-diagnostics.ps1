@@ -7,7 +7,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$idl = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\fbe.idl')
+$idl = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\contracts\fbe.idl')
 $fbe = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
 $external = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ExternalHelper.cpp')
 $versioning = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'docs\fbelib-typelib-versioning.md')

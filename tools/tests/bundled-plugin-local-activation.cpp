@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <objbase.h>
 #include <iostream>
-#include "../../src/fbe/FBE.h"
+#include "FBE.h"
 
 typedef HRESULT (STDAPICALLTYPE* DllGetClassObjectFn)(REFCLSID, REFIID, LPVOID*);
 

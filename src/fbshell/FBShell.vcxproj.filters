@@ -18,16 +18,16 @@
     <ClCompile Include="AtlImageStatics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\fbe\Fb2CoverImage.cpp">
+    <ClCompile Include="..\common\fb2\Fb2CoverImage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\fbe\Fb2CoverThumbnail.cpp">
+    <ClCompile Include="..\common\fb2\Fb2CoverThumbnail.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\fbe\Fb2Metadata.cpp">
+    <ClCompile Include="..\common\fb2\Fb2Metadata.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\fbe\Fb2ShellProperties.cpp">
+    <ClCompile Include="..\common\fb2\Fb2ShellProperties.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FbeCustomProperties.cpp">
@@ -70,16 +70,16 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\fbe\Fb2CoverImage.h">
+    <ClInclude Include="..\common\fb2\Fb2CoverImage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\fbe\Fb2CoverThumbnail.h">
+    <ClInclude Include="..\common\fb2\Fb2CoverThumbnail.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\fbe\Fb2Metadata.h">
+    <ClInclude Include="..\common\fb2\Fb2Metadata.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\fbe\Fb2ShellProperties.h">
+    <ClInclude Include="..\common\fb2\Fb2ShellProperties.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FbeCustomProperties.h">

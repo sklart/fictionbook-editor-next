@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "core": {
+    "copy": [
+      { "sourceRoot": "runtime", "source": "", "destination": "", "contents": true, "kind": "maintainedResource", "required": true },
+      { "sourceRoot": "editorRuntime", "source": "Scintilla.dll", "destination": "Scintilla.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "editorRuntime", "source": "Lexilla.dll", "destination": "Lexilla.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "common", "source": "FBE.exe", "destination": "FBE.exe", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "common", "source": "FBV.exe", "destination": "FBV.exe", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "common", "source": "html.xsl", "destination": "html.xsl", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "commonPlugins", "source": "ExportHTML.dll", "destination": "Plugins/ExportHTML.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "commonPlugins", "source": "ExportDOCX.dll", "destination": "Plugins/ExportDOCX.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "commonPlugins", "source": "ExportEPUB.dll", "destination": "Plugins/ExportEPUB.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "commonPlugins", "source": "ImportEPUB.dll", "destination": "Plugins/ImportEPUB.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "commonPlugins", "source": "ImportEPUBLunaSVG.dll", "destination": "Plugins/ImportEPUBLunaSVG.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "batch", "source": "ExportDOCXBatch.exe", "destination": "ExportDOCXBatch.exe", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "batch", "source": "ExportEPUBBatch.exe", "destination": "ExportEPUBBatch.exe", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "batch", "source": "ImportEPUBBatch.exe", "destination": "ImportEPUBBatch.exe", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "arch", "source": "ZipHandler.exe", "destination": "Utilities/ArchHandler/ZipHandler.exe", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "arch", "source": "RarHandler.exe", "destination": "Utilities/ArchHandler/RarHandler.exe", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "repository", "source": "custom.dic", "destination": "custom.dic", "kind": "maintainedDefault", "required": true },
+      { "sourceRoot": "repository", "source": "Hotkeys.xml", "destination": "Hotkeys.xml", "kind": "maintainedDefault", "required": true },
+      { "sourceRoot": "repository", "source": "languages.txt", "destination": "languages.txt", "kind": "maintainedDefault", "required": true },
+      { "sourceRoot": "repository", "source": "root_genres.xml", "destination": "root_genres.xml", "kind": "maintainedDefault", "required": true },
+      { "sourceRoot": "repository", "source": "Words.xml", "destination": "Words.xml", "kind": "maintainedDefault", "required": true },
+      { "sourceRoot": "runtime", "source": "gpl-3.0.txt", "destination": "LICENSE", "kind": "maintainedResource", "required": true },
+      { "sourceRoot": "repository", "source": "NOTICE", "destination": "NOTICE", "kind": "maintainedResource", "required": true },
+      { "sourceRoot": "repository", "source": "THIRD-PARTY-NOTICES.md", "destination": "THIRD-PARTY-NOTICES.md", "kind": "maintainedResource", "required": true },
+      { "sourceRoot": "repository", "source": "THIRD-PARTY-LICENSES", "destination": "THIRD-PARTY-LICENSES", "recursive": true, "kind": "maintainedResource", "required": true },
+      { "sourceRoot": "thirdParty", "source": "scintilla/License.txt", "destination": "THIRD-PARTY-LICENSES/Scintilla-Lexilla.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "pcre2/LICENCE.md", "destination": "THIRD-PARTY-LICENSES/PCRE2.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "hunspell/license.hunspell", "destination": "THIRD-PARTY-LICENSES/Hunspell.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "hunspell/license.myspell", "destination": "THIRD-PARTY-LICENSES/Hunspell-MySpell.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "libwebp/COPYING", "destination": "THIRD-PARTY-LICENSES/libwebp.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "openjpeg/LICENSE", "destination": "THIRD-PARTY-LICENSES/OpenJPEG.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "libheif/COPYING", "destination": "THIRD-PARTY-LICENSES/libheif.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "libde265/COPYING", "destination": "THIRD-PARTY-LICENSES/libde265.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "aom/LICENSE", "destination": "THIRD-PARTY-LICENSES/libaom.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "aom/PATENTS", "destination": "THIRD-PARTY-LICENSES/libaom-PATENTS.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "lunaSvg", "source": "LICENSE", "destination": "THIRD-PARTY-LICENSES/LunaSVG.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "plutoVg", "source": "LICENSE", "destination": "THIRD-PARTY-LICENSES/PlutoVG.txt", "kind": "thirdPartyLicense", "required": true },
+      { "sourceRoot": "thirdParty", "source": "uac/License.txt", "destination": "THIRD-PARTY-LICENSES/UAC.txt", "kind": "thirdPartyLicense", "required": true }
+    ],
+    "aliases": [
+      { "source": "genres.txt_L", "destination": "genres.librusec.txt", "required": true },
+      { "source": "genres.rus.txt_L", "destination": "genres.rus.librusec.txt", "required": true }
+    ],
+    "remove": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "gpl-3.0.txt", "Themes/licenses"]
+  },
+  "integration": {
+    "copy": [
+      { "sourceRoot": "shellWin32", "source": "FBShell.dll", "destination": "FBShell.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "shellX64", "source": "FBShell.dll", "destination": "FBShell64.dll", "kind": "compiledArtifact", "required": true },
+      { "sourceRoot": "repository", "source": "packaging/property-schema/FBE.Sequence.propdesc", "destination": "FBE.Sequence.propdesc", "kind": "maintainedResource", "required": true },
+      { "sourceRoot": "tools", "source": "register-sequence-property-schema.ps1", "destination": "InstallerTools/register-sequence-property-schema.ps1", "kind": "installerTool", "required": true },
+      { "sourceRoot": "tools", "source": "register-modern-property-handler.ps1", "destination": "InstallerTools/register-modern-property-handler.ps1", "kind": "installerTool", "required": true },
+      { "sourceRoot": "tools", "source": "unregister-modern-property-handler.ps1", "destination": "InstallerTools/unregister-modern-property-handler.ps1", "kind": "installerTool", "required": true },
+      { "sourceRoot": "build", "source": "Lang/Shell", "destination": "Lang/Shell", "recursive": true, "kind": "compiledArtifact", "required": true }
+    ]
+  }
+}

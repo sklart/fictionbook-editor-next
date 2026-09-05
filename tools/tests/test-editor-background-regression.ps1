@@ -3,7 +3,7 @@ param([string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..'))
 
 $ErrorActionPreference = 'Stop'
 $doc = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\FBDoc.cpp')
-$backgrounds = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\EditorBackgrounds.cpp')
+$backgrounds = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\settings\EditorBackgrounds.cpp')
 $frame = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\mainfrm.cpp')
 $settings = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\Settings.cpp')
 $readme = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'runtime\EditorBackgrounds\README.md')

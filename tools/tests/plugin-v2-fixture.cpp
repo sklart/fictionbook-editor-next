@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <oleauto.h>
-#include "../../src/fbe/FBE.h"
+#include "FBE.h"
 
 // Test-only local COM server. mode: 0 valid, 1 no-info, 2 no-export,
 // 3 wrong-id, 4 wrong-api, 5 QI failure.

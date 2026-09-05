@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 
-#include "..\..\src\fbe\Fb2CoverImage.h"
+#include "..\..\src\common\fb2\Fb2CoverImage.h"
 
 namespace {
 

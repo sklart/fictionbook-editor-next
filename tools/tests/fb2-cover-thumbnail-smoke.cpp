@@ -3,9 +3,9 @@
 #include <iostream>
 #include <vector>
 
-#include "..\..\src\fbe\Fb2CoverImage.h"
-#include "..\..\src\fbe\Fb2CoverThumbnail.h"
-#include "..\..\src\fbe\atlimage.h"
+#include "..\..\src\common\fb2\Fb2CoverImage.h"
+#include "..\..\src\common\fb2\Fb2CoverThumbnail.h"
+#include "..\..\src\common\win32\atlimage.h"
 
 ATL::CImage::CInitGDIPlus ATL::CImage::s_initGDIPlus;
 ATL::CImage::CDCCache ATL::CImage::s_cache;
@@ -17,7 +17,7 @@ bool ExpectTrue(const wchar_t* name, bool value)
     if (value)
         return true;
 
-    std::wcerr << L"Проверка условия '" << name << L"' не прошла.\n";
+    std::wcerr << L"FAIL condition: " << name << L"\n";
     return false;
 }
 
@@ -26,9 +26,8 @@ bool ExpectEqual(const wchar_t* name, int actual, int expected)
     if (actual == expected)
         return true;
 
-    std::wcerr
-        << L"Проверка числа '" << name << L"' не прошла. Ожидалось: "
-        << expected << L", получено: " << actual << L".\n";
+    std::wcerr << L"FAIL value: " << name << L" expected=" << expected
+               << L" actual=" << actual << L"\n";
     return false;
 }
 

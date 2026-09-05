@@ -28,8 +28,8 @@ Assert-Contains $matchedTags 'SCI_GETDIRECTFUNCTION' 'direct function lookup'
 Assert-Contains $matchedTags 'SCI_GETDIRECTPOINTER' 'direct pointer lookup'
 Assert-Contains $matchedTags 'return\s+m_source->SendMessage\(' 'safe SendMessage fallback'
 Assert-Contains $matchedTags '~XmlMatchedTagsHighlighter\(\)\s*\{\s*delete\s+_pEditView;' 'matched-tags wrapper cleanup'
-${autocompleteHeader} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\Fb2SourceAutocomplete.h')
-${autocomplete} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\Fb2SourceAutocomplete.cpp')
+${autocompleteHeader} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\source\Fb2SourceAutocomplete.h')
+${autocomplete} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\source\Fb2SourceAutocomplete.cpp')
 ${generator} = Get-Content -Raw (Join-Path $repoRoot 'tools\build\generate-fb2-schema-metadata.ps1')
 ${generatedMetadata} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\generated\Fb2SchemaMetadata.h')
 Assert-Contains $mainFrame 'm_fb2_autocomplete\.Complete' 'schema-derived autocomplete integration'

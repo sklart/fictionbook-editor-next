@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "PluginApiV2.h"
-#include "StartupTrace.h"
+#include "..\\StartupTrace.h"
 #include "..\\..\\version.h"
 
 namespace

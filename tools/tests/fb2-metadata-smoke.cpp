@@ -5,8 +5,8 @@
 #include <iostream>
 #include <vector>
 
-#include "..\..\src\fbe\Fb2Metadata.h"
-#include "..\..\src\fbe\Fb2ShellProperties.h"
+#include "..\..\src\common\fb2\Fb2Metadata.h"
+#include "..\..\src\common\fb2\Fb2ShellProperties.h"
 #include "..\..\src\fbshell\FbeCustomProperties.h"
 #include "..\..\src\fbshell\Fb2PropertyKeys.h"
 #include "..\..\src\fbshell\Fb2PropertyStore.h"

@@ -48,7 +48,7 @@ function Convert-ExpectedMatchCollection($Matches) {
 
 & cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE `
     "/I$(Join-Path $repoRoot "third_party\wtl")" `
-    "/I$(Join-Path $repoRoot "src\fbe")" `
+    "/I$(Join-Path $repoRoot "src\fbe\search")" `
     "/I$(Join-Path $installDir "include")" `
     "/Fo$(Join-Path $testDir "pcre2-wrapper-smoke.obj")" `
     (Join-Path $PSScriptRoot "pcre2-wrapper-smoke.cpp") `

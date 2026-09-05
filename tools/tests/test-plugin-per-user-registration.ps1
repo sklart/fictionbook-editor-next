@@ -21,7 +21,7 @@ $docx = Get-SourceText 'src\export-docx\ExportDOCX.cpp'
 $installer = Get-SourceText 'packaging\nsis\Installer\MakeInstaller.bat'
 $nsisResolver = Get-SourceText 'tools\build\resolve-nsis.ps1'
 
-$pluginHost = Get-SourceText 'src\fbe\PluginManager.cpp'
+$pluginHost = Get-SourceText 'src\fbe\plugins\PluginManager.cpp'
 if ($pluginHost -match 'CoCreateInstance|RegEnumKeyEx|DiscoverLegacyPlugins') { throw 'Plugin Host must not use registry COM activation or discovery.' }
 
 Assert-Contains $installer 'resolve-nsis.ps1' 'Единый резолвер NSIS'

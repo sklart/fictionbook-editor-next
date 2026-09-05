@@ -13,9 +13,8 @@ $brokenFixture = Join-Path $PSScriptRoot "fb2-cover-broken.fb2"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 & cl.exe /nologo /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE /MD /W3 `
-    "/I$(Join-Path $repoRoot "src\fbe")" `
     "/Fo$($testDir)\\" `
-    (Join-Path $repoRoot "src\fbe\Fb2CoverImage.cpp") `
+    (Join-Path $repoRoot "src\common\fb2\Fb2CoverImage.cpp") `
     (Join-Path $PSScriptRoot "fb2-cover-smoke.cpp") `
     "/link" "/SUBSYSTEM:CONSOLE" "ole32.lib" "oleaut32.lib" "comsuppw.lib" "shlwapi.lib" "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) {

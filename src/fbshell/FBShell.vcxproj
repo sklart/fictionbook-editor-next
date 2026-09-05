@@ -24,30 +24,31 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\..\tools\msbuild\FBE.Common.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>false</UseOfMfc>
     <UseOfAtl>false</UseOfAtl>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(FbePlatformToolset)</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>false</UseOfMfc>
     <UseOfAtl>false</UseOfAtl>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(FbePlatformToolset)</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(FbePlatformToolset)</PlatformToolset>
     <UseOfAtl>false</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>$(FbePlatformToolset)</PlatformToolset>
     <UseOfAtl>false</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
@@ -222,16 +223,16 @@
     <ClCompile Include="AtlImageStatics.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\fbe\Fb2CoverImage.cpp">
+    <ClCompile Include="..\common\fb2\Fb2CoverImage.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\fbe\Fb2CoverThumbnail.cpp">
+    <ClCompile Include="..\common\fb2\Fb2CoverThumbnail.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\fbe\Fb2Metadata.cpp">
+    <ClCompile Include="..\common\fb2\Fb2Metadata.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\fbe\Fb2ShellProperties.cpp">
+    <ClCompile Include="..\common\fb2\Fb2ShellProperties.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="FbeCustomProperties.cpp">
@@ -265,10 +266,10 @@
     <None Include="FB2.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\fbe\Fb2CoverImage.h" />
-    <ClInclude Include="..\fbe\Fb2CoverThumbnail.h" />
-    <ClInclude Include="..\fbe\Fb2Metadata.h" />
-    <ClInclude Include="..\fbe\Fb2ShellProperties.h" />
+    <ClInclude Include="..\common\fb2\Fb2CoverImage.h" />
+    <ClInclude Include="..\common\fb2\Fb2CoverThumbnail.h" />
+    <ClInclude Include="..\common\fb2\Fb2Metadata.h" />
+    <ClInclude Include="..\common\fb2\Fb2ShellProperties.h" />
     <ClInclude Include="FBShell.h" />
     <ClInclude Include="FbeCustomProperties.h" />
     <ClInclude Include="Fb2PropertyKeys.h" />

@@ -5,7 +5,7 @@
 #include "resource.h"
 #include "SettingsPageLifecycle.h"
 #include "SettingsTooltips.h"
-#include "EditorBackgrounds.h"
+#include "settings\\EditorBackgrounds.h"
 
 class CEditorBackgroundPreview : public CWindowImpl<CEditorBackgroundPreview, CStatic>
 {

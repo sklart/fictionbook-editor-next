@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-#include "apputils.h"
+#include "..\\apputils.h"
 #include "RegexBackend.h"
 
 namespace AU {

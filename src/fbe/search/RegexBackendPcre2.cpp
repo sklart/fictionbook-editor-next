@@ -3,7 +3,7 @@
 #include "RegexBackend.h"
 #include "RegexPcre2CodeCache.h"
 #include "RegexPcre2MatchLoop.h"
-#include "RuntimeLocalization.h"
+#include "..\\RuntimeLocalization.h"
 
 #define PCRE2_CODE_UNIT_WIDTH 16
 #define PCRE2_STATIC

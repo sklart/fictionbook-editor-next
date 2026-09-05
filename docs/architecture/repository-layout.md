@@ -1,9 +1,10 @@
 # Карта структуры репозитория
 
-Этот документ описывает состояние дерева на HEAD `184952690f7ddc7bd19ae831b0e1b308a08a577`
-(аудит 5 сентября 2026 года). Это базовая карта для поэтапной структурной
-модернизации, а не разрешение на механическое перемещение файлов. Состояние
-рабочего дерева в карту не включено.
+Исходный audit baseline — `184952690f7ddc7bd19ae831b0e1b308a08a577`
+(5 сентября 2026 года). Эта карта обновляется вместе со структурной
+модернизацией и описывает целевое сопровождаемое дерево, а не разрешение на
+механическое перемещение файлов. Правила происхождения runtime-файлов и
+путь от staging к portable/installer описаны в [runtime-packaging.md](runtime-packaging.md).
 
 ## Верхний уровень
 
@@ -61,30 +62,46 @@ FAST, а `-FullValidation` добавляет полный контур; table-�
 
 ## Контракт плагинов и generated outputs
 
-Единый legacy/v2 COM-контракт сейчас определён в `src/fbe/fbe.idl`. MIDL
-производит `FBE.h`, `FBE_i.c` и `FBE.tlb`; первые два выходных файла исключены
-из Git, но в настоящее время размещаются рядом с исходниками FBE. FBE,
-экспортные проекты, ImportEPUB и тестовые harness-ы используют этот контракт.
+Единый legacy/v2 COM-контракт определён в `src/contracts/fbe.idl`. Проект
+`FBEContracts.vcxproj` вызывает MIDL и производит `FBE.h`, `FBE_i.c` и `FBE.tlb`
+в `build/generated/<Platform>/<Configuration>/fbe-api`; эти выходные файлы исключены
+из Git и не появляются в `src/fbe`. FBE — единственный consumer, который
+компилирует `FBE_i.c`; FBE, ImportEPUB и тестовые harness-ы получают заголовок
+через project dependency и точный generated include path. Экспортные IDL
+импортируют контракт из `src/contracts`, не через private каталог GUI.
 
-Это известная переходная граница, а не public include-каталог всего `src/fbe`.
-Будущий отдельный producer должен выдавать один набор файлов в
-`build/generated/<Platform>/<Configuration>/fbe-api/`, а потребители должны
-получить project dependency и точный include path. Перенос не должен менять
-IDL, GUID/IID/CLSID/DISPID, порядок методов, calling convention или правила
-владения памятью.
+Перенос не изменяет IDL, GUID/IID/CLSID/DISPID, порядок методов, calling
+convention или правила владения памятью.
 
-## Известные структурные границы для следующих этапов
+## Действующие структурные границы
 
-- `FBShell.vcxproj` пока компилирует четыре реализации из `src/fbe`:
+- Общая реализация чтения FB2 и shell-свойств находится в `src/common/fb2`:
   `Fb2Metadata`, `Fb2CoverImage`, `Fb2CoverThumbnail`, `Fb2ShellProperties`.
-  Их перенос допускается только одной связной группой с единым списком исходников
-  либо эквивалентной библиотечной границей.
-- В собственных `.vcxproj` зафиксирован `PlatformToolset=v145`, тогда как
-  официальная сборка и CI передают `v143` и закрепляют VC Tools 14.44. До
-  устранения расхождения фактическое значение нужно проверять через evaluated
-  MSBuild properties, а не текстовый поиск XML.
+  FBE и FBShell компилируют один и тот же список исходников; отдельная DLL не
+  вводится. `src/common/fb2` не является portable core: его Windows/COM
+  зависимости намеренно остаются явными.
+- Используемая этим компонентом ATL/GDI+ обёртка расположена в
+  `src/common/win32/atlimage.h`; она больше не получается через private include
+  каталог редактора.
+- Собственные `.vcxproj` явно импортируют `tools/msbuild/FBE.Common.props`.
+  Он вычисляет корень репозитория без текущего каталога и задаёт `v143` по
+  умолчанию; официальный build и CI по-прежнему закрепляют VC Tools 14.44.
+  Vendored LunaSVG/PlutoVG не импортируют этот файл. Фактическое значение
+  проверяется через evaluated MSBuild properties, а не текстовый поиск XML.
 - `FB::Doc` связан с `CFBEView`, HWND и MSHTML. Он остаётся частью приложения,
   пока отдельно не выделены операции с проверяемой границей без главного окна.
+- Host плагинов (`PluginManager` и `PluginApiV2`) расположен в
+  `src/fbe/plugins`. Это editor-only COM/MFC-код, а не public contract и не
+  common-компонент; его границу фиксирует `test-fbe-plugin-host-boundary.ps1`.
+- Standalone helpers автодополнения и structural context расположены в
+  `src/fbe/source`. Они не владеют DOM или UI, остаются частью редактора и
+  проверяются `test-fbe-source-helpers-boundary.ps1` вместе с native smoke.
+- Regex wrapper и его PCRE2 cache/match-loop расположены в `src/fbe/search`.
+  Это editor-only поисковая подсистема; boundary и PCRE2 fixture-проверки
+  сохраняют её независимость от координаторов окна и документа.
+- `EditorBackgrounds` расположен в `src/fbe/settings`: это каталог и
+  валидация настроек/runtime-ресурсов, а не владелец document/view. Его
+  callers остаются в FBDoc, main frame и settings page.
 - `runtime` содержит и сопровождаемые файлы, и бинарные входы. Их происхождение
   определяется build/provenance и package-проверками, а не одним фактом наличия
   в Git.

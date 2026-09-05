@@ -52,6 +52,6 @@
   </ItemGroup>
   <ItemGroup>
     <Midl Include="ExportEPUB.idl"><Filter>Source Files</Filter></Midl>
-    <Midl Include="..\fbe\fbe.idl"><Filter>Source Files</Filter></Midl>
+    <Midl Include="..\contracts\fbe.idl"><Filter>Source Files</Filter></Midl>
   </ItemGroup>
 </Project>

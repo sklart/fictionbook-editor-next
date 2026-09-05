@@ -92,7 +92,7 @@
     <Midl Include="ExportHTML.idl">
       <Filter>Source Files</Filter>
     </Midl>
-    <Midl Include="..\fbe\fbe.idl">
+    <Midl Include="..\contracts\fbe.idl">
       <Filter>Source Files</Filter>
     </Midl>
   </ItemGroup>

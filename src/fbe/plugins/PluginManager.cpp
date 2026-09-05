@@ -1,11 +1,11 @@
 #include "stdafx.h"
 #include "PluginManager.h"
-#include "RuntimeLocalization.h"
-#include "StartupTrace.h"
-#include "apputils.h"
-#include "utils\\utils.h"
+#include "..\\RuntimeLocalization.h"
+#include "..\\StartupTrace.h"
+#include "..\\apputils.h"
+#include "..\\utils\\utils.h"
 #include "FBE.h"
-#include "..\\common\\RuntimeLocalizationCommon.h"
+#include "..\\..\\common\\RuntimeLocalizationCommon.h"
 
 namespace {
 bool ReadString(const std::wstring& json, size_t object, const wchar_t* name, CString& value) {

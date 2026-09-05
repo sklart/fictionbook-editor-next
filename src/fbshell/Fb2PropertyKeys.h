@@ -3,7 +3,7 @@
 #include <atlstr.h>
 #include <propkey.h>
 
-#include "..\fbe\Fb2ShellProperties.h"
+#include "..\common\fb2\Fb2ShellProperties.h"
 
 namespace FBShellModern {
 

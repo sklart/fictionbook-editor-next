@@ -83,7 +83,7 @@
   удалены из репозитория.
 
 Текущий backend по умолчанию выбирается в
-[src/fbe/RegexBackend.cpp](D:\Download\FBeditor\src\fbe\RegexBackend.cpp)
+[src/fbe/search/RegexBackend.cpp](D:\Download\FBeditor\src\fbe\search\RegexBackend.cpp)
 и всегда направляет выполнение в `PCRE2`.
 
 ## Ограничения текущей совместимости

@@ -16,13 +16,14 @@ if (-not $RuntimeDirectory) { $RuntimeDirectory = Join-Path $root "out\Release" 
 $RuntimeDirectory = (Resolve-Path -LiteralPath $RuntimeDirectory).Path
 
 & (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64
+$apiDirectory = & (Join-Path $PSScriptRoot 'ensure-fbe-api.ps1') -Configuration $Configuration
 $testDirectory = Join-Path $root "out\tests\bundled-plugin-local-activation\Win32\$Configuration"
 $testExecutable = Join-Path $testDirectory 'bundled-plugin-local-activation.exe'
 New-Item -ItemType Directory -Force -Path $testDirectory | Out-Null
 
 & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DUNICODE /D_UNICODE /MD /W3 `
-    "/Fo$testDirectory\\" (Join-Path $PSScriptRoot 'bundled-plugin-local-activation.cpp') `
-    (Join-Path $root 'src\fbe\FBE_i.c') '/link' '/SUBSYSTEM:CONSOLE' 'ole32.lib' 'oleaut32.lib' "/OUT:$testExecutable"
+    "/I$apiDirectory" "/Fo$testDirectory\\" (Join-Path $PSScriptRoot 'bundled-plugin-local-activation.cpp') `
+    (Join-Path $apiDirectory 'FBE_i.c') '/link' '/SUBSYSTEM:CONSOLE' 'ole32.lib' 'oleaut32.lib' "/OUT:$testExecutable"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $manifestPath = Join-Path $root 'runtime\Plugins\plugins.json'

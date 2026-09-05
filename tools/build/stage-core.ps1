@@ -4,11 +4,14 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$EditorRuntimeDirectory = '',
     [string]$BatchOutputDirectory = '',
-    [string]$ArchHandlerOutputDirectory = ''
+    [string]$ArchHandlerOutputDirectory = '',
+    [string]$ProvenanceDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $PSScriptRoot 'PackageLayout.ps1')
+$layout = Get-FbePackageLayout -RepositoryRoot $repoRoot
 $buildOutput = Join-Path $repoRoot "out\$Configuration"
 $editorRuntime = if ($EditorRuntimeDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EditorRuntimeDirectory) } else { Join-Path $repoRoot 'runtime' }
 $batchOutput = if ($BatchOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory) } else { $buildOutput }
@@ -20,54 +23,36 @@ foreach ($path in @($buildOutput, $editorRuntime, $batchOutput, $archOutput)) {
 }
 $commonSource = $buildOutput
 $commonPlugins = Join-Path $commonSource 'Plugins'
-& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind CommonCore `
-    -Configuration $Configuration -CommonDirectory $commonSource
-& (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind Runtime `
-    -Configuration $Configuration -ProfileDirectory $editorRuntime -BatchDirectory $batchOutput -ArchHandlerDirectory $archOutput
-foreach ($name in @('FBE.exe','FBV.exe','html.xsl')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $commonSource $name) -PathType Leaf)) { throw "Не найден Core artifact: $name" }
+$commonProvenanceArguments = @{ Action = 'Validate'; Kind = 'CommonCore'; Configuration = $Configuration; CommonDirectory = $commonSource }
+$runtimeProvenanceArguments = @{ Action = 'Validate'; Kind = 'Runtime'; Configuration = $Configuration; ProfileDirectory = $editorRuntime; BatchDirectory = $batchOutput; ArchHandlerDirectory = $archOutput }
+if ($ProvenanceDirectory) {
+    $commonProvenanceArguments.ProvenanceDirectory = $ProvenanceDirectory
+    $runtimeProvenanceArguments.ProvenanceDirectory = $ProvenanceDirectory
 }
-foreach ($name in @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $commonPlugins $name) -PathType Leaf)) { throw "Не найден Core plugin artifact: $name" }
-}
-foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $batchOutput $name) -PathType Leaf)) { throw "Не найден Core batch artifact: $name" }
-}
-foreach ($name in @('Scintilla.dll','Lexilla.dll')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $editorRuntime $name) -PathType Leaf)) { throw "Не найден Core runtime artifact: $name" }
-}
-foreach ($name in @('ZipHandler.exe','RarHandler.exe')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $archOutput $name) -PathType Leaf)) { throw "Не найден Core ArchHandler artifact: $name" }
-}
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') @commonProvenanceArguments
+& (Join-Path $PSScriptRoot 'build-provenance.ps1') @runtimeProvenanceArguments
 
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Path $stage | Out-Null
-Copy-Item -Path (Join-Path $repoRoot 'runtime\*') -Destination $stage -Recurse -Force
-# Current Librusec catalog names are shipped alongside the historical *_L
-# aliases.  The executable accepts both while older manual installations keep
-# working, but every newly staged portable payload must expose the current
-# names directly.
-foreach ($entry in @{ 'genres.txt_L' = 'genres.librusec.txt'; 'genres.rus.txt_L' = 'genres.rus.librusec.txt' }.GetEnumerator()) {
-    Copy-Item -LiteralPath (Join-Path $stage $entry.Key) -Destination (Join-Path $stage $entry.Value) -Force
+$sourceRoots = @{
+    runtime = Join-Path $repoRoot 'runtime'
+    editorRuntime = $editorRuntime
+    common = $commonSource
+    commonPlugins = $commonPlugins
+    batch = $batchOutput
+    arch = $archOutput
+    repository = $repoRoot
+    thirdParty = Join-Path $repoRoot 'third_party'
+    lunaSvg = Join-Path $repoRoot 'src\import-epub\thirdparty\lunasvg'
+    plutoVg = Join-Path $repoRoot 'src\import-epub\thirdparty\lunasvg\plutovg'
 }
-foreach ($name in @('FBShell.dll','FBShell64.dll','FBE.Sequence.propdesc','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Remove-Item -LiteralPath (Join-Path $stage $name) -Force -ErrorAction SilentlyContinue }
-foreach ($name in @('Scintilla.dll','Lexilla.dll')) { Copy-Item -LiteralPath (Join-Path $editorRuntime $name) -Destination $stage -Force }
-foreach ($name in @('FBE.exe','FBV.exe','html.xsl')) { Copy-Item -LiteralPath (Join-Path $commonSource $name) -Destination $stage -Force }
-$pluginsDestination = Join-Path $stage 'Plugins'; New-Item -ItemType Directory -Path $pluginsDestination -Force | Out-Null
-foreach ($name in @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')) { Copy-Item -LiteralPath (Join-Path $commonPlugins $name) -Destination $pluginsDestination -Force }
-foreach ($name in @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe')) { Copy-Item -LiteralPath (Join-Path $batchOutput $name) -Destination $stage -Force }
-$archDestination = Join-Path $stage 'Utilities\ArchHandler'; New-Item -ItemType Directory -Path $archDestination -Force | Out-Null
-foreach ($name in @('ZipHandler.exe','RarHandler.exe')) { Copy-Item -LiteralPath (Join-Path $archOutput $name) -Destination $archDestination -Force }
-foreach ($name in @('custom.dic','Hotkeys.xml','languages.txt','root_genres.xml','Words.xml')) { Copy-Item -LiteralPath (Join-Path $repoRoot $name) -Destination $stage -Force }
+Copy-FbePackageLayoutEntries -Entries $layout.core.copy -SourceRoots $sourceRoots -StageDirectory $stage
+Copy-FbePackageLayoutAliases -Aliases $layout.core.aliases -StageDirectory $stage
+foreach ($relativePath in @($layout.core.remove)) {
+    $target = Join-Path $stage $relativePath
+    if ($relativePath -like '*/*') { Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue }
+    else { Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue }
+}
 & (Join-Path $repoRoot 'tools\localization\export-runtime-lang.ps1') -RepositoryRoot $repoRoot -OutputDirectory (Join-Path $stage 'Lang') -Clean
-Copy-Item -LiteralPath (Join-Path $repoRoot 'runtime\gpl-3.0.txt') -Destination (Join-Path $stage 'LICENSE') -Force
-Remove-Item -LiteralPath (Join-Path $stage 'gpl-3.0.txt') -Force -ErrorAction SilentlyContinue
-Copy-Item -LiteralPath (Join-Path $repoRoot 'NOTICE') -Destination $stage -Force
-Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $stage -Force
-Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-LICENSES') -Destination $stage -Recurse -Force
-$licenseDestination = Join-Path $stage 'THIRD-PARTY-LICENSES'
-$licenses = @{ 'Scintilla-Lexilla.txt'='third_party\scintilla\License.txt'; 'PCRE2.txt'='third_party\pcre2\LICENCE.md'; 'Hunspell.txt'='third_party\hunspell\license.hunspell'; 'Hunspell-MySpell.txt'='third_party\hunspell\license.myspell'; 'libwebp.txt'='third_party\libwebp\COPYING'; 'OpenJPEG.txt'='third_party\openjpeg\LICENSE'; 'libheif.txt'='third_party\libheif\COPYING'; 'libde265.txt'='third_party\libde265\COPYING'; 'libaom.txt'='third_party\aom\LICENSE'; 'libaom-PATENTS.txt'='third_party\aom\PATENTS'; 'LunaSVG.txt'='src\import-epub\thirdparty\lunasvg\LICENSE'; 'PlutoVG.txt'='src\import-epub\thirdparty\lunasvg\plutovg\LICENSE'; 'UAC.txt'='third_party\uac\License.txt' }
-foreach ($entry in $licenses.GetEnumerator()) { Copy-Item -LiteralPath (Join-Path $repoRoot $entry.Value) -Destination (Join-Path $licenseDestination $entry.Key) -Force }
-Remove-Item -LiteralPath (Join-Path $stage 'Themes\licenses') -Recurse -Force -ErrorAction SilentlyContinue
 & (Join-Path $PSScriptRoot 'verify-package-stage.ps1') -Kind Core -StageDirectory $stage
 Write-Host "Core stage prepared: $stage"

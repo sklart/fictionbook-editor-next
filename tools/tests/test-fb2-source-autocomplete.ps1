@@ -63,7 +63,7 @@ int main() {
 '@ | Set-Content -LiteralPath $sourcePath -Encoding utf8
     & cl.exe /nologo /EHsc /std:c++17 /utf-8 /MT `
         "/I$repoRoot\src\fbe" `
-        "/Fe:$exePath" $sourcePath (Join-Path $repoRoot 'src\fbe\Fb2SourceAutocomplete.cpp')
+        "/I$repoRoot\src\fbe\source" "/Fe:$exePath" $sourcePath (Join-Path $repoRoot 'src\fbe\source\Fb2SourceAutocomplete.cpp')
     if ($LASTEXITCODE -ne 0) { throw 'Не удалось собрать behavioral test FB2 autocomplete.' }
     & $exePath
     if ($LASTEXITCODE -ne 0) { throw 'Behavioral test FB2 autocomplete завершился с ошибкой.' }

@@ -1,6 +1,6 @@
 import "oaidl.idl";
 import "ocidl.idl";
-import "..\fbe\fbe.idl";
+import "..\contracts\fbe.idl";
 
 [
 	uuid(B963BA28-01AA-40C2-8EF7-9F89D47C2F66),

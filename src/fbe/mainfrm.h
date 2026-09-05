@@ -24,7 +24,7 @@
 #include "SciLexer.h"
 #include "EditorEngine.h"
 #include "xmlMatchedTagsHighlighter.h"
-#include "Fb2SourceAutocomplete.h"
+#include "source\\Fb2SourceAutocomplete.h"
 #include "FBE.h"
 #include "Words.h"
 #include "SearchReplace.h"

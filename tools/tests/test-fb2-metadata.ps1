@@ -12,11 +12,10 @@ $fixture = Join-Path $PSScriptRoot "fb2-metadata-smoke.fb2"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 & cl.exe /nologo /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE /MD /W3 `
-    "/I$(Join-Path $repoRoot "src\fbe")" `
     "/I$(Join-Path $repoRoot "src\fbshell")" `
     "/Fo$($testDir)\\" `
-    (Join-Path $repoRoot "src\fbe\Fb2Metadata.cpp") `
-    (Join-Path $repoRoot "src\fbe\Fb2ShellProperties.cpp") `
+    (Join-Path $repoRoot "src\common\fb2\Fb2Metadata.cpp") `
+    (Join-Path $repoRoot "src\common\fb2\Fb2ShellProperties.cpp") `
     (Join-Path $repoRoot "src\fbshell\FbeCustomProperties.cpp") `
     (Join-Path $repoRoot "src\fbshell\Fb2PropertyKeys.cpp") `
     (Join-Path $repoRoot "src\fbshell\Fb2PropertyStore.cpp") `
