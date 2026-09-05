@@ -52,8 +52,10 @@ public:
 		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_LAYOUT, CBN_SELCHANGE, OnBackgroundSelectionChanged)
 		COMMAND_HANDLER(IDC_FONT, CBN_SELCHANGE, OnPreviewSettingsChanged)
 		COMMAND_HANDLER(IDC_FONT_SIZE, CBN_SELCHANGE, OnPreviewSettingsChanged)
-		COMMAND_HANDLER(IDC_FG, BN_CLICKED, OnPreviewSettingsChanged)
-		COMMAND_HANDLER(IDC_BG, BN_CLICKED, OnPreviewSettingsChanged)
+		// Let CColorButton receive BN_CLICKED through REFLECT_NOTIFICATIONS so it
+		// can open its picker.  It reports the chosen colour with CPN_SELCHANGE.
+		COMMAND_HANDLER(IDC_FG, CPN_SELCHANGE, OnPreviewSettingsChanged)
+		COMMAND_HANDLER(IDC_BG, CPN_SELCHANGE, OnPreviewSettingsChanged)
 		REFLECT_NOTIFICATIONS()
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsEditorPage>)
 	END_MSG_MAP()
