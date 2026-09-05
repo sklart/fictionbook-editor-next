@@ -342,12 +342,13 @@ int wmain(int argc, wchar_t **argv) {
   SetEnvironmentVariableW(FBE_TEST_PATH, 0);
   SetEnvironmentVariableW(FBE_TEST_CANCEL, 0);
   SetEnvironmentVariableW(FBE_TEST_FAIL, 0);
-  DeleteFileW(good.c_str());
 #ifdef FBE_TEST_EXPORT_EPUB
-  DeleteFileW((root + L"\\ok-epub2.epub").c_str());
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_EPUB_VERSION", 0);
-#endif
+  std::wcout << L"EPUB3=" << good << L"\nEPUB2=" << (root + L"\\ok-epub2.epub") << L"\n";
+#else
+  DeleteFileW(good.c_str());
   RemoveDirectoryW(root.c_str());
+#endif
   FreeLibrary(m);
   std::wcout << L"Export v2 runtime passed\n";
   return 0;
