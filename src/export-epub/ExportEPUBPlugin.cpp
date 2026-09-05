@@ -2550,6 +2550,12 @@ bool AskOutputFile(HWND owner,
                    CString& outPath,
                    fbe::epub::EpubVersion& version)
 {
+    wchar_t testMode[4] = {}, testScenario[32] = {}, testPath[MAX_PATH] = {};
+    const bool headlessTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+        ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", testScenario, _countof(testScenario)) == wcslen(L"export-epub") && wcscmp(testScenario, L"export-epub") == 0;
+    if (headlessTest && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_EPUB_PATH", testPath, _countof(testPath)) > 0) {
+        outPath = testPath; version = fbe::epub::EpubVersion::Epub3; return true;
+    }
     CString proposed = DefaultOutputFileName(filename, source, owner);
     const CString serialized = LoadExportEpubString(IDS_SAVE_FILE_FILTER,
         L"EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|All files (*.*)|*.*|");
@@ -3634,6 +3640,11 @@ HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
 
 HRESULT CExportEPUBPlugin::ExportCore(long hWnd, BSTR filename, IDispatch* doc)
 {
+    wchar_t testMode[4] = {}, testScenario[32] = {}, testFlag[4] = {};
+    const bool headlessTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+        ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", testScenario, _countof(testScenario)) == wcslen(L"export-epub") && wcscmp(testScenario, L"export-epub") == 0;
+    if (headlessTest && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_EPUB_FAIL", testFlag, _countof(testFlag)) == 1 && testFlag[0] == L'1') return E_FAIL;
+    if (headlessTest && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_EPUB_CANCEL", testFlag, _countof(testFlag)) == 1 && testFlag[0] == L'1') return HRESULT_FROM_WIN32(ERROR_CANCELLED);
     InitExportEpubRuntimeStrings(_AtlBaseModule.GetModuleInstance());
 
     const HWND owner = reinterpret_cast<HWND>(static_cast<LONG_PTR>(hWnd));
