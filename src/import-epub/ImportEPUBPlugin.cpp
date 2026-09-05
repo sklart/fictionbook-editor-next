@@ -7,6 +7,7 @@
 #include "resource.h"
 #include "RuntimeLocalization.h"
 #include "..\\common\\ModernFileDialog.h"
+#include "..\\version.h"
 
 // {3C19F5A2-2EC8-4EC7-B7A9-F4910B4CDD82}
 extern const CLSID CLSID_ImportEPUBPlugin =
@@ -16,7 +17,9 @@ extern const CLSID CLSID_ImportEPUBPlugin =
 class ATL_NO_VTABLE CImportEPUBPlugin :
     public CComObjectRootEx<CComSingleThreadModel>,
     public CComCoClass<CImportEPUBPlugin, &CLSID_ImportEPUBPlugin>,
-    public IFBEImportPlugin
+    public IFBEImportPlugin,
+    public IFBEPluginInfo2,
+    public IFBEImportPlugin2
 {
 public:
     CImportEPUBPlugin() = default;
@@ -25,10 +28,17 @@ public:
 
     BEGIN_COM_MAP(CImportEPUBPlugin)
         COM_INTERFACE_ENTRY(IFBEImportPlugin)
+        COM_INTERFACE_ENTRY(IFBEPluginInfo2)
+        COM_INTERFACE_ENTRY(IFBEImportPlugin2)
     END_COM_MAP()
 
     // IFBEImportPlugin
     STDMETHOD(Import)(long hWnd, BSTR* filename, IDispatch** document) override;
+    STDMETHOD(GetPluginId)(BSTR* value) override;
+    STDMETHOD(GetPluginVersion)(BSTR* value) override;
+    STDMETHOD(GetApiVersion)(ULONG* value) override;
+    STDMETHOD(GetCapabilities)(ULONGLONG* value) override;
+    STDMETHOD(Import)(IFBEPluginHost* host, BSTR* suggestedFileName, IStream** fb2Xml) override;
 };
 
 // Register the class in ATL's object map.
@@ -383,6 +393,100 @@ namespace
         *document = dispatch.Detach();
         return S_OK;
     }
+}
+
+STDMETHODIMP CImportEPUBPlugin::GetPluginId(BSTR* value)
+{
+    if (!value) return E_POINTER;
+    *value = ::SysAllocString(L"import-epub");
+    return *value ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CImportEPUBPlugin::GetPluginVersion(BSTR* value)
+{
+    if (!value) return E_POINTER;
+    *value = ::SysAllocString(FBE_VERSION_WSTRING);
+    return *value ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CImportEPUBPlugin::GetApiVersion(ULONG* value)
+{
+    if (!value) return E_POINTER;
+    *value = 2;
+    return S_OK;
+}
+
+STDMETHODIMP CImportEPUBPlugin::GetCapabilities(ULONGLONG* value)
+{
+    if (!value) return E_POINTER;
+    *value = 0;
+    return S_OK;
+}
+
+STDMETHODIMP CImportEPUBPlugin::Import(IFBEPluginHost* host, BSTR* suggestedFileName, IStream** fb2Xml)
+{
+    if (!host || !suggestedFileName || !fb2Xml) return E_POINTER;
+    *suggestedFileName = nullptr;
+    *fb2Xml = nullptr;
+    InitImportEpubRuntimeStrings();
+
+    CComPtr<IFBECancellationToken> cancellation;
+    HRESULT hr = host->GetCancellationToken(&cancellation);
+    if (FAILED(hr)) return hr;
+    BOOL cancelled = FALSE;
+    if (cancellation) {
+        hr = cancellation->IsCancellationRequested(&cancelled);
+        if (FAILED(hr)) return hr;
+        if (cancelled) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+    }
+
+    LONGLONG ownerValue = 0;
+    hr = host->GetOwnerWindow(&ownerValue);
+    if (FAILED(hr)) return hr;
+    HWND owner = reinterpret_cast<HWND>(static_cast<INT_PTR>(ownerValue));
+    EpubImportOptions options;
+    LoadImportOptions(options);
+    CStringW epubPath;
+    wchar_t mode[4] = {}, scenario[32] = {}, testPath[MAX_PATH] = {};
+    const bool headless = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) == 1 && wcscmp(mode, L"1") == 0 &&
+        ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) > 0 && wcscmp(scenario, L"import-epub") == 0;
+    if (headless) {
+        if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_CANCEL", mode, _countof(mode)) == 1 && wcscmp(mode, L"1") == 0)
+            return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+        if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH", testPath, _countof(testPath)) == 0)
+            return E_FAIL;
+        epubPath = testPath;
+    } else if (!SelectEpubFile(owner, epubPath, options)) {
+        return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+    }
+
+    CComPtr<IFBEProgressSink> progress;
+    if (SUCCEEDED(host->GetProgressSink(&progress)) && progress) progress->Report(0, 1, CComBSTR(L"importing"));
+    CStringW xml, error;
+    const bool converted = BuildFb2XmlFromEpub(epubPath, options, xml, error);
+    if (!converted) {
+        xml = BuildDiagnosticFb2Xml(epubPath, error);
+        if (xml.IsEmpty()) { host->ReportMessage(2, CComBSTR(L"import-failed"), CComBSTR(L"ImportEPUB could not create diagnostic FB2")); return E_FAIL; }
+        host->ReportMessage(1, CComBSTR(L"import-diagnostic"), CComBSTR(error));
+    }
+    const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, xml, xml.GetLength(), nullptr, 0, nullptr, nullptr);
+    if (bytes <= 0) return E_FAIL;
+    CComPtr<IStream> stream;
+    hr = ::CreateStreamOnHGlobal(nullptr, TRUE, &stream);
+    if (FAILED(hr)) return hr;
+    std::string utf8(static_cast<size_t>(bytes), '\0');
+    ::WideCharToMultiByte(CP_UTF8, 0, xml, xml.GetLength(), &utf8[0], bytes, nullptr, nullptr);
+    ULONG written = 0;
+    hr = stream->Write(utf8.data(), static_cast<ULONG>(utf8.size()), &written);
+    if (FAILED(hr) || written != utf8.size()) { host->ReportMessage(2, CComBSTR(L"import-failed"), CComBSTR(L"Could not create FB2 stream")); return FAILED(hr) ? hr : E_FAIL; }
+    LARGE_INTEGER zero = {};
+    hr = stream->Seek(zero, STREAM_SEEK_SET, nullptr);
+    if (FAILED(hr)) return hr;
+    *suggestedFileName = ::SysAllocString(ChangeExtensionToFb2(epubPath));
+    if (!*suggestedFileName) return E_OUTOFMEMORY;
+    *fb2Xml = stream.Detach();
+    if (progress) progress->Report(1, 1, CComBSTR(L"imported"));
+    return S_OK;
 }
 
 STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** document)

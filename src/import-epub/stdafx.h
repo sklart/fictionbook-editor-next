@@ -29,9 +29,7 @@
 #include <atlpath.h>
 #include <comdef.h>
 
-// Main FBE import plugin interface definition.
-//
-// Do not include fbe/FBE.h here: in different checkouts it can be generated or
-// placed differently. We only need IFBEImportPlugin, so a minimal binary-
-// compatible declaration with the same IID is kept locally.
-#include "FBEPluginInterfaces.h"
+// The generated API header is the single ABI source for both legacy and v2
+// plugin interfaces.  The old local declaration is intentionally no longer
+// used, so this DLL cannot drift from the host vtable definitions.
+#include "..\\fbe\\FBE.h"
