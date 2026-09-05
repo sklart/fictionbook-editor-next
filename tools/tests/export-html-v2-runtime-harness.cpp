@@ -18,6 +18,7 @@ typedef HRESULT(STDAPICALLTYPE *GetClassObject)(REFCLSID, REFIID, void **);
 #define FBE_TEST_PATH L"FBE_NEXT_TEST_EXPORT_DOCX_PATH"
 #define FBE_TEST_CANCEL L"FBE_NEXT_TEST_EXPORT_DOCX_CANCEL"
 #define FBE_TEST_FAIL L"FBE_NEXT_TEST_EXPORT_DOCX_FAIL"
+#define FBE_TEST_WRITE_FAIL L"FBE_NEXT_TEST_EXPORT_DOCX_WRITE_FAIL"
 #else
 #define FBE_TEST_CLSID L"{C3098839-EF69-4DE5-B27D-1E80051CA843}"
 #define FBE_TEST_PLUGIN_ID L"export-html"
@@ -64,6 +65,7 @@ class Cancel : public IFBECancellationToken {
   LONG r = 1;
 
 public:
+  HRESULT result = S_OK;
   STDMETHOD(QueryInterface)(REFIID i, void **p) {
     if (!p)
       return E_POINTER;
@@ -85,7 +87,7 @@ public:
     if (!x)
       return E_POINTER;
     *x = FALSE;
-    return S_OK;
+    return result;
   }
 };
 class Host : public IFBEPluginHost {
@@ -101,6 +103,7 @@ public:
   }
   bool ok() { return p->start && p->done; }
   bool noDone() { return !p->done; }
+  void SetCancellationResult(HRESULT value) { c->result = value; }
   STDMETHOD(QueryInterface)(REFIID i, void **x) {
     if (!x)
       return E_POINTER;
@@ -332,7 +335,25 @@ int wmain(int argc, wchar_t **argv) {
     return 16;
   snap->Release();
   host->Release();
-  SetEnvironmentVariableW(FBE_TEST_PATH, good.c_str());
+  std::wstring writeFailurePath = root + L"\\write-failure.docx";
+  SetEnvironmentVariableW(FBE_TEST_PATH, writeFailurePath.c_str());
+  SetEnvironmentVariableW(FBE_TEST_WRITE_FAIL, L"1");
+  host = new Host;
+  snap = new Snapshot;
+  h = Call(e, host, snap);
+  if (!FAILED(h) || h == S_OK || !host->messages || !host->noDone() || GetFileAttributesW(writeFailurePath.c_str()) != INVALID_FILE_ATTRIBUTES)
+    return 17;
+  snap->Release();
+  host->Release();
+  SetEnvironmentVariableW(FBE_TEST_WRITE_FAIL, 0);
+  host = new Host;
+  host->SetCancellationResult(E_FAIL);
+  snap = new Snapshot;
+  h = Call(e, host, snap);
+  if (h != E_FAIL || !host->noDone() || host->messages)
+    return 18;
+  snap->Release();
+  host->Release();
 #endif
   SetEnvironmentVariableW(FBE_TEST_FAIL, L"1");
   host = new Host;
@@ -343,6 +364,9 @@ int wmain(int argc, wchar_t **argv) {
   snap->Release();
   host->Release();
   SetEnvironmentVariableW(FBE_TEST_FAIL, 0);
+#ifdef FBE_TEST_EXPORT_DOCX
+  SetEnvironmentVariableW(FBE_TEST_WRITE_FAIL, 0);
+#endif
   SetEnvironmentVariableW(FBE_TEST_CANCEL, L"1");
   host = new Host;
   snap = new Snapshot;

@@ -49,13 +49,23 @@ struct ZipEntry {
 
 class CZipStoreWriter {
 public:
-    CZipStoreWriter() : m_h(INVALID_HANDLE_VALUE) {}
+    CZipStoreWriter() : m_h(INVALID_HANDLE_VALUE), m_error(ERROR_SUCCESS), m_testWriteFailure(false) {}
     ~CZipStoreWriter() { if (m_h != INVALID_HANDLE_VALUE) ::CloseHandle(m_h); }
 
     bool Open(LPCTSTR filename) {
         m_h = ::CreateFile(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-        return m_h != INVALID_HANDLE_VALUE;
+        if (m_h == INVALID_HANDLE_VALUE) {
+            SetError(::GetLastError());
+            return false;
+        }
+        m_testWriteFailure = IsExportDocxHeadlessTest() && []() {
+            wchar_t value[4] = {};
+            return ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_DOCX_WRITE_FAIL", value, _countof(value)) == 1 && wcscmp(value, L"1") == 0;
+        }();
+        return true;
     }
+
+    DWORD Error() const { return m_error; }
 
     bool AddText(const char* name, const CStringW& xml) {
         return AddText(name, ToUtf8(xml));
@@ -66,72 +76,70 @@ public:
     }
 
     bool AddBytes(const char* name, const BYTE* data, DWORD size) {
-        if (m_h == INVALID_HANDLE_VALUE) return false;
+        if (m_h == INVALID_HANDLE_VALUE || m_error != ERROR_SUCCESS) return false;
+        if (!name || strlen(name) > 0xffff) { SetError(ERROR_INVALID_DATA); return false; }
 
         ZipEntry e;
         e.name = name;
         e.crc = Crc32(data, size);
         e.size = size;
-        e.localOffset = Tell();
+        if (!Tell(&e.localOffset)) return false;
 
-        Write32(0x04034b50);       // local file header
-        Write16(20);               // version needed
-        Write16(0x0800);           // UTF-8 file names
-        Write16(0);                // stored, no compression
-        Write16(0); Write16(0);    // time/date
-        Write32(e.crc);
-        Write32(size);
-        Write32(size);
-        Write16(static_cast<WORD>(e.name.size()));
-        Write16(0);
-        WriteRaw(e.name.data(), static_cast<DWORD>(e.name.size()));
-        if (size) WriteRaw(data, size);
+        if (!Write32(0x04034b50) || !Write16(20) || !Write16(0x0800) || !Write16(0) ||
+            !Write16(0) || !Write16(0) || !Write32(e.crc) || !Write32(size) || !Write32(size) ||
+            !Write16(static_cast<WORD>(e.name.size())) || !Write16(0) ||
+            !WriteRaw(e.name.data(), static_cast<DWORD>(e.name.size())) ||
+            (size && !WriteRaw(data, size))) return false;
         m_entries.push_back(e);
         return true;
     }
 
     bool Close() {
-        DWORD cdOffset = Tell();
+        if (m_h == INVALID_HANDLE_VALUE) { SetError(ERROR_INVALID_HANDLE); return false; }
+        DWORD cdOffset = 0;
+        if (m_error == ERROR_SUCCESS && !Tell(&cdOffset)) {}
         for (size_t i = 0; i < m_entries.size(); ++i) {
+            if (m_error != ERROR_SUCCESS) break;
             const ZipEntry& e = m_entries[i];
-            Write32(0x02014b50);   // central directory
-            Write16(20); Write16(20);
-            Write16(0x0800);
-            Write16(0);
-            Write16(0); Write16(0);
-            Write32(e.crc);
-            Write32(e.size);
-            Write32(e.size);
-            Write16(static_cast<WORD>(e.name.size()));
-            Write16(0); Write16(0); Write16(0); Write16(0);
-            Write32(0);
-            Write32(e.localOffset);
-            WriteRaw(e.name.data(), static_cast<DWORD>(e.name.size()));
+            if (!Write32(0x02014b50) || !Write16(20) || !Write16(20) || !Write16(0x0800) || !Write16(0) ||
+                !Write16(0) || !Write16(0) || !Write32(e.crc) || !Write32(e.size) || !Write32(e.size) ||
+                !Write16(static_cast<WORD>(e.name.size())) || !Write16(0) || !Write16(0) || !Write16(0) ||
+                !Write16(0) || !Write32(0) || !Write32(e.localOffset) ||
+                !WriteRaw(e.name.data(), static_cast<DWORD>(e.name.size()))) break;
         }
-        DWORD cdSize = Tell() - cdOffset;
-        Write32(0x06054b50);
-        Write16(0); Write16(0);
-        Write16(static_cast<WORD>(m_entries.size()));
-        Write16(static_cast<WORD>(m_entries.size()));
-        Write32(cdSize);
-        Write32(cdOffset);
-        Write16(0);
-        ::CloseHandle(m_h);
+        DWORD endOffset = 0;
+        if (m_error == ERROR_SUCCESS && Tell(&endOffset)) {
+            const DWORD cdSize = endOffset - cdOffset;
+            Write32(0x06054b50); Write16(0); Write16(0); Write16(static_cast<WORD>(m_entries.size()));
+            Write16(static_cast<WORD>(m_entries.size())); Write32(cdSize); Write32(cdOffset); Write16(0);
+        }
+        if (!::CloseHandle(m_h)) SetError(::GetLastError());
         m_h = INVALID_HANDLE_VALUE;
-        return true;
+        return m_error == ERROR_SUCCESS;
     }
 
 private:
     HANDLE m_h;
+    DWORD m_error;
+    bool m_testWriteFailure;
     std::vector<ZipEntry> m_entries;
 
-    DWORD Tell() const { return ::SetFilePointer(m_h, 0, NULL, FILE_CURRENT); }
-    void WriteRaw(const void* p, DWORD cb) {
-        DWORD wr = 0;
-        if (cb) ::WriteFile(m_h, p, cb, &wr, NULL);
+    void SetError(DWORD error) { if (m_error == ERROR_SUCCESS) m_error = error ? error : ERROR_WRITE_FAULT; }
+    bool Tell(DWORD* offset) {
+        ::SetLastError(ERROR_SUCCESS);
+        const DWORD value = ::SetFilePointer(m_h, 0, NULL, FILE_CURRENT);
+        if (value == INVALID_SET_FILE_POINTER && ::GetLastError() != ERROR_SUCCESS) { SetError(::GetLastError()); return false; }
+        *offset = value; return true;
     }
-    void Write16(WORD v) { BYTE b[2] = { static_cast<BYTE>(v & 255), static_cast<BYTE>((v >> 8) & 255) }; WriteRaw(b, 2); }
-    void Write32(DWORD v) { BYTE b[4] = { static_cast<BYTE>(v & 255), static_cast<BYTE>((v >> 8) & 255), static_cast<BYTE>((v >> 16) & 255), static_cast<BYTE>((v >> 24) & 255) }; WriteRaw(b, 4); }
+    bool WriteRaw(const void* p, DWORD cb) {
+        if (m_error != ERROR_SUCCESS) return false;
+        if (m_testWriteFailure) { SetError(ERROR_WRITE_FAULT); return false; }
+        DWORD wr = 0;
+        if (cb && (!::WriteFile(m_h, p, cb, &wr, NULL) || wr != cb)) { SetError(::GetLastError()); return false; }
+        return true;
+    }
+    bool Write16(WORD v) { BYTE b[2] = { static_cast<BYTE>(v & 255), static_cast<BYTE>((v >> 8) & 255) }; return WriteRaw(b, 2); }
+    bool Write32(DWORD v) { BYTE b[4] = { static_cast<BYTE>(v & 255), static_cast<BYTE>((v >> 8) & 255), static_cast<BYTE>((v >> 16) & 255), static_cast<BYTE>((v >> 24) & 255) }; return WriteRaw(b, 4); }
 
     static std::string ToUtf8(const CStringW& s) {
         if (s.IsEmpty()) return std::string();
@@ -1684,30 +1692,24 @@ public:
         }
         if (m_body.IsEmpty()) m_body += L"<w:p/>";
 
-        zip.AddText("[Content_Types].xml", ContentTypesXml());
-        zip.AddText("_rels/.rels", RootRelsXml());
-        zip.AddText("docProps/core.xml", CorePropsXml());
-        zip.AddText("docProps/app.xml", AppPropsXml());
-        zip.AddText("docProps/custom.xml", CustomPropsXml());
-        zip.AddText("word/document.xml", DocumentXml());
-        zip.AddText("word/_rels/document.xml.rels", DocumentRelsXml());
-        zip.AddText("word/styles.xml", StylesXml());
-        zip.AddText("word/settings.xml", SettingsXml());
-        zip.AddText("word/theme/theme1.xml", ThemeXml());
-        if (m_opt.addHeaders) zip.AddText("word/header1.xml", HeaderXml());
-        if (m_opt.addPageNumbers) zip.AddText("word/footer1.xml", FooterXml());
+        if (!zip.AddText("[Content_Types].xml", ContentTypesXml()) ||
+            !zip.AddText("_rels/.rels", RootRelsXml()) || !zip.AddText("docProps/core.xml", CorePropsXml()) ||
+            !zip.AddText("docProps/app.xml", AppPropsXml()) || !zip.AddText("docProps/custom.xml", CustomPropsXml()) ||
+            !zip.AddText("word/document.xml", DocumentXml()) || !zip.AddText("word/_rels/document.xml.rels", DocumentRelsXml()) ||
+            !zip.AddText("word/styles.xml", StylesXml()) || !zip.AddText("word/settings.xml", SettingsXml()) ||
+            !zip.AddText("word/theme/theme1.xml", ThemeXml())) return false;
+        if (m_opt.addHeaders && !zip.AddText("word/header1.xml", HeaderXml())) return false;
+        if (m_opt.addPageNumbers && !zip.AddText("word/footer1.xml", FooterXml())) return false;
         if (!m_footnotes.empty() && m_opt.notesMode == 0) {
-            zip.AddText("word/footnotes.xml", FootnotesXml());
-            zip.AddText("word/_rels/footnotes.xml.rels", NotesPartRelsXml());
+            if (!zip.AddText("word/footnotes.xml", FootnotesXml()) || !zip.AddText("word/_rels/footnotes.xml.rels", NotesPartRelsXml())) return false;
         }
         if (!m_footnotes.empty() && m_opt.notesMode == 1) {
-            zip.AddText("word/endnotes.xml", EndnotesXml());
-            zip.AddText("word/_rels/endnotes.xml.rels", NotesPartRelsXml());
+            if (!zip.AddText("word/endnotes.xml", EndnotesXml()) || !zip.AddText("word/_rels/endnotes.xml.rels", NotesPartRelsXml())) return false;
         }
 
         for (size_t i = 0; i < m_images.size(); ++i) {
             CStringW path = L"word/media/" + m_images[i].fileName;
-            zip.AddBytes(ToUtf8(path).c_str(), m_images[i].bytes.empty() ? NULL : &m_images[i].bytes[0], static_cast<DWORD>(m_images[i].bytes.size()));
+            if (!zip.AddBytes(ToUtf8(path).c_str(), m_images[i].bytes.empty() ? NULL : &m_images[i].bytes[0], static_cast<DWORD>(m_images[i].bytes.size()))) return false;
         }
         ValidateDocxPackage();
         return true;
@@ -3563,22 +3565,27 @@ extern "C" __declspec(dllexport) HRESULT WINAPI ExportFB2FileToDOCX(LPCWSTR fb2P
 
                     CZipStoreWriter zip;
                     if (!zip.Open(docxPath)) {
-                        DWORD err = ::GetLastError();
-                        result = HRESULT_FROM_WIN32(err);
+                        const DWORD error = zip.Error();
+                        result = error ? HRESULT_FROM_WIN32(error) : E_FAIL;
                     } else {
                         CDocxBuilder builder(source, settings);
                         if (!builder.Build(zip)) {
                             zip.Close();
-                            result = E_FAIL;
+                            const DWORD error = zip.Error();
+                            ::DeleteFileW(docxPath);
+                            result = error ? HRESULT_FROM_WIN32(error) : E_FAIL;
                         } else {
-                            zip.Close();
-
-                            if (settings.createReport) {
-                                CStringW reportName = MakeReportFileName(CStringW(docxPath));
-                                WriteUtf8TextFile(reportName, builder.ReportText(CStringW(docxPath)));
+                            if (!zip.Close()) {
+                                const DWORD error = zip.Error();
+                                ::DeleteFileW(docxPath);
+                                result = error ? HRESULT_FROM_WIN32(error) : E_FAIL;
+                            } else {
+                                if (settings.createReport) {
+                                    CStringW reportName = MakeReportFileName(CStringW(docxPath));
+                                    WriteUtf8TextFile(reportName, builder.ReportText(CStringW(docxPath)));
+                                }
+                                result = S_OK;
                             }
-
-                            result = S_OK;
                         }
                     }
                 }
@@ -3755,9 +3762,15 @@ HRESULT CExportDOCXPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
         CDocxBuilder builder(source, settings);
         if (!builder.Build(zip)) {
             zip.Close();
-            return E_FAIL;
+            const DWORD error = zip.Error();
+            ::DeleteFileW(outputPath);
+            return error ? HRESULT_FROM_WIN32(error) : E_FAIL;
         }
-        zip.Close();
+        if (!zip.Close()) {
+            const DWORD error = zip.Error();
+            ::DeleteFileW(outputPath);
+            return error ? HRESULT_FROM_WIN32(error) : E_FAIL;
+        }
         if (settings.createReport) {
             CStringW reportName = MakeReportFileName(CStringW(outputPath));
             WriteUtf8TextFile(reportName, builder.ReportText(CStringW(outputPath)));

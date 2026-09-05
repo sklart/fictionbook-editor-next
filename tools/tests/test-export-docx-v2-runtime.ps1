@@ -8,8 +8,12 @@ $exe = Join-Path $root "out\$Configuration\export-docx-v2-runtime.exe"
 & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DFBE_TEST_EXPORT_DOCX /DUNICODE /D_UNICODE (Join-Path $PSScriptRoot 'export-html-v2-runtime-harness.cpp') (Join-Path $root 'src\fbe\FBE_i.c') /link ole32.lib oleaut32.lib "/OUT:$exe"
 if ($LASTEXITCODE -ne 0) { throw 'ExportDOCX v2 runtime harness did not compile.' }
 try {
-    $lines = @(& $exe $dll); if ($LASTEXITCODE -ne 0) { throw "ExportDOCX v2 runtime harness failed: $LASTEXITCODE" }
-    $docx = ($lines | Where-Object { $_ -like 'DOCX=*' } | Select-Object -First 1) -replace '^DOCX='
+    $outputLog = "$exe.stdout"
+    $process = Start-Process -FilePath $exe -ArgumentList @($dll) -Wait -PassThru -NoNewWindow -RedirectStandardOutput $outputLog
+    if ($process.ExitCode -ne 0) { throw "ExportDOCX v2 runtime harness failed: $($process.ExitCode)" }
+    $lines = @(Get-Content -LiteralPath $outputLog)
+    $docxLine = [string]($lines | Where-Object { $_ -like 'DOCX=*' } | Select-Object -First 1)
+    $docx = if ($docxLine.StartsWith('DOCX=')) { $docxLine.Substring(5).Trim() } else { '' }
     if ([string]::IsNullOrWhiteSpace($docx) -or -not (Test-Path -LiteralPath $docx)) { throw 'Runtime harness did not return DOCX output.' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip = [System.IO.Compression.ZipFile]::OpenRead($docx)
     try {
@@ -27,4 +31,5 @@ try {
         if ($parent -and (Test-Path -LiteralPath $parent -PathType Container)) { try { [IO.Directory]::Delete($parent) } catch {} }
     }
     Remove-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath ($exe -replace '\.exe$','.pdb') -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $outputLog -Force -ErrorAction SilentlyContinue
 }
