@@ -126,8 +126,12 @@ HRESULT CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
 
 HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 {
-	wchar_t testMode[4] = {}, testCancel[4] = {};
-	if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+	wchar_t testMode[4] = {}, testCancel[4] = {}, testFail[4] = {}, testScenario[32] = {};
+	const bool exportHtmlTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", testScenario, _countof(testScenario)) == wcslen(L"export-html") && wcscmp(testScenario, L"export-html") == 0;
+	if (exportHtmlTest && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", testFail, _countof(testFail)) == 1 && testFail[0] == L'1')
+		return E_FAIL;
+	if (exportHtmlTest &&
 		::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL", testCancel, _countof(testCancel)) == 1 && testCancel[0] == L'1')
 		return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 	InitExportHtmlRuntimeStrings();

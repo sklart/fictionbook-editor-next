@@ -247,11 +247,12 @@ int wmain(int argc, wchar_t **argv) {
   std::wstring root = std::wstring(dir) + L"fbe-exporthtml-v2-" +
                       std::to_wstring(GetCurrentProcessId());
   CreateDirectoryW(root.c_str(), 0);
-  std::wstring good = root + L"\\ok.html", bad = root + L"\\missing\\bad.html";
+  std::wstring good = root + L"\\ok.html";
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", L"1");
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", L"export-html");
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_MODE", L"4");
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL", 0);
+  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", 0);
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_PATH", good.c_str());
   Host *host = new Host;
   Snapshot *snap = new Snapshot;
@@ -267,11 +268,11 @@ int wmain(int argc, wchar_t **argv) {
   ReadFile(file, out, sizeof(out) - 1, &n, 0);
   CloseHandle(file);
   out[n] = 0;
-  if (!strstr(out, "Привет") && !strstr(out, "\xD0\x9F\xD1\x80"))
+  if (!strstr(out, "Привет, мир") && !strstr(out, "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82\x2C\x20\xD0\xBC\xD0\xB8\xD1\x80"))
     return 10;
   snap->Release();
   host->Release();
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_PATH", bad.c_str());
+  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", L"1");
   host = new Host;
   snap = new Snapshot;
   h = Call(e, host, snap);
@@ -279,6 +280,7 @@ int wmain(int argc, wchar_t **argv) {
     return 11;
   snap->Release();
   host->Release();
+  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", 0);
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL", L"1");
   host = new Host;
   snap = new Snapshot;
@@ -301,6 +303,7 @@ int wmain(int argc, wchar_t **argv) {
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", 0);
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_PATH", 0);
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL", 0);
+  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", 0);
   DeleteFileW(good.c_str());
   RemoveDirectoryW(root.c_str());
   FreeLibrary(m);
