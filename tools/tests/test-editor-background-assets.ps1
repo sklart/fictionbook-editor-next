@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param([string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path)
+param(
+    [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
+    [string]$RuntimeDirectory
+)
 
 $ErrorActionPreference = 'Stop'
 $root = Join-Path $RepositoryRoot 'runtime\EditorBackgrounds'
@@ -26,6 +29,17 @@ for($index = 0; $index -lt $manifest.backgrounds.Count; ++$index) {
     if($entry.sha256) { $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant(); if($actual -ne $entry.sha256.ToLowerInvariant()) { throw "SHA-256 mismatch: $($entry.file)" } }
 }
 if((Get-ChildItem -LiteralPath $root -Filter *.png -File).Count -ne 14) { throw 'Runtime folder must contain exactly 14 PNG backgrounds.' }
+if($RuntimeDirectory) {
+    $RuntimeDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RuntimeDirectory)
+    if(-not (Test-Path -LiteralPath $RuntimeDirectory -PathType Container)) { throw "Staged runtime is missing EditorBackgrounds: $RuntimeDirectory" }
+    if(-not (Test-Path -LiteralPath (Join-Path $RuntimeDirectory 'backgrounds.json') -PathType Leaf)) { throw 'Staged runtime is missing backgrounds.json.' }
+    if((Get-ChildItem -LiteralPath $RuntimeDirectory -Filter *.png -File).Count -ne 14) { throw 'Staged runtime must contain exactly 14 PNG backgrounds.' }
+    foreach($entry in $manifest.backgrounds) {
+        $staged = Join-Path $RuntimeDirectory $entry.file
+        if(-not (Test-Path -LiteralPath $staged -PathType Leaf)) { throw "Staged runtime is missing background: $($entry.file)" }
+        if((Get-FileHash -LiteralPath $staged -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath (Join-Path $root $entry.file) -Algorithm SHA256).Hash) { throw "Staged background differs from manifest source: $($entry.file)" }
+    }
+}
 $packageManifest = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'packaging\package-manifest.json') -Encoding UTF8 | ConvertFrom-Json
 if($packageManifest.core.runtimeDirectories -notcontains 'EditorBackgrounds') { throw 'Portable package manifest does not preserve EditorBackgrounds.' }
 foreach($key in @('group','image','browse','layout','none','custom','tile','center','contain','cover','choose')) { if(-not $catalog.strings.PSObject.Properties["fbe.settings.editor_background.$key"]) { throw "Missing localized UI key: $key" } }

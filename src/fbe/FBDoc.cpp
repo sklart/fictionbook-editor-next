@@ -30,6 +30,12 @@ namespace FB {
 
 static bool IsHighContrastEnabled()
 {
+	// The unattended runtime regression uses this switch to exercise the same
+	// accessibility branch without changing the machine-wide Windows setting.
+	wchar_t testMode[4] = {}, forced[4] = {};
+	if(::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_FORCE_HIGH_CONTRAST", forced, _countof(forced)) == 1 && forced[0] == L'1')
+		return true;
 	HIGHCONTRAST highContrast = {}; highContrast.cbSize = sizeof(highContrast);
 	return ::SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, 0) &&
 		(highContrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
@@ -38,7 +44,13 @@ static bool IsHighContrastEnabled()
 static void ApplyEditorBackground(MSHTML::IHTMLStylePtr& style)
 {
 	MSHTML::IHTMLCSSStyleDeclarationPtr css(style);
-	auto setBackgroundSize = [&css](const wchar_t* value) { if(css != NULL) { _variant_t setting(value); _variant_t priority; css->setProperty(L"background-size", &setting, &priority); } };
+	auto setBackgroundSize = [&css, &style](const wchar_t* value) {
+		_variant_t setting(value);
+		if(css != NULL) { _variant_t priority; css->setProperty(L"background-size", &setting, &priority); }
+		// Older document modes do not round-trip this CSS3 property through
+		// cssText, but retain it as a style attribute for the renderer.
+		style->setAttribute(L"background-size", setting, 0);
+	};
 	style->backgroundImage = L"none";
 	style->backgroundRepeat = L"repeat";
 	style->backgroundPosition = L"0 0";
