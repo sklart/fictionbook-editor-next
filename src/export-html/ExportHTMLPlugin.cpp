@@ -5,6 +5,7 @@
 #include "HtmlExportOptionsDialog.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "RuntimeLocalization.h"
+#include "..\\version.h"
 
 #include <vector>
 #include <regex>
@@ -89,7 +90,7 @@ STDMETHODIMP CExportHTMLPlugin::GetPluginId(BSTR* value)
 }
 STDMETHODIMP CExportHTMLPlugin::GetPluginVersion(BSTR* value)
 {
-	if (!value) return E_POINTER; *value = ::SysAllocString(L"3.0.8"); return *value ? S_OK : E_OUTOFMEMORY;
+	if (!value) return E_POINTER; *value = ::SysAllocString(FBE_VERSION_WSTRING); return *value ? S_OK : E_OUTOFMEMORY;
 }
 STDMETHODIMP CExportHTMLPlugin::GetApiVersion(ULONG* value) { if (!value) return E_POINTER; *value = 2; return S_OK; }
 STDMETHODIMP CExportHTMLPlugin::GetCapabilities(ULONGLONG* value) { if (!value) return E_POINTER; *value = 0; return S_OK; }
@@ -109,7 +110,7 @@ STDMETHODIMP CExportHTMLPlugin::Export(IFBEPluginHost* host, BSTR filename, IFBE
 	hr = source->load(_variant_t((IUnknown*)stream), &loaded); if (FAILED(hr) || loaded != VARIANT_TRUE) { host->ReportMessage(2, CComBSTR(L"xml-load"), CComBSTR(L"snapshot XML could not be loaded")); return FAILED(hr) ? hr : E_FAIL; }
 	CComPtr<IFBEProgressSink> progress; if (SUCCEEDED(host->GetProgressSink(&progress))) progress->Report(0, 1, CComBSTR(L"export-html"));
 	hr = Export(static_cast<long>(ownerValue), filename, source);
-	if (progress) progress->Report(1, 1, CComBSTR(L"export-html"));
+	if (SUCCEEDED(hr) && progress) progress->Report(1, 1, CComBSTR(L"export-html"));
 	if (FAILED(hr)) host->ReportMessage(2, CComBSTR(L"export-failed"), CComBSTR(L"ExportHTML failed"));
 	return hr;
 }
@@ -135,7 +136,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		VARIANT_BOOL sourceLoaded = VARIANT_FALSE;
 		CheckError(sourceCopy->loadXML(sourceXml, &sourceLoaded));
 		if (sourceLoaded != VARIANT_TRUE)
-			return S_FALSE;
+			return E_FAIL;
 		source = sourceCopy;
 		CheckError(source->setProperty(bstr_t(L"SelectionLanguage"), variant_t(L"XPath")));
 		CheckError(source->setProperty(bstr_t(L"SelectionNamespaces"),
@@ -170,14 +171,14 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			BuildHtmlModernFileTypes(LoadExportHtmlString(IDS_SAVE_FILE_FILTER), filterLabels, filterPatterns, filters);
 			CComObject<CHtmlFileDialogEvents>* rawEvents = nullptr;
 			HRESULT eventHr = CComObject<CHtmlFileDialogEvents>::CreateInstance(&rawEvents);
-			if (FAILED(eventHr) || !rawEvents) return S_FALSE;
+			if (FAILED(eventHr) || !rawEvents) return FAILED(eventHr) ? eventHr : E_FAIL;
 			rawEvents->AddRef();
 			rawEvents->owner = (HWND)hWnd;
 			rawEvents->options = &options;
 			CComPtr<IFileDialogEvents> events;
 			eventHr = rawEvents->QueryInterface(IID_PPV_ARGS(&events));
 			rawEvents->Release();
-			if (FAILED(eventHr)) return S_FALSE;
+			if (FAILED(eventHr)) return eventHr;
 			ModernFileDialog::Request request;
 			request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"html";
 			request.initialFileName = filename ? filename : L""; request.filters = filters.data(); request.filterCount = static_cast<UINT>(filters.size()); request.filterIndex = 4;
@@ -189,10 +190,10 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 					button);
 			};
 			const ModernFileDialog::Result result = ModernFileDialog::Show((HWND)hWnd, request);
-			if (result.outcome == ModernFileDialog::Outcome::Cancelled) return S_FALSE;
+			if (result.outcome == ModernFileDialog::Outcome::Cancelled) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 			if (result.outcome == ModernFileDialog::Outcome::Failed) {
 				FbeDiagnostic::HResult(L"file-dialog", L"FD203", result.error, L"Export HTML save dialog");
-				return S_FALSE;
+				return FAILED(result.error) ? result.error : E_FAIL;
 			}
 			dlg.m_template = options.m_template; dlg.m_customCss = options.m_customCss; dlg.m_usingCustomTemplate = options.m_usingCustomTemplate;
 			dlg.m_includedesc = options.m_includedesc; dlg.m_tocdepth = options.m_tocdepth; dlg.m_imageMaxWidth = options.m_imageMaxWidth; dlg.m_imageMaxHeight = options.m_imageMaxHeight;
@@ -210,7 +211,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 				(LPCTSTR)U::Win32ErrMsg(::GetLastError()));
 			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage,
 				(LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-			return S_FALSE;
+			return E_FAIL;
 		}
 
 		// * load template
@@ -220,12 +221,12 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		// processor contract expects.
 		IXMLDOMDocument2Ptr	    tdoc(U::CreateDocument(false));
 		if (!U::LoadXml(tdoc, dlg.m_template))
-			return S_FALSE;
+			return E_FAIL;
 		if (fEmbeddedImages && dlg.m_usingCustomTemplate && !SupportsEmbeddedImages(tdoc)) {
 			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML,
 				LoadExportHtmlString(IDS_ERROR_EMBEDDED_IMAGES_TEMPLATE),
 				NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-			return S_FALSE;
+			return E_FAIL;
 		}
 		IXSLTemplatePtr	    tmpl(U::CreateTemplate());
 		CheckError(tmpl->putref_stylesheet(tdoc));
@@ -257,7 +258,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 			CString strMessage;
 			strMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
 			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-			return S_FALSE;
+			return E_FAIL;
 		}
 
 		// * construct images directory
@@ -290,7 +291,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 					::DeleteFile(dlg.m_szFileName);
 					strMessage = FormatExportHtmlString(IDS_ERROR_CREATE_DIRECTORY, (LPCTSTR)dfile, (LPCTSTR)U::Win32ErrMsg(de));
 					ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
-					return S_FALSE;
+					return E_FAIL;
 				}
 			}
 			else
@@ -356,7 +357,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 				}
 				::CloseHandle(hOut);
 				::DeleteFile(dlg.m_szFileName);
-				return S_FALSE;
+						return E_FAIL;
 			}
 		}
 
@@ -433,7 +434,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 							}
 							::CloseHandle(hOut);
 							::DeleteFile(dlg.m_szFileName);
-							return S_FALSE;
+							return E_FAIL;
 						}
 					}
 					else
@@ -515,7 +516,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 				}
 				::CloseHandle(hOut);
 				::DeleteFile(dlg.m_szFileName);
-				return S_FALSE;
+				return E_FAIL;
 			}
 			::CloseHandle(hOut);
 		}
@@ -525,7 +526,7 @@ HRESULT	CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch *doc)
 		if (hOut != INVALID_HANDLE_VALUE)
 			CloseHandle(hOut);
 		U::ReportError(e);
-		return S_FALSE;
+		return e.Error();
 	}
 	return S_OK;
 }
