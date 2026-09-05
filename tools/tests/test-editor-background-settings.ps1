@@ -44,4 +44,4 @@ try {
         Assert-Row (Invoke-Fbe "$kind-$layout-reader" @{}) 'loaded' @{kind=$kind;id='01_clean_white';customPath=$path;layout=$layout;colorBg=$sentinel} "$kind-$layout-reader"
     }}
     $completed=$true; Write-Host 'Editor background CSettings portable Save/Load round-trip verified.'
-} finally { if((Get-Snapshot $installed)-cne$before){throw '%LOCALAPPDATA%\FBE Next changed during isolated settings round-trip.'}; if($completed -or -not $KeepArtifacts){Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue}else{Write-Host "Settings test artifacts: $root"; Get-ChildItem -LiteralPath (Join-Path $portable 'TestData\Settings') -Force -ErrorAction SilentlyContinue | Select-Object Name,Length} }
+} finally { if((Get-Snapshot $installed)-cne$before){throw '%LOCALAPPDATA%\FBE Next changed during isolated settings round-trip.'}; if($completed -and -not $KeepArtifacts){Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue}else{Write-Host "Settings test artifacts: $root"; Get-ChildItem -LiteralPath (Join-Path $portable 'TestData\Settings') -Force -ErrorAction SilentlyContinue | Select-Object Name,Length} }
