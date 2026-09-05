@@ -460,6 +460,14 @@ STDMETHODIMP CImportEPUBPlugin::Import(IFBEPluginHost* host, BSTR* suggestedFile
         return HRESULT_FROM_WIN32(ERROR_CANCELLED);
     }
 
+    const DWORD attributes = ::GetFileAttributesW(epubPath);
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        const DWORD error = attributes == INVALID_FILE_ATTRIBUTES ? ::GetLastError() : ERROR_FILE_NOT_FOUND;
+        const HRESULT failure = error ? HRESULT_FROM_WIN32(error) : E_FAIL;
+        host->ReportMessage(2, CComBSTR(L"import-failed"), CComBSTR(L"EPUB input could not be opened"));
+        return failure;
+    }
+
     CComPtr<IFBEProgressSink> progress;
     if (SUCCEEDED(host->GetProgressSink(&progress)) && progress) progress->Report(0, 1, CComBSTR(L"importing"));
     CStringW xml, error;
