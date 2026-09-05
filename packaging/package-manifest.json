@@ -12,7 +12,7 @@
     ],
     "optional": [],
     "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Lang\\ru-RU\\res_rus.pdb", "Lang\\uk-UA\\res_ukr.pdb"],
-    "runtimeDirectories": ["Lang", "Plugins", "Themes", "Scripts", "Utilities"]
+    "runtimeDirectories": ["Lang", "Plugins", "Themes", "Scripts", "Utilities", "EditorBackgrounds"]
   },
   "integration": {
     "required": [

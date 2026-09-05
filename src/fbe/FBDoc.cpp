@@ -15,6 +15,7 @@
 #include "FBDoc.h"
 #include "Scintilla.h"
 #include "Settings.h"
+#include "EditorBackgrounds.h"
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
 #include "BackupFileCommit.h"
@@ -26,6 +27,37 @@ extern CElementDescMnr _EDMnr;
 extern CSettings _Settings;
 
 namespace FB {
+
+static bool IsHighContrastEnabled()
+{
+	HIGHCONTRAST highContrast = {}; highContrast.cbSize = sizeof(highContrast);
+	return ::SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, 0) &&
+		(highContrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
+}
+
+static void ApplyEditorBackground(MSHTML::IHTMLStylePtr& style)
+{
+	MSHTML::IHTMLCSSStyleDeclarationPtr css(style);
+	auto setBackgroundSize = [&css](const wchar_t* value) { if(css != NULL) { _variant_t setting(value); _variant_t priority; css->setProperty(L"background-size", &setting, &priority); } };
+	style->backgroundImage = L"none";
+	style->backgroundRepeat = L"repeat";
+	style->backgroundPosition = L"0 0";
+	setBackgroundSize(L"auto");
+	style->backgroundAttachment = L"scroll";
+	if(IsHighContrastEnabled()) return;
+	CString path;
+	if(_Settings.GetEditorBackgroundKind() == L"builtin") EditorBackgrounds::ResolveBuiltIn(_Settings.GetEditorBackgroundId(), path);
+	else if(_Settings.GetEditorBackgroundKind() == L"custom" && EditorBackgrounds::IsSupportedLocalImage(_Settings.GetEditorBackgroundCustomPath())) path = _Settings.GetEditorBackgroundCustomPath();
+	if(path.IsEmpty()) return;
+	const CString uri = U::UrlFromPath(path); if(uri.IsEmpty()) return;
+	CString image; image.Format(L"url(%s)", static_cast<LPCWSTR>(uri));
+	style->backgroundImage = static_cast<LPCWSTR>(image);
+	style->backgroundAttachment = L"fixed";
+	const CString layout = _Settings.GetEditorBackgroundLayout();
+	if(layout == L"center") { style->backgroundRepeat = L"no-repeat"; style->backgroundPosition = L"center center"; }
+	else if(layout == L"contain") { style->backgroundRepeat = L"no-repeat"; style->backgroundPosition = L"center center"; setBackgroundSize(L"contain"); }
+	else if(layout == L"cover") { style->backgroundRepeat = L"no-repeat"; style->backgroundPosition = L"center center"; setBackgroundSize(L"cover"); }
+}
 
 // Журнал не содержит имён и путей книг: для диагностики достаточно факта
 // наличия файла и результата операции.
@@ -2226,6 +2258,8 @@ void  Doc::ApplyConfChanges() {
       fs=::GetSysColor(COLOR_WINDOW);
     fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
     hs->backgroundColor=(const wchar_t *)fss;
+
+    ApplyEditorBackground(hs);
 
 	bool mode = _Settings.FastMode();
 	SetFastMode(mode);

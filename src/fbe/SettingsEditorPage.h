@@ -5,6 +5,7 @@
 #include "resource.h"
 #include "SettingsPageLifecycle.h"
 #include "SettingsTooltips.h"
+#include "EditorBackgrounds.h"
 
 class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public ISettingsPage
 {
@@ -13,6 +14,10 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 	CComboBox m_fonts;
 	CComboBox m_fontSize;
 	CComboBox m_nbspCharacter;
+	CComboBox m_backgroundImage;
+	CComboBox m_backgroundLayout;
+	std::vector<EditorBackgroundDescriptor> m_builtInBackgrounds;
+	CString m_customBackgroundPath;
 	CSettingsTooltips m_tooltips;
 
 public:
@@ -21,11 +26,13 @@ public:
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
+		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_BROWSE, BN_CLICKED, OnBrowseBackground)
 		REFLECT_NOTIFICATIONS()
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsEditorPage>)
 	END_MSG_MAP()
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
+	LRESULT OnBrowseBackground(WORD, WORD, HWND, BOOL&);
 	bool Validate(); void Commit(); bool CancelChanges();
 };

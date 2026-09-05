@@ -520,6 +520,12 @@
 #define IDC_SPELL_IGNORE                1098
 #define IDS_SPELL_CUSTOM_DICT           1099
 #define IDC_NBSP_CHAR                   1100
+#define IDC_EDITOR_BACKGROUND_GROUP      1101
+#define IDC_EDITOR_BACKGROUND_IMAGE      1102
+#define IDC_EDITOR_BACKGROUND_BROWSE     1103
+#define IDC_EDITOR_BACKGROUND_LAYOUT     1104
+#define IDC_EDITOR_BACKGROUND_IMAGE_LABEL 1105
+#define IDC_EDITOR_BACKGROUND_LAYOUT_LABEL 1106
 #define IDC_IMAGETYPE                   1101
 #define IDC_EDIT3                       1102
 #define IDC_IMAGETYPE2                  1102

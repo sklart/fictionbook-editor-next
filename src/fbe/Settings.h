@@ -536,6 +536,10 @@ class CSettings : public ISerializable, public IObjectFactory
 	DWORD		m_font_size;
 	CString		m_font;
 	CString		m_srcfont;
+	CString		m_editor_background_kind;
+	CString		m_editor_background_id;
+	CString		m_editor_background_custom_path;
+	CString		m_editor_background_layout;
 
 	bool		m_xml_src_wrap;
 	bool		m_xml_src_syntaxHL;
@@ -675,6 +679,10 @@ public:
 	DWORD	GetFontSize()const;
 	CString	GetFont()const;
 	CString	GetSrcFont()const;
+	CString GetEditorBackgroundKind()const;
+	CString GetEditorBackgroundId()const;
+	CString GetEditorBackgroundCustomPath()const;
+	CString GetEditorBackgroundLayout()const;
 	DWORD	GetSplitterPos()const;	
 	CString GetToolbarsSettings()const;
 	CString GetScriptCommandIds()const;
@@ -743,6 +751,10 @@ public:
 	void	SetFastMode(bool mode,  bool apply = false);
 	void	SetFont(const CString& font, bool apply = false);
 	void	SetSrcFont(const CString& font, bool apply = false);
+	void SetEditorBackgroundKind(const CString& value, bool apply = false);
+	void SetEditorBackgroundId(const CString& value, bool apply = false);
+	void SetEditorBackgroundCustomPath(const CString& value, bool apply = false);
+	void SetEditorBackgroundLayout(const CString& value, bool apply = false);
 	void	SetViewStatusBar(bool view,  bool apply = false);
 	void	SetStatusBarPanes(DWORD panes, bool apply = false);
 	void	SetViewDocumentTree(bool view,  bool apply = false);

@@ -283,6 +283,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="RegexBackendPcre2.cpp" />
     <ClCompile Include="RuntimeLocalization.cpp" />
 	<ClCompile Include="PluginManager.cpp" />
+	<ClCompile Include="EditorBackgrounds.cpp" />
 	<ClCompile Include="PluginApiV2.cpp" />
     <ClCompile Include="XmlSourceThemes.cpp" />
     <ClCompile Include="FBEview.cpp">
@@ -427,6 +428,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="SettingsGeneralPage.h" />
 	<ClInclude Include="SettingsImagesPage.h" />
     <ClInclude Include="SettingsEditorPage.h" />
+	<ClInclude Include="EditorBackgrounds.h" />
     <ClInclude Include="SettingsSpellingPage.h" />
     <ClInclude Include="SettingsSourcePage.h" />
     <ClInclude Include="SettingsDlg.h" />

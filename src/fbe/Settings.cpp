@@ -71,6 +71,10 @@ const wchar_t XML_SRC_SHOW_SPECIAL_CHARS_KEY[] = L"XMLSrcShowSpecialChars";
 const wchar_t XML_SRC_SPECIAL_CHARS_STYLE_KEY[] = L"XMLSrcSpecialCharsStyle";
 const wchar_t FAST_MODE_KEY[]			= L"FastMode";
 const wchar_t FONT_KEY[]				= L"Font";
+const wchar_t EDITOR_BACKGROUND_KIND_KEY[] = L"EditorBackgroundKind";
+const wchar_t EDITOR_BACKGROUND_ID_KEY[] = L"EditorBackgroundId";
+const wchar_t EDITOR_BACKGROUND_CUSTOM_PATH_KEY[] = L"EditorBackgroundCustomPath";
+const wchar_t EDITOR_BACKGROUND_LAYOUT_KEY[] = L"EditorBackgroundLayout";
 const wchar_t SRC_FONT_KEY[]			= L"SrcFont";
 const wchar_t VIEW_STATUS_BAR_KEY[]		= L"ViewStatusBar";
 const wchar_t STATUS_BAR_PANES_KEY[]		= L"StatusBarPanes";
@@ -846,6 +850,10 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(XML_SRC_SPECIAL_CHARS_STYLE_KEY);
 	properties.push_back(FAST_MODE_KEY);
 	properties.push_back(FONT_KEY);
+	properties.push_back(EDITOR_BACKGROUND_KIND_KEY);
+	properties.push_back(EDITOR_BACKGROUND_ID_KEY);
+	properties.push_back(EDITOR_BACKGROUND_CUSTOM_PATH_KEY);
+	properties.push_back(EDITOR_BACKGROUND_LAYOUT_KEY);
 	properties.push_back(SRC_FONT_KEY);
 	properties.push_back(VIEW_STATUS_BAR_KEY);
 	properties.push_back(STATUS_BAR_PANES_KEY);
@@ -1004,6 +1012,10 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 		property = m_font;
 		return true;
 	}
+	else if(sProperty == EDITOR_BACKGROUND_KIND_KEY) { property = m_editor_background_kind; return true; }
+	else if(sProperty == EDITOR_BACKGROUND_ID_KEY) { property = m_editor_background_id; return true; }
+	else if(sProperty == EDITOR_BACKGROUND_CUSTOM_PATH_KEY) { property = m_editor_background_custom_path; return true; }
+	else if(sProperty == EDITOR_BACKGROUND_LAYOUT_KEY) { property = m_editor_background_layout; return true; }
 	else if(sProperty == SRC_FONT_KEY)
 	{
 		property = m_srcfont;
@@ -1320,6 +1332,10 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 		m_font = sValue.GetStringValue();
 		return true;
 	}
+	else if(sProperty == EDITOR_BACKGROUND_KIND_KEY) { SetEditorBackgroundKind(sValue.GetStringValue()); return true; }
+	else if(sProperty == EDITOR_BACKGROUND_ID_KEY) { m_editor_background_id = sValue.GetStringValue(); return true; }
+	else if(sProperty == EDITOR_BACKGROUND_CUSTOM_PATH_KEY) { m_editor_background_custom_path = sValue.GetStringValue(); return true; }
+	else if(sProperty == EDITOR_BACKGROUND_LAYOUT_KEY) { SetEditorBackgroundLayout(sValue.GetStringValue()); return true; }
 	else if(sProperty == SRC_FONT_KEY)
 	{
 		m_srcfont = sValue.GetStringValue();
@@ -1938,6 +1954,10 @@ CString CSettings::GetSrcFont()const
 {
 	return m_srcfont;
 }
+CString CSettings::GetEditorBackgroundKind()const { return m_editor_background_kind; }
+CString CSettings::GetEditorBackgroundId()const { return m_editor_background_id; }
+CString CSettings::GetEditorBackgroundCustomPath()const { return m_editor_background_custom_path; }
+CString CSettings::GetEditorBackgroundLayout()const { return m_editor_background_layout; }
 DWORD CSettings::GetSplitterPos()const
 {
 	return m_splitter_pos;
@@ -2423,6 +2443,10 @@ void CSettings::SetSrcFont(const CString& font, bool apply)
 	if(apply)
 		Save();
 }
+void CSettings::SetEditorBackgroundKind(const CString& value, bool apply) { m_editor_background_kind = value == L"builtin" || value == L"custom" ? value : L"none"; if(apply) Save(); }
+void CSettings::SetEditorBackgroundId(const CString& value, bool apply) { m_editor_background_id = value; if(apply) Save(); }
+void CSettings::SetEditorBackgroundCustomPath(const CString& value, bool apply) { m_editor_background_custom_path = value; if(apply) Save(); }
+void CSettings::SetEditorBackgroundLayout(const CString& value, bool apply) { m_editor_background_layout = value == L"center" || value == L"contain" || value == L"cover" ? value : L"tile"; if(apply) Save(); }
 
 void CSettings::SetViewStatusBar(bool view, bool apply)
 {
@@ -2778,6 +2802,10 @@ void CSettings::SetDefaults()
 	m_fast_mode				= false;
 	m_font					= DEFAULT_FONT;
 	m_srcfont				= DEFAULT_SRCFONT;
+	m_editor_background_kind = L"none";
+	m_editor_background_id.Empty();
+	m_editor_background_custom_path.Empty();
+	m_editor_background_layout = L"tile";
 	m_view_status_bar		= true;
 	m_status_bar_panes		= 0x3f;
 	m_view_doc_tree			= true;

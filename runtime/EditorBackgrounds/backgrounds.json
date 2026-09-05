@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "purpose": "FictionBook Editor Next editor background textures",
+  "format": "PNG RGB",
+  "tileSize": "1024x1024",
+  "tileable": true,
+  "recommendedCss": {
+    "backgroundRepeat": "repeat",
+    "backgroundAttachment": "fixed"
+  },
+  "backgrounds": [
+    {
+      "id": "01_clean_white",
+      "name": "Чистая белая бумага",
+      "file": "01_clean_white.png",
+      "theme": "light",
+      "fallbackColor": "#F8F7F5",
+      "recommendedTextColor": "#202020",
+      "sha256": "5cba8135a6aae5e4233439ef1a116eff3771df90a34f29f77e2199da665d7202"
+    },
+    {
+      "id": "02_near_smooth",
+      "name": "Почти гладкий фон",
+      "file": "02_near_smooth.png",
+      "theme": "light",
+      "fallbackColor": "#FEF9F2",
+      "recommendedTextColor": "#202020",
+      "sha256": "5d2f6cbcb178f9d289a033e41e79ba8a0f0e5119b64075aa7c11ae1e359c4c29"
+    },
+    {
+      "id": "03_warm_cream",
+      "name": "Тёплая кремовая бумага",
+      "file": "03_warm_cream.png",
+      "theme": "light",
+      "fallbackColor": "#F8E8D0",
+      "recommendedTextColor": "#202020",
+      "sha256": "63a5a2dd2da0071a09be4b8842d5090c7a9977d623360b4bd42b0209d0694bdc"
+    },
+    {
+      "id": "04_book_page",
+      "name": "Книжная страница",
+      "file": "04_book_page.png",
+      "theme": "light",
+      "fallbackColor": "#F8EBD8",
+      "recommendedTextColor": "#202020",
+      "sha256": "1de0a8baf7c60f58cc885a3015d5ebf144e9ecb99e8f91370a1ca58263b3f2cb"
+    },
+    {
+      "id": "05_cotton_paper",
+      "name": "Хлопковая бумага",
+      "file": "05_cotton_paper.png",
+      "theme": "light",
+      "fallbackColor": "#F3EDE4",
+      "recommendedTextColor": "#202020",
+      "sha256": "b5a3f960dac84a10f89d3c0312671227f6d1f52a093abb51d2f06850c8f78a0f"
+    },
+    {
+      "id": "06_soft_beige",
+      "name": "Мягкий бежевый",
+      "file": "06_soft_beige.png",
+      "theme": "light",
+      "fallbackColor": "#EADFC9",
+      "recommendedTextColor": "#202020",
+      "sha256": "349f2e0441ad80b5aa85e8ff7237a77ebd17f2a8fc37a8e8fda1a38b9c21d311"
+    },
+    {
+      "id": "07_aged_paper_subtle",
+      "name": "Слегка состаренная бумага",
+      "file": "07_aged_paper_subtle.png",
+      "theme": "light",
+      "fallbackColor": "#F7E2C2",
+      "recommendedTextColor": "#202020",
+      "sha256": "4556bf5ede5ea1e473498bd9c161969af3ec13f843ed2e67b14c4553eb09f5d6"
+    },
+    {
+      "id": "08_recycled_paper",
+      "name": "Переработанная бумага",
+      "file": "08_recycled_paper.png",
+      "theme": "light",
+      "fallbackColor": "#DCD5C6",
+      "recommendedTextColor": "#202020",
+      "sha256": "e843485da97f0439759eb75807b07f52304360404077ec152bddefbbe022955e"
+    },
+    {
+      "id": "09_light_gray",
+      "name": "Светло-серая бумага",
+      "file": "09_light_gray.png",
+      "theme": "light",
+      "fallbackColor": "#DCDBD8",
+      "recommendedTextColor": "#202020",
+      "sha256": "391e8f7e803c113814e4fb380040096b3ba8d754cd79b578961d0ba848faf3e4"
+    },
+    {
+      "id": "10_blue_gray",
+      "name": "Голубовато-серый",
+      "file": "10_blue_gray.png",
+      "theme": "light",
+      "fallbackColor": "#95A1AA",
+      "recommendedTextColor": "#202020",
+      "sha256": "e06c27f3f7ec3ecb1a113b9da68846a73917f3a037eff6fdac4b5aa441f52b3e"
+    },
+    {
+      "id": "11_fbe_light",
+      "name": "FBE Light Paper",
+      "file": "11_fbe_light.png",
+      "theme": "light",
+      "fallbackColor": "#F3E7D6",
+      "recommendedTextColor": "#202020",
+      "sha256": "089d64c44d556dbfd639a6e1ac0f31e886fa63bc20900f6b7199276515a1d391"
+    },
+    {
+      "id": "12_graphite_dark",
+      "name": "Тёмный графит",
+      "file": "12_graphite_dark.png",
+      "theme": "dark",
+      "fallbackColor": "#3D3D3C",
+      "recommendedTextColor": "#E8E8E8",
+      "sha256": "7f82d9152168ff87b5ca38df09adfc6cf1eafb5509b0bf889d762a19ad81917e"
+    },
+    {
+      "id": "13_blue_gray_dark",
+      "name": "Тёмный сине-серый",
+      "file": "13_blue_gray_dark.png",
+      "theme": "dark",
+      "fallbackColor": "#373C46",
+      "recommendedTextColor": "#E8E8E8",
+      "sha256": "be5c53533ff7c05aaeafe54b7ad4671e40c6152eae7b6c3e1fee08ef7daa6ca1"
+    },
+    {
+      "id": "14_fbe_dark",
+      "name": "FBE Dark Paper",
+      "file": "14_fbe_dark.png",
+      "theme": "dark",
+      "fallbackColor": "#343433",
+      "recommendedTextColor": "#E8E8E8",
+      "sha256": "ec2df90361bb2c26478bfc733f7751972f650c9b4434374d44ff41f798179461"
+    }
+  ]
+}
