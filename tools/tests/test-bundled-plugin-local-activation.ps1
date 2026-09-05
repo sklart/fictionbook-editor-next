@@ -22,7 +22,7 @@ New-Item -ItemType Directory -Force -Path $testDirectory | Out-Null
 
 & cl.exe /nologo /EHsc /std:c++14 /utf-8 /DUNICODE /D_UNICODE /MD /W3 `
     "/Fo$testDirectory\\" (Join-Path $PSScriptRoot 'bundled-plugin-local-activation.cpp') `
-    '/link' '/SUBSYSTEM:CONSOLE' 'ole32.lib' "/OUT:$testExecutable"
+    (Join-Path $root 'src\fbe\FBE_i.c') '/link' '/SUBSYSTEM:CONSOLE' 'ole32.lib' 'oleaut32.lib' "/OUT:$testExecutable"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $manifestPath = Join-Path $root 'runtime\Plugins\plugins.json'
@@ -35,7 +35,7 @@ foreach ($plugin in $plugins) {
     $path = Join-Path (Join-Path $RuntimeDirectory 'Plugins') $plugin.module
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $path = Join-Path $RuntimeDirectory $plugin.module }
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Не найден bundled plug-in: $path" }
-    & $testExecutable $path $plugin.clsid
+    & $testExecutable $path $plugin.clsid $plugin.id $plugin.type
     if ($LASTEXITCODE -ne 0) { throw "Локальная активация $($plugin.module) завершилась с кодом $LASTEXITCODE." }
 }
 Write-Host 'Bundled plug-ins активируются локально, без обращения к реестру.'

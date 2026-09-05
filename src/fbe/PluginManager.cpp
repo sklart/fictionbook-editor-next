@@ -109,12 +109,10 @@ HRESULT PluginManager::CreateInstance(const CLSID& clsid, IUnknownPtr& instance)
 HRESULT PluginManager::NegotiateApi(const CLSID& clsid, IUnknown* instance, PluginApiGeneration& generation) {
 	generation = PluginApiV1Fallback; const PluginDescriptor* plugin = FindPlugin(clsid); if (plugin == NULL || instance == NULL) return E_INVALIDARG;
 	CComPtr<IFBEPluginInfo2> info; HRESULT hr = instance->QueryInterface(IID_IFBEPluginInfo2, reinterpret_cast<void**>(&info));
-	if (hr == E_NOINTERFACE) { Trace(L"plugin-api-v1-fallback", plugin->id); return S_OK; }
 	if (FAILED(hr)) { Trace(L"plugin-operation-failed", plugin->id); return hr; }
 	CComBSTR pluginId; ULONG apiVersion = 0; hr = info->GetPluginId(&pluginId); if (SUCCEEDED(hr)) hr = info->GetApiVersion(&apiVersion);
 	if (FAILED(hr) || pluginId == NULL || plugin->id.Compare(static_cast<LPCWSTR>(pluginId)) != 0 || apiVersion != 2) { Trace(L"plugin-info-mismatch", plugin->id); return E_ACCESSDENIED; }
 	if (plugin->type == L"Export") { CComPtr<IFBEExportPlugin2> api; hr = instance->QueryInterface(IID_IFBEExportPlugin2, reinterpret_cast<void**>(&api)); }
 	else { CComPtr<IFBEImportPlugin2> api; hr = instance->QueryInterface(IID_IFBEImportPlugin2, reinterpret_cast<void**>(&api)); }
-	if (hr == E_NOINTERFACE) { Trace(L"plugin-api-v1-fallback", plugin->id); return S_OK; }
 	if (FAILED(hr)) { Trace(L"plugin-operation-failed", plugin->id); return hr; } generation = PluginApiV2Detected; Trace(L"plugin-api-v2-detected", plugin->id); return S_OK;
 }

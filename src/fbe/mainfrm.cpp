@@ -5291,16 +5291,33 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 	  pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk, apiGeneration);
 	  TracePluginDiagnostic(L"Import", pluginClsid, L"NegotiateApi", pluginHr, apiGeneration == PluginApiV2Detected ? 1 : 0);
 	  CheckError(pluginHr);
-	  // No bundled importer advertises v2 yet.  Do not accidentally call its
-	  // v1 ABI after a successful v2 negotiation; import migration is a later
-	  // block and needs the stream-to-editor load path.
-	  if (apiGeneration == PluginApiV2Detected) { TracePluginDiagnostic(L"Import", pluginClsid, L"plugin-operation-failed", E_NOTIMPL, 0); return 0; }
-
-      CComQIPtr<IFBEImportPlugin>	    ipl(unk);
-      TracePluginDiagnostic(L"Import", pluginClsid, L"QueryInterface", ipl ? S_OK : E_NOINTERFACE, 0);
-
       IDispatchPtr  obj;
       _bstr_t	    filename;
+	  if (apiGeneration == PluginApiV2Detected)
+	  {
+		CComQIPtr<IFBEImportPlugin2> importV2(unk);
+		if (!importV2) { TracePluginDiagnostic(L"Import", pluginClsid, L"QueryInterfaceV2", E_NOINTERFACE, 0); return 0; }
+		CComPtr<IFBEPluginHost> host;
+		CheckError(FbePluginApiV2::CreateHost(m_hWnd, _Settings.GetInterfaceLanguageName(), &host));
+		CComBSTR suggestedFileName;
+		CComPtr<IStream> fb2Xml;
+		HRESULT importResult = importV2->Import(host, &suggestedFileName, &fb2Xml);
+		TracePluginDiagnostic(L"Import", pluginClsid, L"ImportV2", importResult, fb2Xml ? 1 : 0);
+		CheckError(importResult);
+		if (importResult != S_OK || !fb2Xml) return 0;
+		CComPtr<MSXML2::IXMLDOMDocument2> dom;
+		CheckError(dom.CoCreateInstance(L"Msxml2.DOMDocument.6.0"));
+		CComQIPtr<IPersistStreamInit> streamLoader(dom);
+		if (!streamLoader) { TracePluginDiagnostic(L"Import", pluginClsid, L"ImportV2StreamLoader", E_NOINTERFACE, 0); return 0; }
+		CheckError(streamLoader->Load(fb2Xml));
+		CheckError(dom.QueryInterface(&obj));
+		filename.Assign(suggestedFileName.Detach());
+		m_last_plugin = wID + ID_IMPORT_BASE;
+	  }
+	  else
+	  {
+      CComQIPtr<IFBEImportPlugin>	    ipl(unk);
+      TracePluginDiagnostic(L"Import", pluginClsid, L"QueryInterface", ipl ? S_OK : E_NOINTERFACE, 0);
       if (ipl) 
 	  {
 		m_last_plugin = wID + ID_IMPORT_BASE;
@@ -5317,8 +5334,9 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 		U::MessageBox(MB_OK|MB_ICONERROR, IDS_IMPORT_ERR_CPT, IDS_IMPORT_ERR_MSG);
 		return 0;
       }
+	  }
 
-      MSXML2::IXMLDOMDocument2Ptr dom(obj);	 
+      MSXML2::IXMLDOMDocument2Ptr dom(obj);
       TracePluginDiagnostic(L"Import", pluginClsid, L"DOM result", dom ? S_OK : E_NOINTERFACE, dom ? 1 : 0);
       if (!(bool)dom)
 	  {

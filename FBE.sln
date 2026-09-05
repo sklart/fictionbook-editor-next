@@ -20,6 +20,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExportEPUB", "src\export-epub\ExportEPUB.vcxproj", "{4730AA98-D733-48D1-82AC-E50E53D52DEE}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImportEPUB", "src\import-epub\ImportEPUB.vcxproj", "{6E0C0E4E-6C7A-4D7B-A534-5D2554C4C89F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E1B04471-3393-4970-93ED-FB6A57BCDA8B} = {E1B04471-3393-4970-93ED-FB6A57BCDA8B}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -218,6 +218,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-plugin-command-ranges.ps1")
 & (Join-Path $repoRoot "tools\tests\test-last-plugin-routing.ps1")
 & (Join-Path $repoRoot "tools\tests\test-plugin-v2-abi.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot "tools\tests\test-plugin-v2-negotiation-policy.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-epub-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-docx-v2-runtime.ps1") -Configuration $Configuration
