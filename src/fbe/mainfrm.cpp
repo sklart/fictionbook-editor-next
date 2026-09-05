@@ -1048,6 +1048,10 @@ struct EditorConfigurationSnapshot
 	DWORD fontSize;
 	DWORD foreground;
 	DWORD background;
+	CString editorBackgroundKind;
+	CString editorBackgroundId;
+	CString editorBackgroundCustomPath;
+	CString editorBackgroundLayout;
 	DWORD sourceColorPalette;
 	CString sourceThemeId;
 	DWORD sourceColors[XML_SRC_COLOR_GROUP_COUNT];
@@ -1069,7 +1073,9 @@ struct EditorConfigurationSnapshot
 		return font == other.font && sourceFont == other.sourceFont &&
 			customDictionary == other.customDictionary && nbsp == other.nbsp &&
 			fontSize == other.fontSize && foreground == other.foreground &&
-			background == other.background && sourceColorPalette == other.sourceColorPalette &&
+			background == other.background && editorBackgroundKind == other.editorBackgroundKind &&
+			editorBackgroundId == other.editorBackgroundId && editorBackgroundCustomPath == other.editorBackgroundCustomPath &&
+			editorBackgroundLayout == other.editorBackgroundLayout && sourceColorPalette == other.sourceColorPalette &&
 			sourceThemeId == other.sourceThemeId &&
 			memcmp(sourceColors, other.sourceColors, sizeof(sourceColors)) == 0 &&
 			customDictionaryCodepage == other.customDictionaryCodepage &&
@@ -1093,6 +1099,10 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	snapshot.fontSize = _Settings.GetFontSize();
 	snapshot.foreground = _Settings.GetColorFG();
 	snapshot.background = _Settings.GetColorBG();
+	snapshot.editorBackgroundKind = _Settings.GetEditorBackgroundKind();
+	snapshot.editorBackgroundId = _Settings.GetEditorBackgroundId();
+	snapshot.editorBackgroundCustomPath = _Settings.GetEditorBackgroundCustomPath();
+	snapshot.editorBackgroundLayout = _Settings.GetEditorBackgroundLayout();
 	snapshot.sourceColorPalette = _Settings.GetXmlSrcColorPalette();
 	snapshot.sourceThemeId = _Settings.GetXmlSrcThemeId();
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
@@ -1117,6 +1127,8 @@ static bool HasDocumentStyleConfigurationChanged(const EditorConfigurationSnapsh
 {
 	return before.font != after.font || before.fontSize != after.fontSize ||
 		before.foreground != after.foreground || before.background != after.background ||
+		before.editorBackgroundKind != after.editorBackgroundKind || before.editorBackgroundId != after.editorBackgroundId ||
+		before.editorBackgroundCustomPath != after.editorBackgroundCustomPath || before.editorBackgroundLayout != after.editorBackgroundLayout ||
 		before.fastMode != after.fastMode;
 }
 static bool HasOnlySourceEditorConfigurationChanged(const EditorConfigurationSnapshot& before,
@@ -1124,6 +1136,8 @@ static bool HasOnlySourceEditorConfigurationChanged(const EditorConfigurationSna
 {
 	return before.font == after.font && before.foreground == after.foreground &&
 		before.background == after.background && before.fontSize == after.fontSize &&
+		before.editorBackgroundKind == after.editorBackgroundKind && before.editorBackgroundId == after.editorBackgroundId &&
+		before.editorBackgroundCustomPath == after.editorBackgroundCustomPath && before.editorBackgroundLayout == after.editorBackgroundLayout &&
 		before.customDictionary == after.customDictionary && before.nbsp == after.nbsp &&
 		before.customDictionaryCodepage == after.customDictionaryCodepage &&
 		before.fastMode == after.fastMode && before.useSpellChecker == after.useSpellChecker &&

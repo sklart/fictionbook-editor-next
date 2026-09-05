@@ -19,6 +19,12 @@ bool IsSafeFileName(const CString& value)
 		value.Right(4).CompareNoCase(L".png") == 0;
 }
 
+bool IsSafeLocalizationKey(const CString& value)
+{
+	return value.Left(38) == L"fbe.settings.editor_background.preset." &&
+		value.SpanIncluding(L"abcdefghijklmnopqrstuvwxyz0123456789._").GetLength() == value.GetLength();
+}
+
 bool IsRegularFile(const CString& path)
 {
 	const DWORD attributes = ::GetFileAttributes(path);
@@ -52,8 +58,10 @@ void EditorBackgrounds::Load(std::vector<EditorBackgroundDescriptor>& background
 		if(!FbeRuntimeLocalization::JsonSkipValue(json, array)) { backgrounds.clear(); return; }
 		EditorBackgroundDescriptor entry;
 		if(!ReadString(json, object, L"id", entry.id) || !ReadString(json, object, L"name", entry.name) ||
+			!ReadString(json, object, L"localizationKey", entry.localizationKey) ||
 			!ReadString(json, object, L"file", entry.fileName) || !ReadString(json, object, L"theme", entry.theme) ||
-			!IsSafeFileName(entry.fileName) || (entry.theme != L"light" && entry.theme != L"dark")) { backgrounds.clear(); return; }
+			!IsSafeFileName(entry.fileName) || !IsSafeLocalizationKey(entry.localizationKey) ||
+			(entry.theme != L"light" && entry.theme != L"dark")) { backgrounds.clear(); return; }
 		bool duplicate = false;
 		for(size_t i = 0; i < backgrounds.size(); ++i) duplicate |= backgrounds[i].id == entry.id;
 		if(duplicate) { backgrounds.clear(); return; }

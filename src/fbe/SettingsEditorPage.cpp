@@ -81,7 +81,8 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_nbspCharacter.SetCurSel(nbspIndex);
 	m_backgroundImage.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.none", L"None (color only)"));
 	EditorBackgrounds::Load(m_builtInBackgrounds);
-	for(size_t i = 0; i < m_builtInBackgrounds.size(); ++i) m_backgroundImage.AddString(m_builtInBackgrounds[i].name);
+	for(size_t i = 0; i < m_builtInBackgrounds.size(); ++i)
+		m_backgroundImage.AddString(FbeLoadRuntimeStringByKey(m_builtInBackgrounds[i].localizationKey, m_builtInBackgrounds[i].name));
 	m_backgroundImage.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.custom", L"Custom image"));
 	int backgroundIndex = 0;
 	if(_Settings.GetEditorBackgroundKind() == L"builtin") for(size_t i = 0; i < m_builtInBackgrounds.size(); ++i) if(m_builtInBackgrounds[i].id == _Settings.GetEditorBackgroundId()) { backgroundIndex = static_cast<int>(i + 1); break; }

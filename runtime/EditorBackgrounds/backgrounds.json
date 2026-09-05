@@ -11,6 +11,7 @@
   "backgrounds": [
     {
       "id": "01_clean_white",
+      "localizationKey": "fbe.settings.editor_background.preset.clean_white",
       "name": "Чистая белая бумага",
       "file": "01_clean_white.png",
       "theme": "light",
@@ -20,6 +21,7 @@
     },
     {
       "id": "02_near_smooth",
+      "localizationKey": "fbe.settings.editor_background.preset.near_smooth",
       "name": "Почти гладкий фон",
       "file": "02_near_smooth.png",
       "theme": "light",
@@ -29,6 +31,7 @@
     },
     {
       "id": "03_warm_cream",
+      "localizationKey": "fbe.settings.editor_background.preset.warm_cream",
       "name": "Тёплая кремовая бумага",
       "file": "03_warm_cream.png",
       "theme": "light",
@@ -38,6 +41,7 @@
     },
     {
       "id": "04_book_page",
+      "localizationKey": "fbe.settings.editor_background.preset.book_page",
       "name": "Книжная страница",
       "file": "04_book_page.png",
       "theme": "light",
@@ -47,6 +51,7 @@
     },
     {
       "id": "05_cotton_paper",
+      "localizationKey": "fbe.settings.editor_background.preset.cotton_paper",
       "name": "Хлопковая бумага",
       "file": "05_cotton_paper.png",
       "theme": "light",
@@ -56,6 +61,7 @@
     },
     {
       "id": "06_soft_beige",
+      "localizationKey": "fbe.settings.editor_background.preset.soft_beige",
       "name": "Мягкий бежевый",
       "file": "06_soft_beige.png",
       "theme": "light",
@@ -65,6 +71,7 @@
     },
     {
       "id": "07_aged_paper_subtle",
+      "localizationKey": "fbe.settings.editor_background.preset.aged_paper_subtle",
       "name": "Слегка состаренная бумага",
       "file": "07_aged_paper_subtle.png",
       "theme": "light",
@@ -74,6 +81,7 @@
     },
     {
       "id": "08_recycled_paper",
+      "localizationKey": "fbe.settings.editor_background.preset.recycled_paper",
       "name": "Переработанная бумага",
       "file": "08_recycled_paper.png",
       "theme": "light",
@@ -83,6 +91,7 @@
     },
     {
       "id": "09_light_gray",
+      "localizationKey": "fbe.settings.editor_background.preset.light_gray",
       "name": "Светло-серая бумага",
       "file": "09_light_gray.png",
       "theme": "light",
@@ -92,6 +101,7 @@
     },
     {
       "id": "10_blue_gray",
+      "localizationKey": "fbe.settings.editor_background.preset.blue_gray",
       "name": "Голубовато-серый",
       "file": "10_blue_gray.png",
       "theme": "light",
@@ -101,6 +111,7 @@
     },
     {
       "id": "11_fbe_light",
+      "localizationKey": "fbe.settings.editor_background.preset.fbe_light",
       "name": "FBE Light Paper",
       "file": "11_fbe_light.png",
       "theme": "light",
@@ -110,6 +121,7 @@
     },
     {
       "id": "12_graphite_dark",
+      "localizationKey": "fbe.settings.editor_background.preset.graphite_dark",
       "name": "Тёмный графит",
       "file": "12_graphite_dark.png",
       "theme": "dark",
@@ -119,6 +131,7 @@
     },
     {
       "id": "13_blue_gray_dark",
+      "localizationKey": "fbe.settings.editor_background.preset.blue_gray_dark",
       "name": "Тёмный сине-серый",
       "file": "13_blue_gray_dark.png",
       "theme": "dark",
@@ -128,6 +141,7 @@
     },
     {
       "id": "14_fbe_dark",
+      "localizationKey": "fbe.settings.editor_background.preset.fbe_dark",
       "name": "FBE Dark Paper",
       "file": "14_fbe_dark.png",
       "theme": "dark",

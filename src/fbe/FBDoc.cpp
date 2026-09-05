@@ -50,7 +50,9 @@ static void ApplyEditorBackground(MSHTML::IHTMLStylePtr& style)
 	else if(_Settings.GetEditorBackgroundKind() == L"custom" && EditorBackgrounds::IsSupportedLocalImage(_Settings.GetEditorBackgroundCustomPath())) path = _Settings.GetEditorBackgroundCustomPath();
 	if(path.IsEmpty()) return;
 	const CString uri = U::UrlFromPath(path); if(uri.IsEmpty()) return;
-	CString image; image.Format(L"url(%s)", static_cast<LPCWSTR>(uri));
+	// UrlCreateFromPath percent-escapes reserved path characters; quoting keeps
+	// the URI intact for CSS even when a local path contains parentheses or spaces.
+	CString image; image.Format(L"url(\"%s\")", static_cast<LPCWSTR>(uri));
 	style->backgroundImage = static_cast<LPCWSTR>(image);
 	style->backgroundAttachment = L"fixed";
 	const CString layout = _Settings.GetEditorBackgroundLayout();

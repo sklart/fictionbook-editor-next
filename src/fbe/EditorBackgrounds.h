@@ -6,6 +6,7 @@ struct EditorBackgroundDescriptor
 {
 	CString id;
 	CString name;
+	CString localizationKey;
 	CString fileName;
 	CString theme;
 };

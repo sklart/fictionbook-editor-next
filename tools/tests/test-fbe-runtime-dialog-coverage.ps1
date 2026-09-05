@@ -52,7 +52,12 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     $escapedKey = [regex]::Escape($key)
     $genericBindingPattern = '\{\s*' + [regex]::Escape($value.resource) + ',\s*[^,]+,\s*L"' + $escapedKey + '"\s*\}'
     $genericBinding = $bindingSource -match $genericBindingPattern
-    if (-not $genericBinding -and -not $consumerText.Contains($key)) {
+    # Built-in editor background labels are manifest-driven.  Their stable
+    # localization keys are validated against backgrounds.json by the asset
+    # contract; the page deliberately must not duplicate the preset list.
+    $manifestDrivenBackgroundPreset = $key -like 'fbe.settings.editor_background.preset.*' -and
+        $consumerText.Contains('m_builtInBackgrounds[i].localizationKey')
+    if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }
