@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "ExportEPUBPlugin.h"
+#include "..\\version.h"
 
 #include "FbeEpubExport.h"
 #include "RuntimeLocalization.h"
@@ -3603,7 +3604,35 @@ void WriteExportLog(const CString& outPath,
 
 } // namespace
 
+STDMETHODIMP CExportEPUBPlugin::GetPluginId(BSTR* value) { if (!value) return E_POINTER; *value = SysAllocString(L"export-epub"); return *value ? S_OK : E_OUTOFMEMORY; }
+STDMETHODIMP CExportEPUBPlugin::GetPluginVersion(BSTR* value) { if (!value) return E_POINTER; *value = SysAllocString(FBE_VERSION_WSTRING); return *value ? S_OK : E_OUTOFMEMORY; }
+STDMETHODIMP CExportEPUBPlugin::GetApiVersion(ULONG* value) { if (!value) return E_POINTER; *value = 2; return S_OK; }
+STDMETHODIMP CExportEPUBPlugin::GetCapabilities(ULONGLONG* value) { if (!value) return E_POINTER; *value = 0; return S_OK; }
+
+STDMETHODIMP CExportEPUBPlugin::Export(IFBEPluginHost* host, BSTR filename, IFBEDocumentSnapshot* document)
+{
+    if (!host || !document) return E_POINTER;
+    LONGLONG owner = 0; HRESULT hr = host->GetOwnerWindow(&owner); if (FAILED(hr)) return hr;
+    CComPtr<IFBECancellationToken> cancellation; hr = host->GetCancellationToken(&cancellation); if (FAILED(hr)) return hr;
+    BOOL cancelled = FALSE; hr = cancellation->IsCancellationRequested(&cancelled); if (FAILED(hr) || cancelled) return FAILED(hr) ? hr : HRESULT_FROM_WIN32(ERROR_CANCELLED);
+    CComPtr<IStream> stream; hr = document->OpenXmlStream(&stream); if (FAILED(hr)) return hr;
+    IXMLDOMDocument2Ptr source; hr = source.CreateInstance(__uuidof(DOMDocument60)); if (FAILED(hr)) return hr;
+    source->put_async(VARIANT_FALSE); source->put_validateOnParse(VARIANT_FALSE); VARIANT_BOOL loaded = VARIANT_FALSE;
+    hr = source->load(_variant_t((IUnknown*)stream), &loaded); if (FAILED(hr) || loaded != VARIANT_TRUE) { host->ReportMessage(2, CComBSTR(L"xml-load"), CComBSTR(L"snapshot XML could not be loaded")); return FAILED(hr) ? hr : E_FAIL; }
+    CComPtr<IFBEProgressSink> progress; if (SUCCEEDED(host->GetProgressSink(&progress))) progress->Report(0, 1, CComBSTR(L"export-epub"));
+    hr = ExportCore(static_cast<long>(owner), filename, source);
+    if (SUCCEEDED(hr) && progress) progress->Report(1, 1, CComBSTR(L"export-epub"));
+    if (FAILED(hr) && hr != HRESULT_FROM_WIN32(ERROR_CANCELLED)) host->ReportMessage(2, CComBSTR(L"export-failed"), CComBSTR(L"ExportEPUB failed"));
+    return hr;
+}
+
 HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
+{
+    const HRESULT result = ExportCore(hWnd, filename, doc);
+    return FAILED(result) ? S_FALSE : result;
+}
+
+HRESULT CExportEPUBPlugin::ExportCore(long hWnd, BSTR filename, IDispatch* doc)
 {
     InitExportEpubRuntimeStrings(_AtlBaseModule.GetModuleInstance());
 
@@ -3620,7 +3649,7 @@ HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
         CString outPath;
         fbe::epub::EpubVersion version = fbe::epub::EpubVersion::Epub3;
         if (!AskOutputFile(owner, filename, source, settings, outPath, version)) {
-            return S_FALSE;
+            return HRESULT_FROM_WIN32(ERROR_CANCELLED);
         }
 
         fbe::epub::EpubBook book;
@@ -3629,7 +3658,7 @@ HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
         if (book.chapters.empty()) {
             CString msg(LoadExportEpubString(IDS_ERROR_NO_CHAPTERS, L"No chapters to export."));
             ShowError(owner, msg);
-            return S_FALSE;
+            return E_FAIL;
         }
 
         const PreflightResult preflight = RunPreflight(book, settings);
@@ -3649,7 +3678,7 @@ HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
         std::wstring error;
         if (!fbe::epub::EpubExporter().Export(book, std::filesystem::path((LPCWSTR)outPath), opt, &error)) {
             ShowExportError(owner, error);
-            return S_FALSE;
+            return E_FAIL;
         }
 
         if (settings.writeDiagnosticLog) {
@@ -3669,15 +3698,15 @@ HRESULT CExportEPUBPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
             ? static_cast<const wchar_t*>(e.Description())
             : std::wstring(e.ErrorMessage());
         ShowExportError(owner, msg);
-        return S_FALSE;
+        return e.Error();
     }
     catch (const std::exception& e) {
         ShowExportError(owner, fbe::epub::WideFromUtf8(e.what()));
-        return S_FALSE;
+        return E_FAIL;
     }
     catch (...) {
         ShowExportError(owner, L"Unknown exception");
-        return S_FALSE;
+        return E_FAIL;
     }
 
     return S_OK;

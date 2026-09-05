@@ -2,11 +2,14 @@
 
 #include "resource.h"
 #include "ExportEPUB_i.h"
+#include "fbe.h"
 
 class ATL_NO_VTABLE CExportEPUBPlugin :
     public CComObjectRootEx<CComSingleThreadModel>,
     public CComCoClass<CExportEPUBPlugin, &CLSID_ExportEPUBPlugin>,
-    public IFBEExportPlugin
+    public IFBEExportPlugin,
+    public IFBEPluginInfo2,
+    public IFBEExportPlugin2
 {
 public:
     DECLARE_REGISTRY_RESOURCEID(IDR_EXPORTEPUB)
@@ -17,10 +20,19 @@ public:
     //-V1096
     BEGIN_COM_MAP(CExportEPUBPlugin) //-V835 //-V1096
         COM_INTERFACE_ENTRY(IFBEExportPlugin)
+        COM_INTERFACE_ENTRY(IFBEPluginInfo2)
+        COM_INTERFACE_ENTRY(IFBEExportPlugin2)
     END_COM_MAP()
 
     DECLARE_PROTECT_FINAL_CONSTRUCT()
 
     // IFBEExportPlugin
     STDMETHODIMP Export(long hWnd, BSTR filename, IDispatch* doc);
+    STDMETHODIMP GetPluginId(BSTR* value);
+    STDMETHODIMP GetPluginVersion(BSTR* value);
+    STDMETHODIMP GetApiVersion(ULONG* value);
+    STDMETHODIMP GetCapabilities(ULONGLONG* value);
+    STDMETHODIMP Export(IFBEPluginHost* host, BSTR filename, IFBEDocumentSnapshot* document);
+private:
+    HRESULT ExportCore(long hWnd, BSTR filename, IDispatch* doc);
 };
