@@ -8,6 +8,8 @@
 #include "..\\common\\ModernFileDialog.h"
 #include "SettingsDlg.h"
 #include "Settings.h"
+#include "EditorBackgrounds.h"
+#include "utils.h"
 #include "KeyboardLayoutSelection.h"
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
@@ -3781,7 +3783,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"editor-background-runtime"))
 	{
-		CStringA header("phase\timage\trepeat\tposition\tsize\tattachment\tmodified\r\n");
+		CStringA header("phase\timage\tcss_url\trepeat\tposition\tsize\tattachment\tmodified\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto backgroundPathFromEnvironment = [](const wchar_t* name) -> CString
 		{
@@ -3793,6 +3795,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		{
 			MSHTML::IHTMLStylePtr style(m_doc->m_body.Document() ? m_doc->m_body.Document()->body->style : MSHTML::IHTMLStylePtr());
 			CString image, repeat, position, attachment, cssText, size(L"auto");
+			CString cssUrl;
 			if(style) {
 				image = static_cast<LPCWSTR>(style->backgroundImage); repeat = static_cast<LPCWSTR>(style->backgroundRepeat);
 				position = static_cast<LPCWSTR>(style->backgroundPosition); attachment = static_cast<LPCWSTR>(style->backgroundAttachment);
@@ -3801,10 +3804,14 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 				else if(cssText.Find(L"background-size: cover") >= 0) size = L"cover";
 				else { _variant_t sizeAttribute(style->getAttribute(L"background-size", 0)); if(sizeAttribute.vt == VT_BSTR && sizeAttribute.bstrVal) size = sizeAttribute.bstrVal; }
 			}
+			CString path;
+			if(_Settings.GetEditorBackgroundKind() == L"builtin") EditorBackgrounds::ResolveBuiltIn(_Settings.GetEditorBackgroundId(), path);
+			else if(_Settings.GetEditorBackgroundKind() == L"custom") path = _Settings.GetEditorBackgroundCustomPath();
+			if(!path.IsEmpty()) { const CString uri = U::UrlFromPath(path); if(!uri.IsEmpty()) cssUrl.Format(L"url(\"%s\")", static_cast<LPCWSTR>(uri)); }
 			CStringA imageA(CW2A(image, CP_UTF8)), repeatA(CW2A(repeat, CP_UTF8)), positionA(CW2A(position, CP_UTF8));
-			CStringA sizeA(CW2A(size, CP_UTF8)), attachmentA(CW2A(attachment, CP_UTF8));
-			CStringA row; row.Format("%s\t%s\t%s\t%s\t%s\t%s\t%d\r\n", phase,
-				imageA.GetString(), repeatA.GetString(), positionA.GetString(), sizeA.GetString(), attachmentA.GetString(), m_doc->DocChanged() ? 1 : 0);
+			CStringA cssUrlA(CW2A(cssUrl, CP_UTF8)), sizeA(CW2A(size, CP_UTF8)), attachmentA(CW2A(attachment, CP_UTF8));
+			CStringA row; row.Format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\r\n", phase,
+				imageA.GetString(), cssUrlA.GetString(), repeatA.GetString(), positionA.GetString(), sizeA.GetString(), attachmentA.GetString(), m_doc->DocChanged() ? 1 : 0);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
 		_Settings.SetEditorBackgroundKind(L"none"); _Settings.SetEditorBackgroundId(CString()); _Settings.SetEditorBackgroundCustomPath(CString()); _Settings.SetEditorBackgroundLayout(L"tile");
@@ -3824,6 +3831,26 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		_Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(L"01_clean_white"); _Settings.SetEditorBackgroundLayout(L"tile"); m_doc->ApplyConfChanges(); appendBackgroundPhase("before-save");
 		if(!m_doc->Save()) { output.Close(); ::PostQuitMessage(1); return 0; }
 		appendBackgroundPhase("after-save"); output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"editor-background-settings"))
+	{
+		CStringA header("phase\tkind\tid\tcustom_path\tlayout\r\n"); DWORD written = 0;
+		output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		auto fromEnvironment = [](const wchar_t* name) -> CString { wchar_t value[1024] = {}; const DWORD length = ::GetEnvironmentVariable(name, value, _countof(value)); return length && length < _countof(value) ? CString(value) : CString(); };
+		auto append = [&](const char* phase) {
+			CStringA kind(CW2A(_Settings.GetEditorBackgroundKind(), CP_UTF8)), id(CW2A(_Settings.GetEditorBackgroundId(), CP_UTF8));
+			CStringA custom(CW2A(_Settings.GetEditorBackgroundCustomPath(), CP_UTF8)), layout(CW2A(_Settings.GetEditorBackgroundLayout(), CP_UTF8)), row;
+			row.Format("%s\t%s\t%s\t%s\t%s\r\n", phase, kind.GetString(), id.GetString(), custom.GetString(), layout.GetString());
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+		};
+		append("loaded");
+		const CString kind = fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_KIND");
+		if(!kind.IsEmpty()) {
+			_Settings.SetEditorBackgroundKind(kind); _Settings.SetEditorBackgroundId(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_ID"));
+			_Settings.SetEditorBackgroundCustomPath(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_PATH")); _Settings.SetEditorBackgroundLayout(fromEnvironment(L"FBE_NEXT_TEST_SETTINGS_LAYOUT"));
+			_Settings.Save(); _Settings.Load(); append("roundtrip");
+		}
+		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{

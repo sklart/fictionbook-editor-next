@@ -124,7 +124,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-source-allocate-lines.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-assets.ps1") -RuntimeDirectory (Join-Path $outputDir "EditorBackgrounds")
-& (Join-Path $repoRoot "tools\tests\test-editor-background-settings.ps1")
+& (Join-Path $repoRoot "tools\tests\test-editor-background-settings.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-regression.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")

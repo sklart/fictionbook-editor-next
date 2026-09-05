@@ -12,6 +12,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
+function Get-FileTreeSnapshot([string]$Path) {
+    if(-not (Test-Path -LiteralPath $Path -PathType Container)) { return '<absent>' }
+    return (Get-ChildItem -LiteralPath $Path -Recurse -File | Sort-Object FullName | ForEach-Object { "$($_.FullName)|$($_.Length)|$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash)" }) -join "`n"
+}
 
 function Assert-Phase($rows, [string]$phase, [scriptblock]$check) {
     $row = @($rows | Where-Object phase -eq $phase)
@@ -29,6 +33,13 @@ function Assert-Image($row, [string]$phase) {
 
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-editor-background-runtime-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
+$installedProfile = Join-Path $env:LOCALAPPDATA 'FBE Next'
+$installedBefore = Get-FileTreeSnapshot $installedProfile
+$sourceRuntime = Split-Path $FbeExe -Parent
+$portableRuntime = Join-Path $directory 'portable-runtime'
+Copy-Item -LiteralPath $sourceRuntime -Destination $portableRuntime -Recurse -Force
+$FbeExe = Join-Path $portableRuntime 'FBE.exe'
+"[Portable]`r`nDataPath=TestData`r`n" | Set-Content -LiteralPath (Join-Path $portableRuntime 'portable.ini') -Encoding utf8NoBOM
 $fixture = Join-Path $directory 'background.fb2'
 $png = Join-Path $directory 'Фоны FBE # % (тест).png'
 $missing = Join-Path $directory 'нет # % (фон).png'
@@ -49,11 +60,17 @@ try {
         $env:FBE_NEXT_TEST_BACKGROUND_MISSING_PATH = $missing
         foreach($extension in @('.png', '.jpg', '.jpeg')) {
             $custom = [IO.Path]::ChangeExtension($png, $extension)
-            if($custom -ne $png) { Copy-Item -LiteralPath $builtin -Destination $custom }
+            if($extension -eq '.png') { Copy-Item -LiteralPath $builtin -Destination $custom }
+            else {
+                $image = [System.Drawing.Image]::FromFile($builtin)
+                try { $image.Save($custom, [System.Drawing.Imaging.ImageFormat]::Jpeg) } finally { $image.Dispose() }
+                $signature = [IO.File]::ReadAllBytes($custom)
+                if($signature.Length -lt 4 -or $signature[0] -ne 0xFF -or $signature[1] -ne 0xD8 -or $signature[$signature.Length - 2] -ne 0xFF -or $signature[$signature.Length - 1] -ne 0xD9) { throw "$extension fixture is not a real JPEG." }
+            }
             $env:FBE_NEXT_TEST_BACKGROUND_PATH = $custom
             Remove-Item Env:FBE_NEXT_TEST_FORCE_HIGH_CONTRAST -ErrorAction SilentlyContinue
             $report = Join-Path $directory ("report$extension.tsv")
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
+            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, '--portable', $fixture) -WorkingDirectory $portableRuntime -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил runtime-проверку $extension." }
             if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE не сформировал runtime-отчёт для $extension (exit=$($process.ExitCode))." }
             $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
@@ -65,11 +82,16 @@ try {
             foreach($phase in @('builtin-center', 'builtin-contain', 'builtin-cover')) { Assert-Phase $rows $phase { param($r) if($r.repeat -ne 'no-repeat' -or $r.position -notmatch 'center') { throw "$phase не установил no-repeat/center." } } }
             Assert-Phase $rows 'builtin-contain' { param($r) if($r.size -ne 'contain') { throw 'contain не установил background-size.' } }
             Assert-Phase $rows 'builtin-cover' { param($r) if($r.size -ne 'cover') { throw 'cover не установил background-size.' } }
-            Assert-Phase $rows 'custom' { param($r) if($r.image -notmatch '%20|%23|%25' -or $r.image -notmatch '\(' -or $r.image -notmatch '\)') { throw "U::UrlFromPath/CSS url не сохранил special-character URI: $($r.image)" } }
+            Assert-Phase $rows 'custom' { param($r)
+                foreach($escape in @('%20','%23','%25')) { if($r.image -notmatch [regex]::Escape($escape)) { throw "U::UrlFromPath did not preserve ${escape}: $($r.image)" } }
+                if($r.image -notmatch 'Фоны' -or $r.image -notmatch '\(' -or $r.image -notmatch '\)') { throw "Unicode or parentheses were lost by MSHTML: $($r.image)" }
+                if($r.image -notmatch '^url\(' -or $r.image -notmatch '\.png|\.jpg|\.jpeg') { throw "MSHTML returned an invalid backgroundImage: $($r.image)" }
+                if($r.css_url -notmatch '^url\("file:' -or $r.css_url -notmatch '"\)$') { throw "U::UrlFromPath CSS URL was not quoted: $($r.css_url)" }
+            }
         }
         $env:FBE_NEXT_TEST_BACKGROUND_PATH = $png; $env:FBE_NEXT_TEST_FORCE_HIGH_CONTRAST = '1'
         $highContrastReport = Join-Path $directory 'report-high-contrast.tsv'
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $highContrastReport, $fixture) -PassThru
+        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $highContrastReport, '--portable', $fixture) -WorkingDirectory $portableRuntime -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил High Contrast runtime-проверку.' }
         if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $highContrastReport)) { throw 'FBE не сформировал High Contrast runtime-отчёт.' }
         $highContrastRows = @(Import-Csv -LiteralPath $highContrastReport -Delimiter "`t")
@@ -86,5 +108,6 @@ try {
     $completed = $true
     Write-Host 'FBE.exe editor background runtime regression passed (MSHTML DOM, layouts, fallback, custom paths, High Contrast and Save isolation).'
 } finally {
+    if((Get-FileTreeSnapshot $installedProfile) -cne $installedBefore) { throw '%LOCALAPPDATA%\FBE Next changed during isolated editor background runtime test.' }
     if($completed -or -not $KeepArtifacts) { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } else { Write-Host "Артефакты runtime-проверки: $directory" }
 }
