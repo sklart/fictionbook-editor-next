@@ -126,6 +126,10 @@ HRESULT CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
 
 HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 {
+	wchar_t testMode[4] = {}, testCancel[4] = {};
+	if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL", testCancel, _countof(testCancel)) == 1 && testCancel[0] == L'1')
+		return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 	InitExportHtmlRuntimeStrings();
 
 	HANDLE  hOut = INVALID_HANDLE_VALUE;
