@@ -2550,11 +2550,14 @@ bool AskOutputFile(HWND owner,
                    CString& outPath,
                    fbe::epub::EpubVersion& version)
 {
-    wchar_t testMode[4] = {}, testScenario[32] = {}, testPath[MAX_PATH] = {};
+    wchar_t testMode[4] = {}, testScenario[32] = {}, testPath[MAX_PATH] = {}, testVersion[4] = {};
     const bool headlessTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
         ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", testScenario, _countof(testScenario)) == wcslen(L"export-epub") && wcscmp(testScenario, L"export-epub") == 0;
     if (headlessTest && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_EPUB_PATH", testPath, _countof(testPath)) > 0) {
-        outPath = testPath; version = fbe::epub::EpubVersion::Epub3; return true;
+        outPath = testPath;
+        const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_EPUB_VERSION", testVersion, _countof(testVersion));
+        version = length == 1 && testVersion[0] == L'2' ? fbe::epub::EpubVersion::Epub2 : fbe::epub::EpubVersion::Epub3;
+        return true;
     }
     CString proposed = DefaultOutputFileName(filename, source, owner);
     const CString serialized = LoadExportEpubString(IDS_SAVE_FILE_FILTER,

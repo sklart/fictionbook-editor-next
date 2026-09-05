@@ -294,6 +294,20 @@ int wmain(int argc, wchar_t **argv) {
   if (!strstr(out, "Привет, мир") && !strstr(out, "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82\x2C\x20\xD0\xBC\xD0\xB8\xD1\x80"))
 #endif
     return 10;
+#ifdef FBE_TEST_EXPORT_EPUB
+  std::wstring epub2 = root + L"\\ok-epub2.epub";
+  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_EPUB_VERSION", L"2");
+  SetEnvironmentVariableW(FBE_TEST_PATH, epub2.c_str());
+  Host *epub2Host = new Host;
+  Snapshot *epub2Snapshot = new Snapshot;
+  h = Call(e, epub2Host, epub2Snapshot);
+  if (FAILED(h) || !epub2Host->ok()) return Die(L"epub2", h);
+  HANDLE epub2File = CreateFileW(epub2.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+  if (epub2File == INVALID_HANDLE_VALUE) return 14;
+  DWORD epub2Bytes = 0; ReadFile(epub2File, out, sizeof(out) - 1, &epub2Bytes, 0); CloseHandle(epub2File);
+  if (epub2Bytes < 4 || memcmp(out, "PK\x03\x04", 4)) return 15;
+  epub2Snapshot->Release(); epub2Host->Release(); SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_EPUB_VERSION", L"3"); SetEnvironmentVariableW(FBE_TEST_PATH, good.c_str());
+#endif
   snap->Release();
   host->Release();
   SetEnvironmentVariableW(FBE_TEST_FAIL, L"1");
@@ -329,6 +343,10 @@ int wmain(int argc, wchar_t **argv) {
   SetEnvironmentVariableW(FBE_TEST_CANCEL, 0);
   SetEnvironmentVariableW(FBE_TEST_FAIL, 0);
   DeleteFileW(good.c_str());
+#ifdef FBE_TEST_EXPORT_EPUB
+  DeleteFileW((root + L"\\ok-epub2.epub").c_str());
+  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_EPUB_VERSION", 0);
+#endif
   RemoveDirectoryW(root.c_str());
   FreeLibrary(m);
   std::wcout << L"Export v2 runtime passed\n";
