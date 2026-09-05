@@ -4,6 +4,21 @@
 #include <string>
 #include <windows.h>
 typedef HRESULT(STDAPICALLTYPE *GetClassObject)(REFCLSID, REFIID, void **);
+#ifdef FBE_TEST_EXPORT_EPUB
+#define FBE_TEST_CLSID L"{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}"
+#define FBE_TEST_PLUGIN_ID L"export-epub"
+#define FBE_TEST_SCENARIO L"export-epub"
+#define FBE_TEST_PATH L"FBE_NEXT_TEST_EXPORT_EPUB_PATH"
+#define FBE_TEST_CANCEL L"FBE_NEXT_TEST_EXPORT_EPUB_CANCEL"
+#define FBE_TEST_FAIL L"FBE_NEXT_TEST_EXPORT_EPUB_FAIL"
+#else
+#define FBE_TEST_CLSID L"{C3098839-EF69-4DE5-B27D-1E80051CA843}"
+#define FBE_TEST_PLUGIN_ID L"export-html"
+#define FBE_TEST_SCENARIO L"export-html"
+#define FBE_TEST_PATH L"FBE_NEXT_TEST_EXPORT_HTML_PATH"
+#define FBE_TEST_CANCEL L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL"
+#define FBE_TEST_FAIL L"FBE_NEXT_TEST_EXPORT_HTML_FAIL"
+#endif
 static int Die(const wchar_t *s, HRESULT h) {
   std::wcerr << s << L" 0x" << std::hex << h << L"\n";
   return 1;
@@ -213,7 +228,7 @@ int wmain(int argc, wchar_t **argv) {
   if (!g)
     return 4;
   CLSID c = {};
-  if (FAILED(CLSIDFromString(L"{C3098839-EF69-4DE5-B27D-1E80051CA843}", &c)))
+  if (FAILED(CLSIDFromString(FBE_TEST_CLSID, &c)))
     return 5;
   IClassFactory *f = 0;
   HRESULT h = g(c, IID_IClassFactory, (void **)&f);
@@ -234,7 +249,7 @@ int wmain(int argc, wchar_t **argv) {
   ULONG api = 0;
   i->GetPluginId(&id);
   i->GetApiVersion(&api);
-  if (!id || wcscmp(id, L"export-html") || api != 2)
+  if (!id || wcscmp(id, FBE_TEST_PLUGIN_ID) || api != 2)
     return 6;
   SysFreeString(id);
   i->Release();
@@ -244,16 +259,21 @@ int wmain(int argc, wchar_t **argv) {
     return 8;
   wchar_t dir[MAX_PATH] = {};
   GetTempPathW(MAX_PATH, dir);
-  std::wstring root = std::wstring(dir) + L"fbe-exporthtml-v2-" +
+  std::wstring root = std::wstring(dir) + L"fbe-export-v2-" +
                       std::to_wstring(GetCurrentProcessId());
   CreateDirectoryW(root.c_str(), 0);
-  std::wstring good = root + L"\\ok.html";
+  std::wstring good = root + L"\\ok";
+#ifdef FBE_TEST_EXPORT_EPUB
+  good += L".epub";
+#else
+  good += L".html";
+#endif
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", L"1");
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", L"export-html");
+  SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", FBE_TEST_SCENARIO);
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_MODE", L"4");
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL", 0);
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", 0);
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_PATH", good.c_str());
+  SetEnvironmentVariableW(FBE_TEST_CANCEL, 0);
+  SetEnvironmentVariableW(FBE_TEST_FAIL, 0);
+  SetEnvironmentVariableW(FBE_TEST_PATH, good.c_str());
   Host *host = new Host;
   Snapshot *snap = new Snapshot;
   h = Call(e, host, snap);
@@ -268,11 +288,15 @@ int wmain(int argc, wchar_t **argv) {
   ReadFile(file, out, sizeof(out) - 1, &n, 0);
   CloseHandle(file);
   out[n] = 0;
+#ifdef FBE_TEST_EXPORT_EPUB
+  if (n < 4 || memcmp(out, "PK\x03\x04", 4))
+#else
   if (!strstr(out, "Привет, мир") && !strstr(out, "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82\x2C\x20\xD0\xBC\xD0\xB8\xD1\x80"))
+#endif
     return 10;
   snap->Release();
   host->Release();
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", L"1");
+  SetEnvironmentVariableW(FBE_TEST_FAIL, L"1");
   host = new Host;
   snap = new Snapshot;
   h = Call(e, host, snap);
@@ -280,8 +304,8 @@ int wmain(int argc, wchar_t **argv) {
     return 11;
   snap->Release();
   host->Release();
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", 0);
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL", L"1");
+  SetEnvironmentVariableW(FBE_TEST_FAIL, 0);
+  SetEnvironmentVariableW(FBE_TEST_CANCEL, L"1");
   host = new Host;
   snap = new Snapshot;
   h = Call(e, host, snap);
@@ -301,12 +325,12 @@ int wmain(int argc, wchar_t **argv) {
   u->Release();
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", 0);
   SetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", 0);
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_PATH", 0);
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL", 0);
-  SetEnvironmentVariableW(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", 0);
+  SetEnvironmentVariableW(FBE_TEST_PATH, 0);
+  SetEnvironmentVariableW(FBE_TEST_CANCEL, 0);
+  SetEnvironmentVariableW(FBE_TEST_FAIL, 0);
   DeleteFileW(good.c_str());
   RemoveDirectoryW(root.c_str());
   FreeLibrary(m);
-  std::wcout << L"ExportHTML v2 runtime passed\n";
+  std::wcout << L"Export v2 runtime passed\n";
   return 0;
 }
