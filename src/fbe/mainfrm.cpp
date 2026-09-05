@@ -5287,14 +5287,11 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
       HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
       TracePluginDiagnostic(L"Import", pluginClsid, L"CreateInstance", pluginHr, 0);
       CheckError(pluginHr);
-	  PluginApiGeneration apiGeneration = PluginApiV1Fallback;
-	  pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk, apiGeneration);
-	  TracePluginDiagnostic(L"Import", pluginClsid, L"NegotiateApi", pluginHr, apiGeneration == PluginApiV2Detected ? 1 : 0);
+	  pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk);
+	  TracePluginDiagnostic(L"Import", pluginClsid, L"NegotiateApiV2", pluginHr, SUCCEEDED(pluginHr) ? 1 : 0);
 	  CheckError(pluginHr);
       IDispatchPtr  obj;
       _bstr_t	    filename;
-	  if (apiGeneration == PluginApiV2Detected)
-	  {
 		CComQIPtr<IFBEImportPlugin2> importV2(unk);
 		if (!importV2) { TracePluginDiagnostic(L"Import", pluginClsid, L"QueryInterfaceV2", E_NOINTERFACE, 0); return 0; }
 		CComPtr<IFBEPluginHost> host;
@@ -5305,36 +5302,14 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 		TracePluginDiagnostic(L"Import", pluginClsid, L"ImportV2", importResult, fb2Xml ? 1 : 0);
 		CheckError(importResult);
 		if (importResult != S_OK || !fb2Xml) return 0;
-		CComPtr<MSXML2::IXMLDOMDocument2> dom;
-		CheckError(dom.CoCreateInstance(L"Msxml2.DOMDocument.6.0"));
-		CComQIPtr<IPersistStreamInit> streamLoader(dom);
+		CComPtr<MSXML2::IXMLDOMDocument2> v2Dom;
+		CheckError(v2Dom.CoCreateInstance(L"Msxml2.DOMDocument.6.0"));
+		CComQIPtr<IPersistStreamInit> streamLoader(v2Dom);
 		if (!streamLoader) { TracePluginDiagnostic(L"Import", pluginClsid, L"ImportV2StreamLoader", E_NOINTERFACE, 0); return 0; }
 		CheckError(streamLoader->Load(fb2Xml));
-		CheckError(dom.QueryInterface(&obj));
+		CheckError(v2Dom.QueryInterface(&obj));
 		filename.Assign(suggestedFileName.Detach());
 		m_last_plugin = wID + ID_IMPORT_BASE;
-	  }
-	  else
-	  {
-      CComQIPtr<IFBEImportPlugin>	    ipl(unk);
-      TracePluginDiagnostic(L"Import", pluginClsid, L"QueryInterface", ipl ? S_OK : E_NOINTERFACE, 0);
-      if (ipl) 
-	  {
-		m_last_plugin = wID + ID_IMPORT_BASE;
-		BSTR	bs=NULL;
-		HRESULT hr=ipl->Import((long)m_hWnd,&bs,&obj);
-		TracePluginDiagnostic(L"Import", pluginClsid, L"Import", hr, obj ? 1 : 0);
-		CheckError(hr);
-		filename.Assign(bs);
-		if (hr!=S_OK)
-		return 0;
-	  } 
-	  else 
-	  {
-		U::MessageBox(MB_OK|MB_ICONERROR, IDS_IMPORT_ERR_CPT, IDS_IMPORT_ERR_MSG);
-		return 0;
-      }
-	  }
 
       MSXML2::IXMLDOMDocument2Ptr dom(obj);
       TracePluginDiagnostic(L"Import", pluginClsid, L"DOM result", dom ? S_OK : E_NOINTERFACE, dom ? 1 : 0);
@@ -5397,13 +5372,10 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 			HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
 			TracePluginDiagnostic(L"Export", pluginClsid, L"CreateInstance", pluginHr, 0);
 			CheckError(pluginHr);
-			PluginApiGeneration apiGeneration = PluginApiV1Fallback;
-			pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk, apiGeneration);
-			TracePluginDiagnostic(L"Export", pluginClsid, L"NegotiateApi", pluginHr, apiGeneration == PluginApiV2Detected ? 1 : 0);
+			pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk);
+			TracePluginDiagnostic(L"Export", pluginClsid, L"NegotiateApiV2", pluginHr, SUCCEEDED(pluginHr) ? 1 : 0);
 			CheckError(pluginHr);
 
-			if (apiGeneration == PluginApiV2Detected)
-			{
 				CComQIPtr<IFBEExportPlugin2> exportV2(unk);
 				if (!exportV2) { TracePluginDiagnostic(L"Export", pluginClsid, L"QueryInterfaceV2", E_NOINTERFACE, 0); return 0; }
 				m_last_plugin = wID + ID_EXPORT_BASE;
@@ -5417,42 +5389,6 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 				CheckError(exportResult);
 				TracePluginDiagnostic(L"Export", pluginClsid, L"completed", S_OK, 0);
 				return 0;
-			}
-
-			CComQIPtr<IFBEExportPlugin> epl(unk);
-			TracePluginDiagnostic(L"Export", pluginClsid, L"QueryInterface", epl ? S_OK : E_NOINTERFACE, 0);
-
-			if(epl)
-			{
-				m_last_plugin = wID + ID_EXPORT_BASE;
-				// Export consumes the in-memory binary payload directly.  Compacting
-				// it is only a Save-to-FB2 optimization and can strip MSXML's typed
-				// binary representation before the export plugin receives it.
-				MSXML2::IXMLDOMDocument2Ptr dom(m_doc->CreateDOM(m_doc->m_encoding, false));
-				_bstr_t filename;
-				if(m_doc->m_namevalid)
-				{
-					CString tmp(m_doc->m_filename);
-					if(tmp.GetLength() >= 4 && tmp.Right(4).CompareNoCase(_T(".fb2")) == 0)
-					{
-						tmp.Delete(tmp.GetLength() - 4, 4);
-					}
-					filename = (const TCHAR*)tmp;
-				}
-				TracePluginDiagnostic(L"Export", pluginClsid, L"DOM result", dom ? S_OK : E_NOINTERFACE, dom ? 1 : 0);
-				if(dom)
-				{
-					HRESULT exportResult = epl->Export((long)m_hWnd, filename, dom);
-					TracePluginDiagnostic(L"Export", pluginClsid, L"Export", exportResult, 1);
-					CheckError(exportResult);
-					TracePluginDiagnostic(L"Export", pluginClsid, L"completed", S_OK, 1);
-				}
-				} 
-				else 
-				{
-					U::MessageBox(MB_OK|MB_ICONERROR, IDS_EXPORT_ERR_CPT, IDS_EXPORT_ERR_MSG);
-				return 0;
-			}
 		}
 		catch(_com_error& e)
 		{
