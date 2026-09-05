@@ -271,6 +271,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-portable-scripts-infrastructure.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-paths-cli.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-copies-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-portable-diagnostic-cleanup-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-atomic-persistence.ps1")
 & (Join-Path $repoRoot "tools\tests\test-mode-aware-updater.ps1")
 & (Join-Path $repoRoot "tools\tests\test-mode-aware-updater-behavior.ps1")

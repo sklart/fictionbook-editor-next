@@ -134,6 +134,8 @@ namespace
 
 	CString ResolveDiagnosticLogDirectory()
 	{
+		if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable)
+			return CString(DeploymentContext::DiagnosticsDirectory().c_str());
 		wchar_t base[MAX_PATH] = {};
 		if (SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, base)))
 		{
@@ -151,6 +153,12 @@ namespace
 	void ResolveDiagnosticLogDirectories(std::vector<CString>& directories)
 	{
 		directories.clear();
+		if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable)
+		{
+			const CString directory(DeploymentContext::DiagnosticsDirectory().c_str());
+			if (!directory.IsEmpty()) directories.push_back(directory);
+			return;
+		}
 		wchar_t base[MAX_PATH] = {};
 		if (SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, base)))
 		{

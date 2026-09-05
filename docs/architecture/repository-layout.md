@@ -31,9 +31,9 @@
 | Редактор | `src/fbe/FBE.vcxproj` | GUI, документ, host плагинов, COM/type library | Win32 Debug/Release; `out/<Configuration>/FBE.exe` |
 | Shell-интеграция | `src/fbshell/FBShell.vcxproj`, `tools/build/build-shell-integration.ps1` | Explorer thumbnail/property handler; собирается отдельно также x64 | Win32/x64 Debug/Release; staging Integration |
 | Просмотрщик | `src/fbv/FBV.vcxproj`, MUI-сценарий | отдельный EXE и MUI-ресурсы | Win32/x64 Debug/Release; `FBV.exe` |
-| HTML-плагин | `src/export-html/ExportHTML.vcxproj` | контракт FBE и экспортный COM-плагин | Win32/x64; `Plugins/ExportHTML.dll` |
-| DOCX-плагин | `src/export-docx/ExportDOCX.vcxproj` и Batch-проект | контракт FBE, экспорт | Win32/x64; `Plugins/ExportDOCX.dll` |
-| EPUB-плагин | `src/export-epub/ExportEPUB.vcxproj` и Batch-проект | контракт FBE, экспорт | Win32/x64; `Plugins/ExportEPUB.dll` |
+| HTML-плагин | `src/export-html/ExportHTML.vcxproj` | контракт FBE и экспортный COM-плагин | Win32; `Plugins/ExportHTML.dll` |
+| DOCX-плагин | `src/export-docx/ExportDOCX.vcxproj` и Batch-проект | контракт FBE, экспорт | Win32; `Plugins/ExportDOCX.dll` |
+| EPUB-плагин | `src/export-epub/ExportEPUB.vcxproj` и Batch-проект | контракт FBE, экспорт | Win32; `Plugins/ExportEPUB.dll` |
 | EPUB-импорт | `src/import-epub/ImportEPUB.vcxproj`, Batch и LunaSVG adapter | контракт FBE, импорт | Win32/x64; `Plugins/ImportEPUB.dll` |
 | ArchHandler | `tools/build/build-archhandler.ps1` | вспомогательная shell-интеграция | Win32 output в `out/archhandler` |
 

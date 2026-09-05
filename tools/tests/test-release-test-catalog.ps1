@@ -34,6 +34,15 @@ foreach ($id in @(
     )) {
     if ($catalog.tests.id -notcontains $id) { throw "Catalog omits required scenario: $id" }
 }
+foreach ($id in @(
+        'release.fbe-table-structural-production.edge-spans.target-0-3.operation-delete-column',
+        'release.fbe-table-structural-production.combined.target-1-0.operation-delete-row',
+        'release.fbe-table-structural-production.colspan.target-0-0.operation-delete-column.then-insert-column-right',
+        'release.fbe-table-structural-production.bulk-10x10.target-0-0-9-9.operation-make-header',
+        'release.fbe-table-structural-production.toggle-preserve.target-0-0.operation-toggle-header'
+    )) {
+    if ($catalog.tests.id -notcontains $id) { throw "Catalog omits parameterized table scenario: $id" }
+}
 if (@($catalog.tests | Where-Object { $_.id -like 'release.fbe-table-structural-production.command-route.*' }).Count -ne 6) {
     throw 'Catalog does not expand all six table command-route operations.'
 }

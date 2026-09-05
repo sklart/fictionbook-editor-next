@@ -34,7 +34,8 @@ for ($index = 0; $index -lt $lines.Count; $index++) {
     if ($line -match '^\s*if \(\$FullValidation\)') { $fullDepth = 1; continue }
     $currentContour = if ($tableDepth -gt 0) { 'TABLE' } elseif ($fullDepth -gt 0) { 'FULL' } else { 'FAST' }
     $match = [regex]::Match($line, 'tools\\tests\\(?<name>test-[A-Za-z0-9-]+\.ps1)')
-    if ($match.Success) {
+    $isCommandRouteMatrix = $line -match '\$commandRouteOperation'
+    if ($match.Success -and -not $isCommandRouteMatrix) {
         $name = $match.Groups['name'].Value
         $entryId = 'release.' + [IO.Path]::GetFileNameWithoutExtension($name).Substring(5)
         # IDs describe a runnable scenario, rather than the source line that
@@ -43,6 +44,15 @@ for ($index = 0; $index -lt $lines.Count; $index++) {
         if ($line -match '\s-Huge(?:\s|$)') { $entryId += '.huge' }
         if ($line -match '-Fault\s+change-colspan-after-normalize') { $entryId += '.fault-change-colspan-after-normalize' }
         elseif ($line -match '-Fault\s+drop-row-after-normalize') { $entryId += '.fault-drop-row-after-normalize' }
+        if ($name -eq 'test-fbe-table-structural-production.ps1' -and $line -match '-FixtureId\s+(?<fixture>[A-Za-z0-9-]+)') {
+            $entryId += '.' + $Matches.fixture
+            if ($line -match '-Target\s+"(?<target>[^"]+)"') {
+                $targetId = $Matches.target -replace '[^A-Za-z0-9]+', '-'
+                $entryId += '.target-' + $targetId.Trim('-')
+            }
+            if ($line -match '-Operation\s+(?<operation>[A-Za-z0-9-]+)') { $entryId += '.operation-' + $Matches.operation }
+            if ($line -match '-SecondOperation\s+(?<second>[A-Za-z0-9-]+)') { $entryId += '.then-' + $Matches.second }
+        }
         if (-not $entries.ContainsKey($entryId)) {
             # Most legacy scripts own fixtures, isolation and timeouts internally.
             # Keep that fact explicit: an empty array would falsely claim that the

@@ -8,7 +8,7 @@ $localization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'localization
 foreach($field in @('sessionsFound','sessionsFullyDeleted','sessionsPartiallyDeleted','sessionsFailed','filesDeleted','filesFailed','lastError')) {
     if($header.IndexOf($field, [StringComparison]::Ordinal) -lt 0) { throw "Cleanup result is missing $field." }
 }
-foreach($pattern in @('StartupTrace::DiagnosticLogCleanupResult StartupTrace::ClearOldLogSessions()', 'ResolveDiagnosticLogDirectories(directories)', 'ERROR_PATH_NOT_FOUND', 'sessionHasFiles', 'sessionHasFailures', 'sessionsFullyDeleted', 'sessionsPartiallyDeleted', 'sessionsFailed')) {
+foreach($pattern in @('StartupTrace::DiagnosticLogCleanupResult StartupTrace::ClearOldLogSessions()', 'ResolveDiagnosticLogDirectories(directories)', 'ERROR_PATH_NOT_FOUND', 'sessionHasFiles', 'sessionHasFailures', 'sessionsFullyDeleted', 'sessionsPartiallyDeleted', 'sessionsFailed', 'DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable', 'DeploymentContext::DiagnosticsDirectory()')) {
     if($source.IndexOf($pattern, [StringComparison]::Ordinal) -lt 0) { throw "Cleanup implementation is missing $pattern." }
 }
 foreach($key in @('fbe.trace.clear_completed_details','fbe.trace.clear_partial','fbe.trace.clear_empty','fbe.trace.clear_delete_failed')) {

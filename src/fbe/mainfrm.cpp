@@ -3559,7 +3559,8 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool toolbarLayoutRead = IsFbeTestScenario(L"portable-toolbar-layout-read");
 	const bool scriptsReload = IsFbeTestScenario(L"portable-scripts-reload");
 	const bool legacyHotkeyRead = IsFbeTestScenario(L"portable-legacy-hotkey-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !scriptsReload && !legacyHotkeyRead)
+	const bool diagnosticCleanup = IsFbeTestScenario(L"portable-diagnostic-cleanup");
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -3574,6 +3575,20 @@ void CMainFrame::RunPortableStateTestScenario()
 	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
+		PostMessage(WM_CLOSE);
+		return;
+	}
+	if (diagnosticCleanup)
+	{
+		// This narrow test hook exercises the public cleanup operation after the
+		// portable startup trace has been opened.  The PowerShell regression seeds
+		// more than ten completed sessions and checks a separate user directory.
+		const StartupTrace::DiagnosticLogCleanupResult cleanup = StartupTrace::ClearOldLogSessions();
+		CStringA report;
+		report.Format("phase=diagnostic-cleanup\nportable=1\nsessions-found=%u\nsessions-deleted=%u\nfiles-deleted=%u\nfiles-failed=%u\nresult=%s\n",
+			cleanup.sessionsFound, cleanup.sessionsFullyDeleted, cleanup.filesDeleted, cleanup.filesFailed,
+			cleanup.filesFailed == 0 && cleanup.sessionsFailed == 0 && cleanup.sessionsPartiallyDeleted == 0 ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE);
 		return;
 	}

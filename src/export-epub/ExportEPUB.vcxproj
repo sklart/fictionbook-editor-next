@@ -249,11 +249,14 @@
     <Image Include="res\ExportEPUB.ico" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\contracts\FBEContracts.vcxproj">
+    <ProjectReference Include="..\contracts\FBEContracts.vcxproj" Condition="'$(Platform)'=='Win32'">
       <Project>{A6F27D46-6116-4A85-A1E5-8C68E79E5B4D}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
     <Midl Include="ExportEPUB.idl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="RejectUnsupportedExportPluginPlatform" BeforeTargets="PrepareForBuild" Condition="'$(Platform)' != 'Win32'">
+    <Error Text="ExportEPUB supports only Win32: the FBE host, contract producer and release package are Win32." />
+  </Target>
 </Project>

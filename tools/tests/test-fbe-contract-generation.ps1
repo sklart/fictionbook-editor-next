@@ -46,6 +46,9 @@ foreach ($producer in @('src\export-html\ExportHTML.vcxproj', 'src\export-docx\E
     if ($producerText.Contains('Midl Include="..\contracts\fbe.idl"')) {
         throw "Contract consumer independently generates fbe.idl: $producer"
     }
+    if ($producerText -notmatch 'RejectUnsupportedExportPluginPlatform' -or $producerText -notmatch "Condition=.*Win32") {
+        throw "Unsupported x64 export platform is not explicitly rejected: $producer"
+    }
 }
 
 $apiDirectory = & (Join-Path $PSScriptRoot 'ensure-fbe-api.ps1') -Configuration $Configuration

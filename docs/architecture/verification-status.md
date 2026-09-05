@@ -69,7 +69,7 @@ fail-closed Save, image/EPUB/HTML E2E и Win7 import gate. Полная пров
 актуальные `FictionBookEditorNext-3.0.8-win32-portable.zip`, setup.exe,
 symbols.zip и `SHA256SUMS.txt` в `out/artifacts`.
 
-Перед этим исправлен тестовый запуск fail-closed Save: при наличии
-`out/Release/portable.ini` он теперь явно выбирает `--installed`, а legacy
-разбор аргументов корректно пропускает deployment-switches. Это сохраняет
-реальную проверку fault injection, а не отключает её.
+Fail-closed Save выполняется из изолированной portable-копии с приватным
+`Data`, включая `Data\Diagnostics`; он не использует `--installed`, не
+читает и не меняет HKCU COM/settings пользователя. Retention trace-логов
+portable-копии ограничен её собственной `DiagnosticsDirectory`.
