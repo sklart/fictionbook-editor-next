@@ -2983,16 +2983,21 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   StartupTrace::Event(L"mainframe", L"M140", L"document attached");
   UISetCheck(ID_VIEW_BODY,1);
 
+  StartupTrace::AppendTestStartupBreadcrumb("document-tree-create-start");
   m_document_tree.Create(m_splitter);
+	StartupTrace::AppendTestStartupBreadcrumb("document-tree-create-complete");
   StartupTrace::Event(L"mainframe", L"M150", L"document tree initialized");
   
   if (AU::_ARGS.start_in_desc_mode) 
 	ShowView(DESC);
 
   // init plugins&MRU list
-  InitPlugins();  
+  StartupTrace::AppendTestStartupBreadcrumb("plugins-init-start");
+  InitPlugins();
+	StartupTrace::AppendTestStartupBreadcrumb("plugins-init-complete");
   StartupTrace::Event(L"mainframe", L"M160", L"plugins and MRU initialized");
 
+  StartupTrace::AppendTestStartupBreadcrumb("mainframe-layout-start");
   // setup splitter
   m_splitter.SetSplitterPanes(m_document_tree, m_view);
 
@@ -3047,11 +3052,14 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     UISetCheck(id,style & RBBS_HIDDEN ? FALSE : TRUE);
   }
 
-	// register object for message filtering and idle updates
+  StartupTrace::AppendTestStartupBreadcrumb("mainframe-layout-complete");
+  // register object for message filtering and idle updates
+	StartupTrace::AppendTestStartupBreadcrumb("mainframe-message-hooks-start");
   CMessageLoop* pLoop = _Module.GetMessageLoop();
   ATLASSERT(pLoop != NULL);
   pLoop->AddMessageFilter(this);
   pLoop->AddIdleHandler(this);
+	StartupTrace::AppendTestStartupBreadcrumb("mainframe-message-hooks-complete");
 
   // accept dropped files
   ::DragAcceptFiles(*this,TRUE);
@@ -3071,6 +3079,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	  }
   }
 
+  StartupTrace::AppendTestStartupBreadcrumb("keyboard-layout-start");
   // Change keyboard layout
   if (_Settings.GetChangeKeybLayout())
   {
@@ -3079,12 +3088,14 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	  if(!layout.IsEmpty() && !LoadKeyboardLayout(layout, KLF_ACTIVATE))
 		  StartupTrace::Warning(L"startup", L"ST126", L"Configured keyboard layout could not be loaded.");
 	}
+	StartupTrace::AppendTestStartupBreadcrumb("keyboard-layout-complete");
   
   // added by SeNS: create blank document, and load incorrect XML to Scintilla
   if (m_bad_xml)
 	if (!LoadToScintilla(startupFileName)) return -1;
 
   // Added by SeNS
+  StartupTrace::AppendTestStartupBreadcrumb("speller-init-start");
   if (m_Speller && m_Speller->Enabled())
   {
 	if (!m_Speller->Available())
@@ -3094,12 +3105,15 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	m_Speller->SetHighlightMisspells(_Settings.GetHighlightMisspells());
   }
   else UIEnable(ID_TOOLS_SPELLCHECK, false, true);
+	StartupTrace::AppendTestStartupBreadcrumb("speller-init-complete");
 
 	// Restore scripts toolbar layout and position
+	StartupTrace::AppendTestStartupBreadcrumb("scripts-toolbar-restore-start");
 	if (DeploymentContext::RegistryPersistenceAllowed())
 		m_ScriptsToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"ScriptsToolbar");
 	else
 		RestorePortableToolbarLayout(m_ScriptsToolbar, true);
+	StartupTrace::AppendTestStartupBreadcrumb("scripts-toolbar-restore-complete");
 
 	// An unattended -b run has no user to answer this dialog.  Keep tracing
 	// enabled for the report, but never turn diagnostics into a modal blocker.
@@ -3128,7 +3142,9 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	  }
   }
 
+  StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-start");
   m_need_title_update = true;
+	StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-complete");
   StartupTrace::Event(L"mainframe", L"M199", L"OnCreate completed");
 	StartupTrace::AppendTestStartupBreadcrumb("mainframe-ui-create-complete");
 	StartupTrace::AppendTestStartupBreadcrumb("mainframe-oncreate-exit");
