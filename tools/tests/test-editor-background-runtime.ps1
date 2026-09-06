@@ -6,6 +6,7 @@ Runs FBE.exe's unattended editor-background scenario against the real MSHTML DOM
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 180,
+    [int]$NoProgressSeconds = 45,
     [switch]$KeepArtifacts
 )
 
@@ -30,26 +31,48 @@ function Assert-Image($row, [string]$phase) {
     if($row.image -notmatch '^url\(' -or $row.attachment -ne 'fixed') { throw "$phase не применил фоновое изображение к MSHTML: '$($row.image)' / '$($row.attachment)'." }
     if([int]$row.modified -ne 0) { throw "$phase изменил modified-state документа." }
 }
+function Save-RuntimeFailureArtifacts([string]$Extension, [string]$Report, [string]$Breadcrumb, [int]$ProcessId, [string]$ExitCode, [string]$LastPhase, [string]$ReportText, [string]$BreadcrumbText) {
+    $target = Join-Path $failureArtifactRoot ((Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N'))
+    [void](New-Item -ItemType Directory -Path $target -Force)
+    foreach($path in @($Report, $Breadcrumb, $fixture, $png, $missing, (Join-Path $portableRuntime 'portable.ini'))) {
+        if($path -and (Test-Path -LiteralPath $path -PathType Leaf)) { Copy-Item -LiteralPath $path -Destination $target -Force }
+    }
+	Get-ChildItem -LiteralPath $directory -File -Include '*.png','*.jpg','*.jpeg' -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $target -Force }
+    foreach($path in @((Join-Path $portableRuntime 'TestData'), (Join-Path $portableRuntime 'TestData\Diagnostics'))) {
+        if(Test-Path -LiteralPath $path -PathType Container) { Copy-Item -LiteralPath $path -Destination $target -Recurse -Force }
+    }
+    @"
+extension=$Extension
+pid=$ProcessId
+exit=$ExitCode
+last-phase=$LastPhase
+report=$ReportText
+breadcrumb=$BreadcrumbText
+"@ | Set-Content -LiteralPath (Join-Path $target 'summary.txt') -Encoding utf8NoBOM
+    return $target
+}
 function Invoke-RuntimeFbe([string]$Extension, [string]$Report) {
     $breadcrumb = Join-Path $directory ("breadcrumb$Extension.log")
     $oldBreadcrumb = $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB; $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB = $breadcrumb
     try {
         $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $Report, '--portable', $fixture) -WorkingDirectory $portableRuntime -PassThru
-        $watch = [Diagnostics.Stopwatch]::StartNew(); $reportText = ''; $breadcrumbText = ''; $lastPhase = '<none>'
+        $watch = [Diagnostics.Stopwatch]::StartNew(); $lastProgress = [Diagnostics.Stopwatch]::StartNew(); $lastBreadcrumbText = ''; $reportText = ''; $breadcrumbText = ''; $lastPhase = '<none>'
         while($true) {
             if(Test-Path -LiteralPath $Report) { $reportText = Get-Content -LiteralPath $Report -Raw -ErrorAction SilentlyContinue }
             if(Test-Path -LiteralPath $breadcrumb) { $breadcrumbText = Get-Content -LiteralPath $breadcrumb -Raw -ErrorAction SilentlyContinue; $lastPhase = @($breadcrumbText -split "`r?`n" | Where-Object { $_ } | Select-Object -Last 1)[0]; if(-not $lastPhase){$lastPhase='<none>'} }
+			if($breadcrumbText -cne $lastBreadcrumbText) { $lastBreadcrumbText = $breadcrumbText; $lastProgress.Restart() }
             $process.Refresh(); if($process.HasExited){break}
-            if($watch.Elapsed.TotalSeconds -ge $TimeoutSeconds) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue; throw "extension=$Extension timed out; last phase=$lastPhase; report=$reportText; breadcrumb=$breadcrumbText; pid=$($process.Id); artifacts=$directory" }
+            if($lastProgress.Elapsed.TotalSeconds -ge $NoProgressSeconds -or $watch.Elapsed.TotalSeconds -ge $TimeoutSeconds) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue; $artifactDir = Save-RuntimeFailureArtifacts $Extension $Report $breadcrumb $process.Id 'timeout' $lastPhase $reportText $breadcrumbText; throw "extension=$Extension timed out; last phase=$lastPhase; seconds-since-progress=$([math]::Floor($lastProgress.Elapsed.TotalSeconds)); report=$reportText; breadcrumb=$breadcrumbText; pid=$($process.Id); artifact-dir=$artifactDir" }
             Start-Sleep -Milliseconds 100
         }
         if(Test-Path -LiteralPath $Report) { $reportText = Get-Content -LiteralPath $Report -Raw -ErrorAction SilentlyContinue }
-        if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $Report)) { throw "extension=$Extension failed; last phase=$lastPhase; report=$reportText; breadcrumb=$breadcrumbText; pid=$($process.Id); artifacts=$directory; exit=$($process.ExitCode)" }
+        if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $Report)) { $artifactDir = Save-RuntimeFailureArtifacts $Extension $Report $breadcrumb $process.Id $process.ExitCode $lastPhase $reportText $breadcrumbText; throw "extension=$Extension failed; last phase=$lastPhase; report=$reportText; breadcrumb=$breadcrumbText; pid=$($process.Id); artifact-dir=$artifactDir; exit=$($process.ExitCode)" }
     } finally { if($null -eq $oldBreadcrumb){Remove-Item Env:FBE_NEXT_TEST_STARTUP_BREADCRUMB -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=$oldBreadcrumb} }
 }
 
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-editor-background-runtime-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
+$failureArtifactRoot = Join-Path (Split-Path $PSScriptRoot -Parent | Split-Path -Parent) 'out\tests\editor-background-runtime-failure'
 $installedProfile = Join-Path $env:LOCALAPPDATA 'FBE Next'
 $installedBefore = Get-FileTreeSnapshot $installedProfile
 $sourceRuntime = Split-Path $FbeExe -Parent

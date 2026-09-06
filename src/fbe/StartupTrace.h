@@ -20,6 +20,9 @@ namespace StartupTrace
 		wchar_t lastDispatchFailure[512];
 	};
 	void Start();
+	// Test-only progress marker. It is a no-op unless an isolated test explicitly
+	// provides both FBE_NEXT_TEST_MODE=1 and a breadcrumb file path.
+	void AppendTestStartupBreadcrumb(const char* phase);
 	void WriteLateEnvironmentHeader();
 	// Возвращает true, когда включён диагностический журнал текущего процесса.
 	bool Enabled();

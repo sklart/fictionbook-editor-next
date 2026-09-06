@@ -2616,6 +2616,8 @@ void CMainFrame::InitPlugins()
 
 LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
+	StartupTrace::AppendTestStartupBreadcrumb("mainframe-oncreate-enter");
+	StartupTrace::AppendTestStartupBreadcrumb("mainframe-ui-create-start");
   StartupTrace::Event(L"mainframe", L"M100", L"OnCreate started");
   StartupTrace::Event(L"settings", L"G100", L"application settings applied");
 	UiMetrics::UpdateForWindow(m_hWnd);
@@ -2897,7 +2899,9 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // create splitter contents
 //  m_document_tree.Create(m_splitter);
 //  m_document_tree.SetTitle(L"Document Tree");
+  StartupTrace::AppendTestStartupBreadcrumb("mshtml-view-create-start");
   m_view.Create(m_splitter,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
+	StartupTrace::AppendTestStartupBreadcrumb("mshtml-view-create-complete");
 
   // create a tree
   /*m_dummy_pane.Create(m_document_tree,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,WS_EX_CLIENTEDGE);
@@ -2920,8 +2924,10 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   StartupTrace::Event(L"mainframe", L"M120", L"editor controls created");
 
   // initialize a new blank document
+  StartupTrace::AppendTestStartupBreadcrumb("document-create-start");
   m_doc=new FB::Doc(*this);
   FB::Doc::m_active_doc = m_doc;
+	StartupTrace::AppendTestStartupBreadcrumb("document-create-complete");
   bool start_with_params = false;
   CString startupFileName;
   // ????????? ???? ?? ????????? ??????, ???? ?? ??? ???????.
@@ -2939,13 +2945,17 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     else
       startupFileName = _ARGV[0];
 
+	StartupTrace::AppendTestStartupBreadcrumb("document-open-request");
+	StartupTrace::AppendTestStartupBreadcrumb("document-load-start");
     if (m_doc->Load(m_view,startupFileName))
 	{
+		StartupTrace::AppendTestStartupBreadcrumb("document-load-complete");
       start_with_params = true;
 	  m_file_age = FileAge(startupFileName);
 	}
     else
 	{
+		StartupTrace::AppendTestStartupBreadcrumb("document-load-complete");
 		// added by SeNS: create blank document, and load incorrect XML to Scintilla
 		delete m_doc;
 		m_doc=new FB::Doc(*this);
@@ -2969,6 +2979,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     m_doc->SetFastMode(false);
 
   AttachDocument(m_doc);
+	StartupTrace::AppendTestStartupBreadcrumb("document-attached");
   StartupTrace::Event(L"mainframe", L"M140", L"document attached");
   UISetCheck(ID_VIEW_BODY,1);
 
@@ -3119,6 +3130,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
   m_need_title_update = true;
   StartupTrace::Event(L"mainframe", L"M199", L"OnCreate completed");
+	StartupTrace::AppendTestStartupBreadcrumb("mainframe-ui-create-complete");
+	StartupTrace::AppendTestStartupBreadcrumb("mainframe-oncreate-exit");
   return 0;
 }
 
@@ -3480,7 +3493,10 @@ LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 
 LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
+	StartupTrace::AppendTestStartupBreadcrumb("postcreate-enter");
+	StartupTrace::AppendTestStartupBreadcrumb("postcreate-recovery-start");
 	TryRestoreRecovery();
+	StartupTrace::AppendTestStartupBreadcrumb("postcreate-recovery-complete");
 	SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
 
 	//SetSplitterPos works best after the default WM_CREATE has been handled
@@ -3509,8 +3525,18 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 	FillMenuWithHkeys(m_MenuBar.GetMenu());
 	RunPortableStateTestScenario();
+	StartupTrace::AppendTestStartupBreadcrumb("postcreate-before-runtime-dispatch");
 	if (!AU::_ARGS.source_memory_benchmark_path.IsEmpty())
-		PostMessage(AU::WM_SOURCE_MEMORY_BENCHMARK);
+	{
+		if (PostMessage(AU::WM_SOURCE_MEMORY_BENCHMARK))
+			StartupTrace::AppendTestStartupBreadcrumb("runtime-message-posted");
+		else
+		{
+			const DWORD error = ::GetLastError();
+			StartupTrace::HResult(L"test", L"TST201", HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_GEN_FAILURE : error), L"failed to post runtime benchmark message");
+		}
+	}
+	StartupTrace::AppendTestStartupBreadcrumb("postcreate-exit");
 	return 0;
 }
 
@@ -3798,8 +3824,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"editor-background-runtime"))
 	{
-		auto breadcrumb = [](const char* phase) { wchar_t path[32768] = {}; const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STARTUP_BREADCRUMB", path, _countof(path)); if (!length || length >= _countof(path)) return; HANDLE file = ::CreateFile(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); if (file == INVALID_HANDLE_VALUE) return; ::SetFilePointer(file, 0, NULL, FILE_END); CStringA line(phase); line += "\r\n"; DWORD written = 0; ::WriteFile(file, line, static_cast<DWORD>(line.GetLength()), &written, NULL); ::FlushFileBuffers(file); ::CloseHandle(file); };
-		breadcrumb("scenario-enter");
+		StartupTrace::AppendTestStartupBreadcrumb("scenario-enter");
 		CStringA header("phase\timage\tcss_url\trepeat\tposition\tsize\tattachment\tmodified\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto backgroundPathFromEnvironment = [](const wchar_t* name) -> CString
@@ -3832,22 +3857,24 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
 		_Settings.SetEditorBackgroundKind(L"none"); _Settings.SetEditorBackgroundId(CString()); _Settings.SetEditorBackgroundCustomPath(CString()); _Settings.SetEditorBackgroundLayout(L"tile");
-		breadcrumb("none-start"); m_doc->ApplyConfChanges(); appendBackgroundPhase("none"); breadcrumb("none-complete");
+		StartupTrace::AppendTestStartupBreadcrumb("none-start"); m_doc->ApplyConfChanges(); appendBackgroundPhase("none"); StartupTrace::AppendTestStartupBreadcrumb("none-complete");
 		_Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(L"01_clean_white"); _Settings.SetEditorBackgroundLayout(L"tile");
-		breadcrumb("builtin-tile-start"); m_doc->ApplyConfChanges(); appendBackgroundPhase("builtin-tile"); breadcrumb("builtin-tile-complete");
+		StartupTrace::AppendTestStartupBreadcrumb("builtin-tile-start"); m_doc->ApplyConfChanges(); appendBackgroundPhase("builtin-tile"); StartupTrace::AppendTestStartupBreadcrumb("builtin-tile-complete");
 		for(const wchar_t* layout : { L"center", L"contain", L"cover" }) {
 			_Settings.SetEditorBackgroundLayout(layout); m_doc->ApplyConfChanges();
-			if(wcscmp(layout, L"center") == 0) appendBackgroundPhase("builtin-center");
-			else if(wcscmp(layout, L"contain") == 0) appendBackgroundPhase("builtin-contain");
-			else appendBackgroundPhase("builtin-cover");
+			if(wcscmp(layout, L"center") == 0) { appendBackgroundPhase("builtin-center"); StartupTrace::AppendTestStartupBreadcrumb("builtin-center-complete"); }
+			else if(wcscmp(layout, L"contain") == 0) { appendBackgroundPhase("builtin-contain"); StartupTrace::AppendTestStartupBreadcrumb("builtin-contain-complete"); }
+			else { appendBackgroundPhase("builtin-cover"); StartupTrace::AppendTestStartupBreadcrumb("builtin-cover-complete"); }
 		}
-		breadcrumb("source-view-start"); ShowView(SOURCE); breadcrumb("source-view-complete"); breadcrumb("body-view-start"); ShowView(BODY); breadcrumb("body-view-complete"); m_doc->ApplyConfChanges(); appendBackgroundPhase("builtin-after-view-recreate"); breadcrumb("view-recreate-complete");
-		_Settings.SetEditorBackgroundId(L"unknown-background"); m_doc->ApplyConfChanges(); appendBackgroundPhase("unknown-builtin");
-		_Settings.SetEditorBackgroundKind(L"custom"); _Settings.SetEditorBackgroundCustomPath(backgroundPathFromEnvironment(L"FBE_NEXT_TEST_BACKGROUND_MISSING_PATH")); m_doc->ApplyConfChanges(); appendBackgroundPhase("missing-custom");
-		_Settings.SetEditorBackgroundCustomPath(backgroundPathFromEnvironment(L"FBE_NEXT_TEST_BACKGROUND_PATH")); _Settings.SetEditorBackgroundLayout(L"contain"); m_doc->ApplyConfChanges(); appendBackgroundPhase("custom");
-		_Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(L"01_clean_white"); _Settings.SetEditorBackgroundLayout(L"tile"); m_doc->ApplyConfChanges(); appendBackgroundPhase("before-save");
-		if(!m_doc->Save()) { output.Close(); ::PostQuitMessage(1); return 0; }
-		appendBackgroundPhase("after-save"); output.Flush(); breadcrumb("after-save"); breadcrumb("report-flush"); output.Close(); breadcrumb("report-closed"); breadcrumb("shutdown-requested"); ::PostQuitMessage(0); breadcrumb("shutdown-complete"); return 0;
+		StartupTrace::AppendTestStartupBreadcrumb("source-view-start"); ShowView(SOURCE); StartupTrace::AppendTestStartupBreadcrumb("source-view-complete"); StartupTrace::AppendTestStartupBreadcrumb("body-view-start"); ShowView(BODY); StartupTrace::AppendTestStartupBreadcrumb("body-view-complete"); m_doc->ApplyConfChanges(); appendBackgroundPhase("builtin-after-view-recreate"); StartupTrace::AppendTestStartupBreadcrumb("view-recreate-complete");
+		_Settings.SetEditorBackgroundId(L"unknown-background"); m_doc->ApplyConfChanges(); appendBackgroundPhase("unknown-builtin"); StartupTrace::AppendTestStartupBreadcrumb("unknown-builtin-complete");
+		_Settings.SetEditorBackgroundKind(L"custom"); _Settings.SetEditorBackgroundCustomPath(backgroundPathFromEnvironment(L"FBE_NEXT_TEST_BACKGROUND_MISSING_PATH")); m_doc->ApplyConfChanges(); appendBackgroundPhase("missing-custom"); StartupTrace::AppendTestStartupBreadcrumb("missing-custom-complete");
+		_Settings.SetEditorBackgroundCustomPath(backgroundPathFromEnvironment(L"FBE_NEXT_TEST_BACKGROUND_PATH")); _Settings.SetEditorBackgroundLayout(L"contain"); m_doc->ApplyConfChanges(); appendBackgroundPhase("custom"); StartupTrace::AppendTestStartupBreadcrumb("custom-complete");
+		_Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(L"01_clean_white"); _Settings.SetEditorBackgroundLayout(L"tile"); m_doc->ApplyConfChanges(); appendBackgroundPhase("before-save"); StartupTrace::AppendTestStartupBreadcrumb("before-save");
+		StartupTrace::AppendTestStartupBreadcrumb("save-start");
+		if(!m_doc->Save()) { StartupTrace::AppendTestStartupBreadcrumb("save-failed"); output.Close(); ::PostQuitMessage(1); return 0; }
+		StartupTrace::AppendTestStartupBreadcrumb("save-complete");
+		appendBackgroundPhase("after-save"); output.Flush(); StartupTrace::AppendTestStartupBreadcrumb("after-save"); StartupTrace::AppendTestStartupBreadcrumb("report-flush"); output.Close(); StartupTrace::AppendTestStartupBreadcrumb("report-closed"); StartupTrace::AppendTestStartupBreadcrumb("shutdown-requested"); ::PostQuitMessage(0); StartupTrace::AppendTestStartupBreadcrumb("shutdown-quit-posted"); return 0;
 	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{

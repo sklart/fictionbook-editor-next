@@ -90,21 +90,6 @@ static CString TestEnvironmentValue(const wchar_t* name)
 	return length && length < _countof(value) ? CString(value) : CString();
 }
 
-static void AppendEditorBackgroundStartupBreadcrumb(const char* phase)
-{
-	if (!IsEditorBackgroundSettingsTest()) return;
-	const CString path = TestEnvironmentValue(L"FBE_NEXT_TEST_STARTUP_BREADCRUMB");
-	if (path.IsEmpty()) return;
-	HANDLE file = ::CreateFile(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file == INVALID_HANDLE_VALUE) return;
-	::SetFilePointer(file, 0, NULL, FILE_END);
-	CStringA line(phase); line += "\r\n";
-	DWORD written = 0;
-	::WriteFile(file, line, static_cast<DWORD>(line.GetLength()), &written, NULL);
-	::FlushFileBuffers(file);
-	::CloseHandle(file);
-}
-
 static bool WriteEditorBackgroundSettingsReport(const CString& path, const CStringA& text)
 {
 	if (path.IsEmpty()) return false;
@@ -131,10 +116,10 @@ static CString EditorBackgroundSettingsReportPath()
 
 static int RunEditorBackgroundSettingsTest()
 {
-	AppendEditorBackgroundStartupBreadcrumb("scenario-dispatch");
+	StartupTrace::AppendTestStartupBreadcrumb("scenario-dispatch");
 	const CString reportPath = EditorBackgroundSettingsReportPath();
 	if (reportPath.IsEmpty()) return 2;
-	AppendEditorBackgroundStartupBreadcrumb("scenario-enter");
+	StartupTrace::AppendTestStartupBreadcrumb("scenario-enter");
 
 	CStringA report("phase\tkind\tid\tcustom_path\tlayout\tcolor_bg\r\n");
 	auto append = [&](const char* phase)
@@ -157,14 +142,14 @@ static int RunEditorBackgroundSettingsTest()
 	}
 	if (seed || !kind.IsEmpty())
 	{
-		AppendEditorBackgroundStartupBreadcrumb("settings-save-start");
+		StartupTrace::AppendTestStartupBreadcrumb("settings-save-start");
 		_Settings.Save();
-		AppendEditorBackgroundStartupBreadcrumb("settings-save-done");
+		StartupTrace::AppendTestStartupBreadcrumb("settings-save-done");
 		append(seed ? "seeded" : "saved");
 	}
 	append("completion");
 	const bool written = WriteEditorBackgroundSettingsReport(reportPath, report);
-	AppendEditorBackgroundStartupBreadcrumb("completion");
+	StartupTrace::AppendTestStartupBreadcrumb("completion");
 	return written ? 0 : 1;
 }
 
@@ -547,10 +532,12 @@ static bool IsMainFrameCreateFaultEnabled()
 
 int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 {
+	StartupTrace::AppendTestStartupBreadcrumb("run-mainframe-construct-start");
 	StartupTrace::Event(L"startup", L"S170", L"main window setup started");
 	CMessageLoop theLoop;
 	_Module.AddMessageLoop(&theLoop);
 	CMainFrame wndMain;
+	StartupTrace::AppendTestStartupBreadcrumb("run-mainframe-construct-complete");
 
 	// FBE always uses its own English structural resources.  User-visible text
 	// is layered from Lang/<locale>/fbe.json by RuntimeLocalization.
@@ -565,6 +552,7 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 	StartupTrace::Event(L"startup", L"S175", L"resources and hotkeys initialized");
 
 	StartupTrace::Event(L"startup", L"S190", L"main frame creation begin");
+	StartupTrace::AppendTestStartupBreadcrumb("run-frame-create-start");
 	const bool injectedMainFrameFailure = IsMainFrameCreateFaultEnabled();
 	if (injectedMainFrameFailure)
 		StartupTrace::Event(L"fault", L"FI014", L"main-frame-create-failure injected");
@@ -576,6 +564,7 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 		return 1;
 	}
 	StartupTrace::Event(L"startup", L"S192", L"main frame created");
+	StartupTrace::AppendTestStartupBreadcrumb("run-frame-create-complete");
 	// WM_POSTCREATE may start the unattended benchmark, which closes the
 	// window when it is done.  Queue it only after CreateEx has returned:
 	// processing it from a nested message loop during WM_CREATE invalidates
@@ -597,7 +586,9 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 	StartupTrace::WriteLateEnvironmentHeader();
 	StartupTrace::Event(L"startup", L"S230", L"main frame ready");
 
+	StartupTrace::AppendTestStartupBreadcrumb("run-message-loop-start");
 	int nRet = theLoop.Run();
+	StartupTrace::AppendTestStartupBreadcrumb("run-exit");
 	StartupTrace::Event(L"startup", L"S900", L"message loop exited");
 
 	_Module.RemoveMessageLoop();
@@ -681,25 +672,28 @@ Scintilla::ILexer5* CreateEditorLexer(const char* name)
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow)
 {
 	int nRet=1;
+	StartupTrace::AppendTestStartupBreadcrumb("process-start");
 	const bool editorBackgroundSettingsTest = IsEditorBackgroundSettingsTest();
-	if (editorBackgroundSettingsTest) AppendEditorBackgroundStartupBreadcrumb("process-start");
 	if (DeploymentContext::HasInvalidModeOverride())
 	{
 		WriteStandardError(L"FBE: --portable and --installed cannot be used together.\r\n");
 		return 2;
 	}
+	StartupTrace::AppendTestStartupBreadcrumb("deployment-check-complete");
 	if (editorBackgroundSettingsTest)
 	{
-		AppendEditorBackgroundStartupBreadcrumb("deployment-resolved");
+		StartupTrace::AppendTestStartupBreadcrumb("deployment-resolved");
 		DeploymentContext::DataRoot();
 		DeploymentContext::SettingsDirectory();
-		AppendEditorBackgroundStartupBreadcrumb("portable-paths-ready");
+		StartupTrace::AppendTestStartupBreadcrumb("portable-paths-ready");
 	}
 	if (PrintRuntimePaths()) return 0;
 	if (PrintUpdateArtifact()) return 0;
 
   ConfigureDllSearchPath();
+	StartupTrace::AppendTestStartupBreadcrumb("dll-search-configured");
   StartupTrace::Start();
+	StartupTrace::AppendTestStartupBreadcrumb("startup-trace-started");
 
 #if 1
 #ifdef _DEBUG
@@ -720,10 +714,12 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   setlocale(LC_COLLATE,"");
 
   // initialize COM/OLE
+  StartupTrace::AppendTestStartupBreadcrumb("ole-init-start");
   HRESULT hRes = ::OleInitialize(NULL);
   ATLASSERT(SUCCEEDED(hRes));
   StartupTrace::HResult(L"startup", L"S110", hRes, L"OleInitialize");
   if (FAILED(hRes)) { StartupTrace::Error(L"startup", L"S110", L"OleInitialize is fatal"); StartupTrace::Finish(); return 1; }
+	StartupTrace::AppendTestStartupBreadcrumb("ole-init-complete");
   
   // this resolves ATL window thunking problem when Microsoft Layer for Unicode (MSLU) is used
   ::DefWindowProc(NULL, 0, 0, 0L);
@@ -731,17 +727,19 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   AtlInitCommonControls(ICC_COOL_CLASSES | ICC_BAR_CLASSES);	// add flags to support other controls
 
   // init module
+  StartupTrace::AppendTestStartupBreadcrumb("module-init-start");
   hRes = _Module.Init(ObjectMap, hInstance, &LIBID_FBELib);
   ATLASSERT(SUCCEEDED(hRes));
   StartupTrace::HResult(L"startup", L"S120", hRes, L"_Module.Init");
   if (FAILED(hRes)) { StartupTrace::Finish(); ::OleUninitialize(); return 1; }
+	StartupTrace::AppendTestStartupBreadcrumb("module-init-complete");
 
   if (editorBackgroundSettingsTest)
   {
     _Settings.Init();
-    AppendEditorBackgroundStartupBreadcrumb("settings-load-start");
+    StartupTrace::AppendTestStartupBreadcrumb("settings-load-start");
     _Settings.Load();
-    AppendEditorBackgroundStartupBreadcrumb("settings-load-done");
+    StartupTrace::AppendTestStartupBreadcrumb("settings-load-done");
     nRet = RunEditorBackgroundSettingsTest();
     goto out;
   }
@@ -755,22 +753,29 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
     ATLTRACE(L"Unable to register the FBE type library: 0x%08X\n", hRes);
 
   // enable web browser hosting
+  StartupTrace::AppendTestStartupBreadcrumb("atlax-init-start");
   if (!AtlAxWinInit()) { const DWORD error = ::GetLastError(); hRes = HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_GEN_FAILURE : error); StartupTrace::HResult(L"startup", L"S125", hRes, L"AtlAxWinInit"); _Module.Term(); ::OleUninitialize(); StartupTrace::Finish(); return 1; }
   StartupTrace::HResult(L"startup", L"S125", S_OK, L"AtlAxWinInit");
+	StartupTrace::AppendTestStartupBreadcrumb("atlax-init-complete");
 
   // initialize registry settings
+  StartupTrace::AppendTestStartupBreadcrumb("settings-init-start");
   U::InitSettings();
   StartupTrace::Event(L"startup", L"S140", L"settings initialized");
+	StartupTrace::AppendTestStartupBreadcrumb("settings-init-complete");
   if (PrintGenreCatalog()) { _Module.Term(); ::OleUninitialize(); StartupTrace::Finish(); return 0; }
   CrashDiagnostics::Initialize();
   StartupTrace::Event(L"startup", L"S150", L"crash diagnostics initialized");
 
   // parse command line
+  StartupTrace::AppendTestStartupBreadcrumb("cmdline-parse-start");
   ParseCommandLine(lpstrCmdLine,_ARGV);
   if (!AU::ParseCmdLineArgs())
     goto out;
+	StartupTrace::AppendTestStartupBreadcrumb("cmdline-parse-complete");
   
   // load xml source editor
+  StartupTrace::AppendTestStartupBreadcrumb("editor-load-start");
   if (!LoadEditor()) 
   {
 	  wchar_t msg[MAX_LOAD_STRING + 1];
@@ -781,6 +786,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
     goto out;
   }
 	StartupTrace::Event(L"startup", L"S164", L"editor modules initialized");
+	StartupTrace::AppendTestStartupBreadcrumb("editor-load-complete");
 
   // register our protocol handler
   IInternetSession *isess = NULL;
@@ -800,6 +806,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   }
 
   // run the main loop
+  StartupTrace::AppendTestStartupBreadcrumb("run-enter");
   nRet = Run(lpstrCmdLine, nCmdShow);
 out:
   _Module.Term();
@@ -807,6 +814,7 @@ out:
   ::OleUninitialize();
   ExternalHelper::FlushTraceSummary();
   StartupTrace::Finish();
+	StartupTrace::AppendTestStartupBreadcrumb("process-exit");
   
   return nRet;
 }

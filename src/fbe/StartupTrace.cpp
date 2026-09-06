@@ -684,6 +684,23 @@ bool StartupTrace::TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot)
 }
 
 CString StartupTrace::LastStageCode() { return TrySnapshot(lastStageCode); }
+void StartupTrace::AppendTestStartupBreadcrumb(const char* phase)
+{
+	if (phase == NULL) return;
+	wchar_t testMode[4] = {}, path[32768] = {};
+	const DWORD modeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
+	if (modeLength != 1 || testMode[0] != L'1') return;
+	const DWORD pathLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STARTUP_BREADCRUMB", path, _countof(path));
+	if (!pathLength || pathLength >= _countof(path)) return;
+	HANDLE file = ::CreateFile(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) return;
+	::SetFilePointer(file, 0, NULL, FILE_END);
+	DWORD written = 0;
+	::WriteFile(file, phase, static_cast<DWORD>(::lstrlenA(phase)), &written, NULL);
+	::WriteFile(file, "\r\n", 2, &written, NULL);
+	::FlushFileBuffers(file);
+	::CloseHandle(file);
+}
 CString StartupTrace::LastStageMessage() { return TrySnapshot(lastStageMessage); }
 CString StartupTrace::LastDocumentStage() { return TrySnapshot(lastDocumentStage); }
 CString StartupTrace::LastScriptOperationStage() { return TrySnapshot(lastScriptOperationStage); }

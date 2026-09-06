@@ -185,6 +185,14 @@ jobs:
             out/build-provenance
           if-no-files-found: error
           retention-days: 3
+      - name: Upload editor background runtime diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: editor-background-runtime-diagnostics
+          path: out/tests/editor-background-runtime-failure/**
+          if-no-files-found: warn
+          retention-days: 7
 
   package:
     if: github.event_name != 'pull_request'
