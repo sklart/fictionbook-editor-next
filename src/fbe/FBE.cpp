@@ -75,6 +75,99 @@ static void WriteStandardError(const wchar_t* text)
 	::WriteFile(::GetStdHandle(STD_ERROR_HANDLE), &output[0], bytes - 1, &written, NULL);
 }
 
+static bool IsEditorBackgroundSettingsTest()
+{
+	wchar_t testMode[4] = {}, scenario[64] = {};
+	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
+	const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
+	return testModeLength == 1 && testMode[0] == L'1' && scenarioLength == wcslen(L"editor-background-settings") && wcscmp(scenario, L"editor-background-settings") == 0;
+}
+
+static CString TestEnvironmentValue(const wchar_t* name)
+{
+	wchar_t value[32768] = {};
+	const DWORD length = ::GetEnvironmentVariable(name, value, _countof(value));
+	return length && length < _countof(value) ? CString(value) : CString();
+}
+
+static void AppendEditorBackgroundStartupBreadcrumb(const char* phase)
+{
+	if (!IsEditorBackgroundSettingsTest()) return;
+	const CString path = TestEnvironmentValue(L"FBE_NEXT_TEST_STARTUP_BREADCRUMB");
+	if (path.IsEmpty()) return;
+	HANDLE file = ::CreateFile(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) return;
+	::SetFilePointer(file, 0, NULL, FILE_END);
+	CStringA line(phase); line += "\r\n";
+	DWORD written = 0;
+	::WriteFile(file, line, static_cast<DWORD>(line.GetLength()), &written, NULL);
+	::FlushFileBuffers(file);
+	::CloseHandle(file);
+}
+
+static bool WriteEditorBackgroundSettingsReport(const CString& path, const CStringA& text)
+{
+	if (path.IsEmpty()) return false;
+	HANDLE file = ::CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) return false;
+	DWORD written = 0;
+	const bool ok = ::WriteFile(file, text, static_cast<DWORD>(text.GetLength()), &written, NULL) != FALSE && written == static_cast<DWORD>(text.GetLength());
+	if (ok) ::FlushFileBuffers(file);
+	::CloseHandle(file);
+	return ok;
+}
+
+static CString EditorBackgroundSettingsReportPath()
+{
+	int count = 0;
+	LPWSTR* arguments = ::CommandLineToArgvW(::GetCommandLineW(), &count);
+	if (arguments == NULL) return CString();
+	CString result;
+	for (int index = 1; index + 1 < count; ++index)
+		if (wcscmp(arguments[index], L"-b") == 0) { result = arguments[index + 1]; break; }
+	::LocalFree(arguments);
+	return result;
+}
+
+static int RunEditorBackgroundSettingsTest()
+{
+	AppendEditorBackgroundStartupBreadcrumb("scenario-dispatch");
+	const CString reportPath = EditorBackgroundSettingsReportPath();
+	if (reportPath.IsEmpty()) return 2;
+	AppendEditorBackgroundStartupBreadcrumb("scenario-enter");
+
+	CStringA report("phase\tkind\tid\tcustom_path\tlayout\tcolor_bg\r\n");
+	auto append = [&](const char* phase)
+	{
+		CStringA kind(CW2A(_Settings.GetEditorBackgroundKind(), CP_UTF8)), id(CW2A(_Settings.GetEditorBackgroundId(), CP_UTF8));
+		CStringA custom(CW2A(_Settings.GetEditorBackgroundCustomPath(), CP_UTF8)), layout(CW2A(_Settings.GetEditorBackgroundLayout(), CP_UTF8)), row;
+		row.Format("%s\t%s\t%s\t%s\t%s\t%lu\r\n", phase, kind.GetString(), id.GetString(), custom.GetString(), layout.GetString(), static_cast<unsigned long>(_Settings.GetColorBG()));
+		report += row;
+	};
+
+	append("loaded");
+	const bool seed = TestEnvironmentValue(L"FBE_NEXT_TEST_SETTINGS_SEED") == L"1";
+	const CString kind = TestEnvironmentValue(L"FBE_NEXT_TEST_SETTINGS_KIND");
+	if (!kind.IsEmpty())
+	{
+		_Settings.SetEditorBackgroundKind(kind);
+		_Settings.SetEditorBackgroundId(TestEnvironmentValue(L"FBE_NEXT_TEST_SETTINGS_ID"));
+		_Settings.SetEditorBackgroundCustomPath(TestEnvironmentValue(L"FBE_NEXT_TEST_SETTINGS_PATH"));
+		_Settings.SetEditorBackgroundLayout(TestEnvironmentValue(L"FBE_NEXT_TEST_SETTINGS_LAYOUT"));
+	}
+	if (seed || !kind.IsEmpty())
+	{
+		AppendEditorBackgroundStartupBreadcrumb("settings-save-start");
+		_Settings.Save();
+		AppendEditorBackgroundStartupBreadcrumb("settings-save-done");
+		append(seed ? "seeded" : "saved");
+	}
+	append("completion");
+	const bool written = WriteEditorBackgroundSettingsReport(reportPath, report);
+	AppendEditorBackgroundStartupBreadcrumb("completion");
+	return written ? 0 : 1;
+}
+
 static bool PrintRuntimePaths()
 {
 	if (!DeploymentContext::HasCommandLineSwitch(L"--print-runtime-paths")) return false;
@@ -588,10 +681,19 @@ Scintilla::ILexer5* CreateEditorLexer(const char* name)
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow)
 {
 	int nRet=1;
+	const bool editorBackgroundSettingsTest = IsEditorBackgroundSettingsTest();
+	if (editorBackgroundSettingsTest) AppendEditorBackgroundStartupBreadcrumb("process-start");
 	if (DeploymentContext::HasInvalidModeOverride())
 	{
 		WriteStandardError(L"FBE: --portable and --installed cannot be used together.\r\n");
 		return 2;
+	}
+	if (editorBackgroundSettingsTest)
+	{
+		AppendEditorBackgroundStartupBreadcrumb("deployment-resolved");
+		DeploymentContext::DataRoot();
+		DeploymentContext::SettingsDirectory();
+		AppendEditorBackgroundStartupBreadcrumb("portable-paths-ready");
 	}
 	if (PrintRuntimePaths()) return 0;
 	if (PrintUpdateArtifact()) return 0;
@@ -633,6 +735,16 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   ATLASSERT(SUCCEEDED(hRes));
   StartupTrace::HResult(L"startup", L"S120", hRes, L"_Module.Init");
   if (FAILED(hRes)) { StartupTrace::Finish(); ::OleUninitialize(); return 1; }
+
+  if (editorBackgroundSettingsTest)
+  {
+    _Settings.Init();
+    AppendEditorBackgroundStartupBreadcrumb("settings-load-start");
+    _Settings.Load();
+    AppendEditorBackgroundStartupBreadcrumb("settings-load-done");
+    nRet = RunEditorBackgroundSettingsTest();
+    goto out;
+  }
 
   StartupTrace::Event(L"startup", L"S130", L"type library validation started");
 

@@ -5,30 +5,35 @@ $ErrorActionPreference = 'Stop'; $FbeExe = $ExecutionContext.SessionState.Path.G
 if(-not (Test-Path -LiteralPath $FbeExe)) { throw "Не найден FBE: $FbeExe" }
 function Get-Snapshot([string]$Path) { if(-not (Test-Path -LiteralPath $Path)) { return '<absent>' }; (Get-ChildItem -LiteralPath $Path -Recurse -File | Sort-Object FullName | ForEach-Object { "$($_.FullName)|$($_.Length)|$((Get-FileHash $_.FullName -Algorithm SHA256).Hash)" }) -join "`n" }
 function Invoke-Fbe([string]$Name, [hashtable]$Environment) {
-    $report = Join-Path $root "$Name.tsv"; $old = @{}
+    $report = Join-Path $root "$Name.tsv"; $breadcrumb = Join-Path $root "$Name.startup.log"; $old = @{}
     foreach($key in $Environment.Keys) { $old[$key] = [Environment]::GetEnvironmentVariable($key, 'Process'); [Environment]::SetEnvironmentVariable($key, $Environment[$key], 'Process') }
-    $oldMode=$env:FBE_NEXT_TEST_MODE; $oldScenario=$env:FBE_NEXT_TEST_SCENARIO
+    $oldMode=$env:FBE_NEXT_TEST_MODE; $oldScenario=$env:FBE_NEXT_TEST_SCENARIO; $oldBreadcrumb=$env:FBE_NEXT_TEST_STARTUP_BREADCRUMB
     try {
-        $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='editor-background-settings'
+        $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='editor-background-settings'; $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=$breadcrumb
         $p=Start-Process -FilePath $portableExe -ArgumentList @('-b',$report,'--portable',$fixture) -WorkingDirectory $portable -PassThru
-        $watch=[Diagnostics.Stopwatch]::StartNew(); $completionObserved=$false; $completionGraceMilliseconds=10000; $reportText=''
+        $watch=[Diagnostics.Stopwatch]::StartNew(); $completionObserved=$false; $completionGraceMilliseconds=10000; $reportText=''; $breadcrumbText=''; $lastStartupPhase='<none>'
         while($true) {
-            if(Test-Path -LiteralPath $report) { $reportText=Get-Content -LiteralPath $report -Raw -ErrorAction SilentlyContinue; if($reportText -match '(?m)^close-requested\t') { $completionObserved=$true } }
+            if(Test-Path -LiteralPath $report) { $reportText=Get-Content -LiteralPath $report -Raw -ErrorAction SilentlyContinue; if($reportText -match '(?m)^completion') { $completionObserved=$true } }
+            if(Test-Path -LiteralPath $breadcrumb) { $breadcrumbText=Get-Content -LiteralPath $breadcrumb -Raw -ErrorAction SilentlyContinue; $lastStartupPhase=@($breadcrumbText -split "`r?`n" | Where-Object { $_ } | Select-Object -Last 1)[0]; if(-not $lastStartupPhase) { $lastStartupPhase='<none>' } }
             $p.Refresh()
             if($p.HasExited) { break }
             if($completionObserved -and $watch.ElapsedMilliseconds -ge $completionGraceMilliseconds) {
                 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-                throw "$Name completed its test-only report but did not exit within $completionGraceMilliseconds ms. Artifacts: $root; report: $reportText"
+                throw "$Name completed its test-only report but did not exit within $completionGraceMilliseconds ms. Last startup phase: $lastStartupPhase; report: $reportText; breadcrumb: $breadcrumbText; artifacts: $root"
             }
             if($watch.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
                 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-                throw "$Name timed out before test-only completion. Artifacts: $root; report: $reportText"
+                throw "$Name timed out before test-only completion. Last startup phase: $lastStartupPhase; report: $reportText; breadcrumb: $breadcrumbText; artifacts: $root"
             }
             Start-Sleep -Milliseconds 100
         }
-        if($p.ExitCode -ne 0 -or -not $completionObserved) { throw "$Name exited without a test-only completion report. Artifacts: $root; exit=$($p.ExitCode); report: $reportText" }
+        # A successful shortcut can create the report and exit between polling
+        # iterations, so always take one final snapshot after process exit.
+        if(Test-Path -LiteralPath $report) { $reportText=Get-Content -LiteralPath $report -Raw -ErrorAction SilentlyContinue; if($reportText -match '(?m)^completion') { $completionObserved=$true } }
+        if(Test-Path -LiteralPath $breadcrumb) { $breadcrumbText=Get-Content -LiteralPath $breadcrumb -Raw -ErrorAction SilentlyContinue; $lastStartupPhase=@($breadcrumbText -split "`r?`n" | Where-Object { $_ } | Select-Object -Last 1)[0]; if(-not $lastStartupPhase) { $lastStartupPhase='<none>' } }
+        if($p.ExitCode -ne 0 -or -not $completionObserved -or $breadcrumbText -notmatch '(?m)^completion\r?$') { throw "$Name exited without a test-only completion report. Last startup phase: $lastStartupPhase; report: $reportText; breadcrumb: $breadcrumbText; artifacts: $root; exit=$($p.ExitCode)" }
         return @(Import-Csv -LiteralPath $report -Delimiter "`t")
-    } finally { foreach($key in $Environment.Keys) { [Environment]::SetEnvironmentVariable($key,$old[$key],'Process') }; $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
+    } finally { foreach($key in $Environment.Keys) { [Environment]::SetEnvironmentVariable($key,$old[$key],'Process') }; $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario; $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=$oldBreadcrumb }
 }
 function Set-Seed([string]$Xml) { New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null; Set-Content -LiteralPath $settingsFile -Value $Xml -Encoding utf8 }
 function Assert-Row($Rows,[string]$Phase,[hashtable]$Expected,[string]$Name) {

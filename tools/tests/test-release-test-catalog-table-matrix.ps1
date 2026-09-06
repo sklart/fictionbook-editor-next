@@ -31,8 +31,8 @@ function Get-Value([string]$Command, [string]$Name) {
 }
 
 function Get-Signature([string]$Script, [string]$Command) {
-    $route = if ($Command -match '-RouteThroughFrame(?:\\s|$)') { '1' } else { '0' }
-    $huge = if ($Command -match '-Huge(?:\\s|$)') { '1' } else { '0' }
+	$route = if ($Command -match '-RouteThroughFrame(?:\s|$)') { '1' } else { '0' }
+	$huge = if ($Command -match '-Huge(?:\s|$)') { '1' } else { '0' }
     return @(
         $Script,
         (Get-Value $Command 'FixtureId'),
@@ -45,6 +45,9 @@ function Get-Signature([string]$Script, [string]$Command) {
         (Get-Value $Command 'Fault')
     ) -join '|'
 }
+
+$switchRegression = (Get-Signature 'test-fbe-table-structural-production.ps1' '-FixtureId plain -Operation insert-row-above -RouteThroughFrame -RuntimeStyle "font-weight:bold" -Huge -SomeOtherArgument value').Split('|')
+if ($switchRegression[5] -ne '1' -or $switchRegression[7] -ne '1') { throw 'Table matrix switch parsing failed when another argument follows the switch.' }
 
 $actual = @()
 foreach ($line in (Get-JoinedPlanLines)) {
