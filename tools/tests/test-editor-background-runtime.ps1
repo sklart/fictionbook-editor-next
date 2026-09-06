@@ -30,6 +30,23 @@ function Assert-Image($row, [string]$phase) {
     if($row.image -notmatch '^url\(' -or $row.attachment -ne 'fixed') { throw "$phase не применил фоновое изображение к MSHTML: '$($row.image)' / '$($row.attachment)'." }
     if([int]$row.modified -ne 0) { throw "$phase изменил modified-state документа." }
 }
+function Invoke-RuntimeFbe([string]$Extension, [string]$Report) {
+    $breadcrumb = Join-Path $directory ("breadcrumb$Extension.log")
+    $oldBreadcrumb = $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB; $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB = $breadcrumb
+    try {
+        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $Report, '--portable', $fixture) -WorkingDirectory $portableRuntime -PassThru
+        $watch = [Diagnostics.Stopwatch]::StartNew(); $reportText = ''; $breadcrumbText = ''; $lastPhase = '<none>'
+        while($true) {
+            if(Test-Path -LiteralPath $Report) { $reportText = Get-Content -LiteralPath $Report -Raw -ErrorAction SilentlyContinue }
+            if(Test-Path -LiteralPath $breadcrumb) { $breadcrumbText = Get-Content -LiteralPath $breadcrumb -Raw -ErrorAction SilentlyContinue; $lastPhase = @($breadcrumbText -split "`r?`n" | Where-Object { $_ } | Select-Object -Last 1)[0]; if(-not $lastPhase){$lastPhase='<none>'} }
+            $process.Refresh(); if($process.HasExited){break}
+            if($watch.Elapsed.TotalSeconds -ge $TimeoutSeconds) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue; throw "extension=$Extension timed out; last phase=$lastPhase; report=$reportText; breadcrumb=$breadcrumbText; pid=$($process.Id); artifacts=$directory" }
+            Start-Sleep -Milliseconds 100
+        }
+        if(Test-Path -LiteralPath $Report) { $reportText = Get-Content -LiteralPath $Report -Raw -ErrorAction SilentlyContinue }
+        if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $Report)) { throw "extension=$Extension failed; last phase=$lastPhase; report=$reportText; breadcrumb=$breadcrumbText; pid=$($process.Id); artifacts=$directory; exit=$($process.ExitCode)" }
+    } finally { if($null -eq $oldBreadcrumb){Remove-Item Env:FBE_NEXT_TEST_STARTUP_BREADCRUMB -ErrorAction SilentlyContinue}else{$env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=$oldBreadcrumb} }
+}
 
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-editor-background-runtime-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
@@ -70,9 +87,7 @@ try {
             $env:FBE_NEXT_TEST_BACKGROUND_PATH = $custom
             Remove-Item Env:FBE_NEXT_TEST_FORCE_HIGH_CONTRAST -ErrorAction SilentlyContinue
             $report = Join-Path $directory ("report$extension.tsv")
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, '--portable', $fixture) -WorkingDirectory $portableRuntime -PassThru
-            if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил runtime-проверку $extension." }
-            if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE не сформировал runtime-отчёт для $extension (exit=$($process.ExitCode))." }
+            Invoke-RuntimeFbe $extension $report
             $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
             Assert-Phase $rows 'none' { param($r) Assert-ColorOnly $r 'none' }
             Assert-Phase $rows 'unknown-builtin' { param($r) Assert-ColorOnly $r 'unknown-builtin' }
@@ -91,9 +106,7 @@ try {
         }
         $env:FBE_NEXT_TEST_BACKGROUND_PATH = $png; $env:FBE_NEXT_TEST_FORCE_HIGH_CONTRAST = '1'
         $highContrastReport = Join-Path $directory 'report-high-contrast.tsv'
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $highContrastReport, '--portable', $fixture) -WorkingDirectory $portableRuntime -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил High Contrast runtime-проверку.' }
-        if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $highContrastReport)) { throw 'FBE не сформировал High Contrast runtime-отчёт.' }
+        Invoke-RuntimeFbe '.high-contrast' $highContrastReport
         $highContrastRows = @(Import-Csv -LiteralPath $highContrastReport -Delimiter "`t")
         Assert-Phase $highContrastRows 'builtin-tile' { param($r) Assert-ColorOnly $r 'High Contrast builtin-tile' }
     } finally {
@@ -109,5 +122,5 @@ try {
     Write-Host 'FBE.exe editor background runtime regression passed (MSHTML DOM, layouts, fallback, custom paths, High Contrast and Save isolation).'
 } finally {
     if((Get-FileTreeSnapshot $installedProfile) -cne $installedBefore) { throw '%LOCALAPPDATA%\FBE Next changed during isolated editor background runtime test.' }
-    if($completed -or -not $KeepArtifacts) { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } else { Write-Host "Артефакты runtime-проверки: $directory" }
+    if($completed -and -not $KeepArtifacts) { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } else { Write-Host "Артефакты runtime-проверки: $directory" }
 }

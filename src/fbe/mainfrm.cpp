@@ -3798,6 +3798,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"editor-background-runtime"))
 	{
+		auto breadcrumb = [](const char* phase) { wchar_t path[32768] = {}; const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STARTUP_BREADCRUMB", path, _countof(path)); if (!length || length >= _countof(path)) return; HANDLE file = ::CreateFile(path, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); if (file == INVALID_HANDLE_VALUE) return; ::SetFilePointer(file, 0, NULL, FILE_END); CStringA line(phase); line += "\r\n"; DWORD written = 0; ::WriteFile(file, line, static_cast<DWORD>(line.GetLength()), &written, NULL); ::FlushFileBuffers(file); ::CloseHandle(file); };
+		breadcrumb("scenario-enter");
 		CStringA header("phase\timage\tcss_url\trepeat\tposition\tsize\tattachment\tmodified\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto backgroundPathFromEnvironment = [](const wchar_t* name) -> CString
@@ -3830,22 +3832,22 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
 		_Settings.SetEditorBackgroundKind(L"none"); _Settings.SetEditorBackgroundId(CString()); _Settings.SetEditorBackgroundCustomPath(CString()); _Settings.SetEditorBackgroundLayout(L"tile");
-		m_doc->ApplyConfChanges(); appendBackgroundPhase("none");
+		breadcrumb("none-start"); m_doc->ApplyConfChanges(); appendBackgroundPhase("none"); breadcrumb("none-complete");
 		_Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(L"01_clean_white"); _Settings.SetEditorBackgroundLayout(L"tile");
-		m_doc->ApplyConfChanges(); appendBackgroundPhase("builtin-tile");
+		breadcrumb("builtin-tile-start"); m_doc->ApplyConfChanges(); appendBackgroundPhase("builtin-tile"); breadcrumb("builtin-tile-complete");
 		for(const wchar_t* layout : { L"center", L"contain", L"cover" }) {
 			_Settings.SetEditorBackgroundLayout(layout); m_doc->ApplyConfChanges();
 			if(wcscmp(layout, L"center") == 0) appendBackgroundPhase("builtin-center");
 			else if(wcscmp(layout, L"contain") == 0) appendBackgroundPhase("builtin-contain");
 			else appendBackgroundPhase("builtin-cover");
 		}
-		ShowView(SOURCE); ShowView(BODY); m_doc->ApplyConfChanges(); appendBackgroundPhase("builtin-after-view-recreate");
+		breadcrumb("source-view-start"); ShowView(SOURCE); breadcrumb("source-view-complete"); breadcrumb("body-view-start"); ShowView(BODY); breadcrumb("body-view-complete"); m_doc->ApplyConfChanges(); appendBackgroundPhase("builtin-after-view-recreate"); breadcrumb("view-recreate-complete");
 		_Settings.SetEditorBackgroundId(L"unknown-background"); m_doc->ApplyConfChanges(); appendBackgroundPhase("unknown-builtin");
 		_Settings.SetEditorBackgroundKind(L"custom"); _Settings.SetEditorBackgroundCustomPath(backgroundPathFromEnvironment(L"FBE_NEXT_TEST_BACKGROUND_MISSING_PATH")); m_doc->ApplyConfChanges(); appendBackgroundPhase("missing-custom");
 		_Settings.SetEditorBackgroundCustomPath(backgroundPathFromEnvironment(L"FBE_NEXT_TEST_BACKGROUND_PATH")); _Settings.SetEditorBackgroundLayout(L"contain"); m_doc->ApplyConfChanges(); appendBackgroundPhase("custom");
 		_Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(L"01_clean_white"); _Settings.SetEditorBackgroundLayout(L"tile"); m_doc->ApplyConfChanges(); appendBackgroundPhase("before-save");
 		if(!m_doc->Save()) { output.Close(); ::PostQuitMessage(1); return 0; }
-		appendBackgroundPhase("after-save"); output.Close(); PostMessage(WM_CLOSE); return 0;
+		appendBackgroundPhase("after-save"); output.Flush(); breadcrumb("after-save"); breadcrumb("report-flush"); output.Close(); breadcrumb("report-closed"); breadcrumb("shutdown-requested"); ::PostQuitMessage(0); breadcrumb("shutdown-complete"); return 0;
 	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{
