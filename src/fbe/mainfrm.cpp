@@ -3872,7 +3872,16 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		_Settings.SetEditorBackgroundCustomPath(backgroundPathFromEnvironment(L"FBE_NEXT_TEST_BACKGROUND_PATH")); _Settings.SetEditorBackgroundLayout(L"contain"); m_doc->ApplyConfChanges(); appendBackgroundPhase("custom"); StartupTrace::AppendTestStartupBreadcrumb("custom-complete");
 		_Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(L"01_clean_white"); _Settings.SetEditorBackgroundLayout(L"tile"); m_doc->ApplyConfChanges(); appendBackgroundPhase("before-save"); StartupTrace::AppendTestStartupBreadcrumb("before-save");
 		StartupTrace::AppendTestStartupBreadcrumb("save-start");
-		if(!m_doc->Save()) { StartupTrace::AppendTestStartupBreadcrumb("save-failed"); output.Close(); ::PostQuitMessage(1); return 0; }
+		if(!m_doc->Save()) {
+			CString saveFailure;
+			saveFailure.Format(L"editor background runtime save failed; name-valid=%d", m_doc->m_namevalid ? 1 : 0);
+			StartupTrace::HResult(L"test", L"TST202", m_doc->GetLastSaveError(), saveFailure);
+			CStringA savePhase;
+			savePhase.Format("save-failed-hr-0x%08lX", static_cast<unsigned long>(m_doc->GetLastSaveError()));
+			appendBackgroundPhase(savePhase);
+			StartupTrace::AppendTestStartupBreadcrumb(m_doc->m_namevalid ? "save-failed" : "save-failed-name-invalid");
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
 		StartupTrace::AppendTestStartupBreadcrumb("save-complete");
 		appendBackgroundPhase("after-save"); output.Flush(); StartupTrace::AppendTestStartupBreadcrumb("after-save"); StartupTrace::AppendTestStartupBreadcrumb("report-flush"); output.Close(); StartupTrace::AppendTestStartupBreadcrumb("report-closed"); StartupTrace::AppendTestStartupBreadcrumb("shutdown-requested"); ::PostQuitMessage(0); StartupTrace::AppendTestStartupBreadcrumb("shutdown-quit-posted"); return 0;
 	}
