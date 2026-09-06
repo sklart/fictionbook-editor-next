@@ -2993,8 +2993,20 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
   // init plugins&MRU list
   StartupTrace::AppendTestStartupBreadcrumb("plugins-init-start");
-  InitPlugins();
-	StartupTrace::AppendTestStartupBreadcrumb("plugins-init-complete");
+  // The unattended background regression exercises the live MSHTML document,
+  // not plug-in discovery.  In its disposable portable runtime, avoid touching
+  // the optional plug-in/script/MRU surface: hosted workers can block there
+  // before the scenario message is posted.  Normal editor startup and every
+  // other scenario retain the full initialization path.
+  if (IsFbeTestScenario(L"editor-background-runtime"))
+  {
+    StartupTrace::AppendTestStartupBreadcrumb("plugins-init-skipped-runtime-test");
+  }
+  else
+  {
+    InitPlugins();
+  }
+  StartupTrace::AppendTestStartupBreadcrumb("plugins-init-complete");
   StartupTrace::Event(L"mainframe", L"M160", L"plugins and MRU initialized");
 
   StartupTrace::AppendTestStartupBreadcrumb("mainframe-layout-start");
