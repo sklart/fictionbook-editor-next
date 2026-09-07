@@ -76,6 +76,8 @@ function Get-EffectiveState {
             '/OB0' { $state.Inline = $option; continue }
             '/OB1' { $state.Inline = $option; continue }
             '/OB2' { $state.Inline = $option; continue }
+            '/OB3' { $state.Inline = $option; continue }
+            '/OX' { $state.Optimization = $option; continue }
             '/OS' { $state.Favor = $option; continue }
             '/OT' { $state.Favor = $option; continue }
             '/GL' { $state.WholeProgram = $option; continue }
@@ -94,6 +96,7 @@ function Assert-SpeedCommand {
     param([hashtable]$Project, [pscustomobject]$Entry)
     $switches = Get-CommandSwitches $Entry.Command; $state = Get-EffectiveState $switches
     foreach ($required in @('/OI', '/GY', '/GW')) { if ($switches -notcontains $required) { Throw-Mismatch $Project $Entry '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL' $required $state } }
+    foreach ($forbidden in @('/OB3', '/OX')) { if ($switches -contains $forbidden) { Throw-Mismatch $Project $Entry '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL' $forbidden $state } }
     if ($state.Optimization -ne '/O2') { Throw-Mismatch $Project $Entry '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL' 'effective optimization' $state }
     if ($state.Inline -ne '/OB2') { Throw-Mismatch $Project $Entry '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL' 'effective inline expansion' $state }
     if ($state.Favor -ne '/OT') { Throw-Mismatch $Project $Entry '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL' 'effective favor speed' $state }
@@ -119,7 +122,7 @@ function Assert-LinkCommand {
 function Assert-ParserRegressionTests {
     $speed = @{ Path = 'synthetic-speed'; Target = 'synthetic' }; $shell = @{ Path = 'synthetic-shell'; Target = 'synthetic' }
     $valid = [pscustomobject]@{ Marker = 'valid.cpp'; Command = '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL' }; Assert-SpeedCommand $speed $valid
-    foreach ($sample in @('/O2 /Ob2 /Oi /Ot /Gy /GL', '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL /Ob1', '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL /Od', '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL /GL-')) {
+    foreach ($sample in @('/O2 /Ob2 /Oi /Ot /Gy /GL', '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL /Ob1', '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL /Ob3', '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL /Od', '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL /Ox', '/O2 /Ob2 /Oi /Ot /Gy /Gw /GL /GL-')) {
         try { Assert-SpeedCommand $speed ([pscustomobject]@{ Marker = 'broken.cpp'; Command = $sample }); throw "Synthetic parser test unexpectedly passed: $sample" } catch { if ($_.Exception.Message -like 'Synthetic parser test unexpectedly passed*') { throw } }
     }
     Assert-ShellCommand $shell ([pscustomobject]@{ Marker = 'shell.cpp'; Command = '/O1 /Os /Oi /Gy /Gw' })
