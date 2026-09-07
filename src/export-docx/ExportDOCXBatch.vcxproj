@@ -40,7 +40,6 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>$(FbePlatformToolset)</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -80,7 +79,6 @@
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\</OutDir>
     <OutDir Condition="'$(BatchOutputDirectory)'!=''">$(BatchOutputDirectory)</OutDir>
     <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\ExportDOCXBatch\$(Platform)\$(Configuration)\</IntDir>
-    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Platform)\$(Configuration)\</OutDir>
@@ -112,7 +110,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <ControlFlowGuard>Guard</ControlFlowGuard>
-      <AdditionalOptions>/utf-8</AdditionalOptions>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>

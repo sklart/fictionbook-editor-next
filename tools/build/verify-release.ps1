@@ -121,7 +121,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata-culture.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-common-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-first-party-msbuild-policy.ps1")
-& (Join-Path $repoRoot "tools\tests\test-release-optimization-profile.ps1")
+& (Join-Path $repoRoot "tools\tests\test-release-optimization-profile.ps1") -RequireEffectiveFlags
 & (Join-Path $repoRoot "tools\tests\test-fbe-contract-generation.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-plugin-x64-rejection.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-fbe-plugin-host-boundary.ps1")

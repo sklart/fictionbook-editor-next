@@ -42,7 +42,6 @@
     <PlatformToolset>$(FbePlatformToolset)</PlatformToolset>
     <UseOfAtl>Static</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -80,7 +79,6 @@
     <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\export-docx\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
     <OutDir>$(MSBuildProjectDirectory)\..\..\out\$(Configuration)\Plugins\</OutDir>
     <IntDir>$(MSBuildProjectDirectory)\..\..\build\obj\export-docx\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
@@ -129,7 +127,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>$(FbeApiOutputDirectory);$(MSBuildProjectDirectory)\..\..\third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/utf-8 /Zc:threadSafeInit-</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DisableSpecificWarnings>4458;%(DisableSpecificWarnings)</DisableSpecificWarnings>
