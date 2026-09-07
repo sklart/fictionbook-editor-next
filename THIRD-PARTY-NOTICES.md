@@ -60,8 +60,8 @@ The repository preserves upstream license material alongside source trees:
 - `third_party/libwebp/COPYING` and `third_party/openjpeg/LICENSE`;
 - `third_party/libheif/COPYING`, `third_party/libde265/COPYING`, and
   `third_party/aom/LICENSE` plus `third_party/aom/PATENTS`;
-- `src/import-epub/thirdparty/lunasvg/LICENSE` and
-  `src/import-epub/thirdparty/lunasvg/plutovg/LICENSE`;
+- `third_party/lunasvg/LICENSE` and
+  `third_party/lunasvg/plutovg/LICENSE`;
 - `third_party/uac/License.txt`.
 
 `THIRD-PARTY-LICENSES/README.md` documents the release-package layout.  WTL

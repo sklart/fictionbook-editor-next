@@ -7,8 +7,8 @@
 // FB2 <image> reference.
 //
 // Build notes:
-// - Put LunaSVG headers into thirdparty\lunasvg\include\.
-// - Put lunasvg.lib into thirdparty\lunasvg\lib\Win32\Release\ or make it
+// - LunaSVG headers live in third_party\lunasvg\include\.
+// - lunasvg.lib is produced under build\lib\lunasvg\Win32\Release\ or can be
 //   available through vcpkg/MSBuild integration.
 // - This wrapper exports a small C ABI so the main importer does not depend on
 //   LunaSVG C++ ABI or library layout.

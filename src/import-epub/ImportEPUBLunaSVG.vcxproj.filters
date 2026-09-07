@@ -13,6 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ImportEPUBLunaSVG.def"><Filter>Build Files</Filter></None>
-    <None Include="thirdparty\lunasvg\README_IMPORT_EPUB_BUILD.txt"><Filter>thirdparty</Filter></None>
+    <None Include="..\..\third_party\lunasvg\README_IMPORT_EPUB_BUILD.txt"><Filter>thirdparty</Filter></None>
   </ItemGroup>
 </Project>

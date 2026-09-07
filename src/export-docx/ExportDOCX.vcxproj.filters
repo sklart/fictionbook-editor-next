@@ -98,16 +98,4 @@
       <Filter>Source Files</Filter>
     </Midl>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="README_ExportDOCX.txt" />
-    <None Include="TODO_ExportDOCX.txt" />
-    <None Include="CHANGELOG_ExportDOCX.txt" />
-    <None Include="BUILD_WIN32_RELEASE.cmd" />
-    <None Include="BUILD_BATCH_WIN32_RELEASE.cmd" />
-    <None Include="REBUILD_REGISTER_WIN32_RELEASE.cmd" />
-    <None Include="REGISTER_EXPORTDOCX.cmd" />
-    <None Include="UNREGISTER_EXPORTDOCX.cmd" />
-    <None Include="CLEAN_AFTER_BUILD.cmd" />
-    <None Include="EXPORT_FOLDER.cmd" />
-  </ItemGroup>
 </Project>

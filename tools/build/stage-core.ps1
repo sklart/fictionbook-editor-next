@@ -43,8 +43,8 @@ $sourceRoots = @{
     arch = $archOutput
     repository = $repoRoot
     thirdParty = Join-Path $repoRoot 'third_party'
-    lunaSvg = Join-Path $repoRoot 'src\import-epub\thirdparty\lunasvg'
-    plutoVg = Join-Path $repoRoot 'src\import-epub\thirdparty\lunasvg\plutovg'
+    lunaSvg = Join-Path $repoRoot 'third_party\lunasvg'
+    plutoVg = Join-Path $repoRoot 'third_party\lunasvg\plutovg'
 }
 Copy-FbePackageLayoutEntries -Entries $layout.core.copy -SourceRoots $sourceRoots -StageDirectory $stage
 Copy-FbePackageLayoutAliases -Aliases $layout.core.aliases -StageDirectory $stage

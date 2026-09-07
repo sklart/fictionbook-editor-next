@@ -415,8 +415,8 @@ function Get-DependencyCatalog {
             DisplayName = 'LunaSVG'
             Repository = 'sammycage/lunasvg'
             RepositoryUrl = 'https://github.com/sammycage/lunasvg.git'
-            LocalPath = Join-Path $repoRoot 'src\import-epub\thirdparty\lunasvg'
-            RelativePath = 'src\import-epub\thirdparty\lunasvg'
+            LocalPath = Join-Path $repoRoot 'third_party\lunasvg'
+            RelativePath = 'third_party\lunasvg'
             ValidationPaths = @('CMakeLists.txt','include\lunasvg.h','source\lunasvg.cpp','lunasvg.vcxproj','plutovg.vcxproj')
             Kind = 'VendoredTree'
             UpdateMode = 'Manual'
@@ -436,8 +436,8 @@ function Get-DependencyCatalog {
             DisplayName = 'PlutoVG (vendored by LunaSVG)'
             Repository = 'sammycage/plutovg'
             RepositoryUrl = 'https://github.com/sammycage/plutovg.git'
-            LocalPath = Join-Path $repoRoot 'src\import-epub\thirdparty\lunasvg\plutovg'
-            RelativePath = 'src\import-epub\thirdparty\lunasvg\plutovg'
+            LocalPath = Join-Path $repoRoot 'third_party\lunasvg\plutovg'
+            RelativePath = 'third_party\lunasvg\plutovg'
             ValidationPaths = @('CMakeLists.txt','include\plutovg.h','source\plutovg-canvas.c')
             Kind = 'VendoredTree'
             UpdateMode = 'Manual'

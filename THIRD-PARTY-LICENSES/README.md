@@ -15,8 +15,8 @@ Portable and Installer consume that Core unchanged. The files are:
 | `libde265.txt` | `third_party/libde265/COPYING` |
 | `libaom.txt` | `third_party/aom/LICENSE` |
 | `libaom-PATENTS.txt` | `third_party/aom/PATENTS` |
-| `LunaSVG.txt` | `src/import-epub/thirdparty/lunasvg/LICENSE` |
-| `PlutoVG.txt` | `src/import-epub/thirdparty/lunasvg/plutovg/LICENSE` |
+| `LunaSVG.txt` | `third_party/lunasvg/LICENSE` |
+| `PlutoVG.txt` | `third_party/lunasvg/plutovg/LICENSE` |
 | `Theme-palettes-MIT.txt` | adapted XML palette attribution and MIT text |
 | `UAC.txt` | `third_party/uac/License.txt` |
 | `WTL-MS-PL.txt` | license identifier and canonical source for WTL |

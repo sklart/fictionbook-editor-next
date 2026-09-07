@@ -42,7 +42,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\thirdparty\lunasvg\include;$(MSBuildProjectDirectory)\thirdparty\lunasvg\plutovg\include;$(MSBuildProjectDirectory)\thirdparty\lunasvg;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\third_party\lunasvg\include;$(MSBuildProjectDirectory)\..\..\third_party\lunasvg\plutovg\include;$(MSBuildProjectDirectory)\..\..\third_party\lunasvg;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>ImportEPUBLunaSVG.def</ModuleDefinitionFile>
@@ -60,7 +60,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\thirdparty\lunasvg\include;$(MSBuildProjectDirectory)\thirdparty\lunasvg\plutovg\include;$(MSBuildProjectDirectory)\thirdparty\lunasvg;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\third_party\lunasvg\include;$(MSBuildProjectDirectory)\..\..\third_party\lunasvg\plutovg\include;$(MSBuildProjectDirectory)\..\..\third_party\lunasvg;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>ImportEPUBLunaSVG.def</ModuleDefinitionFile>
@@ -79,7 +79,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ImportEPUBLunaSVG.def" />
-    <None Include="thirdparty\lunasvg\README_IMPORT_EPUB_BUILD.txt" />
+    <None Include="..\..\third_party\lunasvg\README_IMPORT_EPUB_BUILD.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

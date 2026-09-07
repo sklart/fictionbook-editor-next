@@ -6,9 +6,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImportEPUB", "ImportEPUB.vc
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImportEPUBBatch", "ImportEPUBBatch.vcxproj", "{9F0ED6D7-AC98-41C6-BF9B-7215639DE032}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "plutovg", "thirdparty\lunasvg\plutovg.vcxproj", "{72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "plutovg", "..\..\third_party\lunasvg\plutovg.vcxproj", "{72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lunasvg", "thirdparty\lunasvg\lunasvg.vcxproj", "{2C7F38EF-A8F1-4A49-BD06-F74A317008A9}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lunasvg", "..\..\third_party\lunasvg\lunasvg.vcxproj", "{2C7F38EF-A8F1-4A49-BD06-F74A317008A9}"
 	ProjectSection(ProjectDependencies) = postProject
 		{72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA} = {72B3C5D0-9C3B-4A2E-A70C-01D2B91312AA}
 	EndProjectSection

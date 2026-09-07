@@ -39,41 +39,16 @@
     <Image Include="res\ImportEPUB.ico"><Filter>Resource Files</Filter></Image>
     <None Include="ImportEPUB.def"><Filter>Resource Files</Filter></None>
 
-    <None Include="BUILD_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="BUILD_BATCH_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="CLEAN_AFTER_BUILD.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="REGISTER_IMPORTEPUB.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="UNREGISTER_IMPORTEPUB.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="REBUILD_REGISTER_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="IMPORT_FOLDER.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="CONVERT_AND_PACK_TEST_RESULTS.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="BIG_VOLUME_TEST.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="BIG_VOLUME_TEST.ps1"><Filter>Resource Files</Filter></None>
-    <None Include="BUILD_STABLE_TEST_RELEASE.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="STABILIZATION_BIG_TEST_README.txt"><Filter>Resource Files</Filter></None>
-    <None Include="PACK_PROBLEM_FILES.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="CHECK_DEPENDENCIES.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="RUN_IMPORT_REGRESSION_TESTS.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="RUN_IMPORT_REGRESSION_TESTS.ps1"><Filter>Resource Files</Filter></None>
-    <None Include="CHECK_DEPENDENCIES.ps1"><Filter>Resource Files</Filter></None>
-    <None Include="BUILD_LUNASVG_ADAPTER_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="BUILD_LUNASVG_LIBRARY_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="BUILD_LUNASVG_ALL_WIN32_RELEASE.cmd"><Filter>Resource Files</Filter></None>
     <None Include="ImportEPUBLunaSVG.vcxproj"><Filter>Resource Files</Filter></None>
     <None Include="ImportEPUBLunaSVG.vcxproj.filters"><Filter>Resource Files</Filter></None>
     <None Include="ImportEPUBLunaSVG.def"><Filter>Resource Files</Filter></None>
-    <None Include="CHECK_REGISTRATION.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="CHECK_VERSIONINFO.cmd"><Filter>Resource Files</Filter></None>
-    <None Include="README_ImportEPUB.txt"><Filter>Resource Files</Filter></None>
-    <None Include="TODO_ImportEPUB.txt"><Filter>Resource Files</Filter></None>
-    <None Include="CHANGELOG_ImportEPUB.txt"><Filter>Resource Files</Filter></None>
     <None Include="targetver.h"><Filter>Header Files</Filter></None>
     <None Include="ImportEPUBBatch.vcxproj"><Filter>Resource Files</Filter></None>
-      <None Include="thirdparty\lunasvg\README_IMPORT_EPUB_BUILD.txt"><Filter>Resource Files</Filter></None>
-    <None Include="thirdparty\lunasvg\LICENSE"><Filter>Resource Files</Filter></None>
-    <None Include="thirdparty\lunasvg\plutovg\LICENSE"><Filter>Resource Files</Filter></None>
-    <None Include="thirdparty\lunasvg\plutovg.vcxproj"><Filter>Resource Files</Filter></None>
-    <None Include="thirdparty\lunasvg\lunasvg.vcxproj"><Filter>Resource Files</Filter></None>
+      <None Include="..\..\third_party\lunasvg\README_IMPORT_EPUB_BUILD.txt"><Filter>Resource Files</Filter></None>
+    <None Include="..\..\third_party\lunasvg\LICENSE"><Filter>Resource Files</Filter></None>
+    <None Include="..\..\third_party\lunasvg\plutovg\LICENSE"><Filter>Resource Files</Filter></None>
+    <None Include="..\..\third_party\lunasvg\plutovg.vcxproj"><Filter>Resource Files</Filter></None>
+    <None Include="..\..\third_party\lunasvg\lunasvg.vcxproj"><Filter>Resource Files</Filter></None>
   </ItemGroup>
 
   <ItemGroup>

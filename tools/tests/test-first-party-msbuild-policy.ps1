@@ -34,8 +34,8 @@ foreach ($project in $projects) {
 }
 
 foreach ($vendorProject in @(
-    'src\import-epub\thirdparty\lunasvg\lunasvg.vcxproj',
-    'src\import-epub\thirdparty\lunasvg\plutovg.vcxproj'
+    'third_party\lunasvg\lunasvg.vcxproj',
+    'third_party\lunasvg\plutovg.vcxproj'
 )) {
     $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $vendorProject)
     if ($text -match [regex]::Escape('tools\msbuild\FBE.Common.props')) {
