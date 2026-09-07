@@ -731,9 +731,9 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 
 				if ((!versionOk || !urlOk || !shaOk) && rootOk)
 				{
-					// update.xml — маленький контролируемый манифест без вложенных
-					// одноимённых тегов. Fallback нужен, чтобы проверка обновлений не
-					// зависела от особенностей MSXML DOM/XPath на конкретной системе.
+					// update.xml вЂ” РјР°Р»РµРЅСЊРєРёР№ РєРѕРЅС‚СЂРѕР»РёСЂСѓРµРјС‹Р№ РјР°РЅРёС„РµСЃС‚ Р±РµР· РІР»РѕР¶РµРЅРЅС‹С…
+					// РѕРґРЅРѕРёРјС‘РЅРЅС‹С… С‚РµРіРѕРІ. Fallback РЅСѓР¶РµРЅ, С‡С‚РѕР±С‹ РїСЂРѕРІРµСЂРєР° РѕР±РЅРѕРІР»РµРЅРёР№ РЅРµ
+					// Р·Р°РІРёСЃРµР»Р° РѕС‚ РѕСЃРѕР±РµРЅРЅРѕСЃС‚РµР№ MSXML DOM/XPath РЅР° РєРѕРЅРєСЂРµС‚РЅРѕР№ СЃРёСЃС‚РµРјРµ.
 					versionOk = GetSimpleXmlTagText(manifestText, L"Version", availableVersion);
 					urlOk = GetSimpleXmlTagText(manifestText, L"DownloadUrl", updateURL);
 					shaOk = GetSimpleXmlTagText(manifestText, L"SHA256", updateSHA256);
