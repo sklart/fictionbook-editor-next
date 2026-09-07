@@ -14,4 +14,7 @@
     <FbeGeneratedRoot>$(FbeRepoRoot)\build\generated\</FbeGeneratedRoot>
     <FbeApiOutputDirectory>$(FbeGeneratedRoot)$(Platform)\$(Configuration)\fbe-api\</FbeApiOutputDirectory>
   </PropertyGroup>
+  <PropertyGroup>
+    <ForceImportAfterCppProps>$(MSBuildThisFileDirectory)FBE.ReleaseOptimization.props</ForceImportAfterCppProps>
+  </PropertyGroup>
 </Project>
