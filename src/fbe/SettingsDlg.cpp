@@ -103,7 +103,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	return 1;
 }
 
-LRESULT CSettingsDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsDlg::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND hWndCtl, BOOL& /* unused: bHandled */)
 {
 	const HWND globalOk = GetDlgItem(IDOK);
 	if(hWndCtl != globalOk && m_currentPage == SettingsPageId::Words &&
@@ -118,7 +118,7 @@ LRESULT CSettingsDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
 	return 0;
 }
 
-LRESULT CSettingsDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsDlg::OnClickedCancel(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	for(int i = _countof(m_pageLifecycle) - 1; i >= 0; --i)
 		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->CancelChanges()) { SelectPage(static_cast<SettingsPageId>(i)); return 0; }
@@ -149,7 +149,7 @@ LRESULT CSettingsDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
 	return 0;
 }
 
-LRESULT CSettingsDlg::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) 
+LRESULT CSettingsDlg::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {	
 	if(m_advancedPage) { m_advancedPage->DestroyWindow(); delete m_advancedPage; m_advancedPage = NULL; }
 	if(m_generalPage) { m_generalPage->DestroyWindow(); delete m_generalPage; m_generalPage = NULL; }

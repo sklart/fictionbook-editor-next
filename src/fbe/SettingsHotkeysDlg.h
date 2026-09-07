@@ -29,7 +29,7 @@ public:
 		CHAIN_MSG_MAP(CEditCommands<CAccelEdit>)
 	END_MSG_MAP()
 
-	LRESULT OnKeyDown(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+	LRESULT OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam, BOOL& /* unused: bHandled */)
 	{
 		if(wParam != virtkey)
 		{
@@ -39,7 +39,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnKeyUp(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+	LRESULT OnKeyUp(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam, BOOL& /* unused: bHandled */)
 	{
 		::SendMessage(GetParent(), WM_USER + 0x402, wParam, lParam);
 		virtkey = ~virtkey;
@@ -47,7 +47,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnSkip(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+	LRESULT OnSkip(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 	{
 		return 0;
 	}

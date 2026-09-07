@@ -605,7 +605,7 @@ public:
 // Load HTML into MSHTML ActiveX control
 inline BOOL AtlLoadHTML(IUnknown* pUnkControl, LPCSTR pstrHTML)
 {
-   ATLASSERT(!::IsBadStringPtrA(pstrHTML,-1));
+   ATLASSERT(!::IsBadStringPtrA(pstrHTML, static_cast<UINT_PTR>(-1)));
    HANDLE hHTMLText = ::GlobalAlloc( GPTR, (::lstrlenA(pstrHTML) + 1) * sizeof(CHAR) );
    if( hHTMLText == NULL ) return FALSE;
    ::lstrcpyA( (CHAR*) hHTMLText, pstrHTML );

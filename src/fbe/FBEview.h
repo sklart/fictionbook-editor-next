@@ -426,11 +426,11 @@ public:
 	void QueryStatus(OLECMD *cmd, int ncmd);
 	CString QueryCmdText(int cmd);
 
-	LRESULT OnUndo(WORD, WORD, HWND hWnd, BOOL&) 
+	LRESULT OnUndo(WORD, WORD, HWND /* unused: hWnd */, BOOL&)
 	{ 
 		LRESULT res = ExecCommand(IDM_UNDO);
 		// update tree view
-		::SendMessage(m_frame,WM_COMMAND,MAKELONG(0,IDN_TREE_RESTORE),0);
+		::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_TREE_RESTORE)), 0);
 		return res;
 	}
 	LRESULT OnRedo(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_REDO); }

@@ -380,7 +380,7 @@ void CSettingsSourcePage::ReloadSourceThemes(const CString& selectedThemeId)
 			for(size_t index = 0; index < m_source_theme_display_names.size(); ++index)
 				if(m_source_theme_display_names[index].CompareNoCase(uniqueName) == 0) { duplicate = true; break; }
 			if(!duplicate) break;
-			uniqueName.Format(L"%s (%d)", displayName, suffix);
+			uniqueName.Format(L"%s (%d)", static_cast<LPCWSTR>(displayName), suffix);
 		}
 		const int item = m_source_palette.AddString(uniqueName);
 		if(item >= 0)
@@ -425,13 +425,13 @@ void CSettingsSourcePage::UpdateSourceThemeDisplay()
 	m_source_palette.InsertString(selectedIndex, displayName);
 	m_source_palette.SetCurSel(selectedIndex);
 }
-LRESULT CSettingsSourcePage::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsSourcePage::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	if(Validate()) Commit();
 	return 0;
 }
 
-LRESULT CSettingsSourcePage::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsSourcePage::OnClickedCancel(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	CancelChanges();
 	return 0;
@@ -536,10 +536,13 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 			XmlSourceThemes::ImportThemeConflictMode conflictMode = XmlSourceThemes::IMPORT_THEME_COPY;
 			if(XmlSourceThemes::IsUserTheme(parsedTheme.info.id))
 			{
+				// The conflict prompt identifies the existing theme by parsedTheme.info.name, parsedTheme.info.id.
+
 				CString conflict;
+
 				conflict.Format(ThemeString(L"fbe.theme.conflict.replace",
 					L"Theme \"%s\" (ID: %s) already exists.\n\nReplace the existing user theme?\nYes: replace\nNo: import a copy\nCancel: skip this file."),
-					parsedTheme.info.name, parsedTheme.info.id);
+					static_cast<LPCWSTR>(parsedTheme.info.name), static_cast<LPCWSTR>(parsedTheme.info.id));
 				const int decision = ::MessageBox(m_hWnd, conflict, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNOCANCEL | MB_ICONQUESTION);
 				if(decision == IDCANCEL) { ++cancelled; continue; }
 				if(decision == IDYES) conflictMode = XmlSourceThemes::IMPORT_THEME_REPLACE_USER;
@@ -580,7 +583,7 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 		confirmation.Format(ThemeString(deletedThemeWasActive ? L"fbe.theme.delete.confirm_active" : L"fbe.theme.delete.confirm_inactive",
 			deletedThemeWasActive ?
 			L"Delete active user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel. The editor will switch to FBE Light and manual colors will be reset." :
-			L"Delete user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel."), sourceName);
+			L"Delete user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel."), static_cast<LPCWSTR>(sourceName));
 		if(::MessageBox(m_hWnd, confirmation, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 			return 0;
 		const CString fallbackId = XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT);

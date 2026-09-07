@@ -33,8 +33,8 @@ private:
 public:
 	DECLARE_FRAME_WND_CLASS(L"DocumentTreeFrame", IDR_DOCUMENT_TREE)
 
-	void GetDocumentStructure(MSHTML::IHTMLDocument2Ptr& v);
-	void UpdateDocumentStructure(MSHTML::IHTMLDocument2Ptr& v, MSHTML::IHTMLDOMNodePtr node);
+	void GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v);
+	void UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v, MSHTML::IHTMLDOMNodePtr node);
 	void HighlightItemAtPos(MSHTML::IHTMLElement* p);
 	CTreeItem GetSelectedItem();
 
@@ -118,8 +118,8 @@ public:
 	CDocumentTree() : m_current_tab(0) {}
 
 	// TreeView methods
-	void GetDocumentStructure(MSHTML::IHTMLDocument2Ptr& v);
-	void UpdateDocumentStructure(MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node);
+	void GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v);
+	void UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node);
 	void HighlightItemAtPos(MSHTML::IHTMLElement *p);
 	CTreeItem GetSelectedItem();
 

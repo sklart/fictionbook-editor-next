@@ -45,7 +45,7 @@ bool IsStyle(const MSHTML::IHTMLElementPtr& elem)
 	return (outerHTML.Find(L"<span class=") == 0);
 }
 
-CString GetStylesheetTitle(const MSHTML::IHTMLElementPtr& elem)
+CString GetStylesheetTitle(const MSHTML::IHTMLElementPtr& /* unused: elem */)
 {
 	return L"";
 }
@@ -91,7 +91,7 @@ bool IsAnnotation(const MSHTML::IHTMLElementPtr& elem)
 	return IsDiv(elem, L"annotation");
 }
 
-CString GetAnnotationTitle(const MSHTML::IHTMLElementPtr& elem)
+CString GetAnnotationTitle(const MSHTML::IHTMLElementPtr& /* unused: elem */)
 {
 	return L"";
 }
@@ -101,7 +101,7 @@ bool IsHistory(const MSHTML::IHTMLElementPtr& elem)
 	return IsDiv(elem, L"history");
 }
 
-CString GetHistoryTitle(const MSHTML::IHTMLElementPtr& elem)
+CString GetHistoryTitle(const MSHTML::IHTMLElementPtr& /* unused: elem */)
 {
 	return L"";
 }

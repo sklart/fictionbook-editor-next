@@ -137,7 +137,7 @@ namespace U
 		else elem->className = value;
 		// send message to main window
 #ifndef NO_EXTRN_SETTINGS
-		::SendMessage(_Settings.GetMainWindow(), WM_COMMAND, MAKELONG(0,IDN_TREE_RESTORE), 0);
+		::SendMessage(_Settings.GetMainWindow(), WM_COMMAND, static_cast<WPARAM>(MAKELONG(0,IDN_TREE_RESTORE)), 0);
 #endif
 	}
 
@@ -775,7 +775,7 @@ bool GetImageDimsByPath(const wchar_t* pszFileName, int* nWidth, int* nHeight)
 	return result;
 }
 
-bool GetImageDimsByData(SAFEARRAY* data, ULONG length, int* nWidth, int* nHeight)
+bool GetImageDimsByData(SAFEARRAY* data, ULONG /* unused: length */, int* nWidth, int* nHeight)
 {
 	CImage image;
 	bool result = false;
@@ -894,7 +894,6 @@ void InitSettingsHotkeyGroups()
 		
 		while(currentNode)
 		{
-			BSTR name = currentNode->nodeName;
 			if(currentNode == root)
 			{
 				return true;
@@ -924,8 +923,6 @@ void InitSettingsHotkeyGroups()
 		}
 		
 		MSXML2::IXMLDOMNodePtr currentNode = root;
-		
-		int size = m_path.size();
 		for(unsigned int i = 0; i < m_path.size(); ++i)
 		{
 			currentNode = currentNode->firstChild;
@@ -942,8 +939,6 @@ void InitSettingsHotkeyGroups()
 			{
 				return 0;
 			}			
-
-			int numb = m_path[i];
 			for(int j = 0; j < m_path[i]; ++j)
 			{
 				currentNode = currentNode->nextSibling;
@@ -1014,7 +1009,6 @@ void InitSettingsHotkeyGroups()
 		}
 		
 		MSHTML::IHTMLDOMNodePtr currentNode = root;
-		
 		int size = m_path.size();
 		for(int i = 0; i < size; ++i)
 		{
@@ -1025,7 +1019,6 @@ void InitSettingsHotkeyGroups()
 
 			//name = currentNode->nodeName;
 			if(!currentNode) return 0;
-
 			int numb = m_path[i];
 			for(int j = 0; j < numb; ++j)
 			{
@@ -1067,8 +1060,6 @@ void InitSettingsHotkeyGroups()
 		{
 			return false;
 		}
-
-		const wchar_t* curpos = xml;
 		const wchar_t* selpos = xml + pos;
 		int virtual_pos = pos;
 		// ���� ����������� ���
@@ -1567,8 +1558,8 @@ void InitSettingsHotkeyGroups()
 		_bstr_t   cls(MSHTML::IHTMLElementPtr(elem)->className);
 
 		if ((bool)node && node->nodeType==1 && U::scmp(node->nodeName,L"DIV")==0) {
-			_bstr_t   cls(MSHTML::IHTMLElementPtr(node)->className);
-			if (U::scmp(cls,L"image")==0) {
+			_bstr_t   nodeClass(MSHTML::IHTMLElementPtr(node)->className);
+			if (U::scmp(nodeClass,L"image")==0) {
 				node=node->nextSibling;
 				if (node->nodeType!=1 || U::scmp(node->nodeName,L"DIV"))
 					return NULL;

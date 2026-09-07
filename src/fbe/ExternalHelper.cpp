@@ -352,7 +352,7 @@ static void FillDescElements()
 // genre list helper
 static void LoadGenres()
 {
-	FILE *fp;
+	FILE *fp = nullptr;
   const CString file_name = _Settings.ResolveGenreCatalogFileName();
   // Modification by Pilgrim 
   try{
@@ -360,7 +360,7 @@ static void LoadGenres()
   }catch(...){
   }
   if(!fp){
-	  U::MessageBox(MB_OK|MB_ICONERROR, IDR_MAINFRAME, IDS_GENRES_LIST_MSG, file_name);
+	  U::MessageBox(MB_OK|MB_ICONERROR, IDR_MAINFRAME, IDS_GENRES_LIST_MSG, static_cast<LPCWSTR>(file_name));
 	  return;
   }
 
@@ -470,7 +470,7 @@ static HMENU MakeDescComponentsMenu()
 	return ret.Detach();
 }
 
-HRESULT ExternalHelper::GenrePopup(IDispatch *obj,LONG x,LONG y,BSTR *name)
+HRESULT ExternalHelper::GenrePopup(IDispatch */* unused: obj */,LONG x,LONG y,BSTR *name)
 {
 	LoadGenres();
 	CMenu popup;
@@ -632,7 +632,7 @@ HRESULT	ExternalHelper::STISrcLangPopup(IDispatch *obj,LONG x,LONG y,BSTR *name)
 	return S_OK;
 }*/
 
-HRESULT ExternalHelper::DescShowMenu(IDispatch *obj, LONG x,LONG y, BSTR* element_id)
+HRESULT ExternalHelper::DescShowMenu(IDispatch */* unused: obj */, LONG x,LONG y, BSTR* element_id)
 {
 	FillDescElements();
 	CMenu popup;

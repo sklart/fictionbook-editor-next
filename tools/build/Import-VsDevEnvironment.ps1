@@ -30,11 +30,19 @@ if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
 }
 
-$vswhereArguments = @("-latest", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64")
+$vswhereArguments = @("-all", "-products", "*")
 if ($PlatformToolset -eq "v143") {
     $vswhereArguments += @("-version", "[17.0,18.0)")
 }
-$installationPath = & $vswhere @vswhereArguments -property installationPath
+$installationPaths = @(& $vswhere @vswhereArguments -property installationPath)
+$installationPath = $installationPaths | Where-Object {
+    Get-ChildItem -LiteralPath (Join-Path $_ "VC\Tools\MSVC") -Directory -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName "atlmfc\lib\x86\uafxcwd.lib") } |
+        Select-Object -First 1
+} | Select-Object -First 1
+if (-not $installationPath) {
+    $installationPath = $installationPaths | Select-Object -First 1
+}
 if (-not $installationPath) {
     throw "Не найдены инструменты сборки Visual Studio C++ для x86."
 }

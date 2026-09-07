@@ -54,7 +54,7 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	RECT rect;
 	SetRect(&rect, 0, 0, 500, 20);
 	this->ModifyStyle(0, WS_POPUP, 0);
-	HWND hWndCmdBar = m_view_bar.Create(*this, rect, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE);	
+	m_view_bar.Create(*this, rect, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	m_view_bar.SetStyle(ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	FillViewBar();
 	this->ModifyStyle(WS_POPUP, 0, 0);
@@ -68,18 +68,18 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 }
 
 
-LRESULT CTreeWithToolBar::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CTreeWithToolBar::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
 	bHandled=FALSE;
 	return 0;
 }
 
-LRESULT CTreeWithToolBar::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CTreeWithToolBar::OnClose(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {    
 	return 0;
 }
 
-LRESULT CTreeWithToolBar::OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
 	RECT clientRect = {0, 0, 0, 0};
 	RECT rebarRect = {0, 0, 0, 0};
@@ -138,12 +138,12 @@ LRESULT CTreeWithToolBar::OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
 	return 0;
 }
 
-void CTreeWithToolBar::GetDocumentStructure(MSHTML::IHTMLDocument2Ptr& v)
+void CTreeWithToolBar::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v)
 {
 	m_tree.GetDocumentStructure(v);
 }
 
-void CTreeWithToolBar::UpdateDocumentStructure(MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node)
+void CTreeWithToolBar::UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node)
 {
 	m_tree.UpdateDocumentStructure(v, node);
 }
@@ -158,7 +158,7 @@ CTreeItem CTreeWithToolBar::GetSelectedItem()
 	return m_tree.GetSelectedItem();
 }
 
-LRESULT CTreeWithToolBar::ForwardWMCommand(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CTreeWithToolBar::ForwardWMCommand(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& /* unused: bHandled */)
 {
 	DWORD wParam = MAKELONG(wID, wNotifyCode);
 	DWORD lParam = (LPARAM)hWndCtl;
@@ -213,7 +213,7 @@ void CTreeWithToolBar::FillViewBar()
 
 		if(ED->GetPic(picHandle, picType))
 		{
-			int imageID;
+			int imageID = -1;
 
 			switch(picType)
 			{
@@ -226,7 +226,8 @@ void CTreeWithToolBar::FillViewBar()
 				imageID = m_tree.AddIcon(picHandle);
 				break;				
 			}
-			ED->SetImageID(imageID);
+			if(imageID >= 0)
+				ED->SetImageID(imageID);
 		}
 	}
 
@@ -304,7 +305,7 @@ LRESULT CTreeWithToolBar::OnMenuStCommand(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CTreeWithToolBar::OnMenuClear(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
+LRESULT CTreeWithToolBar::OnMenuClear(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL &/* unused: bHandled */)
 {
 	_EDMnr.CleanUpAll();
 	return 0;
@@ -339,23 +340,23 @@ void CDocumentTree::RefreshLocalizedTitle()
 
 //WS_DLGFRAME  | WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | TBSTYLE_TOOLTIPS | TBSTYLE_BUTTON | TBSTYLE_AUTOSIZE
 
-LRESULT CDocumentTree::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CDocumentTree::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
 	bHandled=FALSE;
 	return 0;
 }
 
-LRESULT CDocumentTree::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CDocumentTree::OnClose(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
 	return 0;
 }
 
-void CDocumentTree::GetDocumentStructure(MSHTML::IHTMLDocument2Ptr& v)
+void CDocumentTree::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v)
 {
 	m_tree.GetDocumentStructure(v);
 }
 
-void CDocumentTree::UpdateDocumentStructure(MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node)
+void CDocumentTree::UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node)
 {
 	m_tree.UpdateDocumentStructure(v, node);
 }

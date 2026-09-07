@@ -248,7 +248,7 @@ void CGLLogoView::DrawFloor()
 {
     GLfloat fExtent = 40.0f;
     GLfloat fStep = 2.0f;
-    GLfloat y = -2.3f;
+	GLfloat floorY = -2.3f;
     GLfloat fColor;
     GLfloat iStrip, iRun;
     GLint iBounce = 0;
@@ -263,8 +263,8 @@ void CGLLogoView::DrawFloor()
 			{
 				if((iBounce %2) == 0) fColor = bFloor?0.0f:1.0f; else fColor = 1.0f;
 				glColor4f(fColor, fColor, fColor, 0.7f);
-				glVertex3f(iStrip, y, iRun);
-				glVertex3f(iStrip + fStep, y, iRun);
+				glVertex3f(iStrip, floorY, iRun);
+				glVertex3f(iStrip + fStep, floorY, iRun);
 				iBounce++;
 			}
 		glEnd();
@@ -480,7 +480,7 @@ BOOL CGLLogoView::SubclassWindow (HWND hWnd)
 	return TRUE;
 }
 
-LRESULT CGLLogoView::OnKeyDown(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
+LRESULT CGLLogoView::OnKeyDown(UINT, WPARAM wParam, LPARAM /* unused: lParam */, BOOL&)
 {
 	switch (wParam)
 	{

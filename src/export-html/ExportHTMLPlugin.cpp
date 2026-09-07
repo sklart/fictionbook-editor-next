@@ -126,9 +126,9 @@ HRESULT CExportHTMLPlugin::Export(long hWnd, BSTR filename, IDispatch* doc)
 
 HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 {
-	wchar_t testMode[4] = {}, testCancel[4] = {}, testFail[4] = {}, testScenario[32] = {};
-	const bool exportHtmlTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
-		::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", testScenario, _countof(testScenario)) == wcslen(L"export-html") && wcscmp(testScenario, L"export-html") == 0;
+	wchar_t testModeValue[4] = {}, testCancel[4] = {}, testFail[4] = {}, testScenarioValue[32] = {};
+	const bool exportHtmlTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testModeValue, _countof(testModeValue)) == 1 && testModeValue[0] == L'1' &&
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", testScenarioValue, _countof(testScenarioValue)) == wcslen(L"export-html") && wcscmp(testScenarioValue, L"export-html") == 0;
 	if (exportHtmlTest && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_FAIL", testFail, _countof(testFail)) == 1 && testFail[0] == L'1')
 		return E_FAIL;
 	if (exportHtmlTest &&
@@ -168,15 +168,15 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		// The portable, self-contained document is the safest default: it cannot
 		// lose its CSS or images when moved to another folder or machine.
 		dlg.m_ofn.nFilterIndex = 4;
-		wchar_t testModeEnabled[4] = {}, testScenario[32] = {}, testOutput[MAX_PATH] = {};
+		wchar_t testModeEnabled[4] = {}, dialogTestScenario[32] = {}, testOutput[MAX_PATH] = {};
 		const bool deterministicTestExport = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testModeEnabled, _countof(testModeEnabled)) == 1 &&
-			testModeEnabled[0] == L'1' && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", testScenario, _countof(testScenario)) == wcslen(L"export-html") &&
-			wcscmp(testScenario, L"export-html") == 0;
+			testModeEnabled[0] == L'1' && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", dialogTestScenario, _countof(dialogTestScenario)) == wcslen(L"export-html") &&
+			wcscmp(dialogTestScenario, L"export-html") == 0;
 		const DWORD testOutputLength = deterministicTestExport ? ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_PATH", testOutput, _countof(testOutput)) : 0;
 		if (testOutputLength > 0 && testOutputLength < _countof(testOutput)) {
-			wchar_t testMode[8] = {};
-			const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_MODE", testMode, _countof(testMode));
-			dlg.m_ofn.nFilterIndex = testModeLength ? max(1, min(4, _wtoi(testMode))) : 4;
+			wchar_t testExportMode[8] = {};
+			const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_EXPORT_HTML_MODE", testExportMode, _countof(testExportMode));
+			dlg.m_ofn.nFilterIndex = testModeLength ? max(1, min(4, _wtoi(testExportMode))) : 4;
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), testOutput, _TRUNCATE);
 			dlg.m_template = U::GetProgDirFile(L"html.xsl");
 			dlg.m_usingCustomTemplate = false;
@@ -272,9 +272,9 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		hOut = ::CreateFile(dlg.m_szFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
 		if (hOut == INVALID_HANDLE_VALUE)
 		{
-			CString strMessage;
-			strMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
-			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)strMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+			CString openErrorMessage;
+			openErrorMessage = FormatExportHtmlString(IDS_ERROR_OPEN_FILE, dlg.m_szFileName, (LPCTSTR)U::Win32ErrMsg(::GetLastError()));
+			ShowExportHtmlTaskDialog(::GetActiveWindow(), IDR_EXPORTHTML, (LPCTSTR)openErrorMessage, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
 			return E_FAIL;
 		}
 

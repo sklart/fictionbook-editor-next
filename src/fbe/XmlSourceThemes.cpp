@@ -401,7 +401,7 @@ CString MakeAvailableUserThemeId(const CString& requestedId)
 	for(int suffix = 1; ; ++suffix)
 	{
 		CString candidate = base;
-		if(suffix > 1) candidate.Format(L"%s-%d", base, suffix);
+		if(suffix > 1) candidate.Format(L"%s-%d", static_cast<LPCWSTR>(base), suffix);
 		const CString path = directory + L"\\" + candidate + L".fbetheme";
 		if(::GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES && FindExternalTheme(candidate) == NULL)
 			return candidate;
@@ -709,7 +709,7 @@ bool ExportThemeFile(const CString& id, const CString& name, const DWORD* colors
 		19 * GetBValue(colors[XML_SRC_STYLE_EDITOR_BACKGROUND])) / 256 < 128;
 	const bool isDark = metadata != NULL && !metadata->recalculateIsDark ? metadata->isDark : calculatedIsDark;
 	content.Format(L"{\r\n  \"format\": \"FictionBookEditorNext.CodeTheme\",\r\n  \"formatVersion\": 1,\r\n  \"id\": \"%s\",\r\n  \"name\": \"%s\",\r\n  \"isDark\": %s,\r\n",
-		id, escapedName, isDark ? L"true" : L"false");
+		static_cast<LPCWSTR>(id), static_cast<LPCWSTR>(escapedName), isDark ? L"true" : L"false");
 	if(metadata != NULL)
 	{
 		const struct { const wchar_t* key; const CString* value; } fields[] = {
@@ -719,14 +719,14 @@ bool ExportThemeFile(const CString& id, const CString& name, const DWORD* colors
 		};
 		for(int i = 0; i < _countof(fields); ++i)
 			if(!fields[i].value->IsEmpty())
-				content.AppendFormat(L"  \"%s\": \"%s\",\r\n", fields[i].key, EscapeJsonString(*fields[i].value));
+				content.AppendFormat(L"  \"%s\": \"%s\",\r\n", fields[i].key, static_cast<LPCWSTR>(EscapeJsonString(*fields[i].value)));
 	}
 	content += L"  \"colors\": {\r\n";
 	for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i)
 	{
 		CString color;
 		color.Format(L"#%02X%02X%02X", GetRValue(colors[i]), GetGValue(colors[i]), GetBValue(colors[i]));
-		content.AppendFormat(L"    \"%s\": \"%s\"%s\r\n", kStyleTokenNames[i], color,
+		content.AppendFormat(L"    \"%s\": \"%s\"%s\r\n", kStyleTokenNames[i], static_cast<LPCWSTR>(color),
 			i + 1 == XML_SRC_STYLE_TOKEN_COUNT ? L"" : L",");
 	}
 	content += L"  }\r\n}\r\n";

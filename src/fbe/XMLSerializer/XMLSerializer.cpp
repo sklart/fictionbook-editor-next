@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "utils.h"
 
 const wchar_t* XML_SAVE_ENCODING = L"utf-8";
@@ -74,11 +74,11 @@ CString CXMLSerializer::GetPlural(const CString& sWord)
 	TCHAR ch = sWord.GetAt(sWord.GetLength() - 1);
 	
 	if(ch == _T('s') || ch == _T('S'))
-		sResult.Format(_T("%ses"), sWord);
+		sResult.Format(_T("%ses"), static_cast<LPCTSTR>(sWord));
 	/*else if(ch == _T('y') || ch == _T('Y'))
 		sResult.Format(_T("%sies"), sWord);*/
 	else
-		sResult.Format(_T("%ss"), sWord);
+		sResult.Format(_T("%ss"), static_cast<LPCTSTR>(sWord));
 
 	return sResult;
 }
@@ -177,12 +177,12 @@ bool CXMLSerializer::SerializeObject(ISerializable* obj, MSXML2::IXMLDOMNodePtr 
 		if(parent == NULL)
 		{
 			// reference is the root
-			sPath.Format(_T("/%s/%s/%s[id='%s']"), m_sAppName, sOuterNodeName, sClass, sId);
+			sPath.Format(_T("/%s/%s/%s[id='%s']"), static_cast<LPCTSTR>(m_sAppName), static_cast<LPCTSTR>(sOuterNodeName), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sId));
 		}
 		else
 		{
 			// reference is the parent node
-			sPath.Format(_T("%ss/%s[id='%s']"), sOuterNodeName, sClass, sId);
+			sPath.Format(_T("%ss/%s[id='%s']"), static_cast<LPCTSTR>(sOuterNodeName), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sId));
 		}
 	}
 	else
@@ -191,12 +191,12 @@ bool CXMLSerializer::SerializeObject(ISerializable* obj, MSXML2::IXMLDOMNodePtr 
 		if(parent == NULL)
 		{
 			// reference is the root
-			sPath.Format(_T("/%s/%s[id='%s']"), m_sAppName, sClass, sId);
+			sPath.Format(_T("/%s/%s[id='%s']"), static_cast<LPCTSTR>(m_sAppName), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sId));
 		}
 		else
 		{
 			// reference is the parent node
-			sPath.Format(_T("%s[id='%s']"), sClass, sId);
+			sPath.Format(_T("%s[id='%s']"), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sId));
 		}
 	}
 
@@ -228,10 +228,10 @@ bool CXMLSerializer::SerializeObject(ISerializable* obj, MSXML2::IXMLDOMNodePtr 
 		// not there. We need to create it.
 		if(bMulti)
 		{
-			CString sOuterNodeName;
+			CString missingOuterNodeName;
 
-			sOuterNodeName = sClass + _T("s"); // e.g. contact+s = contacts
-			sPath.Format(_T("//%s/ %s"), m_sAppName, sOuterNodeName);
+			missingOuterNodeName = sClass + _T("s"); // e.g. contact+s = contacts
+			sPath.Format(_T("//%s/ %s"), static_cast<LPCTSTR>(m_sAppName), static_cast<LPCTSTR>(missingOuterNodeName));
 			bsXPath = sPath;
 			
 			outernode = refnode->selectSingleNode(bsXPath);
@@ -239,7 +239,7 @@ bool CXMLSerializer::SerializeObject(ISerializable* obj, MSXML2::IXMLDOMNodePtr 
 			if(outernode == NULL)
 			{
 				// this node does not exist, we need to create it
-				outernode = CreateChildNode(sOuterNodeName, rootnode);
+				outernode = CreateChildNode(missingOuterNodeName, rootnode);
 				refnode->appendChild(outernode);
 			}
 		}
@@ -291,20 +291,20 @@ bool CXMLSerializer::SerializeObject(ISerializable* obj, MSXML2::IXMLDOMNodePtr 
 			case SimpleList:
 				{
 					// first we create the outer node e.g. <phonenumbers>
-					CString sOuterNodeName = GetPlural(sProperty);
+					CString listNodeName = GetPlural(sProperty);
 					std::vector<CString>& values = property.GetStringList();
-					MSXML2::IXMLDOMNodePtr outernode;
+					MSXML2::IXMLDOMNodePtr listNode;
 			
 					// attach the outernode
-					outernode = CreateChildNode(sOuterNodeName, node);
-					node->appendChild(outernode);
+					listNode = CreateChildNode(listNodeName, node);
+					node->appendChild(listNode);
 					
 					// iterate through all the list of values and store them
-					for(unsigned int nIndex = 0; nIndex < values.size(); nIndex++)
+					for(unsigned int valueIndex = 0; valueIndex < values.size(); valueIndex++)
 					{
-						sValue = values[nIndex];
+						sValue = values[valueIndex];
 						CProperty singleprop(sProperty, sValue);
-						SetProperty(outernode, singleprop, true); // true means
+						SetProperty(listNode, singleprop, true); // true means
 						// we want a new node to be created
 					}
 				}
@@ -317,20 +317,20 @@ bool CXMLSerializer::SerializeObject(ISerializable* obj, MSXML2::IXMLDOMNodePtr 
 			case ComplexList:
 				{
 					// first we create the outer node e.g. <phonenumbers>
-					CString sOuterNodeName = GetPlural(sProperty);
+					CString listNodeName = GetPlural(sProperty);
 					std::vector<void*>& values = property.GetObjectList();
-					MSXML2::IXMLDOMNodePtr outernode;
+					MSXML2::IXMLDOMNodePtr listNode;
 			
 					// attach the outernode
-					outernode = CreateChildNode(sOuterNodeName, node);
-					node->appendChild(outernode);
+					listNode = CreateChildNode(listNodeName, node);
+					node->appendChild(listNode);
 					
 					// iterate through all the list of values and store them
-					for(unsigned int nIndex = 0; nIndex < values.size(); nIndex++)
+					for(unsigned int valueIndex = 0; valueIndex < values.size(); valueIndex++)
 					{
-						ISerializable* pObject = (ISerializable*)values[nIndex];
+						ISerializable* pObject = (ISerializable*)values[valueIndex];
 						CProperty singleprop(sProperty, pObject);
-						SerializeObject(pObject, outernode);
+						SerializeObject(pObject, listNode);
 					}
 				}
 				break;
@@ -409,12 +409,12 @@ int CXMLSerializer::Deserialize(IObjectFactory* factory, ISerializable* obj, MSX
 		if(parent == NULL)
 		{
 			// reference is root
-			sPath.Format(_T("//%s/%ss/%s"), m_sAppName, sClass, sClass);
+			sPath.Format(_T("//%s/%ss/%s"), static_cast<LPCTSTR>(m_sAppName), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sClass));
 		}
 		else
 		{
 			// reference is parent node
-			sPath.Format(_T("%ss/%s"), sClass, sClass);
+			sPath.Format(_T("%ss/%s"), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sClass));
 		}
 	}
 	else
@@ -423,12 +423,12 @@ int CXMLSerializer::Deserialize(IObjectFactory* factory, ISerializable* obj, MSX
 		if(parent == NULL)
 		{
 			// reference is root
-			sPath.Format(_T("//%s/%s[@ID='%s']"), m_sAppName, sClass, sId);
+			sPath.Format(_T("//%s/%s[@ID='%s']"), static_cast<LPCTSTR>(m_sAppName), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sId));
 		}
 		else
 		{
 			// reference is parent node
-			sPath.Format(_T("%s"), sClass);
+			sPath.Format(_T("%s"), static_cast<LPCTSTR>(sClass));
 		}
 	}
 
@@ -461,8 +461,6 @@ int CXMLSerializer::Deserialize(IObjectFactory* factory, ISerializable* obj, MSX
 		factory->Destroy(pEmptyObject);
 		return 0;
 	}
-
-	int nLength = nodes->Getlength();
 
 	// loop for iterating over the class nodes e.g. <contact>
 	for(int nIndex = 0; nIndex < nodes->Getlength(); nIndex++)
@@ -612,12 +610,12 @@ int CXMLSerializer::DeserializeObject(IObjectFactory* factory, std::vector<void*
 		if(parent == NULL)
 		{
 			// reference is root
-			sPath.Format(_T("//%s/%ss/%s"), m_sAppName, sClass, sClass);
+			sPath.Format(_T("//%s/%ss/%s"), static_cast<LPCTSTR>(m_sAppName), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sClass));
 		}
 		else
 		{
 			// reference is parent node
-			sPath.Format(_T("%ss/%s"), sClass, sClass);
+			sPath.Format(_T("%ss/%s"), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sClass));
 		}
 	}
 	else
@@ -626,12 +624,12 @@ int CXMLSerializer::DeserializeObject(IObjectFactory* factory, std::vector<void*
 		if(parent == NULL)
 		{
 			// reference is root
-			sPath.Format(_T("//%s/%s[@ID='%s']"), m_sAppName, sClass, sId);
+			sPath.Format(_T("//%s/%s[@ID='%s']"), static_cast<LPCTSTR>(m_sAppName), static_cast<LPCTSTR>(sClass), static_cast<LPCTSTR>(sId));
 		}
 		else
 		{
 			// reference is parent node
-			sPath.Format(_T("%s"), sClass);			
+			sPath.Format(_T("%s"), static_cast<LPCTSTR>(sClass));
 		}
 	}
 
@@ -664,8 +662,6 @@ int CXMLSerializer::DeserializeObject(IObjectFactory* factory, std::vector<void*
 		factory->Destroy(pEmptyObject);
 		return 0;
 	}
-
-	int nLength = nodes->Getlength();
 	
 	// loop for iterating over the class nodes e.g. <contact>
 	for(int nIndex = 0; nIndex < nodes->Getlength(); nIndex++)
@@ -826,8 +822,6 @@ bool CXMLSerializer::GetProperty(MSXML2::IXMLDOMNodePtr node, CProperty& propert
 
 
 	PropertyType				type;
-
-	ISerializable* pComplexProperty = NULL;
 	type = property.GetType();
 
 	switch(type)

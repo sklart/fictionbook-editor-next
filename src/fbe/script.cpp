@@ -159,8 +159,8 @@ static struct {
 
 #define	NUMFUNCS  (sizeof(g_funcs)/sizeof(g_funcs[0]))
 
-static HRESULT	__declspec(naked) VCall(GenFunc fp,unsigned argc,unsigned null,
-					VARIANT *argv,VARIANT *result)
+static HRESULT	__declspec(naked) VCall(GenFunc /* unused: fp */,unsigned /* unused: argc */,unsigned /* unused: null */,
+					VARIANT */* unused: argv */,VARIANT */* unused: result */)
 {
   __asm {
     push    ebx
@@ -201,7 +201,7 @@ lo:
   };
 }
 
-static DWORD __declspec(naked)	Win32CallImpl(FARPROC proc,unsigned argc,DWORD *argv)
+static DWORD __declspec(naked)	Win32CallImpl(FARPROC /* unused: proc */,unsigned /* unused: argc */,DWORD */* unused: argv */)
 {
   __asm {
     mov	    eax,[esp+4]
@@ -338,8 +338,8 @@ public:
 
     return S_OK;
   }
-  STDMETHOD(Invoke)(DISPID id,REFIID,LCID,WORD flags,DISPPARAMS *params,
-		    VARIANT *result,EXCEPINFO*,unsigned *argerr)
+  STDMETHOD(Invoke)(DISPID id,REFIID,LCID,WORD /* unused: flags */,DISPPARAMS *params,
+		    VARIANT *result,EXCEPINFO*,unsigned */* unused: argerr */)
   {
     if (id<1 || id>NUMFUNCS)
       return DISP_E_MEMBERNOTFOUND;
@@ -433,7 +433,6 @@ public:
 			DWORD ctx;
 			ULONG line = 0;
 			LONG  column = 0;
-			wchar_t *buf = NULL;
 
 			err->GetSourcePosition(&ctx,&line,&column);
 

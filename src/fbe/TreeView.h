@@ -92,7 +92,7 @@ public:
   LRESULT OnMerge(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 
   
-  LRESULT OnDeleteItem(int idCtrl, LPNMHDR pnmh, BOOL& bHandled) {
+  LRESULT OnDeleteItem(int /* unused: idCtrl */, LPNMHDR pnmh, BOOL& /* unused: bHandled */) {
     NMTREEVIEW	  *tvn=(NMTREEVIEW*)pnmh;
     if (tvn->itemOld.lParam)
       ((MSHTML::IHTMLElement*)tvn->itemOld.lParam)->Release();
@@ -102,8 +102,8 @@ public:
   //LRESULT OnRClick(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 
   // get document structure from view
-  void GetDocumentStructure(MSHTML::IHTMLDocument2Ptr& v);
-  void UpdateDocumentStructure(MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node);
+  void GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v);
+  void UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node);
   void UpdateAll();
   void HighlightItemAtPos(MSHTML::IHTMLElement *p);
   void SetMainwindow(HWND hwnd){m_main_window = hwnd;}

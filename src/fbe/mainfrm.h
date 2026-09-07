@@ -85,7 +85,6 @@ public:
 	  Rectangle(dc, rc.left, rc.top, rc.right, rc.bottom);
 	  SelectObject(dc, oldBrush);
 	  SelectObject(dc, oldPen);*/
-      DWORD dwStyle = GetStyle();
 	  HFONT oldFont = (HFONT)SelectObject(dc, m_font);
 
       UINT iFlags = DT_SINGLELINE | DT_CENTER | DT_VCENTER;      
@@ -833,7 +832,7 @@ public:
 	LRESULT OnEditInsSymbol(WORD, WORD, HWND, BOOL&);
 
 	// added by SeNS
-	LRESULT OnSpellReplace(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+	LRESULT OnSpellReplace(WORD /* unused: wNotifyCode */, WORD wID, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 	{ 
 		if (m_Speller)
 		{
@@ -893,10 +892,12 @@ public:
 
   LRESULT OnHideToolbar(WORD wNotifyCode, WORD /*wID*/, HWND hWndCtl, BOOL& bHandled)
   {
-	  return OnViewToolBar(wNotifyCode, m_selBandID, hWndCtl, bHandled);
+	  if (m_selBandID < 0 || m_selBandID > 0xffff)
+		  return 0;
+	  return OnViewToolBar(wNotifyCode, static_cast<WORD>(m_selBandID), hWndCtl, bHandled);
   }
 
-  LRESULT OnToolCustomize(WORD /*wNotifyCode*/, WORD /*wID*/, HWND hWndCtl, BOOL& /*bHandled*/)
+  LRESULT OnToolCustomize(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /* unused: hWndCtl */, BOOL& /*bHandled*/)
   {
 	  UnhookSysDialogs();
 	  if (m_selBandID == ATL_IDW_BAND_FIRST+1) m_CmdToolbar.Customize(); else
@@ -919,13 +920,13 @@ public:
   LRESULT OnSelectCtl(WORD, WORD, HWND, BOOL&);
   LRESULT OnNextItem(WORD, WORD, HWND, BOOL&);
 
-  LRESULT OnEdSelChange(WORD, WORD, HWND hWndCtl, BOOL&) {
+  LRESULT OnEdSelChange(WORD, WORD, HWND /* unused: hWndCtl */, BOOL&) {
     m_sel_changed=true;
     StopIncSearch(true);
 	DisplayCharCode();
     return 0;
   }
-  LRESULT OnFastModeChange(WORD, WORD mode, HWND hWndCtl, BOOL&) 
+  LRESULT OnFastModeChange(WORD, WORD mode, HWND /* unused: hWndCtl */, BOOL&)
   {
 	  UISetCheck(ID_VIEW_FASTMODE, mode);
 	  return 0;
@@ -971,7 +972,7 @@ public:
   void ChangeNBSP(MSHTML::IHTMLElementPtr elem);
   void RemoveLastUndo();
 
-	LRESULT OnEdChange(WORD, WORD, HWND hWnd, BOOL& b) {
+	LRESULT OnEdChange(WORD, WORD, HWND /* unused: hWnd */, BOOL& /* unused: b */) {
     StopIncSearch(true);
 		m_doc_changed=true;
     ResetValidationStatus();
@@ -991,7 +992,7 @@ public:
 	return 0;
   }
   LRESULT OnCbEdChange(WORD, WORD, HWND, BOOL&);
-  LRESULT OnCbSelEndOk(WORD code, WORD wID, HWND hWnd, BOOL&) {
+  LRESULT OnCbSelEndOk(WORD /* unused: code */, WORD wID, HWND hWnd, BOOL&) {
     PostMessage(WM_COMMAND,MAKELONG(wID,CBN_EDITCHANGE),(LPARAM)hWnd);
     return 0;
   }
@@ -1016,20 +1017,20 @@ public:
   LRESULT OnTreeUpdate(WORD, WORD, HWND, BOOL&);
   LRESULT OnTreeRestore(WORD, WORD, HWND, BOOL&);
 
-  LRESULT OnGoToFootnote(WORD wNotifyCode, WORD wID, HWND hWndCtl)
+  LRESULT OnGoToFootnote(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {
 	  if (!m_doc->m_body.ReturnToLinkNavigationOrigin() && !m_doc->m_body.GoToFootnote(false))
 		m_doc->m_body.GoToReference(false);
 	  return 0;
   }
 
-  LRESULT OnGoToReference(WORD wNotifyCode, WORD wID, HWND hWndCtl)
+  LRESULT OnGoToReference(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {
 	  m_doc->m_body.GoToReference(false);
 	  return 0;
   }
 
-  LRESULT OnSciModified(int id,NMHDR *hdr,BOOL& bHandled) {
+  LRESULT OnSciModified(int /* unused: id */,NMHDR *hdr,BOOL& bHandled) {
     if (hdr->hwndFrom!=m_source) {
       bHandled=FALSE;
       return 0;
@@ -1038,7 +1039,7 @@ public:
     return 0;
   }
 
-  LRESULT OnSciMarginClick(int id,NMHDR *hdr,BOOL& bHandled) {
+  LRESULT OnSciMarginClick(int /* unused: id */,NMHDR *hdr,BOOL& bHandled) {
     if (hdr->hwndFrom!=m_source) {
       bHandled=FALSE;
       return 0;
@@ -1047,7 +1048,7 @@ public:
     return 0;
   }
 
-  LRESULT OnSciCharAdded(int id,NMHDR *hdr,BOOL& bHandled) {
+  LRESULT OnSciCharAdded(int /* unused: id */,NMHDR *hdr,BOOL& bHandled) {
     if (hdr->hwndFrom != m_source || m_current_view != SOURCE) {
       bHandled=FALSE;
       return 0;
@@ -1056,7 +1057,7 @@ public:
     return 0;
   }
 
-  LRESULT OnSciUpdateUI(int id,NMHDR *hdr,BOOL& bHandled) 
+  LRESULT OnSciUpdateUI(int /* unused: id */,NMHDR *hdr,BOOL& /* unused: bHandled */)
   {
     if (hdr->hwndFrom != m_source || m_current_view != SOURCE)
 		return 0;
@@ -1074,14 +1075,14 @@ public:
 	return 0;
   }
 
-  LRESULT OnGoToMatchTag(WORD wNotifyCode, WORD wID, HWND hWndCtl)
+  LRESULT OnGoToMatchTag(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {
     if (m_current_view == SOURCE)
 		SciUpdateUI(true);
 	return 0;
   }
 
-  LRESULT OnGoToWrongTag(WORD wNotifyCode, WORD wID, HWND hWndCtl)
+  LRESULT OnGoToWrongTag(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {
     if (m_current_view == SOURCE)
 		SciGotoWrongTag();
@@ -1131,7 +1132,7 @@ public:
 
 	// added by SeNS
     CSpeller *m_Speller;
-	LRESULT OnSpellCheck(WORD, WORD, HWND, BOOL& b)
+	LRESULT OnSpellCheck(WORD, WORD, HWND, BOOL& /* unused: b */)
 	{
 		if (m_Speller && m_doc && m_current_view == BODY && m_Speller->Available())
 			m_Speller->StartDocumentCheck(m_doc->m_body.m_mk_srv);

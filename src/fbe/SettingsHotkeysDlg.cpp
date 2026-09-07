@@ -175,7 +175,7 @@ int CSettingsHotkeysDlg::GetTextLen(CString text)
 	return size.cx;
 }
 
-LRESULT CSettingsHotkeysDlg::OnGroupsSelChange(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnGroupsSelChange(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	m_selGr = m_hkGroups.GetCurSel();
 	m_hotkeys.ResetContent();
@@ -197,7 +197,7 @@ LRESULT CSettingsHotkeysDlg::OnGroupsSelChange(WORD wNotifyCode, WORD wID, HWND 
 	return 0;
 }
 
-LRESULT CSettingsHotkeysDlg::OnHotkeysSelChange(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnHotkeysSelChange(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	m_selHk = m_hotkeys.GetCurSel();
 	ClearAndSet();
@@ -218,7 +218,7 @@ hkIndex CSettingsHotkeysDlg::GetCollIndex(ACCEL newAccel)
 		{
 			if(_Settings.m_hotkey_groups[i].m_hotkeys[j].m_accel.fVirt == newAccel.fVirt
 				&& _Settings.m_hotkey_groups[i].m_hotkeys[j].m_accel.key == newAccel.key
-				&& (i != m_selGr || j != m_selHk))
+				&& ((m_selGr < 0 || i != static_cast<unsigned int>(m_selGr)) || (m_selHk < 0 || j != static_cast<unsigned int>(m_selHk))))
 			{
 				index.group = i;
 				index.hotkey = j;
@@ -251,7 +251,7 @@ bool CSettingsHotkeysDlg::TestAndSet()
 	return collisions;
 }
 
-LRESULT CSettingsHotkeysDlg::OnBnClickedButtonDefault(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnBnClickedButtonDefault(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	hkIndex index = GetCollIndex(_Settings.m_hotkey_groups[m_selGr].m_hotkeys[m_selHk].m_def_accel);
 	if(index.group != -1 && index.hotkey != -1)
@@ -268,7 +268,7 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonDefault(WORD wNotifyCode, WORD wID
 		collCmdName += GetHotkeyDisplayName(_Settings.m_hotkey_groups[index.group].m_hotkeys[index.hotkey]);
 
 		CString collDefCmdMsg;
-		collDefCmdMsg.Format(collDefMsg, collCmdName);
+		collDefCmdMsg.Format(collDefMsg, static_cast<LPCWSTR>(collCmdName));
 
 		wchar_t errCaption[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(),
@@ -293,7 +293,7 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonDefault(WORD wNotifyCode, WORD wID
 	return 0;
 }
 
-LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyDelete(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyDelete(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	::ZeroMemory(&_Settings.m_hotkey_groups[m_selGr].m_hotkeys[m_selHk].m_accel, sizeof(ACCEL));
 	ClearAndSet();
@@ -301,13 +301,13 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyDelete(WORD wNotifyCode, WOR
 	return 0;
 }
 
-LRESULT CSettingsHotkeysDlg::OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	if(Validate()) Commit();
 	return 0;
 }
 
-LRESULT CSettingsHotkeysDlg::OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnClickedCancel(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	CancelChanges();
 	return 0;
@@ -343,7 +343,7 @@ void CSettingsHotkeysDlg::Commit()
 
 bool CSettingsHotkeysDlg::CancelChanges() { _Settings.m_hotkey_groups = m_initHkGroups; return true; }
 
-LRESULT CSettingsHotkeysDlg::OnEditSetFocus(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnEditSetFocus(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	m_editHotkey.SetWindowText(NULL);
 	::SetWindowText(GetDlgItem(IDC_EDIT_HOTKEY_COLLISION), NULL);
@@ -371,7 +371,7 @@ bool CSettingsHotkeysDlg::Test()
 			MAX_LOAD_STRING + 1);
 
 		CString collCmdMsg;
-		collCmdMsg.Format(collMsg, collCmdName);
+		collCmdMsg.Format(collMsg, static_cast<LPCWSTR>(collCmdName));
 
 		::SetWindowText(GetDlgItem(IDC_EDIT_HOTKEY_COLLISION), collCmdMsg);
 
@@ -390,11 +390,14 @@ bool CSettingsHotkeysDlg::Test()
 	}
 }
 
-LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
+	if (wParam > UCHAR_MAX)
+		return 0;
+	const WORD virtualKey = static_cast<WORD>(wParam);
 	CString wndText;
 	m_editHotkey.GetWindowText(wndText);
-	CString keyText = U::KeycodeToString(wParam);
+	CString keyText = U::KeycodeToString(virtualKey);
 
 	switch(m_count)
 	{
@@ -405,20 +408,20 @@ LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT uMsg, WPARAM wParam, LPARAM lPara
 				m_accel.fVirt = FVIRTKEY;
 				m_accel.cmd = _Settings.m_hotkey_groups[m_selGr].m_hotkeys[m_selHk].m_accel.cmd;
 
-				if(wParam == VK_CONTROL || wParam == U::StringToKeycode(L"Alt") || wParam == VK_SHIFT)
+				if(virtualKey == VK_CONTROL || virtualKey == U::StringToKeycode(L"Alt") || virtualKey == VK_SHIFT)
 				{
 					wndText = keyText;
 					m_editHotkey.SetWindowText(wndText);
 
-					m_accel.fVirt |= U::VKToFVirt(wParam);
+					m_accel.fVirt |= static_cast<BYTE>(U::VKToFVirt(virtualKey));
 					m_count++;
 				}
-				else if (wParam >= VK_F1 && wParam <= VK_F12)
+				else if (virtualKey >= VK_F1 && virtualKey <= VK_F12)
 				{
 					wndText += keyText;
 					m_editHotkey.SetWindowText(wndText);
 
-					m_accel.key = wParam;
+					m_accel.key = virtualKey;
 					m_count = 0;
 					Test();
 					::EnableWindow(GetDlgItem(IDC_BUTTON_HOTKEY_ASSIGN), TRUE);
@@ -435,13 +438,13 @@ LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT uMsg, WPARAM wParam, LPARAM lPara
 			}
 		case 1:
 		{
-			if(wParam == VK_CONTROL || wParam == U::StringToKeycode(L"Alt") || wParam == VK_SHIFT)
+			if(virtualKey == VK_CONTROL || virtualKey == U::StringToKeycode(L"Alt") || virtualKey == VK_SHIFT)
 			{
 				wndText += L" + ";
 				wndText += keyText;
 				m_editHotkey.SetWindowText(wndText);
 
-				m_accel.fVirt |= U::VKToFVirt(wParam);
+				m_accel.fVirt |= static_cast<BYTE>(U::VKToFVirt(virtualKey));
 				m_count++;
 			}
 			else if(!keyText.IsEmpty())
@@ -459,7 +462,7 @@ LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT uMsg, WPARAM wParam, LPARAM lPara
 					wndText += keyText;
 					m_editHotkey.SetWindowText(wndText);
 
-					m_accel.key = wParam;
+					m_accel.key = virtualKey;
 					m_count = 0;
 					Test();
 					::EnableWindow(GetDlgItem(IDC_BUTTON_HOTKEY_ASSIGN), TRUE);
@@ -470,13 +473,13 @@ LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT uMsg, WPARAM wParam, LPARAM lPara
 		}
 		case 2:
 		{
-			if(wParam == VK_CONTROL || wParam == U::StringToKeycode(L"Alt") || wParam == VK_SHIFT)
+			if(virtualKey == VK_CONTROL || virtualKey == U::StringToKeycode(L"Alt") || virtualKey == VK_SHIFT)
 			{
 				wndText += L" + ";
 				wndText += keyText;
 				m_editHotkey.SetWindowText(wndText);
 
-				m_accel.fVirt |= U::VKToFVirt(wParam);
+				m_accel.fVirt |= static_cast<BYTE>(U::VKToFVirt(virtualKey));
 				m_count++;
 			}
 			else if(!keyText.IsEmpty())
@@ -485,7 +488,7 @@ LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT uMsg, WPARAM wParam, LPARAM lPara
 				wndText += keyText;
 				m_editHotkey.SetWindowText(wndText);
 
-				m_accel.key = wParam;
+				m_accel.key = virtualKey;
 				m_count = 0;
 				Test();
 				::EnableWindow(GetDlgItem(IDC_BUTTON_HOTKEY_ASSIGN), TRUE);
@@ -496,15 +499,15 @@ LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT uMsg, WPARAM wParam, LPARAM lPara
 		case 3:
 		{
 			if(!keyText.IsEmpty()
-				&& wParam != VK_CONTROL
-				&& wParam != U::StringToKeycode(L"Alt")
-				&& wParam != VK_SHIFT)
+				&& virtualKey != VK_CONTROL
+				&& virtualKey != U::StringToKeycode(L"Alt")
+				&& virtualKey != VK_SHIFT)
 			{
 				wndText += L" + ";
 				wndText += keyText;
 				m_editHotkey.SetWindowText(wndText);
 
-				m_accel.key = wParam;
+				m_accel.key = virtualKey;
 				m_count = 0;
 				Test();
 				::EnableWindow(GetDlgItem(IDC_BUTTON_HOTKEY_ASSIGN), TRUE);
@@ -524,7 +527,7 @@ LRESULT CSettingsHotkeysDlg::OnKeyPressed(UINT uMsg, WPARAM wParam, LPARAM lPara
 	return 0;
 }
 
-LRESULT CSettingsHotkeysDlg::OnKeyReleased(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnKeyReleased(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
 	if(m_accel.key == NULL)
 	{
@@ -534,7 +537,7 @@ LRESULT CSettingsHotkeysDlg::OnKeyReleased(UINT uMsg, WPARAM wParam, LPARAM lPar
 	return 0;
 }
 
-LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyAssign(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyAssign(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	TestAndSet();
 	ClearAndSet();

@@ -777,6 +777,7 @@ void CSettings::InitHotkeyGroups()
 
 	for(int i = 1; i < 100; ++i)
 	{
+		static_assert(ID_EDIT_INS_SYMBOL + 99 <= 0xffff, "Symbol command IDs must fit in WM_COMMAND");
 		CString pattern, langPatt;
 		pattern.Format(L"%s%d=", L"sym", i);
 		langPatt.Format(L"%s%d_%d=", L"sym", i, static_cast<int>(m_interface_lang_id));
@@ -800,7 +801,7 @@ void CSettings::InitHotkeyGroups()
 				desc,
 				wchar_t(val),
 				NULL,
-				ID_EDIT_INS_SYMBOL + i,
+				static_cast<WORD>(ID_EDIT_INS_SYMBOL + i),
 				NULL);
 			symbols_hotkeys_group.m_hotkeys.push_back(Symbol);
 		}

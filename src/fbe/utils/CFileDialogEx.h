@@ -189,13 +189,13 @@ public:
 
         if (!strPath.IsEmpty())
         {
-            LPCTSTR lpsz = _tcsrchr(strPath, '\\');
-            if (lpsz == NULL)
-                lpsz = _tcsrchr(strPath, '/');
+            LPCTSTR pathEnd = _tcsrchr(strPath, '\\');
+            if (pathEnd == NULL)
+                pathEnd = _tcsrchr(strPath, '/');
 
-            if (lpsz != NULL && (lpsz - (LPCTSTR)strPath) == strPath.GetLength()-1)
+            if (pathEnd != NULL && (pathEnd - (LPCTSTR)strPath) == strPath.GetLength()-1)
             {
-                ATLASSERT(*lpsz == '\\' || *lpsz == '/');
+                ATLASSERT(*pathEnd == '\\' || *pathEnd == '/');
                 return strPath + strFileName;
             }
         }

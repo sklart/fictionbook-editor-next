@@ -161,7 +161,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnTextChanged(WORD, WORD wID, HWND, BOOL&)
+	LRESULT OnTextChanged(WORD, WORD /* unused: wID */, HWND, BOOL&)
 	{
 		CheckInput();
 		return 0;
@@ -181,7 +181,7 @@ public:
 		if(cur.IsEmpty())
 			return;
 
-		LRESULT Idx = ::SendMessage(hCB, CB_FINDSTRINGEXACT, -1, (LPARAM)(const TCHAR*)cur);
+		LRESULT Idx = ::SendMessage(hCB, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), (LPARAM)(const TCHAR*)cur);
 		if(Idx == 0)
 			return;
 		if(Idx != CB_ERR)
@@ -242,7 +242,7 @@ public:
 	END_MSG_MAP()
 
 
-	LRESULT OnCancel(WORD, WORD wID, HWND, BOOL&)
+	LRESULT OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&)
 	{
 		m_view->CloseFindDialog(this);
 		return 0;
@@ -283,7 +283,7 @@ public:
   END_MSG_MAP()
 
 
-  LRESULT OnCancel(WORD, WORD wID, HWND, BOOL&) {
+  LRESULT OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&) {
 	  m_view->CloseFindDialog(this);
     return 0;
   }
@@ -306,12 +306,12 @@ public:
     return 0;
   }
 
-  LRESULT OnTextChanged(WORD, WORD wID, HWND, BOOL& bHandled) {
+  LRESULT OnTextChanged(WORD, WORD /* unused: wID */, HWND, BOOL& bHandled) {
     SendMessage(DM_SETDEFID,IDOK);
     bHandled=FALSE;
     return 0;
   }
-  LRESULT OnReplChanged(WORD, WORD wID, HWND, BOOL& bHandled) {
+  LRESULT OnReplChanged(WORD, WORD /* unused: wID */, HWND, BOOL& bHandled) {
     SendMessage(DM_SETDEFID,IDC_REPLACE_ONE);
     bHandled=FALSE;
     return 0;
@@ -339,7 +339,7 @@ public:
 		{
 			if (!VBErr)
 			{
-				U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, m_view->m_fo.pattern);
+				U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 			}
 		}
 		else

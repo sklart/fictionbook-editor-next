@@ -124,6 +124,14 @@ public:
 
 class CHotkey : public ISerializable, public IObjectFactory
 {
+private:
+	static BYTE DefaultVirt(WORD fVirt)
+	{
+		const WORD flags = FVIRTKEY | fVirt;
+		ATLASSERT(flags <= UCHAR_MAX);
+		return static_cast<BYTE>(flags);
+	}
+
 public:
 	CString m_name;
 	CString m_reg_name;
@@ -139,7 +147,7 @@ public:
 	{
 		m_name = FbeLoadCString(IDS_CMD_NAME);
 
-		m_def_accel.fVirt = FVIRTKEY | fVirt;
+		m_def_accel.fVirt = DefaultVirt(fVirt);
 		m_def_accel.cmd = cmd;
 		m_def_accel.key = key;
 
@@ -151,7 +159,7 @@ public:
 		m_name = FbeLoadCString(IDS_CMD_NAME);
 		m_name += uchar;
 
-		m_def_accel.fVirt = FVIRTKEY | fVirt;
+		m_def_accel.fVirt = DefaultVirt(fVirt);
 		m_def_accel.cmd = cmd;
 		m_def_accel.key = key;
 
@@ -162,7 +170,7 @@ public:
 	{
 
 
-		m_def_accel.fVirt = FVIRTKEY | fVirt;
+		m_def_accel.fVirt = DefaultVirt(fVirt);
 		m_def_accel.cmd = cmd;
 		m_def_accel.key = key;
 
@@ -172,7 +180,7 @@ public:
 	CHotkey(CString reg_name, CString cmd_name, WORD fVirt, WORD cmd, WORD key, CString descr = L"") : m_name(cmd_name), m_reg_name(reg_name), m_name_resource_id(0), m_accel(), m_def_accel(), m_desc(descr), m_char_val(0)
 	{
 
-		m_def_accel.fVirt = FVIRTKEY | fVirt;
+		m_def_accel.fVirt = DefaultVirt(fVirt);
 		m_def_accel.cmd = cmd;
 		m_def_accel.key = key;
 
@@ -239,8 +247,15 @@ public:
 
 			if(n == 2)
 			{
-				m_accel.fVirt = StrToInt(tokens[0]);
-				m_accel.key = StrToInt(tokens[1]);
+				const int fVirt = StrToInt(tokens[0]);
+				const int key = StrToInt(tokens[1]);
+				if (fVirt < 0 || fVirt > UCHAR_MAX || key < 0 || key > USHRT_MAX)
+				{
+					delete[] tokens;
+					return false;
+				}
+				m_accel.fVirt = static_cast<BYTE>(fVirt);
+				m_accel.key = static_cast<WORD>(key);
 			}
 
 			delete[] tokens;

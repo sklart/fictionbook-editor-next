@@ -163,13 +163,9 @@ static void ApplyDiagnosticFaultInjection(MSHTML::IHTMLDocument2Ptr document)
 		CString script;
 		script.Format(L"window.fbeNextFaultInjection='%s';", (LPCWSTR)point);
 		window->execScript(_bstr_t(script), _bstr_t(L"JScript"));
-		const HRESULT executeResult = S_OK;
-		StartupTrace::HResult(L"fault", L"FI002", executeResult, L"fault injection flag applied");
-		if (SUCCEEDED(executeResult))
-		{
-			CString details; details.Format(L"point=%s", (LPCWSTR)point);
-			StartupTrace::Event(L"fault", L"FI000", details);
-		}
+		StartupTrace::HResult(L"fault", L"FI002", S_OK, L"fault injection flag applied");
+		CString details; details.Format(L"point=%s", (LPCWSTR)point);
+		StartupTrace::Event(L"fault", L"FI000", details);
 	}
 	catch (const _com_error& error)
 	{
@@ -632,7 +628,8 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	HRESULT	hr;
 	StartupTrace::Event(L"webbrowser", L"WB100", L"m_body.Create begin");
 	const CString path = U::GetProgDirFile(L"main.html");
-	const HWND browserWindow = m_body.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
+	CRect browserRect(0, 0, 500, 500);
+	const HWND browserWindow = m_body.Create(hWndParent, browserRect, _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
 	if (!browserWindow)
 	{
 		StartupTrace::HResult(L"webbrowser", L"WB101", HRESULT_FROM_WIN32(::GetLastError()), L"m_body.Create returned no HWND");
@@ -1450,7 +1447,7 @@ public:
 
   SAXErrorHandler() : m_line(0),m_col(0) { }
 
-  void	SetMsg(MSXML2::ISAXLocator *loc, const wchar_t *msg, HRESULT hr) {
+  void	SetMsg(MSXML2::ISAXLocator *loc, const wchar_t *msg, HRESULT /* unused: hr */) {
     if (!m_msg.IsEmpty())
       return;
     m_msg=msg;
@@ -1936,7 +1933,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	  ::MessageBeep(MB_ICONERROR);
 	else
 	{
-	  if(IDYES == U::MessageBox(MB_YESNO|MB_DEFBUTTON2|MB_ICONERROR, IDS_VALIDATION_FAIL_CPT, IDS_VALIDATION_FAIL_MSG, eh->m_msg))
+	  if(IDYES == U::MessageBox(MB_YESNO|MB_DEFBUTTON2|MB_ICONERROR, IDS_VALIDATION_FAIL_CPT, IDS_VALIDATION_FAIL_MSG, static_cast<LPCWSTR>(eh->m_msg)))
 	  {
 			bErrSave = true;
 			goto forcesave;
@@ -2302,7 +2299,7 @@ static int  compare_counts(const void *v1,const void *v2)
   return diff ? diff : w1->word.CompareNoCase(w2->word);
 }
 
-void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString tagName)
+void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString /* unused: tagName */)
 {
 	CWaitCursor hourglass;
 
@@ -2351,7 +2348,7 @@ void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString tagName)
 
 		// iterate over bb using a primitive fsm
 		wchar_t *p = bb, *e = p + bb.length() + 1; // include trailing 0!
-		wchar_t *wstart,*wend;
+		wchar_t *wstart = nullptr, *wend = nullptr;
 
 		enum
 		{
@@ -2867,9 +2864,6 @@ bool Doc::TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr* xml)
 	{
       if (!eh->m_msg.IsEmpty())
 	  {
-		// record error position
-		int errline = eh->m_line;
-		int errcol = eh->m_col;
 		::MessageBeep(MB_ICONERROR);
 		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT,0,
 		(LPARAM)(const TCHAR *)eh->m_msg);
@@ -2909,10 +2903,10 @@ MSHTML::IHTMLDOMNodePtr Doc::MoveNode(MSHTML::IHTMLDOMNodePtr from, MSHTML::IHTM
 	//  title
 	if((bool)insertBefore)
 	{
-		while(1)
+		for (;;)
 		{
-			MSHTML::IHTMLElementPtr elem = (MSHTML::IHTMLElementPtr)insertBefore;
-			_bstr_t class_name(elem->className);
+			MSHTML::IHTMLElementPtr insertBeforeElement = (MSHTML::IHTMLElementPtr)insertBefore;
+			_bstr_t class_name(insertBeforeElement->className);
 			if(
 				(0 == U::scmp(class_name, L"title"))
 				|| (0 == U::scmp(class_name, L"epigraph"))

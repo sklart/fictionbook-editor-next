@@ -554,7 +554,7 @@ _ATL_FUNC_INFO CFBEView::EventInfo=
 _ATL_FUNC_INFO CFBEView::VoidEventInfo=
   { CC_STDCALL, VT_EMPTY, 1, { VT_DISPATCH } };
 
-LRESULT CFBEView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CFBEView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /* unused: bHandled */)
 {
   if (DefWindowProc(uMsg,wParam,lParam))
     return 1;
@@ -2620,14 +2620,14 @@ void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
 		HWND dialogs[] = { m_find_dlg ? m_find_dlg->m_hWnd : NULL, m_replace_dlg ? m_replace_dlg->m_hWnd : NULL };
 		for(unsigned index = 0; index < _countof(dialogs); ++index)
 		{
-			RECT dialogRect = {};
-			if(!dialogs[index] || !::IsWindowVisible(dialogs[index]) || !::GetWindowRect(dialogs[index], &dialogRect)) continue;
-			if(dialogRect.right <= viewportTopLeft.x || dialogRect.left >= viewportBottomRight.x || dialogRect.bottom <= viewportTopLeft.y || dialogRect.top >= viewportBottomRight.y) continue;
+			RECT dialogBounds = {};
+			if(!dialogs[index] || !::IsWindowVisible(dialogs[index]) || !::GetWindowRect(dialogs[index], &dialogBounds)) continue;
+			if(dialogBounds.right <= viewportTopLeft.x || dialogBounds.left >= viewportBottomRight.x || dialogBounds.bottom <= viewportTopLeft.y || dialogBounds.top >= viewportBottomRight.y) continue;
 			FBESearchViewport::Rect obstruction = {
-				FBESearchViewport::ScaleToViewport(dialogRect.left - viewportTopLeft.x, viewportWidth, scrollElement->clientWidth),
-				FBESearchViewport::ScaleToViewport(dialogRect.top - viewportTopLeft.y, viewportHeight, scrollElement->clientHeight),
-				FBESearchViewport::ScaleToViewport(dialogRect.right - viewportTopLeft.x, viewportWidth, scrollElement->clientWidth),
-				FBESearchViewport::ScaleToViewport(dialogRect.bottom - viewportTopLeft.y, viewportHeight, scrollElement->clientHeight) };
+				FBESearchViewport::ScaleToViewport(dialogBounds.left - viewportTopLeft.x, viewportWidth, scrollElement->clientWidth),
+				FBESearchViewport::ScaleToViewport(dialogBounds.top - viewportTopLeft.y, viewportHeight, scrollElement->clientHeight),
+				FBESearchViewport::ScaleToViewport(dialogBounds.right - viewportTopLeft.x, viewportWidth, scrollElement->clientWidth),
+				FBESearchViewport::ScaleToViewport(dialogBounds.bottom - viewportTopLeft.y, viewportHeight, scrollElement->clientHeight) };
 			obstructions.push_back(obstruction);
 		}
 		const UINT dpi = GetSearchWindowDpi(m_hWnd);
@@ -3123,8 +3123,8 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 
 			for(long l = 0;l < all->length; ++l)
 			{
-				MSHTML::IHTMLElementPtr elem(all->item(l));
-				sel->moveToElementText(elem);;
+				MSHTML::IHTMLElementPtr matchedElement(all->item(l));
+				sel->moveToElementText(matchedElement);;
 				AU::ReMatches rm(ExecuteSearchRegExp(re.get(), sel));
 				if(rm->Count <= 0)
 					continue;
@@ -3385,7 +3385,7 @@ public:
   virtual void DoFind() {
     if (!m_view->DoSearch())
 	{
-		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, m_view->m_fo.pattern);	
+		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 	}
     else {
       SaveString();
@@ -3412,7 +3412,7 @@ public:
       m_selvalid=false;
     } else
 	{
-		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, m_view->m_fo.pattern);
+		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 	}
   }
 };
@@ -3446,7 +3446,7 @@ LRESULT CFBEView::OnReplace(WORD, WORD, HWND, BOOL&)
 LRESULT  CFBEView::OnFindNext(WORD, WORD, HWND, BOOL&) {
   if (!DoSearch())
   {
-	U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, m_fo.pattern);
+	U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_fo.pattern));
   }
   return 0;
 }
@@ -3665,9 +3665,9 @@ void CFBEView::OnNavigateError(IDispatch* pDisp, VARIANT* vtUrl, VARIANT* vtFram
   m_last_browser_event = L"NavigateError";
   StartupTrace::Warning(L"webbrowser", L"WB135", details);
 }
-void  CFBEView::OnBeforeNavigate(IDispatch *pDisp,VARIANT *vtUrl,VARIANT *vtFlags,
-				 VARIANT *vtTargetFrame,VARIANT *vtPostData,
-				 VARIANT *vtHeaders,VARIANT_BOOL *fCancel)
+void  CFBEView::OnBeforeNavigate(IDispatch */* unused: pDisp */,VARIANT *vtUrl,VARIANT */* unused: vtFlags */,
+				 VARIANT */* unused: vtTargetFrame */,VARIANT */* unused: vtPostData */,
+				 VARIANT */* unused: vtHeaders */,VARIANT_BOOL *fCancel)
 {
   m_last_browser_event=L"BeforeNavigate";
   if (!m_initialized)
@@ -3689,7 +3689,7 @@ void  CFBEView::OnBeforeNavigate(IDispatch *pDisp,VARIANT *vtUrl,VARIANT *vtFlag
 }
 
 // HTMLDocumentEvents
-void  CFBEView::OnSelChange(IDispatch *evt) {
+void  CFBEView::OnSelChange(IDispatch */* unused: evt */) {
   if (!m_ignore_changes)
     ::SendMessage(m_frame,WM_COMMAND,MAKELONG(0,IDN_SEL_CHANGE),(LPARAM)m_hWnd);
   if (m_cur_sel)
@@ -4042,8 +4042,8 @@ bool CFBEView::MoveTableCell(bool reverse)
 			BeginUndoUnit(L"insert table row below");
 			MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", CreateTableRowLike(Document(), row));
 			EndUndoUnit();
-			::SendMessage(m_frame, WM_COMMAND, MAKELONG(0, IDN_SEL_CHANGE), reinterpret_cast<LPARAM>(m_hWnd));
-			::SendMessage(m_frame, WM_COMMAND, MAKELONG(0, IDN_TREE_RESTORE), 0);
+			::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_SEL_CHANGE)), reinterpret_cast<LPARAM>(m_hWnd));
+			::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_TREE_RESTORE)), 0);
 			GetTableCells(table, cells);
 		}
 
@@ -4195,7 +4195,7 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf) {
 		{
 			if (fBarf)
 			{
-				U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, m_fo.pattern);
+				U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_fo.pattern));
 			}
 			return false;
 		}
@@ -4424,7 +4424,7 @@ bool CFBEView::GoToReference(bool fCheck)
 	return false;
 }
 
-LRESULT CFBEView::OnEditInsertTable(WORD wNotifyCode, WORD wID, HWND hWndCtl)
+LRESULT CFBEView::OnEditInsertTable(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
 {
 	CTableDlg dlg;
 	if(dlg.DoModal()==IDOK) {
@@ -4438,8 +4438,8 @@ LRESULT CFBEView::OnEditInsertTable(WORD wNotifyCode, WORD wID, HWND hWndCtl)
 
 static void NotifyTableStructureChanged(HWND frame, HWND view)
 {
-	::SendMessage(frame, WM_COMMAND, MAKELONG(0, IDN_SEL_CHANGE), reinterpret_cast<LPARAM>(view));
-	::SendMessage(frame, WM_COMMAND, MAKELONG(0, IDN_TREE_RESTORE), 0);
+	::SendMessage(frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_SEL_CHANGE)), reinterpret_cast<LPARAM>(view));
+	::SendMessage(frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_TREE_RESTORE)), 0);
 }
 
 LRESULT CFBEView::OnTableInsertRowAbove(WORD, WORD, HWND, BOOL&)
@@ -4854,7 +4854,6 @@ long CFBEView::InsertCode()
 				while(U::scmp(elEnd->tagName, L"P")) elEnd = elEnd->parentElement;
 
 				MSHTML::IHTMLDOMNodePtr bNode = elBegin, eNode = elEnd;
-				int last = 0;
 				while(bNode)
 				{
 					CString elBeginHTML = elBegin->innerHTML;
@@ -5115,7 +5114,7 @@ MSHTML::IHTMLTxtRangePtr CFBEView::SetSelection(MSHTML::IHTMLElementPtr begin, M
 	if(begin == end)
 	{
 		rng_begin->moveEnd(L"character", end_pos - begin_pos);
-		HRESULT hr = rng_begin->select();		
+		rng_begin->select();
 		
 		return rng_begin;
 	}
@@ -5286,7 +5285,7 @@ bool CFBEView::ExpandTxtRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& rng,
 	return true;
 }
 
-LRESULT CFBEView::OnCode(WORD wCode, WORD wID, HWND hWnd, BOOL& bHandled)
+LRESULT CFBEView::OnCode(WORD /* unused: wCode */, WORD /* unused: wID */, HWND /* unused: hWnd */, BOOL& /* unused: bHandled */)
 {
 	return InsertCode();
 }

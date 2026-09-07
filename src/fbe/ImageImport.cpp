@@ -90,7 +90,7 @@ HRESULT SaveBitmap(Gdiplus::Image& image, bool png, int quality, std::vector<BYT
 	Gdiplus::EncoderParameters ep = {}; ep.Count=1; ULONG q=(ULONG)max(0,min(100,quality)); ep.Parameter[0].Guid=Gdiplus::EncoderQuality; ep.Parameter[0].Type=Gdiplus::EncoderParameterValueTypeLong; ep.Parameter[0].NumberOfValues=1; ep.Parameter[0].Value=&q;
 	if (flattenWhite) {
 		Gdiplus::Bitmap flattened(image.GetWidth(), image.GetHeight(), PixelFormat24bppRGB);
-		Gdiplus::Graphics graphics(&flattened); graphics.Clear(Gdiplus::Color::White);
+		Gdiplus::Graphics graphics(&flattened); graphics.Clear(static_cast<Gdiplus::ARGB>(Gdiplus::Color::White));
 		if (graphics.DrawImage(&image, 0, 0, image.GetWidth(), image.GetHeight()) != Gdiplus::Ok || flattened.Save(stream, &clsid, &ep) != Gdiplus::Ok) return E_FAIL;
 	} else if(image.Save(stream, &clsid, png ? NULL : &ep) != Gdiplus::Ok) return E_FAIL;
 	HGLOBAL h=NULL; if(FAILED(GetHGlobalFromStream(stream,&h))) return E_FAIL; SIZE_T n=GlobalSize(h); void* p=GlobalLock(h); if(!p || !n || n>ULONG_MAX) { if(p) GlobalUnlock(h); return E_FAIL; } if (n > kMaxOutputBytes) { GlobalUnlock(h); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); } out.assign((BYTE*)p,(BYTE*)p+n); GlobalUnlock(h); return S_OK;

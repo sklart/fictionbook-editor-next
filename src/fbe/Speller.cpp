@@ -19,7 +19,7 @@ static void SetRuntimeSpellText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR
 const CString Tokens(L" .,?�!��\r\n\t\"������:;<>(){}[]\u00A0\u2003\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u2060\u3000\u2012\u2013\u2014\u00BA\u25A1\u25AB\u25E6\u201e\u201c");
 
 // spell check dialog initialisation
-LRESULT CSpellDialog::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CSpellDialog::OnInitDialog(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SPELL_CHECK);
 	m_BadWord = GetDlgItem(IDC_SPELL_BEDWORD);
@@ -88,7 +88,7 @@ LRESULT CSpellDialog::UpdateData()
 	return 1;
 }
 
-LRESULT CSpellDialog::OnSelChange(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSpellDialog::OnSelChange(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	CString strText;
 	if (m_Suggestions.GetText(m_Suggestions.GetCurSel(),strText))
@@ -97,7 +97,7 @@ LRESULT CSpellDialog::OnSelChange(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
 }
 
 // change text to suggested word on doubleclick
-LRESULT CSpellDialog::OnSelDblClick(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSpellDialog::OnSelDblClick(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& bHandled)
 {
 	CString strText;
 	if (m_Suggestions.GetText(m_Suggestions.GetCurSel(),strText))
@@ -108,20 +108,20 @@ LRESULT CSpellDialog::OnSelDblClick(WORD wNotifyCode, WORD wID, HWND hWndCtl, BO
 	return 0;
 }
 
-LRESULT CSpellDialog::OnEditChange(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CSpellDialog::OnEditChange(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	m_Replacement.GetWindowText(m_sReplacement);
 	return 0;
 }
 
-LRESULT CSpellDialog::OnCancel(WORD, WORD wID, HWND, BOOL&) 
+LRESULT CSpellDialog::OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&)
 { 
 	ATLASSERT(m_Speller!=NULL);
 	m_Speller->EndDocumentCheck();
 	return 0;
 }
 
-LRESULT CSpellDialog::OnIgnore(WORD, WORD wID, HWND, BOOL&)
+LRESULT CSpellDialog::OnIgnore(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	ATLASSERT(m_Speller!=NULL);
 	if (m_WasSuspended)
@@ -147,7 +147,7 @@ LRESULT CSpellDialog::OnIgnore(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CSpellDialog::OnIgnoreAll(WORD, WORD wID, HWND, BOOL&)
+LRESULT CSpellDialog::OnIgnoreAll(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	ATLASSERT(m_Speller!=NULL);
 	m_Speller->IgnoreAll(m_sBadWord);
@@ -155,7 +155,7 @@ LRESULT CSpellDialog::OnIgnoreAll(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CSpellDialog::OnChange(WORD, WORD wID, HWND, BOOL&)
+LRESULT CSpellDialog::OnChange(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	ATLASSERT(m_Speller!=NULL);
 	m_Speller->BeginUndoUnit(L"replace word");
@@ -165,7 +165,7 @@ LRESULT CSpellDialog::OnChange(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CSpellDialog::OnChangeAll(WORD, WORD wID, HWND, BOOL&)
+LRESULT CSpellDialog::OnChangeAll(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	ATLASSERT(m_Speller!=NULL);
 	m_Speller->AddReplacement(m_sBadWord,m_sReplacement);
@@ -176,7 +176,7 @@ LRESULT CSpellDialog::OnChangeAll(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CSpellDialog::OnAdd(WORD, WORD wID, HWND, BOOL&)
+LRESULT CSpellDialog::OnAdd(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	ATLASSERT(m_Speller!=NULL);
 	m_Speller->AddToDictionary(m_sBadWord);
@@ -184,7 +184,7 @@ LRESULT CSpellDialog::OnAdd(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CSpellDialog::OnUndo(WORD, WORD wID, HWND, BOOL&)
+LRESULT CSpellDialog::OnUndo(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	ATLASSERT(m_Speller!=NULL);
 	m_Speller->Undo();

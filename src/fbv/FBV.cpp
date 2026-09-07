@@ -177,6 +177,7 @@ void CMainDlg::DoEvents()
 void CMainDlg::AddFileInfo(const wchar_t *filename,DWORD attr,FILETIME ft,
 			  DWORD szLow,DWORD szHigh)
 {
+	(void)attr; // FindFirstFile attribute is not displayed in this view.
   if (m_listItems>=m_listMax) {
     int	  nsize=m_listMax ? m_listMax<<1 : 128;
     void  *nmem=::realloc(m_fileList, nsize*sizeof(m_fileList[0]));
@@ -357,7 +358,12 @@ void CMainDlg::ClearErrorMessage(FileInfo* fi)
 bool CMainDlg::GetSchemaFile()
 {
 	TCHAR szExePath[MAX_PATH] = { 0 };
-	DWORD nCount = ::GetModuleFileName(nullptr, szExePath, MAX_PATH);
+	const DWORD pathLength = ::GetModuleFileName(nullptr, szExePath, _countof(szExePath));
+	if (pathLength == 0 || pathLength >= _countof(szExePath))
+	{
+		AtlTaskDialog(::GetActiveWindow(), IDS_ERROR, IDS_CANNOT_LOAD_SCHEMA, (LPCTSTR)NULL, TDCBF_OK_BUTTON, TD_ERROR_ICON);
+		return false;
+	}
 	m_pathSchema.m_strPath = szExePath;
 	m_pathSchema.RemoveFileSpec();
 	m_pathSchema.Append(_T("FictionBook.xsd"));
@@ -375,6 +381,9 @@ bool CMainDlg::GetSchemaFile()
 int WINAPI _tWinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,
 		      LPTSTR lpCmdLine,int nCmdShow)
 {
+	(void)hPrevInstance;
+	(void)lpCmdLine;
+	(void)nCmdShow;
   HRESULT hRes = ::CoInitialize(NULL);
   ATLASSERT(SUCCEEDED(hRes));
 
@@ -546,6 +555,7 @@ public:
   BSTR	    m_error_msg;
 
   void	  SetMsg(ISAXLocator *loc, const wchar_t *msg,HRESULT hr) {
+	(void)hr; // MSXML supplies an HRESULT separately from the formatted message.
     if (m_error_msg)
       return;
 
@@ -691,6 +701,10 @@ void CMainDlg::ValidateFiles() {
 
 LRESULT CMainDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
+	(void)uMsg;
+	(void)wParam;
+	(void)lParam;
+	(void)bHandled;
 	if (!GetSchemaFile())
 		EndDialog(FALSE);
 

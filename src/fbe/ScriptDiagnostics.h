@@ -68,7 +68,7 @@ inline CString SourceContext(ULONG line, LONG column)
 	for (int i = 0; i < max(0, min(static_cast<int>(column), text.GetLength())); ++i)
 		marker += text[i] == L'\t' ? L"    " : L" ";
 	CString result;
-	result.Format(L"%d: %s\r\n    %s^", line + 1, text, marker);
+	result.Format(L"%d: %s\r\n    %s^", line + 1, static_cast<LPCWSTR>(text), static_cast<LPCWSTR>(marker));
 	return result;
 }
 
@@ -127,7 +127,7 @@ inline void ShowLoad(HWND owner, const CString& path, const CString& message, HR
 	TraceMetadata(L"load", path, 0, 0, code, !message.IsEmpty());
 	CString details;
 	details.Format(FbeLoadCString(IDS_SCRIPT_LOAD_DIAGNOSTIC_MSG),
-		FileName(path), path, message, static_cast<unsigned long>(code));
+		static_cast<LPCWSTR>(FileName(path)), static_cast<LPCWSTR>(path), static_cast<LPCWSTR>(message), static_cast<unsigned long>(code));
 	ShowDetails(owner, details);
 }
 
@@ -139,8 +139,8 @@ inline void Show(HWND owner, const EXCEPINFO& exception, ULONG line, LONG column
 	CString format = FbeLoadCString(IsLoading() ? IDS_SCRIPT_PARSE_DIAGNOSTIC_MSG : IDS_SCRIPT_RUNTIME_DIAGNOSTIC_MSG);
 	CString description = exception.bstrDescription != NULL ? CString(exception.bstrDescription) : FbeLoadCString(IDS_SCRIPT_MSG);
 	CString details;
-	details.Format(format, FileName(ScriptPath()), ScriptPath(), line + 1, column + 1,
-		SourceContext(line, column), description, static_cast<unsigned long>(exception.scode));
+	details.Format(static_cast<LPCWSTR>(format), static_cast<LPCWSTR>(FileName(ScriptPath())), static_cast<LPCWSTR>(ScriptPath()), line + 1, column + 1,
+		static_cast<LPCWSTR>(SourceContext(line, column)), static_cast<LPCWSTR>(description), static_cast<unsigned long>(exception.scode));
 	ShowDetails(owner, details);
 }
 

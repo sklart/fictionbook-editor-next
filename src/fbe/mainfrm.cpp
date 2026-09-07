@@ -1420,7 +1420,7 @@ bool	CMainFrame::DiscardChanges() {
 
   if (DocChanged())
   {
-    switch (U::MessageBox(MB_YESNOCANCEL|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SAVE_DLG_MSG, m_doc->m_filename))
+    switch (U::MessageBox(MB_YESNOCANCEL|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SAVE_DLG_MSG, static_cast<LPCWSTR>(m_doc->m_filename)))
     {
     case IDYES:
 		{
@@ -1467,7 +1467,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     const DWORD attributes = ::GetFileAttributes(m_doc->m_filename);
     if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY)) {
       if (U::MessageBox(MB_YESNO | MB_ICONEXCLAMATION | MB_DEFBUTTON1,
-            IDR_MAINFRAME, IDS_READONLY_SAVE_MSG, m_doc->m_filename) == IDYES)
+            IDR_MAINFRAME, IDS_READONLY_SAVE_MSG, static_cast<LPCWSTR>(m_doc->m_filename)) == IDYES)
         return SaveFile(true);
       return CANCELLED;
     }
@@ -1510,7 +1510,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	const HRESULT saveError = m_doc->GetLastSaveError();
 	const bool accessDenied = saveError == E_ACCESSDENIED || HRESULT_CODE(saveError) == ERROR_ACCESS_DENIED;
 	if (accessDenied && U::MessageBox(MB_YESNO | MB_ICONEXCLAMATION | MB_DEFBUTTON1,
-		IDR_MAINFRAME, IDS_SAVE_ACCESS_DENIED_MSG, m_doc->m_filename) == IDYES)
+		IDR_MAINFRAME, IDS_SAVE_ACCESS_DENIED_MSG, static_cast<LPCWSTR>(m_doc->m_filename)) == IDYES)
 		return SaveFile(true);
 	return FAIL;
   }
@@ -1878,7 +1878,7 @@ BOOL CMainFrame::OnIdle()
 				_variant_t    href;
 
 				if(an)
-					href.Attach(an->getAttribute(L"href", 2));
+					href = an->getAttribute(L"href", 2);
 
 				if((bool)an && V_VT(&href)==VT_BSTR)
 				{
@@ -2478,7 +2478,7 @@ void CMainFrame::SavePortableToolbarLayout()
 				for(int scriptIndex = 0; scriptIndex < m_scripts.GetSize(); ++scriptIndex)
 					if(!m_scripts[scriptIndex].isFolder && m_scripts[scriptIndex].wID == scriptId)
 					{
-						xml.AppendFormat(L"    <Script path=\"%s\" />\r\n", XmlEscape(m_scripts[scriptIndex].relativePath));
+						xml.AppendFormat(L"    <Script path=\"%s\" />\r\n", static_cast<LPCWSTR>(XmlEscape(m_scripts[scriptIndex].relativePath)));
 						break;
 					}
 			}
@@ -2490,7 +2490,7 @@ void CMainFrame::SavePortableToolbarLayout()
 	appendToolbar(L"Command", m_CmdToolbar, false);
 	appendToolbar(L"Scripts", m_ScriptsToolbar, true);
 	if(m_last_script != NULL && !m_last_script->relativePath.IsEmpty())
-		xml.AppendFormat(L"  <LastScript path=\"%s\" />\r\n", XmlEscape(m_last_script->relativePath));
+		xml.AppendFormat(L"  <LastScript path=\"%s\" />\r\n", static_cast<LPCWSTR>(XmlEscape(m_last_script->relativePath)));
 	xml.Append(L"</Toolbars>\r\n");
 	WritePortableToolbarsText(xml);
 }
@@ -2961,13 +2961,13 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		m_doc=new FB::Doc(*this);
 		FB::Doc::m_active_doc = m_doc;
 		m_doc->CreateBlank(m_view);
-		m_file_age = ~0;
+		m_file_age = static_cast<unsigned __int64>(-1);
 		m_bad_xml = true;
 	}
   } else 
   {
 	m_doc->CreateBlank(m_view);
-	m_file_age = ~0;
+	m_file_age = static_cast<unsigned __int64>(-1);
   }
 
   StartupTrace::Event(L"mainframe", L"M130", L"document content created");
@@ -3163,7 +3163,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   return 0;
 }
 
-LRESULT CMainFrame::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
 	if(m_source_window_proc != NULL && ::IsWindow(m_source))
 	{
@@ -4790,7 +4790,6 @@ void CMainFrame::RefreshLocalizedToolbarCaptions()
 	rebuildCaptionToolbar(m_table_id_caption.GetParent(), tableToolbar, _countof(tableToolbar));
 	rebuildCaptionToolbar(m_colspan_caption.GetParent(), tableToolbar2, _countof(tableToolbar2));
 
-	wchar_t buf[MAX_LOAD_STRING + 1] = {};
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_INS, strINS, MAX_LOAD_STRING);
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_OVR, strOVR, MAX_LOAD_STRING);
 
@@ -4955,7 +4954,7 @@ public:
   virtual void DoFind() {
     if (!m_view->SciFindNext(m_source,false,false))
 	{
-		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, m_view->m_fo.pattern);	
+		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 	}
     else {
       SaveString();
@@ -5070,7 +5069,7 @@ public:
       m_selvalid=false;
     } else
 	{
-		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, m_view->m_fo.pattern);	
+		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 	}
   }
 };
@@ -5086,7 +5085,7 @@ CMainFrame::~CMainFrame()
 	delete m_sci_find_dlg;
 }
 
-LRESULT CMainFrame::OnUnhandledCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CMainFrame::OnUnhandledCommand(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam, BOOL& /* unused: bHandled */)
 {
 	HWND hFocus = ::GetFocus();
 	UINT idCtl = HIWORD(wParam);
@@ -5195,7 +5194,7 @@ LRESULT CMainFrame::OnUnhandledCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 	return 0;
 }
 
-LRESULT CMainFrame::OnDropFiles(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CMainFrame::OnDropFiles(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
   HDROP	  hDrop=(HDROP)wParam;
   UINT	  nf=::DragQueryFile(hDrop,0xFFFFFFFF,NULL,0);
@@ -5253,7 +5252,7 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   FB::Doc *doc=new FB::Doc(*this);
   FB::Doc::m_active_doc = doc;
   doc->CreateBlank(m_view);
-  m_file_age = ~0;
+  m_file_age = static_cast<unsigned __int64>(-1);
   AttachDocument(doc);
   delete m_doc;
   m_doc=doc;
@@ -5262,7 +5261,7 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   return 0;
 }
 
-LRESULT CMainFrame::OnFileOpen(WORD, WORD, HWND, BOOL& bHandled)
+LRESULT CMainFrame::OnFileOpen(WORD, WORD, HWND, BOOL& /* unused: bHandled */)
 {
   if (LoadFile()==OK)
   {
@@ -5276,7 +5275,7 @@ LRESULT CMainFrame::OnFileOpen(WORD, WORD, HWND, BOOL& bHandled)
   return 0;
 }
 
-LRESULT CMainFrame::OnFileOpenMRU(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	CString filename;
 	m_mru.GetFromList(wID, filename);
@@ -5548,7 +5547,7 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CMainFrame::OnLastPlugin(WORD, WORD wID, HWND, BOOL&)
+LRESULT CMainFrame::OnLastPlugin(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	if(m_last_plugin)
 		::SendMessage(m_hWnd, WM_COMMAND, m_last_plugin, NULL);
@@ -5797,7 +5796,7 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CMainFrame::OnToolsScript(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CMainFrame::OnToolsScript(WORD /* unused: wNotifyCode */, WORD wID, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	wID -= ID_SCRIPT_BASE;
 
@@ -5869,7 +5868,7 @@ LRESULT CMainFrame::OnToolsScript(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL
   return 0;
 }
 
-LRESULT CMainFrame::OnEditInsSymbol(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CMainFrame::OnEditInsSymbol(WORD /* unused: wNotifyCode */, WORD wID, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	static int symHkGroup = -1;
 	if(symHkGroup == -1)
@@ -5897,7 +5896,6 @@ LRESULT CMainFrame::OnEditInsSymbol(WORD wNotifyCode, WORD wID, HWND hWndCtl, BO
 
 	if(c)
 	{
-		HWND aw = ::GetFocus();
 		::SendMessage(::GetFocus(), WM_CHAR, c, NULL);
 
 		/*IServiceProviderPtr ServiceProvider;
@@ -5929,7 +5927,7 @@ LRESULT CMainFrame::OnAppAbout(WORD, WORD, HWND, BOOL&)
 }
 
 // Navigation
-LRESULT CMainFrame::OnSelectCtl(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CMainFrame::OnSelectCtl(WORD /* unused: wNotifyCode */, WORD wID, HWND /* unused: hWndCtl */, BOOL& bHandled)
 {
 	switch(wID)
 	{
@@ -6010,14 +6008,14 @@ LRESULT CMainFrame::OnSelectCtl(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& 
 	return 0;
 }
 
-LRESULT CMainFrame::OnNextItem(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CMainFrame::OnNextItem(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
   ShowView(NEXT);
   return 1;
 }
 
 // editor notifications
-LRESULT CMainFrame::OnCbEdChange(WORD code, WORD wID, HWND hWndCtl, BOOL& bHandled)
+LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
   if (m_ignore_cb_changes)
     return 0;
@@ -6227,7 +6225,7 @@ LRESULT CMainFrame::OnTreeUpdate(WORD, WORD, HWND, BOOL&)
   return 0;
 }
 
-LRESULT CMainFrame::OnTreeRestore(WORD, WORD, HWND, BOOL& b)
+LRESULT CMainFrame::OnTreeRestore(WORD, WORD, HWND, BOOL& /* unused: b */)
 {
   m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
   return 0;
@@ -6321,9 +6319,9 @@ LRESULT CMainFrame::OnTreeMoveElementOne(WORD, WORD, HWND, BOOL&)
 	GetDocumentStructure();
 	if((bool)ret_node)
 	{
-		MSHTML::IHTMLElementPtr elem(ret_node);
-		m_document_tree.m_tree.m_tree.SelectElement(elem);
-		GoTo(elem);
+		MSHTML::IHTMLElementPtr movedElement(ret_node);
+		m_document_tree.m_tree.m_tree.SelectElement(movedElement);
+		GoTo(movedElement);
 	}
 
 	m_doc->m_body.EndUndoUnit();
@@ -6355,9 +6353,9 @@ LRESULT CMainFrame::OnTreeMoveLeftElement(WORD, WORD, HWND, BOOL&)
 	GetDocumentStructure();
 	if((bool)ret_node)
 	{
-		MSHTML::IHTMLElementPtr elem(ret_node);
-		m_document_tree.m_tree.m_tree.SelectElement(elem);
-		GoTo(elem);
+		MSHTML::IHTMLElementPtr movedElement(ret_node);
+		m_document_tree.m_tree.m_tree.SelectElement(movedElement);
+		GoTo(movedElement);
 	}
 
 	m_doc->m_body.EndUndoUnit();
@@ -6536,7 +6534,7 @@ LRESULT CMainFrame::OnTreeMerge(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CMainFrame::OnTreeClick(WORD, WORD, HWND hWndCtl, BOOL&)
+LRESULT CMainFrame::OnTreeClick(WORD, WORD, HWND /* unused: hWndCtl */, BOOL&)
 {
   GoToSelectedTreeItem();
   return 0;
@@ -7173,11 +7171,11 @@ bool  CMainFrame::SourceToHTML()
 	if(changed)
 	{
 		// ?????????? ? HTML
-		CComDispatchDriver	body(m_doc->m_body.Script());
+		CComDispatchDriver scriptDispatch(m_doc->m_body.Script());
 		CComVariant		    args[2];
 		args[1] = m_saved_xml.GetInterfacePtr();
 		args[0] = _Settings.GetInterfaceLanguageName();
-		CheckError(body.InvokeN(L"LoadFromDOM", args, 2));
+		CheckError(scriptDispatch.InvokeN(L"LoadFromDOM", args, 2));
 		m_doc->m_body.Init();
 		// ? ??? ?????????? ????? HTML ? ????????? ?? ????????? ??????? ?????? ?????????.
 		ClearSelection();
@@ -7704,7 +7702,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 				m_doc->m_filename = m_bad_filename;
 				if (m_bad_filename.CompareNoCase(L"Untitled.fb2") == 0)
 				{
-					m_file_age = ~0;
+					m_file_age = static_cast<unsigned __int64>(-1);
 					m_doc->m_namevalid = false;
 				}
 				else
@@ -8622,7 +8620,7 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::GetLastChildSection(MSHTML::IHTMLDOMNodePtr 
 	return GetPrevSiblingSection(child);	
 }
 
-LRESULT CMainFrame::OnSciCollapse(WORD cose, WORD wID, HWND, BOOL&)
+LRESULT CMainFrame::OnSciCollapse(WORD /* unused: cose */, WORD wID, HWND, BOOL&)
 {
 	if(m_current_view == SOURCE)
 		SciCollapse(wID - ID_SCI_COLLAPSE_BASE, false);
@@ -8633,7 +8631,7 @@ LRESULT CMainFrame::OnSciCollapse(WORD cose, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CMainFrame::OnSciExpand(WORD cose, WORD wID, HWND, BOOL&)
+LRESULT CMainFrame::OnSciExpand(WORD /* unused: cose */, WORD wID, HWND, BOOL&)
 {
 	if(m_current_view == SOURCE)
 		SciCollapse(wID - ID_SCI_EXPAND_BASE, true);
@@ -8816,7 +8814,7 @@ unsigned __int64 CMainFrame::FileAge(LPCTSTR FileName)
 	{
 		return *((unsigned __int64*)&data.ftLastWriteTime);
 	}	
-	return ~0;
+	return static_cast<unsigned __int64>(-1);
 }
 
 bool CMainFrame::CheckFileTimeStamp()
@@ -8824,7 +8822,7 @@ bool CMainFrame::CheckFileTimeStamp()
 	if(m_file_age == FileAge(m_doc->m_filename))
 		return false;
 	
-	if(IDYES == U::MessageBox(MB_YESNO, IDS_FILE_CHANGED_CPT, IDS_FILE_CHANGED_MSG, m_doc->m_filename))
+	if(IDYES == U::MessageBox(MB_YESNO, IDS_FILE_CHANGED_CPT, IDS_FILE_CHANGED_MSG, static_cast<LPCWSTR>(m_doc->m_filename)))
 	{
 		return ReloadFile();			
 	}
@@ -9037,8 +9035,8 @@ void CMainFrame::RestartProgram()
 		const CString filename = U::GetModulePath(_Module.GetModuleInstance());
 		CString ofn = m_doc->GetOpenFileName();
 //		if(wcschr(filename, L' '))
-		ofn.Format(L"\"%s\"", m_doc->GetOpenFileName());
-		HINSTANCE hInst = ShellExecute(0, L"open", filename, ofn, 0, SW_SHOW);
+		ofn.Format(L"\"%s\"", static_cast<LPCWSTR>(m_doc->GetOpenFileName()));
+		ShellExecute(0, L"open", filename, ofn, 0, SW_SHOW);
 	}
 }
 
@@ -9412,6 +9410,9 @@ void CMainFrame::SortScripts()
 
 void CMainFrame::InitScriptHotkey(CMainFrame::ScrInfo& script)
 {
+	if(script.wID < 1 || script.wID > SCRIPT_COMMAND_COUNT)
+		return;
+	const int commandId = ID_SCRIPT_BASE + script.wID;
 	std::vector<CHotkeysGroup>& hotkey_groups = _Settings.m_hotkey_groups;
 	for(unsigned int i = 0; i < hotkey_groups.size(); ++i)
 	{
@@ -9422,7 +9423,7 @@ void CMainFrame::InitScriptHotkey(CMainFrame::ScrInfo& script)
 			CHotkey ScriptsHotkey(script.relativePath,
 				script.name,
 				NULL,
-				ID_SCRIPT_BASE + script.wID,
+				static_cast<WORD>(commandId),
 				NULL,
 				script.relativePath);
 			hotkey_groups.at(i).m_hotkeys.push_back(ScriptsHotkey);
@@ -9432,6 +9433,8 @@ void CMainFrame::InitScriptHotkey(CMainFrame::ScrInfo& script)
 
 void CMainFrame::InitPluginHotkey(CString guid, UINT cmd, CString name)
 {
+	if(cmd > 0xffffu)
+		return;
 	std::vector<CHotkeysGroup>& hotkey_groups = _Settings.m_hotkey_groups;
 	for(unsigned int i = 0; i < hotkey_groups.size(); ++i)
 	{
@@ -9440,7 +9443,7 @@ void CMainFrame::InitPluginHotkey(CString guid, UINT cmd, CString name)
 			CHotkey PluginsHotkey(guid,
 				name,
 				NULL,
-				cmd,
+				static_cast<WORD>(cmd),
 				NULL);
 			hotkey_groups.at(i).m_hotkeys.push_back(PluginsHotkey);
 		}

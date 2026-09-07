@@ -3753,7 +3753,7 @@ HRESULT CExportDOCXPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		if (!zip.Open(outputPath)) {
             const DWORD error = ::GetLastError();
             CString msg;
-			msg.Format(IDS_ERROR_OPEN_FILE, outputPath, static_cast<LPCTSTR>(U::Win32ErrMsg(error)));
+			msg.Format(IDS_ERROR_OPEN_FILE, static_cast<LPCTSTR>(outputPath), static_cast<LPCTSTR>(U::Win32ErrMsg(error)));
             if (!IsExportDocxHeadlessTest())
                 AtlTaskDialog(hwndParent, static_cast<UINT>(IDR_EXPORTDOCX), static_cast<LPCTSTR>(msg), static_cast<LPCTSTR>(NULL), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return error ? HRESULT_FROM_WIN32(error) : E_FAIL;

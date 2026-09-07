@@ -200,7 +200,9 @@ static bool PrintGenreCatalog()
 	const CString legacy = _Settings.GetGenreCatalogLegacyFileName();
 	const CString resolved = _Settings.ResolveGenreCatalogFileName();
 	CString json;
-	json.Format(L"{\"catalog\":\"%s\",\"primaryFile\":\"%s\",\"legacyFile\":\"%s\",\"resolvedFile\":\"%s\"}\r\n", catalog, primary, legacy, resolved);
+	json.Format(L"{\"catalog\":\"%s\",\"primaryFile\":\"%s\",\"legacyFile\":\"%s\",\"resolvedFile\":\"%s\"}\r\n",
+	static_cast<LPCWSTR>(catalog), static_cast<LPCWSTR>(primary),
+	static_cast<LPCWSTR>(legacy), static_cast<LPCWSTR>(resolved));
 	const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, json, -1, NULL, 0, NULL, NULL); std::vector<char> output(bytes);
 	::WideCharToMultiByte(CP_UTF8, 0, json, -1, &output[0], bytes, NULL, NULL); DWORD written = 0;
 	::WriteFile(::GetStdHandle(STD_OUTPUT_HANDLE), &output[0], bytes - 1, &written, NULL);
@@ -327,7 +329,7 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		FUNCDESC* functionDescription = NULL;
 		const HRESULT functionResult = FindFunctionDescription(externalHelper, memberId, &functionDescription);
 		bool signatureMatches = SUCCEEDED(functionResult) && functionDescription && functionDescription->invkind == INVOKE_FUNC &&
-			functionDescription->cParams == methods[index].parameterCount && functionDescription->elemdescFunc.tdesc.vt == methods[index].resultType;
+			static_cast<UINT>(functionDescription->cParams) == methods[index].parameterCount && functionDescription->elemdescFunc.tdesc.vt == methods[index].resultType;
 		if (signatureMatches)
 		{
 			for (UINT parameter = 0; parameter < methods[index].parameterCount; ++parameter)

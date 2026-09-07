@@ -1,4 +1,4 @@
-п»ї#include "stdafx.h"
+#include "stdafx.h"
 #include "Utils.h"
 #include "AboutBox.h"
 #include "RuntimeLocalization.h"
@@ -391,7 +391,7 @@ LRESULT CAboutDlg::OnCloseCmd(WORD, WORD wID, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CAboutDlg::OnCtlColor(UINT, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CAboutDlg::OnCtlColor(UINT, WPARAM wParam, LPARAM lParam, BOOL& /* unused: bHandled */)
 {
 	HWND hwndEdit = (HWND) lParam;
 	if (hwndEdit == GetDlgItem(IDC_CONTRIBS))
@@ -449,7 +449,7 @@ LRESULT CAboutDlg::OnWhatsNew(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CAboutDlg::OnUpdate(WORD, WORD wID, HWND, BOOL&)
+LRESULT CAboutDlg::OnUpdate(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	if (!m_UpdateURL.IsEmpty())
 	{
@@ -543,7 +543,7 @@ bool CAboutDlg::AcceptReceivedData (FCHttpDownload* pTask)
 	return true;
 }
 
-LRESULT CAboutDlg::OnUpdateProgressUI (UINT, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CAboutDlg::OnUpdateProgressUI (UINT, WPARAM wParam, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
     if (!m_monitor.get())
         return 0;
@@ -731,9 +731,9 @@ void CAboutDlg::OnAfterDownloadFinish (FCHttpDownload* pTask)
 
 				if ((!versionOk || !urlOk || !shaOk) && rootOk)
 				{
-					// update.xml вЂ” РјР°Р»РµРЅСЊРєРёР№ РєРѕРЅС‚СЂРѕР»РёСЂСѓРµРјС‹Р№ РјР°РЅРёС„РµСЃС‚ Р±РµР· РІР»РѕР¶РµРЅРЅС‹С…
-					// РѕРґРЅРѕРёРјС‘РЅРЅС‹С… С‚РµРіРѕРІ. Fallback РЅСѓР¶РµРЅ, С‡С‚РѕР±С‹ РїСЂРѕРІРµСЂРєР° РѕР±РЅРѕРІР»РµРЅРёР№ РЅРµ
-					// Р·Р°РІРёСЃРµР»Р° РѕС‚ РѕСЃРѕР±РµРЅРЅРѕСЃС‚РµР№ MSXML DOM/XPath РЅР° РєРѕРЅРєСЂРµС‚РЅРѕР№ СЃРёСЃС‚РµРјРµ.
+					// update.xml — маленький контролируемый манифест без вложенных
+					// одноимённых тегов. Fallback нужен, чтобы проверка обновлений не
+					// зависела от особенностей MSXML DOM/XPath на конкретной системе.
 					versionOk = GetSimpleXmlTagText(manifestText, L"Version", availableVersion);
 					urlOk = GetSimpleXmlTagText(manifestText, L"DownloadUrl", updateURL);
 					shaOk = GetSimpleXmlTagText(manifestText, L"SHA256", updateSHA256);
@@ -1083,7 +1083,7 @@ bool CAboutDlg::SaveVerifiedUpdate(const std::string& data, CString& filename)
 void CAboutDlg::RunUpdate(const CString& filename)
 {
 	if (U::MessageBox(MB_YESNO | MB_ICONEXCLAMATION, IDR_MAINFRAME,
-		IDS_UPDATE_CLOSE, filename) != IDYES)
+		IDS_UPDATE_CLOSE, static_cast<LPCWSTR>(filename)) != IDYES)
 	{
 		::DeleteFile(filename);
 		return;

@@ -32,7 +32,7 @@ public:
 		return TRUE;
 	}
 
-	LRESULT OnPaint(UINT, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+	LRESULT OnPaint(UINT, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 	{
 		RECT rect;
 		GetClientRect(&rect);

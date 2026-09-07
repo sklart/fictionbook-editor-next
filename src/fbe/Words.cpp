@@ -421,7 +421,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnListDispInfo(int id, NMHDR *hdr, BOOL&)
+	LRESULT OnListDispInfo(int /* unused: id */, NMHDR *hdr, BOOL&)
 	{
 		NMLVDISPINFO *ni = (NMLVDISPINFO*)hdr;
 
@@ -468,7 +468,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnListSort(int id, NMHDR *hdr, BOOL&)
+	LRESULT OnListSort(int /* unused: id */, NMHDR *hdr, BOOL&)
 	{
 		NMLISTVIEW *lv = (NMLISTVIEW*)hdr;
 
@@ -484,7 +484,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnListChanged(int id, NMHDR* hdr, BOOL&)
+	LRESULT OnListChanged(int /* unused: id */, NMHDR* hdr, BOOL&)
 	{
 		m_ct = ::GetTickCount();
 
@@ -506,7 +506,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnODStateChanged(int id, NMHDR* hdr, BOOL&)
+	LRESULT OnODStateChanged(int /* unused: id */, NMHDR* hdr, BOOL&)
 	{
 		if(!m_words.GetSize())
 		{
@@ -614,10 +614,10 @@ public:
 				{
 					if(word.CompareNoCase(pwc->word) == 0)
 					{
-						WordsItem checker(word.MakeLower(), pwc->count + pwc->count);
+						WordsItem combinedChecker(word.MakeLower(), pwc->count + pwc->count);
 						pwc->flags |= WARN;
-						if(std::find(_Settings.m_words.begin(), _Settings.m_words.end(), checker) == _Settings.m_words.end())
-							_Settings.m_words.push_back(checker);
+						if(std::find(_Settings.m_words.begin(), _Settings.m_words.end(), combinedChecker) == _Settings.m_words.end())
+							_Settings.m_words.push_back(combinedChecker);
 						idxs2.Add(j);
 					}
 				}
@@ -635,11 +635,8 @@ public:
 			}
 
 			qsort(idxs.GetData(), idxs.GetSize(), sizeof(int), compare_indexes);
-
-			int count = m_words.GetSize();
 			for(int i = idxs.GetSize() - 1; i >= 0 ; --i)
 			{
-				int idx = idxs[i];
 				FB::Doc::Word* wi = &m_words[idxs[i]];
 				wi->flags &= ~HASREPL;
 
@@ -652,7 +649,7 @@ public:
 	}
 
 
-	LRESULT OnListClick(int id, NMHDR* hdr, BOOL&)
+	LRESULT OnListClick(int /* unused: id */, NMHDR* hdr, BOOL&)
 	{
 		NMITEMACTIVATE* ai =( NMITEMACTIVATE*)hdr;
 
@@ -714,7 +711,7 @@ public:
 		return 0;
 	}
 
-	LRESULT OnCustomDraw(int id, NMHDR* hdr, BOOL&)
+	LRESULT OnCustomDraw(int /* unused: id */, NMHDR* hdr, BOOL&)
 	{
 		NMCUSTOMDRAW* cd = (NMCUSTOMDRAW*)hdr;
 
@@ -995,7 +992,7 @@ public:
 		return TRUE;
 	}
 
-	LRESULT OnSize(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
+	LRESULT OnSize(UINT, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL&)
 	{
 		RECT newRect, newClientRect;
 		GetWindowRect(&newRect);
@@ -1033,8 +1030,8 @@ public:
 		int hyp = word.Find(L'-');
 		CString re;
 		re.Format(	pattern,
-			word.Left(hyp),
-			word.Right(word.GetLength() - hyp - 1));
+			static_cast<LPCWSTR>(word.Left(hyp)),
+			static_cast<LPCWSTR>(word.Right(word.GetLength() - hyp - 1)));
 
 		int res = m_doc.m_body.ReplaceToolWordsRe(
 										re,
@@ -1185,8 +1182,8 @@ bool ShowWordsDialog(FB::Doc& document, HWND parent)
 		int hyp = hwords[i].word.Find(L'-');
 		CString re;
 		re.Format(	pattern,
-					hwords[i].word.Left(hyp),
-					hwords[i].word.Right(hwords[i].word.GetLength() - hyp - 1));
+					static_cast<LPCWSTR>(hwords[i].word.Left(hyp)),
+						static_cast<LPCWSTR>(hwords[i].word.Right(hwords[i].word.GetLength() - hyp - 1)));
 
 		MSHTML::IHTMLDocument3Ptr doc = document.m_body.Document();
 

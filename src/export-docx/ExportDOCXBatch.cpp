@@ -932,15 +932,6 @@ static bool ListZipCentralDirectoryEx(const std::wstring& path, ZipEntryMap& ent
     return true;
 }
 
-static bool ListZipCentralDirectory(const std::wstring& path, std::set<std::wstring>& entries, std::wstring& message)
-{
-    entries.clear();
-    ZipEntryMap info;
-    if (!ListZipCentralDirectoryEx(path, info, NULL, message)) return false;
-    for (const auto& kv : info) entries.insert(kv.first);
-    return true;
-}
-
 static bool ExtractStoredZipEntryText(const std::vector<unsigned char>& bytes, const ZipEntryInfo& info, std::wstring& text)
 {
     text.clear();
@@ -1063,7 +1054,6 @@ static std::wstring RelsPathForXmlPart(const std::wstring& xmlPart)
 }
 
 static void ValidateRidReferences(const std::wstring& xmlPart, const std::wstring& xml,
-                                  const ZipEntryMap& entries,
                                   const WStringMap& relsText,
                                   std::vector<std::wstring>& errors)
 {
@@ -1177,7 +1167,7 @@ static bool ValidateDocxPackageBasic(const std::wstring& docxPath, std::wstring&
     for (const auto& kv : relsText)
         ValidateRelationshipTargets(kv.first, kv.second, entries, errors);
     for (const auto& kv : xmlText)
-        ValidateRidReferences(kv.first, kv.second, entries, relsText, errors);
+        ValidateRidReferences(kv.first, kv.second, relsText, errors);
 
     auto ct = xmlText.find(L"[Content_Types].xml");
     if (ct != xmlText.end()) {
@@ -1523,7 +1513,6 @@ static void AppendHtmlRow(std::wstring& html, const ResultRow& row)
 }
 static bool WriteHtmlReport(const std::wstring& path, const Options& opt, const std::wstring& logPath,
                             const std::wstring& dllPath, const std::wstring& warningsSummaryPath,
-                            const std::wstring& warningsFilesPath,
                             int total, int ok, int fail, int timeouts, int skipped,
                             int upToDate, int planned, int filtered, int okWarnings, int docxInvalid,
                             int inputInvalid, int expectedFail, int unexpectedFail, const std::vector<ResultRow>& rows)
@@ -2335,7 +2324,7 @@ int wmain(int argc, wchar_t** argv)
     }
 
     if (!opt.htmlReportPath.empty()) {
-        if (WriteHtmlReport(opt.htmlReportPath, opt, logPath, dllPath, warningsSummaryPath, warningsFilesPath, total, ok, fail, timeouts, skipped, upToDate, planned, filtered, okWarnings, docxInvalid, inputInvalid, expectedFail, unexpectedFail, rows)) {
+        if (WriteHtmlReport(opt.htmlReportPath, opt, logPath, dllPath, warningsSummaryPath, total, ok, fail, timeouts, skipped, upToDate, planned, filtered, okWarnings, docxInvalid, inputInvalid, expectedFail, unexpectedFail, rows)) {
             PrintLine(L"HTML report: " + opt.htmlReportPath);
         } else {
             PrintLine(L"Could not write HTML report: " + opt.htmlReportPath);

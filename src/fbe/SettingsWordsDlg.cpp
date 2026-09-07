@@ -76,7 +76,7 @@ CSettingsWordsDlg::CSettingsWordsDlg() : m_sort(0), m_sel_all(false), m_ct(0), m
 	m_words = _Settings.m_words;
 }
 
-LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CSettingsWordsDlg::OnInitDialog(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
 	m_list_words = GetDlgItem(IDC_LIST_WORDS);
 	m_list_words.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
@@ -130,7 +130,7 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam,
 	return 0;
 }
 
-LRESULT CSettingsWordsDlg::OnListDispInfo(int id, NMHDR *hdr, BOOL&)
+LRESULT CSettingsWordsDlg::OnListDispInfo(int /* unused: id */, NMHDR *hdr, BOOL&)
 {
 	NMLVDISPINFO *ni = (NMLVDISPINFO*)hdr;
 
@@ -206,7 +206,7 @@ void CSettingsWordsDlg::CreateStatBitmaps()
 	m_list_words.SetImageList(m_stat_images.Detach(), LVSIL_SMALL);
 } */
 
-LRESULT CSettingsWordsDlg::OnListSort(int id, NMHDR *hdr, BOOL&)
+LRESULT CSettingsWordsDlg::OnListSort(int /* unused: id */, NMHDR *hdr, BOOL&)
 {
 	NMLISTVIEW*lv = (NMLISTVIEW*)hdr;
 
@@ -226,7 +226,7 @@ LRESULT CSettingsWordsDlg::OnListSort(int id, NMHDR *hdr, BOOL&)
 	return 0;
 }
 
-LRESULT CSettingsWordsDlg::OnListClick(int id, NMHDR *hdr, BOOL&)
+LRESULT CSettingsWordsDlg::OnListClick(int /* unused: id */, NMHDR *hdr, BOOL&)
 {
 	NMITEMACTIVATE *ai = (NMITEMACTIVATE*) hdr;
 
@@ -259,14 +259,14 @@ LRESULT CSettingsWordsDlg::OnListClick(int id, NMHDR *hdr, BOOL&)
 	return 0;
 }
 
-LRESULT CSettingsWordsDlg::OnEditLVDefocused(int id, NMHDR *hdr, BOOL&)
+LRESULT CSettingsWordsDlg::OnEditLVDefocused(int /* unused: id */, NMHDR */* unused: hdr */, BOOL&)
 {
 	m_edit.ShowWindow(SW_HIDE);
 
 	return 0;
 }
 
-LRESULT CSettingsWordsDlg::OnListChanged(int id, NMHDR *hdr, BOOL&)
+LRESULT CSettingsWordsDlg::OnListChanged(int /* unused: id */, NMHDR */* unused: hdr */, BOOL&)
 {
 	m_ct = ::GetTickCount();
 
@@ -358,7 +358,7 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 	}
 }
 
-LRESULT CSettingsWordsDlg::OnCustomDraw(int id, NMHDR *hdr, BOOL&)
+LRESULT CSettingsWordsDlg::OnCustomDraw(int /* unused: id */, NMHDR *hdr, BOOL&)
 {
 	if(hdr->hwndFrom == m_list_words.GetHeader())
 	{
@@ -458,13 +458,13 @@ void CSettingsWordsDlg::RemoveWord(int index)
 	m_list_words.SetItemCount(static_cast<int>(m_words.size()));
 }
 
-LRESULT CSettingsWordsDlg::OnOK(WORD, WORD wID, HWND, BOOL&)
+LRESULT CSettingsWordsDlg::OnOK(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	HandleDefaultAction();
 	return 0;
 }
 
-LRESULT CSettingsWordsDlg::OnCancel(WORD, WORD wID, HWND, BOOL&)
+LRESULT CSettingsWordsDlg::OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
 	return CancelChanges() ? 1 : 0;
 }
