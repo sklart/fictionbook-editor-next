@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    Opt-in CI gate for first-party native code.  This file is imported after
+    project ItemDefinitionGroups, so it intentionally wins over legacy per-
+    project warning levels without changing ordinary Debug/Release builds.
+  -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <!-- Keep diagnostics emitted from pinned implementation headers outside
+           the first-party warning budget; no warning numbers are suppressed. -->
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <ExternalIncludePath>$(ExternalIncludePath);$(FbeRepoRoot)\third_party\wtl;$(FbeRepoRoot)\third_party\hunspell\src;$(FbeRepoRoot)\third_party\pcre2\src;$(FbeRepoRoot)\third_party\openjpeg\src\lib\openjp2;$(FbeRepoRoot)\third_party\libheif\libheif;$(FbeRepoRoot)\third_party\libde265\libde265;$(FbeRepoRoot)\third_party\aom;$(FbeRepoRoot)\third_party\lunasvg;$(FbeRepoRoot)\third_party\lunasvg\include;$(FbeRepoRoot)\third_party\lunasvg\plutovg\include</ExternalIncludePath>
+      <AdditionalOptions>/external:W0 /external:I&quot;$(FbeRepoRoot)\third_party\wtl&quot; /external:I&quot;$(FbeRepoRoot)\third_party\hunspell\src&quot; /external:I&quot;$(FbeRepoRoot)\third_party\pcre2\src&quot; /external:I&quot;$(FbeRepoRoot)\third_party\openjpeg\src\lib\openjp2&quot; /external:I&quot;$(FbeRepoRoot)\third_party\libheif\libheif&quot; /external:I&quot;$(FbeRepoRoot)\third_party\libde265\libde265&quot; /external:I&quot;$(FbeRepoRoot)\third_party\aom&quot; /external:I&quot;$(FbeRepoRoot)\third_party\lunasvg&quot; /external:I&quot;$(FbeRepoRoot)\third_party\lunasvg\include&quot; /external:I&quot;$(FbeRepoRoot)\third_party\lunasvg\plutovg\include&quot; %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>

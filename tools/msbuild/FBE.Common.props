@@ -16,5 +16,9 @@
   </PropertyGroup>
   <PropertyGroup>
     <ForceImportAfterCppProps>$(MSBuildThisFileDirectory)FBE.ReleaseOptimization.props</ForceImportAfterCppProps>
+    <!-- Imported after Microsoft.Cpp.targets only for the dedicated strict
+         first-party gate.  All projects importing this file are owned source;
+         pinned vendor projects intentionally do not import FBE.Common.props. -->
+    <ForceImportAfterCppTargets Condition="'$(FbeStrictWarnings)' == 'true'">$(MSBuildThisFileDirectory)FirstPartyWarnings.targets</ForceImportAfterCppTargets>
   </PropertyGroup>
 </Project>

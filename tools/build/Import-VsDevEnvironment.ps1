@@ -52,7 +52,11 @@ $vcVarsVersionArgument = if ($VcVarsVersion) { " -vcvars_ver=$VcVarsVersion" } e
 # A Codex/CI process can already inherit a different Visual Studio environment.
 # VsDevCmd otherwise treats that installation as active and leaves its ATL paths
 # ahead of the selected toolset.
-foreach ($name in @("VSINSTALLDIR", "VCINSTALLDIR", "VCToolsInstallDir", "VCToolsRedistDir", "VisualStudioVersion", "VSCMD_VER", "VSCMD_ARG_app_plat", "VSCMD_ARG_HOST_ARCH", "VSCMD_ARG_TGT_ARCH")) {
+foreach ($name in @(
+    "VSINSTALLDIR", "VCINSTALLDIR", "VCToolsInstallDir", "VCToolsRedistDir",
+    "VisualStudioVersion", "VSCMD_VER", "VSCMD_ARG_app_plat", "VSCMD_ARG_HOST_ARCH", "VSCMD_ARG_TGT_ARCH",
+    "INCLUDE", "LIB", "LIBPATH", "WindowsSdkDir", "WindowsSDKVersion", "UniversalCRTSdkDir", "UCRTVersion"
+)) {
     Remove-Item -LiteralPath ("Env:" + $name) -ErrorAction SilentlyContinue
 }
 # GitHub-hosted runners can accumulate a PATH longer than cmd.exe can expand
