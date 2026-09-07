@@ -556,4 +556,5 @@ finally {
     Remove-Item -LiteralPath $manifestPath -Force -ErrorAction SilentlyContinue
 }
 
+& (Join-Path $repoRoot 'tools\build\report-release-binary-sizes.ps1') -BatchOutputDirectory $batchOutputDir
 Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
