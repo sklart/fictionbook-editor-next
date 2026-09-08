@@ -173,6 +173,7 @@ enum { FWD_SINK, BACK_SINK, RANGE_SINK };
 
 class CFindDlgBase;
 class CFindResultsDlg;
+class CSearchHighlightOverlay;
 
 class CFBEView : public CWindowImpl<CFBEView, CAxWindow, CFBEViewWinTraits>,
 		 public IDispEventSimpleImpl<0, CFBEView, &DIID_DWebBrowserEvents2>,
@@ -284,6 +285,7 @@ protected:
 	bool m_replace_preview_regexp;
 	bool m_replace_preview_unicode_properties;
 	bool m_has_replace_preview;
+	CSearchHighlightOverlay* m_search_highlight_overlay;
 
 	struct pElAdjacent
 	{
@@ -311,6 +313,9 @@ protected:
 	void PositionFoundRange(MSHTML::IHTMLTxtRange* range);
 	bool DoSearchNative(bool fMore, AU::Search::SearchMode mode);
 	bool RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText = NULL);
+	void RefreshSearchHighlights();
+	void ClearSearchHighlights();
+	void UpdateSearchHighlightsForScroll();
 	bool HasTextSelection();
 	void ResetSearchScope();
 	MSHTML::IHTMLElementPtr SelectionContainerImp();
@@ -358,7 +363,7 @@ public:
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
     m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-	 m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_link_navigation_origin_ordinal(-1), m_find_dlg(0), m_replace_dlg(0), m_find_results_dlg(0), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_last_zero_length_hit(0), m_last_zero_length_generation(0), m_has_last_zero_length_hit(false), m_replace_preview_generation(0), m_replace_preview_revision(0), m_replace_preview_flags(0), m_replace_preview_scope(AU::Search::SearchScope::WholeDocument), m_replace_preview_regexp(false), m_replace_preview_unicode_properties(false), m_has_replace_preview(false), m_file_path(), m_file_name() { }
+	 m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_link_navigation_origin_ordinal(-1), m_find_dlg(0), m_replace_dlg(0), m_find_results_dlg(0), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_last_zero_length_hit(0), m_last_zero_length_generation(0), m_has_last_zero_length_hit(false), m_replace_preview_generation(0), m_replace_preview_revision(0), m_replace_preview_flags(0), m_replace_preview_scope(AU::Search::SearchScope::WholeDocument), m_replace_preview_regexp(false), m_replace_preview_unicode_properties(false), m_has_replace_preview(false), m_search_highlight_overlay(NULL), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);
@@ -366,6 +371,7 @@ public:
   BEGIN_MSG_MAP(CFBEView)
     MESSAGE_HANDLER(WM_CREATE, OnCreate)
     MESSAGE_HANDLER(WM_SETFOCUS, OnFocus)
+    MESSAGE_HANDLER(WM_TIMER, OnTimer)
 
     // editing commands
     COMMAND_ID_HANDLER(ID_EDIT_UNDO, OnUndo)
@@ -441,6 +447,7 @@ public:
 	END_SINK_MAP()
 
   LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+  LRESULT OnTimer(UINT, WPARAM wParam, LPARAM, BOOL&);
   LRESULT OnFocus(UINT, WPARAM, LPARAM, BOOL&) 
   {
     // pass to document

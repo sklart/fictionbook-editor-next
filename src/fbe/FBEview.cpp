@@ -19,6 +19,10 @@
 #include "RuntimeLocalization.h"
 #include <vector>
 
+class CSearchHighlightOverlay;
+static void DestroySearchHighlightOverlay(CSearchHighlightOverlay* overlay);
+static const UINT FBE_SEARCH_HIGHLIGHT_TIMER = 0x4f02;
+
 extern CElementDescMnr _EDMnr;
 
 static bool IsSecondSetExternalFaultEnabled()
@@ -603,6 +607,9 @@ LRESULT CFBEView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /* unu
 
 CFBEView::~CFBEView()
 {
+	::KillTimer(m_hWnd, FBE_SEARCH_HIGHLIGHT_TIMER);
+	DestroySearchHighlightOverlay(m_search_highlight_overlay);
+	m_search_highlight_overlay = NULL;
 	if(HasDoc())
 	{
 		// Init can fail after acquiring the document but before all event sinks and
@@ -633,6 +640,93 @@ CFBEView::~CFBEView()
 		CloseFindResultsDialog(m_find_results_dlg);
 		delete m_find_results_dlg;
 	}
+}
+
+LRESULT CFBEView::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL&)
+{
+	if (wParam == FBE_SEARCH_HIGHLIGHT_TIMER)
+		UpdateSearchHighlightsForScroll();
+	return 0;
+}
+
+// Search highlighting is deliberately a native overlay.  Styling ranges through
+// MSHTML would mutate the FB2 DOM, create undo entries and mark the document
+// dirty merely for showing Find All results.
+class CSearchHighlightOverlay : public CWindowImpl<CSearchHighlightOverlay>
+{
+public:
+	DECLARE_WND_CLASS(L"FbeSearchHighlightOverlay")
+
+	BEGIN_MSG_MAP(CSearchHighlightOverlay)
+		MESSAGE_HANDLER(WM_PAINT, OnPaint)
+	END_MSG_MAP()
+
+	void Update(HWND parent, const std::vector<RECT>& documentRects, long scrollLeft,
+		long scrollTop, std::size_t selected)
+	{
+		m_documentRects = documentRects;
+		m_scrollLeft = scrollLeft;
+		m_scrollTop = scrollTop;
+		m_selected = selected;
+		RECT client = {};
+		::GetClientRect(parent, &client);
+		if (!m_hWnd)
+		{
+			Create(parent, client, NULL, WS_CHILD | WS_VISIBLE | WS_DISABLED,
+				WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
+			if (m_hWnd)
+				::SetLayeredWindowAttributes(m_hWnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+		}
+		if (m_hWnd)
+		{
+			SetWindowPos(HWND_TOP, 0, 0, client.right, client.bottom, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+			Invalidate();
+		}
+	}
+
+	void UpdateScroll(long scrollLeft, long scrollTop)
+	{
+		if (m_scrollLeft == scrollLeft && m_scrollTop == scrollTop) return;
+		m_scrollLeft = scrollLeft;
+		m_scrollTop = scrollTop;
+		if (m_hWnd) Invalidate();
+	}
+
+	void Clear()
+	{
+		m_documentRects.clear();
+		if (m_hWnd) ShowWindow(SW_HIDE);
+	}
+
+	LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL&)
+	{
+		CPaintDC dc(m_hWnd);
+		RECT client = {};
+		GetClientRect(&client);
+		dc.FillSolidRect(&client, RGB(0, 0, 0)); // colour-keyed transparent
+		for (std::size_t index = 0; index < m_documentRects.size(); ++index)
+		{
+			RECT rect = m_documentRects[index];
+			::OffsetRect(&rect, -m_scrollLeft, -m_scrollTop);
+			if (rect.right <= rect.left) rect.right = rect.left + 1;
+			if (rect.bottom <= rect.top) rect.bottom = rect.top + 1;
+			HBRUSH brush = ::CreateSolidBrush(index == m_selected ? RGB(255, 128, 0) : RGB(255, 215, 0));
+			::FrameRect(dc, &rect, brush);
+			::DeleteObject(brush);
+		}
+		return 0;
+	}
+
+private:
+	std::vector<RECT> m_documentRects;
+	long m_scrollLeft = 0;
+	long m_scrollTop = 0;
+	std::size_t m_selected = static_cast<std::size_t>(-1);
+};
+
+static void DestroySearchHighlightOverlay(CSearchHighlightOverlay* overlay)
+{
+	delete overlay;
 }
 
 BOOL CFBEView::PreTranslateMessage(MSG* pMsg)
@@ -2720,11 +2814,80 @@ bool CFBEView::SelectFindResult(std::size_t index)
 		if (m_document_search.SelectResult(Document(), static_cast<std::uint64_t>(GetVersionNumber()), index) == NULL)
 			return false;
 		PositionFoundRange(MSHTML::IHTMLTxtRangePtr(Document()->selection->createRange()));
+		RefreshSearchHighlights();
 		return true;
 	}
 	catch (const _com_error&)
 	{
 		return false;
+	}
+}
+
+void CFBEView::ClearSearchHighlights()
+{
+	::KillTimer(m_hWnd, FBE_SEARCH_HIGHLIGHT_TIMER);
+	if (m_search_highlight_overlay)
+		m_search_highlight_overlay->Clear();
+}
+
+void CFBEView::UpdateSearchHighlightsForScroll()
+{
+	try
+	{
+		if (!m_search_highlight_overlay || !Document()) return;
+		MSHTML::IHTMLElement2Ptr scrollElement(MSHTML::IHTMLDocument3Ptr(Document())->documentElement);
+		if (scrollElement)
+			m_search_highlight_overlay->UpdateScroll(scrollElement->scrollLeft, scrollElement->scrollTop);
+	}
+	catch (const _com_error&)
+	{
+		ClearSearchHighlights();
+	}
+}
+
+void CFBEView::RefreshSearchHighlights()
+{
+	try
+	{
+		if (!Document() || !AreFindResultsCurrent() || FindResultCount() == 0)
+		{
+			ClearSearchHighlights();
+			return;
+		}
+		MSHTML::IHTMLElement2Ptr scrollElement(MSHTML::IHTMLDocument3Ptr(Document())->documentElement);
+		if (!scrollElement)
+		{
+			ClearSearchHighlights();
+			return;
+		}
+		std::vector<RECT> documentRects;
+		for (std::size_t index = 0; index < FindResultCount(); ++index)
+		{
+			MSHTML::IHTMLTxtRangePtr range;
+			if (!m_document_search.CreateResultRange(Document(), static_cast<std::uint64_t>(GetVersionNumber()), index, range) || !range)
+				continue;
+			MSHTML::IHTMLTextRangeMetrics2Ptr metrics(range);
+			MSHTML::IHTMLRectPtr rect(metrics ? metrics->getBoundingClientRect() : MSHTML::IHTMLRectPtr());
+			if (!rect || rect->right < rect->left || rect->bottom < rect->top)
+				continue;
+			RECT documentRect = { rect->left + scrollElement->scrollLeft, rect->top + scrollElement->scrollTop,
+				rect->right + scrollElement->scrollLeft, rect->bottom + scrollElement->scrollTop };
+			documentRects.push_back(documentRect);
+		}
+		if (documentRects.empty())
+		{
+			ClearSearchHighlights();
+			return;
+		}
+		if (!m_search_highlight_overlay)
+			m_search_highlight_overlay = new CSearchHighlightOverlay();
+		m_search_highlight_overlay->Update(m_hWnd, documentRects, scrollElement->scrollLeft, scrollElement->scrollTop,
+			m_document_search.GetSelectedResultIndex());
+		::SetTimer(m_hWnd, FBE_SEARCH_HIGHLIGHT_TIMER, 100, NULL);
+	}
+	catch (const _com_error&)
+	{
+		ClearSearchHighlights();
 	}
 }
 
@@ -3710,6 +3873,7 @@ void	CFBEView::EditorChanged(int id) {
     break;
   case RANGE_SINK:
 	m_startMatch = m_endMatch = 0;
+	ClearSearchHighlights();
     if (!m_ignore_changes)
       ::SendMessage(m_frame,WM_COMMAND,MAKELONG(0,IDN_ED_CHANGED),(LPARAM)m_hWnd);
     break;
@@ -4089,6 +4253,7 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 		}
 		MSHTML::IHTMLTxtRangePtr found(Document()->selection->createRange());
 		PositionFoundRange(found);
+		RefreshSearchHighlights();
 		NotifyWrappedSearch(wrapped);
 		return true;
 	}
@@ -4129,6 +4294,7 @@ bool CFBEView::DoFindAll(bool showResults, CString* errorText)
 			ShowFindResults();
 		else if (m_find_results_dlg && m_find_results_dlg->IsValid())
 			m_find_results_dlg->Refresh();
+		RefreshSearchHighlights();
 		return true;
 	}
 	catch (const _com_error&)
