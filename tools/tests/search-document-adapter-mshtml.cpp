@@ -76,6 +76,12 @@ int wmain()
 	query.Text = L"^second$";
 	query.Multiline = true;
 	if (!result && (!coordinator.Rebuild(document, 45, query) || coordinator.GetSession().GetHitCount() != 1)) result = 13;
+	query.Text = L"\\b\\x{043A}\\x{043E}\\x{0442}\\b";
+	query.UnicodeProperties = true;
+	if (!result && (!coordinator.Rebuild(document, 46, query) || coordinator.GetSession().GetHitCount() != 1)) result = 14;
+	query.Text = L"(";
+	std::wstring regexError;
+	if (!result && (coordinator.Rebuild(document, 47, query, &regexError) || regexError.empty() || coordinator.GetSession().IsValid())) result = 15;
 	}
 
 	persist = NULL;
