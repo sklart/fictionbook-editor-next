@@ -789,6 +789,34 @@
         "bg-BG": "Раздел"
       }
     },
+    "fbe.dialog.idd_find_results.caption": {
+      "resource": "IDD_FIND_RESULTS", "kind": "CAPTION", "targetId": "",
+      "translations": { "en-US": "Find results", "ru-RU": "Результаты поиска", "uk-UA": "Результати пошуку", "de-DE": "Suchergebnisse", "fr-FR": "Résultats de recherche", "es-ES": "Resultados de búsqueda", "it-IT": "Risultati della ricerca", "pl-PL": "Wyniki wyszukiwania", "pt-PT": "Resultados da pesquisa", "nl-NL": "Zoekresultaten", "cs-CZ": "Výsledky hledání", "bg-BG": "Резултати от търсенето" }
+    },
+    "fbe.dialog.idd_find_results.close": {
+      "resource": "IDD_FIND_RESULTS", "kind": "PUSHBUTTON", "targetId": "IDCANCEL",
+      "translations": { "en-US": "Close", "ru-RU": "Закрыть", "uk-UA": "Закрити", "de-DE": "Schließen", "fr-FR": "Fermer", "es-ES": "Cerrar", "it-IT": "Chiudi", "pl-PL": "Zamknij", "pt-PT": "Fechar", "nl-NL": "Sluiten", "cs-CZ": "Zavřít", "bg-BG": "Затвори" }
+    },
+    "fbe.dialog.idd_find_results.number": {
+      "resource": "IDD_FIND_RESULTS", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "#", "ru-RU": "№", "uk-UA": "№", "de-DE": "Nr.", "fr-FR": "N°", "es-ES": "N.º", "it-IT": "N.", "pl-PL": "Nr", "pt-PT": "N.º", "nl-NL": "Nr.", "cs-CZ": "Č.", "bg-BG": "№" }
+    },
+    "fbe.dialog.idd_find_results.context": {
+      "resource": "IDD_FIND_RESULTS", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "Context", "ru-RU": "Контекст", "uk-UA": "Контекст", "de-DE": "Kontext", "fr-FR": "Contexte", "es-ES": "Contexto", "it-IT": "Contesto", "pl-PL": "Kontekst", "pt-PT": "Contexto", "nl-NL": "Context", "cs-CZ": "Kontext", "bg-BG": "Контекст" }
+    },
+    "fbe.dialog.idd_find_results.count": {
+      "resource": "IDD_FIND_RESULTS", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "%Iu results", "ru-RU": "%Iu результатов", "uk-UA": "%Iu результатів", "de-DE": "%Iu Ergebnisse", "fr-FR": "%Iu résultats", "es-ES": "%Iu resultados", "it-IT": "%Iu risultati", "pl-PL": "%Iu wyników", "pt-PT": "%Iu resultados", "nl-NL": "%Iu resultaten", "cs-CZ": "%Iu výsledků", "bg-BG": "%Iu резултата" }
+    },
+    "fbe.dialog.idd_find_results.stale": {
+      "resource": "IDD_FIND_RESULTS", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "Search results are stale. Run Find All again.", "ru-RU": "Результаты поиска устарели. Выполните «Найти всё» снова.", "uk-UA": "Результати пошуку застаріли. Виконайте «Знайти все» ще раз.", "de-DE": "Die Suchergebnisse sind veraltet. Führen Sie Alle suchen erneut aus.", "fr-FR": "Les résultats de recherche sont obsolètes. Relancez Rechercher tout.", "es-ES": "Los resultados de búsqueda están desactualizados. Vuelve a ejecutar Buscar todo.", "it-IT": "I risultati della ricerca non sono aggiornati. Esegui di nuovo Trova tutto.", "pl-PL": "Wyniki wyszukiwania są nieaktualne. Uruchom ponownie Znajdź wszystko.", "pt-PT": "Os resultados da pesquisa estão desatualizados. Execute novamente Localizar tudo.", "nl-NL": "De zoekresultaten zijn verouderd. Voer Alles zoeken opnieuw uit.", "cs-CZ": "Výsledky hledání jsou zastaralé. Spusťte znovu Najít vše.", "bg-BG": "Резултатите от търсенето са остарели. Изпълнете отново „Намери всички“." }
+    },
+    "fbe.search.results.found": {
+      "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "%u found", "ru-RU": "Найдено: %u", "uk-UA": "Знайдено: %u", "de-DE": "%u gefunden", "fr-FR": "%u trouvé(s)", "es-ES": "%u encontrados", "it-IT": "%u trovati", "pl-PL": "Znaleziono: %u", "pt-PT": "%u encontrados", "nl-NL": "%u gevonden", "cs-CZ": "Nalezeno: %u", "bg-BG": "Намерени: %u" }
+    },
     "fbe.replace.preview.caption": {
       "resource": "IDS_REPL_ALL_CAPT",
       "kind": "VALUE",

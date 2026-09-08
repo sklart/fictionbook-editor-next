@@ -508,7 +508,7 @@ public:
 		::SetWindowText(GetDlgItem(IDCANCEL), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.close", L"Close"));
 		m_list = GetDlgItem(IDC_FIND_RESULTS_LIST);
 		m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-		m_list.InsertColumn(0, L"#", LVCFMT_RIGHT, 38);
+		m_list.InsertColumn(0, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.number", L"#"), LVCFMT_RIGHT, 38);
 		m_list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.section", L"Section"), LVCFMT_LEFT, 100);
 		m_list.InsertColumn(2, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.context", L"Context"), LVCFMT_LEFT, 160);
 		Refresh();

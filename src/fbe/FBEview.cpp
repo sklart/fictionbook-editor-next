@@ -2773,7 +2773,8 @@ CString CFBEView::FindAllResultStatus()
 	if (version < 0 || !results.IsValidFor(static_cast<std::uint64_t>(version)))
 		return CString();
 	CString status;
-	status.Format(L"%u found", static_cast<unsigned>(results.GetCount()));
+	status.Format(FbeLoadRuntimeStringByKey(L"fbe.search.results.found", L"%u found"),
+		static_cast<unsigned>(results.GetCount()));
 	return status;
 }
 
