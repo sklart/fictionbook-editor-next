@@ -789,6 +789,30 @@
         "bg-BG": "Раздел"
       }
     },
+    "fbe.replace.preview.caption": {
+      "resource": "IDS_REPL_ALL_CAPT",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Replace All", "ru-RU": "Заменить всё", "uk-UA": "Замінити все", "de-DE": "Alle ersetzen", "fr-FR": "Tout remplacer", "es-ES": "Reemplazar todo", "it-IT": "Sostituisci tutto", "pl-PL": "Zamień wszystko", "pt-PT": "Substituir tudo", "nl-NL": "Alles vervangen", "cs-CZ": "Nahradit vše", "bg-BG": "Замяна на всички"
+      }
+    },
+    "fbe.replace.preview.message": {
+      "resource": "IDS_REPL_DONE_MSG",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Replace %Iu match(es) shown in Find results?", "ru-RU": "Заменить %Iu совпадений, показанных в результатах поиска?", "uk-UA": "Замінити %Iu збігів, показаних у результатах пошуку?", "de-DE": "%Iu in den Suchergebnissen angezeigte Treffer ersetzen?", "fr-FR": "Remplacer les %Iu occurrences affichées dans les résultats ?", "es-ES": "¿Reemplazar %Iu coincidencias mostradas en los resultados?", "it-IT": "Sostituire %Iu corrispondenze mostrate nei risultati?", "pl-PL": "Zastąpić %Iu dopasowań pokazanych w wynikach?", "pt-PT": "Substituir %Iu correspondências mostradas nos resultados?", "nl-NL": "%Iu overeenkomsten in de zoekresultaten vervangen?", "cs-CZ": "Nahradit %Iu shod zobrazených ve výsledcích?", "bg-BG": "Да се заменят ли %Iu съвпадения, показани в резултатите?"
+      }
+    },
+    "fbe.replace.preview.changed": {
+      "resource": "IDS_REPL_DONE_MSG",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "The document changed before Replace All could be applied.", "ru-RU": "Документ изменился до выполнения команды «Заменить всё».", "uk-UA": "Документ змінився до виконання команди «Замінити все».", "de-DE": "Das Dokument wurde geändert, bevor Alle ersetzen ausgeführt werden konnte.", "fr-FR": "Le document a été modifié avant l’application de Tout remplacer.", "es-ES": "El documento cambió antes de aplicar Reemplazar todo.", "it-IT": "Il documento è stato modificato prima dell'applicazione di Sostituisci tutto.", "pl-PL": "Dokument zmienił się przed zastosowaniem opcji Zamień wszystko.", "pt-PT": "O documento foi alterado antes de Substituir tudo poder ser aplicado.", "nl-NL": "Het document is gewijzigd voordat Alles vervangen kon worden toegepast.", "cs-CZ": "Dokument se změnil před použitím příkazu Nahradit vše.", "bg-BG": "Документът се промени преди да може да се изпълни „Замяна на всички“."
+      }
+    },
     "fbe.dialog.idd_find.caption": {
       "resource": "IDD_FIND",
       "kind": "CAPTION",

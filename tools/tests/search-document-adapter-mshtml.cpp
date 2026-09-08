@@ -73,6 +73,9 @@ int wmain()
 	AU::Search::SearchQuery query;
 	query.Text = L"second";
 	if (!result && (!coordinator.Rebuild(document, 43, query) || coordinator.GetSession().GetHitCount() != 1)) result = 13;
+	MSHTML::IHTMLTxtRangePtr resultRange;
+	if (!result && (!coordinator.CreateResultRange(document, 43, 0, resultRange) || !resultRange ||
+		wcsstr(static_cast<LPCWSTR>(_bstr_t(resultRange->text)), L"second") == NULL)) result = 34;
 	AU::Search::SearchRange selectionScope;
 	MSHTML::IHTMLTxtRangePtr bodySelection(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
 	bodySelection->collapse(VARIANT_TRUE);

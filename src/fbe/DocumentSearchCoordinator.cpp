@@ -163,6 +163,25 @@ const AU::Search::SearchResult* DocumentSearchCoordinator::SelectResult(
 	return result;
 }
 
+bool DocumentSearchCoordinator::CreateResultRange(
+	MSHTML::IHTMLDocument2Ptr document,
+	std::uint64_t documentGeneration,
+	std::size_t index,
+	MSHTML::IHTMLTxtRangePtr& range) const
+{
+	range = NULL;
+	if (!m_results.IsValidFor(documentGeneration))
+		return false;
+	const AU::Search::SearchResult* result = m_results.GetAt(index);
+	return result != NULL && m_adapter.CreateHitRange(document, m_snapshot, result->Hit, range);
+}
+
+void DocumentSearchCoordinator::Invalidate()
+{
+	m_session.Invalidate();
+	m_results.Invalidate();
+}
+
 bool DocumentSearchCoordinator::TryGetSearchRange(
 	std::uint64_t documentGeneration,
 	MSHTML::IHTMLTxtRangePtr range,

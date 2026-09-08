@@ -47,6 +47,17 @@ public:
 		std::uint64_t documentGeneration,
 		std::size_t index);
 
+	// Produces an unselected range for a result. Bulk editor operations use
+	// this before mutating the DOM so a mapping failure cannot cause a partial
+	// Replace All.
+	bool CreateResultRange(
+		MSHTML::IHTMLDocument2Ptr document,
+		std::uint64_t documentGeneration,
+		std::size_t index,
+		MSHTML::IHTMLTxtRangePtr& range) const;
+
+	void Invalidate();
+
 	// Converts the current editor selection into a pure snapshot range.  Scope
 	// callers use this before rebuilding so Search Core never observes MSHTML.
 	bool TryGetSearchRange(

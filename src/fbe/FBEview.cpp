@@ -3194,6 +3194,97 @@ void  CFBEView::DoReplace() {
   m_mk_srv->EndUndoUnit();
 }
 
+int CFBEView::ReplaceAllSearchCore(CString* errorText)
+{
+	if (errorText != NULL)
+		errorText->Empty();
+	CString searchError;
+	if (!DoFindAll(true, &searchError))
+	{
+		if (errorText != NULL)
+			*errorText = searchError;
+		return -1;
+	}
+
+	const std::size_t count = m_document_search.GetResults().GetCount();
+	if (count == 0)
+		return 0;
+	CString preview;
+	preview.Format(FbeLoadRuntimeStringByKey(
+		L"fbe.replace.preview.message", L"Replace %Iu match(es) shown in Find results?"), count);
+	if (::MessageBox(m_hWnd, preview, FbeLoadRuntimeStringByKey(
+		L"fbe.replace.preview.caption", L"Replace All"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+		return -2;
+
+	// Validate every source coordinate while the document is unchanged. The
+	// reverse pass below then preserves all earlier offsets in this snapshot.
+	std::vector<MSHTML::IHTMLTxtRangePtr> ranges(count);
+	const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
+	for (std::size_t index = 0; index < count; ++index)
+	{
+		if (!m_document_search.CreateResultRange(Document(), generation, index, ranges[index]) || !ranges[index])
+		{
+			if (errorText != NULL)
+				*errorText = FbeLoadRuntimeStringByKey(L"fbe.replace.preview.changed", L"The document changed before Replace All could be applied.");
+			return -1;
+		}
+	}
+
+	int replaced = 0;
+	m_mk_srv->BeginUndoUnit(L"replace all");
+	try
+	{
+		const AU::Search::SearchTextSnapshot& snapshot = m_document_search.GetSnapshot();
+		for (std::size_t index = count; index-- > 0;)
+		{
+			const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
+			if (result == NULL)
+				throw _com_error(E_FAIL);
+			CString replacement;
+			RRList formatting;
+			if (m_fo.fRegexp)
+			{
+				const AU::Search::SearchHit& hit = result->Hit;
+				AU::IMatch2 match(CString(snapshot.Text.data() + hit.Start, static_cast<int>(hit.Length)),
+					static_cast<int>(hit.Start));
+				for (std::size_t capture = 0; capture < hit.Captures.size(); ++capture)
+				{
+					const AU::Search::SearchCapture& value = hit.Captures[capture];
+					match.AddSubMatch(value.Matched
+						? CString(snapshot.Text.data() + value.Start, static_cast<int>(value.Length))
+						: CString());
+				}
+				replacement = PrepareRegexReplacementText(m_fo.replacement, &match, formatting);
+			}
+			else
+			{
+				replacement = m_fo.replacement;
+				NormalizeReplacementNbsp(replacement);
+			}
+			ranges[index]->text = static_cast<LPCWSTR>(replacement);
+			if (m_fo.fRegexp)
+				ApplyReplacementFormatting(ranges[index], replacement, formatting);
+			++replaced;
+		}
+	}
+	catch (const _com_error& error)
+	{
+		m_mk_srv->EndUndoUnit();
+		m_document_search.Invalidate();
+		if (m_find_results_dlg && m_find_results_dlg->IsValid())
+			m_find_results_dlg->Refresh();
+		if (errorText != NULL)
+			*errorText = error.ErrorMessage();
+		return -1;
+	}
+	m_mk_srv->EndUndoUnit();
+	m_fo.ClearMatch();
+	m_document_search.Invalidate();
+	if (m_find_results_dlg && m_find_results_dlg->IsValid())
+		m_find_results_dlg->Refresh();
+	return replaced;
+}
+
 int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 {
 	if(m_fo.pattern.IsEmpty())
@@ -3510,14 +3601,20 @@ public:
     DoFind();
   }
   virtual void DoReplaceAll() {
-    int nRepl=m_view->GlobalReplace();
+    CString error;
+    int nRepl=m_view->ReplaceAllSearchCore(&error);
     if (nRepl>0) {
       SaveString();
       SaveHistory();
       U::MessageBox(MB_OK, IDS_REPL_ALL_CAPT, IDS_REPL_DONE_MSG, nRepl);
       MakeClose();
       m_selvalid=false;
-    } else
+	} else if (nRepl == -2) {
+		return;
+	} else if (!error.IsEmpty())
+	{
+		::MessageBox(m_hWnd, error, FbeLoadRuntimeStringByKey(L"fbe.replace.preview.caption", L"Replace All"), MB_OK | MB_ICONEXCLAMATION);
+	} else
 	{
 		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 	}

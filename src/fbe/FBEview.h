@@ -611,6 +611,9 @@ public:
 	bool DoSearchStd(bool fMore=true);
 	bool DoSearchRegexp(bool fMore=true);
 	void DoReplace();
+	// Returns the committed replacement count; -2 means that preview was
+	// cancelled and -1 means that the native query/mapping failed.
+	int ReplaceAllSearchCore(CString* errorText=NULL);
 	int GlobalReplace(MSHTML::IHTMLElementPtr elem = NULL, CString cntTag = L"P");
 	int ToolWordsGlobalReplace(MSHTML::IHTMLElementPtr fbw_body, int* pIndex = NULL, int* globIndex = NULL, bool find = false, CString cntTag = L"P");
 
