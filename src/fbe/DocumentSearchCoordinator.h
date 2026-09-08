@@ -4,6 +4,7 @@
 #include <string>
 
 #include "SearchDocumentAdapter.h"
+#include "search\\SearchResults.h"
 #include "search\\SearchSession.h"
 
 // Editor-side bridge for a Design-mode document. It owns MSHTML-aware
@@ -21,6 +22,7 @@ public:
 
 	const AU::Search::SearchTextSnapshot& GetSnapshot() const;
 	const AU::Search::SearchSession& GetSession() const;
+	const AU::Search::SearchResults& GetResults() const;
 
 	const AU::Search::SearchHit* SelectFromOffset(
 		MSHTML::IHTMLDocument2Ptr document,
@@ -36,8 +38,14 @@ public:
 		AU::Search::SearchDirection direction,
 		bool* wrapped = NULL);
 
+	const AU::Search::SearchResult* SelectResult(
+		MSHTML::IHTMLDocument2Ptr document,
+		std::uint64_t documentGeneration,
+		std::size_t index);
+
 private:
 	SearchDocumentAdapter m_adapter;
 	AU::Search::SearchTextSnapshot m_snapshot;
 	AU::Search::SearchSession m_session;
+	AU::Search::SearchResults m_results;
 };

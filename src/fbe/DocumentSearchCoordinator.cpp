@@ -1,9 +1,28 @@
 #include "stdafx.h"
 
+#include <algorithm>
+
 #include "DocumentSearchCoordinator.h"
 
 #include "search\\LiteralSearch.h"
 #include "search\\RegexBackend.h"
+
+namespace {
+
+std::wstring BuildPreview(const std::wstring& text, const AU::Search::SearchHit& hit)
+{
+	const std::size_t context = 40;
+	const std::size_t start = hit.Start > context ? hit.Start - context : 0;
+	const std::size_t end = (std::min)(text.size(), hit.Start + hit.Length + context);
+	std::wstring preview = text.substr(start, end - start);
+	if (start != 0)
+		preview.insert(0, L"…");
+	if (end != text.size())
+		preview += L"…";
+	return preview;
+}
+
+}
 
 bool DocumentSearchCoordinator::Rebuild(
 	MSHTML::IHTMLDocument2Ptr document,
@@ -36,6 +55,7 @@ bool DocumentSearchCoordinator::Rebuild(
 		if (!AU::RegexBackend::Execute(options, source, matches, regexError))
 		{
 			m_session.Invalidate();
+			m_results.Invalidate();
 			if (errorText != NULL)
 				*errorText = static_cast<LPCWSTR>(regexError);
 			return false;
@@ -44,6 +64,16 @@ bool DocumentSearchCoordinator::Rebuild(
 	}
 
 	m_session.SetHits(hits, documentGeneration);
+	std::vector<AU::Search::SearchResult> results;
+	results.reserve(hits.size());
+	for (std::size_t index = 0; index < hits.size(); ++index)
+	{
+		AU::Search::SearchResult result = {};
+		result.Hit = hits[index];
+		result.Preview = BuildPreview(m_snapshot.Text, hits[index]);
+		results.push_back(result);
+	}
+	m_results.SetResults(results, documentGeneration);
 	return true;
 }
 
@@ -55,6 +85,11 @@ const AU::Search::SearchTextSnapshot& DocumentSearchCoordinator::GetSnapshot() c
 const AU::Search::SearchSession& DocumentSearchCoordinator::GetSession() const
 {
 	return m_session;
+}
+
+const AU::Search::SearchResults& DocumentSearchCoordinator::GetResults() const
+{
+	return m_results;
 }
 
 const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromOffset(
@@ -87,4 +122,17 @@ const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromRange(
 		return NULL;
 	}
 	return SelectFromOffset(document, documentGeneration, offset, direction, wrapped);
+}
+
+const AU::Search::SearchResult* DocumentSearchCoordinator::SelectResult(
+	MSHTML::IHTMLDocument2Ptr document,
+	std::uint64_t documentGeneration,
+	std::size_t index)
+{
+	if (!m_results.IsValidFor(documentGeneration))
+		return NULL;
+	const AU::Search::SearchResult* result = m_results.Select(index);
+	if (result == NULL || !m_adapter.SelectHit(document, m_snapshot, result->Hit))
+		return NULL;
+	return result;
 }
