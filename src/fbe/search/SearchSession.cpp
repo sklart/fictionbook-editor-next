@@ -140,5 +140,60 @@ const SearchHit* SearchSession::MoveInQueryDirectionFor(
 	return MoveInQueryDirection(wrapped);
 }
 
+const SearchHit* SearchSession::SelectNearest(
+	std::size_t offset,
+	SearchDirection direction,
+	bool* wrapped)
+{
+	if (wrapped != NULL)
+		*wrapped = false;
+	if (m_hits.empty())
+		return NULL;
+
+	if (direction == SearchDirection::Forward)
+	{
+		for (std::size_t index = 0; index < m_hits.size(); ++index)
+		{
+			if (m_hits[index].Start >= offset)
+			{
+				m_currentIndex = index;
+				return GetCurrentHit();
+			}
+		}
+		m_currentIndex = 0;
+	}
+	else
+	{
+		for (std::size_t index = m_hits.size(); index != 0; --index)
+		{
+			const SearchHit& hit = m_hits[index - 1];
+			if (hit.Start <= offset && hit.Length <= offset - hit.Start)
+			{
+				m_currentIndex = index - 1;
+				return GetCurrentHit();
+			}
+		}
+		m_currentIndex = m_hits.size() - 1;
+	}
+	if (wrapped != NULL)
+		*wrapped = true;
+	return GetCurrentHit();
+}
+
+const SearchHit* SearchSession::SelectNearestFor(
+	std::uint64_t documentGeneration,
+	std::size_t offset,
+	SearchDirection direction,
+	bool* wrapped)
+{
+	if (!IsValidFor(documentGeneration))
+	{
+		if (wrapped != NULL)
+			*wrapped = false;
+		return NULL;
+	}
+	return SelectNearest(offset, direction, wrapped);
+}
+
 }
 }

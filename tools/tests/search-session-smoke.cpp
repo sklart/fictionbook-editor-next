@@ -48,6 +48,18 @@ int wmain()
 		return 10;
 	if (!session.IsValidFor(100) || session.MoveInQueryDirectionFor(100, &wrapped)->Start != 2)
 		return 11;
+	if (session.SelectNearestFor(100, 12, SearchDirection::Forward, &wrapped)->Start != 12 || wrapped)
+		return 33;
+	if (session.SelectNearestFor(100, 13, SearchDirection::Forward, &wrapped)->Start != 30 || wrapped)
+		return 34;
+	if (session.SelectNearestFor(100, 31, SearchDirection::Forward, &wrapped)->Start != 2 || !wrapped)
+		return 35;
+	if (session.SelectNearestFor(100, 18, SearchDirection::Backward, &wrapped)->Start != 12 || wrapped)
+		return 36;
+	if (session.SelectNearestFor(100, 1, SearchDirection::Backward, &wrapped)->Start != 30 || !wrapped)
+		return 37;
+	if (session.SelectNearestFor(101, 12, SearchDirection::Forward, &wrapped) != NULL || wrapped)
+		return 38;
 
 	query.Text = L"other";
 	if (!session.SetQuery(query) || session.IsValid() || session.GetHitCount() != 0)
@@ -56,6 +68,9 @@ int wmain()
 		return 13;
 
 	session.SetHits(std::vector<SearchHit>{ SearchHit(1, 0) }, 101);
+	if (session.SelectNearestFor(101, 1, SearchDirection::Forward, &wrapped)->Start != 1 || wrapped ||
+		session.SelectNearestFor(101, 1, SearchDirection::Backward, &wrapped)->Start != 1 || wrapped)
+		return 39;
 	session.Invalidate();
 	if (session.IsValid() || session.HasCurrentHit() || session.GetHitCount() != 0)
 		return 14;
@@ -130,5 +145,18 @@ int wmain()
 	if (!paragraphSnapshot.TryGetSearchOffset({ 1, 6 }, &searchOffset) || searchOffset != 6 ||
 		!paragraphSnapshot.TryGetSearchOffset({ 2, 0 }, &searchOffset) || searchOffset != 7)
 		return 32;
+
+	SearchTextSnapshotBuilder adjacent(8);
+	adjacent.Append(L"left", { 10, 0 });
+	adjacent.Append(L"right", { 20, 0 });
+	SearchTextSnapshot adjacentSnapshot = adjacent.Build();
+	if (!adjacentSnapshot.TryGetDocumentPosition(4, &position) || position.SourceId != 20 || position.SourceOffset != 0 ||
+		!adjacentSnapshot.TryGetSearchOffset(position, &searchOffset) || searchOffset != 4)
+		return 40;
+	if (!adjacentSnapshot.TryGetDocumentPosition(0, &position) || position.SourceId != 10 || position.SourceOffset != 0 ||
+		!adjacentSnapshot.TryGetDocumentPosition(adjacentSnapshot.Text.size(), &position) || position.SourceId != 20 || position.SourceOffset != 5)
+		return 41;
+	if (!adjacentSnapshot.TryGetDocumentPosition(5, &position) || position.SourceId != 20 || position.SourceOffset != 1)
+		return 42;
 	return 0;
 }

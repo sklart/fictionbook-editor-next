@@ -28,6 +28,11 @@ struct SearchTextSnapshot {
 
 	SearchTextSnapshot() : DocumentGeneration(0) {}
 
+	// At a boundary shared by adjacent mapped segments, the position belongs to
+	// the segment on the right. At a boundary before an unmapped gap (such as
+	// the synthetic newline between paragraphs), it belongs to the segment on
+	// the left. This lets a hit beginning with the next segment start there,
+	// while preserving a position for zero-length hits at a paragraph end.
 	bool TryGetDocumentPosition(std::size_t searchOffset, SearchDocumentPosition* position) const;
 	bool TryGetSearchOffset(const SearchDocumentPosition& position, std::size_t* searchOffset) const;
 };

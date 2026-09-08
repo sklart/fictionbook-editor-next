@@ -35,6 +35,16 @@ public:
 	const SearchHit* MoveInQueryDirection(bool* wrapped = NULL);
 	const SearchHit* MoveInQueryDirectionFor(std::uint64_t documentGeneration, bool* wrapped = NULL);
 
+	// Selects the nearest hit relative to a UTF-16 caret/selection endpoint.
+	// Forward accepts a hit starting at offset; Backward accepts a hit ending at
+	// offset. Both policies include zero-length hits at the caret.
+	const SearchHit* SelectNearest(std::size_t offset, SearchDirection direction, bool* wrapped = NULL);
+	const SearchHit* SelectNearestFor(
+		std::uint64_t documentGeneration,
+		std::size_t offset,
+		SearchDirection direction,
+		bool* wrapped = NULL);
+
 private:
 	static const std::size_t kNoHit = static_cast<std::size_t>(-1);
 
