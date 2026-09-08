@@ -52,10 +52,10 @@ public:
 		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_LAYOUT, CBN_SELCHANGE, OnBackgroundSelectionChanged)
 		COMMAND_HANDLER(IDC_FONT, CBN_SELCHANGE, OnPreviewSettingsChanged)
 		COMMAND_HANDLER(IDC_FONT_SIZE, CBN_SELCHANGE, OnPreviewSettingsChanged)
-		// Let CColorButton receive BN_CLICKED through REFLECT_NOTIFICATIONS so it
-		// can open its picker.  It reports the chosen colour with CPN_SELCHANGE.
-		COMMAND_HANDLER(IDC_FG, CPN_SELCHANGE, OnPreviewSettingsChanged)
-		COMMAND_HANDLER(IDC_BG, CPN_SELCHANGE, OnPreviewSettingsChanged)
+		// CColorButton sends its changes as WM_NOTIFY, not WM_COMMAND.  Keep the
+		// click reflected to the control so its picker can open.
+		NOTIFY_HANDLER(IDC_FG, CPN_SELENDOK, OnPreviewColorChanged)
+		NOTIFY_HANDLER(IDC_BG, CPN_SELENDOK, OnPreviewColorChanged)
 		REFLECT_NOTIFICATIONS()
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsEditorPage>)
 	END_MSG_MAP()
@@ -65,6 +65,7 @@ public:
 	LRESULT OnBrowseBackground(WORD, WORD, HWND, BOOL&);
 	LRESULT OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&);
+	LRESULT OnPreviewColorChanged(int, LPNMHDR, BOOL&);
 	void UpdateBackgroundPreview();
 	bool Validate(); void Commit(); bool CancelChanges();
 };

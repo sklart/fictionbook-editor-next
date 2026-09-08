@@ -154,6 +154,7 @@ LRESULT CSettingsEditorPage::OnBrowseBackground(WORD, WORD, HWND, BOOL&)
 
 LRESULT CSettingsEditorPage::OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
 LRESULT CSettingsEditorPage::OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
+LRESULT CSettingsEditorPage::OnPreviewColorChanged(int, LPNMHDR, BOOL&) { UpdateBackgroundPreview(); return 0; }
 
 void CSettingsEditorPage::UpdateBackgroundPreview()
 {
