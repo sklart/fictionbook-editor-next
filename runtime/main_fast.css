@@ -57,6 +57,9 @@ div#fbw_desc input
 div#fbw_desc input.short{
 	width: 2em;
 }
+div#fbw_desc input.middle{
+	width: 35em;
+}
 div#fbw_desc input.wide {
 	width: 48em;
 }
