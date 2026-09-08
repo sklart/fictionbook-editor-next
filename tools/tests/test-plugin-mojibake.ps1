@@ -94,7 +94,9 @@ foreach ($root in $scanRoots) {
         } |
         ForEach-Object {
             $file = $_
-            $relative = [IO.Path]::GetRelativePath($RepoRoot, $file.FullName)
+            # System.IO.Path.GetRelativePath is unavailable in Windows PowerShell
+            # 5.1's .NET Framework.  All scan roots are inside $RepoRoot.
+            $relative = $file.FullName.Substring($RepoRoot.TrimEnd('\', '/').Length).TrimStart('\', '/')
             $lineNumber = 0
             foreach ($line in Get-Content -LiteralPath $file.FullName -Encoding UTF8) {
                 $lineNumber++
