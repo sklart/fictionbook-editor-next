@@ -14,7 +14,7 @@ bool DocumentSearchCoordinator::Rebuild(
 	if (errorText != NULL)
 		errorText->clear();
 	m_session.SetQuery(query);
-	m_snapshot = m_adapter.BuildSnapshot(document, documentGeneration);
+	m_snapshot = m_adapter.BuildBodySnapshot(document, documentGeneration);
 
 	std::vector<AU::Search::SearchHit> hits;
 	if (query.Mode == AU::Search::SearchMode::Literal)

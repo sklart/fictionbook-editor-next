@@ -15,6 +15,13 @@ public:
 		MSHTML::IHTMLDocument2Ptr document,
 		std::uint64_t documentGeneration);
 
+	// Uses one body-backed source range. It is the parity snapshot for Design
+	// search: all text MSHTML exposes through the body range is searchable,
+	// including structural text that is not wrapped in a <p>.
+	AU::Search::SearchTextSnapshot BuildBodySnapshot(
+		MSHTML::IHTMLDocument2Ptr document,
+		std::uint64_t documentGeneration);
+
 	// Creates a range from snapshot coordinates without changing the editor
 	// selection.  Keeping this separate makes the DOM bridge testable and lets
 	// callers decide when a range should become visible to the user.

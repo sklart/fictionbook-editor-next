@@ -56,6 +56,29 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 	return builder.Build();
 }
 
+AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildBodySnapshot(
+	MSHTML::IHTMLDocument2Ptr document,
+	std::uint64_t documentGeneration)
+{
+	m_sources.clear();
+	AU::Search::SearchTextSnapshotBuilder builder(documentGeneration);
+	if (!document || !document->body)
+		return builder.Build();
+
+	MSHTML::IHTMLBodyElementPtr body(document->body);
+	MSHTML::IHTMLTxtRangePtr range(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+	if (!body || !range)
+		return builder.Build();
+	_bstr_t rangeText(range->text);
+	CString text(static_cast<LPCWSTR>(rangeText));
+	const std::uint64_t sourceId = 1;
+	m_sources.push_back({ sourceId, MSHTML::IHTMLElementPtr(body) });
+	builder.Append(
+		std::wstring(static_cast<LPCWSTR>(text), text.GetLength()),
+		{ sourceId, 0 });
+	return builder.Build();
+}
+
 bool SearchDocumentAdapter::CreateHitRange(
 	MSHTML::IHTMLDocument2Ptr document,
 	const AU::Search::SearchTextSnapshot& snapshot,
@@ -125,30 +148,33 @@ bool SearchDocumentAdapter::TryGetSearchOffset(
 		return false;
 	endpoint->collapse(useEnd ? VARIANT_FALSE : VARIANT_TRUE);
 
-	MSHTML::IHTMLElementPtr element(endpoint->parentElement());
-	const SourceRange* source = NULL;
-	while (element && source == NULL)
+	// parentElement() is not reliable for a collapsed range at an element
+	// boundary. Compare against every adapter-owned source range instead.
+	for (std::size_t index = 0; index < m_sources.size(); ++index)
 	{
-		source = FindSource(element);
-		if (source == NULL)
-			element = element->parentElement;
+		const SourceRange& source = m_sources[index];
+		if (!source.Element)
+			continue;
+		MSHTML::IHTMLDocument2Ptr document(source.Element->document);
+		MSHTML::IHTMLBodyElementPtr body(document ? document->body : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLTxtRangePtr sourceRange(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		if (!sourceRange)
+			continue;
+		sourceRange->moveToElementText(source.Element);
+		MSHTML::IHTMLTxtRangePtr sourceStart(sourceRange->duplicate());
+		MSHTML::IHTMLTxtRangePtr sourceEnd(sourceRange->duplicate());
+		sourceStart->collapse(VARIANT_TRUE);
+		sourceEnd->collapse(VARIANT_FALSE);
+		if (endpoint->compareEndPoints(L"StartToStart", sourceStart) < 0 ||
+			endpoint->compareEndPoints(L"StartToStart", sourceEnd) > 0)
+			continue;
+		sourceRange->setEndPoint(L"EndToStart", endpoint);
+		_bstr_t prefix(sourceRange->text);
+		return snapshot.TryGetSearchOffset(
+			{ source.Id, static_cast<std::size_t>(prefix.length()) },
+			searchOffset);
 	}
-	if (source == NULL || !source->Element)
-		return false;
-
-	MSHTML::IHTMLDocument2Ptr document(source->Element->document);
-	MSHTML::IHTMLBodyElementPtr body(document ? document->body : MSHTML::IHTMLBodyElementPtr());
-	MSHTML::IHTMLTxtRangePtr sourceRange(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
-	if (!sourceRange)
-		return false;
-	sourceRange->moveToElementText(source->Element);
-	if (endpoint->inRange(sourceRange) != VARIANT_TRUE)
-		return false;
-	sourceRange->setEndPoint(L"EndToStart", endpoint);
-	_bstr_t prefix(sourceRange->text);
-	return snapshot.TryGetSearchOffset(
-		{ source->Id, static_cast<std::size_t>(prefix.length()) },
-		searchOffset);
+	return false;
 }
 
 const SearchDocumentAdapter::SourceRange* SearchDocumentAdapter::FindSource(std::uint64_t id) const
