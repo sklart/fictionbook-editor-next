@@ -159,3 +159,19 @@ const AU::Search::SearchResult* DocumentSearchCoordinator::SelectResult(
 		return NULL;
 	return result;
 }
+
+bool DocumentSearchCoordinator::TryGetSearchRange(
+	std::uint64_t documentGeneration,
+	MSHTML::IHTMLTxtRangePtr range,
+	AU::Search::SearchRange* searchRange) const
+{
+	if (searchRange == NULL || m_snapshot.DocumentGeneration != documentGeneration)
+		return false;
+	std::size_t start = 0;
+	std::size_t end = 0;
+	if (!m_adapter.TryGetSearchOffset(m_snapshot, range, false, &start) ||
+		!m_adapter.TryGetSearchOffset(m_snapshot, range, true, &end) || end < start)
+		return false;
+	*searchRange = AU::Search::SearchRange(start, end - start);
+	return true;
+}

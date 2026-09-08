@@ -45,6 +45,13 @@ public:
 		std::uint64_t documentGeneration,
 		std::size_t index);
 
+	// Converts the current editor selection into a pure snapshot range.  Scope
+	// callers use this before rebuilding so Search Core never observes MSHTML.
+	bool TryGetSearchRange(
+		std::uint64_t documentGeneration,
+		MSHTML::IHTMLTxtRangePtr range,
+		AU::Search::SearchRange* searchRange) const;
+
 private:
 	SearchDocumentAdapter m_adapter;
 	AU::Search::SearchTextSnapshot m_snapshot;
