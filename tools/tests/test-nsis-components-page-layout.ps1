@@ -13,7 +13,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $installerPath = Join-Path $repoRoot 'packaging\nsis\Installer\MakeInstaller.nsi'
-$installerText = Get-Content -Raw -LiteralPath $installerPath
+$installerText = Get-Content -Raw -LiteralPath $installerPath -Encoding UTF8
 
 foreach ($fragment in @(
     '!define MUI_PAGE_CUSTOMFUNCTION_SHOW ComponentsPageShow',
@@ -34,7 +34,7 @@ $expectedScriptsDescription = @{
 
 foreach ($entry in $expectedScriptsDescription.GetEnumerator()) {
     $path = Join-Path $repoRoot (Join-Path 'packaging\nsis\Installer\Localization' $entry.Key)
-    $lines = Get-Content -LiteralPath $path
+    $lines = Get-Content -LiteralPath $path -Encoding UTF8
     $descriptions = @($lines | Where-Object { $_ -match '^LangString DESC_' })
     if ($descriptions.Count -eq 0) {
         throw "В $path не найдены описания компонентов."
