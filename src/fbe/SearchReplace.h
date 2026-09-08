@@ -470,6 +470,7 @@ public:
 
 	BEGIN_MSG_MAP(CFindResultsDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		NOTIFY_HANDLER(IDC_FIND_RESULTS_LIST, LVN_ITEMACTIVATE, OnItemActivate)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 	END_MSG_MAP()
@@ -481,7 +482,8 @@ public:
 		m_list.DeleteAllItems();
 		if (!m_view->AreFindResultsCurrent())
 		{
-			::SetWindowText(GetDlgItem(IDC_FIND_RESULTS_STATUS), L"Search results are stale. Run Find All again.");
+			::SetWindowText(GetDlgItem(IDC_FIND_RESULTS_STATUS), FbeLoadRuntimeStringByKey(
+				L"fbe.dialog.idd_find_results.stale", L"Search results are stale. Run Find All again."));
 			return;
 		}
 		for (std::size_t index = 0; index < m_view->FindResultCount(); ++index)
@@ -492,17 +494,41 @@ public:
 			m_list.SetItemText(item, 1, m_view->FindResultPreview(index));
 		}
 		CString status;
-		status.Format(L"%Iu results", m_view->FindResultCount());
+		status.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"%Iu results"), m_view->FindResultCount());
 		::SetWindowText(GetDlgItem(IDC_FIND_RESULTS_STATUS), status);
 	}
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	{
+		::SetWindowText(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.caption", L"Find results"));
+		::SetWindowText(GetDlgItem(IDCANCEL), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.close", L"Close"));
 		m_list = GetDlgItem(IDC_FIND_RESULTS_LIST);
 		m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 		m_list.InsertColumn(0, L"#", LVCFMT_RIGHT, 38);
-		m_list.InsertColumn(1, L"Context", LVCFMT_LEFT, 260);
+		m_list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.context", L"Context"), LVCFMT_LEFT, 260);
 		Refresh();
+		return 0;
+	}
+
+	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&)
+	{
+		if (!m_list.IsWindow()) return 0;
+		RECT client = {};
+		GetClientRect(&client);
+		const int margin = 7;
+		const int footerHeight = 19;
+		const int closeWidth = 49;
+		int listWidth = static_cast<int>(client.right) - 2 * margin;
+		int listHeight = static_cast<int>(client.bottom) - 3 * margin - footerHeight;
+		int statusWidth = static_cast<int>(client.right) - 3 * margin - closeWidth;
+		if (listWidth < 0) listWidth = 0;
+		if (listHeight < 0) listHeight = 0;
+		if (statusWidth < 0) statusWidth = 0;
+		m_list.SetWindowPos(HWND_TOP, margin, margin, listWidth, listHeight, SWP_NOZORDER);
+		::SetWindowPos(::GetDlgItem(m_hWnd, IDC_FIND_RESULTS_STATUS), HWND_TOP, margin, client.bottom - margin - 12,
+			statusWidth, 12, SWP_NOZORDER);
+		::SetWindowPos(::GetDlgItem(m_hWnd, IDCANCEL), HWND_TOP, client.right - margin - closeWidth, client.bottom - margin - 14,
+			closeWidth, 14, SWP_NOZORDER);
 		return 0;
 	}
 
