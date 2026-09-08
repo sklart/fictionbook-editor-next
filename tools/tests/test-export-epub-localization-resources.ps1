@@ -19,12 +19,12 @@ $rcPath = Join-Path $repoRoot "src\export-epub\ExportEPUB.rc"
 $cppPath = Join-Path $repoRoot "src\export-epub\ExportEPUBPlugin.cpp"
 $generatedRcPath = Join-Path $repoRoot "src\export-epub\ExportEPUBStrings.generated.rc2"
 
-$rc = Get-Content -Raw -LiteralPath $rcPath
-$cpp = Get-Content -Raw -LiteralPath $cppPath
+$rc = Get-Content -Raw -LiteralPath $rcPath -Encoding UTF8
+$cpp = Get-Content -Raw -LiteralPath $cppPath -Encoding UTF8
 if (-not (Test-Path -LiteralPath $generatedRcPath)) {
     throw "Сгенерированный файл строк ExportEPUB не найден: $generatedRcPath"
 }
-$generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
+$generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath -Encoding UTF8
 
 if ($rc -notmatch '#include\s+"ExportEPUBStrings\.generated\.rc2"') {
     throw "ExportEPUB.rc не подключает ExportEPUBStrings.generated.rc2."
@@ -54,7 +54,7 @@ if ($cpp -match 'error\.empty\(\) \? L"Unknown error"') {
 }
 
 $resourceHeaderPath = Join-Path (Join-Path $repoRoot "src\export-epub") "resource.h"
-$resourceHeader = Get-Content -Raw -LiteralPath $resourceHeaderPath
+$resourceHeader = Get-Content -Raw -LiteralPath $resourceHeaderPath -Encoding UTF8
 $requiredResourceIds = @(
     [regex]::Matches($resourceHeader, '^#define\s+(IDS_[A-Z0-9_]+)\s+(\d+)', [System.Text.RegularExpressions.RegexOptions]::Multiline) |
         Where-Object { [int]$_.Groups[2].Value -ge 200 } |
