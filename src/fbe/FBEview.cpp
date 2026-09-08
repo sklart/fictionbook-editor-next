@@ -38,6 +38,36 @@ static void FixupParagraphs(MSHTML::IHTMLElement2Ptr elem);
 static void RelocateParagraphs(MSHTML::IHTMLDOMNode *node);
 static void KillStyles(MSHTML::IHTMLElement2Ptr elem);
 
+// IMarkupServices does not close an undo unit for us when a DOM call throws.
+// Keep structural edits paired so an error cannot poison the editor undo stack.
+class CMarkupUndoUnitScope
+{
+public:
+	CMarkupUndoUnitScope(CFBEView& view, const wchar_t* name) : m_view(view), m_active(true)
+	{
+		m_view.BeginUndoUnit(name);
+	}
+
+	~CMarkupUndoUnitScope()
+	{
+		if (m_active) {
+			try { m_view.EndUndoUnit(); }
+			catch (_com_error&) { }
+		}
+	}
+
+	void Close()
+	{
+		if (!m_active) return;
+		m_active = false;
+		m_view.EndUndoUnit();
+	}
+
+private:
+	CFBEView& m_view;
+	bool m_active;
+};
+
 // В живой сборке FBE regex режима «Дизайн» всегда идёт через наш wrapper
 // поверх PCRE2, поэтому здесь больше не нужна развилка на VBScript.RegExp.
 static AU::RegExp CreateSearchRegExp()
@@ -1500,8 +1530,8 @@ bool CFBEView::InsertPoem(bool fCheck)
 		if(fCheck)
 			return true;
 
-		m_mk_srv->BeginUndoUnit(L"insert poem");
-
+		// Build the complete replacement while it is detached. In particular,
+		// MSHTML must not see innerHTML/class changes as separate live edits.
 		CString rngHTML;
 		MSHTML::IHTMLDOMNodePtr sibling = begin;
 		do
@@ -1512,9 +1542,10 @@ bool CFBEView::InsertPoem(bool fCheck)
 		}
 		while((sibling = sibling->nextSibling));
 
+		const bool emptySelection = !U::scmp(rng->text.GetBSTR(), L"");
 		MSHTML::IHTMLElementPtr ne(Document()->createElement(L"<DIV class=poem>"));
 
-		if(!U::scmp(rng->text.GetBSTR(), L""))
+		if(emptySelection)
 		{
 			MSHTML::IHTMLElementPtr se(Document()->createElement(L"<DIV class=stanza>"));
 			se->innerHTML = L"<P>&nbsp;</P>";
@@ -1577,30 +1608,30 @@ bool CFBEView::InsertPoem(bool fCheck)
 		}
 
 
-		MSHTML::IHTMLDOMNodePtr(pe)->insertBefore((MSHTML::IHTMLDOMNodePtr)ne, begin.GetInterfacePtr());
-
-		while(begin != end)
 		{
-			sibling = begin->nextSibling;
-			begin->removeNode(VARIANT_TRUE);
-			begin = sibling;
+			CMarkupUndoUnitScope undo(*this, L"insert poem");
+			MSHTML::IHTMLDOMNodePtr(pe)->insertBefore((MSHTML::IHTMLDOMNodePtr)ne, begin.GetInterfacePtr());
+			while(begin != end) {
+				sibling = begin->nextSibling;
+				begin->removeNode(VARIANT_TRUE);
+				begin = sibling;
+			}
+			end->removeNode(VARIANT_TRUE);
+			undo.Close();
 		}
-		end->removeNode(VARIANT_TRUE);
 
-		FixupParagraphs(pe);
-		PackText(pe, Document());
-
+		// The replacement contains only DIV/P nodes already valid for FB2.
+		// Global paragraph packing/fixup here creates unrelated MSHTML edits.
 		rng->moveToElementText(ne);
 		rng->collapse(VARIANT_FALSE);
 		rng->select();
-
-		m_mk_srv->EndUndoUnit();
+		return true;
 	}
-	catch (_com_error& err) 
+	catch (_com_error& err)
 	{
 		U::ReportError(err);
 	}
-	return true;
+	return false;
 }
 
 bool CFBEView::InsertCite(bool fCheck)
@@ -1644,8 +1675,8 @@ bool CFBEView::InsertCite(bool fCheck)
 		if(fCheck)
 			return true;
 
-		m_mk_srv->BeginUndoUnit(L"insert cite");
-
+		// Build the replacement before the undo unit. Detached DOM construction
+		// avoids recording parser and attribute changes as separate undo states.
 		CString rngHTML;
 		MSHTML::IHTMLDOMNodePtr sibling = begin;
 		do
@@ -1656,9 +1687,9 @@ bool CFBEView::InsertCite(bool fCheck)
 		}
 		while((sibling = sibling->nextSibling));
 
-		// Create cite
-		MSHTML::IHTMLElementPtr ne(Document()->createElement(L"DIV"));
-		ne->className = L"cite";
+		// Create Cite in its final form. Setting className after the element has
+		// entered a live undo unit leaves a separate MSHTML undo record.
+		MSHTML::IHTMLElementPtr ne(Document()->createElement(L"<DIV class=cite>"));
 
 		MSHTML::IHTMLElementPtr acc(Document()->createElement(L"DIV"));
 		acc->innerHTML = rngHTML.AllocSysString();
@@ -1688,30 +1719,30 @@ bool CFBEView::InsertCite(bool fCheck)
 
 		ne->innerHTML = citeHTML.AllocSysString();
 
-		MSHTML::IHTMLDOMNodePtr(pe)->insertBefore((MSHTML::IHTMLDOMNodePtr)ne, begin.GetInterfacePtr());
-
-		while(begin != end)
 		{
-			sibling = begin->nextSibling;
-			begin->removeNode(VARIANT_TRUE);
-			begin = sibling;
+			CMarkupUndoUnitScope undo(*this, L"insert cite");
+			MSHTML::IHTMLDOMNodePtr(pe)->insertBefore((MSHTML::IHTMLDOMNodePtr)ne, begin.GetInterfacePtr());
+			while(begin != end) {
+				sibling = begin->nextSibling;
+				begin->removeNode(VARIANT_TRUE);
+				begin = sibling;
+			}
+			end->removeNode(VARIANT_TRUE);
+			undo.Close();
 		}
-		end->removeNode(VARIANT_TRUE);
 
-		FixupParagraphs(pe);
-		PackText(pe, Document());
-
+		// Cite is assembled as valid DIV/P markup above. Do not run global
+		// normalization here: it becomes extra undo history unrelated to Cite.
 		rng->moveToElementText(ne);
 		rng->collapse(VARIANT_FALSE);
 		rng->select();
-
-		m_mk_srv->EndUndoUnit();
+		return true;
 	}
 	catch (_com_error& err) 
 	{
 		U::ReportError(err);
 	}
-	return true;
+	return false;
 }
 
 CString CFBEView::GetClearedRangeText(const MSHTML::IHTMLTxtRangePtr &rng)const
