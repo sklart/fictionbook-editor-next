@@ -42,6 +42,14 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_backgroundImage, L"fbe.settings.tooltip.editor.background_image", L"An optional local image used behind the editor text.");
 	m_tooltips.Add(m_backgroundLayout, L"fbe.settings.tooltip.editor.background_layout", L"How the selected background image is placed.");
 	m_tooltips.Add(m_backgroundPreview, L"fbe.settings.tooltip.editor.background_preview", L"Preview of the selected editor background.");
+	const CString automaticColorText = FbeLoadRuntimeStringByKey(
+		L"fbe.dialog.idd_setting_next.color_automatic", L"Automatic");
+	const CString moreColorsText = FbeLoadRuntimeStringByKey(
+		L"fbe.dialog.idd_setting_next.color_more", L"More colors...");
+	m_foreground.SetDefaultText(automaticColorText);
+	m_foreground.SetCustomText(moreColorsText);
+	m_background.SetDefaultText(automaticColorText);
+	m_background.SetCustomText(moreColorsText);
 	m_background.SetDefaultColor(::GetSysColor(COLOR_WINDOW));
 	m_foreground.SetDefaultColor(::GetSysColor(COLOR_WINDOWTEXT));
 	m_background.SetColor(_Settings.GetColorBG());
