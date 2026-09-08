@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Project-specific leaves prevent a command-line property from leaking
+       one project's intermediates into a project reference. -->
+  <PropertyGroup>
+    <FbeStrictWarningsOutRoot Condition="'$(FbeStrictWarningsOutRoot)' == ''">$(FbeRepoRoot)\out\strict-warnings\</FbeStrictWarningsOutRoot>
+    <FbeStrictWarningsIntRoot Condition="'$(FbeStrictWarningsIntRoot)' == ''">$(FbeRepoRoot)\build\strict-warnings\</FbeStrictWarningsIntRoot>
+    <OutDir>$(FbeStrictWarningsOutRoot)$(MSBuildProjectName)\$(Configuration)\</OutDir>
+    <IntDir>$(FbeStrictWarningsIntRoot)$(MSBuildProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+</Project>
