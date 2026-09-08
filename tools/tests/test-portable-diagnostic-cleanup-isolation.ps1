@@ -23,7 +23,10 @@ try {
     Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
     Copy-Item -LiteralPath $sourceDirectory -Destination $testRoot -Recurse -Force
     New-Item -ItemType Directory -Force -Path $portableDiagnostics | Out-Null
-    "[Portable]`r`nDataPath=Data`r`n" | Set-Content -LiteralPath (Join-Path $testRoot 'portable.ini') -Encoding utf8NoBOM
+    [IO.File]::WriteAllText(
+        (Join-Path $testRoot 'portable.ini'),
+        "[Portable]`r`nDataPath=Data`r`n",
+        [Text.UTF8Encoding]::new($false))
 
     # Twelve well-formed completed sessions are deliberately older than the new
     # process trace.  Start() retains ten sessions; ClearOldLogSessions() then
