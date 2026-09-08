@@ -71,9 +71,34 @@ bool IsTestUncPath(const std::wstring& path)
         GetEnvironmentVariableW(L"ARCHHANDLER_TEST_MODE", value, 2) == 1 && value[0] == L'1';
 }
 
+bool LaunchProgram(const std::wstring& program, const std::wstring& parameters, DWORD& error)
+{
+    // Archive programs are explicitly configured as .exe files.  Do not route
+    // their already-quoted arguments through ShellExecute: it reparses the
+    // parameter string and loses a trailing backslash before a closing quote.
+    std::wstring commandLine = QuoteWindowsArgument(program);
+    if (!parameters.empty()) {
+        commandLine += L' ';
+        commandLine += parameters;
+    }
+    std::vector<wchar_t> mutableCommandLine(commandLine.begin(), commandLine.end());
+    mutableCommandLine.push_back(L'\0');
+
+    STARTUPINFOW startupInfo = {};
+    startupInfo.cb = sizeof(startupInfo);
+    PROCESS_INFORMATION processInfo = {};
+    if (!CreateProcessW(program.c_str(), mutableCommandLine.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startupInfo, &processInfo)) {
+        error = GetLastError();
+        return false;
+    }
+    CloseHandle(processInfo.hThread);
+    CloseHandle(processInfo.hProcess);
+    return true;
+}
+
 [[noreturn]] void FailLaunch(const std::wstring& program, const std::wstring& archive, DWORD error)
 {
-    std::wstring message = L"Не удалось открыть архив.\n\nПрограмма: " + program + L"\nАрхив: " + archive + L"\nКод ShellExecute: " + std::to_wstring(error);
+    std::wstring message = L"Не удалось открыть архив.\n\nПрограмма: " + program + L"\nАрхив: " + archive + L"\nКод запуска: " + std::to_wstring(error);
     MessageBoxW(nullptr, message.c_str(), L"ArchHandler", MB_OK | MB_ICONERROR);
     ExitProcess(1);
 }
@@ -98,8 +123,8 @@ int Run(int argc, wchar_t* argv[])
     const std::wstring program = ReadSetting(type, fb2 ? L"FB2Program" : L"ArchiveProgram");
     const std::wstring parameters = ReadSetting(type, fb2 ? L"FB2Parameters" : L"ArchiveParameters");
     if (program.empty() || GetFileAttributesW(program.c_str()) == INVALID_FILE_ATTRIBUTES) FailLaunch(program, archive, ERROR_FILE_NOT_FOUND);
-    const INT_PTR launchResult = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", program.c_str(), ExpandParameters(parameters, archive).c_str(), nullptr, SW_SHOWNORMAL));
-    if (launchResult <= 32) FailLaunch(program, archive, static_cast<DWORD>(launchResult));
+    DWORD launchError = ERROR_SUCCESS;
+    if (!LaunchProgram(program, ExpandParameters(parameters, archive), launchError)) FailLaunch(program, archive, launchError);
     return 0;
 }
 
