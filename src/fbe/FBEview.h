@@ -172,6 +172,7 @@ typedef CWinTraits<WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0>
 enum { FWD_SINK, BACK_SINK, RANGE_SINK };
 
 class CFindDlgBase;
+class CFindResultsDlg;
 
 class CFBEView : public CWindowImpl<CFBEView, CAxWindow, CFBEViewWinTraits>,
 		 public IDispEventSimpleImpl<0, CFBEView, &DIID_DWebBrowserEvents2>,
@@ -284,6 +285,7 @@ protected:
 
 	friend class CFindDlgBase;
 	friend class FRBase;
+	friend class CFindResultsDlg;
 	friend class CViewFindDlg;
 	friend class CReplaceDlgBase;
 	friend class CViewReplaceDlg;
@@ -304,6 +306,7 @@ protected:
 public:
 	CFindDlgBase*			m_find_dlg;
 	CReplaceDlgBase*		m_replace_dlg;
+	CFindResultsDlg*		m_find_results_dlg;
 
 	SHD::IWebBrowser2Ptr	Browser()
 	{
@@ -343,7 +346,7 @@ public:
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
     m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-    m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_link_navigation_origin_ordinal(-1), m_find_dlg(0), m_replace_dlg(0), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_file_path(), m_file_name() { }
+    m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_link_navigation_origin_ordinal(-1), m_find_dlg(0), m_replace_dlg(0), m_find_results_dlg(0), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);
@@ -594,6 +597,12 @@ public:
 	bool DoFindAll();
 	CString SearchResultStatus();
 	CString FindAllResultStatus();
+	std::size_t FindResultCount() const;
+	CString FindResultPreview(std::size_t index) const;
+	bool AreFindResultsCurrent();
+	bool SelectFindResult(std::size_t index);
+	void ShowFindResults();
+	bool CloseFindResultsDialog(CFindResultsDlg* dlg);
 	bool DoSearchStd(bool fMore=true);
 	bool DoSearchRegexp(bool fMore=true);
 	void DoReplace();

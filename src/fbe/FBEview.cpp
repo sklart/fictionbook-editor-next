@@ -628,6 +628,11 @@ CFBEView::~CFBEView()
 		CloseFindDialog(m_find_dlg);
 		delete m_find_dlg;
 	}
+	if(m_find_results_dlg)
+	{
+		CloseFindResultsDialog(m_find_results_dlg);
+		delete m_find_results_dlg;
+	}
 }
 
 BOOL CFBEView::PreTranslateMessage(MSG* pMsg)
@@ -2678,6 +2683,57 @@ CString CFBEView::FindAllResultStatus()
 	return status;
 }
 
+std::size_t CFBEView::FindResultCount() const
+{
+	return m_document_search.GetResults().GetCount();
+}
+
+CString CFBEView::FindResultPreview(std::size_t index) const
+{
+	const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
+	return result != NULL ? CString(result->Preview.c_str()) : CString();
+}
+
+bool CFBEView::AreFindResultsCurrent()
+{
+	const long version = GetVersionNumber();
+	return version >= 0 && m_document_search.GetResults().IsValidFor(static_cast<std::uint64_t>(version));
+}
+
+bool CFBEView::SelectFindResult(std::size_t index)
+{
+	try
+	{
+		if (!Document() || !AreFindResultsCurrent())
+			return false;
+		if (m_document_search.SelectResult(Document(), static_cast<std::uint64_t>(GetVersionNumber()), index) == NULL)
+			return false;
+		PositionFoundRange(MSHTML::IHTMLTxtRangePtr(Document()->selection->createRange()));
+		return true;
+	}
+	catch (const _com_error&)
+	{
+		return false;
+	}
+}
+
+void CFBEView::ShowFindResults()
+{
+	if (!m_find_results_dlg)
+		m_find_results_dlg = new CFindResultsDlg(this);
+	if (!m_find_results_dlg->IsValid())
+		m_find_results_dlg->ShowDialog(*this);
+	m_find_results_dlg->Refresh();
+}
+
+bool CFBEView::CloseFindResultsDialog(CFindResultsDlg* dlg)
+{
+	if (!dlg || !dlg->IsValid())
+		return false;
+	dlg->DestroyWindow();
+	return true;
+}
+
 void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
 {
 	try
@@ -3887,7 +3943,10 @@ bool CFBEView::DoFindAll()
 		query.UnicodeProperties = m_fo.unicodeProperties;
 		query.Scope = m_fo.scope;
 		MSHTML::IHTMLTxtRangePtr selection(Document()->selection->createRange());
-		return selection && RebuildDocumentSearch(query, selection);
+		if (!selection || !RebuildDocumentSearch(query, selection))
+			return false;
+		ShowFindResults();
+		return true;
 	}
 	catch (const _com_error&)
 	{

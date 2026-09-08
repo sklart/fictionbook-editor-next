@@ -423,4 +423,72 @@ public:
 	}
 };
 
+// A modeless companion to Find.  It stores indexes only; the document-facing
+// coordinator remains the sole owner of snapshot offsets and generation.
+class CFindResultsDlg: public CModelessDialogImpl<CFindResultsDlg>
+{
+public:
+	enum { IDD = IDD_FIND_RESULTS };
+
+	explicit CFindResultsDlg(CFBEView* view) : m_view(view) { }
+
+	BEGIN_MSG_MAP(CFindResultsDlg)
+		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		NOTIFY_HANDLER(IDC_FIND_RESULTS_LIST, LVN_ITEMACTIVATE, OnItemActivate)
+		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
+	END_MSG_MAP()
+
+	void Refresh()
+	{
+		if (!IsValid())
+			return;
+		m_list.DeleteAllItems();
+		if (!m_view->AreFindResultsCurrent())
+		{
+			::SetWindowText(GetDlgItem(IDC_FIND_RESULTS_STATUS), L"Search results are stale. Run Find All again.");
+			return;
+		}
+		for (std::size_t index = 0; index < m_view->FindResultCount(); ++index)
+		{
+			CString number;
+			number.Format(L"%Iu", index + 1);
+			const int item = m_list.InsertItem(static_cast<int>(index), number);
+			m_list.SetItemText(item, 1, m_view->FindResultPreview(index));
+		}
+		CString status;
+		status.Format(L"%Iu results", m_view->FindResultCount());
+		::SetWindowText(GetDlgItem(IDC_FIND_RESULTS_STATUS), status);
+	}
+
+	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
+	{
+		m_list = GetDlgItem(IDC_FIND_RESULTS_LIST);
+		m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		m_list.InsertColumn(0, L"#", LVCFMT_RIGHT, 38);
+		m_list.InsertColumn(1, L"Context", LVCFMT_LEFT, 260);
+		Refresh();
+		return 0;
+	}
+
+	LRESULT OnItemActivate(int, LPNMHDR header, BOOL&)
+	{
+		const NMLISTVIEW* item = reinterpret_cast<const NMLISTVIEW*>(header);
+		if (item->iItem < 0)
+			return 0;
+		if (!m_view->SelectFindResult(static_cast<std::size_t>(item->iItem)))
+			Refresh();
+		return 0;
+	}
+
+	LRESULT OnCancel(WORD, WORD, HWND, BOOL&)
+	{
+		m_view->CloseFindResultsDialog(this);
+		return 0;
+	}
+
+private:
+	CFBEView* m_view;
+	CListViewCtrl m_list;
+};
+
 #endif
