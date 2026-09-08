@@ -23,4 +23,8 @@ foreach ($adapter in @('SearchDocumentAdapter.cpp', 'SearchDocumentAdapter.h')) 
     $path = Join-Path $repoRoot "src\fbe\$adapter"
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Search document adapter is missing: $path" }
 }
+$designSearch = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
+if ($designSearch -match '\.findText\s*\(') {
+    throw 'Design-mode search or replace returned to IHTMLTxtRange::findText.'
+}
 Write-Host 'FBE search backend boundary passed.'

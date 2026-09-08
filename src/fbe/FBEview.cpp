@@ -3482,101 +3482,86 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 
 int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 {
-	if(m_fo.pattern.IsEmpty())
+	UNREFERENCED_PARAMETER(cntTag); // retained for the public Tools API signature
+	if (m_fo.pattern.IsEmpty() || !Document() || GetVersionNumber() < 0)
 		return 0;
-
+	bool undoStarted = false;
 	try
 	{
-		MSHTML::IHTMLTxtRangePtr sel(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
-		if(elem)
-			sel->moveToElementText(elem);
-		if(!(bool)sel)
+		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
+		AU::Search::SearchQuery query;
+		query.Text = static_cast<LPCWSTR>(m_fo.pattern);
+		query.Mode = m_fo.fRegexp ? AU::Search::SearchMode::Regex : AU::Search::SearchMode::Literal;
+		query.MatchCase = (m_fo.flags & FRF_CASE) != 0;
+		query.WholeWord = (m_fo.flags & FRF_WHOLE) != 0;
+		query.Direction = AU::Search::SearchDirection::Forward;
+		query.UnicodeProperties = m_fo.unicodeProperties;
+		query.Multiline = query.Mode == AU::Search::SearchMode::Regex;
+
+		// GlobalReplace is also used by Tools commands with an element scope. Map
+		// that DOM range once, then let Search Core filter snapshot hits; never
+		// fall back to IHTMLTxtRange::findText for literal replacements.
+		if (!m_document_search.Rebuild(Document(), generation, query))
 			return 0;
+		AU::Search::SearchRange scope;
+		if (elem)
+		{
+			MSHTML::IHTMLTxtRangePtr elementRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+			if (!elementRange) return 0;
+			elementRange->moveToElementText(elem);
+			if (!m_document_search.TryGetSearchRange(generation, elementRange, &scope) || scope.Length == 0)
+				return 0;
+			if (!m_document_search.Rebuild(Document(), generation, query, NULL, &scope))
+				return 0;
+		}
 
-		ScopedSearchRegExp re;
-		NormalizeSearchPatternNbsp(m_fo.pattern);
-		InitSearchRegExp(re.get(), m_fo.flags, m_fo.pattern);
+		const std::size_t count = m_document_search.GetResults().GetCount();
+		std::vector<MSHTML::IHTMLTxtRangePtr> ranges(count);
+		for (std::size_t index = 0; index < count; ++index)
+			if (!m_document_search.CreateResultRange(Document(), generation, index, ranges[index]) || !ranges[index])
+				return 0;
 
+		int replaced = 0;
 		m_mk_srv->BeginUndoUnit(L"replace");
-
-		sel->collapse(VARIANT_TRUE);
-
-		int nRepl = 0;
-
-		if(m_fo.fRegexp)
+		undoStarted = true;
+		const AU::Search::SearchTextSnapshot& snapshot = m_document_search.GetSnapshot();
+		for (std::size_t index = count; index-- > 0;)
 		{
-			MSHTML::IHTMLElementCollectionPtr all;
-			if(elem)
-				all = MSHTML::IHTMLElement2Ptr(elem)->getElementsByTagName(cntTag.AllocSysString());
-			else
-				all = MSHTML::IHTMLDocument3Ptr(Document())->getElementsByTagName(cntTag.AllocSysString());
-			_bstr_t charstr(L"character");
-			RRList rl;
-			CString repl;
-
-			for(long l = 0;l < all->length; ++l)
+			const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
+			if (result == NULL) continue;
+			CString replacement;
+			RRList formatting;
+			if (m_fo.fRegexp)
 			{
-				MSHTML::IHTMLElementPtr matchedElement(all->item(l));
-				sel->moveToElementText(matchedElement);;
-				AU::ReMatches rm(ExecuteSearchRegExp(re.get(), sel));
-				if(rm->Count <= 0)
-					continue;
-
-				// SeNS: fix for issue #147
-				MSHTML::IHTMLTxtRangePtr rng = sel->duplicate();
-				CString text = rng->text;
-				CString html = rng->htmlText;
-
-				// Replace
-				sel->collapse(VARIANT_TRUE);
-				long last = 0;
-				for(long i = 0; i < rm->Count; ++i)
+				const AU::Search::SearchHit& hit = result->Hit;
+				AU::IMatch2 match(CString(snapshot.Text.data() + hit.Start, static_cast<int>(hit.Length)), static_cast<int>(hit.Start));
+				for (std::size_t capture = 0; capture < hit.Captures.size(); ++capture)
 				{
-					AU::ReMatch cur(rm->Item[i]);
-					long delta = cur->FirstIndex - last;
-
-					// SeNS
-					delta += TextOffset (rng, cur, text, html);
-
-					if(delta)
-					{
-						sel->move(charstr, delta);
-						last += delta;
-					}
-					if(sel->moveStart(charstr, 1) == 1)
-						sel->move(charstr, -1);
-					delta = cur->Length;
-					last += cur->Length;
-					sel->moveEnd(charstr, delta);
-					rl.RemoveAll();
-					repl = PrepareRegexReplacementText(m_fo.replacement, cur, rl);
-
-					sel->text = (const wchar_t*)repl;
-					ApplyReplacementFormatting(sel, repl, rl);
-					++nRepl;
+					const AU::Search::SearchCapture& value = hit.Captures[capture];
+					match.AddSubMatch(value.Matched ? CString(snapshot.Text.data() + value.Start, static_cast<int>(value.Length)) : CString());
 				}
+				replacement = PrepareRegexReplacementText(m_fo.replacement, &match, formatting);
 			}
+			else
+			{
+				replacement = m_fo.replacement;
+				NormalizeReplacementNbsp(replacement);
+			}
+			ranges[index]->text = static_cast<LPCWSTR>(replacement);
+			if (m_fo.fRegexp) ApplyReplacementFormatting(ranges[index], replacement, formatting);
+			++replaced;
 		}
-		else
-		{
-			DWORD flags = m_fo.flags & ~FRF_REVERSE;
-			_bstr_t pattern((const wchar_t*)m_fo.pattern);
-			_bstr_t repl((const wchar_t*)m_fo.replacement);
-				while(sel->findText(pattern, 1073741824, flags) == VARIANT_TRUE)
-				{
-					sel->text = repl;
-					++nRepl;
-				}
-		}
-
 		m_mk_srv->EndUndoUnit();
-		return nRepl;
+		undoStarted = false;
+		m_document_search.Invalidate();
+		ClearSearchHighlights();
+		return replaced;
 	}
 	catch (_com_error& err)
 	{
+		if (undoStarted) m_mk_srv->EndUndoUnit();
 		U::ReportError(err);
 	}
-
 	return 0;
 }
 
