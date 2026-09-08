@@ -47,13 +47,16 @@ $wordsDialog = Get-Dialog 'IDD_SETTINGS_WORDS'
 Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 300, 320' 'Source page must fit the Settings content area without exceeding it.'
 foreach ($control in @(
     'IDC_WRAP,"Button".*?,14,38,266,10', 'IDC_SYNTAXHL,"Button".*?,14,52,266,10',
-    'IDC_TAGHL,"Button".*?,14,66,266,10', 'IDC_SHOWEOL,"Button".*?,14,80,266,10',
+    'IDC_TAGHL,"Button".*?,14,66,126,10', 'IDC_SHOWEOL,"Button".*?,14,80,266,10',
     'IDC_SHOWWHITESPACE,"Button".*?,14,94,266,10', 'IDC_SHOWLINENUMBERS,"Button".*?,14,108,266,10',
-    'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,"Button".*?,14,122,266,10',
-    'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE,64,134,128,50',
+    'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,"Button".*?,14,122,154,10',
+    'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE,208,120,76,50',
+    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE,180,64,104,50',
+    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES,"Button".*?,14,136,120,10',
+    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS,"Button".*?,140,136,144,10',
     'IDC_OPTIONS_SOURCE_PREVIEW,"Static",SS_OWNERDRAW,14,257,272,56'
 )) {
-    Assert-Contains $sourceDialog $control 'Source checkboxes must use full-width independent rows.'
+    Assert-Contains $sourceDialog $control 'Source control geometry changed unexpectedly.'
 }
 foreach ($control in @('IDC_SRCFONT', 'IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', 'IDC_SHOWEOL', 'IDC_SHOWWHITESPACE', 'IDC_SHOWLINENUMBERS', 'IDC_OPTIONS_SOURCE_PALETTE', 'IDC_OPTIONS_SOURCE_PREVIEW')) {
     Assert-Contains $sourceDialog $control "Source control missing from IDD_SETTINGS_SOURCE: $control"
