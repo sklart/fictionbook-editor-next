@@ -13,7 +13,10 @@ function New-PortableCopy([string]$Name, [string]$DataPath) {
     $directory = Join-Path $testRoot $Name
     New-Item -ItemType Directory -Force -Path $directory | Out-Null
     Copy-Item -LiteralPath $FbeExecutable -Destination (Join-Path $directory 'FBE.exe')
-    "[Portable]`r`nDataPath=$DataPath`r`n" | Set-Content -LiteralPath (Join-Path $directory 'portable.ini') -Encoding utf8NoBOM
+    [IO.File]::WriteAllText(
+        (Join-Path $directory 'portable.ini'),
+        "[Portable]`r`nDataPath=$DataPath`r`n",
+        [Text.UTF8Encoding]::new($false))
     return Join-Path $directory 'FBE.exe'
 }
 function Get-PortablePaths([string]$Executable) {
