@@ -279,7 +279,7 @@ protected:
 	CString m_replace_preview_replacement;
 	std::uint64_t m_replace_preview_generation;
 	std::uint64_t m_replace_preview_revision;
-	DWORD m_replace_preview_flags;
+	int m_replace_preview_flags;
 	AU::Search::SearchScope m_replace_preview_scope;
 	bool m_replace_preview_regexp;
 	bool m_replace_preview_unicode_properties;

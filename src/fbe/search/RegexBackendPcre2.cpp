@@ -156,7 +156,7 @@ bool RegexBackend::Execute(
 		options.Global,
 		matchData,
 		matchContext,
-		[&matches, &sourceString, &captureNames](int rc, PCRE2_SIZE* ovector)
+		[&matches, &sourceString, &captureNames](int, PCRE2_SIZE* ovector)
 		{
 			const PCRE2_SIZE matchStart = ovector[0];
 			const PCRE2_SIZE matchEnd = ovector[1];
