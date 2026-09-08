@@ -295,6 +295,12 @@ public:
 		COMMAND_ID_HANDLER(ID_FIND_NEXT, OnDoFind)
 		COMMAND_ID_HANDLER(IDC_FIND_ALL, OnDoFindAll)
 		COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_SELCHANGE, OnScopeChanged)
+		COMMAND_HANDLER(IDC_MATCHCASE, BN_CLICKED, OnSearchOptionChanged)
+		COMMAND_HANDLER(IDC_WHOLE, BN_CLICKED, OnSearchOptionChanged)
+		COMMAND_HANDLER(IDC_REGEXP, BN_CLICKED, OnSearchOptionChanged)
+		COMMAND_HANDLER(IDC_FIND_UNICODE_PROPERTIES, BN_CLICKED, OnSearchOptionChanged)
+		COMMAND_HANDLER(IDC_UP, BN_CLICKED, OnSearchOptionChanged)
+		COMMAND_HANDLER(IDC_DOWN, BN_CLICKED, OnSearchOptionChanged)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 		CHAIN_MSG_MAP_ALT(FRBase, 1)
 	END_MSG_MAP()
@@ -329,6 +335,13 @@ public:
 	LRESULT OnScopeChanged(WORD, WORD, HWND, BOOL&)
 	{
 		m_view->ResetSearchScope();
+		::SetTimer(m_hWnd, 0x4F01, 150, NULL);
+		return 0;
+	}
+
+	LRESULT OnSearchOptionChanged(WORD, WORD, HWND, BOOL&)
+	{
+		::SetTimer(m_hWnd, 0x4F01, 150, NULL);
 		return 0;
 	}
 

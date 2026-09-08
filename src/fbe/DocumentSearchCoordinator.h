@@ -31,14 +31,16 @@ public:
 		std::uint64_t documentGeneration,
 		std::size_t offset,
 		AU::Search::SearchDirection direction,
-		bool* wrapped = NULL);
+		bool* wrapped = NULL,
+		bool skipZeroLengthAtOffset = false);
 
 	const AU::Search::SearchHit* SelectFromRange(
 		MSHTML::IHTMLDocument2Ptr document,
 		std::uint64_t documentGeneration,
 		MSHTML::IHTMLTxtRangePtr range,
 		AU::Search::SearchDirection direction,
-		bool* wrapped = NULL);
+		bool* wrapped = NULL,
+		bool skipZeroLengthAtOffset = false);
 
 	const AU::Search::SearchResult* SelectResult(
 		MSHTML::IHTMLDocument2Ptr document,

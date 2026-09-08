@@ -38,12 +38,12 @@ public:
 	// Selects the nearest hit relative to a UTF-16 caret/selection endpoint.
 	// Forward accepts a hit starting at offset; Backward accepts a hit ending at
 	// offset. Both policies include zero-length hits at the caret.
-	const SearchHit* SelectNearest(std::size_t offset, SearchDirection direction, bool* wrapped = NULL);
+	const SearchHit* SelectNearest(std::size_t offset, SearchDirection direction, bool* wrapped = NULL, bool skipZeroLengthAtOffset = false);
 	const SearchHit* SelectNearestFor(
 		std::uint64_t documentGeneration,
 		std::size_t offset,
 		SearchDirection direction,
-		bool* wrapped = NULL);
+		bool* wrapped = NULL, bool skipZeroLengthAtOffset = false);
 
 	void RestrictToRange(const SearchRange& range);
 

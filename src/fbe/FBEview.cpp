@@ -2781,10 +2781,10 @@ void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
 
 bool CFBEView::DoSearchRegexp(bool fMore)
 {
-	// Replace still relies on the legacy IMatch2 capture representation. The
-	// modeless Find dialog can already use the generation-safe native path.
-	if (m_replace_dlg == NULL && DoSearchNative(fMore, AU::Search::SearchMode::Regex))
-		return true;
+	// Ordinary Design-mode Find is wholly native.  The legacy path below is
+	// retained only while Replace still consumes IMatch2 captures.
+	if (m_replace_dlg == NULL)
+		return DoSearchNative(fMore, AU::Search::SearchMode::Regex);
 
 	try
 	{
@@ -3912,9 +3912,19 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
 		if (!RebuildDocumentSearch(query, selection))
 			return false;
+		AU::Search::SearchRange selectedRange;
+		const bool skipZeroLengthAtOffset = m_has_last_zero_length_hit &&
+			m_last_zero_length_generation == generation &&
+			m_document_search.TryGetSearchRange(generation, selection, &selectedRange) &&
+			selectedRange.Length == 0 && selectedRange.Start == m_last_zero_length_hit;
 		bool wrapped = false;
-		if (m_document_search.SelectFromRange(Document(), generation, selection, query.Direction, &wrapped) == NULL)
+		const AU::Search::SearchHit* hit = m_document_search.SelectFromRange(
+			Document(), generation, selection, query.Direction, &wrapped, skipZeroLengthAtOffset);
+		if (hit == NULL)
 			return false;
+		m_has_last_zero_length_hit = hit->Length == 0;
+		m_last_zero_length_hit = hit->Start;
+		m_last_zero_length_generation = generation;
 		MSHTML::IHTMLTxtRangePtr found(Document()->selection->createRange());
 		PositionFoundRange(found);
 		NotifyWrappedSearch(wrapped);
@@ -3954,6 +3964,8 @@ bool CFBEView::DoFindAll(bool showResults, CString* errorText)
 		}
 		if (showResults)
 			ShowFindResults();
+		else if (m_find_results_dlg && m_find_results_dlg->IsValid())
+			m_find_results_dlg->Refresh();
 		return true;
 	}
 	catch (const _com_error&)

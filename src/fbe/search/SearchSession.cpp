@@ -143,7 +143,8 @@ const SearchHit* SearchSession::MoveInQueryDirectionFor(
 const SearchHit* SearchSession::SelectNearest(
 	std::size_t offset,
 	SearchDirection direction,
-	bool* wrapped)
+	bool* wrapped,
+	bool skipZeroLengthAtOffset)
 {
 	if (wrapped != NULL)
 		*wrapped = false;
@@ -154,7 +155,8 @@ const SearchHit* SearchSession::SelectNearest(
 	{
 		for (std::size_t index = 0; index < m_hits.size(); ++index)
 		{
-			if (m_hits[index].Start >= offset)
+			if (m_hits[index].Start >= offset &&
+				(!skipZeroLengthAtOffset || m_hits[index].Length != 0 || m_hits[index].Start != offset))
 			{
 				m_currentIndex = index;
 				return GetCurrentHit();
@@ -167,7 +169,8 @@ const SearchHit* SearchSession::SelectNearest(
 		for (std::size_t index = m_hits.size(); index != 0; --index)
 		{
 			const SearchHit& hit = m_hits[index - 1];
-			if (hit.Start <= offset && hit.Length <= offset - hit.Start)
+			if (hit.Start <= offset && hit.Length <= offset - hit.Start &&
+				(!skipZeroLengthAtOffset || hit.Length != 0 || hit.Start != offset))
 			{
 				m_currentIndex = index - 1;
 				return GetCurrentHit();
@@ -184,7 +187,8 @@ const SearchHit* SearchSession::SelectNearestFor(
 	std::uint64_t documentGeneration,
 	std::size_t offset,
 	SearchDirection direction,
-	bool* wrapped)
+	bool* wrapped,
+	bool skipZeroLengthAtOffset)
 {
 	if (!IsValidFor(documentGeneration))
 	{
@@ -192,7 +196,7 @@ const SearchHit* SearchSession::SelectNearestFor(
 			*wrapped = false;
 		return NULL;
 	}
-	return SelectNearest(offset, direction, wrapped);
+	return SelectNearest(offset, direction, wrapped, skipZeroLengthAtOffset);
 }
 
 void SearchSession::RestrictToRange(const SearchRange& range)

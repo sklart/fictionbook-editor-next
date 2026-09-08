@@ -75,6 +75,16 @@ int wmain()
 	if (session.SelectNearestFor(101, 1, SearchDirection::Forward, &wrapped)->Start != 1 || wrapped ||
 		session.SelectNearestFor(101, 1, SearchDirection::Backward, &wrapped)->Start != 1 || wrapped)
 		return 39;
+	// A collapsed regexp hit at the caret is selectable initially, but a
+	// repeated Find Next/Previous must advance to a neighbouring anchor rather
+	// than select the same zero-length match forever.
+	session.SetHits(std::vector<SearchHit>{ SearchHit(0, 0), SearchHit(1, 0), SearchHit(2, 0) }, 101);
+	if (session.SelectNearestFor(101, 1, SearchDirection::Forward, &wrapped)->Start != 1 || wrapped ||
+		session.SelectNearestFor(101, 1, SearchDirection::Forward, &wrapped, true)->Start != 2 || wrapped ||
+		session.SelectNearestFor(101, 2, SearchDirection::Forward, &wrapped, true)->Start != 0 || !wrapped ||
+		session.SelectNearestFor(101, 1, SearchDirection::Backward, &wrapped, true)->Start != 0 || wrapped ||
+		session.SelectNearestFor(101, 0, SearchDirection::Backward, &wrapped, true)->Start != 2 || !wrapped)
+		return 45;
 	session.Invalidate();
 	if (session.IsValid() || session.HasCurrentHit() || session.GetHitCount() != 0)
 		return 14;

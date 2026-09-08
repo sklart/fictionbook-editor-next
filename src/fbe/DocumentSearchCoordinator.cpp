@@ -111,10 +111,11 @@ const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromOffset(
 	std::uint64_t documentGeneration,
 	std::size_t offset,
 	AU::Search::SearchDirection direction,
-	bool* wrapped)
+	bool* wrapped,
+	bool skipZeroLengthAtOffset)
 {
 	const AU::Search::SearchHit* hit = m_session.SelectNearestFor(
-		documentGeneration, offset, direction, wrapped);
+		documentGeneration, offset, direction, wrapped, skipZeroLengthAtOffset);
 	if (hit == NULL || !m_adapter.SelectHit(document, m_snapshot, *hit))
 		return NULL;
 	for (std::size_t index = 0; index < m_results.GetCount(); ++index)
@@ -134,7 +135,8 @@ const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromRange(
 	std::uint64_t documentGeneration,
 	MSHTML::IHTMLTxtRangePtr range,
 	AU::Search::SearchDirection direction,
-	bool* wrapped)
+	bool* wrapped,
+	bool skipZeroLengthAtOffset)
 {
 	std::size_t offset = 0;
 	if (!m_adapter.TryGetSearchOffset(
@@ -144,7 +146,7 @@ const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromRange(
 			*wrapped = false;
 		return NULL;
 	}
-	return SelectFromOffset(document, documentGeneration, offset, direction, wrapped);
+	return SelectFromOffset(document, documentGeneration, offset, direction, wrapped, skipZeroLengthAtOffset);
 }
 
 const AU::Search::SearchResult* DocumentSearchCoordinator::SelectResult(
