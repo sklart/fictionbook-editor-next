@@ -74,6 +74,10 @@ int wmain()
 	session.Invalidate();
 	if (session.IsValid() || session.HasCurrentHit() || session.GetHitCount() != 0)
 		return 14;
+	session.SetHits(std::vector<SearchHit>{ SearchHit(1, 2), SearchHit(4, 0), SearchHit(6, 3) }, 102);
+	session.RestrictToRange(AU::Search::SearchRange(1, 4));
+	if (session.GetHitCount() != 2 || session.Next()->Start != 1 || session.Next()->Start != 4)
+		return 43;
 
 	SearchResults results;
 	SearchResult first = { SearchHit(2, 6), L"Chapter 1", L"...needle..." };

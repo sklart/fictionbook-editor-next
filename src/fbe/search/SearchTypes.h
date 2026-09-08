@@ -52,6 +52,20 @@ struct SearchHit {
 	SearchHit(std::size_t start, std::size_t length) : Start(start), Length(length) {}
 };
 
+struct SearchRange {
+	std::size_t Start;
+	std::size_t Length;
+
+	SearchRange() : Start(0), Length(0) {}
+	SearchRange(std::size_t start, std::size_t length) : Start(start), Length(length) {}
+};
+
+inline bool IsHitInsideRange(const SearchHit& hit, const SearchRange& range)
+{
+	return hit.Start >= range.Start && hit.Length <= range.Length &&
+		hit.Start - range.Start <= range.Length - hit.Length;
+}
+
 inline bool operator==(const SearchHit& left, const SearchHit& right)
 {
 	return left.Start == right.Start && left.Length == right.Length;

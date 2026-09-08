@@ -195,5 +195,15 @@ const SearchHit* SearchSession::SelectNearestFor(
 	return SelectNearest(offset, direction, wrapped);
 }
 
+void SearchSession::RestrictToRange(const SearchRange& range)
+{
+	std::vector<SearchHit> filtered;
+	for (std::size_t index = 0; index < m_hits.size(); ++index)
+		if (IsHitInsideRange(m_hits[index], range))
+			filtered.push_back(m_hits[index]);
+	m_hits.swap(filtered);
+	m_currentIndex = kNoHit;
+}
+
 }
 }

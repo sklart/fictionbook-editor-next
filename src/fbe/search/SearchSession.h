@@ -45,6 +45,8 @@ public:
 		SearchDirection direction,
 		bool* wrapped = NULL);
 
+	void RestrictToRange(const SearchRange& range);
+
 private:
 	static const std::size_t kNoHit = static_cast<std::size_t>(-1);
 
