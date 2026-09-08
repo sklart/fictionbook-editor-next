@@ -135,6 +135,37 @@ bool SearchDocumentAdapter::SelectHit(
 	return true;
 }
 
+std::wstring SearchDocumentAdapter::GetSectionLabel(
+	MSHTML::IHTMLDocument2Ptr document,
+	const AU::Search::SearchTextSnapshot& snapshot,
+	const AU::Search::SearchHit& hit) const
+{
+	try
+	{
+		MSHTML::IHTMLTxtRangePtr range;
+		if (!CreateHitRange(document, snapshot, hit, range) || !range)
+			return std::wstring();
+		MSHTML::IHTMLElementPtr element(range->parentElement());
+		while (element && _wcsicmp(static_cast<LPCWSTR>(_bstr_t(element->className)), L"section") != 0)
+			element = element->parentElement;
+		if (!element)
+			return std::wstring();
+		MSHTML::IHTMLElementCollectionPtr children(element->children);
+		if (!children)
+			return std::wstring();
+		for (long index = 0; index < children->length; ++index)
+		{
+			MSHTML::IHTMLElementPtr child(children->item(index));
+			if (child && _wcsicmp(static_cast<LPCWSTR>(_bstr_t(child->className)), L"title") == 0)
+				return std::wstring(static_cast<LPCWSTR>(_bstr_t(child->innerText)));
+		}
+	}
+	catch (const _com_error&)
+	{
+	}
+	return std::wstring();
+}
+
 bool SearchDocumentAdapter::TryGetSearchOffset(
 	const AU::Search::SearchTextSnapshot& snapshot,
 	MSHTML::IHTMLTxtRangePtr range,

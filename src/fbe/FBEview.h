@@ -601,6 +601,7 @@ public:
 	CString SearchResultStatus();
 	CString FindAllResultStatus();
 	std::size_t FindResultCount() const;
+	CString FindResultSection(std::size_t index) const;
 	CString FindResultPreview(std::size_t index) const;
 	bool AreFindResultsCurrent();
 	std::uint64_t FindResultsRevision() const;

@@ -79,6 +79,7 @@ bool DocumentSearchCoordinator::Rebuild(
 	{
 		AU::Search::SearchResult result = {};
 		result.Hit = hits[index];
+		result.Section = m_adapter.GetSectionLabel(document, m_snapshot, hits[index]);
 		result.Preview = BuildPreview(m_snapshot.Text, hits[index]);
 		results.push_back(result);
 	}

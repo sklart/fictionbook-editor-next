@@ -770,6 +770,25 @@
         "bg-BG": "Назначаване"
       }
     },
+    "fbe.dialog.idd_find_results.section": {
+      "resource": "IDD_FIND_RESULTS",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Section",
+        "ru-RU": "Раздел",
+        "uk-UA": "Розділ",
+        "de-DE": "Abschnitt",
+        "fr-FR": "Section",
+        "es-ES": "Sección",
+        "it-IT": "Sezione",
+        "pl-PL": "Sekcja",
+        "pt-PT": "Secção",
+        "nl-NL": "Sectie",
+        "cs-CZ": "Sekce",
+        "bg-BG": "Раздел"
+      }
+    },
     "fbe.dialog.idd_find.caption": {
       "resource": "IDD_FIND",
       "kind": "CAPTION",

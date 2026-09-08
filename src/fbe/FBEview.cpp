@@ -2688,6 +2688,12 @@ std::size_t CFBEView::FindResultCount() const
 	return m_document_search.GetResults().GetCount();
 }
 
+CString CFBEView::FindResultSection(std::size_t index) const
+{
+	const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
+	return result != NULL ? CString(result->Section.c_str()) : CString();
+}
+
 CString CFBEView::FindResultPreview(std::size_t index) const
 {
 	const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);

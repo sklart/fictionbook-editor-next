@@ -39,7 +39,7 @@ int wmain()
 	document.CreateInstance(L"htmlfile");
 	IPersistStreamInitPtr persist(document);
 	if (!document || !persist || FAILED(persist->InitNew()) || !WriteHtml(document,
-		L"<html><body><div class='title'>title text</div><p>first</p><p>second</p><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><table><tr><td>table cell</td></tr></table></body></html>"))
+		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><table><tr><td>table cell</td></tr></table></body></html>"))
 		return 2;
 
 	int result = 0;
@@ -100,6 +100,7 @@ int wmain()
 	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &secondScope) || coordinator.GetResults().GetCount() != 0)) result = 20;
 	query.Text = L"second";
 	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &secondScope) || coordinator.GetResults().GetCount() != 1)) result = 21;
+	if (!result && coordinator.GetResults().GetAt(0)->Section != L"Section one") result = 33;
 
 	query.Mode = AU::Search::SearchMode::Regex;
 	query.Scope = AU::Search::SearchScope::CurrentSection;

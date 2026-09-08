@@ -492,7 +492,8 @@ public:
 			CString number;
 			number.Format(L"%Iu", index + 1);
 			const int item = m_list.InsertItem(static_cast<int>(index), number);
-			m_list.SetItemText(item, 1, m_view->FindResultPreview(index));
+			m_list.SetItemText(item, 1, m_view->FindResultSection(index));
+			m_list.SetItemText(item, 2, m_view->FindResultPreview(index));
 		}
 		CString status;
 		status.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"%Iu results"), m_view->FindResultCount());
@@ -506,7 +507,8 @@ public:
 		m_list = GetDlgItem(IDC_FIND_RESULTS_LIST);
 		m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 		m_list.InsertColumn(0, L"#", LVCFMT_RIGHT, 38);
-		m_list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.context", L"Context"), LVCFMT_LEFT, 260);
+		m_list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.section", L"Section"), LVCFMT_LEFT, 100);
+		m_list.InsertColumn(2, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.context", L"Context"), LVCFMT_LEFT, 160);
 		Refresh();
 		return 0;
 	}
@@ -526,6 +528,8 @@ public:
 		if (listHeight < 0) listHeight = 0;
 		if (statusWidth < 0) statusWidth = 0;
 		m_list.SetWindowPos(HWND_TOP, margin, margin, listWidth, listHeight, SWP_NOZORDER);
+		m_list.SetColumnWidth(1, 100);
+		m_list.SetColumnWidth(2, listWidth > 138 ? listWidth - 138 : 0);
 		::SetWindowPos(::GetDlgItem(m_hWnd, IDC_FIND_RESULTS_STATUS), HWND_TOP, margin, client.bottom - margin - 12,
 			statusWidth, 12, SWP_NOZORDER);
 		::SetWindowPos(::GetDlgItem(m_hWnd, IDCANCEL), HWND_TOP, client.right - margin - closeWidth, client.bottom - margin - 14,
