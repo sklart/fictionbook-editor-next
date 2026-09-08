@@ -23,6 +23,7 @@ public:
 	const AU::Search::SearchTextSnapshot& GetSnapshot() const;
 	const AU::Search::SearchSession& GetSession() const;
 	const AU::Search::SearchResults& GetResults() const;
+	std::size_t GetSelectedResultIndex() const;
 
 	const AU::Search::SearchHit* SelectFromOffset(
 		MSHTML::IHTMLDocument2Ptr document,

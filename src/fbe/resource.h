@@ -588,6 +588,7 @@
 #define IDC_OPTIONS_SOURCE_FONT         1122
 #define IDC_FIND_LABEL_TEXT             1123
 #define IDC_FIND_DIRECTION_GROUP        1124
+#define IDC_FIND_STATUS                 1128
 #define IDC_REPLACE_LABEL_TEXT          1125
 #define IDC_REPLACE_LABEL_REPLACE       1126
 #define IDC_REPLACE_DIRECTION_GROUP     1127

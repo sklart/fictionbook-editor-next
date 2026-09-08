@@ -346,6 +346,7 @@ public:
 		{
 			SaveString();
 			SaveHistory();
+			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->SearchResultStatus());
 		}
 	}
 };

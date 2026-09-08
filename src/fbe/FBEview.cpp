@@ -2653,6 +2653,20 @@ void CFBEView::SelMatch(MSHTML::IHTMLTxtRange *tr,AU::ReMatch rm)
 	m_fo.hasMatch = true;
 }
 
+CString CFBEView::SearchResultStatus()
+{
+	const long version = GetVersionNumber();
+	const AU::Search::SearchResults& results = m_document_search.GetResults();
+	if (version < 0 || !results.IsValidFor(static_cast<std::uint64_t>(version)) ||
+		results.GetSelected() == NULL)
+		return CString();
+	CString status;
+	status.Format(L"%u / %u",
+		static_cast<unsigned>(results.GetSelectedIndex() + 1),
+		static_cast<unsigned>(results.GetCount()));
+	return status;
+}
+
 void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
 {
 	try

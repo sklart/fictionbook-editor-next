@@ -581,6 +581,7 @@ public:
 	}
 
 	bool DoSearch(bool fMore=true);
+	CString SearchResultStatus();
 	bool DoSearchStd(bool fMore=true);
 	bool DoSearchRegexp(bool fMore=true);
 	void DoReplace();

@@ -92,6 +92,11 @@ const AU::Search::SearchResults& DocumentSearchCoordinator::GetResults() const
 	return m_results;
 }
 
+std::size_t DocumentSearchCoordinator::GetSelectedResultIndex() const
+{
+	return m_results.GetSelectedIndex();
+}
+
 const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromOffset(
 	MSHTML::IHTMLDocument2Ptr document,
 	std::uint64_t documentGeneration,
@@ -103,6 +108,15 @@ const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromOffset(
 		documentGeneration, offset, direction, wrapped);
 	if (hit == NULL || !m_adapter.SelectHit(document, m_snapshot, *hit))
 		return NULL;
+	for (std::size_t index = 0; index < m_results.GetCount(); ++index)
+	{
+		const AU::Search::SearchResult* result = m_results.GetAt(index);
+		if (result != NULL && result->Hit == *hit)
+		{
+			m_results.Select(index);
+			break;
+		}
+	}
 	return hit;
 }
 
