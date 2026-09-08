@@ -179,7 +179,11 @@ bool RegexBackend::Execute(
 						static_cast<std::size_t>(groupEnd - groupStart), name));
 				}
 				else
+				{
+					// Preserve capture numbering for legacy $1/$2 replacement syntax.
+					item.SubMatches.Add(CString());
 					item.Captures.push_back(Search::SearchCapture(i, 0, 0, name, false));
+				}
 			}
 			matches.Add(item);
 		});

@@ -3928,6 +3928,25 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 		m_has_last_zero_length_hit = hit->Length == 0;
 		m_last_zero_length_hit = hit->Start;
 		m_last_zero_length_generation = generation;
+		if (mode == AU::Search::SearchMode::Regex)
+		{
+			// Replace's formatting/template implementation still consumes IMatch2.
+			// Adapt the native SearchHit here, at the editor boundary, retaining
+			// positional empty captures so $1/$2 semantics remain intact.
+			const AU::Search::SearchTextSnapshot& snapshot = m_document_search.GetSnapshot();
+			m_fo.ClearMatch();
+			m_fo.match = new AU::IMatch2(
+				CString(snapshot.Text.data() + hit->Start, static_cast<int>(hit->Length)),
+				static_cast<int>(hit->Start));
+			for (std::size_t capture = 0; capture < hit->Captures.size(); ++capture)
+			{
+				const AU::Search::SearchCapture& value = hit->Captures[capture];
+				m_fo.match->AddSubMatch(value.Matched
+					? CString(snapshot.Text.data() + value.Start, static_cast<int>(value.Length))
+					: CString());
+			}
+			m_fo.hasMatch = true;
+		}
 		MSHTML::IHTMLTxtRangePtr found(Document()->selection->createRange());
 		PositionFoundRange(found);
 		NotifyWrappedSearch(wrapped);

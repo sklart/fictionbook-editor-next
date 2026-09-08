@@ -2,6 +2,7 @@
 
 #include "SearchDocumentAdapter.h"
 #include "DocumentSearchCoordinator.h"
+#include "search\\RegexBackend.h"
 
 // RegexBackend localizes diagnostics through the editor runtime. The fixture
 // only verifies matching, so its deterministic fallback is sufficient here.
@@ -113,6 +114,14 @@ int wmain()
 	if (!result && namedResult->Hit.Captures[0].Length != 6) result = 25;
 	if (!result && (namedResult->Hit.Captures[1].GroupIndex != 2 || namedResult->Hit.Captures[1].Name != L"optional" ||
 		namedResult->Hit.Captures[1].Matched)) result = 26;
+	AU::RegexBackend::Options replacementOptions;
+	replacementOptions.Pattern = L"(?<first>second)(?<optional>z)?";
+	replacementOptions.Global = VARIANT_TRUE;
+	CSimpleArray<AU::RegexBackend::MatchData> replacementMatches;
+	CString replacementError;
+	if (!result && (!AU::RegexBackend::Execute(replacementOptions, L"second", replacementMatches, replacementError) ||
+		replacementMatches.GetSize() != 1 || replacementMatches[0].SubMatches.GetSize() != 2 ||
+		replacementMatches[0].SubMatches[0] != L"second" || !replacementMatches[0].SubMatches[1].IsEmpty())) result = 32;
 	query.Text = L"\\b\\x{043A}\\x{043E}\\x{0442}\\b";
 	query.UnicodeProperties = true;
 	if (!result && (!coordinator.Rebuild(document, 46, query) || coordinator.GetSession().GetHitCount() != 1)) result = 18;
