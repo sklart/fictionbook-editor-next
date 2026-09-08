@@ -43,11 +43,6 @@ if (-not $cmake) {
 if (-not $cmake) { $cmake = Get-Command cmake.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source }
 if (-not $cmake) { throw 'Не найден cmake.exe.' }
 $installationVersion = $instance.installationVersion
-$generatorInstanceVersion = if ($instance.catalog.productSemanticVersion -match '^(\d+\.\d+\.\d+)\+(\d+)') {
-    "$($Matches[1]).$($Matches[2])"
-} else {
-    $installationVersion
-}
 $availableToolsets = @(Get-ChildItem -LiteralPath (Join-Path $installationPath 'VC\Tools\MSVC') -Directory -ErrorAction SilentlyContinue |
     Select-Object -ExpandProperty Name |
     Sort-Object -Descending)
@@ -78,6 +73,6 @@ $generatorToolset = if ($effectivePlatformToolset -eq 'v143') { "v143,version=$v
     GeneratorToolset = $generatorToolset
     InstallationPath = (Resolve-Path -LiteralPath $installationPath).Path
     InstallationVersion = $installationVersion
-    GeneratorInstance = "$(Resolve-Path -LiteralPath $installationPath),version=$generatorInstanceVersion"
+    GeneratorInstance = (Resolve-Path -LiteralPath $installationPath).Path
     VCToolsVersion = $vcToolsVersion
 }
