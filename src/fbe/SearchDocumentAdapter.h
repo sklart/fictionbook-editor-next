@@ -15,6 +15,15 @@ public:
 		MSHTML::IHTMLDocument2Ptr document,
 		std::uint64_t documentGeneration);
 
+	// Creates a range from snapshot coordinates without changing the editor
+	// selection.  Keeping this separate makes the DOM bridge testable and lets
+	// callers decide when a range should become visible to the user.
+	bool CreateHitRange(
+		MSHTML::IHTMLDocument2Ptr document,
+		const AU::Search::SearchTextSnapshot& snapshot,
+		const AU::Search::SearchHit& hit,
+		MSHTML::IHTMLTxtRangePtr& range) const;
+
 	bool SelectHit(
 		MSHTML::IHTMLDocument2Ptr document,
 		const AU::Search::SearchTextSnapshot& snapshot,

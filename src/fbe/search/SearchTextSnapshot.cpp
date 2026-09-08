@@ -7,7 +7,7 @@ namespace {
 bool ContainsSearchOffset(const SearchTextSegment& segment, std::size_t searchOffset)
 {
 	return searchOffset >= segment.SearchOffset &&
-		searchOffset < segment.SearchOffset + segment.Length;
+		searchOffset <= segment.SearchOffset + segment.Length;
 }
 
 }
@@ -43,7 +43,7 @@ bool SearchTextSnapshot::TryGetSearchOffset(
 			position.SourceOffset < segment.DocumentStart.SourceOffset)
 			continue;
 		const std::size_t offsetInSegment = position.SourceOffset - segment.DocumentStart.SourceOffset;
-		if (offsetInSegment >= segment.Length)
+		if (offsetInSegment > segment.Length)
 			continue;
 		*searchOffset = segment.SearchOffset + offsetInSegment;
 		return true;

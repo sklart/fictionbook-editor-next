@@ -56,33 +56,58 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 	return builder.Build();
 }
 
+bool SearchDocumentAdapter::CreateHitRange(
+	MSHTML::IHTMLDocument2Ptr document,
+	const AU::Search::SearchTextSnapshot& snapshot,
+	const AU::Search::SearchHit& hit,
+	MSHTML::IHTMLTxtRangePtr& range) const
+{
+	range = NULL;
+	if (!document || !document->body)
+		return false;
+
+	AU::Search::SearchDocumentPosition start = {};
+	if (!snapshot.TryGetDocumentPosition(hit.Start, &start))
+		return false;
+
+	const SourceRange* startSource = FindSource(start.SourceId);
+	if (startSource == NULL || !startSource->Element)
+		return false;
+
+	MSHTML::IHTMLBodyElementPtr body(document->body);
+	range = body->createTextRange();
+	if (!range)
+		return false;
+	range->moveToElementText(startSource->Element);
+	range->collapse(VARIANT_TRUE);
+	range->move(L"character", static_cast<long>(start.SourceOffset));
+	if (hit.Length != 0)
+	{
+		AU::Search::SearchDocumentPosition end = {};
+		if (!snapshot.TryGetDocumentPosition(hit.Start + hit.Length, &end))
+			return false;
+		const SourceRange* endSource = FindSource(end.SourceId);
+		if (endSource == NULL || !endSource->Element)
+			return false;
+		MSHTML::IHTMLTxtRangePtr endRange(body->createTextRange());
+		if (!endRange)
+			return false;
+		endRange->moveToElementText(endSource->Element);
+		endRange->collapse(VARIANT_TRUE);
+		endRange->move(L"character", static_cast<long>(end.SourceOffset));
+		range->setEndPoint(L"EndToEnd", endRange);
+	}
+	return true;
+}
+
 bool SearchDocumentAdapter::SelectHit(
 	MSHTML::IHTMLDocument2Ptr document,
 	const AU::Search::SearchTextSnapshot& snapshot,
 	const AU::Search::SearchHit& hit) const
 {
-	if (!document || !document->body || hit.Length == 0)
+	MSHTML::IHTMLTxtRangePtr range;
+	if (!CreateHitRange(document, snapshot, hit, range))
 		return false;
-
-	AU::Search::SearchDocumentPosition start = {};
-	AU::Search::SearchDocumentPosition end = {};
-	if (!snapshot.TryGetDocumentPosition(hit.Start, &start) ||
-		!snapshot.TryGetDocumentPosition(hit.Start + hit.Length - 1, &end) ||
-		start.SourceId != end.SourceId)
-		return false;
-
-	const SourceRange* source = FindSource(start.SourceId);
-	if (source == NULL || !source->Element)
-		return false;
-
-	MSHTML::IHTMLBodyElementPtr body(document->body);
-	MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
-	if (!range)
-		return false;
-	range->moveToElementText(source->Element);
-	range->collapse(VARIANT_TRUE);
-	range->move(L"character", static_cast<long>(start.SourceOffset));
-	range->moveEnd(L"character", static_cast<long>(hit.Length));
 	range->select();
 	return true;
 }
