@@ -16,6 +16,12 @@ enum class SearchDirection {
 	Backward
 };
 
+enum class SearchScope {
+	WholeDocument,
+	CurrentSection,
+	Selection
+};
+
 // This is a UI- and document-independent description of a search.  Text is
 // UTF-16 on Windows, matching both the editor and the PCRE2-16 backend.
 struct SearchQuery {
@@ -24,12 +30,18 @@ struct SearchQuery {
 	bool MatchCase;
 	bool WholeWord;
 	SearchDirection Direction;
+	SearchScope Scope;
+	bool Multiline;
+	bool UnicodeProperties;
 
 	SearchQuery()
 		: Mode(SearchMode::Literal),
 		  MatchCase(false),
 		  WholeWord(false),
-		  Direction(SearchDirection::Forward) {}
+		  Direction(SearchDirection::Forward),
+		  Scope(SearchScope::WholeDocument),
+		  Multiline(false),
+		  UnicodeProperties(false) {}
 };
 
 struct SearchHit {
@@ -57,7 +69,10 @@ inline bool HasSameSearchCriteria(const SearchQuery& left, const SearchQuery& ri
 	return left.Text == right.Text &&
 		left.Mode == right.Mode &&
 		left.MatchCase == right.MatchCase &&
-		left.WholeWord == right.WholeWord;
+		left.WholeWord == right.WholeWord &&
+		left.Scope == right.Scope &&
+		left.Multiline == right.Multiline &&
+		left.UnicodeProperties == right.UnicodeProperties;
 }
 
 }

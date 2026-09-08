@@ -1,6 +1,14 @@
 #include "stdafx.h"
 
 #include "SearchDocumentAdapter.h"
+#include "DocumentSearchCoordinator.h"
+
+// RegexBackend localizes diagnostics through the editor runtime. The fixture
+// only verifies matching, so its deterministic fallback is sufficient here.
+CString FbeLoadRuntimeStringByKey(LPCWSTR, LPCWSTR fallback)
+{
+	return fallback != NULL ? CString(fallback) : CString();
+}
 
 static bool WriteHtml(MSHTML::IHTMLDocument2Ptr document, const wchar_t* html)
 {
@@ -55,6 +63,19 @@ int wmain()
 	AU::Search::SearchDocumentPosition position = {};
 	std::size_t offset = 0;
 	if (!result && (!snapshot.TryGetDocumentPosition(firstEnd, &position) || !snapshot.TryGetSearchOffset(position, &offset) || offset != firstEnd)) result = 9;
+
+	DocumentSearchCoordinator coordinator;
+	AU::Search::SearchQuery query;
+	query.Text = L"second";
+	if (!result && (!coordinator.Rebuild(document, 43, query) || coordinator.GetSession().GetHitCount() != 1)) result = 10;
+	bool wrapped = false;
+	if (!result && (!coordinator.SelectFromOffset(document, 43, 0, AU::Search::SearchDirection::Forward, &wrapped) || wrapped)) result = 11;
+	if (!result && coordinator.SelectFromOffset(document, 44, 0, AU::Search::SearchDirection::Forward, &wrapped) != NULL) result = 12;
+
+	query.Mode = AU::Search::SearchMode::Regex;
+	query.Text = L"^second$";
+	query.Multiline = true;
+	if (!result && (!coordinator.Rebuild(document, 45, query) || coordinator.GetSession().GetHitCount() != 1)) result = 13;
 	}
 
 	persist = NULL;
