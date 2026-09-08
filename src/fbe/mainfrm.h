@@ -1122,6 +1122,7 @@ public:
 	void UpdateFileTimeStamp();
 	bool ShowSettingsDialog(HWND parent = ::GetActiveWindow());
 	void ApplyConfChanges(bool applyDocumentStyles = true);
+	void ApplyEditorBackgroundChanges();
 	void ApplyXmlSourceEditorChanges(bool saveSettings = true);
 	void UpdateSourceLineNumberMargin(bool force = false);
 	void RestartProgram();

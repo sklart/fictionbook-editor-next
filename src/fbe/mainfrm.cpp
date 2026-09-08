@@ -1134,6 +1134,21 @@ static bool HasDocumentStyleConfigurationChanged(const EditorConfigurationSnapsh
 		before.editorBackgroundCustomPath != after.editorBackgroundCustomPath || before.editorBackgroundLayout != after.editorBackgroundLayout ||
 		before.fastMode != after.fastMode;
 }
+static bool HasOnlyEditorBackgroundConfigurationChanged(const EditorConfigurationSnapshot& before,
+	const EditorConfigurationSnapshot& after)
+{
+	const bool backgroundChanged = before.editorBackgroundKind != after.editorBackgroundKind ||
+		before.editorBackgroundId != after.editorBackgroundId ||
+		before.editorBackgroundCustomPath != after.editorBackgroundCustomPath ||
+		before.editorBackgroundLayout != after.editorBackgroundLayout;
+	if(!backgroundChanged) return false;
+	EditorConfigurationSnapshot withoutBackgroundChanges = after;
+	withoutBackgroundChanges.editorBackgroundKind = before.editorBackgroundKind;
+	withoutBackgroundChanges.editorBackgroundId = before.editorBackgroundId;
+	withoutBackgroundChanges.editorBackgroundCustomPath = before.editorBackgroundCustomPath;
+	withoutBackgroundChanges.editorBackgroundLayout = before.editorBackgroundLayout;
+	return before == withoutBackgroundChanges;
+}
 static bool HasOnlySourceEditorConfigurationChanged(const EditorConfigurationSnapshot& before,
 	const EditorConfigurationSnapshot& after)
 {
@@ -5394,7 +5409,11 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 		const EditorConfigurationSnapshot currentConfiguration = CaptureEditorConfigurationSnapshot();
 		if (!(previousConfiguration == currentConfiguration) || _Settings.NeedRestart())
 		{
-			if (HasOnlySourceEditorConfigurationChanged(previousConfiguration, currentConfiguration))
+			if (HasOnlyEditorBackgroundConfigurationChanged(previousConfiguration, currentConfiguration))
+			{
+				ApplyEditorBackgroundChanges();
+			}
+			else if (HasOnlySourceEditorConfigurationChanged(previousConfiguration, currentConfiguration))
 			{
 				ApplyXmlSourceEditorChanges();
 			}
@@ -5610,7 +5629,11 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 		const EditorConfigurationSnapshot currentConfiguration = CaptureEditorConfigurationSnapshot();
 		if (!(previousConfiguration == currentConfiguration) || _Settings.NeedRestart())
 		{
-			if (HasOnlySourceEditorConfigurationChanged(previousConfiguration, currentConfiguration))
+			if (HasOnlyEditorBackgroundConfigurationChanged(previousConfiguration, currentConfiguration))
+			{
+				ApplyEditorBackgroundChanges();
+			}
+			else if (HasOnlySourceEditorConfigurationChanged(previousConfiguration, currentConfiguration))
 			{
 				ApplyXmlSourceEditorChanges();
 			}
@@ -9025,6 +9048,15 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	{
 		return RestartProgram();
 	}
+}
+
+void CMainFrame::ApplyEditorBackgroundChanges()
+{
+	// A background-only change is visual-editor CSS.  Avoid rebuilding
+	// Scintilla styles, spell-check state and NBSP display for this path.
+	if(m_doc)
+		m_doc->ApplyConfChanges();
+	_Settings.Save();
 }
 
 void CMainFrame::RestartProgram()

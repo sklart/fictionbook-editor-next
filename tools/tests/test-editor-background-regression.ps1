@@ -21,6 +21,8 @@ foreach($needle in @('U::UrlFromPath(path)', 'image.Format(L"url(\"%s\")"', 'bac
 foreach($needle in @('PathIsRelative(path)', 'PathIsURL(path)', 'IsRegularFile(path)')) { if($backgrounds -notmatch [regex]::Escape($needle)) { throw "Missing custom path safety behavior: $needle" } }
 foreach($field in @('editorBackgroundKind','editorBackgroundId','editorBackgroundCustomPath','editorBackgroundLayout')) { if($frame -notmatch $field) { throw "Background-only changes are absent from configuration snapshot: $field" } }
 if($frame -notmatch 'HasDocumentStyleConfigurationChanged[\s\S]*editorBackgroundKind') { throw 'Background-only changes do not request Doc::ApplyConfChanges().' }
+if($frame -notmatch 'HasOnlyEditorBackgroundConfigurationChanged') { throw 'Background-only changes do not have a fast apply path.' }
+if($frame -notmatch 'void CMainFrame::ApplyEditorBackgroundChanges\(\)[\s\S]*m_doc->ApplyConfChanges\(\)[\s\S]*_Settings.Save\(\)') { throw 'Background fast apply must update MSHTML and persist settings.' }
 if($settings -notmatch 'SetEditorBackgroundCustomPath\(m_customBackgroundPath\)' -and (Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\SettingsEditorPage.cpp')) -notmatch 'SetEditorBackgroundCustomPath\(m_customBackgroundPath\)') { throw 'Custom path preservation behavior is not explicit.' }
 if($readme -match 'preview\.jpg') { throw 'README advertises a preview that is not shipped.' }
 
