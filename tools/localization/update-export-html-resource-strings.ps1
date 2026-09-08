@@ -58,7 +58,7 @@ function ConvertTo-RcStringLiteral {
     return $value
 }
 
-$catalog = Get-Content -Raw -LiteralPath $CatalogPath | ConvertFrom-Json -Depth 50
+$catalog = Get-Content -Raw -LiteralPath $CatalogPath -Encoding UTF8 | ConvertFrom-Json
 $entries = @(
     $catalog.strings.PSObject.Properties |
         Where-Object {

@@ -29,7 +29,7 @@ try {
         throw "Генератор не создал l10n_resource_ids.h."
     }
 
-    $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json -Depth 20
+    $manifest = Get-Content -Raw -LiteralPath $manifestPath -Encoding UTF8 | ConvertFrom-Json
     $languages = @($manifest.languages)
     if ($languages.Count -ne 12) {
         throw "Ожидалось 12 языков, фактически: $($languages.Count)."

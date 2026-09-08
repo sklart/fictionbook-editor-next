@@ -88,7 +88,7 @@ $headerLines.Add("#pragma once")
 $headerLines.Add("")
 
 foreach ($catalogInfo in $catalogs) {
-    $catalog = Get-Content -Raw -LiteralPath $catalogInfo.Path | ConvertFrom-Json -Depth 30
+    $catalog = Get-Content -Raw -LiteralPath $catalogInfo.Path -Encoding UTF8 | ConvertFrom-Json
     $languages = @($catalog.targetLanguages)
     if ($null -eq $allLanguages) {
         $allLanguages = $languages

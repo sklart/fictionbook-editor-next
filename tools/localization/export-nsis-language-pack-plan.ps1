@@ -21,7 +21,7 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 }
 
 $inventoryPath = Join-Path $repoRoot "localization\language-packs.json"
-$inventory = Get-Content -Raw -LiteralPath $inventoryPath | ConvertFrom-Json -Depth 30
+$inventory = Get-Content -Raw -LiteralPath $inventoryPath -Encoding UTF8 | ConvertFrom-Json
 
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutputPath) | Out-Null
 

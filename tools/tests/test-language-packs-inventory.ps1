@@ -18,9 +18,9 @@ $packPath = Join-Path $repoRoot "localization\language-packs.json"
 $appCatalogPath = Join-Path $repoRoot "localization\app-ui\catalog.json"
 $pluginCatalogPath = Join-Path $repoRoot "localization\plugin-ui\catalog.json"
 
-$packs = Get-Content -Raw -LiteralPath $packPath | ConvertFrom-Json -Depth 30
-$app = Get-Content -Raw -LiteralPath $appCatalogPath | ConvertFrom-Json -Depth 30
-$plugin = Get-Content -Raw -LiteralPath $pluginCatalogPath | ConvertFrom-Json -Depth 30
+$packs = Get-Content -Raw -LiteralPath $packPath -Encoding UTF8 | ConvertFrom-Json
+$app = Get-Content -Raw -LiteralPath $appCatalogPath -Encoding UTF8 | ConvertFrom-Json
+$plugin = Get-Content -Raw -LiteralPath $pluginCatalogPath -Encoding UTF8 | ConvertFrom-Json
 
 $languages = @($packs.languages)
 if ($languages.Count -eq 0) {

@@ -17,8 +17,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $contractPath = Join-Path $repoRoot "localization\runtime\contract.json"
 $packsPath = Join-Path $repoRoot "localization\language-packs.json"
 
-$contract = Get-Content -Raw -LiteralPath $contractPath | ConvertFrom-Json -Depth 30
-$packs = Get-Content -Raw -LiteralPath $packsPath | ConvertFrom-Json -Depth 30
+$contract = Get-Content -Raw -LiteralPath $contractPath -Encoding UTF8 | ConvertFrom-Json
+$packs = Get-Content -Raw -LiteralPath $packsPath -Encoding UTF8 | ConvertFrom-Json
 
 if ($contract.catalogFormat -ne "json") {
     throw "Runtime-контракт должен использовать JSON как основной формат локализации."

@@ -20,7 +20,7 @@ if (-not (Test-Path -LiteralPath $catalogPath)) {
     throw "Каталог главного меню FBE не найден: $catalogPath"
 }
 
-$catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json -Depth 40
+$catalog = Get-Content -Raw -LiteralPath $catalogPath -Encoding UTF8 | ConvertFrom-Json
 $expectedLanguages = @('en-US','ru-RU','uk-UA','de-DE','fr-FR','es-ES','it-IT','pl-PL','pt-PT','nl-NL','cs-CZ','bg-BG')
 $languages = @($catalog.targetLanguages)
 if ((Compare-Object -ReferenceObject $expectedLanguages -DifferenceObject $languages).Count -ne 0) {

@@ -24,7 +24,7 @@ try {
         throw "Экспорт не создал manifest.json."
     }
 
-    $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json -Depth 20
+    $manifest = Get-Content -Raw -LiteralPath $manifestPath -Encoding UTF8 | ConvertFrom-Json
     if ($manifest.formatVersion -ne 1) {
         throw "manifest.json содержит неверный formatVersion: $($manifest.formatVersion)."
     }
@@ -48,7 +48,7 @@ try {
             throw "Не создан файл экспорта для $language."
         }
 
-        $data = Get-Content -Raw -LiteralPath $filePath | ConvertFrom-Json -Depth 30
+        $data = Get-Content -Raw -LiteralPath $filePath -Encoding UTF8 | ConvertFrom-Json
         if ($data.formatVersion -ne 1) {
             throw "В $language.json указан неверный formatVersion: $($data.formatVersion)."
         }

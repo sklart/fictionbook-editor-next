@@ -16,7 +16,7 @@ $outputPath = Join-Path $outputDirectory "catalog.json"
 
 try {
     & (Join-Path $repoRoot "tools\localization\export-nsis-installer-catalog.ps1") -OutputPath $outputPath | Out-Host
-    $catalog = Get-Content -Raw -LiteralPath $outputPath | ConvertFrom-Json -Depth 20
+    $catalog = Get-Content -Raw -LiteralPath $outputPath -Encoding UTF8 | ConvertFrom-Json
     $entries = @($catalog.strings.PSObject.Properties)
     if ($entries.Count -lt 60) {
         throw "В каталоге установщика слишком мало строк: $($entries.Count)."

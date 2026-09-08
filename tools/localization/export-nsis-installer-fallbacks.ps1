@@ -54,7 +54,7 @@ if (-not (Test-Path -LiteralPath $overridePath -PathType Leaf)) {
     throw "Не найден каталог стартовых переводов NSIS: $overridePath"
 }
 
-$overrides = Get-Content -Raw -LiteralPath $overridePath | ConvertFrom-Json -Depth 20
+$overrides = Get-Content -Raw -LiteralPath $overridePath -Encoding UTF8 | ConvertFrom-Json
 $languageIds = [ordered]@{
     "de-DE" = "GERMAN"
     "fr-FR" = "FRENCH"

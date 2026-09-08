@@ -27,7 +27,7 @@ if (-not (Test-Path -LiteralPath $outPath)) {
     throw "Файл отчёта не создан: $outPath"
 }
 
-$report = Get-Content -Raw -LiteralPath $outPath | ConvertFrom-Json -Depth 20
+$report = Get-Content -Raw -LiteralPath $outPath -Encoding UTF8 | ConvertFrom-Json
 $resourceTypes = @($report.byResourceType | ForEach-Object { $_.resourceType })
 if ($resourceTypes -contains "DIALOGEX") {
     throw "DIALOGEX больше не должен быть в ручном инвентаре: все FBE DIALOGEX подключены из generated .rc2."

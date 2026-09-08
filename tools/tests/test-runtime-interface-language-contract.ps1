@@ -47,7 +47,7 @@ $settingsHeaderText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fb
 $generalPageText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\SettingsGeneralPage.cpp")
 $sharedRuntimeHelperPath = Join-Path $repoRoot "src\common\RuntimeLocalizationCommon.h"
 $sharedRuntimeHelperText = Get-Content -Raw -LiteralPath $sharedRuntimeHelperPath
-$appCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\app-ui\catalog.json") | ConvertFrom-Json -Depth 30
+$appCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\app-ui\catalog.json") -Encoding UTF8 | ConvertFrom-Json
 $appCatalogKeys = @($appCatalog.seedStrings.PSObject.Properties.Name)
 
 if ($settingsHeaderText -notlike "*FBE_INTERFACE_LANGUAGE_AUTO*") {

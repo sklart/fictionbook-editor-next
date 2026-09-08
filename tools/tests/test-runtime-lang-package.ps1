@@ -59,7 +59,7 @@ foreach ($language in $expectedLanguages) {
             throw "Runtime JSON-файл пуст: $jsonPath"
         }
 
-        $json = $raw | ConvertFrom-Json -Depth 30
+        $json = $raw | ConvertFrom-Json
         if (-not $json.locale -or [string]$json.locale -ne $language) {
             throw "Runtime JSON-файл $jsonPath содержит неверную locale: $($json.locale)"
         }

@@ -28,10 +28,10 @@ $pluginCatalogPath = Join-Path $repoRoot "localization\plugin-ui\catalog.json"
 $runtimeContractPath = Join-Path $repoRoot "localization\runtime\contract.json"
 $installerCatalogPath = Join-Path $repoRoot "localization\installer-ui\catalog.json"
 
-$appCatalog = Get-Content -Raw -LiteralPath $appCatalogPath | ConvertFrom-Json -Depth 30
-$pluginCatalog = Get-Content -Raw -LiteralPath $pluginCatalogPath | ConvertFrom-Json -Depth 30
-$runtimeContract = Get-Content -Raw -LiteralPath $runtimeContractPath | ConvertFrom-Json -Depth 20
-$installerCatalog = Get-Content -Raw -LiteralPath $installerCatalogPath | ConvertFrom-Json -Depth 30
+$appCatalog = Get-Content -Raw -LiteralPath $appCatalogPath -Encoding UTF8 | ConvertFrom-Json
+$pluginCatalog = Get-Content -Raw -LiteralPath $pluginCatalogPath -Encoding UTF8 | ConvertFrom-Json
+$runtimeContract = Get-Content -Raw -LiteralPath $runtimeContractPath -Encoding UTF8 | ConvertFrom-Json
+$installerCatalog = Get-Content -Raw -LiteralPath $installerCatalogPath -Encoding UTF8 | ConvertFrom-Json
 
 $appLanguages = @($appCatalog.targetLanguages)
 $pluginLanguages = @($pluginCatalog.targetLanguages)
