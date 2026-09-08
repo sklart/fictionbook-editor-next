@@ -54,7 +54,9 @@ public:
 		COMMAND_HANDLER(IDC_FONT_SIZE, CBN_SELCHANGE, OnPreviewSettingsChanged)
 		// CColorButton sends its changes as WM_NOTIFY, not WM_COMMAND.  Keep the
 		// click reflected to the control so its picker can open.
+		NOTIFY_HANDLER(IDC_FG, CPN_SELCHANGE, OnPreviewColorChanged)
 		NOTIFY_HANDLER(IDC_FG, CPN_SELENDOK, OnPreviewColorChanged)
+		NOTIFY_HANDLER(IDC_BG, CPN_SELCHANGE, OnPreviewColorChanged)
 		NOTIFY_HANDLER(IDC_BG, CPN_SELENDOK, OnPreviewColorChanged)
 		REFLECT_NOTIFICATIONS()
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsEditorPage>)

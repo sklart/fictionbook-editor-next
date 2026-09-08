@@ -173,6 +173,7 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	if(foreground == CLR_DEFAULT) foreground = ::GetSysColor(COLOR_WINDOWTEXT);
 	if(background == CLR_DEFAULT) background = ::GetSysColor(COLOR_WINDOW);
 	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, foreground, background, text);
+	m_backgroundPreview.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 }
 
 void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground, COLORREF background, const CString& text)
