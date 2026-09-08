@@ -8,6 +8,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'json-compat.ps1')
 
 if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -22,7 +23,7 @@ $catalogPath = Join-Path $RepositoryRoot 'localization\app-ui\catalog.json'
 
 $runtimeCpp = Get-Content -Raw -LiteralPath $runtimeCppPath -Encoding UTF8
 $resourceHeader = Get-Content -Raw -LiteralPath $resourceHeaderPath
-$catalog = Get-Content -Raw -LiteralPath $catalogPath -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+$catalog = Get-Content -Raw -LiteralPath $catalogPath -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
 
 $resourceNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($match in [regex]::Matches($resourceHeader, '(?m)^#define\s+(IDS_[A-Z0-9_]+)\s+\d+')) {
@@ -66,7 +67,7 @@ try {
             throw "Не создан runtime JSON для FBE: $jsonPath"
         }
 
-        $payload = Get-Content -Raw -LiteralPath $jsonPath -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+        $payload = Get-Content -Raw -LiteralPath $jsonPath -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
         foreach ($key in $bindings.Values) {
             if (-not $payload.strings.ContainsKey($key)) {
                 throw "В $jsonPath отсутствует ключ runtime binding: $key"

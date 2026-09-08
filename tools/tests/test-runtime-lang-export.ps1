@@ -6,6 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'json-compat.ps1')
 
 if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -20,9 +21,9 @@ $langRoot = Join-Path $tempRoot 'Lang'
 try {
     & (Join-Path $RepositoryRoot 'tools\localization\export-runtime-lang.ps1') -RepositoryRoot $RepositoryRoot -OutputDirectory $langRoot -Clean
 
-    $contract = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'localization\runtime\contract.json') -Encoding UTF8 | ConvertFrom-Json -AsHashtable
-    $appCatalog = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'localization\app-ui\catalog.json') -Encoding UTF8 | ConvertFrom-Json -AsHashtable
-    $pluginCatalog = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'localization\plugin-ui\catalog.json') -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+    $contract = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'localization\runtime\contract.json') -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
+    $appCatalog = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'localization\app-ui\catalog.json') -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
+    $pluginCatalog = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'localization\plugin-ui\catalog.json') -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
 
     $fallbackLanguage = [string] $contract['fallbackLanguage']
     $moduleFiles = @{}
@@ -44,7 +45,7 @@ $modules = @($moduleFiles.Keys | Sort-Object)
             if (-not (Test-Path -LiteralPath $path)) {
                 throw "Не создан runtime JSON: $path"
             }
-            $json = Get-Content -Raw -LiteralPath $path -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+            $json = Get-Content -Raw -LiteralPath $path -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
             if ([int] $json['formatVersion'] -ne 1) {
                 throw "Некорректная версия формата в $path"
             }
@@ -99,7 +100,7 @@ $modules = @($moduleFiles.Keys | Sort-Object)
     )
 
     foreach ($check in $checks) {
-        $json = Get-Content -Raw -LiteralPath $check.Path -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+        $json = Get-Content -Raw -LiteralPath $check.Path -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
         $strings = $json['strings']
         if (-not $strings.ContainsKey($check.Key)) {
             throw "В $($check.Path) отсутствует ключ $($check.Key)."
