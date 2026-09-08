@@ -96,6 +96,10 @@ foreach ($pattern in @(
     "RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar)",
     "OnRuntimeToolTipTextW",
     "OnRuntimeToolTipTextA",
+	"fbe.hotkey.plugins.import",
+	"fbe.hotkey.plugins.export",
+	"fbe.toolbar.strikethrough",
+	"fbe.toolbar.code",
     "RefreshBundledPluginMenuTexts",
     "FillMenuWithHkeys(m_MenuBar.GetMenu())",
 	"m_MenuBar.SetButtonInfo(index, &buttonInfo)",
@@ -122,6 +126,11 @@ foreach ($pattern in @(
 )) {
     if ($mainFrameText -notlike "*$pattern*") {
         throw "mainfrm.cpp не содержит обязательный элемент безопасной live-смены языка: $pattern"
+    }
+}
+foreach ($key in @("fbe.hotkey.plugins.import", "fbe.hotkey.plugins.export", "fbe.toolbar.strikethrough", "fbe.toolbar.code")) {
+    if ($key -notin $appCatalogKeys) {
+        throw "В app-ui catalog отсутствует runtime-ключ локализации toolbar/плагинов: $key"
     }
 }
 

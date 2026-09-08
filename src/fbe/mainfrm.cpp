@@ -740,6 +740,16 @@ static CString GetRuntimeToolbarToolTipText(UINT commandId)
 		if (command.commandId == commandId)
 			return FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText);
 	}
+	LPCWSTR toolbarKey = NULL;
+	switch(commandId)
+	{
+	case ID_EDIT_BOLD: toolbarKey = L"fbe.hotkey.edit.bold"; break;
+	case ID_EDIT_ITALIC: toolbarKey = L"fbe.hotkey.edit.italic"; break;
+	case ID_EDIT_SUP: toolbarKey = L"fbe.hotkey.edit.superscript"; break;
+	case ID_EDIT_SUB: toolbarKey = L"fbe.hotkey.edit.subscript"; break;
+	case ID_EDIT_STRIK: toolbarKey = L"fbe.toolbar.strikethrough"; break;
+	case ID_EDIT_CODE: toolbarKey = L"fbe.toolbar.code"; break;
+	}
 
 	wchar_t resourceText[MAX_LOAD_STRING + 1] = {};
 	if (!FbeLoadString(_Module.GetResourceInstance(), commandId, resourceText, MAX_LOAD_STRING))
@@ -747,7 +757,7 @@ static CString GetRuntimeToolbarToolTipText(UINT commandId)
 
 	const wchar_t* fallback = wcschr(resourceText, L'\n');
 	fallback = (fallback != NULL) ? fallback + 1 : resourceText;
-	const LPCWSTR key = FindRuntimeMainFrameMenuCommandKey(commandId);
+	const LPCWSTR key = toolbarKey != NULL ? toolbarKey : FindRuntimeMainFrameMenuCommandKey(commandId);
 	const CString localized = key != NULL ? FbeLoadRuntimeStringByKey(key, fallback) : CString(fallback);
 	return StripMenuMnemonics(localized);
 }
@@ -2545,7 +2555,10 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 		::AppendMenu(hMenu, MF_STRING, command, menu);
 		CString hs = menu;
 		hs.Remove(L'&');
-		InitPluginHotkey(plugin.clsidText, command, plugin.type + CString(L" | ") + hs);
+		const CString pluginType = FbeLoadRuntimeStringByKey(
+			plugin.type == L"Import" ? L"fbe.hotkey.plugins.import" : L"fbe.hotkey.plugins.export",
+			plugin.type);
+		InitPluginHotkey(plugin.clsidText, command, pluginType + CString(L" | ") + hs);
 		// check if an icon is available
 		CString icon(plugin.icon);
 		if(!icon.IsEmpty())

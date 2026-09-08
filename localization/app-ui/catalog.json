@@ -1031,7 +1031,7 @@
       "component": "fbe.core",
       "translations": {
         "en-US": "Subscript",
-        "ru-RU": "Субскрипт",
+        "ru-RU": "Подстрочный",
         "uk-UA": "Субскрипт",
         "de-DE": "Tiefgestellt",
         "fr-FR": "Indice",
@@ -1049,7 +1049,7 @@
       "component": "fbe.core",
       "translations": {
         "en-US": "Superscript",
-        "ru-RU": "Суперскрипт",
+        "ru-RU": "Надстрочный",
         "uk-UA": "Суперскрипт",
         "de-DE": "Hochgestellt",
         "fr-FR": "Exposant",
@@ -3759,6 +3759,78 @@
         "nl-NL": "Klasse is niet geregistreerd",
         "cs-CZ": "Třída není zaregistrována",
         "bg-BG": "Класът не е регистриран"
+      }
+    },
+    "fbe.hotkey.plugins.import": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Import",
+        "ru-RU": "Импорт",
+        "uk-UA": "Імпорт",
+        "de-DE": "Import",
+        "fr-FR": "Importation",
+        "es-ES": "Importar",
+        "it-IT": "Importa",
+        "pl-PL": "Import",
+        "pt-PT": "Importar",
+        "nl-NL": "Importeren",
+        "cs-CZ": "Import",
+        "bg-BG": "Импортиране"
+      }
+    },
+    "fbe.hotkey.plugins.export": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Export",
+        "ru-RU": "Экспорт",
+        "uk-UA": "Експорт",
+        "de-DE": "Export",
+        "fr-FR": "Exportation",
+        "es-ES": "Exportar",
+        "it-IT": "Esporta",
+        "pl-PL": "Eksport",
+        "pt-PT": "Exportar",
+        "nl-NL": "Exporteren",
+        "cs-CZ": "Export",
+        "bg-BG": "Експортиране"
+      }
+    },
+    "fbe.toolbar.strikethrough": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Strikethrough",
+        "ru-RU": "Зачеркнутый",
+        "uk-UA": "Закреслення",
+        "de-DE": "Durchgestrichen",
+        "fr-FR": "Barré",
+        "es-ES": "Tachado",
+        "it-IT": "Barrato",
+        "pl-PL": "Przekreślenie",
+        "pt-PT": "Rasurado",
+        "nl-NL": "Doorhalen",
+        "cs-CZ": "Přeškrtnutí",
+        "bg-BG": "Зачертан"
+      }
+    },
+    "fbe.toolbar.code": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Code",
+        "ru-RU": "Код",
+        "uk-UA": "Код",
+        "de-DE": "Code",
+        "fr-FR": "Code",
+        "es-ES": "Código",
+        "it-IT": "Codice",
+        "pl-PL": "Kod",
+        "pt-PT": "Código",
+        "nl-NL": "Code",
+        "cs-CZ": "Kód",
+        "bg-BG": "Код"
       }
     },
     "fbe.plugin.import_epub.menu": {
