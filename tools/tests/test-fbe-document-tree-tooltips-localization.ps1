@@ -4,8 +4,8 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$header = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\DocumentTree.h')
-$catalog = Get-Content -Raw -LiteralPath (Join-Path $root 'localization\app-ui\fbe-secondary-menus.json') | ConvertFrom-Json -AsHashtable
+$header = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\DocumentTree.h') -Encoding UTF8
+$catalog = Get-Content -Raw -LiteralPath (Join-Path $root 'localization\app-ui\fbe-secondary-menus.json') -Encoding UTF8 | ConvertFrom-Json
 $languages = @($catalog.targetLanguages)
 $required = @{
     'fbe.tooltip.document_tree.move_left' = 'ID_DT_LEFT'
@@ -19,12 +19,12 @@ foreach ($entry in $required.GetEnumerator()) {
     if ($header -notlike "*$($entry.Key)*" -or $header -notlike "*$($entry.Value)*") {
         throw "Document tree tooltip does not map $($entry.Value) to runtime key $($entry.Key)."
     }
-    $translation = $catalog.strings[$entry.Key]
+    $translation = $catalog.strings.PSObject.Properties[$entry.Key].Value
     if ($null -eq $translation -or $translation.targetId -ne $entry.Value) {
         throw "Localization catalog does not describe $($entry.Key) for $($entry.Value)."
     }
     foreach ($language in $languages) {
-        if ([string]::IsNullOrWhiteSpace([string]$translation.translations[$language])) {
+        if ([string]::IsNullOrWhiteSpace([string]$translation.translations.PSObject.Properties[$language].Value)) {
             throw "Missing $language translation for $($entry.Key)."
         }
     }
