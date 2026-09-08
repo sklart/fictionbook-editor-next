@@ -126,6 +126,29 @@ bool RegexBackend::Execute(
 	pcre2_set_match_limit(matchContext, kRegexMatchLimit);
 	pcre2_set_depth_limit(matchContext, kRegexDepthLimit);
 
+	// PCRE2 exposes named group metadata on the compiled pattern. Preserve it
+	// beside absolute UTF-16 capture offsets for Search Core; legacy IRegExp2
+	// continues to consume SubMatches unchanged.
+	std::vector<std::wstring> captureNames(pcre2_get_ovector_count(matchData));
+	uint32_t nameCount = 0;
+	uint32_t nameEntrySize = 0;
+	PCRE2_SPTR nameTable = NULL;
+	pcre2_pattern_info(re, PCRE2_INFO_NAMECOUNT, &nameCount);
+	pcre2_pattern_info(re, PCRE2_INFO_NAMEENTRYSIZE, &nameEntrySize);
+	pcre2_pattern_info(re, PCRE2_INFO_NAMETABLE, &nameTable);
+	if (nameCount != 0 && nameEntrySize >= 3 && nameTable != NULL)
+	{
+		for (uint32_t nameIndex = 0; nameIndex < nameCount; ++nameIndex)
+		{
+			const PCRE2_UCHAR* entry = nameTable + nameIndex * nameEntrySize;
+			// In the 16-bit PCRE2 table the group number occupies one UTF-16
+			// code unit; the familiar two-byte form applies to the 8-bit API.
+			const uint16_t captureIndex = static_cast<uint16_t>(entry[0]);
+			if (captureIndex < captureNames.size())
+				captureNames[captureIndex] = reinterpret_cast<const wchar_t*>(entry + 1);
+		}
+	}
+
 	const int matchResult = RegexPcre2::ForEachMatch(
 		re,
 		reinterpret_cast<PCRE2_SPTR>(static_cast<LPCWSTR>(sourceString)),
@@ -133,7 +156,7 @@ bool RegexBackend::Execute(
 		options.Global,
 		matchData,
 		matchContext,
-		[&matches, &sourceString](int rc, PCRE2_SIZE* ovector)
+		[&matches, &sourceString, &captureNames](int rc, PCRE2_SIZE* ovector)
 		{
 			const PCRE2_SIZE matchStart = ovector[0];
 			const PCRE2_SIZE matchEnd = ovector[1];
@@ -147,8 +170,15 @@ bool RegexBackend::Execute(
 				const PCRE2_SIZE groupStart = ovector[i * 2];
 				const PCRE2_SIZE groupEnd = ovector[i * 2 + 1];
 				if (groupStart != PCRE2_UNSET && groupEnd != PCRE2_UNSET)
+				{
 					item.SubMatches.Add(CString(static_cast<LPCWSTR>(sourceString) + groupStart,
 						static_cast<int>(groupEnd - groupStart)));
+					const std::wstring name = i < static_cast<int>(captureNames.size())
+						? captureNames[i] : std::wstring();
+					item.Captures.push_back(Search::SearchCapture(
+						static_cast<std::size_t>(groupStart),
+						static_cast<std::size_t>(groupEnd - groupStart), name));
+				}
 			}
 			matches.Add(item);
 		});

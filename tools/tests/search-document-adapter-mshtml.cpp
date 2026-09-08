@@ -102,9 +102,14 @@ int wmain()
 
 	query.Mode = AU::Search::SearchMode::Regex;
 	query.Scope = AU::Search::SearchScope::CurrentSection;
-	query.Text = L"^second\\r?$";
+	query.Text = L"^(?<word>second)\\r?$";
 	query.Multiline = true;
 	if (!result && (!coordinator.Rebuild(document, 45, query, NULL, &secondScope) || coordinator.GetSession().GetHitCount() != 1)) result = 17;
+	const AU::Search::SearchResult* namedResult = coordinator.GetResults().GetAt(0);
+	if (!result && !namedResult) result = 22;
+	if (!result && namedResult->Hit.Captures.size() != 1) result = 23;
+	if (!result && namedResult->Hit.Captures[0].Name != L"word") result = 24;
+	if (!result && namedResult->Hit.Captures[0].Length != 6) result = 25;
 	query.Text = L"\\b\\x{043A}\\x{043E}\\x{0442}\\b";
 	query.UnicodeProperties = true;
 	if (!result && (!coordinator.Rebuild(document, 46, query) || coordinator.GetSession().GetHitCount() != 1)) result = 18;

@@ -53,9 +53,11 @@ void RegexBackend::BuildSearchHits(
 	for (int matchIndex = 0; matchIndex < matches.GetSize(); ++matchIndex)
 	{
 		const RegexBackend::MatchData& match = matches[matchIndex];
-		hits.push_back(Search::SearchHit(
+		Search::SearchHit hit(
 			static_cast<std::size_t>(match.FirstIndex),
-			static_cast<std::size_t>(match.Value.GetLength())));
+			static_cast<std::size_t>(match.Value.GetLength()));
+		hit.Captures = match.Captures;
+		hits.push_back(hit);
 	}
 }
 

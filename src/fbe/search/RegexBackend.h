@@ -14,6 +14,7 @@ struct MatchData {
 	CString Value;
 	int FirstIndex;
 	CSimpleArray<CString> SubMatches;
+	std::vector<Search::SearchCapture> Captures;
 
 	MatchData() : FirstIndex(0) {}
 };
