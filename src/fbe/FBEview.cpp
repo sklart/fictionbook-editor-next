@@ -2667,6 +2667,17 @@ CString CFBEView::SearchResultStatus()
 	return status;
 }
 
+CString CFBEView::FindAllResultStatus()
+{
+	const long version = GetVersionNumber();
+	const AU::Search::SearchResults& results = m_document_search.GetResults();
+	if (version < 0 || !results.IsValidFor(static_cast<std::uint64_t>(version)))
+		return CString();
+	CString status;
+	status.Format(L"%u found", static_cast<unsigned>(results.GetCount()));
+	return status;
+}
+
 void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
 {
 	try
@@ -3849,6 +3860,29 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 		PositionFoundRange(found);
 		NotifyWrappedSearch(wrapped);
 		return true;
+	}
+	catch (const _com_error&)
+	{
+		return false;
+	}
+}
+
+bool CFBEView::DoFindAll()
+{
+	try
+	{
+		if (!Document() || GetVersionNumber() < 0)
+			return false;
+		AU::Search::SearchQuery query;
+		query.Text = static_cast<LPCWSTR>(m_fo.pattern);
+		query.Mode = m_fo.fRegexp ? AU::Search::SearchMode::Regex : AU::Search::SearchMode::Literal;
+		query.MatchCase = (m_fo.flags & FRF_CASE) != 0;
+		query.WholeWord = (m_fo.flags & FRF_WHOLE) != 0;
+		query.Direction = (m_fo.flags & FRF_REVERSE)
+			? AU::Search::SearchDirection::Backward
+			: AU::Search::SearchDirection::Forward;
+		return m_document_search.Rebuild(
+			Document(), static_cast<std::uint64_t>(GetVersionNumber()), query);
 	}
 	catch (const _com_error&)
 	{

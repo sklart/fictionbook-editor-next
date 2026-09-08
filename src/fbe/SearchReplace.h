@@ -130,6 +130,8 @@ public:
 			isReplaceDialog ? L"fbe.dialog.idd_replace.find_what" : L"fbe.dialog.idd_find.find_what",
 			isReplaceDialog ? L"Find:" : L"Find what:");
 		SetRuntimeText(ID_FIND_NEXT, isReplaceDialog ? L"fbe.dialog.idd_replace.find_next" : L"fbe.dialog.idd_find.find_next", L"&Find Next");
+		if (!isReplaceDialog)
+			SetRuntimeText(IDC_FIND_ALL, L"fbe.dialog.idd_find.find_all", L"Find &All");
 		SetRuntimeText(IDC_WHOLE, isReplaceDialog ? L"fbe.dialog.idd_replace.whole_word" : L"fbe.dialog.idd_find.whole_word", L"Match &whole words");
 		SetRuntimeText(IDC_MATCHCASE, isReplaceDialog ? L"fbe.dialog.idd_replace.match_case" : L"fbe.dialog.idd_find.match_case", L"Match &case");
 		SetRuntimeText(IDC_REGEXP, isReplaceDialog ? L"fbe.dialog.idd_replace.regexp" : L"fbe.dialog.idd_find.regexp", L"Regular &expression");
@@ -237,6 +239,7 @@ public:
 
 	BEGIN_MSG_MAP(CFindDlgBase)
 		COMMAND_ID_HANDLER(ID_FIND_NEXT, OnDoFind)
+		COMMAND_ID_HANDLER(IDC_FIND_ALL, OnDoFindAll)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 		CHAIN_MSG_MAP_ALT(FRBase, 1)
 	END_MSG_MAP()
@@ -251,6 +254,19 @@ public:
 	LRESULT OnDoFind(WORD, WORD, HWND, BOOL&)
 	{
 		DoFind();
+		return 0;
+	}
+
+	LRESULT OnDoFindAll(WORD, WORD, HWND, BOOL&)
+	{
+		GetData();
+		VBErr = false;
+		if (m_view->DoFindAll())
+		{
+			SaveString();
+			SaveHistory();
+			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->FindAllResultStatus());
+		}
 		return 0;
 	}
 
