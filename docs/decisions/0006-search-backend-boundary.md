@@ -20,13 +20,15 @@ DOM pointer, HWND или модельный диалог. `SearchDocumentAdapter
 `DocumentSearchCoordinator` находятся с editor-side: только они строят
 snapshot из MSHTML и применяют найденный offset как selection.
 
-Обычный Design-mode Find, Find All и regex Find используют один путь:
+Обычный Design-mode Find, Find All, regex Find и Design-mode Replace используют один путь:
 `SearchTextSnapshot -> LiteralSearch/RegexBackend -> SearchSession -> adapter`.
 Навигация начинается от snapshot-offset текущего caret/selection и хранит
 generation документа; нулевые regex-hit'ы при повторном Find Next/Previous
-пропускают текущую позицию, поэтому не зацикливаются. Основной literal
-алгоритм больше не вызывает `IHTMLTxtRange::findText()`; MSHTML-сопоставление
-сохранено только в differential regression test.
+пропускают текущую позицию, поэтому не зацикливаются. Ни Find, ни Replace
+не вызывают `IHTMLTxtRange::findText()`; MSHTML-сопоставление сохранено только
+в differential regression test. Публичный element-scoped Tools Replace сначала
+переводит элемент в snapshot range, а затем применяет native hits справа налево
+в одной undo-группе.
 
 `SearchResults` хранит чистые hit/capture/preview данные и revision. Section
 label и создание невыделенного `IHTMLTxtRange` остаются editor-side задачами
