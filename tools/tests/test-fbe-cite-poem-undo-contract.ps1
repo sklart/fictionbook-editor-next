@@ -40,6 +40,10 @@ $cite = Get-FunctionBody 'InsertCite'
 if($cite.Contains('createElement(L"DIV")') -and $cite.Contains('ne->className = L"cite"')) { throw 'InsertCite changes className as a separate live operation.' }
 if(-not $cite.Contains('createElement(L"<DIV class=cite>")')) { throw 'InsertCite does not create Cite in final form.' }
 
+$poem = Get-FunctionBody 'InsertPoem'
+if(-not $poem.Contains('compareEndPoints(L"StartToEnd", rng) == 0')) { throw 'InsertPoem does not capture a collapsed range before expanding paragraphs.' }
+if($poem.Contains('selectedText.Trim().IsEmpty()')) { throw 'InsertPoem treats whitespace-only text as an empty selection.' }
+
 foreach($required in @('class CMarkupUndoUnitScope', '~CMarkupUndoUnitScope()', 'try { m_view.EndUndoUnit(); }', 'catch (_com_error&) { }')) {
     if($source -notlike "*$required*") { throw "Markup undo RAII misses: $required" }
 }

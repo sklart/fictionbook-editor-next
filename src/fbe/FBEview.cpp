@@ -1500,6 +1500,12 @@ bool CFBEView::InsertPoem(bool fCheck)
 		if(!(bool)pe)
 			return false;
 
+		// MSHTML reports a caret as a collapsed text range.  Do this before
+		// ExpandTxtRangeToParagraphs(), which intentionally widens the range to
+		// whole P elements.  Whitespace-only text can still be an actual user
+		// selection and must not be treated as a missing selection.
+		const bool emptySelection = rng->compareEndPoints(L"StartToEnd", rng) == 0;
+
 		// Get parents for start and end ranges and ensure they are the same as pe
 		MSHTML::IHTMLTxtRangePtr tr(rng->duplicate());
 		tr->collapse(VARIANT_TRUE);
@@ -1542,8 +1548,6 @@ bool CFBEView::InsertPoem(bool fCheck)
 		}
 		while((sibling = sibling->nextSibling));
 
-		CString selectedText(rng->text.GetBSTR());
-		const bool emptySelection = selectedText.Trim().IsEmpty();
 		MSHTML::IHTMLElementPtr ne(Document()->createElement(L"<DIV class=poem>"));
 
 		if(emptySelection)
@@ -1604,6 +1608,11 @@ bool CFBEView::InsertPoem(bool fCheck)
 				se->innerHTML = stanzaHTML.AllocSysString();
 				MSHTML::IHTMLElement2Ptr(ne)->insertAdjacentElement(L"beforeEnd", se);
 			}
+			// A non-collapsed selection may legitimately consist only of whitespace.
+			// It is not a caret, but the normalized poem still needs one valid stanza.
+			MSHTML::IHTMLElementCollectionPtr poemChildren(ne->children);
+			if(!poemChildren || poemChildren->length == 0)
+				ne->innerHTML = L"<DIV class=stanza><P>&nbsp;</P></DIV>";
 		}
 
 
