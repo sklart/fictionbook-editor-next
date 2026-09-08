@@ -39,14 +39,14 @@ int wmain()
 	document.CreateInstance(L"htmlfile");
 	IPersistStreamInitPtr persist(document);
 	if (!document || !persist || FAILED(persist->InitNew()) || !WriteHtml(document,
-		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><table><tr><td>table cell</td></tr></table></body></html>"))
+		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img src='about:blank'>inline-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
 		return 2;
 
 	int result = 0;
 	{
 	SearchDocumentAdapter adapter;
 	const AU::Search::SearchTextSnapshot snapshot = adapter.BuildSnapshot(document, 42);
-	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 3) result = 3;
+	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 4) result = 3;
 	if (!result && (snapshot.Text.find(L"strong") == std::wstring::npos || snapshot.Text.find(L"emphasis") == std::wstring::npos ||
 		snapshot.Text.find(L"link") == std::wstring::npos || snapshot.Text.find(L"\x043A\x043E\x0442") == std::wstring::npos ||
 		snapshot.Text.find(L"\xD83D\xDE00") == std::wstring::npos)) result = 4;
@@ -85,6 +85,10 @@ int wmain()
 	bool wrapped = false;
 	if (!result && (!coordinator.SelectFromRange(document, 43, firstRange, AU::Search::SearchDirection::Forward, &wrapped) || wrapped)) result = 14;
 	if (!result && coordinator.SelectFromOffset(document, 44, 0, AU::Search::SearchDirection::Forward, &wrapped) != NULL) result = 15;
+	query.Text = L"inline-after";
+	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
+		coordinator.CreateResultRange(document, 44, 0, resultRange) == false || !resultRange ||
+		wcscmp(static_cast<LPCWSTR>(_bstr_t(resultRange->text)), L"inline-after") != 0)) result = 35;
 	query.Text = L"table cell";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetSession().GetHitCount() != 1 ||
 		coordinator.GetResults().GetCount() != 1 || coordinator.GetResults().GetAt(0)->Preview.find(L"table cell") == std::wstring::npos ||

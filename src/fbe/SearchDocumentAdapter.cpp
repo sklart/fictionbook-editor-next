@@ -12,6 +12,65 @@ bool IsSearchParagraph(MSHTML::IHTMLElementPtr element)
 	return tagName.length() != 0 && _wcsicmp(static_cast<LPCWSTR>(tagName), L"P") == 0;
 }
 
+bool IsBodyElement(MSHTML::IHTMLElementPtr element)
+{
+	if (!element)
+		return false;
+	_bstr_t tagName(element->tagName);
+	return tagName.length() != 0 && _wcsicmp(static_cast<LPCWSTR>(tagName), L"BODY") == 0;
+}
+
+bool MoveRangeStartToTextOffset(
+	MSHTML::IHTMLBodyElementPtr body,
+	MSHTML::IHTMLElementPtr source,
+	std::size_t textOffset,
+	MSHTML::IHTMLTxtRangePtr& range)
+{
+	range = body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr();
+	if (!range || !source)
+		return false;
+	range->moveToElementText(source);
+	range->collapse(VARIANT_TRUE);
+	if (!IsBodyElement(source))
+	{
+		range->move(L"character", static_cast<long>(textOffset));
+		return true;
+	}
+
+	// MSHTML's character movement counts inline controls (notably IMG), while
+	// IHTMLTxtRange::text omits them. Find the first DOM position whose text
+	// prefix reaches the UTF-16 snapshot offset instead of assuming the two
+	// coordinate systems are identical.
+	MSHTML::IHTMLTxtRangePtr limit(body->createTextRange());
+	if (!limit)
+		return false;
+	limit->moveToElementText(source);
+	limit->collapse(VARIANT_TRUE);
+	const long maximum = limit->move(L"character", LONG_MAX);
+	long lower = 0;
+	long upper = maximum < 0 ? 0 : maximum;
+	while (lower < upper)
+	{
+		const long middle = lower + (upper - lower) / 2;
+		MSHTML::IHTMLTxtRangePtr endpoint(body->createTextRange());
+		MSHTML::IHTMLTxtRangePtr prefix(body->createTextRange());
+		if (!endpoint || !prefix)
+			return false;
+		endpoint->moveToElementText(source);
+		endpoint->collapse(VARIANT_TRUE);
+		endpoint->move(L"character", middle);
+		prefix->moveToElementText(source);
+		prefix->setEndPoint(L"EndToEnd", endpoint);
+		_bstr_t prefixText(prefix->text);
+		if (static_cast<std::size_t>(prefixText.length()) < textOffset)
+			lower = middle + 1;
+		else
+			upper = middle;
+	}
+	range->move(L"character", lower);
+	return true;
+}
+
 }
 
 AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
@@ -98,12 +157,8 @@ bool SearchDocumentAdapter::CreateHitRange(
 		return false;
 
 	MSHTML::IHTMLBodyElementPtr body(document->body);
-	range = body->createTextRange();
-	if (!range)
+	if (!MoveRangeStartToTextOffset(body, startSource->Element, start.SourceOffset, range))
 		return false;
-	range->moveToElementText(startSource->Element);
-	range->collapse(VARIANT_TRUE);
-	range->move(L"character", static_cast<long>(start.SourceOffset));
 	if (hit.Length != 0)
 	{
 		AU::Search::SearchDocumentPosition end = {};
@@ -112,12 +167,9 @@ bool SearchDocumentAdapter::CreateHitRange(
 		const SourceRange* endSource = FindSource(end.SourceId);
 		if (endSource == NULL || !endSource->Element)
 			return false;
-		MSHTML::IHTMLTxtRangePtr endRange(body->createTextRange());
-		if (!endRange)
+		MSHTML::IHTMLTxtRangePtr endRange;
+		if (!MoveRangeStartToTextOffset(body, endSource->Element, end.SourceOffset, endRange))
 			return false;
-		endRange->moveToElementText(endSource->Element);
-		endRange->collapse(VARIANT_TRUE);
-		endRange->move(L"character", static_cast<long>(end.SourceOffset));
 		range->setEndPoint(L"EndToEnd", endRange);
 	}
 	return true;
