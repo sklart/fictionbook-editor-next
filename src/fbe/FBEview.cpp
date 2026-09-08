@@ -2700,6 +2700,11 @@ void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
 
 bool CFBEView::DoSearchRegexp(bool fMore)
 {
+	// Replace still relies on the legacy IMatch2 capture representation. The
+	// modeless Find dialog can already use the generation-safe native path.
+	if (m_replace_dlg == NULL && DoSearchNative(fMore, AU::Search::SearchMode::Regex))
+		return true;
+
 	try
 	{
 		m_fo.ClearMatch();
@@ -2865,7 +2870,7 @@ bool CFBEView::DoSearchRegexp(bool fMore)
 
 bool CFBEView::DoSearchStd(bool fMore)
 {
-	if (DoSearchStdNative(fMore))
+	if (DoSearchNative(fMore, AU::Search::SearchMode::Literal))
 		return true;
 
 	try
@@ -3848,7 +3853,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	return VARIANT_TRUE;
 }
 
-bool CFBEView::DoSearchStdNative(bool fMore)
+bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 {
 	try
 	{
@@ -3862,7 +3867,7 @@ bool CFBEView::DoSearchStdNative(bool fMore)
 
 		AU::Search::SearchQuery query;
 		query.Text = static_cast<LPCWSTR>(m_fo.pattern);
-		query.Mode = AU::Search::SearchMode::Literal;
+		query.Mode = mode;
 		query.MatchCase = (m_fo.flags & FRF_CASE) != 0;
 		query.WholeWord = (m_fo.flags & FRF_WHOLE) != 0;
 		query.Direction = (m_fo.flags & FRF_REVERSE)

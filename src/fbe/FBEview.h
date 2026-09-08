@@ -288,7 +288,7 @@ protected:
 
 	void SelMatch(MSHTML::IHTMLTxtRange* tr, AU::ReMatch rm);
 	void PositionFoundRange(MSHTML::IHTMLTxtRange* range);
-	bool DoSearchStdNative(bool fMore);
+	bool DoSearchNative(bool fMore, AU::Search::SearchMode mode);
 	MSHTML::IHTMLElementPtr SelectionContainerImp();
 
 public:
