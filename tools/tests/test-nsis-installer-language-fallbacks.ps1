@@ -18,7 +18,7 @@ $outputPath = Join-Path $outputDirectory "EuropeanFallback.generated.nsh"
 
 try {
     & (Join-Path $repoRoot "tools\localization\export-nsis-installer-fallbacks.ps1") -OutputPath $outputPath | Out-Host
-    $text = Get-Content -Raw -LiteralPath $outputPath
+    $text = Get-Content -Raw -LiteralPath $outputPath -Encoding UTF8
 
     foreach ($language in @("GERMAN", "FRENCH", "SPANISH", "ITALIAN", "POLISH", "PORTUGUESE", "DUTCH", "CZECH", "BULGARIAN")) {
         if ($text -notmatch [regex]::Escape('!insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_' + $language + '}')) {
