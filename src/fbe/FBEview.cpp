@@ -3849,6 +3849,7 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 		query.Direction = (m_fo.flags & FRF_REVERSE)
 			? AU::Search::SearchDirection::Backward
 			: AU::Search::SearchDirection::Forward;
+		query.UnicodeProperties = m_fo.unicodeProperties;
 
 		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
 		if (!m_document_search.Rebuild(Document(), generation, query))
@@ -3881,6 +3882,7 @@ bool CFBEView::DoFindAll()
 		query.Direction = (m_fo.flags & FRF_REVERSE)
 			? AU::Search::SearchDirection::Backward
 			: AU::Search::SearchDirection::Forward;
+		query.UnicodeProperties = m_fo.unicodeProperties;
 		return m_document_search.Rebuild(
 			Document(), static_cast<std::uint64_t>(GetVersionNumber()), query);
 	}

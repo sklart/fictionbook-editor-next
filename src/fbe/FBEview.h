@@ -250,8 +250,9 @@ protected:
 		int			replNum;
 		bool		hasMatch;
 		bool		fRegexp;
+		bool		unicodeProperties;
 
-		FindReplaceOptions() : match(NULL), flags(0), replNum(0), hasMatch(false), fRegexp(false) { }
+		FindReplaceOptions() : match(NULL), flags(0), replNum(0), hasMatch(false), fRegexp(false), unicodeProperties(false) { }
 		~FindReplaceOptions() { ClearMatch(); }
 
 		void ClearMatch()

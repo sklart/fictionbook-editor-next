@@ -18,9 +18,10 @@ public:
 	int			m_case;
 	int			m_regexp;
 	int			m_dir;
+	int			m_unicode;
 	CEdit		m_text;
 
-	FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1) { }
+	FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0) { }
 
   HWND	GetDlgItem(int id) { return X_GetDlgItem(id); }
   virtual HWND X_GetDlgItem(int id) = 0;
@@ -55,6 +56,8 @@ public:
     DDX_CHECK(IDC_WHOLE, m_whole)
     DDX_CHECK(IDC_MATCHCASE, m_case)
     DDX_CHECK(IDC_REGEXP, m_regexp)
+	if (GetDlgItem(IDC_FIND_UNICODE_PROPERTIES))
+		DDX_CHECK(IDC_FIND_UNICODE_PROPERTIES, m_unicode)
     if (GetDlgItem(IDC_UP))
       DDX_RADIO(IDC_UP, m_dir);
   END_DDX_MAP()
@@ -75,6 +78,7 @@ public:
 
 		m_view->m_fo.flags = flags;
 		m_view->m_fo.fRegexp = m_regexp != 0;
+		m_view->m_fo.unicodeProperties = m_unicode != 0;
 	}
 
 	void PutData()
@@ -83,6 +87,7 @@ public:
 		m_whole = (m_view->m_fo.flags & CFBEView::FRF_WHOLE) != 0;
 		m_dir = (m_view->m_fo.flags & CFBEView::FRF_REVERSE) == 0;
 		m_regexp = m_view->m_fo.fRegexp;
+		m_unicode = m_view->m_fo.unicodeProperties;
 		DoDataExchange(FALSE);
 	}
 
