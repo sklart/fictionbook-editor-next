@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 namespace AU {
 namespace Search {
@@ -44,9 +45,20 @@ struct SearchQuery {
 		  UnicodeProperties(false) {}
 };
 
+struct SearchCapture {
+	std::size_t Start;
+	std::size_t Length;
+	std::wstring Name;
+
+	SearchCapture() : Start(0), Length(0) {}
+	SearchCapture(std::size_t start, std::size_t length, const std::wstring& name = std::wstring())
+		: Start(start), Length(length), Name(name) {}
+};
+
 struct SearchHit {
 	std::size_t Start;
 	std::size_t Length;
+	std::vector<SearchCapture> Captures;
 
 	SearchHit() : Start(0), Length(0) {}
 	SearchHit(std::size_t start, std::size_t length) : Start(start), Length(length) {}

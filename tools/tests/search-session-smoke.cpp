@@ -19,6 +19,10 @@ using AU::Search::SearchTextSnapshotBuilder;
 int wmain()
 {
 	SearchSession session;
+	SearchHit captured(2, 6);
+	captured.Captures.push_back(AU::Search::SearchCapture(3, 2, L"part"));
+	if (captured.Captures.size() != 1 || captured.Captures[0].Name != L"part")
+		return 44;
 	SearchQuery query;
 	query.Text = L"needle";
 	if (!session.SetQuery(query) || session.IsValid())
