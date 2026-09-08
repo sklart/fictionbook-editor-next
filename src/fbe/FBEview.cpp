@@ -2884,59 +2884,10 @@ bool CFBEView::DoSearchRegexp(bool fMore)
 
 bool CFBEView::DoSearchStd(bool fMore)
 {
-	if (DoSearchNative(fMore, AU::Search::SearchMode::Literal))
-		return true;
-
-	try
-	{
-		m_fo.ClearMatch();
-
-		// fetch selection
-		MSHTML::IHTMLTxtRangePtr sel(Document()->selection->createRange());
-		if(!fMore && (bool)m_is_start)
-			sel = m_is_start->duplicate();
-		if(!(bool)sel)
-			return false;
-		
-		MSHTML::IHTMLTxtRangePtr org(sel->duplicate());
-		// check if it is collapsed
-		if(sel->compareEndPoints(L"StartToEnd", sel) != 0)
-		{
-			// collapse and advance
-			if(m_fo.flags & FRF_REVERSE)
-				sel->collapse(VARIANT_TRUE);
-			else
-				sel->collapse(VARIANT_FALSE);
-		}
-
-		// search for text
-		if(sel->findText((const wchar_t*)m_fo.pattern, 1073741824, m_fo.flags) == VARIANT_TRUE)
-		{
-			// ok, found
-			sel->select();
-			PositionFoundRange(sel);
-			return true;
-		}
-
-		// not found, try searching from start to sel
-		sel = MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange();
-		sel->collapse(m_fo.flags & 1 ? VARIANT_FALSE : VARIANT_TRUE);
-		if(sel->findText((const wchar_t*)m_fo.pattern, 1073741824, m_fo.flags) == VARIANT_TRUE
-			&& org->compareEndPoints("StartToStart", sel)*(m_fo.flags & 1 ? -1 : 1) > 0)
-		{
-			// found
-			sel->select();
-			PositionFoundRange(sel);
-			MessageBeep(MB_ICONASTERISK);
-			return true;
-		}
-	}
-	catch (_com_error&)
-	{
-		//U::ReportError(err);
-	}
-
-	return false;
+	// Literal Design-mode Find has completed parity checks against the former
+	// MSHTML algorithm.  Keep MSHTML at the adapter boundary only: matching,
+	// caret-relative navigation and wrap now all go through Search Core.
+	return DoSearchNative(fMore, AU::Search::SearchMode::Literal);
 }
 
 static CString GetSM(AU::ReSubMatches sm, int idx)
