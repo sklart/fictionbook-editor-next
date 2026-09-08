@@ -358,7 +358,9 @@ public:
 		else if (m_view->DoFindAll(false, &error))
 			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->FindAllResultStatus());
 		else
-			FRBase::SetDlgItemText(IDC_FIND_STATUS, error.IsEmpty() ? L"Invalid search expression" : error);
+			FRBase::SetDlgItemText(IDC_FIND_STATUS, error.IsEmpty()
+				? FbeLoadRuntimeStringByKey(L"fbe.search.error.invalid_expression", L"Invalid search expression")
+				: error);
 		return 0;
 	}
 

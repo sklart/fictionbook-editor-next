@@ -821,6 +821,14 @@
         "en-US": "The document changed before Replace All could be applied.", "ru-RU": "Документ изменился до выполнения команды «Заменить всё».", "uk-UA": "Документ змінився до виконання команди «Замінити все».", "de-DE": "Das Dokument wurde geändert, bevor Alle ersetzen ausgeführt werden konnte.", "fr-FR": "Le document a été modifié avant l’application de Tout remplacer.", "es-ES": "El documento cambió antes de aplicar Reemplazar todo.", "it-IT": "Il documento è stato modificato prima dell'applicazione di Sostituisci tutto.", "pl-PL": "Dokument zmienił się przed zastosowaniem opcji Zamień wszystko.", "pt-PT": "O documento foi alterado antes de Substituir tudo poder ser aplicado.", "nl-NL": "Het document is gewijzigd voordat Alles vervangen kon worden toegepast.", "cs-CZ": "Dokument se změnil před použitím příkazu Nahradit vše.", "bg-BG": "Документът се промени преди да може да се изпълни „Замяна на всички“."
       }
     },
+    "fbe.search.error.invalid_expression": {
+      "resource": "IDD_FIND",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Invalid search expression", "ru-RU": "Недопустимое поисковое выражение", "uk-UA": "Неприпустимий пошуковий вираз", "de-DE": "Ungültiger Suchausdruck", "fr-FR": "Expression de recherche non valide", "es-ES": "Expresión de búsqueda no válida", "it-IT": "Espressione di ricerca non valida", "pl-PL": "Nieprawidłowe wyrażenie wyszukiwania", "pt-PT": "Expressão de pesquisa inválida", "nl-NL": "Ongeldige zoekexpressie", "cs-CZ": "Neplatný hledaný výraz", "bg-BG": "Невалиден израз за търсене"
+      }
+    },
     "fbe.dialog.idd_find.caption": {
       "resource": "IDD_FIND",
       "kind": "CAPTION",
