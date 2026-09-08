@@ -1,4 +1,4 @@
-function Get-EditorDependencyVersion {
+﻿function Get-EditorDependencyVersion {
     param(
         [Parameter(Mandatory)]
         [string]$Path,

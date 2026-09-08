@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Exercises FBE's production image-import path and verifies its generated binary id.
 #>

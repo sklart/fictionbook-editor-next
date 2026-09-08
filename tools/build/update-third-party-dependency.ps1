@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Выполняет полный цикл check -> download -> apply -> build -> test для выбранной зависимости.
 #>

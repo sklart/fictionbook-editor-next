@@ -1,4 +1,4 @@
-<# Builds only the static decoder library required by FBE. #>
+﻿<# Builds only the static decoder library required by FBE. #>
 [CmdletBinding()]
 param(
     [ValidateSet("Debug", "Release")][string]$Configuration = "Release",

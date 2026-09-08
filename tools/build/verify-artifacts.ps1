@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet('Win32')][string]$Platform = 'Win32',
     [string]$ArtifactsDirectory,

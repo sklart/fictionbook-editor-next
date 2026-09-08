@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string[]] $Roots = @("src"),
     [switch] $FailOnFindings,
     [switch] $Detailed

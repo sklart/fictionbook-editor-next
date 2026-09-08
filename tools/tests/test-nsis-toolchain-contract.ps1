@@ -1,4 +1,4 @@
-<# Ensures local release, wrapper, and CI use the same NSIS 3 resolver. #>
+﻿<# Ensures local release, wrapper, and CI use the same NSIS 3 resolver. #>
 [CmdletBinding()]
 param()
 

@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$FilePath = "",
     [ValidateSet("Win32", "x64")]

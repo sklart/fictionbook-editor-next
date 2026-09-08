@@ -50,7 +50,7 @@ if (!$modifiedBlock.Success) {
     throw 'SciModified implementation was not found.'
 }
 
-if ($modifiedBlock.Value -match 'SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT|UpdateSourceLineNumberMargin') {
+if ($modifiedBlock.Value -match '(?s)SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT\s*\)\s*\{?\s*UpdateSourceLineNumberMargin') {
     throw 'SciModified must not update the line-number margin for every text modification.'
 }
 

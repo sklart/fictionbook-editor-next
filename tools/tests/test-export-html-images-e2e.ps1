@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Runs FBE -> local ExportHTML plugin -> IFBEExportPlugin::Export with the
 same production export body used by the interactive Save dialog.

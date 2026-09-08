@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Exercises production Save -> Reopen -> Save with many compact FB2 binaries.
 #>

@@ -206,10 +206,16 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	::SetDlgItemText(m_hWnd, IDC_WRAP, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.wrap_lines", L"Wrap lines"));
 	::SetDlgItemText(m_hWnd, IDC_SYNTAXHL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.syntax_highlight", L"Syntax highlighting"));
 	::SetDlgItemText(m_hWnd, IDC_TAGHL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight", L"Highlight matched tags"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE_LABEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_mode", L"Matched tag mode:"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_attributes", L"Highlight attributes"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_errors", L"Show structural tag errors"));
 	::SetDlgItemText(m_hWnd, IDC_SHOWEOL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.show_eol", L"Show end of line marks"));
 	::SetDlgItemText(m_hWnd, IDC_SHOWWHITESPACE, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.show_whitespace", L"Show white spaces"));
 	::SetDlgItemText(m_hWnd, IDC_SHOWLINENUMBERS, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.show_line_numbers", L"Show line numbers"));
 	m_source_palette = GetDlgItem(IDC_OPTIONS_SOURCE_PALETTE);
+	m_tag_highlight_mode = GetDlgItem(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE);
+	m_tag_highlight_mode.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_name_only", L"Tag name only")); m_tag_highlight_mode.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_full_tag", L"Whole tag"));
+	m_tag_highlight_mode.SetCurSel(_Settings.XmlSrcTagHighlightMode() ? 1 : 0);
 	m_srcfonts = GetDlgItem(IDC_SRCFONT);
 	CSimpleArray<CString> fonts;
 	HDC display = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
@@ -221,9 +227,11 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	if(sourceFont < 0) sourceFont = m_srcfonts.AddString(_Settings.GetSrcFont());
 	m_srcfonts.SetCurSel(sourceFont);
 	m_src_wrap = GetDlgItem(IDC_WRAP); m_src_hl = GetDlgItem(IDC_SYNTAXHL); m_src_taghl = GetDlgItem(IDC_TAGHL);
+	m_src_taghl_attributes = GetDlgItem(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES); m_src_taghl_errors = GetDlgItem(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS);
 	m_src_eol = GetDlgItem(IDC_SHOWEOL); m_src_whitespace = GetDlgItem(IDC_SHOWWHITESPACE); m_src_line_numbers = GetDlgItem(IDC_SHOWLINENUMBERS);
 	m_src_wrap.SetCheck(_Settings.XmlSrcWrap()); m_src_hl.SetCheck(_Settings.XmlSrcSyntaxHL()); m_src_taghl.SetCheck(_Settings.XmlSrcTagHL());
 	m_src_eol.SetCheck(_Settings.XmlSrcShowEOL()); m_src_whitespace.SetCheck(_Settings.XmlSrcShowSpace()); m_src_line_numbers.SetCheck(_Settings.XMLSrcShowLineNumbers());
+	m_src_taghl_attributes.SetCheck(_Settings.XmlSrcTagHighlightAttributes()); m_src_taghl_errors.SetCheck(_Settings.XmlSrcTagHighlightErrors());
 	m_source_palette.SetDroppedWidth(250);
 	m_source_tooltips.Initialize(m_hWnd);
 	m_source_tooltips.Add(m_source_palette, L"fbe.theme.tooltip.palette", L"Choose a built-in or user source highlighting theme.");
@@ -243,6 +251,9 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_source_tooltips.Add(m_src_wrap, L"fbe.settings.tooltip.source.wrap", L"Wraps long source-code lines instead of scrolling horizontally.");
 	m_source_tooltips.Add(m_src_hl, L"fbe.settings.tooltip.source.syntax", L"Highlights XML syntax in the source-code editor.");
 	m_source_tooltips.Add(m_src_taghl, L"fbe.settings.tooltip.source.tags", L"Highlights the matching XML tag at the caret.");
+	m_source_tooltips.Add(m_tag_highlight_mode, L"fbe.settings.tooltip.source.tag_mode", L"Chooses whether matching highlights include the full tag.");
+	m_source_tooltips.Add(m_src_taghl_attributes, L"fbe.settings.tooltip.source.tag_attributes", L"Includes attributes in matching tag highlighting.");
+	m_source_tooltips.Add(m_src_taghl_errors, L"fbe.settings.tooltip.source.tag_errors", L"Shows structural XML tag diagnostics while editing.");
 	m_source_tooltips.Add(m_src_eol, L"fbe.settings.tooltip.source.eol", L"Shows end-of-line marks in source code.");
 	m_source_tooltips.Add(m_src_whitespace, L"fbe.settings.tooltip.source.whitespace", L"Shows spaces and other whitespace characters.");
 	m_source_tooltips.Add(m_src_line_numbers, L"fbe.settings.tooltip.source.line_numbers", L"Shows line numbers in the source-code editor.");
@@ -442,7 +453,7 @@ void CSettingsSourcePage::Commit()
 {
 	_Settings.SetXmlSrcShowSpecialChars(IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED);
 	_Settings.SetSrcFont(U::GetWindowText(m_srcfonts));
-	_Settings.SetXmlSrcWrap(m_src_wrap.GetCheck() != 0); _Settings.SetXmlSrcSyntaxHL(m_src_hl.GetCheck() != 0); _Settings.SetXmlSrcTagHL(m_src_taghl.GetCheck() != 0); _Settings.SetXmlSrcShowEOL(m_src_eol.GetCheck() != 0); _Settings.SetXmlSrcShowSpace(m_src_whitespace.GetCheck() != 0); _Settings.SetXMLSrcShowLineNumbers(m_src_line_numbers.GetCheck() != 0);
+	_Settings.SetXmlSrcWrap(m_src_wrap.GetCheck() != 0); _Settings.SetXmlSrcSyntaxHL(m_src_hl.GetCheck() != 0); _Settings.SetXmlSrcTagHL(m_src_taghl.GetCheck() != 0); _Settings.SetXmlSrcTagHighlightMode(m_tag_highlight_mode.GetCurSel() == 1 ? 1 : 0); _Settings.SetXmlSrcTagHighlightAttributes(m_src_taghl_attributes.GetCheck() != 0); _Settings.SetXmlSrcTagHighlightErrors(m_src_taghl_errors.GetCheck() != 0); _Settings.SetXmlSrcShowEOL(m_src_eol.GetCheck() != 0); _Settings.SetXmlSrcShowSpace(m_src_whitespace.GetCheck() != 0); _Settings.SetXMLSrcShowLineNumbers(m_src_line_numbers.GetCheck() != 0);
 	const int specialCharsStyle = m_special_chars_style.GetCurSel();
 	_Settings.SetXmlSrcSpecialCharsStyle(specialCharsStyle == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ? XML_SRC_SPECIAL_CHARS_TEXT_LABELS : XML_SRC_SPECIAL_CHARS_WORD_LIKE);
 	_Settings.SetXmlSrcThemeId(GetSelectedThemeId(m_source_palette, m_source_theme_ids));

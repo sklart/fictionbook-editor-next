@@ -1,4 +1,4 @@
-<# Exercises CSettings Save/Load using a CSettings-generated seed in a portable profile. #>
+﻿<# Exercises CSettings Save/Load using a CSettings-generated seed in a portable profile. #>
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts)
 $ErrorActionPreference = 'Stop'; $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
@@ -43,7 +43,7 @@ function Assert-Row($Rows,[string]$Phase,[hashtable]$Expected,[string]$Name) {
 $root=Join-Path ([IO.Path]::GetTempPath()) ('fbe-editor-background-settings-'+[guid]::NewGuid().ToString('N')); $installed=Join-Path $env:LOCALAPPDATA 'FBE Next'; $before=Get-Snapshot $installed; $completed=$false
 try {
     Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $root -Recurse -Force; $portable=$root; $portableExe=Join-Path $portable 'FBE.exe'
-    "[Portable]`r`nDataPath=TestData`r`n"|Set-Content -LiteralPath (Join-Path $portable 'portable.ini') -Encoding utf8NoBOM
+    [System.IO.File]::WriteAllText((Join-Path $portable 'portable.ini'), "[Portable]`r`nDataPath=TestData`r`n", [System.Text.UTF8Encoding]::new($false))
     $fixture=Join-Path $root 'settings.fb2'; '<?xml version="1.0"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>T</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>settings-test</id><version>1</version></document-info></description><body><section><p>T</p></section></body></FictionBook>'|Set-Content -LiteralPath $fixture -Encoding utf8
     $settingsDir=Join-Path $portable 'TestData\Settings'; $settingsFile=Join-Path $settingsDir 'Settings.xml'; $sentinel='1193046'
     # Bootstrap is structurally valid, then the application itself serializes the canonical seed.

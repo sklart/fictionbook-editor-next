@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$RepoRoot = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 )
 

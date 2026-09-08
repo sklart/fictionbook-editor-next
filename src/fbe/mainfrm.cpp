@@ -4651,8 +4651,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		// Stress the same caret/update lifecycle as keyboard navigation without
 		// forcing every position through viewport scroll policy and layout cache.
 		m_source.SendMessage(SCI_SETCURRENTPOS, position);
-		XmlMatchedTagsHighlighter tagMatchHighlighter(&m_source, &m_xml_matched_tags_state);
-		tagMatchHighlighter.tagMatch(true, false, false);
+		XmlSourceTagHighlighter tagMatchHighlighter(&m_source, &m_xml_matched_tags_state);
+		tagMatchHighlighter.UpdateHighlight({ true, _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
 		}
 	};
 	runMatchedTags(0, 10000);
@@ -8374,7 +8374,8 @@ void  CMainFrame::SetupSci()
       _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_LINE_NUMBER);
     const COLORREF markerBack = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
       _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
-    const COLORREF indicatorColor = highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) : RGB(128, 128, 255);
+	const COLORREF indicatorColor = highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_MATCHING_TAG_BORDER);
+	const COLORREF diagnosticColor = highContrast ? ::GetSysColor(COLOR_HOTLIGHT) : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_XML_ERROR);
     m_source.SendMessage(SCI_SETILEXER, 0, reinterpret_cast<LPARAM>(CreateEditorLexer("xml")));
 
     m_source.SendMessage(SCI_SETMARGINTYPEN, 2, SC_MARGIN_SYMBOL);
@@ -8399,6 +8400,14 @@ void  CMainFrame::SetupSci()
 	m_source.SendMessage(SCI_INDICSETALPHA, EDITOR_INDICATOR_TAG_ATTRIBUTE, 100);
 	m_source.SendMessage(SCI_INDICSETUNDER, EDITOR_INDICATOR_TAG_ATTRIBUTE, TRUE);
 	m_source.SendMessage(SCI_INDICSETFORE,  EDITOR_INDICATOR_TAG_ATTRIBUTE, indicatorColor);
+	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_XML_TAG_INVALID, INDIC_STRIKE);
+	m_source.SendMessage(SCI_INDICSETFORE, EDITOR_INDICATOR_XML_TAG_INVALID, diagnosticColor);
+	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_XML_TAG_MISMATCHED, INDIC_SQUIGGLE);
+	m_source.SendMessage(SCI_INDICSETFORE, EDITOR_INDICATOR_XML_TAG_MISMATCHED, diagnosticColor);
+	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_XML_TAG_MISSING_OPENING, INDIC_DOTS);
+	m_source.SendMessage(SCI_INDICSETFORE, EDITOR_INDICATOR_XML_TAG_MISSING_OPENING, highContrast ? ::GetSysColor(COLOR_HOTLIGHT) : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_XML_WARNING));
+	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_XML_TAG_MISSING_CLOSING, INDIC_DASH);
+	m_source.SendMessage(SCI_INDICSETFORE, EDITOR_INDICATOR_XML_TAG_MISSING_CLOSING, highContrast ? ::GetSysColor(COLOR_HOTLIGHT) : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_XML_WARNING));
 
 	m_source.SendMessage(SCI_COLOURISE,0,-1);
   } 
@@ -8455,7 +8464,9 @@ void CMainFrame::ConfigureSourceSpecialCharacterRepresentations()
 }
 
 void  CMainFrame::SciModified(const SCNotification& scn) {
-  if (scn.modificationType & SC_MOD_CHANGEFOLD) {
+	if (scn.modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))
+		m_xml_matched_tags_state.Invalidate();
+	if (scn.modificationType & SC_MOD_CHANGEFOLD) {
     if (scn.foldLevelNow & SC_FOLDLEVELHEADERFLAG) {
       if (!(scn.foldLevelPrev & SC_FOLDLEVELHEADERFLAG))
 	m_source.SendMessage(SCI_SETFOLDEXPANDED, scn.line, 1);
@@ -8498,8 +8509,9 @@ bool CMainFrame::SciUpdateUI(bool gotoTag)
 	UpdateStatusBar();
 	if (_Settings.XmlSrcTagHL() || gotoTag)
 	{
-		XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
-		UIEnable(ID_GOTO_MATCHTAG, xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, gotoTag));
+		XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
+		if (gotoTag) UIEnable(ID_GOTO_MATCHTAG, xmlTagMatchHiliter.GotoMatchingTag());
+		else UIEnable(ID_GOTO_MATCHTAG, xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() }));
 		return true;
 	}
 	return false;
@@ -8508,8 +8520,8 @@ bool CMainFrame::SciUpdateUI(bool gotoTag)
 void CMainFrame::SciGotoWrongTag()
 {
 	CWaitCursor hourglass;
-	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
-	xmlTagMatchHiliter.gotoWrongTag();
+	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
+	xmlTagMatchHiliter.GotoWrongTag();
 	
 }
 
@@ -9086,8 +9098,8 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	SetSciStyles();
 	UpdateSourceLineNumberMargin(true);
 
-	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
-	xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, false);
+	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
+	xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
 	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
 	// Перекраска XML-редактора не должна менять активный режим документа.
 	if(activeView == BODY && m_doc)
@@ -9112,8 +9124,8 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	// added by SeNS: display line numbers
 	UpdateSourceLineNumberMargin(true);
 
-	XmlMatchedTagsHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
-	xmlTagMatchHiliter.tagMatch(_Settings.XmlSrcTagHL(), false, false);
+	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
+	xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
 	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
 
 	// added by SeNS

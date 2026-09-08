@@ -1,4 +1,4 @@
-<# Verifies that the installer records component ownership before uninstalling. #>
+﻿<# Verifies that the installer records component ownership before uninstalling. #>
 [CmdletBinding()]
 param()
 

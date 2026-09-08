@@ -1,17 +1,17 @@
-<#
+﻿<#
 Проверяет контракт выгрузки <binary>: оба UI-пути обязаны подтверждать замену
 и использовать одну атомарную запись, не объявляя неполную запись успешной.
 #>
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$helper = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\BinaryFileSave.h')
-$external = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\ExternalHelper.h')
-$view = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\FBEview.h')
-$descriptionScript = Get-Content -Raw (Join-Path $repoRoot 'runtime\main.js')
-$scriptingApi = Get-Content -Raw (Join-Path $repoRoot 'docs\scripting-api.md')
-$notification = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\BinarySaveNotification.h')
-$catalog = Get-Content -Raw (Join-Path $repoRoot 'localization\app-ui\catalog.json') | ConvertFrom-Json
-$releaseVerification = Get-Content -Raw (Join-Path $repoRoot 'tools\build\verify-release.ps1')
+$helper = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'src\fbe\BinaryFileSave.h')
+$external = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'src\fbe\ExternalHelper.h')
+$view = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'src\fbe\FBEview.h')
+$descriptionScript = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'runtime\main.js')
+$scriptingApi = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'docs\scripting-api.md')
+$notification = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'src\fbe\BinarySaveNotification.h')
+$catalog = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'localization\app-ui\catalog.json') | ConvertFrom-Json
+$releaseVerification = Get-Content -Raw -Encoding UTF8 (Join-Path $repoRoot 'tools\build\verify-release.ps1')
 
 function Assert-Contains([string]$Text, [string]$Pattern, [string]$Message) {
     if ($Text -notmatch $Pattern) { throw $Message }

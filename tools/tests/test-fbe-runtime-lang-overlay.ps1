@@ -1,4 +1,4 @@
-# Проверяет, что runtime JSON-overlay FBE синхронизирован с каталогом Lang и ресурсными ID.
+﻿# Проверяет, что runtime JSON-overlay FBE синхронизирован с каталогом Lang и ресурсными ID.
 # Тест страхует связку `src/fbe/RuntimeLocalization.cpp` ↔ `localization/app-ui/catalog.json`
 # и гарантирует, что внешний слой Lang/<язык>/fbe.json содержит все подключённые ключи.
 [CmdletBinding()]

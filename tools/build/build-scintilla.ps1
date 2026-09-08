@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Собирает Scintilla и Lexilla и копирует их DLL в runtime.
 #>

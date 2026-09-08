@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $root=(Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $recoder=Join-Path $root 'runtime\Utilities\fb2recode\fb2recode.js'
 $runner=Join-Path $PSScriptRoot 'fb2recode-cancel.js'

@@ -1,4 +1,4 @@
-<# Проверяет локализованные мнемоники непосредственно в runtime JSON catalog. #>
+﻿<# Проверяет локализованные мнемоники непосредственно в runtime JSON catalog. #>
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-idr-mainframe-menu.json') | ConvertFrom-Json

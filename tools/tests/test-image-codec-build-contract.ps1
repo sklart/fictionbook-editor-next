@@ -1,4 +1,4 @@
-param([string]$RepoRoot = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)))
+﻿param([string]$RepoRoot = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)))
 
 $ErrorActionPreference = 'Stop'
 $resolver = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\build\Resolve-VsCmake.ps1') -Raw

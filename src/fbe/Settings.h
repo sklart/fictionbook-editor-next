@@ -562,6 +562,9 @@ class CSettings : public ISerializable, public IObjectFactory
 	CString		 m_xml_src_theme_id;
 	DWORD		m_xml_src_colors[XML_SRC_COLOR_GROUP_COUNT];
 	bool		m_xml_src_tagHL;
+	DWORD		m_xml_src_tagHL_mode;
+	bool		m_xml_src_tagHL_attributes;
+	bool		m_xml_src_tagHL_errors;
 	bool		m_xml_src_showEOL;
 	bool		m_xml_src_showSpace;
 	bool		m_xml_src_showSpecialChars;
@@ -675,6 +678,9 @@ public:
 	static DWORD GetXmlSrcThemeColor(DWORD palette, XmlSrcStyleToken token);
 	DWORD GetXmlSrcStyleColor(XmlSrcStyleToken token)const;
 	bool XmlSrcTagHL()const;
+	DWORD XmlSrcTagHighlightMode()const;
+	bool XmlSrcTagHighlightAttributes()const;
+	bool XmlSrcTagHighlightErrors()const;
 	bool XmlSrcShowEOL()const;
 	bool XmlSrcShowSpace()const;
 	bool XmlSrcShowSpecialChars()const;
@@ -759,6 +765,9 @@ public:
 	void	SetXmlSrcThemeId(const CString& id, bool apply = false);
 	void	SetXmlSrcColor(XmlSrcColorGroup group, DWORD color, bool apply = false);
 	void	SetXmlSrcTagHL(bool hl, bool apply = false);
+	void	SetXmlSrcTagHighlightMode(DWORD mode, bool apply = false);
+	void	SetXmlSrcTagHighlightAttributes(bool enabled, bool apply = false);
+	void	SetXmlSrcTagHighlightErrors(bool enabled, bool apply = false);
 	void	SetXmlSrcShowEOL(bool eol, bool apply = false);
 	void	SetXmlSrcShowSpace(bool eol, bool apply = false);
 	void	SetXmlSrcShowSpecialChars(bool show, bool apply = false);

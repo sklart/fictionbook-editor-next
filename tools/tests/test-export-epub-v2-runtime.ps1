@@ -1,4 +1,4 @@
-[CmdletBinding()] param([string]$Configuration = 'Release')
+﻿[CmdletBinding()] param([string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'; $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $dll = Join-Path $root "out\$Configuration\Plugins\ExportEPUB.dll"; if (-not (Test-Path -LiteralPath $dll)) { throw "Missing ExportEPUB.dll: $dll" }
 & (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset v143

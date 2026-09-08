@@ -1,4 +1,4 @@
-<# Builds the static OpenJPEG decoder used by FBE's FB2 image importer. #>
+﻿<# Builds the static OpenJPEG decoder used by FBE's FB2 image importer. #>
 [CmdletBinding()]
 param(
     [ValidateSet("Debug", "Release")][string]$Configuration = "Release",

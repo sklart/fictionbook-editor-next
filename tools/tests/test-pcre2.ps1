@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
@@ -48,7 +48,7 @@ $fixturesPath = Join-Path $PSScriptRoot "regex-fixtures.json"
 $fixtures = Get-Content -Raw -LiteralPath $fixturesPath | ConvertFrom-Json
 
 foreach ($case in $fixtures.pcre.search) {
-    $optionsText = ""
+    $optionsText = "none"
     if ($case.options) {
         $optionsText = (($case.options | ForEach-Object { [string]$_ }) -join ",")
     }

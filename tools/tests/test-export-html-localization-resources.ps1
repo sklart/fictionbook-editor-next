@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет generated-строки ExportHTML.
 

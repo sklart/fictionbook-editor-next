@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет language-neutral layout-контракт базовых DIALOGEX FBE.
 

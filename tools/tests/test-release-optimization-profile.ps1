@@ -154,10 +154,10 @@ function Get-ProjectTlogEntries {
 }
 foreach ($project in $speedProjects) {
     Get-ProjectTlogEntries $project 'Compiler' | ForEach-Object { Assert-SpeedCommand $project $_ }
-    $links = Get-ProjectTlogEntries $project 'Linker' | Where-Object { $_.Command -match [regex]::Escape($project.Target) }
+    $links = @(Get-ProjectTlogEntries $project 'Linker' | Where-Object { $_.Command -match [regex]::Escape($project.Target) })
     if ($links.Count -ne 1) { throw "Expected one final link command for $($project.Path), found $($links.Count)." }; Assert-LinkCommand $project $links[0]
 }
 Get-ProjectTlogEntries $shellProject 'Compiler' | ForEach-Object { Assert-ShellCommand $shellProject $_ }
-$shellLinks = Get-ProjectTlogEntries $shellProject 'Linker' | Where-Object { $_.Command -match [regex]::Escape($shellProject.Target) }
+$shellLinks = @(Get-ProjectTlogEntries $shellProject 'Linker' | Where-Object { $_.Command -match [regex]::Escape($shellProject.Target) })
 if ($shellLinks.Count -ne 1) { throw "Expected one final link command for $($shellProject.Path), found $($shellLinks.Count)." }; Assert-LinkCommand $shellProject $shellLinks[0] -Shell
 Write-Host 'Release optimization profile effective flags passed.'

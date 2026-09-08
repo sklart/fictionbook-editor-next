@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Common helpers for checking, downloading and applying third-party dependency updates.
 

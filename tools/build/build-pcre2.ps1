@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Собирает статическую библиотеку PCRE2 и устанавливает её в build\pcre2\install.
 #>
@@ -121,9 +121,9 @@ function Invoke-ExternalCommand {
     $processStartInfo.RedirectStandardOutput = $true
     $processStartInfo.RedirectStandardError = $true
 
-    foreach ($argument in $ArgumentList) {
-        [void]$processStartInfo.ArgumentList.Add($argument)
-    }
+    # ArgumentList is a .NET Core API and is unavailable in the .NET
+    # Framework ProcessStartInfo used by Windows PowerShell 5.1.
+    $processStartInfo.Arguments = (($ArgumentList | ForEach-Object { '"' + ($_ -replace '"', '\"') + '"' }) -join ' ')
 
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $processStartInfo

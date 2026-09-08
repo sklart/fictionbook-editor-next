@@ -1,4 +1,4 @@
-<# Returns CMake and the generator selected from a supported Visual Studio installation. #>
+﻿<# Returns CMake and the generator selected from a supported Visual Studio installation. #>
 [CmdletBinding()]
 param([string]$PlatformToolset)
 $ErrorActionPreference = 'Stop'

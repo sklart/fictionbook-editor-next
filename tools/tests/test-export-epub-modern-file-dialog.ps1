@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw (Join-Path $root 'src\export-epub\ExportEPUBPlugin.cpp')
 $resource = Get-Content -Raw (Join-Path $root 'src\export-epub\ExportEPUB.rc')

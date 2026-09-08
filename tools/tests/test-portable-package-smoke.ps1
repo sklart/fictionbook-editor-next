@@ -1,4 +1,4 @@
-<# Exercises a materialised portable payload and, optionally, its ZIP. #>
+﻿<# Exercises a materialised portable payload and, optionally, its ZIP. #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$PackageDirectory,

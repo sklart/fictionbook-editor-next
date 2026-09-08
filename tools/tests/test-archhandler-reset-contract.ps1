@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 foreach($name in @('ConfigZipHandler.hta','ConfigRarHandler.hta')) {
     $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot ('runtime\Utilities\ArchHandler\' + $name))

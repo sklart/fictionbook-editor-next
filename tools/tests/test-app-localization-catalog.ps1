@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет подготовительный каталог локализации основного интерфейса FBE/FBV.
 
@@ -32,7 +32,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "catalog.json не является строгим JSON."
 }
 
-$catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json -Depth 20
+$catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath $catalogPath | ConvertFrom-Json
 
 $requiredLanguages = @(
     "en-US",

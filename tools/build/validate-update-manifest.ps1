@@ -1,4 +1,4 @@
-<# Validates an update manifest without tying a checked-in feed to src/version.h. #>
+﻿<# Validates an update manifest without tying a checked-in feed to src/version.h. #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string]$ManifestPath,

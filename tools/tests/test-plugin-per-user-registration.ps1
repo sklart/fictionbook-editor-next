@@ -1,4 +1,4 @@
-<# Verifies that Plugin Host no longer depends on per-user COM registration. #>
+﻿<# Verifies that Plugin Host no longer depends on per-user COM registration. #>
 [CmdletBinding()]
 param()
 

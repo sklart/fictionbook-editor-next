@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Runs production ArchHandler HTA reset handlers and verifies ZIP/RAR isolation.
 #>
@@ -22,10 +22,25 @@ try {
     $delete = Start-Process -FilePath reg.exe -ArgumentList @('delete', $key, '/f') -PassThru
     if(-not $delete.WaitForExit(15000)) { Stop-Process -Id $delete.Id -Force; throw 'reg.exe delete завис при удалении изолированного ключа.' }
     if($delete.ExitCode -ne 0) { throw "reg.exe delete вернул код $($delete.ExitCode)." }
-    & reg.exe query $key *> $null
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & reg.exe query $key *> $null
+    }
+    finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
     if($LASTEXITCODE -eq 0) { throw 'reg.exe delete не удалил изолированный ключ.' }
 }
 finally {
-    & reg.exe delete $key /f *> $null
+    # Missing is a valid cleanup state; reg.exe writes that diagnostic to stderr.
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & reg.exe delete $key /f *> $null
+    }
+    finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
 }
 Write-Host 'ArchHandler Reset behavioral test passed.'

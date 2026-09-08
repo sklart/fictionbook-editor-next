@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет контракт логических ролей оформления XML-редактора.
 #>
@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 
 function Read-ProjectFile([string]$relativePath) {
-    return Get-Content -Raw -LiteralPath (Join-Path $repoRoot $relativePath)
+    return Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $repoRoot $relativePath)
 }
 
 $settingsHeader = Read-ProjectFile "src\fbe\Settings.h"

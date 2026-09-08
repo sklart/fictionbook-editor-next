@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Exercises production CFBEView table handlers with live DOM snapshots and Undo/Redo.
 #>

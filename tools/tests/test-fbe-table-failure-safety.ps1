@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Verifies that table serialization corruption aborts Save without replacing the
 original FB2 and makes every later Save fail closed.

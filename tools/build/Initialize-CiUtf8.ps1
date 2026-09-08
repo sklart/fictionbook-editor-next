@@ -1,4 +1,4 @@
-<# Normalizes the Windows console used by PowerShell, cmd.exe and native build tools. #>
+﻿<# Normalizes the Windows console used by PowerShell, cmd.exe and native build tools. #>
 [CmdletBinding()]
 param()
 

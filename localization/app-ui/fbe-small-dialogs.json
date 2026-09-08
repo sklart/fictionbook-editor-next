@@ -2604,6 +2604,11 @@
         "bg-BG": "Осветявай текущия таг"
       }
     },
+    "fbe.dialog.idd_options.tag_highlight_mode": { "resource": "IDD_SETTINGS_SOURCE", "kind": "LTEXT", "targetId": "IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE_LABEL", "translations": { "en-US": "Matched tag mode:", "ru-RU": "Режим подсветки тега:" } },
+    "fbe.dialog.idd_options.tag_highlight_attributes": { "resource": "IDD_SETTINGS_SOURCE", "kind": "CONTROL", "targetId": "IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES", "translations": { "en-US": "Highlight attributes", "ru-RU": "Подсвечивать атрибуты" } },
+    "fbe.dialog.idd_options.tag_highlight_errors": { "resource": "IDD_SETTINGS_SOURCE", "kind": "CONTROL", "targetId": "IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS", "translations": { "en-US": "Show structural tag errors", "ru-RU": "Показывать структурные ошибки тегов" } },
+    "fbe.dialog.idd_options.tag_highlight_name_only": { "resource": "IDD_SETTINGS_SOURCE", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Tag name only", "ru-RU": "Только имя тега" } },
+    "fbe.dialog.idd_options.tag_highlight_full_tag": { "resource": "IDD_SETTINGS_SOURCE", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Whole tag", "ru-RU": "Весь тег" } },
     "fbe.dialog.idd_options.source_font": {
       "resource": "IDD_SETTINGS_SOURCE",
       "kind": "LTEXT",

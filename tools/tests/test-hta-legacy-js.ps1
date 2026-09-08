@@ -1,4 +1,4 @@
-<# Проверяет embedded JScript поставляемых HTA на синтаксис, несовместимый с MSHTML. #>
+﻿<# Проверяет embedded JScript поставляемых HTA на синтаксис, несовместимый с MSHTML. #>
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $paths = @(

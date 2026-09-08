@@ -1,4 +1,4 @@
-<# Verifies that Batch EXEs show console help, and pause only in their own console. #>
+﻿<# Verifies that Batch EXEs show console help, and pause only in their own console. #>
 [CmdletBinding()]
 param()
 
@@ -11,7 +11,7 @@ $sources = @(
 )
 
 foreach ($relativePath in $sources) {
-    $source = Get-Content -Raw -LiteralPath (Join-Path $root $relativePath)
+    $source = Get-Content -Raw -LiteralPath (Join-Path $root $relativePath) -Encoding UTF8
     if ($source -match 'MessageBoxW\s*\(') { throw "$relativePath still displays a MessageBox for interactive Batch help." }
     foreach ($required in @('ShowInteractiveLaunchHelp', 'PrintUsage|Usage\(', 'GetConsoleMode', 'GetConsoleProcessList', 'ReadConsoleInputW', 'Нажмите любую клавишу для выхода')) {
         if ($source -notmatch $required) { throw "$relativePath is missing interactive console behavior: $required" }

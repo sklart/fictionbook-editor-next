@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory, Position = 0, ValueFromRemainingArguments)]
     [string[]]$FilePath,

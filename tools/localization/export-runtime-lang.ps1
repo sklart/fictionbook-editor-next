@@ -1,4 +1,4 @@
-# Экспортирует production runtime-локализацию в JSON-файлы Lang/<язык>/<модуль>.json.
+﻿# Экспортирует production runtime-локализацию в JSON-файлы Lang/<язык>/<модуль>.json.
 # Встроенные английские ресурсы остаются structural/emergency fallback.
 [CmdletBinding()]
 param(
@@ -26,7 +26,36 @@ function Read-JsonFile {
     if (-not (Test-Path -LiteralPath $Path)) {
         throw "JSON-файл не найден: $Path"
     }
-    return Get-Content -Raw -LiteralPath $Path -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+    return ConvertTo-Hashtable (Get-Content -Raw -LiteralPath $Path -Encoding UTF8 | ConvertFrom-Json)
+}
+
+function ConvertTo-Hashtable {
+    param([AllowNull()][object] $Value)
+
+    if ($null -eq $Value) {
+        return $null
+    }
+    if ($Value -is [string] -or $Value.PSObject.BaseObject -is [string]) {
+        return [string] $Value
+    }
+    if ($Value -is [System.Collections.IDictionary]) {
+        $result = @{}
+        foreach ($key in $Value.Keys) {
+            $result[[string] $key] = ConvertTo-Hashtable $Value[$key]
+        }
+        return $result
+    }
+    if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
+        return @($Value | ForEach-Object { ConvertTo-Hashtable $_ })
+    }
+    if ($Value -is [pscustomobject]) {
+        $result = @{}
+        foreach ($property in $Value.PSObject.Properties) {
+            $result[$property.Name] = ConvertTo-Hashtable $property.Value
+        }
+        return $result
+    }
+    return $Value
 }
 
 function Get-Translation {

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Собирает статическую библиотеку Hunspell из локального проекта libhunspell.vcxproj.
 #>

@@ -1,4 +1,4 @@
-<# Exercises FBE.exe diagnostic runtime-paths mode without starting its GUI. #>
+﻿<# Exercises FBE.exe diagnostic runtime-paths mode without starting its GUI. #>
 [CmdletBinding()]
 param([string]$FbeExecutable)
 $ErrorActionPreference = 'Stop'

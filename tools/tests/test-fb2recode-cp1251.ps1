@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $recoder = Join-Path $repoRoot 'runtime\Utilities\fb2recode\fb2recode.js'
 $source = Get-Content -Raw -LiteralPath $recoder

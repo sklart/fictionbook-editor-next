@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
@@ -46,6 +46,11 @@ function Convert-ExpectedMatchCollection($Matches) {
     return ($items -join ';')
 }
 
+function Convert-ToNativeArgument([string]$Value) {
+    if ([string]::IsNullOrEmpty($Value)) { return "none" }
+    return $Value
+}
+
 & cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE `
     "/I$(Join-Path $repoRoot "third_party\wtl")" `
     "/I$(Join-Path $repoRoot "src\fbe\search")" `
@@ -60,7 +65,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $fixturesPath = Join-Path $PSScriptRoot "regex-fixtures.json"
-$fixtures = Get-Content -Raw -LiteralPath $fixturesPath | ConvertFrom-Json
+$fixtures = Get-Content -Raw -LiteralPath $fixturesPath -Encoding UTF8 | ConvertFrom-Json
 
 foreach ($case in $fixtures.pcre.wrapper) {
     $expectedFirstSubMatchCount = 0
@@ -77,6 +82,11 @@ foreach ($case in $fixtures.pcre.wrapper) {
         $expectedFirstSubMatchValue = [string]$case.expectedSubMatches[0]
     }
 
+    $expectedCollection = Convert-ExpectedMatchCollection $case.expectedMatches
+    if ([string]::IsNullOrEmpty($expectedCollection)) {
+        $expectedCollection = "none"
+    }
+
     $arguments = @(
         (Convert-ToUtf8Hex ([string]$case.subject)),
         (Convert-ToUtf8Hex ([string]$case.pattern)),
@@ -84,19 +94,19 @@ foreach ($case in $fixtures.pcre.wrapper) {
         ($(if ($case.global) { "1" } else { "0" })),
         ($(if ($case.multiline) { "1" } else { "0" })),
         ([string]$case.expectedCount),
-        (Convert-ToUtf8Hex ([string]$case.expectedFirstValue)),
+        (Convert-ToNativeArgument (Convert-ToUtf8Hex ([string]$case.expectedFirstValue))),
         ([string]$case.expectedFirstIndex),
         ($(if ($case.expectedCompileError) { "1" } else { "0" })),
         ([string]$expectedFirstSubMatchCount),
-        (Convert-ToUtf8Hex $expectedFirstSubMatchValue),
-        (Convert-ExpectedMatchCollection $case.expectedMatches)
+        (Convert-ToNativeArgument (Convert-ToUtf8Hex $expectedFirstSubMatchValue)),
+        $expectedCollection
     )
 
     Push-Location $testDir
     try {
         & $testExe @arguments
         if ($LASTEXITCODE -ne 0) {
-            throw "PCRE2 wrapper-фикстура '$($case.id)' завершилась с кодом $LASTEXITCODE."
+            throw "PCRE2 wrapper-фикстура '$($case.id)' завершилась с кодом $LASTEXITCODE; args=[$($arguments -join '|')]."
         }
     }
     finally {

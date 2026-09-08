@@ -1,4 +1,4 @@
-<# Shared SemVer 2.0 validation for release/update scripts. #>
+﻿<# Shared SemVer 2.0 validation for release/update scripts. #>
 
 function Test-FbeSemVer {
     param([Parameter(Mandatory)][string]$Version)

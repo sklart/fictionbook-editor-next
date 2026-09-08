@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет JSON-каталог главного меню FBE IDR_MAINFRAME.
 

@@ -1,4 +1,4 @@
-[CmdletBinding()] param([string]$Configuration = 'Release')
+﻿[CmdletBinding()] param([string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $dll = Join-Path $root "out\$Configuration\Plugins\ExportDOCX.dll"

@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet("Release")]
     [string]$Configuration = "Release",
@@ -122,8 +122,18 @@ function Invoke-NativeTool {
         [string[]]$ArgumentList
     )
 
-    $output = & $FilePath @ArgumentList 2>&1
-    $exitCode = $LASTEXITCODE
+    # muirct writes successful status messages to stderr.  Do not let
+    # ErrorActionPreference turn those native diagnostics into exceptions;
+    # the process exit code is the authoritative result.
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = & $FilePath @ArgumentList 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
 
     if ($exitCode -ne 0) {
         if ($output) {

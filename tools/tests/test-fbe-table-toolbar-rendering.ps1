@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Exercises table toolbar state transitions in a real FBE process and compares
 the painted button chroma for disabled and enabled states.

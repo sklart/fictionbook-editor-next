@@ -1,4 +1,4 @@
-# Проверяет экспорт будущих runtime JSON-файлов локализации Lang/<язык>/<модуль>.json.
+﻿# Проверяет экспорт будущих runtime JSON-файлов локализации Lang/<язык>/<модуль>.json.
 [CmdletBinding()]
 param(
     [string] $RepositoryRoot

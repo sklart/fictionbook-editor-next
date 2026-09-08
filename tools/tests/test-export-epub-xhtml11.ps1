@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет регрессии ExportEPUB для EPUB 2 / XHTML 1.1.
 

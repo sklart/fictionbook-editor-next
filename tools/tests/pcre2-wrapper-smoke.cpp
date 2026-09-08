@@ -202,7 +202,9 @@ int main(int argc, char* argv[])
 	const bool expectedCompileError = ParseBool(argv[9]);
 	const int expectedFirstSubMatchCount = std::atoi(argv[10]);
 	const std::string expectedFirstSubMatchValue = DecodeHex(argv[11]);
-	const std::string expectedCollection = argv[12];
+	// PowerShell omits an empty native argument.  Keep a non-empty sentinel so
+	// fixtures without expectedMatches retain the fixed command-line arity.
+	const std::string expectedCollection = std::strcmp(argv[12], "none") == 0 ? std::string() : argv[12];
 
 	if (pattern.empty())
 		return 31;

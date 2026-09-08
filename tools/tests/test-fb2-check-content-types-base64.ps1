@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Выполняет Base64-валидатор из поставляемой HTA в MSHTML/JScript.
 #>

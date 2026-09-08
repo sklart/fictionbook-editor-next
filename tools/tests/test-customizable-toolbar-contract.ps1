@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Guards the TBN_GETBUTTONINFO contract for dynamically added toolbar buttons.
 #>

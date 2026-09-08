@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет, что portable/staging-пакет содержит runtime JSON-локализацию.
 

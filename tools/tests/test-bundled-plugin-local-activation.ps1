@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет bundled plug-ins через DllGetClassObject, без CoCreateInstance,
 regsvr32 и каких-либо записей COM в реестре.

@@ -13,9 +13,10 @@
 class CSettingsSourcePage : public CAxDialogImpl<CSettingsSourcePage>, public ISettingsPage
 {
     CComboBox m_source_palette;
+	CComboBox m_tag_highlight_mode;
     CComboBox m_special_chars_style;
     CComboBox m_srcfonts;
-    CButton m_src_wrap, m_src_hl, m_src_taghl, m_src_eol, m_src_whitespace, m_src_line_numbers;
+    CButton m_src_wrap, m_src_hl, m_src_taghl, m_src_taghl_attributes, m_src_taghl_errors, m_src_eol, m_src_whitespace, m_src_line_numbers;
     CSettingsTooltips m_source_tooltips;
     std::vector<CString> m_source_theme_ids;
     std::vector<CString> m_source_theme_display_names;

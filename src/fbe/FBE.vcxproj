@@ -276,6 +276,10 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClCompile Include="settings\EditorBackgrounds.cpp" />
 	<ClCompile Include="plugins\PluginApiV2.cpp" />
     <ClCompile Include="XmlSourceThemes.cpp" />
+	<ClCompile Include="XmlTagMatcher.cpp">
+	  <PrecompiledHeader>NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="XmlSourceTagHighlighter.cpp" />
     <ClCompile Include="FBEview.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -342,7 +346,6 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ClCompile Include="xmlMatchedTagsHighlighter.cpp" />
     <ClCompile Include="XMLSerializer\XMLSerializer.cpp" />
     <ClCompile Include="extras\ColorButton.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
@@ -388,6 +391,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="search\RegexPcre2MatchLoop.h" />
     <ClInclude Include="RuntimeLocalization.h" />
     <ClInclude Include="XmlSourceThemes.h" />
+	<ClInclude Include="XmlTagMatcher.h" />
     <ClInclude Include="SearchReplace.h" />
     <ClInclude Include="XMLSerializer\Serializable.h" />
     <ClInclude Include="Settings.h" />

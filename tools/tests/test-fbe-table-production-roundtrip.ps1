@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Exercises the real FBE FB2 -> visual DOM -> Source -> visual DOM pipeline.
 #>

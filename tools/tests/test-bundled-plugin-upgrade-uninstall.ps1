@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Exercises an installed upgrade from the pre-Plugins flat plug-in layout.
 

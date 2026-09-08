@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Exercises production FBE Save -> Reopen -> Save with realistic binary payloads.
 #>

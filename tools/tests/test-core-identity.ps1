@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Сверяет байтовую идентичность Core payload с его materialized copy.
 

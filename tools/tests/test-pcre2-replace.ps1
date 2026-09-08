@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
@@ -47,7 +47,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $fixturesPath = Join-Path $PSScriptRoot "regex-fixtures.json"
-$fixtures = Get-Content -Raw -LiteralPath $fixturesPath | ConvertFrom-Json
+$fixtures = Get-Content -Raw -LiteralPath $fixturesPath -Encoding UTF8 | ConvertFrom-Json
 
 foreach ($case in $fixtures.pcre.replace) {
     $arguments = @(

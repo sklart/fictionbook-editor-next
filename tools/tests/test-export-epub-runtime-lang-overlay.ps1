@@ -1,4 +1,4 @@
-# Проверяет, что runtime JSON-overlay ExportEPUB синхронизирован с каталогом Lang и ресурсными ID.
+﻿# Проверяет, что runtime JSON-overlay ExportEPUB синхронизирован с каталогом Lang и ресурсными ID.
 [CmdletBinding()]
 param(
     [string] $RepositoryRoot

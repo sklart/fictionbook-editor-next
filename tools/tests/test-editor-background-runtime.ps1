@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Runs FBE.exe's unattended editor-background scenario against the real MSHTML DOM.
 #>
@@ -11,6 +11,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Drawing
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
 function Get-FileTreeSnapshot([string]$Path) {
@@ -41,14 +42,15 @@ function Save-RuntimeFailureArtifacts([string]$Extension, [string]$Report, [stri
     foreach($path in @((Join-Path $portableRuntime 'TestData'), (Join-Path $portableRuntime 'TestData\Diagnostics'))) {
         if(Test-Path -LiteralPath $path -PathType Container) { Copy-Item -LiteralPath $path -Destination $target -Recurse -Force }
     }
-    @"
+    $summary = @"
 extension=$Extension
 pid=$ProcessId
 exit=$ExitCode
 last-phase=$LastPhase
 report=$ReportText
 breadcrumb=$BreadcrumbText
-"@ | Set-Content -LiteralPath (Join-Path $target 'summary.txt') -Encoding utf8NoBOM
+"@
+    [System.IO.File]::WriteAllText((Join-Path $target 'summary.txt'), $summary, [System.Text.UTF8Encoding]::new($false))
     return $target
 }
 function Invoke-RuntimeFbe([string]$Extension, [string]$Report) {
@@ -79,7 +81,7 @@ $sourceRuntime = Split-Path $FbeExe -Parent
 $portableRuntime = Join-Path $directory 'portable-runtime'
 Copy-Item -LiteralPath $sourceRuntime -Destination $portableRuntime -Recurse -Force
 $FbeExe = Join-Path $portableRuntime 'FBE.exe'
-"[Portable]`r`nDataPath=TestData`r`n" | Set-Content -LiteralPath (Join-Path $portableRuntime 'portable.ini') -Encoding utf8NoBOM
+[System.IO.File]::WriteAllText((Join-Path $portableRuntime 'portable.ini'), "[Portable]`r`nDataPath=TestData`r`n", [System.Text.UTF8Encoding]::new($false))
 $fixture = Join-Path $directory 'background.fb2'
 $png = Join-Path $directory 'Фоны FBE # % (тест).png'
 $missing = Join-Path $directory 'нет # % (фон).png'

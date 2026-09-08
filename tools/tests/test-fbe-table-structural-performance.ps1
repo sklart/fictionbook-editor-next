@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Measures production CFBEView structural table commands on a 356 x 14 table.
 #>

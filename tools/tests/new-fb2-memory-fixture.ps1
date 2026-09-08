@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Создаёт воспроизводимый валидный FB2 fixture для full-process benchmark FBE.
 

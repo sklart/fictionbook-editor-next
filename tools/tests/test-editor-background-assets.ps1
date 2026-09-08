@@ -1,10 +1,14 @@
 [CmdletBinding()]
 param(
-    [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
+    [string]$RepositoryRoot,
     [string]$RuntimeDirectory
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
+    $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+}
+Add-Type -AssemblyName System.Drawing
 $root = Join-Path $RepositoryRoot 'runtime\EditorBackgrounds'
 $manifestPath = Join-Path $root 'backgrounds.json'
 if(-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'Missing runtime\EditorBackgrounds.' }

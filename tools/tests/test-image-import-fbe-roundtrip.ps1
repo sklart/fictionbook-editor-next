@@ -1,4 +1,4 @@
-<#!
+﻿<#!
 .SYNOPSIS
 Verifies that production ImageImport output survives FBE Save -> Reopen -> Save.
 #>

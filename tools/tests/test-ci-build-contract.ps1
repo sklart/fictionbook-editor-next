@@ -1,4 +1,4 @@
-<# CI contract: production shell build scripts, UTF-8 console setup and output locations. #>
+﻿<# CI contract: production shell build scripts, UTF-8 console setup and output locations. #>
 [CmdletBinding()]
 param(
     [string]$Configuration = 'Release',

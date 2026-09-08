@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw (Join-Path $root 'src\export-docx\ExportDOCXPlugin.cpp')
 $resource = Get-Content -Raw (Join-Path $root 'src\export-docx\ExportDOCX.rc')

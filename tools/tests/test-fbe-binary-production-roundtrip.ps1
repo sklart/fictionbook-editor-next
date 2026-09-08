@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Runs FBE production Save for an FB2 binary and verifies the persisted bytes.
 #>

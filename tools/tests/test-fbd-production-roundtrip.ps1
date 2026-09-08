@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Saves and reopens representative FBD files with the production editor.
 #>

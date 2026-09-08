@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path $PSScriptRoot)
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
 $document = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBDoc.cpp')
@@ -11,24 +11,24 @@ $fixtureNames = 'description_only.fbd', 'empty_body.fbd', 'with_cover.fbd', 'uni
 foreach($fixture in $fixtureNames) {
   $path = Join-Path $fixtures $fixture
   if(-not (Test-Path -LiteralPath $path)) { throw "Missing FBD fixture: $fixture" }
-  [xml]$xml = Get-Content -Raw -LiteralPath $path
+  [xml]$xml = Get-Content -Raw -LiteralPath $path -Encoding UTF8
   if($xml.DocumentElement.LocalName -ne 'FictionBook') { throw "Invalid FBD root: $fixture" }
   if($xml.DocumentElement.NamespaceURI -ne 'http://www.gribuser.ru/xml/fictionbook/2.0') { throw "Invalid FBD namespace: $fixture" }
   if($null -eq $xml.DocumentElement.description) { throw "Missing FBD description: $fixture" }
 }
-if((Get-Content -Raw -LiteralPath (Join-Path $fixtures 'description_only.fbd')) -match '<body') { throw 'description_only.fbd must remain body-less.' }
-if((Get-Content -Raw -LiteralPath (Join-Path $fixtures 'empty_body.fbd')) -notmatch '<body\s*/>') { throw 'empty_body.fbd must contain an empty body.' }
-if((Get-Content -Raw -LiteralPath (Join-Path $fixtures 'with_cover.fbd')) -notmatch 'cover\.jpg') { throw 'with_cover.fbd must retain a cover binary reference.' }
-if((Get-Content -Raw -LiteralPath (Join-Path $fixtures 'unicode_metadata.fbd')) -notmatch 'Zoë|déjà vu') { throw 'unicode_metadata.fbd must retain Unicode metadata.' }
+if((Get-Content -Raw -LiteralPath (Join-Path $fixtures 'description_only.fbd') -Encoding UTF8) -match '<body') { throw 'description_only.fbd must remain body-less.' }
+if((Get-Content -Raw -LiteralPath (Join-Path $fixtures 'empty_body.fbd') -Encoding UTF8) -notmatch '<body\s*/>') { throw 'empty_body.fbd must contain an empty body.' }
+if((Get-Content -Raw -LiteralPath (Join-Path $fixtures 'with_cover.fbd') -Encoding UTF8) -notmatch 'cover\.jpg') { throw 'with_cover.fbd must retain a cover binary reference.' }
+if((Get-Content -Raw -LiteralPath (Join-Path $fixtures 'unicode_metadata.fbd') -Encoding UTF8) -notmatch 'Zoë|déjà vu') { throw 'unicode_metadata.fbd must retain Unicode metadata.' }
 $invalidFixture = Join-Path $fixtures 'invalid_xml.fbd'
 if(-not (Test-Path -LiteralPath $invalidFixture)) { throw 'Missing malformed FBD fixture.' }
 $invalidParsed = $true
-try { [xml](Get-Content -Raw -LiteralPath $invalidFixture) | Out-Null } catch { $invalidParsed = $false }
+try { [xml](Get-Content -Raw -LiteralPath $invalidFixture -Encoding UTF8) | Out-Null } catch { $invalidParsed = $false }
 if($invalidParsed) { throw 'invalid_xml.fbd must not parse.' }
 function Assert-StructurallyInvalidFbd([string]$Fixture, [string]$Reason) {
   $path = Join-Path $fixtures $Fixture
   if(-not (Test-Path -LiteralPath $path)) { throw "Missing structural-invalid FBD fixture: $Fixture" }
-  [xml]$xml = Get-Content -Raw -LiteralPath $path
+  [xml]$xml = Get-Content -Raw -LiteralPath $path -Encoding UTF8
   $root = $xml.DocumentElement
   $descriptionCount = @($root.ChildNodes | Where-Object {
     $_.NodeType -eq [System.Xml.XmlNodeType]::Element -and $_.LocalName -eq 'description' -and $_.NamespaceURI -eq 'http://www.gribuser.ru/xml/fictionbook/2.0'

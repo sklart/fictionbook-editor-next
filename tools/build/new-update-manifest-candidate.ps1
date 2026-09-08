@@ -1,4 +1,4 @@
-<# Creates schema-v2 update metadata from already verified release artifacts. #>
+﻿<# Creates schema-v2 update metadata from already verified release artifacts. #>
 [CmdletBinding()]
 param(
     [string]$ArtifactsRoot,

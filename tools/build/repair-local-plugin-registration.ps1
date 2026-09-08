@@ -1,4 +1,4 @@
-# Восстанавливает COM-регистрацию плагинов FBE для локальной сборки. В staged
+﻿# Восстанавливает COM-регистрацию плагинов FBE для локальной сборки. В staged
 # runtime DLL лежат в Plugins; плоский out\<Configuration> остаётся fallback
 # только для development-сборки.
 # Полезно при ручном запуске out\Release\FBE.exe, когда Windows ещё помнит старые пути

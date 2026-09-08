@@ -1,4 +1,4 @@
-<# Resolves the single supported NSIS compiler contract for local and CI builds. #>
+﻿<# Resolves the single supported NSIS compiler contract for local and CI builds. #>
 [CmdletBinding()]
 param(
     [string]$MakensisPath

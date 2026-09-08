@@ -65,6 +65,9 @@ const wchar_t XML_SRC_COLOR_STRING_KEY[] = L"XMLSrcColorString";
 const wchar_t XML_SRC_COLOR_COMMENT_KEY[] = L"XMLSrcColorComment";
 const wchar_t XML_SRC_COLOR_BACKGROUND_KEY[] = L"XMLSrcColorBackground";
 const wchar_t XML_SRC_TAG_HL_KEY[]		= L"XMLSrcTagHL";
+const wchar_t XML_SRC_TAG_HL_MODE_KEY[] = L"XMLSrcTagHLMode";
+const wchar_t XML_SRC_TAG_HL_ATTRIBUTES_KEY[] = L"XMLSrcTagHLAttributes";
+const wchar_t XML_SRC_TAG_HL_ERRORS_KEY[] = L"XMLSrcTagHLErrors";
 const wchar_t XML_SRC_SHOW_EOL_KEY[]	= L"XMLSrcShowEOL";
 const wchar_t XML_SRC_SHOW_SPACE_KEY[]	= L"XMLSrcShowSpace";
 const wchar_t XML_SRC_SHOW_SPECIAL_CHARS_KEY[] = L"XMLSrcShowSpecialChars";
@@ -845,6 +848,9 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(XML_SRC_COLOR_STRING_KEY);
 	properties.push_back(XML_SRC_COLOR_COMMENT_KEY);
 	properties.push_back(XML_SRC_TAG_HL_KEY);
+	properties.push_back(XML_SRC_TAG_HL_MODE_KEY);
+	properties.push_back(XML_SRC_TAG_HL_ATTRIBUTES_KEY);
+	properties.push_back(XML_SRC_TAG_HL_ERRORS_KEY);
 	properties.push_back(XML_SRC_SHOW_EOL_KEY);
 	properties.push_back(XML_SRC_SHOW_SPACE_KEY);
 	properties.push_back(XML_SRC_SHOW_SPECIAL_CHARS_KEY);
@@ -1013,6 +1019,9 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 		property = m_font;
 		return true;
 	}
+	else if(sProperty == XML_SRC_TAG_HL_MODE_KEY) { property = GetStringedProperty(&m_xml_src_tagHL_mode, KEY_ULONG); return true; }
+	else if(sProperty == XML_SRC_TAG_HL_ATTRIBUTES_KEY) { property = GetStringedProperty(&m_xml_src_tagHL_attributes, KEY_BOOL); return true; }
+	else if(sProperty == XML_SRC_TAG_HL_ERRORS_KEY) { property = GetStringedProperty(&m_xml_src_tagHL_errors, KEY_BOOL); return true; }
 	else if(sProperty == EDITOR_BACKGROUND_KIND_KEY) { property = m_editor_background_kind; return true; }
 	else if(sProperty == EDITOR_BACKGROUND_ID_KEY) { property = m_editor_background_id; return true; }
 	else if(sProperty == EDITOR_BACKGROUND_CUSTOM_PATH_KEY) { property = m_editor_background_custom_path; return true; }
@@ -1333,6 +1342,9 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 		m_font = sValue.GetStringValue();
 		return true;
 	}
+	else if(sProperty == XML_SRC_TAG_HL_MODE_KEY) { m_xml_src_tagHL_mode = StrToInt(sValue.GetStringValue()); return true; }
+	else if(sProperty == XML_SRC_TAG_HL_ATTRIBUTES_KEY) { m_xml_src_tagHL_attributes = StrToBool(sValue.GetStringValue()); return true; }
+	else if(sProperty == XML_SRC_TAG_HL_ERRORS_KEY) { m_xml_src_tagHL_errors = StrToBool(sValue.GetStringValue()); return true; }
 	else if(sProperty == EDITOR_BACKGROUND_KIND_KEY) { SetEditorBackgroundKind(sValue.GetStringValue()); return true; }
 	else if(sProperty == EDITOR_BACKGROUND_ID_KEY) { m_editor_background_id = sValue.GetStringValue(); return true; }
 	else if(sProperty == EDITOR_BACKGROUND_CUSTOM_PATH_KEY) { m_editor_background_custom_path = sValue.GetStringValue(); return true; }
@@ -1955,6 +1967,9 @@ CString CSettings::GetSrcFont()const
 {
 	return m_srcfont;
 }
+DWORD CSettings::XmlSrcTagHighlightMode()const { return m_xml_src_tagHL_mode; }
+bool CSettings::XmlSrcTagHighlightAttributes()const { return m_xml_src_tagHL_attributes; }
+bool CSettings::XmlSrcTagHighlightErrors()const { return m_xml_src_tagHL_errors; }
 CString CSettings::GetEditorBackgroundKind()const { return m_editor_background_kind; }
 CString CSettings::GetEditorBackgroundId()const { return m_editor_background_id; }
 CString CSettings::GetEditorBackgroundCustomPath()const { return m_editor_background_custom_path; }
@@ -2444,6 +2459,9 @@ void CSettings::SetSrcFont(const CString& font, bool apply)
 	if(apply)
 		Save();
 }
+void CSettings::SetXmlSrcTagHighlightMode(DWORD mode, bool apply) { m_xml_src_tagHL_mode = mode ? 1 : 0; if(apply) Save(); }
+void CSettings::SetXmlSrcTagHighlightAttributes(bool enabled, bool apply) { m_xml_src_tagHL_attributes = enabled; if(apply) Save(); }
+void CSettings::SetXmlSrcTagHighlightErrors(bool enabled, bool apply) { m_xml_src_tagHL_errors = enabled; if(apply) Save(); }
 void CSettings::SetEditorBackgroundKind(const CString& value, bool apply) { m_editor_background_kind = value == L"builtin" || value == L"custom" ? value : L"none"; if(apply) Save(); }
 void CSettings::SetEditorBackgroundId(const CString& value, bool apply) { m_editor_background_id = value; if(apply) Save(); }
 void CSettings::SetEditorBackgroundCustomPath(const CString& value, bool apply) { m_editor_background_custom_path = value; if(apply) Save(); }
@@ -2796,6 +2814,9 @@ void CSettings::SetDefaults()
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 		m_xml_src_colors[i] = XML_SRC_COLOR_DEFAULT;
 	m_xml_src_tagHL			= true;
+	m_xml_src_tagHL_mode = 0;
+	m_xml_src_tagHL_attributes = false;
+	m_xml_src_tagHL_errors = true;
 	m_xml_src_showEOL		= false;
 	m_xml_src_showSpace		= false;
 	m_xml_src_showSpecialChars = false;

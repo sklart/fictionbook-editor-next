@@ -21,6 +21,7 @@
 #pragma once
 
 #include "Scintilla.h"
+#include "XmlTagMatcher.h"
 
 using namespace std;
 
@@ -60,20 +61,16 @@ public:
         return int(execute(SCI_GETLENGTH));
     };
 
-	void clearIndicator(int indicatorNumber) {
-		int docStart = 0;
-		int docEnd = getCurrentDocLen();
-		execute(SCI_SETINDICATORCURRENT, indicatorNumber);
-		execute(SCI_INDICATORCLEARRANGE, docStart, docEnd-docStart);
-	};
-
-	void getText(char *dest, int start, int end) {
-		Sci_TextRange tr;
-		tr.chrg.cpMin = start;
-		tr.chrg.cpMax = end;
-		tr.lpstrText = dest;
-		execute(SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&tr));
+	std::string getText() {
+		const int length = getCurrentDocLen();
+		std::string text(static_cast<size_t>(length) + 1, '\0');
+		execute(SCI_GETTEXT, static_cast<WPARAM>(text.size()), reinterpret_cast<LPARAM>(&text[0]));
+		text.resize(static_cast<size_t>(length));
+		return text;
 	}
+
+	void clearIndicator(int indicatorNumber) { execute(SCI_SETINDICATORCURRENT, indicatorNumber); execute(SCI_INDICATORCLEARRANGE, 0, getCurrentDocLen()); }
+	void getText(char *dest, int start, int end) { Sci_TextRange tr = {}; tr.chrg.cpMin = start; tr.chrg.cpMax = end; tr.lpstrText = dest; execute(SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&tr)); }
 
 	bool isShownIndentGuide()const {
 		return false;
@@ -83,53 +80,42 @@ private:
 	ScintillaDirectCall m_directCall;
 };
 
-enum TagCateg {tagOpen, tagClose, inSingleTag, outOfTag, invalidTag, unknownPb};
-
-typedef pair<CString, int> TAG;
-typedef vector<TAG>::iterator tagIterator;
-
 struct XmlMatchedTagsState {
+	XmlMatchedTagsState() = default;
+	struct IndicatorRange { int indicator; int start; int end; };
 	vector<pair<int, int> > tagRanges;
 	vector<pair<int, int> > attributeRanges;
+	vector<IndicatorRange> diagnosticRanges;
+	int cachedCaret = -1;
+	int cachedDocumentLength = -1;
+	bool cachedMatch = false;
+	bool cachedHighlightEnabled = false;
+	int cachedHighlightMode = -1;
+	bool cachedHighlightAttributes = false;
+	bool cachedShowErrors = false;
+	std::string cachedDocumentText;
+	XmlTagMatcher* cachedMatcher = nullptr;
+	~XmlMatchedTagsState() { delete cachedMatcher; }
+	XmlMatchedTagsState(const XmlMatchedTagsState&) = delete;
+	XmlMatchedTagsState& operator=(const XmlMatchedTagsState&) = delete;
+	void Invalidate() { cachedCaret = -1; cachedDocumentLength = -1; cachedMatch = false; cachedHighlightMode = -1; cachedDocumentText.clear(); delete cachedMatcher; cachedMatcher = nullptr; }
 };
 
+enum class XmlTagHighlightMode { NameOnly, FullTag };
+struct XmlTagHighlightOptions { bool enabled = false; XmlTagHighlightMode mode = XmlTagHighlightMode::NameOnly; bool highlightAttributes = false; bool showErrors = true; };
 
-class XmlMatchedTagsHighlighter {
+class XmlSourceTagHighlighter {
 public:
-	XmlMatchedTagsHighlighter(CWindow* source, XmlMatchedTagsState* state) : _state(state) {
-	  _pEditView = new ScintillaEditView(source);
-	};
-	~XmlMatchedTagsHighlighter() { delete _pEditView; }
-	XmlMatchedTagsHighlighter(const XmlMatchedTagsHighlighter&) = delete;
-	XmlMatchedTagsHighlighter& operator=(const XmlMatchedTagsHighlighter&) = delete;
-	bool tagMatch(bool doHilite, bool doHiliteAttr, bool gotoTag);
-	void gotoWrongTag();
-	
+	XmlSourceTagHighlighter(CWindow* source, XmlMatchedTagsState* state) : _state(state) { _pEditView = new ScintillaEditView(source); }
+	~XmlSourceTagHighlighter() { delete _pEditView; }
+	bool UpdateHighlight(const XmlTagHighlightOptions& options);
+	bool GotoMatchingTag();
+	void GotoWrongTag();
 private:
-	struct XmlMatchedTagsPos {
-		int tagOpenStart;
-		int tagNameEnd;
-		int tagOpenEnd;
-
-		int tagCloseStart;
-		int tagCloseEnd;
-	};
-	
-	ScintillaEditView *_pEditView;
+	ScintillaEditView* _pEditView;
 	XmlMatchedTagsState* _state;
-
-	int getFirstTokenPosFrom(int targetStart, int targetEnd, const char *token, std::pair<int, int> & foundPos);
-	TagCateg getTagCategory(XmlMatchedTagsPos & tagsPos, int curPos);
-	bool getMatchedTagPos(int searchStart, int searchEnd, const char *tag2find, const char *oppositeTag2find, vector<int> oppositeTagFound, XmlMatchedTagsPos & tagsPos);
-	bool getXmlMatchedTagsPos(XmlMatchedTagsPos & tagsPos);
-	vector< pair<int, int> > getAttributesPos(int start, int end);
-	bool isInList(int element, vector<int> elementList) {
-		for (size_t i = 0 ; i < elementList.size() ; i++)
-			if (element == elementList[i])
-				return true;
-		return false;
-	};
-	vector< pair<CString, int> > lookupTags();
+	void ClearPreviousRanges();
+	void FillRange(int indicator, const XmlByteRange& range, vector<pair<int, int> >& ranges);
 };
 
 #endif //XMLMATCHEDTAGSHIGHLIGHTER_H

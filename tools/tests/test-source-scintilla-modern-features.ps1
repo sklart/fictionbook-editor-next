@@ -27,7 +27,7 @@ Assert-Contains $matchedTags 'class\s+ScintillaDirectCall' 'Scintilla direct-cal
 Assert-Contains $matchedTags 'SCI_GETDIRECTFUNCTION' 'direct function lookup'
 Assert-Contains $matchedTags 'SCI_GETDIRECTPOINTER' 'direct pointer lookup'
 Assert-Contains $matchedTags 'return\s+m_source->SendMessage\(' 'safe SendMessage fallback'
-Assert-Contains $matchedTags '~XmlMatchedTagsHighlighter\(\)\s*\{\s*delete\s+_pEditView;' 'matched-tags wrapper cleanup'
+Assert-Contains $matchedTags '~XmlSourceTagHighlighter\(\)\s*\{\s*delete\s+_pEditView;' 'XML source tag adapter cleanup'
 ${autocompleteHeader} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\source\Fb2SourceAutocomplete.h')
 ${autocomplete} = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\source\Fb2SourceAutocomplete.cpp')
 ${generator} = Get-Content -Raw (Join-Path $repoRoot 'tools\build\generate-fb2-schema-metadata.ps1')
