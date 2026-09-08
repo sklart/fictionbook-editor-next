@@ -3926,10 +3926,12 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 	}
 }
 
-bool CFBEView::DoFindAll()
+bool CFBEView::DoFindAll(bool showResults, CString* errorText)
 {
 	try
 	{
+		if (errorText != NULL)
+			errorText->Empty();
 		if (!Document() || GetVersionNumber() < 0)
 			return false;
 		AU::Search::SearchQuery query;
@@ -3943,9 +3945,15 @@ bool CFBEView::DoFindAll()
 		query.UnicodeProperties = m_fo.unicodeProperties;
 		query.Scope = m_fo.scope;
 		MSHTML::IHTMLTxtRangePtr selection(Document()->selection->createRange());
-		if (!selection || !RebuildDocumentSearch(query, selection))
+		std::wstring nativeError;
+		if (!selection || !RebuildDocumentSearch(query, selection, &nativeError))
+		{
+			if (errorText != NULL)
+				*errorText = nativeError.c_str();
 			return false;
-		ShowFindResults();
+		}
+		if (showResults)
+			ShowFindResults();
 		return true;
 	}
 	catch (const _com_error&)
@@ -3975,10 +3983,10 @@ void CFBEView::ResetSearchScope()
 	m_find_scope_generation = 0;
 }
 
-bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection)
+bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText)
 {
 	const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
-	if (!m_document_search.Rebuild(Document(), generation, query))
+	if (!m_document_search.Rebuild(Document(), generation, query, errorText))
 		return false;
 	if (query.Scope == AU::Search::SearchScope::WholeDocument)
 		return true;
@@ -4011,7 +4019,7 @@ bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTM
 		m_find_scope_kind = query.Scope;
 		m_has_find_scope_range = true;
 	}
-	return m_document_search.Rebuild(Document(), generation, query, NULL, &range);
+	return m_document_search.Rebuild(Document(), generation, query, errorText, &range);
 }
 
 LRESULT CFBEView::OnSelectElement(WORD, WORD wID, HWND, BOOL&) {

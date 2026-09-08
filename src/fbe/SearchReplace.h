@@ -215,6 +215,10 @@ public:
 	LRESULT OnTextChanged(WORD, WORD /* unused: wID */, HWND, BOOL&)
 	{
 		CheckInput();
+		// Find All is debounced so editing a query never synchronously invokes
+		// PCRE2 on every keystroke. Replace keeps its existing explicit flow.
+		if (GetDlgItem(IDC_FIND_STATUS))
+			::SetTimer(::GetParent(GetDlgItem(IDC_TEXT)), 0x4F01, 150, NULL);
 		return 0;
 	}
 
@@ -287,6 +291,7 @@ public:
 	CFindDlgBase(CFBEView *view) : FRBase(view){ }
 
 	BEGIN_MSG_MAP(CFindDlgBase)
+		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		COMMAND_ID_HANDLER(ID_FIND_NEXT, OnDoFind)
 		COMMAND_ID_HANDLER(IDC_FIND_ALL, OnDoFindAll)
 		COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_SELCHANGE, OnScopeChanged)
@@ -297,6 +302,7 @@ public:
 
 	LRESULT OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&)
 	{
+		::KillTimer(m_hWnd, 0x4F01);
 		m_view->CloseFindDialog(this);
 		return 0;
 	}
@@ -323,6 +329,23 @@ public:
 	LRESULT OnScopeChanged(WORD, WORD, HWND, BOOL&)
 	{
 		m_view->ResetSearchScope();
+		return 0;
+	}
+
+	LRESULT OnTimer(UINT, WPARAM timerId, LPARAM, BOOL& bHandled)
+	{
+		bHandled = FALSE;
+		if (timerId != 0x4F01)
+			return 0;
+		::KillTimer(m_hWnd, 0x4F01);
+		GetData();
+		CString error;
+		if (m_view->m_fo.pattern.IsEmpty())
+			FRBase::SetDlgItemText(IDC_FIND_STATUS, L"");
+		else if (m_view->DoFindAll(false, &error))
+			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->FindAllResultStatus());
+		else
+			FRBase::SetDlgItemText(IDC_FIND_STATUS, error.IsEmpty() ? L"Invalid search expression" : error);
 		return 0;
 	}
 

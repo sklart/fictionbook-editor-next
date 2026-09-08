@@ -298,7 +298,7 @@ protected:
 	void SelMatch(MSHTML::IHTMLTxtRange* tr, AU::ReMatch rm);
 	void PositionFoundRange(MSHTML::IHTMLTxtRange* range);
 	bool DoSearchNative(bool fMore, AU::Search::SearchMode mode);
-	bool RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection);
+	bool RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText = NULL);
 	bool HasTextSelection();
 	void ResetSearchScope();
 	MSHTML::IHTMLElementPtr SelectionContainerImp();
@@ -594,7 +594,7 @@ public:
 	}
 
 	bool DoSearch(bool fMore=true);
-	bool DoFindAll();
+	bool DoFindAll(bool showResults=true, CString* errorText=NULL);
 	CString SearchResultStatus();
 	CString FindAllResultStatus();
 	std::size_t FindResultCount() const;
