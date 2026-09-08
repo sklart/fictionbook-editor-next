@@ -3943,11 +3943,11 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool selectCaret = selectionModeLength == 5 && wcscmp(selectionMode, L"caret") == 0;
 		const CStringA selectionName(selectCaret ? "caret" : "selected");
 		const bool repeat = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_REPEAT", nullptr, 0) != 0;
-		CStringA header("operation\ttarget\tselection_mode\tselection_collapsed\tselection_text_utf16\tselection_html_utf16\tselection_parent_utf16\tselection_start_to_first_start\tselection_end_to_first_end\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tempty_divs\tempty_paragraphs\tempty_stanzas\tsaved\tresult\r\n");
+		CStringA header("operation\ttarget\tselection_mode\tselection_collapsed\tselection_text_utf16\tselection_html_utf16\tselection_parent_utf16\tselection_start_to_first_start\tselection_end_to_first_end\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tpoem_text_utf16\tempty_divs\tempty_paragraphs\tempty_stanzas\tsaved\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto writeFailure = [&](const char* reason)
 		{
-			CStringA row; row.Format("%s\t%s\t%s\t0\t-\t-\t-\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t%s\r\n", cite ? "cite" : poem ? "poem" : "unknown", (LPCSTR)targetName, (LPCSTR)selectionName, reason);
+			CStringA row; row.Format("%s\t%s\t%s\t0\t-\t-\t-\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\t%s\r\n", cite ? "cite" : poem ? "poem" : "unknown", (LPCSTR)targetName, (LPCSTR)selectionName, reason);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1);
 		};
 		if (!cite && !poem) { writeFailure("invalid-operation"); return 0; }
@@ -4020,7 +4020,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const CString after((const wchar_t*)body->innerHTML);
 		if (!applied || before == after) {
 			CStringA row;
-			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t0\t0\t0\t0\toperation-failed\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs);
+			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\toperation-failed\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		BOOL handled = FALSE;
@@ -4039,6 +4039,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			return count;
 		};
 		const long citeCount = countClass(L"cite"), poemCount = countClass(L"poem"), stanzaCount = countClass(L"stanza");
+		CString poemText;
+		MSHTML::IHTMLElementCollectionPtr poemElements(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
+		for (long index = 0; poemElements && index < poemElements->length; ++index) {
+			MSHTML::IHTMLElementPtr poemElement(poemElements->item(_variant_t(index), _variant_t()));
+			if (poemElement && U::scmp(poemElement->className, L"poem") == 0) { poemText = (const wchar_t*)poemElement->innerText; break; }
+		}
+		const CStringA poemTextSummary(utf16Summary(poemText));
 		const long emptyDivsAfterRedo = countEmpty(L"DIV"), emptyParagraphsAfterRedo = countEmpty(L"P"), emptyStanzasAfterRedo = countEmpty(L"DIV", L"stanza");
 		m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 		const CString restored((const wchar_t*)body->innerHTML);
@@ -4065,8 +4072,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool saved = m_doc->Save();
 		const bool passed = undone && redone && sequential && structure && emptyDivs == 0 && emptyParagraphs == 0 && emptyStanzas == 0 && saved;
 		CStringA row;
-		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%d\t%s\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
-			beforeParagraphs, citeCount, poemCount, stanzaCount, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail");
+		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%s\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
+			beforeParagraphs, citeCount, poemCount, stanzaCount, (LPCSTR)poemTextSummary, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"table-structural"))

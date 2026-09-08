@@ -39,9 +39,9 @@ try {
         @{ id = 'poem-lines'; operation = 'poem'; paragraphs = @('First line', 'Second line') },
         @{ id = 'poem-stanzas'; operation = 'poem'; paragraphs = @('One', '', 'Two', 'Three') },
         @{ id = 'poem-in-cite'; operation = 'poem'; target = 'cite'; body = '<section><cite><p>Quoted line</p></cite><p>Anchor</p></section>' },
-        @{ id = 'poem-caret-text'; operation = 'poem'; selection = 'caret'; paragraphs = @('Text') },
-        @{ id = 'poem-caret-empty'; operation = 'poem'; selection = 'caret'; paragraphs = @('') },
-        @{ id = 'poem-caret-nbsp'; operation = 'poem'; selection = 'caret'; paragraphs = @([string][char]160) },
+        @{ id = 'poem-caret-text'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0054,0065,0078,0074'; paragraphs = @('Text') },
+        @{ id = 'poem-caret-empty'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @('') },
+        @{ id = 'poem-caret-nbsp'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @([string][char]160) },
         @{ id = 'poem-selected-empty'; operation = 'poem'; paragraphs = @('') },
         @{ id = 'poem-selected-spaces'; operation = 'poem'; paragraphs = @('   ') },
         @{ id = 'poem-selected-nbsp'; operation = 'poem'; paragraphs = @([string][char]160) },
@@ -78,6 +78,7 @@ try {
             if($process.ExitCode -eq 0 -or $row.check_allowed -ne '0' -or $row.result -ne 'operation-failed') { throw "Expected the unanchorable MSHTML whitespace range to be rejected for $($case.id)." }
             continue
         }
+        if($case.ContainsKey('expectedPoemText') -and $row.poem_text_utf16 -ne $case.expectedPoemText) { throw "Poem text is wrong for $($case.id): $($row.poem_text_utf16)." }
         if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.selection_mode -ne $expectedSelection -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.saved -ne '1' -or $row.result -ne 'pass') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
         if($case.operation -eq 'cite' -and ([int]$row.after_cites -ne 1 -or [int]$row.after_poems -ne 0)) { throw "Cite structure is wrong for $($case.id)." }
         if($case.operation -eq 'poem' -and ([int]$row.after_poems -ne 1 -or [int]$row.after_stanzas -lt 1)) { throw "Poem structure is wrong for $($case.id)." }

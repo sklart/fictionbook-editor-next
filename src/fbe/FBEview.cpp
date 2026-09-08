@@ -1504,7 +1504,7 @@ bool CFBEView::InsertPoem(bool fCheck)
 		// ExpandTxtRangeToParagraphs(), which intentionally widens the range to
 		// whole P elements.  Whitespace-only text can still be an actual user
 		// selection and must not be treated as a missing selection.
-		const bool emptySelection = rng->compareEndPoints(L"StartToEnd", rng) == 0;
+		const bool wasCollapsed = rng->compareEndPoints(L"StartToEnd", rng) == 0;
 
 		// Get parents for start and end ranges and ensure they are the same as pe
 		MSHTML::IHTMLTxtRangePtr tr(rng->duplicate());
@@ -1548,9 +1548,26 @@ bool CFBEView::InsertPoem(bool fCheck)
 		}
 		while((sibling = sibling->nextSibling));
 
+		bool expandedHasContent = false;
+		for(MSHTML::IHTMLDOMNodePtr paragraph = begin; paragraph; paragraph = paragraph->nextSibling)
+		{
+			CString text = MSHTML::IHTMLElementPtr(paragraph)->innerText;
+			for(int index = 0; index < text.GetLength(); ++index)
+			{
+				const wchar_t ch = text[index];
+				if(ch != L' ' && ch != L'\t' && ch != L'\r' && ch != L'\n' && ch != 0x00A0)
+				{
+					expandedHasContent = true;
+					break;
+				}
+			}
+			if(expandedHasContent || paragraph == end)
+				break;
+		}
+
 		MSHTML::IHTMLElementPtr ne(Document()->createElement(L"<DIV class=poem>"));
 
-		if(emptySelection)
+		if(wasCollapsed && !expandedHasContent)
 		{
 			ne->innerHTML = L"<DIV class=stanza><P>&nbsp;</P></DIV>";
 		}

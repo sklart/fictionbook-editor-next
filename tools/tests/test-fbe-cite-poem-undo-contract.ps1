@@ -41,8 +41,9 @@ if($cite.Contains('createElement(L"DIV")') -and $cite.Contains('ne->className = 
 if(-not $cite.Contains('createElement(L"<DIV class=cite>")')) { throw 'InsertCite does not create Cite in final form.' }
 
 $poem = Get-FunctionBody 'InsertPoem'
-if(-not $poem.Contains('compareEndPoints(L"StartToEnd", rng) == 0')) { throw 'InsertPoem does not capture a collapsed range before expanding paragraphs.' }
+if(-not $poem.Contains('const bool wasCollapsed = rng->compareEndPoints(L"StartToEnd", rng) == 0')) { throw 'InsertPoem does not capture a collapsed range before expanding paragraphs.' }
 if($poem.Contains('selectedText.Trim().IsEmpty()')) { throw 'InsertPoem treats whitespace-only text as an empty selection.' }
+if(-not $poem.Contains('if(wasCollapsed && !expandedHasContent)')) { throw 'InsertPoem does not limit an empty Poem to a collapsed range without paragraph content.' }
 
 foreach($required in @('class CMarkupUndoUnitScope', '~CMarkupUndoUnitScope()', 'try { m_view.EndUndoUnit(); }', 'catch (_com_error&) { }')) {
     if($source -notlike "*$required*") { throw "Markup undo RAII misses: $required" }
