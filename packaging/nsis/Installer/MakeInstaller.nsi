@@ -1381,9 +1381,11 @@ fbd_uninstall_done:
 
 	Delete "$INSTDIR\contributors.txt"
 	Delete "$INSTDIR\LICENSE"
-	Delete "$INSTDIR\NOTICE"
-	Delete "$INSTDIR\THIRD-PARTY-NOTICES.md"
+  Delete "$INSTDIR\NOTICE"
+  Delete "$INSTDIR\THIRD-PARTY-NOTICES.md"
   RMDir /r "$INSTDIR\THIRD-PARTY-LICENSES"
+	Delete "$INSTDIR\defaults\Words.xml"
+	RMDir "$INSTDIR\defaults"
   RMDir /r "$INSTDIR\Themes"
   Delete "$INSTDIR\InstallerTools\register-sequence-property-schema.ps1"
   Delete "$INSTDIR\InstallerTools\register-modern-property-handler.ps1"
