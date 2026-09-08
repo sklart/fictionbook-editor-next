@@ -80,6 +80,101 @@
         "bg-BG": "Премести надясно"
       }
     },
+    "fbe.tooltip.document_tree.move_right": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "TOOLTIP",
+      "targetId": "ID_DT_RIGHT_ONE",
+      "translations": {
+        "en-US": "Move node once to the right",
+        "ru-RU": "Сдвинуть узел на один уровень вправо",
+        "uk-UA": "Перемістити вузол на один рівень праворуч",
+        "de-DE": "Knoten um eine Ebene nach rechts verschieben",
+        "fr-FR": "Déplacer le nœud d’un niveau vers la droite",
+        "es-ES": "Mover el nodo un nivel a la derecha",
+        "it-IT": "Sposta il nodo di un livello a destra",
+        "pl-PL": "Przesuń węzeł o jeden poziom w prawo",
+        "pt-PT": "Mover o nó um nível para a direita",
+        "nl-NL": "Knooppunt één niveau naar rechts verplaatsen",
+        "cs-CZ": "Posunout uzel o jednu úroveň doprava",
+        "bg-BG": "Премести възела с едно ниво надясно"
+      }
+    },
+    "fbe.tooltip.document_tree.make_child": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "TOOLTIP",
+      "targetId": "ID_DT_RIGHT_SMART",
+      "translations": {
+        "en-US": "Move one node to the right with smart mode",
+        "ru-RU": "Сдвинуть узел вправо в умном режиме",
+        "uk-UA": "Перемістити вузол праворуч у розумному режимі",
+        "de-DE": "Knoten im intelligenten Modus nach rechts verschieben",
+        "fr-FR": "Déplacer le nœud vers la droite en mode intelligent",
+        "es-ES": "Mover el nodo a la derecha en modo inteligente",
+        "it-IT": "Sposta il nodo a destra in modalità intelligente",
+        "pl-PL": "Przesuń węzeł w prawo w trybie inteligentnym",
+        "pt-PT": "Mover o nó para a direita no modo inteligente",
+        "nl-NL": "Knooppunt naar rechts verplaatsen in slimme modus",
+        "cs-CZ": "Posunout uzel doprava v inteligentním režimu",
+        "bg-BG": "Премести възела надясно в интелигентен режим"
+      }
+    },
+    "fbe.tooltip.document_tree.move_left": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "TOOLTIP",
+      "targetId": "ID_DT_LEFT",
+      "translations": {
+        "en-US": "Move node once to the left",
+        "ru-RU": "Сдвинуть узел на один уровень влево",
+        "uk-UA": "Перемістити вузол на один рівень ліворуч",
+        "de-DE": "Knoten um eine Ebene nach links verschieben",
+        "fr-FR": "Déplacer le nœud d’un niveau vers la gauche",
+        "es-ES": "Mover el nodo un nivel a la izquierda",
+        "it-IT": "Sposta il nodo di un livello a sinistra",
+        "pl-PL": "Przesuń węzeł o jeden poziom w lewo",
+        "pt-PT": "Mover o nó um nível para a esquerda",
+        "nl-NL": "Knooppunt één niveau naar links verplaatsen",
+        "cs-CZ": "Posunout uzel o jednu úroveň doleva",
+        "bg-BG": "Премести възела с едно ниво наляво"
+      }
+    },
+    "fbe.tooltip.document_tree.delete": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "TOOLTIP",
+      "targetId": "ID_DT_DELETE",
+      "translations": {
+        "en-US": "Delete selected node",
+        "ru-RU": "Удалить выбранный узел",
+        "uk-UA": "Видалити вибраний вузол",
+        "de-DE": "Ausgewählten Knoten löschen",
+        "fr-FR": "Supprimer le nœud sélectionné",
+        "es-ES": "Eliminar el nodo seleccionado",
+        "it-IT": "Elimina il nodo selezionato",
+        "pl-PL": "Usuń wybrany węzeł",
+        "pt-PT": "Eliminar o nó selecionado",
+        "nl-NL": "Geselecteerd knooppunt verwijderen",
+        "cs-CZ": "Odstranit vybraný uzel",
+        "bg-BG": "Изтрий избрания възел"
+      }
+    },
+    "fbe.tooltip.document_tree.merge": {
+      "resource": "IDR_DOCUMENT_TREE",
+      "kind": "TOOLTIP",
+      "targetId": "ID_DT_MERGE",
+      "translations": {
+        "en-US": "Merge containers",
+        "ru-RU": "Объединить контейнеры",
+        "uk-UA": "Об’єднати контейнери",
+        "de-DE": "Container zusammenführen",
+        "fr-FR": "Fusionner les conteneurs",
+        "es-ES": "Combinar contenedores",
+        "it-IT": "Unisci contenitori",
+        "pl-PL": "Scal kontenery",
+        "pt-PT": "Unir contentores",
+        "nl-NL": "Containers samenvoegen",
+        "cs-CZ": "Sloučit kontejnery",
+        "bg-BG": "Обедини контейнерите"
+      }
+    },
     "fbe.menu.idr_document_tree.make_child": {
       "resource": "IDR_DOCUMENT_TREE",
       "kind": "MENUITEM",

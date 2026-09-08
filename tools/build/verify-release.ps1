@@ -271,6 +271,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-no-fbe-locale-resource-dll.ps1")
 & (Join-Path $repoRoot "tools\tests\test-localization-runtime-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-document-tree-tooltips-localization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-next-isolation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-portable-deployment-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-portable-scripts-infrastructure.ps1")

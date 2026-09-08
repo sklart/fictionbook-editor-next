@@ -88,6 +88,7 @@ $modules = @($moduleFiles.Keys | Sort-Object)
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.hotkey.plugins.export'; Expected = 'Экспорт' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.toolbar.strikethrough'; Expected = 'Зачеркнутый' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.toolbar.code'; Expected = 'Код' },
+        @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'fbe.json'; Key = 'fbe.tooltip.document_tree.move_right'; Expected = 'Сдвинуть узел на один уровень вправо' },
         @{ Path = Join-Path (Join-Path $langRoot 'ru-RU') 'export-epub.json'; Key = 'export_epub.content.navigation_title' },
         @{ Path = Join-Path (Join-Path $langRoot 'uk-UA') 'import-epub.json'; Key = 'import_epub.options.title' },
         @{ Path = Join-Path (Join-Path $langRoot 'de-DE') 'export-docx.json'; Key = 'export_docx.dialog.settings.export_cover'; Expected = 'Cover exportieren' },

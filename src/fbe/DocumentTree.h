@@ -2,6 +2,7 @@
 
 #include "TreeView.h"
 #include "AppUtils.h"
+#include "RuntimeLocalization.h"
 
 typedef CWinTraits<WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | ES_LEFT, WS_EX_CLIENTEDGE> CTreeWithToolBarWinTraits;
 
@@ -84,14 +85,21 @@ public:
 			{
 				if(szBuff[i] == L'\n')
 				{
-					SecureHelper::strncpyW_x(pDispInfo->szText, _countof(pDispInfo->szText), &szBuff[i + 1], _TRUNCATE);
+					const wchar_t* fallback = &szBuff[i + 1];
+					LPCWSTR key = NULL;
+					switch(idCtrl)
+					{
+					case ID_DT_LEFT: key = L"fbe.tooltip.document_tree.move_left"; break;
+					case ID_DT_DELETE: key = L"fbe.tooltip.document_tree.delete"; break;
+					case ID_DT_RIGHT_ONE: key = L"fbe.tooltip.document_tree.move_right"; break;
+					case ID_DT_RIGHT_SMART: key = L"fbe.tooltip.document_tree.make_child"; break;
+					case ID_DT_MERGE: key = L"fbe.tooltip.document_tree.merge"; break;
+					}
+					const CString text = key != NULL ? FbeLoadRuntimeStringByKey(key, fallback) : CString(fallback);
+					SecureHelper::strncpyW_x(pDispInfo->szText, _countof(pDispInfo->szText), text.GetString(), _TRUNCATE);
 					break;
 				}
 			}
-#if (_WIN32_IE >= 0x0300)
-			if(nRet > 0)   // string was loaded, save it
-				pDispInfo->uFlags |= TTF_DI_SETITEM;
-#endif // (_WIN32_IE >= 0x0300)
 		}
 
 		return 0;
