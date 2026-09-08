@@ -3,7 +3,7 @@ param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
 
-    [string]$PlatformToolset,
+    [string]$PlatformToolset = "v143",
 
     [switch]$UsePreparedPcre2
 )
