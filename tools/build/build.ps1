@@ -83,7 +83,10 @@ function Invoke-RequiredProjectBuild {
     $target = if ($ForceRebuildRequiredProjects -or $Rebuild) { "Rebuild" } else { "Build" }
     Write-Host "Сборка релизного бинарника ($target): $ProjectPath"
     $projectProperties = @($properties) + "/p:SolutionDir=$repoRoot\"
-    & $msbuild $ProjectPath /m "/t:$target" $projectProperties /v:minimal /nologo
+    # MSBuild node reuse preserves a process environment.  A node created by
+    # another VS instance can otherwise retain Build Tools INCLUDE/LIB paths
+    # while this entry point has selected Enterprise, mixing CRT headers.
+    & $msbuild $ProjectPath /m /nr:false "/t:$target" $projectProperties /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
@@ -104,6 +107,43 @@ function Assert-PreparedDependencies {
     $missing = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
     if ($missing.Count -gt 0) {
         throw ("Нельзя пропустить подготовку зависимостей; отсутствуют: {0}" -f ($missing -join "; "))
+    }
+}
+
+function Get-FirstPartyToolchainFingerprint {
+    return [ordered]@{
+        schemaVersion = 1
+        configuration = $Configuration
+        platform = $Platform
+        platformToolset = $PlatformToolset
+        vsInstallationPath = $env:VSINSTALLDIR
+        vcToolsInstallDir = $env:VCToolsInstallDir
+        vcToolsVersion = $env:VCToolsVersion
+    }
+}
+
+function Test-FirstPartyToolchainFingerprint {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+        [Parameter(Mandatory)]
+        [System.Collections.IDictionary]$Expected
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $false
+    }
+    try {
+        $actual = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+        foreach ($property in $Expected.Keys) {
+            if ([string]$actual.$property -cne [string]$Expected[$property]) {
+                return $false
+            }
+        }
+        return $true
+    }
+    catch {
+        return $false
     }
 }
 
@@ -254,6 +294,19 @@ if ($SkipUpx) {
     $properties += "/p:EnableUpx=false"
 }
 
+$firstPartyToolchainFingerprint = Get-FirstPartyToolchainFingerprint
+$firstPartyToolchainFingerprintDirectory = Join-Path $repoRoot 'build\toolchain'
+$firstPartyToolchainFingerprintPath = Join-Path $firstPartyToolchainFingerprintDirectory ("first-party-{0}-{1}.json" -f $Configuration, $Platform)
+$cleanFirstPartyOutputs = -not (Test-FirstPartyToolchainFingerprint -Path $firstPartyToolchainFingerprintPath -Expected $firstPartyToolchainFingerprint)
+if ($cleanFirstPartyOutputs) {
+    Write-Host 'Toolchain first-party outputs do not match the selected VS instance; cleaning only solution-generated intermediates.'
+    & $msbuild (Join-Path $repoRoot "FBE.sln") /m /nr:false /t:Clean `
+        $properties /v:minimal /nologo
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
 if ($WarningsAsErrors) {
     $properties += "/p:TreatWarningAsError=true"
 }
@@ -278,11 +331,16 @@ foreach ($name in $bundledPluginDlls + $bundledPluginSymbols + @('ImportEPUB.lib
     }
 }
 
-& $msbuild (Join-Path $repoRoot "FBE.sln") /m /t:Build `
+& $msbuild (Join-Path $repoRoot "FBE.sln") /m /nr:false /t:Build `
     $properties /v:minimal /nologo
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
+}
+
+if ($cleanFirstPartyOutputs) {
+    New-Item -ItemType Directory -Path $firstPartyToolchainFingerprintDirectory -Force | Out-Null
+    $firstPartyToolchainFingerprint | ConvertTo-Json | Set-Content -LiteralPath $firstPartyToolchainFingerprintPath -Encoding utf8NoBOM
 }
 
 Assert-PreparedDependencies

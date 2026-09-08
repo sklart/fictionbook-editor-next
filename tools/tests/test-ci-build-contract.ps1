@@ -38,6 +38,16 @@ foreach ($scriptName in @('build-libde265.ps1', 'build-aom.ps1', 'build-libheif.
     }
 }
 
+$buildScript = Get-Content -Raw -LiteralPath (Join-Path $root 'tools\build\build.ps1')
+if ([regex]::Matches($buildScript, '(?i)\$msbuild[^\r\n]*?/nr:false').Count -lt 2) {
+    throw 'The public build entry point must disable MSBuild node reuse for both solution and required-project builds.'
+}
+foreach ($required in @('Get-FirstPartyToolchainFingerprint', 'Test-FirstPartyToolchainFingerprint', 'first-party-{0}-{1}.json', '/t:Clean')) {
+    if (-not $buildScript.Contains($required)) {
+        throw "The public build entry point is missing the first-party toolchain fingerprint contract: $required"
+    }
+}
+
 $utf8Bootstrap = Join-Path $root 'tools\build\Initialize-CiUtf8.ps1'
 & $utf8Bootstrap
 $expected = 'Проверка UTF-8: Ёж'
