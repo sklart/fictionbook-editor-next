@@ -4,6 +4,7 @@ function ConvertTo-FbeHashtable {
     process {
         if ($null -eq $Value) { return $null }
         if ($Value -is [string] -or $Value.PSObject.BaseObject -is [string]) { return [string]$Value }
+        if ($Value -is [System.ValueType]) { return $Value }
         if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [System.Collections.IDictionary])) {
             return @($Value | ForEach-Object { ConvertTo-FbeHashtable $_ })
         }
