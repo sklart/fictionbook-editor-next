@@ -127,6 +127,11 @@
 	<ClCompile Include="source\Fb2SourceStructuralContext.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackend.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackendPcre2.cpp"><Filter>Source Files\Search</Filter></ClCompile>
+	<ClCompile Include="SearchDocumentAdapter.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="search\SearchSession.cpp"><Filter>Source Files\Search</Filter></ClCompile>
+	<ClCompile Include="search\SearchResults.cpp"><Filter>Source Files\Search</Filter></ClCompile>
+	<ClCompile Include="search\LiteralSearch.cpp"><Filter>Source Files\Search</Filter></ClCompile>
+	<ClCompile Include="search\SearchTextSnapshot.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="settings\EditorBackgrounds.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="plugins\PluginApiV2.cpp"><Filter>Source Files\Plugins</Filter></ClCompile>
     <ClCompile Include="XmlSourceThemes.cpp">
@@ -284,6 +289,11 @@
 	<ClInclude Include="search\RegexBackend.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\RegexPcre2CodeCache.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\RegexPcre2MatchLoop.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\SearchSession.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\SearchResults.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\LiteralSearch.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\SearchTextSnapshot.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\SearchTypes.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="settings\EditorBackgrounds.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="plugins\PluginApiV2.h"><Filter>Header Files\Plugins</Filter></ClInclude>
     <ClInclude Include="XmlSourceThemes.h">
@@ -292,6 +302,7 @@
     <ClInclude Include="SearchReplace.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+	<ClInclude Include="SearchDocumentAdapter.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="XMLSerializer\Serializable.h">
       <Filter>Header Files</Filter>
     </ClInclude>

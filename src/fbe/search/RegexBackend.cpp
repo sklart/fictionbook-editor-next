@@ -44,6 +44,21 @@ const wchar_t* RegexBackend::GetBackendDisplayName()
 	return L"Perl Compatible Regular Expressions 2";
 }
 
+void RegexBackend::BuildSearchHits(
+	const CSimpleArray<RegexBackend::MatchData>& matches,
+	std::vector<Search::SearchHit>& hits)
+{
+	hits.clear();
+	hits.reserve(matches.GetSize());
+	for (int matchIndex = 0; matchIndex < matches.GetSize(); ++matchIndex)
+	{
+		const RegexBackend::MatchData& match = matches[matchIndex];
+		hits.push_back(Search::SearchHit(
+			static_cast<std::size_t>(match.FirstIndex),
+			static_cast<std::size_t>(match.Value.GetLength())));
+	}
+}
+
 IMatchCollection* IRegExp2::Execute(CString sourceString)
 {
 	RegexBackend::Options options;

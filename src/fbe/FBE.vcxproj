@@ -271,6 +271,19 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="$(FbeApiOutputDirectory)FBE_i.c"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="search\RegexBackend.cpp" />
     <ClCompile Include="search\RegexBackendPcre2.cpp" />
+	<ClCompile Include="SearchDocumentAdapter.cpp" />
+	<ClCompile Include="search\SearchSession.cpp">
+	  <PrecompiledHeader>NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="search\SearchResults.cpp">
+	  <PrecompiledHeader>NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="search\LiteralSearch.cpp">
+	  <PrecompiledHeader>NotUsing</PrecompiledHeader>
+	</ClCompile>
+	<ClCompile Include="search\SearchTextSnapshot.cpp">
+	  <PrecompiledHeader>NotUsing</PrecompiledHeader>
+	</ClCompile>
     <ClCompile Include="RuntimeLocalization.cpp" />
 	<ClCompile Include="plugins\PluginManager.cpp" />
 	<ClCompile Include="settings\EditorBackgrounds.cpp" />
@@ -389,10 +402,16 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="search\RegexBackend.h" />
     <ClInclude Include="search\RegexPcre2CodeCache.h" />
     <ClInclude Include="search\RegexPcre2MatchLoop.h" />
+	<ClInclude Include="search\SearchSession.h" />
+	<ClInclude Include="search\SearchResults.h" />
+	<ClInclude Include="search\LiteralSearch.h" />
+	<ClInclude Include="search\SearchTextSnapshot.h" />
+	<ClInclude Include="search\SearchTypes.h" />
     <ClInclude Include="RuntimeLocalization.h" />
     <ClInclude Include="XmlSourceThemes.h" />
 	<ClInclude Include="XmlTagMatcher.h" />
     <ClInclude Include="SearchReplace.h" />
+	<ClInclude Include="SearchDocumentAdapter.h" />
     <ClInclude Include="XMLSerializer\Serializable.h" />
     <ClInclude Include="Settings.h" />
 	<ClInclude Include="SettingsPageLifecycle.h" />

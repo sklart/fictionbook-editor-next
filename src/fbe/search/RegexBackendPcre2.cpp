@@ -69,6 +69,8 @@ uint32_t BuildCompileOptions(const RegexBackend::Options& options)
 {
 	uint32_t compileOptions = options.IgnoreCase ? PCRE2_CASELESS : 0;
 	compileOptions |= PCRE2_UTF;
+	if (options.UnicodeProperties)
+		compileOptions |= PCRE2_UCP;
 	if (options.Multiline)
 		compileOptions |= PCRE2_MULTILINE;
 	return compileOptions;
