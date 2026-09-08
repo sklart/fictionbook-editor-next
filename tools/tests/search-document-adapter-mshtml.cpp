@@ -72,6 +72,10 @@ int wmain()
 	AU::Search::SearchQuery query;
 	query.Text = L"second";
 	if (!result && (!coordinator.Rebuild(document, 43, query) || coordinator.GetSession().GetHitCount() != 1)) result = 13;
+	AU::Search::SearchRange selectionScope;
+	if (!result && (!coordinator.TryGetSearchRange(43, firstRange, &selectionScope) ||
+		selectionScope.Start != 0 || selectionScope.Length == 0 ||
+		coordinator.TryGetSearchRange(44, firstRange, &selectionScope))) result = 19;
 	bool wrapped = false;
 	if (!result && (!coordinator.SelectFromRange(document, 43, firstRange, AU::Search::SearchDirection::Forward, &wrapped) || wrapped)) result = 14;
 	if (!result && coordinator.SelectFromOffset(document, 44, 0, AU::Search::SearchDirection::Forward, &wrapped) != NULL) result = 15;
