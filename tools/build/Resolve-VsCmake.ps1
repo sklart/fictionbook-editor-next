@@ -4,7 +4,7 @@ param([string]$PlatformToolset)
 $ErrorActionPreference = 'Stop'
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (-not (Test-Path -LiteralPath $vswhere)) { throw 'Не найден vswhere.exe.' }
-$args = @('-products', '*', '-version', '[17.0,18.0)')
+$args = @('-products', '*', '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', '-version', '[17.0,18.0)')
 # CMake's stable Visual Studio generator is "Visual Studio 17 2022".  Select
 # that instance itself (also for v143), rather than taking CMake from a newer
 # instance and assuming that VS2022 is installed alongside it.

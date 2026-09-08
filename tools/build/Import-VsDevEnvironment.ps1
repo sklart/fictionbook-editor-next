@@ -30,7 +30,7 @@ if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Не найден vswhere.exe. Установите Visual Studio с инструментами сборки C++."
 }
 
-$vswhereArguments = @("-all", "-products", "*")
+$vswhereArguments = @("-all", "-products", "*", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64")
 if ($PlatformToolset -eq "v143") {
     $vswhereArguments += @("-version", "[17.0,18.0)")
 }
