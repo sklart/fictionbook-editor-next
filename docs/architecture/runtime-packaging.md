@@ -16,11 +16,12 @@
 | Property schema и installer tools | `packaging/property-schema`, `tools/build` | Integration | сопровождаемые inputs |
 | Установщик и UAC | `packaging/nsis`, `third_party/uac` | NSIS build environment | внешняя бинарная/исходная зависимость, учтённая в third-party notices |
 
-Пять исторических файлов первого запуска (`custom.dic`, `Hotkeys.xml`,
-`languages.txt`, `root_genres.xml`, `Words.xml`) пока остаются в корне
-репозитория, поскольку `stage-core.ps1` сохраняет их установочные имена и
-первичный сценарий запуска. Их перенос в `runtime/defaults` допускается только
-одним изменением карты источников, всех потребителей и проверок.
+Сопровождаемые статические defaults (`custom.dic`, `languages.txt`,
+`root_genres.xml`) остаются в корне репозитория. Начальный словарь слов
+находится в `runtime/defaults/Words.xml`: при первом запуске он копируется в
+активную пользовательскую директорию. Для portable это `Data/Settings`, для
+installed — `%LOCALAPPDATA%/FBE Next`. `Settings.xml` и `Hotkeys.xml` создаются
+из встроенных defaults и никогда не поставляются рядом с `FBE.exe`.
 
 `packaging/layout.json` — единственная исполняемая карта `source →
 destination`: её читают `stage-core.ps1` и `stage-integration.ps1`.

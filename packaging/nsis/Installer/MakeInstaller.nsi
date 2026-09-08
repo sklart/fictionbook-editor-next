@@ -826,6 +826,11 @@ skip_shell_mui:
 	File "${INPUTDIR}\THIRD-PARTY-NOTICES.md"
 	SetOutPath "$INSTDIR\THIRD-PARTY-LICENSES"
 	File /r "${INPUTDIR}\THIRD-PARTY-LICENSES\*.*"
+	; Defaults are read-only seeds. CSettings copies Words.xml to the active
+	; user settings directory on first use instead of writing beside FBE.exe.
+	SetOutPath "$INSTDIR\defaults"
+	File "${INPUTDIR}\defaults\Words.xml"
+	SetOutPath "$INSTDIR"
   ; Bundled plug-ins are discovered from this local manifest. The DLLs are
   ; optional components below, but the catalog itself is part of the editor
   ; runtime and must always be installed.

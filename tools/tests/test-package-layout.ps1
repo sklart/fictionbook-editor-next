@@ -13,6 +13,22 @@ $layout = Get-Content -Raw -LiteralPath $layoutPath | ConvertFrom-Json
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 if ($layout.schemaVersion -ne 1) { throw "Unsupported package layout schema: $($layout.schemaVersion)" }
 
+foreach ($legacyUserFile in @('Settings.xml', 'Hotkeys.xml', 'Words.xml')) {
+    if (@($layout.core.copy | Where-Object { $_.destination -eq $legacyUserFile }).Count -ne 0) {
+        throw "Core layout must not copy mutable user state to its root: $legacyUserFile"
+    }
+}
+if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'runtime\defaults\Words.xml') -PathType Leaf)) {
+    throw 'The built-in Words.xml seed must live under runtime\defaults.'
+}
+if ($manifest.core.runtimeDirectories -notcontains 'defaults') {
+    throw 'Core manifest must preserve runtime defaults.'
+}
+$installerScript = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'packaging\nsis\Installer\MakeInstaller.nsi')
+if ($installerScript -notmatch 'File "\$\{INPUTDIR\}\\defaults\\Words\.xml"') {
+    throw 'NSIS installer must install the immutable Words.xml seed under defaults.'
+}
+
 foreach ($kind in @('core', 'integration')) {
     $section = $layout.$kind
     if ($null -eq $section -or @($section.copy).Count -eq 0) { throw "Package layout has no copy entries for $kind." }
@@ -52,6 +68,13 @@ foreach ($script in @('tools\build\stage-core.ps1', 'tools\build\stage-integrati
     $scriptText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $script)
     if ($scriptText -notmatch 'Get-FbePackageLayout' -or $scriptText -notmatch 'Copy-FbePackageLayoutEntries') {
         throw "Staging script does not consume the package layout: $script"
+    }
+}
+
+$buildScript = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'tools\build\build.ps1')
+foreach ($legacyUserFile in @('Settings.xml', 'Hotkeys.xml', 'Words.xml')) {
+    if ($buildScript -notmatch ('"' + [regex]::Escape($legacyUserFile) + '"')) {
+        throw "Development build no longer removes obsolete root user state: $legacyUserFile"
     }
 }
 

@@ -27,9 +27,14 @@ try {
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind Runtime -Configuration $configuration -ProfileDirectory $editorRuntime -BatchDirectory $batch -ArchHandlerDirectory $arch -ProvenanceDirectory $provenance
     & (Join-Path $repoRoot 'tools\build\stage-core.ps1') -Configuration $configuration -OutputDirectory $stage -EditorRuntimeDirectory $editorRuntime -BatchOutputDirectory $batch -ArchHandlerOutputDirectory $arch -ProvenanceDirectory $provenance
 
-    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'Utilities\ArchHandler\ZipHandler.exe', 'LICENSE', 'genres.librusec.txt', 'THIRD-PARTY-LICENSES\PCRE2.txt')) {
+    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'Utilities\ArchHandler\ZipHandler.exe', 'LICENSE', 'genres.librusec.txt', 'defaults\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $relativePath) -PathType Leaf)) {
             throw "Layout-driven Core stage omitted: $relativePath"
+        }
+    }
+    foreach ($legacyUserFile in @('Settings.xml', 'Hotkeys.xml', 'Words.xml')) {
+        if (Test-Path -LiteralPath (Join-Path $stage $legacyUserFile) -PathType Leaf) {
+            throw "Core stage must not contain mutable root user state: $legacyUserFile"
         }
     }
     Write-Host 'Package layout Core staging passed.'

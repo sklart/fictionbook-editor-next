@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Собирает основной solution FBE и предварительно подготавливает ключевые зависимости.
 #>
@@ -55,7 +55,12 @@ function Remove-ObsoleteReleaseArtifacts {
         "ImportEPUB.lib",
         "FBShell.exp",
         "FBShell.lib",
-        "FBE.exe.manifest"
+        "FBE.exe.manifest",
+        # User state belongs in Data\Settings for portable deployments (or
+        # %LOCALAPPDATA%\FBE Next when installed), never beside FBE.exe.
+        "Settings.xml",
+        "Hotkeys.xml",
+        "Words.xml"
     )) {
         $path = Join-Path $OutputDirectory $name
         if (Test-Path -LiteralPath $path) {

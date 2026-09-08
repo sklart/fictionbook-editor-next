@@ -455,6 +455,10 @@ CString GetUserDataFile(const CString& filename, const CString& legacyDir)
 			legacyFile = legacyDir + filename;
 		if (!ATLPath::FileExists(legacyFile))
 			legacyFile = GetProgDir() + filename;
+		// Built-in defaults are immutable program resources.  User data always
+		// lives in GetSettingsDir(), including portable Data\Settings.
+		if (!ATLPath::FileExists(legacyFile))
+			legacyFile = GetProgDir() + L"defaults\\" + filename;
 		if (ATLPath::FileExists(legacyFile))
 			::CopyFile(legacyFile, destination, TRUE);
 	}
