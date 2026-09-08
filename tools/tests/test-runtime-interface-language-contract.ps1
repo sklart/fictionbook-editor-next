@@ -221,7 +221,8 @@ $runtimeLoadStringMatches = foreach ($root in $runtimeLoadStringSearchRoots) {
         Select-String -Pattern "\.LoadString\(|LoadStringW\(|LoadString\("
 }
 foreach ($match in $runtimeLoadStringMatches) {
-    $relativePath = [IO.Path]::GetRelativePath($repoRoot, $match.Path) -replace "/", "\"
+    # .NET Framework used by Windows PowerShell 5.1 has no Path.GetRelativePath.
+    $relativePath = $match.Path.Substring($repoRoot.TrimEnd('\', '/').Length).TrimStart('\', '/') -replace "/", "\"
     if ($relativePath -in $approvedRuntimeLoadStringFiles) {
         continue
     }
