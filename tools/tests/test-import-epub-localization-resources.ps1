@@ -21,15 +21,15 @@ $pluginCppPath = Join-Path $repoRoot "src\import-epub\ImportEPUBPlugin.cpp"
 $generatedRcPath = Join-Path $repoRoot "src\import-epub\ImportEPUBStrings.generated.rc2"
 $projectPath = Join-Path $repoRoot "src\import-epub\ImportEPUB.vcxproj"
 
-$rc = Get-Content -Raw -LiteralPath $rcPath
-$cpp = Get-Content -Raw -LiteralPath $cppPath
-$pluginCpp = Get-Content -Raw -LiteralPath $pluginCppPath
+$rc = Get-Content -Raw -LiteralPath $rcPath -Encoding UTF8
+$cpp = Get-Content -Raw -LiteralPath $cppPath -Encoding UTF8
+$pluginCpp = Get-Content -Raw -LiteralPath $pluginCppPath -Encoding UTF8
 if (-not (Test-Path -LiteralPath $generatedRcPath)) {
     throw "Сгенерированный файл строк ImportEPUB не найден: $generatedRcPath"
 }
-$generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
-$catalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\plugin-ui\catalog.json")
-$project = Get-Content -Raw -LiteralPath $projectPath
+$generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath -Encoding UTF8
+$catalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\plugin-ui\catalog.json") -Encoding UTF8
+$project = Get-Content -Raw -LiteralPath $projectPath -Encoding UTF8
 
 if ($project -match '<PreBuildEvent>') {
     throw 'ImportEPUB resource generation must not be an unconditional PreBuildEvent.'
@@ -76,7 +76,7 @@ if ($pluginCpp -notmatch 'LoadPluginString\(\s*IDS_IMPORT_PLUGIN_FILEDLG_TITLE' 
 }
 
 $resourceHeaderPath = Join-Path (Join-Path $repoRoot "src\import-epub") "resource.h"
-$resourceHeader = Get-Content -Raw -LiteralPath $resourceHeaderPath
+$resourceHeader = Get-Content -Raw -LiteralPath $resourceHeaderPath -Encoding UTF8
 $requiredResourceIds = @(
     [regex]::Matches($resourceHeader, '^#define\s+(IDS_IMPORT_[A-Z0-9_]+)\s+\d+', [System.Text.RegularExpressions.RegexOptions]::Multiline) |
         ForEach-Object { $_.Groups[1].Value }
