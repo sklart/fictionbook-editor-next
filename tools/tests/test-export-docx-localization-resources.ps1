@@ -18,12 +18,12 @@ $rcPath = Join-Path $repoRoot "src\export-docx\ExportDOCX.rc"
 $cppPath = Join-Path $repoRoot "src\export-docx\ExportDOCXPlugin.cpp"
 $generatedRcPath = Join-Path $repoRoot "src\export-docx\ExportDOCXStrings.generated.rc2"
 
-$rc = Get-Content -Raw -LiteralPath $rcPath
-$cpp = Get-Content -Raw -LiteralPath $cppPath
+$rc = Get-Content -Raw -LiteralPath $rcPath -Encoding UTF8
+$cpp = Get-Content -Raw -LiteralPath $cppPath -Encoding UTF8
 if (-not (Test-Path -LiteralPath $generatedRcPath)) {
     throw "Сгенерированный файл строк ExportDOCX не найден: $generatedRcPath"
 }
-$generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath
+$generatedRc = Get-Content -Raw -LiteralPath $generatedRcPath -Encoding UTF8
 
 $imagesGroup = [regex]::Match($rc, 'GROUPBOX\s+"Изображения и структура",IDC_GRP_IMAGES,18,36,394,(?<height>\d+)')
 $hyperlinks = [regex]::Match($rc, 'CONTROL\s+"Преобразовывать гиперссылки",IDC_EXPORT_HYPERLINKS,"Button",[^\r\n]*,30,(?<top>\d+),240,(?<height>\d+)')
