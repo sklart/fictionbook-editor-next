@@ -3198,12 +3198,44 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 {
 	if (errorText != NULL)
 		errorText->Empty();
-	CString searchError;
-	if (!DoFindAll(true, &searchError))
+	const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
+	const bool reusePreview = m_has_replace_preview &&
+		m_replace_preview_generation == generation &&
+		m_replace_preview_revision == FindResultsRevision() &&
+		m_replace_preview_pattern == m_fo.pattern &&
+		m_replace_preview_replacement == m_fo.replacement &&
+		m_replace_preview_flags == m_fo.flags &&
+		m_replace_preview_scope == m_fo.scope &&
+		m_replace_preview_regexp == m_fo.fRegexp &&
+		m_replace_preview_unicode_properties == m_fo.unicodeProperties &&
+		AreFindResultsCurrent();
+	if (!reusePreview)
 	{
-		if (errorText != NULL)
-			*errorText = searchError;
-		return -1;
+		CString searchError;
+		if (!DoFindAll(true, &searchError))
+		{
+			if (errorText != NULL)
+				*errorText = searchError;
+			return -1;
+		}
+		const std::size_t previewCount = m_document_search.GetResults().GetCount();
+		if (previewCount == 0)
+			return 0;
+		m_replace_preview_pattern = m_fo.pattern;
+		m_replace_preview_replacement = m_fo.replacement;
+		m_replace_preview_generation = generation;
+		m_replace_preview_revision = FindResultsRevision();
+		m_replace_preview_flags = m_fo.flags;
+		m_replace_preview_scope = m_fo.scope;
+		m_replace_preview_regexp = m_fo.fRegexp;
+		m_replace_preview_unicode_properties = m_fo.unicodeProperties;
+		m_has_replace_preview = true;
+		CString ready;
+		ready.Format(FbeLoadRuntimeStringByKey(
+			L"fbe.replace.preview.ready", L"%Iu match(es) are shown in Find results. Review them, then press Replace All again to confirm."), previewCount);
+		::MessageBox(m_hWnd, ready, FbeLoadRuntimeStringByKey(
+			L"fbe.replace.preview.caption", L"Replace All"), MB_OK | MB_ICONINFORMATION);
+		return -2;
 	}
 
 	const std::size_t count = m_document_search.GetResults().GetCount();
@@ -3219,7 +3251,6 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	// Validate every source coordinate while the document is unchanged. The
 	// reverse pass below then preserves all earlier offsets in this snapshot.
 	std::vector<MSHTML::IHTMLTxtRangePtr> ranges(count);
-	const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
 	for (std::size_t index = 0; index < count; ++index)
 	{
 		if (!m_document_search.CreateResultRange(Document(), generation, index, ranges[index]) || !ranges[index])
@@ -3279,6 +3310,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	}
 	m_mk_srv->EndUndoUnit();
 	m_fo.ClearMatch();
+	m_has_replace_preview = false;
 	m_document_search.Invalidate();
 	if (m_find_results_dlg && m_find_results_dlg->IsValid())
 		m_find_results_dlg->Refresh();

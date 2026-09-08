@@ -805,6 +805,14 @@
         "en-US": "Replace %Iu match(es) shown in Find results?", "ru-RU": "Заменить %Iu совпадений, показанных в результатах поиска?", "uk-UA": "Замінити %Iu збігів, показаних у результатах пошуку?", "de-DE": "%Iu in den Suchergebnissen angezeigte Treffer ersetzen?", "fr-FR": "Remplacer les %Iu occurrences affichées dans les résultats ?", "es-ES": "¿Reemplazar %Iu coincidencias mostradas en los resultados?", "it-IT": "Sostituire %Iu corrispondenze mostrate nei risultati?", "pl-PL": "Zastąpić %Iu dopasowań pokazanych w wynikach?", "pt-PT": "Substituir %Iu correspondências mostradas nos resultados?", "nl-NL": "%Iu overeenkomsten in de zoekresultaten vervangen?", "cs-CZ": "Nahradit %Iu shod zobrazených ve výsledcích?", "bg-BG": "Да се заменят ли %Iu съвпадения, показани в резултатите?"
       }
     },
+    "fbe.replace.preview.ready": {
+      "resource": "IDS_REPL_DONE_MSG",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "%Iu match(es) are shown in Find results. Review them, then press Replace All again to confirm.", "ru-RU": "%Iu совпадений показано в результатах поиска. Проверьте их, затем снова нажмите «Заменить всё» для подтверждения.", "uk-UA": "%Iu збігів показано в результатах пошуку. Перевірте їх, потім знову натисніть «Замінити все» для підтвердження.", "de-DE": "%Iu Treffer werden in den Suchergebnissen angezeigt. Prüfen Sie sie und drücken Sie dann erneut Alle ersetzen zur Bestätigung.", "fr-FR": "%Iu occurrences sont affichées dans les résultats. Vérifiez-les, puis appuyez de nouveau sur Tout remplacer pour confirmer.", "es-ES": "Se muestran %Iu coincidencias en los resultados. Revísalas y vuelve a pulsar Reemplazar todo para confirmar.", "it-IT": "Nei risultati sono mostrate %Iu corrispondenze. Esaminale, quindi premi di nuovo Sostituisci tutto per confermare.", "pl-PL": "W wynikach pokazano %Iu dopasowań. Sprawdź je, a następnie ponownie naciśnij Zamień wszystko, aby potwierdzić.", "pt-PT": "%Iu correspondências são mostradas nos resultados. Reveja-as e prima novamente Substituir tudo para confirmar.", "nl-NL": "%Iu overeenkomsten worden in de zoekresultaten getoond. Controleer ze en druk opnieuw op Alles vervangen om te bevestigen.", "cs-CZ": "Ve výsledcích je zobrazeno %Iu shod. Zkontrolujte je a pak znovu potvrďte příkaz Nahradit vše.", "bg-BG": "%Iu съвпадения са показани в резултатите. Прегледайте ги, след това натиснете отново „Замяна на всички“ за потвърждение."
+      }
+    },
     "fbe.replace.preview.changed": {
       "resource": "IDS_REPL_DONE_MSG",
       "kind": "VALUE",
