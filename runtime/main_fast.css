@@ -1,4 +1,8 @@
+/* Fast Mode favours a low-cost layout for large FB2 documents in MSHTML.
+   It intentionally omits per-div borders and some decorative typography from
+   main.css; shared editor controls and structural rules remain equivalent. */
 body{
+	font-size: 12pt;
 	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
 	padding: 0;
 	margin: 0;
@@ -7,7 +11,7 @@ body{
 div#fbw_desc
 {
 	font-size: 8pt;
-	font-family: "Tahoma",sans-serif;
+	font-family: Tahoma, sans-serif;
 	background-color: #DCDCDC;
 	padding-left: 0.8em;
 	height: 100%;
@@ -94,6 +98,8 @@ div#fbw_desc label.short{
 	width: 4em;
 }
 
+/* Keep descriptor fieldsets compact: the fast layout avoids their decorative
+   borders, uses smaller padding, and lets nested kid fieldsets fill the row. */
 div#fbw_desc fieldset{
 	width: 60em;
 	margin: 0.1em;
@@ -127,7 +133,7 @@ div#fbw_desc textarea#stylesheetId
 {
 	width: 60em;
 	font-family: "Tahoma",sans-serif;
-	font-size: 8pt;
+	font-size: 10pt;
 	border: 1px solid Black;
 }
 

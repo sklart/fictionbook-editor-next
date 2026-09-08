@@ -225,6 +225,7 @@ div.cite{
 
 em{
 	font-style: italic;
+	color: #0000E0;
 }
 div.epigraph{
 	font-size: 80%;
@@ -374,12 +375,7 @@ span.image{
 	text-align: center;
 }
 
-em{
-font-style: italic;
-color: #0000E0;
-}
-
 strong{
-font-weight: bold;
-color: #660066;
+	font-weight: bold;
+	color: #660066;
 }
