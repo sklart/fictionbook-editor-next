@@ -18,7 +18,8 @@ public:
 		MSHTML::IHTMLDocument2Ptr document,
 		std::uint64_t documentGeneration,
 		const AU::Search::SearchQuery& query,
-		std::wstring* errorText = NULL);
+		std::wstring* errorText = NULL,
+		const AU::Search::SearchRange* scopeRange = NULL);
 
 	const AU::Search::SearchTextSnapshot& GetSnapshot() const;
 	const AU::Search::SearchSession& GetSession() const;

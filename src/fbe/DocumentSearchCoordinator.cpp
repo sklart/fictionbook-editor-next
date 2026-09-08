@@ -28,7 +28,8 @@ bool DocumentSearchCoordinator::Rebuild(
 	MSHTML::IHTMLDocument2Ptr document,
 	std::uint64_t documentGeneration,
 	const AU::Search::SearchQuery& query,
-	std::wstring* errorText)
+	std::wstring* errorText,
+	const AU::Search::SearchRange* scopeRange)
 {
 	if (errorText != NULL)
 		errorText->clear();
@@ -63,6 +64,14 @@ bool DocumentSearchCoordinator::Rebuild(
 		AU::RegexBackend::BuildSearchHits(matches, hits);
 	}
 
+	if (scopeRange != NULL)
+	{
+		std::vector<AU::Search::SearchHit> filtered;
+		for (std::size_t index = 0; index < hits.size(); ++index)
+			if (AU::Search::IsHitInsideRange(hits[index], *scopeRange))
+				filtered.push_back(hits[index]);
+		hits.swap(filtered);
+	}
 	m_session.SetHits(hits, documentGeneration);
 	std::vector<AU::Search::SearchResult> results;
 	results.reserve(hits.size());

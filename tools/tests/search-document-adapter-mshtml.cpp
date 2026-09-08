@@ -79,6 +79,8 @@ int wmain()
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetSession().GetHitCount() != 1 ||
 		coordinator.GetResults().GetCount() != 1 || coordinator.GetResults().GetAt(0)->Preview.find(L"table cell") == std::wstring::npos ||
 		coordinator.SelectResult(document, 44, 0) == NULL || coordinator.SelectResult(document, 45, 0) != NULL)) result = 16;
+	AU::Search::SearchRange tableOnly(coordinator.GetSnapshot().Text.find(L"table cell"), 10);
+	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &tableOnly) || coordinator.GetResults().GetCount() != 1)) result = 17;
 
 	query.Mode = AU::Search::SearchMode::Regex;
 	query.Text = L"^second\\r?$";
