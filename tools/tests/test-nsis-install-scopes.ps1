@@ -12,7 +12,14 @@ $makensis = & (Join-Path $root 'tools\build\resolve-nsis.ps1')
 if ($LASTEXITCODE -ne 0 -or -not $makensis) { throw 'Unable to resolve makensis for NSIS scope smoke.' }
 
 function Get-RegistrySnapshot([string]$Key) {
-    $output = & reg.exe query $Key /s 2>&1
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = & reg.exe query $Key /s 2>&1
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
     if ($LASTEXITCODE -eq 1) { return '<absent>' }
     if ($LASTEXITCODE -ne 0) { throw "reg.exe query failed for ${Key}: $output" }
     return (($output | ForEach-Object { [string]$_ }) -join "`n").Trim()
