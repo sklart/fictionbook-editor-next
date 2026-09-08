@@ -165,20 +165,21 @@ bool RegexBackend::Execute(
 				static_cast<int>(matchEnd - matchStart));
 			item.FirstIndex = static_cast<int>(matchStart);
 
-			for (int i = 1; i < rc; i++)
+			for (std::size_t i = 1; i < captureNames.size(); ++i)
 			{
 				const PCRE2_SIZE groupStart = ovector[i * 2];
 				const PCRE2_SIZE groupEnd = ovector[i * 2 + 1];
+				const std::wstring name = captureNames[i];
 				if (groupStart != PCRE2_UNSET && groupEnd != PCRE2_UNSET)
 				{
 					item.SubMatches.Add(CString(static_cast<LPCWSTR>(sourceString) + groupStart,
 						static_cast<int>(groupEnd - groupStart)));
-					const std::wstring name = i < static_cast<int>(captureNames.size())
-						? captureNames[i] : std::wstring();
 					item.Captures.push_back(Search::SearchCapture(
-						static_cast<std::size_t>(groupStart),
+						i, static_cast<std::size_t>(groupStart),
 						static_cast<std::size_t>(groupEnd - groupStart), name));
 				}
+				else
+					item.Captures.push_back(Search::SearchCapture(i, 0, 0, name, false));
 			}
 			matches.Add(item);
 		});

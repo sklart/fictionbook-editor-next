@@ -46,13 +46,16 @@ struct SearchQuery {
 };
 
 struct SearchCapture {
+	std::size_t GroupIndex;
 	std::size_t Start;
 	std::size_t Length;
 	std::wstring Name;
+	bool Matched;
 
-	SearchCapture() : Start(0), Length(0) {}
-	SearchCapture(std::size_t start, std::size_t length, const std::wstring& name = std::wstring())
-		: Start(start), Length(length), Name(name) {}
+	SearchCapture() : GroupIndex(0), Start(0), Length(0), Matched(false) {}
+	SearchCapture(std::size_t groupIndex, std::size_t start, std::size_t length,
+		const std::wstring& name = std::wstring(), bool matched = true)
+		: GroupIndex(groupIndex), Start(start), Length(length), Name(name), Matched(matched) {}
 };
 
 struct SearchHit {
