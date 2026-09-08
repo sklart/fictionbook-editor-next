@@ -2700,6 +2700,11 @@ bool CFBEView::AreFindResultsCurrent()
 	return version >= 0 && m_document_search.GetResults().IsValidFor(static_cast<std::uint64_t>(version));
 }
 
+std::uint64_t CFBEView::FindResultsRevision() const
+{
+	return m_document_search.GetResults().GetRevision();
+}
+
 bool CFBEView::SelectFindResult(std::size_t index)
 {
 	try

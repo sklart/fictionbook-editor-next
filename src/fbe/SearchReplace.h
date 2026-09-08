@@ -466,7 +466,7 @@ class CFindResultsDlg: public CModelessDialogImpl<CFindResultsDlg>
 public:
 	enum { IDD = IDD_FIND_RESULTS };
 
-	explicit CFindResultsDlg(CFBEView* view) : m_view(view) { }
+	explicit CFindResultsDlg(CFBEView* view) : m_view(view), m_revision(0) { }
 
 	BEGIN_MSG_MAP(CFindResultsDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -486,6 +486,7 @@ public:
 				L"fbe.dialog.idd_find_results.stale", L"Search results are stale. Run Find All again."));
 			return;
 		}
+		m_revision = m_view->FindResultsRevision();
 		for (std::size_t index = 0; index < m_view->FindResultCount(); ++index)
 		{
 			CString number;
@@ -537,7 +538,8 @@ public:
 		const NMLISTVIEW* item = reinterpret_cast<const NMLISTVIEW*>(header);
 		if (item->iItem < 0)
 			return 0;
-		if (!m_view->SelectFindResult(static_cast<std::size_t>(item->iItem)))
+		if (m_revision != m_view->FindResultsRevision() ||
+			!m_view->SelectFindResult(static_cast<std::size_t>(item->iItem)))
 			Refresh();
 		return 0;
 	}
@@ -551,6 +553,7 @@ public:
 private:
 	CFBEView* m_view;
 	CListViewCtrl m_list;
+	std::uint64_t m_revision;
 };
 
 #endif

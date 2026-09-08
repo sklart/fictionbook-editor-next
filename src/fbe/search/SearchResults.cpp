@@ -5,6 +5,7 @@ namespace Search {
 
 SearchResults::SearchResults()
 	: m_documentGeneration(0),
+	  m_revision(0),
 	  m_selectedIndex(kNoResult),
 	  m_valid(false)
 {
@@ -14,6 +15,7 @@ void SearchResults::SetResults(const std::vector<SearchResult>& results, std::ui
 {
 	m_results = results;
 	m_documentGeneration = documentGeneration;
+	++m_revision;
 	m_selectedIndex = kNoResult;
 	m_valid = true;
 }
@@ -22,6 +24,7 @@ void SearchResults::Invalidate()
 {
 	m_results.clear();
 	m_documentGeneration = 0;
+	++m_revision;
 	m_selectedIndex = kNoResult;
 	m_valid = false;
 }
@@ -29,6 +32,11 @@ void SearchResults::Invalidate()
 bool SearchResults::IsValidFor(std::uint64_t documentGeneration) const
 {
 	return m_valid && m_documentGeneration == documentGeneration;
+}
+
+std::uint64_t SearchResults::GetRevision() const
+{
+	return m_revision;
 }
 
 std::size_t SearchResults::GetCount() const

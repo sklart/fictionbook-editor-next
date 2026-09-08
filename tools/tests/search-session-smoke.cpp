@@ -98,6 +98,11 @@ int wmain()
 	SearchResult first = { SearchHit(2, 6), L"Chapter 1", L"...needle..." };
 	SearchResult second = { SearchHit(12, 6), L"Chapter 2", L"...other needle..." };
 	results.SetResults(std::vector<SearchResult>{ first, second }, 41);
+	const std::uint64_t firstResultsRevision = results.GetRevision();
+	results.SetResults(std::vector<SearchResult>{ second }, 41);
+	if (results.GetRevision() == firstResultsRevision || results.GetCount() != 1)
+		return 46;
+	results.SetResults(std::vector<SearchResult>{ first, second }, 41);
 	if (!results.IsValidFor(41) || results.IsValidFor(42) || results.GetCount() != 2)
 		return 15;
 	if (results.GetSelected() != NULL || results.Select(1)->Hit.Start != 12)

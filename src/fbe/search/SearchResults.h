@@ -25,6 +25,7 @@ public:
 	void SetResults(const std::vector<SearchResult>& results, std::uint64_t documentGeneration);
 	void Invalidate();
 	bool IsValidFor(std::uint64_t documentGeneration) const;
+	std::uint64_t GetRevision() const;
 
 	std::size_t GetCount() const;
 	const SearchResult* GetAt(std::size_t index) const;
@@ -37,6 +38,7 @@ private:
 
 	std::vector<SearchResult> m_results;
 	std::uint64_t m_documentGeneration;
+	std::uint64_t m_revision;
 	std::size_t m_selectedIndex;
 	bool m_valid;
 };
