@@ -52,6 +52,7 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-vsdev-environment-long-path.ps1
+          ./tools/tests/test-cmake-build-tree-fingerprint.ps1
 
   build:
     needs: validate
@@ -79,7 +80,7 @@ jobs:
             build/aom
             build/libde265
             build/libheif
-          key: ${{ runner.os }}-image-decoders-release-win32-v143-${{ hashFiles('third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
+          key: ${{ runner.os }}-image-decoders-release-win32-v143-vc144-${{ hashFiles('third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/CmakeBuildTree.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
       - name: Restore universal editor runtime cache
         uses: actions/cache@v6
         with:
