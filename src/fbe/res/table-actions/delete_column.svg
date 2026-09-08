@@ -330,7 +330,8 @@
     </rdf:RDF>
   </metadata>
   <g
-     id="delete_mark">
+     id="delete_mark"
+     transform="translate(10.1 19.2) scale(1.12) translate(-10.1 -19.2)">
     <path
        d="M 7.55 16.65 L 12.649999999999999 21.75"
        fill="none"
