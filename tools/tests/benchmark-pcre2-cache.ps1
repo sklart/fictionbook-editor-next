@@ -29,6 +29,7 @@ $clArguments = @(
     "/nologo", "/EHsc", "/std:c++17", "/O2", "/MT", "/DUNICODE", "/D_UNICODE",
     "/I$(Join-Path $repoRoot "third_party\wtl")",
     "/I$(Join-Path $repoRoot "src\fbe")",
+    "/I$(Join-Path $repoRoot "src\fbe\search")",
     "/I$(Join-Path $installDir "include")",
     "/Fo$(Join-Path $benchmarkDir "pcre2-cache-benchmark.obj")",
     (Join-Path $PSScriptRoot "pcre2-cache-benchmark.cpp"),

@@ -20,17 +20,28 @@ DOM pointer, HWND или модельный диалог. `SearchDocumentAdapter
 `DocumentSearchCoordinator` находятся с editor-side: только они строят
 snapshot из MSHTML и применяют найденный offset как selection.
 
-Обычный Design-mode Find уже использует этот путь для literal search:
-`SearchTextSnapshot -> LiteralSearch -> SearchSession -> adapter`. Основной
-алгоритм больше не вызывает `IHTMLTxtRange::findText()`. Legacy MSHTML
-сопоставление сохранено только в differential regression test, а legacy
-regex COM API (`IRegExp2`) и Replace остаются compatibility boundaries до
-их отдельной миграции на result/capture model.
+Обычный Design-mode Find, Find All и regex Find используют один путь:
+`SearchTextSnapshot -> LiteralSearch/RegexBackend -> SearchSession -> adapter`.
+Навигация начинается от snapshot-offset текущего caret/selection и хранит
+generation документа; нулевые regex-hit'ы при повторном Find Next/Previous
+пропускают текущую позицию, поэтому не зацикливаются. Основной literal
+алгоритм больше не вызывает `IHTMLTxtRange::findText()`; MSHTML-сопоставление
+сохранено только в differential regression test.
+
+`SearchResults` хранит чистые hit/capture/preview данные и revision. Section
+label и создание невыделенного `IHTMLTxtRange` остаются editor-side задачами
+`SearchDocumentAdapter`. Replace All сначала формирует и показывает этот
+набор результатов, валидирует все DOM-диапазоны до изменения документа, а
+затем применяет замены справа налево в одной undo-группе. Для regex
+editor-side адаптер создаёт совместимый `IMatch2` только на границе старого
+шаблонизатора replacement, сохраняя пустые и именованные captures.
 
 ## Последствия
 
-Не меняются regex-семантика, cache, PCRE2 flags, COM match collection или
-поведение legacy Replace. `test-fbe-search-boundary.ps1` закрепляет
-размещение и отсутствие зависимостей Search Core на UI/document
-coordinators; PCRE2 cache, match-loop, literal differential и adapter
-fixtures проверяют matching, UTF-16 mapping и navigation contracts.
+Не меняются regex-семантика, PCRE2 flags и legacy public COM collection.
+`test-fbe-search-boundary.ps1` закрепляет размещение и отсутствие
+зависимостей Search Core на UI/document coordinators; session, PCRE2 cache,
+match-loop, literal differential и adapter fixtures проверяют matching,
+UTF-16 mapping, generation/revision и navigation contracts. Отдельный
+`benchmark-pcre2-cache.ps1` измеряет cache на коротких и Find-All-large
+сценариях без введения нестабильного time-based CI-порога.
