@@ -70,3 +70,21 @@ const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromOffset(
 		return NULL;
 	return hit;
 }
+
+const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromRange(
+	MSHTML::IHTMLDocument2Ptr document,
+	std::uint64_t documentGeneration,
+	MSHTML::IHTMLTxtRangePtr range,
+	AU::Search::SearchDirection direction,
+	bool* wrapped)
+{
+	std::size_t offset = 0;
+	if (!m_adapter.TryGetSearchOffset(
+		m_snapshot, range, direction == AU::Search::SearchDirection::Forward, &offset))
+	{
+		if (wrapped != NULL)
+			*wrapped = false;
+		return NULL;
+	}
+	return SelectFromOffset(document, documentGeneration, offset, direction, wrapped);
+}

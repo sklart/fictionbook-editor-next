@@ -29,6 +29,13 @@ public:
 		AU::Search::SearchDirection direction,
 		bool* wrapped = NULL);
 
+	const AU::Search::SearchHit* SelectFromRange(
+		MSHTML::IHTMLDocument2Ptr document,
+		std::uint64_t documentGeneration,
+		MSHTML::IHTMLTxtRangePtr range,
+		AU::Search::SearchDirection direction,
+		bool* wrapped = NULL);
+
 private:
 	SearchDocumentAdapter m_adapter;
 	AU::Search::SearchTextSnapshot m_snapshot;

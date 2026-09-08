@@ -29,6 +29,14 @@ public:
 		const AU::Search::SearchTextSnapshot& snapshot,
 		const AU::Search::SearchHit& hit) const;
 
+	// Maps one endpoint of an editor range back into the UTF-16 snapshot.
+	// useEnd=false reads the range start; true reads its exclusive end.
+	bool TryGetSearchOffset(
+		const AU::Search::SearchTextSnapshot& snapshot,
+		MSHTML::IHTMLTxtRangePtr range,
+		bool useEnd,
+		std::size_t* searchOffset) const;
+
 private:
 	struct SourceRange {
 		std::uint64_t Id;
@@ -36,6 +44,7 @@ private:
 	};
 
 	const SourceRange* FindSource(std::uint64_t id) const;
+	const SourceRange* FindSource(MSHTML::IHTMLElementPtr element) const;
 
 	std::vector<SourceRange> m_sources;
 };

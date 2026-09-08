@@ -63,25 +63,29 @@ int wmain()
 	AU::Search::SearchDocumentPosition position = {};
 	std::size_t offset = 0;
 	if (!result && (!snapshot.TryGetDocumentPosition(firstEnd, &position) || !snapshot.TryGetSearchOffset(position, &offset) || offset != firstEnd)) result = 9;
+	MSHTML::IHTMLTxtRangePtr firstRange;
+	if (!result && (!adapter.CreateHitRange(document, snapshot, AU::Search::SearchHit(0, firstEnd), firstRange) ||
+		!adapter.TryGetSearchOffset(snapshot, firstRange, false, &offset) || offset != 0 ||
+		!adapter.TryGetSearchOffset(snapshot, firstRange, true, &offset) || offset != firstEnd)) result = 10;
 
 	DocumentSearchCoordinator coordinator;
 	AU::Search::SearchQuery query;
 	query.Text = L"second";
-	if (!result && (!coordinator.Rebuild(document, 43, query) || coordinator.GetSession().GetHitCount() != 1)) result = 10;
+	if (!result && (!coordinator.Rebuild(document, 43, query) || coordinator.GetSession().GetHitCount() != 1)) result = 11;
 	bool wrapped = false;
-	if (!result && (!coordinator.SelectFromOffset(document, 43, 0, AU::Search::SearchDirection::Forward, &wrapped) || wrapped)) result = 11;
-	if (!result && coordinator.SelectFromOffset(document, 44, 0, AU::Search::SearchDirection::Forward, &wrapped) != NULL) result = 12;
+	if (!result && (!coordinator.SelectFromRange(document, 43, firstRange, AU::Search::SearchDirection::Forward, &wrapped) || wrapped)) result = 12;
+	if (!result && coordinator.SelectFromOffset(document, 44, 0, AU::Search::SearchDirection::Forward, &wrapped) != NULL) result = 13;
 
 	query.Mode = AU::Search::SearchMode::Regex;
 	query.Text = L"^second$";
 	query.Multiline = true;
-	if (!result && (!coordinator.Rebuild(document, 45, query) || coordinator.GetSession().GetHitCount() != 1)) result = 13;
+	if (!result && (!coordinator.Rebuild(document, 45, query) || coordinator.GetSession().GetHitCount() != 1)) result = 14;
 	query.Text = L"\\b\\x{043A}\\x{043E}\\x{0442}\\b";
 	query.UnicodeProperties = true;
-	if (!result && (!coordinator.Rebuild(document, 46, query) || coordinator.GetSession().GetHitCount() != 1)) result = 14;
+	if (!result && (!coordinator.Rebuild(document, 46, query) || coordinator.GetSession().GetHitCount() != 1)) result = 15;
 	query.Text = L"(";
 	std::wstring regexError;
-	if (!result && (coordinator.Rebuild(document, 47, query, &regexError) || regexError.empty() || coordinator.GetSession().IsValid())) result = 15;
+	if (!result && (coordinator.Rebuild(document, 47, query, &regexError) || regexError.empty() || coordinator.GetSession().IsValid())) result = 16;
 	}
 
 	persist = NULL;

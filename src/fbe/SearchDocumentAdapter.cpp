@@ -112,11 +112,63 @@ bool SearchDocumentAdapter::SelectHit(
 	return true;
 }
 
+bool SearchDocumentAdapter::TryGetSearchOffset(
+	const AU::Search::SearchTextSnapshot& snapshot,
+	MSHTML::IHTMLTxtRangePtr range,
+	bool useEnd,
+	std::size_t* searchOffset) const
+{
+	if (!range || searchOffset == NULL)
+		return false;
+	MSHTML::IHTMLTxtRangePtr endpoint(range->duplicate());
+	if (!endpoint)
+		return false;
+	endpoint->collapse(useEnd ? VARIANT_FALSE : VARIANT_TRUE);
+
+	MSHTML::IHTMLElementPtr element(endpoint->parentElement());
+	const SourceRange* source = NULL;
+	while (element && source == NULL)
+	{
+		source = FindSource(element);
+		if (source == NULL)
+			element = element->parentElement;
+	}
+	if (source == NULL || !source->Element)
+		return false;
+
+	MSHTML::IHTMLDocument2Ptr document(source->Element->document);
+	MSHTML::IHTMLBodyElementPtr body(document ? document->body : MSHTML::IHTMLBodyElementPtr());
+	MSHTML::IHTMLTxtRangePtr sourceRange(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+	if (!sourceRange)
+		return false;
+	sourceRange->moveToElementText(source->Element);
+	if (endpoint->inRange(sourceRange) != VARIANT_TRUE)
+		return false;
+	sourceRange->setEndPoint(L"EndToStart", endpoint);
+	_bstr_t prefix(sourceRange->text);
+	return snapshot.TryGetSearchOffset(
+		{ source->Id, static_cast<std::size_t>(prefix.length()) },
+		searchOffset);
+}
+
 const SearchDocumentAdapter::SourceRange* SearchDocumentAdapter::FindSource(std::uint64_t id) const
 {
 	for (std::size_t index = 0; index < m_sources.size(); ++index)
 	{
 		if (m_sources[index].Id == id)
+			return &m_sources[index];
+	}
+	return NULL;
+}
+
+const SearchDocumentAdapter::SourceRange* SearchDocumentAdapter::FindSource(MSHTML::IHTMLElementPtr element) const
+{
+	if (!element)
+		return NULL;
+	const long sourceIndex = element->sourceIndex;
+	for (std::size_t index = 0; index < m_sources.size(); ++index)
+	{
+		if (m_sources[index].Element && m_sources[index].Element->sourceIndex == sourceIndex)
 			return &m_sources[index];
 	}
 	return NULL;
