@@ -8332,8 +8332,9 @@ void  CMainFrame::SetupSci()
 {
   // Source commands are routed explicitly by FBE; legacy WM_COMMAND events are unnecessary.
   m_source.SendMessage(SCI_SETCOMMANDEVENTS, FALSE);
-  // FBE consumes SCN_MODIFIED only to keep folding state consistent.
-  m_source.SendMessage(SCI_SETMODEVENTMASK, SC_MOD_CHANGEFOLD);
+  // Text modifications invalidate the XML matcher cache; fold notifications
+  // remain necessary for the existing fold-state handling.
+  m_source.SendMessage(SCI_SETMODEVENTMASK, SC_MOD_CHANGEFOLD | SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT);
   m_source.SendMessage(SCI_SETUNDOSELECTIONHISTORY, AU::_ARGS.disable_undo_selection_history ? 0 :
     SC_UNDO_SELECTION_HISTORY_ENABLED | SC_UNDO_SELECTION_HISTORY_SCROLL);
 	m_source.SendMessage(SCI_SETCODEPAGE,SC_CP_UTF8);

@@ -98,6 +98,11 @@ XmlTagMatcher::XmlTagMatcher(const std::string& utf8) : m_tokens(XmlTagTokenizer
 }
 
 XmlTagMatchResult XmlTagMatcher::ResultAt(XmlBytePosition position) const {
-	for (size_t i = 0; i < m_tokens.size(); ++i) if (position >= m_tokens[i].fullRange.start && position <= m_tokens[i].fullRange.end) return m_results[i];
+	const std::vector<XmlTagToken>::const_iterator after = std::upper_bound(m_tokens.begin(), m_tokens.end(), position,
+		[](XmlBytePosition value, const XmlTagToken& token) { return value < token.fullRange.start; });
+	if (after != m_tokens.begin()) {
+		const size_t index = static_cast<size_t>((after - m_tokens.begin()) - 1);
+		if (position >= m_tokens[index].fullRange.start && position <= m_tokens[index].fullRange.end) return m_results[index];
+	}
 	return XmlTagMatchResult();
 }

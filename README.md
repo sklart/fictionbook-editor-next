@@ -203,7 +203,9 @@ Windows XP и Windows Vista не поддерживаются стандартн
 
 ## Сборка из исходников
 
-Требуется Windows и Visual Studio с C++ workload.
+Требуются Windows, Visual Studio 2022 с C++ workload и PowerShell 7 (`pwsh`).
+Windows 7 остаётся runtime target готового приложения, но не является средой
+для build/test/release tooling.
 
 ```powershell
 git submodule update --init --recursive

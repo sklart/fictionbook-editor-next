@@ -6,7 +6,6 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'json-compat.ps1')
 
 if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -62,7 +61,7 @@ try {
         if (-not (Test-Path -LiteralPath $jsonPath)) {
             throw "Не найден $jsonPath"
         }
-        $json = Get-Content -Raw -LiteralPath $jsonPath -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
+        $json = Get-Content -Raw -LiteralPath $jsonPath -Encoding UTF8 | ConvertFrom-Json -AsHashtable
         $strings = $json['strings']
         foreach ($key in $bindings.Values) {
             if (-not $strings.ContainsKey($key)) {

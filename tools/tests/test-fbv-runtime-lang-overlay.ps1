@@ -6,7 +6,6 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'json-compat.ps1')
 
 if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -50,7 +49,7 @@ $langRoot = Join-Path $tempRoot 'Lang'
 try {
     & (Join-Path $RepositoryRoot 'tools\localization\export-runtime-lang.ps1') -RepositoryRoot $RepositoryRoot -OutputDirectory $langRoot -Clean
 
-    $contract = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'localization\runtime\contract.json') -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
+    $contract = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'localization\runtime\contract.json') -Encoding UTF8 | ConvertFrom-Json -AsHashtable
     $languages = Get-ChildItem -LiteralPath $langRoot -Directory | Select-Object -ExpandProperty Name
     if ($languages.Count -eq 0) {
         throw 'Экспорт Lang не создал языковых каталогов.'
@@ -61,7 +60,7 @@ try {
         if (-not (Test-Path -LiteralPath $fbvJsonPath)) {
             throw "Не найден $fbvJsonPath"
         }
-        $json = Get-Content -Raw -LiteralPath $fbvJsonPath -Encoding UTF8 | ConvertFrom-Json | ConvertTo-FbeHashtable
+        $json = Get-Content -Raw -LiteralPath $fbvJsonPath -Encoding UTF8 | ConvertFrom-Json -AsHashtable
         $strings = $json['strings']
         foreach ($key in $bindings.Values) {
             if (-not $strings.ContainsKey($key)) {

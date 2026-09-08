@@ -86,19 +86,21 @@ struct XmlMatchedTagsState {
 	vector<pair<int, int> > tagRanges;
 	vector<pair<int, int> > attributeRanges;
 	vector<IndicatorRange> diagnosticRanges;
+	// Bumped only for SC_MOD_INSERTTEXT/SC_MOD_DELETETEXT.  UI notifications
+	// must not cause a document read or a tokenizer rebuild.
+	unsigned long long documentRevision = 1;
+	unsigned long long matcherRevision = 0;
 	int cachedCaret = -1;
-	int cachedDocumentLength = -1;
 	bool cachedMatch = false;
 	bool cachedHighlightEnabled = false;
 	int cachedHighlightMode = -1;
 	bool cachedHighlightAttributes = false;
 	bool cachedShowErrors = false;
-	std::string cachedDocumentText;
 	XmlTagMatcher* cachedMatcher = nullptr;
 	~XmlMatchedTagsState() { delete cachedMatcher; }
 	XmlMatchedTagsState(const XmlMatchedTagsState&) = delete;
 	XmlMatchedTagsState& operator=(const XmlMatchedTagsState&) = delete;
-	void Invalidate() { cachedCaret = -1; cachedDocumentLength = -1; cachedMatch = false; cachedHighlightMode = -1; cachedDocumentText.clear(); delete cachedMatcher; cachedMatcher = nullptr; }
+	void Invalidate() { ++documentRevision; cachedCaret = -1; cachedMatch = false; }
 };
 
 enum class XmlTagHighlightMode { NameOnly, FullTag };
@@ -114,8 +116,11 @@ public:
 private:
 	ScintillaEditView* _pEditView;
 	XmlMatchedTagsState* _state;
-	void ClearPreviousRanges();
+	void ClearCurrentRanges();
+	void ClearDiagnosticRanges();
 	void FillRange(int indicator, const XmlByteRange& range, vector<pair<int, int> >& ranges);
+	XmlTagMatcher& Matcher();
+	void RefreshDiagnostics(const XmlTagHighlightOptions& options, XmlTagMatcher& matcher);
 };
 
 #endif //XMLMATCHEDTAGSHIGHLIGHTER_H

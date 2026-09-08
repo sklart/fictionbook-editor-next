@@ -34,10 +34,9 @@ function Invoke-Wsh([string]$StatusPath, [string[]]$Arguments) {
     $startInfo.RedirectStandardError = $true
     $startInfo.StandardOutputEncoding = [Text.Encoding]::Unicode
     $startInfo.StandardErrorEncoding = [Text.Encoding]::Unicode
-    # ProcessStartInfo.ArgumentList is unavailable on .NET Framework used by
-    # Windows PowerShell 5.1. All harness arguments are paths or cscript
-    # switches; quote each one for the legacy Arguments property instead.
-    $startInfo.Arguments = (($Arguments | ForEach-Object { '"' + ($_ -replace '"', '\"') + '"' }) -join ' ')
+    foreach ($argument in $Arguments) {
+        [void]$startInfo.ArgumentList.Add($argument)
+    }
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
     [void]$process.Start()

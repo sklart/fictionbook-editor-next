@@ -6,6 +6,11 @@
   release scripts используют `PlatformToolset=v143` и требуют установленный
   VC Tools `14.44`.
 - Windows 10/11 SDK.
+- PowerShell 7 (`pwsh`) для first-party build, test и release scripts.
+
+Windows 7 SP1 — целевая runtime-платформа готового приложения. Это не
+ограничивает development/release tooling: сборка использует актуальные Visual
+Studio, Windows SDK и PowerShell 7.
 
 Собранные бинарники поддерживают Windows 7 SP1 и новее. Windows XP и Vista
 больше не поддерживаются.

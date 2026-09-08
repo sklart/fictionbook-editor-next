@@ -14,7 +14,7 @@ function Assert-Contains([string]$Text, [string]$Pattern, [string]$Description) 
 }
 
 Assert-Contains $mainFrame 'SCI_SETCOMMANDEVENTS\s*,\s*FALSE' 'disabled legacy Scintilla command events'
-Assert-Contains $mainFrame 'SCI_SETMODEVENTMASK\s*,\s*SC_MOD_CHANGEFOLD' 'fold-only modification event mask'
+Assert-Contains $mainFrame 'SCI_SETMODEVENTMASK\s*,\s*SC_MOD_CHANGEFOLD\s*\|\s*SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT' 'text and fold modification event mask'
 Assert-Contains $mainFrame 'SCI_USEPOPUP\s*,\s*SC_POPUP_NEVER' 'disabled English Scintilla popup menu'
 Assert-Contains $mainFrame 'ShowSourceContextMenu' 'localized Source context menu'
 Assert-Contains $mainFrame 'fbe\.context\.cut' 'runtime-localized Source context labels'
