@@ -3460,6 +3460,7 @@ public:
 LRESULT CFBEView::OnFind(WORD, WORD, HWND, BOOL&)
 {
 	m_fo.pattern = (const wchar_t*)Selection();
+	ResetSearchScope();
 	if(!m_find_dlg)
 		m_find_dlg = new CViewFindDlg(this);
 
@@ -3850,9 +3851,10 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 			? AU::Search::SearchDirection::Backward
 			: AU::Search::SearchDirection::Forward;
 		query.UnicodeProperties = m_fo.unicodeProperties;
+		query.Scope = m_fo.scope;
 
 		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
-		if (!m_document_search.Rebuild(Document(), generation, query))
+		if (!RebuildDocumentSearch(query, selection))
 			return false;
 		bool wrapped = false;
 		if (m_document_search.SelectFromRange(Document(), generation, selection, query.Direction, &wrapped) == NULL)
@@ -3883,13 +3885,74 @@ bool CFBEView::DoFindAll()
 			? AU::Search::SearchDirection::Backward
 			: AU::Search::SearchDirection::Forward;
 		query.UnicodeProperties = m_fo.unicodeProperties;
-		return m_document_search.Rebuild(
-			Document(), static_cast<std::uint64_t>(GetVersionNumber()), query);
+		query.Scope = m_fo.scope;
+		MSHTML::IHTMLTxtRangePtr selection(Document()->selection->createRange());
+		return selection && RebuildDocumentSearch(query, selection);
 	}
 	catch (const _com_error&)
 	{
 		return false;
 	}
+}
+
+bool CFBEView::HasTextSelection()
+{
+	try
+	{
+		if (!Document())
+			return false;
+		MSHTML::IHTMLTxtRangePtr range(Document()->selection->createRange());
+		return range && range->compareEndPoints(L"StartToEnd", range) != 0;
+	}
+	catch (const _com_error&)
+	{
+		return false;
+	}
+}
+
+void CFBEView::ResetSearchScope()
+{
+	m_has_find_scope_range = false;
+	m_find_scope_generation = 0;
+}
+
+bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection)
+{
+	const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
+	if (!m_document_search.Rebuild(Document(), generation, query))
+		return false;
+	if (query.Scope == AU::Search::SearchScope::WholeDocument)
+		return true;
+
+	AU::Search::SearchRange range;
+	if (m_has_find_scope_range && m_find_scope_generation == generation && m_find_scope_kind == query.Scope)
+	{
+		range = m_find_scope_range;
+	}
+	else
+	{
+		MSHTML::IHTMLTxtRangePtr scopeSelection(selection);
+		if (query.Scope == AU::Search::SearchScope::Selection)
+		{
+			if (!scopeSelection || scopeSelection->compareEndPoints(L"StartToEnd", scopeSelection) == 0)
+				return false;
+		}
+		else
+		{
+			MSHTML::IHTMLElementPtr section(SelectionStructSection());
+			if (!section)
+				return false;
+			scopeSelection = MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange();
+			scopeSelection->moveToElementText(section);
+		}
+		if (!m_document_search.TryGetSearchRange(generation, scopeSelection, &range) || range.Length == 0)
+			return false;
+		m_find_scope_range = range;
+		m_find_scope_generation = generation;
+		m_find_scope_kind = query.Scope;
+		m_has_find_scope_range = true;
+	}
+	return m_document_search.Rebuild(Document(), generation, query, NULL, &range);
 }
 
 LRESULT CFBEView::OnSelectElement(WORD, WORD wID, HWND, BOOL&) {

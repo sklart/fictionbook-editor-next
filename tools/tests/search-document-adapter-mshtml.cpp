@@ -87,11 +87,24 @@ int wmain()
 		coordinator.SelectResult(document, 44, 0) == NULL || coordinator.SelectResult(document, 45, 0) != NULL)) result = 16;
 	AU::Search::SearchRange tableOnly(coordinator.GetSnapshot().Text.find(L"table cell"), 10);
 	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &tableOnly) || coordinator.GetResults().GetCount() != 1)) result = 17;
+	// Editor scopes are converted to a snapshot range before matching.  A
+	// selection scope must exclude hits outside it for both literal and regex
+	// backends, while retaining normal result/navigation metadata.
+	query.Scope = AU::Search::SearchScope::Selection;
+	query.Mode = AU::Search::SearchMode::Literal;
+	query.Text = L"first";
+	// Include the paragraph separator as well: multiline regex may consume the
+	// CR before the LF depending on the MSHTML body-text representation.
+	AU::Search::SearchRange secondScope(coordinator.GetSnapshot().Text.find(L"second"), 8);
+	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &secondScope) || coordinator.GetResults().GetCount() != 0)) result = 20;
+	query.Text = L"second";
+	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &secondScope) || coordinator.GetResults().GetCount() != 1)) result = 21;
 
 	query.Mode = AU::Search::SearchMode::Regex;
+	query.Scope = AU::Search::SearchScope::CurrentSection;
 	query.Text = L"^second\\r?$";
 	query.Multiline = true;
-	if (!result && (!coordinator.Rebuild(document, 45, query) || coordinator.GetSession().GetHitCount() != 1)) result = 17;
+	if (!result && (!coordinator.Rebuild(document, 45, query, NULL, &secondScope) || coordinator.GetSession().GetHitCount() != 1)) result = 17;
 	query.Text = L"\\b\\x{043A}\\x{043E}\\x{0442}\\b";
 	query.UnicodeProperties = true;
 	if (!result && (!coordinator.Rebuild(document, 46, query) || coordinator.GetSession().GetHitCount() != 1)) result = 18;

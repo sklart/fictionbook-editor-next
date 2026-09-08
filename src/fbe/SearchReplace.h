@@ -19,9 +19,10 @@ public:
 	int			m_regexp;
 	int			m_dir;
 	int			m_unicode;
+	int			m_scope;
 	CEdit		m_text;
 
-	FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0) { }
+	FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0) { }
 
   HWND	GetDlgItem(int id) { return X_GetDlgItem(id); }
   virtual HWND X_GetDlgItem(int id) = 0;
@@ -79,6 +80,13 @@ public:
 		m_view->m_fo.flags = flags;
 		m_view->m_fo.fRegexp = m_regexp != 0;
 		m_view->m_fo.unicodeProperties = m_unicode != 0;
+		HWND scope = GetDlgItem(IDC_FIND_SCOPE);
+		if (scope)
+		{
+			const LRESULT selection = ::SendMessage(scope, CB_GETCURSEL, 0, 0);
+			if (selection != CB_ERR)
+				m_view->m_fo.scope = static_cast<AU::Search::SearchScope>(::SendMessage(scope, CB_GETITEMDATA, selection, 0));
+		}
 	}
 
 	void PutData()
@@ -88,7 +96,38 @@ public:
 		m_dir = (m_view->m_fo.flags & CFBEView::FRF_REVERSE) == 0;
 		m_regexp = m_view->m_fo.fRegexp;
 		m_unicode = m_view->m_fo.unicodeProperties;
+		m_scope = static_cast<int>(m_view->m_fo.scope);
 		DoDataExchange(FALSE);
+	}
+
+	void PopulateFindScopes()
+	{
+		HWND scope = GetDlgItem(IDC_FIND_SCOPE);
+		if (!scope)
+			return;
+		::SendMessage(scope, CB_RESETCONTENT, 0, 0);
+		const struct { LPCWSTR Text; AU::Search::SearchScope Value; } values[] = {
+			{ FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.scope_whole_document", L"Whole document"), AU::Search::SearchScope::WholeDocument },
+			{ FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.scope_current_section", L"Current section"), AU::Search::SearchScope::CurrentSection }
+		};
+		for (int index = 0; index != _countof(values); ++index)
+		{
+			const LRESULT item = ::SendMessage(scope, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(values[index].Text));
+			::SendMessage(scope, CB_SETITEMDATA, item, static_cast<LPARAM>(values[index].Value));
+		}
+		if (m_view->HasTextSelection())
+		{
+			const CString selectionText = FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.scope_selection", L"Selection");
+			const LRESULT item = ::SendMessage(scope, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(selectionText)));
+			::SendMessage(scope, CB_SETITEMDATA, item, static_cast<LPARAM>(AU::Search::SearchScope::Selection));
+		}
+		for (LRESULT index = 0, count = ::SendMessage(scope, CB_GETCOUNT, 0, 0); index < count; ++index)
+			if (static_cast<int>(::SendMessage(scope, CB_GETITEMDATA, index, 0)) == m_scope)
+			{
+				::SendMessage(scope, CB_SETCURSEL, index, 0);
+				return;
+			}
+		::SendMessage(scope, CB_SETCURSEL, 0, 0);
 	}
 
   void	LoadHistoryImp(const TCHAR *path,CRegKey& rk,HWND hCB,CString& first) {
@@ -164,6 +203,11 @@ public:
 
 		// Set fields
 		PutData();
+		if (!isReplaceDialog)
+		{
+			SetRuntimeText(IDC_FIND_SCOPE_LABEL, L"fbe.dialog.idd_find.scope", L"Scope:");
+			PopulateFindScopes();
+		}
 
 		return 0;
 	}
@@ -245,6 +289,7 @@ public:
 	BEGIN_MSG_MAP(CFindDlgBase)
 		COMMAND_ID_HANDLER(ID_FIND_NEXT, OnDoFind)
 		COMMAND_ID_HANDLER(IDC_FIND_ALL, OnDoFindAll)
+		COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_SELCHANGE, OnScopeChanged)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 		CHAIN_MSG_MAP_ALT(FRBase, 1)
 	END_MSG_MAP()
@@ -272,6 +317,12 @@ public:
 			SaveHistory();
 			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->FindAllResultStatus());
 		}
+		return 0;
+	}
+
+	LRESULT OnScopeChanged(WORD, WORD, HWND, BOOL&)
+	{
+		m_view->ResetSearchScope();
 		return 0;
 	}
 
