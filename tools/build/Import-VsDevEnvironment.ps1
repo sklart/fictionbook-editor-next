@@ -35,11 +35,27 @@ if ($PlatformToolset -eq "v143") {
     $vswhereArguments += @("-version", "[17.0,18.0)")
 }
 $installationPaths = @(& $vswhere @vswhereArguments -property installationPath)
+$installationPath = $null
+# CMake dependencies and first-party MSBuild must prefer the same VS instance.
+# Resolve-VsCmake carries the v143/14.44 policy and active-instance affinity.
+try {
+    $resolvedCmake = & (Join-Path $PSScriptRoot 'Resolve-VsCmake.ps1') -PlatformToolset $PlatformToolset
+    if ($resolvedCmake -and $resolvedCmake.InstallationPath -and
+        $installationPaths -contains $resolvedCmake.InstallationPath) {
+        $installationPath = $resolvedCmake.InstallationPath
+    }
+}
+catch {
+    # A compiler-only VS installation may omit CMake; retain the existing
+    # workload-based selection as a compatible fallback.
+}
+if (-not $installationPath) {
 $installationPath = $installationPaths | Where-Object {
     Get-ChildItem -LiteralPath (Join-Path $_ "VC\Tools\MSVC") -Directory -ErrorAction SilentlyContinue |
         Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName "atlmfc\lib\x86\uafxcwd.lib") } |
         Select-Object -First 1
 } | Select-Object -First 1
+}
 if (-not $installationPath) {
     $installationPath = $installationPaths | Select-Object -First 1
 }
