@@ -5,16 +5,17 @@ original FB2 and makes every later Save fail closed.
 #>
 [CmdletBinding()]
 param(
-    [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
+    [string]$FbeExe,
     [int]$TimeoutSeconds = 90,
     [ValidateSet('drop-row-after-normalize', 'change-colspan-after-normalize')]
     [string]$Fault = 'drop-row-after-normalize'
 )
 
 $ErrorActionPreference = 'Stop'
+$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if ([string]::IsNullOrWhiteSpace($FbeExe)) { $FbeExe = Join-Path $repositoryRoot 'out\Release\FBE.exe' }
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $directory = Join-Path $repositoryRoot ('out\tests\fbe table failure ' + [guid]::NewGuid().ToString('N'))
 $runtime = Join-Path $directory 'runtime'
 $fixture = Join-Path $directory 'table.fb2'
@@ -62,8 +63,10 @@ try {
     # executable/Data root and also exercises paths containing spaces.
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $runtime -Recurse -Force
-    "[Portable]`r`nDataPath=Data`r`n`r`n[Diagnostics]`r`nTraceNextLaunch=1`r`n" |
-        Set-Content -LiteralPath $portableIni -Encoding utf8NoBOM
+    [IO.File]::WriteAllText(
+        $portableIni,
+        "[Portable]`r`nDataPath=Data`r`n`r`n[Diagnostics]`r`nTraceNextLaunch=1`r`n",
+        [Text.UTF8Encoding]::new($false))
 @'
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>fault</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>fault-table-test</id><version>1.0</version></document-info></description><body><section><table id="fault-table"><tr><td>one</td><td>two</td></tr><tr><td>three</td><td>four</td></tr></table></section></body></FictionBook>
