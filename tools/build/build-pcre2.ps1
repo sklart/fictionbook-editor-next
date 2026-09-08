@@ -80,7 +80,10 @@ if (-not $cmake) {
     throw "Не найден cmake.exe."
 }
 
-$generator = Get-CMakeVisualStudioGenerator -Toolset $PlatformToolset -VisualStudioProductLineVersion $visualStudioProductLineVersion
+$vs = & (Join-Path $PSScriptRoot 'Resolve-VsCmake.ps1') -PlatformToolset $PlatformToolset
+$installationPath = $vs.InstallationPath
+$cmake = $vs.CMake
+$generator = $vs.Generator
 $generatorSuffix = if ($generator -eq "Visual Studio 17 2022") { "vs2022" } else { "vs2026" }
 $toolsetSuffix = if ($PlatformToolset) { $PlatformToolset } else { "default-toolset" }
 $buildDir = Join-Path $buildRoot "$Configuration-$generatorSuffix-$toolsetSuffix"
@@ -98,6 +101,11 @@ Write-Host "PCRE2: cmake.exe = $cmake"
 Write-Host "PCRE2: каталог сборки = $buildDir"
 Write-Host "PCRE2: каталог установки = $installDir"
 
+# PCRE2 uses the same generated-tree fingerprint contract as image codecs.
+# This removes only its own build/install output when an old VS instance or
+# MSVC minor toolset would otherwise be reused.
+& (Join-Path $PSScriptRoot 'CmakeBuildTree.ps1') -Action Prepare -DependencyName 'pcre2' `
+	-BuildDirectory $buildDir -InstallDirectory $installDir -Vs $vs -PlatformToolset $PlatformToolset | Out-Host
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 
@@ -234,8 +242,9 @@ function Test-PreparedPcre2Fingerprint {
     if ($metadata.configuration -ne $Configuration -or $metadata.generator -ne $generator -or
         $metadata.platformToolset -ne $PlatformToolset -or $metadata.commit -ne $pcre2Commit -or
         $metadata.codeUnitWidth -ne $pcre2CodeUnitWidth -or $metadata.unicode -ne $pcre2Unicode -or
-        $metadata.jit -ne $pcre2Jit) {
-        throw "PCRE2 cache имеет несовместимый fingerprint (configuration/generator/toolset/commit/width/unicode/jit)."
+        $metadata.jit -ne $pcre2Jit -or $metadata.installationPath -ne $vs.InstallationPath -or
+		$metadata.vcToolsVersion -ne $vs.VCToolsVersion) {
+		throw "PCRE2 cache имеет несовместимый fingerprint (configuration/generator/toolset/VS/commit/width/unicode/jit)."
     }
 }
 
@@ -256,6 +265,8 @@ try {
         "-B", $buildDir,
         "-G", $generator,
         "-A", "Win32",
+		"-T", $vs.GeneratorToolset,
+		"-D", "CMAKE_GENERATOR_INSTANCE=$($vs.GeneratorInstance)",
         "-D", "CMAKE_INSTALL_PREFIX=$installDir",
         "-D", "CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>",
         "-D", "BUILD_SHARED_LIBS=OFF",
@@ -268,15 +279,13 @@ try {
         "-D", "PCRE2_SUPPORT_UNICODE=ON",
         "-D", "PCRE2_SUPPORT_JIT=ON"
     )
-    if ($PlatformToolset) {
-        $configureArgs += @("-T", $PlatformToolset)
-    }
-
     Write-Host "PCRE2: конфигурация CMake"
     $exitCode = Invoke-ExternalCommand -FilePath $cmake -ArgumentList $configureArgs -QuietOutput:$Quiet
     if ($exitCode -ne 0) {
         throw "Конфигурация PCRE2 завершилась с кодом $exitCode."
     }
+	& (Join-Path $PSScriptRoot 'CmakeBuildTree.ps1') -Action Write -DependencyName 'pcre2' `
+		-BuildDirectory $buildDir -InstallDirectory $installDir -Vs $vs -PlatformToolset $PlatformToolset | Out-Host
 
     foreach ($target in @("pcre2-16-static")) {
         Write-Host "PCRE2: сборка цели $target"
@@ -310,6 +319,8 @@ try {
         configuration = $Configuration
         generator = $generator
         platformToolset = $PlatformToolset
+		installationPath = $vs.InstallationPath
+		vcToolsVersion = $vs.VCToolsVersion
         commit = $pcre2Commit
         codeUnitWidth = $pcre2CodeUnitWidth
         unicode = $pcre2Unicode
