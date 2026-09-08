@@ -39,7 +39,7 @@ int wmain()
 	document.CreateInstance(L"htmlfile");
 	IPersistStreamInitPtr persist(document);
 	if (!document || !persist || FAILED(persist->InitNew()) || !WriteHtml(document,
-		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img src='about:blank'>inline-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
+		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img src='about:blank'>inline-after</p><div class='image'><img src='about:blank'></div><p>block-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
 		return 2;
 
 	int result = 0;
@@ -89,6 +89,10 @@ int wmain()
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
 		coordinator.CreateResultRange(document, 44, 0, resultRange) == false || !resultRange ||
 		wcscmp(static_cast<LPCWSTR>(_bstr_t(resultRange->text)), L"inline-after") != 0)) result = 35;
+	query.Text = L"block-after";
+	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
+		coordinator.CreateResultRange(document, 44, 0, resultRange) == false || !resultRange ||
+		wcscmp(static_cast<LPCWSTR>(_bstr_t(resultRange->text)), L"block-after") != 0)) result = 36;
 	query.Text = L"table cell";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetSession().GetHitCount() != 1 ||
 		coordinator.GetResults().GetCount() != 1 || coordinator.GetResults().GetAt(0)->Preview.find(L"table cell") == std::wstring::npos ||
