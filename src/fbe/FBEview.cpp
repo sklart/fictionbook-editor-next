@@ -3908,6 +3908,9 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 			: AU::Search::SearchDirection::Forward;
 		query.UnicodeProperties = m_fo.unicodeProperties;
 		query.Scope = m_fo.scope;
+		// Legacy regexp searched paragraphs independently. The body snapshot
+		// joins them with newlines, so PCRE2 multiline preserves ^/$ behaviour.
+		query.Multiline = mode == AU::Search::SearchMode::Regex;
 
 		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
 		if (!RebuildDocumentSearch(query, selection))
@@ -3954,6 +3957,7 @@ bool CFBEView::DoFindAll(bool showResults, CString* errorText)
 			: AU::Search::SearchDirection::Forward;
 		query.UnicodeProperties = m_fo.unicodeProperties;
 		query.Scope = m_fo.scope;
+		query.Multiline = query.Mode == AU::Search::SearchMode::Regex;
 		MSHTML::IHTMLTxtRangePtr selection(Document()->selection->createRange());
 		std::wstring nativeError;
 		if (!selection || !RebuildDocumentSearch(query, selection, &nativeError))
