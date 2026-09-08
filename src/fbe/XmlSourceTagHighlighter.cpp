@@ -58,6 +58,9 @@ bool XmlSourceTagHighlighter::UpdateHighlight(const XmlTagHighlightOptions& opti
 	XmlTagMatcher& matcher = Matcher();
 	if (matcherDirty || diagnosticsChanged) RefreshDiagnostics(options, matcher);
 	ClearCurrentRanges();
+	#ifdef FBE_XML_TAG_HIGHLIGHTER_TEST
+	++_state->testCounters.resultLookupCount;
+	#endif
 	const XmlTagMatchResult result = matcher.ResultAt(static_cast<XmlBytePosition>(caret));
 	if (!options.enabled || result.state != XmlTagMatchState::Matched) { _state->cachedCaret = caret; _state->cachedHighlightEnabled = options.enabled; _state->cachedHighlightMode = static_cast<int>(options.mode); _state->cachedHighlightAttributes = options.highlightAttributes; _state->cachedShowErrors = options.showErrors; _state->cachedMatch = false; return false; }
 	FillRange(EDITOR_INDICATOR_TAG_MATCH, options.mode == XmlTagHighlightMode::FullTag ? result.currentTagRange : result.currentNameRange, _state->tagRanges);
@@ -72,6 +75,10 @@ XmlTagMatcher& XmlSourceTagHighlighter::Matcher()
 		// SCI_GETTEXT is intentionally behind the modification revision check.
 		// Ordinary caret, scroll and repaint updates use the cached matcher.
 		const std::string documentText = _pEditView->getText();
+		#ifdef FBE_XML_TAG_HIGHLIGHTER_TEST
+		++_state->testCounters.documentReadCount;
+		++_state->testCounters.matcherBuildCount;
+		#endif
 		delete _state->cachedMatcher;
 		_state->cachedMatcher = new XmlTagMatcher(documentText);
 		_state->matcherRevision = _state->documentRevision;
@@ -81,6 +88,9 @@ XmlTagMatcher& XmlSourceTagHighlighter::Matcher()
 
 void XmlSourceTagHighlighter::RefreshDiagnostics(const XmlTagHighlightOptions& options, XmlTagMatcher& matcher)
 {
+	#ifdef FBE_XML_TAG_HIGHLIGHTER_TEST
+	++_state->testCounters.diagnosticRefreshCount;
+	#endif
 	ClearDiagnosticRanges();
 	if (!options.showErrors) return;
 	for (const XmlTagMatchResult& diagnostic : matcher.Diagnostics()) if (IsStructuralDiagnostic(diagnostic.state)) {

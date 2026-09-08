@@ -45,4 +45,4 @@ if ($matcher -notmatch 'std::upper_bound\s*\(') {
     throw 'ResultAt must use binary search over ordered XML tokens.'
 }
 
-Write-Host 'XML Source cache/performance contract passed: 1000 unchanged caret moves require zero adapter SCI_GETTEXT calls, zero matcher rebuilds and zero diagnostic redraws by revision guard.'
+Write-Host 'XML Source cache/performance source contract passed.'

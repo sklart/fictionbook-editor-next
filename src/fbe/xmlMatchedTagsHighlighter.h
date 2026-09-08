@@ -80,6 +80,17 @@ private:
 	ScintillaDirectCall m_directCall;
 };
 
+#ifdef FBE_XML_TAG_HIGHLIGHTER_TEST
+// Test-only instrumentation for the Scintilla integration regression.  It is
+// compiled out of the editor and never writes production logs.
+struct XmlTagHighlighterTestCounters {
+	unsigned long long documentReadCount = 0;
+	unsigned long long matcherBuildCount = 0;
+	unsigned long long diagnosticRefreshCount = 0;
+	unsigned long long resultLookupCount = 0;
+};
+#endif
+
 struct XmlMatchedTagsState {
 	XmlMatchedTagsState() = default;
 	struct IndicatorRange { int indicator; int start; int end; };
@@ -97,6 +108,9 @@ struct XmlMatchedTagsState {
 	bool cachedHighlightAttributes = false;
 	bool cachedShowErrors = false;
 	XmlTagMatcher* cachedMatcher = nullptr;
+#ifdef FBE_XML_TAG_HIGHLIGHTER_TEST
+	XmlTagHighlighterTestCounters testCounters;
+#endif
 	~XmlMatchedTagsState() { delete cachedMatcher; }
 	XmlMatchedTagsState(const XmlMatchedTagsState&) = delete;
 	XmlMatchedTagsState& operator=(const XmlMatchedTagsState&) = delete;
