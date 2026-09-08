@@ -26,5 +26,22 @@ int main()
 	{ XmlTagMatcher m("<section"); Check(m.ResultAt(1).state == XmlTagMatchState::Incomplete, "incomplete tag"); }
 	{ XmlTagMatcher m("<section attr=\"x"); Check(m.ResultAt(1).state == XmlTagMatchState::Incomplete, "incomplete quoted attr"); }
 	{ const std::string text = u8"Русский текст <section><p>Текст</p></section>"; XmlTagMatcher m(text); const XmlTagToken* t = First(m, XmlTagTokenType::OpeningTag); Check(t && t->fullRange.start == std::string(u8"Русский текст ").size(), "UTF-8 byte offset before tag"); }
+	{
+		std::string large;
+		std::vector<size_t> offsets;
+		offsets.reserve(12000);
+		for (int i = 0; i < 12000; ++i) {
+			offsets.push_back(large.size());
+			large += "<item attr=\"quoted\"/>";
+		}
+		XmlTagMatcher m(large);
+		Check(m.Tokens().size() == 12000, "large ResultAt token array");
+		for (const size_t offset : offsets) {
+			for (const size_t relative : { size_t(0), size_t(1), size_t(3), size_t(5), size_t(6), size_t(10), size_t(11), size_t(14), size_t(18), size_t(19), size_t(20) }) {
+				Check(m.ResultAt(offset + relative).state == XmlTagMatchState::SelfClosing,
+					"ResultAt handles tag, name, whitespace, attribute, quoted value, slash and closing bracket");
+			}
+		}
+	}
 	return failures ? 1 : 0;
 }
