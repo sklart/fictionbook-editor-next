@@ -2865,6 +2865,9 @@ bool CFBEView::DoSearchRegexp(bool fMore)
 
 bool CFBEView::DoSearchStd(bool fMore)
 {
+	if (DoSearchStdNative(fMore))
+		return true;
+
 	try
 	{
 		m_fo.ClearMatch();
@@ -3843,6 +3846,44 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	::SendMessage(m_frame, AU::WM_TRACKPOPUPMENU, 0, (LPARAM)&tp);
 
 	return VARIANT_TRUE;
+}
+
+bool CFBEView::DoSearchStdNative(bool fMore)
+{
+	try
+	{
+		if (!Document() || GetVersionNumber() < 0)
+			return false;
+		MSHTML::IHTMLTxtRangePtr selection(Document()->selection->createRange());
+		if (!fMore && m_is_start)
+			selection = m_is_start->duplicate();
+		if (!selection)
+			return false;
+
+		AU::Search::SearchQuery query;
+		query.Text = static_cast<LPCWSTR>(m_fo.pattern);
+		query.Mode = AU::Search::SearchMode::Literal;
+		query.MatchCase = (m_fo.flags & FRF_CASE) != 0;
+		query.WholeWord = (m_fo.flags & FRF_WHOLE) != 0;
+		query.Direction = (m_fo.flags & FRF_REVERSE)
+			? AU::Search::SearchDirection::Backward
+			: AU::Search::SearchDirection::Forward;
+
+		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
+		if (!m_document_search.Rebuild(Document(), generation, query))
+			return false;
+		bool wrapped = false;
+		if (m_document_search.SelectFromRange(Document(), generation, selection, query.Direction, &wrapped) == NULL)
+			return false;
+		MSHTML::IHTMLTxtRangePtr found(Document()->selection->createRange());
+		PositionFoundRange(found);
+		NotifyWrappedSearch(wrapped);
+		return true;
+	}
+	catch (const _com_error&)
+	{
+		return false;
+	}
 }
 
 LRESULT CFBEView::OnSelectElement(WORD, WORD wID, HWND, BOOL&) {

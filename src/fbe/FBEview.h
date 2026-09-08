@@ -18,6 +18,7 @@
 #include "StartupTrace.h"
 #include "BinaryFileSave.h"
 #include "BinarySaveNotification.h"
+#include "DocumentSearchCoordinator.h"
 
 extern CSettings _Settings;
 
@@ -263,6 +264,7 @@ protected:
 
 	FindReplaceOptions m_fo;
 	MSHTML::IHTMLTxtRangePtr m_is_start;
+	DocumentSearchCoordinator m_document_search;
 
 	struct pElAdjacent
 	{
@@ -286,6 +288,7 @@ protected:
 
 	void SelMatch(MSHTML::IHTMLTxtRange* tr, AU::ReMatch rm);
 	void PositionFoundRange(MSHTML::IHTMLTxtRange* range);
+	bool DoSearchStdNative(bool fMore);
 	MSHTML::IHTMLElementPtr SelectionContainerImp();
 
 public:
