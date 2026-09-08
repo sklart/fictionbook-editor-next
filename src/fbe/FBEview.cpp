@@ -59,8 +59,8 @@ public:
 	void Close()
 	{
 		if (!m_active) return;
-		m_active = false;
 		m_view.EndUndoUnit();
+		m_active = false;
 	}
 
 private:
@@ -1542,14 +1542,13 @@ bool CFBEView::InsertPoem(bool fCheck)
 		}
 		while((sibling = sibling->nextSibling));
 
-		const bool emptySelection = !U::scmp(rng->text.GetBSTR(), L"");
+		CString selectedText(rng->text.GetBSTR());
+		const bool emptySelection = selectedText.Trim().IsEmpty();
 		MSHTML::IHTMLElementPtr ne(Document()->createElement(L"<DIV class=poem>"));
 
 		if(emptySelection)
 		{
-			MSHTML::IHTMLElementPtr se(Document()->createElement(L"<DIV class=stanza>"));
-			se->innerHTML = L"<P>&nbsp;</P>";
-			ne->innerHTML = se->outerHTML;
+			ne->innerHTML = L"<DIV class=stanza><P>&nbsp;</P></DIV>";
 		}
 		else
 		{

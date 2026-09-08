@@ -43,5 +43,11 @@ if(-not $cite.Contains('createElement(L"<DIV class=cite>")')) { throw 'InsertCit
 foreach($required in @('class CMarkupUndoUnitScope', '~CMarkupUndoUnitScope()', 'try { m_view.EndUndoUnit(); }', 'catch (_com_error&) { }')) {
     if($source -notlike "*$required*") { throw "Markup undo RAII misses: $required" }
 }
+$close = [regex]::Match($source, 'void Close\(\)\s*\{(?<body>.*?)\n\s*\}', [Text.RegularExpressions.RegexOptions]::Singleline)
+if(-not $close.Success) { throw 'CMarkupUndoUnitScope::Close was not found.' }
+$closeBody = $close.Groups['body'].Value
+if($closeBody.IndexOf('m_view.EndUndoUnit();') -gt $closeBody.IndexOf('m_active = false;')) {
+    throw 'Close deactivates the scope before EndUndoUnit succeeds.'
+}
 
 Write-Host 'Cite/Poem Undo contract passed.'

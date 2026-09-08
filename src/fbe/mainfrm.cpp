@@ -3931,14 +3931,20 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	if (IsFbeTestScenario(L"cite-poem-undo"))
 	{
 		wchar_t operation[16] = {};
+		wchar_t target[16] = {};
 		const DWORD operationLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_OPERATION", operation, _countof(operation));
+		const DWORD targetLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TARGET", target, _countof(target));
 		const bool cite = operationLength == 4 && wcscmp(operation, L"cite") == 0;
 		const bool poem = operationLength == 4 && wcscmp(operation, L"poem") == 0;
-		CStringA header("operation\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tundo_empty_divs\tsaved\tresult\r\n");
+		const wchar_t* targetClass = targetLength ? target : L"section";
+		const CStringA targetName((CW2A(targetClass)));
+		const bool emptySelection = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_EMPTY_SELECTION", nullptr, 0) != 0;
+		const bool repeat = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_REPEAT", nullptr, 0) != 0;
+		CStringA header("operation\ttarget\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tempty_divs\tempty_paragraphs\tempty_stanzas\tsaved\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto writeFailure = [&](const char* reason)
 		{
-			CStringA row; row.Format("%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t%s\r\n", cite ? "cite" : poem ? "poem" : "unknown", reason);
+			CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t%s\r\n", cite ? "cite" : poem ? "poem" : "unknown", (LPCSTR)targetName, reason);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1);
 		};
 		if (!cite && !poem) { writeFailure("invalid-operation"); return 0; }
@@ -3947,7 +3953,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		MSHTML::IHTMLElementPtr container;
 		for (long index = 0; divs && index < divs->length; ++index) {
 			MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
-			if (div && U::scmp(div->className, L"section") == 0) { container = div; break; }
+			if (div && U::scmp(div->className, targetClass) == 0) { container = div; break; }
 		}
 		MSHTML::IHTMLElementCollectionPtr paragraphs(container ? MSHTML::IHTMLElement2Ptr(container)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
 		if (!body || !container || !paragraphs || paragraphs->length == 0) { writeFailure("missing-paragraph"); return 0; }
@@ -3958,11 +3964,26 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		if (!first || !last || !range || !rangeEnd) { writeFailure("selection-create"); return 0; }
 		m_doc->m_body.SetFocus();
 		range->moveToElementText(first); range->collapse(VARIANT_TRUE); range->move(L"character", 1);
-		rangeEnd->moveToElementText(last); rangeEnd->collapse(VARIANT_FALSE); rangeEnd->move(L"character", -1);
-		// Both boundaries must be inside their P elements. MSHTML otherwise
-		// reports the enclosing DIV as parentElement(), and
-		// ExpandTxtRangeToParagraphs rejects the structural selection.
-		range->setEndPoint(L"EndToEnd", rangeEnd); range->select();
+		if (!emptySelection) {
+			rangeEnd->moveToElementText(last); rangeEnd->collapse(VARIANT_FALSE); rangeEnd->move(L"character", -1);
+			// Both boundaries must be inside their P elements. MSHTML otherwise
+			// reports the enclosing DIV as parentElement(), and
+			// ExpandTxtRangeToParagraphs rejects the structural selection.
+			range->setEndPoint(L"EndToEnd", rangeEnd);
+		}
+		range->select();
+		auto countEmpty = [&](const wchar_t* tagName, const wchar_t* className = nullptr) -> long
+		{
+			long count = 0;
+			MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(tagName));
+			for (long index = 0; elements && index < elements->length; ++index) {
+				MSHTML::IHTMLElementPtr element(elements->item(_variant_t(index), _variant_t()));
+				MSHTML::IHTMLElementCollectionPtr children(element ? element->children : MSHTML::IHTMLElementCollectionPtr());
+				if (element && (!className || U::scmp(element->className, className) == 0) && (!children || children->length == 0) && CString((const wchar_t*)element->innerHTML).Trim().IsEmpty()) ++count;
+			}
+			return count;
+		};
+		const long beforeEmptyDivs = countEmpty(L"DIV"), beforeEmptyParagraphs = countEmpty(L"P"), beforeEmptyStanzas = countEmpty(L"DIV", L"stanza");
 		const CString before((const wchar_t*)body->innerHTML);
 		const long beforeParagraphs = paragraphs->length;
 		const bool checkAllowed = cite ? m_doc->m_body.InsertCite(true) : m_doc->m_body.InsertPoem(true);
@@ -3989,23 +4010,34 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			return count;
 		};
 		const long citeCount = countClass(L"cite"), poemCount = countClass(L"poem"), stanzaCount = countClass(L"stanza");
+		const long emptyDivsAfterRedo = countEmpty(L"DIV"), emptyParagraphsAfterRedo = countEmpty(L"P"), emptyStanzasAfterRedo = countEmpty(L"DIV", L"stanza");
 		m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 		const CString restored((const wchar_t*)body->innerHTML);
-		long emptyDivs = 0;
-		MSHTML::IHTMLElementCollectionPtr undoDivs(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
-		for (long index = 0; undoDivs && index < undoDivs->length; ++index) {
-			MSHTML::IHTMLElementPtr div(undoDivs->item(_variant_t(index), _variant_t()));
-			MSHTML::IHTMLElementCollectionPtr children(div ? div->children : MSHTML::IHTMLElementCollectionPtr());
-			if (div && CString((const wchar_t*)div->innerText).Trim().IsEmpty() && (!children || children->length == 0)) ++emptyDivs;
-		}
+		const long undoEmptyDivs = countEmpty(L"DIV"), undoEmptyParagraphs = countEmpty(L"P"), undoEmptyStanzas = countEmpty(L"DIV", L"stanza");
+		const long emptyDivs = (emptyDivsAfterRedo > undoEmptyDivs ? emptyDivsAfterRedo : undoEmptyDivs) - beforeEmptyDivs;
+		const long emptyParagraphs = (emptyParagraphsAfterRedo > undoEmptyParagraphs ? emptyParagraphsAfterRedo : undoEmptyParagraphs) - beforeEmptyParagraphs;
+		const long emptyStanzas = (emptyStanzasAfterRedo > undoEmptyStanzas ? emptyStanzasAfterRedo : undoEmptyStanzas) - beforeEmptyStanzas;
 		const bool undone = before == undo && before == restored;
 		const bool redone = after == redo;
+		bool sequential = true;
+		if (repeat) {
+			range->select();
+			const bool secondApplied = cite ? m_doc->m_body.InsertCite(false) : m_doc->m_body.InsertPoem(false);
+			const CString secondAfter((const wchar_t*)body->innerHTML);
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			const CString secondUndo((const wchar_t*)body->innerHTML);
+			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+			const CString secondRedo((const wchar_t*)body->innerHTML);
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			const CString secondRestored((const wchar_t*)body->innerHTML);
+			sequential = secondApplied && before == secondUndo && secondAfter == secondRedo && before == secondRestored;
+		}
 		const bool structure = cite ? citeCount == 1 && poemCount == 0 : poemCount == 1 && stanzaCount >= 1;
 		const bool saved = m_doc->Save();
-		const bool passed = undone && redone && structure && emptyDivs == 0 && saved;
+		const bool passed = undone && redone && sequential && structure && emptyDivs == 0 && emptyParagraphs == 0 && emptyStanzas == 0 && saved;
 		CStringA row;
-		row.Format("%s\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%ld\t%d\t%s\r\n", cite ? "cite" : "poem", checkAllowed, undone, redone,
-			beforeParagraphs, citeCount, poemCount, stanzaCount, emptyDivs, saved, passed ? "pass" : "fail");
+		row.Format("%s\t%s\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%d\t%s\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, checkAllowed, undone, redone, sequential,
+			beforeParagraphs, citeCount, poemCount, stanzaCount, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"table-structural"))

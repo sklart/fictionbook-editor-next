@@ -32,28 +32,38 @@ try {
     $cases = @(
         @{ id = 'cite-one'; operation = 'cite'; paragraphs = @('Text') },
         @{ id = 'cite-many'; operation = 'cite'; paragraphs = @('First', 'Second') },
+        @{ id = 'cite-sequential'; operation = 'cite'; repeat = $true; paragraphs = @('Text') },
+        @{ id = 'cite-epigraph'; operation = 'cite'; target = 'epigraph'; body = '<epigraph><p>Epigraph text</p></epigraph><section><p>Anchor</p></section>' },
         @{ id = 'poem-one'; operation = 'poem'; paragraphs = @('Line') },
+        @{ id = 'poem-sequential'; operation = 'poem'; repeat = $true; paragraphs = @('Line') },
         @{ id = 'poem-lines'; operation = 'poem'; paragraphs = @('First line', 'Second line') },
-        @{ id = 'poem-stanzas'; operation = 'poem'; paragraphs = @('One', '', 'Two', 'Three') }
+        @{ id = 'poem-stanzas'; operation = 'poem'; paragraphs = @('One', '', 'Two', 'Three') },
+        @{ id = 'poem-in-cite'; operation = 'poem'; target = 'cite'; body = '<section><cite><p>Quoted line</p></cite><p>Anchor</p></section>' },
+        @{ id = 'poem-empty-selection'; operation = 'poem'; emptySelection = $true; paragraphs = @([string][char]160) }
     )
     foreach($case in $cases) {
-        $paragraphs = ($case.paragraphs | ForEach-Object { "<p>$([Security.SecurityElement]::Escape($_))</p>" }) -join ''
+        $expectedTarget = if($case.ContainsKey('target')) { $case.target } else { 'section' }
+        $paragraphs = if($case.ContainsKey('paragraphs')) { ($case.paragraphs | ForEach-Object { "<p>$([Security.SecurityElement]::Escape($_))</p>" }) -join '' } else { '' }
+        $body = if($case.ContainsKey('body')) { $case.body } else { "<section>$paragraphs</section>" }
         $fixture = Join-Path $directory ($case.id + '.fb2')
         $report = Join-Path $directory ($case.id + '.tsv')
-        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body><section>$paragraphs</section></body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
-        $oldMode, $oldScenario, $oldOperation = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION
+        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$body</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
+        $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldEmptySelection, $oldRepeat = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_EMPTY_SELECTION, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'cite-poem-undo'; $env:FBE_NEXT_TEST_STRUCTURE_OPERATION = $case.operation
+            $env:FBE_NEXT_TEST_STRUCTURE_TARGET = $expectedTarget
+            $env:FBE_NEXT_TEST_STRUCTURE_EMPTY_SELECTION = if($case.ContainsKey('emptySelection')) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_STRUCTURE_REPEAT = if($case.ContainsKey('repeat')) { '1' } else { $null }
             $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE timed out for $($case.id)." }
             if($process.ExitCode -ne 0) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         }
         finally {
-            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION = $oldMode, $oldScenario, $oldOperation
+            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_EMPTY_SELECTION, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT = $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldEmptySelection, $oldRepeat
         }
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1) { throw "Missing live MSHTML report for $($case.id)." }
-        if($row.operation -ne $case.operation -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.undo_empty_divs -ne '0' -or $row.saved -ne '1' -or $row.result -ne 'pass') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+        if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.saved -ne '1' -or $row.result -ne 'pass') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
         if($case.operation -eq 'cite' -and ([int]$row.after_cites -ne 1 -or [int]$row.after_poems -ne 0)) { throw "Cite structure is wrong for $($case.id)." }
         if($case.operation -eq 'poem' -and ([int]$row.after_poems -ne 1 -or [int]$row.after_stanzas -lt 1)) { throw "Poem structure is wrong for $($case.id)." }
         Assert-Fb2Schema $fixture
