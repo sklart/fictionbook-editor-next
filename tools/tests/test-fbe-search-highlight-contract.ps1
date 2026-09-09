@@ -17,6 +17,8 @@ Assert-Contains $source 'WS_EX_LAYERED\s*\|\s*WS_EX_TRANSPARENT' 'non-interactiv
 Assert-Contains $source 'LWA_COLORKEY' 'colour-key transparency'
 Assert-Contains $source 'CreateResultRange\(' 'Search Core result-to-range mapping'
 Assert-Contains $source 'ClearSearchHighlights\(\);\s*\r?\n\s*if \(!m_ignore_changes\)' 'highlight invalidation on editor mutation'
+Assert-Contains $header 'WM_MOUSEWHEEL, OnSearchHighlightScroll' 'event-driven wheel refresh'
+Assert-Contains $source 'UpdateSearchHighlightsForScroll\(\);\s*\r?\n\s*handled = FALSE' 'event-driven scroll overlay refresh'
 
 $overlay = [regex]::Match($source, 'class\s+CSearchHighlightOverlay\s*:\s*public.*?^};', [Text.RegularExpressions.RegexOptions]::Singleline -bor [Text.RegularExpressions.RegexOptions]::Multiline).Value
 if ([string]::IsNullOrWhiteSpace($overlay)) {

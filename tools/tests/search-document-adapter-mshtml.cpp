@@ -76,6 +76,16 @@ int wmain()
 	MSHTML::IHTMLTxtRangePtr resultRange;
 	if (!result && (!coordinator.CreateResultRange(document, 43, 0, resultRange) || !resultRange ||
 		wcsstr(static_cast<LPCWSTR>(_bstr_t(resultRange->text)), L"second") == NULL)) result = 34;
+	query.Mode = AU::Search::SearchMode::Regex;
+	query.Multiline = true;
+	query.Text = L"first\\r?\\n(?:Section one\\r?\\n)?second";
+	if (!result && (!coordinator.Rebuild(document, 43, query) || coordinator.GetResults().GetCount() != 1 ||
+		!coordinator.CreateResultRange(document, 43, 0, resultRange) || !resultRange ||
+		wcsstr(static_cast<LPCWSTR>(_bstr_t(resultRange->htmlText)), L"P") == NULL)) result = 53;
+	query.Mode = AU::Search::SearchMode::Literal;
+	query.Multiline = false;
+	query.Text = L"second";
+	if (!result && !coordinator.Rebuild(document, 43, query)) result = 54;
 	AU::Search::SearchRange selectionScope;
 	MSHTML::IHTMLTxtRangePtr bodySelection(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
 	bodySelection->collapse(VARIANT_TRUE);
@@ -89,6 +99,34 @@ int wmain()
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
 		coordinator.CreateResultRange(document, 44, 0, resultRange) == false || !resultRange ||
 		wcscmp(static_cast<LPCWSTR>(_bstr_t(resultRange->text)), L"inline-after") != 0)) result = 35;
+	if (!result)
+	{
+		resultRange->text = L"after-replaced";
+		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
+		html.MakeUpper();
+		if (html.Find(L"IMG") < 0 || html.Find(L"AFTER-REPLACED") < 0) result = 47;
+	}
+	query.Text = L"image before";
+	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
+		!coordinator.CreateResultRange(document, 44, 0, resultRange) || !resultRange)) result = 48;
+	if (!result)
+	{
+		resultRange->text = L"before-replaced";
+		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
+		html.MakeUpper();
+		if (html.Find(L"IMG") < 0 || html.Find(L"BEFORE-REPLACED") < 0 || html.Find(L"AFTER-REPLACED") < 0) result = 49;
+	}
+	query.Text = L"strong";
+	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
+		!coordinator.CreateResultRange(document, 44, 0, resultRange) || !resultRange)) result = 50;
+	if (!result)
+	{
+		resultRange->text = L"formatted";
+		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
+		html.MakeUpper();
+		if (html.Find(L"STRONG") < 0 || html.Find(L"EMPHASIS") < 0 || html.Find(L"<A") < 0 ||
+			html.Find(L"TABLE") < 0 || html.Find(L"CLASS=IMAGE") < 0) result = 51;
+	}
 	query.Text = L"block-after";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
 		coordinator.CreateResultRange(document, 44, 0, resultRange) == false || !resultRange ||

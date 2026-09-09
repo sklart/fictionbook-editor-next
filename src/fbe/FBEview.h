@@ -374,6 +374,9 @@ public:
     MESSAGE_HANDLER(WM_CREATE, OnCreate)
     MESSAGE_HANDLER(WM_SETFOCUS, OnFocus)
     MESSAGE_HANDLER(WM_SIZE, OnSize)
+    MESSAGE_HANDLER(WM_MOUSEWHEEL, OnSearchHighlightScroll)
+    MESSAGE_HANDLER(WM_VSCROLL, OnSearchHighlightScroll)
+    MESSAGE_HANDLER(WM_HSCROLL, OnSearchHighlightScroll)
 
     // editing commands
     COMMAND_ID_HANDLER(ID_EDIT_UNDO, OnUndo)
@@ -450,6 +453,7 @@ public:
 
   LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
+  LRESULT OnSearchHighlightScroll(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnFocus(UINT, WPARAM, LPARAM, BOOL&) 
   {
     // pass to document

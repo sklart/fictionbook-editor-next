@@ -36,13 +36,6 @@ public:
 		const AU::Search::SearchTextSnapshot& snapshot,
 		const AU::Search::SearchHit& hit) const;
 
-	// Returns a human-readable enclosing section title for presentation only.
-	// No DOM pointers cross into Search Core/SearchResults.
-	std::wstring GetSectionLabel(
-		MSHTML::IHTMLDocument2Ptr document,
-		const AU::Search::SearchTextSnapshot& snapshot,
-		const AU::Search::SearchHit& hit) const;
-
 	// Maps one endpoint of an editor range back into the UTF-16 snapshot.
 	// useEnd=false reads the range start; true reads its exclusive end.
 	bool TryGetSearchOffset(
@@ -56,14 +49,8 @@ private:
 		std::uint64_t Id;
 		MSHTML::IHTMLElementPtr Element;
 	};
-	struct SectionRange {
-		std::wstring Text;
-		std::wstring Label;
-	};
-
 	const SourceRange* FindSource(std::uint64_t id) const;
 	const SourceRange* FindSource(MSHTML::IHTMLElementPtr element) const;
 
 	std::vector<SourceRange> m_sources;
-	std::vector<SectionRange> m_sections;
 };

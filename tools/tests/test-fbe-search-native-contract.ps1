@@ -18,6 +18,8 @@ Assert-Contains $source 'GetSession\(\)\.IsValidFor\(generation\)' 'cached sessi
 Assert-Contains $source 'GetResults\(\)\.IsValidFor\(generation\)' 'cached results generation validation'
 Assert-Contains $source 'm_fo\.scope = AU::Search::SearchScope::WholeDocument' 'Replace scope default'
 Assert-Contains $source 'm_fo\.unicodeProperties = false' 'Replace UCP default'
+Assert-Contains $source 'openingReplace = !m_replace_dlg \|\| !m_replace_dlg->IsValid\(\)' 'Replace reopen detection'
+Assert-Contains $source 'm_has_replace_preview = false' 'Replace preview reset on reopen'
 Assert-Contains $source 'return DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);' 'native regex Find Next'
 Assert-Contains $source 'IsCrossParagraphReplacementRange' 'structural replacement guard'
 Assert-Contains $source 'fbe\.replace\.cross_paragraph' 'clear cross-paragraph replacement error'

@@ -87,18 +87,35 @@ bool MoveRangeStartToTextOffset(
 	resolvedEndpoint->collapse(VARIANT_TRUE);
 	resolvedEndpoint->move(L"character", lower);
 	// At a block boundary MSHTML can report the first position *after* the
-	// requested text offset. Correct exactly one visual position only when the
-	// prefix proves that happened; IMG/control positions leave the prefix length
-	// unchanged and therefore need no artificial adjustment.
+	// requested text offset. Starts use left affinity; exclusive ends retain
+	// the right affinity so a replacement never swallows an adjacent control.
 	MSHTML::IHTMLTxtRangePtr resolvedPrefix(body->createTextRange());
 	if (!resolvedPrefix)
 		return false;
 	resolvedPrefix->moveToElementText(source);
 	resolvedPrefix->setEndPoint(L"EndToEnd", resolvedEndpoint);
 	_bstr_t resolvedText(resolvedPrefix->text);
-	if (static_cast<std::size_t>(resolvedText.length()) > textOffset)
+	if (!useRightEndpoint && static_cast<std::size_t>(resolvedText.length()) > textOffset)
 		resolvedEndpoint->move(L"character", -1);
-	UNREFERENCED_PARAMETER(useRightEndpoint);
+	if (!useRightEndpoint)
+	{
+		// The text offset immediately after IMG has several equivalent DOM
+		// positions. Move the start across only zero-width control positions so
+		// replacing following text cannot include the IMG itself.
+		for (;;)
+		{
+			MSHTML::IHTMLTxtRangePtr next(resolvedEndpoint->duplicate());
+			MSHTML::IHTMLTxtRangePtr nextPrefix(body->createTextRange());
+			if (!next || !nextPrefix || next->move(L"character", 1) == 0)
+				break;
+			nextPrefix->moveToElementText(source);
+			nextPrefix->setEndPoint(L"EndToEnd", next);
+			_bstr_t nextText(nextPrefix->text);
+			if (static_cast<std::size_t>(nextText.length()) > textOffset)
+				break;
+			resolvedEndpoint = next;
+		}
+	}
 	range = resolvedEndpoint;
 	return true;
 }
@@ -110,7 +127,6 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 	std::uint64_t documentGeneration)
 {
 	m_sources.clear();
-	m_sections.clear();
 	AU::Search::SearchTextSnapshotBuilder builder(documentGeneration);
 	if (!document || !document->body)
 		return builder.Build();
@@ -169,42 +185,6 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildBodySnapshot(
 		{ sourceId, 0 });
 	AU::Search::SearchTextSnapshot snapshot = builder.Build();
 	return snapshot;
-
-	// Capture presentation-only section labels while building the snapshot.
-	// Later result navigation must not touch DOM ancestry after range mapping.
-	MSHTML::IHTMLElementCollectionPtr all(document->all);
-	std::size_t nextOffset = 0;
-	if (all)
-	{
-		for (long index = 0; index < all->length; ++index)
-		{
-			MSHTML::IHTMLElementPtr section(all->item(index));
-			if (!section || _wcsicmp(static_cast<LPCWSTR>(_bstr_t(section->className)), L"section") != 0)
-				continue;
-			_bstr_t sectionText(section->innerText);
-			if (sectionText.length() == 0)
-				continue;
-			const std::wstring sectionSource(static_cast<LPCWSTR>(sectionText), sectionText.length());
-			const std::size_t start = snapshot.Text.find(sectionSource, nextOffset);
-			if (start == std::wstring::npos)
-				continue;
-			nextOffset = start + sectionSource.size();
-			MSHTML::IHTMLElementCollectionPtr children(section->children);
-			if (!children)
-				continue;
-			for (long childIndex = 0; childIndex < children->length; ++childIndex)
-			{
-				MSHTML::IHTMLElementPtr child(children->item(childIndex));
-				if (child && _wcsicmp(static_cast<LPCWSTR>(_bstr_t(child->className)), L"title") == 0)
-				{
-					m_sections.push_back({ sectionSource,
-						std::wstring(static_cast<LPCWSTR>(_bstr_t(child->innerText))) });
-					break;
-				}
-			}
-		}
-	}
-	return snapshot;
 }
 
 bool SearchDocumentAdapter::CreateHitRange(
@@ -254,85 +234,6 @@ bool SearchDocumentAdapter::SelectHit(
 		return false;
 	range->select();
 	return true;
-}
-
-std::wstring SearchDocumentAdapter::GetSectionLabel(
-	MSHTML::IHTMLDocument2Ptr document,
-	const AU::Search::SearchTextSnapshot& snapshot,
-	const AU::Search::SearchHit& hit) const
-{
-	UNREFERENCED_PARAMETER(document);
-	for (std::size_t index = 0; index < m_sections.size(); ++index)
-	{
-		const std::size_t start = snapshot.Text.find(m_sections[index].Text);
-		if (start != std::wstring::npos &&
-			AU::Search::IsHitInsideRange(hit, AU::Search::SearchRange(start, m_sections[index].Text.size())))
-			return m_sections[index].Label;
-	}
-	return std::wstring();
-
-	try
-	{
-		// parentElement() on a range reconstructed from a body snapshot crashes
-		// in the htmlfile host used by Windows 7-era MSHTML. Determine enclosure
-		// from comparable text ranges instead; this also keeps section metadata
-		// out of the native matching path.
-		MSHTML::IHTMLBodyElementPtr body(document ? document->body : MSHTML::IHTMLBodyElementPtr());
-		MSHTML::IHTMLElementCollectionPtr all(document ? document->all : MSHTML::IHTMLElementCollectionPtr());
-		if (!body || !all)
-			return std::wstring();
-		std::size_t nextSectionOffset = 0;
-		for (long index = 0; index < all->length; ++index)
-		{
-			MSHTML::IHTMLElementPtr section(all->item(index));
-			if (!section || _wcsicmp(static_cast<LPCWSTR>(_bstr_t(section->className)), L"section") != 0)
-				continue;
-			_bstr_t sectionText(section->innerText);
-			if (sectionText.length() == 0)
-				continue;
-			const std::wstring text(static_cast<LPCWSTR>(sectionText), sectionText.length());
-			const std::size_t start = snapshot.Text.find(text, nextSectionOffset);
-			if (start == std::wstring::npos)
-				continue;
-			nextSectionOffset = start + text.size();
-			const AU::Search::SearchRange scope(start, text.size());
-			if (!AU::Search::IsHitInsideRange(hit, scope))
-				continue;
-			MSHTML::IHTMLElementCollectionPtr children(section->children);
-			if (!children)
-				return std::wstring();
-			for (long childIndex = 0; childIndex < children->length; ++childIndex)
-			{
-				MSHTML::IHTMLElementPtr child(children->item(childIndex));
-				if (child && _wcsicmp(static_cast<LPCWSTR>(_bstr_t(child->className)), L"title") == 0)
-					return std::wstring(static_cast<LPCWSTR>(_bstr_t(child->innerText)));
-			}
-			return std::wstring();
-		}
-		return std::wstring();
-
-		MSHTML::IHTMLTxtRangePtr range;
-		if (!CreateHitRange(document, snapshot, hit, range) || !range)
-			return std::wstring();
-		MSHTML::IHTMLElementPtr element(range->parentElement());
-		while (element && _wcsicmp(static_cast<LPCWSTR>(_bstr_t(element->className)), L"section") != 0)
-			element = element->parentElement;
-		if (!element)
-			return std::wstring();
-		MSHTML::IHTMLElementCollectionPtr children(element->children);
-		if (!children)
-			return std::wstring();
-		for (long index = 0; index < children->length; ++index)
-		{
-			MSHTML::IHTMLElementPtr child(children->item(index));
-			if (child && _wcsicmp(static_cast<LPCWSTR>(_bstr_t(child->className)), L"title") == 0)
-				return std::wstring(static_cast<LPCWSTR>(_bstr_t(child->innerText)));
-		}
-	}
-	catch (const _com_error&)
-	{
-	}
-	return std::wstring();
 }
 
 bool SearchDocumentAdapter::TryGetSearchOffset(

@@ -649,6 +649,15 @@ LRESULT CFBEView::OnSize(UINT, WPARAM, LPARAM, BOOL&)
 	return 0;
 }
 
+LRESULT CFBEView::OnSearchHighlightScroll(UINT, WPARAM, LPARAM, BOOL& handled)
+{
+	// Keep the native popup aligned when scrolling by wheel or scrollbar.  The
+	// hosted browser still receives the original message; no polling is used.
+	UpdateSearchHighlightsForScroll();
+	handled = FALSE;
+	return 0;
+}
+
 // Search highlighting is deliberately a native overlay.  Styling ranges through
 // MSHTML would mutate the FB2 DOM, create undo entries and mark the document
 // dirty merely for showing Find All results.
@@ -3863,12 +3872,14 @@ LRESULT CFBEView::OnReplace(WORD, WORD, HWND, BOOL&)
 	m_fo.pattern = (const wchar_t *)Selection();
 	// Replace has explicit compatibility defaults. It must not quietly inherit
 	// a Selection/Current-section scope or PCRE2 UCP mode left by Find.
-	if (!m_replace_dlg)
+	const bool openingReplace = !m_replace_dlg || !m_replace_dlg->IsValid();
+	if (openingReplace)
 	{
 		m_fo.scope = AU::Search::SearchScope::WholeDocument;
 		m_fo.unicodeProperties = false;
 		m_fo.ClearMatch();
 		m_has_last_zero_length_hit = false;
+		m_has_replace_preview = false;
 		ResetSearchScope();
 	}
 	if(!m_replace_dlg)
