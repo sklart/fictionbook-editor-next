@@ -28,5 +28,8 @@ Require $writer 'target\.occurrence' 'ZIP writer must identify replacement by oc
 Require $doc 'SerializeToMemory' 'Archive saving must serialize to memory.'
 Require $frame 'RewriteZipEntry' 'Ctrl+S must call the transactional ZIP writer.'
 Require $frame 'DocumentContainerKind::Rar\)\s*return SaveFile\(true\)' 'RAR Ctrl+S must route to Save As.'
+Require $frame 'ShowArchiveError' 'Archive failures must be mapped to user-facing error categories.'
+Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
+Require $frame 'WriteArchiveRecoveryLocation' 'Recovery must retain archive source metadata without rewriting the container.'
 
 Write-Host 'Archive document support contract passed.'

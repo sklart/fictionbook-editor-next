@@ -43,11 +43,11 @@ struct ResolvedOpenDocument
 };
 
 static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDocument& resolved,
-	const DocumentLocation* preferredLocation = NULL)
+	const DocumentLocation* preferredLocation = NULL, FbeArchive::Error* failure = NULL)
 {
 	std::vector<FbeArchive::Entry> entries;
 	FbeArchive::Error error;
-	if (!FbeArchive::EnumerateFictionBookEntries(storagePath, entries, error)) return false;
+	if (!FbeArchive::EnumerateFictionBookEntries(storagePath, entries, error)) { if (failure) *failure = error; return false; }
 	int selected = 0;
 	const bool hasPreferredLocation = preferredLocation != NULL;
 	if (preferredLocation != NULL)
@@ -62,7 +62,7 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 				break;
 			}
 		}
-		if (selected < 0) return false;
+		if (selected < 0) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
 	}
 	if (!hasPreferredLocation && entries.size() > 1)
 	{
@@ -71,13 +71,33 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 		selected = picker.SelectedIndex();
 		if (selected < 0 || static_cast<size_t>(selected) >= entries.size()) return false;
 	}
-	if (!FbeArchive::ReadEntry(storagePath, entries[selected], resolved.rawBytes, error)) return false;
+	if (!FbeArchive::ReadEntry(storagePath, entries[selected], resolved.rawBytes, error)) { if (failure) *failure = error; return false; }
 	resolved.location.containerKind = DetectDocumentContainerKind(storagePath);
 	resolved.location.storagePath = storagePath;
 	resolved.location.entryPath = entries[selected].path;
 	resolved.location.entryOccurrence = entries[selected].occurrence;
 	resolved.location.documentType = entries[selected].documentType;
 	return true;
+}
+
+static void ShowArchiveError(HWND owner, const FbeArchive::Error& error)
+{
+	LPCWSTR key = L"fbe.archive.error.corrupted", fallback = L"The archive is corrupted or cannot be read.";
+	switch (error.code)
+	{
+	case FbeArchive::ErrorCode::NoFictionBookEntries: key = L"fbe.archive.error.no_documents"; fallback = L"No FictionBook documents were found in the archive."; break;
+	case FbeArchive::ErrorCode::Encrypted: key = L"fbe.archive.error.encrypted"; fallback = L"The archive is password protected. Opening protected archives is not supported yet."; break;
+	case FbeArchive::ErrorCode::EntryTooLarge: key = L"fbe.archive.error.too_large"; fallback = L"The FictionBook document in the archive is too large to open."; break;
+	case FbeArchive::ErrorCode::EntryNotFound: key = L"fbe.archive.error.entry_missing"; fallback = L"The selected document no longer exists in the archive."; break;
+	case FbeArchive::ErrorCode::UnsupportedFormat: key = L"fbe.archive.error.unsupported"; fallback = L"The archive format is not supported."; break;
+	case FbeArchive::ErrorCode::ModifiedExternally: key = L"fbe.archive.error.modified"; fallback = L"The archive was modified by another program."; break;
+	case FbeArchive::ErrorCode::WriteFailed:
+	case FbeArchive::ErrorCode::ReplaceFailed: key = L"fbe.archive.error.update_failed"; fallback = L"Failed to update the ZIP archive."; break;
+	default: break;
+	}
+	const CString text = FbeLoadRuntimeStringByKey(key, fallback);
+	const CString caption = FbeLoadRuntimeStringByKey(L"fbe.archive.error.caption", L"Archive");
+	::MessageBox(owner, text, caption, MB_OK | MB_ICONEXCLAMATION);
 }
 
 namespace
@@ -1655,7 +1675,10 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	if (m_document_location.containerKind == DocumentContainerKind::Rar)
 		return SaveFile(true);
 	if (m_file_age != FileAge(m_document_location.storagePath))
-		return FAIL;
+	{
+		FbeArchive::Error error; error.code = FbeArchive::ErrorCode::ModifiedExternally;
+		ShowArchiveError(m_hWnd, error); return FAIL;
+	}
 	std::vector<unsigned char> serialized;
 	if (!m_doc->SerializeToMemory(serialized, m_document_location.documentType)) return FAIL;
 	FbeArchive::Entry entry;
@@ -1663,7 +1686,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	entry.occurrence = m_document_location.entryOccurrence;
 	entry.documentType = m_document_location.documentType;
 	FbeArchive::Error error;
-	if (!FbeArchive::RewriteZipEntry(m_document_location.storagePath, entry, serialized, error)) return FAIL;
+	if (!FbeArchive::RewriteZipEntry(m_document_location.storagePath, entry, serialized, error)) { ShowArchiveError(m_hWnd, error); return FAIL; }
 	m_doc->MarkSavePoint();
 	m_file_age = FileAge(m_document_location.storagePath);
 	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
@@ -1735,8 +1758,12 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 
   ResolvedOpenDocument resolved;
   const bool archive = DetectDocumentContainerKind(filename) != DocumentContainerKind::None;
-  if (archive && !ResolveArchiveOpenRequest(filename, resolved, preferredArchiveLocation))
+  FbeArchive::Error archiveError;
+  if (archive && !ResolveArchiveOpenRequest(filename, resolved, preferredArchiveLocation, &archiveError))
+  {
+    if (archiveError.code != FbeArchive::ErrorCode::None) ShowArchiveError(m_hWnd, archiveError);
     return CANCELLED;
+  }
 
   if (!DiscardChanges())
     return CANCELLED;
@@ -3216,7 +3243,10 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	StartupTrace::AppendTestStartupBreadcrumb("document-load-start");
 	ResolvedOpenDocument startupResolved;
 	const bool startupArchive = DetectDocumentContainerKind(startupFileName) != DocumentContainerKind::None;
-	const bool startupResolvedOk = !startupArchive || ResolveArchiveOpenRequest(startupFileName, startupResolved);
+	FbeArchive::Error startupArchiveError;
+	const bool startupResolvedOk = !startupArchive || ResolveArchiveOpenRequest(startupFileName, startupResolved, NULL, &startupArchiveError);
+	if (!startupResolvedOk && startupArchiveError.code != FbeArchive::ErrorCode::None)
+		ShowArchiveError(m_hWnd, startupArchiveError);
     if (startupResolvedOk && (startupArchive
 		? m_doc->Load(m_view, startupResolved.location.storagePath, startupResolved.location.entryPath, startupResolved.rawBytes)
 		: m_doc->Load(m_view,startupFileName)))
