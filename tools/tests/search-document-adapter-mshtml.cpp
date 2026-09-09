@@ -71,14 +71,13 @@ int wmain()
 	// A collapsed hit immediately after an inline control must resolve on the
 	// right of that control.  Inserting there is the MSHTML equivalent of a
 	// zero-length replacement and must neither consume nor move the image.
-	MSHTML::IHTMLDocument3Ptr document3(document);
-	MSHTML::IHTMLElementPtr inlineImage(document3 ? document3->getElementById(L"inline-image") : MSHTML::IHTMLElementPtr());
-	MSHTML::IHTMLTxtRangePtr zeroLengthRange(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
-	if (!result && (!inlineImage || !zeroLengthRange)) result = 55;
+	const std::size_t inlineAfterOffset = snapshot.Text.find(L"inline-after");
+	MSHTML::IHTMLTxtRangePtr zeroLengthRange;
+	if (!result && (inlineAfterOffset == std::wstring::npos ||
+		!adapter.CreateHitRange(document, snapshot, AU::Search::SearchHit(inlineAfterOffset, 0), zeroLengthRange) ||
+		!zeroLengthRange)) result = 55;
 	if (!result)
 	{
-		zeroLengthRange->moveToElementText(inlineImage);
-		zeroLengthRange->collapse(VARIANT_FALSE);
 		zeroLengthRange->text = L"zero-";
 		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
 		html.MakeUpper();

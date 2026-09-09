@@ -20,18 +20,59 @@ bool IsBodyElement(MSHTML::IHTMLElementPtr element)
 	return tagName.length() != 0 && _wcsicmp(static_cast<LPCWSTR>(tagName), L"BODY") == 0;
 }
 
+bool TryMoveRangeAfterInlineImage(
+	MSHTML::IHTMLBodyElementPtr body,
+	MSHTML::IHTMLElementPtr source,
+	std::size_t textOffset,
+	MSHTML::IHTMLTxtRangePtr& range)
+{
+	MSHTML::IHTMLDocument2Ptr document(source ? source->document : MSHTML::IHTMLDocument2Ptr());
+	MSHTML::IHTMLElementCollectionPtr all(document ? document->all : MSHTML::IHTMLElementCollectionPtr());
+	if (!body || !source || !all)
+		return false;
+	bool found = false;
+
+	for (long index = 0; index < all->length; ++index)
+	{
+		MSHTML::IHTMLElementPtr element(all->item(index));
+		if (!element)
+			continue;
+		_bstr_t tagName(element->tagName);
+		if (_wcsicmp(static_cast<LPCWSTR>(tagName), L"IMG") != 0)
+			continue;
+		MSHTML::IHTMLTxtRangePtr candidate(body->createTextRange());
+		MSHTML::IHTMLTxtRangePtr prefix(body->createTextRange());
+		if (!candidate || !prefix)
+			return false;
+		candidate->moveToElementText(element);
+		candidate->collapse(VARIANT_FALSE);
+		prefix->moveToElementText(source);
+		prefix->setEndPoint(L"EndToEnd", candidate);
+		_bstr_t prefixText(prefix->text);
+		if (static_cast<std::size_t>(prefixText.length()) == textOffset)
+		{
+			range = candidate;
+			found = true;
+		}
+	}
+	return found;
+}
+
 bool MoveRangeStartToTextOffset(
 	MSHTML::IHTMLBodyElementPtr body,
 	MSHTML::IHTMLElementPtr source,
 	std::size_t textOffset,
 	MSHTML::IHTMLTxtRangePtr& range,
-	bool useRightEndpoint = false)
+	bool useRightEndpoint = false,
+	bool preferAfterInlineImage = false)
 {
 	range = body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr();
 	if (!range || !source)
 		return false;
 	range->moveToElementText(source);
 	range->collapse(VARIANT_TRUE);
+	if (preferAfterInlineImage && TryMoveRangeAfterInlineImage(body, source, textOffset, range))
+		return true;
 	if (!IsBodyElement(source))
 	{
 		range->move(L"character", static_cast<long>(textOffset));
@@ -97,25 +138,6 @@ bool MoveRangeStartToTextOffset(
 	_bstr_t resolvedText(resolvedPrefix->text);
 	if (!useRightEndpoint && static_cast<std::size_t>(resolvedText.length()) > textOffset)
 		resolvedEndpoint->move(L"character", -1);
-	if (!useRightEndpoint)
-	{
-		// The text offset immediately after IMG has several equivalent DOM
-		// positions. Move the start across only zero-width control positions so
-		// replacing following text cannot include the IMG itself.
-		for (;;)
-		{
-			MSHTML::IHTMLTxtRangePtr next(resolvedEndpoint->duplicate());
-			MSHTML::IHTMLTxtRangePtr nextPrefix(body->createTextRange());
-			if (!next || !nextPrefix || next->move(L"character", 1) == 0)
-				break;
-			nextPrefix->moveToElementText(source);
-			nextPrefix->setEndPoint(L"EndToEnd", next);
-			_bstr_t nextText(nextPrefix->text);
-			if (static_cast<std::size_t>(nextText.length()) > textOffset)
-				break;
-			resolvedEndpoint = next;
-		}
-	}
 	range = resolvedEndpoint;
 	return true;
 }
@@ -206,7 +228,7 @@ bool SearchDocumentAdapter::CreateHitRange(
 		return false;
 
 	MSHTML::IHTMLBodyElementPtr body(document->body);
-	if (!MoveRangeStartToTextOffset(body, startSource->Element, start.SourceOffset, range))
+	if (!MoveRangeStartToTextOffset(body, startSource->Element, start.SourceOffset, range, false, hit.Length == 0))
 		return false;
 	if (hit.Length != 0)
 	{
