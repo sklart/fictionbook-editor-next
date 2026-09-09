@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include "ReplacementPreflight.h"
 #include "LinkNavigation.h"
 #include "ImageImport.h"
 #include "res1.h"
@@ -3169,22 +3170,6 @@ static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CStri
 // lets MSHTML rewrite block markup. Find may report such a regexp hit, but
 // replacement is deliberately refused until a structural replacement engine
 // can prove preservation of the surrounding FB2 DOM.
-static bool IsCrossParagraphReplacementRange(MSHTML::IHTMLTxtRangePtr range)
-{
-	if (!range)
-		return false;
-	try
-	{
-		CString html(static_cast<LPCWSTR>(_bstr_t(range->htmlText)));
-		html.MakeUpper();
-		return html.Find(L"</P") >= 0 && html.Find(L"<P") >= 0;
-	}
-	catch (const _com_error&)
-	{
-		return true;
-	}
-}
-
 static CString CrossParagraphReplacementError()
 {
 	return FbeLoadRuntimeStringByKey(L"fbe.replace.cross_paragraph",
@@ -3196,7 +3181,7 @@ void  CFBEView::DoReplace() {
     MSHTML::IHTMLTxtRangePtr  sel(Document()->selection->createRange());
     if (!(bool)sel)
       return;
-	if (m_fo.fRegexp && IsCrossParagraphReplacementRange(sel))
+	if (CheckReplacementRange(sel, m_fo.fRegexp) == ReplacementPreflightResult::CrossParagraph)
 	{
 		::MessageBox(m_hWnd, CrossParagraphReplacementError(),
 			FbeLoadRuntimeStringByKey(L"fbe.replace.preview.caption", L"Replace All"), MB_OK | MB_ICONEXCLAMATION);
@@ -3292,7 +3277,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 				*errorText = FbeLoadRuntimeStringByKey(L"fbe.replace.preview.changed", L"The document changed before Replace All could be applied.");
 			return -1;
 		}
-		if (m_fo.fRegexp && IsCrossParagraphReplacementRange(ranges[index]))
+		if (CheckReplacementRange(ranges[index], m_fo.fRegexp) == ReplacementPreflightResult::CrossParagraph)
 		{
 			if (errorText != NULL)
 				*errorText = CrossParagraphReplacementError();

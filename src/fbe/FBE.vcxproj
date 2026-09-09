@@ -272,6 +272,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="search\RegexBackend.cpp" />
     <ClCompile Include="search\RegexBackendPcre2.cpp" />
 	<ClCompile Include="SearchDocumentAdapter.cpp" />
+	<ClCompile Include="ReplacementPreflight.cpp" />
 	<ClCompile Include="DocumentSearchCoordinator.cpp" />
 	<ClCompile Include="search\SearchSession.cpp">
 	  <PrecompiledHeader>NotUsing</PrecompiledHeader>

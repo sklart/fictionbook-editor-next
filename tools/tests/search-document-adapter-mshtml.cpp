@@ -2,6 +2,7 @@
 
 #include "SearchDocumentAdapter.h"
 #include "DocumentSearchCoordinator.h"
+#include "ReplacementPreflight.h"
 #include "search\\RegexBackend.h"
 
 // RegexBackend localizes diagnostics through the editor runtime. The fixture
@@ -209,7 +210,14 @@ int wmain()
 		CString crossParagraphHtml(static_cast<LPCWSTR>(_bstr_t(resultRange->htmlText)));
 		crossParagraphHtml.MakeUpper();
 		if (crossParagraphHtml.Find(L"</P") < 0 || crossParagraphHtml.Find(L"<P") < 0) result = 57;
+		const CString htmlBefore(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
+		if (CheckReplacementRange(resultRange, true) != ReplacementPreflightResult::CrossParagraph) result = 77;
+		const CString htmlAfter(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
+		if (htmlBefore != htmlAfter || htmlAfter.Find(L"replacement-marker") >= 0) result = 78;
 	}
+	MSHTML::IHTMLTxtRangePtr singleParagraphRange;
+	if (!result && (!adapter.CreateHitRange(document, snapshot, AU::Search::SearchHit(0, 5), singleParagraphRange) ||
+		CheckReplacementRange(singleParagraphRange, true) != ReplacementPreflightResult::Allowed)) result = 79;
 	query.Mode = AU::Search::SearchMode::Literal;
 	query.Multiline = false;
 	query.Text = L"second";
