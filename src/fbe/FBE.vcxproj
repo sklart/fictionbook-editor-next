@@ -92,7 +92,7 @@ exit /b 0
       </HeaderFileName>
     </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(FbeApiOutputDirectory);$(SolutionDir)third_party\scintilla\include;$(SolutionDir)third_party\lexilla\include;extras;utils;$(SolutionDir)third_party\wtl;$(SolutionDir)build\hunspell\include;$(SolutionDir)third_party\hunspell\src\hunspell;$(SolutionDir)build\pcre2\install\Release\include;$(SolutionDir)build\libwebp\install\Release\include;$(SolutionDir)build\openjpeg\install\Release\include;$(SolutionDir)build\libheif\install\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FbeApiOutputDirectory);$(SolutionDir)third_party\scintilla\include;$(SolutionDir)third_party\lexilla\include;extras;utils;$(SolutionDir)third_party\wtl;$(SolutionDir)build\hunspell\include;$(SolutionDir)third_party\hunspell\src\hunspell;$(SolutionDir)build\pcre2\install\Release\include;$(SolutionDir)build\libwebp\install\Release\include;$(SolutionDir)build\openjpeg\install\Release\include;$(SolutionDir)build\libheif\install\Release\include;$(SolutionDir)build\libarchive\install\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;UNICODE;STRICT;HUNSPELL_STATIC;_CRT_SECURE_NO_WARNINGS;_WTL_CMDBAR_VISTA_MENUS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
@@ -120,9 +120,9 @@ exit /b 0
     <Link>
       <GenerateManifest>false</GenerateManifest>
       <AdditionalDependencies>rpcrt4.lib;
-gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.lib;openjp2.lib;heif.lib;libde265.lib;aom.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
+gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.lib;openjp2.lib;heif.lib;libde265.lib;aom.lib;archive.lib;zsd.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>$(SolutionDir)build\hunspell\lib\Release;$(SolutionDir)build\pcre2\install\Release\lib;$(SolutionDir)build\libwebp\install\Release\lib;$(SolutionDir)build\openjpeg\install\Release\lib;$(SolutionDir)build\libheif\install\Release\lib;$(SolutionDir)build\libde265\install\Release\lib;$(SolutionDir)build\aom\install\Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)build\hunspell\lib\Release;$(SolutionDir)build\pcre2\install\Release\lib;$(SolutionDir)build\libwebp\install\Release\lib;$(SolutionDir)build\openjpeg\install\Release\lib;$(SolutionDir)build\libheif\install\Release\lib;$(SolutionDir)build\libde265\install\Release\lib;$(SolutionDir)build\aom\install\Release\lib;$(SolutionDir)build\libarchive\install\Release\lib;$(SolutionDir)build\zlib\install\Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -167,7 +167,7 @@ exit /b 0
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(FbeApiOutputDirectory);$(SolutionDir)third_party\scintilla\include;$(SolutionDir)third_party\lexilla\include;extras;utils;$(SolutionDir)third_party\wtl;$(SolutionDir)build\hunspell\include;$(SolutionDir)third_party\hunspell\src\hunspell;$(SolutionDir)build\pcre2\install\Debug\include;$(SolutionDir)build\libwebp\install\Debug\include;$(SolutionDir)build\openjpeg\install\Debug\include;$(SolutionDir)build\libheif\install\Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FbeApiOutputDirectory);$(SolutionDir)third_party\scintilla\include;$(SolutionDir)third_party\lexilla\include;extras;utils;$(SolutionDir)third_party\wtl;$(SolutionDir)build\hunspell\include;$(SolutionDir)third_party\hunspell\src\hunspell;$(SolutionDir)build\pcre2\install\Debug\include;$(SolutionDir)build\libwebp\install\Debug\include;$(SolutionDir)build\openjpeg\install\Debug\include;$(SolutionDir)build\libheif\install\Debug\include;$(SolutionDir)build\libarchive\install\Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;UNICODE;STRICT;HUNSPELL_STATIC;_ATL_TRACE_LEVEL=4;_CRT_SECURE_NO_WARNINGS;_WTL_CMDBAR_VISTA_MENUS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -199,9 +199,9 @@ exit /b 0
       <GenerateManifest>false</GenerateManifest>
       <RegisterOutput>false</RegisterOutput>
       <AdditionalDependencies>rpcrt4.lib;
-gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.lib;openjp2.lib;heif.lib;libde265.lib;aom.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
+gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.lib;openjp2.lib;heif.lib;libde265.lib;aom.lib;archive.lib;zsd.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>$(SolutionDir)build\hunspell\lib\Debug;$(SolutionDir)build\pcre2\install\Debug\lib;$(SolutionDir)build\libwebp\install\Debug\lib;$(SolutionDir)build\openjpeg\install\Debug\lib;$(SolutionDir)build\libheif\install\Debug\lib;$(SolutionDir)build\libde265\install\Debug\lib;$(SolutionDir)build\aom\install\Debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)build\hunspell\lib\Debug;$(SolutionDir)build\pcre2\install\Debug\lib;$(SolutionDir)build\libwebp\install\Debug\lib;$(SolutionDir)build\openjpeg\install\Debug\lib;$(SolutionDir)build\libheif\install\Debug\lib;$(SolutionDir)build\libde265\install\Debug\lib;$(SolutionDir)build\aom\install\Debug\lib;$(SolutionDir)build\libarchive\install\Debug\lib;$(SolutionDir)build\zlib\install\Debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
@@ -257,6 +257,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="archive\ArchiveReader.cpp" />
     <ClCompile Include="FBE.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -385,6 +386,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="CrashHandler.h" />
     <ClInclude Include="ContainerWnd.h" />
     <ClInclude Include="DocumentTree.h" />
+    <ClInclude Include="DocumentLocation.h" />
+    <ClInclude Include="archive\ArchiveReader.h" />
     <ClInclude Include="ElementDescMnr.h" />
     <ClInclude Include="ElementDescriptor.h" />
     <ClInclude Include="ErrsEx.h" />

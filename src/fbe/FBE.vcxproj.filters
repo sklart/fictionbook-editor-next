@@ -120,6 +120,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="RuntimeLocalization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -243,6 +244,8 @@
     <ClInclude Include="DocumentTree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DocumentLocation.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="archive\ArchiveReader.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="ElementDescMnr.h">
       <Filter>Header Files</Filter>
     </ClInclude>

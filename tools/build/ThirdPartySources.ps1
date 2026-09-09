@@ -409,6 +409,8 @@ function Get-DependencyCatalog {
         (New-GitSubmoduleDependency -Name 'aom' -DisplayName 'libaom (AOM)' -RelativePath 'third_party\aom' -RepositoryUrl 'https://aomedia.googlesource.com/aom' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','aom'))
         (New-GitSubmoduleDependency -Name 'libwebp' -DisplayName 'libwebp' -RelativePath 'third_party\libwebp' -RepositoryUrl 'https://chromium.googlesource.com/webm/libwebp' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','src'))
         (New-GitSubmoduleDependency -Name 'openjpeg' -DisplayName 'OpenJPEG' -RelativePath 'third_party\openjpeg' -RepositoryUrl 'https://github.com/uclouvain/openjpeg.git' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','src'))
+        (New-GitSubmoduleDependency -Name 'zlib' -DisplayName 'zlib' -RelativePath 'third_party\zlib' -RepositoryUrl 'https://github.com/madler/zlib.git' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','zlib.h'))
+        (New-GitSubmoduleDependency -Name 'libarchive' -DisplayName 'libarchive' -RelativePath 'third_party\libarchive' -RepositoryUrl 'https://github.com/libarchive/libarchive.git' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','libarchive\archive.h'))
 
         [pscustomobject]@{
             Name = 'lunasvg'

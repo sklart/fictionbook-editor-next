@@ -20,6 +20,8 @@ is needed to build the project but is not shipped as a separate component.
 | libheif | 1.23.4 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
 | libde265 | 1.1.1 | LGPL-2.1-or-later | Static HEVC decoder used by bundled libheif | <https://github.com/strukturag/libde265> |
 | libaom | 3.15.0 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
+| zlib | 1.3.2 | zlib License | Static DEFLATE backend used by libarchive | <https://github.com/madler/zlib> |
+| libarchive | 3.8.9 | BSD-2-Clause | Static ZIP/RAR/RAR5 reader and ZIP writer linked into FBE | <https://github.com/libarchive/libarchive> |
 | Windows Template Library (WTL) | 10.01 | MS-PL | UI and Windows shell components, compiled into FBE, FBV, and FBShell | <https://sourceforge.net/projects/wtl/> |
 | LunaSVG | 3.5.0 | MIT | EPUB import SVG renderer, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/lunasvg> |
 | PlutoVG | 1.3.3 | MIT | LunaSVG raster backend, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/plutovg> |
@@ -60,6 +62,7 @@ The repository preserves upstream license material alongside source trees:
 - `third_party/libwebp/COPYING` and `third_party/openjpeg/LICENSE`;
 - `third_party/libheif/COPYING`, `third_party/libde265/COPYING`, and
   `third_party/aom/LICENSE` plus `third_party/aom/PATENTS`;
+- `third_party/zlib/LICENSE` and `third_party/libarchive/COPYING`;
 - `third_party/lunasvg/LICENSE` and
   `third_party/lunasvg/plutovg/LICENSE`;
 - `third_party/uac/License.txt`.

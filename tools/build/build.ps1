@@ -102,7 +102,9 @@ function Assert-PreparedDependencies {
         (Join-Path $repoRoot "build\libheif\install\$Configuration\include\libheif\heif.h"),
         (Join-Path $repoRoot "build\libheif\install\$Configuration\lib\heif.lib"),
         (Join-Path $repoRoot "build\libde265\install\$Configuration\lib\libde265.lib"),
-        (Join-Path $repoRoot "build\aom\install\$Configuration\lib\aom.lib")
+        (Join-Path $repoRoot "build\aom\install\$Configuration\lib\aom.lib"),
+        (Join-Path $repoRoot "build\libarchive\install\$Configuration\include\archive.h"),
+        (Join-Path $repoRoot "build\libarchive\install\$Configuration\lib\archive.lib")
     )
     $missing = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
     if ($missing.Count -gt 0) {
@@ -240,6 +242,8 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & (Join-Path $repoRoot "tools\build\build-openjpeg.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & (Join-Path $repoRoot "tools\build\build-libheif.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& (Join-Path $repoRoot "tools\build\build-libarchive.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if (-not (Test-Path -LiteralPath $vswhere)) {
