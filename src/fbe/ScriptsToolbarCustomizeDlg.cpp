@@ -12,8 +12,7 @@ CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 
 LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
-	UiMetrics::UpdateForWindow(m_hWnd);
-	::SendMessage(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
+	UpdateMetrics();
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD);
 	SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.caption", L"Customize scripts toolbar"));
 	const struct { UINT id; LPCWSTR key; LPCWSTR fallback; } labels[] = {
@@ -33,11 +32,10 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_toolTip.Create(m_hWnd); m_toolTip.Activate(TRUE);
 	m_toolTip.AddTool(m_availableList, LPSTR_TEXTCALLBACKW, NULL, 1);
 	m_toolTip.AddTool(m_currentList, LPSTR_TEXTCALLBACKW, NULL, 2);
-	::SendMessage(m_availableList, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	::SendMessage(m_currentList, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	CRect client; GetClientRect(client); m_minimumSize = CSize(UiMetrics::Scale(480), UiMetrics::Scale(330));
+	CRect client;
 	const CSize logical = m_settings.GetScriptsToolbarCustomizeSize();
 	SetWindowPos(NULL, 0, 0, UiMetrics::Scale(logical.cx), UiMetrics::Scale(logical.cy), SWP_NOMOVE | SWP_NOZORDER);
+	CenterWindow(GetParent());
 	GetClientRect(client); LayoutControls(client.Width(), client.Height());
 	PopulateAvailable(); PopulateCurrent();
 	return TRUE;
@@ -48,6 +46,7 @@ void CScriptsToolbarCustomizeDlg::PopulateAvailable()
 	CString search; GetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, search); search.MakeLower();
 	m_availableList.ResetContent();
 	for(size_t i = 0; i < m_available.size(); ++i) {
+		if(ToolbarContainsCommand(m_available[i].command)) continue;
 		CString name(m_available[i].name); CString path(m_available[i].relativePath); CString probe(name + L"\n" + path); probe.MakeLower();
 		if(!search.IsEmpty() && probe.Find(search) < 0) continue;
 		const int row = m_availableList.AddString(name); m_availableList.SetItemData(row, static_cast<DWORD_PTR>(i));
@@ -58,13 +57,29 @@ void CScriptsToolbarCustomizeDlg::PopulateCurrent(int select)
 {
 	m_currentList.ResetContent(); CToolBarCtrl toolbar = m_toolbar;
 	for(int i = 0; i < toolbar.GetButtonCount(); ++i) {
-		TBBUTTON button = {}; if(!toolbar.GetButton(i, &button) || (button.fsStyle & TBSTYLE_SEP)) continue;
+		TBBUTTON button = {}; if(!toolbar.GetButton(i, &button)) continue;
+		if(button.fsStyle & TBSTYLE_SEP) {
+			const int row = m_currentList.AddString(L"--- Separator ---");
+			m_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));
+			continue;
+		}
 		CString name;
 		for(size_t j = 0; j < m_available.size(); ++j) if(m_available[j].command == button.idCommand) { name = m_available[j].name; break; }
 		if(name.IsEmpty()) name.Format(L"Command %d", button.idCommand);
 		const int row = m_currentList.AddString(name); m_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));
 	}
 	if(select >= 0 && select < m_currentList.GetCount()) m_currentList.SetCurSel(select);
+}
+
+bool CScriptsToolbarCustomizeDlg::ToolbarContainsCommand(int command) const
+{
+	CToolBarCtrl toolbar = m_toolbar;
+	for(int i = 0; i < toolbar.GetButtonCount(); ++i) {
+		TBBUTTON button = {};
+		if(toolbar.GetButton(i, &button) && !(button.fsStyle & TBSTYLE_SEP) && button.idCommand == command)
+			return true;
+	}
+	return false;
 }
 
 int CScriptsToolbarCustomizeDlg::SelectedAvailableCommand() const
@@ -96,19 +111,19 @@ LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHand
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnAdd(WORD, WORD, HWND, BOOL&)
 {
-	const int command = SelectedAvailableCommand(); if(command == 0) return 0;
+	const int command = SelectedAvailableCommand(); if(command == 0 || ToolbarContainsCommand(command)) return 0;
 	for(size_t i = 0; i < m_available.size(); ++i) if(m_available[i].command == command) {
 		CToolBarCtrl(m_toolbar).AddButton(command, m_available[i].button.fsStyle,
 			m_available[i].button.fsState, m_available[i].button.iBitmap, m_available[i].name, 0);
 		break;
 	}
-	CToolBarCtrl(m_toolbar).AutoSize(); PopulateCurrent(m_currentList.GetCount()); return 0;
+	CToolBarCtrl(m_toolbar).AutoSize(); PopulateAvailable(); PopulateCurrent(m_currentList.GetCount()); return 0;
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnRemove(WORD, WORD, HWND, BOOL&)
 {
 	const int row = m_currentList.GetCurSel(); if(row < 0) return 0;
 	const int index = static_cast<int>(m_currentList.GetItemData(row)); CToolBarCtrl(m_toolbar).DeleteButton(index);
-	CToolBarCtrl(m_toolbar).AutoSize(); PopulateCurrent(row); return 0;
+	CToolBarCtrl(m_toolbar).AutoSize(); PopulateAvailable(); PopulateCurrent(row); return 0;
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnUp(WORD, WORD, HWND, BOOL&)
 {
@@ -120,22 +135,27 @@ LRESULT CScriptsToolbarCustomizeDlg::OnDown(WORD, WORD, HWND, BOOL&)
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnReset(WORD, WORD, HWND, BOOL&)
 {
-	CToolBarCtrl tb = m_toolbar; while(tb.GetButtonCount() > 0) tb.DeleteButton(0); if(m_defaults.GetSize()) tb.AddButtons(m_defaults.GetSize(), m_defaults.GetData()); tb.AutoSize(); PopulateCurrent(); return 0;
+	CToolBarCtrl tb = m_toolbar; while(tb.GetButtonCount() > 0) tb.DeleteButton(0); if(m_defaults.GetSize()) tb.AddButtons(m_defaults.GetSize(), m_defaults.GetData()); tb.AutoSize(); PopulateAvailable(); PopulateCurrent(); return 0;
 }
 void CScriptsToolbarCustomizeDlg::LayoutControls(int width, int height)
 {
-	const int gap = UiMetrics::NormalGap(), button = UiMetrics::Scale(86), top = UiMetrics::Scale(45), bottom = UiMetrics::Scale(42);
-	const int middle = width / 2, listWidth = middle - gap * 3;
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL).MoveWindow(middle + gap * 2, UiMetrics::Scale(29), width - middle - gap * 3, UiMetrics::Scale(18));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH).MoveWindow(UiMetrics::Scale(70), gap, middle - UiMetrics::Scale(85), UiMetrics::Scale(24));
-	m_availableList.MoveWindow(gap, top, listWidth, height - top - bottom);
-	m_currentList.MoveWindow(middle + gap * 2, top, width - middle - gap * 3, height - top - bottom);
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD).MoveWindow(middle - button / 2, top + UiMetrics::Scale(25), button, UiMetrics::Scale(25));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_REMOVE).MoveWindow(middle - button / 2, top + UiMetrics::Scale(55), button, UiMetrics::Scale(25));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_UP).MoveWindow(middle - button / 2, top + UiMetrics::Scale(105), button, UiMetrics::Scale(25));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_DOWN).MoveWindow(middle - button / 2, top + UiMetrics::Scale(135), button, UiMetrics::Scale(25));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_RESET).MoveWindow(gap, height - bottom + gap, button, UiMetrics::Scale(26));
-	GetDlgItem(IDCANCEL).MoveWindow(width - gap - button, height - bottom + gap, button, UiMetrics::Scale(26));
+	const int gap = UiMetrics::NormalGap(), buttonWidth = UiMetrics::Scale(86), buttonColumn = buttonWidth;
+	const int top = UiMetrics::Scale(45), bottom = UiMetrics::Scale(42);
+	const int listWidth = (width - buttonColumn - gap * 4) / 2;
+	const int left = gap, buttonsLeft = left + listWidth + gap, right = buttonsLeft + buttonColumn + gap;
+	const int listHeight = height - top - bottom;
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL).MoveWindow(left, gap, UiMetrics::Scale(55), UiMetrics::Scale(24));
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH).MoveWindow(left + UiMetrics::Scale(58), gap, listWidth - UiMetrics::Scale(58), UiMetrics::Scale(24));
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL).MoveWindow(left, UiMetrics::Scale(29), listWidth, UiMetrics::Scale(18));
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL).MoveWindow(right, UiMetrics::Scale(29), listWidth, UiMetrics::Scale(18));
+	m_availableList.MoveWindow(left, top, listWidth, listHeight);
+	m_currentList.MoveWindow(right, top, listWidth, listHeight);
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD).MoveWindow(buttonsLeft, top + UiMetrics::Scale(25), buttonWidth, UiMetrics::Scale(25));
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_REMOVE).MoveWindow(buttonsLeft, top + UiMetrics::Scale(55), buttonWidth, UiMetrics::Scale(25));
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_UP).MoveWindow(buttonsLeft, top + UiMetrics::Scale(105), buttonWidth, UiMetrics::Scale(25));
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_DOWN).MoveWindow(buttonsLeft, top + UiMetrics::Scale(135), buttonWidth, UiMetrics::Scale(25));
+	GetDlgItem(IDC_SCRIPTS_TOOLBAR_RESET).MoveWindow(gap, height - bottom + gap, buttonWidth, UiMetrics::Scale(26));
+	GetDlgItem(IDCANCEL).MoveWindow(width - gap - buttonWidth, height - bottom + gap, buttonWidth, UiMetrics::Scale(26));
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnSize(UINT, WPARAM, LPARAM lParam, BOOL&) { LayoutControls(LOWORD(lParam), HIWORD(lParam)); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
@@ -146,4 +166,23 @@ LRESULT CScriptsToolbarCustomizeDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam
 	return 0;
 }
 void CScriptsToolbarCustomizeDlg::SaveSize() { CRect rect; GetWindowRect(rect); const int scale96 = max(1, UiMetrics::Scale(96)); m_settings.SetScriptsToolbarCustomizeSize(CSize(MulDiv(rect.Width(), 96, scale96), MulDiv(rect.Height(), 96, scale96)), true); }
+void CScriptsToolbarCustomizeDlg::UpdateMetrics()
+{
+	UiMetrics::UpdateForWindow(m_hWnd);
+	const WPARAM font = reinterpret_cast<WPARAM>(UiMetrics::DialogFont());
+	::SendMessage(m_hWnd, WM_SETFONT, font, TRUE);
+	const UINT controls[] = { IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL, IDC_SCRIPTS_TOOLBAR_SEARCH, IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL,
+		IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL, IDC_SCRIPTS_TOOLBAR_AVAILABLE, IDC_SCRIPTS_TOOLBAR_CURRENT, IDC_SCRIPTS_TOOLBAR_ADD,
+		IDC_SCRIPTS_TOOLBAR_REMOVE, IDC_SCRIPTS_TOOLBAR_UP, IDC_SCRIPTS_TOOLBAR_DOWN, IDC_SCRIPTS_TOOLBAR_RESET, IDCANCEL };
+	for(int i = 0; i < _countof(controls); ++i) ::SendMessage(GetDlgItem(controls[i]), WM_SETFONT, font, TRUE);
+	m_minimumSize = CSize(UiMetrics::Scale(560), UiMetrics::Scale(330));
+}
+LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { SaveSize(); EndDialog(IDCANCEL); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, BOOL&)
+{
+	const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
+	if(suggested) SetWindowPos(NULL, suggested->left, suggested->top, suggested->right - suggested->left, suggested->bottom - suggested->top, SWP_NOACTIVATE | SWP_NOZORDER);
+	UpdateMetrics(); CRect client; GetClientRect(client); LayoutControls(client.Width(), client.Height());
+	return 0;
+}
 LRESULT CScriptsToolbarCustomizeDlg::OnClose(WORD, WORD, HWND, BOOL&) { SaveSize(); EndDialog(IDCANCEL); return 0; }

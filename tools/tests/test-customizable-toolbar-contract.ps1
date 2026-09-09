@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\extras\atlctrlsext.h')
 $dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.cpp')
+$dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.h')
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
 
 foreach ($required in @(
@@ -39,9 +40,21 @@ foreach ($required in @(
     }
 }
 
-foreach ($required in @('PopulateAvailable()', 'OnReset', 'GetScriptsToolbarCustomizeSize', 'relativePath', 'TBSTYLE_SEP')) {
+foreach ($required in @(
+    'PopulateAvailable()', 'PopulateCurrent()', 'OnReset', 'GetScriptsToolbarCustomizeSize', 'relativePath',
+    'ToolbarContainsCommand', 'if(ToolbarContainsCommand(m_available[i].command)) continue;',
+    'if(command == 0 || ToolbarContainsCommand(command)) return 0;',
+    'L"--- Separator ---"', 'm_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));',
+    'PopulateAvailable(); PopulateCurrent', 'CenterWindow(GetParent())', 'buttonColumn'
+)) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Диалог панели скриптов не содержит ожидаемое поведение: $required"
+    }
+}
+
+foreach ($required in @('MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)')) {
+    if ($dialogHeader.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Заголовок диалога не обрабатывает системное событие: $required"
     }
 }
 

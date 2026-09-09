@@ -23,6 +23,8 @@ public:
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
+		MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)
+		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		COMMAND_HANDLER(IDC_SCRIPTS_TOOLBAR_SEARCH, EN_CHANGE, OnSearchChanged)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipText)
 		COMMAND_HANDLER(IDC_SCRIPTS_TOOLBAR_AVAILABLE, LBN_DBLCLK, OnAdd)
@@ -49,6 +51,8 @@ private:
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnGetMinMaxInfo(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnWindowClose(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSearchChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnToolTipText(int, LPNMHDR, BOOL&);
 	LRESULT OnAdd(WORD, WORD, HWND, BOOL&);
@@ -61,6 +65,8 @@ private:
 	void PopulateAvailable();
 	void PopulateCurrent(int select = -1);
 	void LayoutControls(int width, int height);
+	void UpdateMetrics();
+	bool ToolbarContainsCommand(int command) const;
 	int SelectedAvailableCommand() const;
 	void SaveSize();
 };
