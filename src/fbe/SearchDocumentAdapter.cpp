@@ -30,6 +30,9 @@ bool TryMoveRangeAfterInlineImage(
 	MSHTML::IHTMLElementCollectionPtr images(source2 ? source2->getElementsByTagName(L"IMG") : MSHTML::IHTMLElementCollectionPtr());
 	if (!body || !source || !images)
 		return false;
+	// Text snapshots omit IMG. At one textual offset, a collapsed insertion is
+	// intentionally right-affine: choose the boundary after the last IMG in
+	// this source element, so it cannot consume any adjacent inline control.
 	bool found = false;
 
 	for (long index = 0; index < images->length; ++index)

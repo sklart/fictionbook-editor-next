@@ -39,14 +39,14 @@ int wmain()
 	document.CreateInstance(L"htmlfile");
 	IPersistStreamInitPtr persist(document);
 	if (!document || !persist || FAILED(persist->InitNew()) || !WriteHtml(document,
-		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img id='inline-image' src='about:blank'>inline-after</p><div class='image'><img id='block-image' src='about:blank'></div><p>block-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
+		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img id='inline-image' src='about:blank'>inline-after</p><p><img id='twin-first' src='about:blank'><img id='twin-second' src='about:blank'>twins</p><div class='image'><img id='block-image' src='about:blank'></div><p>block-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
 		return 2;
 
 	int result = 0;
 	{
 	SearchDocumentAdapter adapter;
 	const AU::Search::SearchTextSnapshot snapshot = adapter.BuildSnapshot(document, 42);
-	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 5) result = 3;
+	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 6) result = 3;
 	if (!result && (snapshot.Text.find(L"strong") == std::wstring::npos || snapshot.Text.find(L"emphasis") == std::wstring::npos ||
 		snapshot.Text.find(L"link") == std::wstring::npos || snapshot.Text.find(L"\x043A\x043E\x0442") == std::wstring::npos ||
 		snapshot.Text.find(L"\xD83D\xDE00") == std::wstring::npos)) result = 4;
@@ -84,6 +84,19 @@ int wmain()
 		const int imageAt = html.Find(L"ID=INLINE-IMAGE");
 		const int insertedAt = html.Find(L"ZERO-INLINE-AFTER");
 		if (imageAt < 0 || insertedAt < 0 || imageAt > insertedAt || html.Find(L"ID=BLOCK-IMAGE") < 0) result = 56;
+	}
+	// Two adjacent IMG have one text offset. The adapter's documented
+	// right-affinity inserts after the last zero-text control, never between
+	// or before either image.
+	const std::size_t twinsOffset = snapshot.Text.find(L"twins");
+	MSHTML::IHTMLTxtRangePtr twinsRange;
+	if (!result && (twinsOffset == std::wstring::npos || !adapter.CreateHitRange(document, snapshot, AU::Search::SearchHit(twinsOffset, 0), twinsRange))) result = 63;
+	if (!result)
+	{
+		twinsRange->text = L"marker-";
+		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML))); html.MakeUpper();
+		const int first = html.Find(L"ID=TWIN-FIRST"), second = html.Find(L"ID=TWIN-SECOND"), marker = html.Find(L"MARKER-TWINS");
+		if (first < 0 || second < first || marker < second) result = 64;
 	}
 
 	DocumentSearchCoordinator coordinator;

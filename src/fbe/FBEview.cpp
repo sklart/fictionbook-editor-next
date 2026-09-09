@@ -3832,6 +3832,14 @@ bool CFBEView::Init()
   StartupTrace::HResult(L"webbrowser", L"WB225", hr, L"IHTMLDocument2::get_body");
   if (FAILED(hr) || !body) return false;
 
+	// A document rebuild can invoke Init again while the old element is still
+	// alive. Always detach that connection point before replacing its target.
+	if (m_scroll_event_element)
+	{
+		ScrollEvents::DispEventUnadvise(m_scroll_event_element, &DIID_FBEHTMLElementEvents2);
+		m_scroll_event_element = NULL;
+	}
+
   DocumentEvents::DispEventUnadvise(document, &DIID_HTMLDocumentEvents2);
   hr = DocumentEvents::DispEventAdvise(document, &DIID_HTMLDocumentEvents2);
   StartupTrace::HResult(L"webbrowser", L"WB230", hr, L"DocumentEvents::DispEventAdvise");
@@ -3845,10 +3853,10 @@ bool CFBEView::Init()
 		m_scroll_event_element = NULL;
 	if (!m_scroll_event_element)
 		m_scroll_event_element = body.p;
-	ScrollEvents::DispEventUnadvise(m_scroll_event_element, &DIID_FBEHTMLElementEvents2);
 	hr = ScrollEvents::DispEventAdvise(m_scroll_event_element, &DIID_FBEHTMLElementEvents2);
 	StartupTrace::HResult(L"webbrowser", L"WB235", hr, L"ScrollEvents::DispEventAdvise");
-	if (FAILED(hr)) return false;
+	if (FAILED(hr))
+		m_scroll_event_element = NULL; // Highlight All degrades safely.
 
   TextEvents::DispEventUnadvise(body, &DIID_HTMLTextContainerEvents2);
   hr = TextEvents::DispEventAdvise(body, &DIID_HTMLTextContainerEvents2);
