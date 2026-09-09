@@ -11,7 +11,7 @@ LRESULT CFindResultsPane::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
 	m_header.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | static_cast<DWORD>(SS_ENDELLIPSIS), 0, static_cast<UINT>(IDC_STATIC));
 	m_close.Create(m_hWnd, rcDefault, L"\x00D7", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDCANCEL);
-	m_list.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL, 0, IDC_FIND_RESULTS_LIST);
+	m_list.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | LVS_REPORT | LVS_OWNERDATA | LVS_SHOWSELALWAYS | LVS_SINGLESEL, 0, IDC_FIND_RESULTS_LIST);
 	m_status.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_ENDELLIPSIS, 0, IDC_FIND_RESULTS_STATUS);
 	m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 	m_tooltips.Initialize(m_hWnd);
@@ -53,7 +53,7 @@ void CFindResultsPane::Detach(CFBEView* view)
 {
 	if (view != NULL && view != m_view) return;
 	m_view = NULL; m_revision = 0;
-	if (m_list.IsWindow()) m_list.DeleteAllItems();
+	if (m_list.IsWindow()) m_list.SetItemCountEx(0, LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
 	if (m_header.IsWindow()) m_header.SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.caption", L"Find results"));
 	if (m_status.IsWindow()) m_status.SetWindowText(L"");
 }
@@ -75,19 +75,44 @@ void CFindResultsPane::UpdateHeader()
 void CFindResultsPane::Refresh()
 {
 	if (!m_list.IsWindow()) return;
-	m_list.DeleteAllItems(); UpdateHeader();
+	m_list.SetItemCountEx(0, LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL); UpdateHeader();
 	if (m_view == NULL) { m_status.SetWindowText(L""); return; }
 	if (!m_view->AreFindResultsCurrent()) { m_status.SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.stale", L"Search results are stale. Run Find All again.")); return; }
 	m_revision = m_view->FindResultsRevision();
-	for (std::size_t index = 0; index < m_view->FindResultCount(); ++index) { CString number; number.Format(L"%Iu", index + 1); const int item = m_list.InsertItem(static_cast<int>(index), number); m_list.SetItemText(item, 1, m_view->FindResultPreview(index)); }
+	const std::size_t count = m_view->FindResultCount();
+	const int itemCount = count > static_cast<std::size_t>(INT_MAX) ? INT_MAX : static_cast<int>(count);
+	// Virtual mode is essential for broad queries: the ListView requests only
+	// visible rows through LVN_GETDISPINFO instead of materializing every hit.
+	m_list.SetItemCountEx(itemCount, LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
+	m_list.Invalidate();
 	CString status; status.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"%Iu results"), m_view->FindResultCount()); m_status.SetWindowText(status);
 }
 
-LRESULT CFindResultsPane::OnHide(WORD, WORD, HWND, BOOL&) { ::SendMessage(GetParent(), WM_APP + 43, 0, 0); return 0; }
+LRESULT CFindResultsPane::OnHide(WORD, WORD, HWND, BOOL&)
+{
+	// The immediate parent is the nested splitter; the frame owns visibility.
+	const HWND frame = ::GetAncestor(m_hWnd, GA_ROOT);
+	if (frame != NULL) ::SendMessage(frame, AU::WM_HIDE_FIND_RESULTS_PANE, 0, 0);
+	return 0;
+}
 LRESULT CFindResultsPane::OnItemActivate(int, LPNMHDR header, BOOL&)
 {
 	const NMLISTVIEW* item = reinterpret_cast<const NMLISTVIEW*>(header);
 	if (m_view != NULL && item != NULL && item->iItem >= 0 && (m_revision != m_view->FindResultsRevision() || !m_view->SelectFindResult(static_cast<std::size_t>(item->iItem)))) Refresh();
+	return 0;
+}
+
+LRESULT CFindResultsPane::OnGetDispInfo(int, LPNMHDR header, BOOL&)
+{
+	NMLVDISPINFO* info = reinterpret_cast<NMLVDISPINFO*>(header);
+	if (info == NULL || m_view == NULL || info->item.iItem < 0 ||
+		static_cast<std::size_t>(info->item.iItem) >= m_view->FindResultCount()) return 0;
+	if ((info->item.mask & LVIF_TEXT) == 0 || info->item.pszText == NULL || info->item.cchTextMax <= 0) return 0;
+	CString text;
+	if (info->item.iSubItem == 0) text.Format(L"%d", info->item.iItem + 1);
+	else if (info->item.iSubItem == 1) text = m_view->FindResultPreview(static_cast<std::size_t>(info->item.iItem));
+	else return 0;
+	::lstrcpyn(info->item.pszText, text, info->item.cchTextMax);
 	return 0;
 }
 

@@ -734,6 +734,7 @@ public:
 	void HideFindResultsPane();
 	void RefreshFindResultsPane(CFBEView* view);
 	void ApplyFindResultsPaneHeight();
+	void ConstrainFindResultsPaneSplitter();
   LRESULT OnSettingChange(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
@@ -1200,6 +1201,7 @@ public:
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL& bHandled)
 	{
 		UpdateViewSizeInfo();
+		ConstrainFindResultsPaneSplitter();
 		if (!m_status_layout_posted) { m_status_layout_posted = true; PostMessage(WM_APP + 41); }
 		if (_Settings.GetShowFullPathInWindowTitle() && m_doc && m_doc->m_namevalid)
 			m_need_title_update = true;

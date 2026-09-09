@@ -3548,6 +3548,14 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	const UINT oldDpi = m_current_dpi ? m_current_dpi : 96;
 	const int splitterPosition = m_splitter.GetSplitterPos();
 	const bool resultsVisible = m_editor_results_splitter.GetSinglePaneMode() == SPLIT_PANE_NONE;
+	if (resultsVisible)
+	{
+		// Preserve the height the user actually dragged to before coordinates
+		// become relative to the new DPI; do not restore an older setting.
+		RECT resultsClient = {}; m_editor_results_splitter.GetClientRect(&resultsClient);
+		const int height = resultsClient.bottom - m_editor_results_splitter.GetSplitterPos();
+		if (height > 0) _Settings.SetFindResultsPaneHeight(MulDiv(height, 96, oldDpi));
+	}
 	const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
 	if (suggested)
 	{
@@ -3598,8 +3606,27 @@ void CMainFrame::ApplyFindResultsPaneHeight()
 	const int preferred = MulDiv(savedHeight, dpi, 96);
 	const int minResults = MulDiv(120, dpi, 96);
 	const int minEditor = MulDiv(160, dpi, 96);
-	const int resultsHeight = (std::min)((std::max)(minResults, preferred), (std::max)(minResults, total - minEditor));
+	// WTL's splitter has one minimum for both panes.  Use 160 logical pixels
+	// when there is room (which is stricter than the 120px Results minimum),
+	// otherwise reduce it symmetrically so a tiny window never gets a negative
+	// splitter position.
+	m_editor_results_splitter.m_cxyMin = (std::min)(minEditor, total / 2);
+	const int maxResults = (std::max)(0, total - minEditor);
+	const int resultsHeight = total >= minResults + minEditor
+		? (std::min)((std::max)(minResults, preferred), maxResults)
+		: total / 2;
 	m_editor_results_splitter.SetSplitterPos((std::max)(0, total - resultsHeight));
+}
+
+void CMainFrame::ConstrainFindResultsPaneSplitter()
+{
+	if (!m_editor_results_splitter.IsWindow() || m_editor_results_splitter.GetSinglePaneMode() != SPLIT_PANE_NONE) return;
+	RECT client = {}; m_editor_results_splitter.GetClientRect(&client);
+	const UINT dpi = m_current_dpi ? m_current_dpi : 96;
+	const int total = (std::max)(0, static_cast<int>(client.bottom - client.top));
+	m_editor_results_splitter.m_cxyMin = (std::min)(MulDiv(160, dpi, 96), total / 2);
+	const int position = m_editor_results_splitter.GetSplitterPos();
+	if (position >= 0) m_editor_results_splitter.SetSplitterPos(position);
 }
 
 void CMainFrame::ShowFindResultsPane(CFBEView* view)
@@ -3624,14 +3651,23 @@ void CMainFrame::HideFindResultsPane()
 
 void CMainFrame::RefreshFindResultsPane(CFBEView* view)
 {
-	if (view != NULL && m_find_results_pane.AttachedView() == view)
+	if (m_editor_results_splitter.GetSinglePaneMode() == SPLIT_PANE_NONE && view != NULL && m_find_results_pane.AttachedView() == view)
 		m_find_results_pane.Refresh();
 }
 
 LRESULT CMainFrame::OnShowFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&) { ShowFindResultsPane(reinterpret_cast<CFBEView*>(view)); return 0; }
 LRESULT CMainFrame::OnHideFindResultsPane(UINT, WPARAM, LPARAM, BOOL&) { HideFindResultsPane(); return 0; }
 LRESULT CMainFrame::OnRefreshFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&) { RefreshFindResultsPane(reinterpret_cast<CFBEView*>(view)); return 0; }
-LRESULT CMainFrame::OnDetachFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&) { m_find_results_pane.Detach(reinterpret_cast<CFBEView*>(view)); return 0; }
+LRESULT CMainFrame::OnDetachFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&)
+{
+	CFBEView* detached = reinterpret_cast<CFBEView*>(view);
+	if (detached != NULL && m_find_results_pane.AttachedView() == detached)
+	{
+		m_find_results_pane.Detach(detached);
+		HideFindResultsPane();
+	}
+	return 0;
+}
 LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
 	if (wParam == IMAGE_IMPORT_TEST_TIMER_ID)

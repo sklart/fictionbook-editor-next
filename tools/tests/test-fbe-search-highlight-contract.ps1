@@ -42,7 +42,8 @@ Assert-NotContains $header 'OnSearchHighlightScroll|WM_MOUSEWHEEL|WM_VSCROLL|WM_
 $scrollCallCount = [regex]::Matches($source, 'UpdateSearchHighlightsForScroll\(\);').Count
 if ($scrollCallCount -ne 1) { throw "Expected one post-scroll overlay refresh call, got $scrollCallCount." }
 
-Assert-Contains $pane 'SetItemText\(item, 1, m_view->FindResultPreview\(index\)\)' 'results preview column'
+Assert-Contains $pane 'LVS_OWNERDATA' 'virtual results preview column'
+Assert-Contains $pane 'OnGetDispInfo[\s\S]*?FindResultPreview' 'lazy results preview column'
 Assert-NotContains $pane 'FindResultSection|Section' 'disabled unsafe results section column'
 
 $overlay = [regex]::Match($source, 'class\s+CSearchHighlightOverlay\s*:\s*public.*?^};', [Text.RegularExpressions.RegexOptions]::Singleline -bor [Text.RegularExpressions.RegexOptions]::Multiline).Value
