@@ -42,6 +42,13 @@ bool IsSafeEntryPath(const CString& path)
     if (path.GetLength() >= 2 && path[1] == L':') return false;
     for (int index = 0; index < path.GetLength(); ++index)
         if (path[index] < L' ') return false;
+	int segmentStart = 0;
+	for (int index = 0; index <= path.GetLength(); ++index)
+	{
+		if (index != path.GetLength() && path[index] != L'/' && path[index] != L'\\') continue;
+		if (index - segmentStart == 2 && path.Mid(segmentStart, 2) == L"..") return false;
+		segmentStart = index + 1;
+	}
     return true;
 }
 

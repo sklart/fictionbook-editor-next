@@ -19,6 +19,8 @@ struct DocumentLocation
     CString entryPath;
     FictionBookFileType documentType = FictionBookFileType::Unknown;
     unsigned int entryOccurrence = 0;
+	unsigned __int64 containerLastWriteTime = static_cast<unsigned __int64>(-1);
+	unsigned __int64 containerFileSize = static_cast<unsigned __int64>(-1);
 
     bool IsArchive() const { return containerKind != DocumentContainerKind::None; }
 };

@@ -63,6 +63,7 @@ public:
   bool	  Save(const CString& filename);
   bool    SerializeToMemory(std::vector<unsigned char>& output, FictionBookFileType targetType);
   FictionBookFileType GetDocumentFileType() const { return m_file_type; }
+	void SetDocumentFileType(FictionBookFileType type) { m_file_type = type; }
 
   HRESULT GetLastSaveError() const { return m_last_save_error; }
   bool    SaveRecoveryCopy(const CString& filename);

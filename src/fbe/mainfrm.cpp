@@ -42,6 +42,14 @@ struct ResolvedOpenDocument
 	std::vector<unsigned char> rawBytes;
 };
 
+static void CaptureContainerFingerprint(const CString& path, DocumentLocation& location)
+{
+	WIN32_FILE_ATTRIBUTE_DATA data = {};
+	if (!::GetFileAttributesEx(path, GetFileExInfoStandard, &data)) return;
+	location.containerLastWriteTime = *reinterpret_cast<const unsigned __int64*>(&data.ftLastWriteTime);
+	location.containerFileSize = (static_cast<unsigned __int64>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+}
+
 static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDocument& resolved,
 	const DocumentLocation* preferredLocation = NULL, FbeArchive::Error* failure = NULL)
 {
@@ -77,6 +85,7 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 	resolved.location.entryPath = entries[selected].path;
 	resolved.location.entryOccurrence = entries[selected].occurrence;
 	resolved.location.documentType = entries[selected].documentType;
+	CaptureContainerFingerprint(storagePath, resolved.location);
 	return true;
 }
 
@@ -408,7 +417,8 @@ static bool WriteArchiveRecoveryLocation(const DocumentLocation& location)
 	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (file == INVALID_HANDLE_VALUE) return false;
 	CString text;
-	text.Format(L"1\r\n%u\r\n%u\r\n%s\r\n%s\r\n", static_cast<unsigned int>(location.containerKind), location.entryOccurrence,
+	text.Format(L"2\r\n%u\r\n%u\r\n%u\r\n%I64u\r\n%I64u\r\n%s\r\n%s\r\n", static_cast<unsigned int>(location.containerKind), location.entryOccurrence,
+		static_cast<unsigned int>(location.documentType), location.containerLastWriteTime, location.containerFileSize,
 		static_cast<LPCWSTR>(location.storagePath), static_cast<LPCWSTR>(location.entryPath));
 	DWORD written = 0;
 	const bool ok = ::WriteFile(file, text.GetString(), text.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
@@ -429,12 +439,13 @@ static bool ReadArchiveRecoveryLocation(DocumentLocation& location)
 	if (!ok || read != length) return false;
 	std::vector<CString> fields; int position = 0;
 	while (position >= 0) { CString field = CString(&text[0]).Tokenize(L"\n", position); field.TrimRight(L"\r"); fields.push_back(field); }
-	if (fields.size() < 5 || fields[0] != L"1") return false;
-	const unsigned long kind = wcstoul(fields[1], NULL, 10), occurrence = wcstoul(fields[2], NULL, 10);
+	if (fields.size() < 8 || fields[0] != L"2") return false;
+	const unsigned long kind = wcstoul(fields[1], NULL, 10), occurrence = wcstoul(fields[2], NULL, 10), type = wcstoul(fields[3], NULL, 10);
 	if (kind != static_cast<unsigned long>(DocumentContainerKind::Zip) && kind != static_cast<unsigned long>(DocumentContainerKind::Rar)) return false;
-	if (occurrence > UINT_MAX || fields[3].IsEmpty() || fields[4].IsEmpty()) return false;
+	if (occurrence > UINT_MAX || type > static_cast<unsigned long>(FictionBookFileType::Fbd) || fields[6].IsEmpty() || fields[7].IsEmpty()) return false;
 	location.containerKind = static_cast<DocumentContainerKind>(kind); location.entryOccurrence = static_cast<unsigned int>(occurrence);
-	location.storagePath = fields[3]; location.entryPath = fields[4]; location.documentType = DetectFictionBookFileType(location.entryPath);
+	location.documentType = static_cast<FictionBookFileType>(type); location.containerLastWriteTime = _wcstoui64(fields[4], NULL, 10); location.containerFileSize = _wcstoui64(fields[5], NULL, 10);
+	location.storagePath = fields[6]; location.entryPath = fields[7];
 	return location.documentType != FictionBookFileType::Unknown;
 }
 
@@ -1674,7 +1685,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   {
 	if (m_document_location.containerKind == DocumentContainerKind::Rar)
 		return SaveFile(true);
-	if (m_file_age != FileAge(m_document_location.storagePath))
+	if (m_file_age != FileAge(m_document_location.storagePath) || m_file_size != FileSize(m_document_location.storagePath))
 	{
 		FbeArchive::Error error; error.code = FbeArchive::ErrorCode::ModifiedExternally;
 		ShowArchiveError(m_hWnd, error); return FAIL;
@@ -1689,6 +1700,9 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	if (!FbeArchive::RewriteZipEntry(m_document_location.storagePath, entry, serialized, error)) { ShowArchiveError(m_hWnd, error); return FAIL; }
 	m_doc->MarkSavePoint();
 	m_file_age = FileAge(m_document_location.storagePath);
+	m_file_size = FileSize(m_document_location.storagePath);
+	m_document_location.containerLastWriteTime = m_file_age;
+	m_document_location.containerFileSize = m_file_size;
 	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
 	DeleteRecoveryFile();
 	return OK;
@@ -1792,6 +1806,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 
   AttachDocument(doc);
   m_file_age = FileAge(filename);
+	 m_file_size = FileSize(filename);
   delete m_doc;
   m_doc=doc;
   m_document_location = archive ? resolved.location : DocumentLocation();
@@ -3261,6 +3276,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
       start_with_params = true;
 	  m_document_location = startupArchive ? startupResolved.location : DocumentLocation();
 	  m_file_age = FileAge(startupArchive ? startupResolved.location.storagePath : startupFileName);
+	  m_file_size = FileSize(startupArchive ? startupResolved.location.storagePath : startupFileName);
 	}
     else
 	{
@@ -3744,7 +3760,9 @@ void CMainFrame::TryRestoreRecovery()
 			m_document_location = recoveredArchiveLocation;
 			m_doc->m_filename = recoveredArchiveLocation.storagePath;
 			m_doc->m_namevalid = true;
-			m_file_age = FileAge(recoveredArchiveLocation.storagePath);
+			m_doc->SetDocumentFileType(recoveredArchiveLocation.documentType);
+			m_file_age = recoveredArchiveLocation.containerLastWriteTime;
+			m_file_size = recoveredArchiveLocation.containerFileSize;
 		}
 		else
 		{
@@ -9414,6 +9432,14 @@ unsigned __int64 CMainFrame::FileAge(LPCTSTR FileName)
 	{
 		return *((unsigned __int64*)&data.ftLastWriteTime);
 	}	
+	return static_cast<unsigned __int64>(-1);
+}
+
+unsigned __int64 CMainFrame::FileSize(LPCTSTR FileName)
+{
+	WIN32_FILE_ATTRIBUTE_DATA data = {};
+	if (::GetFileAttributesEx(FileName, GetFileExInfoStandard, &data))
+		return (static_cast<unsigned __int64>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
 	return static_cast<unsigned __int64>(-1);
 }
 
