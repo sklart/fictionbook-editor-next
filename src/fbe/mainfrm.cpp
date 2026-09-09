@@ -15,6 +15,7 @@
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
 #include "archive\\ArchiveReader.h"
+#include "ArchiveEntryPicker.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
 #include "plugins\\PluginManager.h"
@@ -46,15 +47,20 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 	std::vector<FbeArchive::Entry> entries;
 	FbeArchive::Error error;
 	if (!FbeArchive::EnumerateFictionBookEntries(storagePath, entries, error)) return false;
-	// The entry picker is added as a separate UI step.  Do not discard the
-	// current book merely because a choice is necessary.
-	if (entries.size() != 1) return false;
-	if (!FbeArchive::ReadEntry(storagePath, entries[0], resolved.rawBytes, error)) return false;
+	int selected = 0;
+	if (entries.size() > 1)
+	{
+		CArchiveEntryPicker picker(entries);
+		if (picker.DoModal() != IDOK) return false;
+		selected = picker.SelectedIndex();
+		if (selected < 0 || static_cast<size_t>(selected) >= entries.size()) return false;
+	}
+	if (!FbeArchive::ReadEntry(storagePath, entries[selected], resolved.rawBytes, error)) return false;
 	resolved.location.containerKind = DetectDocumentContainerKind(storagePath);
 	resolved.location.storagePath = storagePath;
-	resolved.location.entryPath = entries[0].path;
-	resolved.location.entryOccurrence = entries[0].occurrence;
-	resolved.location.documentType = entries[0].documentType;
+	resolved.location.entryPath = entries[selected].path;
+	resolved.location.entryOccurrence = entries[selected].occurrence;
+	resolved.location.documentType = entries[selected].documentType;
 	return true;
 }
 

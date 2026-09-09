@@ -87,6 +87,7 @@
     <ClCompile Include="AboutBox.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ArchiveEntryPicker.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="apputils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -227,6 +228,7 @@
     <ClInclude Include="AboutBox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ArchiveEntryPicker.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="apputils.h">
       <Filter>Header Files</Filter>
     </ClInclude>

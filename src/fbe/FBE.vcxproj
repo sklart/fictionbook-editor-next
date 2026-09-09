@@ -225,6 +225,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AboutBox.cpp" />
+    <ClCompile Include="ArchiveEntryPicker.cpp" />
     <ClCompile Include="UpdateVersion.cpp" />
 	<ClCompile Include="UiMetrics.cpp" />
     <ClCompile Include="apputils.cpp">
@@ -380,6 +381,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AboutBox.h" />
+    <ClInclude Include="ArchiveEntryPicker.h" />
     <ClInclude Include="apputils.h" />
     <ClInclude Include="..\common\win32\atlimage.h" />
     <ClInclude Include="extras\atlcrypt.h" />
