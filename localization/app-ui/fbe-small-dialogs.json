@@ -772,25 +772,6 @@
         "bg-BG": "Назначаване"
       }
     },
-    "fbe.dialog.idd_find_results.section": {
-      "resource": "IDD_FIND_RESULTS",
-      "kind": "VALUE",
-      "targetId": "",
-      "translations": {
-        "en-US": "Section",
-        "ru-RU": "Раздел",
-        "uk-UA": "Розділ",
-        "de-DE": "Abschnitt",
-        "fr-FR": "Section",
-        "es-ES": "Sección",
-        "it-IT": "Sezione",
-        "pl-PL": "Sekcja",
-        "pt-PT": "Secção",
-        "nl-NL": "Sectie",
-        "cs-CZ": "Sekce",
-        "bg-BG": "Раздел"
-      }
-    },
     "fbe.dialog.idd_find_results.caption": {
       "resource": "IDD_FIND_RESULTS", "kind": "CAPTION", "targetId": "",
       "translations": { "en-US": "Find results", "ru-RU": "Результаты поиска", "uk-UA": "Результати пошуку", "de-DE": "Suchergebnisse", "fr-FR": "Résultats de recherche", "es-ES": "Resultados de búsqueda", "it-IT": "Risultati della ricerca", "pl-PL": "Wyniki wyszukiwania", "pt-PT": "Resultados da pesquisa", "nl-NL": "Zoekresultaten", "cs-CZ": "Výsledky hledání", "bg-BG": "Резултати от търсенето" }

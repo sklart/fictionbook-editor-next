@@ -374,9 +374,6 @@ public:
     MESSAGE_HANDLER(WM_CREATE, OnCreate)
     MESSAGE_HANDLER(WM_SETFOCUS, OnFocus)
     MESSAGE_HANDLER(WM_SIZE, OnSize)
-    MESSAGE_HANDLER(WM_MOUSEWHEEL, OnSearchHighlightScroll)
-    MESSAGE_HANDLER(WM_VSCROLL, OnSearchHighlightScroll)
-    MESSAGE_HANDLER(WM_HSCROLL, OnSearchHighlightScroll)
 
     // editing commands
     COMMAND_ID_HANDLER(ID_EDIT_UNDO, OnUndo)
@@ -447,13 +444,13 @@ public:
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEUP, OnMouseUp, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYDOWN, OnKeyDown, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONFOCUSIN, OnFocusIn, &VoidEventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONPASTE, OnRealPaste, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGEND, OnDrop, &VoidEventInfo)
 	END_SINK_MAP()
 
   LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
-  LRESULT OnSearchHighlightScroll(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnFocus(UINT, WPARAM, LPARAM, BOOL&) 
   {
     // pass to document
@@ -623,7 +620,6 @@ public:
 	CString SearchResultStatus();
 	CString FindAllResultStatus();
 	std::size_t FindResultCount() const;
-	CString FindResultSection(std::size_t index) const;
 	CString FindResultPreview(std::size_t index) const;
 	bool AreFindResultsCurrent();
 	std::uint64_t FindResultsRevision() const;
@@ -774,6 +770,7 @@ public:
 
   // HTMLDocumentEvents2
   void __stdcall	  OnSelChange(IDispatch *evt);
+	void __stdcall OnScroll(IDispatch *evt);
   VARIANT_BOOL __stdcall  OnContextMenu(IDispatch *evt);
   VARIANT_BOOL __stdcall  OnClick(IDispatch *evt);
 	VARIANT_BOOL __stdcall  OnMouseDown(IDispatch *evt);

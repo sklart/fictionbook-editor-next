@@ -649,15 +649,6 @@ LRESULT CFBEView::OnSize(UINT, WPARAM, LPARAM, BOOL&)
 	return 0;
 }
 
-LRESULT CFBEView::OnSearchHighlightScroll(UINT, WPARAM, LPARAM, BOOL& handled)
-{
-	// Keep the native popup aligned when scrolling by wheel or scrollbar.  The
-	// hosted browser still receives the original message; no polling is used.
-	UpdateSearchHighlightsForScroll();
-	handled = FALSE;
-	return 0;
-}
-
 // Search highlighting is deliberately a native overlay.  Styling ranges through
 // MSHTML would mutate the FB2 DOM, create undo entries and mark the document
 // dirty merely for showing Find All results.
@@ -2796,12 +2787,6 @@ std::size_t CFBEView::FindResultCount() const
 	return m_document_search.GetResults().GetCount();
 }
 
-CString CFBEView::FindResultSection(std::size_t index) const
-{
-	const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
-	return result != NULL ? CString(result->Section.c_str()) : CString();
-}
-
 CString CFBEView::FindResultPreview(std::size_t index) const
 {
 	const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
@@ -4073,6 +4058,13 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	::SendMessage(m_frame, AU::WM_TRACKPOPUPMENU, 0, (LPARAM)&tp);
 
 	return VARIANT_TRUE;
+}
+
+void CFBEView::OnScroll(IDispatch */* unused: evt */)
+{
+	// MSHTML emits this only after its hosted document has updated scrollLeft /
+	// scrollTop, so popup coordinates are sampled from the final position.
+	UpdateSearchHighlightsForScroll();
 }
 
 bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)

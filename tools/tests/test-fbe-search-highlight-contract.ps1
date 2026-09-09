@@ -5,9 +5,14 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
+$searchReplace = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
     if ($text -notmatch $pattern) { throw "Missing $description." }
+}
+
+function Assert-NotContains([string]$text, [string]$pattern, [string]$description) {
+    if ($text -match $pattern) { throw "Unexpected $description." }
 }
 
 Assert-Contains $header 'CSearchHighlightOverlay\*\s+m_search_highlight_overlay' 'overlay ownership boundary'
@@ -17,8 +22,14 @@ Assert-Contains $source 'WS_EX_LAYERED\s*\|\s*WS_EX_TRANSPARENT' 'non-interactiv
 Assert-Contains $source 'LWA_COLORKEY' 'colour-key transparency'
 Assert-Contains $source 'CreateResultRange\(' 'Search Core result-to-range mapping'
 Assert-Contains $source 'ClearSearchHighlights\(\);\s*\r?\n\s*if \(!m_ignore_changes\)' 'highlight invalidation on editor mutation'
-Assert-Contains $header 'WM_MOUSEWHEEL, OnSearchHighlightScroll' 'event-driven wheel refresh'
-Assert-Contains $source 'UpdateSearchHighlightsForScroll\(\);\s*\r?\n\s*handled = FALSE' 'event-driven scroll overlay refresh'
+Assert-Contains $header 'DISPID_HTMLDOCUMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo' 'post-scroll MSHTML event sink'
+Assert-Contains $source 'void CFBEView::OnScroll\(IDispatch \*/\* unused: evt \*/\)\s*\{[\s\S]*?UpdateSearchHighlightsForScroll\(\);' 'post-scroll overlay refresh'
+Assert-NotContains $header 'OnSearchHighlightScroll|WM_MOUSEWHEEL|WM_VSCROLL|WM_HSCROLL' 'pre-scroll Win32 overlay hooks'
+$scrollCallCount = [regex]::Matches($source, 'UpdateSearchHighlightsForScroll\(\);').Count
+if ($scrollCallCount -ne 1) { throw "Expected one post-scroll overlay refresh call, got $scrollCallCount." }
+
+Assert-Contains $searchReplace 'SetItemText\(item, 1, m_view->FindResultPreview\(index\)\)' 'results preview column'
+Assert-NotContains $searchReplace 'FindResultSection|IDD_FIND_RESULTS, L"Section"' 'disabled unsafe results section column'
 
 $overlay = [regex]::Match($source, 'class\s+CSearchHighlightOverlay\s*:\s*public.*?^};', [Text.RegularExpressions.RegexOptions]::Singleline -bor [Text.RegularExpressions.RegexOptions]::Multiline).Value
 if ([string]::IsNullOrWhiteSpace($overlay)) {

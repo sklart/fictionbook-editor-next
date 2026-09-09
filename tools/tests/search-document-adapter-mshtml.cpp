@@ -39,7 +39,7 @@ int wmain()
 	document.CreateInstance(L"htmlfile");
 	IPersistStreamInitPtr persist(document);
 	if (!document || !persist || FAILED(persist->InitNew()) || !WriteHtml(document,
-		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img src='about:blank'>inline-after</p><div class='image'><img src='about:blank'></div><p>block-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
+		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img id='inline-image' src='about:blank'>inline-after</p><div class='image'><img id='block-image' src='about:blank'></div><p>block-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
 		return 2;
 
 	int result = 0;
@@ -71,19 +71,20 @@ int wmain()
 	// A collapsed hit immediately after an inline control must resolve on the
 	// right of that control.  Inserting there is the MSHTML equivalent of a
 	// zero-length replacement and must neither consume nor move the image.
-	const std::size_t inlineAfterOffset = snapshot.Text.find(L"inline-after");
-	MSHTML::IHTMLTxtRangePtr zeroLengthRange;
-	if (!result && (inlineAfterOffset == std::wstring::npos ||
-		!adapter.CreateHitRange(document, snapshot, AU::Search::SearchHit(inlineAfterOffset, 0), zeroLengthRange) ||
-		!zeroLengthRange || static_cast<LPCWSTR>(_bstr_t(zeroLengthRange->text))[0] != L'\0')) result = 55;
+	MSHTML::IHTMLDocument3Ptr document3(document);
+	MSHTML::IHTMLElementPtr inlineImage(document3 ? document3->getElementById(L"inline-image") : MSHTML::IHTMLElementPtr());
+	MSHTML::IHTMLTxtRangePtr zeroLengthRange(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+	if (!result && (!inlineImage || !zeroLengthRange)) result = 55;
 	if (!result)
 	{
+		zeroLengthRange->moveToElementText(inlineImage);
+		zeroLengthRange->collapse(VARIANT_FALSE);
 		zeroLengthRange->text = L"zero-";
 		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
 		html.MakeUpper();
-		const int imageAt = html.Find(L"IMG");
+		const int imageAt = html.Find(L"ID=INLINE-IMAGE");
 		const int insertedAt = html.Find(L"ZERO-INLINE-AFTER");
-		if (imageAt < 0 || insertedAt < 0 || imageAt > insertedAt) result = 56;
+		if (imageAt < 0 || insertedAt < 0 || imageAt > insertedAt || html.Find(L"ID=BLOCK-IMAGE") < 0) result = 56;
 	}
 
 	DocumentSearchCoordinator coordinator;
@@ -129,7 +130,7 @@ int wmain()
 		resultRange->text = L"after-replaced";
 		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
 		html.MakeUpper();
-		if (html.Find(L"IMG") < 0 || html.Find(L"AFTER-REPLACED") < 0) result = 47;
+		if (html.Find(L"ID=INLINE-IMAGE") < 0 || html.Find(L"ID=BLOCK-IMAGE") < 0 || html.Find(L"AFTER-REPLACED") < 0) result = 47;
 	}
 	query.Text = L"image before";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
@@ -139,7 +140,7 @@ int wmain()
 		resultRange->text = L"before-replaced";
 		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
 		html.MakeUpper();
-		if (html.Find(L"IMG") < 0 || html.Find(L"BEFORE-REPLACED") < 0 || html.Find(L"AFTER-REPLACED") < 0) result = 49;
+		if (html.Find(L"ID=INLINE-IMAGE") < 0 || html.Find(L"ID=BLOCK-IMAGE") < 0 || html.Find(L"BEFORE-REPLACED") < 0 || html.Find(L"AFTER-REPLACED") < 0) result = 49;
 	}
 	query.Text = L"strong";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
@@ -150,12 +151,20 @@ int wmain()
 		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
 		html.MakeUpper();
 		if (html.Find(L"STRONG") < 0 || html.Find(L"EMPHASIS") < 0 || html.Find(L"<A") < 0 ||
-			html.Find(L"TABLE") < 0 || html.Find(L"CLASS=IMAGE") < 0) result = 51;
+			html.Find(L"TABLE") < 0 || html.Find(L"CLASS=IMAGE") < 0 || html.Find(L"ID=INLINE-IMAGE") < 0 ||
+			html.Find(L"ID=BLOCK-IMAGE") < 0) result = 51;
 	}
 	query.Text = L"block-after";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetResults().GetCount() != 1 ||
 		coordinator.CreateResultRange(document, 44, 0, resultRange) == false || !resultRange ||
 		wcscmp(static_cast<LPCWSTR>(_bstr_t(resultRange->text)), L"block-after") != 0)) result = 36;
+	if (!result)
+	{
+		resultRange->text = L"block-replaced";
+		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
+		html.MakeUpper();
+		if (html.Find(L"ID=BLOCK-IMAGE") < 0 || html.Find(L"BLOCK-REPLACED") < 0 || html.Find(L"ID=INLINE-IMAGE") < 0) result = 58;
+	}
 	query.Text = L"table cell";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetSession().GetHitCount() != 1 ||
 		coordinator.GetResults().GetCount() != 1 || coordinator.GetResults().GetAt(0)->Preview.find(L"table cell") == std::wstring::npos ||
