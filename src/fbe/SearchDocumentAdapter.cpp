@@ -12,12 +12,15 @@ bool IsSearchParagraph(MSHTML::IHTMLElementPtr element)
 	return tagName.length() != 0 && _wcsicmp(static_cast<LPCWSTR>(tagName), L"P") == 0;
 }
 
-bool IsBodyElement(MSHTML::IHTMLElementPtr element)
+bool IsDescendantOf(MSHTML::IHTMLElementPtr element, MSHTML::IHTMLElementPtr ancestor)
 {
-	if (!element)
-		return false;
-	_bstr_t tagName(element->tagName);
-	return tagName.length() != 0 && _wcsicmp(static_cast<LPCWSTR>(tagName), L"BODY") == 0;
+	while (element)
+	{
+		if (element == ancestor)
+			return true;
+		element = element->parentElement;
+	}
+	return false;
 }
 
 bool TryMoveRangeAfterInlineImage(
@@ -76,16 +79,10 @@ bool MoveRangeStartToTextOffset(
 	range->collapse(VARIANT_TRUE);
 	if (preferAfterInlineImage && TryMoveRangeAfterInlineImage(body, source, textOffset, range))
 		return true;
-	if (!IsBodyElement(source))
-	{
-		range->move(L"character", static_cast<long>(textOffset));
-		return true;
-	}
-
 	// MSHTML's character movement counts inline controls (notably IMG), while
-	// IHTMLTxtRange::text omits them. Find the first DOM position whose text
-	// prefix reaches the UTF-16 snapshot offset instead of assuming the two
-	// coordinate systems are identical.
+	// IHTMLTxtRange::text omits them. This applies to fbw_body as well as BODY:
+	// find the first DOM position whose text prefix reaches the UTF-16 snapshot
+	// offset instead of assuming the two coordinate systems are identical.
 	MSHTML::IHTMLTxtRangePtr limit(body->createTextRange());
 	if (!limit)
 		return false;
@@ -158,14 +155,17 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 
 	MSHTML::IHTMLBodyElementPtr body(document->body);
 	MSHTML::IHTMLElementCollectionPtr all(document->all);
-	if (!body || !all)
+	MSHTML::IHTMLElementPtr searchRoot(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"fbw_body"));
+	if (!searchRoot)
+		searchRoot = MSHTML::IHTMLElementPtr(body);
+	if (!body || !all || !searchRoot)
 		return builder.Build();
 	std::uint64_t nextSourceId = 1;
 	bool hasPreviousParagraph = false;
 	for (long index = 0; index < all->length; ++index)
 	{
 		MSHTML::IHTMLElementPtr element(all->item(index));
-		if (!IsSearchParagraph(element))
+		if (!IsSearchParagraph(element) || !IsDescendantOf(element, searchRoot))
 			continue;
 
 		MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
@@ -198,13 +198,17 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildBodySnapshot(
 		return builder.Build();
 
 	MSHTML::IHTMLBodyElementPtr body(document->body);
+	MSHTML::IHTMLElementPtr searchRoot(MSHTML::IHTMLDocument3Ptr(document)->getElementById(L"fbw_body"));
+	if (!searchRoot)
+		searchRoot = MSHTML::IHTMLElementPtr(body);
 	MSHTML::IHTMLTxtRangePtr range(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
-	if (!body || !range)
+	if (!body || !searchRoot || !range)
 		return builder.Build();
+	range->moveToElementText(searchRoot);
 	_bstr_t rangeText(range->text);
 	CString text(static_cast<LPCWSTR>(rangeText));
 	const std::uint64_t sourceId = 1;
-	m_sources.push_back({ sourceId, MSHTML::IHTMLElementPtr(body) });
+	m_sources.push_back({ sourceId, searchRoot });
 	builder.Append(
 		std::wstring(static_cast<LPCWSTR>(text), text.GetLength()),
 		{ sourceId, 0 });
@@ -299,6 +303,34 @@ bool SearchDocumentAdapter::TryGetSearchOffset(
 		return snapshot.TryGetSearchOffset(
 			{ source.Id, static_cast<std::size_t>(prefix.length()) },
 			searchOffset);
+	}
+
+	// The Find dialog can retain a collapsed MSHTML selection in BODY just
+	// before/after #fbw_body.  That selection is outside the snapshot source,
+	// but it has an unambiguous document-search meaning: begin/end of the
+	// editable document, depending on direction at the caller.
+	if (m_sources.size() == 1 && m_sources[0].Element)
+	{
+		const SourceRange& source = m_sources[0];
+		MSHTML::IHTMLDocument2Ptr document(source.Element->document);
+		MSHTML::IHTMLBodyElementPtr body(document ? document->body : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLTxtRangePtr sourceRange(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		if (sourceRange)
+		{
+			sourceRange->moveToElementText(source.Element);
+			MSHTML::IHTMLTxtRangePtr sourceStart(sourceRange->duplicate());
+			MSHTML::IHTMLTxtRangePtr sourceEnd(sourceRange->duplicate());
+			sourceStart->collapse(VARIANT_TRUE);
+			sourceEnd->collapse(VARIANT_FALSE);
+			if (endpoint->compareEndPoints(L"StartToStart", sourceStart) <= 0)
+				return snapshot.TryGetSearchOffset({ source.Id, 0 }, searchOffset);
+			if (endpoint->compareEndPoints(L"StartToStart", sourceEnd) >= 0)
+			{
+				_bstr_t sourceText(sourceRange->text);
+				return snapshot.TryGetSearchOffset(
+					{ source.Id, static_cast<std::size_t>(sourceText.length()) }, searchOffset);
+			}
+		}
 	}
 	return false;
 }

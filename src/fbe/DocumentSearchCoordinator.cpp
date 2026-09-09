@@ -9,16 +9,50 @@
 
 namespace {
 
-std::wstring BuildPreview(const std::wstring& text, const AU::Search::SearchHit& hit)
+struct PreviewData {
+	std::wstring Text;
+	std::size_t MatchStart = 0;
+	std::size_t MatchLength = 0;
+};
+
+std::wstring NormalizePreviewText(const std::wstring& text)
+{
+	std::wstring normalized;
+	normalized.reserve(text.size());
+	bool previousWasSpace = false;
+	for (wchar_t character : text)
+	{
+		if (character == L'\r' || character == L'\n' || character == L'\t')
+			character = L' ';
+		if (character == L' ' && previousWasSpace)
+			continue;
+		normalized += character;
+		previousWasSpace = character == L' ';
+	}
+	return normalized;
+}
+
+PreviewData BuildPreview(const std::wstring& text, const AU::Search::SearchHit& hit)
 {
 	const std::size_t context = 40;
 	const std::size_t start = hit.Start > context ? hit.Start - context : 0;
 	const std::size_t end = (std::min)(text.size(), hit.Start + hit.Length + context);
-	std::wstring preview = text.substr(start, end - start);
+	// Paragraph boundaries are searchable, but a list-view cell cannot render
+	// them. Keep the context readable and make the matched fragment explicit.
+	PreviewData preview;
+	preview.Text = NormalizePreviewText(text.substr(start, hit.Start - start));
+	preview.MatchStart = preview.Text.size();
+	const std::wstring match = NormalizePreviewText(text.substr(hit.Start, hit.Length));
+	preview.Text += match;
+	preview.MatchLength = match.size();
+	preview.Text += NormalizePreviewText(text.substr(hit.Start + hit.Length, end - hit.Start - hit.Length));
 	if (start != 0)
-		preview.insert(0, L"…");
+	{
+		preview.Text.insert(0, 1, L'\x2026');
+		++preview.MatchStart;
+	}
 	if (end != text.size())
-		preview += L"…";
+		preview.Text += L'\x2026';
 	return preview;
 }
 
@@ -34,7 +68,10 @@ bool DocumentSearchCoordinator::Rebuild(
 	if (errorText != NULL)
 		errorText->clear();
 	m_session.SetQuery(query);
-	m_snapshot = m_adapter.BuildBodySnapshot(document, documentGeneration);
+	// The editable FB2 content consists of paragraphs in #fbw_body.  Keeping
+	// them as separate sources both excludes host metadata and preserves a
+	// readable paragraph boundary for results previews and regex matching.
+	m_snapshot = m_adapter.BuildSnapshot(document, documentGeneration);
 
 	std::vector<AU::Search::SearchHit> hits;
 	if (query.Mode == AU::Search::SearchMode::Literal)
@@ -82,7 +119,10 @@ bool DocumentSearchCoordinator::Rebuild(
 		// Section is optional Results-pane presentation metadata. Matching,
 		// navigation and replacement must remain independent of DOM ancestry.
 		result.Section.clear();
-		result.Preview = BuildPreview(m_snapshot.Text, hits[index]);
+		const PreviewData preview = BuildPreview(m_snapshot.Text, hits[index]);
+		result.Preview = preview.Text;
+		result.PreviewMatchStart = preview.MatchStart;
+		result.PreviewMatchLength = preview.MatchLength;
 		results.push_back(result);
 	}
 	m_results.SetResults(results, documentGeneration);
@@ -145,9 +185,12 @@ const AU::Search::SearchHit* DocumentSearchCoordinator::SelectFromRange(
 	if (!m_adapter.TryGetSearchOffset(
 		m_snapshot, range, direction == AU::Search::SearchDirection::Forward, &offset))
 	{
-		if (wrapped != NULL)
-			*wrapped = false;
-		return NULL;
+		// A newly created MSHTML selection can sit on BODY (outside #fbw_body).
+		// It is still a valid Find starting point: begin at the editable boundary
+		// rather than reporting "not found" while Find All sees the same hits.
+		offset = direction == AU::Search::SearchDirection::Forward
+			? 0
+			: m_snapshot.Text.size();
 	}
 	return SelectFromOffset(document, documentGeneration, offset, direction, wrapped, skipZeroLengthAtOffset);
 }

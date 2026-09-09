@@ -1038,6 +1038,40 @@
         "bg-BG": "Отказ"
       }
     },
+    "fbe.dialog.idd_find.find_all": {
+      "resource": "IDD_FIND", "kind": "PUSHBUTTON", "targetId": "IDC_FIND_ALL",
+      "translations": { "en-US": "Find &All", "ru-RU": "Найти &все", "uk-UA": "Знайти &все", "de-DE": "&Alle suchen", "fr-FR": "Tout &rechercher", "es-ES": "Buscar &todo", "it-IT": "Trova &tutto", "pl-PL": "Znajdź &wszystko", "pt-PT": "Localizar &tudo", "nl-NL": "&Alles zoeken", "cs-CZ": "Najít &vše", "bg-BG": "Намери &всички" }
+    },
+    "fbe.dialog.idd_find.scope": {
+      "resource": "IDD_FIND", "kind": "LTEXT", "targetId": "IDC_FIND_SCOPE_LABEL",
+      "translations": { "en-US": "Scope:", "ru-RU": "Область:", "uk-UA": "Область:", "de-DE": "Bereich:", "fr-FR": "Portée :", "es-ES": "Ámbito:", "it-IT": "Ambito:", "pl-PL": "Zakres:", "pt-PT": "Âmbito:", "nl-NL": "Bereik:", "cs-CZ": "Rozsah:", "bg-BG": "Обхват:" }
+    },
+    "fbe.dialog.idd_find.scope_whole_document": {
+      "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "Whole document", "ru-RU": "Весь документ", "uk-UA": "Увесь документ", "de-DE": "Gesamtes Dokument", "fr-FR": "Document entier", "es-ES": "Todo el documento", "it-IT": "Intero documento", "pl-PL": "Cały dokument", "pt-PT": "Documento inteiro", "nl-NL": "Hele document", "cs-CZ": "Celý dokument", "bg-BG": "Целият документ" }
+    },
+    "fbe.dialog.idd_find.scope_current_section": {
+      "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "Current section", "ru-RU": "Текущий раздел", "uk-UA": "Поточний розділ", "de-DE": "Aktueller Abschnitt", "fr-FR": "Section actuelle", "es-ES": "Sección actual", "it-IT": "Sezione corrente", "pl-PL": "Bieżąca sekcja", "pt-PT": "Secção atual", "nl-NL": "Huidige sectie", "cs-CZ": "Aktuální sekce", "bg-BG": "Текущ раздел" }
+    },
+    "fbe.dialog.idd_find.scope_selection": {
+      "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "Selection", "ru-RU": "Выделение", "uk-UA": "Виділення", "de-DE": "Auswahl", "fr-FR": "Sélection", "es-ES": "Selección", "it-IT": "Selezione", "pl-PL": "Zaznaczenie", "pt-PT": "Seleção", "nl-NL": "Selectie", "cs-CZ": "Výběr", "bg-BG": "Избрано" }
+    },
+    "fbe.dialog.idd_find.unicode_properties": {
+      "resource": "IDD_FIND", "kind": "CONTROL", "targetId": "IDC_FIND_UNICODE_PROPERTIES",
+      "translations": { "en-US": "Unicode &properties", "ru-RU": "Свойства &Unicode", "uk-UA": "Властивості &Unicode", "de-DE": "Unicode-&Eigenschaften", "fr-FR": "Propriétés &Unicode", "es-ES": "Propiedades &Unicode", "it-IT": "Proprietà &Unicode", "pl-PL": "Właściwości &Unicode", "pt-PT": "Propriedades &Unicode", "nl-NL": "Unicode-&eigenschappen", "cs-CZ": "Vlastnosti &Unicode", "bg-BG": "Свойства на &Unicode" }
+    },
+    "fbe.tooltip.find.text": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_TEXT", "translations": { "en-US": "Text to find. Results update after a short pause while typing.", "ru-RU": "Текст для поиска. Результаты обновляются после короткой паузы при вводе." } },
+    "fbe.tooltip.find.next": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "ID_FIND_NEXT", "translations": { "en-US": "Select the next match in the chosen direction.", "ru-RU": "Перейти к следующему совпадению в выбранном направлении." } },
+    "fbe.tooltip.find.all": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_FIND_ALL", "translations": { "en-US": "Show every match in the Results window.", "ru-RU": "Показать все совпадения в окне результатов." } },
+    "fbe.tooltip.find.whole_word": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_WHOLE", "translations": { "en-US": "Match complete words only.", "ru-RU": "Искать только целые слова." } },
+    "fbe.tooltip.find.match_case": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_MATCHCASE", "translations": { "en-US": "Distinguish uppercase and lowercase letters.", "ru-RU": "Учитывать регистр букв." } },
+    "fbe.tooltip.find.regexp": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_REGEXP", "translations": { "en-US": "Interpret the query as a regular expression.", "ru-RU": "Обрабатывать запрос как регулярное выражение." } },
+    "fbe.tooltip.find.scope": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_FIND_SCOPE", "translations": { "en-US": "Choose where to search.", "ru-RU": "Выберите область поиска." } },
+    "fbe.tooltip.find.unicode_properties": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_FIND_UNICODE_PROPERTIES", "translations": { "en-US": "Use Unicode character properties. In regular expressions, \\w, \\d, \\s and word boundaries match Unicode characters, not only ASCII. You can use \\p{...}, for example \\p{L}. This can change results of ASCII-oriented patterns.", "ru-RU": "Включает свойства Unicode. В регулярных выражениях \\w, \\d, \\s и границы слов учитывают символы Unicode, а не только ASCII. Можно использовать \\p{...}, например \\p{L}. Это может изменить результаты шаблонов, рассчитанных только на ASCII." } },
+    "fbe.tooltip.find.up": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_UP", "translations": { "en-US": "Search toward the beginning of the document.", "ru-RU": "Искать к началу документа." } },
+    "fbe.tooltip.find.down": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_DOWN", "translations": { "en-US": "Search toward the end of the document.", "ru-RU": "Искать к концу документа." } },
     "fbe.dialog.idd_replace.caption": {
       "resource": "IDD_REPLACE",
       "kind": "CAPTION",

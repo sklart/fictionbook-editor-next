@@ -628,6 +628,7 @@ public:
 	CString FindAllResultStatus();
 	std::size_t FindResultCount() const;
 	CString FindResultPreview(std::size_t index) const;
+	bool FindResultPreviewMatch(std::size_t index, std::size_t* start, std::size_t* length) const;
 	bool AreFindResultsCurrent();
 	std::uint64_t FindResultsRevision() const;
 	bool SelectFindResult(std::size_t index);

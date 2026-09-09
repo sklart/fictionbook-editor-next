@@ -44,6 +44,25 @@ int wmain()
 		return 2;
 
 	int result = 0;
+	// FBE hosts editable FB2 markup in #fbw_body and keeps metadata/UI support
+	// markup next to it in BODY. Search must never expose that support text.
+	MSHTML::IHTMLDocument2Ptr scopedDocument;
+	IPersistStreamInitPtr scopedPersist;
+	scopedDocument.CreateInstance(L"htmlfile");
+	scopedPersist = scopedDocument;
+	if (!scopedDocument || !scopedPersist || FAILED(scopedPersist->InitNew()) || !WriteHtml(scopedDocument,
+		L"<html><body><div id='fbw_desc'><p>service-only-match</p></div><div id='fbw_body'><p>editable-match</p></div><div id='fbw_updater'>service-only-match</div></body></html>")) result = 80;
+	if (!result)
+	{
+		SearchDocumentAdapter scopedAdapter;
+		const AU::Search::SearchTextSnapshot scopedSnapshot = scopedAdapter.BuildBodySnapshot(scopedDocument, 41);
+		if (scopedSnapshot.Text.find(L"editable-match") == std::wstring::npos ||
+			scopedSnapshot.Text.find(L"service-only-match") != std::wstring::npos) result = 81;
+		MSHTML::IHTMLTxtRangePtr bodyStart(MSHTML::IHTMLBodyElementPtr(scopedDocument->body)->createTextRange());
+		std::size_t scopedOffset = static_cast<std::size_t>(-1);
+		if (!result && (!bodyStart || !scopedAdapter.TryGetSearchOffset(scopedSnapshot, bodyStart, false, &scopedOffset) ||
+			scopedOffset != 0)) result = 82;
+	}
 	{
 	SearchDocumentAdapter adapter;
 	const AU::Search::SearchTextSnapshot snapshot = adapter.BuildSnapshot(document, 42);

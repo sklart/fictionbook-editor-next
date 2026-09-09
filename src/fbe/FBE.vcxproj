@@ -181,6 +181,9 @@ exit /b 0
       <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
       <WarningLevel>Level2</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
+      <!-- Debug builds may compile several translation units concurrently; /FS
+           serializes access to the shared compiler PDB (vc143.pdb). -->
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
     </ClCompile>

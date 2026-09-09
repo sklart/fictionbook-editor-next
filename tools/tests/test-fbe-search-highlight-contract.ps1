@@ -41,7 +41,7 @@ if ($overlay -match 'execCommand|innerHTML|outerHTML|\.text\s*=') {
 if ($overlay -match 'WS_CHILD|FBE_SEARCH_HIGHLIGHT_TIMER') {
     throw 'Windows 7 Highlight All must not use a layered child window or polling timer.'
 }
-if ($overlay -notmatch 'RGB\(255,\s*128,\s*0\).*RGB\(255,\s*215,\s*0\)') {
+if ($overlay -notmatch '(?s)RGB\(255,\s*128,\s*0\).*RGB\(255,\s*215,\s*0\)') {
     throw 'The current hit must be rendered distinctly from other hits.'
 }
 

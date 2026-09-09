@@ -687,7 +687,10 @@ public:
 		}
 		if (m_hWnd)
 		{
-			SetWindowPos(HWND_TOP, origin.x, origin.y, client.right, client.bottom, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+			// Keep the owned popup immediately above the hosted editor, but below
+			// modeless Find/Results windows. HWND_TOP would paint hit rectangles over
+			// those controls when an explicit Find All opens the Results pane.
+			SetWindowPos(parent, origin.x, origin.y, client.right, client.bottom, SWP_NOACTIVATE | SWP_SHOWWINDOW);
 			Invalidate();
 		}
 	}
@@ -712,16 +715,18 @@ public:
 		RECT client = {};
 		GetClientRect(&client);
 		dc.FillSolidRect(&client, RGB(0, 0, 0)); // colour-keyed transparent
+		HBRUSH selectedBrush = ::CreateSolidBrush(RGB(255, 128, 0));
+		HBRUSH normalBrush = ::CreateSolidBrush(RGB(255, 215, 0));
 		for (std::size_t index = 0; index < m_documentRects.size(); ++index)
 		{
 			RECT rect = m_documentRects[index];
 			::OffsetRect(&rect, -m_scrollLeft, -m_scrollTop);
 			if (rect.right <= rect.left) rect.right = rect.left + 1;
 			if (rect.bottom <= rect.top) rect.bottom = rect.top + 1;
-			HBRUSH brush = ::CreateSolidBrush(index == m_selected ? RGB(255, 128, 0) : RGB(255, 215, 0));
-			::FrameRect(dc, &rect, brush);
-			::DeleteObject(brush);
+			::FrameRect(dc, &rect, index == m_selected ? selectedBrush : normalBrush);
 		}
+		::DeleteObject(normalBrush);
+		::DeleteObject(selectedBrush);
 		return 0;
 	}
 
@@ -2797,6 +2802,16 @@ CString CFBEView::FindResultPreview(std::size_t index) const
 	return result != NULL ? CString(result->Preview.c_str()) : CString();
 }
 
+bool CFBEView::FindResultPreviewMatch(std::size_t index, std::size_t* start, std::size_t* length) const
+{
+	const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
+	if (result == NULL || start == NULL || length == NULL)
+		return false;
+	*start = result->PreviewMatchStart;
+	*length = result->PreviewMatchLength;
+	return true;
+}
+
 bool CFBEView::AreFindResultsCurrent()
 {
 	const long version = GetVersionNumber();
@@ -2851,7 +2866,16 @@ void CFBEView::RefreshSearchHighlights()
 {
 	try
 	{
+		// Geometry extraction crosses the COM boundary and is particularly costly
+		// for short/common queries.  Keep the Results pane and navigation complete,
+		// but bound the visual overlay so Find All cannot monopolize the UI thread.
+		const std::size_t maxOverlayRects = 16;
 		if (!Document() || !AreFindResultsCurrent() || FindResultCount() == 0)
+		{
+			ClearSearchHighlights();
+			return;
+		}
+		if (FindResultCount() > maxOverlayRects)
 		{
 			ClearSearchHighlights();
 			return;
@@ -2905,6 +2929,7 @@ bool CFBEView::CloseFindResultsDialog(CFindResultsDlg* dlg)
 {
 	if (!dlg || !dlg->IsValid())
 		return false;
+	ClearSearchHighlights();
 	dlg->DestroyWindow();
 	return true;
 }
@@ -4201,7 +4226,14 @@ bool CFBEView::DoFindAll(bool showResults, CString* errorText)
 			ShowFindResults();
 		else if (m_find_results_dlg && m_find_results_dlg->IsValid())
 			m_find_results_dlg->Refresh();
-		RefreshSearchHighlights();
+		// Typing into Find invokes this path after a short debounce.  Computing a
+		// rectangle for every hit is synchronous MSHTML work and can freeze the
+		// editor for a common one-character query.  Highlighting remains available
+		// through the explicit Find All action.
+		if (showResults)
+			RefreshSearchHighlights();
+		else
+			ClearSearchHighlights();
 		return true;
 	}
 	catch (const _com_error&)
@@ -5709,6 +5741,7 @@ bool CFBEView::CloseFindDialog(CFindDlgBase* dlg)
 	if(!dlg || !dlg->IsValid())
 		return false;
 
+	ClearSearchHighlights();
 	dlg->DestroyWindow();
 	return true;
 }

@@ -16,6 +16,10 @@ struct SearchResult {
 	SearchHit Hit;
 	std::wstring Section;
 	std::wstring Preview;
+	// Offset inside Preview used by the Results pane to paint the matched text
+	// without adding marker characters to the user-visible context.
+	std::size_t PreviewMatchStart = 0;
+	std::size_t PreviewMatchLength = 0;
 };
 
 class SearchResults {
