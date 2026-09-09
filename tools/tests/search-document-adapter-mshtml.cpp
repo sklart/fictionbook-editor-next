@@ -39,14 +39,14 @@ int wmain()
 	document.CreateInstance(L"htmlfile");
 	IPersistStreamInitPtr persist(document);
 	if (!document || !persist || FAILED(persist->InitNew()) || !WriteHtml(document,
-		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img id='inline-image' src='about:blank'>inline-after</p><p><img id='twin-first' src='about:blank'><img id='twin-second' src='about:blank'>twins</p><div class='image'><img id='block-image' src='about:blank'></div><p>block-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
+		L"<html><body><div class='title'>title text</div><p>first</p><div class='section'><div class='title'>Section one</div><p>second</p></div><p>plain <strong>strong</strong><emphasis> emphasis</emphasis><a> link</a>&nbsp;\x043A\x043E\x0442 \xD83D\xDE00</p><p>image before <img id='inline-image' src='about:blank'>inline-after</p><p><img id='twin-first' src='about:blank'><img id='twin-second' src='about:blank'>twins</p><p id='end-image-paragraph'>tail<img id='end-image' src='about:blank'></p><div class='image'><img id='block-image' src='about:blank'></div><p>block-after</p><table><tr><td>table cell</td></tr></table></body></html>"))
 		return 2;
 
 	int result = 0;
 	{
 	SearchDocumentAdapter adapter;
 	const AU::Search::SearchTextSnapshot snapshot = adapter.BuildSnapshot(document, 42);
-	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 6) result = 3;
+	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 7) result = 3;
 	if (!result && (snapshot.Text.find(L"strong") == std::wstring::npos || snapshot.Text.find(L"emphasis") == std::wstring::npos ||
 		snapshot.Text.find(L"link") == std::wstring::npos || snapshot.Text.find(L"\x043A\x043E\x0442") == std::wstring::npos ||
 		snapshot.Text.find(L"\xD83D\xDE00") == std::wstring::npos)) result = 4;
@@ -85,6 +85,76 @@ int wmain()
 		const int insertedAt = html.Find(L"ZERO-INLINE-AFTER");
 		if (imageAt < 0 || insertedAt < 0 || imageAt > insertedAt || html.Find(L"ID=BLOCK-IMAGE") < 0) result = 56;
 	}
+	const std::size_t tailOffset = snapshot.Text.find(L"tail");
+	const std::size_t tailEnd = tailOffset == std::wstring::npos ? std::wstring::npos : tailOffset + 4;
+	MSHTML::IHTMLTxtRangePtr endImageRange;
+	if (!result && (tailEnd == std::wstring::npos || !adapter.CreateHitRange(document, snapshot, AU::Search::SearchHit(tailEnd, 0), endImageRange))) result = 65;
+	if (!result)
+	{
+		endImageRange->text = L"end-marker";
+		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML))); html.MakeUpper();
+		const int image = html.Find(L"ID=END-IMAGE"), marker = html.Find(L"END-MARKER");
+		if (image < 0 || marker < image) result = 66;
+	}
+	// `$` is a real zero-length regex result. Map the Search Core hit back to
+	// an MSHTML range at an end-of-paragraph IMG without consuming that IMG.
+	MSHTML::IHTMLDocument2Ptr dollarDocument;
+	dollarDocument.CreateInstance(L"htmlfile");
+	IPersistStreamInitPtr dollarPersist(dollarDocument);
+	if (!result && (!dollarDocument || !dollarPersist || FAILED(dollarPersist->InitNew()) || !WriteHtml(dollarDocument,
+		L"<html><body><p><img id='dollar-start' src='about:blank'>alpha</p><p>tail<img id='dollar-end' src='about:blank'></p></body></html>"))) result = 67;
+	if (!result)
+	{
+		SearchDocumentAdapter dollarAdapter;
+		const AU::Search::SearchTextSnapshot dollarAdapterSnapshot = dollarAdapter.BuildBodySnapshot(dollarDocument, 71);
+		AU::Search::SearchQuery dollarQuery; dollarQuery.Mode = AU::Search::SearchMode::Regex; dollarQuery.Multiline = true; dollarQuery.Text = L"$";
+		DocumentSearchCoordinator dollarCoordinator;
+		if (!dollarCoordinator.Rebuild(dollarDocument, 71, dollarQuery)) result = 68;
+		// Rebuild uses BuildBodySnapshot(), so use its exact snapshot for both
+		// the backend hit and the MSHTML range mapping.
+		const AU::Search::SearchTextSnapshot& dollarSearchSnapshot = dollarCoordinator.GetSnapshot();
+		const std::size_t dollarOffset = dollarSearchSnapshot.Text.find(L"tail") + 4;
+		const AU::Search::SearchHit* dollarHit = NULL;
+		for (std::size_t index = 0; !result && index < dollarCoordinator.GetResults().GetCount(); ++index)
+		{
+			const AU::Search::SearchResult* candidate = dollarCoordinator.GetResults().GetAt(index);
+			if (candidate != NULL && candidate->Hit.Start == dollarOffset && candidate->Hit.Length == 0)
+			{
+				dollarHit = &candidate->Hit;
+				break;
+			}
+		}
+		MSHTML::IHTMLTxtRangePtr dollarRange;
+		if (!result && (dollarAdapterSnapshot.Text != dollarSearchSnapshot.Text || dollarHit == NULL ||
+			!dollarAdapter.CreateHitRange(dollarDocument, dollarAdapterSnapshot, *dollarHit, dollarRange))) result = 69;
+		if (!result)
+		{
+			dollarRange->text = L"dollar-marker";
+			CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(dollarDocument->body)->innerHTML))); html.MakeUpper();
+			const int start = html.Find(L"ID=DOLLAR-START"), end = html.Find(L"ID=DOLLAR-END"), marker = html.Find(L"DOLLAR-MARKER");
+			if (start < 0 || end < start || marker < end || html.Find(L"ALPHA") < 0) result = 70;
+		}
+		// `^` has the same collapsed-range contract at an IMG at the beginning
+		// of a paragraph: right-affinity keeps the control before the insertion.
+		AU::Search::SearchQuery startQuery; startQuery.Mode = AU::Search::SearchMode::Regex; startQuery.Multiline = true; startQuery.Text = L"^";
+		DocumentSearchCoordinator startCoordinator;
+		if (!result && !startCoordinator.Rebuild(dollarDocument, 72, startQuery)) result = 71;
+		SearchDocumentAdapter startAdapter;
+		const AU::Search::SearchTextSnapshot startSnapshot = startAdapter.BuildBodySnapshot(dollarDocument, 72);
+		const AU::Search::SearchResult* startResult = !result && startCoordinator.GetResults().GetCount() != 0
+			? startCoordinator.GetResults().GetAt(0) : NULL;
+		MSHTML::IHTMLTxtRangePtr startRange;
+		if (!result && (startResult == NULL || startResult->Hit.Start != 0 || startResult->Hit.Length != 0 ||
+			startSnapshot.Text != startCoordinator.GetSnapshot().Text ||
+			!startAdapter.CreateHitRange(dollarDocument, startSnapshot, startResult->Hit, startRange))) result = 72;
+		if (!result)
+		{
+			startRange->text = L"start-marker";
+			CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(dollarDocument->body)->innerHTML))); html.MakeUpper();
+			const int start = html.Find(L"ID=DOLLAR-START"), marker = html.Find(L"START-MARKER"), alpha = html.Find(L"ALPHA");
+			if (start < 0 || marker < start || alpha < marker) result = 73;
+		}
+	}
 	// Two adjacent IMG have one text offset. The adapter's documented
 	// right-affinity inserts after the last zero-text control, never between
 	// or before either image.
@@ -97,6 +167,26 @@ int wmain()
 		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML))); html.MakeUpper();
 		const int first = html.Find(L"ID=TWIN-FIRST"), second = html.Find(L"ID=TWIN-SECOND"), marker = html.Find(L"MARKER-TWINS");
 		if (first < 0 || second < first || marker < second) result = 64;
+	}
+	// A positive lookahead immediately after a block image is a collapsed Search
+	// Core hit. The same right-affinity must preserve that image and insert on
+	// its text side, rather than letting an MSHTML range consume the control.
+	SearchDocumentAdapter blockAdapter;
+	const AU::Search::SearchTextSnapshot blockSnapshot = blockAdapter.BuildBodySnapshot(document, 73);
+	AU::Search::SearchQuery blockQuery; blockQuery.Mode = AU::Search::SearchMode::Regex; blockQuery.Text = L"(?=block-after)";
+	DocumentSearchCoordinator blockCoordinator;
+	if (!result && !blockCoordinator.Rebuild(document, 73, blockQuery)) result = 74;
+	const AU::Search::SearchResult* blockResult = !result && blockCoordinator.GetResults().GetCount() == 1
+		? blockCoordinator.GetResults().GetAt(0) : NULL;
+	MSHTML::IHTMLTxtRangePtr blockRange;
+	if (!result && (blockResult == NULL || blockResult->Hit.Length != 0 || blockSnapshot.Text != blockCoordinator.GetSnapshot().Text ||
+		!blockAdapter.CreateHitRange(document, blockSnapshot, blockResult->Hit, blockRange))) result = 75;
+	if (!result)
+	{
+		blockRange->text = L"block-marker";
+		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML))); html.MakeUpper();
+		const int image = html.Find(L"ID=BLOCK-IMAGE"), marker = html.Find(L"BLOCK-MARKER"), text = html.Find(L"BLOCK-AFTER");
+		if (image < 0 || marker < image || text < marker) result = 76;
 	}
 
 	DocumentSearchCoordinator coordinator;
