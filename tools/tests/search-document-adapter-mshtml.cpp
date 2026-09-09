@@ -68,6 +68,23 @@ int wmain()
 	if (!result && !adapter.CreateHitRange(document, snapshot, AU::Search::SearchHit(0, firstEnd), firstRange)) result = 10;
 	if (!result && (!adapter.TryGetSearchOffset(snapshot, firstRange, false, &offset) || offset != 0)) result = 11;
 	if (!result && (!adapter.TryGetSearchOffset(snapshot, firstRange, true, &offset) || offset != firstEnd)) result = 12;
+	// A collapsed hit immediately after an inline control must resolve on the
+	// right of that control.  Inserting there is the MSHTML equivalent of a
+	// zero-length replacement and must neither consume nor move the image.
+	const std::size_t inlineAfterOffset = snapshot.Text.find(L"inline-after");
+	MSHTML::IHTMLTxtRangePtr zeroLengthRange;
+	if (!result && (inlineAfterOffset == std::wstring::npos ||
+		!adapter.CreateHitRange(document, snapshot, AU::Search::SearchHit(inlineAfterOffset, 0), zeroLengthRange) ||
+		!zeroLengthRange || static_cast<LPCWSTR>(_bstr_t(zeroLengthRange->text))[0] != L'\0')) result = 55;
+	if (!result)
+	{
+		zeroLengthRange->text = L"zero-";
+		CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
+		html.MakeUpper();
+		const int imageAt = html.Find(L"IMG");
+		const int insertedAt = html.Find(L"ZERO-INLINE-AFTER");
+		if (imageAt < 0 || insertedAt < 0 || imageAt > insertedAt) result = 56;
+	}
 
 	DocumentSearchCoordinator coordinator;
 	AU::Search::SearchQuery query;
@@ -82,6 +99,14 @@ int wmain()
 	if (!result && (!coordinator.Rebuild(document, 43, query) || coordinator.GetResults().GetCount() != 1 ||
 		!coordinator.CreateResultRange(document, 43, 0, resultRange) || !resultRange ||
 		wcsstr(static_cast<LPCWSTR>(_bstr_t(resultRange->htmlText)), L"P") == NULL)) result = 53;
+	if (!result)
+	{
+		// Find across paragraphs stays valid, while this structural range is the
+		// runtime/MSHTML condition that Replace rejects before mutating the DOM.
+		CString crossParagraphHtml(static_cast<LPCWSTR>(_bstr_t(resultRange->htmlText)));
+		crossParagraphHtml.MakeUpper();
+		if (crossParagraphHtml.Find(L"</P") < 0 || crossParagraphHtml.Find(L"<P") < 0) result = 57;
+	}
 	query.Mode = AU::Search::SearchMode::Literal;
 	query.Multiline = false;
 	query.Text = L"second";

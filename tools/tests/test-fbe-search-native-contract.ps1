@@ -10,6 +10,10 @@ function Assert-Contains([string]$text, [string]$pattern, [string]$description) 
     if ($text -notmatch $pattern) { throw "Missing $description." }
 }
 
+function Assert-NotContains([string]$text, [string]$pattern, [string]$description) {
+    if ($text -match $pattern) { throw "Unexpected $description." }
+}
+
 Assert-Contains $header 'm_last_zero_length_query' 'zero-length query identity'
 Assert-Contains $source 'HasSameSearchCriteria\(m_last_zero_length_query, query\)' 'zero-length criteria reset'
 Assert-Contains $source 'm_last_zero_length_query\.Direction == query\.Direction' 'zero-length direction reset'
@@ -21,6 +25,7 @@ Assert-Contains $source 'm_fo\.unicodeProperties = false' 'Replace UCP default'
 Assert-Contains $source 'openingReplace = !m_replace_dlg \|\| !m_replace_dlg->IsValid\(\)' 'Replace reopen detection'
 Assert-Contains $source 'm_has_replace_preview = false' 'Replace preview reset on reopen'
 Assert-Contains $source 'return DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);' 'native regex Find Next'
+Assert-NotContains $source 'DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);\s*/\*\s*Legacy implementation' 'unreachable legacy regexp implementation'
 Assert-Contains $source 'IsCrossParagraphReplacementRange' 'structural replacement guard'
 Assert-Contains $source 'fbe\.replace\.cross_paragraph' 'clear cross-paragraph replacement error'
 
