@@ -6,7 +6,9 @@ Runs FBE.exe's unattended editor-background scenario against the real MSHTML DOM
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 180,
-    [int]$NoProgressSeconds = 45,
+    # LoadFromHTML has a bounded 120-second DocumentComplete wait.  Keep the
+    # external watchdog finite, but do not kill that documented operation first.
+    [int]$NoProgressSeconds = 150,
     [switch]$KeepArtifacts
 )
 

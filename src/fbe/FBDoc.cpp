@@ -626,6 +626,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 {
 	TraceDocumentEvent(L"D110", L"book load started", filename);
 	HRESULT	hr;
+	StartupTrace::AppendTestStartupBreadcrumb("mshtml-create-start");
 	StartupTrace::Event(L"webbrowser", L"WB100", L"m_body.Create begin");
 	const CString path = U::GetProgDirFile(L"main.html");
 	CRect browserRect(0, 0, 500, 500);
@@ -635,6 +636,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		StartupTrace::HResult(L"webbrowser", L"WB101", HRESULT_FROM_WIN32(::GetLastError()), L"m_body.Create returned no HWND");
 		return false;
 	}
+	StartupTrace::AppendTestStartupBreadcrumb("mshtml-create-complete");
 	if (!m_body.Browser())
 	{
 		StartupTrace::Error(L"webbrowser", L"WB102", L"m_body.Create did not provide IWebBrowser2");
@@ -642,10 +644,12 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	}
 	StartupTrace::Event(L"webbrowser", L"WB110", L"IWebBrowser2 available");
 	m_body.BeginNavigationTrace();
+	StartupTrace::AppendTestStartupBreadcrumb("mshtml-navigate-start");
 	hr = m_body.Browser()->Navigate((LPCTSTR)path);
 	StartupTrace::HResult(L"webbrowser", L"WB120", hr, L"Navigate main.html");
 	if (FAILED(hr))
 		return false;
+	StartupTrace::AppendTestStartupBreadcrumb("mshtml-navigate-complete");
 	const CString faultPoint = GetDiagnosticFaultInjection();
 	if (faultPoint == L"navigate-error")
 	{
@@ -661,6 +665,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	const DWORD documentCompleteTimeoutMs = 120000;
 	const DWORD messageWaitSliceMs = 50;
 	StartupTrace::Event(L"webbrowser", L"WB130", L"waiting for DocumentComplete");
+	StartupTrace::AppendTestStartupBreadcrumb("mshtml-document-complete-wait-start");
 	if (faultPoint == L"document-complete-timeout")
 	{
 		CString readyState(L"(unknown)");
@@ -712,6 +717,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		}
 	}
 
+	StartupTrace::AppendTestStartupBreadcrumb("mshtml-document-complete");
 	StartupTrace::Event(L"webbrowser", L"WB150", L"CreateHelper for pre-init external begin");
 	IDispatchPtr preInitHelper = m_body.CreateHelper();
 	if (!preInitHelper)
@@ -742,9 +748,20 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	//FastMode();
 
 	CComVariant params[3];
-	params[2] = rawSource ? static_cast<IUnknown*>(rawSource) : static_cast<IUnknown*>(NULL);
-	params[1] = _Settings.GetInterfaceLanguageName();
-	params[0] = filename;
+	if (rawSource)
+	{
+		// InvokeFunc reverses its VARIANT array: apiLoadFB2(stream, language,
+		// logicalName) loads archive bytes without inventing a pseudo-path.
+		params[2] = static_cast<IUnknown*>(rawSource);
+		params[1] = _Settings.GetInterfaceLanguageName();
+		params[0] = filename;
+	}
+	else
+	{
+		// Keep the established two-argument contract: apiLoadFB2(path, language).
+		params[1] = filename;
+		params[0] = _Settings.GetInterfaceLanguageName();
+	}
 	CComVariant res;
 
 	const bool diagnosticsActive = StartupTrace::Enabled();
@@ -798,10 +815,12 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	ApplyDiagnosticFaultInjection(m_body.Browser()->Document);
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
+	StartupTrace::AppendTestStartupBreadcrumb("document-script-load-start");
 	hr = InvokeFunc(L"apiLoadFB2", params, rawSource ? 3 : 2, res);
 	StartupTrace::HResult(L"document", L"J200", hr, L"apiLoadFB2");
 	if (FAILED(hr))
 	{
+		StartupTrace::AppendTestStartupBreadcrumb("document-script-load-failed");
 		if (diagnosticsActive)
 		{
 		// Preserve the original apiLoadFB2 HRESULT. This extra query is diagnostic only.
@@ -837,6 +856,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 
 	if (!loaded)
 	{
+		StartupTrace::AppendTestStartupBreadcrumb("document-script-load-failed");
 		if (diagnosticsActive)
 		{
 			CComVariant operationStage;
@@ -871,6 +891,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 
 	// Отмечаем документ неизменённым только после подтверждённой загрузки JavaScript.
 	MarkSavePoint();
+	StartupTrace::AppendTestStartupBreadcrumb("document-script-load-complete");
 	TraceDocumentEvent(L"D113", L"book load completed", filename);
 	return true;
 }
