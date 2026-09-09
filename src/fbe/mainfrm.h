@@ -389,7 +389,7 @@ public:
   bool	  DiscardChanges();
 
   FILE_OP_STATUS	  SaveFile(bool askname);
-  FILE_OP_STATUS	  LoadFile(const wchar_t *initfilename=NULL);
+  FILE_OP_STATUS	  LoadFile(const wchar_t *initfilename=NULL, const DocumentLocation* preferredArchiveLocation=NULL);
   CString GetRecoveryFileName();
   void DeleteRecoveryFile();
   void RunPortableStateTestScenario();
