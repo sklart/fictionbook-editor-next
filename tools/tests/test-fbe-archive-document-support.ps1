@@ -34,5 +34,6 @@ Require $frame 'ShowArchiveError' 'Archive failures must be mapped to user-facin
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
 Require $frame 'WriteArchiveRecoveryLocation' 'Recovery must retain archive source metadata without rewriting the container.'
 Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
+Require $frame 'OnFileNew[\s\S]{0,700}m_document_location = DocumentLocation\(\)' 'New documents must not retain an archive save target.'
 
 Write-Host 'Archive document support contract passed.'

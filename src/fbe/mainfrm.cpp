@@ -5828,6 +5828,7 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   FB::Doc::m_active_doc = doc;
   doc->CreateBlank(m_view);
   m_file_age = static_cast<unsigned __int64>(-1);
+	m_document_location = DocumentLocation();
   AttachDocument(doc);
   delete m_doc;
   m_doc=doc;
