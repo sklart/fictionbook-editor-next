@@ -3346,6 +3346,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	}
 
 	int replaced = 0;
+	bool mutationApplied = false;
 	m_mk_srv->BeginUndoUnit(L"replace all");
 	try
 	{
@@ -3377,6 +3378,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 				NormalizeReplacementNbsp(replacement);
 			}
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
+			mutationApplied = true;
 			if (m_fo.fRegexp)
 				ApplyReplacementFormatting(ranges[index], replacement, formatting);
 			++replaced;
@@ -3385,7 +3387,8 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	catch (const _com_error& error)
 	{
 		m_mk_srv->EndUndoUnit();
-		AdvanceSearchDocumentGeneration();
+		if (mutationApplied)
+			AdvanceSearchDocumentGeneration();
 		if (errorText != NULL)
 			*errorText = error.ErrorMessage();
 		return -1;
@@ -3393,7 +3396,8 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	m_mk_srv->EndUndoUnit();
 	m_fo.ClearMatch();
 	m_has_replace_preview = false;
-	AdvanceSearchDocumentGeneration();
+	if (replaced != 0)
+		AdvanceSearchDocumentGeneration();
 	return replaced;
 }
 
@@ -3403,6 +3407,7 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 	if (m_fo.pattern.IsEmpty() || !Document())
 		return 0;
 	bool undoStarted = false;
+	bool mutationApplied = false;
 	try
 	{
 		const std::uint64_t generation = SearchDocumentGeneration();
@@ -3433,6 +3438,8 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 		}
 
 		const std::size_t count = m_document_search.GetResults().GetCount();
+		if (count == 0)
+			return 0;
 		std::vector<MSHTML::IHTMLTxtRangePtr> ranges(count);
 		for (std::size_t index = 0; index < count; ++index)
 			if (!m_document_search.CreateResultRange(Document(), generation, index, ranges[index]) || !ranges[index])
@@ -3465,17 +3472,21 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 				NormalizeReplacementNbsp(replacement);
 			}
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
+			mutationApplied = true;
 			if (m_fo.fRegexp) ApplyReplacementFormatting(ranges[index], replacement, formatting);
 			++replaced;
 		}
 		m_mk_srv->EndUndoUnit();
 		undoStarted = false;
-		AdvanceSearchDocumentGeneration();
+		if (mutationApplied)
+			AdvanceSearchDocumentGeneration();
 		return replaced;
 	}
 	catch (_com_error& err)
 	{
 		if (undoStarted) m_mk_srv->EndUndoUnit();
+		if (mutationApplied)
+			AdvanceSearchDocumentGeneration();
 		U::ReportError(err);
 	}
 	return 0;

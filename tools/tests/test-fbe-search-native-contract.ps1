@@ -29,6 +29,8 @@ Assert-Contains $source 'return DoSearchNative\(fMore, AU::Search::SearchMode::R
 Assert-NotContains $source 'DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);\s*/\*\s*Legacy implementation' 'unreachable legacy regexp implementation'
 Assert-Contains $source 'CheckReplacementRange' 'production replacement preflight'
 Assert-Contains $source 'fbe\.replace\.cross_paragraph' 'clear cross-paragraph replacement error'
+Assert-Contains $source 'const std::size_t count = m_document_search.GetResults\(\)\.GetCount\(\);\s*if \(count == 0\)\s*return 0;' 'GlobalReplace does not open an empty mutation path'
+Assert-Contains $source 'if \(mutationApplied\)\s*AdvanceSearchDocumentGeneration\(\);' 'failed replacement advances semantic generation only after a real DOM mutation'
 Assert-Contains $header 'CString\s+m_last_search_error' 'native search diagnostic channel'
 Assert-Contains $source 'm_last_search_error\s*=\s*nativeError\.c_str\(\)' 'PCRE2 diagnostic retained by native Find'
 Assert-Contains $dialog 'LastSearchError\(\)\.IsEmpty\(\)' 'Find Next checks the actual regexp diagnostic'
