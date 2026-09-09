@@ -59,7 +59,8 @@ void CScriptsToolbarCustomizeDlg::PopulateCurrent(int select)
 	for(int i = 0; i < toolbar.GetButtonCount(); ++i) {
 		TBBUTTON button = {}; if(!toolbar.GetButton(i, &button)) continue;
 		if(button.fsStyle & TBSTYLE_SEP) {
-			const int row = m_currentList.AddString(L"--- Separator ---");
+			const int row = m_currentList.AddString(FbeLoadRuntimeStringByKey(
+				L"fbe.scripts_toolbar_customize.separator", L"--- Separator ---"));
 			m_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));
 			continue;
 		}

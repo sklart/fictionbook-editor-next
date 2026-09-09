@@ -44,7 +44,7 @@ foreach ($required in @(
     'PopulateAvailable()', 'PopulateCurrent()', 'OnReset', 'GetScriptsToolbarCustomizeSize', 'relativePath',
     'ToolbarContainsCommand', 'if(ToolbarContainsCommand(m_available[i].command)) continue;',
     'if(command == 0 || ToolbarContainsCommand(command)) return 0;',
-    'L"--- Separator ---"', 'm_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));',
+    'fbe.scripts_toolbar_customize.separator', 'FbeLoadRuntimeStringByKey', 'm_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));',
     'PopulateAvailable(); PopulateCurrent', 'CenterWindow(GetParent())', 'buttonColumn'
 )) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
