@@ -22,7 +22,7 @@ Assert-Contains $source 'WS_EX_LAYERED\s*\|\s*WS_EX_TRANSPARENT' 'non-interactiv
 Assert-Contains $source 'LWA_COLORKEY' 'colour-key transparency'
 Assert-Contains $source 'CreateResultRange\(' 'Search Core result-to-range mapping'
 Assert-Contains $source 'ClearSearchHighlights\(\);\s*\r?\n\s*if \(!m_ignore_changes\)' 'highlight invalidation on editor mutation'
-Assert-Contains $header 'DISPID_HTMLDOCUMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo' 'post-scroll MSHTML event sink'
+Assert-Contains $header 'DISPID_HTMLELEMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo' 'post-scroll MSHTML event sink'
 Assert-Contains $source 'void CFBEView::OnScroll\(IDispatch \*/\* unused: evt \*/\)\s*\{[\s\S]*?UpdateSearchHighlightsForScroll\(\);' 'post-scroll overlay refresh'
 Assert-NotContains $header 'OnSearchHighlightScroll|WM_MOUSEWHEEL|WM_VSCROLL|WM_HSCROLL' 'pre-scroll Win32 overlay hooks'
 $scrollCallCount = [regex]::Matches($source, 'UpdateSearchHighlightsForScroll\(\);').Count

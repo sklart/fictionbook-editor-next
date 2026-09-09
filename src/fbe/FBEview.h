@@ -444,7 +444,9 @@ public:
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEUP, OnMouseUp, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYDOWN, OnKeyDown, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONFOCUSIN, OnFocusIn, &VoidEventInfo)
-		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo)
+		// MSHTML exposes onscroll through the element-events dispatch table.  It
+		// bubbles to the document connection point used by the hosted editor.
+		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLELEMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONPASTE, OnRealPaste, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGEND, OnDrop, &VoidEventInfo)
 	END_SINK_MAP()

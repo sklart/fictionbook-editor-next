@@ -26,15 +26,15 @@ bool TryMoveRangeAfterInlineImage(
 	std::size_t textOffset,
 	MSHTML::IHTMLTxtRangePtr& range)
 {
-	MSHTML::IHTMLDocument2Ptr document(source ? source->document : MSHTML::IHTMLDocument2Ptr());
-	MSHTML::IHTMLElementCollectionPtr all(document ? document->all : MSHTML::IHTMLElementCollectionPtr());
-	if (!body || !source || !all)
+	MSHTML::IHTMLElement2Ptr source2(source);
+	MSHTML::IHTMLElementCollectionPtr images(source2 ? source2->getElementsByTagName(L"IMG") : MSHTML::IHTMLElementCollectionPtr());
+	if (!body || !source || !images)
 		return false;
 	bool found = false;
 
-	for (long index = 0; index < all->length; ++index)
+	for (long index = 0; index < images->length; ++index)
 	{
-		MSHTML::IHTMLElementPtr element(all->item(index));
+		MSHTML::IHTMLElementPtr element(images->item(index));
 		if (!element)
 			continue;
 		_bstr_t tagName(element->tagName);
