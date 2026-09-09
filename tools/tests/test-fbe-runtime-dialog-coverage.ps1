@@ -19,8 +19,9 @@ $consumers = @{
     IDD_ABOUTBOX = @{ File = 'src\fbe\AboutBox.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_ABOUTBOX\)' }
     IDD_SETTINGS_WORDS = @{ File = 'src\fbe\SettingsWordsDlg.cpp'; Invocation = 'SetRuntimeSettingsWordsText' }
     IDD_HOTKEYS = @{ File = 'src\fbe\SettingsHotkeysDlg.cpp'; Invocation = 'SetRuntimeHotkeysText' }
-    IDD_FIND = @{ File = 'src\fbe\SearchReplace.h'; Invocation = 'SetRuntimeDialogTitle' }
+    IDD_FIND = @{ File = 'src\fbe\SearchReplace.h'; AdditionalFiles = @('src\fbe\FBEview.cpp'); Invocation = 'SetRuntimeDialogTitle' }
     IDD_REPLACE = @{ File = 'src\fbe\SearchReplace.h'; Invocation = 'SetRuntimeDialogTitle' }
+    IDD_FIND_RESULTS = @{ File = 'src\fbe\SearchReplace.h'; Invocation = 'FbeLoadRuntimeStringByKey' }
     IDD_SPELL_CHECK = @{ File = 'src\fbe\Speller.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SPELL_CHECK\)' }
     IDD_WORDS = @{ File = 'src\fbe\Words.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_WORDS\)' }
     IDD_SETTINGS_IMAGES = @{ File = 'src\fbe\SettingsImagesPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_IMAGES\)' }
@@ -29,13 +30,19 @@ $consumers = @{
     IDD_SETTINGS_SPELLING = @{ File = 'src\fbe\SettingsSpellingPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SPELLING\)' }
     IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\SettingsSourcePage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SOURCE\)' }
     IDD_SETTINGS_ADVANCED = @{ File = 'src\fbe\SettingsAdvancedPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_ADVANCED\)' }
+    IDS_REPL_ALL_CAPT = @{ File = 'src\fbe\FBEview.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
+    IDS_REPL_DONE_MSG = @{ File = 'src\fbe\FBEview.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
 }
 
-foreach ($resource in $catalog.resources) {
-    if (-not $consumers.ContainsKey($resource)) { throw "No runtime consumer is declared for $resource." }
+foreach ($resource in $consumers.Keys) {
     $consumer = $consumers[$resource]
     $consumerPath = Join-Path $repoRoot $consumer.File
     $consumerText = Get-Content -Raw -LiteralPath $consumerPath
+    if ($consumer.ContainsKey('AdditionalFiles')) {
+        foreach ($additionalFile in $consumer.AdditionalFiles) {
+            $consumerText += "`n" + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot $additionalFile))
+        }
+    }
     if ($consumerText -notmatch $consumer.Invocation) {
         throw "$resource does not invoke its declared runtime localization consumer: $($consumer.File)"
     }
@@ -47,6 +54,9 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     $value = $entry.Value
     if ($value.targetId -eq 'IDC_STATIC') {
         throw "Runtime-localized control must have a stable ID, not IDC_STATIC: $key"
+    }
+    if (-not $consumers.ContainsKey($value.resource)) {
+        throw "No runtime consumer is declared for $($value.resource), required by $key."
     }
     $consumerText = $consumers[$value.resource].Text
     $escapedKey = [regex]::Escape($key)

@@ -34,7 +34,9 @@
     "IDD_SETTINGS_SPELLING",
     "IDD_SETTINGS_SOURCE",
     "IDD_SETTINGS_IMAGES",
-    "IDD_SETTINGS_ADVANCED"  ],
+    "IDD_SETTINGS_ADVANCED",
+    "IDD_FIND_RESULTS"
+  ],
   "resourceType": "DIALOGEX",
   "strings": {
     "fbe.settings.advanced.group": {
