@@ -130,6 +130,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fbe-plugin-host-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-source-helpers-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-search-boundary.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-find-results-pane-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-search-session.ps1")
 & (Join-Path $repoRoot "tools\tests\test-literal-search-mshtml-differential.ps1")
 & (Join-Path $repoRoot "tools\tests\test-search-document-adapter-mshtml.ps1")
