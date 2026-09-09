@@ -103,7 +103,7 @@ bool EnumerateFictionBookEntries(const CString& storagePath, std::vector<Entry>&
         ++ordinal;
         archive_read_data_skip(handle.Get());
     }
-    if (entries.empty()) error.code = ErrorCode::NoFictionBookEntries;
+    if (entries.empty()) { error.code = ErrorCode::NoFictionBookEntries; return false; }
     return true;
 }
 
