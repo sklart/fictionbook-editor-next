@@ -120,6 +120,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-xml-source-cache-performance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-cache-runtime.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbd-support-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-archive-document-support.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata-culture.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-common-boundary.ps1")
