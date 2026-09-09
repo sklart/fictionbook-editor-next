@@ -21,6 +21,7 @@
 
 class CSearchHighlightOverlay;
 static void DestroySearchHighlightOverlay(CSearchHighlightOverlay* overlay);
+extern const IID DIID_FBEHTMLElementEvents2 = __uuidof(MSHTML::HTMLElementEvents2);
 
 extern CElementDescMnr _EDMnr;
 
@@ -613,6 +614,8 @@ CFBEView::~CFBEView()
 		// Init can fail after acquiring the document but before all event sinks and
 		// markup services are available. Teardown must be best-effort in that case.
 		DocumentEvents::DispEventUnadvise(Document(), &DIID_HTMLDocumentEvents2);
+		if (m_scroll_event_element)
+			ScrollEvents::DispEventUnadvise(m_scroll_event_element, &DIID_FBEHTMLElementEvents2);
 		try
 		{
 			MSHTML::IHTMLElementPtr body;
@@ -3833,6 +3836,19 @@ bool CFBEView::Init()
   hr = DocumentEvents::DispEventAdvise(document, &DIID_HTMLDocumentEvents2);
   StartupTrace::HResult(L"webbrowser", L"WB230", hr, L"DocumentEvents::DispEventAdvise");
   if (FAILED(hr)) return false;
+
+	CComPtr<MSHTML::IHTMLDocument3> document3;
+	document->QueryInterface(&document3);
+	if (document3)
+		m_scroll_event_element = document3->documentElement;
+	else
+		m_scroll_event_element = NULL;
+	if (!m_scroll_event_element)
+		m_scroll_event_element = body.p;
+	ScrollEvents::DispEventUnadvise(m_scroll_event_element, &DIID_FBEHTMLElementEvents2);
+	hr = ScrollEvents::DispEventAdvise(m_scroll_event_element, &DIID_FBEHTMLElementEvents2);
+	StartupTrace::HResult(L"webbrowser", L"WB235", hr, L"ScrollEvents::DispEventAdvise");
+	if (FAILED(hr)) return false;
 
   TextEvents::DispEventUnadvise(body, &DIID_HTMLTextContainerEvents2);
   hr = TextEvents::DispEventAdvise(body, &DIID_HTMLTextContainerEvents2);

@@ -175,15 +175,21 @@ class CFindDlgBase;
 class CFindResultsDlg;
 class CSearchHighlightOverlay;
 
+// mshtml.tlb imports HTMLElementEvents2 without a named DIID constant.
+// Give the ATL event sink a stable IID with external linkage.
+extern const IID DIID_FBEHTMLElementEvents2;
+
 class CFBEView : public CWindowImpl<CFBEView, CAxWindow, CFBEViewWinTraits>,
 		 public IDispEventSimpleImpl<0, CFBEView, &DIID_DWebBrowserEvents2>,
 		 public IDispEventSimpleImpl<0, CFBEView, &DIID_HTMLDocumentEvents2>,
+		 public IDispEventSimpleImpl<1, CFBEView, &DIID_FBEHTMLElementEvents2>,
 		 public IDispEventSimpleImpl<0, CFBEView, &DIID_HTMLTextContainerEvents2>,
 		 public CHTMLChangeSink<CFBEView,RANGE_SINK>
 {
 protected:
   typedef IDispEventSimpleImpl<0, CFBEView, &DIID_DWebBrowserEvents2> BrowserEvents;
   typedef IDispEventSimpleImpl<0, CFBEView, &DIID_HTMLDocumentEvents2> DocumentEvents;
+	  typedef IDispEventSimpleImpl<1, CFBEView, &DIID_FBEHTMLElementEvents2> ScrollEvents;
   typedef IDispEventSimpleImpl<0, CFBEView, &DIID_HTMLTextContainerEvents2> TextEvents;
   typedef CHTMLChangeSink<CFBEView,FWD_SINK>	  ForwardSink;
   typedef CHTMLChangeSink<CFBEView,BACK_SINK>	  BackwardSink;
@@ -202,6 +208,7 @@ public:
 protected:
   SHD::IWebBrowser2Ptr	    m_browser;
   MSHTML::IHTMLDocument2Ptr m_hdoc;
+	MSHTML::IHTMLElementPtr m_scroll_event_element;
   MSHTML::IMarkupContainer2Ptr m_mkc;
 
   int			    m_ignore_changes;
@@ -444,9 +451,7 @@ public:
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEUP, OnMouseUp, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYDOWN, OnKeyDown, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONFOCUSIN, OnFocusIn, &VoidEventInfo)
-		// MSHTML exposes onscroll through the element-events dispatch table.  It
-		// bubbles to the document connection point used by the hosted editor.
-		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLELEMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo)
+		SINK_ENTRY_INFO(1, DIID_FBEHTMLElementEvents2, DISPID_HTMLELEMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONPASTE, OnRealPaste, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGEND, OnDrop, &VoidEventInfo)
 	END_SINK_MAP()
