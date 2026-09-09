@@ -3078,11 +3078,17 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 	StartupTrace::AppendTestStartupBreadcrumb("document-open-request");
 	StartupTrace::AppendTestStartupBreadcrumb("document-load-start");
-    if (m_doc->Load(m_view,startupFileName))
+	ResolvedOpenDocument startupResolved;
+	const bool startupArchive = DetectDocumentContainerKind(startupFileName) != DocumentContainerKind::None;
+	const bool startupResolvedOk = !startupArchive || ResolveArchiveOpenRequest(startupFileName, startupResolved);
+    if (startupResolvedOk && (startupArchive
+		? m_doc->Load(m_view, startupResolved.location.storagePath, startupResolved.location.entryPath, startupResolved.rawBytes)
+		: m_doc->Load(m_view,startupFileName)))
 	{
 		StartupTrace::AppendTestStartupBreadcrumb("document-load-complete");
       start_with_params = true;
-	  m_file_age = FileAge(startupFileName);
+	  m_document_location = startupArchive ? startupResolved.location : DocumentLocation();
+	  m_file_age = FileAge(startupArchive ? startupResolved.location.storagePath : startupFileName);
 	}
     else
 	{
