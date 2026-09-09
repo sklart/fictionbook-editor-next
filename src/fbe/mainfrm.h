@@ -10,6 +10,7 @@
 #include "resource.h"
 #include "res1.h"
 #include "RuntimeLocalization.h"
+#include "DocumentLocation.h"
 
 #include "atlctrlsext.h"
 
@@ -254,6 +255,7 @@ public:
   CCustomStatic   m_valign_caption;  
 
   FB::Doc		  *m_doc; // currently open document
+  DocumentLocation m_document_location;
   DWORD			  m_last_tree_update;
   BOOL			  m_last_sci_ovr:1;
   bool			  m_last_ie_ovr:1;

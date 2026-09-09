@@ -14,6 +14,7 @@
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
+#include "archive\\ArchiveReader.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
 #include "plugins\\PluginManager.h"
@@ -33,6 +34,29 @@ static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 static bool IsFbeTestScenario(const wchar_t* expectedScenario);
+
+struct ResolvedOpenDocument
+{
+	DocumentLocation location;
+	std::vector<unsigned char> rawBytes;
+};
+
+static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDocument& resolved)
+{
+	std::vector<FbeArchive::Entry> entries;
+	FbeArchive::Error error;
+	if (!FbeArchive::EnumerateFictionBookEntries(storagePath, entries, error)) return false;
+	// The entry picker is added as a separate UI step.  Do not discard the
+	// current book merely because a choice is necessary.
+	if (entries.size() != 1) return false;
+	if (!FbeArchive::ReadEntry(storagePath, entries[0], resolved.rawBytes, error)) return false;
+	resolved.location.containerKind = DetectDocumentContainerKind(storagePath);
+	resolved.location.storagePath = storagePath;
+	resolved.location.entryPath = entries[0].path;
+	resolved.location.entryOccurrence = entries[0].occurrence;
+	resolved.location.documentType = entries[0].documentType;
+	return true;
+}
 
 namespace
 {
@@ -1349,7 +1373,9 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 CString	CMainFrame::GetOpenFileName() 
 {
 	const COMDLG_FILTERSPEC filters[] = {
-		{ L"FictionBook files (*.fb2;*.fbd)", L"*.fb2;*.fbd" },
+		{ L"FictionBook files (*.fb2;*.fbd;*.zip;*.rar)", L"*.fb2;*.fbd;*.zip;*.rar" },
+		{ L"FictionBook (*.fb2;*.fbd)", L"*.fb2;*.fbd" },
+		{ L"Archives (*.zip;*.rar)", L"*.zip;*.rar" },
 		{ L"All files (*.*)", L"*.*" }
 	};
 	ModernFileDialog::Request request;
@@ -1544,13 +1570,18 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 
 CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename)
 {
-  if (!DiscardChanges())
-    return CANCELLED; 
-  
   CString filename(initfilename);
   if (filename.IsEmpty())
     filename = GetOpenFileName();
   if (filename.IsEmpty())
+    return CANCELLED;
+
+  ResolvedOpenDocument resolved;
+  const bool archive = DetectDocumentContainerKind(filename) != DocumentContainerKind::None;
+  if (archive && !ResolveArchiveOpenRequest(filename, resolved))
+    return CANCELLED;
+
+  if (!DiscardChanges())
     return CANCELLED;
   
 	FB::Doc *doc = new FB::Doc(*this);
@@ -1562,7 +1593,9 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename)
 	}
   EnableWindow(FALSE);
   m_status.SetPaneText(ID_DEFAULT_PANE,L"Loading...");
-  bool fLoaded = doc->Load(m_view, filename);
+  bool fLoaded = archive
+	  ? doc->Load(m_view, resolved.location.storagePath, resolved.location.entryPath, resolved.rawBytes)
+	  : doc->Load(m_view, filename);
   EnableWindow(TRUE);
   if (!fLoaded) 
   {
@@ -1577,6 +1610,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename)
   m_file_age = FileAge(filename);
   delete m_doc;
   m_doc=doc;
+  m_document_location = archive ? resolved.location : DocumentLocation();
   m_bad_xml = false;
   ResetStatusForDocument();
   return OK;
@@ -5526,7 +5560,7 @@ LRESULT CMainFrame::OnDropFiles(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /
   if (!buf.IsEmpty())
   {
 	  ext.SetString(ATLPath::FindExtension(buf));
-	  if (IsSupportedFictionBookFile(buf))
+	  if (IsSupportedFictionBookFile(buf) || DetectDocumentContainerKind(buf) != DocumentContainerKind::None)
 	  {
 		if (LoadFile(buf)==OK)
 			m_mru.AddToList(m_doc->m_filename);
@@ -5547,7 +5581,7 @@ LRESULT CMainFrame::OnNavigate(WORD, WORD, HWND, BOOL&)
   if (!url.IsEmpty())
   {
 	  CString ext(ATLPath::FindExtension(url));
-	  if (IsSupportedFictionBookFile(url))
+	  if (IsSupportedFictionBookFile(url) || DetectDocumentContainerKind(url) != DocumentContainerKind::None)
 	  {
 		if (LoadFile(url)==OK)
 			m_mru.AddToList(m_doc->m_filename);
