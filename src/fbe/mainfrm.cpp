@@ -1515,6 +1515,27 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   if ((IsSourceActive() && !SourceToHTML()) || m_bad_xml) // added by SeNS: do not save bad xml!
     return FAIL;
 
+  if (!askname && m_document_location.IsArchive())
+  {
+	if (m_document_location.containerKind == DocumentContainerKind::Rar)
+		return SaveFile(true);
+	if (m_file_age != FileAge(m_document_location.storagePath))
+		return FAIL;
+	std::vector<unsigned char> serialized;
+	if (!m_doc->SerializeToMemory(serialized, m_document_location.documentType)) return FAIL;
+	FbeArchive::Entry entry;
+	entry.path = m_document_location.entryPath;
+	entry.occurrence = m_document_location.entryOccurrence;
+	entry.documentType = m_document_location.documentType;
+	FbeArchive::Error error;
+	if (!FbeArchive::RewriteZipEntry(m_document_location.storagePath, entry, serialized, error)) return FAIL;
+	m_doc->MarkSavePoint();
+	m_file_age = FileAge(m_document_location.storagePath);
+	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
+	DeleteRecoveryFile();
+	return OK;
+  }
+
   if (!askname && m_doc->m_namevalid) {
     const DWORD attributes = ::GetFileAttributes(m_doc->m_filename);
     if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY)) {
@@ -1530,7 +1551,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     CString filename(GetSaveFileName(encoding));
     if (filename.IsEmpty())
       return CANCELLED;
-    const bool wasFbd = IsFbdFile(m_doc->m_filename);
+    const bool wasFbd = m_doc->GetDocumentFileType() == FictionBookFileType::Fbd;
     m_doc->m_encoding=encoding;
     if (m_doc->Save(filename)) {
       m_doc->m_filename=filename;
@@ -7417,7 +7438,7 @@ bool  CMainFrame::SourceToHTML()
 			// TextToXML performs the FBD structural check.  Unlike generic XML
 			// syntax fallback, a structurally invalid FBD must never reach
 			// LoadFromDOM through XmlFromText.
-			if (IsFbdFile(m_doc->m_filename))
+			if (m_doc->GetDocumentFileType() == FictionBookFileType::Fbd)
 			{
 				delete[] buffer;
 				SysFreeString(ustr);
@@ -10113,7 +10134,7 @@ void CMainFrame::SetTransientStatus(const CString& text)
 
 CString CMainFrame::GetStatusValidationText() const
 {
-	const bool fbd = m_doc && IsFbdFile(m_doc->m_filename);
+	const bool fbd = m_doc && m_doc->GetDocumentFileType() == FictionBookFileType::Fbd;
 	const wchar_t* type = fbd ? L"FBD" : L"FB2";
 	const wchar_t* state = m_validation_status == VALIDATION_VALID ? L"OK" :
 		m_validation_status == VALIDATION_INVALID ? L"!" : L"?";

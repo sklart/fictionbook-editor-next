@@ -244,7 +244,7 @@ Doc   *Doc::LocateDocument(const wchar_t *id) {
 
 // initialize a new Doc
 Doc::Doc(HWND hWndFrame) :
-	     m_filename(_T("Untitled.fb2")), m_namevalid(false),
+     m_filename(_T("Untitled.fb2")), m_namevalid(false), m_file_type(FictionBookFileType::Fb2),
 //	     m_desc(hWndFrame,false),
 		 m_body(hWndFrame, true),
 	     m_frame(hWndFrame),
@@ -896,6 +896,7 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
 
     m_filename = filename;
     m_namevalid = true;
+    m_file_type = DetectFictionBookFileType(filename);
   }
   catch (_com_error& e) {
 	EXCEPINFO exceptionInfo = {};
@@ -925,6 +926,7 @@ bool Doc::Load(HWND hWndParent, const CString& storagePath, const CString& logic
         if (!LoadFromHTML(hWndParent, logicalName, stream)) return false;
         m_filename = storagePath;
         m_namevalid = true;
+        m_file_type = DetectFictionBookFileType(logicalName);
         return true;
     }
     catch (_com_error& e) { U::ReportError(e); return false; }
@@ -1850,7 +1852,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	try
 	{
 		MSXML2::IXMLDOMDocument2Ptr result(CreateDOMImp(encoding, compactBinaries,
-			ResolveFictionBookTargetType(CString(), m_filename)));
+			m_file_type));
 		StartupTrace::Event(L"xml", L"X190", L"CreateDOM completed");
 		return result;
 	}
@@ -2120,6 +2122,35 @@ bool Doc::SaveRecoveryCopy(const CString& filename)
 		return false;
 	}
 }
+bool Doc::SerializeToMemory(std::vector<unsigned char>& output, FictionBookFileType targetType)
+{
+	output.clear();
+	if (m_serialization_unsafe) return false;
+	try
+	{
+		MSXML2::IXMLDOMDocument2Ptr document(CreateDOMImp(
+			_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true, targetType));
+		if (targetType == FictionBookFileType::Fbd)
+		{
+			CString structuralError;
+			if (!ValidateFbdDocumentStructure(document, &structuralError)) return false;
+		}
+		IStreamPtr stream;
+		CheckError(::CreateStreamOnHGlobal(NULL, TRUE, &stream));
+		CheckError(document->raw_save(_variant_t(static_cast<IUnknown*>(stream))));
+		STATSTG stat = {};
+		CheckError(stream->Stat(&stat, STATFLAG_NONAME));
+		const unsigned __int64 maximumBytes = 512ULL * 1024ULL * 1024ULL;
+		if (stat.cbSize.QuadPart < 0 || static_cast<unsigned __int64>(stat.cbSize.QuadPart) > maximumBytes) return false;
+		output.resize(static_cast<size_t>(stat.cbSize.QuadPart));
+		LARGE_INTEGER beginning = {};
+		CheckError(stream->Seek(beginning, STREAM_SEEK_SET, NULL));
+		ULONG read = 0;
+		if (!output.empty() && (FAILED(stream->Read(&output[0], static_cast<ULONG>(output.size()), &read)) || read != output.size())) { output.clear(); return false; }
+		return true;
+	}
+	catch (_com_error& e) { m_last_save_error = e.Error(); U::ReportError(e); return false; }
+}
 bool  Doc::Save() {
   if (!m_namevalid)
     return false;
@@ -2136,6 +2167,7 @@ bool  Doc::Save(const CString& filename) {
   if (SaveToFile(filename)) {
     MarkSavePoint();
     m_filename=filename;
+	m_file_type=DetectFictionBookFileType(filename);
 	U::SetCurrentDirectoryToFile(filename);
     m_namevalid=true;
     return true;
@@ -2571,7 +2603,7 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 
   // validate it first
   try {
-    const FictionBookFileType fileType = ResolveFictionBookTargetType(CString(), m_filename);
+    const FictionBookFileType fileType = m_file_type;
     MSXML2::IXMLDOMSchemaCollection2Ptr	scol;
 
     // create a SAX reader
@@ -2847,7 +2879,7 @@ public:
 
 bool Doc::TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr* xml)
 {
-	const FictionBookFileType fileType = ResolveFictionBookTargetType(CString(), m_filename);
+	const FictionBookFileType fileType = m_file_type;
 	MSXML2::IXMLDOMSchemaCollection2Ptr	scol;
 
     // create a SAX reader

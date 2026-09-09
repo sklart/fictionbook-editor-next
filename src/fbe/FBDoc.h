@@ -32,6 +32,7 @@ public:
   // filename
   CString		m_filename;
   bool			m_namevalid;
+  FictionBookFileType m_file_type;
   bstr_t		m_save_marker;
 
   static bool			  m_fast_mode;
@@ -60,6 +61,8 @@ public:
   VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath);
 
   bool	  Save(const CString& filename);
+  bool    SerializeToMemory(std::vector<unsigned char>& output, FictionBookFileType targetType);
+  FictionBookFileType GetDocumentFileType() const { return m_file_type; }
 
   HRESULT GetLastSaveError() const { return m_last_save_error; }
   bool    SaveRecoveryCopy(const CString& filename);
