@@ -24,6 +24,16 @@ public:
 	const AU::Search::SearchTextSnapshot& GetSnapshot() const;
 	const AU::Search::SearchSession& GetSession() const;
 	const AU::Search::SearchResults& GetResults() const;
+	// Results rows are virtual.  Context strings are deliberately generated
+	// only when ListView asks for a visible row, rather than during Find All.
+	bool GetResultPreview(
+		std::size_t index,
+		std::wstring* preview,
+		std::size_t* matchStart = NULL,
+		std::size_t* matchLength = NULL) const;
+	// Kept narrow and deterministic for the hosted-MSHTML scale regression.
+	// It verifies that virtual rows do not materialize every preview at once.
+	std::size_t GetCachedPreviewCountForTest() const;
 	std::size_t GetSelectedResultIndex() const;
 
 	const AU::Search::SearchHit* SelectFromOffset(
@@ -70,4 +80,8 @@ private:
 	AU::Search::SearchTextSnapshot m_snapshot;
 	AU::Search::SearchSession m_session;
 	AU::Search::SearchResults m_results;
+	mutable std::vector<std::wstring> m_previewCache;
+	mutable std::vector<std::size_t> m_previewMatchStarts;
+	mutable std::vector<std::size_t> m_previewMatchLengths;
+	mutable std::vector<bool> m_previewCached;
 };

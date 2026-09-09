@@ -94,6 +94,10 @@ bool DocumentSearchCoordinator::Rebuild(
 		{
 			m_session.Invalidate();
 			m_results.Invalidate();
+			m_previewCache.clear();
+			m_previewMatchStarts.clear();
+			m_previewMatchLengths.clear();
+			m_previewCached.clear();
 			if (errorText != NULL)
 				*errorText = static_cast<LPCWSTR>(regexError);
 			return false;
@@ -119,13 +123,16 @@ bool DocumentSearchCoordinator::Rebuild(
 		// Section is optional Results-pane presentation metadata. Matching,
 		// navigation and replacement must remain independent of DOM ancestry.
 		result.Section.clear();
-		const PreviewData preview = BuildPreview(m_snapshot.Text, hits[index]);
-		result.Preview = preview.Text;
-		result.PreviewMatchStart = preview.MatchStart;
-		result.PreviewMatchLength = preview.MatchLength;
 		results.push_back(result);
 	}
 	m_results.SetResults(results, documentGeneration);
+	// SearchResults keeps matching/navigation data only.  Preview text is
+	// presentation work and is populated lazily by the owner-data ListView.
+	const std::size_t resultCount = m_results.GetCount();
+	m_previewCache.assign(resultCount, std::wstring());
+	m_previewMatchStarts.assign(resultCount, 0);
+	m_previewMatchLengths.assign(resultCount, 0);
+	m_previewCached.assign(resultCount, false);
 	return true;
 }
 
@@ -142,6 +149,41 @@ const AU::Search::SearchSession& DocumentSearchCoordinator::GetSession() const
 const AU::Search::SearchResults& DocumentSearchCoordinator::GetResults() const
 {
 	return m_results;
+}
+
+bool DocumentSearchCoordinator::GetResultPreview(
+	std::size_t index,
+	std::wstring* preview,
+	std::size_t* matchStart,
+	std::size_t* matchLength) const
+{
+	const AU::Search::SearchResult* result = m_results.GetAt(index);
+	if (result == NULL || index >= m_previewCached.size())
+		return false;
+	if (!m_previewCached[index])
+	{
+		const PreviewData built = BuildPreview(m_snapshot.Text, result->Hit);
+		m_previewCache[index] = built.Text;
+		m_previewMatchStarts[index] = built.MatchStart;
+		m_previewMatchLengths[index] = built.MatchLength;
+		m_previewCached[index] = true;
+	}
+	if (preview != NULL)
+		*preview = m_previewCache[index];
+	if (matchStart != NULL)
+		*matchStart = m_previewMatchStarts[index];
+	if (matchLength != NULL)
+		*matchLength = m_previewMatchLengths[index];
+	return true;
+}
+
+std::size_t DocumentSearchCoordinator::GetCachedPreviewCountForTest() const
+{
+	std::size_t count = 0;
+	for (std::size_t index = 0; index < m_previewCached.size(); ++index)
+		if (m_previewCached[index])
+			++count;
+	return count;
 }
 
 std::size_t DocumentSearchCoordinator::GetSelectedResultIndex() const
@@ -225,6 +267,10 @@ void DocumentSearchCoordinator::Invalidate()
 {
 	m_session.Invalidate();
 	m_results.Invalidate();
+	m_previewCache.clear();
+	m_previewMatchStarts.clear();
+	m_previewMatchLengths.clear();
+	m_previewCached.clear();
 }
 
 bool DocumentSearchCoordinator::TryGetSearchRange(

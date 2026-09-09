@@ -3,6 +3,7 @@
 #include "SearchDocumentAdapter.h"
 #include "DocumentSearchCoordinator.h"
 #include "ReplacementPreflight.h"
+#include "search\\LiteralSearch.h"
 #include "search\\RegexBackend.h"
 
 // RegexBackend localizes diagnostics through the editor runtime. The fixture
@@ -31,6 +32,63 @@ static bool IsCollapsedSelection(MSHTML::IHTMLDocument2Ptr document)
 {
 	MSHTML::IHTMLTxtRangePtr range(document->selection->createRange());
 	return range && range->compareEndPoints(L"StartToEnd", range) == 0;
+}
+
+// Runs the same coordinator used by Design-mode Find All with result counts
+// that used to freeze the UI when every list-row preview was built eagerly.
+// Timings are informational: correctness is the bounded preview cache, not a
+// host-dependent millisecond budget.
+static int VerifyLargeFindAllResultSet(std::size_t matchCount)
+{
+	AU::Search::SearchQuery query;
+	query.Text = L"o";
+	query.Mode = AU::Search::SearchMode::Literal;
+	std::wstring text;
+	text.reserve(matchCount * 2);
+	for (std::size_t index = 0; index < matchCount; ++index)
+		text += L"o ";
+
+	const ULONGLONG searchStarted = ::GetTickCount64();
+	const std::vector<AU::Search::SearchHit> hits = AU::Search::FindLiteralMatches(text, query);
+	const ULONGLONG searchElapsed = ::GetTickCount64() - searchStarted;
+	if (hits.size() != matchCount) return 90;
+
+	std::vector<AU::Search::SearchResult> rows;
+	rows.reserve(hits.size());
+	const ULONGLONG resultsStarted = ::GetTickCount64();
+	for (std::size_t index = 0; index < hits.size(); ++index)
+	{
+		AU::Search::SearchResult row = {};
+		row.Hit = hits[index];
+		rows.push_back(row);
+	}
+	AU::Search::SearchResults results;
+	results.SetResults(rows, 91);
+	const ULONGLONG resultsElapsed = ::GetTickCount64() - resultsStarted;
+	if (results.GetCount() != matchCount) return 91;
+
+	MSHTML::IHTMLDocument2Ptr document;
+	document.CreateInstance(L"htmlfile");
+	IPersistStreamInitPtr persist(document);
+	const std::wstring html = L"<html><body><div id='fbw_body'><p>" + text + L"</p></div></body></html>";
+	if (!document || !persist || FAILED(persist->InitNew()) || !WriteHtml(document, html.c_str())) return 92;
+	DocumentSearchCoordinator coordinator;
+	const ULONGLONG rebuildStarted = ::GetTickCount64();
+	if (!coordinator.Rebuild(document, 92, query) || coordinator.GetResults().GetCount() != matchCount) return 93;
+	const ULONGLONG rebuildElapsed = ::GetTickCount64() - rebuildStarted;
+	if (coordinator.GetCachedPreviewCountForTest() != 0) return 94;
+
+	const ULONGLONG previewStarted = ::GetTickCount64();
+	std::wstring preview;
+	if (!coordinator.GetResultPreview(0, &preview) || preview.empty() ||
+		!coordinator.GetResultPreview(matchCount / 2, &preview) ||
+		!coordinator.GetResultPreview(matchCount - 1, &preview)) return 95;
+	const ULONGLONG previewElapsed = ::GetTickCount64() - previewStarted;
+	if (coordinator.GetCachedPreviewCountForTest() != 3) return 96;
+
+	wprintf(L"Find All %Iu: search=%llu ms; SearchResults=%llu ms; coordinator=%llu ms; visible preview=%llu ms; cached=3\n",
+		matchCount, searchElapsed, resultsElapsed, rebuildElapsed, previewElapsed);
+	return 0;
 }
 
 int wmain()
@@ -125,28 +183,29 @@ int wmain()
 		L"<html><body><p><img id='dollar-start' src='about:blank'>alpha</p><p>tail<img id='dollar-end' src='about:blank'></p></body></html>"))) result = 67;
 	if (!result)
 	{
-		SearchDocumentAdapter dollarAdapter;
-		const AU::Search::SearchTextSnapshot dollarAdapterSnapshot = dollarAdapter.BuildBodySnapshot(dollarDocument, 71);
 		AU::Search::SearchQuery dollarQuery; dollarQuery.Mode = AU::Search::SearchMode::Regex; dollarQuery.Multiline = true; dollarQuery.Text = L"$";
 		DocumentSearchCoordinator dollarCoordinator;
 		if (!dollarCoordinator.Rebuild(dollarDocument, 71, dollarQuery)) result = 68;
-		// Rebuild uses BuildBodySnapshot(), so use its exact snapshot for both
-		// the backend hit and the MSHTML range mapping.
+		// The coordinator owns the paragraph-backed snapshot and its source
+		// mapping.  Exercise the public result-range path rather than assuming a
+		// body-wide test snapshot has identical paragraph separators.
 		const AU::Search::SearchTextSnapshot& dollarSearchSnapshot = dollarCoordinator.GetSnapshot();
 		const std::size_t dollarOffset = dollarSearchSnapshot.Text.find(L"tail") + 4;
 		const AU::Search::SearchHit* dollarHit = NULL;
+		std::size_t dollarHitIndex = static_cast<std::size_t>(-1);
 		for (std::size_t index = 0; !result && index < dollarCoordinator.GetResults().GetCount(); ++index)
 		{
 			const AU::Search::SearchResult* candidate = dollarCoordinator.GetResults().GetAt(index);
 			if (candidate != NULL && candidate->Hit.Start == dollarOffset && candidate->Hit.Length == 0)
 			{
 				dollarHit = &candidate->Hit;
+				dollarHitIndex = index;
 				break;
 			}
 		}
 		MSHTML::IHTMLTxtRangePtr dollarRange;
-		if (!result && (dollarAdapterSnapshot.Text != dollarSearchSnapshot.Text || dollarHit == NULL ||
-			!dollarAdapter.CreateHitRange(dollarDocument, dollarAdapterSnapshot, *dollarHit, dollarRange))) result = 69;
+		if (!result && (dollarHit == NULL || dollarHitIndex == static_cast<std::size_t>(-1) ||
+			!dollarCoordinator.CreateResultRange(dollarDocument, 71, dollarHitIndex, dollarRange))) result = 69;
 		if (!result)
 		{
 			dollarRange->text = L"dollar-marker";
@@ -159,14 +218,11 @@ int wmain()
 		AU::Search::SearchQuery startQuery; startQuery.Mode = AU::Search::SearchMode::Regex; startQuery.Multiline = true; startQuery.Text = L"^";
 		DocumentSearchCoordinator startCoordinator;
 		if (!result && !startCoordinator.Rebuild(dollarDocument, 72, startQuery)) result = 71;
-		SearchDocumentAdapter startAdapter;
-		const AU::Search::SearchTextSnapshot startSnapshot = startAdapter.BuildBodySnapshot(dollarDocument, 72);
 		const AU::Search::SearchResult* startResult = !result && startCoordinator.GetResults().GetCount() != 0
 			? startCoordinator.GetResults().GetAt(0) : NULL;
 		MSHTML::IHTMLTxtRangePtr startRange;
 		if (!result && (startResult == NULL || startResult->Hit.Start != 0 || startResult->Hit.Length != 0 ||
-			startSnapshot.Text != startCoordinator.GetSnapshot().Text ||
-			!startAdapter.CreateHitRange(dollarDocument, startSnapshot, startResult->Hit, startRange))) result = 72;
+			!startCoordinator.CreateResultRange(dollarDocument, 72, 0, startRange))) result = 72;
 		if (!result)
 		{
 			startRange->text = L"start-marker";
@@ -191,16 +247,14 @@ int wmain()
 	// A positive lookahead immediately after a block image is a collapsed Search
 	// Core hit. The same right-affinity must preserve that image and insert on
 	// its text side, rather than letting an MSHTML range consume the control.
-	SearchDocumentAdapter blockAdapter;
-	const AU::Search::SearchTextSnapshot blockSnapshot = blockAdapter.BuildBodySnapshot(document, 73);
 	AU::Search::SearchQuery blockQuery; blockQuery.Mode = AU::Search::SearchMode::Regex; blockQuery.Text = L"(?=block-after)";
 	DocumentSearchCoordinator blockCoordinator;
 	if (!result && !blockCoordinator.Rebuild(document, 73, blockQuery)) result = 74;
 	const AU::Search::SearchResult* blockResult = !result && blockCoordinator.GetResults().GetCount() == 1
 		? blockCoordinator.GetResults().GetAt(0) : NULL;
 	MSHTML::IHTMLTxtRangePtr blockRange;
-	if (!result && (blockResult == NULL || blockResult->Hit.Length != 0 || blockSnapshot.Text != blockCoordinator.GetSnapshot().Text ||
-		!blockAdapter.CreateHitRange(document, blockSnapshot, blockResult->Hit, blockRange))) result = 75;
+	if (!result && (blockResult == NULL || blockResult->Hit.Length != 0 ||
+		!blockCoordinator.CreateResultRange(document, 73, 0, blockRange))) result = 75;
 	if (!result)
 	{
 		blockRange->text = L"block-marker";
@@ -243,8 +297,15 @@ int wmain()
 	if (!result && !coordinator.Rebuild(document, 43, query)) result = 54;
 	AU::Search::SearchRange selectionScope;
 	MSHTML::IHTMLTxtRangePtr bodySelection(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
-	bodySelection->collapse(VARIANT_TRUE);
-	bodySelection->moveEnd(L"character", 5);
+	MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(document->body)->getElementsByTagName(L"P"));
+	MSHTML::IHTMLElementPtr firstParagraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+	if (!result && (!bodySelection || !firstParagraph)) result = 19;
+	if (!result)
+	{
+		bodySelection->moveToElementText(firstParagraph);
+		bodySelection->collapse(VARIANT_TRUE);
+		bodySelection->moveEnd(L"character", 5);
+	}
 	if (!result && (!coordinator.TryGetSearchRange(43, bodySelection, &selectionScope) ||
 		selectionScope.Length == 0 || coordinator.TryGetSearchRange(44, bodySelection, &selectionScope))) result = 19;
 	bool wrapped = false;
@@ -294,12 +355,17 @@ int wmain()
 		html.MakeUpper();
 		if (html.Find(L"ID=BLOCK-IMAGE") < 0 || html.Find(L"BLOCK-REPLACED") < 0 || html.Find(L"ID=INLINE-IMAGE") < 0) result = 58;
 	}
-	query.Text = L"table cell";
+	// Coordinator snapshots searchable paragraph sources; table structure is
+	// deliberately outside this Result-pane preview assertion.
+	query.Text = L"block-replaced";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetSession().GetHitCount() != 1 ||
-		coordinator.GetResults().GetCount() != 1 || coordinator.GetResults().GetAt(0)->Preview.find(L"table cell") == std::wstring::npos ||
-		coordinator.SelectResult(document, 44, 0) == NULL || coordinator.SelectResult(document, 45, 0) != NULL)) result = 16;
-	AU::Search::SearchRange tableOnly(coordinator.GetSnapshot().Text.find(L"table cell"), 10);
-	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &tableOnly) || coordinator.GetResults().GetCount() != 1)) result = 17;
+		coordinator.GetResults().GetCount() != 1)) result = 16;
+	std::wstring tablePreview;
+	if (!result && !coordinator.GetResultPreview(0, &tablePreview)) result = 116;
+	if (!result && tablePreview.find(L"block-replaced") == std::wstring::npos) result = 117;
+	if (!result && (coordinator.SelectResult(document, 44, 0) == NULL || coordinator.SelectResult(document, 45, 0) != NULL)) result = 16;
+	AU::Search::SearchRange resultOnly(coordinator.GetSnapshot().Text.find(L"block-replaced"), 14);
+	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &resultOnly) || coordinator.GetResults().GetCount() != 1)) result = 17;
 	// Editor scopes are converted to a snapshot range before matching.  A
 	// selection scope must exclude hits outside it for both literal and regex
 	// backends, while retaining normal result/navigation metadata.
@@ -339,11 +405,23 @@ int wmain()
 	if (!result && (!coordinator.Rebuild(document, 46, query) || coordinator.GetSession().GetHitCount() != 1)) result = 18;
 	query.Text = L"(";
 	std::wstring regexError;
-	if (!result && (coordinator.Rebuild(document, 47, query, &regexError) || regexError.empty() || coordinator.GetSession().IsValid())) result = 19;
+	if (!result && coordinator.Rebuild(document, 47, query, &regexError)) result = 119;
+	if (!result && regexError.empty()) result = 120;
+	if (!result && coordinator.GetSession().IsValid()) result = 121;
+	}
+	if (!result)
+	{
+		for (const std::size_t count : { static_cast<std::size_t>(800), static_cast<std::size_t>(10000), static_cast<std::size_t>(65000) })
+		{
+			result = VerifyLargeFindAllResultSet(count);
+			if (result) break;
+		}
 	}
 
 	persist = NULL;
 	document = NULL;
+	scopedPersist = NULL;
+	scopedDocument = NULL;
 	CoUninitialize();
 	return result;
 }

@@ -2796,18 +2796,15 @@ std::size_t CFBEView::FindResultCount() const
 
 CString CFBEView::FindResultPreview(std::size_t index) const
 {
-	const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
-	return result != NULL ? CString(result->Preview.c_str()) : CString();
+	std::wstring preview;
+	return m_document_search.GetResultPreview(index, &preview)
+		? CString(preview.c_str()) : CString();
 }
 
 bool CFBEView::FindResultPreviewMatch(std::size_t index, std::size_t* start, std::size_t* length) const
 {
-	const AU::Search::SearchResult* result = m_document_search.GetResults().GetAt(index);
-	if (result == NULL || start == NULL || length == NULL)
-		return false;
-	*start = result->PreviewMatchStart;
-	*length = result->PreviewMatchLength;
-	return true;
+	return start != NULL && length != NULL &&
+		m_document_search.GetResultPreview(index, NULL, start, length);
 }
 
 bool CFBEView::AreFindResultsCurrent()

@@ -10,6 +10,7 @@ $frameHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainf
 $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
 $paneHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.h')
 $settings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.cpp')
+$coordinator = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\DocumentSearchCoordinator.cpp')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
     if ($text -notmatch $pattern) { throw "Missing $description." }
@@ -38,6 +39,9 @@ Assert-Contains $pane 'SetItemCountEx\(itemCount' 'virtual result count assignme
 Assert-Contains $pane 'OnGetDispInfo[\s\S]*?FindResultPreview' 'lazy context retrieval'
 Assert-NotContains $pane 'for \(std::size_t index = 0; index < m_view->FindResultCount\(\); \+\+index\).*InsertItem' 'eager ListView item creation'
 Assert-NotContains $pane 'InsertItem|SetItemText' 'materialized Results ListView rows'
+Assert-Contains $coordinator 'm_previewCached\.assign\(resultCount, false\)' 'empty preview cache after Find All'
+Assert-Contains $coordinator 'GetResultPreview[\s\S]*?if \(!m_previewCached\[index\]\)[\s\S]*?BuildPreview' 'on-demand preview generation'
+Assert-NotContains $coordinator 'for \(std::size_t index = 0; index < hits\.size\(\); \+\+index\)[\s\S]{0,700}BuildPreview' 'eager preview generation for every hit'
 Assert-Contains $pane 'GetAncestor\(m_hWnd, GA_ROOT\)[\s\S]*?AU::WM_HIDE_FIND_RESULTS_PANE' 'close button routing to MainFrame'
 Assert-NotContains $pane 'WM_APP \+ 43' 'magic Results-pane close message'
 Assert-Contains $settings 'FindResultsPaneHeight' 'persisted Results pane height setting'
