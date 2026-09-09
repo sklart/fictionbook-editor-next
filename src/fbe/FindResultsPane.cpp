@@ -9,7 +9,7 @@ int CFindResultsPane::Scale(int logicalPixels) const { return UiMetrics::Scale(l
 
 LRESULT CFindResultsPane::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
-	m_header.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_ENDELLIPSIS, 0, IDC_STATIC);
+	m_header.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | static_cast<DWORD>(SS_ENDELLIPSIS), 0, static_cast<UINT>(IDC_STATIC));
 	m_close.Create(m_hWnd, rcDefault, L"\x00D7", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDCANCEL);
 	m_list.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL, 0, IDC_FIND_RESULTS_LIST);
 	m_status.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_ENDELLIPSIS, 0, IDC_FIND_RESULTS_STATUS);

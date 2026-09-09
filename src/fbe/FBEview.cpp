@@ -2939,7 +2939,6 @@ void CFBEView::RefreshSearchHighlights()
 		std::size_t selectedRect = static_cast<std::size_t>(-1);
 		for (std::size_t index = subset.FirstIndex, remaining = subset.Count; remaining > 0; ++index, --remaining)
 		{
-			const AU::Search::SearchResult* result = results.GetAt(index);
 			MSHTML::IHTMLTxtRangePtr range;
 			if (!m_document_search.CreateResultRange(Document(), generation, index, range) || !range)
 				continue;
