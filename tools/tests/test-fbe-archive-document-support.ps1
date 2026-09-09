@@ -33,5 +33,6 @@ Require $frame 'DocumentContainerKind::Rar\)\s*return SaveFile\(true\)' 'RAR Ctr
 Require $frame 'ShowArchiveError' 'Archive failures must be mapped to user-facing error categories.'
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
 Require $frame 'WriteArchiveRecoveryLocation' 'Recovery must retain archive source metadata without rewriting the container.'
+Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
 
 Write-Host 'Archive document support contract passed.'

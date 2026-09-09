@@ -2605,6 +2605,12 @@ BOOL CMainFrame::OnIdle()
 		}
 		else
 			tt = U::GetFileTitle(m_doc->m_filename);
+		if (m_document_location.IsArchive())
+		{
+			const CString entryName(U::GetFileTitle(m_document_location.entryPath));
+			const CString containerName(U::GetFileTitle(m_document_location.storagePath));
+			tt = entryName + L" :: " + containerName;
+		}
 		tt += m_change_state ? L" +" : L" -";
 		CString title(tt + L" FB Editor Next");
 		if (StartupTrace::Enabled())
