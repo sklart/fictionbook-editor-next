@@ -11,6 +11,7 @@
 
 #include "FBEView.h"
 #include "FictionBookFileType.h"
+#include <vector>
 
 namespace FB // put all FB2 related stuff into its own namespace
 {
@@ -48,8 +49,10 @@ public:
   // loading and savingaa
   void	  CreateBlank(HWND hWndParent);
   bool	  Load(HWND hWndParent,const CString& filename);
+  bool    Load(HWND hWndParent, const CString& storagePath, const CString& logicalName,
+               const std::vector<unsigned char>& rawBytes);
   //bool	  LoadFromDOM(HWND hWndParent,MSXML2::IXMLDOMDocument2 *dom);
-  bool	  LoadFromHTML(HWND hWndParent,const CString& filename);
+  bool	  LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSource = NULL);
   MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = true);
   HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult, bool quiet = false);
   void	  ShowDescription(bool Show);

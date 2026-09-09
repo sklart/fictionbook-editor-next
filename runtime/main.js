@@ -1303,8 +1303,9 @@ function recursiveChangeNbsp(elem, repChar) {
  }
 }
 
-function apiLoadFB2(path, lang)
+function apiLoadFB2(path, lang, logicalPath)
 {
+	var displayPath=logicalPath || path;
 	diagnosticFailureStage = "";
 	diagnosticOperationStage = "J100";
 	diagnosticLastTraceEvent = "J100";
@@ -1358,7 +1359,7 @@ function apiLoadFB2(path, lang)
 	if(xml.parseError.errorCode)
 	{
 		TraceScript("J114", "operation=XML parse error");
-		errCantLoad(xml, path);
+		errCantLoad(xml, displayPath);
 		failControlled();
 	}
 
@@ -1422,7 +1423,7 @@ function apiLoadFB2(path, lang)
 	var id=desc.all.diID;
 	if(!id) { TraceScript("J183", "operation=diID element missing"); failControlled(); }
 	if(id)
-	if(path.indexOf("blank.fb2") != -1)
+	if(displayPath.indexOf("blank.fb2") != -1)
 	{
 		TraceScript("J190", "operation=GetUUID");
 		id.value=window.external.GetUUID();

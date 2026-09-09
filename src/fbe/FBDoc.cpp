@@ -622,7 +622,7 @@ VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
 	return vtResult.boolVal;
 }
 
-bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
+bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSource)
 {
 	TraceDocumentEvent(L"D110", L"book load started", filename);
 	HRESULT	hr;
@@ -741,9 +741,10 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	TraceHtmlDocumentState(m_body.Browser()->Document);
 	//FastMode();
 
-	CComVariant params[2];
-	params[1] = filename;
-	params[0] = _Settings.GetInterfaceLanguageName();
+	CComVariant params[3];
+	params[2] = rawSource ? static_cast<IUnknown*>(rawSource) : static_cast<IUnknown*>(NULL);
+	params[1] = _Settings.GetInterfaceLanguageName();
+	params[0] = filename;
 	CComVariant res;
 
 	const bool diagnosticsActive = StartupTrace::Enabled();
@@ -797,7 +798,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename)
 	ApplyDiagnosticFaultInjection(m_body.Browser()->Document);
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
-	hr = InvokeFunc(L"apiLoadFB2", params, 2, res);
+	hr = InvokeFunc(L"apiLoadFB2", params, rawSource ? 3 : 2, res);
 	StartupTrace::HResult(L"document", L"J200", hr, L"apiLoadFB2");
 	if (FAILED(hr))
 	{
@@ -904,6 +905,29 @@ bool Doc::Load(HWND hWndParent,const CString& filename) {
   }
 
   return true;
+}
+
+bool Doc::Load(HWND hWndParent, const CString& storagePath, const CString& logicalName,
+    const std::vector<unsigned char>& rawBytes)
+{
+    if (rawBytes.empty()) return false;
+    IStreamPtr stream;
+    HGLOBAL memory = ::GlobalAlloc(GMEM_MOVEABLE, rawBytes.size());
+    if (memory == NULL) return false;
+    HRESULT hr = ::CreateStreamOnHGlobal(memory, TRUE, &stream);
+    if (FAILED(hr)) { ::GlobalFree(memory); return false; }
+    ULONG written = 0;
+    hr = stream->Write(&rawBytes[0], static_cast<ULONG>(rawBytes.size()), &written);
+    LARGE_INTEGER beginning = {};
+    if (FAILED(hr) || written != rawBytes.size() || FAILED(stream->Seek(beginning, STREAM_SEEK_SET, NULL))) return false;
+    try
+    {
+        if (!LoadFromHTML(hWndParent, logicalName, stream)) return false;
+        m_filename = storagePath;
+        m_namevalid = true;
+        return true;
+    }
+    catch (_com_error& e) { U::ReportError(e); return false; }
 }
 
 void  Doc::CreateBlank(HWND hWndParent) {
