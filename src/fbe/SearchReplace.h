@@ -82,7 +82,7 @@ public:
 		m_view->m_fo.flags = flags;
 		m_view->m_fo.fRegexp = m_regexp != 0;
 		m_view->m_fo.unicodeProperties = m_unicode != 0;
-		HWND scope = GetDlgItem(IDC_FIND_SCOPE);
+		HWND scope = FRBase::GetDlgItem(IDC_FIND_SCOPE);
 		if (scope)
 		{
 			const LRESULT selection = ::SendMessage(scope, CB_GETCURSEL, 0, 0);
@@ -119,7 +119,11 @@ public:
 			const LRESULT item = ::SendMessage(scope, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(values[index].Text));
 			::SendMessage(scope, CB_SETITEMDATA, item, static_cast<LPARAM>(values[index].Value));
 		}
-		if (m_view->HasTextSelection())
+		// A completed Selection search owns a stable source range. Find Next moves
+		// MSHTML's visual selection to a hit, so keep this entry while that source
+		// range remains valid; otherwise refresh it from the live selection.
+		if (m_view->HasTextSelection() ||
+			(m_scope == static_cast<int>(AU::Search::SearchScope::Selection) && m_view->HasSavedSearchScope()))
 		{
 			const CString selectionText = FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.scope_selection", L"Selection");
 			const LRESULT item = ::SendMessage(scope, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(selectionText)));
@@ -201,7 +205,8 @@ public:
 		// Load options
 		DWORD flags = _Settings.GetSearchOptions();
 		m_view->m_fo.fRegexp = (flags & CFBEView::FRF_REGEX) != 0;
-		m_view->m_fo.flags = flags & ~CFBEView::FRF_REGEX;
+		m_view->m_fo.unicodeProperties = (flags & CFBEView::FRF_UNICODE_PROPERTIES) != 0;
+		m_view->m_fo.flags = flags & ~(CFBEView::FRF_REGEX | CFBEView::FRF_UNICODE_PROPERTIES);
 
 		m_view->m_startMatch = m_view->m_endMatch = 0;
 
@@ -209,6 +214,7 @@ public:
 
 		// Set fields
 		PutData();
+		UpdateUnicodeControl();
 		if (!isReplaceDialog)
 		{
 			SetRuntimeText(IDC_FIND_SCOPE_LABEL, L"fbe.dialog.idd_find.scope", L"Scope:");
@@ -225,6 +231,7 @@ public:
 				m_tooltips.Add(GetDlgItem(IDC_REGEXP), L"fbe.tooltip.find.regexp", L"Interpret the query as a regular expression.");
 				m_tooltips.Add(GetDlgItem(IDC_FIND_SCOPE), L"fbe.tooltip.find.scope", L"Choose where to search.");
 				m_tooltips.Add(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), L"fbe.tooltip.find.unicode_properties", L"Use Unicode properties in regular expressions.");
+				m_tooltips.Add(GetDlgItem(IDC_FIND_STATUS), L"fbe.tooltip.find.status", L"Search status and complete regular-expression diagnostic.");
 				m_tooltips.Add(GetDlgItem(IDC_UP), L"fbe.tooltip.find.up", L"Search toward the beginning of the document.");
 				m_tooltips.Add(GetDlgItem(IDC_DOWN), L"fbe.tooltip.find.down", L"Search toward the end of the document.");
 			}
@@ -298,9 +305,23 @@ public:
 
 	void SaveHistory() 
 	{
-		_Settings.SetSearchOptions(m_view->m_fo.flags | (m_view->m_fo.fRegexp ? CFBEView::FRF_REGEX : 0), true);
+		SaveSearchOptions();
 		SaveHistoryImp(m_fh,GetDlgItem(IDC_TEXT));
 		SaveHistoryImp(m_rh,GetDlgItem(IDC_REPLACE));
+	}
+
+	void SaveSearchOptions()
+	{
+		_Settings.SetSearchOptions(m_view->m_fo.flags |
+			(m_view->m_fo.fRegexp ? CFBEView::FRF_REGEX : 0) |
+			(m_view->m_fo.unicodeProperties ? CFBEView::FRF_UNICODE_PROPERTIES : 0), true);
+	}
+
+	void UpdateUnicodeControl()
+	{
+		HWND unicode = GetDlgItem(IDC_FIND_UNICODE_PROPERTIES);
+		if (unicode)
+			::EnableWindow(unicode, ::IsDlgButtonChecked(::GetParent(unicode), IDC_REGEXP) == BST_CHECKED);
 	}
 };
 
@@ -317,6 +338,7 @@ public:
 		COMMAND_ID_HANDLER(ID_FIND_NEXT, OnDoFind)
 		COMMAND_ID_HANDLER(IDC_FIND_ALL, OnDoFindAll)
 		COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_SELCHANGE, OnScopeChanged)
+		COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_DROPDOWN, OnScopeDropDown)
 		COMMAND_HANDLER(IDC_MATCHCASE, BN_CLICKED, OnSearchOptionChanged)
 		COMMAND_HANDLER(IDC_WHOLE, BN_CLICKED, OnSearchOptionChanged)
 		COMMAND_HANDLER(IDC_REGEXP, BN_CLICKED, OnSearchOptionChanged)
@@ -331,6 +353,8 @@ public:
 	LRESULT OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&)
 	{
 		::KillTimer(m_hWnd, 0x4F01);
+		GetData();
+		SaveSearchOptions();
 		m_view->CloseFindDialog(this);
 		return 0;
 	}
@@ -338,6 +362,8 @@ public:
 	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		::KillTimer(m_hWnd, 0x4F01);
+		GetData();
+		SaveSearchOptions();
 		m_view->CloseFindDialog(this);
 		return 0;
 	}
@@ -368,8 +394,19 @@ public:
 		return 0;
 	}
 
+	LRESULT OnScopeDropDown(WORD, WORD, HWND, BOOL&)
+	{
+		HWND scope = FRBase::GetDlgItem(IDC_FIND_SCOPE);
+		const LRESULT selected = scope ? ::SendMessage(scope, CB_GETCURSEL, 0, 0) : CB_ERR;
+		if (selected != CB_ERR)
+			m_scope = static_cast<int>(::SendMessage(scope, CB_GETITEMDATA, selected, 0));
+		PopulateFindScopes();
+		return 0;
+	}
+
 	LRESULT OnSearchOptionChanged(WORD, WORD, HWND, BOOL&)
 	{
+		UpdateUnicodeControl();
 		::SetTimer(m_hWnd, 0x4F01, 150, NULL);
 		return 0;
 	}
@@ -478,7 +515,10 @@ public:
 		{
 			if (!VBErr)
 			{
-				U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
+				if (!m_view->LastSearchError().IsEmpty())
+					::MessageBox(m_hWnd, m_view->LastSearchError(), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.caption", L"Find"), MB_OK | MB_ICONEXCLAMATION);
+				else
+					U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 			}
 		}
 		else

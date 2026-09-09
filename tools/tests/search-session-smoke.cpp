@@ -105,6 +105,9 @@ int wmain()
 	results.SetResults(std::vector<SearchResult>{ first, second }, 41);
 	if (!results.IsValidFor(41) || results.IsValidFor(42) || results.GetCount() != 2)
 		return 15;
+	if (results.FindFirstAtOrAfter(0) != 0 || results.FindFirstAtOrAfter(2) != 0 ||
+		results.FindFirstAtOrAfter(3) != 1 || results.FindFirstAtOrAfter(99) != 2)
+		return 47;
 	if (results.GetSelected() != NULL || results.Select(1)->Hit.Start != 12)
 		return 16;
 	if (results.GetSelectedIndex() != 1 || results.Select(2) != NULL)

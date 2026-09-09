@@ -67,5 +67,20 @@ const SearchResult* SearchResults::Select(std::size_t index)
 	return GetSelected();
 }
 
+std::size_t SearchResults::FindFirstAtOrAfter(std::size_t offset) const
+{
+	std::size_t first = 0;
+	std::size_t last = m_results.size();
+	while (first < last)
+	{
+		const std::size_t middle = first + (last - first) / 2;
+		if (m_results[middle].Hit.Start < offset)
+			first = middle + 1;
+		else
+			last = middle;
+	}
+	return first;
+}
+
 }
 }

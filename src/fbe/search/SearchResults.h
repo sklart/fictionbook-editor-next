@@ -36,6 +36,9 @@ public:
 	const SearchResult* GetSelected() const;
 	std::size_t GetSelectedIndex() const;
 	const SearchResult* Select(std::size_t index);
+	// Results are ordered by SearchHit.Start. This bounds viewport overlay work
+	// independently from the total number of Find All matches.
+	std::size_t FindFirstAtOrAfter(std::size_t offset) const;
 
 private:
 	static const std::size_t kNoResult = static_cast<std::size_t>(-1);

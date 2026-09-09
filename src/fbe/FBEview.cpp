@@ -2672,6 +2672,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
 // searching
 bool CFBEView::DoSearch(bool fMore)
 {
+	m_last_search_error.Empty();
 	if(m_fo.pattern.IsEmpty())
 	{
 		if(m_is_start)
@@ -2767,9 +2768,9 @@ void CFBEView::SelMatch(MSHTML::IHTMLTxtRange *tr,AU::ReMatch rm)
 
 CString CFBEView::SearchResultStatus()
 {
-	const long version = GetVersionNumber();
+	const std::uint64_t version = SearchDocumentGeneration();
 	const AU::Search::SearchResults& results = m_document_search.GetResults();
-	if (version < 0 || !results.IsValidFor(static_cast<std::uint64_t>(version)) ||
+	if (!results.IsValidFor(version) ||
 		results.GetSelected() == NULL)
 		return CString();
 	CString status;
@@ -2781,9 +2782,9 @@ CString CFBEView::SearchResultStatus()
 
 CString CFBEView::FindAllResultStatus()
 {
-	const long version = GetVersionNumber();
+	const std::uint64_t version = SearchDocumentGeneration();
 	const AU::Search::SearchResults& results = m_document_search.GetResults();
-	if (version < 0 || !results.IsValidFor(static_cast<std::uint64_t>(version)))
+	if (!results.IsValidFor(version))
 		return CString();
 	CString status;
 	status.Format(FbeLoadRuntimeStringByKey(L"fbe.search.results.found", L"%u found"),
@@ -2814,8 +2815,7 @@ bool CFBEView::FindResultPreviewMatch(std::size_t index, std::size_t* start, std
 
 bool CFBEView::AreFindResultsCurrent()
 {
-	const long version = GetVersionNumber();
-	return version >= 0 && m_document_search.GetResults().IsValidFor(static_cast<std::uint64_t>(version));
+	return m_document_search.GetResults().IsValidFor(SearchDocumentGeneration());
 }
 
 std::uint64_t CFBEView::FindResultsRevision() const
@@ -2829,7 +2829,7 @@ bool CFBEView::SelectFindResult(std::size_t index)
 	{
 		if (!Document() || !AreFindResultsCurrent())
 			return false;
-		if (m_document_search.SelectResult(Document(), static_cast<std::uint64_t>(GetVersionNumber()), index) == NULL)
+		if (m_document_search.SelectResult(Document(), SearchDocumentGeneration(), index) == NULL)
 			return false;
 		PositionFoundRange(MSHTML::IHTMLTxtRangePtr(Document()->selection->createRange()));
 		RefreshSearchHighlights();
@@ -2847,19 +2847,29 @@ void CFBEView::ClearSearchHighlights()
 		m_search_highlight_overlay->Clear();
 }
 
+void CFBEView::AdvanceSearchDocumentGeneration()
+{
+	// Do this for every real dirty-range notification, including editor-owned
+	// operations performed under m_ignore_changes. That flag suppresses the
+	// application's dirty UI notification; it must never preserve stale search
+	// offsets, replacement previews or highlight geometry.
+	++m_search_document_generation;
+	if (m_search_document_generation == 0)
+		++m_search_document_generation;
+	m_document_search.Invalidate();
+	m_has_find_scope_range = false;
+	m_has_last_zero_length_hit = false;
+	m_has_replace_preview = false;
+	ClearSearchHighlights();
+	if (m_find_results_dlg && m_find_results_dlg->IsValid())
+		m_find_results_dlg->Refresh();
+}
+
 void CFBEView::UpdateSearchHighlightsForScroll()
 {
-	try
-	{
-		if (!m_search_highlight_overlay || !Document()) return;
-		MSHTML::IHTMLElement2Ptr scrollElement(MSHTML::IHTMLDocument3Ptr(Document())->documentElement);
-		if (scrollElement)
-			m_search_highlight_overlay->UpdateScroll(scrollElement->scrollLeft, scrollElement->scrollTop);
-	}
-	catch (const _com_error&)
-	{
-		ClearSearchHighlights();
-	}
+	// The scroll event is post-scroll. Recompute a bounded viewport subset so
+	// entering new content creates highlights without touching all Find All rows.
+	RefreshSearchHighlights();
 }
 
 void CFBEView::RefreshSearchHighlights()
@@ -2869,13 +2879,8 @@ void CFBEView::RefreshSearchHighlights()
 		// Geometry extraction crosses the COM boundary and is particularly costly
 		// for short/common queries.  Keep the Results pane and navigation complete,
 		// but bound the visual overlay so Find All cannot monopolize the UI thread.
-		const std::size_t maxOverlayRects = 16;
+		const std::size_t maxOverlayRects = 128;
 		if (!Document() || !AreFindResultsCurrent() || FindResultCount() == 0)
-		{
-			ClearSearchHighlights();
-			return;
-		}
-		if (FindResultCount() > maxOverlayRects)
 		{
 			ClearSearchHighlights();
 			return;
@@ -2886,11 +2891,41 @@ void CFBEView::RefreshSearchHighlights()
 			ClearSearchHighlights();
 			return;
 		}
-		std::vector<RECT> documentRects;
-		for (std::size_t index = 0; index < FindResultCount(); ++index)
+		MSHTML::IHTMLElementPtr topElement(Document()->elementFromPoint(0, 0));
+		MSHTML::IHTMLElementPtr bottomElement(Document()->elementFromPoint(0, (std::max)(0L, scrollElement->clientHeight - 1)));
+		MSHTML::IHTMLTxtRangePtr topRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+		MSHTML::IHTMLTxtRangePtr bottomRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+		if (!topElement || !bottomElement || !topRange || !bottomRange)
 		{
+			ClearSearchHighlights();
+			return;
+		}
+		topRange->moveToElementText(topElement);
+		bottomRange->moveToElementText(bottomElement);
+		const std::uint64_t generation = SearchDocumentGeneration();
+		AU::Search::SearchRange topSearch = {}, bottomSearch = {};
+		if (!m_document_search.TryGetSearchRange(generation, topRange, &topSearch) ||
+			!m_document_search.TryGetSearchRange(generation, bottomRange, &bottomSearch))
+		{
+			ClearSearchHighlights();
+			return;
+		}
+		const std::size_t viewportStart = (std::min)(topSearch.Start, bottomSearch.Start);
+		const std::size_t viewportEnd = (std::max)(topSearch.Start + topSearch.Length, bottomSearch.Start + bottomSearch.Length);
+		const AU::Search::SearchResults& results = m_document_search.GetResults();
+		std::size_t index = results.FindFirstAtOrAfter(viewportStart);
+		if (index > 0) --index; // include a hit spanning the top boundary
+		std::vector<RECT> documentRects;
+		std::size_t selectedRect = static_cast<std::size_t>(-1);
+		for (; index < FindResultCount() && documentRects.size() < maxOverlayRects; ++index)
+		{
+			const AU::Search::SearchResult* result = results.GetAt(index);
+			if (result == NULL || result->Hit.Start > viewportEnd)
+				break;
+			if (result->Hit.Start + result->Hit.Length < viewportStart)
+				continue;
 			MSHTML::IHTMLTxtRangePtr range;
-			if (!m_document_search.CreateResultRange(Document(), static_cast<std::uint64_t>(GetVersionNumber()), index, range) || !range)
+			if (!m_document_search.CreateResultRange(Document(), generation, index, range) || !range)
 				continue;
 			MSHTML::IHTMLTextRangeMetrics2Ptr metrics(range);
 			MSHTML::IHTMLRectPtr rect(metrics ? metrics->getBoundingClientRect() : MSHTML::IHTMLRectPtr());
@@ -2899,6 +2934,8 @@ void CFBEView::RefreshSearchHighlights()
 			RECT documentRect = { rect->left + scrollElement->scrollLeft, rect->top + scrollElement->scrollTop,
 				rect->right + scrollElement->scrollLeft, rect->bottom + scrollElement->scrollTop };
 			documentRects.push_back(documentRect);
+			if (index == m_document_search.GetSelectedResultIndex())
+				selectedRect = documentRects.size() - 1;
 		}
 		if (documentRects.empty())
 		{
@@ -2908,7 +2945,7 @@ void CFBEView::RefreshSearchHighlights()
 		if (!m_search_highlight_overlay)
 			m_search_highlight_overlay = new CSearchHighlightOverlay();
 		m_search_highlight_overlay->Update(m_hWnd, documentRects, scrollElement->scrollLeft, scrollElement->scrollTop,
-			m_document_search.GetSelectedResultIndex());
+			selectedRect);
 	}
 	catch (const _com_error&)
 	{
@@ -3241,7 +3278,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 {
 	if (errorText != NULL)
 		errorText->Empty();
-	const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
+	const std::uint64_t generation = SearchDocumentGeneration();
 	const bool reusePreview = m_has_replace_preview &&
 		m_replace_preview_generation == generation &&
 		m_replace_preview_revision == FindResultsRevision() &&
@@ -3350,9 +3387,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	catch (const _com_error& error)
 	{
 		m_mk_srv->EndUndoUnit();
-		m_document_search.Invalidate();
-		if (m_find_results_dlg && m_find_results_dlg->IsValid())
-			m_find_results_dlg->Refresh();
+		AdvanceSearchDocumentGeneration();
 		if (errorText != NULL)
 			*errorText = error.ErrorMessage();
 		return -1;
@@ -3360,21 +3395,19 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	m_mk_srv->EndUndoUnit();
 	m_fo.ClearMatch();
 	m_has_replace_preview = false;
-	m_document_search.Invalidate();
-	if (m_find_results_dlg && m_find_results_dlg->IsValid())
-		m_find_results_dlg->Refresh();
+	AdvanceSearchDocumentGeneration();
 	return replaced;
 }
 
 int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 {
 	UNREFERENCED_PARAMETER(cntTag); // retained for the public Tools API signature
-	if (m_fo.pattern.IsEmpty() || !Document() || GetVersionNumber() < 0)
+	if (m_fo.pattern.IsEmpty() || !Document())
 		return 0;
 	bool undoStarted = false;
 	try
 	{
-		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
+		const std::uint64_t generation = SearchDocumentGeneration();
 		AU::Search::SearchQuery query;
 		query.Text = static_cast<LPCWSTR>(m_fo.pattern);
 		query.Mode = m_fo.fRegexp ? AU::Search::SearchMode::Regex : AU::Search::SearchMode::Literal;
@@ -3439,8 +3472,7 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 		}
 		m_mk_srv->EndUndoUnit();
 		undoStarted = false;
-		m_document_search.Invalidate();
-		ClearSearchHighlights();
+		AdvanceSearchDocumentGeneration();
 		return replaced;
 	}
 	catch (_com_error& err)
@@ -3729,7 +3761,10 @@ LRESULT CFBEView::OnReplace(WORD, WORD, HWND, BOOL&)
 LRESULT  CFBEView::OnFindNext(WORD, WORD, HWND, BOOL&) {
   if (!DoSearch())
   {
-	U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_fo.pattern));
+	if (!m_last_search_error.IsEmpty())
+		::MessageBox(m_hWnd, m_last_search_error, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.caption", L"Find"), MB_OK | MB_ICONEXCLAMATION);
+	else
+		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_fo.pattern));
   }
   return 0;
 }
@@ -3756,7 +3791,7 @@ void	CFBEView::EditorChanged(int id) {
     break;
   case RANGE_SINK:
 	m_startMatch = m_endMatch = 0;
-	ClearSearchHighlights();
+	AdvanceSearchDocumentGeneration();
     if (!m_ignore_changes)
       ::SendMessage(m_frame,WM_COMMAND,MAKELONG(0,IDN_ED_CHANGED),(LPARAM)m_hWnd);
     break;
@@ -3811,6 +3846,9 @@ bool CFBEView::Init()
   StartupTrace::HResult(L"webbrowser", L"WB201", hr, L"QueryInterface(IHTMLDocument2)");
   if (FAILED(hr) || !document) return false;
   m_hdoc = document.p;
+	// A full hosted-document reload replaces every source coordinate even when
+	// MSHTML happens to retain its internal version number.
+	AdvanceSearchDocumentGeneration();
 
   // MSHTML otherwise turns text resembling a UNC path (for example, \\word)
   // into a file:// hyperlink when the editor loses focus.  Links in FB2 must
@@ -4105,7 +4143,7 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 {
 	try
 	{
-		if (!Document() || GetVersionNumber() < 0)
+		if (!Document())
 			return false;
 		MSHTML::IHTMLTxtRangePtr selection(Document()->selection->createRange());
 		if (!fMore && m_is_start)
@@ -4127,9 +4165,14 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 		// joins them with newlines, so PCRE2 multiline preserves ^/$ behaviour.
 		query.Multiline = mode == AU::Search::SearchMode::Regex;
 
-		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
-		if (!CanReuseDocumentSearch(query, generation) && !RebuildDocumentSearch(query, selection))
+		const std::uint64_t generation = SearchDocumentGeneration();
+		std::wstring nativeError;
+		if (!CanReuseDocumentSearch(query, generation) && !RebuildDocumentSearch(query, selection, &nativeError))
+		{
+			if (!nativeError.empty())
+				m_last_search_error = nativeError.c_str();
 			return false;
+		}
 		const bool sameZeroLengthCriteria = m_has_last_zero_length_hit &&
 			AU::Search::HasSameSearchCriteria(m_last_zero_length_query, query) &&
 			m_last_zero_length_query.Direction == query.Direction;
@@ -4201,7 +4244,7 @@ bool CFBEView::DoFindAll(bool showResults, CString* errorText)
 	{
 		if (errorText != NULL)
 			errorText->Empty();
-		if (!Document() || GetVersionNumber() < 0)
+		if (!Document())
 			return false;
 		AU::Search::SearchQuery query;
 		query.Text = static_cast<LPCWSTR>(m_fo.pattern);
@@ -4265,7 +4308,7 @@ void CFBEView::ResetSearchScope()
 
 bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText)
 {
-	const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
+	const std::uint64_t generation = SearchDocumentGeneration();
 	if (!m_document_search.Rebuild(Document(), generation, query, errorText))
 		return false;
 	if (query.Scope == AU::Search::SearchScope::WholeDocument)
