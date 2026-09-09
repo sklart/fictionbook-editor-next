@@ -33,6 +33,18 @@ CString EntryPath(archive_entry* entry)
     return result;
 }
 
+bool IsSafeEntryPath(const CString& path)
+{
+    // Entries are never extracted, but rejecting paths that cannot be a
+    // document identity also keeps persisted MRU/recovery metadata bounded.
+    if (path.IsEmpty() || path.GetLength() >= 32768) return false;
+    if (path[0] == L'/' || path[0] == L'\\') return false;
+    if (path.GetLength() >= 2 && path[1] == L':') return false;
+    for (int index = 0; index < path.GetLength(); ++index)
+        if (path[index] < L' ') return false;
+    return true;
+}
+
 bool PrepareReader(archive* reader, const CString& storagePath, FbeArchive::Error& error)
 {
     if (reader == NULL) { error.code = FbeArchive::ErrorCode::OpenFailed; return false; }
@@ -80,7 +92,7 @@ bool EnumerateFictionBookEntries(const CString& storagePath, std::vector<Entry>&
         {
             const CString path = EntryPath(header);
             const FictionBookFileType type = DetectFictionBookFileType(path);
-            if (type != FictionBookFileType::Unknown)
+            if (type != FictionBookFileType::Unknown && IsSafeEntryPath(path))
             {
                 const la_int64_t size = archive_entry_size_is_set(header) ? archive_entry_size(header) : -1;
                 if (size < 0 || static_cast<unsigned __int64>(size) > kMaximumDocumentBytes) { error.code = ErrorCode::EntryTooLarge; return false; }
@@ -108,7 +120,7 @@ bool ReadEntry(const CString& storagePath, const Entry& entry, std::vector<unsig
         if (result == ARCHIVE_EOF) { error.code = ErrorCode::EntryNotFound; return false; }
         if (result != ARCHIVE_OK && result != ARCHIVE_WARN) { error.code = ReadError(handle.Get()); return false; }
         if (ordinal++ != entry.occurrence) { archive_read_data_skip(handle.Get()); continue; }
-        if (archive_entry_filetype(header) != AE_IFREG || EntryPath(header) != entry.path) { error.code = ErrorCode::EntryNotFound; return false; }
+        if (archive_entry_filetype(header) != AE_IFREG || !IsSafeEntryPath(entry.path) || EntryPath(header) != entry.path) { error.code = ErrorCode::EntryNotFound; return false; }
         if (IsEncrypted(handle.Get(), header)) { error.code = ErrorCode::Encrypted; return false; }
         const la_int64_t declaredSize = archive_entry_size_is_set(header) ? archive_entry_size(header) : -1;
         if (declaredSize < 0 || static_cast<unsigned __int64>(declaredSize) > kMaximumDocumentBytes) { error.code = ErrorCode::EntryTooLarge; return false; }
@@ -121,7 +133,8 @@ bool ReadEntry(const CString& storagePath, const Entry& entry, std::vector<unsig
             if (read == 0) return true;
             if (read < 0) { error.code = ReadError(handle.Get()); bytes.clear(); return false; }
             if (bytes.size() > kMaximumDocumentBytes - static_cast<size_t>(read)) { error.code = ErrorCode::EntryTooLarge; bytes.clear(); return false; }
-            bytes.insert(bytes.end(), buffer, buffer + read);
+            try { bytes.insert(bytes.end(), buffer, buffer + read); }
+            catch (const std::bad_alloc&) { error.code = ErrorCode::EntryTooLarge; bytes.clear(); return false; }
         }
     }
 }

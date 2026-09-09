@@ -74,7 +74,7 @@ bool RewriteZipEntry(const CString& storagePath, const Entry& target,
 			if (archive_write_finish_entry(writer.value) != ARCHIVE_OK) { error.code = ErrorCode::WriteFailed; goto cleanup; }
 			archive_read_data_skip(reader.value); replaced = true;
 		}
-		else if (!CopyPayload(reader.value, writer.value)) { error.code = ErrorCode::WriteFailed; goto cleanup; }
+		else if (!CopyPayload(reader.value, writer.value) || archive_write_finish_entry(writer.value) != ARCHIVE_OK) { error.code = ErrorCode::WriteFailed; goto cleanup; }
 		++ordinal;
 	}
 	if (!replaced) { error.code = ErrorCode::EntryNotFound; goto cleanup; }
