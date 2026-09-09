@@ -121,6 +121,7 @@
     </ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="archive\ZipArchiveWriter.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="RuntimeLocalization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

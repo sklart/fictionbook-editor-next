@@ -44,4 +44,6 @@ const unsigned __int64 kMaximumDocumentBytes = 512ULL * 1024ULL * 1024ULL;
 
 bool EnumerateFictionBookEntries(const CString& storagePath, std::vector<Entry>& entries, Error& error);
 bool ReadEntry(const CString& storagePath, const Entry& entry, std::vector<unsigned char>& bytes, Error& error);
+bool RewriteZipEntry(const CString& storagePath, const Entry& entry,
+    const std::vector<unsigned char>& replacement, Error& error);
 }
