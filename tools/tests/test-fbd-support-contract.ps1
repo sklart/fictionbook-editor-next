@@ -48,7 +48,7 @@ if($mainFrame -notmatch 'request\.filterIndex\s*=\s*saveAsFbd\s*\?\s*2\s*:\s*1' 
 if($xsl -notmatch 'class="body" fbdsynthetic="1"') { throw 'Body-less FBD visual placeholder is not marked synthetic.' }
 if($mainFrame -notmatch 'if \(IsSourceActive\(\)\)\s*fv=m_doc->SetXMLAndValidate') { throw 'F8 source mode must validate current Scintilla text for FBD and FB2.' }
 if($mainFrame -match 'IsFbdFile\(m_doc->m_filename\)\s*\)\s*fv=m_doc->Validate') { throw 'F8 source mode must not validate serialized DOM for FBD.' }
-if($mainFrame -notmatch 'TextToXML[\s\S]{0,800}IsFbdFile\(m_doc->m_filename\)') { throw 'Source to Body must not fall back to XmlFromText after FBD structural validation fails.' }
+if($mainFrame -notmatch 'TextToXML[\s\S]{0,800}(IsFbdFile\(m_doc->m_filename\)|GetDocumentFileType\(\)\s*==\s*FictionBookFileType::Fbd)') { throw 'Source to Body must not fall back to XmlFromText after FBD structural validation fails.' }
 if($document -notmatch 'ConfigureFictionBookSaxReader\(rdr, targetType, scol\)' -or
 	$document -notmatch 'ConfigureFictionBookSaxReader\(rdr, fileType, scol\)') { throw 'XML validation policy is not shared by SaveToFile, source validation and TextToXML.' }
 if($document -notmatch 'ShouldUseFb2SchemaValidation' -or $document -notmatch 'type != FictionBookFileType::Fbd') { throw 'FBD must disable only FB2 schema validation.' }
