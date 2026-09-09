@@ -403,6 +403,33 @@ function Get-DependencyCatalog {
                 [pscustomobject]@{ Tag=$best.Tag; Version=$best.Version; Commit=$null; ZipUrl="https://sourceforge.net/projects/wtl/files/WTL%2010/$($best.Tag)/download"; Source='SourceForge' }
             }
         }
+        [pscustomobject]@{
+            Name = 'upx'
+            DisplayName = 'UPX'
+            Repository = 'upx/upx'
+            RepositoryUrl = 'https://github.com/upx/upx.git'
+            LocalPath = Join-Path $repoRoot 'tools\upx'
+            RelativePath = 'tools\upx'
+            ValidationPaths = @('upx.exe')
+            Kind = 'VendoredTree'
+            UpdateMode = 'Manual'
+            Optional = $false
+            TagPattern = '^v?(\d+\.\d+\.\d+)$'
+            VersionReader = {
+                param($entry)
+                $executable = Join-Path $entry.LocalPath 'upx.exe'
+                if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { throw "UPX executable not found: $executable" }
+                $output = & $executable --version 2>&1
+                if ($LASTEXITCODE -ne 0) { throw "UPX version query failed with exit code $LASTEXITCODE." }
+                $match = [regex]::Match(($output | Out-String), '(?im)^upx\s+(\d+\.\d+\.\d+)\b')
+                if (-not $match.Success) { throw "Could not read UPX version from $executable" }
+                return $match.Groups[1].Value
+            }
+            RemoteInfoReader = {
+                param($entry)
+                Get-LatestStableGitRelease -RepositoryUrl $entry.RepositoryUrl -TagPattern $entry.TagPattern -ZipUrlTemplate 'https://github.com/upx/upx/archive/refs/tags/{0}.zip'
+            }
+        }
 
         (New-GitSubmoduleDependency -Name 'libheif' -DisplayName 'libheif' -RelativePath 'third_party\libheif' -RepositoryUrl 'https://github.com/strukturag/libheif.git' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','libheif'))
         (New-GitSubmoduleDependency -Name 'libde265' -DisplayName 'libde265' -RelativePath 'third_party\libde265' -RepositoryUrl 'https://github.com/strukturag/libde265.git' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','libde265'))
