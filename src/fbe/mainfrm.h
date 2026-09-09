@@ -685,6 +685,7 @@ public:
 		NOTIFY_CODE_HANDLER(SCN_UPDATEUI, OnSciUpdateUI)
 		NOTIFY_CODE_HANDLER(SCN_CHARADDED, OnSciCharAdded)
 		NOTIFY_CODE_HANDLER(NM_CLICK, OnStatusBarClick)
+		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnToolbarDoubleClick)
 		NOTIFY_CODE_HANDLER(NM_DBLCLK, OnStatusBarDoubleClick)
 		NOTIFY_CODE_HANDLER(NM_RCLICK, OnStatusBarRightClick)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCommandToolbarCustomDraw)
@@ -722,6 +723,7 @@ public:
 	LRESULT OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled);
+	LRESULT OnToolbarDoubleClick(int, LPNMHDR pnmh, BOOL& bHandled);
 
 
   int m_selBandID;
@@ -901,7 +903,7 @@ public:
   {
 	  UnhookSysDialogs();
 	  if (m_selBandID == ATL_IDW_BAND_FIRST+1) m_CmdToolbar.Customize(); else
-	  if (m_selBandID == ATL_IDW_BAND_FIRST+2) m_ScriptsToolbar.Customize();
+	  if (m_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog();
 	  HookSysDialogs();
       return 0;
   }
@@ -1023,6 +1025,8 @@ public:
 		m_doc->m_body.GoToReference(false);
 	  return 0;
   }
+
+	void ShowScriptsToolbarCustomizeDialog();
 
   LRESULT OnGoToReference(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {

@@ -35,10 +35,21 @@
     "IDD_SETTINGS_SOURCE",
     "IDD_SETTINGS_IMAGES",
     "IDD_SETTINGS_ADVANCED",
-    "IDD_FIND_RESULTS"
+    "IDD_FIND_RESULTS",
+    "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE"
   ],
   "resourceType": "DIALOGEX",
   "strings": {
+    "fbe.scripts_toolbar_customize.search": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "LTEXT", "targetId": "IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL", "translations": { "en-US": "Search:", "ru-RU": "Поиск:", "uk-UA": "Пошук:", "de-DE": "Suchen:", "fr-FR": "Rechercher :", "es-ES": "Buscar:", "it-IT": "Cerca:", "pl-PL": "Szukaj:", "pt-PT": "Pesquisar:", "nl-NL": "Zoeken:", "cs-CZ": "Hledat:", "bg-BG": "Търсене:" } },
+    "fbe.scripts_toolbar_customize.available": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "LTEXT", "targetId": "IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL", "translations": { "en-US": "Available scripts:", "ru-RU": "Доступные скрипты:", "uk-UA": "Доступні скрипти:", "de-DE": "Verfügbare Skripte:", "fr-FR": "Scripts disponibles :", "es-ES": "Scripts disponibles:", "it-IT": "Script disponibili:", "pl-PL": "Dostępne skrypty:", "pt-PT": "Scripts disponíveis:", "nl-NL": "Beschikbare scripts:", "cs-CZ": "Dostupné skripty:", "bg-BG": "Налични скриптове:" } },
+    "fbe.scripts_toolbar_customize.current": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "LTEXT", "targetId": "IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL", "translations": { "en-US": "Toolbar buttons:", "ru-RU": "Кнопки панели:", "uk-UA": "Кнопки панелі:", "de-DE": "Schaltflächen:", "fr-FR": "Boutons de la barre :", "es-ES": "Botones de la barra:", "it-IT": "Pulsanti della barra:", "pl-PL": "Przyciski paska:", "pt-PT": "Botões da barra:", "nl-NL": "Werkbalkknoppen:", "cs-CZ": "Tlačítka panelu:", "bg-BG": "Бутони на лентата:" } },
+    "fbe.scripts_toolbar_customize.caption": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "CAPTION", "targetId": "", "translations": { "en-US": "Customize scripts toolbar", "ru-RU": "Настройка панели скриптов", "uk-UA": "Налаштування панелі скриптів", "de-DE": "Skriptleiste anpassen", "fr-FR": "Personnaliser la barre de scripts", "es-ES": "Personalizar barra de scripts", "it-IT": "Personalizza barra script", "pl-PL": "Dostosuj pasek skryptów", "pt-PT": "Personalizar barra de scripts", "nl-NL": "Scriptwerkbalk aanpassen", "cs-CZ": "Přizpůsobit panel skriptů", "bg-BG": "Настройване на лентата със скриптове" } },
+    "fbe.scripts_toolbar_customize.add": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPTS_TOOLBAR_ADD", "translations": { "en-US": "Add >", "ru-RU": "Добавить >", "uk-UA": "Додати >", "de-DE": "Hinzufügen >", "fr-FR": "Ajouter >", "es-ES": "Añadir >", "it-IT": "Aggiungi >", "pl-PL": "Dodaj >", "pt-PT": "Adicionar >", "nl-NL": "Toevoegen >", "cs-CZ": "Přidat >", "bg-BG": "Добави >" } },
+    "fbe.scripts_toolbar_customize.remove": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPTS_TOOLBAR_REMOVE", "translations": { "en-US": "< Remove", "ru-RU": "< Удалить", "uk-UA": "< Вилучити", "de-DE": "< Entfernen", "fr-FR": "< Supprimer", "es-ES": "< Quitar", "it-IT": "< Rimuovi", "pl-PL": "< Usuń", "pt-PT": "< Remover", "nl-NL": "< Verwijderen", "cs-CZ": "< Odebrat", "bg-BG": "< Премахни" } },
+    "fbe.scripts_toolbar_customize.up": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPTS_TOOLBAR_UP", "translations": { "en-US": "Up", "ru-RU": "Вверх", "uk-UA": "Вгору", "de-DE": "Nach oben", "fr-FR": "Monter", "es-ES": "Subir", "it-IT": "Su", "pl-PL": "W górę", "pt-PT": "Para cima", "nl-NL": "Omhoog", "cs-CZ": "Nahoru", "bg-BG": "Нагоре" } },
+    "fbe.scripts_toolbar_customize.down": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPTS_TOOLBAR_DOWN", "translations": { "en-US": "Down", "ru-RU": "Вниз", "uk-UA": "Вниз", "de-DE": "Nach unten", "fr-FR": "Descendre", "es-ES": "Bajar", "it-IT": "Giù", "pl-PL": "W dół", "pt-PT": "Para baixo", "nl-NL": "Omlaag", "cs-CZ": "Dolů", "bg-BG": "Надолу" } },
+    "fbe.scripts_toolbar_customize.reset": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPTS_TOOLBAR_RESET", "translations": { "en-US": "Reset", "ru-RU": "Сбросить", "uk-UA": "Скинути", "de-DE": "Zurücksetzen", "fr-FR": "Réinitialiser", "es-ES": "Restablecer", "it-IT": "Reimposta", "pl-PL": "Resetuj", "pt-PT": "Repor", "nl-NL": "Herstellen", "cs-CZ": "Obnovit", "bg-BG": "Нулирай" } },
+    "fbe.scripts_toolbar_customize.close": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "DEFPUSHBUTTON", "targetId": "IDCANCEL", "translations": { "en-US": "Close", "ru-RU": "Закрыть", "uk-UA": "Закрити", "de-DE": "Schließen", "fr-FR": "Fermer", "es-ES": "Cerrar", "it-IT": "Chiudi", "pl-PL": "Zamknij", "pt-PT": "Fechar", "nl-NL": "Sluiten", "cs-CZ": "Zavřít", "bg-BG": "Затвори" } },
     "fbe.settings.advanced.group": {
       "resource": "IDD_SETTINGS_ADVANCED",
       "kind": "GROUPBOX",
@@ -840,6 +851,22 @@
         "en-US": "Replacing a regular-expression match across paragraphs is not supported because it could change document structure.", "ru-RU": "Замена совпадения регулярного выражения через несколько абзацев не поддерживается, так как она может изменить структуру документа.", "uk-UA": "Заміна збігу регулярного виразу через кілька абзаців не підтримується, оскільки вона може змінити структуру документа.", "de-DE": "Das Ersetzen eines regulären Ausdruckstreffers über mehrere Absätze wird nicht unterstützt, weil es die Dokumentstruktur ändern könnte.", "fr-FR": "Le remplacement d’une correspondance d’expression régulière sur plusieurs paragraphes n’est pas pris en charge, car il pourrait modifier la structure du document.", "es-ES": "No se admite reemplazar una coincidencia de expresión regular entre varios párrafos, ya que podría cambiar la estructura del documento.", "it-IT": "La sostituzione di una corrispondenza regex tra più paragrafi non è supportata perché potrebbe modificare la struttura del documento.", "pl-PL": "Zastępowanie dopasowania wyrażenia regularnego obejmującego wiele akapitów nie jest obsługiwane, ponieważ może zmienić strukturę dokumentu.", "pt-PT": "A substituição de uma correspondência de expressão regular entre parágrafos não é suportada porque pode alterar a estrutura do documento.", "nl-NL": "Het vervangen van een reguliere-expressieovereenkomst over meerdere alinea’s wordt niet ondersteund omdat dit de documentstructuur kan wijzigen.", "cs-CZ": "Nahrazení shody regulárního výrazu přes více odstavců není podporováno, protože by mohlo změnit strukturu dokumentu.", "bg-BG": "Замяната на съвпадение на регулярен израз през няколко абзаца не се поддържа, защото може да промени структурата на документа."
       }
     },
+    "fbe.search.error.mapping_failed": {
+      "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "Search could not be mapped to the document.", "ru-RU": "Не удалось сопоставить поиск с документом." }
+    },
+    "fbe.search.error.selection_scope_unavailable": {
+      "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "The selected search scope is no longer available.", "ru-RU": "Выбранная область поиска больше недоступна." }
+    },
+    "fbe.search.error.current_section_unavailable": {
+      "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "The current section is not available for search.", "ru-RU": "Текущий раздел недоступен для поиска." }
+    },
+    "fbe.search.error.scope_mapping_failed": {
+      "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
+      "translations": { "en-US": "The selected search scope could not be mapped to the document.", "ru-RU": "Не удалось сопоставить выбранную область поиска с документом." }
+    },
     "fbe.search.error.invalid_expression": {
       "resource": "IDD_FIND",
       "kind": "VALUE",
@@ -1064,7 +1091,7 @@
     },
     "fbe.tooltip.find.text": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_TEXT", "translations": { "en-US": "Text to find. Results update after a short pause while typing.", "ru-RU": "Текст для поиска. Результаты обновляются после короткой паузы при вводе." } },
     "fbe.tooltip.find.next": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "ID_FIND_NEXT", "translations": { "en-US": "Select the next match in the chosen direction.", "ru-RU": "Перейти к следующему совпадению в выбранном направлении." } },
-    "fbe.tooltip.find.all": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_FIND_ALL", "translations": { "en-US": "Show every match in the Results window.", "ru-RU": "Показать все совпадения в окне результатов." } },
+    "fbe.tooltip.find.all": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_FIND_ALL", "translations": { "en-US": "Show every match in the Results pane.", "ru-RU": "Показать все совпадения в панели результатов." } },
     "fbe.tooltip.find.whole_word": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_WHOLE", "translations": { "en-US": "Match complete words only.", "ru-RU": "Искать только целые слова." } },
     "fbe.tooltip.find.match_case": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_MATCHCASE", "translations": { "en-US": "Distinguish uppercase and lowercase letters.", "ru-RU": "Учитывать регистр букв." } },
     "fbe.tooltip.find.regexp": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_REGEXP", "translations": { "en-US": "Interpret the query as a regular expression.", "ru-RU": "Обрабатывать запрос как регулярное выражение." } },

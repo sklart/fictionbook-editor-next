@@ -19,6 +19,7 @@
 #include "plugins\\PluginManager.h"
 #include "plugins\\PluginApiV2.h"
 #include "UiMetrics.h"
+#include "ScriptsToolbarCustomizeDlg.h"
 #include "BodySourceSelectionTransfer.h"
 #include "XmlDeclaration.h"
 #include "..\\common\\DeploymentContext.h"
@@ -2421,6 +2422,46 @@ void CMainFrame::AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand, 
 	tb.AutoSize();
 }
 
+void CMainFrame::ShowScriptsToolbarCustomizeDialog()
+{
+	if(!::IsWindow(m_ScriptsToolbar)) return;
+	TBBUTTONS catalog, defaults;
+	if(!GetAvailableButtons(m_ScriptsToolbar, catalog) || !GetDefaultButtons(m_ScriptsToolbar, defaults)) return;
+	std::vector<ScriptsToolbarCommand> commands;
+	auto addCommand = [&](int command, const CString& name, const CString& relativePath) {
+		for(size_t existing = 0; existing < commands.size(); ++existing)
+			if(commands[existing].command == command) return;
+		ScriptsToolbarCommand item = {}; item.command = command; item.name = name; item.relativePath = relativePath;
+		item.button.iBitmap = I_IMAGENONE; item.button.idCommand = command;
+		item.button.fsState = TBSTATE_ENABLED; item.button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE;
+		for(int index = 0; index < catalog.GetSize(); ++index)
+			if(catalog[index].idCommand == command) { item.button = catalog[index]; break; }
+		commands.push_back(item);
+	};
+	for(int index = 0; index < catalog.GetSize(); ++index) {
+		if(catalog[index].idCommand == 0 || (catalog[index].fsStyle & TBSTYLE_SEP)) continue;
+		CString text; if(GetButtonText(catalog[index], text)) addCommand(catalog[index].idCommand, text, CString());
+	}
+	for(int index = 0; index < m_scripts.GetSize(); ++index) {
+		const ScrInfo& script = m_scripts[index];
+		if(!script.isFolder && script.wID > 0)
+			addCommand(ID_SCRIPT_BASE + script.wID, script.name, script.relativePath);
+	}
+	std::sort(commands.begin(), commands.end(), [](const ScriptsToolbarCommand& left, const ScriptsToolbarCommand& right) {
+		return left.name.CompareNoCase(right.name) < 0;
+	});
+	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings);
+	dialog.DoModal(m_hWnd);
+}
+
+LRESULT CMainFrame::OnToolbarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
+{
+	if(hdr == NULL || hdr->hwndFrom != m_ScriptsToolbar) { bHandled = FALSE; return 0; }
+	ShowScriptsToolbarCustomizeDialog();
+	bHandled = TRUE;
+	return 0;
+}
+
 void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 {
 	if(DeploymentContext::RegistryPersistenceAllowed()) return;
@@ -2432,7 +2473,7 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 	const std::vector<PortableToolbarItem>& saved = scriptsToolbar ? scripts : commands;
 
 	CToolBarCtrl target = toolbar;
-	const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(toolbar)));
+	const int catalogIndex = m_aButtons.FindKey(toolbar);
 	if(catalogIndex < 0) return;
 	TBBUTTONS catalog = m_aButtons.GetValueAt(catalogIndex);
 	std::vector<TBBUTTON> restored;
@@ -3678,7 +3719,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	::CreateDirectory(scriptsDirectory, NULL);
 	auto catalogButton = [&](HWND toolbar, int ordinal, TBBUTTON& button) -> bool
 	{
-		const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(toolbar)));
+		const int catalogIndex = m_aButtons.FindKey(toolbar);
 		if(catalogIndex < 0) return false;
 		TBBUTTONS catalog = m_aButtons.GetValueAt(catalogIndex);
 		int found = 0;
@@ -3689,7 +3730,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	};
 	auto catalogButtonByCommand = [&](HWND toolbar, int command, TBBUTTON& button) -> bool
 	{
-		const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(toolbar)));
+		const int catalogIndex = m_aButtons.FindKey(toolbar);
 		if(catalogIndex < 0) return false;
 		TBBUTTONS catalog = m_aButtons.GetValueAt(catalogIndex);
 		for(int index = 0; index < catalog.GetSize(); ++index)
@@ -9551,14 +9592,14 @@ void CMainFrame::ReleaseScriptResources()
 	// next scan, otherwise every scan appends another copy of icon scripts.
 	if(::IsWindow(m_ScriptsToolbar))
 	{
-		const int defaultsIndex = m_aDefaultButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(m_ScriptsToolbar.m_hWnd)));
-		const int catalogIndex = m_aButtons.FindKey(static_cast<int>(reinterpret_cast<INT_PTR>(m_ScriptsToolbar.m_hWnd)));
+		const int defaultsIndex = m_aDefaultButtons.FindKey(m_ScriptsToolbar.m_hWnd);
+		const int catalogIndex = m_aButtons.FindKey(m_ScriptsToolbar.m_hWnd);
 		if(defaultsIndex >= 0 && catalogIndex >= 0)
 		{
 			TBBUTTONS defaults = m_aDefaultButtons.GetValueAt(defaultsIndex);
 			while(m_ScriptsToolbar.GetButtonCount() > 0) m_ScriptsToolbar.DeleteButton(0);
 			if(defaults.GetSize() > 0) m_ScriptsToolbar.AddButtons(defaults.GetSize(), defaults.GetData());
-			m_aButtons.SetAt(static_cast<int>(reinterpret_cast<INT_PTR>(m_ScriptsToolbar.m_hWnd)), defaults);
+			m_aButtons.SetAt(m_ScriptsToolbar.m_hWnd, defaults);
 			m_ScriptsToolbar.AutoSize();
 		}
 	}

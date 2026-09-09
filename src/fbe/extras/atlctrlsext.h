@@ -365,7 +365,7 @@ public:
 // Customizable toolbar
 
 // Simple implementation of ToolBar customization support.
-// It handles only one ToolBar in total!
+// It handles each toolbar registered through InitToolBar().
 // Let the parent window derive from the class; chain it in the message map.
 // Call InitToolbar() after creating the ToolBar control.
 template< class T >
@@ -375,10 +375,12 @@ public:
    typedef CCustomizableToolBarCommands<T> thisClass;
    typedef CSimpleArray<TBBUTTON> TBBUTTONS;
 
-   CSimpleMap<int, TBBUTTONS> m_aButtons;
-   CSimpleMap<int, TBBUTTONS> m_aDefaultButtons;
+protected:
+   CSimpleMap<HWND, TBBUTTONS> m_aButtons;
+   CSimpleMap<HWND, TBBUTTONS> m_aDefaultButtons;
    CSimpleMap<int, CString> m_BtnText;
 
+public:
    // Operations
 
    BOOL InitToolBar(HWND hWndToolBar, UINT nResource, BOOL bInitialSeparator = FALSE)
@@ -451,8 +453,8 @@ public:
             aButtons.Add(bt);
          }
       }
-	  m_aButtons.Add((int)hWndToolBar, aButtons);
-	  m_aDefaultButtons.Add((int)hWndToolBar, aButtons);
+	  m_aButtons.Add(hWndToolBar, aButtons);
+	  m_aDefaultButtons.Add(hWndToolBar, aButtons);
       return TRUE;
    }
 
@@ -462,11 +464,57 @@ public:
 	  if (!tb) return FALSE;
 	  try {
 		  m_BtnText.Add(button.idCommand, text);
-		  int idx = m_aButtons.FindKey((int)hWndToolBar);
+		  int idx = m_aButtons.FindKey(hWndToolBar);
 		  if (idx < 0) return FALSE;
 		  return m_aButtons.GetValueAt(idx).Add(button);
 	  }
 	  catch (...) { return FALSE; }
+   }
+
+   // Copies only values; callers never receive the internal CSimpleMap.
+   BOOL GetAvailableButtons(HWND hWndToolBar, TBBUTTONS& buttons) const
+   {
+      const int index = m_aButtons.FindKey(hWndToolBar);
+      if(index < 0) return FALSE;
+      buttons = m_aButtons.GetValueAt(index);
+      return TRUE;
+   }
+
+   BOOL GetDefaultButtons(HWND hWndToolBar, TBBUTTONS& buttons) const
+   {
+      const int index = m_aDefaultButtons.FindKey(hWndToolBar);
+      if(index < 0) return FALSE;
+      buttons = m_aDefaultButtons.GetValueAt(index);
+      return TRUE;
+   }
+
+   BOOL GetCurrentButtons(HWND hWndToolBar, TBBUTTONS& buttons) const
+   {
+      if(!::IsWindow(hWndToolBar)) return FALSE;
+      CToolBarCtrl toolbar = hWndToolBar;
+      buttons.RemoveAll();
+      for(int index = 0; index < toolbar.GetButtonCount(); ++index) {
+         TBBUTTON button = {};
+         if(toolbar.GetButton(index, &button)) buttons.Add(button);
+      }
+      return TRUE;
+   }
+
+   BOOL GetButtonText(const TBBUTTON& button, CString& text) const
+   {
+      const int index = m_BtnText.FindKey(button.idCommand);
+      if(index >= 0) { text = m_BtnText.GetValueAt(index); return TRUE; }
+      TCHAR buffer[256] = {};
+#if (_ATL_VER < 0x0700)
+      const int length = ::LoadString(_Module.GetResourceInstance(), button.idCommand, buffer, _countof(buffer));
+#else
+      const int length = ATL::AtlLoadString(button.idCommand, buffer, _countof(buffer));
+#endif
+      if(length <= 0) return FALSE;
+      LPCTSTR caption = buffer;
+      for(int i = 0; i < length; ++i) if(buffer[i] == _T('\n')) { caption = buffer + i + 1; break; }
+      text = caption;
+      return TRUE;
    }
 
    // Message map and handler
@@ -486,7 +534,7 @@ public:
       LPTBNOTIFY lpTbNotify = (LPTBNOTIFY) pnmh;
 	  if (lpTbNotify)
 	  try {
-		  int tb = (int)lpTbNotify->hdr.hwndFrom;
+		  HWND tb = lpTbNotify->hdr.hwndFrom;
 		  if (tb)
 		  {
 			  int idx = m_aButtons.FindKey(tb);
@@ -523,7 +571,7 @@ public:
 		  if (tb)
 		  {
 			  while( tb.GetButtonCount() > 0 ) tb.DeleteButton(0);
-			  int idx = m_aDefaultButtons.FindKey((int)lpTbNotify->hdr.hwndFrom);
+			  int idx = m_aDefaultButtons.FindKey(lpTbNotify->hdr.hwndFrom);
 			  if (idx > -1)
 			  {
 				  TBBUTTONS aButtons = m_aDefaultButtons.GetValueAt(idx);
@@ -555,7 +603,7 @@ public:
 	  try {
 		  CToolBarCtrl tb = lpTbNotify->hdr.hwndFrom;
 		  if (!tb || !::IsWindow(tb)) return FALSE;
-		  const int idx = m_aButtons.FindKey((int)lpTbNotify->hdr.hwndFrom);
+		  const int idx = m_aButtons.FindKey(lpTbNotify->hdr.hwndFrom);
 		  if (idx < 0) return FALSE;
 
 		  TBBUTTONS aButtons = m_aButtons.GetValueAt(idx);
