@@ -120,7 +120,7 @@ exit /b 0
     <Link>
       <GenerateManifest>false</GenerateManifest>
       <AdditionalDependencies>rpcrt4.lib;
-gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.lib;openjp2.lib;heif.lib;libde265.lib;aom.lib;archive.lib;zsd.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
+gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.lib;openjp2.lib;heif.lib;libde265.lib;aom.lib;archive.lib;zs.lib;opengl32.lib;glu32.lib;$(IntDir)buildstamp.obj;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>$(SolutionDir)build\hunspell\lib\Release;$(SolutionDir)build\pcre2\install\Release\lib;$(SolutionDir)build\libwebp\install\Release\lib;$(SolutionDir)build\openjpeg\install\Release\lib;$(SolutionDir)build\libheif\install\Release\lib;$(SolutionDir)build\libde265\install\Release\lib;$(SolutionDir)build\aom\install\Release\lib;$(SolutionDir)build\libarchive\install\Release\lib;$(SolutionDir)build\zlib\install\Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
