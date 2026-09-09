@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
+$dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
     if ($text -notmatch $pattern) { throw "Missing $description." }
@@ -28,6 +29,17 @@ Assert-Contains $source 'return DoSearchNative\(fMore, AU::Search::SearchMode::R
 Assert-NotContains $source 'DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);\s*/\*\s*Legacy implementation' 'unreachable legacy regexp implementation'
 Assert-Contains $source 'CheckReplacementRange' 'production replacement preflight'
 Assert-Contains $source 'fbe\.replace\.cross_paragraph' 'clear cross-paragraph replacement error'
+Assert-Contains $header 'CString\s+m_last_search_error' 'native search diagnostic channel'
+Assert-Contains $source 'm_last_search_error\s*=\s*nativeError\.c_str\(\)' 'PCRE2 diagnostic retained by native Find'
+Assert-Contains $dialog 'LastSearchError\(\)\.IsEmpty\(\)' 'Find Next checks the actual regexp diagnostic'
+Assert-Contains $dialog '::MessageBox\(m_hWnd, m_view->LastSearchError\(\)' 'Find Next shows the actual regexp diagnostic'
+Assert-Contains $dialog 'DoFindAll\(true, &error\)' 'Find All receives native regexp diagnostic'
+Assert-Contains $dialog 'fbe\.search\.error\.invalid_expression' 'invalid Find All has a status error rather than stale results'
+Assert-Contains $dialog 'OnCancel[\s\S]*?GetData\(\);[\s\S]*?SaveSearchOptions\(\);' 'Cancel persists Find options without history'
+Assert-Contains $dialog 'OnClose[\s\S]*?GetData\(\);[\s\S]*?SaveSearchOptions\(\);' 'close button persists Find options without history'
+Assert-Contains $dialog 'CBN_DROPDOWN, OnScopeDropDown' 'Scope is refreshed when its list opens'
+Assert-Contains $dialog 'HasSavedSearchScope\(\)' 'saved Selection scope stays available while generation is current'
+Assert-Contains $dialog 'EnableWindow\(unicode, ::IsDlgButtonChecked' 'UCP availability follows RegExp without clearing its state'
 
 $singleReplace = [regex]::Match($source, 'void\s+CFBEView::DoReplace\(\)\s*\{[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ReplaceAllSearchCore').Value
 if ([string]::IsNullOrWhiteSpace($singleReplace)) { throw 'Unable to locate native single Replace path.' }

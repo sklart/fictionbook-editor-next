@@ -411,6 +411,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="search\SearchResults.h" />
 	<ClInclude Include="search\LiteralSearch.h" />
 	<ClInclude Include="search\SearchTextSnapshot.h" />
+	<ClInclude Include="search\SearchDocumentGeneration.h" />
 	<ClInclude Include="search\SearchTypes.h" />
     <ClInclude Include="RuntimeLocalization.h" />
     <ClInclude Include="XmlSourceThemes.h" />

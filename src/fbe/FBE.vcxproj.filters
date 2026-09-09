@@ -294,6 +294,7 @@
 	<ClInclude Include="search\SearchResults.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\LiteralSearch.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchTextSnapshot.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\SearchDocumentGeneration.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchTypes.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="settings\EditorBackgrounds.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="plugins\PluginApiV2.h"><Filter>Header Files\Plugins</Filter></ClInclude>

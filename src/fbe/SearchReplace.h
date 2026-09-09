@@ -378,11 +378,20 @@ public:
 	{
 		GetData();
 		VBErr = false;
-		if (m_view->DoFindAll())
+		CString error;
+		if (m_view->DoFindAll(true, &error))
 		{
 			SaveString();
 			SaveHistory();
 			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->FindAllResultStatus());
+		}
+		else
+		{
+			// Find All is explicit but stays modeless: keep the PCRE2 diagnostic in
+			// the wide status row instead of leaving a previous result count visible.
+			FRBase::SetDlgItemText(IDC_FIND_STATUS, error.IsEmpty()
+				? FbeLoadRuntimeStringByKey(L"fbe.search.error.invalid_expression", L"Invalid search expression")
+				: error);
 		}
 		return 0;
 	}

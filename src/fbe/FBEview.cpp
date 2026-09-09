@@ -2853,9 +2853,7 @@ void CFBEView::AdvanceSearchDocumentGeneration()
 	// operations performed under m_ignore_changes. That flag suppresses the
 	// application's dirty UI notification; it must never preserve stale search
 	// offsets, replacement previews or highlight geometry.
-	++m_search_document_generation;
-	if (m_search_document_generation == 0)
-		++m_search_document_generation;
+	m_search_document_generation.Advance();
 	m_document_search.Invalidate();
 	m_has_find_scope_range = false;
 	m_has_last_zero_length_hit = false;

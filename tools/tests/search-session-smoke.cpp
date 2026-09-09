@@ -4,6 +4,7 @@
 #include "SearchResults.h"
 #include "LiteralSearch.h"
 #include "SearchTextSnapshot.h"
+#include "SearchDocumentGeneration.h"
 
 using AU::Search::SearchDirection;
 using AU::Search::SearchHit;
@@ -15,9 +16,23 @@ using AU::Search::FindLiteralMatches;
 using AU::Search::SearchDocumentPosition;
 using AU::Search::SearchTextSnapshot;
 using AU::Search::SearchTextSnapshotBuilder;
+using AU::Search::SearchDocumentGeneration;
 
 int wmain()
 {
+	// The semantic document generation is independent of viewport activity:
+	// consumers only observe an advance when the editor's mutation/reload path
+	// explicitly invokes Advance().
+	SearchDocumentGeneration documentGeneration;
+	if (documentGeneration.Value() == 0)
+		return 48;
+	const std::uint64_t viewportGeneration = documentGeneration.Value();
+	if (documentGeneration.Value() != viewportGeneration)
+		return 49;
+	documentGeneration.Advance();
+	if (documentGeneration.Value() == viewportGeneration)
+		return 50;
+
 	SearchSession session;
 	SearchHit captured(2, 6);
 	captured.Captures.push_back(AU::Search::SearchCapture(1, 3, 2, L"part"));

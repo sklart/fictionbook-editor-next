@@ -6,6 +6,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
 $searchReplace = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
+$generation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchDocumentGeneration.h')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
     if ($text -notmatch $pattern) { throw "Missing $description." }
@@ -16,6 +17,10 @@ function Assert-NotContains([string]$text, [string]$pattern, [string]$descriptio
 }
 
 Assert-Contains $header 'CSearchHighlightOverlay\*\s+m_search_highlight_overlay' 'overlay ownership boundary'
+Assert-Contains $header 'AU::Search::SearchDocumentGeneration\s+m_search_document_generation' 'editor-owned semantic search generation'
+Assert-Contains $generation 'Only a content/structure mutation or a full' 'semantic generation contract'
+Assert-Contains $generation 'void Advance\(\)' 'semantic generation advance operation'
+Assert-NotContains $source 'GetVersionNumber\(\)' 'MSHTML layout version used as a Search Core semantic generation'
 Assert-Contains $source 'class\s+CSearchHighlightOverlay' 'native highlight overlay'
 Assert-Contains $source 'WS_POPUP\s*\|\s*WS_DISABLED' 'Win7-compatible owned popup overlay'
 Assert-Contains $source 'WS_EX_LAYERED\s*\|\s*WS_EX_TRANSPARENT' 'non-interactive transparent popup overlay'
