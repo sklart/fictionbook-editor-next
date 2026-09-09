@@ -173,7 +173,14 @@ typedef CWinTraits<WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0>
 enum { FWD_SINK, BACK_SINK, RANGE_SINK };
 
 class CFindDlgBase;
-class CFindResultsDlg;
+namespace AU {
+enum : UINT {
+	WM_SHOW_FIND_RESULTS_PANE = WM_APP + 42,
+	WM_HIDE_FIND_RESULTS_PANE = WM_APP + 43,
+	WM_REFRESH_FIND_RESULTS_PANE = WM_APP + 44,
+	WM_DETACH_FIND_RESULTS_PANE = WM_APP + 45
+};
+}
 class CSearchHighlightOverlay;
 
 // mshtml.tlb imports HTMLElementEvents2 without a named DIID constant.
@@ -314,7 +321,6 @@ protected:
 
 	friend class CFindDlgBase;
 	friend class FRBase;
-	friend class CFindResultsDlg;
 	friend class CViewFindDlg;
 	friend class CReplaceDlgBase;
 	friend class CViewReplaceDlg;
@@ -335,6 +341,7 @@ protected:
 	void RefreshSearchHighlights();
 	void ClearSearchHighlights();
 	void UpdateSearchHighlightsForScroll();
+	bool TryGetViewportSearchRange(std::size_t* start, std::size_t* end);
 	bool HasTextSelection();
 	void ResetSearchScope();
 	MSHTML::IHTMLElementPtr SelectionContainerImp();
@@ -342,7 +349,6 @@ protected:
 public:
 	CFindDlgBase*			m_find_dlg;
 	CReplaceDlgBase*		m_replace_dlg;
-	CFindResultsDlg*		m_find_results_dlg;
 
 	SHD::IWebBrowser2Ptr	Browser()
 	{
@@ -382,8 +388,8 @@ public:
   DECLARE_WND_SUPERCLASS(NULL, CAxWindow::GetWndClassName())
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
-    m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-	 m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_link_navigation_origin_ordinal(-1), m_find_dlg(0), m_replace_dlg(0), m_find_results_dlg(0), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_last_zero_length_hit(0), m_last_zero_length_generation(0), m_has_last_zero_length_hit(false), m_replace_preview_generation(0), m_replace_preview_revision(0), m_replace_preview_flags(0), m_replace_preview_scope(AU::Search::SearchScope::WholeDocument), m_replace_preview_regexp(false), m_replace_preview_unicode_properties(false), m_has_replace_preview(false), m_search_highlight_overlay(NULL), m_file_path(), m_file_name() { }
+	 m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
+	 m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_link_navigation_origin_ordinal(-1), m_find_dlg(0), m_replace_dlg(0), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_last_zero_length_hit(0), m_last_zero_length_generation(0), m_has_last_zero_length_hit(false), m_replace_preview_generation(0), m_replace_preview_revision(0), m_replace_preview_flags(0), m_replace_preview_scope(AU::Search::SearchScope::WholeDocument), m_replace_preview_regexp(false), m_replace_preview_unicode_properties(false), m_has_replace_preview(false), m_search_highlight_overlay(NULL), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);
@@ -639,12 +645,12 @@ public:
 	CString FindAllResultStatus();
 	std::size_t FindResultCount() const;
 	CString FindResultPreview(std::size_t index) const;
+	CString FindResultsQuery() const { return m_fo.pattern; }
 	bool FindResultPreviewMatch(std::size_t index, std::size_t* start, std::size_t* length) const;
 	bool AreFindResultsCurrent();
 	std::uint64_t FindResultsRevision() const;
 	bool SelectFindResult(std::size_t index);
 	void ShowFindResults();
-	bool CloseFindResultsDialog(CFindResultsDlg* dlg);
 	bool DoSearchStd(bool fMore=true);
 	bool DoSearchRegexp(bool fMore=true);
 	void DoReplace();

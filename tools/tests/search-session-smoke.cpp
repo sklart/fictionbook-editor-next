@@ -5,6 +5,7 @@
 #include "LiteralSearch.h"
 #include "SearchTextSnapshot.h"
 #include "SearchDocumentGeneration.h"
+#include "SearchViewportResults.h"
 
 using AU::Search::SearchDirection;
 using AU::Search::SearchHit;
@@ -123,6 +124,21 @@ int wmain()
 	if (results.FindFirstAtOrAfter(0) != 0 || results.FindFirstAtOrAfter(2) != 0 ||
 		results.FindFirstAtOrAfter(3) != 1 || results.FindFirstAtOrAfter(99) != 2)
 		return 47;
+	// Results may arrive from UI adapters in arbitrary order; SearchResults
+	// owns the sorted-offset invariant required by viewport selection.
+	results.SetResults(std::vector<SearchResult>{ second, first }, 41);
+	if (results.GetAt(0)->Hit.Start != 2 || results.GetAt(1)->Hit.Start != 12)
+		return 51;
+	AU::Search::SearchResult third = { SearchHit(18, 8), L"Chapter 3", L"...crossing..." };
+	results.SetResults(std::vector<SearchResult>{ first, second, third }, 41);
+	AU::Search::SearchViewportSubset viewport = AU::Search::SelectViewportResults(results, 20, 24, 128);
+	if (viewport.FirstIndex != 2 || viewport.Count != 1)
+		return 52;
+	// A preceding hit that extends into the viewport is included exactly once,
+	// and the limit is enforced after intersection filtering.
+	viewport = AU::Search::SelectViewportResults(results, 15, 23, 1);
+	if (viewport.FirstIndex != 1 || viewport.Count != 1)
+		return 53;
 	if (results.GetSelected() != NULL || results.Select(1)->Hit.Start != 12)
 		return 16;
 	if (results.GetSelectedIndex() != 1 || results.Select(2) != NULL)

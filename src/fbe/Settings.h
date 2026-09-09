@@ -594,6 +594,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	///
 
 	DWORD		m_splitter_pos;
+	DWORD		m_find_results_pane_height;
 	CString		m_toolbars_settings;
 	CString		m_script_command_ids;
 	DWORD		m_scripts_toolbar_customize_width;
@@ -706,7 +707,8 @@ public:
 	CString GetEditorBackgroundId()const;
 	CString GetEditorBackgroundCustomPath()const;
 	CString GetEditorBackgroundLayout()const;
-	DWORD	GetSplitterPos()const;	
+	DWORD	GetSplitterPos()const;
+	DWORD	GetFindResultsPaneHeight()const;
 	CString GetToolbarsSettings()const;
 	CString GetScriptCommandIds()const;
 	CSize GetScriptsToolbarCustomizeSize() const;
@@ -786,6 +788,7 @@ public:
 	void	SetStatusBarPanes(DWORD panes, bool apply = false);
 	void	SetViewDocumentTree(bool view,  bool apply = false);
 	void	SetSplitterPos(DWORD pos,  bool apply = false);
+	void	SetFindResultsPaneHeight(DWORD height, bool apply = false);
 	void	SetToolbarsSettings(CString& settings,  bool apply = false);
 	void	SetScriptCommandIds(const CString& ids, bool apply = false);
 	void SetScriptsToolbarCustomizeSize(const CSize& size, bool apply = false);

@@ -28,6 +28,7 @@
 #include "FBE.h"
 #include "Words.h"
 #include "SearchReplace.h"
+#include "FindResultsPane.h"
 #include "DocumentTree.h"
 #include "Speller.h"
 #include "StatusBarUnicode.h"
@@ -182,7 +183,9 @@ public:
 
 	// Child windows
 	CSplitterWindow		m_splitter; // doc tree and views
+	CHorSplitterWindow	m_editor_results_splitter; // editor and docked Find results
 	CContainerWnd		m_view; // document, description and source
+	CFindResultsPane	m_find_results_pane;
 	//CPaneContainer	m_tree_pane; // left pane with a tree
 	//CSplitterWindow		m_dummy_pane; // frame around the tree
 	//CTreeView			m_tree; // treeview itself
@@ -562,6 +565,10 @@ public:
 		MESSAGE_HANDLER(WM_COMMAND, OnPreCommand)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_APP + 41, OnDeferredStatusBarLayout)
+		MESSAGE_HANDLER(AU::WM_SHOW_FIND_RESULTS_PANE, OnShowFindResultsPane)
+		MESSAGE_HANDLER(AU::WM_HIDE_FIND_RESULTS_PANE, OnHideFindResultsPane)
+		MESSAGE_HANDLER(AU::WM_REFRESH_FIND_RESULTS_PANE, OnRefreshFindResultsPane)
+		MESSAGE_HANDLER(AU::WM_DETACH_FIND_RESULTS_PANE, OnDetachFindResultsPane)
 
 		// tree view notifications
 		COMMAND_CODE_HANDLER(IDN_TREE_CLICK, OnTreeClick)
@@ -719,6 +726,14 @@ public:
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnShowFindResultsPane(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnHideFindResultsPane(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnRefreshFindResultsPane(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnDetachFindResultsPane(UINT, WPARAM, LPARAM, BOOL&);
+	void ShowFindResultsPane(CFBEView* view);
+	void HideFindResultsPane();
+	void RefreshFindResultsPane(CFBEView* view);
+	void ApplyFindResultsPaneHeight();
   LRESULT OnSettingChange(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);

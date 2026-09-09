@@ -83,6 +83,7 @@ const wchar_t VIEW_STATUS_BAR_KEY[]		= L"ViewStatusBar";
 const wchar_t STATUS_BAR_PANES_KEY[]		= L"StatusBarPanes";
 const wchar_t VIEW_DOCUMENT_TREE_KEY[]	= L"ViewDocumentTree";
 const wchar_t SPLITTER_POS_KEY[]		= L"SplitterPos";
+const wchar_t FIND_RESULTS_PANE_HEIGHT_KEY[] = L"FindResultsPaneHeight";
 const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
 const wchar_t SCRIPT_COMMAND_IDS_KEY[] = L"ScriptCommandIds";
 const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY[] = L"ScriptsToolbarCustomizeSize";
@@ -867,6 +868,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(STATUS_BAR_PANES_KEY);
 	properties.push_back(VIEW_DOCUMENT_TREE_KEY);
 	properties.push_back(SPLITTER_POS_KEY);
+	properties.push_back(FIND_RESULTS_PANE_HEIGHT_KEY);
 	properties.push_back(TOOLBARS_SETTINGS_KEY);
 	properties.push_back(SCRIPT_COMMAND_IDS_KEY);
 	properties.push_back(SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY);
@@ -1046,6 +1048,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == SPLITTER_POS_KEY)
 	{
 		property = GetStringedProperty(&m_splitter_pos, KEY_INT);
+		return true;
+	}
+	else if(sProperty == FIND_RESULTS_PANE_HEIGHT_KEY)
+	{
+		property = GetStringedProperty(&m_find_results_pane_height, KEY_INT);
 		return true;
 	}
 	else if(sProperty == TOOLBARS_SETTINGS_KEY)
@@ -1375,6 +1382,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == SPLITTER_POS_KEY)
 	{
 		m_splitter_pos = StrToInt(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == FIND_RESULTS_PANE_HEIGHT_KEY)
+	{
+		m_find_results_pane_height = StrToInt(sValue.GetStringValue());
 		return true;
 	}
 	else if(sProperty == TOOLBARS_SETTINGS_KEY)
@@ -1994,6 +2006,10 @@ DWORD CSettings::GetSplitterPos()const
 {
 	return m_splitter_pos;
 }
+DWORD CSettings::GetFindResultsPaneHeight()const
+{
+	return m_find_results_pane_height;
+}
 CString CSettings::GetToolbarsSettings()const
 {
 	return m_toolbars_settings;
@@ -2508,6 +2524,12 @@ void CSettings::SetSplitterPos(DWORD pos, bool apply)
 	if(apply)
 		Save();
 }
+void CSettings::SetFindResultsPaneHeight(DWORD height, bool apply)
+{
+	m_find_results_pane_height = height;
+	if(apply)
+		Save();
+}
 
 void CSettings::SetToolbarsSettings(CString& settings, bool apply)
 {
@@ -2863,6 +2885,7 @@ void CSettings::SetDefaults()
 	m_status_bar_panes		= 0x3f;
 	m_view_doc_tree			= true;
 	m_splitter_pos			= 200;
+	m_find_results_pane_height = 180;
 	m_toolbars_settings.Empty();
 	m_script_command_ids.Empty();
 	m_scripts_toolbar_customize_width = 700;

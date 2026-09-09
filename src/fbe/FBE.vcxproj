@@ -307,6 +307,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="FindResultsPane.cpp" />
     <ClCompile Include="GLLogo.cpp" />
     <ClCompile Include="ImageImport.cpp" />
     <ClCompile Include="mainfrm.cpp">
@@ -396,6 +397,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="..\common\fb2\Fb2Metadata.h" />
     <ClInclude Include="..\common\fb2\Fb2ShellProperties.h" />
     <ClInclude Include="FBEview.h" />
+    <ClInclude Include="FindResultsPane.h" />
     <ClInclude Include="GLLogo.h" />
     <ClInclude Include="ImageImport.h" />
     <ClInclude Include="mainfrm.h" />
@@ -410,6 +412,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="search\RegexPcre2MatchLoop.h" />
 	<ClInclude Include="search\SearchSession.h" />
 	<ClInclude Include="search\SearchResults.h" />
+	<ClInclude Include="search\SearchViewportResults.h" />
 	<ClInclude Include="search\LiteralSearch.h" />
 	<ClInclude Include="search\SearchTextSnapshot.h" />
 	<ClInclude Include="search\SearchDocumentGeneration.h" />

@@ -225,7 +225,7 @@ public:
 				m_tooltips.Initialize(dialog);
 				m_tooltips.Add(GetDlgItem(IDC_TEXT), L"fbe.tooltip.find.text", L"Text to find. Results update after a short pause while typing.");
 				m_tooltips.Add(GetDlgItem(ID_FIND_NEXT), L"fbe.tooltip.find.next", L"Select the next match in the chosen direction.");
-				m_tooltips.Add(GetDlgItem(IDC_FIND_ALL), L"fbe.tooltip.find.all", L"Show every match in the Results window.");
+				m_tooltips.Add(GetDlgItem(IDC_FIND_ALL), L"fbe.tooltip.find.all", L"Show every match in the Results pane.");
 				m_tooltips.Add(GetDlgItem(IDC_WHOLE), L"fbe.tooltip.find.whole_word", L"Match complete words only.");
 				m_tooltips.Add(GetDlgItem(IDC_MATCHCASE), L"fbe.tooltip.find.match_case", L"Distinguish uppercase and lowercase letters.");
 				m_tooltips.Add(GetDlgItem(IDC_REGEXP), L"fbe.tooltip.find.regexp", L"Interpret the query as a regular expression.");
@@ -383,14 +383,14 @@ public:
 		{
 			SaveString();
 			SaveHistory();
-			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->FindAllResultStatus());
+			SetFindStatus(m_view->FindAllResultStatus());
 		}
 		else
 		{
 			// Find All is explicit but stays modeless: keep the PCRE2 diagnostic in
 			// the wide status row instead of leaving a previous result count visible.
-			FRBase::SetDlgItemText(IDC_FIND_STATUS, error.IsEmpty()
-				? FbeLoadRuntimeStringByKey(L"fbe.search.error.invalid_expression", L"Invalid search expression")
+			SetFindStatus(error.IsEmpty()
+				? FbeLoadRuntimeStringByKey(L"fbe.search.error.mapping_failed", L"Search could not be mapped to the document.")
 				: error);
 		}
 		return 0;
@@ -429,17 +429,25 @@ public:
 		GetData();
 		CString error;
 		if (m_view->m_fo.pattern.IsEmpty())
-			FRBase::SetDlgItemText(IDC_FIND_STATUS, L"");
+			SetFindStatus(L"");
 		else if (m_view->DoFindAll(false, &error))
-			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->FindAllResultStatus());
+			SetFindStatus(m_view->FindAllResultStatus());
 		else
-			FRBase::SetDlgItemText(IDC_FIND_STATUS, error.IsEmpty()
-				? FbeLoadRuntimeStringByKey(L"fbe.search.error.invalid_expression", L"Invalid search expression")
+			SetFindStatus(error.IsEmpty()
+				? FbeLoadRuntimeStringByKey(L"fbe.search.error.mapping_failed", L"Search could not be mapped to the document.")
 				: error);
 		return 0;
 	}
 
 	virtual void DoFind() = 0;
+	void SetFindStatus(const CString& status)
+	{
+		FRBase::SetDlgItemText(IDC_FIND_STATUS, status);
+		const CString tooltip = status.IsEmpty()
+			? FbeLoadRuntimeStringByKey(L"fbe.tooltip.find.status", L"Search status and complete regular-expression diagnostic.")
+			: status;
+		m_tooltips.UpdateText(FRBase::GetDlgItem(IDC_FIND_STATUS), tooltip);
+	}
 	virtual HWND X_GetDlgItem(int id)
 	{
 		return CModelessDialogImpl<CFindDlgBase>::GetDlgItem(id);
@@ -455,7 +463,8 @@ public:
 
   CReplaceDlgBase(CFBEView *view) : FRBase(view), m_selvalid(false) { }
 
-  BEGIN_MSG_MAP(CReplaceDlgBase)
+	BEGIN_MSG_MAP(CReplaceDlgBase)
+		MESSAGE_HANDLER(WM_CLOSE, OnClose)
     COMMAND_ID_HANDLER(ID_FIND_NEXT, OnDoFind)
     COMMAND_ID_HANDLER(IDC_REPLACE_ONE, OnDoReplace)
     COMMAND_ID_HANDLER(IDC_REPLACE_ALL, OnDoReplaceAll)
@@ -469,9 +478,17 @@ public:
 
 
   LRESULT OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&) {
+	  GetData();
+	  SaveSearchOptions();
 	  m_view->CloseFindDialog(this);
     return 0;
   }
+	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&) {
+		GetData();
+		SaveSearchOptions();
+		m_view->CloseFindDialog(this);
+		return 0;
+	}
   virtual void DoFind() = 0;
   LRESULT OnDoFind(WORD, WORD, HWND, BOOL&) {
     GetData();
@@ -534,179 +551,9 @@ public:
 		{
 			SaveString();
 			SaveHistory();
-			FRBase::SetDlgItemText(IDC_FIND_STATUS, m_view->SearchResultStatus());
+			SetFindStatus(m_view->SearchResultStatus());
 		}
 	}
-};
-
-// A modeless companion to Find.  It stores indexes only; the document-facing
-// coordinator remains the sole owner of snapshot offsets and generation.
-class CFindResultsDlg: public CModelessDialogImpl<CFindResultsDlg>
-{
-public:
-	enum { IDD = IDD_FIND_RESULTS };
-
-	explicit CFindResultsDlg(CFBEView* view) : m_view(view), m_revision(0) { }
-
-	BEGIN_MSG_MAP(CFindResultsDlg)
-		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
-		MESSAGE_HANDLER(WM_SIZE, OnSize)
-		MESSAGE_HANDLER(WM_CLOSE, OnClose)
-		NOTIFY_HANDLER(IDC_FIND_RESULTS_LIST, LVN_ITEMACTIVATE, OnItemActivate)
-		NOTIFY_HANDLER(IDC_FIND_RESULTS_LIST, NM_CUSTOMDRAW, OnListCustomDraw)
-		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
-	END_MSG_MAP()
-
-	void Refresh()
-	{
-		if (!IsValid())
-			return;
-		m_list.DeleteAllItems();
-		if (!m_view->AreFindResultsCurrent())
-		{
-			::SetWindowText(GetDlgItem(IDC_FIND_RESULTS_STATUS), FbeLoadRuntimeStringByKey(
-				L"fbe.dialog.idd_find_results.stale", L"Search results are stale. Run Find All again."));
-			return;
-		}
-		m_revision = m_view->FindResultsRevision();
-		for (std::size_t index = 0; index < m_view->FindResultCount(); ++index)
-		{
-			CString number;
-			number.Format(L"%Iu", index + 1);
-			const int item = m_list.InsertItem(static_cast<int>(index), number);
-			m_list.SetItemText(item, 1, m_view->FindResultPreview(index));
-		}
-		CString status;
-		status.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"%Iu results"), m_view->FindResultCount());
-		::SetWindowText(GetDlgItem(IDC_FIND_RESULTS_STATUS), status);
-	}
-
-	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
-	{
-		::SetWindowText(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.caption", L"Find results"));
-		::SetWindowText(GetDlgItem(IDCANCEL), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.close", L"Close"));
-		m_list = GetDlgItem(IDC_FIND_RESULTS_LIST);
-		m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-		m_list.InsertColumn(0, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.number", L"#"), LVCFMT_RIGHT, 38);
-		m_list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.context", L"Context"), LVCFMT_LEFT, 260);
-		Refresh();
-		// WM_SIZE is not guaranteed after a modeless dialog's initial layout.
-		// Size the sole Context column now so it never looks like an unused third
-		// column until the user manually resizes the Results window.
-		BOOL handled = FALSE;
-		OnSize(WM_SIZE, 0, 0, handled);
-		return 0;
-	}
-
-	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&)
-	{
-		if (!m_list.IsWindow()) return 0;
-		RECT client = {};
-		GetClientRect(&client);
-		const int margin = 8;
-		RECT closeRect = {};
-		RECT statusRect = {};
-		::GetWindowRect(::GetDlgItem(m_hWnd, IDCANCEL), &closeRect);
-		::GetWindowRect(::GetDlgItem(m_hWnd, IDC_FIND_RESULTS_STATUS), &statusRect);
-		const int closeWidth = (std::max)(60, static_cast<int>(closeRect.right - closeRect.left));
-		const int closeHeight = (std::max)(23, static_cast<int>(closeRect.bottom - closeRect.top));
-		const int statusHeight = (std::max)(16, static_cast<int>(statusRect.bottom - statusRect.top));
-		const int footerHeight = (std::max)(closeHeight, statusHeight);
-		int listWidth = static_cast<int>(client.right) - 2 * margin;
-		const int footerTop = static_cast<int>(client.bottom) - margin - footerHeight;
-		int listHeight = footerTop - 2 * margin;
-		int statusWidth = static_cast<int>(client.right) - 3 * margin - closeWidth;
-		if (listWidth < 0) listWidth = 0;
-		if (listHeight < 0) listHeight = 0;
-		if (statusWidth < 0) statusWidth = 0;
-		m_list.SetWindowPos(HWND_TOP, margin, margin, listWidth, listHeight, SWP_NOZORDER);
-		m_list.SetColumnWidth(1, listWidth > 38 ? listWidth - 38 : 0);
-		::SetWindowPos(::GetDlgItem(m_hWnd, IDC_FIND_RESULTS_STATUS), HWND_TOP, margin,
-			footerTop + (footerHeight - statusHeight) / 2, statusWidth, statusHeight, SWP_NOZORDER);
-		::SetWindowPos(::GetDlgItem(m_hWnd, IDCANCEL), HWND_TOP, client.right - margin - closeWidth, footerTop,
-			closeWidth, closeHeight, SWP_NOZORDER);
-		return 0;
-	}
-
-	LRESULT OnListCustomDraw(int, LPNMHDR header, BOOL&)
-	{
-		NMLVCUSTOMDRAW* draw = reinterpret_cast<NMLVCUSTOMDRAW*>(header);
-		if (draw->nmcd.dwDrawStage == CDDS_PREPAINT)
-			return CDRF_NOTIFYITEMDRAW;
-		if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
-			return CDRF_NOTIFYSUBITEMDRAW;
-		if (draw->nmcd.dwDrawStage != (CDDS_ITEMPREPAINT | CDDS_SUBITEM) || draw->iSubItem != 1)
-			return CDRF_DODEFAULT;
-
-		std::size_t matchStart = 0, matchLength = 0;
-		const int item = static_cast<int>(draw->nmcd.dwItemSpec);
-		if (item < 0 || !m_view->FindResultPreviewMatch(static_cast<std::size_t>(item), &matchStart, &matchLength) ||
-			matchLength == 0)
-			return CDRF_DODEFAULT;
-		const CString text = m_view->FindResultPreview(static_cast<std::size_t>(item));
-		if (matchStart >= static_cast<std::size_t>(text.GetLength()))
-			return CDRF_DODEFAULT;
-		matchLength = (std::min)(matchLength, static_cast<std::size_t>(text.GetLength()) - matchStart);
-
-		RECT cell = {};
-		if (!m_list.GetSubItemRect(item, 1, LVIR_LABEL, &cell))
-			return CDRF_DODEFAULT;
-		cell.left += 3;
-		HDC dc = draw->nmcd.hdc;
-		HFONT oldFont = static_cast<HFONT>(::SelectObject(dc,
-			reinterpret_cast<HGDIOBJ>(::SendMessage(m_list, WM_GETFONT, 0, 0))));
-		const bool selected = (m_list.GetItemState(item, LVIS_SELECTED) & LVIS_SELECTED) != 0;
-		::SetBkMode(dc, TRANSPARENT);
-		::SetTextColor(dc, selected ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : ::GetSysColor(COLOR_WINDOWTEXT));
-		::DrawText(dc, text, text.GetLength(), &cell, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
-
-		SIZE prefix = {};
-		::GetTextExtentPoint32(dc, text, static_cast<int>(matchStart), &prefix);
-		const CString matched = text.Mid(static_cast<int>(matchStart), static_cast<int>(matchLength));
-		SIZE matchedSize = {};
-		::GetTextExtentPoint32(dc, matched, matched.GetLength(), &matchedSize);
-		RECT highlight = cell;
-		highlight.left += prefix.cx;
-		highlight.right = highlight.left + matchedSize.cx;
-		if (highlight.left < cell.right && highlight.right > cell.left)
-		{
-			HBRUSH brush = ::CreateSolidBrush(selected ? RGB(46, 112, 184) : RGB(255, 235, 120));
-			::FillRect(dc, &highlight, brush);
-			::DeleteObject(brush);
-			::SetTextColor(dc, selected ? RGB(255, 255, 255) : RGB(100, 45, 0));
-			::DrawText(dc, matched, matched.GetLength(), &highlight, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_NOCLIP);
-		}
-		::SelectObject(dc, oldFont);
-		return CDRF_SKIPDEFAULT;
-	}
-
-	LRESULT OnItemActivate(int, LPNMHDR header, BOOL&)
-	{
-		const NMLISTVIEW* item = reinterpret_cast<const NMLISTVIEW*>(header);
-		if (item->iItem < 0)
-			return 0;
-		if (m_revision != m_view->FindResultsRevision() ||
-			!m_view->SelectFindResult(static_cast<std::size_t>(item->iItem)))
-			Refresh();
-		return 0;
-	}
-
-	LRESULT OnCancel(WORD, WORD, HWND, BOOL&)
-	{
-		m_view->CloseFindResultsDialog(this);
-		return 0;
-	}
-
-	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&)
-	{
-		m_view->CloseFindResultsDialog(this);
-		return 0;
-	}
-
-private:
-	CFBEView* m_view;
-	CListViewCtrl m_list;
-	std::uint64_t m_revision;
 };
 
 #endif

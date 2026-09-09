@@ -1,5 +1,7 @@
 #include "SearchResults.h"
 
+#include <algorithm>
+
 namespace AU {
 namespace Search {
 
@@ -14,6 +16,13 @@ SearchResults::SearchResults()
 void SearchResults::SetResults(const std::vector<SearchResult>& results, std::uint64_t documentGeneration)
 {
 	m_results = results;
+	// Viewport selection uses a lower-bound over this collection.  Keep this
+	// invariant at the owner boundary instead of relying on every producer to
+	// remember the ordering contract.  Equal offsets retain producer order so
+	// zero-length matches keep their deterministic affinity.
+	std::stable_sort(m_results.begin(), m_results.end(), [](const SearchResult& left, const SearchResult& right) {
+		return left.Hit.Start < right.Hit.Start;
+	});
 	m_documentGeneration = documentGeneration;
 	++m_revision;
 	m_selectedIndex = kNoResult;

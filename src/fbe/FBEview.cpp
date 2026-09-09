@@ -14,6 +14,7 @@
 #include "FBEView.h"
 #include "SearchReplace.h"
 #include "SearchViewportPosition.h"
+#include "search\\SearchViewportResults.h"
 #include "Scintilla.h"
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
@@ -637,11 +638,7 @@ CFBEView::~CFBEView()
 		CloseFindDialog(m_find_dlg);
 		delete m_find_dlg;
 	}
-	if(m_find_results_dlg)
-	{
-		CloseFindResultsDialog(m_find_results_dlg);
-		delete m_find_results_dlg;
-	}
+	::SendMessage(m_frame, AU::WM_DETACH_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
 }
 
 LRESULT CFBEView::OnSize(UINT, WPARAM, LPARAM, BOOL&)
@@ -2859,8 +2856,7 @@ void CFBEView::AdvanceSearchDocumentGeneration()
 	m_has_last_zero_length_hit = false;
 	m_has_replace_preview = false;
 	ClearSearchHighlights();
-	if (m_find_results_dlg && m_find_results_dlg->IsValid())
-		m_find_results_dlg->Refresh();
+	::SendMessage(m_frame, AU::WM_REFRESH_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
 }
 
 void CFBEView::UpdateSearchHighlightsForScroll()
@@ -2868,6 +2864,47 @@ void CFBEView::UpdateSearchHighlightsForScroll()
 	// The scroll event is post-scroll. Recompute a bounded viewport subset so
 	// entering new content creates highlights without touching all Find All rows.
 	RefreshSearchHighlights();
+}
+
+bool CFBEView::TryGetViewportSearchRange(std::size_t* start, std::size_t* end)
+{
+	if (start == NULL || end == NULL || !Document())
+		return false;
+	MSHTML::IHTMLElement2Ptr scrollElement(MSHTML::IHTMLDocument3Ptr(Document())->documentElement);
+	MSHTML::IHTMLBodyElementPtr body(Document()->body);
+	if (!scrollElement || !body || scrollElement->clientHeight <= 0)
+		return false;
+	MSHTML::IHTMLTxtRangePtr topRange(body->createTextRange());
+	MSHTML::IHTMLTxtRangePtr bottomRange(body->createTextRange());
+	if (!topRange || !bottomRange)
+		return false;
+	const long probeX = (std::max)(1L, scrollElement->clientWidth / 2);
+	const long bottomY = (std::max)(1L, scrollElement->clientHeight - 2);
+	try
+	{
+		// Real viewport points avoid the left-edge ambiguity of elementFromPoint.
+		topRange->moveToPoint(probeX, 1);
+		bottomRange->moveToPoint(probeX, bottomY);
+	}
+	catch (const _com_error&)
+	{
+		// Old MSHTML engines occasionally reject moveToPoint over a control. Use
+		// the same central probes only as a safe fallback, never x=0.
+		MSHTML::IHTMLElementPtr topElement(Document()->elementFromPoint(probeX, 1));
+		MSHTML::IHTMLElementPtr bottomElement(Document()->elementFromPoint(probeX, bottomY));
+		if (!topElement || !bottomElement)
+			return false;
+		topRange->moveToElementText(topElement);
+		bottomRange->moveToElementText(bottomElement);
+	}
+	const std::uint64_t generation = SearchDocumentGeneration();
+	AU::Search::SearchRange topSearch = {}, bottomSearch = {};
+	if (!m_document_search.TryGetSearchRange(generation, topRange, &topSearch) ||
+		!m_document_search.TryGetSearchRange(generation, bottomRange, &bottomSearch))
+		return false;
+	*start = (std::min)(topSearch.Start, bottomSearch.Start);
+	*end = (std::max)(topSearch.Start + topSearch.Length, bottomSearch.Start + bottomSearch.Length);
+	return true;
 }
 
 void CFBEView::RefreshSearchHighlights()
@@ -2889,39 +2926,20 @@ void CFBEView::RefreshSearchHighlights()
 			ClearSearchHighlights();
 			return;
 		}
-		MSHTML::IHTMLElementPtr topElement(Document()->elementFromPoint(0, 0));
-		MSHTML::IHTMLElementPtr bottomElement(Document()->elementFromPoint(0, (std::max)(0L, scrollElement->clientHeight - 1)));
-		MSHTML::IHTMLTxtRangePtr topRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
-		MSHTML::IHTMLTxtRangePtr bottomRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
-		if (!topElement || !bottomElement || !topRange || !bottomRange)
+		std::size_t viewportStart = 0, viewportEnd = 0;
+		if (!TryGetViewportSearchRange(&viewportStart, &viewportEnd))
 		{
 			ClearSearchHighlights();
 			return;
 		}
-		topRange->moveToElementText(topElement);
-		bottomRange->moveToElementText(bottomElement);
 		const std::uint64_t generation = SearchDocumentGeneration();
-		AU::Search::SearchRange topSearch = {}, bottomSearch = {};
-		if (!m_document_search.TryGetSearchRange(generation, topRange, &topSearch) ||
-			!m_document_search.TryGetSearchRange(generation, bottomRange, &bottomSearch))
-		{
-			ClearSearchHighlights();
-			return;
-		}
-		const std::size_t viewportStart = (std::min)(topSearch.Start, bottomSearch.Start);
-		const std::size_t viewportEnd = (std::max)(topSearch.Start + topSearch.Length, bottomSearch.Start + bottomSearch.Length);
 		const AU::Search::SearchResults& results = m_document_search.GetResults();
-		std::size_t index = results.FindFirstAtOrAfter(viewportStart);
-		if (index > 0) --index; // include a hit spanning the top boundary
+		const AU::Search::SearchViewportSubset subset = AU::Search::SelectViewportResults(results, viewportStart, viewportEnd, maxOverlayRects);
 		std::vector<RECT> documentRects;
 		std::size_t selectedRect = static_cast<std::size_t>(-1);
-		for (; index < FindResultCount() && documentRects.size() < maxOverlayRects; ++index)
+		for (std::size_t index = subset.FirstIndex, remaining = subset.Count; remaining > 0; ++index, --remaining)
 		{
 			const AU::Search::SearchResult* result = results.GetAt(index);
-			if (result == NULL || result->Hit.Start > viewportEnd)
-				break;
-			if (result->Hit.Start + result->Hit.Length < viewportStart)
-				continue;
 			MSHTML::IHTMLTxtRangePtr range;
 			if (!m_document_search.CreateResultRange(Document(), generation, index, range) || !range)
 				continue;
@@ -2953,20 +2971,7 @@ void CFBEView::RefreshSearchHighlights()
 
 void CFBEView::ShowFindResults()
 {
-	if (!m_find_results_dlg)
-		m_find_results_dlg = new CFindResultsDlg(this);
-	if (!m_find_results_dlg->IsValid())
-		m_find_results_dlg->ShowDialog(*this);
-	m_find_results_dlg->Refresh();
-}
-
-bool CFBEView::CloseFindResultsDialog(CFindResultsDlg* dlg)
-{
-	if (!dlg || !dlg->IsValid())
-		return false;
-	ClearSearchHighlights();
-	dlg->DestroyWindow();
-	return true;
+	::SendMessage(m_frame, AU::WM_SHOW_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
 }
 
 void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
@@ -4276,8 +4281,8 @@ bool CFBEView::DoFindAll(bool showResults, CString* errorText)
 		}
 		if (showResults)
 			ShowFindResults();
-		else if (m_find_results_dlg && m_find_results_dlg->IsValid())
-			m_find_results_dlg->Refresh();
+		else
+			::SendMessage(m_frame, AU::WM_REFRESH_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
 		// Typing into Find invokes this path after a short debounce.  Computing a
 		// rectangle for every hit is synchronous MSHTML work and can freeze the
 		// editor for a common one-character query.  Highlighting remains available
@@ -4334,18 +4339,30 @@ bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTM
 		if (query.Scope == AU::Search::SearchScope::Selection)
 		{
 			if (!scopeSelection || scopeSelection->compareEndPoints(L"StartToEnd", scopeSelection) == 0)
+			{
+				if (errorText != NULL) *errorText = static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.search.error.selection_scope_unavailable", L"The selected search scope is no longer available."));
+				m_document_search.Invalidate();
 				return false;
+			}
 		}
 		else
 		{
 			MSHTML::IHTMLElementPtr section(SelectionStructSection());
 			if (!section)
+			{
+				if (errorText != NULL) *errorText = static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.search.error.current_section_unavailable", L"The current section is not available for search."));
+				m_document_search.Invalidate();
 				return false;
+			}
 			scopeSelection = MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange();
 			scopeSelection->moveToElementText(section);
 		}
 		if (!m_document_search.TryGetSearchRange(generation, scopeSelection, &range) || range.Length == 0)
+		{
+			if (errorText != NULL) *errorText = static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.search.error.scope_mapping_failed", L"The selected search scope could not be mapped to the document."));
+			m_document_search.Invalidate();
 			return false;
+		}
 		m_find_scope_range = range;
 		m_find_scope_generation = generation;
 		m_find_scope_kind = query.Scope;

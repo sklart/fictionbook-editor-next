@@ -119,6 +119,7 @@
     <ClCompile Include="FBEview.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="RuntimeLocalization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -260,6 +261,7 @@
     <ClInclude Include="FBEview.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FindResultsPane.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="GLLogo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -294,6 +296,7 @@
 	<ClInclude Include="search\RegexPcre2MatchLoop.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchSession.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchResults.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\SearchViewportResults.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\LiteralSearch.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchTextSnapshot.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchDocumentGeneration.h"><Filter>Header Files\Search</Filter></ClInclude>

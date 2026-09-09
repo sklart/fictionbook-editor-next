@@ -2965,12 +2965,19 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   m_hWndClient = m_splitter.Create(m_hWnd,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
   m_splitter.SetSplitterExtendedStyle(0);
 
+  // The outer splitter remains responsible for the document tree. Its right
+  // pane is a horizontal editor/results splitter so Find All never creates a
+  // floating top-level window.
+  m_editor_results_splitter.Create(m_splitter, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
+  m_editor_results_splitter.SetSplitterExtendedStyle(SPLIT_BOTTOMALIGNED);
+
   // create splitter contents
 //  m_document_tree.Create(m_splitter);
 //  m_document_tree.SetTitle(L"Document Tree");
   StartupTrace::AppendTestStartupBreadcrumb("mshtml-view-create-start");
-  m_view.Create(m_splitter,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
+  m_view.Create(m_editor_results_splitter,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN);
 	StartupTrace::AppendTestStartupBreadcrumb("mshtml-view-create-complete");
+	 m_find_results_pane.Create(m_editor_results_splitter, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
 
   // create a tree
   /*m_dummy_pane.Create(m_document_tree,rcDefault,NULL,WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,WS_EX_CLIENTEDGE);
@@ -3080,7 +3087,9 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
   StartupTrace::AppendTestStartupBreadcrumb("mainframe-layout-start");
   // setup splitter
-  m_splitter.SetSplitterPanes(m_document_tree, m_view);
+	 m_editor_results_splitter.SetSplitterPanes(m_view, m_find_results_pane);
+	 m_editor_results_splitter.SetSinglePaneMode(SPLIT_PANE_LEFT);
+  m_splitter.SetSplitterPanes(m_document_tree, m_editor_results_splitter);
 
   // hide elements
   if (_Settings.ViewStatusBar()) 
@@ -3335,6 +3344,12 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	_Settings.SetViewStatusBar(m_status.IsWindowVisible() != 0);
 	//_Settings.SetViewDocumentTree(IsSourceActive() ? m_document_tree.IsWindowVisible()==0 : !m_save_sp_mode);
     _Settings.SetSplitterPos(m_splitter.GetSplitterPos());	
+	if (m_editor_results_splitter.IsWindow() && m_editor_results_splitter.GetSinglePaneMode() == SPLIT_PANE_NONE)
+	{
+		RECT resultsClient = {}; m_editor_results_splitter.GetClientRect(&resultsClient);
+		const int height = resultsClient.bottom - m_editor_results_splitter.GetSplitterPos();
+		if (height > 0) _Settings.SetFindResultsPaneHeight(MulDiv(height, 96, m_current_dpi ? m_current_dpi : 96));
+	}
     WINDOWPLACEMENT wpl;
     wpl.length=sizeof(wpl);
     GetWindowPlacement(&wpl);
@@ -3532,6 +3547,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 
 	const UINT oldDpi = m_current_dpi ? m_current_dpi : 96;
 	const int splitterPosition = m_splitter.GetSplitterPos();
+	const bool resultsVisible = m_editor_results_splitter.GetSinglePaneMode() == SPLIT_PANE_NONE;
 	const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
 	if (suggested)
 	{
@@ -3560,6 +3576,9 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	}
 	if (splitterPosition >= 0)
 		m_splitter.SetSplitterPos(MulDiv(splitterPosition, newDpi, oldDpi));
+	if (resultsVisible)
+		ApplyFindResultsPaneHeight();
+	m_find_results_pane.ApplyDpi();
 
 	m_rebar.SendMessage(WM_SIZE);
 	m_status.SendMessage(WM_SIZE);
@@ -3568,6 +3587,51 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_FRAME);
 	return 0;
 }
+
+void CMainFrame::ApplyFindResultsPaneHeight()
+{
+	if (!m_editor_results_splitter.IsWindow()) return;
+	RECT client = {}; m_editor_results_splitter.GetClientRect(&client);
+	const UINT dpi = m_current_dpi ? m_current_dpi : 96;
+	const int total = (std::max)(0, static_cast<int>(client.bottom - client.top));
+	const int savedHeight = (std::max)(120, static_cast<int>(_Settings.GetFindResultsPaneHeight()));
+	const int preferred = MulDiv(savedHeight, dpi, 96);
+	const int minResults = MulDiv(120, dpi, 96);
+	const int minEditor = MulDiv(160, dpi, 96);
+	const int resultsHeight = (std::min)((std::max)(minResults, preferred), (std::max)(minResults, total - minEditor));
+	m_editor_results_splitter.SetSplitterPos((std::max)(0, total - resultsHeight));
+}
+
+void CMainFrame::ShowFindResultsPane(CFBEView* view)
+{
+	if (view == NULL) return;
+	m_find_results_pane.Attach(view);
+	const bool wasHidden = m_editor_results_splitter.GetSinglePaneMode() != SPLIT_PANE_NONE;
+	m_editor_results_splitter.SetSinglePaneMode(SPLIT_PANE_NONE);
+	if (wasHidden) ApplyFindResultsPaneHeight();
+	// Find All is modeless: do not steal focus from its dialog.
+}
+
+void CMainFrame::HideFindResultsPane()
+{
+	if (!m_editor_results_splitter.IsWindow()) return;
+	RECT client = {}; m_editor_results_splitter.GetClientRect(&client);
+	const int height = client.bottom - m_editor_results_splitter.GetSplitterPos();
+	const UINT dpi = m_current_dpi ? m_current_dpi : 96;
+	if (height > 0) _Settings.SetFindResultsPaneHeight(MulDiv(height, 96, dpi));
+	m_editor_results_splitter.SetSinglePaneMode(SPLIT_PANE_LEFT);
+}
+
+void CMainFrame::RefreshFindResultsPane(CFBEView* view)
+{
+	if (view != NULL && m_find_results_pane.AttachedView() == view)
+		m_find_results_pane.Refresh();
+}
+
+LRESULT CMainFrame::OnShowFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&) { ShowFindResultsPane(reinterpret_cast<CFBEView*>(view)); return 0; }
+LRESULT CMainFrame::OnHideFindResultsPane(UINT, WPARAM, LPARAM, BOOL&) { HideFindResultsPane(); return 0; }
+LRESULT CMainFrame::OnRefreshFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&) { RefreshFindResultsPane(reinterpret_cast<CFBEView*>(view)); return 0; }
+LRESULT CMainFrame::OnDetachFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&) { m_find_results_pane.Detach(reinterpret_cast<CFBEView*>(view)); return 0; }
 LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
 	if (wParam == IMAGE_IMPORT_TEST_TIMER_ID)

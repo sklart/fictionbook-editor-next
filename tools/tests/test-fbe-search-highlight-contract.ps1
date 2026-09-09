@@ -6,6 +6,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
 $searchReplace = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
+$viewport = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchViewportResults.h')
+$pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
 $generation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchDocumentGeneration.h')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
@@ -26,7 +28,11 @@ Assert-Contains $source 'WS_POPUP\s*\|\s*WS_DISABLED' 'Win7-compatible owned pop
 Assert-Contains $source 'WS_EX_LAYERED\s*\|\s*WS_EX_TRANSPARENT' 'non-interactive transparent popup overlay'
 Assert-Contains $source 'LWA_COLORKEY' 'colour-key transparency'
 Assert-Contains $source 'CreateResultRange\(' 'Search Core result-to-range mapping'
-Assert-Contains $source 'FindFirstAtOrAfter\(viewportStart\)' 'viewport-limited result lookup'
+Assert-Contains $source 'TryGetViewportSearchRange\(' 'post-layout viewport range discovery'
+Assert-Contains $source 'moveToPoint\(probeX, 1\)' 'viewport probing through MSHTML text ranges'
+Assert-NotContains $source 'elementFromPoint\(0,' 'left-edge elementFromPoint viewport shortcut'
+Assert-Contains $viewport 'SelectViewportResults' 'pure viewport result selection helper'
+Assert-Contains $viewport 'FindFirstAtOrAfter' 'ordered result lookup in viewport helper'
 Assert-Contains $source 'maxOverlayRects\s*=\s*128' 'bounded viewport geometry limit'
 Assert-NotContains $source 'FindResultCount\(\)\s*>\s*maxOverlayRects' 'global result-count overlay cutoff'
 Assert-Contains $source 'AdvanceSearchDocumentGeneration\(\);\s*\r?\n\s*if \(!m_ignore_changes\)' 'semantic search invalidation on editor mutation'
@@ -36,8 +42,8 @@ Assert-NotContains $header 'OnSearchHighlightScroll|WM_MOUSEWHEEL|WM_VSCROLL|WM_
 $scrollCallCount = [regex]::Matches($source, 'UpdateSearchHighlightsForScroll\(\);').Count
 if ($scrollCallCount -ne 1) { throw "Expected one post-scroll overlay refresh call, got $scrollCallCount." }
 
-Assert-Contains $searchReplace 'SetItemText\(item, 1, m_view->FindResultPreview\(index\)\)' 'results preview column'
-Assert-NotContains $searchReplace 'FindResultSection|IDD_FIND_RESULTS, L"Section"' 'disabled unsafe results section column'
+Assert-Contains $pane 'SetItemText\(item, 1, m_view->FindResultPreview\(index\)\)' 'results preview column'
+Assert-NotContains $pane 'FindResultSection|Section' 'disabled unsafe results section column'
 
 $overlay = [regex]::Match($source, 'class\s+CSearchHighlightOverlay\s*:\s*public.*?^};', [Text.RegularExpressions.RegexOptions]::Singleline -bor [Text.RegularExpressions.RegexOptions]::Multiline).Value
 if ([string]::IsNullOrWhiteSpace($overlay)) {

@@ -867,14 +867,6 @@
       "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
       "translations": { "en-US": "The selected search scope could not be mapped to the document.", "ru-RU": "Не удалось сопоставить выбранную область поиска с документом." }
     },
-    "fbe.search.error.invalid_expression": {
-      "resource": "IDD_FIND",
-      "kind": "VALUE",
-      "targetId": "",
-      "translations": {
-        "en-US": "Invalid search expression", "ru-RU": "Недопустимое поисковое выражение", "uk-UA": "Неприпустимий пошуковий вираз", "de-DE": "Ungültiger Suchausdruck", "fr-FR": "Expression de recherche non valide", "es-ES": "Expresión de búsqueda no válida", "it-IT": "Espressione di ricerca non valida", "pl-PL": "Nieprawidłowe wyrażenie wyszukiwania", "pt-PT": "Expressão de pesquisa inválida", "nl-NL": "Ongeldige zoekexpressie", "cs-CZ": "Neplatný hledaný výraz", "bg-BG": "Невалиден израз за търсене"
-      }
-    },
     "fbe.dialog.idd_find.caption": {
       "resource": "IDD_FIND",
       "kind": "CAPTION",

@@ -6,6 +6,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
+$pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
+$frame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
     if ($text -notmatch $pattern) { throw "Missing $description." }
@@ -36,12 +38,17 @@ Assert-Contains $source 'm_last_search_error\s*=\s*nativeError\.c_str\(\)' 'PCRE
 Assert-Contains $dialog 'LastSearchError\(\)\.IsEmpty\(\)' 'Find Next checks the actual regexp diagnostic'
 Assert-Contains $dialog '::MessageBox\(m_hWnd, m_view->LastSearchError\(\)' 'Find Next shows the actual regexp diagnostic'
 Assert-Contains $dialog 'DoFindAll\(true, &error\)' 'Find All receives native regexp diagnostic'
-Assert-Contains $dialog 'fbe\.search\.error\.invalid_expression' 'invalid Find All has a status error rather than stale results'
+Assert-Contains $dialog 'fbe\.search\.error\.mapping_failed' 'unknown Find All failure has an explicit status error rather than a false regexp diagnosis'
+Assert-Contains $dialog 'm_tooltips\.UpdateText\(FRBase::GetDlgItem\(IDC_FIND_STATUS\), tooltip\)' 'Find status tooltip tracks the exact current diagnostic'
 Assert-Contains $dialog 'OnCancel[\s\S]*?GetData\(\);[\s\S]*?SaveSearchOptions\(\);' 'Cancel persists Find options without history'
 Assert-Contains $dialog 'OnClose[\s\S]*?GetData\(\);[\s\S]*?SaveSearchOptions\(\);' 'close button persists Find options without history'
 Assert-Contains $dialog 'CBN_DROPDOWN, OnScopeDropDown' 'Scope is refreshed when its list opens'
 Assert-Contains $dialog 'HasSavedSearchScope\(\)' 'saved Selection scope stays available while generation is current'
 Assert-Contains $dialog 'EnableWindow\(unicode, ::IsDlgButtonChecked' 'UCP availability follows RegExp without clearing its state'
+Assert-Contains $pane 'OnListCustomDraw' 'Results pane custom-draw match presentation'
+Assert-Contains $pane 'OnItemActivate' 'Results pane activation navigates to a result'
+Assert-Contains $frame 'SetSinglePaneMode\(SPLIT_PANE_LEFT\)' 'Results pane is hidden as a single editor pane by default and on close'
+Assert-Contains $frame 'SetSplitterPanes\(m_view, m_find_results_pane\)' 'Results pane is nested below the editor'
 
 $singleReplace = [regex]::Match($source, 'void\s+CFBEView::DoReplace\(\)\s*\{[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ReplaceAllSearchCore').Value
 if ([string]::IsNullOrWhiteSpace($singleReplace)) { throw 'Unable to locate native single Replace path.' }
