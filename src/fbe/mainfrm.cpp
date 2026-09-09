@@ -9437,7 +9437,7 @@ bool CMainFrame::CheckFileTimeStamp()
 bool CMainFrame::ReloadFile()
 {
 	if (m_document_location.IsArchive())
-		return LoadFile(m_document_location.storagePath) == OK;
+		return LoadFile(m_document_location.storagePath, &m_document_location) == OK;
 
 	FB::Doc *doc=new FB::Doc(*this);
 	FB::Doc::m_active_doc = doc;

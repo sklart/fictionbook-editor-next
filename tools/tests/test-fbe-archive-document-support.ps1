@@ -35,6 +35,6 @@ Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive 
 Require $frame 'WriteArchiveRecoveryLocation' 'Recovery must retain archive source metadata without rewriting the container.'
 Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
 Require $frame 'OnFileNew[\s\S]{0,700}m_document_location = DocumentLocation\(\)' 'New documents must not retain an archive save target.'
-Require $frame 'ReloadFile\(\)[\s\S]{0,220}m_document_location\.IsArchive\(\)[\s\S]{0,180}LoadFile\(m_document_location\.storagePath\)' 'Archive reload must use the archive resolver rather than parse the container as XML.'
+Require $frame 'ReloadFile\(\)[\s\S]{0,220}m_document_location\.IsArchive\(\)[\s\S]{0,180}LoadFile\(m_document_location\.storagePath, &m_document_location\)' 'Archive reload must resolve the already selected entry rather than parse the container as XML.'
 
 Write-Host 'Archive document support contract passed.'
