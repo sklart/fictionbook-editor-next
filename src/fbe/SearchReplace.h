@@ -541,10 +541,12 @@ public:
 		{
 			if (!VBErr)
 			{
-				if (!m_view->LastSearchError().IsEmpty())
+				if (!m_view->LastSearchError().IsEmpty() && m_view->LastSearchErrorIsRegexp())
 					::MessageBox(m_hWnd, m_view->LastSearchError(), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.caption", L"Find"), MB_OK | MB_ICONEXCLAMATION);
-				else
+				else if (m_view->LastSearchError().IsEmpty())
 					U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
+				else
+					SetFindStatus(m_view->LastSearchError());
 			}
 		}
 		else

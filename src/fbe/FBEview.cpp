@@ -3775,9 +3775,9 @@ LRESULT CFBEView::OnReplace(WORD, WORD, HWND, BOOL&)
 LRESULT  CFBEView::OnFindNext(WORD, WORD, HWND, BOOL&) {
   if (!DoSearch())
   {
-	if (!m_last_search_error.IsEmpty())
+	if (!m_last_search_error.IsEmpty() && LastSearchErrorIsRegexp())
 		::MessageBox(m_hWnd, m_last_search_error, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.caption", L"Find"), MB_OK | MB_ICONEXCLAMATION);
-	else
+	else if (m_last_search_error.IsEmpty())
 		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_fo.pattern));
   }
   return 0;
@@ -4181,10 +4181,14 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 
 		const std::uint64_t generation = SearchDocumentGeneration();
 		std::wstring nativeError;
-		if (!CanReuseDocumentSearch(query, generation) && !RebuildDocumentSearch(query, selection, &nativeError))
+		bool expressionError = false;
+		m_last_search_error.Empty();
+		m_last_search_error_is_regexp = false;
+		if (!CanReuseDocumentSearch(query, generation) && !RebuildDocumentSearch(query, selection, &nativeError, &expressionError))
 		{
 			if (!nativeError.empty())
 				m_last_search_error = nativeError.c_str();
+			m_last_search_error_is_regexp = expressionError;
 			return false;
 		}
 		const bool sameZeroLengthCriteria = m_has_last_zero_length_hit &&
@@ -4320,11 +4324,17 @@ void CFBEView::ResetSearchScope()
 	m_find_scope_generation = 0;
 }
 
-bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText)
+bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText, bool* expressionError)
 {
+	if (expressionError != NULL)
+		*expressionError = false;
 	const std::uint64_t generation = SearchDocumentGeneration();
 	if (!m_document_search.Rebuild(Document(), generation, query, errorText))
+	{
+		if (expressionError != NULL)
+			*expressionError = query.Mode == AU::Search::SearchMode::Regex;
 		return false;
+	}
 	if (query.Scope == AU::Search::SearchScope::WholeDocument)
 		return true;
 
