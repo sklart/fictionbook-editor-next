@@ -79,7 +79,9 @@ bool DocumentSearchCoordinator::Rebuild(
 	{
 		AU::Search::SearchResult result = {};
 		result.Hit = hits[index];
-		result.Section = m_adapter.GetSectionLabel(document, m_snapshot, hits[index]);
+		// Section is optional Results-pane presentation metadata. Matching,
+		// navigation and replacement must remain independent of DOM ancestry.
+		result.Section.clear();
 		result.Preview = BuildPreview(m_snapshot.Text, hits[index]);
 		results.push_back(result);
 	}

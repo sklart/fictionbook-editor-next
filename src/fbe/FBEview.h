@@ -275,6 +275,7 @@ protected:
 	bool m_has_find_scope_range;
 	std::size_t m_last_zero_length_hit;
 	std::uint64_t m_last_zero_length_generation;
+	AU::Search::SearchQuery m_last_zero_length_query;
 	bool m_has_last_zero_length_hit;
 	CString m_replace_preview_pattern;
 	CString m_replace_preview_replacement;
@@ -312,6 +313,7 @@ protected:
 	void SelMatch(MSHTML::IHTMLTxtRange* tr, AU::ReMatch rm);
 	void PositionFoundRange(MSHTML::IHTMLTxtRange* range);
 	bool DoSearchNative(bool fMore, AU::Search::SearchMode mode);
+	bool CanReuseDocumentSearch(const AU::Search::SearchQuery& query, std::uint64_t generation) const;
 	bool RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText = NULL);
 	void RefreshSearchHighlights();
 	void ClearSearchHighlights();
@@ -371,7 +373,7 @@ public:
   BEGIN_MSG_MAP(CFBEView)
     MESSAGE_HANDLER(WM_CREATE, OnCreate)
     MESSAGE_HANDLER(WM_SETFOCUS, OnFocus)
-    MESSAGE_HANDLER(WM_TIMER, OnTimer)
+    MESSAGE_HANDLER(WM_SIZE, OnSize)
 
     // editing commands
     COMMAND_ID_HANDLER(ID_EDIT_UNDO, OnUndo)
@@ -447,7 +449,7 @@ public:
 	END_SINK_MAP()
 
   LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-  LRESULT OnTimer(UINT, WPARAM wParam, LPARAM, BOOL&);
+  LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnFocus(UINT, WPARAM, LPARAM, BOOL&) 
   {
     // pass to document

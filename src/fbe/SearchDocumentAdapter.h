@@ -56,9 +56,14 @@ private:
 		std::uint64_t Id;
 		MSHTML::IHTMLElementPtr Element;
 	};
+	struct SectionRange {
+		std::wstring Text;
+		std::wstring Label;
+	};
 
 	const SourceRange* FindSource(std::uint64_t id) const;
 	const SourceRange* FindSource(MSHTML::IHTMLElementPtr element) const;
 
 	std::vector<SourceRange> m_sources;
+	std::vector<SectionRange> m_sections;
 };

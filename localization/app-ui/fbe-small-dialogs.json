@@ -849,6 +849,14 @@
         "en-US": "The document changed before Replace All could be applied.", "ru-RU": "Документ изменился до выполнения команды «Заменить всё».", "uk-UA": "Документ змінився до виконання команди «Замінити все».", "de-DE": "Das Dokument wurde geändert, bevor Alle ersetzen ausgeführt werden konnte.", "fr-FR": "Le document a été modifié avant l’application de Tout remplacer.", "es-ES": "El documento cambió antes de aplicar Reemplazar todo.", "it-IT": "Il documento è stato modificato prima dell'applicazione di Sostituisci tutto.", "pl-PL": "Dokument zmienił się przed zastosowaniem opcji Zamień wszystko.", "pt-PT": "O documento foi alterado antes de Substituir tudo poder ser aplicado.", "nl-NL": "Het document is gewijzigd voordat Alles vervangen kon worden toegepast.", "cs-CZ": "Dokument se změnil před použitím příkazu Nahradit vše.", "bg-BG": "Документът се промени преди да може да се изпълни „Замяна на всички“."
       }
     },
+    "fbe.replace.cross_paragraph": {
+      "resource": "IDS_REPL_DONE_MSG",
+      "kind": "VALUE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Replacing a regular-expression match across paragraphs is not supported because it could change document structure.", "ru-RU": "Замена совпадения регулярного выражения через несколько абзацев не поддерживается, так как она может изменить структуру документа.", "uk-UA": "Заміна збігу регулярного виразу через кілька абзаців не підтримується, оскільки вона може змінити структуру документа.", "de-DE": "Das Ersetzen eines regulären Ausdruckstreffers über mehrere Absätze wird nicht unterstützt, weil es die Dokumentstruktur ändern könnte.", "fr-FR": "Le remplacement d’une correspondance d’expression régulière sur plusieurs paragraphes n’est pas pris en charge, car il pourrait modifier la structure du document.", "es-ES": "No se admite reemplazar una coincidencia de expresión regular entre varios párrafos, ya que podría cambiar la estructura del documento.", "it-IT": "La sostituzione di una corrispondenza regex tra più paragrafi non è supportata perché potrebbe modificare la struttura del documento.", "pl-PL": "Zastępowanie dopasowania wyrażenia regularnego obejmującego wiele akapitów nie jest obsługiwane, ponieważ może zmienić strukturę dokumentu.", "pt-PT": "A substituição de uma correspondência de expressão regular entre parágrafos não é suportada porque pode alterar a estrutura do documento.", "nl-NL": "Het vervangen van een reguliere-expressieovereenkomst over meerdere alinea’s wordt niet ondersteund omdat dit de documentstructuur kan wijzigen.", "cs-CZ": "Nahrazení shody regulárního výrazu přes více odstavců není podporováno, protože by mohlo změnit strukturu dokumentu.", "bg-BG": "Замяната на съвпадение на регулярен израз през няколко абзаца не се поддържа, защото може да промени структурата на документа."
+      }
+    },
     "fbe.search.error.invalid_expression": {
       "resource": "IDD_FIND",
       "kind": "VALUE",

@@ -46,7 +46,7 @@ int wmain()
 	{
 	SearchDocumentAdapter adapter;
 	const AU::Search::SearchTextSnapshot snapshot = adapter.BuildSnapshot(document, 42);
-	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 4) result = 3;
+	if (snapshot.DocumentGeneration != 42 || snapshot.Segments.size() != 5) result = 3;
 	if (!result && (snapshot.Text.find(L"strong") == std::wstring::npos || snapshot.Text.find(L"emphasis") == std::wstring::npos ||
 		snapshot.Text.find(L"link") == std::wstring::npos || snapshot.Text.find(L"\x043A\x043E\x0442") == std::wstring::npos ||
 		snapshot.Text.find(L"\xD83D\xDE00") == std::wstring::npos)) result = 4;
@@ -111,7 +111,6 @@ int wmain()
 	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &secondScope) || coordinator.GetResults().GetCount() != 0)) result = 20;
 	query.Text = L"second";
 	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &secondScope) || coordinator.GetResults().GetCount() != 1)) result = 21;
-	if (!result && coordinator.GetResults().GetAt(0)->Section != L"Section one") result = 33;
 
 	query.Mode = AU::Search::SearchMode::Regex;
 	query.Scope = AU::Search::SearchScope::CurrentSection;

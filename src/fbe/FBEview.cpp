@@ -21,7 +21,6 @@
 
 class CSearchHighlightOverlay;
 static void DestroySearchHighlightOverlay(CSearchHighlightOverlay* overlay);
-static const UINT FBE_SEARCH_HIGHLIGHT_TIMER = 0x4f02;
 
 extern CElementDescMnr _EDMnr;
 
@@ -607,7 +606,6 @@ LRESULT CFBEView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /* unu
 
 CFBEView::~CFBEView()
 {
-	::KillTimer(m_hWnd, FBE_SEARCH_HIGHLIGHT_TIMER);
 	DestroySearchHighlightOverlay(m_search_highlight_overlay);
 	m_search_highlight_overlay = NULL;
 	if(HasDoc())
@@ -642,10 +640,12 @@ CFBEView::~CFBEView()
 	}
 }
 
-LRESULT CFBEView::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL&)
+LRESULT CFBEView::OnSize(UINT, WPARAM, LPARAM, BOOL&)
 {
-	if (wParam == FBE_SEARCH_HIGHLIGHT_TIMER)
-		UpdateSearchHighlightsForScroll();
+	// The highlight overlay is a separate non-activating owner popup so it is
+	// not a layered child window (unsupported by Windows 7).  Resize events are
+	// enough to reposition it without a permanent UI polling timer.
+	RefreshSearchHighlights();
 	return 0;
 }
 
@@ -670,16 +670,20 @@ public:
 		m_selected = selected;
 		RECT client = {};
 		::GetClientRect(parent, &client);
+		POINT origin = { client.left, client.top };
+		::ClientToScreen(parent, &origin);
 		if (!m_hWnd)
 		{
-			Create(parent, client, NULL, WS_CHILD | WS_VISIBLE | WS_DISABLED,
-				WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
+			// Layered *child* windows are unsupported on Windows 7.  An owned
+			// popup is supported there and also remains above the hosted browser.
+			Create(parent, client, NULL, WS_POPUP | WS_DISABLED,
+				WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
 			if (m_hWnd)
 				::SetLayeredWindowAttributes(m_hWnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 		}
 		if (m_hWnd)
 		{
-			SetWindowPos(HWND_TOP, 0, 0, client.right, client.bottom, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+			SetWindowPos(HWND_TOP, origin.x, origin.y, client.right, client.bottom, SWP_NOACTIVATE | SWP_SHOWWINDOW);
 			Invalidate();
 		}
 	}
@@ -2826,7 +2830,6 @@ bool CFBEView::SelectFindResult(std::size_t index)
 
 void CFBEView::ClearSearchHighlights()
 {
-	::KillTimer(m_hWnd, FBE_SEARCH_HIGHLIGHT_TIMER);
 	if (m_search_highlight_overlay)
 		m_search_highlight_overlay->Clear();
 }
@@ -2884,7 +2887,6 @@ void CFBEView::RefreshSearchHighlights()
 			m_search_highlight_overlay = new CSearchHighlightOverlay();
 		m_search_highlight_overlay->Update(m_hWnd, documentRects, scrollElement->scrollLeft, scrollElement->scrollTop,
 			m_document_search.GetSelectedResultIndex());
-		::SetTimer(m_hWnd, FBE_SEARCH_HIGHLIGHT_TIMER, 100, NULL);
 	}
 	catch (const _com_error&)
 	{
@@ -2956,11 +2958,13 @@ void CFBEView::PositionFoundRange(MSHTML::IHTMLTxtRange* range)
 
 bool CFBEView::DoSearchRegexp(bool fMore)
 {
-	// Ordinary Design-mode Find is wholly native.  The legacy path below is
-	// retained only while Replace still consumes IMatch2 captures.
-	if (m_replace_dlg == NULL)
-		return DoSearchNative(fMore, AU::Search::SearchMode::Regex);
+	// Search Core owns matching for both Find and Replace.  The native hit is
+	// adapted to IMatch2 by DoSearchNative only at the replacement-template
+	// boundary below; Replace must never restore paragraph-by-paragraph search.
+	return DoSearchNative(fMore, AU::Search::SearchMode::Regex);
 
+	/* Legacy implementation retained temporarily below only until the next
+	 * cleanup patch removes the now unreachable code. */
 	try
 	{
 		m_fo.ClearMatch();
@@ -3328,11 +3332,43 @@ static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CStri
 	}
 }
 
+// Replacing a range that spans paragraph elements with IHTMLTxtRange::text
+// lets MSHTML rewrite block markup. Find may report such a regexp hit, but
+// replacement is deliberately refused until a structural replacement engine
+// can prove preservation of the surrounding FB2 DOM.
+static bool IsCrossParagraphReplacementRange(MSHTML::IHTMLTxtRangePtr range)
+{
+	if (!range)
+		return false;
+	try
+	{
+		CString html(static_cast<LPCWSTR>(_bstr_t(range->htmlText)));
+		html.MakeUpper();
+		return html.Find(L"</P") >= 0 && html.Find(L"<P") >= 0;
+	}
+	catch (const _com_error&)
+	{
+		return true;
+	}
+}
+
+static CString CrossParagraphReplacementError()
+{
+	return FbeLoadRuntimeStringByKey(L"fbe.replace.cross_paragraph",
+		L"Replacing a regular-expression match across paragraphs is not supported because it could change document structure.");
+}
+
 void  CFBEView::DoReplace() {
   try {
     MSHTML::IHTMLTxtRangePtr  sel(Document()->selection->createRange());
     if (!(bool)sel)
       return;
+	if (m_fo.fRegexp && IsCrossParagraphReplacementRange(sel))
+	{
+		::MessageBox(m_hWnd, CrossParagraphReplacementError(),
+			FbeLoadRuntimeStringByKey(L"fbe.replace.preview.caption", L"Replace All"), MB_OK | MB_ICONEXCLAMATION);
+		return;
+	}
     int			      adv=0;
 
 	m_mk_srv->BeginUndoUnit(L"replace");
@@ -3421,6 +3457,12 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 		{
 			if (errorText != NULL)
 				*errorText = FbeLoadRuntimeStringByKey(L"fbe.replace.preview.changed", L"The document changed before Replace All could be applied.");
+			return -1;
+		}
+		if (m_fo.fRegexp && IsCrossParagraphReplacementRange(ranges[index]))
+		{
+			if (errorText != NULL)
+				*errorText = CrossParagraphReplacementError();
 			return -1;
 		}
 	}
@@ -3819,6 +3861,16 @@ LRESULT CFBEView::OnFind(WORD, WORD, HWND, BOOL&)
 LRESULT CFBEView::OnReplace(WORD, WORD, HWND, BOOL&)
 {
 	m_fo.pattern = (const wchar_t *)Selection();
+	// Replace has explicit compatibility defaults. It must not quietly inherit
+	// a Selection/Current-section scope or PCRE2 UCP mode left by Find.
+	if (!m_replace_dlg)
+	{
+		m_fo.scope = AU::Search::SearchScope::WholeDocument;
+		m_fo.unicodeProperties = false;
+		m_fo.ClearMatch();
+		m_has_last_zero_length_hit = false;
+		ResetSearchScope();
+	}
 	if(!m_replace_dlg)
 		m_replace_dlg = new CViewReplaceDlg(this);
 
@@ -4203,8 +4255,13 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 		query.Multiline = mode == AU::Search::SearchMode::Regex;
 
 		const std::uint64_t generation = static_cast<std::uint64_t>(GetVersionNumber());
-		if (!RebuildDocumentSearch(query, selection))
+		if (!CanReuseDocumentSearch(query, generation) && !RebuildDocumentSearch(query, selection))
 			return false;
+		const bool sameZeroLengthCriteria = m_has_last_zero_length_hit &&
+			AU::Search::HasSameSearchCriteria(m_last_zero_length_query, query) &&
+			m_last_zero_length_query.Direction == query.Direction;
+		if (!sameZeroLengthCriteria)
+			m_has_last_zero_length_hit = false;
 		AU::Search::SearchRange selectedRange;
 		const bool skipZeroLengthAtOffset = m_has_last_zero_length_hit &&
 			m_last_zero_length_generation == generation &&
@@ -4218,6 +4275,9 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 		m_has_last_zero_length_hit = hit->Length == 0;
 		m_last_zero_length_hit = hit->Start;
 		m_last_zero_length_generation = generation;
+		m_last_zero_length_query = query;
+		if (mode != AU::Search::SearchMode::Regex)
+			m_fo.ClearMatch();
 		if (mode == AU::Search::SearchMode::Regex)
 		{
 			// Replace's formatting/template implementation still consumes IMatch2.
@@ -4247,6 +4307,19 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 	{
 		return false;
 	}
+}
+
+bool CFBEView::CanReuseDocumentSearch(const AU::Search::SearchQuery& query, std::uint64_t generation) const
+{
+	// Navigation direction only changes which cached hit is selected.  Rebuild
+	// only when the document, matching criteria, or captured scope changed.
+	if (!m_document_search.GetSession().IsValidFor(generation) ||
+		!m_document_search.GetResults().IsValidFor(generation) ||
+		!AU::Search::HasSameSearchCriteria(m_document_search.GetSession().GetQuery(), query))
+		return false;
+	return query.Scope == AU::Search::SearchScope::WholeDocument ||
+		(m_has_find_scope_range && m_find_scope_generation == generation &&
+			m_find_scope_kind == query.Scope);
 }
 
 bool CFBEView::DoFindAll(bool showResults, CString* errorText)
