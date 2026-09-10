@@ -42,7 +42,8 @@ Assert-Contains $settingsDialog '_Settings.GetDefaultScriptsFolderStored()' 'Def
 Assert-Contains $settingsDialog 'm_initialScriptsFolder.CompareNoCase(_Settings.GetResolvedScriptsFolder())' 'Перезапуск сравнивает канонические resolved-пути'
 
 $mainFrame = Get-ProjectText 'src\fbe\mainfrm.cpp'
-Assert-Contains $mainFrame 'Каталог пользовательских скриптов' 'Диагностический журнал Scripts'
-Assert-Contains $mainFrame 'Найдено пользовательских скриптов' 'Диагностический журнал Scripts'
+Assert-Contains $mainFrame 'scriptCatalog.Discover(_Settings.GetScriptsFolder(), L"*.js")' 'Поиск пользовательских скриптов'
+$scriptCatalog = Get-ProjectText 'src\fbe\scripts\ScriptCatalog.cpp'
+Assert-Contains $scriptCatalog 'NormalizedRelativePath(root, full)' 'Portable identity пользовательских скриптов'
 
 Write-Host 'Проверка Unicode-путей пользовательских скриптов portable-версии пройдена.'

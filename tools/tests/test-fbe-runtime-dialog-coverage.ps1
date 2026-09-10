@@ -15,22 +15,22 @@ $consumers = @{
     IDD_TABLE = @{ File = 'src\fbe\FBEview.h'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_TABLE\)' }
     IDD_INPUTBOX = @{ File = 'src\fbe\apputils.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_INPUTBOX\)' }
     IDD_ADDIMAGE = @{ File = 'src\fbe\FBEview.h'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_ADDIMAGE\)' }
-    IDD_TOOLS_SETTINGS = @{ File = 'src\fbe\SettingsDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_TOOLS_SETTINGS\)' }
+    IDD_TOOLS_SETTINGS = @{ File = 'src\fbe\settings\ui\SettingsDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_TOOLS_SETTINGS\)' }
     IDD_ABOUTBOX = @{ File = 'src\fbe\AboutBox.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_ABOUTBOX\)' }
-    IDD_SETTINGS_WORDS = @{ File = 'src\fbe\SettingsWordsDlg.cpp'; Invocation = 'SetRuntimeSettingsWordsText' }
-    IDD_HOTKEYS = @{ File = 'src\fbe\SettingsHotkeysDlg.cpp'; Invocation = 'SetRuntimeHotkeysText' }
+    IDD_SETTINGS_WORDS = @{ File = 'src\fbe\settings\ui\SettingsWordsDlg.cpp'; Invocation = 'SetRuntimeSettingsWordsText' }
+    IDD_HOTKEYS = @{ File = 'src\fbe\settings\ui\SettingsHotkeysDlg.cpp'; Invocation = 'SetRuntimeHotkeysText' }
     IDD_FIND = @{ File = 'src\fbe\SearchReplace.h'; AdditionalFiles = @('src\fbe\FBEview.cpp'); Invocation = 'SetRuntimeDialogTitle' }
     IDD_REPLACE = @{ File = 'src\fbe\SearchReplace.h'; Invocation = 'SetRuntimeDialogTitle' }
     IDD_FIND_RESULTS = @{ File = 'src\fbe\FindResultsPane.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
     IDD_SCRIPTS_TOOLBAR_CUSTOMIZE = @{ File = 'src\fbe\ScriptsToolbarCustomizeDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD\)' }
     IDD_SPELL_CHECK = @{ File = 'src\fbe\Speller.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SPELL_CHECK\)' }
     IDD_WORDS = @{ File = 'src\fbe\Words.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_WORDS\)' }
-    IDD_SETTINGS_IMAGES = @{ File = 'src\fbe\SettingsImagesPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_IMAGES\)' }
-    IDD_SETTINGS_GENERAL = @{ File = 'src\fbe\SettingsGeneralPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_GENERAL\)' }
-    IDD_SETTINGS_EDITOR = @{ File = 'src\fbe\SettingsEditorPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_EDITOR\)' }
-    IDD_SETTINGS_SPELLING = @{ File = 'src\fbe\SettingsSpellingPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SPELLING\)' }
-    IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\SettingsSourcePage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SOURCE\)' }
-    IDD_SETTINGS_ADVANCED = @{ File = 'src\fbe\SettingsAdvancedPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_ADVANCED\)' }
+    IDD_SETTINGS_IMAGES = @{ File = 'src\fbe\settings\ui\SettingsImagesPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_IMAGES\)' }
+    IDD_SETTINGS_GENERAL = @{ File = 'src\fbe\settings\ui\SettingsGeneralPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_GENERAL\)' }
+    IDD_SETTINGS_EDITOR = @{ File = 'src\fbe\settings\ui\SettingsEditorPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_EDITOR\)' }
+    IDD_SETTINGS_SPELLING = @{ File = 'src\fbe\settings\ui\SettingsSpellingPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SPELLING\)' }
+    IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\settings\ui\SettingsSourcePage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SOURCE\)' }
+    IDD_SETTINGS_ADVANCED = @{ File = 'src\fbe\settings\ui\SettingsAdvancedPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_ADVANCED\)' }
     IDS_REPL_ALL_CAPT = @{ File = 'src\fbe\FBEview.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
     IDS_REPL_DONE_MSG = @{ File = 'src\fbe\FBEview.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
 }

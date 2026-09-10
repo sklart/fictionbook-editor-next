@@ -155,7 +155,7 @@ foreach($requiredText in @(
 if($colorButtonHeader.IndexOf('return m_clrCurrent;', [System.StringComparison]::Ordinal) -lt 0) {
     throw 'CColorButton::GetColor must expose CLR_DEFAULT instead of a rendered fallback color.'
 }
-$settingsDialog = Read-ProjectFile "src\fbe\SettingsSourcePage.cpp"
+$settingsDialog = Read-ProjectFile "src\fbe\settings\ui\SettingsSourcePage.cpp"
 foreach($requiredText in @(
     'OFN_ALLOWMULTISELECT',
     'SaveThemeAsUser',
@@ -191,7 +191,7 @@ foreach($requiredText in @(
 if($settingsDialog -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
     throw 'В SettingsSourcePage.cpp остался мёртвый UI-код XML-комментариев.'
 }
-$settingsHeader = Read-ProjectFile "src\fbe\SettingsSourcePage.h"
+$settingsHeader = Read-ProjectFile "src\fbe\settings\ui\SettingsSourcePage.h"
 if($settingsHeader -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
     throw 'В SettingsSourcePage.h остался обработчик XML-комментариев.'
 }

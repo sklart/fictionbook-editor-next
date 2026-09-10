@@ -10,7 +10,7 @@ $frameHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainf
 $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
 $paneHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.h')
 $settings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.cpp')
-$coordinator = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\DocumentSearchCoordinator.cpp')
+$coordinator = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\DocumentSearchCoordinator.cpp')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
     if ($text -notmatch $pattern) { throw "Missing $description." }

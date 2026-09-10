@@ -75,19 +75,13 @@ Assert-Contains $mainFrame "m_view->SciFindNext(m_source,false,false)" `
 Assert-NotContains $mainFrame "m_view->SciFindNext(m_source,true,false)" `
     "Code-mode Replace must not force the next search downward"
 
-$scriptPictureCalls = ([regex]::Matches(
-    $mainFrame,
-    "LoadScriptPicture\((folder|script),")).Count
-if ($scriptPictureCalls -ne 2) {
-    throw "Ожидалось 2 вызова helper-а для картинок скриптов, найдено: $scriptPictureCalls."
-}
-
-$validSearchChecks = ([regex]::Matches(
-    $mainFrame,
-    "if\(found != INVALID_HANDLE_VALUE\)")).Count
-if ($validSearchChecks -ne 2) {
-    throw "Ожидалось 2 проверенных search-handle для скриптов, найдено: $validSearchChecks."
-}
+$scriptVisualResources = Read-SourceFile "src\fbe\scripts\ScriptVisualResources.cpp"
+Assert-Contains $scriptVisualResources "GetFileAttributes(bitmapPath)" `
+    "script bitmap lookup must use a handle-free file check"
+Assert-Contains $scriptVisualResources "GetFileAttributes(iconPath)" `
+    "script icon lookup must use a handle-free file check"
+Assert-NotContains $scriptVisualResources "FindFirstFile" `
+    "script visual lookup must not allocate search handles"
 
 $descriptorManager = Read-SourceFile "src\fbe\ElementDescMnr.cpp"
 Assert-Contains $descriptorManager "FindClose(found);" `
