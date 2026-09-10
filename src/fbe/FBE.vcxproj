@@ -264,6 +264,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp" />
 	<ClCompile Include="document\recent\RecentDocumentsStore.cpp" />
 	<ClCompile Include="document\recent\RecentDocumentsManager.cpp" />
+	<ClCompile Include="scripts\ScriptCatalog.cpp" />
 	<ClCompile Include="document\FileFingerprint.cpp" />
 	<ClCompile Include="document\DocumentLocation.cpp" />
 	<ClCompile Include="document\DocumentState.cpp" />
@@ -404,6 +405,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="document\ArchiveRecentDocuments.h" />
 	<ClInclude Include="document\recent\RecentDocumentsStore.h" />
 	<ClInclude Include="document\recent\RecentDocumentsManager.h" />
+	<ClInclude Include="scripts\ScriptCatalog.h" />
+	<ClInclude Include="scripts\ScriptDescriptor.h" />
 	<ClInclude Include="document\FileFingerprint.h" />
 	<ClInclude Include="document\DocumentState.h" />
 	<ClInclude Include="document\DocumentSession.h" />
