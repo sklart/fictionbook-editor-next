@@ -7,10 +7,21 @@ namespace
 {
 CString NormalizedRelativePath(const CString& root, const CString& fullPath)
 {
-	CString relative(fullPath);
-	if (relative.Left(root.GetLength()).CompareNoCase(root) == 0) relative = relative.Mid(root.GetLength());
-	while (!relative.IsEmpty() && (relative[0] == L'\\' || relative[0] == L'/')) relative = relative.Mid(1);
-	relative.Replace(L'/', L'\\');
+	DWORD rootLength = ::GetFullPathName(root, 0, NULL, NULL);
+	DWORD pathLength = ::GetFullPathName(fullPath, 0, NULL, NULL);
+	if (rootLength == 0 || pathLength == 0) return CString();
+	std::vector<wchar_t> rootBuffer(rootLength + 1), pathBuffer(pathLength + 1);
+	if (::GetFullPathName(root, static_cast<DWORD>(rootBuffer.size()), &rootBuffer[0], NULL) == 0 ||
+		::GetFullPathName(fullPath, static_cast<DWORD>(pathBuffer.size()), &pathBuffer[0], NULL) == 0) return CString();
+	CString normalizedRoot(&rootBuffer[0]), normalizedPath(&pathBuffer[0]);
+	while (normalizedRoot.GetLength() > 3 && (normalizedRoot[normalizedRoot.GetLength() - 1] == L'\\' || normalizedRoot[normalizedRoot.GetLength() - 1] == L'/'))
+		normalizedRoot.Delete(normalizedRoot.GetLength() - 1);
+	if (normalizedPath.GetLength() <= normalizedRoot.GetLength() || normalizedPath.Left(normalizedRoot.GetLength()).CompareNoCase(normalizedRoot) != 0) return CString();
+	const wchar_t separator = normalizedPath[normalizedRoot.GetLength()];
+	if (separator != L'\\' && separator != L'/') return CString();
+	CString relative = normalizedPath.Mid(normalizedRoot.GetLength() + 1);
+	relative.Replace(L'\\', L'/');
+	relative.MakeLower();
 	return relative;
 }
 
@@ -18,11 +29,10 @@ void SetNameAndOrder(const CString& fileName, CString& name, CString& order)
 {
 	name = fileName;
 	order = L"0_" + fileName;
-	wchar_t* separator = wcschr(name.GetBuffer(), L'_');
-	name.ReleaseBuffer();
-	if (separator != NULL && U::CheckScriptsVersion(fileName))
+	const int separator = name.Find(L'_');
+	if (separator >= 0 && U::CheckScriptsVersion(fileName))
 	{
-		name = separator + 1;
+		name = name.Mid(separator + 1);
 		order = fileName;
 	}
 }
