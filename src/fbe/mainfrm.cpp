@@ -544,8 +544,8 @@ static void ApplyMruOrder(CRecentDocumentList& list)
 	std::vector<CString> order; ReadMruOrder(order); if (order.empty()) return;
 	std::vector<CString> existing; for (int i = 0; i < list.m_arrDocs.GetSize(); ++i) existing.push_back(list.m_arrDocs[i].szDocName);
 	list.m_arrDocs.RemoveAll();
-	for (size_t oi = order.size(); oi > 0; --oi) for (size_t i = 0; i < existing.size(); ++i) if (existing[i].CompareNoCase(order[oi - 1]) == 0) { list.AddToList(existing[i]); break; }
 	for (size_t i = 0; i < existing.size(); ++i) { bool present = false; for (size_t oi = 0; oi < order.size(); ++oi) if (existing[i].CompareNoCase(order[oi]) == 0) { present = true; break; } if (!present) list.AddToList(existing[i]); }
+	for (size_t oi = order.size(); oi > 0; --oi) for (size_t i = 0; i < existing.size(); ++i) if (existing[i].CompareNoCase(order[oi - 1]) == 0) { list.AddToList(existing[i]); break; }
 }
 
 static bool FindArchiveMruRecord(const CString& key, DocumentLocation& location)
@@ -629,6 +629,8 @@ static void RemoveArchiveMruRecord(CRecentDocumentList& list, const DocumentLoca
 static void AddArchiveMruRecordsToList(CRecentDocumentList& list)
 {
 	std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
+	for (size_t i = 0; i < records.size(); ++i) if (::GetFileAttributes(records[i].location.storagePath) == INVALID_FILE_ATTRIBUTES) RemoveArchiveMruRecord(list, records[i].location);
+	ReadArchiveMruRecords(records);
 	for (size_t i = records.size(); i > 0; --i) list.AddToList(ArchiveMruKey(records[i - 1].location));
 	ApplyMruOrder(list);
 	RefreshMruMenu(list);
@@ -712,6 +714,8 @@ static void WritePortableMru(const CRecentDocumentList& list)
 	const CString directory(DeploymentContext::SettingsDirectory().c_str());
 	if(!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return;
 	const CString path = PortableMruPath(), temporary = path + L".tmp";
+	int normalCount = 0; for (int index = 0; index < list.m_arrDocs.GetSize(); ++index) { DocumentLocation archive; if (!ParseArchiveMruKey(CString(list.m_arrDocs[index].szDocName), archive)) ++normalCount; }
+	if (normalCount == 0) { ::DeleteFile(temporary); ::DeleteFile(path); return; }
 	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(file == INVALID_HANDLE_VALUE) return;
 	for(int index = 0; index < list.m_arrDocs.GetSize(); ++index) { const CString value(list.m_arrDocs[index].szDocName); DocumentLocation archive; if (ParseArchiveMruKey(value, archive)) continue; const CString line = value + L"\r\n"; DWORD written = 0; if(!::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) || written != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) { ::CloseHandle(file); ::DeleteFile(temporary); return; } }
