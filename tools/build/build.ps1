@@ -450,3 +450,7 @@ if ($true) {
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind CommonCore `
         -Configuration $Configuration -CommonDirectory (Join-Path $repoRoot "out\$Configuration") -PlatformToolset $PlatformToolset
 }
+
+# A normal build must never rewrite the tracked dependency baselines.  Keep
+# this as a real Git content check, not merely a build-script contract.
+& (Join-Path $repoRoot 'tools\tests\test-tracked-editor-runtime-clean.ps1')

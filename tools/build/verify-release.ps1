@@ -576,4 +576,5 @@ finally {
 }
 
 & (Join-Path $repoRoot 'tools\build\report-release-binary-sizes.ps1') -BatchOutputDirectory $batchOutputDir
+& (Join-Path $repoRoot 'tools\tests\test-tracked-editor-runtime-clean.ps1')
 Write-Host "Проверка релиза для версии $expectedVersion прошла успешно."
