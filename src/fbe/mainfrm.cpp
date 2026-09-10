@@ -454,6 +454,12 @@ static CString ArchiveMruDirectoryName(const CString& path)
 	return slash < 0 ? CString() : path.Left(slash + 1);
 }
 
+static CString CompactMruCaptionPart(const CString& value, int limit)
+{
+	if (value.GetLength() <= limit) return value;
+	return value.Left(max(1, limit - 1)) + L"\x2026";
+}
+
 static CString ArchiveMruDisplayName(const std::vector<ArchiveMruRecord>& records, size_t target)
 {
 	const DocumentLocation& location = records[target].location;
@@ -481,6 +487,12 @@ static CString ArchiveMruDisplayName(const std::vector<ArchiveMruRecord>& record
 		if (differentStorage) result = book + L" \x2014 " + ArchiveMruDirectoryName(location.storagePath) + archive;
 	}
 	if (equal > 1) result.Format(L"%s (%u)", static_cast<LPCWSTR>(result), location.entryOccurrence + 1);
+	if (result.GetLength() > 96)
+	{
+		CString suffix = L" \x2014 " + archive;
+		if (equal > 1) suffix.Format(L" \x2014 %s (%u)", static_cast<LPCWSTR>(archive), location.entryOccurrence + 1);
+		result = CompactMruCaptionPart(book, max(16, 96 - suffix.GetLength())) + suffix;
+	}
 	return result;
 }
 
@@ -633,6 +645,9 @@ static void AddArchiveMruRecordsToList(CRecentDocumentList& list)
 	ReadArchiveMruRecords(records);
 	for (size_t i = records.size(); i > 0; --i) list.AddToList(ArchiveMruKey(records[i - 1].location));
 	ApplyMruOrder(list);
+	while (list.m_arrDocs.GetSize() > 10) list.m_arrDocs.RemoveAt(0);
+	list.SetMaxEntries(10);
+	list.UpdateMenu();
 	RefreshMruMenu(list);
 }
 
@@ -3198,11 +3213,12 @@ void CMainFrame::InitPlugins()
 
 	sub = ::GetSubMenu(file, 9);
 	m_mru.SetMenuHandle(sub);
+	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
 	if (DeploymentContext::RegistryPersistenceAllowed())
 		m_mru.ReadFromRegistry(_Settings.GetKeyPath());
 	else
 		ReadPortableMru(m_mru);
-	m_mru.SetMaxEntries(10);
+	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
 	RemoveLegacyArchiveMruEntries(m_mru);
 	AddArchiveMruRecordsToList(m_mru);
 	StartupTrace::Event(L"plugin", L"P160", L"MRU initialized");
