@@ -106,7 +106,7 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 
 static void ShowArchiveError(HWND owner, const FbeArchive::Error& error)
 {
-	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime") ||
+	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-open-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime") ||
 		IsFbeTestScenario(L"archive-two-phase-runtime") || IsFbeTestScenario(L"archive-recovery-external-verify")) return;
 	LPCWSTR key = L"fbe.archive.error.corrupted", fallback = L"The archive is corrupted or cannot be read.";
 	switch (error.code)
@@ -1717,6 +1717,12 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	if (m_file_age != FileAge(m_document_location.storagePath) || m_file_size != FileSize(m_document_location.storagePath))
 	{
 		FbeArchive::Error error; error.code = FbeArchive::ErrorCode::ModifiedExternally;
+		if (IsFbeTestScenario(L"archive-recovery-external-verify"))
+		{
+			wchar_t diagnostic[16] = {};
+			swprintf_s(diagnostic, _countof(diagnostic), L"%d", static_cast<int>(error.code));
+			::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR", diagnostic);
+		}
 		ShowArchiveError(m_hWnd, error); return FAIL;
 	}
 	std::vector<unsigned char> serialized;
@@ -1834,7 +1840,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 		doc->m_body.m_file_name = filename.Mid(filename.ReverseFind(L'\\') + 1, filename.GetLength() - 1);
 	}
   EnableWindow(FALSE);
-  m_status.SetPaneText(ID_DEFAULT_PANE,L"Loading...");
+  m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
   bool fLoaded = archive
 	  ? doc->Load(m_view, resolved.location.storagePath, resolved.location.entryPath, resolved.rawBytes)
 	  : doc->Load(m_view, filename);
@@ -4302,13 +4308,14 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		const bool archiveSource = m_document_location.IsArchive();
 		const bool fb2 = m_doc->GetDocumentFileType() == FictionBookFileType::Fb2;
+		const bool fbd = m_doc->GetDocumentFileType() == FictionBookFileType::Fbd;
 		const bool htmlReady = m_doc->m_body.Document() != NULL;
 		const bool rar = m_document_location.containerKind == DocumentContainerKind::Rar;
 		CStringA report;
-		report.Format("archive=%d\nfb2=%d\nmshtml=%d\nrar=%d\nentry=%S\n", archiveSource, fb2, htmlReady, rar,
+		report.Format("archive=%d\nfb2=%d\nfbd=%d\nmshtml=%d\nrar=%d\nentry=%S\n", archiveSource, fb2, fbd, htmlReady, rar,
 			static_cast<LPCWSTR>(m_document_location.entryPath));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
-		::PostQuitMessage(archiveSource && fb2 && htmlReady ? 0 : 1);
+		::PostQuitMessage(archiveSource && (fb2 || fbd) && htmlReady ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime"))
@@ -4367,11 +4374,16 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("ARCHIVE_RUNTIME_UNSAVED"));
 		}
 		const CString filenameBefore(m_doc->m_filename);
-		const int mruBefore = m_mru.m_arrDocs.GetSize();
+		CString mruBefore;
+		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index)
+			mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
 		const FILE_OP_STATUS result = failedLength && failedLength < _countof(failedArchive) ? LoadFile(failedArchive) : FAIL;
 		const bool sourceStillModified = m_source.SendMessage(SCI_GETMODIFY) != 0;
 		const bool sameDocument = CString(m_doc->m_filename) == filenameBefore && !m_document_location.IsArchive();
-		const bool mruUnchanged = m_mru.m_arrDocs.GetSize() == mruBefore;
+		CString mruAfter;
+		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index)
+			mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
+		const bool mruUnchanged = mruAfter == mruBefore;
 		CStringA report;
 		report.Format("open_cancelled=%d\nmodified=%d\nsame_document=%d\nmru_unchanged=%d\n", result == CANCELLED, sourceStillModified, sameDocument, mruUnchanged);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
@@ -4385,13 +4397,23 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
 		char* marker = strstr(source.data(), "ARCHIVE_RUNTIME_BEFORE");
 		if (marker) { const size_t offset = static_cast<size_t>(marker - source.data()); m_source.SendMessage(SCI_SETSEL, offset, offset + strlen("ARCHIVE_RUNTIME_BEFORE")); m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("ARCHIVE_RUNTIME_RECOVERY")); }
-		else { m_source.SendMessage(SCI_SETSEL, length, length); m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("\n")); }
+		else
+		{
+			char* titleEnd = strstr(source.data(), "</book-title>");
+			const size_t offset = titleEnd ? static_cast<size_t>(titleEnd - source.data()) : static_cast<size_t>(length);
+			m_source.SendMessage(SCI_SETSEL, offset, offset);
+			m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(" ARCHIVE_RUNTIME_RECOVERY"));
+		}
 		const bool saved = SourceToHTML() && SaveRecoveryNow(); CStringA report; report.Format("recovery_created=%d\n", saved); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(saved ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"archive-recovery-verify"))
 	{
+		ShowView(SOURCE);
+		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH); std::vector<char> source(static_cast<size_t>(length) + 1);
+		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
 		const bool archive = m_document_location.IsArchive(); const bool fbd = m_doc->GetDocumentFileType() == FictionBookFileType::Fbd;
-		CStringA report; report.Format("archive=%d\nfbd=%d\n", archive, fbd); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(archive ? 0 : 1); return 0;
+		const bool payload = strstr(source.data(), "ARCHIVE_RUNTIME_RECOVERY") != NULL;
+		CStringA report; report.Format("archive=%d\nfbd=%d\nrecovery_payload=%d\n", archive, fbd, payload); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(archive && payload ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"archive-recovery-external-verify"))
 	{
@@ -4400,8 +4422,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
 		char* marker = strstr(source.data(), "ARCHIVE_RUNTIME_RECOVERY");
 		if (marker) { const size_t offset = static_cast<size_t>(marker - source.data()); m_source.SendMessage(SCI_SETSEL, offset, offset + strlen("ARCHIVE_RUNTIME_RECOVERY")); m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("ARCHIVE_RUNTIME_EXTERNAL")); }
+		::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR", NULL);
 		const bool blocked = marker != NULL && SourceToHTML() && SaveFile(false) == FAIL;
-		CStringA report; report.Format("archive=%d\nblocked=%d\n", m_document_location.IsArchive(), blocked); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(blocked ? 0 : 1); return 0;
+		wchar_t errorCode[16] = {};
+		const bool modifiedExternally = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR", errorCode, _countof(errorCode)) > 0 &&
+			_wtoi(errorCode) == static_cast<int>(FbeArchive::ErrorCode::ModifiedExternally);
+		CStringA report; report.Format("archive=%d\nblocked=%d\nmodified_externally=%d\nerror_code=%S\n", m_document_location.IsArchive(), blocked, modifiedExternally, errorCode); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(blocked && modifiedExternally ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"table-roundtrip"))
 	{
@@ -9618,7 +9644,7 @@ bool CMainFrame::ReloadFile()
 	FB::Doc::m_active_doc = doc;
 
 	EnableWindow(FALSE);
-	m_status.SetPaneText(ID_DEFAULT_PANE,_T("Loading..."));
+	m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
 	m_file_age = FileAge(m_doc->m_filename);
 	bool fLoaded=doc->Load(m_view,m_doc->m_filename);
 	EnableWindow(TRUE);

@@ -299,6 +299,7 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 	{ IDS_SCRIPT_LOAD_DIAGNOSTIC_MSG, L"fbe.script.diagnostic_load" },
 	{ IDS_SCRIPT_COPY_DETAILS, L"fbe.script.copy_details" },
 	{ IDS_SCRIPT_CLOSE_DETAILS, L"fbe.script.close_details" },
+	{ IDS_STATUS_LOADING, L"fbe.status.loading" },
 	{ IDS_COM_ERR_CPT, L"fbe.com.error.caption" },
 	{ IDS_XML_PARSE_ERR_CPT, L"fbe.xml.parse.caption" },
 	{ IDS_XML_PARSE_ERR_MSG, L"fbe.xml.parse.location" },

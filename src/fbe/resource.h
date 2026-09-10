@@ -741,6 +741,7 @@
 #define IDS_SCRIPT_LOAD_DIAGNOSTIC_MSG  61407
 #define IDS_SCRIPT_COPY_DETAILS         61408
 #define IDS_SCRIPT_CLOSE_DETAILS        61409
+#define IDS_STATUS_LOADING              61410
 #define IDC_CREATE_BACKUP_FILE          1128
 #define IDC_FBE_NEXT_SAVING_GROUP       1129
 #define IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE 1130
@@ -759,6 +760,7 @@
 #define IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL 1637
 #define IDC_STATIC_WORDS_NEW_WORD       1626
 #define IDC_ARCHIVE_ENTRY_LIST           1638
+#define IDC_ARCHIVE_ENTRY_MESSAGE        1639
 
 // Next default values for new objects
 // 
@@ -767,7 +769,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        261
 #define _APS_NEXT_COMMAND_VALUE         33032
-#define _APS_NEXT_CONTROL_VALUE         1639
+#define _APS_NEXT_CONTROL_VALUE         1640
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

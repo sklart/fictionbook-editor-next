@@ -12,6 +12,7 @@ $writer = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ZipArchiveWriter.cp
 $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
 $doc = Get-Content -Raw (Join-Path $root 'src\fbe\FBDoc.cpp')
 $location = Get-Content -Raw (Join-Path $root 'src\fbe\DocumentLocation.h')
+$startup = Get-Content -Raw (Join-Path $root 'src\fbe\FBE.cpp')
 
 Require $location 'enum class DocumentContainerKind' 'Container kind must be separate from FictionBookFileType.'
 Require $location 'entryOccurrence' 'Archive identity must retain duplicate-entry occurrence.'
@@ -56,5 +57,11 @@ Require $frame 'mruUnchanged' 'Two-phase runtime scenario must verify that the f
 Require $frame 'IsFbeTestScenario\(L"archive-rar-save-runtime"\)' 'RAR Save As runtime scenario must be explicitly isolated.'
 Require $frame 'FBE_NEXT_TEST_SAVE_PATH' 'RAR Save As runtime test must use an explicit isolated output path.'
 Require $frame 'archive-recovery-external-verify' 'Archive recovery runtime must verify external-modification blocking.'
+Require $frame 'FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR' 'Archive recovery runtime must report the precise Save failure reason.'
+Require $frame 'ErrorCode::ModifiedExternally' 'Archive recovery runtime must require the external-modification error code.'
+Require $frame 'mruAfter == mruBefore' 'Two-phase runtime scenario must compare the entire MRU snapshot.'
+Require $frame 'archive-open-runtime"\)' 'Archive-open runtime mode must be explicitly isolated from modal error UI.'
+Require $startup 'CommandLineToArgvW' 'CLI parsing must use CommandLineToArgvW.'
+if ($startup -match 'static void ParseCommandLine\(') { throw 'Legacy ParseCommandLine must not remain after CommandLineToArgvW migration.' }
 
 Write-Host 'Archive document support contract passed.'

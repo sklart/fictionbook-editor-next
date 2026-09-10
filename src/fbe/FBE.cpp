@@ -467,61 +467,6 @@ IDispatchPtr  CFBEView::CreateHelper()
 	return obj;
 }
 
-// Command line parser
-static void ParseCommandLine(LPTSTR cmd, CSimpleArray<CString>& args)
-{
-	TCHAR* p=cmd;
-	int len= _tcslen(p);
-	TCHAR* e = p + len;
-
-	for (;;)
-	{
-		// Skip ws
-		while(p < e && (unsigned)*p <= 32)
-			++p;
-		if(p >= e)
-			break;
-
-		// Process argument
-		CString arg;
-		TCHAR* buf = arg.GetBuffer(e - p);
-		TCHAR* q = buf;
-		bool fQuote = false;
-		while(p < e)
-		{
-			if(fQuote)
-			{
-				if(*p == L'"')
-				{
-					// Possible end of arg
-					if(p + 1 < e && p[1] == L'"')
-					{
-						// Literal quote
-						*q++ = L'"';
-						++p;
-					}
-					else
-						fQuote = false;
-					}
-				else
-					*q++ = *p; // normal char
-			}
-			else
-			{
-				if(*p <= 32) // end of arg
-					break;
-				if(*p == L'"') // quoted part
-					fQuote = true;
-				else // normal text
-				*q++ = *p;
-			}
-			++p;
-		}
-		arg.ReleaseBuffer(q - buf);
-		args.Add(arg);
-	}
-}
-
 static void ParseUnicodeCommandLine(CSimpleArray<CString>& args)
 {
 	int count = 0;

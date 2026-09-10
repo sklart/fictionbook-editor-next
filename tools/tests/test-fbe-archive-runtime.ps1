@@ -17,6 +17,9 @@ function New-Zip([string]$path, [hashtable]$entries) {
 function Read-Zip([string]$path) {
     $result = @{}; $zip = [IO.Compression.ZipFile]::OpenRead($path); try { foreach($entry in $zip.Entries) { $reader = [IO.StreamReader]::new($entry.Open(), [Text.UTF8Encoding]::new($false)); try { $result[$entry.FullName] = $reader.ReadToEnd() } finally { $reader.Dispose() } } } finally { $zip.Dispose() }; return $result
 }
+function Expand-ArchiveFixture([string]$fixture, [string]$destination) {
+    [IO.File]::WriteAllBytes($destination, [Convert]::FromBase64String((Get-Content -LiteralPath $fixture -Raw).Trim()))
+}
 function ConvertTo-FbeCommandLineArgument([string]$value) {
     # Start-Process joins an ArgumentList array before CreateProcess.  Quote
     # paths explicitly so archive names with spaces and Unicode remain one CLI
@@ -71,7 +74,7 @@ try {
     $twoPhaseReport = Join-Path $root 'two-phase.txt'; Invoke-TwoPhaseFbe $ordinary $empty $twoPhaseReport
     $twoPhase = Get-Content -LiteralPath $twoPhaseReport -Raw
     foreach($line in @('open_cancelled=1','modified=1','same_document=1','mru_unchanged=1')) { if($twoPhase -notmatch [regex]::Escape($line)) { throw "Two-phase archive open regression: $line" } }
-    $rar5 = Join-Path $root 'fixture-rar5.rar'; $fixture = Join-Path $PSScriptRoot 'fixtures\archive-runtime-rar5.b64'; [IO.File]::WriteAllBytes($rar5, [Convert]::FromBase64String((Get-Content -LiteralPath $fixture -Raw).Trim()))
+    $rar5 = Join-Path $root 'fixture-rar5.rar'; Expand-ArchiveFixture (Join-Path $PSScriptRoot 'fixtures\archive-runtime-rar5.b64') $rar5
     $rarReport = Join-Path $root 'rar5.txt'; Invoke-ArchiveFbe $rar5 $rarReport 'book.fb2' 'archive-open-runtime'; $rarState = Get-Content -LiteralPath $rarReport -Raw
     foreach($line in @('archive=1','fb2=1','mshtml=1','rar=1','entry=book.fb2')) { if($rarState -notmatch [regex]::Escape($line)) { throw "RAR5 runtime open regression: $line" } }
     $rarBefore = (Get-FileHash -LiteralPath $rar5 -Algorithm SHA256).Hash; $rarOutput = Join-Path $root 'rar-save-as.fb2'; $rarSaveReport = Join-Path $root 'rar-save-as.txt'
@@ -80,18 +83,22 @@ try {
     foreach($line in @('archive=1','fb2=1','rar=1','save_as=1','saved=1')) { if($rarSaveState -notmatch [regex]::Escape($line)) { throw "RAR Save As runtime regression: $line`n$rarSaveState" } }
     if(-not (Test-Path -LiteralPath $rarOutput) -or (Get-Content -LiteralPath $rarOutput -Raw) -notmatch 'ARCHIVE_RUNTIME_AFTER') { throw 'RAR Save As did not create the edited FB2.' }
     if((Get-FileHash -LiteralPath $rar5 -Algorithm SHA256).Hash -cne $rarBefore) { throw 'RAR Save As modified the source archive.' }
+    $rar5Multi = Join-Path $root 'fixture-rar5-multi.rar'; Expand-ArchiveFixture (Join-Path $PSScriptRoot 'fixtures\archive-runtime-rar5-multi.b64') $rar5Multi
+    $rar5MultiReport = Join-Path $root 'rar5-multi.txt'; Invoke-ArchiveFbe $rar5Multi $rar5MultiReport 'book.fbd' 'archive-open-runtime'; $rar5MultiState = Get-Content -LiteralPath $rar5MultiReport -Raw
+    foreach($line in @('archive=1','fb2=0','fbd=1','mshtml=1','rar=1','entry=book.fbd')) { if($rar5MultiState -notmatch [regex]::Escape($line)) { throw "RAR5 FBD multi-entry runtime regression: $line" } }
     $recovery = Join-Path $root 'recovery.zip'; New-Zip $recovery @{ 'book.fb2'=$book }; $created = Join-Path $root 'recovery-created.txt'; Invoke-RecoveryFbe 'archive-recovery-create' $created $recovery
     if((Get-Content -LiteralPath $created -Raw) -notmatch 'recovery_created=1') { throw 'Archive recovery was not created.' }
     $restored = Join-Path $root 'recovery-restored.txt'; Invoke-RecoveryFbe 'archive-recovery-verify' $restored
-    foreach($line in @('archive=1','fbd=0')) { if((Get-Content -LiteralPath $restored -Raw) -notmatch [regex]::Escape($line)) { throw "Archive recovery FB2 regression: $line" } }
+    foreach($line in @('archive=1','fbd=0','recovery_payload=1')) { if((Get-Content -LiteralPath $restored -Raw) -notmatch [regex]::Escape($line)) { throw "Archive recovery FB2 regression: $line" } }
     $fbd = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'fixtures\fbd\description_only.fbd') -Raw -Encoding UTF8; $recoveryFbd = Join-Path $root 'recovery-fbd.zip'; New-Zip $recoveryFbd @{ 'book.fbd'=$fbd }
     $fbdCreated = Join-Path $root 'recovery-fbd-created.txt'; Invoke-RecoveryFbe 'archive-recovery-create' $fbdCreated $recoveryFbd
     $fbdRestored = Join-Path $root 'recovery-fbd-restored.txt'; Invoke-RecoveryFbe 'archive-recovery-verify' $fbdRestored
-    foreach($line in @('archive=1','fbd=1')) { if((Get-Content -LiteralPath $fbdRestored -Raw) -notmatch [regex]::Escape($line)) { throw "Archive recovery FBD regression: $line" } }
+    foreach($line in @('archive=1','fbd=1','recovery_payload=1')) { if((Get-Content -LiteralPath $fbdRestored -Raw) -notmatch [regex]::Escape($line)) { throw "Archive recovery FBD regression: $line" } }
     $external = Join-Path $root 'recovery-external.zip'; New-Zip $external @{ 'book.fb2'=$book }; $externalCreated = Join-Path $root 'recovery-external-created.txt'; Invoke-RecoveryFbe 'archive-recovery-create' $externalCreated $external
-    $externalBefore = [IO.File]::ReadAllBytes($external); New-Zip $external @{ 'book.fb2'=($book + '<!-- externally changed -->'); 'cover.txt'='external' }
+    New-Zip $external @{ 'book.fb2'=($book + '<!-- externally changed -->'); 'cover.txt'='external' }
+    $externalSnapshot = [IO.File]::ReadAllBytes($external); $externalHash = (Get-FileHash -LiteralPath $external -Algorithm SHA256).Hash
     $externalReport = Join-Path $root 'recovery-external-restored.txt'; Invoke-RecoveryFbe 'archive-recovery-external-verify' $externalReport
-    foreach($line in @('archive=1','blocked=1')) { if((Get-Content -LiteralPath $externalReport -Raw) -notmatch [regex]::Escape($line)) { throw "Archive recovery external-modification regression: $line" } }
-    if([Linq.Enumerable]::SequenceEqual([byte[]]$externalBefore, [IO.File]::ReadAllBytes($external))) { throw 'External ZIP mutation fixture was not changed.' }
+    foreach($line in @('archive=1','blocked=1','modified_externally=1')) { if((Get-Content -LiteralPath $externalReport -Raw) -notmatch [regex]::Escape($line)) { throw "Archive recovery external-modification regression: $line" } }
+    if(-not [Linq.Enumerable]::SequenceEqual([byte[]]$externalSnapshot, [IO.File]::ReadAllBytes($external)) -or (Get-FileHash -LiteralPath $external -Algorithm SHA256).Hash -cne $externalHash) { throw 'Blocked recovery Save changed the externally modified ZIP.' }
     Write-Host 'FBE.exe archive ZIP and two-phase runtime integration passed.'
 } finally { if($hadPortableIni) { [IO.File]::WriteAllText($portableIni, $oldPortableIni, [Text.UTF8Encoding]::new($false)) } else { Remove-Item -LiteralPath $portableIni -Force -ErrorAction SilentlyContinue }; Remove-Item -LiteralPath (Join-Path (Split-Path $FbeExe) $portableData) -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
