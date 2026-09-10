@@ -522,6 +522,16 @@ static void ParseCommandLine(LPTSTR cmd, CSimpleArray<CString>& args)
 	}
 }
 
+static void ParseUnicodeCommandLine(CSimpleArray<CString>& args)
+{
+	int count = 0;
+	LPWSTR* arguments = ::CommandLineToArgvW(::GetCommandLineW(), &count);
+	if (arguments == NULL) return;
+	for (int index = 1; index < count; ++index)
+		args.Add(CString(arguments[index]));
+	::LocalFree(arguments);
+}
+
 static bool IsMainFrameCreateFaultEnabled()
 {
 	if (!StartupTrace::Enabled()) return false;
@@ -771,7 +781,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 
   // parse command line
   StartupTrace::AppendTestStartupBreadcrumb("cmdline-parse-start");
-  ParseCommandLine(lpstrCmdLine,_ARGV);
+  ParseUnicodeCommandLine(_ARGV);
   if (!AU::ParseCmdLineArgs())
     goto out;
 	StartupTrace::AppendTestStartupBreadcrumb("cmdline-parse-complete");

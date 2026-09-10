@@ -118,9 +118,15 @@ bool RewriteZipEntry(const CString& storagePath, const Entry& target,
 	}
 	if (!replaced) { error.code = ErrorCode::EntryNotFound; goto cleanup; }
 	if (archive_write_close(writer.value) < ARCHIVE_WARN) { error.code = ErrorCode::WriteFailed; goto cleanup; }
+	// archive_*_close completes the stream but libarchive keeps its Win32
+	// callback object until free.  Release both objects before replacing the
+	// original: otherwise the reader/writer can retain a sharing handle and
+	// ReplaceFileW fails with ERROR_SHARING_VIOLATION.
+	archive_write_free(writer.value); writer.value = NULL;
 	// ReplaceFile cannot atomically replace an archive while our reader still
 	// owns its source handle on Windows.
 	if (archive_read_close(reader.value) != ARCHIVE_OK) { error.code = ErrorCode::Corrupted; goto cleanup; }
+	archive_read_free(reader.value); reader.value = NULL;
 	// Antivirus and Explorer can briefly retain a newly-created test/archive
 	// file.  Retry only transient sharing failures; the original remains intact
 	// until ReplaceFileW succeeds.
@@ -128,11 +134,12 @@ bool RewriteZipEntry(const CString& storagePath, const Entry& target,
 	{
 		if (::ReplaceFileW(storagePath, temporary, NULL, REPLACEFILE_WRITE_THROUGH, NULL, NULL)) break;
 		error.systemError = ::GetLastError();
-		if ((error.systemError != ERROR_SHARING_VIOLATION && error.systemError != ERROR_ACCESS_DENIED) || attempt == 9)
+		if ((error.systemError != ERROR_SHARING_VIOLATION && error.systemError != ERROR_ACCESS_DENIED &&
+			error.systemError != ERROR_UNABLE_TO_REMOVE_REPLACED) || attempt == 29)
 		{
 			error.code = ErrorCode::ReplaceFailed; goto cleanup;
 		}
-		::Sleep(50);
+		::Sleep(100);
 	}
 	completed = true;
 cleanup:
