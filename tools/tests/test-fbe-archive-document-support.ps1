@@ -66,8 +66,10 @@ Require $frame 'archive-open-runtime"\)' 'Archive-open runtime mode must be expl
 Require $startup 'CommandLineToArgvW' 'CLI parsing must use CommandLineToArgvW.'
 if ($startup -match 'static void ParseCommandLine\(') { throw 'Legacy ParseCommandLine must not remain after CommandLineToArgvW migration.' }
 Require $picker 'min\(max\(static_cast<int>\(m_entries\.size\(\)\), 5\), 10\)' 'Archive picker must keep space for five to ten visible rows.'
-Require $picker 'contentWidth \+ 16' 'Archive picker must size its initial width from the visible columns.'
+Require $picker 'nonClientWidth[\s\S]{0,500}desiredClientWidth \+ nonClientWidth' 'Archive picker must convert client width to full window width.'
 Require $picker 'MonitorFromWindow[\s\S]{0,300}4 / 5' 'Archive picker width must remain within 80% of the work area.'
+Require $picker 'LayoutColumns\(\)' 'Archive picker must recompute columns after every resize.'
+Require $picker 'SetColumnWidth\(sizeColumn, sizeWidth\)' 'Archive picker Size column must remain compact.'
 Require $picker 'FbeLoadRuntimeStringByKey\(L"fbe\.archive\.picker\.open"' 'Archive picker Open button must use the runtime localization key.'
 Require $picker 'OnShowWindow[\s\S]{0,300}ApplyRuntimeTexts' 'Archive picker must restore its action caption after activation.'
 Require $pickerResources 'IDD_ARCHIVE_ENTRY[\s\S]{0,300}WS_THICKFRAME' 'Archive picker must remain resizable.'

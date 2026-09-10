@@ -31,5 +31,7 @@ private:
 	LRESULT OnCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnDoubleClick(int, LPNMHDR, BOOL&);
 	void LayoutControls(int width, int height);
+	void LayoutColumns();
+	int PreferredColumnWidth(int column, int minimum);
 	void ApplyRuntimeTexts();
 };

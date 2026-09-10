@@ -10,6 +10,22 @@ namespace
 		return slash >= 0 ? path.Mid(slash + 1) : path;
 	}
 
+	int ScaleForWindow(HWND window, int logicalPixels)
+	{
+		typedef UINT (WINAPI* GetDpiForWindowProc)(HWND);
+		HMODULE user32 = ::GetModuleHandle(L"user32.dll");
+		GetDpiForWindowProc getDpiForWindow = user32
+			? reinterpret_cast<GetDpiForWindowProc>(::GetProcAddress(user32, "GetDpiForWindow")) : NULL;
+		UINT dpi = getDpiForWindow ? getDpiForWindow(window) : 0;
+		if (dpi == 0)
+		{
+			HDC dc = ::GetDC(window);
+			dpi = dc ? static_cast<UINT>(::GetDeviceCaps(dc, LOGPIXELSX)) : 96;
+			if (dc) ::ReleaseDC(window, dc);
+		}
+		return ::MulDiv(logicalPixels, static_cast<int>(dpi ? dpi : 96), 96);
+	}
+
 	CString EntryFolder(const CString& path)
 	{
 		const int slash = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
@@ -55,8 +71,6 @@ LRESULT CArchiveEntryPicker::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		if (m_hasFolders) m_list.SetItemText(item, 1, EntryFolder(entry.path));
 		m_list.SetItemText(item, sizeColumn, FormatEntrySize(entry.uncompressedSize));
 	}
-	for (int column = 0; column < (m_hasFolders ? 3 : 2); ++column)
-		m_list.SetColumnWidth(column, LVSCW_AUTOSIZE_USEHEADER);
 	if (!m_entries.empty()) {
 		m_list.SetItemState(0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 		m_list.SetFocus();
@@ -67,13 +81,17 @@ LRESULT CArchiveEntryPicker::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	RECT client = {}, window = {}; GetClientRect(&client); GetWindowRect(&window);
 	const int listHeight = 24 + visibleRows * rowHeight + 4;
 	const int desiredClientHeight = max(240, 8 + 32 + 4 + listHeight + 8 + 24 + 8);
-	int contentWidth = 0;
-	for (int column = 0; column < (m_hasFolders ? 3 : 2); ++column) contentWidth += m_list.GetColumnWidth(column);
+	const int sizeColumn = m_hasFolders ? 2 : 1;
+	const int contentWidth = PreferredColumnWidth(0, ScaleForWindow(m_hWnd, 390)) +
+		(m_hasFolders ? PreferredColumnWidth(1, ScaleForWindow(m_hWnd, 180)) : 0) +
+		PreferredColumnWidth(sizeColumn, ScaleForWindow(m_hWnd, 72)) + ScaleForWindow(m_hWnd, 16);
 	MONITORINFO monitor = { sizeof(monitor) };
 	const HMONITOR currentMonitor = ::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
-	const int maximumWidth = ::GetMonitorInfo(currentMonitor, &monitor) ? (monitor.rcWork.right - monitor.rcWork.left) * 4 / 5 : client.right;
-	const int desiredClientWidth = min(maximumWidth, max(client.right, contentWidth + 16));
-	SetWindowPos(NULL, 0, 0, desiredClientWidth, desiredClientHeight + (window.bottom - window.top - client.bottom), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	const int nonClientWidth = window.right - window.left - client.right;
+	const int maximumWindowWidth = ::GetMonitorInfo(currentMonitor, &monitor) ? (monitor.rcWork.right - monitor.rcWork.left) * 4 / 5 : window.right - window.left;
+	const int maximumClientWidth = max(0, maximumWindowWidth - nonClientWidth);
+	const int desiredClientWidth = min(maximumClientWidth, max(client.right, contentWidth));
+	SetWindowPos(NULL, 0, 0, desiredClientWidth + nonClientWidth, desiredClientHeight + (window.bottom - window.top - client.bottom), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 	GetClientRect(&client); LayoutControls(client.right, client.bottom);
 	HWND owner = GetParent(); if (!owner) owner = ::GetActiveWindow();
 	CenterWindow(owner);
@@ -89,8 +107,8 @@ LRESULT CArchiveEntryPicker::OnSize(UINT, WPARAM, LPARAM lParam, BOOL&)
 LRESULT CArchiveEntryPicker::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
 	MINMAXINFO* const info = reinterpret_cast<MINMAXINFO*>(lParam);
-	info->ptMinTrackSize.x = 600;
-	info->ptMinTrackSize.y = 260;
+	info->ptMinTrackSize.x = ScaleForWindow(m_hWnd, 600);
+	info->ptMinTrackSize.y = ScaleForWindow(m_hWnd, 260);
 	return 0;
 }
 
@@ -111,6 +129,42 @@ void CArchiveEntryPicker::LayoutControls(int width, int height)
 	::SetWindowPos(m_list, NULL, margin, margin + messageHeight + 4, max(0, width - margin * 2), max(0, buttonsY - (margin + messageHeight + 4) - gap), SWP_NOZORDER | SWP_NOACTIVATE);
 	::SetWindowPos(GetDlgItem(IDCANCEL), NULL, width - margin - buttonWidth, buttonsY, buttonWidth, buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 	::SetWindowPos(GetDlgItem(IDOK), NULL, width - margin * 2 - buttonWidth * 2, buttonsY, buttonWidth, buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+	LayoutColumns();
+}
+
+void CArchiveEntryPicker::LayoutColumns()
+{
+	if (!m_list.IsWindow()) return;
+	RECT client = {}; m_list.GetClientRect(&client);
+	int available = max(0, client.right - client.left);
+	RECT item = {};
+	const int itemHeight = m_list.GetItemCount() && m_list.GetItemRect(0, &item, LVIR_BOUNDS) ? item.bottom - item.top : 0;
+	RECT listClient = {}; m_list.GetClientRect(&listClient);
+	if (itemHeight > 0 && m_list.GetItemCount() * itemHeight > listClient.bottom - listClient.top - ScaleForWindow(m_hWnd, 24))
+		available = max(0, available - ::GetSystemMetrics(SM_CXVSCROLL));
+	const int sizeColumn = m_hasFolders ? 2 : 1;
+	const int sizeWidth = min(ScaleForWindow(m_hWnd, 96), PreferredColumnWidth(sizeColumn, ScaleForWindow(m_hWnd, 72)));
+	const int remainder = max(0, available - sizeWidth);
+	m_list.SetColumnWidth(sizeColumn, sizeWidth);
+	if (m_hasFolders)
+	{
+		const int bookWidth = remainder * 3 / 5;
+		m_list.SetColumnWidth(0, bookWidth);
+		m_list.SetColumnWidth(1, remainder - bookWidth);
+	}
+	else m_list.SetColumnWidth(0, remainder);
+}
+
+int CArchiveEntryPicker::PreferredColumnWidth(int column, int minimum)
+{
+	int width = minimum;
+	for (int item = 0; item < m_list.GetItemCount(); ++item)
+	{
+		wchar_t text[1024] = {};
+		m_list.GetItemText(item, column, text, _countof(text));
+		width = max(width, m_list.GetStringWidth(text) + ScaleForWindow(m_hWnd, 16));
+	}
+	return width;
 }
 
 void CArchiveEntryPicker::ApplyRuntimeTexts()
