@@ -38,6 +38,15 @@ try {
         throw 'An empty defaults directory was not removed after the legacy seed.'
     }
 
+    $alreadyCleanOutput = Join-Path $testRoot 'already-clean-defaults'
+    $alreadyCleanDefaults = Join-Path $alreadyCleanOutput 'defaults'
+    New-Item -ItemType Directory -Path $alreadyCleanDefaults -Force | Out-Null
+
+    Remove-ObsoleteReleaseArtifacts -OutputDirectory $alreadyCleanOutput
+    if (Test-Path -LiteralPath $alreadyCleanDefaults -PathType Container) {
+        throw 'An already empty defaults directory was not removed.'
+    }
+
     $nonEmptyOutput = Join-Path $testRoot 'nonempty-defaults'
     $nonEmptyDefaults = Join-Path $nonEmptyOutput 'defaults'
     New-Item -ItemType Directory -Path $nonEmptyDefaults -Force | Out-Null

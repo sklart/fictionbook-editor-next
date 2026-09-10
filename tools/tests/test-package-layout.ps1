@@ -82,8 +82,8 @@ if ($buildScript -notmatch 'Export-BuiltInResources' -or $buildScript -notmatch 
 if ($buildScript -notmatch '"defaults\\Words\.xml"') {
     throw 'Development build must remove the obsolete defaults\\Words.xml seed.'
 }
-if ($buildScript -notmatch '\$removedLegacyWords' -or $buildScript -notmatch 'Get-ChildItem -LiteralPath \$legacyDefaultsDirectory -Force') {
-    throw 'Development build must remove only an empty defaults directory after its legacy Words.xml seed.'
+if ($buildScript -match '\$removedLegacyWords' -or $buildScript -notmatch 'Get-ChildItem -LiteralPath \$legacyDefaultsDirectory -Force') {
+    throw 'Development build must always remove only an empty defaults directory.'
 }
 foreach ($legacyUserFile in @('Settings.xml', 'Hotkeys.xml', 'Words.xml')) {
     if ($buildScript -notmatch ('"' + [regex]::Escape($legacyUserFile) + '"')) {
