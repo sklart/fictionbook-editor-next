@@ -5,6 +5,7 @@
 #include "document\PendingDocument.h"
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
+#include "document\DocumentSavePlan.h"
 #include "archive\ui\ArchiveOpenCoordinator.h"
 
 #include "MainFrm.h"
@@ -1359,10 +1360,10 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   if ((IsSourceActive() && !SourceToHTML()) || m_bad_xml) // added by SeNS: do not save bad xml!
     return FAIL;
 
-  if (!askname && m_document_session.Location().IsArchive())
+  const DocumentSavePlan savePlan = DocumentSavePlan::Create(askname, m_doc->m_namevalid, m_document_session.Location());
+
+  if (savePlan.target == DocumentSaveTarget::CurrentArchive)
   {
-	if (m_document_session.Location().containerKind == DocumentContainerKind::Rar)
-		return SaveFile(true);
 	std::vector<unsigned char> serialized;
 	if (!m_doc->SerializeToMemory(serialized, m_document_session.Location().documentType)) return FAIL;
 	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime"))
@@ -1406,7 +1407,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     }
   }
 
-  if (askname || !m_doc->m_namevalid) { // ask user about save file name
+  if (savePlan.target == DocumentSaveTarget::SaveAs) { // ask user about save file name
     CString encoding;
     CString filename(GetSaveFileName(encoding));
     if (filename.IsEmpty())

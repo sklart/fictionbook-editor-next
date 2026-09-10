@@ -137,6 +137,7 @@
 	<ClCompile Include="document\DocumentLoader.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentState.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentSession.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="document\DocumentSavePlan.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\PendingDocument.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="recovery\RecoveryStore.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="recovery\RecoveryService.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -290,6 +291,7 @@
 	<ClInclude Include="document\FileFingerprint.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentState.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentSession.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="document\DocumentSavePlan.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\PendingDocument.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="recovery\RecoveryStore.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="recovery\RecoveryService.h"><Filter>Header Files</Filter></ClInclude>
