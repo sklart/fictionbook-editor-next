@@ -9,9 +9,11 @@ function Lacks([string]$text, [string]$needle, [string]$what) { if ($text.IndexO
 
 $context = Text 'src\common\DeploymentContext.h'
 foreach ($item in @('enum class Mode', 'portable.ini', '--portable', '--installed', 'HasInvalidModeOverride', 'CommandLineToArgvW', 'DataPath', 'find_first_of', 'SettingsDirectory', 'SHGetFolderPathW', 'DiagnosticsDirectory', 'RecoveryDirectory', 'RegistryPersistenceAllowed')) { Has $context $item 'DeploymentContext' }
-$settings = Text 'src\fbe\Settings.cpp'; Has $settings 'RegistryPersistenceAllowed()' 'Portable settings'; Has $settings 'm_key.Create(HKEY_CURRENT_USER' 'Installed settings compatibility'
+$settings = Text 'src\fbe\Settings.cpp'
+$settingsStore = Text 'src\fbe\settings\SettingsStore.cpp'; Has $settingsStore 'RegistryPersistenceAllowed()' 'Portable settings'; Has $settingsStore 'key.Create(HKEY_CURRENT_USER' 'Installed settings compatibility'
 $utils = Text 'src\fbe\utils\Utils.cpp'; Has $utils 'GetProgDir() + L"Resources\\" + filename' 'Primary built-in resource directory'; Has $utils 'GetProgDir() + L"defaults\\" + filename' 'Legacy built-in defaults fallback'; Has $utils 'return GetProgDir() + filename' 'Legacy root resource fallback'; Has $utils 'GetSettingsDir() + filename' 'User data destination'
-if ($settings -notmatch 'GetUserDataFile\(WORDS_XML_FILE,\s*CString\(\),\s*U::GetBuiltInResourceFile\(WORDS_XML_FILE\)\)') { throw 'Words.xml must seed user state from the centralized built-in resource resolver.' }
+$settingsPaths = Text 'src\fbe\settings\SettingsPaths.cpp'
+if ($settingsPaths -notmatch 'GetUserDataFile\(L"Words.xml",\s*CString\(\),\s*U::GetBuiltInResourceFile\(L"Words.xml"\)\)') { throw 'Words.xml must seed user state from the centralized built-in resource resolver.' }
 $locale = Text 'src\fbe\RuntimeLocalization.cpp'; Has $locale 'DeploymentContext::SettingsDirectory()' 'Portable locale'; Has $locale 'MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH' 'Atomic portable locale'
 $trace = Text 'src\fbe\StartupTrace.cpp'; Has $trace 'DeploymentContext::DiagnosticsDirectory()' 'Portable diagnostics'; Has $trace 'RegistryPersistenceAllowed()' 'Portable trace preference'
 $frame = Text 'src\fbe\mainfrm.cpp'; Has $frame 'ReadPortableMru' 'Portable MRU read'; Has $frame 'WritePortableMru' 'Portable MRU write'; Has $frame 'MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH' 'Atomic portable MRU'; Has $frame 'RegistryPersistenceAllowed()' 'Registry-free portable MRU'; Has $frame 'm_CmdToolbar.RestoreState' 'Toolbar layout restore'; Has $frame 'm_CmdToolbar.SaveState' 'Toolbar layout save'; Has $frame 'm_ScriptsToolbar.RestoreState' 'Scripts toolbar layout restore'; Has $frame 'm_ScriptsToolbar.SaveState' 'Scripts toolbar layout save'
