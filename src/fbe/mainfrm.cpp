@@ -14,6 +14,7 @@
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
+#include "document\\ArchiveRecentDocuments.h"
 #include "archive\\ArchiveReader.h"
 #include "ArchiveEntryPicker.h"
 #include "xmlMatchedTagsHighlighter.h"
@@ -363,10 +364,7 @@ static CString PortableMruPath()
 	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"MRU.xml";
 }
 
-struct ArchiveMruRecord
-{
-	DocumentLocation location;
-};
+typedef FbeArchiveRecentDocuments::Record ArchiveMruRecord;
 
 static const wchar_t* const kArchiveMruVersion = L"FBE-ARCHIVE-MRU\t2";
 
@@ -380,32 +378,19 @@ static CString MruOrderPath()
 	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"MRUOrder.txt";
 }
 
-static bool IsSafeArchiveMruField(const CString& field)
-{
-	return !field.IsEmpty() && field.FindOneOf(L"\t\r\n") < 0;
-}
-
 static bool ParseArchiveMruUnsigned(const CString& text, unsigned int& value)
 {
-	if (text.IsEmpty()) return false;
-	wchar_t* end = NULL;
-	const unsigned long parsed = wcstoul(text, &end, 10);
-	if (end == text.GetString() || *end != L'\0' || parsed > UINT_MAX) return false;
-	value = static_cast<unsigned int>(parsed);
-	return true;
+	return FbeArchiveRecentDocuments::ParseUnsigned(text, value);
 }
 
 static bool IsValidArchiveMruRecord(const ArchiveMruRecord& record)
 {
-	const DocumentLocation& location = record.location;
-	return location.IsArchive() && location.documentType != FictionBookFileType::Unknown &&
-		IsSafeArchiveMruField(location.storagePath) && IsSafeArchiveMruField(location.entryPath);
+	return FbeArchiveRecentDocuments::IsValidRecord(record);
 }
 
 static void SplitArchiveMruFields(const CString& line, std::vector<CString>& fields)
 {
-	fields.clear(); int start = 0;
-	for (;;) { const int tab = line.Find(L'\t', start); if (tab < 0) { fields.push_back(line.Mid(start)); return; } fields.push_back(line.Mid(start, tab - start)); start = tab + 1; }
+	FbeArchiveRecentDocuments::SplitFields(line, fields);
 }
 
 // Version 1 stored "storage path, occurrence, entry path".  Keep accepting it
@@ -449,130 +434,26 @@ static void ReadArchiveMruRecords(std::vector<ArchiveMruRecord>& records)
 	}
 }
 
-static CString ArchiveMruFileName(const CString& path)
-{
-	const int slash = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
-	return slash < 0 ? path : path.Mid(slash + 1);
-}
-
-static CString ArchiveMruDirectoryName(const CString& path)
-{
-	const int slash = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
-	return slash < 0 ? CString() : path.Left(slash + 1);
-}
-
-static CString ArchiveMruDirectoryContext(const CString& path, int components)
-{
-	CString directory = ArchiveMruDirectoryName(path);
-	while (!directory.IsEmpty() && (directory.Right(1) == L"\\" || directory.Right(1) == L"/")) directory = directory.Left(directory.GetLength() - 1);
-	if (directory.IsEmpty() || components <= 0) return CString();
-	int start = directory.GetLength();
-	while (components-- > 0)
-	{
-		const int slash = max(directory.Left(max(0, start - 1)).ReverseFind(L'\\'), directory.Left(max(0, start - 1)).ReverseFind(L'/'));
-		if (slash < 0) { start = 0; break; }
-		start = slash + 1;
-		if (slash == 0) { start = 0; break; }
-	}
-	return directory.Mid(start) + L"\\";
-}
-
-static CString CompactMruCaptionPart(const CString& value, int limit)
-{
-	if (value.GetLength() <= limit) return value;
-	// Keep the right edge: it normally contains both the file extension and
-	// the volume discriminator (for example "_т1.fb2").  A plain left
-	// ellipsis made otherwise distinct books look identical in the menu.
-	const int suffixLength = min(max(8, limit / 2), limit - 2);
-	const int prefixLength = max(1, limit - suffixLength - 1);
-	return value.Left(prefixLength) + L"\x2026" + value.Right(suffixLength);
-}
-
 static CString ArchiveMruDisplayName(const std::vector<ArchiveMruRecord>& records, size_t target)
 {
-	const DocumentLocation& location = records[target].location;
-	CString book = ArchiveMruFileName(location.entryPath), archive = ArchiveMruFileName(location.storagePath);
-	bool sameBook = false;
-	for (size_t i = 0; i < records.size(); ++i)
-		if (i != target && records[i].location.storagePath.CompareNoCase(location.storagePath) == 0 && ArchiveMruFileName(records[i].location.entryPath).CompareNoCase(book) == 0) { sameBook = true; break; }
-	if (sameBook && !ArchiveMruDirectoryName(location.entryPath).IsEmpty()) book = ArchiveMruDirectoryName(location.entryPath) + book;
-	CString archiveContext = archive;
-	CString result = book + L" \x2014 " + archiveContext;
-	unsigned int equal = 0;
-	for (size_t i = 0; i < records.size(); ++i)
-	{
-		CString candidate = ArchiveMruFileName(records[i].location.entryPath);
-		if (sameBook && !ArchiveMruDirectoryName(records[i].location.entryPath).IsEmpty()) candidate = ArchiveMruDirectoryName(records[i].location.entryPath) + candidate;
-		if ((candidate + L" \x2014 " + ArchiveMruFileName(records[i].location.storagePath)).CompareNoCase(result) == 0) ++equal;
-	}
-	// Resolve collisions by adding just enough parent directory context.  This
-	// produces archive.zip, Books\archive.zip, A\Books\archive.zip, and only
-	// reaches an absolute path if shorter contexts remain ambiguous.
-	if (equal > 1)
-	{
-		for (int depth = 1; depth < 32; ++depth)
-		{
-			const CString candidate = ArchiveMruDirectoryContext(location.storagePath, depth);
-			bool unique = true;
-			for (size_t i = 0; i < records.size(); ++i)
-				if (i != target && ArchiveMruFileName(records[i].location.entryPath).CompareNoCase(ArchiveMruFileName(location.entryPath)) == 0 &&
-					ArchiveMruFileName(records[i].location.storagePath).CompareNoCase(archive) == 0 && records[i].location.storagePath.CompareNoCase(location.storagePath) != 0 &&
-					ArchiveMruDirectoryContext(records[i].location.storagePath, depth).CompareNoCase(candidate) == 0) { unique = false; break; }
-			archiveContext = candidate + archive;
-			if (unique) break;
-		}
-	}
-	result = book + L" \x2014 " + archiveContext;
-	CString occurrence;
-	if (equal > 1)
-	{
-		occurrence.Format(L" (%u)", location.entryOccurrence + 1);
-		result += occurrence;
-	}
-	if (result.GetLength() > 96)
-	{
-		// The collision discriminator is finalized before compaction and is kept
-		// intact.  Only book/archive names are shortened around their middle.
-		const int separatorLength = 3;
-		const int available = max(32, 96 - separatorLength - occurrence.GetLength());
-		int archiveLimit = max(16, available / 3);
-		archiveLimit = min(archiveLimit, available - 16);
-		const int bookLimit = max(16, available - archiveLimit);
-		const CString compactArchive = CompactMruCaptionPart(archiveContext, archiveLimit);
-		result = CompactMruCaptionPart(book, bookLimit) + L" \x2014 " + compactArchive + occurrence;
-		if (result.GetLength() > 96) result = CompactMruCaptionPart(book, 16) + L" \x2014 " + CompactMruCaptionPart(archiveContext, max(8, 77 - occurrence.GetLength())) + occurrence;
-	}
-	return result;
+	return FbeArchiveRecentDocuments::DisplayName(records, target);
 }
 
 static bool SameArchiveMruIdentity(const DocumentLocation& left, const DocumentLocation& right)
 {
-	return left.containerKind == right.containerKind && left.storagePath.CompareNoCase(right.storagePath) == 0 &&
-		left.entryPath == right.entryPath && left.entryOccurrence == right.entryOccurrence;
+	return FbeArchiveRecentDocuments::SameIdentity(left, right);
 }
 
 // CRecentDocumentList stores this opaque key, never a caption.  Captions are
 // deliberately rebuilt for the menu, so they cannot become document identity.
-static const wchar_t* const kArchiveMruKeyPrefix = L"\x1Earchive\t";
-
 static CString ArchiveMruKey(const DocumentLocation& location)
 {
-	CString key; key.Format(L"%s%u\t%u\t%s\t%s", kArchiveMruKeyPrefix, static_cast<unsigned int>(location.containerKind), location.entryOccurrence,
-		static_cast<LPCWSTR>(location.storagePath), static_cast<LPCWSTR>(location.entryPath));
-	return key;
+	return FbeArchiveRecentDocuments::Key(location);
 }
 
 static bool ParseArchiveMruKey(const CString& key, DocumentLocation& location)
 {
-	location = DocumentLocation();
-	if (key.Left(wcslen(kArchiveMruKeyPrefix)) != kArchiveMruKeyPrefix) return false;
-	std::vector<CString> fields; SplitArchiveMruFields(key.Mid(wcslen(kArchiveMruKeyPrefix)), fields);
-	unsigned int kind = 0, occurrence = 0;
-	if (fields.size() != 4 || !ParseArchiveMruUnsigned(fields[0], kind) || !ParseArchiveMruUnsigned(fields[1], occurrence) ||
-		(kind != static_cast<unsigned int>(DocumentContainerKind::Zip) && kind != static_cast<unsigned int>(DocumentContainerKind::Rar))) return false;
-	location.containerKind = static_cast<DocumentContainerKind>(kind); location.entryOccurrence = occurrence;
-	location.storagePath = fields[2]; location.entryPath = fields[3]; location.documentType = DetectFictionBookFileType(location.entryPath);
-	return location.IsArchive() && location.documentType != FictionBookFileType::Unknown;
+	return FbeArchiveRecentDocuments::ParseKey(key, location);
 }
 
 static void ReadMruOrder(std::vector<CString>& order)
@@ -708,8 +589,8 @@ static void RebuildMruMenu(CRecentDocumentList& list)
 			DocumentLocation previousLocation; const CString previousCaption = ParseArchiveMruKey(previousKey, previousLocation) ? ArchiveMruCaption(previousKey) : previousKey;
 			if (previousCaption.CompareNoCase(caption) == 0) ++duplicate;
 		}
-		if (duplicate > 1) { CString discriminator; discriminator.Format(L" (%u)", duplicate); caption = CompactMruCaptionPart(caption, 96 - discriminator.GetLength()) + discriminator; }
-		if (caption.GetLength() > 96) caption = CompactMruCaptionPart(caption, 96);
+		if (duplicate > 1) { CString discriminator; discriminator.Format(L" (%u)", duplicate); caption = FbeArchiveRecentDocuments::CompactCaptionPart(caption, 96 - discriminator.GetLength()) + discriminator; }
+		if (caption.GetLength() > 96) caption = FbeArchiveRecentDocuments::CompactCaptionPart(caption, 96);
 		::InsertMenu(menu, insertionPoint + offset, MF_BYPOSITION | MF_STRING, id, caption);
 	}
 }
