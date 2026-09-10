@@ -98,3 +98,43 @@ function Assert-LexillaSubmoduleCheckout {
         throw "Lexilla submodule находится не на commit, зафиксированном текущим репозиторием. Выполните: git submodule update --init --recursive"
     }
 }
+
+function Get-TrackedEditorRuntimeDllSnapshot {
+    param([Parameter(Mandatory)][string]$RepositoryRoot)
+
+    $snapshot = [ordered]@{}
+    foreach ($name in @('Scintilla.dll', 'Lexilla.dll')) {
+        $path = Join-Path $RepositoryRoot (Join-Path 'runtime' $name)
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Не найдена tracked dependency DLL: $path"
+        }
+        $snapshot[$name] = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+    }
+    return $snapshot
+}
+
+function Assert-TrackedEditorRuntimeDllSnapshot {
+    param(
+        [Parameter(Mandatory)][string]$RepositoryRoot,
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Snapshot
+    )
+
+    $changes = @()
+    foreach ($entry in $Snapshot.GetEnumerator()) {
+        $path = Join-Path $RepositoryRoot (Join-Path 'runtime' $entry.Key)
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $changes += "$($entry.Key): файл был удалён"
+            continue
+        }
+        $currentHash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+        if ($currentHash -ne $entry.Value) {
+            $changes += "$($entry.Key): $($entry.Value) -> $currentHash"
+        }
+    }
+
+    if ($changes.Count -ne 0) {
+        throw "Обычная сборка или validation изменили tracked dependency DLL в runtime. Результаты сборки должны оставаться в out; обновлять эти DLL разрешено только через apply-third-party-update-and-test.ps1 для Scintilla/Lexilla.`n$($changes -join "`n")"
+    }
+
+    Write-Host 'Tracked Scintilla/Lexilla runtime DLLs are unchanged by this invocation.'
+}

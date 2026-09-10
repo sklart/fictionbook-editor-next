@@ -36,6 +36,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot 'UpdateVersion.ps1')
+. (Join-Path $PSScriptRoot 'editor-runtime-helpers.ps1')
 
 function Remove-ObsoleteReleaseArtifacts {
     param(
@@ -165,6 +166,7 @@ function Test-FirstPartyToolchainFingerprint {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$trackedEditorRuntimeSnapshot = Get-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
 
 # Use VS 2022 v143 and VC 14.44: newer CRTs import
@@ -451,6 +453,4 @@ if ($true) {
         -Configuration $Configuration -CommonDirectory (Join-Path $repoRoot "out\$Configuration") -PlatformToolset $PlatformToolset
 }
 
-# A normal build must never rewrite the tracked dependency baselines.  Keep
-# this as a real Git content check, not merely a build-script contract.
-& (Join-Path $repoRoot 'tools\tests\test-tracked-editor-runtime-clean.ps1')
+Assert-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot -Snapshot $trackedEditorRuntimeSnapshot
