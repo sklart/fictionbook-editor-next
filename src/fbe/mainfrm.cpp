@@ -485,15 +485,59 @@ static bool SameArchiveMruIdentity(const DocumentLocation& left, const DocumentL
 		left.entryPath == right.entryPath && left.entryOccurrence == right.entryOccurrence;
 }
 
-static bool FindArchiveMruRecord(const CString& menuText, DocumentLocation& location)
+// CRecentDocumentList stores this opaque key, never a caption.  Captions are
+// deliberately rebuilt for the menu, so they cannot become document identity.
+static const wchar_t* const kArchiveMruKeyPrefix = L"\x1Earchive\t";
+
+static CString ArchiveMruKey(const DocumentLocation& location)
 {
+	CString key; key.Format(L"%s%u\t%u\t%s\t%s", kArchiveMruKeyPrefix, static_cast<unsigned int>(location.containerKind), location.entryOccurrence,
+		static_cast<LPCWSTR>(location.storagePath), static_cast<LPCWSTR>(location.entryPath));
+	return key;
+}
+
+static bool ParseArchiveMruKey(const CString& key, DocumentLocation& location)
+{
+	location = DocumentLocation();
+	if (key.Left(wcslen(kArchiveMruKeyPrefix)) != kArchiveMruKeyPrefix) return false;
+	std::vector<CString> fields; SplitArchiveMruFields(key.Mid(wcslen(kArchiveMruKeyPrefix)), fields);
+	unsigned int kind = 0, occurrence = 0;
+	if (fields.size() != 4 || !ParseArchiveMruUnsigned(fields[0], kind) || !ParseArchiveMruUnsigned(fields[1], occurrence) ||
+		(kind != static_cast<unsigned int>(DocumentContainerKind::Zip) && kind != static_cast<unsigned int>(DocumentContainerKind::Rar))) return false;
+	location.containerKind = static_cast<DocumentContainerKind>(kind); location.entryOccurrence = occurrence;
+	location.storagePath = fields[2]; location.entryPath = fields[3]; location.documentType = DetectFictionBookFileType(location.entryPath);
+	return location.IsArchive() && location.documentType != FictionBookFileType::Unknown;
+}
+
+static bool FindArchiveMruRecord(const CString& key, DocumentLocation& location)
+{
+	DocumentLocation requested;
+	if (!ParseArchiveMruKey(key, requested)) return false;
 	location = DocumentLocation(); std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
 	for (size_t i = 0; i < records.size(); ++i)
-		if (ArchiveMruDisplayName(records, i).CompareNoCase(menuText) == 0) { location = records[i].location; return true; }
-	// Compatibility with the old MRU menu, which stored just the archive path.
-	for (size_t i = 0; i < records.size(); ++i)
-		if (records[i].location.storagePath.CompareNoCase(menuText) == 0) { location = records[i].location; return true; }
+		if (SameArchiveMruIdentity(records[i].location, requested)) { location = records[i].location; return true; }
 	return false;
+}
+
+static CString ArchiveMruCaption(const CString& key)
+{
+	DocumentLocation location; if (!FindArchiveMruRecord(key, location)) return key;
+	std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
+	for (size_t i = 0; i < records.size(); ++i) if (SameArchiveMruIdentity(records[i].location, location)) return ArchiveMruDisplayName(records, i);
+	return key;
+}
+
+static void RefreshMruMenu(CRecentDocumentList& list)
+{
+	HMENU menu = list.GetMenuHandle(); if (menu == NULL) return;
+	for (int offset = 0; offset < list.m_arrDocs.GetSize(); ++offset)
+	{
+		const UINT id = ID_FILE_MRU_FIRST + offset; CString key;
+		if (!list.GetFromList(id, key)) continue;
+		DocumentLocation archiveLocation;
+		const CString caption = ParseArchiveMruKey(key, archiveLocation) ? ArchiveMruCaption(key) : key;
+		::ModifyMenu(menu, id, MF_BYCOMMAND | MF_STRING, id, caption);
+	}
 }
 
 static void RememberArchiveMruRecord(CRecentDocumentList& list, const DocumentLocation& location)
@@ -513,9 +557,9 @@ static void RememberArchiveMruRecord(CRecentDocumentList& list, const DocumentLo
 	::FlushFileBuffers(destination); ::CloseHandle(destination);
 	if (written && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
-		list.AddToList(ArchiveMruDisplayName(retained, 0));
+		list.AddToList(ArchiveMruKey(location));
 		for (int i = list.m_arrDocs.GetSize() - 1; i >= 0; --i) if (CString(list.m_arrDocs[i].szDocName).CompareNoCase(location.storagePath) == 0) list.m_arrDocs.RemoveAt(i);
-		list.UpdateMenu();
+		list.UpdateMenu(); RefreshMruMenu(list);
 	}
 	else ::DeleteFile(temporary);
 }
@@ -523,7 +567,24 @@ static void RememberArchiveMruRecord(CRecentDocumentList& list, const DocumentLo
 static void AddArchiveMruRecordsToList(CRecentDocumentList& list)
 {
 	std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
-	for (size_t i = records.size(); i > 0; --i) list.AddToList(ArchiveMruDisplayName(records, i - 1));
+	for (size_t i = records.size(); i > 0; --i) list.AddToList(ArchiveMruKey(records[i - 1].location));
+	RefreshMruMenu(list);
+}
+
+static void RemoveLegacyArchiveMruEntries(CRecentDocumentList& list)
+{
+	std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
+	for (int index = list.m_arrDocs.GetSize() - 1; index >= 0; --index)
+	{
+		const CString value(list.m_arrDocs[index].szDocName);
+		DocumentLocation parsed;
+		bool remove = ParseArchiveMruKey(value, parsed) || DetectDocumentContainerKind(value) != DocumentContainerKind::None ||
+			(value.Find(L" \x2014 ") >= 0 && (value.Right(4).CompareNoCase(L".zip") == 0 || value.Right(4).CompareNoCase(L".rar") == 0));
+		for (size_t record = 0; !remove && record < records.size(); ++record)
+			remove = value.CompareNoCase(records[record].location.storagePath) == 0 || value.CompareNoCase(ArchiveMruDisplayName(records, record)) == 0;
+		if (remove) list.m_arrDocs.RemoveAt(index);
+	}
+	list.UpdateMenu();
 }
 
 static CString ArchiveRecoveryPath()
@@ -590,9 +651,17 @@ static void WritePortableMru(const CRecentDocumentList& list)
 	const CString path = PortableMruPath(), temporary = path + L".tmp";
 	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(file == INVALID_HANDLE_VALUE) return;
-	for(int index = 0; index < list.m_arrDocs.GetSize(); ++index) { const CString line = CString(list.m_arrDocs[index].szDocName) + L"\r\n"; DWORD written = 0; if(!::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) || written != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) { ::CloseHandle(file); ::DeleteFile(temporary); return; } }
+	for(int index = 0; index < list.m_arrDocs.GetSize(); ++index) { const CString value(list.m_arrDocs[index].szDocName); DocumentLocation archive; if (ParseArchiveMruKey(value, archive)) continue; const CString line = value + L"\r\n"; DWORD written = 0; if(!::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) || written != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) { ::CloseHandle(file); ::DeleteFile(temporary); return; } }
 	::FlushFileBuffers(file); ::CloseHandle(file);
 	if(!::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) ::DeleteFile(temporary);
+}
+
+static void WriteRegistryMruWithoutArchive(CRecentDocumentList& list, LPCTSTR settingsKey)
+{
+	ATL::CSimpleArray<CRecentDocumentList::_DocEntry> saved = list.m_arrDocs;
+	for (int index = list.m_arrDocs.GetSize() - 1; index >= 0; --index) { DocumentLocation archive; if (ParseArchiveMruKey(CString(list.m_arrDocs[index].szDocName), archive)) list.m_arrDocs.RemoveAt(index); }
+	list.WriteToRegistry(settingsKey);
+	list.m_arrDocs = saved; list.UpdateMenu(); RefreshMruMenu(list);
 }
 
 struct PortableToolbarItem
@@ -3055,7 +3124,8 @@ void CMainFrame::InitPlugins()
 		m_mru.ReadFromRegistry(_Settings.GetKeyPath());
 	else
 		ReadPortableMru(m_mru);
-	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
+	m_mru.SetMaxEntries(10);
+	RemoveLegacyArchiveMruEntries(m_mru);
 	AddArchiveMruRecordsToList(m_mru);
 	StartupTrace::Event(L"plugin", L"P160", L"MRU initialized");
 
@@ -3570,7 +3640,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   if(start_with_params)
   {
 	  if (m_document_location.IsArchive()) RememberArchiveMruRecord(m_mru, m_document_location);
-	  else m_mru.AddToList(startupFileName);
+	  else { m_mru.AddToList(startupFileName); RefreshMruMenu(m_mru); }
   	  if(_Settings.RestoreFilePosition())
 	  {
 			m_restore_pos_cmdline = true;
@@ -3763,7 +3833,7 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
     GetWindowPlacement(&wpl);
 	_Settings.SetWindowPosition(wpl);
 	if (DeploymentContext::RegistryPersistenceAllowed())
-		m_mru.WriteToRegistry(_Settings.GetKeyPath());
+		WriteRegistryMruWithoutArchive(m_mru, _Settings.GetKeyPath());
 	else
 		WritePortableMru(m_mru);
     // save toolbars state
@@ -4516,12 +4586,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		if (secondOpen == OK) RememberArchiveMruRecord(m_mru, m_document_location);
 		if (secondOpen == OK) { m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT); }
 		std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
-		CString firstMenu;
-		for (size_t index = 0; index < records.size(); ++index) if (SameArchiveMruIdentity(records[index].location, first)) { firstMenu = ArchiveMruDisplayName(records, index); break; }
+		const CString firstKey = ArchiveMruKey(first); WORD firstCommand = 0;
+		for (int offset = 0; offset < m_mru.m_arrDocs.GetSize(); ++offset) { CString key; const WORD candidate = ID_FILE_MRU_FIRST + offset; if (m_mru.GetFromList(candidate, key) && key == firstKey) { firstCommand = candidate; break; } }
 		DocumentLocation menuFirst;
-		const bool menuLookup = !firstMenu.IsEmpty() && FindArchiveMruRecord(firstMenu, menuFirst) && SameArchiveMruIdentity(menuFirst, first);
-		const FILE_OP_STATUS firstOpen = secondOpen == OK && menuLookup ? LoadFile(menuFirst.storagePath, &menuFirst) : FAIL;
-		if (firstOpen == OK) RememberArchiveMruRecord(m_mru, m_document_location);
+		const bool menuLookup = firstCommand != 0 && FindArchiveMruRecord(firstKey, menuFirst) && SameArchiveMruIdentity(menuFirst, first);
+		BOOL handled = FALSE;
+		const LRESULT handlerResult = secondOpen == OK && menuLookup ? OnFileOpenMRU(0, firstCommand, NULL, handled) : 1;
+		const FILE_OP_STATUS firstOpen = handlerResult == 0 && SameArchiveMruIdentity(m_document_location, first) ? OK : FAIL;
 		ReadArchiveMruRecords(records);
 		bool hasFirst = false, hasSecond = false;
 		for (size_t index = 0; index < records.size(); ++index) { hasFirst = hasFirst || SameArchiveMruIdentity(records[index].location, first); hasSecond = hasSecond || SameArchiveMruIdentity(records[index].location, second); }
@@ -6120,7 +6191,7 @@ LRESULT CMainFrame::OnDropFiles(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /
 		if (LoadFile(buf)==OK)
 		{
 			if (m_document_location.IsArchive()) RememberArchiveMruRecord(m_mru, m_document_location);
-			else m_mru.AddToList(m_doc->m_filename);
+			else { m_mru.AddToList(m_doc->m_filename); RefreshMruMenu(m_mru); }
 		}
 	  }
 	  else if ((ext.CompareNoCase(L".JPG") == 0) || (ext.CompareNoCase(L".JPEG") == 0) || (ext.CompareNoCase(L".PNG") == 0))
@@ -6144,7 +6215,7 @@ LRESULT CMainFrame::OnNavigate(WORD, WORD, HWND, BOOL&)
 		if (LoadFile(url)==OK)
 		{
 			if (m_document_location.IsArchive()) RememberArchiveMruRecord(m_mru, m_document_location);
-			else m_mru.AddToList(m_doc->m_filename);
+			else { m_mru.AddToList(m_doc->m_filename); RefreshMruMenu(m_mru); }
 		}
 	  }
 	  else if ((ext.CompareNoCase(L".JPG") == 0) || (ext.CompareNoCase(L".JPEG") == 0) || (ext.CompareNoCase(L".PNG") == 0))
@@ -6179,7 +6250,7 @@ LRESULT CMainFrame::OnFileOpen(WORD, WORD, HWND, BOOL& /* unused: bHandled */)
   if (LoadFile()==OK)
   {
 	if (m_document_location.IsArchive()) RememberArchiveMruRecord(m_mru, m_document_location);
-	else m_mru.AddToList(m_doc->m_filename);
+	else { m_mru.AddToList(m_doc->m_filename); RefreshMruMenu(m_mru); }
 	if(_Settings.RestoreFilePosition())
 	{
 		int saved_pos = U::GetFileSelectedPos(m_doc->m_filename);
@@ -6195,11 +6266,14 @@ LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND
 	m_mru.GetFromList(wID, filename);
 
 	DocumentLocation archiveLocation;
-	const DocumentLocation* preferredArchiveLocation = FindArchiveMruRecord(filename, archiveLocation) ? &archiveLocation : NULL;
-	switch(LoadFile(filename, preferredArchiveLocation))
+	const bool archiveMru = FindArchiveMruRecord(filename, archiveLocation);
+	const FILE_OP_STATUS result = archiveMru ? LoadFile(archiveLocation.storagePath, &archiveLocation) : LoadFile(filename);
+	switch(result)
 	{
 		case OK:
 			m_mru.MoveToTop(wID);
+			if (archiveMru) RememberArchiveMruRecord(m_mru, archiveLocation);
+			RefreshMruMenu(m_mru);
 			// added by SeNS
 			if(_Settings.RestoreFilePosition())
 			{
@@ -6209,6 +6283,7 @@ LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND
 			break;
 		case FAIL:
 			m_mru.RemoveFromList(wID);
+			RefreshMruMenu(m_mru);
 			break;
 		case CANCELLED:
 			break;
