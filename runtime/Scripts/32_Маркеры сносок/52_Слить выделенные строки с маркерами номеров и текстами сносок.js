@@ -1,10 +1,17 @@
 // Скрипт «Слить выделенные строки с маркерами номеров и текстами сносок»
-// Версия 2.11 (real)
+// Версия 2.31 (real)
 // В скрипте использованы фрагменты кода ув.Sclex-а «Удалить пустые строки в выделении» + помощь DeepSeek + stokber (сентябрь 2026). 
 
 function Run() {
-    var undoMsg = "Слить выделенные строки с маркерами номеров и текстами сносок";
-    var statusBarMsg = "Объединяем номера и тексты сносок…";
+
+    //                   НАСТРОЙКА
+    // 0 - обрамлять скобками простым текстом, 1- обрамлять скобками html-текстом:
+    var escapeHtml = 0;
+    // var escapeHtml = 1; // этот режим имеет свои особенности требующие их понимания.
+
+    var name = "Слить выделенные строки с маркерами номеров и текстами сносок";
+    var version = "2.31";
+    var undoMsg = "слияние номеров и текстов сносок";
     //имя тэга, который будет использован для маркеров начала и конца выделения
     var markerTagName = "I";
 
@@ -41,9 +48,7 @@ function Run() {
     // 1) Строки, которые должны быть полностью очищены (содержат "Вернуться" или "(обратно)")
     var delStr = new RegExp("^(?: | |&nbsp;|" + nbspChar + ")*?(Вернуться|\\\(?обратно\\\)?)(?: | |&nbsp;|" + nbspChar + ")*?$", "i");
     // 2) Строки, содержащие номер (цифры, возможно в [ ] или { })
-    // var numStr = new RegExp("^(?: | |&nbsp;|" + nbspChar + ")*?((\\(|\\[|\\{)?\\d+(\\)|\\]|\\}|\\.)?)(?: | |&nbsp;|" + nbspChar + ")*?$", "i");
-	
-	var numStr = new RegExp("^(?: | |&nbsp;|" + nbspChar + ")*?((\\(|\\[|\\{)?\\d+(\\)|\\]|\\})?\.?)(?: | |&nbsp;|" + nbspChar + ")*?$", "i");
+	var numStr = new RegExp("^(?: | |&nbsp;|" + nbspChar + ")*?((\\(|\\[|\\{)?\\d+(\\)|\\]|\\})?\\.?)(?: | |&nbsp;|" + nbspChar + ")*?$", "i");
 
     // === Запрос скобок для номеров 2 ===
     var bracket = prompt("Введите новые откр. и закр. скобки через пробел (например: [ ], { }, ( ) или [~ ~])  или оставьте поле пустым для удаления скобок:", "[~ ~]");
@@ -53,7 +58,15 @@ function Run() {
     var openBracket;
     var closeBracket;
 
-    var parts = bracket.replace(/^\s+|\s+$/g, "").split(/\s+/); // скобки.
+    var parts = bracket; // парные скобки.
+
+    // Для простого текста экранируем символы HTML; при escapeHtml == 1
+    // пользователь может намеренно передать HTML-разметку.
+    if (escapeHtml == 0) {
+        parts = parts.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    parts = parts.replace(/^\s+|\s+$/g, "").split(/\s+/); // скобки.
     var partsN = bracket.replace(/^\s+|\s+$/g, "");
 
     // разрешённая одинарная правая "скобка"...
@@ -134,9 +147,6 @@ function Run() {
     var tr, el, prv, pm, saveNext, saveFirstEmpty, nextPtr;
 
     window.external.BeginUndoUnit(document, undoMsg);
-    try {
-        window.external.SetStatusBarText(statusBarMsg);
-    } catch (e) {}
     var fbwBody = document.getElementById("fbw_body");
 
     var tr3 = document.selection.createRange();
@@ -195,8 +205,7 @@ function Run() {
     processPs();
 
     removesCnt -= mergedCnt + servicCnt; // удалено в итоге пустых строк.
-    try {
-        window.external.SetStatusBarText("Объединено номеров: " + mergedCnt + ". Удалено пустых абзацев: " + removesCnt + ". Удалено служебных абзацев: " + servicCnt + ".");
-    } catch (e) {}
+
+    MsgBox("Объединено номеров:\t\t " + mergedCnt + "\nУдалено пустых абзацев:\t\t " + removesCnt + "\nУдалено служебных абзацев:\t " + servicCnt + "\n\nСкрипт «" + name + "» v." + version);
     window.external.EndUndoUnit(document);
 }
