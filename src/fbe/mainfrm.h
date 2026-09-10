@@ -11,6 +11,7 @@
 #include "res1.h"
 #include "RuntimeLocalization.h"
 #include "DocumentLocation.h"
+#include "recovery\\RecoveryService.h"
 
 #include "atlctrlsext.h"
 
@@ -263,7 +264,7 @@ public:
   bool			  m_sel_changed:1;
   bool			  m_change_state:1;
   bool			  m_need_title_update:1;
-  bool            m_recovery_written:1;
+	FbeRecovery::RecoveryService m_recovery;
   UINT            m_current_dpi;
   bool            m_status_layout_posted;
 
@@ -334,7 +335,7 @@ public:
   // contruction/destruction
   CMainFrame() : m_doc(0), m_last_tree_update(0), m_last_sci_ovr(true), m_last_ie_ovr(true),
     m_doc_changed(false), m_sel_changed(false), m_change_state(false), m_need_title_update(false),
-    m_recovery_written(false), m_current_dpi(96), m_status_layout_posted(false), m_saved_xml(0), m_cb_updated(false),
+    m_current_dpi(96), m_status_layout_posted(false), m_saved_xml(0), m_cb_updated(false),
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0), m_current_view(BODY), m_last_view(DESC),
@@ -390,12 +391,9 @@ public:
 
   FILE_OP_STATUS	  SaveFile(bool askname);
   FILE_OP_STATUS	  LoadFile(const wchar_t *initfilename=NULL, const DocumentLocation* preferredArchiveLocation=NULL);
-  CString GetRecoveryFileName();
-  void DeleteRecoveryFile();
   void RunPortableStateTestScenario();
   void TryRestoreRecovery();
   bool SaveRecoveryNow();
-  bool SaveSourceRecoveryCopy(const CString& filename);
 
   // show a specific view
   enum VIEW_TYPE { BODY, DESC, SOURCE, NEXT };

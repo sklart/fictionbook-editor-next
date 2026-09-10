@@ -261,6 +261,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="archive\ArchiveReader.cpp" />
 	<ClCompile Include="archive\ArchiveDocumentResolver.cpp" />
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp" />
+	<ClCompile Include="recovery\RecoveryStore.cpp" />
+	<ClCompile Include="recovery\RecoveryService.cpp" />
     <ClCompile Include="archive\ZipArchiveWriter.cpp" />
     <ClCompile Include="FBE.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
@@ -393,6 +395,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="DocumentTree.h" />
     <ClInclude Include="DocumentLocation.h" />
 	<ClInclude Include="document\ArchiveRecentDocuments.h" />
+	<ClInclude Include="recovery\RecoveryStore.h" />
+	<ClInclude Include="recovery\RecoveryService.h" />
     <ClInclude Include="archive\ArchiveReader.h" />
 	<ClInclude Include="archive\ArchiveDocumentResolver.h" />
     <ClInclude Include="ElementDescMnr.h" />

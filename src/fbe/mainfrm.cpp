@@ -17,6 +17,7 @@
 #include "document\\ArchiveRecentDocuments.h"
 #include "archive\\ArchiveReader.h"
 #include "archive\\ArchiveDocumentResolver.h"
+#include "recovery\\RecoveryService.h"
 #include "ArchiveEntryPicker.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
@@ -650,49 +651,6 @@ static void RemoveLegacyArchiveMruEntries(CRecentDocumentList& list)
 		if (remove) list.m_arrDocs.RemoveAt(index);
 	}
 	list.UpdateMenu();
-}
-
-static CString ArchiveRecoveryPath()
-{
-	return CString(DeploymentContext::RecoveryDirectory().c_str()) + L"Recovery.archive.txt";
-}
-
-static bool WriteArchiveRecoveryLocation(const DocumentLocation& location)
-{
-	const CString path = ArchiveRecoveryPath(), temporary = path + L".tmp";
-	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file == INVALID_HANDLE_VALUE) return false;
-	CString text;
-	text.Format(L"2\r\n%u\r\n%u\r\n%u\r\n%I64u\r\n%I64u\r\n%s\r\n%s\r\n", static_cast<unsigned int>(location.containerKind), location.entryOccurrence,
-		static_cast<unsigned int>(location.documentType), location.containerLastWriteTime, location.containerFileSize,
-		static_cast<LPCWSTR>(location.storagePath), static_cast<LPCWSTR>(location.entryPath));
-	DWORD written = 0;
-	const bool ok = ::WriteFile(file, text.GetString(), text.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
-	::FlushFileBuffers(file); ::CloseHandle(file);
-	if (ok && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
-	::DeleteFile(temporary); return false;
-}
-
-static bool ReadArchiveRecoveryLocation(DocumentLocation& location)
-{
-	location = DocumentLocation();
-	HANDLE file = ::CreateFile(ArchiveRecoveryPath(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file == INVALID_HANDLE_VALUE) return false;
-	const DWORD length = ::GetFileSize(file, NULL);
-	if (length == INVALID_FILE_SIZE || length > 16 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return false; }
-	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
-	const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
-	if (!ok || read != length) return false;
-	std::vector<CString> fields; int position = 0;
-	while (position >= 0) { CString field = CString(&text[0]).Tokenize(L"\n", position); field.TrimRight(L"\r"); fields.push_back(field); }
-	if (fields.size() < 8 || fields[0] != L"2") return false;
-	const unsigned long kind = wcstoul(fields[1], NULL, 10), occurrence = wcstoul(fields[2], NULL, 10), type = wcstoul(fields[3], NULL, 10);
-	if (kind != static_cast<unsigned long>(DocumentContainerKind::Zip) && kind != static_cast<unsigned long>(DocumentContainerKind::Rar)) return false;
-	if (occurrence > UINT_MAX || type > static_cast<unsigned long>(FictionBookFileType::Fbd) || fields[6].IsEmpty() || fields[7].IsEmpty()) return false;
-	location.containerKind = static_cast<DocumentContainerKind>(kind); location.entryOccurrence = static_cast<unsigned int>(occurrence);
-	location.documentType = static_cast<FictionBookFileType>(type); location.containerLastWriteTime = _wcstoui64(fields[4], NULL, 10); location.containerFileSize = _wcstoui64(fields[5], NULL, 10);
-	location.storagePath = fields[6]; location.entryPath = fields[7];
-	return location.documentType != FictionBookFileType::Unknown;
 }
 
 static void ReadPortableMru(CRecentDocumentList& list)
@@ -1993,7 +1951,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	m_document_location.containerLastWriteTime = m_file_age;
 	m_document_location.containerFileSize = m_file_size;
 	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
-	DeleteRecoveryFile();
+		m_recovery.DeleteIfWritten();
 	return OK;
   }
 
@@ -2024,7 +1982,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	  m_file_age = FileAge(m_doc->m_filename);
 	  if(IsSourceActive())
 		  m_source.SendMessage(SCI_SETSAVEPOINT);
-      DeleteRecoveryFile();
+		m_recovery.DeleteIfWritten();
 	  UpdateStatusBar();
       return OK;
     }
@@ -2037,7 +1995,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	  m_file_age = FileAge(m_doc->m_filename);
 	  if(IsSourceActive())
 		  m_source.SendMessage(SCI_SETSAVEPOINT);
-      DeleteRecoveryFile();
+		m_recovery.DeleteIfWritten();
 	  return OK;
   }
   else
@@ -3893,7 +3851,7 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 {
   if (DiscardChanges()) 
   {
-    DeleteRecoveryFile();
+	m_recovery.DeleteIfWritten();
 	// added by SeNS
 	if (m_Speller) 
 	{
@@ -3954,124 +3912,37 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
   return 0;
 }
 
-CString CMainFrame::GetRecoveryFileName()
-{
-	CString directory(DeploymentContext::RecoveryDirectory().c_str());
-	::CreateDirectory(directory, NULL);
-	return directory + L"Recovery.fb2";
-}
-
-void CMainFrame::DeleteRecoveryFile()
-{
-	if (!m_recovery_written)
-		return;
-
-	::DeleteFile(GetRecoveryFileName());
-	::DeleteFile(ArchiveRecoveryPath());
-	m_recovery_written = false;
-}
-
-bool CMainFrame::SaveSourceRecoveryCopy(const CString& filename)
-{
-	CString temporaryFile;
-	HANDLE file = INVALID_HANDLE_VALUE;
-	StartupTrace::Event(L"recovery", L"R100", L"source recovery started");
-	try
-	{
-		CString directory(filename);
-		const int separator = directory.ReverseFind(L'\\');
-		if (separator < 0)
-			directory = L".\\";
-		else
-			directory.Delete(separator, directory.GetLength() - separator);
-
-		wchar_t temporaryBuffer[MAX_PATH] = {};
-		if (::GetTempFileName(directory, L"fbs", 0, temporaryBuffer) == 0)
-			return false;
-		temporaryFile = temporaryBuffer;
-
-		const LRESULT textLength = m_source.SendMessage(SCI_GETLENGTH);
-		std::vector<char> text(static_cast<size_t>(textLength) + 1);
-		m_source.SendMessage(SCI_GETTEXT, textLength + 1, reinterpret_cast<LPARAM>(text.data()));
-
-		file = ::CreateFile(temporaryFile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-			FILE_ATTRIBUTE_NORMAL, NULL);
-		if (file == INVALID_HANDLE_VALUE)
-			throw ::GetLastError();
-
-		DWORD written = 0;
-		if (textLength > 0 && (!::WriteFile(file, text.data(), static_cast<DWORD>(textLength),
-			&written, NULL) || written != static_cast<DWORD>(textLength)))
-			throw ::GetLastError();
-		if (!::FlushFileBuffers(file))
-			throw ::GetLastError();
-		::CloseHandle(file);
-		file = INVALID_HANDLE_VALUE;
-
-		if (!::MoveFileEx(temporaryFile, filename,
-			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-			throw ::GetLastError();
-
-		StartupTrace::Event(L"recovery", L"R110", L"source recovery completed");
-		return true;
-	}
-	catch (...)
-	{
-		if (file != INVALID_HANDLE_VALUE)
-			::CloseHandle(file);
-		if (!temporaryFile.IsEmpty())
-			::DeleteFile(temporaryFile);
-		StartupTrace::Error(L"recovery", L"R120", L"source recovery failed");
-		return false;
-	}
-}
-
 bool CMainFrame::SaveRecoveryNow()
 {
-	if (!m_doc || !DocChanged())
-		return false;
-
-	const CString recoveryFile(GetRecoveryFileName());
-	if (!m_recovery_written && ::GetFileAttributes(recoveryFile) != INVALID_FILE_ATTRIBUTES)
-		return false;
-
-	const bool saved = IsSourceActive()
-		? SaveSourceRecoveryCopy(recoveryFile)
-		: (!m_bad_xml && m_doc->SaveRecoveryCopy(recoveryFile));
-	if (!saved && m_bad_xml)
-		StartupTrace::Warning(L"recovery", L"R130", L"source recovery skipped because source XML is invalid");
-	if (saved && m_document_location.IsArchive())
-		WriteArchiveRecoveryLocation(m_document_location);
-	else if (saved)
-		::DeleteFile(ArchiveRecoveryPath());
-	m_recovery_written = saved || m_recovery_written;
-	return saved;
+	std::vector<char> sourceText;
+	const bool sourceActive = IsSourceActive();
+	if (sourceActive)
+	{
+		const LRESULT textLength = m_source.SendMessage(SCI_GETLENGTH);
+		sourceText.resize(static_cast<size_t>(textLength) + 1);
+		m_source.SendMessage(SCI_GETTEXT, textLength + 1, reinterpret_cast<LPARAM>(sourceText.data()));
+	}
+	return m_recovery.Save(m_doc, DocChanged(), sourceActive, m_bad_xml,
+		sourceText.empty() ? NULL : sourceText.data(), sourceText.empty() ? 0 : sourceText.size() - 1, m_document_location);
 }
 void CMainFrame::TryRestoreRecovery()
 {
-	if (_ARGV.GetSize() > 0)
-		return;
-
-	const CString recoveryFile(GetRecoveryFileName());
-	const DWORD attributes = ::GetFileAttributes(recoveryFile);
-	if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY))
-		return;
+	FbeRecovery::RestoreCandidate candidate;
+	if (!m_recovery.GetRestoreCandidate(_ARGV.GetSize() > 0, candidate)) return;
 
 	if (!IsFbeTestScenario(L"archive-recovery-verify") && !IsFbeTestScenario(L"archive-recovery-external-verify") && U::MessageBox(MB_YESNO | MB_ICONQUESTION, IDS_RECOVERY_CAPTION, IDS_RECOVERY_MSG) != IDYES)
 		return;
 
-	DocumentLocation recoveredArchiveLocation;
-	const bool archiveBacked = ReadArchiveRecoveryLocation(recoveredArchiveLocation);
-	if (LoadFile(recoveryFile) == OK)
+	if (LoadFile(candidate.snapshotPath) == OK)
 	{
-		if (archiveBacked)
+		if (candidate.archiveBacked)
 		{
-			m_document_location = recoveredArchiveLocation;
-			m_doc->m_filename = recoveredArchiveLocation.storagePath;
+			m_document_location = candidate.archiveLocation;
+			m_doc->m_filename = candidate.archiveLocation.storagePath;
 			m_doc->m_namevalid = true;
-			m_doc->SetDocumentFileType(recoveredArchiveLocation.documentType);
-			m_file_age = recoveredArchiveLocation.containerLastWriteTime;
-			m_file_size = recoveredArchiveLocation.containerFileSize;
+			m_doc->SetDocumentFileType(candidate.archiveLocation.documentType);
+			m_file_age = candidate.archiveLocation.containerLastWriteTime;
+			m_file_size = candidate.archiveLocation.containerFileSize;
 		}
 		else
 		{
@@ -4081,9 +3952,7 @@ void CMainFrame::TryRestoreRecovery()
 		m_doc->ResetSavePoint();
 		if (m_bad_xml)
 			m_bad_filename = L"Untitled.fb2";
-		::DeleteFile(recoveryFile);
-		::DeleteFile(ArchiveRecoveryPath());
-		m_recovery_written = false;
+		m_recovery.CompleteRestore();
 	}
 }
 
@@ -4368,7 +4237,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
 	const CString scriptsDirectory(DeploymentContext::UserScriptsDirectory().c_str());
 	const CString diagnosticsMarker(diagnosticsDirectory + L"portable-state-sentinel.txt");
-	const CString recoveryMarker(GetRecoveryFileName());
+	const CString recoveryMarker(m_recovery.SnapshotPath());
 	const CString reportPath(diagnosticsDirectory + L"portable-state-report.txt");
 	const WORD portableStateHotkeyFlags = FVIRTKEY | FCONTROL | FSHIFT;
 	const WORD portableStateHotkeyKey = VK_F24;

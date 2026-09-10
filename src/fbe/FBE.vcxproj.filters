@@ -124,6 +124,8 @@
     <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="archive\ArchiveDocumentResolver.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="recovery\RecoveryStore.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="recovery\RecoveryService.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ZipArchiveWriter.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="RuntimeLocalization.cpp">
       <Filter>Source Files</Filter>
@@ -251,6 +253,8 @@
     </ClInclude>
     <ClInclude Include="DocumentLocation.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\ArchiveRecentDocuments.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="recovery\RecoveryStore.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="recovery\RecoveryService.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="archive\ArchiveReader.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="archive\ArchiveDocumentResolver.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="ElementDescMnr.h">

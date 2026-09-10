@@ -10,6 +10,9 @@ function Require([string]$text, [string]$pattern, [string]$message) {
 $reader = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ArchiveReader.cpp')
 $writer = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ZipArchiveWriter.cpp')
 $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
+$archiveMru = Get-Content -Raw (Join-Path $root 'src\fbe\document\ArchiveRecentDocuments.cpp')
+$recoveryStore = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryStore.cpp')
+$recoveryService = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryService.cpp')
 $doc = Get-Content -Raw (Join-Path $root 'src\fbe\FBDoc.cpp')
 $location = Get-Content -Raw (Join-Path $root 'src\fbe\DocumentLocation.h')
 $startup = Get-Content -Raw (Join-Path $root 'src\fbe\FBE.cpp')
@@ -45,17 +48,18 @@ Require $frame 'ShowArchiveError' 'Archive failures must be mapped to user-facin
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
 Require $frame 'FBE-ARCHIVE-MRU\\t2' 'Archive MRU persistence must be explicitly versioned.'
 Require $frame 'ReadArchiveMruRecords' 'Archive MRU must load independent persisted entry identities.'
-Require $frame 'SameArchiveMruIdentity' 'Archive MRU must key records by container, storage path, entry path, and occurrence.'
-Require $frame 'entryOccurrence == right\.entryOccurrence' 'Archive MRU must retain duplicate archive entries by occurrence.'
-Require $frame 'ArchiveMruDisplayName' 'Archive MRU menu entries must identify the selected internal document.'
+Require ($frame + $archiveMru) 'SameArchiveMruIdentity|SameIdentity' 'Archive MRU must key records by container, storage path, entry path, and occurrence.'
+Require $archiveMru 'entryOccurrence == right\.entryOccurrence' 'Archive MRU must retain duplicate archive entries by occurrence.'
+Require ($frame + $archiveMru) 'ArchiveMruDisplayName|DisplayName' 'Archive MRU menu entries must identify the selected internal document.'
 Require $frame 'AddArchiveMruRecordsToList' 'Archive MRU entries must be restored into the recent-files menu.'
 Require $frame 'ErrorCode::EntryNotFound' 'Missing MRU archive entries must fail without selecting another document.'
 Require $frame 'archiveMru \? LoadFile\(archiveLocation\.storagePath, &archiveLocation\)' 'Archive MRU must load the physical container path and exact location, never its caption.'
 Require $frame 'ArchiveMruKey' 'Archive MRU identity must be separate from its menu caption.'
 Require $frame 'RebuildMruMenu' 'MRU submenu must be rebuilt separately from stored identities.'
-Require $frame 'WriteArchiveRecoveryLocation' 'Recovery must retain archive source metadata without rewriting the container.'
-Require $frame 'containerLastWriteTime.*containerFileSize' 'Recovery must persist the archive fingerprint.'
-Require $frame 'SetDocumentFileType\(recoveredArchiveLocation.documentType\)' 'Recovery must restore the authoritative archive FBD type.'
+Require $recoveryStore 'WriteArchiveLocation' 'Recovery must retain archive source metadata without rewriting the container.'
+Require $recoveryStore 'containerLastWriteTime.*containerFileSize' 'Recovery must persist the archive fingerprint.'
+Require $frame 'SetDocumentFileType\(candidate.archiveLocation.documentType\)' 'Recovery must restore the authoritative archive FBD type.'
+Require $recoveryService 'SaveSourceSnapshot' 'Recovery source snapshot persistence must be isolated from the main frame.'
 Require $frame 'm_file_size != FileSize' 'Archive save must reject external changes detected by size as well as timestamp.'
 Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
 Require $frame 'OnFileNew[\s\S]{0,700}m_document_location = DocumentLocation\(\)' 'New documents must not retain an archive save target.'
