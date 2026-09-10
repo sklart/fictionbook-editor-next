@@ -53,13 +53,16 @@ Assert-Equal $toolbar @(32899) 'Reset restores IDR_SCRIPTS default'
 if ($settings -notmatch 'SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY' -or $settings -notmatch 'SetScriptsToolbarCustomizeSize\(const CSize& size, bool apply\)' -or $settings -notmatch 'if\(size\.cx >= 300 && size\.cy >= 200\)') {
     throw 'Dialog size persistence contract is incomplete.'
 }
-foreach ($required in @('SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY', 'GetScriptsToolbarCustomizePlacement', 'SetScriptsToolbarCustomizePlacement', 'MonitorFromRect', 'MONITOR_DEFAULTTONULL', 'CenterWindow(GetParent())')) {
+foreach ($required in @('SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY', 'GetScriptsToolbarCustomizePlacement', 'SetScriptsToolbarCustomizePlacement', 'MonitorFromRect', 'MONITOR_DEFAULTTONULL', 'GetMonitorInfo', 'info.rcWork', 'CenterWindow(GetParent())')) {
     if ($settings -notmatch [regex]::Escape($required) -and $settingsHeader -notmatch [regex]::Escape($required) -and $dialog -notmatch [regex]::Escape($required)) {
         throw "Scripts toolbar placement behavior is missing: $required"
     }
 }
 if ($dialog -notmatch 'placement\.showCmd = SW_SHOWNORMAL' -or $dialog -notmatch 'SetScriptsToolbarCustomizeSize\(') {
     throw 'Scripts toolbar placement must restore normal state and preserve the legacy size fallback.'
+}
+if ($dialog -match 'UiMetrics::UpdateForWindow\(m_hWnd\)' -or $dialog -notmatch 'CreateDialogFontForDpi') {
+    throw 'Dialog must use a local DPI font without replacing main-frame UiMetrics fonts.'
 }
 if ($dialog -notmatch 'SavePlacement\(' -or $dialog -notmatch 'SetScriptsToolbarCustomizePlacement' -or $dialogHeader -notmatch 'MESSAGE_HANDLER\(WM_CLOSE') {
     throw 'Dialog does not persist its size on every close path.'

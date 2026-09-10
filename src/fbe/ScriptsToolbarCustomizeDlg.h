@@ -18,6 +18,7 @@ public:
 	enum { IDD = IDD_SCRIPTS_TOOLBAR_CUSTOMIZE };
 	CScriptsToolbarCustomizeDlg(HWND toolbar, const std::vector<ScriptsToolbarCommand>& available,
 		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings);
+	~CScriptsToolbarCustomizeDlg();
 
 	BEGIN_MSG_MAP(CScriptsToolbarCustomizeDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -51,6 +52,8 @@ private:
 	CToolTipCtrl m_toolTip;
 	CString m_toolTipText;
 	CSize m_minimumSize;
+	HFONT m_dialogFont;
+	UINT m_dpi;
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
@@ -76,6 +79,7 @@ private:
 	void UpdateButtonState();
 	void DrawListItem(const DRAWITEMSTRUCT& item);
 	void RestorePlacement();
+	int Scale(int px) const;
 	bool ToolbarContainsCommand(int command) const;
 	int SelectedAvailableCommand() const;
 	void SavePlacement();

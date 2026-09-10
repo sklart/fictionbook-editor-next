@@ -104,3 +104,18 @@ int UiMetrics::NormalGap() { return Scale(7); }
 int UiMetrics::LargeGap() { return Scale(12); }
 int UiMetrics::IconSize() { return Scale(24); }
 int UiMetrics::ToolbarHeight() { return IconSize() + NormalGap(); }
+
+UINT UiMetrics::DpiForWindow(HWND window) { return GetDpi(window); }
+int UiMetrics::ScaleForDpi(int px, UINT dpi) { return ::MulDiv(px, static_cast<int>(dpi ? dpi : 96), 96); }
+HFONT UiMetrics::CreateDialogFontForDpi(UINT dpi)
+{
+	NONCLIENTMETRICS metrics = {}; metrics.cbSize = sizeof(metrics);
+	typedef BOOL (WINAPI* SystemParametersInfoForDpiProc)(UINT, UINT, PVOID, UINT, UINT);
+	HMODULE user32 = ::GetModuleHandle(L"user32.dll");
+	SystemParametersInfoForDpiProc forDpi = user32 ? reinterpret_cast<SystemParametersInfoForDpiProc>(::GetProcAddress(user32, "SystemParametersInfoForDpi")) : NULL;
+	LOGFONTW font = {};
+	const BOOL read = forDpi != NULL ? forDpi(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0, dpi) : ::SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0);
+	if(read) font = metrics.lfMessageFont;
+	else { HFONT fallback = static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT)); if(fallback != NULL) ::GetObjectW(fallback, sizeof(font), &font); }
+	return ::CreateFontIndirectW(&font);
+}

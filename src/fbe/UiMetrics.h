@@ -16,6 +16,9 @@ public:
 	static int LargeGap();
 	static int IconSize();
 	static int ToolbarHeight();
+	static UINT DpiForWindow(HWND window);
+	static int ScaleForDpi(int px, UINT dpi);
+	static HFONT CreateDialogFontForDpi(UINT dpi);
 
 private:
 	static void EnsureFonts();

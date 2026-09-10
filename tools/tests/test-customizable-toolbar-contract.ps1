@@ -12,6 +12,7 @@ $dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Scri
 $dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.h')
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
 $mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+$resource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
 
 foreach ($required in @(
     'if (!lpTbNotify || lpTbNotify->iItem < 0)',
@@ -66,6 +67,19 @@ foreach ($required in @('MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'MESSAGE_HAN
     if ($dialogHeader.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Заголовок диалога не обрабатывает системное событие: $required"
     }
+}
+foreach ($listId in @('IDC_SCRIPTS_TOOLBAR_AVAILABLE', 'IDC_SCRIPTS_TOOLBAR_CURRENT')) {
+    if ($resource -notmatch "$listId,[^\r\n]*LBS_HASSTRINGS[^\r\n]*LBS_OWNERDRAWFIXED") {
+        throw "Owner-draw listbox $listId must retain its strings."
+    }
+}
+foreach ($required in @('CreateDialogFontForDpi', 'fbe.scripts_toolbar_customize.close', 'SetDlgItemText(m_hWnd, IDCANCEL')) {
+    if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Диалог не сохраняет требуемое локальное поведение: $required"
+    }
+}
+if ($dialogSource.IndexOf('UiMetrics::UpdateForWindow(m_hWnd)', [StringComparison]::Ordinal) -ge 0) {
+    throw 'Диалог не должен инвалидировать глобальные шрифты UiMetrics главного окна.'
 }
 
 if ($mainFrame.IndexOf('m_ScriptsToolbar.Customize()', [StringComparison]::Ordinal) -ge 0) {
