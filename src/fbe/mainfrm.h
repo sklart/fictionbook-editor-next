@@ -13,6 +13,9 @@
 #include "document\\DocumentLocation.h"
 #include "document\\DocumentSession.h"
 #include "recovery\\RecoveryService.h"
+#include "scripts\\ScriptDescriptor.h"
+#include "scripts\\ScriptVisualResources.h"
+#include "scripts\\ScriptMenuBuilder.h"
 
 #include "atlctrlsext.h"
 
@@ -294,42 +297,13 @@ public:
   int			  m_incsearch;
   bool			  m_is_fail;
 
-  // Script structure (either for scripts files or for scripts folders)
-  struct ScrInfo
-  {
-	  CString name;
-	  CString path;
-	  CString relativePath;
-	  CString order;
-	  HANDLE picture;
-	  int pictType;
-	  int Type;
-	  CString id;
-	  CString refid;
-	  bool isFolder;
-	  int wID;
-	  /*ACCEL accel;*/
-  };
-
-  // Script small menu icon (16x16) type
-  enum ScrPictType
-  {
-	  NO_PICT,
-	  BITMAP,
-	  ICON	  
-  };
-
-  CSimpleArray<ScrInfo>	 m_scripts;
-  CSimpleMap<unsigned int, HBITMAP> m_scripts_images;
-  void LoadScriptPicture(ScrInfo& item, const CString& path, const CString& baseName);
-	void AddScriptsSubMenu(HMENU, CString, CSimpleArray<ScrInfo>&, int&);
-	void AssignScriptCommandIds();
+	FbeScripts::MenuBuilder m_script_menu;
+	FbeScripts::VisualResources m_script_visuals;
 	void ReleaseScriptResources();
-	void SortScripts();
 	void RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar);
 	void SavePortableToolbarLayout();
-	ScrInfo* m_last_script;
-  void InitScriptHotkey(CMainFrame::ScrInfo&);
+	ScriptDescriptor* m_last_script;
+  void InitScriptHotkey(ScriptDescriptor&);
 
   // contruction/destruction
   CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_sci_ovr(true), m_last_ie_ovr(true),
@@ -338,7 +312,7 @@ public:
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0), m_current_view(BODY), m_last_view(DESC),
-    m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_last_script(0),
+	 m_script_menu(ID_EDIT_INS_SYMBOL + 101, 999), m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
     m_source_selection_transferred(false), m_source_selection_start(0),
 		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL),

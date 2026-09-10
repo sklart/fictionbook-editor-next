@@ -1705,11 +1705,11 @@ BOOL CMainFrame::OnIdle()
 			UIEnable(disabled_commands[i], FALSE);
 
 		HMENU scripts = GetSubMenu(m_MenuBar.GetMenu(), 7);
-		for(int i = 0; i < m_scripts.GetSize(); ++i)
+		for(int i = 0; i < m_script_menu.Count(); ++i)
 		{
-			if(!m_scripts[i].isFolder)
+			if(!m_script_menu.Item(i).isFolder)
 			{
-				::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_scripts[i].wID, MF_BYCOMMAND | MF_GRAYED);
+				::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_script_menu.Item(i).commandId, MF_BYCOMMAND | MF_GRAYED);
 			}
 		}
 
@@ -1784,11 +1784,11 @@ BOOL CMainFrame::OnIdle()
 	else
 	{
 		HMENU scripts = GetSubMenu(m_MenuBar.GetMenu(), 7);
-		for (int i = 0; i < m_scripts.GetSize(); ++i)
+		for (int i = 0; i < m_script_menu.Count(); ++i)
 		{
-			if(!m_scripts[i].isFolder)
+			if(!m_script_menu.Item(i).isFolder)
 			{
-				::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_scripts[i].wID, MF_BYCOMMAND | MF_ENABLED);
+				::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_script_menu.Item(i).commandId, MF_BYCOMMAND | MF_ENABLED);
 			}
 		}
 
@@ -2442,10 +2442,10 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 		else if(!GetButtonText(catalog[index], text)) continue;
 		addCommand(catalog[index].idCommand, text, CString());
 	}
-	for(int index = 0; index < m_scripts.GetSize(); ++index) {
-		const ScrInfo& script = m_scripts[index];
-		if(!script.isFolder && script.wID > 0)
-			addCommand(ID_SCRIPT_BASE + script.wID, script.name, script.relativePath);
+	for(int index = 0; index < m_script_menu.Count(); ++index) {
+		const ScriptDescriptor& script = m_script_menu.Item(index);
+		if(!script.isFolder && script.commandId > 0)
+			addCommand(ID_SCRIPT_BASE + script.commandId, script.name, script.relativePath);
 	}
 	std::sort(commands.begin(), commands.end(), [](const ScriptsToolbarCommand& left, const ScriptsToolbarCommand& right) {
 		return left.name.CompareNoCase(right.name) < 0;
@@ -2504,10 +2504,10 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 		if(!item.relativePath.IsEmpty())
 		{
 			command = 0;
-			for(int scriptIndex = 0; scriptIndex < m_scripts.GetSize(); ++scriptIndex)
-				if(!m_scripts[scriptIndex].isFolder && m_scripts[scriptIndex].relativePath == item.relativePath && m_scripts[scriptIndex].wID > 0)
+			for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
+				if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).relativePath == item.relativePath && m_script_menu.Item(scriptIndex).commandId > 0)
 				{
-					command = ID_SCRIPT_BASE + m_scripts[scriptIndex].wID;
+					command = ID_SCRIPT_BASE + m_script_menu.Item(scriptIndex).commandId;
 					break;
 				}
 		}
@@ -2524,10 +2524,10 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 	target.AutoSize();
 
 	if(scriptsToolbar && !lastScript.IsEmpty())
-		for(int scriptIndex = 0; scriptIndex < m_scripts.GetSize(); ++scriptIndex)
-			if(!m_scripts[scriptIndex].isFolder && m_scripts[scriptIndex].relativePath == lastScript)
+		for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
+			if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).relativePath == lastScript)
 			{
-				m_last_script = &m_scripts[scriptIndex];
+				m_last_script = &m_script_menu.Item(scriptIndex);
 				break;
 			}
 }
@@ -2552,10 +2552,10 @@ void CMainFrame::SavePortableToolbarLayout()
 			if(scriptsToolbar && button.idCommand >= ID_SCRIPT_BASE + 1 && button.idCommand <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
 			{
 				const int scriptId = button.idCommand - ID_SCRIPT_BASE;
-				for(int scriptIndex = 0; scriptIndex < m_scripts.GetSize(); ++scriptIndex)
-					if(!m_scripts[scriptIndex].isFolder && m_scripts[scriptIndex].wID == scriptId)
+				for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
+					if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).commandId == scriptId)
 					{
-						xml.AppendFormat(L"    <Script path=\"%s\" />\r\n", static_cast<LPCWSTR>(XmlEscape(m_scripts[scriptIndex].relativePath)));
+						xml.AppendFormat(L"    <Script path=\"%s\" />\r\n", static_cast<LPCWSTR>(XmlEscape(m_script_menu.Item(scriptIndex).relativePath)));
 						break;
 					}
 			}
@@ -2653,31 +2653,24 @@ void CMainFrame::InitPlugins()
 			(StartScript(this) != 0 || FAILED(ScriptLoad(candidate.path)) || !ScriptFindFunc(L"Run")))
 			continue;
 
-		ScrInfo script;
-		script.name = candidate.name;
-		script.path = candidate.path;
-		script.relativePath = candidate.relativePath;
-		script.order = candidate.order;
-		script.id = candidate.id;
-		script.refid = candidate.parentId;
-		script.isFolder = candidate.isFolder;
-		script.wID = candidate.commandId;
-		script.Type = candidate.isFolder ? 0 : 2;
-		CString pictureName(candidate.name);
+		ScriptDescriptor script(candidate);
+		const CString directory = candidate.isFolder ? candidate.path : candidate.path.Left(candidate.path.ReverseFind(L'\\') + 1);
+		CString pictureName(candidate.path.Mid(candidate.path.ReverseFind(L'\\') + 1));
 		if (!candidate.isFolder && pictureName.GetLength() >= 3) pictureName.Delete(pictureName.GetLength() - 3, 3);
-		LoadScriptPicture(script, candidate.isFolder ? candidate.path.Left(candidate.path.GetLength() - 1) + L"\\" : candidate.path.Left(candidate.path.ReverseFind(L'\\') + 1), pictureName);
-		m_scripts.Add(script);
+		FbeScripts::VisualResource visual = m_script_visuals.Load(directory, pictureName);
+		m_script_menu.Add(script, static_cast<FbeScripts::VisualResource&&>(visual));
 		if (!candidate.isFolder) StopScript();
 	}
 	if (StartupTrace::Enabled())
 	{
 		CString trace;
-		trace.Format(L"script-count=%d", m_scripts.GetSize());
+		trace.Format(L"script-count=%d", m_script_menu.Count());
 		StartupTrace::Event(L"plugin", L"P110", trace);
 	}
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
-	SortScripts();
-	AssignScriptCommandIds();
+	CString serializedCommandIds;
+	if (m_script_menu.AssignCommandIds(SCRIPT_COMMAND_COUNT, _Settings.GetScriptCommandIds(), serializedCommandIds))
+		_Settings.SetScriptCommandIds(serializedCommandIds);
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
 
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
@@ -2708,10 +2701,16 @@ void CMainFrame::InitPlugins()
 	while(::GetMenuItemCount(scripts) > 0)
 	::RemoveMenu(scripts, 0, MF_BYPOSITION);
 
-	if(m_scripts.GetSize())
+	if(m_script_menu.Count())
 	{
-		int nextFolderMenuId = 0;
-		AddScriptsSubMenu(scripts, L"0", m_scripts, nextFolderMenuId);
+		m_script_menu.Build(scripts,
+			[this](ScriptDescriptor& script) { InitScriptHotkey(script); },
+			[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
+				if (!script.isFolder && visual.icon != NULL)
+					AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, visual.icon);
+				if (visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command);
+				else if (visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
+			});
 	}
 	else
 	{
@@ -3847,10 +3846,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool commandCatalogReady = catalogButton(m_CmdToolbar, 0, commandFirst) &&
 			catalogButton(m_CmdToolbar, 2, commandAdded);
 		int scriptCommand = 0;
-		for(int index = 0; index < m_scripts.GetSize(); ++index)
-			if(!m_scripts[index].isFolder && m_scripts[index].relativePath == L"foo.js")
+		for(int index = 0; index < m_script_menu.Count(); ++index)
+			if(!m_script_menu.Item(index).isFolder && m_script_menu.Item(index).relativePath == L"foo.js")
 			{
-				scriptCommand = ID_SCRIPT_BASE + m_scripts[index].wID;
+				scriptCommand = ID_SCRIPT_BASE + m_script_menu.Item(index).commandId;
 				break;
 			}
 		const bool scriptsCatalogReady = scriptCommand != 0 &&
@@ -6349,65 +6348,18 @@ LRESULT CMainFrame::OnToolsScript(WORD /* unused: wNotifyCode */, WORD wID, HWND
   // ??????? ?? FBE ? ?? FBW ??????????? ?? ???????. ? FBE ??????? ??????????? ????? Active Scripting
   // ? ???????? ? ???? ??????????? ????? ?????????. 
   // ? FBW ??????? ??????????? ? ????? HTML ?????????
-	for(int i = 0; i < m_scripts.GetSize(); ++i)
+	for(int i = 0; i < m_script_menu.Count(); ++i)
 	{
-		if(m_scripts[i].wID == -1) continue;
+		if(m_script_menu.Item(i).commandId == -1) continue;
 
-		if(m_scripts[i].Type == 2 && m_scripts[i].wID == wID)
+		if(!m_script_menu.Item(i).isFolder && m_script_menu.Item(i).commandId == wID)
 		{
-			m_doc->RunScript(m_scripts[i].path);
-			m_last_script = &m_scripts[i];
+			m_doc->RunScript(m_script_menu.Item(i).path);
+			m_last_script = &m_script_menu.Item(i);
 			break;
 		}
 	}
   
-  // TODO ??? ?????? ???? else
-
-  /*if (wID < m_scripts.GetSize()) {
-  if (StartScript(this) >= 0) {
-		if (SUCCEEDED(ScriptLoad(m_scripts[wID].name))){
-			if(m_scripts[wID].Type == 0)
-			{
-				MSXML2::IXMLDOMDocument2Ptr dom(m_doc->CreateDOM(m_doc->m_encoding));
-				if (dom) 
-				{
-					CComVariant arg;
-					V_VT(&arg) = VT_DISPATCH;
-					V_DISPATCH(&arg) = dom;
-					dom.AddRef();
-					if (SUCCEEDED(ScriptCall(L"Run",&arg,1,NULL))) 
-					{
-						m_doc->SetXML(dom);						
-					}
-				}
-			}
-			else if(m_scripts[wID].Type == 1)
-			{
-				SHD::IWebBrowser2Ptr HTMLdomBody = m_doc->m_body.Browser();
-				SHD::IWebBrowser2Ptr HTMLdomDesc = m_doc->m_body.Browser();
-				CComVariant* arg = new CComVariant[2];				
-				V_VT(&arg[0]) = VT_DISPATCH;
-				V_DISPATCH(&arg[0]) = HTMLdomBody;
-				HTMLdomBody.AddRef();
-				V_VT(&arg[1]) = VT_DISPATCH;
-				V_DISPATCH(&arg[1]) = HTMLdomDesc;
-				HTMLdomDesc.AddRef();
-				
-				CComVariant vt;
-				if (SUCCEEDED(ScriptCall(L"Run",arg,2,&vt))) 
-				{
-					//m_doc->SetXML(dom);
-				}
-			}
-			else if(m_scripts[wID].Type == 2)
-			{
-				ScriptCall(L"Run",0,0,0);
-			}
-      }
-      StopScript();
-    }
-  }*/
-
   return 0;
 }
 
@@ -9590,120 +9542,6 @@ void CMainFrame::RestartProgram()
 	}
 }
 
-void CMainFrame::LoadScriptPicture(ScrInfo& item, const CString& path, const CString& baseName)
-{
-	item.picture = NULL;
-	item.pictType = CMainFrame::NO_PICT;
-
-	const CString basePath = path + baseName;
-	const CString bitmapPath = basePath + L".bmp";
-	const CString iconPath = basePath + L".ico";
-	const DWORD bitmapAttributes = ::GetFileAttributes(bitmapPath);
-	const DWORD iconAttributes = ::GetFileAttributes(iconPath);
-
-	if(bitmapAttributes != INVALID_FILE_ATTRIBUTES &&
-		(bitmapAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-	{
-		HBITMAP bitmap = (HBITMAP)::LoadImage(
-			NULL, bitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		if(bitmap != NULL)
-		{
-			item.picture = bitmap;
-			item.pictType = CMainFrame::BITMAP;
-		}
-	}
-	else if(iconAttributes != INVALID_FILE_ATTRIBUTES &&
-		(iconAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-	{
-		HICON icon = (HICON)::LoadImage(
-			NULL, iconPath, IMAGE_ICON, 0, 0, LR_LOADFROMFILE);
-		if(icon != NULL)
-		{
-			item.picture = icon;
-			item.pictType = CMainFrame::ICON;
-		}
-	}
-}
-
-void CMainFrame::AssignScriptCommandIds()
-{
-	FbeScripts::CommandRegistry registry(SCRIPT_COMMAND_COUNT, _Settings.GetScriptCommandIds());
-	for (int i = 0; i < m_scripts.GetSize(); ++i)
-	{
-		ScrInfo& script = m_scripts[i];
-		if (script.isFolder) { script.wID = -1; continue; }
-		if (script.relativePath.IsEmpty()) { script.wID = -1; StartupTrace::Event(L"script", L"S120", L"script path is outside Scripts root"); continue; }
-		const int commandId = registry.Assign(script.relativePath);
-		script.wID = commandId;
-		if (commandId < 1) StartupTrace::Event(L"script", L"S121", L"script command ID capacity exhausted");
-	}
-	if (registry.IsDirty()) _Settings.SetScriptCommandIds(registry.Serialize());
-}
-
-void CMainFrame::AddScriptsSubMenu(HMENU parentItem, CString refid, CSimpleArray<ScrInfo>& scripts, int& nextFolderMenuId)
-{
-	MENUITEMINFO mi;
-	int menupos = 0;
-
-	for(int i = 0; i < scripts.GetSize(); ++i)
-	{
-		memset(&mi, NULL, sizeof(MENUITEMINFO));
-		mi.cbSize = sizeof(MENUITEMINFO);
-		mi.fMask = MIIM_TYPE | MIIM_STATE;
-		mi.fType = MFT_STRING;
-
-		for(int j = 0; j < scripts.GetSize(); j++)
-		{
-			if(scripts[j].refid == refid)
-				menupos++;
-		}
-
-		if (scripts[i].refid == refid)
-		{
-			if(scripts[i].isFolder)
-			{
-				mi.fMask |= MIIM_SUBMENU | MIIM_ID;
-				mi.hSubMenu = CreateMenu();
-				mi.wID = nextFolderMenuId < SCRIPT_FOLDER_MENU_ID_COUNT ? SCRIPT_FOLDER_MENU_ID_BASE + nextFolderMenuId++ : 0;
-				scripts[i].wID = -1;
-				AddScriptsSubMenu(mi.hSubMenu, scripts[i].id, scripts, nextFolderMenuId);
-			}
-			else
-			{
-				if(scripts[i].wID < 1)
-					continue;
-				mi.fMask |= MIIM_ID;
-				mi.wID = ID_SCRIPT_BASE + scripts[i].wID;
-
-				InitScriptHotkey(scripts[i]);
-			}
-
-			mi.dwTypeData = scripts[i].name.GetBuffer();
-			mi.cch = wcslen(scripts[i].name);
-
-			if(scripts[i].isFolder)
-				InsertMenuItem(parentItem, 0, true, &mi);
-			else
-			{
-				InsertMenuItem(parentItem, menupos--, true, &mi);
-				// added by SeNS: add scripts with icon to toolbar
-				if (scripts[i].pictType == CMainFrame::ICON)
-					AddTbButton(m_ScriptsToolbar, scripts[i].name, mi.wID, TBSTATE_ENABLED, (HICON)scripts[i].picture);
-			}
-
-			if(!scripts[i].isFolder || mi.wID != 0) switch(scripts[i].pictType)
-			{
-				case CMainFrame::BITMAP:
-					m_MenuBar.AddBitmap((HBITMAP)scripts[i].picture, mi.wID);
-					break;
-				case CMainFrame::ICON:
-					m_MenuBar.AddIcon((HICON)scripts[i].picture, mi.wID);
-					break;
-			}
-		}
-	}
-}
-
 void CMainFrame::ReleaseScriptResources()
 {
 	// InitPlugins may be requested more than once.  Return the physical scripts
@@ -9722,24 +9560,7 @@ void CMainFrame::ReleaseScriptResources()
 			m_ScriptsToolbar.AutoSize();
 		}
 	}
-	for(int i = 0; i < m_scripts.GetSize(); ++i)
-	{
-		ScrInfo& script = m_scripts[i];
-		if(script.picture != NULL)
-		{
-			if(script.pictType == BITMAP)
-				::DeleteObject(static_cast<HBITMAP>(script.picture));
-			else if(script.pictType == ICON)
-				::DestroyIcon(static_cast<HICON>(script.picture));
-		}
-		script.picture = NULL;
-		script.pictType = NO_PICT;
-	}
-	for(int i = 0; i < m_scripts_images.GetSize(); ++i)
-		if(m_scripts_images.GetValueAt(i) != NULL)
-			::DeleteObject(m_scripts_images.GetValueAt(i));
-	m_scripts_images.RemoveAll();
-	m_scripts.RemoveAll();
+	m_script_menu.Clear();
 	m_last_script = NULL;
 	for(int index = m_BtnText.GetSize() - 1; index >= 0; --index)
 	{
@@ -9756,29 +9577,11 @@ void CMainFrame::ReleaseScriptResources()
 	}
 }
 
-void CMainFrame::SortScripts()
+void CMainFrame::InitScriptHotkey(ScriptDescriptor& script)
 {
-	std::vector<ScrInfo> sorted;
-	sorted.reserve(m_scripts.GetSize());
-	for(int i = 0; i < m_scripts.GetSize(); ++i)
-		sorted.push_back(m_scripts[i]);
-	std::sort(sorted.begin(), sorted.end(), [](const ScrInfo& left, const ScrInfo& right)
-	{
-		if(left.isFolder != right.isFolder)
-			return left.isFolder;
-		const int order = left.order.CompareNoCase(right.order);
-		if(order != 0) return order < 0;
-		return left.relativePath.CompareNoCase(right.relativePath) < 0;
-	});
-	for(int i = 0; i < static_cast<int>(sorted.size()); ++i)
-		m_scripts[i] = sorted[i];
-}
-
-void CMainFrame::InitScriptHotkey(CMainFrame::ScrInfo& script)
-{
-	if(script.wID < 1 || script.wID > SCRIPT_COMMAND_COUNT)
+	if(script.commandId < 1 || script.commandId > SCRIPT_COMMAND_COUNT)
 		return;
-	const int commandId = ID_SCRIPT_BASE + script.wID;
+	const int commandId = ID_SCRIPT_BASE + script.commandId;
 	std::vector<CHotkeysGroup>& hotkey_groups = _Settings.m_hotkey_groups;
 	for(unsigned int i = 0; i < hotkey_groups.size(); ++i)
 	{
