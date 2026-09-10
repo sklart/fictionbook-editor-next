@@ -145,8 +145,15 @@ static_assert(ID_PLUGIN_EXPORT_LAST < ID_LAST_SCRIPT, "Plug-in and regular comma
 static_assert(ID_SCRIPT_BASE + 999 < ID_SPELL_REPLACE_FIRST, "Script and spell suggestion command IDs overlap");
 static_assert(ID_SPELL_REPLACE_LAST < ID_SCI_COLLAPSE_BASE, "Scintilla and spell suggestion command IDs overlap");
 static_assert(ID_SPELL_REPLACE_LAST < 0xffff, "Spell suggestion command IDs must fit in WM_COMMAND");
+static_assert(ID_FILE_MRU_LAST <= 0xffff, "MRU command IDs must fit in WM_COMMAND");
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE > ID_EDIT_INS_SYMBOL + 100, "Folder menu IDs overlap symbol commands");
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT_ITEM, "Folder menu IDs overlap regular commands");
+
+static WORD MruCommandId(int offset)
+{
+	ATLASSERT(offset >= 0 && ID_FILE_MRU_FIRST + offset <= ID_FILE_MRU_LAST);
+	return static_cast<WORD>(static_cast<UINT>(ID_FILE_MRU_FIRST) + static_cast<UINT>(offset));
+}
 
 static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE module,
 	UINT bitmapResourceId, UINT commandId)
@@ -4798,7 +4805,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		if (secondOpen == OK) { m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT); }
 		std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
 		const CString firstKey = ArchiveMruKey(first); WORD firstCommand = 0;
-		for (int offset = 0; offset < m_mru.m_arrDocs.GetSize(); ++offset) { CString key; const WORD candidate = ID_FILE_MRU_FIRST + offset; if (m_mru.GetFromList(candidate, key) && key == firstKey) { firstCommand = candidate; break; } }
+		for (int offset = 0; offset < m_mru.m_arrDocs.GetSize() && offset <= ID_FILE_MRU_LAST - ID_FILE_MRU_FIRST; ++offset) { CString key; const WORD candidate = MruCommandId(offset); if (m_mru.GetFromList(candidate, key) && key == firstKey) { firstCommand = candidate; break; } }
 		DocumentLocation menuFirst;
 		const bool menuLookup = firstCommand != 0 && FindArchiveMruRecord(firstKey, menuFirst) && SameArchiveMruIdentity(menuFirst, first);
 		BOOL handled = FALSE;
@@ -4867,7 +4874,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			if ((captions[i].Find(L"A\\Books\\archive.zip") >= 0 && captions[j].Find(L"B\\Books\\archive.zip") >= 0) || (captions[i].Find(L"B\\Books\\archive.zip") >= 0 && captions[j].Find(L"A\\Books\\archive.zip") >= 0)) minimalFolderContexts = true;
 		wchar_t path[MAX_PATH] = {}, entry[MAX_PATH] = {}, occurrenceText[16] = {}; ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_MRU_REOPEN_PATH", path, _countof(path)); ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_ENTRY", entry, _countof(entry)); ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_OCCURRENCE", occurrenceText, _countof(occurrenceText));
 		unsigned int occurrence = 0; DocumentLocation target; target.containerKind = DetectDocumentContainerKind(path); target.storagePath = path; target.entryPath = entry; target.entryOccurrence = ParseArchiveMruUnsigned(occurrenceText, occurrence) ? occurrence : 0; target.documentType = DetectFictionBookFileType(target.entryPath);
-		WORD command = 0; const CString key = ArchiveMruKey(target); for (int offset = 0; offset < count; ++offset) { CString value; if (m_mru.GetFromList(ID_FILE_MRU_FIRST + offset, value) && value == key) { command = ID_FILE_MRU_FIRST + offset; break; } }
+		WORD command = 0; const CString key = ArchiveMruKey(target); for (int offset = 0; offset < count && offset <= ID_FILE_MRU_LAST - ID_FILE_MRU_FIRST; ++offset) { CString value; const WORD candidate = MruCommandId(offset); if (m_mru.GetFromList(candidate, value) && value == key) { command = candidate; break; } }
 		BOOL handled = FALSE; const bool reopened = command != 0 && OnFileOpenMRU(0, command, NULL, handled) == 0 && SameArchiveMruIdentity(m_document_location, target);
 		CStringA report; report.Format("count=%d\nmenu_count=%d\norder=%d\nclean=%d\nempty=%d\ndisabled=%d\nraw=%d\nnumbered=%d\nduplicates=%d\nfolders=%d\nreopened=%d\n", count, menuCount, exactOrder, cleanMenu, emptyCaption, disabledCaption, rawCaption, numberedCaption, duplicateCaption, minimalFolderContexts, reopened); DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(count == 10 && menuCount == 10 && exactOrder && cleanMenu && reopened ? 0 : 1); return 0;

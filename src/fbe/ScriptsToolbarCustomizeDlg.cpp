@@ -199,14 +199,14 @@ bool CScriptsToolbarCustomizeDlg::ReplaceToolbarButtons(const std::vector<TBBUTT
 }
 bool CScriptsToolbarCustomizeDlg::MoveSelectedButtons(bool down)
 {
-	const int count = m_currentList.GetCount(); std::vector<bool> selected(count, false); const std::vector<int> rows = GetSelectedRows(m_currentList);
+	const int count = m_currentList.GetCount(); std::vector<unsigned char> selected(count, 0); const std::vector<int> rows = GetSelectedRows(m_currentList);
 	if(rows.empty()) return false;
-	for(size_t i = 0; i < rows.size(); ++i) selected[rows[i]] = true;
+	for(size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) selected[rows[rowIndex]] = 1;
 	std::vector<TBBUTTON> buttons(count); CToolBarCtrl toolbar = m_toolbar;
 	for(int i = 0; i < count; ++i) if(!toolbar.GetButton(i, &buttons[i])) return false;
 	bool moved = false;
-	if(down) for(int i = count - 2; i >= 0; --i) if(selected[i] && !selected[i + 1]) { std::swap(buttons[i], buttons[i + 1]); std::swap(selected[i], selected[i + 1]); moved = true; }
-	else for(int i = 1; i < count; ++i) if(selected[i] && !selected[i - 1]) { std::swap(buttons[i], buttons[i - 1]); std::swap(selected[i], selected[i - 1]); moved = true; }
+	if(down) for(int index = count - 2; index >= 0; --index) if(selected[index] && !selected[index + 1]) { std::swap(buttons[index], buttons[index + 1]); std::swap(selected[index], selected[index + 1]); moved = true; }
+	else for(int upIndex = 1; upIndex < count; ++upIndex) if(selected[upIndex] && !selected[upIndex - 1]) { std::swap(buttons[upIndex], buttons[upIndex - 1]); std::swap(selected[upIndex], selected[upIndex - 1]); moved = true; }
 	if(!moved) return false;
 	ReplaceToolbarButtons(buttons); std::vector<DWORD_PTR> selection;
 	for(int i = 0; i < count; ++i) if(selected[i]) selection.push_back(i);
