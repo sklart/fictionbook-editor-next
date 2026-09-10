@@ -10,7 +10,7 @@ DWORD Hash(const CString& value) { DWORD hash = 2166136261u; for (int i = 0; i <
 
 namespace FbeScripts
 {
-CommandRegistry::CommandRegistry(int capacity, const CString& serialized) : m_capacity(capacity)
+CommandRegistry::CommandRegistry(int capacity, const CString& serialized) : m_capacity(capacity), m_dirty(false)
 {
 	int cursor = 0; CString entry;
 	while (!(entry = serialized.Tokenize(L";", cursor)).IsEmpty())
@@ -26,7 +26,7 @@ int CommandRegistry::Assign(const CString& relativePath)
 {
 	for (size_t i = 0; i < m_ids.size(); ++i) if (m_ids[i].relativePath == relativePath) return m_ids[i].value;
 	const int first = static_cast<int>(Hash(relativePath) % m_capacity) + 1;
-	for (int attempt = 0; attempt < m_capacity; ++attempt) { const int value = ((first - 1 + attempt) % m_capacity) + 1; bool used = false; for (size_t i = 0; i < m_ids.size(); ++i) if (m_ids[i].value == value) { used = true; break; } if (!used) { CommandId id = { relativePath, value }; m_ids.push_back(id); return value; } }
+	for (int attempt = 0; attempt < m_capacity; ++attempt) { const int value = ((first - 1 + attempt) % m_capacity) + 1; bool used = false; for (size_t i = 0; i < m_ids.size(); ++i) if (m_ids[i].value == value) { used = true; break; } if (!used) { CommandId id = { relativePath, value }; m_ids.push_back(id); m_dirty = true; return value; } }
 	return -1;
 }
 

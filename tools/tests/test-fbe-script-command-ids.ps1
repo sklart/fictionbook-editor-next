@@ -9,23 +9,27 @@ function Read-ProjectFile([string]$RelativePath) {
 }
 
 $mainFrame = Read-ProjectFile 'src\fbe\mainfrm.cpp'
+$registry = Read-ProjectFile 'src\fbe\scripts\ScriptCommandRegistry.cpp'
+$registryHeader = Read-ProjectFile 'src\fbe\scripts\ScriptCommandRegistry.h'
 $settings = Read-ProjectFile 'src\fbe\Settings.cpp'
 
 foreach($required in @(
-    'NormalizeScriptRelativePath',
-    'HashScriptRelativePath',
-    'AssignScriptCommandIds',
-    'ParseScriptCommandIds',
-    'SerializeScriptCommandIds',
+    'CommandRegistry::CommandRegistry',
+    'CommandRegistry::Assign',
+    'CommandRegistry::Serialize',
+    'IsDirty',
     'GetScriptCommandIds',
     'SetScriptCommandIds')) {
-    if($mainFrame -notmatch [regex]::Escape($required) -and $settings -notmatch [regex]::Escape($required)) {
+    if($registry -notmatch [regex]::Escape($required) -and $registryHeader -notmatch [regex]::Escape($required) -and $settings -notmatch [regex]::Escape($required)) {
         throw "Missing required stable script ID component: $required"
     }
 }
 
 if($mainFrame -match 'static\s+int\s+SCRIPT_COMMAND_ID') {
     throw 'Script IDs still depend on a global scan-order counter.'
+}
+foreach($legacy in @('ParseScriptCommandIds', 'SerializeScriptCommandIds', 'HashScriptRelativePath')) {
+    if($mainFrame -match [regex]::Escape($legacy)) { throw "Legacy command-ID implementation remains in CMainFrame: $legacy" }
 }
 
 function Get-Fnv1a32([string]$Path) {

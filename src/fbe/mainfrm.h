@@ -322,8 +322,6 @@ public:
   CSimpleArray<ScrInfo>	 m_scripts;
   CSimpleMap<unsigned int, HBITMAP> m_scripts_images;
   void LoadScriptPicture(ScrInfo& item, const CString& path, const CString& baseName);
-  void CollectScripts(CString path, TCHAR* mask, int lastid, CString refid);
-  int GrabScripts(CString, TCHAR*, CString);
 	void AddScriptsSubMenu(HMENU, CString, CSimpleArray<ScrInfo>&, int&);
 	void AssignScriptCommandIds();
 	void ReleaseScriptResources();
