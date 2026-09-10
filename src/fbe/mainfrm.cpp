@@ -1963,12 +1963,11 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     m_doc->m_encoding=encoding;
     if (m_doc->Save(filename)) {
       m_doc->m_filename=filename;
-	  m_document_location = DocumentLocation();
+	  m_document_location = CreateNormalDocumentLocation(filename, m_doc->GetDocumentFileType());
 	  if (wasFbd != IsFbdFile(filename)) ResetValidationStatus();
 	  U::SetCurrentDirectoryToFile(filename);
       m_doc->m_namevalid=true;
 	  RememberNormalMruRecord(m_mru, filename);
-	  m_file_age = FileAge(m_doc->m_filename);
 	  if(IsSourceActive())
 		  m_source.SendMessage(SCI_SETSAVEPOINT);
 		m_recovery.DeleteIfWritten();
@@ -1981,7 +1980,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 
   if(saved)
   {
-	  m_file_age = FileAge(m_doc->m_filename);
+	  UpdateDocumentLocationFingerprint(m_document_location);
 	  if(IsSourceActive())
 		  m_source.SendMessage(SCI_SETSAVEPOINT);
 		m_recovery.DeleteIfWritten();
@@ -2041,10 +2040,9 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
   }
 
   AttachDocument(doc);
-	if (!archive) m_file_age = FileAge(filename);
   delete m_doc;
   m_doc=doc;
-  m_document_location = archive ? resolved.location : DocumentLocation();
+	 m_document_location = archive ? resolved.location : CreateNormalDocumentLocation(filename, m_doc->GetDocumentFileType());
   m_bad_xml = false;
   ResetStatusForDocument();
   return OK;
@@ -3528,8 +3526,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		StartupTrace::AppendTestStartupBreadcrumb("document-load-complete");
       start_with_params = true;
-	  m_document_location = startupArchive ? startupResolved.location : DocumentLocation();
-	  if (!startupArchive) m_file_age = FileAge(startupFileName);
+	  m_document_location = startupArchive ? startupResolved.location : CreateNormalDocumentLocation(startupFileName, m_doc->GetDocumentFileType());
 	}
     else
 	{
@@ -3539,13 +3536,13 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		m_doc=new FB::Doc(*this);
 		FB::Doc::m_active_doc = m_doc;
 		m_doc->CreateBlank(m_view);
-		m_file_age = static_cast<unsigned __int64>(-1);
+		ResetDocumentLocation(m_document_location);
 		m_bad_xml = true;
 	}
   } else 
   {
 	m_doc->CreateBlank(m_view);
-	m_file_age = static_cast<unsigned __int64>(-1);
+	ResetDocumentLocation(m_document_location);
   }
 
   StartupTrace::Event(L"mainframe", L"M130", L"document content created");
@@ -6227,8 +6224,7 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   FB::Doc *doc=new FB::Doc(*this);
   FB::Doc::m_active_doc = doc;
   doc->CreateBlank(m_view);
-  m_file_age = static_cast<unsigned __int64>(-1);
-	m_document_location = DocumentLocation();
+	ResetDocumentLocation(m_document_location);
   AttachDocument(doc);
   delete m_doc;
   m_doc=doc;
@@ -8700,12 +8696,12 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 				m_doc->m_filename = m_bad_filename;
 				if (m_bad_filename.CompareNoCase(L"Untitled.fb2") == 0)
 				{
-					m_file_age = static_cast<unsigned __int64>(-1);
+					ResetDocumentLocation(m_document_location);
 					m_doc->m_namevalid = false;
 				}
 				else
 				{
-					m_file_age = FileAge(m_doc->m_filename);
+					m_document_location = CreateNormalDocumentLocation(m_doc->m_filename, m_doc->GetDocumentFileType());
 					m_doc->m_namevalid = true;
 				}
 				m_bad_xml=false;
@@ -9818,41 +9814,12 @@ void CMainFrame::SourceGoTo(int line, int col)
     m_source.SendMessage(SCI_SCROLLCARET);
 }
 
-unsigned __int64 CMainFrame::FileAge(LPCTSTR FileName)
-{
-	WIN32_FILE_ATTRIBUTE_DATA data;
-	if (::GetFileAttributesEx(FileName, GetFileExInfoStandard, &data))
-	{
-		return *((unsigned __int64*)&data.ftLastWriteTime);
-	}	
-	return static_cast<unsigned __int64>(-1);
-}
-
 bool CMainFrame::CheckFileTimeStamp()
 {
-	if (m_document_location.IsArchive())
-	{
-		FileFingerprint current, expected;
-		expected.lastWriteTime = m_document_location.containerLastWriteTime;
-		expected.fileSize = m_document_location.containerFileSize;
-		if (!GetFileFingerprint(m_document_location.storagePath, current) || SameFileFingerprint(current, expected)) return false;
-		if (IDYES == U::MessageBox(MB_YESNO, IDS_FILE_CHANGED_CPT, IDS_FILE_CHANGED_MSG, static_cast<LPCWSTR>(m_document_location.storagePath))) return ReloadFile();
-		m_document_location.containerLastWriteTime = current.lastWriteTime;
-		m_document_location.containerFileSize = current.fileSize;
-		return false;
-	}
-	if(m_file_age == FileAge(m_doc->m_filename))
-		return false;
-	
+	if (m_document_location.storagePath.IsEmpty() || !IsDocumentLocationModified(m_document_location)) return false;
 	if(IDYES == U::MessageBox(MB_YESNO, IDS_FILE_CHANGED_CPT, IDS_FILE_CHANGED_MSG, static_cast<LPCWSTR>(m_doc->m_filename)))
-	{
-		return ReloadFile();			
-	}
-	else
-	{
-		m_file_age = FileAge(m_doc->m_filename);
-	}
-
+		return ReloadFile();
+	UpdateDocumentLocationFingerprint(m_document_location);
 	return false;
 }
 
@@ -9866,7 +9833,6 @@ bool CMainFrame::ReloadFile()
 
 	EnableWindow(FALSE);
 	m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
-	m_file_age = FileAge(m_doc->m_filename);
 	bool fLoaded=doc->Load(m_view,m_doc->m_filename);
 	EnableWindow(TRUE);
 	if (!fLoaded) 
@@ -9879,6 +9845,7 @@ bool CMainFrame::ReloadFile()
 	AttachDocument(doc);	
 	delete m_doc;
 	m_doc=doc;
+	m_document_location = CreateNormalDocumentLocation(m_doc->m_filename, m_doc->GetDocumentFileType());
 	return true;
 }
 

@@ -2,6 +2,7 @@
 
 #include <atlstr.h>
 #include "..\\FictionBookFileType.h"
+#include "FileFingerprint.h"
 
 // The physical storage path is deliberately kept separate from an entry name.
 // Legacy document and scripting APIs remain filesystem-path APIs.
@@ -34,3 +35,8 @@ inline DocumentContainerKind DetectDocumentContainerKind(const CString& path)
     if (extension.CompareNoCase(L".rar") == 0) return DocumentContainerKind::Rar;
     return DocumentContainerKind::None;
 }
+
+DocumentLocation CreateNormalDocumentLocation(const CString& path, FictionBookFileType documentType);
+void ResetDocumentLocation(DocumentLocation& location);
+bool UpdateDocumentLocationFingerprint(DocumentLocation& location);
+bool IsDocumentLocationModified(const DocumentLocation& location);
