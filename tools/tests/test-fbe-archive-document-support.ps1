@@ -52,7 +52,7 @@ Require $frame 'AddArchiveMruRecordsToList' 'Archive MRU entries must be restore
 Require $frame 'ErrorCode::EntryNotFound' 'Missing MRU archive entries must fail without selecting another document.'
 Require $frame 'archiveMru \? LoadFile\(archiveLocation\.storagePath, &archiveLocation\)' 'Archive MRU must load the physical container path and exact location, never its caption.'
 Require $frame 'ArchiveMruKey' 'Archive MRU identity must be separate from its menu caption.'
-Require $frame 'RefreshMruMenu' 'MRU menu captions must be rendered separately from stored identities.'
+Require $frame 'RebuildMruMenu' 'MRU submenu must be rebuilt separately from stored identities.'
 Require $frame 'WriteArchiveRecoveryLocation' 'Recovery must retain archive source metadata without rewriting the container.'
 Require $frame 'containerLastWriteTime.*containerFileSize' 'Recovery must persist the archive fingerprint.'
 Require $frame 'SetDocumentFileType\(recoveredArchiveLocation.documentType\)' 'Recovery must restore the authoritative archive FBD type.'
