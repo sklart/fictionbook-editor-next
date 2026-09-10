@@ -3,7 +3,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$tooltips = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsTooltips.h')
+$tooltips = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsTooltips.h')
 
 foreach($contract in @(
 	'm_tooltips\.Create\(owner,\s*NULL,\s*NULL,\s*WS_POPUP\s*\|\s*TTS_ALWAYSTIP\)',
@@ -28,7 +28,7 @@ foreach($pageContract in @{
 	'SettingsAdvancedPage.cpp' = @('advanced.scripts_folder', 'advanced.fast_mode')
 }.GetEnumerator())
 {
-	$pageText = Get-Content -Raw -LiteralPath (Join-Path $root (Join-Path 'src\fbe' $pageContract.Key))
+	$pageText = Get-Content -Raw -LiteralPath (Join-Path $root (Join-Path 'src\fbe\settings\ui' $pageContract.Key))
 	foreach($key in $pageContract.Value)
 	{
 		if($pageText -notmatch [regex]::Escape($key)) { throw "Settings tooltip registration is missing for $($pageContract.Key): $key" }

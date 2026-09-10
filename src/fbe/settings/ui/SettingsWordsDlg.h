@@ -1,8 +1,8 @@
 // SettingsWordsDlg.h : Declaration of the CSettingsWordsDlg
 #pragma once
 
-#include "resource.h"
-#include "Settings.h"
+#include "..\\..\\resource.h"
+#include "..\\..\\Settings.h"
 #include "SettingsPageLifecycle.h"
 #include "SettingsTooltips.h"
 

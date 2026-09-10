@@ -7,7 +7,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $helper = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\KeyboardLayoutSelection.h')
-$dialog = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsHotkeysDlg.cpp')
+$dialog = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsHotkeysDlg.cpp')
 
 if($helper -notmatch 'ResolveKeyboardLayoutSelection' -or $dialog -notmatch 'ResolveKeyboardLayoutSelection\(') { throw 'The Settings dialog must delegate keyboard layout migration to the shared helper.' }
 foreach($kind in @('ExactKlid', 'ExactLegacy', 'MigratedLegacy', 'UnavailableKlid', 'UnresolvedLegacy', 'CurrentDefault')) { if($helper -notmatch $kind) { throw "Keyboard migration helper lacks $kind state." } }

@@ -3,15 +3,15 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$settingsHost = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsDlg.cpp')
+$settingsHost = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsDlg.cpp')
 foreach($text in @('m_pageLifecycle', '->Validate()', '->Commit()', '->CancelChanges()')) { if($settingsHost -notlike "*$text*") { throw "Missing lifecycle host contract: $text" } }
 if($settingsHost -match 'MAKELONG\(IDOK|MAKELONG\(IDCANCEL|m_initial_scripts_folder|SetScriptsFolder') { throw 'SettingsDlg retains legacy page apply or scripts rollback.' }
 $validateLoop = $settingsHost.IndexOf('->Validate()'); $commitLoop = $settingsHost.IndexOf('->Commit()'); $okEndDialog = $settingsHost.IndexOf('EndDialog(IDOK)')
 if($validateLoop -lt 0 -or $commitLoop -lt $validateLoop -or $okEndDialog -lt $commitLoop) { throw 'Settings transaction order is not Validate ALL, Commit ALL, EndDialog.' }
 if($settingsHost -notmatch '(?s)!?m_pageLifecycle\[i\]->Validate\(\).*?SelectPage\(.*?return 0' -or $settingsHost -notmatch '(?s)for\s*\([^)]*\).*?Validate\(.*?\}\s*for\s*\([^)]*\).*?Commit\(\)') { throw 'Settings validation failure no longer selects the page before any commit.' }
 if($settingsHost -notmatch '(?s)hWndCtl\s*!=\s*globalOk.*?m_currentPage\s*==\s*SettingsPageId::Words.*?m_wordsPage->HandleDefaultAction\(\).*?return 0;\s*for\s*\([^)]*\).*?Validate\(\)') { throw 'Words local default action must return before the global transaction.' }
-foreach($path in @('SettingsGeneralPage.cpp','SettingsEditorPage.cpp','SettingsImagesPage.cpp','SettingsAdvancedPage.cpp','SettingsSpellingPage.cpp','SettingsSourcePage.cpp','SettingsHotkeysDlg.cpp','SettingsWordsDlg.cpp')) { $text = Get-Content -Raw -LiteralPath (Join-Path $root ('src\fbe\' + $path)); foreach($method in @('Validate','Commit','CancelChanges')) { if($text -notmatch ($method + '\s*\(')) { throw "$path lacks $method" } } }
-$words = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsWordsDlg.cpp')
+foreach($path in @('SettingsGeneralPage.cpp','SettingsEditorPage.cpp','SettingsImagesPage.cpp','SettingsAdvancedPage.cpp','SettingsSpellingPage.cpp','SettingsSourcePage.cpp','SettingsHotkeysDlg.cpp','SettingsWordsDlg.cpp')) { $text = Get-Content -Raw -LiteralPath (Join-Path $root ('src\fbe\settings\ui\' + $path)); foreach($method in @('Validate','Commit','CancelChanges')) { if($text -notmatch ($method + '\s*\(')) { throw "$path lacks $method" } } }
+$words = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsWordsDlg.cpp')
 $commit = [regex]::Match($words, 'void\s+CSettingsWordsDlg::Commit\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 $validate = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::Validate\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 if(-not $commit.Success -or $commit.Groups['body'].Value -match 'GetFocus\s*\(') { throw 'Words Commit must not depend on focus.' }
@@ -24,11 +24,11 @@ $cancelChanges = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::CancelChanges
 if(-not $defaultAction.Success -or $words -notmatch '(?s)LRESULT\s+CSettingsWordsDlg::OnOK.*?HandleDefaultAction\(\)') { throw 'Words must keep Enter as a local default action.' }
 if($defaultAction.Groups['body'].Value -match 'SaveWords|_Settings\.m_words|Commit\s*\(') { throw 'Words local default action must not persist settings.' }
 if(-not $cancelChanges.Success -or $cancelChanges.Groups['body'].Value -notmatch '(?s)m_editActive.*?GetFocus\s*\(\)\s*==\s*m_edit.*?return false') { throw 'Words CancelChanges must preserve the inline-editor Esc veto.' }
-$advanced = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsAdvancedPage.cpp')
-$spelling = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsSpellingPage.cpp')
+$advanced = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsAdvancedPage.cpp')
+$spelling = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsSpellingPage.cpp')
 if($advanced -notmatch 'm_initialScriptsFolder\s*=\s*_Settings\.GetResolvedScriptsFolder\(\)' -or $advanced -notmatch 'm_initialScriptsFolder\.CompareNoCase\(_Settings\.GetResolvedScriptsFolder\(\)\)') { throw 'Advanced page must own its resolved scripts-folder snapshot.' }
 if($advanced -match 'm_initial_scripts_folder') { throw 'Advanced page still uses the global scripts-folder snapshot.' }
-$advancedHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsAdvancedPage.h')
+$advancedHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsAdvancedPage.h')
 $settingsImplementation = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\Settings.cpp')
 $settingsNormalization = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\SettingsNormalization.cpp')
 if($advanced -notmatch 'GetFileAttributes\(' -or $advanced -notmatch 'm_scriptsFolder\.SetFocus') { throw 'Advanced scripts folder validation is missing.' }
@@ -36,7 +36,7 @@ if($settingsImplementation -notmatch 'ResolveScriptsFolderPath' -or $settingsImp
 if($settingsNormalization -notmatch '(?s)PathIsRelative\(path\).*?U::GetProgDir') { throw 'Relative scripts folders must resolve independently of the process current directory.' }
 $setScriptsFolder = [regex]::Match($settingsImplementation, 'void\s+CSettings::SetScriptsFolder\s*\([^)]*\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 if(-not $setScriptsFolder.Success -or $setScriptsFolder.Groups['body'].Value -notmatch 'm_scripts_folder\.CompareNoCase\(normalized\)' -or $setScriptsFolder.Groups['body'].Value -notmatch 'if\(apply\)\s*Save\(\)') { throw 'SetScriptsFolder must always update the model and save only when requested.' }
-if($spelling -notmatch 'ResolveUserDataFile' -or $spelling -notmatch 'FILE_ATTRIBUTE_DIRECTORY' -or $spelling -notmatch 'FILE_ATTRIBUTE_READONLY' -or $spelling -notmatch 'GENERIC_WRITE' -or $spelling -notmatch 'OFN_NOCHANGEDIR') { throw 'Custom dictionary validation must resolve paths consistently and reject unsuitable files.' }
+if($spelling -notmatch 'ResolveUserDataFile' -or $spelling -notmatch 'FILE_ATTRIBUTE_DIRECTORY' -or $spelling -notmatch 'FILE_ATTRIBUTE_READONLY' -or $spelling -notmatch 'GENERIC_WRITE' -or $spelling -notmatch 'ModernFileDialog::Show') { throw 'Custom dictionary validation must resolve paths consistently and reject unsuitable files.' }
 $customDictionaryIo = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\CustomDictionaryIO.h')
 $speller = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\Speller.cpp')
 if($customDictionaryIo -notmatch 'bool\s+FbeSaveCustomDictionary' -or $customDictionaryIo -notmatch 'output\.flush\(\)' -or $speller -notmatch 'fbe\.spelling\.custom_dictionary\.save_failed') { throw 'Custom dictionary save failures must be detected and reported.' }

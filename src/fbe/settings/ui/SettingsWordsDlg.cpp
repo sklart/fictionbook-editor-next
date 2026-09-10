@@ -2,8 +2,8 @@
 
 #include "stdafx.h"
 #include "SettingsWordsDlg.h"
-#include "Settings.h"
-#include "RuntimeLocalization.h"
+#include "..\\..\\Settings.h"
+#include "..\\..\\RuntimeLocalization.h"
 
 #define IMG_STAT_WIDTH	40
 #define IMG_STAT_HEIGHT	10

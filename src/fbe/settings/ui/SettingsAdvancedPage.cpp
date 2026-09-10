@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "SettingsAdvancedPage.h"
-#include "Settings.h"
-#include "utils.h"
-#include "RuntimeLocalization.h"
+#include "..\\..\\Settings.h"
+#include "..\\..\\utils\\utils.h"
+#include "..\\..\\RuntimeLocalization.h"
 
 extern CSettings _Settings;
 

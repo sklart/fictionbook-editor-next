@@ -164,7 +164,7 @@
     <ClCompile Include="mainfrm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsAdvancedPage.cpp">
+    <ClCompile Include="settings\ui\SettingsAdvancedPage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="script.cpp">
@@ -175,30 +175,36 @@
     </ClCompile>
 	<ClCompile Include="settings\SettingsPaths.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="settings\SettingsNormalization.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="settings\SettingsStore.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
+	<ClCompile Include="settings\hotkeys\HotkeyStore.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
+	<ClCompile Include="settings\hotkeys\Hotkey.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
+	<ClCompile Include="settings\hotkeys\HotkeyGroup.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
+	<ClCompile Include="settings\words\WordsItem.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
+	<ClCompile Include="settings\words\WordsStore.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="XmlTagMatcher.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="XmlSourceTagHighlighter.cpp"><Filter>Source Files</Filter></ClCompile>
-    <ClCompile Include="SettingsGeneralPage.cpp">
+    <ClCompile Include="settings\ui\SettingsGeneralPage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsEditorPage.cpp">
+    <ClCompile Include="settings\ui\SettingsEditorPage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsSpellingPage.cpp">
+    <ClCompile Include="settings\ui\SettingsSpellingPage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsSourcePage.cpp">
+    <ClCompile Include="settings\ui\SettingsSourcePage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-	<ClCompile Include="SettingsImagesPage.cpp">
+	<ClCompile Include="settings\ui\SettingsImagesPage.cpp">
 	  <Filter>Source Files</Filter>
 	</ClCompile>
-    <ClCompile Include="SettingsDlg.cpp">
+    <ClCompile Include="settings\ui\SettingsDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsHotkeysDlg.cpp">
+    <ClCompile Include="settings\ui\SettingsHotkeysDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsWordsDlg.cpp">
+    <ClCompile Include="settings\ui\SettingsWordsDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Speller.cpp">
@@ -313,7 +319,7 @@
     <ClInclude Include="ModelessDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SettingsAdvancedPage.h">
+    <ClInclude Include="settings\ui\SettingsAdvancedPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="res1.h">
@@ -358,32 +364,38 @@
     </ClInclude>
 	<ClInclude Include="settings\SettingsPaths.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="settings\SettingsNormalization.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="settings\SettingsStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
+	<ClInclude Include="settings\hotkeys\HotkeyStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
+	<ClInclude Include="settings\hotkeys\Hotkey.h"><Filter>Header Files\Settings</Filter></ClInclude>
+	<ClInclude Include="settings\hotkeys\HotkeyGroup.h"><Filter>Header Files\Settings</Filter></ClInclude>
+	<ClInclude Include="settings\words\WordsItem.h"><Filter>Header Files\Settings</Filter></ClInclude>
+	<ClInclude Include="settings\words\WordsStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="XmlTagMatcher.h"><Filter>Header Files</Filter></ClInclude>
-	<ClInclude Include="SettingsPageLifecycle.h">
+	<ClInclude Include="settings\ui\SettingsPageLifecycle.h">
 	  <Filter>Header Files</Filter>
 	</ClInclude>
-    <ClInclude Include="SettingsGeneralPage.h">
+    <ClInclude Include="settings\ui\SettingsGeneralPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SettingsEditorPage.h">
+    <ClInclude Include="settings\ui\SettingsEditorPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SettingsSpellingPage.h">
+    <ClInclude Include="settings\ui\SettingsSpellingPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SettingsSourcePage.h">
+    <ClInclude Include="settings\ui\SettingsSourcePage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-	<ClInclude Include="SettingsImagesPage.h">
+	<ClInclude Include="settings\ui\SettingsImagesPage.h">
 	  <Filter>Header Files</Filter>
 	</ClInclude>
-    <ClInclude Include="SettingsDlg.h">
+    <ClInclude Include="settings\ui\SettingsDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SettingsHotkeysDlg.h">
+    <ClInclude Include="settings\ui\SettingsHotkeysDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SettingsWordsDlg.h">
+    <ClInclude Include="settings\ui\SettingsWordsDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Speller.h">

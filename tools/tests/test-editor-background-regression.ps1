@@ -23,7 +23,7 @@ foreach($field in @('editorBackgroundKind','editorBackgroundId','editorBackgroun
 if($frame -notmatch 'HasDocumentStyleConfigurationChanged[\s\S]*editorBackgroundKind') { throw 'Background-only changes do not request Doc::ApplyConfChanges().' }
 if($frame -notmatch 'HasOnlyEditorBackgroundConfigurationChanged') { throw 'Background-only changes do not have a fast apply path.' }
 if($frame -notmatch 'void CMainFrame::ApplyEditorBackgroundChanges\(\)[\s\S]*m_doc->ApplyConfChanges\(\)[\s\S]*_Settings.Save\(\)') { throw 'Background fast apply must update MSHTML and persist settings.' }
-if($settings -notmatch 'SetEditorBackgroundCustomPath\(m_customBackgroundPath\)' -and (Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\SettingsEditorPage.cpp')) -notmatch 'SetEditorBackgroundCustomPath\(m_customBackgroundPath\)') { throw 'Custom path preservation behavior is not explicit.' }
+if($settings -notmatch 'SetEditorBackgroundCustomPath\(m_customBackgroundPath\)' -and (Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\settings\ui\SettingsEditorPage.cpp')) -notmatch 'SetEditorBackgroundCustomPath\(m_customBackgroundPath\)') { throw 'Custom path preservation behavior is not explicit.' }
 if($readme -match 'preview\.jpg') { throw 'README advertises a preview that is not shipped.' }
 
 # UI-only settings may reach the MSHTML style helper, but never FB2 persistence,

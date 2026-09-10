@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "SettingsImagesPage.h"
-#include "Settings.h"
-#include "RuntimeLocalization.h"
+#include "..\\..\\Settings.h"
+#include "..\\..\\RuntimeLocalization.h"
 
 extern CSettings _Settings;
 

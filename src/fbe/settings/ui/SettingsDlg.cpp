@@ -1,10 +1,10 @@
 ﻿// SettingsDlg.cpp : Implementation of CSettingsDlg
 
 #include "stdafx.h"
-#include "Settings.h"
+#include "..\\..\\Settings.h"
 #include "SettingsDlg.h"
-#include "RuntimeLocalization.h"
-#include "res1.h"
+#include "..\\..\\RuntimeLocalization.h"
+#include "..\\..\\res1.h"
 
 extern CSettings _Settings;
 

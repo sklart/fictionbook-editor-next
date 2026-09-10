@@ -3,7 +3,7 @@
 
 #include "ModelessDialog.h"
 #include "Settings.h"
-#include "SettingsTooltips.h"
+#include "settings\\ui\\SettingsTooltips.h"
 #include "RuntimeLocalization.h"
 
 extern CSettings _Settings;

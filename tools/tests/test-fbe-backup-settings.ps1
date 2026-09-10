@@ -15,7 +15,7 @@ $settingsHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Se
 $settingsSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.cpp')
 $documentSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBDoc.cpp')
 $commitSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\BackupFileCommit.h')
-$dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SettingsGeneralPage.cpp')
+$dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsGeneralPage.cpp')
 
 foreach ($contract in @(
     @{ Text = 'm_create_backup_file'; Source = $settingsHeader; Name = 'поле настройки' },

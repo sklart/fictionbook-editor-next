@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <atlctrls.h>
 #include "resource.h"
-#include "SettingsTooltips.h"
+#include "settings\\ui\\SettingsTooltips.h"
 
 class CFBEView;
 

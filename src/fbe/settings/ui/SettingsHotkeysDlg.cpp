@@ -2,11 +2,11 @@
 
 #include "stdafx.h"
 #include "SettingsHotkeysDlg.h"
-#include "KeyboardLayoutSelection.h"
-#include "utils.h"
-#include "Settings.h"
-#include "res1.h"
-#include "RuntimeLocalization.h"
+#include "..\\..\\KeyboardLayoutSelection.h"
+#include "..\\..\\utils\\utils.h"
+#include "..\\..\\Settings.h"
+#include "..\\..\\res1.h"
+#include "..\\..\\RuntimeLocalization.h"
 
 extern CSettings _Settings;
 

@@ -1,9 +1,9 @@
 #include "stdafx.h"
 #include "SettingsEditorPage.h"
-#include "Settings.h"
-#include "RuntimeLocalization.h"
-#include "..\\common\\ModernFileDialog.h"
-#include "utils.h"
+#include "..\\..\\Settings.h"
+#include "..\\..\\RuntimeLocalization.h"
+#include "..\\..\\..\\common\\ModernFileDialog.h"
+#include "..\\..\\utils\\utils.h"
 
 extern CSettings _Settings;
 

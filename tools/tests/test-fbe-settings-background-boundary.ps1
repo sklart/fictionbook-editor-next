@@ -16,7 +16,7 @@ foreach ($name in @('EditorBackgrounds.cpp', 'EditorBackgrounds.h')) {
 }
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\EditorBackgrounds.cpp')
 if ($source -match 'mainfrm\.h|FBEview\.h|FBDoc\.h|SettingsDlg\.h') { throw 'EditorBackgrounds unexpectedly depends on an editor coordinator.' }
-foreach ($caller in @('src\fbe\FBDoc.cpp', 'src\fbe\mainfrm.cpp', 'src\fbe\SettingsEditorPage.h')) {
+foreach ($caller in @('src\fbe\FBDoc.cpp', 'src\fbe\mainfrm.cpp', 'src\fbe\settings\ui\SettingsEditorPage.h')) {
     $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $caller)
     if ($text -notmatch [regex]::Escape('settings\\EditorBackgrounds.h')) { throw "Settings service caller lost its explicit include: $caller" }
 }

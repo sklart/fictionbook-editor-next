@@ -1,9 +1,9 @@
 #include "stdafx.h"
-#include "..\\common\\DeploymentContext.h"
 #include "XmlSourceThemes.h"
-#include "settings\\SettingsPaths.h"
 #include "settings\\SettingsNormalization.h"
 #include "settings\\hotkeys\\HotkeyStore.h"
+#include "settings\\words\\WordsStore.h"
+#include "settings\\SettingsStore.h"
 
 enum KEY_TYPE
 {
@@ -232,13 +232,7 @@ CSettings::~CSettings()
 
 void CSettings::Init()
 {
-	const TCHAR* appname = L"FictionBook Editor Next";
-	m_key_path = L"Software\\FBETeam\\";
-	m_key_path += appname;
-	// Portable copies deliberately retain a key path for legacy readers but do
-	// not create an FBE-owned registry branch or persist settings there.
-	if (DeploymentContext::RegistryPersistenceAllowed())
-		m_key.Create(HKEY_CURRENT_USER, m_key_path);
+	FbeSettings::Store::InitializeRegistry(m_key, m_key_path);
 }
 
 CString NormalizeScriptsFolderStoredPath(const CString& sourcePath)
@@ -821,7 +815,7 @@ void CSettings::InitHotkeyGroups()
 
 void CSettings::Close()
 {
-	m_key.Close();
+	FbeSettings::Store::CloseRegistry(m_key);
 }
 
 // ISerializable interface
@@ -1676,43 +1670,22 @@ void CSettings::Destroy(ISerializable* obj)
 
 void CSettings::Save()
 {
-	CString fullpath = FbeSettings::SettingsFilePath();
-	CXMLSerializer ser(fullpath, L"FBE", false);
-
-	ser.Serialize(this);
+	FbeSettings::Store::Save(*this);
 }
 
 void CSettings::Load()
 {
-	CString fullpath = FbeSettings::SettingsFilePath();
-	CXMLSerializer ser(fullpath, L"FBE", true);
-
-
-	SetDefaults();
-	if(!ser.Deserialize(this, this))
-		Save();
+	FbeSettings::Store::Load(*this);
 }
 
 CHotkeysGroup* CSettings::GetGroupByName(const CString& name)
 {
-	for(unsigned int i = 0; i < m_hotkey_groups.size(); ++i)
-	{
-		if(m_hotkey_groups[i].m_reg_name == name)
-			return &m_hotkey_groups[i];
-	}
-
-	return NULL;
+	return FbeSettings::Hotkeys::FindGroup(m_hotkey_groups, name);
 }
 
 CHotkey* CSettings::GetHotkeyByName(const CString& name, CHotkeysGroup& group)
 {
-	for(unsigned int i = 0; i < group.m_hotkeys.size(); ++i)
-	{
-		if(group.m_hotkeys[i].m_reg_name == name)
-			return &group.m_hotkeys[i];
-	}
-
-	return NULL;
+	return FbeSettings::Hotkeys::FindHotkey(group, name);
 }
 
 void CSettings::SaveHotkeyGroups()
@@ -1722,92 +1695,7 @@ void CSettings::SaveHotkeyGroups()
 
 void CSettings::LoadHotkeyGroups()
 {
-	CXMLSerializer ser(FbeSettings::HotkeysFilePath(), L"FBE", true);
-
-	CHotkeysGroup group;
-	std::vector<void*> objects;
-
-	ser.Deserialize(&group, objects);
-
-	bool migratedLegacyScriptHotkey = false;
-	for(unsigned int i = 0; i < objects.size(); ++i)
-	{
-		group = *(CHotkeysGroup*)objects[i];
-		if(CHotkeysGroup* foundGr = GetGroupByName(group.m_reg_name))
-		{
-			for(unsigned int j = 0; j < group.m_hotkeys.size(); ++j)
-			{
-				CHotkey* foundHk = GetHotkeyByName(group.m_hotkeys[j].m_reg_name, *foundGr);
-				// Versions before the portable script identity used an absolute
-				// path as the XML key.  Map it to an already discovered script's
-				// relative key while loading, then write the portable form back.
-				if(foundHk == NULL && group.m_reg_name == L"Scripts")
-				{
-					CString legacyPath(group.m_hotkeys[j].m_reg_name);
-					legacyPath.Replace(L'\\', L'/');
-					legacyPath.MakeLower();
-					CHotkey* matchedHotkey = NULL;
-					int longestSuffixLength = -1;
-					bool ambiguousLongestSuffix = false;
-					for(unsigned int candidateIndex = 0; candidateIndex < foundGr->m_hotkeys.size(); ++candidateIndex)
-					{
-						CString relativePath(foundGr->m_hotkeys[candidateIndex].m_reg_name);
-						relativePath.Replace(L'\\', L'/');
-						relativePath.MakeLower();
-						const bool matches = legacyPath == relativePath ||
-							(legacyPath.GetLength() > relativePath.GetLength() &&
-							legacyPath.Right(relativePath.GetLength()) == relativePath &&
-							legacyPath[legacyPath.GetLength() - relativePath.GetLength() - 1] == L'/');
-						if(matches)
-						{
-							const int suffixLength = relativePath.GetLength();
-							if(suffixLength > longestSuffixLength)
-							{
-								// A nested relative path is more specific than its basename.
-								// Keep only the longest match; equal best matches remain unsafe.
-								longestSuffixLength = suffixLength;
-								matchedHotkey = &foundGr->m_hotkeys[candidateIndex];
-								ambiguousLongestSuffix = false;
-							}
-							else if(suffixLength == longestSuffixLength)
-								ambiguousLongestSuffix = true; // ambiguous suffix: do not guess
-						}
-					}
-					foundHk = ambiguousLongestSuffix ? NULL : matchedHotkey;
-					migratedLegacyScriptHotkey |= foundHk != NULL;
-				}
-				if(foundHk != NULL)
-				{
-					foundHk->m_accel.fVirt = group.m_hotkeys[j].m_accel.fVirt;
-					foundHk->m_accel.key = group.m_hotkeys[j].m_accel.key;
-				}
-			}
-		}
-	}
-	if(migratedLegacyScriptHotkey)
-		SaveHotkeyGroups();
-
-	for(unsigned int i = 0; i < m_hotkey_groups.size(); ++i)
-	{
-		for(unsigned int j = 0; j < m_hotkey_groups[i].m_hotkeys.size(); ++j)
-		{
-			ACCEL accel = m_hotkey_groups[i].m_hotkeys[j].m_accel;
-
-			if(accel.fVirt != NULL && accel.key != NULL && accel.cmd != NULL)
-				keycodes++;
-
-			if(m_hotkey_groups.at(i).m_reg_name == L"Scripts" || m_hotkey_groups.at(i).m_reg_name == L"Plugins")
-			{
-				ACCEL def_accel = m_hotkey_groups.at(i).m_hotkeys.at(j).m_def_accel;
-				if(accel.fVirt != def_accel.fVirt || accel.key != def_accel.key)
-				{
-					m_hotkey_groups[i].m_hotkeys[j].m_def_accel.fVirt = m_hotkey_groups[i].m_hotkeys[j].m_accel.fVirt;
-					m_hotkey_groups[i].m_hotkeys[j].m_def_accel.key = m_hotkey_groups[i].m_hotkeys[j].m_accel.key;
-					m_hotkey_groups[i].m_hotkeys[j].m_accel.cmd = m_hotkey_groups[i].m_hotkeys[j].m_def_accel.cmd;
-				}
-			}
-		}
-	}
+	FbeSettings::Hotkeys::Load(m_hotkey_groups, keycodes);
 }
 
 bool CSettings::KeepEncoding()const
@@ -2785,39 +2673,9 @@ void CSettings::SetJpegQuality(const DWORD value, bool apply)
 }
 
 
-// Predicate for std::sort
-class sortComp { public: bool operator()(void* x, void* y) {
-	return (reinterpret_cast<WordsItem*>(x)->m_word.Compare(reinterpret_cast<WordsItem*>(y)->m_word) < 0); }
-};
-//
 void CSettings::LoadWords()
 {
-	CXMLSerializer ser(FbeSettings::WordsFilePath(), L"FBE", true);
-
-	WordsItem word;
-	std::vector<void*> objects;
-	ser.Deserialize(&word, objects);
-
-	// Deserialization creates one temporary WordsItem per XML node.  Keep only
-	// the deduplicated values in the persistent model and release every
-	// temporary object before returning; large Words.xml files otherwise retain
-	// tens of thousands of unnecessary allocations.
-	m_words.clear();
-	std::sort (objects.begin(), objects.end(), sortComp());
-	m_words.reserve(objects.size());
-	CString previousWord;
-	bool havePreviousWord = false;
-	for(std::vector<void*>::iterator item = objects.begin(); item != objects.end(); ++item)
-	{
-		WordsItem* loadedWord = reinterpret_cast<WordsItem*>(*item);
-		if(!havePreviousWord || previousWord.Compare(loadedWord->m_word) != 0)
-		{
-			m_words.push_back(*loadedWord);
-			previousWord = loadedWord->m_word;
-			havePreviousWord = true;
-		}
-		word.Destroy(loadedWord);
-	}
+	FbeSettings::Words::Load(m_words);
 }
 
 void CSettings::SetImageImportFormat(const DWORD value, bool apply) { m_image_import_format = min(2u, value); if(apply) Save(); }
@@ -2851,41 +2709,7 @@ void CSettings::SetScriptsToolbarCustomizePlacement(const WINDOWPLACEMENT& wpl, 
 
 void CSettings::SaveWords()
 {
-	// changed by SeNS: extremely slow serialization replaced by fast and simple code
-	MSXML2::IXMLDOMDocument2Ptr pXMLDoc;
-	HRESULT hr = pXMLDoc.CreateInstance(__uuidof(DOMDocument));
-	if (!FAILED(hr))
-	{
-		CString xml(L"<FBE>\n\t<Words>\n");
-		// store all words
-		for (unsigned int i=0; i<m_words.size(); i++)
-		{
-			xml += L"\t\t<Word>\n\t\t\t<Value>" + m_words[i].m_word + L"</Value>\n";
-			CString count;
-			count.Format(L"%d",m_words[i].m_count);
-			xml += L"\t\t\t<Counted>" + count + L"</Counted>\n\t\t</Word>";
-		}
-		xml += L"\t</Words>\n</FBE>";
-		pXMLDoc->loadXML(xml.AllocSysString());
-
-		MSXML2::IXMLDOMElementPtr pXMLRootElem = pXMLDoc->GetdocumentElement();
-		MSXML2::IXMLDOMProcessingInstructionPtr pXMLProcessingNode = pXMLDoc->createProcessingInstruction(L"xml", L" version='1.0' encoding='UTF-8'");
-
-		_variant_t vtObject;
-		vtObject.vt = VT_DISPATCH;
-		vtObject.pdispVal = pXMLRootElem;
-		vtObject.pdispVal->AddRef();
-		pXMLDoc->insertBefore(pXMLProcessingNode,vtObject);
-
-		CString fileName(FbeSettings::WordsFilePath());
-		CString temporaryFile(fileName + L".tmp");
-		::DeleteFileW(temporaryFile);
-		if (pXMLDoc->save(temporaryFile.AllocSysString()) == S_OK)
-		{
-			if (!::MoveFileExW(temporaryFile, fileName, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-				::DeleteFileW(temporaryFile);
-		}
-	}
+	FbeSettings::Words::Save(m_words);
 }
 
 void CSettings::SetDefaults()

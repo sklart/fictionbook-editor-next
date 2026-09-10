@@ -1,9 +1,9 @@
 #include "stdafx.h"
 #include "SettingsSpellingPage.h"
-#include "Settings.h"
-#include "RuntimeLocalization.h"
-#include "..\\common\\ModernFileDialog.h"
-#include "StartupTrace.h"
+#include "..\\..\\Settings.h"
+#include "..\\..\\RuntimeLocalization.h"
+#include "..\\..\\..\\common\\ModernFileDialog.h"
+#include "..\\..\\StartupTrace.h"
 
 extern CSettings _Settings;
 

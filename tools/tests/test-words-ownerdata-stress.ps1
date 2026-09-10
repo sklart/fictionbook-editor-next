@@ -14,9 +14,9 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $resource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
-$dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SettingsWordsDlg.h')
-$dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SettingsWordsDlg.cpp')
-$settingsSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.cpp')
+$dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsWordsDlg.h')
+$dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsWordsDlg.cpp')
+$wordsStoreSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\words\WordsStore.cpp')
 
 if ($resource -notmatch 'IDC_LIST_WORDS,"SysListView32",[^\r\n]*LVS_OWNERDATA') { throw 'IDC_LIST_WORDS must remain an owner-data ListView.' }
 if ($dialogHeader -notmatch 'std::vector<WordsItem>\s+m_words') { throw 'The dialog must keep its staged word model outside the ListView.' }
@@ -24,8 +24,8 @@ if ($dialogHeader -notmatch 'LVN_GETDISPINFO') { throw 'The ListView must provid
 if ($dialogSource -match '(?m)^\s*m_list_words\.(InsertItem|DeleteItem)\s*\(') { throw 'Owner-data Lists must not create or delete individual ListView items.' }
 if ($dialogSource -notmatch 'm_list_words\.SetItemCount\(static_cast<int>\(m_words\.size\(\)\)\)') { throw 'Model changes must update the virtual item count.' }
 if ($dialogSource -notmatch 'SetItemState\(-1, m_sel_all \? 0 : LVIS_SELECTED, LVIS_SELECTED\)') { throw 'Select-all must use a single virtual ListView state operation.' }
-if ($settingsSource -notmatch 'm_words\.reserve\(objects\.size\(\)\)') { throw 'Words.xml loading must reserve the persistent model for large files.' }
-if ($settingsSource -notmatch 'word\.Destroy\(loadedWord\)') { throw 'Words.xml loading must release deserializer-owned temporary objects.' }
+if ($wordsStoreSource -notmatch 'words\.reserve\(objects\.size\(\)\)') { throw 'Words.xml loading must reserve the persistent model for large files.' }
+if ($wordsStoreSource -notmatch 'word\.Destroy\(loadedWord\)') { throw 'Words.xml loading must release deserializer-owned temporary objects.' }
 
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ('fbe-words-stress.' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temporary -Force | Out-Null

@@ -2,11 +2,11 @@
 
 #include "stdafx.h"
 #include "SettingsSourcePage.h"
-#include "Settings.h"
-#include "XmlSourceThemes.h"
-#include "RuntimeLocalization.h"
-#include "utils\CFileDialogEx.h"
-#include "apputils.h"
+#include "..\\..\\Settings.h"
+#include "..\\..\\XmlSourceThemes.h"
+#include "..\\..\\RuntimeLocalization.h"
+#include "..\\..\\utils\\CFileDialogEx.h"
+#include "..\\..\\apputils.h"
 
 extern CSettings _Settings;
 

@@ -2,7 +2,7 @@
 
 #include <atlctrls.h>
 #include <map>
-#include "RuntimeLocalization.h"
+#include "..\\..\\RuntimeLocalization.h"
 
 class CSettingsTooltips
 {

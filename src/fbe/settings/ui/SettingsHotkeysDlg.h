@@ -1,7 +1,7 @@
 // SettingsHotkeysDlg.h : Declaration of the CSettingsHotkeysDlg
 #pragma once
 
-#include "resource.h"
+#include "..\\..\\resource.h"
 #include <atlhost.h>
 #include <vector>
 #include "SettingsPageLifecycle.h"

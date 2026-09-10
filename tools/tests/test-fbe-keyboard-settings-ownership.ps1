@@ -7,12 +7,12 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$hotkeys = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SettingsHotkeysDlg.cpp')
+$hotkeys = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsHotkeysDlg.cpp')
 $migration = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\KeyboardLayoutSelection.h')
 
 foreach ($setter in @('SetChangeKeybLayout', 'SetKeybLayout')) {
     $writers = @(
-        Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe') -Filter 'Settings*.cpp' |
+        Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui') -Filter 'Settings*.cpp' |
             Where-Object {
                 (Get-Content -Raw -LiteralPath $_.FullName) -match ('_Settings\.' + $setter + '\s*\(')
             }
@@ -37,7 +37,7 @@ foreach ($ownership in @(
     @{ Setter = 'SetNBSPChar'; Writer = 'SettingsEditorPage.cpp' }
 )) {
     $writers = @(
-        Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe') -Filter 'Settings*.cpp' |
+        Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui') -Filter 'Settings*.cpp' |
             Where-Object {
                 (Get-Content -Raw -LiteralPath $_.FullName) -match ('_Settings\.' + $ownership.Setter + '\s*\(')
             }

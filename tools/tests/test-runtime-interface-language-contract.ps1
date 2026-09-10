@@ -44,7 +44,7 @@ $requiredInterfaceLanguages = @(
 
 $settingsText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\Settings.cpp")
 $settingsHeaderText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\Settings.h")
-$generalPageText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\SettingsGeneralPage.cpp")
+$generalPageText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\settings\ui\SettingsGeneralPage.cpp")
 $sharedRuntimeHelperPath = Join-Path $repoRoot "src\common\RuntimeLocalizationCommon.h"
 $sharedRuntimeHelperText = Get-Content -Raw -LiteralPath $sharedRuntimeHelperPath
 $appCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\app-ui\catalog.json") -Encoding UTF8 | ConvertFrom-Json

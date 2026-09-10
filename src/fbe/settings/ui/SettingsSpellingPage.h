@@ -1,6 +1,6 @@
 #pragma once
 #include <atlhost.h>
-#include "resource.h"
+#include "..\\..\\resource.h"
 #include "SettingsPageLifecycle.h"
 #include "SettingsTooltips.h"
 

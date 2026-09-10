@@ -6,7 +6,7 @@
 #include "MainFrm.h"
 #include "AboutBox.h"
 #include "..\\common\\ModernFileDialog.h"
-#include "SettingsDlg.h"
+#include "settings\\ui\\SettingsDlg.h"
 #include "Settings.h"
 #include "settings\\EditorBackgrounds.h"
 #include "utils.h"

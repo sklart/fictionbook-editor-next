@@ -3,10 +3,10 @@
 #pragma once
 
 #include <atlhost.h>
-#include <ColorButton.h>
+#include "..\\..\\extras\\ColorButton.h"
 #include <vector>
-#include "resource.h"
-#include "Settings.h"
+#include "..\\..\\resource.h"
+#include "..\\..\\Settings.h"
 #include "SettingsPageLifecycle.h"
 #include "SettingsTooltips.h"
 

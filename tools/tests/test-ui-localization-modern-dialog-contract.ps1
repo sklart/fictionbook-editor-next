@@ -3,7 +3,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 function Read([string]$p) { Get-Content -Raw -LiteralPath (Join-Path $root $p) }
-$spelling = Read 'src\fbe\SettingsSpellingPage.cpp'
+$spelling = Read 'src\fbe\settings\ui\SettingsSpellingPage.cpp'
 if ($spelling -match 'OPENFILENAME|GetOpenFileName') { throw 'Spelling dictionary picker must use ModernFileDialog.' }
 if ($spelling -notmatch 'ModernFileDialog::Request') { throw 'Spelling picker request is missing.' }
 $image = Read 'src\fbe\FBEview.cpp'
@@ -13,7 +13,7 @@ if ($rc -notmatch 'IDD_ADDIMAGE DIALOGEX 0, 0, 220, 78') { throw 'Empty-image di
 $catalog = Read 'localization\app-ui\catalog.json'
 $smallDialogs = Read 'localization\app-ui\fbe-small-dialogs.json'
 if ($catalog -notmatch '"fbe\.image\.open_button"') { throw 'Image Open localization key is missing.' }
-$hotkeys = Read 'src\fbe\SettingsHotkeysDlg.cpp'
+$hotkeys = Read 'src\fbe\settings\ui\SettingsHotkeysDlg.cpp'
 $settings = Read 'src\fbe\Settings.cpp'
 $runtime = Read 'src\fbe\RuntimeLocalization.cpp'
 if ($hotkeys -match 'CompareNoCase\(L"Add to dictionary"|CompareNoCase\(L"Ignore All"') { throw 'Hotkey display names must not depend on registration-name comparisons.' }

@@ -1,11 +1,11 @@
 #pragma once
 
 #include <atlhost.h>
-#include <ColorButton.h>
-#include "resource.h"
+#include "..\\..\\extras\\ColorButton.h"
+#include "..\\..\\resource.h"
 #include "SettingsPageLifecycle.h"
 #include "SettingsTooltips.h"
-#include "settings\\EditorBackgrounds.h"
+#include "..\\EditorBackgrounds.h"
 
 class CEditorBackgroundPreview : public CWindowImpl<CEditorBackgroundPreview, CStatic>
 {
