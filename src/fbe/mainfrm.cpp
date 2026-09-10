@@ -4001,6 +4001,24 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		::PostQuitMessage(result == CANCELLED && sourceStillModified && sameDocument && mruUnchanged ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"failed-open-runtime"))
+	{
+		wchar_t failedPath[MAX_PATH] = {};
+		const DWORD failedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_FAILED_OPEN_PATH", failedPath, _countof(failedPath));
+		FB::Doc* const original = m_doc;
+		const DocumentLocation originalLocation = m_document_session.Location();
+		CString mruBefore;
+		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index) mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
+		const FILE_OP_STATUS result = failedLength && failedLength < _countof(failedPath) ? LoadFile(failedPath) : FAIL;
+		CString mruAfter;
+		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index) mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
+		const bool preserved = result == FAIL && m_doc == original && FB::Doc::m_active_doc == m_doc &&
+			m_document_session.Location().storagePath == originalLocation.storagePath && mruBefore == mruAfter;
+		CStringA report; report.Format("failed=%d\nidentity=%d\nactive=%d\nsession=%d\nmru_unchanged=%d\n", result == FAIL, m_doc == original, FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, mruBefore == mruAfter);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(preserved ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"archive-mru-runtime"))
 	{
 		wchar_t secondEntry[MAX_PATH] = {}, occurrenceText[16] = {}, normalEntries[8192] = {};
