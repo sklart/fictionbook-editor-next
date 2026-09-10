@@ -43,11 +43,11 @@ foreach ($required in @(
 }
 
 foreach ($required in @(
-    'PopulateAvailable()', 'PopulateCurrent()', 'OnReset', 'GetScriptsToolbarCustomizeSize', 'relativePath',
+    'PopulateAvailable(', 'PopulateCurrent(', 'OnReset', 'GetScriptsToolbarCustomizeSize', 'relativePath',
     'ToolbarContainsCommand', 'if(ToolbarContainsCommand(m_available[i].command)) continue;',
-    'command > 0 && ToolbarContainsCommand(command)', 'command < 0', 'TBSTYLE_SEP',
+    'ToolbarContainsCommand(m_available[item].command)', 'item == kSeparatorItem', 'TBSTYLE_SEP',
     'fbe.scripts_toolbar_customize.separator', 'FbeLoadRuntimeStringByKey', 'm_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));',
-    'PopulateAvailable(); PopulateCurrent', 'CenterWindow(GetParent())', 'buttonColumn', 'UpdateButtonState',
+    'RefreshLists', 'CenterWindow(GetParent())', 'buttonColumn', 'UpdateButtonState',
     'TB_GETIMAGELIST', 'ImageList_Draw'
 )) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
@@ -69,11 +69,11 @@ foreach ($required in @('MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'MESSAGE_HAN
     }
 }
 foreach ($listId in @('IDC_SCRIPTS_TOOLBAR_AVAILABLE', 'IDC_SCRIPTS_TOOLBAR_CURRENT')) {
-    if ($resource -notmatch "$listId,[^\r\n]*LBS_HASSTRINGS[^\r\n]*LBS_OWNERDRAWFIXED") {
-        throw "Owner-draw listbox $listId must retain its strings."
+    if ($resource -notmatch "$listId,[^\r\n]*LBS_EXTENDEDSEL[^\r\n]*LBS_HASSTRINGS[^\r\n]*LBS_OWNERDRAWFIXED") {
+        throw "Owner-draw listbox $listId must retain strings and extended selection."
     }
 }
-foreach ($required in @('CreateDialogFontForDpi', 'fbe.scripts_toolbar_customize.close', 'SetDlgItemText(m_hWnd, IDCANCEL')) {
+foreach ($required in @('CreateDialogFontForDpi', 'FbeApplyRuntimeDialogLocalization(m_hWnd, IDD)', 'WM_SETREDRAW', 'RefreshLists')) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Диалог не сохраняет требуемое локальное поведение: $required"
     }
@@ -81,8 +81,8 @@ foreach ($required in @('CreateDialogFontForDpi', 'fbe.scripts_toolbar_customize
 foreach ($required in @(
     'SetWindowSubclass(m_currentList, CurrentListSubclassProc', 'WM_LBUTTONDOWN', 'WM_MOUSEMOVE', 'WM_LBUTTONUP',
     'WM_KEYDOWN', 'VK_ESCAPE', 'SM_CXDRAG', 'DrawDragIndicator', 'UpdateDragInsert', 'UpdateDragScroll',
-    'WM_TIMER', 'SB_LINEUP', 'SB_LINEDOWN', 'm_dragSource < m_dragInsert ? m_dragInsert - 1 : m_dragInsert',
-    'InsertButton(destination, &button)'
+    'WM_TIMER', 'SB_LINEUP', 'SB_LINEDOWN', 'm_dragRows', 'MoveDraggedButtons',
+    'destination = insert'
 )) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Диалог не содержит ожидаемую реализацию drag-перестановки: $required"

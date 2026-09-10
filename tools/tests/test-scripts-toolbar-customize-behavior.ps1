@@ -36,6 +36,25 @@ function Move-ByDrag([System.Collections.Generic.List[int]]$toolbar, [int]$sourc
     $destination = if ($source -lt $insert) { $insert - 1 } else { $insert }
     $item = $toolbar[$source]; $toolbar.RemoveAt($source); $toolbar.Insert($destination, $item)
 }
+function Move-Selected([System.Collections.Generic.List[int]]$toolbar, [int[]]$selected, [bool]$down) {
+    $flags = [bool[]]::new($toolbar.Count); foreach ($index in $selected) { $flags[$index] = $true }
+    if ($down) {
+        for ($index = $toolbar.Count - 2; $index -ge 0; --$index) {
+            if ($flags[$index] -and -not $flags[$index + 1]) { $item = $toolbar[$index]; $toolbar[$index] = $toolbar[$index + 1]; $toolbar[$index + 1] = $item; $flag = $flags[$index]; $flags[$index] = $flags[$index + 1]; $flags[$index + 1] = $flag }
+        }
+    } else {
+        for ($index = 1; $index -lt $toolbar.Count; ++$index) {
+            if ($flags[$index] -and -not $flags[$index - 1]) { $item = $toolbar[$index]; $toolbar[$index] = $toolbar[$index - 1]; $toolbar[$index - 1] = $item; $flag = $flags[$index]; $flags[$index] = $flags[$index - 1]; $flags[$index - 1] = $flag }
+        }
+    }
+}
+function Move-SelectedByDrag([System.Collections.Generic.List[int]]$toolbar, [int[]]$selected, [int]$insert) {
+    $selectedSet = [System.Collections.Generic.HashSet[int]]::new([int[]]$selected)
+    $destination = $insert - @($selected | Where-Object { $_ -lt $insert }).Count
+    $moved = [System.Collections.Generic.List[int]]::new(); $rest = [System.Collections.Generic.List[int]]::new()
+    for ($index = 0; $index -lt $toolbar.Count; ++$index) { if ($selectedSet.Contains($index)) { $moved.Add($toolbar[$index]) } else { $rest.Add($toolbar[$index]) } }
+    $rest.InsertRange($destination, $moved); $toolbar.Clear(); $toolbar.AddRange($rest)
+}
 
 # 0 models TBSTYLE_SEP: it occupies a real toolbar index and is movable/removable.
 $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
@@ -51,6 +70,21 @@ Move-Down $toolbar 1
 Assert-Equal $toolbar @(101, 0, 102) 'Down moves a button across separator'
 $toolbar.RemoveAt(1)
 Assert-Equal $toolbar @(101, 102) 'Remove removes selected separator by toolbar index'
+
+$toolbar = [System.Collections.Generic.List[int]]@(101, 102, 0, 103)
+$selectedAvailable = @(0, 2, 3) # command, separator, command
+foreach ($item in $selectedAvailable) { if ($item -eq 0) { $toolbar.Add(0) } elseif (-not $toolbar.Contains($item)) { $toolbar.Add($item) } }
+Assert-Equal $toolbar @(101, 102, 0, 103, 0, 2, 3) 'multi-add preserves source order and permits separator'
+$remove = @(6, 4); foreach ($index in $remove) { $toolbar.RemoveAt($index) }
+Assert-Equal $toolbar @(101, 102, 0, 103, 2) 'multi-remove runs from end to beginning'
+$toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102, 103)
+Move-Selected $toolbar @(1, 2) $false
+Assert-Equal $toolbar @(0, 102, 101, 103) 'grouped Up preserves selection order across separator'
+Move-Selected $toolbar @(0, 1) $true
+Assert-Equal $toolbar @(101, 0, 102, 103) 'grouped Down preserves selection order across separator'
+$toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102, 103)
+Move-SelectedByDrag $toolbar @(1, 2) 4
+Assert-Equal $toolbar @(101, 103, 0, 102) 'grouped drag preserves order and adjusts downward insert index'
 
 $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
 Move-ByDrag $toolbar 2 1
@@ -92,6 +126,14 @@ foreach ($required in @('CurrentListSubclassProc', 'DrawDragIndicator', 'UpdateD
         throw "Scripts toolbar drag behavior is missing: $required"
     }
 }
+foreach ($required in @('WM_SETREDRAW', 'RedrawWindow', 'LBS_EXTENDEDSEL', 'LB_SETSEL', 'VK_CONTROL', 'm_dragRows', 'MoveSelectedButtons', 'MoveDraggedButtons')) {
+    if ($dialog -notmatch [regex]::Escape($required) -and $dialogHeader -notmatch [regex]::Escape($required) -and $resource -notmatch [regex]::Escape($required)) {
+        throw "Scripts toolbar batch/multi-select behavior is missing: $required"
+    }
+}
+$close = $localization.strings.'fbe.scripts_toolbar_customize.close'
+if ($close.translations.'ru-RU' -ne 'Закрыть') { throw 'Russian runtime localization for the Close button is incorrect.' }
+if ($mainFrame -notmatch 'FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION') { throw 'System-dialog CBT localization must not overwrite the custom Close button.' }
 foreach ($required in @('TB_GETIMAGELIST', 'ImageList_Draw', 'UpdateButtonState', 'fbe.hotkey.scripts.last_script')) {
     if ($dialog -notmatch [regex]::Escape($required) -and $dialogHeader -notmatch [regex]::Escape($required) -and $mainFrame -notmatch [regex]::Escape($required)) {
         throw "Scripts toolbar UI behavior is missing: $required"

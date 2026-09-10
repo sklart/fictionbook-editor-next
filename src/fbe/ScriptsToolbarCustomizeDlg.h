@@ -59,6 +59,7 @@ private:
 	int m_dragInsert;
 	POINT m_dragStartPoint;
 	int m_dragScrollDirection;
+	std::vector<int> m_dragRows;
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
@@ -77,9 +78,11 @@ private:
 	LRESULT OnReset(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClose(WORD, WORD, HWND, BOOL&);
 	static LRESULT CALLBACK CurrentListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference);
+	static LRESULT CALLBACK AvailableListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference);
 
-	void PopulateAvailable();
-	void PopulateCurrent(int select = -1);
+	void PopulateAvailable(const std::vector<DWORD_PTR>* selection = NULL, bool redraw = true);
+	void PopulateCurrent(const std::vector<DWORD_PTR>* selection = NULL, bool redraw = true);
+	void RefreshLists(const std::vector<DWORD_PTR>* availableSelection = NULL, const std::vector<DWORD_PTR>* currentSelection = NULL);
 	void LayoutControls(int width, int height);
 	void UpdateMetrics();
 	void UpdateButtonState();
@@ -88,6 +91,12 @@ private:
 	void UpdateDragInsert(POINT point);
 	void FinishDrag(bool commit, POINT point);
 	void UpdateDragScroll(POINT point);
+	std::vector<int> GetSelectedRows(const CListBox& list) const;
+	std::vector<DWORD_PTR> GetSelectedItemData(const CListBox& list) const;
+	void RestoreSelection(CListBox& list, const std::vector<DWORD_PTR>& selection, int topIndex);
+	bool ReplaceToolbarButtons(const std::vector<TBBUTTON>& buttons);
+	bool MoveSelectedButtons(bool down);
+	bool MoveDraggedButtons(int insert, std::vector<DWORD_PTR>& selection);
 	void RestorePlacement();
 	int Scale(int px) const;
 	bool ToolbarContainsCommand(int command) const;

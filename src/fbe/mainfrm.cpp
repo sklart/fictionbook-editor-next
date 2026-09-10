@@ -1682,7 +1682,7 @@ LRESULT CALLBACK CBTProc(INT nCode, WPARAM wParam, LPARAM lParam)
 	{
 		// set window handles
 		hChildWnd  = (HWND)wParam;
-		if (activatedWnd != (HWND)wParam)
+		if (activatedWnd != (HWND)wParam && ::GetProp(hChildWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION") == NULL)
 		{
 			activatedWnd = hChildWnd;
 

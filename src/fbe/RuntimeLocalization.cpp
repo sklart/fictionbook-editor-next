@@ -23,6 +23,16 @@ struct RuntimeDialogBinding {
 // translations.  Every control below has a stable resource ID (never
 // IDC_STATIC), so an English dialog template can be localized at runtime.
 static const RuntimeDialogBinding g_runtimeDialogBindings[] = {
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, 0, L"fbe.scripts_toolbar_customize.caption" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL, L"fbe.scripts_toolbar_customize.search" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL, L"fbe.scripts_toolbar_customize.available" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL, L"fbe.scripts_toolbar_customize.current" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_ADD, L"fbe.scripts_toolbar_customize.add" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_REMOVE, L"fbe.scripts_toolbar_customize.remove" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_UP, L"fbe.scripts_toolbar_customize.up" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_DOWN, L"fbe.scripts_toolbar_customize.down" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_RESET, L"fbe.scripts_toolbar_customize.reset" },
+	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDCANCEL, L"fbe.scripts_toolbar_customize.close" },
 	{ IDD_TABLE, 0, L"fbe.dialog.idd_table.caption" },
 	{ IDD_TABLE, IDOK, L"fbe.dialog.idd_table.ok" },
 	{ IDD_TABLE, IDCANCEL, L"fbe.dialog.idd_table.cancel" },
