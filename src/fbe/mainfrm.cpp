@@ -454,12 +454,20 @@ static CString ArchiveMruDirectoryName(const CString& path)
 	return slash < 0 ? CString() : path.Left(slash + 1);
 }
 
-static CString ArchiveMruLastDirectoryName(const CString& path)
+static CString ArchiveMruDirectoryContext(const CString& path, int components)
 {
 	CString directory = ArchiveMruDirectoryName(path);
 	while (!directory.IsEmpty() && (directory.Right(1) == L"\\" || directory.Right(1) == L"/")) directory = directory.Left(directory.GetLength() - 1);
-	const int slash = max(directory.ReverseFind(L'\\'), directory.ReverseFind(L'/'));
-	return directory.IsEmpty() ? CString() : directory.Mid(slash + 1) + L"\\";
+	if (directory.IsEmpty() || components <= 0) return CString();
+	int start = directory.GetLength();
+	while (components-- > 0)
+	{
+		const int slash = max(directory.Left(max(0, start - 1)).ReverseFind(L'\\'), directory.Left(max(0, start - 1)).ReverseFind(L'/'));
+		if (slash < 0) { start = 0; break; }
+		start = slash + 1;
+		if (slash == 0) { start = 0; break; }
+	}
+	return directory.Mid(start) + L"\\";
 }
 
 static CString CompactMruCaptionPart(const CString& value, int limit)
@@ -490,15 +498,22 @@ static CString ArchiveMruDisplayName(const std::vector<ArchiveMruRecord>& record
 		if (sameBook && !ArchiveMruDirectoryName(records[i].location.entryPath).IsEmpty()) candidate = ArchiveMruDirectoryName(records[i].location.entryPath) + candidate;
 		if ((candidate + L" \x2014 " + ArchiveMruFileName(records[i].location.storagePath)).CompareNoCase(result) == 0) ++equal;
 	}
-	// Two archives in different folders can still have the same container and
-	// entry names.  Make their menu captions distinct before using occurrence.
+	// Resolve collisions by adding just enough parent directory context.  This
+	// produces archive.zip, Books\archive.zip, A\Books\archive.zip, and only
+	// reaches an absolute path if shorter contexts remain ambiguous.
 	if (equal > 1)
 	{
-		bool differentStorage = false;
-		for (size_t i = 0; i < records.size(); ++i)
-			if (i != target && ArchiveMruFileName(records[i].location.entryPath).CompareNoCase(ArchiveMruFileName(location.entryPath)) == 0 &&
-				ArchiveMruFileName(records[i].location.storagePath).CompareNoCase(archive) == 0 && records[i].location.storagePath.CompareNoCase(location.storagePath) != 0) { differentStorage = true; break; }
-		if (differentStorage) archiveContext = ArchiveMruLastDirectoryName(location.storagePath) + archive;
+		for (int depth = 1; depth < 32; ++depth)
+		{
+			const CString candidate = ArchiveMruDirectoryContext(location.storagePath, depth);
+			bool unique = true;
+			for (size_t i = 0; i < records.size(); ++i)
+				if (i != target && ArchiveMruFileName(records[i].location.entryPath).CompareNoCase(ArchiveMruFileName(location.entryPath)) == 0 &&
+					ArchiveMruFileName(records[i].location.storagePath).CompareNoCase(archive) == 0 && records[i].location.storagePath.CompareNoCase(location.storagePath) != 0 &&
+					ArchiveMruDirectoryContext(records[i].location.storagePath, depth).CompareNoCase(candidate) == 0) { unique = false; break; }
+			archiveContext = candidate + archive;
+			if (unique) break;
+		}
 	}
 	result = book + L" \x2014 " + archiveContext;
 	CString occurrence;
@@ -4838,7 +4853,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const int count = m_mru.m_arrDocs.GetSize(); bool exactOrder = count == 10 && order.size() == 10, cleanMenu = true; int menuCount = 0;
 		for (int index = 0; index < count && exactOrder; ++index) exactOrder = CString(m_mru.m_arrDocs[index].szDocName) == order[order.size() - 1 - index];
 		for (int index = 0; index < count; ++index) { DocumentLocation location; if (ParseArchiveMruKey(CString(m_mru.m_arrDocs[index].szDocName), location) && !FindArchiveMruRecord(CString(m_mru.m_arrDocs[index].szDocName), location)) cleanMenu = false; }
-		std::vector<CString> captions; const HMENU menu = m_mru.GetMenuHandle(); int emptyCaption = 0, rawCaption = 0, numberedCaption = 0, duplicateCaption = 0, disabledCaption = 0;
+		std::vector<CString> captions; const HMENU menu = m_mru.GetMenuHandle(); int emptyCaption = 0, rawCaption = 0, numberedCaption = 0, duplicateCaption = 0, disabledCaption = 0; bool minimalFolderContexts = false;
 		if (menu == NULL) cleanMenu = false; else for (int index = 0; index < ::GetMenuItemCount(menu); ++index)
 		{
 			MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_ID;
@@ -4848,11 +4863,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			for (size_t previous = 0; previous < captions.size(); ++previous) if (captions[previous].CompareNoCase(caption) == 0) { cleanMenu = false; ++duplicateCaption; }
 			captions.push_back(caption);
 		}
+		for (size_t i = 0; i < captions.size(); ++i) for (size_t j = i + 1; j < captions.size(); ++j)
+			if ((captions[i].Find(L"A\\Books\\archive.zip") >= 0 && captions[j].Find(L"B\\Books\\archive.zip") >= 0) || (captions[i].Find(L"B\\Books\\archive.zip") >= 0 && captions[j].Find(L"A\\Books\\archive.zip") >= 0)) minimalFolderContexts = true;
 		wchar_t path[MAX_PATH] = {}, entry[MAX_PATH] = {}, occurrenceText[16] = {}; ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_MRU_REOPEN_PATH", path, _countof(path)); ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_ENTRY", entry, _countof(entry)); ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_OCCURRENCE", occurrenceText, _countof(occurrenceText));
 		unsigned int occurrence = 0; DocumentLocation target; target.containerKind = DetectDocumentContainerKind(path); target.storagePath = path; target.entryPath = entry; target.entryOccurrence = ParseArchiveMruUnsigned(occurrenceText, occurrence) ? occurrence : 0; target.documentType = DetectFictionBookFileType(target.entryPath);
 		WORD command = 0; const CString key = ArchiveMruKey(target); for (int offset = 0; offset < count; ++offset) { CString value; if (m_mru.GetFromList(ID_FILE_MRU_FIRST + offset, value) && value == key) { command = ID_FILE_MRU_FIRST + offset; break; } }
 		BOOL handled = FALSE; const bool reopened = command != 0 && OnFileOpenMRU(0, command, NULL, handled) == 0 && SameArchiveMruIdentity(m_document_location, target);
-		CStringA report; report.Format("count=%d\nmenu_count=%d\norder=%d\nclean=%d\nempty=%d\ndisabled=%d\nraw=%d\nnumbered=%d\nduplicates=%d\nreopened=%d\n", count, menuCount, exactOrder, cleanMenu, emptyCaption, disabledCaption, rawCaption, numberedCaption, duplicateCaption, reopened); DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		CStringA report; report.Format("count=%d\nmenu_count=%d\norder=%d\nclean=%d\nempty=%d\ndisabled=%d\nraw=%d\nnumbered=%d\nduplicates=%d\nfolders=%d\nreopened=%d\n", count, menuCount, exactOrder, cleanMenu, emptyCaption, disabledCaption, rawCaption, numberedCaption, duplicateCaption, minimalFolderContexts, reopened); DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(count == 10 && menuCount == 10 && exactOrder && cleanMenu && reopened ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"archive-recovery-create"))
