@@ -4,8 +4,8 @@
 #include <string>
 
 #include "SearchDocumentAdapter.h"
-#include "search\\SearchResults.h"
-#include "search\\SearchSession.h"
+#include "SearchResults.h"
+#include "SearchSession.h"
 
 // Editor-side bridge for a Design-mode document. It owns MSHTML-aware
 // mapping, while the query, matching and navigation contracts stay in Search

@@ -285,9 +285,9 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="$(FbeApiOutputDirectory)FBE_i.c"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="search\RegexBackend.cpp" />
     <ClCompile Include="search\RegexBackendPcre2.cpp" />
-	<ClCompile Include="SearchDocumentAdapter.cpp" />
+	<ClCompile Include="search\SearchDocumentAdapter.cpp" />
 	<ClCompile Include="ReplacementPreflight.cpp" />
-	<ClCompile Include="DocumentSearchCoordinator.cpp" />
+	<ClCompile Include="search\DocumentSearchCoordinator.cpp" />
 	<ClCompile Include="search\SearchSession.cpp">
 	  <PrecompiledHeader>NotUsing</PrecompiledHeader>
 	</ClCompile>
@@ -444,8 +444,9 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="XmlSourceThemes.h" />
 	<ClInclude Include="XmlTagMatcher.h" />
     <ClInclude Include="SearchReplace.h" />
-	<ClInclude Include="SearchDocumentAdapter.h" />
-	<ClInclude Include="DocumentSearchCoordinator.h" />
+	<ClInclude Include="search\SearchDocumentAdapter.h" />
+	<ClInclude Include="search\DocumentSearchCoordinator.h" />
+	<ClInclude Include="search\SearchViewportPosition.h" />
     <ClInclude Include="XMLSerializer\Serializable.h" />
     <ClInclude Include="Settings.h" />
 	<ClInclude Include="SettingsPageLifecycle.h" />

@@ -4,8 +4,8 @@
 
 #include "DocumentSearchCoordinator.h"
 
-#include "search\\LiteralSearch.h"
-#include "search\\RegexBackend.h"
+#include "LiteralSearch.h"
+#include "RegexBackend.h"
 
 namespace {
 

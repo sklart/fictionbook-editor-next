@@ -15,9 +15,9 @@ $testExe = Join-Path $testDir 'search-document-adapter-mshtml.exe'
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 $sources = @(
     (Join-Path $PSScriptRoot 'search-document-adapter-mshtml.cpp'),
-    (Join-Path $repoRoot 'src\fbe\SearchDocumentAdapter.cpp'),
+    (Join-Path $repoRoot 'src\fbe\search\SearchDocumentAdapter.cpp'),
     (Join-Path $repoRoot 'src\fbe\ReplacementPreflight.cpp'),
-    (Join-Path $repoRoot 'src\fbe\DocumentSearchCoordinator.cpp'),
+    (Join-Path $repoRoot 'src\fbe\search\DocumentSearchCoordinator.cpp'),
     (Join-Path $repoRoot 'src\fbe\search\SearchSession.cpp'),
 	(Join-Path $repoRoot 'src\fbe\search\SearchResults.cpp'),
     (Join-Path $repoRoot 'src\fbe\search\SearchTextSnapshot.cpp'),

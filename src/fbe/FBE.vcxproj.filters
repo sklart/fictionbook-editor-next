@@ -140,8 +140,8 @@
 	<ClCompile Include="source\Fb2SourceStructuralContext.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackend.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackendPcre2.cpp"><Filter>Source Files\Search</Filter></ClCompile>
-	<ClCompile Include="SearchDocumentAdapter.cpp"><Filter>Source Files</Filter></ClCompile>
-	<ClCompile Include="DocumentSearchCoordinator.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="search\SearchDocumentAdapter.cpp"><Filter>Source Files\Search</Filter></ClCompile>
+	<ClCompile Include="search\DocumentSearchCoordinator.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\SearchSession.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\SearchResults.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\LiteralSearch.cpp"><Filter>Source Files\Search</Filter></ClCompile>
@@ -331,8 +331,9 @@
     <ClInclude Include="SearchReplace.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-	<ClInclude Include="SearchDocumentAdapter.h"><Filter>Header Files</Filter></ClInclude>
-	<ClInclude Include="DocumentSearchCoordinator.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="search\SearchDocumentAdapter.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\DocumentSearchCoordinator.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\SearchViewportPosition.h"><Filter>Header Files\Search</Filter></ClInclude>
     <ClInclude Include="XMLSerializer\Serializable.h">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -18,7 +18,7 @@
 #include "StartupTrace.h"
 #include "BinaryFileSave.h"
 #include "BinarySaveNotification.h"
-#include "DocumentSearchCoordinator.h"
+#include "search\\DocumentSearchCoordinator.h"
 #include "search\\SearchDocumentGeneration.h"
 
 extern CSettings _Settings;

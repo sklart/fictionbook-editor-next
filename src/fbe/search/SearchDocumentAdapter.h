@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "search\SearchTextSnapshot.h"
-#include "search\SearchTypes.h"
+#include "SearchTextSnapshot.h"
+#include "SearchTypes.h"
 
 // MSHTML is intentionally confined to this editor-side adapter.  Search Core
 // receives only UTF-16 text and opaque source coordinates.

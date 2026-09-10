@@ -19,7 +19,7 @@ foreach ($source in @('LiteralSearch.cpp', 'LiteralSearch.h', 'RegexBackend.cpp'
     if ($text -match 'mainfrm\.h|FBEview\.h|FBDoc\.h|SettingsDlg\.h') { throw "Search backend unexpectedly depends on an editor coordinator: $source" }
 	if ($text -match 'MSHTML::|IHTMLTxtRange|IHTMLDocument') { throw "Search Core unexpectedly depends on MSHTML: $source" }
 }
-foreach ($adapter in @('SearchDocumentAdapter.cpp', 'SearchDocumentAdapter.h')) {
+foreach ($adapter in @('search\SearchDocumentAdapter.cpp', 'search\SearchDocumentAdapter.h')) {
     $path = Join-Path $repoRoot "src\fbe\$adapter"
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Search document adapter is missing: $path" }
 }

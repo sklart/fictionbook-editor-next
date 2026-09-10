@@ -13,7 +13,7 @@
 
 #include "FBEView.h"
 #include "SearchReplace.h"
-#include "SearchViewportPosition.h"
+#include "search\\SearchViewportPosition.h"
 #include "search\\SearchViewportResults.h"
 #include "Scintilla.h"
 #include "ElementDescMnr.h"
