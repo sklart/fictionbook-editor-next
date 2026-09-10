@@ -130,6 +130,7 @@
 	<ClCompile Include="scripts\ScriptCatalog.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="scripts\ScriptCommandRegistry.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="scripts\ScriptVisualResources.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="scripts\ScriptMenuBuilder.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\FileFingerprint.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentLocation.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentState.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -269,6 +270,7 @@
 	<ClInclude Include="scripts\ScriptDescriptor.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="scripts\ScriptCommandRegistry.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="scripts\ScriptVisualResources.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="scripts\ScriptMenuBuilder.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\FileFingerprint.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentState.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentSession.h"><Filter>Header Files</Filter></ClInclude>
