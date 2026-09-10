@@ -29,6 +29,7 @@
 #include "plugins\\PluginApiV2.h"
 #include "UiMetrics.h"
 #include "ScriptsToolbarCustomizeDlg.h"
+#include "scripts\\ScriptCatalog.h"
 #include "BodySourceSelectionTransfer.h"
 #include "XmlDeclaration.h"
 #include "..\\common\\DeploymentContext.h"
@@ -2777,7 +2778,32 @@ void CMainFrame::InitPlugins()
 	{
 		StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
 	}
-	CollectScripts(_Settings.GetScriptsFolder(), L"*.js", 1, L"0");	
+	FbeScripts::Catalog scriptCatalog;
+	scriptCatalog.Discover(_Settings.GetScriptsFolder(), L"*.js");
+	const std::vector<ScriptDescriptor>& scriptCandidates = scriptCatalog.Items();
+	for (size_t index = 0; index < scriptCandidates.size(); ++index)
+	{
+		const ScriptDescriptor& candidate = scriptCandidates[index];
+		if (!candidate.isFolder &&
+			(StartScript(this) != 0 || FAILED(ScriptLoad(candidate.path)) || !ScriptFindFunc(L"Run")))
+			continue;
+
+		ScrInfo script;
+		script.name = candidate.name;
+		script.path = candidate.path;
+		script.relativePath = candidate.relativePath;
+		script.order = candidate.order;
+		script.id = candidate.id;
+		script.refid = candidate.parentId;
+		script.isFolder = candidate.isFolder;
+		script.wID = candidate.commandId;
+		script.Type = candidate.isFolder ? 0 : 2;
+		CString pictureName(candidate.name);
+		if (!candidate.isFolder && pictureName.GetLength() >= 3) pictureName.Delete(pictureName.GetLength() - 3, 3);
+		LoadScriptPicture(script, candidate.isFolder ? candidate.path.Left(candidate.path.GetLength() - 1) + L"\\" : candidate.path.Left(candidate.path.ReverseFind(L'\\') + 1), pictureName);
+		m_scripts.Add(script);
+		if (!candidate.isFolder) StopScript();
+	}
 	if (StartupTrace::Enabled())
 	{
 		CString trace;
