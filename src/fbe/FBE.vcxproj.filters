@@ -133,6 +133,7 @@
 	<ClCompile Include="scripts\ScriptMenuBuilder.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\FileFingerprint.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentLocation.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="document\DocumentLoader.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentState.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentSession.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\PendingDocument.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -275,6 +276,8 @@
       <Filter>Header Files</Filter>
     </ClInclude>
 	<ClInclude Include="document\DocumentLocation.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="document\DocumentLoader.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="document\DocumentOpenSource.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\ArchiveRecentDocuments.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\recent\RecentDocumentsStore.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\recent\RecentDocumentsManager.h"><Filter>Header Files</Filter></ClInclude>

@@ -3,6 +3,8 @@
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
 #include "document\PendingDocument.h"
+#include "document\DocumentLoader.h"
+#include "document\DocumentOpenSource.h"
 
 #include "MainFrm.h"
 #include "AboutBox.h"
@@ -1551,9 +1553,9 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 	}
   EnableWindow(FALSE);
   m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
-  bool fLoaded = archive
-	  ? doc->Load(m_view, resolved.location.storagePath, resolved.location.entryPath, resolved.rawBytes)
-	  : doc->Load(m_view, filename);
+	DocumentOpenSource source = archive ? DocumentOpenSource() : DocumentOpenSource::Normal(filename);
+	if (archive) { source.location = resolved.location; source.rawBytes = resolved.rawBytes; }
+	bool fLoaded = DocumentLoader::Load(*doc, m_view, source);
   EnableWindow(TRUE);
   if (!fLoaded) 
   {
@@ -9354,23 +9356,22 @@ bool CMainFrame::ReloadFile()
 	if (m_document_session.Location().IsArchive())
 		return LoadFile(m_document_session.Location().storagePath, &m_document_session.Location()) == OK;
 
-	FB::Doc *doc=new FB::Doc(*this);
-	FB::Doc::m_active_doc = doc;
+	PendingDocument pending(*this, m_doc);
+	FB::Doc* doc = &pending.Document();
 
 	EnableWindow(FALSE);
 	m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
-	bool fLoaded=doc->Load(m_view,m_doc->m_filename);
+	bool fLoaded = DocumentLoader::Load(*doc, m_view, DocumentOpenSource::Normal(m_doc->m_filename));
 	EnableWindow(TRUE);
 	if (!fLoaded) 
 	{
-		delete doc;
-		FB::Doc::m_active_doc = m_doc;
+		pending.Rollback();
 		return false;
 	}
 
 	AttachDocument(doc);	
 	delete m_doc;
-	m_doc=doc;
+	m_doc=pending.Commit();
 	m_document_session.ReloadedNormal(m_doc->m_filename, m_doc->GetDocumentFileType());
 	return true;
 }
