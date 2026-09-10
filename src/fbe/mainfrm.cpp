@@ -1453,6 +1453,8 @@ void CMainFrame::CommitSuccessfulSave()
 
 CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, const DocumentLocation* preferredArchiveLocation)
 {
+	const bool traceFailedOpen = IsFbeTestScenario(L"failed-open-runtime");
+	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-loadfile-enter");
   CString filename(initfilename);
   if (filename.IsEmpty())
     filename = GetOpenFileName();
@@ -1482,12 +1484,19 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
   m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
 	DocumentOpenSource source = archive ? DocumentOpenSource() : DocumentOpenSource::Normal(filename);
 	if (archive) { source.location = resolved.location; source.rawBytes = resolved.rawBytes; }
+	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-document-loader-before");
 	bool fLoaded = DocumentLoader::Load(*doc, m_view, source);
+	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-document-loader-after");
   EnableWindow(TRUE);
   if (!fLoaded) 
   {
+	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-rollback-before");
 	  pending.Rollback();
+	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-rollback-after");
+	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-scintilla-before");
 	  if (LoadToScintilla(filename)) return OK;
+	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-scintilla-after");
+	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-loadfile-return-fail");
 	  return FAIL;
   }
 
@@ -1497,6 +1506,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 	 if (archive) m_document_session.OpenArchive(resolved.location); else m_document_session.OpenNormal(filename, m_doc->GetDocumentFileType());
   m_bad_xml = false;
   ResetStatusForDocument();
+	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-loadfile-return-ok");
   return OK;
 }
 
@@ -4004,6 +4014,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"failed-open-runtime"))
 	{
+		StartupTrace::AppendTestStartupBreadcrumb("failed-open-scenario-before-loadfile");
 		wchar_t failedPath[MAX_PATH] = {};
 		const DWORD failedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_FAILED_OPEN_PATH", failedPath, _countof(failedPath));
 		FB::Doc* const original = m_doc;
@@ -4011,13 +4022,32 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		CString mruBefore;
 		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index) mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
 		const FILE_OP_STATUS result = failedLength && failedLength < _countof(failedPath) ? LoadFile(failedPath) : FAIL;
+		StartupTrace::AppendTestStartupBreadcrumb("failed-open-scenario-after-loadfile");
 		CString mruAfter;
 		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index) mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
 		const bool preserved = result == FAIL && m_doc == original && FB::Doc::m_active_doc == m_doc &&
 			m_document_session.Location().storagePath == originalLocation.storagePath && mruBefore == mruAfter;
 		CStringA report; report.Format("failed=%d\nidentity=%d\nactive=%d\nsession=%d\nmru_unchanged=%d\n", result == FAIL, m_doc == original, FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, mruBefore == mruAfter);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		StartupTrace::AppendTestStartupBreadcrumb("failed-open-postquit-before");
 		::PostQuitMessage(preserved ? 0 : 1);
+		StartupTrace::AppendTestStartupBreadcrumb("failed-open-postquit-after");
+		return 0;
+	}
+	if (IsFbeTestScenario(L"malformed-source-fallback-runtime"))
+	{
+		wchar_t malformedPath[MAX_PATH] = {};
+		const DWORD malformedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MALFORMED_SOURCE_PATH", malformedPath, _countof(malformedPath));
+		FB::Doc* const original = m_doc;
+		const DocumentLocation originalLocation = m_document_session.Location();
+		const FILE_OP_STATUS result = malformedLength && malformedLength < _countof(malformedPath) ? LoadFile(malformedPath) : FAIL;
+		const bool sourceFallback = result == OK && m_doc == original && FB::Doc::m_active_doc == m_doc &&
+			m_bad_xml && m_bad_filename == malformedPath && m_current_view == SOURCE &&
+			m_document_session.Location().storagePath == originalLocation.storagePath;
+		CStringA report; report.Format("fallback=%d\nidentity=%d\nactive=%d\nsession=%d\nsource=%d\n", result == OK, m_doc == original,
+			FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, m_bad_xml && m_bad_filename == malformedPath && m_current_view == SOURCE);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(sourceFallback ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"archive-mru-runtime"))
@@ -9699,6 +9729,7 @@ void CMainFrame::RemoveLastUndo()
 // added by SeNS: try to load incorrect XML directly to Scintilla
 bool CMainFrame::LoadToScintilla(CString filename)
 {
+	const bool traceFailedOpen = IsFbeTestScenario(L"failed-open-runtime");
 	bool result = false;
 	bool isUTF8 = true;
 	CString enc;
@@ -9706,7 +9737,9 @@ bool CMainFrame::LoadToScintilla(CString filename)
 
 	CString src(L"");
 	std::ifstream load;
+	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-scintilla-read-before");
 	load.open(filename);
+	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb(load.is_open() ? "failed-open-scintilla-read-opened" : "failed-open-scintilla-read-failed");
 	if (load.is_open())
 	try
 	{
@@ -9760,6 +9793,7 @@ bool CMainFrame::LoadToScintilla(CString filename)
 		result = true;
 	}
 	catch(...) {};
+	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-scintilla-return");
 	return result;
 }
 

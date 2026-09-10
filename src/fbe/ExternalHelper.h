@@ -22,6 +22,15 @@ inline bool IsDiagnosticFaultInjectionEnabled(const wchar_t* point)
 	return length && length < _countof(value) && _wcsicmp(value, point) == 0;
 }
 
+inline bool IsFbeRuntimeTestScenario(const wchar_t* expectedScenario)
+{
+	wchar_t testMode[4] = {}, scenario[64] = {};
+	if (expectedScenario == NULL) return false;
+	return ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) == wcslen(expectedScenario) &&
+		wcscmp(scenario, expectedScenario) == 0;
+}
+
 extern CSettings _Settings;
 
 static int modalResultCode;
@@ -212,6 +221,11 @@ public:
 
 	STDMETHOD(MsgBox)(BSTR message)
 	{
+		if (IsFbeRuntimeTestScenario(L"failed-open-runtime") || IsFbeRuntimeTestScenario(L"malformed-source-fallback-runtime"))
+		{
+			StartupTrace::AppendTestStartupBreadcrumb("failed-open-error-presentation-suppressed");
+			return S_OK;
+		}
 		wchar_t cpt[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(), IDS_SCRIPT_MSG_CPT, cpt, MAX_LOAD_STRING);
 		MessageBoxW(GetActiveWindow(), message, cpt, MB_ICONINFORMATION|MB_OK);
