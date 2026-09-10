@@ -30,6 +30,7 @@
 #include "UiMetrics.h"
 #include "ScriptsToolbarCustomizeDlg.h"
 #include "scripts\\ScriptCatalog.h"
+#include "scripts\\ScriptCommandRegistry.h"
 #include "BodySourceSelectionTransfer.h"
 #include "XmlDeclaration.h"
 #include "..\\common\\DeploymentContext.h"
@@ -9913,6 +9914,21 @@ int CMainFrame::GrabScripts(CString path, TCHAR* mask, CString refid)
 
 void CMainFrame::AssignScriptCommandIds()
 {
+	FbeScripts::CommandRegistry registry(SCRIPT_COMMAND_COUNT, _Settings.GetScriptCommandIds());
+	bool registryChanged = false;
+	for (int i = 0; i < m_scripts.GetSize(); ++i)
+	{
+		ScrInfo& script = m_scripts[i];
+		if (script.isFolder) { script.wID = -1; continue; }
+		if (script.relativePath.IsEmpty()) { script.wID = -1; StartupTrace::Event(L"script", L"S120", L"script path is outside Scripts root"); continue; }
+		const int commandId = registry.Assign(script.relativePath);
+		script.wID = commandId;
+		if (commandId < 1) StartupTrace::Event(L"script", L"S121", L"script command ID capacity exhausted");
+		else registryChanged = true;
+	}
+	if (registryChanged) _Settings.SetScriptCommandIds(registry.Serialize());
+	return;
+
 	std::vector<ScriptCommandId> ids = ParseScriptCommandIds(_Settings.GetScriptCommandIds());
 	bool changed = false;
 
