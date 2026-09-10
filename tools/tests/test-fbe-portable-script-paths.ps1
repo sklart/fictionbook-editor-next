@@ -31,10 +31,11 @@ Assert-NotContains $scriptLoader 'xfilename[MAX_PATH]' 'Загрузка пол�
 Assert-NotContains $scriptLoader 'strlcatW(' 'Загрузка пользовательских скриптов'
 
 $settings = Get-ProjectText 'src\fbe\Settings.cpp'
+$settingsDefaults = Get-ProjectText 'src\fbe\settings\SettingsDefaults.cpp'
 Assert-Contains $settings 'CompareNoCase(GetDefaultScriptsFolder())' 'Сравнение пути Scripts без изменения регистра'
 Assert-NotContains $settings 'path.MakeLower();' 'Путь стандартного каталога Scripts'
 Assert-Contains $settings 'GetDefaultScriptsFolderStored' 'Отдельное portable-friendly хранимое значение Scripts'
-Assert-Contains $settings 'm_scripts_folder		= GetDefaultScriptsFolderStored();' 'Значение Scripts по умолчанию хранится относительно каталога FBE'
+Assert-Contains $settingsDefaults 'm_scripts_folder		= GetDefaultScriptsFolderStored();' 'Значение Scripts по умолчанию хранится относительно каталога FBE'
 
 $settingsDialog = Get-ProjectText 'src\fbe\settings\ui\SettingsAdvancedPage.cpp'
 Assert-NotContains $settingsDialog 'folderPath.MakeLower();' 'Выбор пользовательского каталога Scripts'
