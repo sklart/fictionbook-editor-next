@@ -43,6 +43,7 @@ function Remove-ObsoleteReleaseArtifacts {
         [string]$OutputDirectory
     )
 
+    $removedLegacyWords = $false
     foreach ($name in @(
         "pcre.dll",
         "ExportHTML.exp",
@@ -68,6 +69,22 @@ function Remove-ObsoleteReleaseArtifacts {
         if (Test-Path -LiteralPath $path) {
             Remove-Item -LiteralPath $path -Force
             Write-Host "Удалён лишний релизный артефакт: $path"
+            if ($name -eq "defaults\Words.xml") {
+                $removedLegacyWords = $true
+            }
+        }
+    }
+
+    # Remove only the directory made obsolete by deleting its legacy seed.
+    # A non-empty defaults directory may contain an operator's local files.
+    $legacyDefaultsDirectory = Join-Path $OutputDirectory "defaults"
+    if ($removedLegacyWords -and (Test-Path -LiteralPath $legacyDefaultsDirectory -PathType Container)) {
+        if (@(Get-ChildItem -LiteralPath $legacyDefaultsDirectory -Force).Count -eq 0) {
+            Remove-Item -LiteralPath $legacyDefaultsDirectory -Force
+            Write-Host "Удалён пустой устаревший каталог ресурсов: $legacyDefaultsDirectory"
+        }
+        else {
+            Write-Warning "Сохранён непустой устаревший каталог ресурсов: $legacyDefaultsDirectory"
         }
     }
 }

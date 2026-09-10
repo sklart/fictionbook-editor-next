@@ -138,6 +138,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-search-document-adapter-mshtml.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-settings-background-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-package-layout.ps1")
+& (Join-Path $repoRoot "tools\tests\test-release-artifact-cleanup.ps1")
 & (Join-Path $repoRoot "tools\tests\test-package-layout-copy.ps1")
 & (Join-Path $repoRoot "tools\tests\test-package-layout-integration-stage.ps1")
 & (Join-Path $repoRoot "tools\tests\test-package-layout-core-stage.ps1")
