@@ -64,7 +64,14 @@ LRESULT CArchiveEntryPicker::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		m_list.SetItemState(0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 		m_list.SetFocus();
 	}
-	RECT client = {}; GetClientRect(&client); LayoutControls(client.right, client.bottom);
+	RECT item = {};
+	const int rowHeight = m_list.GetItemCount() && m_list.GetItemRect(0, &item, LVIR_BOUNDS) ? item.bottom - item.top : 18;
+	const int visibleRows = min(max(static_cast<int>(m_entries.size()), 1), 8);
+	RECT client = {}, window = {}; GetClientRect(&client); GetWindowRect(&window);
+	const int listHeight = 24 + visibleRows * rowHeight + 4;
+	const int desiredClientHeight = 8 + 32 + 4 + listHeight + 8 + 24 + 8;
+	SetWindowPos(NULL, 0, 0, client.right, desiredClientHeight + (window.bottom - window.top - client.bottom), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	GetClientRect(&client); LayoutControls(client.right, client.bottom);
 	HWND owner = GetParent(); if (!owner) owner = ::GetActiveWindow();
 	CenterWindow(owner);
 	return FALSE;
@@ -73,6 +80,14 @@ LRESULT CArchiveEntryPicker::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 LRESULT CArchiveEntryPicker::OnSize(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
 	LayoutControls(LOWORD(lParam), HIWORD(lParam));
+	return 0;
+}
+
+LRESULT CArchiveEntryPicker::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
+{
+	MINMAXINFO* const info = reinterpret_cast<MINMAXINFO*>(lParam);
+	info->ptMinTrackSize.x = 360;
+	info->ptMinTrackSize.y = 180;
 	return 0;
 }
 

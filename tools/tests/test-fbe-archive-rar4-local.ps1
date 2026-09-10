@@ -9,6 +9,12 @@ param(
 $ErrorActionPreference = 'Stop'
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE.exe: $FbeExe" }
 if(-not (Test-Path -LiteralPath $Rar4Archive -PathType Leaf)) { throw "Не найден RAR4-архив: $Rar4Archive" }
+$signature = [IO.File]::ReadAllBytes($Rar4Archive)
+if($signature.Length -lt 8) { throw 'Файл слишком мал для сигнатуры RAR4.' }
+$rar4Signature = [byte[]](0x52,0x61,0x72,0x21,0x1A,0x07,0x00)
+$rar5Signature = [byte[]](0x52,0x61,0x72,0x21,0x1A,0x07,0x01,0x00)
+if([Linq.Enumerable]::SequenceEqual([byte[]]$signature[0..7], $rar5Signature)) { throw 'Ожидался RAR4, но передан RAR5.' }
+if(-not [Linq.Enumerable]::SequenceEqual([byte[]]$signature[0..6], $rar4Signature)) { throw 'Ожидался настоящий RAR4 с сигнатурой 52 61 72 21 1A 07 00.' }
 $report = Join-Path ([IO.Path]::GetTempPath()) ("fbe-rar4-runtime-" + [guid]::NewGuid().ToString('N') + '.txt')
 $before = (Get-FileHash -LiteralPath $Rar4Archive -Algorithm SHA256).Hash
 $oldMode,$oldScenario,$oldEntry = $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_ARCHIVE_ENTRY
