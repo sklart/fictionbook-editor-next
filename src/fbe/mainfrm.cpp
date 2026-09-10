@@ -2,6 +2,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
+#include "document\PendingDocument.h"
 
 #include "MainFrm.h"
 #include "AboutBox.h"
@@ -1541,8 +1542,8 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 	if (!IsFbeTestScenario(L"archive-mru-runtime") && !DiscardChanges())
 	    return CANCELLED;
   
-	FB::Doc *doc = new FB::Doc(*this);
-	FB::Doc::m_active_doc = doc;
+	PendingDocument pending(*this, m_doc);
+	FB::Doc* doc = &pending.Document();
 	if((filename.ReverseFind(L'\\') + 1) != -1 && (filename.ReverseFind(L'\\') + 1) < filename.GetLength() - 1)
 	{
 		doc->m_body.m_file_path = filename.Mid(0, filename.ReverseFind(L'\\') + 1);
@@ -1556,16 +1557,14 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
   EnableWindow(TRUE);
   if (!fLoaded) 
   {
+	  pending.Rollback();
 	  if (LoadToScintilla(filename)) return OK;
-	  else return FAIL;
-/*  delete doc;
-	FB::Doc::m_active_doc = m_doc;
-    return FAIL; */
+	  return FAIL;
   }
 
   AttachDocument(doc);
   delete m_doc;
-  m_doc=doc;
+	m_doc=pending.Commit();
 	 if (archive) m_document_session.OpenArchive(resolved.location); else m_document_session.OpenNormal(filename, m_doc->GetDocumentFileType());
   m_bad_xml = false;
   ResetStatusForDocument();
