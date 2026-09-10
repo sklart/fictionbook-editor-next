@@ -16,6 +16,7 @@
 #include "FictionBookFileType.h"
 #include "document\\ArchiveRecentDocuments.h"
 #include "archive\\ArchiveReader.h"
+#include "archive\\ArchiveDocumentResolver.h"
 #include "ArchiveEntryPicker.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
@@ -37,19 +38,7 @@ static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 static bool IsFbeTestScenario(const wchar_t* expectedScenario);
 
-struct ResolvedOpenDocument
-{
-	DocumentLocation location;
-	std::vector<unsigned char> rawBytes;
-};
-
-static void CaptureContainerFingerprint(const CString& path, DocumentLocation& location)
-{
-	WIN32_FILE_ATTRIBUTE_DATA data = {};
-	if (!::GetFileAttributesEx(path, GetFileExInfoStandard, &data)) return;
-	location.containerLastWriteTime = *reinterpret_cast<const unsigned __int64*>(&data.ftLastWriteTime);
-	location.containerFileSize = (static_cast<unsigned __int64>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
-}
+typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
 
 static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDocument& resolved,
 	const DocumentLocation* preferredLocation = NULL, FbeArchive::Error* failure = NULL)
@@ -100,13 +89,7 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 		if (selected < 0 || static_cast<size_t>(selected) >= entries.size()) return false;
 		}
 	}
-	if (!FbeArchive::ReadEntry(storagePath, entries[selected], resolved.rawBytes, error)) { if (failure) *failure = error; return false; }
-	resolved.location.containerKind = DetectDocumentContainerKind(storagePath);
-	resolved.location.storagePath = storagePath;
-	resolved.location.entryPath = entries[selected].path;
-	resolved.location.entryOccurrence = entries[selected].occurrence;
-	resolved.location.documentType = entries[selected].documentType;
-	CaptureContainerFingerprint(storagePath, resolved.location);
+	if (!FbeArchive::ResolveDocument(storagePath, entries[selected], resolved, error)) { if (failure) *failure = error; return false; }
 	return true;
 }
 

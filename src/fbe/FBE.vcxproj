@@ -259,6 +259,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ClCompile Include="archive\ArchiveReader.cpp" />
+	<ClCompile Include="archive\ArchiveDocumentResolver.cpp" />
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp" />
     <ClCompile Include="archive\ZipArchiveWriter.cpp" />
     <ClCompile Include="FBE.cpp">
@@ -393,6 +394,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="DocumentLocation.h" />
 	<ClInclude Include="document\ArchiveRecentDocuments.h" />
     <ClInclude Include="archive\ArchiveReader.h" />
+	<ClInclude Include="archive\ArchiveDocumentResolver.h" />
     <ClInclude Include="ElementDescMnr.h" />
     <ClInclude Include="ElementDescriptor.h" />
     <ClInclude Include="ErrsEx.h" />

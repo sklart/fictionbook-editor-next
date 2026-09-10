@@ -122,6 +122,7 @@
     </ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="archive\ArchiveDocumentResolver.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ZipArchiveWriter.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="RuntimeLocalization.cpp">
@@ -251,6 +252,7 @@
     <ClInclude Include="DocumentLocation.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\ArchiveRecentDocuments.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="archive\ArchiveReader.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="archive\ArchiveDocumentResolver.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="ElementDescMnr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
