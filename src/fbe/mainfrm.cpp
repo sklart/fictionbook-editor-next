@@ -1963,7 +1963,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     m_doc->m_encoding=encoding;
     if (m_doc->Save(filename)) {
       m_doc->m_filename=filename;
-	  m_document_state.SaveAsNormal(filename, m_doc->GetDocumentFileType());
+	  m_document_session.SaveAsNormal(filename, m_doc->GetDocumentFileType());
 	  if (wasFbd != IsFbdFile(filename)) ResetValidationStatus();
 	  U::SetCurrentDirectoryToFile(filename);
       m_doc->m_namevalid=true;
@@ -1980,7 +1980,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 
   if(saved)
   {
-	  m_document_state.Saved();
+	  m_document_session.Saved();
 	  if(IsSourceActive())
 		  m_source.SendMessage(SCI_SETSAVEPOINT);
 		m_recovery.DeleteIfWritten();
@@ -2042,7 +2042,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
   AttachDocument(doc);
   delete m_doc;
   m_doc=doc;
-	 if (archive) m_document_state.OpenArchive(resolved.location); else m_document_state.OpenNormal(filename, m_doc->GetDocumentFileType());
+	 if (archive) m_document_session.OpenArchive(resolved.location); else m_document_session.OpenNormal(filename, m_doc->GetDocumentFileType());
   m_bad_xml = false;
   ResetStatusForDocument();
   return OK;
@@ -3526,7 +3526,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		StartupTrace::AppendTestStartupBreadcrumb("document-load-complete");
       start_with_params = true;
-	  if (startupArchive) m_document_state.OpenArchive(startupResolved.location); else m_document_state.OpenNormal(startupFileName, m_doc->GetDocumentFileType());
+	  if (startupArchive) m_document_session.OpenArchive(startupResolved.location); else m_document_session.OpenNormal(startupFileName, m_doc->GetDocumentFileType());
 	}
     else
 	{
@@ -3536,13 +3536,13 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		m_doc=new FB::Doc(*this);
 		FB::Doc::m_active_doc = m_doc;
 		m_doc->CreateBlank(m_view);
-		m_document_state.NewDocument();
+		m_document_session.NewDocument();
 		m_bad_xml = true;
 	}
   } else 
   {
 	m_doc->CreateBlank(m_view);
-	m_document_state.NewDocument();
+	m_document_session.NewDocument();
   }
 
   StartupTrace::Event(L"mainframe", L"M130", L"document content created");
@@ -3921,7 +3921,7 @@ void CMainFrame::TryRestoreRecovery()
 	{
 		if (candidate.archiveBacked)
 		{
-			m_document_state.RestoreArchive(candidate.archiveLocation);
+			m_document_session.RestoreArchive(candidate.archiveLocation);
 			m_doc->m_filename = candidate.archiveLocation.storagePath;
 			m_doc->m_namevalid = true;
 			m_doc->SetDocumentFileType(candidate.archiveLocation.documentType);
@@ -6224,7 +6224,7 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   FB::Doc *doc=new FB::Doc(*this);
   FB::Doc::m_active_doc = doc;
   doc->CreateBlank(m_view);
-	m_document_state.NewDocument();
+	m_document_session.NewDocument();
   AttachDocument(doc);
   delete m_doc;
   m_doc=doc;
@@ -8696,12 +8696,12 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 				m_doc->m_filename = m_bad_filename;
 				if (m_bad_filename.CompareNoCase(L"Untitled.fb2") == 0)
 				{
-					m_document_state.NewDocument();
+					m_document_session.NewDocument();
 					m_doc->m_namevalid = false;
 				}
 				else
 				{
-					m_document_state.OpenNormal(m_doc->m_filename, m_doc->GetDocumentFileType());
+					m_document_session.OpenNormal(m_doc->m_filename, m_doc->GetDocumentFileType());
 					m_doc->m_namevalid = true;
 				}
 				m_bad_xml=false;
@@ -9819,7 +9819,7 @@ bool CMainFrame::CheckFileTimeStamp()
 	if (m_document_location.storagePath.IsEmpty() || !IsDocumentLocationModified(m_document_location)) return false;
 	if(IDYES == U::MessageBox(MB_YESNO, IDS_FILE_CHANGED_CPT, IDS_FILE_CHANGED_MSG, static_cast<LPCWSTR>(m_doc->m_filename)))
 		return ReloadFile();
-	m_document_state.AcceptExternalVersion();
+	m_document_session.AcceptExternalVersion();
 	return false;
 }
 
@@ -9845,7 +9845,7 @@ bool CMainFrame::ReloadFile()
 	AttachDocument(doc);	
 	delete m_doc;
 	m_doc=doc;
-	m_document_state.ReloadedNormal(m_doc->m_filename, m_doc->GetDocumentFileType());
+	m_document_session.ReloadedNormal(m_doc->m_filename, m_doc->GetDocumentFileType());
 	return true;
 }
 

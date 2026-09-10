@@ -127,6 +127,7 @@
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\FileFingerprint.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentState.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="document\DocumentSession.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="recovery\RecoveryStore.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="recovery\RecoveryService.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ZipArchiveWriter.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -258,6 +259,7 @@
 	<ClInclude Include="document\ArchiveRecentDocuments.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\FileFingerprint.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentState.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="document\DocumentSession.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="recovery\RecoveryStore.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="recovery\RecoveryService.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="archive\ArchiveReader.h"><Filter>Header Files</Filter></ClInclude>
