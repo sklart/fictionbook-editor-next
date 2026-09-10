@@ -8,13 +8,14 @@
 class DocumentSession
 {
 public:
-	DocumentState& State();
-	const DocumentState& State() const;
+	const DocumentLocation& Location() const;
+	bool IsArchive() const;
 	void NewDocument();
 	void OpenNormal(const CString& path, FictionBookFileType documentType);
 	void OpenArchive(const DocumentLocation& location);
 	void SaveAsNormal(const CString& path, FictionBookFileType documentType);
 	void Saved();
+	void SavedArchive(const DocumentLocation& location);
 	void ReloadedNormal(const CString& path, FictionBookFileType documentType);
 	void RestoreArchive(const DocumentLocation& location);
 	void AcceptExternalVersion();

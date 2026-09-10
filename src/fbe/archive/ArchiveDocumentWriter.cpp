@@ -4,7 +4,7 @@
 
 namespace FbeArchive
 {
-bool SaveDocument(DocumentLocation& location, const std::vector<unsigned char>& serialized, Error& error)
+bool SaveDocument(const DocumentLocation& location, const std::vector<unsigned char>& serialized, DocumentLocation& savedLocation, Error& error)
 {
 	error = Error();
 	if (location.containerKind != DocumentContainerKind::Zip)
@@ -34,10 +34,11 @@ bool SaveDocument(DocumentLocation& location, const std::vector<unsigned char>& 
 	entry.occurrence = location.entryOccurrence;
 	entry.documentType = location.documentType;
 	if (!RewriteZipEntry(location.storagePath, entry, serialized, error)) return false;
+	savedLocation = location;
 	if (GetFileFingerprint(location.storagePath, current))
 	{
-		location.containerLastWriteTime = current.lastWriteTime;
-		location.containerFileSize = current.fileSize;
+		savedLocation.containerLastWriteTime = current.lastWriteTime;
+		savedLocation.containerFileSize = current.fileSize;
 	}
 	return true;
 }

@@ -126,6 +126,7 @@
 	<ClCompile Include="archive\ArchiveDocumentWriter.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\FileFingerprint.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="document\DocumentLocation.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentState.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentSession.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="recovery\RecoveryStore.cpp"><Filter>Source Files</Filter></ClCompile>

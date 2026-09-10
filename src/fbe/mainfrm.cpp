@@ -36,6 +36,8 @@
 #include <algorithm>
 #include <psapi.h>
 
+#define m_document_location (m_document_session.Location())
+
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
@@ -1922,7 +1924,8 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 		::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SERIALIZED_CHANGED", marker != serialized.end() ? L"1" : L"0");
 	}
 	FbeArchive::Error error;
-	if (!FbeArchive::SaveDocument(m_document_location, serialized, error))
+	DocumentLocation savedArchiveLocation;
+	if (!FbeArchive::SaveDocument(m_document_location, serialized, savedArchiveLocation, error))
 	{
 		if (IsFbeTestScenario(L"archive-recovery-external-verify"))
 		{
@@ -1938,6 +1941,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 		}
 		ShowArchiveError(m_hWnd, error); return FAIL;
 	}
+	m_document_session.SavedArchive(savedArchiveLocation);
 	m_doc->MarkSavePoint();
 	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
 		m_recovery.DeleteIfWritten();

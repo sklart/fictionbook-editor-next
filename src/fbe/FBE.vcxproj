@@ -263,6 +263,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClCompile Include="archive\ArchiveDocumentWriter.cpp" />
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp" />
 	<ClCompile Include="document\FileFingerprint.cpp" />
+	<ClCompile Include="document\DocumentLocation.cpp" />
 	<ClCompile Include="document\DocumentState.cpp" />
 	<ClCompile Include="document\DocumentSession.cpp" />
 	<ClCompile Include="recovery\RecoveryStore.cpp" />
