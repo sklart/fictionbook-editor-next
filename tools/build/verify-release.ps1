@@ -152,6 +152,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-editor-background-settings.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-regression.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-archive-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-scripts-toolbar-customize-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")

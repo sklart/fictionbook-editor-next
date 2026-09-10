@@ -74,10 +74,25 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 	}
 	if (!hasPreferredLocation && entries.size() > 1)
 	{
+		// The native picker remains the production path.  Runtime integration
+		// tests may select an exact internal name without automating a dialog.
+		wchar_t testMode[4] = {}, requestedEntry[MAX_PATH] = {};
+		const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
+		const DWORD requestedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_ENTRY", requestedEntry, _countof(requestedEntry));
+		if (testModeLength == 1 && testMode[0] == L'1' && requestedLength && requestedLength < _countof(requestedEntry))
+		{
+			selected = -1;
+			for (size_t index = 0; index < entries.size(); ++index)
+				if (entries[index].path == requestedEntry) { selected = static_cast<int>(index); break; }
+			if (selected < 0) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
+		}
+		else
+		{
 		CArchiveEntryPicker picker(entries);
 		if (picker.DoModal() != IDOK) return false;
 		selected = picker.SelectedIndex();
 		if (selected < 0 || static_cast<size_t>(selected) >= entries.size()) return false;
+		}
 	}
 	if (!FbeArchive::ReadEntry(storagePath, entries[selected], resolved.rawBytes, error)) { if (failure) *failure = error; return false; }
 	resolved.location.containerKind = DetectDocumentContainerKind(storagePath);
@@ -4254,6 +4269,33 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	CAtlFile output;
 	if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))
 		return 0;
+	if (IsFbeTestScenario(L"archive-runtime"))
+	{
+		const bool archiveSource = m_document_location.IsArchive();
+		const bool fb2 = m_doc->GetDocumentFileType() == FictionBookFileType::Fb2;
+		const bool htmlReady = m_doc->m_body.Document() != NULL;
+		ShowView(SOURCE);
+		const sptr_t sourceLength = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> source(static_cast<size_t>(sourceLength) + 1);
+		m_source.SendMessage(SCI_GETTEXT, sourceLength + 1, reinterpret_cast<LPARAM>(source.data()));
+		const char* before = "ARCHIVE_RUNTIME_BEFORE";
+		const char* after = "ARCHIVE_RUNTIME_AFTER";
+		char* marker = strstr(source.data(), before);
+		const bool markerFound = marker != NULL;
+		if (marker)
+		{
+			const size_t offset = static_cast<size_t>(marker - source.data());
+			m_source.SendMessage(SCI_SETSEL, static_cast<WPARAM>(offset), static_cast<LPARAM>(offset + strlen(before)));
+			m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(after));
+		}
+		const bool saved = markerFound && SaveFile(false) == OK;
+		CStringA report;
+		report.Format("archive=%d\nfb2=%d\nmshtml=%d\nentry=%S\nsaved=%d\n", archiveSource, fb2, htmlReady,
+			static_cast<LPCWSTR>(m_document_location.entryPath), saved);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(saved ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"table-roundtrip"))
 	{
 		const ULONGLONG start = ::GetTickCount64();

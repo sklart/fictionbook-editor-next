@@ -121,7 +121,19 @@ bool RewriteZipEntry(const CString& storagePath, const Entry& target,
 	// ReplaceFile cannot atomically replace an archive while our reader still
 	// owns its source handle on Windows.
 	if (archive_read_close(reader.value) != ARCHIVE_OK) { error.code = ErrorCode::Corrupted; goto cleanup; }
-	if (!::ReplaceFileW(storagePath, temporary, NULL, REPLACEFILE_WRITE_THROUGH, NULL, NULL)) { error.code = ErrorCode::ReplaceFailed; error.systemError = ::GetLastError(); goto cleanup; }
+	// Antivirus and Explorer can briefly retain a newly-created test/archive
+	// file.  Retry only transient sharing failures; the original remains intact
+	// until ReplaceFileW succeeds.
+	for (int attempt = 0;; ++attempt)
+	{
+		if (::ReplaceFileW(storagePath, temporary, NULL, REPLACEFILE_WRITE_THROUGH, NULL, NULL)) break;
+		error.systemError = ::GetLastError();
+		if ((error.systemError != ERROR_SHARING_VIOLATION && error.systemError != ERROR_ACCESS_DENIED) || attempt == 9)
+		{
+			error.code = ErrorCode::ReplaceFailed; goto cleanup;
+		}
+		::Sleep(50);
+	}
 	completed = true;
 cleanup:
 	if (!completed) ::DeleteFileW(temporary);

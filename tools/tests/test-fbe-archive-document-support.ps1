@@ -45,5 +45,8 @@ Require $frame 'm_file_size != FileSize' 'Archive save must reject external chan
 Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
 Require $frame 'OnFileNew[\s\S]{0,700}m_document_location = DocumentLocation\(\)' 'New documents must not retain an archive save target.'
 Require $frame 'ReloadFile\(\)[\s\S]{0,220}m_document_location\.IsArchive\(\)[\s\S]{0,180}LoadFile\(m_document_location\.storagePath, &m_document_location\)' 'Archive reload must resolve the already selected entry rather than parse the container as XML.'
+Require $frame 'FBE_NEXT_TEST_ARCHIVE_ENTRY' 'Multi-entry archive runtime tests need an isolated entry-selection hook.'
+Require $frame 'IsFbeTestScenario\(L"archive-runtime"\)' 'Archive runtime test scenario must run through real FBE document loading and saving.'
+Require $frame 'm_document_location\.IsArchive\(\)[\s\S]{0,180}GetDocumentFileType' 'Archive runtime scenario must report archive origin and document type from the loaded document.'
 
 Write-Host 'Archive document support contract passed.'
