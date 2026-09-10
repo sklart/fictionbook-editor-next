@@ -3,7 +3,6 @@
 
 DocumentState::DocumentState() {}
 const DocumentLocation& DocumentState::Location() const { return m_location; }
-DocumentLocation& DocumentState::Location() { return m_location; }
 void DocumentState::NewDocument() { ResetDocumentLocation(m_location); }
 void DocumentState::OpenNormal(const CString& path, FictionBookFileType documentType) { m_location = CreateNormalDocumentLocation(path, documentType); }
 void DocumentState::OpenArchive(const DocumentLocation& location) { m_location = location; }
