@@ -175,6 +175,8 @@
     </ClCompile>
 	<ClCompile Include="settings\SettingsPaths.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="settings\SettingsNormalization.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="settings\SettingsDefaults.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
+	<ClCompile Include="settings\SettingsSerialization.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="settings\SettingsStore.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="settings\hotkeys\HotkeyStore.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="settings\hotkeys\HotkeyDefaults.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
@@ -365,6 +367,7 @@
     </ClInclude>
 	<ClInclude Include="settings\SettingsPaths.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="settings\SettingsNormalization.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="settings\SettingsDefaults.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="settings\SettingsTypes.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="settings\SettingsStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="settings\hotkeys\HotkeyStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
