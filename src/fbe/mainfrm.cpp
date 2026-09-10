@@ -5,6 +5,7 @@
 #include "document\PendingDocument.h"
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
+#include "archive\ui\ArchiveOpenCoordinator.h"
 
 #include "MainFrm.h"
 #include "AboutBox.h"
@@ -25,7 +26,6 @@
 #include "archive\\ArchiveDocumentResolver.h"
 #include "archive\\ArchiveDocumentWriter.h"
 #include "recovery\\RecoveryService.h"
-#include "ArchiveEntryPicker.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "StartupTrace.h"
 #include "plugins\\PluginManager.h"
@@ -48,83 +48,8 @@ static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 static bool IsFbeTestScenario(const wchar_t* expectedScenario);
-
 typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
 
-static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDocument& resolved,
-	const DocumentLocation* preferredLocation = NULL, FbeArchive::Error* failure = NULL)
-{
-	std::vector<FbeArchive::Entry> entries;
-	FbeArchive::Error error;
-	if (!FbeArchive::EnumerateFictionBookEntries(storagePath, entries, error)) { if (failure) *failure = error; return false; }
-	int selected = 0;
-	const bool hasPreferredLocation = preferredLocation != NULL;
-	if (preferredLocation != NULL)
-	{
-		selected = -1;
-		for (size_t index = 0; index < entries.size(); ++index)
-		{
-			if (entries[index].path == preferredLocation->entryPath &&
-				entries[index].occurrence == preferredLocation->entryOccurrence)
-			{
-				selected = static_cast<int>(index);
-				break;
-			}
-		}
-		if (selected < 0) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
-	}
-	if (!hasPreferredLocation && entries.size() > 1)
-	{
-		// The native picker remains the production path.  Runtime integration
-		// tests may select an exact internal name without automating a dialog.
-		wchar_t testMode[4] = {}, requestedEntry[MAX_PATH] = {}, requestedOccurrence[16] = {};
-		const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
-		const DWORD requestedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_ENTRY", requestedEntry, _countof(requestedEntry));
-		const DWORD occurrenceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_OCCURRENCE", requestedOccurrence, _countof(requestedOccurrence));
-		if (testModeLength == 1 && testMode[0] == L'1' && requestedLength && requestedLength < _countof(requestedEntry))
-		{
-			unsigned int requestedIndex = 0; wchar_t* occurrenceEnd = NULL;
-			const unsigned long parsedOccurrence = occurrenceLength ? wcstoul(requestedOccurrence, &occurrenceEnd, 10) : 0;
-			if (occurrenceLength && (occurrenceEnd == requestedOccurrence || *occurrenceEnd != L'\0' || parsedOccurrence > UINT_MAX)) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
-			requestedIndex = static_cast<unsigned int>(parsedOccurrence);
-			selected = -1;
-			for (size_t index = 0; index < entries.size(); ++index)
-				if (entries[index].path == requestedEntry && (!occurrenceLength || entries[index].occurrence == requestedIndex)) { selected = static_cast<int>(index); break; }
-			if (selected < 0) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
-		}
-		else
-		{
-		CArchiveEntryPicker picker(entries);
-		if (picker.DoModal() != IDOK) return false;
-		selected = picker.SelectedIndex();
-		if (selected < 0 || static_cast<size_t>(selected) >= entries.size()) return false;
-		}
-	}
-	if (!FbeArchive::ResolveDocument(storagePath, entries[selected], resolved, error)) { if (failure) *failure = error; return false; }
-	return true;
-}
-
-static void ShowArchiveError(HWND owner, const FbeArchive::Error& error)
-{
-	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-open-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime") || IsFbeTestScenario(L"archive-mru-runtime") ||
-		IsFbeTestScenario(L"archive-two-phase-runtime") || IsFbeTestScenario(L"archive-recovery-external-verify")) return;
-	LPCWSTR key = L"fbe.archive.error.corrupted", fallback = L"The archive is corrupted or cannot be read.";
-	switch (error.code)
-	{
-	case FbeArchive::ErrorCode::NoFictionBookEntries: key = L"fbe.archive.error.no_documents"; fallback = L"No FictionBook documents were found in the archive."; break;
-	case FbeArchive::ErrorCode::Encrypted: key = L"fbe.archive.error.encrypted"; fallback = L"The archive is password protected. Opening protected archives is not supported yet."; break;
-	case FbeArchive::ErrorCode::EntryTooLarge: key = L"fbe.archive.error.too_large"; fallback = L"The FictionBook document in the archive is too large to open."; break;
-	case FbeArchive::ErrorCode::EntryNotFound: key = L"fbe.archive.error.entry_missing"; fallback = L"The selected document no longer exists in the archive."; break;
-	case FbeArchive::ErrorCode::UnsupportedFormat: key = L"fbe.archive.error.unsupported"; fallback = L"The archive format is not supported."; break;
-	case FbeArchive::ErrorCode::ModifiedExternally: key = L"fbe.archive.error.modified"; fallback = L"The archive was modified by another program."; break;
-	case FbeArchive::ErrorCode::WriteFailed:
-	case FbeArchive::ErrorCode::ReplaceFailed: key = L"fbe.archive.error.update_failed"; fallback = L"Failed to update the ZIP archive."; break;
-	default: break;
-	}
-	const CString text = FbeLoadRuntimeStringByKey(key, fallback);
-	const CString caption = FbeLoadRuntimeStringByKey(L"fbe.archive.error.caption", L"Archive");
-	::MessageBox(owner, text, caption, MB_OK | MB_ICONEXCLAMATION);
-}
 
 namespace
 {
@@ -1462,7 +1387,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 			swprintf_s(diagnostic, _countof(diagnostic), L"%d/%lu", static_cast<int>(error.code), error.systemError);
 			::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_WRITE_ERROR", diagnostic);
 		}
-		ShowArchiveError(m_hWnd, error); return FAIL;
+		FbeArchiveUi::ShowError(m_hWnd, error); return FAIL;
 	}
 	m_document_session.SavedArchive(savedArchiveLocation);
 	m_doc->MarkSavePoint();
@@ -1535,9 +1460,9 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
   ResolvedOpenDocument resolved;
   const bool archive = DetectDocumentContainerKind(filename) != DocumentContainerKind::None;
   FbeArchive::Error archiveError;
-  if (archive && !ResolveArchiveOpenRequest(filename, resolved, preferredArchiveLocation, &archiveError))
+  if (archive && !FbeArchiveUi::ResolveOpenRequest(filename, resolved, preferredArchiveLocation, &archiveError))
   {
-    if (archiveError.code != FbeArchive::ErrorCode::None) ShowArchiveError(m_hWnd, archiveError);
+    if (archiveError.code != FbeArchive::ErrorCode::None) FbeArchiveUi::ShowError(m_hWnd, archiveError);
     return CANCELLED;
   }
 
@@ -3082,9 +3007,9 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	ResolvedOpenDocument startupResolved;
 	const bool startupArchive = DetectDocumentContainerKind(startupFileName) != DocumentContainerKind::None;
 	FbeArchive::Error startupArchiveError;
-	const bool startupResolvedOk = !startupArchive || ResolveArchiveOpenRequest(startupFileName, startupResolved, NULL, &startupArchiveError);
+	const bool startupResolvedOk = !startupArchive || FbeArchiveUi::ResolveOpenRequest(startupFileName, startupResolved, NULL, &startupArchiveError);
 	if (!startupResolvedOk && startupArchiveError.code != FbeArchive::ErrorCode::None)
-		ShowArchiveError(m_hWnd, startupArchiveError);
+		FbeArchiveUi::ShowError(m_hWnd, startupArchiveError);
     if (startupResolvedOk && (startupArchive
 		? m_doc->Load(m_view, startupResolved.location.storagePath, startupResolved.location.entryPath, startupResolved.rawBytes)
 		: m_doc->Load(m_view,startupFileName)))
@@ -4089,7 +4014,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		// A freshly loaded MSHTML document can carry a transient form-change bit.
 		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 		ResolvedOpenDocument secondResolved; FbeArchive::Error secondError;
-		const bool secondFound = secondValid && ResolveArchiveOpenRequest(second.storagePath, secondResolved, &second, &secondError);
+		const bool secondFound = secondValid && FbeArchiveUi::ResolveOpenRequest(second.storagePath, secondResolved, &second, &secondError);
 		const FILE_OP_STATUS secondOpen = secondFound ? LoadFile(second.storagePath, &second) : CANCELLED;
 		if (secondOpen == OK) FbeRecentDocuments::RememberArchiveMruRecord(m_mru, m_document_session.Location());
 		if (secondOpen == OK) { m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT); }
@@ -4121,7 +4046,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		for (size_t index = 0; index < records.size(); ++index) { hasFirst = hasFirst || FbeRecentDocuments::SameArchiveMruIdentity(records[index].location, first); hasSecond = hasSecond || FbeRecentDocuments::SameArchiveMruIdentity(records[index].location, second); }
 		DocumentLocation missing = first; missing.entryPath = L"missing.fb2"; missing.entryOccurrence = 0;
 		ResolvedOpenDocument ignored; FbeArchive::Error missingError;
-		const bool missingRejected = !ResolveArchiveOpenRequest(first.storagePath, ignored, &missing, &missingError) && missingError.code == FbeArchive::ErrorCode::EntryNotFound;
+		const bool missingRejected = !FbeArchiveUi::ResolveOpenRequest(first.storagePath, ignored, &missing, &missingError) && missingError.code == FbeArchive::ErrorCode::EntryNotFound;
 		int menuCount = 0, visibleArchiveCount = 0; bool menuClean = true;
 		const HMENU mruMenu = m_mru.GetMenuHandle();
 		if (mruMenu != NULL) for (int index = 0; index < ::GetMenuItemCount(mruMenu); ++index)
@@ -5853,7 +5778,7 @@ LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND
 			if (archiveMru)
 			{
 				ResolvedOpenDocument probe; FbeArchive::Error error;
-				if (!ResolveArchiveOpenRequest(archiveLocation.storagePath, probe, &archiveLocation, &error) &&
+				if (!FbeArchiveUi::ResolveOpenRequest(archiveLocation.storagePath, probe, &archiveLocation, &error) &&
 					(error.code == FbeArchive::ErrorCode::EntryNotFound || error.code == FbeArchive::ErrorCode::OpenFailed)) FbeRecentDocuments::RemoveArchiveMruRecord(m_mru, archiveLocation);
 			}
 			break;

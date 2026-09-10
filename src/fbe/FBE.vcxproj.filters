@@ -123,6 +123,7 @@
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="archive\ArchiveDocumentResolver.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="archive\ui\ArchiveOpenCoordinator.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="archive\ArchiveDocumentWriter.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\recent\RecentDocumentsStore.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -294,6 +295,7 @@
 	<ClInclude Include="recovery\RecoveryService.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="archive\ArchiveReader.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="archive\ArchiveDocumentResolver.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="archive\ui\ArchiveOpenCoordinator.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="archive\ArchiveDocumentWriter.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="ElementDescMnr.h">
       <Filter>Header Files</Filter>
