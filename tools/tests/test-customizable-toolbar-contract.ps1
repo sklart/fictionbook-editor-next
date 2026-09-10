@@ -78,6 +78,16 @@ foreach ($required in @('CreateDialogFontForDpi', 'fbe.scripts_toolbar_customize
         throw "Диалог не сохраняет требуемое локальное поведение: $required"
     }
 }
+foreach ($required in @(
+    'SetWindowSubclass(m_currentList, CurrentListSubclassProc', 'WM_LBUTTONDOWN', 'WM_MOUSEMOVE', 'WM_LBUTTONUP',
+    'WM_KEYDOWN', 'VK_ESCAPE', 'SM_CXDRAG', 'DrawDragIndicator', 'UpdateDragInsert', 'UpdateDragScroll',
+    'WM_TIMER', 'SB_LINEUP', 'SB_LINEDOWN', 'm_dragSource < m_dragInsert ? m_dragInsert - 1 : m_dragInsert',
+    'InsertButton(destination, &button)'
+)) {
+    if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Диалог не содержит ожидаемую реализацию drag-перестановки: $required"
+    }
+}
 if ($dialogSource.IndexOf('UiMetrics::UpdateForWindow(m_hWnd)', [StringComparison]::Ordinal) -ge 0) {
     throw 'Диалог не должен инвалидировать глобальные шрифты UiMetrics главного окна.'
 }

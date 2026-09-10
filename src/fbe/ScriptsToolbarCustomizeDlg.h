@@ -54,6 +54,11 @@ private:
 	CSize m_minimumSize;
 	HFONT m_dialogFont;
 	UINT m_dpi;
+	bool m_dragging;
+	int m_dragSource;
+	int m_dragInsert;
+	POINT m_dragStartPoint;
+	int m_dragScrollDirection;
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
@@ -71,6 +76,7 @@ private:
 	LRESULT OnDown(WORD, WORD, HWND, BOOL&);
 	LRESULT OnReset(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClose(WORD, WORD, HWND, BOOL&);
+	static LRESULT CALLBACK CurrentListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference);
 
 	void PopulateAvailable();
 	void PopulateCurrent(int select = -1);
@@ -78,6 +84,10 @@ private:
 	void UpdateMetrics();
 	void UpdateButtonState();
 	void DrawListItem(const DRAWITEMSTRUCT& item);
+	void DrawDragIndicator(const DRAWITEMSTRUCT& item);
+	void UpdateDragInsert(POINT point);
+	void FinishDrag(bool commit, POINT point);
+	void UpdateDragScroll(POINT point);
 	void RestorePlacement();
 	int Scale(int px) const;
 	bool ToolbarContainsCommand(int command) const;

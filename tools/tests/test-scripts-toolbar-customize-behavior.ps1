@@ -29,6 +29,13 @@ function Move-Up([System.Collections.Generic.List[int]]$toolbar, [int]$index) {
 function Move-Down([System.Collections.Generic.List[int]]$toolbar, [int]$index) {
     if ($index -ge 0 -and $index + 1 -lt $toolbar.Count) { $item = $toolbar[$index]; $toolbar.RemoveAt($index); $toolbar.Insert($index + 1, $item) }
 }
+function Move-ByDrag([System.Collections.Generic.List[int]]$toolbar, [int]$source, [int]$insert) {
+    # The insert index is measured before the source button is removed, like a listbox insertion marker.
+    if ($source -lt 0 -or $source -ge $toolbar.Count -or $insert -lt 0 -or $insert -gt $toolbar.Count) { return }
+    if ($insert -eq $source -or $insert -eq ($source + 1)) { return }
+    $destination = if ($source -lt $insert) { $insert - 1 } else { $insert }
+    $item = $toolbar[$source]; $toolbar.RemoveAt($source); $toolbar.Insert($destination, $item)
+}
 
 # 0 models TBSTYLE_SEP: it occupies a real toolbar index and is movable/removable.
 $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
@@ -44,6 +51,19 @@ Move-Down $toolbar 1
 Assert-Equal $toolbar @(101, 0, 102) 'Down moves a button across separator'
 $toolbar.RemoveAt(1)
 Assert-Equal $toolbar @(101, 102) 'Remove removes selected separator by toolbar index'
+
+$toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
+Move-ByDrag $toolbar 2 1
+Assert-Equal $toolbar @(101, 102, 0) 'drag moves button upward across separator'
+Move-ByDrag $toolbar 1 3
+Assert-Equal $toolbar @(101, 0, 102) 'drag moves button downward with adjusted index'
+Move-ByDrag $toolbar 1 3
+Assert-Equal $toolbar @(101, 102, 0) 'drag moves separator across button'
+$beforeNoOp = @($toolbar)
+Move-ByDrag $toolbar 1 1
+Assert-Equal $toolbar $beforeNoOp 'drag drop at source boundary is a no-op'
+Move-ByDrag $toolbar 1 2
+Assert-Equal $toolbar $beforeNoOp 'drag drop after source boundary is a no-op'
 
 if ($resource -notmatch 'IDR_SCRIPTS TOOLBAR[\s\S]*?BUTTON\s+ID_LAST_SCRIPT') { throw 'IDR_SCRIPTS must restore ID_LAST_SCRIPT.' }
 $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
@@ -66,6 +86,11 @@ if ($dialog -match 'UiMetrics::UpdateForWindow\(m_hWnd\)' -or $dialog -notmatch 
 }
 if ($dialog -notmatch 'SavePlacement\(' -or $dialog -notmatch 'SetScriptsToolbarCustomizePlacement' -or $dialogHeader -notmatch 'MESSAGE_HANDLER\(WM_CLOSE') {
     throw 'Dialog does not persist its size on every close path.'
+}
+foreach ($required in @('CurrentListSubclassProc', 'DrawDragIndicator', 'UpdateDragInsert', 'FinishDrag', 'UpdateDragScroll', 'SetCapture', 'ReleaseCapture')) {
+    if ($dialog -notmatch [regex]::Escape($required) -and $dialogHeader -notmatch [regex]::Escape($required)) {
+        throw "Scripts toolbar drag behavior is missing: $required"
+    }
 }
 foreach ($required in @('TB_GETIMAGELIST', 'ImageList_Draw', 'UpdateButtonState', 'fbe.hotkey.scripts.last_script')) {
     if ($dialog -notmatch [regex]::Escape($required) -and $dialogHeader -notmatch [regex]::Escape($required) -and $mainFrame -notmatch [regex]::Escape($required)) {

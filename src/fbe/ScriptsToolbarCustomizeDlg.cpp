@@ -11,7 +11,7 @@ namespace
 
 CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 	const std::vector<ScriptsToolbarCommand>& available, const CSimpleArray<TBBUTTON>& defaults,
-	CSettings& settings) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_dialogFont(NULL), m_dpi(96)
+	CSettings& settings) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
 {
 }
 
@@ -40,6 +40,7 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	::SetDlgItemText(m_hWnd, IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.close", L"Close"));
 	m_availableList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE);
 	m_currentList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT);
+	::SetWindowSubclass(m_currentList, CurrentListSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	m_toolTip.Create(m_hWnd); m_toolTip.Activate(TRUE);
 	m_toolTip.AddTool(m_availableList, LPSTR_TEXTCALLBACKW, NULL, 1);
 	m_toolTip.AddTool(m_currentList, LPSTR_TEXTCALLBACKW, NULL, 2);
@@ -269,6 +270,91 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	HIMAGELIST images = reinterpret_cast<HIMAGELIST>(::SendMessage(m_toolbar, TB_GETIMAGELIST, 0, 0));
 	if(drawIcon && images) { ImageList_Draw(images, button.iBitmap, item.hDC, left, rect.top + (rect.Height() - Scale(16)) / 2, ILD_TRANSPARENT); left += Scale(20); }
 	rect.left = left; dc.DrawText(text, -1, rect, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+	DrawDragIndicator(item);
+}
+void CScriptsToolbarCustomizeDlg::DrawDragIndicator(const DRAWITEMSTRUCT& item)
+{
+	if(!m_dragging || item.CtlID != IDC_SCRIPTS_TOOLBAR_CURRENT) return;
+	const int count = m_currentList.GetCount();
+	if(m_dragInsert != static_cast<int>(item.itemID) && !(m_dragInsert == count && item.itemID + 1 == static_cast<UINT>(count))) return;
+	const int y = m_dragInsert == count ? item.rcItem.bottom - Scale(2) : item.rcItem.top;
+	CDCHandle(item.hDC).FillSolidRect(item.rcItem.left, y, item.rcItem.right - item.rcItem.left, Scale(2), ::GetSysColor(COLOR_HIGHLIGHT));
+}
+void CScriptsToolbarCustomizeDlg::UpdateDragInsert(POINT point)
+{
+	CRect client; m_currentList.GetClientRect(client); const int count = m_currentList.GetCount();
+	int insert = 0;
+	if(point.y >= client.bottom) insert = count;
+	else if(point.y > 0) {
+		BOOL outside = FALSE; const int item = m_currentList.ItemFromPoint(point, outside);
+		if(!outside && item >= 0) { CRect rect; m_currentList.GetItemRect(item, &rect); insert = point.y < (rect.top + rect.bottom) / 2 ? item : item + 1; }
+	}
+	if(insert != m_dragInsert) { m_dragInsert = insert; m_currentList.Invalidate(); }
+	UpdateDragScroll(point);
+}
+void CScriptsToolbarCustomizeDlg::UpdateDragScroll(POINT point)
+{
+	CRect client; m_currentList.GetClientRect(client); const int edge = Scale(18);
+	const int direction = point.y < edge ? -1 : (point.y >= client.bottom - edge ? 1 : 0);
+	if(direction == m_dragScrollDirection) return;
+	m_dragScrollDirection = direction;
+	if(direction == 0) m_currentList.KillTimer(1); else m_currentList.SetTimer(1, 80);
+}
+void CScriptsToolbarCustomizeDlg::FinishDrag(bool commit, POINT point)
+{
+	if(!m_dragging) return;
+	m_currentList.KillTimer(1); m_dragScrollDirection = 0;
+	CRect client; m_currentList.GetClientRect(client);
+	if(commit && client.PtInRect(point) && m_dragSource >= 0 && m_dragInsert >= 0 && m_dragInsert != m_dragSource && m_dragInsert != m_dragSource + 1)
+	{
+		const int destination = m_dragSource < m_dragInsert ? m_dragInsert - 1 : m_dragInsert;
+		TBBUTTON button = {}; CToolBarCtrl toolbar = m_toolbar;
+		if(toolbar.GetButton(m_dragSource, &button)) { toolbar.DeleteButton(m_dragSource); toolbar.InsertButton(destination, &button); toolbar.AutoSize(); PopulateCurrent(destination); UpdateButtonState(); }
+	}
+	m_dragging = false; m_dragSource = m_dragInsert = -1; m_currentList.Invalidate();
+	if(::GetCapture() == m_currentList) ::ReleaseCapture();
+}
+LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
+{
+	CScriptsToolbarCustomizeDlg* dialog = reinterpret_cast<CScriptsToolbarCustomizeDlg*>(reference);
+	if(dialog == NULL) return ::DefSubclassProc(window, message, wParam, lParam);
+	CListBox list(window);
+	switch(message)
+	{
+	case WM_LBUTTONDOWN:
+		{
+			POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; BOOL outside = FALSE; const int row = list.ItemFromPoint(point, outside);
+			dialog->m_dragSource = outside ? -1 : row; dialog->m_dragStartPoint = point; dialog->m_dragInsert = -1;
+		}
+		break;
+	case WM_MOUSEMOVE:
+		if(dialog->m_dragSource >= 0 && !dialog->m_dragging)
+		{
+			const int threshold = max(2, ::GetSystemMetrics(SM_CXDRAG));
+			if(abs(GET_X_LPARAM(lParam) - dialog->m_dragStartPoint.x) >= threshold || abs(GET_Y_LPARAM(lParam) - dialog->m_dragStartPoint.y) >= threshold)
+			{
+				dialog->m_dragging = true; ::SetCapture(window); dialog->UpdateDragInsert(POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) });
+				return 0;
+			}
+		}
+		if(dialog->m_dragging) { dialog->UpdateDragInsert(POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); return 0; }
+		break;
+	case WM_LBUTTONUP:
+		if(dialog->m_dragging) { dialog->FinishDrag(true, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); return 0; }
+		dialog->m_dragSource = -1;
+		break;
+	case WM_KEYDOWN:
+		if(wParam == VK_ESCAPE && dialog->m_dragging) { POINT point = {}; dialog->FinishDrag(false, point); return 0; }
+		break;
+	case WM_TIMER:
+		if(wParam == 1 && dialog->m_dragging && dialog->m_dragScrollDirection != 0)
+		{
+			::SendMessage(window, WM_VSCROLL, dialog->m_dragScrollDirection < 0 ? SB_LINEUP : SB_LINEDOWN, 0);
+			POINT point = {}; ::GetCursorPos(&point); ::ScreenToClient(window, &point); dialog->UpdateDragInsert(point); return 0;
+		}
+		break;
+	}
+	return ::DefSubclassProc(window, message, wParam, lParam);
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL&) { DrawListItem(*reinterpret_cast<DRAWITEMSTRUCT*>(lParam)); return TRUE; }
 LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = Scale(22); return TRUE; }
