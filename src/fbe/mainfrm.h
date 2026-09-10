@@ -11,6 +11,7 @@
 #include "res1.h"
 #include "RuntimeLocalization.h"
 #include "document\\DocumentLocation.h"
+#include "document\\DocumentState.h"
 #include "recovery\\RecoveryService.h"
 
 #include "atlctrlsext.h"
@@ -256,7 +257,8 @@ public:
   CCustomStatic   m_valign_caption;  
 
   FB::Doc		  *m_doc; // currently open document
-  DocumentLocation m_document_location;
+	DocumentState m_document_state;
+  DocumentLocation& m_document_location;
   DWORD			  m_last_tree_update;
   BOOL			  m_last_sci_ovr:1;
   bool			  m_last_ie_ovr:1;
@@ -333,7 +335,7 @@ public:
   void InitScriptHotkey(CMainFrame::ScrInfo&);
 
   // contruction/destruction
-  CMainFrame() : m_doc(0), m_last_tree_update(0), m_last_sci_ovr(true), m_last_ie_ovr(true),
+  CMainFrame() : m_doc(0), m_document_state(), m_document_location(m_document_state.Location()), m_last_tree_update(0), m_last_sci_ovr(true), m_last_ie_ovr(true),
     m_doc_changed(false), m_sel_changed(false), m_change_state(false), m_need_title_update(false),
     m_current_dpi(96), m_status_layout_posted(false), m_saved_xml(0), m_cb_updated(false),
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
