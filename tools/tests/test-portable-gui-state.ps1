@@ -149,9 +149,14 @@ if ($deletedScriptReport -notmatch '(?m)^empty-toolbar=1$') { throw 'Deleted sav
 $rewrittenToolbars = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
 if ($rewrittenToolbars -match 'deleted-script\.js') { throw 'Deleted script remained in the saved toolbar after restart.' }
 
+# Exercise all discovery outcomes in one real reload sequence.  The valid
+# fixture was copied above; these files must be rejected without retaining an
+# Active Scripting runtime between InitPlugins calls.
+Set-Content -LiteralPath (Join-Path $data 'Scripts\invalid.js') -Value 'function {' -Encoding utf8
+Set-Content -LiteralPath (Join-Path $data 'Scripts\no-run.js') -Value 'function NotRun() { return 1; }' -Encoding utf8
 Invoke-PortableStateScenario 'portable-scripts-reload'
 $reloadReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
-if ($reloadReport -notmatch '(?m)^gdi-stable=1$' -or $reloadReport -notmatch '(?m)^result=pass$') { throw "Repeated script reload leaked GDI objects:`n$reloadReport" }
+if ($reloadReport -notmatch '(?m)^gdi-stable=1$' -or $reloadReport -notmatch '(?m)^valid-run=1$' -or $reloadReport -notmatch '(?m)^invalid-js-rejected=1$' -or $reloadReport -notmatch '(?m)^no-run-rejected=1$' -or $reloadReport -notmatch '(?m)^result=pass$') { throw "Repeated script reload did not close rejected runtimes or leaked GDI objects:`n$reloadReport" }
 if ((Get-FileTreeSnapshot $data) -eq '<absent>' -or $persistedSnapshot -eq '<absent>') { throw 'Portable Data disappeared after restart.' }
 if ((Get-FileTreeSnapshot $installedData) -cne $installedBefore) { throw '%LOCALAPPDATA%\FBE Next changed during portable GUI state test.' }
 foreach ($key in $registryKeys) {

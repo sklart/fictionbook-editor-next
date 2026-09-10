@@ -2635,6 +2635,20 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 	::RemoveMenu(hMenu, 0, MF_BYPOSITION);
 }
 
+namespace
+{
+class ScriptDiscoveryRuntime
+{
+public:
+	explicit ScriptDiscoveryRuntime(CMainFrame* frame) : m_started(StartScript(frame) == 0) {}
+	~ScriptDiscoveryRuntime() { if (m_started) StopScript(); }
+	bool Started() const { return m_started; }
+
+private:
+	bool m_started;
+};
+}
+
 void CMainFrame::InitPlugins()
 {
 	g_pluginManager.DiscoverBundledPlugins();
@@ -2649,9 +2663,12 @@ void CMainFrame::InitPlugins()
 	for (size_t index = 0; index < scriptCandidates.size(); ++index)
 	{
 		const ScriptDescriptor& candidate = scriptCandidates[index];
-		if (!candidate.isFolder &&
-			(StartScript(this) != 0 || FAILED(ScriptLoad(candidate.path)) || !ScriptFindFunc(L"Run")))
-			continue;
+		if (!candidate.isFolder)
+		{
+			ScriptDiscoveryRuntime runtime(this);
+			if (!runtime.Started() || FAILED(ScriptLoad(candidate.path)) || !ScriptFindFunc(L"Run"))
+				continue;
+		}
 
 		ScriptDescriptor script(candidate);
 		const CString directory = candidate.isFolder ? candidate.path : candidate.path.Left(candidate.path.ReverseFind(L'\\') + 1);
@@ -2659,7 +2676,6 @@ void CMainFrame::InitPlugins()
 		if (!candidate.isFolder && pictureName.GetLength() >= 3) pictureName.Delete(pictureName.GetLength() - 3, 3);
 		FbeScripts::VisualResource visual = m_script_visuals.Load(directory, pictureName);
 		m_script_menu.Add(script, static_cast<FbeScripts::VisualResource&&>(visual));
-		if (!candidate.isFolder) StopScript();
 	}
 	if (StartupTrace::Enabled())
 	{
@@ -3886,9 +3902,19 @@ void CMainFrame::RunPortableStateTestScenario()
 		InitPlugins();
 		InitPlugins();
 		const DWORD after = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+		bool validRun = false, invalidRejected = true, noRunRejected = true;
+		for (int index = 0; index < m_script_menu.Count(); ++index)
+		{
+			const ScriptDescriptor& script = m_script_menu.Item(index);
+			if (script.isFolder) continue;
+			if (script.relativePath == L"foo.js") validRun = true;
+			if (script.relativePath == L"invalid.js") invalidRejected = false;
+			if (script.relativePath == L"no-run.js") noRunRejected = false;
+		}
 		CStringA report;
-		report.Format("phase=scripts-reload\ngdi-before=%lu\ngdi-after=%lu\ngdi-stable=%d\nresult=%s\n",
-			before, after, after <= before, after <= before ? "pass" : "fail");
+		const bool passed = after <= before && validRun && invalidRejected && noRunRejected;
+		report.Format("phase=scripts-reload\ngdi-before=%lu\ngdi-after=%lu\ngdi-stable=%d\nvalid-run=%d\ninvalid-js-rejected=%d\nno-run-rejected=%d\nresult=%s\n",
+			before, after, after <= before, validRun, invalidRejected, noRunRejected, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 	}
 	else if (legacyHotkeyRead)

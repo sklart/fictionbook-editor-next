@@ -46,6 +46,9 @@ Must $catalog 'left\.relativePath\.CompareNoCase' 'Relative path is deterministi
 Must $registry 'CommandRegistry::Assign' 'Stable command IDs belong to ScriptCommandRegistry'
 Must $menuBuilder 'MenuBuilder::Build' 'Active descriptors build the Scripts menu outside CMainFrame'
 MustNot $frame '\bScrInfo\b|\bm_scripts\b|LoadScriptPicture|SortScripts' 'CMainFrame legacy script model'
+Must $frame 'class ScriptDiscoveryRuntime' 'Discovery runtime has scoped ownership'
+Must $frame '~ScriptDiscoveryRuntime\(\) \{ if \(m_started\) StopScript\(\); \}' 'Started scripting runtime is always stopped'
+Must $frame '!runtime\.Started\(\) \|\| FAILED\(ScriptLoad\(candidate\.path\)\) \|\| !ScriptFindFunc\(L"Run"\)' 'Rejected scripts share scoped runtime cleanup'
 
 Must $frame 'PortableToolbarsPath' 'Portable toolbar file path'
 Must $frame 'Toolbars\.xml' 'Portable toolbar data file'
