@@ -12,6 +12,7 @@ $writer = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ZipArchiveWriter.cp
 $documentWriter = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ArchiveDocumentWriter.cpp')
 $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
 $archiveMru = Get-Content -Raw (Join-Path $root 'src\fbe\document\ArchiveRecentDocuments.cpp')
+$recentStore = Get-Content -Raw (Join-Path $root 'src\fbe\document\recent\RecentDocumentsStore.cpp')
 $recoveryStore = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryStore.cpp')
 $recoveryService = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryService.cpp')
 $doc = Get-Content -Raw (Join-Path $root 'src\fbe\FBDoc.cpp')
@@ -47,7 +48,7 @@ Require $documentWriter 'SaveDocument[\s\S]{0,3000}RewriteZipEntry' 'Ctrl+S must
 Require $frame 'DocumentContainerKind::Rar\)\s*return SaveFile\(true\)' 'RAR Ctrl+S must route to Save As.'
 Require $frame 'ShowArchiveError' 'Archive failures must be mapped to user-facing error categories.'
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
-Require $frame 'FBE-ARCHIVE-MRU\\t2' 'Archive MRU persistence must be explicitly versioned.'
+Require $recentStore 'FBE-ARCHIVE-MRU\\t2' 'Archive MRU persistence must be explicitly versioned.'
 Require $frame 'ReadArchiveMruRecords' 'Archive MRU must load independent persisted entry identities.'
 Require ($frame + $archiveMru) 'SameArchiveMruIdentity|SameIdentity' 'Archive MRU must key records by container, storage path, entry path, and occurrence.'
 Require $archiveMru 'entryOccurrence == right\.entryOccurrence' 'Archive MRU must retain duplicate archive entries by occurrence.'

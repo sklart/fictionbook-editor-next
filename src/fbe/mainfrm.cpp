@@ -15,6 +15,7 @@
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
 #include "document\\ArchiveRecentDocuments.h"
+#include "document\\recent\\RecentDocumentsStore.h"
 #include "document\\FileFingerprint.h"
 #include "archive\\ArchiveReader.h"
 #include "archive\\ArchiveDocumentResolver.h"
@@ -347,79 +348,16 @@ static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& inst
 	return g_pluginManager.CreateInstance(clsid, instance);
 }
 
-static CString PortableMruPath()
-{
-	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"MRU.xml";
-}
-
 typedef FbeArchiveRecentDocuments::Record ArchiveMruRecord;
-
-static const wchar_t* const kArchiveMruVersion = L"FBE-ARCHIVE-MRU\t2";
-
-static CString ArchiveMruPath()
-{
-	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"ArchiveMRU.txt";
-}
-
-static CString MruOrderPath()
-{
-	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"MRUOrder.txt";
-}
 
 static bool ParseArchiveMruUnsigned(const CString& text, unsigned int& value)
 {
 	return FbeArchiveRecentDocuments::ParseUnsigned(text, value);
 }
 
-static bool IsValidArchiveMruRecord(const ArchiveMruRecord& record)
-{
-	return FbeArchiveRecentDocuments::IsValidRecord(record);
-}
-
-static void SplitArchiveMruFields(const CString& line, std::vector<CString>& fields)
-{
-	FbeArchiveRecentDocuments::SplitFields(line, fields);
-}
-
-// Version 1 stored "storage path, occurrence, entry path".  Keep accepting it
-// while writing the versioned format below, so portable and registry MRU data
-// from earlier releases remains useful.
 static void ReadArchiveMruRecords(std::vector<ArchiveMruRecord>& records)
 {
-	records.clear();
-	HANDLE file = ::CreateFile(ArchiveMruPath(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file == INVALID_HANDLE_VALUE) return;
-	const DWORD length = ::GetFileSize(file, NULL);
-	if (length == INVALID_FILE_SIZE || length > 64 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return; }
-	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
-	const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
-	if (!ok || read != length) return;
-	int position = 0;
-	bool versioned = false;
-	while (position >= 0)
-	{
-		CString line = CString(&text[0]).Tokenize(L"\n", position); line.TrimRight(L"\r");
-		if (!versioned && line == kArchiveMruVersion) { versioned = true; continue; }
-		std::vector<CString> fields; SplitArchiveMruFields(line, fields);
-		ArchiveMruRecord record; unsigned int occurrence = 0;
-		if (versioned)
-		{
-			unsigned int kind = 0;
-			if (fields.size() != 4 || !ParseArchiveMruUnsigned(fields[0], kind) || !ParseArchiveMruUnsigned(fields[1], occurrence) ||
-				(kind != static_cast<unsigned int>(DocumentContainerKind::Zip) && kind != static_cast<unsigned int>(DocumentContainerKind::Rar))) continue;
-			record.location.containerKind = static_cast<DocumentContainerKind>(kind);
-			record.location.storagePath = fields[2]; record.location.entryPath = fields[3];
-		}
-		else
-		{
-			if (fields.size() != 3 || !ParseArchiveMruUnsigned(fields[1], occurrence)) continue;
-			record.location.storagePath = fields[0]; record.location.entryPath = fields[2];
-			record.location.containerKind = DetectDocumentContainerKind(record.location.storagePath);
-		}
-		record.location.entryOccurrence = occurrence;
-		record.location.documentType = DetectFictionBookFileType(record.location.entryPath);
-		if (IsValidArchiveMruRecord(record)) records.push_back(record);
-	}
+	FbeRecentDocuments::Store().ReadArchiveRecords(records);
 }
 
 static CString ArchiveMruDisplayName(const std::vector<ArchiveMruRecord>& records, size_t target)
@@ -446,21 +384,12 @@ static bool ParseArchiveMruKey(const CString& key, DocumentLocation& location)
 
 static void ReadMruOrder(std::vector<CString>& order)
 {
-	order.clear(); HANDLE file = ::CreateFile(MruOrderPath(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file == INVALID_HANDLE_VALUE) return; const DWORD length = ::GetFileSize(file, NULL);
-	if (length == INVALID_FILE_SIZE || length > 64 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return; }
-	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0; const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
-	if (!ok || read != length) return; int position = 0;
-	while (position >= 0) { CString item = CString(&text[0]).Tokenize(L"\n", position); item.TrimRight(L"\r"); if (!item.IsEmpty() && item.FindOneOf(L"\r\n") < 0) order.push_back(item); }
+	FbeRecentDocuments::Store().ReadOrder(order);
 }
 
 static void WriteMruOrder(const std::vector<CString>& order)
 {
-	const CString directory(DeploymentContext::SettingsDirectory().c_str()); if (!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return;
-	const CString path = MruOrderPath(), temporary = path + L".tmp"; HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file == INVALID_HANDLE_VALUE) return; bool ok = true;
-	for (size_t i = 0; ok && i < order.size() && i < 10; ++i) { const CString line = order[i] + L"\r\n"; DWORD written = 0; ok = ::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(line.GetLength() * sizeof(wchar_t)); }
-	::FlushFileBuffers(file); ::CloseHandle(file); if (ok && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return; ::DeleteFile(temporary);
+	FbeRecentDocuments::Store().WriteOrder(order);
 }
 
 static void TouchMruOrder(const CString& key)
@@ -586,26 +515,16 @@ static void RebuildMruMenu(CRecentDocumentList& list)
 static void RememberArchiveMruRecord(CRecentDocumentList& list, const DocumentLocation& location)
 {
 	if (!location.IsArchive()) { list.AddToList(location.storagePath); return; }
-	const CString directory(DeploymentContext::SettingsDirectory().c_str());
-	if (!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return;
-	const CString path = ArchiveMruPath(), temporary = path + L".tmp";
 	std::vector<ArchiveMruRecord> retained; ReadArchiveMruRecords(retained);
 	retained.erase(std::remove_if(retained.begin(), retained.end(), [&location](const ArchiveMruRecord& record) { return SameArchiveMruIdentity(record.location, location); }), retained.end());
 	ArchiveMruRecord current; current.location = location; retained.insert(retained.begin(), current);
-	HANDLE destination = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (destination == INVALID_HANDLE_VALUE) return;
-	bool written = true; CString header(kArchiveMruVersion); header += L"\r\n"; DWORD count = 0;
-	if (!::WriteFile(destination, header.GetString(), header.GetLength() * sizeof(wchar_t), &count, NULL) || count != static_cast<DWORD>(header.GetLength() * sizeof(wchar_t))) written = false;
-	for (size_t index = 0; written && index < retained.size() && index < 16; ++index) { const DocumentLocation& item = retained[index].location; CString line; line.Format(L"%u\t%u\t%s\t%s\r\n", static_cast<unsigned int>(item.containerKind), item.entryOccurrence, static_cast<LPCWSTR>(item.storagePath), static_cast<LPCWSTR>(item.entryPath)); count = 0; if (!::WriteFile(destination, line.GetString(), line.GetLength() * sizeof(wchar_t), &count, NULL) || count != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) written = false; }
-	::FlushFileBuffers(destination); ::CloseHandle(destination);
-	if (written && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	if (FbeRecentDocuments::Store().WriteArchiveRecords(retained))
 	{
 		list.AddToList(ArchiveMruKey(location));
 		TouchMruOrder(ArchiveMruKey(location));
 		for (int i = list.m_arrDocs.GetSize() - 1; i >= 0; --i) if (CString(list.m_arrDocs[i].szDocName).CompareNoCase(location.storagePath) == 0) list.m_arrDocs.RemoveAt(i);
 		RebuildMruMenu(list);
 	}
-	else ::DeleteFile(temporary);
 }
 
 static void RememberNormalMruRecord(CRecentDocumentList& list, const CString& path)
@@ -617,14 +536,7 @@ static void RemoveArchiveMruRecord(CRecentDocumentList& list, const DocumentLoca
 {
 	std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
 	records.erase(std::remove_if(records.begin(), records.end(), [&location](const ArchiveMruRecord& item) { return SameArchiveMruIdentity(item.location, location); }), records.end());
-	const CString path = ArchiveMruPath(), temporary = path + L".tmp"; HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file != INVALID_HANDLE_VALUE)
-	{
-		bool ok = true; CString header(kArchiveMruVersion); header += L"\r\n"; DWORD written = 0;
-		ok = ::WriteFile(file, header.GetString(), header.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(header.GetLength() * sizeof(wchar_t));
-		for (size_t i = 0; ok && i < records.size() && i < 16; ++i) { CString line; line.Format(L"%u\t%u\t%s\t%s\r\n", static_cast<unsigned int>(records[i].location.containerKind), records[i].location.entryOccurrence, static_cast<LPCWSTR>(records[i].location.storagePath), static_cast<LPCWSTR>(records[i].location.entryPath)); written = 0; ok = ::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(line.GetLength() * sizeof(wchar_t)); }
-		::FlushFileBuffers(file); ::CloseHandle(file); if (ok) ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH); else ::DeleteFile(temporary);
-	}
+	FbeRecentDocuments::Store().WriteArchiveRecords(records);
 	const CString key = ArchiveMruKey(location); for (int i = list.m_arrDocs.GetSize() - 1; i >= 0; --i) if (CString(list.m_arrDocs[i].szDocName) == key) list.m_arrDocs.RemoveAt(i);
 	std::vector<CString> order; ReadMruOrder(order); order.erase(std::remove_if(order.begin(), order.end(), [&key](const CString& item) { return item == key; }), order.end()); WriteMruOrder(order);
 	RebuildMruMenu(list);
@@ -659,30 +571,21 @@ static void RemoveLegacyArchiveMruEntries(CRecentDocumentList& list)
 
 static void ReadPortableMru(CRecentDocumentList& list)
 {
-	const CString path = PortableMruPath();
-	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) return;
-	const DWORD length = ::GetFileSize(file, NULL);
-	if(length == INVALID_FILE_SIZE || length > 64 * 1024) { ::CloseHandle(file); return; }
-	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
-	const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
-	if(!ok || (read % sizeof(wchar_t)) != 0) return;
-	int position = 0; CString line;
-	while(position >= 0) { line = CString(&text[0]).Tokenize(L"\n", position); line.Trim(); if(!line.IsEmpty()) list.AddToList(line); }
+	std::vector<CString> entries;
+	FbeRecentDocuments::Store().ReadPortable(entries);
+	for (size_t i = 0; i < entries.size(); ++i) list.AddToList(entries[i]);
 }
 
 static void WritePortableMru(const CRecentDocumentList& list)
 {
-	const CString directory(DeploymentContext::SettingsDirectory().c_str());
-	if(!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return;
-	const CString path = PortableMruPath(), temporary = path + L".tmp";
-	int normalCount = 0; for (int index = 0; index < list.m_arrDocs.GetSize(); ++index) { DocumentLocation archive; if (!ParseArchiveMruKey(CString(list.m_arrDocs[index].szDocName), archive)) ++normalCount; }
-	if (normalCount == 0) { ::DeleteFile(temporary); ::DeleteFile(path); return; }
-	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) return;
-	for(int index = 0; index < list.m_arrDocs.GetSize(); ++index) { const CString value(list.m_arrDocs[index].szDocName); DocumentLocation archive; if (ParseArchiveMruKey(value, archive)) continue; const CString line = value + L"\r\n"; DWORD written = 0; if(!::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) || written != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) { ::CloseHandle(file); ::DeleteFile(temporary); return; } }
-	::FlushFileBuffers(file); ::CloseHandle(file);
-	if(!::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) ::DeleteFile(temporary);
+	std::vector<CString> entries;
+	for (int index = 0; index < list.m_arrDocs.GetSize(); ++index)
+	{
+		const CString value(list.m_arrDocs[index].szDocName);
+		DocumentLocation archive;
+		if (!ParseArchiveMruKey(value, archive)) entries.push_back(value);
+	}
+	FbeRecentDocuments::Store().WritePortable(entries);
 }
 
 static void WriteRegistryMruWithoutArchive(CRecentDocumentList& list, LPCTSTR settingsKey)
