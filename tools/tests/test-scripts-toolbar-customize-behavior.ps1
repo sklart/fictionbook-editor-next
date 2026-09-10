@@ -55,6 +55,9 @@ function Move-SelectedByDrag([System.Collections.Generic.List[int]]$toolbar, [in
     for ($index = 0; $index -lt $toolbar.Count; ++$index) { if ($selectedSet.Contains($index)) { $moved.Add($toolbar[$index]) } else { $rest.Add($toolbar[$index]) } }
     $rest.InsertRange($destination, $moved); $toolbar.Clear(); $toolbar.AddRange($rest)
 }
+function Activate-Selection([bool[]]$active, [bool[]]$other) {
+    for ($index = 0; $index -lt $other.Length; ++$index) { $other[$index] = $false }
+}
 
 # 0 models TBSTYLE_SEP: it occupies a real toolbar index and is movable/removable.
 $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
@@ -77,6 +80,16 @@ foreach ($item in $selectedAvailable) { if ($item -eq 0) { $toolbar.Add(0) } els
 Assert-Equal $toolbar @(101, 102, 0, 103, 0, 2, 3) 'multi-add preserves source order and permits separator'
 $remove = @(6, 4); foreach ($index in $remove) { $toolbar.RemoveAt($index) }
 Assert-Equal $toolbar @(101, 102, 0, 103, 2) 'multi-remove runs from end to beginning'
+$availableSelection = [bool[]]@($true, $true, $false); $currentSelection = [bool[]]@($false, $true, $true)
+Activate-Selection $availableSelection $currentSelection
+if ($currentSelection -contains $true) { throw 'selecting available items must clear toolbar selection' }
+$currentSelection[0] = $true
+Activate-Selection $currentSelection $availableSelection
+if ($availableSelection -contains $true) { throw 'selecting toolbar items must clear available selection' }
+$availableSelection = [bool[]]@($false, $false, $false); $currentSelection = [bool[]]@($true, $true)
+if ($availableSelection -contains $true -or ($currentSelection | Where-Object { $_ }).Count -ne 2) { throw 'Add must transfer grouped selection to the toolbar list' }
+$availableSelection = [bool[]]@($true, $true); $currentSelection = [bool[]]@($false, $false)
+if ($currentSelection -contains $true -or ($availableSelection | Where-Object { $_ }).Count -ne 2) { throw 'Remove must transfer grouped selection to the available list' }
 $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102, 103)
 Move-Selected $toolbar @(1, 2) $false
 Assert-Equal $toolbar @(0, 102, 101, 103) 'grouped Up preserves selection order across separator'
@@ -130,6 +143,14 @@ foreach ($required in @('WM_SETREDRAW', 'RedrawWindow', 'LBS_EXTENDEDSEL', 'LB_S
     if ($dialog -notmatch [regex]::Escape($required) -and $dialogHeader -notmatch [regex]::Escape($required) -and $resource -notmatch [regex]::Escape($required)) {
         throw "Scripts toolbar batch/multi-select behavior is missing: $required"
     }
+}
+foreach ($required in @('ActivateList', 'BeginDeferWindowPos', 'DeferWindowPos', 'EndDeferWindowPos', 'RDW_ALLCHILDREN', 'SaveDC', 'IntersectClipRect', 'RestoreDC')) {
+    if ($dialog -notmatch [regex]::Escape($required) -and $dialogHeader -notmatch [regex]::Escape($required)) {
+        throw "Scripts toolbar selection/layout paint regression guard is missing: $required"
+    }
+}
+foreach ($required in @('WS_CLIPCHILDREN', 'WS_CLIPSIBLINGS')) {
+    if ($resource -notmatch [regex]::Escape($required)) { throw "Scripts toolbar resize clipping style is missing: $required" }
 }
 $close = $localization.strings.'fbe.scripts_toolbar_customize.close'
 if ($close.translations.'ru-RU' -ne 'Закрыть') { throw 'Russian runtime localization for the Close button is incorrect.' }

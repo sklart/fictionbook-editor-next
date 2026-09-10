@@ -69,13 +69,18 @@ foreach ($required in @('MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'MESSAGE_HAN
     }
 }
 foreach ($listId in @('IDC_SCRIPTS_TOOLBAR_AVAILABLE', 'IDC_SCRIPTS_TOOLBAR_CURRENT')) {
-    if ($resource -notmatch "$listId,[^\r\n]*LBS_EXTENDEDSEL[^\r\n]*LBS_HASSTRINGS[^\r\n]*LBS_OWNERDRAWFIXED") {
+    if ($resource -notmatch "$listId,[^\r\n]*LBS_EXTENDEDSEL[^\r\n]*LBS_HASSTRINGS[^\r\n]*LBS_OWNERDRAWFIXED[^\r\n]*WS_CLIPSIBLINGS") {
         throw "Owner-draw listbox $listId must retain strings and extended selection."
     }
 }
 foreach ($required in @('CreateDialogFontForDpi', 'FbeApplyRuntimeDialogLocalization(m_hWnd, IDD)', 'WM_SETREDRAW', 'RefreshLists')) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Диалог не сохраняет требуемое локальное поведение: $required"
+    }
+}
+foreach ($required in @('BeginDeferWindowPos', 'DeferWindowPos', 'EndDeferWindowPos', 'RDW_ALLCHILDREN', 'SaveDC', 'IntersectClipRect', 'RestoreDC', 'ActivateList')) {
+    if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Диалог не содержит безопасную layout/paint-защиту: $required"
     }
 }
 foreach ($required in @(

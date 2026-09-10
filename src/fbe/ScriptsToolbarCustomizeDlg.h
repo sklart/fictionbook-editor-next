@@ -94,6 +94,7 @@ private:
 	std::vector<int> GetSelectedRows(const CListBox& list) const;
 	std::vector<DWORD_PTR> GetSelectedItemData(const CListBox& list) const;
 	void RestoreSelection(CListBox& list, const std::vector<DWORD_PTR>& selection, int topIndex);
+	void ActivateList(CListBox& list);
 	bool ReplaceToolbarButtons(const std::vector<TBBUTTON>& buttons);
 	bool MoveSelectedButtons(bool down);
 	bool MoveDraggedButtons(int insert, std::vector<DWORD_PTR>& selection);

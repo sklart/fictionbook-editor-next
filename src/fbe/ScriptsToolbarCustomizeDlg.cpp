@@ -61,6 +61,11 @@ void CScriptsToolbarCustomizeDlg::RestoreSelection(CListBox& list, const std::ve
 	if(list.GetSelCount() == 0 && !selection.empty()) list.SetCurSel(min(list.GetCount() - 1, max(0, topIndex)));
 	if(list.GetCount() > 0) list.SetTopIndex(min(list.GetCount() - 1, max(0, topIndex)));
 }
+void CScriptsToolbarCustomizeDlg::ActivateList(CListBox& list)
+{
+	CListBox& other = list.m_hWnd == m_availableList.m_hWnd ? m_currentList : m_availableList;
+	if(other.GetSelCount() > 0) ::SendMessage(other, LB_SETSEL, FALSE, -1);
+}
 void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>* selected, bool redraw)
 {
 	CString search; GetDlgItemText(IDC_SCRIPTS_TOOLBAR_SEARCH, search); search.MakeLower();
@@ -170,17 +175,21 @@ LRESULT CScriptsToolbarCustomizeDlg::OnAdd(WORD, WORD, HWND, BOOL&)
 		toolbar.AddButton(command.command, command.button.fsStyle, command.button.fsState, command.button.iBitmap, command.name, 0);
 		currentSelection.push_back(toolbar.GetButtonCount() - 1);
 	}
-	if(!currentSelection.empty()) { toolbar.AutoSize(); RefreshLists(NULL, &currentSelection); UpdateButtonState(); }
+	if(!currentSelection.empty()) { std::vector<DWORD_PTR> empty; toolbar.AutoSize(); RefreshLists(&empty, &currentSelection); UpdateButtonState(); }
 	return 0;
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnRemove(WORD, WORD, HWND, BOOL&)
 {
 	std::vector<int> rows = GetSelectedRows(m_currentList); if(rows.empty()) return 0;
+	std::vector<DWORD_PTR> availableSelection;
+	for(size_t row = 0; row < rows.size(); ++row) {
+		TBBUTTON button = {}; if(!CToolBarCtrl(m_toolbar).GetButton(static_cast<int>(m_currentList.GetItemData(rows[row])), &button)) continue;
+		if(button.fsStyle & TBSTYLE_SEP) { availableSelection.push_back(kSeparatorItem); continue; }
+		for(size_t i = 0; i < m_available.size(); ++i) if(m_available[i].command == button.idCommand) { availableSelection.push_back(i); break; }
+	}
 	for(std::vector<int>::reverse_iterator it = rows.rbegin(); it != rows.rend(); ++it) CToolBarCtrl(m_toolbar).DeleteButton(static_cast<int>(m_currentList.GetItemData(*it)));
 	CToolBarCtrl(m_toolbar).AutoSize();
-	const int next = min(rows.front(), CToolBarCtrl(m_toolbar).GetButtonCount() - 1); std::vector<DWORD_PTR> selection;
-	if(next >= 0) selection.push_back(next);
-	RefreshLists(NULL, &selection); UpdateButtonState(); return 0;
+	std::vector<DWORD_PTR> empty; RefreshLists(&availableSelection, &empty); UpdateButtonState(); return 0;
 }
 bool CScriptsToolbarCustomizeDlg::ReplaceToolbarButtons(const std::vector<TBBUTTON>& buttons)
 {
@@ -222,18 +231,21 @@ void CScriptsToolbarCustomizeDlg::LayoutControls(int width, int height)
 	const int listWidth = (width - buttonColumn - gap * 4) / 2;
 	const int left = gap, buttonsLeft = left + listWidth + gap, right = buttonsLeft + buttonColumn + gap;
 	const int listHeight = height - top - bottom;
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL).MoveWindow(left, gap, Scale(55), Scale(24));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH).MoveWindow(left + Scale(58), gap, listWidth - Scale(58), Scale(24));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL).MoveWindow(left, Scale(29), listWidth, Scale(18));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL).MoveWindow(right, Scale(29), listWidth, Scale(18));
-	m_availableList.MoveWindow(left, top, listWidth, listHeight);
-	m_currentList.MoveWindow(right, top, listWidth, listHeight);
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD).MoveWindow(buttonsLeft, top + Scale(25), buttonWidth, Scale(25));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_REMOVE).MoveWindow(buttonsLeft, top + Scale(55), buttonWidth, Scale(25));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_UP).MoveWindow(buttonsLeft, top + Scale(105), buttonWidth, Scale(25));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_DOWN).MoveWindow(buttonsLeft, top + Scale(135), buttonWidth, Scale(25));
-	GetDlgItem(IDC_SCRIPTS_TOOLBAR_RESET).MoveWindow(buttonsLeft, top + Scale(205), buttonWidth, Scale(26));
-	GetDlgItem(IDCANCEL).MoveWindow(width - gap - buttonWidth, height - bottom + gap, buttonWidth, Scale(26));
+	HDWP defer = ::BeginDeferWindowPos(12); const UINT flags = SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOREDRAW;
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL), NULL, left, gap, Scale(55), Scale(24), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH), NULL, left + Scale(58), gap, listWidth - Scale(58), Scale(24), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL), NULL, left, Scale(29), listWidth, Scale(18), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL), NULL, right, Scale(29), listWidth, Scale(18), flags);
+	defer = ::DeferWindowPos(defer, m_availableList, NULL, left, top, listWidth, listHeight, flags);
+	defer = ::DeferWindowPos(defer, m_currentList, NULL, right, top, listWidth, listHeight, flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD), NULL, buttonsLeft, top + Scale(25), buttonWidth, Scale(25), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_REMOVE), NULL, buttonsLeft, top + Scale(55), buttonWidth, Scale(25), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_UP), NULL, buttonsLeft, top + Scale(105), buttonWidth, Scale(25), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_DOWN), NULL, buttonsLeft, top + Scale(135), buttonWidth, Scale(25), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_RESET), NULL, buttonsLeft, top + Scale(205), buttonWidth, Scale(26), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDCANCEL), NULL, width - gap - buttonWidth, height - bottom + gap, buttonWidth, Scale(26), flags);
+	if(defer != NULL) ::EndDeferWindowPos(defer);
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnSize(UINT, WPARAM, LPARAM lParam, BOOL&) { LayoutControls(LOWORD(lParam), HIWORD(lParam)); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
@@ -304,6 +316,7 @@ void CScriptsToolbarCustomizeDlg::UpdateButtonState()
 void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 {
 	if(item.itemID == static_cast<UINT>(-1)) return;
+	const int savedDc = ::SaveDC(item.hDC); ::IntersectClipRect(item.hDC, item.rcItem.left, item.rcItem.top, item.rcItem.right, item.rcItem.bottom);
 	const bool available = item.CtlID == IDC_SCRIPTS_TOOLBAR_AVAILABLE;
 	CDCHandle dc(item.hDC); CRect rect(item.rcItem);
 	const bool selected = (item.itemState & ODS_SELECTED) != 0;
@@ -321,6 +334,7 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	if(drawIcon && images) { ImageList_Draw(images, button.iBitmap, item.hDC, left, rect.top + (rect.Height() - Scale(16)) / 2, ILD_TRANSPARENT); left += Scale(20); }
 	rect.left = left; dc.DrawText(text, -1, rect, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
 	DrawDragIndicator(item);
+	::RestoreDC(item.hDC, savedDc);
 }
 void CScriptsToolbarCustomizeDlg::DrawDragIndicator(const DRAWITEMSTRUCT& item)
 {
@@ -388,11 +402,15 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND windo
 	{
 	case WM_LBUTTONDOWN:
 		{
+			dialog->ActivateList(list);
 			POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }; BOOL outside = FALSE; const int row = list.ItemFromPoint(point, outside);
 			dialog->m_dragSource = outside ? -1 : row; dialog->m_dragStartPoint = point; dialog->m_dragInsert = -1;
 			dialog->m_dragRows = outside ? std::vector<int>() : dialog->GetSelectedRows(list);
 			if(!outside && std::find(dialog->m_dragRows.begin(), dialog->m_dragRows.end(), row) == dialog->m_dragRows.end()) { dialog->m_dragRows.clear(); dialog->m_dragRows.push_back(row); }
 		}
+		break;
+	case WM_SETFOCUS:
+		dialog->ActivateList(list);
 		break;
 	case WM_MOUSEMOVE:
 		if(dialog->m_dragSource >= 0 && !dialog->m_dragging)
@@ -427,6 +445,8 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND windo
 LRESULT CALLBACK CScriptsToolbarCustomizeDlg::AvailableListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
 	CScriptsToolbarCustomizeDlg* dialog = reinterpret_cast<CScriptsToolbarCustomizeDlg*>(reference);
+	CListBox list(window);
+	if(dialog != NULL && (message == WM_LBUTTONDOWN || message == WM_SETFOCUS)) dialog->ActivateList(list);
 	if(message == WM_KEYDOWN && wParam == 'A' && (::GetKeyState(VK_CONTROL) & 0x8000)) { ::SendMessage(window, LB_SETSEL, TRUE, -1); if(dialog != NULL) dialog->UpdateButtonState(); return 0; }
 	return ::DefSubclassProc(window, message, wParam, lParam);
 }
