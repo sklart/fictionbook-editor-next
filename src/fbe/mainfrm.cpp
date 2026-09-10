@@ -17,6 +17,7 @@
 #include "document\\ArchiveRecentDocuments.h"
 #include "archive\\ArchiveReader.h"
 #include "archive\\ArchiveDocumentResolver.h"
+#include "archive\\ArchiveDocumentWriter.h"
 #include "recovery\\RecoveryService.h"
 #include "ArchiveEntryPicker.h"
 #include "xmlMatchedTagsHighlighter.h"
@@ -1911,17 +1912,6 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   {
 	if (m_document_location.containerKind == DocumentContainerKind::Rar)
 		return SaveFile(true);
-	if (m_file_age != FileAge(m_document_location.storagePath) || m_file_size != FileSize(m_document_location.storagePath))
-	{
-		FbeArchive::Error error; error.code = FbeArchive::ErrorCode::ModifiedExternally;
-		if (IsFbeTestScenario(L"archive-recovery-external-verify"))
-		{
-			wchar_t diagnostic[16] = {};
-			swprintf_s(diagnostic, _countof(diagnostic), L"%d", static_cast<int>(error.code));
-			::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR", diagnostic);
-		}
-		ShowArchiveError(m_hWnd, error); return FAIL;
-	}
 	std::vector<unsigned char> serialized;
 	if (!m_doc->SerializeToMemory(serialized, m_document_location.documentType)) return FAIL;
 	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime"))
@@ -1930,13 +1920,15 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 			"ARCHIVE_RUNTIME_AFTER", "ARCHIVE_RUNTIME_AFTER" + strlen("ARCHIVE_RUNTIME_AFTER"));
 		::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SERIALIZED_CHANGED", marker != serialized.end() ? L"1" : L"0");
 	}
-	FbeArchive::Entry entry;
-	entry.path = m_document_location.entryPath;
-	entry.occurrence = m_document_location.entryOccurrence;
-	entry.documentType = m_document_location.documentType;
 	FbeArchive::Error error;
-	if (!FbeArchive::RewriteZipEntry(m_document_location.storagePath, entry, serialized, error))
+	if (!FbeArchive::SaveDocument(m_document_location, serialized, error))
 	{
+		if (IsFbeTestScenario(L"archive-recovery-external-verify"))
+		{
+			wchar_t diagnostic[16] = {};
+			swprintf_s(diagnostic, _countof(diagnostic), L"%d", static_cast<int>(error.code));
+			::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR", diagnostic);
+		}
 		if (IsFbeTestScenario(L"archive-runtime"))
 		{
 			wchar_t diagnostic[64] = {};
@@ -1946,10 +1938,8 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 		ShowArchiveError(m_hWnd, error); return FAIL;
 	}
 	m_doc->MarkSavePoint();
-	m_file_age = FileAge(m_document_location.storagePath);
-	m_file_size = FileSize(m_document_location.storagePath);
-	m_document_location.containerLastWriteTime = m_file_age;
-	m_document_location.containerFileSize = m_file_size;
+	m_file_age = m_document_location.containerLastWriteTime;
+	m_file_size = m_document_location.containerFileSize;
 	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
 		m_recovery.DeleteIfWritten();
 	return OK;

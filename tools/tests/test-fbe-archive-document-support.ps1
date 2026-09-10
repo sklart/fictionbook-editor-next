@@ -9,6 +9,7 @@ function Require([string]$text, [string]$pattern, [string]$message) {
 
 $reader = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ArchiveReader.cpp')
 $writer = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ZipArchiveWriter.cpp')
+$documentWriter = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ArchiveDocumentWriter.cpp')
 $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
 $archiveMru = Get-Content -Raw (Join-Path $root 'src\fbe\document\ArchiveRecentDocuments.cpp')
 $recoveryStore = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryStore.cpp')
@@ -42,7 +43,7 @@ Require $writer 'archive_read_free\(reader.value\)[\s\S]{0,700}ReplaceFileW' 'ZI
 Require $writer 'archive_write_finish_entry' 'ZIP writer must finish every copied entry.'
 Require $writer 'target\.occurrence' 'ZIP writer must identify replacement by occurrence.'
 Require $doc 'SerializeToMemory' 'Archive saving must serialize to memory.'
-Require $frame 'RewriteZipEntry' 'Ctrl+S must call the transactional ZIP writer.'
+Require ($frame + $documentWriter) 'SaveDocument[\s\S]{0,800}RewriteZipEntry' 'Ctrl+S must call the transactional ZIP writer through the archive writer.'
 Require $frame 'DocumentContainerKind::Rar\)\s*return SaveFile\(true\)' 'RAR Ctrl+S must route to Save As.'
 Require $frame 'ShowArchiveError' 'Archive failures must be mapped to user-facing error categories.'
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
@@ -60,7 +61,7 @@ Require $recoveryStore 'WriteArchiveLocation' 'Recovery must retain archive sour
 Require $recoveryStore 'containerLastWriteTime.*containerFileSize' 'Recovery must persist the archive fingerprint.'
 Require $frame 'SetDocumentFileType\(candidate.archiveLocation.documentType\)' 'Recovery must restore the authoritative archive FBD type.'
 Require $recoveryService 'SaveSourceSnapshot' 'Recovery source snapshot persistence must be isolated from the main frame.'
-Require $frame 'm_file_size != FileSize' 'Archive save must reject external changes detected by size as well as timestamp.'
+Require $documentWriter 'containerLastWriteTime != location.containerLastWriteTime[\s\S]{0,180}containerFileSize != location.containerFileSize' 'Archive save must reject external changes detected by size as well as timestamp.'
 Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
 Require $frame 'OnFileNew[\s\S]{0,700}m_document_location = DocumentLocation\(\)' 'New documents must not retain an archive save target.'
 Require $frame 'ReloadFile\(\)[\s\S]{0,220}m_document_location\.IsArchive\(\)[\s\S]{0,180}LoadFile\(m_document_location\.storagePath, &m_document_location\)' 'Archive reload must resolve the already selected entry rather than parse the container as XML.'
@@ -74,7 +75,7 @@ Require $frame 'IsFbeTestScenario\(L"archive-rar-save-runtime"\)' 'RAR Save As r
 Require $frame 'FBE_NEXT_TEST_SAVE_PATH' 'RAR Save As runtime test must use an explicit isolated output path.'
 Require $frame 'archive-recovery-external-verify' 'Archive recovery runtime must verify external-modification blocking.'
 Require $frame 'FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR' 'Archive recovery runtime must report the precise Save failure reason.'
-Require $frame 'ErrorCode::ModifiedExternally' 'Archive recovery runtime must require the external-modification error code.'
+Require ($frame + $documentWriter) 'ErrorCode::ModifiedExternally' 'Archive recovery runtime must require the external-modification error code.'
 Require $frame 'mruAfter == mruBefore' 'Two-phase runtime scenario must compare the entire MRU snapshot.'
 Require $frame 'archive-open-runtime"\)' 'Archive-open runtime mode must be explicitly isolated from modal error UI.'
 Require $startup 'CommandLineToArgvW' 'CLI parsing must use CommandLineToArgvW.'
