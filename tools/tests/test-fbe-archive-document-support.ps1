@@ -11,6 +11,7 @@ $reader = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ArchiveReader.cpp')
 $writer = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ZipArchiveWriter.cpp')
 $documentWriter = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ArchiveDocumentWriter.cpp')
 $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
+$archiveOpen = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ui\ArchiveOpenCoordinator.cpp')
 $archiveMru = Get-Content -Raw (Join-Path $root 'src\fbe\document\ArchiveRecentDocuments.cpp')
 $recentStore = Get-Content -Raw (Join-Path $root 'src\fbe\document\recent\RecentDocumentsStore.cpp')
 $recoveryStore = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryStore.cpp')
@@ -29,7 +30,7 @@ Require $reader 'kMaximumDocumentBytes' 'Archive entry memory budget is missing.
 Require $reader 'IsSafeEntryPath' 'Archive entry identities must reject unsafe path forms.'
 Require $reader 'segmentStart[\s\S]{0,300}L"\.\."' 'Archive entry identities must reject parent-directory segments.'
 Require $reader 'entries\.empty\(\).*ErrorCode::NoFictionBookEntries.*return false' 'An archive without FictionBook entries must fail resolution before any entry access.'
-Require $frame 'ResolveArchiveOpenRequest[\s\S]{0,1400}DiscardChanges' 'Archive resolve must precede document discard.'
+Require $frame 'FbeArchiveUi::ResolveOpenRequest[\s\S]{0,1400}DiscardChanges' 'Archive resolve must precede document discard.'
 Require $frame 'DetectDocumentContainerKind\(buf\)' 'File drag-and-drop must use archive resolver.'
 Require $frame 'startupArchive' 'Command-line opening must use archive resolver.'
 Require $writer 'archive_write_set_format_zip' 'ZIP writer is missing.'
@@ -46,7 +47,7 @@ Require $writer 'target\.occurrence' 'ZIP writer must identify replacement by oc
 Require $doc 'SerializeToMemory' 'Archive saving must serialize to memory.'
 Require $documentWriter 'SaveDocument[\s\S]{0,3000}RewriteZipEntry' 'Ctrl+S must call the transactional ZIP writer through the archive writer.'
 Require $frame 'DocumentContainerKind::Rar\)\s*return SaveFile\(true\)' 'RAR Ctrl+S must route to Save As.'
-Require $frame 'ShowArchiveError' 'Archive failures must be mapped to user-facing error categories.'
+Require $archiveOpen 'FbeArchiveUi::ShowError' 'Archive failures must be mapped to user-facing error categories.'
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
 Require $recentStore 'FBE-ARCHIVE-MRU\\t2' 'Archive MRU persistence must be explicitly versioned.'
 Require $frame 'ReadArchiveMruRecords' 'Archive MRU must load independent persisted entry identities.'
@@ -66,7 +67,7 @@ Require $documentWriter 'expected\.lastWriteTime = location\.containerLastWriteT
 Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
 Require $frame 'OnFileNew[\s\S]{0,700}m_document_session\.NewDocument\(\)' 'New documents must not retain an archive save target.'
 Require $frame 'ReloadFile\(\)[\s\S]{0,220}m_document_session\.Location\(\)\.IsArchive\(\)[\s\S]{0,180}LoadFile\(m_document_session\.Location\(\)\.storagePath, &m_document_session\.Location\(\)\)' 'Archive reload must resolve the already selected entry rather than parse the container as XML.'
-Require $frame 'FBE_NEXT_TEST_ARCHIVE_ENTRY' 'Multi-entry archive runtime tests need an isolated entry-selection hook.'
+Require $archiveOpen 'FBE_NEXT_TEST_ARCHIVE_ENTRY' 'Multi-entry archive runtime tests need an isolated entry-selection hook.'
 Require $frame 'IsFbeTestScenario\(L"archive-runtime"\)' 'Archive runtime test scenario must run through real FBE document loading and saving.'
 Require $frame 'm_document_session\.Location\(\)\.IsArchive\(\)[\s\S]{0,180}GetDocumentFileType' 'Archive runtime scenario must report archive origin and document type from the loaded document.'
 Require $frame 'IsFbeTestScenario\(L"archive-two-phase-runtime"\)' 'Archive two-phase runtime scenario is missing.'
