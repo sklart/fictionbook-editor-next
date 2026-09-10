@@ -5722,13 +5722,13 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   if (!DiscardChanges())
     return 0;
 
-  FB::Doc *doc=new FB::Doc(*this);
-  FB::Doc::m_active_doc = doc;
+  PendingDocument pending(*this, m_doc);
+  FB::Doc* doc = &pending.Document();
   doc->CreateBlank(m_view);
 	m_document_session.NewDocument();
   AttachDocument(doc);
   delete m_doc;
-  m_doc=doc;
+  m_doc=pending.Commit();
   ResetStatusForDocument();
 
   return 0;
