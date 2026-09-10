@@ -56,7 +56,9 @@ function Move-SelectedByDrag([System.Collections.Generic.List[int]]$toolbar, [in
     $rest.InsertRange($destination, $moved); $toolbar.Clear(); $toolbar.AddRange($rest)
 }
 function Activate-Selection([bool[]]$active, [bool[]]$other) {
+    $changed = $other -contains $true
     for ($index = 0; $index -lt $other.Length; ++$index) { $other[$index] = $false }
+    return $changed
 }
 
 # 0 models TBSTYLE_SEP: it occupies a real toolbar index and is movable/removable.
@@ -81,11 +83,13 @@ Assert-Equal $toolbar @(101, 102, 0, 103, 0, 2, 3) 'multi-add preserves source o
 $remove = @(6, 4); foreach ($index in $remove) { $toolbar.RemoveAt($index) }
 Assert-Equal $toolbar @(101, 102, 0, 103, 2) 'multi-remove runs from end to beginning'
 $availableSelection = [bool[]]@($true, $true, $false); $currentSelection = [bool[]]@($false, $true, $true)
-Activate-Selection $availableSelection $currentSelection
+if (-not (Activate-Selection $availableSelection $currentSelection)) { throw 'switching active list with selection must refresh button state' }
 if ($currentSelection -contains $true) { throw 'selecting available items must clear toolbar selection' }
 $currentSelection[0] = $true
-Activate-Selection $currentSelection $availableSelection
+if (-not (Activate-Selection $currentSelection $availableSelection)) { throw 'switching active list with selection must refresh button state' }
 if ($availableSelection -contains $true) { throw 'selecting toolbar items must clear available selection' }
+$availableSelection = [bool[]]@($false, $false); $currentSelection = [bool[]]@($false, $false)
+if (Activate-Selection $availableSelection $currentSelection) { throw 'focus-only switch between empty lists must not refresh button state' }
 $availableSelection = [bool[]]@($false, $false, $false); $currentSelection = [bool[]]@($true, $true)
 if ($availableSelection -contains $true -or ($currentSelection | Where-Object { $_ }).Count -ne 2) { throw 'Add must transfer grouped selection to the toolbar list' }
 $availableSelection = [bool[]]@($true, $true); $currentSelection = [bool[]]@($false, $false)
@@ -148,6 +152,9 @@ foreach ($required in @('ActivateList', 'BeginDeferWindowPos', 'DeferWindowPos',
     if ($dialog -notmatch [regex]::Escape($required) -and $dialogHeader -notmatch [regex]::Escape($required)) {
         throw "Scripts toolbar selection/layout paint regression guard is missing: $required"
     }
+}
+if ($dialog -notmatch 'if\(other\.GetSelCount\(\) > 0\) \{ ::SendMessage\(other, LB_SETSEL, FALSE, -1\); UpdateButtonState\(\); \}') {
+    throw 'ActivateList must refresh buttons only after it clears the opposite selection.'
 }
 foreach ($required in @('WS_CLIPCHILDREN', 'WS_CLIPSIBLINGS')) {
     if ($resource -notmatch [regex]::Escape($required)) { throw "Scripts toolbar resize clipping style is missing: $required" }

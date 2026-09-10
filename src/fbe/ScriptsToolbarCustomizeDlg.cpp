@@ -64,7 +64,7 @@ void CScriptsToolbarCustomizeDlg::RestoreSelection(CListBox& list, const std::ve
 void CScriptsToolbarCustomizeDlg::ActivateList(CListBox& list)
 {
 	CListBox& other = list.m_hWnd == m_availableList.m_hWnd ? m_currentList : m_availableList;
-	if(other.GetSelCount() > 0) ::SendMessage(other, LB_SETSEL, FALSE, -1);
+	if(other.GetSelCount() > 0) { ::SendMessage(other, LB_SETSEL, FALSE, -1); UpdateButtonState(); }
 }
 void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>* selected, bool redraw)
 {

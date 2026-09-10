@@ -83,6 +83,9 @@ foreach ($required in @('BeginDeferWindowPos', 'DeferWindowPos', 'EndDeferWindow
         throw "Диалог не содержит безопасную layout/paint-защиту: $required"
     }
 }
+if ($dialogSource.IndexOf('if(other.GetSelCount() > 0) { ::SendMessage(other, LB_SETSEL, FALSE, -1); UpdateButtonState(); }', [StringComparison]::Ordinal) -lt 0) {
+    throw 'ActivateList must update button state only after clearing the opposite list.'
+}
 foreach ($required in @(
     'SetWindowSubclass(m_currentList, CurrentListSubclassProc', 'WM_LBUTTONDOWN', 'WM_MOUSEMOVE', 'WM_LBUTTONUP',
     'WM_KEYDOWN', 'VK_ESCAPE', 'SM_CXDRAG', 'DrawDragIndicator', 'UpdateDragInsert', 'UpdateDragScroll',
