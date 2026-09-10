@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-Собирает Scintilla и Lexilla и копирует их DLL в runtime.
+Собирает Scintilla и Lexilla в отдельный каталог output.
 #>
 
 [CmdletBinding()]
@@ -15,7 +15,11 @@ param(
 
     # Разрешает использовать предварительно проверенный runtime из CI-кэша.
     # Без ключа локальный запуск всегда сохраняет привычную полную сборку.
-    [switch]$ReusePreparedRuntime
+    [switch]$ReusePreparedRuntime,
+
+    # Обновляет отслеживаемые эталонные DLL в runtime. Используется только
+    # явным pipeline обновления dependency, а не обычной сборкой.
+    [switch]$UpdateTrackedRuntime
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,7 +30,6 @@ $editorRuntimeDir = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 } else {
     $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 }
-$runtimeDir = Join-Path $repoRoot "runtime"
 $fingerprintPath = Join-Path $editorRuntimeDir "fbe-editor-runtime-fingerprint.json"
 . (Join-Path $PSScriptRoot "editor-runtime-helpers.ps1")
 
@@ -75,7 +78,13 @@ function Test-PreparedRuntimeFingerprint {
 }
 
 if ($ReusePreparedRuntime -and (Test-PreparedRuntimeFingerprint)) {
-    foreach ($name in @("Scintilla.dll", "Lexilla.dll")) { Copy-Item -LiteralPath (Join-Path $editorRuntimeDir $name) -Destination $runtimeDir -Force }
+    if ($UpdateTrackedRuntime) {
+        $runtimeDir = Join-Path $repoRoot "runtime"
+        foreach ($name in @("Scintilla.dll", "Lexilla.dll")) {
+            Copy-Item -LiteralPath (Join-Path $editorRuntimeDir $name) -Destination $runtimeDir -Force
+        }
+        Write-Host "Scintilla/Lexilla: эталонные runtime DLL обновлены явным запросом."
+    }
     Write-Host "Scintilla/Lexilla: validated universal editor runtime cache hit (toolset=$PlatformToolset)."
     return
 }
@@ -153,15 +162,19 @@ foreach ($build in @(
     }
 }
 
-Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\scintilla\bin\Scintilla.dll") `
-    -Destination $runtimeDir -Force
-Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll") `
-    -Destination $runtimeDir -Force
 New-Item -ItemType Directory -Path $editorRuntimeDir -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\scintilla\bin\Scintilla.dll") `
     -Destination (Join-Path $editorRuntimeDir "Scintilla.dll") -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll") `
     -Destination (Join-Path $editorRuntimeDir "Lexilla.dll") -Force
+
+if ($UpdateTrackedRuntime) {
+    $runtimeDir = Join-Path $repoRoot "runtime"
+    foreach ($name in @("Scintilla.dll", "Lexilla.dll")) {
+        Copy-Item -LiteralPath (Join-Path $editorRuntimeDir $name) -Destination $runtimeDir -Force
+    }
+    Write-Host "Scintilla/Lexilla: эталонные runtime DLL обновлены явным запросом."
+}
 
 [ordered]@{
     platformToolset = $PlatformToolset
@@ -170,5 +183,4 @@ Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\lexilla\bin\Lexilla.dll
     lexillaVersion = $lexillaVersion
 } | ConvertTo-Json | Set-Content -LiteralPath $fingerprintPath -Encoding UTF8
 
-Write-Host "Scintilla $scintillaVersion и Lexilla $lexillaVersion подготовлены в $runtimeDir (universal Win7+)."
-Write-Host "Целевые DLL редактора сохранены в $editorRuntimeDir."
+Write-Host "Scintilla $scintillaVersion и Lexilla $lexillaVersion собраны в $editorRuntimeDir (universal Win7+)."

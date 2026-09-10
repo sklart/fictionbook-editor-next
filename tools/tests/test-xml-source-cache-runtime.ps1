@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 & (Join-Path $repoRoot 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64
 
+$editorRuntimeDirectory = Join-Path $repoRoot 'out\editor-runtime'
 $outDir = Join-Path $repoRoot 'out\tests\xml-source-cache-runtime'
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $exe = Join-Path $outDir 'xml-source-cache-runtime-test.exe'
@@ -19,7 +20,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & link.exe /nologo /SUBSYSTEM:CONSOLE /OUT:$exe "$outDir\xml-source-cache-runtime-test.obj" "$outDir\XmlSourceTagHighlighter.obj" "$outDir\XmlTagMatcher.obj" user32.lib
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Copy-Item -LiteralPath (Join-Path $repoRoot 'runtime\Scintilla.dll') -Destination $outDir -Force
+Copy-Item -LiteralPath (Join-Path $editorRuntimeDirectory 'Scintilla.dll') -Destination $outDir -Force
 Push-Location $outDir
 try {
     & .\xml-source-cache-runtime-test.exe

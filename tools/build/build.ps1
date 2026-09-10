@@ -226,6 +226,25 @@ function Export-BuiltInResources {
     Write-Host "Встроенные ресурсы подготовлены рядом с бинарниками: $destinationDirectory"
 }
 
+function Copy-EditorRuntimeToDevelopmentOutput {
+    param(
+        [Parameter(Mandatory)]
+        [string]$EditorRuntimeDirectory,
+
+        [Parameter(Mandatory)]
+        [string]$OutputDirectory
+    )
+
+    foreach ($name in @('Scintilla.dll', 'Lexilla.dll')) {
+        $source = Join-Path $EditorRuntimeDirectory $name
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "Не найден собранный runtime редактора: $source"
+        }
+        Copy-Item -LiteralPath $source -Destination (Join-Path $OutputDirectory $name) -Force
+    }
+    Write-Host "Scintilla/Lexilla скопированы из $EditorRuntimeDirectory в $OutputDirectory."
+}
+
 function Remove-ObsoleteRootLanguageDirectories {
     param(
         [Parameter(Mandatory)]
@@ -402,6 +421,10 @@ foreach ($requiredProject in @(
 )) {
     Invoke-RequiredProjectBuild -ProjectPath (Join-Path $repoRoot $requiredProject)
 }
+
+Copy-EditorRuntimeToDevelopmentOutput `
+    -EditorRuntimeDirectory $editorRuntimeDirectory `
+    -OutputDirectory $commonOutput
 
 # Development output uses the same runtime layout as a package.  Keep LIB and
 # EXP build artifacts in out\<Configuration>, but move shipped plugin DLLs and

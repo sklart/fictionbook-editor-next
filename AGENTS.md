@@ -41,3 +41,6 @@ developer checkout or CI must not depend on this absolute path.
   corresponding FAST contracts. Use `tools/build/verify-release.ps1` as the
   compatible public release gate; `-FullValidation` is the broader GUI and
   production contour.
+- `runtime\Scintilla.dll` and `runtime\Lexilla.dll` are dependency binaries.
+  Ordinary builds and tests must not leave them modified; do not commit changes
+  to them unless the task explicitly updates Scintilla or Lexilla.

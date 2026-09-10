@@ -119,6 +119,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-xml-tag-matcher.ps1")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-cache-performance.ps1")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-cache-runtime.ps1")
+& (Join-Path $repoRoot "tools\tests\test-editor-runtime-output-isolation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbd-support-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-archive-document-support.ps1")
 & (Join-Path $repoRoot "tools\tests\test-archive-zip-functional.ps1")

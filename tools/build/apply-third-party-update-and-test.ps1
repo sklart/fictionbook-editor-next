@@ -73,7 +73,7 @@ function Invoke-ScintillaPipeline {
     }
 
     Invoke-ScriptStep -Label (Get-ThirdPartyText -Base64 "0J/QtdGA0LXRgdCx0L7RgNC60LAgU2NpbnRpbGxhINC4IExleGlsbGE=") -Action {
-        & (Join-Path $PSScriptRoot "build-scintilla.ps1")
+        & (Join-Path $PSScriptRoot "build-scintilla.ps1") -UpdateTrackedRuntime
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }
