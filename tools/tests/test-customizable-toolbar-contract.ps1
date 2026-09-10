@@ -56,6 +56,11 @@ foreach ($required in @(
 if ($mainFrameSource.IndexOf('fbe.hotkey.scripts.last_script', [StringComparison]::Ordinal) -lt 0) {
     throw 'Last script не получает runtime-локализацию при формировании каталога панели.'
 }
+foreach ($required in @('SetWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc', 'message == WM_LBUTTONDBLCLK', 'ShowScriptsToolbarCustomizeDialog()', 'RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc')) {
+    if ($mainFrameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Scripts toolbar не перехватывает double-click через безопасный subclass: $required"
+    }
+}
 
 foreach ($required in @('MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)')) {
     if ($dialogHeader.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
@@ -68,6 +73,9 @@ if ($mainFrame.IndexOf('m_ScriptsToolbar.Customize()', [StringComparison]::Ordin
 }
 if ($mainFrame.IndexOf('ShowScriptsToolbarCustomizeDialog()', [StringComparison]::Ordinal) -lt 0) {
     throw 'Панель скриптов не открывает собственный диалог настройки.'
+}
+if ($mainFrame.IndexOf('m_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog()', [StringComparison]::Ordinal) -lt 0) {
+    throw 'Контекстное меню Scripts toolbar не открывает собственный диалог.'
 }
 
 Write-Host 'Customizable toolbar TBN_GETBUTTONINFO contract passed.'

@@ -38,9 +38,7 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_toolTip.AddTool(m_availableList, LPSTR_TEXTCALLBACKW, NULL, 1);
 	m_toolTip.AddTool(m_currentList, LPSTR_TEXTCALLBACKW, NULL, 2);
 	CRect client;
-	const CSize logical = m_settings.GetScriptsToolbarCustomizeSize();
-	SetWindowPos(NULL, 0, 0, UiMetrics::Scale(logical.cx), UiMetrics::Scale(logical.cy), SWP_NOMOVE | SWP_NOZORDER);
-	CenterWindow(GetParent());
+	RestorePlacement();
 	GetClientRect(client); LayoutControls(client.Width(), client.Height());
 	PopulateAvailable(); PopulateCurrent();
 	UpdateButtonState();
@@ -190,7 +188,30 @@ LRESULT CScriptsToolbarCustomizeDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam
 	info->ptMinTrackSize.y = m_minimumSize.cy;
 	return 0;
 }
-void CScriptsToolbarCustomizeDlg::SaveSize() { CRect rect; GetWindowRect(rect); const int scale96 = max(1, UiMetrics::Scale(96)); m_settings.SetScriptsToolbarCustomizeSize(CSize(MulDiv(rect.Width(), 96, scale96), MulDiv(rect.Height(), 96, scale96)), true); }
+void CScriptsToolbarCustomizeDlg::RestorePlacement()
+{
+	WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement);
+	if(m_settings.GetScriptsToolbarCustomizePlacement(placement))
+	{
+		placement.showCmd = SW_SHOWNORMAL;
+		if(::MonitorFromRect(&placement.rcNormalPosition, MONITOR_DEFAULTTONULL) != NULL)
+		{
+			SetWindowPlacement(&placement);
+			return;
+		}
+	}
+	const CSize logical = m_settings.GetScriptsToolbarCustomizeSize();
+	SetWindowPos(NULL, 0, 0, UiMetrics::Scale(logical.cx), UiMetrics::Scale(logical.cy), SWP_NOMOVE | SWP_NOZORDER);
+	CenterWindow(GetParent());
+}
+void CScriptsToolbarCustomizeDlg::SavePlacement()
+{
+	WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement); GetWindowPlacement(&placement);
+	placement.showCmd = SW_SHOWNORMAL; placement.flags = 0;
+	const CRect rect(placement.rcNormalPosition); const int scale96 = max(1, UiMetrics::Scale(96));
+	m_settings.SetScriptsToolbarCustomizeSize(CSize(MulDiv(rect.Width(), 96, scale96), MulDiv(rect.Height(), 96, scale96)));
+	m_settings.SetScriptsToolbarCustomizePlacement(placement, true);
+}
 void CScriptsToolbarCustomizeDlg::UpdateMetrics()
 {
 	UiMetrics::UpdateForWindow(m_hWnd);
@@ -233,7 +254,7 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL&) { DrawListItem(*reinterpret_cast<DRAWITEMSTRUCT*>(lParam)); return TRUE; }
 LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = UiMetrics::Scale(22); return TRUE; }
-LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { SaveSize(); EndDialog(IDCANCEL); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { SavePlacement(); EndDialog(IDCANCEL); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
 	const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
@@ -241,4 +262,4 @@ LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, B
 	UpdateMetrics(); CRect client; GetClientRect(client); LayoutControls(client.Width(), client.Height());
 	return 0;
 }
-LRESULT CScriptsToolbarCustomizeDlg::OnClose(WORD, WORD, HWND, BOOL&) { SaveSize(); EndDialog(IDCANCEL); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnClose(WORD, WORD, HWND, BOOL&) { SavePlacement(); EndDialog(IDCANCEL); return 0; }

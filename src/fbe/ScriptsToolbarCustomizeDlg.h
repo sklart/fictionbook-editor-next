@@ -75,7 +75,8 @@ private:
 	void UpdateMetrics();
 	void UpdateButtonState();
 	void DrawListItem(const DRAWITEMSTRUCT& item);
+	void RestorePlacement();
 	bool ToolbarContainsCommand(int command) const;
 	int SelectedAvailableCommand() const;
-	void SaveSize();
+	void SavePlacement();
 };

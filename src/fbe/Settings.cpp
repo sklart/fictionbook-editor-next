@@ -87,6 +87,7 @@ const wchar_t FIND_RESULTS_PANE_HEIGHT_KEY[] = L"FindResultsPaneHeight";
 const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
 const wchar_t SCRIPT_COMMAND_IDS_KEY[] = L"ScriptCommandIds";
 const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY[] = L"ScriptsToolbarCustomizeSize";
+const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY[] = L"ScriptsToolbarCustomizePlacement";
 const wchar_t RESTORE_FILE_POS_KEY[]	= L"RestoreFilePosition";
 const wchar_t INTERFACE_LANG_KEY[]		= L"IntefaceLangID";
 const wchar_t GENRE_CATALOG_KEY[]       = L"GenreCatalog";
@@ -1199,6 +1200,19 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 		property = temp;
 		return true;
 	}
+	else if(sProperty == SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY)
+	{
+		CString temp;
+		temp.Format(L"%u;%u;%u;%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld",
+			m_scripts_toolbar_customize_placement.length, m_scripts_toolbar_customize_placement.flags,
+			m_scripts_toolbar_customize_placement.showCmd, m_scripts_toolbar_customize_placement.ptMinPosition.x,
+			m_scripts_toolbar_customize_placement.ptMinPosition.y, m_scripts_toolbar_customize_placement.ptMaxPosition.x,
+			m_scripts_toolbar_customize_placement.ptMaxPosition.y, m_scripts_toolbar_customize_placement.rcNormalPosition.bottom,
+			m_scripts_toolbar_customize_placement.rcNormalPosition.left, m_scripts_toolbar_customize_placement.rcNormalPosition.top,
+			m_scripts_toolbar_customize_placement.rcNormalPosition.right);
+		property = temp;
+		return true;
+	}
 	else if(sProperty == SHOW_WORDS_EXCLUSIONS)
 	{
 		property = GetStringedProperty(&m_show_words_excls, KEY_BOOL);
@@ -1560,6 +1574,29 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 
 		delete[] tokens;
 
+		return true;
+	}
+	else if(sProperty == SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY)
+	{
+		CString str = sValue.GetStringValue(); int n = 0, curPos = 0;
+		while(!str.Tokenize(L";", curPos).IsEmpty()) n++;
+		CString* tokens = new CString[n]; curPos = n = 0; CString temp;
+		while(!(temp = str.Tokenize(L";", curPos)).IsEmpty()) { tokens[n] = temp; n++; }
+		if(n == 11)
+		{
+			m_scripts_toolbar_customize_placement.length = StrToInt(tokens[0]);
+			m_scripts_toolbar_customize_placement.flags = StrToInt(tokens[1]);
+			m_scripts_toolbar_customize_placement.showCmd = StrToInt(tokens[2]);
+			m_scripts_toolbar_customize_placement.ptMinPosition.x = StrToInt(tokens[3]);
+			m_scripts_toolbar_customize_placement.ptMinPosition.y = StrToInt(tokens[4]);
+			m_scripts_toolbar_customize_placement.ptMaxPosition.x = StrToInt(tokens[5]);
+			m_scripts_toolbar_customize_placement.ptMaxPosition.y = StrToInt(tokens[6]);
+			m_scripts_toolbar_customize_placement.rcNormalPosition.bottom = StrToInt(tokens[7]);
+			m_scripts_toolbar_customize_placement.rcNormalPosition.left = StrToInt(tokens[8]);
+			m_scripts_toolbar_customize_placement.rcNormalPosition.top = StrToInt(tokens[9]);
+			m_scripts_toolbar_customize_placement.rcNormalPosition.right = StrToInt(tokens[10]);
+		}
+		delete[] tokens;
 		return true;
 	}
 	else if(sProperty == WINDOW_POSITION)
@@ -2022,6 +2059,13 @@ CString CSettings::GetScriptCommandIds()const
 CSize CSettings::GetScriptsToolbarCustomizeSize() const
 {
 	return CSize(static_cast<int>(m_scripts_toolbar_customize_width), static_cast<int>(m_scripts_toolbar_customize_height));
+}
+bool CSettings::GetScriptsToolbarCustomizePlacement(WINDOWPLACEMENT& wpl) const
+{
+	if(m_scripts_toolbar_customize_placement.length != sizeof(WINDOWPLACEMENT)) return false;
+	wpl = m_scripts_toolbar_customize_placement;
+	wpl.showCmd = SW_SHOWNORMAL;
+	return true;
 }
 CString CSettings::GetKeyPath()const
 {
@@ -2812,6 +2856,14 @@ void CSettings::SetScriptsToolbarCustomizeSize(const CSize& size, bool apply)
 	}
 	if(apply) Save();
 }
+void CSettings::SetScriptsToolbarCustomizePlacement(const WINDOWPLACEMENT& wpl, bool apply)
+{
+	m_scripts_toolbar_customize_placement = wpl;
+	m_scripts_toolbar_customize_placement.length = sizeof(WINDOWPLACEMENT);
+	m_scripts_toolbar_customize_placement.showCmd = SW_SHOWNORMAL;
+	m_scripts_toolbar_customize_placement.flags = 0;
+	if(apply) Save();
+}
 
 void CSettings::SaveWords()
 {
@@ -2917,6 +2969,7 @@ void CSettings::SetDefaults()
 	m_image_import_keep_supported	= true;
 
 	::ZeroMemory(&m_wnd_placement, sizeof(WINDOWPLACEMENT));
+	::ZeroMemory(&m_scripts_toolbar_customize_placement, sizeof(WINDOWPLACEMENT));
 	m_desc.SetDefaults();
 }
 

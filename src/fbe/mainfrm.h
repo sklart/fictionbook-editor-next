@@ -743,6 +743,7 @@ public:
 	LRESULT OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT OnToolbarDoubleClick(int, LPNMHDR pnmh, BOOL& bHandled);
+	static LRESULT CALLBACK ScriptsToolbarSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference);
 
 
   int m_selBandID;

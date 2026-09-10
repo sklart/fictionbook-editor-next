@@ -2927,6 +2927,17 @@ LRESULT CMainFrame::OnToolbarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
 	return 0;
 }
 
+LRESULT CALLBACK CMainFrame::ScriptsToolbarSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
+{
+	CMainFrame* frame = reinterpret_cast<CMainFrame*>(reference);
+	if(frame != NULL && message == WM_LBUTTONDBLCLK)
+	{
+		frame->ShowScriptsToolbarCustomizeDialog();
+		return 0;
+	}
+	return ::DefSubclassProc(window, message, wParam, lParam);
+}
+
 void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 {
 	if(DeploymentContext::RegistryPersistenceAllowed()) return;
@@ -3238,6 +3249,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	SetDialogFontForToolbarRow(m_ScriptsToolbar);
   m_ScriptsToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
   InitToolBar(m_ScriptsToolbar, IDR_SCRIPTS);
+	::SetWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
   UIAddToolBar(m_ScriptsToolbar);
 
 	m_hWndLinksBar = CreateWindowEx(0, TOOLBARCLASSNAME, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST, 0, 0, 100, 100,
@@ -3721,6 +3733,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	if(::IsWindow(m_ScriptsToolbar)) ::RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1);
 	if(m_source_window_proc != NULL && ::IsWindow(m_source))
 	{
 		::SetWindowLongPtr(m_source, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_source_window_proc));
