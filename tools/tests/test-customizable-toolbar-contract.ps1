@@ -11,6 +11,7 @@ $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\extras\atl
 $dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.cpp')
 $dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.h')
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
+$mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 
 foreach ($required in @(
     'if (!lpTbNotify || lpTbNotify->iItem < 0)',
@@ -43,13 +44,17 @@ foreach ($required in @(
 foreach ($required in @(
     'PopulateAvailable()', 'PopulateCurrent()', 'OnReset', 'GetScriptsToolbarCustomizeSize', 'relativePath',
     'ToolbarContainsCommand', 'if(ToolbarContainsCommand(m_available[i].command)) continue;',
-    'if(command == 0 || ToolbarContainsCommand(command)) return 0;',
+    'command > 0 && ToolbarContainsCommand(command)', 'command < 0', 'TBSTYLE_SEP',
     'fbe.scripts_toolbar_customize.separator', 'FbeLoadRuntimeStringByKey', 'm_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));',
-    'PopulateAvailable(); PopulateCurrent', 'CenterWindow(GetParent())', 'buttonColumn'
+    'PopulateAvailable(); PopulateCurrent', 'CenterWindow(GetParent())', 'buttonColumn', 'UpdateButtonState',
+    'TB_GETIMAGELIST', 'ImageList_Draw'
 )) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Диалог панели скриптов не содержит ожидаемое поведение: $required"
     }
+}
+if ($mainFrameSource.IndexOf('fbe.hotkey.scripts.last_script', [StringComparison]::Ordinal) -lt 0) {
+    throw 'Last script не получает runtime-локализацию при формировании каталога панели.'
 }
 
 foreach ($required in @('MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)')) {

@@ -2832,7 +2832,11 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 	};
 	for(int index = 0; index < catalog.GetSize(); ++index) {
 		if(catalog[index].idCommand == 0 || (catalog[index].fsStyle & TBSTYLE_SEP)) continue;
-		CString text; if(GetButtonText(catalog[index], text)) addCommand(catalog[index].idCommand, text, CString());
+		CString text;
+		if(catalog[index].idCommand == ID_LAST_SCRIPT)
+			text = FbeLoadRuntimeStringByKey(L"fbe.hotkey.scripts.last_script", L"Last script");
+		else if(!GetButtonText(catalog[index], text)) continue;
+		addCommand(catalog[index].idCommand, text, CString());
 	}
 	for(int index = 0; index < m_scripts.GetSize(); ++index) {
 		const ScrInfo& script = m_scripts[index];

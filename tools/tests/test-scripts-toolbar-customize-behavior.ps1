@@ -11,6 +11,7 @@ $resource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
 $settings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.cpp')
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.cpp')
 $dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.h')
+$mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $localization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 
 function Assert-Equal($actual, $expected, [string]$name) {
@@ -33,6 +34,9 @@ $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
 Assert-Equal $toolbar @(101, 0, 102) 'button-separator-button order'
 Add-Script $toolbar 102
 Assert-Equal $toolbar @(101, 0, 102) 'duplicate Add is ignored'
+$toolbar.Add(0)
+Assert-Equal $toolbar @(101, 0, 102, 0) 'separator may be added repeatedly'
+$toolbar.RemoveAt(3)
 Move-Up $toolbar 2
 Assert-Equal $toolbar @(101, 102, 0) 'Up moves a button across separator'
 Move-Down $toolbar 1
@@ -50,6 +54,11 @@ if ($settings -notmatch 'SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY' -or $settings -notm
 }
 if ($dialog -notmatch 'SaveSize\(\).*SetScriptsToolbarCustomizeSize' -or $dialogHeader -notmatch 'MESSAGE_HANDLER\(WM_CLOSE') {
     throw 'Dialog does not persist its size on every close path.'
+}
+foreach ($required in @('TB_GETIMAGELIST', 'ImageList_Draw', 'UpdateButtonState', 'fbe.hotkey.scripts.last_script')) {
+    if ($dialog -notmatch [regex]::Escape($required) -and $dialogHeader -notmatch [regex]::Escape($required) -and $mainFrame -notmatch [regex]::Escape($required)) {
+        throw "Scripts toolbar UI behavior is missing: $required"
+    }
 }
 $separator = $localization.strings.'fbe.scripts_toolbar_customize.separator'
 if ($null -eq $separator) { throw 'Separator localization key is missing.' }
