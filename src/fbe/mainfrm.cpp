@@ -3011,9 +3011,9 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	const bool startupResolvedOk = !startupArchive || FbeArchiveUi::ResolveOpenRequest(startupFileName, startupResolved, NULL, &startupArchiveError);
 	if (!startupResolvedOk && startupArchiveError.code != FbeArchive::ErrorCode::None)
 		FbeArchiveUi::ShowError(m_hWnd, startupArchiveError);
-    if (startupResolvedOk && (startupArchive
-		? m_doc->Load(m_view, startupResolved.location.storagePath, startupResolved.location.entryPath, startupResolved.rawBytes)
-		: m_doc->Load(m_view,startupFileName)))
+	DocumentOpenSource startupSource = startupArchive ? DocumentOpenSource() : DocumentOpenSource::Normal(startupFileName);
+	if (startupArchive) { startupSource.location = startupResolved.location; startupSource.rawBytes = startupResolved.rawBytes; }
+    if (startupResolvedOk && DocumentLoader::Load(*m_doc, m_view, startupSource))
 	{
 		StartupTrace::AppendTestStartupBreadcrumb("document-load-complete");
       start_with_params = true;
