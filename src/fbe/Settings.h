@@ -18,20 +18,8 @@ CString NormalizeScriptsFolderStoredPath(const CString& path);
 #include "XMLSerializer\Serializable.h"
 #include "settings\hotkeys\HotkeyGroup.h"
 #include "settings\words\WordsItem.h"
+#include "settings\SettingsTypes.h"
 
-const DWORD FBE_INTERFACE_LANGUAGE_AUTO = 0;
-const DWORD FBE_INTERFACE_LANGUAGE_ENGLISH = 0xFBE001;
-const DWORD FBE_INTERFACE_LANGUAGE_RUSSIAN = 0xFBE002;
-const DWORD FBE_INTERFACE_LANGUAGE_UKRAINIAN = 0xFBE003;
-const DWORD FBE_INTERFACE_LANGUAGE_GERMAN = 0xFBE004;
-const DWORD FBE_INTERFACE_LANGUAGE_FRENCH = 0xFBE005;
-const DWORD FBE_INTERFACE_LANGUAGE_SPANISH = 0xFBE006;
-const DWORD FBE_INTERFACE_LANGUAGE_ITALIAN = 0xFBE007;
-const DWORD FBE_INTERFACE_LANGUAGE_POLISH = 0xFBE008;
-const DWORD FBE_INTERFACE_LANGUAGE_PORTUGUESE = 0xFBE009;
-const DWORD FBE_INTERFACE_LANGUAGE_DUTCH = 0xFBE00A;
-const DWORD FBE_INTERFACE_LANGUAGE_CZECH = 0xFBE00B;
-const DWORD FBE_INTERFACE_LANGUAGE_BULGARIAN = 0xFBE00C;
 
 const DWORD XML_SRC_SPECIAL_CHARS_WORD_LIKE = 0;
 const DWORD XML_SRC_SPECIAL_CHARS_TEXT_LABELS = 1;
@@ -162,14 +150,6 @@ enum XmlSrcStyleToken
 	XML_SRC_STYLE_XML_ERROR,
 	XML_SRC_STYLE_XML_WARNING,
 	XML_SRC_STYLE_TOKEN_COUNT,
-};
-
-// Librusec is an alternative genre taxonomy, not a forced replacement for
-// the normal locale-specific catalog.
-enum class GenreCatalog
-{
-	Standard,
-	Librusec,
 };
 
 class CSettings : public ISerializable, public IObjectFactory

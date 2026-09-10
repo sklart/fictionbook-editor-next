@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "SettingsNormalization.h"
-#include "..\\Settings.h"
+#include "SettingsTypes.h"
 #include "..\\utils\\utils.h"
 
 namespace FbeSettings

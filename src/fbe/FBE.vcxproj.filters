@@ -364,6 +364,7 @@
     </ClInclude>
 	<ClInclude Include="settings\SettingsPaths.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="settings\SettingsNormalization.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="settings\SettingsTypes.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="settings\SettingsStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="settings\hotkeys\HotkeyStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="settings\hotkeys\Hotkey.h"><Filter>Header Files\Settings</Filter></ClInclude>

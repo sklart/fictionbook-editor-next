@@ -473,6 +473,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="Settings.h" />
 	<ClInclude Include="settings\SettingsPaths.h" />
 	<ClInclude Include="settings\SettingsNormalization.h" />
+	<ClInclude Include="settings\SettingsTypes.h" />
 	<ClInclude Include="settings\SettingsStore.h" />
 	<ClInclude Include="settings\hotkeys\HotkeyStore.h" />
 	<ClInclude Include="settings\hotkeys\Hotkey.h" />
