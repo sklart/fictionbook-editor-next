@@ -1,6 +1,6 @@
 #pragma once
 
-#include "..\\DocumentLocation.h"
+#include "DocumentLocation.h"
 #include <vector>
 
 namespace FbeArchiveRecentDocuments

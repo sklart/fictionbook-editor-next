@@ -10,7 +10,7 @@
 #include "resource.h"
 #include "res1.h"
 #include "RuntimeLocalization.h"
-#include "DocumentLocation.h"
+#include "document\\DocumentLocation.h"
 #include "recovery\\RecoveryService.h"
 
 #include "atlctrlsext.h"
@@ -339,7 +339,7 @@ public:
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0), m_current_view(BODY), m_last_view(DESC),
-    m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_file_age(0), m_file_size(0), m_last_script(0),
+    m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_file_age(0), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
     m_source_selection_transferred(false), m_source_selection_start(0),
 		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL),
@@ -407,7 +407,6 @@ public:
   VIEW_TYPE		  m_last_ctrl_tab_view;
   bool			  m_ctrl_tab;
   unsigned __int64 m_file_age;
-  unsigned __int64 m_file_size;
 
   MSHTML::IHTMLTxtRangePtr m_body_selection;
   MSHTML::IHTMLTxtRangePtr m_desc_selection;
@@ -1139,7 +1138,6 @@ public:
 	bool IsEmptyText(BSTR text);
 	void SourceGoTo(int line, int linePos);
 	unsigned __int64 FileAge(LPCTSTR FileName);
-	unsigned __int64 FileSize(LPCTSTR FileName);
 	bool CheckFileTimeStamp();
 	bool ReloadFile();
 	void UpdateFileTimeStamp();

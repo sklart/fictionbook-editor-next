@@ -1,14 +1,15 @@
 #include "stdafx.h"
 #include "ArchiveDocumentResolver.h"
+#include "..\\document\\FileFingerprint.h"
 
 namespace FbeArchive
 {
 bool CaptureContainerFingerprint(const CString& path, DocumentLocation& location)
 {
-	WIN32_FILE_ATTRIBUTE_DATA data = {};
-	if (!::GetFileAttributesEx(path, GetFileExInfoStandard, &data)) return false;
-	location.containerLastWriteTime = *reinterpret_cast<const unsigned __int64*>(&data.ftLastWriteTime);
-	location.containerFileSize = (static_cast<unsigned __int64>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+	FileFingerprint fingerprint;
+	if (!GetFileFingerprint(path, fingerprint)) return false;
+	location.containerLastWriteTime = fingerprint.lastWriteTime;
+	location.containerFileSize = fingerprint.fileSize;
 	return true;
 }
 

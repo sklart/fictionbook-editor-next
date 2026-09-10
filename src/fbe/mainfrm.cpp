@@ -15,6 +15,7 @@
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
 #include "document\\ArchiveRecentDocuments.h"
+#include "document\\FileFingerprint.h"
 #include "archive\\ArchiveReader.h"
 #include "archive\\ArchiveDocumentResolver.h"
 #include "archive\\ArchiveDocumentWriter.h"
@@ -1938,8 +1939,6 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 		ShowArchiveError(m_hWnd, error); return FAIL;
 	}
 	m_doc->MarkSavePoint();
-	m_file_age = m_document_location.containerLastWriteTime;
-	m_file_size = m_document_location.containerFileSize;
 	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
 		m_recovery.DeleteIfWritten();
 	return OK;
@@ -2042,8 +2041,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
   }
 
   AttachDocument(doc);
-  m_file_age = FileAge(filename);
-	 m_file_size = FileSize(filename);
+	if (!archive) m_file_age = FileAge(filename);
   delete m_doc;
   m_doc=doc;
   m_document_location = archive ? resolved.location : DocumentLocation();
@@ -3531,8 +3529,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		StartupTrace::AppendTestStartupBreadcrumb("document-load-complete");
       start_with_params = true;
 	  m_document_location = startupArchive ? startupResolved.location : DocumentLocation();
-	  m_file_age = FileAge(startupArchive ? startupResolved.location.storagePath : startupFileName);
-	  m_file_size = FileSize(startupArchive ? startupResolved.location.storagePath : startupFileName);
+	  if (!startupArchive) m_file_age = FileAge(startupFileName);
 	}
     else
 	{
@@ -3931,8 +3928,6 @@ void CMainFrame::TryRestoreRecovery()
 			m_doc->m_filename = candidate.archiveLocation.storagePath;
 			m_doc->m_namevalid = true;
 			m_doc->SetDocumentFileType(candidate.archiveLocation.documentType);
-			m_file_age = candidate.archiveLocation.containerLastWriteTime;
-			m_file_size = candidate.archiveLocation.containerFileSize;
 		}
 		else
 		{
@@ -9833,16 +9828,19 @@ unsigned __int64 CMainFrame::FileAge(LPCTSTR FileName)
 	return static_cast<unsigned __int64>(-1);
 }
 
-unsigned __int64 CMainFrame::FileSize(LPCTSTR FileName)
-{
-	WIN32_FILE_ATTRIBUTE_DATA data = {};
-	if (::GetFileAttributesEx(FileName, GetFileExInfoStandard, &data))
-		return (static_cast<unsigned __int64>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
-	return static_cast<unsigned __int64>(-1);
-}
-
 bool CMainFrame::CheckFileTimeStamp()
 {
+	if (m_document_location.IsArchive())
+	{
+		FileFingerprint current, expected;
+		expected.lastWriteTime = m_document_location.containerLastWriteTime;
+		expected.fileSize = m_document_location.containerFileSize;
+		if (!GetFileFingerprint(m_document_location.storagePath, current) || SameFileFingerprint(current, expected)) return false;
+		if (IDYES == U::MessageBox(MB_YESNO, IDS_FILE_CHANGED_CPT, IDS_FILE_CHANGED_MSG, static_cast<LPCWSTR>(m_document_location.storagePath))) return ReloadFile();
+		m_document_location.containerLastWriteTime = current.lastWriteTime;
+		m_document_location.containerFileSize = current.fileSize;
+		return false;
+	}
 	if(m_file_age == FileAge(m_doc->m_filename))
 		return false;
 	

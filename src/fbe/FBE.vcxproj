@@ -262,6 +262,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClCompile Include="archive\ArchiveDocumentResolver.cpp" />
 	<ClCompile Include="archive\ArchiveDocumentWriter.cpp" />
 	<ClCompile Include="document\ArchiveRecentDocuments.cpp" />
+	<ClCompile Include="document\FileFingerprint.cpp" />
 	<ClCompile Include="recovery\RecoveryStore.cpp" />
 	<ClCompile Include="recovery\RecoveryService.cpp" />
     <ClCompile Include="archive\ZipArchiveWriter.cpp" />
@@ -394,8 +395,9 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="CrashHandler.h" />
     <ClInclude Include="ContainerWnd.h" />
     <ClInclude Include="DocumentTree.h" />
-    <ClInclude Include="DocumentLocation.h" />
+	<ClInclude Include="document\DocumentLocation.h" />
 	<ClInclude Include="document\ArchiveRecentDocuments.h" />
+	<ClInclude Include="document\FileFingerprint.h" />
 	<ClInclude Include="recovery\RecoveryStore.h" />
 	<ClInclude Include="recovery\RecoveryService.h" />
     <ClInclude Include="archive\ArchiveReader.h" />

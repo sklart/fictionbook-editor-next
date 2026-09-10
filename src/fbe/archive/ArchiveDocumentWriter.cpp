@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ArchiveDocumentWriter.h"
+#include "..\\document\\FileFingerprint.h"
 
 namespace FbeArchive
 {
@@ -12,14 +13,17 @@ bool SaveDocument(DocumentLocation& location, const std::vector<unsigned char>& 
 		return false;
 	}
 
-	DocumentLocation current;
-	if (!CaptureContainerFingerprint(location.storagePath, current))
+	FileFingerprint current;
+	if (!GetFileFingerprint(location.storagePath, current))
 	{
 		error.code = ErrorCode::OpenFailed;
 		error.systemError = ::GetLastError();
 		return false;
 	}
-	if (current.containerLastWriteTime != location.containerLastWriteTime || current.containerFileSize != location.containerFileSize)
+	FileFingerprint expected;
+	expected.lastWriteTime = location.containerLastWriteTime;
+	expected.fileSize = location.containerFileSize;
+	if (!SameFileFingerprint(current, expected))
 	{
 		error.code = ErrorCode::ModifiedExternally;
 		return false;
@@ -30,7 +34,11 @@ bool SaveDocument(DocumentLocation& location, const std::vector<unsigned char>& 
 	entry.occurrence = location.entryOccurrence;
 	entry.documentType = location.documentType;
 	if (!RewriteZipEntry(location.storagePath, entry, serialized, error)) return false;
-	CaptureContainerFingerprint(location.storagePath, location);
+	if (GetFileFingerprint(location.storagePath, current))
+	{
+		location.containerLastWriteTime = current.lastWriteTime;
+		location.containerFileSize = current.fileSize;
+	}
 	return true;
 }
 }

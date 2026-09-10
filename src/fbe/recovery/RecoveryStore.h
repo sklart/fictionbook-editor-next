@@ -1,6 +1,6 @@
 #pragma once
 
-#include "..\\DocumentLocation.h"
+#include "..\\document\\DocumentLocation.h"
 
 namespace FbeRecovery
 {

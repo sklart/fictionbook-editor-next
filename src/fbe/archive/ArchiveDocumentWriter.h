@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ArchiveDocumentResolver.h"
+#include "ArchiveReader.h"
 
 namespace FbeArchive
 {

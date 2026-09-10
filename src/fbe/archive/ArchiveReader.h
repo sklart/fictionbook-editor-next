@@ -3,7 +3,7 @@
 #include <atlstr.h>
 #include <vector>
 
-#include "..\\DocumentLocation.h"
+#include "..\\document\\DocumentLocation.h"
 
 namespace FbeArchive
 {

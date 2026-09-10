@@ -15,7 +15,7 @@ $archiveMru = Get-Content -Raw (Join-Path $root 'src\fbe\document\ArchiveRecentD
 $recoveryStore = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryStore.cpp')
 $recoveryService = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryService.cpp')
 $doc = Get-Content -Raw (Join-Path $root 'src\fbe\FBDoc.cpp')
-$location = Get-Content -Raw (Join-Path $root 'src\fbe\DocumentLocation.h')
+$location = Get-Content -Raw (Join-Path $root 'src\fbe\document\DocumentLocation.h')
 $startup = Get-Content -Raw (Join-Path $root 'src\fbe\FBE.cpp')
 $picker = Get-Content -Raw (Join-Path $root 'src\fbe\ArchiveEntryPicker.cpp')
 $pickerResources = Get-Content -Raw (Join-Path $root 'src\fbe\FBE.rc')
@@ -43,7 +43,7 @@ Require $writer 'archive_read_free\(reader.value\)[\s\S]{0,700}ReplaceFileW' 'ZI
 Require $writer 'archive_write_finish_entry' 'ZIP writer must finish every copied entry.'
 Require $writer 'target\.occurrence' 'ZIP writer must identify replacement by occurrence.'
 Require $doc 'SerializeToMemory' 'Archive saving must serialize to memory.'
-Require ($frame + $documentWriter) 'SaveDocument[\s\S]{0,800}RewriteZipEntry' 'Ctrl+S must call the transactional ZIP writer through the archive writer.'
+Require $documentWriter 'SaveDocument[\s\S]{0,3000}RewriteZipEntry' 'Ctrl+S must call the transactional ZIP writer through the archive writer.'
 Require $frame 'DocumentContainerKind::Rar\)\s*return SaveFile\(true\)' 'RAR Ctrl+S must route to Save As.'
 Require $frame 'ShowArchiveError' 'Archive failures must be mapped to user-facing error categories.'
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
@@ -61,7 +61,7 @@ Require $recoveryStore 'WriteArchiveLocation' 'Recovery must retain archive sour
 Require $recoveryStore 'containerLastWriteTime.*containerFileSize' 'Recovery must persist the archive fingerprint.'
 Require $frame 'SetDocumentFileType\(candidate.archiveLocation.documentType\)' 'Recovery must restore the authoritative archive FBD type.'
 Require $recoveryService 'SaveSourceSnapshot' 'Recovery source snapshot persistence must be isolated from the main frame.'
-Require $documentWriter 'containerLastWriteTime != location.containerLastWriteTime[\s\S]{0,180}containerFileSize != location.containerFileSize' 'Archive save must reject external changes detected by size as well as timestamp.'
+Require $documentWriter 'expected\.lastWriteTime = location\.containerLastWriteTime[\s\S]{0,180}expected\.fileSize = location\.containerFileSize[\s\S]{0,180}SameFileFingerprint\(current, expected\)' 'Archive save must reject external changes detected by size as well as timestamp.'
 Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
 Require $frame 'OnFileNew[\s\S]{0,700}m_document_location = DocumentLocation\(\)' 'New documents must not retain an archive save target.'
 Require $frame 'ReloadFile\(\)[\s\S]{0,220}m_document_location\.IsArchive\(\)[\s\S]{0,180}LoadFile\(m_document_location\.storagePath, &m_document_location\)' 'Archive reload must resolve the already selected entry rather than parse the container as XML.'

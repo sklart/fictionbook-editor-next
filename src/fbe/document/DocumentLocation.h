@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atlstr.h>
-#include "FictionBookFileType.h"
+#include "..\\FictionBookFileType.h"
 
 // The physical storage path is deliberately kept separate from an entry name.
 // Legacy document and scripting APIs remain filesystem-path APIs.
