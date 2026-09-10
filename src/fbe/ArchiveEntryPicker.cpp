@@ -39,10 +39,7 @@ namespace
 
 LRESULT CArchiveEntryPicker::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
-	SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.archive.picker.caption", L"Select a book from the archive"));
-	::SetWindowText(GetDlgItem(IDC_ARCHIVE_ENTRY_MESSAGE), FbeLoadRuntimeStringByKey(L"fbe.archive.picker.message", L"Several FictionBook documents were found in the archive. Select the book to open."));
-	::SetWindowText(GetDlgItem(IDOK), FbeLoadRuntimeStringByKey(L"fbe.archive.picker.open", L"Open"));
-	::SetWindowText(GetDlgItem(IDCANCEL), FbeLoadRuntimeStringByKey(L"fbe.archive.picker.cancel", L"Cancel"));
+	ApplyRuntimeTexts();
 	m_list.Attach(GetDlgItem(IDC_ARCHIVE_ENTRY_LIST));
 	m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 	m_hasFolders = false;
@@ -66,11 +63,17 @@ LRESULT CArchiveEntryPicker::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	RECT item = {};
 	const int rowHeight = m_list.GetItemCount() && m_list.GetItemRect(0, &item, LVIR_BOUNDS) ? item.bottom - item.top : 18;
-	const int visibleRows = min(max(static_cast<int>(m_entries.size()), 1), 8);
+	const int visibleRows = min(max(static_cast<int>(m_entries.size()), 5), 10);
 	RECT client = {}, window = {}; GetClientRect(&client); GetWindowRect(&window);
 	const int listHeight = 24 + visibleRows * rowHeight + 4;
-	const int desiredClientHeight = 8 + 32 + 4 + listHeight + 8 + 24 + 8;
-	SetWindowPos(NULL, 0, 0, client.right, desiredClientHeight + (window.bottom - window.top - client.bottom), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	const int desiredClientHeight = max(240, 8 + 32 + 4 + listHeight + 8 + 24 + 8);
+	int contentWidth = 0;
+	for (int column = 0; column < (m_hasFolders ? 3 : 2); ++column) contentWidth += m_list.GetColumnWidth(column);
+	MONITORINFO monitor = { sizeof(monitor) };
+	const HMONITOR currentMonitor = ::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
+	const int maximumWidth = ::GetMonitorInfo(currentMonitor, &monitor) ? (monitor.rcWork.right - monitor.rcWork.left) * 4 / 5 : client.right;
+	const int desiredClientWidth = min(maximumWidth, max(client.right, contentWidth + 16));
+	SetWindowPos(NULL, 0, 0, desiredClientWidth, desiredClientHeight + (window.bottom - window.top - client.bottom), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 	GetClientRect(&client); LayoutControls(client.right, client.bottom);
 	HWND owner = GetParent(); if (!owner) owner = ::GetActiveWindow();
 	CenterWindow(owner);
@@ -86,8 +89,16 @@ LRESULT CArchiveEntryPicker::OnSize(UINT, WPARAM, LPARAM lParam, BOOL&)
 LRESULT CArchiveEntryPicker::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
 	MINMAXINFO* const info = reinterpret_cast<MINMAXINFO*>(lParam);
-	info->ptMinTrackSize.x = 360;
-	info->ptMinTrackSize.y = 180;
+	info->ptMinTrackSize.x = 600;
+	info->ptMinTrackSize.y = 260;
+	return 0;
+}
+
+LRESULT CArchiveEntryPicker::OnShowWindow(UINT, WPARAM, LPARAM, BOOL&)
+{
+	// Apply once more after dialog activation: this guarantees that a generic
+	// IDOK caption from a framework-localizer cannot replace the picker action.
+	ApplyRuntimeTexts();
 	return 0;
 }
 
@@ -100,6 +111,14 @@ void CArchiveEntryPicker::LayoutControls(int width, int height)
 	::SetWindowPos(m_list, NULL, margin, margin + messageHeight + 4, max(0, width - margin * 2), max(0, buttonsY - (margin + messageHeight + 4) - gap), SWP_NOZORDER | SWP_NOACTIVATE);
 	::SetWindowPos(GetDlgItem(IDCANCEL), NULL, width - margin - buttonWidth, buttonsY, buttonWidth, buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 	::SetWindowPos(GetDlgItem(IDOK), NULL, width - margin * 2 - buttonWidth * 2, buttonsY, buttonWidth, buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void CArchiveEntryPicker::ApplyRuntimeTexts()
+{
+	SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.archive.picker.caption", L"Select a book from the archive"));
+	::SetWindowText(GetDlgItem(IDC_ARCHIVE_ENTRY_MESSAGE), FbeLoadRuntimeStringByKey(L"fbe.archive.picker.message", L"Several FictionBook documents were found in the archive. Select the book to open."));
+	::SetWindowText(GetDlgItem(IDOK), FbeLoadRuntimeStringByKey(L"fbe.archive.picker.open", L"Open"));
+	::SetWindowText(GetDlgItem(IDCANCEL), FbeLoadRuntimeStringByKey(L"fbe.archive.picker.cancel", L"Cancel"));
 }
 
 LRESULT CArchiveEntryPicker::OnOk(WORD, WORD, HWND, BOOL&)

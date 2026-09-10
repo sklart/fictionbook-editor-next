@@ -13,6 +13,8 @@ $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
 $doc = Get-Content -Raw (Join-Path $root 'src\fbe\FBDoc.cpp')
 $location = Get-Content -Raw (Join-Path $root 'src\fbe\DocumentLocation.h')
 $startup = Get-Content -Raw (Join-Path $root 'src\fbe\FBE.cpp')
+$picker = Get-Content -Raw (Join-Path $root 'src\fbe\ArchiveEntryPicker.cpp')
+$pickerResources = Get-Content -Raw (Join-Path $root 'src\fbe\FBE.rc')
 
 Require $location 'enum class DocumentContainerKind' 'Container kind must be separate from FictionBookFileType.'
 Require $location 'entryOccurrence' 'Archive identity must retain duplicate-entry occurrence.'
@@ -63,5 +65,12 @@ Require $frame 'mruAfter == mruBefore' 'Two-phase runtime scenario must compare 
 Require $frame 'archive-open-runtime"\)' 'Archive-open runtime mode must be explicitly isolated from modal error UI.'
 Require $startup 'CommandLineToArgvW' 'CLI parsing must use CommandLineToArgvW.'
 if ($startup -match 'static void ParseCommandLine\(') { throw 'Legacy ParseCommandLine must not remain after CommandLineToArgvW migration.' }
+Require $picker 'min\(max\(static_cast<int>\(m_entries\.size\(\)\), 5\), 10\)' 'Archive picker must keep space for five to ten visible rows.'
+Require $picker 'contentWidth \+ 16' 'Archive picker must size its initial width from the visible columns.'
+Require $picker 'MonitorFromWindow[\s\S]{0,300}4 / 5' 'Archive picker width must remain within 80% of the work area.'
+Require $picker 'FbeLoadRuntimeStringByKey\(L"fbe\.archive\.picker\.open"' 'Archive picker Open button must use the runtime localization key.'
+Require $picker 'OnShowWindow[\s\S]{0,300}ApplyRuntimeTexts' 'Archive picker must restore its action caption after activation.'
+Require $pickerResources 'IDD_ARCHIVE_ENTRY[\s\S]{0,300}WS_THICKFRAME' 'Archive picker must remain resizable.'
+if ($pickerResources -match 'IDD_ARCHIVE_ENTRY[\s\S]{0,300}WS_MAXIMIZEBOX') { throw 'Archive picker must not expose a maximize button.' }
 
 Write-Host 'Archive document support contract passed.'
