@@ -514,17 +514,11 @@ static CString ArchiveMruDisplayName(const std::vector<ArchiveMruRecord>& record
 		const int separatorLength = 3;
 		const int available = max(32, 96 - separatorLength - occurrence.GetLength());
 		int archiveLimit = max(16, available / 3);
-		const int contextLength = archiveContext.GetLength() - archive.GetLength();
-		archiveLimit = max(archiveLimit, contextLength + 8);
 		archiveLimit = min(archiveLimit, available - 16);
 		const int bookLimit = max(16, available - archiveLimit);
-		CString compactArchive = archiveContext;
-		if (archiveContext.GetLength() > archiveLimit)
-		{
-			const CString context = archiveContext.Left(contextLength);
-			compactArchive = context + CompactMruCaptionPart(archive, max(8, archiveLimit - context.GetLength()));
-		}
+		const CString compactArchive = CompactMruCaptionPart(archiveContext, archiveLimit);
 		result = CompactMruCaptionPart(book, bookLimit) + L" \x2014 " + compactArchive + occurrence;
+		if (result.GetLength() > 96) result = CompactMruCaptionPart(book, 16) + L" \x2014 " + CompactMruCaptionPart(archiveContext, max(8, 77 - occurrence.GetLength())) + occurrence;
 	}
 	return result;
 }
@@ -660,7 +654,14 @@ static void RebuildMruMenu(CRecentDocumentList& list)
 		if (::GetMenuItemInfo(menu, index, TRUE, &item) && item.wID == ID_FILE_MRU_FIRST) { insertionPoint = index; break; }
 	}
 	if (insertionPoint < 0) return;
-	for (UINT id = ID_FILE_MRU_FIRST; id <= ID_FILE_MRU_LAST; ++id) ::DeleteMenu(menu, id, MF_BYCOMMAND);
+	// UpdateMenu can temporarily leave both the resource placeholder and a
+	// generated item with ID_FILE_MRU_FIRST.  Delete every MRU-range item by
+	// position, not merely the first matching command ID.
+	for (int index = ::GetMenuItemCount(menu) - 1; index >= 0; --index)
+	{
+		MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_ID;
+		if (::GetMenuItemInfo(menu, index, TRUE, &item) && item.wID >= ID_FILE_MRU_FIRST && item.wID <= ID_FILE_MRU_LAST) ::DeleteMenu(menu, index, MF_BYPOSITION);
+	}
 
 	const int count = min(list.m_arrDocs.GetSize(), 10);
 	if (count == 0)
@@ -674,7 +675,19 @@ static void RebuildMruMenu(CRecentDocumentList& list)
 		const UINT id = ID_FILE_MRU_FIRST + offset; CString key;
 		if (!list.GetFromList(id, key)) continue;
 		DocumentLocation archiveLocation;
-		const CString caption = ParseArchiveMruKey(key, archiveLocation) ? ArchiveMruCaption(key) : key;
+		CString caption = ParseArchiveMruKey(key, archiveLocation) ? ArchiveMruCaption(key) : key;
+		// A menu caption is presentation only, but it must still distinguish every
+		// visible command.  Preserve any minimal folder context chosen above and
+		// append a compact ordinal only as the final collision fallback.
+		unsigned int duplicate = 1;
+		for (int previous = 0; previous < offset; ++previous)
+		{
+			CString previousKey; if (!list.GetFromList(ID_FILE_MRU_FIRST + previous, previousKey)) continue;
+			DocumentLocation previousLocation; const CString previousCaption = ParseArchiveMruKey(previousKey, previousLocation) ? ArchiveMruCaption(previousKey) : previousKey;
+			if (previousCaption.CompareNoCase(caption) == 0) ++duplicate;
+		}
+		if (duplicate > 1) { CString discriminator; discriminator.Format(L" (%u)", duplicate); caption = CompactMruCaptionPart(caption, 96 - discriminator.GetLength()) + discriminator; }
+		if (caption.GetLength() > 96) caption = CompactMruCaptionPart(caption, 96);
 		::InsertMenu(menu, insertionPoint + offset, MF_BYPOSITION | MF_STRING, id, caption);
 	}
 }
@@ -4822,15 +4835,25 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	if (IsFbeTestScenario(L"archive-mru-restart-runtime"))
 	{
 		std::vector<CString> order; ReadMruOrder(order);
-		const int count = m_mru.m_arrDocs.GetSize(); bool exactOrder = count == 10 && order.size() == 10, cleanMenu = true;
+		const int count = m_mru.m_arrDocs.GetSize(); bool exactOrder = count == 10 && order.size() == 10, cleanMenu = true; int menuCount = 0;
 		for (int index = 0; index < count && exactOrder; ++index) exactOrder = CString(m_mru.m_arrDocs[index].szDocName) == order[order.size() - 1 - index];
 		for (int index = 0; index < count; ++index) { DocumentLocation location; if (ParseArchiveMruKey(CString(m_mru.m_arrDocs[index].szDocName), location) && !FindArchiveMruRecord(CString(m_mru.m_arrDocs[index].szDocName), location)) cleanMenu = false; }
+		std::vector<CString> captions; const HMENU menu = m_mru.GetMenuHandle(); int emptyCaption = 0, rawCaption = 0, numberedCaption = 0, duplicateCaption = 0, disabledCaption = 0;
+		if (menu == NULL) cleanMenu = false; else for (int index = 0; index < ::GetMenuItemCount(menu); ++index)
+		{
+			MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_ID;
+			if (!::GetMenuItemInfo(menu, index, TRUE, &item) || item.wID < ID_FILE_MRU_FIRST || item.wID > ID_FILE_MRU_LAST) continue;
+			++menuCount; wchar_t text[512] = {}; ::GetMenuString(menu, index, text, _countof(text), MF_BYPOSITION); CString caption(text), parsedKey;
+			item.fMask = MIIM_STATE; ::GetMenuItemInfo(menu, index, TRUE, &item); DocumentLocation parsed; if (caption == m_mru.m_szNoEntries) { ++emptyCaption; } if ((item.fState & (MFS_DISABLED | MFS_GRAYED)) != 0) { cleanMenu = false; ++disabledCaption; } if (ParseArchiveMruKey(caption, parsed)) { cleanMenu = false; ++rawCaption; } if (caption.GetLength() > 1 && caption[0] == L'&' && caption[1] >= L'0' && caption[1] <= L'9') { cleanMenu = false; ++numberedCaption; }
+			for (size_t previous = 0; previous < captions.size(); ++previous) if (captions[previous].CompareNoCase(caption) == 0) { cleanMenu = false; ++duplicateCaption; }
+			captions.push_back(caption);
+		}
 		wchar_t path[MAX_PATH] = {}, entry[MAX_PATH] = {}, occurrenceText[16] = {}; ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_MRU_REOPEN_PATH", path, _countof(path)); ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_ENTRY", entry, _countof(entry)); ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_OCCURRENCE", occurrenceText, _countof(occurrenceText));
 		unsigned int occurrence = 0; DocumentLocation target; target.containerKind = DetectDocumentContainerKind(path); target.storagePath = path; target.entryPath = entry; target.entryOccurrence = ParseArchiveMruUnsigned(occurrenceText, occurrence) ? occurrence : 0; target.documentType = DetectFictionBookFileType(target.entryPath);
 		WORD command = 0; const CString key = ArchiveMruKey(target); for (int offset = 0; offset < count; ++offset) { CString value; if (m_mru.GetFromList(ID_FILE_MRU_FIRST + offset, value) && value == key) { command = ID_FILE_MRU_FIRST + offset; break; } }
 		BOOL handled = FALSE; const bool reopened = command != 0 && OnFileOpenMRU(0, command, NULL, handled) == 0 && SameArchiveMruIdentity(m_document_location, target);
-		CStringA report; report.Format("count=%d\norder=%d\nclean=%d\nreopened=%d\n", count, exactOrder, cleanMenu, reopened); DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
-		::PostQuitMessage(count == 10 && exactOrder && cleanMenu && reopened ? 0 : 1); return 0;
+		CStringA report; report.Format("count=%d\nmenu_count=%d\norder=%d\nclean=%d\nempty=%d\ndisabled=%d\nraw=%d\nnumbered=%d\nduplicates=%d\nreopened=%d\n", count, menuCount, exactOrder, cleanMenu, emptyCaption, disabledCaption, rawCaption, numberedCaption, duplicateCaption, reopened); DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(count == 10 && menuCount == 10 && exactOrder && cleanMenu && reopened ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"archive-recovery-create"))
 	{
