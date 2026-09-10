@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "..\\common\\DeploymentContext.h"
 #include "XmlSourceThemes.h"
+#include "settings\\SettingsPaths.h"
+#include "settings\\SettingsNormalization.h"
 
 enum KEY_TYPE
 {
@@ -240,23 +242,12 @@ void CSettings::Init()
 
 CString NormalizeScriptsFolderStoredPath(const CString& sourcePath)
 {
-	CString path(sourcePath);
-	path.Trim();
-	path.Replace(L'/', L'\\');
-	while(path.GetLength() > 3 && path.Right(1) == L"\\")
-		path.Delete(path.GetLength() - 1);
-	if(!path.IsEmpty() && path.Right(1) != L"\\")
-		path += L"\\";
-	return path;
+	return FbeSettings::NormalizeScriptsFolderStoredPath(sourcePath);
 }
 
 CString ResolveScriptsFolderPath(const CString& storedPath)
 {
-	CString path = NormalizeScriptsFolderStoredPath(storedPath);
-	if(!path.IsEmpty() && ::PathIsRelative(path)) path = U::GetProgDir() + path;
-	wchar_t canonical[MAX_PATH] = {};
-	if(!path.IsEmpty() && ::PathCanonicalize(canonical, path)) path = canonical;
-	return NormalizeScriptsFolderStoredPath(path);
+	return FbeSettings::ResolveScriptsFolderPath(storedPath);
 }
 
 static DWORD NormalizeImageType(DWORD value) { return value <= 1 ? value : 1; }
@@ -1428,7 +1419,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == INTERFACE_LANG_KEY)
 	{
-		m_interface_lang_id = NormalizeInterfaceLanguageID(StrToInt(sValue.GetStringValue()));
+	m_interface_lang_id = FbeSettings::NormalizeInterfaceLanguageID(StrToInt(sValue.GetStringValue()));
 		return true;
 	}
 	else if(sProperty == STATUS_BAR_PANES_KEY)
@@ -1444,7 +1435,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == SCRIPTS_FOLDER_KEY)
 	{
-		m_scripts_folder = NormalizeScriptsFolderStoredPath(sValue.GetStringValue());
+	m_scripts_folder = FbeSettings::NormalizeScriptsFolderStoredPath(sValue.GetStringValue());
 		return true;
 	}
 	// SeNS
@@ -1490,12 +1481,12 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == IMAGE_TYPE_KEY)
 	{
-		m_image_type = NormalizeImageType(StrToInt(sValue.GetStringValue()));
+		m_image_type = FbeSettings::NormalizeImageType(StrToInt(sValue.GetStringValue()));
 		return true;
 	}
 	else if(sProperty == JPEG_QUALITY_KEY)
 	{
-		m_jpeg_quality = NormalizeJpegQuality(StrToInt(sValue.GetStringValue()));
+	m_jpeg_quality = FbeSettings::NormalizeJpegQuality(StrToInt(sValue.GetStringValue()));
 		return true;
 	}
 	else if(sProperty == IMAGE_IMPORT_FORMAT_KEY) { m_image_import_format = min(2u, StrToInt(sValue.GetStringValue())); return true; }
@@ -1684,7 +1675,7 @@ void CSettings::Destroy(ISerializable* obj)
 
 void CSettings::Save()
 {
-	CString fullpath = U::GetSettingsDir() + SETTINGS_XML_FILE;
+	CString fullpath = FbeSettings::SettingsFilePath();
 	CXMLSerializer ser(fullpath, L"FBE", false);
 
 	ser.Serialize(this);
@@ -1692,7 +1683,7 @@ void CSettings::Save()
 
 void CSettings::Load()
 {
-	CString fullpath = U::GetSettingsDir() + SETTINGS_XML_FILE;
+	CString fullpath = FbeSettings::SettingsFilePath();
 	CXMLSerializer ser(fullpath, L"FBE", true);
 
 
@@ -1725,7 +1716,7 @@ CHotkey* CSettings::GetHotkeyByName(const CString& name, CHotkeysGroup& group)
 
 void CSettings::SaveHotkeyGroups()
 {
-	CXMLSerializer ser(U::GetSettingsDir() + HOTKEYS_XML_FILE, L"FBE", false);
+	CXMLSerializer ser(FbeSettings::HotkeysFilePath(), L"FBE", false);
 
 	std::vector<void*> hkGroupsPtr;
 	for(unsigned int i = 0; i < m_hotkey_groups.size(); ++i)
@@ -1738,7 +1729,7 @@ void CSettings::SaveHotkeyGroups()
 
 void CSettings::LoadHotkeyGroups()
 {
-	CXMLSerializer ser(U::GetSettingsDir() + HOTKEYS_XML_FILE, L"FBE", true);
+	CXMLSerializer ser(FbeSettings::HotkeysFilePath(), L"FBE", true);
 
 	CHotkeysGroup group;
 	std::vector<void*> objects;
@@ -2188,7 +2179,7 @@ DWORD CSettings::GetColorFG()const
 
 DWORD CSettings::GetInterfaceLanguageID()const
 {
-	return NormalizeInterfaceLanguageID(m_interface_lang_id);
+	return FbeSettings::NormalizeInterfaceLanguageID(m_interface_lang_id);
 }
 
 DWORD CSettings::GetEffectiveInterfaceLanguageID()const
@@ -2199,9 +2190,9 @@ DWORD CSettings::GetEffectiveInterfaceLanguageID()const
 
 	wchar_t localeName[LOCALE_NAME_MAX_LENGTH] = {};
 	if(::GetUserDefaultLocaleName(localeName, _countof(localeName)) > 0)
-		return InterfaceLanguageFromLocaleName(localeName);
+		return FbeSettings::InterfaceLanguageFromLocaleName(localeName);
 
-	return NormalizeInterfaceLanguageID(PRIMARYLANGID(GetUserDefaultLangID()));
+	return FbeSettings::NormalizeInterfaceLanguageID(PRIMARYLANGID(GetUserDefaultLangID()));
 }
 
 CString CSettings::GetInterfaceLocaleName()const
@@ -2367,17 +2358,17 @@ CString CSettings::GetScriptsFolderStored() const
 
 CString CSettings::GetResolvedScriptsFolder() const
 {
-	return ResolveScriptsFolderPath(m_scripts_folder);
+	return FbeSettings::ResolveScriptsFolderPath(m_scripts_folder);
 }
 
 CString CSettings::GetDefaultScriptsFolderStored() const
 {
-	return NormalizeScriptsFolderStoredPath(DEFAULT_SCRIPTS_FOLDER);
+	return FbeSettings::NormalizeScriptsFolderStoredPath(DEFAULT_SCRIPTS_FOLDER);
 }
 
 CString CSettings::GetDefaultScriptsFolder()
 {
-	return ResolveScriptsFolderPath(GetDefaultScriptsFolderStored());
+	return FbeSettings::ResolveScriptsFolderPath(GetDefaultScriptsFolderStored());
 }
 
 bool CSettings::IsDefaultScriptsFolder()
@@ -2637,7 +2628,7 @@ void CSettings::SetRestoreFilePosition(bool restore, bool apply)
 
 void CSettings::SetInterfaceLanguage(DWORD lang_id, bool apply)
 {
-	lang_id = NormalizeInterfaceLanguageID(lang_id);
+	lang_id = FbeSettings::NormalizeInterfaceLanguageID(lang_id);
 	if(m_interface_lang_id != lang_id)
 	{
 		m_interface_lang_id = lang_id;
@@ -2665,7 +2656,7 @@ void CSettings::SetGenreCatalog(GenreCatalog catalog, bool apply)
 
 void CSettings::SetScriptsFolder(const CString& fullpath, bool apply)
 {
-	const CString normalized = NormalizeScriptsFolderStoredPath(fullpath);
+	const CString normalized = FbeSettings::NormalizeScriptsFolderStoredPath(fullpath);
 	if(m_scripts_folder.CompareNoCase(normalized) != 0)
 	{
 		m_scripts_folder = normalized;
@@ -2790,13 +2781,13 @@ void CSettings::SetXMLSrcShowLineNumbers(const bool value, bool apply)
 
 void CSettings::SetImageType(const DWORD value, bool apply)
 {
-	m_image_type = NormalizeImageType(value);
+	m_image_type = FbeSettings::NormalizeImageType(value);
 	if (apply) Save();
 }
 
 void CSettings::SetJpegQuality(const DWORD value, bool apply)
 {
-	m_jpeg_quality = NormalizeJpegQuality(value);
+	m_jpeg_quality = FbeSettings::NormalizeJpegQuality(value);
 	if (apply) Save();
 }
 
@@ -2808,7 +2799,7 @@ class sortComp { public: bool operator()(void* x, void* y) {
 //
 void CSettings::LoadWords()
 {
-	CXMLSerializer ser(U::GetUserDataFile(WORDS_XML_FILE, CString(), U::GetBuiltInResourceFile(WORDS_XML_FILE)), L"FBE", true);
+	CXMLSerializer ser(FbeSettings::WordsFilePath(), L"FBE", true);
 
 	WordsItem word;
 	std::vector<void*> objects;
@@ -2893,7 +2884,7 @@ void CSettings::SaveWords()
 		vtObject.pdispVal->AddRef();
 		pXMLDoc->insertBefore(pXMLProcessingNode,vtObject);
 
-		CString fileName(U::GetSettingsDir()+WORDS_XML_FILE);
+		CString fileName(FbeSettings::WordsFilePath());
 		CString temporaryFile(fileName + L".tmp");
 		::DeleteFileW(temporaryFile);
 		if (pXMLDoc->save(temporaryFile.AllocSysString()) == S_OK)

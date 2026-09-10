@@ -173,6 +173,8 @@
     <ClCompile Include="Settings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+	<ClCompile Include="settings\SettingsPaths.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="settings\SettingsNormalization.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="XmlTagMatcher.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="XmlSourceTagHighlighter.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="SettingsGeneralPage.cpp">
@@ -354,6 +356,8 @@
     <ClInclude Include="Settings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+	<ClInclude Include="settings\SettingsPaths.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="settings\SettingsNormalization.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="XmlTagMatcher.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="SettingsPageLifecycle.h">
 	  <Filter>Header Files</Filter>

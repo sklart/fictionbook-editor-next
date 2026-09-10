@@ -30,9 +30,10 @@ if($advanced -notmatch 'm_initialScriptsFolder\s*=\s*_Settings\.GetResolvedScrip
 if($advanced -match 'm_initial_scripts_folder') { throw 'Advanced page still uses the global scripts-folder snapshot.' }
 $advancedHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SettingsAdvancedPage.h')
 $settingsImplementation = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\Settings.cpp')
+$settingsNormalization = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\SettingsNormalization.cpp')
 if($advanced -notmatch 'GetFileAttributes\(' -or $advanced -notmatch 'm_scriptsFolder\.SetFocus') { throw 'Advanced scripts folder validation is missing.' }
 if($settingsImplementation -notmatch 'ResolveScriptsFolderPath' -or $settingsImplementation -notmatch 'SetScriptsFolder[\s\S]*?NormalizeScriptsFolderStoredPath') { throw 'Scripts folder stored and resolved forms are not normalized centrally.' }
-if($settingsImplementation -notmatch '(?s)PathIsRelative\(path\).*?U::GetProgDir') { throw 'Relative scripts folders must resolve independently of the process current directory.' }
+if($settingsNormalization -notmatch '(?s)PathIsRelative\(path\).*?U::GetProgDir') { throw 'Relative scripts folders must resolve independently of the process current directory.' }
 $setScriptsFolder = [regex]::Match($settingsImplementation, 'void\s+CSettings::SetScriptsFolder\s*\([^)]*\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 if(-not $setScriptsFolder.Success -or $setScriptsFolder.Groups['body'].Value -notmatch 'm_scripts_folder\.CompareNoCase\(normalized\)' -or $setScriptsFolder.Groups['body'].Value -notmatch 'if\(apply\)\s*Save\(\)') { throw 'SetScriptsFolder must always update the model and save only when requested.' }
 if($spelling -notmatch 'ResolveUserDataFile' -or $spelling -notmatch 'FILE_ATTRIBUTE_DIRECTORY' -or $spelling -notmatch 'FILE_ATTRIBUTE_READONLY' -or $spelling -notmatch 'GENERIC_WRITE' -or $spelling -notmatch 'OFN_NOCHANGEDIR') { throw 'Custom dictionary validation must resolve paths consistently and reject unsuitable files.' }
