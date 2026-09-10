@@ -76,14 +76,19 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 	{
 		// The native picker remains the production path.  Runtime integration
 		// tests may select an exact internal name without automating a dialog.
-		wchar_t testMode[4] = {}, requestedEntry[MAX_PATH] = {};
+		wchar_t testMode[4] = {}, requestedEntry[MAX_PATH] = {}, requestedOccurrence[16] = {};
 		const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
 		const DWORD requestedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_ENTRY", requestedEntry, _countof(requestedEntry));
+		const DWORD occurrenceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_OCCURRENCE", requestedOccurrence, _countof(requestedOccurrence));
 		if (testModeLength == 1 && testMode[0] == L'1' && requestedLength && requestedLength < _countof(requestedEntry))
 		{
+			unsigned int requestedIndex = 0; wchar_t* occurrenceEnd = NULL;
+			const unsigned long parsedOccurrence = occurrenceLength ? wcstoul(requestedOccurrence, &occurrenceEnd, 10) : 0;
+			if (occurrenceLength && (occurrenceEnd == requestedOccurrence || *occurrenceEnd != L'\0' || parsedOccurrence > UINT_MAX)) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
+			requestedIndex = static_cast<unsigned int>(parsedOccurrence);
 			selected = -1;
 			for (size_t index = 0; index < entries.size(); ++index)
-				if (entries[index].path == requestedEntry) { selected = static_cast<int>(index); break; }
+				if (entries[index].path == requestedEntry && (!occurrenceLength || entries[index].occurrence == requestedIndex)) { selected = static_cast<int>(index); break; }
 			if (selected < 0) { error.code = FbeArchive::ErrorCode::EntryNotFound; if (failure) *failure = error; return false; }
 		}
 		else
@@ -106,7 +111,7 @@ static bool ResolveArchiveOpenRequest(const CString& storagePath, ResolvedOpenDo
 
 static void ShowArchiveError(HWND owner, const FbeArchive::Error& error)
 {
-	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-open-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime") ||
+	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-open-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime") || IsFbeTestScenario(L"archive-mru-runtime") ||
 		IsFbeTestScenario(L"archive-two-phase-runtime") || IsFbeTestScenario(L"archive-recovery-external-verify")) return;
 	LPCWSTR key = L"fbe.archive.error.corrupted", fallback = L"The archive is corrupted or cannot be read.";
 	switch (error.code)
@@ -356,39 +361,138 @@ struct ArchiveMruRecord
 	DocumentLocation location;
 };
 
+static const wchar_t* const kArchiveMruVersion = L"FBE-ARCHIVE-MRU\t2";
+
 static CString ArchiveMruPath()
 {
 	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"ArchiveMRU.txt";
 }
 
-static bool FindArchiveMruRecord(const CString& storagePath, DocumentLocation& location)
+static bool IsSafeArchiveMruField(const CString& field)
 {
-	location = DocumentLocation();
+	return !field.IsEmpty() && field.FindOneOf(L"\t\r\n") < 0;
+}
+
+static bool ParseArchiveMruUnsigned(const CString& text, unsigned int& value)
+{
+	if (text.IsEmpty()) return false;
+	wchar_t* end = NULL;
+	const unsigned long parsed = wcstoul(text, &end, 10);
+	if (end == text.GetString() || *end != L'\0' || parsed > UINT_MAX) return false;
+	value = static_cast<unsigned int>(parsed);
+	return true;
+}
+
+static bool IsValidArchiveMruRecord(const ArchiveMruRecord& record)
+{
+	const DocumentLocation& location = record.location;
+	return location.IsArchive() && location.documentType != FictionBookFileType::Unknown &&
+		IsSafeArchiveMruField(location.storagePath) && IsSafeArchiveMruField(location.entryPath);
+}
+
+static void SplitArchiveMruFields(const CString& line, std::vector<CString>& fields)
+{
+	fields.clear(); int start = 0;
+	for (;;) { const int tab = line.Find(L'\t', start); if (tab < 0) { fields.push_back(line.Mid(start)); return; } fields.push_back(line.Mid(start, tab - start)); start = tab + 1; }
+}
+
+// Version 1 stored "storage path, occurrence, entry path".  Keep accepting it
+// while writing the versioned format below, so portable and registry MRU data
+// from earlier releases remains useful.
+static void ReadArchiveMruRecords(std::vector<ArchiveMruRecord>& records)
+{
+	records.clear();
 	HANDLE file = ::CreateFile(ArchiveMruPath(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (file == INVALID_HANDLE_VALUE) return false;
+	if (file == INVALID_HANDLE_VALUE) return;
 	const DWORD length = ::GetFileSize(file, NULL);
-	if (length == INVALID_FILE_SIZE || length > 64 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return false; }
+	if (length == INVALID_FILE_SIZE || length > 64 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return; }
 	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
 	const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
-	if (!ok || read != length) return false;
+	if (!ok || read != length) return;
 	int position = 0;
+	bool versioned = false;
 	while (position >= 0)
 	{
 		CString line = CString(&text[0]).Tokenize(L"\n", position); line.TrimRight(L"\r");
-		const int first = line.Find(L'\t'), second = first < 0 ? -1 : line.Find(L'\t', first + 1);
-		if (first < 1 || second < first + 2) continue;
-		const CString path = line.Left(first);
-		if (path.CompareNoCase(storagePath) != 0) continue;
-		const CString ordinal = line.Mid(first + 1, second - first - 1);
-		const unsigned long value = wcstoul(ordinal, NULL, 10);
-		if (value > UINT_MAX) continue;
-		location.storagePath = storagePath;
-		location.entryOccurrence = static_cast<unsigned int>(value);
-		location.entryPath = line.Mid(second + 1);
-		location.containerKind = DetectDocumentContainerKind(storagePath);
-		location.documentType = DetectFictionBookFileType(location.entryPath);
-		return location.IsArchive() && location.documentType != FictionBookFileType::Unknown && !location.entryPath.IsEmpty();
+		if (!versioned && line == kArchiveMruVersion) { versioned = true; continue; }
+		std::vector<CString> fields; SplitArchiveMruFields(line, fields);
+		ArchiveMruRecord record; unsigned int occurrence = 0;
+		if (versioned)
+		{
+			unsigned int kind = 0;
+			if (fields.size() != 4 || !ParseArchiveMruUnsigned(fields[0], kind) || !ParseArchiveMruUnsigned(fields[1], occurrence) ||
+				(kind != static_cast<unsigned int>(DocumentContainerKind::Zip) && kind != static_cast<unsigned int>(DocumentContainerKind::Rar))) continue;
+			record.location.containerKind = static_cast<DocumentContainerKind>(kind);
+			record.location.storagePath = fields[2]; record.location.entryPath = fields[3];
+		}
+		else
+		{
+			if (fields.size() != 3 || !ParseArchiveMruUnsigned(fields[1], occurrence)) continue;
+			record.location.storagePath = fields[0]; record.location.entryPath = fields[2];
+			record.location.containerKind = DetectDocumentContainerKind(record.location.storagePath);
+		}
+		record.location.entryOccurrence = occurrence;
+		record.location.documentType = DetectFictionBookFileType(record.location.entryPath);
+		if (IsValidArchiveMruRecord(record)) records.push_back(record);
 	}
+}
+
+static CString ArchiveMruFileName(const CString& path)
+{
+	const int slash = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
+	return slash < 0 ? path : path.Mid(slash + 1);
+}
+
+static CString ArchiveMruDirectoryName(const CString& path)
+{
+	const int slash = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
+	return slash < 0 ? CString() : path.Left(slash + 1);
+}
+
+static CString ArchiveMruDisplayName(const std::vector<ArchiveMruRecord>& records, size_t target)
+{
+	const DocumentLocation& location = records[target].location;
+	CString book = ArchiveMruFileName(location.entryPath), archive = ArchiveMruFileName(location.storagePath);
+	bool sameBook = false;
+	for (size_t i = 0; i < records.size(); ++i)
+		if (i != target && records[i].location.storagePath.CompareNoCase(location.storagePath) == 0 && ArchiveMruFileName(records[i].location.entryPath).CompareNoCase(book) == 0) { sameBook = true; break; }
+	if (sameBook && !ArchiveMruDirectoryName(location.entryPath).IsEmpty()) book = ArchiveMruDirectoryName(location.entryPath) + book;
+	CString result = book + L" \x2014 " + archive;
+	unsigned int equal = 0;
+	for (size_t i = 0; i < records.size(); ++i)
+	{
+		CString candidate = ArchiveMruFileName(records[i].location.entryPath);
+		if (sameBook && !ArchiveMruDirectoryName(records[i].location.entryPath).IsEmpty()) candidate = ArchiveMruDirectoryName(records[i].location.entryPath) + candidate;
+		if ((candidate + L" \x2014 " + ArchiveMruFileName(records[i].location.storagePath)).CompareNoCase(result) == 0) ++equal;
+	}
+	// Two archives in different folders can still have the same container and
+	// entry names.  Make their menu captions distinct before using occurrence.
+	if (equal > 1)
+	{
+		bool differentStorage = false;
+		for (size_t i = 0; i < records.size(); ++i)
+			if (i != target && ArchiveMruFileName(records[i].location.entryPath).CompareNoCase(ArchiveMruFileName(location.entryPath)) == 0 &&
+				ArchiveMruFileName(records[i].location.storagePath).CompareNoCase(archive) == 0 && records[i].location.storagePath.CompareNoCase(location.storagePath) != 0) { differentStorage = true; break; }
+		if (differentStorage) result = book + L" \x2014 " + ArchiveMruDirectoryName(location.storagePath) + archive;
+	}
+	if (equal > 1) result.Format(L"%s (%u)", static_cast<LPCWSTR>(result), location.entryOccurrence + 1);
+	return result;
+}
+
+static bool SameArchiveMruIdentity(const DocumentLocation& left, const DocumentLocation& right)
+{
+	return left.containerKind == right.containerKind && left.storagePath.CompareNoCase(right.storagePath) == 0 &&
+		left.entryPath == right.entryPath && left.entryOccurrence == right.entryOccurrence;
+}
+
+static bool FindArchiveMruRecord(const CString& menuText, DocumentLocation& location)
+{
+	location = DocumentLocation(); std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
+	for (size_t i = 0; i < records.size(); ++i)
+		if (ArchiveMruDisplayName(records, i).CompareNoCase(menuText) == 0) { location = records[i].location; return true; }
+	// Compatibility with the old MRU menu, which stored just the archive path.
+	for (size_t i = 0; i < records.size(); ++i)
+		if (records[i].location.storagePath.CompareNoCase(menuText) == 0) { location = records[i].location; return true; }
 	return false;
 }
 
@@ -398,29 +502,28 @@ static void RememberArchiveMruRecord(CRecentDocumentList& list, const DocumentLo
 	const CString directory(DeploymentContext::SettingsDirectory().c_str());
 	if (!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return;
 	const CString path = ArchiveMruPath(), temporary = path + L".tmp";
-	std::vector<CString> retained;
-	HANDLE source = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (source != INVALID_HANDLE_VALUE)
-	{
-		const DWORD length = ::GetFileSize(source, NULL);
-		if (length != INVALID_FILE_SIZE && length <= 64 * 1024 && (length % sizeof(wchar_t)) == 0)
-		{
-			std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
-			if (::ReadFile(source, &text[0], length, &read, NULL) && read == length)
-			{
-				int position = 0;
-				while (position >= 0) { CString line = CString(&text[0]).Tokenize(L"\n", position); line.TrimRight(L"\r"); if (!line.IsEmpty() && line.Left(line.Find(L'\t')).CompareNoCase(location.storagePath) != 0) retained.push_back(line); }
-			}
-		}
-		::CloseHandle(source);
-	}
+	std::vector<ArchiveMruRecord> retained; ReadArchiveMruRecords(retained);
+	retained.erase(std::remove_if(retained.begin(), retained.end(), [&location](const ArchiveMruRecord& record) { return SameArchiveMruIdentity(record.location, location); }), retained.end());
+	ArchiveMruRecord current; current.location = location; retained.insert(retained.begin(), current);
 	HANDLE destination = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (destination == INVALID_HANDLE_VALUE) return;
-	retained.insert(retained.begin(), location.storagePath + L"\t" + std::to_wstring(location.entryOccurrence).c_str() + L"\t" + location.entryPath);
-	bool written = true;
-	for (size_t index = 0; index < retained.size() && index < 16; ++index) { const CString line = retained[index] + L"\r\n"; DWORD count = 0; if (!::WriteFile(destination, line.GetString(), line.GetLength() * sizeof(wchar_t), &count, NULL) || count != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) { written = false; break; } }
+	bool written = true; CString header(kArchiveMruVersion); header += L"\r\n"; DWORD count = 0;
+	if (!::WriteFile(destination, header.GetString(), header.GetLength() * sizeof(wchar_t), &count, NULL) || count != static_cast<DWORD>(header.GetLength() * sizeof(wchar_t))) written = false;
+	for (size_t index = 0; written && index < retained.size() && index < 16; ++index) { const DocumentLocation& item = retained[index].location; CString line; line.Format(L"%u\t%u\t%s\t%s\r\n", static_cast<unsigned int>(item.containerKind), item.entryOccurrence, static_cast<LPCWSTR>(item.storagePath), static_cast<LPCWSTR>(item.entryPath)); count = 0; if (!::WriteFile(destination, line.GetString(), line.GetLength() * sizeof(wchar_t), &count, NULL) || count != static_cast<DWORD>(line.GetLength() * sizeof(wchar_t))) written = false; }
 	::FlushFileBuffers(destination); ::CloseHandle(destination);
-	if (written && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) list.AddToList(location.storagePath); else ::DeleteFile(temporary);
+	if (written && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	{
+		list.AddToList(ArchiveMruDisplayName(retained, 0));
+		for (int i = list.m_arrDocs.GetSize() - 1; i >= 0; --i) if (CString(list.m_arrDocs[i].szDocName).CompareNoCase(location.storagePath) == 0) list.m_arrDocs.RemoveAt(i);
+		list.UpdateMenu();
+	}
+	else ::DeleteFile(temporary);
+}
+
+static void AddArchiveMruRecordsToList(CRecentDocumentList& list)
+{
+	std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
+	for (size_t i = records.size(); i > 0; --i) list.AddToList(ArchiveMruDisplayName(records, i - 1));
 }
 
 static CString ArchiveRecoveryPath()
@@ -1829,8 +1932,8 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
     return CANCELLED;
   }
 
-  if (!DiscardChanges())
-    return CANCELLED;
+	if (!IsFbeTestScenario(L"archive-mru-runtime") && !DiscardChanges())
+	    return CANCELLED;
   
 	FB::Doc *doc = new FB::Doc(*this);
 	FB::Doc::m_active_doc = doc;
@@ -2949,6 +3052,7 @@ void CMainFrame::InitPlugins()
 	else
 		ReadPortableMru(m_mru);
 	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
+	AddArchiveMruRecordsToList(m_mru);
 	StartupTrace::Event(L"plugin", L"P160", L"MRU initialized");
 
 	// Scripts
@@ -4388,6 +4492,42 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		report.Format("open_cancelled=%d\nmodified=%d\nsame_document=%d\nmru_unchanged=%d\n", result == CANCELLED, sourceStillModified, sameDocument, mruUnchanged);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(result == CANCELLED && sourceStillModified && sameDocument && mruUnchanged ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"archive-mru-runtime"))
+	{
+		wchar_t secondEntry[MAX_PATH] = {}, occurrenceText[16] = {};
+		const DWORD secondLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_MRU_SECOND_ENTRY", secondEntry, _countof(secondEntry));
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_MRU_SECOND_OCCURRENCE", occurrenceText, _countof(occurrenceText));
+		DocumentLocation first = m_document_location, second = first;
+		unsigned int occurrence = 0;
+		const bool secondValid = secondLength > 0 && secondLength < _countof(secondEntry) && ParseArchiveMruUnsigned(occurrenceText, occurrence);
+		second.entryPath = secondEntry; second.entryOccurrence = occurrence; second.documentType = DetectFictionBookFileType(second.entryPath);
+		// This scenario exercises MRU routing, not the unsaved-changes prompt.
+		// A freshly loaded MSHTML document can carry a transient form-change bit.
+		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
+		ResolvedOpenDocument secondResolved; FbeArchive::Error secondError;
+		const bool secondFound = secondValid && ResolveArchiveOpenRequest(second.storagePath, secondResolved, &second, &secondError);
+		const FILE_OP_STATUS secondOpen = secondFound ? LoadFile(second.storagePath, &second) : CANCELLED;
+		if (secondOpen == OK) RememberArchiveMruRecord(m_mru, m_document_location);
+		if (secondOpen == OK) { m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT); }
+		std::vector<ArchiveMruRecord> records; ReadArchiveMruRecords(records);
+		CString firstMenu;
+		for (size_t index = 0; index < records.size(); ++index) if (SameArchiveMruIdentity(records[index].location, first)) { firstMenu = ArchiveMruDisplayName(records, index); break; }
+		DocumentLocation menuFirst;
+		const bool menuLookup = !firstMenu.IsEmpty() && FindArchiveMruRecord(firstMenu, menuFirst) && SameArchiveMruIdentity(menuFirst, first);
+		const FILE_OP_STATUS firstOpen = secondOpen == OK && menuLookup ? LoadFile(menuFirst.storagePath, &menuFirst) : FAIL;
+		if (firstOpen == OK) RememberArchiveMruRecord(m_mru, m_document_location);
+		ReadArchiveMruRecords(records);
+		bool hasFirst = false, hasSecond = false;
+		for (size_t index = 0; index < records.size(); ++index) { hasFirst = hasFirst || SameArchiveMruIdentity(records[index].location, first); hasSecond = hasSecond || SameArchiveMruIdentity(records[index].location, second); }
+		DocumentLocation missing = first; missing.entryPath = L"missing.fb2"; missing.entryOccurrence = 0;
+		ResolvedOpenDocument ignored; FbeArchive::Error missingError;
+		const bool missingRejected = !ResolveArchiveOpenRequest(first.storagePath, ignored, &missing, &missingError) && missingError.code == FbeArchive::ErrorCode::EntryNotFound;
+		const bool reopenedFirst = firstOpen == OK && SameArchiveMruIdentity(m_document_location, first);
+		CStringA report; report.Format("first=%d\nsecond=%d\nmenu_lookup=%d\nsecond_found=%d\nsecond_error=%d\nsecond_open=%d\nfirst_open=%d\nreopened_first=%d\nmissing_entry=%d\narchive_records=%u\n", hasFirst, hasSecond, menuLookup, secondFound, static_cast<int>(secondError.code), secondOpen, firstOpen, reopenedFirst, missingRejected, static_cast<unsigned int>(records.size()));
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(hasFirst && hasSecond && menuLookup && reopenedFirst && missingRejected ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"archive-recovery-create"))
