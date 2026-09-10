@@ -1391,9 +1391,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 		FbeArchiveUi::ShowError(m_hWnd, error); return FAIL;
 	}
 	m_document_session.SavedArchive(savedArchiveLocation);
-	m_doc->MarkSavePoint();
-	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
-		m_recovery.DeleteIfWritten();
+	CommitSuccessfulSave();
 	return OK;
   }
 
@@ -1421,9 +1419,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	  U::SetCurrentDirectoryToFile(filename);
       m_doc->m_namevalid=true;
 	  FbeRecentDocuments::RememberNormalMruRecord(m_mru, filename);
-	  if(IsSourceActive())
-		  m_source.SendMessage(SCI_SETSAVEPOINT);
-		m_recovery.DeleteIfWritten();
+	  CommitSuccessfulSave();
 	  UpdateStatusBar();
       return OK;
     }
@@ -1434,9 +1430,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   if(saved)
   {
 	  m_document_session.Saved();
-	  if(IsSourceActive())
-		  m_source.SendMessage(SCI_SETSAVEPOINT);
-		m_recovery.DeleteIfWritten();
+	  CommitSuccessfulSave();
 	  return OK;
   }
   else
@@ -1448,6 +1442,13 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 		return SaveFile(true);
 	return FAIL;
   }
+}
+
+void CMainFrame::CommitSuccessfulSave()
+{
+	m_doc->MarkSavePoint();
+	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
+	m_recovery.DeleteIfWritten();
 }
 
 CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, const DocumentLocation* preferredArchiveLocation)

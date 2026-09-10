@@ -362,7 +362,8 @@ public:
   bool	  SaveToFile(const CString& filename);
   bool	  DiscardChanges();
 
-  FILE_OP_STATUS	  SaveFile(bool askname);
+	FILE_OP_STATUS	  SaveFile(bool askname);
+	void CommitSuccessfulSave();
   FILE_OP_STATUS	  LoadFile(const wchar_t *initfilename=NULL, const DocumentLocation* preferredArchiveLocation=NULL);
   void RunPortableStateTestScenario();
   void TryRestoreRecovery();
