@@ -18,10 +18,12 @@
 
 Сопровождаемые статические defaults (`custom.dic`, `languages.txt`,
 `root_genres.xml`) остаются в корне репозитория. Начальный словарь слов
-находится в `runtime/defaults/Words.xml`: при первом запуске он копируется в
+находится в `runtime/Resources/Words.xml`: при первом запуске он копируется в
 активную пользовательскую директорию. Для portable это `Data/Settings`, для
 installed — `%LOCALAPPDATA%/FBE Next`. `Settings.xml` и `Hotkeys.xml` создаются
-из встроенных defaults и никогда не поставляются рядом с `FBE.exe`.
+из встроенных ресурсов и никогда не поставляются рядом с `FBE.exe`. Для
+совместимости со старыми standalone-сборками поиск seed также понимает
+`defaults/Words.xml` и `Words.xml` рядом с `FBE.exe`.
 
 `packaging/layout.json` — единственная исполняемая карта `source →
 destination`: её читают `stage-core.ps1` и `stage-integration.ps1`.

@@ -27,7 +27,7 @@ try {
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind Runtime -Configuration $configuration -ProfileDirectory $editorRuntime -BatchDirectory $batch -ArchHandlerDirectory $arch -ProvenanceDirectory $provenance
     & (Join-Path $repoRoot 'tools\build\stage-core.ps1') -Configuration $configuration -OutputDirectory $stage -EditorRuntimeDirectory $editorRuntime -BatchOutputDirectory $batch -ArchHandlerOutputDirectory $arch -ProvenanceDirectory $provenance
 
-    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'Utilities\ArchHandler\ZipHandler.exe', 'LICENSE', 'genres.librusec.txt', 'defaults\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt')) {
+    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'Utilities\ArchHandler\ZipHandler.exe', 'LICENSE', 'genres.librusec.txt', 'Resources\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $relativePath) -PathType Leaf)) {
             throw "Layout-driven Core stage omitted: $relativePath"
         }

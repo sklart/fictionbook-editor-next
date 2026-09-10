@@ -2764,7 +2764,7 @@ class sortComp { public: bool operator()(void* x, void* y) {
 //
 void CSettings::LoadWords()
 {
-	CXMLSerializer ser(U::GetUserDataFile(WORDS_XML_FILE), L"FBE", true);
+	CXMLSerializer ser(U::GetUserDataFile(WORDS_XML_FILE, CString(), U::GetBuiltInResourceFile(WORDS_XML_FILE)), L"FBE", true);
 
 	WordsItem word;
 	std::vector<void*> objects;

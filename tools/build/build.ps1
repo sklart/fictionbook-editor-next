@@ -60,7 +60,9 @@ function Remove-ObsoleteReleaseArtifacts {
         # %LOCALAPPDATA%\FBE Next when installed), never beside FBE.exe.
         "Settings.xml",
         "Hotkeys.xml",
-        "Words.xml"
+        "Words.xml",
+        # Pre-3.0 development outputs placed the immutable seed here.
+        "defaults\Words.xml"
     )) {
         $path = Join-Path $OutputDirectory $name
         if (Test-Path -LiteralPath $path) {
@@ -195,6 +197,22 @@ function Export-RuntimeLanguageFiles {
     Write-Host "Runtime-локализация подготовлена рядом с бинарниками: $(Join-Path $OutputDirectory "Lang")"
 }
 
+function Export-BuiltInResources {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OutputDirectory
+    )
+
+    $source = Join-Path $repoRoot 'runtime\Resources\Words.xml'
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        throw "Не найден встроенный ресурс: $source"
+    }
+    $destinationDirectory = Join-Path $OutputDirectory 'Resources'
+    New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+    Copy-Item -LiteralPath $source -Destination (Join-Path $destinationDirectory 'Words.xml') -Force
+    Write-Host "Встроенные ресурсы подготовлены рядом с бинарниками: $destinationDirectory"
+}
+
 function Remove-ObsoleteRootLanguageDirectories {
     param(
         [Parameter(Mandatory)]
@@ -321,6 +339,7 @@ if ($WarningsAsErrors) {
     -ReusePreparedRuntime:$ReuseEditorRuntime
 
 Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Export-BuiltInResources -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
 # A partial or interrupted build must never leave the previous ImportEPUB
 # output looking authoritative.

@@ -3,6 +3,7 @@
   "core": {
     "copy": [
       { "sourceRoot": "runtime", "source": "", "destination": "", "contents": true, "kind": "maintainedResource", "required": true },
+      { "sourceRoot": "runtime", "source": "Resources/Words.xml", "destination": "Resources/Words.xml", "kind": "maintainedResource", "required": true },
       { "sourceRoot": "editorRuntime", "source": "Scintilla.dll", "destination": "Scintilla.dll", "kind": "compiledArtifact", "required": true },
       { "sourceRoot": "editorRuntime", "source": "Lexilla.dll", "destination": "Lexilla.dll", "kind": "compiledArtifact", "required": true },
       { "sourceRoot": "common", "source": "FBE.exe", "destination": "FBE.exe", "kind": "compiledArtifact", "required": true },

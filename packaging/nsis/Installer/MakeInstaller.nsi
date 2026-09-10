@@ -826,10 +826,14 @@ skip_shell_mui:
 	File "${INPUTDIR}\THIRD-PARTY-NOTICES.md"
 	SetOutPath "$INSTDIR\THIRD-PARTY-LICENSES"
 	File /r "${INPUTDIR}\THIRD-PARTY-LICENSES\*.*"
-	; Defaults are read-only seeds. CSettings copies Words.xml to the active
-	; user settings directory on first use instead of writing beside FBE.exe.
-	SetOutPath "$INSTDIR\defaults"
-	File "${INPUTDIR}\defaults\Words.xml"
+	; Resources are immutable program seeds. CSettings copies Words.xml to the
+	; active user settings directory on first use instead of writing beside FBE.exe.
+	; Remove the pre-3.0.9 location during an upgrade; the executable retains a
+	; legacy fallback only for old standalone deployments.
+	Delete "$INSTDIR\defaults\Words.xml"
+	RMDir "$INSTDIR\defaults"
+	SetOutPath "$INSTDIR\Resources"
+	File "${INPUTDIR}\Resources\Words.xml"
 	SetOutPath "$INSTDIR"
   ; Bundled plug-ins are discovered from this local manifest. The DLLs are
   ; optional components below, but the catalog itself is part of the editor
@@ -1384,6 +1388,9 @@ fbd_uninstall_done:
   Delete "$INSTDIR\NOTICE"
   Delete "$INSTDIR\THIRD-PARTY-NOTICES.md"
   RMDir /r "$INSTDIR\THIRD-PARTY-LICENSES"
+	Delete "$INSTDIR\Resources\Words.xml"
+	RMDir "$INSTDIR\Resources"
+	; Clean up the obsolete seed location left by an older installation.
 	Delete "$INSTDIR\defaults\Words.xml"
 	RMDir "$INSTDIR\defaults"
   RMDir /r "$INSTDIR\Themes"

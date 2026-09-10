@@ -18,15 +18,19 @@ foreach ($legacyUserFile in @('Settings.xml', 'Hotkeys.xml', 'Words.xml')) {
         throw "Core layout must not copy mutable user state to its root: $legacyUserFile"
     }
 }
-if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'runtime\defaults\Words.xml') -PathType Leaf)) {
-    throw 'The built-in Words.xml seed must live under runtime\defaults.'
+if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'runtime\Resources\Words.xml') -PathType Leaf)) {
+    throw 'The built-in Words.xml seed must live under runtime\Resources.'
 }
-if ($manifest.core.runtimeDirectories -notcontains 'defaults') {
-    throw 'Core manifest must preserve runtime defaults.'
+if ($manifest.core.runtimeDirectories -notcontains 'Resources') {
+    throw 'Core manifest must preserve immutable runtime Resources.'
+}
+$wordsResource = @($layout.core.copy | Where-Object { $_.sourceRoot -eq 'runtime' -and $_.source -eq 'Resources/Words.xml' -and $_.destination -eq 'Resources/Words.xml' })
+if ($wordsResource.Count -ne 1 -or -not $wordsResource[0].required) {
+    throw 'Package layout must explicitly stage runtime Resources\Words.xml.'
 }
 $installerScript = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'packaging\nsis\Installer\MakeInstaller.nsi')
-if ($installerScript -notmatch 'File "\$\{INPUTDIR\}\\defaults\\Words\.xml"') {
-    throw 'NSIS installer must install the immutable Words.xml seed under defaults.'
+if ($installerScript -notmatch 'File "\$\{INPUTDIR\}\\Resources\\Words\.xml"') {
+    throw 'NSIS installer must install the immutable Words.xml seed under Resources.'
 }
 
 foreach ($kind in @('core', 'integration')) {
@@ -54,7 +58,7 @@ foreach ($kind in @('core', 'integration')) {
 $coreDestinations = @($layout.core.copy | Where-Object { -not $_.contents } | ForEach-Object { $_.destination.Replace('/', '\') })
 $coreDestinations += @($layout.core.aliases | ForEach-Object { $_.destination.Replace('/', '\') })
 foreach ($required in @($manifest.core.required)) {
-    if ($required -notin $coreDestinations -and $required -notmatch '^(Plugins|dict|Lang|Themes|Scripts|Utilities|EditorBackgrounds|THIRD-PARTY-LICENSES)\\' -and $required -notmatch '^genres\.') {
+    if ($required -notin $coreDestinations -and $required -notmatch '^(Plugins|dict|Lang|Themes|Scripts|Utilities|EditorBackgrounds|Resources|THIRD-PARTY-LICENSES)\\' -and $required -notmatch '^genres\.') {
         throw "Core manifest item is not represented by a package-layout entry: $required"
     }
 }
@@ -72,6 +76,12 @@ foreach ($script in @('tools\build\stage-core.ps1', 'tools\build\stage-integrati
 }
 
 $buildScript = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'tools\build\build.ps1')
+if ($buildScript -notmatch 'Export-BuiltInResources' -or $buildScript -notmatch 'runtime\\Resources\\Words\.xml') {
+    throw 'Development build must materialize Resources\\Words.xml beside FBE.exe.'
+}
+if ($buildScript -notmatch '"defaults\\Words\.xml"') {
+    throw 'Development build must remove the obsolete defaults\\Words.xml seed.'
+}
 foreach ($legacyUserFile in @('Settings.xml', 'Hotkeys.xml', 'Words.xml')) {
     if ($buildScript -notmatch ('"' + [regex]::Escape($legacyUserFile) + '"')) {
         throw "Development build no longer removes obsolete root user state: $legacyUserFile"

@@ -141,7 +141,10 @@ namespace U // place all utilities into their own namespace
   UINT	  MessageBox(UINT type, UINT titleID, UINT msgID, ...);
   CString GetProgDir();
   CString GetSettingsDir();
-  CString GetUserDataFile(const CString& filename, const CString& legacyDir = CString());
+	// Resolves an immutable program resource.  Resources is the current layout;
+	// defaults and the program root are retained for pre-3.0.9 deployments.
+	CString GetBuiltInResourceFile(const CString& filename);
+  CString GetUserDataFile(const CString& filename, const CString& legacyDir = CString(), const CString& builtInSeed = CString());
 	CString ResolveUserDataFile(const CString& filename);
   CString GetDocTReeScriptsDir();
   CString GetProgDirFile(const CString& filename);

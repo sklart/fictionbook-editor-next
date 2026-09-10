@@ -442,7 +442,24 @@ CString GetSettingsDir()
 	else return GetProgDir();
 }
 
-CString GetUserDataFile(const CString& filename, const CString& legacyDir)
+CString GetBuiltInResourceFile(const CString& filename)
+{
+	if (filename.IsEmpty() || !PathIsRelative(filename))
+		return filename;
+
+	const CString resourceFile = GetProgDir() + L"Resources\\" + filename;
+	if (ATLPath::FileExists(resourceFile))
+		return resourceFile;
+
+	const CString defaultsFile = GetProgDir() + L"defaults\\" + filename;
+	if (ATLPath::FileExists(defaultsFile))
+		return defaultsFile;
+
+	// Very old installations placed the seed next to FBE.exe.
+	return GetProgDir() + filename;
+}
+
+CString GetUserDataFile(const CString& filename, const CString& legacyDir, const CString& builtInSeed)
 {
 	if (filename.IsEmpty() || !PathIsRelative(filename))
 		return filename;
@@ -453,12 +470,12 @@ CString GetUserDataFile(const CString& filename, const CString& legacyDir)
 		CString legacyFile;
 		if (!legacyDir.IsEmpty())
 			legacyFile = legacyDir + filename;
-		if (!ATLPath::FileExists(legacyFile))
+		if (!ATLPath::FileExists(legacyFile) && builtInSeed.IsEmpty())
 			legacyFile = GetProgDir() + filename;
 		// Built-in defaults are immutable program resources.  User data always
 		// lives in GetSettingsDir(), including portable Data\Settings.
 		if (!ATLPath::FileExists(legacyFile))
-			legacyFile = GetProgDir() + L"defaults\\" + filename;
+			legacyFile = builtInSeed.IsEmpty() ? GetProgDir() + L"defaults\\" + filename : builtInSeed;
 		if (ATLPath::FileExists(legacyFile))
 			::CopyFile(legacyFile, destination, TRUE);
 	}
