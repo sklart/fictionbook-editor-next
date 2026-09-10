@@ -341,6 +341,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="Settings.cpp" />
 	<ClCompile Include="settings\SettingsPaths.cpp" />
 	<ClCompile Include="settings\SettingsNormalization.cpp" />
+	<ClCompile Include="settings\hotkeys\HotkeyStore.cpp" />
     <ClCompile Include="SettingsGeneralPage.cpp" />
 	<ClCompile Include="SettingsImagesPage.cpp" />
     <ClCompile Include="SettingsEditorPage.cpp" />
@@ -467,6 +468,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="Settings.h" />
 	<ClInclude Include="settings\SettingsPaths.h" />
 	<ClInclude Include="settings\SettingsNormalization.h" />
+	<ClInclude Include="settings\hotkeys\HotkeyStore.h" />
 	<ClInclude Include="SettingsPageLifecycle.h" />
     <ClInclude Include="SettingsGeneralPage.h" />
 	<ClInclude Include="SettingsImagesPage.h" />

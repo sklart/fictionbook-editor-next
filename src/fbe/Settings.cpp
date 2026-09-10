@@ -3,6 +3,7 @@
 #include "XmlSourceThemes.h"
 #include "settings\\SettingsPaths.h"
 #include "settings\\SettingsNormalization.h"
+#include "settings\\hotkeys\\HotkeyStore.h"
 
 enum KEY_TYPE
 {
@@ -1716,15 +1717,7 @@ CHotkey* CSettings::GetHotkeyByName(const CString& name, CHotkeysGroup& group)
 
 void CSettings::SaveHotkeyGroups()
 {
-	CXMLSerializer ser(FbeSettings::HotkeysFilePath(), L"FBE", false);
-
-	std::vector<void*> hkGroupsPtr;
-	for(unsigned int i = 0; i < m_hotkey_groups.size(); ++i)
-	{
-		hkGroupsPtr.push_back(&m_hotkey_groups[i]);
-	}
-
-	ser.Serialize(hkGroupsPtr);
+	FbeSettings::Hotkeys::Save(m_hotkey_groups);
 }
 
 void CSettings::LoadHotkeyGroups()
