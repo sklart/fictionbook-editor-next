@@ -177,6 +177,7 @@
 	<ClCompile Include="settings\SettingsNormalization.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="settings\SettingsStore.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="settings\hotkeys\HotkeyStore.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
+	<ClCompile Include="settings\hotkeys\HotkeyDefaults.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="settings\hotkeys\Hotkey.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="settings\hotkeys\HotkeyGroup.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
 	<ClCompile Include="settings\words\WordsItem.cpp"><Filter>Source Files\Settings</Filter></ClCompile>
@@ -367,6 +368,7 @@
 	<ClInclude Include="settings\SettingsTypes.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="settings\SettingsStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="settings\hotkeys\HotkeyStore.h"><Filter>Header Files\Settings</Filter></ClInclude>
+	<ClInclude Include="settings\hotkeys\HotkeyDefaults.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="settings\hotkeys\Hotkey.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="settings\hotkeys\HotkeyGroup.h"><Filter>Header Files\Settings</Filter></ClInclude>
 	<ClInclude Include="settings\words\WordsItem.h"><Filter>Header Files\Settings</Filter></ClInclude>
