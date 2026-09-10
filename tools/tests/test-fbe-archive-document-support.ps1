@@ -12,6 +12,7 @@ $writer = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ZipArchiveWriter.cp
 $documentWriter = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ArchiveDocumentWriter.cpp')
 $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
 $archiveOpen = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ui\ArchiveOpenCoordinator.cpp')
+$savePlan = Get-Content -Raw (Join-Path $root 'src\fbe\document\DocumentSavePlan.cpp')
 $archiveMru = Get-Content -Raw (Join-Path $root 'src\fbe\document\ArchiveRecentDocuments.cpp')
 $recentStore = Get-Content -Raw (Join-Path $root 'src\fbe\document\recent\RecentDocumentsStore.cpp')
 $recoveryStore = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryStore.cpp')
@@ -46,7 +47,7 @@ Require $writer 'archive_write_finish_entry' 'ZIP writer must finish every copie
 Require $writer 'target\.occurrence' 'ZIP writer must identify replacement by occurrence.'
 Require $doc 'SerializeToMemory' 'Archive saving must serialize to memory.'
 Require $documentWriter 'SaveDocument[\s\S]{0,3000}RewriteZipEntry' 'Ctrl+S must call the transactional ZIP writer through the archive writer.'
-Require $frame 'DocumentContainerKind::Rar\)\s*return SaveFile\(true\)' 'RAR Ctrl+S must route to Save As.'
+Require $savePlan 'location\.containerKind == DocumentContainerKind::Rar' 'RAR Ctrl+S must route to Save As.'
 Require $archiveOpen 'FbeArchiveUi::ShowError' 'Archive failures must be mapped to user-facing error categories.'
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
 Require $recentStore 'FBE-ARCHIVE-MRU\\t2' 'Archive MRU persistence must be explicitly versioned.'
