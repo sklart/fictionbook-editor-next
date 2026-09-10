@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path $temp | Out-Null
 try {
     $source = Join-Path $root 'tools\tests\search-viewport-position-test.cpp'
     $exe = Join-Path $temp 'search-viewport-position-test.exe'
-    & $compiler /nologo /utf-8 /EHsc /std:c++17 /I (Join-Path $root 'src\fbe') $source /Fe$exe
+    & $compiler /nologo /utf-8 /EHsc /std:c++17 /I (Join-Path $root 'src\fbe\search') $source /Fe$exe
     if ($LASTEXITCODE -ne 0) { throw 'Search viewport position test compilation failed.' }
     & $exe
     if ($LASTEXITCODE -ne 0) { throw 'Search viewport position test failed.' }
