@@ -40,6 +40,10 @@
 #include "XmlDeclaration.h"
 #include "..\\common\\DeploymentContext.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
+#include "toolbars\\PortableToolbarStore.h"
+#include "toolbars\\ToolbarLayoutAdapter.h"
+#include "toolbars\\ToolbarFactory.h"
+#include "toolbars\\TableToolbarCommands.h"
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -55,6 +59,9 @@ typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
 
 namespace
 {
+using ToolbarFactory::AutoSizeToolbar;
+using ToolbarFactory::ImageListHasMaskPlane;
+using ToolbarFactory::SetDialogFontForToolbarRow;
 static PluginManager g_pluginManager;
 const int SCRIPT_COMMAND_COUNT = 999;
 const int SCRIPT_FOLDER_MENU_ID_BASE = ID_EDIT_INS_SYMBOL + 101;
@@ -90,150 +97,6 @@ static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE
 	return added != FALSE;
 }
 
-struct ToolbarResourceData
-{
-	WORD version;
-	WORD width;
-	WORD height;
-	WORD itemCount;
-	WORD* Items() { return reinterpret_cast<WORD*>(this + 1); }
-};
-
-// Kept solely for the unattended rendering probe: creation itself never
-// reconstructs an image list after the toolbar is populated.
-static bool ImageListHasMaskPlane(HIMAGELIST imageList)
-{
-	IMAGEINFO imageInfo = {};
-	return imageList != NULL && ::ImageList_GetImageInfo(imageList, 0, &imageInfo) != FALSE && imageInfo.hbmMask != NULL;
-}
-
-static bool CopyToolbarImages(HIMAGELIST destination, HIMAGELIST source, int imageCount)
-{
-	for (int index = 0; index < imageCount; ++index)
-	{
-		HICON icon = ::ImageList_GetIcon(source, index, ILD_NORMAL);
-		const int copiedIndex = icon != NULL ? ::ImageList_AddIcon(destination, icon) : -1;
-		if (icon != NULL) ::DestroyIcon(icon);
-		if (copiedIndex != index) return false;
-	}
-	return true;
-}
-
-static BOOL CALLBACK SetDialogFontForToolbarChild(HWND window, LPARAM)
-{
-	::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	return TRUE;
-}
-
-static void SetDialogFontForToolbarRow(HWND window, bool includeChildren = false)
-{
-	if(window == NULL) return;
-	::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE);
-	if(includeChildren) ::EnumChildWindows(window, SetDialogFontForToolbarChild, 0);
-}
-
-static void AutoSizeToolbar(HWND window)
-{
-	if(window != NULL) ::SendMessage(window, TB_AUTOSIZE, 0, 0);
-}
-
-static HWND CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId,
-	DWORD style = ATL_SIMPLE_TOOLBAR_STYLE, UINT controlId = ATL_IDW_TOOLBAR)
-{
-	HINSTANCE module = _Module.GetResourceInstance();
-	HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR);
-	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
-	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
-	if (toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != 24 || toolbarData->height != 24)
-		return NULL;
-
-	ATL::CTempBuffer<TBBUTTON, _WTL_STACK_ALLOC_THRESHOLD> buttonsBuffer;
-	TBBUTTON* buttons = buttonsBuffer.Allocate(toolbarData->itemCount);
-	if (buttons == NULL) return NULL;
-
-	int standardImageCount = 0;
-	for (int index = 0; index < toolbarData->itemCount; ++index)
-	{
-		TBBUTTON& button = buttons[index];
-		::ZeroMemory(&button, sizeof(button));
-		const WORD commandId = toolbarData->Items()[index];
-		if (commandId != 0)
-		{
-			button.iBitmap = standardImageCount++;
-			button.idCommand = commandId;
-			button.fsState = TBSTATE_ENABLED;
-			button.fsStyle = BTNS_BUTTON;
-		}
-		else
-		{
-			button.iBitmap = 8;
-			button.fsStyle = BTNS_SEP;
-		}
-	}
-
-	HWND window = ::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, style, 0, 0, 100, 100, parent,
-		(HMENU)LongToHandle(controlId), module, NULL);
-	if (window == NULL) return NULL;
-	::SendMessage(window, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
-
-	if (!ownedImages.Create(24, 24, ILC_COLOR32 | ILC_MASK, standardImageCount + 8, 8))
-	{
-		::DestroyWindow(window);
-		return NULL;
-	}
-	HIMAGELIST sourceImages = ::ImageList_LoadImage(module, MAKEINTRESOURCE(toolbarResourceId), 24, 1, CLR_DEFAULT,
-		IMAGE_BITMAP, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
-	const bool copied = sourceImages != NULL && ::ImageList_GetImageCount(sourceImages) >= standardImageCount &&
-		CopyToolbarImages(ownedImages, sourceImages, standardImageCount);
-	if (sourceImages != NULL) ::ImageList_Destroy(sourceImages);
-	if (!copied)
-	{
-		ownedImages.Destroy();
-		::DestroyWindow(window);
-		return NULL;
-	}
-
-	const HIMAGELIST previousImages = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(static_cast<HIMAGELIST>(ownedImages))));
-	if (previousImages != NULL || ::SendMessage(window, TB_ADDBUTTONS, toolbarData->itemCount, reinterpret_cast<LPARAM>(buttons)) == FALSE)
-	{
-		::SendMessage(window, TB_SETIMAGELIST, 0, 0);
-		ownedImages.Destroy();
-		::DestroyWindow(window);
-		return NULL;
-	}
-
-	SetDialogFontForToolbarRow(window);
-	// The image list is 24x24. Keep bitmap geometry fixed until the artwork
-	// itself is DPI-aware, otherwise comctl32 reserves blank space below icons.
-	::SendMessage(window, TB_SETBITMAPSIZE, 0, MAKELONG(24, 24));
-	::SendMessage(window, TB_SETBUTTONSIZE, 0, MAKELONG(toolbarData->width + 7, toolbarData->height + 7));
-	AutoSizeToolbar(window);
-	StartupTrace::Event(L"toolbar", L"TB210", L"command-toolbar image list created; 24x24; ILC_COLOR32|ILC_MASK");
-	return window;
-}
-
-static int AddToolbarBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId)
-{
-	HBITMAP colorBitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId),
-		IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
-	if (colorBitmap == NULL) return -1;
-
-	DIBSECTION bitmapSection = {};
-	if (::GetObject(colorBitmap, sizeof(bitmapSection), &bitmapSection) != sizeof(bitmapSection) ||
-		bitmapSection.dsBm.bmWidth != 24 || bitmapSection.dsBmih.biHeight == 0 ||
-		(bitmapSection.dsBmih.biHeight < 0 ? -bitmapSection.dsBmih.biHeight : bitmapSection.dsBmih.biHeight) != 24 ||
-		bitmapSection.dsBm.bmBitsPixel != 24 || bitmapSection.dsBm.bmBits == NULL ||
-		bitmapSection.dsBm.bmWidthBytes < 24 * 3)
-	{
-		::DeleteObject(colorBitmap);
-		return -1;
-	}
-
-	const int imageIndex = ::ImageList_AddMasked(toolbar.GetImageList(), colorBitmap, RGB(192, 192, 192));
-	::DeleteObject(colorBitmap);
-	return imageIndex;
-}
-
 static CString StripMenuMnemonics(const CString& text)
 {
 	CString result;
@@ -245,160 +108,10 @@ static CString StripMenuMnemonics(const CString& text)
 	return result;
 }
 
-struct TableToolbarCommand
-{
-	UINT bitmapResourceId;
-	UINT commandId;
-	LPCWSTR localizationKey;
-	LPCWSTR fallbackText;
-};
-
-static const TableToolbarCommand kTableToolbarCommands[] =
-{
-	{ IDB_TABLE_TOOLBAR_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_ABOVE, L"fbe.menu.idr_mainframe.table.insert_row_above", L"Insert row above" },
-	{ IDB_TABLE_TOOLBAR_INSERT_ROW_BELOW, ID_TABLE_INSERT_ROW_BELOW, L"fbe.menu.idr_mainframe.table.insert_row_below", L"Insert row below" },
-	{ IDB_TABLE_TOOLBAR_DELETE_ROW, ID_TABLE_DELETE_ROW, L"fbe.menu.idr_mainframe.table.delete_row", L"Delete row" },
-	{ IDB_TABLE_TOOLBAR_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_LEFT, L"fbe.menu.idr_mainframe.table.insert_column_left", L"Insert column left" },
-	{ IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT, ID_TABLE_INSERT_COLUMN_RIGHT, L"fbe.menu.idr_mainframe.table.insert_column_right", L"Insert column right" },
-	{ IDB_TABLE_TOOLBAR_DELETE_COLUMN, ID_TABLE_DELETE_COLUMN, L"fbe.menu.idr_mainframe.table.delete_column", L"Delete column" },
-	{ IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS, ID_TABLE_MAKE_HEADER_CELLS, L"fbe.menu.idr_mainframe.table.make_header_cells", L"Make header cells" },
-	{ IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS, ID_TABLE_MAKE_NORMAL_CELLS, L"fbe.menu.idr_mainframe.table.make_normal_cells", L"Make normal cells" },
-};
-
-static bool IsTableToolbarCommand(UINT commandId)
-{
-	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
-	{
-		if (kTableToolbarCommands[index].commandId == commandId)
-			return true;
-	}
-	return false;
-}
-
 static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& instance)
 {
 	return g_pluginManager.CreateInstance(clsid, instance);
 }
-struct PortableToolbarItem
-{
-	bool separator;
-	int command;
-	int width;
-	CString relativePath;
-};
-
-static CString PortableToolbarsPath()
-{
-	return CString(DeploymentContext::SettingsDirectory().c_str()) + L"Toolbars.xml";
-}
-
-static CString XmlEscape(const CString& value)
-{
-	CString escaped(value);
-	escaped.Replace(L"&", L"&amp;");
-	escaped.Replace(L"\"", L"&quot;");
-	escaped.Replace(L"<", L"&lt;");
-	escaped.Replace(L">", L"&gt;");
-	return escaped;
-}
-
-static CString XmlUnescape(const CString& value)
-{
-	CString unescaped(value);
-	unescaped.Replace(L"&quot;", L"\"");
-	unescaped.Replace(L"&lt;", L"<");
-	unescaped.Replace(L"&gt;", L">");
-	unescaped.Replace(L"&amp;", L"&");
-	return unescaped;
-}
-
-static bool ReadPortableToolbars(std::vector<PortableToolbarItem>& commands,
-	std::vector<PortableToolbarItem>& scripts, CString& lastScript,
-	bool& commandToolbarPresent, bool& scriptsToolbarPresent)
-{
-	commandToolbarPresent = false;
-	scriptsToolbarPresent = false;
-	const CString path = PortableToolbarsPath();
-	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) return false;
-	const DWORD length = ::GetFileSize(file, NULL);
-	if(length == INVALID_FILE_SIZE || length > 256 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return false; }
-	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
-	const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
-	if(!ok || read != length) return false;
-
-	CString content(&text[0]);
-	if(content.Find(L"<Toolbars version=\"1\">") < 0 || content.Find(L"</Toolbars>") < 0)
-		return false;
-	int cursor = 0;
-	CString active;
-	while(cursor >= 0)
-	{
-		const int start = content.Find(L'<', cursor);
-		if(start < 0) break;
-		const int end = content.Find(L'>', start + 1);
-		if(end < 0) break;
-		CString tag = content.Mid(start + 1, end - start - 1);
-		cursor = end + 1;
-		if(tag.Left(8) == L"Toolbar ")
-		{
-			active = tag.Find(L"name=\"Command\"") >= 0 ? L"Command" :
-				tag.Find(L"name=\"Scripts\"") >= 0 ? L"Scripts" : CString();
-			if(active == L"Command") commandToolbarPresent = true;
-			if(active == L"Scripts") scriptsToolbarPresent = true;
-			continue;
-		}
-		if(tag.Left(8) == L"/Toolbar") { active.Empty(); continue; }
-		if(active.IsEmpty())
-		{
-			if(tag.Left(10) == L"LastScript")
-			{
-				const int value = tag.Find(L"path=\"");
-				if(value >= 0) { const int tail = tag.Find(L'\"', value + 6); if(tail > value) lastScript = XmlUnescape(tag.Mid(value + 6, tail - value - 6)); }
-			}
-			continue;
-		}
-		PortableToolbarItem item = {};
-		if(tag.Left(9) == L"Separator")
-		{
-			item.separator = true;
-			const int width = tag.Find(L"width=\"");
-			if(width >= 0) item.width = _wtoi(tag.Mid(width + 7));
-		}
-		else if(tag.Left(7) == L"Command")
-		{
-			item.command = _wtoi(tag.Mid(tag.Find(L"id=\"") + 4));
-		}
-		else if(tag.Left(6) == L"Script")
-		{
-			const int value = tag.Find(L"path=\"");
-			if(value < 0) continue;
-			const int tail = tag.Find(L'\"', value + 6);
-			if(tail < 0) continue;
-			item.relativePath = XmlUnescape(tag.Mid(value + 6, tail - value - 6));
-		}
-		else continue;
-		(active == L"Command" ? commands : scripts).push_back(item);
-	}
-	return commandToolbarPresent || scriptsToolbarPresent;
-}
-
-static bool WritePortableToolbarsText(const CString& text)
-{
-	const CString directory(DeploymentContext::SettingsDirectory().c_str());
-	if(!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return false;
-	const CString path = PortableToolbarsPath(), temporary = path + L".tmp";
-	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) return false;
-	DWORD written = 0;
-	const DWORD bytes = static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
-	const bool ok = ::WriteFile(file, text, bytes, &written, NULL) != FALSE && written == bytes;
-	if(ok) ::FlushFileBuffers(file);
-	::CloseHandle(file);
-	if(!ok || !::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) { ::DeleteFile(temporary); return false; }
-	return true;
-}
-
 }
 
 // The detailed ShowSource profile is intentionally diagnostic-only.  It is
@@ -593,7 +306,7 @@ static LPCWSTR FindRuntimeMainFrameMenuCommandKey(UINT commandId)
 
 static CString GetRuntimeToolbarToolTipText(UINT commandId)
 {
-	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+	for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
 	{
 		const TableToolbarCommand& command = kTableToolbarCommands[index];
 		if (command.commandId == commandId)
@@ -2331,29 +2044,41 @@ LRESULT CALLBACK CMainFrame::ScriptsToolbarSubclassProc(HWND window, UINT messag
 void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 {
 	if(DeploymentContext::RegistryPersistenceAllowed()) return;
-	std::vector<PortableToolbarItem> commands, scripts;
-	CString lastScript; bool commandToolbarPresent = false, scriptsToolbarPresent = false;
-	if(!ReadPortableToolbars(commands, scripts, lastScript, commandToolbarPresent, scriptsToolbarPresent)) return;
-	const bool toolbarPresent = scriptsToolbar ? scriptsToolbarPresent : commandToolbarPresent;
+	PortableToolbarLayout layout;
+	if(!PortableToolbarStore::Load(layout)) return;
+	const bool toolbarPresent = scriptsToolbar ? layout.scriptsToolbarPresent : layout.commandToolbarPresent;
 	if(!toolbarPresent) return;
-	const std::vector<PortableToolbarItem>& saved = scriptsToolbar ? scripts : commands;
+	std::vector<PortableToolbarItem> saved = scriptsToolbar ? layout.scripts : layout.commands;
 
 	CToolBarCtrl target = toolbar;
+	if(scriptsToolbar)
+	{
+		TBBUTTONS available;
+		if(!GetAvailableButtons(toolbar, available)) return;
+		for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
+		{
+			const ScriptDescriptor& script = m_script_menu.Item(scriptIndex);
+			if(script.isFolder || script.commandId < 1) continue;
+			const int command = ID_SCRIPT_BASE + script.commandId;
+			bool found = false;
+			for(int buttonIndex = 0; buttonIndex < available.GetSize(); ++buttonIndex)
+				if(available[buttonIndex].idCommand == command) { found = true; break; }
+			if(found) continue;
+			TBBUTTON button = {};
+			button.iBitmap = I_IMAGENONE;
+			button.idCommand = command;
+			button.fsState = TBSTATE_ENABLED;
+			button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE;
+			if(AddToolbarButton(toolbar, button, script.name)) available.Add(button);
+		}
+	}
 	const int catalogIndex = m_aButtons.FindKey(toolbar);
 	if(catalogIndex < 0) return;
 	TBBUTTONS catalog = m_aButtons.GetValueAt(catalogIndex);
-	std::vector<TBBUTTON> restored;
 	for(size_t index = 0; index < saved.size(); ++index)
 	{
-		const PortableToolbarItem& item = saved[index];
-		if(item.separator)
-		{
-			TBBUTTON separator = {};
-			separator.iBitmap = item.width > 0 ? item.width : 8;
-			separator.fsStyle = TBSTYLE_SEP;
-			restored.push_back(separator);
-			continue;
-		}
+		PortableToolbarItem& item = saved[index];
+		if(item.separator) continue;
 
 		int command = item.command;
 		if(!item.relativePath.IsEmpty())
@@ -2366,21 +2091,15 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 					break;
 				}
 		}
-		if(command == 0) continue; // deleted script or obsolete command
-		for(int buttonIndex = 0; buttonIndex < catalog.GetSize(); ++buttonIndex)
-			if(catalog[buttonIndex].idCommand == command)
-			{
-				restored.push_back(catalog[buttonIndex]);
-				break;
-			}
+		item.command = command; // deleted scripts remain unresolved and are ignored by the adapter.
 	}
-	while(target.GetButtonCount() > 0) target.DeleteButton(0);
-	if(!restored.empty()) target.AddButtons(static_cast<int>(restored.size()), &restored[0]);
-	target.AutoSize();
+	std::vector<TBBUTTON> catalogButtons(catalog.GetSize());
+	for(int index = 0; index < catalog.GetSize(); ++index) catalogButtons[index] = catalog[index];
+	ToolbarLayoutAdapter::Apply(target, saved, catalogButtons);
 
-	if(scriptsToolbar && !lastScript.IsEmpty())
+	if(scriptsToolbar && !layout.lastScript.IsEmpty())
 		for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
-			if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).relativePath == lastScript)
+			if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).relativePath == layout.lastScript)
 			{
 				m_last_script = &m_script_menu.Item(scriptIndex);
 				break;
@@ -2390,41 +2109,20 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 void CMainFrame::SavePortableToolbarLayout()
 {
 	if(DeploymentContext::RegistryPersistenceAllowed()) return;
-	CString xml(L"<Toolbars version=\"1\">\r\n");
-	auto appendToolbar = [&](const wchar_t* name, HWND toolbar, bool scriptsToolbar)
+	PortableToolbarLayout layout;
+	layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
+	ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands);
+	ToolbarLayoutAdapter::Capture(m_ScriptsToolbar, layout.scripts);
+	for(size_t index = 0; index < layout.scripts.size(); ++index)
 	{
-		xml.AppendFormat(L"  <Toolbar name=\"%s\">\r\n", name);
-		CToolBarCtrl source = toolbar;
-		for(int index = 0; index < source.GetButtonCount(); ++index)
-		{
-			TBBUTTON button = {};
-			if(!source.GetButton(index, &button)) continue;
-			if((button.fsStyle & TBSTYLE_SEP) != 0)
-			{
-				xml.AppendFormat(L"    <Separator width=\"%d\" />\r\n", button.iBitmap);
-				continue;
-			}
-			if(scriptsToolbar && button.idCommand >= ID_SCRIPT_BASE + 1 && button.idCommand <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
-			{
-				const int scriptId = button.idCommand - ID_SCRIPT_BASE;
-				for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
-					if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).commandId == scriptId)
-					{
-						xml.AppendFormat(L"    <Script path=\"%s\" />\r\n", static_cast<LPCWSTR>(XmlEscape(m_script_menu.Item(scriptIndex).relativePath)));
-						break;
-					}
-			}
-			else if(button.idCommand != 0)
-				xml.AppendFormat(L"    <Command id=\"%d\" />\r\n", button.idCommand);
-		}
-		xml.Append(L"  </Toolbar>\r\n");
-	};
-	appendToolbar(L"Command", m_CmdToolbar, false);
-	appendToolbar(L"Scripts", m_ScriptsToolbar, true);
-	if(m_last_script != NULL && !m_last_script->relativePath.IsEmpty())
-		xml.AppendFormat(L"  <LastScript path=\"%s\" />\r\n", static_cast<LPCWSTR>(XmlEscape(m_last_script->relativePath)));
-	xml.Append(L"</Toolbars>\r\n");
-	WritePortableToolbarsText(xml);
+		PortableToolbarItem& item = layout.scripts[index];
+		if(item.separator || item.command < ID_SCRIPT_BASE + 1 || item.command > ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT) continue;
+		const int scriptId = item.command - ID_SCRIPT_BASE;
+		for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
+			if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).commandId == scriptId) { item.command = 0; item.relativePath = m_script_menu.Item(scriptIndex).relativePath; break; }
+	}
+	if(m_last_script != NULL) layout.lastScript = m_last_script->relativePath;
+	PortableToolbarStore::Save(layout);
 }
 
 static void SubclassBox(HWND hWnd, RECT& rc, const int pos, CComboBox& box, DWORD dwStyle, CCustomEdit& custedit, const int resID, HFONT& hFont)
@@ -2575,13 +2273,37 @@ void CMainFrame::InitPlugins()
 	if(m_script_menu.Count())
 	{
 		m_script_menu.Build(scripts,
-			[this](ScriptDescriptor& script) { InitScriptHotkey(script); },
+			[](ScriptDescriptor&) {},
 			[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
 				if (!script.isFolder && visual.icon != NULL)
 					AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, visual.icon);
+				if (!script.isFolder)
+				{
+					TBBUTTONS catalog;
+					bool available = GetAvailableButtons(m_ScriptsToolbar, catalog);
+					for(int index = 0; available && index < catalog.GetSize(); ++index)
+						if(catalog[index].idCommand == static_cast<int>(command)) { available = false; break; }
+					if(available)
+					{
+						// Keep customization's available catalog aligned with the script
+						// menu even when toolbar artwork could not be added.
+						TBBUTTON button = {};
+						button.iBitmap = I_IMAGENONE;
+						button.idCommand = command;
+						button.fsState = TBSTATE_ENABLED;
+						button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE;
+						AddToolbarButton(m_ScriptsToolbar, button, script.name);
+					}
+				}
 				if (visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command);
 				else if (visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
 			});
+		// Hotkey registration is catalog lifecycle, not menu rendering.  Keeping
+		// it outside MenuBuilder's recursive traversal makes every discovered
+		// script available to portable hotkey migration, including nested items.
+		for(int index = 0; index < m_script_menu.Count(); ++index)
+			if(!m_script_menu.Item(index).isFolder)
+				InitScriptHotkey(m_script_menu.Item(index));
 	}
 	else
 	{
@@ -2631,7 +2353,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TABLE_MAKE_NORMAL_CELLS, ID_TABLE_MAKE_NORMAL_CELLS);
 
-	m_CmdToolbar = CreateCommandToolbarCtrl(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME,
+	m_CmdToolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME,
 		ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
 	if (!m_CmdToolbar || !InitToolBar(m_CmdToolbar, IDR_MAINFRAME))
 	{
@@ -2642,14 +2364,14 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		return -1;
 	}
 	m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
-	for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+	for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
 	{
     m_table_toolbar_image_indices[index] = -1;
   }
-  for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+  for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
   {
     const TableToolbarCommand& command = kTableToolbarCommands[index];
-    const int imageIndex = AddToolbarBitmapFromModule(m_CmdToolbar, applicationModule, command.bitmapResourceId);
+		const int imageIndex = ToolbarFactory::AddBitmapFromModule(m_CmdToolbar, applicationModule, command.bitmapResourceId);
     m_table_toolbar_image_indices[index] = imageIndex;
     if (imageIndex < 0) continue;
     TBBUTTON button = {};
@@ -2665,7 +2387,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		m_CmdToolbar.RestoreState(HKEY_CURRENT_USER, _Settings.GetKeyPath() + L"\\Toolbars", L"CommandToolbar");
 	else
 		RestorePortableToolbarLayout(m_CmdToolbar, false);
-  for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+  for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
   {
     if (m_table_toolbar_image_indices[index] < 0) continue;
     TBBUTTONINFO info = {};
@@ -2680,6 +2402,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	SetDialogFontForToolbarRow(m_ScriptsToolbar);
   m_ScriptsToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
   InitToolBar(m_ScriptsToolbar, IDR_SCRIPTS);
+	CImageList scriptsToolbarImages = m_ScriptsToolbar.GetImageList();
+	m_scriptsToolbarBaseImageCount = scriptsToolbarImages ? scriptsToolbarImages.GetImageCount() : 0;
 	::SetWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
   UIAddToolBar(m_ScriptsToolbar);
 
@@ -3629,10 +3353,12 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool emptyToolbarRead = IsFbeTestScenario(L"portable-toolbar-empty-read");
 	const bool toolbarLayoutWrite = IsFbeTestScenario(L"portable-toolbar-layout-write");
 	const bool toolbarLayoutRead = IsFbeTestScenario(L"portable-toolbar-layout-read");
+	const bool missingScriptRead = IsFbeTestScenario(L"portable-toolbar-missing-script-read");
+	const bool malformedToolbarRead = IsFbeTestScenario(L"portable-toolbar-malformed-read");
 	const bool scriptsReload = IsFbeTestScenario(L"portable-scripts-reload");
 	const bool legacyHotkeyRead = IsFbeTestScenario(L"portable-legacy-hotkey-read");
 	const bool diagnosticCleanup = IsFbeTestScenario(L"portable-diagnostic-cleanup");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -3709,23 +3435,35 @@ void CMainFrame::RunPortableStateTestScenario()
 		report.Format("phase=toolbar-empty-read\nempty-toolbar=%d\nresult=%s\n", empty, empty ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 	}
-	else if (toolbarLayoutWrite || toolbarLayoutRead)
+	else if (malformedToolbarRead)
 	{
-		TBBUTTON commandFirst = {}, commandAdded = {}, scriptButton = {}, lastScriptButton = {}, separator = {};
+		const bool defaultsKept = m_CmdToolbar.GetButtonCount() > 0 && m_ScriptsToolbar.GetButtonCount() > 0;
+		CStringA report;
+		report.Format("phase=toolbar-malformed-read\ndefaults-kept=%d\nresult=%s\n", defaultsKept, defaultsKept ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
+	}
+	else if (toolbarLayoutWrite || toolbarLayoutRead || missingScriptRead)
+	{
+		TBBUTTON commandFirst = {}, commandAdded = {}, alphaButton = {}, betaButton = {}, separator = {};
 		separator.iBitmap = 13;
 		separator.fsStyle = TBSTYLE_SEP;
 		const bool commandCatalogReady = catalogButton(m_CmdToolbar, 0, commandFirst) &&
 			catalogButton(m_CmdToolbar, 2, commandAdded);
-		int scriptCommand = 0;
+		int alphaCommand = 0, betaCommand = 0;
+		CStringA discoveredScripts;
 		for(int index = 0; index < m_script_menu.Count(); ++index)
-			if(!m_script_menu.Item(index).isFolder && m_script_menu.Item(index).relativePath == L"foo.js")
+			if(!m_script_menu.Item(index).isFolder)
 			{
-				scriptCommand = ID_SCRIPT_BASE + m_script_menu.Item(index).commandId;
-				break;
-			}
-		const bool scriptsCatalogReady = scriptCommand != 0 &&
-			catalogButtonByCommand(m_ScriptsToolbar, scriptCommand, scriptButton) &&
-			catalogButtonByCommand(m_ScriptsToolbar, ID_LAST_SCRIPT, lastScriptButton);
+				const ScriptDescriptor& script = m_script_menu.Item(index);
+				CStringA entry;
+				entry.Format("%ls:%d;", static_cast<LPCWSTR>(script.relativePath), script.commandId);
+				discoveredScripts += entry;
+				if(script.relativePath == L"test/alpha.js") alphaCommand = ID_SCRIPT_BASE + script.commandId;
+				if(script.relativePath == L"test/beta.js") betaCommand = ID_SCRIPT_BASE + script.commandId;
+		}
+		const bool alphaInCatalog = alphaCommand != 0 && catalogButtonByCommand(m_ScriptsToolbar, alphaCommand, alphaButton);
+		const bool betaInCatalog = betaCommand != 0 && catalogButtonByCommand(m_ScriptsToolbar, betaCommand, betaButton);
+		const bool scriptsCatalogReady = alphaInCatalog && betaInCatalog;
 		const bool catalogReady = commandCatalogReady && scriptsCatalogReady;
 		if(toolbarLayoutWrite && catalogReady)
 		{
@@ -3736,18 +3474,26 @@ void CMainFrame::RunPortableStateTestScenario()
 			m_CmdToolbar.AddButton(&separator);
 			m_CmdToolbar.AddButton(&commandFirst);
 			while(m_ScriptsToolbar.GetButtonCount() > 0) m_ScriptsToolbar.DeleteButton(0);
-			m_ScriptsToolbar.AddButton(&scriptButton);
+			m_ScriptsToolbar.AddButton(&alphaButton);
 			m_ScriptsToolbar.AddButton(&separator);
-			m_ScriptsToolbar.AddButton(&lastScriptButton);
+			m_ScriptsToolbar.AddButton(&betaButton);
+			for(int index = 0; index < m_script_menu.Count(); ++index)
+				if(!m_script_menu.Item(index).isFolder && m_script_menu.Item(index).relativePath == L"test/beta.js")
+					m_last_script = &m_script_menu.Item(index);
 			m_CmdToolbar.AutoSize();
 			m_ScriptsToolbar.AutoSize();
 		}
 		const bool commandLayout = catalogReady && hasButtons(m_CmdToolbar, commandAdded, separator, commandFirst);
-		const bool scriptsLayout = catalogReady && hasButtons(m_ScriptsToolbar, scriptButton, separator, lastScriptButton);
+		const bool scriptsLayout = catalogReady && hasButtons(m_ScriptsToolbar, alphaButton, separator, betaButton);
+		const bool lastScriptIsBeta = m_last_script != NULL && m_last_script->relativePath == L"test/beta.js";
+		TBBUTTON missingSeparator = {};
+		const bool missingScriptSafe = alphaInCatalog && m_ScriptsToolbar.GetButtonCount() == 2 &&
+			m_ScriptsToolbar.GetButton(0, &alphaButton) && alphaButton.idCommand == alphaCommand &&
+			m_ScriptsToolbar.GetButton(1, &missingSeparator) && (missingSeparator.fsStyle & TBSTYLE_SEP) != 0 && m_last_script == NULL;
 		CStringA report;
-		report.Format("phase=toolbar-layout-%s\nnonempty-command=%d\nnonempty-scripts=%d\nresult=%s\n",
-			toolbarLayoutWrite ? "write" : "read", commandLayout, scriptsLayout,
-			commandLayout && scriptsLayout ? "pass" : "fail");
+		report.Format("phase=toolbar-layout-%s\nscript-count=%d\ndiscovered-scripts=%s\nalpha-command=%d\nbeta-command=%d\ncommand-catalog=%d\nalpha-catalog=%d\nbeta-catalog=%d\nnonempty-command=%d\nnonempty-scripts=%d\nlast-script-beta=%d\nmissing-script-safe=%d\nresult=%s\n",
+			missingScriptRead ? "missing-script-read" : toolbarLayoutWrite ? "write" : "read", m_script_menu.Count(), static_cast<LPCSTR>(discoveredScripts), alphaCommand, betaCommand, commandCatalogReady, alphaInCatalog, betaInCatalog, commandLayout, scriptsLayout, lastScriptIsBeta, missingScriptSafe,
+			missingScriptRead ? (missingScriptSafe ? "pass" : "fail") : commandLayout && scriptsLayout && lastScriptIsBeta ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 	}
 	else if (scriptsReload)
@@ -4739,7 +4485,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			// Let the toolbar settle first. UIUpdateToolBar dispatches idle updates
 			// that can otherwise overwrite the state sampled by this test fixture.
 			UIUpdateToolBar();
-			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+			for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
 			{
 				const UINT commandId = kTableToolbarCommands[index].commandId;
 				UIEnable(commandId, tableCommandEnabled);
@@ -4775,7 +4521,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool imageListHasMask = ImageListHasMaskPlane(m_CmdToolbar.GetImageList());
 		auto appendPhase = [&](const char* phase)
 		{
-			for (size_t index = 0; index < _countof(kTableToolbarCommands); ++index)
+			for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
 			{
 				const UINT command = kTableToolbarCommands[index].commandId;
 				RECT rect = {}; const bool hasRect = m_CmdToolbar.GetItemRect(m_CmdToolbar.CommandToIndex(command), &rect) != FALSE;
@@ -9511,6 +9257,9 @@ void CMainFrame::ReleaseScriptResources()
 	// next scan, otherwise every scan appends another copy of icon scripts.
 	if(::IsWindow(m_ScriptsToolbar))
 	{
+		CImageList images = m_ScriptsToolbar.GetImageList();
+		while(images && images.GetImageCount() > m_scriptsToolbarBaseImageCount)
+			images.Remove(images.GetImageCount() - 1);
 		const int defaultsIndex = m_aDefaultButtons.FindKey(m_ScriptsToolbar.m_hWnd);
 		const int catalogIndex = m_aButtons.FindKey(m_ScriptsToolbar.m_hWnd);
 		if(defaultsIndex >= 0 && catalogIndex >= 0)

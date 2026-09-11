@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $resource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
 $settings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.cpp')
+$settingsSerialization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\SettingsSerialization.cpp')
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.cpp')
 $dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.h')
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
@@ -121,11 +122,11 @@ $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
 $toolbar.Clear(); $toolbar.Add(32899) # ID_LAST_SCRIPT from resource.h; default is verified above against IDR_SCRIPTS.
 Assert-Equal $toolbar @(32899) 'Reset restores IDR_SCRIPTS default'
 
-if ($settings -notmatch 'SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY' -or $settings -notmatch 'SetScriptsToolbarCustomizeSize\(const CSize& size, bool apply\)' -or $settings -notmatch 'if\(size\.cx >= 300 && size\.cy >= 200\)') {
+if ($settingsSerialization -notmatch 'SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY' -or $settings -notmatch 'SetScriptsToolbarCustomizeSize\(const CSize& size, bool apply\)' -or $settings -notmatch 'if\(size\.cx >= 300 && size\.cy >= 200\)') {
     throw 'Dialog size persistence contract is incomplete.'
 }
 foreach ($required in @('SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY', 'GetScriptsToolbarCustomizePlacement', 'SetScriptsToolbarCustomizePlacement', 'MonitorFromRect', 'MONITOR_DEFAULTTONULL', 'GetMonitorInfo', 'info.rcWork', 'CenterWindow(GetParent())')) {
-    if ($settings -notmatch [regex]::Escape($required) -and $settingsHeader -notmatch [regex]::Escape($required) -and $dialog -notmatch [regex]::Escape($required)) {
+    if ($settings -notmatch [regex]::Escape($required) -and $settingsSerialization -notmatch [regex]::Escape($required) -and $settingsHeader -notmatch [regex]::Escape($required) -and $dialog -notmatch [regex]::Escape($required)) {
         throw "Scripts toolbar placement behavior is missing: $required"
     }
 }

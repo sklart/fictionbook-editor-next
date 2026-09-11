@@ -1,0 +1,2 @@
+#pragma once
+namespace ToolbarFactory { bool ImageListHasMaskPlane(HIMAGELIST imageList); void SetDialogFontForToolbarRow(HWND window, bool includeChildren = false); void AutoSizeToolbar(HWND window); HWND CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId, DWORD style = ATL_SIMPLE_TOOLBAR_STYLE, UINT controlId = ATL_IDW_TOOLBAR); int AddBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId); }

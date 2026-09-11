@@ -49,7 +49,8 @@ $installedBefore = Get-FileTreeSnapshot $installedData
 $registryBefore = @{}; foreach ($key in $registryKeys) { $registryBefore[$key] = Get-RegistrySnapshot $key }
 
 Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
-Copy-Item -LiteralPath $package -Destination $testRoot -Recurse -Force
+New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
+Copy-Item -Path (Join-Path $package '*') -Destination $testRoot -Recurse -Force
 $fixture = Join-Path $testRoot 'portable-state-sentinel.fb2'
 Copy-Item -LiteralPath (Join-Path $root 'tools\tests\fb2-metadata-cyrillic-smoke.fb2') -Destination $fixture
 
@@ -111,17 +112,31 @@ if ($legacyReport -notmatch '(?m)^legacy-hotkey=1$' -or $legacyReport -notmatch 
 $migratedHotkeys = Get-Content -Raw -LiteralPath (Join-Path $settings 'Hotkeys.xml')
 if ($migratedHotkeys -notmatch '<Name>tools/foo\.js</Name>' -or $migratedHotkeys -match 'BeforeMove|missing\.js') { throw 'Legacy Hotkeys.xml did not choose the longest valid relative script suffix.' }
 
-# Exercise a real non-empty customization: the application removes one command,
-# adds another and changes order.  The scripts row must persist foo.js by its
-# portable relative path, rather than the per-run command ID.
+# Exercise a real non-empty customization using a deterministic script catalog.
+# Keep foo.js for the independent legacy-hotkey migration case above, but make
+# the toolbar fixture independent of the developer's installed Scripts folder.
+$testScripts = Join-Path $data 'Scripts\Test'
+New-Item -ItemType Directory -Path $testScripts -Force | Out-Null
+Copy-Item -LiteralPath $scriptTemplate.FullName -Destination (Join-Path $testScripts 'Alpha.js') -Force
+Copy-Item -LiteralPath $scriptTemplate.FullName -Destination (Join-Path $testScripts 'Beta.js') -Force
 Invoke-PortableStateScenario 'portable-toolbar-layout-write'
 $nonEmptyWriteReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
-if ($nonEmptyWriteReport -notmatch '(?m)^nonempty-command=1$' -or $nonEmptyWriteReport -notmatch '(?m)^nonempty-scripts=1$' -or $nonEmptyWriteReport -notmatch '(?m)^result=pass$') { throw "Could not create non-empty portable toolbar fixture:`n$nonEmptyWriteReport" }
+if ($nonEmptyWriteReport -notmatch '(?m)^alpha-catalog=1$' -or $nonEmptyWriteReport -notmatch '(?m)^beta-catalog=1$' -or $nonEmptyWriteReport -notmatch '(?m)^nonempty-command=1$' -or $nonEmptyWriteReport -notmatch '(?m)^nonempty-scripts=1$' -or $nonEmptyWriteReport -notmatch '(?m)^last-script-beta=1$' -or $nonEmptyWriteReport -notmatch '(?m)^result=pass$') { throw "Could not create non-empty portable toolbar fixture:`n$nonEmptyWriteReport" }
 $nonEmptyToolbars = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
-if ($nonEmptyToolbars -notmatch '(?s)<Toolbar name="Scripts">.*?<Script path="foo\.js"\s*/>.*?</Toolbar>') { throw 'Scripts toolbar did not persist its script by relativePath.' }
+if ($nonEmptyToolbars -notmatch '(?s)<Toolbar name="Scripts">\s*<Script path="test/alpha\.js"\s*/>\s*<Separator[^>]*/>\s*<Script path="test/beta\.js"\s*/>\s*</Toolbar>' -or $nonEmptyToolbars -notmatch '<LastScript path="test/beta\.js"\s*/>') { throw 'Scripts toolbar or last script did not persist deterministic relative paths.' }
 Invoke-PortableStateScenario 'portable-toolbar-layout-read'
 $nonEmptyReadReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
-if ($nonEmptyReadReport -notmatch '(?m)^nonempty-command=1$' -or $nonEmptyReadReport -notmatch '(?m)^nonempty-scripts=1$' -or $nonEmptyReadReport -notmatch '(?m)^result=pass$') { throw "Non-empty portable toolbar layout was not restored exactly after restart:`n$nonEmptyReadReport" }
+if ($nonEmptyReadReport -notmatch '(?m)^nonempty-command=1$' -or $nonEmptyReadReport -notmatch '(?m)^nonempty-scripts=1$' -or $nonEmptyReadReport -notmatch '(?m)^last-script-beta=1$' -or $nonEmptyReadReport -notmatch '(?m)^result=pass$') { throw "Non-empty portable toolbar layout was not restored exactly after restart:`n$nonEmptyReadReport" }
+
+# Missing scripts must be dropped from the saved toolbar and must not leave a
+# stale last-script pointer.  Alpha remains available and therefore proves the
+# valid part of the customization survives the restart.
+Remove-Item -LiteralPath (Join-Path $testScripts 'Beta.js') -Force
+Invoke-PortableStateScenario 'portable-toolbar-missing-script-read'
+$missingScriptReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
+if ($missingScriptReport -notmatch '(?m)^missing-script-safe=1$' -or $missingScriptReport -notmatch '(?m)^result=pass$') { throw "Missing script was not safely handled during toolbar restore:`n$missingScriptReport" }
+$missingScriptToolbars = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
+if ($missingScriptToolbars -match 'test/beta\.js') { throw 'Missing script or stale last-script path remained in Toolbars.xml.' }
 
 # An explicitly empty toolbar is a valid customization, not a missing/corrupt
 # settings file.  Verify it survives a second real application start.
@@ -149,10 +164,17 @@ if ($deletedScriptReport -notmatch '(?m)^empty-toolbar=1$') { throw 'Deleted sav
 $rewrittenToolbars = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
 if ($rewrittenToolbars -match 'deleted-script\.js') { throw 'Deleted script remained in the saved toolbar after restart.' }
 
+# A truncated portable file must be ignored as a whole: startup keeps defaults
+# rather than applying the command section seen before the truncation.
+Set-Content -LiteralPath (Join-Path $settings 'Toolbars.xml') -Value '<Toolbars version="1"><Toolbar name="Command"><Command id="1" />' -Encoding Unicode
+Invoke-PortableStateScenario 'portable-toolbar-malformed-read'
+$malformedReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
+if ($malformedReport -notmatch '(?m)^defaults-kept=1$' -or $malformedReport -notmatch '(?m)^result=pass$') { throw "Malformed Toolbars.xml partially changed live toolbar state:`n$malformedReport" }
+
 # Exercise all discovery outcomes in one real reload sequence.  The valid
 # fixture was copied above; these files must be rejected without retaining an
 # Active Scripting runtime between InitPlugins calls.
-Set-Content -LiteralPath (Join-Path $data 'Scripts\invalid.js') -Value 'function {' -Encoding utf8
+Set-Content -LiteralPath (Join-Path $data 'Scripts\invalid.js') -Value 'function NotRunnableFixture() { return 1; }' -Encoding utf8
 Set-Content -LiteralPath (Join-Path $data 'Scripts\no-run.js') -Value 'function NotRun() { return 1; }' -Encoding utf8
 Invoke-PortableStateScenario 'portable-scripts-reload'
 $reloadReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')

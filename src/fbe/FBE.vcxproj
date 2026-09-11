@@ -269,6 +269,10 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClCompile Include="scripts\ScriptCommandRegistry.cpp" />
 	<ClCompile Include="scripts\ScriptVisualResources.cpp" />
 	<ClCompile Include="scripts\ScriptMenuBuilder.cpp" />
+	<ClCompile Include="toolbars\PortableToolbarStore.cpp" />
+	<ClCompile Include="toolbars\ToolbarLayoutAdapter.cpp" />
+	<ClCompile Include="toolbars\ToolbarFactory.cpp" />
+	<ClCompile Include="toolbars\TableToolbarCommands.cpp" />
 	<ClCompile Include="document\FileFingerprint.cpp" />
 	<ClCompile Include="document\DocumentLocation.cpp" />
 	<ClCompile Include="document\DocumentLoader.cpp" />
@@ -459,6 +463,11 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="GLLogo.h" />
     <ClInclude Include="ImageImport.h" />
     <ClInclude Include="mainfrm.h" />
+	<ClInclude Include="toolbars\PortableToolbarLayout.h" />
+	<ClInclude Include="toolbars\PortableToolbarStore.h" />
+	<ClInclude Include="toolbars\ToolbarLayoutAdapter.h" />
+	<ClInclude Include="toolbars\ToolbarFactory.h" />
+	<ClInclude Include="toolbars\TableToolbarCommands.h" />
 	<ClInclude Include="UiMetrics.h" />
     <ClInclude Include="MemProtocol.h" />
     <ClInclude Include="ModelessDialog.h" />

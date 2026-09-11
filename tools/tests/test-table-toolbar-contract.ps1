@@ -9,8 +9,10 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $cpp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
+$factory = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\ToolbarFactory.cpp')
+$tableCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\TableToolbarCommands.cpp')
 
-$bitmapHelper = [regex]::Match($cpp, '(?s)static int AddToolbarBitmapFromModule\(.*?return imageIndex;\s*\}')
+$bitmapHelper = [regex]::Match($factory, '(?s)int ToolbarFactory::AddBitmapFromModule\(.*?return imageIndex;\s*\}')
 if (-not $bitmapHelper.Success -or
     $bitmapHelper.Value -notmatch 'LoadImage\(module, MAKEINTRESOURCE\(bitmapResourceId\)' -or
     $bitmapHelper.Value -notmatch 'toolbar\.GetImageList\(\)' -or
@@ -19,7 +21,7 @@ if (-not $bitmapHelper.Success -or
     throw 'Table toolbar bitmap helper must append a 24x24 bitmap through the owned image list and the RGB(192,192,192) mask key.'
 }
 if ($bitmapHelper.Value -match 'pixel\[[012]\]\s*=\s*0') { throw 'Table toolbar transparency-key pixels must not be rewritten to visible black.' }
-if ($cpp -notmatch '(?s)static HWND CreateCommandToolbarCtrl\(.*?FindResource\(.*?RT_TOOLBAR.*?ownedImages\.Create\(24, 24, ILC_COLOR32 \| ILC_MASK.*?ImageList_LoadImage\(.*?CopyToolbarImages\(ownedImages, sourceImages, standardImageCount\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS') {
+if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?FindResource\(.*?RT_TOOLBAR.*?ownedImages\.Create\(24, 24, ILC_COLOR32 \| ILC_MASK.*?ImageList_LoadImage\(.*?CopyToolbarImages\(ownedImages, sourceImages, standardImageCount\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS') {
     throw 'Command toolbar must create one application-owned ILC_COLOR32|ILC_MASK image list from the RT_TOOLBAR strip before adding buttons.'
 }
 if ($cpp -match 'EnsureToolbarImageListHasMask') {
@@ -28,7 +30,7 @@ if ($cpp -match 'EnsureToolbarImageListHasMask') {
 if ($header -notmatch 'CImageList\s+m_commandToolbarImages') {
     throw 'CMainFrame must explicitly own the command toolbar image list.'
 }
-if ($cpp -notmatch '(?s)m_CmdToolbar = CreateCommandToolbarCtrl\(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME.*?InitToolBar\(m_CmdToolbar, IDR_MAINFRAME\)') {
+if ($cpp -notmatch '(?s)m_CmdToolbar = ToolbarFactory::CreateCommandToolbarCtrl\(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME.*?InitToolBar\(m_CmdToolbar, IDR_MAINFRAME\)') {
     throw 'The owned image list must be installed during command toolbar creation while InitToolBar retains customization metadata.'
 }
 if ($cpp -notmatch '(?s)LRESULT CMainFrame::OnDestroy\(.*?m_CmdToolbar\.SetImageList\(NULL\).*?m_commandToolbarImages\.Destroy\(\)') {

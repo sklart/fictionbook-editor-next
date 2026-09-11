@@ -8,6 +8,7 @@ $metricsHeader = Get-Content -LiteralPath (Join-Path $root 'src\fbe\UiMetrics.h'
 $metricsSource = Get-Content -LiteralPath (Join-Path $root 'src\fbe\UiMetrics.cpp') -Raw
 $mainFrame = Get-Content -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp') -Raw
 $mainFrameHeader = Get-Content -LiteralPath (Join-Path $root 'src\fbe\mainfrm.h') -Raw
+$toolbarFactory = Get-Content -LiteralPath (Join-Path $root 'src\fbe\toolbars\ToolbarFactory.cpp') -Raw
 
 function Require([string]$Text, [string]$Pattern, [string]$Description) {
     if ($Text -notmatch $Pattern) { throw "UiMetrics contract missing: $Description" }
@@ -20,9 +21,9 @@ Require $metricsSource 'GetProcAddress\([^\r\n]*SystemParametersInfoForDpi' 'Win
 Require $metricsSource 'SystemParametersInfoW\(SPI_GETNONCLIENTMETRICS' 'SystemParametersInfoW fallback'
 Require $metricsSource 'lfMessageFont' 'message font source'
 Require $metricsSource 'lfMenuFont' 'menu font source'
-Require $mainFrame 'TB_SETBITMAPSIZE[^\r\n]*MAKELONG\(24, 24\)' 'fixed 24x24 command-toolbar bitmap geometry'
-Require $mainFrame 'TB_SETBUTTONSIZE[^\r\n]*toolbarData->width \+ 7, toolbarData->height \+ 7' 'compact pre-metrics command-toolbar button geometry'
-Require $mainFrame 'AutoSizeToolbar\(window\)' 'command-toolbar autosize'
+Require $toolbarFactory 'TB_SETBITMAPSIZE[^\r\n]*MAKELONG\(24, 24\)' 'fixed 24x24 command-toolbar bitmap geometry'
+Require $toolbarFactory 'TB_SETBUTTONSIZE[^\r\n]*toolbarData->width \+ 7, toolbarData->height \+ 7' 'compact pre-metrics command-toolbar button geometry'
+Require $toolbarFactory 'AutoSizeToolbar\(window\)' 'command-toolbar autosize'
 Require $mainFrame 'm_MenuBar\.AttachMenu\(GetMenu\(\)\);[\s\S]{0,200}UiMetrics::MenuFont\(\)' 'menu font applied after AttachMenu'
 Require $mainFrame 'SetDialogFontForToolbarRow\(m_hWndLinksBar\);[\s\S]{0,500}WM_GETFONT' 'links row receives DialogFont before WM_GETFONT'
 Require $mainFrame 'SetDialogFontForToolbarRow\(m_hWndTableBar\);' 'first table row receives DialogFont'

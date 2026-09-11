@@ -206,6 +206,7 @@ public:
 	CImageList		m_commandToolbarImages;	// application-owned command toolbar image list
 	int			m_table_toolbar_image_indices[8];
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
+	int			m_scriptsToolbarBaseImageCount;
 	CReBarCtrl		m_rebar;			// toolbars
 	HWND			m_hWndLinksBar = NULL;
 	HWND			m_hWndTableBar = NULL;
@@ -315,7 +316,7 @@ public:
 	 m_script_menu(ID_EDIT_INS_SYMBOL + 101, 999), m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
     m_source_selection_transferred(false), m_source_selection_start(0),
-		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL),
+		m_source_selection_end(0), m_source_line_number_digits(-1), m_selBandID(-1), m_source_window_proc(NULL), m_scriptsToolbarBaseImageCount(0),
         m_status_transient_expiration(0), m_validation_status(VALIDATION_UNKNOWN)
 	// added by SeNS
 	{
