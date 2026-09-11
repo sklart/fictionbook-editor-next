@@ -6401,26 +6401,17 @@ static bool FindVisibleXmlTextRange(const CString& sourceXml,
 	const CString& visibleText, int scopeStart, int scopeEnd, int expectedStart,
 	int& rangeStart, int& rangeEnd)
 {
-	FBEBodySourceTransfer::XmlTextRange range = { -1, -1 };
-	if (!FBEBodySourceTransfer::FindVisibleXmlTextRange(
-		std::wstring((const wchar_t*)sourceXml), std::wstring((const wchar_t*)visibleText),
-		scopeStart, scopeEnd, expectedStart, range))
-		return false;
-	rangeStart = range.start;
-	rangeEnd = range.end;
-	return true;
+	SourceDocumentTransfer::TextRange range;
+	if(!SourceDocumentTransfer::FindVisibleXmlTextRange(sourceXml, visibleText, scopeStart, scopeEnd, expectedStart, range)) return false;
+	rangeStart = range.start; rangeEnd = range.end; return true;
 }
 
 static bool FindEnclosingXmlElementRange(const CString& sourceXml, int position,
 	const wchar_t* elementName, int& elementStart, int& elementEnd)
 {
-	FBEBodySourceTransfer::XmlTextRange range = { -1, -1 };
-	if (!FBEBodySourceTransfer::FindEnclosingXmlElementRange(
-		std::wstring((const wchar_t*)sourceXml), position, elementName, range))
-		return false;
-	elementStart = range.start;
-	elementEnd = range.end;
-	return true;
+	SourceDocumentTransfer::TextRange range;
+	if(!SourceDocumentTransfer::FindEnclosingXmlElementRange(sourceXml, position, elementName, range)) return false;
+	elementStart = range.start; elementEnd = range.end; return true;
 }
 
 static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,

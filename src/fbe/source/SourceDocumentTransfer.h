@@ -28,9 +28,12 @@ struct SourceDocumentText
 class SourceDocumentTransfer
 {
 public:
+	struct TextRange { int start = -1; int end = -1; };
 	static bool ReadSourceText(CWindow& source, SourceDocumentText& result);
 	static CString ExtractXmlDeclarationEncoding(const CString& xmlText);
 	static int SkipXmlMarkupForward(const CString& sourceXml, int position);
 	static int SkipXmlMarkupBackward(const CString& sourceXml, int position);
 	static int FindXmlBodyIndexAtPosition(const CString& sourceXml, int position);
+	static bool FindVisibleXmlTextRange(const CString& sourceXml, const CString& visibleText, int scopeStart, int scopeEnd, int expectedStart, TextRange& result);
+	static bool FindEnclosingXmlElementRange(const CString& sourceXml, int position, const wchar_t* elementName, TextRange& result);
 };

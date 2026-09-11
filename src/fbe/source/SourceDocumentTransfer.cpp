@@ -2,6 +2,7 @@
 #include "SourceDocumentTransfer.h"
 #include "Scintilla.h"
 #include "../XmlDeclaration.h"
+#include "BodySourceSelectionTransfer.h"
 
 bool SourceDocumentTransfer::ReadSourceText(CWindow& source, SourceDocumentText& result)
 {
@@ -72,4 +73,18 @@ int SourceDocumentTransfer::FindXmlBodyIndexAtPosition(const CString& sourceXml,
 		tagStart = sourceXml.Find(L'<', tagEnd + 1);
 	}
 	return currentBody;
+}
+
+bool SourceDocumentTransfer::FindVisibleXmlTextRange(const CString& sourceXml, const CString& visibleText, int scopeStart, int scopeEnd, int expectedStart, TextRange& result)
+{
+	FBEBodySourceTransfer::XmlTextRange range = { -1, -1 };
+	if(!FBEBodySourceTransfer::FindVisibleXmlTextRange(std::wstring(static_cast<const wchar_t*>(sourceXml)), std::wstring(static_cast<const wchar_t*>(visibleText)), scopeStart, scopeEnd, expectedStart, range)) return false;
+	result.start = range.start; result.end = range.end; return true;
+}
+
+bool SourceDocumentTransfer::FindEnclosingXmlElementRange(const CString& sourceXml, int position, const wchar_t* elementName, TextRange& result)
+{
+	FBEBodySourceTransfer::XmlTextRange range = { -1, -1 };
+	if(!FBEBodySourceTransfer::FindEnclosingXmlElementRange(std::wstring(static_cast<const wchar_t*>(sourceXml)), position, elementName, range)) return false;
+	result.start = range.start; result.end = range.end; return true;
 }
