@@ -130,6 +130,8 @@
     <ClCompile Include="FBEview.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="table\TableGrid.cpp"><Filter>Source Files\Table</Filter></ClCompile>
+    <ClCompile Include="table\TableStructuralEditor.cpp"><Filter>Source Files\Table</Filter></ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="archive\ArchiveDocumentResolver.cpp"><Filter>Source Files</Filter></ClCompile>

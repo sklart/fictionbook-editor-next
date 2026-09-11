@@ -19,7 +19,11 @@
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
 #include "RuntimeLocalization.h"
+#include "table/TableGrid.h"
+#include "table/TableStructuralEditor.h"
 #include <vector>
+
+using FbeTable::Grid;
 
 class CSearchHighlightOverlay;
 static void DestroySearchHighlightOverlay(CSearchHighlightOverlay* overlay);
@@ -311,90 +315,6 @@ static void GetTableCells(const MSHTML::IHTMLElementPtr& table, std::vector<MSHT
 
 static MSHTML::IHTMLElementPtr CreateTableCell(MSHTML::IHTMLDocument2Ptr document, const wchar_t* tagName);
 
-struct LogicalTableCell { MSHTML::IHTMLElementPtr element; long sourceRow, startColumn, colspan, rowspan; };
-struct LogicalTableGrid
-{
-	std::vector<MSHTML::IHTMLElementPtr> rows;
-	std::vector<LogicalTableCell> cells;
-	std::vector<std::vector<long> > slots;
-	long columns;
-	LogicalTableGrid() : columns(0) {}
-	long At(long row, long column) const { return row >= 0 && row < static_cast<long>(slots.size()) && column >= 0 && column < static_cast<long>(slots[row].size()) ? slots[row][column] : -1; }
-	void Ensure(long row, long column) { while (static_cast<long>(slots.size()) <= row) slots.push_back(std::vector<long>()); if (static_cast<long>(slots[row].size()) <= column) slots[row].resize(column + 1, -1); }
-};
-static long GetTableSpan(const MSHTML::IHTMLElementPtr& cell, const wchar_t* fbName, const wchar_t* htmlName)
-{
-	CString value(AU::GetAttrCS(cell, fbName)); if (value.IsEmpty()) value = AU::GetAttrCS(cell, htmlName);
-	const long span = _wtol(value); return span > 0 ? span : 1;
-}
-static void SetTableSpan(const MSHTML::IHTMLElementPtr& cell, const wchar_t* fbName, const wchar_t* htmlName, long span)
-{
-	if (span <= 1) {
-		cell->removeAttribute(fbName, 0);
-		cell->removeAttribute(htmlName, 0);
-	}
-	else {
-		CString value; value.Format(L"%ld", span);
-		const _variant_t attributeValue((const wchar_t*)value);
-		cell->setAttribute(fbName, attributeValue, 0);
-		cell->setAttribute(htmlName, attributeValue, 0);
-	}
-}
-static long g_tableGridBuildCount = 0;
-
-static bool IsTableGridInstrumentationEnabled()
-{
-	static const bool enabled = []() -> bool {
-		wchar_t testMode[4] = {};
-		return ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1';
-	}();
-	return enabled;
-}
-
-static bool BuildLogicalTableGrid(const MSHTML::IHTMLElementPtr& table, LogicalTableGrid& grid)
-{
-	if (IsTableGridInstrumentationEnabled()) ++g_tableGridBuildCount;
-	if (!table) return false;
-	MSHTML::IHTMLElementCollectionPtr tableRows(MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR")); if (!tableRows) return false;
-	for (long rowIndex = 0; rowIndex < tableRows->length; ++rowIndex) {
-		MSHTML::IHTMLElementPtr row(tableRows->item(_variant_t(rowIndex), _variant_t())); grid.rows.push_back(row);
-		std::vector<MSHTML::IHTMLElementPtr> rowCells; GetDirectTableCells(row, rowCells); long column = 0;
-		for (size_t physicalIndex = 0; physicalIndex < rowCells.size(); ++physicalIndex) {
-			grid.Ensure(rowIndex, column); while (grid.At(rowIndex, column) >= 0) { ++column; grid.Ensure(rowIndex, column); }
-			LogicalTableCell cell = { rowCells[physicalIndex], rowIndex, column, GetTableSpan(rowCells[physicalIndex], L"fbcolspan", L"colspan"), GetTableSpan(rowCells[physicalIndex], L"fbrowspan", L"rowspan") };
-			const long cellIndex = static_cast<long>(grid.cells.size()); grid.cells.push_back(cell);
-			for (long coveredRow = rowIndex; coveredRow < rowIndex + cell.rowspan; ++coveredRow) for (long coveredColumn = column; coveredColumn < column + cell.colspan; ++coveredColumn) { grid.Ensure(coveredRow, coveredColumn); grid.slots[coveredRow][coveredColumn] = cellIndex; }
-			column += cell.colspan;
-		}
-	}
-	for (size_t row = 0; row < grid.slots.size(); ++row) if (static_cast<long>(grid.slots[row].size()) > grid.columns) grid.columns = static_cast<long>(grid.slots[row].size());
-	return !grid.rows.empty();
-}
-static long FindLogicalCell(const LogicalTableGrid& grid, const MSHTML::IHTMLElementPtr& element)
-{
-	for (size_t index = 0; index < grid.cells.size(); ++index) if (grid.cells[index].element == element) return static_cast<long>(index); return -1;
-}
-
-static bool GetTableCellRectangle(const MSHTML::IHTMLElementPtr& firstCell,
-	const MSHTML::IHTMLElementPtr& lastCell, std::vector<MSHTML::IHTMLElementPtr>& result)
-{
-	result.clear();
-	MSHTML::IHTMLElementPtr table(FindTableElement(firstCell));
-	if (!table || table != FindTableElement(lastCell)) return false;
-	LogicalTableGrid grid;
-	if (!BuildLogicalTableGrid(table, grid)) return false;
-	const long first = FindLogicalCell(grid, firstCell), last = FindLogicalCell(grid, lastCell);
-	if (first < 0 || last < 0) return false;
-	const LogicalTableCell& a = grid.cells[first]; const LogicalTableCell& b = grid.cells[last];
-	const long rowStart = min(a.sourceRow, b.sourceRow), rowEnd = max(a.sourceRow + a.rowspan - 1, b.sourceRow + b.rowspan - 1);
-	const long columnStart = min(a.startColumn, b.startColumn), columnEnd = max(a.startColumn + a.colspan - 1, b.startColumn + b.colspan - 1);
-	std::vector<bool> selected(grid.cells.size(), false);
-	for (long row = rowStart; row <= rowEnd; ++row) for (long column = columnStart; column <= columnEnd; ++column) {
-		const long owner = grid.At(row, column); if (owner >= 0) selected[owner] = true;
-	}
-	for (size_t index = 0; index < grid.cells.size(); ++index) if (selected[index]) result.push_back(grid.cells[index].element);
-	return !result.empty();
-}
 
 static void SetTableCellHighlight(const MSHTML::IHTMLElementPtr& cell, const wchar_t* color)
 {
@@ -421,19 +341,6 @@ static void UpdateTableCellHighlights(std::vector<MSHTML::IHTMLElementPtr>& prev
 	for (size_t index = 0; index < previous.size(); ++index) SetTableCellHighlight(previous[index], L"#B8D6FB");
 }
 
-static const wchar_t* TableCellTagAt(const LogicalTableGrid& grid, long row, long column, const wchar_t* fallback)
-{
-	const long index = grid.At(row, column);
-	return index >= 0 && index < static_cast<long>(grid.cells.size()) && U::scmp(grid.cells[index].element->tagName, L"TH") == 0 ? L"TH" :
-		index >= 0 && index < static_cast<long>(grid.cells.size()) ? L"TD" : fallback;
-}
-static void InsertCellAtLogicalColumn(MSHTML::IHTMLDocument2Ptr document, const LogicalTableGrid& grid, long rowIndex, long column, const wchar_t* tagName)
-{
-	if (rowIndex < 0 || rowIndex >= static_cast<long>(grid.rows.size())) return;
-	MSHTML::IHTMLElementPtr cell(CreateTableCell(document, tagName)); long before = -1;
-	for (size_t index = 0; index < grid.cells.size(); ++index) if (grid.cells[index].sourceRow == rowIndex && grid.cells[index].startColumn >= column && (before < 0 || grid.cells[index].startColumn < grid.cells[before].startColumn)) before = static_cast<long>(index);
-	if (before >= 0) MSHTML::IHTMLElement2Ptr(grid.cells[before].element)->insertAdjacentElement(L"beforeBegin", cell); else MSHTML::IHTMLElement2Ptr(grid.rows[rowIndex])->insertAdjacentElement(L"beforeEnd", cell);
-}
 
 static MSHTML::IHTMLElementPtr CreateTableCell(MSHTML::IHTMLDocument2Ptr document, const wchar_t* tagName)
 {
@@ -4643,7 +4550,7 @@ VARIANT_BOOL CFBEView::OnMouseMove(IDispatch* evt)
 	MSHTML::IHTMLElementPtr source(eventObject ? eventObject->srcElement : NULL);
 	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
 	std::vector<MSHTML::IHTMLElementPtr> cells;
-	if (!cell || cell == m_table_selection_anchor || !GetTableCellRectangle(m_table_selection_anchor, cell, cells) || !SelectTableCellRange(Document(), m_table_selection_anchor, cell)) return VARIANT_TRUE;
+	if (!cell || cell == m_table_selection_anchor || !FbeTable::GetCellRectangle(m_table_selection_anchor, cell, cells) || !SelectTableCellRange(Document(), m_table_selection_anchor, cell)) return VARIANT_TRUE;
 	UpdateTableCellHighlights(m_table_selection_cells, cells);
 	eventObject->cancelBubble = VARIANT_TRUE;
 	eventObject->returnValue = VARIANT_FALSE;
@@ -4658,7 +4565,7 @@ VARIANT_BOOL CFBEView::OnMouseUp(IDispatch* evt)
 	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
 	std::vector<MSHTML::IHTMLElementPtr> cells;
 	bool tableSelectionHandled = !m_table_selection_cells.empty();
-	if (cell && cell != m_table_selection_anchor && GetTableCellRectangle(m_table_selection_anchor, cell, cells) && SelectTableCellRange(Document(), m_table_selection_anchor, cell))
+	if (cell && cell != m_table_selection_anchor && FbeTable::GetCellRectangle(m_table_selection_anchor, cell, cells) && SelectTableCellRange(Document(), m_table_selection_anchor, cell))
 	{
 		UpdateTableCellHighlights(m_table_selection_cells, cells);
 		tableSelectionHandled = true;
@@ -5099,19 +5006,12 @@ LRESULT CFBEView::OnTableInsertRowAbove(WORD, WORD, HWND, BOOL&)
 		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
 		MSHTML::IHTMLElementPtr row(FindTableRow(cell));
 		MSHTML::IHTMLElementPtr table(FindTableElement(row));
-		LogicalTableGrid grid;
-		if (!cell || !row || !BuildLogicalTableGrid(table, grid)) return 0;
+		Grid grid;
+		if (!cell || !row || !FbeTable::BuildGrid(table, grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
 		BeginUndoUnit(L"insert table row above");
-		std::vector<bool> expanded(grid.cells.size(), false);
-		MSHTML::IHTMLElementPtr newRow(Document()->createElement(L"TR")); newRow->className = L"tr";
-		for (long column = 0; column < grid.columns; ++column) {
-			const long above = grid.At(rowIndex - 1, column), below = grid.At(rowIndex, column);
-			if (above >= 0 && above == below && !expanded[above]) { SetTableSpan(grid.cells[above].element, L"fbrowspan", L"rowspan", grid.cells[above].rowspan + 1); expanded[above] = true; }
-			else if (!(above >= 0 && above == below)) MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(L"beforeEnd", CreateTableCell(Document(), TableCellTagAt(grid, rowIndex, column, cell->tagName)));
-		}
-		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"beforeBegin", newRow);
+		FbeTable::InsertRow(Document(), grid, rowIndex, false, cell->tagName);
 		EndUndoUnit();
 		NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
@@ -5126,20 +5026,12 @@ LRESULT CFBEView::OnTableInsertRowBelow(WORD, WORD, HWND, BOOL&)
 		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
 		MSHTML::IHTMLElementPtr row(FindTableRow(cell));
 		MSHTML::IHTMLElementPtr table(FindTableElement(row));
-		LogicalTableGrid grid;
-		if (!cell || !row || !BuildLogicalTableGrid(table, grid)) return 0;
+		Grid grid;
+		if (!cell || !row || !FbeTable::BuildGrid(table, grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
-		const long boundary = rowIndex + 1;
 		BeginUndoUnit(L"insert table row below");
-		std::vector<bool> expanded(grid.cells.size(), false);
-		MSHTML::IHTMLElementPtr newRow(Document()->createElement(L"TR")); newRow->className = L"tr";
-		for (long column = 0; column < grid.columns; ++column) {
-			const long above = grid.At(boundary - 1, column), below = grid.At(boundary, column);
-			if (above >= 0 && above == below && !expanded[above]) { SetTableSpan(grid.cells[above].element, L"fbrowspan", L"rowspan", grid.cells[above].rowspan + 1); expanded[above] = true; }
-			else if (!(above >= 0 && above == below)) MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(L"beforeEnd", CreateTableCell(Document(), TableCellTagAt(grid, boundary - 1, column, cell->tagName)));
-		}
-		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", newRow);
+		FbeTable::InsertRow(Document(), grid, rowIndex, true, cell->tagName);
 		EndUndoUnit();
 		NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
@@ -5152,26 +5044,12 @@ LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
 	try
 	{
 		MSHTML::IHTMLElementPtr row(FindTableRow(SelectionStructTableCon()));
-		LogicalTableGrid grid;
-		if (!row || !row->parentElement || !BuildLogicalTableGrid(FindTableElement(row), grid)) return 0;
+		Grid grid;
+		if (!row || !row->parentElement || !FbeTable::BuildGrid(FindTableElement(row), grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
 		BeginUndoUnit(L"delete table row");
-		for (size_t index = 0; index < grid.cells.size(); ++index) {
-			LogicalTableCell& current = grid.cells[index];
-			if (current.sourceRow < rowIndex && current.sourceRow + current.rowspan > rowIndex)
-				SetTableSpan(current.element, L"fbrowspan", L"rowspan", current.rowspan - 1);
-			else if (current.sourceRow == rowIndex && current.rowspan > 1 && rowIndex + 1 < static_cast<long>(grid.rows.size())) {
-				SetTableSpan(current.element, L"fbrowspan", L"rowspan", current.rowspan - 1);
-				long before = -1;
-				for (size_t other = 0; other < grid.cells.size(); ++other)
-					if (grid.cells[other].sourceRow == rowIndex + 1 && grid.cells[other].startColumn >= current.startColumn &&
-						(before < 0 || grid.cells[other].startColumn < grid.cells[before].startColumn)) before = static_cast<long>(other);
-				if (before >= 0) MSHTML::IHTMLElement2Ptr(grid.cells[before].element)->insertAdjacentElement(L"beforeBegin", current.element);
-				else MSHTML::IHTMLElement2Ptr(grid.rows[rowIndex + 1])->insertAdjacentElement(L"beforeEnd", current.element);
-			}
-		}
-		MSHTML::IHTMLDOMNodePtr(row->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(row));
+		FbeTable::DeleteRow(grid, rowIndex);
 		EndUndoUnit();
 		NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
@@ -5179,55 +5057,18 @@ LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
-static bool InsertTableColumn(CFBEView* view, bool before)
-{
-	MSHTML::IHTMLElementPtr selectedCell(view->SelectionStructTableCon());
-	MSHTML::IHTMLElementPtr selectedRow(FindTableRow(selectedCell));
-	MSHTML::IHTMLElementPtr table(FindTableElement(selectedRow));
-	LogicalTableGrid grid;
-	if (!selectedCell || !selectedRow || !BuildLogicalTableGrid(table, grid)) return false;
-	const long selectedIndex = FindLogicalCell(grid, selectedCell);
-	if (selectedIndex < 0) return false;
-	const long column = grid.cells[selectedIndex].startColumn + (before ? 0 : grid.cells[selectedIndex].colspan);
-	view->BeginUndoUnit(before ? L"insert table column left" : L"insert table column right");
-	std::vector<bool> expanded(grid.cells.size(), false);
-	for (long rowIndex = 0; rowIndex < static_cast<long>(grid.rows.size()); ++rowIndex) {
-		const long left = grid.At(rowIndex, column - 1), right = grid.At(rowIndex, column);
-		if (left >= 0 && left == right && !expanded[left]) { SetTableSpan(grid.cells[left].element, L"fbcolspan", L"colspan", grid.cells[left].colspan + 1); expanded[left] = true; }
-		else InsertCellAtLogicalColumn(view->Document(), grid, rowIndex, column, TableCellTagAt(grid, rowIndex, before ? column : column - 1, selectedCell->tagName));
-	}
-	view->EndUndoUnit();
-	return true;
-}
-
 LRESULT CFBEView::OnTableInsertColumnLeft(WORD, WORD, HWND, BOOL&)
 {
-	try { if (InsertTableColumn(this, true)) NotifyTableStructureChanged(m_frame, m_hWnd); }
+	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FindTableRow(cell)), table(FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { BeginUndoUnit(L"insert table column left"); FbeTable::InsertColumn(Document(), grid, index, true, cell->tagName); EndUndoUnit(); NotifyTableStructureChanged(m_frame, m_hWnd); } }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
 }
 
 LRESULT CFBEView::OnTableInsertColumnRight(WORD, WORD, HWND, BOOL&)
 {
-	try { if (InsertTableColumn(this, false)) NotifyTableStructureChanged(m_frame, m_hWnd); }
+	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FindTableRow(cell)), table(FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { BeginUndoUnit(L"insert table column right"); FbeTable::InsertColumn(Document(), grid, index, false, cell->tagName); EndUndoUnit(); NotifyTableStructureChanged(m_frame, m_hWnd); } }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
-}
-
-static bool DeleteTableLogicalColumn(CFBEView* view, const LogicalTableGrid& grid, long column)
-{
-	if (!view || column < 0 || column >= grid.columns) return false;
-	view->BeginUndoUnit(L"delete table column");
-	std::vector<bool> handled(grid.cells.size(), false);
-	for (long rowIndex = 0; rowIndex < static_cast<long>(grid.rows.size()); ++rowIndex) {
-		const long owner = grid.At(rowIndex, column);
-		if (owner < 0 || handled[owner]) continue;
-		handled[owner] = true;
-		if (grid.cells[owner].colspan > 1) SetTableSpan(grid.cells[owner].element, L"fbcolspan", L"colspan", grid.cells[owner].colspan - 1);
-		else MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element));
-	}
-	view->EndUndoUnit();
-	return true;
 }
 
 bool CFBEView::DeleteTableLogicalColumnForTest(long column)
@@ -5236,8 +5077,12 @@ bool CFBEView::DeleteTableLogicalColumnForTest(long column)
 		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
-		LogicalTableGrid grid;
-		if (!BuildLogicalTableGrid(table, grid) || !DeleteTableLogicalColumn(this, grid, column)) return false;
+		Grid grid;
+		if (!FbeTable::BuildGrid(table, grid)) return false;
+		BeginUndoUnit(L"delete table column");
+		const bool changed = FbeTable::DeleteColumn(grid, column);
+		EndUndoUnit();
+		if (!changed) return false;
 		NotifyTableStructureChanged(m_frame, m_hWnd);
 		return true;
 	}
@@ -5251,11 +5096,11 @@ LRESULT CFBEView::OnTableDeleteColumn(WORD, WORD, HWND, BOOL&)
 		MSHTML::IHTMLElementPtr selectedCell(SelectionStructTableCon());
 		MSHTML::IHTMLElementPtr selectedRow(FindTableRow(selectedCell));
 		MSHTML::IHTMLElementPtr table(FindTableElement(selectedRow));
-		LogicalTableGrid grid;
-		if (!selectedCell || !selectedRow || !BuildLogicalTableGrid(table, grid)) return 0;
-		const long selectedIndex = FindLogicalCell(grid, selectedCell);
+		Grid grid;
+		if (!selectedCell || !selectedRow || !FbeTable::BuildGrid(table, grid)) return 0;
+		const long selectedIndex = FbeTable::FindCell(grid, selectedCell);
 		if (selectedIndex < 0) return 0;
-		if (DeleteTableLogicalColumn(this, grid, grid.cells[selectedIndex].startColumn)) NotifyTableStructureChanged(m_frame, m_hWnd);
+		BeginUndoUnit(L"delete table column"); if (FbeTable::DeleteColumn(grid, grid.cells[selectedIndex].startColumn)) NotifyTableStructureChanged(m_frame, m_hWnd); EndUndoUnit();
 	}
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
@@ -5267,18 +5112,7 @@ LRESULT CFBEView::OnTableToggleHeaderCell(WORD, WORD, HWND, BOOL&)
 	{
 		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
 		if (!cell || !FindTableElement(cell)) return 0;
-		const wchar_t* targetName = U::scmp(cell->tagName, L"TH") == 0 ? L"TD" : L"TH";
-		MSHTML::IHTMLElementPtr replacement(CreateTableCell(Document(), targetName));
-		replacement->innerHTML = cell->innerHTML;
-		CopyTableCellReplacementAttributes(cell, replacement);
-		MSHTML::IHTMLDOMNodePtr(cell->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement), MSHTML::IHTMLDOMNodePtr(cell));
-		std::vector<TableCellReplacement> replacements; TableCellReplacement pair = { replacement, cell }; replacements.push_back(pair);
-		const HRESULT undoResult = AddTableCellToggleUndoUnit(Document(), replacements);
-		if (FAILED(undoResult)) {
-			MSHTML::IHTMLDOMNodePtr(replacement->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(cell), MSHTML::IHTMLDOMNodePtr(replacement));
-			_com_issue_error(undoResult);
-		}
-		NotifyTableStructureChanged(m_frame, m_hWnd);
+		if (FbeTable::ToggleHeaderCell(Document(), cell)) NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
@@ -6010,17 +5844,14 @@ BSTR CFBEView::PrepareDefaultId(const CString& filename){
 	return newid.AllocSysString();
 }
 
-static bool GetSelectedTableCells(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& currentCell, std::vector<MSHTML::IHTMLElementPtr>& result);
-static bool ReplaceTableCells(MSHTML::IHTMLDocument2Ptr document, const std::vector<MSHTML::IHTMLElementPtr>& cells, const wchar_t* targetName);
-
 void CFBEView::ResetTableGridBuildCountForTest()
 {
-	if (IsTableGridInstrumentationEnabled()) g_tableGridBuildCount = 0;
+	FbeTable::GridDiagnostics::ResetBuildCount();
 }
 
 long CFBEView::TableGridBuildCountForTest()
 {
-	return IsTableGridInstrumentationEnabled() ? g_tableGridBuildCount : -1;
+	return FbeTable::GridDiagnostics::BuildCount();
 }
 
 bool CFBEView::SelectTableLogicalRangeForTest(long firstRow, long firstColumn, long lastRow, long lastColumn)
@@ -6029,8 +5860,8 @@ bool CFBEView::SelectTableLogicalRangeForTest(long firstRow, long firstColumn, l
 		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
-		LogicalTableGrid grid;
-		if (!body || !BuildLogicalTableGrid(table, grid)) return false;
+		Grid grid;
+		if (!body || !FbeTable::BuildGrid(table, grid)) return false;
 		const long first = grid.At(firstRow, firstColumn), last = grid.At(lastRow, lastColumn);
 		if (first < 0 || last < 0) return false;
 		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
@@ -6047,46 +5878,14 @@ bool CFBEView::SelectTableLogicalRangeForTest(long firstRow, long firstColumn, l
 	catch (_com_error&) { return false; }
 }
 
-static unsigned long HashNormalizedTableHtml(const CString& html)
-{
-	unsigned long hash = 2166136261u;
-	for (int index = 0; index < html.GetLength(); ++index) {
-		hash ^= static_cast<unsigned long>(html[index]);
-		hash *= 16777619u;
-	}
-	return hash;
-}
-
 CStringA CFBEView::TableStructuralSnapshot()
 {
 	try {
 		MSHTML::IHTMLElementPtr body(Document() ? Document()->body : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr tables(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"TABLE") : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
-		LogicalTableGrid grid;
-		if (!BuildLogicalTableGrid(table, grid)) return CStringA("invalid");
-		CStringA snapshot; snapshot.Format("rows=%ld;columns=%ld;", static_cast<long>(grid.rows.size()), grid.columns);
-		for (size_t index = 0; index < grid.cells.size(); ++index) {
-			const LogicalTableCell& cell = grid.cells[index];
-			CString id(AU::GetAttrCS(cell.element, L"id")), style, fbstyle(AU::GetAttrCS(cell.element, L"fbstyle"));
-			MSHTML::IHTMLStylePtr runtimeStyle(cell.element ? cell.element->style : MSHTML::IHTMLStylePtr());
-			if (runtimeStyle) style = (const wchar_t*)_bstr_t(runtimeStyle->cssText);
-			CString colspan(AU::GetAttrCS(cell.element, L"colspan")), fbcolspan(AU::GetAttrCS(cell.element, L"fbcolspan"));
-			CString rowspan(AU::GetAttrCS(cell.element, L"rowspan")), fbrowspan(AU::GetAttrCS(cell.element, L"fbrowspan"));
-			CString align(AU::GetAttrCS(cell.element, L"align")), fbalign(AU::GetAttrCS(cell.element, L"fbalign"));
-			CString valign(AU::GetAttrCS(cell.element, L"valign")), fbvalign(AU::GetAttrCS(cell.element, L"fbvalign"));
-			_bstr_t innerHtml(cell.element->innerHTML);
-			CStringA entry; entry.Format("c%u:id=%S,tag=%S,row=%ld,column=%ld,logical-colspan=%ld,logical-rowspan=%ld,html=%08lX,style=%S,fbstyle=%S,colspan=%S,fbcolspan=%S,rowspan=%S,fbrowspan=%S,align=%S,fbalign=%S,valign=%S,fbvalign=%S;", static_cast<unsigned>(index),
-				(const wchar_t*)id, (const wchar_t*)cell.element->tagName, cell.sourceRow, cell.startColumn, cell.colspan, cell.rowspan,
-				HashNormalizedTableHtml(CString((const wchar_t*)innerHtml)), (const wchar_t*)style, (const wchar_t*)fbstyle,
-				(const wchar_t*)colspan, (const wchar_t*)fbcolspan, (const wchar_t*)rowspan, (const wchar_t*)fbrowspan,
-				(const wchar_t*)align, (const wchar_t*)fbalign, (const wchar_t*)valign, (const wchar_t*)fbvalign);
-			snapshot += entry;
-		}
-		for (long row = 0; row < static_cast<long>(grid.rows.size()); ++row) for (long column = 0; column < grid.columns; ++column) {
-			CStringA entry; entry.Format("s%ld,%ld=%ld;", row, column, grid.At(row, column)); snapshot += entry;
-		}
-		return snapshot;
+		Grid grid;
+		return FbeTable::BuildGrid(table, grid) ? FbeTable::BuildStructuralSnapshot(grid) : CStringA("invalid");
 	}
 	catch (_com_error&) { return CStringA("error"); }
 }
@@ -6095,7 +5894,7 @@ static bool MakeSelectedTableCells(CFBEView* view, const wchar_t* targetName)
 {
 	MSHTML::IHTMLElementPtr currentCell(view->SelectionStructTableCon());
 	std::vector<MSHTML::IHTMLElementPtr> cells;
-	return GetSelectedTableCells(view->Document(), currentCell, cells) && ReplaceTableCells(view->Document(), cells, targetName);
+	return FbeTable::GetSelectedCells(view->Document(), currentCell, cells) && FbeTable::ReplaceCells(view->Document(), cells, targetName);
 }
 
 LRESULT CFBEView::OnTableMakeHeaderCells(WORD, WORD, HWND, BOOL&)
@@ -6110,65 +5909,6 @@ LRESULT CFBEView::OnTableMakeNormalCells(WORD, WORD, HWND, BOOL&)
 	try { if (MakeSelectedTableCells(this, L"TD")) NotifyTableStructureChanged(m_frame, m_hWnd); }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
-}
-
-static bool GetSelectedTableCells(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& currentCell, std::vector<MSHTML::IHTMLElementPtr>& result)
-{
-	result.clear();
-	MSHTML::IHTMLElementPtr anchor(FindTableCell(currentCell));
-	try {
-		if (!anchor) {
-			MSHTML::IHTMLTxtRangePtr range(document->selection->createRange());
-			if (range) { range->collapse(VARIANT_TRUE); anchor = FindTableCell(range->parentElement()); }
-		}
-	}
-	catch (_com_error&) { }
-	MSHTML::IHTMLElementPtr table(FindTableElement(anchor));
-	LogicalTableGrid grid;
-	if (!anchor || !table || !BuildLogicalTableGrid(table, grid)) return false;
-	long first = FindLogicalCell(grid, anchor), last = first;
-	try {
-		MSHTML::IHTMLTxtRangePtr selection(document->selection->createRange());
-		MSHTML::IHTMLTxtRangePtr start(selection ? selection->duplicate() : MSHTML::IHTMLTxtRangePtr()), end(selection ? selection->duplicate() : MSHTML::IHTMLTxtRangePtr());
-		if (start && end) {
-			start->collapse(VARIANT_TRUE); end->collapse(VARIANT_FALSE);
-			MSHTML::IHTMLElementPtr firstCell(FindTableCell(start->parentElement())), lastCell(FindTableCell(end->parentElement()));
-			const long selectedFirst = FindLogicalCell(grid, firstCell), selectedLast = FindLogicalCell(grid, lastCell);
-			if (selectedFirst >= 0 && selectedLast >= 0) { first = selectedFirst; last = selectedLast; }
-		}
-	}
-	catch (_com_error&) { }
-	if (first < 0 || last < 0) return false;
-	const LogicalTableCell& firstCell = grid.cells[first]; const LogicalTableCell& lastCell = grid.cells[last];
-	const long rowStart = min(firstCell.sourceRow, lastCell.sourceRow), rowEnd = max(firstCell.sourceRow + firstCell.rowspan - 1, lastCell.sourceRow + lastCell.rowspan - 1);
-	const long colStart = min(firstCell.startColumn, lastCell.startColumn), colEnd = max(firstCell.startColumn + firstCell.colspan - 1, lastCell.startColumn + lastCell.colspan - 1);
-	std::vector<bool> selected(grid.cells.size(), false);
-	for (long row = rowStart; row <= rowEnd; ++row) for (long column = colStart; column <= colEnd; ++column) {
-		const long owner = grid.At(row, column); if (owner >= 0) selected[owner] = true;
-	}
-	for (size_t index = 0; index < grid.cells.size(); ++index) if (selected[index]) result.push_back(grid.cells[index].element);
-	return !result.empty();
-}
-
-static bool ReplaceTableCells(MSHTML::IHTMLDocument2Ptr document, const std::vector<MSHTML::IHTMLElementPtr>& cells, const wchar_t* targetName)
-{
-	std::vector<TableCellReplacement> replacements;
-	for (size_t index = 0; index < cells.size(); ++index) {
-		if (!cells[index] || U::scmp(cells[index]->tagName, targetName) == 0) continue;
-		MSHTML::IHTMLElementPtr replacement(CreateTableCell(document, targetName)); replacement->innerHTML = cells[index]->innerHTML;
-		CopyTableCellReplacementAttributes(cells[index], replacement);
-		MSHTML::IHTMLDOMNodePtr(cells[index]->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement), MSHTML::IHTMLDOMNodePtr(cells[index]));
-		TableCellReplacement pair = { replacement, cells[index] }; replacements.push_back(pair);
-	}
-	if (replacements.empty()) return false;
-	const HRESULT undoResult = AddTableCellToggleUndoUnit(document, replacements);
-	if (SUCCEEDED(undoResult)) return true;
-	for (size_t index = replacements.size(); index > 0; --index) {
-		TableCellReplacement& pair = replacements[index - 1];
-		if (pair.active && pair.active->parentElement) MSHTML::IHTMLDOMNodePtr(pair.active->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(pair.inactive), MSHTML::IHTMLDOMNodePtr(pair.active));
-	}
-	_com_issue_error(undoResult);
-	return false;
 }
 
 HRESULT CFBEView::AddImportedBinary(const BYTE* bytes, size_t size, const CString& logicalFileName,

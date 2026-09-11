@@ -340,6 +340,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="table\TableGrid.cpp" />
+    <ClCompile Include="table\TableStructuralEditor.cpp" />
     <ClCompile Include="FindResultsPane.cpp" />
     <ClCompile Include="GLLogo.cpp" />
     <ClCompile Include="ImageImport.cpp" />
