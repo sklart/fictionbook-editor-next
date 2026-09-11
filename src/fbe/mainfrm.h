@@ -784,17 +784,13 @@ public:
 		{
 			m_ignore_cb_changes = true;
 
-			CString str(U::GetWindowText(m_contextAttributeBars.HrefEdit()));
-
-			m_contextAttributeBars.HrefBox().ResetContent();
-			m_contextAttributeBars.HrefEdit().SetWindowText(str);
-			m_contextAttributeBars.HrefEdit().SetSel(0, str.GetLength() + 1);
+			m_contextAttributeBars.BeginHrefCatalogUpdate();
 			m_ignore_cb_changes = false;
 
 			if(m_cb_last_images)
-				m_doc->BinIDsToComboBox(m_contextAttributeBars.HrefBox());
+				m_doc->BinIDsToComboBox(m_contextAttributeBars.HrefCatalogForPopulation());
 			else
-				m_doc->ParaIDsToComboBox(m_contextAttributeBars.HrefBox());
+				m_doc->ParaIDsToComboBox(m_contextAttributeBars.HrefCatalogForPopulation());
 			m_cb_updated = true;
 		}
 

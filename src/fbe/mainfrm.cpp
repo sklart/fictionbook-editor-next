@@ -1442,6 +1442,10 @@ BOOL CMainFrame::OnIdle()
 			// update links and IDs
 			try
 			{
+				LinkAttributeState linkState;
+				LinkAttributeAvailability linkAvailability = {};
+				TableAttributeState tableState;
+				TableAttributeAvailability tableAvailability = {};
 				MSHTML::IHTMLElementPtr an(m_doc->m_body.SelectionAnchor());
 				_variant_t    href;
 
@@ -1450,122 +1454,50 @@ BOOL CMainFrame::OnIdle()
 
 				if((bool)an && V_VT(&href)==VT_BSTR)
 				{
-					m_contextAttributeBars.HrefBox().EnableWindow();
-					m_contextAttributeBars.HrefCaption().SetEnabled();
-					m_ignore_cb_changes = true;
-
-					if(!(m_contextAttributeBars.HrefEdit() == ::GetFocus()))
-					{
-						// changed by SeNS: fix hrefs
-						CString tmp(V_BSTR(&href));
-						if (tmp.Find(L"file") == 0)
-							tmp = tmp.Mid(tmp.ReverseFind (L'#'),1024);
-						m_contextAttributeBars.HrefEdit().SetWindowText(tmp);
-						m_contextAttributeBars.HrefEdit().SetSel(tmp.GetLength(), tmp.GetLength(), FALSE);
-					}
-
-					m_ignore_cb_changes = false;
-
-					// SeNS - inline images
+					linkAvailability.href = true;
+					linkState.href = CString(V_BSTR(&href));
+					if(linkState.href.Find(L"file") == 0) linkState.href = linkState.href.Mid(linkState.href.ReverseFind(L'#'), 1024);
 					bool img = (U::scmp(an->tagName, L"DIV") == 0) || (U::scmp(an->tagName, L"SPAN") == 0);
 					if(img != m_cb_last_images)
 						m_cb_updated = false;
 					m_cb_last_images = img;
 				}
-				else
-				{
-					m_contextAttributeBars.HrefBox().SetWindowText(L"");
-					m_contextAttributeBars.HrefBox().EnableWindow(FALSE);
-					m_contextAttributeBars.HrefCaption().SetEnabled(false);
-				}
 
 				MSHTML::IHTMLElementPtr	sc(m_doc->m_body.SelectionStructCon());
 				if(sc)
 				{
-					m_contextAttributeBars.IdBox().EnableWindow();
-					m_contextAttributeBars.IdCaption().SetEnabled(true);
-					m_ignore_cb_changes = true;
-
+					linkAvailability.id = true;
 					if(U::scmp(sc->id, L"fbw_body"))
-						m_contextAttributeBars.IdEdit().SetWindowText(sc->id);
-					else
-						m_contextAttributeBars.IdEdit().SetWindowText(L"");
-
-					m_ignore_cb_changes = false;
-				}
-				else
-				{
-					m_contextAttributeBars.IdBox().EnableWindow(FALSE);
-					m_contextAttributeBars.IdCaption().SetEnabled(false);
+						linkState.id = static_cast<const wchar_t*>(sc->id);
 				}
 
 				MSHTML::IHTMLElementPtr	  im(m_doc->m_body.SelectionStructImage());
 				if(im)
 				{
-					m_contextAttributeBars.ImageTitleBox().EnableWindow();
-					m_contextAttributeBars.ImageTitleCaption().SetEnabled();
-					m_ignore_cb_changes = true;
-					m_contextAttributeBars.ImageTitleEdit().SetWindowText(im->title);
-					_bstr_t title = im->title;
-					const int titleLength = title.length();
-					if(titleLength)
-						m_contextAttributeBars.ImageTitleEdit().SetSel(titleLength, titleLength, FALSE);
-					m_ignore_cb_changes = false;
-				}
-				else
-				{
-					m_contextAttributeBars.ImageTitleBox().SetWindowText(L"");
-					m_contextAttributeBars.ImageTitleBox().EnableWindow(FALSE);
-					m_contextAttributeBars.ImageTitleCaption().SetEnabled(false);
+					linkAvailability.imageTitle = true;
+					linkState.imageTitle = static_cast<const wchar_t*>(im->title);
 				}
 
 				// ??????????? ID ??? ????? <section>
 				MSHTML::IHTMLElementPtr scstn(m_doc->m_body.SelectionStructSection());
 				if(scstn)
 				{
-					m_contextAttributeBars.SectionBox().EnableWindow(TRUE);
-					m_contextAttributeBars.SectionCaption().SetEnabled();
-					m_ignore_cb_changes = true;
-					m_contextAttributeBars.SectionEdit().SetWindowText(scstn->id);
-					m_ignore_cb_changes = false;
-				}
-				else
-				{
-					m_contextAttributeBars.SectionBox().SetWindowText(L"");
-					m_contextAttributeBars.SectionBox().EnableWindow(FALSE);
-					m_contextAttributeBars.SectionCaption().SetEnabled(false);
+					linkAvailability.section = true;
+					linkState.section = static_cast<const wchar_t*>(scstn->id);
 				}
 				// ??????????? ID ??? ????? <table>
 				MSHTML::IHTMLElementPtr sct(m_doc->m_body.SelectionStructTable());
 				if(sct)
 				{
-					m_contextAttributeBars.TableIdBox().EnableWindow(TRUE);
-					m_contextAttributeBars.TableIdCaption().SetEnabled();
-					m_ignore_cb_changes = true;
-					m_contextAttributeBars.TableIdEdit().SetWindowText(sct->id);
-					m_ignore_cb_changes = false;
-				}
-				else
-				{
-					m_contextAttributeBars.TableIdBox().SetWindowText(L"");
-					m_contextAttributeBars.TableIdBox().EnableWindow(FALSE);
-					m_contextAttributeBars.TableIdCaption().SetEnabled(false);
+					tableAvailability.tableId = true;
+					tableState.tableId = static_cast<const wchar_t*>(sct->id);
 				}
 
 				// ??????????? ID ??? ????? <tr>, <th>, <td>
 				MSHTML::IHTMLElementPtr sctc(m_doc->m_body.SelectionStructTableCon());
 				if (sctc) {
-					m_contextAttributeBars.CellIdBox().EnableWindow(TRUE);
-					m_contextAttributeBars.CellIdCaption().SetEnabled();
-					m_ignore_cb_changes = true;
-					m_contextAttributeBars.CellIdEdit().SetWindowText(sctc->id);
-					m_ignore_cb_changes = false;
-				}
-				else
-				{
-					m_contextAttributeBars.CellIdBox().SetWindowText(L"");
-					m_contextAttributeBars.CellIdBox().EnableWindow(FALSE);
-					m_contextAttributeBars.CellIdCaption().SetEnabled(false);
+					tableAvailability.cellId = true;
+					tableState.id = static_cast<const wchar_t*>(sctc->id);
 				}
 
 				// ??????????? style ??? ????? <table>
@@ -1573,26 +1505,8 @@ BOOL CMainFrame::OnIdle()
 				MSHTML::IHTMLElementPtr scsT(m_doc->m_body.SelectionsStyleTB(styleT));
 				if(scsT)
 				{
-					m_contextAttributeBars.TableStyleBox().EnableWindow(TRUE);
-					m_contextAttributeBars.TableStyleCaption().SetEnabled();
-					if(U::scmp(styleT,L"") != 0)
-					{
-						m_contextAttributeBars.TableStyleBox().EnableWindow(TRUE);
-						m_contextAttributeBars.TableStyleCaption().SetEnabled();
-						m_ignore_cb_changes = true;
-						m_contextAttributeBars.TableStyleEdit().SetWindowText(styleT);
-						m_ignore_cb_changes = false;
-					}
-					else
-					{
-						m_contextAttributeBars.TableStyleBox().SetWindowText(L"");
-					}
-				}
-				else
-				{
-					m_contextAttributeBars.TableStyleBox().SetWindowText(L"");
-					m_contextAttributeBars.TableStyleCaption().SetEnabled(false);
-					m_contextAttributeBars.TableStyleBox().EnableWindow(FALSE);
+					tableAvailability.tableStyle = true;
+					if(U::scmp(styleT,L"") != 0) tableState.tableStyle = static_cast<const wchar_t*>(styleT);
 				}
 
 				// ??????????? style ??? ????? <th>, <td>
@@ -1600,26 +1514,8 @@ BOOL CMainFrame::OnIdle()
 				MSHTML::IHTMLElementPtr scs(m_doc->m_body.SelectionsStyleB(style));
 				if(scs)
 				{
-					m_contextAttributeBars.CellStyleBox().EnableWindow(TRUE);
-					m_contextAttributeBars.CellStyleCaption().SetEnabled();
-					if (U::scmp(style,L"") != 0)
-					{
-						m_contextAttributeBars.CellStyleBox().EnableWindow(TRUE);
-						m_contextAttributeBars.CellStyleCaption().SetEnabled();
-						m_ignore_cb_changes = true;
-						m_contextAttributeBars.CellStyleEdit().SetWindowText(style);
-						m_ignore_cb_changes = false;
-					}
-					else
-					{
-						m_contextAttributeBars.CellStyleBox().SetWindowText(L"");
-					}
-				}
-				else
-				{
-					m_contextAttributeBars.CellStyleBox().SetWindowText(L"");
-					m_contextAttributeBars.CellStyleBox().EnableWindow(FALSE);
-					m_contextAttributeBars.CellStyleCaption().SetEnabled(false);
+					tableAvailability.cellStyle = true;
+					if(U::scmp(style,L"") != 0) tableState.style = static_cast<const wchar_t*>(style);
 				}
 
 				// ??????????? colspan ??? ????? <th>, <td>
@@ -1627,26 +1523,8 @@ BOOL CMainFrame::OnIdle()
 				MSHTML::IHTMLElementPtr scc(m_doc->m_body.SelectionsColspanB(colspan));
 				if(scc)
 				{
-					m_contextAttributeBars.ColspanBox().EnableWindow(TRUE);
-					m_contextAttributeBars.ColspanCaption().SetEnabled();
-					if(U::scmp(colspan, L"") != 0)
-					{
-						m_contextAttributeBars.ColspanBox().EnableWindow(TRUE);
-						m_contextAttributeBars.ColspanCaption().SetEnabled();
-						m_ignore_cb_changes = true;
-						m_contextAttributeBars.ColspanEdit().SetWindowText(colspan);
-						m_ignore_cb_changes = false;
-					}
-					else
-					{
-						m_contextAttributeBars.ColspanBox().SetWindowText(L"");
-					}
-				}
-				else
-				{
-					m_contextAttributeBars.ColspanBox().SetWindowText(_T(""));
-					m_contextAttributeBars.ColspanBox().EnableWindow(FALSE);
-					m_contextAttributeBars.ColspanCaption().SetEnabled(false);
+					tableAvailability.colspan = true;
+					if(U::scmp(colspan, L"") != 0) tableState.colspan = static_cast<const wchar_t*>(colspan);
 				}
 
 				// ??????????? rowspan ??? ????? <th>, <td>
@@ -1654,26 +1532,8 @@ BOOL CMainFrame::OnIdle()
 				MSHTML::IHTMLElementPtr scr(m_doc->m_body.SelectionsRowspanB(rowspan));
 				if(scr)
 				{
-					m_contextAttributeBars.RowspanBox().EnableWindow(TRUE);
-					m_contextAttributeBars.RowspanCaption().SetEnabled();
-					if (U::scmp(rowspan,L"") != 0)
-					{
-						m_contextAttributeBars.RowspanBox().EnableWindow(TRUE);
-						m_contextAttributeBars.RowspanCaption().SetEnabled();
-						m_ignore_cb_changes = true;
-						m_contextAttributeBars.RowspanEdit().SetWindowText(rowspan);
-						m_ignore_cb_changes = false;
-					}
-					else
-					{
-						m_contextAttributeBars.RowspanBox().SetWindowText(L"");
-					}
-				}
-				else
-				{
-					m_contextAttributeBars.RowspanBox().SetWindowText(L"");
-					m_contextAttributeBars.RowspanBox().EnableWindow(FALSE);
-					m_contextAttributeBars.RowspanCaption().SetEnabled(false);
+					tableAvailability.rowspan = true;
+					if(U::scmp(rowspan,L"") != 0) tableState.rowspan = static_cast<const wchar_t*>(rowspan);
 				}
 
 				// ??????????? align ??? ????? <tr>
@@ -1681,26 +1541,8 @@ BOOL CMainFrame::OnIdle()
 				MSHTML::IHTMLElementPtr scaTR(m_doc->m_body.SelectionsAlignTRB(alignTR));
 				if(scaTR)
 				{
-					m_contextAttributeBars.RowAlignBox().EnableWindow(TRUE);
-					m_contextAttributeBars.RowAlignCaption().SetEnabled();
-					if(U::scmp(alignTR,L"") != 0)
-					{
-						m_contextAttributeBars.RowAlignBox().EnableWindow(TRUE);
-						m_contextAttributeBars.RowAlignCaption().SetEnabled();
-						m_ignore_cb_changes = true;
-						m_contextAttributeBars.RowAlignBox().SetCurSel(m_contextAttributeBars.RowAlignBox().FindString(0,alignTR));
-						m_ignore_cb_changes = false;
-					}
-					else
-					{
-						m_contextAttributeBars.RowAlignBox().SetCurSel(m_contextAttributeBars.RowAlignBox().FindString( 0, L""));
-					}
-				}
-				else
-				{
-					m_contextAttributeBars.RowAlignBox().SetCurSel(m_contextAttributeBars.RowAlignBox().FindString(0, L""));
-					m_contextAttributeBars.RowAlignBox().EnableWindow(FALSE);
-					m_contextAttributeBars.RowAlignCaption().SetEnabled(false);
+					tableAvailability.rowAlign = true;
+					if(U::scmp(alignTR,L"") != 0) tableState.rowAlign = static_cast<const wchar_t*>(alignTR);
 				}
 
 				// ??????????? align ??? ????? <th>, <td>
@@ -1708,26 +1550,8 @@ BOOL CMainFrame::OnIdle()
 				MSHTML::IHTMLElementPtr sca(m_doc->m_body.SelectionsAlignB(align));
 				if(sca)
 				{
-					m_contextAttributeBars.AlignBox().EnableWindow(TRUE);
-					m_contextAttributeBars.AlignCaption().SetEnabled();
-					if(U::scmp(align,L"") != 0)
-					{
-						m_contextAttributeBars.AlignBox().EnableWindow(TRUE);
-						m_contextAttributeBars.AlignCaption().SetEnabled();
-						m_ignore_cb_changes = true;
-						m_contextAttributeBars.AlignBox().SetCurSel(m_contextAttributeBars.AlignBox().FindString(0, align));
-						m_ignore_cb_changes = false;
-					}
-					else
-					{
-						m_contextAttributeBars.AlignBox().SetCurSel(m_contextAttributeBars.AlignBox().FindString(0, L""));
-					}
-				}
-				else
-				{
-					m_contextAttributeBars.AlignBox().SetCurSel(m_contextAttributeBars.AlignBox().FindString(0, L""));
-					m_contextAttributeBars.AlignBox().EnableWindow(FALSE);
-					m_contextAttributeBars.AlignCaption().SetEnabled(false);
+					tableAvailability.align = true;
+					if(U::scmp(align,L"") != 0) tableState.align = static_cast<const wchar_t*>(align);
 				}
 
 				// ??????????? valign ??? ????? <th>, <td>
@@ -1735,27 +1559,12 @@ BOOL CMainFrame::OnIdle()
 				MSHTML::IHTMLElementPtr scva(m_doc->m_body.SelectionsVAlignB(valign));
 				if(scva)
 				{
-					m_contextAttributeBars.VAlignBox().EnableWindow(TRUE);
-					m_contextAttributeBars.VAlignCaption().SetEnabled();
-					if (U::scmp(valign,L"") != 0)
-					{
-						m_contextAttributeBars.VAlignBox().EnableWindow(TRUE);
-						m_contextAttributeBars.VAlignCaption().SetEnabled();
-						m_ignore_cb_changes = true;
-						m_contextAttributeBars.VAlignBox().SetCurSel(m_contextAttributeBars.VAlignBox().FindString(0, valign));
-						m_ignore_cb_changes = false;
-					}
-					else
-					{
-						m_contextAttributeBars.VAlignBox().SetCurSel(m_contextAttributeBars.VAlignBox().FindString(0, L""));
-					}
+					tableAvailability.valign = true;
+					if(U::scmp(valign,L"") != 0) tableState.valign = static_cast<const wchar_t*>(valign);
 				}
-				else
-				{
-					m_contextAttributeBars.VAlignBox().SetCurSel(m_contextAttributeBars.VAlignBox().FindString(0, L""));
-					m_contextAttributeBars.VAlignBox().EnableWindow(FALSE);
-					m_contextAttributeBars.VAlignCaption().SetEnabled(false);
-				}
+				m_ignore_cb_changes = true;
+				m_contextAttributeBars.ApplySelectionState(linkState, linkAvailability, tableState, tableAvailability);
+				m_ignore_cb_changes = false;
 			}
 			catch(_com_error&)
 			{
@@ -4781,83 +4590,6 @@ void CMainFrame::RefreshLocalizedToolbarCaptions()
 	// из-за чего подписи накладывались друг на друга после смены языка.
 	// Пересобираем только эти пустые кнопки и заново размещаем уже созданные
 	// дочерние контролы. Содержимое combo-box при этом не затрагивается.
-	struct CaptionToolbarBinding
-	{
-		CCustomStatic* caption;
-		CWindow* editor;
-		CString text;
-		LPCWSTR editorPlaceholder;
-	};
-
-	auto loadCaption = [](UINT resourceId) -> CString
-	{
-		wchar_t buffer[MAX_LOAD_STRING + 1] = {};
-		return FbeLoadString(_Module.GetResourceInstance(), resourceId, buffer, MAX_LOAD_STRING)
-			? CString(buffer) : CString();
-	};
-
-	auto rebuildCaptionToolbar = [this](HWND toolbar, CaptionToolbarBinding* bindings, size_t bindingCount)
-	{
-		if(!::IsWindow(toolbar))
-			return;
-
-		::SendMessage(toolbar, WM_SETREDRAW, FALSE, 0);
-		for(int index = static_cast<int>(::SendMessage(toolbar, TB_BUTTONCOUNT, 0, 0)) - 1; index >= 0; --index)
-			::SendMessage(toolbar, TB_DELETEBUTTON, index, 0);
-
-		for(size_t index = 0; index < bindingCount; ++index)
-		{
-			AddTbButton(toolbar, bindings[index].text);
-			AddTbButton(toolbar, bindings[index].editorPlaceholder);
-		}
-
-		::SendMessage(toolbar, TB_AUTOSIZE, 0, 0);
-		for(size_t index = 0; index < bindingCount; ++index)
-		{
-			RECT captionRect = {};
-			RECT editorRect = {};
-			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 2), reinterpret_cast<LPARAM>(&captionRect));
-			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 2 + 1), reinterpret_cast<LPARAM>(&editorRect));
-			--captionRect.bottom;
-			--editorRect.bottom;
-
-			bindings[index].caption->SetWindowText(bindings[index].text);
-			::SetWindowPos(bindings[index].caption->m_hWnd, NULL,
-				captionRect.left, captionRect.top, captionRect.right - captionRect.left, captionRect.bottom - captionRect.top,
-				SWP_NOACTIVATE | SWP_NOZORDER);
-			::SetWindowPos(bindings[index].editor->m_hWnd, NULL,
-				editorRect.left, editorRect.top, editorRect.right - editorRect.left, editorRect.bottom - editorRect.top,
-				SWP_NOACTIVATE | SWP_NOZORDER);
-		}
-
-		::SendMessage(toolbar, WM_SETREDRAW, TRUE, 0);
-		::RedrawWindow(toolbar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
-	};
-
-	CaptionToolbarBinding linksToolbar[] = {
-		{ &m_contextAttributeBars.IdCaption(), &m_contextAttributeBars.IdBox(), loadCaption(IDS_TB_CAPT_ID), L"123456789012345678901234567890" },
-		{ &m_contextAttributeBars.HrefCaption(), &m_contextAttributeBars.HrefBox(), loadCaption(IDS_TB_CAPT_HREF), L"123456789012345678901234567890" },
-		{ &m_contextAttributeBars.SectionCaption(), &m_contextAttributeBars.SectionBox(), loadCaption(IDS_TB_CAPT_SECTION_ID), L"123456789012345678901234567890" },
-		{ &m_contextAttributeBars.ImageTitleCaption(), &m_contextAttributeBars.ImageTitleBox(), loadCaption(IDS_TB_CAPT_IMAGE_TITLE), L"123456789012345678901234567890" },
-	};
-	CaptionToolbarBinding tableToolbar[] = {
-		{ &m_contextAttributeBars.TableIdCaption(), &m_contextAttributeBars.TableIdBox(), loadCaption(IDS_TB_CAPT_TABLE_ID), L"12345678901234567890" },
-		{ &m_contextAttributeBars.TableStyleCaption(), &m_contextAttributeBars.TableStyleBox(), loadCaption(IDS_TB_CAPT_TABLE_STYLE), L"123456789012345" },
-		{ &m_contextAttributeBars.CellIdCaption(), &m_contextAttributeBars.CellIdBox(), loadCaption(IDS_TB_CAPT_ID), L"12345678901234567890" },
-		{ &m_contextAttributeBars.CellStyleCaption(), &m_contextAttributeBars.CellStyleBox(), loadCaption(IDS_TB_CAPT_STYLE), L"123456789012345" },
-	};
-	CaptionToolbarBinding tableToolbar2[] = {
-		{ &m_contextAttributeBars.ColspanCaption(), &m_contextAttributeBars.ColspanBox(), loadCaption(IDS_TB_CAPT_COLSPAN), L"12345" },
-		{ &m_contextAttributeBars.RowspanCaption(), &m_contextAttributeBars.RowspanBox(), loadCaption(IDS_TB_CAPT_ROWSPAN), L"12345" },
-		{ &m_contextAttributeBars.RowAlignCaption(), &m_contextAttributeBars.RowAlignBox(), loadCaption(IDS_TB_CAPT_TR_ALIGN), L"12345678" },
-		{ &m_contextAttributeBars.AlignCaption(), &m_contextAttributeBars.AlignBox(), loadCaption(IDS_TB_CAPT_TD_ALIGN), L"12345678" },
-		{ &m_contextAttributeBars.VAlignCaption(), &m_contextAttributeBars.VAlignBox(), loadCaption(IDS_TB_CAPT_TD_VALIGN), L"12345678" },
-	};
-
-	rebuildCaptionToolbar(m_contextAttributeBars.IdCaption().GetParent(), linksToolbar, _countof(linksToolbar));
-	rebuildCaptionToolbar(m_contextAttributeBars.TableIdCaption().GetParent(), tableToolbar, _countof(tableToolbar));
-	rebuildCaptionToolbar(m_contextAttributeBars.ColspanCaption().GetParent(), tableToolbar2, _countof(tableToolbar2));
-
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_INS, strINS, MAX_LOAD_STRING);
 	FbeLoadString(_Module.GetResourceInstance(), IDS_PANE_OVR, strOVR, MAX_LOAD_STRING);
 
@@ -6096,9 +5828,8 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			r->select();
 		}
       } else {
-        m_contextAttributeBars.HrefBox().SetWindowText(_T(""));
-		m_contextAttributeBars.HrefBox().EnableWindow(FALSE);
-		m_contextAttributeBars.HrefCaption().SetEnabled(false);
+		m_contextAttributeBars.ClearLinkState();
+		m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
       }
     }
     if (wID==IDC_ID) {
@@ -6106,24 +5837,20 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
       if (sc)
 		sc->id=(const wchar_t *)linkState.id;
       else
-	  {
-		m_contextAttributeBars.IdBox().EnableWindow(FALSE);
-		m_contextAttributeBars.IdCaption().SetEnabled(false);
-	  }
+		m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
     }
 	if (wID==IDC_SECTION) {
 		MSHTML::IHTMLElementPtr		scs(m_doc->m_body.SelectionStructSection());
 		if (scs)
 			scs->id=(const wchar_t *)linkState.section;
 		else
-			m_contextAttributeBars.SectionEdit().EnableWindow(FALSE);
+			m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
 	}
 
 	if (wID==IDC_IMAGE_TITLE) {
 		MSHTML::IHTMLElementPtr		scs(m_doc->m_body.SelectionStructImage());
 		if (scs)
 		{
-			//scs->title=(const wchar_t *)U::GetWindowText(m_contextAttributeBars.ImageTitleEdit());
 			U::ChangeAttribute(scs, L"title", (const wchar_t *)linkState.imageTitle);
 
 			IHTMLControlRangePtr r(((MSHTML::IHTMLElement2Ptr)(m_doc->m_body.Document()->body))->createControlRange());
@@ -6131,10 +5858,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			r->select();
 		}
 		else
-		{
-			m_contextAttributeBars.ImageTitleBox().EnableWindow(FALSE);
-			m_contextAttributeBars.ImageTitleCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
 	}
 
 	if (wID==IDC_IDT) {
@@ -6142,20 +5866,14 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 		if (sc)
 			sc->id=(const wchar_t *)tableState.tableId;
 		else
-		{
-			m_contextAttributeBars.TableIdBox().EnableWindow(FALSE);
-			m_contextAttributeBars.TableIdCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_ID) {
 		MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionStructTableCon());
 		if (sc)
 			sc->id=(const wchar_t *)tableState.id;
 		else
-		{
-			m_contextAttributeBars.CellIdBox().EnableWindow(FALSE);
-			m_contextAttributeBars.CellIdCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_STYLET) {
 		_bstr_t style("");
@@ -6165,10 +5883,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			sc->setAttribute(L"fbstyle",_variant_t((const wchar_t *)newsSyleT),0);
 		}
 		else
-		{
-			m_contextAttributeBars.CellStyleBox().EnableWindow(FALSE);
-			m_contextAttributeBars.CellStyleCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_STYLE) {
 		_bstr_t style("");
@@ -6178,10 +5893,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			sc->setAttribute(L"fbstyle",_variant_t((const wchar_t *)newsSyle),0);
 		}
 		else
-		{
-			m_contextAttributeBars.CellStyleBox().EnableWindow(FALSE);
-			m_contextAttributeBars.CellStyleCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_COLSPAN) {
 		_bstr_t colspan("");
@@ -6191,10 +5903,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			sc->setAttribute(L"fbcolspan",_variant_t((const wchar_t *)newsColspan),0);
 		}
 		else
-		{
-			m_contextAttributeBars.ColspanBox().EnableWindow(FALSE);
-			m_contextAttributeBars.ColspanCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_ROWSPAN) {
 		_bstr_t rowspan("");
@@ -6204,10 +5913,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			sc->setAttribute(L"fbrowspan",_variant_t((const wchar_t *)newsRowspan),0);
 		}
 		else
-		{
-			m_contextAttributeBars.RowspanBox().EnableWindow(FALSE);
-			m_contextAttributeBars.RowspanCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_ALIGNTR) {
 		_bstr_t alignTR("");
@@ -6217,10 +5923,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			sc->setAttribute(L"fbalign",_variant_t((const wchar_t *)newsAlignTR),0);
 		}
 		else
-		{
-			m_contextAttributeBars.RowAlignBox().EnableWindow(FALSE);
-			m_contextAttributeBars.RowAlignCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_ALIGN) {
 		_bstr_t align("");
@@ -6230,10 +5933,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			sc->setAttribute(L"fbalign",_variant_t((const wchar_t *)newsAlign),0);
 		}
 		else
-		{
-			m_contextAttributeBars.AlignBox().EnableWindow(FALSE);
-			m_contextAttributeBars.AlignCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_VALIGN) {
 		_bstr_t valign("");
@@ -6243,10 +5943,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 			sc->setAttribute(L"fbvalign",_variant_t((const wchar_t *)newsVAlign),0);
 		}
 		else
-		{
-			m_contextAttributeBars.VAlignBox().EnableWindow(FALSE);
-			m_contextAttributeBars.VAlignCaption().SetEnabled(false);
-		}
+			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
   }
   catch (_com_error&) { }
@@ -7819,50 +7516,10 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
   case DESC:
     UISetCheck(ID_VIEW_DESC, 1);
     m_view.ActivateWnd(m_doc->m_body);
-    m_contextAttributeBars.HrefBox().SetWindowText(_T(""));
-    m_contextAttributeBars.HrefBox().EnableWindow(FALSE);
-    m_contextAttributeBars.IdBox().SetWindowText(_T(""));
-    m_contextAttributeBars.IdBox().EnableWindow(FALSE);
-
-	m_contextAttributeBars.ImageTitleBox().SetWindowText(_T(""));
-	m_contextAttributeBars.ImageTitleBox().EnableWindow(FALSE);
-
-    // Modification by Pilgrim
-	m_contextAttributeBars.SectionBox().SetWindowText(_T(""));
-	m_contextAttributeBars.SectionBox().EnableWindow(FALSE);
-	m_contextAttributeBars.TableIdBox().SetWindowText(_T(""));
-	m_contextAttributeBars.TableIdBox().EnableWindow(FALSE);
-	m_contextAttributeBars.CellIdBox().SetWindowText(_T(""));
-	m_contextAttributeBars.CellIdBox().EnableWindow(FALSE);
-	m_contextAttributeBars.TableStyleBox().SetWindowText(_T(""));
-	m_contextAttributeBars.TableStyleBox().EnableWindow(FALSE);
-	m_contextAttributeBars.CellStyleBox().SetWindowText(_T(""));
-	m_contextAttributeBars.CellStyleBox().EnableWindow(FALSE);
-	m_contextAttributeBars.ColspanBox().SetWindowText(_T(""));
-	m_contextAttributeBars.ColspanBox().EnableWindow(FALSE);
-	m_contextAttributeBars.RowspanBox().SetWindowText(_T(""));
-	m_contextAttributeBars.RowspanBox().EnableWindow(FALSE);
-	m_contextAttributeBars.RowAlignBox().SetWindowText(_T(""));
-	m_contextAttributeBars.RowAlignBox().EnableWindow(FALSE);
-	m_contextAttributeBars.AlignBox().SetWindowText(_T(""));
-	m_contextAttributeBars.AlignBox().EnableWindow(FALSE);
-	m_contextAttributeBars.VAlignBox().SetWindowText(_T(""));
-	m_contextAttributeBars.VAlignBox().EnableWindow(FALSE);
-
-
-	m_contextAttributeBars.IdCaption().SetEnabled(false);
-	m_contextAttributeBars.HrefCaption().SetEnabled(false);
-	m_contextAttributeBars.SectionCaption().SetEnabled(false);
-	m_contextAttributeBars.ImageTitleCaption().SetEnabled(false);
-	m_contextAttributeBars.TableIdCaption().SetEnabled(false);
-	m_contextAttributeBars.TableStyleCaption().SetEnabled(false);
-	m_contextAttributeBars.CellIdCaption().SetEnabled(false);
-	m_contextAttributeBars.CellStyleCaption().SetEnabled(false);
-	m_contextAttributeBars.ColspanCaption().SetEnabled(false);
-	m_contextAttributeBars.RowspanCaption().SetEnabled(false);
-	m_contextAttributeBars.RowAlignCaption().SetEnabled(false);
-	m_contextAttributeBars.AlignCaption().SetEnabled(false);
-	m_contextAttributeBars.VAlignCaption().SetEnabled(false);
+	m_contextAttributeBars.ClearLinkState();
+	m_contextAttributeBars.ClearTableState();
+	m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
+	m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 
 	SetStatusContext(_T(""));
 	{

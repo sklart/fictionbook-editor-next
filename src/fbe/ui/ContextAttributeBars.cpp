@@ -69,17 +69,40 @@ bool ContextAttributeBars::Create(HWND parent)
 
 void ContextAttributeBars::Destroy() { if(m_linksBar) ::DestroyWindow(m_linksBar); if(m_tableBar) ::DestroyWindow(m_tableBar); if(m_tableBar2) ::DestroyWindow(m_tableBar2); m_linksBar = m_tableBar = m_tableBar2 = NULL; }
 void ContextAttributeBars::UpdateMetrics() { ToolbarFactory::SetDialogFontForToolbarRow(m_linksBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar2, true); ToolbarFactory::AutoSizeToolbar(m_linksBar); ToolbarFactory::AutoSizeToolbar(m_tableBar); ToolbarFactory::AutoSizeToolbar(m_tableBar2); }
-void ContextAttributeBars::SetCaptionText(CCustomStatic& caption, UINT textId)
-{
-	wchar_t text[MAX_LOAD_STRING + 1] = {};
-	if(FbeLoadString(_Module.GetResourceInstance(), textId, text, MAX_LOAD_STRING)) caption.SetWindowText(text);
-}
-
 void ContextAttributeBars::UpdateLocalization()
 {
-	SetCaptionText(m_idCaption, IDS_TB_CAPT_ID); SetCaptionText(m_hrefCaption, IDS_TB_CAPT_HREF); SetCaptionText(m_sectionCaption, IDS_TB_CAPT_SECTION_ID); SetCaptionText(m_imageTitleCaption, IDS_TB_CAPT_IMAGE_TITLE);
-	SetCaptionText(m_tableIdCaption, IDS_TB_CAPT_TABLE_ID); SetCaptionText(m_tableStyleCaption, IDS_TB_CAPT_TABLE_STYLE); SetCaptionText(m_cellIdCaption, IDS_TB_CAPT_ID); SetCaptionText(m_cellStyleCaption, IDS_TB_CAPT_STYLE);
-	SetCaptionText(m_colspanCaption, IDS_TB_CAPT_COLSPAN); SetCaptionText(m_rowspanCaption, IDS_TB_CAPT_ROWSPAN); SetCaptionText(m_rowAlignCaption, IDS_TB_CAPT_TR_ALIGN); SetCaptionText(m_alignCaption, IDS_TB_CAPT_TD_ALIGN); SetCaptionText(m_valignCaption, IDS_TB_CAPT_TD_VALIGN);
+	struct Binding { CCustomStatic* caption; CWindow* editor; UINT textId; LPCWSTR placeholder; };
+	const Binding links[] = { { &m_idCaption, &m_idBox, IDS_TB_CAPT_ID, L"123456789012345678901234567890" }, { &m_hrefCaption, &m_hrefBox, IDS_TB_CAPT_HREF, L"123456789012345678901234567890" }, { &m_sectionCaption, &m_sectionBox, IDS_TB_CAPT_SECTION_ID, L"123456789012345678901234567890" }, { &m_imageTitleCaption, &m_imageTitleBox, IDS_TB_CAPT_IMAGE_TITLE, L"123456789012345678901234567890" } };
+	const Binding table[] = { { &m_tableIdCaption, &m_tableIdBox, IDS_TB_CAPT_TABLE_ID, L"12345678901234567890" }, { &m_tableStyleCaption, &m_tableStyleBox, IDS_TB_CAPT_TABLE_STYLE, L"123456789012345" }, { &m_cellIdCaption, &m_cellIdBox, IDS_TB_CAPT_ID, L"12345678901234567890" }, { &m_cellStyleCaption, &m_cellStyleBox, IDS_TB_CAPT_STYLE, L"123456789012345" } };
+	const Binding table2[] = { { &m_colspanCaption, &m_colspanBox, IDS_TB_CAPT_COLSPAN, L"12345" }, { &m_rowspanCaption, &m_rowspanBox, IDS_TB_CAPT_ROWSPAN, L"12345" }, { &m_rowAlignCaption, &m_rowAlignBox, IDS_TB_CAPT_TR_ALIGN, L"12345678" }, { &m_alignCaption, &m_alignBox, IDS_TB_CAPT_TD_ALIGN, L"12345678" }, { &m_valignCaption, &m_valignBox, IDS_TB_CAPT_TD_VALIGN, L"12345678" } };
+	const auto rebuild = [](HWND toolbar, const Binding* bindings, size_t count)
+	{
+		if(!::IsWindow(toolbar)) return;
+		::SendMessage(toolbar, WM_SETREDRAW, FALSE, 0);
+		for(int index = static_cast<int>(::SendMessage(toolbar, TB_BUTTONCOUNT, 0, 0)) - 1; index >= 0; --index) ::SendMessage(toolbar, TB_DELETEBUTTON, index, 0);
+		for(size_t index = 0; index < count; ++index)
+		{
+			wchar_t text[MAX_LOAD_STRING + 1] = {};
+			FbeLoadString(_Module.GetResourceInstance(), bindings[index].textId, text, MAX_LOAD_STRING);
+			AddPlaceholder(toolbar, text); AddPlaceholder(toolbar, bindings[index].placeholder);
+		}
+		::SendMessage(toolbar, TB_AUTOSIZE, 0, 0);
+		for(size_t index = 0; index < count; ++index)
+		{
+			RECT captionRect = {}, editorRect = {};
+			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 2), reinterpret_cast<LPARAM>(&captionRect));
+			::SendMessage(toolbar, TB_GETITEMRECT, static_cast<WPARAM>(index * 2 + 1), reinterpret_cast<LPARAM>(&editorRect));
+			--captionRect.bottom; --editorRect.bottom;
+			wchar_t text[MAX_LOAD_STRING + 1] = {};
+			FbeLoadString(_Module.GetResourceInstance(), bindings[index].textId, text, MAX_LOAD_STRING);
+			bindings[index].caption->SetWindowText(text);
+			::SetWindowPos(bindings[index].caption->m_hWnd, NULL, captionRect.left, captionRect.top, captionRect.right - captionRect.left, captionRect.bottom - captionRect.top, SWP_NOACTIVATE | SWP_NOZORDER);
+			::SetWindowPos(bindings[index].editor->m_hWnd, NULL, editorRect.left, editorRect.top, editorRect.right - editorRect.left, editorRect.bottom - editorRect.top, SWP_NOACTIVATE | SWP_NOZORDER);
+		}
+		::SendMessage(toolbar, WM_SETREDRAW, TRUE, 0);
+		::RedrawWindow(toolbar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+	};
+	rebuild(m_linksBar, links, _countof(links)); rebuild(m_tableBar, table, _countof(table)); rebuild(m_tableBar2, table2, _countof(table2));
 }
 void ContextAttributeBars::SetMode(ContextBarMode mode)
 {
@@ -103,8 +126,16 @@ void FocusEdit(CCustomEdit& edit, bool selectAll) { edit.SetFocus(); if(selectAl
 
 void ContextAttributeBars::SetLinkAvailability(const LinkAttributeAvailability& a) { SetAvailable(m_idBox,m_idCaption,a.id); SetAvailable(m_hrefBox,m_hrefCaption,a.href); SetAvailable(m_sectionBox,m_sectionCaption,a.section); SetAvailable(m_imageTitleBox,m_imageTitleCaption,a.imageTitle); }
 void ContextAttributeBars::SetTableAvailability(const TableAttributeAvailability& a) { SetAvailable(m_tableIdBox,m_tableIdCaption,a.tableId); SetAvailable(m_tableStyleBox,m_tableStyleCaption,a.tableStyle); SetAvailable(m_cellIdBox,m_cellIdCaption,a.cellId); SetAvailable(m_cellStyleBox,m_cellStyleCaption,a.cellStyle); SetAvailable(m_colspanBox,m_colspanCaption,a.colspan); SetAvailable(m_rowspanBox,m_rowspanCaption,a.rowspan); SetAvailable(m_rowAlignBox,m_rowAlignCaption,a.rowAlign); SetAvailable(m_alignBox,m_alignCaption,a.align); SetAvailable(m_valignBox,m_valignCaption,a.valign); }
+void ContextAttributeBars::ApplySelectionState(const LinkAttributeState& linkState, const LinkAttributeAvailability& linkAvailability, const TableAttributeState& tableState, const TableAttributeAvailability& tableAvailability)
+{
+	LinkAttributeState displayedLink = linkState;
+	if(::GetFocus() == m_href) displayedLink.href = TextOf(m_href);
+	SetLinkState(displayedLink); SetTableState(tableState);
+	SetLinkAvailability(linkAvailability); SetTableAvailability(tableAvailability);
+}
 void ContextAttributeBars::ClearLinkState() { SetLinkState(LinkAttributeState()); }
 void ContextAttributeBars::ClearTableState() { SetTableState(TableAttributeState()); }
+void ContextAttributeBars::BeginHrefCatalogUpdate() { const CString text = TextOf(m_href); m_hrefBox.ResetContent(); m_href.SetWindowText(text); m_href.SetSel(0, text.GetLength() + 1); }
 void ContextAttributeBars::FocusLinkField(LinkAttributeField field, bool selectAll) { switch(field) { case LinkAttributeField::Id: FocusEdit(m_id,selectAll); break; case LinkAttributeField::Href: FocusEdit(m_href,selectAll); break; case LinkAttributeField::Section: FocusEdit(m_section,selectAll); break; case LinkAttributeField::ImageTitle: FocusEdit(m_imageTitle,selectAll); break; } }
 void ContextAttributeBars::FocusTableField(TableAttributeField field) { switch(field) { case TableAttributeField::TableId: FocusEdit(m_tableId,false); break; case TableAttributeField::TableStyle: FocusEdit(m_tableStyle,false); break; case TableAttributeField::CellId: FocusEdit(m_cellId,false); break; case TableAttributeField::CellStyle: FocusEdit(m_cellStyle,false); break; case TableAttributeField::Colspan: FocusEdit(m_colspan,false); break; case TableAttributeField::Rowspan: FocusEdit(m_rowspan,false); break; case TableAttributeField::RowAlign: FocusEdit(m_rowAlign,false); break; case TableAttributeField::Align: FocusEdit(m_align,false); break; case TableAttributeField::VAlign: FocusEdit(m_valign,false); break; } }
 bool ContextAttributeBars::ContainsFocus(HWND window) const { return window == m_id.m_hWnd || window == m_href.m_hWnd || window == m_section.m_hWnd || window == m_imageTitle.m_hWnd || window == m_tableId.m_hWnd || window == m_tableStyle.m_hWnd || window == m_cellId.m_hWnd || window == m_cellStyle.m_hWnd || window == m_colspan.m_hWnd || window == m_rowspan.m_hWnd || window == m_rowAlign.m_hWnd || window == m_align.m_hWnd || window == m_valign.m_hWnd || ::IsChild(m_linksBar, window) || ::IsChild(m_tableBar, window) || ::IsChild(m_tableBar2, window); }
