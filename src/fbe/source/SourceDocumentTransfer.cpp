@@ -1,6 +1,7 @@
 #include "../stdafx.h"
 #include "SourceDocumentTransfer.h"
 #include "Scintilla.h"
+#include "../XmlDeclaration.h"
 
 bool SourceDocumentTransfer::ReadSourceText(CWindow& source, SourceDocumentText& result)
 {
@@ -23,4 +24,9 @@ bool SourceDocumentTransfer::ReadSourceText(CWindow& source, SourceDocumentText&
 	result.selectionStart = ::MultiByteToWideChar(CP_UTF8, 0, result.utf8.data(), static_cast<int>(start), NULL, 0);
 	result.selectionEnd = result.caret ? result.selectionStart : ::MultiByteToWideChar(CP_UTF8, 0, result.utf8.data(), static_cast<int>(end), NULL, 0);
 	return true;
+}
+
+CString SourceDocumentTransfer::ExtractXmlDeclarationEncoding(const CString& xmlText)
+{
+	return CString(FbeExtractXmlDeclarationEncoding(std::wstring(static_cast<const wchar_t*>(xmlText))).c_str());
 }

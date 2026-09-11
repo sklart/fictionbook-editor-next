@@ -29,4 +29,5 @@ class SourceDocumentTransfer
 {
 public:
 	static bool ReadSourceText(CWindow& source, SourceDocumentText& result);
+	static CString ExtractXmlDeclarationEncoding(const CString& xmlText);
 };

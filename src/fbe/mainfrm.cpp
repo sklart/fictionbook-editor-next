@@ -6381,11 +6381,6 @@ LRESULT CMainFrame::OnChar(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
   return 0;
 }
 
-static CString ExtractXmlDeclarationEncoding(const CString& xmlText)
-{
-	return CString(FbeExtractXmlDeclarationEncoding(std::wstring(static_cast<const wchar_t*>(xmlText))).c_str());
-}
-
 // Возвращает позицию символа отображаемого текста XML-узла в Source. Теги и
 // сущности XML пропускаются, поэтому форматирование Source не влияет на поиск.
 static int FindXmlNodeTextPosition(const CString& sourceXml,
@@ -6765,7 +6760,7 @@ bool  CMainFrame::SourceToHTML()
 
 	if(changed)
 	{
-		CString sourceEncoding = ExtractXmlDeclarationEncoding(sourceText);
+		CString sourceEncoding = SourceDocumentTransfer::ExtractXmlDeclarationEncoding(sourceText);
 		if (!sourceEncoding.IsEmpty())
 			m_doc->m_encoding = sourceEncoding;
 
