@@ -598,6 +598,7 @@
 #define IDC_FIND_SCOPE                   1165
 #define IDC_FIND_RESULTS_LIST            1166
 #define IDC_FIND_RESULTS_STATUS          1167
+#define IDC_FIND_FROM_START              1168
 #define IDC_REPLACE_LABEL_TEXT          1125
 #define IDC_REPLACE_LABEL_REPLACE       1126
 #define IDC_REPLACE_DIRECTION_GROUP     1127

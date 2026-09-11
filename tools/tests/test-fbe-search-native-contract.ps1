@@ -48,9 +48,23 @@ Assert-Contains $dialog 'CBN_DROPDOWN, OnScopeDropDown' 'Scope is refreshed when
 Assert-Contains $dialog 'HasSavedSearchScope\(\)' 'saved Selection scope stays available while generation is current'
 Assert-Contains $dialog 'EnableWindow\(unicode, ::IsDlgButtonChecked' 'UCP availability follows RegExp without clearing its state'
 Assert-Contains $pane 'OnListCustomDraw' 'Results pane custom-draw match presentation'
+Assert-Contains $pane 'GetSysColorBrush\(COLOR_HIGHLIGHT\)' 'selected result context uses the system highlight background'
+Assert-Contains $pane 'COLOR_HIGHLIGHTTEXT' 'selected result context uses the system highlight text color'
+Assert-Contains $pane 'GetSubItemRect\(item, 1, LVIR_BOUNDS' 'selected result paints the complete context cell'
 Assert-Contains $pane 'OnItemActivate' 'Results pane activation navigates to a result'
 Assert-Contains $frame 'SetSinglePaneMode\(SPLIT_PANE_LEFT\)' 'Results pane is hidden as a single editor pane by default and on close'
 Assert-Contains $frame 'SetSplitterPanes\(m_view, m_find_results_pane\)' 'Results pane is nested below the editor'
+
+$selectResult = [regex]::Match($source, 'bool\s+CFBEView::SelectFindResult\(std::size_t index\)\s*\{[\s\S]*?\r?\n}\r?\n\r?\nvoid\s+CFBEView::ClearSearchHighlights').Value
+if ([string]::IsNullOrWhiteSpace($selectResult)) { throw 'Unable to locate Find result selection path.' }
+Assert-Contains $selectResult 'PositionFoundRange' 'result selection navigates the editor'
+Assert-Contains $selectResult 'RefreshSearchHighlights' 'result selection refreshes highlights'
+Assert-NotContains $selectResult 'OnViewToolBar|IsBandVisible|ATL_IDW_BAND_FIRST' 'result selection must not change rebar-band visibility'
+Assert-Contains $dialog 'IDC_FIND_FROM_START' 'Find exposes a separate From start command'
+Assert-Contains $dialog 'DoSearchFromScopeStart' 'From start uses the current Search Core scope'
+Assert-Contains $source 'DoSearchNative\(true, m_fo\.fRegexp \? AU::Search::SearchMode::Regex : AU::Search::SearchMode::Literal, true\)' 'From start keeps the existing direction state while using a dedicated action'
+Assert-Contains $source 'm_has_find_scope_range \? m_find_scope_range\.Start : 0' 'From start begins at the current scope boundary'
+Assert-Contains $source 'AU::Search::SearchDirection::Forward, &wrapped' 'From start selects the first match without adding a third direction'
 
 $singleReplace = [regex]::Match($source, 'void\s+CFBEView::DoReplace\(\)\s*\{[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ReplaceAllSearchCore').Value
 if ([string]::IsNullOrWhiteSpace($singleReplace)) { throw 'Unable to locate native single Replace path.' }

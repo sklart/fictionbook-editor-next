@@ -333,7 +333,7 @@ protected:
 
 	void SelMatch(MSHTML::IHTMLTxtRange* tr, AU::ReMatch rm);
 	void PositionFoundRange(MSHTML::IHTMLTxtRange* range);
-	bool DoSearchNative(bool fMore, AU::Search::SearchMode mode);
+	bool DoSearchNative(bool fMore, AU::Search::SearchMode mode, bool fromScopeStart = false);
 	bool CanReuseDocumentSearch(const AU::Search::SearchQuery& query, std::uint64_t generation) const;
 	bool RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText = NULL, bool* expressionError = NULL);
 	void AdvanceSearchDocumentGeneration();
@@ -642,6 +642,7 @@ public:
 	}
 
 	bool DoSearch(bool fMore=true);
+	bool DoSearchFromScopeStart();
 	bool DoFindAll(bool showResults=true, CString* errorText=NULL);
 	CString SearchResultStatus();
 	CString FindAllResultStatus();

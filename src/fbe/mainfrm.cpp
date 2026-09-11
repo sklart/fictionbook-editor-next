@@ -2140,8 +2140,11 @@ void CMainFrame::AddStaticText(CCustomStatic &st, HWND toolbarHwnd, int id, cons
 	SendMessage(toolbarHwnd, TB_GETITEMRECT, id, (LPARAM)&rect);  
 	rect.bottom--; 
 
-	st.Create(toolbarHwnd, rect, NULL, WS_CHILD|WS_VISIBLE, WS_EX_TRANSPARENT, IDC_ID);
-	st.SetFont(hFont);
+	// Captions are real opaque child controls.  The toolbar button underneath is
+	// only a layout placeholder, so transparent painting would leave stale glyphs
+	// after a resize or localization refresh.
+	st.Create(toolbarHwnd, rect, NULL, WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | SS_NOPREFIX, 0, IDC_ID);
+	st.SetFont(UiMetrics::DialogFont() ? UiMetrics::DialogFont() : hFont);
 	st.SetWindowText(text);
 	st.SetEnabled(true);
 }
@@ -2522,15 +2525,6 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // add editor controls  
   RECT rc;    
   
-  // m_id_caption.SetParent(this->m_hWnd);
-
-  /*HDC hdc = ::GetDC(hWndLinksBar);
-  COLORREF bkCollor = GetBkColor(hdc);*/
-  HDC hdc1 = ::GetDC(m_id_caption);
-  SetBkColor(hdc1, RGB(0,0,0));
-  //ReleaseDC(hdc);
-  ReleaseDC(hdc1);
-
   DWORD CBS_COMMON_STYLE =  WS_CHILD | WS_VISIBLE | CBS_AUTOHSCROLL;
 
   SubclassBox(hWndLinksBar, rc, 1, m_id_box, CBS_COMMON_STYLE, m_id, IDC_ID, hFont);
@@ -6168,18 +6162,18 @@ LRESULT CMainFrame::OnSelectCtl(WORD /* unused: wNotifyCode */, WORD wID, HWND /
 			m_section.SetFocus();
 			break;
 		case ID_SELECT_IDT:
-			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 3))
-				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 3, NULL, bHandled);
+			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
+				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
 			m_id_table_id.SetFocus();
 			break;
 		case ID_SELECT_STYLET:
-			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 3))
-				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 3, NULL, bHandled);
+			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
+				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
 			m_styleT_table.SetFocus();
 			break;
 		case ID_SELECT_STYLE:
-			if(!IsBandVisible(ATL_IDW_BAND_FIRST+  3))
-				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 3, NULL, bHandled);
+			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
+				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
 			m_style_table.SetFocus();
 			break;
 		case ID_SELECT_COLSPAN:

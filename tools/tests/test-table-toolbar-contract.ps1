@@ -12,6 +12,14 @@ $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h'
 $factory = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\ToolbarFactory.cpp')
 $tableCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\TableToolbarCommands.cpp')
 
+$selectControls = [regex]::Match($cpp, 'LRESULT\s+CMainFrame::OnSelectCtl\([\s\S]*?\r?\n}\r?\n\r?\nLRESULT\s+CMainFrame::OnNextItem').Value
+if ([string]::IsNullOrWhiteSpace($selectControls)) { throw 'Unable to locate attribute-band selection handler.' }
+foreach ($tableControl in @('ID_SELECT_IDT', 'ID_SELECT_STYLET', 'ID_SELECT_STYLE')) {
+    if ($selectControls -notmatch "(?s)case\s+$tableControl\s*:.*?ATL_IDW_BAND_FIRST\s*\+\s*4") {
+        throw "$tableControl must reveal the first table attribute band (+4), not the links/image band."
+    }
+}
+
 $bitmapHelper = [regex]::Match($factory, '(?s)int ToolbarFactory::AddBitmapFromModule\(.*?return imageIndex;\s*\}')
 if (-not $bitmapHelper.Success -or
     $bitmapHelper.Value -notmatch 'LoadImage\(module, MAKEINTRESOURCE\(bitmapResourceId\)' -or

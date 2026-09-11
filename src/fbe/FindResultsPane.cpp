@@ -125,11 +125,22 @@ LRESULT CFindResultsPane::OnListCustomDraw(int, LPNMHDR header, BOOL&)
 	std::size_t matchStart = 0, matchLength = 0; const int item = static_cast<int>(draw->nmcd.dwItemSpec);
 	if (item < 0 || !m_view->FindResultPreviewMatch(static_cast<std::size_t>(item), &matchStart, &matchLength) || matchLength == 0) return CDRF_DODEFAULT;
 	const CString text = m_view->FindResultPreview(static_cast<std::size_t>(item)); if (matchStart >= static_cast<std::size_t>(text.GetLength())) return CDRF_DODEFAULT;
-	matchLength = (std::min)(matchLength, static_cast<std::size_t>(text.GetLength()) - matchStart); RECT cell = {}; if (!m_list.GetSubItemRect(item, 1, LVIR_LABEL, &cell)) return CDRF_DODEFAULT;
+	matchLength = (std::min)(matchLength, static_cast<std::size_t>(text.GetLength()) - matchStart); RECT cell = {}; if (!m_list.GetSubItemRect(item, 1, LVIR_BOUNDS, &cell)) return CDRF_DODEFAULT;
+	const RECT paintCell = cell;
 	cell.left += Scale(3); HDC dc = draw->nmcd.hdc; HFONT oldFont = static_cast<HFONT>(::SelectObject(dc, reinterpret_cast<HGDIOBJ>(::SendMessage(m_list, WM_GETFONT, 0, 0)))); const bool selected = (m_list.GetItemState(item, LVIS_SELECTED) & LVIS_SELECTED) != 0;
+	if (selected)
+		::FillRect(dc, &paintCell, ::GetSysColorBrush(COLOR_HIGHLIGHT));
 	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, selected ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : ::GetSysColor(COLOR_WINDOWTEXT)); ::DrawText(dc, text, text.GetLength(), &cell, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
 	SIZE prefix = {}; ::GetTextExtentPoint32(dc, text, static_cast<int>(matchStart), &prefix); const CString matched = text.Mid(static_cast<int>(matchStart), static_cast<int>(matchLength)); SIZE matchedSize = {}; ::GetTextExtentPoint32(dc, matched, matched.GetLength(), &matchedSize);
 	RECT highlight = cell; highlight.left += prefix.cx; highlight.right = highlight.left + matchedSize.cx;
-	if (highlight.left < cell.right && highlight.right > cell.left) { HBRUSH brush = ::CreateSolidBrush(selected ? RGB(46, 112, 184) : RGB(255, 235, 120)); ::FillRect(dc, &highlight, brush); ::DeleteObject(brush); ::SetTextColor(dc, selected ? RGB(255, 255, 255) : RGB(100, 45, 0)); ::DrawText(dc, matched, matched.GetLength(), &highlight, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_NOCLIP); }
+	if (highlight.left < cell.right && highlight.right > cell.left) {
+		// A selected row already has the system highlight background.  Repainting
+		// the fragment with its system foreground preserves contrast and avoids a
+		// second, potentially white-on-white, selection colour.
+		if (!selected)
+			::FillRect(dc, &highlight, ::GetSysColorBrush(COLOR_INFOBK));
+		::SetTextColor(dc, selected ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : ::GetSysColor(COLOR_INFOTEXT));
+		::DrawText(dc, matched, matched.GetLength(), &highlight, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_NOCLIP);
+	}
 	::SelectObject(dc, oldFont); return CDRF_SKIPDEFAULT;
 }

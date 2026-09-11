@@ -194,6 +194,8 @@ public:
 			L"Direction");
 		SetRuntimeText(IDC_UP, isReplaceDialog ? L"fbe.dialog.idd_replace.up" : L"fbe.dialog.idd_find.up", L"&Up");
 		SetRuntimeText(IDC_DOWN, isReplaceDialog ? L"fbe.dialog.idd_replace.down" : L"fbe.dialog.idd_find.down", L"&Down");
+		if (!isReplaceDialog)
+			SetRuntimeText(IDC_FIND_FROM_START, L"fbe.dialog.idd_find.from_start", L"&From start");
 		SetRuntimeText(IDCANCEL, isReplaceDialog ? L"fbe.dialog.idd_replace.cancel" : L"fbe.dialog.idd_find.cancel", L"Cancel");
 		if(isReplaceDialog)
 		{
@@ -234,6 +236,7 @@ public:
 				m_tooltips.Add(GetDlgItem(IDC_FIND_STATUS), L"fbe.tooltip.find.status", L"Search status and complete regular-expression diagnostic.");
 				m_tooltips.Add(GetDlgItem(IDC_UP), L"fbe.tooltip.find.up", L"Search toward the beginning of the document.");
 				m_tooltips.Add(GetDlgItem(IDC_DOWN), L"fbe.tooltip.find.down", L"Search toward the end of the document.");
+				m_tooltips.Add(GetDlgItem(IDC_FIND_FROM_START), L"fbe.tooltip.find.from_start", L"Go to the first match in the selected scope.");
 			}
 		}
 
@@ -336,6 +339,7 @@ public:
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		COMMAND_ID_HANDLER(ID_FIND_NEXT, OnDoFind)
+		COMMAND_HANDLER(IDC_FIND_FROM_START, BN_CLICKED, OnFindFromStart)
 		COMMAND_ID_HANDLER(IDC_FIND_ALL, OnDoFindAll)
 		COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_SELCHANGE, OnScopeChanged)
 		COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_DROPDOWN, OnScopeDropDown)
@@ -371,6 +375,26 @@ public:
 	LRESULT OnDoFind(WORD, WORD, HWND, BOOL&)
 	{
 		DoFind();
+		return 0;
+	}
+
+	LRESULT OnFindFromStart(WORD, WORD, HWND, BOOL&)
+	{
+		GetData();
+		VBErr = false;
+		if (!m_view->DoSearchFromScopeStart())
+		{
+			if (!VBErr && !m_view->LastSearchError().IsEmpty())
+				SetFindStatus(m_view->LastSearchError());
+			else if (!VBErr)
+				U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
+		}
+		else
+		{
+			SaveString();
+			SaveHistory();
+			SetFindStatus(m_view->SearchResultStatus());
+		}
 		return 0;
 	}
 

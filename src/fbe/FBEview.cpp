@@ -2682,6 +2682,15 @@ bool CFBEView::DoSearch(bool fMore)
 	return m_fo.fRegexp ? DoSearchRegexp(fMore) : DoSearchStd(fMore);
 }
 
+bool CFBEView::DoSearchFromScopeStart()
+{
+	m_last_search_error.Empty();
+	if (m_fo.pattern.IsEmpty())
+		return true;
+	NormalizeSearchPatternNbsp(m_fo.pattern);
+	return DoSearchNative(true, m_fo.fRegexp ? AU::Search::SearchMode::Regex : AU::Search::SearchMode::Literal, true);
+}
+
 // Removes HTML tags
 void RemoveTags(CString &src)
 {
@@ -4149,7 +4158,7 @@ void CFBEView::OnScroll(IDispatch */* unused: evt */)
 	UpdateSearchHighlightsForScroll();
 }
 
-bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
+bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode, bool fromScopeStart)
 {
 	try
 	{
@@ -4198,8 +4207,11 @@ bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode)
 			m_document_search.TryGetSearchRange(generation, selection, &selectedRange) &&
 			selectedRange.Length == 0 && selectedRange.Start == m_last_zero_length_hit;
 		bool wrapped = false;
-		const AU::Search::SearchHit* hit = m_document_search.SelectFromRange(
-			Document(), generation, selection, query.Direction, &wrapped, skipZeroLengthAtOffset);
+		const AU::Search::SearchHit* hit = fromScopeStart
+			? m_document_search.SelectFromOffset(Document(), generation,
+				m_has_find_scope_range ? m_find_scope_range.Start : 0,
+				AU::Search::SearchDirection::Forward, &wrapped)
+			: m_document_search.SelectFromRange(Document(), generation, selection, query.Direction, &wrapped, skipZeroLengthAtOffset);
 		if (hit == NULL)
 			return false;
 		m_has_last_zero_length_hit = hit->Length == 0;

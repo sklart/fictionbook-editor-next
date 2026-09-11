@@ -82,9 +82,13 @@ public:
 	CCustomStatic():m_font(0), m_enabled(0){}
 
 	void DoPaint(CDCHandle dc)
-    {		
+    {
       RECT rc;
       GetClientRect(&rc);
+	  // Attribute captions cover toolbar layout placeholders.  Paint an opaque
+	  // system background so a toolbar repaint cannot show a second stale label
+	  // through this child window.
+	  ::FillRect(dc, &rc, ::GetSysColorBrush(COLOR_BTNFACE));
 	  /*HBRUSH hBr = GetSysColorBrush(COLOR_3DFACE);
 	  HPEN pen = CreatePen(PS_SOLID, 1, GetSysColor(COLOR_3DFACE));
 	  HBRUSH oldBrush = (HBRUSH)SelectObject(dc, hBr);

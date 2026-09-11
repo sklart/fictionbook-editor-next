@@ -33,5 +33,8 @@ Require $mainFrameHeader 'm_font\s*=\s*reinterpret_cast<HFONT>\(wParam\)' 'CCust
 Require $mainFrameHeader 'MESSAGE_HANDLER\(WM_SETFONT, OnSetFont\)' 'CCustomStatic WM_SETFONT message map'
 Require $mainFrameHeader 'bHandled\s*=\s*FALSE' 'CCustomStatic chains WM_SETFONT to the Static superclass'
 Require $mainFrameHeader 'SendMessage\(m_hWnd, WM_SETFONT' 'CCustomStatic SetFont uses the WM_SETFONT path'
+Require $mainFrameHeader 'GetSysColorBrush\(COLOR_BTNFACE\)' 'attribute captions paint an opaque system toolbar background'
+Require $mainFrame 'st\.Create\(toolbarHwnd, rect, NULL, WS_CHILD \| WS_VISIBLE \| SS_CENTER \| SS_CENTERIMAGE \| SS_NOPREFIX, 0, IDC_ID\)' 'attribute captions are opaque child controls rather than transparent overlays'
+Require $mainFrame 'st\.SetFont\(UiMetrics::DialogFont\(\)' 'attribute captions explicitly use the dialog font'
 
 Write-Host 'UiMetrics and toolbar geometry contract passed.'
