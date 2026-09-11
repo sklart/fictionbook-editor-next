@@ -81,7 +81,7 @@ $exe = Join-Path $testDir 'image-import-smoke.exe'
 $webp = Join-Path $repoRoot "build\libwebp\install\$Configuration"
 $openjpeg = Join-Path $repoRoot "build\openjpeg\install\$Configuration"
 
-& cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE `
+& cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE "/Fo$testDir\\" `
     "/I$repoRoot\src\fbe" "/I$repoRoot\third_party\wtl" "/I$webp\include" "/I$openjpeg\include" "/I$repoRoot\build\libheif\install\$Configuration\include" `
     (Join-Path $PSScriptRoot 'image-import-smoke.cpp') (Join-Path $repoRoot 'src\fbe\ImageImport.cpp') `
     "/Fe$exe" "/link" "/SUBSYSTEM:CONSOLE" "/LIBPATH:$webp\lib" "/LIBPATH:$openjpeg\lib" "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib" libwebpmux.lib libwebp.lib libsharpyuv.lib openjp2.lib heif.lib libde265.lib aom.lib gdiplus.lib ole32.lib

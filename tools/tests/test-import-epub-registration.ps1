@@ -147,7 +147,7 @@ int wmain()
 
     & (Join-Path $repoRoot "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64
 
-    & cl.exe /nologo /EHsc /W3 "/Fe:$exePath" $sourcePath ole32.lib uuid.lib
+    & cl.exe /nologo /EHsc /W3 "/Fo:$testRoot\\" "/Fe:$exePath" $sourcePath ole32.lib uuid.lib
     if ($LASTEXITCODE -ne 0) {
         throw "Сборка smoke-теста ImportEPUB завершилась с кодом $LASTEXITCODE."
     }

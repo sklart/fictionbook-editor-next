@@ -23,11 +23,14 @@ $vsDevCmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
 $msvc = Get-ChildItem -LiteralPath (Join-Path $vs 'VC\Tools\MSVC') -Directory | Sort-Object Name -Descending | Select-Object -First 1
 if (-not $msvc) { throw 'Не найден каталог MSVC.' }
 $out = Join-Path ([IO.Path]::GetTempPath()) 'fbe-update-version-test.exe'
+$objectDirectory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-update-version-objects-' + $PID)
+New-Item -ItemType Directory -Path $objectDirectory -Force | Out-Null
 $testSource = Join-Path $PSScriptRoot 'test-update-version.cpp'
 $implementation = Join-Path $root 'src\fbe\UpdateVersion.cpp'
-$command = '"{0}" -arch=x86 -host_arch=x64 >nul && cl /nologo /EHsc /DUNICODE /D_UNICODE /I "{1}\src\fbe" /I "{1}\third_party\wtl" /I "{2}\ATLMFC\include" "{3}" "{4}" /Fe"{5}"' -f $vsDevCmd, $root, $msvc.FullName, $testSource, $implementation, $out
+$command = '"{0}" -arch=x86 -host_arch=x64 >nul && cl /nologo /EHsc /DUNICODE /D_UNICODE /I "{1}\src\fbe" /I "{1}\third_party\wtl" /I "{2}\ATLMFC\include" /Fo"{3}\\" "{4}" "{5}" /Fe"{6}"' -f $vsDevCmd, $root, $msvc.FullName, $objectDirectory, $testSource, $implementation, $out
 & cmd.exe /d /s /c $command
 if ($LASTEXITCODE -ne 0) { throw 'Не удалось собрать SemVer regression test.' }
 & $out
 if ($LASTEXITCODE -ne 0) { throw 'SemVer regression test failed.' }
+Remove-Item -LiteralPath $objectDirectory -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host 'SemVer regression test passed.'

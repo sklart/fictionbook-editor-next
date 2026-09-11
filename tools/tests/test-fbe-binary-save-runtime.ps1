@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 & cl.exe /nologo /EHsc /std:c++17 /utf-8 /DUNICODE /D_UNICODE /MT /W4 `
     "/I$(Join-Path $repoRoot 'src\fbe')" `
-    (Join-Path $PSScriptRoot 'binary-file-save-runtime.cpp') `
+    "/Fo$testDir\\" (Join-Path $PSScriptRoot 'binary-file-save-runtime.cpp') `
     "/Fe$testExe" /link /SUBSYSTEM:CONSOLE
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

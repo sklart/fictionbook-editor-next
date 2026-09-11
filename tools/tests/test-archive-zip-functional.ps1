@@ -7,7 +7,7 @@ $out = Join-Path $root 'out\tests'; New-Item -ItemType Directory -Force -Path $o
 $exe = Join-Path $out 'archive-zip-functional-test.exe'
 $includes = @("/I$root\src\fbe", "/I$root\third_party\wtl", "/I$root\build\libarchive\install\Release\include")
 $sources = @("$PSScriptRoot\archive-zip-functional-test.cpp", "$root\src\fbe\archive\ArchiveReader.cpp", "$root\src\fbe\archive\ZipArchiveWriter.cpp")
-& cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE /DWIN32 @includes $sources "/Fe$exe" "/link" "/LIBPATH:$root\build\libarchive\install\Release\lib" "/LIBPATH:$root\build\zlib\install\Release\lib" archive.lib zs.lib xmllite.lib
+& cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE /DWIN32 "/Fo$out\\" @includes $sources "/Fe$exe" "/link" "/LIBPATH:$root\build\libarchive\install\Release\lib" "/LIBPATH:$root\build\zlib\install\Release\lib" archive.lib zs.lib xmllite.lib
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path $temp | Out-Null
 try {
     $source = Join-Path $root 'tools\tests\spell-visible-paragraphs-test.cpp'
     $exe = Join-Path $temp 'spell-visible-paragraphs-test.exe'
-    & $compiler /nologo /utf-8 /WX /EHsc /std:c++17 /I (Join-Path $root 'src\fbe') $source /Fe$exe
+    & $compiler /nologo /utf-8 /WX /EHsc /std:c++17 /I (Join-Path $root 'src\fbe') "/Fo$temp\\" $source /Fe$exe
     if ($LASTEXITCODE -ne 0) { throw 'Visible spelling paragraph test compilation failed.' }
     & $exe
     if ($LASTEXITCODE -ne 0) { throw 'Visible spelling paragraph test failed.' }

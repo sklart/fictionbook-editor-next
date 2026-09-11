@@ -29,7 +29,7 @@ $resourceObject = Join-Path $outputDir 'ArchHandler.res'
 & rc.exe /nologo /fo $resourceObject $resourceSource
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& cl.exe /nologo /std:c++17 /EHsc /W4 /utf-8 /DUNICODE /D_UNICODE $source $resourceObject "/Fe$zipHandler" /link /SUBSYSTEM:WINDOWS /DYNAMICBASE /NXCOMPAT "/MANIFESTINPUT:$manifestSource" /MANIFEST:EMBED Shell32.lib Advapi32.lib User32.lib
+& cl.exe /nologo /std:c++17 /EHsc /W4 /utf-8 /DUNICODE /D_UNICODE "/Fo$outputDir\\" $source $resourceObject "/Fe$zipHandler" /link /SUBSYSTEM:WINDOWS /DYNAMICBASE /NXCOMPAT "/MANIFESTINPUT:$manifestSource" /MANIFEST:EMBED Shell32.lib Advapi32.lib User32.lib
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Copy-Item -LiteralPath $zipHandler -Destination $rarHandler -Force
 Write-Host "ArchHandler собран: $zipHandler; $rarHandler"

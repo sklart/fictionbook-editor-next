@@ -28,7 +28,7 @@ if ($HandlerDirectory) {
 $testDir = Join-Path $repoRoot 'out\tests\archhandler-argv'
 New-Item -ItemType Directory -Force -Path $testDir | Out-Null
 $receiver = Join-Path $testDir 'receiver.exe'
-& cl.exe /nologo /std:c++17 /EHsc /W4 /DUNICODE /D_UNICODE (Join-Path $PSScriptRoot 'archhandler-argv-receiver.cpp') "/Fe$receiver" /link /SUBSYSTEM:CONSOLE
+& cl.exe /nologo /std:c++17 /EHsc /W4 /DUNICODE /D_UNICODE "/Fo$testDir\\" (Join-Path $PSScriptRoot 'archhandler-argv-receiver.cpp') "/Fe$receiver" /link /SUBSYSTEM:CONSOLE
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $registryRoot = 'HKCU:\Software\FictionBook Editor\ArchHandler'

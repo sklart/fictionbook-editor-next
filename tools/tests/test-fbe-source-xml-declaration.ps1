@@ -9,7 +9,7 @@ $directory = Join-Path ([IO.Path]::GetTempPath()) ("fbe-xml-declaration-$PID")
 New-Item -ItemType Directory -Path $directory | Out-Null
 try {
     $exe = Join-Path $directory 'xml-declaration-test.exe'
-    & cl.exe /nologo /std:c++17 /EHsc /W4 /WX /I (Join-Path $root 'src\fbe') (Join-Path $root 'tools\tests\xml-declaration-test.cpp') /Fe$exe
+    & cl.exe /nologo /std:c++17 /EHsc /W4 /WX /I (Join-Path $root 'src\fbe') "/Fo$directory\\" (Join-Path $root 'tools\tests\xml-declaration-test.cpp') /Fe$exe
     if ($LASTEXITCODE -ne 0) { throw 'XML declaration helper compilation failed.' }
     & $exe
     if ($LASTEXITCODE -ne 0) { throw 'XML declaration helper regression failed.' }

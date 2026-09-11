@@ -212,6 +212,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     "/I$(Join-Path $repoRoot 'build\hunspell\include')" `
     "/I$(Join-Path $repoRoot 'third_party\hunspell\src\hunspell')" `
     "/I$(Join-Path $repoRoot 'src\fbe')" `
+    "/Fo$testDir\\" `
     (Join-Path $PSScriptRoot "spellcheck-dictionary-smoke.cpp") `
     (Join-Path $testDir "spellcheck-splitter.obj") `
     (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib") `
