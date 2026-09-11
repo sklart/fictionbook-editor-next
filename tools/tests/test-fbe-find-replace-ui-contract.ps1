@@ -64,7 +64,7 @@ if ($caption.'en-US' -ne 'Find results' -or $count.'en-US' -ne '%Iu results') { 
 
 foreach ($key in @(
     'fbe.dialog.idd_find.unicode_properties', 'fbe.dialog.idd_find.scope', 'fbe.dialog.idd_find.from_start',
-    'fbe.replace.preview.completed')) {
+    'fbe.replace.preview.completed', 'fbe.tooltip.find.unicode_properties')) {
     RequireLocalized $key
 }
 foreach ($key in @('fbe.dialog.idd_replace.unicode_properties', 'fbe.dialog.idd_replace.scope', 'fbe.dialog.idd_replace.from_start')) {
@@ -72,8 +72,11 @@ foreach ($key in @('fbe.dialog.idd_replace.unicode_properties', 'fbe.dialog.idd_
 }
 Require $dialog 'SyncSearchOptionsToOpenDialogs\(this\)' 'immediate Find/Replace common-option synchronization'
 Require $dialog 'SyncSearchOptionsFromView' 'peer dialog control synchronization'
+Require $dialog 'm_tooltips\.Add\(GetDlgItem\(IDC_FIND_UNICODE_PROPERTIES\), L"fbe\.tooltip\.find\.unicode_properties"[\s\S]*?m_tooltips\.AddDisabledControlArea\(GetDlgItem\(IDC_FIND_UNICODE_PROPERTIES\), L"fbe\.tooltip\.find\.unicode_properties"' 'shared enabled and disabled UCP tooltip delivery'
 if ($dialog -match 'idd_replace\.(unicode_properties|scope|from_start)') { throw 'Replace must use shared Find localization keys for common controls.' }
 if ($catalog.strings.'fbe.replace.preview.message'.translations.'ru-RU' -ne 'Будет выполнено %Iu замен. Продолжить?') { throw 'Russian Replace All confirmation is not canonical.' }
 if ($null -ne $catalog.strings.'fbe.replace.preview.ready') { throw 'Obsolete second-click Replace All prompt must not remain localized.' }
+if ($catalog.strings.'fbe.tooltip.find.unicode_properties'.translations.'ru-RU' -ne 'Использовать Unicode-свойства для \w, \d, \s и границ слов \b/\B (например, для кириллицы). Доступно только при включённом «Регулярное выражение».') { throw 'Russian UCP tooltip is not canonical.' }
+if ($catalog.strings.'fbe.tooltip.find.unicode_properties'.translations.'en-US' -ne 'Use Unicode properties for \w, \d, \s and word boundaries \b/\B (for example with Cyrillic text). Available only when Regular expression is enabled.') { throw 'English UCP tooltip is not canonical.' }
 
 Write-Host 'Find/Replace common UI and Results Pane contract passed.'
