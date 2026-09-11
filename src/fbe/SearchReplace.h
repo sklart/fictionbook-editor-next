@@ -243,8 +243,8 @@ public:
 				m_tooltips.Add(GetDlgItem(IDC_MATCHCASE), L"fbe.tooltip.find.match_case", L"Distinguish uppercase and lowercase letters.");
 				m_tooltips.Add(GetDlgItem(IDC_REGEXP), L"fbe.tooltip.find.regexp", L"Interpret the query as a regular expression.");
 				m_tooltips.Add(GetDlgItem(IDC_FIND_SCOPE), L"fbe.tooltip.find.scope", L"Choose where to search.");
-				m_tooltips.Add(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), L"fbe.tooltip.find.unicode_properties", L"Use Unicode properties in regular expressions.");
-				m_tooltips.AddDisabledControlArea(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), L"fbe.tooltip.find.unicode_properties", L"Use Unicode properties in regular expressions.");
+				m_tooltips.Add(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), L"fbe.tooltip.find.unicode_properties", L"Use Unicode properties for \\w, \\d, \\s and word boundaries \\b/\\B (for example with Cyrillic text). Available only when Regular expression is enabled.");
+				m_tooltips.AddDisabledControlArea(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), L"fbe.tooltip.find.unicode_properties", L"Use Unicode properties for \\w, \\d, \\s and word boundaries \\b/\\B (for example with Cyrillic text). Available only when Regular expression is enabled.");
 				if (!isReplaceDialog) m_tooltips.Add(GetDlgItem(IDC_FIND_STATUS), L"fbe.tooltip.find.status", L"Search status and complete regular-expression diagnostic.");
 				m_tooltips.Add(GetDlgItem(IDC_UP), L"fbe.tooltip.find.up", L"Search toward the beginning of the document.");
 				m_tooltips.Add(GetDlgItem(IDC_DOWN), L"fbe.tooltip.find.down", L"Search toward the end of the document.");

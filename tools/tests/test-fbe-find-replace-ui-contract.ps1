@@ -11,6 +11,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $rc = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
 $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
+$view = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 
 function Require([string]$text, [string]$pattern, [string]$description) {
@@ -59,8 +60,8 @@ if ($pane -match 'title \+= L" —') { throw 'Results Pane header must not depen
 
 $caption = $catalog.strings.'fbe.dialog.idd_find_results.caption'.translations
 $count = $catalog.strings.'fbe.dialog.idd_find_results.count'.translations
-if ($caption.'ru-RU' -ne 'Результаты поиска' -or $count.'ru-RU' -ne '%Iu результатов') { throw 'Russian Results Pane header localization is not canonical.' }
-if ($caption.'en-US' -ne 'Find results' -or $count.'en-US' -ne '%Iu results') { throw 'English Results Pane header localization is not canonical.' }
+if ($caption.'ru-RU' -ne 'Результаты поиска' -or $count.'ru-RU' -ne 'Найдено: %Iu') { throw 'Russian Results Pane header localization is not canonical.' }
+if ($caption.'en-US' -ne 'Find results' -or $count.'en-US' -ne 'Found: %Iu') { throw 'English Results Pane header localization is not canonical.' }
 
 foreach ($key in @(
     'fbe.dialog.idd_find.unicode_properties', 'fbe.dialog.idd_find.scope', 'fbe.dialog.idd_find.from_start',
@@ -73,8 +74,17 @@ foreach ($key in @('fbe.dialog.idd_replace.unicode_properties', 'fbe.dialog.idd_
 Require $dialog 'SyncSearchOptionsToOpenDialogs\(this\)' 'immediate Find/Replace common-option synchronization'
 Require $dialog 'SyncSearchOptionsFromView' 'peer dialog control synchronization'
 Require $dialog 'm_tooltips\.Add\(GetDlgItem\(IDC_FIND_UNICODE_PROPERTIES\), L"fbe\.tooltip\.find\.unicode_properties"[\s\S]*?m_tooltips\.AddDisabledControlArea\(GetDlgItem\(IDC_FIND_UNICODE_PROPERTIES\), L"fbe\.tooltip\.find\.unicode_properties"' 'shared enabled and disabled UCP tooltip delivery'
+Require $dialog 'Use Unicode properties for \\\\w, \\\\d, \\\\s and word boundaries \\\\b/\\\\B \(for example with Cyrillic text\)\. Available only when Regular expression is enabled\.' 'informative portable UCP tooltip fallback'
+Require $pane 'fbe\.dialog\.idd_find_results\.count", L"Found: %Iu"' 'neutral portable Results Pane count fallback'
+Require $view 'fbe\.replace\.preview\.message", L"Number of replacements: %Iu\. Continue\?"' 'neutral portable Replace All confirmation fallback'
 if ($dialog -match 'idd_replace\.(unicode_properties|scope|from_start)') { throw 'Replace must use shared Find localization keys for common controls.' }
-if ($catalog.strings.'fbe.replace.preview.message'.translations.'ru-RU' -ne 'Будет выполнено %Iu замен. Продолжить?') { throw 'Russian Replace All confirmation is not canonical.' }
+if ($catalog.strings.'fbe.replace.preview.message'.translations.'ru-RU' -ne 'Количество замен: %Iu. Продолжить?') { throw 'Russian Replace All confirmation is not canonical.' }
+if ($catalog.strings.'fbe.replace.preview.message'.translations.'en-US' -ne 'Number of replacements: %Iu. Continue?') { throw 'English Replace All confirmation is not canonical.' }
+foreach ($language in @('en-US', 'ru-RU', 'uk-UA', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'pl-PL', 'pt-PT', 'nl-NL', 'cs-CZ', 'bg-BG')) {
+    if ([string]::IsNullOrWhiteSpace($count.$language) -or [string]::IsNullOrWhiteSpace($catalog.strings.'fbe.replace.preview.message'.translations.$language)) {
+        throw "Neutral search count or Replace All confirmation is missing for $language."
+    }
+}
 if ($null -ne $catalog.strings.'fbe.replace.preview.ready') { throw 'Obsolete second-click Replace All prompt must not remain localized.' }
 if ($catalog.strings.'fbe.tooltip.find.unicode_properties'.translations.'ru-RU' -ne 'Использовать Unicode-свойства для \w, \d, \s и границ слов \b/\B (например, для кириллицы). Доступно только при включённом «Регулярное выражение».') { throw 'Russian UCP tooltip is not canonical.' }
 if ($catalog.strings.'fbe.tooltip.find.unicode_properties'.translations.'en-US' -ne 'Use Unicode properties for \w, \d, \s and word boundaries \b/\B (for example with Cyrillic text). Available only when Regular expression is enabled.') { throw 'English UCP tooltip is not canonical.' }

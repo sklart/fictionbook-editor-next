@@ -66,7 +66,7 @@ void CFindResultsPane::UpdateHeader()
 	{
 		CString query(m_view->FindResultsQuery()); query.Trim();
 		if (!query.IsEmpty()) title += L" \x2014 \x00AB" + query + L"\x00BB \x2014 ";
-		CString count; count.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"%Iu results"), m_view->FindResultCount());
+		CString count; count.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"Found: %Iu"), m_view->FindResultCount());
 		title += count;
 	}
 	m_header.SetWindowText(title);
@@ -91,7 +91,7 @@ void CFindResultsPane::Refresh()
 	// visible rows through LVN_GETDISPINFO instead of materializing every hit.
 	m_list.SetItemCountEx(itemCount, LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
 	m_list.Invalidate();
-	CString status; status.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"%Iu results"), m_view->FindResultCount()); m_status.SetWindowText(status);
+	CString status; status.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"Found: %Iu"), m_view->FindResultCount()); m_status.SetWindowText(status);
 }
 
 LRESULT CFindResultsPane::OnHide(WORD, WORD, HWND, BOOL&)

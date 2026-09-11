@@ -3334,7 +3334,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 		return 0;
 	CString preview;
 	preview.Format(FbeLoadRuntimeStringByKey(
-		L"fbe.replace.preview.message", L"%Iu replacement(s) will be made. Continue?"), count);
+		L"fbe.replace.preview.message", L"Number of replacements: %Iu. Continue?"), count);
 	if (::MessageBox(m_hWnd, preview, FbeLoadRuntimeStringByKey(
 		L"fbe.replace.preview.caption", L"Replace All"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return -2;

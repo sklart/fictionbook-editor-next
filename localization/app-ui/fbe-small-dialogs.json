@@ -803,7 +803,7 @@
     },
     "fbe.dialog.idd_find_results.count": {
       "resource": "IDD_FIND_RESULTS", "kind": "VALUE", "targetId": "",
-      "translations": { "en-US": "%Iu results", "ru-RU": "%Iu результатов", "uk-UA": "%Iu результатів", "de-DE": "%Iu Ergebnisse", "fr-FR": "%Iu résultats", "es-ES": "%Iu resultados", "it-IT": "%Iu risultati", "pl-PL": "%Iu wyników", "pt-PT": "%Iu resultados", "nl-NL": "%Iu resultaten", "cs-CZ": "%Iu výsledků", "bg-BG": "%Iu резултата" }
+      "translations": { "en-US": "Found: %Iu", "ru-RU": "Найдено: %Iu", "uk-UA": "Знайдено: %Iu", "de-DE": "Gefunden: %Iu", "fr-FR": "Nombre de résultats : %Iu", "es-ES": "Resultados encontrados: %Iu", "it-IT": "Risultati trovati: %Iu", "pl-PL": "Znaleziono: %Iu", "pt-PT": "Encontrados: %Iu", "nl-NL": "Gevonden: %Iu", "cs-CZ": "Nalezeno: %Iu", "bg-BG": "Намерени: %Iu" }
     },
     "fbe.dialog.idd_find_results.stale": {
       "resource": "IDD_FIND_RESULTS", "kind": "VALUE", "targetId": "",
@@ -826,7 +826,7 @@
       "kind": "VALUE",
       "targetId": "",
       "translations": {
-        "en-US": "%Iu replacement(s) will be made. Continue?", "ru-RU": "Будет выполнено %Iu замен. Продолжить?", "uk-UA": "Буде виконано замін: %Iu. Продовжити?", "de-DE": "%Iu Ersetzungen werden vorgenommen. Fortfahren?", "fr-FR": "%Iu remplacement(s) seront effectués. Continuer ?", "es-ES": "Se realizarán %Iu reemplazos. ¿Continuar?", "it-IT": "Verranno effettuate %Iu sostituzioni. Continuare?", "pl-PL": "Zostanie wykonanych zamian: %Iu. Kontynuować?", "pt-PT": "Serão efetuadas %Iu substituições. Continuar?", "nl-NL": "%Iu vervanging(en) worden uitgevoerd. Doorgaan?", "cs-CZ": "Bude provedeno nahrazení: %Iu. Pokračovat?", "bg-BG": "Ще бъдат извършени замени: %Iu. Продължаване?"
+        "en-US": "Number of replacements: %Iu. Continue?", "ru-RU": "Количество замен: %Iu. Продолжить?", "uk-UA": "Кількість замін: %Iu. Продовжити?", "de-DE": "Anzahl der Ersetzungen: %Iu. Fortfahren?", "fr-FR": "Nombre de remplacements : %Iu. Continuer ?", "es-ES": "Número de reemplazos: %Iu. ¿Continuar?", "it-IT": "Numero di sostituzioni: %Iu. Continuare?", "pl-PL": "Liczba zamian: %Iu. Kontynuować?", "pt-PT": "Número de substituições: %Iu. Continuar?", "nl-NL": "Aantal vervangingen: %Iu. Doorgaan?", "cs-CZ": "Počet nahrazení: %Iu. Pokračovat?", "bg-BG": "Брой замени: %Iu. Продължаване?"
       }
     },
     "fbe.replace.preview.changed": {

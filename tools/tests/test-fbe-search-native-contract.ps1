@@ -95,6 +95,9 @@ Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?DoFindAll\(true
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION' 'Replace All has one Yes/No confirmation'
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?if \(!previewIsCurrent\(\)\)' 'preview identity is rechecked after confirmation'
 Assert-NotContains $replaceAll 'fbe\.replace\.preview\.ready|MB_OK \| MB_ICONINFORMATION' 'obsolete second-click Replace All information prompt'
+Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'No leaves preview intact before any replacement range is opened'
+Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?return -1;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'changed preview identity blocks replacement before ranges and Undo'
+Assert-Contains $replaceAll 'SetFindResultsCompletionStatus\(completion\)' 'successful replacement clears stale preview rows and reports completion'
 
 $globalReplace = [regex]::Match($source, 'int\s+CFBEView::GlobalReplace\(MSHTML::IHTMLElementPtr elem, CString cntTag\)[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ToolWordsGlobalReplace').Value
 if ([string]::IsNullOrWhiteSpace($globalReplace)) { throw 'Unable to locate Search Core GlobalReplace path.' }
