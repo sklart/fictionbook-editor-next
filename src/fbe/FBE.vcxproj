@@ -272,6 +272,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClCompile Include="document\FileFingerprint.cpp" />
 	<ClCompile Include="document\DocumentLocation.cpp" />
 	<ClCompile Include="document\DocumentLoader.cpp" />
+	<ClCompile Include="document\ui\DocumentFileDialogs.cpp" />
 	<ClCompile Include="document\DocumentState.cpp" />
 	<ClCompile Include="document\DocumentSession.cpp" />
 	<ClCompile Include="document\DocumentSavePlan.cpp" />
@@ -421,6 +422,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="DocumentTree.h" />
 	<ClInclude Include="document\DocumentLocation.h" />
 	<ClInclude Include="document\DocumentLoader.h" />
+	<ClInclude Include="document\ui\DocumentFileDialogs.h" />
 	<ClInclude Include="document\DocumentOpenSource.h" />
 	<ClInclude Include="document\ArchiveRecentDocuments.h" />
 	<ClInclude Include="document\recent\RecentDocumentsStore.h" />

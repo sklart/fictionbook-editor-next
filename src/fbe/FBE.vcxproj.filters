@@ -135,6 +135,7 @@
 	<ClCompile Include="document\FileFingerprint.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentLocation.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentLoader.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="document\ui\DocumentFileDialogs.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentState.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentSession.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentSavePlan.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -279,6 +280,7 @@
     </ClInclude>
 	<ClInclude Include="document\DocumentLocation.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentLoader.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="document\ui\DocumentFileDialogs.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentOpenSource.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\ArchiveRecentDocuments.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\recent\RecentDocumentsStore.h"><Filter>Header Files</Filter></ClInclude>

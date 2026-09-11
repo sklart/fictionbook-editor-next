@@ -6,6 +6,7 @@
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
 #include "document\DocumentSavePlan.h"
+#include "document\ui\DocumentFileDialogs.h"
 #include "archive\ui\ArchiveOpenCoordinator.h"
 
 #include "MainFrm.h"
@@ -1203,27 +1204,7 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 	m_view.ActivateWnd(doc->m_body);
 }
 
-CString	CMainFrame::GetOpenFileName() 
-{
-	const COMDLG_FILTERSPEC filters[] = {
-		{ L"FictionBook files (*.fb2;*.fbd;*.zip;*.rar)", L"*.fb2;*.fbd;*.zip;*.rar" },
-		{ L"FictionBook (*.fb2;*.fbd)", L"*.fb2;*.fbd" },
-		{ L"Archives (*.zip;*.rar)", L"*.zip;*.rar" },
-		{ L"All files (*.*)", L"*.*" }
-	};
-	ModernFileDialog::Request request;
-	request.fileMustExist = true;
-	request.pathMustExist = true;
-	request.defaultExtension = L"fb2";
-	request.filters = filters;
-	request.filterCount = _countof(filters);
-	request.filterIndex = 1;
-	const ModernFileDialog::Result result = ModernFileDialog::Show(m_hWnd, request);
-	if (result.outcome == ModernFileDialog::Outcome::Failed)
-		StartupTrace::HResult(L"file-dialog", L"FD101", result.error, L"Open FictionBook dialog");
-	if (result.outcome == ModernFileDialog::Outcome::Accepted) return result.paths.front().c_str();
-	return CString();
-}
+CString CMainFrame::GetOpenFileName() { const DocumentFileDialogs::OpenResult result = DocumentFileDialogs::ShowOpen(m_hWnd); return result.accepted ? result.path : CString(); }
 
 CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	// Runtime integration uses an explicitly supplied output only in this
@@ -1238,74 +1219,20 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 			return CString(testPath);
 		}
 	}
+	DocumentFileDialogs::SaveRequest request;
 	bstr_t filename = m_doc->m_filename;
 	if (!filename || (filename == bstr_t(L"Untitled.fb2")))
 		filename = L"";
-	const bool saveAsFbd = IsFbdFile((const wchar_t*)filename);
-	const COMDLG_FILTERSPEC filters[] = {
-		{ L"FictionBook (*.fb2)", L"*.fb2" },
-		{ L"FictionBook Description (*.fbd)", L"*.fbd" },
-		{ L"All files (*.*)", L"*.*" }
-	};
-	CString selectedEncoding = _Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding();
+	request.initialFileName = static_cast<const wchar_t*>(filename);
+	request.currentFileName = m_doc->m_filename;
+	request.selectedEncoding = _Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding();
 	wchar_t encodingBuffer[1024] = {};
 	FbeLoadString(_Module.GetResourceInstance(), IDS_ENCODINGS, encodingBuffer, _countof(encodingBuffer));
-	CString encodingList(encodingBuffer);
-	ModernFileDialog::Request request;
-	request.save = true;
-	request.pathMustExist = true;
-	request.overwritePrompt = true;
-	request.defaultExtension = L"fb2";
-	request.initialFileName = static_cast<const wchar_t*>(filename);
-	request.filters = filters;
-	request.filterCount = _countof(filters);
-	request.filterIndex = saveAsFbd ? 2 : 1;
-	request.customize = [&encodingList, &selectedEncoding](IFileDialogCustomize* customize) -> HRESULT {
-		const DWORD labelId = 1000;
-		const DWORD controlId = 1001;
-		HRESULT hr = customize->StartVisualGroup(labelId, FbeLoadRuntimeStringByKey(L"fbe.save_as.encoding", L"Encoding:").GetString());
-		if (FAILED(hr)) return hr;
-		hr = customize->AddComboBox(controlId);
-		if (FAILED(hr)) return hr;
-		int index = 0, selectedIndex = 0;
-		CString remaining(encodingList);
-		while (!remaining.IsEmpty()) {
-			const int comma = remaining.Find(L',');
-			const CString item = comma >= 0 ? remaining.Left(comma) : remaining;
-			remaining = comma >= 0 ? remaining.Mid(comma + 1) : CString();
-			if (!item.IsEmpty()) {
-				customize->AddControlItem(controlId, ++index, item);
-				if (item == selectedEncoding) selectedIndex = index;
-			}
-		}
-		hr = customize->SetSelectedControlItem(controlId, selectedIndex ? selectedIndex : 1);
-		if (FAILED(hr)) return hr;
-		return customize->EndVisualGroup();
-	};
-	request.readCustomization = [&encodingList, &selectedEncoding](IFileDialogCustomize* customize) {
-		DWORD selected = 0;
-		if (!customize || FAILED(customize->GetSelectedControlItem(1001, &selected))) return;
-		int index = 0;
-		CString remaining(encodingList);
-		while (!remaining.IsEmpty()) {
-			const int comma = remaining.Find(L',');
-			const CString item = comma >= 0 ? remaining.Left(comma) : remaining;
-			remaining = comma >= 0 ? remaining.Mid(comma + 1) : CString();
-			if (!item.IsEmpty() && ++index == static_cast<int>(selected)) { selectedEncoding = item; return; }
-		}
-	};
-	const ModernFileDialog::Result dialogResult = ModernFileDialog::Show(m_hWnd, request);
-	if (dialogResult.outcome == ModernFileDialog::Outcome::Failed)
-		StartupTrace::HResult(L"file-dialog", L"FD102", dialogResult.error, L"Save FictionBook dialog");
-	if (dialogResult.outcome == ModernFileDialog::Outcome::Accepted) {
-		encoding = selectedEncoding;
-		CString result(dialogResult.paths.front().c_str());
-		FictionBookFileType targetType = dialogResult.filterIndex == 2 ? FictionBookFileType::Fbd :
-			dialogResult.filterIndex == 1 ? FictionBookFileType::Fb2 :
-		ResolveFictionBookTargetType(CString(), m_doc->m_filename);
-	return AddFictionBookExtensionIfMissing(result, targetType);
-  }
-  return CString();
+	request.encodingList = encodingBuffer;
+	const DocumentFileDialogs::SaveResult result = DocumentFileDialogs::ShowSave(m_hWnd, request);
+	if (!result.accepted) return CString();
+	encoding = result.encoding;
+	return result.path;
 }
 
 bool	CMainFrame::DocChanged() {
