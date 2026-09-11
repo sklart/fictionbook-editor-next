@@ -77,7 +77,13 @@ void CFindResultsPane::Refresh()
 	if (!m_list.IsWindow()) return;
 	m_list.SetItemCountEx(0, LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL); UpdateHeader();
 	if (m_view == NULL) { m_status.SetWindowText(L""); return; }
-	if (!m_view->AreFindResultsCurrent()) { m_status.SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.stale", L"Search results are stale. Run Find All again.")); return; }
+	if (!m_view->AreFindResultsCurrent()) {
+		const CString completion = m_view->FindResultsCompletionStatus();
+		m_status.SetWindowText(completion.IsEmpty()
+			? FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.stale", L"Search results are stale. Run Find All again.")
+			: completion);
+		return;
+	}
 	m_revision = m_view->FindResultsRevision();
 	const std::size_t count = m_view->FindResultCount();
 	const int itemCount = count > static_cast<std::size_t>(INT_MAX) ? INT_MAX : static_cast<int>(count);
@@ -127,10 +133,10 @@ LRESULT CFindResultsPane::OnListCustomDraw(int, LPNMHDR header, BOOL&)
 	RECT cell = {}; if (!m_list.GetSubItemRect(item, 1, LVIR_BOUNDS, &cell)) return CDRF_DODEFAULT;
 	const RECT paintCell = cell;
 	cell.left += Scale(3); HDC dc = draw->nmcd.hdc; HFONT oldFont = static_cast<HFONT>(::SelectObject(dc, reinterpret_cast<HGDIOBJ>(::SendMessage(m_list, WM_GETFONT, 0, 0))));
-	const bool selected = (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
+	const bool selected = (m_list.GetItemState(item, LVIS_SELECTED) & LVIS_SELECTED) != 0;
 	// Owner-data ListView can repaint a previous row after the selection has
-	// moved.  Always erase the complete context cell from NM_CUSTOMDRAW state,
-	// rather than asking the control for a potentially newer item state.
+	// moved. Query the control's authoritative state and always erase the whole
+	// context cell, so exactly the current selected row stays highlighted.
 	::FillRect(dc, &paintCell, ::GetSysColorBrush(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW));
 	const CString text = m_view->FindResultPreview(static_cast<std::size_t>(item));
 	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, selected ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : ::GetSysColor(COLOR_WINDOWTEXT)); ::DrawText(dc, text, text.GetLength(), &cell, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);

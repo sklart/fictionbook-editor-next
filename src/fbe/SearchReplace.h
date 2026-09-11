@@ -188,7 +188,7 @@ public:
 		SetRuntimeText(IDC_MATCHCASE, isReplaceDialog ? L"fbe.dialog.idd_replace.match_case" : L"fbe.dialog.idd_find.match_case", L"Match &case");
 		SetRuntimeText(IDC_REGEXP, isReplaceDialog ? L"fbe.dialog.idd_replace.regexp" : L"fbe.dialog.idd_find.regexp", L"Regular &expression");
 		SetRuntimeText(IDC_FIND_UNICODE_PROPERTIES,
-			isReplaceDialog ? L"fbe.dialog.idd_replace.unicode_properties" : L"fbe.dialog.idd_find.unicode_properties",
+			L"fbe.dialog.idd_find.unicode_properties",
 			L"Unicode (&UCP)");
 		SetRuntimeText(isReplaceDialog ? IDC_REPLACE_DIRECTION_GROUP : IDC_FIND_DIRECTION_GROUP,
 			isReplaceDialog ? L"fbe.dialog.idd_replace.direction" : L"fbe.dialog.idd_find.direction",
@@ -196,7 +196,7 @@ public:
 		SetRuntimeText(IDC_UP, isReplaceDialog ? L"fbe.dialog.idd_replace.up" : L"fbe.dialog.idd_find.up", L"&Up");
 		SetRuntimeText(IDC_DOWN, isReplaceDialog ? L"fbe.dialog.idd_replace.down" : L"fbe.dialog.idd_find.down", L"&Down");
 		SetRuntimeText(IDC_FIND_FROM_START,
-			isReplaceDialog ? L"fbe.dialog.idd_replace.from_start" : L"fbe.dialog.idd_find.from_start",
+			L"fbe.dialog.idd_find.from_start",
 			L"&From start");
 		SetRuntimeText(IDCANCEL, isReplaceDialog ? L"fbe.dialog.idd_replace.cancel" : L"fbe.dialog.idd_find.cancel", L"Cancel");
 		if(isReplaceDialog)
@@ -230,7 +230,7 @@ public:
 		if (GetDlgItem(IDC_FIND_SCOPE) != NULL)
 		{
 			SetRuntimeText(IDC_FIND_SCOPE_LABEL,
-				isReplaceDialog ? L"fbe.dialog.idd_replace.scope" : L"fbe.dialog.idd_find.scope", L"Scope:");
+				L"fbe.dialog.idd_find.scope", L"Scope:");
 			PopulateFindScopes();
 			const HWND dialog = ::GetParent(GetDlgItem(IDC_TEXT));
 			if (dialog)
@@ -337,6 +337,37 @@ public:
 		if (unicode)
 			::EnableWindow(unicode, ::IsDlgButtonChecked(::GetParent(unicode), IDC_REGEXP) == BST_CHECKED);
 	}
+
+	// Find and Replace are modeless views of the same CFBEView options.  Keep
+	// their controls in lockstep as soon as a common option changes, rather
+	// than waiting for a search command or either dialog to close.
+	void SyncSearchOptionsFromView()
+	{
+		m_case = (m_view->m_fo.flags & CFBEView::FRF_CASE) != 0;
+		m_whole = (m_view->m_fo.flags & CFBEView::FRF_WHOLE) != 0;
+		m_dir = (m_view->m_fo.flags & CFBEView::FRF_REVERSE) == 0;
+		m_regexp = m_view->m_fo.fRegexp;
+		m_unicode = m_view->m_fo.unicodeProperties;
+		m_scope = static_cast<int>(m_view->m_fo.scope);
+		const HWND dialog = ::GetParent(GetDlgItem(IDC_TEXT));
+		if (dialog)
+		{
+			::CheckDlgButton(dialog, IDC_MATCHCASE, m_case ? BST_CHECKED : BST_UNCHECKED);
+			::CheckDlgButton(dialog, IDC_WHOLE, m_whole ? BST_CHECKED : BST_UNCHECKED);
+			::CheckDlgButton(dialog, IDC_REGEXP, m_regexp ? BST_CHECKED : BST_UNCHECKED);
+			::CheckDlgButton(dialog, IDC_FIND_UNICODE_PROPERTIES, m_unicode ? BST_CHECKED : BST_UNCHECKED);
+			::CheckRadioButton(dialog, IDC_UP, IDC_DOWN, m_dir ? IDC_DOWN : IDC_UP);
+		}
+		const HWND scope = GetDlgItem(IDC_FIND_SCOPE);
+		if (scope)
+			for (LRESULT index = 0, count = ::SendMessage(scope, CB_GETCOUNT, 0, 0); index < count; ++index)
+				if (static_cast<int>(::SendMessage(scope, CB_GETITEMDATA, index, 0)) == m_scope)
+				{
+					::SendMessage(scope, CB_SETCURSEL, index, 0);
+					break;
+				}
+		UpdateUnicodeControl();
+	}
 };
 
 class CFindDlgBase: public CModelessDialogImpl<CFindDlgBase>, public FRBase
@@ -433,7 +464,9 @@ public:
 
 	LRESULT OnScopeChanged(WORD, WORD, HWND, BOOL&)
 	{
+		GetData();
 		m_view->ResetSearchScope();
+		m_view->SyncSearchOptionsToOpenDialogs(this);
 		::SetTimer(m_hWnd, 0x4F01, 150, NULL);
 		return 0;
 	}
@@ -450,7 +483,9 @@ public:
 
 	LRESULT OnSearchOptionChanged(WORD, WORD, HWND, BOOL&)
 	{
+		GetData();
 		UpdateUnicodeControl();
+		m_view->SyncSearchOptionsToOpenDialogs(this);
 		::SetTimer(m_hWnd, 0x4F01, 150, NULL);
 		return 0;
 	}
@@ -565,7 +600,7 @@ public:
 	return 0;
   }
   LRESULT OnScopeChanged(WORD, WORD, HWND, BOOL&) {
-	m_view->ResetSearchScope(); m_selvalid = false; return 0;
+	GetData(); m_view->ResetSearchScope(); m_view->SyncSearchOptionsToOpenDialogs(this); m_selvalid = false; return 0;
   }
   LRESULT OnScopeDropDown(WORD, WORD, HWND, BOOL&) {
 	HWND scope = FRBase::GetDlgItem(IDC_FIND_SCOPE);
@@ -574,7 +609,7 @@ public:
 	PopulateFindScopes(); return 0;
   }
   LRESULT OnSearchOptionChanged(WORD, WORD, HWND, BOOL&) {
-	UpdateUnicodeControl(); m_selvalid = false; return 0;
+	GetData(); UpdateUnicodeControl(); m_view->SyncSearchOptionsToOpenDialogs(this); m_selvalid = false; return 0;
   }
 
   LRESULT OnTextChanged(WORD, WORD /* unused: wID */, HWND, BOOL& bHandled) {

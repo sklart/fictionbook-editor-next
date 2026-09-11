@@ -2803,6 +2803,12 @@ std::size_t CFBEView::FindResultCount() const
 	return m_document_search.GetResults().GetCount();
 }
 
+void CFBEView::SetFindResultsCompletionStatus(const CString& status)
+{
+	m_find_results_completion_status = status;
+	::SendMessage(m_frame, AU::WM_REFRESH_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
+}
+
 CString CFBEView::FindResultPreview(std::size_t index) const
 {
 	std::wstring preview;
@@ -2861,6 +2867,7 @@ void CFBEView::AdvanceSearchDocumentGeneration()
 	m_has_find_scope_range = false;
 	m_has_last_zero_length_hit = false;
 	m_has_replace_preview = false;
+	m_find_results_completion_status.Empty();
 	ClearSearchHighlights();
 	::SendMessage(m_frame, AU::WM_REFRESH_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
 }
@@ -3407,7 +3414,12 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	m_fo.ClearMatch();
 	m_has_replace_preview = false;
 	if (replaced != 0)
+	{
 		AdvanceSearchDocumentGeneration();
+		CString completion;
+		completion.Format(FbeLoadRuntimeStringByKey(L"fbe.replace.preview.completed", L"Replaced: %d"), replaced);
+		SetFindResultsCompletionStatus(completion);
+	}
 	return replaced;
 }
 
@@ -4265,6 +4277,7 @@ bool CFBEView::DoFindAll(bool showResults, CString* errorText)
 {
 	try
 	{
+		m_find_results_completion_status.Empty();
 		if (errorText != NULL)
 			errorText->Empty();
 		if (!Document())
@@ -5847,6 +5860,14 @@ bool CFBEView::IsFindDialogOpen() const
 bool CFBEView::IsReplaceDialogOpen() const
 {
 	return m_replace_dlg != NULL && m_replace_dlg->IsValid();
+}
+
+void CFBEView::SyncSearchOptionsToOpenDialogs(FRBase* source)
+{
+	if (m_find_dlg != NULL && m_find_dlg->IsValid() && m_find_dlg != source)
+		m_find_dlg->SyncSearchOptionsFromView();
+	if (m_replace_dlg != NULL && m_replace_dlg->IsValid() && m_replace_dlg != source)
+		m_replace_dlg->SyncSearchOptionsFromView();
 }
 
 bool CFBEView::ExpandTxtRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& rng,

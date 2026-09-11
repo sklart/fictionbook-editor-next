@@ -71,7 +71,12 @@ std::size_t SearchResults::GetSelectedIndex() const
 const SearchResult* SearchResults::Select(std::size_t index)
 {
 	if (index >= m_results.size())
+	{
+		// A failed navigation must not leave a stale row selected.  Consumers
+		// use this state for both Results-pane painting and editor highlights.
+		m_selectedIndex = kNoResult;
 		return NULL;
+	}
 	m_selectedIndex = index;
 	return GetSelected();
 }

@@ -57,7 +57,7 @@ Assert-Contains $pane 'OnListCustomDraw' 'Results pane custom-draw match present
 Assert-Contains $pane 'selected \? COLOR_HIGHLIGHT : COLOR_WINDOW' 'selected result context uses the system highlight background'
 Assert-Contains $pane 'GetSysColorBrush\(selected \? COLOR_HIGHLIGHT : COLOR_WINDOW\)' 'each custom-drawn context cell is fully cleared before repaint'
 Assert-Contains $pane 'COLOR_HIGHLIGHTTEXT' 'selected result context uses the system highlight text color'
-Assert-Contains $pane 'nmcd\.uItemState & CDIS_SELECTED' 'custom draw uses notification selection state rather than stale ListView state'
+Assert-Contains $pane 'm_list\.GetItemState\(item, LVIS_SELECTED\) & LVIS_SELECTED' 'custom draw uses authoritative ListView selection state'
 Assert-Contains $pane 'GetSubItemRect\(item, 1, LVIR_BOUNDS' 'selected result paints the complete context cell'
 Assert-Contains $pane 'L" \\x2014 \\x00AB" \+ query \+ L"\\x00BB \\x2014 "' 'Results header uses codepage-independent Unicode punctuation'
 Assert-Contains $pane 'OnItemActivate' 'Results pane activation navigates to a result'
@@ -74,6 +74,8 @@ Assert-Contains $dialog 'DoSearchFromScopeStart' 'From start uses the current Se
 Assert-Contains $source 'DoSearchNative\(true, m_fo\.fRegexp \? AU::Search::SearchMode::Regex : AU::Search::SearchMode::Literal, true\)' 'From start keeps the existing direction state while using a dedicated action'
 Assert-Contains $source 'm_has_find_scope_range \? m_find_scope_range\.Start : 0' 'From start begins at the current scope boundary'
 Assert-Contains $source 'AU::Search::SearchDirection::Forward, &wrapped' 'From start selects the first match without adding a third direction'
+Assert-Contains $dialog 'SyncSearchOptionsToOpenDialogs\(this\)' 'common options update the shared model immediately'
+Assert-Contains $source 'SyncSearchOptionsToOpenDialogs\(FRBase\* source\)' 'open Find and Replace dialogs synchronize their common controls'
 
 $singleReplace = [regex]::Match($source, 'void\s+CFBEView::DoReplace\(\)\s*\{[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ReplaceAllSearchCore').Value
 if ([string]::IsNullOrWhiteSpace($singleReplace)) { throw 'Unable to locate native single Replace path.' }
@@ -88,6 +90,7 @@ Assert-Contains $replaceAll 'CheckReplacementRange\(ranges\[index\], m_fo\.fRege
 $allGuard = $replaceAll.IndexOf('CheckReplacementRange(ranges[index], m_fo.fRegexp)')
 $allUndo = $replaceAll.IndexOf('BeginUndoUnit(L"replace all")')
 if ($allGuard -lt 0 -or $allUndo -lt 0 -or $allGuard -gt $allUndo) { throw 'Replace All must reject a cross-paragraph range before opening Undo.' }
+Assert-Contains $replaceAll 'SetFindResultsCompletionStatus\(completion\)' 'successful Replace All clears rows and reports completed replacements'
 
 $globalReplace = [regex]::Match($source, 'int\s+CFBEView::GlobalReplace\(MSHTML::IHTMLElementPtr elem, CString cntTag\)[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ToolWordsGlobalReplace').Value
 if ([string]::IsNullOrWhiteSpace($globalReplace)) { throw 'Unable to locate Search Core GlobalReplace path.' }

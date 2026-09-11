@@ -43,7 +43,7 @@ Require $dialog 'GetDlgItem\(IDC_FIND_SCOPE\) != NULL[\s\S]*?PopulateFindScopes'
 Require $dialog 'class CReplaceDlgBase[\s\S]*?OnFindFromStart[\s\S]*?DoSearchFromScopeStart' 'Replace From start action'
 Require $dialog 'class CReplaceDlgBase[\s\S]*?OnScopeChanged[\s\S]*?ResetSearchScope' 'Replace preserves a stable scope until the user changes it'
 Require $dialog 'EnableWindow\(unicode, ::IsDlgButtonChecked' 'UCP remains RegExp-gated in both dialogs'
-Require $pane 'nmcd\.uItemState & CDIS_SELECTED' 'notification-owned selection painting'
+Require $pane 'm_list\.GetItemState\(item, LVIS_SELECTED\) & LVIS_SELECTED' 'authoritative ListView selection painting'
 Require $pane 'GetSysColorBrush\(selected \? COLOR_HIGHLIGHT : COLOR_WINDOW\)' 'complete selected and unselected cell repaint'
 Require $pane 'L" \\x2014 \\x00AB" \+ query \+ L"\\x00BB \\x2014 "' 'Unicode-safe Results Pane header punctuation'
 if ($pane -match 'title \+= L" —') { throw 'Results Pane header must not depend on a source-code-page em dash literal.' }
@@ -55,8 +55,14 @@ if ($caption.'en-US' -ne 'Find results' -or $count.'en-US' -ne '%Iu results') { 
 
 foreach ($key in @(
     'fbe.dialog.idd_find.unicode_properties', 'fbe.dialog.idd_find.scope', 'fbe.dialog.idd_find.from_start',
-    'fbe.dialog.idd_replace.unicode_properties', 'fbe.dialog.idd_replace.scope', 'fbe.dialog.idd_replace.from_start')) {
+    'fbe.replace.preview.completed')) {
     RequireLocalized $key
 }
+foreach ($key in @('fbe.dialog.idd_replace.unicode_properties', 'fbe.dialog.idd_replace.scope', 'fbe.dialog.idd_replace.from_start')) {
+    if ($null -ne $catalog.strings.$key) { throw "Duplicate Replace localization key $key must not exist." }
+}
+Require $dialog 'SyncSearchOptionsToOpenDialogs\(this\)' 'immediate Find/Replace common-option synchronization'
+Require $dialog 'SyncSearchOptionsFromView' 'peer dialog control synchronization'
+if ($dialog -match 'idd_replace\.(unicode_properties|scope|from_start)') { throw 'Replace must use shared Find localization keys for common controls.' }
 
 Write-Host 'Find/Replace common UI and Results Pane contract passed.'

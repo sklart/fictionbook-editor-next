@@ -173,6 +173,7 @@ typedef CWinTraits<WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0>
 enum { FWD_SINK, BACK_SINK, RANGE_SINK };
 
 class CFindDlgBase;
+class FRBase;
 namespace AU {
 enum : UINT {
 	WM_SHOW_FIND_RESULTS_PANE = WM_APP + 42,
@@ -308,6 +309,10 @@ protected:
 	bool m_replace_preview_regexp;
 	bool m_replace_preview_unicode_properties;
 	bool m_has_replace_preview;
+	// A completed Replace All invalidates snapshot offsets. Keep a short
+	// presentation-only result so an open Results pane does not call that
+	// successful operation "stale".
+	CString m_find_results_completion_status;
 	CSearchHighlightOverlay* m_search_highlight_overlay;
 
 	struct pElAdjacent
@@ -650,6 +655,8 @@ public:
 	CString FindResultPreview(std::size_t index) const;
 	CString FindResultsQuery() const { return m_fo.pattern; }
 	bool FindResultPreviewMatch(std::size_t index, std::size_t* start, std::size_t* length) const;
+	CString FindResultsCompletionStatus() const { return m_find_results_completion_status; }
+	void SetFindResultsCompletionStatus(const CString& status);
 	bool AreFindResultsCurrent();
 	std::uint64_t FindResultsRevision() const;
 	bool SelectFindResult(std::size_t index);
@@ -832,6 +839,7 @@ public:
 	bool CloseFindDialog(CReplaceDlgBase* dlg);
 	bool IsFindDialogOpen() const;
 	bool IsReplaceDialogOpen() const;
+	void SyncSearchOptionsToOpenDialogs(FRBase* source);
 
 private:
 	bool ExpandTxtRangeToParagraphs(MSHTML::IHTMLTxtRangePtr &rng, MSHTML::IHTMLElementPtr& begin, MSHTML::IHTMLElementPtr& end)const;

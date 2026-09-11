@@ -141,7 +141,7 @@ int wmain()
 		return 53;
 	if (results.GetSelected() != NULL || results.Select(1)->Hit.Start != 12)
 		return 16;
-	if (results.GetSelectedIndex() != 1 || results.Select(2) != NULL)
+	if (results.GetSelectedIndex() != 1 || results.Select(3) != NULL || results.GetSelected() != NULL)
 		return 17;
 	results.Invalidate();
 	if (results.IsValidFor(41) || results.GetCount() != 0 || results.GetSelected() != NULL)
