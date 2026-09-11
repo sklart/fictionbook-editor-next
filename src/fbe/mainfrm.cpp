@@ -6438,62 +6438,6 @@ static bool FindXmlBodyRangeByIndex(const CString& sourceXml, int targetIndex,
 // Находит диапазон в HTML по началу и концу видимого текста. Это покрывает
 // Source-выделения, пересекающие абзацы: один вызов findText для всего такого
 // диапазона не работает в MSHTML из-за разных представлений перевода строки.
-static MSHTML::IHTMLTxtRangePtr FindBodyTextRange(
-	MSHTML::IHTMLBodyElementPtr htmlBody, MSHTML::IHTMLElementPtr htmlScope,
-	MSHTML::IHTMLElementPtr expectedStartElement, const CString& visibleText)
-{
-	if (!(bool)htmlBody || !(bool)htmlScope || visibleText.IsEmpty())
-		return MSHTML::IHTMLTxtRangePtr();
-
-	MSHTML::IHTMLTxtRangePtr wholeRange = htmlBody->createTextRange();
-	if ((bool)wholeRange)
-		wholeRange->moveToElementText(expectedStartElement ? expectedStartElement : htmlScope);
-	if ((bool)wholeRange && wholeRange->findText((const wchar_t*)visibleText,
-		1073741824, 0) == VARIANT_TRUE)
-		return wholeRange;
-
-	CString startAnchor = visibleText;
-	CString endAnchor = visibleText;
-	startAnchor.TrimLeft();
-	endAnchor.TrimRight();
-	const int firstLineEnd = startAnchor.Find(L"\r\n");
-	if (firstLineEnd >= 0)
-		startAnchor = startAnchor.Left(firstLineEnd);
-	const int lastLineBegin = endAnchor.ReverseFind(L'\n');
-	if (lastLineBegin >= 0)
-		endAnchor = endAnchor.Mid(lastLineBegin + 1);
-	startAnchor.Trim();
-	endAnchor.Trim();
-	if (startAnchor.IsEmpty() || endAnchor.IsEmpty())
-		return MSHTML::IHTMLTxtRangePtr();
-
-	// Длинная граница практически исключает совпадение с другой фразой.
-	const int anchorLength = 96;
-	if (startAnchor.GetLength() > anchorLength)
-		startAnchor = startAnchor.Left(anchorLength);
-	if (endAnchor.GetLength() > anchorLength)
-		endAnchor = endAnchor.Right(anchorLength);
-
-	MSHTML::IHTMLTxtRangePtr startRange = htmlBody->createTextRange();
-	if ((bool)startRange)
-		startRange->moveToElementText(expectedStartElement ? expectedStartElement : htmlScope);
-	if (!(bool)startRange ||
-		startRange->findText((const wchar_t*)startAnchor, 1073741824, 0) != VARIANT_TRUE)
-		return MSHTML::IHTMLTxtRangePtr();
-	// Search the closing anchor only after the structurally selected start.
-	// Searching backwards from the whole document used to join two unrelated
-	// duplicate paragraphs into one range.
-	MSHTML::IHTMLTxtRangePtr endRange = startRange->duplicate();
-	if (!(bool)endRange)
-		return MSHTML::IHTMLTxtRangePtr();
-	endRange->collapse(VARIANT_FALSE);
-	if (endRange->findText((const wchar_t*)endAnchor, 1073741824, 0) != VARIANT_TRUE)
-		return MSHTML::IHTMLTxtRangePtr();
-
-	startRange->setEndPoint(L"EndToEnd", endRange);
-	return startRange;
-}
-
 // Границы выделения Source могут попасть в имя тега или его атрибут. В Body
 // таких символов нет, поэтому отсекаем разметку и оставляем только видимый
 // текст между тегами.
@@ -6815,7 +6759,7 @@ bool  CMainFrame::SourceToHTML()
 			root = root->nextSibling;
 		}
 		MSHTML::IHTMLBodyElementPtr htmlBody(m_doc->m_body.Document()->body);
-		MSHTML::IHTMLTxtRangePtr range = FindBodyTextRange(htmlBody, htmlScope,
+		MSHTML::IHTMLTxtRangePtr range = SourceDocumentTransfer::FindBodyTextRange(htmlBody, htmlScope,
 			expectedStartElement, selectedSourceText);
 		if((bool)range)
 		{

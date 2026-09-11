@@ -130,3 +130,21 @@ bool SourceDocumentTransfer::FindEnclosingXmlElementRange(const CString& sourceX
 	if(!FBEBodySourceTransfer::FindEnclosingXmlElementRange(std::wstring(static_cast<const wchar_t*>(sourceXml)), position, elementName, range)) return false;
 	result.start = range.start; result.end = range.end; return true;
 }
+
+MSHTML::IHTMLTxtRangePtr SourceDocumentTransfer::FindBodyTextRange(MSHTML::IHTMLBodyElementPtr htmlBody, MSHTML::IHTMLElementPtr htmlScope, MSHTML::IHTMLElementPtr expectedStartElement, const CString& visibleText)
+{
+	if(!htmlBody || !htmlScope || visibleText.IsEmpty()) return MSHTML::IHTMLTxtRangePtr();
+	MSHTML::IHTMLTxtRangePtr wholeRange = htmlBody->createTextRange();
+	if(wholeRange) wholeRange->moveToElementText(expectedStartElement ? expectedStartElement : htmlScope);
+	if(wholeRange && wholeRange->findText(static_cast<const wchar_t*>(visibleText), 1073741824, 0) == VARIANT_TRUE) return wholeRange;
+	CString startAnchor = visibleText, endAnchor = visibleText; startAnchor.TrimLeft(); endAnchor.TrimRight();
+	const int firstLineEnd = startAnchor.Find(L"\r\n"); if(firstLineEnd >= 0) startAnchor = startAnchor.Left(firstLineEnd);
+	const int lastLineBegin = endAnchor.ReverseFind(L'\n'); if(lastLineBegin >= 0) endAnchor = endAnchor.Mid(lastLineBegin + 1);
+	startAnchor.Trim(); endAnchor.Trim(); if(startAnchor.IsEmpty() || endAnchor.IsEmpty()) return MSHTML::IHTMLTxtRangePtr();
+	const int anchorLength = 96; if(startAnchor.GetLength() > anchorLength) startAnchor = startAnchor.Left(anchorLength); if(endAnchor.GetLength() > anchorLength) endAnchor = endAnchor.Right(anchorLength);
+	MSHTML::IHTMLTxtRangePtr startRange = htmlBody->createTextRange(); if(startRange) startRange->moveToElementText(expectedStartElement ? expectedStartElement : htmlScope);
+	if(!startRange || startRange->findText(static_cast<const wchar_t*>(startAnchor), 1073741824, 0) != VARIANT_TRUE) return MSHTML::IHTMLTxtRangePtr();
+	MSHTML::IHTMLTxtRangePtr endRange = startRange->duplicate(); if(!endRange) return MSHTML::IHTMLTxtRangePtr(); endRange->collapse(VARIANT_FALSE);
+	if(endRange->findText(static_cast<const wchar_t*>(endAnchor), 1073741824, 0) != VARIANT_TRUE) return MSHTML::IHTMLTxtRangePtr();
+	startRange->setEndPoint(L"EndToEnd", endRange); return startRange;
+}

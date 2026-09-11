@@ -2,6 +2,7 @@
 
 #include <atlstr.h>
 #include <atlwin.h>
+#include <mshtml.h>
 #include <vector>
 
 enum class SourceTransitionResult
@@ -38,4 +39,5 @@ public:
 	static CString ExtractVisibleXmlText(const CString& sourceFragment);
 	static bool FindVisibleXmlTextRange(const CString& sourceXml, const CString& visibleText, int scopeStart, int scopeEnd, int expectedStart, TextRange& result);
 	static bool FindEnclosingXmlElementRange(const CString& sourceXml, int position, const wchar_t* elementName, TextRange& result);
+	static MSHTML::IHTMLTxtRangePtr FindBodyTextRange(MSHTML::IHTMLBodyElementPtr htmlBody, MSHTML::IHTMLElementPtr htmlScope, MSHTML::IHTMLElementPtr expectedStartElement, const CString& visibleText);
 };
