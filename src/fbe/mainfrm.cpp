@@ -7769,6 +7769,7 @@ void  CMainFrame::DefineMarker(int marker, int markerType, COLORREF fore,COLORRE
 
 void  CMainFrame::SetupSci()
 {
+	m_source.ApplyConfiguration(BuildSourceEditorConfig());
   // Source commands are routed explicitly by FBE; legacy WM_COMMAND events are unnecessary.
   m_source.SendMessage(SCI_SETCOMMANDEVENTS, FALSE);
   // Text modifications invalidate the XML matcher cache; fold notifications
