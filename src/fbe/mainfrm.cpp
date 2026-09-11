@@ -4031,7 +4031,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			appendImportPhase("import-failed;phase=import;reason=section-selection");
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
-		m_doc->m_body.AddImage(imagePath, true);
+		wchar_t inlineMode[2] = {};
+		const bool inlineImage = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_INLINE", inlineMode, _countof(inlineMode)) != 1 || inlineMode[0] != L'0';
+		m_doc->m_body.AddImage(imagePath, inlineImage);
 		appendImportPhase("import-complete");
 		appendImportPhase("save-start");
 		if (!m_doc->Save())
