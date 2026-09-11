@@ -21,10 +21,10 @@ function Assert-Fb2Schema([string]$Path) {
     if ($validation.errorCode -ne 0) { throw "FictionBook.xsd validation failed: $($validation.reason)" }
 }
 
-function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture) {
+function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture, [string]$WorkingDirectory) {
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = $Scenario
-    $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $Report, $Fixture) -PassThru
+    $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('-b', $Report, $Fixture) -PassThru
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
         Stop-Process -Id $process.Id -Force
         throw "FBE не завершил сценарий $Scenario."
@@ -60,8 +60,13 @@ function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$Ex
 
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-image-generated-id-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
-$fixture = Join-Path $directory 'imported-image.fb2'
-$sourceImage = Join-Path $directory 'cover-part-01.jpg'
+$sourceDirectory = Join-Path $directory 'source'
+$cwdDirectory = Join-Path $directory 'cwd'
+[void](New-Item -ItemType Directory -Path $sourceDirectory)
+[void](New-Item -ItemType Directory -Path $cwdDirectory)
+$fixture = Join-Path $sourceDirectory 'imported-image.fb2'
+$sourceImage = Join-Path $sourceDirectory 'cover-part-01.jpg'
+$cwdImage = Join-Path $cwdDirectory 'cover-part-01.jpg'
 $importReport = Join-Path $directory 'import.tsv'
 $reopenReport = Join-Path $directory 'reopen.tsv'
 $savedEnvironment = @{
@@ -81,8 +86,18 @@ try {
         $bitmap.Save($sourceImage, [Drawing.Imaging.ImageFormat]::Jpeg)
     }
     finally { $bitmap.Dispose() }
+    $collisionBitmap = [Drawing.Bitmap]::new(3, 1)
+    try {
+        $collisionBitmap.SetPixel(0, 0, [Drawing.Color]::Black)
+        $collisionBitmap.SetPixel(1, 0, [Drawing.Color]::Yellow)
+        $collisionBitmap.SetPixel(2, 0, [Drawing.Color]::Magenta)
+        $collisionBitmap.Save($cwdImage, [Drawing.Imaging.ImageFormat]::Jpeg)
+    }
+    finally { $collisionBitmap.Dispose() }
     $sourceBytes = [IO.File]::ReadAllBytes($sourceImage)
     $sourceHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($sourceBytes))
+    $cwdHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($cwdImage)))
+    if($cwdHash -eq $sourceHash) { throw 'CWD collision images must differ.' }
     @"
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Image import</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>image-import-test</id><version>1.0</version></document-info></description><body><section><p>Image import fixture.</p></section></body></FictionBook>
@@ -90,10 +105,10 @@ try {
 
     $env:FBE_NEXT_TEST_IMAGE_PATH = $sourceImage
     $env:FBE_NEXT_TEST_IMAGE_INLINE = $Inline
-    Invoke-FbeScenario 'binary-import-image' $importReport $fixture
+    Invoke-FbeScenario 'binary-import-image' $importReport $fixture $cwdDirectory
     Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline
 
-    Invoke-FbeScenario 'binary-roundtrip' $reopenReport $fixture
+    Invoke-FbeScenario 'binary-roundtrip' $reopenReport $fixture $cwdDirectory
     Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline
     Write-Host 'Production image import generated-id -> Save -> Reopen -> Save passed.'
 }

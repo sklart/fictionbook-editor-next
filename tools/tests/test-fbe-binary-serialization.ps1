@@ -12,7 +12,7 @@ function Assert-True {
 }
 
 $docSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBDoc.cpp') -Raw
-$viewSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBEview.cpp') -Raw
+$insertSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\image\ImageDocumentInserter.cpp') -Raw
 
 Assert-True ($docSource -match 'CompactBinaryTextContent') 'Не найдено уплотнение base64 перед сохранением FB2.'
 Assert-True ($docSource -match 'PutdataType.*bin\.base64') 'Перед уплотнением binary должен декодироваться штатным MSXML.'
@@ -23,7 +23,7 @@ Assert-True ($docSource -match 'createTextNode') 'Для compact base64 долж
 Assert-True ($docSource -notmatch 'binary->Puttext') 'Для элемента binary нельзя использовать put_text: MSXML6 возвращает E_INVALIDARG.'
 Assert-True ($docSource -match 'if \(compactBinaries\)') 'Уплотнение binary должно выполняться только при сохранении файла.'
 Assert-True ($docSource -match "c==_T\('-'\)") 'Doc::PrepareDefaultId должен сохранять допустимое тире в ID.'
-Assert-True ($viewSource -match "c==_T\('-'\)") 'CFBEView::PrepareDefaultId должен сохранять допустимое тире в ID.'
+Assert-True ($insertSource -match "c == _T\('-'\)") 'ImageDocumentInserter::MakeId должен сохранять допустимое тире в ID.'
 
 $document = New-Object -ComObject Msxml2.DOMDocument.6.0
 $document.async = $false
