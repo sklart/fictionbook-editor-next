@@ -50,15 +50,6 @@
 #include <algorithm>
 #include <psapi.h>
 
-// Keep legacy call sites focused on orchestration while state storage lives in
-// the dedicated components declared by CMainFrame.
-#define m_current_view m_editor_view_state.Current()
-#define m_last_view m_editor_view_state.PreviousRef()
-#define m_last_ctrl_tab_view m_editor_view_state.LastCtrlTabViewRef()
-#define m_ctrl_tab m_editor_view_state.CtrlTabActiveRef()
-#define m_body_selection m_editor_selection_state.BodyRange()
-#define m_desc_selection m_editor_selection_state.DescriptionRange()
-#define m_body_source_selection m_editor_selection_state.BodySource()
 
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
@@ -1180,7 +1171,7 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 	// reset ctrl tab
 	if (pMsg->message == WM_KEYUP && pMsg->wParam == VK_CONTROL)
 	{
-		m_ctrl_tab = false;
+		m_editor_view_state.SetCtrlTabActive(false);
 	}
 	TraceMainFrameHotkey(pMsg);
 
@@ -1445,7 +1436,7 @@ BOOL CMainFrame::OnIdle()
 		// Added by SeNS: process bitmap paste
 		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || BitmapInClipboard());
 
-		if (m_sel_changed && /*GetCurView()*/m_current_view != DESC)
+		if (m_sel_changed && /*GetCurView()*/m_editor_view_state.Current() != DESC)
 		{
 			SetStatusContext(m_doc->m_body.SelPath());
 			UpdateStatusBar();
@@ -1611,7 +1602,7 @@ BOOL CMainFrame::OnIdle()
 
 	// added by SeNS
 	// detect page scrolling, run a background spellcheck if necessary
-	if (m_Speller && m_Speller->Enabled() && m_current_view == BODY)
+	if (m_Speller && m_Speller->Enabled() && m_editor_view_state.Current() == BODY)
 	{
 		if (!m_Speller->Available())
 			UIEnable(ID_TOOLS_SPELLCHECK, false, true);
@@ -1623,7 +1614,7 @@ BOOL CMainFrame::OnIdle()
 	}
 	else UIEnable(ID_TOOLS_SPELLCHECK, false, true);
 
-	const bool tableCommandEnabled = m_current_view == BODY && m_doc && m_doc->m_body.SelectionStructTableCon();
+	const bool tableCommandEnabled = m_editor_view_state.Current() == BODY && m_doc && m_doc->m_body.SelectionStructTableCon();
 	const UINT tableCommands[] = {
 		ID_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_BELOW, ID_TABLE_DELETE_ROW,
 		ID_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_DELETE_COLUMN,
@@ -2105,7 +2096,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   StartupTrace::Event(L"mainframe", L"M100", L"OnCreate started");
   StartupTrace::Event(L"settings", L"G100", L"application settings applied");
 	UiMetrics::UpdateForWindow(m_hWnd);
-  m_ctrl_tab = false;
+  m_editor_view_state.SetCtrlTabActive(false);
 
   // create command bar window
   m_MenuBar.SetAlphaImages(true);
@@ -3254,33 +3245,39 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		FB::Doc* const originalDocument = m_doc;
 		const auto isBodyHostActive = [&]() { return m_view.GetActiveWnd() == m_doc->m_body; };
+		const auto descriptionModeEnabled = [&]()
+		{
+			MSHTML::IHTMLDocument3Ptr document(m_doc->m_body.Document());
+			MSHTML::IHTMLElementPtr description = document ? document->getElementById(L"fbw_desc") : MSHTML::IHTMLElementPtr();
+			return description && description->style && U::scmp(description->style->display, L"block") == 0;
+		};
 		ShowView(DESC);
-		const bool bodyToDescription = m_current_view == DESC && m_last_view == BODY && isBodyHostActive();
+		const bool bodyToDescription = m_editor_view_state.Current() == DESC && m_editor_view_state.Previous() == BODY && isBodyHostActive() && descriptionModeEnabled();
 		ShowView(BODY);
-		const bool descriptionToBody = m_current_view == BODY && m_last_view == DESC && isBodyHostActive();
+		const bool descriptionToBody = m_editor_view_state.Current() == BODY && m_editor_view_state.Previous() == DESC && isBodyHostActive() && !descriptionModeEnabled();
 		ShowView(SOURCE);
-		const bool bodyToSource = m_current_view == SOURCE && IsSourceActive() && m_last_view == BODY;
+		const bool bodyToSource = m_editor_view_state.Current() == SOURCE && IsSourceActive() && m_editor_view_state.Previous() == BODY;
 		ShowView(BODY);
-		const bool sourceToBody = m_current_view == BODY && !IsSourceActive() && m_last_view == SOURCE && isBodyHostActive();
+		const bool sourceToBody = m_editor_view_state.Current() == BODY && !IsSourceActive() && m_editor_view_state.Previous() == SOURCE && isBodyHostActive();
 		ShowView(DESC);
 		ShowView(SOURCE);
-		const bool descriptionToSource = m_current_view == SOURCE && IsSourceActive() && m_last_view == DESC;
+		const bool descriptionToSource = m_editor_view_state.Current() == SOURCE && IsSourceActive() && m_editor_view_state.Previous() == DESC;
 		ShowView(DESC);
-		const bool sourceToDescription = m_current_view == DESC && !IsSourceActive() && m_last_view == SOURCE && isBodyHostActive();
+		const bool sourceToDescription = m_editor_view_state.Current() == DESC && !IsSourceActive() && m_editor_view_state.Previous() == SOURCE && isBodyHostActive();
 		ShowView(SOURCE);
 		ShowView(BODY);
 		ShowView(DESC);
-		const bool sourceBodyDescription = m_current_view == DESC && m_last_view == BODY && isBodyHostActive();
+		const bool sourceBodyDescription = m_editor_view_state.Current() == DESC && m_editor_view_state.Previous() == BODY && isBodyHostActive();
 		ShowView(SOURCE);
 		ShowView(DESC);
 		ShowView(BODY);
-		const bool sourceDescriptionBody = m_current_view == BODY && m_last_view == DESC && isBodyHostActive();
+		const bool sourceDescriptionBody = m_editor_view_state.Current() == BODY && m_editor_view_state.Previous() == DESC && isBodyHostActive();
 		bool cycles = true;
 		for(int cycle = 0; cycle < 3; ++cycle)
 		{
-			ShowView(DESC); cycles = cycles && m_current_view == DESC && isBodyHostActive();
+			ShowView(DESC); cycles = cycles && m_editor_view_state.Current() == DESC && isBodyHostActive();
 			ShowView(SOURCE); cycles = cycles && IsSourceActive();
-			ShowView(BODY); cycles = cycles && m_current_view == BODY && isBodyHostActive();
+			ShowView(BODY); cycles = cycles && m_editor_view_state.Current() == BODY && isBodyHostActive();
 		}
 		const bool documentPreserved = m_doc == originalDocument && m_doc->m_body.Document() != NULL;
 		CStringA report;
@@ -3347,10 +3344,10 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const DocumentLocation originalLocation = m_document_session.Location();
 		const FILE_OP_STATUS result = malformedLength && malformedLength < _countof(malformedPath) ? LoadFile(malformedPath) : FAIL;
 		const bool sourceFallback = result == OK && m_doc == original && FB::Doc::m_active_doc == m_doc &&
-			m_bad_xml && m_bad_filename == malformedPath && m_current_view == SOURCE &&
+			m_bad_xml && m_bad_filename == malformedPath && m_editor_view_state.Current() == SOURCE &&
 			m_document_session.Location().storagePath == originalLocation.storagePath;
 		CStringA report; report.Format("fallback=%d\nidentity=%d\nactive=%d\nsession=%d\nsource=%d\n", result == OK, m_doc == original,
-			FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, m_bad_xml && m_bad_filename == malformedPath && m_current_view == SOURCE);
+			FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, m_bad_xml && m_bad_filename == malformedPath && m_editor_view_state.Current() == SOURCE);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(sourceFallback ? 0 : 1);
 		return 0;
@@ -6459,7 +6456,7 @@ static void WriteSelectionTrace(const wchar_t* code, const CString& message)
 
 bool  CMainFrame::SourceToHTML()
 {
-	m_body_source_selection.sourceToBodyTransferred = false;
+	m_editor_selection_state.BodySource().sourceToBodyTransferred = false;
 	LRESULT changed = m_source.SendMessage(SCI_GETMODIFY);
 	SourceDocumentText sourceDocument;
 	if(SourceDocumentTransfer::ReadSourceText(m_source, sourceDocument) != SourceTransitionResult::Success)
@@ -6666,13 +6663,13 @@ bool  CMainFrame::SourceToHTML()
 		if((bool)selectedHTMLElementBegin && (bool)selectedHTMLElementEnd)
 		{
 			m_doc->m_body.GoTo(selectedHTMLElementBegin);
-			m_body_selection = m_doc->m_body.SetSelection(
+			m_editor_selection_state.BodyRange() = m_doc->m_body.SetSelection(
 				selectedHTMLElementBegin, selectedHTMLElementEnd, begin_char, end_char);
-			m_body_source_selection.sourceToBodyTransferred = (bool)m_body_selection;
+			m_editor_selection_state.BodySource().sourceToBodyTransferred = (bool)m_editor_selection_state.BodyRange();
 		}
 	}
 
-	if(!m_body_source_selection.sourceToBodyTransferred && !selectedSourceText.IsEmpty())
+	if(!m_editor_selection_state.BodySource().sourceToBodyTransferred && !selectedSourceText.IsEmpty())
 	{
 		MSHTML::IHTMLElementPtr htmlScope;
 		MSHTML::IHTMLElementPtr expectedStartElement;
@@ -6709,15 +6706,15 @@ bool  CMainFrame::SourceToHTML()
 			expectedStartElement, selectedSourceText);
 		if((bool)range)
 		{
-			m_body_selection = range;
-			m_body_source_selection.sourceToBodyTransferred = true;
+			m_editor_selection_state.BodyRange() = range;
+			m_editor_selection_state.BodySource().sourceToBodyTransferred = true;
 		}
 	}
 	if (StartupTrace::Enabled())
 	{
 		CString trace;
 		trace.Format(L"SourceToHTML: transfer result=%d, DOM-path=%d, crosses-p=%d",
-			m_body_source_selection.sourceToBodyTransferred ? 1 : 0,
+			m_editor_selection_state.BodySource().sourceToBodyTransferred ? 1 : 0,
 			selection_path_available ? 1 : 0, selectionCrossesParagraph ? 1 : 0);
 		WriteSelectionTrace(L"E240", trace);
 	}
@@ -6734,7 +6731,7 @@ bool  CMainFrame::SourceToHTML()
 bool CMainFrame::ShowSource(bool saveSelection)
 {
 	ShowSourcePhaseProfiler phaseProfiler;
-	m_body_source_selection.bodyToSourceTransferred = false;
+	m_editor_selection_state.BodySource().bodyToSourceTransferred = false;
 	U::DomPath selection_begin_path;
 	U::DomPath selection_end_path;
 
@@ -6755,17 +6752,17 @@ bool CMainFrame::ShowSource(bool saveSelection)
 
 		m_doc->m_body.GetSelectionInfo((MSHTML::IHTMLElementPtr*)(&selectedBeginElement), (MSHTML::IHTMLElementPtr*)(&selectedEndElement), &selection_begin_char, &selection_end_char, 0);
 		phaseProfiler.Mark("Body selection extraction");
-		if(selectedBeginElement == selectedEndElement && (bool)m_body_selection)
+		if(selectedBeginElement == selectedEndElement && (bool)m_editor_selection_state.BodyRange())
 		{
-			const CString selectedText((const wchar_t*)m_body_selection->text);
+			const CString selectedText((const wchar_t*)m_editor_selection_state.BodyRange()->text);
 			if(!selectedText.IsEmpty())
 				selection_end_char = selection_begin_char + selectedText.GetLength();
 		}
 		if (StartupTrace::Enabled())
 		{
 			CString selectedText;
-			if ((bool)m_body_selection)
-				selectedText = (const wchar_t*)m_body_selection->text;
+			if ((bool)m_editor_selection_state.BodyRange())
+				selectedText = (const wchar_t*)m_editor_selection_state.BodyRange()->text;
 			CString trace;
 			trace.Format(L"ShowSource: Body chars=[%d,%d], same-element=%d, text chars=%d, text=\"%s\"",
 				selection_begin_char, selection_end_char,
@@ -6904,9 +6901,9 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		int bodyEnd = -1;
 		int caretScopeStart = -1;
 		int caretScopeEnd = -1;
-		if((bool)m_body_selection)
+		if((bool)m_editor_selection_state.BodyRange())
 		{
-			const CString selectedText((const wchar_t*)m_body_selection->text);
+			const CString selectedText((const wchar_t*)m_editor_selection_state.BodyRange()->text);
 			hasBodySelectionText = !selectedText.IsEmpty();
 			if(hasBodySelectionText && selection_path_available &&
 				(bool)xml_selected_begin && (bool)xml_selected_end)
@@ -7021,9 +7018,9 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	phaseProfiler.Mark("selection restoration");
 	m_source.SendMessage(SCI_SCROLLCARET);
 	phaseProfiler.Mark("scroll restoration");
-	m_body_source_selection.bodyToSourceTransferred = selection_mapped_to_source;
-	m_body_source_selection.sourceStart = savedPosBegin;
-	m_body_source_selection.sourceEnd = savedPosEnd;
+	m_editor_selection_state.BodySource().bodyToSourceTransferred = selection_mapped_to_source;
+	m_editor_selection_state.BodySource().sourceStart = savedPosBegin;
+	m_editor_selection_state.BodySource().sourceEnd = savedPosEnd;
 	if (StartupTrace::Enabled())
 	{
 		const int sourceLine = m_source.SendMessage(SCI_LINEFROMPOSITION, savedPosBegin);
@@ -7043,38 +7040,29 @@ bool CMainFrame::ShowSource(bool saveSelection)
 
 EditorView CMainFrame::NextEditorView()
 {
-	EditorView target = m_current_view;
-	if(!m_ctrl_tab)
+	const EditorView current = m_editor_view_state.Current();
+	const bool ctrlTabActive = m_editor_view_state.CtrlTabActive();
+	const EditorView target = NextCtrlTabEditorView(current,
+		m_editor_view_state.Previous(), m_editor_view_state.LastCtrlTabView(), ctrlTabActive);
+	if(!ctrlTabActive)
 	{
-		if(m_current_view != m_last_ctrl_tab_view)
-			target = m_last_ctrl_tab_view;
-		else if((m_last_view == BODY && m_current_view == DESC) ||
-			(m_last_view == DESC && m_current_view == BODY))
-			target = SOURCE;
-		else if((m_last_view == BODY && m_current_view == SOURCE) ||
-			(m_last_view == SOURCE && m_current_view == BODY))
-			target = DESC;
-		else if((m_last_view == SOURCE && m_current_view == DESC) ||
-			(m_last_view == DESC && m_current_view == SOURCE))
-			target = BODY;
-		m_last_ctrl_tab_view = m_current_view;
-		m_ctrl_tab = true;
+		m_editor_view_state.SetLastCtrlTabView(current);
+		m_editor_view_state.SetCtrlTabActive(true);
 	}
-	else if((m_last_view == BODY && m_current_view == DESC) ||
-		(m_last_view == DESC && m_current_view == BODY))
-		target = SOURCE;
-	else if((m_last_view == BODY && m_current_view == SOURCE) ||
-		(m_last_view == SOURCE && m_current_view == BODY))
-		target = DESC;
-	else if((m_last_view == SOURCE && m_current_view == DESC) ||
-		(m_last_view == DESC && m_current_view == SOURCE))
-		target = BODY;
 	return target;
+}
+
+void CMainFrame::SetDescriptionMode(bool enabled)
+{
+	CComDispatchDriver body(m_doc->m_body.Script());
+	CComVariant argument;
+	argument = enabled;
+	CheckError(body.Invoke1(L"apiShowDesc", &argument));
 }
 
 void  CMainFrame::ShowView(EditorView vt)
 {
-	EditorView prev = m_current_view;
+	EditorView prev = m_editor_view_state.Current();
 	const EditorViewTransitionPlan transition = MakeEditorViewTransitionPlan(prev, vt);
 	if (StartupTrace::Enabled())
 	{
@@ -7084,7 +7072,7 @@ void  CMainFrame::ShowView(EditorView vt)
 		WriteSelectionTrace(L"E280", trace);
 	}
 	if(transition.saveCurrentSelection)
-		SaveSelection(m_current_view);
+		SaveSelection(m_editor_view_state.Current());
 
   // added by SeNS
   if (vt != BODY)
@@ -7099,9 +7087,9 @@ void  CMainFrame::ShowView(EditorView vt)
 	  m_doc->m_body.CloseFindDialog(m_sci_replace_dlg);
   }
 
-	if(!m_ctrl_tab && prev != vt)
+	if(!m_editor_view_state.CtrlTabActive() && prev != vt)
 	{
-		m_last_ctrl_tab_view = m_current_view;
+		m_editor_view_state.SetLastCtrlTabView(m_editor_view_state.Current());
 	}
 
 
@@ -7138,13 +7126,8 @@ void  CMainFrame::ShowView(EditorView vt)
 
     /*if (!SourceToHTML())
       return;*/
-	  if(vt == DESC)
-	  {
-		 if (!SourceToHTML())
-			return;
-		 m_source.SendMessage(SCI_SETSAVEPOINT);
-		// SaveSelection(BODY);
-	  }
+		if (!SourceToHTML()) return;
+		m_source.SendMessage(SCI_SETSAVEPOINT);
   }
 
   if ((vt == BODY || vt == DESC) && (!m_doc || !m_doc->m_body.HasDoc()))
@@ -7173,6 +7156,8 @@ void  CMainFrame::ShowView(EditorView vt)
   UISetCheck(ID_VIEW_BODY, 0);
   UISetCheck(ID_VIEW_DESC, 0);
   UISetCheck(ID_VIEW_SOURCE, 0);
+	if(transition.leaveDescriptionMode) SetDescriptionMode(false);
+	if(transition.enterDescriptionMode) SetDescriptionMode(true);
 
   switch (vt) {
   case BODY:
@@ -7180,16 +7165,6 @@ void  CMainFrame::ShowView(EditorView vt)
 	        UISetCheck(ID_VIEW_BODY, 1);
 			m_view.ActivateWnd(m_doc->m_body);
 			m_sel_changed=true;
-			CComDispatchDriver	body(m_doc->m_body.Script());
-			CComVariant		    args[1];
-			args[0]=false;
-			CheckError(body.Invoke1(L"apiShowDesc",&args[0]));
-			if(prev == SOURCE)
-			{
-			  if (!SourceToHTML())
-				return;
-			  m_source.SendMessage(SCI_SETSAVEPOINT);
-			}
 			m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
 
 			if (m_Speller)
@@ -7205,12 +7180,6 @@ void  CMainFrame::ShowView(EditorView vt)
 	m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 
 	SetStatusContext(_T(""));
-	{
-			CComDispatchDriver	body(m_doc->m_body.Script());
-			CComVariant		    args[1];
-			args[0]=true;
-			CheckError(body.Invoke1(L"apiShowDesc",&args[0]));
-	}
     break;
   case SOURCE:
 	m_source.UpdateLineNumberMargin(false);
@@ -7219,10 +7188,10 @@ void  CMainFrame::ShowView(EditorView vt)
     m_view.HideActiveWnd();
     m_splitter.SetSinglePaneMode(SPLIT_PANE_RIGHT);
     m_view.ActivateWnd(m_source);
-	if(m_body_source_selection.bodyToSourceTransferred)
+	if(m_editor_selection_state.BodySource().bodyToSourceTransferred)
 	{
-		m_source.SendMessage(SCI_SETSELECTIONSTART, m_body_source_selection.sourceStart);
-		m_source.SendMessage(SCI_SETSELECTIONEND, m_body_source_selection.sourceEnd);
+		m_source.SendMessage(SCI_SETSELECTIONSTART, m_editor_selection_state.BodySource().sourceStart);
+		m_source.SendMessage(SCI_SETSELECTIONEND, m_editor_selection_state.BodySource().sourceEnd);
 		m_source.SendMessage(SCI_SCROLLCARET);
 	}
 	{
@@ -7247,40 +7216,40 @@ void  CMainFrame::ShowView(EditorView vt)
 	if(transition.restoreTargetSelection)
 		RestoreSelection();
   m_view.SetFocus();
-	if(vt == BODY && prev == SOURCE && m_body_source_selection.sourceToBodyTransferred &&
-		(bool)m_body_selection)
+	if(vt == BODY && prev == SOURCE && m_editor_selection_state.BodySource().sourceToBodyTransferred &&
+		(bool)m_editor_selection_state.BodyRange())
 	{
 		// Activating the MSHTML host can clear its visual highlight.  Apply the
 		// already mapped range once, after the final focus assignment.  MSHTML
 		// can stop extending a new drag-selection when the same IHTMLTxtRange is
 		// selected both before and after the host gains focus.
-		m_body_selection->select();
+		m_editor_selection_state.BodyRange()->select();
 	}
-	if(vt == SOURCE && m_body_source_selection.bodyToSourceTransferred)
+	if(vt == SOURCE && m_editor_selection_state.BodySource().bodyToSourceTransferred)
 	{
 		// Source получает фокус и окончательный размер только в конце смены
 		// режима. Повторная установка здесь делает прокрутку устойчивой.
-		m_source.SendMessage(SCI_SETSEL, m_body_source_selection.sourceStart,
-			m_body_source_selection.sourceEnd);
+		m_source.SendMessage(SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart,
+			m_editor_selection_state.BodySource().sourceEnd);
 		const int sourceLine = m_source.SendMessage(SCI_LINEFROMPOSITION,
-			m_body_source_selection.sourceStart);
+			m_editor_selection_state.BodySource().sourceStart);
 		m_source.SendMessage(SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine);
-		m_source.SendMessage(SCI_GOTOPOS, m_body_source_selection.sourceStart);
-		m_source.SendMessage(SCI_SETSEL, m_body_source_selection.sourceStart,
-			m_body_source_selection.sourceEnd);
+		m_source.SendMessage(SCI_GOTOPOS, m_editor_selection_state.BodySource().sourceStart);
+		m_source.SendMessage(SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart,
+			m_editor_selection_state.BodySource().sourceEnd);
 		m_source.SendMessage(SCI_SCROLLCARET);
 		// После отображения панели Scintilla может сбросить положение каретки.
 		// Повторяем диапазон в очереди сообщений уже после завершения layout.
 		::PostMessage(m_source, SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine, 0);
-		::PostMessage(m_source, SCI_GOTOPOS, m_body_source_selection.sourceStart, 0);
-		::PostMessage(m_source, SCI_SETSEL, m_body_source_selection.sourceStart,
-			m_body_source_selection.sourceEnd);
+		::PostMessage(m_source, SCI_GOTOPOS, m_editor_selection_state.BodySource().sourceStart, 0);
+		::PostMessage(m_source, SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart,
+			m_editor_selection_state.BodySource().sourceEnd);
 		::PostMessage(m_source, SCI_SCROLLCARET, 0, 0);
 		if (StartupTrace::Enabled())
 		{
 			CString trace;
 			trace.Format(L"ShowView: Source final bytes=[%d,%d], line=%d, first-visible=%d",
-				m_body_source_selection.sourceStart, m_body_source_selection.sourceEnd, sourceLine,
+				m_editor_selection_state.BodySource().sourceStart, m_editor_selection_state.BodySource().sourceEnd, sourceLine,
 				(int)m_source.SendMessage(SCI_GETFIRSTVISIBLELINE));
 			WriteSelectionTrace(L"E290", trace);
 		}
@@ -7289,8 +7258,8 @@ void  CMainFrame::ShowView(EditorView vt)
 	{
 		CString trace;
 		trace.Format(L"ShowView: completed current=%d, body-transfer=%d, source-transfer=%d",
-			m_current_view, m_body_source_selection.bodyToSourceTransferred ? 1 : 0,
-			m_body_source_selection.sourceToBodyTransferred ? 1 : 0);
+			m_editor_view_state.Current(), m_editor_selection_state.BodySource().bodyToSourceTransferred ? 1 : 0,
+			m_editor_selection_state.BodySource().sourceToBodyTransferred ? 1 : 0);
 		WriteSelectionTrace(L"E299", trace);
 	}
 }
@@ -7438,7 +7407,7 @@ void CMainFrame::GoToSelectedTreeItem()
   CTreeItem ii(m_document_tree.GetSelectedItem());
   if (!ii.IsNull() && ii.GetData())
   {
-    if(m_current_view != BODY)
+    if(m_editor_view_state.Current() != BODY)
 	{
 		ShowView();
 	}
@@ -7656,7 +7625,7 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::GetLastChildSection(MSHTML::IHTMLDOMNodePtr 
 
 LRESULT CMainFrame::OnSciCollapse(WORD /* unused: cose */, WORD wID, HWND, BOOL&)
 {
-	if(m_current_view == SOURCE)
+	if(m_editor_view_state.Current() == SOURCE)
 		SciCollapse(wID - ID_SCI_COLLAPSE_BASE, false);
 
 	if(m_document_tree.IsWindowVisible())
@@ -7667,7 +7636,7 @@ LRESULT CMainFrame::OnSciCollapse(WORD /* unused: cose */, WORD wID, HWND, BOOL&
 
 LRESULT CMainFrame::OnSciExpand(WORD /* unused: cose */, WORD wID, HWND, BOOL&)
 {
-	if(m_current_view == SOURCE)
+	if(m_editor_view_state.Current() == SOURCE)
 		SciCollapse(wID - ID_SCI_EXPAND_BASE, true);
 
 	if(m_document_tree.IsWindowVisible())
@@ -7790,13 +7759,13 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::CreateNestedSection(MSHTML::IHTMLDOMNodePtr 
 
 void CMainFrame::RestoreSelection()
 {
-	if(m_current_view == BODY && (bool)m_body_selection)
+	if(m_editor_view_state.Current() == BODY && (bool)m_editor_selection_state.BodyRange())
 	{
-		m_body_selection->select();
+		m_editor_selection_state.BodyRange()->select();
 	}
-	if(m_current_view == DESC && (bool)m_desc_selection)
+	if(m_editor_view_state.Current() == DESC && (bool)m_editor_selection_state.DescriptionRange())
 	{
-		m_desc_selection->select();
+		m_editor_selection_state.DescriptionRange()->select();
 	}
 }
 
@@ -7810,10 +7779,10 @@ void CMainFrame::SaveSelection(EditorView vt)
 	}
 	if(vt == BODY)
 	{
-		m_body_selection = m_doc->m_body.Document()->selection->createRange();
-		if (StartupTrace::Enabled() && (bool)m_body_selection)
+		m_editor_selection_state.BodyRange() = m_doc->m_body.Document()->selection->createRange();
+		if (StartupTrace::Enabled() && (bool)m_editor_selection_state.BodyRange())
 		{
-			const CString selectedText((const wchar_t*)m_body_selection->text);
+			const CString selectedText((const wchar_t*)m_editor_selection_state.BodyRange()->text);
 			CString trace;
 			trace.Format(L"SaveSelection: Body; selection-chars=%d", selectedText.GetLength());
 			WriteSelectionTrace(L"E300", trace);
@@ -7821,14 +7790,13 @@ void CMainFrame::SaveSelection(EditorView vt)
 	}
 	if(vt == DESC)
 	{
-		m_desc_selection = m_doc->m_body.Document()->selection->createRange();
+		m_editor_selection_state.DescriptionRange() = m_doc->m_body.Document()->selection->createRange();
 	}
 }
 
 void CMainFrame::ClearSelection()
 {
-	m_body_selection = NULL;
-	m_desc_selection = NULL;
+	m_editor_selection_state.ClearHtmlRanges();
 }
 
 void CMainFrame::SourceGoTo(int line, int col)
@@ -7915,7 +7883,7 @@ LRESULT CMainFrame::OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&)
 }
 void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 {
-	const EditorView activeView = m_current_view;
+	const EditorView activeView = m_editor_view_state.Current();
 	const SourceEditorConfig config = BuildSourceEditorConfig();
 	m_source.ApplyConfiguration(config);
 	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
@@ -7928,7 +7896,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 }
 void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 {
-	const EditorView activeView = m_current_view;
+	const EditorView activeView = m_editor_view_state.Current();
 	CWaitCursor hourglass;
 	LONG visible = false;
 
@@ -8368,8 +8336,8 @@ int SourceSelectionWordCount(HWND source, int start, int end)
 
 bool CMainFrame::CurrentOverwriteMode() const
 {
-	return m_current_view == SOURCE ? m_last_sci_ovr :
-		m_current_view == BODY ? m_last_ie_ovr : false;
+	return m_editor_view_state.Current() == SOURCE ? m_last_sci_ovr :
+		m_editor_view_state.Current() == BODY ? m_last_ie_ovr : false;
 }
 
 void CMainFrame::RefreshStatusMainPane()
@@ -8470,7 +8438,7 @@ LRESULT CMainFrame::OnStatusBarDoubleClick(int, LPNMHDR hdr, BOOL& bHandled)
 	const UINT pane = StatusPaneAt(reinterpret_cast<LPNMMOUSE>(hdr)->pt);
 	const FBEStatusBar::Action action = FBEStatusBar::DoubleClickAction(
 		pane == ID_PANE_INS ? FBEStatusBar::InsertMode : pane == ID_PANE_CHAR ? FBEStatusBar::Character : FBEStatusBar::Position,
-		m_current_view == SOURCE, m_current_view == BODY && m_doc != NULL);
+		m_editor_view_state.Current() == SOURCE, m_editor_view_state.Current() == BODY && m_doc != NULL);
 	if(action == FBEStatusBar::ToggleSourceOverwrite) {
 			m_source.SendMessage(SCI_SETOVERTYPE, !CurrentOverwriteMode());
 			m_last_sci_ovr = m_source.SendMessage(SCI_GETOVERTYPE) != 0;
@@ -8553,7 +8521,7 @@ void CMainFrame::UpdateStatusBar()
 	CString position, selection, character, encoding;
 	if (m_doc && !m_doc->m_encoding.IsEmpty())
 		encoding = m_doc->m_encoding;
-	if (m_current_view == SOURCE)
+	if (m_editor_view_state.Current() == SOURCE)
 	{
 		const int caret = m_source.SendMessage(SCI_GETCURRENTPOS);
 		const int line = m_source.SendMessage(SCI_LINEFROMPOSITION, caret);
@@ -8591,7 +8559,7 @@ void CMainFrame::UpdateStatusBar()
 			}
 		}
 	}
-	else if (m_current_view == BODY && m_doc && m_doc->m_body.Document())
+	else if (m_editor_view_state.Current() == BODY && m_doc && m_doc->m_body.Document())
 	{
 		try
 		{

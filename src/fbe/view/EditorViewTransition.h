@@ -13,3 +13,5 @@ struct EditorViewTransitionPlan
 };
 
 EditorViewTransitionPlan MakeEditorViewTransitionPlan(EditorView from, EditorView to);
+EditorView NextCtrlTabEditorView(EditorView current, EditorView previous,
+	EditorView lastCtrlTab, bool ctrlTabActive);

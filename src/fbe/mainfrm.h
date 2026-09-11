@@ -213,6 +213,7 @@ public:
   // show a specific view
   void	  ShowView(EditorView vt=EditorView::Body);
 	EditorView NextEditorView();
+	void SetDescriptionMode(bool enabled);
   bool	  ShowSource(bool saveSelection = true);
   //VIEW_TYPE GetCurView();
 

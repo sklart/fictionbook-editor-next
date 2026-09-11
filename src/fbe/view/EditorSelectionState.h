@@ -14,10 +14,10 @@ public:
 	const BodySourceSelectionState& BodySource() const { return m_bodySource; }
 	void Reset()
 	{
-		m_body = NULL;
-		m_description = NULL;
+		ClearHtmlRanges();
 		m_bodySource.Reset();
 	}
+	void ClearHtmlRanges() { m_body = NULL; m_description = NULL; }
 
 private:
 	MSHTML::IHTMLTxtRangePtr m_body;

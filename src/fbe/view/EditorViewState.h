@@ -19,12 +19,8 @@ public:
 	EditorViewState();
 	EditorView Current() const { return m_current; }
 	EditorView Previous() const { return m_previous; }
-	EditorView& CurrentRef() { return m_current; }
-	EditorView& PreviousRef() { return m_previous; }
 	EditorView LastCtrlTabView() const { return m_lastCtrlTab; }
 	bool CtrlTabActive() const { return m_ctrlTabActive; }
-	EditorView& LastCtrlTabViewRef() { return m_lastCtrlTab; }
-	bool& CtrlTabActiveRef() { return m_ctrlTabActive; }
 	void CommitTransition(EditorView target);
 	void SetLastCtrlTabView(EditorView view) { m_lastCtrlTab = view; }
 	void SetCtrlTabActive(bool active) { m_ctrlTabActive = active; }
