@@ -6433,33 +6433,6 @@ static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,
 // DomPath may fail for a valid Source position (for example inside inline
 // markup).  The body ordinal is still available from the source XML and is
 // sufficient to constrain the fallback search to the matching visual body.
-static int FindXmlBodyIndexAtPosition(const CString& sourceXml, int position)
-{
-	int currentBody = -1;
-	int bodyCount = 0;
-	for(int tagStart = sourceXml.Find(L'<'); tagStart >= 0 && tagStart <= position;)
-	{
-		const int tagEnd = sourceXml.Find(L'>', tagStart + 1);
-		if(tagEnd < 0) break;
-		CString tag = sourceXml.Mid(tagStart + 1, tagEnd - tagStart - 1);
-		tag.TrimLeft();
-		const bool closing = !tag.IsEmpty() && tag[0] == L'/';
-		if(closing) tag.Delete(0);
-		const int nameEnd = tag.FindOneOf(L" \t\r\n/");
-		CString name = nameEnd >= 0 ? tag.Left(nameEnd) : tag;
-		const int namespaceSeparator = name.ReverseFind(L':');
-		if(namespaceSeparator >= 0) name = name.Mid(namespaceSeparator + 1);
-		if(name.CompareNoCase(L"body") == 0)
-		{
-			if(closing) currentBody = -1;
-			else currentBody = bodyCount++;
-		}
-		if(tagEnd >= position) break;
-		tagStart = sourceXml.Find(L'<', tagEnd + 1);
-	}
-	return currentBody;
-}
-
 // Resolve the complete serialized range of one top-level FB2 body.  This is
 // deliberately independent of DomPath: a native MSHTML text selection can be
 // perfectly valid even when DomPath cannot represent one of its inline nodes.
@@ -6675,7 +6648,7 @@ bool  CMainFrame::SourceToHTML()
 		selectedPosEnd = sourceDocument.selectionEnd;
 	}
 	CString sourceText(ustr);
-	selected_body_index = FindXmlBodyIndexAtPosition(sourceText, selectedPosBegin);
+	selected_body_index = SourceDocumentTransfer::FindXmlBodyIndexAtPosition(sourceText, selectedPosBegin);
 	if (!one_pos)
 	{
 		selectedPosBegin = SourceDocumentTransfer::SkipXmlMarkupForward(sourceText, selectedPosBegin);

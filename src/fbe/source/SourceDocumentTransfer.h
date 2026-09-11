@@ -32,4 +32,5 @@ public:
 	static CString ExtractXmlDeclarationEncoding(const CString& xmlText);
 	static int SkipXmlMarkupForward(const CString& sourceXml, int position);
 	static int SkipXmlMarkupBackward(const CString& sourceXml, int position);
+	static int FindXmlBodyIndexAtPosition(const CString& sourceXml, int position);
 };

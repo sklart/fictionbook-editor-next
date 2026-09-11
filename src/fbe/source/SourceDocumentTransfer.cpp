@@ -54,3 +54,22 @@ int SourceDocumentTransfer::SkipXmlMarkupBackward(const CString& sourceXml, int 
 	}
 	return position;
 }
+
+int SourceDocumentTransfer::FindXmlBodyIndexAtPosition(const CString& sourceXml, int position)
+{
+	int currentBody = -1;
+	int bodyCount = 0;
+	for(int tagStart = sourceXml.Find(L'<'); tagStart >= 0 && tagStart <= position;)
+	{
+		const int tagEnd = sourceXml.Find(L'>', tagStart + 1);
+		if(tagEnd < 0) break;
+		CString tag = sourceXml.Mid(tagStart + 1, tagEnd - tagStart - 1); tag.TrimLeft();
+		const bool closing = !tag.IsEmpty() && tag[0] == L'/'; if(closing) tag.Delete(0);
+		const int nameEnd = tag.FindOneOf(L" \t\r\n/"); CString name = nameEnd >= 0 ? tag.Left(nameEnd) : tag;
+		const int separator = name.ReverseFind(L':'); if(separator >= 0) name = name.Mid(separator + 1);
+		if(name.CompareNoCase(L"body") == 0) { if(closing) currentBody = -1; else currentBody = bodyCount++; }
+		if(tagEnd >= position) break;
+		tagStart = sourceXml.Find(L'<', tagEnd + 1);
+	}
+	return currentBody;
+}
