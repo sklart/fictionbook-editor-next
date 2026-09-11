@@ -36,6 +36,15 @@ foreach ($control in @('IDC_WHOLE', 'IDC_MATCHCASE', 'IDC_REGEXP', 'IDC_FIND_SCO
 }
 Require $find 'IDC_FIND_SCOPE[\s\S]*?IDC_FIND_UNICODE_PROPERTIES' 'Find UCP immediately follows Scope'
 Require $replace 'IDC_FIND_SCOPE[\s\S]*?IDC_FIND_UNICODE_PROPERTIES' 'Replace UCP immediately follows Scope'
+Require $find 'IDC_FIND_LABEL_TEXT,7,9,45,8[\s\S]*?IDC_TEXT,53,7,179,62' 'Find label and input use the shared horizontal grid'
+Require $replace 'IDC_REPLACE_LABEL_TEXT,7,9,45,8[\s\S]*?IDC_TEXT,53,7,179,62' 'Replace label and input use the shared horizontal grid'
+foreach ($dialogBlock in @($find, $replace)) {
+    Require $dialogBlock 'IDC_WHOLE,"Button",BS_AUTOCHECKBOX \| WS_TABSTOP,7,' 'common options start at x=7'
+    Require $dialogBlock 'IDC_FIND_SCOPE_LABEL,105,' 'Scope starts at x=105'
+    Require $dialogBlock 'DIRECTION_GROUP,172,' 'Direction starts at x=172'
+    Require $dialogBlock 'ID_FIND_NEXT,238,7,50,14' 'Find Next uses the shared action column'
+    Require $dialogBlock 'IDCANCEL,238,61,50,14' 'Cancel uses the shared bottom action slot'
+}
 Require $find 'IDC_FIND_ALL' 'Find All action'
 Require $replace 'IDC_REPLACE_ONE[\s\S]*?IDC_REPLACE_ALL' 'Replace-specific actions'
 if ($replace -match 'IDC_FIND_ALL') { throw 'Replace must not add a duplicate Find All action.' }
@@ -64,5 +73,7 @@ foreach ($key in @('fbe.dialog.idd_replace.unicode_properties', 'fbe.dialog.idd_
 Require $dialog 'SyncSearchOptionsToOpenDialogs\(this\)' 'immediate Find/Replace common-option synchronization'
 Require $dialog 'SyncSearchOptionsFromView' 'peer dialog control synchronization'
 if ($dialog -match 'idd_replace\.(unicode_properties|scope|from_start)') { throw 'Replace must use shared Find localization keys for common controls.' }
+if ($catalog.strings.'fbe.replace.preview.message'.translations.'ru-RU' -ne 'Будет выполнено %Iu замен. Продолжить?') { throw 'Russian Replace All confirmation is not canonical.' }
+if ($null -ne $catalog.strings.'fbe.replace.preview.ready') { throw 'Obsolete second-click Replace All prompt must not remain localized.' }
 
 Write-Host 'Find/Replace common UI and Results Pane contract passed.'

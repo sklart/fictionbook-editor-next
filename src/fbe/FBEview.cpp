@@ -3294,7 +3294,8 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	if (errorText != NULL)
 		errorText->Empty();
 	const std::uint64_t generation = SearchDocumentGeneration();
-	const bool reusePreview = m_has_replace_preview &&
+	const auto previewIsCurrent = [&]() {
+		return m_has_replace_preview &&
 		m_replace_preview_generation == generation &&
 		m_replace_preview_revision == FindResultsRevision() &&
 		m_replace_preview_pattern == m_fo.pattern &&
@@ -3304,7 +3305,8 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 		m_replace_preview_regexp == m_fo.fRegexp &&
 		m_replace_preview_unicode_properties == m_fo.unicodeProperties &&
 		AreFindResultsCurrent();
-	if (!reusePreview)
+	};
+	if (!previewIsCurrent())
 	{
 		CString searchError;
 		if (!DoFindAll(true, &searchError))
@@ -3325,12 +3327,6 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 		m_replace_preview_regexp = m_fo.fRegexp;
 		m_replace_preview_unicode_properties = m_fo.unicodeProperties;
 		m_has_replace_preview = true;
-		CString ready;
-		ready.Format(FbeLoadRuntimeStringByKey(
-			L"fbe.replace.preview.ready", L"%Iu match(es) are shown in Find results. Review them, then press Replace All again to confirm."), previewCount);
-		::MessageBox(m_hWnd, ready, FbeLoadRuntimeStringByKey(
-			L"fbe.replace.preview.caption", L"Replace All"), MB_OK | MB_ICONINFORMATION);
-		return -2;
 	}
 
 	const std::size_t count = m_document_search.GetResults().GetCount();
@@ -3338,10 +3334,19 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 		return 0;
 	CString preview;
 	preview.Format(FbeLoadRuntimeStringByKey(
-		L"fbe.replace.preview.message", L"Replace %Iu match(es) shown in Find results?"), count);
+		L"fbe.replace.preview.message", L"%Iu replacement(s) will be made. Continue?"), count);
 	if (::MessageBox(m_hWnd, preview, FbeLoadRuntimeStringByKey(
 		L"fbe.replace.preview.caption", L"Replace All"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return -2;
+	// The confirmation is modal, so the preview normally stays unchanged. Still
+	// validate its complete identity after the user answers: automation, browser
+	// events, or another editor command must never apply stale coordinates.
+	if (!previewIsCurrent())
+	{
+		if (errorText != NULL)
+			*errorText = FbeLoadRuntimeStringByKey(L"fbe.replace.preview.changed", L"The document changed before Replace All could be applied.");
+		return -1;
+	}
 
 	// Validate every source coordinate while the document is unchanged. The
 	// reverse pass below then preserves all earlier offsets in this snapshot.

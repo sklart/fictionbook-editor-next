@@ -91,6 +91,10 @@ $allGuard = $replaceAll.IndexOf('CheckReplacementRange(ranges[index], m_fo.fRege
 $allUndo = $replaceAll.IndexOf('BeginUndoUnit(L"replace all")')
 if ($allGuard -lt 0 -or $allUndo -lt 0 -or $allGuard -gt $allUndo) { throw 'Replace All must reject a cross-paragraph range before opening Undo.' }
 Assert-Contains $replaceAll 'SetFindResultsCompletionStatus\(completion\)' 'successful Replace All clears rows and reports completed replacements'
+Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?DoFindAll\(true, &searchError\)' 'first Replace All builds and displays the preview'
+Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION' 'Replace All has one Yes/No confirmation'
+Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?if \(!previewIsCurrent\(\)\)' 'preview identity is rechecked after confirmation'
+Assert-NotContains $replaceAll 'fbe\.replace\.preview\.ready|MB_OK \| MB_ICONINFORMATION' 'obsolete second-click Replace All information prompt'
 
 $globalReplace = [regex]::Match($source, 'int\s+CFBEView::GlobalReplace\(MSHTML::IHTMLElementPtr elem, CString cntTag\)[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ToolWordsGlobalReplace').Value
 if ([string]::IsNullOrWhiteSpace($globalReplace)) { throw 'Unable to locate Search Core GlobalReplace path.' }
