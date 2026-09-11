@@ -244,7 +244,6 @@ public:
 	UINT m_last_plugin;
 
   void AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand = 0, const BYTE bState = 0, const HICON icon = 0);
-  void		AddStaticText(CCustomStatic &st, HWND toolbarHwnd, int id, const TCHAR *text, HFONT hFont);
 
 
   // ui updating

@@ -1290,33 +1290,8 @@ BOOL CMainFrame::OnIdle()
 			}
 		}
 
-		m_contextAttributeBars.IdBox().EnableWindow(FALSE);
-		m_contextAttributeBars.HrefBox().EnableWindow(FALSE);
-		m_contextAttributeBars.ImageTitleBox().EnableWindow(FALSE);
-		m_contextAttributeBars.SectionBox().EnableWindow(FALSE);
-		m_contextAttributeBars.TableIdBox().EnableWindow(FALSE);
-		m_contextAttributeBars.CellIdBox().EnableWindow(FALSE);
-		m_contextAttributeBars.TableStyleBox().EnableWindow(FALSE);
-		m_contextAttributeBars.CellStyleBox().EnableWindow(FALSE);
-		m_contextAttributeBars.ColspanBox().EnableWindow(FALSE);
-		m_contextAttributeBars.RowspanBox().EnableWindow(FALSE);
-		m_contextAttributeBars.RowAlignBox().EnableWindow(FALSE);
-		m_contextAttributeBars.AlignBox().EnableWindow(FALSE);
-		m_contextAttributeBars.VAlignBox().EnableWindow(FALSE);
-
-		m_contextAttributeBars.IdCaption().SetEnabled(false);
-		m_contextAttributeBars.HrefCaption().SetEnabled(false);
-		m_contextAttributeBars.SectionCaption().SetEnabled(false);
-		m_contextAttributeBars.ImageTitleCaption().SetEnabled(false);
-		m_contextAttributeBars.TableIdCaption().SetEnabled(false);
-		m_contextAttributeBars.TableStyleCaption().SetEnabled(false);
-		m_contextAttributeBars.CellIdCaption().SetEnabled(false);
-		m_contextAttributeBars.CellStyleCaption().SetEnabled(false);
-		m_contextAttributeBars.ColspanCaption().SetEnabled(false);
-		m_contextAttributeBars.RowspanCaption().SetEnabled(false);
-		m_contextAttributeBars.RowAlignCaption().SetEnabled(false);
-		m_contextAttributeBars.AlignCaption().SetEnabled(false);
-		m_contextAttributeBars.VAlignCaption().SetEnabled(false);
+		m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
+		m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 
 		bool fCanCC = m_source.SendMessage(SCI_GETSELECTIONSTART) != m_source.SendMessage(SCI_GETSELECTIONEND);
 		UIEnable(ID_EDIT_COPY, fCanCC);
@@ -2132,30 +2107,6 @@ void CMainFrame::SavePortableToolbarLayout()
 	}
 	if(m_last_script != NULL) layout.lastScript = m_last_script->relativePath;
 	PortableToolbarStore::Save(layout);
-}
-
-static void SubclassBox(HWND hWnd, RECT& rc, const int pos, CComboBox& box, DWORD dwStyle, CCustomEdit& custedit, const int resID, HFONT& hFont)
-{
-	  ::SendMessage(hWnd, TB_GETITEMRECT, pos, (LPARAM)&rc);
-	  rc.bottom--;
-	  box.Create(hWnd, rc, NULL, dwStyle, WS_EX_CLIENTEDGE, resID);
-	  box.SetFont(hFont);
-	  custedit.SubclassWindow(box.ChildWindowFromPoint(CPoint(3,3)));
-}
-
-void CMainFrame::AddStaticText(CCustomStatic &st, HWND toolbarHwnd, int id, const TCHAR *text, HFONT hFont)
-{
-	RECT rect;
-	SendMessage(toolbarHwnd, TB_GETITEMRECT, id, (LPARAM)&rect);
-	rect.bottom--;
-
-	// Captions are real opaque child controls.  The toolbar button underneath is
-	// only a layout placeholder, so transparent painting would leave stale glyphs
-	// after a resize or localization refresh.
-	st.Create(toolbarHwnd, rect, NULL, WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | SS_NOPREFIX, 0, IDC_ID);
-	st.SetFont(UiMetrics::DialogFont() ? UiMetrics::DialogFont() : hFont);
-	st.SetWindowText(text);
-	st.SetEnabled(true);
 }
 
 void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist)
@@ -4438,25 +4389,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"context-attribute-bars-runtime"))
 	{
-		LinkAttributeState link; link.id = L"link-id"; link.href = L"#target"; link.section = L"section-id"; link.imageTitle = L"cover";
-		TableAttributeState table; table.tableId = L"table-id"; table.tableStyle = L"table-style"; table.id = L"cell-id"; table.style = L"cell-style"; table.colspan = L"2"; table.rowspan = L"3"; table.rowAlign = L"left"; table.align = L"center"; table.valign = L"middle";
-		m_contextAttributeBars.SetLinkState(link); m_contextAttributeBars.SetTableState(table);
-		const LinkAttributeState readLink = m_contextAttributeBars.GetLinkState();
-		const TableAttributeState readTable = m_contextAttributeBars.GetTableState();
-		m_contextAttributeBars.SetMode(ContextBarMode::Link);
-		const bool linkMode = ::IsWindowVisible(m_contextAttributeBars.LinksBar()) != FALSE && ::IsWindowVisible(m_contextAttributeBars.TableBar()) == FALSE;
-		m_contextAttributeBars.SetMode(ContextBarMode::Table);
-		const bool tableMode = ::IsWindowVisible(m_contextAttributeBars.LinksBar()) == FALSE && ::IsWindowVisible(m_contextAttributeBars.TableBar()) != FALSE && ::IsWindowVisible(m_contextAttributeBars.TableBar2()) != FALSE;
-		m_contextAttributeBars.UpdateMetrics();
-		const bool idControl = ::IsWindow(m_contextAttributeBars.IdBox()) != FALSE;
-		const bool hrefControl = ::IsWindow(m_contextAttributeBars.HrefBox()) != FALSE;
-		const bool tableIdControl = ::IsWindow(m_contextAttributeBars.TableIdBox()) != FALSE;
-		const bool valignControl = ::IsWindow(m_contextAttributeBars.VAlignBox()) != FALSE;
-		const bool controlsExist = idControl && hrefControl && tableIdControl && valignControl;
-		const bool idsCorrect = ::GetDlgCtrlID(m_contextAttributeBars.HrefBox()) == IDC_HREF && ::GetDlgCtrlID(m_contextAttributeBars.TableIdBox()) == IDC_IDT && ::GetDlgCtrlID(m_contextAttributeBars.VAlignBox()) == IDC_VALIGN;
-		const bool catalogsCorrect = m_contextAttributeBars.AlignBox().GetCount() == 4 && m_contextAttributeBars.RowAlignBox().GetCount() == 4 && m_contextAttributeBars.VAlignBox().GetCount() == 4;
-		const bool stateCorrect = readLink.id == link.id && readLink.href == link.href && readLink.section == link.section && readLink.imageTitle == link.imageTitle && readTable.tableId == table.tableId && readTable.tableStyle == table.tableStyle && readTable.id == table.id && readTable.style == table.style && readTable.colspan == table.colspan && readTable.rowspan == table.rowspan && readTable.rowAlign == table.rowAlign && readTable.align == table.align && readTable.valign == table.valign;
-		CStringA row; row.Format("controls\t%d\r\nid_control\t%d\r\nhref_control\t%d\r\ntable_id_control\t%d\r\nvalign_control\t%d\r\nids\t%d\r\ncatalogs\t%d\r\nstate\t%d\r\nlink_mode\t%d\r\ntable_mode\t%d\r\n", controlsExist ? 1 : 0, idControl ? 1 : 0, hrefControl ? 1 : 0, tableIdControl ? 1 : 0, valignControl ? 1 : 0, idsCorrect ? 1 : 0, catalogsCorrect ? 1 : 0, stateCorrect ? 1 : 0, linkMode ? 1 : 0, tableMode ? 1 : 0);
+		const ContextAttributeBarsDiagnostics diagnostics = m_contextAttributeBars.RunDiagnostics();
+		CStringA row; row.Format("controls\t%d\r\nids\t%d\r\ncatalogs\t%d\r\nstate\t%d\r\nlink_mode\t%d\r\ntable_mode\t%d\r\n", diagnostics.controls ? 1 : 0, diagnostics.ids ? 1 : 0, diagnostics.catalogs ? 1 : 0, diagnostics.state ? 1 : 0, diagnostics.linkMode ? 1 : 0, diagnostics.tableMode ? 1 : 0);
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"export-html"))
@@ -5231,18 +5165,7 @@ LRESULT CMainFrame::OnUnhandledCommand(UINT /* unused: uMsg */, WPARAM wParam, L
 	// only pass messages to the editors
 	if (idCtl == 0 || idCtl == 1)
 	{
-		if (
-			hFocus == m_contextAttributeBars.IdEdit() || hFocus == m_contextAttributeBars.HrefEdit() || hFocus == m_contextAttributeBars.SectionEdit() || ::IsChild(m_contextAttributeBars.IdEdit(), hFocus)
-			|| ::IsChild(m_contextAttributeBars.HrefEdit(), hFocus) || ::IsChild(m_contextAttributeBars.SectionEdit(), hFocus) || hFocus == m_contextAttributeBars.TableStyleEdit()
-			|| hFocus == m_contextAttributeBars.TableIdEdit() || hFocus == m_contextAttributeBars.CellIdEdit() || hFocus == m_contextAttributeBars.CellStyleEdit()
-			|| hFocus == m_contextAttributeBars.ColspanEdit() || hFocus == m_contextAttributeBars.RowspanEdit() || hFocus == m_contextAttributeBars.AlignEdit()
-			|| hFocus == m_contextAttributeBars.VAlignEdit() || hFocus == m_contextAttributeBars.RowAlignEdit() || hFocus==m_contextAttributeBars.ImageTitleEdit()
-			|| ::IsChild(m_contextAttributeBars.TableIdEdit(),hFocus) || ::IsChild(m_contextAttributeBars.CellIdEdit(), hFocus)
-			|| ::IsChild(m_contextAttributeBars.CellStyleEdit(),hFocus) || ::IsChild(m_contextAttributeBars.TableStyleEdit(), hFocus)
-			|| ::IsChild(m_contextAttributeBars.ColspanEdit(),hFocus) ||::IsChild(m_contextAttributeBars.RowspanEdit(), hFocus)
-			|| ::IsChild(m_contextAttributeBars.RowAlignEdit(),hFocus) || ::IsChild(m_contextAttributeBars.AlignEdit(), hFocus)
-			|| ::IsChild(m_contextAttributeBars.VAlignEdit(),hFocus)|| ::IsChild(m_contextAttributeBars.ImageTitleEdit(), hFocus)
-			)
+		if (m_contextAttributeBars.ContainsFocus(hFocus))
 				return ::SendMessage(hFocus, WM_COMMAND, wParam, lParam);
 
 		// We need to check that the focused window is a web browser indeed
@@ -6058,21 +5981,19 @@ LRESULT CMainFrame::OnSelectCtl(WORD /* unused: wNotifyCode */, WORD wID, HWND /
 		case ID_SELECT_ID:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 3))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 3, NULL, bHandled);
-			m_contextAttributeBars.IdEdit().SetFocus();
+			m_contextAttributeBars.FocusLinkField(LinkAttributeField::Id);
 			break;
 			case ID_SELECT_HREF:
 			{
 				if(!IsBandVisible(ATL_IDW_BAND_FIRST + 3))
 					OnViewToolBar(0,ATL_IDW_BAND_FIRST + 3, NULL, bHandled);
-				m_contextAttributeBars.HrefEdit().SetFocus();
-				CString href(U::GetWindowText(m_contextAttributeBars.HrefEdit()));
-				m_contextAttributeBars.HrefEdit().SetSel(0, href.GetLength(), FALSE);
+				m_contextAttributeBars.FocusLinkField(LinkAttributeField::Href, true);
 				break;
 			}
 		case ID_SELECT_IMAGE:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 3))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 3, NULL, bHandled);
-			m_contextAttributeBars.ImageTitleEdit().SetFocus();
+			m_contextAttributeBars.FocusLinkField(LinkAttributeField::ImageTitle);
 			break;
 		case ID_SELECT_TEXT:
 			m_view.SetFocus();
@@ -6080,47 +6001,47 @@ LRESULT CMainFrame::OnSelectCtl(WORD /* unused: wNotifyCode */, WORD wID, HWND /
 		case ID_SELECT_SECTION:
 			if (!IsBandVisible(ATL_IDW_BAND_FIRST + 3))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 3, NULL, bHandled);
-			m_contextAttributeBars.SectionEdit().SetFocus();
+			m_contextAttributeBars.FocusLinkField(LinkAttributeField::Section);
 			break;
 		case ID_SELECT_IDT:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
-			m_contextAttributeBars.TableIdEdit().SetFocus();
+			m_contextAttributeBars.FocusTableField(TableAttributeField::TableId);
 			break;
 		case ID_SELECT_STYLET:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
-			m_contextAttributeBars.TableStyleEdit().SetFocus();
+			m_contextAttributeBars.FocusTableField(TableAttributeField::TableStyle);
 			break;
 		case ID_SELECT_STYLE:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
-			m_contextAttributeBars.CellStyleEdit().SetFocus();
+			m_contextAttributeBars.FocusTableField(TableAttributeField::CellStyle);
 			break;
 		case ID_SELECT_COLSPAN:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
-			m_contextAttributeBars.ColspanEdit().SetFocus();
+			m_contextAttributeBars.FocusTableField(TableAttributeField::Colspan);
 			break;
 		case ID_SELECT_ROWSPAN:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
-			m_contextAttributeBars.RowspanEdit().SetFocus();
+			m_contextAttributeBars.FocusTableField(TableAttributeField::Rowspan);
 			break;
 		case ID_SELECT_ALIGNTR:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
 			OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
-			m_contextAttributeBars.RowAlignEdit().SetFocus();
+			m_contextAttributeBars.FocusTableField(TableAttributeField::RowAlign);
 			break;
 		case ID_SELECT_ALIGN:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
-			m_contextAttributeBars.AlignEdit().SetFocus();
+			m_contextAttributeBars.FocusTableField(TableAttributeField::Align);
 			break;
 		case ID_SELECT_VALIGN:
 			if(!IsBandVisible(ATL_IDW_BAND_FIRST + 4))
 				OnViewToolBar(0, ATL_IDW_BAND_FIRST + 4, NULL, bHandled);
-			m_contextAttributeBars.VAlignEdit().SetFocus();
+			m_contextAttributeBars.FocusTableField(TableAttributeField::VAlign);
 			break;
 	}
 

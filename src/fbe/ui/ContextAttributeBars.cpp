@@ -94,3 +94,34 @@ void ContextAttributeBars::SetLinkState(const LinkAttributeState& s) { m_id.SetW
 LinkAttributeState ContextAttributeBars::GetLinkState() const { LinkAttributeState s; s.id = TextOf(m_id); s.href = TextOf(m_href); s.section = TextOf(m_section); s.imageTitle = TextOf(m_imageTitle); return s; }
 void ContextAttributeBars::SetTableState(const TableAttributeState& s) { m_tableId.SetWindowText(s.tableId); m_tableStyle.SetWindowText(s.tableStyle); m_cellId.SetWindowText(s.id); m_cellStyle.SetWindowText(s.style); m_colspan.SetWindowText(s.colspan); m_rowspan.SetWindowText(s.rowspan); m_rowAlignBox.SelectString(-1, s.rowAlign); m_alignBox.SelectString(-1, s.align); m_valignBox.SelectString(-1, s.valign); }
 TableAttributeState ContextAttributeBars::GetTableState() const { TableAttributeState s; s.tableId=TextOf(m_tableId); s.tableStyle=TextOf(m_tableStyle); s.id=TextOf(m_cellId); s.style=TextOf(m_cellStyle); s.colspan=TextOf(m_colspan); s.rowspan=TextOf(m_rowspan); s.rowAlign=TextOf(m_rowAlignBox); s.align=TextOf(m_alignBox); s.valign=TextOf(m_valignBox); return s; }
+
+namespace
+{
+void SetAvailable(CComboBox& box, CCustomStatic& caption, bool available) { box.EnableWindow(available); caption.SetEnabled(available); }
+void FocusEdit(CCustomEdit& edit, bool selectAll) { edit.SetFocus(); if(selectAll) { CString text = TextOf(edit); edit.SetSel(0, text.GetLength(), FALSE); } }
+}
+
+void ContextAttributeBars::SetLinkAvailability(const LinkAttributeAvailability& a) { SetAvailable(m_idBox,m_idCaption,a.id); SetAvailable(m_hrefBox,m_hrefCaption,a.href); SetAvailable(m_sectionBox,m_sectionCaption,a.section); SetAvailable(m_imageTitleBox,m_imageTitleCaption,a.imageTitle); }
+void ContextAttributeBars::SetTableAvailability(const TableAttributeAvailability& a) { SetAvailable(m_tableIdBox,m_tableIdCaption,a.tableId); SetAvailable(m_tableStyleBox,m_tableStyleCaption,a.tableStyle); SetAvailable(m_cellIdBox,m_cellIdCaption,a.cellId); SetAvailable(m_cellStyleBox,m_cellStyleCaption,a.cellStyle); SetAvailable(m_colspanBox,m_colspanCaption,a.colspan); SetAvailable(m_rowspanBox,m_rowspanCaption,a.rowspan); SetAvailable(m_rowAlignBox,m_rowAlignCaption,a.rowAlign); SetAvailable(m_alignBox,m_alignCaption,a.align); SetAvailable(m_valignBox,m_valignCaption,a.valign); }
+void ContextAttributeBars::ClearLinkState() { SetLinkState(LinkAttributeState()); }
+void ContextAttributeBars::ClearTableState() { SetTableState(TableAttributeState()); }
+void ContextAttributeBars::FocusLinkField(LinkAttributeField field, bool selectAll) { switch(field) { case LinkAttributeField::Id: FocusEdit(m_id,selectAll); break; case LinkAttributeField::Href: FocusEdit(m_href,selectAll); break; case LinkAttributeField::Section: FocusEdit(m_section,selectAll); break; case LinkAttributeField::ImageTitle: FocusEdit(m_imageTitle,selectAll); break; } }
+void ContextAttributeBars::FocusTableField(TableAttributeField field) { switch(field) { case TableAttributeField::TableId: FocusEdit(m_tableId,false); break; case TableAttributeField::TableStyle: FocusEdit(m_tableStyle,false); break; case TableAttributeField::CellId: FocusEdit(m_cellId,false); break; case TableAttributeField::CellStyle: FocusEdit(m_cellStyle,false); break; case TableAttributeField::Colspan: FocusEdit(m_colspan,false); break; case TableAttributeField::Rowspan: FocusEdit(m_rowspan,false); break; case TableAttributeField::RowAlign: FocusEdit(m_rowAlign,false); break; case TableAttributeField::Align: FocusEdit(m_align,false); break; case TableAttributeField::VAlign: FocusEdit(m_valign,false); break; } }
+bool ContextAttributeBars::ContainsFocus(HWND window) const { return window == m_id.m_hWnd || window == m_href.m_hWnd || window == m_section.m_hWnd || window == m_imageTitle.m_hWnd || window == m_tableId.m_hWnd || window == m_tableStyle.m_hWnd || window == m_cellId.m_hWnd || window == m_cellStyle.m_hWnd || window == m_colspan.m_hWnd || window == m_rowspan.m_hWnd || window == m_rowAlign.m_hWnd || window == m_align.m_hWnd || window == m_valign.m_hWnd || ::IsChild(m_linksBar, window) || ::IsChild(m_tableBar, window) || ::IsChild(m_tableBar2, window); }
+
+ContextAttributeBarsDiagnostics ContextAttributeBars::RunDiagnostics()
+{
+	ContextAttributeBarsDiagnostics result = {};
+	LinkAttributeState link; link.id=L"link-id"; link.href=L"#target"; link.section=L"section-id"; link.imageTitle=L"cover";
+	TableAttributeState table; table.tableId=L"table-id"; table.tableStyle=L"table-style"; table.id=L"cell-id"; table.style=L"cell-style"; table.colspan=L"2"; table.rowspan=L"3"; table.rowAlign=L"left"; table.align=L"center"; table.valign=L"middle";
+	SetLinkState(link); SetTableState(table);
+	const LinkAttributeState readLink=GetLinkState(); const TableAttributeState readTable=GetTableState();
+	SetMode(ContextBarMode::Link); result.linkMode=::IsWindowVisible(m_linksBar)!=FALSE && ::IsWindowVisible(m_tableBar)==FALSE;
+	SetMode(ContextBarMode::Table); result.tableMode=::IsWindowVisible(m_linksBar)==FALSE && ::IsWindowVisible(m_tableBar)!=FALSE && ::IsWindowVisible(m_tableBar2)!=FALSE;
+	UpdateMetrics();
+	result.controls=::IsWindow(m_idBox)!=FALSE && ::IsWindow(m_hrefBox)!=FALSE && ::IsWindow(m_tableIdBox)!=FALSE && ::IsWindow(m_valignBox)!=FALSE;
+	result.ids=::GetDlgCtrlID(m_hrefBox)==IDC_HREF && ::GetDlgCtrlID(m_tableIdBox)==IDC_IDT && ::GetDlgCtrlID(m_valignBox)==IDC_VALIGN;
+	result.catalogs=m_alignBox.GetCount()==4 && m_rowAlignBox.GetCount()==4 && m_valignBox.GetCount()==4;
+	result.state=readLink.id==link.id && readLink.href==link.href && readLink.section==link.section && readLink.imageTitle==link.imageTitle && readTable.tableId==table.tableId && readTable.tableStyle==table.tableStyle && readTable.id==table.id && readTable.style==table.style && readTable.colspan==table.colspan && readTable.rowspan==table.rowspan && readTable.rowAlign==table.rowAlign && readTable.align==table.align && readTable.valign==table.valign;
+	return result;
+}

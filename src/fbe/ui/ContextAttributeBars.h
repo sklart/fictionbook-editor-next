@@ -4,7 +4,12 @@
 
 struct LinkAttributeState { CString id; CString href; CString section; CString imageTitle; };
 struct TableAttributeState { CString tableId; CString tableStyle; CString id; CString style; CString colspan; CString rowspan; CString rowAlign; CString align; CString valign; };
+struct LinkAttributeAvailability { bool id; bool href; bool section; bool imageTitle; };
+struct TableAttributeAvailability { bool tableId; bool tableStyle; bool cellId; bool cellStyle; bool colspan; bool rowspan; bool rowAlign; bool align; bool valign; };
 enum class ContextBarMode { None, Link, Image, Section, Table };
+enum class LinkAttributeField { Id, Href, Section, ImageTitle };
+enum class TableAttributeField { TableId, TableStyle, CellId, CellStyle, Colspan, Rowspan, RowAlign, Align, VAlign };
+struct ContextAttributeBarsDiagnostics { bool controls; bool ids; bool catalogs; bool state; bool linkMode; bool tableMode; };
 
 // Owns Win32/WTL presentation state only. CMainFrame stays the notification
 // parent and the owner of document commands.
@@ -19,6 +24,13 @@ public:
 	ContextBarMode Mode() const { return m_mode; }
 	void SetLinkState(const LinkAttributeState& state); LinkAttributeState GetLinkState() const;
 	void SetTableState(const TableAttributeState& state); TableAttributeState GetTableState() const;
+	void SetLinkAvailability(const LinkAttributeAvailability& availability);
+	void SetTableAvailability(const TableAttributeAvailability& availability);
+	void ClearLinkState(); void ClearTableState();
+	void FocusLinkField(LinkAttributeField field, bool selectAll = false);
+	void FocusTableField(TableAttributeField field);
+	bool ContainsFocus(HWND window) const;
+	ContextAttributeBarsDiagnostics RunDiagnostics();
 	CComboBox& IdBox() { return m_idBox; } CComboBox& HrefBox() { return m_hrefBox; } CComboBox& ImageTitleBox() { return m_imageTitleBox; } CComboBox& SectionBox() { return m_sectionBox; }
 	CCustomEdit& IdEdit() { return m_id; } CCustomEdit& HrefEdit() { return m_href; } CCustomEdit& ImageTitleEdit() { return m_imageTitle; } CCustomEdit& SectionEdit() { return m_section; }
 	CComboBox& TableIdBox() { return m_tableIdBox; } CComboBox& TableStyleBox() { return m_tableStyleBox; } CComboBox& CellIdBox() { return m_cellIdBox; } CComboBox& CellStyleBox() { return m_cellStyleBox; }
