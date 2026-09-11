@@ -5,6 +5,18 @@
 #include "../../xmlMatchedTagsHighlighter.h"
 #include "SourceEditorConfig.h"
 
+struct SourceEditorControlDiagnostics
+{
+	bool created = false;
+	bool utf8 = false;
+	bool eol = false;
+	bool wrapping = false;
+	bool whitespace = false;
+	bool lineNumbers = false;
+	bool folding = false;
+	bool reapply = false;
+};
+
 class SourceEditorControl : public CWindow
 {
 public:
@@ -23,6 +35,7 @@ public:
 	bool UpdateTagHighlight(const XmlTagHighlightOptions& options);
 	bool GotoMatchingTag();
 	void GotoWrongTag();
+	SourceEditorControlDiagnostics RunDiagnostics();
 private:
 	int m_lineNumberDigits = -1;
 	SourceEditorConfig m_config;

@@ -218,3 +218,20 @@ void SourceEditorControl::GotoWrongTag()
 	XmlSourceTagHighlighter highlighter(this, &m_tagMatchState);
 	highlighter.GotoWrongTag();
 }
+
+SourceEditorControlDiagnostics SourceEditorControl::RunDiagnostics()
+{
+	SourceEditorControlDiagnostics diagnostics;
+	diagnostics.created = IsWindow() != FALSE;
+	if(!diagnostics.created) return diagnostics;
+	diagnostics.utf8 = Send(SCI_GETCODEPAGE) == SC_CP_UTF8;
+	diagnostics.eol = Send(SCI_GETEOLMODE) == SC_EOL_CRLF;
+	diagnostics.wrapping = Send(SCI_GETWRAPMODE) == (m_config.wrap ? SC_WRAP_WORD : SC_WRAP_NONE);
+	diagnostics.whitespace = Send(SCI_GETVIEWWS) == static_cast<sptr_t>(m_config.showWhitespace);
+	diagnostics.lineNumbers = Send(SCI_GETMARGINWIDTHN, 0) >= 0;
+	diagnostics.folding = Send(SCI_GETMARGINWIDTHN, 2) == (m_config.syntaxHighlight ? 16 : 0);
+	ApplyConfiguration(m_config);
+	UpdateMetrics(m_config);
+	diagnostics.reapply = IsWindow() != FALSE && Send(SCI_GETCODEPAGE) == SC_CP_UTF8;
+	return diagnostics;
+}
