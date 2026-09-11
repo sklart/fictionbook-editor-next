@@ -3369,6 +3369,10 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 
 	int replaced = 0;
 	bool mutationApplied = false;
+	// MSHTML notifies RANGE_SINK for every individual assignment below.  Those
+	// notifications are part of this one controlled operation; invalidate once
+	// after EndUndoUnit instead of repeatedly clearing the completion status.
+	m_controlled_replace_all_mutation = true;
 	m_mk_srv->BeginUndoUnit(L"replace all");
 	try
 	{
@@ -3409,6 +3413,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	catch (const _com_error& error)
 	{
 		m_mk_srv->EndUndoUnit();
+		m_controlled_replace_all_mutation = false;
 		if (mutationApplied)
 			AdvanceSearchDocumentGeneration();
 		if (errorText != NULL)
@@ -3425,6 +3430,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 		completion.Format(FbeLoadRuntimeStringByKey(L"fbe.replace.preview.completed", L"Replaced: %d"), replaced);
 		SetFindResultsCompletionStatus(completion);
 	}
+	m_controlled_replace_all_mutation = false;
 	return replaced;
 }
 
@@ -3824,7 +3830,10 @@ void	CFBEView::EditorChanged(int id) {
     break;
   case RANGE_SINK:
 	m_startMatch = m_endMatch = 0;
-	AdvanceSearchDocumentGeneration();
+	// A controlled Replace All owns the invalidation and publishes its status
+	// only after the complete Undo unit. Ordinary edits still invalidate here.
+	if (!m_controlled_replace_all_mutation)
+		AdvanceSearchDocumentGeneration();
     if (!m_ignore_changes)
       ::SendMessage(m_frame,WM_COMMAND,MAKELONG(0,IDN_ED_CHANGED),(LPARAM)m_hWnd);
     break;

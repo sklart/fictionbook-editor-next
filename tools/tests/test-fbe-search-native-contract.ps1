@@ -98,6 +98,10 @@ Assert-NotContains $replaceAll 'fbe\.replace\.preview\.ready|MB_OK \| MB_ICONINF
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'No leaves preview intact before any replacement range is opened'
 Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?return -1;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'changed preview identity blocks replacement before ranges and Undo'
 Assert-Contains $replaceAll 'SetFindResultsCompletionStatus\(completion\)' 'successful replacement clears stale preview rows and reports completion'
+Assert-Contains $replaceAll 'm_controlled_replace_all_mutation = true;[\s\S]*?BeginUndoUnit\(L"replace all"\)' 'Replace All coalesces its own RANGE_SINK notifications before mutation'
+Assert-Contains $replaceAll 'SetFindResultsCompletionStatus\(completion\);[\s\S]*?m_controlled_replace_all_mutation = false;' 'Replace All preserves completion status until its controlled mutation has finished'
+
+Assert-Contains $source 'case RANGE_SINK:[\s\S]*?if \(!m_controlled_replace_all_mutation\)\s*AdvanceSearchDocumentGeneration\(\);' 'ordinary RANGE_SINK invalidates searches while controlled Replace All notifications are coalesced'
 
 $globalReplace = [regex]::Match($source, 'int\s+CFBEView::GlobalReplace\(MSHTML::IHTMLElementPtr elem, CString cntTag\)[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ToolWordsGlobalReplace').Value
 if ([string]::IsNullOrWhiteSpace($globalReplace)) { throw 'Unable to locate Search Core GlobalReplace path.' }
