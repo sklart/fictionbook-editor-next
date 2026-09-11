@@ -228,6 +228,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="ArchiveEntryPicker.cpp" />
     <ClCompile Include="UpdateVersion.cpp" />
 	<ClCompile Include="UiMetrics.cpp" />
+	<ClCompile Include="source\ui\SourceEditorControl.cpp" />
 	<ClCompile Include="ui\ContextAttributeBars.cpp" />
 	<ClCompile Include="ui\ContextAttributeControls.cpp" />
     <ClCompile Include="apputils.cpp">
@@ -471,6 +472,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="toolbars\ToolbarFactory.h" />
 	<ClInclude Include="toolbars\TableToolbarCommands.h" />
 	<ClInclude Include="UiMetrics.h" />
+	<ClInclude Include="source\ui\SourceEditorConfig.h" />
+	<ClInclude Include="source\ui\SourceEditorControl.h" />
 	<ClInclude Include="ui\ContextAttributeBars.h" />
 	<ClInclude Include="ui\ContextAttributeControls.h" />
     <ClInclude Include="MemProtocol.h" />

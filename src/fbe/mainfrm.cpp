@@ -2249,12 +2249,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   m_dummy_pane.SetSinglePaneMode(SPLIT_PANE_LEFT);*/
 
   // create a source view
-  m_source.Create(_T("Scintilla"),m_view,rcDefault,NULL,WS_CHILD|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,0);
-	// Scintilla's built-in popup is English-only. Replace it with the runtime-localized menu below.
-	m_source.SendMessage(SCI_USEPOPUP, SC_POPUP_NEVER);
-	::SetProp(m_source, L"FBE.Next.SourceContextMenuOwner", reinterpret_cast<HANDLE>(this));
-	m_source_window_proc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(m_source, GWLP_WNDPROC,
-		reinterpret_cast<LONG_PTR>(&CMainFrame::SourceEditorWindowProc)));
+	if(!m_source.Create(m_view))
+		return -1;
   m_view.AttachWnd(m_source);
   SetupSci();
   SetSciStyles();
@@ -7614,40 +7610,24 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	}
 }
 
-static int GetLineNumberDigits(int lineCount)
+static SourceEditorConfig BuildSourceEditorConfig()
 {
-	if(lineCount < 1) lineCount = 1;
-	int digits = 1;
-	for(int value = lineCount; value >= 10; value /= 10) ++digits;
-	return digits < 4 ? 4 : digits;
-}
-
-static bool ShouldUpdateSourceLineNumberMargin(int previousDigits, int lineCount)
-{
-	return previousDigits != GetLineNumberDigits(lineCount);
+	SourceEditorConfig config;
+	config.showEol = _Settings.XmlSrcShowEOL();
+	config.showWhitespace = _Settings.XmlSrcShowSpace();
+	config.wrap = _Settings.XmlSrcWrap();
+	config.showLineNumbers = _Settings.XMLSrcShowLineNumbers();
+	config.syntaxHighlight = _Settings.XmlSrcSyntaxHL();
+	config.showSpecialCharacters = _Settings.XmlSrcShowSpecialChars();
+	config.specialCharactersStyle = _Settings.XmlSrcSpecialCharsStyle();
+	config.fontName = _Settings.GetSrcFont();
+	config.fontSize = static_cast<int>(_Settings.GetFontSize());
+	return config;
 }
 
 void CMainFrame::UpdateSourceLineNumberMargin(bool force)
 {
-	if(!m_source.IsWindow()) return;
-	if(!_Settings.XMLSrcShowLineNumbers())
-	{
-		if(force || m_source_line_number_digits != 0)
-			m_source.SendMessage(SCI_SETMARGINWIDTHN, 0, 0);
-		m_source_line_number_digits = 0;
-		return;
-	}
-	const int lineCount = static_cast<int>(m_source.SendMessage(SCI_GETLINECOUNT));
-	if(!force && !ShouldUpdateSourceLineNumberMargin(m_source_line_number_digits, lineCount)) return;
-	const int digits = GetLineNumberDigits(lineCount);
-	CStringA sample;
-	for(int i = 0; i < digits; ++i) sample += '9';
-	const int measuredWidth = static_cast<int>(m_source.SendMessage(SCI_TEXTWIDTH,
-		STYLE_LINENUMBER, reinterpret_cast<LPARAM>(sample.GetString())));
-	const int width = measuredWidth > 0 ? measuredWidth + 8 : 64;
-	if(force || static_cast<int>(m_source.SendMessage(SCI_GETMARGINWIDTHN, 0)) != width)
-		m_source.SendMessage(SCI_SETMARGINWIDTHN, 0, width);
-	m_source_line_number_digits = digits;
+	m_source.UpdateLineNumberMargin(force, BuildSourceEditorConfig());
 }
 
 void  CMainFrame::SetSciStyles() {
@@ -7936,47 +7916,7 @@ void  CMainFrame::SetupSci()
 
 void CMainFrame::ConfigureSourceSpecialCharacterRepresentations()
 {
-	// Representations affect painting only; the UTF-8 document, lexer and save path remain unchanged.
-	struct SpecialCharacterRepresentation
-	{
-		const char* character;
-		const char* label;
-	};
-	static const SpecialCharacterRepresentation representations[] = {
-		{ "\xC2\xA0", "\xC2\xB0" },
-		{ "\xC2\xAD", "\xC2\xAC" },
-		{ "\xE2\x80\x8B", "ZWSP" },
-		{ "\xE2\x80\x8C", "ZWNJ" },
-		{ "\xE2\x80\x8D", "ZWJ" },
-		{ "\xE2\x80\xAF", "NNBSP" },
-		{ "\xE2\x81\xA0", "WJ" },
-		{ "\xEF\xBB\xBF", "BOM" }
-	};
-	static const SpecialCharacterRepresentation textLabels[] = {
-		{ "\xC2\xA0", "NBSP" }, { "\xC2\xAD", "SHY" },
-		{ "\xE2\x80\x8B", "ZWSP" }, { "\xE2\x80\x8C", "ZWNJ" },
-		{ "\xE2\x80\x8D", "ZWJ" }, { "\xE2\x80\xAF", "NNBSP" },
-		{ "\xE2\x81\xA0", "WJ" }, { "\xEF\xBB\xBF", "BOM" }
-	};
-	const SpecialCharacterRepresentation* activeRepresentations =
-		_Settings.XmlSrcSpecialCharsStyle() == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ? textLabels : representations;
-
-	for (size_t i = 0; i < _countof(representations); ++i)
-	{
-		if (_Settings.XmlSrcShowSpecialChars())
-		{
-			m_source.SendMessage(SCI_SETREPRESENTATION,
-				reinterpret_cast<WPARAM>(representations[i].character),
-				reinterpret_cast<LPARAM>(activeRepresentations[i].label));
-			m_source.SendMessage(SCI_SETREPRESENTATIONAPPEARANCE,
-				reinterpret_cast<WPARAM>(representations[i].character), SC_REPRESENTATION_PLAIN);
-		}
-		else
-		{
-			m_source.SendMessage(SCI_CLEARREPRESENTATION,
-				reinterpret_cast<WPARAM>(representations[i].character));
-		}
-	}
+	m_source.ConfigureSpecialCharacterRepresentations(BuildSourceEditorConfig());
 }
 
 void  CMainFrame::SciModified(const SCNotification& scn) {
@@ -8082,32 +8022,7 @@ void CMainFrame::ShowFb2Autocomplete(int character)
 
 void  CMainFrame::SciMarginClicked(const SCNotification& scn)
 {
-  int lineClick = m_source.SendMessage(SCI_LINEFROMPOSITION, scn.position);
-  if ((scn.modifiers & SCMOD_SHIFT) && (scn.modifiers & SCMOD_CTRL)) {
-    FoldAll();
-  } else {
-    int levelClick = m_source.SendMessage(SCI_GETFOLDLEVEL, lineClick);
-    if (levelClick & SC_FOLDLEVELHEADERFLAG) {
-      if (scn.modifiers & SCMOD_SHIFT) {
-	// Ensure all children visible
-	m_source.SendMessage(SCI_SETFOLDEXPANDED, lineClick, 1);
-	ExpandFold(lineClick, true, true, 100, levelClick);
-      } else if (scn.modifiers & SCMOD_CTRL) {
-	if (m_source.SendMessage(SCI_GETFOLDEXPANDED, lineClick)) {
-	  // Contract this line and all children
-	  m_source.SendMessage(SCI_SETFOLDEXPANDED, lineClick, 0);
-	  ExpandFold(lineClick, false, true, 0, levelClick);
-	} else {
-	  // Expand this line and all children
-	  m_source.SendMessage(SCI_SETFOLDEXPANDED, lineClick, 1);
-	  ExpandFold(lineClick, true, true, 100, levelClick);
-	}
-      } else {
-	// Toggle this line
-	m_source.SendMessage(SCI_TOGGLEFOLD, lineClick);
-      }
-    }
-  }
+	m_source.HandleMarginClick(scn);
 }
 
 
