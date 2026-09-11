@@ -6417,7 +6417,6 @@ bool  CMainFrame::SourceToHTML()
 	if(SourceDocumentTransfer::ReadSourceText(m_source, sourceDocument) != SourceTransitionResult::Success)
 		return false;
 	const int textlen = static_cast<int>(sourceDocument.utf8.size()) - 1;
-	const char* const buffer = sourceDocument.utf8.data();
 
 	int begin_char = 0;
 	int end_char = 0;
