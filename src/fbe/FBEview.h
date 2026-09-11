@@ -828,8 +828,10 @@ public:
 
   // extract currently selected text
   _bstr_t   Selection();
-  bool CloseFindDialog(CFindDlgBase* dlg);
-  bool CloseFindDialog(CReplaceDlgBase* dlg); 
+	bool CloseFindDialog(CFindDlgBase* dlg);
+	bool CloseFindDialog(CReplaceDlgBase* dlg);
+	bool IsFindDialogOpen() const;
+	bool IsReplaceDialogOpen() const;
 
 private:
 	bool ExpandTxtRangeToParagraphs(MSHTML::IHTMLTxtRangePtr &rng, MSHTML::IHTMLElementPtr& begin, MSHTML::IHTMLElementPtr& end)const;

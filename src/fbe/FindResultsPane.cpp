@@ -65,9 +65,9 @@ void CFindResultsPane::UpdateHeader()
 	if (m_view != NULL && m_view->AreFindResultsCurrent())
 	{
 		CString query(m_view->FindResultsQuery()); query.Trim();
-		if (!query.IsEmpty()) title += L" — \x00AB" + query + L"\x00BB";
+		if (!query.IsEmpty()) title += L" \x2014 \x00AB" + query + L"\x00BB \x2014 ";
 		CString count; count.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"%Iu results"), m_view->FindResultCount());
-		title += L" — " + count;
+		title += count;
 	}
 	m_header.SetWindowText(title);
 }
@@ -122,25 +122,28 @@ LRESULT CFindResultsPane::OnListCustomDraw(int, LPNMHDR header, BOOL&)
 	if (draw->nmcd.dwDrawStage == CDDS_PREPAINT) return CDRF_NOTIFYITEMDRAW;
 	if (draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT) return CDRF_NOTIFYSUBITEMDRAW;
 	if (m_view == NULL || draw->nmcd.dwDrawStage != (CDDS_ITEMPREPAINT | CDDS_SUBITEM) || draw->iSubItem != 1) return CDRF_DODEFAULT;
-	std::size_t matchStart = 0, matchLength = 0; const int item = static_cast<int>(draw->nmcd.dwItemSpec);
-	if (item < 0 || !m_view->FindResultPreviewMatch(static_cast<std::size_t>(item), &matchStart, &matchLength) || matchLength == 0) return CDRF_DODEFAULT;
-	const CString text = m_view->FindResultPreview(static_cast<std::size_t>(item)); if (matchStart >= static_cast<std::size_t>(text.GetLength())) return CDRF_DODEFAULT;
-	matchLength = (std::min)(matchLength, static_cast<std::size_t>(text.GetLength()) - matchStart); RECT cell = {}; if (!m_list.GetSubItemRect(item, 1, LVIR_BOUNDS, &cell)) return CDRF_DODEFAULT;
+	const int item = static_cast<int>(draw->nmcd.dwItemSpec);
+	if (item < 0) return CDRF_DODEFAULT;
+	RECT cell = {}; if (!m_list.GetSubItemRect(item, 1, LVIR_BOUNDS, &cell)) return CDRF_DODEFAULT;
 	const RECT paintCell = cell;
-	cell.left += Scale(3); HDC dc = draw->nmcd.hdc; HFONT oldFont = static_cast<HFONT>(::SelectObject(dc, reinterpret_cast<HGDIOBJ>(::SendMessage(m_list, WM_GETFONT, 0, 0)))); const bool selected = (m_list.GetItemState(item, LVIS_SELECTED) & LVIS_SELECTED) != 0;
-	if (selected)
-		::FillRect(dc, &paintCell, ::GetSysColorBrush(COLOR_HIGHLIGHT));
+	cell.left += Scale(3); HDC dc = draw->nmcd.hdc; HFONT oldFont = static_cast<HFONT>(::SelectObject(dc, reinterpret_cast<HGDIOBJ>(::SendMessage(m_list, WM_GETFONT, 0, 0))));
+	const bool selected = (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
+	// Owner-data ListView can repaint a previous row after the selection has
+	// moved.  Always erase the complete context cell from NM_CUSTOMDRAW state,
+	// rather than asking the control for a potentially newer item state.
+	::FillRect(dc, &paintCell, ::GetSysColorBrush(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW));
+	const CString text = m_view->FindResultPreview(static_cast<std::size_t>(item));
 	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, selected ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : ::GetSysColor(COLOR_WINDOWTEXT)); ::DrawText(dc, text, text.GetLength(), &cell, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
-	SIZE prefix = {}; ::GetTextExtentPoint32(dc, text, static_cast<int>(matchStart), &prefix); const CString matched = text.Mid(static_cast<int>(matchStart), static_cast<int>(matchLength)); SIZE matchedSize = {}; ::GetTextExtentPoint32(dc, matched, matched.GetLength(), &matchedSize);
-	RECT highlight = cell; highlight.left += prefix.cx; highlight.right = highlight.left + matchedSize.cx;
-	if (highlight.left < cell.right && highlight.right > cell.left) {
-		// A selected row already has the system highlight background.  Repainting
-		// the fragment with its system foreground preserves contrast and avoids a
-		// second, potentially white-on-white, selection colour.
-		if (!selected)
+	std::size_t matchStart = 0, matchLength = 0;
+	if (m_view->FindResultPreviewMatch(static_cast<std::size_t>(item), &matchStart, &matchLength) && matchLength != 0 && matchStart < static_cast<std::size_t>(text.GetLength())) {
+		matchLength = (std::min)(matchLength, static_cast<std::size_t>(text.GetLength()) - matchStart);
+		SIZE prefix = {}; ::GetTextExtentPoint32(dc, text, static_cast<int>(matchStart), &prefix); const CString matched = text.Mid(static_cast<int>(matchStart), static_cast<int>(matchLength)); SIZE matchedSize = {}; ::GetTextExtentPoint32(dc, matched, matched.GetLength(), &matchedSize);
+		RECT highlight = cell; highlight.left += prefix.cx; highlight.right = highlight.left + matchedSize.cx;
+		if (highlight.left < cell.right && highlight.right > cell.left) {
 			::FillRect(dc, &highlight, ::GetSysColorBrush(COLOR_INFOBK));
-		::SetTextColor(dc, selected ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : ::GetSysColor(COLOR_INFOTEXT));
-		::DrawText(dc, matched, matched.GetLength(), &highlight, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_NOCLIP);
+			::SetTextColor(dc, ::GetSysColor(COLOR_INFOTEXT));
+			::DrawText(dc, matched, matched.GetLength(), &highlight, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_NOCLIP);
+		}
 	}
 	::SelectObject(dc, oldFont); return CDRF_SKIPDEFAULT;
 }

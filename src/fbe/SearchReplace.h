@@ -187,15 +187,17 @@ public:
 		SetRuntimeText(IDC_WHOLE, isReplaceDialog ? L"fbe.dialog.idd_replace.whole_word" : L"fbe.dialog.idd_find.whole_word", L"Match &whole words");
 		SetRuntimeText(IDC_MATCHCASE, isReplaceDialog ? L"fbe.dialog.idd_replace.match_case" : L"fbe.dialog.idd_find.match_case", L"Match &case");
 		SetRuntimeText(IDC_REGEXP, isReplaceDialog ? L"fbe.dialog.idd_replace.regexp" : L"fbe.dialog.idd_find.regexp", L"Regular &expression");
-		if (!isReplaceDialog)
-			SetRuntimeText(IDC_FIND_UNICODE_PROPERTIES, L"fbe.dialog.idd_find.unicode_properties", L"Unicode properties");
+		SetRuntimeText(IDC_FIND_UNICODE_PROPERTIES,
+			isReplaceDialog ? L"fbe.dialog.idd_replace.unicode_properties" : L"fbe.dialog.idd_find.unicode_properties",
+			L"Unicode (&UCP)");
 		SetRuntimeText(isReplaceDialog ? IDC_REPLACE_DIRECTION_GROUP : IDC_FIND_DIRECTION_GROUP,
 			isReplaceDialog ? L"fbe.dialog.idd_replace.direction" : L"fbe.dialog.idd_find.direction",
 			L"Direction");
 		SetRuntimeText(IDC_UP, isReplaceDialog ? L"fbe.dialog.idd_replace.up" : L"fbe.dialog.idd_find.up", L"&Up");
 		SetRuntimeText(IDC_DOWN, isReplaceDialog ? L"fbe.dialog.idd_replace.down" : L"fbe.dialog.idd_find.down", L"&Down");
-		if (!isReplaceDialog)
-			SetRuntimeText(IDC_FIND_FROM_START, L"fbe.dialog.idd_find.from_start", L"&From start");
+		SetRuntimeText(IDC_FIND_FROM_START,
+			isReplaceDialog ? L"fbe.dialog.idd_replace.from_start" : L"fbe.dialog.idd_find.from_start",
+			L"&From start");
 		SetRuntimeText(IDCANCEL, isReplaceDialog ? L"fbe.dialog.idd_replace.cancel" : L"fbe.dialog.idd_find.cancel", L"Cancel");
 		if(isReplaceDialog)
 		{
@@ -204,11 +206,19 @@ public:
 			SetRuntimeText(IDC_REPLACE_ALL, L"fbe.dialog.idd_replace.replace_all", L"Replace &All");
 		}
 
-		// Load options
-		DWORD flags = _Settings.GetSearchOptions();
-		m_view->m_fo.fRegexp = (flags & CFBEView::FRF_REGEX) != 0;
-		m_view->m_fo.unicodeProperties = (flags & CFBEView::FRF_UNICODE_PROPERTIES) != 0;
-		m_view->m_fo.flags = flags & ~(CFBEView::FRF_REGEX | CFBEView::FRF_UNICODE_PROPERTIES);
+		// One open dialog is the in-memory source of truth for the other one.
+		// Otherwise opening Replace while Find is modeless would reload registry
+		// defaults and visibly discard its unsaved common options.
+		const bool otherDialogOpen = isReplaceDialog
+			? m_view->IsFindDialogOpen()
+			: m_view->IsReplaceDialogOpen();
+		if (!otherDialogOpen)
+		{
+			DWORD flags = _Settings.GetSearchOptions();
+			m_view->m_fo.fRegexp = (flags & CFBEView::FRF_REGEX) != 0;
+			m_view->m_fo.unicodeProperties = (flags & CFBEView::FRF_UNICODE_PROPERTIES) != 0;
+			m_view->m_fo.flags = flags & ~(CFBEView::FRF_REGEX | CFBEView::FRF_UNICODE_PROPERTIES);
+		}
 
 		m_view->m_startMatch = m_view->m_endMatch = 0;
 
@@ -217,9 +227,10 @@ public:
 		// Set fields
 		PutData();
 		UpdateUnicodeControl();
-		if (!isReplaceDialog)
+		if (GetDlgItem(IDC_FIND_SCOPE) != NULL)
 		{
-			SetRuntimeText(IDC_FIND_SCOPE_LABEL, L"fbe.dialog.idd_find.scope", L"Scope:");
+			SetRuntimeText(IDC_FIND_SCOPE_LABEL,
+				isReplaceDialog ? L"fbe.dialog.idd_replace.scope" : L"fbe.dialog.idd_find.scope", L"Scope:");
 			PopulateFindScopes();
 			const HWND dialog = ::GetParent(GetDlgItem(IDC_TEXT));
 			if (dialog)
@@ -227,13 +238,13 @@ public:
 				m_tooltips.Initialize(dialog);
 				m_tooltips.Add(GetDlgItem(IDC_TEXT), L"fbe.tooltip.find.text", L"Text to find. Results update after a short pause while typing.");
 				m_tooltips.Add(GetDlgItem(ID_FIND_NEXT), L"fbe.tooltip.find.next", L"Select the next match in the chosen direction.");
-				m_tooltips.Add(GetDlgItem(IDC_FIND_ALL), L"fbe.tooltip.find.all", L"Show every match in the Results pane.");
+				if (!isReplaceDialog) m_tooltips.Add(GetDlgItem(IDC_FIND_ALL), L"fbe.tooltip.find.all", L"Show every match in the Results pane.");
 				m_tooltips.Add(GetDlgItem(IDC_WHOLE), L"fbe.tooltip.find.whole_word", L"Match complete words only.");
 				m_tooltips.Add(GetDlgItem(IDC_MATCHCASE), L"fbe.tooltip.find.match_case", L"Distinguish uppercase and lowercase letters.");
 				m_tooltips.Add(GetDlgItem(IDC_REGEXP), L"fbe.tooltip.find.regexp", L"Interpret the query as a regular expression.");
 				m_tooltips.Add(GetDlgItem(IDC_FIND_SCOPE), L"fbe.tooltip.find.scope", L"Choose where to search.");
 				m_tooltips.Add(GetDlgItem(IDC_FIND_UNICODE_PROPERTIES), L"fbe.tooltip.find.unicode_properties", L"Use Unicode properties in regular expressions.");
-				m_tooltips.Add(GetDlgItem(IDC_FIND_STATUS), L"fbe.tooltip.find.status", L"Search status and complete regular-expression diagnostic.");
+				if (!isReplaceDialog) m_tooltips.Add(GetDlgItem(IDC_FIND_STATUS), L"fbe.tooltip.find.status", L"Search status and complete regular-expression diagnostic.");
 				m_tooltips.Add(GetDlgItem(IDC_UP), L"fbe.tooltip.find.up", L"Search toward the beginning of the document.");
 				m_tooltips.Add(GetDlgItem(IDC_DOWN), L"fbe.tooltip.find.down", L"Search toward the end of the document.");
 				m_tooltips.Add(GetDlgItem(IDC_FIND_FROM_START), L"fbe.tooltip.find.from_start", L"Go to the first match in the selected scope.");
@@ -492,6 +503,15 @@ public:
     COMMAND_ID_HANDLER(ID_FIND_NEXT, OnDoFind)
     COMMAND_ID_HANDLER(IDC_REPLACE_ONE, OnDoReplace)
     COMMAND_ID_HANDLER(IDC_REPLACE_ALL, OnDoReplaceAll)
+	COMMAND_HANDLER(IDC_FIND_FROM_START, BN_CLICKED, OnFindFromStart)
+	COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_SELCHANGE, OnScopeChanged)
+	COMMAND_HANDLER(IDC_FIND_SCOPE, CBN_DROPDOWN, OnScopeDropDown)
+	COMMAND_HANDLER(IDC_MATCHCASE, BN_CLICKED, OnSearchOptionChanged)
+	COMMAND_HANDLER(IDC_WHOLE, BN_CLICKED, OnSearchOptionChanged)
+	COMMAND_HANDLER(IDC_REGEXP, BN_CLICKED, OnSearchOptionChanged)
+	COMMAND_HANDLER(IDC_FIND_UNICODE_PROPERTIES, BN_CLICKED, OnSearchOptionChanged)
+	COMMAND_HANDLER(IDC_UP, BN_CLICKED, OnSearchOptionChanged)
+	COMMAND_HANDLER(IDC_DOWN, BN_CLICKED, OnSearchOptionChanged)
     COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 
     COMMAND_HANDLER(IDC_TEXT,CBN_EDITCHANGE, OnTextChanged)
@@ -531,9 +551,35 @@ public:
     DoReplaceAll();
     return 0;
   }
+  LRESULT OnFindFromStart(WORD, WORD, HWND, BOOL&) {
+	GetData();
+	m_selvalid = false;
+	if (!m_view->DoSearchFromScopeStart()) {
+		if (!m_view->LastSearchError().IsEmpty() && m_view->LastSearchErrorIsRegexp())
+			::MessageBox(m_hWnd, m_view->LastSearchError(), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_replace.caption", L"Replace"), MB_OK | MB_ICONEXCLAMATION);
+		else
+			U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
+	} else {
+		SaveString(); SaveHistory(); m_selvalid = true; MakeClose();
+	}
+	return 0;
+  }
+  LRESULT OnScopeChanged(WORD, WORD, HWND, BOOL&) {
+	m_view->ResetSearchScope(); m_selvalid = false; return 0;
+  }
+  LRESULT OnScopeDropDown(WORD, WORD, HWND, BOOL&) {
+	HWND scope = FRBase::GetDlgItem(IDC_FIND_SCOPE);
+	const LRESULT selected = scope ? ::SendMessage(scope, CB_GETCURSEL, 0, 0) : CB_ERR;
+	if (selected != CB_ERR) m_scope = static_cast<int>(::SendMessage(scope, CB_GETITEMDATA, selected, 0));
+	PopulateFindScopes(); return 0;
+  }
+  LRESULT OnSearchOptionChanged(WORD, WORD, HWND, BOOL&) {
+	UpdateUnicodeControl(); m_selvalid = false; return 0;
+  }
 
   LRESULT OnTextChanged(WORD, WORD /* unused: wID */, HWND, BOOL& bHandled) {
     SendMessage(DM_SETDEFID,IDOK);
+	m_selvalid=false;
     bHandled=FALSE;
     return 0;
   }

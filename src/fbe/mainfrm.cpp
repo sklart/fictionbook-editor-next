@@ -617,7 +617,6 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 
 		HMENU importMenu = ::GetSubMenu(fileMenu, 6);
 		HMENU exportMenu = ::GetSubMenu(fileMenu, 7);
-		HMENU recentMenu = ::GetSubMenu(fileMenu, 9);
 		if(importMenu != NULL && ::GetMenuItemID(importMenu, 0) == IDCANCEL)
 			SetRuntimePlainMenuItemTextByPosition(importMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.import");
 		if(exportMenu != NULL && ::GetMenuItemID(exportMenu, 0) == IDCANCEL)

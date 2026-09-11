@@ -1479,6 +1479,18 @@
         "bg-BG": "Игнорирай всички"
       }
     },
+    "fbe.dialog.idd_replace.scope": {
+      "resource": "IDD_REPLACE", "kind": "LTEXT", "targetId": "IDC_FIND_SCOPE_LABEL",
+      "translations": { "en-US": "Scope:", "ru-RU": "Область:", "uk-UA": "Область:", "de-DE": "Bereich:", "fr-FR": "Portée :", "es-ES": "Ámbito:", "it-IT": "Ambito:", "pl-PL": "Zakres:", "pt-PT": "Âmbito:", "nl-NL": "Bereik:", "cs-CZ": "Rozsah:", "bg-BG": "Обхват:" }
+    },
+    "fbe.dialog.idd_replace.unicode_properties": {
+      "resource": "IDD_REPLACE", "kind": "CONTROL", "targetId": "IDC_FIND_UNICODE_PROPERTIES",
+      "translations": { "en-US": "Unicode (&UCP)", "ru-RU": "Unicode (&UCP)", "uk-UA": "Unicode (&UCP)", "de-DE": "Unicode (&UCP)", "fr-FR": "Unicode (&UCP)", "es-ES": "Unicode (&UCP)", "it-IT": "Unicode (&UCP)", "pl-PL": "Unicode (&UCP)", "pt-PT": "Unicode (&UCP)", "nl-NL": "Unicode (&UCP)", "cs-CZ": "Unicode (&UCP)", "bg-BG": "Unicode (&UCP)" }
+    },
+    "fbe.dialog.idd_replace.from_start": {
+      "resource": "IDD_REPLACE", "kind": "PUSHBUTTON", "targetId": "IDC_FIND_FROM_START",
+      "translations": { "en-US": "&From start", "ru-RU": "&С начала", "uk-UA": "&З початку", "de-DE": "&Von Anfang", "fr-FR": "Depuis le &début", "es-ES": "&Desde el inicio", "it-IT": "&Dall'inizio", "pl-PL": "&Od początku", "pt-PT": "&Do início", "nl-NL": "&Vanaf begin", "cs-CZ": "&Od začátku", "bg-BG": "&От началото" }
+    },
     "fbe.spelling.menu.more_suggestions": {
       "resource": "IDD_SPELL_CHECK",
       "kind": "VALUE",

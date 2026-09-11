@@ -3741,7 +3741,6 @@ public:
 LRESULT CFBEView::OnFind(WORD, WORD, HWND, BOOL&)
 {
 	m_fo.pattern = (const wchar_t*)Selection();
-	ResetSearchScope();
 	if(!m_find_dlg)
 		m_find_dlg = new CViewFindDlg(this);
 
@@ -3755,17 +3754,15 @@ LRESULT CFBEView::OnFind(WORD, WORD, HWND, BOOL&)
 LRESULT CFBEView::OnReplace(WORD, WORD, HWND, BOOL&)
 {
 	m_fo.pattern = (const wchar_t *)Selection();
-	// Replace has explicit compatibility defaults. It must not quietly inherit
-	// a Selection/Current-section scope or PCRE2 UCP mode left by Find.
+	// Find and Replace share search criteria, including a stable Selection
+	// scope.  A reopened Replace dialog may reuse that scope after Find Next
+	// moved MSHTML's visible selection to a hit.
 	const bool openingReplace = !m_replace_dlg || !m_replace_dlg->IsValid();
 	if (openingReplace)
 	{
-		m_fo.scope = AU::Search::SearchScope::WholeDocument;
-		m_fo.unicodeProperties = false;
 		m_fo.ClearMatch();
 		m_has_last_zero_length_hit = false;
 		m_has_replace_preview = false;
-		ResetSearchScope();
 	}
 	if(!m_replace_dlg)
 		m_replace_dlg = new CViewReplaceDlg(this);
@@ -5840,6 +5837,16 @@ bool CFBEView::CloseFindDialog(CReplaceDlgBase* dlg)
 
 	dlg->DestroyWindow();
 	return true;
+}
+
+bool CFBEView::IsFindDialogOpen() const
+{
+	return m_find_dlg != NULL && m_find_dlg->IsValid();
+}
+
+bool CFBEView::IsReplaceDialogOpen() const
+{
+	return m_replace_dlg != NULL && m_replace_dlg->IsValid();
 }
 
 bool CFBEView::ExpandTxtRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& rng,
