@@ -221,6 +221,8 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-save-runtime.ps1")
 & (Join-Path $repoRoot "tools\tests\test-image-import-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-image-document-inserter-boundary.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-image-document-inserter-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-js-reliability.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-js-binary-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-css-regression.ps1")
