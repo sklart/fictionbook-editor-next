@@ -30,4 +30,6 @@ class SourceDocumentTransfer
 public:
 	static bool ReadSourceText(CWindow& source, SourceDocumentText& result);
 	static CString ExtractXmlDeclarationEncoding(const CString& xmlText);
+	static int SkipXmlMarkupForward(const CString& sourceXml, int position);
+	static int SkipXmlMarkupBackward(const CString& sourceXml, int position);
 };

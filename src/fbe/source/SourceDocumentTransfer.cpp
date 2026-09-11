@@ -30,3 +30,27 @@ CString SourceDocumentTransfer::ExtractXmlDeclarationEncoding(const CString& xml
 {
 	return CString(FbeExtractXmlDeclarationEncoding(std::wstring(static_cast<const wchar_t*>(xmlText))).c_str());
 }
+
+int SourceDocumentTransfer::SkipXmlMarkupForward(const CString& sourceXml, int position)
+{
+	while(position < sourceXml.GetLength())
+	{
+		const int tagBegin = sourceXml.Left(position).ReverseFind(L'<');
+		const int tagEnd = tagBegin >= 0 ? sourceXml.Find(L'>', tagBegin + 1) : -1;
+		if(tagBegin >= 0 && tagEnd >= position) position = tagEnd + 1;
+		else break;
+	}
+	return position;
+}
+
+int SourceDocumentTransfer::SkipXmlMarkupBackward(const CString& sourceXml, int position)
+{
+	while(position > 0)
+	{
+		const int tagBegin = sourceXml.Left(position).ReverseFind(L'<');
+		const int tagEnd = tagBegin >= 0 ? sourceXml.Find(L'>', tagBegin + 1) : -1;
+		if(tagBegin >= 0 && tagEnd >= position) position = tagBegin;
+		else break;
+	}
+	return position;
+}

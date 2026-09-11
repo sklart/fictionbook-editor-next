@@ -6623,38 +6623,6 @@ static MSHTML::IHTMLTxtRangePtr FindBodyTextRange(
 // Границы выделения Source могут попасть в имя тега или его атрибут. В Body
 // таких символов нет, поэтому отсекаем разметку и оставляем только видимый
 // текст между тегами.
-static int SkipXmlMarkupForward(const CString& sourceXml, int position)
-{
-	while (position < sourceXml.GetLength())
-	{
-		const int tagBegin = sourceXml.Left(position).ReverseFind(L'<');
-		const int tagEnd = tagBegin >= 0
-			? sourceXml.Find(L'>', tagBegin + 1)
-			: -1;
-		if (tagBegin >= 0 && tagEnd >= position)
-			position = tagEnd + 1;
-		else
-			break;
-	}
-	return position;
-}
-
-static int SkipXmlMarkupBackward(const CString& sourceXml, int position)
-{
-	while (position > 0)
-	{
-		const int tagBegin = sourceXml.Left(position).ReverseFind(L'<');
-		const int tagEnd = tagBegin >= 0
-			? sourceXml.Find(L'>', tagBegin + 1)
-			: -1;
-		if (tagBegin >= 0 && tagEnd >= position)
-			position = tagBegin;
-		else
-			break;
-	}
-	return position;
-}
-
 // Журнал не содержит текст книги или выделения: только длину диапазона.
 
 static CString SelectionTraceSummary(const CString& text)
@@ -6710,8 +6678,8 @@ bool  CMainFrame::SourceToHTML()
 	selected_body_index = FindXmlBodyIndexAtPosition(sourceText, selectedPosBegin);
 	if (!one_pos)
 	{
-		selectedPosBegin = SkipXmlMarkupForward(sourceText, selectedPosBegin);
-		selectedPosEnd = SkipXmlMarkupBackward(sourceText, selectedPosEnd);
+		selectedPosBegin = SourceDocumentTransfer::SkipXmlMarkupForward(sourceText, selectedPosBegin);
+		selectedPosEnd = SourceDocumentTransfer::SkipXmlMarkupBackward(sourceText, selectedPosEnd);
 		if (selectedPosEnd < selectedPosBegin)
 			selectedPosEnd = selectedPosBegin;
 	}
