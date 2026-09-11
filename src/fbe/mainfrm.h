@@ -97,7 +97,6 @@ public:
 	CReBarCtrl		m_rebar;			// toolbars
 	ContextAttributeBars m_contextAttributeBars;
 	SourceEditorControl m_source; // source editor presentation owner
-	WNDPROC			m_source_window_proc;
 	XmlMatchedTagsState m_xml_matched_tags_state;
 	//bool			m_save_sp_mode;
   CRecentDocumentList	  m_mru; // MRU list
@@ -157,7 +156,7 @@ public:
 	 m_script_menu(ID_EDIT_INS_SYMBOL + 101, 999), m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
     m_source_selection_transferred(false), m_source_selection_start(0),
-		m_source_selection_end(0), m_selBandID(-1), m_source_window_proc(NULL), m_scriptsToolbarBaseImageCount(0),
+		m_source_selection_end(0), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0),
         m_status_transient_expiration(0), m_validation_status(VALIDATION_UNKNOWN)
 	// added by SeNS
 	{
@@ -261,8 +260,6 @@ public:
 	void	  DefineMarker(int marker, int markerType, COLORREF fore,COLORREF back);
 	void	  SetupSci();
 	void	  ConfigureSourceSpecialCharacterRepresentations();
-	void	  ShowSourceContextMenu(LPARAM screenPosition);
-	static LRESULT CALLBACK SourceEditorWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 	// Transitional helpers still service fold-change notifications until they
 	// are routed through SourceEditorControl.
 	void FoldAll();
