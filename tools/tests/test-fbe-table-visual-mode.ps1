@@ -10,6 +10,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $xslPath = Join-Path $repoRoot 'runtime\fb2.xsl'
 $sourcePath = Join-Path $repoRoot 'src\fbe\FBDoc.cpp'
 $viewPath = Join-Path $repoRoot 'src\fbe\FBEview.cpp'
+$gridPath = Join-Path $repoRoot 'src\fbe\table\TableGrid.cpp'
+$structuralPath = Join-Path $repoRoot 'src\fbe\table\TableStructuralEditor.cpp'
 
 $input = @'
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">
@@ -34,6 +36,8 @@ foreach($fragment in @('U::scmp(name,L"TABLE")', 'U::scmp(name,L"TR")', 'U::scmp
 }
 
 $viewSource = Get-Content -Raw -LiteralPath $viewPath
+$gridSource = Get-Content -Raw -LiteralPath $gridPath
+$structuralSource = Get-Content -Raw -LiteralPath $structuralPath
 foreach($fragment in @('Native tables have a deliberately different content model', 'U::scmp(nodeName, L"TABLE") == 0', 'U::scmp(name,L"TBODY")', 'createElement(L"TBODY")', 'insertAdjacentElement(L"afterEnd", te)')) {
     if($viewSource -notlike "*$fragment*") { throw "Нормализация визуального редактора не сохраняет таблицы: $fragment" }
 }
@@ -42,12 +46,12 @@ foreach($fragment in @('IsNativeTableBlockName', '!IsNativeTableBlockName(cur_na
     if($viewSource -notlike "*$fragment*") { throw "PackText может вложить TABLE в автоматически созданный P: $fragment" }
 }
 
-foreach($fragment in @('SetTableSpan(const MSHTML::IHTMLElementPtr& cell, const wchar_t* fbName, const wchar_t* htmlName, long span)', 'cell->setAttribute(fbName, attributeValue, 0)', 'cell->setAttribute(htmlName, attributeValue, 0)', 'cell->removeAttribute(fbName, 0)', 'cell->removeAttribute(htmlName, 0)', 'L"fbcolspan", L"colspan"', 'L"fbrowspan", L"rowspan"')) {
-    if($viewSource -notlike "*$fragment*") { throw "Span metadata и HTML layout не синхронизированы: $fragment" }
+foreach($fragment in @('void SetSpan(', 'cell->setAttribute(fbName, attributeValue, 0)', 'cell->setAttribute(htmlName, attributeValue, 0)', 'cell->removeAttribute(fbName, 0)', 'cell->removeAttribute(htmlName, 0)', 'L"fbcolspan", L"colspan"', 'L"fbrowspan", L"rowspan"')) {
+    if($gridSource -notlike "*$fragment*") { throw "Span metadata и HTML layout не синхронизированы: $fragment" }
 }
 
-foreach($fragment in @('TableCellTagAt', 'TableCellTagAt(grid, rowIndex, column, cell->tagName)', 'TableCellTagAt(grid, boundary - 1, column, cell->tagName)', 'TableCellTagAt(grid, rowIndex, before ? column : column - 1, selectedCell->tagName)')) {
-    if($viewSource -notlike "*$fragment*") { throw "Новые ячейки таблицы не наследуют тип локального соседа: $fragment" }
+foreach($fragment in @('TagAt(', 'TagAt(grid,boundary-1,col,fallbackTag)', 'TagAt(grid,row,before?column:column-1,fallbackTag)')) {
+    if($structuralSource -notlike "*$fragment*") { throw "Новые ячейки таблицы не наследуют тип локального соседа: $fragment" }
 }
 
 foreach($fragment in @('SnapshotNativeTables', 'tablesBeforeNormalize', 'D224', 'SnapshotSerializedTables', 'D225', 'm_serialization_unsafe', 'drop-row-after-normalize')) {

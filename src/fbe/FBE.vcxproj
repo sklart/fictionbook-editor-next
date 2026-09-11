@@ -464,6 +464,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="source\BodySourceSelectionState.h" />
 	<ClInclude Include="source\BodySourceSelectionTransfer.h" />
 	<ClInclude Include="source\SourceDocumentTransfer.h" />
+	<ClInclude Include="table\TableGrid.h" />
+	<ClInclude Include="table\TableStructuralEditor.h" />
 	<ClInclude Include="view\EditorSelectionState.h" />
 	<ClInclude Include="view\EditorViewState.h" />
 	<ClInclude Include="view\EditorViewTransition.h" />

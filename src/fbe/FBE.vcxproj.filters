@@ -37,6 +37,14 @@
       <UniqueIdentifier>{B2A566BF-44FD-477D-96D4-0D7C980D6D4C}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
     </Filter>
+    <Filter Include="Source Files\Table">
+      <UniqueIdentifier>{7C1D1488-81E8-4BF0-B669-016E02B373E1}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Table">
+      <UniqueIdentifier>{C82E52DA-D7B2-4FEE-8A6A-10195D1CF424}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
     <Filter Include="Source Files\Search">
       <UniqueIdentifier>{1128c08a-cd1e-4a38-a38b-2d3d1dcb3d99}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
@@ -368,6 +376,8 @@
 	<ClInclude Include="source\BodySourceSelectionState.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="source\BodySourceSelectionTransfer.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="source\SourceDocumentTransfer.h"><Filter>Header Files\XML Source</Filter></ClInclude>
+	<ClInclude Include="table\TableGrid.h"><Filter>Header Files\Table</Filter></ClInclude>
+	<ClInclude Include="table\TableStructuralEditor.h"><Filter>Header Files\Table</Filter></ClInclude>
 	<ClInclude Include="view\EditorSelectionState.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewState.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewTransition.h"><Filter>Header Files\View</Filter></ClInclude>

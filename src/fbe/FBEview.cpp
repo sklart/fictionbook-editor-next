@@ -146,81 +146,6 @@ static void TraceSelectionContainerFailure(const wchar_t* comOperation, HRESULT 
 	}
 	StartupTrace::HResult(L"mshtml", L"SC100", result, details);
 }
-// The visual view uses native HTML tables.  Keep table mutations here instead
-// of relying on MSHTML's legacy editing commands: those commands may insert
-// HTML that has no FB2 counterpart and do not group a whole operation in one
-// undo item.
-static bool IsTableCellElement(const MSHTML::IHTMLElementPtr& element)
-{
-	return (bool)element && (U::scmp(element->tagName, L"TD") == 0 || U::scmp(element->tagName, L"TH") == 0);
-}
-
-// MSHTML tracks attribute and child-list edits in an IMarkupServices undo
-// unit, but not replacement of a table-cell element with a different tag.
-// Keep that replacement as one native IOleUndoUnit so Ctrl+Z/Ctrl+Y retains
-// the exact TD/TH conversion without serialising any editor-only state.
-struct TableCellReplacement { MSHTML::IHTMLElementPtr active, inactive; };
-
-class CTableCellToggleUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit
-{
-public:
-	BEGIN_COM_MAP(CTableCellToggleUndoUnit)
-		COM_INTERFACE_ENTRY(IOleUndoUnit)
-	END_COM_MAP()
-
-	void Initialize(const std::vector<TableCellReplacement>& replacements)
-	{
-		m_replacements = replacements;
-	}
-
-	STDMETHOD(Do)(IOleUndoManager* undoManager)
-	{
-		for (size_t index = 0; index < m_replacements.size(); ++index) {
-			TableCellReplacement& replacement = m_replacements[index];
-			if (!replacement.active || !replacement.inactive || !replacement.active->parentElement) return E_UNEXPECTED;
-			MSHTML::IHTMLDOMNodePtr(replacement.active->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement.inactive), MSHTML::IHTMLDOMNodePtr(replacement.active));
-			MSHTML::IHTMLElementPtr previousActive(replacement.active);
-			replacement.active = replacement.inactive;
-			replacement.inactive = previousActive;
-		}
-		return undoManager ? undoManager->Add(this) : S_OK;
-	}
-
-	STDMETHOD(GetDescription)(BSTR* description)
-	{
-		if (!description) return E_POINTER;
-		*description = ::SysAllocString(L"toggle table header cell");
-		return *description ? S_OK : E_OUTOFMEMORY;
-	}
-
-	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id)
-	{
-		if (!classId || !id) return E_POINTER;
-		*classId = CLSID_NULL; *id = 0;
-		return S_OK;
-	}
-
-	STDMETHOD(OnNextAdd)() { return S_OK; }
-
-private:
-	std::vector<TableCellReplacement> m_replacements;
-};
-
-static HRESULT AddTableCellToggleUndoUnit(MSHTML::IHTMLDocument2Ptr document, const std::vector<TableCellReplacement>& replacements)
-{
-	IServiceProviderPtr serviceProvider(document);
-	CComPtr<IOleUndoManager> undoManager;
-	if (!serviceProvider || FAILED(serviceProvider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, (void**)&undoManager))) return E_NOINTERFACE;
-	CComObject<CTableCellToggleUndoUnit>* undoUnit = NULL;
-	HRESULT hr = CComObject<CTableCellToggleUndoUnit>::CreateInstance(&undoUnit);
-	if (FAILED(hr)) return hr;
-	undoUnit->AddRef();
-	undoUnit->Initialize(replacements);
-	hr = undoManager->Add(undoUnit);
-	undoUnit->Release();
-	return hr;
-}
-
 // A native table is a structural child of an FB2 visual DIV, just like a
 // paragraph or a nested DIV.  It must never be collected into an implicitly
 // created paragraph by PackText().
@@ -229,45 +154,13 @@ static bool IsNativeTableBlockName(const _bstr_t& name)
 	return U::scmp(name, L"TABLE") == 0;
 }
 
-static MSHTML::IHTMLElementPtr FindTableElement(MSHTML::IHTMLElementPtr element)
-{
-	while (element)
-	{
-		if (U::scmp(element->tagName, L"TABLE") == 0 && U::scmp(element->className, L"table") == 0)
-			return element;
-		element = element->parentElement;
-	}
-	return MSHTML::IHTMLElementPtr();
-}
-
-static MSHTML::IHTMLElementPtr FindTableRow(MSHTML::IHTMLElementPtr element)
-{
-	while (element)
-	{
-		if (U::scmp(element->tagName, L"TR") == 0 && U::scmp(element->className, L"tr") == 0)
-			return element;
-		element = element->parentElement;
-	}
-	return MSHTML::IHTMLElementPtr();
-}
-
-static MSHTML::IHTMLElementPtr FindTableCell(MSHTML::IHTMLElementPtr element)
-{
-	while (element)
-	{
-		if (IsTableCellElement(element)) return element;
-		element = element->parentElement;
-	}
-	return MSHTML::IHTMLElementPtr();
-}
-
 static bool SelectTableCellRange(const MSHTML::IHTMLDocument2Ptr& document,
 	const MSHTML::IHTMLElementPtr& firstCell, const MSHTML::IHTMLElementPtr& lastCell)
 {
 	try
 	{
 		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
-		if (!body || !firstCell || !lastCell || FindTableElement(firstCell) != FindTableElement(lastCell)) return false;
+		if (!body || !firstCell || !lastCell || FbeTable::FindTableElement(firstCell) != FbeTable::FindTableElement(lastCell)) return false;
 		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		MSHTML::IHTMLTxtRangePtr end(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		if (!range || !end) return false;
@@ -283,34 +176,6 @@ static bool SelectTableCellRange(const MSHTML::IHTMLDocument2Ptr& document,
 		return true;
 	}
 	catch (const _com_error&) { return false; }
-}
-
-static void GetDirectTableCells(const MSHTML::IHTMLElementPtr& row, std::vector<MSHTML::IHTMLElementPtr>& cells)
-{
-	cells.clear();
-	if (!row) return;
-	for (MSHTML::IHTMLDOMNodePtr node(MSHTML::IHTMLDOMNodePtr(row)->firstChild); node; node = node->nextSibling)
-	{
-		if (node->nodeType != NODE_ELEMENT) continue;
-		MSHTML::IHTMLElementPtr element(node);
-		if (IsTableCellElement(element)) cells.push_back(element);
-	}
-}
-
-static void GetTableCells(const MSHTML::IHTMLElementPtr& table, std::vector<MSHTML::IHTMLElementPtr>& cells)
-{
-	cells.clear();
-	if (!table) return;
-	MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(table)->getElementsByTagName(L"TR"));
-	if (!rows) return;
-	for (long rowIndex = 0; rowIndex < rows->length; ++rowIndex)
-	{
-		_variant_t itemIndex(rowIndex);
-		MSHTML::IHTMLElementPtr row(rows->item(itemIndex, _variant_t()));
-		std::vector<MSHTML::IHTMLElementPtr> rowCells;
-		GetDirectTableCells(row, rowCells);
-		cells.insert(cells.end(), rowCells.begin(), rowCells.end());
-	}
 }
 
 static MSHTML::IHTMLElementPtr CreateTableCell(MSHTML::IHTMLDocument2Ptr document, const wchar_t* tagName);
@@ -354,7 +219,7 @@ static MSHTML::IHTMLElementPtr CreateTableRowLike(MSHTML::IHTMLDocument2Ptr docu
 	MSHTML::IHTMLElementPtr row(document->createElement(L"TR"));
 	row->className = L"tr";
 	std::vector<MSHTML::IHTMLElementPtr> cells;
-	GetDirectTableCells(sourceRow, cells);
+	FbeTable::GetDirectCells(sourceRow, cells);
 	for (size_t index = 0; index < cells.size(); ++index)
 		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"beforeEnd", CreateTableCell(document, cells[index]->tagName));
 	return row;
@@ -385,34 +250,6 @@ static CString GetLocalizedMainMenuText(UINT commandId, const wchar_t* fallback)
 			return CString(text);
 	}
 	return CString(fallback);
-}
-
-static void CopyTableCellAttribute(const MSHTML::IHTMLElementPtr& source, const MSHTML::IHTMLElementPtr& destination, const wchar_t* name)
-{
-	_variant_t value(source->getAttribute(name, 0));
-	if (value.vt != VT_EMPTY && value.vt != VT_NULL)
-		destination->setAttribute(name, value, 0);
-}
-
-// TD/TH replacement must preserve the same visual and FB2-facing cell data,
-// regardless of whether it is initiated by the single-cell toggle or bulk action.
-static const wchar_t* const kTableCellReplacementAttributes[] = {
-	L"id", L"style", L"fbstyle", L"colspan", L"fbcolspan", L"rowspan", L"fbrowspan",
-	L"align", L"fbalign", L"valign", L"fbvalign"
-};
-
-static void CopyTableCellReplacementAttributes(const MSHTML::IHTMLElementPtr& source, const MSHTML::IHTMLElementPtr& destination)
-{
-	for (size_t index = 0; index < _countof(kTableCellReplacementAttributes); ++index)
-		CopyTableCellAttribute(source, destination, kTableCellReplacementAttributes[index]);
-	// MSHTML can keep a runtime CSS declaration in IHTMLStyle without exposing
-	// it through getAttribute(L"style"). Preserve that visual-DOM state too.
-	MSHTML::IHTMLStylePtr sourceStyle(source ? source->style : MSHTML::IHTMLStylePtr());
-	MSHTML::IHTMLStylePtr destinationStyle(destination ? destination->style : MSHTML::IHTMLStylePtr());
-	if (sourceStyle && destinationStyle) {
-		_bstr_t cssText(sourceStyle->cssText);
-		if (cssText.length()) destinationStyle->cssText = (const wchar_t*)cssText;
-	}
 }
 
 static void NotifyWrappedSearch(bool wrapped)
@@ -2208,7 +2045,7 @@ MSHTML::IHTMLElementPtr	  CFBEView::SelectionStructTableCon() {
 	MSHTML::IHTMLTxtRangePtr range(Document()->selection->createRange());
 	if (range) {
 		range->collapse(VARIANT_TRUE);
-		MSHTML::IHTMLElementPtr cell(FindTableCell(range->parentElement()));
+		MSHTML::IHTMLElementPtr cell(FbeTable::FindTableCell(range->parentElement()));
 		if (cell) return cell;
 	}
   }
@@ -4049,7 +3886,7 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 	// The table commands must be available where the user edits a cell, not
 	// only in the main menu.  The source element may be an inline child, so
 	// walk up to its TD/TH ancestor.
-	MSHTML::IHTMLElementPtr contextCell(FindTableCell(MSHTML::IHTMLElementPtr(oe->srcElement)));
+	MSHTML::IHTMLElementPtr contextCell(FbeTable::FindTableCell(MSHTML::IHTMLElementPtr(oe->srcElement)));
 	if (m_normalize && contextCell)
 	{
 		// Right-click does not reliably move the MSHTML selection.  Retain the
@@ -4532,7 +4369,7 @@ VARIANT_BOOL CFBEView::OnMouseDown(IDispatch* evt)
 	if (m_table_selection_anchor) m_table_selection_anchor.Release();
 	UpdateTableCellHighlights(m_table_selection_cells, std::vector<MSHTML::IHTMLElementPtr>());
 	MSHTML::IHTMLElementPtr source(eventObject->srcElement);
-	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
+	MSHTML::IHTMLElementPtr cell(FbeTable::FindTableCell(source));
 	// The document event signature returns VT_BOOL: VARIANT_FALSE cancels the
 	// native MSHTML gesture.  Outside tables (and inside one cell) preserve the
 	// editor's normal text selection, double-click and Shift-click behaviour.
@@ -4548,7 +4385,7 @@ VARIANT_BOOL CFBEView::OnMouseMove(IDispatch* evt)
 	MSHTML::IHTMLEventObjPtr eventObject(evt);
 	if (!eventObject) return VARIANT_TRUE;
 	MSHTML::IHTMLElementPtr source(eventObject ? eventObject->srcElement : NULL);
-	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
+	MSHTML::IHTMLElementPtr cell(FbeTable::FindTableCell(source));
 	std::vector<MSHTML::IHTMLElementPtr> cells;
 	if (!cell || cell == m_table_selection_anchor || !FbeTable::GetCellRectangle(m_table_selection_anchor, cell, cells) || !SelectTableCellRange(Document(), m_table_selection_anchor, cell)) return VARIANT_TRUE;
 	UpdateTableCellHighlights(m_table_selection_cells, cells);
@@ -4562,7 +4399,7 @@ VARIANT_BOOL CFBEView::OnMouseUp(IDispatch* evt)
 	if (!m_table_selection_dragging) return VARIANT_TRUE;
 	MSHTML::IHTMLEventObjPtr eventObject(evt);
 	MSHTML::IHTMLElementPtr source(eventObject ? eventObject->srcElement : NULL);
-	MSHTML::IHTMLElementPtr cell(FindTableCell(source));
+	MSHTML::IHTMLElementPtr cell(FbeTable::FindTableCell(source));
 	std::vector<MSHTML::IHTMLElementPtr> cells;
 	bool tableSelectionHandled = !m_table_selection_cells.empty();
 	if (cell && cell != m_table_selection_anchor && FbeTable::GetCellRectangle(m_table_selection_anchor, cell, cells) && SelectTableCellRange(Document(), m_table_selection_anchor, cell))
@@ -4583,13 +4420,13 @@ bool CFBEView::MoveTableCell(bool reverse)
 	{
 		if (!HasDoc()) return false;
 		MSHTML::IHTMLTxtRangePtr selection(Document()->selection->createRange());
-		MSHTML::IHTMLElementPtr cell(FindTableCell(selection ? selection->parentElement() : MSHTML::IHTMLElementPtr()));
-		MSHTML::IHTMLElementPtr row(FindTableRow(cell));
-		MSHTML::IHTMLElementPtr table(FindTableElement(row));
+		MSHTML::IHTMLElementPtr cell(FbeTable::FindTableCell(selection ? selection->parentElement() : MSHTML::IHTMLElementPtr()));
+		MSHTML::IHTMLElementPtr row(FbeTable::FindTableRow(cell));
+		MSHTML::IHTMLElementPtr table(FbeTable::FindTableElement(row));
 		if (!cell || !row || !table) return false;
 
 		std::vector<MSHTML::IHTMLElementPtr> cells;
-		GetTableCells(table, cells);
+		FbeTable::GetCells(table, cells);
 		size_t index = 0;
 		while (index < cells.size() && cells[index] != cell) ++index;
 		if (index == cells.size()) return false;
@@ -4601,7 +4438,7 @@ bool CFBEView::MoveTableCell(bool reverse)
 			EndUndoUnit();
 			::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_SEL_CHANGE)), reinterpret_cast<LPARAM>(m_hWnd));
 			::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_TREE_RESTORE)), 0);
-			GetTableCells(table, cells);
+			FbeTable::GetCells(table, cells);
 		}
 
 		size_t targetIndex = index;
@@ -5004,8 +4841,8 @@ LRESULT CFBEView::OnTableInsertRowAbove(WORD, WORD, HWND, BOOL&)
 	try
 	{
 		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
-		MSHTML::IHTMLElementPtr row(FindTableRow(cell));
-		MSHTML::IHTMLElementPtr table(FindTableElement(row));
+		MSHTML::IHTMLElementPtr row(FbeTable::FindTableRow(cell));
+		MSHTML::IHTMLElementPtr table(FbeTable::FindTableElement(row));
 		Grid grid;
 		if (!cell || !row || !FbeTable::BuildGrid(table, grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
@@ -5024,8 +4861,8 @@ LRESULT CFBEView::OnTableInsertRowBelow(WORD, WORD, HWND, BOOL&)
 	try
 	{
 		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
-		MSHTML::IHTMLElementPtr row(FindTableRow(cell));
-		MSHTML::IHTMLElementPtr table(FindTableElement(row));
+		MSHTML::IHTMLElementPtr row(FbeTable::FindTableRow(cell));
+		MSHTML::IHTMLElementPtr table(FbeTable::FindTableElement(row));
 		Grid grid;
 		if (!cell || !row || !FbeTable::BuildGrid(table, grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
@@ -5043,9 +4880,9 @@ LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
 {
 	try
 	{
-		MSHTML::IHTMLElementPtr row(FindTableRow(SelectionStructTableCon()));
+		MSHTML::IHTMLElementPtr row(FbeTable::FindTableRow(SelectionStructTableCon()));
 		Grid grid;
-		if (!row || !row->parentElement || !FbeTable::BuildGrid(FindTableElement(row), grid)) return 0;
+		if (!row || !row->parentElement || !FbeTable::BuildGrid(FbeTable::FindTableElement(row), grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
 		BeginUndoUnit(L"delete table row");
@@ -5059,14 +4896,14 @@ LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
 
 LRESULT CFBEView::OnTableInsertColumnLeft(WORD, WORD, HWND, BOOL&)
 {
-	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FindTableRow(cell)), table(FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { BeginUndoUnit(L"insert table column left"); FbeTable::InsertColumn(Document(), grid, index, true, cell->tagName); EndUndoUnit(); NotifyTableStructureChanged(m_frame, m_hWnd); } }
+	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { BeginUndoUnit(L"insert table column left"); FbeTable::InsertColumn(Document(), grid, index, true, cell->tagName); EndUndoUnit(); NotifyTableStructureChanged(m_frame, m_hWnd); } }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
 }
 
 LRESULT CFBEView::OnTableInsertColumnRight(WORD, WORD, HWND, BOOL&)
 {
-	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FindTableRow(cell)), table(FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { BeginUndoUnit(L"insert table column right"); FbeTable::InsertColumn(Document(), grid, index, false, cell->tagName); EndUndoUnit(); NotifyTableStructureChanged(m_frame, m_hWnd); } }
+	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { BeginUndoUnit(L"insert table column right"); FbeTable::InsertColumn(Document(), grid, index, false, cell->tagName); EndUndoUnit(); NotifyTableStructureChanged(m_frame, m_hWnd); } }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
 }
@@ -5094,8 +4931,8 @@ LRESULT CFBEView::OnTableDeleteColumn(WORD, WORD, HWND, BOOL&)
 	try
 	{
 		MSHTML::IHTMLElementPtr selectedCell(SelectionStructTableCon());
-		MSHTML::IHTMLElementPtr selectedRow(FindTableRow(selectedCell));
-		MSHTML::IHTMLElementPtr table(FindTableElement(selectedRow));
+		MSHTML::IHTMLElementPtr selectedRow(FbeTable::FindTableRow(selectedCell));
+		MSHTML::IHTMLElementPtr table(FbeTable::FindTableElement(selectedRow));
 		Grid grid;
 		if (!selectedCell || !selectedRow || !FbeTable::BuildGrid(table, grid)) return 0;
 		const long selectedIndex = FbeTable::FindCell(grid, selectedCell);
@@ -5111,7 +4948,7 @@ LRESULT CFBEView::OnTableToggleHeaderCell(WORD, WORD, HWND, BOOL&)
 	try
 	{
 		MSHTML::IHTMLElementPtr cell(SelectionStructTableCon());
-		if (!cell || !FindTableElement(cell)) return 0;
+		if (!cell || !FbeTable::FindTableElement(cell)) return 0;
 		if (FbeTable::ToggleHeaderCell(Document(), cell)) NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
