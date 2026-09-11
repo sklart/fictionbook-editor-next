@@ -6381,60 +6381,15 @@ LRESULT CMainFrame::OnChar(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
   return 0;
 }
 
-// Возвращает позицию символа отображаемого текста XML-узла в Source. Теги и
-// сущности XML пропускаются, поэтому форматирование Source не влияет на поиск.
-static int FindXmlNodeTextPosition(const CString& sourceXml,
-	MSXML2::IXMLDOMNodePtr xmlNode, int textPosition, int scopeStart,
-	int scopeEnd)
-{
-	if (!(bool)xmlNode) return -1;
-	bstr_t nodeTextValue(xmlNode->text);
-	return FBEBodySourceTransfer::FindXmlNodeTextPosition(
-		std::wstring((const wchar_t*)sourceXml),
-		std::wstring((const wchar_t*)nodeTextValue), textPosition, scopeStart, scopeEnd);
-}
-
 // Text refines the exact Source boundaries, while the DOM path supplies both
 // the body scope and the expected structural position.  Without that position
 // the helper refuses an ambiguous transfer instead of selecting another copy.
-static bool FindVisibleXmlTextRange(const CString& sourceXml,
-	const CString& visibleText, int scopeStart, int scopeEnd, int expectedStart,
-	int& rangeStart, int& rangeEnd)
-{
-	SourceDocumentTransfer::TextRange range;
-	if(!SourceDocumentTransfer::FindVisibleXmlTextRange(sourceXml, visibleText, scopeStart, scopeEnd, expectedStart, range)) return false;
-	rangeStart = range.start; rangeEnd = range.end; return true;
-}
-
-static bool FindEnclosingXmlElementRange(const CString& sourceXml, int position,
-	const wchar_t* elementName, int& elementStart, int& elementEnd)
-{
-	SourceDocumentTransfer::TextRange range;
-	if(!SourceDocumentTransfer::FindEnclosingXmlElementRange(sourceXml, position, elementName, range)) return false;
-	elementStart = range.start; elementEnd = range.end; return true;
-}
-
-static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,
-	int& bodyStart, int& bodyEnd)
-{
-	return FindEnclosingXmlElementRange(sourceXml, position, L"body",
-		bodyStart, bodyEnd);
-}
-
 // DomPath may fail for a valid Source position (for example inside inline
 // markup).  The body ordinal is still available from the source XML and is
 // sufficient to constrain the fallback search to the matching visual body.
 // Resolve the complete serialized range of one top-level FB2 body.  This is
 // deliberately independent of DomPath: a native MSHTML text selection can be
 // perfectly valid even when DomPath cannot represent one of its inline nodes.
-static bool FindXmlBodyRangeByIndex(const CString& sourceXml, int targetIndex,
-	int& bodyStart, int& bodyEnd)
-{
-	SourceDocumentTransfer::TextRange range;
-	if(!SourceDocumentTransfer::FindXmlBodyRangeByIndex(sourceXml, targetIndex, range)) return false;
-	bodyStart = range.start; bodyEnd = range.end; return true;
-}
-
 // Находит диапазон в HTML по началу и концу видимого текста. Это покрывает
 // Source-выделения, пересекающие абзацы: один вызов findText для всего такого
 // диапазона не работает в MSHTML из-за разных представлений перевода строки.
@@ -6995,21 +6950,25 @@ bool CMainFrame::ShowSource(bool saveSelection)
 					selection_begin_char);
 				const int expectedEnd = selection_end_path.GetNodeFromText(src,
 					selection_end_char);
+				SourceDocumentTransfer::TextRange bodyRange;
 				if(expectedBegin >= 0 && expectedEnd >= expectedBegin &&
-					FindEnclosingXmlBodyRange(srcText, expectedBegin, bodyStart, bodyEnd))
+					SourceDocumentTransfer::FindEnclosingXmlElementRange(srcText, expectedBegin, L"body", bodyRange))
 				{
-					FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd,
-						expectedBegin, beginPosition, endPosition);
+					bodyStart = bodyRange.start; bodyEnd = bodyRange.end;
+					SourceDocumentTransfer::TextRange visibleRange;
+					if(SourceDocumentTransfer::FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd, expectedBegin, visibleRange)) { beginPosition = visibleRange.start; endPosition = visibleRange.end; }
 				}
 			}
 			// DomPath is positional refinement, not a prerequisite for a native
 			// Body selection.  The selected FB2 body remains a safe base scope;
 			// FindVisibleXmlTextRange refuses ambiguous repeated text within it.
+			SourceDocumentTransfer::TextRange fallbackBodyRange;
 			if(hasBodySelectionText && (beginPosition < 0 || endPosition < 0) &&
-				FindXmlBodyRangeByIndex(srcText, selected_body_index, bodyStart, bodyEnd))
+				SourceDocumentTransfer::FindXmlBodyRangeByIndex(srcText, selected_body_index, fallbackBodyRange))
 			{
-				FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd,
-					-1, beginPosition, endPosition);
+				bodyStart = fallbackBodyRange.start; bodyEnd = fallbackBodyRange.end;
+				SourceDocumentTransfer::TextRange visibleRange;
+				if(SourceDocumentTransfer::FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd, -1, visibleRange)) { beginPosition = visibleRange.start; endPosition = visibleRange.end; }
 			}
 		}
 
@@ -7026,13 +6985,15 @@ bool CMainFrame::ShowSource(bool saveSelection)
 				bodyAnchor = selection_begin_path.GetNodeFromText(src, 0);
 			if(bodyAnchor >= 0)
 			{
-				FindEnclosingXmlBodyRange(srcText, bodyAnchor, bodyStart, bodyEnd);
-				if(!FindEnclosingXmlElementRange(srcText, bodyAnchor, L"section",
-					caretScopeStart, caretScopeEnd))
+				SourceDocumentTransfer::TextRange bodyRange;
+				if(SourceDocumentTransfer::FindEnclosingXmlElementRange(srcText, bodyAnchor, L"body", bodyRange)) { bodyStart = bodyRange.start; bodyEnd = bodyRange.end; }
+				SourceDocumentTransfer::TextRange sectionRange;
+				if(!SourceDocumentTransfer::FindEnclosingXmlElementRange(srcText, bodyAnchor, L"section", sectionRange))
 				{
 					caretScopeStart = bodyStart;
 					caretScopeEnd = bodyEnd;
 				}
+				else { caretScopeStart = sectionRange.start; caretScopeEnd = sectionRange.end; }
 			}
 		}
 
@@ -7041,11 +7002,11 @@ bool CMainFrame::ShowSource(bool saveSelection)
 		// таком отказе сопоставляем позицию по его XML-представлению.
 		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_begin &&
 			beginPosition < 0 && caretScopeStart >= 0)
-			beginPosition = FindXmlNodeTextPosition(srcText, xml_selected_begin,
+			beginPosition = SourceDocumentTransfer::FindXmlNodeTextPosition(srcText, xml_selected_begin,
 				selection_begin_char, caretScopeStart, caretScopeEnd);
 		if(!hasBodySelectionText && selection_path_available && (bool)xml_selected_end &&
 			endPosition < 0 && caretScopeStart >= 0)
-			endPosition = FindXmlNodeTextPosition(srcText, xml_selected_end,
+			endPosition = SourceDocumentTransfer::FindXmlNodeTextPosition(srcText, xml_selected_end,
 				selection_end_char, caretScopeStart, caretScopeEnd);
 
 		if(beginPosition >= 0 && endPosition >= 0)

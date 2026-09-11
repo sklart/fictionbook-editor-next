@@ -148,3 +148,10 @@ MSHTML::IHTMLTxtRangePtr SourceDocumentTransfer::FindBodyTextRange(MSHTML::IHTML
 	if(endRange->findText(static_cast<const wchar_t*>(endAnchor), 1073741824, 0) != VARIANT_TRUE) return MSHTML::IHTMLTxtRangePtr();
 	startRange->setEndPoint(L"EndToEnd", endRange); return startRange;
 }
+
+int SourceDocumentTransfer::FindXmlNodeTextPosition(const CString& sourceXml, MSXML2::IXMLDOMNodePtr xmlNode, int textPosition, int scopeStart, int scopeEnd)
+{
+	if(!xmlNode) return -1;
+	bstr_t nodeTextValue(xmlNode->text);
+	return FBEBodySourceTransfer::FindXmlNodeTextPosition(std::wstring(static_cast<const wchar_t*>(sourceXml)), std::wstring(static_cast<const wchar_t*>(nodeTextValue)), textPosition, scopeStart, scopeEnd);
+}

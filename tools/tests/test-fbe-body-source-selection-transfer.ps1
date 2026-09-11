@@ -45,11 +45,11 @@ Assert-Contains $source 'SCI_SETSEL, m_body_source_selection.sourceStart' `
     'после установки фокуса Source должен повторно применяться весь диапазон выделения'
 Assert-Contains $source 'PostMessage(m_source, SCI_SCROLLCARET' `
     'после завершения смены режима Source должен отложенно прокручиваться к выделению'
-Assert-Contains $source 'FindVisibleXmlTextRange(srcText, selectedText' `
+Assert-Contains $source 'SourceDocumentTransfer::FindVisibleXmlTextRange(srcText, selectedText' `
     'переход Body → Source должен сначала сопоставлять фактически выделенный текст'
-Assert-Contains $source 'FindXmlBodyRangeByIndex(srcText, selected_body_index, bodyStart, bodyEnd)' `
+Assert-Contains $source 'SourceDocumentTransfer::FindXmlBodyRangeByIndex(srcText, selected_body_index, fallbackBodyRange)' `
     'переход Body → Source при отказе DomPath должен ограничить fallback соответствующим XML body'
-Assert-Contains $source 'FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd,' `
+Assert-Contains $source 'SourceDocumentTransfer::FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd,' `
     'переход Body → Source должен применять безопасный text fallback в границах body'
 
 Assert-Contains $source 'SCI_GETSELECTIONSTART' `
@@ -77,9 +77,9 @@ Assert-Contains $source 'MSHTML::IHTMLElementPtr refinedScope' `
 Assert-Contains $source 'vt == BODY && prev == SOURCE && m_body_source_selection.sourceToBodyTransferred' `
 	'после окончательной установки фокуса Body должно применяться только подтверждённое перенесённое выделение'
 
-Assert-Contains $source 'FindXmlNodeTextPosition(srcText, xml_selected_begin' `
+Assert-Contains $source 'SourceDocumentTransfer::FindXmlNodeTextPosition(srcText, xml_selected_begin' `
     'при отказе DomPath переход Body → Source должен использовать XML выбранного узла'
-Assert-Contains $source 'FindXmlNodeTextPosition(srcText, xml_selected_end' `
+Assert-Contains $source 'SourceDocumentTransfer::FindXmlNodeTextPosition(srcText, xml_selected_end' `
     'конец выделения Body → Source должен сопоставляться по XML конечного узла'
 
 Assert-Contains $source 'SourceToHTML: source bytes=' `
