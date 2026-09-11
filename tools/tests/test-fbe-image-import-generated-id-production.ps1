@@ -3,7 +3,7 @@
 Exercises FBE's production image-import path and verifies its generated binary id.
 #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [ValidateSet('0','1')][string]$Inline = '1')
 
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
@@ -64,6 +64,7 @@ $savedEnvironment = @{
     FBE_NEXT_TEST_MODE = $env:FBE_NEXT_TEST_MODE
     FBE_NEXT_TEST_SCENARIO = $env:FBE_NEXT_TEST_SCENARIO
     FBE_NEXT_TEST_IMAGE_PATH = $env:FBE_NEXT_TEST_IMAGE_PATH
+    FBE_NEXT_TEST_IMAGE_INLINE = $env:FBE_NEXT_TEST_IMAGE_INLINE
 }
 try {
     Add-Type -AssemblyName System.Drawing
@@ -84,6 +85,7 @@ try {
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
 
     $env:FBE_NEXT_TEST_IMAGE_PATH = $sourceImage
+    $env:FBE_NEXT_TEST_IMAGE_INLINE = $Inline
     Invoke-FbeScenario 'binary-import-image' $importReport $fixture
     Assert-ImportedImage $fixture $sourceBytes $sourceHash
 
