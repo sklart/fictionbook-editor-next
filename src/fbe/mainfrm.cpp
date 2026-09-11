@@ -6414,7 +6414,7 @@ bool  CMainFrame::SourceToHTML()
 	m_body_source_selection.sourceToBodyTransferred = false;
 	LRESULT changed = m_source.SendMessage(SCI_GETMODIFY);
 	SourceDocumentText sourceDocument;
-	if(!SourceDocumentTransfer::ReadSourceText(m_source, sourceDocument))
+	if(SourceDocumentTransfer::ReadSourceText(m_source, sourceDocument) != SourceTransitionResult::Success)
 		return false;
 	const int textlen = static_cast<int>(sourceDocument.utf8.size()) - 1;
 	const char* const buffer = sourceDocument.utf8.data();
