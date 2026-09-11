@@ -3881,6 +3881,65 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"reference-navigation-runtime"))
+	{
+		CStringA header("footnote_check\tfootnote_target\treference_check\treference_target\tcheck_unchanged\tdom_unchanged\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
+		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr link(links && links->length ? links->item(0L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr strongs(link ? MSHTML::IHTMLElement2Ptr(link)->getElementsByTagName(L"STRONG") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? strongs->item(0L) : MSHTML::IHTMLElementPtr());
+		const CString originalHtml(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+		auto selectElement = [&](MSHTML::IHTMLElementPtr element) -> bool
+		{
+			if (!element || !document || !document->body) return false;
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			range->moveToElementText(element); range->collapse(VARIANT_TRUE); range->select(); return true;
+		};
+		auto sameSelection = [&]() -> bool
+		{
+			MSHTML::IHTMLTxtRangePtr first(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+			if (!first) return false;
+			const bool canFootnote = m_doc->m_body.GoToFootnote(true);
+			MSHTML::IHTMLTxtRangePtr after(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+			const bool unchangedFootnote = after && first->compareEndPoints(L"StartToStart", after) == 0 &&
+				first->compareEndPoints(L"EndToEnd", after) == 0;
+			return canFootnote && unchangedFootnote;
+		};
+		const bool selectedLink = selectElement(nested ? nested : link);
+		const bool footnoteCheck = selectedLink && sameSelection();
+		const bool footnoteMoved = footnoteCheck && m_doc->m_body.GoToFootnote(false);
+		MSHTML::IHTMLElementPtr noteParent;
+		try { noteParent = MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->parentElement(); } catch (const _com_error&) { }
+		while (noteParent && CString(static_cast<LPCWSTR>(noteParent->id)) != L"note-1") noteParent = noteParent->parentElement;
+		const bool footnoteTarget = footnoteMoved && noteParent;
+		MSHTML::IHTMLTxtRangePtr beforeReference(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+		const bool referenceCheck = beforeReference && m_doc->m_body.GoToReference(true);
+		MSHTML::IHTMLTxtRangePtr afterReference(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+		const bool referenceCheckUnchanged = beforeReference && afterReference &&
+			beforeReference->compareEndPoints(L"StartToStart", afterReference) == 0 &&
+			beforeReference->compareEndPoints(L"EndToEnd", afterReference) == 0;
+		m_doc->m_body.GoToReference(false);
+		MSHTML::IHTMLTxtRangePtr selectedAfterReference(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+		MSHTML::IHTMLTxtRangePtr expectedReference(link && document && document->body ? MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		if (expectedReference)
+		{
+			expectedReference->moveToElementText(link); expectedReference->collapse(VARIANT_TRUE);
+			expectedReference->move(L"character", CString(static_cast<LPCWSTR>(link->innerText)).GetLength());
+		}
+		const bool referenceTarget = selectedAfterReference && expectedReference &&
+			selectedAfterReference->compareEndPoints(L"StartToStart", expectedReference) == 0 &&
+			selectedAfterReference->compareEndPoints(L"EndToEnd", expectedReference) == 0;
+		const bool unchanged = editable && originalHtml == CString(static_cast<LPCWSTR>(editable->innerHTML));
+		const bool passed = footnoteCheck && footnoteTarget && referenceCheck && referenceCheckUnchanged && referenceTarget && unchanged;
+		CStringA row;
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", footnoteCheck, footnoteTarget, referenceCheck,
+			referenceTarget, referenceCheckUnchanged, unchanged, passed ? "pass" : "fail");
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{
 		const ULONGLONG start = ::GetTickCount64();

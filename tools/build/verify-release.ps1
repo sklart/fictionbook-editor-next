@@ -231,6 +231,8 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 & (Join-Path $repoRoot "tools\tests\test-link-navigation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-link-navigation-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-link-navigation-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-reference-navigation-boundary.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-reference-navigation-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-mouse-selection-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-binary-editor-localization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-image-codec-build-contract.ps1")
