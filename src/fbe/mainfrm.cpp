@@ -6430,99 +6430,9 @@ static bool FindEnclosingXmlBodyRange(const CString& sourceXml, int position,
 static bool FindXmlBodyRangeByIndex(const CString& sourceXml, int targetIndex,
 	int& bodyStart, int& bodyEnd)
 {
-	bodyStart = bodyEnd = -1;
-	if(targetIndex < 0) return false;
-	int bodyIndex = 0;
-	for(int tagStart = sourceXml.Find(L'<'); tagStart >= 0;)
-	{
-		const int tagEnd = sourceXml.Find(L'>', tagStart + 1);
-		if(tagEnd < 0) break;
-		CString tag = sourceXml.Mid(tagStart + 1, tagEnd - tagStart - 1);
-		tag.TrimLeft();
-		const bool closing = !tag.IsEmpty() && tag[0] == L'/';
-		if(closing) tag.Delete(0);
-		const int nameEnd = tag.FindOneOf(L" \t\r\n/");
-		CString name = nameEnd >= 0 ? tag.Left(nameEnd) : tag;
-		const int namespaceSeparator = name.ReverseFind(L':');
-		if(namespaceSeparator >= 0) name = name.Mid(namespaceSeparator + 1);
-		if(name.CompareNoCase(L"body") == 0)
-		{
-			if(!closing && bodyIndex++ == targetIndex)
-				bodyStart = tagStart;
-			else if(closing && bodyStart >= 0)
-			{
-				bodyEnd = tagEnd + 1;
-				return true;
-			}
-		}
-		tagStart = sourceXml.Find(L'<', tagEnd + 1);
-	}
-	return false;
-}
-
-// Преобразует фрагмент Source в отображаемый текст для поиска в Body.
-static CString ExtractVisibleXmlText(const CString& sourceFragment)
-{
-	CString text;
-	for (int position = 0; position < sourceFragment.GetLength();)
-	{
-		if (sourceFragment[position] == L'<')
-		{
-			const int tagEnd = sourceFragment.Find(L'>', position + 1);
-			if (tagEnd < 0)
-				break;
-			CString tagName = sourceFragment.Mid(position + 1,
-				tagEnd - position - 1);
-			tagName.TrimLeft();
-			if (!tagName.IsEmpty() && tagName[0] == L'/')
-				tagName.Delete(0);
-			const int tagNameEnd = tagName.FindOneOf(L" \t\r\n/");
-			if (tagNameEnd >= 0)
-				tagName = tagName.Left(tagNameEnd);
-			// В HTML граница абзаца представлена переводом строки, в XML —
-			// парой тегов. Сохраняем эту границу для IHTMLTxtRange::findText.
-			if (tagName.CompareNoCase(L"p") == 0 ||
-				tagName.CompareNoCase(L"empty-line") == 0 ||
-				tagName.CompareNoCase(L"title") == 0)
-			{
-				while (!text.IsEmpty() && text[text.GetLength() - 1] == L' ')
-					text.Delete(text.GetLength() - 1);
-				if (!text.IsEmpty() && text.Right(2) != L"\r\n")
-					text += L"\r\n";
-			}
-			position = tagEnd + 1;
-			continue;
-		}
-
-		if (sourceFragment[position] == L'&')
-		{
-			const int entityEnd = sourceFragment.Find(L';', position + 1);
-			if (entityEnd >= 0)
-			{
-				const CString entity = sourceFragment.Mid(position, entityEnd - position + 1);
-				std::wstring decoded;
-				if (FBEBodySourceTransfer::DecodeXmlCharacterReference(
-					std::wstring((const wchar_t*)entity), decoded))
-					text += decoded.c_str();
-				else text += entity;
-				position = entityEnd + 1;
-				continue;
-			}
-		}
-
-		const wchar_t character = sourceFragment[position++];
-		if (iswspace(character) || character == L'\xA0')
-		{
-			if (!text.IsEmpty() && text.Right(2) != L"\r\n" &&
-				text[text.GetLength() - 1] != L' ')
-				text += L' ';
-		}
-		else
-		{
-			text += character;
-		}
-	}
-	return text;
+	SourceDocumentTransfer::TextRange range;
+	if(!SourceDocumentTransfer::FindXmlBodyRangeByIndex(sourceXml, targetIndex, range)) return false;
+	bodyStart = range.start; bodyEnd = range.end; return true;
 }
 
 // Находит диапазон в HTML по началу и концу видимого текста. Это покрывает
@@ -6653,7 +6563,7 @@ bool  CMainFrame::SourceToHTML()
 	{
 		const CString selectedSourceXml = sourceText.Mid(selectedPosBegin,
 			selectedPosEnd - selectedPosBegin);
-		selectedSourceText = ExtractVisibleXmlText(selectedSourceXml);
+		selectedSourceText = SourceDocumentTransfer::ExtractVisibleXmlText(selectedSourceXml);
 		selectionCrossesParagraph = selectedSourceXml.Find(L"</p") >= 0 ||
 			selectedSourceXml.Find(L"<p") >= 0;
 	}

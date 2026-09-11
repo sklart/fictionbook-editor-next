@@ -34,6 +34,8 @@ public:
 	static int SkipXmlMarkupForward(const CString& sourceXml, int position);
 	static int SkipXmlMarkupBackward(const CString& sourceXml, int position);
 	static int FindXmlBodyIndexAtPosition(const CString& sourceXml, int position);
+	static bool FindXmlBodyRangeByIndex(const CString& sourceXml, int targetIndex, TextRange& result);
+	static CString ExtractVisibleXmlText(const CString& sourceFragment);
 	static bool FindVisibleXmlTextRange(const CString& sourceXml, const CString& visibleText, int scopeStart, int scopeEnd, int expectedStart, TextRange& result);
 	static bool FindEnclosingXmlElementRange(const CString& sourceXml, int position, const wchar_t* elementName, TextRange& result);
 };
