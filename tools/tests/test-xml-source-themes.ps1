@@ -15,6 +15,7 @@ function Read-ProjectFile([string]$relativePath) {
 
 $settingsHeader = Read-ProjectFile "src\fbe\Settings.h"
 $settingsSource = Read-ProjectFile "src\fbe\Settings.cpp"
+$settingsSerialization = Read-ProjectFile "src\fbe\settings\SettingsSerialization.cpp"
 $mainFrame = Read-ProjectFile "src\fbe\mainfrm.cpp"
 $sourceEditor = Read-ProjectFile "src\fbe\source\ui\SourceEditorControl.cpp"
 $documentation = Read-ProjectFile "docs\xml-source-themes.md"
@@ -199,7 +200,7 @@ if($settingsHeader -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
 if($settingsDialog -like '*<!--*') {
     throw 'В предпросмотре не должен отображаться XML-комментарий до подтверждения сохранности модели документа.'
 }
-if($settingsSource.IndexOf('m_xml_src_colors[XML_SRC_COLOR_COMMENT] = XML_SRC_COLOR_DEFAULT', [System.StringComparison]::Ordinal) -lt 0) {
+if($settingsSerialization.IndexOf('m_xml_src_colors[XML_SRC_COLOR_COMMENT] = XML_SRC_COLOR_DEFAULT', [System.StringComparison]::Ordinal) -lt 0) {
     throw 'Историческое переопределение цвета XML-комментариев не очищается при загрузке Settings.xml.'
 }
 
