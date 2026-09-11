@@ -7,6 +7,7 @@
 #include "LinkNavigation.h"
 #include "navigation/LinkDomNavigation.h"
 #include "navigation/LinkNavigationState.h"
+#include "navigation/ReferenceNavigation.h"
 #include "ImageImport.h"
 #include "res1.h"
 
@@ -4403,153 +4404,48 @@ static bool IsTD(MSHTML::IHTMLDOMNode *node) {
 
 bool CFBEView::GoToFootnote(bool fCheck)
 {
-	// * create selection range
-	MSHTML::IHTMLTxtRangePtr rng(Document()->selection->createRange());
-	if (!(bool)rng)
-		return false;
-
-	MSHTML::IHTMLTxtRangePtr next_rng = rng->duplicate();
-	MSHTML::IHTMLTxtRangePtr prev_rng = rng->duplicate();
-	next_rng->moveEnd(L"character", +1);
-	prev_rng->moveStart(L"character", -1);
-
-	CString	sref(AU::GetAttrCS(SelectionAnchor(),L"href"));
-	if (sref.IsEmpty())
-		sref = AU::GetAttrCS(SelectionAnchor(next_rng->parentElement()),L"href");
-	if (sref.IsEmpty())
-		sref = AU::GetAttrCS(SelectionAnchor(prev_rng->parentElement()),L"href");
-
-	if (sref.Find(L"file") == 0)
-		sref = sref.Mid(sref.ReverseFind (L'#'),1024);
-	if (sref.IsEmpty() || sref[0]!=_T('#'))
-		return false;
-
-	// * ok, all checks passed
-	if (fCheck)
-		return true;
-
-	sref.Delete(0);
-
-	MSHTML::IHTMLElementPtr     targ(Document()->all->item((const wchar_t *)sref));
-
-	if (!(bool)targ)
-		return false;
-
-	MSHTML::IHTMLDOMNodePtr childNode;
-	MSHTML::IHTMLDOMNodePtr node(targ);
-	if (!(bool)node)
-		return false;
-
-	// added by SeNS: move caret to the foornote text
-	if (!U::scmp(node->nodeName,L"DIV") && !U::scmp(targ->className,L"section"))
-	{
-		if (node->firstChild) 
-		{
-			childNode = node->firstChild;
-			while (childNode && !U::scmp(childNode->nodeName,L"DIV") && 
-				  (!U::scmp(MSHTML::IHTMLElementPtr(childNode)->className,L"image") || 
-				   !U::scmp(MSHTML::IHTMLElementPtr(childNode)->className,L"title"))) 
-				childNode=childNode->nextSibling;
-		}
-	}
-	if (!childNode) childNode=node;
-	if (childNode)
-	{
-		GoTo(MSHTML::IHTMLElementPtr(childNode));
-		targ->scrollIntoView(true);
-	}
-
-	return true; 
+	const FBEReferenceNavigation::Resolution result =
+		FBEReferenceNavigation::FindFootnoteTarget(Document(), !fCheck);
+	if (!result.CanNavigate()) return false;
+	if (fCheck) return true;
+	if (!result.HasTarget()) return false;
+	GoTo(result.element);
+	result.scrollElement->scrollIntoView(VARIANT_TRUE);
+	return true;
 }
 bool CFBEView::GoToReference(bool fCheck)
 {
-	// * create selection range
-	MSHTML::IHTMLTxtRangePtr	rng(Document()->selection->createRange());
-	if (!(bool)rng)
-		return false;
-
-	// * get its parent element
-	MSHTML::IHTMLElementPtr	pe(GetHP(rng->parentElement()));
-	if (!(bool)pe)
-		return false;
-
-	if (rng->compareEndPoints(L"StartToEnd",rng)!=0)
-		return false;
-
-	while((bool)pe && (U::scmp(pe->tagName,L"DIV")!=0 || U::scmp(pe->className,L"section")!=0)) 
-		pe=pe->parentElement; // Find parent division
-	if(!(bool)pe) 
-		return false;
-
-	MSHTML::IHTMLElementPtr body=pe->parentElement;
-	
-	while((bool)body && (U::scmp(body->tagName,L"DIV")!=0 || U::scmp(body->className,L"body")!=0)) 
-		body=body->parentElement; // Find body
-
-	if(!(bool)body) 
-		return false;
-
-	CString id = MSHTML::IHTMLElementPtr(rng->parentElement())->id;
-	CString	sfbname(AU::GetAttrCS(body,L"fbname"));	
-	if(id.IsEmpty() && (sfbname.IsEmpty() || !(sfbname.CompareNoCase(L"notes")==0 || sfbname.CompareNoCase(L"comments")==0)))
-		return false;
-	id = L"#"+id;
-	
-	// * ok, all checks passed
-	if (fCheck)
-		return true;
-
-	MSHTML::IHTMLElement2Ptr			elem(Document()->body);
-	MSHTML::IHTMLElementCollectionPtr	coll(elem->getElementsByTagName(L"A"));
-	if (!(bool)coll || coll->length==0) 
+	const FBEReferenceNavigation::Resolution result =
+		FBEReferenceNavigation::FindReferenceTarget(Document(), !fCheck);
+	if (!result.CanNavigate()) return false;
+	if (fCheck) return true;
+	if (result.status == FBEReferenceNavigation::ResolutionStatus::NoReferences)
 	{
 		wchar_t cpt[MAX_LOAD_STRING + 1];
 		wchar_t msg[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(), IDR_MAINFRAME, cpt, MAX_LOAD_STRING);
-		FbeLoadString(_Module.GetResourceInstance(), IDS_GOTO_REF_FAIL_MSG, msg, MAX_LOAD_STRING);		
+		FbeLoadString(_Module.GetResourceInstance(), IDS_GOTO_REF_FAIL_MSG, msg, MAX_LOAD_STRING);
 		::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONINFORMATION);
 		return false;
 	}
-
-	for (long l=0;l<coll->length;++l) {
-		MSHTML::IHTMLElementPtr a(coll->item(l));
-		if (!(bool)a)
-			continue;
-
-		CString href(AU::GetAttrCS((MSHTML::IHTMLElementPtr)coll->item(l),L"href"));
-
-		// changed by SeNS
-		if (href.Find(L"file") == 0)
-			href = href.Mid(href.ReverseFind (L'#'),1024);
-		else if(href.Find(_T("://"),0) !=-1)
-			continue;
-
-		CString snote = L"#"+pe->id;
-
-		if(href==snote || href==id)
-		{
-			GoTo(a);
-			MSHTML::IHTMLTxtRangePtr r(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
-			r->moveToElementText(a);
-			r->collapse(VARIANT_TRUE);
-			// move selection to position after reference
-			CString sa = a->innerText;
-			r->move(L"character", sa.GetLength());
-			r->select();
-			// scroll to the center of view
-			MSHTML::IHTMLRectPtr rect = MSHTML::IHTMLElement2Ptr(a)->getBoundingClientRect();
-			MSHTML::IHTMLWindow2Ptr window(MSHTML::IHTMLDocument2Ptr(Document())->parentWindow);
-			if (rect && window)
-			{
-				if (rect->bottom-rect->top <= _Settings.GetViewHeight())
-					window->scrollBy(0,(rect->top+rect->bottom-_Settings.GetViewHeight())/2);
-				else
-					window->scrollBy(0,rect->top);
-			}
-			break;
-		}
+	if (!result.HasTarget()) return false;
+	GoTo(result.element);
+	MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+	range->moveToElementText(result.element);
+	range->collapse(VARIANT_TRUE);
+	CString text = result.element->innerText;
+	range->move(L"character", text.GetLength());
+	range->select();
+	MSHTML::IHTMLRectPtr rect = MSHTML::IHTMLElement2Ptr(result.element)->getBoundingClientRect();
+	MSHTML::IHTMLWindow2Ptr window(MSHTML::IHTMLDocument2Ptr(Document())->parentWindow);
+	if (rect && window)
+	{
+		if (rect->bottom - rect->top <= _Settings.GetViewHeight())
+			window->scrollBy(0, (rect->top + rect->bottom - _Settings.GetViewHeight()) / 2);
+		else
+			window->scrollBy(0, rect->top);
 	}
-
+	// Preserve the historic action return value; command routing ignores it.
 	return false;
 }
 
