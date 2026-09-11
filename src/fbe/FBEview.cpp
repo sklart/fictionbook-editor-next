@@ -25,6 +25,7 @@
 #include "table/TableGrid.h"
 #include "table/TableStructuralEditor.h"
 #include "view/VisualDomNormalizer.h"
+#include "dom/MarkupUndoUnitScope.h"
 #include "image/ImageDocumentInserter.h"
 #include <vector>
 
@@ -49,35 +50,6 @@ static bool IsSecondSetExternalFaultEnabled()
 // normalization helpers
 static void NotifyTableStructureChanged(HWND frame, HWND view);
 
-// IMarkupServices does not close an undo unit for us when a DOM call throws.
-// Keep structural edits paired so an error cannot poison the editor undo stack.
-class CMarkupUndoUnitScope
-{
-public:
-	CMarkupUndoUnitScope(CFBEView& view, const wchar_t* name) : m_view(view), m_active(true)
-	{
-		m_view.BeginUndoUnit(name);
-	}
-
-	~CMarkupUndoUnitScope()
-	{
-		if (m_active) {
-			try { m_view.EndUndoUnit(); }
-			catch (_com_error&) { }
-		}
-	}
-
-	void Close()
-	{
-		if (!m_active) return;
-		m_view.EndUndoUnit();
-		m_active = false;
-	}
-
-private:
-	CFBEView& m_view;
-	bool m_active;
-};
 
 // В живой сборке FBE regex режима «Дизайн» всегда идёт через наш wrapper
 // поверх PCRE2, поэтому здесь больше не нужна развилка на VBScript.RegExp.
@@ -1292,7 +1264,7 @@ bool CFBEView::InsertPoem(bool fCheck)
 
 
 		{
-			CMarkupUndoUnitScope undo(*this, L"insert poem");
+			FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert poem");
 			MSHTML::IHTMLDOMNodePtr(pe)->insertBefore((MSHTML::IHTMLDOMNodePtr)ne, begin.GetInterfacePtr());
 			while(begin != end) {
 				sibling = begin->nextSibling;
@@ -1403,7 +1375,7 @@ bool CFBEView::InsertCite(bool fCheck)
 		ne->innerHTML = citeHTML.AllocSysString();
 
 		{
-			CMarkupUndoUnitScope undo(*this, L"insert cite");
+			FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert cite");
 			MSHTML::IHTMLDOMNodePtr(pe)->insertBefore((MSHTML::IHTMLDOMNodePtr)ne, begin.GetInterfacePtr());
 			while(begin != end) {
 				sibling = begin->nextSibling;
@@ -4170,7 +4142,7 @@ bool CFBEView::MoveTableCell(bool reverse)
 
 		if (!reverse && index + 1 == cells.size())
 		{
-			CMarkupUndoUnitScope undo(*this, L"insert table row below");
+			FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert table row below");
 			MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", FbeTable::CreateRowLike(Document(), row));
 			undo.Close();
 			NotifyTableStructureChanged(m_frame, m_hWnd);
@@ -4478,7 +4450,7 @@ LRESULT CFBEView::OnTableInsertRowAbove(WORD, WORD, HWND, BOOL&)
 		if (!cell || !row || !FbeTable::BuildGrid(table, grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
-		CMarkupUndoUnitScope undo(*this, L"insert table row above");
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert table row above");
 		const bool changed = FbeTable::InsertRow(Document(), grid, rowIndex, false, cell->tagName);
 		undo.Close();
 		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);
@@ -4498,7 +4470,7 @@ LRESULT CFBEView::OnTableInsertRowBelow(WORD, WORD, HWND, BOOL&)
 		if (!cell || !row || !FbeTable::BuildGrid(table, grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
-		CMarkupUndoUnitScope undo(*this, L"insert table row below");
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert table row below");
 		const bool changed = FbeTable::InsertRow(Document(), grid, rowIndex, true, cell->tagName);
 		undo.Close();
 		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);
@@ -4516,7 +4488,7 @@ LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
 		if (!row || !row->parentElement || !FbeTable::BuildGrid(FbeTable::FindTableElement(row), grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
-		CMarkupUndoUnitScope undo(*this, L"delete table row");
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"delete table row");
 		const bool changed = FbeTable::DeleteRow(grid, rowIndex);
 		undo.Close();
 		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);
@@ -4527,14 +4499,14 @@ LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
 
 LRESULT CFBEView::OnTableInsertColumnLeft(WORD, WORD, HWND, BOOL&)
 {
-	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { CMarkupUndoUnitScope undo(*this, L"insert table column left"); const bool changed = FbeTable::InsertColumn(Document(), grid, index, true, cell->tagName); undo.Close(); if (changed) NotifyTableStructureChanged(m_frame, m_hWnd); } }
+	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert table column left"); const bool changed = FbeTable::InsertColumn(Document(), grid, index, true, cell->tagName); undo.Close(); if (changed) NotifyTableStructureChanged(m_frame, m_hWnd); } }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
 }
 
 LRESULT CFBEView::OnTableInsertColumnRight(WORD, WORD, HWND, BOOL&)
 {
-	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { CMarkupUndoUnitScope undo(*this, L"insert table column right"); const bool changed = FbeTable::InsertColumn(Document(), grid, index, false, cell->tagName); undo.Close(); if (changed) NotifyTableStructureChanged(m_frame, m_hWnd); } }
+	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"insert table column right"); const bool changed = FbeTable::InsertColumn(Document(), grid, index, false, cell->tagName); undo.Close(); if (changed) NotifyTableStructureChanged(m_frame, m_hWnd); } }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
 }
@@ -4547,7 +4519,7 @@ bool CFBEView::DeleteTableLogicalColumnForTest(long column)
 		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
 		Grid grid;
 		if (!FbeTable::BuildGrid(table, grid)) return false;
-		CMarkupUndoUnitScope undo(*this, L"delete table column");
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"delete table column");
 		const bool changed = FbeTable::DeleteColumn(grid, column);
 		undo.Close();
 		if (!changed) return false;
@@ -4568,7 +4540,7 @@ LRESULT CFBEView::OnTableDeleteColumn(WORD, WORD, HWND, BOOL&)
 		if (!selectedCell || !selectedRow || !FbeTable::BuildGrid(table, grid)) return 0;
 		const long selectedIndex = FbeTable::FindCell(grid, selectedCell);
 		if (selectedIndex < 0) return 0;
-		CMarkupUndoUnitScope undo(*this, L"delete table column");
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"delete table column");
 		const bool changed = FbeTable::DeleteColumn(grid, grid.cells[selectedIndex].startColumn);
 		undo.Close();
 		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);

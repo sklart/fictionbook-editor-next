@@ -474,6 +474,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="view\EditorViewState.h" />
 	<ClInclude Include="view\EditorViewTransition.h" />
 	<ClInclude Include="view\VisualDomNormalizer.h" />
+	<ClInclude Include="dom\MarkupUndoUnitScope.h" />
     <ClInclude Include="source\Fb2SourceStructuralContext.h" />
     <ClInclude Include="..\common\fb2\Fb2CoverImage.h" />
     <ClInclude Include="..\common\fb2\Fb2CoverThumbnail.h" />

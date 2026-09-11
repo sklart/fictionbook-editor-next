@@ -406,6 +406,7 @@
 	<ClInclude Include="view\EditorViewState.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewTransition.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\VisualDomNormalizer.h"><Filter>Header Files\View</Filter></ClInclude>
+	<ClInclude Include="dom\MarkupUndoUnitScope.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="source\Fb2SourceStructuralContext.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="search\RegexBackend.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\RegexPcre2CodeCache.h"><Filter>Header Files\Search</Filter></ClInclude>

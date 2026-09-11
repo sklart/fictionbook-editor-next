@@ -29,11 +29,11 @@ function Get-FunctionBody([string]$Name) {
 
 foreach($name in @('InsertCite', 'InsertPoem')) {
     $body = Get-FunctionBody $name
-    foreach($required in @('CMarkupUndoUnitScope undo', 'undo.Close();', 'insertBefore', 'removeNode(VARIANT_TRUE)', 'return true;', 'return false;')) {
+    foreach($required in @('FbeDom::MarkupUndoUnitScope undo', 'undo.Close();', 'insertBefore', 'removeNode(VARIANT_TRUE)', 'return true;', 'return false;')) {
         if($body -notlike "*$required*") { throw "$name misses Undo contract fragment: $required" }
     }
     if($body -match 'FixupParagraphs\(pe\)|PackText\(pe, Document\(\)\)') { throw "$name performs global normalization." }
-    if($body.IndexOf('CMarkupUndoUnitScope undo') -lt $body.IndexOf('CString rngHTML')) { throw "$name begins undo before HTML preparation." }
+    if($body.IndexOf('FbeDom::MarkupUndoUnitScope undo') -lt $body.IndexOf('CString rngHTML')) { throw "$name begins undo before HTML preparation." }
 }
 
 $cite = Get-FunctionBody 'InsertCite'
@@ -45,13 +45,14 @@ if(-not $poem.Contains('const bool wasCollapsed = rng->compareEndPoints(L"StartT
 if($poem.Contains('selectedText.Trim().IsEmpty()')) { throw 'InsertPoem treats whitespace-only text as an empty selection.' }
 if(-not $poem.Contains('if(wasCollapsed && !expandedHasContent)')) { throw 'InsertPoem does not limit an empty Poem to a collapsed range without paragraph content.' }
 
-foreach($required in @('class CMarkupUndoUnitScope', '~CMarkupUndoUnitScope()', 'try { m_view.EndUndoUnit(); }', 'catch (_com_error&) { }')) {
-    if($source -notlike "*$required*") { throw "Markup undo RAII misses: $required" }
+$undoSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\dom\MarkupUndoUnitScope.h')
+foreach($required in @('class MarkupUndoUnitScope', '~MarkupUndoUnitScope()', 'try { m_services->EndUndoUnit(); }', 'catch (_com_error&) { }')) {
+    if($undoSource -notlike "*$required*") { throw "Markup undo RAII misses: $required" }
 }
-$close = [regex]::Match($source, 'void Close\(\)\s*\{(?<body>.*?)\n\s*\}', [Text.RegularExpressions.RegexOptions]::Singleline)
-if(-not $close.Success) { throw 'CMarkupUndoUnitScope::Close was not found.' }
+$close = [regex]::Match($undoSource, 'void Close\(\)\s*\{(?<body>.*?)\n\s*\}', [Text.RegularExpressions.RegexOptions]::Singleline)
+if(-not $close.Success) { throw 'MarkupUndoUnitScope::Close was not found.' }
 $closeBody = $close.Groups['body'].Value
-if($closeBody.IndexOf('m_view.EndUndoUnit();') -gt $closeBody.IndexOf('m_active = false;')) {
+if($closeBody.IndexOf('m_services->EndUndoUnit();') -gt $closeBody.IndexOf('m_active = false;')) {
     throw 'Close deactivates the scope before EndUndoUnit succeeds.'
 }
 
