@@ -6499,63 +6499,23 @@ bool  CMainFrame::SourceToHTML()
 		WriteSelectionTrace(L"E230", trace);
 	}
 
-	if(changed)
-	{
-		CString sourceEncoding = SourceDocumentTransfer::ExtractXmlDeclarationEncoding(sourceText);
-		if (!sourceEncoding.IsEmpty())
-			m_doc->m_encoding = sourceEncoding;
-
-		if((bool)m_saved_xml)
-		{
-			m_saved_xml.Release();
-			m_saved_xml = 0;
-		}
-
-		if(!m_doc->TextToXML(ustr, (MSXML2::IXMLDOMDocument2Ptr*)(&m_saved_xml)))
-		{
-			// TextToXML performs the FBD structural check.  Unlike generic XML
-			// syntax fallback, a structurally invalid FBD must never reach
-			// LoadFromDOM through XmlFromText.
-			if (m_doc->GetDocumentFileType() == FictionBookFileType::Fbd)
-			{
-				SysFreeString(ustr);
-				return false;
-			}
-			CComDispatchDriver	body(m_doc->m_body.Script());
-			CComVariant		    args[1];
-			CComVariant		    ret;
-			args[0]=ustr;
-			CheckError(body.Invoke1(L"XmlFromText",&args[0], &ret));
-			if(ret.vt == VT_DISPATCH)
-			{
-				m_saved_xml = ret.pdispVal;
-				// ???? ???????? ?? xml, ?????? ????????? ??????
-				if(!(bool)m_saved_xml)
-				{
-					MSXML2::IXMLDOMParseErrorPtr err = ret.pdispVal;
-					if(!(bool)err)
-					{
-						SysFreeString(ustr);
-						return false;
-					}
-					bstr_t msg = err->reason;
-					int line = err->line;
-					int linepos = err->linepos;
-					::SendMessage(m_doc->m_frame,AU::WM_SETSTATUSTEXT,0,(LPARAM)(const TCHAR *)msg);
-					SourceGoTo(line, linepos);
-					SysFreeString(ustr);
-					return false;
-				}
-			}
-			else
-			{
-				SysFreeString(ustr);
-				return false;
-			}
-		}
-	}
-
+	const SourceDocumentApplyResult applyResult =
+		SourceDocumentTransfer::ApplySourceDocument(*m_doc, sourceDocument,
+			changed != 0, m_saved_xml, _Settings.GetInterfaceLanguageName());
 	SysFreeString(ustr);
+	if(applyResult.result != SourceTransitionResult::Success)
+	{
+		if(applyResult.result == SourceTransitionResult::InvalidSource &&
+			!applyResult.errorMessage.IsEmpty())
+		{
+			::SendMessage(m_doc->m_frame, AU::WM_SETSTATUSTEXT, 0,
+				(LPARAM)(const TCHAR*)applyResult.errorMessage);
+			SourceGoTo(applyResult.errorLine, applyResult.errorColumn);
+		}
+		return false;
+	}
+	if(applyResult.documentChanged)
+		ClearSelection();
 
 
 	MSXML2::IXMLDOMNodeListPtr ChildNodes = m_saved_xml->documentElement->childNodes;
@@ -6622,22 +6582,6 @@ bool  CMainFrame::SourceToHTML()
 
 
 	// ???? ???????? ??? ???????, ?? ?????????? ??? ? HTML
-	if(changed)
-	{
-		// ?????????? ? HTML
-		CComDispatchDriver scriptDispatch(m_doc->m_body.Script());
-		CComVariant		    args[2];
-		args[1] = m_saved_xml.GetInterfacePtr();
-		args[0] = _Settings.GetInterfaceLanguageName();
-		CheckError(scriptDispatch.InvokeN(L"LoadFromDOM", args, 2));
-		m_doc->m_body.Init();
-		// ? ??? ?????????? ????? HTML ? ????????? ?? ????????? ??????? ?????? ?????????.
-		ClearSelection();
-
-        //m_saved_xml.Release();
-		//m_saved_xml = 0;
-	}
-
 	if(selection_path_available && !selectionCrossesParagraph)
 	{
 		// Выделение из Source переносится только в отображаемый текстовый body.
@@ -6829,21 +6773,11 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	if (sourceEncoding.IsEmpty())
 		sourceEncoding = L"utf-8";
 
-	{
-		if (m_doc->DocRelChanged() || !(bool)m_saved_xml)
-		{
-			if ((bool)m_saved_xml)
-			{
-				m_saved_xml.Release();
-			}
-			m_saved_xml = m_doc->CreateDOM(sourceEncoding);
-			if (!(bool)m_saved_xml)
-			{
-				return false;
-			}
-		}
-	}
-	phaseProfiler.Mark("CreateDOM");
+	CString srcText;
+	if(SourceDocumentTransfer::PrepareSerializedSource(*m_doc, m_saved_xml,
+		sourceEncoding, srcText) != SourceTransitionResult::Success)
+		return false;
+	phaseProfiler.Mark("serialized source preparation");
 
 /*	std::ofstream save;
 	CString s = m_saved_xml->xml;
@@ -6908,23 +6842,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	}
 	phaseProfiler.Mark("selection DOM lookup");
 
-	_bstr_t rawSrc(m_saved_xml->xml);
-	phaseProfiler.Mark("m_saved_xml serialization");
-	CString srcText((const wchar_t*)rawSrc);
-	phaseProfiler.Mark("BSTR to CString");
-	CString xmlDecl;
-	xmlDecl.Format(L"<?xml version=\"1.0\" encoding=\"%s\"?>", (const wchar_t*)sourceEncoding);
-	const CString xmlDeclWithoutEncoding(L"<?xml version=\"1.0\"?>");
-	if (srcText.Left(xmlDeclWithoutEncoding.GetLength()).CompareNoCase(xmlDeclWithoutEncoding) == 0)
-	{
-		srcText.Delete(0, xmlDeclWithoutEncoding.GetLength());
-		srcText.Insert(0, xmlDecl);
-	}
-	else if (srcText.Left(5).CompareNoCase(L"<?xml") != 0)
-	{
-		srcText.Insert(0, xmlDecl + L"\r\n");
-	}
-	phaseProfiler.Mark("XML declaration normalization");
+	phaseProfiler.Mark("source serialization and XML declaration normalization");
 	_bstr_t src((const wchar_t*)srcText);
 
 	int savedPosBegin = 0;

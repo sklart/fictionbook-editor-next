@@ -1,6 +1,8 @@
 #include "../stdafx.h"
 #include "SourceDocumentTransfer.h"
 #include "Scintilla.h"
+#include "../apputils.h"
+#include "../FBDoc.h"
 #include "../XmlDeclaration.h"
 #include "BodySourceSelectionTransfer.h"
 
@@ -25,6 +27,101 @@ SourceTransitionResult SourceDocumentTransfer::ReadSourceText(CWindow& source, S
 	result.selectionStart = ::MultiByteToWideChar(CP_UTF8, 0, result.utf8.data(), static_cast<int>(start), NULL, 0);
 	result.selectionEnd = result.caret ? result.selectionStart : ::MultiByteToWideChar(CP_UTF8, 0, result.utf8.data(), static_cast<int>(end), NULL, 0);
 	return SourceTransitionResult::Success;
+}
+
+SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& document,
+	MSXML2::IXMLDOMDocumentPtr& cachedXml, const CString& encoding,
+	CString& sourceText)
+{
+	if(document.DocRelChanged() || !(bool)cachedXml)
+	{
+		MSXML2::IXMLDOMDocument2Ptr candidate = document.CreateDOM(encoding);
+		if(!(bool)candidate) return SourceTransitionResult::Failed;
+		cachedXml = candidate;
+	}
+
+	_bstr_t serialized(cachedXml->xml);
+	sourceText = static_cast<const wchar_t*>(serialized);
+	CString declaration;
+	declaration.Format(L"<?xml version=\"1.0\" encoding=\"%s\"?>", static_cast<const wchar_t*>(encoding));
+	const CString declarationWithoutEncoding(L"<?xml version=\"1.0\"?>");
+	if(sourceText.Left(declarationWithoutEncoding.GetLength()).CompareNoCase(declarationWithoutEncoding) == 0)
+	{
+		sourceText.Delete(0, declarationWithoutEncoding.GetLength());
+		sourceText.Insert(0, declaration);
+	}
+	else if(sourceText.Left(5).CompareNoCase(L"<?xml") != 0)
+	{
+		sourceText.Insert(0, declaration + L"\r\n");
+	}
+	return SourceTransitionResult::Success;
+}
+
+SourceDocumentApplyResult SourceDocumentTransfer::ApplySourceDocument(FB::Doc& document,
+	const SourceDocumentText& source, bool sourceChanged,
+	MSXML2::IXMLDOMDocumentPtr& cachedXml, const CString& interfaceLanguage)
+{
+	SourceDocumentApplyResult result;
+	if(!sourceChanged)
+	{
+		result.result = cachedXml ? SourceTransitionResult::Success : SourceTransitionResult::Failed;
+		return result;
+	}
+
+	BSTR sourceText = ::SysAllocStringLen(source.text, source.text.GetLength());
+	if(!sourceText) return result;
+	MSXML2::IXMLDOMDocument2Ptr candidate;
+	if(!document.TextToXML(sourceText, (MSXML2::IXMLDOMDocument2Ptr*)(&candidate)))
+	{
+		// FBD's structural check is authoritative.  Do not pass a rejected FBD
+		// through the generic script parser.
+		if(document.GetDocumentFileType() == FictionBookFileType::Fbd)
+		{
+			::SysFreeString(sourceText);
+			result.result = SourceTransitionResult::InvalidSource;
+			return result;
+		}
+		CComDispatchDriver body(document.m_body.Script());
+		CComVariant args[1];
+		CComVariant parsed;
+		args[0] = sourceText;
+		CheckError(body.Invoke1(L"XmlFromText", &args[0], &parsed));
+		if(parsed.vt != VT_DISPATCH)
+		{
+			::SysFreeString(sourceText);
+			return result;
+		}
+		candidate = parsed.pdispVal;
+		if(!(bool)candidate)
+		{
+			MSXML2::IXMLDOMParseErrorPtr error = parsed.pdispVal;
+			if((bool)error)
+			{
+				result.errorMessage = static_cast<const wchar_t*>(bstr_t(error->reason));
+				result.errorLine = error->line;
+				result.errorColumn = error->linepos;
+			}
+			::SysFreeString(sourceText);
+			result.result = SourceTransitionResult::InvalidSource;
+			return result;
+		}
+	}
+	::SysFreeString(sourceText);
+
+	// The old cache and the displayed document remain untouched until the
+	// candidate has passed parsing.  Commit their new values only at this point.
+	CComDispatchDriver script(document.m_body.Script());
+	CComVariant args[2];
+	args[1] = candidate.GetInterfacePtr();
+	args[0] = interfaceLanguage;
+	CheckError(script.InvokeN(L"LoadFromDOM", args, 2));
+	document.m_body.Init();
+	const CString encoding = ExtractXmlDeclarationEncoding(source.text);
+	if(!encoding.IsEmpty()) document.m_encoding = encoding;
+	cachedXml = candidate;
+	result.result = SourceTransitionResult::Success;
+	result.documentChanged = true;
+	return result;
 }
 
 CString SourceDocumentTransfer::ExtractXmlDeclarationEncoding(const CString& xmlText)
