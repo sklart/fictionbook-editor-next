@@ -29,6 +29,14 @@
       <UniqueIdentifier>{0e8a785f-f95c-40e1-a99e-f967a51bb02e}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
     </Filter>
+    <Filter Include="Source Files\View">
+      <UniqueIdentifier>{4D9C6940-889D-4BAF-A93C-C6D5D9A0A316}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Header Files\View">
+      <UniqueIdentifier>{B2A566BF-44FD-477D-96D4-0D7C980D6D4C}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
     <Filter Include="Source Files\Search">
       <UniqueIdentifier>{1128c08a-cd1e-4a38-a38b-2d3d1dcb3d99}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
@@ -152,6 +160,8 @@
 	<ClCompile Include="plugins\PluginManager.cpp"><Filter>Source Files\Plugins</Filter></ClCompile>
 	<ClCompile Include="source\Fb2SourceAutocomplete.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="source\SourceDocumentTransfer.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
+	<ClCompile Include="view\EditorViewState.cpp"><Filter>Source Files\View</Filter></ClCompile>
+	<ClCompile Include="view\EditorViewTransition.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="source\Fb2SourceStructuralContext.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackend.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackendPcre2.cpp"><Filter>Source Files\Search</Filter></ClCompile>
@@ -356,6 +366,9 @@
 	<ClInclude Include="source\BodySourceSelectionState.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="source\BodySourceSelectionTransfer.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="source\SourceDocumentTransfer.h"><Filter>Header Files\XML Source</Filter></ClInclude>
+	<ClInclude Include="view\EditorSelectionState.h"><Filter>Header Files\View</Filter></ClInclude>
+	<ClInclude Include="view\EditorViewState.h"><Filter>Header Files\View</Filter></ClInclude>
+	<ClInclude Include="view\EditorViewTransition.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="source\Fb2SourceStructuralContext.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="search\RegexBackend.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\RegexPcre2CodeCache.h"><Filter>Header Files\Search</Filter></ClInclude>

@@ -31,8 +31,10 @@
 #include "EditorEngine.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "source\\Fb2SourceAutocomplete.h"
-#include "source\\BodySourceSelectionState.h"
 #include "source\\ui\\SourceEditorControl.h"
+#include "view\\EditorViewState.h"
+#include "view\\EditorViewTransition.h"
+#include "view\\EditorSelectionState.h"
 #include "FBE.h"
 #include "Words.h"
 #include "SearchReplace.h"
@@ -152,8 +154,8 @@ public:
     m_current_dpi(96), m_status_layout_posted(false), m_saved_xml(0), m_cb_updated(false),
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
-    m_sci_find_dlg(0), m_sci_replace_dlg(0), m_current_view(BODY), m_last_view(DESC),
-	 m_script_menu(ID_EDIT_INS_SYMBOL + 101, 999), m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_last_script(0),
+    m_sci_find_dlg(0), m_sci_replace_dlg(0),
+	 m_script_menu(ID_EDIT_INS_SYMBOL + 101, 999), m_last_script(0),
     m_last_plugin(0), m_bad_xml(false), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0),
         m_status_transient_expiration(0), m_validation_status(VALIDATION_UNKNOWN)
 	// added by SeNS
@@ -187,7 +189,7 @@ public:
   //bool	  IsSourceActive() { return m_source==m_view.GetActiveWnd(); }
   bool	  IsSourceActive() 
   { 
-	  return m_current_view == SOURCE; 
+	  return m_editor_view_state.Current() == EditorView::Source;
   }
 
   // document structure
@@ -209,23 +211,17 @@ public:
   bool SaveRecoveryNow();
 
   // show a specific view
-  enum VIEW_TYPE { BODY, DESC, SOURCE, NEXT };
-  void	  ShowView(VIEW_TYPE vt=BODY);
+  void	  ShowView(EditorView vt=EditorView::Body);
+	EditorView NextEditorView();
   bool	  ShowSource(bool saveSelection = true);
   //VIEW_TYPE GetCurView();
 
   
-  VIEW_TYPE		  m_current_view;
-  VIEW_TYPE		  m_last_view;
-  VIEW_TYPE		  m_last_ctrl_tab_view;
-  bool			  m_ctrl_tab;
-
-  MSHTML::IHTMLTxtRangePtr m_body_selection;
-  MSHTML::IHTMLTxtRangePtr m_desc_selection;
-	BodySourceSelectionState m_body_source_selection;
+	EditorViewState m_editor_view_state;
+	EditorSelectionState m_editor_selection_state;
 	Fb2SourceAutocomplete   m_fb2_autocomplete;
 
-  void SaveSelection(VIEW_TYPE vt);  
+  void SaveSelection(EditorView vt);
   void RestoreSelection(); 
   void ClearSelection();
 
@@ -634,7 +630,7 @@ public:
 	LRESULT OnEditAddBinary(WORD, WORD, HWND, BOOL&);
 	LRESULT OnEditFind(WORD, WORD, HWND, BOOL& bHandled)
 	{
-		if(m_current_view == DESC)
+		if(m_editor_view_state.Current() == EditorView::Description)
 			ShowView(BODY);
 
 		bHandled = FALSE;
@@ -792,7 +788,7 @@ public:
 		ChangeNBSP(m_doc->m_body.SelectionContainer());
 
 	// added by SeNS: do spellcheck
-	if (m_Speller && m_current_view == BODY)
+	if (m_Speller && m_editor_view_state.Current() == EditorView::Body)
 		if (m_Speller->Enabled() && _Settings.GetHighlightMisspells())
 			m_Speller->CheckElement(m_doc->m_body.SelectionContainer(), -1);
 
@@ -858,7 +854,7 @@ public:
   }
 
   LRESULT OnSciCharAdded(int /* unused: id */,NMHDR *hdr,BOOL& bHandled) {
-    if (hdr->hwndFrom != m_source || m_current_view != SOURCE) {
+    if (hdr->hwndFrom != m_source || m_editor_view_state.Current() != EditorView::Source) {
       bHandled=FALSE;
       return 0;
     }
@@ -868,7 +864,7 @@ public:
 
   LRESULT OnSciUpdateUI(int /* unused: id */,NMHDR *hdr,BOOL& /* unused: bHandled */)
   {
-    if (hdr->hwndFrom != m_source || m_current_view != SOURCE)
+    if (hdr->hwndFrom != m_source || m_editor_view_state.Current() != EditorView::Source)
 		return 0;
 
     const SCNotification& scn = *reinterpret_cast<const SCNotification*>(hdr);
@@ -886,14 +882,14 @@ public:
 
   LRESULT OnGoToMatchTag(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {
-    if (m_current_view == SOURCE)
+    if (m_editor_view_state.Current() == EditorView::Source)
 		SciUpdateUI(true);
 	return 0;
   }
 
   LRESULT OnGoToWrongTag(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {
-    if (m_current_view == SOURCE)
+    if (m_editor_view_state.Current() == EditorView::Source)
 		SciGotoWrongTag();
 	return 0;
   }
@@ -942,14 +938,14 @@ public:
     CSpeller *m_Speller;
 	LRESULT OnSpellCheck(WORD, WORD, HWND, BOOL& /* unused: b */)
 	{
-		if (m_Speller && m_doc && m_current_view == BODY && m_Speller->Available())
+		if (m_Speller && m_doc && m_editor_view_state.Current() == EditorView::Body && m_Speller->Available())
 			m_Speller->StartDocumentCheck(m_doc->m_body.m_mk_srv);
 		return S_OK;
 	}
 
 	LRESULT OnToggleHighlight(WORD, WORD, HWND, BOOL&)
 	{
-		if (m_Speller && m_current_view == BODY)
+		if (m_Speller && m_editor_view_state.Current() == EditorView::Body)
 		{
 			_Settings.SetHighlightMisspells(!_Settings.GetHighlightMisspells());
 			m_Speller->SetHighlightMisspells(_Settings.GetHighlightMisspells());

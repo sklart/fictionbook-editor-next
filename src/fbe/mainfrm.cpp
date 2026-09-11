@@ -50,6 +50,16 @@
 #include <algorithm>
 #include <psapi.h>
 
+// Keep legacy call sites focused on orchestration while state storage lives in
+// the dedicated components declared by CMainFrame.
+#define m_current_view m_editor_view_state.Current()
+#define m_last_view m_editor_view_state.PreviousRef()
+#define m_last_ctrl_tab_view m_editor_view_state.LastCtrlTabViewRef()
+#define m_ctrl_tab m_editor_view_state.CtrlTabActiveRef()
+#define m_body_selection m_editor_selection_state.BodyRange()
+#define m_desc_selection m_editor_selection_state.DescriptionRange()
+#define m_body_source_selection m_editor_selection_state.BodySource()
+
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
@@ -903,9 +913,8 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 	UISetCheck(ID_VIEW_DESC, 0);
 	UISetCheck(ID_VIEW_SOURCE, 0);
 	m_view.ActivateWnd(doc->m_body);
-	m_current_view = BODY;
-	m_last_view = DESC;
-	m_last_ctrl_tab_view= DESC;
+	m_editor_view_state.Reset(EditorView::Body, EditorView::Description);
+	m_editor_selection_state.Reset();
 	m_cb_updated=false;
 	m_need_title_update=m_sel_changed=true;
 	if(_Settings.ViewDocumentTree())
@@ -3239,6 +3248,45 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"editor-view-lifecycle-runtime"))
+	{
+		FB::Doc* const originalDocument = m_doc;
+		const auto isBodyHostActive = [&]() { return m_view.GetActiveWnd() == m_doc->m_body; };
+		ShowView(DESC);
+		const bool bodyToDescription = m_current_view == DESC && m_last_view == BODY && isBodyHostActive();
+		ShowView(BODY);
+		const bool descriptionToBody = m_current_view == BODY && m_last_view == DESC && isBodyHostActive();
+		ShowView(SOURCE);
+		const bool bodyToSource = m_current_view == SOURCE && IsSourceActive() && m_last_view == BODY;
+		ShowView(BODY);
+		const bool sourceToBody = m_current_view == BODY && !IsSourceActive() && m_last_view == SOURCE && isBodyHostActive();
+		ShowView(DESC);
+		ShowView(SOURCE);
+		const bool descriptionToSource = m_current_view == SOURCE && IsSourceActive() && m_last_view == DESC;
+		ShowView(DESC);
+		const bool sourceToDescription = m_current_view == DESC && !IsSourceActive() && m_last_view == SOURCE && isBodyHostActive();
+		ShowView(SOURCE);
+		ShowView(BODY);
+		ShowView(DESC);
+		const bool sourceBodyDescription = m_current_view == DESC && m_last_view == BODY && isBodyHostActive();
+		ShowView(SOURCE);
+		ShowView(DESC);
+		ShowView(BODY);
+		const bool sourceDescriptionBody = m_current_view == BODY && m_last_view == DESC && isBodyHostActive();
+		bool cycles = true;
+		for(int cycle = 0; cycle < 3; ++cycle)
+		{
+			ShowView(DESC); cycles = cycles && m_current_view == DESC && isBodyHostActive();
+			ShowView(SOURCE); cycles = cycles && IsSourceActive();
+			ShowView(BODY); cycles = cycles && m_current_view == BODY && isBodyHostActive();
+		}
+		const bool documentPreserved = m_doc == originalDocument && m_doc->m_body.Document() != NULL;
+		CStringA report;
+		report.Format("body_desc=%d\ndesc_body=%d\nbody_source=%d\nsource_body=%d\ndesc_source=%d\nsource_desc=%d\nsource_body_desc=%d\nsource_desc_body=%d\ncycles=%d\ndocument=%d\n", bodyToDescription, descriptionToBody, bodyToSource, sourceToBody, descriptionToSource, sourceToDescription, sourceBodyDescription, sourceDescriptionBody, cycles, documentPreserved);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(bodyToDescription && descriptionToBody && bodyToSource && sourceToBody && descriptionToSource && sourceToDescription && sourceBodyDescription && sourceDescriptionBody && cycles && documentPreserved ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"archive-two-phase-runtime"))
@@ -5769,7 +5817,7 @@ LRESULT CMainFrame::OnSelectCtl(WORD /* unused: wNotifyCode */, WORD wID, HWND /
 
 LRESULT CMainFrame::OnNextItem(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
-  ShowView(NEXT);
+  ShowView(NextEditorView());
   return 1;
 }
 
@@ -6993,57 +7041,55 @@ bool CMainFrame::ShowSource(bool saveSelection)
 }
 
 
-void  CMainFrame::ShowView(VIEW_TYPE vt)
+EditorView CMainFrame::NextEditorView()
 {
-  VIEW_TYPE prev = m_current_view;
+	EditorView target = m_current_view;
+	if(!m_ctrl_tab)
+	{
+		if(m_current_view != m_last_ctrl_tab_view)
+			target = m_last_ctrl_tab_view;
+		else if((m_last_view == BODY && m_current_view == DESC) ||
+			(m_last_view == DESC && m_current_view == BODY))
+			target = SOURCE;
+		else if((m_last_view == BODY && m_current_view == SOURCE) ||
+			(m_last_view == SOURCE && m_current_view == BODY))
+			target = DESC;
+		else if((m_last_view == SOURCE && m_current_view == DESC) ||
+			(m_last_view == DESC && m_current_view == SOURCE))
+			target = BODY;
+		m_last_ctrl_tab_view = m_current_view;
+		m_ctrl_tab = true;
+	}
+	else if((m_last_view == BODY && m_current_view == DESC) ||
+		(m_last_view == DESC && m_current_view == BODY))
+		target = SOURCE;
+	else if((m_last_view == BODY && m_current_view == SOURCE) ||
+		(m_last_view == SOURCE && m_current_view == BODY))
+		target = DESC;
+	else if((m_last_view == SOURCE && m_current_view == DESC) ||
+		(m_last_view == DESC && m_current_view == SOURCE))
+		target = BODY;
+	return target;
+}
+
+void  CMainFrame::ShowView(EditorView vt)
+{
+	EditorView prev = m_current_view;
+	const EditorViewTransitionPlan transition = MakeEditorViewTransitionPlan(prev, vt);
 	if (StartupTrace::Enabled())
 	{
-		const wchar_t* const viewNames[] = { L"Body", L"Description", L"Source", L"Next" };
+		const wchar_t* const viewNames[] = { L"Body", L"Description", L"Source" };
 		CString trace;
-		trace.Format(L"ShowView: requested %s -> %s", viewNames[prev], viewNames[vt]);
+		trace.Format(L"ShowView: requested %s -> %s", viewNames[static_cast<int>(prev)], viewNames[static_cast<int>(vt)]);
 		WriteSelectionTrace(L"E280", trace);
 	}
-  SaveSelection(m_current_view);
+	if(transition.saveCurrentSelection)
+		SaveSelection(m_current_view);
 
   // added by SeNS
   if (vt != BODY)
 	if (m_Speller)
 		m_Speller->EndDocumentCheck();
-
-  if (vt == NEXT)
-  {
-	  if(!m_ctrl_tab)
-	  {
-		  if(m_current_view !=m_last_ctrl_tab_view)
-			vt = m_last_ctrl_tab_view;
-		  else
-		  {
-			if((m_last_view == BODY && m_current_view == DESC) ||
-				(m_last_view == DESC && m_current_view == BODY))
-				vt = SOURCE;
-			if((m_last_view == BODY && m_current_view == SOURCE) ||
-				(m_last_view == SOURCE && m_current_view == BODY))
-				vt = DESC;
-			if((m_last_view == SOURCE && m_current_view == DESC) ||
-				(m_last_view == DESC && m_current_view == SOURCE))
-				vt = BODY;
-		  }
-          m_last_ctrl_tab_view = m_current_view;
-		  m_ctrl_tab = true;
-	  }
-	  else
-	  {
-		  if((m_last_view == BODY && m_current_view == DESC) ||
-			  (m_last_view == DESC && m_current_view == BODY))
-			  vt = SOURCE;
-		  if((m_last_view == BODY && m_current_view == SOURCE) ||
-			  (m_last_view == SOURCE && m_current_view == BODY))
-			  vt = DESC;
-		  if((m_last_view == SOURCE && m_current_view == DESC) ||
-			  (m_last_view == DESC && m_current_view == SOURCE))
-			  vt = BODY;
-	  }
-  }
 
   if(prev != vt)
   {
@@ -7059,7 +7105,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	}
 
 
-  if (prev!=vt && prev==SOURCE) {
+	if (transition.commitSourceToDocument) {
 	  // added by SeNS: special trick for incorrect XML
 	  if (m_bad_xml)
 	  {
@@ -7106,7 +7152,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
     StartupTrace::Warning(L"selection", L"E281", L"view switch ignored: HTML document is unavailable");
     return;
   }
-  if (prev!=vt && vt==SOURCE)
+	if (transition.prepareDocumentSource)
   {
 	  if(!this->ShowSource(prev == BODY))
 	  {
@@ -7196,10 +7242,9 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
     break;
   }
-  m_last_view = m_current_view;
-  m_current_view = vt;
+	m_editor_view_state.CommitTransition(vt);
 	UpdateStatusBar();
-	if(!(prev == SOURCE && vt == BODY))
+	if(transition.restoreTargetSelection)
 		RestoreSelection();
   m_view.SetFocus();
 	if(vt == BODY && prev == SOURCE && m_body_source_selection.sourceToBodyTransferred &&
@@ -7756,7 +7801,7 @@ void CMainFrame::RestoreSelection()
 }
 
 
-void CMainFrame::SaveSelection(VIEW_TYPE vt)
+void CMainFrame::SaveSelection(EditorView vt)
 {
 	if ((vt == BODY || vt == DESC) && (!m_doc || !m_doc->m_body.HasDoc()))
 	{
@@ -7870,7 +7915,7 @@ LRESULT CMainFrame::OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&)
 }
 void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 {
-	const VIEW_TYPE activeView = m_current_view;
+	const EditorView activeView = m_current_view;
 	const SourceEditorConfig config = BuildSourceEditorConfig();
 	m_source.ApplyConfiguration(config);
 	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
@@ -7883,7 +7928,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 }
 void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 {
-	const VIEW_TYPE activeView = m_current_view;
+	const EditorView activeView = m_current_view;
 	CWaitCursor hourglass;
 	LONG visible = false;
 
