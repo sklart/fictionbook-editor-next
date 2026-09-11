@@ -6,6 +6,14 @@
 
 namespace FBELinkNavigation
 {
+enum class LinkActivation
+{
+	Ignore,
+	Internal,
+	ExternalHttp,
+	Blocked
+};
+
 inline std::wstring Trim(const std::wstring& value)
 {
 	std::wstring::size_type first = 0, last = value.size();
@@ -59,5 +67,17 @@ inline bool IsBlockedUrl(const std::wstring& source)
 {
 	const std::wstring lower = Lower(Trim(source));
 	return lower.compare(0, 11, L"javascript:") == 0 || lower.compare(0, 5, L"data:") == 0;
+}
+
+inline LinkActivation DecideLinkActivation(const std::wstring& href,
+	const std::wstring& currentDocumentUrl, bool ctrl, bool alt, bool shift)
+{
+	if((!ctrl && !alt) || shift) return LinkActivation::Ignore;
+	if(!GetInternalTargetId(href, currentDocumentUrl).empty()) return LinkActivation::Internal;
+	if(ctrl && IsExternalHttpUrl(href)) return LinkActivation::ExternalHttp;
+	// Alt previously let javascript:/data: fall through to MSHTML's default
+	// navigation. Unsafe schemes must be consumed for either accepted modifier.
+	if(IsBlockedUrl(href)) return LinkActivation::Blocked;
+	return LinkActivation::Ignore;
 }
 }

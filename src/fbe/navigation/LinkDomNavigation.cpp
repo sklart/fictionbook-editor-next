@@ -39,6 +39,12 @@ CString GetInternalLinkTargetId(MSHTML::IHTMLDocument2Ptr d,
                      (LPCWSTR)AU::GetAttrCS(l, L"href"), (LPCWSTR)u)
                      .c_str());
 }
+MSHTML::IHTMLElementPtr FindTargetElement(MSHTML::IHTMLDocument2Ptr d,
+                                          const CString &id) {
+  return d && !id.IsEmpty()
+             ? MSHTML::IHTMLElementPtr(d->all->item((LPCWSTR)id))
+             : MSHTML::IHTMLElementPtr();
+}
 long GetLinkTargetOrdinal(MSHTML::IHTMLDocument2Ptr d,
                           MSHTML::IHTMLElementPtr l, const CString &id) {
   MSHTML::IHTMLElement2Ptr b(GetEditableBody(d));
@@ -54,5 +60,23 @@ long GetLinkTargetOrdinal(MSHTML::IHTMLDocument2Ptr d,
     ++o;
   }
   return -1;
+}
+MSHTML::IHTMLElementPtr FindOriginLink(MSHTML::IHTMLDocument2Ptr d,
+                                       const CString &id, long ordinal) {
+  if (!d || id.IsEmpty() || ordinal < 0)
+    return MSHTML::IHTMLElementPtr();
+  MSHTML::IHTMLElement2Ptr body(GetEditableBody(d));
+  MSHTML::IHTMLElementCollectionPtr links(
+      body ? body->getElementsByTagName(L"A")
+           : MSHTML::IHTMLElementCollectionPtr());
+  long current = 0;
+  for (long index = 0; links && index < links->length; ++index) {
+    MSHTML::IHTMLElementPtr link(links->item(index));
+    if (GetInternalLinkTargetId(d, link) != id)
+      continue;
+    if (current++ == ordinal)
+      return link;
+  }
+  return MSHTML::IHTMLElementPtr();
 }
 } // namespace FBELinkNavigation

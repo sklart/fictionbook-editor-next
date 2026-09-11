@@ -780,6 +780,7 @@ public:
   bool				GoToReference(bool fCheck);
 	bool				ReturnToLinkNavigationOrigin();
 	void				ClearLinkNavigationHistory();
+	bool				NavigateInternalLink(MSHTML::IHTMLElementPtr link, const CString& targetId);
   MSHTML::IHTMLTxtRangePtr	SetSelection(MSHTML::IHTMLElementPtr begin, MSHTML::IHTMLElementPtr end, int begin_pos, int end_pos);
   int				GetRelationalCharPos(MSHTML::IHTMLDOMNodePtr node, int pos);
   int				GetRealCharPos(MSHTML::IHTMLDOMNodePtr node, int pos);

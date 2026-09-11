@@ -21,7 +21,10 @@ foreach($forbidden in @('CFBEView', 'CMainFrame', 'mainfrm.h', 'FBEview.h', 'She
 foreach($legacy in @('static MSHTML::IHTMLElementPtr FindNearestLinkElement', 'static MSHTML::IHTMLElementPtr GetEditableBody', 'static CString GetInternalLinkTargetId', 'static long GetLinkTargetOrdinal', 'm_link_navigation_target_id', 'm_link_navigation_origin_ordinal')) {
     if($view -match [regex]::Escape($legacy)) { throw "FBEview retains extracted link navigation: $legacy" }
 }
-foreach($required in @('FBELinkNavigation::FindNearestLinkElement', 'FBELinkNavigation::GetInternalLinkTargetId', 'm_link_navigation_state.Reset()', 'm_link_navigation_state.HasOrigin()', 'ShellExecuteW')) {
+foreach($required in @('FBELinkNavigation::FindNearestLinkElement', 'FBELinkNavigation::FindTargetElement', 'FBELinkNavigation::FindOriginLink', 'DecideLinkActivation', 'ShellExecuteW')) {
     if(-not $view.Contains($required)) { throw "FBEview no longer coordinates link navigation: $required" }
+}
+foreach($required in @('FindTargetElement', 'FindOriginLink', 'GetLinkTargetOrdinal')) {
+    if(-not $dom.Contains($required)) { throw "LinkDomNavigation omits $required." }
 }
 Write-Host 'Link navigation boundary passed.'

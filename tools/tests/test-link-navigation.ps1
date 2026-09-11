@@ -14,20 +14,6 @@ try {
     if($LASTEXITCODE -ne 0) { throw 'Link navigation test compilation failed.' }
     & $exe
     if($LASTEXITCODE -ne 0) { throw 'Link navigation test failed.' }
-    $view = Get-Content -Raw (Join-Path $root 'src\fbe\FBEview.cpp')
-    $dom = Get-Content -Raw (Join-Path $root 'src\fbe\navigation\LinkDomNavigation.cpp')
-    foreach($contract in @(
-        'FBELinkNavigation::FindNearestLinkElement',
-        'FBELinkNavigation::GetEditableBody',
-        'const bool ctrlClick = oe->ctrlKey == VARIANT_TRUE;',
-        'm_link_navigation_state.originOrdinal = FBELinkNavigation::GetLinkTargetOrdinal',
-        'ClearLinkNavigationHistory();',
-        'ShellExecuteW(m_hWnd, L"open"')) {
-        if(-not $view.Contains($contract)) { throw "Missing link-navigation contract: $contract" }
-    }
-    foreach($contract in @('e = e->parentElement;', 'GetInternalTargetId', 'getElementsByTagName(L"A")')) {
-        if(-not $dom.Contains($contract)) { throw "Missing DOM navigation contract: $contract" }
-    }
     Write-Host 'Link navigation helper test passed.'
 }
 finally { Remove-Item -Recurse -Force -LiteralPath $temp -ErrorAction SilentlyContinue }

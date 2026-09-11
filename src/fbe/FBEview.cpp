@@ -4005,24 +4005,26 @@ void CFBEView::ClearLinkNavigationHistory()
 	m_link_navigation_state.Reset();
 }
 
+bool CFBEView::NavigateInternalLink(MSHTML::IHTMLElementPtr link, const CString& targetId)
+{
+	MSHTML::IHTMLElementPtr target(FBELinkNavigation::FindTargetElement(Document(), targetId));
+	if(!target) return false;
+	m_link_navigation_state.targetId = targetId;
+	m_link_navigation_state.originOrdinal = FBELinkNavigation::GetLinkTargetOrdinal(Document(), link, targetId);
+	HideNotePreview(*this);
+	GoTo(target);
+	return true;
+}
+
 bool CFBEView::ReturnToLinkNavigationOrigin()
 {
 	if(!m_link_navigation_state.HasOrigin() || !Document()) return false;
-	MSHTML::IHTMLElement2Ptr body(FBELinkNavigation::GetEditableBody(Document()));
-	MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
-	if(!links) { ClearLinkNavigationHistory(); return false; }
-	long ordinal = 0;
-	for(long i = 0; i < links->length; ++i)
-	{
-		MSHTML::IHTMLElementPtr link(links->item(i));
-		if(FBELinkNavigation::GetInternalLinkTargetId(Document(), link) != m_link_navigation_state.targetId) continue;
-		if(ordinal++ != m_link_navigation_state.originOrdinal) continue;
-		ClearLinkNavigationHistory();
-		GoTo(link);
-		return true;
-	}
+	MSHTML::IHTMLElementPtr origin(FBELinkNavigation::FindOriginLink(
+		Document(), m_link_navigation_state.targetId, m_link_navigation_state.originOrdinal));
 	ClearLinkNavigationHistory();
-	return false;
+	if(!origin) return false;
+	GoTo(origin);
+	return true;
 }
 
 VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
@@ -4054,33 +4056,31 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 		return VARIANT_TRUE;
 	}
 
-	const bool ctrlClick = oe->ctrlKey == VARIANT_TRUE;
-	const bool altClick = oe->altKey == VARIANT_TRUE;
-	if((!ctrlClick && !altClick) || oe->shiftKey == VARIANT_TRUE)
-		return VARIANT_FALSE;
-
 	MSHTML::IHTMLElementPtr link = FBELinkNavigation::FindNearestLinkElement(
 		elem, FBELinkNavigation::GetEditableBody(Document()));
 	if(!link) return VARIANT_FALSE;
 	CString href(AU::GetAttrCS(link, L"href"));
-	CString targetId(FBELinkNavigation::GetInternalLinkTargetId(Document(), link));
-	if(!targetId.IsEmpty())
+	CString documentUrl;
+	try {
+		MSHTML::IHTMLDocument4Ptr document4(Document());
+		if(document4) documentUrl = static_cast<LPCWSTR>(document4->URLUnencoded);
+	}
+	catch(const _com_error&) { }
+	const FBELinkNavigation::LinkActivation activation = FBELinkNavigation::DecideLinkActivation(
+		static_cast<LPCWSTR>(href), static_cast<LPCWSTR>(documentUrl),
+		oe->ctrlKey == VARIANT_TRUE, oe->altKey == VARIANT_TRUE, oe->shiftKey == VARIANT_TRUE);
+	if(activation == FBELinkNavigation::LinkActivation::Ignore) return VARIANT_FALSE;
+	if(activation == FBELinkNavigation::LinkActivation::Internal)
 	{
-		MSHTML::IHTMLElementPtr target(Document()->all->item(static_cast<LPCWSTR>(targetId)));
-		// Ctrl+Click consumes broken internal links too: MSHTML must not try a
+		CString targetId(FBELinkNavigation::GetInternalLinkTargetId(Document(), link));
+		// Accepted modifier clicks consume broken internal links too: MSHTML must not try a
 		// browser fragment navigation after the target was known to be absent.
-		if(target)
-		{
-			m_link_navigation_state.targetId = targetId;
-			m_link_navigation_state.originOrdinal = FBELinkNavigation::GetLinkTargetOrdinal(Document(), link, targetId);
-			HideNotePreview(*this);
-			GoTo(target);
-		}
+		NavigateInternalLink(link, targetId);
 		oe->cancelBubble = VARIANT_TRUE;
 		oe->returnValue = VARIANT_FALSE;
 		return VARIANT_TRUE;
 	}
-	if(ctrlClick && FBELinkNavigation::IsExternalHttpUrl(static_cast<LPCWSTR>(href)))
+	if(activation == FBELinkNavigation::LinkActivation::ExternalHttp)
 	{
 		HideNotePreview(*this);
 		::ShellExecuteW(m_hWnd, L"open", static_cast<LPCWSTR>(href), NULL, NULL, SW_SHOWNORMAL);
@@ -4088,7 +4088,7 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 		oe->returnValue = VARIANT_FALSE;
 		return VARIANT_TRUE;
 	}
-	if(ctrlClick && FBELinkNavigation::IsBlockedUrl(static_cast<LPCWSTR>(href)))
+	if(activation == FBELinkNavigation::LinkActivation::Blocked)
 	{
 		oe->cancelBubble = VARIANT_TRUE;
 		oe->returnValue = VARIANT_FALSE;

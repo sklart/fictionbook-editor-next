@@ -38,6 +38,8 @@
 #include "scripts\\ScriptCommandRegistry.h"
 #include "source\\BodySourceSelectionTransfer.h"
 #include "source\\SourceDocumentTransfer.h"
+#include "navigation\\LinkDomNavigation.h"
+#include "LinkNavigation.h"
 #include "XmlDeclaration.h"
 #include "..\\common\\DeploymentContext.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
@@ -3845,6 +3847,37 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		CStringA row;
 		row.Format("%ld\t%ld\t%ld\t%d\t%s\r\n", countElements(L"P"), emptyDivs, countElements(L"BR"),
 			text.Find(L"alpha") >= 0 && text.Find(L"beta") >= 0, passed ? "pass" : "fail");
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"link-navigation-runtime"))
+	{
+		CStringA header("nested\ttarget\tsame_document\treturn_origin\tbroken\tunchanged\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
+		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr internal(links && links->length > 0 ? links->item(0L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr broken(links && links->length > 1 ? links->item(1L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr strongs(internal ? MSHTML::IHTMLElement2Ptr(internal)->getElementsByTagName(L"STRONG") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? strongs->item(0L) : MSHTML::IHTMLElementPtr());
+		const CString before(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+		MSHTML::IHTMLElementPtr nearest(FBELinkNavigation::FindNearestLinkElement(nested, editable));
+		const CString targetId(FBELinkNavigation::GetInternalLinkTargetId(document, nearest));
+		MSHTML::IHTMLElementPtr target(FBELinkNavigation::FindTargetElement(document, targetId));
+		CString documentUrl;
+		try { MSHTML::IHTMLDocument4Ptr document4(document); if(document4) documentUrl = static_cast<LPCWSTR>(document4->URLUnencoded); }
+		catch(const _com_error&) { }
+		const CString sameDocumentHref = documentUrl + L"#note-1";
+		const bool sameDocument = FBELinkNavigation::GetInternalTargetId(static_cast<LPCWSTR>(sameDocumentHref), static_cast<LPCWSTR>(documentUrl)) == L"note-1";
+		const bool navigated = target && m_doc->m_body.NavigateInternalLink(nearest, targetId);
+		const bool returned = navigated && m_doc->m_body.ReturnToLinkNavigationOrigin();
+		const CString brokenTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, broken));
+		const bool brokenInternal = !brokenTargetId.IsEmpty() && !FBELinkNavigation::FindTargetElement(document, brokenTargetId);
+		const bool unchanged = editable && before == CString(static_cast<LPCWSTR>(editable->innerHTML));
+		const bool passed = nearest == internal && target && sameDocument && returned && brokenInternal && unchanged;
+		CStringA row;
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, returned, brokenInternal, unchanged, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
