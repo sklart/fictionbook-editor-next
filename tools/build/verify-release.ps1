@@ -170,6 +170,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structure-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-boundary.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-table-toolbar-contract.ps1")
