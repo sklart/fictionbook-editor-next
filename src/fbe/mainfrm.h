@@ -40,6 +40,7 @@
 #include "StatusBarUnicode.h"
 #include "StatusBarText.h"
 #include "StatusBarBehavior.h"
+#include "ui/ContextAttributeBars.h"
 
 #if _MSC_VER >= 1000
 #pragma once
@@ -48,125 +49,6 @@
 
 #define MSGFLT_ADD 1
 #define MSGFLT_REMOVE 2
-
-typedef CWinTraits<WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|ES_LEFT,WS_EX_CLIENTEDGE> CCustomEditWinTraits;
-
-class CCustomEdit : public CWindowImpl<CCustomEdit,CEdit,CCustomEditWinTraits>, public CEditCommands<CCustomEdit>
-{
-public:
-	DECLARE_WND_SUPERCLASS(NULL, CEdit::GetWndClassName())
-
-	CCustomEdit() { }
-
-	BEGIN_MSG_MAP(CCustomEdit)
-		MESSAGE_HANDLER(WM_CHAR, OnChar)
-		CHAIN_MSG_MAP_ALT(CEditCommands<CCustomEdit>, 1)
-	END_MSG_MAP()
-
-	LRESULT OnChar(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
-	{
-		if(wParam == VK_RETURN)
-			::PostMessage(::GetParent(GetParent()), WM_COMMAND,MAKELONG(GetDlgCtrlID(), IDN_ED_RETURN), (LPARAM)m_hWnd);
-
-		bHandled = FALSE;
-		return 0;
-	}
-};
-
-class CCustomStatic : public CWindowImpl<CCustomStatic,CStatic/*,CCustomStaticWinTraits*/>
-{
-private:
-	HFONT m_font;
-	bool m_enabled;
-public:
-	CCustomStatic():m_font(0), m_enabled(0){}
-
-	void DoPaint(CDCHandle dc)
-    {
-      RECT rc;
-      GetClientRect(&rc);
-	  // Attribute captions cover toolbar layout placeholders.  Paint an opaque
-	  // system background so a toolbar repaint cannot show a second stale label
-	  // through this child window.
-	  ::FillRect(dc, &rc, ::GetSysColorBrush(COLOR_BTNFACE));
-	  /*HBRUSH hBr = GetSysColorBrush(COLOR_3DFACE);
-	  HPEN pen = CreatePen(PS_SOLID, 1, GetSysColor(COLOR_3DFACE));
-	  HBRUSH oldBrush = (HBRUSH)SelectObject(dc, hBr);
-	  HPEN oldPen = (HPEN)SelectObject(dc, pen);
-	  Rectangle(dc, rc.left, rc.top, rc.right, rc.bottom);
-	  SelectObject(dc, oldBrush);
-	  SelectObject(dc, oldPen);*/
-	  HFONT oldFont = (HFONT)SelectObject(dc, m_font);
-
-      UINT iFlags = DT_SINGLELINE | DT_CENTER | DT_VCENTER;      
-
-      int len = GetWindowTextLength();
-      wchar_t* text = new wchar_t[len+1];
-      GetWindowText(text, len+1);
-
-      dc.SetBkMode(TRANSPARENT);
-	  if(m_enabled)
-	  {
-		  dc.SetTextColor(GetSysColor(COLOR_BTNTEXT));
-	  }
-	  else
-	  {
-		  dc.SetTextColor(GetSysColor(COLOR_GRAYTEXT));
-	  }
-	  dc.DrawText(text, -1, &rc, iFlags);      
-	  SelectObject(dc, oldFont);
-	  delete []text;
-    }
-
-	LRESULT OnPaint(UINT, WPARAM wParam, LPARAM, BOOL&)
-	{
-		if(wParam != NULL) {
-         DoPaint((HDC)wParam);
-      }
-      else {
-         CPaintDC dc(m_hWnd);
-         DoPaint(dc.m_hDC);
-      }
-      return 0;
-	}
-
-	LRESULT OnSetFont(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
-	{
-		// UiMetrics owns this HFONT. Keep only the current borrowed handle and
-		// let the Static superclass update its own font state as well.
-		m_font = reinterpret_cast<HFONT>(wParam);
-		Invalidate();
-		bHandled = FALSE;
-		return 0;
-	}
-
-	void SetFont(HFONT pFont)
-	{
-		ATLASSERT(IsWindow());
-		::SendMessage(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(pFont), TRUE);
-	}
-
-	void SetEnabled(bool Enabled = true)
-	{
-		m_enabled = Enabled;
-		Invalidate();
-	}
-
-	BEGIN_MSG_MAP(CCustomStatic)
-		//MESSAGE_HANDLER(WM_CREATE, OnCreate)
-		MESSAGE_HANDLER(WM_SETFONT, OnSetFont)
-		MESSAGE_HANDLER(WM_PAINT, OnPaint)
-	END_MSG_MAP()
-};	
-
-class CTableToolbarsWindow: public CFrameWindowImpl<CTableToolbarsWindow>,
-		   public CUpdateUI<CTableToolbarsWindow>
-{
-public:
-	  BEGIN_UPDATE_UI_MAP(CTableToolbarsWindow)
-
-  END_UPDATE_UI_MAP()
-};
 
 // for MessageBox localization
 void HookSysDialogs();
@@ -212,58 +94,12 @@ public:
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
 	int			m_scriptsToolbarBaseImageCount;
 	CReBarCtrl		m_rebar;			// toolbars
-	HWND			m_hWndLinksBar = NULL;
-	HWND			m_hWndTableBar = NULL;
-	HWND			m_hWndTableBar2 = NULL;
-	CComboBox		m_id_box;
-	CComboBox		m_href_box;
-	CComboBox		m_image_title_box;
-	CCustomEdit		m_image_title; // paragraph ID
-	CCustomEdit		m_id; // paragraph ID
-	CCustomEdit		m_href; // link's href
+	ContextAttributeBars m_contextAttributeBars;
 	CWindow			m_source; // source editor
 	WNDPROC			m_source_window_proc;
 	XmlMatchedTagsState m_xml_matched_tags_state;
 	//bool			m_save_sp_mode;
-
-  CComboBox		  m_section_box;
-  CCustomEdit	  m_section;	// ID ??? <section>
-  // ???????? ?????? ??????
-  CComboBox		  m_id_table_id_box;
-  CCustomEdit	  m_id_table_id;	  // Table ID
-  CComboBox		  m_id_table_box;
-  CCustomEdit	  m_id_table;		  // ID
-  CComboBox		  m_styleT_table_box;
-  CCustomEdit	  m_styleT_table;     // style ??? <table>
-  CComboBox		  m_style_table_box;
-  CCustomEdit	  m_style_table;      // style
-  CComboBox		  m_colspan_table_box;
-  CCustomEdit	  m_colspan_table;    // colspan
-  CComboBox		  m_rowspan_table_box;
-  CCustomEdit	  m_rowspan_table;    // rowspan
-  CComboBox		  m_align_table_box;
-  CCustomEdit	  m_alignTR_table;    // align ??? <tr>
-  CComboBox		  m_alignTR_table_box;
-  CCustomEdit	  m_align_table;      // align
-  CComboBox		  m_valign_table_box;
-  CCustomEdit	  m_valign_table;     // valign
-
   CRecentDocumentList	  m_mru; // MRU list
-
-  CCustomStatic   m_id_caption;
-  CCustomStatic   m_href_caption;
-  CCustomStatic   m_section_id_caption;
-  CCustomStatic   m_image_title_caption;
-  CCustomStatic   m_table_id_caption;
-  CCustomStatic   m_table_style_caption;
-  CCustomStatic   m_id_table_caption;
-  CCustomStatic   m_style_caption;
-  CCustomStatic   m_colspan_caption;
-  CCustomStatic   m_rowspan_caption;
-  CCustomStatic   m_tr_allign_caption;
-  CCustomStatic   m_th_allign_caption;
-  CCustomStatic   m_valign_caption;  
-
   FB::Doc		  *m_doc; // currently open document
 	DocumentSession m_document_session;
   DWORD			  m_last_tree_update;
@@ -949,17 +785,17 @@ public:
 		{
 			m_ignore_cb_changes = true;
 
-			CString str(U::GetWindowText(m_href));
+			CString str(U::GetWindowText(m_contextAttributeBars.HrefEdit()));
 
-			m_href_box.ResetContent();
-			m_href.SetWindowText(str);
-			m_href.SetSel(0, str.GetLength() + 1);
+			m_contextAttributeBars.HrefBox().ResetContent();
+			m_contextAttributeBars.HrefEdit().SetWindowText(str);
+			m_contextAttributeBars.HrefEdit().SetSel(0, str.GetLength() + 1);
 			m_ignore_cb_changes = false;
 
 			if(m_cb_last_images)
-				m_doc->BinIDsToComboBox(m_href_box);
+				m_doc->BinIDsToComboBox(m_contextAttributeBars.HrefBox());
 			else
-				m_doc->ParaIDsToComboBox(m_href_box); 
+				m_doc->ParaIDsToComboBox(m_contextAttributeBars.HrefBox());
 			m_cb_updated = true;
 		}
 

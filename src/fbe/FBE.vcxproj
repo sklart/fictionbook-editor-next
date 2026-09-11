@@ -228,6 +228,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="ArchiveEntryPicker.cpp" />
     <ClCompile Include="UpdateVersion.cpp" />
 	<ClCompile Include="UiMetrics.cpp" />
+	<ClCompile Include="ui\ContextAttributeBars.cpp" />
+	<ClCompile Include="ui\ContextAttributeControls.cpp" />
     <ClCompile Include="apputils.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -469,6 +471,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="toolbars\ToolbarFactory.h" />
 	<ClInclude Include="toolbars\TableToolbarCommands.h" />
 	<ClInclude Include="UiMetrics.h" />
+	<ClInclude Include="ui\ContextAttributeBars.h" />
+	<ClInclude Include="ui\ContextAttributeControls.h" />
     <ClInclude Include="MemProtocol.h" />
     <ClInclude Include="ModelessDialog.h" />
     <ClInclude Include="SettingsAdvancedPage.h" />

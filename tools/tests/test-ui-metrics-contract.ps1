@@ -8,6 +8,9 @@ $metricsHeader = Get-Content -LiteralPath (Join-Path $root 'src\fbe\UiMetrics.h'
 $metricsSource = Get-Content -LiteralPath (Join-Path $root 'src\fbe\UiMetrics.cpp') -Raw
 $mainFrame = Get-Content -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp') -Raw
 $mainFrameHeader = Get-Content -LiteralPath (Join-Path $root 'src\fbe\mainfrm.h') -Raw
+$contextControls = Get-Content -LiteralPath (Join-Path $root 'src\fbe\ui\ContextAttributeControls.h') -Raw
+$contextControlsSource = Get-Content -LiteralPath (Join-Path $root 'src\fbe\ui\ContextAttributeControls.cpp') -Raw
+$contextBars = Get-Content -LiteralPath (Join-Path $root 'src\fbe\ui\ContextAttributeBars.cpp') -Raw
 $toolbarFactory = Get-Content -LiteralPath (Join-Path $root 'src\fbe\toolbars\ToolbarFactory.cpp') -Raw
 
 function Require([string]$Text, [string]$Pattern, [string]$Description) {
@@ -25,16 +28,16 @@ Require $toolbarFactory 'TB_SETBITMAPSIZE[^\r\n]*MAKELONG\(24, 24\)' 'fixed 24x2
 Require $toolbarFactory 'TB_SETBUTTONSIZE[^\r\n]*toolbarData->width \+ 7, toolbarData->height \+ 7' 'compact pre-metrics command-toolbar button geometry'
 Require $toolbarFactory 'AutoSizeToolbar\(window\)' 'command-toolbar autosize'
 Require $mainFrame 'm_MenuBar\.AttachMenu\(GetMenu\(\)\);[\s\S]{0,200}UiMetrics::MenuFont\(\)' 'menu font applied after AttachMenu'
-Require $mainFrame 'SetDialogFontForToolbarRow\(m_hWndLinksBar\);[\s\S]{0,500}WM_GETFONT' 'links row receives DialogFont before WM_GETFONT'
-Require $mainFrame 'SetDialogFontForToolbarRow\(m_hWndTableBar\);' 'first table row receives DialogFont'
-Require $mainFrame 'SetDialogFontForToolbarRow\(m_hWndTableBar2\);' 'second table row receives DialogFont'
-Require $mainFrameHeader 'LRESULT\s+OnSetFont\([^\)]*WPARAM wParam[^\)]*BOOL& bHandled\)' 'CCustomStatic WM_SETFONT handler'
-Require $mainFrameHeader 'm_font\s*=\s*reinterpret_cast<HFONT>\(wParam\)' 'CCustomStatic updates its borrowed font handle'
-Require $mainFrameHeader 'MESSAGE_HANDLER\(WM_SETFONT, OnSetFont\)' 'CCustomStatic WM_SETFONT message map'
-Require $mainFrameHeader 'bHandled\s*=\s*FALSE' 'CCustomStatic chains WM_SETFONT to the Static superclass'
-Require $mainFrameHeader 'SendMessage\(m_hWnd, WM_SETFONT' 'CCustomStatic SetFont uses the WM_SETFONT path'
-Require $mainFrameHeader 'GetSysColorBrush\(COLOR_BTNFACE\)' 'attribute captions paint an opaque system toolbar background'
-Require $mainFrame 'st\.Create\(toolbarHwnd, rect, NULL, WS_CHILD \| WS_VISIBLE \| SS_CENTER \| SS_CENTERIMAGE \| SS_NOPREFIX, 0, IDC_ID\)' 'attribute captions are opaque child controls rather than transparent overlays'
-Require $mainFrame 'st\.SetFont\(UiMetrics::DialogFont\(\)' 'attribute captions explicitly use the dialog font'
+Require $contextBars 'SetDialogFontForToolbarRow\(m_linksBar\)' 'links row receives DialogFont'
+Require $contextBars 'SendMessage\(m_linksBar, WM_GETFONT' 'links row obtains its configured font'
+Require $contextBars 'SetDialogFontForToolbarRow\(m_tableBar\);' 'first table row receives DialogFont'
+Require $contextBars 'SetDialogFontForToolbarRow\(m_tableBar2\);' 'second table row receives DialogFont'
+Require $contextControls 'LRESULT\s+OnSetFont\([^\)]*WPARAM wParam[^\)]*BOOL& bHandled\)' 'CCustomStatic WM_SETFONT handler'
+Require $contextControlsSource 'm_font\s*=\s*reinterpret_cast<HFONT>\(wParam\)' 'CCustomStatic updates its borrowed font handle'
+Require $contextControls 'MESSAGE_HANDLER\(WM_SETFONT, OnSetFont\)' 'CCustomStatic WM_SETFONT message map'
+Require $contextControlsSource 'bHandled\s*=\s*FALSE' 'CCustomStatic chains WM_SETFONT to the Static superclass'
+Require $contextControlsSource 'SendMessage\(m_hWnd, WM_SETFONT' 'CCustomStatic SetFont uses the WM_SETFONT path'
+Require $contextControlsSource 'GetSysColorBrush\(COLOR_BTNFACE\)' 'attribute captions paint an opaque system toolbar background'
+Require $mainFrame 'm_contextAttributeBars\.UpdateMetrics\(\)' 'context bars receive centralized DPI/font update'
 
 Write-Host 'UiMetrics and toolbar geometry contract passed.'
