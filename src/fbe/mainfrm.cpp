@@ -223,7 +223,6 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_FILE_SAVE, L"fbe.menu.idr_mainframe.file.save" },
 	{ ID_FILE_SAVE_AS, L"fbe.menu.idr_mainframe.file.save_as" },
 	{ ID_FILE_VALIDATE, L"fbe.menu.idr_mainframe.file.validate" },
-	{ ID_FILE_MRU_FIRST, L"fbe.menu.idr_mainframe.recent.empty" },
 	{ ID_APP_EXIT, L"fbe.menu.idr_mainframe.file.exit" },
 	{ ID_EDIT_UNDO, L"fbe.menu.idr_mainframe.edit.undo" },
 	{ ID_EDIT_REDO, L"fbe.menu.idr_mainframe.edit.redo" },
@@ -488,6 +487,15 @@ static void SetRuntimePlainMenuItemTextByPosition(HMENU menu, UINT position, LPC
 	::ModifyMenu(menu, position, MF_BYPOSITION | MF_STRING | (itemInfo.fState & (MFS_DISABLED | MFS_GRAYED)), itemInfo.wID, text);
 }
 
+// MRU command IDs are reused by real documents.  Its empty-state is therefore
+// owned by CRecentDocumentList, never by the general command-id localizer.
+static void RefreshMruEmptyStateText(CRecentDocumentList& mru)
+{
+	const CString text = FbeLoadRuntimeStringByKey(
+		L"fbe.menu.idr_mainframe.recent.empty", L"No Recent Files");
+	ATL::Checked::tcsncpy_s(mru.m_szNoEntries, _countof(mru.m_szNoEntries), text, _TRUNCATE);
+}
+
 static void ApplyRuntimeMenuCommandTexts(HMENU menu)
 {
 	if(menu == NULL)
@@ -502,6 +510,10 @@ static void ApplyRuntimeMenuCommandTexts(HMENU menu)
 
 		const UINT commandId = ::GetMenuItemID(menu, i);
 		if(commandId == static_cast<UINT>(-1) || commandId == 0 || commandId == IDCANCEL)
+			continue;
+		// These are dynamic command slots.  A non-empty MRU item must retain its
+		// document caption and ID_FILE_MRU_FIRST must remain executable.
+		if(commandId >= ID_FILE_MRU_FIRST && commandId <= ID_FILE_MRU_LAST)
 			continue;
 
 		LPCWSTR key = FindRuntimeMainFrameMenuCommandKey(commandId);
@@ -610,8 +622,6 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 			SetRuntimePlainMenuItemTextByPosition(importMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.import");
 		if(exportMenu != NULL && ::GetMenuItemID(exportMenu, 0) == IDCANCEL)
 			SetRuntimePlainMenuItemTextByPosition(exportMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.export");
-		if(recentMenu != NULL && ::GetMenuItemID(recentMenu, 0) == IDCANCEL)
-			SetRuntimePlainMenuItemTextByPosition(recentMenu, 0, L"fbe.menu.idr_mainframe.recent.empty");
 	}
 
 	HMENU scriptsMenu = scriptsPosition >= 0 ? ::GetSubMenu(menu, scriptsPosition) : NULL;
@@ -2256,6 +2266,7 @@ void CMainFrame::InitPlugins()
 
 	sub = ::GetSubMenu(file, 9);
 	m_mru.SetMenuHandle(sub);
+	RefreshMruEmptyStateText(m_mru);
 	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
 	if (DeploymentContext::RegistryPersistenceAllowed())
 		m_mru.ReadFromRegistry(_Settings.GetKeyPath());
@@ -3842,8 +3853,37 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		unsigned int occurrence = 0; DocumentLocation target; target.containerKind = DetectDocumentContainerKind(path); target.storagePath = path; target.entryPath = entry; target.entryOccurrence = FbeRecentDocuments::ParseArchiveMruUnsigned(occurrenceText, occurrence) ? occurrence : 0; target.documentType = DetectFictionBookFileType(target.entryPath);
 		WORD command = 0; const CString key = FbeRecentDocuments::ArchiveMruKey(target); for (int offset = 0; offset < count && offset <= ID_FILE_MRU_LAST - ID_FILE_MRU_FIRST; ++offset) { CString value; const WORD candidate = MruCommandId(offset); if (m_mru.GetFromList(candidate, value) && value == key) { command = candidate; break; } }
 		BOOL handled = FALSE; const bool reopened = command != 0 && OnFileOpenMRU(0, command, NULL, handled) == 0 && FbeRecentDocuments::SameArchiveMruIdentity(m_document_session.Location(), target);
-		CStringA report; report.Format("count=%d\nmenu_count=%d\norder=%d\nclean=%d\nempty=%d\ndisabled=%d\nraw=%d\nnumbered=%d\nduplicates=%d\nfolders=%d\nreopened=%d\n", count, menuCount, exactOrder, cleanMenu, emptyCaption, disabledCaption, rawCaption, numberedCaption, duplicateCaption, minimalFolderContexts, reopened); DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
-		::PostQuitMessage(count == 10 && menuCount == 10 && exactOrder && cleanMenu && reopened ? 0 : 1); return 0;
+		auto getMruItem = [&](UINT id, CString& caption, UINT& state) -> bool
+		{
+			const int position = FindMenuPositionByCommand(menu, id);
+			if (position < 0) return false;
+			wchar_t text[512] = {}; if (::GetMenuString(menu, position, text, _countof(text), MF_BYPOSITION) <= 0) return false;
+			MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_STATE;
+			if (!::GetMenuItemInfo(menu, position, TRUE, &item)) return false;
+			caption = text; state = item.fState; return true;
+		};
+		CString firstBefore, firstRussian; UINT firstBeforeState = 0, firstRussianState = 0;
+		CString firstKeyBefore; const bool firstMappedBefore = m_mru.GetFromList(ID_FILE_MRU_FIRST, firstKeyBefore);
+		const bool firstVisibleBefore = getMruItem(ID_FILE_MRU_FIRST, firstBefore, firstBeforeState);
+		_Settings.SetInterfaceLanguage(FBE_INTERFACE_LANGUAGE_RUSSIAN);
+		FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName()); FbeResetRuntimeLocalization(); RefreshLocalizedMainFrameUi();
+		const bool russianLocaleSelected = _Settings.GetInterfaceLocaleName() == L"ru-RU";
+		const CString russianLocalizedEmpty = FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.recent.empty", L"No Recent Files");
+		CString firstKeyRussian; const bool firstMappedRussian = m_mru.GetFromList(ID_FILE_MRU_FIRST, firstKeyRussian);
+		const bool firstVisibleRussian = getMruItem(ID_FILE_MRU_FIRST, firstRussian, firstRussianState);
+		const bool nonEmptyMruLocalized = firstMappedBefore && firstMappedRussian && firstKeyBefore == firstKeyRussian && firstVisibleBefore && firstVisibleRussian && firstBefore == firstRussian && firstRussian != m_mru.m_szNoEntries && (firstRussianState & (MFS_DISABLED | MFS_GRAYED)) == 0;
+		m_mru.m_arrDocs.RemoveAll();
+		RefreshMruEmptyStateText(m_mru); FbeRecentDocuments::RebuildMruMenu(m_mru);
+		CString russianEmpty; UINT russianEmptyState = 0; int russianEmptyCount = 0;
+		for (int index = 0; index < ::GetMenuItemCount(menu); ++index) { MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_ID; if (::GetMenuItemInfo(menu, index, TRUE, &item) && item.wID >= ID_FILE_MRU_FIRST && item.wID <= ID_FILE_MRU_LAST) ++russianEmptyCount; }
+		const bool russianEmptyOk = russianEmptyCount == 1 && !russianLocalizedEmpty.IsEmpty() && getMruItem(ID_FILE_MRU_FIRST, russianEmpty, russianEmptyState) && russianEmpty == russianLocalizedEmpty && (russianEmptyState & (MFS_DISABLED | MFS_GRAYED)) != 0;
+		_Settings.SetInterfaceLanguage(FBE_INTERFACE_LANGUAGE_ENGLISH);
+		FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName()); FbeResetRuntimeLocalization(); RefreshLocalizedMainFrameUi();
+		CString englishEmpty; UINT englishEmptyState = 0; int englishEmptyCount = 0;
+		for (int index = 0; index < ::GetMenuItemCount(menu); ++index) { MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_ID; if (::GetMenuItemInfo(menu, index, TRUE, &item) && item.wID >= ID_FILE_MRU_FIRST && item.wID <= ID_FILE_MRU_LAST) ++englishEmptyCount; }
+		const bool englishEmptyOk = englishEmptyCount == 1 && getMruItem(ID_FILE_MRU_FIRST, englishEmpty, englishEmptyState) && englishEmpty == L"No Recent Files" && (englishEmptyState & (MFS_DISABLED | MFS_GRAYED)) != 0;
+		CStringA report; report.Format("count=%d\nmenu_count=%d\norder=%d\nclean=%d\nempty=%d\ndisabled=%d\nraw=%d\nnumbered=%d\nduplicates=%d\nfolders=%d\nreopened=%d\nlocalized_nonempty=%d\nrussian_empty=%d\nrussian_locale=%d\nenglish_empty=%d\n", count, menuCount, exactOrder, cleanMenu, emptyCaption, disabledCaption, rawCaption, numberedCaption, duplicateCaption, minimalFolderContexts, reopened, nonEmptyMruLocalized, russianEmptyOk, russianLocaleSelected, englishEmptyOk); DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(count == 10 && menuCount == 10 && exactOrder && cleanMenu && reopened && nonEmptyMruLocalized && russianEmptyOk && englishEmptyOk ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"archive-recovery-create"))
 	{
@@ -5025,6 +5065,10 @@ void CMainFrame::RefreshLocalizedMainFrameUi()
 	HMENU menu = m_MenuBar.GetMenu();
 	if(menu != NULL)
 	{
+		// Update the only localized dynamic MRU string before rebuilding its
+		// menu.  RebuildMruMenu preserves captions of actual documents.
+		RefreshMruEmptyStateText(m_mru);
+		FbeRecentDocuments::RebuildMruMenu(m_mru);
 		ApplyRuntimeMainFrameMenuLocalization(menu);
 
 		HMENU fileMenu = ::GetSubMenu(menu, 0);

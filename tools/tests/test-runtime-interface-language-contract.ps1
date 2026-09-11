@@ -44,14 +44,16 @@ $requiredInterfaceLanguages = @(
 
 $settingsText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\Settings.cpp")
 $settingsHeaderText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\Settings.h")
+$settingsTypesText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\settings\SettingsTypes.h")
 $generalPageText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\settings\ui\SettingsGeneralPage.cpp")
 $sharedRuntimeHelperPath = Join-Path $repoRoot "src\common\RuntimeLocalizationCommon.h"
 $sharedRuntimeHelperText = Get-Content -Raw -LiteralPath $sharedRuntimeHelperPath
 $appCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\app-ui\catalog.json") -Encoding UTF8 | ConvertFrom-Json
 $appCatalogKeys = @($appCatalog.seedStrings.PSObject.Properties.Name)
+$mainMenuCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "localization\app-ui\fbe-idr-mainframe-menu.json") -Encoding UTF8 | ConvertFrom-Json
 
-if ($settingsHeaderText -notlike "*FBE_INTERFACE_LANGUAGE_AUTO*") {
-    throw "В Settings.h отсутствует специальное значение FBE_INTERFACE_LANGUAGE_AUTO для режима 'Определяется системой'."
+if ($settingsTypesText -notlike "*FBE_INTERFACE_LANGUAGE_AUTO*") {
+    throw "В SettingsTypes.h отсутствует специальное значение FBE_INTERFACE_LANGUAGE_AUTO для режима 'Определяется системой'."
 }
 if ($generalPageText -notlike "*FBE_INTERFACE_LANGUAGE_AUTO, IDS_LANG_SYSTEM_DEFAULT*") {
     throw "В списке языков настроек FBE отсутствует пункт 'Определяется системой'."
@@ -132,6 +134,22 @@ foreach ($key in @("fbe.hotkey.plugins.import", "fbe.hotkey.plugins.export", "fb
     if ($key -notin $appCatalogKeys) {
         throw "В app-ui catalog отсутствует runtime-ключ локализации toolbar/плагинов: $key"
     }
+}
+if ($mainMenuCatalog.strings.'fbe.menu.idr_mainframe.recent.empty'.targetId -ne '') {
+    throw 'MRU empty-state must not be bound to ID_FILE_MRU_FIRST in the shared menu-localization table.'
+}
+if ($mainMenuCatalog.strings.'fbe.menu.idr_mainframe.recent.empty'.translations.'ru-RU' -ne 'Пусто' -or
+    $mainMenuCatalog.strings.'fbe.menu.idr_mainframe.recent.empty'.translations.'en-US' -ne 'No Recent Files') {
+    throw 'MRU empty-state must provide the Russian and English runtime-localized captions.'
+}
+if ($mainFrameText -match '\{\s*ID_FILE_MRU_FIRST\s*,\s*L"fbe\.menu\.idr_mainframe\.recent\.empty"\s*\}') {
+    throw 'ID_FILE_MRU_FIRST must not be mapped by the shared runtime menu-localization bindings.'
+}
+if ($mainFrameText -notmatch 'RefreshMruEmptyStateText\(m_mru\);\s*FbeRecentDocuments::RebuildMruMenu\(m_mru\);') {
+    throw 'A live language switch must refresh the MRU empty-state before rebuilding the MRU menu.'
+}
+if ($mainFrameText -notmatch 'commandId >= ID_FILE_MRU_FIRST && commandId <= ID_FILE_MRU_LAST\)\s*continue;') {
+    throw 'ApplyRuntimeMenuCommandTexts must skip the dynamic MRU command range.'
 }
 
 $refreshMatch = [regex]::Match($mainFrameText, 'void\s+CMainFrame::RefreshLocalizedMainFrameUi\s*\(\s*\)\s*\{(?<body>.*?)\n\}', [System.Text.RegularExpressions.RegexOptions]::Singleline)

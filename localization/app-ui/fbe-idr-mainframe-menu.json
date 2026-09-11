@@ -219,10 +219,10 @@
       }
     },
     "fbe.menu.idr_mainframe.recent.empty": {
-      "kind": "MENUITEM",
-      "targetId": "ID_FILE_MRU_FIRST",
+      "kind": "VALUE",
+      "targetId": "",
       "translations": {
-        "en-US": "Empty",
+        "en-US": "No Recent Files",
         "ru-RU": "Пусто",
         "uk-UA": "Порожньо",
         "de-DE": "Leer",
