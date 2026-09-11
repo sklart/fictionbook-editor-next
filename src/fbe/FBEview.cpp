@@ -22,6 +22,7 @@
 #include "table/TableGrid.h"
 #include "table/TableStructuralEditor.h"
 #include "view/VisualDomNormalizer.h"
+#include "image/ImageDocumentInserter.h"
 #include <vector>
 
 using FbeTable::Grid;
@@ -5435,36 +5436,6 @@ bool CFBEView::SelectionHasTags(wchar_t* elem)
 	return false;
 }
 
-BSTR CFBEView::PrepareDefaultId(const CString& filename){
-
-    CString _filename = U::Transliterate(filename);
-	// prepare a default id
-	int cp = _filename.ReverseFind(_T('\\'));
-	if (cp < 0)
-		cp = 0;
-	else
-		++cp;
-	CString   newid;
-	TCHAR	    *ncp=newid.GetBuffer(_filename.GetLength()-cp);
-	int	    newlen=0;
-	while (cp<_filename.GetLength()) {
-		TCHAR   c=_filename[cp];
-		if ((c>=_T('0') && c<=_T('9')) ||
-			(c>=_T('A') && c<=_T('Z')) ||
-			(c>=_T('a') && c<=_T('z')) ||
-			c==_T('_') || c==_T('-') || c==_T('.'))
-			ncp[newlen++]=c;
-		++cp;
-	}
-	newid.ReleaseBuffer(newlen);
-	if (!newid.IsEmpty() && !(
-		(newid[0]>=_T('A') && newid[0]<=_T('Z')) ||
-		(newid[0]>=_T('a') && newid[0]<=_T('z')) ||
-		newid[0]==_T('_')))
-		newid.Insert(0,_T('_'));
-	return newid.AllocSysString();
-}
-
 void CFBEView::ResetTableGridBuildCountForTest()
 {
 	FbeTable::GridDiagnostics::ResetBuildCount();
@@ -5535,43 +5506,9 @@ LRESULT CFBEView::OnTableMakeNormalCells(WORD, WORD, HWND, BOOL&)
 HRESULT CFBEView::AddImportedBinary(const BYTE* bytes, size_t size, const CString& logicalFileName,
 	const CString& mimeType, _variant_t* checkedId)
 {
-	if (!bytes || !size || size > ULONG_MAX)
-		return E_INVALIDARG;
-	_variant_t args[4];
-	SAFEARRAY* data = SafeArrayCreateVector(VT_UI1, 0, static_cast<ULONG>(size));
-	if (!data)
-		return E_OUTOFMEMORY;
-	void* raw = NULL;
-	HRESULT hr = SafeArrayAccessData(data, &raw);
-	if (FAILED(hr)) {
-		SafeArrayDestroy(data);
-		return hr;
-	}
-	memcpy(raw, bytes, size);
-	SafeArrayUnaccessData(data);
-	V_ARRAY(&args[0]) = data;
-	V_VT(&args[0]) = VT_ARRAY | VT_UI1;
-	V_BSTR(&args[1]) = mimeType.AllocSysString();
-	V_VT(&args[1]) = VT_BSTR;
-	V_BSTR(&args[2]) = PrepareDefaultId(logicalFileName);
-	V_VT(&args[2]) = VT_BSTR;
-	// apiAddBinary's first argument is a real filesystem path, not the FB2
-	// binary name.  Converted imports only have the latter, so force dimension
-	// discovery from the bytes rather than accidentally resolving a same-named
-	// file in the process working directory.
-	V_BSTR(&args[3]) = ::SysAllocString(L"");
-	V_VT(&args[3]) = VT_BSTR;
-	CComDispatchDriver body(Script());
-	_variant_t localId;
-	hr = body.InvokeN(L"apiAddBinary", args, 4, &localId);
-	if (FAILED(hr))
-		return hr;
-	// apiAddBinary incrementally adds dimensions for the new image.  Refresh
-	// only the lists; OnBinaryChange rebuilds every image and is reserved for
-	// edits to existing binary properties.
-	hr = body.Invoke0(L"FillCoverList");
-	if (SUCCEEDED(hr) && checkedId)
-		*checkedId = localId;
+	FbeImage::ImageInsertionResult result;
+	const HRESULT hr = FbeImage::AddImportedBinary(Script(), bytes, size, logicalFileName, mimeType, &result);
+	if (SUCCEEDED(hr) && checkedId) *checkedId = result.binaryId;
 	return hr;
 }
 
@@ -5593,16 +5530,8 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 	if (FAILED(hr)) { if (!error.IsEmpty()) ::MessageBox(m_hWnd, error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
 	try
 	{
-		CComDispatchDriver body(Script());
-		_variant_t checkedId;
-		hr = AddImportedBinary(imported.data.data(), imported.data.size(), imported.logicalFileName, imported.mimeType, &checkedId);
-		if (FAILED(hr)) { U::ReportError(hr); return; }
-
-		_variant_t check(false);
-		if (bInline)
-			hr = body.Invoke2(L"InsInlineImage", &check, &checkedId);
-		else
-			hr = body.Invoke2(L"InsImage", &check, &checkedId);
+		hr = FbeImage::InsertImportedImage(Script(), imported.data.data(), imported.data.size(), imported.logicalFileName, imported.mimeType,
+			bInline ? FbeImage::ImagePlacement::Inline : FbeImage::ImagePlacement::Block);
 		if (FAILED(hr))
 			U::ReportError(hr);
 

@@ -45,6 +45,14 @@
       <UniqueIdentifier>{C82E52DA-D7B2-4FEE-8A6A-10195D1CF424}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
     </Filter>
+    <Filter Include="Source Files\Image">
+      <UniqueIdentifier>{6AFD3D43-58E9-4A9D-8278-43F576F877B4}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Image">
+      <UniqueIdentifier>{C7B2C956-39F1-4D16-B711-874F3B969C57}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
     <Filter Include="Source Files\Search">
       <UniqueIdentifier>{1128c08a-cd1e-4a38-a38b-2d3d1dcb3d99}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
@@ -140,6 +148,7 @@
     </ClCompile>
     <ClCompile Include="table\TableGrid.cpp"><Filter>Source Files\Table</Filter></ClCompile>
     <ClCompile Include="table\TableStructuralEditor.cpp"><Filter>Source Files\Table</Filter></ClCompile>
+    <ClCompile Include="image\ImageDocumentInserter.cpp"><Filter>Source Files\Image</Filter></ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="archive\ArchiveDocumentResolver.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -343,6 +352,7 @@
     <ClInclude Include="FBEview.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="image\ImageDocumentInserter.h"><Filter>Header Files\Image</Filter></ClInclude>
     <ClInclude Include="FindResultsPane.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="GLLogo.h">
       <Filter>Header Files</Filter>

@@ -682,7 +682,6 @@ public:
 	int GlobalReplace(MSHTML::IHTMLElementPtr elem = NULL, CString cntTag = L"P");
 	int ToolWordsGlobalReplace(MSHTML::IHTMLElementPtr fbw_body, int* pIndex = NULL, int* globIndex = NULL, bool find = false, CString cntTag = L"P");
 
-	BSTR PrepareDefaultId(const CString& filename);
 	// Shared DOM adapter for document-level binary insertion and editor commands.
 	// ImageImport deliberately stays independent of MSHTML and SAFEARRAYs.
 	HRESULT AddImportedBinary(const BYTE* data, size_t size, const CString& logicalFileName,

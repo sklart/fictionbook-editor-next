@@ -11,6 +11,7 @@ function Assert-True {
 $importSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\ImageImport.cpp') -Raw
 $docSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBDoc.cpp') -Raw
 $viewSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBEview.cpp') -Raw
+$inserterSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\image\ImageDocumentInserter.cpp') -Raw
 $frameSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\mainfrm.cpp') -Raw
 $settingsDialogSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\settings\ui\SettingsImagesPage.cpp') -Raw
 $projectSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBE.vcxproj') -Raw
@@ -21,7 +22,7 @@ $nativeRunner = Get-Content -LiteralPath (Join-Path $RepoRoot 'tools\tests\test-
 $mainJsSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'runtime\main.js') -Raw
 $apiAddBinarySource = [regex]::Match($mainJsSource, 'function apiAddBinary\([\s\S]*?\r?\n}\r?\n\r?\nfunction GetImageData').Value
 $binaryControlsSource = [regex]::Match($mainJsSource, 'function BuildBinaryControls\([\s\S]*?\r?\n}\r?\n\r?\nfunction SaveBinary').Value
-$addImportedBinarySource = [regex]::Match($viewSource, 'HRESULT CFBEView::AddImportedBinary\([\s\S]*?\r?\n}\r?\n\r?\n// images').Value
+$addImportedBinarySource = $inserterSource
 
 foreach ($format in @('Jpeg', 'Png', 'Webp', 'Jp2', 'J2k', 'Tiff', 'Bmp', 'Gif', 'Heif')) {
     Assert-True ($importSource -match ('SourceFormat::' + $format)) "Отсутствует поддержка сигнатуры $format."
@@ -52,7 +53,7 @@ Assert-True ($importSource -match 'StartupTrace::Event\(L"image-import"') 'Ус�
 Assert-True ($importSource -match 'StartupTrace::HResult\(L"image-import"') 'Ошибка импорта должна оставлять диагностический trace.'
 Assert-True ($importSource -notmatch 'CreateFile.*TEMP|GetTempPath|dwebp\.exe|opj_decompress') 'Импорт не должен использовать временные файлы или внешние конвертеры.'
 Assert-True ($docSource -match 'AddBinaryData') 'Doc должен принимать готовые байты изображения.'
-Assert-True ($viewSource -match 'PrepareDefaultId\(logicalFileName\)') 'ID должен строиться по целевому имени.'
+Assert-True ($inserterSource -match 'MakeId\(name\)') 'ID должен строиться по целевому имени.'
 Assert-True ($viewSource -match 'AddImportedBinary') 'Добавление binary должно использовать общий DOM adapter.'
 Assert-True ($binaryControlsSource -match 'GetImageDimsByPath\(fullpath\)' -and $binaryControlsSource -match 'if\(dims == ""\) dims = window\.external\.GetImageDimsByData\(data\)') 'Binary controls должны получать размеры из data, если path отсутствует или не дал результата.'
 Assert-True ($apiAddBinarySource -match 'ImagesInfo\.push\(ImageInfo\)') 'apiAddBinary должен инкрементально добавлять dimensions нового изображения в ImagesInfo.'
@@ -62,7 +63,7 @@ Assert-True ($addImportedBinarySource -notmatch 'body\.Invoke0\(L"OnBinaryChange
 Assert-True ($addImportedBinarySource -match 'body\.Invoke0\(L"FillCoverList"\)') 'После добавления binary должны обновляться cover/image lists.'
 Assert-True ($mainJsSource -match 'function OnBinaryChange\(\)[\s\S]*?RebuildImagesInfo\(\);\s*FillLists\(\);' -and $mainJsSource -match 'function RebuildImagesInfo\(\)') 'OnBinaryChange должен сохранять полную пересинхронизацию для изменения существующих binary.'
 Assert-True ($viewSource -match 'ImportImageForFb2') 'Вставка изображения должна использовать общий импортёр.'
-Assert-True ($viewSource -match 'body\.Invoke2\(L"InsImage"' -and $viewSource -match 'body\.Invoke2\(L"InsInlineImage"') 'Новый binary должен вставляться существующими путями обычной и inline-картинки.'
+Assert-True ($inserterSource -match 'InsImage' -and $inserterSource -match 'InsInlineImage') 'Новый binary должен вставляться существующими путями обычной и inline-картинки.'
 Assert-True ($frameSource -match 'ImportBinary\(fileName') 'Пакетный импорт должен продолжать обработку файлов.'
 Assert-True ($frameSource -match 'batch_summary') 'Пакетный импорт должен формировать единый итоговый отчёт.'
 Assert-True ($frameSource -match 'else\s+continue;') 'Отказ от JPEG flatten в пакетном импорте не должен считаться ошибкой.'

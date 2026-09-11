@@ -169,6 +169,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-scripts-toolbar-customize-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structure-boundary.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-table-toolbar-contract.ps1")
@@ -210,6 +211,7 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Fault change-colspan-after-normalize
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-undo-failure-safety.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 } else {
     Write-Host "Table production checks are not run by default; use -RunTableTests or -FullValidation to enable them."
 }
