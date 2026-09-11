@@ -3,29 +3,282 @@
 #include "../utils/utils.h"
 #include <vector>
 
-namespace FbeTable
-{
-struct CellReplacement { MSHTML::IHTMLElementPtr active, inactive; };
-class CTableCellToggleUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
-public:
-	BEGIN_COM_MAP(CTableCellToggleUndoUnit) COM_INTERFACE_ENTRY(IOleUndoUnit) END_COM_MAP()
-	void Initialize(const std::vector<CellReplacement>& replacements) { m_replacements = replacements; }
-	STDMETHOD(Do)(IOleUndoManager* undoManager) { for (size_t i=0;i<m_replacements.size();++i) { CellReplacement& r=m_replacements[i]; if(!r.active||!r.inactive||!r.active->parentElement) return E_UNEXPECTED; MSHTML::IHTMLDOMNodePtr(r.active->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(r.inactive),MSHTML::IHTMLDOMNodePtr(r.active)); MSHTML::IHTMLElementPtr previous(r.active); r.active=r.inactive; r.inactive=previous; } return undoManager ? undoManager->Add(this) : S_OK; }
-	STDMETHOD(GetDescription)(BSTR* description) { if(!description) return E_POINTER; *description=::SysAllocString(L"toggle table header cell"); return *description ? S_OK : E_OUTOFMEMORY; }
-	STDMETHOD(GetUnitType)(CLSID* classId,LONG* id) { if(!classId||!id) return E_POINTER; *classId=CLSID_NULL;*id=0;return S_OK; }
-	STDMETHOD(OnNextAdd)(){return S_OK;}
-private: std::vector<CellReplacement> m_replacements;
-};
-static HRESULT AddUndo(MSHTML::IHTMLDocument2Ptr document, const std::vector<CellReplacement>& replacements) { IServiceProviderPtr sp(document); CComPtr<IOleUndoManager> manager; if(!sp||FAILED(sp->QueryService(SID_SOleUndoManager,IID_IOleUndoManager,(void**)&manager))) return E_NOINTERFACE; CComObject<CTableCellToggleUndoUnit>* unit=NULL; HRESULT hr=CComObject<CTableCellToggleUndoUnit>::CreateInstance(&unit); if(FAILED(hr))return hr; unit->AddRef();unit->Initialize(replacements);hr=manager->Add(unit);unit->Release();return hr; }
-static MSHTML::IHTMLElementPtr CreateCell(MSHTML::IHTMLDocument2Ptr document,const wchar_t* tag) { MSHTML::IHTMLElementPtr cell(document->createElement(tag)); cell->className=U::scmp(tag,L"TH")==0 ? L"th" : L"td"; return cell; }
-static const wchar_t* TagAt(const Grid& grid,long row,long column,const wchar_t* fallback) { long i=grid.At(row,column); return i>=0&&i<static_cast<long>(grid.cells.size())&&U::scmp(grid.cells[i].element->tagName,L"TH")==0 ? L"TH" : i>=0&&i<static_cast<long>(grid.cells.size()) ? L"TD" : fallback; }
-static void InsertCell(MSHTML::IHTMLDocument2Ptr document,const Grid& grid,long row,long column,const wchar_t* tag) { if(row<0||row>=static_cast<long>(grid.rows.size()))return; MSHTML::IHTMLElementPtr cell(CreateCell(document,tag));long before=-1;for(size_t i=0;i<grid.cells.size();++i)if(grid.cells[i].sourceRow==row&&grid.cells[i].startColumn>=column&&(before<0||grid.cells[i].startColumn<grid.cells[before].startColumn))before=static_cast<long>(i);if(before>=0)MSHTML::IHTMLElement2Ptr(grid.cells[before].element)->insertAdjacentElement(L"beforeBegin",cell);else MSHTML::IHTMLElement2Ptr(grid.rows[row])->insertAdjacentElement(L"beforeEnd",cell); }
-bool InsertRow(MSHTML::IHTMLDocument2Ptr document,const Grid& grid,long rowIndex,bool below,const wchar_t* fallbackTag) { if(!document||rowIndex<0||rowIndex>=static_cast<long>(grid.rows.size()))return false;long boundary=rowIndex+(below?1:0);std::vector<bool> expanded(grid.cells.size(),false);MSHTML::IHTMLElementPtr newRow(document->createElement(L"TR"));newRow->className=L"tr";for(long col=0;col<grid.columns;++col){long above=grid.At(boundary-1,col),under=grid.At(boundary,col);if(above>=0&&above==under&&!expanded[above]){SetSpan(grid.cells[above].element,L"fbrowspan",L"rowspan",grid.cells[above].rowspan+1);expanded[above]=true;}else if(!(above>=0&&above==under))MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(L"beforeEnd",CreateCell(document,TagAt(grid,boundary-1,col,fallbackTag)));}MSHTML::IHTMLElement2Ptr(grid.rows[rowIndex])->insertAdjacentElement(below?L"afterEnd":L"beforeBegin",newRow);return true; }
-bool DeleteRow(const Grid& grid,long rowIndex) { if(rowIndex<0||rowIndex>=static_cast<long>(grid.rows.size())||!grid.rows[rowIndex]->parentElement)return false;for(size_t i=0;i<grid.cells.size();++i){LogicalCell& current=const_cast<LogicalCell&>(grid.cells[i]);if(current.sourceRow<rowIndex&&current.sourceRow+current.rowspan>rowIndex)SetSpan(current.element,L"fbrowspan",L"rowspan",current.rowspan-1);else if(current.sourceRow==rowIndex&&current.rowspan>1&&rowIndex+1<static_cast<long>(grid.rows.size())){SetSpan(current.element,L"fbrowspan",L"rowspan",current.rowspan-1);long before=-1;for(size_t j=0;j<grid.cells.size();++j)if(grid.cells[j].sourceRow==rowIndex+1&&grid.cells[j].startColumn>=current.startColumn&&(before<0||grid.cells[j].startColumn<grid.cells[before].startColumn))before=static_cast<long>(j);if(before>=0)MSHTML::IHTMLElement2Ptr(grid.cells[before].element)->insertAdjacentElement(L"beforeBegin",current.element);else MSHTML::IHTMLElement2Ptr(grid.rows[rowIndex+1])->insertAdjacentElement(L"beforeEnd",current.element);}}MSHTML::IHTMLDOMNodePtr(grid.rows[rowIndex]->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(grid.rows[rowIndex]));return true; }
-bool InsertColumn(MSHTML::IHTMLDocument2Ptr document,const Grid& grid,long selectedCell,bool before,const wchar_t* fallbackTag) { if(!document||selectedCell<0||selectedCell>=static_cast<long>(grid.cells.size()))return false;long column=grid.cells[selectedCell].startColumn+(before?0:grid.cells[selectedCell].colspan);std::vector<bool> expanded(grid.cells.size(),false);for(long row=0;row<static_cast<long>(grid.rows.size());++row){long left=grid.At(row,column-1),right=grid.At(row,column);if(left>=0&&left==right&&!expanded[left]){SetSpan(grid.cells[left].element,L"fbcolspan",L"colspan",grid.cells[left].colspan+1);expanded[left]=true;}else InsertCell(document,grid,row,column,TagAt(grid,row,before?column:column-1,fallbackTag));}return true; }
-bool DeleteColumn(const Grid& grid,long column) { if(column<0||column>=grid.columns)return false;std::vector<bool> handled(grid.cells.size(),false);for(long row=0;row<static_cast<long>(grid.rows.size());++row){long owner=grid.At(row,column);if(owner<0||handled[owner])continue;handled[owner]=true;if(grid.cells[owner].colspan>1)SetSpan(grid.cells[owner].element,L"fbcolspan",L"colspan",grid.cells[owner].colspan-1);else MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element->parentElement)->removeChild(MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element));}return true; }
-static const wchar_t* const kAttrs[]={L"id",L"style",L"fbstyle",L"colspan",L"fbcolspan",L"rowspan",L"fbrowspan",L"align",L"fbalign",L"valign",L"fbvalign"};
-static void CopyAttrs(const MSHTML::IHTMLElementPtr& from,const MSHTML::IHTMLElementPtr& to){for(size_t i=0;i<_countof(kAttrs);++i){_variant_t value=from->getAttribute(kAttrs[i],0);if(value.vt!=VT_NULL&&value.vt!=VT_EMPTY)to->setAttribute(kAttrs[i],value,0);} MSHTML::IHTMLStylePtr sourceStyle(from ? from->style : MSHTML::IHTMLStylePtr()), destinationStyle(to ? to->style : MSHTML::IHTMLStylePtr()); if(sourceStyle&&destinationStyle){_bstr_t cssText(sourceStyle->cssText);if(cssText.length())destinationStyle->cssText=(const wchar_t*)cssText;}}
-bool ReplaceCells(MSHTML::IHTMLDocument2Ptr document,const std::vector<MSHTML::IHTMLElementPtr>& cells,const wchar_t* target){std::vector<CellReplacement> replacements;for(size_t i=0;i<cells.size();++i){if(!cells[i]||U::scmp(cells[i]->tagName,target)==0)continue;MSHTML::IHTMLElementPtr replacement(CreateCell(document,target));replacement->innerHTML=cells[i]->innerHTML;CopyAttrs(cells[i],replacement);MSHTML::IHTMLDOMNodePtr(cells[i]->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement),MSHTML::IHTMLDOMNodePtr(cells[i]));CellReplacement pair={replacement,cells[i]};replacements.push_back(pair);}if(replacements.empty())return false;HRESULT hr=AddUndo(document,replacements);if(SUCCEEDED(hr))return true;for(size_t i=replacements.size();i>0;--i){CellReplacement& pair=replacements[i-1];if(pair.active&&pair.active->parentElement)MSHTML::IHTMLDOMNodePtr(pair.active->parentElement)->replaceChild(MSHTML::IHTMLDOMNodePtr(pair.inactive),MSHTML::IHTMLDOMNodePtr(pair.active));}_com_issue_error(hr);return false;}
-bool ToggleHeaderCell(MSHTML::IHTMLDocument2Ptr document,const MSHTML::IHTMLElementPtr& cell){if(!cell||!FindTableElement(cell))return false;std::vector<MSHTML::IHTMLElementPtr> one(1,cell);return ReplaceCells(document,one,U::scmp(cell->tagName,L"TH")==0?L"TD":L"TH");}
+namespace FbeTable {
+static void InjectTestFaultAfterMutation() {
+  wchar_t testMode[2] = {};
+  if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode,
+                               _countof(testMode)) != 1 ||
+      testMode[0] != L'1')
+    return;
+
+  wchar_t fault[64] = {};
+  if (::GetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", fault,
+                               _countof(fault)) == 0 ||
+      _wcsicmp(fault, L"table-structural-after-mutation") != 0)
+    return;
+
+  ::SetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", NULL);
+  _com_issue_error(E_FAIL);
 }
+
+struct CellReplacement {
+  MSHTML::IHTMLElementPtr active, inactive;
+};
+class CTableCellToggleUndoUnit : public CComObjectRootEx<CComSingleThreadModel>,
+                                 public IOleUndoUnit {
+public:
+  BEGIN_COM_MAP(CTableCellToggleUndoUnit)
+  COM_INTERFACE_ENTRY(IOleUndoUnit) END_COM_MAP() void Initialize(
+      const std::vector<CellReplacement> &replacements) {
+    m_replacements = replacements;
+  }
+  STDMETHOD(Do)(IOleUndoManager *undoManager) {
+    for (size_t i = 0; i < m_replacements.size(); ++i) {
+      CellReplacement &r = m_replacements[i];
+      if (!r.active || !r.inactive || !r.active->parentElement)
+        return E_UNEXPECTED;
+      MSHTML::IHTMLDOMNodePtr(r.active->parentElement)
+          ->replaceChild(MSHTML::IHTMLDOMNodePtr(r.inactive),
+                         MSHTML::IHTMLDOMNodePtr(r.active));
+      MSHTML::IHTMLElementPtr previous(r.active);
+      r.active = r.inactive;
+      r.inactive = previous;
+    }
+    return undoManager ? undoManager->Add(this) : S_OK;
+  }
+  STDMETHOD(GetDescription)(BSTR *description) {
+    if (!description)
+      return E_POINTER;
+    *description = ::SysAllocString(L"toggle table header cell");
+    return *description ? S_OK : E_OUTOFMEMORY;
+  }
+  STDMETHOD(GetUnitType)(CLSID *classId, LONG *id) {
+    if (!classId || !id)
+      return E_POINTER;
+    *classId = CLSID_NULL;
+    *id = 0;
+    return S_OK;
+  }
+  STDMETHOD(OnNextAdd)() { return S_OK; }
+
+private:
+  std::vector<CellReplacement> m_replacements;
+};
+static HRESULT AddUndo(MSHTML::IHTMLDocument2Ptr document,
+                       const std::vector<CellReplacement> &replacements) {
+  IServiceProviderPtr sp(document);
+  CComPtr<IOleUndoManager> manager;
+  if (!sp || FAILED(sp->QueryService(SID_SOleUndoManager, IID_IOleUndoManager,
+                                     (void **)&manager)))
+    return E_NOINTERFACE;
+  CComObject<CTableCellToggleUndoUnit> *unit = NULL;
+  HRESULT hr = CComObject<CTableCellToggleUndoUnit>::CreateInstance(&unit);
+  if (FAILED(hr))
+    return hr;
+  unit->AddRef();
+  unit->Initialize(replacements);
+  hr = manager->Add(unit);
+  unit->Release();
+  return hr;
+}
+MSHTML::IHTMLElementPtr CreateCell(MSHTML::IHTMLDocument2Ptr document,
+                                   const wchar_t *tag) {
+  MSHTML::IHTMLElementPtr cell(document->createElement(tag));
+  cell->className = U::scmp(tag, L"TH") == 0 ? L"th" : L"td";
+  return cell;
+}
+MSHTML::IHTMLElementPtr
+CreateRowLike(MSHTML::IHTMLDocument2Ptr document,
+              const MSHTML::IHTMLElementPtr &sourceRow) {
+  MSHTML::IHTMLElementPtr row(document->createElement(L"TR"));
+  row->className = L"tr";
+  std::vector<MSHTML::IHTMLElementPtr> cells;
+  GetDirectCells(sourceRow, cells);
+  for (size_t index = 0; index < cells.size(); ++index)
+    MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(
+        L"beforeEnd", CreateCell(document, cells[index]->tagName));
+  return row;
+}
+static const wchar_t *TagAt(const Grid &grid, long row, long column,
+                            const wchar_t *fallback) {
+  long i = grid.At(row, column);
+  return i >= 0 && i < static_cast<long>(grid.cells.size()) &&
+                 U::scmp(grid.cells[i].element->tagName, L"TH") == 0
+             ? L"TH"
+         : i >= 0 && i < static_cast<long>(grid.cells.size()) ? L"TD"
+                                                              : fallback;
+}
+static void InsertCell(MSHTML::IHTMLDocument2Ptr document, const Grid &grid,
+                       long row, long column, const wchar_t *tag) {
+  if (row < 0 || row >= static_cast<long>(grid.rows.size()))
+    return;
+  MSHTML::IHTMLElementPtr cell(CreateCell(document, tag));
+  long before = -1;
+  for (size_t i = 0; i < grid.cells.size(); ++i)
+    if (grid.cells[i].sourceRow == row && grid.cells[i].startColumn >= column &&
+        (before < 0 ||
+         grid.cells[i].startColumn < grid.cells[before].startColumn))
+      before = static_cast<long>(i);
+  if (before >= 0)
+    MSHTML::IHTMLElement2Ptr(grid.cells[before].element)
+        ->insertAdjacentElement(L"beforeBegin", cell);
+  else
+    MSHTML::IHTMLElement2Ptr(grid.rows[row])
+        ->insertAdjacentElement(L"beforeEnd", cell);
+}
+bool InsertRow(MSHTML::IHTMLDocument2Ptr document, const Grid &grid,
+               long rowIndex, bool below, const wchar_t *fallbackTag) {
+  if (!document || rowIndex < 0 ||
+      rowIndex >= static_cast<long>(grid.rows.size()))
+    return false;
+  long boundary = rowIndex + (below ? 1 : 0);
+  std::vector<bool> expanded(grid.cells.size(), false);
+  MSHTML::IHTMLElementPtr newRow(document->createElement(L"TR"));
+  newRow->className = L"tr";
+  for (long col = 0; col < grid.columns; ++col) {
+    long above = grid.At(boundary - 1, col), under = grid.At(boundary, col);
+    if (above >= 0 && above == under && !expanded[above]) {
+      SetSpan(grid.cells[above].element, L"fbrowspan", L"rowspan",
+              grid.cells[above].rowspan + 1);
+      expanded[above] = true;
+    } else if (!(above >= 0 && above == under))
+      MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(
+          L"beforeEnd",
+          CreateCell(document, TagAt(grid, boundary - 1, col, fallbackTag)));
+  }
+  MSHTML::IHTMLElement2Ptr(grid.rows[rowIndex])
+      ->insertAdjacentElement(below ? L"afterEnd" : L"beforeBegin", newRow);
+  InjectTestFaultAfterMutation();
+  return true;
+}
+bool DeleteRow(const Grid &grid, long rowIndex) {
+  if (rowIndex < 0 || rowIndex >= static_cast<long>(grid.rows.size()) ||
+      !grid.rows[rowIndex]->parentElement)
+    return false;
+  for (size_t i = 0; i < grid.cells.size(); ++i) {
+    const LogicalCell &current = grid.cells[i];
+    if (current.sourceRow < rowIndex &&
+        current.sourceRow + current.rowspan > rowIndex)
+      SetSpan(current.element, L"fbrowspan", L"rowspan", current.rowspan - 1);
+    else if (current.sourceRow == rowIndex && current.rowspan > 1 &&
+             rowIndex + 1 < static_cast<long>(grid.rows.size())) {
+      SetSpan(current.element, L"fbrowspan", L"rowspan", current.rowspan - 1);
+      long before = -1;
+      for (size_t j = 0; j < grid.cells.size(); ++j)
+        if (grid.cells[j].sourceRow == rowIndex + 1 &&
+            grid.cells[j].startColumn >= current.startColumn &&
+            (before < 0 ||
+             grid.cells[j].startColumn < grid.cells[before].startColumn))
+          before = static_cast<long>(j);
+      if (before >= 0)
+        MSHTML::IHTMLElement2Ptr(grid.cells[before].element)
+            ->insertAdjacentElement(L"beforeBegin", current.element);
+      else
+        MSHTML::IHTMLElement2Ptr(grid.rows[rowIndex + 1])
+            ->insertAdjacentElement(L"beforeEnd", current.element);
+    }
+  }
+  MSHTML::IHTMLDOMNodePtr(grid.rows[rowIndex]->parentElement)
+      ->removeChild(MSHTML::IHTMLDOMNodePtr(grid.rows[rowIndex]));
+  InjectTestFaultAfterMutation();
+  return true;
+}
+bool InsertColumn(MSHTML::IHTMLDocument2Ptr document, const Grid &grid,
+                  long selectedCell, bool before, const wchar_t *fallbackTag) {
+  if (!document || selectedCell < 0 ||
+      selectedCell >= static_cast<long>(grid.cells.size()))
+    return false;
+  long column = grid.cells[selectedCell].startColumn +
+                (before ? 0 : grid.cells[selectedCell].colspan);
+  std::vector<bool> expanded(grid.cells.size(), false);
+  for (long row = 0; row < static_cast<long>(grid.rows.size()); ++row) {
+    long left = grid.At(row, column - 1), right = grid.At(row, column);
+    if (left >= 0 && left == right && !expanded[left]) {
+      SetSpan(grid.cells[left].element, L"fbcolspan", L"colspan",
+              grid.cells[left].colspan + 1);
+      expanded[left] = true;
+    } else
+      InsertCell(document, grid, row, column,
+                 TagAt(grid, row, before ? column : column - 1, fallbackTag));
+  }
+  InjectTestFaultAfterMutation();
+  return true;
+}
+bool DeleteColumn(const Grid &grid, long column) {
+  if (column < 0 || column >= grid.columns)
+    return false;
+  std::vector<bool> handled(grid.cells.size(), false);
+  for (long row = 0; row < static_cast<long>(grid.rows.size()); ++row) {
+    long owner = grid.At(row, column);
+    if (owner < 0 || handled[owner])
+      continue;
+    handled[owner] = true;
+    if (grid.cells[owner].colspan > 1)
+      SetSpan(grid.cells[owner].element, L"fbcolspan", L"colspan",
+              grid.cells[owner].colspan - 1);
+    else
+      MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element->parentElement)
+          ->removeChild(MSHTML::IHTMLDOMNodePtr(grid.cells[owner].element));
+  }
+  InjectTestFaultAfterMutation();
+  return true;
+}
+static const wchar_t *const kAttrs[] = {
+    L"id",        L"style", L"fbstyle", L"colspan", L"fbcolspan", L"rowspan",
+    L"fbrowspan", L"align", L"fbalign", L"valign",  L"fbvalign"};
+static void CopyAttrs(const MSHTML::IHTMLElementPtr &from,
+                      const MSHTML::IHTMLElementPtr &to) {
+  for (size_t i = 0; i < _countof(kAttrs); ++i) {
+    _variant_t value = from->getAttribute(kAttrs[i], 0);
+    if (value.vt != VT_NULL && value.vt != VT_EMPTY)
+      to->setAttribute(kAttrs[i], value, 0);
+  }
+  MSHTML::IHTMLStylePtr sourceStyle(from ? from->style
+                                         : MSHTML::IHTMLStylePtr()),
+      destinationStyle(to ? to->style : MSHTML::IHTMLStylePtr());
+  if (sourceStyle && destinationStyle) {
+    _bstr_t cssText(sourceStyle->cssText);
+    if (cssText.length())
+      destinationStyle->cssText = (const wchar_t *)cssText;
+  }
+}
+bool ReplaceCells(MSHTML::IHTMLDocument2Ptr document,
+                  const std::vector<MSHTML::IHTMLElementPtr> &cells,
+                  const wchar_t *target) {
+  std::vector<CellReplacement> replacements;
+  for (size_t i = 0; i < cells.size(); ++i) {
+    if (!cells[i] || U::scmp(cells[i]->tagName, target) == 0)
+      continue;
+    MSHTML::IHTMLElementPtr replacement(CreateCell(document, target));
+    replacement->innerHTML = cells[i]->innerHTML;
+    CopyAttrs(cells[i], replacement);
+    MSHTML::IHTMLDOMNodePtr(cells[i]->parentElement)
+        ->replaceChild(MSHTML::IHTMLDOMNodePtr(replacement),
+                       MSHTML::IHTMLDOMNodePtr(cells[i]));
+    CellReplacement pair = {replacement, cells[i]};
+    replacements.push_back(pair);
+  }
+  if (replacements.empty())
+    return false;
+  HRESULT hr = AddUndo(document, replacements);
+  if (SUCCEEDED(hr))
+    return true;
+  for (size_t i = replacements.size(); i > 0; --i) {
+    CellReplacement &pair = replacements[i - 1];
+    if (pair.active && pair.active->parentElement)
+      MSHTML::IHTMLDOMNodePtr(pair.active->parentElement)
+          ->replaceChild(MSHTML::IHTMLDOMNodePtr(pair.inactive),
+                         MSHTML::IHTMLDOMNodePtr(pair.active));
+  }
+  _com_issue_error(hr);
+  return false;
+}
+bool ToggleHeaderCell(MSHTML::IHTMLDocument2Ptr document,
+                      const MSHTML::IHTMLElementPtr &cell) {
+  if (!cell || !FindTableElement(cell))
+    return false;
+  std::vector<MSHTML::IHTMLElementPtr> one(1, cell);
+  return ReplaceCells(document, one,
+                      U::scmp(cell->tagName, L"TH") == 0 ? L"TD" : L"TH");
+}
+} // namespace FbeTable

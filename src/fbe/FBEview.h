@@ -23,7 +23,6 @@
 
 extern CSettings _Settings;
 
-void BubbleUp(MSHTML::IHTMLDOMNode *node, const wchar_t *name);
 
 class CTableDlg : public CDialogImpl<CTableDlg>,
 	public CWinDataExchange<CTableDlg> {

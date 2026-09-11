@@ -21,6 +21,7 @@
 #include "RuntimeLocalization.h"
 #include "table/TableGrid.h"
 #include "table/TableStructuralEditor.h"
+#include "view/VisualDomNormalizer.h"
 #include <vector>
 
 using FbeTable::Grid;
@@ -42,11 +43,7 @@ static bool IsSecondSetExternalFaultEnabled()
 }
 
 // normalization helpers
-static void PackText(MSHTML::IHTMLElement2Ptr elem,MSHTML::IHTMLDocument2 *doc);
-static void KillDivs(MSHTML::IHTMLElement2Ptr elem);
-static void FixupParagraphs(MSHTML::IHTMLElement2Ptr elem);
-static void RelocateParagraphs(MSHTML::IHTMLDOMNode *node);
-static void KillStyles(MSHTML::IHTMLElement2Ptr elem);
+static void NotifyTableStructureChanged(HWND frame, HWND view);
 
 // IMarkupServices does not close an undo unit for us when a DOM call throws.
 // Keep structural edits paired so an error cannot poison the editor undo stack.
@@ -146,14 +143,6 @@ static void TraceSelectionContainerFailure(const wchar_t* comOperation, HRESULT 
 	}
 	StartupTrace::HResult(L"mshtml", L"SC100", result, details);
 }
-// A native table is a structural child of an FB2 visual DIV, just like a
-// paragraph or a nested DIV.  It must never be collected into an implicitly
-// created paragraph by PackText().
-static bool IsNativeTableBlockName(const _bstr_t& name)
-{
-	return U::scmp(name, L"TABLE") == 0;
-}
-
 static bool SelectTableCellRange(const MSHTML::IHTMLDocument2Ptr& document,
 	const MSHTML::IHTMLElementPtr& firstCell, const MSHTML::IHTMLElementPtr& lastCell)
 {
@@ -178,7 +167,6 @@ static bool SelectTableCellRange(const MSHTML::IHTMLDocument2Ptr& document,
 	catch (const _com_error&) { return false; }
 }
 
-static MSHTML::IHTMLElementPtr CreateTableCell(MSHTML::IHTMLDocument2Ptr document, const wchar_t* tagName);
 
 
 static void SetTableCellHighlight(const MSHTML::IHTMLElementPtr& cell, const wchar_t* color)
@@ -207,23 +195,6 @@ static void UpdateTableCellHighlights(std::vector<MSHTML::IHTMLElementPtr>& prev
 }
 
 
-static MSHTML::IHTMLElementPtr CreateTableCell(MSHTML::IHTMLDocument2Ptr document, const wchar_t* tagName)
-{
-	MSHTML::IHTMLElementPtr cell(document->createElement(tagName));
-	cell->className = U::scmp(tagName, L"TH") == 0 ? L"th" : L"td";
-	return cell;
-}
-
-static MSHTML::IHTMLElementPtr CreateTableRowLike(MSHTML::IHTMLDocument2Ptr document, const MSHTML::IHTMLElementPtr& sourceRow)
-{
-	MSHTML::IHTMLElementPtr row(document->createElement(L"TR"));
-	row->className = L"tr";
-	std::vector<MSHTML::IHTMLElementPtr> cells;
-	FbeTable::GetDirectCells(sourceRow, cells);
-	for (size_t index = 0; index < cells.size(); ++index)
-		MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"beforeEnd", CreateTableCell(document, cells[index]->tagName));
-	return row;
-}
 
 static CString GetLocalizedMainMenuText(UINT commandId, const wchar_t* fallback)
 {
@@ -704,28 +675,6 @@ static bool IsEmptyNode(MSHTML::IHTMLDOMNode *node) {
 	return false;
 }
 
-// Remove empty leaf nodes
-static void RemoveEmptyNodes(MSHTML::IHTMLDOMNode *node) {
-	if (node->nodeType!=1)
-		return;
-	_bstr_t nodeName(node->nodeName);
-	if (U::scmp(nodeName, L"TABLE") == 0 || U::scmp(nodeName, L"TBODY") == 0 ||
-		U::scmp(nodeName, L"TR") == 0 || U::scmp(nodeName, L"TD") == 0 || U::scmp(nodeName, L"TH") == 0)
-		return;
-
-	MSHTML::IHTMLDOMNodePtr cur(node->firstChild);
-	while (cur)
-	{
-		MSHTML::IHTMLDOMNodePtr next;
-		try { next = cur->nextSibling; } catch(...) { return; }
-
-		RemoveEmptyNodes(cur);
-		if(IsEmptyNode(cur))
-			cur->removeNode(VARIANT_TRUE);
-		cur=next;
-	}
-}
-
 // Find parent DIV
 static MSHTML::IHTMLElementPtr GetHP(MSHTML::IHTMLElementPtr hp)
 {
@@ -875,8 +824,8 @@ bool CFBEView::SplitContainer(bool fCheck)
 			elTitle->innerHTML = title.html.AllocSysString();
 
 			// Delete all containers from title
-			KillDivs(elTitle);
-			KillStyles(elTitle);
+			FbeVisualDom::KillDivs(elTitle);
+			FbeVisualDom::KillStyles(elTitle);
 		}
 
 		if(pre.html.Find(L"<P") == -1)
@@ -889,8 +838,8 @@ bool CFBEView::SplitContainer(bool fCheck)
 		pe->innerHTML = pre.html.AllocSysString();
 
 		// Ensure we have good html
-		FixupParagraphs(ne);
-		PackText(ne, Document());
+		FbeVisualDom::FixupParagraphs(ne);
+		FbeVisualDom::PackText(ne, Document());
 
 		peColl = pe->children;
 		if(peColl->length == 1)
@@ -937,19 +886,6 @@ bool CFBEView::SplitContainer(bool fCheck)
 	}
 
 	return false;
-}
-
-// cleaning up html
-static void KillDivs(MSHTML::IHTMLElement2Ptr elem) {
-	MSHTML::IHTMLElementCollectionPtr	  divs(elem->getElementsByTagName(L"DIV"));
-	while (divs->length>0)
-		MSHTML::IHTMLDOMNodePtr(divs->item(0L))->removeNode(VARIANT_FALSE);
-}
-
-static void KillStyles(MSHTML::IHTMLElement2Ptr elem) {
-	MSHTML::IHTMLElementCollectionPtr	  ps(elem->getElementsByTagName(L"P"));
-	for (long l=0;l<ps->length;++l)
-		CheckError(MSHTML::IHTMLElementPtr(ps->item(l))->put_className(NULL));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1171,144 +1107,9 @@ ok:
 	return fRet;
 }
 
-// move the paragraph up one level
-void MoveUp(bool fCopyFmt,MSHTML::IHTMLDOMNodePtr& node) {
-	MSHTML::IHTMLDOMNodePtr   parent(node->parentNode);
-	MSHTML::IHTMLElement2Ptr  elem(parent);
-
-	// clone parent (it can be A/EM/STRONG/SPAN)
-	if (fCopyFmt) {
-		MSHTML::IHTMLDOMNodePtr   clone(parent->cloneNode(VARIANT_FALSE));
-		while ((bool)node->firstChild)
-			clone->appendChild(node->firstChild);
-		node->appendChild(clone);
-	}
-
-	// clone parent once more and move siblings after node to it
-	if ((bool)node->nextSibling) {
-		MSHTML::IHTMLDOMNodePtr   clone(parent->cloneNode(VARIANT_FALSE));
-		while ((bool)node->nextSibling)
-			clone->appendChild(node->nextSibling);
-		elem->insertAdjacentElement(L"afterEnd",MSHTML::IHTMLElementPtr(clone));
-		if (U::scmp(parent->nodeName,L"P")==0)
-			MSHTML::IHTMLElement3Ptr(clone)->inflateBlock=VARIANT_TRUE;
-	}
-
-	// now move node to parent level, the tree may be in some weird state
-	node->removeNode(VARIANT_TRUE); // delete from tree
-	node=elem->insertAdjacentElement(L"afterEnd",MSHTML::IHTMLElementPtr(node));
-}
-
-void BubbleUp(MSHTML::IHTMLDOMNode *node,const wchar_t *name) {
-	MSHTML::IHTMLElement2Ptr	    elem(node);
-	MSHTML::IHTMLElementCollectionPtr elements(elem->getElementsByTagName(name));
-	long				    len=elements->length;
-	for (long i=0;i<len;++i) {
-		MSHTML::IHTMLDOMNodePtr	  ce(elements->item(i));
-		if (!(bool)ce)
-			break;
-		for (int ll=0;ce->parentNode!=node && ll<30;++ll)
-			MoveUp(true,ce);
-		MoveUp(false,ce);
-	}
-}
-
-#if (1)
-// split paragraphs containing BR elements
-static void   SplitBRs(MSHTML::IHTMLElement2Ptr elem) 
-{
-	CString text = MSHTML::IHTMLElementPtr(elem)->outerHTML;
-	if (text.Replace(L"<BR>", L"</P><P>") > 0)
-		MSHTML::IHTMLElementPtr(elem)->outerHTML = text.AllocSysString();
-}
-#else
-static void   SplitBRs(MSHTML::IHTMLElement2Ptr elem) {
-	MSHTML::IHTMLElementCollectionPtr BRs(elem->getElementsByTagName(L"BR"));
-	while (BRs->length>0) {
-		MSHTML::IHTMLDOMNodePtr	  ce(BRs->item(0L));
-		if (!(bool)ce)
-			break;
-		for (;;) {
-			MSHTML::IHTMLDOMNodePtr	parent(ce->parentNode);
-			if (!(bool)parent) // no parent? huh?
-				goto blowit;
-			_bstr_t	  name(parent->nodeName);
-			if (U::scmp(name,L"P")==0 || U::scmp(name,L"DIV")==0)
-				break;
-			if (U::scmp(name,L"BODY")==0)
-				goto blowit;
-			MoveUp(false,ce);
-		}
-		MoveUp(false,ce);
-blowit:
-		ce->removeNode(VARIANT_TRUE);
-	}
-}
-#endif
-
-// this sub should locate any nested paragraphs and bubble them up
-static void RelocateParagraphs(MSHTML::IHTMLDOMNode *node) {
-	if (node->nodeType!=1)
-		return;
-	// Native tables have a deliberately different content model: paragraphs
-	// belong to cells and must never be bubbled out during normalization.
-	_bstr_t nodeName(node->nodeName);
-	if (U::scmp(nodeName, L"TABLE") == 0 || U::scmp(nodeName, L"TBODY") == 0 ||
-		U::scmp(nodeName, L"TR") == 0 || U::scmp(nodeName, L"TD") == 0 || U::scmp(nodeName, L"TH") == 0)
-		return;
-
-	MSHTML::IHTMLDOMNodePtr   cur(node->firstChild);
-	while (cur) {
-		if (cur->nodeType==1) {
-			if (!U::scmp(cur->nodeName,L"P")) {
-				BubbleUp(cur,L"P");
-				BubbleUp(cur,L"DIV");
-			} else
-				RelocateParagraphs(cur);
-		}
-		cur=cur->nextSibling;
-	}
-}
-
 static bool IsStanza(MSHTML::IHTMLDOMNode *node) {
 	MSHTML::IHTMLElementPtr   elem(node);
 	return U::scmp(elem->className,L"stanza")==0;
-}
-
-// Move text content in DIV items to P elements.  Native TABLE is also a
-// structural DIV child and therefore stays outside automatically created P.
-static void PackText(MSHTML::IHTMLElement2Ptr elem, MSHTML::IHTMLDocument2* doc)
-{
-	MSHTML::IHTMLElementCollectionPtr elements(elem->getElementsByTagName(L"DIV"));
-	for(long i = 0; i < elements->length; ++i)
-	{
-		MSHTML::IHTMLDOMNodePtr div(elements->item(i));
-		if(U::scmp(MSHTML::IHTMLElementPtr(div)->className, L"image") == 0)
-			continue;
-		MSHTML::IHTMLDOMNodePtr cur(div->firstChild);
-		while((bool)cur)
-		{
-			_bstr_t cur_name(cur->nodeName);
-			if (U::scmp(cur_name, L"P") && U::scmp(cur_name, L"DIV") && !IsNativeTableBlockName(cur_name))
-			{
-				// create a paragraph from a run of non-structural nodes
-				MSHTML::IHTMLElementPtr newp(doc->createElement(L"P"));
-				MSHTML::IHTMLDOMNodePtr newn(newp);
-				cur->replaceNode(newn);
-				newn->appendChild(cur);
-				while ((bool)newn->nextSibling)
-				{
-					cur_name = newn->nextSibling->nodeName;
-					if (U::scmp(cur_name, L"P") == 0 || U::scmp(cur_name, L"DIV") == 0 || IsNativeTableBlockName(cur_name))
-						break;
-					newn->appendChild(newn->nextSibling);
-				}
-				cur = newn->nextSibling;
-			}
-			else
-				cur = cur->nextSibling;
-		}
-	}
 }
 
 static void FixupLinks(MSHTML::IHTMLDOMNode *dom) {
@@ -2297,19 +2098,7 @@ void  CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom) {
 	RemoveUnk(el,Document());
 
 	MergeEqualHTMLElements(el, Document());
-    // get rid of nested DIVs and Ps
-    RelocateParagraphs(el);
-    // delete empty nodes
-    
-	RemoveEmptyNodes(el);
-    // make sure text appears under Ps only
-    PackText(el,Document());
-    // get rid of nested Ps once more
-    RelocateParagraphs(el);
-    // convert BRs to separate paragraphs
-    SplitBRs(el);
-    // delete empty nodes again
-    RemoveEmptyNodes(el);
+	FbeVisualDom::NormalizeStructure(Document(), el);
     // fixup links
     FixupLinks(el);
 
@@ -2318,13 +2107,6 @@ void  CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom) {
   catch (_com_error& e) {
     U::ReportError(e);
   }
-}
-
-static void FixupParagraphs(MSHTML::IHTMLElement2Ptr elem)
-{
-	MSHTML::IHTMLElementCollectionPtr pp(elem->getElementsByTagName(L"P"));
-	for(long l = 0; l < pp->length; ++l)
-		MSHTML::IHTMLElement3Ptr(pp->item(l))->inflateBlock = VARIANT_TRUE;
 }
 
 LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
@@ -3752,7 +3534,7 @@ bool CFBEView::Init()
     return false;
   }
   StartupTrace::Event(L"webbrowser", L"WB280", L"FixupParagraphs");
-  FixupParagraphs(body2);
+	FbeVisualDom::FixupParagraphs(body2);
   if (m_normalize)
   {
     StartupTrace::Event(L"webbrowser", L"WB290", L"Normalize");
@@ -4433,11 +4215,10 @@ bool CFBEView::MoveTableCell(bool reverse)
 
 		if (!reverse && index + 1 == cells.size())
 		{
-			BeginUndoUnit(L"insert table row below");
-			MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", CreateTableRowLike(Document(), row));
-			EndUndoUnit();
-			::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_SEL_CHANGE)), reinterpret_cast<LPARAM>(m_hWnd));
-			::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_TREE_RESTORE)), 0);
+			CMarkupUndoUnitScope undo(*this, L"insert table row below");
+			MSHTML::IHTMLElement2Ptr(row)->insertAdjacentElement(L"afterEnd", FbeTable::CreateRowLike(Document(), row));
+			undo.Close();
+			NotifyTableStructureChanged(m_frame, m_hWnd);
 			FbeTable::GetCells(table, cells);
 		}
 
@@ -4847,10 +4628,10 @@ LRESULT CFBEView::OnTableInsertRowAbove(WORD, WORD, HWND, BOOL&)
 		if (!cell || !row || !FbeTable::BuildGrid(table, grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
-		BeginUndoUnit(L"insert table row above");
-		FbeTable::InsertRow(Document(), grid, rowIndex, false, cell->tagName);
-		EndUndoUnit();
-		NotifyTableStructureChanged(m_frame, m_hWnd);
+		CMarkupUndoUnitScope undo(*this, L"insert table row above");
+		const bool changed = FbeTable::InsertRow(Document(), grid, rowIndex, false, cell->tagName);
+		undo.Close();
+		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
@@ -4867,10 +4648,10 @@ LRESULT CFBEView::OnTableInsertRowBelow(WORD, WORD, HWND, BOOL&)
 		if (!cell || !row || !FbeTable::BuildGrid(table, grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
-		BeginUndoUnit(L"insert table row below");
-		FbeTable::InsertRow(Document(), grid, rowIndex, true, cell->tagName);
-		EndUndoUnit();
-		NotifyTableStructureChanged(m_frame, m_hWnd);
+		CMarkupUndoUnitScope undo(*this, L"insert table row below");
+		const bool changed = FbeTable::InsertRow(Document(), grid, rowIndex, true, cell->tagName);
+		undo.Close();
+		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
@@ -4885,10 +4666,10 @@ LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
 		if (!row || !row->parentElement || !FbeTable::BuildGrid(FbeTable::FindTableElement(row), grid)) return 0;
 		long rowIndex = 0; while (rowIndex < static_cast<long>(grid.rows.size()) && grid.rows[rowIndex] != row) ++rowIndex;
 		if (rowIndex == static_cast<long>(grid.rows.size())) return 0;
-		BeginUndoUnit(L"delete table row");
-		FbeTable::DeleteRow(grid, rowIndex);
-		EndUndoUnit();
-		NotifyTableStructureChanged(m_frame, m_hWnd);
+		CMarkupUndoUnitScope undo(*this, L"delete table row");
+		const bool changed = FbeTable::DeleteRow(grid, rowIndex);
+		undo.Close();
+		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
@@ -4896,14 +4677,14 @@ LRESULT CFBEView::OnTableDeleteRow(WORD, WORD, HWND, BOOL&)
 
 LRESULT CFBEView::OnTableInsertColumnLeft(WORD, WORD, HWND, BOOL&)
 {
-	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { BeginUndoUnit(L"insert table column left"); FbeTable::InsertColumn(Document(), grid, index, true, cell->tagName); EndUndoUnit(); NotifyTableStructureChanged(m_frame, m_hWnd); } }
+	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { CMarkupUndoUnitScope undo(*this, L"insert table column left"); const bool changed = FbeTable::InsertColumn(Document(), grid, index, true, cell->tagName); undo.Close(); if (changed) NotifyTableStructureChanged(m_frame, m_hWnd); } }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
 }
 
 LRESULT CFBEView::OnTableInsertColumnRight(WORD, WORD, HWND, BOOL&)
 {
-	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { BeginUndoUnit(L"insert table column right"); FbeTable::InsertColumn(Document(), grid, index, false, cell->tagName); EndUndoUnit(); NotifyTableStructureChanged(m_frame, m_hWnd); } }
+	try { MSHTML::IHTMLElementPtr cell(SelectionStructTableCon()), row(FbeTable::FindTableRow(cell)), table(FbeTable::FindTableElement(row)); Grid grid; long index = FbeTable::BuildGrid(table, grid) ? FbeTable::FindCell(grid, cell) : -1; if (index >= 0) { CMarkupUndoUnitScope undo(*this, L"insert table column right"); const bool changed = FbeTable::InsertColumn(Document(), grid, index, false, cell->tagName); undo.Close(); if (changed) NotifyTableStructureChanged(m_frame, m_hWnd); } }
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
 }
@@ -4916,9 +4697,9 @@ bool CFBEView::DeleteTableLogicalColumnForTest(long column)
 		MSHTML::IHTMLElementPtr table(tables && tables->length ? tables->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
 		Grid grid;
 		if (!FbeTable::BuildGrid(table, grid)) return false;
-		BeginUndoUnit(L"delete table column");
+		CMarkupUndoUnitScope undo(*this, L"delete table column");
 		const bool changed = FbeTable::DeleteColumn(grid, column);
-		EndUndoUnit();
+		undo.Close();
 		if (!changed) return false;
 		NotifyTableStructureChanged(m_frame, m_hWnd);
 		return true;
@@ -4937,7 +4718,10 @@ LRESULT CFBEView::OnTableDeleteColumn(WORD, WORD, HWND, BOOL&)
 		if (!selectedCell || !selectedRow || !FbeTable::BuildGrid(table, grid)) return 0;
 		const long selectedIndex = FbeTable::FindCell(grid, selectedCell);
 		if (selectedIndex < 0) return 0;
-		BeginUndoUnit(L"delete table column"); if (FbeTable::DeleteColumn(grid, grid.cells[selectedIndex].startColumn)) NotifyTableStructureChanged(m_frame, m_hWnd); EndUndoUnit();
+		CMarkupUndoUnitScope undo(*this, L"delete table column");
+		const bool changed = FbeTable::DeleteColumn(grid, grid.cells[selectedIndex].startColumn);
+		undo.Close();
+		if (changed) NotifyTableStructureChanged(m_frame, m_hWnd);
 	}
 	catch (_com_error& error) { U::ReportError(error); }
 	return 0;
@@ -5001,7 +4785,7 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 			{
 				MSHTML::IHTMLDOMNodePtr node(Call(L"InsImage"));
 				if (node)
-					BubbleUp(node,L"DIV");
+					FbeVisualDom::BubbleUp(node,L"DIV");
 			}
 		}
 		catch (_com_error&) { }
@@ -5073,7 +4857,7 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 			tre->className = L"tr";
 			const wchar_t* cellType = bTitle && row == 0 ? L"TH" : L"TD";
 			for (int column = 0; column < ncolumns; ++column) {
-				MSHTML::IHTMLElementPtr cell(CreateTableCell(Document(), cellType));
+				MSHTML::IHTMLElementPtr cell(FbeTable::CreateCell(Document(), cellType));
 				if (!firstCell) firstCell = cell;
 				MSHTML::IHTMLElement2Ptr(tre)->insertAdjacentElement(L"beforeEnd", cell);
 			}
@@ -5085,8 +4869,8 @@ bool  CFBEView::InsertTable(bool fCheck, bool bTitle, int nrows, int ncolumns) {
 		MSHTML::IHTMLElement2Ptr(anchor)->insertAdjacentElement(L"afterEnd", te);
 
 		// * ensure we have good html
-		RelocateParagraphs(MSHTML::IHTMLDOMNodePtr(pe));
-		FixupParagraphs(pe);
+		FbeVisualDom::RelocateParagraphs(MSHTML::IHTMLDOMNodePtr(pe));
+		FbeVisualDom::FixupParagraphs(pe);
 
 		// * close undo unit
 		m_mk_srv->EndUndoUnit();
@@ -5824,7 +5608,7 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 
 		MSHTML::IHTMLDOMNodePtr node(NULL);
 		if(node)
-			BubbleUp(node, L"DIV");
+			FbeVisualDom::BubbleUp(node, L"DIV");
 	}
 	catch (_com_error&) { }
 }

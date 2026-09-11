@@ -172,6 +172,7 @@
 	<ClCompile Include="source\SourceDocumentTransfer.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="view\EditorViewState.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="view\EditorViewTransition.cpp"><Filter>Source Files\View</Filter></ClCompile>
+	<ClCompile Include="view\VisualDomNormalizer.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="source\Fb2SourceStructuralContext.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackend.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackendPcre2.cpp"><Filter>Source Files\Search</Filter></ClCompile>
@@ -381,6 +382,7 @@
 	<ClInclude Include="view\EditorSelectionState.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewState.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewTransition.h"><Filter>Header Files\View</Filter></ClInclude>
+	<ClInclude Include="view\VisualDomNormalizer.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="source\Fb2SourceStructuralContext.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="search\RegexBackend.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\RegexPcre2CodeCache.h"><Filter>Header Files\Search</Filter></ClInclude>

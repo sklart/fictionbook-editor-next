@@ -6,13 +6,13 @@ $view = Join-Path $root 'src\fbe\FBEview.cpp'
 
 foreach ($path in @($grid, $editor)) {
     $text = Get-Content -Raw $path
-    foreach ($forbidden in @('FBEview.h', 'CFBEView', 'mainfrm.h', 'CMainFrame')) {
+    foreach ($forbidden in @('FBEview.h', 'CFBEView', 'mainfrm.h', 'CMainFrame', 'Settings')) {
         if ($text -match [regex]::Escape($forbidden)) { throw "$path must not depend on $forbidden" }
     }
 }
 
 $viewText = Get-Content -Raw $view
-foreach ($legacy in @('struct LogicalTableCell', 'struct LogicalTableGrid', 'BuildLogicalTableGrid')) {
+foreach ($legacy in @('struct LogicalTableCell', 'struct LogicalTableGrid', 'BuildLogicalTableGrid', 'CreateTableRowLike')) {
     if ($viewText -match [regex]::Escape($legacy)) { throw "FBEview.cpp still owns $legacy" }
 }
 
