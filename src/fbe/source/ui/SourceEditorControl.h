@@ -2,6 +2,7 @@
 
 #include <atlwin.h>
 #include "Scintilla.h"
+#include "../../xmlMatchedTagsHighlighter.h"
 #include "SourceEditorConfig.h"
 
 class SourceEditorControl : public CWindow
@@ -17,8 +18,10 @@ public:
 	void ConfigureSpecialCharacterRepresentations(const SourceEditorConfig& config);
 	void FoldAll();
 	void HandleMarginClick(const SCNotification& notification);
+	XmlMatchedTagsState& TagMatchState() { return m_tagMatchState; }
 private:
 	int m_lineNumberDigits = -1;
+	XmlMatchedTagsState m_tagMatchState;
 	WNDPROC m_previousWindowProc = NULL;
 	void ExpandFold(int& line, bool expand, bool force = false, int visibleLevels = 0, int level = -1);
 	static LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);

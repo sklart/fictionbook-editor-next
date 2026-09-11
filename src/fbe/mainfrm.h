@@ -97,7 +97,6 @@ public:
 	CReBarCtrl		m_rebar;			// toolbars
 	ContextAttributeBars m_contextAttributeBars;
 	SourceEditorControl m_source; // source editor presentation owner
-	XmlMatchedTagsState m_xml_matched_tags_state;
 	//bool			m_save_sp_mode;
   CRecentDocumentList	  m_mru; // MRU list
   FB::Doc		  *m_doc; // currently open document

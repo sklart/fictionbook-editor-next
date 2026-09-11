@@ -4291,7 +4291,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		// Stress the same caret/update lifecycle as keyboard navigation without
 		// forcing every position through viewport scroll policy and layout cache.
 		m_source.SendMessage(SCI_SETCURRENTPOS, position);
-		XmlSourceTagHighlighter tagMatchHighlighter(&m_source, &m_xml_matched_tags_state);
+		XmlSourceTagHighlighter tagMatchHighlighter(&m_source, &m_source.TagMatchState());
 		tagMatchHighlighter.UpdateHighlight({ true, _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
 		}
 	};
@@ -7865,7 +7865,7 @@ void CMainFrame::ConfigureSourceSpecialCharacterRepresentations()
 
 void  CMainFrame::SciModified(const SCNotification& scn) {
 	if (scn.modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))
-		m_xml_matched_tags_state.Invalidate();
+		m_source.TagMatchState().Invalidate();
 	if (scn.modificationType & SC_MOD_CHANGEFOLD) {
     if (scn.foldLevelNow & SC_FOLDLEVELHEADERFLAG) {
       if (!(scn.foldLevelPrev & SC_FOLDLEVELHEADERFLAG))
@@ -7909,7 +7909,7 @@ bool CMainFrame::SciUpdateUI(bool gotoTag)
 	UpdateStatusBar();
 	if (_Settings.XmlSrcTagHL() || gotoTag)
 	{
-		XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
+		XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_source.TagMatchState());
 		if (gotoTag) UIEnable(ID_GOTO_MATCHTAG, xmlTagMatchHiliter.GotoMatchingTag());
 		else UIEnable(ID_GOTO_MATCHTAG, xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() }));
 		return true;
@@ -7920,7 +7920,7 @@ bool CMainFrame::SciUpdateUI(bool gotoTag)
 void CMainFrame::SciGotoWrongTag()
 {
 	CWaitCursor hourglass;
-	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
+	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_source.TagMatchState());
 	xmlTagMatchHiliter.GotoWrongTag();
 
 }
@@ -8457,7 +8457,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	SetSciStyles();
 	UpdateSourceLineNumberMargin(true);
 
-	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
+	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_source.TagMatchState());
 	xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
 	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
 	// Перекраска XML-редактора не должна менять активный режим документа.
@@ -8483,7 +8483,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	// added by SeNS: display line numbers
 	UpdateSourceLineNumberMargin(true);
 
-	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_xml_matched_tags_state);
+	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_source.TagMatchState());
 	xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
 	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
 
