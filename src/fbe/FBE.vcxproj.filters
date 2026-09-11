@@ -53,6 +53,14 @@
       <UniqueIdentifier>{C7B2C956-39F1-4D16-B711-874F3B969C57}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
     </Filter>
+    <Filter Include="Source Files\Navigation">
+      <UniqueIdentifier>{7F2A188C-5F34-4248-A117-08DB1AEC2EBF}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Navigation">
+      <UniqueIdentifier>{E3FB5BDF-FF0A-426D-8B98-A4F674893E16}</UniqueIdentifier>
+      <Extensions>cpp;h</Extensions>
+    </Filter>
     <Filter Include="Source Files\Search">
       <UniqueIdentifier>{1128c08a-cd1e-4a38-a38b-2d3d1dcb3d99}</UniqueIdentifier>
       <Extensions>cpp;h</Extensions>
@@ -149,6 +157,7 @@
     <ClCompile Include="table\TableGrid.cpp"><Filter>Source Files\Table</Filter></ClCompile>
     <ClCompile Include="table\TableStructuralEditor.cpp"><Filter>Source Files\Table</Filter></ClCompile>
     <ClCompile Include="image\ImageDocumentInserter.cpp"><Filter>Source Files\Image</Filter></ClCompile>
+    <ClCompile Include="navigation\LinkDomNavigation.cpp"><Filter>Source Files\Navigation</Filter></ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="archive\ArchiveDocumentResolver.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -353,6 +362,8 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="image\ImageDocumentInserter.h"><Filter>Header Files\Image</Filter></ClInclude>
+    <ClInclude Include="navigation\LinkDomNavigation.h"><Filter>Header Files\Navigation</Filter></ClInclude>
+    <ClInclude Include="navigation\LinkNavigationState.h"><Filter>Header Files\Navigation</Filter></ClInclude>
     <ClInclude Include="FindResultsPane.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="GLLogo.h">
       <Filter>Header Files</Filter>

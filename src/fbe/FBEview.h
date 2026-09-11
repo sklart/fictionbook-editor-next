@@ -20,6 +20,7 @@
 #include "BinarySaveNotification.h"
 #include "search\\DocumentSearchCoordinator.h"
 #include "search\\SearchDocumentGeneration.h"
+#include "navigation\\LinkNavigationState.h"
 
 extern CSettings _Settings;
 
@@ -241,8 +242,7 @@ protected:
   ULONGLONG         m_navigation_started;
   bool              m_navigation_failed;
 	long              m_navigation_status;
-	CString            m_link_navigation_target_id;
-	long               m_link_navigation_origin_ordinal;
+	FBELinkNavigation::LinkNavigationState m_link_navigation_state;
 
   static _ATL_FUNC_INFO DocumentCompleteInfo;
   static _ATL_FUNC_INFO BeforeNavigateInfo;
@@ -406,7 +406,7 @@ public:
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
 	 m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-	 m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_link_navigation_origin_ordinal(-1), m_find_dlg(0), m_replace_dlg(0), m_last_search_error_is_regexp(false), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_last_zero_length_hit(0), m_last_zero_length_generation(0), m_has_last_zero_length_hit(false), m_replace_preview_generation(0), m_replace_preview_revision(0), m_replace_preview_flags(0), m_replace_preview_scope(AU::Search::SearchScope::WholeDocument), m_replace_preview_regexp(false), m_replace_preview_unicode_properties(false), m_has_replace_preview(false), m_controlled_replace_all_mutation(false), m_replace_all_completion_pending(false), m_replace_all_completion_count(0), m_search_highlight_overlay(NULL), m_file_path(), m_file_name() { }
+	 m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_find_dlg(0), m_replace_dlg(0), m_last_search_error_is_regexp(false), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_last_zero_length_hit(0), m_last_zero_length_generation(0), m_has_last_zero_length_hit(false), m_replace_preview_generation(0), m_replace_preview_revision(0), m_replace_preview_flags(0), m_replace_preview_scope(AU::Search::SearchScope::WholeDocument), m_replace_preview_regexp(false), m_replace_preview_unicode_properties(false), m_has_replace_preview(false), m_controlled_replace_all_mutation(false), m_replace_all_completion_pending(false), m_replace_all_completion_count(0), m_search_highlight_overlay(NULL), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);

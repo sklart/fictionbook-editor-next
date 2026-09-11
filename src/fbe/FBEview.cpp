@@ -5,6 +5,8 @@
 #include "stdafx.h"
 #include "ReplacementPreflight.h"
 #include "LinkNavigation.h"
+#include "navigation/LinkDomNavigation.h"
+#include "navigation/LinkNavigationState.h"
 #include "ImageImport.h"
 #include "res1.h"
 
@@ -3992,55 +3994,6 @@ LRESULT CFBEView::OnSelectElement(WORD, WORD wID, HWND, BOOL&) {
   return 0;
 }
 
-static MSHTML::IHTMLElementPtr FindNearestLinkElement(MSHTML::IHTMLElementPtr element,
-	MSHTML::IHTMLElementPtr body)
-{
-	while(element && element != body)
-	{
-		if(!U::scmp(element->tagName, L"A")) return element;
-		element = element->parentElement;
-	}
-	return body && !U::scmp(body->tagName, L"A") ? body : MSHTML::IHTMLElementPtr();
-}
-
-static MSHTML::IHTMLElementPtr GetEditableBody(MSHTML::IHTMLDocument2Ptr document)
-{
-	return document ? MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body")) : MSHTML::IHTMLElementPtr();
-}
-
-static CString GetInternalLinkTargetId(MSHTML::IHTMLDocument2Ptr document, MSHTML::IHTMLElementPtr link)
-{
-	if(!document || !link) return CString();
-	CString documentUrl;
-	try
-	{
-		MSHTML::IHTMLDocument4Ptr document4(document);
-		if(document4) documentUrl = static_cast<LPCWSTR>(document4->URLUnencoded);
-	}
-	catch(const _com_error&) { }
-	const std::wstring target = FBELinkNavigation::GetInternalTargetId(
-		static_cast<LPCWSTR>(AU::GetAttrCS(link, L"href")), static_cast<LPCWSTR>(documentUrl));
-	return CString(target.c_str());
-}
-
-static long GetLinkTargetOrdinal(MSHTML::IHTMLDocument2Ptr document,
-	MSHTML::IHTMLElementPtr link, const CString& targetId)
-{
-	if(!document || !link || targetId.IsEmpty()) return -1;
-	MSHTML::IHTMLElement2Ptr body(GetEditableBody(document));
-	MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
-	if(!links) return -1;
-	long ordinal = 0;
-	for(long i = 0; i < links->length; ++i)
-	{
-		MSHTML::IHTMLElementPtr candidate(links->item(i));
-		if(GetInternalLinkTargetId(document, candidate) != targetId) continue;
-		if(candidate == link) return ordinal;
-		++ordinal;
-	}
-	return -1;
-}
-
 static void HideNotePreview(CFBEView& view)
 {
 	try { CComDispatchDriver(view.Script()).Invoke0(L"HideNotePreview"); }
@@ -4049,22 +4002,21 @@ static void HideNotePreview(CFBEView& view)
 
 void CFBEView::ClearLinkNavigationHistory()
 {
-	m_link_navigation_target_id.Empty();
-	m_link_navigation_origin_ordinal = -1;
+	m_link_navigation_state.Reset();
 }
 
 bool CFBEView::ReturnToLinkNavigationOrigin()
 {
-	if(m_link_navigation_target_id.IsEmpty() || m_link_navigation_origin_ordinal < 0 || !Document()) return false;
-	MSHTML::IHTMLElement2Ptr body(GetEditableBody(Document()));
+	if(!m_link_navigation_state.HasOrigin() || !Document()) return false;
+	MSHTML::IHTMLElement2Ptr body(FBELinkNavigation::GetEditableBody(Document()));
 	MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
 	if(!links) { ClearLinkNavigationHistory(); return false; }
 	long ordinal = 0;
 	for(long i = 0; i < links->length; ++i)
 	{
 		MSHTML::IHTMLElementPtr link(links->item(i));
-		if(GetInternalLinkTargetId(Document(), link) != m_link_navigation_target_id) continue;
-		if(ordinal++ != m_link_navigation_origin_ordinal) continue;
+		if(FBELinkNavigation::GetInternalLinkTargetId(Document(), link) != m_link_navigation_state.targetId) continue;
+		if(ordinal++ != m_link_navigation_state.originOrdinal) continue;
 		ClearLinkNavigationHistory();
 		GoTo(link);
 		return true;
@@ -4107,10 +4059,11 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 	if((!ctrlClick && !altClick) || oe->shiftKey == VARIANT_TRUE)
 		return VARIANT_FALSE;
 
-	MSHTML::IHTMLElementPtr link = FindNearestLinkElement(elem, GetEditableBody(Document()));
+	MSHTML::IHTMLElementPtr link = FBELinkNavigation::FindNearestLinkElement(
+		elem, FBELinkNavigation::GetEditableBody(Document()));
 	if(!link) return VARIANT_FALSE;
 	CString href(AU::GetAttrCS(link, L"href"));
-	CString targetId(GetInternalLinkTargetId(Document(), link));
+	CString targetId(FBELinkNavigation::GetInternalLinkTargetId(Document(), link));
 	if(!targetId.IsEmpty())
 	{
 		MSHTML::IHTMLElementPtr target(Document()->all->item(static_cast<LPCWSTR>(targetId)));
@@ -4118,8 +4071,8 @@ VARIANT_BOOL  CFBEView::OnClick(IDispatch *evt)
 		// browser fragment navigation after the target was known to be absent.
 		if(target)
 		{
-			m_link_navigation_target_id = targetId;
-			m_link_navigation_origin_ordinal = GetLinkTargetOrdinal(Document(), link, targetId);
+			m_link_navigation_state.targetId = targetId;
+			m_link_navigation_state.originOrdinal = FBELinkNavigation::GetLinkTargetOrdinal(Document(), link, targetId);
 			HideNotePreview(*this);
 			GoTo(target);
 		}
@@ -5530,13 +5483,14 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 	if (FAILED(hr)) { if (!error.IsEmpty()) ::MessageBox(m_hWnd, error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
 	try
 	{
+		FbeImage::ImageInsertionResult result;
 		hr = FbeImage::InsertImportedImage(Script(), imported.data.data(), imported.data.size(), imported.logicalFileName, imported.mimeType,
-			bInline ? FbeImage::ImagePlacement::Inline : FbeImage::ImagePlacement::Block);
+			bInline ? FbeImage::ImagePlacement::Inline : FbeImage::ImagePlacement::Block, &result);
 		if (FAILED(hr))
 			U::ReportError(hr);
 
-		MSHTML::IHTMLDOMNodePtr node(NULL);
-		if(node)
+		MSHTML::IHTMLDOMNodePtr node(result.insertedElement);
+		if(!bInline && node)
 			FbeVisualDom::BubbleUp(node, L"DIV");
 	}
 	catch (_com_error&) { }

@@ -36,7 +36,7 @@ function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture
     if (-not (Test-Path -LiteralPath $Report -PathType Leaf)) { throw "FBE не записал отчёт сценария $Scenario." }
 }
 
-function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$ExpectedHash) {
+function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$ExpectedHash, [string]$Inline) {
     $xmlText = Get-Content -LiteralPath $Path -Raw
     if ($xmlText -match 'dt:dt|urn:schemas-microsoft-com:datatypes') { throw 'Production Save записал MSXML datatype metadata.' }
     Assert-Fb2Schema $Path
@@ -52,6 +52,10 @@ function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$Ex
     if ($actualBytes.Length -ne $ExpectedBytes.Length -or $actualHash -ne $ExpectedHash) { throw 'Production import или Save изменили bytes JPEG.' }
     $image = $xml.SelectSingleNode('//fb:image[@*[local-name()="href"]="#cover-part-01.jpg"]', $namespaces)
     if ($null -eq $image) { throw 'Imported image не ссылается на #cover-part-01.jpg.' }
+    $inlineImage = $xml.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:p/fb:image[@*[local-name()="href"]="#cover-part-01.jpg"]', $namespaces)
+    $blockImage = $xml.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:image[@*[local-name()="href"]="#cover-part-01.jpg"]', $namespaces)
+    if ($Inline -eq '1' -and ($null -eq $inlineImage -or $null -ne $blockImage)) { throw 'Inline import не сохранил image внутри paragraph.' }
+    if ($Inline -eq '0' -and ($null -eq $blockImage -or $null -ne $inlineImage)) { throw 'Block import не сохранил image как прямой дочерний section.' }
 }
 
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-image-generated-id-' + [guid]::NewGuid().ToString('N'))
@@ -87,10 +91,10 @@ try {
     $env:FBE_NEXT_TEST_IMAGE_PATH = $sourceImage
     $env:FBE_NEXT_TEST_IMAGE_INLINE = $Inline
     Invoke-FbeScenario 'binary-import-image' $importReport $fixture
-    Assert-ImportedImage $fixture $sourceBytes $sourceHash
+    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline
 
     Invoke-FbeScenario 'binary-roundtrip' $reopenReport $fixture
-    Assert-ImportedImage $fixture $sourceBytes $sourceHash
+    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline
     Write-Host 'Production image import generated-id -> Save -> Reopen -> Save passed.'
 }
 finally {

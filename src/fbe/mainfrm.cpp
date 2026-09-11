@@ -3808,6 +3808,46 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			beforeParagraphs, citeCount, poemCount, stanzaCount, (LPCSTR)poemTextSummary, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"visual-dom-normalizer"))
+	{
+		CStringA header("paragraphs\tempty_divs\tbrs\ttext\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		if (!body || !editable)
+		{
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		const CString originalHtml((const wchar_t*)editable->innerHTML);
+		// Keep the fixture in the editor's valid section/P shape.  Normalize then
+		// exercises its BR splitting and empty-node removal on a live MSHTML DOM.
+		editable->innerHTML = L"<DIV class='section'><P><SPAN>alpha</SPAN><BR><SPAN>beta</SPAN></P><P></P></DIV>";
+		m_doc->m_body.Normalize(MSHTML::IHTMLDOMNodePtr(body));
+		auto countElements = [&](const wchar_t* tagName) -> long
+		{
+			MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(tagName));
+			return elements ? elements->length : 0;
+		};
+		long emptyDivs = 0;
+		MSHTML::IHTMLElementCollectionPtr divs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
+		for (long index = 0; divs && index < divs->length; ++index)
+		{
+			MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
+			if (div && CString((const wchar_t*)div->innerHTML).Trim().IsEmpty()) ++emptyDivs;
+		}
+		const CString text((const wchar_t*)editable->innerText);
+		const bool passed = countElements(L"P") >= 1 && emptyDivs == 0 && countElements(L"BR") == 0 &&
+			text.Find(L"alpha") >= 0 && text.Find(L"beta") >= 0;
+		// This is a DOM-only probe: leave the loaded FB2 untouched before the
+		// application performs its ordinary shutdown validation.
+		editable->innerHTML = originalHtml.AllocSysString();
+		CStringA row;
+		row.Format("%ld\t%ld\t%ld\t%d\t%s\r\n", countElements(L"P"), emptyDivs, countElements(L"BR"),
+			text.Find(L"alpha") >= 0 && text.Find(L"beta") >= 0, passed ? "pass" : "fail");
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{
 		const ULONGLONG start = ::GetTickCount64();
