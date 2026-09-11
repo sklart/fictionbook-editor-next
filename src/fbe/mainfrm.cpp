@@ -36,7 +36,8 @@
 #include "ScriptsToolbarCustomizeDlg.h"
 #include "scripts\\ScriptCatalog.h"
 #include "scripts\\ScriptCommandRegistry.h"
-#include "BodySourceSelectionTransfer.h"
+#include "source\\BodySourceSelectionTransfer.h"
+#include "source\\SourceDocumentTransfer.h"
 #include "XmlDeclaration.h"
 #include "..\\common\\DeploymentContext.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
@@ -3195,6 +3196,49 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			sourceCommitted, bodyActive, archiveSaveSerializedChanged, archiveWriteError, static_cast<LPCWSTR>(m_document_session.Location().entryPath), saved);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(saved ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"body-source-transition-runtime"))
+	{
+		FB::Doc* const originalDocument = m_doc;
+		ShowView(SOURCE);
+		const bool sourceActive = IsSourceActive();
+		const sptr_t initialLength = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> initialSource(static_cast<size_t>(initialLength) + 1);
+		m_source.SendMessage(SCI_GETTEXT, initialLength + 1, reinterpret_cast<LPARAM>(initialSource.data()));
+		const char* const originalMarker = "BODY_SOURCE_ORIGINAL";
+		const bool sourceCurrent = strstr(initialSource.data(), originalMarker) != NULL;
+		ShowView(BODY);
+		const bool bodyWithoutChange = !IsSourceActive() && m_doc == originalDocument && m_doc->m_body.Document() != NULL;
+		ShowView(SOURCE);
+		char* marker = strstr(initialSource.data(), originalMarker);
+		const bool markerFound = marker != NULL;
+		if(markerFound)
+		{
+			const sptr_t position = static_cast<sptr_t>(marker - initialSource.data());
+			m_source.SendMessage(SCI_SETSEL, position, position + strlen(originalMarker));
+			m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("BODY_SOURCE_EDITED"));
+		}
+		ShowView(BODY);
+		const bool validEditApplied = markerFound && !IsSourceActive() && m_doc == originalDocument && m_doc->m_body.Document() != NULL;
+		ShowView(SOURCE);
+		const sptr_t editedLength = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> editedSource(static_cast<size_t>(editedLength) + 1);
+		m_source.SendMessage(SCI_GETTEXT, editedLength + 1, reinterpret_cast<LPARAM>(editedSource.data()));
+		const bool editedSourceCurrent = strstr(editedSource.data(), "BODY_SOURCE_EDITED") != NULL;
+		bool cycles = true;
+		for(int cycle = 0; cycle < 3; ++cycle) { ShowView(BODY); cycles = cycles && !IsSourceActive(); ShowView(SOURCE); cycles = cycles && IsSourceActive(); }
+		const sptr_t preservedSelectionStart = m_source.SendMessage(SCI_GETSELECTIONSTART);
+		const sptr_t preservedSelectionEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
+		m_source.SendMessage(SCI_SELECTALL);
+		m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("<FictionBook><broken>"));
+		const bool invalidRejected = !SourceToHTML();
+		const bool invalidPreserved = invalidRejected && IsSourceActive() && m_doc == originalDocument &&
+			m_source.SendMessage(SCI_GETLENGTH) > 0 && m_source.SendMessage(SCI_GETSELECTIONSTART) >= 0 && m_source.SendMessage(SCI_GETSELECTIONEND) >= 0;
+		CStringA report;
+		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"archive-two-phase-runtime"))
@@ -6631,45 +6675,41 @@ static void WriteSelectionTrace(const wchar_t* code, const CString& message)
 
 bool  CMainFrame::SourceToHTML()
 {
-	m_source_selection_transferred = false;
+	m_body_source_selection.sourceToBodyTransferred = false;
 	LRESULT changed = m_source.SendMessage(SCI_GETMODIFY);
-	int	    textlen = 0;
-	char*	buffer = 0;
+	SourceDocumentText sourceDocument;
+	if(!SourceDocumentTransfer::ReadSourceText(m_source, sourceDocument))
+		return false;
+	const int textlen = static_cast<int>(sourceDocument.utf8.size()) - 1;
+	const char* const buffer = sourceDocument.utf8.data();
 
 	int begin_char = 0;
 	int end_char = 0;
 	int bodies_count = 0;
 	int selected_body_index = -1;
 
-	// ????? ?????
-	textlen = m_source.SendMessage(SCI_GETLENGTH);
-	buffer = new char[textlen + 1];
-	m_source.SendMessage(SCI_GETTEXT, textlen+1, (LPARAM)buffer);
-	// ????????? ? UTF16
-	DWORD   ulen=::MultiByteToWideChar(CP_UTF8,0,buffer,textlen,NULL,0);
-
-	BSTR    ustr=::SysAllocStringLen(NULL,ulen);
-	::MultiByteToWideChar(CP_UTF8,0,buffer,textlen,ustr,ulen);
+	BSTR ustr = ::SysAllocStringLen(sourceDocument.text, sourceDocument.text.GetLength());
+	if(!ustr) return false;
 
 	//	??????? ?????????? ???????
-	int	  selectedPosBegin = m_source.SendMessage(SCI_GETSELECTIONSTART);
-	int	  selectedPosEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
-	bool one_pos = selectedPosEnd == selectedPosBegin;
+	int selectedPosBegin = sourceDocument.selectionStart;
+	int selectedPosEnd = sourceDocument.selectionEnd;
+	bool one_pos = sourceDocument.caret;
 	if (StartupTrace::Enabled())
 	{
 		CString trace;
 		trace.Format(L"SourceToHTML: source bytes=[%d,%d], text bytes=%d, caret=%d",
-			selectedPosBegin, selectedPosEnd, textlen, one_pos ? 1 : 0);
+			sourceDocument.selectionStartByte, sourceDocument.selectionEndByte, textlen, one_pos ? 1 : 0);
 		WriteSelectionTrace(L"E210", trace);
 	}
 	if(one_pos)
 	{
-		selectedPosEnd = selectedPosBegin = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosBegin,NULL,0);
+		selectedPosEnd = selectedPosBegin = sourceDocument.selectionStart;
 	}
 	else
 	{
-		selectedPosBegin = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosBegin,NULL,0);
-		selectedPosEnd = MultiByteToWideChar(CP_UTF8,0,buffer,selectedPosEnd,NULL,0);
+		selectedPosBegin = sourceDocument.selectionStart;
+		selectedPosEnd = sourceDocument.selectionEnd;
 	}
 	CString sourceText(ustr);
 	selected_body_index = FindXmlBodyIndexAtPosition(sourceText, selectedPosBegin);
@@ -6742,7 +6782,6 @@ bool  CMainFrame::SourceToHTML()
 			// LoadFromDOM through XmlFromText.
 			if (m_doc->GetDocumentFileType() == FictionBookFileType::Fbd)
 			{
-				delete[] buffer;
 				SysFreeString(ustr);
 				return false;
 			}
@@ -6760,7 +6799,6 @@ bool  CMainFrame::SourceToHTML()
 					MSXML2::IXMLDOMParseErrorPtr err = ret.pdispVal;
 					if(!(bool)err)
 					{
-						delete[] buffer;
 						SysFreeString(ustr);
 						return false;
 					}
@@ -6769,14 +6807,12 @@ bool  CMainFrame::SourceToHTML()
 					int linepos = err->linepos;
 					::SendMessage(m_doc->m_frame,AU::WM_SETSTATUSTEXT,0,(LPARAM)(const TCHAR *)msg);
 					SourceGoTo(line, linepos);
-					delete[] buffer;
 					SysFreeString(ustr);
 					return false;
 				}
 			}
 			else
 			{
-				delete[] buffer;
 				SysFreeString(ustr);
 				return false;
 			}
@@ -6905,11 +6941,11 @@ bool  CMainFrame::SourceToHTML()
 			m_doc->m_body.GoTo(selectedHTMLElementBegin);
 			m_body_selection = m_doc->m_body.SetSelection(
 				selectedHTMLElementBegin, selectedHTMLElementEnd, begin_char, end_char);
-			m_source_selection_transferred = (bool)m_body_selection;
+			m_body_source_selection.sourceToBodyTransferred = (bool)m_body_selection;
 		}
 	}
 
-	if(!m_source_selection_transferred && !selectedSourceText.IsEmpty())
+	if(!m_body_source_selection.sourceToBodyTransferred && !selectedSourceText.IsEmpty())
 	{
 		MSHTML::IHTMLElementPtr htmlScope;
 		MSHTML::IHTMLElementPtr expectedStartElement;
@@ -6947,19 +6983,18 @@ bool  CMainFrame::SourceToHTML()
 		if((bool)range)
 		{
 			m_body_selection = range;
-			m_source_selection_transferred = true;
+			m_body_source_selection.sourceToBodyTransferred = true;
 		}
 	}
 	if (StartupTrace::Enabled())
 	{
 		CString trace;
 		trace.Format(L"SourceToHTML: transfer result=%d, DOM-path=%d, crosses-p=%d",
-			m_source_selection_transferred ? 1 : 0,
+			m_body_source_selection.sourceToBodyTransferred ? 1 : 0,
 			selection_path_available ? 1 : 0, selectionCrossesParagraph ? 1 : 0);
 		WriteSelectionTrace(L"E240", trace);
 	}
 
-	delete[] buffer;
 	m_doc->MarkDocCP(); // document is in sync with source
 	if(_Settings.ViewDocumentTree())
 	{
@@ -6972,7 +7007,7 @@ bool  CMainFrame::SourceToHTML()
 bool CMainFrame::ShowSource(bool saveSelection)
 {
 	ShowSourcePhaseProfiler phaseProfiler;
-	m_body_selection_transferred = false;
+	m_body_source_selection.bodyToSourceTransferred = false;
 	U::DomPath selection_begin_path;
 	U::DomPath selection_end_path;
 
@@ -7279,9 +7314,9 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	phaseProfiler.Mark("selection restoration");
 	m_source.SendMessage(SCI_SCROLLCARET);
 	phaseProfiler.Mark("scroll restoration");
-	m_body_selection_transferred = selection_mapped_to_source;
-	m_source_selection_start = savedPosBegin;
-	m_source_selection_end = savedPosEnd;
+	m_body_source_selection.bodyToSourceTransferred = selection_mapped_to_source;
+	m_body_source_selection.sourceStart = savedPosBegin;
+	m_body_source_selection.sourceEnd = savedPosEnd;
 	if (StartupTrace::Enabled())
 	{
 		const int sourceLine = m_source.SendMessage(SCI_LINEFROMPOSITION, savedPosBegin);
@@ -7479,10 +7514,10 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
     m_view.HideActiveWnd();
     m_splitter.SetSinglePaneMode(SPLIT_PANE_RIGHT);
     m_view.ActivateWnd(m_source);
-	if(m_body_selection_transferred)
+	if(m_body_source_selection.bodyToSourceTransferred)
 	{
-		m_source.SendMessage(SCI_SETSELECTIONSTART, m_source_selection_start);
-		m_source.SendMessage(SCI_SETSELECTIONEND, m_source_selection_end);
+		m_source.SendMessage(SCI_SETSELECTIONSTART, m_body_source_selection.sourceStart);
+		m_source.SendMessage(SCI_SETSELECTIONEND, m_body_source_selection.sourceEnd);
 		m_source.SendMessage(SCI_SCROLLCARET);
 	}
 	{
@@ -7508,7 +7543,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	if(!(prev == SOURCE && vt == BODY))
 		RestoreSelection();
   m_view.SetFocus();
-	if(vt == BODY && prev == SOURCE && m_source_selection_transferred &&
+	if(vt == BODY && prev == SOURCE && m_body_source_selection.sourceToBodyTransferred &&
 		(bool)m_body_selection)
 	{
 		// Activating the MSHTML host can clear its visual highlight.  Apply the
@@ -7517,31 +7552,31 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 		// selected both before and after the host gains focus.
 		m_body_selection->select();
 	}
-	if(vt == SOURCE && m_body_selection_transferred)
+	if(vt == SOURCE && m_body_source_selection.bodyToSourceTransferred)
 	{
 		// Source получает фокус и окончательный размер только в конце смены
 		// режима. Повторная установка здесь делает прокрутку устойчивой.
-		m_source.SendMessage(SCI_SETSEL, m_source_selection_start,
-			m_source_selection_end);
+		m_source.SendMessage(SCI_SETSEL, m_body_source_selection.sourceStart,
+			m_body_source_selection.sourceEnd);
 		const int sourceLine = m_source.SendMessage(SCI_LINEFROMPOSITION,
-			m_source_selection_start);
+			m_body_source_selection.sourceStart);
 		m_source.SendMessage(SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine);
-		m_source.SendMessage(SCI_GOTOPOS, m_source_selection_start);
-		m_source.SendMessage(SCI_SETSEL, m_source_selection_start,
-			m_source_selection_end);
+		m_source.SendMessage(SCI_GOTOPOS, m_body_source_selection.sourceStart);
+		m_source.SendMessage(SCI_SETSEL, m_body_source_selection.sourceStart,
+			m_body_source_selection.sourceEnd);
 		m_source.SendMessage(SCI_SCROLLCARET);
 		// После отображения панели Scintilla может сбросить положение каретки.
 		// Повторяем диапазон в очереди сообщений уже после завершения layout.
 		::PostMessage(m_source, SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine, 0);
-		::PostMessage(m_source, SCI_GOTOPOS, m_source_selection_start, 0);
-		::PostMessage(m_source, SCI_SETSEL, m_source_selection_start,
-			m_source_selection_end);
+		::PostMessage(m_source, SCI_GOTOPOS, m_body_source_selection.sourceStart, 0);
+		::PostMessage(m_source, SCI_SETSEL, m_body_source_selection.sourceStart,
+			m_body_source_selection.sourceEnd);
 		::PostMessage(m_source, SCI_SCROLLCARET, 0, 0);
 		if (StartupTrace::Enabled())
 		{
 			CString trace;
 			trace.Format(L"ShowView: Source final bytes=[%d,%d], line=%d, first-visible=%d",
-				m_source_selection_start, m_source_selection_end, sourceLine,
+				m_body_source_selection.sourceStart, m_body_source_selection.sourceEnd, sourceLine,
 				(int)m_source.SendMessage(SCI_GETFIRSTVISIBLELINE));
 			WriteSelectionTrace(L"E290", trace);
 		}
@@ -7550,8 +7585,8 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	{
 		CString trace;
 		trace.Format(L"ShowView: completed current=%d, body-transfer=%d, source-transfer=%d",
-			m_current_view, m_body_selection_transferred ? 1 : 0,
-			m_source_selection_transferred ? 1 : 0);
+			m_current_view, m_body_source_selection.bodyToSourceTransferred ? 1 : 0,
+			m_body_source_selection.sourceToBodyTransferred ? 1 : 0);
 		WriteSelectionTrace(L"E299", trace);
 	}
 }

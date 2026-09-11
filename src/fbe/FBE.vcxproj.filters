@@ -151,6 +151,7 @@
 	<ClCompile Include="ScriptsToolbarCustomizeDlg.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="plugins\PluginManager.cpp"><Filter>Source Files\Plugins</Filter></ClCompile>
 	<ClCompile Include="source\Fb2SourceAutocomplete.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
+	<ClCompile Include="source\SourceDocumentTransfer.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="source\Fb2SourceStructuralContext.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackend.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\RegexBackendPcre2.cpp"><Filter>Source Files\Search</Filter></ClCompile>
@@ -352,6 +353,9 @@
 	<ClInclude Include="ScriptsToolbarCustomizeDlg.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="plugins\PluginManager.h"><Filter>Header Files\Plugins</Filter></ClInclude>
 	<ClInclude Include="source\Fb2SourceAutocomplete.h"><Filter>Header Files\XML Source</Filter></ClInclude>
+	<ClInclude Include="source\BodySourceSelectionState.h"><Filter>Header Files\XML Source</Filter></ClInclude>
+	<ClInclude Include="source\BodySourceSelectionTransfer.h"><Filter>Header Files\XML Source</Filter></ClInclude>
+	<ClInclude Include="source\SourceDocumentTransfer.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="source\Fb2SourceStructuralContext.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="search\RegexBackend.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\RegexPcre2CodeCache.h"><Filter>Header Files\Search</Filter></ClInclude>

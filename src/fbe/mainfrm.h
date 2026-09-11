@@ -31,6 +31,7 @@
 #include "EditorEngine.h"
 #include "xmlMatchedTagsHighlighter.h"
 #include "source\\Fb2SourceAutocomplete.h"
+#include "source\\BodySourceSelectionState.h"
 #include "source\\ui\\SourceEditorControl.h"
 #include "FBE.h"
 #include "Words.h"
@@ -153,9 +154,7 @@ public:
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0), m_current_view(BODY), m_last_view(DESC),
 	 m_script_menu(ID_EDIT_INS_SYMBOL + 101, 999), m_last_ctrl_tab_view(DESC), m_ctrl_tab(false), m_last_script(0),
-    m_last_plugin(0), m_bad_xml(false), m_body_selection_transferred(false),
-    m_source_selection_transferred(false), m_source_selection_start(0),
-		m_source_selection_end(0), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0),
+    m_last_plugin(0), m_bad_xml(false), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0),
         m_status_transient_expiration(0), m_validation_status(VALIDATION_UNKNOWN)
 	// added by SeNS
 	{
@@ -223,10 +222,7 @@ public:
 
   MSHTML::IHTMLTxtRangePtr m_body_selection;
   MSHTML::IHTMLTxtRangePtr m_desc_selection;
-  bool                    m_body_selection_transferred;
-  bool                    m_source_selection_transferred;
-  int                     m_source_selection_start;
-  int                     m_source_selection_end;
+	BodySourceSelectionState m_body_source_selection;
 	Fb2SourceAutocomplete   m_fb2_autocomplete;
 
   void SaveSelection(VIEW_TYPE vt);  

@@ -295,7 +295,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ClCompile Include="source\Fb2SourceAutocomplete.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+      <ClCompile Include="source\Fb2SourceAutocomplete.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+	  <ClCompile Include="source\SourceDocumentTransfer.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="source\Fb2SourceStructuralContext.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="..\common\fb2\Fb2CoverImage.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="..\common\fb2\Fb2CoverThumbnail.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
@@ -456,6 +457,9 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="ExternalHelper.h" />
     <ClInclude Include="FBDoc.h" />
     <ClInclude Include="source\Fb2SourceAutocomplete.h" />
+	<ClInclude Include="source\BodySourceSelectionState.h" />
+	<ClInclude Include="source\BodySourceSelectionTransfer.h" />
+	<ClInclude Include="source\SourceDocumentTransfer.h" />
     <ClInclude Include="source\Fb2SourceStructuralContext.h" />
     <ClInclude Include="..\common\fb2\Fb2CoverImage.h" />
     <ClInclude Include="..\common\fb2\Fb2CoverThumbnail.h" />
