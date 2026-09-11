@@ -223,7 +223,6 @@ public:
 	{
 		if (IsFbeRuntimeTestScenario(L"failed-open-runtime") || IsFbeRuntimeTestScenario(L"malformed-source-fallback-runtime"))
 		{
-			StartupTrace::AppendTestStartupBreadcrumb("failed-open-error-presentation-suppressed");
 			return S_OK;
 		}
 		wchar_t cpt[MAX_LOAD_STRING + 1];

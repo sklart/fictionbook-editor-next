@@ -17,6 +17,8 @@ public:
 	FB::Doc* Commit();
 
 private:
+	enum State { Pending, RolledBack, Committed };
 	FB::Doc* m_previous;
 	std::unique_ptr<FB::Doc> m_document;
+	State m_state;
 };

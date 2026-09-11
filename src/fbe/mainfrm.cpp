@@ -1453,8 +1453,6 @@ void CMainFrame::CommitSuccessfulSave()
 
 CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, const DocumentLocation* preferredArchiveLocation)
 {
-	const bool traceFailedOpen = IsFbeTestScenario(L"failed-open-runtime");
-	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-loadfile-enter");
   CString filename(initfilename);
   if (filename.IsEmpty())
     filename = GetOpenFileName();
@@ -1484,19 +1482,12 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
   m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
 	DocumentOpenSource source = archive ? DocumentOpenSource() : DocumentOpenSource::Normal(filename);
 	if (archive) { source.location = resolved.location; source.rawBytes = resolved.rawBytes; }
-	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-document-loader-before");
 	bool fLoaded = DocumentLoader::Load(*doc, m_view, source);
-	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-document-loader-after");
   EnableWindow(TRUE);
   if (!fLoaded) 
   {
-	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-rollback-before");
 	  pending.Rollback();
-	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-rollback-after");
-	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-scintilla-before");
 	  if (LoadToScintilla(filename)) return OK;
-	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-scintilla-after");
-	  if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-loadfile-return-fail");
 	  return FAIL;
   }
 
@@ -1506,7 +1497,6 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 	 if (archive) m_document_session.OpenArchive(resolved.location); else m_document_session.OpenNormal(filename, m_doc->GetDocumentFileType());
   m_bad_xml = false;
   ResetStatusForDocument();
-	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-loadfile-return-ok");
   return OK;
 }
 
@@ -4014,7 +4004,6 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"failed-open-runtime"))
 	{
-		StartupTrace::AppendTestStartupBreadcrumb("failed-open-scenario-before-loadfile");
 		wchar_t failedPath[MAX_PATH] = {};
 		const DWORD failedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_FAILED_OPEN_PATH", failedPath, _countof(failedPath));
 		FB::Doc* const original = m_doc;
@@ -4022,16 +4011,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		CString mruBefore;
 		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index) mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
 		const FILE_OP_STATUS result = failedLength && failedLength < _countof(failedPath) ? LoadFile(failedPath) : FAIL;
-		StartupTrace::AppendTestStartupBreadcrumb("failed-open-scenario-after-loadfile");
 		CString mruAfter;
 		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index) mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
 		const bool preserved = result == FAIL && m_doc == original && FB::Doc::m_active_doc == m_doc &&
 			m_document_session.Location().storagePath == originalLocation.storagePath && mruBefore == mruAfter;
 		CStringA report; report.Format("failed=%d\nidentity=%d\nactive=%d\nsession=%d\nmru_unchanged=%d\n", result == FAIL, m_doc == original, FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, mruBefore == mruAfter);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		StartupTrace::AppendTestStartupBreadcrumb("failed-open-postquit-before");
 		::PostQuitMessage(preserved ? 0 : 1);
-		StartupTrace::AppendTestStartupBreadcrumb("failed-open-postquit-after");
 		return 0;
 	}
 	if (IsFbeTestScenario(L"malformed-source-fallback-runtime"))
@@ -4048,6 +4034,54 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, m_bad_xml && m_bad_filename == malformedPath && m_current_view == SOURCE);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(sourceFallback ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"successful-open-runtime"))
+	{
+		wchar_t openedPath[MAX_PATH] = {};
+		const DWORD openedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SUCCESSFUL_OPEN_PATH", openedPath, _countof(openedPath));
+		FB::Doc* const original = m_doc;
+		const FILE_OP_STATUS result = openedLength && openedLength < _countof(openedPath) ? LoadFile(openedPath) : FAIL;
+		const bool opened = result == OK && m_doc != original && FB::Doc::m_active_doc == m_doc &&
+			m_document_session.Location().storagePath == openedPath && m_doc->m_filename == openedPath && m_doc->m_body.Document() != NULL;
+		CStringA report; report.Format("opened=%d\nidentity_changed=%d\nactive=%d\nsession=%d\nfilename=%d\nvalid=%d\n", result == OK,
+			m_doc != original, FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == openedPath,
+			m_doc->m_filename == openedPath, m_doc->m_body.Document() != NULL);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(opened ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"new-document-runtime"))
+	{
+		FB::Doc* const original = m_doc;
+		BOOL handled = FALSE;
+		OnFileNew(0, ID_FILE_NEW, NULL, handled);
+		const bool created = m_doc != original && FB::Doc::m_active_doc == m_doc &&
+			m_document_session.Location().storagePath.IsEmpty() && !m_document_session.Location().IsArchive() && m_doc->m_body.Document() != NULL;
+		CStringA report; report.Format("created=%d\nidentity_changed=%d\nactive=%d\nsession_new=%d\nvalid=%d\n", created,
+			m_doc != original, FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath.IsEmpty() && !m_document_session.Location().IsArchive(), m_doc->m_body.Document() != NULL);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(created ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"reload-success-runtime") || IsFbeTestScenario(L"reload-failure-runtime"))
+	{
+		const bool expectSuccess = IsFbeTestScenario(L"reload-success-runtime");
+		FB::Doc* const original = m_doc;
+		const DocumentLocation originalLocation = m_document_session.Location();
+		if (!expectSuccess) ::SetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", L"api-load-return-false");
+		const bool result = ReloadFile();
+		if (!expectSuccess) ::SetEnvironmentVariable(L"FBE_NEXT_FAULT_INJECT", NULL);
+		const bool reloadMatches = expectSuccess
+			? result && m_doc != original && FB::Doc::m_active_doc == m_doc && m_doc->m_body.Document() != NULL &&
+				m_document_session.Location().storagePath == originalLocation.storagePath
+			: !result && m_doc == original && FB::Doc::m_active_doc == m_doc &&
+				m_document_session.Location().storagePath == originalLocation.storagePath;
+		CStringA report; report.Format("reloaded=%d\nidentity=%d\nactive=%d\nsession=%d\nvalid=%d\n", result,
+			expectSuccess ? m_doc != original : m_doc == original, FB::Doc::m_active_doc == m_doc,
+			m_document_session.Location().storagePath == originalLocation.storagePath, m_doc->m_body.Document() != NULL);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(reloadMatches ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"archive-mru-runtime"))
@@ -5774,10 +5808,10 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   PendingDocument pending(*this, m_doc);
   FB::Doc* doc = &pending.Document();
   doc->CreateBlank(m_view);
-	m_document_session.NewDocument();
   AttachDocument(doc);
   delete m_doc;
-  m_doc=pending.Commit();
+	m_doc=pending.Commit();
+	m_document_session.NewDocument();
   ResetStatusForDocument();
 
   return 0;
@@ -9729,7 +9763,6 @@ void CMainFrame::RemoveLastUndo()
 // added by SeNS: try to load incorrect XML directly to Scintilla
 bool CMainFrame::LoadToScintilla(CString filename)
 {
-	const bool traceFailedOpen = IsFbeTestScenario(L"failed-open-runtime");
 	bool result = false;
 	bool isUTF8 = true;
 	CString enc;
@@ -9737,9 +9770,7 @@ bool CMainFrame::LoadToScintilla(CString filename)
 
 	CString src(L"");
 	std::ifstream load;
-	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-scintilla-read-before");
 	load.open(filename);
-	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb(load.is_open() ? "failed-open-scintilla-read-opened" : "failed-open-scintilla-read-failed");
 	if (load.is_open())
 	try
 	{
@@ -9793,7 +9824,6 @@ bool CMainFrame::LoadToScintilla(CString filename)
 		result = true;
 	}
 	catch(...) {};
-	if (traceFailedOpen) StartupTrace::AppendTestStartupBreadcrumb("failed-open-scintilla-return");
 	return result;
 }
 
