@@ -80,6 +80,8 @@ HRESULT InsertImportedImage(const IDispatchPtr &script, const BYTE *bytes,
       result.insertedElement = V_DISPATCH(&inserted);
     result.result = hr;
   }
-  return Finish(out, hr, &result.binaryId);
+  if (out)
+    *out = result;
+  return hr;
 }
 } // namespace FbeImage
