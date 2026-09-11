@@ -18,6 +18,6 @@ try {
         if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE context attribute scenario failed: exit $($process.ExitCode)." }
     } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
     $rows = @{}; foreach($line in Get-Content -LiteralPath $report) { $parts = $line -split "`t"; if($parts.Count -eq 2) { $rows[$parts[0]] = $parts[1] } }
-    foreach($key in @('controls', 'ids', 'catalogs', 'state', 'link_mode', 'table_mode')) { if($rows[$key] -ne '1') { throw "Context attribute runtime check failed: $key (value '$($rows[$key])')." } }
+    foreach($key in @('controls', 'ids', 'catalogs', 'state', 'availability', 'layout')) { if($rows[$key] -ne '1') { throw "Context attribute runtime check failed: $key (value '$($rows[$key])')." } }
     Write-Host 'FBE context attribute bars runtime passed.'
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

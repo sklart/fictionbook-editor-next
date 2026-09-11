@@ -15,23 +15,25 @@ void AddPlaceholder(HWND bar, LPCWSTR text)
 CString TextOf(const CWindow& window) { CString text; window.GetWindowText(text); return text; }
 }
 
-void ContextAttributeBars::AddCaption(CCustomStatic& caption, HWND bar, int position, UINT textId, LPCWSTR placeholder, HFONT font)
+bool ContextAttributeBars::AddCaption(CCustomStatic& caption, HWND bar, int position, UINT textId, LPCWSTR placeholder, HFONT font)
 {
 	wchar_t text[MAX_LOAD_STRING + 1] = {};
 	FbeLoadString(_Module.GetResourceInstance(), textId, text, MAX_LOAD_STRING);
 	AddPlaceholder(bar, text);
 	RECT rect = {}; ::SendMessage(bar, TB_GETITEMRECT, position, reinterpret_cast<LPARAM>(&rect)); --rect.bottom;
-	caption.Create(bar, rect, NULL, WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | SS_NOPREFIX, 0, IDC_ID);
+	if(!caption.Create(bar, rect, NULL, WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | SS_NOPREFIX, 0, IDC_ID)) return false;
 	caption.SetFont(UiMetrics::DialogFont() ? UiMetrics::DialogFont() : font);
 	caption.SetWindowText(text); caption.SetEnabled(true);
 	AddPlaceholder(bar, placeholder);
+	return true;
 }
 
-void ContextAttributeBars::AddBox(HWND bar, int position, CComboBox& box, CCustomEdit& edit, DWORD style, UINT id, HFONT font)
+bool ContextAttributeBars::AddBox(HWND bar, int position, CComboBox& box, CCustomEdit& edit, DWORD style, UINT id, HFONT font)
 {
 	RECT rect = {}; ::SendMessage(bar, TB_GETITEMRECT, position, reinterpret_cast<LPARAM>(&rect)); --rect.bottom;
-	box.Create(bar, rect, NULL, style, WS_EX_CLIENTEDGE, id); box.SetFont(font);
-	edit.SubclassWindow(box.ChildWindowFromPoint(CPoint(3, 3)));
+	if(!box.Create(bar, rect, NULL, style, WS_EX_CLIENTEDGE, id)) return false;
+	box.SetFont(font);
+	return edit.SubclassWindow(box.ChildWindowFromPoint(CPoint(3, 3))) != NULL;
 }
 
 bool ContextAttributeBars::Create(HWND parent)
@@ -45,23 +47,9 @@ bool ContextAttributeBars::Create(HWND parent)
 	::SendMessage(m_linksBar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0); ::SendMessage(m_tableBar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0); ::SendMessage(m_tableBar2, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
 	::SendMessage(m_linksBar, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT); ::SendMessage(m_tableBar, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT); ::SendMessage(m_tableBar2, TB_SETDRAWTEXTFLAGS, DT_CALCRECT, DT_CALCRECT);
 	HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_linksBar, WM_GETFONT, 0, 0));
-	AddCaption(m_idCaption, m_linksBar, 0, IDS_TB_CAPT_ID, L"123456789012345678901234567890", font);
-	AddCaption(m_hrefCaption, m_linksBar, 2, IDS_TB_CAPT_HREF, L"123456789012345678901234567890", font);
-	AddCaption(m_sectionCaption, m_linksBar, 4, IDS_TB_CAPT_SECTION_ID, L"123456789012345678901234567890", font);
-	AddCaption(m_imageTitleCaption, m_linksBar, 6, IDS_TB_CAPT_IMAGE_TITLE, L"123456789012345678901234567890", font);
-	AddCaption(m_tableIdCaption, m_tableBar, 0, IDS_TB_CAPT_TABLE_ID, L"12345678901234567890", font);
-	AddCaption(m_tableStyleCaption, m_tableBar, 2, IDS_TB_CAPT_TABLE_STYLE, L"123456789012345", font);
-	AddCaption(m_cellIdCaption, m_tableBar, 4, IDS_TB_CAPT_ID, L"12345678901234567890", font);
-	AddCaption(m_cellStyleCaption, m_tableBar, 6, IDS_TB_CAPT_STYLE, L"123456789012345", font);
-	AddCaption(m_colspanCaption, m_tableBar2, 0, IDS_TB_CAPT_COLSPAN, L"12345", font);
-	AddCaption(m_rowspanCaption, m_tableBar2, 2, IDS_TB_CAPT_ROWSPAN, L"12345", font);
-	AddCaption(m_rowAlignCaption, m_tableBar2, 4, IDS_TB_CAPT_TR_ALIGN, L"12345678", font);
-	AddCaption(m_alignCaption, m_tableBar2, 6, IDS_TB_CAPT_TD_ALIGN, L"12345678", font);
-	AddCaption(m_valignCaption, m_tableBar2, 8, IDS_TB_CAPT_TD_VALIGN, L"12345678", font);
+	if(!AddCaption(m_idCaption, m_linksBar, 0, IDS_TB_CAPT_ID, L"123456789012345678901234567890", font) || !AddCaption(m_hrefCaption, m_linksBar, 2, IDS_TB_CAPT_HREF, L"123456789012345678901234567890", font) || !AddCaption(m_sectionCaption, m_linksBar, 4, IDS_TB_CAPT_SECTION_ID, L"123456789012345678901234567890", font) || !AddCaption(m_imageTitleCaption, m_linksBar, 6, IDS_TB_CAPT_IMAGE_TITLE, L"123456789012345678901234567890", font) || !AddCaption(m_tableIdCaption, m_tableBar, 0, IDS_TB_CAPT_TABLE_ID, L"12345678901234567890", font) || !AddCaption(m_tableStyleCaption, m_tableBar, 2, IDS_TB_CAPT_TABLE_STYLE, L"123456789012345", font) || !AddCaption(m_cellIdCaption, m_tableBar, 4, IDS_TB_CAPT_ID, L"12345678901234567890", font) || !AddCaption(m_cellStyleCaption, m_tableBar, 6, IDS_TB_CAPT_STYLE, L"123456789012345", font) || !AddCaption(m_colspanCaption, m_tableBar2, 0, IDS_TB_CAPT_COLSPAN, L"12345", font) || !AddCaption(m_rowspanCaption, m_tableBar2, 2, IDS_TB_CAPT_ROWSPAN, L"12345", font) || !AddCaption(m_rowAlignCaption, m_tableBar2, 4, IDS_TB_CAPT_TR_ALIGN, L"12345678", font) || !AddCaption(m_alignCaption, m_tableBar2, 6, IDS_TB_CAPT_TD_ALIGN, L"12345678", font) || !AddCaption(m_valignCaption, m_tableBar2, 8, IDS_TB_CAPT_TD_VALIGN, L"12345678", font)) { Destroy(); return false; }
 	const DWORD common = WS_CHILD | WS_VISIBLE | CBS_AUTOHSCROLL;
-	AddBox(m_linksBar, 1, m_idBox, m_id, common, IDC_ID, font); AddBox(m_linksBar, 3, m_hrefBox, m_href, common | WS_VSCROLL | CBS_DROPDOWN | CBS_SORT, IDC_HREF, font); AddBox(m_linksBar, 5, m_sectionBox, m_section, common, IDC_SECTION, font); AddBox(m_linksBar, 7, m_imageTitleBox, m_imageTitle, common, IDC_IMAGE_TITLE, font);
-	AddBox(m_tableBar, 1, m_tableIdBox, m_tableId, common, IDC_IDT, font); AddBox(m_tableBar, 3, m_tableStyleBox, m_tableStyle, common, IDC_STYLET, font); AddBox(m_tableBar, 5, m_cellIdBox, m_cellId, common, IDC_ID, font); AddBox(m_tableBar, 7, m_cellStyleBox, m_cellStyle, common, IDC_STYLE, font);
-	AddBox(m_tableBar2, 1, m_colspanBox, m_colspan, common, IDC_COLSPAN, font); AddBox(m_tableBar2, 3, m_rowspanBox, m_rowspan, common, IDC_ROWSPAN, font); AddBox(m_tableBar2, 5, m_rowAlignBox, m_rowAlign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGNTR, font); AddBox(m_tableBar2, 7, m_alignBox, m_align, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGN, font); AddBox(m_tableBar2, 9, m_valignBox, m_valign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_VALIGN, font);
+	if(!AddBox(m_linksBar, 1, m_idBox, m_id, common, IDC_ID, font) || !AddBox(m_linksBar, 3, m_hrefBox, m_href, common | WS_VSCROLL | CBS_DROPDOWN | CBS_SORT, IDC_HREF, font) || !AddBox(m_linksBar, 5, m_sectionBox, m_section, common, IDC_SECTION, font) || !AddBox(m_linksBar, 7, m_imageTitleBox, m_imageTitle, common, IDC_IMAGE_TITLE, font) || !AddBox(m_tableBar, 1, m_tableIdBox, m_tableId, common, IDC_IDT, font) || !AddBox(m_tableBar, 3, m_tableStyleBox, m_tableStyle, common, IDC_STYLET, font) || !AddBox(m_tableBar, 5, m_cellIdBox, m_cellId, common, IDC_ID, font) || !AddBox(m_tableBar, 7, m_cellStyleBox, m_cellStyle, common, IDC_STYLE, font) || !AddBox(m_tableBar2, 1, m_colspanBox, m_colspan, common, IDC_COLSPAN, font) || !AddBox(m_tableBar2, 3, m_rowspanBox, m_rowspan, common, IDC_ROWSPAN, font) || !AddBox(m_tableBar2, 5, m_rowAlignBox, m_rowAlign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGNTR, font) || !AddBox(m_tableBar2, 7, m_alignBox, m_align, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGN, font) || !AddBox(m_tableBar2, 9, m_valignBox, m_valign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_VALIGN, font)) { Destroy(); return false; }
 	for(int i = 0; i != 4; ++i) { static const wchar_t* align[] = { L"", L"left", L"right", L"center" }; m_rowAlignBox.InsertString(i, align[i]); m_alignBox.InsertString(i, align[i]); }
 	static const wchar_t* valign[] = { L"", L"top", L"middle", L"bottom" }; for(int i = 0; i != 4; ++i) m_valignBox.InsertString(i, valign[i]);
 	UpdateMetrics(); return true;
@@ -104,15 +92,6 @@ void ContextAttributeBars::UpdateLocalization()
 	};
 	rebuild(m_linksBar, links, _countof(links)); rebuild(m_tableBar, table, _countof(table)); rebuild(m_tableBar2, table2, _countof(table2));
 }
-void ContextAttributeBars::SetMode(ContextBarMode mode)
-{
-	m_mode = mode;
-	const BOOL linksVisible = mode == ContextBarMode::Link || mode == ContextBarMode::Image || mode == ContextBarMode::Section;
-	const BOOL tableVisible = mode == ContextBarMode::Table;
-	if(m_linksBar) ::ShowWindow(m_linksBar, linksVisible ? SW_SHOWNA : SW_HIDE);
-	if(m_tableBar) ::ShowWindow(m_tableBar, tableVisible ? SW_SHOWNA : SW_HIDE);
-	if(m_tableBar2) ::ShowWindow(m_tableBar2, tableVisible ? SW_SHOWNA : SW_HIDE);
-}
 void ContextAttributeBars::SetLinkState(const LinkAttributeState& s) { m_id.SetWindowText(s.id); m_href.SetWindowText(s.href); m_section.SetWindowText(s.section); m_imageTitle.SetWindowText(s.imageTitle); }
 LinkAttributeState ContextAttributeBars::GetLinkState() const { LinkAttributeState s; s.id = TextOf(m_id); s.href = TextOf(m_href); s.section = TextOf(m_section); s.imageTitle = TextOf(m_imageTitle); return s; }
 void ContextAttributeBars::SetTableState(const TableAttributeState& s) { m_tableId.SetWindowText(s.tableId); m_tableStyle.SetWindowText(s.tableStyle); m_cellId.SetWindowText(s.id); m_cellStyle.SetWindowText(s.style); m_colspan.SetWindowText(s.colspan); m_rowspan.SetWindowText(s.rowspan); m_rowAlignBox.SelectString(-1, s.rowAlign); m_alignBox.SelectString(-1, s.align); m_valignBox.SelectString(-1, s.valign); }
@@ -147,9 +126,12 @@ ContextAttributeBarsDiagnostics ContextAttributeBars::RunDiagnostics()
 	TableAttributeState table; table.tableId=L"table-id"; table.tableStyle=L"table-style"; table.id=L"cell-id"; table.style=L"cell-style"; table.colspan=L"2"; table.rowspan=L"3"; table.rowAlign=L"left"; table.align=L"center"; table.valign=L"middle";
 	SetLinkState(link); SetTableState(table);
 	const LinkAttributeState readLink=GetLinkState(); const TableAttributeState readTable=GetTableState();
-	SetMode(ContextBarMode::Link); result.linkMode=::IsWindowVisible(m_linksBar)!=FALSE && ::IsWindowVisible(m_tableBar)==FALSE;
-	SetMode(ContextBarMode::Table); result.tableMode=::IsWindowVisible(m_linksBar)==FALSE && ::IsWindowVisible(m_tableBar)!=FALSE && ::IsWindowVisible(m_tableBar2)!=FALSE;
+	SetLinkAvailability(LinkAttributeAvailability{ true, false, true, false });
+	SetTableAvailability(TableAttributeAvailability{ true, false, true, false, true, false, true, false, true });
+	result.availability=::IsWindowEnabled(m_idBox)!=FALSE && ::IsWindowEnabled(m_hrefBox)==FALSE && ::IsWindowEnabled(m_tableIdBox)!=FALSE && ::IsWindowEnabled(m_tableStyleBox)==FALSE && ::IsWindowEnabled(m_valignBox)!=FALSE;
 	UpdateMetrics();
+	UpdateLocalization();
+	result.layout=::IsWindow(m_linksBar)!=FALSE && ::IsWindow(m_tableBar)!=FALSE && ::IsWindow(m_tableBar2)!=FALSE && ::IsWindow(m_idBox)!=FALSE && ::IsWindow(m_valignBox)!=FALSE;
 	result.controls=::IsWindow(m_idBox)!=FALSE && ::IsWindow(m_hrefBox)!=FALSE && ::IsWindow(m_tableIdBox)!=FALSE && ::IsWindow(m_valignBox)!=FALSE;
 	result.ids=::GetDlgCtrlID(m_hrefBox)==IDC_HREF && ::GetDlgCtrlID(m_tableIdBox)==IDC_IDT && ::GetDlgCtrlID(m_valignBox)==IDC_VALIGN;
 	result.catalogs=m_alignBox.GetCount()==4 && m_rowAlignBox.GetCount()==4 && m_valignBox.GetCount()==4;
