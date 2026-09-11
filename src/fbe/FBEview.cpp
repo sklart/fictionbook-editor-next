@@ -2856,7 +2856,7 @@ void CFBEView::ClearSearchHighlights()
 		m_search_highlight_overlay->Clear();
 }
 
-void CFBEView::AdvanceSearchDocumentGeneration()
+void CFBEView::AdvanceSearchDocumentGeneration(bool refreshFindResultsPane)
 {
 	// Do this for every real dirty-range notification, including editor-owned
 	// operations performed under m_ignore_changes. That flag suppresses the
@@ -2869,7 +2869,27 @@ void CFBEView::AdvanceSearchDocumentGeneration()
 	m_has_replace_preview = false;
 	m_find_results_completion_status.Empty();
 	ClearSearchHighlights();
+	if (refreshFindResultsPane)
+		::SendMessage(m_frame, AU::WM_REFRESH_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
+}
+
+LRESULT CFBEView::OnFinalizeReplaceAllCompletion(UINT, WPARAM, LPARAM, BOOL&)
+{
+	if (!m_replace_all_completion_pending)
+		return 0;
+
+	// This posted turn follows the Replace All mutation and lets MSHTML deliver
+	// queued RANGE_SINK notifications while the pending flag protects the pane.
+	// Publish one final state, never an intermediate stale one.
+	const int replaced = m_replace_all_completion_count;
+	AdvanceSearchDocumentGeneration(false);
+	CString completion;
+	completion.Format(FbeLoadRuntimeStringByKey(L"fbe.replace.preview.completed", L"Replaced: %d"), replaced);
+	m_find_results_completion_status = completion;
+	m_replace_all_completion_pending = false;
+	m_replace_all_completion_count = 0;
 	::SendMessage(m_frame, AU::WM_REFRESH_FIND_RESULTS_PANE, reinterpret_cast<WPARAM>(this), 0);
+	return 0;
 }
 
 void CFBEView::UpdateSearchHighlightsForScroll()
@@ -3425,10 +3445,16 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	m_has_replace_preview = false;
 	if (replaced != 0)
 	{
-		AdvanceSearchDocumentGeneration();
-		CString completion;
-		completion.Format(FbeLoadRuntimeStringByKey(L"fbe.replace.preview.completed", L"Replaced: %d"), replaced);
-		SetFindResultsCompletionStatus(completion);
+		m_replace_all_completion_count = replaced;
+		m_replace_all_completion_pending = true;
+		// Do not finalize synchronously: MSHTML may still dispatch RANGE_SINK
+		// notifications after this method returns. A one-shot posted message gives
+		// them one protected UI turn without a polling timer.
+		if (!::PostMessage(m_hWnd, AU::WM_FINALIZE_REPLACE_ALL_COMPLETION, 0, 0))
+		{
+			BOOL handled = FALSE;
+			OnFinalizeReplaceAllCompletion(AU::WM_FINALIZE_REPLACE_ALL_COMPLETION, 0, 0, handled);
+		}
 	}
 	m_controlled_replace_all_mutation = false;
 	return replaced;
@@ -3832,7 +3858,7 @@ void	CFBEView::EditorChanged(int id) {
 	m_startMatch = m_endMatch = 0;
 	// A controlled Replace All owns the invalidation and publishes its status
 	// only after the complete Undo unit. Ordinary edits still invalidate here.
-	if (!m_controlled_replace_all_mutation)
+	if (!m_controlled_replace_all_mutation && !m_replace_all_completion_pending)
 		AdvanceSearchDocumentGeneration();
     if (!m_ignore_changes)
       ::SendMessage(m_frame,WM_COMMAND,MAKELONG(0,IDN_ED_CHANGED),(LPARAM)m_hWnd);

@@ -90,18 +90,19 @@ Assert-Contains $replaceAll 'CheckReplacementRange\(ranges\[index\], m_fo\.fRege
 $allGuard = $replaceAll.IndexOf('CheckReplacementRange(ranges[index], m_fo.fRegexp)')
 $allUndo = $replaceAll.IndexOf('BeginUndoUnit(L"replace all")')
 if ($allGuard -lt 0 -or $allUndo -lt 0 -or $allGuard -gt $allUndo) { throw 'Replace All must reject a cross-paragraph range before opening Undo.' }
-Assert-Contains $replaceAll 'SetFindResultsCompletionStatus\(completion\)' 'successful Replace All clears rows and reports completed replacements'
+Assert-Contains $replaceAll 'm_replace_all_completion_pending = true;[\s\S]*?WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All defers completion until queued MSHTML notifications have drained'
 Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?DoFindAll\(true, &searchError\)' 'first Replace All builds and displays the preview'
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION' 'Replace All has one Yes/No confirmation'
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?if \(!previewIsCurrent\(\)\)' 'preview identity is rechecked after confirmation'
 Assert-NotContains $replaceAll 'fbe\.replace\.preview\.ready|MB_OK \| MB_ICONINFORMATION' 'obsolete second-click Replace All information prompt'
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'No leaves preview intact before any replacement range is opened'
 Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?return -1;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'changed preview identity blocks replacement before ranges and Undo'
-Assert-Contains $replaceAll 'SetFindResultsCompletionStatus\(completion\)' 'successful replacement clears stale preview rows and reports completion'
+Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?m_find_results_completion_status = completion;' 'successful replacement clears stale preview rows and reports completion'
 Assert-Contains $replaceAll 'm_controlled_replace_all_mutation = true;[\s\S]*?BeginUndoUnit\(L"replace all"\)' 'Replace All coalesces its own RANGE_SINK notifications before mutation'
-Assert-Contains $replaceAll 'SetFindResultsCompletionStatus\(completion\);[\s\S]*?m_controlled_replace_all_mutation = false;' 'Replace All preserves completion status until its controlled mutation has finished'
+Assert-Contains $replaceAll 'm_replace_all_completion_count = replaced;[\s\S]*?m_replace_all_completion_pending = true;[\s\S]*?PostMessage\(m_hWnd, AU::WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All schedules one protected completion phase'
 
-Assert-Contains $source 'case RANGE_SINK:[\s\S]*?if \(!m_controlled_replace_all_mutation\)\s*AdvanceSearchDocumentGeneration\(\);' 'ordinary RANGE_SINK invalidates searches while controlled Replace All notifications are coalesced'
+Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?AdvanceSearchDocumentGeneration\(false\);[\s\S]*?m_find_results_completion_status = completion;[\s\S]*?m_replace_all_completion_pending = false;[\s\S]*?WM_REFRESH_FIND_RESULTS_PANE' 'posted completion finalizes one invalidation before publishing the Results-pane status'
+Assert-Contains $source 'case RANGE_SINK:[\s\S]*?if \(!m_controlled_replace_all_mutation && !m_replace_all_completion_pending\)\s*AdvanceSearchDocumentGeneration\(\);' 'ordinary RANGE_SINK invalidates searches while controlled and pending Replace All notifications are coalesced'
 
 $globalReplace = [regex]::Match($source, 'int\s+CFBEView::GlobalReplace\(MSHTML::IHTMLElementPtr elem, CString cntTag\)[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ToolWordsGlobalReplace').Value
 if ([string]::IsNullOrWhiteSpace($globalReplace)) { throw 'Unable to locate Search Core GlobalReplace path.' }

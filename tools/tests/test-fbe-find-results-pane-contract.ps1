@@ -43,7 +43,7 @@ Assert-Contains $pane 'OnItemActivate[\s\S]*?SelectFindResult' 'Enter and double
 Assert-Contains $pane 'm_list\.GetItemState\(item, LVIS_SELECTED\) & LVIS_SELECTED' 'row selection comes from authoritative ListView state'
 Assert-Contains $pane 'GetSysColorBrush\(selected \? COLOR_HIGHLIGHT : COLOR_WINDOW\)' 'every virtual context cell is erased before repainting'
 Assert-Contains $pane 'FindResultsCompletionStatus\(\)' 'completed Replace All keeps a useful Results-pane status'
-Assert-Contains $view 'SetFindResultsCompletionStatus\(completion\)' 'successful Replace All supplies its final Results-pane status'
+Assert-Contains $view 'OnFinalizeReplaceAllCompletion[\s\S]*?m_find_results_completion_status = completion;[\s\S]*?WM_REFRESH_FIND_RESULTS_PANE' 'successful Replace All supplies its final Results-pane status after the posted completion phase'
 Assert-Contains $pane 'L" \\x2014 \\x00AB" \+ query \+ L"\\x00BB \\x2014 "' 'header punctuation is codepage-independent Unicode'
 Assert-NotContains $pane 'for \(std::size_t index = 0; index < m_view->FindResultCount\(\); \+\+index\).*InsertItem' 'eager ListView item creation'
 Assert-NotContains $pane 'InsertItem|SetItemText' 'materialized Results ListView rows'
