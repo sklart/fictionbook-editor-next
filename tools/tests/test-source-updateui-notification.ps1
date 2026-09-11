@@ -14,7 +14,7 @@ foreach ($required in @(
     'SC_UPDATE_LINE_COUNT',
     'SC_UPDATE_SELECTION',
     'SC_UPDATE_TEXT',
-    'UpdateSourceLineNumberMargin(false)',
+    'm_source.UpdateLineNumberMargin(false)',
     'SciUpdateUI(false)'
 )) {
     if ($handler.Value -notlike "*$required*") {
@@ -22,7 +22,7 @@ foreach ($required in @(
     }
 }
 
-$marginCall = 'UpdateSourceLineNumberMargin\s*\(\s*false\s*\)'
+$marginCall = 'm_source\.UpdateLineNumberMargin\s*\(\s*false\s*\)'
 $matchingTagsCall = 'SciUpdateUI\s*\(\s*false\s*\)'
 if ([regex]::Matches($handler.Value, $marginCall).Count -ne 1) {
     throw 'OnSciUpdateUI must update the line-number margin exactly once.'

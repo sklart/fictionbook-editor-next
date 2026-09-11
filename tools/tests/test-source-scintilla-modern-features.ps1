@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $mainFrame = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $mainFrameHeader = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\mainfrm.h')
+$sourceEditor = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\source\ui\SourceEditorControl.cpp')
 $matchedTags = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\xmlMatchedTagsHighlighter.h')
 
 function Assert-Contains([string]$Text, [string]$Pattern, [string]$Description) {
@@ -13,16 +14,16 @@ function Assert-Contains([string]$Text, [string]$Pattern, [string]$Description) 
     }
 }
 
-Assert-Contains $mainFrame 'SCI_SETCOMMANDEVENTS\s*,\s*FALSE' 'disabled legacy Scintilla command events'
-Assert-Contains $mainFrame 'SCI_SETMODEVENTMASK\s*,\s*SC_MOD_CHANGEFOLD\s*\|\s*SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT' 'text and fold modification event mask'
-Assert-Contains $mainFrame 'SCI_USEPOPUP\s*,\s*SC_POPUP_NEVER' 'disabled English Scintilla popup menu'
-Assert-Contains $mainFrame 'ShowSourceContextMenu' 'localized Source context menu'
-Assert-Contains $mainFrame 'fbe\.context\.cut' 'runtime-localized Source context labels'
-Assert-Contains $mainFrame 'SCI_SETUNDOSELECTIONHISTORY\s*,\s*AU::_ARGS\.disable_undo_selection_history\s*\?\s*0\s*:\s*\r?\n\s*SC_UNDO_SELECTION_HISTORY_ENABLED\s*\|\s*SC_UNDO_SELECTION_HISTORY_SCROLL' 'configurable undo selection and scroll history'
+Assert-Contains $sourceEditor 'SCI_SETCOMMANDEVENTS\s*,\s*FALSE' 'disabled legacy Scintilla command events'
+Assert-Contains $sourceEditor 'SCI_SETMODEVENTMASK\s*,\s*SC_MOD_CHANGEFOLD\s*\|\s*SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT' 'text and fold modification event mask'
+Assert-Contains $sourceEditor 'SCI_USEPOPUP\s*,\s*SC_POPUP_NEVER' 'disabled English Scintilla popup menu'
+Assert-Contains $sourceEditor 'ShowContextMenu' 'localized Source context menu'
+Assert-Contains $sourceEditor 'fbe\.context\.cut' 'runtime-localized Source context labels'
+Assert-Contains $sourceEditor 'SCI_SETUNDOSELECTIONHISTORY\s*,\s*config\.undoSelectionHistory' 'configurable undo selection and scroll history'
 Assert-Contains $mainFrame 'if\s*\(m_doc->DocRelChanged\(\)\)\s*\{\s*const DWORD nch\s*=\s*::WideCharToMultiByte\(CP_UTF8,0,src,src\.length\(\),\s*NULL,0,NULL,NULL\)' 'UTF-8 size pass only during Source reload'
-Assert-Contains $mainFrame 'lexer\.xml\.allow\.asp"\s*,\s*\(LPARAM\)"0"' 'disabled XML ASP lexer mode'
-Assert-Contains $mainFrame 'lexer\.xml\.allow\.php"\s*,\s*\(LPARAM\)"0"' 'disabled XML PHP lexer mode'
-Assert-Contains $mainFrame 'lexer\.xml\.allow\.scripts"\s*,\s*\(LPARAM\)"0"' 'disabled XML script lexer mode'
+Assert-Contains $sourceEditor 'lexer\.xml\.allow\.asp' 'disabled XML ASP lexer mode'
+Assert-Contains $sourceEditor 'lexer\.xml\.allow\.php' 'disabled XML PHP lexer mode'
+Assert-Contains $sourceEditor 'lexer\.xml\.allow\.scripts' 'disabled XML script lexer mode'
 Assert-Contains $matchedTags 'class\s+ScintillaDirectCall' 'Scintilla direct-call wrapper'
 Assert-Contains $matchedTags 'SCI_GETDIRECTFUNCTION' 'direct function lookup'
 Assert-Contains $matchedTags 'SCI_GETDIRECTPOINTER' 'direct pointer lookup'

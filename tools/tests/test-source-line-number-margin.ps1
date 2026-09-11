@@ -32,10 +32,10 @@ if (!(Needs-MarginUpdate 4 10000) -or (Needs-MarginUpdate 5 10001) -or !(Needs-M
 }
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$source = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
+$source = Get-Content -Raw (Join-Path $root 'src\fbe\source\ui\SourceEditorControl.cpp')
 $header = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.h')
 
-foreach ($required in @('GetLineNumberDigits', 'ShouldUpdateSourceLineNumberMargin', 'SCI_GETLINECOUNT', 'SCI_TEXTWIDTH', 'SCI_SETMARGINWIDTHN')) {
+foreach ($required in @('GetLineNumberDigits', 'm_lineNumberDigits', 'SCI_GETLINECOUNT', 'SCI_TEXTWIDTH', 'SCI_SETMARGINWIDTHN')) {
     if ($source -notlike "*$required*") {
         throw "Missing source margin behavior: $required"
     }
@@ -45,9 +45,9 @@ if ($header -notlike '*SC_UPDATE_LINE_COUNT*') {
     throw 'Missing SC_UPDATE_LINE_COUNT margin update behavior.'
 }
 
-$modifiedBlock = [regex]::Match($source, 'void\s+CMainFrame::SciModified\s*\([^)]*\)\s*\{[\s\S]*?(?=\n\nbool\s+CMainFrame::SciUpdateUI)')
+$modifiedBlock = [regex]::Match($source, 'void\s+SourceEditorControl::HandleModified\s*\([^)]*\)\s*\{[\s\S]*?(?=\n\nvoid\s+SourceEditorControl::GotoWrongTag)')
 if (!$modifiedBlock.Success) {
-    throw 'SciModified implementation was not found.'
+    throw 'SourceEditorControl modification handler was not found.'
 }
 
 if ($modifiedBlock.Value -match '(?s)SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT\s*\)\s*\{?\s*UpdateSourceLineNumberMargin') {

@@ -6,7 +6,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $adapter = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\XmlSourceTagHighlighter.cpp')
 $state = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\xmlMatchedTagsHighlighter.h')
 $matcher = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\XmlTagMatcher.cpp')
-$mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+$sourceEditor = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\source\ui\SourceEditorControl.cpp')
 
 if ($state -notmatch 'documentRevision' -or $state -notmatch 'matcherRevision') {
     throw 'XML Source cache must use separate document and matcher revisions.'
@@ -14,10 +14,10 @@ if ($state -notmatch 'documentRevision' -or $state -notmatch 'matcherRevision') 
 if ($state -notmatch 'void\s+Invalidate\s*\(\)\s*\{\s*\+\+documentRevision') {
     throw 'Text invalidation must advance the XML document revision.'
 }
-if ($mainFrame -notmatch 'SCI_SETMODEVENTMASK\s*,\s*SC_MOD_CHANGEFOLD\s*\|\s*SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT') {
+if ($sourceEditor -notmatch 'SCI_SETMODEVENTMASK\s*,\s*SC_MOD_CHANGEFOLD\s*\|\s*SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT') {
     throw 'Scintilla must notify the XML cache about text modifications.'
 }
-if ($mainFrame -notmatch 'if\s*\(scn\.modificationType\s*&\s*\(SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT\)\)\s*\r?\n\s*m_xml_matched_tags_state\.Invalidate\(\)') {
+if ($sourceEditor -notmatch 'if\s*\(notification\.modificationType\s*&\s*\(SC_MOD_INSERTTEXT\s*\|\s*SC_MOD_DELETETEXT\)\)\s*m_tagMatchState\.Invalidate\(\)') {
     throw 'Only text modifications may invalidate the XML cache.'
 }
 $matcherMethod = [regex]::Match($adapter, 'XmlTagMatcher&\s+XmlSourceTagHighlighter::Matcher\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)

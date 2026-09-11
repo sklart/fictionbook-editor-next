@@ -54,6 +54,7 @@ static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 static bool IsFbeTestScenario(const wchar_t* expectedScenario);
+static SourceEditorConfig BuildSourceEditorConfig();
 typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
 
 
@@ -2252,8 +2253,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	if(!m_source.Create(m_view))
 		return -1;
   m_view.AttachWnd(m_source);
-  SetupSci();
-  SetSciStyles();
+	m_source.ApplyConfiguration(BuildSourceEditorConfig());
   StartupTrace::Event(L"mainframe", L"M120", L"editor controls created");
 
   // initialize a new blank document
@@ -2662,9 +2662,7 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 		m_doc->ApplyConfChanges();
 	if (m_source.IsWindow())
 	{
-		SetupSci();
-		SetSciStyles();
-		UpdateSourceLineNumberMargin(true);
+		m_source.UpdateMetrics(BuildSourceEditorConfig());
 		m_source.SendMessage(SCI_COLOURISE, 0, -1);
 	}
 	if (m_document_tree.IsWindow())
@@ -2709,9 +2707,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if(m_source.IsWindow())
 	{
-		SetupSci();
-		SetSciStyles();
-		UpdateSourceLineNumberMargin(true);
+		m_source.UpdateMetrics(BuildSourceEditorConfig());
 	}
 	if (splitterPosition >= 0)
 		m_splitter.SetSplitterPos(MulDiv(splitterPosition, newDpi, oldDpi));
@@ -4224,9 +4220,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	m_source.SendMessage(SCI_SETWRAPMODE, SC_WRAP_NONE);
 	m_source.SendMessage(SCI_COLOURISE, 0, -1);
 	appendSnapshot("source-styled-wrap-none");
-	FoldAll();
+	m_source.FoldAll();
 	appendSnapshot("fold-all");
-	FoldAll();
+	m_source.FoldAll();
 	appendSnapshot("expand-all");
 
 	const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
@@ -4291,8 +4287,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		// Stress the same caret/update lifecycle as keyboard navigation without
 		// forcing every position through viewport scroll policy and layout cache.
 		m_source.SendMessage(SCI_SETCURRENTPOS, position);
-		XmlSourceTagHighlighter tagMatchHighlighter(&m_source, &m_source.TagMatchState());
-		tagMatchHighlighter.UpdateHighlight({ true, _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
+		m_source.UpdateTagHighlight({ true, _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
 		}
 	};
 	runMatchedTags(0, 10000);
@@ -7470,8 +7465,7 @@ void  CMainFrame::ShowView(VIEW_TYPE vt)
 	}
     break;
   case SOURCE:
-	// added by SeNS: display line numbers
-	UpdateSourceLineNumberMargin(false);
+	m_source.UpdateLineNumberMargin(false);
 
     UISetCheck(ID_VIEW_SOURCE, 1);
     m_view.HideActiveWnd();
@@ -7564,111 +7558,16 @@ static SourceEditorConfig BuildSourceEditorConfig()
 	config.syntaxHighlight = _Settings.XmlSrcSyntaxHL();
 	config.showSpecialCharacters = _Settings.XmlSrcShowSpecialChars();
 	config.specialCharactersStyle = _Settings.XmlSrcSpecialCharsStyle();
+	config.undoSelectionHistory = !AU::_ARGS.disable_undo_selection_history;
+	config.tagHighlight = _Settings.XmlSrcTagHL();
+	config.tagHighlightFullTag = _Settings.XmlSrcTagHighlightMode() != 0;
+	config.tagHighlightAttributes = _Settings.XmlSrcTagHighlightAttributes();
+	config.tagHighlightErrors = _Settings.XmlSrcTagHighlightErrors();
 	config.fontName = _Settings.GetSrcFont();
 	config.fontSize = static_cast<int>(_Settings.GetFontSize());
+	for(int token = 0; token < XML_SRC_STYLE_TOKEN_COUNT; ++token)
+		config.colors[token] = _Settings.GetXmlSrcStyleColor(static_cast<XmlSrcStyleToken>(token));
 	return config;
-}
-
-void CMainFrame::UpdateSourceLineNumberMargin(bool force)
-{
-	m_source.UpdateLineNumberMargin(force, BuildSourceEditorConfig());
-}
-
-void  CMainFrame::SetSciStyles() {
-  const bool highContrast = IsHighContrastEnabled();
-  const COLORREF windowText = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
-    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_FOREGROUND);
-  const COLORREF windowBackground = highContrast ? ::GetSysColor(COLOR_WINDOW) :
-    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
-
-  // Смена схемы должна применяться как одна операция: Scintilla иначе
-  // кратко рисует прежние стили и не всегда перекрашивает уже открытый код.
-  m_source.SendMessage(WM_SETREDRAW, FALSE, 0);
-  m_source.SendMessage(SCI_STYLERESETDEFAULT);
-
-  CT2A srcFont(_Settings.GetSrcFont());
-  m_source.SendMessage(SCI_STYLESETFONT,STYLE_DEFAULT,(LPARAM) srcFont.m_psz);
-  m_source.SendMessage(SCI_STYLESETSIZE,STYLE_DEFAULT, _Settings.GetFontSize());
-  m_source.SendMessage(SCI_STYLESETFORE, STYLE_DEFAULT, windowText);
-  m_source.SendMessage(SCI_STYLESETBACK, STYLE_DEFAULT, windowBackground);
-
-  m_source.SendMessage(SCI_STYLECLEARALL);
-  m_source.SendMessage(SCI_STYLESETFORE, STYLE_LINENUMBER, highContrast ? windowText :
-    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_LINE_NUMBER));
-  m_source.SendMessage(SCI_STYLESETBACK, STYLE_LINENUMBER, windowBackground);
-  m_source.SendMessage(SCI_SETCARETFORE, highContrast ? windowText :
-    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CARET));
-  // Current-line highlighting is editor chrome and remains active when XML
-  // syntax highlighting is disabled. High contrast never uses a theme color.
-  if(highContrast)
-    m_source.SendMessage(SCI_SETCARETLINEVISIBLE, FALSE);
-  else
-  {
-    m_source.SendMessage(SCI_SETCARETLINEBACK,
-      _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CURRENT_LINE_BACKGROUND));
-    m_source.SendMessage(SCI_SETCARETLINEVISIBLE, TRUE);
-  }
-  m_source.SendMessage(SCI_SETSELFORE, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) :
-    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_SELECTION_FOREGROUND));
-  m_source.SendMessage(SCI_SETSELBACK, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) :
-    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_SELECTION_BACKGROUND));
-  m_source.SendMessage(SCI_STYLESETFORE, STYLE_BRACELIGHT, highContrast ? windowText :
-    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_XML_TAG_NAME));
-  m_source.SendMessage(SCI_STYLESETBACK, STYLE_BRACELIGHT, highContrast ? windowBackground :
-    _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_MATCHING_TAG_BACKGROUND));
-
-  // Номера стилей определены лексером XML из Lexilla (SCE_H_*). Задаём все
-  // базовые XML/SGML-стили, чтобы схема не теряла читаемость на CDATA,
-  // комментариях и объявлениях, а не только на обычных тегах FB2.
-  static struct {
-    int style;
-    XmlSrcStyleToken token;
-  } styles[] = {
-    { SCE_H_DEFAULT,                XML_SRC_STYLE_XML_TEXT },
-    { SCE_H_TAG,                    XML_SRC_STYLE_XML_TAG_NAME },
-    { SCE_H_TAGUNKNOWN,             XML_SRC_STYLE_XML_TAG_NAME },
-    { SCE_H_ATTRIBUTE,              XML_SRC_STYLE_XML_ATTRIBUTE_NAME },
-    { SCE_H_ATTRIBUTEUNKNOWN,       XML_SRC_STYLE_XML_ATTRIBUTE_NAME },
-    { SCE_H_NUMBER,                 XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
-    { SCE_H_DOUBLESTRING,           XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
-    { SCE_H_SINGLESTRING,           XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
-    { SCE_H_OTHER,                  XML_SRC_STYLE_XML_TAG_DELIMITER },
-    { SCE_H_COMMENT,                XML_SRC_STYLE_XML_COMMENT },
-    { SCE_H_ENTITY,                 XML_SRC_STYLE_XML_ENTITY },
-    { SCE_H_TAGEND,                 XML_SRC_STYLE_XML_TAG_DELIMITER },
-    { SCE_H_XMLSTART,               XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
-    { SCE_H_XMLEND,                 XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
-    { SCE_H_SCRIPT,                 XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
-    { SCE_H_ASP,                    XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
-    { SCE_H_ASPAT,                  XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
-    { SCE_H_CDATA,                  XML_SRC_STYLE_XML_CDATA },
-    { SCE_H_QUESTION,               XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION },
-    { SCE_H_VALUE,                  XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
-    { SCE_H_XCCOMMENT,              XML_SRC_STYLE_XML_COMMENT },
-    { SCE_H_SGML_DEFAULT,           XML_SRC_STYLE_XML_DOCTYPE },
-    { SCE_H_SGML_COMMAND,           XML_SRC_STYLE_XML_DOCTYPE },
-    { SCE_H_SGML_1ST_PARAM,         XML_SRC_STYLE_XML_ATTRIBUTE_NAME },
-    { SCE_H_SGML_DOUBLESTRING,      XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
-    { SCE_H_SGML_SIMPLESTRING,      XML_SRC_STYLE_XML_ATTRIBUTE_VALUE },
-    { SCE_H_SGML_ERROR,             XML_SRC_STYLE_XML_ERROR },
-    { SCE_H_SGML_SPECIAL,           XML_SRC_STYLE_XML_DOCTYPE },
-    { SCE_H_SGML_ENTITY,            XML_SRC_STYLE_XML_ENTITY },
-    { SCE_H_SGML_COMMENT,           XML_SRC_STYLE_XML_COMMENT },
-    { SCE_H_SGML_1ST_PARAM_COMMENT, XML_SRC_STYLE_XML_COMMENT },
-    { SCE_H_SGML_BLOCK_DEFAULT,     XML_SRC_STYLE_XML_DOCTYPE },
-  };
-  if (_Settings.XmlSrcSyntaxHL() && !highContrast)
-  {
-    for (int i = 0; i < sizeof(styles) / sizeof(styles[0]); ++i)
-    {
-      m_source.SendMessage(SCI_STYLESETFORE, styles[i].style,
-        _Settings.GetXmlSrcStyleColor(styles[i].token));
-    }
-
-  }
-  m_source.SendMessage(SCI_COLOURISE, 0, -1);
-  m_source.SendMessage(WM_SETREDRAW, TRUE, 0);
-  m_source.Invalidate();
 }
 
 LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
@@ -7695,191 +7594,8 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
   return 0;
 }
 
-void  CMainFrame::FoldAll() {
-  m_source.SendMessage(SCI_COLOURISE, 0, -1);
-  int maxLine = m_source.SendMessage(SCI_GETLINECOUNT);
-  bool expanding = true;
-  for (int lineSeek = 0; lineSeek < maxLine; lineSeek++) {
-    if (m_source.SendMessage(SCI_GETFOLDLEVEL, lineSeek) & SC_FOLDLEVELHEADERFLAG) {
-      expanding = !m_source.SendMessage(SCI_GETFOLDEXPANDED, lineSeek);
-      break;
-    }
-  }
-  for (int line = 0; line < maxLine; line++) {
-    int level = m_source.SendMessage(SCI_GETFOLDLEVEL, line);
-    if ((level & SC_FOLDLEVELHEADERFLAG) &&
-      (SC_FOLDLEVELBASE == (level & SC_FOLDLEVELNUMBERMASK))) {
-      if (expanding) {
-	m_source.SendMessage(SCI_SETFOLDEXPANDED, line, 1);
-	ExpandFold(line, true, false, 0, level);
-	line--;
-      } else {
-	int lineMaxSubord = m_source.SendMessage(SCI_GETLASTCHILD, line, -1);
-	m_source.SendMessage(SCI_SETFOLDEXPANDED, line, 0);
-	if (lineMaxSubord > line)
-	  m_source.SendMessage(SCI_HIDELINES, line + 1, lineMaxSubord);
-      }
-    }
-  }
-}
-
-void CMainFrame::ExpandFold(int &line, bool doExpand, bool force, int visLevels, int level) {
-  int lineMaxSubord = m_source.SendMessage(SCI_GETLASTCHILD, line, level & SC_FOLDLEVELNUMBERMASK);
-  line++;
-  while (line <= lineMaxSubord) {
-    if (force) {
-      if (visLevels > 0)
-	m_source.SendMessage(SCI_SHOWLINES, line, line);
-      else
-	m_source.SendMessage(SCI_HIDELINES, line, line);
-    } else {
-      if (doExpand)
-	m_source.SendMessage(SCI_SHOWLINES, line, line);
-    }
-    int levelLine = level;
-    if (levelLine == -1)
-      levelLine = m_source.SendMessage(SCI_GETFOLDLEVEL, line);
-    if (levelLine & SC_FOLDLEVELHEADERFLAG) {
-      if (force) {
-	if (visLevels > 1)
-	  m_source.SendMessage(SCI_SETFOLDEXPANDED, line, 1);
-	else
-	  m_source.SendMessage(SCI_SETFOLDEXPANDED, line, 0);
-	ExpandFold(line, doExpand, force, visLevels - 1);
-      } else {
-	if (doExpand) {
-	  if (!m_source.SendMessage(SCI_GETFOLDEXPANDED, line))
-	    m_source.SendMessage(SCI_SETFOLDEXPANDED, line, 1);
-	  ExpandFold(line, true, force, visLevels - 1);
-	} else {
-	  ExpandFold(line, false, force, visLevels - 1);
-	}
-      }
-    } else {
-      line++;
-    }
-  }
-}
-
-void  CMainFrame::DefineMarker(int marker, int markerType, COLORREF fore,COLORREF back) {
-  m_source.SendMessage(SCI_MARKERDEFINE, marker, markerType);
-  m_source.SendMessage(SCI_MARKERSETFORE, marker, fore);
-  m_source.SendMessage(SCI_MARKERSETBACK, marker, back);
-}
-
-void  CMainFrame::SetupSci()
-{
-	m_source.ApplyConfiguration(BuildSourceEditorConfig());
-  // Source commands are routed explicitly by FBE; legacy WM_COMMAND events are unnecessary.
-  m_source.SendMessage(SCI_SETCOMMANDEVENTS, FALSE);
-  // Text modifications invalidate the XML matcher cache; fold notifications
-  // remain necessary for the existing fold-state handling.
-  m_source.SendMessage(SCI_SETMODEVENTMASK, SC_MOD_CHANGEFOLD | SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT);
-  m_source.SendMessage(SCI_SETUNDOSELECTIONHISTORY, AU::_ARGS.disable_undo_selection_history ? 0 :
-    SC_UNDO_SELECTION_HISTORY_ENABLED | SC_UNDO_SELECTION_HISTORY_SCROLL);
-	m_source.SendMessage(SCI_SETCODEPAGE,SC_CP_UTF8);
-	ConfigureSourceSpecialCharacterRepresentations();
-	m_source.SendMessage(SCI_SETEOLMODE,SC_EOL_CRLF);
-  m_source.SendMessage(SCI_SETVIEWEOL, _Settings.XmlSrcShowEOL());
-  m_source.SendMessage(SCI_SETVIEWWS, _Settings.XmlSrcShowSpace());
-  m_source.SendMessage(SCI_SETWRAPMODE, _Settings.XmlSrcWrap() ? SC_WRAP_WORD : SC_WRAP_NONE);
-  // added by SeNS: try to speed-up wrap mode
-  m_source.SendMessage(SCI_SETLAYOUTCACHE,SC_CACHE_DOCUMENT);
-  m_source.SendMessage(SCI_SETXCARETPOLICY,CARET_SLOP|CARET_EVEN,50);
-  m_source.SendMessage(SCI_SETYCARETPOLICY,CARET_SLOP|CARET_EVEN,50);
-  // added by SeNS: display line numbers
-  UpdateSourceLineNumberMargin(true);
-  m_source.SendMessage(SCI_SETMARGINWIDTHN,1,0);
-  m_source.SendMessage(SCI_SETFOLDFLAGS, 16);
-  m_source.SendMessage(SCI_SETPROPERTY,(WPARAM)"fold",(WPARAM)"1");
-  m_source.SendMessage(SCI_SETPROPERTY,(WPARAM)"fold.html",(WPARAM)"1");
-  m_source.SendMessage(SCI_SETPROPERTY,(WPARAM)"fold.compact",(WPARAM)"1");
-  m_source.SendMessage(SCI_SETPROPERTY,(WPARAM)"fold.flags",(WPARAM)"16");
-  // FB2 Source is XML, not a host for embedded ASP/PHP/script languages.
-  m_source.SendMessage(SCI_SETPROPERTY, (WPARAM)"lexer.xml.allow.asp", (LPARAM)"0");
-  m_source.SendMessage(SCI_SETPROPERTY, (WPARAM)"lexer.xml.allow.php", (LPARAM)"0");
-  m_source.SendMessage(SCI_SETPROPERTY, (WPARAM)"lexer.xml.allow.scripts", (LPARAM)"0");
-
-  // added by SeNS: disable Scintilla's control characters
-  char sciCtrlChars[] = {'Q','E','R','S','K',':'};
-  for (int i=0; i<sizeof(sciCtrlChars); i++)
-	m_source.SendMessage(SCI_ASSIGNCMDKEY, sciCtrlChars[i]+(SCMOD_CTRL << 16), SCI_NULL);
-  char sciCtrlShiftChars[] = {'Q','W','E','R','Y','O','P','A','S','D','F','G','H','K','Z','X','C','V','B','N',':'};
-  for (int i=0; i<sizeof(sciCtrlShiftChars); i++)
-    m_source.SendMessage(SCI_ASSIGNCMDKEY, sciCtrlShiftChars[i]+((SCMOD_CTRL+SCMOD_SHIFT) << 16), SCI_NULL);
-  ///
-  if (_Settings.XmlSrcSyntaxHL())
-  {
-    const bool highContrast = IsHighContrastEnabled();
-    const COLORREF markerFore = highContrast ? ::GetSysColor(COLOR_WINDOW) :
-      _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_LINE_NUMBER);
-    const COLORREF markerBack = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
-      _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
-	const COLORREF indicatorColor = highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_MATCHING_TAG_BORDER);
-	const COLORREF diagnosticColor = highContrast ? ::GetSysColor(COLOR_HOTLIGHT) : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_XML_ERROR);
-    m_source.SendMessage(SCI_SETILEXER, 0, reinterpret_cast<LPARAM>(CreateEditorLexer("xml")));
-
-    m_source.SendMessage(SCI_SETMARGINTYPEN, 2, SC_MARGIN_SYMBOL);
-    m_source.SendMessage(SCI_SETMARGINWIDTHN, 2, 16);
-    m_source.SendMessage(SCI_SETMARGINMASKN, 2, SC_MASK_FOLDERS);
-    m_source.SendMessage(SCI_SETMARGINSENSITIVEN, 2, 1);
-    DefineMarker(SC_MARKNUM_FOLDEROPEN, SC_MARK_MINUS, markerFore, markerBack);
-    DefineMarker(SC_MARKNUM_FOLDER, SC_MARK_PLUS, markerFore, markerBack);
-    DefineMarker(SC_MARKNUM_FOLDERSUB, SC_MARK_EMPTY, markerFore, markerBack);
-    DefineMarker(SC_MARKNUM_FOLDERTAIL, SC_MARK_EMPTY, markerFore, markerBack);
-    DefineMarker(SC_MARKNUM_FOLDEREND, SC_MARK_EMPTY, markerFore, markerBack);
-    DefineMarker(SC_MARKNUM_FOLDEROPENMID, SC_MARK_EMPTY, markerFore, markerBack);
-    DefineMarker(SC_MARKNUM_FOLDERMIDTAIL, SC_MARK_EMPTY, markerFore, markerBack);
-
-	// indicator for tag match
-	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_TAG_MATCH, INDIC_ROUNDBOX);
-	m_source.SendMessage(SCI_INDICSETALPHA, EDITOR_INDICATOR_TAG_MATCH, 100);
-	m_source.SendMessage(SCI_INDICSETUNDER, EDITOR_INDICATOR_TAG_MATCH, TRUE);
-	m_source.SendMessage(SCI_INDICSETFORE,  EDITOR_INDICATOR_TAG_MATCH, indicatorColor);
-
-	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_TAG_ATTRIBUTE, INDIC_ROUNDBOX);
-	m_source.SendMessage(SCI_INDICSETALPHA, EDITOR_INDICATOR_TAG_ATTRIBUTE, 100);
-	m_source.SendMessage(SCI_INDICSETUNDER, EDITOR_INDICATOR_TAG_ATTRIBUTE, TRUE);
-	m_source.SendMessage(SCI_INDICSETFORE,  EDITOR_INDICATOR_TAG_ATTRIBUTE, indicatorColor);
-	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_XML_TAG_INVALID, INDIC_STRIKE);
-	m_source.SendMessage(SCI_INDICSETFORE, EDITOR_INDICATOR_XML_TAG_INVALID, diagnosticColor);
-	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_XML_TAG_MISMATCHED, INDIC_SQUIGGLE);
-	m_source.SendMessage(SCI_INDICSETFORE, EDITOR_INDICATOR_XML_TAG_MISMATCHED, diagnosticColor);
-	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_XML_TAG_MISSING_OPENING, INDIC_DOTS);
-	m_source.SendMessage(SCI_INDICSETFORE, EDITOR_INDICATOR_XML_TAG_MISSING_OPENING, highContrast ? ::GetSysColor(COLOR_HOTLIGHT) : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_XML_WARNING));
-	m_source.SendMessage(SCI_INDICSETSTYLE, EDITOR_INDICATOR_XML_TAG_MISSING_CLOSING, INDIC_DASH);
-	m_source.SendMessage(SCI_INDICSETFORE, EDITOR_INDICATOR_XML_TAG_MISSING_CLOSING, highContrast ? ::GetSysColor(COLOR_HOTLIGHT) : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_XML_WARNING));
-
-	m_source.SendMessage(SCI_COLOURISE,0,-1);
-  }
-  else
-  {
-    m_source.SendMessage(SCI_SETILEXER, 0, 0);
-    m_source.SendMessage(SCI_SETMARGINWIDTHN, 2, 0);
-  }
-}
-
-void CMainFrame::ConfigureSourceSpecialCharacterRepresentations()
-{
-	m_source.ConfigureSpecialCharacterRepresentations(BuildSourceEditorConfig());
-}
-
 void  CMainFrame::SciModified(const SCNotification& scn) {
-	if (scn.modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))
-		m_source.TagMatchState().Invalidate();
-	if (scn.modificationType & SC_MOD_CHANGEFOLD) {
-    if (scn.foldLevelNow & SC_FOLDLEVELHEADERFLAG) {
-      if (!(scn.foldLevelPrev & SC_FOLDLEVELHEADERFLAG))
-	m_source.SendMessage(SCI_SETFOLDEXPANDED, scn.line, 1);
-    } else if (scn.foldLevelPrev & SC_FOLDLEVELHEADERFLAG) {
-      if (!m_source.SendMessage(SCI_GETFOLDEXPANDED, scn.line)) {
-	// Removing the fold from one that has been contracted so should expand
-	// otherwise lines are left invisible with no way to make them visible
-	int tmpline=scn.line;
-	ExpandFold(tmpline, true, false, 0, scn.foldLevelPrev);
-      }
-    }
-  }
+	m_source.HandleModified(scn);
 }
 
 void CMainFrame::ClearSourceValidationAnnotations()
@@ -7910,9 +7626,8 @@ bool CMainFrame::SciUpdateUI(bool gotoTag)
 	UpdateStatusBar();
 	if (_Settings.XmlSrcTagHL() || gotoTag)
 	{
-		XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_source.TagMatchState());
-		if (gotoTag) UIEnable(ID_GOTO_MATCHTAG, xmlTagMatchHiliter.GotoMatchingTag());
-		else UIEnable(ID_GOTO_MATCHTAG, xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() }));
+		if (gotoTag) UIEnable(ID_GOTO_MATCHTAG, m_source.GotoMatchingTag());
+		else UIEnable(ID_GOTO_MATCHTAG, m_source.UpdateTagHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() }));
 		return true;
 	}
 	return false;
@@ -7921,8 +7636,7 @@ bool CMainFrame::SciUpdateUI(bool gotoTag)
 void CMainFrame::SciGotoWrongTag()
 {
 	CWaitCursor hourglass;
-	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_source.TagMatchState());
-	xmlTagMatchHiliter.GotoWrongTag();
+	m_source.GotoWrongTag();
 
 }
 
@@ -8454,12 +8168,9 @@ LRESULT CMainFrame::OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&)
 void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 {
 	const VIEW_TYPE activeView = m_current_view;
-	SetupSci();
-	SetSciStyles();
-	UpdateSourceLineNumberMargin(true);
-
-	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_source.TagMatchState());
-	xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
+	const SourceEditorConfig config = BuildSourceEditorConfig();
+	m_source.ApplyConfiguration(config);
+	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
 	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
 	// Перекраска XML-редактора не должна менять активный режим документа.
 	if(activeView == BODY && m_doc)
@@ -8478,14 +8189,9 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 
 	if (applyDocumentStyles && m_doc)
 		m_doc->ApplyConfChanges();
-	SetupSci();
-	SetSciStyles();
-
-	// added by SeNS: display line numbers
-	UpdateSourceLineNumberMargin(true);
-
-	XmlSourceTagHighlighter xmlTagMatchHiliter(&m_source, &m_source.TagMatchState());
-	xmlTagMatchHiliter.UpdateHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() });
+	const SourceEditorConfig config = BuildSourceEditorConfig();
+	m_source.ApplyConfiguration(config);
+	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
 	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
 
 	// added by SeNS

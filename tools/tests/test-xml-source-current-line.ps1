@@ -2,11 +2,11 @@
 param()
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$source = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\mainfrm.cpp")
+$source = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\source\ui\SourceEditorControl.cpp")
 $themes = Get-ChildItem -LiteralPath (Join-Path $root "runtime\Themes") -Filter *.fbetheme -File
-if($source -notmatch 'SCI_SETCARETLINEBACK[\s\S]*XML_SRC_STYLE_CURRENT_LINE_BACKGROUND') { throw 'Current-line theme color is not sent to Scintilla.' }
+if($source -notmatch 'SCI_SETCARETLINEBACK[\s\S]*SourceEditorColorCurrentLineBackground') { throw 'Current-line theme color is not sent to Scintilla.' }
 if($source -notmatch 'if\(highContrast\)[\s\S]*SCI_SETCARETLINEVISIBLE, FALSE') { throw 'High contrast must disable themed current-line background.' }
-if($source -notmatch 'UpdateSourceLineNumberMargin\(true\)') { throw 'Theme/configuration paths do not refresh editor decoration.' }
+if($source -notmatch 'UpdateLineNumberMargin\(true, config\)') { throw 'Theme/configuration paths do not refresh editor decoration.' }
 $colors = @{}
 foreach($file in $themes) { $theme = Get-Content -Raw $file.FullName | ConvertFrom-Json; $colors[$theme.id] = $theme.colors.'editor.currentLine.background' }
 foreach($id in @('everforest-light-medium','dracula')) { if([string]::IsNullOrWhiteSpace($colors[$id])) { throw "Theme $id has no currentLine color." } }

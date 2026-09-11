@@ -16,6 +16,7 @@ function Read-ProjectFile([string]$relativePath) {
 $settingsHeader = Read-ProjectFile "src\fbe\Settings.h"
 $settingsSource = Read-ProjectFile "src\fbe\Settings.cpp"
 $mainFrame = Read-ProjectFile "src\fbe\mainfrm.cpp"
+$sourceEditor = Read-ProjectFile "src\fbe\source\ui\SourceEditorControl.cpp"
 $documentation = Read-ProjectFile "docs\xml-source-themes.md"
 $dialogLocalization = Read-ProjectFile "localization\app-ui\fbe-small-dialogs.json"
 
@@ -66,14 +67,14 @@ foreach($requiredLocalizationKey in @(
     }
 }
 foreach($requiredMapping in @(
-    "SCE_H_TAGUNKNOWN,             XML_SRC_STYLE_XML_TAG_NAME",
-    "SCE_H_ATTRIBUTEUNKNOWN,       XML_SRC_STYLE_XML_ATTRIBUTE_NAME",
-    "SCE_H_CDATA,                  XML_SRC_STYLE_XML_CDATA",
-    "SCE_H_ENTITY,                 XML_SRC_STYLE_XML_ENTITY",
-    "SCE_H_SGML_ERROR,             XML_SRC_STYLE_XML_ERROR"
+    "SCE_H_TAGUNKNOWN, SourceEditorColorXmlTagName",
+    "SCE_H_ATTRIBUTEUNKNOWN, SourceEditorColorXmlAttributeName",
+    "SCE_H_CDATA, SourceEditorColorXmlCdata",
+    "SCE_H_ENTITY, SourceEditorColorXmlEntity",
+    "SCE_H_SGML_ERROR, SourceEditorColorXmlError"
 )) {
-    if($mainFrame -notlike "*$requiredMapping*") {
-        throw "В mainfrm.cpp отсутствует сопоставление Lexilla: $requiredMapping"
+    if($sourceEditor -notlike "*$requiredMapping*") {
+        throw "В SourceEditorControl.cpp отсутствует сопоставление Lexilla: $requiredMapping"
     }
 }
 
@@ -309,9 +310,9 @@ if($documentation -notlike '*xml.namespace*' -or $documentation -notlike '*за�
 # Fold markers inherit active theme colors, and a failed delete preserves the
 # original DeleteFileW error while restoring the read-only attribute.
 $mainFrame = Read-ProjectFile "src\fbe\mainfrm.cpp"
-$foldBlock = [regex]::Match($mainFrame, 'const COLORREF markerFore[\s\S]*?DefineMarker\(SC_MARKNUM_FOLDEROPENMID, SC_MARK_EMPTY, markerFore, markerBack\);')
+$foldBlock = [regex]::Match($sourceEditor, 'const COLORREF markerFore[\s\S]*?DefineMarker\(SC_MARKNUM_FOLDEROPENMID, SC_MARK_EMPTY, markerFore, markerBack\);')
 if(!$foldBlock.Success) { throw 'Cannot inspect fold marker palette setup.' }
-foreach($requiredText in @('XML_SRC_STYLE_LINE_NUMBER', 'XML_SRC_STYLE_EDITOR_BACKGROUND', 'GetSysColor(COLOR_WINDOW)', 'GetSysColor(COLOR_WINDOWTEXT)', 'markerFore, markerBack')) {
+foreach($requiredText in @('SourceEditorColorLineNumber', 'SourceEditorColorEditorBackground', 'GetSysColor(COLOR_WINDOW)', 'GetSysColor(COLOR_WINDOWTEXT)', 'markerFore, markerBack')) {
     if($foldBlock.Value -notlike "*$requiredText*") { throw "Fold marker setup is missing: $requiredText" }
 }
 if($foldBlock.Value -match 'RGB\(0xff, 0xff, 0xff\)|RGB\(0, 0, 0\)') { throw 'Fold markers must not use hard-coded black or white outside high contrast.' }

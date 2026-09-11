@@ -255,18 +255,6 @@ public:
   void	  StopIncSearch(bool fCancel);
   void	  SetIsText();
 
-  // source editor
-	void	  DefineMarker(int marker, int markerType, COLORREF fore,COLORREF back);
-	void	  SetupSci();
-	void	  ConfigureSourceSpecialCharacterRepresentations();
-	// Transitional helpers still service fold-change notifications until they
-	// are routed through SourceEditorControl.
-	void FoldAll();
-	void ExpandFold(int& line, bool doExpand, bool force = false, int visLevels = 0, int level = -1);
-
-  // source editor styles
-  void	  SetSciStyles();
-
 	// source<->html exchange
 	bool SourceToHTML();
 
@@ -889,7 +877,7 @@ public:
 
     const SCNotification& scn = *reinterpret_cast<const SCNotification*>(hdr);
     if (scn.updated & SC_UPDATE_LINE_COUNT)
-		UpdateSourceLineNumberMargin(false);
+		m_source.UpdateLineNumberMargin(false);
     if (scn.updated & SC_UPDATE_TEXT)
     {
 		ClearSourceValidationAnnotations();
@@ -948,7 +936,6 @@ public:
 	void ApplyConfChanges(bool applyDocumentStyles = true);
 	void ApplyEditorBackgroundChanges();
 	void ApplyXmlSourceEditorChanges(bool saveSettings = true);
-	void UpdateSourceLineNumberMargin(bool force = false);
 	void RestartProgram();
 	void FillMenuWithHkeys(HMENU);
 	void RefreshLocalizedMainFrameUi();
