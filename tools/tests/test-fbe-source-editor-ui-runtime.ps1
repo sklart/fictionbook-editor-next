@@ -18,6 +18,6 @@ try {
         if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE SourceEditorControl scenario failed: exit $($process.ExitCode)." }
     } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
     $rows = @{}; foreach($line in Get-Content -LiteralPath $report) { $parts = $line -split "`t"; if($parts.Count -eq 2) { $rows[$parts[0]] = $parts[1] } }
-    foreach($key in @('created', 'utf8', 'eol', 'wrapping', 'whitespace', 'line_numbers', 'folding', 'reapply')) { if($rows[$key] -ne '1') { throw "SourceEditorControl runtime check failed: $key (value '$($rows[$key])')." } }
+    foreach($key in @('created', 'utf8', 'eol', 'eol_visibility', 'wrapping', 'whitespace', 'line_numbers', 'folding', 'styles', 'tag_state', 'metrics', 'reapply')) { if($rows[$key] -ne '1') { throw "SourceEditorControl runtime check failed: $key (value '$($rows[$key])')." } }
     Write-Host 'FBE SourceEditorControl runtime passed.'
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

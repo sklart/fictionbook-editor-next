@@ -10,10 +10,14 @@ struct SourceEditorControlDiagnostics
 	bool created = false;
 	bool utf8 = false;
 	bool eol = false;
+	bool eolVisibility = false;
 	bool wrapping = false;
 	bool whitespace = false;
 	bool lineNumbers = false;
 	bool folding = false;
+	bool styles = false;
+	bool tagState = false;
+	bool metrics = false;
 	bool reapply = false;
 };
 

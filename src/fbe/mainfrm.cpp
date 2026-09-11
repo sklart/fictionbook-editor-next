@@ -4141,7 +4141,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	if (IsFbeTestScenario(L"source-editor-ui-runtime"))
 	{
 		const SourceEditorControlDiagnostics diagnostics = m_source.RunDiagnostics();
-		CStringA row; row.Format("created\t%d\r\nutf8\t%d\r\neol\t%d\r\nwrapping\t%d\r\nwhitespace\t%d\r\nline_numbers\t%d\r\nfolding\t%d\r\nreapply\t%d\r\n", diagnostics.created ? 1 : 0, diagnostics.utf8 ? 1 : 0, diagnostics.eol ? 1 : 0, diagnostics.wrapping ? 1 : 0, diagnostics.whitespace ? 1 : 0, diagnostics.lineNumbers ? 1 : 0, diagnostics.folding ? 1 : 0, diagnostics.reapply ? 1 : 0);
+		CStringA row; row.Format("created\t%d\r\nutf8\t%d\r\neol\t%d\r\neol_visibility\t%d\r\nwrapping\t%d\r\nwhitespace\t%d\r\nline_numbers\t%d\r\nfolding\t%d\r\nstyles\t%d\r\ntag_state\t%d\r\nmetrics\t%d\r\nreapply\t%d\r\n", diagnostics.created ? 1 : 0, diagnostics.utf8 ? 1 : 0, diagnostics.eol ? 1 : 0, diagnostics.eolVisibility ? 1 : 0, diagnostics.wrapping ? 1 : 0, diagnostics.whitespace ? 1 : 0, diagnostics.lineNumbers ? 1 : 0, diagnostics.folding ? 1 : 0, diagnostics.styles ? 1 : 0, diagnostics.tagState ? 1 : 0, diagnostics.metrics ? 1 : 0, diagnostics.reapply ? 1 : 0);
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"export-html"))
@@ -4223,7 +4223,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	appendSnapshot("source-unchanged-body-source-5");
 	m_source.SendMessage(SCI_COLOURISE, 0, -1);
 	appendSnapshot("source-styled-wrap-word");
-	m_source.SendMessage(SCI_SETWRAPMODE, SC_WRAP_NONE);
+	SourceEditorConfig benchmarkConfig = BuildSourceEditorConfig();
+	benchmarkConfig.wrap = false;
+	m_source.ApplyConfiguration(benchmarkConfig);
 	m_source.SendMessage(SCI_COLOURISE, 0, -1);
 	appendSnapshot("source-styled-wrap-none");
 	m_source.FoldAll();
@@ -7630,10 +7632,11 @@ void CMainFrame::ShowSourceValidationAnnotation(int line, int column, const CStr
 bool CMainFrame::SciUpdateUI(bool gotoTag)
 {
 	UpdateStatusBar();
-	if (_Settings.XmlSrcTagHL() || gotoTag)
+	const SourceEditorConfig config = BuildSourceEditorConfig();
+	if (config.tagHighlight || gotoTag)
 	{
 		if (gotoTag) UIEnable(ID_GOTO_MATCHTAG, m_source.GotoMatchingTag());
-		else UIEnable(ID_GOTO_MATCHTAG, m_source.UpdateTagHighlight({ _Settings.XmlSrcTagHL(), _Settings.XmlSrcTagHighlightMode() ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, _Settings.XmlSrcTagHighlightAttributes(), _Settings.XmlSrcTagHighlightErrors() }));
+		else UIEnable(ID_GOTO_MATCHTAG, m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors }));
 		return true;
 	}
 	return false;
@@ -8177,7 +8180,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	const SourceEditorConfig config = BuildSourceEditorConfig();
 	m_source.ApplyConfiguration(config);
 	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
-	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
+	UIEnable(ID_GOTO_MATCHTAG, config.tagHighlight);
 	// Перекраска XML-редактора не должна менять активный режим документа.
 	if(activeView == BODY && m_doc)
 		m_view.ActivateWnd(m_doc->m_body);
@@ -8198,7 +8201,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	const SourceEditorConfig config = BuildSourceEditorConfig();
 	m_source.ApplyConfiguration(config);
 	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
-	UIEnable(ID_GOTO_MATCHTAG, _Settings.XmlSrcTagHL());
+	UIEnable(ID_GOTO_MATCHTAG, config.tagHighlight);
 
 	// added by SeNS
 	if (_Settings.GetUseSpellChecker())

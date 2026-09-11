@@ -226,12 +226,17 @@ SourceEditorControlDiagnostics SourceEditorControl::RunDiagnostics()
 	if(!diagnostics.created) return diagnostics;
 	diagnostics.utf8 = Send(SCI_GETCODEPAGE) == SC_CP_UTF8;
 	diagnostics.eol = Send(SCI_GETEOLMODE) == SC_EOL_CRLF;
+	diagnostics.eolVisibility = Send(SCI_GETVIEWEOL) == static_cast<sptr_t>(m_config.showEol);
 	diagnostics.wrapping = Send(SCI_GETWRAPMODE) == (m_config.wrap ? SC_WRAP_WORD : SC_WRAP_NONE);
 	diagnostics.whitespace = Send(SCI_GETVIEWWS) == static_cast<sptr_t>(m_config.showWhitespace);
-	diagnostics.lineNumbers = Send(SCI_GETMARGINWIDTHN, 0) >= 0;
+	diagnostics.lineNumbers = m_config.showLineNumbers ? Send(SCI_GETMARGINWIDTHN, 0) > 0 : Send(SCI_GETMARGINWIDTHN, 0) == 0;
 	diagnostics.folding = Send(SCI_GETMARGINWIDTHN, 2) == (m_config.syntaxHighlight ? 16 : 0);
+	diagnostics.styles = Send(SCI_STYLEGETFORE, STYLE_DEFAULT) != -1;
+	const unsigned long long revision = m_tagMatchState.documentRevision;
 	ApplyConfiguration(m_config);
 	UpdateMetrics(m_config);
-	diagnostics.reapply = IsWindow() != FALSE && Send(SCI_GETCODEPAGE) == SC_CP_UTF8;
+	diagnostics.tagState = m_tagMatchState.documentRevision == revision;
+	diagnostics.metrics = m_config.showLineNumbers ? Send(SCI_GETMARGINWIDTHN, 0) > 0 : Send(SCI_GETMARGINWIDTHN, 0) == 0;
+	diagnostics.reapply = IsWindow() != FALSE && Send(SCI_GETCODEPAGE) == SC_CP_UTF8 && Send(SCI_GETVIEWEOL) == static_cast<sptr_t>(m_config.showEol);
 	return diagnostics;
 }
