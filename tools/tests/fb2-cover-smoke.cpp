@@ -54,8 +54,8 @@ bool ExpectPngSignature(const std::vector<unsigned char>& bytes)
 
 int wmain(int argc, wchar_t* argv[])
 {
-    if (argc != 3) {
-        std::wcerr << L"Использование: fb2-cover-smoke.exe <валидный-fb2> <битый-fb2>\n";
+    if (argc != 4) {
+        std::wcerr << L"Использование: fb2-cover-smoke.exe <валидный-fb2> <несколько-binary-fb2> <битый-fb2>\n";
         return 10;
     }
 
@@ -89,9 +89,27 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectTrue(L"stream.read", SUCCEEDED(streamHr) && FB2CoverImage::TryReadStream(coverStream, streamCoverImage, 32U * 1024U * 1024U, &errorMessage)) && success;
     success = ExpectPngSignature(streamCoverImage.bytes) && success;
 
+    // A publisher logo can precede the actual cover binary.  Both the file
+    // and shell-stream readers must resolve the coverpage xlink reference.
+    FB2CoverImage::CoverImage multipleBinaryCover;
+    CString multipleBinaryError;
+    success = ExpectTrue(L"multipleBinary.file.read", FB2CoverImage::TryRead(argv[2], multipleBinaryCover, &multipleBinaryError)) && success;
+    success = ExpectEqual(L"multipleBinary.file.href", multipleBinaryCover.href, L"#book-cover.png") && success;
+    success = ExpectEqual(L"multipleBinary.file.binaryId", multipleBinaryCover.binaryId, L"book-cover.png") && success;
+    success = ExpectPngSignature(multipleBinaryCover.bytes) && success;
+
+    CComPtr<IStream> multipleBinaryStream;
+    FB2CoverImage::CoverImage multipleBinaryStreamCover;
+    const HRESULT multipleBinaryStreamHr = ::SHCreateStreamOnFileEx(argv[2], STGM_READ | STGM_SHARE_DENY_NONE, FILE_ATTRIBUTE_NORMAL, FALSE, nullptr, &multipleBinaryStream);
+    success = ExpectTrue(L"multipleBinary.stream.open", SUCCEEDED(multipleBinaryStreamHr)) && success;
+    success = ExpectTrue(L"multipleBinary.stream.read", SUCCEEDED(multipleBinaryStreamHr) && FB2CoverImage::TryReadStream(multipleBinaryStream, multipleBinaryStreamCover, 32U * 1024U * 1024U, &multipleBinaryError)) && success;
+    success = ExpectEqual(L"multipleBinary.stream.href", multipleBinaryStreamCover.href, L"#book-cover.png") && success;
+    success = ExpectEqual(L"multipleBinary.stream.binaryId", multipleBinaryStreamCover.binaryId, L"book-cover.png") && success;
+    success = ExpectPngSignature(multipleBinaryStreamCover.bytes) && success;
+
     FB2CoverImage::CoverImage brokenCoverImage;
     CString brokenErrorMessage;
-    const bool brokenOk = FB2CoverImage::TryRead(argv[2], brokenCoverImage, &brokenErrorMessage);
+    const bool brokenOk = FB2CoverImage::TryRead(argv[3], brokenCoverImage, &brokenErrorMessage);
     success = ExpectTrue(L"brokenCover.mustFail", !brokenOk) && success;
     success = ExpectTrue(L"brokenCover.errorMessage", !brokenErrorMessage.IsEmpty()) && success;
     success = ExpectTrue(L"brokenCover.bytesEmpty", brokenCoverImage.bytes.empty()) && success;

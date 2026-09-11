@@ -284,7 +284,7 @@ bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecode
     HRESULT hr = ::CreateXmlReader(__uuidof(IXmlReader), reinterpret_cast<void**>(&reader), nullptr);
     if (FAILED(hr) || FAILED(reader->SetInput(stream))) return false;
 
-    int depth = 0, descriptionDepth = -1, titleInfoDepth = -1, binaryDepth = -1;
+    int depth = 0, descriptionDepth = -1, titleInfoDepth = -1, coverpageDepth = -1, binaryDepth = -1;
     bool matchedBinary = false;
     ATL::CString base64;
     const size_t maximumBase64Characters = ((maximumDecodedBytes + 2) / 3) * 4 + 8;
@@ -305,9 +305,24 @@ bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecode
             const auto named = [&](const wchar_t* expected) { return wcslen(expected) == length && wcsncmp(name, expected, length) == 0; };
             if (named(L"description")) descriptionDepth = depth;
             else if (depth == descriptionDepth + 1 && named(L"title-info")) titleInfoDepth = depth;
-            else if (depth == titleInfoDepth + 2 && named(L"image")) { coverImage.href = getAttribute(L"href"); if (!coverImage.href.IsEmpty() && coverImage.href[0] == L'#') coverImage.href.Delete(0); coverImage.binaryId = coverImage.href; NormalizeWhitespace(coverImage.binaryId); }
+            else if (depth == titleInfoDepth + 1 && named(L"coverpage")) coverpageDepth = depth;
+            // The thumbnail must use only the image explicitly designated by
+            // title-info/coverpage.  Do not let an illustration in annotation
+            // or another title-info child overwrite the requested cover.
+            else if (depth == coverpageDepth + 1 && named(L"image") && coverImage.href.IsEmpty()) {
+                coverImage.href = getAttribute(L"href");
+                coverImage.binaryId = coverImage.href;
+                if (!coverImage.binaryId.IsEmpty() && coverImage.binaryId[0] == L'#')
+                    coverImage.binaryId.Delete(0);
+                NormalizeWhitespace(coverImage.binaryId);
+            }
             else if (named(L"binary") && !coverImage.binaryId.IsEmpty() && getAttribute(L"id") == coverImage.binaryId) { matchedBinary = true; binaryDepth = depth; coverImage.contentType = getAttribute(L"content-type"); }
-            if (reader->IsEmptyElement()) --depth;
+            if (reader->IsEmptyElement()) {
+                if (depth == coverpageDepth) coverpageDepth = -1;
+                if (depth == titleInfoDepth) titleInfoDepth = -1;
+                if (depth == descriptionDepth) descriptionDepth = -1;
+                --depth;
+            }
         } else if ((type == XmlNodeType_Text || type == XmlNodeType_Whitespace) && matchedBinary) {
             const wchar_t* text = nullptr; UINT length = 0; reader->GetValue(&text, &length);
             for (UINT index = 0; index < length; ++index) {
@@ -324,6 +339,9 @@ bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecode
                 if (!::CryptStringToBinaryW(base64, base64.GetLength(), CRYPT_STRING_BASE64, coverImage.bytes.data(), &byteCount, nullptr, nullptr)) { coverImage.Clear(); return false; }
                 return true;
             }
+            if (depth == coverpageDepth) coverpageDepth = -1;
+            if (depth == titleInfoDepth) titleInfoDepth = -1;
+            if (depth == descriptionDepth) descriptionDepth = -1;
             --depth;
         }
     }

@@ -143,8 +143,8 @@ int wmain(int argc, wchar_t* argv[])
 {
     const int requestedEdge = 256;
 
-    if (argc != 7) {
-        std::wcerr << L"Использование: fb2-thumbnail-provider-smoke.exe <png-fb2> <jpeg-fb2> <bmp-fb2> <битый-fb2> <без-coverpage-fb2> <без-binary-fb2>\n";
+    if (argc != 9) {
+        std::wcerr << L"Использование: fb2-thumbnail-provider-smoke.exe <png-fb2> <несколько-binary-fb2> <jpeg-fb2> <bmp-fb2> <вертикальная-обложка-fb2> <битый-fb2> <без-coverpage-fb2> <без-binary-fb2>\n";
         return 10;
     }
 
@@ -179,9 +179,9 @@ int wmain(int argc, wchar_t* argv[])
     success = ExpectTrue(L"bitmap.beforeInitialize.null", bitmap == nullptr) && success;
     delete providerWithoutInit;
 
-    const wchar_t* validFixtures[3] = { argv[1], argv[2], argv[3] };
-    const wchar_t* validLabels[3] = { L"png", L"jpeg", L"bmp" };
-    for (int i = 0; i < 3; ++i) {
+    const wchar_t* validFixtures[5] = { argv[1], argv[2], argv[3], argv[4], argv[5] };
+    const wchar_t* validLabels[5] = { L"png", L"multiple-binaries", L"jpeg", L"bmp", L"visible-portrait" };
+    for (int i = 0; i < 5; ++i) {
         CComPtr<IStream> validStream;
         hr = CreateReadOnlyStreamFromFile(validFixtures[i], &validStream);
         if (FAILED(hr)) {
@@ -247,13 +247,20 @@ int wmain(int argc, wchar_t* argv[])
         const int actualMaxEdge = width > height ? width : height;
         success = ExpectEqualInt(edgeName, actualMaxEdge, requestedEdge) && success;
 
+        if (i == 4) {
+            // 96x128 source image must fit within 256px as 192x256, without
+            // stretching to a square or cropping the portrait cover.
+            success = ExpectEqualInt(L"bitmap.visiblePortrait.width", width, 192) && success;
+            success = ExpectEqualInt(L"bitmap.visiblePortrait.height", height, 256) && success;
+        }
+
         if (bitmap != nullptr)
             ::DeleteObject(bitmap);
         delete validProvider;
     }
 
     CComPtr<IStream> brokenStream;
-    hr = CreateReadOnlyStreamFromFile(argv[4], &brokenStream);
+    hr = CreateReadOnlyStreamFromFile(argv[6], &brokenStream);
     if (FAILED(hr)) {
         std::wcerr << L"Не удалось открыть битый fixture как IStream: 0x"
                    << std::hex << hr << std::dec << L"\n";
@@ -281,7 +288,7 @@ int wmain(int argc, wchar_t* argv[])
     delete brokenProvider;
 
     CComPtr<IStream> missingCoverStream;
-    hr = CreateReadOnlyStreamFromFile(argv[5], &missingCoverStream);
+    hr = CreateReadOnlyStreamFromFile(argv[7], &missingCoverStream);
     if (FAILED(hr)) {
         std::wcerr << L"Не удалось открыть fixture без coverpage как IStream: 0x"
                    << std::hex << hr << std::dec << L"\n";
@@ -308,7 +315,7 @@ int wmain(int argc, wchar_t* argv[])
     delete missingCoverProvider;
 
     CComPtr<IStream> missingBinaryStream;
-    hr = CreateReadOnlyStreamFromFile(argv[6], &missingBinaryStream);
+    hr = CreateReadOnlyStreamFromFile(argv[8], &missingBinaryStream);
     if (FAILED(hr)) {
         std::wcerr << L"Не удалось открыть fixture без binary как IStream: 0x"
                    << std::hex << hr << std::dec << L"\n";
@@ -337,4 +344,3 @@ int wmain(int argc, wchar_t* argv[])
     ::CoUninitialize();
     return success ? 0 : 3;
 }
-

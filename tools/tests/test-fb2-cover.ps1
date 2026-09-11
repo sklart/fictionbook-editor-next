@@ -9,6 +9,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $testDir = Join-Path $repoRoot "out\tests\fb2-cover"
 $testExe = Join-Path $testDir "fb2-cover-smoke.exe"
 $validFixture = Join-Path $PSScriptRoot "fb2-cover-smoke.fb2"
+$multipleBinariesFixture = Join-Path $PSScriptRoot "fb2-cover-multiple-binaries.fb2"
 $brokenFixture = Join-Path $PSScriptRoot "fb2-cover-broken.fb2"
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
@@ -23,7 +24,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Push-Location $testDir
 try {
-    & $testExe $validFixture $brokenFixture
+    & $testExe $validFixture $multipleBinariesFixture $brokenFixture
     if ($LASTEXITCODE -ne 0) {
         throw "Smoke-тест чтения обложки FB2 завершился с кодом $LASTEXITCODE."
     }

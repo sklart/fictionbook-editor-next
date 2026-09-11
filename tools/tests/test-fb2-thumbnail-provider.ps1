@@ -9,6 +9,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $testDir = Join-Path $repoRoot "out\tests\fb2-thumbnail-provider"
 $testExe = Join-Path $testDir "fb2-thumbnail-provider-smoke.exe"
 $pngFixture = Join-Path $PSScriptRoot "fb2-cover-smoke.fb2"
+$multipleBinariesFixture = Join-Path $PSScriptRoot "fb2-cover-multiple-binaries.fb2"
+$visibleFixture = Join-Path $PSScriptRoot "fb2-cover-visible-smoke.fb2"
 $jpegFixture = Join-Path $PSScriptRoot "fb2-cover-jpeg-smoke.fb2"
 $bmpFixture = Join-Path $PSScriptRoot "fb2-cover-bmp-smoke.fb2"
 $brokenFixture = Join-Path $PSScriptRoot "fb2-cover-broken.fb2"
@@ -33,7 +35,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Push-Location $testDir
 try {
-    & $testExe $pngFixture $jpegFixture $bmpFixture $brokenFixture $missingCoverFixture $missingBinaryFixture
+    & $testExe $pngFixture $multipleBinariesFixture $jpegFixture $bmpFixture $visibleFixture $brokenFixture $missingCoverFixture $missingBinaryFixture
     if ($LASTEXITCODE -ne 0) {
         throw "Smoke-тест COM thumbnail provider завершился с кодом $LASTEXITCODE."
     }

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <genre>science</genre>
+      <author><first-name>Frank</first-name><last-name>Wilczek</last-name></author>
+      <book-title>Multiple Binary Cover Fixture</book-title>
+      <coverpage><image xlink:href="#book-cover.png"/></coverpage>
+      <lang>en</lang>
+    </title-info>
+  </description>
+  <body>
+    <section><p>An internal publisher logo follows, but is not the cover.</p><image xlink:href="#publisher-logo.png"/></section>
+  </body>
+  <binary id="publisher-logo.png" content-type="image/png">
+    iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+pWuoAAAAASUVORK5CYII=
+  </binary>
+  <binary id="book-cover.png" content-type="image/png">
+    iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=
+  </binary>
+</FictionBook>
