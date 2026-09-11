@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "stdafx.h"
 #include "ReferenceNavigation.h"
 #include "LinkDomNavigation.h"
 #include "../apputils.h"
@@ -28,7 +28,13 @@ MSHTML::IHTMLElementPtr FindParentDiv(MSHTML::IHTMLElementPtr element)
 CString NormalizeLegacyReferenceHref(CString href)
 {
   if (href.Find(L"file") == 0)
-    href = href.Mid(href.ReverseFind(L'#'), 1024);
+  {
+    const int fragment = href.ReverseFind(L'#');
+    // A file URL without a fragment is never an in-document reference.  The
+    // legacy code passed -1 to Mid(), which is invalid for CString and could
+    // surface as a COM failure while command enablement was probing a range.
+    href = fragment >= 0 ? href.Mid(fragment, 1024) : CString();
+  }
   return href;
 }
 

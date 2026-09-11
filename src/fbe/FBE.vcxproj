@@ -348,7 +348,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="ImageImport.cpp" />
     <ClCompile Include="image\ImageDocumentInserter.cpp" />
     <ClCompile Include="navigation\LinkDomNavigation.cpp" />
-	<ClCompile Include="navigation\ReferenceNavigation.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+	<ClCompile Include="navigation\ReferenceNavigation.cpp" />
     <ClCompile Include="mainfrm.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
