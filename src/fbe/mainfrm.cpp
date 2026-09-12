@@ -4006,7 +4006,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			BOOL handled = FALSE;
 			if (splitResult.documentChanged) m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 			const bool expectedChanged = wcscmp(splitFault, L"after-first-mutation") == 0;
-			const bool undoRestored = !splitResult.documentChanged || before == contentHtml();
+			// A false documentChanged must not be accepted as evidence of restoration:
+			// this fault scenario exists specifically to catch an incorrect flag.
+			const bool undoRestored = before == contentHtml();
 			const bool passed = checkAllowed && splitResult.HasTechnicalFailure() && splitResult.error == E_FAIL &&
 				splitResult.documentChanged == expectedChanged && (expectedChanged ? before != after && undoRestored : before == after);
 			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t%d\t%d\t1\t1\t1\t0\t%s\t0x%08lX\t%d\t%s\t%s\t0x%08lX\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, before != after, undoRestored, passed ? "pass" : "fail", static_cast<unsigned long>(splitResult.error), splitResult.documentChanged ? 1 : 0, statusName(checkResult), statusName(splitResult), static_cast<unsigned long>(splitResult.error));
