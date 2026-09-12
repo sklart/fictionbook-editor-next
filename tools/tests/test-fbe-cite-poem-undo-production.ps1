@@ -56,6 +56,9 @@ try {
         # inside the first whitespace-only P; the editor correctly rejects it.
 		@{ id = 'poem-selected-whitespace-paragraphs'; operation = 'poem'; expectRejected = $true; paragraphs = @('  ', "`t", '  ') },
 		@{ id = 'poem-wrapper-rejected'; operation = 'poem'; route = 'wrapper'; expectRejected = $true; paragraphs = @('  ', "`t", '  ') }
+		,@{ id = 'cite-fault-before'; operation = 'cite'; paragraphs = @('Text'); fault = 'before-mutation'; documentChanged = $false }
+		,@{ id = 'cite-fault-after-insert'; operation = 'cite'; paragraphs = @('Text'); fault = 'after-insert'; documentChanged = $true }
+		,@{ id = 'poem-fault-before-selection'; operation = 'poem'; paragraphs = @('Line'); fault = 'before-selection'; documentChanged = $true }
     )
     if($CaseId -and -not (@($cases | ForEach-Object { $_.id }) -contains $CaseId)) { throw "Unknown Cite/Poem runtime case: $CaseId" }
     $selectedCases = @($cases | Where-Object { -not $CaseId -or $_.id -eq $CaseId })
@@ -74,13 +77,14 @@ try {
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
         @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$body</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
         $beforeFixture = Get-Content -LiteralPath $fixture -Raw
-        $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase, $oldRoute = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE
+        $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase, $oldRoute, $oldFault = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_CITE_POEM_FAULT
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'cite-poem-undo'; $env:FBE_NEXT_TEST_STRUCTURE_OPERATION = $case.operation
             $env:FBE_NEXT_TEST_STRUCTURE_TARGET = $expectedTarget
             $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE = $expectedSelection
             $env:FBE_NEXT_TEST_STRUCTURE_REPEAT = if($case.ContainsKey('repeat')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_ROUTE = if($case.ContainsKey('route')) { $case.route } else { $null }
+			$env:FBE_NEXT_TEST_CITE_POEM_FAULT = if($case.ContainsKey('fault')) { $case.fault } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = if($case.ContainsKey('route')) { $null } else { $trace }
             $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
             $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
@@ -92,14 +96,18 @@ try {
             if($process.ExitCode -ne 0 -and -not $case.ContainsKey('expectRejected')) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         }
         finally {
-            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE = $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase, $oldRoute
+            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_CITE_POEM_FAULT = $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase, $oldRoute, $oldFault
         }
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1) { throw "Missing live MSHTML report for $($case.id)." }
         $expectedCollapsed = if($expectedSelection -eq 'caret') { '1' } else { '0' }
         if($row.selection_collapsed -ne $expectedCollapsed) { throw "MSHTML collapsed-state mismatch for $($case.id): $($row.selection_collapsed)." }
+		if($case.ContainsKey('fault')) {
+			if($process.ExitCode -ne 0 -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'failed' -or $row.hresult -ne '0x80004005' -or $row.document_changed -ne $(if($case.documentChanged){'1'}else{'0'})) { throw "Cite/Poem fault result contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+			$completed++; $passed++; continue
+		}
         if($case.ContainsKey('expectRejected')) {
-            if($process.ExitCode -eq 0 -or $row.check_allowed -ne '0' -or $row.result -ne 'not-applicable' -or (Get-Content -LiteralPath $fixture -Raw) -ne $beforeFixture) { throw "Expected an unchanged, explicitly not-applicable MSHTML whitespace range for $($case.id)." }
+            if($process.ExitCode -eq 0 -or $row.check_allowed -ne '0' -or $row.result -ne 'not-applicable' -or $row.check_status -ne 'not-applicable' -or $row.apply_status -ne 'not-applicable' -or $row.hresult -ne '0x00000000' -or $row.document_changed -ne '0' -or (Get-Content -LiteralPath $fixture -Raw) -ne $beforeFixture) { throw "Expected an unchanged, explicitly not-applicable MSHTML whitespace range for $($case.id)." }
             if($case.ContainsKey('route')) { $completed++; $passed++; continue }
             if(-not (Test-Path -LiteralPath $trace)) { throw "Missing structural trace for rejected $($case.id): $trace" }
             $traceRows = Import-Csv -LiteralPath $trace -Delimiter "`t"
@@ -119,7 +127,7 @@ try {
             if(@($traceRows | Where-Object { $_.event -in @('exception', 'failure') }).Count) { throw "Structural trace recorded a COM failure for $($case.id): $trace" }
         }
         if($case.ContainsKey('expectedPoemText') -and $row.poem_text_utf16 -ne $case.expectedPoemText) { throw "Poem text is wrong for $($case.id): $($row.poem_text_utf16)." }
-        if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.selection_mode -ne $expectedSelection -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.saved -ne '1' -or $row.result -ne 'pass') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+        if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.selection_mode -ne $expectedSelection -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.saved -ne '1' -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'applied' -or $row.hresult -ne '0x00000000' -or $row.document_changed -ne '1') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
         if($case.operation -eq 'cite' -and ([int]$row.after_cites -ne 1 -or [int]$row.after_poems -ne 0)) { throw "Cite structure is wrong for $($case.id)." }
         if($case.operation -eq 'poem' -and ([int]$row.after_poems -ne 1 -or [int]$row.after_stanzas -lt 1)) { throw "Poem structure is wrong for $($case.id)." }
         Assert-Fb2Schema $fixture

@@ -37,18 +37,33 @@ enum class SplitFailurePoint
 	AfterFirstMutation
 };
 
+// Used by the production runtime harness to prove that a failure reports
+// whether the live DOM has already changed.  Callers normally use the
+// one-argument overloads below.
+enum class CitePoemFailurePoint
+{
+	None,
+	BeforeMutation,
+	AfterInsert,
+	BeforeSelection
+};
+
 class BodyStructuralEditor
 {
 public:
 	BodyStructuralEditor(MSHTML::IHTMLDocument2Ptr document, MSHTML::IMarkupServices2Ptr markupServices, StructuralTrace* trace = nullptr);
 	StructuralOperationResult InsertCite(bool checkOnly);
 	StructuralOperationResult InsertPoem(bool checkOnly);
+	StructuralOperationResult InsertCite(bool checkOnly, CitePoemFailurePoint failurePoint);
+	StructuralOperationResult InsertPoem(bool checkOnly, CitePoemFailurePoint failurePoint);
 	StructuralOperationResult SplitContainer(bool checkOnly);
 	StructuralOperationResult SplitContainer(bool checkOnly, SplitFailurePoint failurePoint);
 
 private:
 	static MSHTML::IHTMLElementPtr FindParentDiv(MSHTML::IHTMLElementPtr element);
-	bool ExpandRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& range, MSHTML::IHTMLElementPtr& begin, MSHTML::IHTMLElementPtr& end) const;
+	// S_OK: range expanded; S_FALSE: selection is not structurally applicable;
+	// failed HRESULT: MSHTML/markup-services failure that must reach the UI.
+	HRESULT ExpandRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& range, MSHTML::IHTMLElementPtr& begin, MSHTML::IHTMLElementPtr& end) const;
 	void Before(const wchar_t* phase) const;
 	void After(const wchar_t* phase) const;
 	void Hr(const wchar_t* phase, HRESULT hr) const;

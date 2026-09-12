@@ -3703,13 +3703,14 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		wchar_t selectionMode[16] = {};
 		wchar_t tracePath[MAX_PATH] = {};
 		wchar_t traceCase[64] = {};
-		wchar_t route[16] = {};
+		wchar_t route[16] = {}, citePoemFault[32] = {};
 		const DWORD operationLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_OPERATION", operation, _countof(operation));
 		const DWORD targetLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TARGET", target, _countof(target));
 		const DWORD selectionModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE", selectionMode, _countof(selectionMode));
 		const DWORD traceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TRACE", tracePath, _countof(tracePath));
 		const DWORD traceCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_CASE", traceCase, _countof(traceCase));
 		const DWORD routeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_ROUTE", route, _countof(route));
+		const DWORD citePoemFaultLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_CITE_POEM_FAULT", citePoemFault, _countof(citePoemFault));
 		const bool cite = operationLength == 4 && wcscmp(operation, L"cite") == 0;
 		const bool poem = operationLength == 4 && wcscmp(operation, L"poem") == 0;
 		const wchar_t* targetClass = targetLength ? target : L"section";
@@ -3718,7 +3719,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const CStringA selectionName(selectCaret ? "caret" : "selected");
 		const bool repeat = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_REPEAT", nullptr, 0) != 0;
 		const bool viaWrapper = routeLength == 7 && wcscmp(route, L"wrapper") == 0;
-		CStringA header("operation\ttarget\tselection_mode\tselection_collapsed\tselection_text_utf16\tselection_html_utf16\tselection_parent_utf16\tselection_start_to_first_start\tselection_end_to_first_end\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tpoem_text_utf16\tempty_divs\tempty_paragraphs\tempty_stanzas\tsaved\tresult\r\n");
+		CStringA header("operation\ttarget\tselection_mode\tselection_collapsed\tselection_text_utf16\tselection_html_utf16\tselection_parent_utf16\tselection_start_to_first_start\tselection_end_to_first_end\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tpoem_text_utf16\tempty_divs\tempty_paragraphs\tempty_stanzas\tsaved\tresult\tcheck_status\tapply_status\thresult\tdocument_changed\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto writeFailure = [&](const char* reason)
 		{
@@ -3793,19 +3794,36 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		FbeStructure::StructuralTrace trace(traceLength ? tracePath : nullptr,
 			cite ? L"cite" : L"poem", traceCaseLength ? traceCase : L"runtime");
 		FbeStructure::BodyStructuralEditor extracted(m_doc->m_body.Document(), m_doc->m_body.MarkupServices(), trace.IsEnabled() ? &trace : nullptr);
-		auto apply = [&](bool checkOnly) -> bool {
+		const FbeStructure::CitePoemFailurePoint failurePoint = citePoemFaultLength
+			? (wcscmp(citePoemFault, L"after-insert") == 0 ? FbeStructure::CitePoemFailurePoint::AfterInsert
+				: wcscmp(citePoemFault, L"before-selection") == 0 ? FbeStructure::CitePoemFailurePoint::BeforeSelection
+				: FbeStructure::CitePoemFailurePoint::BeforeMutation)
+			: FbeStructure::CitePoemFailurePoint::None;
+		auto apply = [&](bool checkOnly) -> FbeStructure::StructuralOperationResult {
 			if (viaWrapper)
-				return cite ? m_doc->m_body.InsertCite(checkOnly) : m_doc->m_body.InsertPoem(checkOnly);
-			const FbeStructure::StructuralOperationResult result = cite ? extracted.InsertCite(checkOnly) : extracted.InsertPoem(checkOnly);
-			return result.IsApplied();
+				return (cite ? m_doc->m_body.InsertCite(checkOnly) : m_doc->m_body.InsertPoem(checkOnly))
+					? FbeStructure::StructuralOperationResult::Applied() : FbeStructure::StructuralOperationResult::NotApplicable();
+			return cite ? extracted.InsertCite(checkOnly, failurePoint) : extracted.InsertPoem(checkOnly, failurePoint);
 		};
-		const bool checkAllowed = apply(true);
-		const bool applied = apply(false);
+		const FbeStructure::StructuralOperationResult checkResult = apply(true);
+		const FbeStructure::StructuralOperationResult applyResult = apply(false);
+		const bool checkAllowed = checkResult.IsApplied();
+		const bool applied = applyResult.IsApplied();
 		const CString after((const wchar_t*)body->innerHTML);
-		if (!applied || before == after) {
-			const char* reason = !checkAllowed && before == after ? "not-applicable" : "operation-failed";
+		if (citePoemFaultLength) {
+			BOOL handled = FALSE;
+			if (applyResult.documentChanged) m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			const bool expectedChanged = wcscmp(citePoemFault, L"before-mutation") != 0;
+			const bool restored = !applyResult.documentChanged || before == CString((const wchar_t*)body->innerHTML);
+			const bool passed = checkResult.IsApplied() && applyResult.HasTechnicalFailure() && applyResult.error == E_FAIL && applyResult.documentChanged == expectedChanged && restored;
 			CStringA row;
-			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs, reason);
+			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t1\t1\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\tapplied\tfailed\t0x80004005\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, restored, beforeParagraphs, passed ? "pass" : "fail", applyResult.documentChanged ? 1 : 0);
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+		}
+		if (!applied || before == after) {
+			const char* reason = applyResult.status == FbeStructure::StructuralOperationStatus::NotApplicable ? "not-applicable" : "operation-failed";
+			CStringA row;
+			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs, reason, checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		BOOL handled = FALSE;
@@ -3843,7 +3861,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		bool sequential = true;
 		if (repeat) {
 			range->select();
-			const bool secondApplied = apply(false);
+			const bool secondApplied = apply(false).IsApplied();
 			const CString secondAfter((const wchar_t*)body->innerHTML);
 			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 			const CString secondUndo((const wchar_t*)body->innerHTML);
@@ -3863,7 +3881,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool saved = redoForSave && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
 		const bool passed = undone && redone && sequential && structure && emptyDivs == 0 && emptyParagraphs == 0 && emptyStanzas == 0 && saved;
 		CStringA row;
-		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%s\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
+		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%s\tapplied\tapplied\t0x00000000\t1\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
 			beforeParagraphs, citeCount, poemCount, stanzaCount, (LPCSTR)poemTextSummary, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

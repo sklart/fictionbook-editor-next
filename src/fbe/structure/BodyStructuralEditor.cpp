@@ -19,33 +19,38 @@ MSHTML::IHTMLElementPtr BodyStructuralEditor::FindParentDiv(MSHTML::IHTMLElement
 	while (element && U::scmp(element->tagName, L"DIV")) element = element->parentElement;
 	return element;
 }
-bool BodyStructuralEditor::ExpandRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& range, MSHTML::IHTMLElementPtr& begin, MSHTML::IHTMLElementPtr& end) const
+HRESULT BodyStructuralEditor::ExpandRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& range, MSHTML::IHTMLElementPtr& begin, MSHTML::IHTMLElementPtr& end) const
 {
 	Before(L"expand-enter");
 	Before(L"duplicate-start"); MSHTML::IHTMLTxtRangePtr first = range->duplicate(); After(L"duplicate-start");
 	Before(L"collapse-start"); first->collapse(VARIANT_TRUE); After(L"collapse-start");
-	if (!FindParentDiv(first->parentElement())) return false;
+	if (!FindParentDiv(first->parentElement())) return S_FALSE;
 	Before(L"duplicate-end"); MSHTML::IHTMLTxtRangePtr last = range->duplicate(); After(L"duplicate-end");
 	Before(L"collapse-end"); last->collapse(VARIANT_FALSE); After(L"collapse-end");
 	begin = first->parentElement(); while (begin && U::scmp(begin->tagName, L"P")) begin = begin->parentElement;
 	if (begin) After(L"begin-paragraph-found");
 	end = last->parentElement(); while (end && U::scmp(end->tagName, L"P")) end = end->parentElement;
 	if (end) After(L"end-paragraph-found");
-	if (!begin || !end) return false;
+	if (!begin || !end) return S_FALSE;
 	if (begin == end) {
 		Before(L"single-paragraph-move"); range->moveToElementText(begin); After(L"single-paragraph-move");
 	} else {
 		MSHTML::IMarkupPointerPtr start, finish;
-		Before(L"create-start-pointer"); HRESULT hr = m_markupServices->CreateMarkupPointer(&start); Hr(L"create-start-pointer", hr); if (FAILED(hr)) return false;
-		Before(L"create-end-pointer"); hr = m_markupServices->CreateMarkupPointer(&finish); Hr(L"create-end-pointer", hr); if (FAILED(hr)) return false;
-		Before(L"move-start-pointer"); hr = start->MoveAdjacentToElement(begin, MSHTML::ELEM_ADJ_AfterBegin); Hr(L"move-start-pointer", hr); if (FAILED(hr)) return false;
-		Before(L"move-end-pointer"); hr = finish->MoveAdjacentToElement(end, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"move-end-pointer", hr); if (FAILED(hr)) return false;
-		Before(L"move-range-to-pointers"); hr = m_markupServices->MoveRangeToPointers(start, finish, range); Hr(L"move-range-to-pointers", hr); if (FAILED(hr)) return false;
+		Before(L"create-start-pointer"); HRESULT hr = m_markupServices->CreateMarkupPointer(&start); Hr(L"create-start-pointer", hr); if (FAILED(hr)) return hr;
+		Before(L"create-end-pointer"); hr = m_markupServices->CreateMarkupPointer(&finish); Hr(L"create-end-pointer", hr); if (FAILED(hr)) return hr;
+		Before(L"move-start-pointer"); hr = start->MoveAdjacentToElement(begin, MSHTML::ELEM_ADJ_AfterBegin); Hr(L"move-start-pointer", hr); if (FAILED(hr)) return hr;
+		Before(L"move-end-pointer"); hr = finish->MoveAdjacentToElement(end, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"move-end-pointer", hr); if (FAILED(hr)) return hr;
+		Before(L"move-range-to-pointers"); hr = m_markupServices->MoveRangeToPointers(start, finish, range); Hr(L"move-range-to-pointers", hr); if (FAILED(hr)) return hr;
 	}
 	After(L"expand-success");
-	return true;
+	return S_OK;
 }
 StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly)
+{
+	return InsertCite(checkOnly, CitePoemFailurePoint::None);
+}
+
+StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly, CitePoemFailurePoint failurePoint)
 {
 	bool documentChanged = false;
 	try {
@@ -59,7 +64,7 @@ StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly)
 		_bstr_t cls(parent->className);
 		if (U::scmp(cls, L"section") && U::scmp(cls, L"epigraph") && U::scmp(cls, L"annotation") && U::scmp(cls, L"history")) return StructuralOperationResult::NotApplicable();
 		After(L"preflight-complete");
-		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; if (!ExpandRangeToParagraphs(range, beginElement, endElement)) return StructuralOperationResult::NotApplicable(); After(L"expand");
+		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; const HRESULT expandHr = ExpandRangeToParagraphs(range, beginElement, endElement); if (expandHr == S_FALSE) return StructuralOperationResult::NotApplicable(); if (FAILED(expandHr)) return StructuralOperationResult::Failed(expandHr); After(L"expand");
 		if (checkOnly) { After(L"cite-check-success"); return { StructuralOperationStatus::Applied, S_OK, false }; }
 		Before(L"capture-html");
 		CString html; MSHTML::IHTMLDOMNodePtr sibling = beginElement;
@@ -77,13 +82,16 @@ StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly)
 		After(L"cite-html-built");
 		Before(L"cite-innerhtml"); cite->innerHTML = citeHtml.AllocSysString(); After(L"cite-innerhtml");
 		Before(L"undo-begin"); FbeDom::MarkupUndoUnitScope undo(m_markupServices, L"insert cite"); After(L"undo-begin");
+		if (failurePoint == CitePoemFailurePoint::BeforeMutation) return StructuralOperationResult::Failed(E_FAIL);
 		MSHTML::IHTMLDOMNodePtr begin = beginElement, end = endElement;
 		Before(L"insert-before"); MSHTML::IHTMLDOMNodePtr(parent)->insertBefore(MSHTML::IHTMLDOMNodePtr(cite), begin.GetInterfacePtr()); After(L"insert-before");
+		documentChanged = true;
+		if (failurePoint == CitePoemFailurePoint::AfterInsert) return StructuralOperationResult::Failed(E_FAIL, true);
 		After(L"remove-loop-enter");
 		while (begin != end) { sibling = begin->nextSibling; Before(L"remove-node"); begin->removeNode(VARIANT_TRUE); After(L"remove-node"); begin = sibling; }
 		Before(L"remove-end"); end->removeNode(VARIANT_TRUE); After(L"remove-end");
 		Before(L"undo-end"); undo.Close(); After(L"undo-end");
-		documentChanged = true;
+		if (failurePoint == CitePoemFailurePoint::BeforeSelection) return StructuralOperationResult::Failed(E_FAIL, true);
 		Before(L"selection-move"); range->moveToElementText(cite); After(L"selection-move");
 		Before(L"selection-collapse"); range->collapse(VARIANT_FALSE); After(L"selection-collapse");
 		Before(L"selection-select"); range->select(); After(L"selection-select");
@@ -91,6 +99,11 @@ StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly)
 	} catch (const _com_error& error) { if (m_trace) m_trace->Exception(L"cite", error.Error(), error.Description()); return StructuralOperationResult::Failed(error.Error(), documentChanged); }
 }
 StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly)
+{
+	return InsertPoem(checkOnly, CitePoemFailurePoint::None);
+}
+
+StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly, CitePoemFailurePoint failurePoint)
 {
 	bool documentChanged = false;
 	try {
@@ -105,7 +118,7 @@ StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly)
 		_bstr_t cls(parent->className);
 		if (U::scmp(cls,L"section") && U::scmp(cls,L"epigraph") && U::scmp(cls,L"annotation") && U::scmp(cls,L"history") && U::scmp(cls,L"cite")) return StructuralOperationResult::NotApplicable();
 		After(L"preflight-complete");
-		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; if (!ExpandRangeToParagraphs(range, beginElement, endElement)) return StructuralOperationResult::NotApplicable(); After(L"expand");
+		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; const HRESULT expandHr = ExpandRangeToParagraphs(range, beginElement, endElement); if (expandHr == S_FALSE) return StructuralOperationResult::NotApplicable(); if (FAILED(expandHr)) return StructuralOperationResult::Failed(expandHr); After(L"expand");
 		if (checkOnly) { After(L"poem-check-success"); return { StructuralOperationStatus::Applied, S_OK, false }; }
 		Before(L"capture-html"); CString html; MSHTML::IHTMLDOMNodePtr sibling = beginElement;
 		do { html += MSHTML::IHTMLElementPtr(sibling)->outerHTML.GetBSTR(); if (sibling == endElement) break; sibling = sibling->nextSibling; } while (sibling);
@@ -126,12 +139,15 @@ StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly)
 		}
 		After(L"poem-dom-ready");
 		Before(L"undo-begin"); FbeDom::MarkupUndoUnitScope undo(m_markupServices,L"insert poem"); After(L"undo-begin");
+		if (failurePoint == CitePoemFailurePoint::BeforeMutation) return StructuralOperationResult::Failed(E_FAIL);
 		MSHTML::IHTMLDOMNodePtr begin = beginElement, end = endElement;
 		Before(L"insert-before"); MSHTML::IHTMLDOMNodePtr(parent)->insertBefore(MSHTML::IHTMLDOMNodePtr(poem), begin.GetInterfacePtr()); After(L"insert-before");
+		documentChanged = true;
+		if (failurePoint == CitePoemFailurePoint::AfterInsert) return StructuralOperationResult::Failed(E_FAIL, true);
 		After(L"remove-loop-enter"); while (begin != end) { sibling = begin->nextSibling; Before(L"remove-node"); begin->removeNode(VARIANT_TRUE); After(L"remove-node"); begin = sibling; }
 		Before(L"remove-end"); end->removeNode(VARIANT_TRUE); After(L"remove-end");
 		Before(L"undo-end"); undo.Close(); After(L"undo-end");
-		documentChanged = true;
+		if (failurePoint == CitePoemFailurePoint::BeforeSelection) return StructuralOperationResult::Failed(E_FAIL, true);
 		Before(L"selection-move"); range->moveToElementText(poem); After(L"selection-move");
 		Before(L"selection-collapse"); range->collapse(VARIANT_FALSE); After(L"selection-collapse");
 		Before(L"selection-select"); range->select(); After(L"selection-select");
