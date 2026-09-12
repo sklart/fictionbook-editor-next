@@ -12,7 +12,8 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $settingsHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.h')
-$settingsSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.cpp')
+$settingsDefaults = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\SettingsDefaults.cpp')
+$settingsSerialization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\SettingsSerialization.cpp')
 $documentSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBDoc.cpp')
 $commitSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\BackupFileCommit.h')
 $dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsGeneralPage.cpp')
@@ -21,8 +22,8 @@ foreach ($contract in @(
     @{ Text = 'm_create_backup_file'; Source = $settingsHeader; Name = 'поле настройки' },
     @{ Text = 'GetCreateBackupFile'; Source = $settingsHeader; Name = 'getter настройки' },
     @{ Text = 'SetCreateBackupFile'; Source = $settingsHeader; Name = 'setter настройки' },
-    @{ Text = 'CreateBackupFile'; Source = $settingsSource; Name = 'ключ Settings.xml' },
-    @{ Text = 'm_create_backup_file\s*=\s*true'; Source = $settingsSource; Name = 'значение по умолчанию' },
+    @{ Text = 'CreateBackupFile'; Source = $settingsSerialization; Name = 'ключ Settings.xml' },
+    @{ Text = 'm_create_backup_file\s*=\s*true'; Source = $settingsDefaults; Name = 'значение по умолчанию' },
     @{ Text = 'FbeBackupFileCommit::CommitSavedFile'; Source = $documentSource; Name = 'вызов атомарного сохранения' },
     @{ Text = 'CommitSavedFile\([^\)]*bool createBackupFile'; Source = $commitSource; Name = 'параметр атомарного сохранения' },
     @{ Text = '_Settings\.GetCreateBackupFile\(\)'; Source = $documentSource; Name = 'передача настройки в сохранение' },
