@@ -17,17 +17,16 @@ void Sanitize(wchar_t* destination, size_t destinationCount, const wchar_t* valu
 } // namespace
 
 StructuralTrace::StructuralTrace(const wchar_t* path, const wchar_t* operation, const wchar_t* caseName)
-	: m_file(INVALID_HANDLE_VALUE), m_operation(operation), m_caseName(caseName)
+	: m_file(INVALID_HANDLE_VALUE), m_operation(operation), m_caseName(caseName), m_writeFailure(false)
 {
 	if (!path || !*path) return;
 	m_file = ::CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (!IsEnabled()) return;
+	if (!IsEnabled()) { m_writeFailure = true; return; }
 	const wchar_t bom = 0xFEFF;
 	DWORD written = 0;
-	::WriteFile(m_file, &bom, sizeof(bom), &written, nullptr);
+	WriteRaw(&bom, sizeof(bom));
 	const wchar_t* header = L"timestamp\toperation\tbackend\tcase\tphase\tevent\thresult\tdetails\r\n";
-	::WriteFile(m_file, header, static_cast<DWORD>(wcslen(header) * sizeof(wchar_t)), &written, nullptr);
-	::FlushFileBuffers(m_file);
+	WriteRaw(header, static_cast<DWORD>(wcslen(header) * sizeof(wchar_t)));
 }
 
 StructuralTrace::~StructuralTrace()
@@ -76,9 +75,17 @@ void StructuralTrace::Write(const wchar_t* phase, const wchar_t* event, const wc
 	::swprintf_s(line, _countof(line), L"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\t%s\textracted\t%s\t%s\t%s\t%s\t%s\r\n",
 		now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond, now.wMilliseconds,
 		operation, caseName, safePhase, safeEvent, hresult, safeDetails);
+	WriteRaw(line, static_cast<DWORD>(wcslen(line) * sizeof(wchar_t)));
+}
+
+bool StructuralTrace::WriteRaw(const void* data, DWORD bytes)
+{
+	if (!IsEnabled()) return false;
 	DWORD written = 0;
-	::WriteFile(m_file, line, static_cast<DWORD>(wcslen(line) * sizeof(wchar_t)), &written, nullptr);
-	::FlushFileBuffers(m_file);
+	const bool wrote = ::WriteFile(m_file, data, bytes, &written, nullptr) != FALSE && written == bytes;
+	const bool flushed = wrote && ::FlushFileBuffers(m_file) != FALSE;
+	if (!wrote || !flushed) m_writeFailure = true;
+	return wrote && flushed;
 }
 
 } // namespace FbeStructure

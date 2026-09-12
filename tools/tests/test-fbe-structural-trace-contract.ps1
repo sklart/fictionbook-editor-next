@@ -22,6 +22,7 @@ try {
     if($rows[0].operation -ne 'cite trace' -or $rows[0].case -ne 'case  trace' -or $rows[0].details -ne 'TAB CR LF ' -or $rows[0].hresult -ne 'NA') { throw 'Production StructuralTrace sanitization contract is wrong.' }
     if($rows[1].event -ne 'after' -or $rows[1].hresult -ne 'NA' -or $rows[1].details -notlike 'completed*') { throw 'Production StructuralTrace completion contract is wrong.' }
     if($rows[2].event -ne 'failure' -or $rows[2].hresult -ne '0x80070005') { throw 'Production StructuralTrace HRESULT contract is wrong.' }
-    if((Import-Csv -LiteralPath $report -Delimiter "`t").enabled -ne '1') { throw 'Production StructuralTrace did not open the writable file.' }
+    $reportRow = Import-Csv -LiteralPath $report -Delimiter "`t"
+    if($reportRow.enabled -ne '1' -or $reportRow.write_failed -ne '0') { throw 'Production StructuralTrace did not open and flush the writable file.' }
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Host 'Production StructuralTrace TSV contract passed.'

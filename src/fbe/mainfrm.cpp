@@ -3684,7 +3684,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		trace.Before(L"phase\tone", L"TAB\tCR\rLF\n");
 		trace.After(L"phase-two", L"complete");
 		trace.Hr(L"failed-write", E_ACCESSDENIED, L"denied");
-		CStringA row; row.Format("enabled\tresult\r\n%d\tpass\r\n", trace.IsEnabled() ? 1 : 0);
+		CStringA row; row.Format("enabled\twrite_failed\tresult\r\n%d\t%d\tpass\r\n", trace.IsEnabled() ? 1 : 0, trace.HasWriteFailure() ? 1 : 0);
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(0); return 0;
 	}
