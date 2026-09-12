@@ -662,10 +662,15 @@ static MSHTML::IHTMLElementPtr GetHP(MSHTML::IHTMLElementPtr hp)
 
 bool CFBEView::SplitContainer(bool fCheck)
 {
-	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
-	const FbeStructure::StructuralOperationResult result = editor.SplitContainer(fCheck);
+	const FbeStructure::StructuralOperationResult result = SplitContainerResult(fCheck);
 	if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
 	return result.IsApplied();
+}
+
+FbeStructure::StructuralOperationResult CFBEView::SplitContainerResult(bool fCheck, FbeStructure::SplitFailurePoint failurePoint)
+{
+	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
+	return editor.SplitContainer(fCheck, failurePoint);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -924,19 +929,29 @@ static void FixupLinks(MSHTML::IHTMLDOMNode *dom) {
 
 bool CFBEView::InsertPoem(bool fCheck)
 {
-	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
-	const FbeStructure::StructuralOperationResult result = editor.InsertPoem(fCheck);
+	const FbeStructure::StructuralOperationResult result = InsertPoemResult(fCheck);
 	if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
 	return result.IsApplied();
 } // CFBEView::InsertPoem
 
-bool CFBEView::InsertCite(bool fCheck)
+FbeStructure::StructuralOperationResult CFBEView::InsertPoemResult(bool fCheck, FbeStructure::CitePoemFailurePoint failurePoint)
 {
 	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
-	const FbeStructure::StructuralOperationResult result = editor.InsertCite(fCheck);
+	return editor.InsertPoem(fCheck, failurePoint);
+}
+
+bool CFBEView::InsertCite(bool fCheck)
+{
+	const FbeStructure::StructuralOperationResult result = InsertCiteResult(fCheck);
 	if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
 	return result.IsApplied();
 } // CFBEView::InsertCite
+
+FbeStructure::StructuralOperationResult CFBEView::InsertCiteResult(bool fCheck, FbeStructure::CitePoemFailurePoint failurePoint)
+{
+	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
+	return editor.InsertCite(fCheck, failurePoint);
+}
 
 // searching
 void  CFBEView::StartIncSearch() {

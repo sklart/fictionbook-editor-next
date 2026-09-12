@@ -29,6 +29,7 @@ try {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $cases = @(
         @{ id = 'split-section-middle'; body = '<section id="target-section-middle"><p>First <a l:href="#target-section-middle">Backlink</a></p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'target-section-middle'; backlink = $true },
+		@{ id = 'split-wrapper-success'; route = 'wrapper'; body = '<section id="split-wrapper-success"><p>First</p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'split-wrapper-success' },
         @{ id = 'split-section-selection'; body = '<section id="target-section-selection"><p>AAA 123 ZZZ</p></section>'; position = 'selection'; containerId = 'target-section-selection'; fragments = $true },
         @{ id = 'split-section-start'; body = '<section id="target-section-start"><p>First</p><p>Last</p></section>'; position = 'start'; containerId = 'target-section-start'; rejected = $true },
         @{ id = 'split-section-end'; body = '<section id="target-section-end"><p>First</p><p>Last</p></section>'; position = 'end'; containerId = 'target-section-end' },
@@ -50,19 +51,20 @@ try {
         $reopenReport = Join-Path $directory ($case.id + '.reopen.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
         @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`" xmlns:l=`"http://www.w3.org/1999/xlink`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$($case.body)</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
-        $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT
+        $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault, $oldRoute = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-container'; $env:FBE_NEXT_TEST_SPLIT_POSITION = $case.position
             $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS = if($case.ContainsKey('container')) { $case.container } else { $null }
             $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID = $case.containerId
             $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT = if($case.ContainsKey('rejected')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_SPLIT_FAULT = if($case.ContainsKey('fault')) { $case.fault } else { $null }
+			$env:FBE_NEXT_TEST_STRUCTURE_ROUTE = if($case.ContainsKey('route')) { $case.route } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $trace; $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
             $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE timed out for $($case.id)." }
             if($process.ExitCode -ne 0) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         } finally {
-            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT = $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault
+            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE = $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault, $oldRoute
         }
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1 -or $row.result -ne 'pass') { throw "Split runtime contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
@@ -85,10 +87,12 @@ try {
         if($case.ContainsKey('rejected')) {
             if(@($traceRows | Where-Object { $_.phase -eq 'preflight-complete' -and $_.event -eq 'after' }).Count) { throw "Rejected Split case reached preflight completion: $($case.id)." }
         } else {
-            foreach($phase in @('split-enter','preflight-complete','undo-begin','insert-container','undo-end','selection-update','split-success')) {
-                if(-not @($traceRows | Where-Object { $_.phase -eq $phase -and $_.event -eq 'after' }).Count) { throw "Incomplete Split trace for $($case.id): $phase" }
-            }
-            if(@($traceRows | Where-Object { $_.event -in @('exception','failure') }).Count) { throw "Split trace has a failure for $($case.id)." }
+			if(-not $case.ContainsKey('route')) {
+				foreach($phase in @('split-enter','preflight-complete','undo-begin','insert-container','undo-end','selection-update','split-success')) {
+					if(-not @($traceRows | Where-Object { $_.phase -eq $phase -and $_.event -eq 'after' }).Count) { throw "Incomplete Split trace for $($case.id): $phase" }
+				}
+				if(@($traceRows | Where-Object { $_.event -in @('exception','failure') }).Count) { throw "Split trace has a failure for $($case.id)." }
+			}
             Assert-Fb2Schema $fixture
             if($case.ContainsKey('backlink')) {
                 $savedXml = Get-Content -Raw -LiteralPath $fixture

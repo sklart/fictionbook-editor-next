@@ -3791,6 +3791,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const long beforeEmptyDivs = countEmpty(L"DIV"), beforeEmptyParagraphs = countEmpty(L"P"), beforeEmptyStanzas = countEmpty(L"DIV", L"stanza");
 		const CString before((const wchar_t*)body->innerHTML);
 		const long beforeParagraphs = paragraphs->length;
+		const bool dirtyBefore = m_doc->DocChanged();
 		FbeStructure::StructuralTrace trace(traceLength ? tracePath : nullptr,
 			cite ? L"cite" : L"poem", traceCaseLength ? traceCase : L"runtime");
 		FbeStructure::BodyStructuralEditor extracted(m_doc->m_body.Document(), m_doc->m_body.MarkupServices(), trace.IsEnabled() ? &trace : nullptr);
@@ -3801,27 +3802,49 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			: FbeStructure::CitePoemFailurePoint::None;
 		auto apply = [&](bool checkOnly) -> FbeStructure::StructuralOperationResult {
 			if (viaWrapper)
-				return (cite ? m_doc->m_body.InsertCite(checkOnly) : m_doc->m_body.InsertPoem(checkOnly))
-					? FbeStructure::StructuralOperationResult::Applied() : FbeStructure::StructuralOperationResult::NotApplicable();
+				return cite ? m_doc->m_body.InsertCiteResult(checkOnly, failurePoint) : m_doc->m_body.InsertPoemResult(checkOnly, failurePoint);
 			return cite ? extracted.InsertCite(checkOnly, failurePoint) : extracted.InsertPoem(checkOnly, failurePoint);
 		};
 		const FbeStructure::StructuralOperationResult checkResult = apply(true);
+		MSHTML::IHTMLTxtRangePtr selectionAfterCheck(m_doc->m_body.Document()->selection->createRange());
+		const bool checkDomUnchanged = before == CString((const wchar_t*)body->innerHTML);
+		const bool checkSelectionUnchanged = selectionAfterCheck &&
+			range->compareEndPoints(L"StartToStart", selectionAfterCheck) == 0 &&
+			range->compareEndPoints(L"EndToEnd", selectionAfterCheck) == 0;
+		const bool checkDirtyUnchanged = dirtyBefore == m_doc->DocChanged();
 		const FbeStructure::StructuralOperationResult applyResult = apply(false);
 		const bool checkAllowed = checkResult.IsApplied();
 		const bool applied = applyResult.IsApplied();
 		const CString after((const wchar_t*)body->innerHTML);
 		if (citePoemFaultLength) {
+			MSHTML::IHTMLTxtRangePtr selectionAfterApply(m_doc->m_body.Document()->selection->createRange());
+			const bool selectionUnchanged = selectionAfterApply &&
+				range->compareEndPoints(L"StartToStart", selectionAfterApply) == 0 &&
+				range->compareEndPoints(L"EndToEnd", selectionAfterApply) == 0;
+			const bool observedChanged = before != after;
+			const bool dirtyChanged = dirtyBefore != m_doc->DocChanged();
 			BOOL handled = FALSE;
-			if (applyResult.documentChanged) m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			if (observedChanged) m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 			const bool expectedChanged = wcscmp(citePoemFault, L"before-mutation") != 0;
-			const bool restored = !applyResult.documentChanged || before == CString((const wchar_t*)body->innerHTML);
-			const bool passed = checkResult.IsApplied() && applyResult.HasTechnicalFailure() && applyResult.error == E_FAIL && applyResult.documentChanged == expectedChanged && restored;
+			const bool restored = before == CString((const wchar_t*)body->innerHTML);
+			const bool passed = checkResult.IsApplied() && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged &&
+				applyResult.HasTechnicalFailure() && applyResult.error == E_FAIL && observedChanged == expectedChanged &&
+				applyResult.documentChanged == observedChanged && (expectedChanged ? restored : selectionUnchanged && !dirtyChanged && restored);
 			CStringA row;
-			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t1\t1\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\tapplied\tfailed\t0x80004005\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, restored, beforeParagraphs, passed ? "pass" : "fail", applyResult.documentChanged ? 1 : 0);
+			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t1\t1\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, restored, beforeParagraphs, passed ? "pass" : "fail", checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		}
 		if (!applied || before == after) {
-			const char* reason = applyResult.status == FbeStructure::StructuralOperationStatus::NotApplicable ? "not-applicable" : "operation-failed";
+			MSHTML::IHTMLTxtRangePtr selectionAfterApply(m_doc->m_body.Document()->selection->createRange());
+			const bool applySelectionUnchanged = selectionAfterApply &&
+				range->compareEndPoints(L"StartToStart", selectionAfterApply) == 0 &&
+				range->compareEndPoints(L"EndToEnd", selectionAfterApply) == 0;
+			const bool applyDomUnchanged = before == after;
+			const bool applyDirtyUnchanged = dirtyBefore == m_doc->DocChanged();
+			const bool genuineNotApplicable = applyResult.status == FbeStructure::StructuralOperationStatus::NotApplicable &&
+				checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged &&
+				applyDomUnchanged && applySelectionUnchanged && applyDirtyUnchanged;
+			const char* reason = genuineNotApplicable ? "not-applicable" : "operation-failed";
 			CStringA row;
 			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs, reason, checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0;
@@ -3881,13 +3904,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool saved = redoForSave && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
 		const bool passed = undone && redone && sequential && structure && emptyDivs == 0 && emptyParagraphs == 0 && emptyStanzas == 0 && saved;
 		CStringA row;
-		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%s\tapplied\tapplied\t0x00000000\t1\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
-			beforeParagraphs, citeCount, poemCount, stanzaCount, (LPCSTR)poemTextSummary, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail");
+		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
+			beforeParagraphs, citeCount, poemCount, stanzaCount, (LPCSTR)poemTextSummary, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail", checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"split-container"))
 	{
-		wchar_t position[16] = {}, containerClass[16] = {}, containerId[64] = {}, tracePath[MAX_PATH] = {}, traceCase[64] = {};
+		wchar_t position[16] = {}, containerClass[16] = {}, containerId[64] = {}, tracePath[MAX_PATH] = {}, traceCase[64] = {}, route[16] = {};
 		wchar_t splitFault[32] = {};
 		const DWORD positionLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_POSITION", position, _countof(position));
 		const DWORD containerClassLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS", containerClass, _countof(containerClass));
@@ -3895,6 +3918,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const DWORD traceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TRACE", tracePath, _countof(tracePath));
 		const DWORD traceCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_CASE", traceCase, _countof(traceCase));
 		const DWORD splitFaultLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_FAULT", splitFault, _countof(splitFault));
+		const DWORD routeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_ROUTE", route, _countof(route));
+		const bool viaWrapper = routeLength == 7 && wcscmp(route, L"wrapper") == 0;
 		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\tfault_error\tdocument_changed\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
@@ -3945,6 +3970,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			// into its first character.
 			if (!atEnd && !nonEmptySelection && wcscmp(requestedContainerClass, L"stanza") != 0 && !CString((const wchar_t*)paragraph->innerText).IsEmpty()) range->move(L"character", 1);
 		}
+		m_doc->m_body.SetFocus();
 		range->select();
 		MSHTML::IHTMLTxtRangePtr selectionBefore(document->selection->createRange());
 		MSHTML::IHTMLTxtRangePtr containerRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
@@ -3956,7 +3982,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool dirtyBefore = m_doc->DocChanged();
 		FbeStructure::StructuralTrace trace(traceLength ? tracePath : nullptr, L"split", traceCaseLength ? traceCase : L"runtime");
 		FbeStructure::BodyStructuralEditor editor(document, m_doc->m_body.MarkupServices(), trace.IsEnabled() ? &trace : nullptr);
-		const bool checkAllowed = editor.SplitContainer(true).IsApplied();
+		const FbeStructure::StructuralOperationResult checkResult = viaWrapper ? m_doc->m_body.SplitContainerResult(true) : editor.SplitContainer(true);
+		const bool checkAllowed = checkResult.IsApplied();
 		MSHTML::IHTMLTxtRangePtr selectionAfterCheck(document->selection->createRange());
 		const bool checkDomUnchanged = before == contentHtml();
 		const bool checkSelectionUnchanged = selectionAfterCheck &&
@@ -3968,7 +3995,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 				? FbeStructure::SplitFailurePoint::AfterFirstMutation
 				: FbeStructure::SplitFailurePoint::BeforeMutation)
 			: FbeStructure::SplitFailurePoint::None;
-		const FbeStructure::StructuralOperationResult splitResult = editor.SplitContainer(false, failurePoint);
+		const FbeStructure::StructuralOperationResult splitResult = viaWrapper ? m_doc->m_body.SplitContainerResult(false, failurePoint) : editor.SplitContainer(false, failurePoint);
 		const bool applied = splitResult.IsApplied();
 		const CString after(contentHtml());
 		trace.After(L"split-content", after);

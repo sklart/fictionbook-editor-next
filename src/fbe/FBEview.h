@@ -21,6 +21,7 @@
 #include "search\\DocumentSearchCoordinator.h"
 #include "search\\SearchDocumentGeneration.h"
 #include "navigation\\LinkNavigationState.h"
+#include "structure\\BodyStructuralEditor.h"
 
 extern CSettings _Settings;
 
@@ -769,9 +770,12 @@ public:
   void			    ImgSetURL(IDispatch *elem,const CString& url);
 
   bool			    SplitContainer(bool fCheck);
+  FbeStructure::StructuralOperationResult SplitContainerResult(bool fCheck, FbeStructure::SplitFailurePoint failurePoint = FbeStructure::SplitFailurePoint::None);
 //  MSHTML::IHTMLDOMNodePtr	  ChangeAttribute(MSHTML::IHTMLElementPtr elem, const wchar_t* attrib, const wchar_t* value);
   bool				InsertPoem(bool fCheck);
   bool				InsertCite(bool fCheck);
+  FbeStructure::StructuralOperationResult InsertPoemResult(bool fCheck, FbeStructure::CitePoemFailurePoint failurePoint = FbeStructure::CitePoemFailurePoint::None);
+  FbeStructure::StructuralOperationResult InsertCiteResult(bool fCheck, FbeStructure::CitePoemFailurePoint failurePoint = FbeStructure::CitePoemFailurePoint::None);
   bool				InsertTable(bool fCheck, bool bTitle=true, int nrows=1, int ncolumns=2);
 	bool				MoveTableCell(bool reverse);
   long				InsertCode();

@@ -37,7 +37,8 @@ try {
         @{ id = 'cite-many'; operation = 'cite'; paragraphs = @('First', 'Second') },
         @{ id = 'cite-sequential'; operation = 'cite'; repeat = $true; paragraphs = @('Text') },
         @{ id = 'cite-epigraph'; operation = 'cite'; target = 'epigraph'; body = '<epigraph><p>Epigraph text</p></epigraph><section><p>Anchor</p></section>' },
-        @{ id = 'poem-one'; operation = 'poem'; paragraphs = @('Line') },
+		@{ id = 'poem-one'; operation = 'poem'; paragraphs = @('Line') },
+		@{ id = 'poem-wrapper-success'; operation = 'poem'; route = 'wrapper'; paragraphs = @('Line') },
         @{ id = 'poem-sequential'; operation = 'poem'; repeat = $true; paragraphs = @('Line') },
         @{ id = 'poem-lines'; operation = 'poem'; paragraphs = @('First line', 'Second line') },
         @{ id = 'poem-stanzas'; operation = 'poem'; paragraphs = @('One', '', 'Two', 'Three') },
@@ -56,9 +57,12 @@ try {
         # inside the first whitespace-only P; the editor correctly rejects it.
 		@{ id = 'poem-selected-whitespace-paragraphs'; operation = 'poem'; expectRejected = $true; paragraphs = @('  ', "`t", '  ') },
 		@{ id = 'poem-wrapper-rejected'; operation = 'poem'; route = 'wrapper'; expectRejected = $true; paragraphs = @('  ', "`t", '  ') }
-		,@{ id = 'cite-fault-before'; operation = 'cite'; paragraphs = @('Text'); fault = 'before-mutation'; documentChanged = $false }
-		,@{ id = 'cite-fault-after-insert'; operation = 'cite'; paragraphs = @('Text'); fault = 'after-insert'; documentChanged = $true }
-		,@{ id = 'poem-fault-before-selection'; operation = 'poem'; paragraphs = @('Line'); fault = 'before-selection'; documentChanged = $true }
+		,@{ id = 'cite-fault-before'; operation = 'cite'; route = 'wrapper'; paragraphs = @('Text'); fault = 'before-mutation'; documentChanged = $false }
+		,@{ id = 'cite-fault-after-insert'; operation = 'cite'; route = 'wrapper'; paragraphs = @('Text'); fault = 'after-insert'; documentChanged = $true }
+		,@{ id = 'cite-fault-before-selection'; operation = 'cite'; route = 'wrapper'; paragraphs = @('Text'); fault = 'before-selection'; documentChanged = $true }
+		,@{ id = 'poem-fault-before'; operation = 'poem'; route = 'wrapper'; paragraphs = @('Line'); fault = 'before-mutation'; documentChanged = $false }
+		,@{ id = 'poem-fault-after-insert'; operation = 'poem'; route = 'wrapper'; paragraphs = @('Line'); fault = 'after-insert'; documentChanged = $true }
+		,@{ id = 'poem-fault-before-selection'; operation = 'poem'; route = 'wrapper'; paragraphs = @('Line'); fault = 'before-selection'; documentChanged = $true }
     )
     if($CaseId -and -not (@($cases | ForEach-Object { $_.id }) -contains $CaseId)) { throw "Unknown Cite/Poem runtime case: $CaseId" }
     $selectedCases = @($cases | Where-Object { -not $CaseId -or $_.id -eq $CaseId })

@@ -42,7 +42,9 @@ foreach($name in @('InsertCite', 'InsertPoem')) {
 
 foreach($name in @('InsertCite', 'InsertPoem')) {
     $wrapper = [regex]::Match($viewSource, "bool CFBEView::$name\(bool fCheck\)\s*\{(?<body>.*?)\n\}", [Text.RegularExpressions.RegexOptions]::Singleline)
-    if(-not $wrapper.Success -or $wrapper.Groups['body'].Value -notmatch "BodyStructuralEditor editor\(Document\(\), m_mk_srv\);\s*const FbeStructure::StructuralOperationResult result = editor\.$name\(fCheck\);" -or $wrapper.Groups['body'].Value -notmatch 'return result.IsApplied\(\);') { throw "CFBEView::$name is not a structural-editor wrapper." }
+    if(-not $wrapper.Success -or $wrapper.Groups['body'].Value -notmatch "const FbeStructure::StructuralOperationResult result = ${name}Result\(fCheck\);" -or $wrapper.Groups['body'].Value -notmatch 'if \(!fCheck && FAILED\(result.error\)\) U::ReportError\(result.error\);' -or $wrapper.Groups['body'].Value -notmatch 'return result.IsApplied\(\);') { throw "CFBEView::$name does not preserve the UI result boundary." }
+    $result = [regex]::Match($viewSource, "StructuralOperationResult CFBEView::${name}Result\(bool fCheck, FbeStructure::CitePoemFailurePoint failurePoint\)\s*\{(?<body>.*?)\n\}", [Text.RegularExpressions.RegexOptions]::Singleline)
+    if(-not $result.Success -or $result.Groups['body'].Value -notmatch "BodyStructuralEditor editor\(Document\(\), m_mk_srv\);\s*return editor\.$name\(fCheck, failurePoint\);") { throw "CFBEView::$name Result does not expose the actual production result." }
 }
 
 $cite = Get-FunctionBody 'InsertCite'
