@@ -75,7 +75,7 @@ try {
             $env:FBE_NEXT_TEST_STRUCTURE_REPEAT = if($case.ContainsKey('repeat')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $trace
             $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
+            $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) {
                 $tail = if(Test-Path -LiteralPath $trace) { (Get-Content -LiteralPath $trace | Select-Object -Last 20) -join [Environment]::NewLine } else { '<trace unavailable>' }
                 Stop-Process -Id $process.Id -Force

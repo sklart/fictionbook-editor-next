@@ -51,7 +51,7 @@ try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-container'; $env:FBE_NEXT_TEST_SPLIT_POSITION = $case.position
             $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT = if($case.ContainsKey('rejected')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $trace; $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
+            $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE timed out for $($case.id)." }
             if($process.ExitCode -ne 0) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         } finally {
