@@ -3676,6 +3676,18 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		StartupTrace::AppendTestStartupBreadcrumb("save-complete");
 		appendBackgroundPhase("after-save"); output.Flush(); StartupTrace::AppendTestStartupBreadcrumb("after-save"); StartupTrace::AppendTestStartupBreadcrumb("report-flush"); output.Close(); StartupTrace::AppendTestStartupBreadcrumb("report-closed"); StartupTrace::AppendTestStartupBreadcrumb("shutdown-requested"); ::PostQuitMessage(0); StartupTrace::AppendTestStartupBreadcrumb("shutdown-quit-posted"); return 0;
 	}
+	if (IsFbeTestScenario(L"structural-trace-contract"))
+	{
+		wchar_t tracePath[MAX_PATH] = {};
+		const DWORD traceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TRACE", tracePath, _countof(tracePath));
+		FbeStructure::StructuralTrace trace(traceLength ? tracePath : nullptr, L"cite\ttrace", L"case\r\ntrace");
+		trace.Before(L"phase\tone", L"TAB\tCR\rLF\n");
+		trace.After(L"phase-two", L"complete");
+		trace.Hr(L"failed-write", E_ACCESSDENIED, L"denied");
+		CStringA row; row.Format("enabled\tresult\r\n%d\tpass\r\n", trace.IsEnabled() ? 1 : 0);
+		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(0); return 0;
+	}
 	if (IsFbeTestScenario(L"cite-poem-undo"))
 	{
 		wchar_t operation[16] = {};
