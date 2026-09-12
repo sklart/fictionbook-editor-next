@@ -12,6 +12,7 @@ public:
 	BodyStructuralEditor(MSHTML::IHTMLDocument2Ptr document, MSHTML::IMarkupServices2Ptr markupServices, StructuralTrace* trace = nullptr);
 	bool InsertCite(bool checkOnly);
 	bool InsertPoem(bool checkOnly);
+	bool SplitContainer(bool checkOnly);
 
 private:
 	static MSHTML::IHTMLElementPtr FindParentDiv(MSHTML::IHTMLElementPtr element);

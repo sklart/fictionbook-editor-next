@@ -2,6 +2,7 @@
 #include "BodyStructuralEditor.h"
 #include "StructuralTrace.h"
 #include "../dom/MarkupUndoUnitScope.h"
+#include "../view/VisualDomNormalizer.h"
 #include "../utils/utils.h"
 
 namespace FbeStructure {
@@ -131,5 +132,113 @@ bool BodyStructuralEditor::InsertPoem(bool checkOnly)
 		Before(L"selection-select"); range->select(); After(L"selection-select");
 		After(L"poem-success"); return true;
 	} catch (const _com_error& error) { if (m_trace) m_trace->Exception(L"poem", error.Error(), error.Description()); return false; }
+}
+
+bool BodyStructuralEditor::SplitContainer(bool checkOnly)
+{
+	try {
+		Before(L"split-enter"); After(L"split-enter");
+		Before(L"selection-create"); MSHTML::IHTMLTxtRangePtr range(m_document->selection->createRange()); After(L"selection-create");
+		if (!range) return false;
+		Before(L"parent-resolved"); MSHTML::IHTMLElementPtr parent(FindParentDiv(range->parentElement())); After(L"parent-resolved");
+		if (!parent || (U::scmp(parent->className, L"section") && U::scmp(parent->className, L"stanza"))) return false;
+		Before(L"container-range-create"); MSHTML::IHTMLTxtRangePtr containerRange(range->duplicate()); After(L"container-range-create");
+		Before(L"container-range-move"); containerRange->moveToElementText(parent); After(L"container-range-move");
+		Before(L"range-start-validated"); const bool startsAtContainer = range->compareEndPoints(L"StartToStart", containerRange) == 0; After(L"range-start-validated");
+		if (startsAtContainer) return false;
+		Before(L"range-start-create"); MSHTML::IHTMLTxtRangePtr start(range->duplicate()); start->collapse(VARIANT_TRUE); After(L"range-start-create");
+		Before(L"range-end-create"); MSHTML::IHTMLTxtRangePtr end(range->duplicate()); end->collapse(VARIANT_FALSE); After(L"range-end-create");
+		Before(L"range-end-validated"); const bool endpointsMatch = FindParentDiv(start->parentElement()) == parent && FindParentDiv(end->parentElement()) == parent; After(L"range-end-validated");
+		if (!endpointsMatch) return false;
+		After(L"preflight-complete");
+		if (checkOnly) { After(L"split-check-success"); return true; }
+
+		CString undoName(L"split "); undoName += static_cast<const wchar_t*>(parent->className);
+		Before(L"new-container-create"); MSHTML::IHTMLElementPtr next(m_document->createElement(L"DIV")); next->className = parent->className; After(L"new-container-create");
+		_bstr_t className = parent->className;
+
+		Before(L"title-prototype-create"); MSHTML::IHTMLElementPtr parentTitle(m_document->createElement(L"DIV")); After(L"title-prototype-create");
+		MSHTML::IHTMLElementCollectionPtr parentChildren = parent->children;
+		{
+			MSHTML::IHTMLElementPtr firstChild = parentChildren->item(0);
+			if (!U::scmp(firstChild->tagName, L"DIV") && !U::scmp(firstChild->className, L"title")) parentTitle->innerHTML = firstChild->outerHTML;
+			else parentTitle = NULL;
+		}
+
+		MSHTML::IMarkupPointerPtr selectionStart, selectionEnd, elementBegin, elementEnd;
+		Before(L"selection-start-pointer-create"); HRESULT hr = m_markupServices->CreateMarkupPointer(&selectionStart); Hr(L"selection-start-pointer-create", hr); if (FAILED(hr)) return false;
+		Before(L"selection-end-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&selectionEnd); Hr(L"selection-end-pointer-create", hr); if (FAILED(hr)) return false;
+		Before(L"element-start-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&elementBegin); Hr(L"element-start-pointer-create", hr); if (FAILED(hr)) return false;
+		Before(L"element-end-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&elementEnd); Hr(L"element-end-pointer-create", hr); if (FAILED(hr)) return false;
+
+		Before(L"title-range-create"); MSHTML::IHTMLTxtRangePtr titleRange(range->duplicate()); After(L"title-range-create");
+		Before(L"selection-pointers-move"); hr = m_markupServices->MovePointersToRange(titleRange, selectionStart, selectionEnd); Hr(L"selection-pointers-move", hr); if (FAILED(hr)) return false;
+		U::ElTextHTML title(titleRange->htmlText, titleRange->text);
+		Before(L"pre-range-create"); MSHTML::IHTMLTxtRangePtr preRange(range->duplicate()); After(L"pre-range-create");
+		Before(L"element-start-pointer-move"); hr = elementBegin->MoveAdjacentToElement(parent, MSHTML::ELEM_ADJ_AfterBegin); Hr(L"element-start-pointer-move", hr); if (FAILED(hr)) return false;
+		Before(L"pre-range-move"); hr = m_markupServices->MoveRangeToPointers(elementBegin, selectionStart, preRange); Hr(L"pre-range-move", hr); if (FAILED(hr)) return false;
+		U::ElTextHTML pre(preRange->htmlText, preRange->text);
+
+		MSHTML::IHTMLElementCollectionPtr children = parent->children;
+		MSHTML::IHTMLElementPtr last = children->item(children->length - 1);
+		if (U::scmp(last->innerText, L"") == 0) last->innerText = L"123";
+		Before(L"post-range-create"); MSHTML::IHTMLTxtRangePtr postRange(range->duplicate()); After(L"post-range-create");
+		Before(L"element-end-pointer-move"); hr = elementEnd->MoveAdjacentToElement(parent, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"element-end-pointer-move", hr); if (FAILED(hr)) return false;
+		Before(L"post-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionEnd, elementEnd, postRange); Hr(L"post-range-move", hr); if (FAILED(hr)) return false;
+		U::ElTextHTML post(postRange->htmlText, postRange->text);
+
+		const bool hasTitle = !title.text.IsEmpty(), hasContent = !post.html.IsEmpty();
+		_bstr_t id; if (hasContent) id = parent->id; parent->id = L"";
+		if (hasTitle && title.html.Find(L"<P") == -1) title.html = CString(L"<P>") + title.html + L"</P>";
+		if (hasContent && post.html.Find(L"<P") == -1) post.html = CString(L"<P>") + post.html + L"</P>";
+		title.html.Remove(L'\r'); title.html.Remove(L'\n'); post.html.Remove(L'\r'); post.html.Remove(L'\n');
+		if (post.html.Find(L"<P>&nbsp;</P>") == 0 && post.html.GetLength() > 13 && hasTitle && title.html.Find(L"<P>&nbsp;</P>") != title.html.GetLength() - 14) post.html.Delete(0, 13);
+		if (post.html.Find(L"<P>123</P>") != -1) post.html.Replace(L"<P>123</P>", L"<P>&nbsp;</P>");
+
+		// Build the replacement while it is detached.  MSHTML records the
+		// insertion itself as the undoable mutation; filling an already attached
+		// DIV leaves its child markup outside that transaction on older engines.
+		if (hasContent) {
+			if (post.html == L"<P>&nbsp;</P>") post.html += L"<P>&nbsp;</P>";
+			Before(L"new-container-content"); next->innerHTML = post.html.AllocSysString(); next->id = id; After(L"new-container-content");
+		} else {
+			Before(L"empty-paragraph-create"); MSHTML::IHTMLElementPtr paragraph(m_document->createElement(L"P")); MSHTML::IHTMLElement3Ptr(paragraph)->inflateBlock = VARIANT_TRUE; MSHTML::IHTMLElement2Ptr(next)->insertAdjacentElement(L"beforeEnd", paragraph); After(L"empty-paragraph-create");
+		}
+		if (hasTitle) {
+			Before(L"title-create"); MSHTML::IHTMLElementPtr nextTitle(m_document->createElement(L"DIV")); nextTitle->className = L"title"; MSHTML::IHTMLElement2Ptr(next)->insertAdjacentElement(L"afterBegin", nextTitle); nextTitle->innerHTML = title.html.AllocSysString(); FbeVisualDom::KillDivs(nextTitle); FbeVisualDom::KillStyles(nextTitle); After(L"title-create");
+		}
+		// Detached construction is deliberately outside the undo unit.  MSHTML
+		// otherwise records a non-document edit ahead of the real replacement and
+		// leaves Split's document mutation behind after Undo.
+		Before(L"undo-begin"); FbeDom::MarkupUndoUnitScope undo(m_markupServices, static_cast<const wchar_t*>(undoName)); After(L"undo-begin");
+		Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
+		if (pre.html.Find(L"<P") == -1) pre.html = pre.html.IsEmpty() ? L"<P>&nbsp;</P>" : CString(L"<P>") + pre.html + L"</P>";
+		auto replaceChildren = [&](MSHTML::IHTMLElementPtr destination, const CString& html, const wchar_t* phase) {
+			Before(phase); MSHTML::IHTMLElementPtr staging(m_document->createElement(L"DIV")); staging->innerHTML = html.AllocSysString();
+			MSHTML::IHTMLDOMNodePtr destinationNode(destination), stagingNode(staging);
+			while (destinationNode->firstChild) { MSHTML::IHTMLDOMNodePtr(destinationNode->firstChild)->removeNode(VARIANT_TRUE); }
+			while (stagingNode->firstChild) { MSHTML::IHTMLDOMNodePtr node(stagingNode->firstChild); destinationNode->appendChild(node); }
+			After(phase);
+		};
+		Before(L"source-cleanup"); postRange->pasteHTML(L""); FbeVisualDom::FixupParagraphs(next); FbeVisualDom::PackText(next, m_document); After(L"source-cleanup");
+		parentChildren = parent->children;
+		if (parentChildren->length == 1) { MSHTML::IHTMLElementPtr child = parentChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"source-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"source-wrapper-remove", hr); if (FAILED(hr)) return false; } }
+		MSHTML::IHTMLElementCollectionPtr nextChildren = next->children;
+		if (nextChildren->length == 1) { MSHTML::IHTMLElementPtr child = nextChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"new-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"new-wrapper-remove", hr); if (FAILED(hr)) return false; } }
+		CString titleSection;
+		if (parentTitle) { titleSection = parentTitle->innerHTML.GetBSTR(); titleSection += L"<P>&nbsp;</P>"; }
+		CString parentText = parent->innerText; parentText.Remove(L'\r'); parentText.Remove(L'\n');
+		CString titleText = parentTitle ? parentTitle->innerText : L""; titleText.Remove(L'\r'); titleText.Remove(L'\n');
+		if (parentTitle && !U::scmp(parentText, titleText)) replaceChildren(parent, titleSection, L"source-title-replace");
+		Before(L"undo-end"); undo.Close(); After(L"undo-end");
+		Before(L"selection-update"); MSHTML::IHTMLTxtRangePtr selection(MSHTML::IHTMLBodyElementPtr(m_document->body)->createTextRange()); selection->moveToElementText(next); selection->collapse(VARIANT_TRUE);
+		try {
+			Before(L"selection-position-workaround");
+			if (next != selection->parentElement() && selection->move(L"character", 1) == 1) selection->move(L"character", -1);
+			After(L"selection-position-workaround");
+		} catch (_com_error& error) { Hr(L"selection-position-workaround", error.Error()); }
+		selection->select(); After(L"selection-update");
+		After(L"split-success"); return true;
+	} catch (_com_error& error) { if (m_trace) m_trace->Exception(L"split", error.Error(), error.Description()); U::ReportError(error); return false; }
 }
 } // namespace FbeStructure
