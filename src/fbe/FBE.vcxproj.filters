@@ -367,7 +367,6 @@
     <ClInclude Include="image\ImageDocumentInserter.h"><Filter>Header Files\Image</Filter></ClInclude>
     <ClInclude Include="navigation\LinkDomNavigation.h"><Filter>Header Files\Navigation</Filter></ClInclude>
 	<ClInclude Include="navigation\ReferenceNavigation.h"><Filter>Header Files\Navigation</Filter></ClInclude>
-    <ClInclude Include="navigation\LinkNavigationState.h"><Filter>Header Files\Navigation</Filter></ClInclude>
     <ClInclude Include="FindResultsPane.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="GLLogo.h">
       <Filter>Header Files</Filter>

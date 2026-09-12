@@ -3721,7 +3721,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			rangeEnd->collapse(VARIANT_FALSE); rangeEnd->move(L"character", -1);
 			// Both boundaries must be inside their P elements. MSHTML otherwise
 			// reports the enclosing DIV as parentElement(), and
-			// ExpandTxtRangeToParagraphs rejects the structural selection.
+			// The structural editor rejects this selection.
 			range->setEndPoint(L"EndToEnd", rangeEnd);
 		}
 		auto utf16Summary = [](const CString& value) -> CStringA
@@ -3942,7 +3942,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"link-navigation-runtime"))
 	{
-		CStringA header("nested\ttarget\tsame_document\treturn_origin\tbroken\tunchanged\tresult\r\n");
+		CStringA header("nested\ttarget\tsame_document\tbroken\tunchanged\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
@@ -3961,13 +3961,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const CString sameDocumentHref = documentUrl + L"#note-1";
 		const bool sameDocument = FBELinkNavigation::GetInternalTargetId(static_cast<LPCWSTR>(sameDocumentHref), static_cast<LPCWSTR>(documentUrl)) == L"note-1";
 		const bool navigated = target && m_doc->m_body.NavigateInternalLink(nearest, targetId);
-		const bool returned = navigated && m_doc->m_body.ReturnToLinkNavigationOrigin();
 		const CString brokenTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, broken));
 		const bool brokenInternal = !brokenTargetId.IsEmpty() && !FBELinkNavigation::FindTargetElement(document, brokenTargetId);
 		const bool unchanged = editable && before == CString(static_cast<LPCWSTR>(editable->innerHTML));
-		const bool passed = nearest == internal && target && sameDocument && returned && brokenInternal && unchanged;
+		const bool passed = nearest == internal && target && sameDocument && navigated && brokenInternal && unchanged;
 		CStringA row;
-		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, returned, brokenInternal, unchanged, passed ? "pass" : "fail");
+		row.Format("%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, unchanged, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

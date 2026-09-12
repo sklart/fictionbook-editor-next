@@ -823,7 +823,7 @@ public:
 
   LRESULT OnGoToFootnote(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {
-	  if (!m_doc->m_body.ReturnToLinkNavigationOrigin() && !m_doc->m_body.GoToFootnote(false))
+	  if (!m_doc->m_body.GoToFootnote(false))
 		m_doc->m_body.GoToReference(false);
 	  return 0;
   }

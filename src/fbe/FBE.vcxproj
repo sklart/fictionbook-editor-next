@@ -491,7 +491,6 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="image\ImageDocumentInserter.h" />
     <ClInclude Include="navigation\LinkDomNavigation.h" />
 	<ClInclude Include="navigation\ReferenceNavigation.h" />
-    <ClInclude Include="navigation\LinkNavigationState.h" />
     <ClInclude Include="mainfrm.h" />
 	<ClInclude Include="toolbars\PortableToolbarLayout.h" />
 	<ClInclude Include="toolbars\PortableToolbarStore.h" />

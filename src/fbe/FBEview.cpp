@@ -7,7 +7,6 @@
 #include "ReplacementPreflight.h"
 #include "LinkNavigation.h"
 #include "navigation/LinkDomNavigation.h"
-#include "navigation/LinkNavigationState.h"
 #include "navigation/ReferenceNavigation.h"
 #include "ImageImport.h"
 #include "res1.h"
@@ -932,23 +931,6 @@ bool CFBEView::InsertCite(bool fCheck)
 	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
 	return editor.InsertCite(fCheck);
 } // CFBEView::InsertCite
-
-CString CFBEView::GetClearedRangeText(const MSHTML::IHTMLTxtRangePtr &rng)const
-{
-	CString org_text = rng->htmlText;
-	
-	org_text.Replace(L"\r\n", L"\n");
-	org_text.Replace(L" \n", L" ");
-	org_text.Replace(L"\n ", L" ");
-	org_text.Replace(L"\n", L" ");
-
-	while(org_text[org_text.GetLength() - 1] == L' ')
-		org_text = org_text.Left(org_text.GetLength() - 1);
-	while(org_text[0] == L' ')
-		org_text = org_text.Right(org_text.GetLength() - 1);
-	org_text.Replace(L"> <", L">\r\n<");	
-	return org_text;
-}
 
 // searching
 void  CFBEView::StartIncSearch() {
@@ -2930,9 +2912,6 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
 bool CFBEView::Init()
 {
   StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
-	// Init is called after a full MSHTML/TransformXML rebuild.  Link navigation
-	// origins are document-DOM scoped and must never survive that replacement.
-	ClearLinkNavigationHistory();
   if (!m_browser)
   {
     StartupTrace::Error(L"webbrowser", L"WB200", L"IWebBrowser2 unavailable");
@@ -3506,30 +3485,12 @@ static void HideNotePreview(CFBEView& view)
 	catch(const _com_error&) { }
 }
 
-void CFBEView::ClearLinkNavigationHistory()
-{
-	m_link_navigation_state.Reset();
-}
-
-bool CFBEView::NavigateInternalLink(MSHTML::IHTMLElementPtr link, const CString& targetId)
+bool CFBEView::NavigateInternalLink(MSHTML::IHTMLElementPtr /*link*/, const CString& targetId)
 {
 	MSHTML::IHTMLElementPtr target(FBELinkNavigation::FindTargetElement(Document(), targetId));
 	if(!target) return false;
-	m_link_navigation_state.targetId = targetId;
-	m_link_navigation_state.originOrdinal = FBELinkNavigation::GetLinkTargetOrdinal(Document(), link, targetId);
 	HideNotePreview(*this);
 	GoTo(target);
-	return true;
-}
-
-bool CFBEView::ReturnToLinkNavigationOrigin()
-{
-	if(!m_link_navigation_state.HasOrigin() || !Document()) return false;
-	MSHTML::IHTMLElementPtr origin(FBELinkNavigation::FindOriginLink(
-		Document(), m_link_navigation_state.targetId, m_link_navigation_state.originOrdinal));
-	ClearLinkNavigationHistory();
-	if(!origin) return false;
-	GoTo(origin);
 	return true;
 }
 
@@ -4718,50 +4679,6 @@ void CFBEView::SyncSearchOptionsToOpenDialogs(FRBase* source)
 		m_find_dlg->SyncSearchOptionsFromView();
 	if (m_replace_dlg != NULL && m_replace_dlg->IsValid() && m_replace_dlg != source)
 		m_replace_dlg->SyncSearchOptionsFromView();
-}
-
-bool CFBEView::ExpandTxtRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& rng,
-											MSHTML::IHTMLElementPtr& begin,
-											MSHTML::IHTMLElementPtr& end) const
-{
-	MSHTML::IHTMLTxtRangePtr tr1 = rng->duplicate(); 
-	tr1->collapse(VARIANT_TRUE);
-
-	MSHTML::IHTMLElementPtr te = GetHP(tr1->parentElement());
-
-	if(!(bool)te)
-		return false;
-
-	MSHTML::IHTMLTxtRangePtr tr2 = rng->duplicate(); 
-	tr2->collapse(VARIANT_FALSE);
-
-	begin = tr1->parentElement(); 
-	while((bool)begin && U::scmp(begin->tagName, L"P"))
-		begin = begin->parentElement;
-
-	if(!(bool)begin)
-		return false;
-
-	end = tr2->parentElement();
-	while((bool)end && U::scmp(end->tagName, L"P"))
-		end = end->parentElement;
-
-	if(!(bool)end)
-		return false;
-
-	if(begin == end)
-		rng->moveToElementText(begin);
-	else
-	{
-		MSHTML::IMarkupPointerPtr pBegin, pEnd;
-		m_mk_srv->CreateMarkupPointer(&pBegin);
-		m_mk_srv->CreateMarkupPointer(&pEnd);
-		pBegin->MoveAdjacentToElement(begin, MSHTML::ELEM_ADJ_AfterBegin);
-		pEnd->MoveAdjacentToElement(end, MSHTML::ELEM_ADJ_BeforeEnd);
-		m_mk_srv->MoveRangeToPointers(pBegin, pEnd, rng);
-	}
-
-	return true;
 }
 
 LRESULT CFBEView::OnCode(WORD /* unused: wCode */, WORD /* unused: wID */, HWND /* unused: hWnd */, BOOL& /* unused: bHandled */)

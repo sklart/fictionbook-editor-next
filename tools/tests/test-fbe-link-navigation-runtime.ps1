@@ -26,7 +26,7 @@ try {
     }
     finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
     $row = Import-Csv -LiteralPath $report -Delimiter "`t"
-    if(@($row).Count -ne 1 -or $row.nested -ne '1' -or $row.target -ne '1' -or $row.same_document -ne '1' -or $row.return_origin -ne '1' -or $row.broken -ne '1' -or $row.unchanged -ne '1' -or $row.result -ne 'pass') { throw "Link navigation runtime contract failed: $($row | ConvertTo-Json -Compress)" }
+    if(@($row).Count -ne 1 -or $row.nested -ne '1' -or $row.target -ne '1' -or $row.same_document -ne '1' -or $row.broken -ne '1' -or $row.unchanged -ne '1' -or $row.result -ne 'pass') { throw "Link navigation runtime contract failed: $($row | ConvertTo-Json -Compress)" }
     Write-Host 'Link navigation production runtime passed.'
 }
 finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

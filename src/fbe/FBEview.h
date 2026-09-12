@@ -20,7 +20,6 @@
 #include "BinarySaveNotification.h"
 #include "search\\DocumentSearchCoordinator.h"
 #include "search\\SearchDocumentGeneration.h"
-#include "navigation\\LinkNavigationState.h"
 
 extern CSettings _Settings;
 
@@ -242,7 +241,6 @@ protected:
   ULONGLONG         m_navigation_started;
   bool              m_navigation_failed;
 	long              m_navigation_status;
-	FBELinkNavigation::LinkNavigationState m_link_navigation_state;
 
   static _ATL_FUNC_INFO DocumentCompleteInfo;
   static _ATL_FUNC_INFO BeforeNavigateInfo;
@@ -392,10 +390,8 @@ public:
 	const CString& LastSearchError() const { return m_last_search_error; }
 	bool LastSearchErrorIsRegexp() const { return m_last_search_error_is_regexp; }
 
-  CAtlList<CString> m_UndoStrings;
   void			    BeginUndoUnit(const wchar_t *name) 
   { 
-	  //m_UndoStrings.AddHead(name);
 	  m_mk_srv->BeginUndoUnit((wchar_t *)name); 
   }
   void			    EndUndoUnit() 
@@ -779,8 +775,6 @@ public:
   long				InsertCode();
   bool				GoToFootnote(bool fCheck);
   bool				GoToReference(bool fCheck);
-	bool				ReturnToLinkNavigationOrigin();
-	void				ClearLinkNavigationHistory();
 	bool				NavigateInternalLink(MSHTML::IHTMLElementPtr link, const CString& targetId);
   MSHTML::IHTMLTxtRangePtr	SetSelection(MSHTML::IHTMLElementPtr begin, MSHTML::IHTMLElementPtr end, int begin_pos, int end_pos);
   int				GetRelationalCharPos(MSHTML::IHTMLDOMNodePtr node, int pos);
@@ -855,8 +849,6 @@ public:
 	void SyncSearchOptionsToOpenDialogs(FRBase* source);
 
 private:
-	bool ExpandTxtRangeToParagraphs(MSHTML::IHTMLTxtRangePtr &rng, MSHTML::IHTMLElementPtr& begin, MSHTML::IHTMLElementPtr& end)const;
-	CString GetClearedRangeText(const MSHTML::IHTMLTxtRangePtr &rng)const;   
 	// added by SeNS
 	int m_startMatch, m_endMatch;
 };
