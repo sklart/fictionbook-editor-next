@@ -2912,6 +2912,8 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
 bool CFBEView::Init()
 {
   StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
+	// A full MSHTML rebuild invalidates every DOM-scoped navigation origin.
+	ClearLinkNavigationHistory();
   if (!m_browser)
   {
     StartupTrace::Error(L"webbrowser", L"WB200", L"IWebBrowser2 unavailable");
@@ -3485,12 +3487,30 @@ static void HideNotePreview(CFBEView& view)
 	catch(const _com_error&) { }
 }
 
-bool CFBEView::NavigateInternalLink(MSHTML::IHTMLElementPtr /*link*/, const CString& targetId)
+void CFBEView::ClearLinkNavigationHistory()
+{
+	m_link_navigation_state.Reset();
+}
+
+bool CFBEView::NavigateInternalLink(MSHTML::IHTMLElementPtr link, const CString& targetId)
 {
 	MSHTML::IHTMLElementPtr target(FBELinkNavigation::FindTargetElement(Document(), targetId));
 	if(!target) return false;
+	m_link_navigation_state.targetId = targetId;
+	m_link_navigation_state.originOrdinal = FBELinkNavigation::GetLinkTargetOrdinal(Document(), link, targetId);
 	HideNotePreview(*this);
 	GoTo(target);
+	return true;
+}
+
+bool CFBEView::ReturnToLinkNavigationOrigin()
+{
+	if(!m_link_navigation_state.HasOrigin() || !Document()) return false;
+	MSHTML::IHTMLElementPtr origin(FBELinkNavigation::FindOriginLink(Document(),
+		m_link_navigation_state.targetId, m_link_navigation_state.originOrdinal));
+	ClearLinkNavigationHistory();
+	if(!origin) return false;
+	GoTo(origin);
 	return true;
 }
 

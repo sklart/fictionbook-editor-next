@@ -181,23 +181,29 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 
 		MSHTML::IHTMLElementCollectionPtr children = parent->children;
 		MSHTML::IHTMLElementPtr last = children->item(children->length - 1);
-		if (U::scmp(last->innerText, L"") == 0) last->innerText = L"123";
-		Before(L"post-range-create"); MSHTML::IHTMLTxtRangePtr postRange(range->duplicate()); After(L"post-range-create");
-		Before(L"element-end-pointer-move"); hr = elementEnd->MoveAdjacentToElement(parent, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"element-end-pointer-move", hr); if (FAILED(hr)) return false;
-		Before(L"post-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionEnd, elementEnd, postRange); Hr(L"post-range-move", hr); if (FAILED(hr)) return false;
-		U::ElTextHTML post(postRange->htmlText, postRange->text);
+		const bool lastWasEmpty = last && U::scmp(last->innerText, L"") == 0;
 
-		const bool hasTitle = !title.text.IsEmpty(), hasContent = !post.html.IsEmpty();
-		_bstr_t id; if (hasContent) id = parent->id; parent->id = L"";
+		const bool hasTitle = !title.text.IsEmpty();
 		if (hasTitle && title.html.Find(L"<P") == -1) title.html = CString(L"<P>") + title.html + L"</P>";
-		if (hasContent && post.html.Find(L"<P") == -1) post.html = CString(L"<P>") + post.html + L"</P>";
-		title.html.Remove(L'\r'); title.html.Remove(L'\n'); post.html.Remove(L'\r'); post.html.Remove(L'\n');
-		if (post.html.Find(L"<P>&nbsp;</P>") == 0 && post.html.GetLength() > 13 && hasTitle && title.html.Find(L"<P>&nbsp;</P>") != title.html.GetLength() - 14) post.html.Delete(0, 13);
-		if (post.html.Find(L"<P>123</P>") != -1) post.html.Replace(L"<P>123</P>", L"<P>&nbsp;</P>");
 
 		// Build the replacement while it is detached.  MSHTML records the
 		// insertion itself as the undoable mutation; filling an already attached
 		// DIV leaves its child markup outside that transaction on older engines.
+		Before(L"post-range-create"); MSHTML::IHTMLTxtRangePtr postRange(range->duplicate()); After(L"post-range-create");
+		Before(L"element-end-pointer-move"); hr = elementEnd->MoveAdjacentToElement(parent, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"element-end-pointer-move", hr); if (FAILED(hr)) return false;
+		Before(L"post-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionEnd, elementEnd, postRange); Hr(L"post-range-move", hr); if (FAILED(hr)) return false;
+		U::ElTextHTML post(postRange->htmlText, postRange->text);
+		const bool hasContent = !post.html.IsEmpty();
+		_bstr_t id; if (hasContent) id = parent->id;
+		if (hasContent && post.html.Find(L"<P") == -1) post.html = CString(L"<P>") + post.html + L"</P>";
+		title.html.Remove(L'\r'); title.html.Remove(L'\n'); post.html.Remove(L'\r'); post.html.Remove(L'\n');
+		if (post.html.Find(L"<P>&nbsp;</P>") == 0 && post.html.GetLength() > 13 && hasTitle && title.html.Find(L"<P>&nbsp;</P>") != title.html.GetLength() - 14) post.html.Delete(0, 13);
+		// Only restore the synthetic trailing paragraph.  A real <P>123</P>
+		// elsewhere in the selected content is user data and must not be touched.
+		if (lastWasEmpty && post.html.GetLength() >= 10 && post.html.Right(10) == L"<P>123</P>") {
+			post.html.Delete(post.html.GetLength() - 10, 10);
+			post.html += L"<P>&nbsp;</P>";
+		}
 		if (hasContent) {
 			if (post.html == L"<P>&nbsp;</P>") post.html += L"<P>&nbsp;</P>";
 			Before(L"new-container-content"); next->innerHTML = post.html.AllocSysString(); next->id = id; After(L"new-container-content");
@@ -207,10 +213,10 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		if (hasTitle) {
 			Before(L"title-create"); MSHTML::IHTMLElementPtr nextTitle(m_document->createElement(L"DIV")); nextTitle->className = L"title"; MSHTML::IHTMLElement2Ptr(next)->insertAdjacentElement(L"afterBegin", nextTitle); nextTitle->innerHTML = title.html.AllocSysString(); FbeVisualDom::KillDivs(nextTitle); FbeVisualDom::KillStyles(nextTitle); After(L"title-create");
 		}
-		// Detached construction is deliberately outside the undo unit.  MSHTML
-		// otherwise records a non-document edit ahead of the real replacement and
-		// leaves Split's document mutation behind after Undo.
+		// Detached construction above is not a document mutation.  Start the
+		// unit immediately before changing the source container or inserting next.
 		Before(L"undo-begin"); FbeDom::MarkupUndoUnitScope undo(m_markupServices, static_cast<const wchar_t*>(undoName)); After(L"undo-begin");
+		parent->id = L"";
 		Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
 		if (pre.html.Find(L"<P") == -1) pre.html = pre.html.IsEmpty() ? L"<P>&nbsp;</P>" : CString(L"<P>") + pre.html + L"</P>";
 		auto replaceChildren = [&](MSHTML::IHTMLElementPtr destination, const CString& html, const wchar_t* phase) {

@@ -26,7 +26,7 @@ foreach($required in @('FBELinkNavigation::FindNearestLinkElement', 'FBELinkNavi
 foreach($required in @('FindTargetElement')) {
     if(-not $dom.Contains($required)) { throw "LinkDomNavigation omits $required." }
 }
-foreach($dead in @('LinkNavigationState', 'ReturnToLinkNavigationOrigin', 'ClearLinkNavigationHistory', 'FindOriginLink', 'GetLinkTargetOrdinal', 'm_link_navigation_state')) {
-    if($view -match [regex]::Escape($dead) -or $dom -match [regex]::Escape($dead)) { throw "Dead link-navigation history remains: $dead" }
+foreach($required in @('ReturnToLinkNavigationOrigin', 'ClearLinkNavigationHistory', 'FindOriginLink', 'GetLinkTargetOrdinal', 'm_link_navigation_state')) {
+    if($view -notmatch [regex]::Escape($required) -and $dom -notmatch [regex]::Escape($required)) { throw "Link-navigation return history is missing: $required" }
 }
 Write-Host 'Link navigation boundary passed.'

@@ -20,6 +20,7 @@
 #include "BinarySaveNotification.h"
 #include "search\\DocumentSearchCoordinator.h"
 #include "search\\SearchDocumentGeneration.h"
+#include "navigation\\LinkNavigationState.h"
 
 extern CSettings _Settings;
 
@@ -241,6 +242,7 @@ protected:
   ULONGLONG         m_navigation_started;
   bool              m_navigation_failed;
 	long              m_navigation_status;
+	FBELinkNavigation::LinkNavigationState m_link_navigation_state;
 
   static _ATL_FUNC_INFO DocumentCompleteInfo;
   static _ATL_FUNC_INFO BeforeNavigateInfo;
@@ -775,6 +777,8 @@ public:
   long				InsertCode();
   bool				GoToFootnote(bool fCheck);
   bool				GoToReference(bool fCheck);
+	bool				ReturnToLinkNavigationOrigin();
+	void				ClearLinkNavigationHistory();
 	bool				NavigateInternalLink(MSHTML::IHTMLElementPtr link, const CString& targetId);
   MSHTML::IHTMLTxtRangePtr	SetSelection(MSHTML::IHTMLElementPtr begin, MSHTML::IHTMLElementPtr end, int begin_pos, int end_pos);
   int				GetRelationalCharPos(MSHTML::IHTMLDOMNodePtr node, int pos);
