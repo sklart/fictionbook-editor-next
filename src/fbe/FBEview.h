@@ -375,6 +375,7 @@ public:
 	{
 		return m_hdoc;
 	}
+	MSHTML::IMarkupServices2Ptr MarkupServices() { return m_mk_srv; }
 
   bool			    HasDoc() { return m_hdoc; }
   IDispatchPtr	    Script(){ return MSHTML::IHTMLDocumentPtr(m_hdoc)->Script; }
