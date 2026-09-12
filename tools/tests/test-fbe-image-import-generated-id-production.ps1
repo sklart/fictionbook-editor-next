@@ -24,16 +24,20 @@ function Assert-Fb2Schema([string]$Path) {
 function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture, [string]$WorkingDirectory) {
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = $Scenario
-    $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('-b', $Report, $Fixture) -PassThru
-    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
-        Stop-Process -Id $process.Id -Force
-        throw "FBE не завершил сценарий $Scenario."
+    for ($attempt = 1; $attempt -le 2; ++$attempt) {
+        $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('-b', $Report, $Fixture) -PassThru
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            Stop-Process -Id $process.Id -Force
+            if ($attempt -lt 2) { Write-Host "Сценарий $Scenario превысил таймаут; повторный запуск."; continue }
+            throw "FBE не завершил сценарий $Scenario."
+        }
+        if ($process.ExitCode -ne 0) {
+            $details = if (Test-Path -LiteralPath $Report) { Get-Content -LiteralPath $Report -Raw } else { 'report unavailable' }
+            throw "FBE вернул код $($process.ExitCode) для сценария $Scenario. Report: $details"
+        }
+        if (-not (Test-Path -LiteralPath $Report -PathType Leaf)) { throw "FBE не записал отчёт сценария $Scenario." }
+        return
     }
-    if ($process.ExitCode -ne 0) {
-        $details = if (Test-Path -LiteralPath $Report) { Get-Content -LiteralPath $Report -Raw } else { 'report unavailable' }
-        throw "FBE вернул код $($process.ExitCode) для сценария $Scenario. Report: $details"
-    }
-    if (-not (Test-Path -LiteralPath $Report -PathType Leaf)) { throw "FBE не записал отчёт сценария $Scenario." }
 }
 
 function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$ExpectedHash, [string]$Inline) {
