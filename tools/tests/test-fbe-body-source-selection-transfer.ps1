@@ -33,15 +33,15 @@ Assert-Contains $source 'SCI_SETSELECTIONSTART,savedPosBegin' `
     'переход Body → Source должен устанавливать начало выделения в Scintilla'
 Assert-Contains $source 'SCI_SETSELECTIONEND,savedPosEnd' `
     'переход Body → Source должен устанавливать конец выделения в Scintilla'
-Assert-Contains $source 'm_body_source_selection.bodyToSourceTransferred = selection_mapped_to_source;' `
+Assert-Contains $source 'm_editor_selection_state.BodySource().bodyToSourceTransferred = selection_mapped_to_source;' `
     'переход Body → Source должен сохранять результат сопоставления диапазона'
 Assert-Contains $source 'm_view.ActivateWnd(m_source);' `
     'переход Body → Source должен активировать окно Scintilla'
-Assert-Contains $source 'SCI_SETSELECTIONSTART, m_body_source_selection.sourceStart' `
+Assert-Contains $source 'SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart' `
     'после активации Source должно восстанавливаться начало перенесённого выделения'
-Assert-Contains $source 'SCI_SETSELECTIONEND, m_body_source_selection.sourceEnd' `
+Assert-Contains $source 'm_editor_selection_state.BodySource().sourceEnd' `
     'после активации Source должно восстанавливаться конец перенесённого выделения'
-Assert-Contains $source 'SCI_SETSEL, m_body_source_selection.sourceStart' `
+Assert-Contains $source 'SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart' `
     'после установки фокуса Source должен повторно применяться весь диапазон выделения'
 Assert-Contains $source 'PostMessage(m_source, SCI_SCROLLCARET' `
     'после завершения смены режима Source должен отложенно прокручиваться к выделению'
@@ -58,9 +58,9 @@ Assert-Contains $source 'SCI_GETSELECTIONEND' `
     'переход Source → Body должен читать конец выделения Scintilla'
 Assert-Contains $source 'bool selection_path_available = path_begin.CreatePathFromText' `
     'переход Source → Body должен проверять преобразование позиции в DOM-путь'
-Assert-Contains $source 'm_body_source_selection.sourceToBodyTransferred = (bool)m_body_selection;' `
+Assert-Contains $source 'm_editor_selection_state.BodySource().sourceToBodyTransferred = (bool)m_editor_selection_state.BodyRange();' `
     'переход Source → Body должен фиксировать успешное создание HTML-выделения'
-Assert-Contains $source 'm_body_selection->select();' `
+Assert-Contains $source 'm_editor_selection_state.BodyRange()->select();' `
 	'после активации Body должно восстанавливаться перенесённое выделение'
 Assert-Contains $source 'ExtractVisibleXmlText(selectedSourceXml)' `
     'при переходе Source → Body выделение должно преобразовываться в отображаемый текст'
@@ -74,7 +74,7 @@ Assert-Contains $source 'htmlScope = element;' `
 	'соответствующий HTML body должен быть базовой областью поиска fallback'
 Assert-Contains $source 'MSHTML::IHTMLElementPtr refinedScope' `
 	'DomPath может только уточнять область поиска fallback, а не отключать её'
-Assert-Contains $source 'vt == BODY && prev == SOURCE && m_body_source_selection.sourceToBodyTransferred' `
+Assert-Contains $source 'vt == BODY && prev == SOURCE && m_editor_selection_state.BodySource().sourceToBodyTransferred' `
 	'после окончательной установки фокуса Body должно применяться только подтверждённое перенесённое выделение'
 
 Assert-Contains $source 'SourceDocumentTransfer::FindXmlNodeTextPosition(srcText, xml_selected_begin' `
