@@ -271,6 +271,6 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		} catch (_com_error& error) { Hr(L"selection-update", error.Error()); }
 		After(L"selection-update");
 		After(L"split-success"); return true;
-	} catch (_com_error& error) { if (m_trace) m_trace->Exception(L"split", error.Error(), error.Description()); U::ReportError(error); return false; }
+	} catch (_com_error& error) { if (m_trace) m_trace->Exception(L"split", error.Error(), error.Description()); return false; }
 }
 } // namespace FbeStructure

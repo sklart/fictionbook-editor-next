@@ -20,6 +20,7 @@ try {
     if(@($rows).Count -ne 3) { throw 'Production StructuralTrace record count is wrong.' }
     foreach($column in @('timestamp','operation','backend','case','phase','event','hresult','details')) { if(-not ($rows[0].PSObject.Properties.Name -contains $column)) { throw "StructuralTrace TSV lacks column: $column" } }
     if($rows[0].operation -ne 'cite trace' -or $rows[0].case -ne 'case  trace' -or $rows[0].details -ne 'TAB CR LF ' -or $rows[0].hresult -ne 'NA') { throw 'Production StructuralTrace sanitization contract is wrong.' }
+    if($rows[1].event -ne 'after' -or $rows[1].hresult -ne 'NA' -or $rows[1].details -notlike 'completed*') { throw 'Production StructuralTrace completion contract is wrong.' }
     if($rows[2].event -ne 'failure' -or $rows[2].hresult -ne '0x80070005') { throw 'Production StructuralTrace HRESULT contract is wrong.' }
     if((Import-Csv -LiteralPath $report -Delimiter "`t").enabled -ne '1') { throw 'Production StructuralTrace did not open the writable file.' }
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

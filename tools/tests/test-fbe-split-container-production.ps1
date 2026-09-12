@@ -28,11 +28,11 @@ function Assert-Fb2Schema([string]$Path) {
 try {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $cases = @(
-        @{ id = 'split-section-middle'; body = '<section><p>First</p><p>Middle</p><p>Last</p></section>'; position = 'middle' },
-        @{ id = 'split-section-start'; body = '<section><p>First</p><p>Last</p></section>'; position = 'start'; rejected = $true },
-        @{ id = 'split-section-end'; body = '<section><p>First</p><p>Last</p></section>'; position = 'end'; rejected = $true },
-        @{ id = 'split-stanza-middle'; body = '<section><p>Anchor</p><poem><stanza><v>First</v><v>Middle</v></stanza></poem></section>'; position = 'middle'; container = 'stanza' },
-        @{ id = 'split-invalid-container'; body = '<epigraph><p>Quoted</p><p>Tail</p></epigraph>'; position = 'middle'; rejected = $true }
+        @{ id = 'split-section-middle'; body = '<section id="target-section-middle"><p>First</p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'target-section-middle' },
+        @{ id = 'split-section-start'; body = '<section id="target-section-start"><p>First</p><p>Last</p></section>'; position = 'start'; containerId = 'target-section-start'; rejected = $true },
+        @{ id = 'split-section-end'; body = '<section id="target-section-end"><p>First</p><p>Last</p></section>'; position = 'end'; containerId = 'target-section-end'; rejected = $true },
+        @{ id = 'split-stanza-middle'; body = '<section><p>Anchor</p><poem><stanza><v>First</v><v>Middle</v></stanza></poem></section>'; position = 'middle'; container = 'stanza'; containerId = '' },
+        @{ id = 'split-invalid-container'; body = '<epigraph id="target-epigraph"><p>Quoted</p><p>Tail</p></epigraph>'; position = 'middle'; container = 'epigraph'; containerId = 'target-epigraph'; rejected = $true }
     )
     if($CaseId -and -not (@($cases | ForEach-Object { $_.id }) -contains $CaseId)) { throw "Unknown Split runtime case: $CaseId" }
     $selectedCases = @($cases | Where-Object { -not $CaseId -or $_.id -eq $CaseId })
@@ -46,20 +46,25 @@ try {
         $report = Join-Path $directory ($case.id + '.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
         @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$($case.body)</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
-        $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldReject, $oldTrace, $oldTraceCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE
+        $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-container'; $env:FBE_NEXT_TEST_SPLIT_POSITION = $case.position
             $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS = if($case.ContainsKey('container')) { $case.container } else { $null }
+            $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID = $case.containerId
             $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT = if($case.ContainsKey('rejected')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $trace; $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
             $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE timed out for $($case.id)." }
             if($process.ExitCode -ne 0) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         } finally {
-            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE = $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldReject, $oldTrace, $oldTraceCase
+            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE = $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase
         }
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1 -or $row.result -ne 'pass') { throw "Split runtime contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+        foreach($property in @('requested_container','actual_container','selection_collapsed','selection_start_relative','selection_end_relative')) {
+            if(-not ($row.PSObject.Properties.Name -contains $property) -or [string]::IsNullOrWhiteSpace($row.$property)) { throw "Split runtime diagnostic $property is missing for $($case.id)." }
+        }
+        if($row.requested_container -ne $row.actual_container) { throw "Split scenario selected the wrong container for $($case.id): requested $($row.requested_container), actual $($row.actual_container)." }
         $requiredProperties = if($case.ContainsKey('rejected')) { @('check_dom_unchanged','check_selection_unchanged','check_dirty_unchanged') } else { @('check_allowed','check_dom_unchanged','check_selection_unchanged','check_dirty_unchanged','changed','before_equals_undo','after_equals_redo','selection_in_new','saved') }
         foreach($property in $requiredProperties) {
             if($row.$property -ne '1') { throw "Split runtime assertion $property failed for $($case.id)." }

@@ -42,7 +42,9 @@ void StructuralTrace::Before(const wchar_t* phase, const wchar_t* details)
 
 void StructuralTrace::After(const wchar_t* phase, const wchar_t* details)
 {
-	Write(phase, L"after", L"0x00000000", details);
+	wchar_t completed[1024] = {};
+	::swprintf_s(completed, _countof(completed), L"completed%s%s", details && *details ? L": " : L"", details && *details ? details : L"");
+	Write(phase, L"after", L"NA", completed);
 }
 
 void StructuralTrace::Hr(const wchar_t* phase, HRESULT hr, const wchar_t* details)
