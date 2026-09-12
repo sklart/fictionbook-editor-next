@@ -42,8 +42,10 @@ try {
         @{ id = 'poem-stanzas'; operation = 'poem'; paragraphs = @('One', '', 'Two', 'Three') },
         @{ id = 'poem-in-cite'; operation = 'poem'; target = 'cite'; body = '<section><cite><p>Quoted line</p></cite><p>Anchor</p></section>' },
         @{ id = 'poem-caret-text'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0054,0065,0078,0074'; paragraphs = @('Text') },
-        @{ id = 'poem-caret-empty'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @('') },
-        @{ id = 'poem-caret-nbsp'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @([string][char]160) },
+        # Keep an unselected sibling so both the pre-operation fixture and
+        # the restored document are valid FictionBook sections at Save time.
+        @{ id = 'poem-caret-empty'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @('', 'Anchor') },
+        @{ id = 'poem-caret-nbsp'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @([string][char]160, 'Anchor') },
         @{ id = 'poem-selected-empty'; operation = 'poem'; paragraphs = @('') },
         @{ id = 'poem-selected-spaces'; operation = 'poem'; paragraphs = @('   ') },
         @{ id = 'poem-selected-nbsp'; operation = 'poem'; paragraphs = @([string][char]160) },

@@ -3818,7 +3818,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			sequential = secondApplied && before == secondUndo && secondAfter == secondRedo && before == secondRestored;
 		}
 		const bool structure = cite ? citeCount == 1 && poemCount == 0 : poemCount == 1 && stanzaCount >= 1;
-		const bool saved = m_doc->Save();
+		// The final Undo proves restoration of the original DOM.  Persist the
+		// operation result after a fresh Redo: an intentionally empty fixture is
+		// not itself a valid FictionBook section and must not open a validation UI.
+		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+		const bool redoForSave = after == CString((const wchar_t*)body->innerHTML);
+		const bool saved = redoForSave && m_doc->Save();
 		const bool passed = undone && redone && sequential && structure && emptyDivs == 0 && emptyParagraphs == 0 && emptyStanzas == 0 && saved;
 		CStringA row;
 		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%s\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
