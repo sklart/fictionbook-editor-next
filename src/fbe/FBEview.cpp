@@ -3531,7 +3531,7 @@ bool CFBEView::ReturnToLinkNavigationOrigin()
 	MSHTML::IHTMLElementPtr origin(FBELinkNavigation::FindOriginLink(Document(),
 		m_link_navigation_state.targetId, m_link_navigation_state.originUniqueNumber));
 	ClearLinkNavigationHistory();
-	if(!origin) return false;
+	if(!origin || !origin->parentElement) return false;
 	GoTo(origin);
 	return true;
 }

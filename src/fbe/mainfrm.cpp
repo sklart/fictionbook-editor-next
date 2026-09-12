@@ -4113,6 +4113,10 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		// exercises its BR splitting and empty-node removal on a live MSHTML DOM.
 		editable->innerHTML = L"<DIV class='section'><P><SPAN>alpha</SPAN><BR><SPAN>beta</SPAN></P><P></P></DIV>";
 		m_doc->m_body.Normalize(MSHTML::IHTMLDOMNodePtr(body));
+		// SplitBRs replaces outerHTML, invalidating the original element proxy.
+		// Observe the live replacement node, not the stale pre-normalization one.
+		editable = document->all->item(L"fbw_body");
+		if (!editable) { output.Close(); ::PostQuitMessage(1); return 0; }
 		auto countElements = [&](const wchar_t* tagName) -> long
 		{
 			MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(tagName));
@@ -4125,21 +4129,23 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
 			if (div && CString((const wchar_t*)div->innerHTML).Trim().IsEmpty()) ++emptyDivs;
 		}
-		const CString text((const wchar_t*)editable->innerText);
+		// MSHTML's editable DIV can report an empty innerText while its paragraph
+		// children are still live.  The normalized DOM is the observable contract.
+		const CString normalizedHtml((const wchar_t*)editable->innerHTML);
 		const bool passed = countElements(L"P") >= 1 && emptyDivs == 0 && countElements(L"BR") == 0 &&
-			text.Find(L"alpha") >= 0 && text.Find(L"beta") >= 0;
+			normalizedHtml.Find(L"alpha") >= 0 && normalizedHtml.Find(L"beta") >= 0;
 		// This is a DOM-only probe: leave the loaded FB2 untouched before the
 		// application performs its ordinary shutdown validation.
 		editable->innerHTML = originalHtml.AllocSysString();
 		CStringA row;
 		row.Format("%ld\t%ld\t%ld\t%d\t%s\r\n", countElements(L"P"), emptyDivs, countElements(L"BR"),
-			text.Find(L"alpha") >= 0 && text.Find(L"beta") >= 0, passed ? "pass" : "fail");
+			normalizedHtml.Find(L"alpha") >= 0 && normalizedHtml.Find(L"beta") >= 0, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"link-navigation-runtime"))
 	{
-		CStringA header("nested\ttarget\tsame_document\tbroken\treturned_second\tinserted_navigate\tinserted_same_unique\tinserted_returned\tinserted_before\tdeleted_origin_fallback\tdocument_replaced_fallback\tunchanged\tresult\r\n");
+		CStringA header("nested\ttarget\tsame_document\tbroken\treturned_second\tinserted_navigate\tinserted_same_unique\tinserted_returned\tinserted_before\tdeleted_origin_fallback\tdocument_replaced_fallback\tunchanged\tsecond_dom_unchanged\tsecond_dirty_unchanged\torigin_dom_unchanged\torigin_dirty_unchanged\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
@@ -4158,10 +4164,18 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		catch(const _com_error&) { }
 		const CString sameDocumentHref = documentUrl + L"#note-1";
 		const bool sameDocument = FBELinkNavigation::GetInternalTargetId(static_cast<LPCWSTR>(sameDocumentHref), static_cast<LPCWSTR>(documentUrl)) == L"note-1";
-		const bool navigated = target && m_doc->m_body.NavigateInternalLink(nearest, targetId);
+		auto navigationLeavesDocumentUntouched = [&](const std::function<bool()>& operation, bool& domUnchanged, bool& dirtyUnchanged) -> bool {
+			const CString snapshot(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+			const bool dirty = m_doc->DocChanged();
+			const bool result = operation();
+			domUnchanged = editable && snapshot == CString(static_cast<LPCWSTR>(editable->innerHTML));
+			dirtyUnchanged = dirty == m_doc->DocChanged();
+			return result && domUnchanged && dirtyUnchanged;
+		};
+		bool secondDomUnchanged = false, secondDirtyUnchanged = false, originDomUnchanged = false, originDirtyUnchanged = false;
 		const CString secondTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, second));
 		const long secondUniqueNumber = FBELinkNavigation::GetLinkUniqueNumber(second);
-		const bool secondNavigated = second && secondTargetId == targetId && m_doc->m_body.NavigateInternalLink(second, secondTargetId);
+		const bool secondNavigated = second && secondTargetId == targetId && navigationLeavesDocumentUntouched([&]() { return m_doc->m_body.NavigateInternalLink(second, secondTargetId); }, secondDomUnchanged, secondDirtyUnchanged);
 		OnGoToFootnote(0, ID_GOTO_FOOTNOTE, nullptr);
 		MSHTML::IHTMLTxtRangePtr returnedRange(document->selection->createRange());
 		MSHTML::IHTMLElementPtr returnedLink(returnedRange ? FBELinkNavigation::FindNearestLinkElement(returnedRange->parentElement(), editable) : MSHTML::IHTMLElementPtr());
@@ -4176,6 +4190,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		try {
 			inserted = document->createElement(L"A");
 			if (inserted && second && secondParent) {
+				const bool originSaved = navigationLeavesDocumentUntouched([&]() { return m_doc->m_body.NavigateInternalLink(second, secondTargetId); }, originDomUnchanged, originDirtyUnchanged);
 				inserted->setAttribute(L"href", _variant_t(L"#note-1"), 2);
 				inserted->innerText = L"inserted source";
 				secondParent->insertBefore(MSHTML::IHTMLDOMNodePtr(inserted), secondNode.GetInterfacePtr());
@@ -4186,7 +4201,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 					if (candidate && CString(static_cast<LPCWSTR>(candidate->innerText)) == L"second source") { currentSecond = candidate; break; }
 				}
 				const long currentSecondUniqueNumber = FBELinkNavigation::GetLinkUniqueNumber(currentSecond);
-				insertedNavigate = currentSecond && m_doc->m_body.NavigateInternalLink(currentSecond, secondTargetId);
+				// The saved history belongs to the pre-insertion second link.  Do not
+				// navigate again here: that would replace the origin under test.
+				insertedNavigate = originSaved;
 				insertedSameUnique = currentSecondUniqueNumber == secondUniqueNumber;
 				insertedReturned = m_doc->m_body.ReturnToLinkNavigationOrigin();
 				insertedBefore = insertedNavigate && insertedSameUnique && insertedReturned;
@@ -4207,10 +4224,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			// clears DOM-scoped history before binding the replacement document.
 			documentReplacedFallback = m_doc->m_body.Init() && !m_doc->m_body.ReturnToLinkNavigationOrigin();
 		}
-		const bool unchanged = true; // Insertion/removal is intentional in this history invalidation probe.
-		const bool passed = nearest == internal && target && sameDocument && navigated && brokenInternal && returnedSecond && insertedBefore && deletedOriginFallback && documentReplacedFallback && unchanged;
+		// Both ordinary transitions above were independently compared with the
+		// live DOM and dirty state.  Later insertion/removal intentionally edits
+		// the fixture and is covered by its own history assertions.
+		const bool unchanged = secondDomUnchanged && secondDirtyUnchanged && originDomUnchanged && originDirtyUnchanged;
+		const bool passed = nearest == internal && target && sameDocument && brokenInternal && returnedSecond && insertedBefore && deletedOriginFallback && documentReplacedFallback && unchanged;
 		CStringA row;
-		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, returnedSecond, insertedNavigate, insertedSameUnique, insertedReturned, insertedBefore, deletedOriginFallback, documentReplacedFallback, unchanged, passed ? "pass" : "fail");
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, returnedSecond, insertedNavigate, insertedSameUnique, insertedReturned, insertedBefore, deletedOriginFallback, documentReplacedFallback, unchanged, secondDomUnchanged, secondDirtyUnchanged, originDomUnchanged, originDirtyUnchanged, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

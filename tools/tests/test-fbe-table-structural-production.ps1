@@ -101,6 +101,10 @@ try {
 			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'make-normal' -and $Target -eq '0,0:2,0') {
 				if([int]$after.td_count -ne 7 -or [int]$after.th_count -ne 2 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 7 -or [int]$redo.th_count -ne 2) { throw 'Make Normal для целого логического столбца изменил ячейки вне выделения.' }
 			}
+			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'insert-row-above' -and $Target -eq '1,0') {
+				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 9 -or [int]$after.th_count -ne 3 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 9 -or [int]$redo.th_count -ne 3) { throw 'Insert Row Above не скопировал точную последовательность TD выбранной строки через Undo/Redo.' }
+				if($after.grid_signature -notmatch 'c3:id=,tag=TD,row=1,column=0' -or $after.grid_signature -match 'c3:id=,tag=TH,row=1,column=0') { throw 'Insert Row Above создал TH вместо TD в новой строке.' }
+			}
 			if($requestedOperation -and (($case.Id -eq 'preserve' -and $operation -eq 'make-header') -or ($case.Id -eq 'preserve-header' -and $operation -eq 'make-normal'))) {
 				$withoutTag = { param($snapshot) $snapshot -replace 'tag=(TD|TH)', 'tag=*' }
 				if((&$withoutTag $before.grid_signature) -ne (&$withoutTag $after.grid_signature)) { throw "TD/TH conversion изменила attributes или content ($($case.Id))." }

@@ -10,6 +10,10 @@ static bool IsEmptyNode(MSHTML::IHTMLDOMNode *node) {
   if (!node || node->nodeType != 1)
     return false;
   _bstr_t name(node->nodeName);
+  // BR is converted to a paragraph boundary later in normalization; an empty
+  // P is an author-visible empty line.  Neither is disposable whitespace.
+  if (U::scmp(name, L"P") == 0 || U::scmp(name, L"BR") == 0)
+    return false;
   if (U::scmp(name, L"DIV") == 0 &&
       U::scmp(MSHTML::IHTMLElementPtr(node)->className, L"image") == 0)
     return false;

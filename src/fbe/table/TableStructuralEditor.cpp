@@ -142,9 +142,11 @@ bool InsertRow(MSHTML::IHTMLDocument2Ptr document, const Grid &grid,
               grid.cells[above].rowspan + 1);
       expanded[above] = true;
     } else if (!(above >= 0 && above == under))
+      // The insertion boundary can be above the selected row, but the new
+      // row inherits cell types from that selected row, not its predecessor.
       MSHTML::IHTMLElement2Ptr(newRow)->insertAdjacentElement(
-          L"beforeEnd",
-          CreateCell(document, TagAt(grid, boundary - 1, col, fallbackTag)));
+          L"beforeEnd", CreateCell(document, TagAt(grid, rowIndex, col,
+                                                     fallbackTag)));
   }
   MSHTML::IHTMLElement2Ptr(grid.rows[rowIndex])
       ->insertAdjacentElement(below ? L"afterEnd" : L"beforeBegin", newRow);
@@ -197,7 +199,7 @@ bool InsertColumn(MSHTML::IHTMLDocument2Ptr document, const Grid &grid,
       SetSpan(grid.cells[left].element, L"fbcolspan", L"colspan",
               grid.cells[left].colspan + 1);
       expanded[left] = true;
-    } else
+    } else if (!(left >= 0 && left == right && expanded[left]))
       InsertCell(document, grid, row, column,
                  TagAt(grid, row, before ? column : column - 1, fallbackTag));
   }

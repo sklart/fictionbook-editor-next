@@ -2,7 +2,7 @@
 content, a BR and an empty paragraph.  It deliberately does not reuse a table
 scenario: this test exercises CFBEView::Normalize and VisualDomNormalizer. #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts)
 $ErrorActionPreference='Stop'
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-visual-dom-normalizer-' + [guid]::NewGuid().ToString('N'))
 $fixture = Join-Path $directory 'normalizer.fb2'
@@ -27,5 +27,5 @@ try {
     if(-not $saved.load($fixture)) { throw "Saved normalization fixture is not XML: $($saved.parseError.reason)" }
     if($saved.selectNodes('//*[local-name()="table"]').length -ne 0) { throw 'Normalizer runtime fixture unexpectedly used a table.' }
 }
-finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+finally { if($KeepArtifacts) { Write-Host "Artifacts: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } }
 Write-Host 'Visual DOM normalizer production runtime passed.'

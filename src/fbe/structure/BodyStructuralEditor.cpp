@@ -294,8 +294,10 @@ StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly, S
 			// pointer just inside the leaf instead of at its element boundary.
 			MSHTML::IMarkupPointerPtr selectionPointer;
 			Before(L"selection-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&selectionPointer); Hr(L"selection-pointer-create", hr); if (FAILED(hr)) { selectionWarning = hr; }
-			const MSHTML::_ELEMENT_ADJACENCY selectionEdge = CString((const wchar_t*)selectionTarget->innerText).IsEmpty()
-				? MSHTML::ELEM_ADJ_AfterBegin : MSHTML::ELEM_ADJ_BeforeEnd;
+			// Place the caret at the semantic beginning of the new container.  The
+			// leaf walk above is still required for stanza and empty-element MSHTML
+			// limitations, but typing after Split must produce Xdef, not defX.
+			const MSHTML::_ELEMENT_ADJACENCY selectionEdge = MSHTML::ELEM_ADJ_AfterBegin;
 			if (SUCCEEDED(selectionWarning)) { Before(L"selection-pointer-move"); hr = selectionPointer->MoveAdjacentToElement(selectionTarget, selectionEdge); Hr(L"selection-pointer-move", hr); if (FAILED(hr)) selectionWarning = hr; }
 			if (SUCCEEDED(selectionWarning)) { Before(L"selection-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionPointer, selectionPointer, selection); Hr(L"selection-range-move", hr); if (FAILED(hr)) selectionWarning = hr; }
 			MSHTML::IHTMLElement2Ptr(m_document->body)->focus();
