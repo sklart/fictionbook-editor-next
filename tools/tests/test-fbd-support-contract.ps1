@@ -1,6 +1,8 @@
 ﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path $PSScriptRoot)
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
+$fileDialogs = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\ui\DocumentFileDialogs.cpp')
+$sourceTransfer = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\source\SourceDocumentTransfer.cpp')
 $document = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBDoc.cpp')
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $root 'localization\app-ui\catalog.json') | ConvertFrom-Json
 $xsl = Get-Content -Raw -LiteralPath (Join-Path $root 'runtime\fb2.xsl')
@@ -41,14 +43,14 @@ Assert-StructurallyInvalidFbd 'wrong_root.fbd' 'wrong root'
 Assert-StructurallyInvalidFbd 'wrong_namespace.fbd' 'wrong namespace'
 Assert-StructurallyInvalidFbd 'missing_description.fbd' 'missing description'
 Assert-StructurallyInvalidFbd 'duplicate_description.fbd' 'duplicate description'
-if($mainFrame -notmatch '\*\.fb2;\*\.fbd') { throw 'Open dialog does not expose both FictionBook extensions.' }
-if($mainFrame -notmatch 'FictionBook Description \(\*\.fbd\)') { throw 'Save As does not expose the separate FBD type.' }
-if($mainFrame -notmatch 'request\.filterIndex\s*=\s*saveAsFbd\s*\?\s*2\s*:\s*1' -or
-   $mainFrame -notmatch 'dialogResult\.filterIndex\s*==\s*2\s*\?\s*FictionBookFileType::Fbd') { throw 'Save As filter selection does not control the target type.' }
+if($fileDialogs -notmatch '\*\.fb2;\*\.fbd') { throw 'Open dialog does not expose both FictionBook extensions.' }
+if($fileDialogs -notmatch 'FictionBook Description \(\*\.fbd\)') { throw 'Save As does not expose the separate FBD type.' }
+if($fileDialogs -notmatch 'request\.filterIndex\s*=\s*IsFbdFile\(input\.initialFileName\)\s*\?\s*2\s*:\s*1' -or
+	$fileDialogs -notmatch 'dialogResult\.filterIndex\s*==\s*2\s*\?\s*FictionBookFileType::Fbd') { throw 'Save As filter selection does not control the target type.' }
 if($xsl -notmatch 'class="body" fbdsynthetic="1"') { throw 'Body-less FBD visual placeholder is not marked synthetic.' }
 if($mainFrame -notmatch 'if \(IsSourceActive\(\)\)\s*fv=m_doc->SetXMLAndValidate') { throw 'F8 source mode must validate current Scintilla text for FBD and FB2.' }
 if($mainFrame -match 'IsFbdFile\(m_doc->m_filename\)\s*\)\s*fv=m_doc->Validate') { throw 'F8 source mode must not validate serialized DOM for FBD.' }
-if($mainFrame -notmatch 'TextToXML[\s\S]{0,800}(IsFbdFile\(m_doc->m_filename\)|GetDocumentFileType\(\)\s*==\s*FictionBookFileType::Fbd)') { throw 'Source to Body must not fall back to XmlFromText after FBD structural validation fails.' }
+if($sourceTransfer -notmatch 'TextToXML[\s\S]{0,800}GetDocumentFileType\(\)\s*==\s*FictionBookFileType::Fbd') { throw 'Source to Body must not fall back to XmlFromText after FBD structural validation fails.' }
 if($document -notmatch 'ConfigureFictionBookSaxReader\(rdr, targetType, scol\)' -or
 	$document -notmatch 'ConfigureFictionBookSaxReader\(rdr, fileType, scol\)') { throw 'XML validation policy is not shared by SaveToFile, source validation and TextToXML.' }
 if($document -notmatch 'ShouldUseFb2SchemaValidation' -or $document -notmatch 'type != FictionBookFileType::Fbd') { throw 'FBD must disable only FB2 schema validation.' }
