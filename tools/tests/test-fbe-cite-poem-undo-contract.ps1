@@ -15,7 +15,10 @@ $source = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\structure\Body
 $viewSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBEview.cpp')
 
 function Get-FunctionBody([string]$Name) {
-    $match = [regex]::Match($source, "StructuralOperationResult BodyStructuralEditor::$Name\(bool checkOnly\)\s*\{")
+    # The public one-argument overload deliberately delegates to the overload
+    # used by the runtime fault harness.  Inspect the latter: it owns the live
+    # DOM mutation and its undo boundary.
+    $match = [regex]::Match($source, "StructuralOperationResult BodyStructuralEditor::$Name\(bool checkOnly, CitePoemFailurePoint failurePoint\)\s*\{")
     if(-not $match.Success) { throw "BodyStructuralEditor::$Name was not found." }
     $depth = 0
     for($index = $match.Index; $index -lt $source.Length; ++$index) {
