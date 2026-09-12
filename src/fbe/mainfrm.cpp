@@ -1859,10 +1859,10 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 			const ScriptDescriptor& script = m_script_menu.Item(scriptIndex);
 			if(script.isFolder || script.commandId < 1) continue;
 			const int command = ID_SCRIPT_BASE + script.commandId;
-			bool found = false;
+			bool alreadyPresent = false;
 			for(int buttonIndex = 0; buttonIndex < available.GetSize(); ++buttonIndex)
-				if(available[buttonIndex].idCommand == command) { found = true; break; }
-			if(found) continue;
+				if(available[buttonIndex].idCommand == command) { alreadyPresent = true; break; }
+			if(alreadyPresent) continue;
 			TBBUTTON button = {};
 			button.iBitmap = I_IMAGENONE;
 			button.idCommand = command;
