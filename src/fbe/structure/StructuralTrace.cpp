@@ -5,10 +5,12 @@ namespace FbeStructure {
 
 namespace {
 
-void Sanitize(wchar_t* value)
+void Sanitize(wchar_t* destination, size_t destinationCount, const wchar_t* value)
 {
-	for (; *value; ++value) {
-		if (*value == L'\t' || *value == L'\r' || *value == L'\n') *value = L' ';
+	if (!value) value = L"";
+	::wcsncpy_s(destination, destinationCount, value, _TRUNCATE);
+	for (wchar_t* current = destination; *current; ++current) {
+		if (*current == L'\t' || *current == L'\r' || *current == L'\n') *current = L' ';
 	}
 }
 
@@ -62,11 +64,16 @@ void StructuralTrace::Write(const wchar_t* phase, const wchar_t* event, const wc
 	if (!IsEnabled()) return;
 	SYSTEMTIME now = {};
 	::GetSystemTime(&now);
+	wchar_t operation[128] = {}, caseName[128] = {}, safePhase[128] = {}, safeEvent[64] = {}, safeDetails[1024] = {};
+	Sanitize(operation, _countof(operation), m_operation ? m_operation : L"unknown");
+	Sanitize(caseName, _countof(caseName), m_caseName ? m_caseName : L"unknown");
+	Sanitize(safePhase, _countof(safePhase), phase);
+	Sanitize(safeEvent, _countof(safeEvent), event);
+	Sanitize(safeDetails, _countof(safeDetails), details);
 	wchar_t line[2048] = {};
 	::swprintf_s(line, _countof(line), L"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\t%s\textracted\t%s\t%s\t%s\t%s\t%s\r\n",
 		now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond, now.wMilliseconds,
-		m_operation ? m_operation : L"unknown", m_caseName ? m_caseName : L"unknown", phase, event, hresult, details ? details : L"");
-	Sanitize(line);
+		operation, caseName, safePhase, safeEvent, hresult, safeDetails);
 	DWORD written = 0;
 	::WriteFile(m_file, line, static_cast<DWORD>(wcslen(line) * sizeof(wchar_t)), &written, nullptr);
 	::FlushFileBuffers(m_file);

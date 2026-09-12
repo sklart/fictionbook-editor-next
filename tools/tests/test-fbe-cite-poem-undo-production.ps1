@@ -94,6 +94,9 @@ try {
         if($trace) {
             if(-not (Test-Path -LiteralPath $trace)) { throw "Missing structural trace for $($case.id): $trace" }
             $traceRows = Import-Csv -LiteralPath $trace -Delimiter "`t"
+            foreach($property in @('phase', 'event', 'hresult')) {
+                if(-not ($traceRows[0].PSObject.Properties.Name -contains $property)) { throw "Malformed StructuralTrace TSV for $($case.id): missing $property" }
+            }
             $required = @("$($case.operation)-enter", 'preflight-complete', 'undo-begin', 'insert-before', 'undo-end', "$($case.operation)-success")
             foreach($phase in $required) {
                 if(-not (@($traceRows | Where-Object { $_.phase -eq $phase -and $_.event -eq 'after' }).Count)) { throw "Incomplete structural trace for $($case.id): missing $phase after ($trace)" }
