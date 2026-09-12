@@ -3858,7 +3858,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const DWORD containerIdLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_CONTAINER_ID", containerId, _countof(containerId));
 		const DWORD traceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TRACE", tracePath, _countof(tracePath));
 		const DWORD traceCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_CASE", traceCase, _countof(traceCase));
-		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tsaved\tresult\r\n");
+		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
@@ -3896,12 +3896,17 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			const long index = atEnd ? paragraphs->length - 1 : paragraphs->length / 2;
 			MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
 			if (!paragraph) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-paragraph\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
+			const bool nonEmptySelection = positionLength == 9 && wcscmp(position, L"selection") == 0;
 			if (atEnd) { range->moveToElementText(container); range->collapse(VARIANT_FALSE); }
+			else if (nonEmptySelection) {
+				range->moveToElementText(paragraph);
+				if (!range->findText(L"SELECTED", 0, 0)) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-selection-marker\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
+			}
 			else { range->moveToElementText(paragraph); range->collapse(VARIANT_TRUE); }
 			// Stanza splitting is defined between verses.  Keep the test caret at
 			// the beginning of the second visual paragraph instead of advancing
 			// into its first character.
-			if (!atEnd && wcscmp(requestedContainerClass, L"stanza") != 0 && !CString((const wchar_t*)paragraph->innerText).IsEmpty()) range->move(L"character", 1);
+			if (!atEnd && !nonEmptySelection && wcscmp(requestedContainerClass, L"stanza") != 0 && !CString((const wchar_t*)paragraph->innerText).IsEmpty()) range->move(L"character", 1);
 		}
 		range->select();
 		MSHTML::IHTMLTxtRangePtr selectionBefore(document->selection->createRange());
@@ -3925,23 +3930,38 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const CString after(contentHtml());
 		if (!checkAllowed && !applied) {
 			const bool passed = !checkAllowed && !applied && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && before == after;
-			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t%d\t%d\t%d\t%d\t0\t1\t1\t1\t1\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, passed ? "pass" : "fail");
+			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t0\t1\t1\t1\t1\t1\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, passed ? "pass" : "fail");
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		}
 		MSHTML::IHTMLTxtRangePtr selectionAfter(document->selection->createRange());
 		MSHTML::IHTMLElementPtr selectionParent(selectionAfter ? selectionAfter->parentElement() : MSHTML::IHTMLElementPtr());
 		while (selectionParent && U::scmp(selectionParent->tagName, L"DIV")) selectionParent = selectionParent->parentElement;
-		const bool selectionInNew = selectionParent && U::scmp(selectionParent->className, container->className) == 0 && selectionParent->sourceIndex != container->sourceIndex;
+		CStringA selectionParentSummary;
+		if (selectionParent) selectionParentSummary.Format("%S#%S", static_cast<LPCWSTR>(selectionParent->className), static_cast<LPCWSTR>(selectionParent->id));
+		MSHTML::IHTMLElementPtr newContainer;
+		MSHTML::IHTMLElementCollectionPtr currentDivs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
+		for (long index = 0; currentDivs && index < currentDivs->length; ++index) {
+			MSHTML::IHTMLElementPtr div(currentDivs->item(_variant_t(index), _variant_t()));
+			if (div && U::scmp(div->className, container->className) == 0 &&
+				(containerIdLength ? U::scmp(div->id, containerId) == 0 : div->sourceIndex != container->sourceIndex)) { newContainer = div; break; }
+		}
+		MSHTML::IHTMLTxtRangePtr newContainerRange(newContainer ? MSHTML::IHTMLBodyElementPtr(body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		if (newContainerRange) newContainerRange->moveToElementText(newContainer);
+		const long selectionStartInNew = selectionAfter && newContainerRange ? selectionAfter->compareEndPoints(L"StartToStart", newContainerRange) : 99;
+		const long selectionEndInNew = selectionAfter && newContainerRange ? selectionAfter->compareEndPoints(L"EndToEnd", newContainerRange) : 99;
+		const bool selectionInNew = newContainer && selectionStartInNew >= 0 && selectionEndInNew <= 0;
 		BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undone(contentHtml());
 		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redone(contentHtml());
 		int validationLine = 0, validationColumn = 0;
 		const bool saved = applied && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
 		const bool changed = before != after;
-		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && changed && before == undone && after == redone && selectionInNew && saved;
-		CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, changed, before == undone, after == redone, selectionInNew, saved, passed ? "pass" : "fail");
+		auto countText = [&](const wchar_t* text) { long count = 0, offset = 0; while ((offset = after.Find(text, offset)) >= 0) { ++count; offset += static_cast<int>(wcslen(text)); } return count; };
+		const bool fragmentsPreserved = positionLength != 9 || wcscmp(position, L"selection") != 0 || (countText(L"AAA") == 1 && countText(L"SELECTED") == 1 && countText(L"ZZZ") == 1);
+		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && changed && before == undone && after == redone && selectionInNew && fragmentsPreserved && saved;
+		CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, (LPCSTR)selectionParentSummary, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, changed, before == undone, after == redone, selectionInNew, fragmentsPreserved, saved, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		} catch (_com_error& error) {
-			CStringA row; row.Format("unknown\tunknown\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tcom-0x%08lX\r\n", static_cast<unsigned long>(error.Error()));
+			CStringA row; row.Format("unknown\tunknown\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tcom-0x%08lX\r\n", static_cast<unsigned long>(error.Error()));
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(1); return 0;
 		}
 	}

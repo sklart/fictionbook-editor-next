@@ -184,10 +184,6 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		Before(L"pre-range-move"); hr = m_markupServices->MoveRangeToPointers(elementBegin, selectionStart, preRange); Hr(L"pre-range-move", hr); if (FAILED(hr)) return false;
 		U::ElTextHTML pre(preRange->htmlText, preRange->text);
 
-		MSHTML::IHTMLElementCollectionPtr children = parent->children;
-		MSHTML::IHTMLElementPtr last = children->item(children->length - 1);
-		const bool lastWasEmpty = last && U::scmp(last->innerText, L"") == 0;
-
 		const bool hasTitle = !title.text.IsEmpty();
 		if (hasTitle && title.html.Find(L"<P") == -1) title.html = CString(L"<P>") + title.html + L"</P>";
 
@@ -203,12 +199,6 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		if (hasContent && post.html.Find(L"<P") == -1) post.html = CString(L"<P>") + post.html + L"</P>";
 		title.html.Remove(L'\r'); title.html.Remove(L'\n'); post.html.Remove(L'\r'); post.html.Remove(L'\n');
 		if (post.html.Find(L"<P>&nbsp;</P>") == 0 && post.html.GetLength() > 13 && hasTitle && title.html.Find(L"<P>&nbsp;</P>") != title.html.GetLength() - 14) post.html.Delete(0, 13);
-		// Only restore the synthetic trailing paragraph.  A real <P>123</P>
-		// elsewhere in the selected content is user data and must not be touched.
-		if (lastWasEmpty && post.html.GetLength() >= 10 && post.html.Right(10) == L"<P>123</P>") {
-			post.html.Delete(post.html.GetLength() - 10, 10);
-			post.html += L"<P>&nbsp;</P>";
-		}
 		if (hasContent) {
 			if (post.html == L"<P>&nbsp;</P>") post.html += L"<P>&nbsp;</P>";
 			Before(L"new-container-content"); next->innerHTML = post.html.AllocSysString(); next->id = id; After(L"new-container-content");
@@ -231,7 +221,7 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 			while (stagingNode->firstChild) { MSHTML::IHTMLDOMNodePtr node(stagingNode->firstChild); destinationNode->appendChild(node); }
 			After(phase);
 		};
-		Before(L"source-cleanup"); postRange->pasteHTML(L""); FbeVisualDom::FixupParagraphs(next); FbeVisualDom::PackText(next, m_document); After(L"source-cleanup");
+		Before(L"source-cleanup"); range->pasteHTML(L""); postRange->pasteHTML(L""); FbeVisualDom::FixupParagraphs(parent); FbeVisualDom::PackText(parent, m_document); FbeVisualDom::FixupParagraphs(next); FbeVisualDom::PackText(next, m_document); After(L"source-cleanup");
 		parentChildren = parent->children;
 		if (parentChildren->length == 1) { MSHTML::IHTMLElementPtr child = parentChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"source-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"source-wrapper-remove", hr); if (FAILED(hr)) return false; } }
 		MSHTML::IHTMLElementCollectionPtr nextChildren = next->children;
@@ -255,17 +245,12 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 				if (!child) break;
 				selectionTarget = child;
 			}
-			// Text ranges created from BODY reject some stanza descendants.  Use
-			// a markup pointer at the child's beginning instead; it is valid for
-			// both P and V visual nodes and keeps the caret inside new stanza.
+			// BODY text ranges reject some visual P/V descendants.  Place the
+			// pointer just inside the leaf instead of at its element boundary.
 			MSHTML::IMarkupPointerPtr selectionPointer;
 			Before(L"selection-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&selectionPointer); Hr(L"selection-pointer-create", hr); if (FAILED(hr)) return false;
-			Before(L"selection-pointer-move"); hr = selectionPointer->MoveAdjacentToElement(selectionTarget, MSHTML::ELEM_ADJ_AfterBegin); Hr(L"selection-pointer-move", hr); if (FAILED(hr)) return false;
+			Before(L"selection-pointer-move"); hr = selectionPointer->MoveAdjacentToElement(selectionTarget, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"selection-pointer-move", hr); if (FAILED(hr)) return false;
 			Before(L"selection-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionPointer, selectionPointer, selection); Hr(L"selection-range-move", hr); if (FAILED(hr)) return false;
-			// A collapsed range exactly at an element boundary has no parentElement
-			// in MSHTML. Move into its text when possible so the editor and callers
-			// can reliably identify the new structural container.
-			selection->move(L"character", 1);
 			MSHTML::IHTMLElement2Ptr(m_document->body)->focus();
 			selection->select();
 		} catch (_com_error& error) { Hr(L"selection-update", error.Error()); }

@@ -29,6 +29,7 @@ try {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $cases = @(
         @{ id = 'split-section-middle'; body = '<section id="target-section-middle"><p>First</p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'target-section-middle' },
+        @{ id = 'split-section-selection'; body = '<section id="target-section-selection"><p>AAA SELECTED ZZZ</p></section>'; position = 'selection'; containerId = 'target-section-selection'; fragments = $true },
         @{ id = 'split-section-start'; body = '<section id="target-section-start"><p>First</p><p>Last</p></section>'; position = 'start'; containerId = 'target-section-start'; rejected = $true },
         @{ id = 'split-section-end'; body = '<section id="target-section-end"><p>First</p><p>Last</p></section>'; position = 'end'; containerId = 'target-section-end'; rejected = $true },
         @{ id = 'split-stanza-middle'; body = '<section><p>Anchor</p><poem><stanza><v>First</v><v>Middle</v></stanza></poem></section>'; position = 'middle'; container = 'stanza'; containerId = '' },
@@ -66,6 +67,7 @@ try {
         }
         if($row.requested_container -ne $row.actual_container) { throw "Split scenario selected the wrong container for $($case.id): requested $($row.requested_container), actual $($row.actual_container)." }
         $requiredProperties = if($case.ContainsKey('rejected')) { @('check_dom_unchanged','check_selection_unchanged','check_dirty_unchanged') } else { @('check_allowed','check_dom_unchanged','check_selection_unchanged','check_dirty_unchanged','changed','before_equals_undo','after_equals_redo','selection_in_new','saved') }
+        if($case.ContainsKey('fragments')) { $requiredProperties += 'fragments_preserved' }
         foreach($property in $requiredProperties) {
             if($row.$property -ne '1') { throw "Split runtime assertion $property failed for $($case.id)." }
         }
