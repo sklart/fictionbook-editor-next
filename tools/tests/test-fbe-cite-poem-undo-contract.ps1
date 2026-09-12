@@ -11,11 +11,12 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$source = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBEview.cpp')
+$source = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\structure\BodyStructuralEditor.cpp')
+$viewSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBEview.cpp')
 
 function Get-FunctionBody([string]$Name) {
-    $match = [regex]::Match($source, "bool CFBEView::$Name\(bool fCheck\)\s*\{")
-    if(-not $match.Success) { throw "CFBEView::$Name was not found." }
+    $match = [regex]::Match($source, "bool BodyStructuralEditor::$Name\(bool checkOnly\)\s*\{")
+    if(-not $match.Success) { throw "BodyStructuralEditor::$Name was not found." }
     $depth = 0
     for($index = $match.Index; $index -lt $source.Length; ++$index) {
         if($source[$index] -eq '{') { ++$depth }
@@ -36,14 +37,19 @@ foreach($name in @('InsertCite', 'InsertPoem')) {
     if($body.IndexOf('FbeDom::MarkupUndoUnitScope undo') -lt $body.IndexOf('CString rngHTML')) { throw "$name begins undo before HTML preparation." }
 }
 
+foreach($name in @('InsertCite', 'InsertPoem')) {
+    $wrapper = [regex]::Match($viewSource, "bool CFBEView::$name\(bool fCheck\)\s*\{(?<body>.*?)\n\}", [Text.RegularExpressions.RegexOptions]::Singleline)
+    if(-not $wrapper.Success -or $wrapper.Groups['body'].Value -notmatch "BodyStructuralEditor editor\(Document\(\), m_mk_srv\);\s*return editor\.$name\(fCheck\);") { throw "CFBEView::$name is not a structural-editor wrapper." }
+}
+
 $cite = Get-FunctionBody 'InsertCite'
-if($cite.Contains('createElement(L"DIV")') -and $cite.Contains('ne->className = L"cite"')) { throw 'InsertCite changes className as a separate live operation.' }
+if($cite.Contains('createElement(L"DIV")') -and $cite.Contains('className = L"cite"')) { throw 'InsertCite changes className as a separate live operation.' }
 if(-not $cite.Contains('createElement(L"<DIV class=cite>")')) { throw 'InsertCite does not create Cite in final form.' }
 
 $poem = Get-FunctionBody 'InsertPoem'
-if(-not $poem.Contains('const bool wasCollapsed = rng->compareEndPoints(L"StartToEnd", rng) == 0')) { throw 'InsertPoem does not capture a collapsed range before expanding paragraphs.' }
+if(-not $poem.Contains('const bool wasCollapsed = range->compareEndPoints(L"StartToEnd", range) == 0')) { throw 'InsertPoem does not capture a collapsed range before expanding paragraphs.' }
 if($poem.Contains('selectedText.Trim().IsEmpty()')) { throw 'InsertPoem treats whitespace-only text as an empty selection.' }
-if(-not $poem.Contains('if(wasCollapsed && !expandedHasContent)')) { throw 'InsertPoem does not limit an empty Poem to a collapsed range without paragraph content.' }
+if(-not $poem.Contains('if (wasCollapsed && !expandedHasContent)')) { throw 'InsertPoem does not limit an empty Poem to a collapsed range without paragraph content.' }
 
 $undoSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\dom\MarkupUndoUnitScope.h')
 foreach($required in @('class MarkupUndoUnitScope', '~MarkupUndoUnitScope()', 'try { m_services->EndUndoUnit(); }', 'catch (_com_error&) { }')) {

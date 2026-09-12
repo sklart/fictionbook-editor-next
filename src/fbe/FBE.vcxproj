@@ -342,6 +342,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     </ClCompile>
 	<ClCompile Include="view\VisualDomNormalizer.cpp" />
 	<ClCompile Include="structure\BodyStructuralEditor.cpp" />
+	<ClCompile Include="structure\StructuralTrace.cpp" />
     <ClCompile Include="table\TableGrid.cpp" />
     <ClCompile Include="table\TableStructuralEditor.cpp" />
     <ClCompile Include="FindResultsPane.cpp" />
@@ -477,6 +478,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="view\VisualDomNormalizer.h" />
 	<ClInclude Include="dom\MarkupUndoUnitScope.h" />
 	<ClInclude Include="structure\BodyStructuralEditor.h" />
+	<ClInclude Include="structure\StructuralTrace.h" />
     <ClInclude Include="source\Fb2SourceStructuralContext.h" />
     <ClInclude Include="..\common\fb2\Fb2CoverImage.h" />
     <ClInclude Include="..\common\fb2\Fb2CoverThumbnail.h" />

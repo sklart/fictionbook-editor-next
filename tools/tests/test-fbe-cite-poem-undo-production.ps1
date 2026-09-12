@@ -8,8 +8,6 @@ param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 90,
     [string]$Case,
-    [ValidateSet('legacy', 'extracted')]
-    [string]$Backend = 'legacy',
     [switch]$KeepArtifacts
 )
 
@@ -61,20 +59,26 @@ try {
         $body = if($case.ContainsKey('body')) { $case.body } else { "<section>$paragraphs</section>" }
         $fixture = Join-Path $directory ($case.id + '.fb2')
         $report = Join-Path $directory ($case.id + '.tsv')
+        $trace = Join-Path $directory ($case.id + '.trace.tsv')
         @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$body</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
-        $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldBackend = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_BACKEND
+        $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'cite-poem-undo'; $env:FBE_NEXT_TEST_STRUCTURE_OPERATION = $case.operation
             $env:FBE_NEXT_TEST_STRUCTURE_TARGET = $expectedTarget
             $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE = $expectedSelection
             $env:FBE_NEXT_TEST_STRUCTURE_REPEAT = if($case.ContainsKey('repeat')) { '1' } else { $null }
-            $env:FBE_NEXT_TEST_STRUCTURE_BACKEND = $Backend
+            $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $trace
+            $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
             $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
-            if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE timed out for $($case.id)." }
+            if(-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+                $tail = if(Test-Path -LiteralPath $trace) { (Get-Content -LiteralPath $trace | Select-Object -Last 20) -join [Environment]::NewLine } else { '<trace unavailable>' }
+                Stop-Process -Id $process.Id -Force
+                throw "FBE timed out for case=$($case.id), trace=$trace. Last phases:`n$tail"
+            }
             if($process.ExitCode -ne 0 -and -not $case.ContainsKey('expectRejected')) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         }
         finally {
-            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_BACKEND = $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldBackend
+            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE = $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase
         }
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1) { throw "Missing live MSHTML report for $($case.id)." }
@@ -82,7 +86,19 @@ try {
         if($row.selection_collapsed -ne $expectedCollapsed) { throw "MSHTML collapsed-state mismatch for $($case.id): $($row.selection_collapsed)." }
         if($case.ContainsKey('expectRejected')) {
             if($process.ExitCode -eq 0 -or $row.check_allowed -ne '0' -or $row.result -ne 'operation-failed') { throw "Expected the unanchorable MSHTML whitespace range to be rejected for $($case.id)." }
+            if(-not (Test-Path -LiteralPath $trace)) { throw "Missing structural trace for rejected $($case.id): $trace" }
+            $traceRows = Import-Csv -LiteralPath $trace -Delimiter "`t"
+            if(-not (@($traceRows | Where-Object { $_.phase -eq 'preflight-rejected' -and $_.event -eq 'after' }).Count)) { throw "Rejected structural trace is not explained for $($case.id): $trace" }
             continue
+        }
+        if($trace) {
+            if(-not (Test-Path -LiteralPath $trace)) { throw "Missing structural trace for $($case.id): $trace" }
+            $traceRows = Import-Csv -LiteralPath $trace -Delimiter "`t"
+            $required = @("$($case.operation)-enter", 'preflight-complete', 'undo-begin', 'insert-before', 'undo-end', "$($case.operation)-success")
+            foreach($phase in $required) {
+                if(-not (@($traceRows | Where-Object { $_.phase -eq $phase -and $_.event -eq 'after' }).Count)) { throw "Incomplete structural trace for $($case.id): missing $phase after ($trace)" }
+            }
+            if(@($traceRows | Where-Object { $_.event -in @('exception', 'failure') }).Count) { throw "Structural trace recorded a COM failure for $($case.id): $trace" }
         }
         if($case.ContainsKey('expectedPoemText') -and $row.poem_text_utf16 -ne $case.expectedPoemText) { throw "Poem text is wrong for $($case.id): $($row.poem_text_utf16)." }
         if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.selection_mode -ne $expectedSelection -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.saved -ne '1' -or $row.result -ne 'pass') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }

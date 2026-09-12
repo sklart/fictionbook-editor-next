@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
 #include "structure/BodyStructuralEditor.h"
+#include "structure/StructuralTrace.h"
 #include "document\PendingDocument.h"
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
@@ -3668,11 +3669,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		wchar_t operation[16] = {};
 		wchar_t target[16] = {};
 		wchar_t selectionMode[16] = {};
-		wchar_t backend[16] = {};
+		wchar_t tracePath[MAX_PATH] = {};
+		wchar_t traceCase[64] = {};
 		const DWORD operationLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_OPERATION", operation, _countof(operation));
 		const DWORD targetLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TARGET", target, _countof(target));
 		const DWORD selectionModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE", selectionMode, _countof(selectionMode));
-		const DWORD backendLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_BACKEND", backend, _countof(backend));
+		const DWORD traceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TRACE", tracePath, _countof(tracePath));
+		const DWORD traceCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_CASE", traceCase, _countof(traceCase));
 		const bool cite = operationLength == 4 && wcscmp(operation, L"cite") == 0;
 		const bool poem = operationLength == 4 && wcscmp(operation, L"poem") == 0;
 		const wchar_t* targetClass = targetLength ? target : L"section";
@@ -3680,8 +3683,6 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool selectCaret = selectionModeLength == 5 && wcscmp(selectionMode, L"caret") == 0;
 		const CStringA selectionName(selectCaret ? "caret" : "selected");
 		const bool repeat = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_REPEAT", nullptr, 0) != 0;
-		const bool legacyBackend = backendLength == 0 || (backendLength == 6 && wcscmp(backend, L"legacy") == 0);
-		const bool extractedBackend = backendLength == 9 && wcscmp(backend, L"extracted") == 0;
 		CStringA header("operation\ttarget\tselection_mode\tselection_collapsed\tselection_text_utf16\tselection_html_utf16\tselection_parent_utf16\tselection_start_to_first_start\tselection_end_to_first_end\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tpoem_text_utf16\tempty_divs\tempty_paragraphs\tempty_stanzas\tsaved\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto writeFailure = [&](const char* reason)
@@ -3690,7 +3691,6 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1);
 		};
 		if (!cite && !poem) { writeFailure("invalid-operation"); return 0; }
-		if (!legacyBackend && !extractedBackend) { writeFailure("invalid-backend"); return 0; }
 		MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr divs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr container;
@@ -3755,8 +3755,10 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const long beforeEmptyDivs = countEmpty(L"DIV"), beforeEmptyParagraphs = countEmpty(L"P"), beforeEmptyStanzas = countEmpty(L"DIV", L"stanza");
 		const CString before((const wchar_t*)body->innerHTML);
 		const long beforeParagraphs = paragraphs->length;
-		FbeStructure::BodyStructuralEditor extracted(m_doc->m_body.Document(), m_doc->m_body.MarkupServices());
-		auto apply = [&](bool checkOnly) -> bool { if (legacyBackend) return cite ? m_doc->m_body.InsertCite(checkOnly) : m_doc->m_body.InsertPoem(checkOnly); return cite ? extracted.InsertCite(checkOnly) : extracted.InsertPoem(checkOnly); };
+		FbeStructure::StructuralTrace trace(traceLength ? tracePath : nullptr,
+			cite ? L"cite" : L"poem", traceCaseLength ? traceCase : L"runtime");
+		FbeStructure::BodyStructuralEditor extracted(m_doc->m_body.Document(), m_doc->m_body.MarkupServices(), trace.IsEnabled() ? &trace : nullptr);
+		auto apply = [&](bool checkOnly) -> bool { return cite ? extracted.InsertCite(checkOnly) : extracted.InsertPoem(checkOnly); };
 		const bool checkAllowed = apply(true);
 		const bool applied = apply(false);
 		const CString after((const wchar_t*)body->innerHTML);
