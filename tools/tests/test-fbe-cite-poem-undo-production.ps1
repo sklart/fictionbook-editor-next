@@ -7,6 +7,7 @@ one-step Undo/Redo DOM snapshots plus a save after the final Undo.
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 90,
+    [string]$Case,
     [switch]$KeepArtifacts
 )
 
@@ -49,7 +50,9 @@ try {
         # inside the first whitespace-only P; the editor correctly rejects it.
         @{ id = 'poem-selected-whitespace-paragraphs'; operation = 'poem'; expectRejected = $true; paragraphs = @('  ', "`t", '  ') }
     )
+    if($Case -and -not (@($cases | ForEach-Object { $_.id }) -contains $Case)) { throw "Unknown Cite/Poem runtime case: $Case" }
     foreach($case in $cases) {
+		if($Case -and $case.id -ne $Case) { continue }
         $expectedTarget = if($case.ContainsKey('target')) { $case.target } else { 'section' }
         $expectedSelection = if($case.ContainsKey('selection')) { $case.selection } else { 'selected' }
         $paragraphs = if($case.ContainsKey('paragraphs')) { ($case.paragraphs | ForEach-Object { "<p>$([Security.SecurityElement]::Escape($_))</p>" }) -join '' } else { '' }
