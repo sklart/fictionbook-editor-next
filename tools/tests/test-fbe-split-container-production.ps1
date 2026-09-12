@@ -35,8 +35,8 @@ try {
         @{ id = 'split-section-end'; body = '<section id="target-section-end"><p>First</p><p>Last</p></section>'; position = 'end'; containerId = 'target-section-end' },
         @{ id = 'split-stanza-middle'; body = '<section><p>Anchor</p><poem><stanza><v>First</v><v>Middle</v></stanza></poem></section>'; position = 'middle'; container = 'stanza'; containerId = '' },
         @{ id = 'split-invalid-container'; body = '<epigraph id="target-epigraph"><p>Quoted</p><p>Tail</p></epigraph>'; position = 'middle'; container = 'epigraph'; containerId = 'target-epigraph'; rejected = $true }
-		,@{ id = 'split-fault-before'; body = '<section id="fault-before"><p>First</p><p>Last</p></section>'; position = 'middle'; containerId = 'fault-before'; fault = 'before-mutation'; documentChanged = $false }
-		,@{ id = 'split-fault-after'; body = '<section id="fault-after"><p>First</p><p>Last</p></section>'; position = 'middle'; containerId = 'fault-after'; fault = 'after-first-mutation'; documentChanged = $true }
+		,@{ id = 'split-fault-before'; route = 'wrapper'; body = '<section id="fault-before"><p>First</p><p>Last</p></section>'; position = 'middle'; containerId = 'fault-before'; fault = 'before-mutation'; documentChanged = $false }
+		,@{ id = 'split-fault-after'; route = 'wrapper'; body = '<section id="fault-after"><p>First</p><p>Last</p></section>'; position = 'middle'; containerId = 'fault-after'; fault = 'after-first-mutation'; documentChanged = $true }
     )
     if($CaseId -and -not (@($cases | ForEach-Object { $_.id }) -contains $CaseId)) { throw "Unknown Split runtime case: $CaseId" }
     $selectedCases = @($cases | Where-Object { -not $CaseId -or $_.id -eq $CaseId })
@@ -69,7 +69,7 @@ try {
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1 -or $row.result -ne 'pass') { throw "Split runtime contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
 		if($case.ContainsKey('fault')) {
-			if($row.fault_error -ne '0x80004005' -or $row.document_changed -ne $(if($case.documentChanged){'1'}else{'0'}) -or $row.before_equals_undo -ne '1') { throw "Split fault contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+			if($row.check_status -ne 'applied' -or $row.apply_status -ne 'failed' -or $row.hresult -ne '0x80004005' -or $row.fault_error -ne '0x80004005' -or $row.document_changed -ne $(if($case.documentChanged){'1'}else{'0'}) -or $row.before_equals_undo -ne '1') { throw "Split fault contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
 			$completed++; $passed++; continue
 		}
         foreach($property in @('requested_container','actual_container','selection_collapsed','selection_start_relative','selection_end_relative')) {

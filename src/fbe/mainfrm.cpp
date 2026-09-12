@@ -3920,7 +3920,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const DWORD splitFaultLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_FAULT", splitFault, _countof(splitFault));
 		const DWORD routeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_ROUTE", route, _countof(route));
 		const bool viaWrapper = routeLength == 7 && wcscmp(route, L"wrapper") == 0;
-		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\tfault_error\tdocument_changed\r\n");
+		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\tfault_error\tdocument_changed\tcheck_status\tapply_status\thresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
@@ -3999,6 +3999,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool applied = splitResult.IsApplied();
 		const CString after(contentHtml());
 		trace.After(L"split-content", after);
+		auto statusName = [](const FbeStructure::StructuralOperationResult& result) -> const char* {
+			return result.IsApplied() ? "applied" : result.HasTechnicalFailure() ? "failed" : "not-applicable";
+		};
 		if (splitFaultLength) {
 			BOOL handled = FALSE;
 			if (splitResult.documentChanged) m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
@@ -4006,12 +4009,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			const bool undoRestored = !splitResult.documentChanged || before == contentHtml();
 			const bool passed = checkAllowed && splitResult.HasTechnicalFailure() && splitResult.error == E_FAIL &&
 				splitResult.documentChanged == expectedChanged && (expectedChanged ? before != after && undoRestored : before == after);
-			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t%d\t%d\t1\t1\t1\t0\t%s\t0x%08lX\t%d\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, before != after, undoRestored, passed ? "pass" : "fail", static_cast<unsigned long>(splitResult.error), splitResult.documentChanged ? 1 : 0);
+			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t%d\t%d\t1\t1\t1\t0\t%s\t0x%08lX\t%d\t%s\t%s\t0x%08lX\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, before != after, undoRestored, passed ? "pass" : "fail", static_cast<unsigned long>(splitResult.error), splitResult.documentChanged ? 1 : 0, statusName(checkResult), statusName(splitResult), static_cast<unsigned long>(splitResult.error));
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		}
-		if (!checkAllowed && !applied) {
-			const bool passed = !checkAllowed && !applied && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && before == after;
-			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t0\t1\t1\t1\t1\t1\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, passed ? "pass" : "fail");
+		if (checkResult.status == FbeStructure::StructuralOperationStatus::NotApplicable && splitResult.status == FbeStructure::StructuralOperationStatus::NotApplicable) {
+			const bool passed = checkResult.error == S_OK && splitResult.error == S_OK && !checkResult.documentChanged && !splitResult.documentChanged && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && before == after;
+			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t0\t1\t1\t1\t1\t1\t%s\t0x%08lX\t%d\t%s\t%s\t0x%08lX\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, passed ? "pass" : "fail", static_cast<unsigned long>(splitResult.error), splitResult.documentChanged ? 1 : 0, statusName(checkResult), statusName(splitResult), static_cast<unsigned long>(splitResult.error));
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		}
 		MSHTML::IHTMLTxtRangePtr selectionAfter(document->selection->createRange());
