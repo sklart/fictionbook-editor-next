@@ -2627,6 +2627,13 @@ bool CMainFrame::SaveRecoveryNow()
 }
 void CMainFrame::TryRestoreRecovery()
 {
+	// Unattended runtime scenarios must not inherit or prompt for a previous
+	// session.  The two recovery scenarios below are the sole explicit tests of
+	// this UI path and retain its production behavior.
+	wchar_t testMode[4] = {};
+	const bool unattendedTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1';
+	if (unattendedTest && !IsFbeTestScenario(L"archive-recovery-verify") && !IsFbeTestScenario(L"archive-recovery-external-verify"))
+		return;
 	FbeRecovery::RestoreCandidate candidate;
 	if (!m_recovery.GetRestoreCandidate(_ARGV.GetSize() > 0, candidate)) return;
 
@@ -3823,7 +3830,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		// not itself a valid FictionBook section and must not open a validation UI.
 		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
 		const bool redoForSave = after == CString((const wchar_t*)body->innerHTML);
-		const bool saved = redoForSave && m_doc->Save();
+		int validationLine = 0, validationColumn = 0;
+		const bool saved = redoForSave && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
 		const bool passed = undone && redone && sequential && structure && emptyDivs == 0 && emptyParagraphs == 0 && emptyStanzas == 0 && saved;
 		CStringA row;
 		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%s\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
@@ -3832,11 +3840,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"split-container"))
 	{
-		wchar_t position[16] = {}, tracePath[MAX_PATH] = {}, traceCase[64] = {};
+		wchar_t position[16] = {}, containerClass[16] = {}, tracePath[MAX_PATH] = {}, traceCase[64] = {};
 		const DWORD positionLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_POSITION", position, _countof(position));
+		const DWORD containerClassLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS", containerClass, _countof(containerClass));
 		const DWORD traceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TRACE", tracePath, _countof(tracePath));
 		const DWORD traceCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_CASE", traceCase, _countof(traceCase));
-		CStringA header("check_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tsaved\tresult\r\n");
+		CStringA header("check_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tsaved\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
@@ -3844,10 +3853,11 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr divs(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
 		const bool expectRejected = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_EXPECT_REJECT", nullptr, 0) != 0;
+		const wchar_t* requestedContainerClass = containerClassLength ? containerClass : L"section";
 		MSHTML::IHTMLElementPtr container;
 		for (long index = 0; divs && index < divs->length; ++index) {
 			MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
-			if (div && (expectRejected || U::scmp(div->className, L"section") == 0 || U::scmp(div->className, L"stanza") == 0)) { container = div; break; }
+			if (div && (expectRejected || U::scmp(div->className, requestedContainerClass) == 0)) { container = div; break; }
 		}
 		if (!body || !editable || !container) { CStringA row("0\t0\t0\t0\t0\t0\t0\t0\tmissing-container\r\n"); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
 		MSHTML::IHTMLElementPtr contentRoot(container->parentElement);
@@ -3871,7 +3881,10 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
 			if (!paragraph) { CStringA row("0\t0\t0\t0\t0\t0\t0\t0\tmissing-paragraph\r\n"); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
 			range->moveToElementText(paragraph); range->collapse(atEnd ? VARIANT_FALSE : VARIANT_TRUE);
-			if (!atEnd && !CString((const wchar_t*)paragraph->innerText).IsEmpty()) range->move(L"character", 1);
+			// Stanza splitting is defined between verses.  Keep the test caret at
+			// the beginning of the second visual paragraph instead of advancing
+			// into its first character.
+			if (!atEnd && wcscmp(requestedContainerClass, L"stanza") != 0 && !CString((const wchar_t*)paragraph->innerText).IsEmpty()) range->move(L"character", 1);
 		}
 		range->select();
 		const CString before(contentHtml()), selectionBefore((const wchar_t*)range->htmlText);
@@ -3887,18 +3900,20 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const CString after(contentHtml());
 		if (expectRejected) {
 			const bool passed = !checkAllowed && !applied && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && before == after;
-			CStringA row; row.Format("%d\t%d\t%d\t%d\t1\t1\t1\t1\t%s\r\n", checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, passed ? "pass" : "fail");
+			CStringA row; row.Format("%d\t%d\t%d\t%d\t0\t1\t1\t1\t1\t%s\r\n", checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, passed ? "pass" : "fail");
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		}
 		MSHTML::IHTMLTxtRangePtr selectionAfter(document->selection->createRange());
 		MSHTML::IHTMLElementPtr selectionParent(selectionAfter ? selectionAfter->parentElement() : MSHTML::IHTMLElementPtr());
 		while (selectionParent && U::scmp(selectionParent->tagName, L"DIV")) selectionParent = selectionParent->parentElement;
-		const bool selectionInNew = selectionParent && U::scmp(selectionParent->className, container->className) == 0 && selectionParent != container;
+		const bool selectionInNew = selectionParent && U::scmp(selectionParent->className, container->className) == 0 && selectionParent->sourceIndex != container->sourceIndex;
 		BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undone(contentHtml());
 		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redone(contentHtml());
-		const bool saved = applied && m_doc->Save();
-		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && before == undone && after == redone && selectionInNew && saved;
-		CStringA row; row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, before == undone, after == redone, selectionInNew, saved, passed ? "pass" : "fail");
+		int validationLine = 0, validationColumn = 0;
+		const bool saved = applied && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
+		const bool changed = before != after;
+		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && changed && before == undone && after == redone && selectionInNew && saved;
+		CStringA row; row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, changed, before == undone, after == redone, selectionInNew, saved, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		} catch (_com_error& error) {
 			CStringA row; row.Format("0\t0\t0\t0\t0\t0\t0\t0\tcom-0x%08lX\r\n", static_cast<unsigned long>(error.Error()));

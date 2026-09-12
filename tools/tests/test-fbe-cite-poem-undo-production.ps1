@@ -46,9 +46,11 @@ try {
         # the restored document are valid FictionBook sections at Save time.
         @{ id = 'poem-caret-empty'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @('', 'Anchor') },
         @{ id = 'poem-caret-nbsp'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @([string][char]160, 'Anchor') },
-        @{ id = 'poem-selected-empty'; operation = 'poem'; paragraphs = @('') },
-        @{ id = 'poem-selected-spaces'; operation = 'poem'; paragraphs = @('   ') },
-        @{ id = 'poem-selected-nbsp'; operation = 'poem'; paragraphs = @([string][char]160) },
+        @{ id = 'poem-selected-empty'; operation = 'poem'; expectRejected = $true; body = '<section><p></p><empty-line/></section>' },
+        @{ id = 'poem-selected-spaces'; operation = 'poem'; expectRejected = $true; body = '<section><p>   </p><empty-line/></section>' },
+        # MSHTML collapses a selection containing only NBSP to a caret. Keep a
+        # real sibling paragraph so the document remains valid when saved.
+        @{ id = 'poem-selected-nbsp'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0020'; paragraphs = @([string][char]160, 'Anchor') },
         # MSHTML keeps this range non-collapsed, but does not anchor its start
         # inside the first whitespace-only P; the editor correctly rejects it.
         @{ id = 'poem-selected-whitespace-paragraphs'; operation = 'poem'; expectRejected = $true; paragraphs = @('  ', "`t", '  ') }

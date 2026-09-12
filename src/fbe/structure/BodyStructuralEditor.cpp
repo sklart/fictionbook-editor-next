@@ -146,6 +146,11 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		Before(L"container-range-move"); containerRange->moveToElementText(parent); After(L"container-range-move");
 		Before(L"range-start-validated"); const bool startsAtContainer = range->compareEndPoints(L"StartToStart", containerRange) == 0; After(L"range-start-validated");
 		if (startsAtContainer) return false;
+		// A split at the closing boundary would create an empty trailing section
+		// or stanza.  It is not a valid FictionBook structure and Save would
+		// otherwise display a validation dialog in an unattended run.
+		Before(L"range-end-at-container-validated"); const bool endsAtContainer = range->compareEndPoints(L"EndToEnd", containerRange) == 0; After(L"range-end-at-container-validated");
+		if (endsAtContainer) return false;
 		Before(L"range-start-create"); MSHTML::IHTMLTxtRangePtr start(range->duplicate()); start->collapse(VARIANT_TRUE); After(L"range-start-create");
 		Before(L"range-end-create"); MSHTML::IHTMLTxtRangePtr end(range->duplicate()); end->collapse(VARIANT_FALSE); After(L"range-end-create");
 		Before(L"range-end-validated"); const bool endpointsMatch = FindParentDiv(start->parentElement()) == parent && FindParentDiv(end->parentElement()) == parent; After(L"range-end-validated");
@@ -237,13 +242,34 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		CString titleText = parentTitle ? parentTitle->innerText : L""; titleText.Remove(L'\r'); titleText.Remove(L'\n');
 		if (parentTitle && !U::scmp(parentText, titleText)) replaceChildren(parent, titleSection, L"source-title-replace");
 		Before(L"undo-end"); undo.Close(); After(L"undo-end");
-		Before(L"selection-update"); MSHTML::IHTMLTxtRangePtr selection(MSHTML::IHTMLBodyElementPtr(m_document->body)->createTextRange()); selection->moveToElementText(next); selection->collapse(VARIANT_TRUE);
+		Before(L"selection-update");
 		try {
-			Before(L"selection-position-workaround");
-			if (next != selection->parentElement() && selection->move(L"character", 1) == 1) selection->move(L"character", -1);
-			After(L"selection-position-workaround");
-		} catch (_com_error& error) { Hr(L"selection-position-workaround", error.Error()); }
-		selection->select(); After(L"selection-update");
+			MSHTML::IHTMLTxtRangePtr selection(MSHTML::IHTMLBodyElementPtr(m_document->body)->createTextRange());
+			// MSHTML rejects moveToElementText(DIV.stanza) with E_INVALIDARG. Put
+			// the caret in the first leaf of the newly created container instead.
+			MSHTML::IHTMLElementPtr selectionTarget(next);
+			for (;;) {
+				MSHTML::IHTMLElementCollectionPtr selectionChildren(selectionTarget ? selectionTarget->children : MSHTML::IHTMLElementCollectionPtr());
+				if (!selectionChildren || selectionChildren->length == 0) break;
+				MSHTML::IHTMLElementPtr child(selectionChildren->item(0));
+				if (!child) break;
+				selectionTarget = child;
+			}
+			// Text ranges created from BODY reject some stanza descendants.  Use
+			// a markup pointer at the child's beginning instead; it is valid for
+			// both P and V visual nodes and keeps the caret inside new stanza.
+			MSHTML::IMarkupPointerPtr selectionPointer;
+			Before(L"selection-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&selectionPointer); Hr(L"selection-pointer-create", hr); if (FAILED(hr)) return false;
+			Before(L"selection-pointer-move"); hr = selectionPointer->MoveAdjacentToElement(selectionTarget, MSHTML::ELEM_ADJ_AfterBegin); Hr(L"selection-pointer-move", hr); if (FAILED(hr)) return false;
+			Before(L"selection-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionPointer, selectionPointer, selection); Hr(L"selection-range-move", hr); if (FAILED(hr)) return false;
+			// A collapsed range exactly at an element boundary has no parentElement
+			// in MSHTML. Move into its text when possible so the editor and callers
+			// can reliably identify the new structural container.
+			selection->move(L"character", 1);
+			MSHTML::IHTMLElement2Ptr(m_document->body)->focus();
+			selection->select();
+		} catch (_com_error& error) { Hr(L"selection-update", error.Error()); }
+		After(L"selection-update");
 		After(L"split-success"); return true;
 	} catch (_com_error& error) { if (m_trace) m_trace->Exception(L"split", error.Error(), error.Description()); U::ReportError(error); return false; }
 }
