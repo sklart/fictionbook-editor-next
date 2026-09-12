@@ -18,7 +18,7 @@ Require $wordsStore 'MoveFileExW(temporaryFile, fileName, MOVEFILE_REPLACE_EXIST
 $locale = Text 'src\fbe\RuntimeLocalization.cpp'
 Require $locale 'temporaryPath += L".tmp"' 'Locale temporary file'
 Require $locale 'MoveFileExW(temporaryPath, localePath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)' 'Locale atomic replacement'
-$mru = Text 'src\fbe\mainfrm.cpp'
+$mru = Text 'src\fbe\document\recent\RecentDocumentsStore.cpp'
 Require $mru 'MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH' 'MRU atomic replacement'
 
 Write-Host 'Portable atomic persistence contract passed.'
