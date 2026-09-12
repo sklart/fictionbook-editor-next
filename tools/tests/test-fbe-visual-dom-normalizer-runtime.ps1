@@ -22,7 +22,14 @@ try {
     }
     finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
     $row = Import-Csv -LiteralPath $report -Delimiter "`t"
-    if(@($row).Count -ne 1 -or [int]$row.paragraphs -lt 1 -or $row.empty_divs -ne '0' -or $row.brs -ne '0' -or $row.text -ne '1' -or $row.result -ne 'pass') { throw "Visual DOM normalizer runtime contract failed: $($row | ConvertTo-Json -Compress)" }
+    if(@($row).Count -ne 5 -or @($row | Where-Object { $_.result -ne 'pass' }).Count -ne 0) { throw "Visual DOM normalizer runtime contract failed: $($row | ConvertTo-Json -Compress)" }
+    $byCase = @{}; foreach($entry in $row) { $byCase[$entry.case] = $entry }
+    foreach($name in 'single-br', 'double-br', 'empty-p', 'nbsp-p', 'formatted-br') { if(-not $byCase.ContainsKey($name)) { throw "Missing normalizer case: $name" } }
+    if([int]$byCase['single-br'].paragraphs -ne 2 -or $byCase['single-br'].exact_paragraphs -ne '1') { throw 'A single BR did not become two ordered paragraphs.' }
+    if([int]$byCase['double-br'].paragraphs -ne 3 -or $byCase['double-br'].empty_line -ne '1') { throw 'Two BRs did not preserve the intermediate empty line.' }
+    if([int]$byCase['empty-p'].paragraphs -ne 3 -or $byCase['empty-p'].exact_paragraphs -ne '1') { throw 'An explicit empty paragraph was lost or reordered.' }
+    if($byCase['nbsp-p'].nbsp -ne '1' -or $byCase['formatted-br'].formatting -ne '1') { throw 'NBSP or inline formatting around BR was not preserved.' }
+    if(@($row | Where-Object { $_.empty_divs -ne '0' -or $_.brs -ne '0' }).Count -ne 0) { throw 'Normalizer left disposable DIVs or BRs in the resulting DOM.' }
     $saved = New-Object -ComObject Msxml2.DOMDocument.6.0
     if(-not $saved.load($fixture)) { throw "Saved normalization fixture is not XML: $($saved.parseError.reason)" }
     if($saved.selectNodes('//*[local-name()="table"]').length -ne 0) { throw 'Normalizer runtime fixture unexpectedly used a table.' }

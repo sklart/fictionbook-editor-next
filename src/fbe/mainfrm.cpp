@@ -4099,7 +4099,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"visual-dom-normalizer"))
 	{
-		CStringA header("paragraphs\tempty_divs\tbrs\ttext\tresult\r\n");
+		CStringA header("case\tparagraphs\tempty_divs\tbrs\texact_paragraphs\tempty_line\tnbsp\tformatting\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
@@ -4109,39 +4109,56 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		const CString originalHtml((const wchar_t*)editable->innerHTML);
-		// Keep the fixture in the editor's valid section/P shape.  Normalize then
-		// exercises its BR splitting and empty-node removal on a live MSHTML DOM.
-		editable->innerHTML = L"<DIV class='section'><P><SPAN>alpha</SPAN><BR><SPAN>beta</SPAN></P><P></P></DIV>";
-		m_doc->m_body.Normalize(MSHTML::IHTMLDOMNodePtr(body));
-		// SplitBRs replaces outerHTML, invalidating the original element proxy.
-		// Observe the live replacement node, not the stale pre-normalization one.
-		editable = document->all->item(L"fbw_body");
-		if (!editable) { output.Close(); ::PostQuitMessage(1); return 0; }
-		auto countElements = [&](const wchar_t* tagName) -> long
-		{
-			MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(tagName));
-			return elements ? elements->length : 0;
+		struct NormalizerCase { const wchar_t* name; const wchar_t* html; const wchar_t* text[3]; long paragraphs; bool nbsp; bool formatting; };
+		const NormalizerCase cases[] = {
+			{ L"single-br", L"<DIV class='section'><P>alpha<BR>beta</P></DIV>", { L"alpha", L"beta", L"" }, 2, false, false },
+			{ L"double-br", L"<DIV class='section'><P>alpha<BR><BR>beta</P></DIV>", { L"alpha", L"", L"beta" }, 3, false, false },
+			{ L"empty-p", L"<DIV class='section'><P>alpha</P><P></P><P>beta</P></DIV>", { L"alpha", L"", L"beta" }, 3, false, false },
+			{ L"nbsp-p", L"<DIV class='section'><P>alpha</P><P>&nbsp;</P><P>beta</P></DIV>", { L"alpha", L"\x00a0", L"beta" }, 3, true, false },
+			{ L"formatted-br", L"<DIV class='section'><P><STRONG>alpha</STRONG><BR><EM>beta</EM></P></DIV>", { L"alpha", L"beta", L"" }, 2, false, true }
 		};
-		long emptyDivs = 0;
-		MSHTML::IHTMLElementCollectionPtr divs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
-		for (long index = 0; divs && index < divs->length; ++index)
+		bool allPassed = true;
+		for (const NormalizerCase& testCase : cases)
 		{
-			MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
-			if (div && CString((const wchar_t*)div->innerHTML).Trim().IsEmpty()) ++emptyDivs;
+			editable->innerHTML = testCase.html;
+			m_doc->m_body.Normalize(MSHTML::IHTMLDOMNodePtr(body));
+			// SplitBRs replaces outerHTML, invalidating the original element proxy.
+			editable = document->all->item(L"fbw_body");
+			if (!editable) { output.Close(); ::PostQuitMessage(1); return 0; }
+			auto countElements = [&](const wchar_t* tagName) -> long {
+				MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(tagName));
+				return elements ? elements->length : 0;
+			};
+			long emptyDivs = 0;
+			MSHTML::IHTMLElementCollectionPtr divs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
+			for (long index = 0; divs && index < divs->length; ++index) {
+				MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
+				if (div && CString((const wchar_t*)div->innerHTML).Trim().IsEmpty()) ++emptyDivs;
+			}
+			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"P"));
+			bool exactParagraphs = paragraphs && paragraphs->length == testCase.paragraphs;
+			for (long index = 0; exactParagraphs && index < testCase.paragraphs; ++index) {
+				MSHTML::IHTMLElementPtr paragraph(paragraphs->item(_variant_t(index), _variant_t()));
+				exactParagraphs = paragraph && (testCase.nbsp && index == 1 || CString(static_cast<LPCWSTR>(paragraph->innerText)) == testCase.text[index]);
+			}
+			const bool emptyLine = paragraphs && paragraphs->length >= 3 && CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(1L), _variant_t()))->innerText)).IsEmpty();
+			CString middleHtml;
+			if (paragraphs && paragraphs->length >= 3) middleHtml = static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(1L), _variant_t()))->innerHTML);
+			middleHtml.MakeLower();
+			const bool nbsp = !testCase.nbsp || middleHtml.Find(L"&nbsp;") >= 0 || middleHtml.Find(L"\x00a0") >= 0;
+			const bool formatting = !testCase.formatting || (countElements(L"STRONG") == 1 && countElements(L"EM") == 1);
+			const bool passed = countElements(L"BR") == 0 && emptyDivs == 0 && exactParagraphs &&
+				(wcscmp(testCase.name, L"double-br") || emptyLine) && nbsp && formatting;
+			allPassed = allPassed && passed;
+			CStringA row;
+			row.Format("%S\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%s\r\n", testCase.name, countElements(L"P"), emptyDivs, countElements(L"BR"), exactParagraphs, emptyLine, nbsp, formatting, passed ? "pass" : "fail");
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 		}
-		// MSHTML's editable DIV can report an empty innerText while its paragraph
-		// children are still live.  The normalized DOM is the observable contract.
-		const CString normalizedHtml((const wchar_t*)editable->innerHTML);
-		const bool passed = countElements(L"P") >= 1 && emptyDivs == 0 && countElements(L"BR") == 0 &&
-			normalizedHtml.Find(L"alpha") >= 0 && normalizedHtml.Find(L"beta") >= 0;
 		// This is a DOM-only probe: leave the loaded FB2 untouched before the
 		// application performs its ordinary shutdown validation.
 		editable->innerHTML = originalHtml.AllocSysString();
-		CStringA row;
-		row.Format("%ld\t%ld\t%ld\t%d\t%s\r\n", countElements(L"P"), emptyDivs, countElements(L"BR"),
-			normalizedHtml.Find(L"alpha") >= 0 && normalizedHtml.Find(L"beta") >= 0, passed ? "pass" : "fail");
-		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(passed ? 0 : 1); return 0;
+		output.Flush(); output.Close();
+		::PostQuitMessage(allPassed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"link-navigation-runtime"))
 	{
