@@ -30,6 +30,13 @@ struct StructuralOperationResult
 	bool HasTechnicalFailure() const { return status == StructuralOperationStatus::Failed; }
 };
 
+enum class SplitFailurePoint
+{
+	None,
+	BeforeMutation,
+	AfterFirstMutation
+};
+
 class BodyStructuralEditor
 {
 public:
@@ -37,6 +44,7 @@ public:
 	StructuralOperationResult InsertCite(bool checkOnly);
 	StructuralOperationResult InsertPoem(bool checkOnly);
 	StructuralOperationResult SplitContainer(bool checkOnly);
+	StructuralOperationResult SplitContainer(bool checkOnly, SplitFailurePoint failurePoint);
 
 private:
 	static MSHTML::IHTMLElementPtr FindParentDiv(MSHTML::IHTMLElementPtr element);

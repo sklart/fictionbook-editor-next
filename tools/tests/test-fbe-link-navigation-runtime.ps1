@@ -22,11 +22,14 @@ try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'link-navigation-runtime'
         $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE timed out during link navigation runtime test.' }
-        if($process.ExitCode -ne 0) { throw "FBE link navigation runtime test failed: exit $($process.ExitCode)." }
+        if($process.ExitCode -ne 0) {
+            $detail = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<report unavailable>' }
+            throw "FBE link navigation runtime test failed: exit $($process.ExitCode). Report: $detail"
+        }
     }
     finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
     $row = Import-Csv -LiteralPath $report -Delimiter "`t"
-    if(@($row).Count -ne 1 -or $row.nested -ne '1' -or $row.target -ne '1' -or $row.same_document -ne '1' -or $row.broken -ne '1' -or $row.returned_second -ne '1' -or $row.unchanged -ne '1' -or $row.result -ne 'pass') { throw "Link navigation runtime contract failed: $($row | ConvertTo-Json -Compress)" }
+    if(@($row).Count -ne 1 -or $row.nested -ne '1' -or $row.target -ne '1' -or $row.same_document -ne '1' -or $row.broken -ne '1' -or $row.returned_second -ne '1' -or $row.inserted_before -ne '1' -or $row.deleted_origin_fallback -ne '1' -or $row.document_replaced_fallback -ne '1' -or $row.unchanged -ne '1' -or $row.result -ne 'pass') { throw "Link navigation runtime contract failed: $($row | ConvertTo-Json -Compress)" }
     Write-Host 'Link navigation production runtime passed.'
 }
 finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

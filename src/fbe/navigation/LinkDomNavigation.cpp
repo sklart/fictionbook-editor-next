@@ -51,13 +51,15 @@ long GetLinkUniqueNumber(MSHTML::IHTMLElementPtr link) {
   catch (const _com_error &) { return -1; }
 }
 MSHTML::IHTMLElementPtr FindOriginLink(MSHTML::IHTMLDocument2Ptr d,
-                                       const CString &id, long originUniqueNumber) {
-  if (!d || id.IsEmpty() || originUniqueNumber < 0) return MSHTML::IHTMLElementPtr();
+                                       const CString & /*id*/, long originUniqueNumber) {
+  if (!d || originUniqueNumber < 0) return MSHTML::IHTMLElementPtr();
   MSHTML::IHTMLElement2Ptr body(GetEditableBody(d));
   MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
   for (long index = 0; links && index < links->length; ++index) {
     MSHTML::IHTMLElementPtr candidate(links->item(index));
-    if (GetInternalLinkTargetId(d, candidate) != id) continue;
+    // The destination href can be normalized by MSHTML after an unrelated DOM
+    // insertion.  uniqueNumber identifies the original link itself, which is
+    // the only safe criterion for a history return.
     if (GetLinkUniqueNumber(candidate) == originUniqueNumber) return candidate;
   }
   return MSHTML::IHTMLElementPtr();

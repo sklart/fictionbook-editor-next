@@ -13,6 +13,7 @@ public:
 
 	bool IsEnabled() const { return m_file != INVALID_HANDLE_VALUE; }
 	bool HasWriteFailure() const { return m_writeFailure; }
+	HRESULT LastError() const { return m_lastError; }
 	void Before(const wchar_t* phase, const wchar_t* details = L"");
 	void After(const wchar_t* phase, const wchar_t* details = L"");
 	void Hr(const wchar_t* phase, HRESULT hr, const wchar_t* details = L"");
@@ -25,6 +26,7 @@ private:
 	const wchar_t* m_operation;
 	const wchar_t* m_caseName;
 	bool m_writeFailure;
+	HRESULT m_lastError;
 };
 
 } // namespace FbeStructure

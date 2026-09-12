@@ -6,6 +6,7 @@
 #include "../utils/utils.h"
 
 namespace FbeStructure {
+
 BodyStructuralEditor::BodyStructuralEditor(MSHTML::IHTMLDocument2Ptr document, MSHTML::IMarkupServices2Ptr markupServices, StructuralTrace* trace)
 	: m_document(document), m_markupServices(markupServices), m_trace(trace) {}
 
@@ -140,6 +141,11 @@ StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly)
 
 StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly)
 {
+	return SplitContainer(checkOnly, SplitFailurePoint::None);
+}
+
+StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly, SplitFailurePoint failurePoint)
+{
 	bool documentChanged = false;
 	try {
 		Before(L"split-enter"); After(L"split-enter");
@@ -211,10 +217,18 @@ StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly)
 		// Detached construction above is not a document mutation.  Start the
 		// unit immediately before changing the source container or inserting next.
 		Before(L"undo-begin"); FbeDom::MarkupUndoUnitScope undo(m_markupServices, static_cast<const wchar_t*>(undoName)); After(L"undo-begin");
+		if (failurePoint == SplitFailurePoint::BeforeMutation) {
+			After(L"fault-before-mutation"); undo.Close();
+			return StructuralOperationResult::Failed(E_FAIL, false);
+		}
 		parent->id = L"";
 		// From this point on the live document has changed, even if a later
 		// cleanup or caret call fails.
 		documentChanged = true;
+		if (failurePoint == SplitFailurePoint::AfterFirstMutation) {
+			After(L"fault-after-first-mutation"); undo.Close();
+			return StructuralOperationResult::Failed(E_FAIL, true);
+		}
 		if (hasContent) {
 			Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
 			next->id = _bstr_t(id.GetString());

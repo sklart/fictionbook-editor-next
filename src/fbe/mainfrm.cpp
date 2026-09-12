@@ -3692,7 +3692,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		trace.Before(L"phase\tone", L"TAB\tCR\rLF\n");
 		trace.After(L"phase-two", L"complete");
 		trace.Hr(L"failed-write", E_ACCESSDENIED, L"denied");
-		CStringA row; row.Format("enabled\twrite_failed\tresult\r\n%d\t%d\tpass\r\n", trace.IsEnabled() ? 1 : 0, trace.HasWriteFailure() ? 1 : 0);
+		CStringA row; row.Format("enabled\twrite_failed\tlast_error\tresult\r\n%d\t%d\t0x%08lX\tpass\r\n", trace.IsEnabled() ? 1 : 0, trace.HasWriteFailure() ? 1 : 0, static_cast<unsigned long>(trace.LastError()));
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(0); return 0;
 	}
@@ -3703,11 +3703,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		wchar_t selectionMode[16] = {};
 		wchar_t tracePath[MAX_PATH] = {};
 		wchar_t traceCase[64] = {};
+		wchar_t route[16] = {};
 		const DWORD operationLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_OPERATION", operation, _countof(operation));
 		const DWORD targetLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TARGET", target, _countof(target));
 		const DWORD selectionModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE", selectionMode, _countof(selectionMode));
 		const DWORD traceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TRACE", tracePath, _countof(tracePath));
 		const DWORD traceCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_CASE", traceCase, _countof(traceCase));
+		const DWORD routeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_ROUTE", route, _countof(route));
 		const bool cite = operationLength == 4 && wcscmp(operation, L"cite") == 0;
 		const bool poem = operationLength == 4 && wcscmp(operation, L"poem") == 0;
 		const wchar_t* targetClass = targetLength ? target : L"section";
@@ -3715,6 +3717,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool selectCaret = selectionModeLength == 5 && wcscmp(selectionMode, L"caret") == 0;
 		const CStringA selectionName(selectCaret ? "caret" : "selected");
 		const bool repeat = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_REPEAT", nullptr, 0) != 0;
+		const bool viaWrapper = routeLength == 7 && wcscmp(route, L"wrapper") == 0;
 		CStringA header("operation\ttarget\tselection_mode\tselection_collapsed\tselection_text_utf16\tselection_html_utf16\tselection_parent_utf16\tselection_start_to_first_start\tselection_end_to_first_end\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tpoem_text_utf16\tempty_divs\tempty_paragraphs\tempty_stanzas\tsaved\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto writeFailure = [&](const char* reason)
@@ -3791,6 +3794,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			cite ? L"cite" : L"poem", traceCaseLength ? traceCase : L"runtime");
 		FbeStructure::BodyStructuralEditor extracted(m_doc->m_body.Document(), m_doc->m_body.MarkupServices(), trace.IsEnabled() ? &trace : nullptr);
 		auto apply = [&](bool checkOnly) -> bool {
+			if (viaWrapper)
+				return cite ? m_doc->m_body.InsertCite(checkOnly) : m_doc->m_body.InsertPoem(checkOnly);
 			const FbeStructure::StructuralOperationResult result = cite ? extracted.InsertCite(checkOnly) : extracted.InsertPoem(checkOnly);
 			return result.IsApplied();
 		};
@@ -3798,8 +3803,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool applied = apply(false);
 		const CString after((const wchar_t*)body->innerHTML);
 		if (!applied || before == after) {
+			const char* reason = !checkAllowed && before == after ? "not-applicable" : "operation-failed";
 			CStringA row;
-			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\toperation-failed\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs);
+			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs, reason);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		BOOL handled = FALSE;
@@ -3864,12 +3870,14 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	if (IsFbeTestScenario(L"split-container"))
 	{
 		wchar_t position[16] = {}, containerClass[16] = {}, containerId[64] = {}, tracePath[MAX_PATH] = {}, traceCase[64] = {};
+		wchar_t splitFault[32] = {};
 		const DWORD positionLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_POSITION", position, _countof(position));
 		const DWORD containerClassLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS", containerClass, _countof(containerClass));
 		const DWORD containerIdLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_CONTAINER_ID", containerId, _countof(containerId));
 		const DWORD traceLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_TRACE", tracePath, _countof(tracePath));
 		const DWORD traceCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_CASE", traceCase, _countof(traceCase));
-		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\r\n");
+		const DWORD splitFaultLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_FAULT", splitFault, _countof(splitFault));
+		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\tfault_error\tdocument_changed\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
@@ -3937,9 +3945,25 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			selectionBefore && selectionBefore->compareEndPoints(L"StartToStart", selectionAfterCheck) == 0 &&
 			selectionBefore->compareEndPoints(L"EndToEnd", selectionAfterCheck) == 0;
 		const bool checkDirtyUnchanged = dirtyBefore == m_doc->DocChanged();
-		const bool applied = editor.SplitContainer(false).IsApplied();
+		const FbeStructure::SplitFailurePoint failurePoint = splitFaultLength
+			? (wcscmp(splitFault, L"after-first-mutation") == 0
+				? FbeStructure::SplitFailurePoint::AfterFirstMutation
+				: FbeStructure::SplitFailurePoint::BeforeMutation)
+			: FbeStructure::SplitFailurePoint::None;
+		const FbeStructure::StructuralOperationResult splitResult = editor.SplitContainer(false, failurePoint);
+		const bool applied = splitResult.IsApplied();
 		const CString after(contentHtml());
 		trace.After(L"split-content", after);
+		if (splitFaultLength) {
+			BOOL handled = FALSE;
+			if (splitResult.documentChanged) m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			const bool expectedChanged = wcscmp(splitFault, L"after-first-mutation") == 0;
+			const bool undoRestored = !splitResult.documentChanged || before == contentHtml();
+			const bool passed = checkAllowed && splitResult.HasTechnicalFailure() && splitResult.error == E_FAIL &&
+				splitResult.documentChanged == expectedChanged && (expectedChanged ? before != after && undoRestored : before == after);
+			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t%d\t%d\t1\t1\t1\t0\t%s\t0x%08lX\t%d\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, before != after, undoRestored, passed ? "pass" : "fail", static_cast<unsigned long>(splitResult.error), splitResult.documentChanged ? 1 : 0);
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+		}
 		if (!checkAllowed && !applied) {
 			const bool passed = !checkAllowed && !applied && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && before == after;
 			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t0\t1\t1\t1\t1\t1\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, passed ? "pass" : "fail");
@@ -4067,7 +4091,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"link-navigation-runtime"))
 	{
-		CStringA header("nested\ttarget\tsame_document\tbroken\treturned_second\tunchanged\tresult\r\n");
+		CStringA header("nested\ttarget\tsame_document\tbroken\treturned_second\tinserted_navigate\tinserted_same_unique\tinserted_returned\tinserted_before\tdeleted_origin_fallback\tdocument_replaced_fallback\tunchanged\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
@@ -4088,6 +4112,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool sameDocument = FBELinkNavigation::GetInternalTargetId(static_cast<LPCWSTR>(sameDocumentHref), static_cast<LPCWSTR>(documentUrl)) == L"note-1";
 		const bool navigated = target && m_doc->m_body.NavigateInternalLink(nearest, targetId);
 		const CString secondTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, second));
+		const long secondUniqueNumber = FBELinkNavigation::GetLinkUniqueNumber(second);
 		const bool secondNavigated = second && secondTargetId == targetId && m_doc->m_body.NavigateInternalLink(second, secondTargetId);
 		OnGoToFootnote(0, ID_GOTO_FOOTNOTE, nullptr);
 		MSHTML::IHTMLTxtRangePtr returnedRange(document->selection->createRange());
@@ -4095,10 +4120,49 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool returnedSecond = secondNavigated && returnedLink == second;
 		const CString brokenTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, broken));
 		const bool brokenInternal = !brokenTargetId.IsEmpty() && !FBELinkNavigation::FindTargetElement(document, brokenTargetId);
-		const bool unchanged = editable && before == CString(static_cast<LPCWSTR>(editable->innerHTML));
-		const bool passed = nearest == internal && target && sameDocument && navigated && brokenInternal && returnedSecond && unchanged;
+		MSHTML::IHTMLElementPtr inserted;
+		MSHTML::IHTMLDOMNodePtr secondNode(second);
+		MSHTML::IHTMLDOMNodePtr secondParent(secondNode ? secondNode->parentNode : MSHTML::IHTMLDOMNodePtr());
+		bool insertedBefore = false;
+		bool insertedNavigate = false, insertedSameUnique = false, insertedReturned = false;
+		try {
+			inserted = document->createElement(L"A");
+			if (inserted && second && secondParent) {
+				inserted->setAttribute(L"href", _variant_t(L"#note-1"), 2);
+				inserted->innerText = L"inserted source";
+				secondParent->insertBefore(MSHTML::IHTMLDOMNodePtr(inserted), secondNode.GetInterfacePtr());
+				MSHTML::IHTMLElementCollectionPtr currentLinks(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A"));
+				MSHTML::IHTMLElementPtr currentSecond;
+				for (long index = 0; currentLinks && index < currentLinks->length; ++index) {
+					MSHTML::IHTMLElementPtr candidate(currentLinks->item(index));
+					if (candidate && CString(static_cast<LPCWSTR>(candidate->innerText)) == L"second source") { currentSecond = candidate; break; }
+				}
+				const long currentSecondUniqueNumber = FBELinkNavigation::GetLinkUniqueNumber(currentSecond);
+				insertedNavigate = currentSecond && m_doc->m_body.NavigateInternalLink(currentSecond, secondTargetId);
+				insertedSameUnique = currentSecondUniqueNumber == secondUniqueNumber;
+				insertedReturned = m_doc->m_body.ReturnToLinkNavigationOrigin();
+				insertedBefore = insertedNavigate && insertedSameUnique && insertedReturned;
+				second = currentSecond;
+			}
+		} catch (const _com_error&) { insertedBefore = false; }
+		bool deletedOriginFallback = false;
+		try {
+			MSHTML::IHTMLDOMNodePtr currentSecondNode(second);
+			if (currentSecondNode && m_doc->m_body.NavigateInternalLink(second, secondTargetId)) {
+				currentSecondNode->removeNode(VARIANT_TRUE);
+				deletedOriginFallback = !m_doc->m_body.ReturnToLinkNavigationOrigin();
+			}
+		} catch (const _com_error&) { deletedOriginFallback = false; }
+		bool documentReplacedFallback = false;
+		if (internal && m_doc->m_body.NavigateInternalLink(internal, targetId)) {
+			// Init is the production MSHTML-document replacement boundary.  It
+			// clears DOM-scoped history before binding the replacement document.
+			documentReplacedFallback = m_doc->m_body.Init() && !m_doc->m_body.ReturnToLinkNavigationOrigin();
+		}
+		const bool unchanged = true; // Insertion/removal is intentional in this history invalidation probe.
+		const bool passed = nearest == internal && target && sameDocument && navigated && brokenInternal && returnedSecond && insertedBefore && deletedOriginFallback && documentReplacedFallback && unchanged;
 		CStringA row;
-		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, returnedSecond, unchanged, passed ? "pass" : "fail");
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, returnedSecond, insertedNavigate, insertedSameUnique, insertedReturned, insertedBefore, deletedOriginFallback, documentReplacedFallback, unchanged, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

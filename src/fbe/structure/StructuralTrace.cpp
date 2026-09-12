@@ -17,11 +17,11 @@ void Sanitize(wchar_t* destination, size_t destinationCount, const wchar_t* valu
 } // namespace
 
 StructuralTrace::StructuralTrace(const wchar_t* path, const wchar_t* operation, const wchar_t* caseName)
-	: m_file(INVALID_HANDLE_VALUE), m_operation(operation), m_caseName(caseName), m_writeFailure(false)
+	: m_file(INVALID_HANDLE_VALUE), m_operation(operation), m_caseName(caseName), m_writeFailure(false), m_lastError(S_OK)
 {
 	if (!path || !*path) return;
 	m_file = ::CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (!IsEnabled()) { m_writeFailure = true; return; }
+	if (!IsEnabled()) { m_writeFailure = true; m_lastError = HRESULT_FROM_WIN32(::GetLastError()); return; }
 	const wchar_t bom = 0xFEFF;
 	WriteRaw(&bom, sizeof(bom));
 	const wchar_t* header = L"timestamp\toperation\tbackend\tcase\tphase\tevent\thresult\tdetails\r\n";
@@ -83,7 +83,10 @@ bool StructuralTrace::WriteRaw(const void* data, DWORD bytes)
 	DWORD written = 0;
 	const bool wrote = ::WriteFile(m_file, data, bytes, &written, nullptr) != FALSE && written == bytes;
 	const bool flushed = wrote && ::FlushFileBuffers(m_file) != FALSE;
-	if (!wrote || !flushed) m_writeFailure = true;
+	if (!wrote || !flushed) {
+		m_writeFailure = true;
+		m_lastError = HRESULT_FROM_WIN32(::GetLastError());
+	}
 	return wrote && flushed;
 }
 

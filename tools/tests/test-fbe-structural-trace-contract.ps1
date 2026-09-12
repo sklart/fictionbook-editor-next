@@ -23,6 +23,17 @@ try {
     if($rows[1].event -ne 'after' -or $rows[1].hresult -ne 'NA' -or $rows[1].details -notlike 'completed*') { throw 'Production StructuralTrace completion contract is wrong.' }
     if($rows[2].event -ne 'failure' -or $rows[2].hresult -ne '0x80070005') { throw 'Production StructuralTrace HRESULT contract is wrong.' }
     $reportRow = Import-Csv -LiteralPath $report -Delimiter "`t"
-    if($reportRow.enabled -ne '1' -or $reportRow.write_failed -ne '0') { throw 'Production StructuralTrace did not open and flush the writable file.' }
+    if($reportRow.enabled -ne '1' -or $reportRow.write_failed -ne '0' -or $reportRow.last_error -ne '0x00000000') { throw 'Production StructuralTrace did not open and flush the writable file.' }
+    $deniedReport = Join-Path $directory 'denied-report.tsv'
+    $oldMode, $oldScenario, $oldTrace = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_TRACE
+    try {
+        # Passing a directory as the trace file is a real CreateFile failure on Windows.
+        $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'structural-trace-contract'; $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $directory
+        $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $deniedReport) -WorkingDirectory (Split-Path $FbeExe) -PassThru
+        if(-not $process.WaitForExit(30000)) { Stop-Process -Id $process.Id -Force; throw 'FBE timed out while checking StructuralTrace open failure.' }
+        if($process.ExitCode -ne 0) { throw "FBE failed while checking StructuralTrace open failure: exit $($process.ExitCode)." }
+    } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $oldMode, $oldScenario, $oldTrace }
+    $deniedRow = Import-Csv -LiteralPath $deniedReport -Delimiter "`t"
+    if($deniedRow.enabled -ne '0' -or $deniedRow.write_failed -ne '1' -or $deniedRow.last_error -ne '0x80070005') { throw 'Production StructuralTrace did not report a real access-denied open failure.' }
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Host 'Production StructuralTrace TSV contract passed.'

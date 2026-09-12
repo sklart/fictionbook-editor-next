@@ -34,6 +34,8 @@ try {
         @{ id = 'split-section-end'; body = '<section id="target-section-end"><p>First</p><p>Last</p></section>'; position = 'end'; containerId = 'target-section-end' },
         @{ id = 'split-stanza-middle'; body = '<section><p>Anchor</p><poem><stanza><v>First</v><v>Middle</v></stanza></poem></section>'; position = 'middle'; container = 'stanza'; containerId = '' },
         @{ id = 'split-invalid-container'; body = '<epigraph id="target-epigraph"><p>Quoted</p><p>Tail</p></epigraph>'; position = 'middle'; container = 'epigraph'; containerId = 'target-epigraph'; rejected = $true }
+		,@{ id = 'split-fault-before'; body = '<section id="fault-before"><p>First</p><p>Last</p></section>'; position = 'middle'; containerId = 'fault-before'; fault = 'before-mutation'; documentChanged = $false }
+		,@{ id = 'split-fault-after'; body = '<section id="fault-after"><p>First</p><p>Last</p></section>'; position = 'middle'; containerId = 'fault-after'; fault = 'after-first-mutation'; documentChanged = $true }
     )
     if($CaseId -and -not (@($cases | ForEach-Object { $_.id }) -contains $CaseId)) { throw "Unknown Split runtime case: $CaseId" }
     $selectedCases = @($cases | Where-Object { -not $CaseId -or $_.id -eq $CaseId })
@@ -48,21 +50,26 @@ try {
         $reopenReport = Join-Path $directory ($case.id + '.reopen.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
         @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`" xmlns:l=`"http://www.w3.org/1999/xlink`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$($case.body)</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
-        $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE
+        $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-container'; $env:FBE_NEXT_TEST_SPLIT_POSITION = $case.position
             $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS = if($case.ContainsKey('container')) { $case.container } else { $null }
             $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID = $case.containerId
             $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT = if($case.ContainsKey('rejected')) { '1' } else { $null }
+            $env:FBE_NEXT_TEST_SPLIT_FAULT = if($case.ContainsKey('fault')) { $case.fault } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $trace; $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
             $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE timed out for $($case.id)." }
             if($process.ExitCode -ne 0) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         } finally {
-            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE = $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase
+            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT = $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault
         }
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1 -or $row.result -ne 'pass') { throw "Split runtime contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+		if($case.ContainsKey('fault')) {
+			if($row.fault_error -ne '0x80004005' -or $row.document_changed -ne $(if($case.documentChanged){'1'}else{'0'}) -or $row.before_equals_undo -ne '1') { throw "Split fault contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+			$completed++; $passed++; continue
+		}
         foreach($property in @('requested_container','actual_container','selection_collapsed','selection_start_relative','selection_end_relative')) {
             if(-not ($row.PSObject.Properties.Name -contains $property) -or [string]::IsNullOrWhiteSpace($row.$property)) { throw "Split runtime diagnostic $property is missing for $($case.id)." }
         }
