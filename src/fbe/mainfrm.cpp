@@ -4156,11 +4156,12 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			row.Format("%S\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%s\r\n", testCase.name, countElements(L"P"), emptyDivs, countElements(L"BR"), exactParagraphs, emptyLine, nbsp, formatting, passed ? "pass" : "fail");
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 		}
-		// This is a DOM-only probe: leave the loaded FB2 untouched before the
-		// application performs its ordinary shutdown validation.
+		// Restore the fixture before exercising the ordinary production save path.
 		editable->innerHTML = originalHtml.AllocSysString();
+		int validationLine = 0, validationColumn = 0;
+		const bool saved = m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
 		output.Flush(); output.Close();
-		::PostQuitMessage(allPassed ? 0 : 1); return 0;
+		::PostQuitMessage(allPassed && saved ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"link-navigation-runtime"))
 	{
