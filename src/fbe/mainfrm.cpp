@@ -4007,13 +4007,14 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"link-navigation-runtime"))
 	{
-		CStringA header("nested\ttarget\tsame_document\tbroken\tunchanged\tresult\r\n");
+		CStringA header("nested\ttarget\tsame_document\tbroken\treturned_second\tunchanged\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
 		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr internal(links && links->length > 0 ? links->item(0L) : MSHTML::IHTMLElementPtr());
-		MSHTML::IHTMLElementPtr broken(links && links->length > 1 ? links->item(1L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr second(links && links->length > 1 ? links->item(1L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr broken(links && links->length > 2 ? links->item(2L) : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementCollectionPtr strongs(internal ? MSHTML::IHTMLElement2Ptr(internal)->getElementsByTagName(L"STRONG") : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? strongs->item(0L) : MSHTML::IHTMLElementPtr());
 		const CString before(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
@@ -4026,12 +4027,18 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const CString sameDocumentHref = documentUrl + L"#note-1";
 		const bool sameDocument = FBELinkNavigation::GetInternalTargetId(static_cast<LPCWSTR>(sameDocumentHref), static_cast<LPCWSTR>(documentUrl)) == L"note-1";
 		const bool navigated = target && m_doc->m_body.NavigateInternalLink(nearest, targetId);
+		const CString secondTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, second));
+		const bool secondNavigated = second && secondTargetId == targetId && m_doc->m_body.NavigateInternalLink(second, secondTargetId);
+		OnGoToFootnote(0, ID_GOTO_FOOTNOTE, nullptr);
+		MSHTML::IHTMLTxtRangePtr returnedRange(document->selection->createRange());
+		MSHTML::IHTMLElementPtr returnedLink(returnedRange ? FBELinkNavigation::FindNearestLinkElement(returnedRange->parentElement(), editable) : MSHTML::IHTMLElementPtr());
+		const bool returnedSecond = secondNavigated && returnedLink == second;
 		const CString brokenTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, broken));
 		const bool brokenInternal = !brokenTargetId.IsEmpty() && !FBELinkNavigation::FindTargetElement(document, brokenTargetId);
 		const bool unchanged = editable && before == CString(static_cast<LPCWSTR>(editable->innerHTML));
-		const bool passed = nearest == internal && target && sameDocument && navigated && brokenInternal && unchanged;
+		const bool passed = nearest == internal && target && sameDocument && navigated && brokenInternal && returnedSecond && unchanged;
 		CStringA row;
-		row.Format("%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, unchanged, passed ? "pass" : "fail");
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, returnedSecond, unchanged, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
