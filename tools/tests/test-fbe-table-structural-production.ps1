@@ -35,6 +35,7 @@ try {
         @{ Id='rowspan'; Table='<tr><td rowspan="2">one</td><td>two</td><td>three</td></tr><tr><td>four</td><td>five</td></tr><tr><td>six</td><td>seven</td><td>eight</td></tr>' },
         @{ Id='combined'; Table='<tr><th id="h" colspan="2">head</th><td>one</td></tr><tr><td rowspan="2">two</td><td>three</td><td>four</td></tr><tr><td>five</td><td>six</td></tr>' },
         @{ Id='mixed'; Table='<tr><th>one</th><th>two</th><th>three</th></tr><tr><td>four</td><td>five</td><td>six</td></tr><tr><td>seven</td><td>eight</td><td>nine</td></tr>' },
+		@{ Id='mixed-first-row'; Table='<tr><th>head-one</th><td>body</td><th>head-two</th></tr><tr><td>four</td><td>five</td><td>six</td></tr>' },
         @{ Id='all-header'; Table='<tr><th>one</th><th>two</th></tr><tr><th>three</th><th>four</th></tr>' },
         @{ Id='edge-spans'; Table='<tr><td colspan="2">first</td><td>middle</td><td colspan="2">last</td></tr><tr><td rowspan="2">one</td><td>two</td><td colspan="2" rowspan="2">three</td><td>four</td></tr><tr><td>five</td><td>six</td></tr>' },
 		@{ Id='inherited-colspan'; Table='<tr><td id="A" rowspan="2" colspan="2">A</td><td id="B">B</td></tr><tr><td id="C">C</td></tr><tr><td id="D">D</td><td id="E">E</td><td id="F">F</td></tr>' },
@@ -105,6 +106,18 @@ try {
 			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'insert-row-above' -and $Target -eq '1,0') {
 				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 9 -or [int]$after.th_count -ne 3 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 9 -or [int]$redo.th_count -ne 3) { throw 'Insert Row Above не скопировал точную последовательность TD выбранной строки через Undo/Redo.' }
 				if($after.grid_signature -notmatch 'c3:id=,tag=TD,row=1,column=0' -or $after.grid_signature -match 'c3:id=,tag=TH,row=1,column=0') { throw 'Insert Row Above создал TH вместо TD в новой строке.' }
+			}
+			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'insert-row-below' -and $Target -eq '1,0') {
+				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 9 -or [int]$after.th_count -ne 3 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 9 -or [int]$redo.th_count -ne 3) { throw 'Insert Row Below не сохранил TD-последовательность выбранной строки через Undo/Redo.' }
+				if($after.grid_signature -notmatch 'c6:id=,tag=TD,row=2,column=0') { throw 'Insert Row Below создал не TD в новой строке.' }
+			}
+			if($requestedOperation -and $case.Id -eq 'mixed-first-row' -and $operation -eq 'insert-row-above' -and $Target -eq '0,0') {
+				if([int]$before.td_count -ne 4 -or [int]$before.th_count -ne 2 -or [int]$after.td_count -ne 5 -or [int]$after.th_count -ne 4 -or [int]$undo.td_count -ne 4 -or [int]$undo.th_count -ne 2 -or [int]$redo.td_count -ne 5 -or [int]$redo.th_count -ne 4) { throw 'Insert Row Above первой смешанной строки не сохранил TH|TD|TH.' }
+				if($after.grid_signature -notmatch 'c0:id=,tag=TH,row=0,column=0' -or $after.grid_signature -notmatch 'c1:id=,tag=TD,row=0,column=1' -or $after.grid_signature -notmatch 'c2:id=,tag=TH,row=0,column=2') { throw 'Insert Row Above первой смешанной строки не воспроизвёл точную последовательность TH|TD|TH.' }
+			}
+			if($requestedOperation -and $case.Id -eq 'rowspan' -and $operation -eq 'insert-row-above' -and $Target -eq '1,1') {
+				if([int]$before.td_count -ne 8 -or [int]$after.td_count -ne 10 -or [int]$undo.td_count -ne 8 -or [int]$redo.td_count -ne 10) { throw 'Insert Row через rowspan создал неверное число физических TD.' }
+				if($after.grid_signature -notmatch 'c0:id=,tag=TD,row=0,column=0,logical-colspan=1,logical-rowspan=3') { throw 'Insert Row через границу rowspan не расширил пересекающую ячейку.' }
 			}
 			if($requestedOperation -and $case.Id -eq 'inherited-colspan' -and $operation -eq 'insert-column-right' -and $Target -eq '2,0') {
 				if([int]$before.td_count -ne 6 -or [int]$after.td_count -ne 7 -or [int]$undo.td_count -ne 6 -or [int]$redo.td_count -ne 7) { throw 'Insert Column внутри rowspan/colspan добавил лишнюю физическую ячейку.' }
