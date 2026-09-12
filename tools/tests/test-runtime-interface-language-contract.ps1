@@ -90,7 +90,7 @@ if ($generalPageText -notmatch "m_language\.SetDroppedWidth\((3[0-9]{2}|[4-9][0-
     throw "SettingsGeneralPage.cpp должен расширять выпадающий список языка минимум до 300 px, чтобы 'Определяется системой' не обрезался."
 }
 
-$mainFrameText = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\mainfrm.cpp")) + "`n" + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\DocumentTree.cpp")) + "`n" + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\DocumentTree.h"))
+$mainFrameText = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\mainfrm.cpp")) + "`n" + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\DocumentTree.cpp")) + "`n" + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\DocumentTree.h")) + "`n" + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\ui\ContextAttributeBars.cpp")) + "`n" + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\fbe\source\ui\SourceEditorControl.cpp"))
 foreach ($pattern in @(
     "RefreshLocalizedMainFrameUi()",
     "RefreshLocalizedToolbarCaptions()",
