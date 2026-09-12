@@ -28,10 +28,10 @@ function Assert-Fb2Schema([string]$Path) {
 try {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $cases = @(
-        @{ id = 'split-section-middle'; body = '<section id="target-section-middle"><p>First</p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'target-section-middle' },
-        @{ id = 'split-section-selection'; body = '<section id="target-section-selection"><p>AAA SELECTED ZZZ</p></section>'; position = 'selection'; containerId = 'target-section-selection'; fragments = $true },
+        @{ id = 'split-section-middle'; body = '<section id="target-section-middle"><p>First <a l:href="#target-section-middle">Backlink</a></p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'target-section-middle'; backlink = $true },
+        @{ id = 'split-section-selection'; body = '<section id="target-section-selection"><p>AAA 123 ZZZ</p></section>'; position = 'selection'; containerId = 'target-section-selection'; fragments = $true },
         @{ id = 'split-section-start'; body = '<section id="target-section-start"><p>First</p><p>Last</p></section>'; position = 'start'; containerId = 'target-section-start'; rejected = $true },
-        @{ id = 'split-section-end'; body = '<section id="target-section-end"><p>First</p><p>Last</p></section>'; position = 'end'; containerId = 'target-section-end'; rejected = $true },
+        @{ id = 'split-section-end'; body = '<section id="target-section-end"><p>First</p><p>Last</p></section>'; position = 'end'; containerId = 'target-section-end' },
         @{ id = 'split-stanza-middle'; body = '<section><p>Anchor</p><poem><stanza><v>First</v><v>Middle</v></stanza></poem></section>'; position = 'middle'; container = 'stanza'; containerId = '' },
         @{ id = 'split-invalid-container'; body = '<epigraph id="target-epigraph"><p>Quoted</p><p>Tail</p></epigraph>'; position = 'middle'; container = 'epigraph'; containerId = 'target-epigraph'; rejected = $true }
     )
@@ -45,8 +45,9 @@ try {
 		$case = $testCase
         $fixture = Join-Path $directory ($case.id + '.fb2')
         $report = Join-Path $directory ($case.id + '.tsv')
+        $reopenReport = Join-Path $directory ($case.id + '.reopen.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
-        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$($case.body)</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
+        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`" xmlns:l=`"http://www.w3.org/1999/xlink`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$($case.body)</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
         $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-container'; $env:FBE_NEXT_TEST_SPLIT_POSITION = $case.position
@@ -81,6 +82,24 @@ try {
                 if(-not @($traceRows | Where-Object { $_.phase -eq $phase -and $_.event -eq 'after' }).Count) { throw "Incomplete Split trace for $($case.id): $phase" }
             }
             if(@($traceRows | Where-Object { $_.event -in @('exception','failure') }).Count) { throw "Split trace has a failure for $($case.id)." }
+            Assert-Fb2Schema $fixture
+            if($case.ContainsKey('backlink')) {
+                $savedXml = Get-Content -Raw -LiteralPath $fixture
+                if($savedXml -notmatch 'id="target-section-middle"' -or $savedXml -notmatch 'href="#target-section-middle"') { throw "Split did not preserve the moved id/backlink for $($case.id)." }
+            }
+            if($case.containerId) {
+                $oldMode, $oldScenario, $oldContainerId = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID
+                try {
+                    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-container-reopen'; $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID = $case.containerId
+                    $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $reopenReport, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
+                    if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE timed out reopening $($case.id)." }
+                    if($process.ExitCode -ne 0) { throw "FBE failed reopening $($case.id): exit $($process.ExitCode)." }
+                } finally {
+                    $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID = $oldMode, $oldScenario, $oldContainerId
+                }
+                $reopen = Import-Csv -LiteralPath $reopenReport -Delimiter "`t"
+                if(@($reopen).Count -ne 1 -or $reopen.result -ne 'pass' -or $reopen.id_restored -ne '1' -or $reopen.section_complete -ne '1' -or $reopen.saved -ne '1') { throw "Split reopen contract failed for $($case.id): $($reopen | ConvertTo-Json -Compress)" }
+            }
             Assert-Fb2Schema $fixture
         }
         $completed++; $passed++

@@ -44,21 +44,22 @@ bool BodyStructuralEditor::ExpandRangeToParagraphs(MSHTML::IHTMLTxtRangePtr& ran
 	After(L"expand-success");
 	return true;
 }
-bool BodyStructuralEditor::InsertCite(bool checkOnly)
+StructuralOperationResult BodyStructuralEditor::InsertCite(bool checkOnly)
 {
+	bool documentChanged = false;
 	try {
 		Before(L"cite-enter"); After(L"cite-enter");
 		Before(L"selection-create"); MSHTML::IHTMLTxtRangePtr range(m_document->selection->createRange()); After(L"selection-create");
-		if (!range) return false;
+		if (!range) return StructuralOperationResult::NotApplicable();
 		Before(L"parent-resolved"); MSHTML::IHTMLElementPtr parent(FindParentDiv(range->parentElement())); After(L"parent-resolved");
-		if (!parent) return false;
+		if (!parent) return StructuralOperationResult::NotApplicable();
 		Before(L"start-range-created"); MSHTML::IHTMLTxtRangePtr start(range->duplicate()); start->collapse(VARIANT_TRUE); After(L"start-range-created");
-		if (FindParentDiv(start->parentElement()) != parent) { After(L"preflight-rejected"); return false; }
+		if (FindParentDiv(start->parentElement()) != parent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
 		_bstr_t cls(parent->className);
-		if (U::scmp(cls, L"section") && U::scmp(cls, L"epigraph") && U::scmp(cls, L"annotation") && U::scmp(cls, L"history")) return false;
+		if (U::scmp(cls, L"section") && U::scmp(cls, L"epigraph") && U::scmp(cls, L"annotation") && U::scmp(cls, L"history")) return StructuralOperationResult::NotApplicable();
 		After(L"preflight-complete");
-		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; if (!ExpandRangeToParagraphs(range, beginElement, endElement)) return false; After(L"expand");
-		if (checkOnly) { After(L"cite-check-success"); return true; }
+		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; if (!ExpandRangeToParagraphs(range, beginElement, endElement)) return StructuralOperationResult::NotApplicable(); After(L"expand");
+		if (checkOnly) { After(L"cite-check-success"); return { StructuralOperationStatus::Applied, S_OK, false }; }
 		Before(L"capture-html");
 		CString html; MSHTML::IHTMLDOMNodePtr sibling = beginElement;
 		do { html += MSHTML::IHTMLElementPtr(sibling)->outerHTML.GetBSTR(); if (sibling == endElement) break; sibling = sibling->nextSibling; } while (sibling);
@@ -81,28 +82,30 @@ bool BodyStructuralEditor::InsertCite(bool checkOnly)
 		while (begin != end) { sibling = begin->nextSibling; Before(L"remove-node"); begin->removeNode(VARIANT_TRUE); After(L"remove-node"); begin = sibling; }
 		Before(L"remove-end"); end->removeNode(VARIANT_TRUE); After(L"remove-end");
 		Before(L"undo-end"); undo.Close(); After(L"undo-end");
+		documentChanged = true;
 		Before(L"selection-move"); range->moveToElementText(cite); After(L"selection-move");
 		Before(L"selection-collapse"); range->collapse(VARIANT_FALSE); After(L"selection-collapse");
 		Before(L"selection-select"); range->select(); After(L"selection-select");
-		After(L"cite-success"); return true;
-	} catch (const _com_error& error) { if (m_trace) m_trace->Exception(L"cite", error.Error(), error.Description()); return false; }
+		After(L"cite-success"); return StructuralOperationResult::Applied();
+	} catch (const _com_error& error) { if (m_trace) m_trace->Exception(L"cite", error.Error(), error.Description()); return StructuralOperationResult::Failed(error.Error(), documentChanged); }
 }
-bool BodyStructuralEditor::InsertPoem(bool checkOnly)
+StructuralOperationResult BodyStructuralEditor::InsertPoem(bool checkOnly)
 {
+	bool documentChanged = false;
 	try {
 		Before(L"poem-enter"); After(L"poem-enter");
 		Before(L"selection-create"); MSHTML::IHTMLTxtRangePtr range(m_document->selection->createRange()); After(L"selection-create");
-		if (!range) return false;
+		if (!range) return StructuralOperationResult::NotApplicable();
 		Before(L"parent-resolved"); MSHTML::IHTMLElementPtr parent(FindParentDiv(range->parentElement())); After(L"parent-resolved");
-		if (!parent) return false;
+		if (!parent) return StructuralOperationResult::NotApplicable();
 		Before(L"collapsed-state"); const bool wasCollapsed = range->compareEndPoints(L"StartToEnd", range) == 0; After(L"collapsed-state");
 		Before(L"start-range-created"); MSHTML::IHTMLTxtRangePtr start(range->duplicate()); start->collapse(VARIANT_TRUE); After(L"start-range-created");
-		if (FindParentDiv(start->parentElement()) != parent) { After(L"preflight-rejected"); return false; }
+		if (FindParentDiv(start->parentElement()) != parent) { After(L"preflight-rejected"); return StructuralOperationResult::NotApplicable(); }
 		_bstr_t cls(parent->className);
-		if (U::scmp(cls,L"section") && U::scmp(cls,L"epigraph") && U::scmp(cls,L"annotation") && U::scmp(cls,L"history") && U::scmp(cls,L"cite")) return false;
+		if (U::scmp(cls,L"section") && U::scmp(cls,L"epigraph") && U::scmp(cls,L"annotation") && U::scmp(cls,L"history") && U::scmp(cls,L"cite")) return StructuralOperationResult::NotApplicable();
 		After(L"preflight-complete");
-		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; if (!ExpandRangeToParagraphs(range, beginElement, endElement)) return false; After(L"expand");
-		if (checkOnly) { After(L"poem-check-success"); return true; }
+		Before(L"expand"); MSHTML::IHTMLElementPtr beginElement, endElement; if (!ExpandRangeToParagraphs(range, beginElement, endElement)) return StructuralOperationResult::NotApplicable(); After(L"expand");
+		if (checkOnly) { After(L"poem-check-success"); return { StructuralOperationStatus::Applied, S_OK, false }; }
 		Before(L"capture-html"); CString html; MSHTML::IHTMLDOMNodePtr sibling = beginElement;
 		do { html += MSHTML::IHTMLElementPtr(sibling)->outerHTML.GetBSTR(); if (sibling == endElement) break; sibling = sibling->nextSibling; } while (sibling);
 		After(L"capture-html");
@@ -127,36 +130,33 @@ bool BodyStructuralEditor::InsertPoem(bool checkOnly)
 		After(L"remove-loop-enter"); while (begin != end) { sibling = begin->nextSibling; Before(L"remove-node"); begin->removeNode(VARIANT_TRUE); After(L"remove-node"); begin = sibling; }
 		Before(L"remove-end"); end->removeNode(VARIANT_TRUE); After(L"remove-end");
 		Before(L"undo-end"); undo.Close(); After(L"undo-end");
+		documentChanged = true;
 		Before(L"selection-move"); range->moveToElementText(poem); After(L"selection-move");
 		Before(L"selection-collapse"); range->collapse(VARIANT_FALSE); After(L"selection-collapse");
 		Before(L"selection-select"); range->select(); After(L"selection-select");
-		After(L"poem-success"); return true;
-	} catch (const _com_error& error) { if (m_trace) m_trace->Exception(L"poem", error.Error(), error.Description()); return false; }
+		After(L"poem-success"); return StructuralOperationResult::Applied();
+	} catch (const _com_error& error) { if (m_trace) m_trace->Exception(L"poem", error.Error(), error.Description()); return StructuralOperationResult::Failed(error.Error(), documentChanged); }
 }
 
-bool BodyStructuralEditor::SplitContainer(bool checkOnly)
+StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly)
 {
+	bool documentChanged = false;
 	try {
 		Before(L"split-enter"); After(L"split-enter");
 		Before(L"selection-create"); MSHTML::IHTMLTxtRangePtr range(m_document->selection->createRange()); After(L"selection-create");
-		if (!range) return false;
+		if (!range) return StructuralOperationResult::NotApplicable();
 		Before(L"parent-resolved"); MSHTML::IHTMLElementPtr parent(FindParentDiv(range->parentElement())); After(L"parent-resolved");
-		if (!parent || (U::scmp(parent->className, L"section") && U::scmp(parent->className, L"stanza"))) return false;
+		if (!parent || (U::scmp(parent->className, L"section") && U::scmp(parent->className, L"stanza"))) return StructuralOperationResult::NotApplicable();
 		Before(L"container-range-create"); MSHTML::IHTMLTxtRangePtr containerRange(range->duplicate()); After(L"container-range-create");
 		Before(L"container-range-move"); containerRange->moveToElementText(parent); After(L"container-range-move");
 		Before(L"range-start-validated"); const bool startsAtContainer = range->compareEndPoints(L"StartToStart", containerRange) == 0; After(L"range-start-validated");
-		if (startsAtContainer) return false;
-		// A split at the closing boundary would create an empty trailing section
-		// or stanza.  It is not a valid FictionBook structure and Save would
-		// otherwise display a validation dialog in an unattended run.
-		Before(L"range-end-at-container-validated"); const bool endsAtContainer = range->compareEndPoints(L"EndToEnd", containerRange) == 0; After(L"range-end-at-container-validated");
-		if (endsAtContainer) return false;
+		if (startsAtContainer) return StructuralOperationResult::NotApplicable();
 		Before(L"range-start-create"); MSHTML::IHTMLTxtRangePtr start(range->duplicate()); start->collapse(VARIANT_TRUE); After(L"range-start-create");
 		Before(L"range-end-create"); MSHTML::IHTMLTxtRangePtr end(range->duplicate()); end->collapse(VARIANT_FALSE); After(L"range-end-create");
 		Before(L"range-end-validated"); const bool endpointsMatch = FindParentDiv(start->parentElement()) == parent && FindParentDiv(end->parentElement()) == parent; After(L"range-end-validated");
-		if (!endpointsMatch) return false;
+		if (!endpointsMatch) return StructuralOperationResult::NotApplicable();
 		After(L"preflight-complete");
-		if (checkOnly) { After(L"split-check-success"); return true; }
+		if (checkOnly) { After(L"split-check-success"); return { StructuralOperationStatus::Applied, S_OK, false }; }
 
 		CString undoName(L"split "); undoName += static_cast<const wchar_t*>(parent->className);
 		Before(L"new-container-create"); MSHTML::IHTMLElementPtr next(m_document->createElement(L"DIV")); next->className = parent->className; After(L"new-container-create");
@@ -171,17 +171,17 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		}
 
 		MSHTML::IMarkupPointerPtr selectionStart, selectionEnd, elementBegin, elementEnd;
-		Before(L"selection-start-pointer-create"); HRESULT hr = m_markupServices->CreateMarkupPointer(&selectionStart); Hr(L"selection-start-pointer-create", hr); if (FAILED(hr)) return false;
-		Before(L"selection-end-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&selectionEnd); Hr(L"selection-end-pointer-create", hr); if (FAILED(hr)) return false;
-		Before(L"element-start-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&elementBegin); Hr(L"element-start-pointer-create", hr); if (FAILED(hr)) return false;
-		Before(L"element-end-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&elementEnd); Hr(L"element-end-pointer-create", hr); if (FAILED(hr)) return false;
+		Before(L"selection-start-pointer-create"); HRESULT hr = m_markupServices->CreateMarkupPointer(&selectionStart); Hr(L"selection-start-pointer-create", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
+		Before(L"selection-end-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&selectionEnd); Hr(L"selection-end-pointer-create", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
+		Before(L"element-start-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&elementBegin); Hr(L"element-start-pointer-create", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
+		Before(L"element-end-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&elementEnd); Hr(L"element-end-pointer-create", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
 
 		Before(L"title-range-create"); MSHTML::IHTMLTxtRangePtr titleRange(range->duplicate()); After(L"title-range-create");
-		Before(L"selection-pointers-move"); hr = m_markupServices->MovePointersToRange(titleRange, selectionStart, selectionEnd); Hr(L"selection-pointers-move", hr); if (FAILED(hr)) return false;
+		Before(L"selection-pointers-move"); hr = m_markupServices->MovePointersToRange(titleRange, selectionStart, selectionEnd); Hr(L"selection-pointers-move", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
 		U::ElTextHTML title(titleRange->htmlText, titleRange->text);
 		Before(L"pre-range-create"); MSHTML::IHTMLTxtRangePtr preRange(range->duplicate()); After(L"pre-range-create");
-		Before(L"element-start-pointer-move"); hr = elementBegin->MoveAdjacentToElement(parent, MSHTML::ELEM_ADJ_AfterBegin); Hr(L"element-start-pointer-move", hr); if (FAILED(hr)) return false;
-		Before(L"pre-range-move"); hr = m_markupServices->MoveRangeToPointers(elementBegin, selectionStart, preRange); Hr(L"pre-range-move", hr); if (FAILED(hr)) return false;
+		Before(L"element-start-pointer-move"); hr = elementBegin->MoveAdjacentToElement(parent, MSHTML::ELEM_ADJ_AfterBegin); Hr(L"element-start-pointer-move", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
+		Before(L"pre-range-move"); hr = m_markupServices->MoveRangeToPointers(elementBegin, selectionStart, preRange); Hr(L"pre-range-move", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
 		U::ElTextHTML pre(preRange->htmlText, preRange->text);
 
 		const bool hasTitle = !title.text.IsEmpty();
@@ -191,17 +191,17 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		// insertion itself as the undoable mutation; filling an already attached
 		// DIV leaves its child markup outside that transaction on older engines.
 		Before(L"post-range-create"); MSHTML::IHTMLTxtRangePtr postRange(range->duplicate()); After(L"post-range-create");
-		Before(L"element-end-pointer-move"); hr = elementEnd->MoveAdjacentToElement(parent, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"element-end-pointer-move", hr); if (FAILED(hr)) return false;
-		Before(L"post-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionEnd, elementEnd, postRange); Hr(L"post-range-move", hr); if (FAILED(hr)) return false;
+		Before(L"element-end-pointer-move"); hr = elementEnd->MoveAdjacentToElement(parent, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"element-end-pointer-move", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
+		Before(L"post-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionEnd, elementEnd, postRange); Hr(L"post-range-move", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr);
 		U::ElTextHTML post(postRange->htmlText, postRange->text);
 		const bool hasContent = !post.html.IsEmpty();
-		_bstr_t id; if (hasContent) id = parent->id;
+		const CString id(static_cast<const wchar_t*>(parent->id));
 		if (hasContent && post.html.Find(L"<P") == -1) post.html = CString(L"<P>") + post.html + L"</P>";
 		title.html.Remove(L'\r'); title.html.Remove(L'\n'); post.html.Remove(L'\r'); post.html.Remove(L'\n');
 		if (post.html.Find(L"<P>&nbsp;</P>") == 0 && post.html.GetLength() > 13 && hasTitle && title.html.Find(L"<P>&nbsp;</P>") != title.html.GetLength() - 14) post.html.Delete(0, 13);
 		if (hasContent) {
 			if (post.html == L"<P>&nbsp;</P>") post.html += L"<P>&nbsp;</P>";
-			Before(L"new-container-content"); next->innerHTML = post.html.AllocSysString(); next->id = id; After(L"new-container-content");
+			Before(L"new-container-content"); next->innerHTML = post.html.AllocSysString(); After(L"new-container-content");
 		} else {
 			Before(L"empty-paragraph-create"); MSHTML::IHTMLElementPtr paragraph(m_document->createElement(L"P")); MSHTML::IHTMLElement3Ptr(paragraph)->inflateBlock = VARIANT_TRUE; MSHTML::IHTMLElement2Ptr(next)->insertAdjacentElement(L"beforeEnd", paragraph); After(L"empty-paragraph-create");
 		}
@@ -212,7 +212,14 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 		// unit immediately before changing the source container or inserting next.
 		Before(L"undo-begin"); FbeDom::MarkupUndoUnitScope undo(m_markupServices, static_cast<const wchar_t*>(undoName)); After(L"undo-begin");
 		parent->id = L"";
-		Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
+		// From this point on the live document has changed, even if a later
+		// cleanup or caret call fails.
+		documentChanged = true;
+		if (hasContent) {
+			Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
+			next->id = _bstr_t(id.GetString());
+			if (m_trace) m_trace->After(L"new-container-id", static_cast<const wchar_t*>(next->id));
+		}
 		if (pre.html.Find(L"<P") == -1) pre.html = pre.html.IsEmpty() ? L"<P>&nbsp;</P>" : CString(L"<P>") + pre.html + L"</P>";
 		auto replaceChildren = [&](MSHTML::IHTMLElementPtr destination, const CString& html, const wchar_t* phase) {
 			Before(phase); MSHTML::IHTMLElementPtr staging(m_document->createElement(L"DIV")); staging->innerHTML = html.AllocSysString();
@@ -222,17 +229,25 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 			After(phase);
 		};
 		Before(L"source-cleanup"); range->pasteHTML(L""); postRange->pasteHTML(L""); FbeVisualDom::FixupParagraphs(parent); FbeVisualDom::PackText(parent, m_document); FbeVisualDom::FixupParagraphs(next); FbeVisualDom::PackText(next, m_document); After(L"source-cleanup");
+		if (!hasContent) {
+			Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
+			next->id = _bstr_t(id.GetString());
+			if (m_trace) m_trace->After(L"new-container-id", static_cast<const wchar_t*>(next->id));
+		}
+		if (m_trace) m_trace->After(L"new-container-id-after-cleanup", static_cast<const wchar_t*>(next->id));
 		parentChildren = parent->children;
-		if (parentChildren->length == 1) { MSHTML::IHTMLElementPtr child = parentChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"source-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"source-wrapper-remove", hr); if (FAILED(hr)) return false; } }
+		if (parentChildren->length == 1) { MSHTML::IHTMLElementPtr child = parentChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"source-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"source-wrapper-remove", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr, documentChanged); } }
 		MSHTML::IHTMLElementCollectionPtr nextChildren = next->children;
-		if (nextChildren->length == 1) { MSHTML::IHTMLElementPtr child = nextChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"new-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"new-wrapper-remove", hr); if (FAILED(hr)) return false; } }
+		if (nextChildren->length == 1) { MSHTML::IHTMLElementPtr child = nextChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"new-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"new-wrapper-remove", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr, documentChanged); } }
 		CString titleSection;
 		if (parentTitle) { titleSection = parentTitle->innerHTML.GetBSTR(); titleSection += L"<P>&nbsp;</P>"; }
 		CString parentText = parent->innerText; parentText.Remove(L'\r'); parentText.Remove(L'\n');
 		CString titleText = parentTitle ? parentTitle->innerText : L""; titleText.Remove(L'\r'); titleText.Remove(L'\n');
 		if (parentTitle && !U::scmp(parentText, titleText)) replaceChildren(parent, titleSection, L"source-title-replace");
 		Before(L"undo-end"); undo.Close(); After(L"undo-end");
+		documentChanged = true;
 		Before(L"selection-update");
+		HRESULT selectionWarning = S_OK;
 		try {
 			MSHTML::IHTMLTxtRangePtr selection(MSHTML::IHTMLBodyElementPtr(m_document->body)->createTextRange());
 			// MSHTML rejects moveToElementText(DIV.stanza) with E_INVALIDARG. Put
@@ -248,14 +263,16 @@ bool BodyStructuralEditor::SplitContainer(bool checkOnly)
 			// BODY text ranges reject some visual P/V descendants.  Place the
 			// pointer just inside the leaf instead of at its element boundary.
 			MSHTML::IMarkupPointerPtr selectionPointer;
-			Before(L"selection-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&selectionPointer); Hr(L"selection-pointer-create", hr); if (FAILED(hr)) return false;
-			Before(L"selection-pointer-move"); hr = selectionPointer->MoveAdjacentToElement(selectionTarget, MSHTML::ELEM_ADJ_BeforeEnd); Hr(L"selection-pointer-move", hr); if (FAILED(hr)) return false;
-			Before(L"selection-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionPointer, selectionPointer, selection); Hr(L"selection-range-move", hr); if (FAILED(hr)) return false;
+			Before(L"selection-pointer-create"); hr = m_markupServices->CreateMarkupPointer(&selectionPointer); Hr(L"selection-pointer-create", hr); if (FAILED(hr)) { selectionWarning = hr; }
+			const MSHTML::_ELEMENT_ADJACENCY selectionEdge = CString((const wchar_t*)selectionTarget->innerText).IsEmpty()
+				? MSHTML::ELEM_ADJ_AfterBegin : MSHTML::ELEM_ADJ_BeforeEnd;
+			if (SUCCEEDED(selectionWarning)) { Before(L"selection-pointer-move"); hr = selectionPointer->MoveAdjacentToElement(selectionTarget, selectionEdge); Hr(L"selection-pointer-move", hr); if (FAILED(hr)) selectionWarning = hr; }
+			if (SUCCEEDED(selectionWarning)) { Before(L"selection-range-move"); hr = m_markupServices->MoveRangeToPointers(selectionPointer, selectionPointer, selection); Hr(L"selection-range-move", hr); if (FAILED(hr)) selectionWarning = hr; }
 			MSHTML::IHTMLElement2Ptr(m_document->body)->focus();
-			selection->select();
-		} catch (_com_error& error) { Hr(L"selection-update", error.Error()); }
+			if (SUCCEEDED(selectionWarning)) selection->select();
+		} catch (_com_error& error) { selectionWarning = error.Error(); Hr(L"selection-update", error.Error()); }
 		After(L"selection-update");
-		After(L"split-success"); return true;
-	} catch (_com_error& error) { if (m_trace) m_trace->Exception(L"split", error.Error(), error.Description()); return false; }
+		After(L"split-success"); return StructuralOperationResult::Applied(selectionWarning);
+	} catch (const _com_error& error) { if (m_trace) m_trace->Exception(L"split", error.Error(), error.Description()); return StructuralOperationResult::Failed(error.Error(), documentChanged); }
 }
 } // namespace FbeStructure

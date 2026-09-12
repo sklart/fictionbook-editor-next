@@ -45,29 +45,20 @@ MSHTML::IHTMLElementPtr FindTargetElement(MSHTML::IHTMLDocument2Ptr d,
              ? MSHTML::IHTMLElementPtr(d->all->item((LPCWSTR)id))
              : MSHTML::IHTMLElementPtr();
 }
-long GetLinkTargetOrdinal(MSHTML::IHTMLDocument2Ptr d,
-                          MSHTML::IHTMLElementPtr l, const CString &id) {
-  MSHTML::IHTMLElement2Ptr body(GetEditableBody(d));
-  MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
-  long ordinal = 0;
-  for (long index = 0; links && index < links->length; ++index) {
-    MSHTML::IHTMLElementPtr candidate(links->item(index));
-    if (GetInternalLinkTargetId(d, candidate) != id) continue;
-    if (candidate == l) return ordinal;
-    ++ordinal;
-  }
-  return -1;
+long GetLinkUniqueNumber(MSHTML::IHTMLElementPtr link) {
+  if (!link) return -1;
+  try { return MSHTML::IHTMLUniqueNamePtr(link)->uniqueNumber; }
+  catch (const _com_error &) { return -1; }
 }
 MSHTML::IHTMLElementPtr FindOriginLink(MSHTML::IHTMLDocument2Ptr d,
-                                       const CString &id, long ordinal) {
-  if (!d || id.IsEmpty() || ordinal < 0) return MSHTML::IHTMLElementPtr();
+                                       const CString &id, long originUniqueNumber) {
+  if (!d || id.IsEmpty() || originUniqueNumber < 0) return MSHTML::IHTMLElementPtr();
   MSHTML::IHTMLElement2Ptr body(GetEditableBody(d));
   MSHTML::IHTMLElementCollectionPtr links(body ? body->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
-  long current = 0;
   for (long index = 0; links && index < links->length; ++index) {
     MSHTML::IHTMLElementPtr candidate(links->item(index));
     if (GetInternalLinkTargetId(d, candidate) != id) continue;
-    if (current++ == ordinal) return candidate;
+    if (GetLinkUniqueNumber(candidate) == originUniqueNumber) return candidate;
   }
   return MSHTML::IHTMLElementPtr();
 }

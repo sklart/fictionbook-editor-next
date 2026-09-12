@@ -2549,7 +2549,11 @@ LRESULT CMainFrame::OnEndSession(UINT, WPARAM wParam, LPARAM, BOOL&)
 }
 LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
-  if (DiscardChanges())
+  // Batch jobs have neither an operator nor an interactive close contract.
+  // Their individual scenario handlers have already saved or recorded failure
+  // before posting WM_CLOSE, so never let DiscardChanges() show a modal prompt.
+  const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty();
+  if (unattendedBatch || DiscardChanges())
   {
 	m_recovery.DeleteIfWritten();
 	// added by SeNS
@@ -2632,7 +2636,11 @@ void CMainFrame::TryRestoreRecovery()
 	// this UI path and retain its production behavior.
 	wchar_t testMode[4] = {};
 	const bool unattendedTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1';
-	if (unattendedTest && !IsFbeTestScenario(L"archive-recovery-verify") && !IsFbeTestScenario(L"archive-recovery-external-verify"))
+	// -b runs an unattended batch job.  A recovery prompt would leave that job
+	// blocked forever, and the document passed on its command line is already
+	// the caller's explicit recovery choice.
+	const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty();
+	if ((unattendedTest || unattendedBatch) && !IsFbeTestScenario(L"archive-recovery-verify") && !IsFbeTestScenario(L"archive-recovery-external-verify"))
 		return;
 	FbeRecovery::RestoreCandidate candidate;
 	if (!m_recovery.GetRestoreCandidate(_ARGV.GetSize() > 0, candidate)) return;
@@ -3782,7 +3790,10 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		FbeStructure::StructuralTrace trace(traceLength ? tracePath : nullptr,
 			cite ? L"cite" : L"poem", traceCaseLength ? traceCase : L"runtime");
 		FbeStructure::BodyStructuralEditor extracted(m_doc->m_body.Document(), m_doc->m_body.MarkupServices(), trace.IsEnabled() ? &trace : nullptr);
-		auto apply = [&](bool checkOnly) -> bool { return cite ? extracted.InsertCite(checkOnly) : extracted.InsertPoem(checkOnly); };
+		auto apply = [&](bool checkOnly) -> bool {
+			const FbeStructure::StructuralOperationResult result = cite ? extracted.InsertCite(checkOnly) : extracted.InsertPoem(checkOnly);
+			return result.IsApplied();
+		};
 		const bool checkAllowed = apply(true);
 		const bool applied = apply(false);
 		const CString after((const wchar_t*)body->innerHTML);
@@ -3889,10 +3900,10 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		m_doc->m_body.SetFocus();
 		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		const bool atStart = positionLength == 5 && wcscmp(position, L"start") == 0;
+		const bool atEnd = positionLength == 3 && wcscmp(position, L"end") == 0;
 		if (atStart) { range->moveToElementText(container); range->collapse(VARIANT_TRUE); }
 		else {
 			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(container)->getElementsByTagName(L"P"));
-			const bool atEnd = positionLength == 3 && wcscmp(position, L"end") == 0;
 			const long index = atEnd ? paragraphs->length - 1 : paragraphs->length / 2;
 			MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
 			if (!paragraph) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-paragraph\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
@@ -3900,7 +3911,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			if (atEnd) { range->moveToElementText(container); range->collapse(VARIANT_FALSE); }
 			else if (nonEmptySelection) {
 				range->moveToElementText(paragraph);
-				if (!range->findText(L"SELECTED", 0, 0)) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-selection-marker\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
+				if (!range->findText(L"123", 0, 0)) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-selection-marker\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
 			}
 			else { range->moveToElementText(paragraph); range->collapse(VARIANT_TRUE); }
 			// Stanza splitting is defined between verses.  Keep the test caret at
@@ -3919,15 +3930,16 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool dirtyBefore = m_doc->DocChanged();
 		FbeStructure::StructuralTrace trace(traceLength ? tracePath : nullptr, L"split", traceCaseLength ? traceCase : L"runtime");
 		FbeStructure::BodyStructuralEditor editor(document, m_doc->m_body.MarkupServices(), trace.IsEnabled() ? &trace : nullptr);
-		const bool checkAllowed = editor.SplitContainer(true);
+		const bool checkAllowed = editor.SplitContainer(true).IsApplied();
 		MSHTML::IHTMLTxtRangePtr selectionAfterCheck(document->selection->createRange());
 		const bool checkDomUnchanged = before == contentHtml();
 		const bool checkSelectionUnchanged = selectionAfterCheck &&
 			selectionBefore && selectionBefore->compareEndPoints(L"StartToStart", selectionAfterCheck) == 0 &&
 			selectionBefore->compareEndPoints(L"EndToEnd", selectionAfterCheck) == 0;
 		const bool checkDirtyUnchanged = dirtyBefore == m_doc->DocChanged();
-		const bool applied = editor.SplitContainer(false);
+		const bool applied = editor.SplitContainer(false).IsApplied();
 		const CString after(contentHtml());
+		trace.After(L"split-content", after);
 		if (!checkAllowed && !applied) {
 			const bool passed = !checkAllowed && !applied && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && before == after;
 			CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t\t%d\t%d\t%d\t%d\t0\t1\t1\t1\t1\t1\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, passed ? "pass" : "fail");
@@ -3939,29 +3951,77 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		CStringA selectionParentSummary;
 		if (selectionParent) selectionParentSummary.Format("%S#%S", static_cast<LPCWSTR>(selectionParent->className), static_cast<LPCWSTR>(selectionParent->id));
 		MSHTML::IHTMLElementPtr newContainer;
-		MSHTML::IHTMLElementCollectionPtr currentDivs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
-		for (long index = 0; currentDivs && index < currentDivs->length; ++index) {
-			MSHTML::IHTMLElementPtr div(currentDivs->item(_variant_t(index), _variant_t()));
-			if (div && U::scmp(div->className, container->className) == 0 &&
-				(containerIdLength ? U::scmp(div->id, containerId) == 0 : div->sourceIndex != container->sourceIndex)) { newContainer = div; break; }
+		if (containerIdLength) {
+			MSHTML::IHTMLElementPtr adjacent(MSHTML::IHTMLDOMNodePtr(container)->nextSibling);
+			if (adjacent && U::scmp(adjacent->className, container->className) == 0 && U::scmp(adjacent->id, containerId) == 0) newContainer = adjacent;
+		} else {
+			MSHTML::IHTMLElementCollectionPtr currentDivs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
+			for (long index = 0; currentDivs && index < currentDivs->length; ++index) {
+				MSHTML::IHTMLElementPtr div(currentDivs->item(_variant_t(index), _variant_t()));
+				if (div && U::scmp(div->className, container->className) == 0 && div->sourceIndex != container->sourceIndex) { newContainer = div; break; }
+			}
 		}
 		MSHTML::IHTMLTxtRangePtr newContainerRange(newContainer ? MSHTML::IHTMLBodyElementPtr(body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
 		if (newContainerRange) newContainerRange->moveToElementText(newContainer);
 		const long selectionStartInNew = selectionAfter && newContainerRange ? selectionAfter->compareEndPoints(L"StartToStart", newContainerRange) : 99;
 		const long selectionEndInNew = selectionAfter && newContainerRange ? selectionAfter->compareEndPoints(L"EndToEnd", newContainerRange) : 99;
 		const bool selectionInNew = newContainer && selectionStartInNew >= 0 && selectionEndInNew <= 0;
+		CString selectionMembership;
+		selectionMembership.Format(L"start=%ld; end=%ld; new=%d", selectionStartInNew, selectionEndInNew, selectionInNew ? 1 : 0);
+		trace.After(L"selection-membership", selectionMembership);
 		BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undone(contentHtml());
 		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redone(contentHtml());
+		bool endTextInserted = !atEnd;
+		if (atEnd && newContainer) {
+			MSHTML::IHTMLElementPtr inputContainer(document->all->item(containerId));
+			MSHTML::IHTMLElementCollectionPtr leaves(inputContainer ? MSHTML::IHTMLElement2Ptr(inputContainer)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr leaf(leaves && leaves->length ? leaves->item(0L) : MSHTML::IHTMLElementPtr());
+			if (leaf) {
+				MSHTML::IHTMLTxtRangePtr input(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+				input->moveToElementText(leaf); leaf->innerText = L"Tail";
+				endTextInserted = inputContainer && CString((const wchar_t*)inputContainer->innerText).Find(L"Tail") >= 0;
+			}
+			CString endWorkflow;
+			endWorkflow.Format(L"container=%d; leaf=%d; text=%d", inputContainer ? 1 : 0, leaf ? 1 : 0, endTextInserted ? 1 : 0);
+			trace.After(L"end-workflow", endWorkflow);
+		}
 		int validationLine = 0, validationColumn = 0;
-		const bool saved = applied && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
+		const bool saved = applied && endTextInserted && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
 		const bool changed = before != after;
 		auto countText = [&](const wchar_t* text) { long count = 0, offset = 0; while ((offset = after.Find(text, offset)) >= 0) { ++count; offset += static_cast<int>(wcslen(text)); } return count; };
-		const bool fragmentsPreserved = positionLength != 9 || wcscmp(position, L"selection") != 0 || (countText(L"AAA") == 1 && countText(L"SELECTED") == 1 && countText(L"ZZZ") == 1);
-		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && changed && before == undone && after == redone && selectionInNew && fragmentsPreserved && saved;
+		const bool selectionScenario = positionLength == 9 && wcscmp(position, L"selection") == 0;
+		const CString originalText(container ? static_cast<const wchar_t*>(container->innerText) : L"");
+		const CString splitText(newContainer ? static_cast<const wchar_t*>(newContainer->innerText) : L"");
+		const bool fragmentsPreserved = !selectionScenario ||
+			(countText(L"AAA") == 1 && countText(L"123") == 1 && countText(L"ZZZ") == 1 &&
+			 originalText.Find(L"AAA") >= 0 && originalText.Find(L"123") >= 0 && originalText.Find(L"ZZZ") < 0 &&
+			 splitText.Find(L"AAA") < 0 && splitText.Find(L"123") < 0 && splitText.Find(L"ZZZ") >= 0);
+		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && changed && before == undone && after == redone && selectionInNew && fragmentsPreserved && endTextInserted && saved;
 		CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, (LPCSTR)selectionParentSummary, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, changed, before == undone, after == redone, selectionInNew, fragmentsPreserved, saved, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		} catch (_com_error& error) {
 			CStringA row; row.Format("unknown\tunknown\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tcom-0x%08lX\r\n", static_cast<unsigned long>(error.Error()));
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(1); return 0;
+		}
+	}
+	if (IsFbeTestScenario(L"split-container-reopen"))
+	{
+		wchar_t containerId[64] = {};
+		const DWORD containerIdLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_CONTAINER_ID", containerId, _countof(containerId));
+		CStringA header("id_restored\tsection_complete\tsaved\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		try {
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			MSHTML::IHTMLElementPtr section(document && containerIdLength ? document->all->item(containerId) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr paragraphs(section ? MSHTML::IHTMLElement2Ptr(section)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr firstParagraph(paragraphs && paragraphs->length ? paragraphs->item(0L) : MSHTML::IHTMLElementPtr());
+			const bool idRestored = section && U::scmp(section->id, containerId) == 0;
+			const bool sectionComplete = firstParagraph && !CString(static_cast<const wchar_t*>(firstParagraph->innerText)).IsEmpty();
+			const bool saved = idRestored && sectionComplete && m_doc->Save();
+			CStringA row; row.Format("%d\t%d\t%d\t%s\r\n", idRestored ? 1 : 0, sectionComplete ? 1 : 0, saved ? 1 : 0, saved ? "pass" : "fail");
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(saved ? 0 : 1); return 0;
+		} catch (_com_error& error) {
+			CStringA row; row.Format("0\t0\t0\tcom-0x%08lX\r\n", static_cast<unsigned long>(error.Error()));
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(1); return 0;
 		}
 	}
@@ -4742,7 +4802,11 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	DWORD written = 0;
 	output.Write(rows, static_cast<DWORD>(rows.GetLength()), &written);
 	output.Close();
-	PostMessage(WM_CLOSE);
+	// -b is an unattended contract.  WM_CLOSE routes through DiscardChanges(),
+	// which may legitimately ask an interactive user about a dirty FBD document
+	// after reopening it.  There is no user in batch mode, and the report was
+	// already written, so end the message loop directly.
+	::PostQuitMessage(0);
 	return 0;
 }
 

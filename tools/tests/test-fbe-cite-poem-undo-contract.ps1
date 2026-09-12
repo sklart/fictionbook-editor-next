@@ -15,7 +15,7 @@ $source = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\structure\Body
 $viewSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBEview.cpp')
 
 function Get-FunctionBody([string]$Name) {
-    $match = [regex]::Match($source, "bool BodyStructuralEditor::$Name\(bool checkOnly\)\s*\{")
+    $match = [regex]::Match($source, "StructuralOperationResult BodyStructuralEditor::$Name\(bool checkOnly\)\s*\{")
     if(-not $match.Success) { throw "BodyStructuralEditor::$Name was not found." }
     $depth = 0
     for($index = $match.Index; $index -lt $source.Length; ++$index) {
@@ -30,7 +30,7 @@ function Get-FunctionBody([string]$Name) {
 
 foreach($name in @('InsertCite', 'InsertPoem')) {
     $body = Get-FunctionBody $name
-    foreach($required in @('FbeDom::MarkupUndoUnitScope undo', 'undo.Close();', 'insertBefore', 'removeNode(VARIANT_TRUE)', 'return true;', 'return false;')) {
+    foreach($required in @('FbeDom::MarkupUndoUnitScope undo', 'undo.Close();', 'insertBefore', 'removeNode(VARIANT_TRUE)', 'StructuralOperationResult::Applied()', 'StructuralOperationResult::NotApplicable()', 'StructuralOperationResult::Failed(error.Error(), documentChanged)')) {
         if($body -notlike "*$required*") { throw "$name misses Undo contract fragment: $required" }
     }
     if($body -match 'FixupParagraphs\(pe\)|PackText\(pe, Document\(\)\)') { throw "$name performs global normalization." }
@@ -39,7 +39,7 @@ foreach($name in @('InsertCite', 'InsertPoem')) {
 
 foreach($name in @('InsertCite', 'InsertPoem')) {
     $wrapper = [regex]::Match($viewSource, "bool CFBEView::$name\(bool fCheck\)\s*\{(?<body>.*?)\n\}", [Text.RegularExpressions.RegexOptions]::Singleline)
-    if(-not $wrapper.Success -or $wrapper.Groups['body'].Value -notmatch "BodyStructuralEditor editor\(Document\(\), m_mk_srv\);\s*return editor\.$name\(fCheck\);") { throw "CFBEView::$name is not a structural-editor wrapper." }
+    if(-not $wrapper.Success -or $wrapper.Groups['body'].Value -notmatch "BodyStructuralEditor editor\(Document\(\), m_mk_srv\);\s*const FbeStructure::StructuralOperationResult result = editor\.$name\(fCheck\);" -or $wrapper.Groups['body'].Value -notmatch 'return result.IsApplied\(\);') { throw "CFBEView::$name is not a structural-editor wrapper." }
 }
 
 $cite = Get-FunctionBody 'InsertCite'

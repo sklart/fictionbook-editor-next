@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "../ErrsEx.h"
 #include "../Settings.h"
+#include "../apputils.h"
 #include "../resource.h"
 #include "../res1.h"
 #include "../RuntimeLocalization.h"
@@ -21,6 +22,14 @@ extern CSettings _Settings;
 #endif
 
 bool VBErr = false;
+
+namespace
+{
+	bool IsUnattendedBatch()
+	{
+		return !AU::_ARGS.source_memory_benchmark_path.IsEmpty();
+	}
+}
 
 namespace U
 {
@@ -550,6 +559,7 @@ void  ReportError(HRESULT hr)
 {
   CString   err(Win32ErrMsg(hr));
   StartupTrace::HResult(L"utils", L"U100", hr, L"ReportError(HRESULT)");
+	if (IsUnattendedBatch()) return;
   CString cpt(FbeLoadRuntimeString(IDS_ERRMSGBOX_CAPTION));
   ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
 }
@@ -604,6 +614,7 @@ void  ReportError(_com_error& e) {
   CString cpt(FbeLoadRuntimeString(IDS_COM_ERR_CPT));
   StartupTrace::ComException(L"utils", L"U110", e.Error(), NULL, e.ErrorInfo(),
     L"operation=ReportError(_com_error)");
+	if (IsUnattendedBatch()) { VBErr = true; return; }
   ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
   VBErr = true;
 }

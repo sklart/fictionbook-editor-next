@@ -14,7 +14,8 @@ if($body.Contains('GetEnvironmentVariable')) { throw 'BodyStructuralEditor reads
 if($header -notmatch 'StructuralTrace\* trace = nullptr') { throw 'BodyStructuralEditor trace must remain nullable by default.' }
 if($view.Contains('StructuralTrace')) { throw 'Production CFBEView wrappers must not construct StructuralTrace.' }
 foreach($name in @('InsertCite', 'InsertPoem', 'SplitContainer')) {
-    if($view -notmatch "BodyStructuralEditor editor\(Document\(\), m_mk_srv\);\s*return editor\.$name\(fCheck\);") { throw "CFBEView::$name does not delegate to BodyStructuralEditor." }
+    if($view -notmatch "BodyStructuralEditor editor\(Document\(\), m_mk_srv\);\s*const FbeStructure::StructuralOperationResult result = editor\.$name\(fCheck\);\s*if \(!fCheck && FAILED\(result.error\)\) U::ReportError\(result.error\);\s*return result.IsApplied\(\);") { throw "CFBEView::$name does not surface BodyStructuralEditor failures at the UI boundary." }
 }
-if($header -notmatch 'bool SplitContainer\(bool checkOnly\);') { throw 'BodyStructuralEditor does not expose SplitContainer.' }
+if($header -notmatch 'StructuralOperationResult SplitContainer\(bool checkOnly\);') { throw 'BodyStructuralEditor does not expose SplitContainer result.' }
+if($header -notmatch 'bool documentChanged;') { throw 'Structural operation result does not report committed document changes.' }
 Write-Host 'BodyStructuralEditor boundary passed.'

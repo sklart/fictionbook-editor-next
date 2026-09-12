@@ -663,7 +663,9 @@ static MSHTML::IHTMLElementPtr GetHP(MSHTML::IHTMLElementPtr hp)
 bool CFBEView::SplitContainer(bool fCheck)
 {
 	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
-	return editor.SplitContainer(fCheck);
+	const FbeStructure::StructuralOperationResult result = editor.SplitContainer(fCheck);
+	if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
+	return result.IsApplied();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -923,13 +925,17 @@ static void FixupLinks(MSHTML::IHTMLDOMNode *dom) {
 bool CFBEView::InsertPoem(bool fCheck)
 {
 	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
-	return editor.InsertPoem(fCheck);
+	const FbeStructure::StructuralOperationResult result = editor.InsertPoem(fCheck);
+	if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
+	return result.IsApplied();
 } // CFBEView::InsertPoem
 
 bool CFBEView::InsertCite(bool fCheck)
 {
 	FbeStructure::BodyStructuralEditor editor(Document(), m_mk_srv);
-	return editor.InsertCite(fCheck);
+	const FbeStructure::StructuralOperationResult result = editor.InsertCite(fCheck);
+	if (!fCheck && FAILED(result.error)) U::ReportError(result.error);
+	return result.IsApplied();
 } // CFBEView::InsertCite
 
 // searching
@@ -3497,7 +3503,8 @@ bool CFBEView::NavigateInternalLink(MSHTML::IHTMLElementPtr link, const CString&
 	MSHTML::IHTMLElementPtr target(FBELinkNavigation::FindTargetElement(Document(), targetId));
 	if(!target) return false;
 	m_link_navigation_state.targetId = targetId;
-	m_link_navigation_state.originOrdinal = FBELinkNavigation::GetLinkTargetOrdinal(Document(), link, targetId);
+	m_link_navigation_state.originUniqueNumber = FBELinkNavigation::GetLinkUniqueNumber(link);
+	if(!m_link_navigation_state.HasOrigin()) return false;
 	HideNotePreview(*this);
 	GoTo(target);
 	return true;
@@ -3507,7 +3514,7 @@ bool CFBEView::ReturnToLinkNavigationOrigin()
 {
 	if(!m_link_navigation_state.HasOrigin() || !Document()) return false;
 	MSHTML::IHTMLElementPtr origin(FBELinkNavigation::FindOriginLink(Document(),
-		m_link_navigation_state.targetId, m_link_navigation_state.originOrdinal));
+		m_link_navigation_state.targetId, m_link_navigation_state.originUniqueNumber));
 	ClearLinkNavigationHistory();
 	if(!origin) return false;
 	GoTo(origin);
