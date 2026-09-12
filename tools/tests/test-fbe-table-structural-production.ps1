@@ -37,6 +37,7 @@ try {
         @{ Id='mixed'; Table='<tr><th>one</th><th>two</th><th>three</th></tr><tr><td>four</td><td>five</td><td>six</td></tr><tr><td>seven</td><td>eight</td><td>nine</td></tr>' },
         @{ Id='all-header'; Table='<tr><th>one</th><th>two</th></tr><tr><th>three</th><th>four</th></tr>' },
         @{ Id='edge-spans'; Table='<tr><td colspan="2">first</td><td>middle</td><td colspan="2">last</td></tr><tr><td rowspan="2">one</td><td>two</td><td colspan="2" rowspan="2">three</td><td>four</td></tr><tr><td>five</td><td>six</td></tr>' },
+		@{ Id='inherited-colspan'; Table='<tr><td id="A" rowspan="2" colspan="2">A</td><td id="B">B</td></tr><tr><td id="C">C</td></tr><tr><td id="D">D</td><td id="E">E</td><td id="F">F</td></tr>' },
         @{ Id='bulk-10x10'; Table=$bulkTable.ToString() },
         @{ Id='bulk-header-10x10'; Table=$bulkHeaderTable },
         @{ Id='preserve'; Table=$preserveTable },
@@ -104,6 +105,10 @@ try {
 			if($requestedOperation -and $case.Id -eq 'mixed' -and $operation -eq 'insert-row-above' -and $Target -eq '1,0') {
 				if([int]$before.td_count -ne 6 -or [int]$before.th_count -ne 3 -or [int]$after.td_count -ne 9 -or [int]$after.th_count -ne 3 -or [int]$undo.td_count -ne 6 -or [int]$undo.th_count -ne 3 -or [int]$redo.td_count -ne 9 -or [int]$redo.th_count -ne 3) { throw 'Insert Row Above не скопировал точную последовательность TD выбранной строки через Undo/Redo.' }
 				if($after.grid_signature -notmatch 'c3:id=,tag=TD,row=1,column=0' -or $after.grid_signature -match 'c3:id=,tag=TH,row=1,column=0') { throw 'Insert Row Above создал TH вместо TD в новой строке.' }
+			}
+			if($requestedOperation -and $case.Id -eq 'inherited-colspan' -and $operation -eq 'insert-column-right' -and $Target -eq '2,0') {
+				if([int]$before.td_count -ne 6 -or [int]$after.td_count -ne 7 -or [int]$undo.td_count -ne 6 -or [int]$redo.td_count -ne 7) { throw 'Insert Column внутри rowspan/colspan добавил лишнюю физическую ячейку.' }
+				if($after.grid_signature -notmatch 'id=A,tag=TD,row=0,column=0,logical-colspan=3,logical-rowspan=2' -or $after.grid_signature -notmatch 's0,0=0;s0,1=0;s0,2=0' -or $after.grid_signature -notmatch 's1,0=0;s1,1=0;s1,2=0') { throw 'Insert Column не расширил объединённую A ровно один раз по логической сетке.' }
 			}
 			if($requestedOperation -and (($case.Id -eq 'preserve' -and $operation -eq 'make-header') -or ($case.Id -eq 'preserve-header' -and $operation -eq 'make-normal'))) {
 				$withoutTag = { param($snapshot) $snapshot -replace 'tag=(TD|TH)', 'tag=*' }
