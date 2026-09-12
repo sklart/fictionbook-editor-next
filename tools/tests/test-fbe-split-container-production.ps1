@@ -3,7 +3,8 @@
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 90,
-    [string]$Case,
+    [Alias('Case')]
+    [string]$CaseId,
     [switch]$KeepArtifacts
 )
 
@@ -33,9 +34,14 @@ try {
         @{ id = 'split-stanza-middle'; body = '<section><poem><stanza><v>First</v><v>Middle</v></stanza></poem></section>'; position = 'middle' },
         @{ id = 'split-invalid-container'; body = '<epigraph><p>Quoted</p><p>Tail</p></epigraph>'; position = 'middle'; rejected = $true }
     )
-    if($Case -and -not (@($cases | ForEach-Object { $_.id }) -contains $Case)) { throw "Unknown Split runtime case: $Case" }
-    foreach($case in $cases) {
-		if($Case -and $case.id -ne $Case) { continue }
+    if($CaseId -and -not (@($cases | ForEach-Object { $_.id }) -contains $CaseId)) { throw "Unknown Split runtime case: $CaseId" }
+    $selectedCases = @($cases | Where-Object { -not $CaseId -or $_.id -eq $CaseId })
+    $selected = $selectedCases.Count; $started = 0; $completed = 0; $passed = 0; $failed = 0
+    if($selected -eq 0) { throw 'No Split runtime cases were selected.' }
+    foreach($testCase in $selectedCases) {
+		$started++
+		try {
+		$case = $testCase
         $fixture = Join-Path $directory ($case.id + '.fb2')
         $report = Join-Path $directory ($case.id + '.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
@@ -69,7 +75,15 @@ try {
             if(@($traceRows | Where-Object { $_.event -in @('exception','failure') }).Count) { throw "Split trace has a failure for $($case.id)." }
             Assert-Fb2Schema $fixture
         }
+        $completed++; $passed++
+        } catch {
+            $failed++
+            Write-Host "Split scenario counters: selected=$selected started=$started completed=$completed passed=$passed failed=$failed"
+            throw
+        }
     }
+    Write-Host "Split scenario counters: selected=$selected started=$started completed=$completed passed=$passed failed=$failed"
+    if($selected -le 0 -or $started -ne $selected -or $completed -ne $selected -or $failed -ne 0) { throw 'Split scenario execution accounting failed.' }
     Write-Host 'Production SplitContainer MSHTML Undo/Redo passed.'
 } finally {
     if($KeepArtifacts) { Write-Host "Artifacts: $directory" }

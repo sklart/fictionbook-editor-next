@@ -45,7 +45,7 @@ if ($header -notlike '*SC_UPDATE_LINE_COUNT*') {
     throw 'Missing SC_UPDATE_LINE_COUNT margin update behavior.'
 }
 
-$modifiedBlock = [regex]::Match($source, 'void\s+SourceEditorControl::HandleModified\s*\([^)]*\)\s*\{[\s\S]*?(?=\n\nvoid\s+SourceEditorControl::GotoWrongTag)')
+$modifiedBlock = [regex]::Match($source, 'void\s+SourceEditorControl::HandleModified\s*\([^)]*\)\s*\{[\s\S]*?(?=\r?\n\s*void\s+SourceEditorControl::GotoWrongTag\b)')
 if (!$modifiedBlock.Success) {
     throw 'SourceEditorControl modification handler was not found.'
 }

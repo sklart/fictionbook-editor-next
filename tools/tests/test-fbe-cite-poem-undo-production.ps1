@@ -7,7 +7,8 @@ one-step Undo/Redo DOM snapshots plus a save after the final Undo.
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 90,
-    [string]$Case,
+    [Alias('Case')]
+    [string]$CaseId,
     [switch]$KeepArtifacts
 )
 
@@ -50,9 +51,14 @@ try {
         # inside the first whitespace-only P; the editor correctly rejects it.
         @{ id = 'poem-selected-whitespace-paragraphs'; operation = 'poem'; expectRejected = $true; paragraphs = @('  ', "`t", '  ') }
     )
-    if($Case -and -not (@($cases | ForEach-Object { $_.id }) -contains $Case)) { throw "Unknown Cite/Poem runtime case: $Case" }
-    foreach($case in $cases) {
-		if($Case -and $case.id -ne $Case) { continue }
+    if($CaseId -and -not (@($cases | ForEach-Object { $_.id }) -contains $CaseId)) { throw "Unknown Cite/Poem runtime case: $CaseId" }
+    $selectedCases = @($cases | Where-Object { -not $CaseId -or $_.id -eq $CaseId })
+    $selected = $selectedCases.Count; $started = 0; $completed = 0; $passed = 0; $failed = 0
+    if($selected -eq 0) { throw 'No Cite/Poem runtime cases were selected.' }
+    foreach($testCase in $selectedCases) {
+		$started++
+		try {
+		$case = $testCase
         $expectedTarget = if($case.ContainsKey('target')) { $case.target } else { 'section' }
         $expectedSelection = if($case.ContainsKey('selection')) { $case.selection } else { 'selected' }
         $paragraphs = if($case.ContainsKey('paragraphs')) { ($case.paragraphs | ForEach-Object { "<p>$([Security.SecurityElement]::Escape($_))</p>" }) -join '' } else { '' }
@@ -89,7 +95,7 @@ try {
             if(-not (Test-Path -LiteralPath $trace)) { throw "Missing structural trace for rejected $($case.id): $trace" }
             $traceRows = Import-Csv -LiteralPath $trace -Delimiter "`t"
             if(-not (@($traceRows | Where-Object { $_.phase -eq 'preflight-rejected' -and $_.event -eq 'after' }).Count)) { throw "Rejected structural trace is not explained for $($case.id): $trace" }
-            continue
+            $completed++; $passed++; continue
         }
         if($trace) {
             if(-not (Test-Path -LiteralPath $trace)) { throw "Missing structural trace for $($case.id): $trace" }
@@ -108,7 +114,15 @@ try {
         if($case.operation -eq 'cite' -and ([int]$row.after_cites -ne 1 -or [int]$row.after_poems -ne 0)) { throw "Cite structure is wrong for $($case.id)." }
         if($case.operation -eq 'poem' -and ([int]$row.after_poems -ne 1 -or [int]$row.after_stanzas -lt 1)) { throw "Poem structure is wrong for $($case.id)." }
         Assert-Fb2Schema $fixture
+        $completed++; $passed++
+        } catch {
+            $failed++
+            Write-Host "Cite/Poem scenario counters: selected=$selected started=$started completed=$completed passed=$passed failed=$failed"
+            throw
+        }
     }
+    Write-Host "Cite/Poem scenario counters: selected=$selected started=$started completed=$completed passed=$passed failed=$failed"
+    if($selected -le 0 -or $started -ne $selected -or $completed -ne $selected -or $failed -ne 0) { throw 'Cite/Poem scenario execution accounting failed.' }
     Write-Host 'Production Cite/Poem MSHTML Undo/Redo passed.'
 }
 finally {
