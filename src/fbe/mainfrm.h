@@ -12,7 +12,7 @@
 #include "RuntimeLocalization.h"
 #include "document\\DocumentLocation.h"
 #include "document\\DocumentSession.h"
-#include "recovery\\RecoveryService.h"
+#include "recovery\\RecoveryController.h"
 #include "document\\recent\\RecentDocumentsController.h"
 #include "scripts\\ScriptUiController.h"
 #include "plugins\\PluginUiController.h"
@@ -111,7 +111,7 @@ public:
   bool			  m_sel_changed:1;
   bool			  m_change_state:1;
   bool			  m_need_title_update:1;
-	FbeRecovery::RecoveryService m_recovery;
+	FbeRecovery::RecoveryController m_recovery;
   UINT            m_current_dpi;
   bool            m_status_layout_posted;
 

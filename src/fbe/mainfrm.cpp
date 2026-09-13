@@ -2495,8 +2495,9 @@ bool CMainFrame::SaveRecoveryNow()
 		sourceText.resize(static_cast<size_t>(textLength) + 1);
 		m_source.SendMessage(SCI_GETTEXT, textLength + 1, reinterpret_cast<LPARAM>(sourceText.data()));
 	}
-	return m_recovery.Save(m_doc, DocChanged(), sourceActive, m_bad_xml,
-		sourceText.empty() ? NULL : sourceText.data(), sourceText.empty() ? 0 : sourceText.size() - 1, m_document_session.Location());
+	FbeRecovery::SnapshotRequest request; request.documentChanged = DocChanged(); request.sourceActive = sourceActive; request.sourceXmlInvalid = m_bad_xml;
+	request.sourceText = sourceText.empty() ? NULL : sourceText.data(); request.sourceTextLength = sourceText.empty() ? 0 : sourceText.size() - 1; request.location = m_document_session.Location();
+	return m_doc && m_recovery.Save(*m_doc, request);
 }
 void CMainFrame::TryRestoreRecovery()
 {
@@ -2519,18 +2520,7 @@ void CMainFrame::TryRestoreRecovery()
 
 	if (LoadFile(candidate.snapshotPath) == OK)
 	{
-		if (candidate.archiveBacked)
-		{
-			m_document_session.RestoreArchive(candidate.archiveLocation);
-			m_doc->m_filename = candidate.archiveLocation.storagePath;
-			m_doc->m_namevalid = true;
-			m_doc->SetDocumentFileType(candidate.archiveLocation.documentType);
-		}
-		else
-		{
-			m_doc->m_filename = L"Untitled.fb2";
-			m_doc->m_namevalid = false;
-		}
+		m_recovery.CommitRestoredIdentity(*m_doc, m_document_session, candidate);
 		m_doc->ResetSavePoint();
 		if (m_bad_xml)
 			m_bad_filename = L"Untitled.fb2";
