@@ -54,7 +54,7 @@ PluginImportResult PluginExecutionController::Import(PluginManager& manager,
 	hr = loader->Load(stream);
 	if (FAILED(hr)) { TracePluginExecution(L"Import", clsid, L"ImportV2StreamLoader", hr, 0); result.failure = PluginExecutionFailure::ResultStream; result.hr = hr; return result; }
 	result.suggestedFilename = static_cast<LPCWSTR>(suggestedFilename);
-	result.document = document; result.status = PluginExecutionStatus::Success; result.failure = PluginExecutionFailure::None; result.hr = S_OK;
+	result.document = document.p; result.status = PluginExecutionStatus::Success; result.failure = PluginExecutionFailure::None; result.hr = S_OK;
 	TracePluginExecution(L"Import", clsid, L"DOM result", S_OK, 1);
 	return result;
 }
