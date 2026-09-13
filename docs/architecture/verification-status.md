@@ -39,6 +39,8 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   RecoveryController владеет lifecycle/identity commit. Frame сохраняет timer,
   source extraction и restore prompt; normal restore сбрасывает session через
   `NewDocument`, archive restore возвращает archive location.
+  Archive external-modification runtime получает реальный `ArchiveWrite` code
+  на frame/test boundary, не загрязняя `DocumentSaveController` test logic.
   Save As удерживает encoding, filename и session identity до persistence
   success; MRU mutation проходит через `RecentDocumentsController`.
 
