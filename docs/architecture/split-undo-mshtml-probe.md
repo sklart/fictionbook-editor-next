@@ -85,3 +85,27 @@ framework. До его реализации prototype обязан отдель�
 
 Пока эти пункты не доказаны runtime-тестом, production Split оставлен без
 изменений, а строгий контракт `AAA [123] ZZZ` остаётся красным.
+
+## Первый текущий строгий runtime-отказ
+
+На test-only ревизии `42a93d79` первый по порядку строгий Split-case,
+`split-section-selection`, воспроизводится командой:
+
+```powershell
+& .\tools\tests\test-fbe-split-container-production.ps1 `
+  -FbeExe .\out\Release\FBE.exe -CaseId split-section-selection -KeepArtifacts
+```
+
+Фактическая диагностика подтверждает, что до команды выбрано именно `123`
+(`selection_text=123`, range не collapsed). Команда возвращает корректные
+`StructuralOperationResult` и сохраняет Undo/Redo, но её DOM после операции
+таков:
+
+```html
+<DIV class=section><P>AAA&nbsp;123</P></DIV>
+<DIV id=target-section-selection class=section><P>ZZZ</P></DIV>
+```
+
+То есть `new_title_text` пуст, `fragments_preserved=0`; это первый реальный
+отказ строгого регресса, а не ошибка selection assertion.  Артефакт
+воспроизведения: `%TEMP%\fbe-split-container-7a8251aa7c7e41ddb41e8dba99482368`.
