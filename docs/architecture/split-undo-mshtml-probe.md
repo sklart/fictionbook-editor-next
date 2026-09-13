@@ -92,6 +92,34 @@ Split должен заменить область с двумя sibling section
 изолировать созданные native MSHTML units. Табличный unit не решает ни
 вытеснение этих промежуточных entries, ни жизненный цикл после `LoadFile`.
 
+## Command-specific prototype: результат
+
+Был выполнен отдельный production prototype только для `SplitContainer`:
+он хранил detached deep-clone исходного контейнера и detached пару
+post-Split containers, удалял только верхний native Split unit через
+`DiscardFrom(topUnit)` и добавлял свой `IOleUndoUnit`. Никакой snapshot
+всей книги и очистка всего undo-stack не использовались.
+
+Базовый контракт прошёл: `AAA [123] ZZZ` дал правильный title/body, а один
+Undo и один Redo восстановили exact DOM. Однако обязательная смешанная
+последовательность выявила несовместимость менеджера MSHTML:
+
+```text
+Split → WM_CHAR X → Undo X → Undo Split → Redo Split → Redo X
+```
+
+* при стандартном `Do() { ...; undoManager->Add(this); }` Redo Split
+  возвращает Split DOM, но очищает ещё ожидающий native Redo для `X`;
+  второй Redo не возвращает `X`;
+* при `Do() { ...; return S_OK; }` native Redo сохраняется, но сам custom
+  Split unit не попадает в Redo и первый Redo не возвращает Split.
+
+Это прямо нарушает требование сохранения обычного MSHTML Undo. Согласно
+границе prototype, production-изменения удалены; оставлена только test-only
+диагностика последовательности. Исправление потребовало бы глобального
+перехвата/перестройки обоих стеков Undo, что не разрешено для Split-specific
+решения.
+
 Пока эти пункты не доказаны runtime-тестом, production Split оставлен без
 изменений, а строгий контракт `AAA [123] ZZZ` остаётся красным.
 

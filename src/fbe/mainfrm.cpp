@@ -4139,8 +4139,11 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		CString selectionMembership;
 		selectionMembership.Format(L"start=%ld; end=%ld; new=%d", selectionStartInNew, selectionEndInNew, selectionInNew ? 1 : 0);
 		trace.After(L"selection-membership", selectionMembership);
-		BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undone(contentHtml()); trace.After(L"undo-content", undone);
-		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redone(contentHtml());
+		BOOL handled = FALSE; CString undone, redone;
+		if (!caretScenario) {
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); undone = contentHtml(); trace.After(L"undo-content", undone);
+			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); redone = contentHtml();
+		}
 		bool caretInserted = !caretScenario, caretUndoRedo = !caretScenario;
 		if (caretScenario && selectionAfter && newContainer) {
 			const CString beforeInput(static_cast<const wchar_t*>(newContainer->innerText));
@@ -4148,13 +4151,30 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			const HWND inputFocus = ::GetFocus();
 			const bool insertedWithCommand = inputFocus && ::SendMessage(inputFocus, WM_CHAR, L'X', 0) != 0;
 			const CString afterInput(static_cast<const wchar_t*>(newContainer->innerText));
+			trace.After(L"caret-input-after", contentHtml());
 			BOOL inputHandled = FALSE;
 			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, inputHandled);
 			const CString undoneInput(static_cast<const wchar_t*>(newContainer->innerText));
+			const CString splitUndoneAfterInput(contentHtml());
+			trace.After(L"caret-input-undo", splitUndoneAfterInput);
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, inputHandled);
+			const CString splitUndoDom(contentHtml());
+			trace.After(L"caret-split-undo", splitUndoDom);
+			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, inputHandled);
+			const CString splitRedoDom(contentHtml());
+			trace.After(L"caret-split-redo", splitRedoDom);
 			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, inputHandled);
 			const CString redoneInput(static_cast<const wchar_t*>(newContainer->innerText));
-			caretInserted = (insertedWithCommand || afterInput != beforeInput) && beforeInput.Find(L"def") >= 0 && afterInput.Find(L"Xdef") >= 0 && afterInput.Find(L"defX") < 0;
-			caretUndoRedo = beforeInput == undoneInput && afterInput == redoneInput;
+			trace.After(L"caret-input-redo", contentHtml());
+			undone = splitUndoDom;
+			redone = splitRedoDom;
+			const bool hasTail = beforeInput.Find(L"def") >= 0;
+			// A split at end creates an intentionally empty paragraph.  Its
+			// regression is that a real WM_CHAR lands in that paragraph; all
+			// non-empty cases must remain the stricter Xdef/not-defX contract.
+			caretInserted = (insertedWithCommand || afterInput != beforeInput) &&
+				(hasTail ? (afterInput.Find(L"Xdef") >= 0 && afterInput.Find(L"defX") < 0) : afterInput.Find(L"X") >= 0);
+			caretUndoRedo = beforeInput == undoneInput && splitUndoneAfterInput == after && splitUndoDom == before && splitRedoDom == after && afterInput == redoneInput;
 		}
 		bool endTextInserted = !atEnd;
 		if (atEnd && newContainer) {
