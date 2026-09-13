@@ -18,6 +18,8 @@
 - [x] Стабилизировать save result: serialization, normal-write и archive-write
   failures различаются, а session/savepoint/recovery подтверждаются только
   после persistence success.
+- [x] Сделать Save As rollback-safe для encoding и направить его MRU update
+  через `RecentDocumentsController`.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 

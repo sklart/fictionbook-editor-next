@@ -34,6 +34,8 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   savepoint и recovery cleanup; failed/cancelled save не подтверждает их.
   Serialization и archive-write failures различаются в result, поэтому
   фиктивный archive error не показывается при ошибке сериализации.
+  Save As удерживает encoding, filename и session identity до persistence
+  success; MRU mutation проходит через `RecentDocumentsController`.
 
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation

@@ -8,6 +8,8 @@
   savepoint и recovery cleanup остаются во frame.
   Serialization, normal-write и archive-write failures различаются явно;
   archive error UI показывается только для реальной ошибки archive writer.
+- Save As теперь откатывает выбранную encoding при неудачной записи и обновляет
+  recent documents только после успеха через отдельный MRU owner.
 
 - New/Open/Reload используют единый transactional `PendingDocument`, который
   сохраняет прежний active-document до commit; `DocumentLifecycleResult`
