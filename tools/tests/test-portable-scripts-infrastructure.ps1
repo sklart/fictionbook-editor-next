@@ -11,7 +11,7 @@ function MustNot([string]$text, [string]$pattern, [string]$what) {
     if ($text -match $pattern) { throw "${what}: forbidden '$pattern' found." }
 }
 
-$frame = Text 'src\fbe\mainfrm.cpp'
+$frame = (Text 'src\fbe\mainfrm.cpp') + "`n" + (Text 'src\fbe\testing\RuntimeTestPortableState.inl')
 $header = Text 'src\fbe\mainfrm.h'
 $toolbarStore = Text 'src\fbe\toolbars\PortableToolbarStore.cpp'
 $layoutAdapter = Text 'src\fbe\toolbars\ToolbarLayoutAdapter.cpp'
@@ -42,7 +42,7 @@ Must $visuals '::DeleteObject\(bitmap\)' 'Bitmap RAII cleanup'
 Must $visuals '::DestroyIcon\(icon\)' 'Icon RAII cleanup'
 Must $frame 'm_last_script = NULL' 'Reload resets Last Script pointer'
 Must $frame 'GR_GDIOBJECTS' 'GUI regression scenario measures script reload GDI ownership'
-Must $frame 'InitPlugins\(\);\s*\n\s*InitPlugins\(\);\s*\n\s*InitPlugins\(\);' 'GUI regression scenario reloads scripts repeatedly'
+Must $frame 'InitializeExtensionUi\(\);\s*\n\s*InitializeExtensionUi\(\);\s*\n\s*InitializeExtensionUi\(\);' 'GUI regression scenario reloads extension UI repeatedly'
 Must $catalog 'std::sort\(m_items\.begin\(\)' 'Deterministic script ordering'
 Must $catalog 'left\.isFolder != right\.isFolder' 'Folders sort before scripts'
 Must $catalog 'left\.relativePath\.CompareNoCase' 'Relative path is deterministic sort tiebreaker'

@@ -6,6 +6,12 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $mainSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
 $scenarioSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\testing\RuntimeTestScenarios.inl')
+$scenarioParts = @('RuntimeTestPortableState.inl', 'RuntimeTestArchiveAndLifecycle.inl', 'RuntimeTestUndoAndContainers.inl', 'RuntimeTestNavigationAndStructure.inl', 'RuntimeTestEditorAndExport.inl')
+$scenarioText = $scenarioSource
+foreach($part in $scenarioParts) {
+    if($scenarioSource -notmatch [regex]::Escape($part)) { throw "Runtime scenario umbrella is missing: $part" }
+    $scenarioText += "`n" + (Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\testing\$part"))
+}
 $modeHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\testing\RuntimeTestScenarioMode.h')
 $project = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.vcxproj')
 
@@ -24,7 +30,7 @@ foreach($required in @(
     'split-undo-probe',
     'body-source-transition-runtime',
     'settings-dialog-runtime')) {
-    if($scenarioSource -notmatch [regex]::Escape($required)) {
+    if($scenarioText -notmatch [regex]::Escape($required)) {
         throw "Runtime scenario harness is missing: $required"
     }
 }
@@ -40,6 +46,11 @@ foreach($forbidden in @(
 
 if($modeHeader -notmatch 'namespace\s+RuntimeTests' -or $modeHeader -notmatch 'IsScenario\s*\(') {
     throw 'Runtime test scenario mode must remain a narrow testing helper.'
+}
+
+if($mainSource -match 'CMainFrame::InitPlugins\s*\(') { throw 'InitPlugins must not regroup scripts, plugins and MRU.' }
+foreach($required in @('InitializeExtensionUi\s*\(', 'InitializeScripts\s*\(', 'InitializeBundledPlugins\s*\(', 'InitializeRecentDocumentsMenu\s*\(')) {
+    if($mainSource -notmatch $required) { throw "MainFrame extension responsibilities are missing: $required" }
 }
 
 Write-Host 'Runtime test scenario boundary contract passed.'

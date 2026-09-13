@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Startup coordination разделена на независимые `InitializeScripts`,
+  `InitializeBundledPlugins` и `InitializeRecentDocumentsMenu`; большой
+  runtime test harness разбит на тематические `.inl`-части.
+
 - Presentation-обработчики runtime-локализации меню, toolbar и tooltip вынесены
   из `mainfrm.cpp` в `src/fbe/ui/MainFrameRuntimeUi.inl`; live-refresh языка
   сохраняет существующий контракт без расширения доступа `CMainFrame`.

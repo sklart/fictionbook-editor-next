@@ -185,7 +185,7 @@ void CMainFrame::RefreshLocalizedToolbarCaptions()
 void CMainFrame::RefreshLocalizedMainFrameUi()
 {
 	// Меню и панели уже построены при старте. Переводим их на месте: повторный
-	// AttachMenu + InitPlugins создавал новые toolbar-кнопки и GDI-изображения
+	// AttachMenu + InitializeExtensionUi создавал новые toolbar-кнопки и GDI-изображения
 	// при каждом переключении языка, вызывая задержку, рост памяти и артефакты UI.
 	HMENU menu = m_MenuBar.GetMenu();
 	if(menu != NULL)

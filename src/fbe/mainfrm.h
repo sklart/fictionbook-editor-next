@@ -229,9 +229,12 @@ public:
 	// Plugins support
 	CSimpleArray<CLSID> m_import_plugins;
 	CSimpleArray<CLSID> m_export_plugins;
-	void InitPlugins();
-	void InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist);
-	void InitPluginHotkey(CString guid, UINT cmd, CString name);
+	void InitializeExtensionUi();
+	void InitializeScripts();
+	void InitializeBundledPlugins();
+	void InitializeRecentDocumentsMenu();
+	void InitializeBundledPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist);
+	void RegisterPluginHotkey(CString guid, UINT cmd, CString name);
 	UINT m_last_plugin;
 
   void AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand = 0, const BYTE bState = 0, const HICON icon = 0);

@@ -1,0 +1,252 @@
+	if (IsFbeTestScenario(L"visual-dom-normalizer"))
+	{
+		CStringA header("case\tparagraphs\tempty_divs\tbrs\texact_paragraphs\tempty_line\tnbsp\tformatting\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		if (!body || !editable)
+		{
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		const CString originalHtml((const wchar_t*)editable->innerHTML);
+		const CString pastePayload(L"paste-alpha\x00a0bold\r\npaste-beta\r\n\r\npaste-gamma");
+		bool pasteNormalized = false;
+		CComPtr<IDataObject> originalClipboard;
+		if (SUCCEEDED(::OleGetClipboard(&originalClipboard)) && ::OpenClipboard(m_hWnd)) {
+			::EmptyClipboard();
+			const SIZE_T pasteBytes = static_cast<SIZE_T>(pastePayload.GetLength() + 1) * sizeof(wchar_t);
+			HGLOBAL pasteMemory = ::GlobalAlloc(GMEM_MOVEABLE, pasteBytes);
+			wchar_t* pasteText = pasteMemory ? static_cast<wchar_t*>(::GlobalLock(pasteMemory)) : nullptr;
+			if (pasteText) { wcscpy_s(pasteText, pastePayload.GetLength() + 1, pastePayload); ::GlobalUnlock(pasteMemory); }
+			const bool clipboardReady = pasteMemory && pasteText && ::SetClipboardData(CF_UNICODETEXT, pasteMemory);
+			if (!clipboardReady && pasteMemory) ::GlobalFree(pasteMemory);
+			::CloseClipboard();
+			if (clipboardReady) {
+				MSHTML::IHTMLElementCollectionPtr initialParagraphs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"P"));
+				MSHTML::IHTMLElementPtr initialParagraph(initialParagraphs && initialParagraphs->length ? initialParagraphs->item(0L) : MSHTML::IHTMLElementPtr());
+				if (initialParagraph) { MSHTML::IHTMLTxtRangePtr pasteRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()); pasteRange->moveToElementText(initialParagraph); pasteRange->collapse(VARIANT_FALSE); pasteRange->select(); BOOL pasteHandled = FALSE; m_doc->m_body.OnPaste(0, ID_EDIT_PASTE, 0, pasteHandled); }
+				editable = document->all->item(L"fbw_body");
+				const CString pastedHtml(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+				const CString pastedText(editable ? static_cast<LPCWSTR>(editable->innerText) : L"");
+				const int alpha = pastedText.Find(L"paste-alpha"), beta = pastedText.Find(L"paste-beta"), gamma = pastedText.Find(L"paste-gamma");
+				pasteNormalized = alpha >= 0 && beta > alpha && gamma > beta && pastedHtml.Find(L"<BR") < 0 && (pastedHtml.Find(L"&nbsp;") >= 0 || pastedHtml.Find(L"\x00a0") >= 0);
+			}
+			::OleSetClipboard(originalClipboard);
+		}
+		CStringA pasteRow; pasteRow.Format("paste-normal\t0\t0\t0\t%d\t%d\t%d\t%d\t%s\r\n", pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, 1, pasteNormalized ? "pass" : "fail");
+		output.Write(pasteRow, static_cast<DWORD>(pasteRow.GetLength()), &written);
+		editable = document->all->item(L"fbw_body");
+		if (!editable) { output.Close(); ::PostQuitMessage(1); return 0; }
+		editable->innerHTML = originalHtml.AllocSysString();
+		struct NormalizerCase { const wchar_t* name; const wchar_t* html; const wchar_t* text[3]; long paragraphs; bool nbsp; bool formatting; };
+		const NormalizerCase cases[] = {
+			{ L"single-br", L"<DIV class='section'><P>alpha<BR>beta</P></DIV>", { L"alpha", L"beta", L"" }, 2, false, false },
+			{ L"double-br", L"<DIV class='section'><P>alpha<BR><BR>beta</P></DIV>", { L"alpha", L"", L"beta" }, 3, false, false },
+			{ L"empty-p", L"<DIV class='section'><P>alpha</P><P></P><P>beta</P></DIV>", { L"alpha", L"", L"beta" }, 3, false, false },
+			{ L"nbsp-p", L"<DIV class='section'><P>alpha</P><P>&nbsp;</P><P>beta</P></DIV>", { L"alpha", L"\x00a0", L"beta" }, 3, true, false },
+			{ L"formatted-br", L"<DIV class='section'><P><STRONG>alpha</STRONG><BR><EM>beta</EM></P></DIV>", { L"alpha", L"beta", L"" }, 2, false, true }
+		};
+		bool allPassed = true;
+		for (const NormalizerCase& testCase : cases)
+		{
+			editable->innerHTML = testCase.html;
+			m_doc->m_body.Normalize(MSHTML::IHTMLDOMNodePtr(body));
+			// SplitBRs replaces outerHTML, invalidating the original element proxy.
+			editable = document->all->item(L"fbw_body");
+			if (!editable) { output.Close(); ::PostQuitMessage(1); return 0; }
+			auto countElements = [&](const wchar_t* tagName) -> long {
+				MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(tagName));
+				return elements ? elements->length : 0;
+			};
+			long emptyDivs = 0;
+			MSHTML::IHTMLElementCollectionPtr divs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
+			for (long index = 0; divs && index < divs->length; ++index) {
+				MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
+				if (div && CString((const wchar_t*)div->innerHTML).Trim().IsEmpty()) ++emptyDivs;
+			}
+			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"P"));
+			bool exactParagraphs = paragraphs && paragraphs->length == testCase.paragraphs;
+			for (long index = 0; exactParagraphs && index < testCase.paragraphs; ++index) {
+				MSHTML::IHTMLElementPtr paragraph(paragraphs->item(_variant_t(index), _variant_t()));
+				exactParagraphs = paragraph && (testCase.nbsp && index == 1 || CString(static_cast<LPCWSTR>(paragraph->innerText)) == testCase.text[index]);
+			}
+			const bool emptyLine = paragraphs && paragraphs->length >= 3 && CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(1L), _variant_t()))->innerText)).IsEmpty();
+			CString middleHtml;
+			if (paragraphs && paragraphs->length >= 3) middleHtml = static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(1L), _variant_t()))->innerHTML);
+			middleHtml.MakeLower();
+			const bool nbsp = !testCase.nbsp || middleHtml.Find(L"&nbsp;") >= 0 || middleHtml.Find(L"\x00a0") >= 0;
+			const bool formatting = !testCase.formatting || (countElements(L"STRONG") == 1 && countElements(L"EM") == 1);
+			const bool passed = countElements(L"BR") == 0 && emptyDivs == 0 && exactParagraphs &&
+				(wcscmp(testCase.name, L"double-br") || emptyLine) && nbsp && formatting;
+			allPassed = allPassed && passed;
+			CStringA row;
+			row.Format("%S\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%s\r\n", testCase.name, countElements(L"P"), emptyDivs, countElements(L"BR"), exactParagraphs, emptyLine, nbsp, formatting, passed ? "pass" : "fail");
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+		}
+		// Restore the fixture before exercising the ordinary production save path.
+		editable->innerHTML = originalHtml.AllocSysString();
+		int validationLine = 0, validationColumn = 0;
+		const bool saved = m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
+		output.Flush(); output.Close();
+		::PostQuitMessage(allPassed && saved ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"link-navigation-runtime"))
+	{
+		CStringA header("nested\ttarget\tsame_document\tbroken\treturned_second\tinserted_navigate\tinserted_same_unique\tinserted_returned\tinserted_returned_origin\tinserted_before\tdeleted_origin_fallback\tother_document_opened\tunchanged\tsecond_dom_unchanged\tsecond_dirty_unchanged\torigin_dom_unchanged\torigin_dirty_unchanged\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
+		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr internal(links && links->length > 0 ? links->item(0L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr second(links && links->length > 1 ? links->item(1L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr broken(links && links->length > 2 ? links->item(2L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr strongs(internal ? MSHTML::IHTMLElement2Ptr(internal)->getElementsByTagName(L"STRONG") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? strongs->item(0L) : MSHTML::IHTMLElementPtr());
+		const CString before(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+		MSHTML::IHTMLElementPtr nearest(FBELinkNavigation::FindNearestLinkElement(nested, editable));
+		const CString targetId(FBELinkNavigation::GetInternalLinkTargetId(document, nearest));
+		MSHTML::IHTMLElementPtr target(FBELinkNavigation::FindTargetElement(document, targetId));
+		CString documentUrl;
+		try { MSHTML::IHTMLDocument4Ptr document4(document); if(document4) documentUrl = static_cast<LPCWSTR>(document4->URLUnencoded); }
+		catch(const _com_error&) { }
+		const CString sameDocumentHref = documentUrl + L"#note-1";
+		const bool sameDocument = FBELinkNavigation::GetInternalTargetId(static_cast<LPCWSTR>(sameDocumentHref), static_cast<LPCWSTR>(documentUrl)) == L"note-1";
+		auto navigationLeavesDocumentUntouched = [&](const std::function<bool()>& operation, bool& domUnchanged, bool& dirtyUnchanged) -> bool {
+			const CString snapshot(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+			const bool dirty = m_doc->DocChanged();
+			const bool result = operation();
+			domUnchanged = editable && snapshot == CString(static_cast<LPCWSTR>(editable->innerHTML));
+			dirtyUnchanged = dirty == m_doc->DocChanged();
+			return result && domUnchanged && dirtyUnchanged;
+		};
+		bool secondDomUnchanged = false, secondDirtyUnchanged = false, originDomUnchanged = false, originDirtyUnchanged = false;
+		const CString secondTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, second));
+		const long secondUniqueNumber = FBELinkNavigation::GetLinkUniqueNumber(second);
+		const bool secondNavigated = second && secondTargetId == targetId && navigationLeavesDocumentUntouched([&]() { return m_doc->m_body.NavigateInternalLink(second, secondTargetId); }, secondDomUnchanged, secondDirtyUnchanged);
+		OnGoToFootnote(0, ID_GOTO_FOOTNOTE, nullptr);
+		MSHTML::IHTMLTxtRangePtr returnedRange(document->selection->createRange());
+		MSHTML::IHTMLElementPtr returnedLink(returnedRange ? FBELinkNavigation::FindNearestLinkElement(returnedRange->parentElement(), editable) : MSHTML::IHTMLElementPtr());
+		const bool returnedSecond = secondNavigated && returnedLink == second;
+		const CString brokenTargetId(FBELinkNavigation::GetInternalLinkTargetId(document, broken));
+		const bool brokenInternal = !brokenTargetId.IsEmpty() && !FBELinkNavigation::FindTargetElement(document, brokenTargetId);
+		MSHTML::IHTMLElementPtr inserted;
+		MSHTML::IHTMLDOMNodePtr secondNode(second);
+		MSHTML::IHTMLDOMNodePtr secondParent(secondNode ? secondNode->parentNode : MSHTML::IHTMLDOMNodePtr());
+		bool insertedBefore = false;
+		bool insertedNavigate = false, insertedSameUnique = false, insertedReturned = false, insertedReturnedOrigin = false;
+		try {
+			inserted = document->createElement(L"A");
+			if (inserted && second && secondParent) {
+				const bool originSaved = navigationLeavesDocumentUntouched([&]() { return m_doc->m_body.NavigateInternalLink(second, secondTargetId); }, originDomUnchanged, originDirtyUnchanged);
+				inserted->setAttribute(L"href", _variant_t(L"#note-1"), 2);
+				inserted->innerText = L"inserted source";
+				secondParent->insertBefore(MSHTML::IHTMLDOMNodePtr(inserted), secondNode.GetInterfacePtr());
+				MSHTML::IHTMLElementCollectionPtr currentLinks(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A"));
+				MSHTML::IHTMLElementPtr currentSecond;
+				for (long index = 0; currentLinks && index < currentLinks->length; ++index) {
+					MSHTML::IHTMLElementPtr candidate(currentLinks->item(index));
+					if (candidate && CString(static_cast<LPCWSTR>(candidate->innerText)) == L"second source") { currentSecond = candidate; break; }
+				}
+				const long currentSecondUniqueNumber = FBELinkNavigation::GetLinkUniqueNumber(currentSecond);
+				// The saved history belongs to the pre-insertion second link.  Do not
+				// navigate again here: that would replace the origin under test.
+				insertedNavigate = originSaved;
+				insertedSameUnique = currentSecondUniqueNumber == secondUniqueNumber;
+				insertedReturned = m_doc->m_body.ReturnToLinkNavigationOrigin();
+				MSHTML::IHTMLTxtRangePtr returnedOriginRange(document->selection->createRange());
+				MSHTML::IHTMLTxtRangePtr currentSecondRange(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+				if (currentSecondRange && currentSecond) currentSecondRange->moveToElementText(currentSecond);
+				insertedReturnedOrigin = insertedReturned && currentSecondRange &&
+					returnedOriginRange->compareEndPoints(L"StartToStart", currentSecondRange) >= 0 &&
+					returnedOriginRange->compareEndPoints(L"EndToEnd", currentSecondRange) <= 0;
+				insertedBefore = insertedNavigate && insertedSameUnique && insertedReturnedOrigin;
+				second = currentSecond;
+			}
+		} catch (const _com_error&) { insertedBefore = false; }
+		bool deletedOriginFallback = false;
+		try {
+			MSHTML::IHTMLDOMNodePtr currentSecondNode(second);
+			if (currentSecondNode && m_doc->m_body.NavigateInternalLink(second, secondTargetId)) {
+				currentSecondNode->removeNode(VARIANT_TRUE);
+				deletedOriginFallback = !m_doc->m_body.ReturnToLinkNavigationOrigin();
+			}
+		} catch (const _com_error&) { deletedOriginFallback = false; }
+		wchar_t replacementPath[MAX_PATH] = {};
+		const DWORD replacementPathLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_NAVIGATION_SECOND_FILE", replacementPath, _countof(replacementPath));
+		bool otherDocumentOpened = false;
+		if (replacementPathLength && replacementPathLength < _countof(replacementPath) && internal && m_doc->m_body.NavigateInternalLink(internal, targetId)) {
+			// The preceding insertion/removal is intentional history coverage.  It
+			// must not prompt during this separate ordinary-open regression step.
+			m_doc->MarkSavePoint();
+			otherDocumentOpened = LoadFile(replacementPath) == OK && !m_doc->m_body.ReturnToLinkNavigationOrigin();
+		}
+		// Both ordinary transitions above were independently compared with the
+		// live DOM and dirty state.  Later insertion/removal intentionally edits
+		// the fixture and is covered by its own history assertions.
+		const bool unchanged = secondDomUnchanged && secondDirtyUnchanged && originDomUnchanged && originDirtyUnchanged;
+		const bool passed = nearest == internal && target && sameDocument && brokenInternal && returnedSecond && insertedBefore && deletedOriginFallback && otherDocumentOpened && unchanged;
+		CStringA row;
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, returnedSecond, insertedNavigate, insertedSameUnique, insertedReturned, insertedReturnedOrigin, insertedBefore, deletedOriginFallback, otherDocumentOpened, unchanged, secondDomUnchanged, secondDirtyUnchanged, originDomUnchanged, originDirtyUnchanged, passed ? "pass" : "fail");
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"reference-navigation-runtime"))
+	{
+		CStringA header("footnote_check\tfootnote_target\treference_check\treference_target\tcheck_unchanged\tdom_unchanged\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
+		MSHTML::IHTMLElementCollectionPtr links(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr link(links && links->length ? links->item(0L) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementCollectionPtr strongs(link ? MSHTML::IHTMLElement2Ptr(link)->getElementsByTagName(L"STRONG") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr nested(strongs && strongs->length ? strongs->item(0L) : MSHTML::IHTMLElementPtr());
+		const CString originalHtml(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+		auto selectElement = [&](MSHTML::IHTMLElementPtr element) -> bool
+		{
+			if (!element || !document || !document->body) return false;
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			range->moveToElementText(element); range->collapse(VARIANT_TRUE); range->select(); return true;
+		};
+		auto sameSelection = [&]() -> bool
+		{
+			MSHTML::IHTMLTxtRangePtr first(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+			if (!first) return false;
+			const bool canFootnote = m_doc->m_body.GoToFootnote(true);
+			MSHTML::IHTMLTxtRangePtr after(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+			const bool unchangedFootnote = after && first->compareEndPoints(L"StartToStart", after) == 0 &&
+				first->compareEndPoints(L"EndToEnd", after) == 0;
+			return canFootnote && unchangedFootnote;
+		};
+		const bool selectedLink = selectElement(nested ? nested : link);
+		const bool footnoteCheck = selectedLink && sameSelection();
+		const bool footnoteMoved = footnoteCheck && m_doc->m_body.GoToFootnote(false);
+		MSHTML::IHTMLElementPtr noteParent;
+		try { noteParent = MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->parentElement(); } catch (const _com_error&) { }
+		while (noteParent && CString(static_cast<LPCWSTR>(noteParent->id)) != L"note-1") noteParent = noteParent->parentElement;
+		const bool footnoteTarget = footnoteMoved && noteParent;
+		MSHTML::IHTMLTxtRangePtr beforeReference(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+		const bool referenceCheck = beforeReference && m_doc->m_body.GoToReference(true);
+		MSHTML::IHTMLTxtRangePtr afterReference(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+		const bool referenceCheckUnchanged = beforeReference && afterReference &&
+			beforeReference->compareEndPoints(L"StartToStart", afterReference) == 0 &&
+			beforeReference->compareEndPoints(L"EndToEnd", afterReference) == 0;
+		m_doc->m_body.GoToReference(false);
+		MSHTML::IHTMLTxtRangePtr selectedAfterReference(document && document->selection ? MSHTML::IHTMLTxtRangePtr(document->selection->createRange()) : MSHTML::IHTMLTxtRangePtr());
+		MSHTML::IHTMLTxtRangePtr expectedReference(link && document && document->body ? MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		if (expectedReference)
+		{
+			expectedReference->moveToElementText(link); expectedReference->collapse(VARIANT_TRUE);
+			expectedReference->move(L"character", CString(static_cast<LPCWSTR>(link->innerText)).GetLength());
+		}
+		const bool referenceTarget = selectedAfterReference && expectedReference &&
+			selectedAfterReference->compareEndPoints(L"StartToStart", expectedReference) == 0 &&
+			selectedAfterReference->compareEndPoints(L"EndToEnd", expectedReference) == 0;
+		const bool unchanged = editable && originalHtml == CString(static_cast<LPCWSTR>(editable->innerHTML));
+		const bool passed = footnoteCheck && footnoteTarget && referenceCheck && referenceCheckUnchanged && referenceTarget && unchanged;
+		CStringA row;
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", footnoteCheck, footnoteTarget, referenceCheck,
+			referenceTarget, referenceCheckUnchanged, unchanged, passed ? "pass" : "fail");
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}

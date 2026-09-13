@@ -16,6 +16,10 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
 
 ## Подтверждено локально
 
+- Extension startup разделён на scripts, bundled plugins и MRU/recent documents;
+  `InitializeExtensionUi` остаётся только тонким coordinator. Runtime test
+  scenarios подключают тематические части из малого umbrella-файла.
+
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation
   unit, поэтому private-граница frame не расширена.

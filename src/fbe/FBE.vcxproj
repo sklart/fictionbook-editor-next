@@ -586,6 +586,11 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="extras\SHA256.h" />
     <ClInclude Include="testing\RuntimeTestScenarios.inl" />
     <ClInclude Include="testing\RuntimeTestScenarioMode.h" />
+    <ClInclude Include="testing\RuntimeTestPortableState.inl" />
+    <ClInclude Include="testing\RuntimeTestArchiveAndLifecycle.inl" />
+    <ClInclude Include="testing\RuntimeTestUndoAndContainers.inl" />
+    <ClInclude Include="testing\RuntimeTestNavigationAndStructure.inl" />
+    <ClInclude Include="testing\RuntimeTestEditorAndExport.inl" />
     <ClInclude Include="ui\MainFrameRuntimeUi.inl" />
     <ClInclude Include="EditorEngine.h" />
   </ItemGroup>

@@ -1925,7 +1925,7 @@ void CMainFrame::SavePortableToolbarLayout()
 	PortableToolbarStore::Save(layout);
 }
 
-void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist)
+void CMainFrame::InitializeBundledPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist)
 {
 	const int commandCapacity = static_cast<int>((cmdbase == ID_IMPORT_BASE ? ID_PLUGIN_IMPORT_LAST : ID_PLUGIN_EXPORT_LAST) - cmdbase + 1);
 	const std::vector<PluginDescriptor>& plugins = g_pluginManager.GetPlugins();
@@ -1942,7 +1942,7 @@ void CMainFrame::InitPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, C
 		const CString pluginType = FbeLoadRuntimeStringByKey(
 			plugin.type == L"Import" ? L"fbe.hotkey.plugins.import" : L"fbe.hotkey.plugins.export",
 			plugin.type);
-		InitPluginHotkey(plugin.clsidText, command, pluginType + CString(L" | ") + hs);
+		RegisterPluginHotkey(plugin.clsidText, command, pluginType + CString(L" | ") + hs);
 		// check if an icon is available
 		CString icon(plugin.icon);
 		if(!icon.IsEmpty())
@@ -1981,9 +1981,15 @@ private:
 };
 }
 
-void CMainFrame::InitPlugins()
+void CMainFrame::InitializeExtensionUi()
 {
-	g_pluginManager.DiscoverBundledPlugins();
+	InitializeScripts();
+	InitializeBundledPlugins();
+	InitializeRecentDocumentsMenu();
+}
+
+void CMainFrame::InitializeScripts()
+{
 	ReleaseScriptResources();
 	if (StartupTrace::Enabled())
 	{
@@ -2021,29 +2027,6 @@ void CMainFrame::InitPlugins()
 		_Settings.SetScriptCommandIds(serializedCommandIds);
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
 
-	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
-	HMENU sub = ::GetSubMenu(file, 6);
-	InitPluginsType(sub, L"Import", ID_IMPORT_BASE, m_import_plugins);
-	StartupTrace::Event(L"plugin", L"P140", L"import plugins initialized");
-
-	sub = ::GetSubMenu(file, 7);
-	InitPluginsType(sub, L"Export", ID_EXPORT_BASE, m_export_plugins);
-	StartupTrace::Event(L"plugin", L"P150", L"export plugins initialized");
-
-	sub = ::GetSubMenu(file, 9);
-	m_mru.SetMenuHandle(sub);
-	RefreshMruEmptyStateText(m_mru);
-	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
-	if (DeploymentContext::RegistryPersistenceAllowed())
-		m_mru.ReadFromRegistry(_Settings.GetKeyPath());
-	else
-		FbeRecentDocuments::ReadPortableMru(m_mru);
-	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
-	FbeRecentDocuments::RemoveLegacyArchiveMruEntries(m_mru);
-	FbeRecentDocuments::AddArchiveMruRecordsToList(m_mru);
-	StartupTrace::Event(L"plugin", L"P160", L"MRU initialized");
-
-	// Scripts
 	HMENU ManMenu = m_MenuBar.GetMenu();
 	HMENU scripts = GetSubMenu(ManMenu, 6);
 
@@ -2092,6 +2075,33 @@ void CMainFrame::InitPlugins()
 		AppendMenu(scripts, MF_STRING | MF_DISABLED | MF_GRAYED, IDCANCEL, buf);
 	}
 	ApplyRuntimeMainFrameMenuLocalization(ManMenu);
+}
+
+void CMainFrame::InitializeBundledPlugins()
+{
+	g_pluginManager.DiscoverBundledPlugins();
+	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
+	HMENU sub = ::GetSubMenu(file, 6);
+	InitializeBundledPluginsType(sub, L"Import", ID_IMPORT_BASE, m_import_plugins);
+	StartupTrace::Event(L"plugin", L"P140", L"import plugins initialized");
+	sub = ::GetSubMenu(file, 7);
+	InitializeBundledPluginsType(sub, L"Export", ID_EXPORT_BASE, m_export_plugins);
+	StartupTrace::Event(L"plugin", L"P150", L"export plugins initialized");
+}
+
+void CMainFrame::InitializeRecentDocumentsMenu()
+{
+	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
+	HMENU sub = ::GetSubMenu(file, 9);
+	m_mru.SetMenuHandle(sub);
+	RefreshMruEmptyStateText(m_mru);
+	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
+	if (DeploymentContext::RegistryPersistenceAllowed()) m_mru.ReadFromRegistry(_Settings.GetKeyPath());
+	else FbeRecentDocuments::ReadPortableMru(m_mru);
+	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
+	FbeRecentDocuments::RemoveLegacyArchiveMruEntries(m_mru);
+	FbeRecentDocuments::AddArchiveMruRecordsToList(m_mru);
+	StartupTrace::Event(L"plugin", L"P160", L"MRU initialized");
 }
 
 LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
@@ -2351,7 +2361,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   }
   else
   {
-    InitPlugins();
+	InitializeExtensionUi();
   }
   StartupTrace::AppendTestStartupBreadcrumb("plugins-init-complete");
   StartupTrace::Event(L"mainframe", L"M160", L"plugins and MRU initialized");
@@ -6266,7 +6276,7 @@ void CMainFrame::RestartProgram()
 
 void CMainFrame::ReleaseScriptResources()
 {
-	// InitPlugins may be requested more than once.  Return the physical scripts
+	// InitializeExtensionUi may be requested more than once.  Return the physical scripts
 	// toolbar and its customization catalog to the resource baseline before the
 	// next scan, otherwise every scan appends another copy of icon scripts.
 	if(::IsWindow(m_ScriptsToolbar))
@@ -6325,7 +6335,7 @@ void CMainFrame::InitScriptHotkey(ScriptDescriptor& script)
 	}
 }
 
-void CMainFrame::InitPluginHotkey(CString guid, UINT cmd, CString name)
+void CMainFrame::RegisterPluginHotkey(CString guid, UINT cmd, CString name)
 {
 	if(cmd > 0xffffu)
 		return;
