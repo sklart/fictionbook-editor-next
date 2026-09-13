@@ -4,7 +4,6 @@
 #include "stdafx.h"
 #include "structure/BodyStructuralEditor.h"
 #include "structure/StructuralTrace.h"
-#include "document\PendingDocument.h"
 #include "document\DocumentLifecycleController.h"
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
