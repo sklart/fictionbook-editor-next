@@ -6,6 +6,8 @@
   persistence и `DocumentSession` commit происходят только после успешной
   записи, в то время как fail-closed editor preflight, native dialogs,
   savepoint и recovery cleanup остаются во frame.
+  Serialization, normal-write и archive-write failures различаются явно;
+  archive error UI показывается только для реальной ошибки archive writer.
 
 - New/Open/Reload используют единый transactional `PendingDocument`, который
   сохраняет прежний active-document до commit; `DocumentLifecycleResult`

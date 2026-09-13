@@ -1,19 +1,19 @@
 #pragma once
 
 #include "DocumentLocation.h"
-#include "../archive/ArchiveReader.h"
+#include "../archive/ArchiveError.h"
 
 class DocumentSession;
 namespace FB { class Doc; }
 
-enum class DocumentSaveStatus { Success, Cancelled, Failed };
+enum class DocumentSaveStatus { Success, Failed };
+enum class DocumentSaveFailureKind { None, Serialization, NormalWrite, ArchiveWrite };
 
 struct DocumentSaveResult
 {
 	DocumentSaveStatus status = DocumentSaveStatus::Failed;
+	DocumentSaveFailureKind failure = DocumentSaveFailureKind::None;
 	DocumentLocation location;
-	bool archive = false;
-	bool serialized = false;
 	FbeArchive::Error archiveError;
 	bool Succeeded() const { return status == DocumentSaveStatus::Success; }
 };

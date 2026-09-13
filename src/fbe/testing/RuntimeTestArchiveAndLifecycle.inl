@@ -48,14 +48,10 @@
 		const bool saveAs = IsFbeTestScenario(L"archive-rar-save-runtime");
 		const bool shouldSave = !readOnlyArchive || saveAs;
 		const bool saved = sourceCommitted && bodyActive && markerFound && (!shouldSave || SaveFile(false) == OK);
-		wchar_t serializedChanged[4] = {};
-		const bool archiveSaveSerializedChanged = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SERIALIZED_CHANGED", serializedChanged, _countof(serializedChanged)) == 1 && serializedChanged[0] == L'1';
-		wchar_t archiveWriteError[64] = {};
-		::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_WRITE_ERROR", archiveWriteError, _countof(archiveWriteError));
 		CStringA report;
-		report.Format("archive=%d\nfb2=%d\nfbd=%d\nmshtml=%d\nrar=%d\nsave_as=%d\nsource_committed=%d\nbody_active=%d\narchive_save_serialized_changed=%d\narchive_write_error=%S\nentry=%S\nsaved=%d\n", archiveSource, fb2,
+		report.Format("archive=%d\nfb2=%d\nfbd=%d\nmshtml=%d\nrar=%d\nsave_as=%d\nsource_committed=%d\nbody_active=%d\nentry=%S\nsaved=%d\n", archiveSource, fb2,
 			m_doc->GetDocumentFileType() == FictionBookFileType::Fbd, htmlReady, readOnlyArchive, saveAs,
-			sourceCommitted, bodyActive, archiveSaveSerializedChanged, archiveWriteError, static_cast<LPCWSTR>(m_document_session.Location().entryPath), saved);
+			sourceCommitted, bodyActive, static_cast<LPCWSTR>(m_document_session.Location().entryPath), saved);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(saved ? 0 : 1);
 		return 0;

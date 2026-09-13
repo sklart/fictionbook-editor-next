@@ -15,6 +15,9 @@
   остаются в `CMainFrame` отдельными следующими этапами.
 - [x] Выделить Save / Save As / archive save persistence в
   `DocumentSaveController`, сохранив editor/recovery presentation boundary.
+- [x] Стабилизировать save result: serialization, normal-write и archive-write
+  failures различаются, а session/savepoint/recovery подтверждаются только
+  после persistence success.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 

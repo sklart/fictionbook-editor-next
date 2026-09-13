@@ -32,6 +32,8 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   archive и Save As persistence, committing `DocumentSession` только после
   успеха. `CMainFrame` сохраняет fail-closed source/XML preflight, UI,
   savepoint и recovery cleanup; failed/cancelled save не подтверждает их.
+  Serialization и archive-write failures различаются в result, поэтому
+  фиктивный archive error не показывается при ошибке сериализации.
 
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation
