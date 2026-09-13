@@ -349,6 +349,8 @@ if ($PlatformToolset) {
 
 if ($FullValidation) {
     Write-Host 'Running FULL GUI, production, stress and benchmark validation.'
+	& (Join-Path $repoRoot "tools\tests\test-fbe-split-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
+	& (Join-Path $repoRoot "tools\tests\test-fbe-split-ole-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
     & (Join-Path $repoRoot "tools\tests\test-fbd-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-source-full-process-benchmark.ps1")
     & (Join-Path $repoRoot "tools\tests\test-words-ownerdata-stress.ps1")

@@ -25,9 +25,10 @@ try {
     }
     finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
     $row = Import-Csv -LiteralPath $report -Delimiter "`t"
-    if(@($row).Count -ne 5 -or @($row | Where-Object { $_.result -ne 'pass' }).Count -ne 0) { throw "Visual DOM normalizer runtime contract failed: $($row | ConvertTo-Json -Compress)" }
+    if(@($row).Count -ne 6 -or @($row | Where-Object { $_.result -ne 'pass' }).Count -ne 0) { throw "Visual DOM normalizer runtime contract failed: $($row | ConvertTo-Json -Compress)" }
     $byCase = @{}; foreach($entry in $row) { $byCase[$entry.case] = $entry }
     foreach($name in 'single-br', 'double-br', 'empty-p', 'nbsp-p', 'formatted-br') { if(-not $byCase.ContainsKey($name)) { throw "Missing normalizer case: $name" } }
+	if(-not $byCase.ContainsKey('paste-normal') -or $byCase['paste-normal'].result -ne 'pass' -or $byCase['paste-normal'].nbsp -ne '1') { throw 'Ordinary Paste did not preserve the unique NBSP and line-break payload through Normalize.' }
     if([int]$byCase['single-br'].paragraphs -ne 2 -or $byCase['single-br'].exact_paragraphs -ne '1') { throw 'A single BR did not become two ordered paragraphs.' }
     if([int]$byCase['double-br'].paragraphs -ne 3 -or $byCase['double-br'].empty_line -ne '1') { throw 'Two BRs did not preserve the intermediate empty line.' }
     if([int]$byCase['empty-p'].paragraphs -ne 3 -or $byCase['empty-p'].exact_paragraphs -ne '1') { throw 'An explicit empty paragraph was lost or reordered.' }

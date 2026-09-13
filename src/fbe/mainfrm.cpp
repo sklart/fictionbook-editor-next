@@ -85,6 +85,28 @@ static_assert(ID_FILE_MRU_LAST <= 0xffff, "MRU command IDs must fit in WM_COMMAN
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE > ID_EDIT_INS_SYMBOL + 100, "Folder menu IDs overlap symbol commands");
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT_ITEM, "Folder menu IDs overlap regular commands");
 
+// Test-only OLE parent for the Split undo probe.  It is intentionally kept
+// outside production structural code until MSHTML proves this composition.
+class CSplitUndoProbeParent : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
+public:
+	BEGIN_COM_MAP(CSplitUndoProbeParent)
+		COM_INTERFACE_ENTRY(IOleUndoUnit)
+		COM_INTERFACE_ENTRY(IOleParentUndoUnit)
+	END_COM_MAP()
+	STDMETHOD(Do)(IOleUndoManager* manager) { for (std::vector<CComPtr<IOleUndoUnit>>::reverse_iterator it = m_units.rbegin(); it != m_units.rend(); ++it) { HRESULT hr = (*it)->Do(manager); if (FAILED(hr)) return hr; } return manager ? manager->Add(this) : S_OK; }
+	STDMETHOD(GetDescription)(BSTR* description) { if (!description) return E_POINTER; *description = ::SysAllocString(L"split undo probe parent"); return *description ? S_OK : E_OUTOFMEMORY; }
+	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id) { if (!classId || !id) return E_POINTER; *classId = CLSID_NULL; *id = 0; return S_OK; }
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+	STDMETHOD(Open)(IOleParentUndoUnit*) { return S_OK; }
+	STDMETHOD(Close)(IOleParentUndoUnit*, BOOL) { return S_OK; }
+	STDMETHOD(Add)(IOleUndoUnit* unit) { if (!unit) return E_POINTER; m_units.push_back(unit); return S_OK; }
+	STDMETHOD(FindUnit)(IOleUndoUnit* unit) { for (std::vector<CComPtr<IOleUndoUnit>>::const_iterator it = m_units.begin(); it != m_units.end(); ++it) if (it->p == unit) return S_OK; return S_FALSE; }
+	STDMETHOD(GetParentState)(DWORD* state) { if (!state) return E_POINTER; *state = 0; return S_OK; }
+	long UnitCount() const { return static_cast<long>(m_units.size()); }
+private:
+	std::vector<CComPtr<IOleUndoUnit>> m_units;
+};
+
 static WORD MruCommandId(int offset)
 {
 	ATLASSERT(offset >= 0 && ID_FILE_MRU_FIRST + offset <= ID_FILE_MRU_LAST);
@@ -3908,6 +3930,73 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			beforeParagraphs, citeCount, poemCount, stanzaCount, (LPCSTR)poemTextSummary, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail", checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"split-undo-probe"))
+	{
+		wchar_t variant[48] = {};
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_UNDO_PROBE_VARIANT", variant, _countof(variant));
+		CStringA header("variant\thresult\tdom_before\tdom_after\tdom_undo_1\tdom_undo_2\tdom_redo_1\tundos_required\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		try {
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr bodies(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr root;
+			for (long i = 0; bodies && i < bodies->length; ++i) { MSHTML::IHTMLElementPtr e(bodies->item(_variant_t(i), _variant_t())); if (e && U::scmp(e->className, L"body") == 0) { root = e; break; } }
+			if (!root) throw _com_error(E_FAIL);
+			root->innerHTML = L"<DIV id=probe-old class=section><P>AAA 123 ZZZ</P></DIV>";
+			IServiceProviderPtr service(document); CComPtr<IOleUndoManager> undoManager;
+			if (service) service->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&undoManager));
+			if (undoManager) undoManager->DiscardFrom(NULL);
+			auto snapshot = [&]() { CString value(static_cast<const wchar_t*>(root->innerHTML)); value.Replace(L"\r", L""); value.Replace(L"\n", L""); value.Replace(L"\t", L" "); return value; };
+			const CString before(snapshot()); HRESULT operationHr = S_OK;
+			MSHTML::IHTMLElementPtr old(document->all->item(L"probe-old"));
+			auto makeNext = [&]() { MSHTML::IHTMLElementPtr next(document->createElement(L"DIV")); next->className = L"section"; next->id = L"probe-old"; next->innerHTML = L"<DIV class=title><P>123</P></DIV><P>ZZZ</P>"; return next; };
+			m_doc->m_body.BeginUndoUnit(L"split undo probe");
+			try {
+				if (wcscmp(variant, L"insert-adjacent") == 0) { MSHTML::IHTMLElementPtr next(makeNext()); old->id = L""; old->innerHTML = L"<P>AAA</P>"; MSHTML::IHTMLElement2Ptr(old)->insertAdjacentElement(L"afterEnd", next); }
+				else if (wcscmp(variant, L"insert-before") == 0) { MSHTML::IHTMLElementPtr next(makeNext()); old->id = L""; old->innerHTML = L"<P>AAA</P>"; MSHTML::IHTMLDOMNodePtr parent(old->parentElement), oldNode(old); parent->insertBefore(MSHTML::IHTMLDOMNodePtr(next), oldNode->nextSibling.GetInterfacePtr()); }
+				else if (wcscmp(variant, L"append-child") == 0) { MSHTML::IHTMLElementPtr next(makeNext()); old->id = L""; old->innerHTML = L"<P>AAA</P>"; MSHTML::IHTMLDOMNodePtr(root)->appendChild(MSHTML::IHTMLDOMNodePtr(next)); }
+				else if (wcscmp(variant, L"pastehtml-content") == 0) { MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()); range->moveToElementText(old); range->pasteHTML(L"<P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P>"); }
+				else if (wcscmp(variant, L"pastehtml-root") == 0) { MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange()); range->moveToElementText(root); range->pasteHTML(L"<DIV class=section><P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P></DIV>"); }
+				else if (wcscmp(variant, L"markup-after-end") == 0 || wcscmp(variant, L"markup-before-begin") == 0) { MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); MSHTML::IMarkupPointerPtr start, finish; markup->CreateMarkupPointer(&start); markup->CreateMarkupPointer(&finish); const MSHTML::_ELEMENT_ADJACENCY edge = wcscmp(variant, L"markup-before-begin") == 0 ? MSHTML::ELEM_ADJ_BeforeBegin : MSHTML::ELEM_ADJ_AfterEnd; start->MoveAdjacentToElement(old, edge); finish->MoveAdjacentToElement(old, edge); MSHTML::IHTMLElementPtr next(makeNext()); operationHr = markup->InsertElement(next, start, finish); if (SUCCEEDED(operationHr)) { old->id = L""; old->innerHTML = L"<P>AAA</P>"; } }
+				else if (wcscmp(variant, L"markup-parse-copy") == 0) { MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices()); MSHTML::IMarkupPointerPtr sourceStart, sourceFinish, targetStart, targetFinish; MSHTML::IMarkupContainerPtr parsed; markup->CreateMarkupPointer(&sourceStart); markup->CreateMarkupPointer(&sourceFinish); operationHr = markup->ParseString(L"<DIV class=section><P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P></DIV>", 0, &parsed, sourceStart, sourceFinish); if (SUCCEEDED(operationHr)) { markup->CreateMarkupPointer(&targetStart); markup->CreateMarkupPointer(&targetFinish); targetStart->MoveAdjacentToElement(old, MSHTML::ELEM_ADJ_BeforeBegin); targetFinish->MoveAdjacentToElement(old, MSHTML::ELEM_ADJ_AfterEnd); operationHr = markup->remove(targetStart, targetFinish); if (SUCCEEDED(operationHr)) operationHr = markup->Copy(sourceStart, sourceFinish, targetStart); } }
+				else if (wcscmp(variant, L"detached-subtree") == 0) { MSHTML::IHTMLElementPtr next(makeNext()); old->id = L""; MSHTML::IHTMLDOMNodePtr parent(old->parentElement), oldNode(old); parent->insertBefore(MSHTML::IHTMLDOMNodePtr(next), oldNode->nextSibling.GetInterfacePtr()); old->innerHTML = L"<P>AAA</P>"; }
+				else if (wcscmp(variant, L"whole-innerhtml") == 0) { root->innerHTML = L"<DIV class=section><P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P></DIV>"; }
+				else operationHr = E_INVALIDARG;
+			} catch (const _com_error& error) { operationHr = error.Error(); }
+			m_doc->m_body.EndUndoUnit();
+			const CString after(snapshot()); BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undo1(snapshot()); m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undo2(snapshot()); m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redo1(snapshot());
+			const CString expected(L"<DIV class=section><P>AAA</P></DIV><DIV id=probe-old class=section><DIV class=title><P>123</P></DIV><P>ZZZ</P></DIV>");
+			const bool oneUndo = SUCCEEDED(operationHr) && undo1 == before && redo1 == after;
+			const long required = undo1 == before ? 1 : undo2 == before ? 2 : 3;
+			CStringA row; row.Format("%S\t0x%08lX\t%S\t%S\t%S\t%S\t%S\t%ld\t%s\r\n", variant, static_cast<unsigned long>(operationHr), static_cast<LPCWSTR>(before), static_cast<LPCWSTR>(after), static_cast<LPCWSTR>(undo1), static_cast<LPCWSTR>(undo2), static_cast<LPCWSTR>(redo1), required, oneUndo && after == expected ? "pass" : "fail");
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(0); return 0;
+		} catch (const _com_error& error) { CStringA row; row.Format("%S\t0x%08lX\t\t\t\t\t\t0\tfail\r\n", variant, static_cast<unsigned long>(error.Error())); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
+	}
+	if (IsFbeTestScenario(L"split-ole-undo-probe"))
+	{
+		CStringA header("manager_hr\topen_hr\tclose_hr\tparent_units\tstate_before\tstate_after\tstate_undo\tstate_redo\tdom_before\tdom_after\tdom_undo\tdom_redo\tundo_description_before\tundo_description_after\tundo_description_undo\tundo_description_redo\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		try {
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document()); IServiceProviderPtr service(document); CComPtr<IOleUndoManager> manager;
+			const HRESULT managerHr = service ? service->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager)) : E_NOINTERFACE;
+			if (FAILED(managerHr) || !manager) { CStringA row; row.Format("0x%08lX\t\t\t0\t\t\t\t\t\t\t\t\t\t\t\t\tfail\r\n", static_cast<unsigned long>(managerHr)); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(0); return 0; }
+			MSHTML::IHTMLElementPtr editable(document->all->item(L"fbw_body")), root; MSHTML::IHTMLElementCollectionPtr divs(editable ? MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr()); for (long i = 0; divs && i < divs->length; ++i) { MSHTML::IHTMLElementPtr div(divs->item(_variant_t(i), _variant_t())); if (div && U::scmp(div->className, L"body") == 0) { root = div; break; } } if (!root) throw _com_error(E_FAIL);
+			root->innerHTML = L"<DIV id=probe-old class=section><P>AAA 123 ZZZ</P></DIV>"; manager->DiscardFrom(NULL);
+			auto compact = [](CString value) { value.Replace(L"\r", L""); value.Replace(L"\n", L""); value.Replace(L"\t", L" "); return value; };
+			auto dom = [&]() { return compact(CString(static_cast<const wchar_t*>(root->innerHTML))); };
+			auto state = [&]() { DWORD value = 0; return SUCCEEDED(manager->GetOpenParentState(&value)) ? value : 0xffffffffUL; };
+			auto description = [&](bool redo) { BSTR value = NULL; HRESULT hr = redo ? manager->GetLastRedoDescription(&value) : manager->GetLastUndoDescription(&value); CString result = SUCCEEDED(hr) && value ? value : L""; if (value) ::SysFreeString(value); return compact(result); };
+			const CString before(dom()), descriptionBefore(description(false)); const DWORD stateBefore = state();
+			CComObject<CSplitUndoProbeParent>* rawParent = NULL; HRESULT openHr = CComObject<CSplitUndoProbeParent>::CreateInstance(&rawParent); if (SUCCEEDED(openHr)) rawParent->AddRef(); CComPtr<IOleParentUndoUnit> parent(rawParent);
+			if (SUCCEEDED(openHr)) openHr = manager->Open(parent);
+			if (SUCCEEDED(openHr)) { MSHTML::IHTMLElementPtr old(document->all->item(L"probe-old")), next(document->createElement(L"DIV")); next->className = L"section"; next->id = L"probe-old"; next->innerHTML = L"<DIV class=title><P>123</P></DIV><P>ZZZ</P>"; old->id = L""; old->innerHTML = L"<P>AAA</P>"; MSHTML::IHTMLDOMNodePtr parentNode(old->parentElement), oldNode(old); parentNode->insertBefore(MSHTML::IHTMLDOMNodePtr(next), oldNode->nextSibling.GetInterfacePtr()); }
+			const HRESULT closeHr = SUCCEEDED(openHr) ? manager->Close(parent, TRUE) : E_FAIL; const CString after(dom()), descriptionAfter(description(false)); const DWORD stateAfter = state(); const long childCount = rawParent ? rawParent->UnitCount() : 0;
+			BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undone(dom()), descriptionUndo(description(true)); const DWORD stateUndo = state(); m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redone(dom()), descriptionRedo(description(false)); const DWORD stateRedo = state();
+			const bool passed = SUCCEEDED(managerHr) && SUCCEEDED(openHr) && SUCCEEDED(closeHr) && before == undone && after == redone;
+			CStringA row; row.Format("0x%08lX\t0x%08lX\t0x%08lX\t%ld\t0x%08lX\t0x%08lX\t0x%08lX\t0x%08lX\t%S\t%S\t%S\t%S\t%S\t%S\t%S\t%S\t%s\r\n", static_cast<unsigned long>(managerHr), static_cast<unsigned long>(openHr), static_cast<unsigned long>(closeHr), childCount, stateBefore, stateAfter, stateUndo, stateRedo, static_cast<LPCWSTR>(before), static_cast<LPCWSTR>(after), static_cast<LPCWSTR>(undone), static_cast<LPCWSTR>(redone), static_cast<LPCWSTR>(descriptionBefore), static_cast<LPCWSTR>(descriptionAfter), static_cast<LPCWSTR>(descriptionUndo), static_cast<LPCWSTR>(descriptionRedo), passed ? "pass" : "fail"); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); if (rawParent) rawParent->Release(); ::PostQuitMessage(0); return 0;
+		} catch (const _com_error& error) { CStringA row; row.Format("0x%08lX\t\t\t0\t\t\t\t\t\t\t\t\t\t\t\t\tfail\r\n", static_cast<unsigned long>(error.Error())); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
+	}
 	if (IsFbeTestScenario(L"split-container"))
 	{
 		wchar_t position[16] = {}, containerClass[16] = {}, containerId[64] = {}, tracePath[MAX_PATH] = {}, traceCase[64] = {}, route[16] = {};
@@ -3920,7 +4009,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const DWORD splitFaultLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_FAULT", splitFault, _countof(splitFault));
 		const DWORD routeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_ROUTE", route, _countof(route));
 		const bool viaWrapper = routeLength == 7 && wcscmp(route, L"wrapper") == 0;
-		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\tfault_error\tdocument_changed\tcheck_status\tapply_status\thresult\r\n");
+		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\tfault_error\tdocument_changed\tcheck_status\tapply_status\thresult\tselection_text\tnew_title_text\tnew_remaining_text\tcaret_inserted\tcaret_undo_redo\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		try {
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
@@ -3952,7 +4041,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		const bool atStart = positionLength == 5 && wcscmp(position, L"start") == 0;
 		const bool atEnd = positionLength == 3 && wcscmp(position, L"end") == 0;
-		if (atStart) { range->moveToElementText(container); range->collapse(VARIANT_TRUE); }
+		const bool caretScenario = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_CARET", nullptr, 0) > 0;
+		if (caretScenario) {
+			range->moveToElementText(container);
+			if (!range->findText(L"abc", 0, 0)) { CStringA row; row.Format("%s\t%s\t0\tmissing-caret-marker\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-caret-marker\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
+			range->collapse(VARIANT_FALSE);
+		}
+		else if (atStart) { range->moveToElementText(container); range->collapse(VARIANT_TRUE); }
 		else {
 			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(container)->getElementsByTagName(L"P"));
 			const long index = atEnd ? paragraphs->length - 1 : paragraphs->length / 2;
@@ -3973,6 +4068,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		m_doc->m_body.SetFocus();
 		range->select();
 		MSHTML::IHTMLTxtRangePtr selectionBefore(document->selection->createRange());
+		const CString selectionTextBefore(selectionBefore ? static_cast<const wchar_t*>(selectionBefore->text) : L"");
 		MSHTML::IHTMLTxtRangePtr containerRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 		containerRange->moveToElementText(container);
 		const bool selectionCollapsed = selectionBefore && selectionBefore->compareEndPoints(L"StartToEnd", selectionBefore) == 0;
@@ -4043,8 +4139,23 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		CString selectionMembership;
 		selectionMembership.Format(L"start=%ld; end=%ld; new=%d", selectionStartInNew, selectionEndInNew, selectionInNew ? 1 : 0);
 		trace.After(L"selection-membership", selectionMembership);
-		BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undone(contentHtml());
+		BOOL handled = FALSE; m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); const CString undone(contentHtml()); trace.After(L"undo-content", undone);
 		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); const CString redone(contentHtml());
+		bool caretInserted = !caretScenario, caretUndoRedo = !caretScenario;
+		if (caretScenario && selectionAfter && newContainer) {
+			const CString beforeInput(static_cast<const wchar_t*>(newContainer->innerText));
+			m_doc->m_body.SetFocus();
+			const HWND inputFocus = ::GetFocus();
+			const bool insertedWithCommand = inputFocus && ::SendMessage(inputFocus, WM_CHAR, L'X', 0) != 0;
+			const CString afterInput(static_cast<const wchar_t*>(newContainer->innerText));
+			BOOL inputHandled = FALSE;
+			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, inputHandled);
+			const CString undoneInput(static_cast<const wchar_t*>(newContainer->innerText));
+			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, inputHandled);
+			const CString redoneInput(static_cast<const wchar_t*>(newContainer->innerText));
+			caretInserted = (insertedWithCommand || afterInput != beforeInput) && beforeInput.Find(L"def") >= 0 && afterInput.Find(L"Xdef") >= 0 && afterInput.Find(L"defX") < 0;
+			caretUndoRedo = beforeInput == undoneInput && afterInput == redoneInput;
+		}
 		bool endTextInserted = !atEnd;
 		if (atEnd && newContainer) {
 			MSHTML::IHTMLElementPtr inputContainer(document->all->item(containerId));
@@ -4060,18 +4171,25 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			trace.After(L"end-workflow", endWorkflow);
 		}
 		int validationLine = 0, validationColumn = 0;
-		const bool saved = applied && endTextInserted && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
+		const bool saved = applied && caretInserted && caretUndoRedo && endTextInserted && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
 		const bool changed = before != after;
 		auto countText = [&](const wchar_t* text) { long count = 0, offset = 0; while ((offset = after.Find(text, offset)) >= 0) { ++count; offset += static_cast<int>(wcslen(text)); } return count; };
 		const bool selectionScenario = positionLength == 9 && wcscmp(position, L"selection") == 0;
 		const CString originalText(container ? static_cast<const wchar_t*>(container->innerText) : L"");
 		const CString splitText(newContainer ? static_cast<const wchar_t*>(newContainer->innerText) : L"");
+		MSHTML::IHTMLElementPtr newTitle;
+		MSHTML::IHTMLElementCollectionPtr newDivs(newContainer ? MSHTML::IHTMLElement2Ptr(newContainer)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+		for (long index = 0; newDivs && index < newDivs->length; ++index) { MSHTML::IHTMLElementPtr div(newDivs->item(_variant_t(index), _variant_t())); if (div && U::scmp(div->className, L"title") == 0) { newTitle = div; break; } }
+		const CString newTitleText(newTitle ? static_cast<const wchar_t*>(newTitle->innerText) : L"");
+		CString newRemainingText;
+		MSHTML::IHTMLElementCollectionPtr newParagraphs(newContainer ? MSHTML::IHTMLElement2Ptr(newContainer)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		for (long index = 0; newParagraphs && index < newParagraphs->length; ++index) { MSHTML::IHTMLElementPtr paragraph(newParagraphs->item(_variant_t(index), _variant_t())); if (paragraph && paragraph->parentElement != newTitle) newRemainingText += static_cast<const wchar_t*>(paragraph->innerText); }
 		const bool fragmentsPreserved = !selectionScenario ||
 			(countText(L"AAA") == 1 && countText(L"123") == 1 && countText(L"ZZZ") == 1 &&
-			 originalText.Find(L"AAA") >= 0 && originalText.Find(L"123") >= 0 && originalText.Find(L"ZZZ") < 0 &&
-			 splitText.Find(L"AAA") < 0 && splitText.Find(L"123") < 0 && splitText.Find(L"ZZZ") >= 0);
-		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && changed && before == undone && after == redone && selectionInNew && fragmentsPreserved && endTextInserted && saved;
-		CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, (LPCSTR)selectionParentSummary, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, changed, before == undone, after == redone, selectionInNew, fragmentsPreserved, saved, passed ? "pass" : "fail");
+			 selectionTextBefore == L"123" && originalText.Find(L"AAA") >= 0 && originalText.Find(L"123") < 0 && originalText.Find(L"ZZZ") < 0 &&
+			 newTitleText == L"123" && newRemainingText.Find(L"ZZZ") >= 0 && splitText.Find(L"AAA") < 0);
+		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && changed && before == undone && after == redone && selectionInNew && fragmentsPreserved && caretInserted && caretUndoRedo && endTextInserted && saved;
+		CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t0x%08lX\t%d\t%s\t%s\t0x%08lX\t%S\t%S\t%S\t%d\t%d\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, (LPCSTR)selectionParentSummary, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, changed, before == undone, after == redone, selectionInNew, fragmentsPreserved, saved, passed ? "pass" : "fail", static_cast<unsigned long>(splitResult.error), splitResult.documentChanged ? 1 : 0, statusName(checkResult), statusName(splitResult), static_cast<unsigned long>(splitResult.error), static_cast<LPCWSTR>(selectionTextBefore), static_cast<LPCWSTR>(newTitleText), static_cast<LPCWSTR>(newRemainingText), caretInserted ? 1 : 0, caretUndoRedo ? 1 : 0);
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		} catch (_com_error& error) {
 			CStringA row; row.Format("unknown\tunknown\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tcom-0x%08lX\r\n", static_cast<unsigned long>(error.Error()));
@@ -4111,6 +4229,35 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		const CString originalHtml((const wchar_t*)editable->innerHTML);
+		const CString pastePayload(L"paste-alpha\x00a0bold\r\npaste-beta\r\n\r\npaste-gamma");
+		bool pasteNormalized = false;
+		CComPtr<IDataObject> originalClipboard;
+		if (SUCCEEDED(::OleGetClipboard(&originalClipboard)) && ::OpenClipboard(m_hWnd)) {
+			::EmptyClipboard();
+			const SIZE_T pasteBytes = static_cast<SIZE_T>(pastePayload.GetLength() + 1) * sizeof(wchar_t);
+			HGLOBAL pasteMemory = ::GlobalAlloc(GMEM_MOVEABLE, pasteBytes);
+			wchar_t* pasteText = pasteMemory ? static_cast<wchar_t*>(::GlobalLock(pasteMemory)) : nullptr;
+			if (pasteText) { wcscpy_s(pasteText, pastePayload.GetLength() + 1, pastePayload); ::GlobalUnlock(pasteMemory); }
+			const bool clipboardReady = pasteMemory && pasteText && ::SetClipboardData(CF_UNICODETEXT, pasteMemory);
+			if (!clipboardReady && pasteMemory) ::GlobalFree(pasteMemory);
+			::CloseClipboard();
+			if (clipboardReady) {
+				MSHTML::IHTMLElementCollectionPtr initialParagraphs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"P"));
+				MSHTML::IHTMLElementPtr initialParagraph(initialParagraphs && initialParagraphs->length ? initialParagraphs->item(0L) : MSHTML::IHTMLElementPtr());
+				if (initialParagraph) { MSHTML::IHTMLTxtRangePtr pasteRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()); pasteRange->moveToElementText(initialParagraph); pasteRange->collapse(VARIANT_FALSE); pasteRange->select(); BOOL pasteHandled = FALSE; m_doc->m_body.OnPaste(0, ID_EDIT_PASTE, 0, pasteHandled); }
+				editable = document->all->item(L"fbw_body");
+				const CString pastedHtml(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+				const CString pastedText(editable ? static_cast<LPCWSTR>(editable->innerText) : L"");
+				const int alpha = pastedText.Find(L"paste-alpha"), beta = pastedText.Find(L"paste-beta"), gamma = pastedText.Find(L"paste-gamma");
+				pasteNormalized = alpha >= 0 && beta > alpha && gamma > beta && pastedHtml.Find(L"<BR") < 0 && (pastedHtml.Find(L"&nbsp;") >= 0 || pastedHtml.Find(L"\x00a0") >= 0);
+			}
+			::OleSetClipboard(originalClipboard);
+		}
+		CStringA pasteRow; pasteRow.Format("paste-normal\t0\t0\t0\t%d\t%d\t%d\t%d\t%s\r\n", pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, 1, pasteNormalized ? "pass" : "fail");
+		output.Write(pasteRow, static_cast<DWORD>(pasteRow.GetLength()), &written);
+		editable = document->all->item(L"fbw_body");
+		if (!editable) { output.Close(); ::PostQuitMessage(1); return 0; }
+		editable->innerHTML = originalHtml.AllocSysString();
 		struct NormalizerCase { const wchar_t* name; const wchar_t* html; const wchar_t* text[3]; long paragraphs; bool nbsp; bool formatting; };
 		const NormalizerCase cases[] = {
 			{ L"single-br", L"<DIV class='section'><P>alpha<BR>beta</P></DIV>", { L"alpha", L"beta", L"" }, 2, false, false },
@@ -4165,7 +4312,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"link-navigation-runtime"))
 	{
-		CStringA header("nested\ttarget\tsame_document\tbroken\treturned_second\tinserted_navigate\tinserted_same_unique\tinserted_returned\tinserted_before\tdeleted_origin_fallback\tdocument_replaced_fallback\tunchanged\tsecond_dom_unchanged\tsecond_dirty_unchanged\torigin_dom_unchanged\torigin_dirty_unchanged\tresult\r\n");
+		CStringA header("nested\ttarget\tsame_document\tbroken\treturned_second\tinserted_navigate\tinserted_same_unique\tinserted_returned\tinserted_returned_origin\tinserted_before\tdeleted_origin_fallback\tother_document_opened\tunchanged\tsecond_dom_unchanged\tsecond_dirty_unchanged\torigin_dom_unchanged\torigin_dirty_unchanged\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr editable(FBELinkNavigation::GetEditableBody(document));
@@ -4206,7 +4353,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		MSHTML::IHTMLDOMNodePtr secondNode(second);
 		MSHTML::IHTMLDOMNodePtr secondParent(secondNode ? secondNode->parentNode : MSHTML::IHTMLDOMNodePtr());
 		bool insertedBefore = false;
-		bool insertedNavigate = false, insertedSameUnique = false, insertedReturned = false;
+		bool insertedNavigate = false, insertedSameUnique = false, insertedReturned = false, insertedReturnedOrigin = false;
 		try {
 			inserted = document->createElement(L"A");
 			if (inserted && second && secondParent) {
@@ -4226,7 +4373,13 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 				insertedNavigate = originSaved;
 				insertedSameUnique = currentSecondUniqueNumber == secondUniqueNumber;
 				insertedReturned = m_doc->m_body.ReturnToLinkNavigationOrigin();
-				insertedBefore = insertedNavigate && insertedSameUnique && insertedReturned;
+				MSHTML::IHTMLTxtRangePtr returnedOriginRange(document->selection->createRange());
+				MSHTML::IHTMLTxtRangePtr currentSecondRange(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+				if (currentSecondRange && currentSecond) currentSecondRange->moveToElementText(currentSecond);
+				insertedReturnedOrigin = insertedReturned && currentSecondRange &&
+					returnedOriginRange->compareEndPoints(L"StartToStart", currentSecondRange) >= 0 &&
+					returnedOriginRange->compareEndPoints(L"EndToEnd", currentSecondRange) <= 0;
+				insertedBefore = insertedNavigate && insertedSameUnique && insertedReturnedOrigin;
 				second = currentSecond;
 			}
 		} catch (const _com_error&) { insertedBefore = false; }
@@ -4238,19 +4391,22 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 				deletedOriginFallback = !m_doc->m_body.ReturnToLinkNavigationOrigin();
 			}
 		} catch (const _com_error&) { deletedOriginFallback = false; }
-		bool documentReplacedFallback = false;
-		if (internal && m_doc->m_body.NavigateInternalLink(internal, targetId)) {
-			// Init is the production MSHTML-document replacement boundary.  It
-			// clears DOM-scoped history before binding the replacement document.
-			documentReplacedFallback = m_doc->m_body.Init() && !m_doc->m_body.ReturnToLinkNavigationOrigin();
+		wchar_t replacementPath[MAX_PATH] = {};
+		const DWORD replacementPathLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_NAVIGATION_SECOND_FILE", replacementPath, _countof(replacementPath));
+		bool otherDocumentOpened = false;
+		if (replacementPathLength && replacementPathLength < _countof(replacementPath) && internal && m_doc->m_body.NavigateInternalLink(internal, targetId)) {
+			// The preceding insertion/removal is intentional history coverage.  It
+			// must not prompt during this separate ordinary-open regression step.
+			m_doc->MarkSavePoint();
+			otherDocumentOpened = LoadFile(replacementPath) == OK && !m_doc->m_body.ReturnToLinkNavigationOrigin();
 		}
 		// Both ordinary transitions above were independently compared with the
 		// live DOM and dirty state.  Later insertion/removal intentionally edits
 		// the fixture and is covered by its own history assertions.
 		const bool unchanged = secondDomUnchanged && secondDirtyUnchanged && originDomUnchanged && originDirtyUnchanged;
-		const bool passed = nearest == internal && target && sameDocument && brokenInternal && returnedSecond && insertedBefore && deletedOriginFallback && documentReplacedFallback && unchanged;
+		const bool passed = nearest == internal && target && sameDocument && brokenInternal && returnedSecond && insertedBefore && deletedOriginFallback && otherDocumentOpened && unchanged;
 		CStringA row;
-		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, returnedSecond, insertedNavigate, insertedSameUnique, insertedReturned, insertedBefore, deletedOriginFallback, documentReplacedFallback, unchanged, secondDomUnchanged, secondDirtyUnchanged, originDomUnchanged, originDirtyUnchanged, passed ? "pass" : "fail");
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", nearest == internal, target ? 1 : 0, sameDocument, brokenInternal, returnedSecond, insertedNavigate, insertedSameUnique, insertedReturned, insertedReturnedOrigin, insertedBefore, deletedOriginFallback, otherDocumentOpened, unchanged, secondDomUnchanged, secondDirtyUnchanged, originDomUnchanged, originDirtyUnchanged, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
