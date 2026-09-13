@@ -187,6 +187,7 @@
     </ClCompile>
 	<ClCompile Include="ScriptsToolbarCustomizeDlg.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="plugins\PluginManager.cpp"><Filter>Source Files\Plugins</Filter></ClCompile>
+	<ClCompile Include="plugins\PluginExecutionController.cpp"><Filter>Source Files\Plugins</Filter></ClCompile>
 	<ClCompile Include="source\Fb2SourceAutocomplete.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="source\SourceDocumentTransfer.cpp"><Filter>Source Files\XML Source</Filter></ClCompile>
 	<ClCompile Include="view\EditorViewState.cpp"><Filter>Source Files\View</Filter></ClCompile>
@@ -399,6 +400,7 @@
     </ClInclude>
 	<ClInclude Include="ScriptsToolbarCustomizeDlg.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="plugins\PluginManager.h"><Filter>Header Files\Plugins</Filter></ClInclude>
+	<ClInclude Include="plugins\PluginExecutionController.h"><Filter>Header Files\Plugins</Filter></ClInclude>
 	<ClInclude Include="source\Fb2SourceAutocomplete.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="source\BodySourceSelectionState.h"><Filter>Header Files\XML Source</Filter></ClInclude>
 	<ClInclude Include="source\BodySourceSelectionTransfer.h"><Filter>Header Files\XML Source</Filter></ClInclude>

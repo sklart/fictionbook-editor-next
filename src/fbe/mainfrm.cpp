@@ -116,10 +116,6 @@ static CString StripMenuMnemonics(const CString& text)
 	return result;
 }
 
-static HRESULT CreateBundledPluginInstance(PluginManager& manager, const CLSID& clsid, IUnknownPtr& instance)
-{
-	return manager.CreateInstance(clsid, instance);
-}
 }
 
 // The detailed ShowSource profile is intentionally diagnostic-only.  It is
@@ -208,16 +204,6 @@ static ProcessMemorySnapshot GetProcessMemorySnapshot()
 }
 
 extern CSettings _Settings;
-
-static void TracePluginDiagnostic(const wchar_t* type, const CLSID& clsid, const wchar_t* operation, HRESULT result, int domReturned)
-{
-	wchar_t clsidText[64] = {};
-	::StringFromGUID2(clsid, clsidText, _countof(clsidText));
-	CString details;
-	details.Format(L"type=%s; clsid=%s; operation=%s; dom-returned=%d", type, clsidText, operation, domReturned);
-	if (FAILED(result)) StartupTrace::HResult(L"plugin", L"P210", result, details);
-	else StartupTrace::Event(L"plugin", L"P210", details);
-}
 
 struct RuntimeMenuCommandBinding
 {
@@ -3375,38 +3361,17 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
   wID-=ID_IMPORT_BASE;
   if (wID<m_plugins.ImportPlugins().GetSize()) {
     const CLSID& pluginClsid = m_plugins.ImportPlugins()[wID];
-    TracePluginDiagnostic(L"Import", pluginClsid, L"begin", S_OK, 0);
+    const PluginImportResult execution = m_plugin_execution.Import(m_plugins.Manager(),
+      pluginClsid, m_hWnd, _Settings.GetInterfaceLanguageName());
+    if (!execution.Succeeded()) {
+      if (execution.failure != PluginExecutionFailure::InterfaceUnavailable &&
+        execution.failure != PluginExecutionFailure::ResultStream)
+        U::ReportError(execution.hr);
+      return 0;
+    }
+    m_plugins.SetLastCommand(wID + ID_IMPORT_BASE);
     try {
-      IUnknownPtr			    unk;
-	  HRESULT pluginHr = CreateBundledPluginInstance(m_plugins.Manager(), pluginClsid, unk);
-      TracePluginDiagnostic(L"Import", pluginClsid, L"CreateInstance", pluginHr, 0);
-      CheckError(pluginHr);
-	  pluginHr = m_plugins.Manager().NegotiateApi(pluginClsid, unk);
-	  TracePluginDiagnostic(L"Import", pluginClsid, L"NegotiateApiV2", pluginHr, SUCCEEDED(pluginHr) ? 1 : 0);
-	  CheckError(pluginHr);
-      IDispatchPtr  obj;
-      _bstr_t	    filename;
-		CComQIPtr<IFBEImportPlugin2> importV2(unk);
-		if (!importV2) { TracePluginDiagnostic(L"Import", pluginClsid, L"QueryInterfaceV2", E_NOINTERFACE, 0); return 0; }
-		CComPtr<IFBEPluginHost> host;
-		CheckError(FbePluginApiV2::CreateHost(m_hWnd, _Settings.GetInterfaceLanguageName(), &host));
-		CComBSTR suggestedFileName;
-		CComPtr<IStream> fb2Xml;
-		HRESULT importResult = importV2->Import(host, &suggestedFileName, &fb2Xml);
-		TracePluginDiagnostic(L"Import", pluginClsid, L"ImportV2", importResult, fb2Xml ? 1 : 0);
-		CheckError(importResult);
-		if (importResult != S_OK || !fb2Xml) return 0;
-		CComPtr<MSXML2::IXMLDOMDocument2> v2Dom;
-		CheckError(v2Dom.CoCreateInstance(L"Msxml2.DOMDocument.6.0"));
-		CComQIPtr<IPersistStreamInit> streamLoader(v2Dom);
-		if (!streamLoader) { TracePluginDiagnostic(L"Import", pluginClsid, L"ImportV2StreamLoader", E_NOINTERFACE, 0); return 0; }
-		CheckError(streamLoader->Load(fb2Xml));
-		CheckError(v2Dom.QueryInterface(&obj));
-		filename.Assign(suggestedFileName.Detach());
-		m_plugins.SetLastCommand(wID + ID_IMPORT_BASE);
-
-      MSXML2::IXMLDOMDocument2Ptr dom(obj);
-      TracePluginDiagnostic(L"Import", pluginClsid, L"DOM result", dom ? S_OK : E_NOINTERFACE, dom ? 1 : 0);
+      const MSXML2::IXMLDOMDocument2Ptr& dom = execution.document;
       if (!(bool)dom)
 	  {
 		U::MessageBox(MB_OK|MB_ICONERROR, IDS_ERRMSGBOX_CAPTION, IDS_IMPORT_XML_ERR_MSG);
@@ -3426,10 +3391,10 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 		if(res.boolVal)
 		//if (doc->LoadFromHTML(m_view,(const wchar_t* )filename))
 		{
-			if (filename.length()>0)
+			if (!execution.suggestedFilename.IsEmpty())
 			{
-				m_doc->m_filename=(const TCHAR *)filename;
-				U::SetCurrentDirectoryToFile((const wchar_t*)filename);
+				m_doc->m_filename=execution.suggestedFilename;
+				U::SetCurrentDirectoryToFile(execution.suggestedFilename);
 				if (m_doc->m_filename.GetLength()<4 || m_doc->m_filename.Right(4).CompareNoCase(_T(".fb2"))!=0)
 				m_doc->m_filename+=_T(".fb2");
 				m_doc->m_namevalid=true;
@@ -3439,14 +3404,12 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 			m_doc=doc;*/
 			m_doc->m_body.Init();
 			m_doc->ResetSavePoint();
-			TracePluginDiagnostic(L"Import", pluginClsid, L"completed", S_OK, 1);
 		}// else
 			//FB::Doc::m_active_doc = m_doc;
 		//delete doc;
 	  }
-	}
+    }
     catch (_com_error& e) {
-      TracePluginDiagnostic(L"Import", pluginClsid, L"exception", e.Error(), 0);
       U::ReportError(e);
     }
   }
@@ -3459,34 +3422,25 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 	if(wID<m_plugins.ExportPlugins().GetSize())
 	{
 		const CLSID& pluginClsid = m_plugins.ExportPlugins()[wID];
-		TracePluginDiagnostic(L"Export", pluginClsid, L"begin", S_OK, 0);
 		try
 		{
-			IUnknownPtr unk;
-			HRESULT pluginHr = CreateBundledPluginInstance(m_plugins.Manager(), pluginClsid, unk);
-			TracePluginDiagnostic(L"Export", pluginClsid, L"CreateInstance", pluginHr, 0);
-			CheckError(pluginHr);
-			pluginHr = m_plugins.Manager().NegotiateApi(pluginClsid, unk);
-			TracePluginDiagnostic(L"Export", pluginClsid, L"NegotiateApiV2", pluginHr, SUCCEEDED(pluginHr) ? 1 : 0);
-			CheckError(pluginHr);
-
-				CComQIPtr<IFBEExportPlugin2> exportV2(unk);
-				if (!exportV2) { TracePluginDiagnostic(L"Export", pluginClsid, L"QueryInterfaceV2", E_NOINTERFACE, 0); return 0; }
-				m_plugins.SetLastCommand(wID + ID_EXPORT_BASE);
-				MSXML2::IXMLDOMDocument2Ptr dom(m_doc->CreateDOM(m_doc->m_encoding, false));
-				CComPtr<IFBEPluginHost> host; CComPtr<IFBEDocumentSnapshot> snapshot;
-				CheckError(FbePluginApiV2::CreateHost(m_hWnd, _Settings.GetInterfaceLanguageName(), &host));
-				CheckError(FbePluginApiV2::CreateSnapshot(dom, m_doc->m_namevalid ? m_doc->m_filename.GetString() : L"", m_doc->m_encoding, &snapshot));
-				_bstr_t filename = m_doc->m_namevalid ? static_cast<LPCWSTR>(m_doc->m_filename) : L"";
-				HRESULT exportResult = exportV2->Export(host, filename, snapshot);
-				TracePluginDiagnostic(L"Export", pluginClsid, L"ExportV2", exportResult, 0);
-				CheckError(exportResult);
-				TracePluginDiagnostic(L"Export", pluginClsid, L"completed", S_OK, 0);
+			PluginExportRequest request;
+			request.clsid = pluginClsid; request.owner = m_hWnd;
+			request.interfaceLanguage = _Settings.GetInterfaceLanguageName();
+			request.document = m_doc->CreateDOM(m_doc->m_encoding, false);
+			request.sourceFilename = m_doc->m_namevalid ? m_doc->m_filename.GetString() : L"";
+			request.documentEncoding = m_doc->m_encoding;
+			const PluginExecutionResult execution = m_plugin_execution.Export(m_plugins.Manager(), request);
+			if (!execution.Succeeded()) {
+				if (execution.failure != PluginExecutionFailure::InterfaceUnavailable)
+					U::ReportError(execution.hr);
 				return 0;
+			}
+			m_plugins.SetLastCommand(wID + ID_EXPORT_BASE);
+			return 0;
 		}
 		catch(_com_error& e)
 		{
-			TracePluginDiagnostic(L"Export", pluginClsid, L"exception", e.Error(), 0);
 			U::ReportError(e);
 		}
 	}

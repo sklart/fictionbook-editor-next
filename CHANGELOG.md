@@ -9,6 +9,11 @@
   вызывает отдельную операцию commit Source без искусственного переключения
   представления.
 
+- COM-протокол импортных и экспортных плагинов вынесен в
+  `PluginExecutionController`. Меню, discovery и команда последнего плагина
+  остаются в `PluginUiController`; замена текущего документа после import
+  остаётся в application/UI layer.
+
 - Recovery lifecycle теперь координирует `RecoveryController`: frame собирает
   editor/source state и показывает prompt, service сохраняет snapshot, а
   normal restore возвращает session в NewDocument вместо `Recovery.fb2`.

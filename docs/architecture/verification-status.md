@@ -56,6 +56,12 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   preflight без fake view switch. Контракты и BODY/DESC/SOURCE runtime,
   включая некорректный Source, выполнены на Release-сборке.
 
+- `PluginExecutionController` владеет COM execution protocol для import/export:
+  instance creation, API negotiation, v2 interface, host, stream/DOM и
+  snapshot. Он возвращает explicit result и сохраняет plugin diagnostic
+  events. `PluginUiController` остаётся discovery/menu/LastCommand owner, а
+  `CMainFrame` применяет возвращённый import DOM только после `DiscardChanges`.
+
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation
   unit, поэтому private-граница frame не расширена.

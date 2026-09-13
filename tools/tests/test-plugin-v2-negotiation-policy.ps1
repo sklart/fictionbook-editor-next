@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $manager = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\plugins\PluginManager.cpp')
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
+$execution = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\plugins\PluginExecutionController.cpp')
 $importPrecompiledHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\import-epub\stdafx.h')
 $solution = Get-Content -Raw -LiteralPath (Join-Path $root 'FBE.sln')
 $manifest = Get-Content -Raw -LiteralPath (Join-Path $root 'runtime\Plugins\plugins.json') | ConvertFrom-Json
@@ -17,9 +18,9 @@ foreach ($needle in @('IID_IFBEPluginInfo2', 'GetPluginId', 'GetApiVersion', 'ap
 if ($method -match 'plugin-api-v1-fallback|E_NOINTERFACE\)\s*\{[^}]*return S_OK') { throw 'PluginManager still silently downgrades an interface mismatch to API v1.' }
 if ($method -notmatch 'if \(FAILED\(hr\)\).*return hr') { throw 'Unexpected QueryInterface HRESULT is not propagated.' }
 if ($method -notmatch 'plugin-info-mismatch.*E_ACCESSDENIED') { throw 'Plugin ID/API-version mismatch is not rejected.' }
-if ($mainFrame -notmatch 'importV2->Import\(' -or $mainFrame -notmatch 'exportV2->Export\(') { throw 'Normal host dispatch does not invoke both v2 interfaces.' }
+if ($execution -notmatch 'plugin->Import\(' -or $execution -notmatch 'plugin->Export\(') { throw 'Plugin execution controller does not invoke both v2 interfaces.' }
 foreach ($legacyHostToken in @('PluginApiGeneration', 'PluginApiV1Fallback', 'PluginApiV2Detected', 'plugin-api-v1-fallback', 'IFBEImportPlugin\b', 'IFBEExportPlugin\b')) {
-    if (($manager + "`n" + $mainFrame) -match $legacyHostToken) { throw "Dead host-side legacy plugin path remains: $legacyHostToken" }
+if (($manager + "`n" + $mainFrame + "`n" + $execution) -match $legacyHostToken) { throw "Dead host-side legacy plugin path remains: $legacyHostToken" }
 }
 if ($importPrecompiledHeader -notmatch '#include\s+"FBE\.h"') { throw 'ImportEPUB no longer uses the generated FBE.h contract.' }
 $importProject = [regex]::Match($solution, '(?ms)^Project\([^\r\n]+\) = "ImportEPUB".*?^EndProject\s*$').Value

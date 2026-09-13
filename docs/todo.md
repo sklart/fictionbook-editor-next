@@ -29,6 +29,9 @@
   `EditorViewController`: host-port удерживает presentation в `CMainFrame`,
   но ordering, fail-closed Source commit и state commit принадлежат
   coordinator.
+- [x] Вынести import/export COM execution protocol в
+  `PluginExecutionController`, оставив plugin discovery/menu/last command в
+  `PluginUiController` и document replacement в application layer.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 

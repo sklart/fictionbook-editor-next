@@ -275,6 +275,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="scripts\ScriptMenuBuilder.cpp" />
     <ClCompile Include="scripts\ScriptUiController.cpp" />
     <ClCompile Include="plugins\PluginUiController.cpp" />
+	<ClCompile Include="plugins\PluginExecutionController.cpp" />
 	<ClCompile Include="toolbars\PortableToolbarStore.cpp" />
 	<ClCompile Include="toolbars\ToolbarLayoutAdapter.cpp" />
 	<ClCompile Include="toolbars\ToolbarFactory.cpp" />
@@ -461,6 +462,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="scripts\ScriptMenuBuilder.h" />
     <ClInclude Include="scripts\ScriptUiController.h" />
     <ClInclude Include="plugins\PluginUiController.h" />
+	<ClInclude Include="plugins\PluginExecutionController.h" />
 	<ClInclude Include="document\FileFingerprint.h" />
 	<ClInclude Include="document\DocumentState.h" />
 	<ClInclude Include="document\DocumentSession.h" />
