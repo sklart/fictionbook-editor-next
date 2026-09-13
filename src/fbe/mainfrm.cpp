@@ -8,6 +8,7 @@
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
 #include "document\DocumentSavePlan.h"
+#include "document\DocumentSaveController.h"
 #include "document\ui\DocumentFileDialogs.h"
 #include "archive\ui\ArchiveOpenCoordinator.h"
 
@@ -1017,35 +1018,13 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 
   const DocumentSavePlan savePlan = DocumentSavePlan::Create(askname, m_doc->m_namevalid, m_document_session.Location());
 
+  DocumentSaveController saveController;
   if (savePlan.target == DocumentSaveTarget::CurrentArchive)
   {
-	std::vector<unsigned char> serialized;
-	if (!m_doc->SerializeToMemory(serialized, m_document_session.Location().documentType)) return FAIL;
+	const DocumentSaveResult result = saveController.SaveCurrent(*m_doc, m_document_session, m_document_session.Location());
+	if (!result.Succeeded()) return FAIL;
 	if (RuntimeTests::IsScenario(L"archive-runtime") || RuntimeTests::IsScenario(L"archive-rar-save-runtime"))
-	{
-		const std::vector<unsigned char>::const_iterator marker = std::search(serialized.begin(), serialized.end(),
-			"ARCHIVE_RUNTIME_AFTER", "ARCHIVE_RUNTIME_AFTER" + strlen("ARCHIVE_RUNTIME_AFTER"));
-		::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SERIALIZED_CHANGED", marker != serialized.end() ? L"1" : L"0");
-	}
-	FbeArchive::Error error;
-	DocumentLocation savedArchiveLocation;
-	if (!FbeArchive::SaveDocument(m_document_session.Location(), serialized, savedArchiveLocation, error))
-	{
-		if (RuntimeTests::IsScenario(L"archive-recovery-external-verify"))
-		{
-			wchar_t diagnostic[16] = {};
-			swprintf_s(diagnostic, _countof(diagnostic), L"%d", static_cast<int>(error.code));
-			::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR", diagnostic);
-		}
-		if (RuntimeTests::IsScenario(L"archive-runtime"))
-		{
-			wchar_t diagnostic[64] = {};
-			swprintf_s(diagnostic, _countof(diagnostic), L"%d/%lu", static_cast<int>(error.code), error.systemError);
-			::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_WRITE_ERROR", diagnostic);
-		}
-		FbeArchiveUi::ShowError(m_hWnd, error); return FAIL;
-	}
-	m_document_session.SavedArchive(savedArchiveLocation);
+		::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SERIALIZED_CHANGED", result.serialized ? L"1" : L"0");
 	CommitSuccessfulSave();
 	return OK;
   }
@@ -1067,9 +1046,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
       return CANCELLED;
     const bool wasFbd = m_doc->GetDocumentFileType() == FictionBookFileType::Fbd;
     m_doc->m_encoding=encoding;
-    if (m_doc->Save(filename)) {
-      m_doc->m_filename=filename;
-	  m_document_session.SaveAsNormal(filename, m_doc->GetDocumentFileType());
+    if (saveController.SaveAsNormal(*m_doc, m_document_session, filename).Succeeded()) {
 	  if (wasFbd != IsFbdFile(filename)) ResetValidationStatus();
 	  U::SetCurrentDirectoryToFile(filename);
       m_doc->m_namevalid=true;
@@ -1080,11 +1057,10 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     }
     return FAIL;
   }
-  bool saved = m_doc->Save();
+  const DocumentSaveResult currentSave = saveController.SaveCurrent(*m_doc, m_document_session, m_document_session.Location());
 
-  if(saved)
+  if(currentSave.Succeeded())
   {
-	  m_document_session.Saved();
 	  CommitSuccessfulSave();
 	  return OK;
   }
