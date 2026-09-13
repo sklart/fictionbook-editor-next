@@ -18,9 +18,15 @@ try {
     $oldMode,$oldScenario = $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO
     try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='archive-open-runtime'
-        $quote = { param([string]$value) '"' + $value.Replace('"', '\"') + '"' }
-        $arguments = '--portable -b {0} {1}' -f (& $quote $report), (& $quote $archive)
-        $process = Start-Process -FilePath $FbeExe -ArgumentList $arguments -WorkingDirectory (Split-Path $FbeExe) -PassThru
+        # ProcessStartInfo.ArgumentList performs the Windows quoting itself.
+        # A manually pre-quoted string makes Unicode paths with spaces depend
+        # on PowerShell's native argument transport instead of FBE's parser.
+        $startInfo = [Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $FbeExe
+        $startInfo.WorkingDirectory = Split-Path $FbeExe
+        $startInfo.UseShellExecute = $false
+        foreach($argument in @('--portable', '-b', $report, $archive)) { [void]$startInfo.ArgumentList.Add($argument) }
+        $process = [Diagnostics.Process]::Start($startInfo)
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "CLI regression timed out after $TimeoutSeconds seconds." }
         $state = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
         if($process.ExitCode -ne 0) { throw "CLI regression exited $($process.ExitCode): $state" }
