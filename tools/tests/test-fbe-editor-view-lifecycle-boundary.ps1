@@ -5,13 +5,15 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $viewState = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\EditorViewState.h')
+$controllerHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\EditorViewController.h')
+$controllerSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\EditorViewController.cpp')
 $transitionHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\EditorViewTransition.h')
 $transitionSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\EditorViewTransition.cpp')
 $selectionState = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\EditorSelectionState.h')
 $mainHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.h')
 $mainSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
 
-foreach($unit in @($viewState, $transitionHeader, $transitionSource)) {
+foreach($unit in @($viewState, $transitionHeader, $transitionSource, $controllerHeader, $controllerSource)) {
     foreach($forbidden in @('CMainFrame', 'FBDoc', 'FB::Doc', 'MSHTML', 'Scintilla', 'HWND')) {
         if($unit -match $forbidden) { throw "Pure editor view component must not depend on $forbidden." }
     }
@@ -34,7 +36,7 @@ foreach($legacy in @('m_current_view', 'm_last_view', 'm_last_ctrl_tab_view', 'm
 foreach($forbidden in @('#define\s+m_current_view', '#define\s+m_last_view', '#define\s+m_last_ctrl_tab_view', '#define\s+m_ctrl_tab', '#define\s+m_body_selection', '#define\s+m_desc_selection', '#define\s+m_body_source_selection')) {
     if($mainSource -match $forbidden) { throw "CMainFrame retains lifecycle compatibility macro: $forbidden" }
 }
-foreach($required in @('MakeEditorViewTransitionPlan', 'CommitTransition', 'NextEditorView', 'NextCtrlTabEditorView', 'SetDescriptionMode')) {
+foreach($required in @('m_editor_view_controller\.Request', 'CommitTransition', 'NextEditorView', 'NextCtrlTabEditorView', 'SetDescriptionMode')) {
     if($mainSource -notmatch $required) { throw "CMainFrame does not coordinate extracted lifecycle operation: $required" }
 }
 Write-Host 'Editor view lifecycle boundary contract passed.'

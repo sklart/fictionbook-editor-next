@@ -34,6 +34,7 @@
 #include "source\\ui\\SourceEditorControl.h"
 #include "view\\EditorViewState.h"
 #include "view\\EditorViewTransition.h"
+#include "view\\EditorViewController.h"
 #include "view\\EditorSelectionState.h"
 #include "FBE.h"
 #include "Words.h"
@@ -217,6 +218,7 @@ public:
 
   
 	EditorViewState m_editor_view_state;
+	EditorViewController m_editor_view_controller;
 	EditorSelectionState m_editor_selection_state;
 	Fb2SourceAutocomplete   m_fb2_autocomplete;
 

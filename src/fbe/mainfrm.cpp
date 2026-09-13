@@ -5160,7 +5160,10 @@ void CMainFrame::SetDescriptionMode(bool enabled)
 void  CMainFrame::ShowView(EditorView vt)
 {
 	EditorView prev = m_editor_view_state.Current();
-	const EditorViewTransitionPlan transition = MakeEditorViewTransitionPlan(prev, vt);
+	const EditorViewChangeResult viewChange = m_editor_view_controller.Request(prev, vt);
+	if (!viewChange.Succeeded())
+		return;
+	const EditorViewTransitionPlan& transition = viewChange.plan;
 	if (StartupTrace::Enabled())
 	{
 		const wchar_t* const viewNames[] = { L"Body", L"Description", L"Source" };

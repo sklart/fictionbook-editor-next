@@ -304,6 +304,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
       <ClCompile Include="source\Fb2SourceAutocomplete.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="source\SourceDocumentTransfer.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="view\EditorViewState.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+	<ClCompile Include="view\EditorViewController.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="view\EditorViewTransition.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="source\Fb2SourceStructuralContext.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="..\common\fb2\Fb2CoverImage.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
@@ -487,6 +488,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="table\TableStructuralEditor.h" />
 	<ClInclude Include="view\EditorSelectionState.h" />
 	<ClInclude Include="view\EditorViewState.h" />
+	<ClInclude Include="view\EditorViewController.h" />
 	<ClInclude Include="view\EditorViewTransition.h" />
 	<ClInclude Include="view\VisualDomNormalizer.h" />
 	<ClInclude Include="dom\MarkupUndoUnitScope.h" />
