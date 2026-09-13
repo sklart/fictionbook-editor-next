@@ -20,6 +20,8 @@ $lifecycleHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\docum
 $loaderSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\DocumentLoader.cpp')
 $pendingSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\PendingDocument.cpp')
 $recentOwner = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\recent\RecentDocumentsController.h')
+$saveHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\DocumentSaveController.h')
+$saveSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\DocumentSaveController.cpp')
 $project = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.vcxproj')
 
 foreach($required in @(
@@ -97,6 +99,16 @@ $reloadHandler = [regex]::Match($mainSource, 'bool CMainFrame::ReloadFile[\s\S]*
 foreach($handler in @($newHandler, $loadHandler, $reloadHandler)) {
     if(-not $handler -or $handler -notmatch 'DocumentLifecycleController') { throw 'New/Open/Reload must delegate document orchestration to DocumentLifecycleController.' }
     if($handler -match 'PendingDocument\s+pending') { throw 'CMainFrame retained transactional document orchestration.' }
+}
+foreach($required in @('enum class DocumentSaveStatus', 'struct DocumentSaveResult', 'SaveCurrent\s*\(', 'SaveAsNormal\s*\(')) {
+    if($saveHeader -notmatch $required) { throw "Document save boundary is missing: $required" }
+}
+if($saveSource -match 'mainfrm\.h') { throw 'DocumentSaveController must not depend on CMainFrame.' }
+foreach($required in @('DocumentSaveController', 'DocumentSavePlan::Create', 'CommitSuccessfulSave')) {
+    if($mainSource -notmatch $required) { throw "SaveFile boundary is missing: $required" }
+}
+if($saveSource -notmatch 'SaveDocument' -or $saveSource -notmatch 'session\.SavedArchive' -or $saveSource -notmatch 'session\.Saved\(\)') {
+    throw 'DocumentSaveController must commit session only after persistence succeeds.'
 }
 
 Write-Host 'Runtime test scenario boundary contract passed.'

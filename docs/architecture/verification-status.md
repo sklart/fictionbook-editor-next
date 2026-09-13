@@ -28,6 +28,11 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   при rollback, а `FbeRecentDocuments::Controller` владеет normal/archive MRU
   resolution и мутациями. Проверены boundary-контракт и runtime New/Open/Reload.
 
+- Save-контур отделён от frame: `DocumentSaveController` выполняет normal,
+  archive и Save As persistence, committing `DocumentSession` только после
+  успеха. `CMainFrame` сохраняет fail-closed source/XML preflight, UI,
+  savepoint и recovery cleanup; failed/cancelled save не подтверждает их.
+
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation
   unit, поэтому private-граница frame не расширена.

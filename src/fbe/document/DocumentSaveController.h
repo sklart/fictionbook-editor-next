@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DocumentLocation.h"
+#include "../archive/ArchiveReader.h"
 
 class DocumentSession;
 namespace FB { class Doc; }
@@ -13,6 +14,7 @@ struct DocumentSaveResult
 	DocumentLocation location;
 	bool archive = false;
 	bool serialized = false;
+	FbeArchive::Error archiveError;
 	bool Succeeded() const { return status == DocumentSaveStatus::Success; }
 };
 

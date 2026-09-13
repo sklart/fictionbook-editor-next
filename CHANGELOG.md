@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Save, Save As и archive save теперь используют `DocumentSaveController`:
+  persistence и `DocumentSession` commit происходят только после успешной
+  записи, в то время как fail-closed editor preflight, native dialogs,
+  savepoint и recovery cleanup остаются во frame.
+
 - New/Open/Reload используют единый transactional `PendingDocument`, который
   сохраняет прежний active-document до commit; `DocumentLifecycleResult`
   описывает исход операции на legacy MRU-границе. MRU вынесен в

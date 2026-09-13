@@ -1022,7 +1022,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   if (savePlan.target == DocumentSaveTarget::CurrentArchive)
   {
 	const DocumentSaveResult result = saveController.SaveCurrent(*m_doc, m_document_session, m_document_session.Location());
-	if (!result.Succeeded()) return FAIL;
+	if (!result.Succeeded()) { FbeArchiveUi::ShowError(m_hWnd, result.archiveError); return FAIL; }
 	if (RuntimeTests::IsScenario(L"archive-runtime") || RuntimeTests::IsScenario(L"archive-rar-save-runtime"))
 		::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SERIALIZED_CHANGED", result.serialized ? L"1" : L"0");
 	CommitSuccessfulSave();

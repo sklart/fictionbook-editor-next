@@ -13,6 +13,8 @@
   Reload используют transactional `PendingDocument`, MRU — result-контракт и
   normal/archive MRU принадлежит отдельному owner. Save/Save As и recovery
   остаются в `CMainFrame` отдельными следующими этапами.
+- [x] Выделить Save / Save As / archive save persistence в
+  `DocumentSaveController`, сохранив editor/recovery presentation boundary.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 
