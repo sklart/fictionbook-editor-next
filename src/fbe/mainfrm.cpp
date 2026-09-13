@@ -1025,7 +1025,16 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	const DocumentSaveResult result = saveController.SaveCurrent(*m_doc, m_document_session, m_document_session.Location());
 	if (!result.Succeeded())
 	{
-		if (result.failure == DocumentSaveFailureKind::ArchiveWrite) FbeArchiveUi::ShowError(m_hWnd, result.archiveError);
+		if (result.failure == DocumentSaveFailureKind::ArchiveWrite)
+		{
+			if (RuntimeTests::IsScenario(L"archive-recovery-external-verify"))
+			{
+				wchar_t diagnostic[16] = {};
+				swprintf_s(diagnostic, _countof(diagnostic), L"%d", static_cast<int>(result.archiveError.code));
+				::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR", diagnostic);
+			}
+			FbeArchiveUi::ShowError(m_hWnd, result.archiveError);
+		}
 		return FAIL;
 	}
 	CommitSuccessfulSave();
