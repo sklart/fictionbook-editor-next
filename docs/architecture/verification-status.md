@@ -19,6 +19,9 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
 - Extension startup разделён на scripts, bundled plugins и MRU/recent documents;
   `InitializeExtensionUi` остаётся только тонким coordinator. Runtime test
   scenarios подключают тематические части из малого umbrella-файла.
+  `ScriptUiController` и `PluginUiController` действительно владеют своим
+  state/lifecycle (меню, visual resources, catalog/manager и command state),
+  а не только вызываются как разнесённые startup methods.
 
 - Первый lifecycle-контур документа отделён структурно: `DocumentLoader` не
   зависит от `CMainFrame`, `PendingDocument` восстанавливает active-document
