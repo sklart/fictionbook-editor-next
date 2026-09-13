@@ -8,6 +8,17 @@
 
 extern CSettings _Settings;
 
+namespace
+{
+	bool IsSettingsDialogRuntimeTest()
+	{
+		wchar_t mode[4] = {}, scenario[64] = {};
+		return ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) == 1 && mode[0] == L'1' &&
+			::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) == wcslen(L"settings-dialog-runtime") &&
+			wcscmp(scenario, L"settings-dialog-runtime") == 0;
+	}
+}
+
 // CSettingsDlg
 
 CSettingsDlg::CSettingsDlg() :
@@ -100,7 +111,27 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	LayoutControls(client.Width(), client.Height());
 	m_navigation.SetCurSel(0);
 	SelectPage(SettingsPageId::General);
+	if (IsSettingsDialogRuntimeTest())
+	{
+		// Test-only automation still commits through the normal global OK path.
+		// Use independent pages so ApplyConfChanges covers more than one category.
+		m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, BST_CHECKED);
+		m_editorPage->SendDlgItemMessage(IDC_NBSP_CHAR, CB_SELECTSTRING, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"\x25AB"));
+		m_sourcePage->CheckDlgButton(IDC_WRAP, BST_CHECKED);
+		m_spellingPage->CheckDlgButton(IDC_USESPELLCHECKER, BST_UNCHECKED);
+		m_spellingPage->SetDlgItemText(IDC_CUSTOM_DICT, L"");
+		m_advancedPage->SendMessage(WM_COMMAND, MAKEWPARAM(IDC_DEFAULT_SCRIPTS_FOLDER, BN_CLICKED), 0);
+		SetTimer(0x53455454, 1);
+	}
 	return 1;
+}
+
+LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
+{
+	if (timerId != 0x53455454 || !IsSettingsDialogRuntimeTest()) return 0;
+	KillTimer(timerId);
+	BOOL handled = FALSE;
+	return OnClickedOK(BN_CLICKED, IDOK, GetDlgItem(IDOK), handled);
 }
 
 LRESULT CSettingsDlg::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND hWndCtl, BOOL& /* unused: bHandled */)

@@ -31,6 +31,9 @@ try {
         @{ id = 'split-section-middle'; body = '<section id="target-section-middle"><p>First <a l:href="#target-section-middle">Backlink</a></p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'target-section-middle'; backlink = $true },
 		@{ id = 'split-wrapper-success'; route = 'wrapper'; body = '<section id="split-wrapper-success"><p>First</p><p>Middle</p><p>Last</p></section>'; position = 'middle'; containerId = 'split-wrapper-success' },
         @{ id = 'split-section-selection'; body = '<section id="target-section-selection"><p>AAA 123 ZZZ</p></section>'; position = 'selection'; containerId = 'target-section-selection'; fragments = $true },
+		@{ id = 'split-section-inline-selection'; body = '<section id="target-section-inline-selection"><p>AAA <strong>123</strong> ZZZ</p></section>'; position = 'selection'; containerId = 'target-section-inline-selection'; fragments = $true },
+		@{ id = 'split-section-multi-paragraph-selection'; body = '<section id="target-section-multi"><p>AAA <strong>111</strong> tail</p><p>middle <emphasis>222</emphasis></p><p>last 333 ZZZ</p></section>'; position = 'selection-multi'; containerId = 'target-section-multi'; selectionStart = '111'; selectionEnd = '333'; multi = $true },
+		@{ id = 'split-section-title-selection'; body = '<section id="target-section-title-selection"><title><p>Existing title</p></title><p>AAA 123 ZZZ</p></section>'; position = 'selection'; containerId = 'target-section-title-selection'; fragments = $true; existingTitle = $true },
 		@{ id = 'split-section-caret'; body = '<section id="target-section-caret"><p>abcdef</p></section>'; position = 'middle'; containerId = 'target-section-caret'; caret = $true },
 		@{ id = 'split-stanza-caret'; body = '<section><p>Anchor</p><poem><stanza><v>abcdef</v></stanza></poem></section>'; position = 'middle'; container = 'stanza'; containerId = ''; caret = $true },
 		@{ id = 'split-section-title-caret'; body = '<section id="target-section-title-caret"><title><p>Existing title</p></title><p>abcdef</p></section>'; position = 'middle'; containerId = 'target-section-title-caret'; caret = $true },
@@ -55,7 +58,7 @@ try {
         $reopenReport = Join-Path $directory ($case.id + '.reopen.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
         @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`" xmlns:l=`"http://www.w3.org/1999/xlink`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$($case.body)</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
-        $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault, $oldRoute, $oldCaret = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_SPLIT_CARET
+		$oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault, $oldRoute, $oldCaret, $oldSelectionStart, $oldSelectionEnd = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_SPLIT_CARET, $env:FBE_NEXT_TEST_SPLIT_SELECTION_START, $env:FBE_NEXT_TEST_SPLIT_SELECTION_END
         try {
             $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'split-container'; $env:FBE_NEXT_TEST_SPLIT_POSITION = $case.position
             $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS = if($case.ContainsKey('container')) { $case.container } else { $null }
@@ -63,13 +66,15 @@ try {
             $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT = if($case.ContainsKey('rejected')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_SPLIT_FAULT = if($case.ContainsKey('fault')) { $case.fault } else { $null }
 			$env:FBE_NEXT_TEST_STRUCTURE_ROUTE = if($case.ContainsKey('route')) { $case.route } else { $null }
+			$env:FBE_NEXT_TEST_SPLIT_SELECTION_START = if($case.ContainsKey('selectionStart')) { $case.selectionStart } else { $null }
+			$env:FBE_NEXT_TEST_SPLIT_SELECTION_END = if($case.ContainsKey('selectionEnd')) { $case.selectionEnd } else { $null }
 			$env:FBE_NEXT_TEST_SPLIT_CARET = if($case.ContainsKey('caret')) { '1' } else { $null }
             $env:FBE_NEXT_TEST_STRUCTURE_TRACE = $trace; $env:FBE_NEXT_TEST_STRUCTURE_CASE = $case.id
             $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE timed out for $($case.id)." }
             if($process.ExitCode -ne 0) { throw "FBE failed for $($case.id): exit $($process.ExitCode)." }
         } finally {
-            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_SPLIT_CARET = $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault, $oldRoute, $oldCaret
+			$env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPLIT_POSITION, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS, $env:FBE_NEXT_TEST_SPLIT_CONTAINER_ID, $env:FBE_NEXT_TEST_SPLIT_EXPECT_REJECT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_SPLIT_FAULT, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_SPLIT_CARET, $env:FBE_NEXT_TEST_SPLIT_SELECTION_START, $env:FBE_NEXT_TEST_SPLIT_SELECTION_END = $oldMode, $oldScenario, $oldPosition, $oldContainer, $oldContainerId, $oldReject, $oldTrace, $oldTraceCase, $oldFault, $oldRoute, $oldCaret, $oldSelectionStart, $oldSelectionEnd
         }
         $row = Import-Csv -LiteralPath $report -Delimiter "`t"
         if(@($row).Count -ne 1 -or $row.result -ne 'pass') { throw "Split runtime contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
@@ -88,6 +93,14 @@ try {
             if($row.$property -ne '1') { throw "Split runtime assertion $property failed for $($case.id)." }
         }
 		if($case.ContainsKey('fragments') -and ($row.selection_text -ne '123' -or $row.new_title_text -ne '123' -or $row.new_remaining_text -notmatch 'ZZZ')) { throw "Split selection must create the new container title and preserve its remainder for $($case.id): $($row | ConvertTo-Json -Compress)" }
+		if($case.ContainsKey('multi') -and ($row.selection_text -notmatch '111' -or $row.selection_text -notmatch '222' -or $row.selection_text -notmatch '333' -or $row.new_title_text -notmatch '111' -or $row.new_title_text -notmatch '333')) { throw "Split multi-paragraph selection did not retain both boundaries for $($case.id): $($row | ConvertTo-Json -Compress)" }
+		if($case.ContainsKey('existingTitle')) {
+			[xml]$savedForTitles = Get-Content -LiteralPath $fixture -Raw
+			$sections = @($savedForTitles.SelectNodes('//*[local-name()="section"]'))
+			if($sections.Count -lt 2 -or $sections[0].SelectSingleNode('./*[local-name()="title"]/*[local-name()="p"]')?.InnerText -ne 'Existing title' -or $sections[1].SelectSingleNode('./*[local-name()="title"]/*[local-name()="p"]')?.InnerText -ne '123') {
+				throw "Split with an existing section title did not preserve old/new titles for $($case.id)."
+			}
+		}
         if($case.ContainsKey('rejected') -and $row.check_allowed -ne '0') { throw "Rejected Split case was enabled: $($case.id)." }
         $traceRows = Import-Csv -LiteralPath $trace -Delimiter "`t"
         foreach($property in @('phase', 'event', 'hresult')) { if(-not ($traceRows[0].PSObject.Properties.Name -contains $property)) { throw "Malformed StructuralTrace TSV for $($case.id): missing $property" } }

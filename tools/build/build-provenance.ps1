@@ -54,7 +54,9 @@ if ($Action -eq 'Write') {
     $commit = (& git -C $repoRoot rev-parse HEAD).Trim()
     [ordered]@{ schemaVersion=1; kind=$Kind; configuration=$Configuration; platform='Win32'; platformToolset=$PlatformToolset; gitCommit=$commit; artifacts=$artifacts } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
     Write-Host "Build provenance written: $manifestPath"
-    exit 0
+    # This script is invoked from the public verification gate.  Do not end
+    # its caller's PowerShell host after writing provenance.
+    return
 }
 
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Build provenance is missing: $manifestPath. Run the authoritative full build pipeline." }

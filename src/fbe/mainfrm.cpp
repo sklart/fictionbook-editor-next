@@ -3247,6 +3247,75 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	if (IsFbeTestScenario(L"body-source-transition-runtime"))
 	{
 		FB::Doc* const originalDocument = m_doc;
+		const wchar_t* const unicodeMarker = L"\x0413\x0420\x0410\x041D\x042C_UNICODE";
+		// Exercise the actual MSHTML selection -> Scintilla selection -> MSHTML
+		// selection path before the legacy source-edit checks below.  The fixture
+		// deliberately includes Unicode, repeated text and inline boundaries: a
+		// source position alone cannot prove that these ranges survived a view
+		// transition.
+		auto selectBodyRange = [&](const wchar_t* elementId, const wchar_t* beginMarker, const wchar_t* endMarker, bool collapsed)
+		{
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			MSHTML::IHTMLDocument3Ptr document3(document);
+			MSHTML::IHTMLBodyElementPtr body(document ? document->body : NULL);
+			MSHTML::IHTMLElementPtr element(document3 ? document3->getElementById(elementId) : NULL);
+			if (!body || !element) return false;
+			MSHTML::IHTMLTxtRangePtr begin(body->createTextRange());
+			MSHTML::IHTMLTxtRangePtr end(body->createTextRange());
+			if (!begin || !end) return false;
+			begin->moveToElementText(element); end->moveToElementText(element);
+			const bool wholeElement = beginMarker == NULL || *beginMarker == L'\0';
+			if (!wholeElement && !begin->findText(beginMarker, 0, 0)) return false;
+			if (collapsed)
+				begin->collapse(VARIANT_TRUE);
+			else
+			{
+				if (!wholeElement && (!end->findText(endMarker, 0, 0) || FAILED(begin->setEndPoint(L"EndToEnd", end)))) return false;
+			}
+			begin->select();
+			return true;
+		};
+		auto selectedBodyText = [&]()
+		{
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			MSHTML::IHTMLSelectionObjectPtr selection(document ? document->selection : NULL);
+			MSHTML::IHTMLTxtRangePtr range(selection ? selection->createRange() : NULL);
+			return range ? CString(static_cast<LPCWSTR>(range->text)) : CString();
+		};
+		CStringA selectionRoundTripDiagnostics;
+		auto roundTripBodySelection = [&](const wchar_t* elementId, const wchar_t* beginMarker, const wchar_t* endMarker, const wchar_t* expectedText, bool collapsed)
+		{
+			const bool selected = selectBodyRange(elementId, beginMarker, endMarker, collapsed);
+			if (!selected) { selectionRoundTripDiagnostics.AppendFormat("%S=select;", elementId); return false; }
+			const CString before(selectedBodyText());
+			ShowView(SOURCE);
+			const sptr_t sourceStart = m_source.SendMessage(SCI_GETSELECTIONSTART);
+			const sptr_t sourceEnd = m_source.SendMessage(SCI_GETSELECTIONEND);
+			const bool sourceSelection = IsSourceActive() && m_editor_selection_state.BodySource().bodyToSourceTransferred &&
+				sourceStart >= 0 && sourceEnd >= sourceStart && (collapsed ? sourceStart == sourceEnd : sourceEnd > sourceStart);
+			const sptr_t sourceLength = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> source(static_cast<size_t>(sourceLength) + 1);
+			m_source.SendMessage(SCI_GETTEXT, sourceLength + 1, reinterpret_cast<LPARAM>(source.data()));
+			const CStringA expectedUtf8(CW2A(expectedText, CP_UTF8));
+			const bool sourceContainsExpected = collapsed || (sourceSelection && CStringA(source.data() + sourceStart,
+				static_cast<int>(sourceEnd - sourceStart)).Find(expectedUtf8) >= 0);
+			ShowView(BODY);
+			const CString after(selectedBodyText());
+			// IHTMLTxtRange::text omits inline markup content for an outer paragraph
+			// range.  Its UTF-8 source range above is the authoritative check for
+			// this case; the visual comparison still proves that the same range came
+			// back after the round trip.
+			const bool outerInlineRange = wcscmp(elementId, L"body-source-inline") == 0;
+			const bool beforeMatches = collapsed ? before.IsEmpty() : (outerInlineRange ? !before.IsEmpty() : before.Find(expectedText) >= 0);
+			const bool afterMatches = collapsed ? after.IsEmpty() : (outerInlineRange ? !after.IsEmpty() : after.Find(expectedText) >= 0);
+			const bool exactRoundTrip = before == after;
+			selectionRoundTripDiagnostics.AppendFormat("%S=%d/%d/%d/%d/%d/%d;", elementId, sourceSelection, sourceContainsExpected, beforeMatches, afterMatches, exactRoundTrip, !IsSourceActive());
+			return sourceSelection && sourceContainsExpected && !IsSourceActive() && beforeMatches && afterMatches && exactRoundTrip;
+		};
+		const bool unicodeInlineSelection = roundTripBodySelection(L"body-source-unicode", L"UNICODE_BEGIN", L"UNICODE_END", unicodeMarker, false);
+		const bool repeatedTextSelection = roundTripBodySelection(L"body-source-repeat", L"REPEAT_TOKEN", L"REPEAT_TOKEN_REPEAT_END", L"REPEAT_TOKEN middle REPEAT_TOKEN_REPEAT_END", false);
+		const bool tagBoundarySelection = roundTripBodySelection(L"body-source-boundary", L"BOUNDARY_BEGIN", L"BOUNDARY_END", L"BOUNDARY_BEGIN", false);
+		const bool collapsedCaretSelection = roundTripBodySelection(L"body-source-caret", L"CARET_UNICODE", L"CARET_UNICODE", L"", true);
 		ShowView(SOURCE);
 		const bool sourceActive = IsSourceActive();
 		const sptr_t initialLength = m_source.SendMessage(SCI_GETLENGTH);
@@ -3282,9 +3351,25 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool invalidPreserved = invalidRejected && IsSourceActive() && m_doc == originalDocument &&
 			m_source.SendMessage(SCI_GETLENGTH) > 0 && m_source.SendMessage(SCI_GETSELECTIONSTART) >= 0 && m_source.SendMessage(SCI_GETSELECTIONEND) >= 0;
 		CStringA report;
-		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0);
+		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\nunicode_inline_selection=%d\nrepeated_text_selection=%d\ntag_boundary_selection=%d\ncollapsed_caret_selection=%d\nselection_diagnostics=%s\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0, unicodeInlineSelection, repeatedTextSelection, tagBoundarySelection, collapsedCaretSelection, static_cast<LPCSTR>(selectionRoundTripDiagnostics));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved ? 0 : 1);
+		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved && unicodeInlineSelection && repeatedTextSelection && tagBoundarySelection && collapsedCaretSelection ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
+	{
+		const bool verifyOnly = IsFbeTestScenario(L"settings-dialog-runtime-verify");
+		if (!verifyOnly)
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_TOOLS_OPTIONS, 0), 0);
+		const bool backupPersisted = _Settings.GetCreateBackupFile();
+		const bool nbspPersisted = _Settings.GetNBSPChar() == L"\x25AB";
+		const bool wrapPersisted = _Settings.XmlSrcWrap();
+		const bool persisted = backupPersisted && nbspPersisted && wrapPersisted;
+		const bool applied = verifyOnly || (m_source.SendMessage(SCI_GETWRAPMODE) != SC_WRAP_NONE);
+		CStringA report;
+		report.Format("settings_dialog=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\n", !verifyOnly, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(persisted && applied ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"editor-view-lifecycle-runtime"))
@@ -4004,7 +4089,7 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (IsFbeTestScenario(L"split-container"))
 	{
-		wchar_t position[16] = {}, containerClass[16] = {}, containerId[64] = {}, tracePath[MAX_PATH] = {}, traceCase[64] = {}, route[16] = {};
+		wchar_t position[16] = {}, containerClass[16] = {}, containerId[64] = {}, tracePath[MAX_PATH] = {}, traceCase[64] = {}, route[16] = {}, selectionStartMarker[64] = {}, selectionEndMarker[64] = {};
 		wchar_t splitFault[32] = {};
 		const DWORD positionLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_POSITION", position, _countof(position));
 		const DWORD containerClassLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_CONTAINER_CLASS", containerClass, _countof(containerClass));
@@ -4013,6 +4098,8 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const DWORD traceCaseLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_CASE", traceCase, _countof(traceCase));
 		const DWORD splitFaultLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_FAULT", splitFault, _countof(splitFault));
 		const DWORD routeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_ROUTE", route, _countof(route));
+		const DWORD selectionStartLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_SELECTION_START", selectionStartMarker, _countof(selectionStartMarker));
+		const DWORD selectionEndLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SPLIT_SELECTION_END", selectionEndMarker, _countof(selectionEndMarker));
 		const bool viaWrapper = routeLength == 7 && wcscmp(route, L"wrapper") == 0;
 		CStringA header("requested_container\tactual_container\tselection_collapsed\tselection_start_relative\tselection_end_relative\tselection_parent\tcheck_allowed\tcheck_dom_unchanged\tcheck_selection_unchanged\tcheck_dirty_unchanged\tchanged\tbefore_equals_undo\tafter_equals_redo\tselection_in_new\tfragments_preserved\tsaved\tresult\tfault_error\tdocument_changed\tcheck_status\tapply_status\thresult\tselection_text\tnew_title_text\tnew_remaining_text\tcaret_inserted\tcaret_undo_redo\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
@@ -4058,11 +4145,18 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			const long index = atEnd ? paragraphs->length - 1 : paragraphs->length / 2;
 			MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
 			if (!paragraph) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-paragraph\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
-			const bool nonEmptySelection = positionLength == 9 && wcscmp(position, L"selection") == 0;
+			const bool nonEmptySelection = positionLength >= 9 && wcsncmp(position, L"selection", 9) == 0;
 			if (atEnd) { range->moveToElementText(container); range->collapse(VARIANT_FALSE); }
 			else if (nonEmptySelection) {
-				range->moveToElementText(paragraph);
-				if (!range->findText(L"123", 0, 0)) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-selection-marker\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
+				range->moveToElementText(container);
+				const wchar_t* const startMarker = selectionStartLength && selectionStartLength < _countof(selectionStartMarker) ? selectionStartMarker : L"123";
+				const wchar_t* const endMarker = selectionEndLength && selectionEndLength < _countof(selectionEndMarker) ? selectionEndMarker : startMarker;
+				MSHTML::IHTMLTxtRangePtr selectionEnd(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+				selectionEnd->moveToElementText(container);
+				// findText already leaves the range end immediately after the marker.
+				// Moving it again would include following user text in a single-marker
+				// selection (for example, "123 ZZZ" instead of "123").
+				if (!range->findText(startMarker, 0, 0) || !selectionEnd->findText(endMarker, 0, 0) || FAILED(range->setEndPoint(L"EndToEnd", selectionEnd))) { CStringA row; row.Format("%s\t%s\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tmissing-selection-marker\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0; }
 			}
 			else { range->moveToElementText(paragraph); range->collapse(VARIANT_TRUE); }
 			// Stanza splitting is defined between verses.  Keep the test caret at
@@ -4214,7 +4308,9 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 			 selectionTextBefore == L"123" && originalText.Find(L"AAA") >= 0 && originalText.Find(L"123") < 0 && originalText.Find(L"ZZZ") < 0 &&
 			 newTitleText == L"123" && newRemainingText.Find(L"ZZZ") >= 0 && splitText.Find(L"AAA") < 0);
 		const bool passed = checkAllowed && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged && applied && changed && before == undone && after == redone && selectionInNew && fragmentsPreserved && caretInserted && caretUndoRedo && endTextInserted && saved;
-		CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t0x%08lX\t%d\t%s\t%s\t0x%08lX\t%S\t%S\t%S\t%d\t%d\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, (LPCSTR)selectionParentSummary, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, changed, before == undone, after == redone, selectionInNew, fragmentsPreserved, saved, passed ? "pass" : "fail", static_cast<unsigned long>(splitResult.error), splitResult.documentChanged ? 1 : 0, statusName(checkResult), statusName(splitResult), static_cast<unsigned long>(splitResult.error), static_cast<LPCWSTR>(selectionTextBefore), static_cast<LPCWSTR>(newTitleText), static_cast<LPCWSTR>(newRemainingText), caretInserted ? 1 : 0, caretUndoRedo ? 1 : 0);
+		auto tsvField = [](CString value) { value.Replace(L"\r", L"\\r"); value.Replace(L"\n", L"\\n"); value.Replace(L"\t", L"\\t"); return CStringA(CW2A(value, CP_UTF8)); };
+		const CStringA selectionTextField(tsvField(selectionTextBefore)), newTitleField(tsvField(newTitleText)), newRemainingField(tsvField(newRemainingText));
+		CStringA row; row.Format("%s\t%s\t%d\t%ld\t%ld\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t0x%08lX\t%d\t%s\t%s\t0x%08lX\t%s\t%s\t%s\t%d\t%d\r\n", (LPCSTR)requestedContainer, (LPCSTR)actualContainer, selectionCollapsed, selectionStartRelative, selectionEndRelative, (LPCSTR)selectionParentSummary, checkAllowed, checkDomUnchanged, checkSelectionUnchanged, checkDirtyUnchanged, changed, before == undone, after == redone, selectionInNew, fragmentsPreserved, saved, passed ? "pass" : "fail", static_cast<unsigned long>(splitResult.error), splitResult.documentChanged ? 1 : 0, statusName(checkResult), statusName(splitResult), static_cast<unsigned long>(splitResult.error), (LPCSTR)selectionTextField, (LPCSTR)newTitleField, (LPCSTR)newRemainingField, caretInserted ? 1 : 0, caretUndoRedo ? 1 : 0);
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		} catch (_com_error& error) {
 			CStringA row; row.Format("unknown\tunknown\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tcom-0x%08lX\r\n", static_cast<unsigned long>(error.Error()));

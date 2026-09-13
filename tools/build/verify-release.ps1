@@ -155,6 +155,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-editor-runtime-fingerprint.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-assets.ps1") -RuntimeDirectory (Join-Path $outputDir "EditorBackgrounds")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-settings.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-settings-dialog-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-regression.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-archive-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
@@ -194,6 +195,9 @@ if ($runTables) {
 foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','delete-row','insert-column-left','insert-column-right','delete-column')) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId plain -Operation $commandRouteOperation -RouteThroughFrame
 }
+# Cover the same frame/WM_COMMAND route against a non-rectangular logical grid:
+# rowspan, colspan, and mixed header/body cells must round-trip through Undo/Redo.
+& (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId combined -Target "1,0" -Operation delete-row -RouteThroughFrame
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId plain -Target "1,1" -Operation insert-column-left
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId edge-spans -Target "0,3" -Operation delete-column
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId rowspan -Target "1,0" -Operation insert-row-below
