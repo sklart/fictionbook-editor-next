@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Presentation-обработчики runtime-локализации меню, toolbar и tooltip вынесены
+  из `mainfrm.cpp` в `src/fbe/ui/MainFrameRuntimeUi.inl`; live-refresh языка
+  сохраняет существующий контракт без расширения доступа `CMainFrame`.
+
 - Тестовая runtime-orchestration вынесена из `mainfrm.cpp` в
   `src/fbe/testing/RuntimeTestScenarios.inl`: portable-state, archive, split
   undo, Body/Source, settings и остальные автоматические сценарии сохранили

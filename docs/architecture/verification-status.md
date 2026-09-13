@@ -16,6 +16,10 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
 
 ## Подтверждено локально
 
+- Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
+  размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation
+  unit, поэтому private-граница frame не расширена.
+
 - Test-only runtime orchestration живёт в `src/fbe/testing/RuntimeTestScenarios.inl`;
   `mainfrm.cpp` включает её в тот же translation unit, сохраняя private-boundary
   CMainFrame без public-полей или широкого `friend`.
