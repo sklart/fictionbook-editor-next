@@ -3,16 +3,15 @@
 Дата прогона: 2026-09-13.  Базовая ревизия перед test-only изменениями:
 `bc7c8cbe385ec34f5b01352b45f8537124197f1b`.
 
-Цель probe — доказать либо опровергнуть возможность сохранить исторический
-контракт Split без изменения production-кода:
+Цель probe — установить фактические границы MSHTML Undo и отличить их от
+исторической пользовательской семантики Split:
 
 ```text
 AAA [123] ZZZ
 old section = AAA
 new section.title = 123
 new section.body = ZZZ
-Undo #1 = точный исходный DOM
-Redo #1 = точный результат Split
+Undo/Redo исследуются отдельно от преобразования DOM.
 ```
 
 `[123]` обозначает выделение; текстовый fixture хранит его как `AAA 123 ZZZ`.
@@ -62,37 +61,7 @@ Redo #1 = точный результат Split
 пользовательский единый Undo и не является основанием менять
 `BodyStructuralEditor::SplitContainer()`.
 
-## Следующий допустимый prototype
-
-Нужен command-specific `IOleUndoUnit` только для Split, а не общий Undo
-framework. До его реализации prototype обязан отдельно доказать следующее:
-
-1. До Split сохранить точное представление минимальной затронутой области и
-   после Split — её точное представление, включая id, title, inline-разметку и
-   ссылки.
-2. Выполнить native Split и убрать его промежуточные MSHTML undo-units только
-   в пределах этой команды; затем добавить один собственный unit в тот же
-   manager.
-3. В `Do` атомарно переключать pre/post представления, не создавая новые
-   MSHTML undo entries. Повторный `Do` должен добавлять только самого себя,
-   как требует контракт `IOleUndoUnit`.
-4. Проверить стек: `Split`, обычный `WM_CHAR`, Undo, Undo, Redo, Redo. Ввод
-   должен отменяться первым, Split — вторым; повторный ввод не вправе
-   использовать stale markup pointers.
-5. Привязать unit к текущему document/session generation. При `LoadFile`,
-   закрытии документа или смене MSHTML document старый unit должен быть
-   уничтожен вместе со старым undo manager, а не применён к новому FB2.
-
-В проекте уже есть узкий прецедент — `CTableCellToggleUndoUnit` в
-`src/fbe/table/TableStructuralEditor.cpp`. Он переключает только пару
-`active`/`inactive` detached cell elements через `replaceChild`, а затем
-повторно добавляет самого себя в тот же manager. Этот механизм подтверждает
-жизнеспособность command-specific unit, но не переносим механически на Split:
-Split должен заменить область с двумя sibling sections, сохранить title/id и
-изолировать созданные native MSHTML units. Табличный unit не решает ни
-вытеснение этих промежуточных entries, ни жизненный цикл после `LoadFile`.
-
-## Command-specific prototype: результат
+## Command-specific prototype: результат исследования
 
 Был выполнен отдельный production prototype только для `SplitContainer`:
 он хранил detached deep-clone исходного контейнера и detached пару
@@ -120,10 +89,44 @@ Split → WM_CHAR X → Undo X → Undo Split → Redo Split → Redo X
 перехвата/перестройки обоих стеков Undo, что не разрешено для Split-specific
 решения.
 
-Пока эти пункты не доказаны runtime-тестом, production Split оставлен без
-изменений, а строгий контракт `AAA [123] ZZZ` остаётся красным.
+Следовательно, глобальный Undo layer и Split-specific compound undo не
+являются допустимым продолжением этой задачи.
 
-## Первый текущий строгий runtime-отказ
+## Исторический runtime и финальное решение
+
+Исторический binary, собранный из `6705abf2^`
+(`0498862487c5d31fb787b8b75c00439746d4b1e9`), проверен на реальном MSHTML.
+Он является oracle поведения, а не только источником старого C++ кода:
+
+| Сценарий | Фактический результат |
+| --- | --- |
+| `AAA [123] ZZZ → Split` | old = `AAA`, new title = `123`, new body = `ZZZ` |
+| Undo #1 | не восстанавливает точный исходный DOM одной операцией |
+| `abc|def → Split → WM_CHAR X` | `Xdef` |
+
+Таким образом, historical Split **сохранял title**, но атомарный один Undo не
+был историческим контрактом: фактический вариант — C (title сохраняется,
+native MSHTML создаёт несколько Undo entries). Требование сохранить title не
+требует и не оправдывает создание нового глобального Undo/Redo механизма.
+
+На `bc7c8cbe` strict runtime-regression обнаружил потерю title при сохранении
+native Undo/Redo. Диагностика показала, что title уже создан в новом sibling,
+но `source-cleanup` удаляет его, когда sibling предварительно присоединён к
+живому DOM.
+
+Финальное исправление `fbf108b0` оставляет новый sibling detached до полного
+завершения `source-cleanup`, и только затем вставляет его рядом с исходным
+контейнером. Это возвращает историческую семантику `title = selected text`,
+не меняя архитектуру Undo и не создавая placeholder из пользовательского
+текста.
+
+`test-fbe-split-container-production.ps1` успешно прошёл 13/13 runtime
+сценариев: section, stanza, существующий title, пустой tail, inline markup,
+id/ссылки, сохранение/XSD/reopen, Undo/Redo и штатный ввод в текущую каретку
+(`abc|def → Split → WM_CHAR X → Xdef`). Также успешно пройден
+`verify-release.ps1 -FullValidation` на Release Win32/v143.
+
+## Исходный строгий runtime-отказ
 
 На test-only ревизии `42a93d79` первый по порядку строгий Split-case,
 `split-section-selection`, воспроизводится командой:
@@ -143,6 +146,7 @@ Split → WM_CHAR X → Undo X → Undo Split → Redo Split → Redo X
 <DIV id=target-section-selection class=section><P>ZZZ</P></DIV>
 ```
 
-То есть `new_title_text` пуст, `fragments_preserved=0`; это первый реальный
-отказ строгого регресса, а не ошибка selection assertion.  Артефакт
-воспроизведения: `%TEMP%\fbe-split-container-7a8251aa7c7e41ddb41e8dba99482368`.
+То есть `new_title_text` пуст, `fragments_preserved=0`; это был первый реальный
+отказ строгого регресса, а не ошибка selection assertion. Он устранён
+`fbf108b0` описанным выше порядком DOM-мутаций. Артефакт воспроизведения:
+`%TEMP%\fbe-split-container-7a8251aa7c7e41ddb41e8dba99482368`.
