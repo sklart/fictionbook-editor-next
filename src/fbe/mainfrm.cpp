@@ -1924,48 +1924,6 @@ void CMainFrame::SavePortableToolbarLayout()
 	PortableToolbarStore::Save(layout);
 }
 
-void CMainFrame::InitializeBundledPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist)
-{
-	const int commandCapacity = static_cast<int>((cmdbase == ID_IMPORT_BASE ? ID_PLUGIN_IMPORT_LAST : ID_PLUGIN_EXPORT_LAST) - cmdbase + 1);
-	const std::vector<PluginDescriptor>& plugins = m_plugins.Manager().GetPlugins();
-	for(size_t index = 0; index < plugins.size() && plist.GetSize() < commandCapacity; ++index)
-	{
-		const PluginDescriptor& plugin = plugins[index];
-		if(plugin.type != type) continue;
-		const int command = cmdbase + plist.GetSize();
-		const CString menu = FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu);
-		plist.Add(plugin.clsid);
-		::AppendMenu(hMenu, MF_STRING, command, menu);
-		CString hs = menu;
-		hs.Remove(L'&');
-		const CString pluginType = FbeLoadRuntimeStringByKey(
-			plugin.type == L"Import" ? L"fbe.hotkey.plugins.import" : L"fbe.hotkey.plugins.export",
-			plugin.type);
-		RegisterPluginHotkey(plugin.clsidText, command, pluginType + CString(L" | ") + hs);
-		// check if an icon is available
-		CString icon(plugin.icon);
-		if(!icon.IsEmpty())
-		{
-			int cp = icon.ReverseFind(L',');
-			int iconID;
-			if(cp > 0 && _stscanf((const TCHAR *)icon + cp, L",%d", &iconID) == 1)
-				icon.Delete(cp, icon.GetLength() - cp);
-			else
-				iconID = 0;
-
-			// try load from file first
-			HICON hIcon;
-			if(::ExtractIconEx(icon, iconID, NULL, &hIcon, 1) > 0 && hIcon)
-			{
-				m_MenuBar.AddIcon(hIcon, command);
-				::DestroyIcon(hIcon);
-			}
-		}
-	}
-	if(plist.GetSize() > 0) // delete placeholder from menu
-	::RemoveMenu(hMenu, 0, MF_BYPOSITION);
-}
-
 namespace
 {
 class ScriptDiscoveryRuntime
@@ -2078,13 +2036,16 @@ void CMainFrame::InitializeScripts()
 
 void CMainFrame::InitializeBundledPlugins()
 {
-	m_plugins.Manager().DiscoverBundledPlugins();
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
-	HMENU sub = ::GetSubMenu(file, 6);
-	InitializeBundledPluginsType(sub, L"Import", ID_IMPORT_BASE, m_plugins.ImportPlugins());
+	m_plugins.Initialize(::GetSubMenu(file, 6), ::GetSubMenu(file, 7),
+		[](const PluginDescriptor& plugin) { return FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu); },
+		[this](const PluginDescriptor& plugin, UINT command, const CString& menu) {
+			CString hotkeyText(menu); hotkeyText.Remove(L'&');
+			const CString type = FbeLoadRuntimeStringByKey(plugin.type == L"Import" ? L"fbe.hotkey.plugins.import" : L"fbe.hotkey.plugins.export", plugin.type);
+			RegisterPluginHotkey(plugin.clsidText, command, type + CString(L" | ") + hotkeyText);
+		},
+		[this](HICON icon, UINT command) { m_MenuBar.AddIcon(icon, command); });
 	StartupTrace::Event(L"plugin", L"P140", L"import plugins initialized");
-	sub = ::GetSubMenu(file, 7);
-	InitializeBundledPluginsType(sub, L"Export", ID_EXPORT_BASE, m_plugins.ExportPlugins());
 	StartupTrace::Event(L"plugin", L"P150", L"export plugins initialized");
 }
 

@@ -229,7 +229,6 @@ public:
 	void InitializeScripts();
 	void InitializeBundledPlugins();
 	void InitializeRecentDocumentsMenu();
-	void InitializeBundledPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist);
 	void RegisterPluginHotkey(CString guid, UINT cmd, CString name);
 
   void AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand = 0, const BYTE bState = 0, const HICON icon = 0);
