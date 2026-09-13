@@ -46,14 +46,15 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   Save As удерживает encoding, filename и session identity до persistence
   success; MRU mutation проходит через `RecentDocumentsController`.
 
-- Координация запроса смены представления editor вынесена в узкий
-  `EditorViewController`: он возвращает явный transition result и делегирует
-  policy в `EditorViewTransition`. `EditorViewState`,
-  `EditorSelectionState` и `SourceDocumentTransfer` сохраняют ownership
-  состояния и преобразования. `CMainFrame` остаётся presentation-boundary для
-  MSHTML/Scintilla, validation UI и восстановления selection. Контракт
-  контроллера, lifecycle/BODY-SOURCE contracts и runtime переходы
-  BODY/DESC/SOURCE, включая некорректный Source, выполнены на Release-сборке.
+- `EditorViewController` координирует полный lifecycle перехода через узкий
+  `IEditorViewHost`: policy остаётся в `EditorViewTransition`, state — в
+  `EditorViewState`, selection — в `EditorSelectionState`, а conversion — в
+  `SourceDocumentTransfer`. Он выполняет prerequisites и Source commit до
+  `CommitTransition`; invalid Source возвращает `Rejected/InvalidSource` и
+  сохраняет Source view. `CMainFrame::ShowView` — только adapter/result
+  presentation, а отдельный `CommitSourceDocument` используется Save
+  preflight без fake view switch. Контракты и BODY/DESC/SOURCE runtime,
+  включая некорректный Source, выполнены на Release-сборке.
 
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation

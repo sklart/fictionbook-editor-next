@@ -1014,7 +1014,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   ATLASSERT(m_doc!=NULL);
 
   // force consistent html view
-  if ((IsSourceActive() && !SourceToHTML()) || m_bad_xml) // added by SeNS: do not save bad xml!
+  if ((IsSourceActive() && CommitSourceDocument() != EditorSourceOperationResult::Success) || m_bad_xml) // added by SeNS: do not save bad xml!
     return FAIL;
 
   const DocumentSavePlan savePlan = DocumentSavePlan::Create(askname, m_doc->m_namevalid, m_document_session.Location());
@@ -4551,13 +4551,38 @@ static void WriteSelectionTrace(const wchar_t* code, const CString& message)
 	StartupTrace::Event(L"selection", code, message);
 }
 
-bool  CMainFrame::SourceToHTML()
+EditorSourceOperationResult CMainFrame::CommitSourceDocument()
 {
+	// A malformed document opened into Source has no DOM to update yet.  Keep
+	// this validation before any view-state commit.
+	if (m_bad_xml)
+	{
+		int col, line;
+		if (!m_doc->SetXMLAndValidate(m_source, true, line, col))
+		{
+			U::MessageBox(MB_OK|MB_ICONERROR, IDR_MAINFRAME, IDS_BAD_XML_MSG);
+			SourceGoTo(line, col);
+			return EditorSourceOperationResult::InvalidSource;
+		}
+		AttachDocument(m_doc);
+		m_doc->m_filename = m_bad_filename;
+		if (m_bad_filename.CompareNoCase(L"Untitled.fb2") == 0)
+		{
+			m_document_session.NewDocument();
+			m_doc->m_namevalid = false;
+		}
+		else
+		{
+			m_document_session.OpenNormal(m_doc->m_filename, m_doc->GetDocumentFileType());
+			m_doc->m_namevalid = true;
+		}
+		m_bad_xml = false;
+	}
 	m_editor_selection_state.BodySource().sourceToBodyTransferred = false;
 	LRESULT changed = m_source.SendMessage(SCI_GETMODIFY);
 	SourceDocumentText sourceDocument;
 	if(SourceDocumentTransfer::ReadSourceText(m_source, sourceDocument) != SourceTransitionResult::Success)
-		return false;
+		return EditorSourceOperationResult::Failed;
 	const int textlen = static_cast<int>(sourceDocument.utf8.size()) - 1;
 
 	int begin_char = 0;
@@ -4566,7 +4591,7 @@ bool  CMainFrame::SourceToHTML()
 	int selected_body_index = -1;
 
 	BSTR ustr = ::SysAllocStringLen(sourceDocument.text, sourceDocument.text.GetLength());
-	if(!ustr) return false;
+	if(!ustr) return EditorSourceOperationResult::Failed;
 
 	//	??????? ?????????? ???????
 	int selectedPosBegin = sourceDocument.selectionStart;
@@ -4653,7 +4678,8 @@ bool  CMainFrame::SourceToHTML()
 				(LPARAM)(const TCHAR*)applyResult.errorMessage);
 			SourceGoTo(applyResult.errorLine, applyResult.errorColumn);
 		}
-		return false;
+		return applyResult.result == SourceTransitionResult::InvalidSource
+			? EditorSourceOperationResult::InvalidSource : EditorSourceOperationResult::Failed;
 	}
 	if(applyResult.documentChanged)
 		ClearSelection();
@@ -4821,12 +4847,18 @@ bool  CMainFrame::SourceToHTML()
 	{
 		m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
 	}
-	return true;
+	return EditorSourceOperationResult::Success;
 	//m_document_tree.HighlightItemAtPos(m_doc->m_body.SelectionContainer());
 }
 
-bool CMainFrame::ShowSource(bool saveSelection)
+bool CMainFrame::SourceToHTML()
 {
+	return CommitSourceDocument() == EditorSourceOperationResult::Success;
+}
+
+EditorSourceOperationResult CMainFrame::PrepareSourceDocument(EditorView previous)
+{
+	const bool saveSelection = previous == BODY;
 	ShowSourcePhaseProfiler phaseProfiler;
 	m_editor_selection_state.BodySource().bodyToSourceTransferred = false;
 	U::DomPath selection_begin_path;
@@ -4917,7 +4949,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	CString srcText;
 	if(SourceDocumentTransfer::PrepareSerializedSource(*m_doc, m_saved_xml,
 		sourceEncoding, srcText) != SourceTransitionResult::Success)
-		return false;
+		return EditorSourceOperationResult::Failed;
 	phaseProfiler.Mark("serialized source preparation");
 
 /*	std::ofstream save;
@@ -4942,7 +4974,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	{
 		MSXML2::IXMLDOMElementPtr xml_root = m_saved_xml->documentElement;
 		if (!(bool)xml_root)
-			return false;
+			return EditorSourceOperationResult::Failed;
 
 		MSXML2::IXMLDOMNodePtr xml_body = xml_root->firstChild;
 		while (xml_body)
@@ -5131,7 +5163,7 @@ bool CMainFrame::ShowSource(bool saveSelection)
 	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
 	phaseProfiler.Mark("SCI_EMPTYUNDOBUFFER");
 	m_doc->MarkDocCP();
-	return true;
+	return EditorSourceOperationResult::Success;
 }
 
 
@@ -5157,13 +5189,43 @@ void CMainFrame::SetDescriptionMode(bool enabled)
 	CheckError(body.Invoke1(L"apiShowDesc", &argument));
 }
 
-void  CMainFrame::ShowView(EditorView vt)
+bool CMainFrame::IsHtmlDocumentAvailable() const
 {
-	EditorView prev = m_editor_view_state.Current();
-	const EditorViewChangeResult viewChange = m_editor_view_controller.Request(prev, vt);
-	if (!viewChange.Succeeded())
-		return;
-	const EditorViewTransitionPlan& transition = viewChange.plan;
+	return m_doc && m_doc->m_body.HasDoc();
+}
+
+void CMainFrame::SaveEditorViewSelection(EditorView view)
+{
+	SaveSelection(view);
+}
+
+void CMainFrame::RestoreEditorViewSelection(EditorView)
+{
+	RestoreSelection();
+}
+
+void CMainFrame::PresentEditorViewChangeFailure(const EditorViewChangeResult& result)
+{
+	if (result.failure == EditorViewChangeFailure::HtmlUnavailable)
+	{
+		StartupTrace::Warning(L"selection", L"E281",
+			L"view switch ignored: HTML document is unavailable");
+	}
+}
+
+void CMainFrame::ShowView(EditorView vt)
+{
+	const EditorViewChangeResult result =
+		m_editor_view_controller.ChangeView(m_editor_view_state, *this, vt);
+	if (!result.Succeeded())
+		PresentEditorViewChangeFailure(result);
+}
+
+void CMainFrame::PrepareEditorViewPresentation(EditorView prev, EditorView vt,
+	const EditorViewTransitionPlan& transition)
+{
+	if (transition.commitSourceToDocument)
+		m_source.SendMessage(SCI_SETSAVEPOINT);
 	if (StartupTrace::Enabled())
 	{
 		const wchar_t* const viewNames[] = { L"Body", L"Description", L"Source" };
@@ -5171,9 +5233,6 @@ void  CMainFrame::ShowView(EditorView vt)
 		trace.Format(L"ShowView: requested %s -> %s", viewNames[static_cast<int>(prev)], viewNames[static_cast<int>(vt)]);
 		WriteSelectionTrace(L"E280", trace);
 	}
-	if(transition.saveCurrentSelection)
-		SaveSelection(m_editor_view_state.Current());
-
   // added by SeNS
   if (vt != BODY)
 	if (m_Speller)
@@ -5192,59 +5251,6 @@ void  CMainFrame::ShowView(EditorView vt)
 		m_editor_view_state.SetLastCtrlTabView(m_editor_view_state.Current());
 	}
 
-
-	if (transition.commitSourceToDocument) {
-	  // added by SeNS: special trick for incorrect XML
-	  if (m_bad_xml)
-	  {
-			int col,line;
-			bool fv;
-			fv=m_doc->SetXMLAndValidate(m_source,true,line,col);// ?? ?????? Source
-			if (!fv)
-			{
-				U::MessageBox(MB_OK|MB_ICONERROR, IDR_MAINFRAME, IDS_BAD_XML_MSG);
-				SourceGoTo(line, col);
-				return;
-			}
-			else
-			{
-				AttachDocument(m_doc);
-				m_doc->m_filename = m_bad_filename;
-				if (m_bad_filename.CompareNoCase(L"Untitled.fb2") == 0)
-				{
-					m_document_session.NewDocument();
-					m_doc->m_namevalid = false;
-				}
-				else
-				{
-					m_document_session.OpenNormal(m_doc->m_filename, m_doc->GetDocumentFileType());
-					m_doc->m_namevalid = true;
-				}
-				m_bad_xml=false;
-			}
-	  }
-
-    /*if (!SourceToHTML())
-      return;*/
-		if (!SourceToHTML()) return;
-		m_source.SendMessage(SCI_SETSAVEPOINT);
-  }
-
-  if ((vt == BODY || vt == DESC) && (!m_doc || !m_doc->m_body.HasDoc()))
-  {
-    StartupTrace::Warning(L"selection", L"E281", L"view switch ignored: HTML document is unavailable");
-    return;
-  }
-	if (transition.prepareDocumentSource)
-  {
-	  if(!this->ShowSource(prev == BODY))
-	  {
-		  return;
-	  }
-	  // turn off doctree
-	  /*m_save_sp_mode=m_document_tree.IsWindowVisible()!=0;
-	  UISetCheck(ID_VIEW_TREE,0);*/
-  }
 
   if (prev!=vt && vt!=SOURCE) {
     UIEnable(ID_VIEW_TREE,1);
@@ -5311,10 +5317,12 @@ void  CMainFrame::ShowView(EditorView vt)
 	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
     break;
   }
-	m_editor_view_state.CommitTransition(vt);
+
+}
+
+void CMainFrame::CompleteEditorViewPresentation(EditorView prev, EditorView vt)
+{
 	UpdateStatusBar();
-	if(transition.restoreTargetSelection)
-		RestoreSelection();
   m_view.SetFocus();
 	if(vt == BODY && prev == SOURCE && m_editor_selection_state.BodySource().sourceToBodyTransferred &&
 		(bool)m_editor_selection_state.BodyRange())

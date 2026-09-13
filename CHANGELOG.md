@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Переходы между Body, Description и Source теперь координирует
+  `EditorViewController`: он проверяет prerequisites, fail-closed commit
+  Source, подготовку Source и только затем фиксирует `EditorViewState`.
+  `CMainFrame::ShowView` оставлен presentation adapter, а Save preflight
+  вызывает отдельную операцию commit Source без искусственного переключения
+  представления.
+
 - Recovery lifecycle теперь координирует `RecoveryController`: frame собирает
   editor/source state и показывает prompt, service сохраняет snapshot, а
   normal restore возвращает session в NewDocument вместо `Recovery.fb2`.

@@ -36,7 +36,7 @@ foreach($legacy in @('m_current_view', 'm_last_view', 'm_last_ctrl_tab_view', 'm
 foreach($forbidden in @('#define\s+m_current_view', '#define\s+m_last_view', '#define\s+m_last_ctrl_tab_view', '#define\s+m_ctrl_tab', '#define\s+m_body_selection', '#define\s+m_desc_selection', '#define\s+m_body_source_selection')) {
     if($mainSource -match $forbidden) { throw "CMainFrame retains lifecycle compatibility macro: $forbidden" }
 }
-foreach($required in @('m_editor_view_controller\.Request', 'CommitTransition', 'NextEditorView', 'NextCtrlTabEditorView', 'SetDescriptionMode')) {
+foreach($required in @('m_editor_view_controller\.ChangeView', 'NextEditorView', 'NextCtrlTabEditorView', 'SetDescriptionMode')) {
     if($mainSource -notmatch $required) { throw "CMainFrame does not coordinate extracted lifecycle operation: $required" }
 }
 Write-Host 'Editor view lifecycle boundary contract passed.'

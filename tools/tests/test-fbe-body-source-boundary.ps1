@@ -28,8 +28,8 @@ foreach($required in @('enum class SourceTransitionResult', 'ReadSourceText', 'P
 foreach($required in @('PrepareSerializedSource', 'ApplySourceDocument', 'TextToXML', 'XmlFromText', 'LoadFromDOM')) {
     if($transferSource -notmatch $required) { throw "SourceDocumentTransfer production conversion is missing: $required" }
 }
-$sourceToBody = [regex]::Match($mainSource, '(?s)bool\s+CMainFrame::SourceToHTML\(\).*?(?=bool\s+CMainFrame::ShowSource\()').Value
-$bodyToSource = [regex]::Match($mainSource, '(?s)bool\s+CMainFrame::ShowSource\(.*?\).*?(?=void\s+CMainFrame::ShowView\()').Value
+$sourceToBody = [regex]::Match($mainSource, '(?s)EditorSourceOperationResult\s+CMainFrame::CommitSourceDocument\(\).*?(?=bool\s+CMainFrame::SourceToHTML\()').Value
+$bodyToSource = [regex]::Match($mainSource, '(?s)EditorSourceOperationResult\s+CMainFrame::PrepareSourceDocument\(.*?\).*?(?=EditorView\s+CMainFrame::NextEditorView\()').Value
 if([string]::IsNullOrEmpty($sourceToBody) -or [string]::IsNullOrEmpty($bodyToSource)) { throw 'Unable to locate BODY/SOURCE transition coordinators.' }
 foreach($productionCall in @('TextToXML', 'XmlFromText', 'LoadFromDOM')) {
     if($sourceToBody -match $productionCall) { throw "CMainFrame retains SOURCE-to-BODY conversion call: $productionCall" }

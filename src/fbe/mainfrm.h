@@ -63,7 +63,8 @@ class CMainFrame :	public CFrameWindowImpl<CMainFrame>,
 					public CCustomizableToolBarCommands<CMainFrame>,
 					public CUpdateUI<CMainFrame>,
 					public CMessageFilter,
-					public CIdleHandler
+					public CIdleHandler,
+					private IEditorViewHost
 {
 public:
 	enum FILE_OP_STATUS
@@ -213,7 +214,7 @@ public:
   void	  ShowView(EditorView vt=EditorView::Body);
 	EditorView NextEditorView();
 	void SetDescriptionMode(bool enabled);
-  bool	  ShowSource(bool saveSelection = true);
+	EditorSourceOperationResult PrepareSourceDocument(EditorView previous) override;
   //VIEW_TYPE GetCurView();
 
   
@@ -222,8 +223,16 @@ public:
 	EditorSelectionState m_editor_selection_state;
 	Fb2SourceAutocomplete   m_fb2_autocomplete;
 
-  void SaveSelection(EditorView vt);
-  void RestoreSelection(); 
+	void SaveSelection(EditorView vt);
+	void RestoreSelection();
+	bool IsHtmlDocumentAvailable() const override;
+	void SaveEditorViewSelection(EditorView view) override;
+	EditorSourceOperationResult CommitSourceDocument() override;
+	void PrepareEditorViewPresentation(EditorView previous, EditorView target,
+		const EditorViewTransitionPlan& plan) override;
+	void RestoreEditorViewSelection(EditorView view) override;
+	void CompleteEditorViewPresentation(EditorView previous, EditorView target) override;
+	void PresentEditorViewChangeFailure(const EditorViewChangeResult& result);
   void ClearSelection();
 
 	// Plugins support

@@ -2,21 +2,59 @@
 
 #include "EditorViewTransition.h"
 
-// Coordinator boundary for a requested editor representation change.  The
-// frame remains responsible for presentation effects; transition policy and
-// its outcome are explicit at this boundary.
+enum class EditorViewChangeStatus
+{
+	Success,
+	Rejected,
+	Failed
+};
+
+enum class EditorViewChangeFailure
+{
+	None,
+	HtmlUnavailable,
+	InvalidSource,
+	SourceCommitFailed,
+	SourcePrepareFailed
+};
+
+enum class EditorSourceOperationResult
+{
+	Success,
+	InvalidSource,
+	Failed
+};
+
+// Narrow presentation port.  It deliberately contains only the effects that
+// cannot leave the editor window, while lifecycle ordering remains in the
+// controller.
+class IEditorViewHost
+{
+public:
+	virtual ~IEditorViewHost() = default;
+	virtual bool IsHtmlDocumentAvailable() const = 0;
+	virtual void SaveEditorViewSelection(EditorView view) = 0;
+	virtual EditorSourceOperationResult CommitSourceDocument() = 0;
+	virtual EditorSourceOperationResult PrepareSourceDocument(EditorView previous) = 0;
+	virtual void PrepareEditorViewPresentation(EditorView previous, EditorView target,
+		const EditorViewTransitionPlan& plan) = 0;
+	virtual void RestoreEditorViewSelection(EditorView view) = 0;
+	virtual void CompleteEditorViewPresentation(EditorView previous, EditorView target) = 0;
+};
+
 struct EditorViewChangeResult
 {
 	EditorView previous = EditorView::Body;
 	EditorView current = EditorView::Body;
-	EditorViewTransitionPlan plan;
-	bool accepted = false;
+	EditorViewChangeStatus status = EditorViewChangeStatus::Rejected;
+	EditorViewChangeFailure failure = EditorViewChangeFailure::None;
 
-	bool Succeeded() const { return accepted; }
+	bool Succeeded() const { return status == EditorViewChangeStatus::Success; }
 };
 
 class EditorViewController
 {
 public:
-	EditorViewChangeResult Request(EditorView current, EditorView target) const;
+	EditorViewChangeResult ChangeView(EditorViewState& state, IEditorViewHost& host,
+		EditorView target) const;
 };
