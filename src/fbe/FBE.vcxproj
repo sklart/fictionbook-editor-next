@@ -585,6 +585,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="extras\http_download.h" />
     <ClInclude Include="extras\SHA256.h" />
     <ClInclude Include="testing\RuntimeTestScenarios.inl" />
+    <ClInclude Include="testing\RuntimeTestScenarioMode.h" />
     <ClInclude Include="EditorEngine.h" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,8 @@
 // Оркестрация runtime-сценариев только для тестов. Файл включается из
 // mainfrm.cpp, чтобы узкая граница CMainFrame сохранила private-доступ.
 
+#define IsFbeTestScenario RuntimeTests::IsScenario
+
 // Test-only OLE parent for the Split undo probe.  It is intentionally kept
 // outside production structural code until MSHTML proves this composition.
 class CSplitUndoProbeParent : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
@@ -2320,3 +2322,5 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 	::PostQuitMessage(0);
 	return 0;
 }
+
+#undef IsFbeTestScenario

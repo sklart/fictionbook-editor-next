@@ -49,6 +49,7 @@
 #include "toolbars\\ToolbarLayoutAdapter.h"
 #include "toolbars\\ToolbarFactory.h"
 #include "toolbars\\TableToolbarCommands.h"
+#include "testing\RuntimeTestScenarioMode.h"
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -59,7 +60,6 @@
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
-static bool IsFbeTestScenario(const wchar_t* expectedScenario);
 static SourceEditorConfig BuildSourceEditorConfig();
 typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
 
@@ -938,7 +938,7 @@ CString CMainFrame::GetOpenFileName() { const DocumentFileDialogs::OpenResult re
 CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	// Runtime integration uses an explicitly supplied output only in this
 	// narrowly scoped test mode; normal Save As always shows the native dialog.
-	if (IsFbeTestScenario(L"archive-rar-save-runtime"))
+	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime"))
 	{
 		wchar_t testPath[MAX_PATH] = {};
 		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", testPath, _countof(testPath));
@@ -1022,7 +1022,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
   {
 	std::vector<unsigned char> serialized;
 	if (!m_doc->SerializeToMemory(serialized, m_document_session.Location().documentType)) return FAIL;
-	if (IsFbeTestScenario(L"archive-runtime") || IsFbeTestScenario(L"archive-rar-save-runtime"))
+	if (RuntimeTests::IsScenario(L"archive-runtime") || RuntimeTests::IsScenario(L"archive-rar-save-runtime"))
 	{
 		const std::vector<unsigned char>::const_iterator marker = std::search(serialized.begin(), serialized.end(),
 			"ARCHIVE_RUNTIME_AFTER", "ARCHIVE_RUNTIME_AFTER" + strlen("ARCHIVE_RUNTIME_AFTER"));
@@ -1032,13 +1032,13 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	DocumentLocation savedArchiveLocation;
 	if (!FbeArchive::SaveDocument(m_document_session.Location(), serialized, savedArchiveLocation, error))
 	{
-		if (IsFbeTestScenario(L"archive-recovery-external-verify"))
+		if (RuntimeTests::IsScenario(L"archive-recovery-external-verify"))
 		{
 			wchar_t diagnostic[16] = {};
 			swprintf_s(diagnostic, _countof(diagnostic), L"%d", static_cast<int>(error.code));
 			::SetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR", diagnostic);
 		}
-		if (IsFbeTestScenario(L"archive-runtime"))
+		if (RuntimeTests::IsScenario(L"archive-runtime"))
 		{
 			wchar_t diagnostic[64] = {};
 			swprintf_s(diagnostic, _countof(diagnostic), L"%d/%lu", static_cast<int>(error.code), error.systemError);
@@ -1124,7 +1124,7 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
     return CANCELLED;
   }
 
-	if (!IsFbeTestScenario(L"archive-mru-runtime") && !DiscardChanges())
+	if (!RuntimeTests::IsScenario(L"archive-mru-runtime") && !DiscardChanges())
 	    return CANCELLED;
 
 	PendingDocument pending(*this, m_doc);
@@ -2345,7 +2345,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // the optional plug-in/script/MRU surface: hosted workers can block there
   // before the scenario message is posted.  Normal editor startup and every
   // other scenario retain the full initialization path.
-  if (IsFbeTestScenario(L"editor-background-runtime"))
+  if (RuntimeTests::IsScenario(L"editor-background-runtime"))
   {
     StartupTrace::AppendTestStartupBreadcrumb("plugins-init-skipped-runtime-test");
   }
@@ -2641,12 +2641,12 @@ void CMainFrame::TryRestoreRecovery()
 	// blocked forever, and the document passed on its command line is already
 	// the caller's explicit recovery choice.
 	const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty();
-	if ((unattendedTest || unattendedBatch) && !IsFbeTestScenario(L"archive-recovery-verify") && !IsFbeTestScenario(L"archive-recovery-external-verify"))
+	if ((unattendedTest || unattendedBatch) && !RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify"))
 		return;
 	FbeRecovery::RestoreCandidate candidate;
 	if (!m_recovery.GetRestoreCandidate(_ARGV.GetSize() > 0, candidate)) return;
 
-	if (!IsFbeTestScenario(L"archive-recovery-verify") && !IsFbeTestScenario(L"archive-recovery-external-verify") && U::MessageBox(MB_YESNO | MB_ICONQUESTION, IDS_RECOVERY_CAPTION, IDS_RECOVERY_MSG) != IDYES)
+	if (!RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && U::MessageBox(MB_YESNO | MB_ICONQUESTION, IDS_RECOVERY_CAPTION, IDS_RECOVERY_MSG) != IDYES)
 		return;
 
 	if (LoadFile(candidate.snapshotPath) == OK)
@@ -2883,15 +2883,6 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-exit");
 	return 0;
-}
-
-static bool IsFbeTestScenario(const wchar_t* expectedScenario)
-{
-	wchar_t testMode[4] = {}, scenario[64] = {};
-	const DWORD testModeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode));
-	const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
-	return testModeLength == 1 && testMode[0] == L'1' &&
-		scenarioLength == wcslen(expectedScenario) && wcscmp(scenario, expectedScenario) == 0;
 }
 
 static bool WritePortableStateTestText(const CString& path, const char* text)
