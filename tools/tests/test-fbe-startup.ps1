@@ -149,7 +149,12 @@ try {
     }
     while (-not $process.HasExited -and (Get-Date) -lt $closeDeadline)
     if (-not $process.HasExited) {
-        if (-not [FbeStartupWindow]::PostMessage($mainWindowHandle, 0x0111, [IntPtr]0xE141, [IntPtr]::Zero)) { throw "Не удалось отправить команду Exit FBE." }
+        # WM_CLOSE may already have recreated or destroyed the original frame;
+        # route the fallback command to the process' current top-level window.
+        $exitWindow = [FbeStartupWindow]::FindVisibleTopLevelWindow($process.Id)
+        if ($exitWindow -ne [IntPtr]::Zero) {
+            [void][FbeStartupWindow]::PostMessage($exitWindow, 0x0111, [IntPtr]0xE141, [IntPtr]::Zero)
+        }
         $closeDeadline = (Get-Date).AddSeconds(10)
         do {
             Start-Sleep -Milliseconds 250
