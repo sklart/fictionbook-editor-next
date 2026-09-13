@@ -13,6 +13,11 @@ param(
 
     [string]$PlatformToolset = "v143",
 
+    # C++17 — release baseline. C++20 разрешён только как контролируемый
+    # локальный эксперимент и не меняет toolchain или Windows policy.
+    [ValidateSet('stdcpp17', 'stdcpp20')]
+    [string]$FbeLanguageStandard = 'stdcpp17',
+
     [switch]$SkipUpx,
 
     # Диагностический локальный режим. CI всегда полагается на корректный
@@ -134,6 +139,7 @@ function Get-FirstPartyToolchainFingerprint {
         configuration = $Configuration
         platform = $Platform
         platformToolset = $PlatformToolset
+        fbeLanguageStandard = $FbeLanguageStandard
         vsInstallationPath = $env:VSINSTALLDIR
         vcToolsInstallDir = $env:VCToolsInstallDir
         vcToolsVersion = $env:VCToolsVersion
@@ -320,6 +326,7 @@ $properties = @(
     "/p:Configuration=$Configuration",
     "/p:Platform=$Platform"
 )
+$properties += "/p:FbeLanguageStandard=$FbeLanguageStandard"
 $buildCommit = (& git -C $repoRoot rev-parse --short=12 HEAD 2>$null | Select-Object -First 1)
 if(-not $buildCommit) { $buildCommit = 'unknown' }
 $properties += "/p:FbeBuildCommit=$buildCommit"

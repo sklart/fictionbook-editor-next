@@ -11,6 +11,9 @@
     <SolutionDir>$(FbeRepoRoot)\</SolutionDir>
     <FbePlatformToolset Condition="'$(FbePlatformToolset)' == '' and '$(PlatformToolset)' != ''">$(PlatformToolset)</FbePlatformToolset>
     <FbePlatformToolset Condition="'$(FbePlatformToolset)' == ''">v143</FbePlatformToolset>
+    <!-- Baseline собственного C++. Для локального эксперимента передайте
+         /p:FbeLanguageStandard=stdcpp20; release и CI сохраняют C++17. -->
+    <FbeLanguageStandard Condition="'$(FbeLanguageStandard)' == ''">stdcpp17</FbeLanguageStandard>
     <FbeGeneratedRoot>$(FbeRepoRoot)\build\generated\</FbeGeneratedRoot>
     <FbeApiOutputDirectory>$(FbeGeneratedRoot)$(Platform)\$(Configuration)\fbe-api\</FbeApiOutputDirectory>
   </PropertyGroup>
@@ -18,10 +21,9 @@
     <ForceImportAfterCppProps>$(MSBuildThisFileDirectory)FBE.ReleaseOptimization.props</ForceImportAfterCppProps>
     <!-- Imported after each project has selected its configuration, but before
          Microsoft.Cpp.targets derives TargetPath and clean locations. -->
-    <ForceImportBeforeCppTargets Condition="'$(FbeStrictWarnings)' == 'true'">$(MSBuildThisFileDirectory)FirstPartyWarnings.props</ForceImportBeforeCppTargets>
-    <!-- Imported after Microsoft.Cpp.targets only for the dedicated strict
-         first-party gate.  All projects importing this file are owned source;
-         pinned vendor projects intentionally do not import FBE.Common.props. -->
-    <ForceImportAfterCppTargets Condition="'$(FbeStrictWarnings)' == 'true'">$(MSBuildThisFileDirectory)FirstPartyWarnings.targets</ForceImportAfterCppTargets>
+    <!-- Импорт после объявления project items, перед C++-компиляцией. Он
+         применяет baseline только к C++-исходникам и подключает strict
+         warnings при выборе специального gate. -->
+    <ForceImportBeforeCppTargets>$(MSBuildThisFileDirectory)FBE.FirstParty.targets</ForceImportBeforeCppTargets>
   </PropertyGroup>
 </Project>

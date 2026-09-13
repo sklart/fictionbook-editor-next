@@ -31,11 +31,17 @@ foreach ($project in $projects) {
     if ($text -notmatch [regex]::Escape('<PlatformToolset>$(FbePlatformToolset)</PlatformToolset>')) {
         throw "First-party project does not use the centralized toolset property: $project"
     }
+    if ($text -match '<LanguageStandard>') {
+        throw "First-party project must not override the centralized C++ standard: $project"
+    }
 }
 
 foreach ($vendorProject in @(
     'third_party\lunasvg\lunasvg.vcxproj',
-    'third_party\lunasvg\plutovg.vcxproj'
+    'third_party\lunasvg\plutovg.vcxproj',
+    'third_party\scintilla\win32\Scintilla.vcxproj',
+    'third_party\lexilla\src\Lexilla.vcxproj',
+    'third_party\hunspell\msvc\libhunspell.vcxproj'
 )) {
     $text = Get-Content -Raw -LiteralPath (Join-Path $repoRoot $vendorProject)
     if ($text -match [regex]::Escape('tools\msbuild\FBE.Common.props')) {
@@ -59,7 +65,7 @@ foreach ($case in @(
     @{ Project = 'src\export-epub\ExportEPUBBatch.vcxproj'; Configuration = 'Release'; Platform = 'x64' },
     @{ Project = 'src\import-epub\ImportEPUBLunaSVG.vcxproj'; Configuration = 'Release'; Platform = 'Win32' }
 )) {
-    $output = & $msbuild (Join-Path $repoRoot $case.Project) "/p:Configuration=$($case.Configuration)" "/p:Platform=$($case.Platform)" '/getProperty:PlatformToolset;VCToolsVersion;VCToolsInstallDir;FbeRepoRoot;SolutionDir' /nologo
+    $output = & $msbuild (Join-Path $repoRoot $case.Project) "/p:Configuration=$($case.Configuration)" "/p:Platform=$($case.Platform)" '/getProperty:PlatformToolset;VCToolsVersion;VCToolsInstallDir;FbeRepoRoot;SolutionDir;FbeLanguageStandard' /nologo
     if ($LASTEXITCODE -ne 0) {
         throw "MSBuild property evaluation failed: $($case.Project)"
     }
@@ -79,6 +85,46 @@ foreach ($case in @(
     if ($properties.SolutionDir.TrimEnd('\') -ne $repoRoot.TrimEnd('\')) {
         throw "Standalone SolutionDir is not repository-rooted for $($case.Project): $($properties.SolutionDir)"
     }
+    if ($properties.FbeLanguageStandard -ne 'stdcpp17') {
+        throw "Unexpected C++ baseline for $($case.Project): $($properties.FbeLanguageStandard)"
+    }
 }
 
-Write-Host 'First-party MSBuild policy passed.'
+function Get-EvaluatedClCompileItems {
+    param(
+        [Parameter(Mandatory)][string]$Project,
+        [Parameter(Mandatory)][string]$Configuration,
+        [Parameter(Mandatory)][string]$Platform,
+        [string[]]$AdditionalProperties = @()
+    )
+
+    $output = & $msbuild (Join-Path $repoRoot $Project) "/p:Configuration=$Configuration" "/p:Platform=$Platform" '/getItem:ClCompile' /nologo @AdditionalProperties
+    if ($LASTEXITCODE -ne 0) { throw "MSBuild item evaluation failed: $Project ($Configuration|$Platform)" }
+    return ((($output -join "`n") | ConvertFrom-Json).Items.ClCompile)
+}
+
+$cppProjects = @($projects | Where-Object { $_ -ne 'src\contracts\FBEContracts.vcxproj' })
+foreach ($project in $cppProjects) {
+    foreach ($configuration in @('Debug', 'Release')) {
+        $items = @(Get-EvaluatedClCompileItems -Project $project -Configuration $configuration -Platform 'Win32')
+        $cppItems = @($items | Where-Object { $_.Extension -in @('.cpp', '.cxx', '.cc', '.ixx') })
+        if ($cppItems.Count -eq 0) { throw "C++ project has no evaluated C++ sources: $project ($configuration)" }
+        foreach ($item in $cppItems) {
+            if ($item.LanguageStandard -ne 'stdcpp17') {
+                throw "C++17 policy was not evaluated for $project ($configuration): $($item.Identity) = $($item.LanguageStandard)"
+            }
+        }
+        foreach ($item in @($items | Where-Object { $_.Extension -eq '.c' })) {
+            if ($item.LanguageStandard -and $item.LanguageStandard -ne 'Default') {
+                throw "C source must not receive the C++ language policy: $project ($configuration): $($item.Identity) = $($item.LanguageStandard)"
+            }
+        }
+    }
+}
+
+$overrideItems = @(Get-EvaluatedClCompileItems -Project 'src\fbe\FBE.vcxproj' -Configuration 'Release' -Platform 'Win32' -AdditionalProperties @('/p:FbeLanguageStandard=stdcpp20'))
+if (@($overrideItems | Where-Object { $_.Extension -eq '.cpp' -and $_.LanguageStandard -ne 'stdcpp20' }).Count -ne 0) {
+    throw 'FbeLanguageStandard=stdcpp20 did not override the evaluated C++ item policy.'
+}
+
+Write-Host 'First-party MSBuild and C++17 language policy passed.'

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Этот файл импортируется только из FBE.Common.props. C-исходники остаются
+       на прежнем пути компилятора: /std:c++17 применяется только к C++. -->
+  <ItemGroup>
+    <ClCompile Update="@(ClCompile-&gt;WithMetadataValue('Extension', '.cpp'))">
+      <LanguageStandard>$(FbeLanguageStandard)</LanguageStandard>
+    </ClCompile>
+    <ClCompile Update="@(ClCompile-&gt;WithMetadataValue('Extension', '.cxx'))">
+      <LanguageStandard>$(FbeLanguageStandard)</LanguageStandard>
+    </ClCompile>
+    <ClCompile Update="@(ClCompile-&gt;WithMetadataValue('Extension', '.cc'))">
+      <LanguageStandard>$(FbeLanguageStandard)</LanguageStandard>
+    </ClCompile>
+    <ClCompile Update="@(ClCompile-&gt;WithMetadataValue('Extension', '.ixx'))">
+      <LanguageStandard>$(FbeLanguageStandard)</LanguageStandard>
+    </ClCompile>
+  </ItemGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)FirstPartyWarnings.props"
+          Condition="'$(FbeStrictWarnings)' == 'true'" />
+  <Import Project="$(MSBuildThisFileDirectory)FirstPartyWarnings.targets"
+          Condition="'$(FbeStrictWarnings)' == 'true'" />
+</Project>

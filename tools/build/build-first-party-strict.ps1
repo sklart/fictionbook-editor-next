@@ -4,7 +4,9 @@ param(
     [string]$Configuration = 'Release',
     [ValidateSet('Win32')]
     [string]$Platform = 'Win32',
-    [string]$PlatformToolset = 'v143'
+    [string]$PlatformToolset = 'v143',
+    [ValidateSet('stdcpp17', 'stdcpp20')]
+    [string]$FbeLanguageStandard = 'stdcpp17'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,7 +72,7 @@ $contractProject = Join-Path $repoRoot "src\contracts\$contractName.vcxproj"
 if (-not (Test-Path -LiteralPath $contractProject)) { throw "First-party contract project not found: $contractProject" }
 Write-Host 'Strict first-party IDL: src\contracts\FBEContracts.vcxproj'
 & $msbuild $contractProject /t:Rebuild /m:1 /v:minimal /nologo `
-    "/p:Configuration=$Configuration" "/p:Platform=$Platform" "/p:PlatformToolset=$PlatformToolset" `
+    "/p:Configuration=$Configuration" "/p:Platform=$Platform" "/p:PlatformToolset=$PlatformToolset" "/p:FbeLanguageStandard=$FbeLanguageStandard" `
     "/p:FbeStrictWarningsOutRoot=$strictOutRoot\" "/p:FbeStrictWarningsIntRoot=$strictIntRoot\" `
     /p:FbeStrictWarnings=true /p:BuildProjectReferences=false
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -94,7 +96,7 @@ foreach ($relativeProject in $projects) {
     if (-not (Test-Path -LiteralPath $project)) { throw "First-party project not found: $project" }
     Write-Host "Strict first-party warnings: $relativeProject"
     & $msbuild $project /t:Rebuild /m:1 /v:minimal /nologo `
-        "/p:Configuration=$Configuration" "/p:Platform=$Platform" "/p:PlatformToolset=$PlatformToolset" `
+        "/p:Configuration=$Configuration" "/p:Platform=$Platform" "/p:PlatformToolset=$PlatformToolset" "/p:FbeLanguageStandard=$FbeLanguageStandard" `
         "/p:FbeStrictWarningsOutRoot=$strictOutRoot\" "/p:FbeStrictWarningsIntRoot=$strictIntRoot\" `
         /p:FbeStrictWarnings=true /p:BuildProjectReferences=false
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

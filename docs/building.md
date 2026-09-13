@@ -196,6 +196,19 @@ handler и FBV MUI используют v143, а native release binaries и Scin
 инициализируются через `vcvars_ver=14.44`. Не заменяйте этот набор на более
 новый VC Tools без отдельной проверки Windows 7 imports.
 
+Собственный C++ код собирается с централизованным baseline `/std:c++17`
+(`FbeLanguageStandard=stdcpp17`). Это не отменяет поддержку Windows 7: её
+сохраняют v143 / VC Tools 14.44 и существующая policy API/CRT. Для локальной
+оценки будущей миграции допустимо передать MSBuild
+`/p:FbeLanguageStandard=stdcpp20`, не меняя `.vcxproj`; это не release-режим.
+Vendored и generated-проекты имеют собственные требования. `/permissive-` и
+`/Zc:wchar_t` намеренно не меняются.
+
+Пробный strict first-party C++20-прогон на VC Tools 14.44 пока не собирается:
+его блокируют legacy WTL/ATL, неявные COM/CString-преобразования, MSXML-строки
+и `for each`. Это известный результат оценки, а не основание менять C++17
+release baseline.
+
 Параметр `-WarningsAsErrors` запрещает появление новых предупреждений
 компилятора. Предупреждения legacy-заголовков WTL подавлены только на границе
 подключения сторонней библиотеки.

@@ -18,6 +18,9 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
 
 - Evaluated MSBuild policy: собственные проекты используют `v143`, а прямые
   сборки FBE, ImportEPUB и shell-интеграции используют VC Tools 14.44.
+  C++-исходники получают централизованный `stdcpp17` в Debug и Release;
+  контракт отдельно подтверждает C++20 override и то, что C/vendored/generated
+  код не становится потребителем этой policy.
 - FBE COM contract генерируется в `build/generated/.../fbe-api`; ABI v2
   harness, ImportEPUB и FBE временные Release-link проверки проходят.
 - Общая FB2/shell реализация проходит metadata, cover, thumbnail и boundary

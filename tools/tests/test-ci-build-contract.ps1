@@ -19,6 +19,7 @@ foreach ($required in @(
     './tools/build/build-shell-integration.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143',
     './tools/build/build-shell-integration.ps1 -Configuration Release -Platform x64 -PlatformToolset v143',
     './tools/build/Initialize-CiUtf8.ps1',
+    './tools/tests/test-first-party-msbuild-policy.ps1',
     './tools/tests/test-ci-build-contract.ps1 -RequireArtifacts')) {
     if (-not $workflow.Contains($required)) { throw "CI workflow is missing '$required'." }
 }

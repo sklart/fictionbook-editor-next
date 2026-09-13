@@ -54,7 +54,7 @@ class CImage;
 class CImageDC
 {
 public:
-	CImageDC( const CImage& image ) throw( ... );
+	CImageDC( const CImage& image ) noexcept(false);
 	~CImageDC() throw();
 
 	operator HDC() const throw();
@@ -272,7 +272,7 @@ private:
 	static CDCCache s_cache;
 };
 
-inline CImageDC::CImageDC( const CImage& image ) throw( ... ) :
+inline CImageDC::CImageDC( const CImage& image ) noexcept(false) :
 	m_image( image ),
 	m_hDC( image.GetDC() )
 {

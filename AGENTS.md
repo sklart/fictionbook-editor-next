@@ -27,6 +27,11 @@ developer checkout or CI must not depend on this absolute path.
   operation has an explicit tested boundary.
 - Do not import `tools/msbuild/FBE.Common.props` into vendored or generated
   projects. The supported release toolchain remains v143 / VC Tools 14.44.
+- First-party C++ sources use the centralized C++17 baseline from
+  `FBE.Common.props`; override only `FbeLanguageStandard` for an explicitly
+  requested local experiment. Do not apply it to C sources, vendored code or
+  generated projects. `/permissive-`, `/Zc:wchar_t` and a C++20 migration are
+  separate work items; retain the existing `TreatWChar_tAsBuiltInType=false`.
 - `third_party` is pinned vendor content. Do not change paths, versions or
   generate broad formatting changes there without a dedicated task.
 

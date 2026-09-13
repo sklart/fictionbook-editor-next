@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <memory>
 #include <math.h>
 #include "ModelessDialog.h"
 #include "extras/http_download.h"
@@ -105,7 +106,7 @@ public:
 private:
 	RECT m_SaveRect, m_LogoRect;
 	CGLLogoView m_glLogo;
-	auto_ptr<CDownloadMonitor> m_monitor;
+	unique_ptr<CDownloadMonitor> m_monitor;
 	stringstream m_file;
 	CEdit m_Contributors;
 	bool m_UpdateReady;
