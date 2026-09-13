@@ -9,9 +9,10 @@
 - [x] Выделить production responsibilities extensions из `CMainFrame`:
   runtime UI, scripts/plugins startup и их state/lifecycle имеют отдельные
   owners; test-only runtime harness остаётся изолированным.
-- [ ] Следующим отдельным этапом выделить Document/File lifecycle ownership:
-  New/Open/MRU/Save/Save As orchestration поверх существующих `document/*`
-  компонентов, не смешивая его с extensions или recovery redesign.
+- [x] Выделить первый этап Document/File lifecycle ownership: New/Open и
+  Reload используют transactional `PendingDocument`, MRU — result-контракт и
+  normal/archive MRU принадлежит отдельному owner. Save/Save As и recovery
+  остаются в `CMainFrame` отдельными следующими этапами.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 

@@ -5,6 +5,7 @@
 #include "structure/BodyStructuralEditor.h"
 #include "structure/StructuralTrace.h"
 #include "document\PendingDocument.h"
+#include "document\DocumentLifecycleController.h"
 #include "document\DocumentLoader.h"
 #include "document\DocumentOpenSource.h"
 #include "document\DocumentSavePlan.h"
@@ -3248,18 +3249,19 @@ LRESULT CMainFrame::OnFileOpen(WORD, WORD, HWND, BOOL& /* unused: bHandled */)
 LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	CString filename;
-	m_recentDocuments.List().GetFromList(wID, filename);
-
 	DocumentLocation archiveLocation;
-	const bool archiveMru = FbeRecentDocuments::FindArchiveMruRecord(filename, archiveLocation);
+	bool archiveMru = false;
+	if (!m_recentDocuments.Resolve(wID, filename, archiveLocation, archiveMru)) return 0;
+
 	const FILE_OP_STATUS result = archiveMru ? LoadFile(archiveLocation.storagePath, &archiveLocation) : LoadFile(filename);
-	switch(result)
+	const DocumentLocation location = archiveMru ? archiveLocation : DocumentLocation();
+	const DocumentLifecycleResult lifecycle = result == OK ? DocumentLifecycleController::Completed(location, archiveMru) :
+		result == CANCELLED ? DocumentLifecycleController::Cancelled(location, archiveMru) :
+		DocumentLifecycleController::Failed(location, archiveMru);
+	switch(lifecycle.status)
 	{
-		case OK:
-			m_recentDocuments.List().MoveToTop(wID);
-			if (archiveMru) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), archiveLocation);
-			else FbeRecentDocuments::TouchMruOrder(filename);
-			FbeRecentDocuments::RebuildMruMenu(m_recentDocuments.List());
+		case DocumentLifecycleStatus::Success:
+			m_recentDocuments.OnOpened(wID, filename, archiveLocation, archiveMru);
 			// added by SeNS
 			if(_Settings.RestoreFilePosition())
 			{
@@ -3267,17 +3269,11 @@ LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND
 				GoTo(saved_pos);
 			}
 			break;
-		case FAIL:
-			m_recentDocuments.List().RemoveFromList(wID);
-			FbeRecentDocuments::RebuildMruMenu(m_recentDocuments.List());
+		case DocumentLifecycleStatus::Failed:
+			m_recentDocuments.OnFailed(wID);
 			break;
-		case CANCELLED:
-			if (archiveMru)
-			{
-				ResolvedOpenDocument probe; FbeArchive::Error error;
-				if (!FbeArchiveUi::ResolveOpenRequest(archiveLocation.storagePath, probe, &archiveLocation, &error) &&
-					(error.code == FbeArchive::ErrorCode::EntryNotFound || error.code == FbeArchive::ErrorCode::OpenFailed)) FbeRecentDocuments::RemoveArchiveMruRecord(m_recentDocuments.List(), archiveLocation);
-			}
+		case DocumentLifecycleStatus::Cancelled:
+			if (archiveMru) m_recentDocuments.OnCancelledArchive(archiveLocation);
 			break;
 	}
 

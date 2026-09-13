@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- New/Open/Reload используют единый transactional `PendingDocument`, который
+  сохраняет прежний active-document до commit; `DocumentLifecycleResult`
+  описывает исход операции на legacy MRU-границе. MRU вынесен в
+  `FbeRecentDocuments::Controller`, включая normal/archive resolution,
+  порядок, удаление неудачной записи и архивный cancel-path; UI-обработчик
+  оставляет только открытие и восстановление позиции.
+
 - Startup coordination разделена на независимые `InitializeScripts`,
   `InitializeBundledPlugins` и `InitializeRecentDocumentsMenu`; большой
   runtime test harness разбит на тематические `.inl`-части.

@@ -20,6 +20,11 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   `InitializeExtensionUi` остаётся только тонким coordinator. Runtime test
   scenarios подключают тематические части из малого umbrella-файла.
 
+- Первый lifecycle-контур документа отделён структурно: `DocumentLoader` не
+  зависит от `CMainFrame`, `PendingDocument` восстанавливает active-document
+  при rollback, а `FbeRecentDocuments::Controller` владеет normal/archive MRU
+  resolution и мутациями. Проверены boundary-контракт и runtime New/Open/Reload.
+
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation
   unit, поэтому private-граница frame не расширена.

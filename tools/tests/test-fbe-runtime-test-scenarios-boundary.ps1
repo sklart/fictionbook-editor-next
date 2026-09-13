@@ -16,6 +16,10 @@ $modeHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\testing\Ru
 $mainHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.h')
 $scriptOwner = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\scripts\ScriptUiController.h')
 $pluginOwner = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\plugins\PluginUiController.h')
+$lifecycleHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\DocumentLifecycleController.h')
+$loaderSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\DocumentLoader.cpp')
+$pendingSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\PendingDocument.cpp')
+$recentOwner = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\document\recent\RecentDocumentsController.h')
 $project = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.vcxproj')
 
 foreach($required in @(
@@ -64,6 +68,28 @@ foreach($required in @('class\s+UiController', 'MenuBuilder\s+m_menu', 'VisualRe
 }
 foreach($required in @('PluginManager\s+m_manager', 'CSimpleArray<CLSID>\s+m_importPlugins', 'CSimpleArray<CLSID>\s+m_exportPlugins')) {
     if($pluginOwner -notmatch $required) { throw "Plugin owner is missing: $required" }
+}
+
+foreach($required in @('enum class DocumentLifecycleStatus', 'struct DocumentLifecycleResult', 'Succeeded\s*\(')) {
+    if($lifecycleHeader -notmatch $required) { throw "Document lifecycle result contract is missing: $required" }
+}
+if($loaderSource -match 'mainfrm\.h') { throw 'DocumentLoader must not depend on CMainFrame.' }
+foreach($required in @('FbeRecentDocuments::Controller\s+m_recentDocuments')) {
+    if($mainHeader -notmatch $required) { throw "CMainFrame recent-document boundary is missing: $required" }
+}
+foreach($required in @('bool Resolve\s*\(', 'void OnOpened\s*\(', 'void OnFailed\s*\(', 'void OnCancelledArchive\s*\(')) {
+    if($recentOwner -notmatch $required) { throw "Recent-document controller is missing: $required" }
+}
+$mruHandler = [regex]::Match($mainSource, 'LRESULT CMainFrame::OnFileOpenMRU[\s\S]*?(?=LRESULT CMainFrame::OnFileSave\()').Value
+if(-not $mruHandler) { throw 'OnFileOpenMRU handler is missing.' }
+foreach($required in @('m_recentDocuments\.Resolve', 'm_recentDocuments\.OnOpened', 'm_recentDocuments\.OnFailed')) {
+    if($mruHandler -notmatch $required) { throw "OnFileOpenMRU must delegate MRU ownership: $required" }
+}
+foreach($forbidden in @('\.MoveToTop\(', '\.RemoveFromList\(', 'FbeRecentDocuments::TouchMruOrder', 'FbeRecentDocuments::RebuildMruMenu')) {
+    if($mruHandler -match $forbidden) { throw "OnFileOpenMRU retained MRU mutation: $forbidden" }
+}
+foreach($required in @('m_document\.reset\(\);\s*FB::Doc::m_active_doc = m_previous;', 'm_document\.release\(\);\s*FB::Doc::m_active_doc = committed;')) {
+    if($pendingSource -notmatch $required) { throw "PendingDocument transactional rollback contract is missing: $required" }
 }
 
 Write-Host 'Runtime test scenario boundary contract passed.'
