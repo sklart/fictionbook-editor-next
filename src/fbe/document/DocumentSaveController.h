@@ -18,9 +18,15 @@ struct DocumentSaveResult
 	bool Succeeded() const { return status == DocumentSaveStatus::Success; }
 };
 
+struct DocumentSaveAsRequest
+{
+	CString filename;
+	CString encoding;
+};
+
 class DocumentSaveController
 {
 public:
 	DocumentSaveResult SaveCurrent(FB::Doc& document, DocumentSession& session, const DocumentLocation& location);
-	DocumentSaveResult SaveAsNormal(FB::Doc& document, DocumentSession& session, const CString& filename);
+	DocumentSaveResult SaveAsNormal(FB::Doc& document, DocumentSession& session, const DocumentSaveAsRequest& request);
 };

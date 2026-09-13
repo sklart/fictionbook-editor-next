@@ -1047,12 +1047,10 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
     if (filename.IsEmpty())
       return CANCELLED;
     const bool wasFbd = m_doc->GetDocumentFileType() == FictionBookFileType::Fbd;
-    m_doc->m_encoding=encoding;
-    if (saveController.SaveAsNormal(*m_doc, m_document_session, filename).Succeeded()) {
+	DocumentSaveAsRequest request; request.filename = filename; request.encoding = encoding;
+    if (saveController.SaveAsNormal(*m_doc, m_document_session, request).Succeeded()) {
 	  if (wasFbd != IsFbdFile(filename)) ResetValidationStatus();
-	  U::SetCurrentDirectoryToFile(filename);
-      m_doc->m_namevalid=true;
-	  FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), filename);
+	  m_recentDocuments.OnSavedAsNormal(filename);
 	  CommitSuccessfulSave();
 	  UpdateStatusBar();
       return OK;

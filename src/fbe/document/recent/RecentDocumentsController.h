@@ -14,6 +14,7 @@ public:
 	void OnOpened(WORD command, const CString& normalPath, const DocumentLocation& archiveLocation, bool archive);
 	void OnFailed(WORD command);
 	void OnCancelledArchive(const DocumentLocation& archiveLocation);
+	void OnSavedAsNormal(const CString& path);
 
 private:
 	WTL::CRecentDocumentList m_list;

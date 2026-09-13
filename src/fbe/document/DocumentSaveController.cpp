@@ -23,11 +23,15 @@ DocumentSaveResult DocumentSaveController::SaveCurrent(FB::Doc& document, Docume
 	return { DocumentSaveStatus::Success, DocumentSaveFailureKind::None, savedLocation, FbeArchive::Error() };
 }
 
-DocumentSaveResult DocumentSaveController::SaveAsNormal(FB::Doc& document, DocumentSession& session, const CString& filename)
+DocumentSaveResult DocumentSaveController::SaveAsNormal(FB::Doc& document, DocumentSession& session, const DocumentSaveAsRequest& request)
 {
-	if (!document.Save(filename)) return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::NormalWrite, session.Location(), FbeArchive::Error() };
-	document.m_filename = filename;
-	document.m_namevalid = true;
-	session.SaveAsNormal(filename, document.GetDocumentFileType());
+	const CString previousEncoding = document.m_encoding;
+	document.m_encoding = request.encoding;
+	if (!document.Save(request.filename))
+	{
+		document.m_encoding = previousEncoding;
+		return { DocumentSaveStatus::Failed, DocumentSaveFailureKind::NormalWrite, session.Location(), FbeArchive::Error() };
+	}
+	session.SaveAsNormal(request.filename, document.GetDocumentFileType());
 	return { DocumentSaveStatus::Success, DocumentSaveFailureKind::None, session.Location(), FbeArchive::Error() };
 }

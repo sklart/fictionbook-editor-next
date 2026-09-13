@@ -32,3 +32,8 @@ void FbeRecentDocuments::Controller::OnCancelledArchive(const DocumentLocation& 
 		(error.code == FbeArchive::ErrorCode::EntryNotFound || error.code == FbeArchive::ErrorCode::OpenFailed))
 		RemoveArchiveMruRecord(m_list, archiveLocation);
 }
+
+void FbeRecentDocuments::Controller::OnSavedAsNormal(const CString& path)
+{
+	RememberNormalMruRecord(m_list, path);
+}
