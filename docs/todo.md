@@ -6,9 +6,12 @@
 - [ ] Отдельно спланировать C++20/conformance-миграцию: пробный strict-прогон
   блокируют WTL/ATL, неявные COM/CString-преобразования, MSXML-строки и
   Microsoft `for each`; не смешивать это с C++17 baseline.
-- [ ] Продолжить выделение production responsibilities из `CMainFrame`:
-  следующими кандидатами отдельно оценить UI-команды, toolbar/menu слой и
-  coordination, не смешивая их с уже вынесенным test-only runtime harness.
+- [x] Выделить production responsibilities extensions из `CMainFrame`:
+  runtime UI, scripts/plugins startup и их state/lifecycle имеют отдельные
+  owners; test-only runtime harness остаётся изолированным.
+- [ ] Следующим отдельным этапом выделить Document/File lifecycle ownership:
+  New/Open/MRU/Save/Save As orchestration поверх существующих `document/*`
+  компонентов, не смешивая его с extensions или recovery redesign.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 

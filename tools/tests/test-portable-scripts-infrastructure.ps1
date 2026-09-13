@@ -34,7 +34,7 @@ Must $hotkeysStore 'ambiguousLongestSuffix \? NULL : matchedHotkey' 'Ambiguous l
 Must $hotkeysStore 'if\(migratedLegacyScriptHotkey\) Save\(groups\)' 'Legacy hotkey migration writes portable identity back'
 
 Must $header 'ReleaseScriptResources\(\)' 'Script lifecycle helper declaration'
-Must $frame 'ReleaseScriptResources\(\);\s*\n\s*if \(StartupTrace::Enabled\(\)\)' 'Reload releases script resources before collecting'
+Must $frame 'ReleaseScriptResources\(\);\s*\n\s*StartupTrace::Event\(L"plugin", L"P100"' 'Reload releases script resources before collecting'
 Must $menuBuilder 'm_items\.clear\(\)' 'Reload clears active script descriptors'
 Must $menuBuilder 'm_visuals\.clear\(\)' 'Reload clears visual resources together with descriptors'
 Must $visuals '~VisualResource\(\) \{ Reset\(\); \}' 'GDI handles use RAII cleanup'
@@ -51,7 +51,7 @@ Must $menuBuilder 'MenuBuilder::Build' 'Active descriptors build the Scripts men
 MustNot $frame '\bScrInfo\b|LoadScriptPicture|SortScripts' 'CMainFrame legacy script model'
 Must $frame 'class ScriptDiscoveryRuntime' 'Discovery runtime has scoped ownership'
 Must $frame '~ScriptDiscoveryRuntime\(\) \{ if \(m_started\) StopScript\(\); \}' 'Started scripting runtime is always stopped'
-Must $frame '!runtime\.Started\(\) \|\| FAILED\(ScriptLoad\(candidate\.path\)\) \|\| !ScriptFindFunc\(L"Run"\)' 'Rejected scripts share scoped runtime cleanup'
+Must $frame 'runtime\.Started\(\) && SUCCEEDED\(ScriptLoad\(path\)\) && ScriptFindFunc\(L"Run"\)' 'Rejected scripts share scoped runtime cleanup'
 
 Must $toolbarStore 'PortableToolbarsPath' 'Portable toolbar file path'
 Must $toolbarStore 'Toolbars\.xml' 'Portable toolbar data file'
@@ -70,7 +70,7 @@ Must $frame 'portable-toolbar-layout-read' 'GUI scenario checks non-empty portab
 Must $frame 'relativePath == L"foo\.js"' 'Scripts toolbar E2E locates script by stable relative path'
 MustNot $toolbarStore '#include.*(mainfrm\.h|Settings\.h|scripts)' 'Portable toolbar store stays independent from frame, settings and scripts'
 
-Must $frame 'm_plugins\.Manager\(\)\.GetPlugins\(\)' 'Bundled plugins remain available through PluginUiController'
+Must (Text 'src\fbe\plugins\PluginUiController.cpp') 'm_manager\.GetPlugins\(\)' 'Bundled plugins remain available through PluginUiController'
 Must $about 'DeploymentContext::LogsDirectory\(\)' 'Update trace uses deployment-specific log directory'
 MustNot $about 'LOCALAPPDATA' 'Update trace must not hardcode LocalAppData'
 

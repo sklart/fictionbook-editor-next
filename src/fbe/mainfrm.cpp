@@ -1948,90 +1948,21 @@ void CMainFrame::InitializeExtensionUi()
 void CMainFrame::InitializeScripts()
 {
 	ReleaseScriptResources();
-	if (StartupTrace::Enabled())
-	{
-		StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
-	}
-	FbeScripts::Catalog scriptCatalog;
-	scriptCatalog.Discover(_Settings.GetScriptsFolder(), L"*.js");
-	const std::vector<ScriptDescriptor>& scriptCandidates = scriptCatalog.Items();
-	for (size_t index = 0; index < scriptCandidates.size(); ++index)
-	{
-		const ScriptDescriptor& candidate = scriptCandidates[index];
-		if (!candidate.isFolder)
-		{
-			ScriptDiscoveryRuntime runtime(this);
-			if (!runtime.Started() || FAILED(ScriptLoad(candidate.path)) || !ScriptFindFunc(L"Run"))
-				continue;
-		}
-
-		ScriptDescriptor script(candidate);
-		const CString directory = candidate.isFolder ? candidate.path : candidate.path.Left(candidate.path.ReverseFind(L'\\') + 1);
-		CString pictureName(candidate.path.Mid(candidate.path.ReverseFind(L'\\') + 1));
-		if (!candidate.isFolder && pictureName.GetLength() >= 3) pictureName.Delete(pictureName.GetLength() - 3, 3);
-		FbeScripts::VisualResource visual = m_scripts.Visuals().Load(directory, pictureName);
-		m_scripts.Menu().Add(script, static_cast<FbeScripts::VisualResource&&>(visual));
-	}
-	if (StartupTrace::Enabled())
-	{
-		CString trace;
-		trace.Format(L"script-count=%d", m_scripts.Menu().Count());
-		StartupTrace::Event(L"plugin", L"P110", trace);
-	}
-	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
+	StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
 	CString serializedCommandIds;
-	if (m_scripts.Menu().AssignCommandIds(SCRIPT_COMMAND_COUNT, _Settings.GetScriptCommandIds(), serializedCommandIds))
-		_Settings.SetScriptCommandIds(serializedCommandIds);
+	HMENU mainMenu = m_MenuBar.GetMenu();
+	if(m_scripts.Initialize(_Settings.GetScriptsFolder(), _Settings.GetScriptCommandIds(), serializedCommandIds, ::GetSubMenu(mainMenu, 6),
+		FbeLoadRuntimeStringByKey(L"fbe.menu.scripts.empty", L"No scripts"),
+		[this](const CString& path) { ScriptDiscoveryRuntime runtime(this); return runtime.Started() && SUCCEEDED(ScriptLoad(path)) && ScriptFindFunc(L"Run"); },
+		[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
+			if(!script.isFolder && visual.icon != NULL) AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, visual.icon);
+			if(!script.isFolder) { TBBUTTONS catalog; bool available = GetAvailableButtons(m_ScriptsToolbar, catalog); for(int index = 0; available && index < catalog.GetSize(); ++index) if(catalog[index].idCommand == static_cast<int>(command)) available = false; if(available) { TBBUTTON button = {}; button.iBitmap = I_IMAGENONE; button.idCommand = command; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; AddToolbarButton(m_ScriptsToolbar, button, script.name); } }
+			if(visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command); else if(visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
+		},
+		[this](ScriptDescriptor& script) { InitScriptHotkey(script); })) _Settings.SetScriptCommandIds(serializedCommandIds);
+	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
-
-	HMENU ManMenu = m_MenuBar.GetMenu();
-	HMENU scripts = GetSubMenu(ManMenu, 6);
-
-	while(::GetMenuItemCount(scripts) > 0)
-	::RemoveMenu(scripts, 0, MF_BYPOSITION);
-
-	if(m_scripts.Menu().Count())
-	{
-		m_scripts.Menu().Build(scripts,
-			[](ScriptDescriptor&) {},
-			[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
-				if (!script.isFolder && visual.icon != NULL)
-					AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, visual.icon);
-				if (!script.isFolder)
-				{
-					TBBUTTONS catalog;
-					bool available = GetAvailableButtons(m_ScriptsToolbar, catalog);
-					for(int index = 0; available && index < catalog.GetSize(); ++index)
-						if(catalog[index].idCommand == static_cast<int>(command)) { available = false; break; }
-					if(available)
-					{
-						// Keep customization's available catalog aligned with the script
-						// menu even when toolbar artwork could not be added.
-						TBBUTTON button = {};
-						button.iBitmap = I_IMAGENONE;
-						button.idCommand = command;
-						button.fsState = TBSTATE_ENABLED;
-						button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE;
-						AddToolbarButton(m_ScriptsToolbar, button, script.name);
-					}
-				}
-				if (visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command);
-				else if (visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
-			});
-		// Hotkey registration is catalog lifecycle, not menu rendering.  Keeping
-		// it outside MenuBuilder's recursive traversal makes every discovered
-		// script available to portable hotkey migration, including nested items.
-		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
-			if(!m_scripts.Menu().Item(index).isFolder)
-				InitScriptHotkey(m_scripts.Menu().Item(index));
-	}
-	else
-	{
-		wchar_t buf[MAX_LOAD_STRING + 1];
-		FbeLoadString(_Module.GetResourceInstance(), IDS_NO_SCRIPTS, buf, MAX_LOAD_STRING);
-		AppendMenu(scripts, MF_STRING | MF_DISABLED | MF_GRAYED, IDCANCEL, buf);
-	}
-	ApplyRuntimeMainFrameMenuLocalization(ManMenu);
+	ApplyRuntimeMainFrameMenuLocalization(mainMenu);
 }
 
 void CMainFrame::InitializeBundledPlugins()
