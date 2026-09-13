@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Тестовая runtime-orchestration вынесена из `mainfrm.cpp` в
+  `src/fbe/testing/RuntimeTestScenarios.inl`: portable-state, archive, split
+  undo, Body/Source, settings и остальные автоматические сценарии сохранили
+  прежний контракт. Документирована трёхуровневая policy LOCAL/STAGE/RELEASE.
+
 - Собственные C++-проекты теперь явно используют централизованный baseline
   C++17 (`/std:c++17`) при неизменных v143 / VC Tools 14.44 и Windows 7
   release-policy. Контракт MSBuild проверяет evaluated metadata Debug/Release,

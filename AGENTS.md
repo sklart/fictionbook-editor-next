@@ -35,6 +35,23 @@ developer checkout or CI must not depend on this absolute path.
 - `third_party` is pinned vendor content. Do not change paths, versions or
   generate broad formatting changes there without a dedicated task.
 
+# Verification levels
+
+- **LOCAL / affected**: after ordinary edits, build only the changed project
+  and run directly related contract, unit or regression tests. Do not run
+  `verify-release.ps1` here.
+- **STAGE**: after a coherent change, build affected first-party projects in
+  Release; run strict warnings for C++ edits and a small related runtime or
+  behavior contour. Run `verify-release.ps1` only when the change crosses
+  build, release, runtime, package or other broad module boundaries.
+- **RELEASE**: run `tools/build/verify-release.ps1`. Run
+  `-FullValidation` only before a release/tag, after a major systemic change,
+  or on explicit request.
+- Do not run `verify-release.ps1` after every edit or small commit. Prefer
+  affected tests while developing and one justified release gate after a
+  completed stage. If it has passed and only documentation or unrelated code
+  changed afterwards, do not repeat it.
+
 # Generated outputs and verification
 
 - `build` and `out` are generated. Do not add tracked configuration there.
@@ -43,9 +60,7 @@ developer checkout or CI must not depend on this absolute path.
 - Preserve existing package provenance and independent manifest checks; do not
   replace behavior tests with text searches.
 - Before a structural commit, run the affected native/behavioral tests and the
-  corresponding FAST contracts. Use `tools/build/verify-release.ps1` as the
-  compatible public release gate; `-FullValidation` is the broader GUI and
-  production contour.
+  corresponding FAST contracts according to the verification levels above.
 - `runtime\Scintilla.dll` and `runtime\Lexilla.dll` are dependency binaries.
   Ordinary builds and tests must not leave them modified; do not commit changes
   to them unless the task explicitly updates Scintilla or Lexilla.

@@ -16,6 +16,10 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
 
 ## Подтверждено локально
 
+- Test-only runtime orchestration живёт в `src/fbe/testing/RuntimeTestScenarios.inl`;
+  `mainfrm.cpp` включает её в тот же translation unit, сохраняя private-boundary
+  CMainFrame без public-полей или широкого `friend`.
+
 - Evaluated MSBuild policy: собственные проекты используют `v143`, а прямые
   сборки FBE, ImportEPUB и shell-интеграции используют VC Tools 14.44.
   C++-исходники получают централизованный `stdcpp17` в Debug и Release;

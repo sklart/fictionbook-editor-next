@@ -184,6 +184,22 @@ UPX 5.2.1 хранится в `tools/upx`. Hunspell подключён как Gi
 .\tools\build\build.ps1 -Configuration Release -Platform Win32
 ```
 
+## Проверка изменений
+
+Используйте три уровня проверки. На **LOCAL / affected** после обычной правки
+соберите только затронутый проект и запустите связанные `tools/tests/test-*.ps1`:
+`source`, `table`, `archive`, `settings`, `scripts`, `document` либо
+`first-party-msbuild-policy` для build/MSBuild. На **STAGE** после логического
+блока добавьте Release-сборку затронутых first-party проектов, strict warnings
+для C++ и несколько соответствующих runtime/behavior тестов.
+
+`verify-release.ps1` — **RELEASE** gate, а не проверка после каждой правки или
+маленького коммита. Запускайте его один раз после завершённого этапа, когда
+изменения затрагивают широкий runtime, package, build/release или межмодульный
+контракт. `-FullValidation` нужен только перед релизом/tag, после крупного
+системного изменения или по явному запросу. Уже успешный release gate не нужно
+повторять после одной документации или несвязанного кода.
+
 Для CI с установленным Visual Studio 2022:
 
 ```powershell
