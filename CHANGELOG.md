@@ -5,6 +5,8 @@
 - Recovery lifecycle теперь координирует `RecoveryController`: frame собирает
   editor/source state и показывает prompt, service сохраняет snapshot, а
   normal restore возвращает session в NewDocument вместо `Recovery.fb2`.
+  Runtime regression подтверждает Untitled identity, dirty restored document и
+  cleanup snapshot только после успешного restore.
 
 - Save, Save As и archive save теперь используют `DocumentSaveController`:
   persistence и `DocumentSession` commit происходят только после успешной

@@ -41,6 +41,8 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   `NewDocument`, archive restore возвращает archive location.
   Archive external-modification runtime получает реальный `ArchiveWrite` code
   на frame/test boundary, не загрязняя `DocumentSaveController` test logic.
+  Dedicated normal-recovery runtime проверяет NewDocument session, Untitled
+  identity, dirty state и удаление snapshot после commit restore.
   Save As удерживает encoding, filename и session identity до persistence
   success; MRU mutation проходит через `RecentDocumentsController`.
 

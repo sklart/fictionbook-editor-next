@@ -22,6 +22,9 @@
   через `RecentDocumentsController`.
 - [x] Выделить lifecycle recovery в `RecoveryController`, сохранив storage
   format, frame timer/prompt и normal/archive session identity semantics.
+- [x] Зафиксировать normal recovery runtime: восстановленный документ остаётся
+  dirty, получает Untitled/NewDocument identity, а snapshot очищается после
+  успешного restore.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 
