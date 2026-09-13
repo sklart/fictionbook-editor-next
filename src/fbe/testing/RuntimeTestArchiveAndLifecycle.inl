@@ -250,14 +250,14 @@
 		}
 		const CString filenameBefore(m_doc->m_filename);
 		CString mruBefore;
-		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index)
-			mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
+		for (int index = 0; index < m_recentDocuments.List().m_arrDocs.GetSize(); ++index)
+			mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[index].szDocName));
 		const FILE_OP_STATUS result = failedLength && failedLength < _countof(failedArchive) ? LoadFile(failedArchive) : FAIL;
 		const bool sourceStillModified = m_source.SendMessage(SCI_GETMODIFY) != 0;
 		const bool sameDocument = CString(m_doc->m_filename) == filenameBefore && !m_document_session.Location().IsArchive();
 		CString mruAfter;
-		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index)
-			mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
+		for (int index = 0; index < m_recentDocuments.List().m_arrDocs.GetSize(); ++index)
+			mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[index].szDocName));
 		const bool mruUnchanged = mruAfter == mruBefore;
 		CStringA report;
 		report.Format("open_cancelled=%d\nmodified=%d\nsame_document=%d\nmru_unchanged=%d\n", result == CANCELLED, sourceStillModified, sameDocument, mruUnchanged);
@@ -272,10 +272,10 @@
 		FB::Doc* const original = m_doc;
 		const DocumentLocation originalLocation = m_document_session.Location();
 		CString mruBefore;
-		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index) mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
+		for (int index = 0; index < m_recentDocuments.List().m_arrDocs.GetSize(); ++index) mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[index].szDocName));
 		const FILE_OP_STATUS result = failedLength && failedLength < _countof(failedPath) ? LoadFile(failedPath) : FAIL;
 		CString mruAfter;
-		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index) mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_mru.m_arrDocs[index].szDocName));
+		for (int index = 0; index < m_recentDocuments.List().m_arrDocs.GetSize(); ++index) mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[index].szDocName));
 		const bool preserved = result == FAIL && m_doc == original && FB::Doc::m_active_doc == m_doc &&
 			m_document_session.Location().storagePath == originalLocation.storagePath && mruBefore == mruAfter;
 		CStringA report; report.Format("failed=%d\nidentity=%d\nactive=%d\nsession=%d\nmru_unchanged=%d\n", result == FAIL, m_doc == original, FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, mruBefore == mruAfter);
@@ -363,11 +363,11 @@
 		ResolvedOpenDocument secondResolved; FbeArchive::Error secondError;
 		const bool secondFound = secondValid && FbeArchiveUi::ResolveOpenRequest(second.storagePath, secondResolved, &second, &secondError);
 		const FILE_OP_STATUS secondOpen = secondFound ? LoadFile(second.storagePath, &second) : CANCELLED;
-		if (secondOpen == OK) FbeRecentDocuments::RememberArchiveMruRecord(m_mru, m_document_session.Location());
+		if (secondOpen == OK) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), m_document_session.Location());
 		if (secondOpen == OK) { m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT); }
 		std::vector<FbeRecentDocuments::ArchiveMruRecord> records; FbeRecentDocuments::ReadArchiveMruRecords(records);
 		const CString firstKey = FbeRecentDocuments::ArchiveMruKey(first); WORD firstCommand = 0;
-		for (int offset = 0; offset < m_mru.m_arrDocs.GetSize() && offset <= ID_FILE_MRU_LAST - ID_FILE_MRU_FIRST; ++offset) { CString key; const WORD candidate = MruCommandId(offset); if (m_mru.GetFromList(candidate, key) && key == firstKey) { firstCommand = candidate; break; } }
+		for (int offset = 0; offset < m_recentDocuments.List().m_arrDocs.GetSize() && offset <= ID_FILE_MRU_LAST - ID_FILE_MRU_FIRST; ++offset) { CString key; const WORD candidate = MruCommandId(offset); if (m_recentDocuments.List().GetFromList(candidate, key) && key == firstKey) { firstCommand = candidate; break; } }
 		DocumentLocation menuFirst;
 		const bool menuLookup = firstCommand != 0 && FbeRecentDocuments::FindArchiveMruRecord(firstKey, menuFirst) && FbeRecentDocuments::SameArchiveMruIdentity(menuFirst, first);
 		BOOL handled = FALSE;
@@ -384,7 +384,7 @@
 				if (normal.IsEmpty()) continue;
 				m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 				if (LoadFile(normal) != OK) { normalEntriesOpened = false; break; }
-				FbeRecentDocuments::RememberNormalMruRecord(m_mru, normal);
+				FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), normal);
 				normalEntriesOpened = true;
 			}
 		}
@@ -395,7 +395,7 @@
 		ResolvedOpenDocument ignored; FbeArchive::Error missingError;
 		const bool missingRejected = !FbeArchiveUi::ResolveOpenRequest(first.storagePath, ignored, &missing, &missingError) && missingError.code == FbeArchive::ErrorCode::EntryNotFound;
 		int menuCount = 0, visibleArchiveCount = 0; bool menuClean = true;
-		const HMENU mruMenu = m_mru.GetMenuHandle();
+		const HMENU mruMenu = m_recentDocuments.List().GetMenuHandle();
 		if (mruMenu != NULL) for (int index = 0; index < ::GetMenuItemCount(mruMenu); ++index)
 		{
 			MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_ID;
@@ -405,12 +405,12 @@
 			DocumentLocation captionLocation;
 			if (FbeRecentDocuments::ParseArchiveMruKey(caption, captionLocation) || CString(caption).Left(2) == L"&1" || CString(caption).Left(2) == L"&2") menuClean = false;
 			CString key; DocumentLocation keyLocation;
-			if (m_mru.GetFromList(item.wID, key) && FbeRecentDocuments::ParseArchiveMruKey(key, keyLocation)) ++visibleArchiveCount;
+			if (m_recentDocuments.List().GetFromList(item.wID, key) && FbeRecentDocuments::ParseArchiveMruKey(key, keyLocation)) ++visibleArchiveCount;
 		}
 		const CString firstCaption = FbeRecentDocuments::ArchiveMruCaption(firstKey), secondCaption = FbeRecentDocuments::ArchiveMruCaption(FbeRecentDocuments::ArchiveMruKey(second));
 		const bool captionsDifferent = firstCaption.Compare(secondCaption) != 0;
 		const bool captionsDistinct = visibleArchiveCount < 2 || captionsDifferent;
-		FbeRecentDocuments::WritePortableMru(m_mru);
+		FbeRecentDocuments::WritePortableMru(m_recentDocuments.List());
 		CStringA report; report.Format("first=%d\nsecond=%d\nmenu_lookup=%d\nsecond_found=%d\nsecond_error=%d\nsecond_open=%d\nfirst_open=%d\nreopened_first=%d\nmissing_entry=%d\narchive_records=%u\nnormal_entries=%d\nmenu_count=%d\nmenu_clean=%d\ncaption_diff=%d\ncaptions_distinct=%d\n", hasFirst, hasSecond, menuLookup, secondFound, static_cast<int>(secondError.code), secondOpen, firstOpen, reopenedFirst, missingRejected, static_cast<unsigned int>(records.size()), normalEntriesOpened, menuCount, menuClean, captionsDifferent, captionsDistinct);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(hasFirst && hasSecond && menuLookup && reopenedFirst && missingRejected && normalEntriesOpened && menuCount > 0 && menuCount <= 10 && menuClean && captionsDistinct ? 0 : 1);
@@ -419,16 +419,16 @@
 	if (IsFbeTestScenario(L"archive-mru-restart-runtime"))
 	{
 		std::vector<CString> order; FbeRecentDocuments::ReadMruOrder(order);
-		const int count = m_mru.m_arrDocs.GetSize(); bool exactOrder = count == 10 && order.size() == 10, cleanMenu = true; int menuCount = 0;
-		for (int index = 0; index < count && exactOrder; ++index) exactOrder = CString(m_mru.m_arrDocs[index].szDocName) == order[order.size() - 1 - index];
-		for (int index = 0; index < count; ++index) { DocumentLocation location; if (FbeRecentDocuments::ParseArchiveMruKey(CString(m_mru.m_arrDocs[index].szDocName), location) && !FbeRecentDocuments::FindArchiveMruRecord(CString(m_mru.m_arrDocs[index].szDocName), location)) cleanMenu = false; }
-		std::vector<CString> captions; const HMENU menu = m_mru.GetMenuHandle(); int emptyCaption = 0, rawCaption = 0, numberedCaption = 0, duplicateCaption = 0, disabledCaption = 0; bool minimalFolderContexts = false;
+		const int count = m_recentDocuments.List().m_arrDocs.GetSize(); bool exactOrder = count == 10 && order.size() == 10, cleanMenu = true; int menuCount = 0;
+		for (int index = 0; index < count && exactOrder; ++index) exactOrder = CString(m_recentDocuments.List().m_arrDocs[index].szDocName) == order[order.size() - 1 - index];
+		for (int index = 0; index < count; ++index) { DocumentLocation location; if (FbeRecentDocuments::ParseArchiveMruKey(CString(m_recentDocuments.List().m_arrDocs[index].szDocName), location) && !FbeRecentDocuments::FindArchiveMruRecord(CString(m_recentDocuments.List().m_arrDocs[index].szDocName), location)) cleanMenu = false; }
+		std::vector<CString> captions; const HMENU menu = m_recentDocuments.List().GetMenuHandle(); int emptyCaption = 0, rawCaption = 0, numberedCaption = 0, duplicateCaption = 0, disabledCaption = 0; bool minimalFolderContexts = false;
 		if (menu == NULL) cleanMenu = false; else for (int index = 0; index < ::GetMenuItemCount(menu); ++index)
 		{
 			MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_ID;
 			if (!::GetMenuItemInfo(menu, index, TRUE, &item) || item.wID < ID_FILE_MRU_FIRST || item.wID > ID_FILE_MRU_LAST) continue;
 			++menuCount; wchar_t text[512] = {}; ::GetMenuString(menu, index, text, _countof(text), MF_BYPOSITION); CString caption(text), parsedKey;
-			item.fMask = MIIM_STATE; ::GetMenuItemInfo(menu, index, TRUE, &item); DocumentLocation parsed; if (caption == m_mru.m_szNoEntries) { ++emptyCaption; } if ((item.fState & (MFS_DISABLED | MFS_GRAYED)) != 0) { cleanMenu = false; ++disabledCaption; } if (FbeRecentDocuments::ParseArchiveMruKey(caption, parsed)) { cleanMenu = false; ++rawCaption; } if (caption.GetLength() > 1 && caption[0] == L'&' && caption[1] >= L'0' && caption[1] <= L'9') { cleanMenu = false; ++numberedCaption; }
+			item.fMask = MIIM_STATE; ::GetMenuItemInfo(menu, index, TRUE, &item); DocumentLocation parsed; if (caption == m_recentDocuments.List().m_szNoEntries) { ++emptyCaption; } if ((item.fState & (MFS_DISABLED | MFS_GRAYED)) != 0) { cleanMenu = false; ++disabledCaption; } if (FbeRecentDocuments::ParseArchiveMruKey(caption, parsed)) { cleanMenu = false; ++rawCaption; } if (caption.GetLength() > 1 && caption[0] == L'&' && caption[1] >= L'0' && caption[1] <= L'9') { cleanMenu = false; ++numberedCaption; }
 			for (size_t previous = 0; previous < captions.size(); ++previous) if (captions[previous].CompareNoCase(caption) == 0) { cleanMenu = false; ++duplicateCaption; }
 			captions.push_back(caption);
 		}
@@ -436,7 +436,7 @@
 			if ((captions[i].Find(L"A\\Books\\archive.zip") >= 0 && captions[j].Find(L"B\\Books\\archive.zip") >= 0) || (captions[i].Find(L"B\\Books\\archive.zip") >= 0 && captions[j].Find(L"A\\Books\\archive.zip") >= 0)) minimalFolderContexts = true;
 		wchar_t path[MAX_PATH] = {}, entry[MAX_PATH] = {}, occurrenceText[16] = {}; ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_MRU_REOPEN_PATH", path, _countof(path)); ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_ENTRY", entry, _countof(entry)); ::GetEnvironmentVariable(L"FBE_NEXT_TEST_ARCHIVE_OCCURRENCE", occurrenceText, _countof(occurrenceText));
 		unsigned int occurrence = 0; DocumentLocation target; target.containerKind = DetectDocumentContainerKind(path); target.storagePath = path; target.entryPath = entry; target.entryOccurrence = FbeRecentDocuments::ParseArchiveMruUnsigned(occurrenceText, occurrence) ? occurrence : 0; target.documentType = DetectFictionBookFileType(target.entryPath);
-		WORD command = 0; const CString key = FbeRecentDocuments::ArchiveMruKey(target); for (int offset = 0; offset < count && offset <= ID_FILE_MRU_LAST - ID_FILE_MRU_FIRST; ++offset) { CString value; const WORD candidate = MruCommandId(offset); if (m_mru.GetFromList(candidate, value) && value == key) { command = candidate; break; } }
+		WORD command = 0; const CString key = FbeRecentDocuments::ArchiveMruKey(target); for (int offset = 0; offset < count && offset <= ID_FILE_MRU_LAST - ID_FILE_MRU_FIRST; ++offset) { CString value; const WORD candidate = MruCommandId(offset); if (m_recentDocuments.List().GetFromList(candidate, value) && value == key) { command = candidate; break; } }
 		BOOL handled = FALSE; const bool reopened = command != 0 && OnFileOpenMRU(0, command, NULL, handled) == 0 && FbeRecentDocuments::SameArchiveMruIdentity(m_document_session.Location(), target);
 		auto getMruItem = [&](UINT id, CString& caption, UINT& state) -> bool
 		{
@@ -448,17 +448,17 @@
 			caption = text; state = item.fState; return true;
 		};
 		CString firstBefore, firstRussian; UINT firstBeforeState = 0, firstRussianState = 0;
-		CString firstKeyBefore; const bool firstMappedBefore = m_mru.GetFromList(ID_FILE_MRU_FIRST, firstKeyBefore);
+		CString firstKeyBefore; const bool firstMappedBefore = m_recentDocuments.List().GetFromList(ID_FILE_MRU_FIRST, firstKeyBefore);
 		const bool firstVisibleBefore = getMruItem(ID_FILE_MRU_FIRST, firstBefore, firstBeforeState);
 		_Settings.SetInterfaceLanguage(FBE_INTERFACE_LANGUAGE_RUSSIAN);
 		FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName()); FbeResetRuntimeLocalization(); RefreshLocalizedMainFrameUi();
 		const bool russianLocaleSelected = _Settings.GetInterfaceLocaleName() == L"ru-RU";
 		const CString russianLocalizedEmpty = FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.recent.empty", L"No Recent Files");
-		CString firstKeyRussian; const bool firstMappedRussian = m_mru.GetFromList(ID_FILE_MRU_FIRST, firstKeyRussian);
+		CString firstKeyRussian; const bool firstMappedRussian = m_recentDocuments.List().GetFromList(ID_FILE_MRU_FIRST, firstKeyRussian);
 		const bool firstVisibleRussian = getMruItem(ID_FILE_MRU_FIRST, firstRussian, firstRussianState);
-		const bool nonEmptyMruLocalized = firstMappedBefore && firstMappedRussian && firstKeyBefore == firstKeyRussian && firstVisibleBefore && firstVisibleRussian && firstBefore == firstRussian && firstRussian != m_mru.m_szNoEntries && (firstRussianState & (MFS_DISABLED | MFS_GRAYED)) == 0;
-		m_mru.m_arrDocs.RemoveAll();
-		RefreshMruEmptyStateText(m_mru); FbeRecentDocuments::RebuildMruMenu(m_mru);
+		const bool nonEmptyMruLocalized = firstMappedBefore && firstMappedRussian && firstKeyBefore == firstKeyRussian && firstVisibleBefore && firstVisibleRussian && firstBefore == firstRussian && firstRussian != m_recentDocuments.List().m_szNoEntries && (firstRussianState & (MFS_DISABLED | MFS_GRAYED)) == 0;
+		m_recentDocuments.List().m_arrDocs.RemoveAll();
+		RefreshMruEmptyStateText(m_recentDocuments.List()); FbeRecentDocuments::RebuildMruMenu(m_recentDocuments.List());
 		CString russianEmpty; UINT russianEmptyState = 0; int russianEmptyCount = 0;
 		for (int index = 0; index < ::GetMenuItemCount(menu); ++index) { MENUITEMINFO item = { sizeof(item) }; item.fMask = MIIM_ID; if (::GetMenuItemInfo(menu, index, TRUE, &item) && item.wID >= ID_FILE_MRU_FIRST && item.wID <= ID_FILE_MRU_LAST) ++russianEmptyCount; }
 		const bool russianEmptyOk = russianEmptyCount == 1 && !russianLocalizedEmpty.IsEmpty() && getMruItem(ID_FILE_MRU_FIRST, russianEmpty, russianEmptyState) && russianEmpty == russianLocalizedEmpty && (russianEmptyState & (MFS_DISABLED | MFS_GRAYED)) != 0;

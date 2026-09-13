@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "DocumentLoader.h"
 #include "DocumentOpenSource.h"
-#include "..\mainfrm.h"
+#include "..\apputils.h"
 #include "..\FBDoc.h"
 
 DocumentOpenSource DocumentOpenSource::Normal(const CString& path)

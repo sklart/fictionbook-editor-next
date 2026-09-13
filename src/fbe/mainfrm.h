@@ -13,6 +13,7 @@
 #include "document\\DocumentLocation.h"
 #include "document\\DocumentSession.h"
 #include "recovery\\RecoveryService.h"
+#include "document\\recent\\RecentDocumentsController.h"
 #include "scripts\\ScriptUiController.h"
 #include "plugins\\PluginUiController.h"
 
@@ -100,7 +101,7 @@ public:
 	ContextAttributeBars m_contextAttributeBars;
 	SourceEditorControl m_source; // source editor presentation owner
 	//bool			m_save_sp_mode;
-  CRecentDocumentList	  m_mru; // MRU list
+  FbeRecentDocuments::Controller m_recentDocuments;
   FB::Doc		  *m_doc; // currently open document
 	DocumentSession m_document_session;
   DWORD			  m_last_tree_update;

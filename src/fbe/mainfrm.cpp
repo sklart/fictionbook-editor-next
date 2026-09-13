@@ -1073,7 +1073,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	  if (wasFbd != IsFbdFile(filename)) ResetValidationStatus();
 	  U::SetCurrentDirectoryToFile(filename);
       m_doc->m_namevalid=true;
-	  FbeRecentDocuments::RememberNormalMruRecord(m_mru, filename);
+	  FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), filename);
 	  CommitSuccessfulSave();
 	  UpdateStatusBar();
       return OK;
@@ -1984,14 +1984,14 @@ void CMainFrame::InitializeRecentDocumentsMenu()
 {
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
 	HMENU sub = ::GetSubMenu(file, 9);
-	m_mru.SetMenuHandle(sub);
-	RefreshMruEmptyStateText(m_mru);
-	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
-	if (DeploymentContext::RegistryPersistenceAllowed()) m_mru.ReadFromRegistry(_Settings.GetKeyPath());
-	else FbeRecentDocuments::ReadPortableMru(m_mru);
-	m_mru.SetMaxEntries(m_mru.m_nMaxEntries_Max - 1);
-	FbeRecentDocuments::RemoveLegacyArchiveMruEntries(m_mru);
-	FbeRecentDocuments::AddArchiveMruRecordsToList(m_mru);
+	m_recentDocuments.List().SetMenuHandle(sub);
+	RefreshMruEmptyStateText(m_recentDocuments.List());
+	m_recentDocuments.List().SetMaxEntries(m_recentDocuments.List().m_nMaxEntries_Max - 1);
+	if (DeploymentContext::RegistryPersistenceAllowed()) m_recentDocuments.List().ReadFromRegistry(_Settings.GetKeyPath());
+	else FbeRecentDocuments::ReadPortableMru(m_recentDocuments.List());
+	m_recentDocuments.List().SetMaxEntries(m_recentDocuments.List().m_nMaxEntries_Max - 1);
+	FbeRecentDocuments::RemoveLegacyArchiveMruEntries(m_recentDocuments.List());
+	FbeRecentDocuments::AddArchiveMruRecordsToList(m_recentDocuments.List());
 	StartupTrace::Event(L"plugin", L"P160", L"MRU initialized");
 }
 
@@ -2334,8 +2334,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
   if(start_with_params)
   {
-	  if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_mru, m_document_session.Location());
-	  else FbeRecentDocuments::RememberNormalMruRecord(m_mru, startupFileName);
+	  if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), m_document_session.Location());
+	  else FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), startupFileName);
   	  if(_Settings.RestoreFilePosition())
 	  {
 			m_restore_pos_cmdline = true;
@@ -2478,9 +2478,9 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
     GetWindowPlacement(&wpl);
 	_Settings.SetWindowPosition(wpl);
 	if (DeploymentContext::RegistryPersistenceAllowed())
-		FbeRecentDocuments::WriteRegistryMruWithoutArchive(m_mru, _Settings.GetKeyPath());
+		FbeRecentDocuments::WriteRegistryMruWithoutArchive(m_recentDocuments.List(), _Settings.GetKeyPath());
 	else
-		FbeRecentDocuments::WritePortableMru(m_mru);
+		FbeRecentDocuments::WritePortableMru(m_recentDocuments.List());
     // save toolbars state
     CString tbs;
     REBARBANDINFO  rbi;
@@ -3176,8 +3176,8 @@ LRESULT CMainFrame::OnDropFiles(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /
 	  {
 		if (LoadFile(buf)==OK)
 		{
-			if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_mru, m_document_session.Location());
-			else FbeRecentDocuments::RememberNormalMruRecord(m_mru, m_doc->m_filename);
+			if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), m_document_session.Location());
+			else FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), m_doc->m_filename);
 		}
 	  }
 	  else if ((ext.CompareNoCase(L".JPG") == 0) || (ext.CompareNoCase(L".JPEG") == 0) || (ext.CompareNoCase(L".PNG") == 0))
@@ -3200,8 +3200,8 @@ LRESULT CMainFrame::OnNavigate(WORD, WORD, HWND, BOOL&)
 	  {
 		if (LoadFile(url)==OK)
 		{
-			if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_mru, m_document_session.Location());
-			else FbeRecentDocuments::RememberNormalMruRecord(m_mru, m_doc->m_filename);
+			if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), m_document_session.Location());
+			else FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), m_doc->m_filename);
 		}
 	  }
 	  else if ((ext.CompareNoCase(L".JPG") == 0) || (ext.CompareNoCase(L".JPEG") == 0) || (ext.CompareNoCase(L".PNG") == 0))
@@ -3234,8 +3234,8 @@ LRESULT CMainFrame::OnFileOpen(WORD, WORD, HWND, BOOL& /* unused: bHandled */)
 {
   if (LoadFile()==OK)
   {
-	if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_mru, m_document_session.Location());
-	else FbeRecentDocuments::RememberNormalMruRecord(m_mru, m_doc->m_filename);
+	if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), m_document_session.Location());
+	else FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), m_doc->m_filename);
 	if(_Settings.RestoreFilePosition())
 	{
 		int saved_pos = U::GetFileSelectedPos(m_doc->m_filename);
@@ -3248,7 +3248,7 @@ LRESULT CMainFrame::OnFileOpen(WORD, WORD, HWND, BOOL& /* unused: bHandled */)
 LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
 	CString filename;
-	m_mru.GetFromList(wID, filename);
+	m_recentDocuments.List().GetFromList(wID, filename);
 
 	DocumentLocation archiveLocation;
 	const bool archiveMru = FbeRecentDocuments::FindArchiveMruRecord(filename, archiveLocation);
@@ -3256,10 +3256,10 @@ LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND
 	switch(result)
 	{
 		case OK:
-			m_mru.MoveToTop(wID);
-			if (archiveMru) FbeRecentDocuments::RememberArchiveMruRecord(m_mru, archiveLocation);
+			m_recentDocuments.List().MoveToTop(wID);
+			if (archiveMru) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), archiveLocation);
 			else FbeRecentDocuments::TouchMruOrder(filename);
-			FbeRecentDocuments::RebuildMruMenu(m_mru);
+			FbeRecentDocuments::RebuildMruMenu(m_recentDocuments.List());
 			// added by SeNS
 			if(_Settings.RestoreFilePosition())
 			{
@@ -3268,15 +3268,15 @@ LRESULT CMainFrame::OnFileOpenMRU(WORD /* unused: wNotifyCode */, WORD wID, HWND
 			}
 			break;
 		case FAIL:
-			m_mru.RemoveFromList(wID);
-			FbeRecentDocuments::RebuildMruMenu(m_mru);
+			m_recentDocuments.List().RemoveFromList(wID);
+			FbeRecentDocuments::RebuildMruMenu(m_recentDocuments.List());
 			break;
 		case CANCELLED:
 			if (archiveMru)
 			{
 				ResolvedOpenDocument probe; FbeArchive::Error error;
 				if (!FbeArchiveUi::ResolveOpenRequest(archiveLocation.storagePath, probe, &archiveLocation, &error) &&
-					(error.code == FbeArchive::ErrorCode::EntryNotFound || error.code == FbeArchive::ErrorCode::OpenFailed)) FbeRecentDocuments::RemoveArchiveMruRecord(m_mru, archiveLocation);
+					(error.code == FbeArchive::ErrorCode::EntryNotFound || error.code == FbeArchive::ErrorCode::OpenFailed)) FbeRecentDocuments::RemoveArchiveMruRecord(m_recentDocuments.List(), archiveLocation);
 			}
 			break;
 	}

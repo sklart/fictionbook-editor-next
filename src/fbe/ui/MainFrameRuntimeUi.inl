@@ -192,8 +192,8 @@ void CMainFrame::RefreshLocalizedMainFrameUi()
 	{
 		// Update the only localized dynamic MRU string before rebuilding its
 		// menu.  RebuildMruMenu preserves captions of actual documents.
-		RefreshMruEmptyStateText(m_mru);
-		FbeRecentDocuments::RebuildMruMenu(m_mru);
+		RefreshMruEmptyStateText(m_recentDocuments.List());
+		FbeRecentDocuments::RebuildMruMenu(m_recentDocuments.List());
 		ApplyRuntimeMainFrameMenuLocalization(menu);
 
 		HMENU fileMenu = ::GetSubMenu(menu, 0);

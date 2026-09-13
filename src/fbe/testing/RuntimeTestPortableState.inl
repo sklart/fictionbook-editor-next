@@ -213,7 +213,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		_Settings.SetInterfaceLanguage(FBE_INTERFACE_LANGUAGE_RUSSIAN);
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
 		_Settings.m_words.push_back(WordsItem(L"portable-state-sentinel", 17));
-		m_mru.AddToList(U::GetProgDirFile(L"portable-state-sentinel.fb2"));
+		m_recentDocuments.List().AddToList(U::GetProgDirFile(L"portable-state-sentinel.fb2"));
 		if (CHotkeysGroup* tools = _Settings.GetGroupByName(L"Tools"))
 			if (CHotkey* hotkey = _Settings.GetHotkeyByName(L"Words", *tools))
 			{
@@ -243,8 +243,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		CHotkey* hotkey = tools ? _Settings.GetHotkeyByName(L"Words", *tools) : NULL;
 		const bool hotkeys = hotkey != NULL && hotkey->m_accel.fVirt == portableStateHotkeyFlags &&
 			hotkey->m_accel.key == portableStateHotkeyKey;
-		for (int index = 0; index < m_mru.m_arrDocs.GetSize(); ++index)
-			if (CString(m_mru.m_arrDocs[index].szDocName).Find(L"portable-state-sentinel.fb2") >= 0) mruFound = true;
+		for (int index = 0; index < m_recentDocuments.List().m_arrDocs.GetSize(); ++index)
+			if (CString(m_recentDocuments.List().m_arrDocs[index].szDocName).Find(L"portable-state-sentinel.fb2") >= 0) mruFound = true;
 		const bool settings = _Settings.GetShowFullPathInWindowTitle();
 		const bool locale = _Settings.GetInterfaceLocaleName() == L"ru-RU";
 		const bool scripts = _Settings.GetScriptsFolder().CompareNoCase(scriptsDirectory) == 0;
