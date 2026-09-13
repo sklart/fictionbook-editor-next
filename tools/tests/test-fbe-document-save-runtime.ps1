@@ -15,6 +15,10 @@ try {
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Save As failure runtime timed out.' }
         $state=Get-Content -LiteralPath $report -Raw
         foreach($line in @('failed=1','filename=1','namevalid=1','type=1','encoding=1','session=1')) { if($process.ExitCode -ne 0 -or $state -notmatch [regex]::Escape($line)) { throw "Save As rollback regression: $state" } }
+		$env:FBE_NEXT_TEST_SCENARIO='save-as-cancel-runtime'; $process=Start-Process -FilePath $FbeExe -ArgumentList ('--portable -b "{0}" "{1}"' -f $report,$source) -WorkingDirectory (Split-Path $FbeExe) -PassThru
+		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Save As cancel runtime timed out.' }
+		$state=Get-Content -LiteralPath $report -Raw
+		foreach($line in @('cancelled=1','filename=1','namevalid=1','type=1','encoding=1','session=1')) { if($process.ExitCode -ne 0 -or $state -notmatch [regex]::Escape($line)) { throw "Save As cancel regression: $state" } }
     } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_SAVE_PATH=$oldMode,$oldScenario,$oldPath }
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Host 'Document Save As failure runtime regression passed.'

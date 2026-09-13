@@ -936,6 +936,7 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 CString CMainFrame::GetOpenFileName() { const DocumentFileDialogs::OpenResult result = DocumentFileDialogs::ShowOpen(m_hWnd); return result.accepted ? result.path : CString(); }
 
 CString	CMainFrame::GetSaveFileName(CString& encoding) {
+	if (RuntimeTests::IsScenario(L"save-as-cancel-runtime")) return CString();
 	// Runtime integration uses an explicitly supplied output only in this
 	// narrowly scoped test mode; normal Save As always shows the native dialog.
 	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime"))
