@@ -14,6 +14,10 @@
   остаются в `PluginUiController`; замена текущего документа после import
   остаётся в application/UI layer.
 
+- Логическое состояние status bar (context, transient, queued message и
+  validation) теперь принадлежит `FBEStatusBar::State`. Control, DPI/layout,
+  pane visibility и пользовательские действия остались в frame.
+
 - Recovery lifecycle теперь координирует `RecoveryController`: frame собирает
   editor/source state и показывает prompt, service сохраняет snapshot, а
   normal restore возвращает session в NewDocument вместо `Recovery.fb2`.

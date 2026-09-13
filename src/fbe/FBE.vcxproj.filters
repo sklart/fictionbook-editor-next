@@ -193,6 +193,7 @@
 	<ClCompile Include="view\EditorViewState.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="view\EditorViewController.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="view\EditorViewTransition.cpp"><Filter>Source Files\View</Filter></ClCompile>
+	<ClCompile Include="StatusBarState.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="view\VisualDomNormalizer.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="structure\BodyStructuralEditor.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="structure\StructuralTrace.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -411,6 +412,7 @@
 	<ClInclude Include="view\EditorViewState.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewController.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewTransition.h"><Filter>Header Files\View</Filter></ClInclude>
+	<ClInclude Include="StatusBarState.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="view\VisualDomNormalizer.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="dom\MarkupUndoUnitScope.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="structure\BodyStructuralEditor.h"><Filter>Header Files</Filter></ClInclude>

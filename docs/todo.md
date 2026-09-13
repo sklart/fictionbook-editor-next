@@ -32,6 +32,8 @@
 - [x] Вынести import/export COM execution protocol в
   `PluginExecutionController`, оставив plugin discovery/menu/last command в
   `PluginUiController` и document replacement в application layer.
+- [x] Вынести logical lifecycle status bar в `FBEStatusBar::State`, сохранив
+  WTL control, pane behavior и layout presentation responsibility frame.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 

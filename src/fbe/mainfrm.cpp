@@ -1649,16 +1649,11 @@ BOOL CMainFrame::OnIdle()
 	m_want_focus = 0;
 
 	// install a posted status line message
-	if(!m_status_msg.IsEmpty())
-	{
-		SetTransientStatus(m_status_msg);
-		m_status_msg.Empty();
-	}
-	if (!m_status_transient.IsEmpty() && static_cast<LONG>(::GetTickCount() - m_status_transient_expiration) >= 0)
-	{
-		m_status_transient.Empty();
+	const DWORD statusNow = ::GetTickCount();
+	if (m_status_state.PromoteQueuedMessage(statusNow))
 		RefreshStatusMainPane();
-	}
+	if (m_status_state.ClearTransientIfExpired(statusNow))
+		RefreshStatusMainPane();
 
 	// see if we need to update title
 	if(m_need_title_update || m_change_state != DocChanged())
@@ -5359,11 +5354,11 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
     fv=m_doc->Validate(line,col);						// ?? ?????? Body
   if (fv) {
     ClearSourceValidationAnnotations();
-    SetValidationStatus(VALIDATION_VALID);
+		SetValidationStatus(FBEStatusBar::ValidationStatus::Valid);
     return 0;
   }
   if (!fv) {
-    SetValidationStatus(VALIDATION_INVALID);
+		SetValidationStatus(FBEStatusBar::ValidationStatus::Invalid);
     ShowView(SOURCE);
     ShowSourceValidationAnnotation(line, col, validationError);
     // have to jump through the hoops to move to required column
@@ -6395,47 +6390,39 @@ bool CMainFrame::CurrentOverwriteMode() const
 void CMainFrame::RefreshStatusMainPane()
 {
 	if (!m_status.IsWindow()) return;
-	if (m_incsearch)
-		m_status.SetPaneText(ID_DEFAULT_PANE, m_is_fail ? L"Failing Incremental Search: " + m_is_str : L"Incremental Search: " + m_is_str);
-	else if (!m_status_transient.IsEmpty() && static_cast<LONG>(::GetTickCount() - m_status_transient_expiration) < 0)
-		m_status.SetPaneText(ID_DEFAULT_PANE, m_status_transient);
-	else
-		m_status.SetPaneText(ID_DEFAULT_PANE, m_status_context);
+	m_status.SetPaneText(ID_DEFAULT_PANE,
+		m_status_state.EffectiveMainText(m_incsearch != 0, m_is_fail, m_is_str));
 }
 
-void CMainFrame::SetValidationStatus(ValidationStatus status)
+void CMainFrame::SetValidationStatus(FBEStatusBar::ValidationStatus status)
 {
-	if (m_validation_status == status) return;
-	m_validation_status = status;
+	if (m_status_state.Validation() == status) return;
+	m_status_state.SetValidation(status);
 	if (m_status.IsWindow()) m_status.SetPaneText(ID_PANE_VALIDATION, m_doc ? GetStatusValidationText() : L"");
 	UpdateStatusBarLayout();
 }
 
 void CMainFrame::ResetValidationStatus()
 {
-	SetValidationStatus(VALIDATION_UNKNOWN);
+	SetValidationStatus(FBEStatusBar::ValidationStatus::Unknown);
 }
 
 void CMainFrame::ResetStatusForDocument()
 {
-	m_status_context.Empty();
-	m_status_transient.Empty();
-	m_status_transient_expiration = 0;
-	ResetValidationStatus();
+	m_status_state.ResetForDocument();
 	RefreshStatusMainPane();
 	UpdateStatusBar();
 }
 
 void CMainFrame::SetStatusContext(const CString& text)
 {
-	m_status_context = text;
+	m_status_state.SetContext(text);
 	RefreshStatusMainPane();
 }
 
 void CMainFrame::SetTransientStatus(const CString& text)
 {
-	m_status_transient = text;
-	m_status_transient_expiration = ::GetTickCount() + 5000;
+	m_status_state.SetTransient(text, ::GetTickCount());
 	RefreshStatusMainPane();
 }
 
@@ -6443,8 +6430,9 @@ CString CMainFrame::GetStatusValidationText() const
 {
 	const bool fbd = m_doc && m_doc->GetDocumentFileType() == FictionBookFileType::Fbd;
 	const wchar_t* type = fbd ? L"FBD" : L"FB2";
-	const wchar_t* state = m_validation_status == VALIDATION_VALID ? L"OK" :
-		m_validation_status == VALIDATION_INVALID ? L"!" : L"?";
+	const FBEStatusBar::ValidationStatus validation = m_status_state.Validation();
+	const wchar_t* state = validation == FBEStatusBar::ValidationStatus::Valid ? L"OK" :
+		validation == FBEStatusBar::ValidationStatus::Invalid ? L"!" : L"?";
 	CString text;
 	text.Format(L"%s: %s", type, state);
 	return text;

@@ -46,6 +46,7 @@
 #include "StatusBarUnicode.h"
 #include "StatusBarText.h"
 #include "StatusBarBehavior.h"
+#include "StatusBarState.h"
 #include "ui/ContextAttributeBars.h"
 
 #if _MSC_VER >= 1000
@@ -128,12 +129,7 @@ public:
 
   int			  m_want_focus; // focus this control when idle
 
-  CString		  m_status_msg; // message to be posted to frame's status line
-  CString       m_status_context;
-  CString       m_status_transient;
-  DWORD         m_status_transient_expiration;
-  enum ValidationStatus { VALIDATION_UNKNOWN, VALIDATION_VALID, VALIDATION_INVALID };
-  ValidationStatus m_validation_status;
+  FBEStatusBar::State m_status_state;
 
   bool			  m_restore_pos_cmdline;
   
@@ -157,8 +153,7 @@ public:
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0),
 	 m_scripts(ID_EDIT_INS_SYMBOL + 101, 999),
-	    m_bad_xml(false), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0),
-        m_status_transient_expiration(0), m_validation_status(VALIDATION_UNKNOWN)
+	    m_bad_xml(false), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0)
 	// added by SeNS
 	{
 		strINS[0] = L'\0';
@@ -605,7 +600,7 @@ public:
   }
   LRESULT OnDropFiles(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSetStatusText(UINT, WPARAM, LPARAM lParam, BOOL&) {
-    m_status_msg=(const TCHAR *)lParam;
+    m_status_state.QueueMessage((const TCHAR *)lParam);
     return 0;
   }
 
@@ -1017,7 +1012,7 @@ public:
   void UpdateStatusBarLayout();
   bool CurrentOverwriteMode() const;
   void RefreshStatusMainPane();
-  void SetValidationStatus(ValidationStatus status);
+	void SetValidationStatus(FBEStatusBar::ValidationStatus status);
   void ResetValidationStatus();
   void ResetStatusForDocument();
   void SetStatusContext(const CString& text);

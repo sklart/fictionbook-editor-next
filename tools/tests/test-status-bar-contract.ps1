@@ -10,6 +10,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $main = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\mainfrm.cpp")
 $unicode = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\StatusBarUnicode.h")
 $header = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\mainfrm.h")
+$state = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\StatusBarState.cpp")
 $resources = Get-Content -Raw -LiteralPath (Join-Path $root "src\fbe\resource.h")
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $root "localization\app-ui\catalog.json") | ConvertFrom-Json
 
@@ -30,7 +31,7 @@ foreach ($contract in @("CurrentOverwriteMode", "SetValidationStatus", "ResetVal
     if ($main -notmatch $contract -or $header -notmatch $contract) { throw "Missing status lifecycle helper: $contract" }
 }
 if ($main -notmatch "caret > 0") { throw "SOURCE caret-at-zero guard is missing." }
-if ($main -notmatch "static_cast<LONG>\(::GetTickCount\(\) - m_status_transient_expiration\)") { throw "Transient timeout is not wrap-safe." }
+if ($state -notmatch "static_cast<LONG>\(now - m_transientExpiration\)") { throw "Transient timeout is not wrap-safe." }
 if ($main -notmatch "CurrentOverwriteMode\(\) \? strOVR : strINS") { throw "INS/OVR does not use the centralized view-aware mode." }
 if ($main -notmatch "UpdateStatusBarLayout" -or $header -notmatch "UpdateStatusBarLayout") {
     throw "Status bar must use the common dynamic layout path."

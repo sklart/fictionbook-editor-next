@@ -62,6 +62,11 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   events. `PluginUiController` остаётся discovery/menu/LastCommand owner, а
   `CMainFrame` применяет возвращённый import DOM только после `DiscardChanges`.
 
+- `FBEStatusBar::State` владеет queued/context/transient/validation logical
+  state и сохраняет priority incremental search → transient → context.
+  `CMultiPaneStatusBarCtrl` по-прежнему принадлежит frame: pane text/layout,
+  DPI и click/double-click/clipboard presentation не перенесены в модель.
+
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation
   unit, поэтому private-граница frame не расширена.
