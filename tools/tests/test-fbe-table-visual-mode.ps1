@@ -52,7 +52,7 @@ foreach($fragment in @('void SetSpan(', 'cell->setAttribute(fbName, attributeVal
     if($gridSource -notlike "*$fragment*") { throw "Span metadata и HTML layout не синхронизированы: $fragment" }
 }
 
-foreach($fragment in @('TagAt(', 'TagAt(grid, boundary - 1, col, fallbackTag)', 'TagAt(grid, row, before ? column : column - 1, fallbackTag)')) {
+foreach($fragment in @('TagAt(', 'TagAt(grid, rowIndex, col,', 'TagAt(grid, row, before ? column : column - 1, fallbackTag)')) {
     if($structuralSource -notlike "*$fragment*") { throw "Новые ячейки таблицы не наследуют тип локального соседа: $fragment" }
 }
 
