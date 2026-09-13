@@ -1127,30 +1127,20 @@ CMainFrame::FILE_OP_STATUS  CMainFrame::LoadFile(const wchar_t *initfilename, co
 	if (!RuntimeTests::IsScenario(L"archive-mru-runtime") && !DiscardChanges())
 	    return CANCELLED;
 
-	PendingDocument pending(*this, m_doc);
-	FB::Doc* doc = &pending.Document();
-	if((filename.ReverseFind(L'\\') + 1) != -1 && (filename.ReverseFind(L'\\') + 1) < filename.GetLength() - 1)
-	{
-		doc->m_body.m_file_path = filename.Mid(0, filename.ReverseFind(L'\\') + 1);
-		doc->m_body.m_file_name = filename.Mid(filename.ReverseFind(L'\\') + 1, filename.GetLength() - 1);
-	}
   EnableWindow(FALSE);
   m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
 	DocumentOpenSource source = archive ? DocumentOpenSource() : DocumentOpenSource::Normal(filename);
 	if (archive) { source.location = resolved.location; source.rawBytes = resolved.rawBytes; }
-	bool fLoaded = DocumentLoader::Load(*doc, m_view, source);
+	DocumentLifecycleController lifecycle(*this, m_doc, m_document_session, m_view);
+	const DocumentLifecycleResult lifecycleResult = lifecycle.Open(source);
   EnableWindow(TRUE);
-  if (!fLoaded)
+  if (!lifecycleResult.Succeeded())
   {
-	  pending.Rollback();
 	  if (LoadToScintilla(filename)) return OK;
 	  return FAIL;
   }
 
-  AttachDocument(doc);
-  delete m_doc;
-	m_doc=pending.Commit();
-	 if (archive) m_document_session.OpenArchive(resolved.location); else m_document_session.OpenNormal(filename, m_doc->GetDocumentFileType());
+  AttachDocument(m_doc);
   m_bad_xml = false;
   ResetStatusForDocument();
   return OK;
@@ -3219,14 +3209,12 @@ LRESULT CMainFrame::OnFileNew(WORD, WORD, HWND, BOOL&)
   if (!DiscardChanges())
     return 0;
 
-  PendingDocument pending(*this, m_doc);
-  FB::Doc* doc = &pending.Document();
-  doc->CreateBlank(m_view);
-  AttachDocument(doc);
-  delete m_doc;
-	m_doc=pending.Commit();
-	m_document_session.NewDocument();
-  ResetStatusForDocument();
+  DocumentLifecycleController lifecycle(*this, m_doc, m_document_session, m_view);
+  if (lifecycle.NewDocument().Succeeded())
+  {
+	AttachDocument(m_doc);
+	ResetStatusForDocument();
+  }
 
   return 0;
 }
@@ -5957,23 +5945,13 @@ bool CMainFrame::ReloadFile()
 	if (m_document_session.Location().IsArchive())
 		return LoadFile(m_document_session.Location().storagePath, &m_document_session.Location()) == OK;
 
-	PendingDocument pending(*this, m_doc);
-	FB::Doc* doc = &pending.Document();
-
 	EnableWindow(FALSE);
 	m_status.SetPaneText(ID_DEFAULT_PANE, FbeLoadRuntimeString(IDS_STATUS_LOADING));
-	bool fLoaded = DocumentLoader::Load(*doc, m_view, DocumentOpenSource::Normal(m_doc->m_filename));
+	DocumentLifecycleController lifecycle(*this, m_doc, m_document_session, m_view);
+	const DocumentLifecycleResult lifecycleResult = lifecycle.ReloadNormal(m_doc->m_filename);
 	EnableWindow(TRUE);
-	if (!fLoaded)
-	{
-		pending.Rollback();
-		return false;
-	}
-
-	AttachDocument(doc);
-	delete m_doc;
-	m_doc=pending.Commit();
-	m_document_session.ReloadedNormal(m_doc->m_filename, m_doc->GetDocumentFileType());
+	if (!lifecycleResult.Succeeded()) return false;
+	AttachDocument(m_doc);
 	return true;
 }
 

@@ -70,7 +70,7 @@ foreach($required in @('PluginManager\s+m_manager', 'CSimpleArray<CLSID>\s+m_imp
     if($pluginOwner -notmatch $required) { throw "Plugin owner is missing: $required" }
 }
 
-foreach($required in @('enum class DocumentLifecycleStatus', 'struct DocumentLifecycleResult', 'Succeeded\s*\(')) {
+foreach($required in @('enum class DocumentLifecycleStatus', 'struct DocumentLifecycleResult', 'Succeeded\s*\(', 'DocumentLifecycleResult NewDocument\s*\(', 'DocumentLifecycleResult Open\s*\(', 'DocumentLifecycleResult ReloadNormal\s*\(')) {
     if($lifecycleHeader -notmatch $required) { throw "Document lifecycle result contract is missing: $required" }
 }
 if($loaderSource -match 'mainfrm\.h') { throw 'DocumentLoader must not depend on CMainFrame.' }
@@ -90,6 +90,13 @@ foreach($forbidden in @('\.MoveToTop\(', '\.RemoveFromList\(', 'FbeRecentDocumen
 }
 foreach($required in @('m_document\.reset\(\);\s*FB::Doc::m_active_doc = m_previous;', 'm_document\.release\(\);\s*FB::Doc::m_active_doc = committed;')) {
     if($pendingSource -notmatch $required) { throw "PendingDocument transactional rollback contract is missing: $required" }
+}
+$newHandler = [regex]::Match($mainSource, 'LRESULT CMainFrame::OnFileNew[\s\S]*?(?=LRESULT CMainFrame::OnFileOpen\()').Value
+$loadHandler = [regex]::Match($mainSource, 'CMainFrame::FILE_OP_STATUS\s+CMainFrame::LoadFile[\s\S]*?(?=void\s+CMainFrame::GetDocumentStructure)').Value
+$reloadHandler = [regex]::Match($mainSource, 'bool CMainFrame::ReloadFile[\s\S]*?(?=void CMainFrame::GoTo\(int)').Value
+foreach($handler in @($newHandler, $loadHandler, $reloadHandler)) {
+    if(-not $handler -or $handler -notmatch 'DocumentLifecycleController') { throw 'New/Open/Reload must delegate document orchestration to DocumentLifecycleController.' }
+    if($handler -match 'PendingDocument\s+pending') { throw 'CMainFrame retained transactional document orchestration.' }
 }
 
 Write-Host 'Runtime test scenario boundary contract passed.'
