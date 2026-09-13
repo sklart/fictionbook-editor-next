@@ -229,6 +229,7 @@ StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly, S
 		}
 		if (hasTitle) {
 			Before(L"title-create"); MSHTML::IHTMLElementPtr nextTitle(m_document->createElement(L"DIV")); nextTitle->className = L"title"; MSHTML::IHTMLElement2Ptr(next)->insertAdjacentElement(L"afterBegin", nextTitle); nextTitle->innerHTML = title.html.AllocSysString(); FbeVisualDom::KillDivs(nextTitle); FbeVisualDom::KillStyles(nextTitle); After(L"title-create");
+			if (m_trace) m_trace->After(L"title-dom-after-create", static_cast<const wchar_t*>(next->innerHTML));
 		}
 		// Detached construction above is not a document mutation.  Start the
 		// unit immediately before changing the source container or inserting next.
@@ -245,11 +246,6 @@ StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly, S
 			After(L"fault-after-first-mutation"); undo.Close();
 			return StructuralOperationResult::Failed(E_FAIL, true);
 		}
-		if (hasContent) {
-			Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
-			next->id = _bstr_t(id.GetString());
-			if (m_trace) m_trace->After(L"new-container-id", static_cast<const wchar_t*>(next->id));
-		}
 		if (pre.html.Find(L"<P") == -1) pre.html = pre.html.IsEmpty() ? L"<P>&nbsp;</P>" : CString(L"<P>") + pre.html + L"</P>";
 		auto replaceChildren = [&](MSHTML::IHTMLElementPtr destination, const CString& html, const wchar_t* phase) {
 			Before(phase); MSHTML::IHTMLElementPtr staging(m_document->createElement(L"DIV")); staging->innerHTML = html.AllocSysString();
@@ -259,11 +255,10 @@ StructuralOperationResult BodyStructuralEditor::SplitContainer(bool checkOnly, S
 			After(phase);
 		};
 		Before(L"source-cleanup"); range->pasteHTML(L""); postRange->pasteHTML(L""); FbeVisualDom::FixupParagraphs(parent); FbeVisualDom::PackText(parent, m_document); FbeVisualDom::FixupParagraphs(next); FbeVisualDom::PackText(next, m_document); After(L"source-cleanup");
-		if (!hasContent) {
-			Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
-			next->id = _bstr_t(id.GetString());
-			if (m_trace) m_trace->After(L"new-container-id", static_cast<const wchar_t*>(next->id));
-		}
+		if (m_trace) m_trace->After(L"next-dom-after-cleanup", static_cast<const wchar_t*>(next->innerHTML));
+		Before(L"insert-container"); MSHTML::IHTMLDOMNodePtr parentNode(parent), nextNode(next), sibling(parentNode->nextSibling); parentNode->parentNode->insertBefore(nextNode, sibling.GetInterfacePtr()); After(L"insert-container");
+		next->id = _bstr_t(id.GetString());
+		if (m_trace) m_trace->After(L"new-container-id", static_cast<const wchar_t*>(next->id));
 		if (m_trace) m_trace->After(L"new-container-id-after-cleanup", static_cast<const wchar_t*>(next->id));
 		parentChildren = parent->children;
 		if (parentChildren->length == 1) { MSHTML::IHTMLElementPtr child = parentChildren->item(0); if (!U::scmp(child->tagName, L"DIV") && !U::scmp(child->className, className.GetBSTR())) { Before(L"source-wrapper-remove"); hr = m_markupServices->RemoveElement(child); Hr(L"source-wrapper-remove", hr); if (FAILED(hr)) return StructuralOperationResult::Failed(hr, documentChanged); } }
