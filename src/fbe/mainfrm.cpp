@@ -3192,9 +3192,14 @@ LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)
 		const bool fbd = m_doc->GetDocumentFileType() == FictionBookFileType::Fbd;
 		const bool htmlReady = m_doc->m_body.Document() != NULL;
 		const bool rar = m_document_session.Location().containerKind == DocumentContainerKind::Rar;
+		// Runtime reports are consumed as UTF-8 by the PowerShell regressions.
+		// Do not let the runner's ANSI code page convert a Unicode ZIP entry:
+		// on an English Windows image that conversion can throw before the
+		// archive-open diagnostic is written.
+		const CStringA entryUtf8(CW2A(m_document_session.Location().entryPath, CP_UTF8));
 		CStringA report;
-		report.Format("archive=%d\nfb2=%d\nfbd=%d\nmshtml=%d\nrar=%d\nentry=%S\n", archiveSource, fb2, fbd, htmlReady, rar,
-			static_cast<LPCWSTR>(m_document_session.Location().entryPath));
+		report.Format("archive=%d\nfb2=%d\nfbd=%d\nmshtml=%d\nrar=%d\nentry=%s\n", archiveSource, fb2, fbd, htmlReady, rar,
+			static_cast<LPCSTR>(entryUtf8));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(archiveSource && (fb2 || fbd) && htmlReady ? 0 : 1);
 		return 0;
