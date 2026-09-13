@@ -938,13 +938,13 @@ CString CMainFrame::GetOpenFileName() { const DocumentFileDialogs::OpenResult re
 CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	// Runtime integration uses an explicitly supplied output only in this
 	// narrowly scoped test mode; normal Save As always shows the native dialog.
-	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime"))
+	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime"))
 	{
 		wchar_t testPath[MAX_PATH] = {};
 		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", testPath, _countof(testPath));
 		if (length && length < _countof(testPath))
 		{
-			encoding = _Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding();
+			encoding = RuntimeTests::IsScenario(L"save-as-failure-runtime") ? CString(L"windows-1251") : (_Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding());
 			return CString(testPath);
 		}
 	}

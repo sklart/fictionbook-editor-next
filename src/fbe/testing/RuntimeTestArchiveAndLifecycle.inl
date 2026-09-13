@@ -279,6 +279,25 @@
 		::PostQuitMessage(preserved ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"save-as-failure-runtime"))
+	{
+		wchar_t destination[MAX_PATH] = {};
+		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", destination, _countof(destination));
+		const CString filename(m_doc->m_filename), encoding(m_doc->m_encoding);
+		const bool nameValid = m_doc->m_namevalid;
+		const FictionBookFileType type = m_doc->GetDocumentFileType();
+		const DocumentLocation location = m_document_session.Location();
+		const FILE_OP_STATUS result = length && length < _countof(destination) ? SaveFile(true) : FAIL;
+		const bool preserved = result == FAIL && CString(m_doc->m_filename) == filename && m_doc->m_namevalid == nameValid &&
+			m_doc->GetDocumentFileType() == type && CString(m_doc->m_encoding) == encoding &&
+			m_document_session.Location().storagePath == location.storagePath;
+		CStringA report; report.Format("failed=%d\nfilename=%d\nnamevalid=%d\ntype=%d\nencoding=%d\nsession=%d\n", result == FAIL,
+			CString(m_doc->m_filename) == filename, m_doc->m_namevalid == nameValid, m_doc->GetDocumentFileType() == type,
+			CString(m_doc->m_encoding) == encoding, m_document_session.Location().storagePath == location.storagePath);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(preserved ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"malformed-source-fallback-runtime"))
 	{
 		wchar_t malformedPath[MAX_PATH] = {};
