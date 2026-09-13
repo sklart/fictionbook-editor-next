@@ -199,8 +199,8 @@ void CMainFrame::RefreshLocalizedMainFrameUi()
 		HMENU fileMenu = ::GetSubMenu(menu, 0);
 		if(fileMenu != NULL)
 		{
-			RefreshBundledPluginMenuTexts(::GetSubMenu(fileMenu, 6), L"Import", ID_IMPORT_BASE);
-			RefreshBundledPluginMenuTexts(::GetSubMenu(fileMenu, 7), L"Export", ID_EXPORT_BASE);
+			RefreshBundledPluginMenuTexts(m_plugins.Manager(), ::GetSubMenu(fileMenu, 6), L"Import", ID_IMPORT_BASE);
+			RefreshBundledPluginMenuTexts(m_plugins.Manager(), ::GetSubMenu(fileMenu, 7), L"Export", ID_EXPORT_BASE);
 		}
 
 		FillMenuWithHkeys(m_MenuBar.GetMenu());

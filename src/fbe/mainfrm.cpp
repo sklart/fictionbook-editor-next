@@ -69,7 +69,6 @@ namespace
 using ToolbarFactory::AutoSizeToolbar;
 using ToolbarFactory::ImageListHasMaskPlane;
 using ToolbarFactory::SetDialogFontForToolbarRow;
-static PluginManager g_pluginManager;
 const int SCRIPT_COMMAND_COUNT = 999;
 const int SCRIPT_FOLDER_MENU_ID_BASE = ID_EDIT_INS_SYMBOL + 101;
 const int SCRIPT_FOLDER_MENU_ID_COUNT = 999;
@@ -116,9 +115,9 @@ static CString StripMenuMnemonics(const CString& text)
 	return result;
 }
 
-static HRESULT CreateBundledPluginInstance(const CLSID& clsid, IUnknownPtr& instance)
+static HRESULT CreateBundledPluginInstance(PluginManager& manager, const CLSID& clsid, IUnknownPtr& instance)
 {
-	return g_pluginManager.CreateInstance(clsid, instance);
+	return manager.CreateInstance(clsid, instance);
 }
 }
 
@@ -437,13 +436,13 @@ static void TraceMainFrameHotkey(const MSG* message)
 // Обновляет уже существующие пункты встроенных плагинов. При смене языка не
 // нужно заново создавать плагины, скрипты, значки меню и кнопки toolbar: такой
 // путь накапливал GDI-ресурсы и добавлял повторные элементы интерфейса.
-static void RefreshBundledPluginMenuTexts(HMENU menu, const TCHAR* type, UINT commandBase)
+static void RefreshBundledPluginMenuTexts(const PluginManager& manager, HMENU menu, const TCHAR* type, UINT commandBase)
 {
 	if(menu == NULL)
 		return;
 	int commandOffset = 0;
 	const int commandCapacity = static_cast<int>((commandBase == ID_IMPORT_BASE ? ID_PLUGIN_IMPORT_LAST : ID_PLUGIN_EXPORT_LAST) - commandBase + 1);
-	const std::vector<PluginDescriptor>& plugins = g_pluginManager.GetPlugins();
+	const std::vector<PluginDescriptor>& plugins = manager.GetPlugins();
 	for(size_t index = 0; index < plugins.size() && commandOffset < commandCapacity; ++index)
 	{
 		const PluginDescriptor& plugin = plugins[index];
@@ -1289,11 +1288,11 @@ BOOL CMainFrame::OnIdle()
 			UIEnable(disabled_commands[i], FALSE);
 
 		HMENU scripts = GetSubMenu(m_MenuBar.GetMenu(), 7);
-		for(int i = 0; i < m_script_menu.Count(); ++i)
+		for(int i = 0; i < m_scripts.Menu().Count(); ++i)
 		{
-			if(!m_script_menu.Item(i).isFolder)
+			if(!m_scripts.Menu().Item(i).isFolder)
 			{
-				::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_script_menu.Item(i).commandId, MF_BYCOMMAND | MF_GRAYED);
+				::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_scripts.Menu().Item(i).commandId, MF_BYCOMMAND | MF_GRAYED);
 			}
 		}
 
@@ -1343,11 +1342,11 @@ BOOL CMainFrame::OnIdle()
 	else
 	{
 		HMENU scripts = GetSubMenu(m_MenuBar.GetMenu(), 7);
-		for (int i = 0; i < m_script_menu.Count(); ++i)
+		for (int i = 0; i < m_scripts.Menu().Count(); ++i)
 		{
-			if(!m_script_menu.Item(i).isFolder)
+			if(!m_scripts.Menu().Item(i).isFolder)
 			{
-				::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_script_menu.Item(i).commandId, MF_BYCOMMAND | MF_ENABLED);
+				::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_scripts.Menu().Item(i).commandId, MF_BYCOMMAND | MF_ENABLED);
 			}
 		}
 
@@ -1810,8 +1809,8 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 		else if(!GetButtonText(catalog[index], text)) continue;
 		addCommand(catalog[index].idCommand, text, CString());
 	}
-	for(int index = 0; index < m_script_menu.Count(); ++index) {
-		const ScriptDescriptor& script = m_script_menu.Item(index);
+	for(int index = 0; index < m_scripts.Menu().Count(); ++index) {
+		const ScriptDescriptor& script = m_scripts.Menu().Item(index);
 		if(!script.isFolder && script.commandId > 0)
 			addCommand(ID_SCRIPT_BASE + script.commandId, script.name, script.relativePath);
 	}
@@ -1855,9 +1854,9 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 	{
 		TBBUTTONS available;
 		if(!GetAvailableButtons(toolbar, available)) return;
-		for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
+		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
 		{
-			const ScriptDescriptor& script = m_script_menu.Item(scriptIndex);
+			const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex);
 			if(script.isFolder || script.commandId < 1) continue;
 			const int command = ID_SCRIPT_BASE + script.commandId;
 			bool alreadyPresent = false;
@@ -1884,10 +1883,10 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 		if(!item.relativePath.IsEmpty())
 		{
 			command = 0;
-			for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
-				if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).relativePath == item.relativePath && m_script_menu.Item(scriptIndex).commandId > 0)
+			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
+				if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).relativePath == item.relativePath && m_scripts.Menu().Item(scriptIndex).commandId > 0)
 				{
-					command = ID_SCRIPT_BASE + m_script_menu.Item(scriptIndex).commandId;
+					command = ID_SCRIPT_BASE + m_scripts.Menu().Item(scriptIndex).commandId;
 					break;
 				}
 		}
@@ -1898,10 +1897,10 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 	ToolbarLayoutAdapter::Apply(target, saved, catalogButtons);
 
 	if(scriptsToolbar && !layout.lastScript.IsEmpty())
-		for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
-			if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).relativePath == layout.lastScript)
+		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
+			if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).relativePath == layout.lastScript)
 			{
-				m_last_script = &m_script_menu.Item(scriptIndex);
+				m_scripts.SetLastScript(m_scripts.Menu().Item(scriptIndex));
 				break;
 			}
 }
@@ -1918,17 +1917,17 @@ void CMainFrame::SavePortableToolbarLayout()
 		PortableToolbarItem& item = layout.scripts[index];
 		if(item.separator || item.command < ID_SCRIPT_BASE + 1 || item.command > ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT) continue;
 		const int scriptId = item.command - ID_SCRIPT_BASE;
-		for(int scriptIndex = 0; scriptIndex < m_script_menu.Count(); ++scriptIndex)
-			if(!m_script_menu.Item(scriptIndex).isFolder && m_script_menu.Item(scriptIndex).commandId == scriptId) { item.command = 0; item.relativePath = m_script_menu.Item(scriptIndex).relativePath; break; }
+		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
+			if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).commandId == scriptId) { item.command = 0; item.relativePath = m_scripts.Menu().Item(scriptIndex).relativePath; break; }
 	}
-	if(m_last_script != NULL) layout.lastScript = m_last_script->relativePath;
+	layout.lastScript = m_scripts.LastRelativePath();
 	PortableToolbarStore::Save(layout);
 }
 
 void CMainFrame::InitializeBundledPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist)
 {
 	const int commandCapacity = static_cast<int>((cmdbase == ID_IMPORT_BASE ? ID_PLUGIN_IMPORT_LAST : ID_PLUGIN_EXPORT_LAST) - cmdbase + 1);
-	const std::vector<PluginDescriptor>& plugins = g_pluginManager.GetPlugins();
+	const std::vector<PluginDescriptor>& plugins = m_plugins.Manager().GetPlugins();
 	for(size_t index = 0; index < plugins.size() && plist.GetSize() < commandCapacity; ++index)
 	{
 		const PluginDescriptor& plugin = plugins[index];
@@ -2012,18 +2011,18 @@ void CMainFrame::InitializeScripts()
 		const CString directory = candidate.isFolder ? candidate.path : candidate.path.Left(candidate.path.ReverseFind(L'\\') + 1);
 		CString pictureName(candidate.path.Mid(candidate.path.ReverseFind(L'\\') + 1));
 		if (!candidate.isFolder && pictureName.GetLength() >= 3) pictureName.Delete(pictureName.GetLength() - 3, 3);
-		FbeScripts::VisualResource visual = m_script_visuals.Load(directory, pictureName);
-		m_script_menu.Add(script, static_cast<FbeScripts::VisualResource&&>(visual));
+		FbeScripts::VisualResource visual = m_scripts.Visuals().Load(directory, pictureName);
+		m_scripts.Menu().Add(script, static_cast<FbeScripts::VisualResource&&>(visual));
 	}
 	if (StartupTrace::Enabled())
 	{
 		CString trace;
-		trace.Format(L"script-count=%d", m_script_menu.Count());
+		trace.Format(L"script-count=%d", m_scripts.Menu().Count());
 		StartupTrace::Event(L"plugin", L"P110", trace);
 	}
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
 	CString serializedCommandIds;
-	if (m_script_menu.AssignCommandIds(SCRIPT_COMMAND_COUNT, _Settings.GetScriptCommandIds(), serializedCommandIds))
+	if (m_scripts.Menu().AssignCommandIds(SCRIPT_COMMAND_COUNT, _Settings.GetScriptCommandIds(), serializedCommandIds))
 		_Settings.SetScriptCommandIds(serializedCommandIds);
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
 
@@ -2033,9 +2032,9 @@ void CMainFrame::InitializeScripts()
 	while(::GetMenuItemCount(scripts) > 0)
 	::RemoveMenu(scripts, 0, MF_BYPOSITION);
 
-	if(m_script_menu.Count())
+	if(m_scripts.Menu().Count())
 	{
-		m_script_menu.Build(scripts,
+		m_scripts.Menu().Build(scripts,
 			[](ScriptDescriptor&) {},
 			[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
 				if (!script.isFolder && visual.icon != NULL)
@@ -2064,9 +2063,9 @@ void CMainFrame::InitializeScripts()
 		// Hotkey registration is catalog lifecycle, not menu rendering.  Keeping
 		// it outside MenuBuilder's recursive traversal makes every discovered
 		// script available to portable hotkey migration, including nested items.
-		for(int index = 0; index < m_script_menu.Count(); ++index)
-			if(!m_script_menu.Item(index).isFolder)
-				InitScriptHotkey(m_script_menu.Item(index));
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(!m_scripts.Menu().Item(index).isFolder)
+				InitScriptHotkey(m_scripts.Menu().Item(index));
 	}
 	else
 	{
@@ -2079,13 +2078,13 @@ void CMainFrame::InitializeScripts()
 
 void CMainFrame::InitializeBundledPlugins()
 {
-	g_pluginManager.DiscoverBundledPlugins();
+	m_plugins.Manager().DiscoverBundledPlugins();
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
 	HMENU sub = ::GetSubMenu(file, 6);
-	InitializeBundledPluginsType(sub, L"Import", ID_IMPORT_BASE, m_import_plugins);
+	InitializeBundledPluginsType(sub, L"Import", ID_IMPORT_BASE, m_plugins.ImportPlugins());
 	StartupTrace::Event(L"plugin", L"P140", L"import plugins initialized");
 	sub = ::GetSubMenu(file, 7);
-	InitializeBundledPluginsType(sub, L"Export", ID_EXPORT_BASE, m_export_plugins);
+	InitializeBundledPluginsType(sub, L"Export", ID_EXPORT_BASE, m_plugins.ExportPlugins());
 	StartupTrace::Event(L"plugin", L"P150", L"export plugins initialized");
 }
 
@@ -3523,15 +3522,15 @@ LRESULT CMainFrame::OnViewOptions(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
   wID-=ID_IMPORT_BASE;
-  if (wID<m_import_plugins.GetSize()) {
-    const CLSID& pluginClsid = m_import_plugins[wID];
+  if (wID<m_plugins.ImportPlugins().GetSize()) {
+    const CLSID& pluginClsid = m_plugins.ImportPlugins()[wID];
     TracePluginDiagnostic(L"Import", pluginClsid, L"begin", S_OK, 0);
     try {
       IUnknownPtr			    unk;
-      HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
+	  HRESULT pluginHr = CreateBundledPluginInstance(m_plugins.Manager(), pluginClsid, unk);
       TracePluginDiagnostic(L"Import", pluginClsid, L"CreateInstance", pluginHr, 0);
       CheckError(pluginHr);
-	  pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk);
+	  pluginHr = m_plugins.Manager().NegotiateApi(pluginClsid, unk);
 	  TracePluginDiagnostic(L"Import", pluginClsid, L"NegotiateApiV2", pluginHr, SUCCEEDED(pluginHr) ? 1 : 0);
 	  CheckError(pluginHr);
       IDispatchPtr  obj;
@@ -3553,7 +3552,7 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 		CheckError(streamLoader->Load(fb2Xml));
 		CheckError(v2Dom.QueryInterface(&obj));
 		filename.Assign(suggestedFileName.Detach());
-		m_last_plugin = wID + ID_IMPORT_BASE;
+		m_plugins.SetLastCommand(wID + ID_IMPORT_BASE);
 
       MSXML2::IXMLDOMDocument2Ptr dom(obj);
       TracePluginDiagnostic(L"Import", pluginClsid, L"DOM result", dom ? S_OK : E_NOINTERFACE, dom ? 1 : 0);
@@ -3606,23 +3605,23 @@ LRESULT CMainFrame::OnToolsImport(WORD, WORD wID, HWND, BOOL&) {
 LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 {
 	wID -= ID_EXPORT_BASE;
-	if(wID<m_export_plugins.GetSize())
+	if(wID<m_plugins.ExportPlugins().GetSize())
 	{
-		const CLSID& pluginClsid = m_export_plugins[wID];
+		const CLSID& pluginClsid = m_plugins.ExportPlugins()[wID];
 		TracePluginDiagnostic(L"Export", pluginClsid, L"begin", S_OK, 0);
 		try
 		{
 			IUnknownPtr unk;
-			HRESULT pluginHr = CreateBundledPluginInstance(pluginClsid, unk);
+			HRESULT pluginHr = CreateBundledPluginInstance(m_plugins.Manager(), pluginClsid, unk);
 			TracePluginDiagnostic(L"Export", pluginClsid, L"CreateInstance", pluginHr, 0);
 			CheckError(pluginHr);
-			pluginHr = g_pluginManager.NegotiateApi(pluginClsid, unk);
+			pluginHr = m_plugins.Manager().NegotiateApi(pluginClsid, unk);
 			TracePluginDiagnostic(L"Export", pluginClsid, L"NegotiateApiV2", pluginHr, SUCCEEDED(pluginHr) ? 1 : 0);
 			CheckError(pluginHr);
 
 				CComQIPtr<IFBEExportPlugin2> exportV2(unk);
 				if (!exportV2) { TracePluginDiagnostic(L"Export", pluginClsid, L"QueryInterfaceV2", E_NOINTERFACE, 0); return 0; }
-				m_last_plugin = wID + ID_EXPORT_BASE;
+				m_plugins.SetLastCommand(wID + ID_EXPORT_BASE);
 				MSXML2::IXMLDOMDocument2Ptr dom(m_doc->CreateDOM(m_doc->m_encoding, false));
 				CComPtr<IFBEPluginHost> host; CComPtr<IFBEDocumentSnapshot> snapshot;
 				CheckError(FbePluginApiV2::CreateHost(m_hWnd, _Settings.GetInterfaceLanguageName(), &host));
@@ -3645,8 +3644,8 @@ LRESULT CMainFrame::OnToolsExport(WORD, WORD wID, HWND, BOOL&)
 
 LRESULT CMainFrame::OnLastPlugin(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
-	if(m_last_plugin)
-		::SendMessage(m_hWnd, WM_COMMAND, m_last_plugin, NULL);
+	if(m_plugins.LastCommand())
+		::SendMessage(m_hWnd, WM_COMMAND, m_plugins.LastCommand(), NULL);
 	return 0;
 }
 
@@ -3906,14 +3905,14 @@ LRESULT CMainFrame::OnToolsScript(WORD /* unused: wNotifyCode */, WORD wID, HWND
   // ??????? ?? FBE ? ?? FBW ??????????? ?? ???????. ? FBE ??????? ??????????? ????? Active Scripting
   // ? ???????? ? ???? ??????????? ????? ?????????.
   // ? FBW ??????? ??????????? ? ????? HTML ?????????
-	for(int i = 0; i < m_script_menu.Count(); ++i)
+	for(int i = 0; i < m_scripts.Menu().Count(); ++i)
 	{
-		if(m_script_menu.Item(i).commandId == -1) continue;
+		if(m_scripts.Menu().Item(i).commandId == -1) continue;
 
-		if(!m_script_menu.Item(i).isFolder && m_script_menu.Item(i).commandId == wID)
+		if(!m_scripts.Menu().Item(i).isFolder && m_scripts.Menu().Item(i).commandId == wID)
 		{
-			m_doc->RunScript(m_script_menu.Item(i).path);
-			m_last_script = &m_script_menu.Item(i);
+			m_doc->RunScript(m_scripts.Menu().Item(i).path);
+			m_scripts.SetLastScript(m_scripts.Menu().Item(i));
 			break;
 		}
 	}
@@ -6295,8 +6294,8 @@ void CMainFrame::ReleaseScriptResources()
 			m_ScriptsToolbar.AutoSize();
 		}
 	}
-	m_script_menu.Clear();
-	m_last_script = NULL;
+	m_scripts.Menu().Clear();
+	m_scripts.ClearLastScript();
 	for(int index = m_BtnText.GetSize() - 1; index >= 0; --index)
 	{
 		const int command = m_BtnText.GetKeyAt(index);

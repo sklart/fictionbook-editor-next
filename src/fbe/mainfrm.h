@@ -13,9 +13,8 @@
 #include "document\\DocumentLocation.h"
 #include "document\\DocumentSession.h"
 #include "recovery\\RecoveryService.h"
-#include "scripts\\ScriptDescriptor.h"
-#include "scripts\\ScriptVisualResources.h"
-#include "scripts\\ScriptMenuBuilder.h"
+#include "scripts\\ScriptUiController.h"
+#include "plugins\\PluginUiController.h"
 
 #include "atlctrlsext.h"
 
@@ -140,13 +139,11 @@ public:
   int			  m_incsearch;
   bool			  m_is_fail;
 
-	FbeScripts::MenuBuilder m_script_menu;
-	FbeScripts::VisualResources m_script_visuals;
+	FbeScripts::UiController m_scripts;
 	void ReleaseScriptResources();
 	void RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar);
 	void SavePortableToolbarLayout();
-	ScriptDescriptor* m_last_script;
-  void InitScriptHotkey(ScriptDescriptor&);
+	void InitScriptHotkey(ScriptDescriptor&);
 
   // contruction/destruction
   CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_sci_ovr(true), m_last_ie_ovr(true),
@@ -155,8 +152,8 @@ public:
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0),
-	 m_script_menu(ID_EDIT_INS_SYMBOL + 101, 999), m_last_script(0),
-    m_last_plugin(0), m_bad_xml(false), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0),
+	 m_scripts(ID_EDIT_INS_SYMBOL + 101, 999),
+	    m_bad_xml(false), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0),
         m_status_transient_expiration(0), m_validation_status(VALIDATION_UNKNOWN)
 	// added by SeNS
 	{
@@ -227,15 +224,13 @@ public:
   void ClearSelection();
 
 	// Plugins support
-	CSimpleArray<CLSID> m_import_plugins;
-	CSimpleArray<CLSID> m_export_plugins;
+	PluginUiController m_plugins;
 	void InitializeExtensionUi();
 	void InitializeScripts();
 	void InitializeBundledPlugins();
 	void InitializeRecentDocumentsMenu();
 	void InitializeBundledPluginsType(HMENU hMenu, const TCHAR* type, UINT cmdbase, CSimpleArray<CLSID>& plist);
 	void RegisterPluginHotkey(CString guid, UINT cmd, CString name);
-	UINT m_last_plugin;
 
   void AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand = 0, const BYTE bState = 0, const HICON icon = 0);
 
@@ -719,9 +714,10 @@ public:
 
 	LRESULT OnLastScript(WORD, WORD, HWND, BOOL&)
 	{
-		if(m_last_script != 0 && !IsSourceActive())
+		const ScriptDescriptor* lastScript = m_scripts.LastScript();
+		if(lastScript != NULL && !IsSourceActive())
 		{
-			m_doc->RunScript((*m_last_script).path);
+			m_doc->RunScript(lastScript->path);
 		}
 		return 0;
 	}

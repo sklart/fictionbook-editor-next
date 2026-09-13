@@ -127,10 +127,10 @@ void CMainFrame::RunPortableStateTestScenario()
 			catalogButton(m_CmdToolbar, 2, commandAdded);
 		int alphaCommand = 0, betaCommand = 0;
 		CStringA discoveredScripts;
-		for(int index = 0; index < m_script_menu.Count(); ++index)
-			if(!m_script_menu.Item(index).isFolder)
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(!m_scripts.Menu().Item(index).isFolder)
 			{
-				const ScriptDescriptor& script = m_script_menu.Item(index);
+				const ScriptDescriptor& script = m_scripts.Menu().Item(index);
 				CStringA entry;
 				entry.Format("%ls:%d;", static_cast<LPCWSTR>(script.relativePath), script.commandId);
 				discoveredScripts += entry;
@@ -153,22 +153,23 @@ void CMainFrame::RunPortableStateTestScenario()
 			m_ScriptsToolbar.AddButton(&alphaButton);
 			m_ScriptsToolbar.AddButton(&separator);
 			m_ScriptsToolbar.AddButton(&betaButton);
-			for(int index = 0; index < m_script_menu.Count(); ++index)
-				if(!m_script_menu.Item(index).isFolder && m_script_menu.Item(index).relativePath == L"test/beta.js")
-					m_last_script = &m_script_menu.Item(index);
+			for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+				if(!m_scripts.Menu().Item(index).isFolder && m_scripts.Menu().Item(index).relativePath == L"test/beta.js")
+					m_scripts.SetLastScript(m_scripts.Menu().Item(index));
 			m_CmdToolbar.AutoSize();
 			m_ScriptsToolbar.AutoSize();
 		}
 		const bool commandLayout = catalogReady && hasButtons(m_CmdToolbar, commandAdded, separator, commandFirst);
 		const bool scriptsLayout = catalogReady && hasButtons(m_ScriptsToolbar, alphaButton, separator, betaButton);
-		const bool lastScriptIsBeta = m_last_script != NULL && m_last_script->relativePath == L"test/beta.js";
+		const ScriptDescriptor* lastScript = m_scripts.LastScript();
+		const bool lastScriptIsBeta = lastScript != NULL && lastScript->relativePath == L"test/beta.js";
 		TBBUTTON missingSeparator = {};
 		const bool missingScriptSafe = alphaInCatalog && m_ScriptsToolbar.GetButtonCount() == 2 &&
 			m_ScriptsToolbar.GetButton(0, &alphaButton) && alphaButton.idCommand == alphaCommand &&
-			m_ScriptsToolbar.GetButton(1, &missingSeparator) && (missingSeparator.fsStyle & TBSTYLE_SEP) != 0 && m_last_script == NULL;
+			m_ScriptsToolbar.GetButton(1, &missingSeparator) && (missingSeparator.fsStyle & TBSTYLE_SEP) != 0 && !m_scripts.HasLastScript();
 		CStringA report;
 		report.Format("phase=toolbar-layout-%s\nscript-count=%d\ndiscovered-scripts=%s\nalpha-command=%d\nbeta-command=%d\ncommand-catalog=%d\nalpha-catalog=%d\nbeta-catalog=%d\nnonempty-command=%d\nnonempty-scripts=%d\nlast-script-beta=%d\nmissing-script-safe=%d\nresult=%s\n",
-			missingScriptRead ? "missing-script-read" : toolbarLayoutWrite ? "write" : "read", m_script_menu.Count(), static_cast<LPCSTR>(discoveredScripts), alphaCommand, betaCommand, commandCatalogReady, alphaInCatalog, betaInCatalog, commandLayout, scriptsLayout, lastScriptIsBeta, missingScriptSafe,
+			missingScriptRead ? "missing-script-read" : toolbarLayoutWrite ? "write" : "read", m_scripts.Menu().Count(), static_cast<LPCSTR>(discoveredScripts), alphaCommand, betaCommand, commandCatalogReady, alphaInCatalog, betaInCatalog, commandLayout, scriptsLayout, lastScriptIsBeta, missingScriptSafe,
 			missingScriptRead ? (missingScriptSafe ? "pass" : "fail") : commandLayout && scriptsLayout && lastScriptIsBeta ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 	}
@@ -180,9 +181,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		InitializeExtensionUi();
 		const DWORD after = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
 		bool validRun = false, invalidRejected = true, noRunRejected = true;
-		for (int index = 0; index < m_script_menu.Count(); ++index)
+		for (int index = 0; index < m_scripts.Menu().Count(); ++index)
 		{
-			const ScriptDescriptor& script = m_script_menu.Item(index);
+			const ScriptDescriptor& script = m_scripts.Menu().Item(index);
 			if (script.isFolder) continue;
 			if (script.relativePath == L"foo.js") validRun = true;
 			if (script.relativePath == L"invalid.js") invalidRejected = false;
