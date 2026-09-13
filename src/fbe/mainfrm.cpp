@@ -2519,12 +2519,12 @@ void CMainFrame::TryRestoreRecovery()
 	// blocked forever, and the document passed on its command line is already
 	// the caller's explicit recovery choice.
 	const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty();
-	if ((unattendedTest || unattendedBatch) && !RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify"))
+	if ((unattendedTest || unattendedBatch) && !RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && !RuntimeTests::IsScenario(L"normal-recovery-verify"))
 		return;
 	FbeRecovery::RestoreCandidate candidate;
 	if (!m_recovery.GetRestoreCandidate(_ARGV.GetSize() > 0, candidate)) return;
 
-	if (!RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && U::MessageBox(MB_YESNO | MB_ICONQUESTION, IDS_RECOVERY_CAPTION, IDS_RECOVERY_MSG) != IDYES)
+	if (!RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && !RuntimeTests::IsScenario(L"normal-recovery-verify") && U::MessageBox(MB_YESNO | MB_ICONQUESTION, IDS_RECOVERY_CAPTION, IDS_RECOVERY_MSG) != IDYES)
 		return;
 
 	if (LoadFile(candidate.snapshotPath) == OK)

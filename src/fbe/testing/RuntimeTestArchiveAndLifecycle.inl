@@ -517,6 +517,19 @@
 		}
 		const bool saved = SourceToHTML() && SaveRecoveryNow(); CStringA report; report.Format("recovery_created=%d\n", saved); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(saved ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"normal-recovery-create"))
+	{
+		ShowView(SOURCE); const sptr_t length = m_source.SendMessage(SCI_GETLENGTH); std::vector<char> source(static_cast<size_t>(length) + 1); m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data())); char* marker = strstr(source.data(), "Runtime");
+		if (marker) { const size_t offset = static_cast<size_t>(marker - source.data()); m_source.SendMessage(SCI_SETSEL, offset, offset + strlen("Runtime")); m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("RECOVERY_NORMAL")); }
+		const bool saved = marker != NULL && SourceToHTML() && SaveRecoveryNow(); CStringA report; report.Format("recovery_created=%d\n", saved); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(saved ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"normal-recovery-verify"))
+	{
+		ShowView(SOURCE); const sptr_t length = m_source.SendMessage(SCI_GETLENGTH); std::vector<char> source(static_cast<size_t>(length) + 1); m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
+		const bool payload = strstr(source.data(), "RECOVERY_NORMAL") != NULL; const bool identity = CString(m_doc->m_filename) == L"Untitled.fb2" && !m_doc->m_namevalid && m_document_session.Location().storagePath.IsEmpty();
+		const bool dirty = DocChanged(); const bool cleaned = ::GetFileAttributes(m_recovery.SnapshotPath()) == INVALID_FILE_ATTRIBUTES;
+		CStringA report; report.Format("payload=%d\nidentity=%d\ndirty=%d\ncleaned=%d\n", payload, identity, dirty, cleaned); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(identity && dirty && cleaned ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"archive-recovery-verify"))
 	{
 		ShowView(SOURCE);
