@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Recovery lifecycle теперь координирует `RecoveryController`: frame собирает
+  editor/source state и показывает prompt, service сохраняет snapshot, а
+  normal restore возвращает session в NewDocument вместо `Recovery.fb2`.
+
 - Save, Save As и archive save теперь используют `DocumentSaveController`:
   persistence и `DocumentSession` commit происходят только после успешной
   записи, в то время как fail-closed editor preflight, native dialogs,
