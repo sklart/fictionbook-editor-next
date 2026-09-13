@@ -83,6 +83,15 @@ framework. До его реализации prototype обязан отдель�
    закрытии документа или смене MSHTML document старый unit должен быть
    уничтожен вместе со старым undo manager, а не применён к новому FB2.
 
+В проекте уже есть узкий прецедент — `CTableCellToggleUndoUnit` в
+`src/fbe/table/TableStructuralEditor.cpp`. Он переключает только пару
+`active`/`inactive` detached cell elements через `replaceChild`, а затем
+повторно добавляет самого себя в тот же manager. Этот механизм подтверждает
+жизнеспособность command-specific unit, но не переносим механически на Split:
+Split должен заменить область с двумя sibling sections, сохранить title/id и
+изолировать созданные native MSHTML units. Табличный unit не решает ни
+вытеснение этих промежуточных entries, ни жизненный цикл после `LoadFile`.
+
 Пока эти пункты не доказаны runtime-тестом, production Split оставлен без
 изменений, а строгий контракт `AAA [123] ZZZ` остаётся красным.
 
