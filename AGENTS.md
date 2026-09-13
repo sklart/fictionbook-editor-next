@@ -47,10 +47,10 @@ developer checkout or CI must not depend on this absolute path.
 - **RELEASE**: run `tools/build/verify-release.ps1`. Run
   `-FullValidation` only before a release/tag, after a major systemic change,
   or on explicit request.
-- Do not run `verify-release.ps1` after every edit or small commit. Prefer
-  affected tests while developing and one justified release gate after a
-  completed stage. If it has passed and only documentation or unrelated code
-  changed afterwards, do not repeat it.
+- Do not run `verify-release.ps1` after every edit or every small commit.
+  Prefer affected tests during development and run the release gate once after
+  a completed stage when warranted. If it has passed and only documentation or
+  unrelated code changed afterwards, do not repeat it.
 
 # Generated outputs and verification
 
