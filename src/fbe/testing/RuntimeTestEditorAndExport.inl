@@ -133,7 +133,7 @@
 		const ULONGLONG start = ::GetTickCount64();
 		auto appendImportPhase = [&](const char* phase)
 		{
-			const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+			const FbeSourceDiagnostics::ProcessMemorySnapshot memory = FbeSourceDiagnostics::GetProcessMemorySnapshot();
 			CStringA row;
 			row.Format("%s\t%I64u\t%I64u\t%I64u\r\n", phase, ::GetTickCount64() - start,
 				static_cast<unsigned __int64>(memory.privateBytes), static_cast<unsigned __int64>(memory.workingSetBytes));
@@ -239,7 +239,7 @@
 		const ULONGLONG start = ::GetTickCount64();
 		auto appendBinaryPhase = [&](const char* phase)
 		{
-			const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+			const FbeSourceDiagnostics::ProcessMemorySnapshot memory = FbeSourceDiagnostics::GetProcessMemorySnapshot();
 			CStringA row;
 			row.Format("%s\t%I64u\t%I64u\t%I64u\r\n", phase, ::GetTickCount64() - start,
 				static_cast<unsigned __int64>(memory.privateBytes), static_cast<unsigned __int64>(memory.workingSetBytes));
@@ -439,7 +439,7 @@
 	const ULONGLONG start = ::GetTickCount64();
 	auto appendSnapshot = [&](const char* phase)
 	{
-		const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+		const FbeSourceDiagnostics::ProcessMemorySnapshot memory = FbeSourceDiagnostics::GetProcessMemorySnapshot();
 		const sptr_t sourceBytes = m_source.SendMessage(SCI_GETLENGTH);
 		const sptr_t sourceLines = m_source.SendMessage(SCI_GETLINECOUNT);
 		CStringA row;
@@ -454,9 +454,9 @@
 	appendSnapshot("document-open");
 	auto appendShowSourceProfile = [&](const char* scenario)
 	{
-		for (const SourceProfileSample& sample : g_show_source_profile)
+		for (const FbeSourceDiagnostics::SourceProfileSample& sample : FbeSourceDiagnostics::ProfileSamples())
 		{
-			const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+			const FbeSourceDiagnostics::ProcessMemorySnapshot memory = FbeSourceDiagnostics::GetProcessMemorySnapshot();
 			CStringA phase("showsource-");
 			phase += scenario;
 			phase += ":";
@@ -596,7 +596,7 @@
 			{
 				CStringA phase;
 				phase.Format("body-source-cycle-%d", cycle);
-				const ProcessMemorySnapshot memory = GetProcessMemorySnapshot();
+				const FbeSourceDiagnostics::ProcessMemorySnapshot memory = FbeSourceDiagnostics::GetProcessMemorySnapshot();
 				const sptr_t sourceBytes = m_source.SendMessage(SCI_GETLENGTH);
 				const sptr_t sourceLines = m_source.SendMessage(SCI_GETLINECOUNT);
 				CStringA row;

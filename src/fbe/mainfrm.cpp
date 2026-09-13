@@ -41,6 +41,7 @@
 #include "scripts\\ScriptCommandRegistry.h"
 #include "source\\BodySourceSelectionTransfer.h"
 #include "source\\SourceDocumentTransfer.h"
+#include "source\\SourceViewDiagnostics.h"
 #include "navigation\\LinkDomNavigation.h"
 #include "LinkNavigation.h"
 #include "XmlDeclaration.h"
@@ -118,91 +119,6 @@ static CString StripMenuMnemonics(const CString& text)
 
 }
 
-// The detailed ShowSource profile is intentionally diagnostic-only.  It is
-// populated by the internal benchmark (-b) and has no work in the normal UI
-// hot path beyond the disabled branch in Mark().
-struct SourceProfileSample
-{
-	CStringA phase;
-	double elapsedMilliseconds;
-};
-
-static std::vector<SourceProfileSample> g_show_source_profile;
-
-class ShowSourcePhaseProfiler
-{
-public:
-	ShowSourcePhaseProfiler() : m_enabled(!AU::_ARGS.source_memory_benchmark_path.IsEmpty()), m_frequency(0), m_start(0)
-	{
-		if (m_enabled)
-		{
-			LARGE_INTEGER frequency = {};
-			LARGE_INTEGER start = {};
-			::QueryPerformanceFrequency(&frequency);
-			::QueryPerformanceCounter(&start);
-			m_frequency = frequency.QuadPart;
-			m_start = start.QuadPart;
-			g_show_source_profile.clear();
-		}
-	}
-
-	void Mark(const char* phase) const
-	{
-		if (!m_enabled)
-			return;
-		LARGE_INTEGER now = {};
-		::QueryPerformanceCounter(&now);
-		SourceProfileSample sample = {};
-		sample.phase = phase;
-		sample.elapsedMilliseconds = (now.QuadPart - m_start) * 1000.0 / m_frequency;
-		g_show_source_profile.push_back(sample);
-	}
-
-private:
-	bool m_enabled;
-	LONGLONG m_frequency;
-	LONGLONG m_start;
-};
-
-struct ProcessMemorySnapshot
-{
-	SIZE_T privateBytes;
-	SIZE_T workingSetBytes;
-	SIZE_T committedBytes;
-	SIZE_T reservedBytes;
-};
-
-static ProcessMemorySnapshot GetProcessMemorySnapshot()
-{
-	ProcessMemorySnapshot snapshot = {};
-	PROCESS_MEMORY_COUNTERS_EX counters = {};
-	counters.cb = sizeof(counters);
-	if (::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters)))
-	{
-		snapshot.privateBytes = counters.PrivateUsage;
-		snapshot.workingSetBytes = counters.WorkingSetSize;
-	}
-
-	SYSTEM_INFO systemInfo = {};
-	::GetSystemInfo(&systemInfo);
-	for (BYTE* address = NULL; address < systemInfo.lpMaximumApplicationAddress; )
-	{
-		MEMORY_BASIC_INFORMATION memory = {};
-		const SIZE_T result = ::VirtualQuery(address, &memory, sizeof(memory));
-		if (result == 0)
-			break;
-		if (memory.State == MEM_COMMIT)
-			snapshot.committedBytes += memory.RegionSize;
-		else if (memory.State == MEM_RESERVE)
-			snapshot.reservedBytes += memory.RegionSize;
-		BYTE* const nextAddress = static_cast<BYTE*>(memory.BaseAddress) + memory.RegionSize;
-		if (nextAddress <= address)
-			break;
-		address = nextAddress;
-	}
-	return snapshot;
-}
-
 extern CSettings _Settings;
 
 struct RuntimeMenuCommandBinding
@@ -278,15 +194,6 @@ static CString GetDiagnosticTraceText(LPCWSTR key, LPCWSTR fallback)
 	return FbeLoadRuntimeStringByKey(key, fallback);
 }
 
-static bool IsDiagnosticTraceEnabledForNextLaunch()
-{
-	return StartupTrace::IsEnabledForNextLaunch();
-}
-
-static bool SetDiagnosticTraceEnabledForNextLaunch(bool enabled)
-{
-	return StartupTrace::SetEnabledForNextLaunch(enabled);
-}
 static LPCWSTR FindRuntimeMainFrameMenuCommandKey(UINT commandId)
 {
 	for(size_t i = 0; i < _countof(kMainFrameMenuCommandBindings); ++i)
@@ -2345,7 +2252,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		  L"Отключить диагностический режим для следующих запусков? Для применения потребуется перезапустить программу."));
 	  if (::MessageBox(m_hWnd, warning, caption, MB_YESNO | MB_ICONWARNING) == IDYES)
 	  {
-		  if (SetDiagnosticTraceEnabledForNextLaunch(false))
+		  if (m_diagnostic_commands.SetEnabledForNextLaunch(false))
 		  {
 			  ::MessageBox(m_hWnd,
 				  GetDiagnosticTraceText(L"fbe.trace.disable.completed",
@@ -3539,52 +3446,9 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
-static bool OpenDiagnosticLog()
-{
-	const CString currentLogPath(StartupTrace::CurrentLogPath());
-	if(!currentLogPath.IsEmpty() && ::GetFileAttributes(currentLogPath) != INVALID_FILE_ATTRIBUTES)
-	{
-		return reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", currentLogPath,
-			NULL, NULL, SW_SHOWNORMAL)) > 32;
-	}
-
-	const CString currentLogDirectory(StartupTrace::CurrentLogDirectory());
-	if(!currentLogDirectory.IsEmpty() && ::GetFileAttributes(currentLogDirectory) != INVALID_FILE_ATTRIBUTES)
-	{
-		return reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", currentLogDirectory,
-			NULL, NULL, SW_SHOWNORMAL)) > 32;
-	}
-	return false;
-}
-
-static bool OpenDiagnosticLogFolder()
-{
-	const CString currentLogDirectory(StartupTrace::CurrentLogDirectory());
-	return !currentLogDirectory.IsEmpty() && ::GetFileAttributes(currentLogDirectory) != INVALID_FILE_ATTRIBUTES &&
-		reinterpret_cast<INT_PTR>(::ShellExecute(NULL, L"open", currentLogDirectory, NULL, NULL, SW_SHOWNORMAL)) > 32;
-}
-
-static bool CopyDiagnosticLogPathToClipboard()
-{
-	const CString currentLogPath(StartupTrace::CurrentLogPath());
-	if (currentLogPath.IsEmpty() || !::OpenClipboard(NULL)) return false;
-	::EmptyClipboard();
-	const SIZE_T bytes = (static_cast<SIZE_T>(currentLogPath.GetLength()) + 1) * sizeof(wchar_t);
-	HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, bytes);
-	if (!data) { ::CloseClipboard(); return false; }
-	void* target = ::GlobalLock(data);
-	if (!target) { ::GlobalFree(data); ::CloseClipboard(); return false; }
-	memcpy(target, static_cast<LPCWSTR>(currentLogPath), bytes);
-	::GlobalUnlock(data);
-	const bool copied = ::SetClipboardData(CF_UNICODETEXT, data) != NULL;
-	if (!copied) ::GlobalFree(data);
-	::CloseClipboard();
-	return copied;
-}
-
 LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
 {
-	if(!OpenDiagnosticLog())
+	if(!m_diagnostic_commands.OpenCurrentLog())
 	{
 		::MessageBox(m_hWnd,
 			GetDiagnosticTraceText(L"fbe.trace.open_failed", L"Не удалось открыть диагностический журнал."),
@@ -3595,7 +3459,7 @@ LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolsOpenDiagnosticFolder(WORD, WORD, HWND, BOOL&)
 {
-	if (!OpenDiagnosticLogFolder())
+	if (!m_diagnostic_commands.OpenLogFolder())
 		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.open_folder_failed", L"Could not open the diagnostic log folder."),
 			GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"), MB_OK | MB_ICONERROR);
 	return 0;
@@ -3603,7 +3467,23 @@ LRESULT CMainFrame::OnToolsOpenDiagnosticFolder(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnToolsCopyDiagnosticLogPath(WORD, WORD, HWND, BOOL&)
 {
-	if (!CopyDiagnosticLogPathToClipboard())
+	const CString currentLogPath(m_diagnostic_commands.CurrentLogPath());
+	bool copied = !currentLogPath.IsEmpty() && ::OpenClipboard(m_hWnd);
+	if (copied)
+	{
+		::EmptyClipboard();
+		const SIZE_T bytes = (static_cast<SIZE_T>(currentLogPath.GetLength()) + 1) * sizeof(wchar_t);
+		HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, bytes);
+		void* target = data ? ::GlobalLock(data) : NULL;
+		if (!target) { if (data) ::GlobalFree(data); copied = false; }
+		else {
+			memcpy(target, static_cast<LPCWSTR>(currentLogPath), bytes); ::GlobalUnlock(data);
+			copied = ::SetClipboardData(CF_UNICODETEXT, data) != NULL;
+			if (!copied) ::GlobalFree(data);
+		}
+		::CloseClipboard();
+	}
+	if (!copied)
 		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.copy_path_failed", L"Could not copy the diagnostic log path."),
 			GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"), MB_OK | MB_ICONERROR);
 	return 0;
@@ -3614,7 +3494,7 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"));
 	if (::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_confirmation", L"Clear old diagnostic logs? The current log will be preserved."), caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return 0;
-	const StartupTrace::DiagnosticLogCleanupResult cleanup = StartupTrace::ClearOldLogSessions();
+	const StartupTrace::DiagnosticLogCleanupResult cleanup = m_diagnostic_commands.ClearOldLogSessions();
 	if (cleanup.sessionsFound == 0 && cleanup.filesFailed == 0)
 	{
 		StartupTrace::Event(L"diagnostic", L"DG122", L"no old trace sessions found");
@@ -3647,7 +3527,7 @@ LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"));
 	if (::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.package_confirmation", L"Create a diagnostic package?\n\nIt includes selected diagnostic logs, environment and FBELib information, and a matching technical crash report when available.\n\nIt never includes books, book text, XML/HTML, settings, recovery files, user scripts, images, or Base64 data."), caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return 0;
-	if (!StartupTrace::CreateDiagnosticPackage(packagePath, error))
+	if (!m_diagnostic_commands.CreatePackage(packagePath, error))
 	{
 		StartupTrace::Error(L"diagnostic", L"DG131", CString(L"diagnostic package creation failed: ") + StartupTrace::SanitizeLogText(error, 256));
 		LPCWSTR key = L"fbe.trace.package_write_failed";
@@ -3663,7 +3543,7 @@ LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 }
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 {
-	const bool enabled = IsDiagnosticTraceEnabledForNextLaunch();
+	const bool enabled = m_diagnostic_commands.IsEnabledForNextLaunch();
 	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"));
 	if(enabled)
 	{
@@ -3680,7 +3560,7 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 	if(::MessageBox(m_hWnd, question, caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return 0;
 
-	if(!SetDiagnosticTraceEnabledForNextLaunch(true))
+	if(!m_diagnostic_commands.SetEnabledForNextLaunch(true))
 	{
 		::MessageBox(m_hWnd,
 			GetDiagnosticTraceText(L"fbe.trace.change_failed",
@@ -4808,7 +4688,8 @@ bool CMainFrame::SourceToHTML()
 EditorSourceOperationResult CMainFrame::PrepareSourceDocument(EditorView previous)
 {
 	const bool saveSelection = previous == BODY;
-	ShowSourcePhaseProfiler phaseProfiler;
+	FbeSourceDiagnostics::SourceViewPhaseProfiler phaseProfiler(
+		!AU::_ARGS.source_memory_benchmark_path.IsEmpty());
 	m_editor_selection_state.BodySource().bodyToSourceTransferred = false;
 	U::DomPath selection_begin_path;
 	U::DomPath selection_end_path;

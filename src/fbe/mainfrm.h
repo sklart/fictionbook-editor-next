@@ -17,6 +17,7 @@
 #include "scripts\\ScriptUiController.h"
 #include "plugins\\PluginUiController.h"
 #include "plugins\\PluginExecutionController.h"
+#include "diagnostics\\DiagnosticCommandService.h"
 
 #include "atlctrlsext.h"
 
@@ -234,6 +235,7 @@ public:
 	// Plugins support
 	PluginUiController m_plugins;
 	PluginExecutionController m_plugin_execution;
+	FbeDiagnostics::DiagnosticCommandService m_diagnostic_commands;
 	void InitializeExtensionUi();
 	void InitializeScripts();
 	void InitializeBundledPlugins();

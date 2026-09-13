@@ -34,6 +34,8 @@
   `PluginUiController` и document replacement в application layer.
 - [x] Вынести logical lifecycle status bar в `FBEStatusBar::State`, сохранив
   WTL control, pane behavior и layout presentation responsibility frame.
+- [x] Изолировать Source benchmark diagnostics и операции diagnostic commands
+  от `CMainFrame`, сохранив `StartupTrace` и privacy/package backends.
 
 - [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
 

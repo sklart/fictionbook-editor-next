@@ -18,6 +18,11 @@
   validation) теперь принадлежит `FBEStatusBar::State`. Control, DPI/layout,
   pane visibility и пользовательские действия остались в frame.
 
+- Профилирование Source view и memory snapshot вынесены в
+  `SourceViewDiagnostics`, а операции диагностических команд — в
+  `DiagnosticCommandService`. Frame сохраняет локализованные confirmation,
+  error/info и clipboard presentation.
+
 - Recovery lifecycle теперь координирует `RecoveryController`: frame собирает
   editor/source state и показывает prompt, service сохраняет snapshot, а
   normal restore возвращает session в NewDocument вместо `Recovery.fb2`.

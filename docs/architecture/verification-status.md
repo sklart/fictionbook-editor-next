@@ -67,6 +67,12 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   `CMultiPaneStatusBarCtrl` по-прежнему принадлежит frame: pane text/layout,
   DPI и click/double-click/clipboard presentation не перенесены в модель.
 
+- `SourceViewDiagnostics` изолирует benchmark-only profile и memory snapshot:
+  когда benchmark выключен, profiler не выполняет sampling. `DiagnosticCommandService`
+  выполняет операции журнала, cleanup, package и next-launch preference через
+  authoritative `StartupTrace`; frame оставляет confirmation, localized
+  feedback и запись clipboard. Privacy backend и package content не менялись.
+
 - Presentation-слой runtime-локализации `CMainFrame` (меню, toolbar и tooltip)
   размещён в `src/fbe/ui/MainFrameRuntimeUi.inl` и остаётся в том же translation
   unit, поэтому private-граница frame не расширена.
