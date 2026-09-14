@@ -769,7 +769,7 @@ BEGIN
             VALUE "FileDescription", FBE_PRODUCT_NAME
             VALUE "FileVersion", FBE_VERSION_STRING
             VALUE "InternalName", "FBE"
-            VALUE "LegalCopyright", "Copyright 2010 � FBE Team, 2008 � LitRes, 2003 � Mike Matsnev"
+            VALUE "LegalCopyright", "Copyright 2010 © FBE Team, 2008 © LitRes, 2003 © Mike Matsnev"
             VALUE "OriginalFilename", "FBE.exe"
             VALUE "ProductName", FBE_PRODUCT_NAME
             VALUE "ProductVersion", FBE_VERSION_STRING
@@ -1237,7 +1237,7 @@ BEGIN
     IDS_UPDATE_INCORRECTMD5 "Error, incorrect SHA-256 checksum"
     IDS_UPDATE_NEWVERSIONAVAILABLE "A new version of FBE is available."
     IDS_UPDATE_HAVELATESTVERSION "You have a latest version of FBE."
-    IDS_ABOUT_LOGOCAPTION   "FB2 animated logo � press ? for help"
+    IDS_ABOUT_LOGOCAPTION   "FB2 animated logo © press ? for help"
     IDS_UPDATE_CLOSE        "FBE must be closed to continue installation.\r\n\r\nYou may delete installation file at download location ""%s"" later.\r\n\r\nQuit FBE now and continue installation?"
     IDS_LANG_UKRAINIAN      "Ukrainian"
     IDS_LANG_SYSTEM_DEFAULT "System default"

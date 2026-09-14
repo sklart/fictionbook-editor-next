@@ -3,16 +3,59 @@ param()
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$singleByteEncoding = [System.Text.Encoding]::GetEncoding(1251)
+$utf8 = New-Object System.Text.UTF8Encoding($false, $true)
 
 function Read-SourceFile([string]$RelativePath) {
     $path = Join-Path $repoRoot $RelativePath
     $bytes = [System.IO.File]::ReadAllBytes($path)
-    if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) {
-        return [System.Text.Encoding]::Unicode.GetString($bytes)
+    try {
+        $text = $utf8.GetString($bytes)
+    } catch [System.Text.DecoderFallbackException] {
+        throw "Исходный файл должен быть корректным UTF-8: $RelativePath"
     }
-    return $singleByteEncoding.GetString($bytes)
+    return $text
 }
+
+# Raw-byte guard for the first-party compilation and test inputs. Generated
+# MIDL/localization output and third-party code intentionally stay outside this
+# policy. ReadAllBytes plus a throwing decoder makes the result independent of
+# the host ANSI code page in both Windows PowerShell 5.1 and PowerShell 7.
+function Assert-FirstPartyUtf8 {
+    $extensions = @('.c', '.cc', '.cpp', '.cxx', '.h', '.hpp', '.inl', '.ps1', '.psm1', '.props', '.targets', '.vcxproj', '.idl')
+    $paths = & git -c core.quotepath=false ls-files
+    $mixedEolCount = 0
+    foreach ($relativePath in $paths) {
+        $normalized = $relativePath.Replace('/', '\')
+        if ($normalized -match '^(third_party|build|out|src\\fbe\\generated)\\' -or
+            $extensions -notcontains [System.IO.Path]::GetExtension($normalized).ToLowerInvariant()) {
+            continue
+        }
+        $bytes = [System.IO.File]::ReadAllBytes((Join-Path $repoRoot $normalized))
+        try {
+            $text = $utf8.GetString($bytes)
+        } catch [System.Text.DecoderFallbackException] {
+            throw "First-party source is not valid UTF-8: $relativePath"
+        }
+        if ($text.IndexOf([char]0xFFFD) -ge 0) {
+            throw "First-party source contains U+FFFD: $relativePath"
+        }
+        $crlf = 0
+        $bareLf = 0
+        for ($index = 0; $index -lt $bytes.Length; ++$index) {
+            if ($bytes[$index] -eq 0x0A) {
+                if ($index -gt 0 -and $bytes[$index - 1] -eq 0x0D) { ++$crlf } else { ++$bareLf }
+            }
+        }
+        if ($crlf -gt 0 -and $bareLf -gt 0) { ++$mixedEolCount }
+    }
+    # Historical mixed-EOL files are deliberately not mass-rewritten. This
+    # baseline makes every additional mixed file a source-safety failure.
+    if ($mixedEolCount -gt 51) {
+        throw "First-party mixed-EOL baseline grew: $mixedEolCount (expected at most 51)"
+    }
+}
+
+Assert-FirstPartyUtf8
 
 function Assert-Contains(
     [string]$Text,
@@ -151,6 +194,12 @@ Assert-NotContains $colorButton "GetVersionEx" `
     "UI behavior must not depend on manifest-sensitive version detection"
 
 $spellerSource = Read-SourceFile "src\fbe\Speller.cpp"
+Assert-NotContains $spellerSource ([string][char]0xFFFD) `
+    "Speller.cpp must not contain replacement characters"
+Assert-Contains $spellerSource 'L" .,?\u2013!\u2014\u2026\r\n\t\"\u00AB\u00BB\u201C\u201D\u2018\u2019' `
+    "Tokens must preserve the history-verified Unicode delimiter code points"
+Assert-Contains $spellerSource 'checkWord.Replace(L"\u0451", L"\u0435")' `
+    "Russian ё-to-е dictionary normalization must use explicit Unicode code points"
 Assert-Contains $spellerSource "GetParagraphContainer" `
     "проверка орфографии должна нормализовать inline-выделение до абзаца"
 Assert-Contains $spellerSource "GetNextParagraph(elem, m_fbw_body);" `

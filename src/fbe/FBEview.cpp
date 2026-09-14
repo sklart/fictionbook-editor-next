@@ -223,9 +223,9 @@ static void ReleaseSearchRegExp(AU::RegExp& re)
 	re = NULL;
 }
 
-// ��������� RAII-������ ��� regex wrapper-� ������ ��������.
-// ������ ����������� ��������� ������������� �������������,
-// � ������� ���������� ��� ������������� ���������� �������� � m_fo.match.
+// RAII owner for the regular-expression wrapper used by search.
+// It keeps the wrapper valid for the whole operation and centralizes release
+// when ownership moves to the saved match state.
 class ScopedSearchRegExp
 {
 public:
@@ -633,10 +633,10 @@ static bool IsEmptyNode(MSHTML::IHTMLDOMNode *node) {
 	if (U::scmp(name,L"P")==0) // the editor uses empty Ps to represent empty lines
 		return false;
 
-	/* if (U::scmp(name,L"EM")==0) // ���������� ������ ��������� ������� ������ <emphasis> � <strong>
+	/* if (U::scmp(name,L"EM")==0) // Keep emphasis and strong markup distinct.
 	return false;
 
-	if (U::scmp(name,L"STRONG")==0) // ���������� ������ ��������� ������� ������ <emphasis> � <strong>
+	if (U::scmp(name,L"STRONG")==0) // Keep emphasis and strong markup distinct.
 	return false;*/
 
 	// images are always empty
@@ -688,15 +688,14 @@ FbeStructure::StructuralOperationResult CFBEView::SplitContainerResult(bool fChe
 //////////////////////////////////////////////////////////////////////////////
 /// @fn static bool	MergeEqualHTMLElements(MSHTML::IHTMLDOMNode *node)
 ///
-/// ������� ���������� ������� ����� ���������� HTML ��������
+/// Merge adjacent equivalent HTML elements.
 ///
-/// @params MSHTML::IHTMLDOMNode *node [in, out] - ����, ������ ������� ����� ������������� ��������������
+/// @param node [in, out] Node whose descendants are normalized.
 ///
-/// @note ��������� ��������� ��������: EM, STRONG
-/// ��� ���� ���������� �������, ��������������� ����� ����������� � ����������� ������ ��������, �.�. 
-/// '<EM>�������</EM> <EM>������</EM>' ������������� � '<EM>������� ������</EM>'
+/// @note Only EM and STRONG are merged. Adjacent equal elements are collapsed,
+/// for example two neighbouring EM nodes become one.
 ///
-/// @author ����� ���� @date 31.03.08
+/// @author Legacy FBE code, 2008-03-31
 //////////////////////////////////////////////////////////////////////////////
 static bool	MergeEqualHTMLElements(MSHTML::IHTMLDOMNode *node, MSHTML::IHTMLDocument2 *doc)
 {
@@ -718,7 +717,7 @@ static bool	MergeEqualHTMLElements(MSHTML::IHTMLDOMNode *node, MSHTML::IHTMLDocu
 			continue;
 		}
 
-		// ���� ��� ���������� ��������, �� ������� ����� ������
+		// A final child has no sibling to merge with.
 		if(!(bool)next)
 			return false;
 
@@ -727,11 +726,11 @@ static bool	MergeEqualHTMLElements(MSHTML::IHTMLDOMNode *node, MSHTML::IHTMLDocu
 		if (U::scmp(name,L"EM")==0 || U::scmp(name,L"STRONG")==0) 
 		{
 			MSHTML::IHTMLElementPtr	curelem(cur);
-			// ����������� �������� � ��������, ����������� ������ EM �.�.
+			// Empty or whitespace-only emphasis can bridge equal formatting nodes.
 			bstr_t curText = curelem->innerText;
 			if(curText.length() == 0 || U::is_whitespace(curelem->innerText))
 			{
-				// ������� ����������� ����				
+				// Preserve the whitespace while removing the empty formatting node.
 				MSHTML::IHTMLDOMNodePtr prev = cur->previousSibling;
 				if((bool)prev)
 				{
@@ -779,20 +778,20 @@ static bool	MergeEqualHTMLElements(MSHTML::IHTMLDOMNode *node, MSHTML::IHTMLDocu
 				MSHTML::IHTMLElementPtr	afterNextElem(afterNext);
 
 				bstr_t afterNextName = afterNext->nodeName;
-				if(U::scmp(name, afterNextName))// ���� ��������� ������� ������� ����
+				if(U::scmp(name, afterNextName))// The outer elements differ.
 				{
 					cur = next;
 					continue;
 				}
 
-				// ��������� ����� ����������� ���������� ����� ���� �������
+				// Only whitespace may separate the two equal elements.
 				if(!U::is_whitespace(next->nodeValue.bstrVal))
 				{
 					cur = next;
-					continue; // <EM>123</EM>45<EM>678</EM> ��������� ���������� ��������
+					continue; // Content between the elements prevents a merge.
 				}
 
-				// ���������� ��������
+				// Replace the three nodes with one merged element.
 				MSHTML::IHTMLElementPtr	newelem(doc->createElement(name));
 				MSHTML::IHTMLDOMNodePtr	newnode(newelem);
 				newelem->innerHTML = curelem->innerHTML + next->nodeValue.bstrVal + afterNextElem->innerHTML;
@@ -805,13 +804,13 @@ static bool	MergeEqualHTMLElements(MSHTML::IHTMLDOMNode *node, MSHTML::IHTMLDocu
 			else
 			{
 				bstr_t nextName(next->nodeName);
-				if(U::scmp(name, nextName))// ���� ��������� ������� ������� ����
+				if(U::scmp(name, nextName))// The adjacent elements differ.
 				{
 					cur = next;
 					continue;
 				}
 
-				// ���������� ��������
+				// Merge directly adjacent equal elements.
 				MSHTML::IHTMLElementPtr	nextElem(next);
 				MSHTML::IHTMLElementPtr	newelem(doc->createElement(name));
 				MSHTML::IHTMLDOMNodePtr	newnode(newelem);
@@ -1609,7 +1608,7 @@ void  CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom) {
 	MSHTML::IHTMLDOMNodePtr el = dom->firstChild;
 	bool found = false;
 
-	// ������������� ����� ������ body ���������
+	// Locate the document body before normalizing its children.
 	while(el)
 	{
 		MSHTML::IHTMLElementPtr hel(el);

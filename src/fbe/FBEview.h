@@ -44,10 +44,10 @@ public:
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_ID_HANDLER(IDOK, OnOK)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCloseCmd)
-		REFLECT_NOTIFICATIONS()//��������� ������� ���������� ��������� �� ��������
+		REFLECT_NOTIFICATIONS() // Forward reflected control notifications.
 	END_MSG_MAP()
 
-	//����� DDX ������
+	// DDX map follows.
 	BEGIN_DDX_MAP(CTableDlg)
 		DDX_INT(IDC_EDIT_TABLE_ROWS, m_nRows)
 		DDX_INT(IDC_EDIT_TABLE_COLUMNS, m_nColumns)

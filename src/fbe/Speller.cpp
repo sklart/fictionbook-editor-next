@@ -16,7 +16,9 @@ static void SetRuntimeSpellText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR
 		::SetDlgItemText(dialog, controlId, text);
 }
 
-const CString Tokens(L" .,?�!��\r\n\t\"������:;<>(){}[]\u00A0\u2003\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u2060\u3000\u2012\u2013\u2014\u00BA\u25A1\u25AB\u25E6\u201e\u201c");
+// Delimiters are expressed with Unicode escapes so their code points survive
+// source-file encoding changes. Keep this set aligned with the legacy list.
+const CString Tokens(L" .,?\u2013!\u2014\u2026\r\n\t\"\u00AB\u00BB\u201C\u201D\u2018\u2019:;<>(){}[]\u00A0\u2003\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u200B\u202F\u205F\u2060\u3000\u2012\u2013\u2014\u00BA\u25A1\u25AB\u25E6\u201E\u201C");
 
 // spell check dialog initialisation
 LRESULT CSpellDialog::OnInitDialog(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
@@ -592,8 +594,8 @@ SPELL_RESULT CSpeller::SpellCheck(CString word)
 		checkWord = FbePrepareDictionaryWord(checkWord);
 		// remove accent
 		checkWord.Replace(L"\u0301", L"");
-		// special case for Russian letter "�"
-		if (currDict == m_Dictionaries[LANG_RU].handle) checkWord.Replace(L"�", L"�");
+		// Hunspell's Russian dictionary stores "ё" as "е".
+		if (currDict == m_Dictionaries[LANG_RU].handle) checkWord.Replace(L"\u0451", L"\u0435");
 
 		// encode string to the dictionary encoding 
 		CStringA str = FbeEncodeDictionaryWord(checkWord, m_codePage);
@@ -702,9 +704,8 @@ void CSpeller::ClearMarks (int elemID)
 }
 
 //
-// ���������� �����, ���������� �������� �������. ��������� MSHTML �����
-// ���������� ������ EM, A ��� ������� inline-��������, �� �������������
-// ������ ���� ������� � ���������� ����������� P.
+// Return the paragraph that owns an element. MSHTML can return EM, A, or
+// another inline element from hit testing, but spell checking is paragraph based.
 //
 static MSHTML::IHTMLElementPtr GetParagraphContainer(MSHTML::IHTMLElementPtr element)
 {
@@ -718,8 +719,7 @@ static MSHTML::IHTMLElementPtr GetParagraphContainer(MSHTML::IHTMLElementPtr ele
 }
 
 //
-// ���� ��������� ����� ����� DOM-�������, �� ����� ��������� ���� P
-// ���������. ��� ��������� ����������� ������ � ����� �������� �������.
+// Walk document order to the next paragraph without building a global DOM list.
 //
 static MSHTML::IHTMLElementPtr GetNextParagraph(
 	MSHTML::IHTMLElementPtr element,
@@ -741,7 +741,7 @@ static MSHTML::IHTMLElementPtr GetNextParagraph(
 }
 
 //
-// ��������� �����, ���������� ���������.
+// Check one paragraph and update its highlights.
 //
 void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 {
@@ -763,8 +763,8 @@ void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 	{
 		if (uniqID < 0)	uniqID = MSHTML::IHTMLUniqueNamePtr(elem)->uniqueNumber;
 
-		// ���������� inline-���� ������ ������ ���� �����. ������� ����
-		// ������������� ������ ��������� ������ ���������������� ������� ���������.
+		// Inline edits affect the entire paragraph, so refresh its existing marks
+		// before splitting and checking its text.
 		ClearMarks(uniqID);
 
 		// tokenize and spellcheck

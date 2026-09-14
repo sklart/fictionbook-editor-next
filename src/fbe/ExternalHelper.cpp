@@ -502,7 +502,7 @@ HRESULT ExternalHelper::GenrePopup(IDispatch */* unused: obj */,LONG x,LONG y,BS
 
 	if(!fp){
 		U::MessageBox(MB_OK|MB_ICONERROR,_T("FBE"),
-			  _T("�� ���� ����� ����-������ ������ '%s'."),_T("languages.txt"));
+			  _T("Cannot open language data file '%s'."),_T("languages.txt"));
 		return;
 	}
 

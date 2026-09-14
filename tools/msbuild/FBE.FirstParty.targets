@@ -5,15 +5,19 @@
   <ItemGroup>
     <ClCompile Update="@(ClCompile-&gt;WithMetadataValue('Extension', '.cpp'))">
       <LanguageStandard>$(FbeLanguageStandard)</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <ClCompile Update="@(ClCompile-&gt;WithMetadataValue('Extension', '.cxx'))">
       <LanguageStandard>$(FbeLanguageStandard)</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <ClCompile Update="@(ClCompile-&gt;WithMetadataValue('Extension', '.cc'))">
       <LanguageStandard>$(FbeLanguageStandard)</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <ClCompile Update="@(ClCompile-&gt;WithMetadataValue('Extension', '.ixx'))">
       <LanguageStandard>$(FbeLanguageStandard)</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemGroup>
 

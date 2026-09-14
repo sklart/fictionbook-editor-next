@@ -49,8 +49,8 @@
 
 extern CAppModule _Module;
 
-// Общая точка загрузки пользовательских строк FBE:
-// сначала пробуем runtime-слой Lang, затем встроенные Win32-ресурсы.
+// РћР±С‰Р°СЏ С‚РѕС‡РєР° Р·Р°РіСЂСѓР·РєРё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёС… СЃС‚СЂРѕРє FBE:
+// СЃРЅР°С‡Р°Р»Р° РїСЂРѕР±СѓРµРј runtime-СЃР»РѕР№ Lang, Р·Р°С‚РµРј РІСЃС‚СЂРѕРµРЅРЅС‹Рµ Win32-СЂРµСЃСѓСЂСЃС‹.
 int FbeLoadRuntimeString(UINT id, wchar_t* buffer, int bufferChars);
 inline int FbeLoadString(HINSTANCE instance, UINT id, wchar_t* buffer, int bufferChars)
 {

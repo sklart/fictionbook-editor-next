@@ -72,7 +72,7 @@ BEGIN
             VALUE "FileDescription", "FictionBook Validator"
             VALUE "FileVersion", FBE_VERSION_STRING
             VALUE "InternalName", "FBV"
-            VALUE "LegalCopyright", "Copyright 2017 � FBE Team, 2008 � LitRes, 2003 � Mike Matsnev"
+            VALUE "LegalCopyright", "Copyright 2017 © FBE Team, 2008 © LitRes, 2003 © Mike Matsnev"
             VALUE "OriginalFilename", "FBV.exe"
             VALUE "ProductName", "FictionBook Validator Next"
             VALUE "ProductVersion", FBE_VERSION_STRING
@@ -185,6 +185,5 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
-
 
 

@@ -71,7 +71,7 @@ try {
         ForEach-Object { [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::Unicode) } |
         Out-String
 
-    if ($allRcText -cmatch '�|Ð.|Ñ.|Ã.|Â.') {
+     if ($allRcText -cmatch (([char]0xFFFD) + '|Ð.|Ñ.|Ã.|Â.')) {
         throw "В сгенерированных .rc2 обнаружены признаки mojibake."
     }
 

@@ -903,7 +903,7 @@ void InitSettingsHotkeyGroups()
 
 	bool DomPath::CreatePathFromHTMLDOM(MSHTML::IHTMLDOMNodePtr root, MSHTML::IHTMLDOMNodePtr endNode)
 	{
-		// ����� ���� � �������� ������� �� ���� � ����������� �� �����
+
 		m_path.clear();
 		if(!(bool)root || !(bool)endNode)
 		{
@@ -990,7 +990,7 @@ void InitSettingsHotkeyGroups()
 
 	bool DomPath::CreatePathFromXMLDOM(MSXML2::IXMLDOMNodePtr root, MSXML2::IXMLDOMNodePtr endNode)
 	{
-		// ����� ���� � �������� ������� �� ���� � ����������� �� �����
+
 		m_path.clear();
 		if(!(bool)root || !(bool)endNode)
 		{
@@ -1067,7 +1067,7 @@ void InitSettingsHotkeyGroups()
 
 	MSHTML::IHTMLDOMNodePtr DomPath::FindSelectedNodeInXMLDOM(MSXML2::IXMLDOMNodePtr root)
 	{
-		// ���������� ������� ������ � ���� ������� � ��������� selected		
+
 		MSXML2::IXMLDOMElementPtr currentNode = root;
 		while((bool)currentNode)
 		{
@@ -1094,7 +1094,7 @@ void InitSettingsHotkeyGroups()
 		}
 		const wchar_t* selpos = xml + pos;
 		int virtual_pos = pos;
-		// ���� ����������� ���
+
 		int id = 0;
 
 		wchar_t* open_tag_begin = 0;
@@ -1113,7 +1113,7 @@ void InitSettingsHotkeyGroups()
 				virtual_pos = virtual_pos - (close_tag_end - open_tag_begin);
 				continue;
 			}
-			// ���� ������ ����� ������ ����
+
 			if((selpos >= open_tag_begin && selpos < open_tag_end) ||(selpos > close_tag_begin))
 			{
 				*char_pos = 0;
@@ -1121,21 +1121,21 @@ void InitSettingsHotkeyGroups()
 				return true;
 			}
 
-			// ���� ������ ����� ����������� � ����������� �����, �� ���������� ������� � ��������
+
 			if(selpos >= open_tag_end && selpos <= close_tag_begin)
 			{
 				m_path.push_back(id);
 				return this->CPFT(open_tag_end, selpos - open_tag_end, char_pos);
 			}
 
-			// ���� ����������� ��� ������ �������, ������ �� ����� ������� �������
+
 			if(selpos < open_tag_begin)
 			{
 				break;
 			}
 		}
 
-		// ���� ����������� ����, ������ �� ����� �� ��� �����
+
 		*char_pos = virtual_pos;
 		return true;		
 
@@ -1143,7 +1143,7 @@ void InitSettingsHotkeyGroups()
 		/*while(curpos = wcsstr(curpos, L"<"))
 		{
 			++curpos;			
-			// ���� ��� ������ selectedpos
+
 			if(curpos > selpos)
 			{
 				//m_path.push_back(id);
@@ -1159,16 +1159,16 @@ void InitSettingsHotkeyGroups()
 
 
 
-			// ��������� �� ���������� �� ���
-			// TODO ���� �������, ��� ������������ �� �����
+
+
 
 			/*if(*curpos == L'!')
 			{
 				continue;
 			}*/			
 
-			/*// ������ ��� ����
-			// ���� ������ ��� ����������� ������
+			/*
+
 			wchar_t* p1 = wcschr(curpos, L' ');
 			wchar_t* p2 = wcschr(curpos, L'>');
 			if(!p2)
@@ -1192,7 +1192,7 @@ void InitSettingsHotkeyGroups()
 				return false;
 			}
 
-			// ��������� ����� �� ����������� ���
+
 			wchar_t* p3 = wcsstr(curpos, L">");
 			wchar_t* p4 = wcsstr(curpos, L"/>");
 
@@ -1212,12 +1212,12 @@ void InitSettingsHotkeyGroups()
 			wcscpy(close_tag_name, L"/" );
 			wcsncat(close_tag_name, curpos, end_tag_name - curpos);			
 
-			// TODO ����� ���� �������� ���� � ����� ���������. ���� <my_tag><my_tag></my_tag></my_tag>
-			// ��� �������� ���� ����������� ����������*/
 
 
 
-			// ���� ����������� ���
+
+
+
 			/*wchar_t* close_tag = wcsstr(curpos, close_tag_name);
 			delete[] close_tag_name;
 			close_tag_name = 0;
@@ -1228,7 +1228,7 @@ void InitSettingsHotkeyGroups()
 				return false;
 			}
 
-			// ���� ����������� ��� ������ �������� ��������, �� ���������� �������
+
 			if(close_tag > selpos)
 			{
 				m_path.push_back(id);
@@ -1250,7 +1250,7 @@ void InitSettingsHotkeyGroups()
 
 	int DomPath::GetNodeFromText(wchar_t* xml, int char_pos)
 	{
-		int nest_len = m_path.size(); //������� �����������
+		int nest_len = m_path.size();
 
 		if(!nest_len)
 		{
@@ -1277,7 +1277,7 @@ void InitSettingsHotkeyGroups()
 			}
 		}
 
-		// ������� �������, ��������� �������� ����
+
 
 		wchar_t* open_tag_begin = 0;
 		wchar_t* open_tag_end = 0;
@@ -1313,7 +1313,7 @@ void InitSettingsHotkeyGroups()
 			return false;
 		}
 
-		// ���� ��������� ���
+
 		wchar_t* optb = wcschr(const_cast<wchar_t*>(xml), L'<');
 		while(optb && (*(optb + 1) == L'/'))
 		{
@@ -1325,12 +1325,12 @@ void InitSettingsHotkeyGroups()
 		}
 		wchar_t* tag_name_start = optb + 1;
 
-		// ��������� ��� ����
-		// ���� ��������� ������ ��� ����������� ������
+
+
 		wchar_t* tag_name_end = wcschr(tag_name_start, L' ');
 		wchar_t* opte = wcschr(tag_name_start, L'>');
 
-		// ������� ����� � �� ����
+
 		if((tag_name_end > opte) || (tag_name_end == 0))
 		{
 			tag_name_end = opte;
@@ -1355,7 +1355,7 @@ void InitSettingsHotkeyGroups()
 		}
 		else
 		{
-			// ���� ����������� ���
+
 			if(!tFindCloseTag(opte, tag_name, &cltb))
 			{
 				delete[] tag_name;
@@ -1371,7 +1371,7 @@ void InitSettingsHotkeyGroups()
 		}
 		delete[] tag_name;
 
-		// ���������� ������������� ��������
+
 		if(open_tag_begin)
 		{
 			*open_tag_begin = optb;
@@ -1397,27 +1397,27 @@ void InitSettingsHotkeyGroups()
 		// added by SeNS: check space in tags
 		CString tag(tag_name); tag.Trim(); if (tag.IsEmpty()) return false;
 
-		// ����� ���������� ���� <tag_name...></tag_name>
+
 		//wchar_t* close_tagname
 		wchar_t* next_tag = wcsstr(start, tag_name);
 		while(next_tag)
 		{
-			// ���� ��� ����������� ���, �� ������ �� ����� ��� ����
+
 			if((*(next_tag - 1) == L'/')&&(*(next_tag - 2) == L'<'))
 			{
 				*close_tag = next_tag - 2;
 				return true;
 			}
 
-			// ��������� ��� �� ��� ������
+
 			if(*(next_tag - 1) != L'<')
 			{
 				next_tag = wcsstr(next_tag + wcslen(tag_name), tag_name);
 				continue;
 			}
 			
-			// ��� ��� ����������� ���
-			// ���� ��� ����������� ���
+
+
 			if(!tFindCloseTag(next_tag + wcslen(tag_name), tag_name, &next_tag))
 			{
 				return false;
@@ -1436,9 +1436,9 @@ void InitSettingsHotkeyGroups()
 		}
 		node = node->firstChild;
 
-		int index = 0; // ���������� ����� ���� � HTML ��������
+		int index = 0;
 
-		// �� ������ ���������� ��������� ����� ����
+
 		wchar_t* text = elem->innerHTML;
 		wchar_t* openb = 0;
 		wchar_t* opene = 0;
@@ -1728,7 +1728,7 @@ void InitSettingsHotkeyGroups()
 	CString Transliterate (CString src)
 	{
 		CString dst = L"";
-		CString from = L"���������������������������������������Ũ������������������������ߪ��";
+		CString from = L"\u0430\u0431\u0432\u0433\u0434\u0435\u0451\u0436\u0437\u0438\u0439\u043A\u043B\u043C\u043D\u043E\u043F\u0440\u0441\u0442\u0443\u0444\u0445\u0446\u0447\u0448\u0449\u044A\u044B\u044C\u044D\u044E\u044F\u0454\u0456\u0457\u0410\u0411\u0412\u0413\u0414\u0415\u0401\u0416\u0417\u0418\u0419\u041A\u041B\u041C\u041D\u041E\u041F\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042A\u042B\u042C\u042D\u042E\u042F\u0404\u0406\u0407";
 		CString to[] = { L"a", L"b", L"v", L"g", L"d", L"e", L"jo", L"zh", L"z", L"i", L"jj", L"k", 
 						 L"l", L"m", L"n", L"o", L"p", L"r", L"s", L"t", L"u", L"f", L"c", L"ch", 
 						 L"sh", L"shh", L"\"", L"y", L"'", L"eh", L"ju", L"ja", L"je", L"i", L"i'", 

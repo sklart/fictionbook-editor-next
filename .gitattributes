@@ -11,3 +11,10 @@ src/fbe/generated/Fb2SchemaMetadata.h text eol=lf
 runtime/dict/*.aff -text
 runtime/dict/*.dic -text
 runtime/EditorBackgrounds/*.png -text
+
+# Generated and vendored inputs retain the encoding and EOL selected by their
+# producer. First-party editor settings are defined in .editorconfig; this
+# avoids an attributes-only mass rewrite of historical mixed-EOL files.
+*.generated.rc2 -text
+src/fbe/generated/** -text
+third_party/** -text

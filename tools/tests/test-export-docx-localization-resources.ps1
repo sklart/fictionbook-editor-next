@@ -248,7 +248,7 @@ finally {
     Remove-Item -LiteralPath $tempDirectory -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-if ($generatedRc -cmatch '�|Ð.|Ñ.|Ã.|Â.') {
+    if ($generatedRc -cmatch (([char]0xFFFD) + '|Ð.|Ñ.|Ã.|Â.')) {
     throw "В ExportDOCXStrings.generated.rc2 обнаружены признаки mojibake."
 }
 

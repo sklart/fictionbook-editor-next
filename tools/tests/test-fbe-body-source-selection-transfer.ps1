@@ -10,13 +10,14 @@ $transferPath = Join-Path $repoRoot 'src\fbe\source\SourceDocumentTransfer.cpp'
 $presentationPath = Join-Path $repoRoot 'src\fbe\view\ui\EditorViewPresentationHost.cpp'
 $tracePath = Join-Path $repoRoot 'src\fbe\StartupTrace.cpp'
 $documentPath = Join-Path $repoRoot 'src\fbe\FBDoc.cpp'
-$source = [System.Text.Encoding]::GetEncoding(1251).GetString([System.IO.File]::ReadAllBytes($sourcePath)) +
-    [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($selectionCoordinatorPath)) +
-    [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($sourceSessionPath)) +
-    [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($transferPath)) +
-    [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($presentationPath))
-$trace = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($tracePath))
-$document = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($documentPath))
+$utf8 = New-Object System.Text.UTF8Encoding($false, $true)
+$source = $utf8.GetString([System.IO.File]::ReadAllBytes($sourcePath)) +
+    $utf8.GetString([System.IO.File]::ReadAllBytes($selectionCoordinatorPath)) +
+    $utf8.GetString([System.IO.File]::ReadAllBytes($sourceSessionPath)) +
+    $utf8.GetString([System.IO.File]::ReadAllBytes($transferPath)) +
+    $utf8.GetString([System.IO.File]::ReadAllBytes($presentationPath))
+$trace = $utf8.GetString([System.IO.File]::ReadAllBytes($tracePath))
+$document = $utf8.GetString([System.IO.File]::ReadAllBytes($documentPath))
 
 function Assert-Contains {
     param(

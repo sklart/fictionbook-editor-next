@@ -113,6 +113,9 @@ foreach ($project in $cppProjects) {
             if ($item.LanguageStandard -ne 'stdcpp17') {
                 throw "C++17 policy was not evaluated for $project ($configuration): $($item.Identity) = $($item.LanguageStandard)"
             }
+            if ($item.AdditionalOptions -notmatch '(^|\s)/utf-8(\s|$)') {
+                throw "C++ source must receive centralized /utf-8: $project ($configuration): $($item.Identity)"
+            }
         }
         foreach ($item in @($items | Where-Object { $_.Extension -eq '.c' })) {
             if ($item.LanguageStandard -and $item.LanguageStandard -ne 'Default') {

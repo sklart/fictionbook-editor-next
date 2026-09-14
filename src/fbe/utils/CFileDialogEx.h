@@ -35,7 +35,7 @@ class CFileDialogEx :
     public CFileDialogImpl<CFileDialogEx>
 {
 public:
-    TCHAR m_szFileName[_MAX_PATH * 1000]; // Потому что по умолчанию маловато будет
+    TCHAR m_szFileName[_MAX_PATH * 1000]; // РџРѕС‚РѕРјСѓ С‡С‚Рѕ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РјР°Р»РѕРІР°С‚Рѕ Р±СѓРґРµС‚
     CSimpleArray<CString> m_FileNames;
     bool m_centerOnOwner;
 
@@ -129,7 +129,7 @@ public:
     }
     CString GetNextPathName(_POSITION_& pos) const
     {
-        BOOL bExplorer = m_ofn.Flags & OFN_EXPLORER; // что для WTL завсегда правда
+        BOOL bExplorer = m_ofn.Flags & OFN_EXPLORER; // С‡С‚Рѕ РґР»СЏ WTL Р·Р°РІСЃРµРіРґР° РїСЂР°РІРґР°
         TCHAR chDelimiter;
         if (bExplorer)
             chDelimiter = '\0';

@@ -39,10 +39,10 @@ protected:
 				(lpMsg->message == WM_CHAR && (
 				 lpMsg->wParam == 'F' || lpMsg->wParam == 'R' || lpMsg->wParam == 'A' ||
 			     lpMsg->wParam == 'f' || lpMsg->wParam == 'r' || lpMsg->wParam == 'a' || 
-			     // Ðóññêèå shortcut: Ç/È/Â.
+			     // Ð ÑƒÑÑÐºÐ¸Ðµ shortcut: Ð—/Ð˜/Ð’.
 			     lpMsg->wParam == L'\x0417' || lpMsg->wParam == L'\x0418' || lpMsg->wParam == L'\x0412' ||
 			     lpMsg->wParam == L'\x0437' || lpMsg->wParam == L'\x0438' || lpMsg->wParam == L'\x0432' ||
-				 // Óêðàèíñêèå shortcut: Ó/Í.
+				 // Ð£ÐºÑ€Ð°Ð¸Ð½ÑÐºÐ¸Ðµ shortcut: Ð£/Ð.
 			     lpMsg->wParam == L'\x0423' || lpMsg->wParam == L'\x041D' ||
 			     lpMsg->wParam == L'\x0443' || lpMsg->wParam == L'\x043D'))) 
 			{

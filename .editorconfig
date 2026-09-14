@@ -1,0 +1,27 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+
+[*.{c,cc,cpp,cxx,h,hpp,inl,ixx}]
+charset = utf-8
+
+[*.{ps1,psm1,psd1,bat,cmd}]
+charset = utf-8-bom
+
+[*.{rc,rc2}]
+# Authored RC input is UTF-8 with BOM. Generated localization fragments retain
+# their UTF-16LE producer format and are not hand edited.
+charset = utf-8-bom
+
+[src/**/generated/**]
+generated_code = true
+
+[**/*.generated.rc2]
+generated_code = true
+charset = utf-16le
+
+[third_party/**]
+generated_code = true

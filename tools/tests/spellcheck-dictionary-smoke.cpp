@@ -150,7 +150,7 @@ static bool ProductionKoi8rRoundTrip(Hunhandle* dict) {
     for (int i = 0; i < count; ++i) {
         const CString suggestion = FbeDecodeDictionaryWord(list[i], 20866);
         if (suggestion == L"собака") found = true;
-        if (suggestion.Find(L"�") >= 0) ok = false;
+        if (suggestion.Find(L"\uFFFD") >= 0) ok = false;
     }
     Hunspell_free_list(dict, &list, count);
     return ok && found;

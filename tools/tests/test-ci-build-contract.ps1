@@ -59,7 +59,7 @@ $utf8Bootstrap = Join-Path $root 'tools\build\Initialize-CiUtf8.ps1'
 & $utf8Bootstrap
 $expected = 'Проверка UTF-8: Ёж'
 $nativeOutput = (& cmd.exe /d /c "echo $expected").Trim()
-if ($nativeOutput -ne $expected -or $nativeOutput -match '[?�]') {
+if ($nativeOutput -ne $expected -or $nativeOutput -match ('[?' + [char]0xFFFD + ']')) {
     throw "UTF-8 console regression: expected '$expected', got '$nativeOutput'."
 }
 

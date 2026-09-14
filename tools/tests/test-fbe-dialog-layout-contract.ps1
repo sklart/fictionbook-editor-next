@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $rcPath = Join-Path $repoRoot 'src\fbe\FBE.rc'
 $resourceHeaderPath = Join-Path $repoRoot 'src\fbe\resource.h'
-$rc = [Text.Encoding]::GetEncoding(1251).GetString([IO.File]::ReadAllBytes($rcPath))
+$rc = (New-Object Text.UTF8Encoding($false, $true)).GetString([IO.File]::ReadAllBytes($rcPath))
 $resourceHeader = Get-Content -Raw -LiteralPath $resourceHeaderPath
 
 function Assert-Contains([string]$Text, [string]$Pattern, [string]$Description) {

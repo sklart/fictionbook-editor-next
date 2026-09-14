@@ -15,15 +15,17 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $outputDir = Join-Path $repoRoot "out\$Configuration"
 $dictDir = Join-Path $outputDir "dict"
-$singleByteEncoding = [System.Text.Encoding]::GetEncoding(1251)
+$utf8 = New-Object System.Text.UTF8Encoding($false, $true)
 
 function Read-SourceFile([string]$RelativePath) {
     $path = Join-Path $repoRoot $RelativePath
     $bytes = [System.IO.File]::ReadAllBytes($path)
-    if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) {
-        return [System.Text.Encoding]::Unicode.GetString($bytes)
+    try {
+        $text = $utf8.GetString($bytes)
+    } catch [System.Text.DecoderFallbackException] {
+        throw "Исходный файл должен быть корректным UTF-8: $RelativePath"
     }
-    return $singleByteEncoding.GetString($bytes)
+    return $text
 }
 
 function Get-DictionaryEncoding([string]$AffPath) {
