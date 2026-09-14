@@ -55,12 +55,6 @@ bool IsGroupBox(HWND window)
 		((::GetWindowLongPtrW(window, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX);
 }
 
-bool IsToolbarSurface(HWND window)
-{
-	return IsClass(window, TOOLBARCLASSNAMEW) || IsClass(window, REBARCLASSNAMEW) ||
-		IsClass(window, L"WTL_CommandBar");
-}
-
 void PaintDarkGroupBox(HWND window)
 {
 	PAINTSTRUCT paint = {};
@@ -99,13 +93,6 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 	{
 		if(message == WM_ERASEBKGND) return 1;
 		if(message == WM_PAINT) { PaintDarkGroupBox(window); return 0; }
-	}
-	if(ThemeManager::IsDark() && IsToolbarSurface(window) && message == WM_ERASEBKGND)
-	{
-		HDC dc = reinterpret_cast<HDC>(wParam);
-		RECT client = {}; ::GetClientRect(window, &client);
-		::FillRect(dc, &client, ThemeManager::ControlBrush());
-		return 1;
 	}
 	if(message == WM_CTLCOLORDLG)
 	{
@@ -157,7 +144,7 @@ void ApplyNativeControlPalette(HWND window)
 	{
 		::SendMessage(window, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 	}
-	else if(IsClass(window, TOOLBARCLASSNAMEW) || IsClass(window, L"WTL_CommandBar"))
+	else if(IsClass(window, TOOLBARCLASSNAMEW))
 		::SendMessage(window, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 	else if(IsClass(window, L"Edit"))
 		::SendMessage(window, EM_SETBKGNDCOLOR, 0, ThemeManager::ControlColor());

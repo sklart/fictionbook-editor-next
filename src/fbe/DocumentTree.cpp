@@ -138,6 +138,21 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	return 0;
 }
 
+LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	if(!m_tree.IsWindow()) return 0;
+	if(ThemeManager::IsDark())
+	{
+		m_tree.SetBkColor(ThemeManager::WindowColor());
+		m_tree.SetTextColor(ThemeManager::TextColor());
+		m_tree.SetLineColor(ThemeManager::SeparatorColor());
+	}
+	if(m_rebar.IsWindow()) ::SendMessage(m_rebar, RB_SETBKCOLOR, 0, ThemeManager::ControlColor());
+	if(m_toolbar.IsWindow()) ::SendMessage(m_toolbar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
+	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+	return 0;
+}
+
 void CTreeWithToolBar::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v)
 {
 	m_tree.GetDocumentStructure(v);

@@ -3,6 +3,7 @@
 #include "TreeView.h"
 #include "AppUtils.h"
 #include "RuntimeLocalization.h"
+#include "ThemeManager.h"
 
 typedef CWinTraits<WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | ES_LEFT, WS_EX_CLIENTEDGE> CTreeWithToolBarWinTraits;
 
@@ -44,6 +45,7 @@ public:
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
 
 		COMMAND_ID_HANDLER(ID_DT_RIGHT_ONE, ForwardWMCommand)
 		COMMAND_ID_HANDLER(ID_DT_RIGHT_SMART, ForwardWMCommand)
@@ -63,6 +65,7 @@ public:
 	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
 
 	LRESULT ForwardWMCommand(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 
