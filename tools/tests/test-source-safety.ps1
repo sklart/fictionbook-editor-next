@@ -21,12 +21,14 @@ function Read-SourceFile([string]$RelativePath) {
 # policy. ReadAllBytes plus a throwing decoder makes the result independent of
 # the host ANSI code page in both Windows PowerShell 5.1 and PowerShell 7.
 function Assert-FirstPartyUtf8 {
-    $extensions = @('.c', '.cc', '.cpp', '.cxx', '.h', '.hpp', '.inl', '.ps1', '.psm1', '.props', '.targets', '.vcxproj', '.idl')
+    $extensions = @('.c', '.cc', '.cpp', '.cxx', '.h', '.hpp', '.inl', '.ixx', '.ps1', '.psm1', '.psd1', '.props', '.targets', '.vcxproj', '.sln', '.idl', '.rc', '.rc2', '.cmd', '.bat')
     $paths = & git -c core.quotepath=false ls-files
-    $mixedEolCount = 0
     foreach ($relativePath in $paths) {
         $normalized = $relativePath.Replace('/', '\')
-        if ($normalized -match '^(third_party|build|out|src\\fbe\\generated)\\' -or
+        if ($normalized -match '^(third_party|build|out)\\' -or
+            $normalized -match '^src\\.*\\generated\\' -or
+            $normalized -match '^src\\export-(docx|epub)\\Export(DOCX|EPUB)_i\.(c|h)$' -or
+            $normalized -match '\.generated\.rc2$' -or
             $extensions -notcontains [System.IO.Path]::GetExtension($normalized).ToLowerInvariant()) {
             continue
         }
@@ -39,6 +41,14 @@ function Assert-FirstPartyUtf8 {
         if ($text.IndexOf([char]0xFFFD) -ge 0) {
             throw "First-party source contains U+FFFD: $relativePath"
         }
+        # UTF-8 decoded as a Western single-byte code page is normally visible
+        # as a lead character (Ð, Ñ, Â or Ã) followed by a CP1252 continuation.
+        # Restrict the heuristic to this two-character signature to avoid
+        # flagging ordinary non-ASCII prose. Tests that intentionally exercise
+        # the signature express it with code points instead of literal text.
+        if ($text -match '(?:[ÐÑÂÃ][\u0080-\u00BF\u0178\u20AC\u201A-\u2022\u2026\u2030\u2122])') {
+            throw "First-party source contains apparent UTF-8 mojibake: $relativePath"
+        }
         $crlf = 0
         $bareLf = 0
         for ($index = 0; $index -lt $bytes.Length; ++$index) {
@@ -46,12 +56,9 @@ function Assert-FirstPartyUtf8 {
                 if ($index -gt 0 -and $bytes[$index - 1] -eq 0x0D) { ++$crlf } else { ++$bareLf }
             }
         }
-        if ($crlf -gt 0 -and $bareLf -gt 0) { ++$mixedEolCount }
-    }
-    # Historical mixed-EOL files are deliberately not mass-rewritten. This
-    # baseline makes every additional mixed file a source-safety failure.
-    if ($mixedEolCount -gt 51) {
-        throw "First-party mixed-EOL baseline grew: $mixedEolCount (expected at most 51)"
+        if ($crlf -gt 0 -and $bareLf -gt 0) {
+            throw "First-party source has mixed CRLF/LF line endings: $relativePath"
+        }
     }
 }
 

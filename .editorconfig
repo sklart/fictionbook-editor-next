@@ -18,10 +18,36 @@ charset = utf-8-bom
 
 [src/**/generated/**]
 generated_code = true
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+
+[src/fbe/generated/Fb2SchemaMetadata.h]
+# This generated header is intentionally UTF-8 with LF line endings.
+charset = utf-8
+end_of_line = lf
 
 [**/*.generated.rc2]
 generated_code = true
-charset = utf-16le
+# Generated localization fragments retain the producer's UTF-16LE format.
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+
+[src/export-docx/ExportDOCX_i.{c,h}]
+generated_code = true
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+
+[src/export-epub/ExportEPUB_i.{c,h}]
+generated_code = true
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
 
 [third_party/**]
 generated_code = true
+charset = unset
+end_of_line = unset
+insert_final_newline = unset

@@ -1,3 +1,25 @@
+# First-party authored text uses CRLF. Generated and vendored inputs are
+# explicitly exempt below, so Git does not reinterpret their producer format.
+*.c text eol=crlf
+*.cc text eol=crlf
+*.cpp text eol=crlf
+*.cxx text eol=crlf
+*.h text eol=crlf
+*.hpp text eol=crlf
+*.inl text eol=crlf
+*.ixx text eol=crlf
+*.idl text eol=crlf
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.props text eol=crlf
+*.targets text eol=crlf
+*.vcxproj text eol=crlf
+*.sln text eol=crlf
+*.rc text eol=crlf
+*.rc2 text eol=crlf
 runtime/main.js text eol=crlf
 runtime/Scripts/**/*.js text eol=crlf
 runtime/Scripts/**/*.html text eol=crlf
@@ -7,7 +29,6 @@ runtime/HTML/**/*.js text eol=crlf
 runtime/HTML/**/*.html text eol=crlf
 runtime/HTML/**/*.htm text eol=crlf
 runtime/HTML/**/*.css text eol=crlf
-src/fbe/generated/Fb2SchemaMetadata.h text eol=lf
 runtime/dict/*.aff -text
 runtime/dict/*.dic -text
 runtime/EditorBackgrounds/*.png -text
@@ -17,4 +38,12 @@ runtime/EditorBackgrounds/*.png -text
 # avoids an attributes-only mass rewrite of historical mixed-EOL files.
 *.generated.rc2 -text
 src/fbe/generated/** -text
+src/export-docx/ExportDOCX_i.c -text
+src/export-docx/ExportDOCX_i.h -text
+src/export-epub/ExportEPUB_i.c -text
+src/export-epub/ExportEPUB_i.h -text
 third_party/** -text
+src/fbe/generated/Fb2SchemaMetadata.h text eol=lf
+runtime/languages.txt -text
+runtime/root_genres.xml -text
+runtime/symbols.ini -text
