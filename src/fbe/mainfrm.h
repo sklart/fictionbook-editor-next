@@ -187,9 +187,13 @@ public:
   bool			  m_is_fail;
 
 	FbeScripts::UiController m_scripts;
+	std::vector<CString> m_scriptToolbarMenuIds;
 	void ReleaseScriptResources();
 	void RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar);
 	void SavePortableToolbarLayout();
+	void DestroyScriptToolbarRuntimeControls();
+	bool ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);
+	void RefreshScriptToolbarViewMenu();
 	void InitScriptHotkey(ScriptDescriptor&);
 
   // contruction/destruction
@@ -277,7 +281,8 @@ public:
 	PluginExecutionController m_plugin_execution;
 	FbeDiagnostics::DiagnosticCommandService m_diagnostic_commands;
 	void InitializeExtensionUi();
-	void InitializeScripts();
+	bool InitializeScripts();
+	LRESULT OnViewScriptToolbarToggle(WORD, WORD, HWND, BOOL&);
 	void InitializeBundledPlugins();
 	void InitializeRecentDocumentsMenu();
 	void RegisterPluginHotkey(CString guid, UINT cmd, CString name);
@@ -468,6 +473,7 @@ public:
 		COMMAND_RANGE_HANDLER(ID_STATUS_PANE_POSITION, ID_STATUS_PANE_INSERT_MODE, OnStatusPaneVisibility)
 		COMMAND_ID_HANDLER(ID_VIEW_FASTMODE, OnViewFastMode)
 		COMMAND_ID_HANDLER(ID_VIEW_SCRIPT_TOOLBARS_MANAGE, OnViewScriptToolbarsManage)
+		COMMAND_RANGE_HANDLER(ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_FIRST, ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST, OnViewScriptToolbarToggle)
 		COMMAND_ID_HANDLER(ID_VIEW_TREE, OnViewTree)
 		COMMAND_ID_HANDLER(ID_VIEW_DESC, OnViewDesc)
 		COMMAND_ID_HANDLER(ID_VIEW_BODY, OnViewBody)

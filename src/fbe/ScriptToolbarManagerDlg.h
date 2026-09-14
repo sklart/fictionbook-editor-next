@@ -7,7 +7,7 @@ class CScriptToolbarManagerDlg : public CDialogImpl<CScriptToolbarManagerDlg>
 {
 public:
 	enum { IDD = IDD_SCRIPT_TOOLBAR_MANAGER };
-	CScriptToolbarManagerDlg(ScriptToolbarManager& manager, const std::function<bool()>& changed) : m_manager(manager), m_changed(changed) {}
+	CScriptToolbarManagerDlg(ScriptToolbarManager& manager, const std::function<bool(const std::vector<ScriptToolbarDefinition>&, const std::vector<ScriptToolbarDefinition>&)>& changed) : m_manager(manager), m_changed(changed) {}
 	BEGIN_MSG_MAP(CScriptToolbarManagerDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_HANDLER(IDC_SCRIPT_PANELS_LIST, LBN_SELCHANGE, OnSelection)
@@ -20,7 +20,7 @@ public:
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 	END_MSG_MAP()
 private:
-	ScriptToolbarManager& m_manager; std::function<bool()> m_changed; CListBox m_list;
+	ScriptToolbarManager& m_manager; std::function<bool(const std::vector<ScriptToolbarDefinition>&, const std::vector<ScriptToolbarDefinition>&)> m_changed; CListBox m_list;
 	std::vector<ScriptToolbarDefinition> m_lastCommitted;
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&); LRESULT OnSelection(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCreatePanel(WORD, WORD, HWND, BOOL&); LRESULT OnRename(WORD, WORD, HWND, BOOL&); LRESULT OnDelete(WORD, WORD, HWND, BOOL&);

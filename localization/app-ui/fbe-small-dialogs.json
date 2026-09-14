@@ -36,10 +36,21 @@
     "IDD_SETTINGS_IMAGES",
     "IDD_SETTINGS_ADVANCED",
     "IDD_FIND_RESULTS",
-    "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE"
+    "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE",
+    "IDD_SCRIPT_TOOLBAR_MANAGER"
   ],
   "resourceType": "DIALOGEX",
   "strings": {
+    "fbe.script_toolbar_manager.caption": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "CAPTION", "targetId": "", "translations": { "en-US": "Manage script toolbars", "ru-RU": "Управление панелями скриптов" } },
+    "fbe.script_toolbar_manager.name": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "LTEXT", "targetId": "IDC_SCRIPT_PANEL_NAME_LABEL", "translations": { "en-US": "Name:", "ru-RU": "Имя:" } },
+    "fbe.script_toolbar_manager.create": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPT_PANEL_CREATE", "translations": { "en-US": "Create", "ru-RU": "Создать" } },
+    "fbe.script_toolbar_manager.rename": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPT_PANEL_RENAME", "translations": { "en-US": "Rename", "ru-RU": "Переименовать" } },
+    "fbe.script_toolbar_manager.delete": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPT_PANEL_DELETE", "translations": { "en-US": "Delete", "ru-RU": "Удалить" } },
+    "fbe.script_toolbar_manager.up": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPT_PANEL_UP", "translations": { "en-US": "Up", "ru-RU": "Вверх" } },
+    "fbe.script_toolbar_manager.down": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "PUSHBUTTON", "targetId": "IDC_SCRIPT_PANEL_DOWN", "translations": { "en-US": "Down", "ru-RU": "Вниз" } },
+    "fbe.script_toolbar_manager.visible": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "CONTROL", "targetId": "IDC_SCRIPT_PANEL_VISIBLE", "translations": { "en-US": "Visible", "ru-RU": "Показывать" } },
+    "fbe.script_toolbar_manager.close": { "resource": "IDD_SCRIPT_TOOLBAR_MANAGER", "kind": "DEFPUSHBUTTON", "targetId": "IDCANCEL", "translations": { "en-US": "Close", "ru-RU": "Закрыть" } },
+    "fbe.scripts_toolbar_customize.panel": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "LTEXT", "targetId": "IDC_SCRIPTS_TOOLBAR_PANEL_LABEL", "translations": { "en-US": "Panel:", "ru-RU": "Панель:" } },
     "fbe.scripts_toolbar_customize.search": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "LTEXT", "targetId": "IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL", "translations": { "en-US": "Search:", "ru-RU": "Поиск:", "uk-UA": "Пошук:", "de-DE": "Suchen:", "fr-FR": "Rechercher :", "es-ES": "Buscar:", "it-IT": "Cerca:", "pl-PL": "Szukaj:", "pt-PT": "Pesquisar:", "nl-NL": "Zoeken:", "cs-CZ": "Hledat:", "bg-BG": "Търсене:" } },
     "fbe.scripts_toolbar_customize.available": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "LTEXT", "targetId": "IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL", "translations": { "en-US": "Available scripts:", "ru-RU": "Доступные скрипты:", "uk-UA": "Доступні скрипти:", "de-DE": "Verfügbare Skripte:", "fr-FR": "Scripts disponibles :", "es-ES": "Scripts disponibles:", "it-IT": "Script disponibili:", "pl-PL": "Dostępne skrypty:", "pt-PT": "Scripts disponíveis:", "nl-NL": "Beschikbare scripts:", "cs-CZ": "Dostupné skripty:", "bg-BG": "Налични скриптове:" } },
     "fbe.scripts_toolbar_customize.current": { "resource": "IDD_SCRIPTS_TOOLBAR_CUSTOMIZE", "kind": "LTEXT", "targetId": "IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL", "translations": { "en-US": "Toolbar buttons:", "ru-RU": "Кнопки панели:", "uk-UA": "Кнопки панелі:", "de-DE": "Schaltflächen:", "fr-FR": "Boutons de la barre :", "es-ES": "Botones de la barra:", "it-IT": "Pulsanti della barra:", "pl-PL": "Przyciski paska:", "pt-PT": "Botões da barra:", "nl-NL": "Werkbalkknoppen:", "cs-CZ": "Tlačítka panelu:", "bg-BG": "Бутони на лентата:" } },

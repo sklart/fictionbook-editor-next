@@ -22,10 +22,12 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   definitions, а `ScriptToolbarRuntimeCollection` — HWND/rebar state. Focused
   contracts `test-script-identity-contract.ps1`,
   `test-script-toolbars-v2-contract.ps1`,
-  `test-portable-scripts-infrastructure.ps1` и customize-dialog contracts
-  выполнены локально. Полный native build не отмечен как подтверждённый:
-  предыдущая попытка завершилась аварией compiler process на `stdafx.cpp`
-  до компиляции затронутых translation units.
+  `test-portable-scripts-infrastructure.ps1`, customize-dialog и новый
+  `test-script-toolbar-management-contract.ps1` выполнены локально.
+  Проверены transactional persistence в installed/portable mode, empty custom
+  toolbar, lifecycle rebar/HWND, dynamic View menu и сохранение позиции
+  временно отсутствующего UID. Debug и Release Win32 `FBE.vcxproj` собраны
+  локально 15.09.2026.
 
 - Extension startup разделён на scripts, bundled plugins и MRU/recent documents;
   `InitializeExtensionUi` остаётся только тонким coordinator. Runtime test
