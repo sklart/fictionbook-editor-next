@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "SettingsGeneralPage.h"
 #include "..\\..\\Settings.h"
+#include "..\\..\\ThemeManager.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\res1.h"
 
@@ -41,6 +42,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_GENERAL);
 	m_language = GetDlgItem(IDC_LANG);
+	m_originalTheme = _Settings.GetInterfaceTheme();
 	m_interfaceTheme = GetDlgItem(IDC_INTERFACE_THEME);
 	m_genreCatalog = GetDlgItem(IDC_GENRE_CATALOG);
 	m_defaultEncoding = GetDlgItem(IDC_DEFAULT_ENC);
@@ -143,6 +145,17 @@ LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
 	return CancelChanges() ? 0 : 1;
 }
 
+LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&)
+{
+	const int selection = m_interfaceTheme.GetCurSel();
+	if(selection >= INTERFACE_THEME_AUTOMATIC && selection <= INTERFACE_THEME_DARK)
+	{
+		ThemeManager::SetSelectedTheme(static_cast<InterfaceTheme>(selection));
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+	}
+	return 0;
+}
+
 bool CSettingsGeneralPage::Validate() { return true; }
 void CSettingsGeneralPage::Commit()
 {
@@ -169,4 +182,9 @@ void CSettingsGeneralPage::Commit()
 		}
 	}
 }
-bool CSettingsGeneralPage::CancelChanges() { return true; }
+bool CSettingsGeneralPage::CancelChanges()
+{
+	ThemeManager::SetSelectedTheme(m_originalTheme);
+	ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+	return true;
+}

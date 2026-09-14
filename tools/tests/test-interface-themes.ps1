@@ -15,6 +15,9 @@ $mainFrame = Read-ProjectFile 'src\fbe\mainfrm.cpp'
 foreach($required in @('AppsUseLightTheme', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
 }
+foreach($required in @('THEME_COLOR_BORDER', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_SECONDARY_TEXT', 'THEME_COLOR_DISABLED_TEXT', 'THEME_COLOR_SELECTION_BACKGROUND', 'THEME_COLOR_SELECTION_TEXT', 'THEME_COLOR_HOVER', 'THEME_COLOR_PRESSED', 'THEME_COLOR_FOCUS', 'THEME_COLOR_ACCENT', 'THEME_COLOR_ERROR', 'THEME_COLOR_WARNING', 'THEME_COLOR_SUCCESS')) {
+    if($managerHeader -notlike "*$required*") { throw "ThemeManager.h does not expose semantic colour $required." }
+}
 if($managerHeader -notlike '*INTERFACE_THEME_AUTOMATIC*' -or $managerHeader -notlike '*WindowBrush*') {
     throw 'Theme manager must expose Automatic and shared colour resources.'
 }
@@ -28,5 +31,10 @@ if($settings -notlike '*ThemeManager::IsDark()*') { throw 'Source Automatic must
 if($settings -like '*GetXmlSrcThemeColor*AppsUseLightTheme*') { throw 'Source Automatic must not read Windows theme directly.' }
 if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -notlike '*OnThemeChanged*') {
     throw 'Main frame does not dynamically refresh theme changes.'
+}
+$generalPageHeader = Read-ProjectFile 'src\fbe\settings\ui\SettingsGeneralPage.h'
+if($generalPage -notlike '*OnInterfaceThemeChanged*' -or $generalPage -notlike '*ThemeManager::ApplyToAllThreadWindows*' -or
+    $generalPage -notlike '*ThemeManager::SetSelectedTheme(m_originalTheme)*' -or $generalPageHeader -notlike '*CBN_SELCHANGE, OnInterfaceThemeChanged*') {
+    throw 'Settings interface-theme live preview and Cancel rollback are missing.'
 }
 Write-Host 'Контракт интерфейсных тем прошёл проверку.'
