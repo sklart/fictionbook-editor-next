@@ -15,6 +15,7 @@
 #include "FBDoc.h"
 #include "Scintilla.h"
 #include "Settings.h"
+#include "ThemeManager.h"
 #include "settings\\EditorBackgrounds.h"
 #include "ElementDescMnr.h"
 #include "StartupTrace.h"
@@ -2141,6 +2142,18 @@ bool Doc::SaveRecoveryCopy(const CString& filename)
 		return false;
 	}
 }
+
+static DWORD ResolveBodyEditorColor(DWORD configuredColor, int systemColor, COLORREF darkThemeColor)
+{
+	if(configuredColor != CLR_DEFAULT)
+		return configuredColor;
+	// Accessibility takes precedence over application appearance.  In
+	// particular, do not substitute FBE's dark palette for a High Contrast
+	// scheme selected by the user.
+	if(IsHighContrastEnabled() || !ThemeManager::IsDark())
+		return ::GetSysColor(systemColor);
+	return darkThemeColor;
+}
 bool Doc::SerializeToMemory(std::vector<unsigned char>& output, FictionBookFileType targetType)
 {
 	output.clear();
@@ -2333,15 +2346,11 @@ void  Doc::ApplyConfChanges() {
       hs->fontSize=(const wchar_t *)fss;
     }
 
-    fs = _Settings.GetColorFG();
-    if (fs==CLR_DEFAULT)
-      fs=::GetSysColor(COLOR_WINDOWTEXT);
+    fs = ResolveBodyEditorColor(_Settings.GetColorFG(), COLOR_WINDOWTEXT, ThemeManager::TextColor());
     fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
     hs->color=(const wchar_t *)fss;
 
-    fs = _Settings.GetColorBG();
-    if (fs==CLR_DEFAULT)
-      fs=::GetSysColor(COLOR_WINDOW);
+    fs = ResolveBodyEditorColor(_Settings.GetColorBG(), COLOR_WINDOW, ThemeManager::WindowColor());
     fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
     hs->backgroundColor=(const wchar_t *)fss;
 

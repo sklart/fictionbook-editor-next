@@ -5547,7 +5547,10 @@ void CMainFrame::RefreshStatusMainPane()
 
 LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
-	// BODY is intentionally excluded: its document colours are user content.
+	// Apply only resolved defaults; explicit BODY colours and background images
+	// remain document-editor settings and are preserved by Doc::ApplyConfChanges.
+	if(m_doc)
+		m_doc->ApplyConfChanges();
 	if(_Settings.GetXmlSrcColorPalette() == XML_SRC_COLOR_PALETTE_SYSTEM)
 		ApplyXmlSourceEditorChanges(false);
 	if(m_document_tree.IsWindow() && m_document_tree.m_tree.m_tree.IsWindow())
