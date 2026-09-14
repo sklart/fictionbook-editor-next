@@ -1684,7 +1684,8 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 	std::sort(commands.begin(), commands.end(), [](const ScriptsToolbarCommand& left, const ScriptsToolbarCommand& right) {
 		return left.name.CompareNoCase(right.name) < 0;
 	});
-	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings);
+	std::vector<CString> panelNames; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) panelNames.push_back(m_scriptToolbars.Items()[index].definition.name);
+	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings, panelNames);
 	dialog.DoModal(m_hWnd);
 }
 

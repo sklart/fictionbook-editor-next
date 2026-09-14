@@ -17,7 +17,7 @@ class CScriptsToolbarCustomizeDlg : public CDialogImpl<CScriptsToolbarCustomizeD
 public:
 	enum { IDD = IDD_SCRIPTS_TOOLBAR_CUSTOMIZE };
 	CScriptsToolbarCustomizeDlg(HWND toolbar, const std::vector<ScriptsToolbarCommand>& available,
-		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings);
+		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings, const std::vector<CString>& panels);
 	~CScriptsToolbarCustomizeDlg();
 
 	BEGIN_MSG_MAP(CScriptsToolbarCustomizeDlg)
@@ -47,6 +47,7 @@ private:
 	const std::vector<ScriptsToolbarCommand>& m_available;
 	CSimpleArray<TBBUTTON> m_defaults;
 	CSettings& m_settings;
+	const std::vector<CString>& m_panels;
 	CListBox m_availableList;
 	CListBox m_currentList;
 	CComboBox m_panelList;
