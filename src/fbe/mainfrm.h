@@ -19,6 +19,7 @@
 #include "plugins\\PluginExecutionController.h"
 #include "diagnostics\\DiagnosticCommandService.h"
 #include "toolbars\\ScriptToolbarRuntime.h"
+#include "toolbars\\ScriptToolbarManager.h"
 
 #include "atlctrlsext.h"
 
@@ -148,6 +149,7 @@ public:
 	int			m_table_toolbar_image_indices[8];
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
 	ScriptToolbarRuntimeCollection m_scriptToolbars;
+	ScriptToolbarManager m_scriptToolbarManager;
 	int			m_scriptsToolbarBaseImageCount;
 	CReBarCtrl		m_rebar;			// toolbars
 	ContextAttributeBars m_contextAttributeBars;
@@ -878,6 +880,7 @@ public:
   }
 
 	void ShowScriptsToolbarCustomizeDialog();
+	void ShowScriptToolbarManagerDialog();
 
   LRESULT OnGoToReference(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
   {

@@ -38,6 +38,7 @@
 #include "plugins\\PluginApiV2.h"
 #include "UiMetrics.h"
 #include "ScriptsToolbarCustomizeDlg.h"
+#include "ScriptToolbarManagerDlg.h"
 #include "scripts\\ScriptCatalog.h"
 #include "scripts\\ScriptCommandRegistry.h"
 #include "source\\BodySourceSelectionTransfer.h"
@@ -1686,6 +1687,20 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 	});
 	std::vector<ScriptsToolbarTarget> panels; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) if(m_scriptToolbars.Items()[index].window != NULL) { ScriptsToolbarTarget target = { m_scriptToolbars.Items()[index].definition.name, m_scriptToolbars.Items()[index].window }; panels.push_back(target); }
 	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings, panels);
+	dialog.DoModal(m_hWnd);
+}
+
+void CMainFrame::ShowScriptToolbarManagerDialog()
+{
+	m_scriptToolbarManager.Collection().Items().clear();
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) m_scriptToolbarManager.Collection().Items().push_back(m_scriptToolbars.Items()[index].definition);
+	CScriptToolbarManagerDlg dialog(m_scriptToolbarManager, [this]() {
+		if(DeploymentContext::RegistryPersistenceAllowed()) return false;
+		PortableToolbarLayout layout; PortableToolbarStore::Load(layout);
+		layout.scriptToolbars = m_scriptToolbarManager.Collection().Items(); layout.scriptsToolbarPresent = true;
+		if(!PortableToolbarStore::Save(layout)) return false;
+		InitializeScripts(); return true;
+	});
 	dialog.DoModal(m_hWnd);
 }
 
