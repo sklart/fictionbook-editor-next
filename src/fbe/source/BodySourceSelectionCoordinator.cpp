@@ -117,12 +117,12 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 	MSHTML::IHTMLElementPtr beginElement, endElement;
 	document.m_body.GetSelectionInfo((MSHTML::IHTMLElementPtr*)(&beginElement),
 		(MSHTML::IHTMLElementPtr*)(&endElement), &beginCharacter, &endCharacter, 0);
-	if(profiler) profiler->Mark("Body selection extraction");
 	if(beginElement == endElement && selection.BodyRange())
 	{
 		const CString text((const wchar_t*)selection.BodyRange()->text);
 		if(!text.IsEmpty()) endCharacter = beginCharacter + text.GetLength();
 	}
+	if(profiler) profiler->Mark("Body selection extraction");
 	U::DomPath beginPath, endPath;
 	bool pathAvailable = false;
 	bool sameElement = beginElement == endElement;
@@ -146,7 +146,7 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 		root = root->nextSibling;
 	}
 	if(profiler) profiler->Mark("DomPath construction");
-	CString serialized(serializedSource);
+	const CString& serialized = serializedSource;
 	int beginPosition = -1, endPosition = -1;
 	bool hasSelectionText = false;
 	if(selection.BodyRange())
@@ -179,7 +179,7 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 		beginPosition = beginPath.GetNodeFromText(text, beginCharacter);
 		endPosition = endPath.GetNodeFromText(text, endCharacter);
 	}
-	if(profiler) profiler->Mark("selection DOM lookup");
+	if(profiler) profiler->Mark("selection lookup and matching");
 	int beginByte = 0, endByte = 0;
 	if(beginPosition >= 0 && endPosition >= 0)
 	{
@@ -187,7 +187,7 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 		endByte = ::WideCharToMultiByte(CP_UTF8, 0, serialized, endPosition, NULL, 0, NULL, NULL);
 		selection.BodySource().bodyToSourceTransferred = true;
 	}
-	if(profiler) profiler->Mark("selection matching");
+	if(profiler) profiler->Mark("UTF-8 selection offset conversion");
 	selection.BodySource().sourceStart = beginByte;
 	selection.BodySource().sourceEnd = endByte;
 	source.SendMessage(SCI_SETSELECTIONSTART, beginByte);
