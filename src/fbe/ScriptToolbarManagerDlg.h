@@ -21,6 +21,7 @@ public:
 	END_MSG_MAP()
 private:
 	ScriptToolbarManager& m_manager; std::function<bool()> m_changed; CListBox m_list;
+	std::vector<ScriptToolbarDefinition> m_lastCommitted;
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&); LRESULT OnSelection(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCreatePanel(WORD, WORD, HWND, BOOL&); LRESULT OnRename(WORD, WORD, HWND, BOOL&); LRESULT OnDelete(WORD, WORD, HWND, BOOL&);
 	LRESULT OnUp(WORD, WORD, HWND, BOOL&); LRESULT OnDown(WORD, WORD, HWND, BOOL&); LRESULT OnVisible(WORD, WORD, HWND, BOOL&); LRESULT OnClose(WORD, WORD, HWND, BOOL&);
