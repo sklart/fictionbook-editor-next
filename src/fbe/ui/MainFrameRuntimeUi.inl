@@ -88,7 +88,8 @@ LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled)
 {
 	const bool isCommandToolbar = pnmh->hwndFrom == m_CmdToolbar.m_hWnd;
-	if (!isCommandToolbar)
+	const bool isMenuBar = pnmh->hwndFrom == m_MenuBar.m_hWnd;
+	if (!isCommandToolbar && !isMenuBar)
 	{
 		bHandled = FALSE;
 		return 0;

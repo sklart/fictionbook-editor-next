@@ -56,6 +56,15 @@ bool IsGroupBox(HWND window)
 		((::GetWindowLongPtrW(window, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX);
 }
 
+bool UsesClassicSurfacePalette(HWND window)
+{
+	// Explorer visual styles ignore the colours set through the common-control
+	// messages for rebar/toolbar/status surfaces. Disable them only for these
+	// surfaces in dark mode; ordinary controls keep native modern rendering.
+	return IsClass(window, TOOLBARCLASSNAMEW) || IsClass(window, REBARCLASSNAMEW) ||
+		IsClass(window, STATUSCLASSNAMEW);
+}
+
 void PaintDarkGroupBox(HWND window)
 {
 	PAINTSTRUCT paint = {};
@@ -162,7 +171,9 @@ void ApplyPreferredAppMode(bool dark)
 	HMODULE uxtheme = ::LoadLibraryW(L"uxtheme.dll");
 	if(!uxtheme) return;
 	SetPreferredAppModeFn setMode = reinterpret_cast<SetPreferredAppModeFn>(::GetProcAddress(uxtheme, MAKEINTRESOURCEA(135)));
-	if(setMode) setMode(dark ? 1 /* AllowDark */ : 0 /* Default */);
+	// AllowDark leaves popup menus light when FBE is explicitly Dark but Windows
+	// itself is light. ForceDark makes FBE's selected theme govern its menus.
+	if(setMode) setMode(dark ? 2 /* ForceDark */ : 0 /* Default */);
 	// Rebuild popup-menu rendering after changing the preferred app mode.  This
 	// export is available only on supported Windows 10/11 builds, so resolving
 	// it dynamically keeps the Windows 7 path untouched.
@@ -318,7 +329,8 @@ void ApplyToWindow(HWND window)
 	if(!::IsWindow(window)) return;
 	const bool dark = IsDark() && !IsHighContrastEnabled();
 	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
-	::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
+	::SetWindowTheme(window, dark && UsesClassicSurfacePalette(window) ? L"" :
+		(dark ? L"DarkMode_Explorer" : L"Explorer"), NULL);
 	ApplyModernTitleBar(window, dark);
 	// Common controls reset custom colours while processing WM_THEMECHANGED.
 	// Set their palette only after that notification has completed.
