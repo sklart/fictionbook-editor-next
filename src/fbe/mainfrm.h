@@ -107,43 +107,6 @@ public:
 	}
 };
 
-class CThemedCommandBar : public WTL::CCommandBarCtrlImpl<CThemedCommandBar>
-{
-public:
-	DECLARE_WND_SUPERCLASS(_T("FBE_ThemedCommandBar"), GetWndClassName())
-
-	BEGIN_MSG_MAP(CThemedCommandBar)
-		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
-		ALT_MSG_MAP(1)
-			NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnParentCustomDraw)
-		CHAIN_MSG_MAP(WTL::CCommandBarCtrlImpl<CThemedCommandBar>)
-	END_MSG_MAP()
-
-	LRESULT OnEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
-	{
-		if(!ThemeManager::IsDark()) { bHandled = FALSE; return 0; }
-		RECT client = {}; GetClientRect(&client);
-		::FillRect(reinterpret_cast<HDC>(wParam), &client, ThemeManager::ControlBrush());
-		return 1;
-	}
-
-	LRESULT OnParentCustomDraw(int, LPNMHDR notification, BOOL& bHandled)
-	{
-		if(notification->hwndFrom != m_hWnd || !ThemeManager::IsDark()) { bHandled = FALSE; return CDRF_DODEFAULT; }
-		NMTBCUSTOMDRAW* draw = reinterpret_cast<NMTBCUSTOMDRAW*>(notification);
-		if(draw->nmcd.dwDrawStage == CDDS_PREPAINT)
-			return CDRF_NOTIFYITEMDRAW;
-		if(draw->nmcd.dwDrawStage != CDDS_ITEMPREPAINT) { bHandled = FALSE; return CDRF_DODEFAULT; }
-		const bool disabled = (draw->nmcd.uItemState & (CDIS_DISABLED | CDIS_GRAYED)) != 0;
-		draw->clrText = disabled ? ThemeManager::DisabledTextColor() : ThemeManager::TextColor();
-		draw->clrTextHighlight = ThemeManager::SelectionTextColor();
-		draw->clrBtnFace = ThemeManager::ControlColor();
-		draw->clrBtnHighlight = ThemeManager::HoverColor();
-		draw->clrHighlightHotTrack = ThemeManager::HoverColor();
-		return CDRF_DODEFAULT;
-	}
-};
-
 class CMainFrame :	public CFrameWindowImpl<CMainFrame>,
 					public CCustomizableToolBarCommands<CMainFrame>,
 					public CUpdateUI<CMainFrame>,
@@ -178,7 +141,7 @@ public:
   wchar_t strINS[MAX_LOAD_STRING + 1];
   wchar_t strOVR[MAX_LOAD_STRING + 1];
 
-	CThemedCommandBar	m_MenuBar;			// menu bar
+	CCommandBarCtrl	m_MenuBar;			// menu bar
 	CToolBarCtrl	m_CmdToolbar;		// commands toolbar
 	CImageList		m_commandToolbarImages;	// application-owned command toolbar image list
 	int			m_table_toolbar_image_indices[8];
