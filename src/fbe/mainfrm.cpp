@@ -1776,6 +1776,10 @@ void CMainFrame::SavePortableToolbarLayout()
 {
 	if(DeploymentContext::RegistryPersistenceAllowed()) return;
 	PortableToolbarLayout layout;
+	// Preserve v2 definitions that do not currently have a legacy WTL control.
+	// This also keeps missing-script/orphaned UID entries round-trippable.
+	PortableToolbarLayout persisted;
+	if(PortableToolbarStore::Load(persisted)) layout.scriptToolbars = persisted.scriptToolbars;
 	layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
 	ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands);
 	ToolbarLayoutAdapter::Capture(m_ScriptsToolbar, layout.scripts);
@@ -1787,6 +1791,10 @@ void CMainFrame::SavePortableToolbarLayout()
 		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
 			if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).commandId == scriptId) { item.command = 0; item.scriptUid = m_scripts.Menu().Item(scriptIndex).uid; break; }
 	}
+	bool mainFound = false;
+	for(size_t index = 0; index < layout.scriptToolbars.size(); ++index)
+		if(layout.scriptToolbars[index].id == L"scripts-main") { layout.scriptToolbars[index].items = layout.scripts; mainFound = true; break; }
+	if(!mainFound) { ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; main.items = layout.scripts; layout.scriptToolbars.push_back(main); }
 	layout.lastScript = m_scripts.LastScriptUid();
 	PortableToolbarStore::Save(layout);
 }
