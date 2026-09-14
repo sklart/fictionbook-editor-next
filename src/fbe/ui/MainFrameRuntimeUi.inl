@@ -87,7 +87,9 @@ LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 
 LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled)
 {
-	if (pnmh->hwndFrom != m_CmdToolbar.m_hWnd)
+	const bool isCommandToolbar = pnmh->hwndFrom == m_CmdToolbar.m_hWnd;
+	const bool isMenuBar = pnmh->hwndFrom == m_MenuBar.m_hWnd;
+	if (!isCommandToolbar && !isMenuBar)
 	{
 		bHandled = FALSE;
 		return 0;
@@ -106,7 +108,7 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		customDraw->clrBtnHighlight = ThemeManager::HoverColor();
 		customDraw->clrHighlightHotTrack = ThemeManager::HoverColor();
 		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
-		if (IsTableToolbarCommand(commandId) &&
+		if (isCommandToolbar && IsTableToolbarCommand(commandId) &&
 			disabled)
 		{
 			const int imageIndex = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, commandId, 0));
@@ -134,11 +136,11 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		// The legacy command bitmaps contain a number of nearly-black strokes.
 		// Blend a light foreground over the normal image in dark mode so these
 		// strokes remain visible without replacing application-owned resources.
-		if (ThemeManager::IsDark() && !disabled)
+		if (isCommandToolbar && ThemeManager::IsDark() && !disabled)
 			return CDRF_NOTIFYPOSTPAINT;
 	}
 
-	if (customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark())
+	if (isCommandToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark())
 	{
 		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
 		const int imageIndex = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, commandId, 0));

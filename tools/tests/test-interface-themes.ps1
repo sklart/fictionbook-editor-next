@@ -20,7 +20,7 @@ foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChang
 foreach($required in @('THEME_COLOR_BORDER', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_SECONDARY_TEXT', 'THEME_COLOR_DISABLED_TEXT', 'THEME_COLOR_SELECTION_BACKGROUND', 'THEME_COLOR_SELECTION_TEXT', 'THEME_COLOR_HOVER', 'THEME_COLOR_PRESSED', 'THEME_COLOR_FOCUS', 'THEME_COLOR_ACCENT', 'THEME_COLOR_ERROR', 'THEME_COLOR_WARNING', 'THEME_COLOR_SUCCESS')) {
     if($managerHeader -notlike "*$required*") { throw "ThemeManager.h does not expose semantic colour $required." }
 }
-foreach($required in @('SetWindowSubclass', 'BS_GROUPBOX', 'PaintDarkGroupBox', 'WM_CTLCOLORSTATIC', 'WM_CTLCOLORBTN', 'WM_CTLCOLOREDIT', 'WC_TREEVIEWW', 'TVM_SETLINECOLOR', 'WC_LISTVIEWW', 'WC_TABCONTROLW', 'STATUSCLASSNAMEW', 'REBARCLASSNAMEW', 'EM_SETBKGNDCOLOR')) {
+foreach($required in @('SetWindowSubclass', 'BS_GROUPBOX', 'PaintDarkGroupBox', 'IsToolbarSurface', 'TOOLBARCLASSNAMEW', 'WM_CTLCOLORSTATIC', 'WM_CTLCOLORBTN', 'WM_CTLCOLOREDIT', 'WC_TREEVIEWW', 'TVM_SETLINECOLOR', 'WC_LISTVIEWW', 'WC_TABCONTROLW', 'STATUSCLASSNAMEW', 'REBARCLASSNAMEW', 'EM_SETBKGNDCOLOR')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not apply the semantic palette to $required." }
 }
 if($managerHeader -notlike '*INTERFACE_THEME_AUTOMATIC*' -or $managerHeader -notlike '*WindowBrush*') {
@@ -40,7 +40,7 @@ if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -no
 foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_BORDER')) {
     if($mainFrameHeader -notlike "*$required*") { throw "Main frame does not theme splitter separator $required." }
 }
-foreach($required in @('ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {
+foreach($required in @('ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'isMenuBar', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {
     if($toolbarUi -notlike "*$required*") { throw "Toolbar custom draw does not apply semantic colour $required." }
 }
 $generalPageHeader = Read-ProjectFile 'src\fbe\settings\ui\SettingsGeneralPage.h'
