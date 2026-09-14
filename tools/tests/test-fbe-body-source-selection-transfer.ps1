@@ -35,8 +35,10 @@ function Assert-Contains {
     }
 }
 
-Assert-Contains $source 'document.m_body.GetSelectionInfo(' `
-    'переход Body → Source должен читать границы выделения из HTML DOM'
+Assert-Contains $source 'FbeDom::SelectionRangeMapper::GetSelectionInfo(document.m_body.Document()' `
+	'переход Body → Source должен читать границы выделения через DOM mapper'
+Assert-Contains $source 'FbeDom::SelectionRangeMapper::SetSelection(document.m_body.Document()' `
+	'переход Source → Body должен восстанавливать диапазон через DOM mapper'
 Assert-Contains $source 'SCI_SETSELECTIONSTART, beginByte' `
     'переход Body → Source должен устанавливать начало выделения в Scintilla'
 Assert-Contains $source 'SCI_SETSELECTIONEND, endByte' `

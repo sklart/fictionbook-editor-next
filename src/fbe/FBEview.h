@@ -733,8 +733,6 @@ public:
     return SelectionContainerImp();
   }
 
-  bool GetSelectionInfo(MSHTML::IHTMLElementPtr *begin, MSHTML::IHTMLElementPtr *end, int* begin_char, int* end_char, MSHTML::IHTMLTxtRangePtr range);
-
   bool SelectionHasTags(wchar_t* elem);
   MSHTML::IHTMLElementPtr   SelectionAnchor();
   MSHTML::IHTMLElementPtr   SelectionAnchor(MSHTML::IHTMLElementPtr cur);
@@ -784,12 +782,6 @@ public:
 	bool				ReturnToLinkNavigationOrigin();
 	void				ClearLinkNavigationHistory();
 	bool				NavigateInternalLink(MSHTML::IHTMLElementPtr link, const CString& targetId);
-  MSHTML::IHTMLTxtRangePtr	SetSelection(MSHTML::IHTMLElementPtr begin, MSHTML::IHTMLElementPtr end, int begin_pos, int end_pos);
-  int				GetRelationalCharPos(MSHTML::IHTMLDOMNodePtr node, int pos);
-  int				GetRealCharPos(MSHTML::IHTMLDOMNodePtr node, int pos);
-  int				CountNodeChars(MSHTML::IHTMLDOMNodePtr node);
-  int				GetRangePos(const MSHTML::IHTMLTxtRangePtr& range, MSHTML::IHTMLElementPtr &element, int &pos);  
-
   // script calls
   IDispatchPtr	Call(const wchar_t *name);
   bool		bCall(const wchar_t *name, int nParams, VARIANT* params);

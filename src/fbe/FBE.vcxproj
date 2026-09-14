@@ -355,6 +355,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
 	<ClCompile Include="view\VisualDomNormalizer.cpp" />
+	<ClCompile Include="dom\SelectionRangeMapper.cpp" />
 	<ClCompile Include="structure\BodyStructuralEditor.cpp" />
 	<ClCompile Include="structure\StructuralTrace.cpp" />
     <ClCompile Include="table\TableGrid.cpp" />
@@ -519,6 +520,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="GLLogo.h" />
     <ClInclude Include="ImageImport.h" />
     <ClInclude Include="image\ImageDocumentInserter.h" />
+	<ClInclude Include="dom\SelectionRangeMapper.h" />
 	<ClInclude Include="clipboard\ClipboardPastePreparer.h" />
     <ClInclude Include="navigation\LinkDomNavigation.h" />
 	<ClInclude Include="navigation\LinkNavigationState.h" />

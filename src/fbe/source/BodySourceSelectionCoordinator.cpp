@@ -7,6 +7,7 @@
 #include "../utils/utils.h"
 #include "../FBDoc.h"
 #include "../view/EditorSelectionState.h"
+#include "../dom/SelectionRangeMapper.h"
 
 void BodySourceSelectionCoordinator::MapSourceSelectionToBody(FB::Doc& document,
 	MSXML2::IXMLDOMDocumentPtr xml, const SourceDocumentText& source, EditorSelectionState& selection)
@@ -82,7 +83,7 @@ void BodySourceSelectionCoordinator::MapSourceSelectionToBody(FB::Doc& document,
 			{
 				MSHTML::IHTMLElementPtr htmlBegin = beginPath.GetNodeFromHTMLDOM(root);
 				MSHTML::IHTMLElementPtr htmlEnd = caret ? htmlBegin : endPath.GetNodeFromHTMLDOM(root);
-				if(htmlBegin && htmlEnd) { document.m_body.GoTo(htmlBegin); selection.BodyRange() = document.m_body.SetSelection(htmlBegin, htmlEnd, beginCharacter, endCharacter); selection.BodySource().sourceToBodyTransferred = (bool)selection.BodyRange(); }
+				if(htmlBegin && htmlEnd) { document.m_body.GoTo(htmlBegin); selection.BodyRange() = FbeDom::SelectionRangeMapper::SetSelection(document.m_body.Document(), htmlBegin, htmlEnd, beginCharacter, endCharacter); selection.BodySource().sourceToBodyTransferred = (bool)selection.BodyRange(); }
 				break;
 			}
 			root = root->nextSibling;
@@ -115,7 +116,7 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 	selection.BodySource().bodyToSourceTransferred = false;
 	int beginCharacter = 0, endCharacter = 0, selectedBodyIndex = -1;
 	MSHTML::IHTMLElementPtr beginElement, endElement;
-	document.m_body.GetSelectionInfo((MSHTML::IHTMLElementPtr*)(&beginElement),
+	FbeDom::SelectionRangeMapper::GetSelectionInfo(document.m_body.Document(), (MSHTML::IHTMLElementPtr*)(&beginElement),
 		(MSHTML::IHTMLElementPtr*)(&endElement), &beginCharacter, &endCharacter, 0);
 	if(beginElement == endElement && selection.BodyRange())
 	{
