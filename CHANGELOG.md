@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Source XML snapshot, сериализация/применение документа и обмен с редактором
+  вынесены из `CMainFrame` в `SourceViewSession`; двустороннее сопоставление
+  выделения Body/Source теперь принадлежит `BodySourceSelectionCoordinator`.
+  Runtime-путь и безопасный отказ для некорректного Source сохранены.
+
 - Переходы между Body, Description и Source теперь координирует
   `EditorViewController`: он проверяет prerequisites, fail-closed commit
   Source, подготовку Source и только затем фиксирует `EditorViewState`.

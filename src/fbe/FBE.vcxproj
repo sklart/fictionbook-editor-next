@@ -304,6 +304,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     </ClCompile>
       <ClCompile Include="source\Fb2SourceAutocomplete.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="source\SourceDocumentTransfer.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+	<ClCompile Include="source\SourceViewSession.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+	<ClCompile Include="source\BodySourceSelectionCoordinator.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="view\EditorViewState.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="view\EditorViewController.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="view\EditorViewTransition.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
@@ -490,6 +492,8 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="source\BodySourceSelectionState.h" />
 	<ClInclude Include="source\BodySourceSelectionTransfer.h" />
 	<ClInclude Include="source\SourceDocumentTransfer.h" />
+	<ClInclude Include="source\SourceViewSession.h" />
+	<ClInclude Include="source\BodySourceSelectionCoordinator.h" />
 	<ClInclude Include="table\TableGrid.h" />
 	<ClInclude Include="table\TableStructuralEditor.h" />
 	<ClInclude Include="view\EditorSelectionState.h" />

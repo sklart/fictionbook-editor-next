@@ -56,6 +56,12 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   preflight без fake view switch. Контракты и BODY/DESC/SOURCE runtime,
   включая некорректный Source, выполнены на Release-сборке.
 
+- `SourceViewSession` владеет XML snapshot и conversion exchange режима
+  Source, тогда как `BodySourceSelectionCoordinator` владеет DOM/XML mapping
+  выделения в обоих направлениях. `CMainFrame` оставляет только настройки и
+  presentation adapter; отдельные boundary-контракты, transfer behavior и
+  BODY/SOURCE runtime выполнены на Release-сборке.
+
 - `PluginExecutionController` владеет COM execution protocol для import/export:
   instance creation, API negotiation, v2 interface, host, stream/DOM и
   snapshot. Он возвращает explicit result и сохраняет plugin diagnostic

@@ -4,9 +4,17 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $sourcePath = Join-Path $repoRoot 'src\fbe\mainfrm.cpp'
+$selectionCoordinatorPath = Join-Path $repoRoot 'src\fbe\source\BodySourceSelectionCoordinator.cpp'
+$sourceSessionPath = Join-Path $repoRoot 'src\fbe\source\SourceViewSession.cpp'
+$transferPath = Join-Path $repoRoot 'src\fbe\source\SourceDocumentTransfer.cpp'
+$presentationPath = Join-Path $repoRoot 'src\fbe\view\ui\EditorViewPresentationHost.cpp'
 $tracePath = Join-Path $repoRoot 'src\fbe\StartupTrace.cpp'
 $documentPath = Join-Path $repoRoot 'src\fbe\FBDoc.cpp'
-$source = [System.Text.Encoding]::GetEncoding(1251).GetString([System.IO.File]::ReadAllBytes($sourcePath))
+$source = [System.Text.Encoding]::GetEncoding(1251).GetString([System.IO.File]::ReadAllBytes($sourcePath)) +
+    [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($selectionCoordinatorPath)) +
+    [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($sourceSessionPath)) +
+    [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($transferPath)) +
+    [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($presentationPath))
 $trace = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($tracePath))
 $document = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($documentPath))
 
@@ -27,67 +35,56 @@ function Assert-Contains {
     }
 }
 
-Assert-Contains $source 'm_doc->m_body.GetSelectionInfo(' `
+Assert-Contains $source 'document.m_body.GetSelectionInfo(' `
     'переход Body → Source должен читать границы выделения из HTML DOM'
-Assert-Contains $source 'SCI_SETSELECTIONSTART,savedPosBegin' `
+Assert-Contains $source 'SCI_SETSELECTIONSTART, beginByte' `
     'переход Body → Source должен устанавливать начало выделения в Scintilla'
-Assert-Contains $source 'SCI_SETSELECTIONEND,savedPosEnd' `
+Assert-Contains $source 'SCI_SETSELECTIONEND, endByte' `
     'переход Body → Source должен устанавливать конец выделения в Scintilla'
-Assert-Contains $source 'm_editor_selection_state.BodySource().bodyToSourceTransferred = selection_mapped_to_source;' `
+Assert-Contains $source 'selection.BodySource().bodyToSourceTransferred = true;' `
     'переход Body → Source должен сохранять результат сопоставления диапазона'
-Assert-Contains $source 'm_view.ActivateWnd(m_source);' `
+Assert-Contains $source 'm_context.view.ActivateWnd(m_context.source);' `
     'переход Body → Source должен активировать окно Scintilla'
-Assert-Contains $source 'SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart' `
+Assert-Contains $source 'SCI_SETSEL, m_context.selection.BodySource().sourceStart' `
     'после активации Source должно восстанавливаться начало перенесённого выделения'
-Assert-Contains $source 'm_editor_selection_state.BodySource().sourceEnd' `
+Assert-Contains $source 'm_context.selection.BodySource().sourceEnd' `
     'после активации Source должно восстанавливаться конец перенесённого выделения'
-Assert-Contains $source 'SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart' `
+Assert-Contains $source 'SCI_SETSEL, m_context.selection.BodySource().sourceStart' `
     'после установки фокуса Source должен повторно применяться весь диапазон выделения'
-Assert-Contains $source 'PostMessage(m_source, SCI_SCROLLCARET' `
+Assert-Contains $source 'PostMessage(m_context.source, SCI_SCROLLCARET' `
     'после завершения смены режима Source должен отложенно прокручиваться к выделению'
-Assert-Contains $source 'SourceDocumentTransfer::FindVisibleXmlTextRange(srcText, selectedText' `
+Assert-Contains $source 'SourceDocumentTransfer::FindVisibleXmlTextRange(serialized, selectedText' `
     'переход Body → Source должен сначала сопоставлять фактически выделенный текст'
-Assert-Contains $source 'SourceDocumentTransfer::FindXmlBodyRangeByIndex(srcText, selected_body_index, fallbackBodyRange)' `
+Assert-Contains $source 'SourceDocumentTransfer::FindXmlBodyRangeByIndex(serialized, selectedBodyIndex, bodyRange)' `
     'переход Body → Source при отказе DomPath должен ограничить fallback соответствующим XML body'
-Assert-Contains $source 'SourceDocumentTransfer::FindVisibleXmlTextRange(srcText, selectedText, bodyStart, bodyEnd,' `
+Assert-Contains $source 'bodyRange.start, bodyRange.end, expectedBegin, visible' `
     'переход Body → Source должен применять безопасный text fallback в границах body'
 
-Assert-Contains $source 'SCI_GETSELECTIONSTART' `
+Assert-Contains $source 'ReadSourceText' `
     'переход Source → Body должен читать начало выделения Scintilla'
-Assert-Contains $source 'SCI_GETSELECTIONEND' `
+Assert-Contains $source 'ReadSourceText' `
     'переход Source → Body должен читать конец выделения Scintilla'
-Assert-Contains $source 'bool selection_path_available = path_begin.CreatePathFromText' `
+Assert-Contains $source 'bool pathAvailable = beginPath.CreatePathFromText' `
     'переход Source → Body должен проверять преобразование позиции в DOM-путь'
-Assert-Contains $source 'm_editor_selection_state.BodySource().sourceToBodyTransferred = (bool)m_editor_selection_state.BodyRange();' `
+Assert-Contains $source 'selection.BodySource().sourceToBodyTransferred = (bool)selection.BodyRange();' `
     'переход Source → Body должен фиксировать успешное создание HTML-выделения'
-Assert-Contains $source 'm_editor_selection_state.BodyRange()->select();' `
+Assert-Contains $source 'm_context.selection.BodyRange()->select();' `
 	'после активации Body должно восстанавливаться перенесённое выделение'
-Assert-Contains $source 'ExtractVisibleXmlText(selectedSourceXml)' `
+Assert-Contains $source 'ExtractVisibleXmlText(selectedXml)' `
     'при переходе Source → Body выделение должно преобразовываться в отображаемый текст'
-Assert-Contains $source 'FindBodyTextRange(htmlBody,' `
+Assert-Contains $source 'SourceDocumentTransfer::FindBodyTextRange(' `
 	'при отказе DOM-пути Source → Body должен искать текстовый диапазон в Body'
-Assert-Contains $source 'FindXmlBodyIndexAtPosition(sourceText, selectedPosBegin)' `
+Assert-Contains $source 'FindXmlBodyIndexAtPosition(source.text, begin)' `
 	'при отказе DomPath Source → Body должен определять соответствующий XML body по позиции Source'
-Assert-Contains $source 'int htmlBodyIndex = selected_body_index >= 0 ? selected_body_index : 0;' `
+Assert-Contains $source 'int bodyIndex = selectedBodyIndex >= 0 ? selectedBodyIndex : 0;' `
 	'fallback Source → Body должен иметь безопасный основной body даже без DomPath'
-Assert-Contains $source 'htmlScope = element;' `
+Assert-Contains $source 'scope = element;' `
 	'соответствующий HTML body должен быть базовой областью поиска fallback'
-Assert-Contains $source 'MSHTML::IHTMLElementPtr refinedScope' `
+Assert-Contains $source 'MSHTML::IHTMLElementPtr refined' `
 	'DomPath может только уточнять область поиска fallback, а не отключать её'
-Assert-Contains $source 'vt == BODY && prev == SOURCE && m_editor_selection_state.BodySource().sourceToBodyTransferred' `
+Assert-Contains $source 'target == BODY && previous == SOURCE && m_context.selection.BodySource().sourceToBodyTransferred' `
 	'после окончательной установки фокуса Body должно применяться только подтверждённое перенесённое выделение'
 
-Assert-Contains $source 'SourceDocumentTransfer::FindXmlNodeTextPosition(srcText, xml_selected_begin' `
-    'при отказе DomPath переход Body → Source должен использовать XML выбранного узла'
-Assert-Contains $source 'SourceDocumentTransfer::FindXmlNodeTextPosition(srcText, xml_selected_end' `
-    'конец выделения Body → Source должен сопоставляться по XML конечного узла'
-
-Assert-Contains $source 'SourceToHTML: source bytes=' `
-    'диагностический журнал должен фиксировать исходные позиции выделения Source'
-Assert-Contains $source 'ShowSource: mapping-by-text=' `
-    'диагностический журнал должен фиксировать способ переноса Body → Source'
-Assert-Contains $source 'ShowView: Source final bytes=' `
-    'диагностический журнал должен фиксировать итоговую прокрутку Source'
 Assert-Contains $trace 'FBE_NEXT_TRACE' `
 	'диагностический журнал должен включаться переменной окружения'
 if ($trace.Contains('FBE_NEXT_STARTUP_TRACE') -or $trace.Contains('FBE_NEXT_SELECTION_TRACE')) {

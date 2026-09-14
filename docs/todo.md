@@ -29,6 +29,9 @@
   `EditorViewController`: host-port удерживает presentation в `CMainFrame`,
   но ordering, fail-closed Source commit и state commit принадлежат
   coordinator.
+- [x] Вынести Source XML snapshot, сериализацию/применение и подготовку
+  Scintilla в `SourceViewSession`, а двустороннее сопоставление выделения — в
+  `BodySourceSelectionCoordinator`; удалить legacy-реализацию из `mainfrm.cpp`.
 - [x] Вынести import/export COM execution protocol в
   `PluginExecutionController`, оставив plugin discovery/menu/last command в
   `PluginUiController` и document replacement в application layer.

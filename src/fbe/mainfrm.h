@@ -34,6 +34,8 @@
 #include "xmlMatchedTagsHighlighter.h"
 #include "source\\Fb2SourceAutocomplete.h"
 #include "source\\ui\\SourceEditorControl.h"
+#include "source\\SourceViewSession.h"
+#include "source\\BodySourceSelectionCoordinator.h"
 #include "view\\EditorViewState.h"
 #include "view\\EditorViewTransition.h"
 #include "view\\EditorViewController.h"
@@ -120,9 +122,6 @@ public:
   UINT            m_current_dpi;
   bool            m_status_layout_posted;
 
-  MSXML2::IXMLDOMDocumentPtr		m_saved_xml;
-
-
   // IDs in combobox
   bool			  m_cb_updated:1;
   bool			  m_cb_last_images:1; // images or plain ids?
@@ -149,7 +148,7 @@ public:
   // contruction/destruction
   CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_sci_ovr(true), m_last_ie_ovr(true),
     m_doc_changed(false), m_sel_changed(false), m_change_state(false), m_need_title_update(false),
-    m_current_dpi(96), m_status_layout_posted(false), m_saved_xml(0), m_cb_updated(false),
+	m_current_dpi(96), m_status_layout_posted(false), m_source_view_session(m_source, m_doc, m_editor_selection_state, m_source_selection_coordinator), m_cb_updated(false),
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0),
@@ -217,6 +216,8 @@ public:
 	EditorViewState m_editor_view_state;
 	EditorViewController m_editor_view_controller;
 	EditorSelectionState m_editor_selection_state;
+	BodySourceSelectionCoordinator m_source_selection_coordinator;
+	SourceViewSession m_source_view_session;
 	Fb2SourceAutocomplete   m_fb2_autocomplete;
 
 	EditorSourceOperationResult CommitSourceDocument() override;
