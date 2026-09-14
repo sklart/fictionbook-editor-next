@@ -107,54 +107,6 @@ public:
 	}
 };
 
-class CThemedCommandBar : public WTL::CCommandBarCtrlImpl<CThemedCommandBar>
-{
-public:
-	DECLARE_WND_SUPERCLASS(_T("FBE_ThemedCommandBar"), GetWndClassName())
-
-	BEGIN_MSG_MAP(CThemedCommandBar)
-		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
-		ALT_MSG_MAP(1)
-			NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnParentCustomDraw)
-		CHAIN_MSG_MAP(WTL::CCommandBarCtrlImpl<CThemedCommandBar>)
-	END_MSG_MAP()
-
-	LRESULT OnEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
-	{
-		if(!ThemeManager::IsDark()) { bHandled = FALSE; return 0; }
-		HDC dc = reinterpret_cast<HDC>(wParam);
-		RECT client = {}; GetClientRect(&client);
-		::FillRect(dc, &client, ThemeManager::ControlBrush());
-		return 1;
-	}
-
-	LRESULT OnParentCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled)
-	{
-		if(pnmh->hwndFrom != m_hWnd || !ThemeManager::IsDark()) { bHandled = FALSE; return CDRF_DODEFAULT; }
-		NMTBCUSTOMDRAW* draw = reinterpret_cast<NMTBCUSTOMDRAW*>(pnmh);
-		if(draw->nmcd.dwDrawStage == CDDS_PREPAINT) return CDRF_NOTIFYITEMDRAW;
-		if(draw->nmcd.dwDrawStage != CDDS_ITEMPREPAINT) { bHandled = FALSE; return CDRF_DODEFAULT; }
-
-		const bool disabled = (draw->nmcd.uItemState & (CDIS_DISABLED | CDIS_GRAYED)) != 0;
-		const bool pressed = (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
-		const bool hot = (draw->nmcd.uItemState & CDIS_HOT) != 0;
-		::FillRect(draw->nmcd.hdc, &draw->nmcd.rc,
-			ThemeManager::Brush(pressed ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL));
-		::SetBkMode(draw->nmcd.hdc, TRANSPARENT);
-		::SetTextColor(draw->nmcd.hdc, disabled ? ThemeManager::DisabledTextColor() : ThemeManager::TextColor());
-
-		wchar_t text[200] = {};
-		TBBUTTONINFO button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_TEXT;
-		button.pszText = text; button.cchText = _countof(text);
-		GetButtonInfo(static_cast<int>(draw->nmcd.dwItemSpec), &button);
-		HFONT font = reinterpret_cast<HFONT>(SendMessage(WM_GETFONT, 0, 0));
-		HGDIOBJ oldFont = font ? ::SelectObject(draw->nmcd.hdc, font) : NULL;
-		::DrawTextW(draw->nmcd.hdc, text, -1, &draw->nmcd.rc, DT_SINGLELINE | DT_CENTER | DT_VCENTER | DT_HIDEPREFIX);
-		if(oldFont) ::SelectObject(draw->nmcd.hdc, oldFont);
-		return CDRF_SKIPDEFAULT;
-	}
-};
-
 class CMainFrame :	public CFrameWindowImpl<CMainFrame>,
 					public CCustomizableToolBarCommands<CMainFrame>,
 					public CUpdateUI<CMainFrame>,
@@ -189,7 +141,7 @@ public:
   wchar_t strINS[MAX_LOAD_STRING + 1];
   wchar_t strOVR[MAX_LOAD_STRING + 1];
 
-	CThemedCommandBar	m_MenuBar;			// menu bar
+	CCommandBarCtrl	m_MenuBar;			// menu bar
 	CToolBarCtrl	m_CmdToolbar;		// commands toolbar
 	CImageList		m_commandToolbarImages;	// application-owned command toolbar image list
 	int			m_table_toolbar_image_indices[8];

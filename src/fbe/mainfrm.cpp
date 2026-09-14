@@ -95,7 +95,7 @@ static WORD MruCommandId(int offset)
 	return static_cast<WORD>(static_cast<UINT>(ID_FILE_MRU_FIRST) + static_cast<UINT>(offset));
 }
 
-static bool AddCommandBarBitmapFromModule(CThemedCommandBar& commandBar, HINSTANCE module,
+static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE module,
 	UINT bitmapResourceId, UINT commandId)
 {
 	HBITMAP bitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId),
