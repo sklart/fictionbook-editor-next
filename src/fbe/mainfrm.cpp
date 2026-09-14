@@ -1695,7 +1695,6 @@ void CMainFrame::ShowScriptToolbarManagerDialog()
 	m_scriptToolbarManager.Collection().Items().clear();
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) m_scriptToolbarManager.Collection().Items().push_back(m_scriptToolbars.Items()[index].definition);
 	CScriptToolbarManagerDlg dialog(m_scriptToolbarManager, [this]() {
-		if(DeploymentContext::RegistryPersistenceAllowed()) return false;
 		PortableToolbarLayout layout; PortableToolbarStore::Load(layout);
 		layout.scriptToolbars = m_scriptToolbarManager.Collection().Items(); layout.scriptsToolbarPresent = true;
 		if(!PortableToolbarStore::Save(layout)) return false;
@@ -1864,7 +1863,7 @@ void CMainFrame::InitializeScripts()
 		if(m_scriptToolbars.Items()[index].window != NULL && m_scriptToolbars.Items()[index].window != m_ScriptsToolbar) ::DestroyWindow(m_scriptToolbars.Items()[index].window);
 	m_scriptToolbars.Reset();
 	PortableToolbarLayout persistedToolbars;
-	if(!DeploymentContext::RegistryPersistenceAllowed() && PortableToolbarStore::Load(persistedToolbars))
+	if(PortableToolbarStore::Load(persistedToolbars))
 		for(size_t index = 0; index < persistedToolbars.scriptToolbars.size(); ++index)
 			m_scriptToolbars.Add(persistedToolbars.scriptToolbars[index]);
 	if(m_scriptToolbars.Find(L"scripts-main") == NULL) { ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; m_scriptToolbars.Add(main); }
@@ -1893,7 +1892,7 @@ void CMainFrame::InitializeScripts()
 	for(size_t toolbarIndex = 0; toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex)
 	{
 		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[toolbarIndex];
-		if(runtime.window == NULL || runtime.definition.items.empty()) continue;
+		if(runtime.window == NULL) continue;
 		TBBUTTONS available; if(!GetAvailableButtons(runtime.window, available)) continue;
 		std::vector<TBBUTTON> catalog(available.GetSize()); for(int buttonIndex = 0; buttonIndex < available.GetSize(); ++buttonIndex) catalog[buttonIndex] = available[buttonIndex];
 		std::vector<PortableToolbarItem> items = runtime.definition.items;
