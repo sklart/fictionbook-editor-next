@@ -1835,12 +1835,23 @@ void CMainFrame::InitializeExtensionUi()
 void CMainFrame::InitializeScripts()
 {
 	ReleaseScriptResources();
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+		if(m_scriptToolbars.Items()[index].window != NULL && m_scriptToolbars.Items()[index].window != m_ScriptsToolbar) ::DestroyWindow(m_scriptToolbars.Items()[index].window);
 	m_scriptToolbars.Reset();
 	PortableToolbarLayout persistedToolbars;
 	if(!DeploymentContext::RegistryPersistenceAllowed() && PortableToolbarStore::Load(persistedToolbars))
 		for(size_t index = 0; index < persistedToolbars.scriptToolbars.size(); ++index)
 			m_scriptToolbars.Add(persistedToolbars.scriptToolbars[index]);
 	if(m_scriptToolbars.Find(L"scripts-main") == NULL) { ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; m_scriptToolbars.Add(main); }
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+	{
+		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
+		if(runtime.definition.id == L"scripts-main") { runtime.window = m_ScriptsToolbar; continue; }
+		if(!runtime.definition.visible) continue;
+		runtime.window = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+		if(runtime.window == NULL) continue;
+		SetDialogFontForToolbarRow(runtime.window); CToolBarCtrl toolbar = runtime.window; toolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS); InitToolBar(toolbar, IDR_SCRIPTS); UIAddToolBar(toolbar); AddSimpleReBarBand(toolbar, 0, TRUE, 0, FALSE);
+	}
 	StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
 	CString serializedCommandIds;
 	HMENU mainMenu = m_MenuBar.GetMenu();
@@ -1849,6 +1860,7 @@ void CMainFrame::InitializeScripts()
 		[this](const CString& path) { ScriptDiscoveryRuntime runtime(this); return runtime.Started() && SUCCEEDED(ScriptLoad(path)) && ScriptFindFunc(L"Run"); },
 		[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
 			if(!script.isFolder && visual.icon != NULL) AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, visual.icon);
+			for(size_t toolbarIndex = 0; !script.isFolder && toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex) if(m_scriptToolbars.Items()[toolbarIndex].window != NULL && m_scriptToolbars.Items()[toolbarIndex].window != m_ScriptsToolbar) AddTbButton(m_scriptToolbars.Items()[toolbarIndex].window, script.name, command, TBSTATE_ENABLED, visual.icon);
 			if(!script.isFolder) { TBBUTTONS catalog; bool available = GetAvailableButtons(m_ScriptsToolbar, catalog); for(int index = 0; available && index < catalog.GetSize(); ++index) if(catalog[index].idCommand == static_cast<int>(command)) available = false; if(available) { TBBUTTON button = {}; button.iBitmap = I_IMAGENONE; button.idCommand = command; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; AddToolbarButton(m_ScriptsToolbar, button, script.name); } }
 			if(visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command); else if(visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
 		},
