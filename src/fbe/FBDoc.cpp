@@ -2143,16 +2143,48 @@ bool Doc::SaveRecoveryCopy(const CString& filename)
 	}
 }
 
-static DWORD ResolveBodyEditorColor(DWORD configuredColor, int systemColor, COLORREF darkThemeColor)
+struct BodyEditorColors
 {
-	if(configuredColor != CLR_DEFAULT)
-		return configuredColor;
-	// Accessibility takes precedence over application appearance.  In
-	// particular, do not substitute FBE's dark palette for a High Contrast
-	// scheme selected by the user.
-	if(IsHighContrastEnabled() || !ThemeManager::IsDark())
-		return ::GetSysColor(systemColor);
-	return darkThemeColor;
+	DWORD foreground;
+	DWORD background;
+};
+
+static BodyEditorColors ResolveBodyEditorColors()
+{
+	const DWORD configuredForeground = _Settings.GetColorFG();
+	const DWORD configuredBackground = _Settings.GetColorBG();
+	BodyEditorColors colors = {
+		configuredForeground == CLR_DEFAULT ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOWTEXT)) : configuredForeground,
+		configuredBackground == CLR_DEFAULT ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOW)) : configuredBackground
+	};
+	// Accessibility takes precedence over all FBE and background policies.
+	if(IsHighContrastEnabled()) return colors;
+
+	const CString backgroundKind = _Settings.GetEditorBackgroundKind();
+	if(backgroundKind == L"none")
+	{
+		// Interface colours are used only for an entirely standard BODY.
+		if(configuredForeground == CLR_DEFAULT && configuredBackground == CLR_DEFAULT && ThemeManager::IsDark())
+		{
+			colors.foreground = ThemeManager::TextColor();
+			colors.background = ThemeManager::WindowColor();
+		}
+		return colors;
+	}
+
+	if(backgroundKind == L"builtin")
+	{
+		COLORREF fallback = 0, text = 0;
+		if(EditorBackgrounds::GetBuiltInRecommendedColors(_Settings.GetEditorBackgroundId(), fallback, text))
+		{
+			if(configuredForeground == CLR_DEFAULT) colors.foreground = text;
+			if(configuredBackground == CLR_DEFAULT) colors.background = fallback;
+		}
+	}
+	// Custom images, including an unavailable file selected by the user, never
+	// inherit the interface palette.  Their remaining Default values stay the
+	// Windows system colours selected above.
+	return colors;
 }
 bool Doc::SerializeToMemory(std::vector<unsigned char>& output, FictionBookFileType targetType)
 {
@@ -2346,11 +2378,12 @@ void  Doc::ApplyConfChanges() {
       hs->fontSize=(const wchar_t *)fss;
     }
 
-    fs = ResolveBodyEditorColor(_Settings.GetColorFG(), COLOR_WINDOWTEXT, ThemeManager::TextColor());
+    const BodyEditorColors colors = ResolveBodyEditorColors();
+    fs = colors.foreground;
     fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
     hs->color=(const wchar_t *)fss;
 
-    fs = ResolveBodyEditorColor(_Settings.GetColorBG(), COLOR_WINDOW, ThemeManager::WindowColor());
+    fs = colors.background;
     fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
     hs->backgroundColor=(const wchar_t *)fss;
 

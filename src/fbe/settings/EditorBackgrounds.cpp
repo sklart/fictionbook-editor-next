@@ -25,6 +25,15 @@ bool IsSafeLocalizationKey(const CString& value)
 		value.SpanIncluding(L"abcdefghijklmnopqrstuvwxyz0123456789._").GetLength() == value.GetLength();
 }
 
+bool ParseCssColor(const CString& value, COLORREF& color)
+{
+	if(value.GetLength() != 7 || value[0] != L'#') return false;
+	unsigned int red = 0, green = 0, blue = 0;
+	if(swscanf_s(value, L"#%2x%2x%2x", &red, &green, &blue) != 3) return false;
+	color = RGB(red, green, blue);
+	return true;
+}
+
 bool IsRegularFile(const CString& path)
 {
 	const DWORD attributes = ::GetFileAttributes(path);
@@ -60,8 +69,11 @@ void EditorBackgrounds::Load(std::vector<EditorBackgroundDescriptor>& background
 		if(!ReadString(json, object, L"id", entry.id) || !ReadString(json, object, L"name", entry.name) ||
 			!ReadString(json, object, L"localizationKey", entry.localizationKey) ||
 			!ReadString(json, object, L"file", entry.fileName) || !ReadString(json, object, L"theme", entry.theme) ||
+			!ReadString(json, object, L"fallbackColor", entry.fallbackColor) || !ReadString(json, object, L"recommendedTextColor", entry.recommendedTextColor) ||
 			!IsSafeFileName(entry.fileName) || !IsSafeLocalizationKey(entry.localizationKey) ||
 			(entry.theme != L"light" && entry.theme != L"dark")) { backgrounds.clear(); return; }
+		COLORREF fallback = 0, text = 0;
+		if(!ParseCssColor(entry.fallbackColor, fallback) || !ParseCssColor(entry.recommendedTextColor, text)) { backgrounds.clear(); return; }
 		bool duplicate = false;
 		for(size_t i = 0; i < backgrounds.size(); ++i) duplicate |= backgrounds[i].id == entry.id;
 		if(duplicate) { backgrounds.clear(); return; }
@@ -81,6 +93,16 @@ bool EditorBackgrounds::ResolveBuiltIn(const CString& id, CString& filePath)
 		filePath = U::GetProgDirFile(L"EditorBackgrounds\\") + backgrounds[i].fileName;
 		return IsRegularFile(filePath);
 	}
+	return false;
+}
+
+bool EditorBackgrounds::GetBuiltInRecommendedColors(const CString& id, COLORREF& fallbackColor, COLORREF& textColor)
+{
+	std::vector<EditorBackgroundDescriptor> backgrounds; Load(backgrounds);
+	for(size_t i = 0; i < backgrounds.size(); ++i)
+		if(backgrounds[i].id == id)
+			return ParseCssColor(backgrounds[i].fallbackColor, fallbackColor) &&
+				ParseCssColor(backgrounds[i].recommendedTextColor, textColor);
 	return false;
 }
 
