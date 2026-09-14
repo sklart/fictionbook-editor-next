@@ -20,8 +20,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          submodules: recursive
           fetch-depth: 1
+      # validate reads the Lexilla project to enforce the boundary between
+      # first-party and vendored MSBuild policy.  Fetching every submodule
+      # here is unnecessary and makes this fast job depend on external hosts.
+      - name: Initialize Lexilla policy fixture
+        shell: pwsh
+        run: git submodule update --init --depth=1 third_party/lexilla
       - name: Check generated version files and pipeline structure
         shell: pwsh
         run: |
