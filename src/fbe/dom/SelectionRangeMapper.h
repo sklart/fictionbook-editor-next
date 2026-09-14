@@ -11,9 +11,12 @@ class SelectionRangeMapper {
 public:
 	static int GetRangePos(const MSHTML::IHTMLTxtRangePtr& range,
 		MSHTML::IHTMLElementPtr& element, int& pos);
-	static bool GetSelectionInfo(MSHTML::IHTMLDocument2Ptr document,
+	static bool GetSelectionInfo(MSHTML::IHTMLTxtRangePtr range,
 		MSHTML::IHTMLElementPtr* begin, MSHTML::IHTMLElementPtr* end,
-		int* beginChar, int* endChar, MSHTML::IHTMLTxtRangePtr range);
+		int* beginChar, int* endChar);
+	static bool GetSelectionInfo(MSHTML::IHTMLControlRangePtr range,
+		MSHTML::IHTMLElementPtr* begin, MSHTML::IHTMLElementPtr* end,
+		int* beginChar, int* endChar);
 	static MSHTML::IHTMLTxtRangePtr SetSelection(MSHTML::IHTMLDocument2Ptr document,
 		MSHTML::IHTMLElementPtr begin, MSHTML::IHTMLElementPtr end,
 		int beginPos, int endPos);

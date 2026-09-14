@@ -55,35 +55,20 @@ int SelectionRangeMapper::GetRangePos(const MSHTML::IHTMLTxtRangePtr& range, MSH
 	return pos;
 }
 
-bool SelectionRangeMapper::GetSelectionInfo(MSHTML::IHTMLDocument2Ptr document, MSHTML::IHTMLElementPtr* begin, MSHTML::IHTMLElementPtr* end, int* beginChar, int* endChar, MSHTML::IHTMLTxtRangePtr range)
+bool SelectionRangeMapper::GetSelectionInfo(MSHTML::IHTMLTxtRangePtr range, MSHTML::IHTMLElementPtr* begin, MSHTML::IHTMLElementPtr* end, int* beginChar, int* endChar)
 {
 	*beginChar = 0;
 	*endChar = 0;
+	if(!range) return false;
 	int b = 0;
 	int e = 0;
-	MSHTML::IHTMLTxtRangePtr rng;
-	if(!(bool)range)
-	{
-		IDispatchPtr disp(document->selection->createRange());
-		rng = disp;
-		if (!(bool)rng)
-		{
-			MSHTML::IHTMLControlRangePtr coll(disp);
-			if (!(bool)coll) return false;
-			*begin = coll->item(0);
-			*end = coll->item(coll->length - 1);
-			return true;
-		}
-	}
-	else rng = range;
-
-	bstr_t text = rng->text;
-	MSHTML::IHTMLTxtRangePtr tr(rng->duplicate());
+	bstr_t text = range->text;
+	MSHTML::IHTMLTxtRangePtr tr(range->duplicate());
 	tr->collapse(VARIANT_TRUE);
 	*begin = tr->parentElement();
 	if (!(bool)(*begin)) return false;
 	GetRangePos(tr, *begin, b);
-	tr = rng->duplicate();
+	tr = range->duplicate();
 	tr->collapse(VARIANT_FALSE);
 	*end = tr->parentElement();
 	GetRangePos(tr, *end, e);
@@ -92,6 +77,16 @@ bool SelectionRangeMapper::GetSelectionInfo(MSHTML::IHTMLDocument2Ptr document, 
 	if(!(bool)nodeb || !(bool)nodee) return false;
 	*beginChar = b;
 	*endChar = e;
+	return true;
+}
+
+bool SelectionRangeMapper::GetSelectionInfo(MSHTML::IHTMLControlRangePtr range, MSHTML::IHTMLElementPtr* begin, MSHTML::IHTMLElementPtr* end, int* beginChar, int* endChar)
+{
+	*beginChar = 0;
+	*endChar = 0;
+	if(!range || range->length <= 0) return false;
+	*begin = range->item(0);
+	*end = range->item(range->length - 1);
 	return true;
 }
 

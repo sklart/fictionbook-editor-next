@@ -733,6 +733,8 @@ public:
     return SelectionContainerImp();
   }
 
+  bool GetSelectionInfo(MSHTML::IHTMLElementPtr* begin, MSHTML::IHTMLElementPtr* end, int* beginChar, int* endChar, MSHTML::IHTMLTxtRangePtr range);
+
   bool SelectionHasTags(wchar_t* elem);
   MSHTML::IHTMLElementPtr   SelectionAnchor();
   MSHTML::IHTMLElementPtr   SelectionAnchor(MSHTML::IHTMLElementPtr cur);

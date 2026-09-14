@@ -116,7 +116,7 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 	selection.BodySource().bodyToSourceTransferred = false;
 	int beginCharacter = 0, endCharacter = 0, selectedBodyIndex = -1;
 	MSHTML::IHTMLElementPtr beginElement, endElement;
-	FbeDom::SelectionRangeMapper::GetSelectionInfo(document.m_body.Document(), (MSHTML::IHTMLElementPtr*)(&beginElement),
+	document.m_body.GetSelectionInfo((MSHTML::IHTMLElementPtr*)(&beginElement),
 		(MSHTML::IHTMLElementPtr*)(&endElement), &beginCharacter, &endCharacter, 0);
 	if(beginElement == endElement && selection.BodyRange())
 	{

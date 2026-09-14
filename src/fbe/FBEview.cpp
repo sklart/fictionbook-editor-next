@@ -26,6 +26,7 @@
 #include "table/TableStructuralEditor.h"
 #include "view/VisualDomNormalizer.h"
 #include "dom/MarkupUndoUnitScope.h"
+#include "dom/SelectionRangeMapper.h"
 #include "image/ImageDocumentInserter.h"
 #include "clipboard/ClipboardPastePreparer.h"
 #include <vector>
@@ -1217,6 +1218,18 @@ MSHTML::IHTMLElementPtr CFBEView::SelectionContainerImp()
 	}
 
 	return MSHTML::IHTMLElementPtr();
+}
+
+bool CFBEView::GetSelectionInfo(MSHTML::IHTMLElementPtr* begin, MSHTML::IHTMLElementPtr* end, int* beginChar, int* endChar, MSHTML::IHTMLTxtRangePtr range)
+{
+	if(range)
+		return FbeDom::SelectionRangeMapper::GetSelectionInfo(range, begin, end, beginChar, endChar);
+	IDispatchPtr selectionRange(Document()->selection->createRange());
+	MSHTML::IHTMLTxtRangePtr textRange(selectionRange);
+	if(textRange)
+		return FbeDom::SelectionRangeMapper::GetSelectionInfo(textRange, begin, end, beginChar, endChar);
+	MSHTML::IHTMLControlRangePtr controlRange(selectionRange);
+	return FbeDom::SelectionRangeMapper::GetSelectionInfo(controlRange, begin, end, beginChar, endChar);
 }
 
 MSHTML::IHTMLElementPtr CFBEView::SelectionAnchor() {
