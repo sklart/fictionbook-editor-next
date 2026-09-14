@@ -12,7 +12,7 @@ namespace
 
 CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 	const std::vector<ScriptsToolbarCommand>& available, const CSimpleArray<TBBUTTON>& defaults,
-	CSettings& settings, const std::vector<CString>& panels) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
+	CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
 {
 }
 
@@ -29,9 +29,10 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_availableList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE);
 	m_currentList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT);
 	m_panelList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL);
-	for(size_t index = 0; index < m_panels.size(); ++index) m_panelList.AddString(m_panels[index]);
+	for(size_t index = 0; index < m_panels.size(); ++index) m_panelList.AddString(m_panels[index].name);
 	if(m_panelList.GetCount() == 0) m_panelList.AddString(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.main", L"Scripts"));
-	m_panelList.SetCurSel(0);
+	int selectedPanel = 0; for(size_t index = 0; index < m_panels.size(); ++index) if(m_panels[index].toolbar == m_toolbar) { selectedPanel = static_cast<int>(index); break; }
+	m_panelList.SetCurSel(selectedPanel);
 	::SetWindowSubclass(m_availableList, AvailableListSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	::SetWindowSubclass(m_currentList, CurrentListSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	m_toolTip.Create(m_hWnd); m_toolTip.Activate(TRUE);
@@ -142,6 +143,7 @@ int CScriptsToolbarCustomizeDlg::SelectedAvailableCommand() const
 }
 
 LRESULT CScriptsToolbarCustomizeDlg::OnSearchChanged(WORD, WORD, HWND, BOOL&) { PopulateAvailable(); UpdateButtonState(); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size()) && ::IsWindow(m_panels[index].toolbar)) { m_toolbar = m_panels[index].toolbar; RefreshLists(); UpdateButtonState(); } return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnSelectionChanged(WORD, WORD, HWND, BOOL&) { UpdateButtonState(); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHandled)
 {

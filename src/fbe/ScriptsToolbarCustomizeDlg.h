@@ -11,13 +11,14 @@ struct ScriptsToolbarCommand
 	CString relativePath;
 	TBBUTTON button;
 };
+struct ScriptsToolbarTarget { CString name; HWND toolbar; };
 
 class CScriptsToolbarCustomizeDlg : public CDialogImpl<CScriptsToolbarCustomizeDlg>
 {
 public:
 	enum { IDD = IDD_SCRIPTS_TOOLBAR_CUSTOMIZE };
 	CScriptsToolbarCustomizeDlg(HWND toolbar, const std::vector<ScriptsToolbarCommand>& available,
-		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings, const std::vector<CString>& panels);
+		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels);
 	~CScriptsToolbarCustomizeDlg();
 
 	BEGIN_MSG_MAP(CScriptsToolbarCustomizeDlg)
@@ -29,6 +30,7 @@ public:
 		MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
 		MESSAGE_HANDLER(WM_MEASUREITEM, OnMeasureItem)
 		COMMAND_HANDLER(IDC_SCRIPTS_TOOLBAR_SEARCH, EN_CHANGE, OnSearchChanged)
+		COMMAND_HANDLER(IDC_SCRIPTS_TOOLBAR_PANEL, CBN_SELCHANGE, OnPanelChanged)
 		COMMAND_HANDLER(IDC_SCRIPTS_TOOLBAR_AVAILABLE, LBN_SELCHANGE, OnSelectionChanged)
 		COMMAND_HANDLER(IDC_SCRIPTS_TOOLBAR_CURRENT, LBN_SELCHANGE, OnSelectionChanged)
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFOW, OnToolTipText)
@@ -47,7 +49,7 @@ private:
 	const std::vector<ScriptsToolbarCommand>& m_available;
 	CSimpleArray<TBBUTTON> m_defaults;
 	CSettings& m_settings;
-	const std::vector<CString>& m_panels;
+	const std::vector<ScriptsToolbarTarget>& m_panels;
 	CListBox m_availableList;
 	CListBox m_currentList;
 	CComboBox m_panelList;
@@ -71,6 +73,7 @@ private:
 	LRESULT OnDrawItem(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnMeasureItem(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSearchChanged(WORD, WORD, HWND, BOOL&);
+	LRESULT OnPanelChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnSelectionChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnToolTipText(int, LPNMHDR, BOOL&);
 	LRESULT OnAdd(WORD, WORD, HWND, BOOL&);
