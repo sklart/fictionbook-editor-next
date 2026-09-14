@@ -865,6 +865,7 @@ BEGIN
     BEGIN
         MENUITEM "&Commands toolbar",           60161
         MENUITEM "Scripts toolbar",             60162
+		MENUITEM "Manage script toolbars...",     ID_VIEW_SCRIPT_TOOLBARS_MANAGE
         MENUITEM "&Links Bar",                  60163
         MENUITEM "Table Bar",                   60164
         MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR

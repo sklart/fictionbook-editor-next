@@ -704,6 +704,7 @@
 #define ID_DT_LEFT_WITH_CHILDREN        32876
 #define ID_DT_MERGE                     32877
 #define ID_VIEW_FASTMODE                32878
+#define ID_VIEW_SCRIPT_TOOLBARS_MANAGE  33032
 #define ID_LAST_SCRIPT                  32899
 #define ID_LAST_PLUGIN                  32900
 #define ID_ADD_IMAGE                    32902
