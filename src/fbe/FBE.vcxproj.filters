@@ -157,6 +157,7 @@
     <ClCompile Include="table\TableGrid.cpp"><Filter>Source Files\Table</Filter></ClCompile>
 	<ClCompile Include="dom\SelectionRangeMapper.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="search\DesignSearchController.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="document\DocumentEditorHost.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="table\TableStructuralEditor.cpp"><Filter>Source Files\Table</Filter></ClCompile>
     <ClCompile Include="image\ImageDocumentInserter.cpp"><Filter>Source Files\Image</Filter></ClCompile>
 	<ClCompile Include="clipboard\ClipboardPastePreparer.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -335,6 +336,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
 	<ClInclude Include="document\DocumentLocation.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="document\DocumentEditorHost.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentLoader.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\ui\DocumentFileDialogs.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentOpenSource.h"><Filter>Header Files</Filter></ClInclude>

@@ -246,7 +246,7 @@ Doc   *Doc::LocateDocument(const wchar_t *id) {
 Doc::Doc(HWND hWndFrame) :
      m_filename(_T("Untitled.fb2")), m_namevalid(false), m_file_type(FictionBookFileType::Fb2),
 //	     m_desc(hWndFrame,false),
-		 m_body(hWndFrame, true),
+		 m_body(hWndFrame, true), m_editor(m_body),
 	     m_frame(hWndFrame),
 //		 m_desc_ver(-1),
 		 m_body_ver(-1),
@@ -257,7 +257,7 @@ Doc::Doc(HWND hWndFrame) :
 	     m_serialization_unsafe(false),
 	     m_save_transaction_active(false)
 {
-  m_body.SetDocumentFilePathSource(&m_filename, &m_namevalid);
+	  m_editor.SetDocumentFilePathSource(&m_filename, &m_namevalid);
   m_active_docs.Add(this,this);
 }
 
@@ -266,14 +266,14 @@ Doc::~Doc() {
   // destroy windows explicitly
 //  if (m_desc.IsWindow())
 //    m_desc.DestroyWindow();
-  if (m_body.IsWindow())
-    m_body.DestroyWindow();
+  if (m_editor.IsWindow())
+	 m_editor.DestroyWindow();
   m_active_docs.Remove(this);
 }
 
 bool  Doc::GetBinary(const wchar_t *id,_variant_t& vt) {
   if (id && *id==L'#') {
-	  CComDispatchDriver	    body(m_body.Script());
+	  CComDispatchDriver	    body(m_editor.Script());
     _variant_t	  vid(id+1);
     body.Invoke1(L"apiGetBinary",&vid,&vt);
     return true;
@@ -300,7 +300,7 @@ static DWORD __stdcall XMLTransformThread(LPVOID varg) {
 }
 
 void Doc::TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,
-    CFBEView& dest)
+    DocumentEditorHost& dest)
 {
   StartupTrace::Event(L"xslt", L"T400", L"XML transform for view started");
   // create processor
@@ -375,9 +375,7 @@ void Doc::TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr do
   ::CloseHandle(transformThread);
 
   // now stuff the data into mshtml
-  IPersistStreamInitPtr	ips(dest.Browser()->Document);
-  ips->InitNew();
-  ips->Load(U::NewStream(hRd));
+	dest.LoadTransformedHtml(U::NewStream(hRd));
   StartupTrace::Event(L"xslt", L"T490", L"XML transform for view completed");
 }
 
@@ -450,28 +448,28 @@ static MSXML2::IXSLTemplatePtr	LoadXSL(const CString& path) {
     desc.Invoke1(L"PutBinaries",&arg);
 
     // create body view
-    m_body.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
+    m_editor.Create(hWndParent, CRect(0,0,500,500), _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
 
     // navigate body browser
-    m_body.Browser()->Navigate(L"about:blank");
+    m_editor.Browser()->Navigate(L"about:blank");
 
     // wait until it loads
-    while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
+    while (!m_editor.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
       ::TranslateMessage(&msg);
       ::DispatchMessage(&msg);
     }
 
     // transform to html
-    TransformXML(LoadXSL(_T("body.xsl")),dom,m_body);
+    TransformXML(LoadXSL(_T("body.xsl")),dom,m_editor);
 
     // wait until it loads
-    while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
+    while (!m_editor.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
       ::TranslateMessage(&msg);
       ::DispatchMessage(&msg);
     }
 
     // initialize view
-    m_body.Init();
+    m_editor.Init();
 
     // mark unchanged
     MarkSavePoint();
@@ -504,13 +502,13 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	trace.Format(L"InvokeFunc: %s; arguments=%d", FuncName, count);
 	if (!quiet) StartupTrace::Event(L"script", L"C100", trace);
 
-	if (!m_body.Browser())
+	if (!m_editor.Browser())
 	{
 		StartupTrace::HResult(L"script", L"C101", E_UNEXPECTED, L"web browser unavailable");
 		return E_UNEXPECTED;
 	}
 
-	IHTMLDocument2Ptr doc = m_body.Browser()->Document;
+	IHTMLDocument2Ptr doc = m_editor.Browser()->Document;
 	if (!doc)
 	{
 		StartupTrace::HResult(L"script", L"C102", E_NOINTERFACE, L"HTML document unavailable");
@@ -627,25 +625,25 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	TraceDocumentEvent(L"D110", L"book load started", filename);
 	HRESULT	hr;
 	StartupTrace::AppendTestStartupBreadcrumb("mshtml-create-start");
-	StartupTrace::Event(L"webbrowser", L"WB100", L"m_body.Create begin");
+	StartupTrace::Event(L"webbrowser", L"WB100", L"m_editor.Create begin");
 	const CString path = U::GetProgDirFile(L"main.html");
 	CRect browserRect(0, 0, 500, 500);
-	const HWND browserWindow = m_body.Create(hWndParent, browserRect, _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
+	const HWND browserWindow = m_editor.Create(hWndParent, browserRect, _T("{8856F961-340A-11D0-A96B-00C04FD705A2}"));
 	if (!browserWindow)
 	{
-		StartupTrace::HResult(L"webbrowser", L"WB101", HRESULT_FROM_WIN32(::GetLastError()), L"m_body.Create returned no HWND");
+		StartupTrace::HResult(L"webbrowser", L"WB101", HRESULT_FROM_WIN32(::GetLastError()), L"m_editor.Create returned no HWND");
 		return false;
 	}
 	StartupTrace::AppendTestStartupBreadcrumb("mshtml-create-complete");
-	if (!m_body.Browser())
+	if (!m_editor.Browser())
 	{
-		StartupTrace::Error(L"webbrowser", L"WB102", L"m_body.Create did not provide IWebBrowser2");
+		StartupTrace::Error(L"webbrowser", L"WB102", L"m_editor.Create did not provide IWebBrowser2");
 		return false;
 	}
 	StartupTrace::Event(L"webbrowser", L"WB110", L"IWebBrowser2 available");
-	m_body.BeginNavigationTrace();
+	m_editor.BeginNavigationTrace();
 	StartupTrace::AppendTestStartupBreadcrumb("mshtml-navigate-start");
-	hr = m_body.Browser()->Navigate((LPCTSTR)path);
+	hr = m_editor.Browser()->Navigate((LPCTSTR)path);
 	StartupTrace::HResult(L"webbrowser", L"WB120", hr, L"Navigate main.html");
 	if (FAILED(hr))
 		return false;
@@ -656,7 +654,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		CComVariant url(path), frame, status(static_cast<LONG>(INET_E_DOWNLOAD_FAILURE));
 		VARIANT_BOOL cancel = VARIANT_FALSE;
 		StartupTrace::Event(L"fault", L"FI012", L"NavigateError injected before DocumentComplete wait");
-		m_body.OnNavigateError(m_body.Browser(), &url, &frame, &status, &cancel);
+		m_editor.OnNavigateError(m_editor.Browser(), &url, &frame, &status, &cancel);
 	}
 	MSG msg;
 	const ULONGLONG navigationStarted = ::GetTickCount64();
@@ -669,18 +667,18 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	if (faultPoint == L"document-complete-timeout")
 	{
 		CString readyState(L"(unknown)");
-		try { MSHTML::IHTMLDocument2Ptr document = m_body.Browser()->Document; if (document) readyState = static_cast<const wchar_t*>(_bstr_t(document->readyState)); } catch (const _com_error&) { }
-		CString details; details.Format(L"elapsed=0; ready-state=%s; document-present=%d; last-browser-event=%s", (LPCWSTR)readyState, m_body.HasDoc() ? 1 : 0, (LPCWSTR)m_body.LastBrowserEvent());
+		try { MSHTML::IHTMLDocument2Ptr document = m_editor.Browser()->Document; if (document) readyState = static_cast<const wchar_t*>(_bstr_t(document->readyState)); } catch (const _com_error&) { }
+		CString details; details.Format(L"elapsed=0; ready-state=%s; document-present=%d; last-browser-event=%s", (LPCWSTR)readyState, m_editor.HasDoc() ? 1 : 0, (LPCWSTR)m_editor.LastBrowserEvent());
 		StartupTrace::Event(L"fault", L"FI013", L"DocumentComplete timeout injected");
 		StartupTrace::Warning(L"webbrowser", L"WB133", details);
 		return false;
 	}
-	while (!m_body.Loaded())
+	while (!m_editor.Loaded())
 	{
-		if (m_body.NavigationFailed())
+		if (m_editor.NavigationFailed())
 		{
 			CString details;
-			details.Format(L"status=%ld; last-browser-event=%s", m_body.NavigationStatus(), (LPCWSTR)m_body.LastBrowserEvent());
+			details.Format(L"status=%ld; last-browser-event=%s", m_editor.NavigationStatus(), (LPCWSTR)m_editor.LastBrowserEvent());
 			StartupTrace::Warning(L"webbrowser", L"WB134", details);
 			return false;
 		}
@@ -688,8 +686,8 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		if (elapsed >= documentCompleteTimeoutMs)
 		{
 			CString readyState(L"(unknown)");
-			try { MSHTML::IHTMLDocument2Ptr document = m_body.Browser()->Document; if (document) readyState = static_cast<const wchar_t*>(_bstr_t(document->readyState)); } catch (const _com_error&) { }
-			CString details; details.Format(L"elapsed=%llu; ready-state=%s; document-present=%d; last-browser-event=%s; url=%s", elapsed, (LPCWSTR)readyState, m_body.HasDoc() ? 1 : 0, (LPCWSTR)m_body.LastBrowserEvent(), (LPCWSTR)StartupTrace::RedactPath(m_body.NavURL()));
+			try { MSHTML::IHTMLDocument2Ptr document = m_editor.Browser()->Document; if (document) readyState = static_cast<const wchar_t*>(_bstr_t(document->readyState)); } catch (const _com_error&) { }
+			CString details; details.Format(L"elapsed=%llu; ready-state=%s; document-present=%d; last-browser-event=%s; url=%s", elapsed, (LPCWSTR)readyState, m_editor.HasDoc() ? 1 : 0, (LPCWSTR)m_editor.LastBrowserEvent(), (LPCWSTR)StartupTrace::RedactPath(m_editor.NavURL()));
 			StartupTrace::Warning(L"webbrowser", L"WB133", details);
 			return false;
 		}
@@ -719,7 +717,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 
 	StartupTrace::AppendTestStartupBreadcrumb("mshtml-document-complete");
 	StartupTrace::Event(L"webbrowser", L"WB150", L"CreateHelper for pre-init external begin");
-	IDispatchPtr preInitHelper = m_body.CreateHelper();
+	IDispatchPtr preInitHelper = m_editor.CreateHelper();
 	if (!preInitHelper)
 	{
 		StartupTrace::Error(L"webbrowser", L"WB151", L"CreateHelper for pre-init external returned null");
@@ -733,18 +731,18 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		StartupTrace::HResult(L"fault", L"FI010", hr, L"first SetExternalDispatch injected failure");
 	}
 	else
-		hr = m_body.SetExternalDispatch(preInitHelper);
+		hr = m_editor.SetExternalDispatch(preInitHelper);
 	StartupTrace::HResult(L"webbrowser", L"WB153", hr, L"SetExternalDispatch pre-init result");
 	if (FAILED(hr))
 		return false;
 
-	if (!m_body.Init())
+	if (!m_editor.Init())
 	{
 		StartupTrace::Error(L"webbrowser", L"WB298", L"CFBEView::Init failed");
 		return false;
 	}
 	StartupTrace::Event(L"webbrowser", L"WB199", L"browser ready");
-	TraceHtmlDocumentState(m_body.Browser()->Document);
+	TraceHtmlDocumentState(m_editor.Browser()->Document);
 	//FastMode();
 
 	CComVariant params[3];
@@ -812,7 +810,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 
 
 	}
-	ApplyDiagnosticFaultInjection(m_body.Browser()->Document);
+	ApplyDiagnosticFaultInjection(m_editor.Browser()->Document);
 	ApplyConfChanges();
 	StartupTrace::Event(L"document", L"J100", L"apiLoadFB2 begin");
 	StartupTrace::AppendTestStartupBreadcrumb("document-script-load-start");
@@ -835,7 +833,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		TraceDocumentEvent(L"D111", L"book load JavaScript failure", filename);
 		return false;
 	}
-	//m_body.Normalize(m_body.Document()->body);
+	//m_editor.Normalize(m_editor.Document()->body);
 	bool loaded = false;
 	if(res.vt == VT_BOOL)
 	{
@@ -1728,20 +1726,20 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   };
 
   markTableSerializationPhase(L"native-before-normalize-start");
-  const TableSnapshot tablesBeforeNormalize = SnapshotNativeTables(m_body.Document()->body);
+  const TableSnapshot tablesBeforeNormalize = SnapshotNativeTables(m_editor.Document()->body);
   markTableSerializationPhase(L"native-before-normalize-complete");
 
   // normalize body first
   markTableSerializationPhase(L"normalize-start");
   _EDMnr.CleanUpAll();
-   m_body.Normalize(m_body.Document()->body);
+   m_editor.Normalize(m_editor.Document()->body);
   markTableSerializationPhase(L"normalize-complete");
 
   // Source/Body switches are part of the normal editor transaction. This
   // fault point models only the destructive Save serialization path.
   if (m_save_transaction_active && GetDiagnosticFaultInjection() == L"drop-row-after-normalize")
   {
-    MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(m_body.Document()->body)->getElementsByTagName(L"TR"));
+    MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(m_editor.Document()->body)->getElementsByTagName(L"TR"));
     MSHTML::IHTMLElementPtr row(rows && rows->length ? rows->item(_variant_t(0L), _variant_t()) : 0);
     if (row && row->parentElement)
     {
@@ -1752,7 +1750,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   if (m_save_transaction_active && GetDiagnosticFaultInjection() == L"change-colspan-after-normalize")
   {
-    MSHTML::IHTMLElementCollectionPtr cells(MSHTML::IHTMLElement2Ptr(m_body.Document()->body)->getElementsByTagName(L"TD"));
+    MSHTML::IHTMLElementCollectionPtr cells(MSHTML::IHTMLElement2Ptr(m_editor.Document()->body)->getElementsByTagName(L"TD"));
     MSHTML::IHTMLElementPtr cell(cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : 0);
     if (cell)
     {
@@ -1763,7 +1761,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   }
 
   markTableSerializationPhase(L"native-after-normalize-start");
-  const TableSnapshot tablesAfterNormalize = SnapshotNativeTables(m_body.Document()->body);
+  const TableSnapshot tablesAfterNormalize = SnapshotNativeTables(m_editor.Document()->body);
   markTableSerializationPhase(L"native-after-normalize-complete");
   if (!tablesBeforeNormalize.Equals(tablesAfterNormalize))
   {
@@ -1796,7 +1794,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   // fetch annotation
 
-  MSHTML::IHTMLElementCollectionPtr children(m_body.Document()->body->children);
+  MSHTML::IHTMLElementCollectionPtr children(m_editor.Document()->body->children);
   long c_len = children->length;
 
   MSHTML::IHTMLElementPtr fbw_body;
@@ -1820,7 +1818,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   MSXML2::IXMLDOMNodePtr  hist(GetDiv(fbw_body,ndoc,L"history",3));
 
   // fetch description
-  CComDispatchDriver	body(m_body.Script());
+  CComDispatchDriver	body(m_editor.Script());
   CComVariant		    args[3];
   if (hist)
     args[0]=hist.GetInterfacePtr();
@@ -2226,7 +2224,7 @@ static void GrabIDs(CString& tmp,CComboBox& box,MSHTML::IHTMLDOMNode *node) {
 void  Doc::ParaIDsToComboBox(CComboBox& box) {
   try {
     CString tmp;
-    MSHTML::IHTMLDOMNodePtr body(m_body.Document()->body);
+    MSHTML::IHTMLDOMNodePtr body(m_editor.Document()->body);
     GrabIDs(tmp,box,body);
   }
   catch (_com_error&) { }
@@ -2234,7 +2232,7 @@ void  Doc::ParaIDsToComboBox(CComboBox& box) {
 
 void  Doc::BinIDsToComboBox(CComboBox& box) {
   try {
-	  IDispatchPtr	bo(m_body.Document()->all->item(L"id"));
+	  IDispatchPtr	bo(m_editor.Document()->all->item(L"id"));
     if (!(bool)bo)
       return;
     CString	  tmp;
@@ -2289,7 +2287,7 @@ BSTR Doc::PrepareDefaultId(const CString& filename){
 // binaries
 HRESULT Doc::AddBinaryData(const BYTE* data, size_t size, const CString& logicalFileName, const CString& mimeType)
 {
-	return m_body.AddImportedBinary(data, size, logicalFileName, mimeType);
+	return m_editor.AddImportedBinary(data, size, logicalFileName, mimeType);
 }
 
 void Doc::AddBinary(const CString& filename)
@@ -2323,7 +2321,7 @@ HRESULT Doc::ImportBinary(const CString& filename, CString& error, bool* convert
 
 void  Doc::ApplyConfChanges() {
   try {
-    MSHTML::IHTMLStylePtr	  hs(m_body.Document()->body->style);
+    MSHTML::IHTMLStylePtr	  hs(m_editor.Document()->body->style);
 
 	CString	  fss(_Settings.GetFont());
     if (!fss.IsEmpty())
@@ -2380,7 +2378,7 @@ void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString /* unused: t
 {
 	CWaitCursor hourglass;
 
-	MSHTML::IHTMLElementPtr fbw_body = MSHTML::IHTMLDocument3Ptr(m_body.Document())->getElementById(L"fbw_body");
+	MSHTML::IHTMLElementPtr fbw_body = MSHTML::IHTMLDocument3Ptr(m_editor.Document())->getElementById(L"fbw_body");
 	MSHTML::IHTMLElementCollectionPtr paras = MSHTML::IHTMLElement2Ptr(fbw_body)->getElementsByTagName(L"P");
 	if(!paras->length)
 		return;
@@ -2598,15 +2596,15 @@ void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString /* unused: t
     desc.Invoke1(L"PutBinaries",&arg);
 
     // transform to html
-	TransformXML(LoadXSL(_T("body.xsl")),dom,m_body);
+	TransformXML(LoadXSL(_T("body.xsl")),dom,m_editor);
 
     // wait until it loads
-    while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
+    while (!m_editor.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
       ::TranslateMessage(&msg);
       ::DispatchMessage(&msg);
     }
 
-    m_body.Init();
+    m_editor.Init();
   }
   catch (_com_error& e) {
     U::ReportError(e);
@@ -2734,12 +2732,12 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
     dom->setProperty(L"SelectionNamespaces",(const TCHAR *)nsprop);
 
     // transform to html
-	CComDispatchDriver	body(m_body.Script());
+	CComDispatchDriver	body(m_editor.Script());
 	CComVariant		    args[2];
 	args[1]=dom.GetInterfacePtr();
 	args[0] = _Settings.GetInterfaceLanguageName();
 	CheckError(body.InvokeN(L"LoadFromDOM", args, 2));
-	m_body.Init();
+	m_editor.Init();
     /*TransformXML(LoadXSL(_T("description.xsl")),dom,m_desc);
 
     // wait until it loads
@@ -2759,17 +2757,17 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
     desc.Invoke1(L"PutBinaries",&arg);
 
     // transform to html
-    TransformXML(LoadXSL(_T("body.xsl")),dom,m_body);
+    TransformXML(LoadXSL(_T("body.xsl")),dom,m_editor);
 
 
     // wait until it loads
-    while (!m_body.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
+    while (!m_editor.Loaded() && ::GetMessage(&msg,NULL,0,0)) {
       ::TranslateMessage(&msg);
       ::DispatchMessage(&msg);
     }
 
     // initialize view
-    m_body.Init();*/
+    m_editor.Init();*/
 
     // mark unchanged
     MarkSavePoint();
@@ -2784,7 +2782,7 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 
 void Doc::SaveSelectedPos()
 {
-	MSHTML::IHTMLElementPtr selected = m_body.SelectionStructCon();
+	MSHTML::IHTMLElementPtr selected = m_editor.SelectionStructCon();
 
 	//  UUID
 	UUID	      uuid;
@@ -3015,7 +3013,7 @@ MSHTML::IHTMLDOMNodePtr Doc::MoveNode(MSHTML::IHTMLDOMNodePtr from, MSHTML::IHTM
 
 void Doc::FastMode()
 {
-	if (!m_body.HasDoc())
+	if (!m_editor.HasDoc())
 	{
 		StartupTrace::Warning(L"document", L"D230", L"FastMode deferred: HTML document is not ready");
 		return;
@@ -3023,7 +3021,7 @@ void Doc::FastMode()
 
 	try
 	{
-		IDispatchPtr script(m_body.Script());
+		IDispatchPtr script(m_editor.Script());
 		if (!script)
 		{
 			StartupTrace::Warning(L"document", L"D231", L"FastMode deferred: script dispatch is not ready");
@@ -3057,7 +3055,7 @@ bool Doc::GetFastMode()
 int Doc::GetSelectedPos()
 {
 	const int delta = -100000;
-	MSHTML::IHTMLTxtRangePtr rng(m_body.Document()->selection->createRange());
+	MSHTML::IHTMLTxtRangePtr rng(m_editor.Document()->selection->createRange());
 	if(!bool(rng))
 		return 0;
 

@@ -10,6 +10,7 @@
 #endif // _MSC_VER > 1000
 
 #include "FBEView.h"
+#include "document\\DocumentEditorHost.h"
 #include "FictionBookFileType.h"
 #include <vector>
 
@@ -28,6 +29,7 @@ public:
   // document text is stored here
   //CFBEView		m_desc;
   CFBEView		m_body;
+	DocumentEditorHost m_editor;
 
   // filename
   CString		m_filename;
@@ -79,9 +81,9 @@ public:
 
   // changes
   bool	  DocChanged() {
-	  return m_body_ver!=m_body.GetVersionNumber() || 
+	  return m_body_ver!=m_editor.GetVersionNumber() ||
 		  //m_desc_ver!=m_desc.GetVersionNumber() || 
-		  m_body.IsFormChanged(); }
+		  m_editor.IsFormChanged(); }
 
   // added by SeNS
   void	  AdvanceDocVersion (int delta) {
@@ -89,20 +91,20 @@ public:
   }
 
   void	  MarkSavePoint() { 
-	  m_body_ver=m_body.GetVersionNumber();
+	  m_body_ver=m_editor.GetVersionNumber();
 	  //m_desc_ver=m_desc.GetVersionNumber(); 
-	  m_body.ResetFormChanged(); 
+	  m_editor.ResetFormChanged();
   }
   void	  ResetSavePoint() { m_body_ver=-1; }
 
   void	  MarkDocCP() { 
-	  m_body_cp=m_body.GetVersionNumber(); 
+	  m_body_cp=m_editor.GetVersionNumber();
 	  //m_desc_cp=m_desc.GetVersionNumber(); 
-	  m_body.ResetFormCP(); }
+	  m_editor.ResetFormCP(); }
   bool	  DocRelChanged() { 
-	  return m_body_cp!=m_body.GetVersionNumber() || 
+	  return m_body_cp!=m_editor.GetVersionNumber() ||
 //		  m_desc_cp!=m_desc.GetVersionNumber() || 
-		  m_body.IsFormCP(); 
+		  m_editor.IsFormCP();
   }
 
   // IDs
@@ -169,8 +171,8 @@ private:
                                            FictionBookFileType targetType);
 
   // loading support
-  void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,
-		       CFBEView& dest);
+	void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,
+		       DocumentEditorHost& dest);
   CString MyID() { CString ret; ret.Format(_T("%lu"),(unsigned long)this); return ret; }
   CString MyURL(const wchar_t *part) { CString ret; ret.Format(_T("fbw-internal:%lu:%s"),(unsigned long)this,part); return ret; }
 
