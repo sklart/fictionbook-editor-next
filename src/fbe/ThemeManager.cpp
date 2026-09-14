@@ -155,7 +155,13 @@ void ApplyNativeControlPalette(HWND window)
 		::SendMessage(window, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 	}
 	else if(IsClass(window, TOOLBARCLASSNAMEW))
-		::SendMessage(window, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
+	{
+		COLORSCHEME colours = {};
+		colours.dwSize = sizeof(colours);
+		colours.clrBtnHighlight = ThemeManager::HoverColor();
+		colours.clrBtnShadow = ThemeManager::BorderColor();
+		::SendMessage(window, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
+	}
 	else if(IsClass(window, L"Edit"))
 		::SendMessage(window, EM_SETBKGNDCOLOR, 0, ThemeManager::ControlColor());
 	else if(IsClass(window, STATUSCLASSNAMEW))

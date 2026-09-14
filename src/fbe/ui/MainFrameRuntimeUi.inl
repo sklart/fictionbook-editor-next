@@ -97,7 +97,15 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 
 	NMTBCUSTOMDRAW* customDraw = reinterpret_cast<NMTBCUSTOMDRAW*>(pnmh);
 	if (customDraw->nmcd.dwDrawStage == CDDS_PREPAINT)
+	{
+		if(ThemeManager::IsDark())
+		{
+			RECT client = {};
+			::GetClientRect(pnmh->hwndFrom, &client);
+			::FillRect(customDraw->nmcd.hdc, &client, ThemeManager::ControlBrush());
+		}
 		return CDRF_NOTIFYITEMDRAW;
+	}
 
 	if (customDraw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
 	{
