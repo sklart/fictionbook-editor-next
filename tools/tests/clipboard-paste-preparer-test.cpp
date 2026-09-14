@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <utility>
 
 ATL::CImage::CInitGDIPlus ATL::CImage::s_initGDIPlus;
 
@@ -82,16 +83,51 @@ static void TestBitmapPreparation(FbeClipboard::ClipboardBitmapOutput output,
   FbeClipboard::ClipboardPasteOptions options;
   options.bitmapOutput = output;
   options.jpegQuality = 81;
-  const FbeClipboard::ClipboardPastePreparationResult result =
-      FbeClipboard::ClipboardPastePreparer::Prepare(NULL, options);
-  Require(result.HasPreparedBitmap(), "Bitmap was not prepared");
-  Require(::GetFileAttributes(result.temporaryImagePath) != INVALID_FILE_ATTRIBUTES,
-          "Prepared bitmap file missing");
-  Require(result.temporaryImagePath.Right(4).CompareNoCase(extension) == 0,
-          "Prepared bitmap extension");
-  result.RemovePreparedBitmap();
-  Require(::GetFileAttributes(result.temporaryImagePath) == INVALID_FILE_ATTRIBUTES,
-          "Prepared bitmap file was not removed");
+  CString preparedPath;
+  {
+    FbeClipboard::ClipboardPastePreparationResult result =
+        FbeClipboard::ClipboardPastePreparer::Prepare(NULL, options);
+    Require(result.HasPreparedBitmap(), "Bitmap was not prepared");
+    preparedPath = result.temporaryImagePath;
+    Require(::GetFileAttributes(preparedPath) != INVALID_FILE_ATTRIBUTES,
+            "Prepared bitmap file missing");
+    Require(preparedPath.Right(4).CompareNoCase(extension) == 0,
+            "Prepared bitmap extension");
+  }
+  Require(::GetFileAttributes(preparedPath) == INVALID_FILE_ATTRIBUTES,
+          "Prepared bitmap file was not removed by result ownership");
+  EmptyTestClipboard();
+}
+
+static void TestBitmapMoveOwnership() {
+  const unsigned char pixels[] = {0, 0, 255, 0};
+  HBITMAP bitmap = ::CreateBitmap(1, 1, 1, 32, pixels);
+  Require(bitmap != NULL, "CreateBitmap move");
+  Require(::OpenClipboard(NULL) != FALSE, "OpenClipboard move");
+  Require(::EmptyClipboard() != FALSE, "EmptyClipboard move");
+  if (!::SetClipboardData(CF_BITMAP, bitmap)) {
+    ::CloseClipboard();
+    ::DeleteObject(bitmap);
+    Require(false, "SetClipboardData move");
+  }
+  ::CloseClipboard();
+
+  CString preparedPath;
+  {
+    FbeClipboard::ClipboardPastePreparationResult first =
+        FbeClipboard::ClipboardPastePreparer::Prepare(NULL, FbeClipboard::ClipboardPasteOptions());
+    Require(first.HasPreparedBitmap(), "Move source bitmap was not prepared");
+    preparedPath = first.temporaryImagePath;
+    {
+      FbeClipboard::ClipboardPastePreparationResult second(std::move(first));
+      Require(!first.HasPreparedBitmap(), "Move source retained bitmap ownership");
+      Require(second.HasPreparedBitmap(), "Move destination lost bitmap ownership");
+      Require(::GetFileAttributes(preparedPath) != INVALID_FILE_ATTRIBUTES,
+              "Move destination lost prepared bitmap file");
+    }
+    Require(::GetFileAttributes(preparedPath) == INVALID_FILE_ATTRIBUTES,
+            "Move destination did not remove prepared bitmap file");
+  }
   EmptyTestClipboard();
 }
 
@@ -99,5 +135,6 @@ int main() {
   TestTextPreparation();
   TestBitmapPreparation(FbeClipboard::ClipboardBitmapOutput::Png, L".png");
   TestBitmapPreparation(FbeClipboard::ClipboardBitmapOutput::Jpeg, L".jpg");
+  TestBitmapMoveOwnership();
   return 0;
 }

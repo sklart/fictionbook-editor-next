@@ -106,9 +106,30 @@ CString PrepareBitmapFile(const ClipboardPasteOptions& options) {
 
 } // namespace
 
-void ClipboardPastePreparationResult::RemovePreparedBitmap() const {
+ClipboardPastePreparationResult::~ClipboardPastePreparationResult() {
+  RemovePreparedBitmap();
+}
+
+ClipboardPastePreparationResult::ClipboardPastePreparationResult(
+    ClipboardPastePreparationResult&& other) noexcept
+    : temporaryImagePath(other.temporaryImagePath) {
+  other.temporaryImagePath.Empty();
+}
+
+ClipboardPastePreparationResult& ClipboardPastePreparationResult::operator=(
+    ClipboardPastePreparationResult&& other) noexcept {
+  if (this != &other) {
+    RemovePreparedBitmap();
+    temporaryImagePath = other.temporaryImagePath;
+    other.temporaryImagePath.Empty();
+  }
+  return *this;
+}
+
+void ClipboardPastePreparationResult::RemovePreparedBitmap() {
   if (!temporaryImagePath.IsEmpty())
     ::DeleteFile(temporaryImagePath);
+  temporaryImagePath.Empty();
 }
 
 CString ClipboardPastePreparer::ReplaceStandardNbsp(const CString& text,

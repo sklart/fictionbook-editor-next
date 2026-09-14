@@ -51,6 +51,17 @@ static bool IsSecondSetExternalFaultEnabled()
 // normalization helpers
 static void NotifyTableStructureChanged(HWND frame, HWND view);
 
+class PasteEnableScope {
+public:
+	explicit PasteEnableScope(int& counter) : m_counter(counter), m_active(true) { ++m_counter; }
+	~PasteEnableScope() { if (m_active) --m_counter; }
+	void Close() { if (m_active) { --m_counter; m_active = false; } }
+
+private:
+	int& m_counter;
+	bool m_active;
+};
+
 
 // В живой сборке FBE regex режима «Дизайн» всегда идёт через наш wrapper
 // поверх PCRE2, поэтому здесь больше не нужна развилка на VBScript.RegExp.
@@ -1626,8 +1637,8 @@ LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
 {
 	try
 	{
-		m_mk_srv->BeginUndoUnit(L"Paste");
-		++m_enable_paste;
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Paste");
+		PasteEnableScope pasteEnabled(m_enable_paste);
 
 		FbeClipboard::ClipboardPasteOptions options;
 		options.nbspReplacement = _Settings.GetNBSPChar();
@@ -1637,16 +1648,14 @@ LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
 		options.jpegQuality = _Settings.GetJpegQuality();
 		const FbeClipboard::ClipboardPastePreparationResult preparation =
 			FbeClipboard::ClipboardPastePreparer::Prepare(m_hWnd, options);
-		if (preparation.HasPreparedBitmap()) {
+		if (preparation.HasPreparedBitmap())
 			AddImage(preparation.temporaryImagePath, true);
-			preparation.RemovePreparedBitmap();
-		}
 
 		IOleCommandTargetPtr(m_browser)->Exec(&CGID_MSHTML, IDM_PASTE, 0, NULL, NULL);
-		--m_enable_paste;
+		pasteEnabled.Close();
 		if(m_normalize)
 			Normalize(Document()->body);
-		m_mk_srv->EndUndoUnit();
+		undo.Close();
 	}
 	catch(_com_error& err)
 	{

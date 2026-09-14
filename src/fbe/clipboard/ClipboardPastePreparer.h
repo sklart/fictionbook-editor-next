@@ -27,8 +27,17 @@ struct ClipboardPasteOptions {
 struct ClipboardPastePreparationResult {
   CString temporaryImagePath;
 
+  ClipboardPastePreparationResult() = default;
+  ~ClipboardPastePreparationResult();
+  ClipboardPastePreparationResult(const ClipboardPastePreparationResult&) = delete;
+  ClipboardPastePreparationResult& operator=(const ClipboardPastePreparationResult&) = delete;
+  ClipboardPastePreparationResult(ClipboardPastePreparationResult&& other) noexcept;
+  ClipboardPastePreparationResult& operator=(ClipboardPastePreparationResult&& other) noexcept;
+
   bool HasPreparedBitmap() const { return !temporaryImagePath.IsEmpty(); }
-  void RemovePreparedBitmap() const;
+
+private:
+  void RemovePreparedBitmap();
 };
 
 class ClipboardPastePreparer {
