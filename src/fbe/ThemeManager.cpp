@@ -40,6 +40,7 @@ void RebuildBrushes()
 
 typedef HRESULT (WINAPI* DwmSetWindowAttributeFn)(HWND, DWORD, LPCVOID, DWORD);
 typedef HRESULT (WINAPI* SetPreferredAppModeFn)(int);
+typedef void (WINAPI* FlushMenuThemesFn)();
 
 const UINT_PTR kThemeControlSubclassId = 0x46424554; // "FBET"
 
@@ -162,6 +163,11 @@ void ApplyPreferredAppMode(bool dark)
 	if(!uxtheme) return;
 	SetPreferredAppModeFn setMode = reinterpret_cast<SetPreferredAppModeFn>(::GetProcAddress(uxtheme, MAKEINTRESOURCEA(135)));
 	if(setMode) setMode(dark ? 1 /* AllowDark */ : 0 /* Default */);
+	// Rebuild popup-menu rendering after changing the preferred app mode.  This
+	// export is available only on supported Windows 10/11 builds, so resolving
+	// it dynamically keeps the Windows 7 path untouched.
+	FlushMenuThemesFn flushMenus = reinterpret_cast<FlushMenuThemesFn>(::GetProcAddress(uxtheme, MAKEINTRESOURCEA(136)));
+	if(flushMenus) flushMenus();
 	::FreeLibrary(uxtheme);
 }
 
@@ -313,9 +319,11 @@ void ApplyToWindow(HWND window)
 	const bool dark = IsDark() && !IsHighContrastEnabled();
 	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
 	::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
-	ApplyNativeControlPalette(window);
 	ApplyModernTitleBar(window, dark);
+	// Common controls reset custom colours while processing WM_THEMECHANGED.
+	// Set their palette only after that notification has completed.
 	::SendMessage(window, WM_THEMECHANGED, 0, 0);
+	ApplyNativeControlPalette(window);
 	::SendMessage(window, WM_FBE_THEMECHANGED, 0, 0);
 	::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);
 	::EnumChildWindows(window, ApplyChild, 0);

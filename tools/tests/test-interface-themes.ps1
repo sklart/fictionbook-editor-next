@@ -44,6 +44,9 @@ foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'THE
 foreach($required in @('ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {
     if($toolbarUi -notlike "*$required*") { throw "Toolbar custom draw does not apply semantic colour $required." }
 }
+foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ApplyNativeControlPalette(window);')) {
+    if($manager -notlike "*$required*") { throw "Theme manager does not refresh native menu and control colours: $required." }
+}
 foreach($required in @('OnThemeChanged', 'ThemeManager::WindowColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR')) {
     if($documentTree -notlike "*$required*") { throw "Document Tree does not refresh $required on theme changes." }
 }
