@@ -5,6 +5,7 @@ namespace
 {
 InterfaceTheme g_selected = INTERFACE_THEME_AUTOMATIC;
 bool g_systemDark = false;
+bool g_highContrast = false;
 HBRUSH g_windowBrush = NULL;
 HBRUSH g_controlBrush = NULL;
 HBRUSH g_brushes[THEME_COLOR_COUNT] = {};
@@ -165,10 +166,12 @@ void SetSelectedTheme(InterfaceTheme theme)
 	if(theme < INTERFACE_THEME_AUTOMATIC || theme > INTERFACE_THEME_DARK)
 		theme = INTERFACE_THEME_AUTOMATIC;
 	const bool wasDark = IsDark();
+	const bool wasHighContrast = g_highContrast;
 	g_selected = theme;
 	g_systemDark = ReadAppsUseLightTheme();
-	ApplyPreferredAppMode(IsDark());
-	if(wasDark != IsDark() || !g_windowBrush) RebuildBrushes();
+	g_highContrast = IsHighContrastEnabled();
+	ApplyPreferredAppMode(IsDark() && !g_highContrast);
+	if(wasDark != IsDark() || wasHighContrast != g_highContrast || !g_windowBrush) RebuildBrushes();
 }
 
 InterfaceTheme GetSelectedTheme() { return g_selected; }
@@ -273,9 +276,12 @@ void ApplyToAllThreadWindows(DWORD threadId)
 bool RefreshSystemTheme()
 {
 	const bool oldDark = IsDark();
+	const bool oldHighContrast = g_highContrast;
 	g_systemDark = ReadAppsUseLightTheme();
-	if(g_selected != INTERFACE_THEME_AUTOMATIC || oldDark == IsDark()) return false;
-	ApplyPreferredAppMode(IsDark());
+	g_highContrast = IsHighContrastEnabled();
+	const bool highContrastChanged = oldHighContrast != g_highContrast;
+	if((g_selected != INTERFACE_THEME_AUTOMATIC || oldDark == IsDark()) && !highContrastChanged) return false;
+	ApplyPreferredAppMode(IsDark() && !g_highContrast);
 	ApplyToAllThreadWindows(::GetCurrentThreadId());
 	return true;
 }
