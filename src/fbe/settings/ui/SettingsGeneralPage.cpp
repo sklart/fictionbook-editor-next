@@ -41,6 +41,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_GENERAL);
 	m_language = GetDlgItem(IDC_LANG);
+	m_interfaceTheme = GetDlgItem(IDC_INTERFACE_THEME);
 	m_genreCatalog = GetDlgItem(IDC_GENRE_CATALOG);
 	m_defaultEncoding = GetDlgItem(IDC_DEFAULT_ENC);
 	m_keepEncoding = GetDlgItem(IDC_KEEP);
@@ -48,6 +49,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_updateChannel = GetDlgItem(IDC_UPDATE_CHANNEL);
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_language, L"fbe.settings.tooltip.general.language", L"Interface language. System default uses the Windows language.");
+	m_tooltips.Add(m_interfaceTheme, L"fbe.settings.tooltip.general.interface_theme", L"Automatic follows the Windows app theme.");
 	m_tooltips.Add(m_genreCatalog, L"fbe.settings.tooltip.general.genre_catalog", L"Selects genres available when editing book metadata.");
 	m_tooltips.Add(m_restorePosition, L"fbe.settings.tooltip.general.restore_position", L"Restores the saved reading or editing position when reopening a document.");
 	m_tooltips.Add(m_defaultEncoding, L"fbe.settings.tooltip.general.default_encoding", L"Encoding used when saving if the original encoding is not kept.");
@@ -58,6 +60,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 
 	SetText(m_hWnd, IDC_OPTIONS_INTERFACE_GROUP, L"fbe.dialog.idd_options.interface", L"Interface");
 	SetText(m_hWnd, IDC_OPTIONS_LANGUAGE_LABEL, L"fbe.dialog.idd_options.language", L"Language:");
+	SetText(m_hWnd, IDC_INTERFACE_THEME_LABEL, L"fbe.dialog.idd_options.interface_theme", L"Interface theme:");
 	SetText(m_hWnd, IDC_OPTIONS_GENRE_CATALOG_LABEL, L"fbe.dialog.idd_options.genre_catalog", L"Genre catalog:");
 	SetText(m_hWnd, IDC_SETTINGS_OTHER_OPEN_GROUP, L"fbe.dialog.idd_setting_other.open_file", L"Open file");
 	SetText(m_hWnd, IDC_RESTORE_POS, L"fbe.dialog.idd_setting_other.restore_position", L"Restore position");
@@ -98,6 +101,10 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 			}
 	}
 	m_language.SetCurSel(selectedLanguage);
+	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.automatic", L"Automatic — follow Windows"));
+	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.light", L"Light"));
+	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.dark", L"Dark"));
+	m_interfaceTheme.SetCurSel(static_cast<int>(_Settings.GetInterfaceTheme()));
 	m_genreCatalog.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.genre_catalog.standard", L"Standard"));
 	m_genreCatalog.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.genre_catalog.librusec", L"Librusec"));
 	m_genreCatalog.SetCurSel(_Settings.GetGenreCatalog() == GenreCatalog::Librusec ? 1 : 0);
@@ -139,6 +146,9 @@ LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
 bool CSettingsGeneralPage::Validate() { return true; }
 void CSettingsGeneralPage::Commit()
 {
+	const int interfaceTheme = m_interfaceTheme.GetCurSel();
+	if(interfaceTheme >= INTERFACE_THEME_AUTOMATIC && interfaceTheme <= INTERFACE_THEME_DARK)
+		_Settings.SetInterfaceTheme(static_cast<InterfaceTheme>(interfaceTheme));
 	const int encodingIndex = m_defaultEncoding.GetCurSel();
 	if(encodingIndex != CB_ERR) { CString encoding; m_defaultEncoding.GetLBText(encodingIndex, encoding); _Settings.SetDefaultEncoding(encoding); }
 	_Settings.SetKeepEncoding(m_keepEncoding.GetCheck() == BST_CHECKED);

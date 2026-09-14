@@ -220,6 +220,7 @@
     <ClCompile Include="XmlSourceThemes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+	<ClCompile Include="ThemeManager.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="GLLogo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -451,6 +452,7 @@
     <ClInclude Include="XmlSourceThemes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+	<ClInclude Include="ThemeManager.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="SearchReplace.h">
       <Filter>Header Files</Filter>
     </ClInclude>

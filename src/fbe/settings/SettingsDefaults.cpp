@@ -49,6 +49,8 @@ void CSettings::SetDefaults()
 	m_scripts_toolbar_customize_height = 500;
 	m_restore_file_position	= false;
 	m_interface_lang_id		= FBE_INTERFACE_LANGUAGE_AUTO;
+	m_interface_theme = INTERFACE_THEME_AUTOMATIC;
+	ThemeManager::SetSelectedTheme(m_interface_theme);
 	m_genre_catalog			= GenreCatalog::Standard;
 	m_scripts_folder		= GetDefaultScriptsFolderStored();
 	m_insimage_ask			= true;

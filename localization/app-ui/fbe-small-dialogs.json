@@ -2586,6 +2586,30 @@
         "bg-BG": "Език:"
       }
     },
+    "fbe.dialog.idd_options.interface_theme": {
+      "resource": "IDD_SETTINGS_GENERAL",
+      "kind": "LTEXT",
+      "targetId": "IDC_INTERFACE_THEME_LABEL",
+      "translations": {
+        "en-US": "Interface theme:", "ru-RU": "Тема интерфейса:", "uk-UA": "Тема інтерфейсу:", "de-DE": "Oberflächendesign:", "fr-FR": "Thème de l’interface :", "es-ES": "Tema de interfaz:", "it-IT": "Tema dell'interfaccia:", "pl-PL": "Motyw interfejsu:", "pt-PT": "Tema da interface:", "nl-NL": "Interfacethema:", "cs-CZ": "Motiv rozhraní:", "bg-BG": "Тема на интерфейса:"
+      }
+    },
+    "fbe.settings.interface_theme.automatic": {
+      "resource": "IDD_SETTINGS_GENERAL",
+      "kind": "COMBOBOX",
+      "targetId": "IDC_INTERFACE_THEME",
+      "translations": {
+        "en-US": "Automatic — follow Windows", "ru-RU": "Автоматически — как в Windows", "uk-UA": "Автоматично — як у Windows", "de-DE": "Automatisch — Windows folgen", "fr-FR": "Automatique — suivre Windows", "es-ES": "Automático — seguir Windows", "it-IT": "Automatico — segui Windows", "pl-PL": "Automatycznie — jak w Windows", "pt-PT": "Automático — seguir o Windows", "nl-NL": "Automatisch — Windows volgen", "cs-CZ": "Automaticky — podle Windows", "bg-BG": "Автоматично — според Windows"
+      }
+    },
+    "fbe.settings.interface_theme.light": {
+      "resource": "IDD_SETTINGS_GENERAL", "kind": "COMBOBOX", "targetId": "IDC_INTERFACE_THEME",
+      "translations": { "en-US": "Light", "ru-RU": "Светлая", "uk-UA": "Світла", "de-DE": "Hell", "fr-FR": "Clair", "es-ES": "Claro", "it-IT": "Chiaro", "pl-PL": "Jasny", "pt-PT": "Claro", "nl-NL": "Licht", "cs-CZ": "Světlý", "bg-BG": "Светла" }
+    },
+    "fbe.settings.interface_theme.dark": {
+      "resource": "IDD_SETTINGS_GENERAL", "kind": "COMBOBOX", "targetId": "IDC_INTERFACE_THEME",
+      "translations": { "en-US": "Dark", "ru-RU": "Тёмная", "uk-UA": "Темна", "de-DE": "Dunkel", "fr-FR": "Sombre", "es-ES": "Oscuro", "it-IT": "Scuro", "pl-PL": "Ciemny", "pt-PT": "Escuro", "nl-NL": "Donker", "cs-CZ": "Tmavý", "bg-BG": "Тъмна" }
+    },
     "fbe.dialog.idd_options.genre_catalog": {
       "resource": "IDD_SETTINGS_GENERAL",
       "kind": "LTEXT",

@@ -5,6 +5,7 @@
 #include "SettingsDlg.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\res1.h"
+#include "..\\..\\ThemeManager.h"
 
 extern CSettings _Settings;
 
@@ -39,6 +40,7 @@ CSettingsDlg::~CSettingsDlg()
 LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
+	ThemeManager::ApplyToWindow(m_hWnd);
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_TOOLS_SETTINGS);
 	m_navigation = GetDlgItem(IDC_SETTINGS_NAV);
 	const struct { LPCWSTR key; LPCWSTR fallback; } navigationItems[] = {

@@ -19,6 +19,7 @@ CString NormalizeScriptsFolderStoredPath(const CString& path);
 #include "settings\hotkeys\HotkeyGroup.h"
 #include "settings\words\WordsItem.h"
 #include "settings\SettingsTypes.h"
+#include "ThemeManager.h"
 
 
 const DWORD XML_SRC_SPECIAL_CHARS_WORD_LIKE = 0;
@@ -219,6 +220,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_restore_file_position;
 
 	DWORD		m_interface_lang_id;
+	InterfaceTheme m_interface_theme;
 	GenreCatalog	m_genre_catalog;
 
 	bool		m_need_restart;
@@ -352,6 +354,7 @@ public:
 	bool	GetExtElementStyle(const CString& elem)const;
 	bool	GetWindowPosition(WINDOWPLACEMENT& wpl)const;
 	DWORD	GetInterfaceLanguageID()const;
+	InterfaceTheme GetInterfaceTheme()const;
 	DWORD GetEffectiveInterfaceLanguageID()const;
 	CString GetInterfaceLocaleName()const;
 	CString GetLocalizedGenresFileName()const;
@@ -415,6 +418,7 @@ public:
 	void	SetWindowPosition(const WINDOWPLACEMENT& wpl,  bool apply = false);
 	void	SetRestoreFilePosition(bool restore, bool apply = false);	
 	void	SetInterfaceLanguage(DWORD Language, bool apply = false);
+	void SetInterfaceTheme(InterfaceTheme theme, bool apply = false);
 	void	SetGenreCatalog(GenreCatalog catalog, bool apply = false);
 	void	SetScriptsFolder(const CString& fullpath, bool apply = false);
 	void	SetInsImageAsking(const bool value, bool apply = false);

@@ -106,6 +106,7 @@ CString CSettings::GetStoredXmlSrcThemeId()const
 {
 	return m_xml_src_theme_id;
 }
+InterfaceTheme CSettings::GetInterfaceTheme()const { return m_interface_theme; }
 DWORD CSettings::GetXmlSrcDefaultColor(DWORD palette, XmlSrcColorGroup group)
 {
 	static const XmlSrcStyleToken tokens[XML_SRC_COLOR_GROUP_COUNT] = {
@@ -124,14 +125,8 @@ DWORD CSettings::GetXmlSrcThemeColor(DWORD palette, XmlSrcStyleToken token)
 {
 	if(palette == XML_SRC_COLOR_PALETTE_SYSTEM)
 	{
-		// Значение AppsUseLightTheme существует в Windows 10/11. В Windows 7
-		// и при любой ошибке чтения выбираем светлую FBE Light.
-		DWORD appsUseLightTheme = 1;
-		DWORD valueSize = sizeof(appsUseLightTheme);
-		const LONG result = ::RegGetValue(HKEY_CURRENT_USER,
-			L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-			L"AppsUseLightTheme", RRF_RT_REG_DWORD, NULL, &appsUseLightTheme, &valueSize);
-		palette = result == ERROR_SUCCESS && appsUseLightTheme == 0
+		// Source → Automatic follows the effective FBE interface theme.
+		palette = ThemeManager::IsDark()
 			? XML_SRC_COLOR_PALETTE_FBE_DARK
 			: XML_SRC_COLOR_PALETTE_FBE_LIGHT;
 	}
@@ -890,6 +885,19 @@ void CSettings::SetInterfaceLanguage(DWORD lang_id, bool apply)
 		m_interface_lang_id = lang_id;
 		if(apply)
 			Save();
+	}
+}
+
+void CSettings::SetInterfaceTheme(InterfaceTheme theme, bool apply)
+{
+	if(theme < INTERFACE_THEME_AUTOMATIC || theme > INTERFACE_THEME_DARK)
+		theme = INTERFACE_THEME_AUTOMATIC;
+	if(m_interface_theme != theme)
+	{
+		m_interface_theme = theme;
+		ThemeManager::SetSelectedTheme(theme);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		if(apply) Save();
 	}
 }
 

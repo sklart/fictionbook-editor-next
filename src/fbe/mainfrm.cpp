@@ -17,6 +17,7 @@
 #include "..\\common\\ModernFileDialog.h"
 #include "settings\\ui\\SettingsDlg.h"
 #include "Settings.h"
+#include "ThemeManager.h"
 #include "settings\\EditorBackgrounds.h"
 #include "utils.h"
 #include "KeyboardLayoutSelection.h"
@@ -2272,6 +2273,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   }
 
   StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-start");
+	ThemeManager::ApplyToWindow(m_hWnd);
   m_need_title_update = true;
 	StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-complete");
   StartupTrace::Event(L"mainframe", L"M199", L"OnCreate completed");
@@ -2429,6 +2431,7 @@ void CMainFrame::TryRestoreRecovery()
 
 LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 {
+	ThemeManager::RefreshSystemTheme();
 	UiMetrics::UpdateForWindow(m_hWnd);
 	if (::IsWindow(m_MenuBar)) { ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE); m_MenuBar.AutoSize(); }
 	if (::IsWindow(m_CmdToolbar)) { SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
@@ -2446,7 +2449,7 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 	if (m_document_tree.IsWindow())
 	{
 		if (m_document_tree.m_tree.m_tree.IsWindow())
-			m_document_tree.m_tree.m_tree.SetBkColor(::GetSysColor(COLOR_WINDOW));
+			m_document_tree.m_tree.m_tree.SetBkColor(ThemeManager::WindowColor());
 	}
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_FRAME);
 	return 0;
@@ -5540,6 +5543,17 @@ void CMainFrame::RefreshStatusMainPane()
 	if (!m_status.IsWindow()) return;
 	m_status.SetPaneText(ID_DEFAULT_PANE,
 		m_status_state.EffectiveMainText(m_incsearch != 0, m_is_fail, m_is_str));
+}
+
+LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	// BODY is intentionally excluded: its document colours are user content.
+	if(_Settings.GetXmlSrcColorPalette() == XML_SRC_COLOR_PALETTE_SYSTEM)
+		ApplyXmlSourceEditorChanges(false);
+	if(m_document_tree.IsWindow() && m_document_tree.m_tree.m_tree.IsWindow())
+		m_document_tree.m_tree.m_tree.SetBkColor(ThemeManager::WindowColor());
+	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME);
+	return 0;
 }
 
 void CMainFrame::SetValidationStatus(FBEStatusBar::ValidationStatus status)

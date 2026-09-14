@@ -8,6 +8,7 @@
 class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public ISettingsPage
 {
 	CComboBox m_language;
+	CComboBox m_interfaceTheme;
 	CComboBox m_genreCatalog;
 	CComboBox m_defaultEncoding;
 	CButton m_keepEncoding;
