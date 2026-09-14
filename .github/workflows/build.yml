@@ -21,12 +21,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      # validate reads the Lexilla project to enforce the boundary between
-      # first-party and vendored MSBuild policy.  Fetching every submodule
-      # here is unnecessary and makes this fast job depend on external hosts.
-      - name: Initialize Lexilla policy fixture
+      # validate reads the Lexilla and Hunspell projects to enforce the
+      # boundary between first-party and vendored MSBuild policy. Fetching
+      # every submodule here is unnecessary and makes this fast job depend on
+      # unrelated external hosts.
+      - name: Initialize MSBuild policy fixtures
         shell: pwsh
-        run: git submodule update --init --depth=1 third_party/lexilla
+        run: git submodule update --init --depth=1 third_party/lexilla third_party/hunspell
       - name: Check generated version files and pipeline structure
         shell: pwsh
         run: |

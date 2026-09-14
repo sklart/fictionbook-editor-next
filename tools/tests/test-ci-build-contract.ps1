@@ -24,10 +24,10 @@ foreach ($required in @(
     if (-not $workflow.Contains($required)) { throw "CI workflow is missing '$required'." }
 }
 
-$validateCheckout = [regex]::Match($workflow, '(?s)validate:.*?actions/checkout@v7\s*\r?\n\s*with:(?<options>.*?)\r?\n\s*# validate reads.*?- name: Initialize Lexilla policy fixture\s*\r?\n\s*shell: pwsh\s*\r?\n\s*run: (?<command>.*?)\r?\n\s*- name: Check generated')
+$validateCheckout = [regex]::Match($workflow, '(?s)validate:.*?actions/checkout@v7\s*\r?\n\s*with:(?<options>.*?)\r?\n\s*# validate reads.*?- name: Initialize MSBuild policy fixtures\s*\r?\n\s*shell: pwsh\s*\r?\n\s*run: (?<command>.*?)\r?\n\s*- name: Check generated')
 if(-not $validateCheckout.Success -or $validateCheckout.Groups['options'].Value -match '(?m)^\s*submodules:\s*recursive\s*$' -or
-    $validateCheckout.Groups['command'].Value -notmatch 'git submodule update --init --depth=1 third_party/lexilla') {
-    throw 'Validate must initialize only Lexilla before reading its vendored MSBuild project.'
+    $validateCheckout.Groups['command'].Value -notmatch 'git submodule update --init --depth=1 third_party/lexilla third_party/hunspell') {
+    throw 'Validate must initialize only the vendored MSBuild policy fixtures.'
 }
 
 foreach ($match in [regex]::Matches($workflow, '(?m)(?:\./|\.\\)(tools[\\/][A-Za-z0-9_.\\/-]+\.ps1)')) {
