@@ -31,14 +31,14 @@ void EditorViewPresentationHost::PrepareEditorViewPresentation(EditorView previo
 {
 	if (plan.commitSourceToDocument) m_context.source.SendMessage(SCI_SETSAVEPOINT);
 	if (previous != target && target != SOURCE)
-		m_context.splitter.SetSinglePaneMode(m_context.showDocumentTree ? SPLIT_PANE_NONE : SPLIT_PANE_RIGHT);
+		m_context.splitter.SetPresentationSinglePane(m_context.showDocumentTree ? SPLIT_PANE_NONE : SPLIT_PANE_RIGHT);
 	CComDispatchDriver body(m_context.document->m_body.Script()); CComVariant argument;
 	if (plan.leaveDescriptionMode) { argument = false; CheckError(body.Invoke1(L"apiShowDesc", &argument)); }
 	if (plan.enterDescriptionMode) { argument = true; CheckError(body.Invoke1(L"apiShowDesc", &argument)); }
 	if (target == BODY || target == DESC) m_context.view.ActivateWnd(m_context.document->m_body);
 	else {
 		m_context.source.UpdateLineNumberMargin(false);
-		m_context.view.HideActiveWnd(); m_context.splitter.SetSinglePaneMode(SPLIT_PANE_RIGHT);
+		m_context.view.HideActiveWnd(); m_context.splitter.SetPresentationSinglePane(SPLIT_PANE_RIGHT);
 		m_context.view.ActivateWnd(m_context.source);
 		if (m_context.selection.BodySource().bodyToSourceTransferred) {
 			m_context.source.SendMessage(SCI_SETSELECTIONSTART, m_context.selection.BodySource().sourceStart);

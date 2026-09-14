@@ -51,6 +51,8 @@
 #include "StatusBarBehavior.h"
 #include "StatusBarState.h"
 #include "ui/ContextAttributeBars.h"
+#include "ThemeManager.h"
+#include "view/ui/EditorViewPresentationHost.h"
 
 #if _MSC_VER >= 1000
 #pragma once
@@ -63,6 +65,47 @@
 // for MessageBox localization
 void HookSysDialogs();
 void UnhookSysDialogs();
+
+class CThemedSplitterWindow : public WTL::CSplitterWindowImpl<CThemedSplitterWindow>, public IEditorViewSplitter
+{
+public:
+	DECLARE_WND_CLASS_EX2(_T("FBE_ThemedVerticalSplitter"), CThemedSplitterWindow, CS_DBLCLKS, COLOR_WINDOW)
+
+	CThemedSplitterWindow() : WTL::CSplitterWindowImpl<CThemedSplitterWindow>(true) {}
+	void SetPresentationSinglePane(int pane) override { SetSinglePaneMode(pane); }
+	void DrawSplitterBar(CDCHandle dc)
+	{
+		RECT rect = {};
+		if(!GetSplitterBarRect(&rect)) return;
+		::FillRect(dc.m_hDC, &rect, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+		RECT edge = rect;
+		edge.right = edge.left + 1;
+		::FillRect(dc.m_hDC, &edge, ThemeManager::Brush(THEME_COLOR_BORDER));
+		edge = rect;
+		edge.left = edge.right - 1;
+		::FillRect(dc.m_hDC, &edge, ThemeManager::Brush(THEME_COLOR_BORDER));
+	}
+};
+
+class CThemedHorSplitterWindow : public WTL::CSplitterWindowImpl<CThemedHorSplitterWindow>
+{
+public:
+	DECLARE_WND_CLASS_EX2(_T("FBE_ThemedHorizontalSplitter"), CThemedHorSplitterWindow, CS_DBLCLKS, COLOR_WINDOW)
+
+	CThemedHorSplitterWindow() : WTL::CSplitterWindowImpl<CThemedHorSplitterWindow>(false) {}
+	void DrawSplitterBar(CDCHandle dc)
+	{
+		RECT rect = {};
+		if(!GetSplitterBarRect(&rect)) return;
+		::FillRect(dc.m_hDC, &rect, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+		RECT edge = rect;
+		edge.bottom = edge.top + 1;
+		::FillRect(dc.m_hDC, &edge, ThemeManager::Brush(THEME_COLOR_BORDER));
+		edge = rect;
+		edge.top = edge.bottom - 1;
+		::FillRect(dc.m_hDC, &edge, ThemeManager::Brush(THEME_COLOR_BORDER));
+	}
+};
 
 class CMainFrame :	public CFrameWindowImpl<CMainFrame>,
 					public CCustomizableToolBarCommands<CMainFrame>,
@@ -85,8 +128,8 @@ public:
 	CSciReplaceDlg*	m_sci_replace_dlg;
 
 	// Child windows
-	CSplitterWindow		m_splitter; // doc tree and views
-	CHorSplitterWindow	m_editor_results_splitter; // editor and docked Find results
+	CThemedSplitterWindow		m_splitter; // doc tree and views
+	CThemedHorSplitterWindow	m_editor_results_splitter; // editor and docked Find results
 	CContainerWnd		m_view; // document, description and source
 	CFindResultsPane	m_find_results_pane;
 	//CPaneContainer	m_tree_pane; // left pane with a tree

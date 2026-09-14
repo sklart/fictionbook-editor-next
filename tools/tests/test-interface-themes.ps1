@@ -12,6 +12,7 @@ $serialization = Read-ProjectFile 'src\fbe\settings\SettingsSerialization.cpp'
 $generalPage = Read-ProjectFile 'src\fbe\settings\ui\SettingsGeneralPage.cpp'
 $mainFrame = Read-ProjectFile 'src\fbe\mainfrm.cpp'
 $toolbarUi = Read-ProjectFile 'src\fbe\ui\MainFrameRuntimeUi.inl'
+$mainFrameHeader = Read-ProjectFile 'src\fbe\mainfrm.h'
 
 foreach($required in @('AppsUseLightTheme', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
@@ -35,6 +36,9 @@ if($settings -notlike '*ThemeManager::IsDark()*') { throw 'Source Automatic must
 if($settings -like '*GetXmlSrcThemeColor*AppsUseLightTheme*') { throw 'Source Automatic must not read Windows theme directly.' }
 if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -notlike '*OnThemeChanged*') {
     throw 'Main frame does not dynamically refresh theme changes.'
+}
+foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_BORDER')) {
+    if($mainFrameHeader -notlike "*$required*") { throw "Main frame does not theme splitter separator $required." }
 }
 foreach($required in @('ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {
     if($toolbarUi -notlike "*$required*") { throw "Toolbar custom draw does not apply semantic colour $required." }

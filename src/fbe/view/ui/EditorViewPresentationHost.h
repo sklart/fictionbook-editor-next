@@ -8,10 +8,20 @@ class SourceEditorControl;
 class EditorSelectionState;
 namespace FB { class Doc; }
 
+// Keeps view transitions independent from the concrete WTL splitter class.
+// The main frame supplies this small presentation-only adapter so it can use
+// a themed splitter without leaking a concrete control type into this layer.
+class IEditorViewSplitter
+{
+public:
+	virtual ~IEditorViewSplitter() {}
+	virtual void SetPresentationSinglePane(int pane) = 0;
+};
+
 struct EditorViewPresentationContext
 {
 	CContainerWnd& view;
-	WTL::CSplitterWindow& splitter;
+	IEditorViewSplitter& splitter;
 	SourceEditorControl& source;
 	FB::Doc*& document;
 	EditorSelectionState& selection;
