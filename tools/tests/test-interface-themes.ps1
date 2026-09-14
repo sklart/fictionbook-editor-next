@@ -36,7 +36,7 @@ if($settings -like '*GetXmlSrcThemeColor*AppsUseLightTheme*') { throw 'Source Au
 if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -notlike '*OnThemeChanged*') {
     throw 'Main frame does not dynamically refresh theme changes.'
 }
-foreach($required in @('ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()')) {
+foreach($required in @('ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {
     if($toolbarUi -notlike "*$required*") { throw "Toolbar custom draw does not apply semantic colour $required." }
 }
 $generalPageHeader = Read-ProjectFile 'src\fbe\settings\ui\SettingsGeneralPage.h'

@@ -131,6 +131,36 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 			draw.fState = ILS_SATURATE;
 			return ::ImageList_DrawIndirect(&draw) ? CDRF_SKIPDEFAULT : CDRF_DODEFAULT;
 		}
+		// The legacy command bitmaps contain a number of nearly-black strokes.
+		// Blend a light foreground over the normal image in dark mode so these
+		// strokes remain visible without replacing application-owned resources.
+		if (ThemeManager::IsDark() && !disabled)
+			return CDRF_NOTIFYPOSTPAINT;
+	}
+
+	if (customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark())
+	{
+		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
+		const int imageIndex = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, commandId, 0));
+		HIMAGELIST imageList = m_CmdToolbar.GetImageList();
+		if (imageIndex < 0 || imageList == NULL)
+			return CDRF_DODEFAULT;
+
+		const RECT& rect = customDraw->nmcd.rc;
+		IMAGELISTDRAWPARAMS draw = {};
+		draw.cbSize = sizeof(draw);
+		draw.himl = imageList;
+		draw.i = imageIndex;
+		draw.hdcDst = customDraw->nmcd.hdc;
+		draw.x = rect.left + (rect.right - rect.left - 24) / 2;
+		draw.y = rect.top + (rect.bottom - rect.top - 24) / 2;
+		draw.cx = 24;
+		draw.cy = 24;
+		draw.rgbBk = CLR_NONE;
+		draw.rgbFg = ThemeManager::TextColor();
+		draw.fStyle = ILD_TRANSPARENT | ILD_BLEND50;
+		::ImageList_DrawIndirect(&draw);
+		return CDRF_DODEFAULT;
 	}
 
 	return CDRF_DODEFAULT;
