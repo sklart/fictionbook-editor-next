@@ -16,6 +16,17 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
 
 ## Подтверждено локально
 
+- Пользовательские script toolbars получили отдельные boundaries: `ScriptRegistry`
+  владеет GUID UID и orphan records в settings directory, `ToolbarsV2Codec`
+  — portable v1/v2 representation, `ScriptToolbarCollection` — persistent
+  definitions, а `ScriptToolbarRuntimeCollection` — HWND/rebar state. Focused
+  contracts `test-script-identity-contract.ps1`,
+  `test-script-toolbars-v2-contract.ps1`,
+  `test-portable-scripts-infrastructure.ps1` и customize-dialog contracts
+  выполнены локально. Полный native build не отмечен как подтверждённый:
+  предыдущая попытка завершилась аварией compiler process на `stdafx.cpp`
+  до компиляции затронутых translation units.
+
 - Extension startup разделён на scripts, bundled plugins и MRU/recent documents;
   `InitializeExtensionUi` остаётся только тонким coordinator. Runtime test
   scenarios подключают тематические части из малого umbrella-файла.
