@@ -329,8 +329,12 @@ void ApplyToWindow(HWND window)
 	if(!::IsWindow(window)) return;
 	const bool dark = IsDark() && !IsHighContrastEnabled();
 	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
-	::SetWindowTheme(window, dark && UsesClassicSurfacePalette(window) ? L"" :
-		(dark ? L"DarkMode_Explorer" : L"Explorer"), NULL);
+	// A single-space app/sub-app pair is the documented opt-out marker for
+	// visual styles. An empty string merely selects the default theme again.
+	if(dark && UsesClassicSurfacePalette(window))
+		::SetWindowTheme(window, L" ", L" ");
+	else
+		::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
 	ApplyModernTitleBar(window, dark);
 	// Common controls reset custom colours while processing WM_THEMECHANGED.
 	// Set their palette only after that notification has completed.
