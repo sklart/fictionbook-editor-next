@@ -28,6 +28,9 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD);
 	m_availableList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE);
 	m_currentList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT);
+	m_panelList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL);
+	m_panelList.AddString(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.main", L"Scripts"));
+	m_panelList.SetCurSel(0);
 	::SetWindowSubclass(m_availableList, AvailableListSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	::SetWindowSubclass(m_currentList, CurrentListSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	m_toolTip.Create(m_hWnd); m_toolTip.Activate(TRUE);

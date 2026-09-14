@@ -49,6 +49,7 @@ private:
 	CSettings& m_settings;
 	CListBox m_availableList;
 	CListBox m_currentList;
+	CComboBox m_panelList;
 	CToolTipCtrl m_toolTip;
 	CString m_toolTipText;
 	CSize m_minimumSize;
