@@ -1803,6 +1803,16 @@ void CMainFrame::SavePortableToolbarLayout()
 				bool available = false; for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).uid == saved.scriptUid) { available = true; break; }
 				if(!available) layout.scripts.push_back(saved);
 			}
+	for(size_t toolbarIndex = 0; toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex)
+	{
+		const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[toolbarIndex];
+		if(runtime.window == NULL || runtime.definition.id == L"scripts-main") continue;
+		std::vector<PortableToolbarItem> captured; ToolbarLayoutAdapter::Capture(runtime.window, captured);
+		for(size_t itemIndex = 0; itemIndex < captured.size(); ++itemIndex) if(!captured[itemIndex].separator && captured[itemIndex].command >= ID_SCRIPT_BASE + 1 && captured[itemIndex].command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
+			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).commandId == captured[itemIndex].command - ID_SCRIPT_BASE) { captured[itemIndex].command = 0; captured[itemIndex].scriptUid = m_scripts.Menu().Item(scriptIndex).uid; break; }
+		bool found = false; for(size_t definitionIndex = 0; definitionIndex < layout.scriptToolbars.size(); ++definitionIndex) if(layout.scriptToolbars[definitionIndex].id == runtime.definition.id) { layout.scriptToolbars[definitionIndex].items = captured; layout.scriptToolbars[definitionIndex].visible = runtime.definition.visible; found = true; break; }
+		if(!found) { ScriptToolbarDefinition definition = runtime.definition; definition.items = captured; layout.scriptToolbars.push_back(definition); }
+	}
 	bool mainFound = false;
 	for(size_t index = 0; index < layout.scriptToolbars.size(); ++index)
 		if(layout.scriptToolbars[index].id == L"scripts-main") { layout.scriptToolbars[index].items = layout.scripts; mainFound = true; break; }
