@@ -307,6 +307,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClCompile Include="view\EditorViewState.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="view\EditorViewController.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="view\EditorViewTransition.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
+	<ClCompile Include="view\ui\EditorViewPresentationHost.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="source\SourceViewDiagnostics.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="diagnostics\DiagnosticCommandService.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
 	<ClCompile Include="StatusBarState.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
@@ -495,6 +496,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="view\EditorViewState.h" />
 	<ClInclude Include="view\EditorViewController.h" />
 	<ClInclude Include="view\EditorViewTransition.h" />
+	<ClInclude Include="view\ui\EditorViewPresentationHost.h" />
 	<ClInclude Include="source\SourceViewDiagnostics.h" />
 	<ClInclude Include="diagnostics\DiagnosticCommandService.h" />
 	<ClInclude Include="StatusBarState.h" />

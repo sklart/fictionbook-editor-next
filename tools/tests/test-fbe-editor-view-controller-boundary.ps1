@@ -12,10 +12,10 @@ $selectionState = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\E
 $transferHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\source\SourceDocumentTransfer.h')
 $mainSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
 
-foreach($required in @('class\s+EditorViewController', 'class\s+IEditorViewHost', 'EditorViewChangeResult', 'ChangeView\s*\(', 'EditorViewChangeStatus', 'EditorViewChangeFailure', 'EditorSourceOperationResult', 'Succeeded\s*\(')) {
+foreach($required in @('class\s+EditorViewController', 'class\s+IEditorSourceExchange', 'class\s+IEditorViewPresentationHost', 'EditorViewChangeResult', 'ChangeView\s*\(', 'EditorViewChangeStatus', 'EditorViewChangeFailure', 'EditorSourceOperationResult', 'Succeeded\s*\(')) {
     if(($controllerHeader + $controllerSource) -notmatch $required) { throw "Editor view controller is missing: $required" }
 }
-foreach($required in @('MakeEditorViewTransitionPlan\s*\(', 'CommitSourceDocument\s*\(', 'PrepareSourceDocument\s*\(', 'state\.CommitTransition\s*\(', 'RestoreEditorViewSelection\s*\(')) {
+foreach($required in @('MakeEditorViewTransitionPlan\s*\(', 'CommitSourceDocument\s*\(', 'PrepareSourceDocument\s*\(', 'state\.CommitTransition\s*\(', 'presentation\.RestoreSelection\s*\(')) {
     if($controllerSource -notmatch $required) { throw "Controller orchestration is missing: $required" }
 }
 if($controllerSource.IndexOf('state.CommitTransition') -lt $controllerSource.IndexOf('CommitSourceDocument')) { throw 'View state must not commit before Source prerequisites.' }
@@ -27,7 +27,7 @@ foreach($unit in @($controllerHeader, $controllerSource)) {
 foreach($required in @('class\s+EditorViewState', 'class\s+EditorSelectionState', 'PrepareSerializedSource', 'ApplySourceDocument')) {
     if(($viewState + $selectionState + $transferHeader) -notmatch $required) { throw "Existing view boundary is missing: $required" }
 }
-$showView = [regex]::Match($mainSource, '(?s)void\s+CMainFrame::ShowView\(.*?(?=void\s+CMainFrame::PrepareEditorViewPresentation)').Value
+$showView = [regex]::Match($mainSource, '(?s)void\s+CMainFrame::ShowView\(.*?(?=void\s+CMainFrame::ApplyEditorViewCommandUi)').Value
 if([string]::IsNullOrEmpty($showView)) { throw 'Unable to locate CMainFrame::ShowView.' }
 foreach($required in @('m_editor_view_controller\.ChangeView\s*\(', 'PresentEditorViewChangeFailure\s*\(')) {
     if($showView -notmatch $required) { throw "ShowView adapter is missing: $required" }

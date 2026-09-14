@@ -12,7 +12,8 @@ EditorViewChangeFailure SourceFailure(EditorSourceOperationResult result,
 }
 
 EditorViewChangeResult EditorViewController::ChangeView(EditorViewState& state,
-	IEditorViewHost& host, EditorView target) const
+	IEditorSourceExchange& source, IEditorViewPresentationHost& presentation,
+	EditorView target) const
 {
 	EditorViewChangeResult result;
 	result.previous = state.Current();
@@ -21,10 +22,10 @@ EditorViewChangeResult EditorViewController::ChangeView(EditorViewState& state,
 		MakeEditorViewTransitionPlan(result.previous, target);
 
 	if (plan.saveCurrentSelection)
-		host.SaveEditorViewSelection(result.previous);
+		presentation.SaveSelection(result.previous);
 	if (plan.commitSourceToDocument)
 	{
-		const EditorSourceOperationResult sourceResult = host.CommitSourceDocument();
+		const EditorSourceOperationResult sourceResult = source.CommitSourceDocument();
 		if (sourceResult != EditorSourceOperationResult::Success)
 		{
 			result.status = EditorViewChangeStatus::Rejected;
@@ -34,7 +35,7 @@ EditorViewChangeResult EditorViewController::ChangeView(EditorViewState& state,
 		}
 	}
 	if ((target == EditorView::Body || target == EditorView::Description) &&
-		!host.IsHtmlDocumentAvailable())
+		!presentation.IsHtmlDocumentAvailable())
 	{
 		result.failure = EditorViewChangeFailure::HtmlUnavailable;
 		return result;
@@ -42,7 +43,7 @@ EditorViewChangeResult EditorViewController::ChangeView(EditorViewState& state,
 	if (plan.prepareDocumentSource)
 	{
 		const EditorSourceOperationResult sourceResult =
-			host.PrepareSourceDocument(result.previous);
+			source.PrepareSourceDocument(result.previous);
 		if (sourceResult != EditorSourceOperationResult::Success)
 		{
 			result.status = EditorViewChangeStatus::Failed;
@@ -52,11 +53,11 @@ EditorViewChangeResult EditorViewController::ChangeView(EditorViewState& state,
 		}
 	}
 
-	host.PrepareEditorViewPresentation(result.previous, target, plan);
+	presentation.PrepareEditorViewPresentation(result.previous, target, plan);
 	state.CommitTransition(target);
 	if (plan.restoreTargetSelection)
-		host.RestoreEditorViewSelection(target);
-	host.CompleteEditorViewPresentation(result.previous, target);
+		presentation.RestoreSelection(target);
+	presentation.CompleteEditorViewPresentation(result.previous, target);
 	result.current = target;
 	result.status = EditorViewChangeStatus::Success;
 	return result;

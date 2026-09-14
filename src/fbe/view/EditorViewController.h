@@ -28,17 +28,23 @@ enum class EditorSourceOperationResult
 // Narrow presentation port.  It deliberately contains only the effects that
 // cannot leave the editor window, while lifecycle ordering remains in the
 // controller.
-class IEditorViewHost
+class IEditorSourceExchange
 {
 public:
-	virtual ~IEditorViewHost() = default;
-	virtual bool IsHtmlDocumentAvailable() const = 0;
-	virtual void SaveEditorViewSelection(EditorView view) = 0;
+	virtual ~IEditorSourceExchange() = default;
 	virtual EditorSourceOperationResult CommitSourceDocument() = 0;
 	virtual EditorSourceOperationResult PrepareSourceDocument(EditorView previous) = 0;
+};
+
+class IEditorViewPresentationHost
+{
+public:
+	virtual ~IEditorViewPresentationHost() = default;
+	virtual bool IsHtmlDocumentAvailable() const = 0;
+	virtual void SaveSelection(EditorView view) = 0;
 	virtual void PrepareEditorViewPresentation(EditorView previous, EditorView target,
 		const EditorViewTransitionPlan& plan) = 0;
-	virtual void RestoreEditorViewSelection(EditorView view) = 0;
+	virtual void RestoreSelection(EditorView view) = 0;
 	virtual void CompleteEditorViewPresentation(EditorView previous, EditorView target) = 0;
 };
 
@@ -55,6 +61,7 @@ struct EditorViewChangeResult
 class EditorViewController
 {
 public:
-	EditorViewChangeResult ChangeView(EditorViewState& state, IEditorViewHost& host,
+	EditorViewChangeResult ChangeView(EditorViewState& state,
+		IEditorSourceExchange& source, IEditorViewPresentationHost& presentation,
 		EditorView target) const;
 };

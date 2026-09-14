@@ -12,6 +12,7 @@ $transitionSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view
 $selectionState = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\EditorSelectionState.h')
 $mainHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.h')
 $mainSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
+$presentationSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view\ui\EditorViewPresentationHost.cpp')
 
 foreach($unit in @($viewState, $transitionHeader, $transitionSource, $controllerHeader, $controllerSource)) {
     foreach($forbidden in @('CMainFrame', 'FBDoc', 'FB::Doc', 'MSHTML', 'Scintilla', 'HWND')) {
@@ -36,7 +37,8 @@ foreach($legacy in @('m_current_view', 'm_last_view', 'm_last_ctrl_tab_view', 'm
 foreach($forbidden in @('#define\s+m_current_view', '#define\s+m_last_view', '#define\s+m_last_ctrl_tab_view', '#define\s+m_ctrl_tab', '#define\s+m_body_selection', '#define\s+m_desc_selection', '#define\s+m_body_source_selection')) {
     if($mainSource -match $forbidden) { throw "CMainFrame retains lifecycle compatibility macro: $forbidden" }
 }
-foreach($required in @('m_editor_view_controller\.ChangeView', 'NextEditorView', 'NextCtrlTabEditorView', 'SetDescriptionMode')) {
+foreach($required in @('m_editor_view_controller\.ChangeView', 'NextEditorView', 'NextCtrlTabEditorView')) {
     if($mainSource -notmatch $required) { throw "CMainFrame does not coordinate extracted lifecycle operation: $required" }
 }
+if($presentationSource -notmatch 'apiShowDesc') { throw 'Presentation host must own description mode presentation.' }
 Write-Host 'Editor view lifecycle boundary contract passed.'

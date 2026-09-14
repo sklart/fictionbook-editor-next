@@ -1,5 +1,6 @@
 #include "../stdafx.h"
 #include "SourceViewDiagnostics.h"
+#include <psapi.h>
 
 namespace FbeSourceDiagnostics
 {

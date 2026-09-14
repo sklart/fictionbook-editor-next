@@ -193,6 +193,7 @@
 	<ClCompile Include="view\EditorViewState.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="view\EditorViewController.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="view\EditorViewTransition.cpp"><Filter>Source Files\View</Filter></ClCompile>
+	<ClCompile Include="view\ui\EditorViewPresentationHost.cpp"><Filter>Source Files\View</Filter></ClCompile>
 	<ClCompile Include="source\SourceViewDiagnostics.cpp"><Filter>Source Files\Source</Filter></ClCompile>
 	<ClCompile Include="diagnostics\DiagnosticCommandService.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="StatusBarState.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -414,6 +415,7 @@
 	<ClInclude Include="view\EditorViewState.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewController.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="view\EditorViewTransition.h"><Filter>Header Files\View</Filter></ClInclude>
+	<ClInclude Include="view\ui\EditorViewPresentationHost.h"><Filter>Header Files\View</Filter></ClInclude>
 	<ClInclude Include="source\SourceViewDiagnostics.h"><Filter>Header Files\Source</Filter></ClInclude>
 	<ClInclude Include="diagnostics\DiagnosticCommandService.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="StatusBarState.h"><Filter>Header Files</Filter></ClInclude>

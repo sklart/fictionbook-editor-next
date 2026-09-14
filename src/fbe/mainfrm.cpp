@@ -42,6 +42,7 @@
 #include "source\\BodySourceSelectionTransfer.h"
 #include "source\\SourceDocumentTransfer.h"
 #include "source\\SourceViewDiagnostics.h"
+#include "view\\ui\\EditorViewPresentationHost.h"
 #include "navigation\\LinkDomNavigation.h"
 #include "LinkNavigation.h"
 #include "XmlDeclaration.h"
@@ -5011,29 +5012,6 @@ EditorView CMainFrame::NextEditorView()
 	return target;
 }
 
-void CMainFrame::SetDescriptionMode(bool enabled)
-{
-	CComDispatchDriver body(m_doc->m_body.Script());
-	CComVariant argument;
-	argument = enabled;
-	CheckError(body.Invoke1(L"apiShowDesc", &argument));
-}
-
-bool CMainFrame::IsHtmlDocumentAvailable() const
-{
-	return m_doc && m_doc->m_body.HasDoc();
-}
-
-void CMainFrame::SaveEditorViewSelection(EditorView view)
-{
-	SaveSelection(view);
-}
-
-void CMainFrame::RestoreEditorViewSelection(EditorView)
-{
-	RestoreSelection();
-}
-
 void CMainFrame::PresentEditorViewChangeFailure(const EditorViewChangeResult& result)
 {
 	if (result.failure == EditorViewChangeFailure::HtmlUnavailable)
@@ -5045,161 +5023,42 @@ void CMainFrame::PresentEditorViewChangeFailure(const EditorViewChangeResult& re
 
 void CMainFrame::ShowView(EditorView vt)
 {
+	const EditorView previous = m_editor_view_state.Current();
+	if (!m_editor_view_state.CtrlTabActive() && previous != vt)
+		m_editor_view_state.SetLastCtrlTabView(previous);
+	EditorViewPresentationContext presentationContext = {
+		m_view, m_splitter, m_source, m_doc, m_editor_selection_state,
+		_Settings.ViewDocumentTree() };
+	EditorViewPresentationHost presentation(presentationContext);
 	const EditorViewChangeResult result =
-		m_editor_view_controller.ChangeView(m_editor_view_state, *this, vt);
+		m_editor_view_controller.ChangeView(m_editor_view_state, *this, presentation, vt);
 	if (!result.Succeeded())
 		PresentEditorViewChangeFailure(result);
+	else
+		ApplyEditorViewCommandUi(result.previous, result.current);
 }
 
-void CMainFrame::PrepareEditorViewPresentation(EditorView prev, EditorView vt,
-	const EditorViewTransitionPlan& transition)
+void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)
 {
-	if (transition.commitSourceToDocument)
-		m_source.SendMessage(SCI_SETSAVEPOINT);
-	if (StartupTrace::Enabled())
-	{
-		const wchar_t* const viewNames[] = { L"Body", L"Description", L"Source" };
-		CString trace;
-		trace.Format(L"ShowView: requested %s -> %s", viewNames[static_cast<int>(prev)], viewNames[static_cast<int>(vt)]);
-		WriteSelectionTrace(L"E280", trace);
+	if (vt != BODY && m_Speller) m_Speller->EndDocumentCheck();
+	if (prev != vt) {
+		m_doc->m_body.CloseFindDialog(m_doc->m_body.m_find_dlg);
+		m_doc->m_body.CloseFindDialog(m_sci_find_dlg);
+		m_doc->m_body.CloseFindDialog(m_doc->m_body.m_replace_dlg);
+		m_doc->m_body.CloseFindDialog(m_sci_replace_dlg);
 	}
-  // added by SeNS
-  if (vt != BODY)
-	if (m_Speller)
-		m_Speller->EndDocumentCheck();
-
-  if(prev != vt)
-  {
-	  m_doc->m_body.CloseFindDialog(m_doc->m_body.m_find_dlg);
-	  m_doc->m_body.CloseFindDialog(m_sci_find_dlg);
-	  m_doc->m_body.CloseFindDialog(m_doc->m_body.m_replace_dlg);
-	  m_doc->m_body.CloseFindDialog(m_sci_replace_dlg);
-  }
-
-	if(!m_editor_view_state.CtrlTabActive() && prev != vt)
-	{
-		m_editor_view_state.SetLastCtrlTabView(m_editor_view_state.Current());
+	if (prev != vt && vt != SOURCE)
+		UIEnable(ID_VIEW_TREE, 1);
+	UISetCheck(ID_VIEW_BODY, vt == BODY); UISetCheck(ID_VIEW_DESC, vt == DESC); UISetCheck(ID_VIEW_SOURCE, vt == SOURCE);
+	if (vt == BODY) { m_sel_changed = true; if (m_Speller) m_Speller->SetDocumentLanguage(); }
+	if (vt == DESC) {
+		m_contextAttributeBars.ClearLinkState(); m_contextAttributeBars.ClearTableState();
+		m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
+		m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
+		SetStatusContext(L"");
 	}
-
-
-  if (prev!=vt && vt!=SOURCE) {
-    UIEnable(ID_VIEW_TREE,1);
-	/*m_save_sp_mode=true;// Modification by Pilgrim - ????? ?????? ?? ??(!)??? ?????? DESC ??????? ID_VIEW_TREE ? ??????? ?? BODY ?? ???????????????. ??, ???? ????? ??????? ????? ??????? ?? SOURCE, ?? ???????? ?? DESC ? BODY ?? ?????? ID_VIEW_TREE. ???? ???????????, ? ????? ??????? m_save_sp_mode=true;
-    UISetCheck(ID_VIEW_TREE, m_save_sp_mode);*/
-    m_splitter.SetSinglePaneMode(_Settings.ViewDocumentTree() ? SPLIT_PANE_NONE : SPLIT_PANE_RIGHT);
-  }
-
-  UISetCheck(ID_VIEW_BODY, 0);
-  UISetCheck(ID_VIEW_DESC, 0);
-  UISetCheck(ID_VIEW_SOURCE, 0);
-	if(transition.leaveDescriptionMode) SetDescriptionMode(false);
-	if(transition.enterDescriptionMode) SetDescriptionMode(true);
-
-  switch (vt) {
-  case BODY:
-	  {
-	        UISetCheck(ID_VIEW_BODY, 1);
-			m_view.ActivateWnd(m_doc->m_body);
-			m_sel_changed=true;
-			m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
-
-			if (m_Speller)
-				m_Speller->SetDocumentLanguage();
-	  }
-    break;
-  case DESC:
-    UISetCheck(ID_VIEW_DESC, 1);
-    m_view.ActivateWnd(m_doc->m_body);
-	m_contextAttributeBars.ClearLinkState();
-	m_contextAttributeBars.ClearTableState();
-	m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
-	m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
-
-	SetStatusContext(_T(""));
-    break;
-  case SOURCE:
-	m_source.UpdateLineNumberMargin(false);
-
-    UISetCheck(ID_VIEW_SOURCE, 1);
-    m_view.HideActiveWnd();
-    m_splitter.SetSinglePaneMode(SPLIT_PANE_RIGHT);
-    m_view.ActivateWnd(m_source);
-	if(m_editor_selection_state.BodySource().bodyToSourceTransferred)
-	{
-		m_source.SendMessage(SCI_SETSELECTIONSTART, m_editor_selection_state.BodySource().sourceStart);
-		m_source.SendMessage(SCI_SETSELECTIONEND, m_editor_selection_state.BodySource().sourceEnd);
-		m_source.SendMessage(SCI_SCROLLCARET);
-	}
-	{
-		if(prev == BODY)
-		{
-			CComDispatchDriver	body(m_doc->m_body.Script());
-			// Эта вспомогательная функция не должна отменять переход в Source.
-			// На части систем MSHTML возвращает E_INVALIDARG, хотя сохранение
-			// прокрутки не влияет на содержимое документа.
-			body.Invoke0(L"SaveBodyScroll");
-		}
-	}
-	SetStatusContext(L"");
-	m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
-
-	RefreshLocalizedToolbarButtonTexts(m_CmdToolbar);
-	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
-    break;
-  }
-
-}
-
-void CMainFrame::CompleteEditorViewPresentation(EditorView prev, EditorView vt)
-{
+	if (vt == SOURCE) { SetStatusContext(L""); RefreshLocalizedToolbarButtonTexts(m_CmdToolbar); RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar); }
 	UpdateStatusBar();
-  m_view.SetFocus();
-	if(vt == BODY && prev == SOURCE && m_editor_selection_state.BodySource().sourceToBodyTransferred &&
-		(bool)m_editor_selection_state.BodyRange())
-	{
-		// Activating the MSHTML host can clear its visual highlight.  Apply the
-		// already mapped range once, after the final focus assignment.  MSHTML
-		// can stop extending a new drag-selection when the same IHTMLTxtRange is
-		// selected both before and after the host gains focus.
-		m_editor_selection_state.BodyRange()->select();
-	}
-	if(vt == SOURCE && m_editor_selection_state.BodySource().bodyToSourceTransferred)
-	{
-		// Source получает фокус и окончательный размер только в конце смены
-		// режима. Повторная установка здесь делает прокрутку устойчивой.
-		m_source.SendMessage(SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart,
-			m_editor_selection_state.BodySource().sourceEnd);
-		const int sourceLine = m_source.SendMessage(SCI_LINEFROMPOSITION,
-			m_editor_selection_state.BodySource().sourceStart);
-		m_source.SendMessage(SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine);
-		m_source.SendMessage(SCI_GOTOPOS, m_editor_selection_state.BodySource().sourceStart);
-		m_source.SendMessage(SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart,
-			m_editor_selection_state.BodySource().sourceEnd);
-		m_source.SendMessage(SCI_SCROLLCARET);
-		// После отображения панели Scintilla может сбросить положение каретки.
-		// Повторяем диапазон в очереди сообщений уже после завершения layout.
-		::PostMessage(m_source, SCI_ENSUREVISIBLEENFORCEPOLICY, sourceLine, 0);
-		::PostMessage(m_source, SCI_GOTOPOS, m_editor_selection_state.BodySource().sourceStart, 0);
-		::PostMessage(m_source, SCI_SETSEL, m_editor_selection_state.BodySource().sourceStart,
-			m_editor_selection_state.BodySource().sourceEnd);
-		::PostMessage(m_source, SCI_SCROLLCARET, 0, 0);
-		if (StartupTrace::Enabled())
-		{
-			CString trace;
-			trace.Format(L"ShowView: Source final bytes=[%d,%d], line=%d, first-visible=%d",
-				m_editor_selection_state.BodySource().sourceStart, m_editor_selection_state.BodySource().sourceEnd, sourceLine,
-				(int)m_source.SendMessage(SCI_GETFIRSTVISIBLELINE));
-			WriteSelectionTrace(L"E290", trace);
-		}
-	}
-	else if (StartupTrace::Enabled())
-	{
-		CString trace;
-		trace.Format(L"ShowView: completed current=%d, body-transfer=%d, source-transfer=%d",
-			m_editor_view_state.Current(), m_editor_selection_state.BodySource().bodyToSourceTransferred ? 1 : 0,
-			m_editor_selection_state.BodySource().sourceToBodyTransferred ? 1 : 0);
-		WriteSelectionTrace(L"E299", trace);
-	}
 }
 
 static SourceEditorConfig BuildSourceEditorConfig()
@@ -5693,43 +5552,6 @@ MSHTML::IHTMLDOMNodePtr CMainFrame::CreateNestedSection(MSHTML::IHTMLDOMNodePtr 
 	}while((bool)(section = section->nextSibling));
 
 	return new_node;
-}
-
-void CMainFrame::RestoreSelection()
-{
-	if(m_editor_view_state.Current() == BODY && (bool)m_editor_selection_state.BodyRange())
-	{
-		m_editor_selection_state.BodyRange()->select();
-	}
-	if(m_editor_view_state.Current() == DESC && (bool)m_editor_selection_state.DescriptionRange())
-	{
-		m_editor_selection_state.DescriptionRange()->select();
-	}
-}
-
-
-void CMainFrame::SaveSelection(EditorView vt)
-{
-	if ((vt == BODY || vt == DESC) && (!m_doc || !m_doc->m_body.HasDoc()))
-	{
-		StartupTrace::Warning(L"selection", L"E301", L"SaveSelection ignored: HTML document is unavailable");
-		return;
-	}
-	if(vt == BODY)
-	{
-		m_editor_selection_state.BodyRange() = m_doc->m_body.Document()->selection->createRange();
-		if (StartupTrace::Enabled() && (bool)m_editor_selection_state.BodyRange())
-		{
-			const CString selectedText((const wchar_t*)m_editor_selection_state.BodyRange()->text);
-			CString trace;
-			trace.Format(L"SaveSelection: Body; selection-chars=%d", selectedText.GetLength());
-			WriteSelectionTrace(L"E300", trace);
-		}
-	}
-	if(vt == DESC)
-	{
-		m_editor_selection_state.DescriptionRange() = m_doc->m_body.Document()->selection->createRange();
-	}
 }
 
 void CMainFrame::ClearSelection()
