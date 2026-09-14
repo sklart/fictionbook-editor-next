@@ -1,6 +1,7 @@
 #include "../stdafx.h"
 #include "BodySourceSelectionCoordinator.h"
 #include "SourceDocumentTransfer.h"
+#include "SourceViewDiagnostics.h"
 #include "ui/SourceEditorControl.h"
 #include "../apputils.h"
 #include "../utils/utils.h"
@@ -108,13 +109,15 @@ void BodySourceSelectionCoordinator::MapSourceSelectionToBody(FB::Doc& document,
 
 void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 	MSXML2::IXMLDOMDocumentPtr xml, SourceEditorControl& source,
-	const CString& serializedSource, EditorSelectionState& selection)
+	const CString& serializedSource, EditorSelectionState& selection,
+	FbeSourceDiagnostics::SourceViewPhaseProfiler* profiler)
 {
 	selection.BodySource().bodyToSourceTransferred = false;
 	int beginCharacter = 0, endCharacter = 0, selectedBodyIndex = -1;
 	MSHTML::IHTMLElementPtr beginElement, endElement;
 	document.m_body.GetSelectionInfo((MSHTML::IHTMLElementPtr*)(&beginElement),
 		(MSHTML::IHTMLElementPtr*)(&endElement), &beginCharacter, &endCharacter, 0);
+	if(profiler) profiler->Mark("Body selection extraction");
 	if(beginElement == endElement && selection.BodyRange())
 	{
 		const CString text((const wchar_t*)selection.BodyRange()->text);
@@ -142,7 +145,9 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 		}
 		root = root->nextSibling;
 	}
+	if(profiler) profiler->Mark("DomPath construction");
 	CString serialized(serializedSource);
+	if(profiler) profiler->Mark("MoveToNode serialization");
 	int beginPosition = -1, endPosition = -1;
 	bool hasSelectionText = false;
 	if(selection.BodyRange())
@@ -169,6 +174,7 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 			}
 		}
 	}
+	if(profiler) profiler->Mark("selection DOM lookup");
 	if(beginPosition < 0 && endPosition < 0 && pathAvailable && !hasSelectionText)
 	{
 		_bstr_t text((const wchar_t*)serialized);
@@ -182,9 +188,12 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 		endByte = ::WideCharToMultiByte(CP_UTF8, 0, serialized, endPosition, NULL, 0, NULL, NULL);
 		selection.BodySource().bodyToSourceTransferred = true;
 	}
+	if(profiler) profiler->Mark("selection matching");
 	selection.BodySource().sourceStart = beginByte;
 	selection.BodySource().sourceEnd = endByte;
 	source.SendMessage(SCI_SETSELECTIONSTART, beginByte);
 	source.SendMessage(SCI_SETSELECTIONEND, endByte);
+	if(profiler) profiler->Mark("selection restoration");
 	source.SendMessage(SCI_SCROLLCARET);
+	if(profiler) profiler->Mark("scroll restoration");
 }

@@ -12,5 +12,6 @@ public:
 		EditorSelectionState& selection) override;
 	void MapBodySelectionToSource(FB::Doc& document,
 		MSXML2::IXMLDOMDocumentPtr xml, SourceEditorControl& source,
-		const CString& serializedSource, EditorSelectionState& selection) override;
+		const CString& serializedSource, EditorSelectionState& selection,
+		FbeSourceDiagnostics::SourceViewPhaseProfiler* profiler) override;
 };

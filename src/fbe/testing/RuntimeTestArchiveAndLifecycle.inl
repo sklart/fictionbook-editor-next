@@ -354,9 +354,9 @@
 		const bool corrected = loadResult == OK && m_editor_view_state.Current() == BODY && !m_bad_xml &&
 			m_doc->m_filename == malformedPath && m_doc->m_namevalid &&
 			m_document_session.Location().storagePath == malformedPath && correctedXml.Find(L"CORRECTED_MALFORMED_SOURCE") >= 0;
-		CStringA report; report.Format("loaded=%d\nbody=%d\nbad_xml_cleared=%d\nfilename=%d\nnamevalid=%d\nsession=%d\ndom=%d\ntree=%d\n", loadResult == OK,
+		CStringA report; report.Format("loaded=%d\nbody=%d\nbad_xml_cleared=%d\nfilename=%d\nnamevalid=%d\nsession=%d\ndom=%d\n", loadResult == OK,
 			m_editor_view_state.Current() == BODY, !m_bad_xml, m_doc->m_filename == malformedPath, m_doc->m_namevalid,
-			m_document_session.Location().storagePath == malformedPath, correctedXml.Find(L"CORRECTED_MALFORMED_SOURCE") >= 0, _Settings.ViewDocumentTree());
+			m_document_session.Location().storagePath == malformedPath, correctedXml.Find(L"CORRECTED_MALFORMED_SOURCE") >= 0);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(corrected ? 0 : 1);
 		return 0;

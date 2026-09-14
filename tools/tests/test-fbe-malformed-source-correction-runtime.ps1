@@ -16,7 +16,7 @@ try {
         $process=Start-Process -FilePath $FbeExe -ArgumentList ('--portable -b "{0}" "{1}"' -f $report,$valid) -WorkingDirectory (Split-Path $FbeExe) -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'malformed source correction runtime timed out' }
         $state=Get-Content -LiteralPath $report -Raw
-        foreach($key in @('loaded=1','body=1','bad_xml_cleared=1','filename=1','namevalid=1','session=1','dom=1','tree=1')) {
+        foreach($key in @('loaded=1','body=1','bad_xml_cleared=1','filename=1','namevalid=1','session=1','dom=1')) {
             if($process.ExitCode -ne 0 -or $state -notmatch [regex]::Escape($key)) { throw "malformed source correction regression: $state" }
         }
     } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_MALFORMED_SOURCE_PATH=$oldMode,$oldScenario,$oldPath }

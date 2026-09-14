@@ -8,6 +8,7 @@
 class SourceEditorControl;
 class EditorSelectionState;
 namespace FB { class Doc; }
+namespace FbeSourceDiagnostics { class SourceViewPhaseProfiler; }
 
 class IBodySourceSelectionMapper
 {
@@ -18,7 +19,8 @@ public:
 		EditorSelectionState& selection) = 0;
 	virtual void MapBodySelectionToSource(FB::Doc& document,
 		MSXML2::IXMLDOMDocumentPtr xml, SourceEditorControl& source,
-		const CString& serializedSource, EditorSelectionState& selection) = 0;
+		const CString& serializedSource, EditorSelectionState& selection,
+		FbeSourceDiagnostics::SourceViewPhaseProfiler* profiler) = 0;
 };
 
 // Source-specific state and conversion boundary.  Presentation, document

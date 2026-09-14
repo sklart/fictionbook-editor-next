@@ -28,4 +28,8 @@ if($showView -notmatch 'm_editor_view_controller\.ChangeView\(m_editor_view_stat
 if($showView -match 'ChangeView\(m_editor_view_state,\s*m_source_view_session') {
     throw 'View lifecycle bypasses the application source adapter.'
 }
+$commit = [regex]::Match($mainSource, '(?s)EditorSourceOperationResult\s+CMainFrame::CommitSourceDocument\(\).*?(?=bool\s+CMainFrame::SourceToHTML\()').Value
+if($commit -notmatch 'm_document_tree\.GetDocumentStructure\(m_doc->m_body\.Document\(\)\)') {
+    throw 'Successful Source commit must refresh the document tree.'
+}
 Write-Host 'Source view session boundary contract passed.'
