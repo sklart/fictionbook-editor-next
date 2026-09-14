@@ -41,8 +41,11 @@ if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -no
 foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_BORDER')) {
     if($mainFrameHeader -notlike "*$required*") { throw "Main frame does not theme splitter separator $required." }
 }
-foreach($required in @('isMenuBar', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {
+foreach($required in @('ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {
     if($toolbarUi -notlike "*$required*") { throw "Toolbar custom draw does not apply semantic colour $required." }
+}
+foreach($required in @('CThemedCommandBar', 'OnEraseBackground', 'OnParentCustomDraw', 'ThemeManager::ControlBrush()')) {
+    if($mainFrameHeader -notlike "*$required*") { throw "Main frame command bar does not provide dark rendering: $required." }
 }
 foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ForceDark', 'UsesClassicSurfacePalette', 'SetWindowTheme(window, L" ", L" ")', 'ApplyNativeControlPalette(window);')) {
     if($manager -notlike "*$required*") { throw "Theme manager does not refresh native menu and control colours: $required." }

@@ -88,8 +88,7 @@ LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled)
 {
 	const bool isCommandToolbar = pnmh->hwndFrom == m_CmdToolbar.m_hWnd;
-	const bool isMenuBar = pnmh->hwndFrom == m_MenuBar.m_hWnd;
-	if (!isCommandToolbar && !isMenuBar)
+	if (!isCommandToolbar)
 	{
 		bHandled = FALSE;
 		return 0;
@@ -169,8 +168,9 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		draw.rgbBk = CLR_NONE;
 		draw.rgbFg = ThemeManager::TextColor();
 		draw.fStyle = ILD_TRANSPARENT | ILD_BLEND50;
-		::ImageList_DrawIndirect(&draw);
-		return CDRF_DODEFAULT;
+	::ImageList_DrawIndirect(&draw);
+	::ImageList_DrawIndirect(&draw);
+	return CDRF_DODEFAULT;
 	}
 
 	return CDRF_DODEFAULT;
