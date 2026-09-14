@@ -343,6 +343,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	</ClCompile>
     <ClCompile Include="RuntimeLocalization.cpp" />
 	<ClCompile Include="ScriptsToolbarCustomizeDlg.cpp" />
+	<ClCompile Include="ScriptToolbarManagerDlg.cpp" />
 	<ClCompile Include="plugins\PluginManager.cpp" />
 	<ClCompile Include="settings\EditorBackgrounds.cpp" />
 	<ClCompile Include="plugins\PluginApiV2.cpp" />
@@ -568,6 +569,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="search\SearchTypes.h" />
     <ClInclude Include="RuntimeLocalization.h" />
 	<ClInclude Include="ScriptsToolbarCustomizeDlg.h" />
+	<ClInclude Include="ScriptToolbarManagerDlg.h" />
     <ClInclude Include="XmlSourceThemes.h" />
 	<ClInclude Include="ThemeManager.h" />
 	<ClInclude Include="XmlTagMatcher.h" />
