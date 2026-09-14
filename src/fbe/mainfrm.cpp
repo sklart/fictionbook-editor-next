@@ -1823,6 +1823,12 @@ void CMainFrame::InitializeExtensionUi()
 void CMainFrame::InitializeScripts()
 {
 	ReleaseScriptResources();
+	m_scriptToolbars.Reset();
+	PortableToolbarLayout persistedToolbars;
+	if(!DeploymentContext::RegistryPersistenceAllowed() && PortableToolbarStore::Load(persistedToolbars))
+		for(size_t index = 0; index < persistedToolbars.scriptToolbars.size(); ++index)
+			m_scriptToolbars.Add(persistedToolbars.scriptToolbars[index]);
+	if(m_scriptToolbars.Find(L"scripts-main") == NULL) { ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; m_scriptToolbars.Add(main); }
 	StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
 	CString serializedCommandIds;
 	HMENU mainMenu = m_MenuBar.GetMenu();

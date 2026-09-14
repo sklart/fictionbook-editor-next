@@ -18,6 +18,7 @@
 #include "plugins\\PluginUiController.h"
 #include "plugins\\PluginExecutionController.h"
 #include "diagnostics\\DiagnosticCommandService.h"
+#include "toolbars\\ScriptToolbarRuntime.h"
 
 #include "atlctrlsext.h"
 
@@ -146,6 +147,7 @@ public:
 	CImageList		m_commandToolbarImages;	// application-owned command toolbar image list
 	int			m_table_toolbar_image_indices[8];
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
+	ScriptToolbarRuntimeCollection m_scriptToolbars;
 	int			m_scriptsToolbarBaseImageCount;
 	CReBarCtrl		m_rebar;			// toolbars
 	ContextAttributeBars m_contextAttributeBars;
