@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
+$controller = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\DesignSearchController.cpp')
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
 $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
 $frame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
@@ -17,21 +18,22 @@ function Assert-NotContains([string]$text, [string]$pattern, [string]$descriptio
     if ($text -match $pattern) { throw "Unexpected $description." }
 }
 
-Assert-Contains $header 'm_last_zero_length_query' 'zero-length query identity'
-Assert-Contains $source 'HasSameSearchCriteria\(m_last_zero_length_query, query\)' 'zero-length criteria reset'
-Assert-Contains $source 'm_last_zero_length_query\.Direction == query\.Direction' 'zero-length direction reset'
+Assert-Contains $controller 'm_lastZeroLengthQuery' 'zero-length query identity'
+Assert-Contains $source 'PrepareZeroLengthSearch\(query\)' 'zero-length criteria reset delegation'
+Assert-Contains $controller 'HasSameSearchCriteria\(m_lastZeroLengthQuery, query\)' 'zero-length criteria reset'
+Assert-Contains $controller 'm_lastZeroLengthQuery\.Direction != query\.Direction' 'zero-length direction reset'
 Assert-Contains $source 'CanReuseDocumentSearch\(query, generation\)' 'cached Find Next decision'
 Assert-Contains $source 'GetSession\(\)\.IsValidFor\(generation\)' 'cached session generation validation'
 Assert-Contains $source 'GetResults\(\)\.IsValidFor\(generation\)' 'cached results generation validation'
 Assert-Contains $source 'openingReplace = !m_replace_dlg \|\| !m_replace_dlg->IsValid\(\)' 'Replace reopen detection'
-Assert-Contains $source 'm_has_replace_preview = false' 'Replace preview reset on reopen'
+Assert-Contains $source 'm_design_search\.ClearReplacePreview\(\)' 'Replace preview reset on reopen'
 Assert-NotContains $source 'm_fo\.scope = AU::Search::SearchScope::WholeDocument' 'Replace must not discard Find scope on open'
 Assert-NotContains $source 'm_fo\.unicodeProperties = false' 'Replace must not discard UCP on open'
 Assert-Contains $source 'return DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);' 'native regex Find Next'
 Assert-NotContains $source 'DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);\s*/\*\s*Legacy implementation' 'unreachable legacy regexp implementation'
 Assert-Contains $source 'CheckReplacementRange' 'production replacement preflight'
 Assert-Contains $source 'fbe\.replace\.cross_paragraph' 'clear cross-paragraph replacement error'
-Assert-Contains $source 'const std::size_t count = m_document_search.GetResults\(\)\.GetCount\(\);\s*if \(count == 0\)\s*return 0;' 'GlobalReplace does not open an empty mutation path'
+Assert-Contains $source 'const std::size_t count = m_design_search\.Coordinator\(\)\.GetResults\(\)\.GetCount\(\);\s*if \(count == 0\)\s*return 0;' 'GlobalReplace does not open an empty mutation path'
 Assert-Contains $source 'if \(mutationApplied\)\s*AdvanceSearchDocumentGeneration\(\);' 'failed replacement advances semantic generation only after a real DOM mutation'
 Assert-Contains $header 'CString\s+m_last_search_error' 'native search diagnostic channel'
 Assert-Contains $source 'm_last_search_error\s*=\s*nativeError\.c_str\(\)' 'PCRE2 diagnostic retained by native Find'
@@ -72,7 +74,7 @@ Assert-NotContains $selectResult 'OnViewToolBar|IsBandVisible|ATL_IDW_BAND_FIRST
 Assert-Contains $dialog 'IDC_FIND_FROM_START' 'Find exposes a separate From start command'
 Assert-Contains $dialog 'DoSearchFromScopeStart' 'From start uses the current Search Core scope'
 Assert-Contains $source 'DoSearchNative\(true, m_fo\.fRegexp \? AU::Search::SearchMode::Regex : AU::Search::SearchMode::Literal, true\)' 'From start keeps the existing direction state while using a dedicated action'
-Assert-Contains $source 'm_has_find_scope_range \? m_find_scope_range\.Start : 0' 'From start begins at the current scope boundary'
+Assert-Contains $source 'm_design_search\.Scope\(query\.Scope\) \? m_design_search\.Scope\(query\.Scope\)->Start : 0' 'From start begins at the current scope boundary'
 Assert-Contains $source 'AU::Search::SearchDirection::Forward, &wrapped' 'From start selects the first match without adding a third direction'
 Assert-Contains $dialog 'SyncSearchOptionsToOpenDialogs\(this\)' 'common options update the shared model immediately'
 Assert-Contains $source 'SyncSearchOptionsToOpenDialogs\(FRBase\* source\)' 'open Find and Replace dialogs synchronize their common controls'
@@ -90,7 +92,7 @@ Assert-Contains $replaceAll 'CheckReplacementRange\(ranges\[index\], m_fo\.fRege
 $allGuard = $replaceAll.IndexOf('CheckReplacementRange(ranges[index], m_fo.fRegexp)')
 $allUndo = $replaceAll.IndexOf('BeginUndoUnit(L"replace all")')
 if ($allGuard -lt 0 -or $allUndo -lt 0 -or $allGuard -gt $allUndo) { throw 'Replace All must reject a cross-paragraph range before opening Undo.' }
-Assert-Contains $replaceAll 'm_replace_all_completion_pending = true;[\s\S]*?WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All defers completion until queued MSHTML notifications have drained'
+Assert-Contains $replaceAll 'SetReplaceAllCompletion\(replaced\);[\s\S]*?WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All defers completion until queued MSHTML notifications have drained'
 Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?DoFindAll\(true, &searchError\)' 'first Replace All builds and displays the preview'
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION' 'Replace All has one Yes/No confirmation'
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?if \(!previewIsCurrent\(\)\)' 'preview identity is rechecked after confirmation'
@@ -98,15 +100,15 @@ Assert-NotContains $replaceAll 'fbe\.replace\.preview\.ready|MB_OK \| MB_ICONINF
 Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -2;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'No leaves preview intact before any replacement range is opened'
 Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?return -1;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'changed preview identity blocks replacement before ranges and Undo'
 Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?m_find_results_completion_status = completion;' 'successful replacement clears stale preview rows and reports completion'
-Assert-Contains $replaceAll 'm_controlled_replace_all_mutation = true;[\s\S]*?BeginUndoUnit\(L"replace all"\)' 'Replace All coalesces its own RANGE_SINK notifications before mutation'
-Assert-Contains $replaceAll 'm_replace_all_completion_count = replaced;[\s\S]*?m_replace_all_completion_pending = true;[\s\S]*?PostMessage\(m_hWnd, AU::WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All schedules one protected completion phase'
+Assert-Contains $replaceAll 'SetControlledReplaceAllMutation\(true\);[\s\S]*?BeginUndoUnit\(L"replace all"\)' 'Replace All coalesces its own RANGE_SINK notifications before mutation'
+Assert-Contains $replaceAll 'SetReplaceAllCompletion\(replaced\);[\s\S]*?PostMessage\(m_hWnd, AU::WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All schedules one protected completion phase'
 
-Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?AdvanceSearchDocumentGeneration\(false\);[\s\S]*?m_find_results_completion_status = completion;[\s\S]*?m_replace_all_completion_pending = false;[\s\S]*?WM_REFRESH_FIND_RESULTS_PANE' 'posted completion finalizes one invalidation before publishing the Results-pane status'
-Assert-Contains $source 'case RANGE_SINK:[\s\S]*?if \(!m_controlled_replace_all_mutation && !m_replace_all_completion_pending\)\s*AdvanceSearchDocumentGeneration\(\);' 'ordinary RANGE_SINK invalidates searches while controlled and pending Replace All notifications are coalesced'
+Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?TakeReplaceAllCompletion\(\);[\s\S]*?AdvanceSearchDocumentGeneration\(false\);[\s\S]*?m_find_results_completion_status = completion;[\s\S]*?WM_REFRESH_FIND_RESULTS_PANE' 'posted completion finalizes one invalidation before publishing the Results-pane status'
+Assert-Contains $source 'case RANGE_SINK:[\s\S]*?if \(!m_design_search\.ControlledReplaceAllMutation\(\) && !m_design_search\.ReplaceAllCompletionPending\(\)\)\s*AdvanceSearchDocumentGeneration\(\);' 'ordinary RANGE_SINK invalidates searches while controlled and pending Replace All notifications are coalesced'
 
 $globalReplace = [regex]::Match($source, 'int\s+CFBEView::GlobalReplace\(MSHTML::IHTMLElementPtr elem, CString cntTag\)[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::ToolWordsGlobalReplace').Value
 if ([string]::IsNullOrWhiteSpace($globalReplace)) { throw 'Unable to locate Search Core GlobalReplace path.' }
-Assert-Contains $globalReplace 'const std::size_t count = m_document_search.GetResults\(\)\.GetCount\(\);\s*if \(count == 0\)\s*return 0;' 'GlobalReplace does not open a no-op Undo unit or invalidate results'
+Assert-Contains $globalReplace 'const std::size_t count = m_design_search\.Coordinator\(\)\.GetResults\(\)\.GetCount\(\);\s*if \(count == 0\)\s*return 0;' 'GlobalReplace does not open a no-op Undo unit or invalidate results'
 Assert-Contains $globalReplace 'bool mutationApplied = false;' 'GlobalReplace tracks actual DOM writes'
 Assert-Contains $globalReplace 'catch \(_com_error& err\)[\s\S]*?if \(mutationApplied\)\s*AdvanceSearchDocumentGeneration\(\);' 'GlobalReplace invalidates partial failed writes only'
 

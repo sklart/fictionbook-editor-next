@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
+$controller = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\DesignSearchController.h')
 $searchReplace = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
 $viewport = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchViewportResults.h')
 $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
@@ -19,7 +20,8 @@ function Assert-NotContains([string]$text, [string]$pattern, [string]$descriptio
 }
 
 Assert-Contains $header 'CSearchHighlightOverlay\*\s+m_search_highlight_overlay' 'overlay ownership boundary'
-Assert-Contains $header 'AU::Search::SearchDocumentGeneration\s+m_search_document_generation' 'editor-owned semantic search generation'
+Assert-Contains $header 'DesignSearchController\s+m_design_search' 'editor-owned Design search runtime'
+Assert-Contains $controller 'AU::Search::SearchDocumentGeneration\s+m_generation' 'controller-owned semantic search generation'
 Assert-Contains $generation 'Only a content/structure mutation or a full' 'semantic generation contract'
 Assert-Contains $generation 'void Advance\(\)' 'semantic generation advance operation'
 Assert-NotContains $source 'GetVersionNumber\(\)' 'MSHTML layout version used as a Search Core semantic generation'

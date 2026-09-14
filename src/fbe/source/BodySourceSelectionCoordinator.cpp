@@ -113,6 +113,7 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 	const CString& serializedSource, EditorSelectionState& selection,
 	FbeSourceDiagnostics::SourceViewPhaseProfiler* profiler)
 {
+	(void)xml;
 	selection.BodySource().bodyToSourceTransferred = false;
 	int beginCharacter = 0, endCharacter = 0, selectedBodyIndex = -1;
 	MSHTML::IHTMLElementPtr beginElement, endElement;

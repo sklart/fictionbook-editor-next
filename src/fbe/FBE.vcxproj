@@ -356,6 +356,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     </ClCompile>
 	<ClCompile Include="view\VisualDomNormalizer.cpp" />
 	<ClCompile Include="dom\SelectionRangeMapper.cpp" />
+	<ClCompile Include="search\DesignSearchController.cpp" />
 	<ClCompile Include="structure\BodyStructuralEditor.cpp" />
 	<ClCompile Include="structure\StructuralTrace.cpp" />
     <ClCompile Include="table\TableGrid.cpp" />
@@ -521,6 +522,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="ImageImport.h" />
     <ClInclude Include="image\ImageDocumentInserter.h" />
 	<ClInclude Include="dom\SelectionRangeMapper.h" />
+	<ClInclude Include="search\DesignSearchController.h" />
 	<ClInclude Include="clipboard\ClipboardPastePreparer.h" />
     <ClInclude Include="navigation\LinkDomNavigation.h" />
 	<ClInclude Include="navigation\LinkNavigationState.h" />

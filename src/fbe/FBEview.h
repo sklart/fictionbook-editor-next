@@ -18,8 +18,7 @@
 #include "StartupTrace.h"
 #include "BinaryFileSave.h"
 #include "BinarySaveNotification.h"
-#include "search\\DocumentSearchCoordinator.h"
-#include "search\\SearchDocumentGeneration.h"
+#include "search\\DesignSearchController.h"
 #include "navigation\\LinkNavigationState.h"
 #include "structure\\BodyStructuralEditor.h"
 
@@ -288,38 +287,7 @@ protected:
 	CString m_last_search_error;
 	bool m_last_search_error_is_regexp;
 	MSHTML::IHTMLTxtRangePtr m_is_start;
-	DocumentSearchCoordinator m_document_search;
-	// Search offsets are semantic document coordinates. MSHTML's markup version
-	// also changes for viewport and selection activity, so it must not validate
-	// Search Core caches or Results-pane rows.
-	AU::Search::SearchDocumentGeneration m_search_document_generation;
-	AU::Search::SearchRange m_find_scope_range;
-	std::uint64_t m_find_scope_generation;
-	AU::Search::SearchScope m_find_scope_kind;
-	bool m_has_find_scope_range;
-	std::size_t m_last_zero_length_hit;
-	std::uint64_t m_last_zero_length_generation;
-	AU::Search::SearchQuery m_last_zero_length_query;
-	bool m_has_last_zero_length_hit;
-	CString m_replace_preview_pattern;
-	CString m_replace_preview_replacement;
-	std::uint64_t m_replace_preview_generation;
-	std::uint64_t m_replace_preview_revision;
-	int m_replace_preview_flags;
-	AU::Search::SearchScope m_replace_preview_scope;
-	bool m_replace_preview_regexp;
-	bool m_replace_preview_unicode_properties;
-	bool m_has_replace_preview;
-	// MSHTML raises RANGE_SINK synchronously for each range->text assignment.
-	// Replace All coalesces those notifications into one semantic invalidation
-	// after its Undo unit has closed, so its completion status cannot be
-	// overwritten by an intermediate stale refresh.
-	bool m_controlled_replace_all_mutation;
-	// MSHTML can queue a final range notification after ReplaceAllSearchCore
-	// returns. Keep the operation pending until one posted UI turn finalizes the
-	// invalidation and publishes the completion status.
-	bool m_replace_all_completion_pending;
-	int m_replace_all_completion_count;
+	DesignSearchController m_design_search;
 	// A completed Replace All invalidates snapshot offsets. Keep a short
 	// presentation-only result so an open Results pane does not call that
 	// successful operation "stale".
@@ -353,8 +321,8 @@ protected:
 	bool CanReuseDocumentSearch(const AU::Search::SearchQuery& query, std::uint64_t generation) const;
 	bool RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText = NULL, bool* expressionError = NULL);
 	void AdvanceSearchDocumentGeneration(bool refreshFindResultsPane = true);
-	std::uint64_t SearchDocumentGeneration() const { return m_search_document_generation.Value(); }
-	bool HasSavedSearchScope() const { return m_has_find_scope_range && m_find_scope_generation == SearchDocumentGeneration(); }
+	std::uint64_t SearchDocumentGeneration() const { return m_design_search.Generation(); }
+	bool HasSavedSearchScope() const { return m_design_search.HasValidScope(m_fo.scope); }
 	void RefreshSearchHighlights();
 	void ClearSearchHighlights();
 	void UpdateSearchHighlightsForScroll();
@@ -406,7 +374,7 @@ public:
 
   CFBEView(HWND frame, bool fNorm) : m_frame(frame), m_document_filename(NULL), m_document_namevalid(NULL), m_dirtyRangeCookie(0), m_ignore_changes(0), m_enable_paste(0),
 	 m_normalize(fNorm), m_complete(false), m_initialized(false), m_startMatch(0), m_endMatch(0),
-	 m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_find_dlg(0), m_replace_dlg(0), m_last_search_error_is_regexp(false), m_find_scope_generation(0), m_find_scope_kind(AU::Search::SearchScope::WholeDocument), m_has_find_scope_range(false), m_last_zero_length_hit(0), m_last_zero_length_generation(0), m_has_last_zero_length_hit(false), m_replace_preview_generation(0), m_replace_preview_revision(0), m_replace_preview_flags(0), m_replace_preview_scope(AU::Search::SearchScope::WholeDocument), m_replace_preview_regexp(false), m_replace_preview_unicode_properties(false), m_has_replace_preview(false), m_controlled_replace_all_mutation(false), m_replace_all_completion_pending(false), m_replace_all_completion_count(0), m_search_highlight_overlay(NULL), m_file_path(), m_file_name() { }
+	 m_form_changed(false), m_form_cp(false), m_table_selection_dragging(false), m_last_browser_event(L"none"), m_navigation_started(0), m_navigation_failed(false), m_navigation_status(0), m_find_dlg(0), m_replace_dlg(0), m_last_search_error_is_regexp(false), m_search_highlight_overlay(NULL), m_file_path(), m_file_name() { }
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);
