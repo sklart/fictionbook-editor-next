@@ -62,29 +62,54 @@ EditorSourceOperationResult SourceViewSession::CommitSourceDocument()
 	return EditorSourceOperationResult::Success;
 }
 
-EditorSourceOperationResult SourceViewSession::PrepareSourceDocument(EditorView)
+EditorSourceOperationResult SourceViewSession::PrepareSourceDocument(EditorView previous)
 {
+	FbeSourceDiagnostics::SourceViewPhaseProfiler phaseProfiler(m_memoryProfilingEnabled);
 	m_documentChanged = false;
 	m_selection.BodySource().bodyToSourceTransferred = false;
+	const bool transferBodySelection = previous == EditorView::Body;
+	if (transferBodySelection)
+		phaseProfiler.Mark("Body selection extraction");
+	phaseProfiler.Mark("DomPath construction");
 	CString sourceText;
 	if(SourceDocumentTransfer::PrepareSerializedSource(*m_document, m_savedXml,
 		m_sourceEncoding, sourceText) != SourceTransitionResult::Success)
 		return EditorSourceOperationResult::Failed;
+	phaseProfiler.Mark("serialized source preparation");
+	phaseProfiler.Mark("source serialization and XML declaration normalization");
 	if(m_document->DocRelChanged())
 	{
 		const DWORD byteCount = ::WideCharToMultiByte(CP_UTF8, 0, sourceText,
 			sourceText.GetLength(), NULL, 0, NULL, NULL);
+		phaseProfiler.Mark("UTF-8 size calculation");
+		m_source.SendMessage(SCI_CLEARALL);
+		phaseProfiler.Mark("SCI_CLEARALL");
+		int lineCount = 1;
+		for (int index = 0; index < sourceText.GetLength(); ++index)
+			if (sourceText[index] == L'\n') ++lineCount;
+		m_source.SendMessage(SCI_ALLOCATELINES, lineCount);
+		phaseProfiler.Mark("line count estimation and SCI_ALLOCATELINES");
 		std::vector<char> buffer(byteCount);
 		if(!buffer.empty())
+		{
 			::WideCharToMultiByte(CP_UTF8, 0, sourceText, sourceText.GetLength(),
 				buffer.data(), byteCount, NULL, NULL);
-		m_source.SendMessage(SCI_CLEARALL);
-		if(!buffer.empty()) m_source.SendMessage(SCI_APPENDTEXT, byteCount,
-			reinterpret_cast<LPARAM>(buffer.data()));
+			phaseProfiler.Mark("UTF-16 to UTF-8 conversion");
+			m_source.SendMessage(SCI_APPENDTEXT, byteCount, reinterpret_cast<LPARAM>(buffer.data()));
+			phaseProfiler.Mark("SCI_APPENDTEXT");
+		}
 	}
-	m_selectionMapper.MapBodySelectionToSource(*m_document, m_savedXml, m_source,
-		sourceText, m_selection);
+	if (transferBodySelection)
+	{
+		phaseProfiler.Mark("selection DOM lookup");
+		m_selectionMapper.MapBodySelectionToSource(*m_document, m_savedXml, m_source,
+			sourceText, m_selection);
+		phaseProfiler.Mark("selection lookup and mapping");
+		phaseProfiler.Mark("selection restoration");
+		phaseProfiler.Mark("scroll restoration");
+	}
 	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+	phaseProfiler.Mark("SCI_EMPTYUNDOBUFFER");
 	m_document->MarkDocCP();
 	return EditorSourceOperationResult::Success;
 }

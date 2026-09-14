@@ -4436,7 +4436,6 @@ EditorSourceOperationResult CMainFrame::PrepareSourceDocument(EditorView previou
 {
 	CString sourceEncoding = _Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding();
 	if (sourceEncoding.IsEmpty()) sourceEncoding = L"utf-8";
-	m_source_view_session.SetInterfaceLanguage(_Settings.GetInterfaceLanguageName());
 	m_source_view_session.SetSourceEncoding(sourceEncoding);
 	m_source_view_session.SetMemoryProfilingEnabled(!AU::_ARGS.source_memory_benchmark_path.IsEmpty());
 	return m_source_view_session.PrepareSourceDocument(previous);
@@ -4475,13 +4474,8 @@ void CMainFrame::ShowView(EditorView vt)
 		m_view, m_splitter, m_source, m_doc, m_editor_selection_state,
 		_Settings.ViewDocumentTree() };
 	EditorViewPresentationHost presentation(presentationContext);
-	CString sourceEncoding = _Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding();
-	if (sourceEncoding.IsEmpty()) sourceEncoding = L"utf-8";
-	m_source_view_session.SetInterfaceLanguage(_Settings.GetInterfaceLanguageName());
-	m_source_view_session.SetSourceEncoding(sourceEncoding);
-	m_source_view_session.SetMemoryProfilingEnabled(!AU::_ARGS.source_memory_benchmark_path.IsEmpty());
 	const EditorViewChangeResult result =
-		m_editor_view_controller.ChangeView(m_editor_view_state, m_source_view_session, presentation, vt);
+		m_editor_view_controller.ChangeView(m_editor_view_state, *this, presentation, vt);
 	if (!result.Succeeded())
 		PresentEditorViewChangeFailure(result);
 	else

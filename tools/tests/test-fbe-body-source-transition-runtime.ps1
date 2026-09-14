@@ -18,6 +18,6 @@ try {
         if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { $diagnostics = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<report missing>' }; throw "FBE BODY/SOURCE transition scenario failed: exit $($process.ExitCode).`n$diagnostics" }
     } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
     $rows = @{}; foreach($line in Get-Content -LiteralPath $report) { $parts = $line -split '='; if($parts.Count -eq 2) { $rows[$parts[0]] = $parts[1] } }
-    foreach($key in @('source_active','source_current','body_without_change','valid_edit','edited_source','cycles','invalid_rejected','invalid_preserved','selection_saved','unicode_inline_selection','repeated_text_selection','tag_boundary_selection','collapsed_caret_selection')) { if($rows[$key] -ne '1') { throw "BODY/SOURCE transition check failed: $key (value '$($rows[$key])')." } }
+    foreach($key in @('source_active','source_current','body_without_change','valid_edit','edited_source','cycles','invalid_rejected','invalid_preserved','selection_saved','unicode_inline_selection','repeated_text_selection','tag_boundary_selection','collapsed_caret_selection','body_to_source_selection','description_to_source_no_selection')) { if($rows[$key] -ne '1') { throw "BODY/SOURCE transition check failed: $key (value '$($rows[$key])')." } }
     Write-Host 'FBE BODY/SOURCE transition runtime passed.'
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

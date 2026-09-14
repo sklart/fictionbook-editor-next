@@ -20,4 +20,12 @@ if($mainHeader -match 'm_saved_xml') { throw 'Main frame retains the source XML 
 foreach($conversion in @('PrepareSerializedSource', 'ApplySourceDocument')) {
     if($mainSource -match $conversion) { throw "Main frame retains source conversion: $conversion" }
 }
+$showView = [regex]::Match($mainSource, '(?s)void\s+CMainFrame::ShowView\(.*?(?=void\s+CMainFrame::ApplyEditorViewCommandUi)').Value
+if([string]::IsNullOrEmpty($showView)) { throw 'Unable to locate CMainFrame::ShowView.' }
+if($showView -notmatch 'm_editor_view_controller\.ChangeView\(m_editor_view_state,\s*\*this,\s*presentation,\s*vt\)') {
+    throw 'View lifecycle must use the CMainFrame application source adapter.'
+}
+if($showView -match 'ChangeView\(m_editor_view_state,\s*m_source_view_session') {
+    throw 'View lifecycle bypasses the application source adapter.'
+}
 Write-Host 'Source view session boundary contract passed.'

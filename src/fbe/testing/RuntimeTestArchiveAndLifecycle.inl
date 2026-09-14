@@ -128,6 +128,13 @@
 		const bool repeatedTextSelection = roundTripBodySelection(L"body-source-repeat", L"REPEAT_TOKEN", L"REPEAT_TOKEN_REPEAT_END", L"REPEAT_TOKEN middle REPEAT_TOKEN_REPEAT_END", false);
 		const bool tagBoundarySelection = roundTripBodySelection(L"body-source-boundary", L"BOUNDARY_BEGIN", L"BOUNDARY_END", L"BOUNDARY_BEGIN", false);
 		const bool collapsedCaretSelection = roundTripBodySelection(L"body-source-caret", L"CARET_UNICODE", L"CARET_UNICODE", L"", true);
+		selectBodyRange(L"body-source-unicode", L"UNICODE_BEGIN", L"UNICODE_END", false);
+		ShowView(SOURCE);
+		const bool bodyToSourceTransfersSelection = m_editor_selection_state.BodySource().bodyToSourceTransferred;
+		ShowView(DESC);
+		ShowView(SOURCE);
+		const bool descriptionToSourceSkipsSelection = IsSourceActive() &&
+			!m_editor_selection_state.BodySource().bodyToSourceTransferred;
 		ShowView(SOURCE);
 		const bool sourceActive = IsSourceActive();
 		const sptr_t initialLength = m_source.SendMessage(SCI_GETLENGTH);
@@ -163,9 +170,9 @@
 		const bool invalidPreserved = invalidRejected && IsSourceActive() && m_doc == originalDocument &&
 			m_source.SendMessage(SCI_GETLENGTH) > 0 && m_source.SendMessage(SCI_GETSELECTIONSTART) >= 0 && m_source.SendMessage(SCI_GETSELECTIONEND) >= 0;
 		CStringA report;
-		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\nunicode_inline_selection=%d\nrepeated_text_selection=%d\ntag_boundary_selection=%d\ncollapsed_caret_selection=%d\nselection_diagnostics=%s\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0, unicodeInlineSelection, repeatedTextSelection, tagBoundarySelection, collapsedCaretSelection, static_cast<LPCSTR>(selectionRoundTripDiagnostics));
+		report.Format("source_active=%d\nsource_current=%d\nbody_without_change=%d\nvalid_edit=%d\nedited_source=%d\ncycles=%d\ninvalid_rejected=%d\ninvalid_preserved=%d\nselection_saved=%d\nunicode_inline_selection=%d\nrepeated_text_selection=%d\ntag_boundary_selection=%d\ncollapsed_caret_selection=%d\nbody_to_source_selection=%d\ndescription_to_source_no_selection=%d\nselection_diagnostics=%s\n", sourceActive, sourceCurrent, bodyWithoutChange, validEditApplied, editedSourceCurrent, cycles, invalidRejected, invalidPreserved, preservedSelectionStart >= 0 && preservedSelectionEnd >= 0, unicodeInlineSelection, repeatedTextSelection, tagBoundarySelection, collapsedCaretSelection, bodyToSourceTransfersSelection, descriptionToSourceSkipsSelection, static_cast<LPCSTR>(selectionRoundTripDiagnostics));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved && unicodeInlineSelection && repeatedTextSelection && tagBoundarySelection && collapsedCaretSelection ? 0 : 1);
+		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved && unicodeInlineSelection && repeatedTextSelection && tagBoundarySelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
@@ -328,6 +335,30 @@
 			FB::Doc::m_active_doc == m_doc, m_document_session.Location().storagePath == originalLocation.storagePath, m_bad_xml && m_bad_filename == malformedPath && m_editor_view_state.Current() == SOURCE);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(sourceFallback ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"malformed-source-correction-runtime"))
+	{
+		wchar_t malformedPath[MAX_PATH] = {};
+		const DWORD malformedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MALFORMED_SOURCE_PATH", malformedPath, _countof(malformedPath));
+		const FILE_OP_STATUS loadResult = malformedLength && malformedLength < _countof(malformedPath) ? LoadFile(malformedPath) : FAIL;
+		const CStringA correctedSource("<?xml version=\"1.0\" encoding=\"utf-8\"?><FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><description><title-info><genre>prose</genre><author><first-name>Runtime</first-name><last-name>Correction</last-name></author><book-title>Corrected</book-title><lang>en</lang></title-info><document-info><author><nickname>FBE Next</nickname></author><program-used>FBE Next</program-used><date value=\"2026-09-14\">14 September 2026</date><id>malformed-correction-test</id><version>1.0</version></document-info></description><body><section><p>CORRECTED_MALFORMED_SOURCE</p></section></body></FictionBook>");
+		if (loadResult == OK && m_bad_xml)
+		{
+			m_source.SendMessage(SCI_CLEARALL);
+			m_source.SendMessage(SCI_APPENDTEXT, correctedSource.GetLength(), reinterpret_cast<LPARAM>(correctedSource.GetString()));
+			ShowView(BODY);
+		}
+		MSXML2::IXMLDOMDocument2Ptr correctedDom(m_doc->CreateDOM(m_doc->m_encoding));
+		const CString correctedXml(correctedDom ? static_cast<LPCWSTR>(correctedDom->xml) : L"");
+		const bool corrected = loadResult == OK && m_editor_view_state.Current() == BODY && !m_bad_xml &&
+			m_doc->m_filename == malformedPath && m_doc->m_namevalid &&
+			m_document_session.Location().storagePath == malformedPath && correctedXml.Find(L"CORRECTED_MALFORMED_SOURCE") >= 0;
+		CStringA report; report.Format("loaded=%d\nbody=%d\nbad_xml_cleared=%d\nfilename=%d\nnamevalid=%d\nsession=%d\ndom=%d\ntree=%d\n", loadResult == OK,
+			m_editor_view_state.Current() == BODY, !m_bad_xml, m_doc->m_filename == malformedPath, m_doc->m_namevalid,
+			m_document_session.Location().storagePath == malformedPath, correctedXml.Find(L"CORRECTED_MALFORMED_SOURCE") >= 0, _Settings.ViewDocumentTree());
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(corrected ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"successful-open-runtime"))
