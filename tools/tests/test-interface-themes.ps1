@@ -47,7 +47,7 @@ foreach($required in @('ThemeManager::ControlBrush()', 'ThemeManager::DisabledTe
 foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ForceDark', 'UsesClassicSurfacePalette', 'SetWindowTheme(window, L" ", L" ")', 'ApplyNativeControlPalette(window);')) {
     if($manager -notlike "*$required*") { throw "Theme manager does not refresh native menu and control colours: $required." }
 }
-foreach($required in @('OnThemeChanged', 'ThemeManager::WindowColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR')) {
+foreach($required in @('OnThemeChanged', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR')) {
     if($documentTree -notlike "*$required*") { throw "Document Tree does not refresh $required on theme changes." }
 }
 $generalPageHeader = Read-ProjectFile 'src\fbe\settings\ui\SettingsGeneralPage.h'

@@ -37,7 +37,9 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	LRESULT lRet = DefWindowProc(uMsg, wParam, lParam);
 
 	m_tree.Create(*this, rcDefault);
-	m_tree.SetBkColor(::GetSysColor(COLOR_WINDOW));
+	m_tree.SetBkColor(ThemeManager::WindowColor());
+	m_tree.SetTextColor(ThemeManager::TextColor());
+	m_tree.SetLineColor(ThemeManager::SeparatorColor());
 	m_rebar = CFrameWindowImplBase<>::CreateSimpleReBarCtrl(*this, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | CS_HREDRAW);
 	m_toolbar = CFrameWindowImplBase<>::CreateSimpleToolBarCtrl(*this, IDR_DOCUMENT_TREE, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	CFrameWindowImplBase<>::AddSimpleReBarBandCtrl(m_rebar, m_toolbar);
@@ -141,12 +143,12 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
 	if(!m_tree.IsWindow()) return 0;
-	if(ThemeManager::IsDark())
-	{
-		m_tree.SetBkColor(ThemeManager::WindowColor());
-		m_tree.SetTextColor(ThemeManager::TextColor());
-		m_tree.SetLineColor(ThemeManager::SeparatorColor());
-	}
+	// The tree may be created after its parent receives the initial theme
+	// notification. Apply the effective palette both at creation and on every
+	// refresh, including the return from Dark to Light.
+	m_tree.SetBkColor(ThemeManager::WindowColor());
+	m_tree.SetTextColor(ThemeManager::TextColor());
+	m_tree.SetLineColor(ThemeManager::SeparatorColor());
 	if(m_rebar.IsWindow()) ::SendMessage(m_rebar, RB_SETBKCOLOR, 0, ThemeManager::ControlColor());
 	if(m_toolbar.IsWindow()) ::SendMessage(m_toolbar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
