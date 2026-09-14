@@ -1865,6 +1865,17 @@ void CMainFrame::InitializeScripts()
 			if(visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command); else if(visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
 		},
 		[this](ScriptDescriptor& script) { InitScriptHotkey(script); })) _Settings.SetScriptCommandIds(serializedCommandIds);
+	for(size_t toolbarIndex = 0; toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex)
+	{
+		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[toolbarIndex];
+		if(runtime.window == NULL || runtime.definition.items.empty()) continue;
+		TBBUTTONS available; if(!GetAvailableButtons(runtime.window, available)) continue;
+		std::vector<TBBUTTON> catalog(available.GetSize()); for(int buttonIndex = 0; buttonIndex < available.GetSize(); ++buttonIndex) catalog[buttonIndex] = available[buttonIndex];
+		std::vector<PortableToolbarItem> items = runtime.definition.items;
+		for(size_t itemIndex = 0; itemIndex < items.size(); ++itemIndex) if(!items[itemIndex].separator && !items[itemIndex].scriptUid.IsEmpty())
+			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == items[itemIndex].scriptUid && script.commandId > 0) { items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
+		ToolbarLayoutAdapter::Apply(runtime.window, items, catalog);
+	}
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
 	ApplyRuntimeMainFrameMenuLocalization(mainMenu);
