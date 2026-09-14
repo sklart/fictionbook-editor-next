@@ -1747,11 +1747,11 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 		if(item.separator) continue;
 
 		int command = item.command;
-		if(!item.relativePath.IsEmpty())
+		if(!item.scriptUid.IsEmpty() || !item.relativePath.IsEmpty())
 		{
 			command = 0;
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
-				if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).relativePath == item.relativePath && m_scripts.Menu().Item(scriptIndex).commandId > 0)
+				if(!m_scripts.Menu().Item(scriptIndex).isFolder && (m_scripts.Menu().Item(scriptIndex).uid == item.scriptUid || (!item.relativePath.IsEmpty() && m_scripts.Menu().Item(scriptIndex).relativePath == item.relativePath)) && m_scripts.Menu().Item(scriptIndex).commandId > 0)
 				{
 					command = ID_SCRIPT_BASE + m_scripts.Menu().Item(scriptIndex).commandId;
 					break;
@@ -1785,7 +1785,7 @@ void CMainFrame::SavePortableToolbarLayout()
 		if(item.separator || item.command < ID_SCRIPT_BASE + 1 || item.command > ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT) continue;
 		const int scriptId = item.command - ID_SCRIPT_BASE;
 		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
-			if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).commandId == scriptId) { item.command = 0; item.relativePath = m_scripts.Menu().Item(scriptIndex).relativePath; break; }
+			if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).commandId == scriptId) { item.command = 0; item.scriptUid = m_scripts.Menu().Item(scriptIndex).uid; break; }
 	}
 	layout.lastScript = m_scripts.LastScriptUid();
 	PortableToolbarStore::Save(layout);

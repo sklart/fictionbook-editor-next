@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "PortableToolbarStore.h"
+#include "ToolbarsV2Codec.h"
 #include "..\\..\\common\\DeploymentContext.h"
 
 namespace
@@ -25,7 +26,7 @@ bool PortableToolbarStore::Load(PortableToolbarLayout& layout)
 	const CString path = PortableToolbarsPath(); HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); if(file == INVALID_HANDLE_VALUE) return false;
 	const DWORD length = ::GetFileSize(file, NULL); if(length == INVALID_FILE_SIZE || length > 256 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return false; }
 	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0; const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file); if(!ok || read != length) return false;
-	CString content(&text[0]); if(content.Find(L"<Toolbars version=\"1\">") < 0 || content.Find(L"</Toolbars>") < 0) return false;
+	CString content(&text[0]); if(content.Find(L"<Toolbars version=\"2\">") >= 0) return ToolbarsV2Codec::Parse(content, layout); if(content.Find(L"<Toolbars version=\"1\">") < 0 || content.Find(L"</Toolbars>") < 0) return false;
 	PortableToolbarLayout parsed; int cursor = 0; CString active; bool closedRoot = false;
 	while(cursor >= 0) { const int start = content.Find(L'<', cursor); if(start < 0) break; const int end = content.Find(L'>', start + 1); if(end < 0) return false; CString tag = content.Mid(start + 1, end - start - 1); cursor = end + 1;
 		if(tag == L"/Toolbars") { if(!active.IsEmpty()) return false; closedRoot = true; break; }
@@ -39,5 +40,5 @@ bool PortableToolbarStore::Load(PortableToolbarLayout& layout)
 }
 bool PortableToolbarStore::Save(const PortableToolbarLayout& layout)
 {
-	CString xml(L"<Toolbars version=\"1\">\r\n"); if(layout.commandToolbarPresent) AppendToolbar(xml, L"Command", layout.commands); if(layout.scriptsToolbarPresent) AppendToolbar(xml, L"Scripts", layout.scripts); if(!layout.lastScript.IsEmpty()) xml.AppendFormat(L"  <LastScript path=\"%s\" />\r\n", static_cast<LPCWSTR>(XmlEscape(layout.lastScript))); xml.Append(L"</Toolbars>\r\n"); return WriteText(xml);
+	return WriteText(ToolbarsV2Codec::Serialize(layout));
 }
