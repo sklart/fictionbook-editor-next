@@ -5,6 +5,44 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $utf8 = New-Object System.Text.UTF8Encoding($false, $true)
 
+function Test-ApparentMojibake([string]$Text) {
+    # UTF-8 decoded as a Western single-byte code page is normally visible
+    # as a lead character (Ð, Ñ, Â or Ã) followed by a CP1252 continuation.
+    if ($Text -match '(?:[ÐÑÂÃ][\u0080-\u00BF\u0178\u20AC\u201A-\u2022\u2026\u2030\u2122])') {
+        return $true
+    }
+
+    # UTF-8 decoded as CP1251 and then saved as UTF-8 produces pairs beginning
+    # with U+0420 or U+0421. A single pair can occur in legitimate text, so
+    # require two pairs whose second character can only be a CP1251 decoding
+    # of an UTF-8 continuation byte (0x80..0xBF).
+    $cp1251Continuation = '[\u00A0-\u00BF\u0401-\u0407\u0409-\u040F\u0451-\u0457\u0459-\u045F\u0490-\u0491\u2018-\u2022\u2026\u2030\u2039\u20AC\u2122]'
+    return ([regex]::Matches($Text, "[\u0420\u0421]$cp1251Continuation")).Count -ge 2
+}
+
+function ConvertFrom-CodePoints([int[]]$CodePoints) {
+    return -join ($CodePoints | ForEach-Object { [char]$_ })
+}
+
+function Assert-MojibakeResult([string]$Text, [bool]$Expected, [string]$Description) {
+    if ((Test-ApparentMojibake $Text) -ne $Expected) {
+        throw "Mojibake regression failed: $Description"
+    }
+}
+
+# Keep fixtures as code points so the source-safety scan does not match the
+# intentionally malformed examples inside this test script.
+Assert-MojibakeResult (ConvertFrom-CodePoints @(0x0420, 0x045F, 0x0421, 0x0402, 0x0420, 0x0451, 0x0420, 0x0406, 0x0420, 0x00B5, 0x0421, 0x201A)) $true `
+    "CP1251-style greeting fixture"
+Assert-MojibakeResult (ConvertFrom-CodePoints @(0x0420, 0x0459, 0x0420, 0x0455, 0x0420, 0x0491, 0x0420, 0x0451, 0x0421, 0x0402, 0x0420, 0x0455, 0x0420, 0x0406, 0x0420, 0x0454, 0x0420, 0x00B0)) $true `
+    "CP1251-style encoding fixture"
+Assert-MojibakeResult (ConvertFrom-CodePoints @(0x00D0, 0x0178, 0x00D1, 0x20AC, 0x00D0, 0x00B8, 0x00D0, 0x00B2, 0x00D0, 0x00B5, 0x00D1, 0x201A)) $true `
+    "Western-style mojibake"
+Assert-MojibakeResult (ConvertFrom-CodePoints @(0x0420, 0x0451)) $false "isolated CP1251-style pair"
+Assert-MojibakeResult "Обычный русский текст" $false "ordinary Russian text"
+Assert-MojibakeResult "Звичайний український текст" $false "ordinary Ukrainian text"
+Assert-MojibakeResult "«Unicode — работает»" $false "ordinary Unicode punctuation"
+
 function Read-SourceFile([string]$RelativePath) {
     $path = Join-Path $repoRoot $RelativePath
     $bytes = [System.IO.File]::ReadAllBytes($path)
@@ -41,12 +79,7 @@ function Assert-FirstPartyUtf8 {
         if ($text.IndexOf([char]0xFFFD) -ge 0) {
             throw "First-party source contains U+FFFD: $relativePath"
         }
-        # UTF-8 decoded as a Western single-byte code page is normally visible
-        # as a lead character (Ð, Ñ, Â or Ã) followed by a CP1252 continuation.
-        # Restrict the heuristic to this two-character signature to avoid
-        # flagging ordinary non-ASCII prose. Tests that intentionally exercise
-        # the signature express it with code points instead of literal text.
-        if ($text -match '(?:[ÐÑÂÃ][\u0080-\u00BF\u0178\u20AC\u201A-\u2022\u2026\u2030\u2122])') {
+        if (Test-ApparentMojibake $text) {
             throw "First-party source contains apparent UTF-8 mojibake: $relativePath"
         }
         $crlf = 0
@@ -201,6 +234,7 @@ Assert-NotContains $colorButton "GetVersionEx" `
     "UI behavior must not depend on manifest-sensitive version detection"
 
 $spellerSource = Read-SourceFile "src\fbe\Speller.cpp"
+Assert-MojibakeResult $spellerSource $false "Speller.cpp, including Tokens"
 Assert-NotContains $spellerSource ([string][char]0xFFFD) `
     "Speller.cpp must not contain replacement characters"
 Assert-Contains $spellerSource 'L" .,?\u2013!\u2014\u2026\r\n\t\"\u00AB\u00BB\u201C\u201D\u2018\u2019' `

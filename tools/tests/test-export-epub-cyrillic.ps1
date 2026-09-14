@@ -6,7 +6,7 @@
 Скрипт вызывает экспортируемую функцию ExportEpubFileW из собранного ExportEPUB.dll,
 создаёт EPUB из тестовой кириллической FB2-книги и проверяет content.opf, nav.xhtml,
 toc.ncx и XHTML-главы на ожидаемые русские строки и типичные признаки двойной/ошибочной
-кодировки вида Рђ/Рћ/С‚.
+кодировки с CP1251-style сигнатурами U+0420/U+0421.
 #>
 
 [CmdletBinding()]
@@ -172,7 +172,21 @@ foreach ($fragment in $expectedFragments) {
     }
 }
 
-$mojibakeMarkers = @("Рђ", "Рћ", "РЅ", "Р°", "С‚", "С†", "СЊ", "Ð", "Ñ")
+function ConvertFrom-MojibakeCodePoints([int[]]$CodePoints) {
+    return -join ($CodePoints | ForEach-Object { [char]$_ })
+}
+
+$mojibakeMarkers = @(
+    (ConvertFrom-MojibakeCodePoints @(0x0420, 0x0452)),
+    (ConvertFrom-MojibakeCodePoints @(0x0420, 0x040B)),
+    (ConvertFrom-MojibakeCodePoints @(0x0420, 0x0455)),
+    (ConvertFrom-MojibakeCodePoints @(0x0420, 0x00B0)),
+    (ConvertFrom-MojibakeCodePoints @(0x0421, 0x201A)),
+    (ConvertFrom-MojibakeCodePoints @(0x0421, 0x2020)),
+    (ConvertFrom-MojibakeCodePoints @(0x0421, 0x040C)),
+    (ConvertFrom-MojibakeCodePoints @(0x00D0)),
+    (ConvertFrom-MojibakeCodePoints @(0x00D1))
+)
 foreach ($marker in $mojibakeMarkers) {
     if ($combined.Contains($marker)) {
         throw "В EPUB найден признак mojibake '$marker'."

@@ -64,11 +64,11 @@ public:
 
 static bool ContainsMojibake(const std::wstring& text) {
     static const wchar_t markers[][3] = {
-        { 0x00D0, 0 }, // \xC3\x90 (Ð)
-        { 0x00D1, 0 }, // \xC3\x91 (Ñ)
-        { 0x0420, 0x0452, 0 }, // Рђ
-        { 0x0420, 0x00B0, 0 }, // Р°
-        { 0x0421, 0x201A, 0 }  // С‚
+        { 0x00D0, 0 }, // U+00D0
+        { 0x00D1, 0 }, // U+00D1
+        { 0x0420, 0x0452, 0 }, // U+0420 U+0452
+        { 0x0420, 0x00B0, 0 }, // U+0420 U+00B0
+        { 0x0421, 0x201A, 0 }  // U+0421 U+201A
     };
     for (const auto& marker : markers) if (text.find(marker) != std::wstring::npos) return true;
     return false;
