@@ -76,7 +76,6 @@ EditorSourceOperationResult SourceViewSession::PrepareSourceDocument(EditorView 
 		m_sourceEncoding, sourceText) != SourceTransitionResult::Success)
 		return EditorSourceOperationResult::Failed;
 	if(phaseProfiler) phaseProfiler->Mark("serialized source preparation");
-	if(phaseProfiler) phaseProfiler->Mark("Unicode newline normalization");
 	if(m_document->DocRelChanged())
 	{
 		const DWORD byteCount = ::WideCharToMultiByte(CP_UTF8, 0, sourceText,

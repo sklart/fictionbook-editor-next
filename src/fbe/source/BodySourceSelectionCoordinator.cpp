@@ -147,7 +147,6 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 	}
 	if(profiler) profiler->Mark("DomPath construction");
 	CString serialized(serializedSource);
-	if(profiler) profiler->Mark("MoveToNode serialization");
 	int beginPosition = -1, endPosition = -1;
 	bool hasSelectionText = false;
 	if(selection.BodyRange())
@@ -174,13 +173,13 @@ void BodySourceSelectionCoordinator::MapBodySelectionToSource(FB::Doc& document,
 			}
 		}
 	}
-	if(profiler) profiler->Mark("selection DOM lookup");
 	if(beginPosition < 0 && endPosition < 0 && pathAvailable && !hasSelectionText)
 	{
 		_bstr_t text((const wchar_t*)serialized);
 		beginPosition = beginPath.GetNodeFromText(text, beginCharacter);
 		endPosition = endPath.GetNodeFromText(text, endCharacter);
 	}
+	if(profiler) profiler->Mark("selection DOM lookup");
 	int beginByte = 0, endByte = 0;
 	if(beginPosition >= 0 && endPosition >= 0)
 	{
