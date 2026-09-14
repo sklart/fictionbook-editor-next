@@ -14,7 +14,7 @@ $mainFrame = Read-ProjectFile 'src\fbe\mainfrm.cpp'
 $toolbarUi = Read-ProjectFile 'src\fbe\ui\MainFrameRuntimeUi.inl'
 $mainFrameHeader = Read-ProjectFile 'src\fbe\mainfrm.h'
 
-foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChanged', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
+foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChanged', 'WH_CBT', 'HCBT_ACTIVATE', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
 }
 foreach($required in @('THEME_COLOR_BORDER', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_SECONDARY_TEXT', 'THEME_COLOR_DISABLED_TEXT', 'THEME_COLOR_SELECTION_BACKGROUND', 'THEME_COLOR_SELECTION_TEXT', 'THEME_COLOR_HOVER', 'THEME_COLOR_PRESSED', 'THEME_COLOR_FOCUS', 'THEME_COLOR_ACCENT', 'THEME_COLOR_ERROR', 'THEME_COLOR_WARNING', 'THEME_COLOR_SUCCESS')) {

@@ -6,6 +6,7 @@ namespace
 InterfaceTheme g_selected = INTERFACE_THEME_AUTOMATIC;
 bool g_systemDark = false;
 bool g_highContrast = false;
+HHOOK g_themeCbtHook = NULL;
 HBRUSH g_windowBrush = NULL;
 HBRUSH g_controlBrush = NULL;
 HBRUSH g_brushes[THEME_COLOR_COUNT] = {};
@@ -157,6 +158,19 @@ BOOL CALLBACK ApplyThreadWindow(HWND window, LPARAM)
 	ThemeManager::ApplyToWindow(window);
 	return TRUE;
 }
+
+LRESULT CALLBACK ThemeCbtHookProc(int code, WPARAM wParam, LPARAM lParam)
+{
+	if(code == HCBT_ACTIVATE && wParam != 0)
+		ThemeManager::ApplyToWindow(reinterpret_cast<HWND>(wParam));
+	return ::CallNextHookEx(g_themeCbtHook, code, wParam, lParam);
+}
+
+void EnsureThemeCbtHook()
+{
+	if(g_themeCbtHook == NULL)
+		g_themeCbtHook = ::SetWindowsHookExW(WH_CBT, ThemeCbtHookProc, NULL, ::GetCurrentThreadId());
+}
 }
 
 namespace ThemeManager
@@ -170,6 +184,7 @@ void SetSelectedTheme(InterfaceTheme theme)
 	g_selected = theme;
 	g_systemDark = ReadAppsUseLightTheme();
 	g_highContrast = IsHighContrastEnabled();
+	EnsureThemeCbtHook();
 	ApplyPreferredAppMode(IsDark() && !g_highContrast);
 	if(wasDark != IsDark() || wasHighContrast != g_highContrast || !g_windowBrush) RebuildBrushes();
 }
