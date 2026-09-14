@@ -178,6 +178,7 @@
 	<ClCompile Include="toolbars\ScriptToolbarCollection.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="toolbars\ToolbarsV2Codec.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="toolbars\ScriptToolbarRuntime.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="toolbars\ScriptToolbarManager.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="scripts\ScriptMenuBuilder.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\FileFingerprint.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="document\DocumentLocation.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -356,6 +357,7 @@
 	<ClInclude Include="toolbars\ScriptToolbarCollection.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="toolbars\ToolbarsV2Codec.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="toolbars\ScriptToolbarRuntime.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="toolbars\ScriptToolbarManager.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="scripts\ScriptMenuBuilder.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\FileFingerprint.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="document\DocumentState.h"><Filter>Header Files</Filter></ClInclude>
