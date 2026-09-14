@@ -27,6 +27,7 @@
 #include "view/VisualDomNormalizer.h"
 #include "dom/MarkupUndoUnitScope.h"
 #include "image/ImageDocumentInserter.h"
+#include "clipboard/ClipboardPastePreparer.h"
 #include <vector>
 
 using FbeTable::Grid;
@@ -1627,67 +1628,18 @@ LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
 	{
 		m_mk_srv->BeginUndoUnit(L"Paste");
 		++m_enable_paste;
-		
-		// added by SeNS: process clipboard and change nbsp
-		if (OpenClipboard())
-		{
-			// process text
-			if ( IsClipboardFormatAvailable(CF_TEXT) || IsClipboardFormatAvailable(CF_UNICODETEXT))
-			{
-				if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
-				{
-					HANDLE hData = GetClipboardData( CF_UNICODETEXT );
-					TCHAR *buffer = (TCHAR*)GlobalLock( hData );
-					CString fromClipboard(buffer);
-					GlobalUnlock( hData );
 
-					fromClipboard.Replace( L"\u00A0", _Settings.GetNBSPChar());
-
-					HGLOBAL clipbuffer = GlobalAlloc(GMEM_DDESHARE, (fromClipboard.GetLength()+1)*sizeof(TCHAR));
-					buffer = (TCHAR*)GlobalLock(clipbuffer);
-					wcscpy(buffer, fromClipboard);
-					GlobalUnlock( clipbuffer );
-					SetClipboardData(CF_UNICODETEXT, clipbuffer);
-				}
-			}
-			// process bitmaps from clipboard
-			else if ( IsClipboardFormatAvailable(CF_BITMAP))
-			{
-				HBITMAP hBitmap = (HBITMAP)GetClipboardData(CF_BITMAP);
-				TCHAR szPathName[MAX_PATH] = { 0 };
-				TCHAR szFileName[MAX_PATH] = { 0 };
-				if (::GetTempPath(sizeof(szPathName)/sizeof(TCHAR), szPathName))
-					if (::GetTempFileName(szPathName, L"img", ::GetTickCount(), szFileName))
-					{
-						int quality = _Settings.GetJpegQuality();
-
-						CString fileName(szFileName);
-						CImage image; 
-						image.Attach(hBitmap); 
-
-						if (_Settings.GetImageType() == 0)
-						{
-							fileName.Replace(L".tmp", L".png");
-							image.Save(fileName, Gdiplus::ImageFormatPNG);
-						}
-						else
-						{
-							fileName.Replace(L".tmp", L".jpg");
-							// set encoder quality
-							Gdiplus::EncoderParameters encoderParameters[1];
-							encoderParameters[0].Count = 1;
-							encoderParameters[0].Parameter[0].Guid = Gdiplus::EncoderQuality;
-							encoderParameters[0].Parameter[0].NumberOfValues = 1;
-							encoderParameters[0].Parameter[0].Type = Gdiplus::EncoderParameterValueTypeLong;
-							encoderParameters[0].Parameter[0].Value = &quality;
-							image.Save(fileName, Gdiplus::ImageFormatJPEG, &encoderParameters[0]);
-						}
-
-						AddImage(fileName, true);
-						::DeleteFile(fileName);
-					}
-			}
-			CloseClipboard();
+		FbeClipboard::ClipboardPasteOptions options;
+		options.nbspReplacement = _Settings.GetNBSPChar();
+		options.bitmapOutput = _Settings.GetImageType() == 0
+			? FbeClipboard::ClipboardBitmapOutput::Png
+			: FbeClipboard::ClipboardBitmapOutput::Jpeg;
+		options.jpegQuality = _Settings.GetJpegQuality();
+		const FbeClipboard::ClipboardPastePreparationResult preparation =
+			FbeClipboard::ClipboardPastePreparer::Prepare(m_hWnd, options);
+		if (preparation.HasPreparedBitmap()) {
+			AddImage(preparation.temporaryImagePath, true);
+			preparation.RemovePreparedBitmap();
 		}
 
 		IOleCommandTargetPtr(m_browser)->Exec(&CGID_MSHTML, IDM_PASTE, 0, NULL, NULL);

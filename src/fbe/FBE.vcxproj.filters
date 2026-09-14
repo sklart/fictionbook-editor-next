@@ -157,6 +157,7 @@
     <ClCompile Include="table\TableGrid.cpp"><Filter>Source Files\Table</Filter></ClCompile>
     <ClCompile Include="table\TableStructuralEditor.cpp"><Filter>Source Files\Table</Filter></ClCompile>
     <ClCompile Include="image\ImageDocumentInserter.cpp"><Filter>Source Files\Image</Filter></ClCompile>
+	<ClCompile Include="clipboard\ClipboardPastePreparer.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="navigation\LinkDomNavigation.cpp"><Filter>Source Files\Navigation</Filter></ClCompile>
 	<ClCompile Include="navigation\ReferenceNavigation.cpp"><Filter>Source Files\Navigation</Filter></ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -373,6 +374,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="image\ImageDocumentInserter.h"><Filter>Header Files\Image</Filter></ClInclude>
+	<ClInclude Include="clipboard\ClipboardPastePreparer.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="navigation\LinkDomNavigation.h"><Filter>Header Files\Navigation</Filter></ClInclude>
 	<ClInclude Include="navigation\LinkNavigationState.h"><Filter>Header Files\Navigation</Filter></ClInclude>
 	<ClInclude Include="navigation\ReferenceNavigation.h"><Filter>Header Files\Navigation</Filter></ClInclude>
