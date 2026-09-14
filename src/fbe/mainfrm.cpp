@@ -1791,6 +1791,17 @@ void CMainFrame::SavePortableToolbarLayout()
 		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
 			if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).commandId == scriptId) { item.command = 0; item.scriptUid = m_scripts.Menu().Item(scriptIndex).uid; break; }
 	}
+	// ToolbarLayoutAdapter cannot render a temporarily missing script, but its
+	// UID must survive this save so the button reconnects after the file returns.
+	for(size_t toolbarIndex = 0; toolbarIndex < persisted.scriptToolbars.size(); ++toolbarIndex)
+		if(persisted.scriptToolbars[toolbarIndex].id == L"scripts-main")
+			for(size_t itemIndex = 0; itemIndex < persisted.scriptToolbars[toolbarIndex].items.size(); ++itemIndex)
+			{
+				const PortableToolbarItem& saved = persisted.scriptToolbars[toolbarIndex].items[itemIndex];
+				if(saved.separator || saved.scriptUid.IsEmpty()) continue;
+				bool available = false; for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).uid == saved.scriptUid) { available = true; break; }
+				if(!available) layout.scripts.push_back(saved);
+			}
 	bool mainFound = false;
 	for(size_t index = 0; index < layout.scriptToolbars.size(); ++index)
 		if(layout.scriptToolbars[index].id == L"scripts-main") { layout.scriptToolbars[index].items = layout.scripts; mainFound = true; break; }
