@@ -11,6 +11,7 @@ $settings = Read-ProjectFile 'src\fbe\Settings.cpp'
 $serialization = Read-ProjectFile 'src\fbe\settings\SettingsSerialization.cpp'
 $generalPage = Read-ProjectFile 'src\fbe\settings\ui\SettingsGeneralPage.cpp'
 $mainFrame = Read-ProjectFile 'src\fbe\mainfrm.cpp'
+$toolbarUi = Read-ProjectFile 'src\fbe\ui\MainFrameRuntimeUi.inl'
 
 foreach($required in @('AppsUseLightTheme', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
@@ -34,6 +35,9 @@ if($settings -notlike '*ThemeManager::IsDark()*') { throw 'Source Automatic must
 if($settings -like '*GetXmlSrcThemeColor*AppsUseLightTheme*') { throw 'Source Automatic must not read Windows theme directly.' }
 if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -notlike '*OnThemeChanged*') {
     throw 'Main frame does not dynamically refresh theme changes.'
+}
+foreach($required in @('ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()')) {
+    if($toolbarUi -notlike "*$required*") { throw "Toolbar custom draw does not apply semantic colour $required." }
 }
 $generalPageHeader = Read-ProjectFile 'src\fbe\settings\ui\SettingsGeneralPage.h'
 if($generalPage -notlike '*OnInterfaceThemeChanged*' -or $generalPage -notlike '*ThemeManager::ApplyToAllThreadWindows*' -or

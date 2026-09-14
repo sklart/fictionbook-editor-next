@@ -99,9 +99,15 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 
 	if (customDraw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
 	{
+		const bool disabled = (customDraw->nmcd.uItemState & (CDIS_DISABLED | CDIS_GRAYED)) != 0;
+		customDraw->clrText = disabled ? ThemeManager::DisabledTextColor() : ThemeManager::TextColor();
+		customDraw->clrTextHighlight = ThemeManager::SelectionTextColor();
+		customDraw->clrBtnFace = ThemeManager::ControlColor();
+		customDraw->clrBtnHighlight = ThemeManager::HoverColor();
+		customDraw->clrHighlightHotTrack = ThemeManager::HoverColor();
 		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
 		if (IsTableToolbarCommand(commandId) &&
-			(customDraw->nmcd.uItemState & (CDIS_DISABLED | CDIS_GRAYED)) != 0)
+			disabled)
 		{
 			const int imageIndex = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, commandId, 0));
 			HIMAGELIST imageList = m_CmdToolbar.GetImageList();

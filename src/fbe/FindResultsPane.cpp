@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "ThemeManager.h"
 #include "FindResultsPane.h"
 #include "apputils.h"
 #include "FBEView.h"
@@ -137,9 +138,9 @@ LRESULT CFindResultsPane::OnListCustomDraw(int, LPNMHDR header, BOOL&)
 	// Owner-data ListView can repaint a previous row after the selection has
 	// moved. Query the control's authoritative state and always erase the whole
 	// context cell, so exactly the current selected row stays highlighted.
-	::FillRect(dc, &paintCell, ::GetSysColorBrush(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW));
+	::FillRect(dc, &paintCell, ThemeManager::Brush(selected ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_WINDOW));
 	const CString text = m_view->FindResultPreview(static_cast<std::size_t>(item));
-	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, selected ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : ::GetSysColor(COLOR_WINDOWTEXT)); ::DrawText(dc, text, text.GetLength(), &cell, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor()); ::DrawText(dc, text, text.GetLength(), &cell, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
 	std::size_t matchStart = 0, matchLength = 0;
 	if (m_view->FindResultPreviewMatch(static_cast<std::size_t>(item), &matchStart, &matchLength) && matchLength != 0 && matchStart < static_cast<std::size_t>(text.GetLength())) {
 		matchLength = (std::min)(matchLength, static_cast<std::size_t>(text.GetLength()) - matchStart);
