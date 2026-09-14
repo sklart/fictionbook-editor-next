@@ -49,6 +49,38 @@ bool IsClass(HWND window, LPCWSTR className)
 	return ::GetClassNameW(window, actual, _countof(actual)) && ::lstrcmpiW(actual, className) == 0;
 }
 
+bool IsGroupBox(HWND window)
+{
+	return IsClass(window, L"Button") &&
+		((::GetWindowLongPtrW(window, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX);
+}
+
+void PaintDarkGroupBox(HWND window)
+{
+	PAINTSTRUCT paint = {};
+	HDC dc = ::BeginPaint(window, &paint);
+	RECT client = {}; ::GetClientRect(window, &client);
+	::FillRect(dc, &client, ThemeManager::WindowBrush());
+
+	wchar_t caption[256] = {};
+	::GetWindowTextW(window, caption, _countof(caption));
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(window, WM_GETFONT, 0, 0));
+	HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+	SIZE textSize = {};
+	::GetTextExtentPoint32W(dc, caption, ::lstrlenW(caption), &textSize);
+
+	RECT border = client;
+	border.top += (textSize.cy + 1) / 2;
+	::FrameRect(dc, &border, ThemeManager::Brush(THEME_COLOR_BORDER));
+	RECT captionRect = { 8, 0, (std::min)(client.right - 2, 12 + textSize.cx), textSize.cy };
+	::FillRect(dc, &captionRect, ThemeManager::WindowBrush());
+	::SetBkMode(dc, TRANSPARENT);
+	::SetTextColor(dc, ::IsWindowEnabled(window) ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+	::DrawTextW(dc, caption, -1, &captionRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX);
+	if(oldFont) ::SelectObject(dc, oldFont);
+	::EndPaint(window, &paint);
+}
+
 LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
 	if(message == WM_NCDESTROY)
@@ -57,6 +89,11 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(ThemeManager::IsDark() && IsGroupBox(window))
+	{
+		if(message == WM_ERASEBKGND) return 1;
+		if(message == WM_PAINT) { PaintDarkGroupBox(window); return 0; }
+	}
 	if(message == WM_CTLCOLORDLG)
 	{
 		HDC dc = reinterpret_cast<HDC>(wParam);
