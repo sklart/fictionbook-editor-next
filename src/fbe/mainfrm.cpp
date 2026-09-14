@@ -954,6 +954,7 @@ CMainFrame::FILE_OP_STATUS CMainFrame::SaveFile(bool askname) {
 	DocumentSaveAsRequest request; request.filename = filename; request.encoding = encoding;
     if (saveController.SaveAsNormal(*m_doc, m_document_session, request).Succeeded()) {
 	  if (wasFbd != IsFbdFile(filename)) ResetValidationStatus();
+	  U::SetCurrentDirectoryToFile(filename);
 	  m_recentDocuments.OnSavedAsNormal(filename);
 	  CommitSuccessfulSave();
 	  UpdateStatusBar();

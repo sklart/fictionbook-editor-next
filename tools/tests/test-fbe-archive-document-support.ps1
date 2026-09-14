@@ -15,8 +15,13 @@ $archiveOpen = Get-Content -Raw (Join-Path $root 'src\fbe\archive\ui\ArchiveOpen
 $savePlan = Get-Content -Raw (Join-Path $root 'src\fbe\document\DocumentSavePlan.cpp')
 $archiveMru = Get-Content -Raw (Join-Path $root 'src\fbe\document\ArchiveRecentDocuments.cpp')
 $recentStore = Get-Content -Raw (Join-Path $root 'src\fbe\document\recent\RecentDocumentsStore.cpp')
+$recentManager = Get-Content -Raw (Join-Path $root 'src\fbe\document\recent\RecentDocumentsManager.cpp')
+$recentController = Get-Content -Raw (Join-Path $root 'src\fbe\document\recent\RecentDocumentsController.cpp')
 $recoveryStore = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryStore.cpp')
 $recoveryService = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryService.cpp')
+$recoveryController = Get-Content -Raw (Join-Path $root 'src\fbe\recovery\RecoveryController.cpp')
+$lifecycleController = Get-Content -Raw (Join-Path $root 'src\fbe\document\DocumentLifecycleController.cpp')
+$runtimeArchiveLifecycle = Get-Content -Raw (Join-Path $root 'src\fbe\testing\RuntimeTestArchiveAndLifecycle.inl')
 $doc = Get-Content -Raw (Join-Path $root 'src\fbe\FBDoc.cpp')
 $location = Get-Content -Raw (Join-Path $root 'src\fbe\document\DocumentLocation.h')
 $startup = Get-Content -Raw (Join-Path $root 'src\fbe\FBE.cpp')
@@ -51,36 +56,36 @@ Require $savePlan 'location\.containerKind == DocumentContainerKind::Rar' 'RAR C
 Require $archiveOpen 'FbeArchiveUi::ShowError' 'Archive failures must be mapped to user-facing error categories.'
 Require $frame 'RememberArchiveMruRecord' 'MRU must retain the selected archive entry separately from the storage path.'
 Require $recentStore 'FBE-ARCHIVE-MRU\\t2' 'Archive MRU persistence must be explicitly versioned.'
-Require $frame 'ReadArchiveMruRecords' 'Archive MRU must load independent persisted entry identities.'
+Require ($frame + $recentManager) 'ReadArchiveMruRecords' 'Archive MRU must load independent persisted entry identities.'
 Require ($frame + $archiveMru) 'SameArchiveMruIdentity|SameIdentity' 'Archive MRU must key records by container, storage path, entry path, and occurrence.'
 Require $archiveMru 'entryOccurrence == right\.entryOccurrence' 'Archive MRU must retain duplicate archive entries by occurrence.'
 Require ($frame + $archiveMru) 'ArchiveMruDisplayName|DisplayName' 'Archive MRU menu entries must identify the selected internal document.'
 Require $frame 'AddArchiveMruRecordsToList' 'Archive MRU entries must be restored into the recent-files menu.'
-Require $frame 'ErrorCode::EntryNotFound' 'Missing MRU archive entries must fail without selecting another document.'
+Require ($frame + $recentController) 'ErrorCode::EntryNotFound' 'Missing MRU archive entries must fail without selecting another document.'
 Require $frame 'archiveMru \? LoadFile\(archiveLocation\.storagePath, &archiveLocation\)' 'Archive MRU must load the physical container path and exact location, never its caption.'
-Require $frame 'ArchiveMruKey' 'Archive MRU identity must be separate from its menu caption.'
-Require $frame 'RebuildMruMenu' 'MRU submenu must be rebuilt separately from stored identities.'
+Require ($frame + $recentManager) 'ArchiveMruKey' 'Archive MRU identity must be separate from its menu caption.'
+Require ($frame + $recentManager) 'RebuildMruMenu' 'MRU submenu must be rebuilt separately from stored identities.'
 Require $recoveryStore 'WriteArchiveLocation' 'Recovery must retain archive source metadata without rewriting the container.'
 Require $recoveryStore 'containerLastWriteTime.*containerFileSize' 'Recovery must persist the archive fingerprint.'
-Require $frame 'SetDocumentFileType\(candidate.archiveLocation.documentType\)' 'Recovery must restore the authoritative archive FBD type.'
+Require ($frame + $recoveryController) 'SetDocumentFileType\(candidate.archiveLocation.documentType\)' 'Recovery must restore the authoritative archive FBD type.'
 Require $recoveryService 'SaveSourceSnapshot' 'Recovery source snapshot persistence must be isolated from the main frame.'
 Require $documentWriter 'expected\.lastWriteTime = location\.containerLastWriteTime[\s\S]{0,180}expected\.fileSize = location\.containerFileSize[\s\S]{0,180}SameFileFingerprint\(current, expected\)' 'Archive save must reject external changes detected by size as well as timestamp.'
 Require $frame 'entryName \+ L" :: " \+ containerName' 'Archive window titles must identify the selected entry and its container.'
-Require $frame 'OnFileNew[\s\S]{0,700}m_document_session\.NewDocument\(\)' 'New documents must not retain an archive save target.'
+Require $lifecycleController 'DocumentLifecycleController::NewDocument\(\)[\s\S]{0,800}m_session\.NewDocument\(\)' 'New documents must not retain an archive save target.'
 Require $frame 'ReloadFile\(\)[\s\S]{0,220}m_document_session\.Location\(\)\.IsArchive\(\)[\s\S]{0,180}LoadFile\(m_document_session\.Location\(\)\.storagePath, &m_document_session\.Location\(\)\)' 'Archive reload must resolve the already selected entry rather than parse the container as XML.'
 Require $archiveOpen 'FBE_NEXT_TEST_ARCHIVE_ENTRY' 'Multi-entry archive runtime tests need an isolated entry-selection hook.'
-Require $frame 'IsFbeTestScenario\(L"archive-runtime"\)' 'Archive runtime test scenario must run through real FBE document loading and saving.'
-Require $frame 'm_document_session\.Location\(\)\.IsArchive\(\)[\s\S]{0,180}GetDocumentFileType' 'Archive runtime scenario must report archive origin and document type from the loaded document.'
-Require $frame 'IsFbeTestScenario\(L"archive-two-phase-runtime"\)' 'Archive two-phase runtime scenario is missing.'
-Require $frame 'LoadFile\(failedArchive\)' 'Two-phase runtime scenario must attempt the real archive open path.'
-Require $frame 'mruUnchanged' 'Two-phase runtime scenario must verify that the failed archive did not mutate MRU.'
-Require $frame 'IsFbeTestScenario\(L"archive-rar-save-runtime"\)' 'RAR Save As runtime scenario must be explicitly isolated.'
+Require $runtimeArchiveLifecycle 'IsFbeTestScenario\(L"archive-runtime"\)' 'Archive runtime test scenario must run through real FBE document loading and saving.'
+Require $runtimeArchiveLifecycle 'm_document_session\.Location\(\)\.IsArchive\(\)[\s\S]{0,180}GetDocumentFileType' 'Archive runtime scenario must report archive origin and document type from the loaded document.'
+Require $runtimeArchiveLifecycle 'IsFbeTestScenario\(L"archive-two-phase-runtime"\)' 'Archive two-phase runtime scenario is missing.'
+Require $runtimeArchiveLifecycle 'LoadFile\(failedArchive\)' 'Two-phase runtime scenario must attempt the real archive open path.'
+Require $runtimeArchiveLifecycle 'mruUnchanged' 'Two-phase runtime scenario must verify that the failed archive did not mutate MRU.'
+Require $runtimeArchiveLifecycle 'IsFbeTestScenario\(L"archive-rar-save-runtime"\)' 'RAR Save As runtime scenario must be explicitly isolated.'
 Require $frame 'FBE_NEXT_TEST_SAVE_PATH' 'RAR Save As runtime test must use an explicit isolated output path.'
-Require $frame 'archive-recovery-external-verify' 'Archive recovery runtime must verify external-modification blocking.'
-Require $frame 'FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR' 'Archive recovery runtime must report the precise Save failure reason.'
+Require $runtimeArchiveLifecycle 'archive-recovery-external-verify' 'Archive recovery runtime must verify external-modification blocking.'
+Require $runtimeArchiveLifecycle 'FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR' 'Archive recovery runtime must report the precise Save failure reason.'
 Require ($frame + $documentWriter) 'ErrorCode::ModifiedExternally' 'Archive recovery runtime must require the external-modification error code.'
-Require $frame 'mruAfter == mruBefore' 'Two-phase runtime scenario must compare the entire MRU snapshot.'
-Require $frame 'archive-open-runtime"\)' 'Archive-open runtime mode must be explicitly isolated from modal error UI.'
+Require $runtimeArchiveLifecycle 'mruAfter == mruBefore' 'Two-phase runtime scenario must compare the entire MRU snapshot.'
+Require ($runtimeArchiveLifecycle + $archiveOpen) 'archive-open-runtime"\)' 'Archive-open runtime mode must be explicitly isolated from modal error UI.'
 Require $startup 'CommandLineToArgvW' 'CLI parsing must use CommandLineToArgvW.'
 if ($startup -match 'static void ParseCommandLine\(') { throw 'Legacy ParseCommandLine must not remain after CommandLineToArgvW migration.' }
 Require $picker 'min\(max\(static_cast<int>\(m_entries\.size\(\)\), 5\), 10\)' 'Archive picker must keep space for five to ten visible rows.'

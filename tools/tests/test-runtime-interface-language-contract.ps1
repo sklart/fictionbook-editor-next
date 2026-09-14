@@ -149,7 +149,7 @@ if ($mainMenuCatalog.strings.'fbe.menu.idr_mainframe.recent.empty'.translations.
 if ($mainFrameText -match '\{\s*ID_FILE_MRU_FIRST\s*,\s*L"fbe\.menu\.idr_mainframe\.recent\.empty"\s*\}') {
     throw 'ID_FILE_MRU_FIRST must not be mapped by the shared runtime menu-localization bindings.'
 }
-if ($mainFrameText -notmatch 'RefreshMruEmptyStateText\(m_mru\);\s*FbeRecentDocuments::RebuildMruMenu\(m_mru\);') {
+if ($mainFrameText -notmatch 'RefreshMruEmptyStateText\(m_recentDocuments\.List\(\)\);\s*FbeRecentDocuments::RebuildMruMenu\(m_recentDocuments\.List\(\)\);') {
     throw 'A live language switch must refresh the MRU empty-state before rebuilding the MRU menu.'
 }
 if ($mainFrameText -notmatch 'commandId >= ID_FILE_MRU_FIRST && commandId <= ID_FILE_MRU_LAST\)\s*continue;') {

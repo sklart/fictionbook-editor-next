@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $mainFrame = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $mainFrameHeader = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\mainfrm.h')
+$sourceViewSession = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\source\SourceViewSession.cpp')
 $sourceEditor = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\source\ui\SourceEditorControl.cpp')
 $matchedTags = Get-Content -Raw (Join-Path $repoRoot 'src\fbe\xmlMatchedTagsHighlighter.h')
 
@@ -20,7 +21,7 @@ Assert-Contains $sourceEditor 'SCI_USEPOPUP\s*,\s*SC_POPUP_NEVER' 'disabled Engl
 Assert-Contains $sourceEditor 'ShowContextMenu' 'localized Source context menu'
 Assert-Contains $sourceEditor 'fbe\.context\.cut' 'runtime-localized Source context labels'
 Assert-Contains $sourceEditor 'SCI_SETUNDOSELECTIONHISTORY\s*,\s*config\.undoSelectionHistory' 'configurable undo selection and scroll history'
-Assert-Contains $mainFrame 'if\s*\(m_doc->DocRelChanged\(\)\)\s*\{\s*const DWORD nch\s*=\s*::WideCharToMultiByte\(CP_UTF8,0,src,src\.length\(\),\s*NULL,0,NULL,NULL\)' 'UTF-8 size pass only during Source reload'
+Assert-Contains $sourceViewSession 'if\s*\(m_document->DocRelChanged\(\)\)\s*\{\s*const DWORD byteCount\s*=\s*::WideCharToMultiByte\(CP_UTF8,\s*0,\s*sourceText,\s*sourceText\.GetLength\(\),\s*NULL,\s*0,\s*NULL,\s*NULL\)' 'UTF-8 size pass only during Source reload'
 Assert-Contains $sourceEditor 'lexer\.xml\.allow\.asp' 'disabled XML ASP lexer mode'
 Assert-Contains $sourceEditor 'lexer\.xml\.allow\.php' 'disabled XML PHP lexer mode'
 Assert-Contains $sourceEditor 'lexer\.xml\.allow\.scripts' 'disabled XML script lexer mode'

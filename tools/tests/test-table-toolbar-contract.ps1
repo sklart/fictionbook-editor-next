@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $cpp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
+$runtimeUi = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ui\MainFrameRuntimeUi.inl')
 $factory = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\ToolbarFactory.cpp')
 $tableCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\TableToolbarCommands.cpp')
 
@@ -49,16 +50,16 @@ foreach ($forbidden in @('TB_ADDBITMAP', 'ImageList_Replace', 'SetDisabledImageL
 }
 if ($bitmapHelper.Value.Contains('maskOneCount')) { throw 'Table toolbar bitmap helper must not retain the redundant mask-one counter.' }
 
-if ($cpp -notmatch '(?s)LRESULT CMainFrame::OnCommandToolbarCustomDraw\(.*?pnmh->hwndFrom != m_CmdToolbar\.m_hWnd.*?IsTableToolbarCommand\(commandId\).*?TB_GETBITMAP.*?DrawThemeParentBackground.*?ILS_SATURATE.*?ImageList_DrawIndirect.*?CDRF_SKIPDEFAULT' -or
+if ($runtimeUi -notmatch '(?s)LRESULT CMainFrame::OnCommandToolbarCustomDraw\(.*?pnmh->hwndFrom != m_CmdToolbar\.m_hWnd.*?IsTableToolbarCommand\(commandId\).*?TB_GETBITMAP.*?DrawThemeParentBackground.*?ILS_SATURATE.*?ImageList_DrawIndirect.*?CDRF_SKIPDEFAULT' -or
     $header -notmatch 'NOTIFY_CODE_HANDLER\(NM_CUSTOMDRAW, OnCommandToolbarCustomDraw\)') {
     throw 'Table toolbar custom draw must grayscale only disabled table icons with ImageList_DrawIndirect.'
 }
-if ($cpp -notmatch 'ImageList_DrawIndirect\(&draw\) \? CDRF_SKIPDEFAULT : CDRF_DODEFAULT') {
+if ($runtimeUi -notmatch 'ImageList_DrawIndirect\(&draw\) \? CDRF_SKIPDEFAULT : CDRF_DODEFAULT') {
     throw 'Table toolbar custom draw must fall back to native painting when ImageList_DrawIndirect fails.'
 }
 if ($cpp -notmatch '(?s)GetRuntimeToolbarToolTipText\(UINT commandId\).*?kTableToolbarCommands.*?FbeLoadRuntimeStringByKey\(command\.localizationKey, command\.fallbackText\)' -or
-    $cpp -notmatch '(?s)OnRuntimeToolTipTextA.*?GetRuntimeToolbarToolTipText\(static_cast<UINT>\(idCtrl\)\)' -or
-    $cpp -notmatch '(?s)OnRuntimeToolTipTextW.*?GetRuntimeToolbarToolTipText\(static_cast<UINT>\(idCtrl\)\)') {
+    $runtimeUi -notmatch '(?s)OnRuntimeToolTipTextA.*?GetRuntimeToolbarToolTipText\(static_cast<UINT>\(idCtrl\)\)' -or
+    $runtimeUi -notmatch '(?s)OnRuntimeToolTipTextW.*?GetRuntimeToolbarToolTipText\(static_cast<UINT>\(idCtrl\)\)') {
     throw 'Table toolbar tooltips must use the runtime-localized command captions in both ANSI and Unicode notifications.'
 }
 if ($cpp -notmatch '(?s)GetRuntimeToolbarToolTipText\(UINT commandId\).*?FindRuntimeMainFrameMenuCommandKey\(commandId\).*?FbeLoadRuntimeStringByKey\(key, fallback\).*?StripMenuMnemonics') {

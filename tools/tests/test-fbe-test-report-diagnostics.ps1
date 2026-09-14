@@ -7,7 +7,10 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+$source = @(
+    Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\testing\RuntimeTestArchiveAndLifecycle.inl')
+    Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\testing\RuntimeTestEditorAndExport.inl')
+) -join "`n"
 
 if ($source -match 'save(?:-1)?-failed;hr=0x80004005;operation=Save') {
     throw 'Тестовый отчёт Save всё ещё подставляет фиктивный 0x80004005.'
