@@ -24,6 +24,11 @@ foreach ($required in @(
     if (-not $workflow.Contains($required)) { throw "CI workflow is missing '$required'." }
 }
 
+$validateCheckout = [regex]::Match($workflow, '(?s)validate:.*?actions/checkout@v7\s*\r?\n\s*with:(?<options>.*?)\r?\n\s*- name: Check generated')
+if(-not $validateCheckout.Success -or $validateCheckout.Groups['options'].Value -notmatch '(?m)^\s*submodules:\s*recursive\s*$') {
+    throw 'Validate must recursively checkout submodules before reading vendored MSBuild projects.'
+}
+
 foreach ($match in [regex]::Matches($workflow, '(?m)(?:\./|\.\\)(tools[\\/][A-Za-z0-9_.\\/-]+\.ps1)')) {
     $relativePath = $match.Groups[1].Value -replace '/', '\\'
     if (-not (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf)) {

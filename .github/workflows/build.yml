@@ -20,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          submodules: recursive
           fetch-depth: 1
       - name: Check generated version files and pipeline structure
         shell: pwsh
