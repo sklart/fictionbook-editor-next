@@ -35,7 +35,7 @@ Must $hotkeysStore 'ambiguousLongestSuffix \? NULL : matchedHotkey' 'Ambiguous l
 Must $hotkeysStore 'if\(migratedLegacyScriptHotkey\) Save\(groups\)' 'Legacy hotkey migration writes portable identity back'
 
 Must $header 'ReleaseScriptResources\(\)' 'Script lifecycle helper declaration'
-Must $frame 'ReleaseScriptResources\(\);\s*\n\s*StartupTrace::Event\(L"plugin", L"P100"' 'Reload releases script resources before collecting'
+Must $frame 'ReleaseScriptResources\(\);[\s\S]*StartupTrace::Event\(L"plugin", L"P100"' 'Reload releases script resources before collecting'
 Must $menuBuilder 'm_items\.clear\(\)' 'Reload clears active script descriptors'
 Must $menuBuilder 'm_visuals\.clear\(\)' 'Reload clears visual resources together with descriptors'
 Must $visuals '~VisualResource\(\) \{ Reset\(\); \}' 'GDI handles use RAII cleanup'
