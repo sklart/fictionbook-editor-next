@@ -62,7 +62,19 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		::SetTextColor(dc, ThemeManager::TextColor());
 		return reinterpret_cast<LRESULT>(ThemeManager::WindowBrush());
 	}
-	if(message == WM_CTLCOLORSTATIC || message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX || message == WM_CTLCOLORBTN)
+	if(message == WM_CTLCOLORSTATIC)
+	{
+		// Labels are normally painted directly on a dialog/panel.  Using the
+		// control brush here leaves visible rectangles behind captions in dark
+		// dialogs, so keep them on the owning window background.
+		HDC dc = reinterpret_cast<HDC>(wParam);
+		HWND control = reinterpret_cast<HWND>(lParam);
+		const bool enabled = !control || ::IsWindowEnabled(control) != FALSE;
+		::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+		::SetBkColor(dc, ThemeManager::WindowColor());
+		return reinterpret_cast<LRESULT>(ThemeManager::WindowBrush());
+	}
+	if(message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX || message == WM_CTLCOLORBTN)
 	{
 		HDC dc = reinterpret_cast<HDC>(wParam);
 		HWND control = reinterpret_cast<HWND>(lParam);
@@ -81,6 +93,7 @@ void ApplyNativeControlPalette(HWND window)
 	{
 		::SendMessage(window, TVM_SETBKCOLOR, 0, ThemeManager::WindowColor());
 		::SendMessage(window, TVM_SETTEXTCOLOR, 0, ThemeManager::TextColor());
+		::SendMessage(window, TVM_SETLINECOLOR, 0, ThemeManager::SeparatorColor());
 	}
 	else if(IsClass(window, WC_LISTVIEWW))
 	{
