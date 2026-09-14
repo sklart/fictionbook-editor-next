@@ -1,5 +1,13 @@
 # Текущий TODO
 
+- [x] Первый этап пользовательских панелей скриптов: выделить `ScriptRegistry`
+  и `ScriptIdentity` с GUID, fingerprint-heuristic, orphan preservation и
+  atomic persistence в `DeploymentContext::SettingsDirectory`; перевести
+  runtime command mapping, Last Script и новые script hotkeys на UID, сохранив
+  миграцию legacy relative path.
+- [ ] Завершить следующие этапы пользовательских панелей: `Toolbars.xml` v2,
+  коллекцию runtime toolbars и UI управления/редактирования нескольких панелей.
+
 - [x] Зафиксировать единый baseline C++17 для собственных C++-проектов через
   `FbeLanguageStandard`; оставить C++20, `/permissive-` и `/Zc:wchar_t`
   самостоятельными следующими этапами.

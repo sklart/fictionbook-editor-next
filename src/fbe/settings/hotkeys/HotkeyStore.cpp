@@ -32,7 +32,11 @@ void Load(std::vector<CHotkeysGroup>& groups, int& keycodes)
 				CHotkey* matchedHotkey = NULL; int longestSuffixLength = -1; bool ambiguousLongestSuffix = false;
 				for(unsigned int candidateIndex = 0; candidateIndex < foundGroup->m_hotkeys.size(); ++candidateIndex)
 				{
-					CString relativePath(foundGroup->m_hotkeys[candidateIndex].m_reg_name); relativePath.Replace(L'\\', L'/'); relativePath.MakeLower();
+				CString relativePath(foundGroup->m_hotkeys[candidateIndex].m_reg_name);
+				// Current script names are script:{UID}; their description preserves
+				// the legacy relative path for this one-time safe migration.
+				if(relativePath.Left(7) == L"script:") relativePath = foundGroup->m_hotkeys[candidateIndex].m_desc;
+				relativePath.Replace(L'\\', L'/'); relativePath.MakeLower();
 					const bool matches = legacyPath == relativePath || (legacyPath.GetLength() > relativePath.GetLength() && legacyPath.Right(relativePath.GetLength()) == relativePath && legacyPath[legacyPath.GetLength() - relativePath.GetLength() - 1] == L'/');
 					if(matches) { const int suffixLength = relativePath.GetLength(); if(suffixLength > longestSuffixLength) { longestSuffixLength = suffixLength; matchedHotkey = &foundGroup->m_hotkeys[candidateIndex]; ambiguousLongestSuffix = false; } else if(suffixLength == longestSuffixLength) ambiguousLongestSuffix = true; }
 				}

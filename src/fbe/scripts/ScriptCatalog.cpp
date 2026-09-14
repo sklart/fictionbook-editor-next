@@ -40,7 +40,7 @@ void SetNameAndOrder(const CString& fileName, CString& name, CString& order)
 
 namespace FbeScripts
 {
-void Catalog::Discover(const CString& root, const CString& mask)
+bool Catalog::Discover(const CString& root, const CString& mask, ScriptRegistry* registry)
 {
 	m_items.clear();
 	DiscoverFolder(root, root, mask, CString());
@@ -50,6 +50,7 @@ void Catalog::Discover(const CString& root, const CString& mask)
 		const int order = left.order.CompareNoCase(right.order);
 		return order != 0 ? order < 0 : left.relativePath.CompareNoCase(right.relativePath) < 0;
 	});
+	return registry == NULL || registry->Resolve(m_items);
 }
 
 void Catalog::DiscoverFolder(const CString& root, const CString& path, const CString& mask, const CString& parentId)

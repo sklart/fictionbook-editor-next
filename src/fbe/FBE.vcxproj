@@ -270,6 +270,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClCompile Include="document\recent\RecentDocumentsManager.cpp" />
 	<ClCompile Include="document\recent\RecentDocumentsController.cpp" />
 	<ClCompile Include="scripts\ScriptCatalog.cpp" />
+	<ClCompile Include="scripts\ScriptRegistry.cpp" />
 	<ClCompile Include="scripts\ScriptCommandRegistry.cpp" />
 	<ClCompile Include="scripts\ScriptVisualResources.cpp" />
     <ClCompile Include="scripts\ScriptMenuBuilder.cpp" />
@@ -467,6 +468,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
 	<ClInclude Include="document\recent\RecentDocumentsManager.h" />
 	<ClInclude Include="document\recent\RecentDocumentsController.h" />
 	<ClInclude Include="scripts\ScriptCatalog.h" />
+	<ClInclude Include="scripts\ScriptRegistry.h" />
 	<ClInclude Include="scripts\ScriptDescriptor.h" />
 	<ClInclude Include="scripts\ScriptCommandRegistry.h" />
 	<ClInclude Include="scripts\ScriptVisualResources.h" />

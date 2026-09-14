@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ScriptDescriptor.h"
+#include "ScriptRegistry.h"
 #include <vector>
 
 namespace FbeScripts
@@ -8,7 +9,7 @@ namespace FbeScripts
 class Catalog
 {
 public:
-	void Discover(const CString& root, const CString& mask);
+	bool Discover(const CString& root, const CString& mask, ScriptRegistry* registry = NULL);
 	const std::vector<ScriptDescriptor>& Items() const { return m_items; }
 
 private:

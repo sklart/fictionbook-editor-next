@@ -24,7 +24,8 @@ bool MenuBuilder::AssignCommandIds(int capacity, const CString& serialized, CStr
 	for (int index = 0; index < Count(); ++index)
 	{
 		ScriptDescriptor& script = Item(index);
-		script.commandId = script.isFolder || script.relativePath.IsEmpty() ? -1 : registry.Assign(script.relativePath);
+		if(!script.isFolder) registry.MigrateLegacyPath(script.relativePath, script.uid);
+		script.commandId = script.isFolder || script.uid.IsEmpty() ? -1 : registry.Assign(script.uid);
 	}
 	if (!registry.IsDirty()) return false;
 	updatedSerialized = registry.Serialize();

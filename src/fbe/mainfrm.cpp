@@ -1765,7 +1765,7 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 
 	if(scriptsToolbar && !layout.lastScript.IsEmpty())
 		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
-			if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).relativePath == layout.lastScript)
+			if(!m_scripts.Menu().Item(scriptIndex).isFolder && (m_scripts.Menu().Item(scriptIndex).uid == layout.lastScript || m_scripts.Menu().Item(scriptIndex).relativePath == layout.lastScript))
 			{
 				m_scripts.SetLastScript(m_scripts.Menu().Item(scriptIndex));
 				break;
@@ -1787,7 +1787,7 @@ void CMainFrame::SavePortableToolbarLayout()
 		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
 			if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).commandId == scriptId) { item.command = 0; item.relativePath = m_scripts.Menu().Item(scriptIndex).relativePath; break; }
 	}
-	layout.lastScript = m_scripts.LastRelativePath();
+	layout.lastScript = m_scripts.LastScriptUid();
 	PortableToolbarStore::Save(layout);
 }
 
@@ -5273,9 +5273,9 @@ void CMainFrame::InitScriptHotkey(ScriptDescriptor& script)
 	{
 		if(hotkey_groups.at(i).m_reg_name == L"Scripts")
 		{
-			// relativePath is the persistent script identity.  An absolute path
-			// breaks portable hotkeys as soon as the package is moved.
-			CHotkey ScriptsHotkey(script.relativePath,
+			// Script UID remains stable across a rename and has no machine path.
+			const CString identity = L"script:" + script.uid;
+			CHotkey ScriptsHotkey(identity,
 				script.name,
 				NULL,
 				static_cast<WORD>(commandId),

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ScriptUiController.h"
 #include "ScriptCatalog.h"
+#include "ScriptRegistry.h"
 #include "..\resource.h"
 
 namespace FbeScripts
@@ -10,7 +11,7 @@ UiController::UiController(UINT folderCommandBase, UINT folderCommandCount)
 
 void UiController::SetLastScript(const ScriptDescriptor& script)
 {
-	m_lastRelativePath = script.relativePath;
+	m_lastUid = script.uid;
 }
 
 const ScriptDescriptor* UiController::LastScript() const
@@ -18,7 +19,7 @@ const ScriptDescriptor* UiController::LastScript() const
 	for(int index = 0; index < m_menu.Count(); ++index)
 	{
 		const ScriptDescriptor& script = m_menu.Item(index);
-		if(!script.isFolder && script.relativePath == m_lastRelativePath)
+		if(!script.isFolder && script.uid == m_lastUid)
 			return &script;
 	}
 	return NULL;
@@ -31,7 +32,8 @@ bool UiController::Initialize(const CString& folder, const CString& persistedCom
 	const std::function<void(ScriptDescriptor&)>& registerHotkey)
 {
 	m_menu.Clear(); ClearLastScript();
-	Catalog catalog; catalog.Discover(folder, L"*.js");
+	ScriptRegistry registry; if(!registry.Load()) return false;
+	Catalog catalog; if(!catalog.Discover(folder, L"*.js", &registry)) return false;
 	const std::vector<ScriptDescriptor>& candidates = catalog.Items();
 	for(size_t index = 0; index < candidates.size(); ++index)
 	{

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Пользовательские JavaScript-скрипты получили устойчивый GUID UID в отдельном
+  атомарно записываемом `ScriptRegistry.xml` в каталоге настроек. UID переживает
+  переименование и перенос внутри `Scripts`; исчезнувшие записи не удаляются,
+  а одинаковый fingerprint не объединяет разные скрипты. Runtime command IDs,
+  Last Script и новые identity hotkeys используют UID, с безопасной миграцией
+  старых относительных путей.
+
 - Source XML snapshot, сериализация/применение документа и обмен с редактором
   вынесены из `CMainFrame` в `SourceViewSession`; двустороннее сопоставление
   выделения Body/Source теперь принадлежит `BodySourceSelectionCoordinator`.
