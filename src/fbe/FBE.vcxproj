@@ -278,6 +278,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClCompile Include="plugins\PluginUiController.cpp" />
 	<ClCompile Include="plugins\PluginExecutionController.cpp" />
 	<ClCompile Include="toolbars\PortableToolbarStore.cpp" />
+	<ClCompile Include="toolbars\ScriptToolbarCollection.cpp" />
 	<ClCompile Include="toolbars\ToolbarLayoutAdapter.cpp" />
 	<ClCompile Include="toolbars\ToolbarFactory.cpp" />
 	<ClCompile Include="toolbars\TableToolbarCommands.cpp" />
@@ -535,6 +536,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="mainfrm.h" />
 	<ClInclude Include="toolbars\PortableToolbarLayout.h" />
 	<ClInclude Include="toolbars\PortableToolbarStore.h" />
+	<ClInclude Include="toolbars\ScriptToolbarCollection.h" />
 	<ClInclude Include="toolbars\ToolbarLayoutAdapter.h" />
 	<ClInclude Include="toolbars\ToolbarFactory.h" />
 	<ClInclude Include="toolbars\TableToolbarCommands.h" />
