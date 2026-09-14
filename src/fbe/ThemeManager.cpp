@@ -39,6 +39,67 @@ void RebuildBrushes()
 typedef HRESULT (WINAPI* DwmSetWindowAttributeFn)(HWND, DWORD, LPCVOID, DWORD);
 typedef HRESULT (WINAPI* SetPreferredAppModeFn)(int);
 
+const UINT_PTR kThemeControlSubclassId = 0x46424554; // "FBET"
+
+bool IsClass(HWND window, LPCWSTR className)
+{
+	wchar_t actual[64] = {};
+	return ::GetClassNameW(window, actual, _countof(actual)) && ::lstrcmpiW(actual, className) == 0;
+}
+
+LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
+{
+	if(message == WM_NCDESTROY)
+	{
+		::RemoveWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId);
+		return ::DefSubclassProc(window, message, wParam, lParam);
+	}
+	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(message == WM_CTLCOLORDLG)
+	{
+		HDC dc = reinterpret_cast<HDC>(wParam);
+		::SetBkColor(dc, ThemeManager::WindowColor());
+		::SetTextColor(dc, ThemeManager::TextColor());
+		return reinterpret_cast<LRESULT>(ThemeManager::WindowBrush());
+	}
+	if(message == WM_CTLCOLORSTATIC || message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX || message == WM_CTLCOLORBTN)
+	{
+		HDC dc = reinterpret_cast<HDC>(wParam);
+		HWND control = reinterpret_cast<HWND>(lParam);
+		const bool enabled = !control || ::IsWindowEnabled(control) != FALSE;
+		::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+		::SetBkColor(dc, ThemeManager::ControlColor());
+		return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
+	}
+	return ::DefSubclassProc(window, message, wParam, lParam);
+}
+
+void ApplyNativeControlPalette(HWND window)
+{
+	if(IsHighContrastEnabled()) return;
+	if(IsClass(window, WC_TREEVIEWW))
+	{
+		::SendMessage(window, TVM_SETBKCOLOR, 0, ThemeManager::WindowColor());
+		::SendMessage(window, TVM_SETTEXTCOLOR, 0, ThemeManager::TextColor());
+	}
+	else if(IsClass(window, WC_LISTVIEWW))
+	{
+		::SendMessage(window, LVM_SETBKCOLOR, 0, ThemeManager::WindowColor());
+		::SendMessage(window, LVM_SETTEXTBKCOLOR, 0, ThemeManager::WindowColor());
+		::SendMessage(window, LVM_SETTEXTCOLOR, 0, ThemeManager::TextColor());
+	}
+	else if(IsClass(window, WC_TABCONTROLW))
+	{
+		::SendMessage(window, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
+	}
+	else if(IsClass(window, L"Edit"))
+		::SendMessage(window, EM_SETBKGNDCOLOR, 0, ThemeManager::ControlColor());
+	else if(IsClass(window, STATUSCLASSNAMEW))
+		::SendMessage(window, SB_SETBKCOLOR, 0, ThemeManager::ControlColor());
+	else if(IsClass(window, REBARCLASSNAMEW))
+		::SendMessage(window, RB_SETBKCOLOR, 0, ThemeManager::ControlColor());
+}
+
 void ApplyPreferredAppMode(bool dark)
 {
 	// Ordinal 135 exists only on modern Windows 10 builds.  Resolving it at
@@ -179,8 +240,10 @@ HBRUSH ControlBrush() { if(!g_controlBrush) RebuildBrushes(); return g_controlBr
 void ApplyToWindow(HWND window)
 {
 	if(!::IsWindow(window)) return;
-	const bool dark = IsDark();
+	const bool dark = IsDark() && !IsHighContrastEnabled();
+	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
 	::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
+	ApplyNativeControlPalette(window);
 	ApplyModernTitleBar(window, dark);
 	::SendMessage(window, WM_THEMECHANGED, 0, 0);
 	::SendMessage(window, WM_FBE_THEMECHANGED, 0, 0);

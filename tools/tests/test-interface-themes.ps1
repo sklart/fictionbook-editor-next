@@ -18,6 +18,9 @@ foreach($required in @('AppsUseLightTheme', 'DwmSetWindowAttribute', 'SetWindowT
 foreach($required in @('THEME_COLOR_BORDER', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_SECONDARY_TEXT', 'THEME_COLOR_DISABLED_TEXT', 'THEME_COLOR_SELECTION_BACKGROUND', 'THEME_COLOR_SELECTION_TEXT', 'THEME_COLOR_HOVER', 'THEME_COLOR_PRESSED', 'THEME_COLOR_FOCUS', 'THEME_COLOR_ACCENT', 'THEME_COLOR_ERROR', 'THEME_COLOR_WARNING', 'THEME_COLOR_SUCCESS')) {
     if($managerHeader -notlike "*$required*") { throw "ThemeManager.h does not expose semantic colour $required." }
 }
+foreach($required in @('SetWindowSubclass', 'WM_CTLCOLORBTN', 'WM_CTLCOLOREDIT', 'WC_TREEVIEWW', 'WC_LISTVIEWW', 'WC_TABCONTROLW', 'STATUSCLASSNAMEW', 'REBARCLASSNAMEW', 'EM_SETBKGNDCOLOR')) {
+    if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not apply the semantic palette to $required." }
+}
 if($managerHeader -notlike '*INTERFACE_THEME_AUTOMATIC*' -or $managerHeader -notlike '*WindowBrush*') {
     throw 'Theme manager must expose Automatic and shared colour resources.'
 }
