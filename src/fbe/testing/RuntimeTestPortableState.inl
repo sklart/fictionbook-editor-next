@@ -38,7 +38,8 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptToolbarLifecycleReload = IsFbeTestScenario(L"script-toolbar-lifecycle-reload-runtime");
 	const bool scriptToolbarRollbackNoMain = IsFbeTestScenario(L"script-toolbar-rollback-no-main-runtime");
 	const bool scriptToolbarRollbackPersisted = IsFbeTestScenario(L"script-toolbar-rollback-persisted-runtime");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted)
+	const bool scriptToolbarRollbackPartial = IsFbeTestScenario(L"script-toolbar-rollback-partial-runtime");
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -50,7 +51,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
@@ -86,6 +87,34 @@ void CMainFrame::RunPortableStateTestScenario()
 		PortableToolbarLayout restored; const bool loaded = PortableToolbarStore::Load(restored);
 		const bool state = loaded && restored.commandToolbarPresent && restored.commands.size() == 1 && restored.commands[0].command == ID_FILE_SAVE && restored.lastScript == original.lastScript && restored.scriptToolbars.size() == 3 && restored.scriptToolbars[0].id == L"scripts-main" && !restored.scriptToolbars[0].visible && restored.scriptToolbars[0].items.size() == 1 && restored.scriptToolbars[0].items[0].command == ID_LAST_SCRIPT && restored.scriptToolbars[1].id == L"persisted-first" && !restored.scriptToolbars[1].visible && restored.scriptToolbars[2].id == L"persisted-second" && restored.scriptToolbars[2].visible;
 		CStringA report; report.Format("phase=script-toolbar-rollback-persisted\nseeded=%d\nrollback=%d\nexact=%d\nstate=%d\nresult=%s\n", captured, rolledBack, exact, state, captured && rolledBack && exact && state ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if(scriptToolbarRollbackPartial)
+	{
+		::CreateDirectory(scriptsDirectory, NULL); _Settings.SetScriptsFolder(scriptsDirectory, true);
+		auto makeDefinitions = [&]() { std::vector<ScriptToolbarDefinition> definitions; ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; definitions.push_back(main); for(int index = 1; index <= 3; ++index) { ScriptToolbarDefinition item; item.id.Format(L"partial-toolbar-%d", index); item.name.Format(L"Partial %d", index); item.visible = true; PortableToolbarItem button = {}; button.command = ID_LAST_SCRIPT; item.items.push_back(button); definitions.push_back(item); } return definitions; };
+		auto runtimeValid = [&](const std::vector<ScriptToolbarDefinition>& definitions, int bands) {
+			int windows = 0;
+			const std::vector<ScriptToolbarRuntime>& runtimes = m_scriptToolbars.Items();
+			if(static_cast<int>(m_rebar.GetBandCount()) != bands || runtimes.size() != definitions.size()) return false;
+			for(size_t index = 0; index < runtimes.size(); ++index) {
+				const ScriptToolbarRuntime& runtime = runtimes[index]; const ScriptToolbarDefinition& expected = definitions[index];
+				if(runtime.definition.id != expected.id || runtime.definition.name != expected.name || runtime.definition.visible != expected.visible || runtime.definition.items.size() != expected.items.size()) return false;
+				for(size_t item = 0; item < expected.items.size(); ++item) { const PortableToolbarItem& actual = runtime.definition.items[item]; const PortableToolbarItem& expectedItem = expected.items[item]; if(actual.separator != expectedItem.separator || actual.command != expectedItem.command || actual.width != expectedItem.width || actual.scriptUid != expectedItem.scriptUid || actual.relativePath != expectedItem.relativePath) return false; }
+				if(runtime.definition.id != L"scripts-main" && runtime.window != NULL && ::IsWindow(runtime.window)) ++windows;
+			}
+			return windows == 3;
+		};
+		PortableToolbarStore::Snapshot absentBefore, absentAfter; const bool noFile = PortableToolbarStore::CaptureSnapshot(absentBefore) && !absentBefore.exists;
+		std::vector<ScriptToolbarDefinition> previous = makeDefinitions(); const bool initialNoFile = noFile && InitializeScriptsFromDefinitions(previous, false); const int noFileBands = m_rebar.GetBandCount();
+		std::vector<ScriptToolbarDefinition> candidate = previous; ScriptToolbarDefinition extra; extra.id = L"partial-extra"; extra.name = L"Extra"; candidate.push_back(extra);
+		m_testFailAfterCustomToolbarCreates = 2; const bool noFileRollback = initialNoFile && !ApplyScriptToolbarDefinitions(previous, candidate) && PortableToolbarStore::CaptureSnapshot(absentAfter) && !absentAfter.exists && runtimeValid(previous, noFileBands);
+		PortableToolbarLayout original; original.commandToolbarPresent = true; original.scriptsToolbarPresent = true; original.lastScript = L"partial-last-script"; original.scriptToolbars = previous; PortableToolbarItem command = {}; command.command = ID_FILE_SAVE; original.commands.push_back(command);
+		const bool seeded = PortableToolbarStore::Save(original); PortableToolbarStore::Snapshot persistedBefore, persistedAfter; const bool captured = seeded && PortableToolbarStore::CaptureSnapshot(persistedBefore);
+		const bool initialized = seeded && InitializeScripts(); const int persistedBands = m_rebar.GetBandCount();
+		m_testFailAfterCustomToolbarCreates = 2; const bool persistedRollback = initialized && !ApplyScriptToolbarDefinitions(currentDefinitions(), candidate) && PortableToolbarStore::CaptureSnapshot(persistedAfter) && persistedAfter.text == persistedBefore.text && runtimeValid(previous, persistedBands);
+		const bool stable = persistedRollback && InitializeScripts() && runtimeValid(previous, persistedBands);
+		CStringA report; report.Format("phase=script-toolbar-rollback-partial\nno-file=%d\npartial-no-file=%d\npersisted=%d\npartial-persisted=%d\nstable=%d\nresult=%s\n", noFile, noFileRollback, captured, persistedRollback, stable, noFileRollback && persistedRollback && stable ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if (scriptToolbarLifecycleReload)

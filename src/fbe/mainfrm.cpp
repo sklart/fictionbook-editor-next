@@ -2008,7 +2008,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 	m_scriptToolbars.Reset();
 	for(size_t index = 0; index < definitions.size(); ++index) m_scriptToolbars.Add(definitions[index]);
 	if(m_scriptToolbars.Find(L"scripts-main") == NULL) { ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; m_scriptToolbars.Add(main); }
-	bool controlsCreated = true;
+	bool controlsCreated = true; int customControlsCreated = 0;
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
 	{
 		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
@@ -2032,6 +2032,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID;
 		if(band < 0 || !m_rebar.GetBandInfo(band, &info)) { DestroyScriptToolbarRuntimeControls(); controlsCreated = false; break; }
 		runtime.rebarBandId = info.wID;
+		if(m_testFailAfterCustomToolbarCreates > 0 && ++customControlsCreated >= m_testFailAfterCustomToolbarCreates) { m_testFailAfterCustomToolbarCreates = 0; controlsCreated = false; break; }
 	}
 	if(!controlsCreated) { DestroyScriptToolbarRuntimeControls(); return false; }
 	StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");

@@ -37,13 +37,17 @@ try {
     Reset-PortableLifecycleState
     Invoke-Lifecycle '--portable' 'script-toolbar-rollback-persisted-runtime' (Join-Path $portableData 'Diagnostics')
     Reset-PortableLifecycleState
+    Invoke-Lifecycle '--portable' 'script-toolbar-rollback-partial-runtime' (Join-Path $portableData 'Diagnostics')
+    Reset-PortableLifecycleState
     Invoke-Lifecycle '--portable' 'script-toolbar-lifecycle-runtime' (Join-Path $portableData 'Diagnostics')
     Invoke-Lifecycle '--portable' 'script-toolbar-lifecycle-reload-runtime' (Join-Path $portableData 'Diagnostics')
     if($IncludeInstalled) {
         # CI explicitly marks its disposable Windows profile.  This test never
         # removes or moves installed settings, even on that worker.
+        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-no-main-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
         Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
         Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-reload-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
+        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-persisted-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
     }
     Write-Host ('Script toolbar lifecycle runtime regression passed ({0}).' -f $(if($IncludeInstalled) { 'portable + installed' } else { 'portable' }))
 } finally {
