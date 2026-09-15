@@ -404,6 +404,7 @@ void SetSelectedTheme(InterfaceTheme theme)
 
 InterfaceTheme GetSelectedTheme() { return g_selected; }
 bool IsDark() { return g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark); }
+bool IsHighContrast() { return g_highContrast; }
 COLORREF Color(ThemeColorRole role)
 {
 	if(IsHighContrastEnabled())

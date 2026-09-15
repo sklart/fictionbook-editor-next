@@ -14,6 +14,7 @@ $mainFrame = Read-ProjectFile 'src\fbe\mainfrm.cpp'
 $toolbarUi = Read-ProjectFile 'src\fbe\ui\MainFrameRuntimeUi.inl'
 $mainFrameHeader = Read-ProjectFile 'src\fbe\mainfrm.h'
 $documentTree = Read-ProjectFile 'src\fbe\DocumentTree.cpp'
+$documentTreeHeader = Read-ProjectFile 'src\fbe\DocumentTree.h'
 $contextAttributeBars = Read-ProjectFile 'src\fbe\ui\ContextAttributeBars.cpp'
 
 foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChanged', 'WH_CBT', 'HCBT_ACTIVATE', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
@@ -52,8 +53,14 @@ foreach($required in @('isContextAttributeBar', 'ThemeManager::ControlBrush()', 
 foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ForceDark', 'UsesClassicSurfacePalette', 'SetWindowTheme(window, L" ", L" ")', 'ApplyNativeControlPalette(window);')) {
     if($manager -notlike "*$required*") { throw "Theme manager does not refresh native menu and control colours: $required." }
 }
-foreach($required in @('OnThemeChanged', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR')) {
-    if($documentTree -notlike "*$required*") { throw "Document Tree does not refresh $required on theme changes." }
+foreach($required in @('OnThemeChanged', 'OnThemePaint', 'PaintDarkTitle', 'OnToolbarCustomDraw', 'DocumentTreeViewBarThemeProc', 'DocumentTreeViewBarWindowThemeProc', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::ControlColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR', 'TB_SETCOLORSCHEME')) {
+	if($documentTree -notlike "*$required*") { throw "Document Tree does not refresh $required on theme changes." }
+}
+if($documentTree -notlike '*SetWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc*') {
+	throw 'Document Tree does not intercept custom drawing of the view selector.'
+}
+if($documentTreeHeader -notlike '*NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnToolbarCustomDraw)*') {
+    throw 'Document Tree does not route toolbar custom draw notifications.'
 }
 $generalPageHeader = Read-ProjectFile 'src\fbe\settings\ui\SettingsGeneralPage.h'
 if($generalPage -notlike '*OnInterfaceThemeChanged*' -or $generalPage -notlike '*ThemeManager::ApplyToAllThreadWindows*' -or

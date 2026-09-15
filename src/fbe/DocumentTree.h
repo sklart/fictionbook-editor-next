@@ -45,7 +45,9 @@ public:
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_ERASEBKGND, OnThemeEraseBackground)
 		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
+		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnToolbarCustomDraw)
 
 		COMMAND_ID_HANDLER(ID_DT_RIGHT_ONE, ForwardWMCommand)
 		COMMAND_ID_HANDLER(ID_DT_RIGHT_SMART, ForwardWMCommand)
@@ -65,7 +67,9 @@ public:
 	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnThemeEraseBackground(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnToolbarCustomDraw(int, LPNMHDR, BOOL&);
 
 	LRESULT ForwardWMCommand(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 
@@ -121,6 +125,7 @@ class CDocumentTree : public CPaneContainer
 {
 private:	
 	int m_current_tab;
+	CString m_title;
 
 
 public:
@@ -138,6 +143,9 @@ public:
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_ERASEBKGND, OnThemeEraseBackground)
+		MESSAGE_HANDLER(WM_PAINT, OnThemePaint)
+		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
 
 		CHAIN_MSG_MAP(CPaneContainer);
 	END_MSG_MAP()
@@ -145,5 +153,9 @@ public:
 	LRESULT OnCreate(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnThemeEraseBackground(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnThemePaint(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
 	void RefreshLocalizedTitle();
+	void PaintDarkTitle(HDC dc);
 };
