@@ -36,7 +36,9 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool diagnosticCleanup = IsFbeTestScenario(L"portable-diagnostic-cleanup");
 	const bool scriptToolbarLifecycle = IsFbeTestScenario(L"script-toolbar-lifecycle-runtime");
 	const bool scriptToolbarLifecycleReload = IsFbeTestScenario(L"script-toolbar-lifecycle-reload-runtime");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload)
+	const bool scriptToolbarRollbackNoMain = IsFbeTestScenario(L"script-toolbar-rollback-no-main-runtime");
+	const bool scriptToolbarRollbackPersisted = IsFbeTestScenario(L"script-toolbar-rollback-persisted-runtime");
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -48,11 +50,43 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
 		return;
+	}
+	auto currentDefinitions = [&]() { std::vector<ScriptToolbarDefinition> result; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) result.push_back(m_scriptToolbars.Items()[index].definition); return result; };
+	auto mainHasDefault = [&]() { TBBUTTON button = {}; return m_ScriptsToolbar.GetButtonCount() > 0 && m_ScriptsToolbar.GetButton(0, &button) && button.idCommand == ID_LAST_SCRIPT; };
+	if(scriptToolbarRollbackNoMain)
+	{
+		::CreateDirectory(scriptsDirectory, NULL); _Settings.SetScriptsFolder(scriptsDirectory, true); InitializeScripts();
+		PortableToolbarStore::Snapshot before, after; const bool absentBefore = PortableToolbarStore::CaptureSnapshot(before) && !before.exists;
+		std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), candidate = previous;
+		ScriptToolbarDefinition custom; custom.id = L"rollback-new-toolbar"; custom.name = L"Rollback candidate"; candidate.push_back(custom);
+		m_testFailNextInitializeScripts = true; const bool rolledBack = !ApplyScriptToolbarDefinitions(previous, candidate);
+		const bool absentAfter = PortableToolbarStore::CaptureSnapshot(after) && !after.exists;
+		const bool restarted = InitializeScripts() && mainHasDefault();
+		CStringA report; report.Format("phase=script-toolbar-rollback-no-main\nabsent-before=%d\nrollback=%d\nabsent-after=%d\ndefault-main=%d\nresult=%s\n", absentBefore, rolledBack, absentAfter, restarted, absentBefore && rolledBack && absentAfter && restarted ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if(scriptToolbarRollbackPersisted)
+	{
+		::CreateDirectory(scriptsDirectory, NULL); _Settings.SetScriptsFolder(scriptsDirectory, true);
+		PortableToolbarLayout original; original.commandToolbarPresent = true; original.scriptsToolbarPresent = true; original.lastScript = L"persisted-last-script-uid";
+		PortableToolbarItem command = {}; command.command = ID_FILE_SAVE; original.commands.push_back(command);
+		ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Persisted main"; main.visible = false; PortableToolbarItem mainItem = {}; mainItem.command = ID_LAST_SCRIPT; main.items.push_back(mainItem); original.scriptToolbars.push_back(main);
+		ScriptToolbarDefinition first; first.id = L"persisted-first"; first.name = L"First"; first.visible = false; original.scriptToolbars.push_back(first);
+		ScriptToolbarDefinition second; second.id = L"persisted-second"; second.name = L"Second"; second.visible = true; original.scriptToolbars.push_back(second);
+		const bool seeded = PortableToolbarStore::Save(original); PortableToolbarStore::Snapshot before, after; const bool captured = seeded && PortableToolbarStore::CaptureSnapshot(before);
+		const bool initialized = seeded && InitializeScripts(); std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), candidate = previous;
+		ScriptToolbarDefinition extra; extra.id = L"rollback-extra"; extra.name = L"Extra"; candidate.push_back(extra);
+		m_testFailNextInitializeScripts = true; const bool rolledBack = initialized && !ApplyScriptToolbarDefinitions(previous, candidate);
+		const bool exact = PortableToolbarStore::CaptureSnapshot(after) && after.exists && after.text == before.text;
+		PortableToolbarLayout restored; const bool loaded = PortableToolbarStore::Load(restored);
+		const bool state = loaded && restored.commandToolbarPresent && restored.commands.size() == 1 && restored.commands[0].command == ID_FILE_SAVE && restored.lastScript == original.lastScript && restored.scriptToolbars.size() == 3 && restored.scriptToolbars[0].id == L"scripts-main" && !restored.scriptToolbars[0].visible && restored.scriptToolbars[0].items.size() == 1 && restored.scriptToolbars[0].items[0].command == ID_LAST_SCRIPT && restored.scriptToolbars[1].id == L"persisted-first" && !restored.scriptToolbars[1].visible && restored.scriptToolbars[2].id == L"persisted-second" && restored.scriptToolbars[2].visible;
+		CStringA report; report.Format("phase=script-toolbar-rollback-persisted\nseeded=%d\nrollback=%d\nexact=%d\nstate=%d\nresult=%s\n", captured, rolledBack, exact, state, captured && rolledBack && exact && state ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if (scriptToolbarLifecycleReload)
 	{

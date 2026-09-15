@@ -1710,8 +1710,10 @@ void CMainFrame::ShowScriptToolbarManagerDialog()
 
 bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current)
 {
-	PortableToolbarLayout before; PortableToolbarStore::Load(before);
-	const bool hadPersistedMainDefinition = before.scriptsToolbarPresent;
+	PortableToolbarStore::Snapshot snapshot;
+	if(!PortableToolbarStore::CaptureSnapshot(snapshot)) return false;
+	PortableToolbarLayout before; const bool hadPersistentState = PortableToolbarStore::Load(before);
+	const bool hadPersistedMainDefinition = hadPersistentState && before.scriptsToolbarPresent;
 	PortableToolbarLayout layout = before;
 	layout.scriptToolbars = current; layout.scriptsToolbarPresent = true;
 	if(!PortableToolbarStore::Save(layout)) return false;
@@ -1720,8 +1722,7 @@ bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDe
 	// must not re-read a file whose rollback may have failed after the atomic
 	// replacement, otherwise an I/O error can turn a recoverable UI failure into
 	// a partially rebuilt toolbar collection.
-	before.scriptToolbars = previous; before.scriptsToolbarPresent = true;
-	const bool persistenceRestored = PortableToolbarStore::Save(before);
+	const bool persistenceRestored = PortableToolbarStore::RestoreSnapshot(snapshot);
 	InitializeScriptsFromDefinitions(previous, hadPersistedMainDefinition);
 	if(!persistenceRestored) StartupTrace::Event(L"plugin", L"P105", L"script toolbar persistence rollback failed; runtime restored from memory");
 	return false;
@@ -1987,6 +1988,7 @@ void CMainFrame::DestroyScriptToolbarRuntimeControls()
 
 bool CMainFrame::InitializeScripts()
 {
+	if(m_testFailNextInitializeScripts) { m_testFailNextInitializeScripts = false; return false; }
 	PortableToolbarLayout persistedToolbars;
 	bool hasPersistedMainDefinition = false;
 	std::vector<ScriptToolbarDefinition> definitions;

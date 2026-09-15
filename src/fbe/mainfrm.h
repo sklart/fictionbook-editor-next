@@ -187,6 +187,7 @@ public:
   bool			  m_is_fail;
 
 	FbeScripts::UiController m_scripts;
+	bool m_testFailNextInitializeScripts;
 	std::vector<CString> m_scriptToolbarMenuIds;
 	void ReleaseScriptResources();
 	void RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar);
@@ -205,7 +206,7 @@ public:
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0),
-	 m_scripts(ID_EDIT_INS_SYMBOL + 101, 999),
+	 m_scripts(ID_EDIT_INS_SYMBOL + 101, 999), m_testFailNextInitializeScripts(false),
 	    m_bad_xml(false), m_selBandID(-1), m_scriptsToolbarBaseImageCount(0)
 	// added by SeNS
 	{

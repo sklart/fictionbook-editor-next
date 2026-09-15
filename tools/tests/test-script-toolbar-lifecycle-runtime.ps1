@@ -25,11 +25,18 @@ if((Split-Path -Parent $portableData) -ne [IO.Path]::GetFullPath($exeDirectory))
 if($IncludeInstalled -and $env:FBE_CI_ISOLATED_PROFILE -ne '1') {
     throw 'Installed lifecycle test requires FBE_CI_ISOLATED_PROFILE=1 and must not run against a developer profile.'
 }
-try {
-    [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=ScriptToolbarLifecyclePortable`r`n", [Text.UTF8Encoding]::new($false))
-    # Each run starts from an empty v2 store, preventing duplicate runtime IDs.
+function Reset-PortableLifecycleState {
+    # `$portableData` is validated as a direct child of `$exeDirectory` above.
     if(Test-Path -LiteralPath $portableData) { Remove-Item -LiteralPath $portableData -Recurse -Force }
     New-Item -ItemType Directory -Path $portableData -Force | Out-Null
+}
+try {
+    [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=ScriptToolbarLifecyclePortable`r`n", [Text.UTF8Encoding]::new($false))
+    Reset-PortableLifecycleState
+    Invoke-Lifecycle '--portable' 'script-toolbar-rollback-no-main-runtime' (Join-Path $portableData 'Diagnostics')
+    Reset-PortableLifecycleState
+    Invoke-Lifecycle '--portable' 'script-toolbar-rollback-persisted-runtime' (Join-Path $portableData 'Diagnostics')
+    Reset-PortableLifecycleState
     Invoke-Lifecycle '--portable' 'script-toolbar-lifecycle-runtime' (Join-Path $portableData 'Diagnostics')
     Invoke-Lifecycle '--portable' 'script-toolbar-lifecycle-reload-runtime' (Join-Path $portableData 'Diagnostics')
     if($IncludeInstalled) {

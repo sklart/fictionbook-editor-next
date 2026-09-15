@@ -42,3 +42,22 @@ bool PortableToolbarStore::Save(const PortableToolbarLayout& layout)
 {
 	return WriteText(ToolbarsV2Codec::Serialize(layout));
 }
+bool PortableToolbarStore::CaptureSnapshot(Snapshot& snapshot)
+{
+	snapshot = Snapshot(); const CString path = PortableToolbarsPath();
+	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) return ::GetLastError() == ERROR_FILE_NOT_FOUND;
+	const DWORD length = ::GetFileSize(file, NULL);
+	if(length == INVALID_FILE_SIZE || length > 256 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return false; }
+	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0;
+	const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file);
+	if(!ok || read != length) return false;
+	snapshot.exists = true; snapshot.text = CString(&text[0]); return true;
+}
+bool PortableToolbarStore::RestoreSnapshot(const Snapshot& snapshot)
+{
+	if(snapshot.exists) return WriteText(snapshot.text);
+	const CString path = PortableToolbarsPath();
+	if(::DeleteFile(path) || ::GetLastError() == ERROR_FILE_NOT_FOUND) return true;
+	return false;
+}

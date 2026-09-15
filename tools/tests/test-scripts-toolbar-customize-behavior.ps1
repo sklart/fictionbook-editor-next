@@ -121,6 +121,10 @@ if ($resource -notmatch 'IDR_SCRIPTS TOOLBAR[\s\S]*?BUTTON\s+ID_LAST_SCRIPT') { 
 $toolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
 $toolbar.Clear(); $toolbar.Add(32899) # ID_LAST_SCRIPT from resource.h; default is verified above against IDR_SCRIPTS.
 Assert-Equal $toolbar @(32899) 'Reset restores IDR_SCRIPTS default'
+$customToolbar = [System.Collections.Generic.List[int]]@(101, 0, 102)
+$customToolbar.Clear()
+Assert-Equal $customToolbar @() 'Reset clears a user-created toolbar instead of copying main defaults'
+if ($dialog -notmatch 'm_panels\[CurrentPanelIndex\(\)\]\.id == L"scripts-main"') { throw 'Reset must distinguish scripts-main from user-created toolbars.' }
 
 if ($settingsSerialization -notmatch 'SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY' -or $settings -notmatch 'SetScriptsToolbarCustomizeSize\(const CSize& size, bool apply\)' -or $settings -notmatch 'if\(size\.cx >= 300 && size\.cy >= 200\)') {
     throw 'Dialog size persistence contract is incomplete.'
