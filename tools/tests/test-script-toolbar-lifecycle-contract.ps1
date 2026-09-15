@@ -39,6 +39,8 @@ Must $runner 'IncludeInstalled' 'Runtime runner covers installed mode on an isol
 Must $runner 'FBE_CI_ISOLATED_PROFILE' 'Installed runner rejects non-isolated developer profiles'
 Must $runner "'--installed' 'script-toolbar-rollback-no-main-runtime'" 'Installed runner covers rollback without persisted scripts-main'
 Must $runner "'--installed' 'script-toolbar-rollback-persisted-runtime'" 'Installed runner covers rollback with persisted state'
+Must $runner "'--portable' 'script-toolbar-rollback-partial-runtime'" 'Portable runner covers partial rollback'
+Must $runner "'--installed' 'script-toolbar-rollback-partial-runtime'" 'Installed runner covers partial rollback on an isolated CI profile'
 Must $runner 'Remove-Item -LiteralPath \$portableData -Recurse -Force' 'Portable lifecycle data is recreated and cleaned up'
 Must $runner "'--portable'" 'Runtime runner covers portable mode'
 Must $verify 'test-script-toolbar-lifecycle-runtime\.ps1.*-FbeExe' 'Verify-release executes the real portable lifecycle test'

@@ -48,6 +48,7 @@ try {
         Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
         Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-reload-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
         Invoke-Lifecycle '--installed' 'script-toolbar-rollback-persisted-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
+        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-partial-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
     }
     Write-Host ('Script toolbar lifecycle runtime regression passed ({0}).' -f $(if($IncludeInstalled) { 'portable + installed' } else { 'portable' }))
 } finally {

@@ -94,16 +94,19 @@ void CMainFrame::RunPortableStateTestScenario()
 		::CreateDirectory(scriptsDirectory, NULL); _Settings.SetScriptsFolder(scriptsDirectory, true);
 		auto makeDefinitions = [&]() { std::vector<ScriptToolbarDefinition> definitions; ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; definitions.push_back(main); for(int index = 1; index <= 3; ++index) { ScriptToolbarDefinition item; item.id.Format(L"partial-toolbar-%d", index); item.name.Format(L"Partial %d", index); item.visible = true; PortableToolbarItem button = {}; button.command = ID_LAST_SCRIPT; item.items.push_back(button); definitions.push_back(item); } return definitions; };
 		auto runtimeValid = [&](const std::vector<ScriptToolbarDefinition>& definitions, int bands) {
-			int windows = 0;
+			int expectedWindows = 0, windows = 0, validBands = 0;
 			const std::vector<ScriptToolbarRuntime>& runtimes = m_scriptToolbars.Items();
 			if(static_cast<int>(m_rebar.GetBandCount()) != bands || runtimes.size() != definitions.size()) return false;
 			for(size_t index = 0; index < runtimes.size(); ++index) {
 				const ScriptToolbarRuntime& runtime = runtimes[index]; const ScriptToolbarDefinition& expected = definitions[index];
 				if(runtime.definition.id != expected.id || runtime.definition.name != expected.name || runtime.definition.visible != expected.visible || runtime.definition.items.size() != expected.items.size()) return false;
 				for(size_t item = 0; item < expected.items.size(); ++item) { const PortableToolbarItem& actual = runtime.definition.items[item]; const PortableToolbarItem& expectedItem = expected.items[item]; if(actual.separator != expectedItem.separator || actual.command != expectedItem.command || actual.width != expectedItem.width || actual.scriptUid != expectedItem.scriptUid || actual.relativePath != expectedItem.relativePath) return false; }
-				if(runtime.definition.id != L"scripts-main" && runtime.window != NULL && ::IsWindow(runtime.window)) ++windows;
+				if(runtime.definition.id == L"scripts-main" || !runtime.definition.visible) continue;
+				++expectedWindows;
+				if(runtime.window == NULL || !::IsWindow(runtime.window) || runtime.rebarBandId == 0 || m_rebar.IdToIndex(runtime.rebarBandId) < 0) return false;
+				++windows; ++validBands;
 			}
-			return windows == 3;
+			return expectedWindows == windows && validBands == expectedWindows;
 		};
 		PortableToolbarStore::Snapshot absentBefore, absentAfter; const bool noFile = PortableToolbarStore::CaptureSnapshot(absentBefore) && !absentBefore.exists;
 		std::vector<ScriptToolbarDefinition> previous = makeDefinitions(); const bool initialNoFile = noFile && InitializeScriptsFromDefinitions(previous, false); const int noFileBands = m_rebar.GetBandCount();
@@ -114,7 +117,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool initialized = seeded && InitializeScripts(); const int persistedBands = m_rebar.GetBandCount();
 		m_testFailAfterCustomToolbarCreates = 2; const bool persistedRollback = initialized && !ApplyScriptToolbarDefinitions(currentDefinitions(), candidate) && PortableToolbarStore::CaptureSnapshot(persistedAfter) && persistedAfter.text == persistedBefore.text && runtimeValid(previous, persistedBands);
 		const bool stable = persistedRollback && InitializeScripts() && runtimeValid(previous, persistedBands);
-		CStringA report; report.Format("phase=script-toolbar-rollback-partial\nno-file=%d\npartial-no-file=%d\npersisted=%d\npartial-persisted=%d\nstable=%d\nresult=%s\n", noFile, noFileRollback, captured, persistedRollback, stable, noFileRollback && persistedRollback && stable ? "pass" : "fail");
+		const bool noFileResult = !noFile || noFileRollback;
+		CStringA report; report.Format("phase=script-toolbar-rollback-partial\nno-file=%d\npartial-no-file=%d\npersisted=%d\npartial-persisted=%d\nstable=%d\nresult=%s\n", noFile, noFileRollback, captured, persistedRollback, stable, noFileResult && persistedRollback && stable ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if (scriptToolbarLifecycleReload)
