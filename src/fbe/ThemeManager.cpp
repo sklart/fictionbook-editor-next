@@ -43,6 +43,14 @@ typedef HRESULT (WINAPI* SetPreferredAppModeFn)(int);
 typedef void (WINAPI* FlushMenuThemesFn)();
 
 const UINT_PTR kThemeControlSubclassId = 0x46424554; // "FBET"
+const wchar_t kHeaderThemeStateProperty[] = L"FBE.HeaderThemeState";
+
+struct HeaderThemeState
+{
+	int hotItem = -1;
+	int pressedItem = -1;
+	bool trackingMouse = false;
+};
 
 bool IsClass(HWND window, LPCWSTR className)
 {
@@ -78,11 +86,125 @@ bool IsComboDropList(HWND window)
 	return IsClass(window, L"ComboLBox");
 }
 
+bool IsHeader(HWND window)
+{
+	return IsClass(window, WC_HEADERW);
+}
+
 void ApplyComboDropListTheme(HWND combo)
 {
 	COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
 	if(::GetComboBoxInfo(combo, &info) && ::IsWindow(info.hwndList))
 		ThemeManager::ApplyToWindow(info.hwndList);
+}
+
+HeaderThemeState* HeaderState(HWND window)
+{
+	HeaderThemeState* state = reinterpret_cast<HeaderThemeState*>(::GetPropW(window, kHeaderThemeStateProperty));
+	if(!state)
+	{
+		state = new HeaderThemeState;
+		::SetPropW(window, kHeaderThemeStateProperty, state);
+	}
+	return state;
+}
+
+int HeaderItemAt(HWND window, LPARAM lParam)
+{
+	HDHITTESTINFO hit = {};
+	hit.pt.x = GET_X_LPARAM(lParam); hit.pt.y = GET_Y_LPARAM(lParam);
+	return static_cast<int>(::SendMessage(window, HDM_HITTEST, 0, reinterpret_cast<LPARAM>(&hit)));
+}
+
+void InvalidateHeaderItem(HWND window, int item)
+{
+	if(item < 0) return;
+	RECT rect = {};
+	if(::SendMessage(window, HDM_GETITEMRECT, item, reinterpret_cast<LPARAM>(&rect)))
+		::InvalidateRect(window, &rect, FALSE);
+}
+
+void PaintDarkHeader(HWND window, HeaderThemeState& state)
+{
+	PAINTSTRUCT paint = {};
+	HDC dc = ::BeginPaint(window, &paint);
+	RECT client = {}; ::GetClientRect(window, &client);
+	::FillRect(dc, &client, ThemeManager::ControlBrush());
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(window, WM_GETFONT, 0, 0));
+	HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+	const int itemCount = static_cast<int>(::SendMessage(window, HDM_GETITEMCOUNT, 0, 0));
+	for(int item = 0; item < itemCount; ++item)
+	{
+		RECT rect = {};
+		if(!::SendMessage(window, HDM_GETITEMRECT, item, reinterpret_cast<LPARAM>(&rect))) continue;
+		const ThemeColorRole surface = item == state.pressedItem ? THEME_COLOR_PRESSED :
+			item == state.hotItem ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL;
+		::FillRect(dc, &rect, ThemeManager::Brush(surface));
+
+		wchar_t text[512] = {};
+		HDITEM headerItem = {}; headerItem.mask = HDI_TEXT | HDI_FORMAT;
+		headerItem.pszText = text; headerItem.cchTextMax = _countof(text);
+		::SendMessage(window, HDM_GETITEM, item, reinterpret_cast<LPARAM>(&headerItem));
+		RECT textRect = rect; textRect.left += 8; textRect.right -= 8;
+		const bool sorted = (headerItem.fmt & (HDF_SORTUP | HDF_SORTDOWN)) != 0;
+		if(sorted) textRect.right -= 12;
+		UINT flags = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX;
+		if((headerItem.fmt & HDF_JUSTIFYMASK) == HDF_RIGHT) flags |= DT_RIGHT;
+		else if((headerItem.fmt & HDF_JUSTIFYMASK) == HDF_CENTER) flags |= DT_CENTER;
+		else flags |= DT_LEFT;
+		::SetBkMode(dc, TRANSPARENT);
+		::SetTextColor(dc, ::IsWindowEnabled(window) ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+		::DrawTextW(dc, text, -1, &textRect, flags);
+
+		if(sorted)
+		{
+			const LONG middle = rect.top + (rect.bottom - rect.top) / 2;
+			const LONG right = rect.right - 7;
+			POINT triangle[3] = {};
+			if(headerItem.fmt & HDF_SORTUP) { triangle[0] = { right - 5, middle + 3 }; triangle[1] = { right + 1, middle + 3 }; triangle[2] = { right - 2, middle - 3 }; }
+			else { triangle[0] = { right - 5, middle - 3 }; triangle[1] = { right + 1, middle - 3 }; triangle[2] = { right - 2, middle + 3 }; }
+			HBRUSH arrow = ::CreateSolidBrush(ThemeManager::SecondaryTextColor());
+			HGDIOBJ oldBrush = ::SelectObject(dc, arrow); HGDIOBJ oldPen = ::SelectObject(dc, ::GetStockObject(NULL_PEN));
+			::Polygon(dc, triangle, _countof(triangle));
+			::SelectObject(dc, oldPen); ::SelectObject(dc, oldBrush); ::DeleteObject(arrow);
+		}
+
+		RECT separator = rect; separator.left = separator.right - 1;
+		::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+	}
+	if(oldFont) ::SelectObject(dc, oldFont);
+	::EndPaint(window, &paint);
+}
+
+LRESULT HandleDarkHeaderMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	HeaderThemeState* state = HeaderState(window);
+	switch(message)
+	{
+	case WM_MOUSEMOVE:
+		{
+			const int item = HeaderItemAt(window, lParam);
+			if(item != state->hotItem) { InvalidateHeaderItem(window, state->hotItem); state->hotItem = item; InvalidateHeaderItem(window, state->hotItem); }
+			if(!state->trackingMouse) { TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, window, 0 }; ::TrackMouseEvent(&tracking); state->trackingMouse = true; }
+		}
+		break;
+	case WM_MOUSELEAVE:
+		state->trackingMouse = false; InvalidateHeaderItem(window, state->hotItem); state->hotItem = -1;
+		break;
+	case WM_LBUTTONDOWN:
+		state->pressedItem = HeaderItemAt(window, lParam); InvalidateHeaderItem(window, state->pressedItem);
+		break;
+	case WM_LBUTTONUP:
+	case WM_CANCELMODE:
+		InvalidateHeaderItem(window, state->pressedItem); state->pressedItem = -1;
+		break;
+	case WM_PAINT:
+		PaintDarkHeader(window, *state); return 0;
+	case WM_THEMECHANGED:
+		::InvalidateRect(window, NULL, TRUE);
+		break;
+	}
+	return ::DefSubclassProc(window, message, wParam, lParam);
 }
 
 void PaintDarkGroupBox(HWND window)
@@ -115,10 +237,12 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 {
 	if(message == WM_NCDESTROY)
 	{
+		if(IsHeader(window)) delete reinterpret_cast<HeaderThemeState*>(::RemovePropW(window, kHeaderThemeStateProperty));
 		::RemoveWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId);
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(ThemeManager::IsDark() && IsHeader(window)) return HandleDarkHeaderMessage(window, message, wParam, lParam);
 	if(message == WM_COMMAND && HIWORD(wParam) == CBN_DROPDOWN)
 	{
 		HWND combo = reinterpret_cast<HWND>(lParam);
@@ -174,6 +298,8 @@ void ApplyNativeControlPalette(HWND window)
 		::SendMessage(window, LVM_SETBKCOLOR, 0, ThemeManager::WindowColor());
 		::SendMessage(window, LVM_SETTEXTBKCOLOR, 0, ThemeManager::WindowColor());
 		::SendMessage(window, LVM_SETTEXTCOLOR, 0, ThemeManager::TextColor());
+		HWND header = reinterpret_cast<HWND>(::SendMessage(window, LVM_GETHEADER, 0, 0));
+		if(::IsWindow(header)) ThemeManager::ApplyToWindow(header);
 	}
 	else if(IsClass(window, WC_TABCONTROLW))
 	{
