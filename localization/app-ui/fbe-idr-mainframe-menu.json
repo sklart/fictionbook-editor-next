@@ -589,7 +589,7 @@
       "kind": "MENUITEM",
       "targetId": "ID_VIEW_SCRIPT_TOOLBARS_MANAGE",
       "translations": {
-        "en-US": "Manage script toolbars...", "ru-RU": "Настроить панели скриптов..."
+        "en-US": "Manage script toolbars...", "ru-RU": "Настроить панели скриптов...", "uk-UA": "Налаштувати панелі скриптів...", "de-DE": "Skriptleisten verwalten...", "fr-FR": "Gérer les barres d’outils de scripts...", "es-ES": "Administrar barras de herramientas de scripts...", "it-IT": "Gestisci barre degli strumenti degli script...", "pl-PL": "Zarządzaj paskami narzędzi skryptów...", "pt-PT": "Gerir barras de ferramentas de scripts...", "nl-NL": "Scriptwerkbalken beheren...", "cs-CZ": "Spravovat panely nástrojů skriptů...", "bg-BG": "Управление на лентите с инструменти за скриптове..."
       }
     },
     "fbe.menu.idr_mainframe.view.links_bar": {

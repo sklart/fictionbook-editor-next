@@ -31,6 +31,7 @@ bool UiController::Initialize(const CString& folder, const CString& persistedCom
 	const std::function<void(const ScriptDescriptor&, const VisualResource&, UINT)>& addVisual,
 	const std::function<void(ScriptDescriptor&)>& registerHotkey)
 {
+	if(scriptsMenu == NULL) return false;
 	m_menu.Clear(); ClearLastScript();
 	ScriptRegistry registry; if(!registry.Load()) return false;
 	Catalog catalog; if(!catalog.Discover(folder, L"*.js", &registry)) return false;
