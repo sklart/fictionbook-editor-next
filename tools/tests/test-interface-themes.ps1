@@ -53,7 +53,7 @@ foreach($required in @('isContextAttributeBar', 'ThemeManager::ControlBrush()', 
 foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ForceDark', 'UsesClassicSurfacePalette', 'SetWindowTheme(window, L" ", L" ")', 'ApplyNativeControlPalette(window);')) {
     if($manager -notlike "*$required*") { throw "Theme manager does not refresh native menu and control colours: $required." }
 }
-foreach($required in @('OnThemeChanged', 'OnThemePaint', 'PaintDarkTitle', 'OnToolbarCustomDraw', 'DocumentTreeViewBarThemeProc', 'DocumentTreeViewBarWindowThemeProc', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::ControlColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR', 'TB_SETCOLORSCHEME')) {
+foreach($required in @('OnThemeChanged', 'OnThemePaint', 'PaintDarkTitle', 'OnToolbarCustomDraw', 'DocumentTreeViewBarThemeProc', 'DocumentTreeViewBarWindowThemeProc', 'ShowNativeDocumentTreeViewBarPopup', 'TrackPopupMenuEx', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::ControlColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR', 'TB_SETCOLORSCHEME')) {
 	if($documentTree -notlike "*$required*") { throw "Document Tree does not refresh $required on theme changes." }
 }
 if($documentTree -notlike '*SetWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc*') {

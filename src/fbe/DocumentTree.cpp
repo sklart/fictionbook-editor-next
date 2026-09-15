@@ -16,9 +16,41 @@ namespace
 const UINT_PTR kDocumentTreeViewBarThemeSubclassId = 0xFBE4;
 const UINT_PTR kDocumentTreeViewBarWindowThemeSubclassId = 0xFBE5;
 
+bool ShowNativeDocumentTreeViewBarPopup(HWND commandBar, int item)
+{
+	const HMENU menu = reinterpret_cast<HMENU>(::SendMessage(commandBar, CBRM_GETMENU, 0, 0));
+	if(menu == NULL || item < 0 || item >= ::GetMenuItemCount(menu)) return false;
+	const HMENU popup = ::GetSubMenu(menu, item);
+	if(popup == NULL) return false;
+
+	RECT itemRect = {};
+	if(!::SendMessage(commandBar, TB_GETITEMRECT, item, reinterpret_cast<LPARAM>(&itemRect))) return false;
+	POINT point = { itemRect.left, itemRect.bottom };
+	::ClientToScreen(commandBar, &point);
+	const HWND owner = ::GetParent(commandBar);
+	const UINT command = ::TrackPopupMenuEx(popup,
+		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON | TPM_RETURNCMD,
+		point.x, point.y, owner, NULL);
+	if(command != 0)
+		::SendMessage(owner, WM_COMMAND, MAKEWPARAM(command, 0), 0);
+	return true;
+}
+
 LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc(HWND window, UINT message, WPARAM wParam,
 	LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
+	if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+	{
+		int item = -1;
+		if(message == WM_LBUTTONDOWN)
+		{
+			POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			item = static_cast<int>(::SendMessage(window, TB_HITTEST, 0, reinterpret_cast<LPARAM>(&point)));
+		}
+		else if(message == WM_KEYDOWN && (wParam == VK_DOWN || wParam == VK_RETURN || wParam == VK_SPACE))
+			item = static_cast<int>(::SendMessage(window, TB_GETHOTITEM, 0, 0));
+		if(item >= 0 && ShowNativeDocumentTreeViewBarPopup(window, item)) return 0;
+	}
 	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
 	if(message == WM_FBE_THEMECHANGED)
 	{
