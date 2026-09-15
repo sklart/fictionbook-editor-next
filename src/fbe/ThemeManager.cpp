@@ -65,6 +65,26 @@ bool UsesClassicSurfacePalette(HWND window)
 		IsClass(window, STATUSCLASSNAMEW);
 }
 
+bool IsComboBox(HWND window)
+{
+	return IsClass(window, WC_COMBOBOXW) || IsClass(window, WC_COMBOBOXEXW);
+}
+
+bool IsComboDropList(HWND window)
+{
+	// The list opened by a ComboBox is a top-level popup with this private
+	// common-control class. It is not included in EnumChildWindows, so it must
+	// be themed when CBN_DROPDOWN tells us that it has been created.
+	return IsClass(window, L"ComboLBox");
+}
+
+void ApplyComboDropListTheme(HWND combo)
+{
+	COMBOBOXINFO info = {}; info.cbSize = sizeof(info);
+	if(::GetComboBoxInfo(combo, &info) && ::IsWindow(info.hwndList))
+		ThemeManager::ApplyToWindow(info.hwndList);
+}
+
 void PaintDarkGroupBox(HWND window)
 {
 	PAINTSTRUCT paint = {};
@@ -99,6 +119,11 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(message == WM_COMMAND && HIWORD(wParam) == CBN_DROPDOWN)
+	{
+		HWND combo = reinterpret_cast<HWND>(lParam);
+		if(IsComboBox(combo)) ApplyComboDropListTheme(combo);
+	}
 	if(ThemeManager::IsDark() && IsGroupBox(window))
 	{
 		if(message == WM_ERASEBKGND) return 1;
@@ -339,6 +364,13 @@ void ApplyToWindow(HWND window)
 	// visual styles. An empty string merely selects the default theme again.
 	if(dark && UsesClassicSurfacePalette(window))
 		::SetWindowTheme(window, L" ", L" ");
+	else if(dark && IsComboBox(window))
+		// DarkMode_CFD is the Windows 10/11 ComboBox visual-style contract. It
+		// themes the edit/list field, glyph, focused border and disabled state.
+		// On Windows 7 it is simply unavailable and falls back to light UxTheme.
+		::SetWindowTheme(window, L"DarkMode_CFD", NULL);
+	else if(dark && IsComboDropList(window))
+		::SetWindowTheme(window, L"DarkMode_Explorer", NULL);
 	else
 		::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
 	ApplyModernTitleBar(window, dark);
