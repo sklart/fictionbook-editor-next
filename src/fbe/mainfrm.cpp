@@ -74,7 +74,7 @@ namespace
 using ToolbarFactory::AutoSizeToolbar;
 using ToolbarFactory::ImageListHasMaskPlane;
 using ToolbarFactory::SetDialogFontForToolbarRow;
-const int SCRIPT_COMMAND_COUNT = 999;
+const int SCRIPT_COMMAND_COUNT = FbeScripts::ScriptCommandCount;
 const int SCRIPT_FOLDER_MENU_ID_BASE = ID_EDIT_INS_SYMBOL + 101;
 const int SCRIPT_FOLDER_MENU_ID_COUNT = 999;
 static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < SCRIPT_FOLDER_MENU_ID_BASE, "Script and folder menu IDs overlap");

@@ -6,6 +6,8 @@
 
 namespace FbeScripts
 {
+enum { ScriptCommandCount = 999 };
+
 class UiController
 {
 public:

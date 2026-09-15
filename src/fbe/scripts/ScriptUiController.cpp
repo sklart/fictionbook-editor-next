@@ -45,7 +45,7 @@ bool UiController::Initialize(const CString& folder, const CString& persistedCom
 		if(!candidate.isFolder && picture.GetLength() >= 3) picture.Delete(picture.GetLength() - 3, 3);
 		VisualResource visual = m_visuals.Load(directory, picture); m_menu.Add(candidate, static_cast<VisualResource&&>(visual));
 	}
-	const bool changed = m_menu.AssignCommandIds(ID_LAST_SCRIPT - ID_SCRIPT_BASE, persistedCommandIds, updatedCommandIds);
+	const bool changed = m_menu.AssignCommandIds(ScriptCommandCount, persistedCommandIds, updatedCommandIds);
 	while(::GetMenuItemCount(scriptsMenu) > 0) ::RemoveMenu(scriptsMenu, 0, MF_BYPOSITION);
 	if(m_menu.Count())
 	{

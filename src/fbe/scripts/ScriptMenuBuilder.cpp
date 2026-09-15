@@ -37,7 +37,7 @@ void MenuBuilder::Build(HMENU parentMenu,
 	const std::function<void(const ScriptDescriptor&, const VisualResource&, UINT)>& addVisual)
 {
 	ResetFolderCommands();
-	BuildSubMenu(parentMenu, L"0", initializeHotkey, addVisual);
+	BuildSubMenu(parentMenu, CString(), initializeHotkey, addVisual);
 }
 
 void MenuBuilder::BuildSubMenu(HMENU parentMenu, const CString& parentId,
