@@ -1711,6 +1711,7 @@ void CMainFrame::ShowScriptToolbarManagerDialog()
 bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current)
 {
 	PortableToolbarLayout before; PortableToolbarStore::Load(before);
+	const bool hadPersistedMainDefinition = before.scriptsToolbarPresent;
 	PortableToolbarLayout layout = before;
 	layout.scriptToolbars = current; layout.scriptsToolbarPresent = true;
 	if(!PortableToolbarStore::Save(layout)) return false;
@@ -1721,7 +1722,7 @@ bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDe
 	// a partially rebuilt toolbar collection.
 	before.scriptToolbars = previous; before.scriptsToolbarPresent = true;
 	const bool persistenceRestored = PortableToolbarStore::Save(before);
-	InitializeScriptsFromDefinitions(previous, true);
+	InitializeScriptsFromDefinitions(previous, hadPersistedMainDefinition);
 	if(!persistenceRestored) StartupTrace::Event(L"plugin", L"P105", L"script toolbar persistence rollback failed; runtime restored from memory");
 	return false;
 }

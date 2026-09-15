@@ -13,7 +13,7 @@ namespace
 CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 	const std::vector<ScriptsToolbarCommand>& available, const CSimpleArray<TBBUTTON>& defaults,
 	CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
-	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
+	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
 {
 }
 
@@ -30,6 +30,7 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_availableList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE);
 	m_currentList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT);
 	m_panelList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL);
+	m_scriptImages = reinterpret_cast<HIMAGELIST>(::SendMessage(m_toolbar, TB_GETIMAGELIST, 0, 0));
 	for(size_t index = 0; index < m_panels.size(); ++index) m_panelList.AddString(m_panels[index].name);
 	if(m_panelList.GetCount() == 0) m_panelList.AddString(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.main", L"Scripts"));
 	int selectedPanel = 0; for(size_t index = 0; index < m_panels.size(); ++index) if(m_panels[index].toolbar == m_toolbar) { selectedPanel = static_cast<int>(index); break; }
@@ -255,7 +256,10 @@ LRESULT CScriptsToolbarCustomizeDlg::OnDown(WORD, WORD, HWND, BOOL&)
 LRESULT CScriptsToolbarCustomizeDlg::OnReset(WORD, WORD, HWND, BOOL&)
 {
 	const std::vector<PortableToolbarItem> previous = CurrentItems(); CurrentItems().clear();
-	for(int index = 0; index < m_defaults.GetSize(); ++index) { PortableToolbarItem item = {}; item.separator = (m_defaults[index].fsStyle & TBSTYLE_SEP) != 0; item.command = m_defaults[index].idCommand; item.width = m_defaults[index].iBitmap; CurrentItems().push_back(item); }
+	// User-created panels intentionally reset to an empty definition.  Only the
+	// stable main panel owns the legacy IDR_SCRIPTS default (ID_LAST_SCRIPT).
+	if(m_panels[CurrentPanelIndex()].id == L"scripts-main")
+		for(int index = 0; index < m_defaults.GetSize(); ++index) { PortableToolbarItem item = {}; item.separator = (m_defaults[index].fsStyle & TBSTYLE_SEP) != 0; item.command = m_defaults[index].idCommand; item.width = m_defaults[index].iBitmap; CurrentItems().push_back(item); }
 	if(CommitCurrentItems(previous)) { RefreshLists(); UpdateButtonState(); } return 0;
 }
 void CScriptsToolbarCustomizeDlg::LayoutControls(int width, int height)
@@ -364,8 +368,7 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	TBBUTTON button = {}; bool drawIcon = false;
 	if(available && data != kSeparatorItem && data < m_available.size()) { button = m_available[data].button; drawIcon = button.iBitmap >= 0; }
 	if(!available && CurrentItemButton(static_cast<size_t>(data), button)) drawIcon = button.iBitmap >= 0;
-	HIMAGELIST images = reinterpret_cast<HIMAGELIST>(::SendMessage(m_toolbar, TB_GETIMAGELIST, 0, 0));
-	if(drawIcon && images) { ImageList_Draw(images, button.iBitmap, item.hDC, left, rect.top + (rect.Height() - Scale(16)) / 2, ILD_TRANSPARENT); left += Scale(20); }
+	if(drawIcon && m_scriptImages) { ImageList_Draw(m_scriptImages, button.iBitmap, item.hDC, left, rect.top + (rect.Height() - Scale(16)) / 2, ILD_TRANSPARENT); left += Scale(20); }
 	rect.left = left; dc.DrawText(text, -1, rect, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
 	DrawDragIndicator(item);
 	::RestoreDC(item.hDC, savedDc);

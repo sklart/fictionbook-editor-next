@@ -65,6 +65,7 @@ private:
 	CListBox m_currentList;
 	CComboBox m_panelList;
 	CToolTipCtrl m_toolTip;
+	HIMAGELIST m_scriptImages;
 	CString m_toolTipText;
 	CSize m_minimumSize;
 	HFONT m_dialogFont;

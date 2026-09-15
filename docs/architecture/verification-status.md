@@ -35,6 +35,9 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   self-closing runtime scenario с пятью панелями, повторной инициализацией,
   restart-readback, отсутствующим UID и rebar/HWND leak checks; installed
   contour запускается только на изолированном CI worker.
+  Release verification выполняет portable runtime-runner; он очищает свой
+  отдельный Data root до и после теста, поэтому последовательные прогоны не
+  накапливают `runtime-toolbar-*` definitions.
 
 - Extension startup разделён на scripts, bundled plugins и MRU/recent documents;
   `InitializeExtensionUi` остаётся только тонким coordinator. Runtime test

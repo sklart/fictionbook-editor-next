@@ -8,6 +8,11 @@
   при неудачной инициализации; добавлен runtime lifecycle-regression (portable
   и isolated installed contour) с проверкой HWND/bands, restart и missing UID.
 
+- Lifecycle runtime-test теперь является частью Release verification: portable
+  состояние очищается на каждом прогоне, а installed contour допускается только
+  в явно помеченном изолированном CI-профиле. Reset пользовательской панели
+  возвращает пустой layout; Reset `scripts-main` — штатный `ID_LAST_SCRIPT`.
+
 - Пользовательские панели скриптов завершены поверх `Toolbars.xml v2`: в
   «Вид» добавлен динамический список панелей с отметкой видимости и командой
   управления. Диалог позволяет создавать, переименовывать, удалять,

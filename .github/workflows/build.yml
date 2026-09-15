@@ -111,6 +111,13 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build-first-party-strict.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143
+      - name: Run installed script toolbar lifecycle regression in isolated profile
+        shell: pwsh
+        env:
+          FBE_CI_ISOLATED_PROFILE: '1'
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-script-toolbar-lifecycle-runtime.ps1 -FbeExe out/Release/FBE.exe -IncludeInstalled
       - name: Run keyboard layout C++ regression
         shell: pwsh
         run: |

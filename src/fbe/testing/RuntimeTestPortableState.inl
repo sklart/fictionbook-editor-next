@@ -71,6 +71,12 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 	if (scriptToolbarLifecycle)
 	{
+		// The lifecycle probe exercises toolbar ownership, not the bundled script
+		// catalogue.  A fresh empty test folder makes its repeated reloads bounded
+		// and deterministic on both portable and isolated installed workers.
+		::CreateDirectory(scriptsDirectory, NULL);
+		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		if(!InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-lifecycle\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
 		std::vector<ScriptToolbarDefinition> previous;
 		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) previous.push_back(m_scriptToolbars.Items()[index].definition);
 		std::vector<ScriptToolbarDefinition> definitions = previous;
@@ -80,7 +86,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		CString knownUid;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(!m_scripts.Menu().Item(index).isFolder && !m_scripts.Menu().Item(index).uid.IsEmpty()) { knownUid = m_scripts.Menu().Item(index).uid; break; }
 		for(int index = 1; index <= 5; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-toolbar-%d", index); item.name.Format(L"Runtime toolbar %d", index); item.visible = true; definitions.push_back(item); }
-		if(!knownUid.IsEmpty()) { PortableToolbarItem known = {}; known.scriptUid = knownUid; definitions.back().items.push_back(known); }
+		PortableToolbarItem known = {}; known.scriptUid = knownUid.IsEmpty() ? L"runtime-layout-anchor-uid" : knownUid; definitions.back().items.push_back(known);
 		PortableToolbarItem missing = {}; missing.scriptUid = L"runtime-missing-script-uid"; definitions.back().items.push_back(missing);
 		PortableToolbarItem separator = {}; separator.separator = true; separator.width = 9; definitions.back().items.push_back(separator);
 		const int initialBands = m_rebar.GetBandCount();

@@ -11,6 +11,9 @@
 - [x] Разрешить редактирование скрытых script toolbars по definition без
   materialization HWND; добавить restart/lifecycle runtime regression для
   create/rename/reorder/hide/show/delete, missing UID и обоих режимов.
+- [x] Подключить реальный lifecycle runtime-test к Release verification;
+  portable state очищается между прогонами, а installed mode ограничен
+  изолированным CI-профилем.
 
 - [x] Зафиксировать единый baseline C++17 для собственных C++-проектов через
   `FbeLanguageStandard`; оставить C++20, `/permissive-` и `/Zc:wchar_t`
