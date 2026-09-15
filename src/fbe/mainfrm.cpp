@@ -5770,6 +5770,7 @@ void CMainFrame::RefreshStatusMainPane()
 
 LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
+	m_contextAttributeBars.ApplyTheme();
 	// Apply only resolved defaults; explicit BODY colours and background images
 	// remain document-editor settings and are preserved by Doc::ApplyConfChanges.
 	if(m_doc)

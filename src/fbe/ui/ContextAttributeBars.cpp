@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ContextAttributeBars.h"
 #include "../UiMetrics.h"
+#include "../ThemeManager.h"
 #include "../toolbars/ToolbarFactory.h"
 #include "../resource.h"
 
@@ -13,6 +14,53 @@ void AddPlaceholder(HWND bar, LPCWSTR text)
 }
 
 CString TextOf(const CWindow& window) { CString text; window.GetWindowText(text); return text; }
+
+const UINT_PTR kContextAttributeThemeSubclassId = 0x46424152; // "FBAR"
+
+bool IsHighContrastEnabled()
+{
+	HIGHCONTRAST value = {}; value.cbSize = sizeof(value);
+	return ::SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(value), &value, 0) &&
+		(value.dwFlags & HCF_HIGHCONTRASTON) != 0;
+}
+
+LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
+{
+	if(message == WM_NCDESTROY)
+	{
+		::RemoveWindowSubclass(window, ContextAttributeBarThemeProc, kContextAttributeThemeSubclassId);
+		return ::DefSubclassProc(window, message, wParam, lParam);
+	}
+	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(message == WM_ERASEBKGND && ThemeManager::IsDark())
+	{
+		RECT client = {}; ::GetClientRect(window, &client);
+		::FillRect(reinterpret_cast<HDC>(wParam), &client, ThemeManager::ControlBrush());
+		return 1;
+	}
+	if(message == WM_CTLCOLORSTATIC || message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX || message == WM_CTLCOLORBTN)
+	{
+		HDC dc = reinterpret_cast<HDC>(wParam);
+		HWND control = reinterpret_cast<HWND>(lParam);
+		const bool enabled = !control || ::IsWindowEnabled(control) != FALSE;
+		::SetTextColor(dc, enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor());
+		::SetBkColor(dc, ThemeManager::ControlColor());
+		return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
+	}
+	return ::DefSubclassProc(window, message, wParam, lParam);
+}
+
+void ApplyContextBarTheme(HWND bar)
+{
+	if(!::IsWindow(bar)) return;
+	ThemeManager::ApplyToWindow(bar);
+	::SetWindowSubclass(bar, ContextAttributeBarThemeProc, kContextAttributeThemeSubclassId, 0);
+	COLORSCHEME colours = {}; colours.dwSize = sizeof(colours);
+	colours.clrBtnHighlight = ThemeManager::HoverColor();
+	colours.clrBtnShadow = ThemeManager::BorderColor();
+	::SendMessage(bar, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
+	::RedrawWindow(bar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+}
 }
 
 bool ContextAttributeBars::AddCaption(CCustomStatic& caption, HWND bar, int position, UINT textId, LPCWSTR placeholder, HFONT font)
@@ -52,10 +100,11 @@ bool ContextAttributeBars::Create(HWND parent)
 	if(!AddBox(m_linksBar, 1, m_idBox, m_id, common, IDC_ID, font) || !AddBox(m_linksBar, 3, m_hrefBox, m_href, common | WS_VSCROLL | CBS_DROPDOWN | CBS_SORT, IDC_HREF, font) || !AddBox(m_linksBar, 5, m_sectionBox, m_section, common, IDC_SECTION, font) || !AddBox(m_linksBar, 7, m_imageTitleBox, m_imageTitle, common, IDC_IMAGE_TITLE, font) || !AddBox(m_tableBar, 1, m_tableIdBox, m_tableId, common, IDC_IDT, font) || !AddBox(m_tableBar, 3, m_tableStyleBox, m_tableStyle, common, IDC_STYLET, font) || !AddBox(m_tableBar, 5, m_cellIdBox, m_cellId, common, IDC_ID, font) || !AddBox(m_tableBar, 7, m_cellStyleBox, m_cellStyle, common, IDC_STYLE, font) || !AddBox(m_tableBar2, 1, m_colspanBox, m_colspan, common, IDC_COLSPAN, font) || !AddBox(m_tableBar2, 3, m_rowspanBox, m_rowspan, common, IDC_ROWSPAN, font) || !AddBox(m_tableBar2, 5, m_rowAlignBox, m_rowAlign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGNTR, font) || !AddBox(m_tableBar2, 7, m_alignBox, m_align, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_ALIGN, font) || !AddBox(m_tableBar2, 9, m_valignBox, m_valign, common | WS_VSCROLL | CBS_DROPDOWNLIST, IDC_VALIGN, font)) { Destroy(); return false; }
 	for(int i = 0; i != 4; ++i) { static const wchar_t* align[] = { L"", L"left", L"right", L"center" }; m_rowAlignBox.InsertString(i, align[i]); m_alignBox.InsertString(i, align[i]); }
 	static const wchar_t* valign[] = { L"", L"top", L"middle", L"bottom" }; for(int i = 0; i != 4; ++i) m_valignBox.InsertString(i, valign[i]);
-	UpdateMetrics(); return true;
+	UpdateMetrics(); ApplyTheme(); return true;
 }
 
 void ContextAttributeBars::Destroy() { if(m_linksBar) ::DestroyWindow(m_linksBar); if(m_tableBar) ::DestroyWindow(m_tableBar); if(m_tableBar2) ::DestroyWindow(m_tableBar2); m_linksBar = m_tableBar = m_tableBar2 = NULL; }
+void ContextAttributeBars::ApplyTheme() { ApplyContextBarTheme(m_linksBar); ApplyContextBarTheme(m_tableBar); ApplyContextBarTheme(m_tableBar2); }
 void ContextAttributeBars::UpdateMetrics() { ToolbarFactory::SetDialogFontForToolbarRow(m_linksBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar2, true); ToolbarFactory::AutoSizeToolbar(m_linksBar); ToolbarFactory::AutoSizeToolbar(m_tableBar); ToolbarFactory::AutoSizeToolbar(m_tableBar2); }
 void ContextAttributeBars::UpdateLocalization()
 {

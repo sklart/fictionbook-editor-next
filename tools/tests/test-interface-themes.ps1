@@ -14,6 +14,7 @@ $mainFrame = Read-ProjectFile 'src\fbe\mainfrm.cpp'
 $toolbarUi = Read-ProjectFile 'src\fbe\ui\MainFrameRuntimeUi.inl'
 $mainFrameHeader = Read-ProjectFile 'src\fbe\mainfrm.h'
 $documentTree = Read-ProjectFile 'src\fbe\DocumentTree.cpp'
+$contextAttributeBars = Read-ProjectFile 'src\fbe\ui\ContextAttributeBars.cpp'
 
 foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChanged', 'WH_CBT', 'HCBT_ACTIVATE', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
@@ -38,6 +39,10 @@ if($settings -like '*GetXmlSrcThemeColor*AppsUseLightTheme*') { throw 'Source Au
 if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -notlike '*OnThemeChanged*') {
     throw 'Main frame does not dynamically refresh theme changes.'
 }
+foreach($required in @('ApplyTheme()', 'ContextAttributeBarThemeProc', 'WM_CTLCOLORSTATIC', 'WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'TB_SETCOLORSCHEME', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()')) {
+    if($contextAttributeBars -notlike "*$required*") { throw "Context attribute bars do not apply the theme palette: $required." }
+}
+if($mainFrame -notlike '*m_contextAttributeBars.ApplyTheme()*') { throw 'Main frame does not refresh context attribute bars on theme changes.' }
 foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_BORDER')) {
     if($mainFrameHeader -notlike "*$required*") { throw "Main frame does not theme splitter separator $required." }
 }
