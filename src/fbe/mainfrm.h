@@ -193,6 +193,8 @@ public:
 	void SavePortableToolbarLayout();
 	void DestroyScriptToolbarRuntimeControls();
 	bool ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);
+	bool UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items);
+	bool InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition);
 	void RefreshScriptToolbarViewMenu();
 	void InitScriptHotkey(ScriptDescriptor&);
 

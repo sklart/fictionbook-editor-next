@@ -29,6 +29,13 @@ ImportEPUB resources переведена с unconditional PreBuildEvent на
   временно отсутствующего UID. Debug и Release Win32 `FBE.vcxproj` собраны
   локально 15.09.2026.
 
+- Скрытые script toolbars редактируются напрямую по persistent definition:
+  selector customize-диалога не зависит от `HWND`, а runtime toolbar является
+  только projection этой модели. Добавлены focused UI/lifecycle contract и
+  self-closing runtime scenario с пятью панелями, повторной инициализацией,
+  restart-readback, отсутствующим UID и rebar/HWND leak checks; installed
+  contour запускается только на изолированном CI worker.
+
 - Extension startup разделён на scripts, bundled plugins и MRU/recent documents;
   `InitializeExtensionUi` остаётся только тонким coordinator. Runtime test
   scenarios подключают тематические части из малого umbrella-файла.

@@ -8,6 +8,9 @@
 - [x] Завершить пользовательские панели скриптов: `Toolbars.xml` v2,
   generic collection/runtime lifecycle, UI создания/переименования/удаления,
   порядка и visibility, dynamic menu и сохранение в portable/installed mode.
+- [x] Разрешить редактирование скрытых script toolbars по definition без
+  materialization HWND; добавить restart/lifecycle runtime regression для
+  create/rename/reorder/hide/show/delete, missing UID и обоих режимов.
 
 - [x] Зафиксировать единый baseline C++17 для собственных C++-проектов через
   `FbeLanguageStandard`; оставить C++20, `/permissive-` и `/Zc:wchar_t`

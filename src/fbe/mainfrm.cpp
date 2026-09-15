@@ -1685,8 +1685,16 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog()
 	std::sort(commands.begin(), commands.end(), [](const ScriptsToolbarCommand& left, const ScriptsToolbarCommand& right) {
 		return left.name.CompareNoCase(right.name) < 0;
 	});
-	std::vector<ScriptsToolbarTarget> panels; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) if(m_scriptToolbars.Items()[index].window != NULL) { ScriptsToolbarTarget target = { m_scriptToolbars.Items()[index].definition.name, m_scriptToolbars.Items()[index].window }; panels.push_back(target); }
-	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings, panels);
+	std::vector<ScriptsToolbarTarget> panels;
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) {
+		const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
+		ScriptsToolbarTarget target = {}; target.id = runtime.definition.id; target.name = runtime.definition.name; target.toolbar = runtime.window; target.items = runtime.definition.items;
+		if(target.items.empty() && runtime.window != NULL) ToolbarLayoutAdapter::Capture(runtime.window, target.items);
+		for(size_t itemIndex = 0; itemIndex < target.items.size(); ++itemIndex) if(!target.items[itemIndex].separator && !target.items[itemIndex].scriptUid.IsEmpty())
+			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == target.items[itemIndex].scriptUid && script.commandId > 0) { target.items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
+		panels.push_back(target);
+	}
+	CScriptsToolbarCustomizeDlg dialog(m_ScriptsToolbar, commands, defaults, _Settings, panels, [this](const CString& id, const std::vector<PortableToolbarItem>& items) { return UpdateScriptToolbarItems(id, items); });
 	dialog.DoModal(m_hWnd);
 }
 
@@ -1702,14 +1710,39 @@ void CMainFrame::ShowScriptToolbarManagerDialog()
 
 bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current)
 {
-	PortableToolbarLayout layout; PortableToolbarStore::Load(layout);
+	PortableToolbarLayout before; PortableToolbarStore::Load(before);
+	PortableToolbarLayout layout = before;
 	layout.scriptToolbars = current; layout.scriptsToolbarPresent = true;
 	if(!PortableToolbarStore::Save(layout)) return false;
 	if(InitializeScripts()) return true;
-	layout.scriptToolbars = previous;
-	if(!PortableToolbarStore::Save(layout)) return false;
-	InitializeScripts();
+	// Runtime recovery intentionally uses the already committed definitions.  It
+	// must not re-read a file whose rollback may have failed after the atomic
+	// replacement, otherwise an I/O error can turn a recoverable UI failure into
+	// a partially rebuilt toolbar collection.
+	before.scriptToolbars = previous; before.scriptsToolbarPresent = true;
+	const bool persistenceRestored = PortableToolbarStore::Save(before);
+	InitializeScriptsFromDefinitions(previous, true);
+	if(!persistenceRestored) StartupTrace::Event(L"plugin", L"P105", L"script toolbar persistence rollback failed; runtime restored from memory");
 	return false;
+}
+
+bool CMainFrame::UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items)
+{
+	PortableToolbarLayout layout;
+	if(!PortableToolbarStore::Load(layout)) {
+		layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
+		ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands);
+		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) layout.scriptToolbars.push_back(m_scriptToolbars.Items()[index].definition);
+	}
+	std::vector<PortableToolbarItem> persisted = items;
+	for(size_t itemIndex = 0; itemIndex < persisted.size(); ++itemIndex) if(!persisted[itemIndex].separator && persisted[itemIndex].command >= ID_SCRIPT_BASE + 1 && persisted[itemIndex].command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
+		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.commandId == persisted[itemIndex].command - ID_SCRIPT_BASE) { persisted[itemIndex].command = 0; persisted[itemIndex].scriptUid = script.uid; break; } }
+	bool found = false;
+	for(size_t index = 0; index < layout.scriptToolbars.size(); ++index) if(layout.scriptToolbars[index].id == id) { layout.scriptToolbars[index].items = persisted; if(id == L"scripts-main") layout.scripts = persisted; found = true; break; }
+	if(!found) return false;
+	if(!PortableToolbarStore::Save(layout)) return false;
+	if(ScriptToolbarRuntime* runtime = m_scriptToolbars.Find(id)) runtime->definition.items = persisted;
+	return true;
 }
 
 void CMainFrame::RefreshScriptToolbarViewMenu()
@@ -1953,17 +1986,24 @@ void CMainFrame::DestroyScriptToolbarRuntimeControls()
 
 bool CMainFrame::InitializeScripts()
 {
-	ReleaseScriptResources();
-	DestroyScriptToolbarRuntimeControls();
-	m_scriptToolbars.Reset();
 	PortableToolbarLayout persistedToolbars;
 	bool hasPersistedMainDefinition = false;
+	std::vector<ScriptToolbarDefinition> definitions;
 	if(PortableToolbarStore::Load(persistedToolbars))
 		for(size_t index = 0; index < persistedToolbars.scriptToolbars.size(); ++index)
 		{
-			m_scriptToolbars.Add(persistedToolbars.scriptToolbars[index]);
+			definitions.push_back(persistedToolbars.scriptToolbars[index]);
 			if(persistedToolbars.scriptToolbars[index].id == L"scripts-main") hasPersistedMainDefinition = true;
 		}
+	return InitializeScriptsFromDefinitions(definitions, hasPersistedMainDefinition);
+}
+
+bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition)
+{
+	ReleaseScriptResources();
+	DestroyScriptToolbarRuntimeControls();
+	m_scriptToolbars.Reset();
+	for(size_t index = 0; index < definitions.size(); ++index) m_scriptToolbars.Add(definitions[index]);
 	if(m_scriptToolbars.Find(L"scripts-main") == NULL) { ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; m_scriptToolbars.Add(main); }
 	bool controlsCreated = true;
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)

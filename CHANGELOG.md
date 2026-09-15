@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Настройка содержимого script toolbars теперь работает и для скрытых панелей:
+  selector строится из definitions, а изменения сохраняются в `Toolbars.xml v2`
+  без создания runtime HWND/rebar band. Усилен откат runtime toolbar definitions
+  при неудачной инициализации; добавлен runtime lifecycle-regression (portable
+  и isolated installed contour) с проверкой HWND/bands, restart и missing UID.
+
 - Пользовательские панели скриптов завершены поверх `Toolbars.xml v2`: в
   «Вид» добавлен динамический список панелей с отметкой видимости и командой
   управления. Диалог позволяет создавать, переименовывать, удалять,

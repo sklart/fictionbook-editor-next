@@ -1,6 +1,9 @@
 #pragma once
 
 #include "resource.h"
+#include "toolbars\\PortableToolbarLayout.h"
+
+#include <functional>
 
 class CSettings;
 
@@ -11,14 +14,21 @@ struct ScriptsToolbarCommand
 	CString relativePath;
 	TBBUTTON button;
 };
-struct ScriptsToolbarTarget { CString name; HWND toolbar; };
+struct ScriptsToolbarTarget
+{
+	CString id;
+	CString name;
+	HWND toolbar;
+	std::vector<PortableToolbarItem> items;
+};
 
 class CScriptsToolbarCustomizeDlg : public CDialogImpl<CScriptsToolbarCustomizeDlg>
 {
 public:
 	enum { IDD = IDD_SCRIPTS_TOOLBAR_CUSTOMIZE };
 	CScriptsToolbarCustomizeDlg(HWND toolbar, const std::vector<ScriptsToolbarCommand>& available,
-		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels);
+		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
+		const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems);
 	~CScriptsToolbarCustomizeDlg();
 
 	BEGIN_MSG_MAP(CScriptsToolbarCustomizeDlg)
@@ -49,7 +59,8 @@ private:
 	const std::vector<ScriptsToolbarCommand>& m_available;
 	CSimpleArray<TBBUTTON> m_defaults;
 	CSettings& m_settings;
-	const std::vector<ScriptsToolbarTarget>& m_panels;
+	std::vector<ScriptsToolbarTarget> m_panels;
+	std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)> m_saveItems;
 	CListBox m_availableList;
 	CListBox m_currentList;
 	CComboBox m_panelList;
@@ -101,6 +112,12 @@ private:
 	void RestoreSelection(CListBox& list, const std::vector<DWORD_PTR>& selection, int topIndex);
 	void ActivateList(CListBox& list);
 	bool ReplaceToolbarButtons(const std::vector<TBBUTTON>& buttons);
+	bool CommitCurrentItems(const std::vector<PortableToolbarItem>& previous);
+	bool ApplyCurrentItemsToRuntimeToolbar();
+	std::vector<PortableToolbarItem>& CurrentItems();
+	const std::vector<PortableToolbarItem>& CurrentItems() const;
+	int CurrentPanelIndex() const;
+	bool CurrentItemButton(size_t index, TBBUTTON& button) const;
 	bool MoveSelectedButtons(bool down);
 	bool MoveDraggedButtons(int insert, std::vector<DWORD_PTR>& selection);
 	void RestorePlacement();

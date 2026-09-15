@@ -34,7 +34,9 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptsReload = IsFbeTestScenario(L"portable-scripts-reload");
 	const bool legacyHotkeyRead = IsFbeTestScenario(L"portable-legacy-hotkey-read");
 	const bool diagnosticCleanup = IsFbeTestScenario(L"portable-diagnostic-cleanup");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup)
+	const bool scriptToolbarLifecycle = IsFbeTestScenario(L"script-toolbar-lifecycle-runtime");
+	const bool scriptToolbarLifecycleReload = IsFbeTestScenario(L"script-toolbar-lifecycle-reload-runtime");
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -46,11 +48,73 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
 		return;
+	}
+	if (scriptToolbarLifecycleReload)
+	{
+		PortableToolbarLayout persisted; const bool loaded = PortableToolbarStore::Load(persisted);
+		bool missingPreserved = false; int expected = 0;
+		for(size_t index = 0; loaded && index < persisted.scriptToolbars.size(); ++index) {
+			const ScriptToolbarDefinition& item = persisted.scriptToolbars[index];
+			if(item.id.Left(16) == L"runtime-toolbar-") ++expected;
+			if(item.id == L"runtime-toolbar-5" && item.items.size() > 1 && item.items[1].scriptUid == L"runtime-missing-script-uid") missingPreserved = true;
+		}
+		auto liveCount = [&]() { int count = 0; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) if(m_scriptToolbars.Items()[index].definition.id != L"scripts-main" && m_scriptToolbars.Items()[index].window != NULL && ::IsWindow(m_scriptToolbars.Items()[index].window)) ++count; return count; };
+		const int bandsBefore = m_rebar.GetBandCount(); const bool reloaded = InitializeScripts(); const int bandsAfter = m_rebar.GetBandCount();
+		const bool passed = loaded && expected == 4 && missingPreserved && reloaded && liveCount() == 4 && bandsBefore == bandsAfter;
+		CStringA report; report.Format("phase=script-toolbar-lifecycle-reload\nmode=%s\nexpected=%d\nmissing-uid=%d\nreload=%d\nbands-stable=%d\nresult=%s\n", DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? "portable" : "installed", expected, missingPreserved, reloaded && liveCount() == 4, bandsBefore == bandsAfter, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if (scriptToolbarLifecycle)
+	{
+		std::vector<ScriptToolbarDefinition> previous;
+		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) previous.push_back(m_scriptToolbars.Items()[index].definition);
+		std::vector<ScriptToolbarDefinition> definitions = previous;
+		ScriptToolbarDefinition* main = NULL;
+		for(size_t index = 0; index < definitions.size(); ++index) if(definitions[index].id == L"scripts-main") { main = &definitions[index]; break; }
+		if(main == NULL) { ScriptToolbarDefinition item; item.id = L"scripts-main"; item.name = L"Scripts"; definitions.insert(definitions.begin(), item); main = &definitions.front(); }
+		CString knownUid;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(!m_scripts.Menu().Item(index).isFolder && !m_scripts.Menu().Item(index).uid.IsEmpty()) { knownUid = m_scripts.Menu().Item(index).uid; break; }
+		for(int index = 1; index <= 5; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-toolbar-%d", index); item.name.Format(L"Runtime toolbar %d", index); item.visible = true; definitions.push_back(item); }
+		if(!knownUid.IsEmpty()) { PortableToolbarItem known = {}; known.scriptUid = knownUid; definitions.back().items.push_back(known); }
+		PortableToolbarItem missing = {}; missing.scriptUid = L"runtime-missing-script-uid"; definitions.back().items.push_back(missing);
+		PortableToolbarItem separator = {}; separator.separator = true; separator.width = 9; definitions.back().items.push_back(separator);
+		const int initialBands = m_rebar.GetBandCount();
+		auto runtimeBandsValid = [&](int expected) {
+			int windows = 0, bands = 0;
+			for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) { const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index]; if(runtime.definition.id == L"scripts-main") continue; if(runtime.window != NULL && ::IsWindow(runtime.window)) { ++windows; if(runtime.rebarBandId != 0 && m_rebar.IdToIndex(runtime.rebarBandId) >= 0) ++bands; } }
+			return windows == expected && bands == expected && static_cast<int>(m_rebar.GetBandCount()) == initialBands + expected;
+		};
+		bool created = ApplyScriptToolbarDefinitions(previous, definitions) && runtimeBandsValid(5);
+		// Every operation receives the definitions actually live before the edit.
+		std::vector<ScriptToolbarDefinition> current; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) current.push_back(m_scriptToolbars.Items()[index].definition);
+		definitions[1].name = L"Renamed runtime toolbar"; std::swap(definitions[1], definitions[3]);
+		bool renamedAndReordered = created && ApplyScriptToolbarDefinitions(current, definitions);
+		current.clear(); for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) current.push_back(m_scriptToolbars.Items()[index].definition);
+		for(size_t index = 0; index < definitions.size(); ++index) if(definitions[index].id == L"runtime-toolbar-2") definitions[index].visible = false;
+		bool hidden = renamedAndReordered && ApplyScriptToolbarDefinitions(current, definitions) && runtimeBandsValid(4);
+		current.clear(); for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) current.push_back(m_scriptToolbars.Items()[index].definition);
+		for(size_t index = 0; index < definitions.size(); ++index) if(definitions[index].id == L"runtime-toolbar-2") definitions[index].visible = true;
+		bool shown = hidden && ApplyScriptToolbarDefinitions(current, definitions) && runtimeBandsValid(5);
+		bool reloads = shown;
+		for(int cycle = 0; cycle < 3 && reloads; ++cycle) reloads = InitializeScripts() && runtimeBandsValid(5);
+		current.clear(); for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) current.push_back(m_scriptToolbars.Items()[index].definition);
+		for(std::vector<ScriptToolbarDefinition>::iterator it = definitions.begin(); it != definitions.end(); ++it) if(it->id == L"runtime-toolbar-3") { definitions.erase(it); break; }
+		bool deleted = reloads && ApplyScriptToolbarDefinitions(current, definitions) && runtimeBandsValid(4);
+		PortableToolbarLayout persisted; const bool loaded = PortableToolbarStore::Load(persisted);
+		bool missingPreserved = false, orderPreserved = false;
+		for(size_t index = 0; loaded && index < persisted.scriptToolbars.size(); ++index) {
+			const ScriptToolbarDefinition& item = persisted.scriptToolbars[index];
+			if(item.id == L"runtime-toolbar-5" && item.items.size() > 1 && item.items[1].scriptUid == L"runtime-missing-script-uid") missingPreserved = true;
+			if(index > 0 && item.id == definitions[1].id) orderPreserved = true;
+		}
+		const bool passed = created && renamedAndReordered && hidden && shown && reloads && deleted && loaded && missingPreserved && orderPreserved;
+		CStringA report; report.Format("phase=script-toolbar-lifecycle\nmode=%s\ncreated=%d\nrenamed-reordered=%d\nhidden=%d\nshown=%d\nreloads=%d\ndeleted=%d\nmissing-uid=%d\npersistence=%d\nresult=%s\n", DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? "portable" : "installed", created, renamedAndReordered, hidden, shown, reloads, deleted, missingPreserved, loaded && orderPreserved, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if (diagnosticCleanup)
 	{

@@ -12,7 +12,8 @@ namespace
 
 CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 	const std::vector<ScriptsToolbarCommand>& available, const CSimpleArray<TBBUTTON>& defaults,
-	CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
+	CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
+	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
 {
 }
 
@@ -97,18 +98,18 @@ void CScriptsToolbarCustomizeDlg::PopulateCurrent(const std::vector<DWORD_PTR>* 
 {
 	const int top = m_currentList.GetTopIndex(); const std::vector<DWORD_PTR> saved = selected != NULL ? *selected : GetSelectedItemData(m_currentList);
 	if(redraw) ::SendMessage(m_currentList, WM_SETREDRAW, FALSE, 0);
-	m_currentList.ResetContent(); CToolBarCtrl toolbar = m_toolbar;
-	for(int i = 0; i < toolbar.GetButtonCount(); ++i) {
-		TBBUTTON button = {}; if(!toolbar.GetButton(i, &button)) continue;
-		if(button.fsStyle & TBSTYLE_SEP) {
+	m_currentList.ResetContent(); const std::vector<PortableToolbarItem>& items = CurrentItems();
+	for(size_t i = 0; i < items.size(); ++i) {
+		if(items[i].separator) {
 			const int row = m_currentList.AddString(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.separator", L"--- Separator ---"));
 			m_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));
 			continue;
 		}
+		TBBUTTON button = {}; const bool known = CurrentItemButton(i, button);
 		CString name;
-		for(size_t j = 0; j < m_available.size(); ++j) if(m_available[j].command == button.idCommand) { name = m_available[j].name; break; }
+		for(size_t j = 0; known && j < m_available.size(); ++j) if(m_available[j].command == button.idCommand) { name = m_available[j].name; break; }
 		if(name.IsEmpty()) name.Format(FbeLoadRuntimeStringByKey(
-			L"fbe.scripts_toolbar_customize.unknown_command", L"Command %d"), button.idCommand);
+			L"fbe.scripts_toolbar_customize.unknown_command", L"Command %d"), items[i].command);
 		const int row = m_currentList.AddString(name); m_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));
 	}
 	RestoreSelection(m_currentList, saved, top);
@@ -125,12 +126,9 @@ void CScriptsToolbarCustomizeDlg::RefreshLists(const std::vector<DWORD_PTR>* ava
 
 bool CScriptsToolbarCustomizeDlg::ToolbarContainsCommand(int command) const
 {
-	CToolBarCtrl toolbar = m_toolbar;
-	for(int i = 0; i < toolbar.GetButtonCount(); ++i) {
-		TBBUTTON button = {};
-		if(toolbar.GetButton(i, &button) && !(button.fsStyle & TBSTYLE_SEP) && button.idCommand == command)
-			return true;
-	}
+	const std::vector<PortableToolbarItem>& items = CurrentItems();
+	for(size_t index = 0; index < items.size(); ++index)
+		if(!items[index].separator && items[index].command == command) return true;
 	return false;
 }
 
@@ -143,7 +141,7 @@ int CScriptsToolbarCustomizeDlg::SelectedAvailableCommand() const
 }
 
 LRESULT CScriptsToolbarCustomizeDlg::OnSearchChanged(WORD, WORD, HWND, BOOL&) { PopulateAvailable(); UpdateButtonState(); return 0; }
-LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size()) && ::IsWindow(m_panels[index].toolbar)) { m_toolbar = m_panels[index].toolbar; RefreshLists(); UpdateButtonState(); } return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnPanelChanged(WORD, WORD, HWND, BOOL&) { const int index = m_panelList.GetCurSel(); if(index >= 0 && index < static_cast<int>(m_panels.size())) { m_toolbar = m_panels[index].toolbar; RefreshLists(); UpdateButtonState(); } return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnSelectionChanged(WORD, WORD, HWND, BOOL&) { UpdateButtonState(); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHandled)
 {
@@ -158,12 +156,10 @@ LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHand
 		if(item == kSeparatorItem) m_toolTipText = FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.separator", L"--- Separator ---");
 		else if(item < m_available.size()) { m_toolTipText = m_available[item].name; if(!m_available[item].relativePath.IsEmpty()) m_toolTipText += L"\n" + m_available[item].relativePath; }
 	} else {
-		const int buttonIndex = static_cast<int>(m_currentList.GetItemData(row)); TBBUTTON button = {};
-		if(CToolBarCtrl(m_toolbar).GetButton(buttonIndex, &button)) {
-			if(button.fsStyle & TBSTYLE_SEP) m_toolTipText = FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.separator", L"--- Separator ---");
-			else for(size_t i = 0; i < m_available.size(); ++i)
-				if(m_available[i].command == button.idCommand) { m_toolTipText = m_available[i].name; if(!m_available[i].relativePath.IsEmpty()) m_toolTipText += L"\n" + m_available[i].relativePath; break; }
-		}
+		const size_t itemIndex = static_cast<size_t>(m_currentList.GetItemData(row)); TBBUTTON button = {};
+		if(itemIndex < CurrentItems().size() && CurrentItems()[itemIndex].separator) m_toolTipText = FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.separator", L"--- Separator ---");
+		else if(CurrentItemButton(itemIndex, button)) for(size_t i = 0; i < m_available.size(); ++i)
+			if(m_available[i].command == button.idCommand) { m_toolTipText = m_available[i].name; if(!m_available[i].relativePath.IsEmpty()) m_toolTipText += L"\n" + m_available[i].relativePath; break; }
 	}
 	if(m_toolTipText.IsEmpty()) { bHandled = FALSE; return 0; }
 	info->lpszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(m_toolTipText));
@@ -172,30 +168,31 @@ LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHand
 LRESULT CScriptsToolbarCustomizeDlg::OnAdd(WORD, WORD, HWND, BOOL&)
 {
 	const std::vector<int> rows = GetSelectedRows(m_availableList); if(rows.empty()) return 0;
-	CToolBarCtrl toolbar = m_toolbar; std::vector<DWORD_PTR> currentSelection;
+	const std::vector<PortableToolbarItem> previous = CurrentItems(); std::vector<DWORD_PTR> currentSelection;
 	for(size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) {
 		const DWORD_PTR item = m_availableList.GetItemData(rows[rowIndex]);
-		if(item == kSeparatorItem) { TBBUTTON separator = {}; separator.fsStyle = TBSTYLE_SEP; separator.iBitmap = Scale(8); toolbar.AddButtons(1, &separator); currentSelection.push_back(toolbar.GetButtonCount() - 1); continue; }
+		if(item == kSeparatorItem) { PortableToolbarItem separator = {}; separator.separator = true; separator.width = Scale(8); CurrentItems().push_back(separator); currentSelection.push_back(CurrentItems().size() - 1); continue; }
 		if(item >= m_available.size() || ToolbarContainsCommand(m_available[item].command)) continue;
-		const ScriptsToolbarCommand& command = m_available[item];
-		toolbar.AddButton(command.command, command.button.fsStyle, command.button.fsState, command.button.iBitmap, command.name, 0);
-		currentSelection.push_back(toolbar.GetButtonCount() - 1);
+		PortableToolbarItem command = {}; command.command = m_available[item].command;
+		CurrentItems().push_back(command); currentSelection.push_back(CurrentItems().size() - 1);
 	}
-	if(!currentSelection.empty()) { std::vector<DWORD_PTR> empty; toolbar.AutoSize(); RefreshLists(&empty, &currentSelection); UpdateButtonState(); }
+	if(!currentSelection.empty() && CommitCurrentItems(previous)) { std::vector<DWORD_PTR> empty; RefreshLists(&empty, &currentSelection); UpdateButtonState(); }
 	return 0;
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnRemove(WORD, WORD, HWND, BOOL&)
 {
 	std::vector<int> rows = GetSelectedRows(m_currentList); if(rows.empty()) return 0;
+	const std::vector<PortableToolbarItem> previous = CurrentItems();
 	std::vector<DWORD_PTR> availableSelection;
 	for(size_t row = 0; row < rows.size(); ++row) {
-		TBBUTTON button = {}; if(!CToolBarCtrl(m_toolbar).GetButton(static_cast<int>(m_currentList.GetItemData(rows[row])), &button)) continue;
-		if(button.fsStyle & TBSTYLE_SEP) { availableSelection.push_back(kSeparatorItem); continue; }
+		const size_t itemIndex = static_cast<size_t>(m_currentList.GetItemData(rows[row])); TBBUTTON button = {};
+		if(itemIndex >= CurrentItems().size()) continue;
+		if(CurrentItems()[itemIndex].separator) { availableSelection.push_back(kSeparatorItem); continue; }
+		if(!CurrentItemButton(itemIndex, button)) continue;
 		for(size_t i = 0; i < m_available.size(); ++i) if(m_available[i].command == button.idCommand) { availableSelection.push_back(i); break; }
 	}
-	for(std::vector<int>::reverse_iterator it = rows.rbegin(); it != rows.rend(); ++it) CToolBarCtrl(m_toolbar).DeleteButton(static_cast<int>(m_currentList.GetItemData(*it)));
-	CToolBarCtrl(m_toolbar).AutoSize();
-	std::vector<DWORD_PTR> empty; RefreshLists(&availableSelection, &empty); UpdateButtonState(); return 0;
+	for(std::vector<int>::reverse_iterator it = rows.rbegin(); it != rows.rend(); ++it) CurrentItems().erase(CurrentItems().begin() + static_cast<int>(m_currentList.GetItemData(*it)));
+	if(CommitCurrentItems(previous)) { std::vector<DWORD_PTR> empty; RefreshLists(&availableSelection, &empty); UpdateButtonState(); } return 0;
 }
 bool CScriptsToolbarCustomizeDlg::ReplaceToolbarButtons(const std::vector<TBBUTTON>& buttons)
 {
@@ -203,18 +200,47 @@ bool CScriptsToolbarCustomizeDlg::ReplaceToolbarButtons(const std::vector<TBBUTT
 	if(!buttons.empty()) toolbar.AddButtons(static_cast<int>(buttons.size()), const_cast<TBBUTTON*>(&buttons[0]));
 	toolbar.AutoSize(); return true;
 }
+int CScriptsToolbarCustomizeDlg::CurrentPanelIndex() const
+{
+	const int index = m_panelList.GetCurSel(); return index >= 0 && index < static_cast<int>(m_panels.size()) ? index : 0;
+}
+std::vector<PortableToolbarItem>& CScriptsToolbarCustomizeDlg::CurrentItems() { return m_panels[CurrentPanelIndex()].items; }
+const std::vector<PortableToolbarItem>& CScriptsToolbarCustomizeDlg::CurrentItems() const { return m_panels[CurrentPanelIndex()].items; }
+bool CScriptsToolbarCustomizeDlg::CurrentItemButton(size_t index, TBBUTTON& button) const
+{
+	if(index >= CurrentItems().size() || CurrentItems()[index].separator) return false;
+	for(size_t available = 0; available < m_available.size(); ++available)
+		if(m_available[available].command == CurrentItems()[index].command) { button = m_available[available].button; button.idCommand = m_available[available].command; return true; }
+	return false;
+}
+bool CScriptsToolbarCustomizeDlg::ApplyCurrentItemsToRuntimeToolbar()
+{
+	const int panel = CurrentPanelIndex(); if(panel < 0 || panel >= static_cast<int>(m_panels.size()) || !::IsWindow(m_panels[panel].toolbar)) return true;
+	std::vector<TBBUTTON> buttons;
+	for(size_t index = 0; index < CurrentItems().size(); ++index) {
+		if(CurrentItems()[index].separator) { TBBUTTON separator = {}; separator.fsStyle = TBSTYLE_SEP; separator.iBitmap = CurrentItems()[index].width; buttons.push_back(separator); continue; }
+		TBBUTTON button = {}; if(CurrentItemButton(index, button)) buttons.push_back(button);
+	}
+	m_toolbar = m_panels[panel].toolbar; return ReplaceToolbarButtons(buttons);
+}
+bool CScriptsToolbarCustomizeDlg::CommitCurrentItems(const std::vector<PortableToolbarItem>& previous)
+{
+	if(ApplyCurrentItemsToRuntimeToolbar() && (!m_saveItems || m_saveItems(m_panels[CurrentPanelIndex()].id, CurrentItems()))) return true;
+	CurrentItems() = previous; ApplyCurrentItemsToRuntimeToolbar();
+	::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.script_toolbar_manager.save_failed", L"Не удалось сохранить настройки панелей скриптов."), FbeLoadRuntimeStringByKey(L"fbe.script_toolbar_manager.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
+	return false;
+}
 bool CScriptsToolbarCustomizeDlg::MoveSelectedButtons(bool down)
 {
 	const int count = m_currentList.GetCount(); std::vector<unsigned char> selected(count, 0); const std::vector<int> rows = GetSelectedRows(m_currentList);
 	if(rows.empty()) return false;
 	for(size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) selected[rows[rowIndex]] = 1;
-	std::vector<TBBUTTON> buttons(count); CToolBarCtrl toolbar = m_toolbar;
-	for(int i = 0; i < count; ++i) if(!toolbar.GetButton(i, &buttons[i])) return false;
+	const std::vector<PortableToolbarItem> previous = CurrentItems(); std::vector<PortableToolbarItem> buttons = CurrentItems();
 	bool moved = false;
 	if(down) for(int index = count - 2; index >= 0; --index) if(selected[index] && !selected[index + 1]) { std::swap(buttons[index], buttons[index + 1]); std::swap(selected[index], selected[index + 1]); moved = true; }
 	else for(int upIndex = 1; upIndex < count; ++upIndex) if(selected[upIndex] && !selected[upIndex - 1]) { std::swap(buttons[upIndex], buttons[upIndex - 1]); std::swap(selected[upIndex], selected[upIndex - 1]); moved = true; }
 	if(!moved) return false;
-	ReplaceToolbarButtons(buttons); std::vector<DWORD_PTR> selection;
+	CurrentItems() = buttons; if(!CommitCurrentItems(previous)) return false; std::vector<DWORD_PTR> selection;
 	for(int i = 0; i < count; ++i) if(selected[i]) selection.push_back(i);
 	RefreshLists(NULL, &selection); return true;
 }
@@ -228,7 +254,9 @@ LRESULT CScriptsToolbarCustomizeDlg::OnDown(WORD, WORD, HWND, BOOL&)
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnReset(WORD, WORD, HWND, BOOL&)
 {
-	CToolBarCtrl tb = m_toolbar; while(tb.GetButtonCount() > 0) tb.DeleteButton(0); if(m_defaults.GetSize()) tb.AddButtons(m_defaults.GetSize(), m_defaults.GetData()); tb.AutoSize(); RefreshLists(); UpdateButtonState(); return 0;
+	const std::vector<PortableToolbarItem> previous = CurrentItems(); CurrentItems().clear();
+	for(int index = 0; index < m_defaults.GetSize(); ++index) { PortableToolbarItem item = {}; item.separator = (m_defaults[index].fsStyle & TBSTYLE_SEP) != 0; item.command = m_defaults[index].idCommand; item.width = m_defaults[index].iBitmap; CurrentItems().push_back(item); }
+	if(CommitCurrentItems(previous)) { RefreshLists(); UpdateButtonState(); } return 0;
 }
 void CScriptsToolbarCustomizeDlg::LayoutControls(int width, int height)
 {
@@ -335,7 +363,7 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	const DWORD_PTR data = ::SendMessage(item.hwndItem, LB_GETITEMDATA, item.itemID, 0);
 	TBBUTTON button = {}; bool drawIcon = false;
 	if(available && data != kSeparatorItem && data < m_available.size()) { button = m_available[data].button; drawIcon = button.iBitmap >= 0; }
-	if(!available && CToolBarCtrl(m_toolbar).GetButton(static_cast<int>(data), &button)) drawIcon = !(button.fsStyle & TBSTYLE_SEP) && button.iBitmap >= 0;
+	if(!available && CurrentItemButton(static_cast<size_t>(data), button)) drawIcon = button.iBitmap >= 0;
 	HIMAGELIST images = reinterpret_cast<HIMAGELIST>(::SendMessage(m_toolbar, TB_GETIMAGELIST, 0, 0));
 	if(drawIcon && images) { ImageList_Draw(images, button.iBitmap, item.hDC, left, rect.top + (rect.Height() - Scale(16)) / 2, ILD_TRANSPARENT); left += Scale(20); }
 	rect.left = left; dc.DrawText(text, -1, rect, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
@@ -386,17 +414,16 @@ bool CScriptsToolbarCustomizeDlg::MoveDraggedButtons(int insert, std::vector<DWO
 {
 	const int count = m_currentList.GetCount(); if(m_dragRows.empty() || insert < 0 || insert > count) return false;
 	std::vector<bool> selected(count, false); for(size_t i = 0; i < m_dragRows.size(); ++i) selected[m_dragRows[i]] = true;
-	std::vector<TBBUTTON> original(count), moved; CToolBarCtrl toolbar = m_toolbar;
-	for(int i = 0; i < count; ++i) if(!toolbar.GetButton(i, &original[i])) return false;
+	const std::vector<PortableToolbarItem> original = CurrentItems(); std::vector<PortableToolbarItem> moved;
 	int destination = insert; for(int i = 0; i < insert; ++i) if(selected[i]) --destination;
-	std::vector<TBBUTTON> reordered; reordered.reserve(count);
+	std::vector<PortableToolbarItem> reordered; reordered.reserve(count);
 	for(int i = 0; i < count; ++i) if(selected[i]) moved.push_back(original[i]); else reordered.push_back(original[i]);
 	destination = max(0, min(destination, static_cast<int>(reordered.size())));
 	reordered.insert(reordered.begin() + destination, moved.begin(), moved.end());
 	bool changed = false;
-	for(int i = 0; i < count; ++i) if(reordered[i].idCommand != original[i].idCommand || reordered[i].fsStyle != original[i].fsStyle || reordered[i].iBitmap != original[i].iBitmap || reordered[i].dwData != original[i].dwData) { changed = true; break; }
+	for(int i = 0; i < count; ++i) if(reordered[i].separator != original[i].separator || reordered[i].command != original[i].command || reordered[i].width != original[i].width || reordered[i].scriptUid != original[i].scriptUid) { changed = true; break; }
 	if(!changed) return false;
-	ReplaceToolbarButtons(reordered); for(size_t i = 0; i < moved.size(); ++i) selection.push_back(destination + static_cast<int>(i));
+	CurrentItems() = reordered; if(!CommitCurrentItems(original)) return false; for(size_t i = 0; i < moved.size(); ++i) selection.push_back(destination + static_cast<int>(i));
 	return true;
 }
 LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
