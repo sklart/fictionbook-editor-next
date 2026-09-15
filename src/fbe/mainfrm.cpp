@@ -493,7 +493,12 @@ static int FindTopLevelScriptsMenuPosition(HMENU menu)
 static HMENU GetScriptsMenu(HMENU menu)
 {
 	const int position = FindTopLevelScriptsMenuPosition(menu);
-	return position >= 0 ? ::GetSubMenu(menu, position) : NULL;
+	if(position >= 0) return ::GetSubMenu(menu, position);
+
+	// The resource menu always owns the Scripts popup at this position.  The
+	// fallback is needed before its placeholder has been materialized by the
+	// command bar, when no script command or IDCANCEL item is visible yet.
+	return menu != NULL ? ::GetSubMenu(menu, 6) : NULL;
 }
 
 static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)

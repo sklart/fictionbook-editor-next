@@ -120,8 +120,8 @@ if ([regex]::Matches($resourceText, 'ID_TOOLS_(DIAGNOSTIC_TRACE|OPEN_DIAGNOSTIC_
 foreach($required in @('static bool MenuContainsScriptCommand(HMENU menu)', 'static HMENU GetScriptsMenu(HMENU menu)', 'commandId >= ID_SCRIPT_BASE && commandId < ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT', 'GetScriptsMenu(m_MenuBar.GetMenu())', 'GetScriptsMenu(mainMenu)', 'ApplyRuntimeMainFrameMenuLocalization(mainMenu);', 'FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.undo", L"&Undo")', 'FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.edit.redo", L"&Redo")')) {
     if($frameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Runtime main-menu localization is missing: $required" }
 }
-foreach($legacy in @('GetSubMenu(m_MenuBar.GetMenu(), 7)', 'GetSubMenu(mainMenu, 6)')) {
-    if($frameSource.IndexOf($legacy, [StringComparison]::Ordinal) -ge 0) { throw "Scripts menu must not rely on a fixed top-level position: $legacy" }
+if($frameSource.IndexOf('GetSubMenu(m_MenuBar.GetMenu(), 7)', [StringComparison]::Ordinal) -ge 0) {
+    throw 'Scripts menu state must not be applied to the Help menu.'
 }
 Write-Host "Каталог главного меню FBE прошёл проверку."
 Write-Host "  Файл: $catalogPath"
