@@ -120,6 +120,66 @@ static CString StripMenuMnemonics(const CString& text)
 	return result;
 }
 
+const UINT_PTR kMainMenuBarThemeSubclassId = 0xFBE6;
+
+void ApplyMainMenuRebarBandTheme(CReBarCtrl& rebar, HWND menuBar)
+{
+	if(!::IsWindow(rebar) || !::IsWindow(menuBar)) return;
+	for(int band = 0; band < static_cast<int>(rebar.GetBandCount()); ++band)
+	{
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_COLORS;
+		if(!rebar.GetBandInfo(band, &info) || info.hwndChild != menuBar) continue;
+		info.clrBack = ThemeManager::IsDark() ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_BTNFACE);
+		info.clrFore = ThemeManager::IsDark() ? ThemeManager::TextColor() : ::GetSysColor(COLOR_BTNTEXT);
+		rebar.SetBandInfo(band, &info);
+		return;
+	}
+}
+
+LRESULT CALLBACK MainMenuBarThemeProc(HWND window, UINT message, WPARAM wParam,
+	LPARAM lParam, UINT_PTR, DWORD_PTR reference)
+{
+	if(message != WM_NOTIFY || !ThemeManager::IsDark() || ThemeManager::IsHighContrast())
+		return ::DefSubclassProc(window, message, wParam, lParam);
+
+	LPNMHDR header = reinterpret_cast<LPNMHDR>(lParam);
+	const HWND menuBar = reinterpret_cast<HWND>(reference);
+	if(header == NULL || header->hwndFrom != menuBar || header->code != NM_CUSTOMDRAW)
+		return ::DefSubclassProc(window, message, wParam, lParam);
+
+	NMTBCUSTOMDRAW* draw = reinterpret_cast<NMTBCUSTOMDRAW*>(header);
+	if(draw->nmcd.dwDrawStage == CDDS_PREPAINT)
+	{
+		RECT client = {}; ::GetClientRect(menuBar, &client);
+		::FillRect(draw->nmcd.hdc, &client, ThemeManager::ControlBrush());
+		return CDRF_NOTIFYITEMDRAW;
+	}
+	if(draw->nmcd.dwDrawStage != CDDS_ITEMPREPAINT)
+		return CDRF_DODEFAULT;
+
+	const bool disabled = (draw->nmcd.uItemState & (CDIS_DISABLED | CDIS_GRAYED)) != 0;
+	const bool pressed = (draw->nmcd.uItemState & CDIS_SELECTED) != 0;
+	const bool hot = (draw->nmcd.uItemState & CDIS_HOT) != 0;
+	const ThemeColorRole surface = pressed ? THEME_COLOR_PRESSED : hot ? THEME_COLOR_HOVER : THEME_COLOR_CONTROL;
+	::FillRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(surface));
+	if(hot || pressed)
+		::FrameRect(draw->nmcd.hdc, &draw->nmcd.rc, ThemeManager::Brush(THEME_COLOR_BORDER));
+
+	wchar_t text[256] = {};
+	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_TEXT;
+	button.pszText = text; button.cchText = _countof(text);
+	::SendMessage(menuBar, TB_GETBUTTONINFOW, static_cast<WPARAM>(draw->nmcd.dwItemSpec), reinterpret_cast<LPARAM>(&button));
+	RECT textRect = draw->nmcd.rc; ::InflateRect(&textRect, -6, 0);
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(menuBar, WM_GETFONT, 0, 0));
+	HGDIOBJ oldFont = font ? ::SelectObject(draw->nmcd.hdc, font) : NULL;
+	::SetBkMode(draw->nmcd.hdc, TRANSPARENT);
+	::SetTextColor(draw->nmcd.hdc, disabled ? ThemeManager::DisabledTextColor() : ThemeManager::TextColor());
+	::DrawTextW(draw->nmcd.hdc, text, -1, &textRect,
+		DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+	if(oldFont) ::SelectObject(draw->nmcd.hdc, oldFont);
+	return CDRF_SKIPDEFAULT;
+}
+
 }
 
 extern CSettings _Settings;
@@ -2099,6 +2159,10 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // attach menu
   ApplyRuntimeMainFrameMenuLocalization(GetMenu());
   m_MenuBar.AttachMenu(GetMenu());
+	// CCommandBarCtrl remains the stock WTL implementation.  The outer frame
+	// only supplies dark custom drawing for its toolbar surface and menu labels.
+	::SetWindowSubclass(m_hWnd, MainMenuBarThemeProc, kMainMenuBarThemeSubclassId,
+		reinterpret_cast<DWORD_PTR>(hWndCmdBar));
 	::SendMessage(hWndCmdBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
 	m_MenuBar.AutoSize();
   // remove old menu
@@ -2189,6 +2253,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	AddSimpleReBarBand(m_contextAttributeBars.TableBar(), 0, TRUE, 0, TRUE);
 	AddSimpleReBarBand(m_contextAttributeBars.TableBar2(), 0, TRUE, 0, TRUE);
 	m_rebar = m_hWndToolBar;
+	ApplyMainMenuRebarBandTheme(m_rebar, hWndCmdBar);
 	m_rebar.SendMessage(WM_SIZE);
 	StartupTrace::Event(L"mainframe", L"M110", L"menus and toolbars created");
 
@@ -2505,6 +2570,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	::RemoveWindowSubclass(m_hWnd, MainMenuBarThemeProc, kMainMenuBarThemeSubclassId);
 	if(::IsWindow(m_ScriptsToolbar)) ::RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1);
 	m_source.Destroy();
   KillTimer(RECOVERY_TIMER_ID);
@@ -5771,6 +5837,7 @@ void CMainFrame::RefreshStatusMainPane()
 LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
 	m_contextAttributeBars.ApplyTheme();
+	ApplyMainMenuRebarBandTheme(m_rebar, m_MenuBar);
 	if(m_document_tree.IsWindow())
 		ThemeManager::ApplyToWindow(m_document_tree);
 	// Apply only resolved defaults; explicit BODY colours and background images
