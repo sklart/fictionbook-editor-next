@@ -124,6 +124,9 @@ static CString StripMenuMnemonics(const CString& text)
 
 extern CSettings _Settings;
 
+static_assert(ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST < ID_EDIT_FIND,
+	"Dynamic script-toolbar menu commands must not overlap standard edit commands.");
+
 struct RuntimeMenuCommandBinding
 {
 	UINT commandId;
@@ -154,6 +157,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_EDIT_REMOVE_OUTER_SECTION, L"fbe.menu.idr_mainframe.edit.remove_outer_section" },
 	{ 60161, L"fbe.menu.idr_mainframe.view.toolbar" },
 	{ 60162, L"fbe.menu.idr_mainframe.view.scripts_bar" },
+	{ ID_VIEW_SCRIPT_TOOLBARS_MANAGE, L"fbe.menu.idr_mainframe.view.script_toolbar_manager" },
 	{ 60163, L"fbe.menu.idr_mainframe.view.links_bar" },
 	{ 60164, L"fbe.menu.idr_mainframe.view.tables_bar" },
 	{ ID_VIEW_STATUS_BAR, L"fbe.menu.idr_mainframe.view.status_bar" },

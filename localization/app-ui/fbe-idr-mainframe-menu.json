@@ -585,6 +585,13 @@
         "en-US": "Scripts &bar", "ru-RU": "Панель &скриптов", "uk-UA": "Панель &скриптів", "de-DE": "S&kriptleiste", "fr-FR": "B&arre des scripts", "es-ES": "B&arra de scripts", "it-IT": "B&arra degli script", "pl-PL": "P&asek skryptów", "pt-PT": "B&arra de scripts", "nl-NL": "&Scriptbalk", "cs-CZ": "P&anel skriptů", "bg-BG": "Л&ента със скриптове"
       }
     },
+    "fbe.menu.idr_mainframe.view.script_toolbar_manager": {
+      "kind": "MENUITEM",
+      "targetId": "ID_VIEW_SCRIPT_TOOLBARS_MANAGE",
+      "translations": {
+        "en-US": "Manage script toolbars...", "ru-RU": "Настроить панели скриптов..."
+      }
+    },
     "fbe.menu.idr_mainframe.view.links_bar": {
       "kind": "MENUITEM",
       "targetId": "60163",
