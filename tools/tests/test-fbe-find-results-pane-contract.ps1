@@ -21,7 +21,7 @@ function Assert-NotContains([string]$text, [string]$pattern, [string]$descriptio
 
 Assert-NotContains $viewHeader 'CFindResultsDlg|m_find_results_dlg' 'legacy floating Results dialog ownership'
 Assert-NotContains $view 'CFindResultsDlg|CloseFindResultsDialog' 'legacy floating Results dialog lifecycle'
-Assert-Contains $frameHeader 'CHorSplitterWindow\s+m_editor_results_splitter' 'nested horizontal editor/results splitter'
+Assert-Contains $frameHeader 'C(?:Themed)?HorSplitterWindow\s+m_editor_results_splitter' 'nested horizontal editor/results splitter'
 Assert-Contains $frameHeader 'CFindResultsPane\s+m_find_results_pane' 'frame-owned Results pane'
 Assert-Contains $frame 'SetSplitterPanes\(m_view, m_find_results_pane\)' 'editor above Results pane hierarchy'
 Assert-Contains $frame 'SetSplitterPanes\(m_document_tree, m_editor_results_splitter\)' 'outer tree/editor-results hierarchy'
@@ -41,7 +41,7 @@ Assert-Contains $pane 'SetItemCountEx\(itemCount' 'virtual result count assignme
 Assert-Contains $pane 'OnGetDispInfo[\s\S]*?FindResultPreview' 'lazy context retrieval'
 Assert-Contains $pane 'OnItemActivate[\s\S]*?SelectFindResult' 'Enter and double-click activate the selected result through the editor navigation path'
 Assert-Contains $pane 'm_list\.GetItemState\(item, LVIS_SELECTED\) & LVIS_SELECTED' 'row selection comes from authoritative ListView state'
-Assert-Contains $pane 'GetSysColorBrush\(selected \? COLOR_HIGHLIGHT : COLOR_WINDOW\)' 'every virtual context cell is erased before repainting'
+Assert-Contains $pane 'ThemeManager::Brush\(selected \? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_WINDOW\)' 'every virtual context cell is erased before repainting'
 Assert-Contains $pane 'FindResultsCompletionStatus\(\)' 'completed Replace All keeps a useful Results-pane status'
 Assert-Contains $view 'OnFinalizeReplaceAllCompletion[\s\S]*?m_find_results_completion_status = completion;[\s\S]*?WM_REFRESH_FIND_RESULTS_PANE' 'successful Replace All supplies its final Results-pane status after the posted completion phase'
 Assert-Contains $pane 'L" \\x2014 \\x00AB" \+ query \+ L"\\x00BB \\x2014 "' 'header punctuation is codepage-independent Unicode'
