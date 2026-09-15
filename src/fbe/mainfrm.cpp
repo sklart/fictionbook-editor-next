@@ -490,17 +490,6 @@ static int FindTopLevelScriptsMenuPosition(HMENU menu)
 	return -1;
 }
 
-static HMENU GetScriptsMenu(HMENU menu)
-{
-	const int position = FindTopLevelScriptsMenuPosition(menu);
-	if(position >= 0) return ::GetSubMenu(menu, position);
-
-	// The resource menu always owns the Scripts popup at this position.  The
-	// fallback is needed before its placeholder has been materialized by the
-	// command bar, when no script command or IDCANCEL item is visible yet.
-	return menu != NULL ? ::GetSubMenu(menu, 6) : NULL;
-}
-
 static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 {
 	if(menu == NULL)
@@ -1176,15 +1165,6 @@ BOOL CMainFrame::OnIdle()
 		for (int i = 0; i < sizeof(disabled_commands)/sizeof(disabled_commands[0]); ++i)
 			UIEnable(disabled_commands[i], FALSE);
 
-		HMENU scripts = GetScriptsMenu(m_MenuBar.GetMenu());
-		for(int i = 0; i < m_scripts.Menu().Count(); ++i)
-		{
-			if(!m_scripts.Menu().Item(i).isFolder)
-			{
-				if(scripts != NULL) ::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_scripts.Menu().Item(i).commandId, MF_BYCOMMAND | MF_GRAYED);
-			}
-		}
-
 		m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
 		m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 
@@ -1230,15 +1210,6 @@ BOOL CMainFrame::OnIdle()
 	// BODY view
 	else
 	{
-		HMENU scripts = GetScriptsMenu(m_MenuBar.GetMenu());
-		for (int i = 0; i < m_scripts.Menu().Count(); ++i)
-		{
-			if(!m_scripts.Menu().Item(i).isFolder)
-			{
-				if(scripts != NULL) ::EnableMenuItem(scripts, ID_SCRIPT_BASE + m_scripts.Menu().Item(i).commandId, MF_BYCOMMAND | MF_ENABLED);
-			}
-		}
-
 		// check if editing commands can be performed
 
 		CFBEView& view = ActiveView();
@@ -2054,7 +2025,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 	StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
 	CString serializedCommandIds;
 	HMENU mainMenu = m_MenuBar.GetMenu();
-	if(m_scripts.Initialize(_Settings.GetScriptsFolder(), _Settings.GetScriptCommandIds(), serializedCommandIds, GetScriptsMenu(mainMenu),
+	if(m_scripts.Initialize(_Settings.GetScriptsFolder(), _Settings.GetScriptCommandIds(), serializedCommandIds, ::GetSubMenu(mainMenu, 6),
 		FbeLoadRuntimeStringByKey(L"fbe.menu.scripts.empty", L"No scripts"),
 		[this](const CString& path) { ScriptDiscoveryRuntime runtime(this); return runtime.Started() && SUCCEEDED(ScriptLoad(path)) && ScriptFindFunc(L"Run"); },
 		[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
