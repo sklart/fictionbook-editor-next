@@ -85,6 +85,8 @@ var initialWindowWidth=null;
 var initialWindowHeight=null;
 var doResize=false;
 var secondResizeCall=false;
+var scrolling="no";
+var mouseDown=false;
 var nbspRegExp=new RegExp("(&nbsp;| |"+String.fromCharCode(160)+")","g");
 
 document.onselectstart = function() { return false; }
@@ -696,10 +698,18 @@ function makeFilenameForSaving(fileCnt,bookTitle) {
   if (!fso.FolderExists(path)) throw new Error("Выходная папка не существует: "+path);
   var maxNameLength=Math.max(1, 240-path.length-9);
   if (transliteratedName.length>maxNameLength) transliteratedName=transliteratedName.substr(0,maxNameLength);
+  transliteratedName=transliteratedName.replace(/[. ]+$/g,"");
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(transliteratedName)) transliteratedName="_"+transliteratedName;
   var fullFileName=transliteratedName;
   i=0;
   while (fso.FileExists(path+fullFileName+(i==0?"":"_"+addZeros2(i,4)+"_SSASD")+".fb2")) i++;
   return path+fullFileName+(i==0?"":"_"+addZeros2(i,4)+"_SSASD")+".fb2";
+}
+
+function updateFilenamePreview() {
+  var preview=document.getElementById("filenamePreview");
+  if (!preview) return;
+  try { preview.value=makeFilenameForSaving(1,bookTitle); } catch (e) { preview.value=""; }
 }
 
 function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
@@ -1004,15 +1014,15 @@ function saveSectionsAsSeparateDocuments() {
  }
  var myElem5,ps;
  var report={planned:sortedElementArray.length, created:0, skipped:0, errors:0};
- fileCnt=1;
+ var fileCnt=1;
  if (document.getElementById("radio1").checked || document.getElementById("radio2").checked) {
    var wrongTitleTexts=[];
    var titles=xmlDoc.documentElement.selectNodes("//fb:section/fb:title");
    var itIsFirstTitle=true;
-   for (nPtr=0;nPtr<sortedElementArray.length;nPtr++) {
+   for (var nPtr=0;nPtr<sortedElementArray.length;nPtr++) {
      var displayIndex=sortedElementArray[nPtr];
      var sourceIndex=myLinks[displayIndex];
-     myTitle=titles[sourceIndex];
+     var myTitle=titles[sourceIndex];
      ps=myTitle.selectNodes("./fb:p");
      if (ps.length<2) {
        wrongTitleTexts.push(ps.length ? getParagraphText(ps[0]) : "(пустой заголовок)");
@@ -1028,9 +1038,9 @@ function saveSectionsAsSeparateDocuments() {
     return;
    }
  }
- for (nPtr=0;nPtr<sortedElementArray.length;nPtr++) {
+ for (var nPtr=0;nPtr<sortedElementArray.length;nPtr++) {
   //запишем в myElem5 ссылку на заголовок раздела, который (раздел) нужно сохранить как отдельный документ
-  myElem5=myLinks[sortedElementArray[nPtr]];
+  var myElem5=myLinks[sortedElementArray[nPtr]];
   try {
    saveOneSectionAsSeparateDocument(myElem5,fileCnt);
    report.created++;
@@ -1072,7 +1082,7 @@ function saveOuterSectionsAsSeparateDocuments() {
  getTime1();
  var myElem5,ps;
  var report={planned:0, created:0, skipped:0, errors:0};
- fileCnt=1;
+ var fileCnt=1;
  var titles=xmlDoc.documentElement.selectNodes("//fb:section/fb:title");
  if (document.getElementById("radio1").checked || document.getElementById("radio2").checked) {
    var wrongTitleTexts=[];
@@ -1667,7 +1677,8 @@ function applySettings() {
 <div style="margin:0 auto; width:650px;">
   <label>Выходная папка: <input type=text id="outputFolder" style="width:400px;"></label> <input type=button value="Выбрать..." onclick="chooseOutputFolder();"><br>
   <label for="unicodeNames"><input type=checkbox id="unicodeNames"> сохранять названия файлов в Unicode</label>
-  <label>Шаблон: <input type=text id="filenameTemplate" value="{number}_{author}_{title}" style="width:240px;"></label>
+  <label>Шаблон: <input type=text id="filenameTemplate" value="{number}_{author}_{title}" style="width:240px;" onkeyup="updateFilenamePreview();"></label><br>
+  <label>Предпросмотр: <input type=text id="filenamePreview" readonly style="width:460px;"></label>
 </div>
 <br>
 <div style="margin:0 auto; width:600px;">
