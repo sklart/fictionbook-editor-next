@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createFingerprintEntries, fingerprintKey } from "./fingerprint.mjs";
+import { compareBaseline } from "./baseline.mjs";
 
 function entries(source, diagnostics) {
   const filePath = "runtime/test.js";
@@ -16,4 +17,10 @@ const added = entries("var old = missing;\nvar newValue = unknown;\n", [
 ]);
 const baseline = new Set(original.map(fingerprintKey));
 assert.equal(added.filter((item) => !baseline.has(fingerprintKey(item))).length, 1, "Новый diagnostic должен отличаться от baseline.");
+
+const comparison = compareBaseline(added, original);
+assert.equal(comparison.unexpected.length, 1, "Новая диагностика должна блокировать проверку.");
+assert.equal(comparison.stale.length, 0, "Существующая диагностика не должна считаться устаревшей.");
+const fixed = entries("var old = 1;\n", []);
+assert.equal(compareBaseline(fixed, original).stale.length, 1, "Исчезнувшая диагностика должна блокировать проверку до обновления baseline.");
 console.log("ESLint fingerprint regression passed.");

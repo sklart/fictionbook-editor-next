@@ -9,11 +9,13 @@ export default [
       "third_party/**",
       "runtime/HTML/**/jquery*.js",
       "runtime/HTML/**/jquery-*.js",
-      "runtime/HTML/**/jszip*.js"
+      "runtime/HTML/**/jszip*.js",
+      "runtime/**/generated/**",
+      "runtime/**/vendor/**"
     ]
   },
   {
-    files: ["runtime/**/*.js"],
+    files: ["runtime/**/*.js", "runtime/**/*.html"],
     languageOptions: {
       ecmaVersion: 3,
       sourceType: "script",
@@ -24,15 +26,34 @@ export default [
         GetObject: "readonly",
         VBArray: "readonly",
         alert: "readonly",
+        AskYesNo: "readonly",
+        clearInterval: "readonly",
+        clearTimeout: "readonly",
         confirm: "readonly",
         console: "readonly",
         document: "readonly",
         event: "readonly",
         external: "readonly",
+        frames: "readonly",
+        GoTo: "readonly",
+        history: "readonly",
+        Image: "readonly",
+        InflateIt: "readonly",
+        InputBox: "readonly",
         location: "readonly",
+        MsgBox: "readonly",
         navigator: "readonly",
+        opener: "readonly",
+        parent: "readonly",
         prompt: "readonly",
+        screen: "readonly",
+        setInterval: "readonly",
+        setTimeout: "readonly",
         showModalDialog: "readonly",
+        showModelessDialog: "readonly",
+        self: "readonly",
+        top: "readonly",
+        WScript: "readonly",
         window: "readonly"
       }
     },
@@ -42,6 +63,8 @@ export default [
       "no-self-assign": "error",
       "no-unreachable": "error",
       "no-unexpected-multiline": "error",
+      "no-redeclare": ["error", { builtinGlobals: false }],
+      "no-undef": "error",
       "use-isnan": "error",
       "valid-typeof": "error"
     }

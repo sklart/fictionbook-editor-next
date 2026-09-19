@@ -1,0 +1,1 @@
+const unsupported = () => 1;
