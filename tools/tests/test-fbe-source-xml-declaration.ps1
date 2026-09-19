@@ -16,6 +16,7 @@ try {
     function Assert-FbeEncodingRoundTrip([string] $fromEncoding, [string] $targetEncoding) {
         $fixture = Join-Path $directory ("fbe-" + $fromEncoding + '-to-' + $targetEncoding + '.fb2')
         $report = Join-Path $directory ("fbe-" + $fromEncoding + '-to-' + $targetEncoding + '.txt')
+        $reopenReport = Join-Path $directory ("fbe-" + $fromEncoding + '-to-' + $targetEncoding + '-reopen.txt')
         $xml = "<?xml version=`"1.0`" encoding=`"$fromEncoding`"?><FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>Тест</first-name><last-name>Кодировки</last-name></author><book-title>Проверка</book-title><lang>ru</lang></title-info><document-info><id>source-encoding-$fromEncoding-$targetEncoding</id><version>1.0</version></document-info></description><body><section><p>Кириллица после Source</p></section></body></FictionBook>"
         [IO.File]::WriteAllBytes($fixture, [Text.Encoding]::GetEncoding($fromEncoding).GetBytes($xml))
         $previousMode, $previousScenario, $previousTarget = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_TARGET_ENCODING
@@ -23,15 +24,21 @@ try {
             $env:FBE_NEXT_TEST_MODE = '1'
             $env:FBE_NEXT_TEST_SCENARIO = 'source-xml-declaration-encoding-runtime'
             $env:FBE_NEXT_TEST_TARGET_ENCODING = $targetEncoding
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path -Parent $FbeExe) -PassThru
+            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -WorkingDirectory (Split-Path -Parent $FbeExe) -PassThru
             if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил encoding round-trip $fromEncoding -> $targetEncoding." }
             if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { $details = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<report missing>' }; throw "FBE encoding round-trip $fromEncoding -> $targetEncoding failed: exit $($process.ExitCode).`n$details" }
+            $env:FBE_NEXT_TEST_SCENARIO = 'source-xml-declaration-reopen-runtime'
+            $reopened = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reopenReport, $fixture) -WorkingDirectory (Split-Path -Parent $FbeExe) -PassThru
+            if (-not $reopened.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopened.Id -Force; throw "FBE не завершил повторное открытие $fromEncoding -> $targetEncoding." }
+            if ($reopened.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reopenReport)) { $details = if (Test-Path -LiteralPath $reopenReport) { Get-Content -LiteralPath $reopenReport -Raw } else { '<report missing>' }; throw "FBE reopen $fromEncoding -> $targetEncoding failed: exit $($reopened.ExitCode).`n$details" }
         }
         finally {
             $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_TARGET_ENCODING = $previousMode, $previousScenario, $previousTarget
         }
         $rows = @{}; foreach ($line in Get-Content -LiteralPath $report) { $parts = $line -split '=', 2; if ($parts.Count -eq 2) { $rows[$parts[0]] = $parts[1] } }
-        foreach ($key in @('source_edited', 'body', 'saved', 'reopened')) { if ($rows[$key] -ne '1') { throw "FBE encoding round-trip $fromEncoding -> $targetEncoding failed: $key=$($rows[$key])" } }
+        foreach ($key in @('source_edited', 'body', 'saved')) { if ($rows[$key] -ne '1') { throw "FBE encoding round-trip $fromEncoding -> $targetEncoding failed: $key=$($rows[$key])" } }
+        $reopenRows = @{}; foreach ($line in Get-Content -LiteralPath $reopenReport) { $parts = $line -split '=', 2; if ($parts.Count -eq 2) { $reopenRows[$parts[0]] = $parts[1] } }
+        foreach ($key in @('reopened', 'source_declaration')) { if ($reopenRows[$key] -ne '1') { throw "FBE reopen $fromEncoding -> $targetEncoding failed: $key=$($reopenRows[$key])" } }
         $bytes = [IO.File]::ReadAllBytes($fixture)
         $savedXml = [Text.Encoding]::GetEncoding($targetEncoding).GetString($bytes)
         if ($savedXml -notmatch ('^<\?xml\s+[^?]*encoding\s*=\s*["'']' + [regex]::Escape($targetEncoding) + '["''][^?]*\?>')) { throw "Saved $targetEncoding file does not declare its actual encoding." }

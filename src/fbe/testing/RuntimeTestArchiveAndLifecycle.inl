@@ -203,16 +203,37 @@
 		ShowView(BODY);
 		const bool sourceApplied = sourceEdited && !IsSourceActive() &&
 			m_doc->m_encoding.CompareNoCase(targetEncoding) == 0;
-		const CString savedPath(m_doc->m_filename);
-		const bool saved = sourceApplied && m_doc->Save();
-		const FILE_OP_STATUS reloadResult = saved ? LoadFile(savedPath) : FAIL;
-		const bool reopened = reloadResult == OK && m_doc->m_body.Document() != NULL &&
-			m_doc->m_encoding.CompareNoCase(targetEncoding) == 0;
+		DocumentSaveController saveController;
+		const DocumentSaveResult saveResult = sourceApplied
+			? saveController.SaveCurrent(*m_doc, m_document_session, m_document_session.Location())
+			: DocumentSaveResult();
+		const bool saved = saveResult.Succeeded();
+		if(saved) CommitSuccessfulSave();
 		CStringA report;
-		report.Format("source=%d\nsource_edited=%d\nbody=%d\nsaved=%d\nreopened=%d\n", IsSourceActive(), sourceEdited,
-			sourceApplied, saved, reopened);
+		report.Format("source_edited=%d\nbody=%d\nsaved=%d\n", sourceEdited, sourceApplied, saved);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(sourceApplied && saved && reopened ? 0 : 1);
+		::PostQuitMessage(sourceApplied && saved ? 0 : 1);
+		return 0;
+	}
+	if (IsFbeTestScenario(L"source-xml-declaration-reopen-runtime"))
+	{
+		wchar_t requestedEncoding[32] = {};
+		const DWORD requestedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TARGET_ENCODING", requestedEncoding, _countof(requestedEncoding));
+		const CString targetEncoding(requestedLength && requestedLength < _countof(requestedEncoding) ? requestedEncoding : L"");
+		_Settings.SetKeepEncoding(true);
+		ShowView(SOURCE);
+		const sptr_t sourceLength = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> source(static_cast<size_t>(sourceLength) + 1);
+		m_source.SendMessage(SCI_GETTEXT, sourceLength + 1, reinterpret_cast<LPARAM>(source.data()));
+		const CStringA targetUtf8(CW2A(targetEncoding, CP_UTF8));
+		CStringA expectedDeclaration;
+		expectedDeclaration.Format("encoding=\"%s\"", static_cast<LPCSTR>(targetUtf8));
+		const bool reopened = m_doc->m_body.Document() != NULL && m_doc->m_encoding.CompareNoCase(targetEncoding) == 0;
+		const bool sourceDeclaration = reopened && IsSourceActive() && strstr(source.data(), expectedDeclaration) != NULL;
+		CStringA report;
+		report.Format("reopened=%d\nsource_declaration=%d\n", reopened, sourceDeclaration);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(reopened && sourceDeclaration ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
