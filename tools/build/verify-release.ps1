@@ -153,6 +153,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-editor-background-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-archive-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-archive-mru-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-save-as-mru-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-failed-open-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-malformed-source-fallback-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-document-lifecycle-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")

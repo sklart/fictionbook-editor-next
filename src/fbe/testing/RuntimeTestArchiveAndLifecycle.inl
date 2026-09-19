@@ -389,8 +389,8 @@
 		if (length && length < _countof(path)) target = path;
 		const FILE_OP_STATUS first = target.IsEmpty() ? FAIL : SaveFile(true);
 		const FILE_OP_STATUS repeat = first == OK ? SaveFile(true) : FAIL;
-		int targetCount = 0, sourceCount = 0; CString firstItem;
-		for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) { const CString item(m_recentDocuments.List().m_arrDocs[i].szDocName); if (i == 0) firstItem = item; if (item.CompareNoCase(target) == 0) ++targetCount; if (item.CompareNoCase(source) == 0) ++sourceCount; }
+		int targetCount = 0, sourceCount = 0;
+		for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) { const CString item(m_recentDocuments.List().m_arrDocs[i].szDocName); if (item.CompareNoCase(target) == 0) ++targetCount; if (item.CompareNoCase(source) == 0) ++sourceCount; }
 		CString beforeCancel; for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) beforeCancel.AppendFormat(L"%s\n", static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[i].szDocName));
 		::SetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", NULL);
 		const FILE_OP_STATUS cancelled = SaveFile(true);

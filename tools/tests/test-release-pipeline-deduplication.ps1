@@ -57,6 +57,7 @@ foreach ($test in @('test-release-test-catalog.ps1', 'test-fb2-common-boundary.p
 foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-table-production-roundtrip.ps1', 'test-fbe-table-structural-performance.ps1', 'test-fbe-table-failure-safety.ps1', 'test-fbe-spellcheck-local-edit-performance.ps1')) { Require $verify $test 'verify-release FULL contour' }
 Forbid $verify 'QUARANTINED table-toolbar-rendering failure' 'verify-release.ps1'
 Require $verify 'test-nsis-legacy-archhandler-cleanup.ps1' 'verify-release legacy ArchHandler cleanup contract'
+Require $verify 'test-fbe-save-as-mru-runtime.ps1' 'verify-release Save As MRU runtime regression'
 $tableContourStart = $verify.IndexOf('if ($runTables) {')
 $fullContourStart = $verify.IndexOf('if ($FullValidation) {')
 if ($tableContourStart -lt 0 -or $fullContourStart -lt 0) { throw 'verify-release.ps1 must retain explicit table and FULL contours.' }
