@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <HTML>
 <HEAD>
-<TITLE>Save Sections As Separate Documents v6.7 (MSXML6 version) (автор Sclex)</TITLE>
+<TITLE>Save Sections As Separate Documents v6.7 (автор Sclex)</TITLE>
 <HTA:APPLICATION ID="oHTA" icon="SSASD.ico" />
 <META http-equiv="Content-Type" content="text/html; charset=utf-8">
 <META http-equiv="MSThemeCompatible" content="yes">
@@ -90,7 +90,7 @@ var nbspRegExp=new RegExp("(&nbsp;| |"+String.fromCharCode(160)+")","g");
 document.onselectstart = function() { return false; }
 
 function createXmlDocument() {
-  var versions=["Msxml2.DOMDocument.6.0", "Msxml2.DOMDocument.3.0"];
+  var versions=["Msxml2.DOMDocument.6.0"];
   for (var i=0; i<versions.length; i++) {
     try {
       var document1=new ActiveXObject(versions[i]);
@@ -101,7 +101,7 @@ function createXmlDocument() {
     }
     catch (e) {}
   }
-  throw new Error("Не удалось создать MSXML DOMDocument 6.0 или 3.0.");
+  throw new Error("Не удалось создать обязательный MSXML DOMDocument 6.0.");
 }
 
 function configureXmlDocument(document1) {
@@ -126,6 +126,13 @@ function getParseErrorText(document1,path) {
 
 function getParagraphText(paragraph) {
   return paragraph ? String(paragraph.text || "") : "";
+}
+
+function isRecognizedAuthorText(authorText) {
+  var parts=String(authorText || "").match(/([^\s.]+\.?)/g);
+  if (!parts) return false;
+  return (parts.length==3 && (parts[2].slice(-1)!="." || (parts[1].slice(-1)=="." && parts[2].slice(-1)=="."))) ||
+    (parts.length==2 && (parts[1].slice(-1)!="." || parts[1].slice(-1)=="."));
 }
 
 function getXLinkHref(element) {
@@ -331,6 +338,10 @@ function fillInDescription(sectionTitle,xmlDoc) {
 
   var authorArr=authorParagraph.match(/[^,]+/g);
 
+  /* Title metadata is independent from whether an author string is usable. */
+  if (document.getElementById("radio1").checked || document.getElementById("radio2").checked)
+    bookTitle=bookTitleParagraph;
+
   if (document.getElementById("radio3").checked) {
     bookTitle=getParagraphText(titleParagraphs[0]);
   }
@@ -365,13 +376,14 @@ function fillInDescription(sectionTitle,xmlDoc) {
 
   var authorsReplaced=false;
 
-  if (authorArr && (document.getElementById("radio1").checked || document.getElementById("radio2").checked)) {
+  var allAuthorsRecognized=true;
+  if (authorArr) for (var authorIndex=0; authorIndex<authorArr.length; authorIndex++)
+    if (!isRecognizedAuthorText(authorArr[authorIndex])) allAuthorsRecognized=false;
+  if (authorArr && allAuthorsRecognized && (document.getElementById("radio1").checked || document.getElementById("radio2").checked)) {
     for (var j=authorArr.length-1;j>=0;j--) {
       authorFirstName="";
       authorMiddleName="";
       authorLastName="";
-      bookTitle=bookTitleParagraph;
-
       arr1=authorArr[j].match(/([^\s.]+\.?)/g);
       if (!arr1) continue;
       if (arr1.length==3 && arr1[2].slice(-1)!=".") {
@@ -674,7 +686,8 @@ function makeFilenameForSaving(fileCnt,bookTitle) {
     i++;
   }
   if (document.getElementById("unicodeNames").checked) transliteratedName=sourceName;
-  transliteratedName=transliteratedName.replace(/[\\\/:*?"<>|]/g,"_").replace(/_+/g,"_").replace(/^_+|_+$/g,"");
+  transliteratedName=transliteratedName.replace(/[\\\/:*?"<>|\x00-\x1f]/g,"_").replace(/_+/g,"_").replace(/^_+|_+$/g,"").replace(/[. ]+$/g,"");
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(transliteratedName)) transliteratedName="_"+transliteratedName;
   if (transliteratedName=="") transliteratedName="section";
   var path=document.getElementById("outputFolder").value;
   if (path=="") path=openedFileName.replace(/\\[^\\]+$/,"");
