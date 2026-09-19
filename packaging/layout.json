@@ -17,8 +17,6 @@
       { "sourceRoot": "batch", "source": "ExportDOCXBatch.exe", "destination": "ExportDOCXBatch.exe", "kind": "compiledArtifact", "required": true },
       { "sourceRoot": "batch", "source": "ExportEPUBBatch.exe", "destination": "ExportEPUBBatch.exe", "kind": "compiledArtifact", "required": true },
       { "sourceRoot": "batch", "source": "ImportEPUBBatch.exe", "destination": "ImportEPUBBatch.exe", "kind": "compiledArtifact", "required": true },
-      { "sourceRoot": "arch", "source": "ZipHandler.exe", "destination": "Utilities/ArchHandler/ZipHandler.exe", "kind": "compiledArtifact", "required": true },
-      { "sourceRoot": "arch", "source": "RarHandler.exe", "destination": "Utilities/ArchHandler/RarHandler.exe", "kind": "compiledArtifact", "required": true },
       { "sourceRoot": "repository", "source": "custom.dic", "destination": "custom.dic", "kind": "maintainedDefault", "required": true },
       { "sourceRoot": "repository", "source": "languages.txt", "destination": "languages.txt", "kind": "maintainedDefault", "required": true },
       { "sourceRoot": "repository", "source": "root_genres.xml", "destination": "root_genres.xml", "kind": "maintainedDefault", "required": true },

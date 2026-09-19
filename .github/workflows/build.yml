@@ -158,21 +158,11 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build-fbv-verb-mui.ps1 -Configuration Release -PlatformToolset v143
-      - name: Build ArchHandler
-        shell: pwsh
-        run: |
-          ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/build/build-archhandler.ps1 -PlatformToolset v143 -OutputDirectory out/archhandler/Win32/Release
-      - name: Verify ArchHandler PE contract
-        shell: pwsh
-        run: |
-          ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/tests/test-archhandler-pe-contract.ps1 -PlatformToolset v143 -HandlerDirectory out/archhandler/Win32/Release
       - name: Write Runtime build provenance
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/build/build-provenance.ps1 -Action Write -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches -ArchHandlerDirectory out/archhandler/Win32/Release -PlatformToolset v143
+          ./tools/build/build-provenance.ps1 -Action Write -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches -PlatformToolset v143
       - name: Ensure NSIS 3.12
         shell: pwsh
         run: |
@@ -183,7 +173,7 @@ jobs:
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches'; ArchHandlerOutputDirectory = 'out/archhandler/Win32/Release' }
+          $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.FullValidation = $true }
           ./tools/build/verify-release.ps1 @arguments
       - name: Smoke bundled plugin upgrade and uninstall
@@ -192,7 +182,7 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           $testRoot = 'out/tests/bundled-plugin-installer-smoke'
           $repoRoot = (Get-Location).Path
-          ./tools/build/stage-core.ps1 -Configuration Release -OutputDirectory "$testRoot/Core" -EditorRuntimeDirectory out/editor-runtime -BatchOutputDirectory out/target-batches -ArchHandlerOutputDirectory out/archhandler/Win32/Release
+          ./tools/build/stage-core.ps1 -Configuration Release -OutputDirectory "$testRoot/Core" -EditorRuntimeDirectory out/editor-runtime -BatchOutputDirectory out/target-batches
           ./tools/build/stage-integration.ps1 -Configuration Release -OutputDirectory "$testRoot/Integration"
           ./tools/build/prepare-installer.ps1 -CoreDirectory "$testRoot/Core" -IntegrationDirectory "$testRoot/Integration" -OutputDirectory "$testRoot/Input"
           $makensis = ./tools/build/resolve-nsis.ps1
@@ -214,7 +204,6 @@ jobs:
           path: |
             out/Release
             out/editor-runtime
-            out/archhandler
             out/package/shell-build
             out/target-batches
             out/build-provenance

@@ -93,7 +93,7 @@ try {
         if ($entries -contains $forbidden -or ($entries | Where-Object { $_ -like "$forbidden\*" })) { throw "Portable archive contains forbidden payload: $forbidden" }
     }
     if ($entries | Where-Object { $_ -match '\.(pdb|lib|exp|obj)$' }) { throw 'Portable archive contains build artifacts.' }
-    foreach ($name in @('Scintilla.dll', 'Lexilla.dll', 'ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe', 'Utilities\ArchHandler\ZipHandler.exe', 'Utilities\ArchHandler\RarHandler.exe', 'portable.ini')) {
+    foreach ($name in @('Scintilla.dll', 'Lexilla.dll', 'ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe', 'portable.ini')) {
         if ($entries -notcontains $name) { throw "Portable archive is missing release component: $name" }
     }
 }

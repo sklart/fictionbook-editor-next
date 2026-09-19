@@ -4,7 +4,6 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$EditorRuntimeDirectory = '',
     [string]$BatchOutputDirectory = '',
-    [string]$ArchHandlerOutputDirectory = '',
     [string]$ProvenanceDirectory = ''
 )
 
@@ -15,16 +14,15 @@ $layout = Get-FbePackageLayout -RepositoryRoot $repoRoot
 $buildOutput = Join-Path $repoRoot "out\$Configuration"
 $editorRuntime = if ($EditorRuntimeDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EditorRuntimeDirectory) } else { Join-Path $repoRoot 'runtime' }
 $batchOutput = if ($BatchOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory) } else { $buildOutput }
-$archOutput = if ($ArchHandlerOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchHandlerOutputDirectory) } else { Join-Path $repoRoot "out\archhandler\Win32\$Configuration" }
 $stage = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 
-foreach ($path in @($buildOutput, $editorRuntime, $batchOutput, $archOutput)) {
+foreach ($path in @($buildOutput, $editorRuntime, $batchOutput)) {
     if (-not (Test-Path -LiteralPath $path -PathType Container)) { throw "Не найден подготовленный input Core: $path" }
 }
 $commonSource = $buildOutput
 $commonPlugins = Join-Path $commonSource 'Plugins'
 $commonProvenanceArguments = @{ Action = 'Validate'; Kind = 'CommonCore'; Configuration = $Configuration; CommonDirectory = $commonSource }
-$runtimeProvenanceArguments = @{ Action = 'Validate'; Kind = 'Runtime'; Configuration = $Configuration; ProfileDirectory = $editorRuntime; BatchDirectory = $batchOutput; ArchHandlerDirectory = $archOutput }
+$runtimeProvenanceArguments = @{ Action = 'Validate'; Kind = 'Runtime'; Configuration = $Configuration; ProfileDirectory = $editorRuntime; BatchDirectory = $batchOutput }
 if ($ProvenanceDirectory) {
     $commonProvenanceArguments.ProvenanceDirectory = $ProvenanceDirectory
     $runtimeProvenanceArguments.ProvenanceDirectory = $ProvenanceDirectory
@@ -40,7 +38,6 @@ $sourceRoots = @{
     common = $commonSource
     commonPlugins = $commonPlugins
     batch = $batchOutput
-    arch = $archOutput
     repository = $repoRoot
     thirdParty = Join-Path $repoRoot 'third_party'
     lunaSvg = Join-Path $repoRoot 'third_party\lunasvg'

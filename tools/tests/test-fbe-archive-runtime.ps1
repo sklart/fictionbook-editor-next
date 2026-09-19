@@ -60,7 +60,7 @@ try {
     $portableIni = Join-Path (Split-Path $FbeExe) 'portable.ini'; $hadPortableIni = Test-Path -LiteralPath $portableIni; $oldPortableIni = if($hadPortableIni) { Get-Content -LiteralPath $portableIni -Raw } else { $null }
     $portableData = 'ArchiveRuntimeData'; [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=$portableData`r`n", [Text.UTF8Encoding]::new($false)); New-Item -ItemType Directory -Force -Path (Join-Path (Split-Path $FbeExe) $portableData) | Out-Null
     $book = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Runtime</first-name><last-name>Test</last-name></author><book-title>Archive runtime</book-title><lang>en</lang></title-info><document-info><author><nickname>FBE Next</nickname></author><program-used>FBE Next</program-used><date value="2026-09-10">10 September 2026</date><id>11111111-1111-1111-1111-111111111111</id><version>1.0</version></document-info></description><body><section><p>ARCHIVE_RUNTIME_BEFORE</p></section></body></FictionBook>'
-    $zip = Join-Path $root 'single.zip'; $report = Join-Path $root 'single.txt'; New-Zip $zip @{ 'book.fb2'=$book; 'cover.txt'='unchanged' }; $before = Read-Zip $zip
+    $zip = Join-Path $root 'Книга с пробелом.fb2.zip'; $report = Join-Path $root 'single.txt'; New-Zip $zip @{ 'book.fb2'=$book; 'cover.txt'='unchanged' }; $before = Read-Zip $zip
     Invoke-ArchiveFbe $zip $report
     $state = Get-Content -LiteralPath $report -Raw
     foreach($line in @('archive=1','fb2=1','mshtml=1','entry=book.fb2','saved=1')) { if($state -notmatch [regex]::Escape($line)) { throw "ZIP open/save runtime report missing $line" } }
@@ -74,7 +74,7 @@ try {
     $twoPhaseReport = Join-Path $root 'two-phase.txt'; Invoke-TwoPhaseFbe $ordinary $empty $twoPhaseReport
     $twoPhase = Get-Content -LiteralPath $twoPhaseReport -Raw
     foreach($line in @('open_cancelled=1','modified=1','same_document=1','mru_unchanged=1')) { if($twoPhase -notmatch [regex]::Escape($line)) { throw "Two-phase archive open regression: $line" } }
-    $rar5 = Join-Path $root 'fixture-rar5.rar'; Expand-ArchiveFixture (Join-Path $PSScriptRoot 'fixtures\archive-runtime-rar5.b64') $rar5
+    $rar5 = Join-Path $root 'Книга с пробелом.fb2.rar'; Expand-ArchiveFixture (Join-Path $PSScriptRoot 'fixtures\archive-runtime-rar5.b64') $rar5
     $rarReport = Join-Path $root 'rar5.txt'; Invoke-ArchiveFbe $rar5 $rarReport 'book.fb2' 'archive-open-runtime'; $rarState = Get-Content -LiteralPath $rarReport -Raw
     foreach($line in @('archive=1','fb2=1','mshtml=1','rar=1','entry=book.fb2')) { if($rarState -notmatch [regex]::Escape($line)) { throw "RAR5 runtime open regression: $line" } }
     $rarBefore = (Get-FileHash -LiteralPath $rar5 -Algorithm SHA256).Hash; $rarOutput = Join-Path $root 'rar-save-as.fb2'; $rarSaveReport = Join-Path $root 'rar-save-as.txt'

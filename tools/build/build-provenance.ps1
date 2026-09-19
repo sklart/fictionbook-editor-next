@@ -7,7 +7,6 @@ param(
     [string]$CommonDirectory,
     [string]$ProfileDirectory,
     [string]$BatchDirectory,
-    [string]$ArchHandlerDirectory,
     [string]$PlatformToolset,
     [string]$ProvenanceDirectory
 )
@@ -35,7 +34,7 @@ function Get-CommonSourcePath([string]$Directory, [string]$Name) {
 $commonNames = @('FBE.exe','FBV.exe','ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll','html.xsl')
 $pluginNames = @('ExportHTML.dll','ExportDOCX.dll','ExportEPUB.dll','ImportEPUB.dll','ImportEPUBLunaSVG.dll')
 $profileNames = @('Scintilla.dll','Lexilla.dll')
-if ($Kind -ne 'CommonCore') { $profileNames += @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe','Utilities/ArchHandler/ZipHandler.exe','Utilities/ArchHandler/RarHandler.exe') }
+if ($Kind -ne 'CommonCore') { $profileNames += @('ExportDOCXBatch.exe','ExportEPUBBatch.exe','ImportEPUBBatch.exe') }
 
 if ($Action -eq 'Write') {
     $artifacts = [ordered]@{}
@@ -44,9 +43,7 @@ if ($Action -eq 'Write') {
     }
     else {
         foreach ($name in $profileNames) {
-            $source = if ($name -like '*Batch.exe') { Get-SourcePath $BatchDirectory $name }
-                elseif ($name -like 'Utilities/*') { Get-SourcePath $ArchHandlerDirectory (Split-Path $name -Leaf) }
-                else { Get-SourcePath $ProfileDirectory $name }
+            $source = if ($name -like '*Batch.exe') { Get-SourcePath $BatchDirectory $name } else { Get-SourcePath $ProfileDirectory $name }
             $artifacts[$name] = Get-FileDigest $source $name
         }
     }
@@ -65,7 +62,6 @@ foreach ($property in $manifest.artifacts.PSObject.Properties) {
     $name = $property.Name
     $source = if ($Kind -eq 'CommonCore') { Get-CommonSourcePath $CommonDirectory $name }
         elseif ($name -like '*Batch.exe') { Get-SourcePath $BatchDirectory $name }
-        elseif ($name -like 'Utilities/*') { Get-SourcePath $ArchHandlerDirectory (Split-Path $name -Leaf) }
         else { Get-SourcePath $ProfileDirectory $name }
     $actual = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
     if ($actual -ne $property.Value.sha256) {

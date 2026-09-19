@@ -15,8 +15,7 @@ foreach ($entry in @($catalog.tests)) {
 }
 foreach ($selection in @(
         @{ Catalog = (& $catalogTool -AsJson -Contour TABLE | ConvertFrom-Json); ExpectedId = 'release.fbe-table-production-roundtrip' },
-        @{ Catalog = (& $catalogTool -AsJson -Contour FULL | ConvertFrom-Json); ExpectedId = 'release.fbd-production-roundtrip' },
-        @{ Catalog = (& $catalogTool -AsJson -Id release.archhandler-pe-contract | ConvertFrom-Json); ExpectedId = 'release.archhandler-pe-contract' }
+        @{ Catalog = (& $catalogTool -AsJson -Contour FULL | ConvertFrom-Json); ExpectedId = 'release.fbd-production-roundtrip' }
 )) {
     if ($selection.Catalog.tests.id -notcontains $selection.ExpectedId) { throw "Catalog selection omitted $($selection.ExpectedId)." }
 }

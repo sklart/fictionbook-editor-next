@@ -19,7 +19,7 @@ function Get-Component([string]$FileName) {
     if ($FileName -match '^test-fb2') { return 'fb2' }
     if ($FileName -match '^test-(plugin|export|import)') { return 'plugins' }
     if ($FileName -match '^test-(nsis|portable|runtime|language|localization)') { return 'packaging-localization' }
-    if ($FileName -match '^test-(archhandler|scintilla|pcre2)') { return 'native-dependencies' }
+    if ($FileName -match '^test-(scintilla|pcre2)') { return 'native-dependencies' }
     return 'editor'
 }
 

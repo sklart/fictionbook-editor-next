@@ -138,17 +138,10 @@ if (-not $SkipBuild) {
 	}
     & (Join-Path $PSScriptRoot "build.ps1") @buildArguments
 }
-$archHandlerOutputDirectory = Join-Path $repoRoot "out\archhandler\Win32\$Configuration"
-if (-not $SkipBuild) {
-    $archHandlerArguments = @{ OutputDirectory = $archHandlerOutputDirectory }
-    if ($PlatformToolset) { $archHandlerArguments.PlatformToolset = $PlatformToolset }
-    & (Join-Path $PSScriptRoot "build-archhandler.ps1") @archHandlerArguments
-}
-
 if (-not $SkipBuild) {
     & (Join-Path $PSScriptRoot "build-provenance.ps1") -Action Write -Kind Runtime `
         -Configuration $Configuration -ProfileDirectory $editorRuntimeDirectory `
-        -BatchDirectory $batchOutputDirectory -ArchHandlerDirectory $archHandlerOutputDirectory `
+        -BatchDirectory $batchOutputDirectory `
         -PlatformToolset $PlatformToolset
 }
 
@@ -211,7 +204,6 @@ $verifyReleaseArguments = @{
     Configuration = $Configuration
     SkipUpdateManifest = $true
     BatchOutputDirectory = $batchOutputDirectory
-    ArchHandlerOutputDirectory = $archHandlerOutputDirectory
 }
 if ($PlatformToolset) {
     $verifyReleaseArguments.PlatformToolset = $PlatformToolset
@@ -226,7 +218,6 @@ $stageCoreArguments = @{
     Configuration = $Configuration
     EditorRuntimeDirectory = $editorRuntimeDirectory
     BatchOutputDirectory = $batchOutputDirectory
-    ArchHandlerOutputDirectory = $archHandlerOutputDirectory
     OutputDirectory = $coreDir
 }
 & (Join-Path $PSScriptRoot "stage-core.ps1") @stageCoreArguments
@@ -236,13 +227,6 @@ $stageCoreArguments = @{
 & (Join-Path $PSScriptRoot "package-portable.ps1") `
     -CoreDirectory $coreDir `
     -OutputDirectory $portableDir
-foreach ($name in @('ZipHandler.exe', 'RarHandler.exe')) {
-    $builtArtifact = Join-Path $archHandlerOutputDirectory $name
-    $packagedArtifact = Join-Path $portableDir "Utilities\ArchHandler\$name"
-    if ((Get-FileHash -LiteralPath $builtArtifact -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $packagedArtifact -Algorithm SHA256).Hash) {
-        throw "Упакованный ArchHandler не совпадает с проверенным artifact: $name"
-    }
-}
 
 if ((Test-Path -LiteralPath $artifactsDir) -and -not $PreserveArtifacts) {
     try {

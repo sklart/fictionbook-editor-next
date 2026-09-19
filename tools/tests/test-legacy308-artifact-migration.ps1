@@ -32,11 +32,6 @@ foreach ($directory in @($manifest.core.runtimeDirectories)) {
     New-Item -ItemType Directory -Path $path -Force | Out-Null
     [IO.File]::WriteAllText((Join-Path $path '.keep'), 'runtime')
 }
-foreach ($relative in @('Utilities\ArchHandler\ZipHandler.exe', 'Utilities\ArchHandler\RarHandler.exe')) {
-    $path = Join-Path $payload $relative
-    New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-    [IO.File]::WriteAllText($path, $relative)
-}
 New-Item -ItemType Directory -Path $fixture -Force | Out-Null
 $setup = Join-Path $fixture "FictionBookEditorNext-$assetVersion-win32-setup.exe"
 [IO.File]::WriteAllText($setup, 'fixture setup')

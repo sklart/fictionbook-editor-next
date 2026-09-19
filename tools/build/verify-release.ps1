@@ -6,8 +6,6 @@ param(
 
     [string]$BatchOutputDirectory,
 
-    [string]$ArchHandlerOutputDirectory,
-
     [switch]$SkipUpdateManifest,
 
     # Table regressions are intentionally opt-in while portable finalization is
@@ -36,11 +34,6 @@ $batchOutputDir = if ($BatchOutputDirectory) {
 } else {
     $outputDir
 }
-$archHandlerOutputDir = if ($ArchHandlerOutputDirectory) {
-    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchHandlerOutputDirectory)
-} else {
-    Join-Path $repoRoot "out\archhandler\Win32\$Configuration"
-}
 $batchNames = @("ExportDOCXBatch.exe", "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "ExportDOCXBatch.pdb", "ExportEPUBBatch.pdb", "ImportEPUBBatch.pdb")
 $pluginDllNames = @("ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll")
 $pluginSymbolNames = @("ExportHTML.pdb", "ExportDOCX.pdb", "ExportEPUB.pdb", "ImportEPUB.pdb", "ImportEPUBLunaSVG.pdb")
@@ -66,7 +59,7 @@ $runTables = $RunTableTests -or $FullValidation
     -Configuration $Configuration -CommonDirectory $outputDir
 & (Join-Path $PSScriptRoot 'build-provenance.ps1') -Action Validate -Kind Runtime `
     -Configuration $Configuration -ProfileDirectory (Join-Path $repoRoot "out\editor-runtime") `
-    -BatchDirectory $batchOutputDir -ArchHandlerDirectory $archHandlerOutputDir
+    -BatchDirectory $batchOutputDir
 & (Join-Path $repoRoot 'tools\tests\test-development-plugin-layout.ps1') `
     -Configuration $Configuration -OutputDirectory $outputDir -BatchOutputDirectory $batchOutputDir
 & (Join-Path $repoRoot 'tools\tests\test-batch-interactive-launch.ps1')
@@ -249,8 +242,6 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
 & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") @imageImportTestArguments
-& (Join-Path $repoRoot "tools\tests\test-archhandler-reset-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-archhandler-reset-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-check-content-types-base64.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2recode-cp1251.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2recode-cancel.ps1")
@@ -374,12 +365,6 @@ if ($FullValidation) {
     & (Join-Path $repoRoot "tools\tests\test-librusec-genres-portable.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 }
 
-# ArchHandler is part of the single release and is tested from its staged output.
-$archHandlerTestArguments = @{ PlatformToolset = $PlatformToolset }
-$archHandlerTestArguments.HandlerDirectory = $archHandlerOutputDir
-& (Join-Path $repoRoot "tools\tests\test-archhandler-pe-contract.ps1") @archHandlerTestArguments
-& (Join-Path $repoRoot "tools\tests\test-archhandler-argv.ps1") @archHandlerTestArguments
-
 & (Join-Path $repoRoot "tools\tests\test-scintilla.ps1") `
     -EditorRuntimeDirectory (Join-Path $repoRoot "out\editor-runtime")
 
@@ -403,11 +388,6 @@ $editorRuntimeDir = Join-Path $repoRoot "out\editor-runtime"
     -Configuration $Configuration `
     -OutputDirectory $editorRuntimeDir `
     -IncludeNames @("Scintilla.dll", "Lexilla.dll")
-
-& (Join-Path $repoRoot "tools\tests\check-win7-imports.ps1") `
-    -Configuration $Configuration `
-    -OutputDirectory $archHandlerOutputDir `
-    -IncludeNames @("ZipHandler.exe", "RarHandler.exe")
 
 function Test-BinarySecurityFlags {
     param(
