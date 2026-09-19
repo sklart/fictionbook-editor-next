@@ -19,6 +19,7 @@ $machineDir = Join-Path ${env:ProgramFiles(x86)} $product
 $currentKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$product"
 $machineKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$product"
 $portableDir = Join-Path $PSScriptRoot "..\..\out\tests\nsis-lifecycle-portable"
+$shellKeys = @('HKCU:\Software\Classes\FictionBook.2', 'HKCU:\Software\Classes\.fb2', 'HKLM:\Software\Classes\FictionBook.2', 'HKLM:\Software\Classes\.fb2')
 
 function Assert([bool]$Value, [string]$Message) { if (-not $Value) { throw $Message } }
 function Invoke-Setup([string[]]$Arguments, [int[]]$Allowed = @(0)) {
@@ -31,6 +32,10 @@ function Invoke-Uninstall([string]$Directory) {
     Assert (Test-Path -LiteralPath $uninstaller -PathType Leaf) "Missing uninstaller: $uninstaller"
     $p = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru -WindowStyle Hidden
     Assert ($p.ExitCode -eq 0) "uninstall $Directory returned $($p.ExitCode)."
+}
+function Get-RegistryState([string]$Key) {
+    if (-not (Test-Path -LiteralPath $Key)) { return '<absent>' }
+    return (Get-ItemProperty -LiteralPath $Key | Out-String)
 }
 
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -60,16 +65,21 @@ try {
     Assert ((Get-ItemProperty -LiteralPath $machineKey).InstallScope -eq 'allusers') 'All Users installation did not write HKLM scope.'
     Assert (-not (Test-Path -LiteralPath $currentKey)) 'All Users installation wrote HKCU.'
     Invoke-Setup @('/S', '/ALLUSERS')
+    Invoke-Setup @('/S', '/CURRENTUSER') @(183)
+    Assert (-not (Test-Path -LiteralPath $currentDir)) 'Reverse cross-scope conflict created LocalAppData installation.'
+    Assert (-not (Test-Path -LiteralPath $currentKey)) 'Reverse cross-scope conflict created HKCU uninstall state.'
     Invoke-Uninstall $machineDir
     Assert (-not (Test-Path -LiteralPath $machineDir)) 'All Users uninstall left Program Files installation.'
     Assert (-not (Test-Path -LiteralPath $machineKey)) 'All Users uninstall left HKLM record.'
 
     # /D must be final for NSIS. Portable must not create uninstall or shell state.
+    $shellBefore = @{}; foreach ($key in $shellKeys) { $shellBefore[$key] = Get-RegistryState $key }
     Invoke-Setup @('/S', '/PORTABLE', "/D=$portableDir")
     Assert (Test-Path (Join-Path $portableDir 'portable.ini')) 'Portable installation missing portable.ini.'
     Assert (-not (Test-Path (Join-Path $portableDir 'uninst.exe'))) 'Portable installation created uninst.exe.'
     Assert (-not (Test-Path -LiteralPath $currentKey)) 'Portable installation created HKCU uninstall record.'
     Assert (-not (Test-Path -LiteralPath $machineKey)) 'Portable installation created HKLM uninstall record.'
+    foreach ($key in $shellKeys) { Assert ((Get-RegistryState $key) -ceq $shellBefore[$key]) "Portable installation changed shell registration: $key" }
 
     foreach ($invalid in @(@('/S','/CURRENTUSER','/ALLUSERS'), @('/S','/CURRENTUSER','/PORTABLE'), @('/S','/ALLUSERS','/PORTABLE'))) {
         Invoke-Setup $invalid @(87)

@@ -106,6 +106,13 @@ Installer Portable удобен, когда нужно выбрать перен
 обычное удаление не удаляет пользовательские настройки. Uninstall удаляет
 shell/COM registrations только когда они всё ещё указывают на текущую установку.
 
+Перед выпуском обязательно выполнить на чистой Windows VM
+`tools\tests\test-nsis-install-lifecycle-e2e.ps1 -InstallerPath <setup.exe>`
+из elevated PowerShell. Отдельный ручной UAC smoke запускается из обычного
+неповышенного PowerShell: `/S /ALLUSERS` должен запросить повышение и успешно
+установиться; повторный запуск с отменой consent dialog должен вернуть `1223`
+и не оставить файлов в `Program Files (x86)` либо HKLM-записей.
+
 Итоговые артефакты попадают в `out\artifacts`.
 
 ## Что больше не нужно делать вручную

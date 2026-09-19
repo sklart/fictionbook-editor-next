@@ -220,7 +220,10 @@ Function .onInit
     StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
   !endif
   Call ApplyDeploymentCommandLine
-  Call CheckOtherScopeConflict
+  ; GUI checks the conflict after the user has chosen scope.  Silent setup has
+  ; no page-leave callback, so it must fail before elevation or file writes.
+  IfSilent 0 +2
+    Call CheckOtherScopeConflict
   ${If} $DeploymentMode == "portable"
     Call DisablePortableIntegration
   ${EndIf}
