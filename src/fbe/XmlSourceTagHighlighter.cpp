@@ -103,12 +103,17 @@ void XmlSourceTagHighlighter::RefreshDiagnostics(const XmlTagHighlightOptions& o
 
 bool XmlSourceTagHighlighter::GotoMatchingTag()
 {
+	if (!HasMatchingTag()) return false;
 	const XmlTagMatchResult result = Matcher().ResultAt(static_cast<XmlBytePosition>(_pEditView->execute(SCI_GETCURRENTPOS)));
-	if (result.state != XmlTagMatchState::Matched) return false;
 	const XmlBytePosition caret = static_cast<XmlBytePosition>(_pEditView->execute(SCI_GETCURRENTPOS));
 	const XmlBytePosition offset = caret > result.currentNameRange.start ? (std::min)(caret - result.currentNameRange.start, result.matchingNameRange.end - result.matchingNameRange.start) : 0;
 	_pEditView->execute(SCI_GOTOPOS, static_cast<WPARAM>(result.matchingNameRange.start + offset));
 	return true;
+}
+
+bool XmlSourceTagHighlighter::HasMatchingTag()
+{
+	return Matcher().ResultAt(static_cast<XmlBytePosition>(_pEditView->execute(SCI_GETCURRENTPOS))).state == XmlTagMatchState::Matched;
 }
 
 void XmlSourceTagHighlighter::GotoWrongTag()

@@ -213,6 +213,12 @@ bool SourceEditorControl::GotoMatchingTag()
 	return highlighter.GotoMatchingTag();
 }
 
+bool SourceEditorControl::HasMatchingTag()
+{
+	XmlSourceTagHighlighter highlighter(this, &m_tagMatchState);
+	return highlighter.HasMatchingTag();
+}
+
 void SourceEditorControl::GotoWrongTag()
 {
 	XmlSourceTagHighlighter highlighter(this, &m_tagMatchState);

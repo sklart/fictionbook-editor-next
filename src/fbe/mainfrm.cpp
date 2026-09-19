@@ -4875,13 +4875,12 @@ bool CMainFrame::SciUpdateUI(bool gotoTag)
 {
 	UpdateStatusBar();
 	const SourceEditorConfig config = BuildSourceEditorConfig();
-	if (config.tagHighlight || gotoTag)
-	{
-		if (gotoTag) UIEnable(ID_GOTO_MATCHTAG, m_source.GotoMatchingTag());
-		else UIEnable(ID_GOTO_MATCHTAG, m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors }));
-		return true;
+	if (gotoTag) UIEnable(ID_GOTO_MATCHTAG, m_source.GotoMatchingTag());
+	else {
+		m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
+		UIEnable(ID_GOTO_MATCHTAG, m_source.HasMatchingTag());
 	}
-	return false;
+	return true;
 }
 
 void CMainFrame::SciGotoWrongTag()
@@ -5374,7 +5373,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	const SourceEditorConfig config = BuildSourceEditorConfig();
 	m_source.ApplyConfiguration(config);
 	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
-	UIEnable(ID_GOTO_MATCHTAG, config.tagHighlight);
+	UIEnable(ID_GOTO_MATCHTAG, m_source.HasMatchingTag());
 	// Перекраска XML-редактора не должна менять активный режим документа.
 	if(activeView == BODY && m_doc)
 		m_view.ActivateWnd(m_doc->m_body);
@@ -5395,7 +5394,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	const SourceEditorConfig config = BuildSourceEditorConfig();
 	m_source.ApplyConfiguration(config);
 	m_source.UpdateTagHighlight({ config.tagHighlight, config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly, config.tagHighlightAttributes, config.tagHighlightErrors });
-	UIEnable(ID_GOTO_MATCHTAG, config.tagHighlight);
+	UIEnable(ID_GOTO_MATCHTAG, m_source.HasMatchingTag());
 
 	// added by SeNS
 	if (_Settings.GetUseSpellChecker())

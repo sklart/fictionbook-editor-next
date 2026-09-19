@@ -37,6 +37,7 @@ public:
 	void HandleMarginClick(const SCNotification& notification);
 	void HandleModified(const SCNotification& notification);
 	bool UpdateTagHighlight(const XmlTagHighlightOptions& options);
+	bool HasMatchingTag();
 	bool GotoMatchingTag();
 	void GotoWrongTag();
 	SourceEditorControlDiagnostics RunDiagnostics();

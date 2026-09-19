@@ -125,6 +125,7 @@ public:
 	XmlSourceTagHighlighter(CWindow* source, XmlMatchedTagsState* state) : _state(state) { _pEditView = new ScintillaEditView(source); }
 	~XmlSourceTagHighlighter() { delete _pEditView; }
 	bool UpdateHighlight(const XmlTagHighlightOptions& options);
+	bool HasMatchingTag();
 	bool GotoMatchingTag();
 	void GotoWrongTag();
 private:

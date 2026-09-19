@@ -142,20 +142,40 @@ bool VerifyNavigation(HWND editor, XmlSourceTagHighlighter& highlighter, XmlMatc
 	const size_t nested = document.find("<section>", document.find("<section>") + 1) + 1;
 	SendMessage(editor, SCI_GOTOPOS, static_cast<WPARAM>(nested), 0);
 	if (!Check(highlighter.GotoMatchingTag(), "goto matching for nested same-name tag")) return false;
+	XmlTagHighlightOptions noTagIndicators = options;
+	noTagIndicators.enabled = false;
+	SendMessage(editor, SCI_GOTOPOS, static_cast<WPARAM>(opening), 0);
+	if (!Check(!highlighter.UpdateHighlight(noTagIndicators), "disabled matching only clears indicators")) return false;
+	if (!Check(highlighter.GotoMatchingTag(), "goto matching remains available when tag indicators are disabled")) return false;
 	if (!Check(SameCounters(state, cached) && SendMessage(editor, SCI_CANUNDO, 0, 0) == 0,
 		"cached navigation does not read, rebuild or create undo entries")) return false;
 
-	const std::string invalid = "</missing><section><p>text</section></p>";
+	const std::string boundary = "<section attr=\"value\">text</section>";
+	SetDocument(editor, boundary, state);
+	const std::vector<size_t> tagPositions = { 0, 1, boundary.find("section") + 6, boundary.find(' '), boundary.find("attr") + 2, boundary.find('>'), boundary.find("</section>") + 1, boundary.find("</section>") + 3 };
+	for (const size_t position : tagPositions) {
+		SendMessage(editor, SCI_GOTOPOS, static_cast<WPARAM>(position), 0);
+		if (!Check(highlighter.GotoMatchingTag(), "goto matching accepts every tag boundary")) return false;
+	}
+	SendMessage(editor, SCI_GOTOPOS, static_cast<WPARAM>(boundary.find("text")), 0);
+	if (!Check(!highlighter.GotoMatchingTag(), "goto matching is unavailable in ordinary XML text")) return false;
+	SendMessage(editor, SCI_GOTOPOS, static_cast<WPARAM>(boundary.size()), 0);
+	if (!Check(!highlighter.GotoMatchingTag(), "goto matching is unavailable after the final tag")) return false;
+
+	const std::string invalid = "</missing><root><section><p>text</section></p></root>";
 	SetDocument(editor, invalid, state);
 	SendMessage(editor, SCI_GOTOPOS, 0, 0);
 	highlighter.UpdateHighlight(options);
 	const CounterSnapshot invalidCached = Snapshot(state);
+	const std::vector<XmlTagMatchResult>& diagnostics = state.cachedMatcher->Diagnostics();
+	if (!Check(diagnostics.size() == 5, "wrong-tag fixture exposes every structural error")) return false;
+	for (size_t i = 1; i < diagnostics.size(); ++i) {
+		highlighter.GotoWrongTag();
+		if (!Check(SendMessage(editor, SCI_GETCURRENTPOS, 0, 0) == static_cast<LRESULT>(diagnostics[i].currentTagRange.start), "goto wrong tag follows every diagnostic in document order")) return false;
+	}
 	highlighter.GotoWrongTag();
-	if (!Check(SendMessage(editor, SCI_GETCURRENTPOS, 0, 0) > 0, "goto wrong tag advances to the next diagnostic")) return false;
-	SendMessage(editor, SCI_GOTOPOS, static_cast<WPARAM>(invalid.size()), 0);
-	highlighter.GotoWrongTag();
-	if (!Check(SendMessage(editor, SCI_GETCURRENTPOS, 0, 0) == 0, "goto wrong tag wraps around")) return false;
-	return Check(SameCounters(state, invalidCached), "wrong-tag navigation reuses the cached matcher");
+	if (!Check(SendMessage(editor, SCI_GETCURRENTPOS, 0, 0) == static_cast<LRESULT>(diagnostics[0].currentTagRange.start), "goto wrong tag wraps around to the first diagnostic")) return false;
+	return Check(SameCounters(state, invalidCached) && SendMessage(editor, SCI_CANUNDO, 0, 0) == 0, "wrong-tag navigation reuses the cached matcher without undo entries");
 }
 
 } // namespace
