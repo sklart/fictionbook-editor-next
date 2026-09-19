@@ -189,6 +189,7 @@ Var DeploymentModePortableRadio
 Var InstallScopeCurrentRadio
 Var InstallScopeAllUsersRadio
 Var ExistingMachineInstall
+Var DetectedInstallScope
 Var UninstallUserData
 Var UninstallUserDataCheckbox
 Var CommandLineCurrentUser
@@ -306,6 +307,7 @@ FunctionEnd
 Function DetectExistingInstallScope
   ReadRegStr $0 HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"
   ${If} $0 != ""
+    StrCpy $DetectedInstallScope "allusers"
     StrCpy $InstallScope "allusers"
     SetShellVarContext all
     StrCpy $INSTDIR "$0"
@@ -313,6 +315,7 @@ Function DetectExistingInstallScope
   ${EndIf}
   ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "InstallLocation"
   ${If} $0 != ""
+    StrCpy $DetectedInstallScope "current"
     StrCpy $InstallScope "current"
     SetShellVarContext current
     StrCpy $INSTDIR "$0"
@@ -418,11 +421,15 @@ Function InstallScopePageLeave
   ${If} $0 == ${BST_CHECKED}
     StrCpy $InstallScope "allusers"
     SetShellVarContext all
-    StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
+    ${If} $DetectedInstallScope != "allusers"
+      StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
+    ${EndIf}
   ${Else}
     StrCpy $InstallScope "current"
     SetShellVarContext current
-    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+    ${If} $DetectedInstallScope != "current"
+      StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+    ${EndIf}
   ${EndIf}
   Call CheckOtherScopeConflict
 FunctionEnd

@@ -19,7 +19,7 @@ $machineDir = Join-Path ${env:ProgramFiles(x86)} $product
 $currentKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$product"
 $machineKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$product"
 $portableDir = Join-Path $PSScriptRoot "..\..\out\tests\nsis-lifecycle-portable"
-$shellKeys = @('HKCU:\Software\Classes\FictionBook.2', 'HKCU:\Software\Classes\.fb2', 'HKLM:\Software\Classes\FictionBook.2', 'HKLM:\Software\Classes\.fb2', 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PropertySystem\PropertyHandlers\.fb2', 'HKLM:\Software\Classes\CLSID\{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}', 'HKLM:\Software\Classes\CLSID\{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}\InprocServer32', 'HKLM:\Software\Classes\.fb2\ShellEx')
+$shellKeys = @('HKCU:\Software\Classes\FictionBook.2', 'HKCU:\Software\Classes\.fb2', 'HKLM:\Software\Classes\FictionBook.2', 'HKLM:\Software\Classes\.fb2', 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PropertySystem\PropertyHandlers\.fb2', 'HKLM:\Software\Classes\CLSID\{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}', 'HKLM:\Software\Classes\CLSID\{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}\InprocServer32', 'HKLM:\Software\Classes\CLSID\{4F99D1F0-5D76-4B9C-9D3D-9E6B8B4C7E31}', 'HKLM:\Software\Classes\CLSID\{4F99D1F0-5D76-4B9C-9D3D-9E6B8B4C7E31}\InprocServer32', 'HKLM:\Software\Classes\.fb2\ShellEx', 'HKLM:\Software\Classes\FictionBook.2\ShellEx')
 $shellFiles = @((Join-Path $env:ProgramData 'FictionBook Editor Next\Shell\FBShell.dll'), (Join-Path $env:ProgramData 'FictionBook Editor Next\Shell\FBShell64.dll'), (Join-Path $env:ProgramData 'FictionBook Editor Next\Shell\FBE.Sequence.propdesc'))
 
 function Assert([bool]$Value, [string]$Message) { if (-not $Value) { throw $Message } }
