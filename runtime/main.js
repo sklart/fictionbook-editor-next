@@ -2473,6 +2473,7 @@ function GetDesc(doc,ann,hist)
 function GetBinaries(doc)
 {
  var bo=document.all.binobj.getElementsByTagName("DIV");
+ var progressStep=25;
  for(var i=0; i<bo.length; i++)
  {
   var newb=doc.createNode(1,"binary",fbNS);
@@ -2485,6 +2486,8 @@ function GetBinaries(doc)
   newb.dataType=undefined;
   Indent(doc.documentElement,1);
   doc.documentElement.appendChild(newb);
+  if(bo.length>=50 && ((i+1)%progressStep==0 || i+1==bo.length))
+   window.external.SetStatusBarText("Processing images: "+(i+1)+" / "+bo.length);
  }
 }
 

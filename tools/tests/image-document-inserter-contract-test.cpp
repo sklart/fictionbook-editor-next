@@ -58,6 +58,13 @@ static void CheckInvalid(const IDispatchPtr &script, const BYTE *bytes,
 }
 
 int main() {
+
+  Require(FbeBinary::NormalizeXmlId(L"cover-part-01.jpg") == L"cover-part-01.jpg", "valid dash ID must not change");
+  Require(FbeBinary::NormalizeXmlId(L"_image.jpg") == L"_image.jpg", "valid underscore ID must not change");
+  Require(FbeBinary::NormalizeXmlId(L"01-image.jpg") == L"_01-image.jpg", "numeric XML ID start must be normalized");
+  Require(FbeBinary::NormalizeXmlId(L"image 01.jpg") == L"image_01.jpg", "space must be normalized");
+  Require(FbeBinary::NormalizeXmlId(L"image 01.jpg") == FbeBinary::NormalizeXmlId(L"image@01.jpg"), "two invalid names must expose the same normalized ID to collision handling");
+  Require(FbeBinary::NormalizeXmlId(L"\u043e\u0431\u043b\u043e\u0436\u043a\u0430.jpg") == L"\u043e\u0431\u043b\u043e\u0436\u043a\u0430.jpg", "valid Unicode ID must not be transliterated");
   const BYTE byte = 0;
   CheckInvalid(IDispatchPtr(), &byte, 1, "null script");
   CheckInvalid(IDispatchPtr(new TestDispatch()), NULL, 1, "null bytes");

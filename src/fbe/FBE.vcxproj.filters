@@ -386,6 +386,7 @@
     <ClInclude Include="FBDoc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BinaryId.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="FBEview.h">
       <Filter>Header Files</Filter>
     </ClInclude>

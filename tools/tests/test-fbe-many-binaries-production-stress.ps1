@@ -5,7 +5,7 @@ Exercises production Save -> Reopen -> Save with many compact FB2 binaries.
 [CmdletBinding()]
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
-    [int]$BinaryCount = 500,
+    [int[]]$BinaryCounts = @(50, 100, 500),
     [int]$BinarySizeKiB = 64,
     [int]$TimeoutSeconds = 600
 )
@@ -13,7 +13,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-if ($BinaryCount -lt 1 -or $BinarySizeKiB -lt 1) { throw 'Количество и размер binary должны быть положительными.' }
+if (($BinaryCounts | Where-Object { $_ -lt 1 }).Count -ne 0 -or $BinarySizeKiB -lt 1) { throw 'Количество и размер binary должны быть положительными.' }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $schemaPath = Join-Path $repoRoot 'runtime\FictionBook.xsd'
 
@@ -59,33 +59,51 @@ function Invoke-FbeMeasured([string[]]$Arguments, [string]$Phase) {
     [pscustomobject]@{ Phase = $Phase; ElapsedMs = $watch.ElapsedMilliseconds; PeakPrivateBytes = $peakPrivate; PeakWorkingSetBytes = $peakWorkingSet }
 }
 
+function Write-SoftPerformanceGuardrail($Measurements, [int]$BinaryCount) {
+    foreach ($measurement in $Measurements) {
+        if ($measurement.ElapsedMs -le 0 -or $measurement.PeakPrivateBytes -le 0 -or $measurement.PeakWorkingSetBytes -le 0) {
+            throw "Не удалось собрать метрики $($measurement.Phase) для $BinaryCount binary."
+        }
+    }
+
+    # This is intentionally diagnostic rather than a CI limit: elapsed time and
+    # peak memory vary substantially between the supported Windows versions.
+    $slowest = @($Measurements | Measure-Object -Property ElapsedMs -Maximum).Maximum
+    if ($slowest -gt 120000) {
+        Write-Warning "Мягкий performance guardrail: операция с $BinaryCount binary заняла $slowest ms."
+    }
+}
+
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-many-binaries-' + [guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $directory)
 try {
     $previousMode = $env:FBE_NEXT_TEST_MODE; $previousScenario = $env:FBE_NEXT_TEST_SCENARIO
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'binary-roundtrip'
-    $records = @(); $markup = [Text.StringBuilder]::new(); $random = [Random]::new(24024)
-    for ($index = 0; $index -lt $BinaryCount; ++$index) {
-        $bytes = [byte[]]::new($BinarySizeKiB * 1KB); $random.NextBytes($bytes)
-        $id = 'stress-{0:D3}' -f $index; $contentType = if (($index % 2) -eq 0) { 'application/octet-stream' } else { 'application/x-fbe-stress' }
-        $records += [pscustomobject]@{ Id = $id; ContentType = $contentType; Length = $bytes.Length; Hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)) }
-        [void]$markup.AppendFormat('<binary id="{0}" content-type="{1}">{2}</binary>', $id, $contentType, [Convert]::ToBase64String($bytes))
+    foreach ($binaryCount in $BinaryCounts) {
+        $records = @(); $markup = [Text.StringBuilder]::new(); $random = [Random]::new(24024)
+        for ($index = 0; $index -lt $binaryCount; ++$index) {
+            $bytes = [byte[]]::new($BinarySizeKiB * 1KB); $random.NextBytes($bytes)
+            $id = 'stress-{0:D3}' -f $index; $contentType = if (($index % 2) -eq 0) { 'application/octet-stream' } else { 'application/x-fbe-stress' }
+            $records += [pscustomobject]@{ Id = $id; ContentType = $contentType; Length = $bytes.Length; Hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)) }
+            [void]$markup.AppendFormat('<binary id="{0}" content-type="{1}">{2}</binary>', $id, $contentType, [Convert]::ToBase64String($bytes))
+        }
+        $fixture = Join-Path $directory ("many-binaries-{0}.fb2" -f $binaryCount)
+        $xml = "<?xml version=`"1.0`" encoding=`"utf-8`"?><FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>many binaries</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>many-binaries</id><version>1.0</version></document-info></description><body><section><p>Stress fixture.</p></section></body>$markup</FictionBook>"
+        [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
+        $measurements = @()
+        $saveReport = Join-Path $directory ("save-{0}.tsv" -f $binaryCount); $reopenReport = Join-Path $directory ("reopen-{0}.tsv" -f $binaryCount); $resaveReport = Join-Path $directory ("resave-{0}.tsv" -f $binaryCount)
+        $measurements += Invoke-FbeMeasured @('-b', $saveReport, $fixture) 'Save'
+        if (-not (Test-Path -LiteralPath $saveReport)) { throw 'FBE не записал Save report.' }
+        Assert-ManyBinaries $fixture $records
+        $measurements += Invoke-FbeMeasured @('-b', $reopenReport, $fixture) 'Reopen'
+        if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал Reopen report.' }
+        $measurements += Invoke-FbeMeasured @('-b', $resaveReport, $fixture) 'Save #2'
+        if (-not (Test-Path -LiteralPath $resaveReport)) { throw 'FBE не записал Save #2 report.' }
+        Assert-ManyBinaries $fixture $records
+        Write-SoftPerformanceGuardrail $measurements $binaryCount
+        $measurements | Format-Table Phase,ElapsedMs,PeakPrivateBytes,PeakWorkingSetBytes -AutoSize | Out-Host
+        Write-Host "Many-binary production Save -> Reopen -> Save stress passed ($binaryCount x $BinarySizeKiB KiB)."
     }
-    $fixture = Join-Path $directory 'many-binaries.fb2'
-    $xml = "<?xml version=`"1.0`" encoding=`"utf-8`"?><FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>many binaries</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>many-binaries</id><version>1.0</version></document-info></description><body><section><p>Stress fixture.</p></section></body>$markup</FictionBook>"
-    [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
-    $measurements = @()
-    $saveReport = Join-Path $directory 'save.tsv'; $reopenReport = Join-Path $directory 'reopen.tsv'; $resaveReport = Join-Path $directory 'resave.tsv'
-    $measurements += Invoke-FbeMeasured @('-b', $saveReport, $fixture) 'Save'
-    if (-not (Test-Path -LiteralPath $saveReport)) { throw 'FBE не записал Save report.' }
-    Assert-ManyBinaries $fixture $records
-    $measurements += Invoke-FbeMeasured @('-b', $reopenReport, $fixture) 'Reopen'
-    if (-not (Test-Path -LiteralPath $reopenReport)) { throw 'FBE не записал Reopen report.' }
-    $measurements += Invoke-FbeMeasured @('-b', $resaveReport, $fixture) 'Save #2'
-    if (-not (Test-Path -LiteralPath $resaveReport)) { throw 'FBE не записал Save #2 report.' }
-    Assert-ManyBinaries $fixture $records
-    $measurements | Format-Table Phase,ElapsedMs,PeakPrivateBytes,PeakWorkingSetBytes -AutoSize | Out-Host
-    Write-Host "Many-binary production Save -> Reopen -> Save stress passed ($BinaryCount x $BinarySizeKiB KiB)."
 }
 finally {
     if ($null -eq $previousMode) { Remove-Item Env:FBE_NEXT_TEST_MODE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TEST_MODE = $previousMode }

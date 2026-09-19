@@ -529,6 +529,7 @@ gdiplus.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;libwebp.li
     <ClInclude Include="FindResultsPane.h" />
     <ClInclude Include="GLLogo.h" />
     <ClInclude Include="ImageImport.h" />
+    <ClInclude Include="BinaryId.h" />
     <ClInclude Include="image\ImageDocumentInserter.h" />
 	<ClInclude Include="dom\SelectionRangeMapper.h" />
 	<ClInclude Include="search\DesignSearchController.h" />

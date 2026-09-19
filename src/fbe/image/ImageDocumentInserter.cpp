@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ImageDocumentInserter.h"
+#include "../BinaryId.h"
 #include "../utils/utils.h"
 namespace FbeImage {
 static HRESULT Finish(ImageInsertionResult *out, HRESULT result,
@@ -13,21 +14,7 @@ static HRESULT Finish(ImageInsertionResult *out, HRESULT result,
 }
 
 static BSTR MakeId(const CString &name) {
-  CString input = U::Transliterate(name), id;
-  int start = input.ReverseFind(_T('\\'));
-  start = start < 0 ? 0 : start + 1;
-  for (int i = start; i < input.GetLength(); ++i) {
-    TCHAR c = input[i];
-    if ((c >= _T('0') && c <= _T('9')) || (c >= _T('A') && c <= _T('Z')) ||
-        (c >= _T('a') && c <= _T('z') || c == _T('_') || c == _T('-') ||
-         c == _T('.')))
-      id.AppendChar(c);
-  }
-  if (!id.IsEmpty() &&
-      !((id[0] >= _T('A') && id[0] <= _T('Z')) ||
-        (id[0] >= _T('a') && id[0] <= _T('z')) || id[0] == _T('_')))
-    id.Insert(0, _T('_'));
-  return id.AllocSysString();
+  return FbeBinary::NormalizeXmlId(name).AllocSysString();
 }
 HRESULT AddImportedBinary(const IDispatchPtr &script, const BYTE *bytes,
                           size_t size, const CString &name, const CString &mime,

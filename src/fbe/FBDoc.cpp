@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "ImageImport.h"
+#include "BinaryId.h"
 #include "FictionBookFileType.h"
 #include "RuntimeLocalization.h"
 #include "resource.h"
@@ -979,10 +980,9 @@ static void Indent(MSXML2::IXMLDOMNode *node, MSXML2::IXMLDOMDocument2 *xml, int
 		node->raw_appendChild(text, NULL);
 }
 
-// MSXML форматирует значение узла bin.base64 переводами строк. Для FB2 это
-// допустимо, но заметно раздувает книги с большим количеством иллюстраций.
-// После получения двоичных данных из редактора сохраняем тот же base64 как
-// обычный текст без разделяющих пробельных символов.
+// MSXML formats a bin.base64 nodeTypedValue with line breaks. GetBinaries has
+// already converted the editor value to bytes, so remove only that formatting:
+// do not run a second MSXML base64 decode/encode pass for every binary.
 static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 {
 	MSXML2::IXMLDOMNodeListPtr binaries = document->selectNodes(
@@ -990,42 +990,32 @@ static void CompactBinaryTextContent(MSXML2::IXMLDOMDocument2Ptr document)
 	if (binaries == NULL)
 		return;
 
-	const long count = binaries->length;
-	for (long index = 0; index < count; ++index)
+	for (long index = 0; index < binaries->length; ++index)
 	{
 		MSXML2::IXMLDOMNodePtr binary = binaries->item[index];
 		if (binary == NULL)
 			continue;
 
-		MSXML2::IXMLDOMElementPtr binaryElement(binary);
-		if (binaryElement != NULL)
-			binaryElement->PutdataType(_bstr_t(L"bin.base64"));
 		_bstr_t encoded(binary->Gettext());
-		const CString source((const wchar_t*)encoded);
-		CString compact;
-		compact.Preallocate(source.GetLength());
-		for (int character = 0; character < source.GetLength(); ++character)
+		const int length = static_cast<int>(encoded.length());
+		if (length == 0)
+			continue;
+
+		// Compact one CString in place. The old path first copied encoded to a
+		// source CString and then allocated another complete compact CString.
+		CString compact((const wchar_t*)encoded);
+		wchar_t* buffer = compact.GetBuffer();
+		int output = 0;
+		for (int input = 0; input < length; ++input)
 		{
-			const wchar_t value = source[character];
+			const wchar_t value = buffer[input];
 			if (value != L' ' && value != L'\t' && value != L'\r' && value != L'\n')
-				compact.AppendChar(value);
+				buffer[output++] = value;
 		}
+		compact.ReleaseBuffer(output);
+		if (output == length)
+			continue;
 
-		// dataType is a temporary MSXML conversion aid.  Leaving it on the
-		// element can make MSXML serialize dt:dt and its datatype namespace,
-		// neither of which belongs in an FB2 document.
-		if (binaryElement != NULL)
-		{
-			// PutdataType is imported as a BSTR setter.  MSXML6 rejects a null
-			// BSTR with E_INVALIDARG; an empty BSTR clears the temporary type.
-			binaryElement->PutdataType(_bstr_t(L""));
-		}
-
-		// GetBinaries уже создаёт обычный текстовый узел Base64. Повторное
-		// назначение dataType на элементе <binary> несовместимо с частью
-		// версий MSXML6 и возвращает E_INVALIDARG. Заменяем дочерний текстовый
-		// узел обычным способом DOM: так Base64 остаётся компактным и не
-		// ломает переход редактора в режим исходного кода.
 		MSXML2::IXMLDOMNodePtr child = binary->firstChild;
 		while (child != NULL)
 		{
@@ -1625,6 +1615,9 @@ static bool ReportFbdStructureValidationFailure(HWND frame, const CString& messa
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
 	FictionBookFileType targetType) {
+	// GetBinaries converts every editor base64data value to bytes. MSXML formats
+	// the resulting bin.base64 text, so saving removes only that whitespace in
+	// place instead of converting every binary through MSXML a second time.
 	const bool profileTableSerialization = StartupTrace::Enabled();
 	const ULONGLONG profileStarted = profileTableSerialization ? ::GetTickCount64() : 0;
 	auto markTableSerializationPhase = [&](const wchar_t* phase)
@@ -1852,11 +1845,9 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   CheckError(body.Invoke1(L"GetBinaries",&args[2]));
   markTableSerializationPhase(L"get-binaries-complete");
 
-	// Уплотнение base64 нужно только для записи файла. Переход в Source,
-	// экспорт и скриптовый API должны получать DOM без этой необязательной
-	// операции, чтобы вложение не могло сорвать работу редактора.
 	if (compactBinaries)
 		CompactBinaryTextContent(ndoc);
+
 	markTableSerializationPhase(L"complete");
 
   Indent(root,ndoc,0);
@@ -2303,30 +2294,7 @@ void  Doc::BinIDsToComboBox(CComboBox& box) {
 }
 
 BSTR Doc::PrepareDefaultId(const CString& filename){
-
-  CString _filename = U::Transliterate(filename);
-  // prepare a default id
-  int cp = _filename.ReverseFind(_T('\\'));
-  if (cp < 0)
-    cp = 0;
-  else
-    ++cp;
-  CString   newid;
-  while (cp<_filename.GetLength()) {
-    TCHAR   c=_filename[cp];
-    if ((c>=_T('0') && c<=_T('9')) ||
-	(c>=_T('A') && c<=_T('Z')) ||
-	(c>=_T('a') && c<=_T('z')) ||
-	c==_T('_') || c==_T('-') || c==_T('.'))
-      newid.AppendChar(c);
-    ++cp;
-  }
-  if (!newid.IsEmpty() && !(
-    (newid[0]>=_T('A') && newid[0]<=_T('Z')) ||
-    (newid[0]>=_T('a') && newid[0]<=_T('z')) ||
-    newid[0]==_T('_')))
-    newid.Insert(0,_T('_'));
-  return newid.AllocSysString();
+  return FbeBinary::NormalizeXmlId(filename).AllocSysString();
  }
 
 // binaries

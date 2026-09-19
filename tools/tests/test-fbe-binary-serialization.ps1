@@ -13,17 +13,17 @@ function Assert-True {
 
 $docSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\FBDoc.cpp') -Raw
 $insertSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\image\ImageDocumentInserter.cpp') -Raw
+$mainJsSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'runtime\main.js') -Raw
 
 Assert-True ($docSource -match 'CompactBinaryTextContent') 'Не найдено уплотнение base64 перед сохранением FB2.'
-Assert-True ($docSource -match 'PutdataType.*bin\.base64') 'Перед уплотнением binary должен декодироваться штатным MSXML.'
-Assert-True ($docSource -match 'compact\.Preallocate' -and $docSource -match 'compact\.AppendChar') 'Уплотнение Base64 должно выполняться одним линейным проходом.'
-Assert-True ($docSource -notmatch 'compact\.Remove') 'Уплотнение Base64 не должно выполнять последовательные CString::Remove.'
-Assert-True ($docSource.Contains('PutdataType(_bstr_t(L""))')) 'Production-код обязан снять временный MSXML dataType перед сериализацией.'
-Assert-True ($docSource -match 'createTextNode') 'Для compact base64 должен создаваться текстовый DOM-узел.'
-Assert-True ($docSource -notmatch 'binary->Puttext') 'Для элемента binary нельзя использовать put_text: MSXML6 возвращает E_INVALIDARG.'
 Assert-True ($docSource -match 'if \(compactBinaries\)') 'Уплотнение binary должно выполняться только при сохранении файла.'
-Assert-True ($docSource -match "c==_T\('-'\)") 'Doc::PrepareDefaultId должен сохранять допустимое тире в ID.'
-Assert-True ($insertSource -match "c == _T\('-'\)") 'ImageDocumentInserter::MakeId должен сохранять допустимое тире в ID.'
+Assert-True ($docSource -match 'compact\.GetBuffer\(\)' -and $docSource -match 'compact\.ReleaseBuffer\(output\)') 'Уплотнение Base64 должно выполняться в одном CString in-place.'
+Assert-True ($docSource -notmatch 'PutdataType.*bin\.base64') 'Повторный MSXML decode/encode binary при уплотнении не нужен.'
+Assert-True ($docSource -notmatch 'const CString source') 'Уплотнение не должно создавать отдельную копию исходной Base64-строки.'
+Assert-True ($mainJsSource -match '(?s)newb\.dataType="bin\.base64";.*?newb\.nodeTypedValue=bo\[i\]\.base64data;.*?newb\.dataType=undefined') 'GetBinaries должен сам формировать compact Base64 через MSXML до сохранения.'
+$binaryIdHeader = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\fbe\BinaryId.h') -Raw
+Assert-True ($docSource -match 'FbeBinary::NormalizeXmlId' -and $insertSource -match 'FbeBinary::NormalizeXmlId') 'Генерация binary ID должна использовать общий helper.'
+Assert-True ($binaryIdHeader -match 'IsCharAlphaW' -and $binaryIdHeader -notmatch 'Transliterate') 'Общий helper должен сохранять допустимые Unicode XML ID без транслитерации.'
 
 $document = New-Object -ComObject Msxml2.DOMDocument.6.0
 $document.async = $false
@@ -58,4 +58,4 @@ for ($index = 0; $index -lt $original.Length; ++$index) {
     Assert-True ($roundTrip[$index] -eq $original[$index]) "После уплотнения изменился байт $index."
 }
 
-Write-Host 'Проверка компактной сериализации binary и сохранения тире в ID пройдена.'
+Write-Host 'Проверка компактной сериализации binary и общего Unicode-aware генератора ID пройдена.'
