@@ -220,6 +220,9 @@ Function .onInit
     StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
   !endif
   Call ApplyDeploymentCommandLine
+  ${If} $DeploymentMode == "portable"
+    Call DisablePortableIntegration
+  ${EndIf}
   !ifdef FBE_DEPLOYMENT_TEST_ROOT
     StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
   !endif
@@ -312,6 +315,7 @@ Function EnsureAllUsersElevation
   ${EndIf}
   Quit
 FunctionEnd
+
 Function .OnInstFailed
 FunctionEnd
  
@@ -349,6 +353,7 @@ Function DeploymentModePageLeave
     StrCpy $InstallScope "current"
     SetShellVarContext current
     StrCpy $INSTDIR "$EXEDIR\${PRODUCT_NAME} Portable"
+    Call DisablePortableIntegration
   ${Else}
     StrCpy $DeploymentMode "installed"
   ${EndIf}
@@ -867,6 +872,8 @@ Section "Deployment scope probe"
   SetErrorLevel 0
   Quit
 SectionEnd
+Function DisablePortableIntegration
+FunctionEnd
 !else
 Section !$(Main) MainSection_id
   SectionIn RO
@@ -1133,7 +1140,6 @@ SectionEnd
 
 SectionGroupEnd
 
-
 Function ComponentsPageLeave
   Call EnsureAllUsersElevation
 
@@ -1337,6 +1343,24 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_cs_CZ} $(DESC_LanguagePack)
   !insertmacro MUI_DESCRIPTION_TEXT ${LanguagePack_bg_BG} $(DESC_LanguagePack)
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+Function DisablePortableIntegration
+  ; Hiding the Components and Start Menu pages is not enough: NSIS still runs
+  ; selected sections in silent mode. A portable copy must never create shell
+  ; registration or shortcuts.
+  !ifdef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+    Return
+  !else
+  SectionSetFlags ${System_Integration_id} 0
+  SectionSetFlags ${FB2_File_Association_id} 0
+  SectionSetFlags ${FBD_File_Association_id} 0
+  SectionSetFlags ${FB2_Validate_Command_id} 0
+  SectionSetFlags ${FB2_Explorer_Properties_id} 0
+  SectionSetFlags ${ShCutGroup_id} 0
+  SectionSetFlags ${Start_Menu_ShortCuts_id} 0
+  SectionSetFlags ${Desktop_ShortCut_id} 0
+  !endif
+FunctionEnd
 
 Function un.DeleteShortcuts
   !insertmacro MUI_STARTMENU_GETFOLDER Application $ICONS_GROUP
