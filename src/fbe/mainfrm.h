@@ -654,8 +654,17 @@ public:
     return 0;
   }
   LRESULT OnDropFiles(UINT, WPARAM, LPARAM, BOOL&);
-  LRESULT OnSetStatusText(UINT, WPARAM, LPARAM lParam, BOOL&) {
-    m_status_state.QueueMessage((const TCHAR *)lParam);
+  LRESULT OnSetStatusText(UINT, WPARAM wParam, LPARAM lParam, BOOL&) {
+    const CString text((const TCHAR *)lParam);
+    if (wParam == AU::StatusTextImmediate) {
+      m_status_state.SetTransient(text, ::GetTickCount());
+      RefreshStatusMainPane();
+      // UpdateWindow delivers only the pending WM_PAINT for the status bar;
+      // it cannot pump commands or re-enter serialization.
+      if (m_status.IsWindowVisible()) ::UpdateWindow(m_status);
+    } else {
+      m_status_state.QueueMessage(text);
+    }
     return 0;
   }
 

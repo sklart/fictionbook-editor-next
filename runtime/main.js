@@ -2474,6 +2474,7 @@ function GetBinaries(doc)
 {
  var bo=document.all.binobj.getElementsByTagName("DIV");
  var progressStep=25;
+ var progressText=LocalizedBinaryMessage("fbe.binary.processing_images");
  for(var i=0; i<bo.length; i++)
  {
   var newb=doc.createNode(1,"binary",fbNS);
@@ -2487,7 +2488,7 @@ function GetBinaries(doc)
   Indent(doc.documentElement,1);
   doc.documentElement.appendChild(newb);
   if(bo.length>=50 && ((i+1)%progressStep==0 || i+1==bo.length))
-   window.external.SetStatusBarText("Processing images: "+(i+1)+" / "+bo.length);
+   window.external.SetStatusBarText(progressText.replace("{0}",i+1).replace("{1}",bo.length));
  }
 }
 

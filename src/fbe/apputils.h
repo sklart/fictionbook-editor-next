@@ -23,6 +23,14 @@ namespace AU
 		WM_SOURCE_MEMORY_BENCHMARK
 	};
 
+	enum StatusTextUpdate
+	{
+		StatusTextQueued = 0,
+		// Rendering only the status bar is safe while the editor serializes: it
+		// does not dispatch the application's general message queue.
+		StatusTextImmediate = 1
+	};
+
 	struct TRACKPARAMS
 	{
 	HMENU	hMenu;

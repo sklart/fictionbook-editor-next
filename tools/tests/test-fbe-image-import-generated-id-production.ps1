@@ -40,24 +40,24 @@ function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture
     }
 }
 
-function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$ExpectedHash, [string]$Inline) {
+function Assert-ImportedImage([string]$Path, [byte[]]$ExpectedBytes, [string]$ExpectedHash, [string]$Inline, [string]$ExpectedId) {
     $xmlText = Get-Content -LiteralPath $Path -Raw
     if ($xmlText -match 'dt:dt|urn:schemas-microsoft-com:datatypes') { throw 'Production Save записал MSXML datatype metadata.' }
     Assert-Fb2Schema $Path
     [xml]$xml = $xmlText
     $namespaces = [Xml.XmlNamespaceManager]::new($xml.NameTable)
     $namespaces.AddNamespace('fb', 'http://www.gribuser.ru/xml/fictionbook/2.0')
-    $binary = $xml.SelectSingleNode('/fb:FictionBook/fb:binary[@id="cover-part-01.jpg"]', $namespaces)
-    if ($null -eq $binary) { throw 'Production import не создал binary id="cover-part-01.jpg".' }
+    $binary = $xml.SelectSingleNode(('/fb:FictionBook/fb:binary[@id="{0}"]' -f $ExpectedId), $namespaces)
+    if ($null -eq $binary) { throw "Production import не создал binary id=`"$ExpectedId`"." }
     if ($binary.GetAttribute('content-type') -ne 'image/jpeg') { throw "Production import изменил MIME: $($binary.GetAttribute('content-type'))." }
     if ($binary.InnerText -match '[ \r\n\t]') { throw 'Production Save оставил whitespace в imported Base64.' }
     $actualBytes = [Convert]::FromBase64String($binary.InnerText)
     $actualHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($actualBytes))
     if ($actualBytes.Length -ne $ExpectedBytes.Length -or $actualHash -ne $ExpectedHash) { throw 'Production import или Save изменили bytes JPEG.' }
-    $image = $xml.SelectSingleNode('//fb:image[@*[local-name()="href"]="#cover-part-01.jpg"]', $namespaces)
-    if ($null -eq $image) { throw 'Imported image не ссылается на #cover-part-01.jpg.' }
-    $inlineImage = $xml.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:p/fb:image[@*[local-name()="href"]="#cover-part-01.jpg"]', $namespaces)
-    $blockImage = $xml.SelectSingleNode('/fb:FictionBook/fb:body/fb:section/fb:image[@*[local-name()="href"]="#cover-part-01.jpg"]', $namespaces)
+    $image = $xml.SelectSingleNode(('//fb:image[@*[local-name()="href"]="#{0}"]' -f $ExpectedId), $namespaces)
+    if ($null -eq $image) { throw "Imported image не ссылается на #$ExpectedId." }
+    $inlineImage = $xml.SelectSingleNode(('/fb:FictionBook/fb:body/fb:section/fb:p/fb:image[@*[local-name()="href"]="#{0}"]' -f $ExpectedId), $namespaces)
+    $blockImage = $xml.SelectSingleNode(('/fb:FictionBook/fb:body/fb:section/fb:image[@*[local-name()="href"]="#{0}"]' -f $ExpectedId), $namespaces)
     if ($Inline -eq '1' -and ($null -eq $inlineImage -or $null -ne $blockImage)) { throw 'Inline import не сохранил image внутри paragraph.' }
     if ($Inline -eq '0' -and ($null -eq $blockImage -or $null -ne $inlineImage)) { throw 'Block import не сохранил image как прямой дочерний section.' }
 }
@@ -68,11 +68,6 @@ $sourceDirectory = Join-Path $directory 'source'
 $cwdDirectory = Join-Path $directory 'cwd'
 [void](New-Item -ItemType Directory -Path $sourceDirectory)
 [void](New-Item -ItemType Directory -Path $cwdDirectory)
-$fixture = Join-Path $sourceDirectory 'imported-image.fb2'
-$sourceImage = Join-Path $sourceDirectory 'cover-part-01.jpg'
-$cwdImage = Join-Path $cwdDirectory 'cover-part-01.jpg'
-$importReport = Join-Path $directory 'import.tsv'
-$reopenReport = Join-Path $directory 'reopen.tsv'
 $savedEnvironment = @{
     FBE_NEXT_TEST_MODE = $env:FBE_NEXT_TEST_MODE
     FBE_NEXT_TEST_SCENARIO = $env:FBE_NEXT_TEST_SCENARIO
@@ -81,6 +76,13 @@ $savedEnvironment = @{
 }
 try {
     Add-Type -AssemblyName System.Drawing
+    $imageCases = @('cover-part-01.jpg', 'Обложка-01.jpg')
+    foreach ($imageName in $imageCases) {
+    $fixture = Join-Path $sourceDirectory ("imported-image-$imageName.fb2")
+    $sourceImage = Join-Path $sourceDirectory $imageName
+    $cwdImage = Join-Path $cwdDirectory $imageName
+    $importReport = Join-Path $directory ("import-$imageName.tsv")
+    $reopenReport = Join-Path $directory ("reopen-$imageName.tsv")
     $bitmap = [Drawing.Bitmap]::new(2, 2)
     try {
         $bitmap.SetPixel(0, 0, [Drawing.Color]::Red)
@@ -110,10 +112,11 @@ try {
     $env:FBE_NEXT_TEST_IMAGE_PATH = $sourceImage
     $env:FBE_NEXT_TEST_IMAGE_INLINE = $Inline
     Invoke-FbeScenario 'binary-import-image' $importReport $fixture $cwdDirectory
-    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline
+    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline $imageName
 
     Invoke-FbeScenario 'binary-roundtrip' $reopenReport $fixture $cwdDirectory
-    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline
+    Assert-ImportedImage $fixture $sourceBytes $sourceHash $Inline $imageName
+    }
     Write-Host 'Production image import generated-id -> Save -> Reopen -> Save passed.'
 }
 finally {

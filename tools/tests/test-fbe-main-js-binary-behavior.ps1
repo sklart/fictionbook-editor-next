@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path $PSScriptRoot)
 $source = Get-Content -Raw -LiteralPath (Join-Path $root 'runtime\main.js')
-if ($source -notmatch '(?s)function GetBinaries\(doc\).*?bo\.length>=50.*?\(i\+1\)%progressStep.*?SetStatusBarText\("Processing images: "\+\(i\+1\)\+" / "\+bo\.length\)') {
+if ($source -notmatch '(?s)function GetBinaries\(doc\).*?LocalizedBinaryMessage\("fbe\.binary\.processing_images"\).*?bo\.length>=50.*?\(i\+1\)%progressStep.*?SetStatusBarText\(progressText\.replace\("\{0\}",i\+1\)\.replace\("\{1\}",bo\.length\)\)') {
     throw 'GetBinaries должен показывать throttled progress при сохранении большого числа изображений.'
 }
 
@@ -27,7 +27,7 @@ function Input(value){this.value=value; this.attrs={}; this.setAttribute=functio
 var binaries=[]; var references=[]; var covers=[];
 var binobj={getElementsByTagName:function(){return binaries;},appendChild:function(binary){binaries.push(binary);}};
 var document={all:{binobj:binobj},createElement:function(){return Binary('','');},getElementsByTagName:function(name){if(name=='*') return references; if(name=='SELECT') return covers; return [];}};
-var localized={"fbe.binary.id.empty":'empty',"fbe.binary.id.duplicate":'duplicate',"fbe.binary.delete.referenced":'referenced'};
+var localized={"fbe.binary.id.empty":'empty',"fbe.binary.id.duplicate":'duplicate',"fbe.binary.delete.referenced":'referenced',"fbe.binary.processing_images":'Processing images: {0} / {1}'};
 var window={event:null,external:{GetImageDimsByData:function(){return '2x3';},GetBinarySize:function(){return 4;},GetImageDimsByPath:function(){return '';},GetLocalizedString:function(key){return localized[key];}}};
 function Binary(id,type){var b={base64data:'AQID',all:{},parentNode:binobj,innerHTML:''}; b.all.id=new Input(id); b.all.type=new Input(type); b.all.id.setAttribute('oldId',id); b.all.id.parentNode=b; b.all.type.parentNode=b; b.getElementsByTagName=function(){return [b.all.id,b.all.type];}; b.removeNode=function(){for(var i=0;i<binaries.length;i++)if(binaries[i]===b)binaries.splice(i,1);}; return b;}
 function Ref(href,src){this.attrs={href:href,src:src}; this.href=href; this.src=src; this.getAttribute=function(name){return this.attrs[name];}; this.setAttribute=function(name,value){this.attrs[name]=value; if(name=='href')this.href=value; if(name=='src')this.src=value;};}

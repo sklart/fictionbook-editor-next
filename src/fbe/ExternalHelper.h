@@ -404,7 +404,7 @@ public:
 	STDMETHOD(SetStatusBarText)(BSTR text)
 	{
 		CString sbtext(text);
-		::SendMessage(_Settings.GetMainWindow(), AU::WM_SETSTATUSTEXT, 0, (LPARAM) (LPCTSTR) sbtext.GetBuffer());
+		::SendMessage(_Settings.GetMainWindow(), AU::WM_SETSTATUSTEXT, AU::StatusTextImmediate, (LPARAM) (LPCTSTR) sbtext.GetBuffer());
 		return S_OK;
 	}
 
