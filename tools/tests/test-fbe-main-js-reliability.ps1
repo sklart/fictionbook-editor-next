@@ -56,14 +56,22 @@ var document={
 };
 var window={ event:null, onerror:null, external:{
   TraceScript:function(){}, MsgBox:function(text){messages.push(text);}, GetNBSP:function(){return "\u00A0";},
-  BeginUndoUnit:function(){}, EndUndoUnit:function(){}, inflateBlock:false, GetUUID:function(){return "test-id";},
+  BeginUndoUnit:function(){}, EndUndoUnit:function(){}, InflateParagraphs:function(){}, inflateBlock:false, GetUUID:function(){return "test-id";},
   GetStylePath:function(){return "C:\\missing-xsl";}
 }, setTimeout:function(callback){var id=++timerId; timers[id]=callback; return id;}, clearTimeout:function(id){clearedTimers.push(id); delete timers[id];} };
 var event={srcElement:{offsetHeight:20},clientX:400,clientY:300};
+var xslScenario="missing";
 function ActiveXObject(name) {
   if(name=="Msxml2.DOMDocument.6.0") return { async:false, preserveWhiteSpace:false, parseError:{errorCode:0}, firstChild:null, load:function(){return true;}, setProperty:function(){}, selectSingleNode:function(){return null;} };
-  if(name=="Msxml2.XSLTemplate.6.0") return { stylesheet:null, createProcessor:function(){return null;} };
-  if(name=="Msxml2.FreeThreadedDOMDocument.6.0") return { async:false, parseError:{errorCode:1,reason:"XSL unavailable",line:1,linepos:1}, documentElement:null, setProperty:function(){}, load:function(){return false;} };
+  if(name=="Msxml2.XSLTemplate.6.0") return { stylesheet:null, createProcessor:function(){return { input:null, output:"", setStartMode:function(mode){this.mode=mode;}, transform:function(){this.output=this.mode=="description" ? "RECOVERED DESCRIPTION" : "RECOVERED BODY";} };} };
+  if(name=="Msxml2.FreeThreadedDOMDocument.6.0") {
+    var xsl={ async:false, parseError:{errorCode:0,reason:"",line:0,linepos:0}, documentElement:null, setProperty:function(){}, load:function(){
+      if(xslScenario=="missing") { this.parseError={errorCode:1,reason:"XSL file not found",line:0,linepos:0}; return false; }
+      if(xslScenario=="broken") { this.parseError={errorCode:2,reason:"Malformed XSL",line:7,linepos:3}; return false; }
+      var href={nodeValue:""}; this.documentElement={firstChild:{nodeType:1,nodeName:"xsl:import",attributes:{getNamedItem:function(name){return name=="href" ? href : null;}},nextSibling:null}}; return true;
+    } };
+    return xsl;
+  }
   throw new Error("unexpected ActiveX class: "+name);
 }
 '@
@@ -118,17 +126,30 @@ GoToEndOfElement=function(){}; InflateIt=function(){};
 AddEpigraph(epigraphContainer, false);
 assert(epigraphContainer.inserted && epigraphContainer.inserted.children.length==2 && epigraphContainer.inserted.children[1].className!="text-author", "AddEpigraph compares collected tag names rather than their indexes");
 
-// Both a missing and a malformed XSL fail inside apiLoadFB2 without a second JS
-// exception, restore CSS, and leave the already-rendered editor DOM untouched.
-function assertXslFailure(label) {
+// Distinct missing and malformed XSL errors fail inside apiLoadFB2 without a
+// second JS exception, restore CSS, and leave the rendered editor DOM intact.
+function assertXslFailure(scenario, expectedError) {
   messages.length=0; elements.css.href="main.css"; elements.fbw_body.innerHTML="BODY BEFORE XSL FAILURE"; elements.fbw_desc.innerHTML="DESC BEFORE XSL FAILURE";
-  var result=apiLoadFB2(label, "english");
-  assert(result===false, label+" must report a controlled load failure");
-  assert(messages.length==2, label+" reports the XSL problem and the controlled Body-mode failure only");
-  assert(elements.css.href=="main.css", label+" restores CSS after failure");
-  assert(elements.fbw_body.innerHTML=="BODY BEFORE XSL FAILURE" && elements.fbw_desc.innerHTML=="DESC BEFORE XSL FAILURE", label+" leaves the editor DOM intact");
+  xslScenario=scenario;
+  var result=apiLoadFB2(scenario+".fb2", "english");
+  assert(result===false, scenario+" XSL must report a controlled load failure");
+  assert(messages.length==2, scenario+" XSL reports the XSL problem and the controlled Body-mode failure only");
+  assert(messages[0].indexOf(expectedError)!=-1, scenario+" XSL reports its own parse error");
+  assert(elements.css.href=="main.css", scenario+" XSL restores CSS after failure");
+  assert(elements.fbw_body.innerHTML=="BODY BEFORE XSL FAILURE" && elements.fbw_desc.innerHTML=="DESC BEFORE XSL FAILURE", scenario+" XSL leaves the editor DOM intact");
 }
-assertXslFailure("missing.xsl"); assertXslFailure("broken.xsl");
+assertXslFailure("missing", "XSL file not found");
+assertXslFailure("broken", "Malformed XSL");
+
+// A later valid load must not inherit the failed XSL load's disabled CSS or
+// editor state.  Stub only unrelated DOM setup helpers in this isolated test.
+PutBinaries=function(){}; SetupDescription=function(){}; HideNotePreview=function(){}; InitNotePreview=function(){}; ShowDescElements=function(){return true;}; apiShowDesc=function(){return true;};
+elements.fbw_desc.all.diID={value:"original-id"};
+messages.length=0; xslScenario="valid";
+assert(apiLoadFB2("valid.fb2", "english")===undefined, "a valid document loads after an XSL failure");
+assert(messages.length==0, "a valid document after XSL recovery reports no error");
+assert(elements.css.href=="main.css", "a valid document after XSL recovery keeps CSS restored");
+assert(elements.fbw_body.innerHTML=="RECOVERED BODY" && elements.fbw_desc.innerHTML=="RECOVERED DESCRIPTION", "a valid document after XSL recovery replaces the editor DOM");
 WScript.Echo("main.js behavioral reliability test passed.");
 '@
     [IO.File]::WriteAllText($runner, $runnerScript, [Text.Encoding]::Unicode)
