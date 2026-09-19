@@ -20,7 +20,39 @@ int main()
 	{ XmlTagMatcher m("<section><p>Text</p>"); Check(m.ResultAt(1).state == XmlTagMatchState::MissingClosing, "missing closing"); }
 	{ XmlTagMatcher m("</section>"); Check(m.ResultAt(1).state == XmlTagMatchState::MissingOpening, "missing opening"); }
 	{ XmlTagMatcher m("<Section></section>"); Check(!m.Diagnostics().empty(), "case-sensitive names"); }
+	{ XmlTagMatcher m("<fb:section></fb:section>"); Check(m.Diagnostics().empty(), "namespace names form a valid pair"); }
+	{ XmlTagMatcher m("<fb:section></section>"); Check(!m.Diagnostics().empty(), "namespace names remain case- and prefix-sensitive"); }
+	{
+		const std::string text = "</missing><section><p>text</section></p>";
+		XmlTagMatcher m(text); const std::vector<XmlTagMatchResult>& diagnostics = m.Diagnostics();
+		Check(diagnostics.size() == 5, "mixed malformed XML produces every structural diagnostic");
+		for (size_t i = 1; i < diagnostics.size(); ++i) Check(diagnostics[i - 1].currentTagRange.start <= diagnostics[i].currentTagRange.start, "diagnostics are sorted in document order");
+		Check(diagnostics.size() == 5 && diagnostics[0].state == XmlTagMatchState::MissingOpening && diagnostics[0].currentTagRange.start == text.find("</missing>"), "first mixed diagnostic is the orphan close");
+		Check(diagnostics.size() == 5 && diagnostics[1].state == XmlTagMatchState::MissingClosing && diagnostics[1].currentTagRange.start == text.find("<section>"), "mixed diagnostics retain the section opener");
+		Check(diagnostics.size() == 5 && diagnostics[2].state == XmlTagMatchState::MissingClosing && diagnostics[2].currentTagRange.start == text.find("<p>"), "mixed diagnostics retain the paragraph opener");
+		Check(diagnostics.size() == 5 && diagnostics[3].state == XmlTagMatchState::Mismatched && diagnostics[3].currentTagRange.start == text.find("</section>"), "mixed diagnostics include the first crossing close");
+		Check(diagnostics.size() == 5 && diagnostics[4].state == XmlTagMatchState::Mismatched && diagnostics[4].currentTagRange.start == text.find("</p>"), "mixed diagnostics include the second crossing close");
+	}
+	{
+		const std::string text = "<root><section><p>"; XmlTagMatcher m(text); const std::vector<XmlTagMatchResult>& diagnostics = m.Diagnostics();
+		Check(diagnostics.size() == 3, "all missing closers are diagnosed");
+		Check(diagnostics.size() == 3 && diagnostics[0].currentTagRange.start == text.find("<root>") && diagnostics[1].currentTagRange.start == text.find("<section>") && diagnostics[2].currentTagRange.start == text.find("<p>"), "missing closers are ordered by opening tag");
+	}
+	{
+		const std::string text = "</p></section>"; XmlTagMatcher m(text); const std::vector<XmlTagMatchResult>& diagnostics = m.Diagnostics();
+		Check(diagnostics.size() == 2 && diagnostics[0].state == XmlTagMatchState::MissingOpening && diagnostics[1].state == XmlTagMatchState::MissingOpening, "multiple orphan closers are diagnosed");
+	}
+	{ XmlTagMatcher m("<a><b></a></b>"); Check(m.ResultAt(1).state != XmlTagMatchState::Matched && m.ResultAt(4).state != XmlTagMatchState::Matched, "crossing nesting creates no false tag pairs"); }
+	{ XmlTagMatcher m("<section id=test>"); Check(m.ResultAt(1).state == XmlTagMatchState::Invalid, "completed unquoted attribute value is invalid"); }
+	{ XmlTagMatcher m("<section id="); Check(m.ResultAt(1).state == XmlTagMatchState::Incomplete, "unfinished attribute value remains incomplete"); }
 	{ const std::string text = "<section id=\"x\">text</section>"; XmlTagMatcher m(text); for (size_t position : { size_t(0), size_t(1), size_t(4), size_t(8), size_t(10), size_t(14), size_t(15), size_t(20), size_t(21), size_t(22), size_t(29) }) Check(m.ResultAt(position).state == XmlTagMatchState::Matched, "caret position inside matched tag"); }
+	{
+		const std::string text = "<section>text</section>"; XmlTagMatcher m(text); const size_t openingEnd = text.find('>'); const size_t closingStart = text.find("</section>");
+		Check(m.ResultAt(0).state == XmlTagMatchState::Matched && m.ResultAt(openingEnd).state == XmlTagMatchState::Matched, "opening tag boundaries are included");
+		Check(m.ResultAt(openingEnd + 1).state == XmlTagMatchState::None && m.ResultAt(text.find("text")).state == XmlTagMatchState::None, "position after opening tag and ordinary text are outside tag ranges");
+		Check(m.ResultAt(closingStart).state == XmlTagMatchState::Matched && m.ResultAt(text.size() - 1).state == XmlTagMatchState::Matched, "closing tag boundaries are included");
+		Check(m.ResultAt(text.size()).state == XmlTagMatchState::None, "position after closing tag is outside the half-open range");
+	}
 	{ XmlTagMatcher m("<"); Check(m.ResultAt(0).state == XmlTagMatchState::Incomplete, "incomplete angle"); }
 	{ XmlTagMatcher m("</"); Check(m.ResultAt(0).state == XmlTagMatchState::Incomplete, "incomplete close"); }
 	{ XmlTagMatcher m("<section"); Check(m.ResultAt(1).state == XmlTagMatchState::Incomplete, "incomplete tag"); }

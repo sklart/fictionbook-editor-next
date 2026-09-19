@@ -69,7 +69,12 @@ std::vector<XmlTagToken> XmlTagTokenizer::Tokenize(const std::string& s) const {
 			++p; while (p < s.size() && IsSpace(s[p])) ++p;
 			if (p == s.size()) { incomplete = true; break; }
 			if (s[p] == '\'' || s[p] == '"') { const char quote = s[p++]; while (p < s.size() && s[p] != quote) ++p; if (p == s.size()) { incomplete = true; break; } ++p; }
-			else { const size_t valueStart = p; while (p < s.size() && !IsSpace(s[p]) && s[p] != '>' && s[p] != '/') { if (s[p] == '<') { invalid = true; break; } ++p; } if (p == valueStart) invalid = true; }
+			else {
+				const size_t valueStart = p;
+				while (p < s.size() && !IsSpace(s[p]) && s[p] != '>' && s[p] != '/') { if (s[p] == '<') { invalid = true; break; } ++p; }
+				if (p == s.size()) incomplete = true;
+				else if (p == valueStart || !invalid) invalid = true;
+			}
 			if (invalid) break;
 			attributes.push_back({attributeStart, p});
 		}
@@ -91,10 +96,24 @@ XmlTagMatcher::XmlTagMatcher(const std::string& utf8) : m_tokens(XmlTagTokenizer
 		else if (t.type == XmlTagTokenType::ClosingTag) {
 			if (stack.empty()) { r.state = XmlTagMatchState::MissingOpening; m_diagnostics.push_back(r); }
 			else if (m_tokens[stack.back()].name == t.name) { size_t open = stack.back(); stack.pop_back(); r.state = XmlTagMatchState::Matched; r.matchingTagRange = m_tokens[open].fullRange; r.matchingNameRange = m_tokens[open].nameRange; m_results[open].state = XmlTagMatchState::Matched; m_results[open].matchingTagRange = t.fullRange; m_results[open].matchingNameRange = t.nameRange; }
-			else { r.state = XmlTagMatchState::Mismatched; m_diagnostics.push_back(r); }
+			else {
+				r.state = XmlTagMatchState::Mismatched;
+				m_diagnostics.push_back(r);
+				// A crossing close cannot form a valid pair with a later close.
+				// Retire the unmatched opener so neither side is reported as matched.
+				XmlTagMatchResult& unmatchedOpen = m_results[stack.back()];
+				unmatchedOpen.state = XmlTagMatchState::MissingClosing;
+				m_diagnostics.push_back(unmatchedOpen);
+				stack.pop_back();
+			}
 		}
 	}
 	for (size_t i = 0; i < stack.size(); ++i) { XmlTagMatchResult& r = m_results[stack[i]]; r.state = XmlTagMatchState::MissingClosing; m_diagnostics.push_back(r); }
+	std::stable_sort(m_diagnostics.begin(), m_diagnostics.end(), [](const XmlTagMatchResult& left, const XmlTagMatchResult& right) {
+		if (left.currentTagRange.start != right.currentTagRange.start) return left.currentTagRange.start < right.currentTagRange.start;
+		if (left.currentTagRange.end != right.currentTagRange.end) return left.currentTagRange.end < right.currentTagRange.end;
+		return static_cast<int>(left.state) < static_cast<int>(right.state);
+	});
 }
 
 XmlTagMatchResult XmlTagMatcher::ResultAt(XmlBytePosition position) const {
@@ -102,7 +121,7 @@ XmlTagMatchResult XmlTagMatcher::ResultAt(XmlBytePosition position) const {
 		[](XmlBytePosition value, const XmlTagToken& token) { return value < token.fullRange.start; });
 	if (after != m_tokens.begin()) {
 		const size_t index = static_cast<size_t>((after - m_tokens.begin()) - 1);
-		if (position >= m_tokens[index].fullRange.start && position <= m_tokens[index].fullRange.end) return m_results[index];
+		if (position >= m_tokens[index].fullRange.start && position < m_tokens[index].fullRange.end) return m_results[index];
 	}
 	return XmlTagMatchResult();
 }

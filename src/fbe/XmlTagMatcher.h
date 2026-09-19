@@ -9,6 +9,7 @@
 typedef std::size_t XmlBytePosition;
 
 struct XmlByteRange {
+	// Half-open UTF-8 byte range: start is included, end is the first byte after it.
 	XmlBytePosition start = 0;
 	XmlBytePosition end = 0;
 	bool empty() const { return start >= end; }
