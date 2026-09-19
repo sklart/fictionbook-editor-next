@@ -9,6 +9,7 @@ $externalHelperSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\
 $startupSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
 $viewSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $viewHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
+$presentationSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\view\ui\EditorViewPresentationHost.cpp')
 
 $required = @(
     'var diagnosticTraceBridgeState = 0;',
@@ -47,7 +48,9 @@ if($viewHeader -notlike '*DISPID_NAVIGATEERROR*') { throw 'Missing NavigateError
 foreach($pattern in @('L"WB135"', 'L"WB136"', 'm_navigation_status')) {
     if($viewSource -notlike "*$pattern*") { throw "Incomplete NavigateError handling: $pattern" }
 }
-if($documentSource -notlike '*m_body.NavigationFailed()*') { throw 'DocumentComplete wait does not stop after NavigateError.' }
+if($documentSource -notmatch '(?s)while \(!m_editor\.Loaded\(\)\)\s*\{\s*if \(m_editor\.NavigationFailed\(\)\)') {
+    throw 'DocumentComplete wait does not stop after NavigateError.'
+}
 foreach($pattern in @('GetErrorInfo(0, &errorInfo)', 'SetErrorInfo(0, errorInfo)', 'pfnDeferredFillIn = NULL', 'InvokeFunc(L"apiSetDiagnosticTraceEnabled", &diagnosticTrace, 1, diagnosticResult, true)', 'InvokeFunc(L"apiGetDiagnosticTraceBridgeState", NULL, 0, bridgeState, true)')) {
     if($documentSource -notlike "*$pattern*") { throw "Missing quiet optional API or COM error preservation contract: $pattern" }
 }
@@ -58,7 +61,7 @@ foreach($pattern in @('diagnosticFailureStage = "";', 'diagnosticOperationStage 
     if($script -notlike "*$pattern*") { throw "Missing lifecycle or privacy diagnostic contract: $pattern" }
 }
 foreach($pattern in @('FBE_NEXT_TEST_MODE', 'IsDiagnosticFaultInjectionEnabled', 'if (!StartupTrace::Enabled())')) {
-    if(($documentSource + $externalHelperSource + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot ''src\fbe\ExternalHelper.h''))) -notlike "*$pattern*") { throw "Missing fault-injection test-mode gate: $pattern" }
+    if(($documentSource + $externalHelperSource + (Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ExternalHelper.h'))) -notlike "*$pattern*") { throw "Missing fault-injection test-mode gate: $pattern" }
 }
 foreach($pattern in @('J104', 'J512', 'J513', 'J182', 'J183', 'J854', 'J855', 'J890', 'if(!ShowDescElements()) return false;', 'return true;')) {
     if($script -notlike "*$pattern*") { throw "Missing explicit JavaScript DOM failure stage: $pattern" }
@@ -83,14 +86,17 @@ foreach($pattern in @('PARAMFLAG_FIN', 'PARAMFLAG_FOUT', 'PARAMFLAG_FRETVAL', 'c
 }
 foreach($pattern in @('DiagnosticLogCleanupResult ClearOldLogSessions()', 'TrySnapshot', 'TryEnterCriticalSection', 'FindLatestTrace', 'ResolveDiagnosticLogDirectory')) {
     if(($traceHeader + $traceImplementation) -notlike "*$pattern*") { throw "Missing trace fallback or crash snapshot contract: $pattern" }
-}foreach($pattern in @('var result=false;', 'var operationCompleted=false;', 'var cssRestoreFailed=false;', 'var originalException=null;', 'var controlledFailureOccurred=false;', 'var primaryFailureStage="";', 'function failControlled()', 'controlledFailureOccurred=true;', 'diagnosticFailureStage=primaryFailureStage || diagnosticOperationStage;', 'if(originalException)', 'throw originalException;', 'if(cssRestoreFailed)', 'TraceDiagnosticEvent("J210", "operation=CSS restore begin")', 'TraceDiagnosticEvent("J211", "operation=CSS restore success")', 'TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=" + (operationCompleted ? "success" : "failure"))', 'if(!originalException && !controlledFailureOccurred)', 'diagnosticFailureStage="J212"', 'DiagError("J212", "CSS restore", e)', 'var failedStage = diagnosticFailureStage || diagnosticOperationStage || code')) {
-    if($script -notlike "*$pattern*") { throw "Missing CSS restore diagnostic: $pattern" }
-}$mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
-foreach($pattern in @('TracePluginDiagnostic', 'type=%s; clsid=%s; operation=%s; dom-returned=%d', 'L"CreateInstance"', 'L"QueryInterface"', 'L"Import"', 'L"Export"', 'L"completed"', 'L"exception"')) {
-    if($mainFrameSource -notlike "*$pattern*") { throw "Missing safe plugin diagnostic: $pattern" }
 }
+foreach($pattern in @('var result=false;', 'var operationCompleted=false;', 'var cssRestoreFailed=false;', 'var originalException=null;', 'var controlledFailureOccurred=false;', 'var primaryFailureStage="";', 'function failControlled()', 'controlledFailureOccurred=true;', 'diagnosticFailureStage=primaryFailureStage || diagnosticOperationStage;', 'if(originalException)', 'throw originalException;', 'if(cssRestoreFailed)', 'TraceDiagnosticEvent("J210", "operation=CSS restore begin")', 'TraceDiagnosticEvent("J211", "operation=CSS restore success")', 'TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=" + (operationCompleted ? "success" : "failure"))', 'if(!originalException && !controlledFailureOccurred)', 'diagnosticFailureStage="J212"', 'DiagError("J212", "CSS restore", e)', 'var failedStage = diagnosticFailureStage || diagnosticOperationStage || code')) {
+    if($script -notlike "*$pattern*") { throw "Missing CSS restore diagnostic: $pattern" }
+}
+$pluginExecutionSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\plugins\PluginExecutionController.cpp')
+foreach($pattern in @('TracePluginExecution', 'type=%s; clsid=%s; operation=%s; dom-returned=%d', 'L"CreateInstance"', 'L"QueryInterfaceV2"', 'L"ImportV2"', 'L"ExportV2"', 'L"completed"', 'L"P201"')) {
+    if($pluginExecutionSource -notlike "*$pattern*") { throw "Missing safe plugin diagnostic: $pattern" }
+}
+$mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $fastModeSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBDoc.cpp')
-foreach($pattern in @('void Doc::FastMode()', 'm_body.HasDoc()', 'L"D230"', 'L"D231"', 'L"D233"')) {
+foreach($pattern in @('void Doc::FastMode()', 'm_editor.HasDoc()', 'L"D230"', 'L"D231"', 'L"D233"')) {
     if($fastModeSource -notlike "*$pattern*") { throw "Missing safe FastMode startup guard: $pattern" }
 }
 $viewCommandGuard = '(?s)CheckCommand\(WORD wID\).*?if \(!HasDoc\(\)\)\s*return false;'
@@ -101,8 +107,8 @@ $mainFrameIdleGuard = '(?s)BOOL CMainFrame::OnIdle\(\).*?if \(!m_doc \|\| !m_doc
 if($mainFrameSource -notmatch $mainFrameIdleGuard) {
     throw 'Idle command updates must wait for the HTML document.'
 }
-$viewSelectionGuard = '(?s)void CMainFrame::SaveSelection\(VIEW_TYPE vt\).*?m_body\.HasDoc\(\).*?return;'
-if($mainFrameSource -notmatch $viewSelectionGuard) {
+$viewSelectionGuard = '(?s)void EditorViewPresentationHost::SaveSelection\(EditorView view\).*?if \(!IsHtmlDocumentAvailable\(\).*?return;'
+if($presentationSource -notmatch $viewSelectionGuard) {
     throw 'View selection must tolerate an unavailable HTML document.'
 }
 
