@@ -360,7 +360,6 @@ function apiAddBinary(fullpath, id, type, data)
 	div.base64data = data;
 
 	document.all.binobj.appendChild(div);
-	// PutSpacers(document.all.binobj);
 
 	return curid;
 }
@@ -396,11 +395,6 @@ function ShowPrevImage(source)
 	var prevImg = document.getElementById("prevImg");
 
 	if(!prevImgPanel || !prevImg) return;
-
-	// Shouldn't be shown in Fast mode.
-	/*if(window.external.IsFastMode())
-		return;
-	}*/
 
 	var idx = -1;
 	for(var i = 0; i < ImagesInfo.length; ++i)
@@ -2799,64 +2793,6 @@ function AddTitle(cp, check)
     }
   }
 
-//  if(full)
-//  {
-//    var nps = np.nextSibling;
-//    while(nps)
-//    {
-//      nps.removeNode(true);
-//      nps = np.nextSibling;
-//    }
-
-//    switch(targ)
-//    {
-//      case "P":
-//        np.innerText = "";
-//        break;
-//      case "DIV":
-//        while(np)
-//        {
-//          var nps = np.nextSibling;
-//          while(nps)
-//          {
-//            nps.removeNode(true);
-//            nps = np.nextSibling;
-//          }
-
-//          if(np.tagName == "P")
-//          {
-//            var nps = np.nextSibling;
-//            while(nps)
-//            {
-//              nps.removeNode(true);
-//              nps = np.nextSibling;
-//            }
-//            np.innerText = "";
-//            window.external.inflateBlock(np) = true;
-//            break;
-//          }
-//          else
-//            np = np.firstChild;
-//        }
-
-//        if(cp.className == "body")
-//        {
-//          cp = cp.firstChild.nextSibling;
-//          while(np.parentElement && np.parentElement != cp)
-//          {
-//            np.parentElement.removeNode(false);
-//          }
-//        }
-//        else if(cp.className == "section")
-//        {
-//          while(np.parentElement && np.parentElement != cp)
-//          {
-//            np.parentElement.removeNode(false);
-//          }
-//        }
-//        break;
-//    }
-//  }
   if(del)
   {
     sel.text = "";
