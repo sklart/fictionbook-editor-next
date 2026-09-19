@@ -108,10 +108,11 @@ shell/COM registrations только когда они всё ещё указы�
 
 Перед выпуском обязательно выполнить на чистой Windows VM
 `tools\tests\test-nsis-install-lifecycle-e2e.ps1 -InstallerPath <setup.exe>`
-из elevated PowerShell. Отдельный ручной UAC smoke запускается из обычного
-неповышенного PowerShell: `/S /ALLUSERS` должен запросить повышение и успешно
-установиться; повторный запуск с отменой consent dialog должен вернуть `1223`
-и не оставить файлов в `Program Files (x86)` либо HKLM-записей.
+из elevated PowerShell. Отдельный ручной UAC smoke начинается из обычного
+неповышенного PowerShell: на чистой системе отмените consent dialog для
+`/S /ALLUSERS`, получите `1223` и убедитесь в отсутствии файлов в
+`Program Files (x86)` и HKLM-записей. Затем отдельным запуском подтвердите
+повышение прав, установку All Users и её обычное удаление.
 
 Итоговые артефакты попадают в `out\artifacts`.
 

@@ -19,7 +19,8 @@ $machineDir = Join-Path ${env:ProgramFiles(x86)} $product
 $currentKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$product"
 $machineKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$product"
 $portableDir = Join-Path $PSScriptRoot "..\..\out\tests\nsis-lifecycle-portable"
-$shellKeys = @('HKCU:\Software\Classes\FictionBook.2', 'HKCU:\Software\Classes\.fb2', 'HKLM:\Software\Classes\FictionBook.2', 'HKLM:\Software\Classes\.fb2')
+$shellKeys = @('HKCU:\Software\Classes\FictionBook.2', 'HKCU:\Software\Classes\.fb2', 'HKLM:\Software\Classes\FictionBook.2', 'HKLM:\Software\Classes\.fb2', 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PropertySystem\PropertyHandlers\.fb2', 'HKLM:\Software\Classes\CLSID\{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}', 'HKLM:\Software\Classes\CLSID\{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}\InprocServer32', 'HKLM:\Software\Classes\.fb2\ShellEx')
+$shellFiles = @((Join-Path $env:ProgramData 'FictionBook Editor Next\Shell\FBShell.dll'), (Join-Path $env:ProgramData 'FictionBook Editor Next\Shell\FBShell64.dll'), (Join-Path $env:ProgramData 'FictionBook Editor Next\Shell\FBE.Sequence.propdesc'))
 
 function Assert([bool]$Value, [string]$Message) { if (-not $Value) { throw $Message } }
 function Invoke-Setup([string[]]$Arguments, [int[]]$Allowed = @(0)) {
@@ -36,6 +37,10 @@ function Invoke-Uninstall([string]$Directory) {
 function Get-RegistryState([string]$Key) {
     if (-not (Test-Path -LiteralPath $Key)) { return '<absent>' }
     return (Get-ItemProperty -LiteralPath $Key | Out-String)
+}
+function Get-FileState([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '<absent>' }
+    return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash + ':' + (Get-Item -LiteralPath $Path).Length)
 }
 
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -74,12 +79,14 @@ try {
 
     # /D must be final for NSIS. Portable must not create uninstall or shell state.
     $shellBefore = @{}; foreach ($key in $shellKeys) { $shellBefore[$key] = Get-RegistryState $key }
+    $shellFilesBefore = @{}; foreach ($path in $shellFiles) { $shellFilesBefore[$path] = Get-FileState $path }
     Invoke-Setup @('/S', '/PORTABLE', "/D=$portableDir")
     Assert (Test-Path (Join-Path $portableDir 'portable.ini')) 'Portable installation missing portable.ini.'
     Assert (-not (Test-Path (Join-Path $portableDir 'uninst.exe'))) 'Portable installation created uninst.exe.'
     Assert (-not (Test-Path -LiteralPath $currentKey)) 'Portable installation created HKCU uninstall record.'
     Assert (-not (Test-Path -LiteralPath $machineKey)) 'Portable installation created HKLM uninstall record.'
     foreach ($key in $shellKeys) { Assert ((Get-RegistryState $key) -ceq $shellBefore[$key]) "Portable installation changed shell registration: $key" }
+    foreach ($path in $shellFiles) { Assert ((Get-FileState $path) -ceq $shellFilesBefore[$path]) "Portable installation changed shell file: $path" }
 
     foreach ($invalid in @(@('/S','/CURRENTUSER','/ALLUSERS'), @('/S','/CURRENTUSER','/PORTABLE'), @('/S','/ALLUSERS','/PORTABLE'))) {
         Invoke-Setup $invalid @(87)

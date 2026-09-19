@@ -219,6 +219,13 @@ Function .onInit
     ; The scope smoke redirects only its test probe, never a release install.
     StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
   !endif
+  ; A normal GUI upgrade should reopen the scope of the installed copy.  An
+  ; explicit command line remains authoritative, and silent setup deliberately
+  ; has no implicit registry-based mode selection.
+  IfSilent 0 +2
+    Goto deployment_scope_detected
+  Call DetectExistingInstallScope
+deployment_scope_detected:
   Call ApplyDeploymentCommandLine
   ; GUI checks the conflict after the user has chosen scope.  Silent setup has
   ; no page-leave callback, so it must fail before elevation or file writes.
@@ -293,6 +300,22 @@ Function ApplyDeploymentCommandLine
     StrCpy $InstallScope "current"
     SetShellVarContext current
     StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+  ${EndIf}
+FunctionEnd
+
+Function DetectExistingInstallScope
+  ReadRegStr $0 HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  ${If} $0 != ""
+    StrCpy $InstallScope "allusers"
+    SetShellVarContext all
+    StrCpy $INSTDIR "$0"
+    Return
+  ${EndIf}
+  ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  ${If} $0 != ""
+    StrCpy $InstallScope "current"
+    SetShellVarContext current
+    StrCpy $INSTDIR "$0"
   ${EndIf}
 FunctionEnd
 
