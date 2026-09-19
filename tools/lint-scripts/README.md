@@ -11,6 +11,12 @@ npm ci
 npm run lint:scripts
 ```
 
+Для read-only статистики legacy baseline без изменений runtime-кода:
+
+```text
+npm run lint:scripts:report
+```
+
 Проверяются JavaScript-файлы и inline-блоки `<script>` HTML, поставляемые с редактором: пользовательские
 скрипты (`runtime/Scripts/`), файлы HTML-диалогов, общие скрипты,
 `runtime/main.js`, `runtime/TreeCmd/` и утилита перекодирования. Каталоги
@@ -42,6 +48,10 @@ JScript; укажите его в конфигурации, а не отключ
 обязательно сопровождается удалением её записи из baseline. Обновлять baseline
 можно только сознательно после проверки изменений командой
 `npm run lint:scripts:baseline`.
+
+Baseline фиксирует legacy-состояние `runtime/Scripts/**` и `runtime/HTML/**`.
+Массово исправлять эти файлы в рамках инфраструктурной проверки не следует:
+изменения runtime-кода требуют отдельной функциональной задачи.
 
 ESLint не запускает Microsoft JScript и не заменяет проверку в реальном FBE:
 между ES3 и JScript возможны отличия. В CI Windows выполняется

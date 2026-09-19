@@ -7,6 +7,7 @@
   "scripts": {
     "lint:scripts": "node tools/lint-scripts/lint-scripts.mjs",
     "lint:scripts:baseline": "node tools/lint-scripts/lint-scripts.mjs --write-baseline",
+    "lint:scripts:report": "node tools/lint-scripts/baseline-report.mjs",
     "test:lint-scripts:jscript": "node tools/lint-scripts/test-jscript-fingerprint.mjs && node tools/lint-scripts/jscript-compat.mjs && powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\lint-scripts\\test-jscript-compat.ps1",
     "test:lint-scripts:jscript:baseline": "node tools/lint-scripts/jscript-compat.mjs --write-baseline",
     "test:lint-scripts:fingerprint": "node tools/lint-scripts/test-fingerprint.mjs && node tools/lint-scripts/test-inline-html.mjs"
