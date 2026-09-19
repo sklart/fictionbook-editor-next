@@ -391,6 +391,7 @@
 		const FILE_OP_STATUS repeat = first == OK ? SaveFile(true) : FAIL;
 		int targetCount = 0, sourceCount = 0; CString firstItem;
 		for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) { const CString item(m_recentDocuments.List().m_arrDocs[i].szDocName); if (i == 0) firstItem = item; if (item.CompareNoCase(target) == 0) ++targetCount; if (item.CompareNoCase(source) == 0) ++sourceCount; }
+		CString beforeCancel; for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) beforeCancel.AppendFormat(L"%s\n", static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[i].szDocName));
 		::SetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", NULL);
 		const FILE_OP_STATUS cancelled = SaveFile(true);
 		CString afterCancel; for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) afterCancel.AppendFormat(L"%s\n", static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[i].szDocName));
@@ -398,15 +399,16 @@
 		if (failureLength && failureLength < _countof(failure)) ::SetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", failure);
 		const FILE_OP_STATUS failed = failureLength ? SaveFile(true) : FAIL;
 		CString afterFailure; for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) afterFailure.AppendFormat(L"%s\n", static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[i].szDocName));
-		const bool passed = first == OK && repeat == OK && firstItem.CompareNoCase(target) == 0 && targetCount == 1 && sourceCount == 1 && cancelled == CANCELLED && failed == FAIL && afterCancel == afterFailure;
-		CStringA report; report.Format("saved=%d\nfirst=%d\nunique=%d\nsource=%d\ncancel=%d\nfailed=%d\nmru_unchanged=%d\n", first == OK && repeat == OK, firstItem.CompareNoCase(target) == 0, targetCount == 1, sourceCount == 1, cancelled == CANCELLED, failed == FAIL, afterCancel == afterFailure);
-		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+		CString firstKey; const bool menuFirst = m_recentDocuments.List().GetFromList(ID_FILE_MRU_FIRST, firstKey) && firstKey.CompareNoCase(target) == 0;
+		const bool passed = first == OK && repeat == OK && menuFirst && targetCount == 1 && sourceCount == 1 && cancelled == CANCELLED && beforeCancel == afterCancel && failed == FAIL && afterCancel == afterFailure;
+		CStringA report; report.Format("saved=%d\nfirst=%d\nunique=%d\nsource=%d\ncancel=%d\nfailed=%d\ncancel_unchanged=%d\nfailed_unchanged=%d\n", first == OK && repeat == OK, menuFirst, targetCount == 1, sourceCount == 1, cancelled == CANCELLED, failed == FAIL, beforeCancel == afterCancel, afterCancel == afterFailure);
+		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); if (!passed) { ::PostQuitMessage(1); return 0; } ::PostMessage(m_hWnd, WM_CLOSE, 0, 0); return 0;
 	}
 	if (IsFbeTestScenario(L"save-as-mru-restart-runtime"))
 	{
 		wchar_t expected[MAX_PATH] = {}; const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", expected, _countof(expected));
 		const CString target = length && length < _countof(expected) ? CString(expected) : CString();
-		const bool first = m_recentDocuments.List().m_arrDocs.GetSize() > 0 && CString(m_recentDocuments.List().m_arrDocs[0].szDocName).CompareNoCase(target) == 0;
+		CString firstKey; const bool first = m_recentDocuments.List().GetFromList(ID_FILE_MRU_FIRST, firstKey) && firstKey.CompareNoCase(target) == 0;
 		CStringA report; report.Format("order=%d\n", first); DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(first ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"malformed-source-fallback-runtime"))
