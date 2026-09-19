@@ -672,14 +672,14 @@ function getFilenameAuthorName(document1) {
   return authorName;
 }
 
-function makeFilenameForSaving(fileCnt,bookTitle,document1) {
+function makeFilenameForSaving(fileCnt,bookTitle,document1,authorName) {
   var fileCnt2=1;
   var transliteratedName="";
   var maxNameLength=70;
   var ch,transliteratedChar;
   var i=0;
   if (!document1) document1=xmlDoc;
-  var authorName=getFilenameAuthorName(document1);
+  if (authorName==null) authorName=getFilenameAuthorName(document1);
   var sourceName=document.getElementById("filenameTemplate").value;
   sourceName=sourceName.replace(/\{number\}/g,addZeros2(fileCnt,4)).replace(/\{author\}/g,authorName).replace(/\{title\}/g,bookTitle);
   while (i<sourceName.length) {
@@ -739,21 +739,44 @@ function getPreviewTitleIndex() {
   return titleIndex;
 }
 
+function getAuthorLastNameFromText(authorText) {
+  var arr1=String(authorText || "").match(/([^\s.]+\.?)/g);
+  if (!arr1) return "";
+  if (arr1.length==3 && arr1[2].slice(-1)!=".") return arr1[2];
+  if (arr1.length==3 && arr1[1].slice(-1)=="." && arr1[2].slice(-1)==".") return arr1[0];
+  if (arr1.length==2 && arr1[1].slice(-1)!=".") return arr1[1];
+  if (arr1.length==2 && arr1[1].slice(-1)==".") return arr1[0];
+  return "";
+}
+
 function getPreviewMetadata() {
-  var titleIndex,title,previewDoc,savedBookTitle,metadata;
+  var titleIndex,title,titleParagraphs,authorParagraph="",bookTitleParagraph="";
+  var authorArr,authorIndex,allAuthorsRecognized=true,authorName;
   if (!xmlDoc) return null;
   titleIndex=getPreviewTitleIndex();
   if (titleIndex==null) titleIndex=0;
-  previewDoc=createXmlDocument();
-  configureXPath(previewDoc);
-  if (!previewDoc.loadXML(xmlDoc.xml) || previewDoc.parseError.errorCode) return null;
-  title=previewDoc.documentElement.selectNodes("//fb:section/fb:title")[titleIndex];
+  title=xmlDoc.documentElement.selectNodes("//fb:section/fb:title")[titleIndex];
   if (!title) return null;
-  savedBookTitle=bookTitle;
-  fillInDescription(title,previewDoc);
-  metadata={bookTitle:bookTitle, authorName:getFilenameAuthorName(previewDoc), document1:previewDoc};
-  bookTitle=savedBookTitle;
-  return metadata;
+  titleParagraphs=title.selectNodes("./fb:p");
+  authorName=getFilenameAuthorName(xmlDoc);
+  if (document.getElementById("radio1").checked) {
+    authorParagraph=getParagraphText(titleParagraphs[0]);
+    bookTitleParagraph=getParagraphText(titleParagraphs[1]);
+  }
+  if (document.getElementById("radio2").checked) {
+    authorParagraph=getParagraphText(titleParagraphs[1]);
+    bookTitleParagraph=getParagraphText(titleParagraphs[0]);
+  }
+  if (document.getElementById("radio1").checked || document.getElementById("radio2").checked) {
+    authorArr=authorParagraph.match(/[^,]+/g);
+    if (authorArr) for (authorIndex=0; authorIndex<authorArr.length; authorIndex++)
+      if (!isRecognizedAuthorText(authorArr[authorIndex])) allAuthorsRecognized=false;
+    if (authorArr && allAuthorsRecognized) authorName=getAuthorLastNameFromText(authorArr[0]);
+    return {bookTitle:String(bookTitleParagraph || "").replace(nbspRegExp," "), authorName:authorName};
+  }
+  if (document.getElementById("radio3").checked)
+    return {bookTitle:getParagraphText(titleParagraphs[0]).replace(nbspRegExp," "), authorName:authorName};
+  return {bookTitle:getParagraphText(titleParagraphs.length>1 ? titleParagraphs[1] : titleParagraphs[0]).replace(nbspRegExp," "), authorName:authorName};
 }
 
 function updateFilenamePreview() {
@@ -761,7 +784,7 @@ function updateFilenamePreview() {
   if (!preview) return;
   try {
     metadata=getPreviewMetadata();
-    preview.value=metadata ? makeFilenameForSaving(1,metadata.bookTitle,metadata.document1) : "";
+    preview.value=metadata ? makeFilenameForSaving(1,metadata.bookTitle,xmlDoc,metadata.authorName) : "";
   } catch (e) { preview.value=""; }
 }
 

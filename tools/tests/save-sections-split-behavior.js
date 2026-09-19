@@ -18,7 +18,9 @@
     if(controls.filenamePreview.value.indexOf("Container")<0) throw new Error("filename preview does not use the first available section without selection");
     selectedElements={5:5}; myLinks={5:1};
     controls.radio3.checked=false; controls.radio1.checked=true;
+    var previewStarted=(new Date()).getTime();
     updateFilenamePreview();
+    if((new Date()).getTime()-previewStarted>2000) throw new Error("filename preview is unexpectedly slow with large binaries");
     var previewName=controls.filenamePreview.value;
     if(!previewName) throw new Error("filename preview is empty for selected section");
     /* Select the nested section.  The utility deliberately unwraps a selected
