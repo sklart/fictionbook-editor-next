@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "RecentDocumentsStore.h"
+#include "RecentDocumentsManager.h"
 #include "..\\..\\..\\common\\DeploymentContext.h"
 
 namespace
@@ -126,7 +127,7 @@ void Store::ReadOrder(std::vector<CString>& order) const
 
 bool Store::WriteOrder(const std::vector<CString>& order) const
 {
-	std::vector<CString> limited(order.begin(), order.begin() + min(static_cast<size_t>(10), order.size()));
+	std::vector<CString> limited(order.begin(), order.begin() + min(static_cast<size_t>(FbeRecentDocuments::kMaxRecentDocuments), order.size()));
 	return WriteTextFile(SettingsPath(L"MRUOrder.txt"), limited);
 }
 

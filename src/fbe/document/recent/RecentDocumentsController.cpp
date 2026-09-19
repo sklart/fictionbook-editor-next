@@ -21,6 +21,8 @@ void FbeRecentDocuments::Controller::OnOpened(WORD command, const CString& norma
 
 void FbeRecentDocuments::Controller::OnFailed(WORD command)
 {
+	CString key; DocumentLocation archive;
+	if (m_list.GetFromList(command, key) && !ParseArchiveMruKey(key, archive)) RemoveMruOrder(key);
 	m_list.RemoveFromList(command);
 	RebuildMruMenu(m_list);
 }

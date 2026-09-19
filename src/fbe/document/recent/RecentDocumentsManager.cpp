@@ -56,6 +56,13 @@ static void TouchMruOrder(const CString& key)
 	order.erase(std::remove_if(order.begin(), order.end(), [&key](const CString& item) { return item.CompareNoCase(key) == 0; }), order.end()); order.insert(order.begin(), key); WriteMruOrder(order);
 }
 
+static void RemoveMruOrder(const CString& key)
+{
+	std::vector<CString> order; ReadMruOrder(order);
+	order.erase(std::remove_if(order.begin(), order.end(), [&key](const CString& item) { return item.CompareNoCase(key) == 0; }), order.end());
+	WriteMruOrder(order);
+}
+
 static void ApplyMruOrder(CRecentDocumentList& list)
 {
 	std::vector<CString> order; ReadMruOrder(order);
@@ -85,12 +92,12 @@ static void ApplyMruOrder(CRecentDocumentList& list)
 
 	// The backing array is oldest-to-newest.  Keep the newest ten by selecting
 	// the tail before repopulating it; do not mutate the front while merging.
-	if (unified.size() > 10) unified.erase(unified.begin(), unified.end() - 10);
+	if (unified.size() > static_cast<size_t>(FbeRecentDocuments::kMaxRecentDocuments)) unified.erase(unified.begin(), unified.end() - FbeRecentDocuments::kMaxRecentDocuments);
 	list.m_arrDocs.RemoveAll();
 	const int previousMax = list.GetMaxEntries();
 	list.SetMaxEntries(list.m_nMaxEntries_Max - 1);
 	for (size_t i = 0; i < unified.size(); ++i) list.AddToList(unified[i]);
-	list.SetMaxEntries(min(previousMax, 10));
+	list.SetMaxEntries(min(previousMax, FbeRecentDocuments::kMaxRecentDocuments));
 }
 
 static bool FindArchiveMruRecord(const CString& key, DocumentLocation& location)
@@ -141,7 +148,7 @@ static void RebuildMruMenu(CRecentDocumentList& list)
 		if (::GetMenuItemInfo(menu, index, TRUE, &item) && item.wID >= ID_FILE_MRU_FIRST && item.wID <= ID_FILE_MRU_LAST) ::DeleteMenu(menu, index, MF_BYPOSITION);
 	}
 
-	const int count = min(list.m_arrDocs.GetSize(), 10);
+	const int count = min(list.m_arrDocs.GetSize(), FbeRecentDocuments::kMaxRecentDocuments);
 	if (count == 0)
 	{
 		::InsertMenu(menu, insertionPoint, MF_BYPOSITION | MF_STRING, ID_FILE_MRU_FIRST, list.m_szNoEntries);
@@ -166,6 +173,7 @@ static void RebuildMruMenu(CRecentDocumentList& list)
 		}
 		if (duplicate > 1) { CString discriminator; discriminator.Format(L" (%u)", duplicate); caption = FbeArchiveRecentDocuments::CompactCaptionPart(caption, 96 - discriminator.GetLength()) + discriminator; }
 		if (caption.GetLength() > 96) caption = FbeArchiveRecentDocuments::CompactCaptionPart(caption, 96);
+		caption.Replace(L"&", L"&&");
 		::InsertMenu(menu, insertionPoint + offset, MF_BYPOSITION | MF_STRING, id, caption);
 	}
 }
@@ -207,7 +215,7 @@ static void AddArchiveMruRecordsToList(CRecentDocumentList& list)
 	ReadArchiveMruRecords(records);
 	for (size_t i = records.size(); i > 0; --i) list.AddToList(ArchiveMruKey(records[i - 1].location));
 	ApplyMruOrder(list);
-	list.SetMaxEntries(10);
+	list.SetMaxEntries(FbeRecentDocuments::kMaxRecentDocuments);
 	RebuildMruMenu(list);
 }
 
@@ -266,6 +274,7 @@ bool FindArchiveMruRecord(const CString& key, DocumentLocation& location) { retu
 bool SameArchiveMruIdentity(const DocumentLocation& left, const DocumentLocation& right) { return ::SameArchiveMruIdentity(left, right); }
 CString ArchiveMruCaption(const CString& key) { return ::ArchiveMruCaption(key); }
 void TouchMruOrder(const CString& key) { ::TouchMruOrder(key); }
+void RemoveMruOrder(const CString& key) { ::RemoveMruOrder(key); }
 void ReadMruOrder(std::vector<CString>& order) { ::ReadMruOrder(order); }
 void ReadPortableMru(WTL::CRecentDocumentList& list) { ::ReadPortableMru(list); }
 void RememberArchiveMruRecord(CRecentDocumentList& list, const DocumentLocation& location) { ::RememberArchiveMruRecord(list, location); }

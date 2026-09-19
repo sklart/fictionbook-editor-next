@@ -7,6 +7,7 @@ namespace WTL { class CRecentDocumentList; }
 
 namespace FbeRecentDocuments
 {
+	const int kMaxRecentDocuments = 10;
 	typedef FbeArchiveRecentDocuments::Record ArchiveMruRecord;
 	void ReadArchiveMruRecords(std::vector<FbeArchiveRecentDocuments::Record>& records);
 	bool ParseArchiveMruUnsigned(const CString& text, unsigned int& value);
@@ -16,6 +17,7 @@ namespace FbeRecentDocuments
 	bool SameArchiveMruIdentity(const DocumentLocation& left, const DocumentLocation& right);
 	CString ArchiveMruCaption(const CString& key);
 	void TouchMruOrder(const CString& key);
+	void RemoveMruOrder(const CString& key);
 	void ReadMruOrder(std::vector<CString>& order);
 	void ReadPortableMru(WTL::CRecentDocumentList& list);
 void RememberArchiveMruRecord(WTL::CRecentDocumentList& list, const DocumentLocation& location);
