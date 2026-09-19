@@ -1,39 +1,49 @@
-<# Native regression for XML declaration encoding parsing. #>
+<# XML declaration helper and real FBE Source -> Body -> Save regressions. #>
 [CmdletBinding()]
-param()
+param(
+    [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
+    [ValidateRange(30, 300)][int]$TimeoutSeconds = 120
+)
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -PlatformToolset v143
-$directory = Join-Path ([IO.Path]::GetTempPath()) ("fbe-xml-declaration-$PID")
+$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-xml-declaration-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory | Out-Null
 try {
+    $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
+    if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
+    function Assert-FbeEncodingRoundTrip([string] $fromEncoding, [string] $targetEncoding) {
+        $fixture = Join-Path $directory ("fbe-" + $fromEncoding + '-to-' + $targetEncoding + '.fb2')
+        $report = Join-Path $directory ("fbe-" + $fromEncoding + '-to-' + $targetEncoding + '.txt')
+        $xml = "<?xml version=`"1.0`" encoding=`"$fromEncoding`"?><FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>Тест</first-name><last-name>Кодировки</last-name></author><book-title>Проверка</book-title><lang>ru</lang></title-info><document-info><id>source-encoding-$fromEncoding-$targetEncoding</id><version>1.0</version></document-info></description><body><section><p>Кириллица после Source</p></section></body></FictionBook>"
+        [IO.File]::WriteAllBytes($fixture, [Text.Encoding]::GetEncoding($fromEncoding).GetBytes($xml))
+        $previousMode, $previousScenario, $previousTarget = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_TARGET_ENCODING
+        try {
+            $env:FBE_NEXT_TEST_MODE = '1'
+            $env:FBE_NEXT_TEST_SCENARIO = 'source-xml-declaration-encoding-runtime'
+            $env:FBE_NEXT_TEST_TARGET_ENCODING = $targetEncoding
+            $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path -Parent $FbeExe) -PassThru
+            if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил encoding round-trip $fromEncoding -> $targetEncoding." }
+            if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { $details = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<report missing>' }; throw "FBE encoding round-trip $fromEncoding -> $targetEncoding failed: exit $($process.ExitCode).`n$details" }
+        }
+        finally {
+            $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_TARGET_ENCODING = $previousMode, $previousScenario, $previousTarget
+        }
+        $rows = @{}; foreach ($line in Get-Content -LiteralPath $report) { $parts = $line -split '=', 2; if ($parts.Count -eq 2) { $rows[$parts[0]] = $parts[1] } }
+        foreach ($key in @('source_edited', 'body', 'saved', 'reopened')) { if ($rows[$key] -ne '1') { throw "FBE encoding round-trip $fromEncoding -> $targetEncoding failed: $key=$($rows[$key])" } }
+        $bytes = [IO.File]::ReadAllBytes($fixture)
+        $savedXml = [Text.Encoding]::GetEncoding($targetEncoding).GetString($bytes)
+        if ($savedXml -notmatch ('^<\?xml\s+[^?]*encoding\s*=\s*["'']' + [regex]::Escape($targetEncoding) + '["''][^?]*\?>')) { throw "Saved $targetEncoding file does not declare its actual encoding." }
+        if ($savedXml -notmatch '<p>Кириллица после Source</p>') { throw "Saved $targetEncoding file cannot be decoded using its XML declaration." }
+    }
+
+    Assert-FbeEncodingRoundTrip 'windows-1251' 'utf-8'
+    Assert-FbeEncodingRoundTrip 'utf-8' 'windows-1251'
     $exe = Join-Path $directory 'xml-declaration-test.exe'
     & cl.exe /nologo /std:c++17 /EHsc /W4 /WX /I (Join-Path $root 'src\fbe') "/Fo$directory\\" (Join-Path $root 'tools\tests\xml-declaration-test.cpp') /Fe$exe
     if ($LASTEXITCODE -ne 0) { throw 'XML declaration helper compilation failed.' }
     & $exe
     if ($LASTEXITCODE -ne 0) { throw 'XML declaration helper regression failed.' }
-
-    function Assert-SerializedEncoding([string] $encoding) {
-        $source = "<?xml version='1.0' encoding='$encoding' standalone=`"yes`"?><FictionBook>Привет</FictionBook>"
-        $document = New-Object -ComObject Msxml2.DOMDocument.6.0
-        $document.async = $false
-        if (-not $document.loadXML($source)) { throw "MSXML rejected Source fixture for ${encoding}: $($document.parseError.reason)" }
-        $path = Join-Path $directory ("saved-" + $encoding + '.xml')
-        $document.save($path)
-        $bytes = [IO.File]::ReadAllBytes($path)
-        $actual = [Text.Encoding]::GetEncoding($encoding).GetString($bytes)
-        if ($actual -notmatch ('^<\?xml\s+[^?]*encoding\s*=\s*["'']' + [regex]::Escape($encoding) + '["''][^?]*\?>')) {
-            throw "Saved $encoding fixture does not declare the selected encoding."
-        }
-        if ($actual -notmatch '<FictionBook>Привет</FictionBook>') {
-            throw "Saved $encoding fixture is not decodable using its XML declaration."
-        }
-    }
-
-    # This follows the Source -> Body -> Save route: XML supplied by Source is
-    # parsed, then MSXML saves through the declaration selected by the editor.
-    Assert-SerializedEncoding 'utf-8'
-    Assert-SerializedEncoding 'windows-1251'
-    Write-Host 'XML declaration native regression passed.'
+    Write-Host 'XML declaration helper and FBE integration regressions passed.'
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

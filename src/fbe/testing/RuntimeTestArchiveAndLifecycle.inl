@@ -175,6 +175,46 @@
 		::PostQuitMessage(sourceActive && sourceCurrent && bodyWithoutChange && validEditApplied && editedSourceCurrent && cycles && invalidPreserved && unicodeInlineSelection && repeatedTextSelection && tagBoundarySelection && collapsedCaretSelection && bodyToSourceTransfersSelection && descriptionToSourceSkipsSelection ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"source-xml-declaration-encoding-runtime"))
+	{
+		wchar_t requestedEncoding[32] = {};
+		const DWORD requestedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_TARGET_ENCODING", requestedEncoding, _countof(requestedEncoding));
+		const CString targetEncoding(requestedLength && requestedLength < _countof(requestedEncoding) ? requestedEncoding : L"");
+		// The regression exercises the normal "keep opened encoding" path, not a
+		// user's optional default-save-encoding override.
+		_Settings.SetKeepEncoding(true);
+		ShowView(SOURCE);
+		const sptr_t sourceLength = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> source(static_cast<size_t>(sourceLength) + 1);
+		m_source.SendMessage(SCI_GETTEXT, sourceLength + 1, reinterpret_cast<LPARAM>(source.data()));
+		const char* const encodingPrefix = "encoding=\"";
+		char* const encodingStart = strstr(source.data(), encodingPrefix);
+		char* const valueStart = encodingStart ? encodingStart + strlen(encodingPrefix) : NULL;
+		char* const valueEnd = valueStart ? strchr(valueStart, '\"') : NULL;
+		const CStringA targetUtf8(CW2A(targetEncoding, CP_UTF8));
+		const bool sourceEdited = valueStart != NULL && valueEnd != NULL && !targetEncoding.IsEmpty();
+		if (sourceEdited)
+		{
+			const sptr_t start = static_cast<sptr_t>(valueStart - source.data());
+			const sptr_t end = static_cast<sptr_t>(valueEnd - source.data());
+			m_source.SendMessage(SCI_SETSEL, start, end);
+			m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(targetUtf8.GetString()));
+		}
+		ShowView(BODY);
+		const bool sourceApplied = sourceEdited && !IsSourceActive() &&
+			m_doc->m_encoding.CompareNoCase(targetEncoding) == 0;
+		const CString savedPath(m_doc->m_filename);
+		const bool saved = sourceApplied && m_doc->Save();
+		const FILE_OP_STATUS reloadResult = saved ? LoadFile(savedPath) : FAIL;
+		const bool reopened = reloadResult == OK && m_doc->m_body.Document() != NULL &&
+			m_doc->m_encoding.CompareNoCase(targetEncoding) == 0;
+		CStringA report;
+		report.Format("source=%d\nsource_edited=%d\nbody=%d\nsaved=%d\nreopened=%d\n", IsSourceActive(), sourceEdited,
+			sourceApplied, saved, reopened);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(sourceApplied && saved && reopened ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
 	{
 		const bool verifyOnly = IsFbeTestScenario(L"settings-dialog-runtime-verify");
