@@ -220,6 +220,7 @@ Function .onInit
     StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
   !endif
   Call ApplyDeploymentCommandLine
+  Call CheckOtherScopeConflict
   ${If} $DeploymentMode == "portable"
     Call DisablePortableIntegration
   ${EndIf}
@@ -412,8 +413,12 @@ Function CheckOtherScopeConflict
     ReadRegStr $0 HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"
   ${EndIf}
   ${If} $0 != ""
+    IfSilent conflict_silent
     MessageBox MB_OK|MB_ICONEXCLAMATION "$(InstallScopeConflict)$\r$\n$\r$\n$0"
     Abort
+conflict_silent:
+    SetErrorLevel 183
+    Quit
   ${EndIf}
 FunctionEnd
 
