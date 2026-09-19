@@ -1,6 +1,6 @@
 # Тестовые контуры
 
-Проект собирает один универсальный Win32 runtime для Windows 7 SP1+; отдельных Modern/Win7 деревьев, batch-профилей и ArchHandler артефактов нет.
+Проект собирает один универсальный Win32 runtime для Windows 7 SP1+; отдельных Modern/Win7 деревьев и batch-профилей нет. FBE.exe напрямую открывает поддерживаемые ZIP/RAR-контейнеры; отдельный ArchHandler не поставляется.
 
 ## FAST
 
@@ -24,9 +24,13 @@ FAST содержит статические/transform contracts. FULL соде�
 
 ## CI-special
 
-Workflow отдельно строит и проверяет ArchHandler из `out\archhandler\Win32\Release`: `test-archhandler-pe-contract.ps1` читает фактический PE32 GUI artifact, VERSIONINFO, embedded asInvoker manifest, ASLR и DEP. Installer upgrade/uninstall, shell/property-handler и keyboard-layout native checks также вызываются специализированными workflow steps.
-
-Локальный PE contract: `pwsh ./tools/tests/test-archhandler-pe-contract.ps1 -HandlerDirectory ./out/archhandler/Win32/Release`.
+Прямое открытие ZIP/RAR проверяют `test-fbe-archive-document-support.ps1`,
+`test-fbe-archive-runtime.ps1` и `test-fbe-archive-mru-runtime.ps1`, включая
+`.fb2.zip`, `.fb2.rar`, обычные архивы и Unicode-пути. Установщик при upgrade
+безопасно удаляет только legacy OpenWith/ProgID/Capabilities ArchHandler;
+`test-nsis-legacy-archhandler-cleanup.ps1` не допускает смены пользовательской
+ассоциации `.zip` или `.rar`. Installer upgrade/uninstall, shell/property-handler
+и keyboard-layout native checks также вызываются специализированными workflow steps.
 
 ## Installer, shell, portable и plugins
 

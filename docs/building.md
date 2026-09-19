@@ -207,8 +207,8 @@ UPX 5.2.1 хранится в `tools/upx`. Hunspell подключён как Gi
 ```
 
 Это также локальный release-контур по умолчанию: `build.ps1`,
-`create-release.ps1`, `verify-release.ps1`, ArchHandler, FBShell property
-handler и FBV MUI используют v143, а native release binaries и Scintilla/Lexilla
+`create-release.ps1`, `verify-release.ps1`, FBShell property handler и FBV MUI
+используют v143, а native release binaries и Scintilla/Lexilla
 инициализируются через `vcvars_ver=14.44`. Не заменяйте этот набор на более
 новый VC Tools без отдельной проверки Windows 7 imports.
 

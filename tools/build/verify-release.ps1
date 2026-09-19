@@ -338,6 +338,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-language-pack-plan.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-installer-language-fallbacks.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-installer-catalog.ps1")
+& (Join-Path $repoRoot "tools\tests\test-nsis-legacy-archhandler-cleanup.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-components-page-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-deployment-modes.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-install-scopes.ps1")

@@ -35,10 +35,9 @@
 | DOCX-плагин | `src/export-docx/ExportDOCX.vcxproj` и Batch-проект | контракт FBE, экспорт | Win32; `Plugins/ExportDOCX.dll` |
 | EPUB-плагин | `src/export-epub/ExportEPUB.vcxproj` и Batch-проект | контракт FBE, экспорт | Win32; `Plugins/ExportEPUB.dll` |
 | EPUB-импорт | `src/import-epub/ImportEPUB.vcxproj`, Batch и LunaSVG adapter | контракт FBE, импорт | Win32; `Plugins/ImportEPUB.dll` |
-| ArchHandler | `tools/build/build-archhandler.ps1` | вспомогательная shell-интеграция | Win32 output в `out/archhandler` |
 
 Основной solution включает FBE, FBShell, FBV и плагины. Batch-проекты,
-LunaSVG/PlutoVG, ArchHandler, shell x64 и FBV MUI дополняются официальными
+LunaSVG/PlutoVG, shell x64 и FBV MUI дополняются официальными
 сценариями; поэтому инвентарь нельзя получать только из `FBE.sln`.
 
 ## Граф сборки и артефактов

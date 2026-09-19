@@ -83,6 +83,10 @@ try {
     foreach($line in @('archive=1','fb2=1','rar=1','save_as=1','saved=1')) { if($rarSaveState -notmatch [regex]::Escape($line)) { throw "RAR Save As runtime regression: $line`n$rarSaveState" } }
     if(-not (Test-Path -LiteralPath $rarOutput) -or (Get-Content -LiteralPath $rarOutput -Raw) -notmatch 'ARCHIVE_RUNTIME_AFTER') { throw 'RAR Save As did not create the edited FB2.' }
     if((Get-FileHash -LiteralPath $rar5 -Algorithm SHA256).Hash -cne $rarBefore) { throw 'RAR Save As modified the source archive.' }
+    $ordinaryRar = Join-Path $root 'Обычный архив с пробелом.rar'; Copy-Item -LiteralPath $rar5 -Destination $ordinaryRar
+    $ordinaryRarReport = Join-Path $root 'ordinary-rar.txt'; Invoke-ArchiveFbe $ordinaryRar $ordinaryRarReport 'book.fb2' 'archive-open-runtime'
+    $ordinaryRarState = Get-Content -LiteralPath $ordinaryRarReport -Raw
+    foreach($line in @('archive=1','fb2=1','mshtml=1','rar=1','entry=book.fb2')) { if($ordinaryRarState -notmatch [regex]::Escape($line)) { throw "Ordinary RAR Unicode-path runtime regression: $line" } }
     $rar5Multi = Join-Path $root 'fixture-rar5-multi.rar'; Expand-ArchiveFixture (Join-Path $PSScriptRoot 'fixtures\archive-runtime-rar5-multi.b64') $rar5Multi
     $rar5MultiReport = Join-Path $root 'rar5-multi.txt'; Invoke-ArchiveFbe $rar5Multi $rar5MultiReport 'book.fbd' 'archive-open-runtime'; $rar5MultiState = Get-Content -LiteralPath $rar5MultiReport -Raw
     foreach($line in @('archive=1','fb2=0','fbd=1','mshtml=1','rar=1','entry=book.fbd')) { if($rar5MultiState -notmatch [regex]::Escape($line)) { throw "RAR5 FBD multi-entry runtime regression: $line" } }

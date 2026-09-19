@@ -9,7 +9,7 @@
 | --- | --- | --- | --- |
 | Редактор и просмотрщик | `out/<Configuration>/FBE.exe`, `FBV.exe`, `html.xsl` | корень Core | compiled artifact; хэш проверяется `build-provenance.ps1` |
 | COM-плагины | `out/<Configuration>/Plugins/*.dll` | `Plugins/` | compiled artifact; список обязателен в manifest |
-| Batch и ArchHandler | `out/<Configuration>/*.exe`, `out/archhandler/Win32/...` | корень, `Utilities/ArchHandler/` | compiled artifact; хэш проверяется provenance |
+| Batch-конвертеры | `out/<Configuration>/*.exe` | корень Core | compiled artifact; хэш проверяется provenance |
 | Scintilla/Lexilla | сборка из `third_party` через `build-scintilla.ps1` | корень Core | runtime-копия заменяется результатом собственной сборки |
 | Ресурсы runtime | `runtime/` | исходные относительные пути | сопровождаемые ресурсы; Core удаляет shell и plugin DLL из этой копии |
 | Shell integration | `out/package/shell-build/<Platform>/...` | Integration: `FBShell.dll`, `FBShell64.dll` | отдельные Win32/x64 compiled artifacts |
