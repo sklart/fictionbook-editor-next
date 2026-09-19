@@ -4,6 +4,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
+$implementation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $handler = [regex]::Match($source, 'LRESULT\s+OnSciUpdateUI\s*\([^)]*\)\s*\{[\s\S]*?(?=\n\s*LRESULT\s+OnGoToMatchTag)')
 if (!$handler.Success) { throw 'OnSciUpdateUI implementation was not found.' }
 
@@ -47,6 +48,18 @@ $viewEarlyExit = 'if\s*\(\s*m_editor_view_state\.Current\(\)\s*!=\s*EditorView::
 if ($handler.Value -notmatch $combinedEarlyExit -and
     -not ($handler.Value -match $sourceEarlyExit -and $handler.Value -match $viewEarlyExit)) {
     throw 'OnSciUpdateUI must return early for notifications from another control or inactive Source view.'
+}
+
+$sciUpdate = [regex]::Match($implementation, 'bool\s+CMainFrame::SciUpdateUI\s*\([^)]*\)\s*\{[\s\S]*?(?=\n\s*void\s+CMainFrame::SciGotoWrongTag)')
+if (!$sciUpdate.Success) { throw 'CMainFrame::SciUpdateUI implementation was not found.' }
+if ($sciUpdate.Value -match 'if\s*\(\s*config\.tagHighlight\s*\|\|\s*gotoTag\s*\)') {
+    throw 'Goto Matching Tag must not be gated by the visual tag-highlighting setting.'
+}
+if ($sciUpdate.Value -notmatch 'm_source\.HasMatchingTag\s*\(\s*\)') {
+    throw 'Goto Matching Tag availability must be derived from the cached XML matcher.'
+}
+if ($implementation -notmatch 'UIEnable\s*\(\s*ID_GOTO_MATCHTAG\s*,\s*m_source\.HasMatchingTag\s*\(\s*\)\s*\)') {
+    throw 'Applying source-editor settings must preserve matching-tag navigation availability.'
 }
 
 Write-Host 'Source SCN_UPDATEUI notification contract passed.'
