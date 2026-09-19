@@ -42,18 +42,9 @@ SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& 
 
 	_bstr_t serialized(cachedXml->xml);
 	sourceText = static_cast<const wchar_t*>(serialized);
-	CString declaration;
-	declaration.Format(L"<?xml version=\"1.0\" encoding=\"%s\"?>", static_cast<const wchar_t*>(encoding));
-	const CString declarationWithoutEncoding(L"<?xml version=\"1.0\"?>");
-	if(sourceText.Left(declarationWithoutEncoding.GetLength()).CompareNoCase(declarationWithoutEncoding) == 0)
-	{
-		sourceText.Delete(0, declarationWithoutEncoding.GetLength());
-		sourceText.Insert(0, declaration);
-	}
-	else if(sourceText.Left(5).CompareNoCase(L"<?xml") != 0)
-	{
-		sourceText.Insert(0, declaration + L"\r\n");
-	}
+	sourceText = FbeSetXmlDeclarationEncoding(
+		std::wstring(static_cast<const wchar_t*>(sourceText)),
+		std::wstring(static_cast<const wchar_t*>(encoding))).c_str();
 	return SourceTransitionResult::Success;
 }
 
