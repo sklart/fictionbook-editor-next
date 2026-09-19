@@ -398,7 +398,9 @@ Function DeploymentModePageLeave
   ${NSD_GetState} $DeploymentModePortableRadio $0
   ${If} $0 == ${BST_CHECKED}
     ${If} $DeploymentMode == "installed"
+      !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
       Call SaveInstalledModeState
+      !endif
     ${EndIf}
     StrCpy $DeploymentMode "portable"
     StrCpy $InstallScope "current"
@@ -407,7 +409,9 @@ Function DeploymentModePageLeave
     Call DisablePortableIntegration
   ${Else}
     ${If} $DeploymentMode == "portable"
+      !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
       Call RestoreInstalledModeState
+      !endif
     ${EndIf}
     StrCpy $DeploymentMode "installed"
   ${EndIf}
@@ -967,12 +971,6 @@ SectionEnd
 Function DisablePortableIntegration
 FunctionEnd
 
-!ifdef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
-Function SaveInstalledModeState
-FunctionEnd
-Function RestoreInstalledModeState
-FunctionEnd
-!endif
 !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
 Function SaveInstalledModeState
   ${If} $InstalledStateSaved == "1"
