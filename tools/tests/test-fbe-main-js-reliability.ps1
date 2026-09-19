@@ -62,7 +62,7 @@ var window={ event:null, onerror:null, external:{
 var event={srcElement:{offsetHeight:20},clientX:400,clientY:300};
 var xslScenario="missing";
 function ActiveXObject(name) {
-  if(name=="Msxml2.DOMDocument.6.0") return { async:false, preserveWhiteSpace:false, parseError:{errorCode:0}, firstChild:null, load:function(){return true;}, setProperty:function(){}, selectSingleNode:function(){return null;} };
+  if(name=="Msxml2.DOMDocument.6.0") return { async:false, preserveWhiteSpace:false, parseError:{errorCode:0}, firstChild:null, load:function(){ if(xslScenario=="valid") this.firstChild={attributes:{getNamedItem:function(name){return name=="encoding" ? {text:"utf-8"} : null;}}}; return true;}, setProperty:function(){}, selectSingleNode:function(){return null;} };
   if(name=="Msxml2.XSLTemplate.6.0") return { stylesheet:null, createProcessor:function(){return { input:null, output:"", setStartMode:function(mode){this.mode=mode;}, transform:function(){this.output=this.mode=="description" ? "RECOVERED DESCRIPTION" : "RECOVERED BODY";} };} };
   if(name=="Msxml2.FreeThreadedDOMDocument.6.0") {
     var xsl={ async:false, parseError:{errorCode:0,reason:"",line:0,linepos:0}, documentElement:null, setProperty:function(){}, load:function(){
@@ -146,7 +146,7 @@ assertXslFailure("broken", "Malformed XSL");
 PutBinaries=function(){}; SetupDescription=function(){}; HideNotePreview=function(){}; InitNotePreview=function(){}; ShowDescElements=function(){return true;}; apiShowDesc=function(){return true;};
 elements.fbw_desc.all.diID={value:"original-id"};
 messages.length=0; xslScenario="valid";
-assert(apiLoadFB2("valid.fb2", "english")===undefined, "a valid document loads after an XSL failure");
+assert(apiLoadFB2("valid.fb2", "english")=="utf-8", "a valid document returns its encoding after an XSL failure");
 assert(messages.length==0, "a valid document after XSL recovery reports no error");
 assert(elements.css.href=="main.css", "a valid document after XSL recovery keeps CSS restored");
 assert(elements.fbw_body.innerHTML=="RECOVERED BODY" && elements.fbw_desc.innerHTML=="RECOVERED DESCRIPTION", "a valid document after XSL recovery replaces the editor DOM");
