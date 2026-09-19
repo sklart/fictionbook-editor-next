@@ -706,6 +706,19 @@ function makeFilenameForSaving(fileCnt,bookTitle) {
   return path+fullFileName+(i==0?"":"_"+addZeros2(i,4)+"_SSASD")+".fb2";
 }
 
+function cleanupLinkedBody(document1, linksObj, bodyName) {
+  var sections=document1.documentElement.selectNodes('fb:body[@name="'+bodyName+'"]//fb:section');
+  var j, subsections, sectionId, bodies;
+  for (j=sections.length-1; j>=0; j--) {
+    subsections=sections[j].selectNodes("./fb:section");
+    sectionId=sections[j].getAttribute("id");
+    if (subsections.length==0 && (sectionId==null || linksObj[sectionId.toLowerCase()]!==true)) removeNode(sections[j]);
+  }
+  bodies=document1.documentElement.selectNodes('fb:body[@name="'+bodyName+'"]');
+  for (j=bodies.length-1; j>=0; j--)
+    if (bodies[j].selectNodes(".//fb:section").length==0) removeNode(bodies[j]);
+}
+
 function updateFilenamePreview() {
   var preview=document.getElementById("filenamePreview");
   if (!preview) return;
@@ -846,6 +859,10 @@ function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
   
       var removedCnt=0;
       var removedStr="";
+      cleanupLinkedBody(xmlDoc,linksObj,"notes");
+      cleanupLinkedBody(xmlDoc,linksObj,"comments");
+      /* Historical duplicated notes/comments cleanup retained below only as
+         reference for the migration; the common helper above is authoritative.
       // удалим ненужные разделы в notes body
       var sections=xmlDoc.documentElement.selectNodes('fb:body[@name="notes"]//fb:section');
       //alert("Разделов в notes body: "+sections.length);
@@ -924,6 +941,7 @@ function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
           removesCnt++;
        }
       }
+      } */
     }
 
     // удалим ненужные теги binary
