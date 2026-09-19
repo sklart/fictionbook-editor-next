@@ -257,6 +257,15 @@ Bundled plugins активируются из `Plugins\plugins.json` локал�
 регистрации. Это единый portable-набор для Windows 7 SP1 и новее; отдельного
 compatibility-профиля и отдельной Win7-сборки нет.
 
+NSIS installer предлагает три режима. **Current User** устанавливает текущую
+Win32-сборку в `%LOCALAPPDATA%\Programs\FictionBook Editor Next` без UAC;
+**All Users** устанавливает её в `Program Files (x86)\FictionBook Editor Next`
+и требует прав администратора; **Portable** создаёт переносимую папку без
+деинсталлятора, ассоциаций и системной интеграции. Для автоматической установки
+совмещайте `/S` с одним из `/CURRENTUSER`, `/ALLUSERS` или `/PORTABLE`.
+Installer Portable создаёт копию через мастер, а `portable.zip` предназначен
+для ручной распаковки без запуска installer.
+
 Проверка релиза по умолчанию не запускает длительный набор table-regression
 tests. Для его явного включения используйте `-RunTableTests`:
 

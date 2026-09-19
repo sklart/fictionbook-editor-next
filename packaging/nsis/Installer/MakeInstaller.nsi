@@ -191,6 +191,9 @@ Var InstallScopeAllUsersRadio
 Var ExistingMachineInstall
 Var UninstallUserData
 Var UninstallUserDataCheckbox
+Var CommandLineCurrentUser
+Var CommandLineAllUsers
+Var CommandLinePortable
 
 Function .onInit
   !insertmacro UAC_PageElevation_OnInit
@@ -212,13 +215,111 @@ Function .onInit
     StrCpy $InstallScope "allusers"
     SetShellVarContext all
   !endif
+  Call ApplyDeploymentCommandLine
   !ifdef FBE_DEPLOYMENT_TEST_ROOT
     ; The scope smoke redirects only its test probe, never a release install.
+    ; Do it after command-line parsing so the probe can exercise /CURRENTUSER,
+    ; /ALLUSERS and /PORTABLE without writing a production directory.
     StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
+  !endif
+  ; In an interactive installation ComponentsPageLeave requests elevation
+  ; after the user has seen the component choices.  Silent /ALLUSERS has no
+  ; page-leave callback, so request it here before any HKLM write is possible.
+  !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+    IfSilent 0 +2
+      Call EnsureAllUsersElevation
   !endif
   ${IfNot} ${UAC_IsInnerInstance}
     !insertmacro MUI_LANGDLL_DISPLAY
   ${EndIf}
+FunctionEnd
+
+Function ApplyDeploymentCommandLine
+  ${GetParameters} $0
+  StrCpy $CommandLineCurrentUser "0"
+  StrCpy $CommandLineAllUsers "0"
+  StrCpy $CommandLinePortable "0"
+  ClearErrors
+  ${GetOptions} $0 "/CURRENTUSER" $1
+  ${IfNot} ${Errors}
+    StrCpy $CommandLineCurrentUser "1"
+  ${EndIf}
+  ClearErrors
+  ${GetOptions} $0 "/ALLUSERS" $1
+  ${IfNot} ${Errors}
+    StrCpy $CommandLineAllUsers "1"
+  ${EndIf}
+  ClearErrors
+  ${GetOptions} $0 "/PORTABLE" $1
+  ${IfNot} ${Errors}
+    StrCpy $CommandLinePortable "1"
+  ${EndIf}
+
+  ${If} $CommandLineCurrentUser == "1"
+  ${AndIf} $CommandLineAllUsers == "1"
+    Call AbortInvalidDeploymentCommandLine
+  ${EndIf}
+  ${If} $CommandLinePortable == "1"
+  ${AndIf} $CommandLineCurrentUser == "1"
+    Call AbortInvalidDeploymentCommandLine
+  ${EndIf}
+  ${If} $CommandLinePortable == "1"
+  ${AndIf} $CommandLineAllUsers == "1"
+    Call AbortInvalidDeploymentCommandLine
+  ${EndIf}
+
+  ${If} $CommandLinePortable == "1"
+    StrCpy $DeploymentMode "portable"
+    StrCpy $InstallScope "current"
+    SetShellVarContext current
+    StrCpy $INSTDIR "$EXEDIR\${PRODUCT_NAME} Portable"
+    Return
+  ${EndIf}
+  ${If} $CommandLineAllUsers == "1"
+    StrCpy $DeploymentMode "installed"
+    StrCpy $InstallScope "allusers"
+    SetShellVarContext all
+    StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
+    Return
+  ${EndIf}
+  ${If} $CommandLineCurrentUser == "1"
+    StrCpy $DeploymentMode "installed"
+    StrCpy $InstallScope "current"
+    SetShellVarContext current
+    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+  ${EndIf}
+FunctionEnd
+
+Function AbortInvalidDeploymentCommandLine
+  IfSilent invalid_deployment_silent
+  MessageBox MB_OK|MB_ICONSTOP "$(InvalidDeploymentCommandLine)"
+invalid_deployment_silent:
+  SetErrorLevel 87
+  Quit
+FunctionEnd
+
+Function EnsureAllUsersElevation
+  ${If} $InstallScope != "allusers"
+    Return
+  ${EndIf}
+  ${If} ${UAC_IsAdmin}
+    Return
+  ${EndIf}
+  !insertmacro UAC_PageElevation_RunElevated
+  ${If} $2 = 0x666666
+    MessageBox MB_OK|MB_ICONEXCLAMATION $(UacAbortInstaller)
+    Abort
+  ${ElseIf} $0 = 1223
+    SetErrorLevel 1223
+    Abort
+  ${ElseIf} $0 = 1062
+    MessageBox MB_OK|MB_ICONSTOP $(UacLogonServiceInstaller)
+    Abort
+  ${ElseIf} $0 <> 0
+    MessageBox MB_OK|MB_ICONSTOP "$(UacUnknownError) $0"
+    Abort
+  ${EndIf}
+  Quit
 FunctionEnd
 Function .OnInstFailed
 FunctionEnd
@@ -275,8 +376,12 @@ Function InstallScopePageCreate
   Pop $0
   ${NSD_CreateRadioButton} 10u 28u 100% 12u "$(InstallScopeCurrent)"
   Pop $InstallScopeCurrentRadio
-  ${NSD_CreateRadioButton} 10u 48u 100% 12u "$(InstallScopeAllUsers)"
+  ${NSD_CreateLabel} 24u 40u 100% 10u "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+  Pop $0
+  ${NSD_CreateRadioButton} 10u 54u 100% 12u "$(InstallScopeAllUsers)"
   Pop $InstallScopeAllUsersRadio
+  ${NSD_CreateLabel} 24u 66u 100% 10u "$PROGRAMFILES32\${PRODUCT_NAME}"
+  Pop $0
   ${If} $InstallScope == "allusers"
     ${NSD_Check} $InstallScopeAllUsersRadio
   ${Else}
@@ -1017,23 +1122,7 @@ SectionGroupEnd
 
 
 Function ComponentsPageLeave
-  ${If} $InstallScope == "allusers"
-  ${AndIfNot} ${UAC_IsAdmin}
-    !insertmacro UAC_PageElevation_RunElevated
-    ${If} $2 = 0x666666
-      MessageBox MB_OK|MB_ICONEXCLAMATION $(UacAbortInstaller)
-      Abort
-    ${ElseIf} $0 = 1223
-      Abort
-    ${ElseIf} $0 = 1062
-      MessageBox MB_OK|MB_ICONSTOP $(UacLogonServiceInstaller)
-      Abort
-    ${ElseIf} $0 <> 0
-      MessageBox MB_OK|MB_ICONSTOP "$(UacUnknownError) $0"
-      Abort
-    ${EndIf}
-    Quit
-  ${EndIf}
+  Call EnsureAllUsersElevation
 
   SectionGetFlags ${FB2_Explorer_Properties_id} $0
   IntOp $0 $0 & ${SF_SELECTED}

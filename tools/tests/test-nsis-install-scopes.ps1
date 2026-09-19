@@ -32,7 +32,7 @@ function Read-Probe([string]$Path) {
     }
     return $result
 }
-function Invoke-ScopeProbe([string]$Name, [string[]]$Defines) {
+function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArguments) {
     $directory = Join-Path $testRoot $Name
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     $setup = Join-Path $directory 'scope-probe.exe'
@@ -47,7 +47,7 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines) {
     Push-Location $installerDirectory
     try { & $makensis @arguments } finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) { throw "makensis failed for $Name scope probe." }
-    $process = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
+    $process = Start-Process -FilePath $setup -ArgumentList $RunArguments -Wait -PassThru
     if ($process.ExitCode -ne 0) { throw "NSIS $Name scope probe exited with $($process.ExitCode)." }
     $probe = Join-Path $directory 'deployment-scope.txt'
     if (-not (Test-Path -LiteralPath $probe -PathType Leaf)) { throw "NSIS $Name scope probe did not write its result." }
@@ -66,20 +66,20 @@ New-Item -ItemType Directory -Path $inputDirectory -Force | Out-Null
 foreach ($license in @('LICENSE', 'gpl-3.0.ru.txt', 'gpl-3.0.ua.txt')) {
     Set-Content -LiteralPath (Join-Path $inputDirectory $license) -Value 'NSIS deployment scope test fixture.' -Encoding ASCII
 }
-$current = Invoke-ScopeProbe 'current' @()
+$current = Invoke-ScopeProbe 'current' @() @('/S', '/CURRENTUSER')
 if ($current.State.DeploymentMode -ne 'installed' -or $current.State.InstallScope -ne 'current' -or
     $current.State.UninstallRegistryRoot -ne 'HKCU' -or $current.State.ProductionPath -notmatch '\\Programs\\FictionBook Editor Next$') {
     throw "Current User scope probe returned an unexpected state: $($current.State | Out-String)"
 }
 if ($current.State.ProductionPath -match 'Program Files') { throw 'Current User scope selected Program Files semantics.' }
 
-$allUsers = Invoke-ScopeProbe 'allusers' @('/DFBE_DEPLOYMENT_TEST_ALLUSERS=1')
+$allUsers = Invoke-ScopeProbe 'allusers' @() @('/S', '/ALLUSERS')
 if ($allUsers.State.DeploymentMode -ne 'installed' -or $allUsers.State.InstallScope -ne 'allusers' -or
     $allUsers.State.UninstallRegistryRoot -ne 'HKLM' -or $allUsers.State.ProductionPath -notmatch 'Program Files') {
     throw "All Users scope probe returned an unexpected state: $($allUsers.State | Out-String)"
 }
 
-$portable = Invoke-ScopeProbe 'portable' @('/DFBE_DEPLOYMENT_TEST_PORTABLE=1')
+$portable = Invoke-ScopeProbe 'portable' @() @('/S', '/PORTABLE')
 if ($portable.State.DeploymentMode -ne 'portable' -or $portable.State.InstallScope -ne 'current') {
     throw "Portable scope probe returned an unexpected state: $($portable.State | Out-String)"
 }
