@@ -191,6 +191,9 @@ Var InstallScopeAllUsersRadio
 Var ExistingMachineInstall
 Var UninstallUserData
 Var UninstallUserDataCheckbox
+Var CommandLineCurrentUser
+Var CommandLineAllUsers
+Var CommandLinePortable
 
 Function .onInit
   !insertmacro UAC_PageElevation_OnInit
@@ -216,9 +219,98 @@ Function .onInit
     ; The scope smoke redirects only its test probe, never a release install.
     StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
   !endif
+  Call ApplyDeploymentCommandLine
+  !ifdef FBE_DEPLOYMENT_TEST_ROOT
+    StrCpy $INSTDIR "${FBE_DEPLOYMENT_TEST_ROOT}"
+  !endif
+  !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+    IfSilent 0 +2
+      Call EnsureAllUsersElevation
+  !endif
   ${IfNot} ${UAC_IsInnerInstance}
     !insertmacro MUI_LANGDLL_DISPLAY
   ${EndIf}
+FunctionEnd
+
+Function ApplyDeploymentCommandLine
+  ${GetParameters} $0
+  StrCpy $CommandLineCurrentUser "0"
+  StrCpy $CommandLineAllUsers "0"
+  StrCpy $CommandLinePortable "0"
+  ClearErrors
+  ${GetOptions} $0 "/CURRENTUSER" $1
+  ${IfNot} ${Errors}
+    StrCpy $CommandLineCurrentUser "1"
+  ${EndIf}
+  ClearErrors
+  ${GetOptions} $0 "/ALLUSERS" $1
+  ${IfNot} ${Errors}
+    StrCpy $CommandLineAllUsers "1"
+  ${EndIf}
+  ClearErrors
+  ${GetOptions} $0 "/PORTABLE" $1
+  ${IfNot} ${Errors}
+    StrCpy $CommandLinePortable "1"
+  ${EndIf}
+  ${If} $CommandLineCurrentUser == "1"
+  ${AndIf} $CommandLineAllUsers == "1"
+    SetErrorLevel 87
+    Quit
+  ${EndIf}
+  ${If} $CommandLinePortable == "1"
+  ${AndIf} $CommandLineCurrentUser == "1"
+    SetErrorLevel 87
+    Quit
+  ${EndIf}
+  ${If} $CommandLinePortable == "1"
+  ${AndIf} $CommandLineAllUsers == "1"
+    SetErrorLevel 87
+    Quit
+  ${EndIf}
+  ${If} $CommandLinePortable == "1"
+    StrCpy $DeploymentMode "portable"
+    StrCpy $InstallScope "current"
+    SetShellVarContext current
+    StrCpy $INSTDIR "$EXEDIR\${PRODUCT_NAME} Portable"
+    Return
+  ${EndIf}
+  ${If} $CommandLineAllUsers == "1"
+    StrCpy $DeploymentMode "installed"
+    StrCpy $InstallScope "allusers"
+    SetShellVarContext all
+    StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
+    Return
+  ${EndIf}
+  ${If} $CommandLineCurrentUser == "1"
+    StrCpy $DeploymentMode "installed"
+    StrCpy $InstallScope "current"
+    SetShellVarContext current
+    StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+  ${EndIf}
+FunctionEnd
+
+Function EnsureAllUsersElevation
+  ${If} $InstallScope != "allusers"
+    Return
+  ${EndIf}
+  ${If} ${UAC_IsAdmin}
+    Return
+  ${EndIf}
+  !insertmacro UAC_PageElevation_RunElevated
+  ${If} $2 = 0x666666
+    MessageBox MB_OK|MB_ICONEXCLAMATION $(UacAbortInstaller)
+    Abort
+  ${ElseIf} $0 = 1223
+    SetErrorLevel 1223
+    Abort
+  ${ElseIf} $0 = 1062
+    MessageBox MB_OK|MB_ICONSTOP $(UacLogonServiceInstaller)
+    Abort
+  ${ElseIf} $0 <> 0
+    MessageBox MB_OK|MB_ICONSTOP "$(UacUnknownError) $0"
+    Abort
+  ${EndIf}
+  Quit
 FunctionEnd
 Function .OnInstFailed
 FunctionEnd
@@ -275,8 +367,12 @@ Function InstallScopePageCreate
   Pop $0
   ${NSD_CreateRadioButton} 10u 28u 100% 12u "$(InstallScopeCurrent)"
   Pop $InstallScopeCurrentRadio
-  ${NSD_CreateRadioButton} 10u 48u 100% 12u "$(InstallScopeAllUsers)"
+  ${NSD_CreateLabel} 24u 40u 100% 10u "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+  Pop $0
+  ${NSD_CreateRadioButton} 10u 54u 100% 12u "$(InstallScopeAllUsers)"
   Pop $InstallScopeAllUsersRadio
+  ${NSD_CreateLabel} 24u 66u 100% 10u "$PROGRAMFILES32\${PRODUCT_NAME}"
+  Pop $0
   ${If} $InstallScope == "allusers"
     ${NSD_Check} $InstallScopeAllUsersRadio
   ${Else}
@@ -712,6 +808,27 @@ migrate_legacy_win32:
 migrate_legacy_done:
 FunctionEnd
 
+; ArchHandler belonged to older FBE releases.  It registered only its own
+; OpenWith entries, ProgIDs and capability root under HKCU; never touch the
+; extension default value or UserChoice because those belong to the user.
+Function CleanupLegacyArchHandlerRegistration
+  DeleteRegValue HKCU "Software\Classes\.zip\OpenWithProgids" "FictionBookEditor.ArchHandler.zip"
+  DeleteRegValue HKCU "Software\Classes\.rar\OpenWithProgids" "FictionBookEditor.ArchHandler.rar"
+  DeleteRegKey HKCU "Software\Classes\FictionBookEditor.ArchHandler.zip"
+  DeleteRegKey HKCU "Software\Classes\FictionBookEditor.ArchHandler.rar"
+  DeleteRegValue HKCU "Software\RegisteredApplications" "FictionBook Editor ArchHandler"
+  DeleteRegKey HKCU "Software\FictionBook Editor\ArchHandler"
+FunctionEnd
+
+Function un.CleanupLegacyArchHandlerRegistration
+  DeleteRegValue HKCU "Software\Classes\.zip\OpenWithProgids" "FictionBookEditor.ArchHandler.zip"
+  DeleteRegValue HKCU "Software\Classes\.rar\OpenWithProgids" "FictionBookEditor.ArchHandler.rar"
+  DeleteRegKey HKCU "Software\Classes\FictionBookEditor.ArchHandler.zip"
+  DeleteRegKey HKCU "Software\Classes\FictionBookEditor.ArchHandler.rar"
+  DeleteRegValue HKCU "Software\RegisteredApplications" "FictionBook Editor ArchHandler"
+  DeleteRegKey HKCU "Software\FictionBook Editor\ArchHandler"
+FunctionEnd
+
 Function WriteDeploymentScopeTestProbe
   CreateDirectory "$INSTDIR"
   FileOpen $0 "$INSTDIR\deployment-scope.txt" w
@@ -859,6 +976,7 @@ portable_core_done:
   Goto main_section_done
 
 installed_core_state:
+  Call CleanupLegacyArchHandlerRegistration
   ; uninstall info must exist for any successful installation, not only when
   ; optional system integration is selected
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayName" "${PRODUCT_NAME_VERSION}"
@@ -1017,23 +1135,7 @@ SectionGroupEnd
 
 
 Function ComponentsPageLeave
-  ${If} $InstallScope == "allusers"
-  ${AndIfNot} ${UAC_IsAdmin}
-    !insertmacro UAC_PageElevation_RunElevated
-    ${If} $2 = 0x666666
-      MessageBox MB_OK|MB_ICONEXCLAMATION $(UacAbortInstaller)
-      Abort
-    ${ElseIf} $0 = 1223
-      Abort
-    ${ElseIf} $0 = 1062
-      MessageBox MB_OK|MB_ICONSTOP $(UacLogonServiceInstaller)
-      Abort
-    ${ElseIf} $0 <> 0
-      MessageBox MB_OK|MB_ICONSTOP "$(UacUnknownError) $0"
-      Abort
-    ${EndIf}
-    Quit
-  ${EndIf}
+  Call EnsureAllUsersElevation
 
   SectionGetFlags ${FB2_Explorer_Properties_id} $0
   IntOp $0 $0 & ${SF_SELECTED}
@@ -1270,6 +1372,7 @@ FunctionEnd
 Section Uninstall
 
   Call un.CheckFBERunning
+  Call un.CleanupLegacyArchHandlerRegistration
 
   ; Shared shell registration is removed only when this setup installed it.
   ; The helper additionally verifies every CLSID and DLL path before changing
