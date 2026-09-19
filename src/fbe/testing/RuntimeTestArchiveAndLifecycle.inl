@@ -382,6 +382,22 @@
 		::PostQuitMessage(preserved ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"save-as-mru-runtime"))
+	{
+		const CString source(m_doc->m_filename); CString target; wchar_t path[MAX_PATH] = {};
+		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", path, _countof(path));
+		if (length && length < _countof(path)) target = path;
+		const FILE_OP_STATUS first = target.IsEmpty() ? FAIL : SaveFile(true);
+		const FILE_OP_STATUS repeat = first == OK ? SaveFile(true) : FAIL;
+		int targetCount = 0, sourceCount = 0; CString firstItem;
+		for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) { const CString item(m_recentDocuments.List().m_arrDocs[i].szDocName); if (i == 0) firstItem = item; if (item.CompareNoCase(target) == 0) ++targetCount; if (item.CompareNoCase(source) == 0) ++sourceCount; }
+		::SetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", NULL);
+		const FILE_OP_STATUS cancelled = SaveFile(true);
+		CString afterCancel; for (int i = 0; i < m_recentDocuments.List().m_arrDocs.GetSize(); ++i) afterCancel.AppendFormat(L"%s\n", static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[i].szDocName));
+		const bool passed = first == OK && repeat == OK && firstItem.CompareNoCase(target) == 0 && targetCount == 1 && sourceCount == 1 && cancelled == CANCELLED;
+		CStringA report; report.Format("saved=%d\nfirst=%d\nunique=%d\nsource=%d\ncancel=%d\n", first == OK && repeat == OK, firstItem.CompareNoCase(target) == 0, targetCount == 1, sourceCount == 1, cancelled == CANCELLED);
+		DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"malformed-source-fallback-runtime"))
 	{
 		wchar_t malformedPath[MAX_PATH] = {};
