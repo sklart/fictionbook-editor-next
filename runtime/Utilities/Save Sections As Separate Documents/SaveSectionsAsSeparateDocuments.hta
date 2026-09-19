@@ -1306,7 +1306,7 @@ function myOnClick() {
  if (event.shiftKey && evaledN && selectionBegin) {
   var oldN=selectionBegin.id;
   if (oldN==null || oldN=="" || oldN.indexOf("n_")!=0) return;
- evaledOldN=parseInt(oldN.substr(2),10);
+ var evaledOldN=parseInt(oldN.substr(2),10);
   if (!event.ctrlKey) {
    //alert("добавляем в список n_"+evaledOldN);
    selectedElements[evaledOldN]=evaledOldN;
@@ -1359,13 +1359,13 @@ function myOnClick() {
 
 function isInNotesOrCommentsBody(el) {
  while (el && el.nodeName!="body") el=el.parentNode;
- if (el.nodeName=="body" && (el.getAttribute("name")=="notes" || el.getAttribute("name")=="comments"))
+ if (el && el.nodeName=="body" && (el.getAttribute("name")=="notes" || el.getAttribute("name")=="comments"))
   return true;
  return false;
 }
 
 function scrollingTimer() {
- var tmpEl,el,n,r,l,elemListHeight;
+ var tmpEl,el,n,r,l,lft,rgt,elemListHeight;
  el=document.getElementById("elementList");
  if (scrolling=="up") {
   document.getElementById("elementList").scrollTop-=20;
@@ -1428,7 +1428,8 @@ function scrollingTimer() {
 
 function capturedMouse() {
  //logStr+="Вошли в capturedMouse.\n";
- el=event.srcElement;
+ var el=event.srcElement;
+ var evaledN;
  if (event.type=="mouseover") {
   if (el.nodeName=="BODY") {
    scrolling="no";
@@ -1501,7 +1502,7 @@ function getInnerXML(startEl) {
  var xmlStr="";
  var myAttrs,myAttr,i;
  if (!startEl.hasChildNodes) return "";
- el=startEl.firstChild;
+ var el=startEl.firstChild;
 
  while (el && el!=startEl) {
 //  alert("nodeType: "+el.nodeType+"\n\nnodeValue: "+el.nodeValue);
