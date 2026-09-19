@@ -88,6 +88,9 @@ foreach ($path in @('portable.ini', 'Data\Settings', 'Data\Scripts', 'Data\Dicti
 }
 if (Test-Path -LiteralPath (Join-Path $portable.Directory 'uninst.exe')) { throw 'Portable NSIS probe created an uninstaller.' }
 
+$transitions = Invoke-ScopeProbe 'scope-transitions' @('/DFBE_DEPLOYMENT_TEST_SCOPE_TRANSITIONS=1') @('/S', '/CURRENTUSER')
+if ($transitions.State.ScopeTransitions -ne 'passed') { throw "NSIS scope path transition regression failed: $($transitions.State | Out-String)" }
+
 foreach ($key in $registryKeys) {
     if ((Get-RegistrySnapshot $key) -cne $before[$key]) { throw "NSIS scope probe changed registry state: $key" }
 }

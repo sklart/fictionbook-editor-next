@@ -192,6 +192,9 @@ Var ExistingMachineInstall
 Var DetectedInstallScope
 Var DetectedCurrentInstallLocation
 Var DetectedAllUsersInstallLocation
+Var SessionCurrentInstallLocation
+Var SessionAllUsersInstallLocation
+Var ScopeTransitionResult
 Var UninstallUserData
 Var UninstallUserDataCheckbox
 Var CommandLineCurrentUser
@@ -310,6 +313,7 @@ Function DetectExistingInstallScope
   ReadRegStr $DetectedAllUsersInstallLocation HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"
   ReadRegStr $DetectedCurrentInstallLocation HKCU "${PRODUCT_UNINST_KEY}" "InstallLocation"
   ${If} $DetectedAllUsersInstallLocation != ""
+    StrCpy $SessionAllUsersInstallLocation "$DetectedAllUsersInstallLocation"
     StrCpy $DetectedInstallScope "allusers"
     StrCpy $InstallScope "allusers"
     SetShellVarContext all
@@ -317,6 +321,7 @@ Function DetectExistingInstallScope
     Return
   ${EndIf}
   ${If} $DetectedCurrentInstallLocation != ""
+    StrCpy $SessionCurrentInstallLocation "$DetectedCurrentInstallLocation"
     StrCpy $DetectedInstallScope "current"
     StrCpy $InstallScope "current"
     SetShellVarContext current
@@ -421,27 +426,43 @@ FunctionEnd
 Function InstallScopePageLeave
   ${NSD_GetState} $InstallScopeAllUsersRadio $0
   ${If} $0 == ${BST_CHECKED}
-    ${If} $InstallScope != "allusers"
-      StrCpy $InstallScope "allusers"
-      SetShellVarContext all
-      ${If} $DetectedAllUsersInstallLocation != ""
-        StrCpy $INSTDIR "$DetectedAllUsersInstallLocation"
-      ${Else}
-        StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
-      ${EndIf}
+    StrCpy $0 "allusers"
+  ${Else}
+    StrCpy $0 "current"
+  ${EndIf}
+  Call ApplyInstallScopeSelection
+  Call CheckOtherScopeConflict
+FunctionEnd
+
+; $0 is the selected scope. Preserve the directory typed on the Directory
+; page before crossing scopes, then restore that scope's session path when
+; returning. Selecting the already active scope deliberately does nothing.
+Function ApplyInstallScopeSelection
+  ${If} $0 == $InstallScope
+    Return
+  ${EndIf}
+  ${If} $InstallScope == "current"
+    StrCpy $SessionCurrentInstallLocation "$INSTDIR"
+  ${Else}
+    StrCpy $SessionAllUsersInstallLocation "$INSTDIR"
+  ${EndIf}
+  ${If} $0 == "allusers"
+    StrCpy $InstallScope "allusers"
+    SetShellVarContext all
+    ${If} $SessionAllUsersInstallLocation != ""
+      StrCpy $INSTDIR "$SessionAllUsersInstallLocation"
+    ${Else}
+      StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
     ${EndIf}
   ${Else}
-    ${If} $InstallScope != "current"
-      StrCpy $InstallScope "current"
-      SetShellVarContext current
-      ${If} $DetectedCurrentInstallLocation != ""
-        StrCpy $INSTDIR "$DetectedCurrentInstallLocation"
-      ${Else}
-        StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
-      ${EndIf}
+    StrCpy $InstallScope "current"
+    SetShellVarContext current
+    ${If} $SessionCurrentInstallLocation != ""
+      StrCpy $INSTDIR "$SessionCurrentInstallLocation"
+    ${Else}
+      StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
     ${EndIf}
   ${EndIf}
-  Call CheckOtherScopeConflict
 FunctionEnd
 
 Function CheckOtherScopeConflict
@@ -883,9 +904,15 @@ Function un.CleanupLegacyArchHandlerRegistration
 FunctionEnd
 
 Function WriteDeploymentScopeTestProbe
+  !ifdef FBE_DEPLOYMENT_TEST_SCOPE_TRANSITIONS
+    Call VerifyScopePathTransitions
+  !endif
   CreateDirectory "$INSTDIR"
   FileOpen $0 "$INSTDIR\deployment-scope.txt" w
   FileWrite $0 "DeploymentMode=$DeploymentMode$\r$\nInstallScope=$InstallScope$\r$\nInstallPath=$INSTDIR$\r$\n"
+  !ifdef FBE_DEPLOYMENT_TEST_SCOPE_TRANSITIONS
+    FileWrite $0 "ScopeTransitions=$ScopeTransitionResult$\r$\n"
+  !endif
   ${If} $InstallScope == "allusers"
     FileWrite $0 "UninstallRegistryRoot=HKLM$\r$\nProductionPath=$PROGRAMFILES32\${PRODUCT_NAME}$\r$\n"
   ${Else}
@@ -921,6 +948,42 @@ Section "Deployment scope probe"
   Quit
 SectionEnd
 Function DisablePortableIntegration
+FunctionEnd
+Function VerifyScopePathTransitions
+  ; Current User custom path -> All Users -> Current User.
+  StrCpy $SessionCurrentInstallLocation "C:\NSIS-test\Current-custom"
+  StrCpy $SessionAllUsersInstallLocation "D:\NSIS-test\All-custom"
+  StrCpy $InstallScope "current"
+  StrCpy $INSTDIR "$SessionCurrentInstallLocation"
+  StrCpy $0 "allusers"
+  Call ApplyInstallScopeSelection
+  StrCmp $INSTDIR "D:\NSIS-test\All-custom" 0 transition_failed
+  StrCpy $0 "current"
+  Call ApplyInstallScopeSelection
+  StrCmp $INSTDIR "C:\NSIS-test\Current-custom" 0 transition_failed
+  ; Mirror All Users path and a Directory-page manual path round trip.
+  StrCpy $InstallScope "allusers"
+  StrCpy $INSTDIR "$SessionAllUsersInstallLocation"
+  StrCpy $0 "current"
+  Call ApplyInstallScopeSelection
+  StrCmp $INSTDIR "C:\NSIS-test\Current-custom" 0 transition_failed
+  StrCpy $0 "allusers"
+  Call ApplyInstallScopeSelection
+  StrCmp $INSTDIR "D:\NSIS-test\All-custom" 0 transition_failed
+  StrCpy $InstallScope "current"
+  StrCpy $INSTDIR "E:\NSIS-test\Manual-current"
+  StrCpy $0 "allusers"
+  Call ApplyInstallScopeSelection
+  StrCpy $0 "current"
+  Call ApplyInstallScopeSelection
+  StrCmp $INSTDIR "E:\NSIS-test\Manual-current" 0 transition_failed
+  StrCpy $ScopeTransitionResult "passed"
+  StrCpy $INSTDIR "$EXEDIR"
+  Return
+transition_failed:
+  StrCpy $ScopeTransitionResult "failed"
+  StrCpy $INSTDIR "$EXEDIR"
+  Return
 FunctionEnd
 !else
 Section !$(Main) MainSection_id
