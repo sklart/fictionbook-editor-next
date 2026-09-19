@@ -6,6 +6,10 @@ $source = Get-Content -Raw -LiteralPath $hta
 foreach ($pattern in @('validateSavedFictionBook', 'XMLSchemaCache\.6\.0', 'FictionBook\.xsd', 'FBE_NEXT_TEST_MODE', 'SAVE_SECTIONS_FAIL_REPLACE')) {
     if ($source -notmatch $pattern) { throw "Не найдена обязательная защита Save Sections: $pattern" }
 }
+foreach ($pattern in @('var versions=\["Msxml2\.DOMDocument\.6\.0"\]', 'function isRecognizedAuthorText', 'allAuthorsRecognized', 'bookTitle=bookTitleParagraph', 'replace\(/\[\\\\\\/:\*\?"<>\|\\x00-\\x1f\]/g,"_"\)', 'com\[1-9\]\|lpt\[1-9\]')) {
+    if ($source -notmatch $pattern) { throw "Не найдена регрессия Save Sections: $pattern" }
+}
+if ($source -match 'MSXML6 version') { throw 'Заголовок HTA не должен содержать устаревшее уточнение MSXML6.' }
 if ($source -match 'DeleteFile\(pathForSaving') { throw 'Целевой файл нельзя удалять до успешной замены.' }
 if ($source -notmatch 'while \(elementList\.hasChildNodes\(\)\)') { throw 'Список разделов должен вызывать hasChildNodes() перед удалением узла.' }
 
