@@ -719,10 +719,23 @@ function cleanupLinkedBody(document1, linksObj, bodyName) {
     if (bodies[j].selectNodes(".//fb:section").length==0) removeNode(bodies[j]);
 }
 
+function getPreviewBookTitle() {
+  var titleIndex, title, paragraphs;
+  sortElements();
+  if (!xmlDoc || !sortedElementArray || sortedElementArray.length==0) return bookTitle;
+  titleIndex=myLinks[sortedElementArray[0]];
+  title=xmlDoc.documentElement.selectNodes("//fb:section/fb:title")[titleIndex];
+  if (!title) return bookTitle;
+  paragraphs=title.selectNodes("./fb:p");
+  if (document.getElementById("radio1").checked) return getParagraphText(paragraphs[1]);
+  if (document.getElementById("radio2").checked || document.getElementById("radio3").checked) return getParagraphText(paragraphs[0]);
+  return getParagraphText(paragraphs.length>1 ? paragraphs[1] : paragraphs[0]);
+}
+
 function updateFilenamePreview() {
   var preview=document.getElementById("filenamePreview");
   if (!preview) return;
-  try { preview.value=makeFilenameForSaving(1,bookTitle); } catch (e) { preview.value=""; }
+  try { preview.value=makeFilenameForSaving(1,getPreviewBookTitle()); } catch (e) { preview.value=""; }
 }
 
 function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
@@ -1175,6 +1188,7 @@ function selectElements(selectionBegin,selectionEnd) {
   }
   currElement=currElement.nextSibling;
  }
+ updateFilenamePreview();
 }
 
 function removeActivityFromActiveElement() {
@@ -1589,7 +1603,7 @@ function chooseOutputFolder() {
   try {
     var shell=new ActiveXObject("Shell.Application");
     var folder=shell.BrowseForFolder(0, "Выберите папку для сохранения FB2", 0);
-    if (folder) document.getElementById("outputFolder").value=folder.Self.Path;
+    if (folder) { document.getElementById("outputFolder").value=folder.Self.Path; updateFilenamePreview(); }
   }
   catch (e) {
     alert("Не удалось открыть выбор папки.\n\n"+e.message);
@@ -1668,6 +1682,7 @@ function applySettings() {
  document.getElementById("elementList").style.display="inline-block";
  setListWidthAndHeight();
  doResize=true;
+ updateFilenamePreview();
 // alert("Настройки успешно применены.\n\n"+f1);
 }
 
@@ -1695,7 +1710,7 @@ function applySettings() {
 <DIV id=buttonsDiv style="display:none;">
 <div style="margin:0 auto; width:650px;">
   <label>Выходная папка: <input type=text id="outputFolder" style="width:400px;"></label> <input type=button value="Выбрать..." onclick="chooseOutputFolder();"><br>
-  <label for="unicodeNames"><input type=checkbox id="unicodeNames"> сохранять названия файлов в Unicode</label>
+  <label for="unicodeNames"><input type=checkbox id="unicodeNames" onclick="updateFilenamePreview();"> сохранять названия файлов в Unicode</label>
   <label>Шаблон: <input type=text id="filenameTemplate" value="{number}_{author}_{title}" style="width:240px;" onkeyup="updateFilenamePreview();"></label><br>
   <label>Предпросмотр: <input type=text id="filenamePreview" readonly style="width:460px;"></label>
 </div>
@@ -1704,13 +1719,13 @@ function applySettings() {
 <label for="checkbox1"><input type=checkbox id="checkbox1" name=noteSign style="width:30px; height:30px;"> включать в сохраняемые файлы эпиграфы, в исходном документе относившиеся к body, а также разделы без заголовков, которые (разделы) находились в начале body</label>
 </div>
 <div style="margin:0 auto; width:500px;">
-<label for=radio1><input type=radio id=radio1 name=radiogroup1 checked style="width:30px; height:30px;"> первый абзац заголовка – автор(ы), второй – название произведения</label>
+<label for=radio1><input type=radio id=radio1 name=radiogroup1 checked style="width:30px; height:30px;" onclick="updateFilenamePreview();"> первый абзац заголовка – автор(ы), второй – название произведения</label>
 <br>
-<label for=radio2><input type=radio id=radio2 name=radiogroup1 style="width:30px; height:30px;"> первый абзац заголовка – название произведения, второй – автор(ы)</label>
+<label for=radio2><input type=radio id=radio2 name=radiogroup1 style="width:30px; height:30px;" onclick="updateFilenamePreview();"> первый абзац заголовка – название произведения, второй – автор(ы)</label>
 <br>
-<label for=radio3><input type=radio id=radio3 name=radiogroup1 style="width:30px; height:30px;"> первый (либо единственный) абзац заголовка – название произведения (а авторов оставить из исходного документа)</label>
+<label for=radio3><input type=radio id=radio3 name=radiogroup1 style="width:30px; height:30px;" onclick="updateFilenamePreview();"> первый (либо единственный) абзац заголовка – название произведения (а авторов оставить из исходного документа)</label>
 <br>
-<label for=radio4><input type=radio id=radio4 name=radiogroup1 style="width:30px; height:30px;"> второй (либо единственный) абзац заголовка – название произведения (а авторов оставить из исходного документа)</label>
+<label for=radio4><input type=radio id=radio4 name=radiogroup1 style="width:30px; height:30px;" onclick="updateFilenamePreview();"> второй (либо единственный) абзац заголовка – название произведения (а авторов оставить из исходного документа)</label>
 </div>
 <br>
 <p style="text-align:center;"><INPUT type=button value="Сохранить выбранные разделы как отдельные документы" onclick="saveSectionsAsSeparateDocuments();" class=gray></p>
