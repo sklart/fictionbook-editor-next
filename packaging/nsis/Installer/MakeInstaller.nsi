@@ -195,6 +195,17 @@ Var DetectedAllUsersInstallLocation
 Var SessionCurrentInstallLocation
 Var SessionAllUsersInstallLocation
 Var ScopeTransitionResult
+Var InstalledStateSaved
+Var SavedInstallScope
+Var SavedInstallDirectory
+Var SavedSystemIntegrationFlags
+Var SavedFb2AssociationFlags
+Var SavedFbdAssociationFlags
+Var SavedValidateFlags
+Var SavedExplorerFlags
+Var SavedShortcutsFlags
+Var SavedStartMenuFlags
+Var SavedDesktopFlags
 Var UninstallUserData
 Var UninstallUserDataCheckbox
 Var CommandLineCurrentUser
@@ -386,12 +397,18 @@ FunctionEnd
 Function DeploymentModePageLeave
   ${NSD_GetState} $DeploymentModePortableRadio $0
   ${If} $0 == ${BST_CHECKED}
+    ${If} $DeploymentMode == "installed"
+      Call SaveInstalledModeState
+    ${EndIf}
     StrCpy $DeploymentMode "portable"
     StrCpy $InstallScope "current"
     SetShellVarContext current
     StrCpy $INSTDIR "$EXEDIR\${PRODUCT_NAME} Portable"
     Call DisablePortableIntegration
   ${Else}
+    ${If} $DeploymentMode == "portable"
+      Call RestoreInstalledModeState
+    ${EndIf}
     StrCpy $DeploymentMode "installed"
   ${EndIf}
 FunctionEnd
@@ -949,6 +966,53 @@ Section "Deployment scope probe"
 SectionEnd
 Function DisablePortableIntegration
 FunctionEnd
+
+!ifdef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+Function SaveInstalledModeState
+FunctionEnd
+Function RestoreInstalledModeState
+FunctionEnd
+!endif
+!ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+Function SaveInstalledModeState
+  ${If} $InstalledStateSaved == "1"
+    Return
+  ${EndIf}
+  StrCpy $InstalledStateSaved "1"
+  StrCpy $SavedInstallScope "$InstallScope"
+  StrCpy $SavedInstallDirectory "$INSTDIR"
+  SectionGetFlags ${System_Integration_id} $SavedSystemIntegrationFlags
+  SectionGetFlags ${FB2_File_Association_id} $SavedFb2AssociationFlags
+  SectionGetFlags ${FBD_File_Association_id} $SavedFbdAssociationFlags
+  SectionGetFlags ${FB2_Validate_Command_id} $SavedValidateFlags
+  SectionGetFlags ${FB2_Explorer_Properties_id} $SavedExplorerFlags
+  SectionGetFlags ${ShCutGroup_id} $SavedShortcutsFlags
+  SectionGetFlags ${Start_Menu_ShortCuts_id} $SavedStartMenuFlags
+  SectionGetFlags ${Desktop_ShortCut_id} $SavedDesktopFlags
+FunctionEnd
+
+Function RestoreInstalledModeState
+  ${If} $InstalledStateSaved != "1"
+    Return
+  ${EndIf}
+  StrCpy $InstallScope "$SavedInstallScope"
+  StrCpy $INSTDIR "$SavedInstallDirectory"
+  ${If} $InstallScope == "allusers"
+    SetShellVarContext all
+  ${Else}
+    SetShellVarContext current
+  ${EndIf}
+  SectionSetFlags ${System_Integration_id} $SavedSystemIntegrationFlags
+  SectionSetFlags ${FB2_File_Association_id} $SavedFb2AssociationFlags
+  SectionSetFlags ${FBD_File_Association_id} $SavedFbdAssociationFlags
+  SectionSetFlags ${FB2_Validate_Command_id} $SavedValidateFlags
+  SectionSetFlags ${FB2_Explorer_Properties_id} $SavedExplorerFlags
+  SectionSetFlags ${ShCutGroup_id} $SavedShortcutsFlags
+  SectionSetFlags ${Start_Menu_ShortCuts_id} $SavedStartMenuFlags
+  SectionSetFlags ${Desktop_ShortCut_id} $SavedDesktopFlags
+  StrCpy $InstalledStateSaved "0"
+FunctionEnd
+!endif
 Function VerifyScopePathTransitions
   ; Current User custom path -> All Users -> Current User.
   StrCpy $SessionCurrentInstallLocation "C:\NSIS-test\Current-custom"
@@ -1471,6 +1535,45 @@ Function DisablePortableIntegration
   SectionSetFlags ${Start_Menu_ShortCuts_id} 0
   SectionSetFlags ${Desktop_ShortCut_id} 0
   !endif
+FunctionEnd
+
+Function SaveInstalledModeState
+  ${If} $InstalledStateSaved == "1"
+    Return
+  ${EndIf}
+  StrCpy $InstalledStateSaved "1"
+  StrCpy $SavedInstallScope "$InstallScope"
+  StrCpy $SavedInstallDirectory "$INSTDIR"
+  SectionGetFlags ${System_Integration_id} $SavedSystemIntegrationFlags
+  SectionGetFlags ${FB2_File_Association_id} $SavedFb2AssociationFlags
+  SectionGetFlags ${FBD_File_Association_id} $SavedFbdAssociationFlags
+  SectionGetFlags ${FB2_Validate_Command_id} $SavedValidateFlags
+  SectionGetFlags ${FB2_Explorer_Properties_id} $SavedExplorerFlags
+  SectionGetFlags ${ShCutGroup_id} $SavedShortcutsFlags
+  SectionGetFlags ${Start_Menu_ShortCuts_id} $SavedStartMenuFlags
+  SectionGetFlags ${Desktop_ShortCut_id} $SavedDesktopFlags
+FunctionEnd
+
+Function RestoreInstalledModeState
+  ${If} $InstalledStateSaved != "1"
+    Return
+  ${EndIf}
+  StrCpy $InstallScope "$SavedInstallScope"
+  StrCpy $INSTDIR "$SavedInstallDirectory"
+  ${If} $InstallScope == "allusers"
+    SetShellVarContext all
+  ${Else}
+    SetShellVarContext current
+  ${EndIf}
+  SectionSetFlags ${System_Integration_id} $SavedSystemIntegrationFlags
+  SectionSetFlags ${FB2_File_Association_id} $SavedFb2AssociationFlags
+  SectionSetFlags ${FBD_File_Association_id} $SavedFbdAssociationFlags
+  SectionSetFlags ${FB2_Validate_Command_id} $SavedValidateFlags
+  SectionSetFlags ${FB2_Explorer_Properties_id} $SavedExplorerFlags
+  SectionSetFlags ${ShCutGroup_id} $SavedShortcutsFlags
+  SectionSetFlags ${Start_Menu_ShortCuts_id} $SavedStartMenuFlags
+  SectionSetFlags ${Desktop_ShortCut_id} $SavedDesktopFlags
+  StrCpy $InstalledStateSaved "0"
 FunctionEnd
 
 Function un.DeleteShortcuts
