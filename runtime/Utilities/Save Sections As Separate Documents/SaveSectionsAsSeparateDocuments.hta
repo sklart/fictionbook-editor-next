@@ -661,19 +661,25 @@ t["x"]="x";
 t["y"]="y";
 t["z"]="z";
 
-function makeFilenameForSaving(fileCnt,bookTitle) {
-  var fileCnt2=1;
-  var transliteratedName="";
-  var maxNameLength=70;
-  var ch,transliteratedChar;
-  var i=0;
-  var authorNode=xmlDoc.selectSingleNode("/fb:FictionBook/fb:description/fb:title-info/fb:author[1]");
+function getFilenameAuthorName(document1) {
+  var authorNode=document1.selectSingleNode("/fb:FictionBook/fb:description/fb:title-info/fb:author[1]");
   var authorName="";
   if (authorNode) {
     var lastName=authorNode.selectSingleNode("./fb:last-name");
     var nickname=authorNode.selectSingleNode("./fb:nickname");
     authorName=getParagraphText(lastName) || getParagraphText(nickname);
   }
+  return authorName;
+}
+
+function makeFilenameForSaving(fileCnt,bookTitle,document1) {
+  var fileCnt2=1;
+  var transliteratedName="";
+  var maxNameLength=70;
+  var ch,transliteratedChar;
+  var i=0;
+  if (!document1) document1=xmlDoc;
+  var authorName=getFilenameAuthorName(document1);
   var sourceName=document.getElementById("filenameTemplate").value;
   sourceName=sourceName.replace(/\{number\}/g,addZeros2(fileCnt,4)).replace(/\{author\}/g,authorName).replace(/\{title\}/g,bookTitle);
   while (i<sourceName.length) {
@@ -705,34 +711,58 @@ function makeFilenameForSaving(fileCnt,bookTitle) {
 
 function cleanupLinkedBody(document1, linksObj, bodyName) {
   var sections=document1.documentElement.selectNodes('fb:body[@name="'+bodyName+'"]//fb:section');
-  var j, subsections, sectionId, bodies;
+  var j, subsections, sectionId, bodies, removedCount=0;
   for (j=sections.length-1; j>=0; j--) {
     subsections=sections[j].selectNodes("./fb:section");
     sectionId=sections[j].getAttribute("id");
-    if (subsections.length==0 && (sectionId==null || linksObj[sectionId.toLowerCase()]!==true)) removeNode(sections[j]);
+    if (subsections.length==0 && (sectionId==null || linksObj[sectionId.toLowerCase()]!==true)) {
+      removeNode(sections[j]);
+      removedCount++;
+    }
   }
   bodies=document1.documentElement.selectNodes('fb:body[@name="'+bodyName+'"]');
   for (j=bodies.length-1; j>=0; j--)
-    if (bodies[j].selectNodes(".//fb:section").length==0) removeNode(bodies[j]);
+    if (bodies[j].selectNodes(".//fb:section").length==0) {
+      removeNode(bodies[j]);
+      removedCount++;
+    }
+  return removedCount;
 }
 
-function getPreviewBookTitle() {
-  var titleIndex, title, paragraphs;
+function getPreviewTitleIndex() {
+  var titleIndex=null, displayIndex, firstDisplayIndex=null;
   sortElements();
-  if (!xmlDoc || !sortedElementArray || sortedElementArray.length==0) return bookTitle;
-  titleIndex=myLinks[sortedElementArray[0]];
-  title=xmlDoc.documentElement.selectNodes("//fb:section/fb:title")[titleIndex];
-  if (!title) return bookTitle;
-  paragraphs=title.selectNodes("./fb:p");
-  if (document.getElementById("radio1").checked) return getParagraphText(paragraphs[1]);
-  if (document.getElementById("radio2").checked || document.getElementById("radio3").checked) return getParagraphText(paragraphs[0]);
-  return getParagraphText(paragraphs.length>1 ? paragraphs[1] : paragraphs[0]);
+  if (sortedElementArray && sortedElementArray.length>0) return myLinks[sortedElementArray[0]];
+  for (displayIndex in myLinks)
+    if (firstDisplayIndex==null || parseInt(displayIndex,10)<parseInt(firstDisplayIndex,10)) firstDisplayIndex=displayIndex;
+  if (firstDisplayIndex!=null) titleIndex=myLinks[firstDisplayIndex];
+  return titleIndex;
+}
+
+function getPreviewMetadata() {
+  var titleIndex,title,previewDoc,savedBookTitle,metadata;
+  if (!xmlDoc) return null;
+  titleIndex=getPreviewTitleIndex();
+  if (titleIndex==null) titleIndex=0;
+  previewDoc=createXmlDocument();
+  configureXPath(previewDoc);
+  if (!previewDoc.loadXML(xmlDoc.xml) || previewDoc.parseError.errorCode) return null;
+  title=previewDoc.documentElement.selectNodes("//fb:section/fb:title")[titleIndex];
+  if (!title) return null;
+  savedBookTitle=bookTitle;
+  fillInDescription(title,previewDoc);
+  metadata={bookTitle:bookTitle, authorName:getFilenameAuthorName(previewDoc), document1:previewDoc};
+  bookTitle=savedBookTitle;
+  return metadata;
 }
 
 function updateFilenamePreview() {
-  var preview=document.getElementById("filenamePreview");
+  var preview=document.getElementById("filenamePreview"), metadata;
   if (!preview) return;
-  try { preview.value=makeFilenameForSaving(1,getPreviewBookTitle()); } catch (e) { preview.value=""; }
+  try {
+    metadata=getPreviewMetadata();
+    preview.value=metadata ? makeFilenameForSaving(1,metadata.bookTitle,metadata.document1) : "";
+  } catch (e) { preview.value=""; }
 }
 
 function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
@@ -867,10 +897,8 @@ function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
         }
       }
   
-      var removedCnt=0;
-      var removedStr="";
-      cleanupLinkedBody(xmlDoc,linksObj,"notes");
-      cleanupLinkedBody(xmlDoc,linksObj,"comments");
+      removesCnt+=cleanupLinkedBody(xmlDoc,linksObj,"notes");
+      removesCnt+=cleanupLinkedBody(xmlDoc,linksObj,"comments");
     }
 
     // удалим ненужные теги binary
@@ -1302,6 +1330,7 @@ function myOnClick() {
   }
  }
  document.getElementById("selectedInput").value=selectedElementsCnt.toString();
+ updateFilenamePreview();
  event.returnValue=false;
  return false;
 }
@@ -1360,7 +1389,6 @@ function scrollingTimer() {
    if (r.top<elemListHeight && r.bottom<elemListHeight) lft=n+1;
    else if (r.top>elemListHeight && r.bottom>elemListHeight) rgt=n;
    else if (r.bottom==elemListHeight || (r.top<=elemListHeight && r.bottom>elemListHeight)) {lft=n; rgt=n;}
-   firstTime=false;
   }
   //logStr+="activeElement: "+activeElement.outerHTML+"\n"+
   //        "el.children[lft]: "+el.children[lft].outerHTML+"\n\n";
