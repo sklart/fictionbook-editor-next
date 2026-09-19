@@ -190,6 +190,8 @@ Var InstallScopeCurrentRadio
 Var InstallScopeAllUsersRadio
 Var ExistingMachineInstall
 Var DetectedInstallScope
+Var DetectedCurrentInstallLocation
+Var DetectedAllUsersInstallLocation
 Var UninstallUserData
 Var UninstallUserDataCheckbox
 Var CommandLineCurrentUser
@@ -305,20 +307,20 @@ Function ApplyDeploymentCommandLine
 FunctionEnd
 
 Function DetectExistingInstallScope
-  ReadRegStr $0 HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"
-  ${If} $0 != ""
+  ReadRegStr $DetectedAllUsersInstallLocation HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  ReadRegStr $DetectedCurrentInstallLocation HKCU "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  ${If} $DetectedAllUsersInstallLocation != ""
     StrCpy $DetectedInstallScope "allusers"
     StrCpy $InstallScope "allusers"
     SetShellVarContext all
-    StrCpy $INSTDIR "$0"
+    StrCpy $INSTDIR "$DetectedAllUsersInstallLocation"
     Return
   ${EndIf}
-  ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "InstallLocation"
-  ${If} $0 != ""
+  ${If} $DetectedCurrentInstallLocation != ""
     StrCpy $DetectedInstallScope "current"
     StrCpy $InstallScope "current"
     SetShellVarContext current
-    StrCpy $INSTDIR "$0"
+    StrCpy $INSTDIR "$DetectedCurrentInstallLocation"
   ${EndIf}
 FunctionEnd
 
@@ -419,16 +421,24 @@ FunctionEnd
 Function InstallScopePageLeave
   ${NSD_GetState} $InstallScopeAllUsersRadio $0
   ${If} $0 == ${BST_CHECKED}
-    StrCpy $InstallScope "allusers"
-    SetShellVarContext all
-    ${If} $DetectedInstallScope != "allusers"
-      StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
+    ${If} $InstallScope != "allusers"
+      StrCpy $InstallScope "allusers"
+      SetShellVarContext all
+      ${If} $DetectedAllUsersInstallLocation != ""
+        StrCpy $INSTDIR "$DetectedAllUsersInstallLocation"
+      ${Else}
+        StrCpy $INSTDIR "$PROGRAMFILES32\${PRODUCT_NAME}"
+      ${EndIf}
     ${EndIf}
   ${Else}
-    StrCpy $InstallScope "current"
-    SetShellVarContext current
-    ${If} $DetectedInstallScope != "current"
-      StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+    ${If} $InstallScope != "current"
+      StrCpy $InstallScope "current"
+      SetShellVarContext current
+      ${If} $DetectedCurrentInstallLocation != ""
+        StrCpy $INSTDIR "$DetectedCurrentInstallLocation"
+      ${Else}
+        StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
+      ${EndIf}
     ${EndIf}
   ${EndIf}
   Call CheckOtherScopeConflict
