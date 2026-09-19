@@ -255,6 +255,7 @@ if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToo
 & (Join-Path $repoRoot "tools\tests\test-fb2recode-cp1251.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2recode-cancel.ps1")
 & (Join-Path $repoRoot "tools\tests\test-save-sections-safe-replacement.ps1")
+& (Join-Path $repoRoot "tools\tests\test-save-sections-split-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-hta-legacy-js.ps1")
 if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")

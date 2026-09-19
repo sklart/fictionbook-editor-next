@@ -320,9 +320,6 @@ function fillInDescription(sectionTitle,xmlDoc) {
   var authorFirstName="";
   var authorMiddleName="";
   var authorLastName="";
-  var authorFirstName="";
-  var authorMiddleName="";
-  var authorLastName="";
   var authorParagraph="";
   var bookTitleParagraph="";
   var firstNameElement=null;
@@ -874,87 +871,6 @@ function saveOneSectionAsSeparateDocument(titleNum,fileCnt) {
       var removedStr="";
       cleanupLinkedBody(xmlDoc,linksObj,"notes");
       cleanupLinkedBody(xmlDoc,linksObj,"comments");
-      /* Historical duplicated notes/comments cleanup retained below only as
-         reference for the migration; the common helper above is authoritative.
-      // удалим ненужные разделы в notes body
-      var sections=xmlDoc.documentElement.selectNodes('fb:body[@name="notes"]//fb:section');
-      //alert("Разделов в notes body: "+sections.length);
-      for (j=sections.length-1; j>=0; j--) {
-         subsections=sections[j].selectNodes("./fb:section");
-         //alert("j: "+j+"\n\nsubsections.length: "+subsections.length);
-         if (subsections.length==0 && (sections[j].getAttribute("id")==null || 
-             (sections[j].getAttribute("id") &&
-              linksObj[sections[j].getAttribute("id").toLowerCase()]!=true))) {
-           //alert("Удаляем раздел в notes body.");
-           //removedStr+="\n\n===\n\n"+getOuterXML(sections[j]);
-           removeNode(sections[j]);
-           removesCnt++;
-           //removedCnt++;
-         }
-      }
-      //alert("removedCnt: "+removedCnt);
-      //window.clipboardData.setData("text",removedStr);
-      var notesBodies=xmlDoc.documentElement.selectNodes('fb:body[@name="notes"]');
-      //alert("notes body в точке 1.\n\n"+getOuterXML(notesBodies[0]));
-      // если надо, удалим корневой раздел в notes body
-      sections=xmlDoc.documentElement.selectNodes('fb:body[@name="notes"]//fb:section');
-      if (sections.length!=0) {
-        sections2=xmlDoc.documentElement.selectNodes('fb:body[@name="notes"]//fb:section//fb:section');
-        if (sections2.length==0)
-         if (sections[0].getAttribute("id")==null || 
-             (sections[0].getAttribute("id") &&
-              linksObj[sections[0].getAttribute("id").toLowerCase()]!=true)) {
-           //alert("Удаляем корневой раздел в notes body.");
-           removeNode(sections[0]);
-           removesCnt++;
-        }
-      }
-      // удалим ненужные notes body
-      var notesBodies=xmlDoc.documentElement.selectNodes('fb:body[@name="notes"]');
-      for (j=notesBodies.length-1; j>=0; j--) {
-        if (xmlDoc.documentElement.selectNodes('fb:body[@name="notes"]//fb:section').length==0) {
-          //alert("Удаляем notes body.\n\n"+getOuterXML(notesBodies[j]));
-          removeNode(notesBodies[j]);
-          removesCnt++;
-       }
-      }
-  
-      // удалим ненужные разделы в comments body
-      var sections=xmlDoc.documentElement.selectNodes('fb:body[@name="comments"]//fb:section');
-      //alert("Разделов в comments body: "+sections.length);
-      for (j=sections.length-1; j>=0; j--) {
-         subsections=sections[j].selectNodes("./fb:section");
-         var sectionId=sections[j].getAttribute("id");
-         if (subsections.length==0 &&
-             (sectionId==null || linksObj[sectionId.toLowerCase()]!==true)) {
-           //alert("Удаляем раздел в comments body.");
-           removeNode(sections[j]);
-           removesCnt++;
-         }
-      }
-      // если надо, удалим корневой раздел в comments body
-      sections=xmlDoc.documentElement.selectNodes('fb:body[@name="comments"]//fb:section');
-      if (sections.length!=0) {
-        sections2=xmlDoc.documentElement.selectNodes('fb:body[@name="comments"]//fb:section//fb:section');
-        if (sections2.length==0)
-         if (sections[0].getAttribute("id")==null || 
-             (sections[0].getAttribute("id") &&
-              linksObj[sections[0].getAttribute("id").toLowerCase()]!=true)) {
-           //alert("Удаляем корневой раздел в comments body.\n\n"+getOuterXML(sections[0]));
-           removeNode(sections[0]);
-           removesCnt++;
-        }
-      }
-      // удалим ненужные comments body
-      var commentsBodies=xmlDoc.documentElement.selectNodes('fb:body[@name="comments"]');
-      for (j=commentsBodies.length-1; j>=0; j--) {
-        if (xmlDoc.documentElement.selectNodes('fb:body[@name="comments"]//fb:section').length==0) {
-          //alerft("Удаляем comments body.\n\n"+getOuterXML(commentsBodies[j]));
-          removeNode(commentsBodies[j]);
-          removesCnt++;
-       }
-      }
-      } */
     }
 
     // удалим ненужные теги binary
@@ -1111,7 +1027,7 @@ function itIsInNotesOrCommentsBody(title4) {
 
 function saveOuterSectionsAsSeparateDocuments() {
  getTime1();
- var myElem5,ps;
+ var myElem5,ps,myTitle;
  var report={planned:0, created:0, skipped:0, errors:0};
  var fileCnt=1;
  var titles=xmlDoc.documentElement.selectNodes("//fb:section/fb:title");
@@ -1279,6 +1195,7 @@ function myOnMouseDown() {
 
 function myOnClick() {
  var el=event.srcElement;
+ var k;
  event.returnValue=false;
  while (el && el.nodeName!="BODY" && el.nodeName!="TD" || (el.nodeName=="TD" && el.className!=null && el.className!="" &&
         el.className.search("el_")!=0))
@@ -1397,13 +1314,13 @@ function isInNotesOrCommentsBody(el) {
 }
 
 function scrollingTimer() {
- var tmpEl,el,n,r,l,lft,rgt,elemListHeight;
+ var tmpEl,el,n,r,l,lft,rgt,elemListHeight,listLeft,listTop,upperListElement;
  el=document.getElementById("elementList");
  if (scrolling=="up") {
   document.getElementById("elementList").scrollTop-=20;
-  var listLeft=document.getElementById('elementList').getBoundingClientRect().left;
-  var listTop=document.getElementById('elementList').getBoundingClientRect().top;
-  var upperListElement=document.elementFromPoint(listLeft+10,listTop+10);
+  listLeft=document.getElementById('elementList').getBoundingClientRect().left;
+  listTop=document.getElementById('elementList').getBoundingClientRect().top;
+  upperListElement=document.elementFromPoint(listLeft+10,listTop+10);
   // logStr+="elementFromPoint: "+(document.elementFromPoint(listLeft+10,listTop+10).outerHTML)+"\n\n";
   /* lft=0;
   rgt=el.children.length-1;
@@ -1415,7 +1332,6 @@ function scrollingTimer() {
    if (r.top<0 && r.bottom<0) lft=n+1;
    else if (r.top>0 && r.bottom>0) rgt=n;
    else if (r.top==0 || (r.top<0 && r.bottom>=0)) {lft=n; rgt=n;}
-   firstTime=false;
   }
   while (lft>=0 && el.children[lft].className=="delim")
     lft++; */
