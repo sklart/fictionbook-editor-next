@@ -2,12 +2,12 @@
 
 #include "../DocumentLocation.h"
 #include "../ArchiveRecentDocuments.h"
+#include "RecentDocumentsLimits.h"
 
 namespace WTL { class CRecentDocumentList; }
 
 namespace FbeRecentDocuments
 {
-	const int kMaxRecentDocuments = 10;
 	typedef FbeArchiveRecentDocuments::Record ArchiveMruRecord;
 	void ReadArchiveMruRecords(std::vector<FbeArchiveRecentDocuments::Record>& records);
 	bool ParseArchiveMruUnsigned(const CString& text, unsigned int& value);

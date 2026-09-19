@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "RecentDocumentsStore.h"
-#include "RecentDocumentsManager.h"
+#include "RecentDocumentsLimits.h"
 #include "..\\..\\..\\common\\DeploymentContext.h"
 
 namespace

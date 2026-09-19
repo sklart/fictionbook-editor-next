@@ -3,6 +3,7 @@
 #include "..\..\..\common\ModernFileDialog.h"
 #include "..\..\StartupTrace.h"
 #include "..\..\RuntimeLocalization.h"
+#include "..\..\testing\RuntimeTestScenarioMode.h"
 
 namespace DocumentFileDialogs
 {
@@ -17,6 +18,13 @@ namespace DocumentFileDialogs
 
 	SaveResult ShowSave(HWND owner, const SaveRequest& input)
 	{
+		if (RuntimeTests::IsScenario(L"save-as-mru-runtime"))
+		{
+			SaveResult result; wchar_t testPath[MAX_PATH] = {};
+			const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", testPath, _countof(testPath));
+			if (length > 0 && length < _countof(testPath)) { result.accepted = true; result.path = CString(testPath); result.encoding = input.selectedEncoding; result.documentType = ResolveFictionBookTargetType(result.path, input.currentFileName); }
+			return result;
+		}
 		const COMDLG_FILTERSPEC filters[] = {{L"FictionBook (*.fb2)", L"*.fb2"}, {L"FictionBook Description (*.fbd)", L"*.fbd"}, {L"All files (*.*)", L"*.*"}};
 		CString selectedEncoding(input.selectedEncoding);
 		ModernFileDialog::Request request; request.save = true; request.pathMustExist = true; request.overwritePrompt = true; request.defaultExtension = L"fb2"; request.initialFileName = input.initialFileName; request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = IsFbdFile(input.initialFileName) ? 2 : 1;
