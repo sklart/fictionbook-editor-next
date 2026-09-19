@@ -10,13 +10,31 @@
     }
 
     function read(path) {
-        var stream = fso.OpenTextFile(path, 1), text = stream.ReadAll();
+        // OpenTextFile defaults to the host ANSI code page, which changes the
+        // token stream for UTF-8 files on CI machines. ADODB.Stream decodes
+        // the repository's UTF-8 runtime sources explicitly.
+        var stream = new ActiveXObject("ADODB.Stream"), text;
+        stream.Type = 2;
+        stream.Charset = "utf-8";
+        stream.Open();
+        stream.LoadFromFile(path);
+        text = stream.ReadText();
         stream.Close();
         return text;
     }
 
-    function failureKey(path, block) {
-        return encodeURIComponent("runtime/" + path.substr(root.length + 1).replace(/\\/g, "/")) + "|" + block;
+    function sourceHash(source) {
+        var hash = 2166136261, index;
+        for (index = 0; index < source.length; index++) {
+            hash ^= source.charCodeAt(index);
+            hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+        }
+        return (hash >>> 0).toString(16);
+    }
+
+    function failureKey(path, block, error, source) {
+        var file = "runtime/" + path.substr(root.length + 1).replace(/\\/g, "/");
+        return encodeURIComponent(file) + "|" + block + "|" + error.number + "|" + sourceHash(source);
     }
 
     function compile(path, source, label, block) {
@@ -25,7 +43,7 @@
             checked++;
         } catch (error) {
             failures++;
-            if (listOnly) WScript.Echo("FAIL " + failureKey(path, block));
+            if (listOnly) WScript.Echo("FAIL " + failureKey(path, block, error, source));
             else WScript.Echo(path + label + ": " + (error.description || error.message));
         }
     }
