@@ -907,6 +907,9 @@ FunctionEnd
 ; OpenWith entries, ProgIDs and capability root under HKCU; never touch the
 ; extension default value or UserChoice because those belong to the user.
 Function CleanupLegacyArchHandlerRegistration
+  ; Old releases placed only ArchHandler here.  Do not remove Utilities itself:
+  ; it may contain other current or user-supplied utilities.
+  RMDir /r "$INSTDIR\Utilities\ArchHandler"
   DeleteRegValue HKCU "Software\Classes\.zip\OpenWithProgids" "FictionBookEditor.ArchHandler.zip"
   DeleteRegValue HKCU "Software\Classes\.rar\OpenWithProgids" "FictionBookEditor.ArchHandler.rar"
   DeleteRegKey HKCU "Software\Classes\FictionBookEditor.ArchHandler.zip"

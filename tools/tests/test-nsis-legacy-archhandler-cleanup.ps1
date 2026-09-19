@@ -5,6 +5,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $script = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging\nsis\Installer\MakeInstaller.nsi')
+$manifest = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging\package-manifest.json') | ConvertFrom-Json
 
 function Get-FunctionBody([string]$name) {
     $match = [regex]::Match($script, '(?ms)^Function\s+' + [regex]::Escape($name) + '\s*\r?\n(?<body>.*?)^FunctionEnd\s*$')
@@ -20,6 +21,8 @@ function Forbid([string]$text, [string]$needle, [string]$message) {
 
 $cleanup = Get-FunctionBody 'CleanupLegacyArchHandlerRegistration'
 $uninstallCleanup = Get-FunctionBody 'un.CleanupLegacyArchHandlerRegistration'
+Require $cleanup 'RMDir /r "$INSTDIR\Utilities\ArchHandler"' 'Upgrade cleanup must remove only the old ArchHandler directory.'
+Forbid $cleanup 'RMDir /r "$INSTDIR\Utilities"' 'Upgrade cleanup must preserve the rest of Utilities.'
 $expected = @(
     'DeleteRegValue HKCU "Software\Classes\.zip\OpenWithProgids" "FictionBookEditor.ArchHandler.zip"',
     'DeleteRegValue HKCU "Software\Classes\.rar\OpenWithProgids" "FictionBookEditor.ArchHandler.rar"',
@@ -44,5 +47,7 @@ foreach ($legacyRegistration in @('FictionBookEditor.ArchHandler', 'FictionBook 
 }
 Require $script 'Call CleanupLegacyArchHandlerRegistration' 'Successful installed upgrade must remove old ArchHandler registration.'
 Require $script 'Call un.CleanupLegacyArchHandlerRegistration' 'Uninstall must remove any remaining old ArchHandler registration.'
+if (@($manifest.core.forbidden) -notcontains 'Utilities\ArchHandler') { throw 'Core package must forbid Utilities\ArchHandler.' }
+if (Test-Path -LiteralPath (Join-Path $root 'runtime\Utilities\ArchHandler')) { throw 'New runtime distribution must not contain Utilities\ArchHandler.' }
 
 Write-Host 'NSIS legacy ArchHandler cleanup contract passed.'

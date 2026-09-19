@@ -12,7 +12,7 @@
       "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
     ],
     "optional": [],
-    "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Lang\\ru-RU\\res_rus.pdb", "Lang\\uk-UA\\res_ukr.pdb"],
+    "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "Utilities\\ArchHandler", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Lang\\ru-RU\\res_rus.pdb", "Lang\\uk-UA\\res_ukr.pdb"],
     "runtimeDirectories": ["Lang", "Plugins", "Themes", "Scripts", "Utilities", "EditorBackgrounds", "Resources"]
   },
   "integration": {
