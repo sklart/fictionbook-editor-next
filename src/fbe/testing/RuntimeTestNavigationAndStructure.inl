@@ -248,7 +248,7 @@
 		const bool reopened = saved && LoadFile(filename) == OK;
 		ShowView(BODY);
 		document = m_doc->m_body.Document();
-		const bool typedSavedReopened = hasUnlinkedTypedText();
+		const bool typedSavedReopened = reopened && hasUnlinkedTypedText();
 		const bool savedReopened = reopened && typedSavedReopened && hasExpectedPlainText(false);
 		bool undo = false, redo = false, manualLink = false;
 		try {
