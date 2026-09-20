@@ -1174,20 +1174,55 @@ void  CMainFrame::UIUpdateViewCmd(CFBEView& view, WORD wID, OLECMD& oc, const wc
 	UIEnable(wID, (oc.cmdf & OLECMDF_ENABLED) != 0);
 }
 
+namespace
+{
+// Aggregate diagnostics keep tracing useful without turning a profiler into
+// the dominant source of idle work.
+struct IdleProfile
+{
+	ULONGLONG count = 0, totalMilliseconds = 0, maxMilliseconds = 0;
+	ULONGLONG commandUpdates = 0, selectionUpdates = 0, toolbarUpdates = 0;
+	ULONGLONG treeUpdates = 0, fileChecks = 0, clipboardChecks = 0;
+
+	void Finish(ULONGLONG started)
+	{
+		const ULONGLONG elapsed = ::GetTickCount64() - started;
+		++count; totalMilliseconds += elapsed;
+		if (elapsed > maxMilliseconds) maxMilliseconds = elapsed;
+		if ((count % 256) != 0) return;
+		CString summary;
+		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; selection-context-updates=%llu; toolbar-updates=%llu; tree-updates=%llu; file-fingerprint-checks=%llu; clipboard-checks=%llu",
+			count, totalMilliseconds, maxMilliseconds, totalMilliseconds / count,
+			commandUpdates, selectionUpdates, toolbarUpdates, treeUpdates, fileChecks, clipboardChecks);
+		StartupTrace::Event(L"performance", L"P410", summary);
+	}
+};
+
+IdleProfile g_idleProfile;
+}
+
 BOOL CMainFrame::OnIdle()
 {
+	const bool profileIdle = StartupTrace::Enabled();
+	const ULONGLONG idleStarted = profileIdle ? ::GetTickCount64() : 0;
 	// LoadFromHTML pumps messages before DocumentComplete.  Do not run the
 	// command-update path until its MSHTML document is available.
 	if (!m_doc || !m_doc->m_body.HasDoc())
-	  return false;
+	{
+		if (profileIdle) g_idleProfile.Finish(idleStarted);
+		return false;
+	}
 
+	if (profileIdle) ++g_idleProfile.fileChecks;
 	if(CheckFileTimeStamp())
 	{
+		if (profileIdle) g_idleProfile.Finish(idleStarted);
 		return true;
 	}
 
 	if (IsSourceActive())
 	{
+		if (profileIdle) ++g_idleProfile.commandUpdates;
 		static WORD disabled_commands[] =
 		{
 			ID_EDIT_BOLD,
@@ -1271,6 +1306,7 @@ BOOL CMainFrame::OnIdle()
 	// BODY view
 	else
 	{
+		if (profileIdle) ++g_idleProfile.commandUpdates;
 		// check if editing commands can be performed
 
 		CFBEView& view = ActiveView();
@@ -1363,6 +1399,7 @@ BOOL CMainFrame::OnIdle()
 
 		if (m_sel_changed && /*GetCurView()*/m_editor_view_state.Current() != DESC)
 		{
+			if (profileIdle) ++g_idleProfile.selectionUpdates;
 			SetStatusContext(m_doc->m_body.SelPath());
 			UpdateStatusBar();
 
@@ -1550,11 +1587,13 @@ BOOL CMainFrame::OnIdle()
 	}
 
 	// update UI
+	if (profileIdle) ++g_idleProfile.toolbarUpdates;
 	UIUpdateToolBar();
 
 	// update document tree
 	if (m_doc_changed)
 	{
+		if (profileIdle) ++g_idleProfile.treeUpdates;
 		MSHTML::IHTMLDOMNodePtr chp(m_doc->m_body.GetChangedNode());
 		if ((bool)chp && m_document_tree.IsWindowVisible())
 		{
@@ -1673,6 +1712,7 @@ BOOL CMainFrame::OnIdle()
 		SetWindowText(title);
 	}
 
+	if (profileIdle) g_idleProfile.Finish(idleStarted);
 	return FALSE;
 }
 
