@@ -254,6 +254,7 @@ if (-not $SkipUpdateManifest) {
     & (Join-Path $repoRoot "tools\tests\test-update-manifest.ps1")
 }
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-dictionaries.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-russian-yo.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-spellcheck-corpus-regression.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-spell-visible-paragraphs.ps1")
 $pcre2TestArguments = @{

@@ -291,6 +291,41 @@
 		// unattended message loop without opening the normal dirty-document UI.
 		::PostQuitMessage(0); return 0;
 	}
+	if (IsFbeTestScenario(L"spellcheck-russian-yo"))
+	{
+		// Exercise the production CSpeller path after the Russian document has
+		// selected its dictionary.  The test deliberately does not duplicate the
+		// normalization performed by SpellCheck().
+		if (!m_doc || !m_doc->m_body.Document())
+		{
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		if (!m_Speller)
+		{
+			m_Speller = new CSpeller(U::GetProgDir() + L"dict\\");
+			m_Speller->SetFrame(m_hWnd);
+			m_Speller->AttachDocument(m_doc->m_body.Document());
+		}
+		m_Speller->SetDocumentLanguage();
+		struct SpellCase { const char* name; LPCWSTR word; };
+		const SpellCase cases[] = {
+			{ "lower-e", L"ежик" }, { "lower-yo", L"ёжик" },
+			{ "upper-e", L"Ежик" }, { "upper-yo", L"Ёжик" },
+			{ "accent-e", L"е\u0301жик" }, { "accent-yo", L"ё\u0301жик" }
+		};
+		CStringA header("case\tspell_result\texpected\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		bool passed = true;
+		for (size_t index = 0; index < _countof(cases); ++index)
+		{
+			const SPELL_RESULT result = m_Speller->SpellCheck(CString(cases[index].word));
+			const bool accepted = result == SPELL_OK;
+			CStringA row; row.Format("%s\t%d\t1\r\n", cases[index].name, accepted ? 1 : 0);
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+			passed = passed && accepted;
+		}
+		output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"table-toolbar-rendering"))
 	{
 		// This is deliberately a UI-level probe.  The toolbar state and the
