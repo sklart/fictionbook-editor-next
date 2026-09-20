@@ -72,6 +72,10 @@ $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 foreach ($dictionaryName in @("de_DE", "en_US", "ru_RU", "uk_UA")) {
     $entry = $manifest.$dictionaryName
     if (-not $entry) { throw "В sources.json отсутствует $dictionaryName" }
+    if ($entry.upstreamCommit -notmatch '^[0-9a-f]{40}$' -or $entry.retrievedAt -notmatch '^\d{4}-\d{2}-\d{2}$' -or
+        [string]::IsNullOrWhiteSpace($entry.variant) -or $null -eq $entry.localChanges) {
+        throw "Provenance словаря неполный: $dictionaryName требует полный upstream SHA, дату, variant и localChanges."
+    }
     $runtimeAff = Join-Path $repoRoot "runtime\dict\$dictionaryName.aff"
     $runtimeDic = Join-Path $repoRoot "runtime\dict\$dictionaryName.dic"
     if ((Get-FileHash -LiteralPath $runtimeAff -Algorithm SHA256).Hash -ne $entry.affSha256) { throw "SHA-256 aff не совпадает с sources.json: $dictionaryName" }
