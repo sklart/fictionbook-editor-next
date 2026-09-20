@@ -1297,9 +1297,6 @@ BOOL CMainFrame::OnIdle()
 		m_last_sci_ovr = m_source.SendMessage(SCI_GETOVERTYPE);
 		m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
 
-	RefreshLocalizedToolbarButtonTexts(m_CmdToolbar);
-	RefreshLocalizedToolbarButtonTexts(m_ScriptsToolbar);
-
 		// Added by SeNS: issue (wish) #127
 		DisplayCharCode();
 	}
