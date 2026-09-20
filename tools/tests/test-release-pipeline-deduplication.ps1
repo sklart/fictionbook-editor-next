@@ -54,7 +54,7 @@ foreach ($needle in @('CompatibilityTarget', 'artifacts\\Modern', 'artifacts\\Wi
 Require $verify 'check-win7-imports.ps1' 'verify-release.ps1'
 Require $verify 'out\editor-runtime' 'verify-release.ps1'
 foreach ($test in @('test-release-test-catalog.ps1', 'test-fb2-common-boundary.ps1', 'test-first-party-msbuild-policy.ps1', 'test-fbe-contract-generation.ps1', 'test-fbe-plugin-host-boundary.ps1', 'test-fbe-source-helpers-boundary.ps1', 'test-fbe-search-boundary.ps1', 'test-fbe-settings-background-boundary.ps1', 'test-package-layout.ps1', 'test-release-artifact-cleanup.ps1', 'test-package-layout-copy.ps1', 'test-package-layout-integration-stage.ps1', 'test-package-layout-core-stage.ps1', 'test-editor-runtime-output-isolation.ps1', 'test-fbe-table-visual-mode.ps1', 'test-fbe-table-structure-boundary.ps1', 'test-table-toolbar-contract.ps1', 'test-fbe-context-attribute-bars.ps1', 'test-fbe-context-attribute-bars-runtime.ps1', 'test-fbe-script-document-path-api.ps1', 'test-fbe-script-document-path-runtime.ps1', 'test-fbe-backup-settings.ps1', 'test-fbe-auto-url-detect.ps1', 'test-xml-source-themes.ps1', 'test-xml-source-current-line.ps1', 'test-fbe-filename-state.ps1', 'test-fbe-source-xml-declaration.ps1')) { Require $verify $test 'verify-release FAST contour' }
-foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-table-production-roundtrip.ps1', 'test-fbe-table-structural-performance.ps1', 'test-fbe-table-failure-safety.ps1', 'test-fbe-spellcheck-local-edit-performance.ps1')) { Require $verify $test 'verify-release FULL contour' }
+foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-table-production-roundtrip.ps1', 'test-fbe-table-structural-performance.ps1', 'test-fbe-table-failure-safety.ps1', 'test-fbe-spellcheck-local-edit-performance.ps1', 'test-fbe-idle-performance-runtime.ps1')) { Require $verify $test 'verify-release FULL contour' }
 Forbid $verify 'QUARANTINED table-toolbar-rendering failure' 'verify-release.ps1'
 Require $verify 'test-nsis-legacy-archhandler-cleanup.ps1' 'verify-release legacy ArchHandler cleanup contract'
 Require $verify 'test-fbe-save-as-mru-runtime.ps1' 'verify-release Save As MRU runtime regression'
@@ -75,6 +75,9 @@ foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-table-prod
 $spellcheckProductionTest = 'test-fbe-spellcheck-local-edit-performance.ps1'
 $spellcheckPosition = $verify.IndexOf($spellcheckProductionTest)
 if ($spellcheckPosition -le $fullContourStart -or $spellcheckPosition -ge $fullContourEnd -or (Get-OccurrenceCount $verify $spellcheckProductionTest) -ne 1) { throw 'Spellcheck local-edit production regression must be invoked exactly once strictly inside FULL.' }
+$idlePerformanceTest = 'test-fbe-idle-performance-runtime.ps1'
+$idlePerformancePosition = $verify.IndexOf($idlePerformanceTest)
+if ($idlePerformancePosition -le $fullContourStart -or $idlePerformancePosition -ge $fullContourEnd -or (Get-OccurrenceCount $verify $idlePerformanceTest) -ne 1) { throw 'Idle performance runtime regression must be invoked exactly once strictly inside FULL.' }
 if ((Get-OccurrenceCount $verify 'test-fbe-table-toolbar-rendering.ps1') -ne 1) { throw 'Table toolbar rendering must be invoked exactly once.' }
 Require $workflow 'Test-FbeLegacy308MigrationRequired' 'workflow migration verification'
 Require $release 'Test-FbeLegacy308MigrationRequired' 'create-release migration policy'
