@@ -257,6 +257,44 @@
 		appendBinaryPhase("save-complete");
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"idle-performance"))
+	{
+		// Prime the event-driven UI once, then prove that an unchanged document
+		// has no command, selection or toolbar work over a long idle streak.
+		if (!StartupTrace::Enabled()) { output.Close(); ::PostQuitMessage(1); return 0; }
+		InvalidateUi(UiDirtyAll);
+		m_sel_changed = true;
+		OnIdle();
+
+		const ULONGLONG idleBefore = g_idleProfile.count;
+		const ULONGLONG commandBefore = g_idleProfile.commandUpdates;
+		const ULONGLONG selectionBefore = g_idleProfile.selectionUpdates;
+		const ULONGLONG toolbarBefore = g_idleProfile.toolbarUpdates;
+		const ULONGLONG fileBefore = g_idleProfile.fileChecks;
+		const ULONGLONG clipboardBefore = g_idleProfile.clipboardChecks;
+		const ULONGLONG checkCommandBefore = StartupTrace::UiCheckCommandCount();
+		const ULONGLONG selectionContainerBefore = StartupTrace::UiSelectionContainerQueryCount();
+		const ULONGLONG selectionStructConBefore = StartupTrace::UiSelectionStructConQueryCount();
+		const ULONGLONG selectionStructTableConBefore = StartupTrace::UiSelectionStructTableConQueryCount();
+		const ULONGLONG comBefore = StartupTrace::UiComCallCount();
+		const ULONGLONG started = ::GetTickCount64();
+		const int idleCycles = 1000;
+		for (int cycle = 0; cycle < idleCycles; ++cycle)
+			OnIdle();
+
+		CStringA report;
+		report.Format("idle_cycles\t%I64u\r\nelapsed_ms\t%I64u\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\nfile_fingerprint_checks\t%I64u\r\nclipboard_checks\t%I64u\r\ncheck_command_calls\t%I64u\r\nselection_container_queries\t%I64u\r\nselection_struct_con_queries\t%I64u\r\nselection_struct_table_con_queries\t%I64u\r\njs_com_calls\t%I64u\r\n",
+			g_idleProfile.count - idleBefore, ::GetTickCount64() - started,
+			g_idleProfile.commandUpdates - commandBefore, g_idleProfile.selectionUpdates - selectionBefore,
+			g_idleProfile.toolbarUpdates - toolbarBefore, g_idleProfile.fileChecks - fileBefore,
+			g_idleProfile.clipboardChecks - clipboardBefore, StartupTrace::UiCheckCommandCount() - checkCommandBefore,
+			StartupTrace::UiSelectionContainerQueryCount() - selectionContainerBefore,
+			StartupTrace::UiSelectionStructConQueryCount() - selectionStructConBefore,
+			StartupTrace::UiSelectionStructTableConQueryCount() - selectionStructTableConBefore,
+			StartupTrace::UiComCallCount() - comBefore);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"spellcheck-local-edit"))
 	{
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
