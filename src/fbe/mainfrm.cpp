@@ -874,6 +874,7 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 	m_editor_selection_state.Reset();
 	m_cb_updated=false;
 	m_need_title_update=m_sel_changed=true;
+	InvalidateUi(UiDirtyAll);
 	if(_Settings.ViewDocumentTree())
 	{
 		m_document_tree.GetDocumentStructure(doc->m_body.Document());
@@ -1221,6 +1222,8 @@ BOOL CMainFrame::OnIdle()
 
 	if (IsSourceActive())
 	{
+		if ((m_ui_dirty & (UiDirtySource | UiDirtyView | UiDirtyClipboard | UiDirtyToolbar | UiDirtyStatus)) != UiDirtyNone)
+		{
 		if (profileIdle) ++g_idleProfile.commandUpdates;
 		static WORD disabled_commands[] =
 		{
@@ -1298,10 +1301,13 @@ BOOL CMainFrame::OnIdle()
 
 		// Added by SeNS: issue (wish) #127
 		DisplayCharCode();
+		}
 	}
 	// BODY view
 	else
 	{
+		if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView | UiDirtyClipboard | UiDirtyToolbar | UiDirtyStatus)) != UiDirtyNone)
+		{
 		if (profileIdle) ++g_idleProfile.commandUpdates;
 		// check if editing commands can be performed
 
@@ -1558,11 +1564,12 @@ BOOL CMainFrame::OnIdle()
 			GoTo(saved_pos);
 			m_view.SetFocus();
 		}
+		}
 	}
 
 	// added by SeNS
 	// detect page scrolling, run a background spellcheck if necessary
-	if (m_Speller && m_Speller->Enabled() && m_editor_view_state.Current() == BODY)
+	if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone && m_Speller && m_Speller->Enabled() && m_editor_view_state.Current() == BODY)
 	{
 		if (!m_Speller->Available())
 			UIEnable(ID_TOOLS_SPELLCHECK, false, true);
@@ -1572,8 +1579,10 @@ BOOL CMainFrame::OnIdle()
 			m_Speller->CheckScroll();
 		}
 	}
-	else UIEnable(ID_TOOLS_SPELLCHECK, false, true);
+	else if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone) UIEnable(ID_TOOLS_SPELLCHECK, false, true);
 
+	if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone)
+	{
 	const bool tableCommandEnabled = m_editor_view_state.Current() == BODY && m_doc && m_doc->m_body.SelectionStructTableCon();
 	const UINT tableCommands[] = {
 		ID_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_BELOW, ID_TABLE_DELETE_ROW,
@@ -1583,10 +1592,14 @@ BOOL CMainFrame::OnIdle()
 	for (size_t index = 0; index < _countof(tableCommands); ++index) {
 		UIEnable(tableCommands[index], tableCommandEnabled);
 	}
+	}
 
 	// update UI
-	if (profileIdle) ++g_idleProfile.toolbarUpdates;
-	UIUpdateToolBar();
+	if (m_ui_dirty != UiDirtyNone)
+	{
+		if (profileIdle) ++g_idleProfile.toolbarUpdates;
+		UIUpdateToolBar();
+	}
 
 	// update document tree
 	if (m_doc_changed)
@@ -1710,6 +1723,7 @@ BOOL CMainFrame::OnIdle()
 		SetWindowText(title);
 	}
 
+	m_ui_dirty = UiDirtyNone;
 	if (profileIdle) g_idleProfile.Finish(idleStarted);
 	return FALSE;
 }
@@ -2636,6 +2650,7 @@ LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 LRESULT CMainFrame::OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&)
 {
 	RefreshClipboardState();
+	InvalidateUi(UiDirtyClipboard | UiDirtyToolbar);
 	if (m_doc && !IsSourceActive())
 		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
 	return 0;
@@ -4842,6 +4857,7 @@ void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)
 		UIEnable(ID_VIEW_TREE, 1);
 	UISetCheck(ID_VIEW_BODY, vt == BODY); UISetCheck(ID_VIEW_DESC, vt == DESC); UISetCheck(ID_VIEW_SOURCE, vt == SOURCE);
 	if (vt == BODY) { m_sel_changed = true; if (m_Speller) m_Speller->SetDocumentLanguage(); }
+	InvalidateUi(UiDirtyView | UiDirtySelection | UiDirtyToolbar | UiDirtyStatus);
 	if (vt == DESC) {
 		m_contextAttributeBars.ClearLinkState(); m_contextAttributeBars.ClearTableState();
 		m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });

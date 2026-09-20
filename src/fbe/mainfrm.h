@@ -117,6 +117,19 @@ class CMainFrame :	public CFrameWindowImpl<CMainFrame>,
 					private IEditorSourceExchange
 {
 public:
+	enum UiDirtyFlags
+	{
+		UiDirtyNone = 0,
+		UiDirtySelection = 1 << 0,
+		UiDirtyDocument = 1 << 1,
+		UiDirtyClipboard = 1 << 2,
+		UiDirtySource = 1 << 3,
+		UiDirtyView = 1 << 4,
+		UiDirtyToolbar = 1 << 5,
+		UiDirtyStatus = 1 << 6,
+		UiDirtyAll = UiDirtySelection | UiDirtyDocument | UiDirtyClipboard | UiDirtySource | UiDirtyView | UiDirtyToolbar | UiDirtyStatus
+	};
+
 	enum FILE_OP_STATUS
 	{
 		FAIL,
@@ -165,6 +178,7 @@ public:
 	bool			  m_clipboard_has_bitmap;
 	DWORD			  m_last_clipboard_fallback_check;
 	bool			  m_clipboard_fallback_check_started;
+	unsigned int	  m_ui_dirty;
   BOOL			  m_last_sci_ovr:1;
   bool			  m_last_ie_ovr:1;
   bool			  m_doc_changed:1;
@@ -207,7 +221,7 @@ public:
 	void InitScriptHotkey(ScriptDescriptor&);
 
   // contruction/destruction
-  CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_external_file_check(0), m_external_file_check_started(false), m_clipboard_listener_registered(false), m_clipboard_has_bitmap(false), m_last_clipboard_fallback_check(0), m_clipboard_fallback_check_started(false), m_last_sci_ovr(true), m_last_ie_ovr(true),
+  CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_external_file_check(0), m_external_file_check_started(false), m_clipboard_listener_registered(false), m_clipboard_has_bitmap(false), m_last_clipboard_fallback_check(0), m_clipboard_fallback_check_started(false), m_ui_dirty(UiDirtyAll), m_last_sci_ovr(true), m_last_ie_ovr(true),
     m_doc_changed(false), m_sel_changed(false), m_change_state(false), m_need_title_update(false),
 	m_current_dpi(96), m_status_layout_posted(false), m_source_view_session(m_source, m_doc, m_editor_selection_state, m_source_selection_coordinator), m_cb_updated(false),
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
@@ -310,6 +324,7 @@ public:
 
   void	  StopIncSearch(bool fCancel);
   void	  SetIsText();
+	void InvalidateUi(unsigned int flags) { m_ui_dirty |= flags; }
 
 	// source<->html exchange
 	bool SourceToHTML();
@@ -810,6 +825,7 @@ public:
 
   LRESULT OnEdSelChange(WORD, WORD, HWND /* unused: hWndCtl */, BOOL&) {
     m_sel_changed=true;
+	InvalidateUi(UiDirtySelection | UiDirtyStatus | UiDirtyToolbar);
     StopIncSearch(true);
 	DisplayCharCode();
     return 0;
@@ -859,6 +875,7 @@ public:
 	LRESULT OnEdChange(WORD, WORD, HWND /* unused: hWnd */, BOOL& /* unused: b */) {
     StopIncSearch(true);
 		m_doc_changed=true;
+		InvalidateUi(UiDirtyDocument | UiDirtySelection | UiDirtyStatus | UiDirtyToolbar);
     ResetValidationStatus();
     m_cb_updated=false;
 
@@ -923,6 +940,7 @@ public:
       return 0;
     }
     SciModified(*(SCNotification*)hdr);
+	InvalidateUi(UiDirtySource | UiDirtyToolbar | UiDirtyStatus);
     return 0;
   }
 
@@ -957,8 +975,11 @@ public:
 		ClearSourceValidationAnnotations();
         ResetValidationStatus();
     }
-    if (scn.updated & (SC_UPDATE_SELECTION | SC_UPDATE_TEXT))
+	if (scn.updated & (SC_UPDATE_SELECTION | SC_UPDATE_TEXT))
+	{
+		InvalidateUi(UiDirtySource | UiDirtyToolbar | UiDirtyStatus);
 		SciUpdateUI(false);
+	}
 	return 0;
   }
 
