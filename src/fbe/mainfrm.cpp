@@ -1193,9 +1193,9 @@ struct IdleProfile
 		if (elapsed > maxMilliseconds) maxMilliseconds = elapsed;
 		if ((count % 256) != 0) return;
 		CString summary;
-		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; selection-context-updates=%llu; toolbar-updates=%llu; tree-updates=%llu; file-fingerprint-checks=%llu; clipboard-checks=%llu",
+		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; selection-context-updates=%llu; js-com-calls=%llu; toolbar-updates=%llu; tree-updates=%llu; file-fingerprint-checks=%llu; clipboard-checks=%llu",
 			count, totalMilliseconds, maxMilliseconds, totalMilliseconds / count,
-			commandUpdates, selectionUpdates, toolbarUpdates, treeUpdates, fileChecks, clipboardChecks);
+			commandUpdates, selectionUpdates, StartupTrace::UiComCallCount(), toolbarUpdates, treeUpdates, fileChecks, clipboardChecks);
 		StartupTrace::Event(L"performance", L"P410", summary);
 	}
 };

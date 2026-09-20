@@ -26,6 +26,10 @@ namespace StartupTrace
 	void WriteLateEnvironmentHeader();
 	// Возвращает true, когда включён диагностический журнал текущего процесса.
 	bool Enabled();
+	// Aggregate UI dispatch diagnostics.  These functions are no-ops unless
+	// the existing diagnostic trace is active.
+	void CountUiComCall();
+	ULONGLONG UiComCallCount();
 	// Определяет режим следующего запуска: настройка FBE имеет приоритет над переменной среды.
 	bool IsEnabledForNextLaunch();
 	// Возвращает true только для явно сохранённого пользовательского включения.

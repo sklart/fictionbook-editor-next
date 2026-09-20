@@ -1033,6 +1033,7 @@ static bool vt2bool(const _variant_t& vt) {
 
 bool CFBEView::bCall(const wchar_t *name, int nParams, VARIANT* params)
 {
+	StartupTrace::CountUiComCall();
 	try
 	{
 		CComDispatchDriver dd(Script());
@@ -1049,6 +1050,7 @@ bool CFBEView::bCall(const wchar_t *name, int nParams, VARIANT* params)
 }
 
 bool  CFBEView::bCall(const wchar_t *name,IDispatch *pDisp) {
+	StartupTrace::CountUiComCall();
   try {
     CComDispatchDriver  dd(Script());
     _variant_t  vt;
@@ -1064,6 +1066,7 @@ bool  CFBEView::bCall(const wchar_t *name,IDispatch *pDisp) {
 }
 
 bool  CFBEView::bCall(const wchar_t *name) {
+	StartupTrace::CountUiComCall();
   try {
     CComDispatchDriver  dd(Script());
     _variant_t  vt2(true);

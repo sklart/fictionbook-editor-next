@@ -16,6 +16,7 @@ namespace
 	CRITICAL_SECTION traceLock;
 	bool traceLockInitialized = false;
 	ULONGLONG startTime = 0, previousTime = 0, writtenBytes = 0, recordSequence = 0;
+	ULONGLONG uiComCallCount = 0;
 	DWORD lastWriteError = ERROR_SUCCESS;
 	CString tracePath, traceBasePath, lastStageCode, lastStageMessage, lastDocumentStage, lastScriptOperationStage, lastScriptFailureStage, lastComFailure, lastHResultFailure, lastDispatchFailure;
 	unsigned int traceSegment = 0;
@@ -619,6 +620,8 @@ void StartupTrace::WriteLateEnvironmentHeader()
   WriteFeatureControlSnapshot();
 }
 bool StartupTrace::Enabled() { return traceFile != INVALID_HANDLE_VALUE; }
+void StartupTrace::CountUiComCall() { if (Enabled()) ++uiComCallCount; }
+ULONGLONG StartupTrace::UiComCallCount() { return Enabled() ? uiComCallCount : 0; }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"info", code, message, false); }
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"LEGACY", message, false); }
