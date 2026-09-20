@@ -6259,6 +6259,24 @@
         "bg-BG": "Цветовият профил AVIF/HEIF не може да бъде безопасно преобразуван в sRGB."
       }
     },
+    "fbe.image_import.heif_hdr_primaries_unsupported": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "HDR AVIF/HEIF without ICC and colour primaries cannot be converted safely to sRGB.",
+        "ru-RU": "HDR AVIF/HEIF без ICC-профиля и цветовых первичных нельзя безопасно преобразовать в sRGB.",
+        "uk-UA": "HDR AVIF/HEIF без ICC-профілю та колірних первинних не можна безпечно перетворити на sRGB.",
+        "de-DE": "HDR-AVIF/HEIF ohne ICC-Profil und Farbprimärwerte kann nicht sicher nach sRGB konvertiert werden.",
+        "fr-FR": "Un fichier AVIF/HEIF HDR sans profil ICC ni primaires de couleur ne peut pas être converti de façon sûre vers sRGB.",
+        "es-ES": "Un AVIF/HEIF HDR sin perfil ICC ni primarias de color no se puede convertir de forma segura a sRGB.",
+        "it-IT": "Un AVIF/HEIF HDR senza profilo ICC e primari colore non può essere convertito in modo sicuro in sRGB.",
+        "pl-PL": "HDR AVIF/HEIF bez profilu ICC i barw podstawowych nie może zostać bezpiecznie przekonwertowany do sRGB.",
+        "pt-PT": "Um AVIF/HEIF HDR sem perfil ICC e primárias de cor não pode ser convertido com segurança para sRGB.",
+        "nl-NL": "HDR-AVIF/HEIF zonder ICC-profiel en kleurprimairen kan niet veilig naar sRGB worden omgezet.",
+        "cs-CZ": "HDR AVIF/HEIF bez profilu ICC a barevných primárních hodnot nelze bezpečně převést do sRGB.",
+        "bg-BG": "HDR AVIF/HEIF без ICC профил и цветови първични стойности не може да бъде безопасно преобразуван в sRGB."
+      }
+    },
     "fbe.image_import.jp2_invalid": {
       "component": "fbe.core",
       "runtimeOnly": true,

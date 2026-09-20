@@ -43,6 +43,8 @@ Assert-True ($importSource -match 'heif_image_handle_get_raw_color_profile' -and
 Assert-True ($importSource -match 'heif_image_handle_get_nclx_color_profile' -and $importSource -match 'ConvertNclxPixelsToSrgb') 'NCLX metadata должна участвовать в преобразовании HEIF в sRGB.'
 Assert-True ($importSource -match 'SMPTE_EG_432_1' -and $importSource -match 'ITU_R_BT_2020_2_and_2100_0') 'Wide-gamut Display-P3 и Rec.2020 должны иметь явные sRGB-преобразования.'
 Assert-True ($importSource -match 'PqToNits' -and $importSource -match 'HlgToRelative' -and $importSource -match 'ToneMapHdr') 'PQ/HLG должны обрабатываться отдельным HDR-to-SDR контуром.'
+Assert-True ($importSource -match '254\.0 / 255\.0' -and $importSource -match 'value / \(value \+ 0\.10\)') 'HDR tone mapping должен иметь bounded shoulder без массового клиппинга в 255.'
+Assert-True ($importSource -match 'hdr && nclx->color_primaries == heif_color_primaries_unspecified && rawIcc\.empty\(\)') 'HDR без ICC и заданных primaries должен контролируемо отклоняться.'
 Assert-True ($importSource -match 'heif_chroma_interleaved_RRGGBBAA_LE' -and $importSource -match 'floor\(value \* 255\.0 \+ 0\.5\)') '10/12-bit HEIF должен декодироваться с сохранением глубины и округлением в 8 bit.'
 Assert-True ($importSource -match 'heif_color_unsupported' -and $importSource -match 'heif_color_profile_failed') 'Непреобразуемый профиль HEIF должен завершать импорт понятной ошибкой.'
 Assert-True ($importSource -match 'heif_check_filetype' -and $importSource -match 'heif_has_compatible_filetype') 'HEIF должен определяться официальным API libheif, включая compatible brands.'
@@ -79,7 +81,7 @@ Assert-True ($projectSource -match 'openjp2\.lib') 'OpenJPEG должен быт
 foreach ($key in @('fbe.image_import.read_failed', 'fbe.image_import.heif_decode_failed', 'fbe.image_import.filter_supported', 'fbe.image_import.filter_heif')) {
     Assert-True ($catalogSource -match [regex]::Escape($key)) "В runtime-каталоге отсутствует ключ $key."
 }
-foreach ($key in @('fbe.image_import.heif_color_profile_failed', 'fbe.image_import.heif_color_unsupported')) {
+foreach ($key in @('fbe.image_import.heif_color_profile_failed', 'fbe.image_import.heif_color_unsupported', 'fbe.image_import.heif_hdr_primaries_unsupported')) {
     Assert-True ($catalogSource -match [regex]::Escape($key)) "В runtime-каталоге отсутствует ключ $key."
 }
 foreach ($key in @('fbe.image_import.output_auto', 'fbe.image_import.output_jpeg', 'fbe.image_import.output_png')) {
@@ -111,6 +113,7 @@ Assert-True ($nativeHarness -match 'TestHeif10Bit' -and $nativeRunner -match 'sd
 Assert-True ($nativeHarness -match 'TestNclxP3' -and $nativeHarness -match 'TestNclxP3WithAlpha' -and $nativeRunner -match 'New-NclxFixture') 'Native harness должен проверять Display-P3/NCLX и wide-gamut alpha на реальных AVIF pixels.'
 Assert-True ($nativeHarness -match 'TestHeifIcc' -and $nativeRunner -match 'rainbow-451x461\.heic') 'Native harness должен проверять HEIC с ICC-профилем.'
 Assert-True ($nativeHarness -match 'TestHdrHeif' -and $nativeHarness -match 'ITU_R_BT_2100_0_PQ' -and $nativeHarness -match 'ITU_R_BT_2100_0_HLG') 'Native harness должен проверять PQ и HLG HDR-to-SDR контуры.'
+Assert-True ($nativeHarness -match 'expectedRed' -and $nativeHarness -match 'TestHdrUnspecifiedPrimariesRejected' -and $nativeRunner -match 'hdr-unspecified-primaries') 'Native harness должен закреплять контрольные HDR RGB и отказ для undefined primaries.'
 Assert-True ($nativeHarness -match 'TestTransformedHeif' -and $nativeHarness -match 'markerA' -and $nativeHarness -match 'OutputPixelAt' -and $nativeRunner -match 'abc_color_irot_alpha_irot\.avif') 'Native harness должен проверять HEIF rotation по конкретным pixels и размерам после transform.'
 Assert-True ($nativeHarness -match 'argv\[19\].*image/jpeg') 'Native harness должен проверять успешную конвертацию одно-страничного TIFF.'
 Assert-True ($nativeHarness -match 'TestJpeg2000Fixture\(true\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(false\)' -and $nativeHarness -match 'TestJpeg2000Fixture\(true, true\)' -and $nativeHarness -match 'TestJpeg2000SyccSubsampled' -and $nativeHarness -match 'TestJpeg2000OriginSampling' -and $nativeHarness -match 'OutputPixelAt') 'Native harness должен проверять JP2/J2K, alpha, sYCC subsampling и component origin по RGB pixels.'

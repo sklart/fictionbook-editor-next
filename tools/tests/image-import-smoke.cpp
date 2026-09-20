@@ -399,8 +399,34 @@ static bool TestHdrHeif(const wchar_t* path, heif_transfer_characteristics trans
 	heif_color_profile_nclx* rawNclx = NULL; const heif_error profile = heif_image_handle_get_nclx_color_profile(handle.get(), &rawNclx);
 	std::unique_ptr<heif_color_profile_nclx, void(*)(heif_color_profile_nclx*)> nclx(profile.code == heif_error_Ok ? rawNclx : NULL, heif_nclx_color_profile_free);
 	if (!nclx || nclx->color_primaries != heif_color_primaries_ITU_R_BT_2020_2_and_2100_0 || nclx->transfer_characteristics != transfer) return false;
+	heif_decoding_options* rawOptions = heif_decoding_options_alloc(); std::unique_ptr<heif_decoding_options, void(*)(heif_decoding_options*)> decodeOptions(rawOptions, heif_decoding_options_free);
+	if (!decodeOptions) return false; decodeOptions->strict_decoding = 1; decodeOptions->ignore_transformations = 0; decodeOptions->output_image_nclx_profile_passthrough = 1;
+	heif_image* rawImage = NULL; if (heif_decode_image(handle.get(), &rawImage, heif_colorspace_RGB, heif_chroma_interleaved_RGBA, decodeOptions.get()).code != heif_error_Ok || !rawImage) return false;
+	std::unique_ptr<heif_image, void(*)(const heif_image*)> image(rawImage, heif_image_release); int stride = 0; const uint8_t* plane = heif_image_get_plane_readonly(image.get(), heif_channel_interleaved, &stride); if (!plane) return false;
+	UINT controlX = 0, controlY = 0; bool found = false;
+	for (UINT y = 0; y < static_cast<UINT>(heif_image_get_primary_height(image.get())) && !found; ++y) for (UINT x = 0; x < static_cast<UINT>(heif_image_get_primary_width(image.get())); ++x) { const BYTE* p = plane + size_t(y) * stride + x * 4; if (p[3] > 0 && p[0] > 32 && p[0] < 250) { controlX = x; controlY = y; found = true; break; } }
+	if (!found) return false;
+	const BYTE* source = plane + size_t(controlY) * stride + controlX * 4;
+	auto pq = [](double value) { const double power = pow(value / 255.0, 32.0 / 2523.0), n = max(0.0, power - 3424.0 / 4096.0), d = max(0.000001, 2413.0 / 128.0 - 2392.0 / 128.0 * power); return 100.0 * pow(n / d, 16384.0 / 2610.0); };
+	auto hlg = [](double value) { value /= 255.0; return (value <= 0.5 ? value * value / 3.0 : (exp((value - 0.55991073) / 0.17883277) + 0.28466892) / 12.0) * 10.0; };
+	double red = transfer == heif_transfer_characteristic_ITU_R_BT_2100_0_PQ ? pq(source[0]) : hlg(source[0]);
+	double green = transfer == heif_transfer_characteristic_ITU_R_BT_2100_0_PQ ? pq(source[1]) : hlg(source[1]);
+	double blue = transfer == heif_transfer_characteristic_ITU_R_BT_2100_0_PQ ? pq(source[2]) : hlg(source[2]);
+	const double sourceRed = red, sourceGreen = green, sourceBlue = blue;
+	red = 1.6604910 * sourceRed - 0.5876411 * sourceGreen - 0.0728499 * sourceBlue; green = -0.1245505 * sourceRed + 1.1328999 * sourceGreen - 0.0083494 * sourceBlue; blue = -0.0181508 * sourceRed - 0.1005789 * sourceGreen + 1.1187297 * sourceBlue;
+	const double luma = max(0.000001, 0.2126 * red + 0.7152 * green + 0.0722 * blue), scale = min(254.0 / 255.0, luma / (luma + 0.10)) / luma;
+	auto encoded = [](double value) { value = max(0.0, value); value = value <= 0.0031308 ? value * 12.92 : 1.055 * pow(value, 1.0 / 2.4) - 0.055; return int(max(0.0, min(255.0, floor(value * 255.0 + 0.5)))); };
+	const int expectedRed = encoded(red * scale), expectedGreen = encoded(green * scale), expectedBlue = encoded(blue * scale);
+	ImageImportOptions options; ImageImportResult result; CString error; Gdiplus::Color output;
+	const bool ok = SUCCEEDED(ImportImageForFb2(path, options, result, error)) && result.mimeType == L"image/png" && OutputHasContrast(result.data) && OutputPixelAt(result.data, controlX, controlY, output) && abs(int(output.GetRed()) - expectedRed) <= 2 && abs(int(output.GetGreen()) - expectedGreen) <= 2 && abs(int(output.GetBlue()) - expectedBlue) <= 2;
+	if (!ok) std::wcerr << L"HDR control: expected=" << expectedRed << L"," << expectedGreen << L"," << expectedBlue << L" actual=" << output.GetRed() << L"," << output.GetGreen() << L"," << output.GetBlue() << L"; " << error.GetString() << std::endl;
+	return ok;
+}
+
+static bool TestHdrUnspecifiedPrimariesRejected(const wchar_t* path)
+{
 	ImageImportOptions options; ImageImportResult result; CString error;
-	return SUCCEEDED(ImportImageForFb2(path, options, result, error)) && (result.mimeType == L"image/jpeg" || result.mimeType == L"image/png") && !result.data.empty() && OutputHasContrast(result.data);
+	return ImportImageForFb2(path, options, result, error) == E_NOTIMPL && error == L"HDR AVIF/HEIF without ICC and colour primaries cannot be converted safely to sRGB." && result.data.empty();
 }
 
 static bool TestHeifHighDepth(const wchar_t* path)
@@ -513,7 +539,7 @@ int wmain(int argc, wchar_t** argv)
 		}
 		return 0;
 	}
-	if (argc != 29) return 2;
+	if (argc != 30) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
 
@@ -588,6 +614,7 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestHeifIcc(argv[25])) return 42;
 	if (!TestHdrHeif(argv[26], heif_transfer_characteristic_ITU_R_BT_2100_0_PQ)) return 43;
 	if (!TestHdrHeif(argv[27], heif_transfer_characteristic_ITU_R_BT_2100_0_HLG)) return 44;
-	if (!TestHeifHighDepth(argv[28])) return 45;
+	if (!TestHdrUnspecifiedPrimariesRejected(argv[28])) return 45;
+	if (!TestHeifHighDepth(argv[29])) return 46;
 	return 0;
 }

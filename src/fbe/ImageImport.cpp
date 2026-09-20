@@ -82,9 +82,11 @@ double HlgToRelative(double value) {
 }
 
 double ToneMapHdr(double linearSdr) {
-	// Preserve the SDR range around diffuse white and compress only highlights.
-	if (linearSdr <= 1.0) return max(0.0, linearSdr);
-	return 1.0 + (linearSdr - 1.0) / (linearSdr + 4.0);
+	// A bounded Reinhard shoulder: it is strictly below one for any finite HDR
+	// value, so GDI+ cannot turn a large highlight region into clipped 255s.
+	// The small shoulder keeps diffuse SDR white close to its original level.
+	const double value = max(0.0, linearSdr);
+	return min(254.0 / 255.0, value / (value + 0.10));
 }
 
 void ConvertPrimariesToSrgb(const heif_color_profile_nclx* nclx, double& red, double& green, double& blue) {
@@ -294,6 +296,7 @@ HRESULT DecodeHeif(const std::vector<BYTE>& data, const ImageImportOptions& o, I
 	if (rawIccSize && heif_image_handle_get_raw_color_profile(handle.get(), rawIcc.data()).code != heif_error_Ok) { err=ImageMessage(L"fbe.image_import.heif_color_profile_failed",L"Could not read the embedded colour profile; the image was not imported."); return E_FAIL; }
 	const bool hdr = IsHeifHdr(nclx.get());
 	const bool needsColorConversion = nclx && !IsSrgbNclx(nclx.get());
+	if (hdr && nclx->color_primaries == heif_color_primaries_unspecified && rawIcc.empty()) { err=ImageMessage(L"fbe.image_import.heif_hdr_primaries_unsupported",L"HDR AVIF/HEIF without ICC and colour primaries cannot be converted safely to sRGB."); return E_NOTIMPL; }
 	if (needsColorConversion && !IsSupportedNclx(nclx.get()) && rawIcc.empty()) { err=ImageMessage(L"fbe.image_import.heif_color_unsupported",L"The AVIF/HEIF colour profile cannot be converted safely to sRGB."); return E_NOTIMPL; }
 	const int sourceBits = heif_image_handle_get_luma_bits_per_pixel(handle.get());
 	const bool highDepth = sourceBits > 8;

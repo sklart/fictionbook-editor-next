@@ -40,10 +40,12 @@ $displayP3AlphaFixture = Join-Path $testDir 'display-p3-alpha.avif'
 $displayP3Fixture = Join-Path $testDir 'display-p3.avif'
 $hdrPqFixture = Join-Path $testDir 'hdr-pq-10bit.avif'
 $hdrHlgFixture = Join-Path $testDir 'hdr-hlg-10bit.avif'
+$hdrUnspecifiedPrimariesFixture = Join-Path $testDir 'hdr-unspecified-primaries.avif'
 New-NclxFixture (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') $displayP3AlphaFixture 12 13
 New-NclxFixture $avifFixture $displayP3Fixture 12 13
 New-NclxFixture (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') $hdrPqFixture 9 16
 New-NclxFixture (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') $hdrHlgFixture 9 18
+New-NclxFixture (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') $hdrUnspecifiedPrimariesFixture 2 16
 $jpegFixture = Join-Path $testDir 'generated.jpg'
 $jpegPassThroughFixture = Join-Path $testDir 'original.jpeg'
 $gifFixture = Join-Path $testDir 'generated.gif'
@@ -136,6 +138,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic') `
     $hdrPqFixture `
     $hdrHlgFixture `
+    $hdrUnspecifiedPrimariesFixture `
     (Join-Path $repoRoot 'tools\tests\fixtures\sdr_fox_10bit.avif')
 if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
 Write-Host 'Native ImageImport smoke-test passed.'
