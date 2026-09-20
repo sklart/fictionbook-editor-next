@@ -812,11 +812,12 @@
 		const CStringA selectionName(selectCaret ? "caret" : "selected");
 		const bool repeat = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_REPEAT", nullptr, 0) != 0;
 		const bool viaWrapper = routeLength == 7 && wcscmp(route, L"wrapper") == 0;
-		CStringA header("operation\ttarget\tselection_mode\tselection_collapsed\tselection_text_utf16\tselection_html_utf16\tselection_parent_utf16\tselection_start_to_first_start\tselection_end_to_first_end\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tpoem_text_utf16\tempty_divs\tempty_paragraphs\tempty_stanzas\tsaved\tresult\tcheck_status\tapply_status\thresult\tdocument_changed\r\n");
+		const bool viaCommand = routeLength == 7 && wcscmp(route, L"command") == 0;
+		CStringA header("operation\ttarget\tselection_mode\tselection_collapsed\tselection_text_utf16\tselection_html_utf16\tselection_parent_utf16\tselection_start_to_first_start\tselection_end_to_first_end\tcheck_allowed\tbefore_equals_undo\tafter_equals_redo\tsequential_cycle\tbefore_paragraphs\tafter_cites\tafter_poems\tafter_stanzas\tpoem_text_utf16\tempty_divs\tempty_paragraphs\tempty_stanzas\tundo_validated\tundo_saved\tfault_recovery\tsaved\tresult\tcheck_status\tapply_status\thresult\tdocument_changed\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		auto writeFailure = [&](const char* reason)
 		{
-			CStringA row; row.Format("%s\t%s\t%s\t0\t-\t-\t-\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\t%s\r\n", cite ? "cite" : poem ? "poem" : "unknown", (LPCSTR)targetName, (LPCSTR)selectionName, reason);
+			CStringA row; row.Format("%s\t%s\t%s\t0\t-\t-\t-\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\t0\t0\t0\t%s\r\n", cite ? "cite" : poem ? "poem" : "unknown", (LPCSTR)targetName, (LPCSTR)selectionName, reason);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1);
 		};
 		if (!cite && !poem) { writeFailure("invalid-operation"); return 0; }
@@ -894,6 +895,18 @@
 				: FbeStructure::CitePoemFailurePoint::BeforeMutation)
 			: FbeStructure::CitePoemFailurePoint::None;
 		auto apply = [&](bool checkOnly) -> FbeStructure::StructuralOperationResult {
+			// The command route deliberately goes through CMainFrame.  The check
+			// remains a direct production preflight; WM_COMMAND itself only has the
+			// historical bool result boundary and does not expose the rich result.
+			if (viaCommand && !checkOnly) {
+				const CString commandBefore((const wchar_t*)body->innerHTML);
+				m_doc->m_body.SetFocus();
+				::SetFocus(m_doc->m_body);
+				SendMessage(WM_COMMAND, MAKEWPARAM(cite ? ID_EDIT_INS_CITE : ID_EDIT_INS_POEM, 0), 0);
+				return commandBefore != CString((const wchar_t*)body->innerHTML)
+					? FbeStructure::StructuralOperationResult::Applied()
+					: FbeStructure::StructuralOperationResult::NotApplicable();
+			}
 			if (viaWrapper)
 				return cite ? m_doc->m_body.InsertCiteResult(checkOnly, failurePoint) : m_doc->m_body.InsertPoemResult(checkOnly, failurePoint);
 			return cite ? extracted.InsertCite(checkOnly, failurePoint) : extracted.InsertPoem(checkOnly, failurePoint);
@@ -920,11 +933,38 @@
 			if (observedChanged) m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
 			const bool expectedChanged = wcscmp(citePoemFault, L"before-mutation") != 0;
 			const bool restored = before == CString((const wchar_t*)body->innerHTML);
+			bool recovery = false;
+			if (restored) {
+				MSHTML::IHTMLElementPtr recoveryContainer;
+				MSHTML::IHTMLElementCollectionPtr recoveryDivs(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
+				for (long index = 0; recoveryDivs && index < recoveryDivs->length; ++index) {
+					MSHTML::IHTMLElementPtr div(recoveryDivs->item(_variant_t(index), _variant_t()));
+					if (div && U::scmp(div->className, targetClass) == 0) { recoveryContainer = div; break; }
+				}
+				MSHTML::IHTMLElementCollectionPtr recoveryParagraphs(recoveryContainer ? MSHTML::IHTMLElement2Ptr(recoveryContainer)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+				MSHTML::IHTMLElementPtr recoveryFirst(recoveryParagraphs && recoveryParagraphs->length ? recoveryParagraphs->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLTxtRangePtr recoveryRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+				if (recoveryFirst && recoveryRange) {
+					recoveryRange->moveToElementText(recoveryFirst); recoveryRange->collapse(VARIANT_TRUE);
+					if (!CString((const wchar_t*)recoveryFirst->innerText).IsEmpty()) recoveryRange->move(L"character", 1);
+					recoveryRange->select();
+					const FbeStructure::StructuralOperationResult recoveryResult = cite
+						? m_doc->m_body.InsertCiteResult(false) : m_doc->m_body.InsertPoemResult(false);
+					const CString recoveryAfter((const wchar_t*)body->innerHTML);
+					BOOL recoveryHandled = FALSE;
+					m_doc->m_body.OnUndo(0, 0, m_doc->m_body, recoveryHandled);
+					const bool recoveryUndo = before == CString((const wchar_t*)body->innerHTML);
+					m_doc->m_body.OnRedo(0, 0, m_doc->m_body, recoveryHandled);
+					const bool recoveryRedo = recoveryAfter == CString((const wchar_t*)body->innerHTML);
+					m_doc->m_body.OnUndo(0, 0, m_doc->m_body, recoveryHandled);
+					recovery = recoveryResult.IsApplied() && recoveryAfter != before && recoveryUndo && recoveryRedo && before == CString((const wchar_t*)body->innerHTML);
+				}
+			}
 			const bool passed = checkResult.IsApplied() && checkDomUnchanged && checkSelectionUnchanged && checkDirtyUnchanged &&
 				applyResult.HasTechnicalFailure() && applyResult.error == E_FAIL && observedChanged == expectedChanged &&
-				applyResult.documentChanged == observedChanged && (expectedChanged ? restored : selectionUnchanged && !dirtyChanged && restored);
+				applyResult.documentChanged == observedChanged && recovery && (expectedChanged ? restored : selectionUnchanged && !dirtyChanged && restored);
 			CStringA row;
-			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t1\t1\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, restored, beforeParagraphs, passed ? "pass" : "fail", checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
+			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t1\t1\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t0\t%d\t0\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : poem ? "poem" : "unknown", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, restored, beforeParagraphs, recovery ? 1 : 0, passed ? "pass" : "fail", checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 		}
 		if (!applied || before == after) {
@@ -939,7 +979,7 @@
 				applyDomUnchanged && applySelectionUnchanged && applyDirtyUnchanged;
 			const char* reason = genuineNotApplicable ? "not-applicable" : "operation-failed";
 			CStringA row;
-			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs, reason, checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
+			row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t0\t0\t0\t%ld\t0\t0\t0\t-\t0\t0\t0\t0\t0\t0\t0\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, beforeParagraphs, reason, checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		BOOL handled = FALSE;
@@ -988,16 +1028,15 @@
 			sequential = secondApplied && before == secondUndo && secondAfter == secondRedo && before == secondRestored;
 		}
 		const bool structure = cite ? citeCount == 1 && poemCount == 0 : poemCount == 1 && stanzaCount >= 1;
-		// The final Undo proves restoration of the original DOM.  Persist the
-		// operation result after a fresh Redo: an intentionally empty fixture is
-		// not itself a valid FictionBook section and must not open a validation UI.
-		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
-		const bool redoForSave = after == CString((const wchar_t*)body->innerHTML);
+		// MSHTML Save resets its undo/redo history.  Check the one-step Redo before
+		// saving, then persist the independently restored Undo state below.
 		int validationLine = 0, validationColumn = 0;
-		const bool saved = redoForSave && m_doc->Validate(validationLine, validationColumn) && m_doc->Save();
-		const bool passed = undone && redone && sequential && structure && emptyDivs == 0 && emptyParagraphs == 0 && emptyStanzas == 0 && saved;
+		const bool undoValidated = before == restored && m_doc->Validate(validationLine, validationColumn);
+		const bool undoSaved = undoValidated && m_doc->Save();
+		const bool saved = undoSaved;
+		const bool passed = undone && redone && sequential && structure && emptyDivs == 0 && emptyParagraphs == 0 && emptyStanzas == 0 && undoValidated && undoSaved;
 		CStringA row;
-		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
-			beforeParagraphs, citeCount, poemCount, stanzaCount, (LPCSTR)poemTextSummary, emptyDivs, emptyParagraphs, emptyStanzas, saved, passed ? "pass" : "fail", checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
+		row.Format("%s\t%s\t%s\t%d\t%s\t%s\t%s\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%s\t%ld\t%ld\t%ld\t%d\t%d\t0\t%d\t%s\t%s\t%s\t0x%08lX\t%d\r\n", cite ? "cite" : "poem", (LPCSTR)targetName, (LPCSTR)selectionName, selectionCollapsed, (LPCSTR)selectionTextSummary, (LPCSTR)selectionHtmlSummary, (LPCSTR)selectionParentSummary, selectionStartToFirstStart, selectionEndToFirstEnd, checkAllowed, undone, redone, sequential,
+			beforeParagraphs, citeCount, poemCount, stanzaCount, (LPCSTR)poemTextSummary, emptyDivs, emptyParagraphs, emptyStanzas, undoValidated, undoSaved, saved, passed ? "pass" : "fail", checkResult.IsApplied() ? "applied" : checkResult.HasTechnicalFailure() ? "failed" : "not-applicable", applyResult.IsApplied() ? "applied" : applyResult.HasTechnicalFailure() ? "failed" : "not-applicable", static_cast<unsigned long>(applyResult.error), applyResult.documentChanged ? 1 : 0);
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
-Exercises InsertCite and InsertPoem in the live MSHTML editor and verifies
-one-step Undo/Redo DOM snapshots plus a save after the final Undo.
+Exercises InsertCite and InsertPoem in the live MSHTML editor.  Every allowed
+container verifies one-step Undo/Redo DOM snapshots, a save and XSD validation
+while Undo has restored the source DOM, and empty-node hygiene.
 #>
 [CmdletBinding()]
 param(
@@ -37,12 +38,19 @@ try {
         @{ id = 'cite-many'; operation = 'cite'; paragraphs = @('First', 'Second') },
         @{ id = 'cite-sequential'; operation = 'cite'; repeat = $true; paragraphs = @('Text') },
         @{ id = 'cite-epigraph'; operation = 'cite'; target = 'epigraph'; body = '<epigraph><p>Epigraph text</p></epigraph><section><p>Anchor</p></section>' },
+		@{ id = 'cite-annotation'; operation = 'cite'; target = 'annotation'; selection = 'caret'; body = '<section><annotation><p>Annotation first</p><p>Annotation second</p></annotation><p>Anchor</p></section>' },
+		@{ id = 'cite-history'; operation = 'cite'; target = 'history'; documentInfoExtra = '<history><p>History text</p></history>'; paragraphs = @('Anchor') },
+		@{ id = 'cite-command'; operation = 'cite'; route = 'command'; paragraphs = @('Text') },
 		@{ id = 'poem-one'; operation = 'poem'; paragraphs = @('Line') },
 		@{ id = 'poem-wrapper-success'; operation = 'poem'; route = 'wrapper'; paragraphs = @('Line') },
         @{ id = 'poem-sequential'; operation = 'poem'; repeat = $true; paragraphs = @('Line') },
         @{ id = 'poem-lines'; operation = 'poem'; paragraphs = @('First line', 'Second line') },
         @{ id = 'poem-stanzas'; operation = 'poem'; paragraphs = @('One', '', 'Two', 'Three') },
         @{ id = 'poem-in-cite'; operation = 'poem'; target = 'cite'; body = '<section><cite><p>Quoted line</p></cite><p>Anchor</p></section>' },
+		@{ id = 'poem-epigraph'; operation = 'poem'; target = 'epigraph'; body = '<epigraph><p>Epigraph line</p></epigraph><section><p>Anchor</p></section>' },
+		@{ id = 'poem-annotation'; operation = 'poem'; target = 'annotation'; selection = 'caret'; body = '<section><annotation><p>Annotation first</p><p>Annotation second</p></annotation><p>Anchor</p></section>' },
+		@{ id = 'poem-history'; operation = 'poem'; target = 'history'; documentInfoExtra = '<history><p>History line</p></history>'; paragraphs = @('Anchor') },
+		@{ id = 'poem-command'; operation = 'poem'; route = 'command'; paragraphs = @('Line') },
         @{ id = 'poem-caret-text'; operation = 'poem'; selection = 'caret'; expectedPoemText = '0054,0065,0078,0074'; paragraphs = @('Text') },
         # Keep an unselected sibling so both the pre-operation fixture and
         # the restored document are valid FictionBook sections at Save time.
@@ -76,10 +84,11 @@ try {
         $expectedSelection = if($case.ContainsKey('selection')) { $case.selection } else { 'selected' }
         $paragraphs = if($case.ContainsKey('paragraphs')) { ($case.paragraphs | ForEach-Object { "<p>$([Security.SecurityElement]::Escape($_))</p>" }) -join '' } else { '' }
         $body = if($case.ContainsKey('body')) { $case.body } else { "<section>$paragraphs</section>" }
+		$documentInfoExtra = if($case.ContainsKey('documentInfoExtra')) { $case.documentInfoExtra } else { '' }
         $fixture = Join-Path $directory ($case.id + '.fb2')
         $report = Join-Path $directory ($case.id + '.tsv')
         $trace = Join-Path $directory ($case.id + '.trace.tsv')
-        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>$($case.id)</id><version>1.0</version></document-info></description><body>$body</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
+        @("<?xml version=`"1.0`" encoding=`"utf-8`"?>", "<FictionBook xmlns=`"http://www.gribuser.ru/xml/fictionbook/2.0`"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>$($case.id)</book-title><lang>en</lang></title-info><document-info><author><first-name>T</first-name><last-name>T</last-name></author><program-used>test</program-used><date>2026-09-20</date><id>$($case.id)</id><version>1.0</version>$documentInfoExtra</document-info></description><body>$body</body></FictionBook>") | Set-Content -LiteralPath $fixture -Encoding utf8
         $beforeFixture = Get-Content -LiteralPath $fixture -Raw
         $oldMode, $oldScenario, $oldOperation, $oldTarget, $oldSelection, $oldRepeat, $oldTrace, $oldTraceCase, $oldRoute, $oldFault = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_STRUCTURE_OPERATION, $env:FBE_NEXT_TEST_STRUCTURE_TARGET, $env:FBE_NEXT_TEST_STRUCTURE_SELECTION_MODE, $env:FBE_NEXT_TEST_STRUCTURE_REPEAT, $env:FBE_NEXT_TEST_STRUCTURE_TRACE, $env:FBE_NEXT_TEST_STRUCTURE_CASE, $env:FBE_NEXT_TEST_STRUCTURE_ROUTE, $env:FBE_NEXT_TEST_CITE_POEM_FAULT
         try {
@@ -107,7 +116,7 @@ try {
         $expectedCollapsed = if($expectedSelection -eq 'caret') { '1' } else { '0' }
         if($row.selection_collapsed -ne $expectedCollapsed) { throw "MSHTML collapsed-state mismatch for $($case.id): $($row.selection_collapsed)." }
 		if($case.ContainsKey('fault')) {
-			if($process.ExitCode -ne 0 -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'failed' -or $row.hresult -ne '0x80004005' -or $row.document_changed -ne $(if($case.documentChanged){'1'}else{'0'})) { throw "Cite/Poem fault result contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+			if($process.ExitCode -ne 0 -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'failed' -or $row.hresult -ne '0x80004005' -or $row.document_changed -ne $(if($case.documentChanged){'1'}else{'0'}) -or $row.fault_recovery -ne '1') { throw "Cite/Poem fault result contract or recovery Undo/Redo failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
 			$completed++; $passed++; continue
 		}
         if($case.ContainsKey('expectRejected')) {
@@ -131,7 +140,7 @@ try {
             if(@($traceRows | Where-Object { $_.event -in @('exception', 'failure') }).Count) { throw "Structural trace recorded a COM failure for $($case.id): $trace" }
         }
         if($case.ContainsKey('expectedPoemText') -and $row.poem_text_utf16 -ne $case.expectedPoemText) { throw "Poem text is wrong for $($case.id): $($row.poem_text_utf16)." }
-        if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.selection_mode -ne $expectedSelection -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.saved -ne '1' -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'applied' -or $row.hresult -ne '0x00000000' -or $row.document_changed -ne '1') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
+		if($row.operation -ne $case.operation -or $row.target -ne $expectedTarget -or $row.selection_mode -ne $expectedSelection -or $row.check_allowed -ne '1' -or $row.before_equals_undo -ne '1' -or $row.after_equals_redo -ne '1' -or $row.sequential_cycle -ne '1' -or $row.empty_divs -ne '0' -or $row.empty_paragraphs -ne '0' -or $row.empty_stanzas -ne '0' -or $row.undo_validated -ne '1' -or $row.undo_saved -ne '1' -or $row.saved -ne '1' -or $row.result -ne 'pass' -or $row.check_status -ne 'applied' -or $row.apply_status -ne 'applied' -or $row.hresult -ne '0x00000000' -or $row.document_changed -ne '1') { throw "Undo/Redo contract failed for $($case.id): $($row | ConvertTo-Json -Compress)" }
         if($case.operation -eq 'cite' -and ([int]$row.after_cites -ne 1 -or [int]$row.after_poems -ne 0)) { throw "Cite structure is wrong for $($case.id)." }
         if($case.operation -eq 'poem' -and ([int]$row.after_poems -ne 1 -or [int]$row.after_stanzas -lt 1)) { throw "Poem structure is wrong for $($case.id)." }
         Assert-Fb2Schema $fixture
