@@ -188,7 +188,7 @@ div#fbw_body table.table th {
 div.section {
 	border-color: #008000;
 }
-div.cite {
+div#fbw_body div.cite {
 	padding-left: 2em;
 	padding-right: 2em;
 	color: #660000;
@@ -230,7 +230,7 @@ div.stanza p {
 	margin-bottom: 0em;
 	color: #006600;
 }
-div.title {
+div#fbw_body div.title {
 	font-size: 130%;
 	border-color: #008080;
 	background: #008080;
@@ -260,6 +260,7 @@ p.text-author {
 }
 span.code {
 	font-family: monospace;
+	font-style: normal;
 	background: rgb(238,238,238);
 }
 a.note {

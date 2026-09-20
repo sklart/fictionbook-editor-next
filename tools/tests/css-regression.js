@@ -10,6 +10,7 @@ function parseCss(path) {
 
   const rules = new Map();
   const selectorCounts = new Map();
+	const orderedRules = [];
   const blocks = withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g);
   const consumed = withoutComments.replace(/[^{}]+\{[^{}]*\}/g, "");
   assert(!/[{}]/.test(consumed), `${path}: unbalanced or nested rule block`);
@@ -39,8 +40,69 @@ function parseCss(path) {
     const resolvedDeclarations = rules.get(selector) || new Map();
     for (const [property, value] of declarations) resolvedDeclarations.set(property, value);
     rules.set(selector, resolvedDeclarations);
+		orderedRules.push({ selector, declarations, order: orderedRules.length });
   }
-  return { rules, selectorCounts };
+  return { rules, selectorCounts, orderedRules };
+}
+
+function selectorSpecificity(selector) {
+	const ids = (selector.match(/#[a-z0-9_-]+/gi) || []).length;
+	const classes = (selector.match(/\.[a-z0-9_-]+/gi) || []).length;
+	const tags = (selector.match(/(?:^|\s)[a-z][a-z0-9_-]*/gi) || []).length;
+	return ids * 100 + classes * 10 + tags;
+}
+
+function matchesSimpleSelector(token, element) {
+	const tag = token.match(/^[a-z][a-z0-9_-]*/i);
+	const id = token.match(/#([a-z0-9_-]+)/i);
+	const classes = [...token.matchAll(/\.([a-z0-9_-]+)/gi)].map(match => match[1]);
+	return (!tag || element.tag === tag[0].toLowerCase()) && (!id || element.id === id[1]) && classes.every(name => element.classes.includes(name));
+}
+
+function matchesSelector(selector, ancestors) {
+	if (selector.includes(",") || selector.includes(":")) return false;
+	const tokens = selector.split(" ");
+	let ancestor = ancestors.length - 1;
+	for (let index = tokens.length - 1; index >= 0; --index) {
+		while (ancestor >= 0 && !matchesSimpleSelector(tokens[index], ancestors[ancestor])) --ancestor;
+		if (ancestor < 0) return false;
+		--ancestor;
+	}
+	return true;
+}
+
+function paddingValues(value) {
+	const values = value.split(/\s+/);
+	if (values.length === 1) return [values[0], values[0], values[0], values[0]];
+	if (values.length === 2) return [values[0], values[1], values[0], values[1]];
+	if (values.length === 3) return [values[0], values[1], values[2], values[1]];
+	return values;
+}
+
+function normalizeCssValue(value) {
+	return /^[-+]?0(?:\.0+)?(?:em|px|pt|%)$/i.test(value) ? "0" : value;
+}
+
+function resolveComputedPadding(css, ancestors) {
+	const values = { "padding-top": "0", "padding-right": "0", "padding-bottom": "0", "padding-left": "0" };
+	const precedence = {};
+	for (const rule of css.orderedRules) {
+		if (!matchesSelector(rule.selector, ancestors)) continue;
+		const specificity = selectorSpecificity(rule.selector);
+		for (const [property, value] of rule.declarations) {
+			const declarations = property === "padding"
+				? [["padding-top", paddingValues(value)[0]], ["padding-right", paddingValues(value)[1]], ["padding-bottom", paddingValues(value)[2]], ["padding-left", paddingValues(value)[3]]]
+				: [[property, value]];
+			for (const [resolvedProperty, resolvedValue] of declarations) {
+				const previous = precedence[resolvedProperty];
+				if (!previous || specificity > previous.specificity || (specificity === previous.specificity && rule.order >= previous.order)) {
+					values[resolvedProperty] = normalizeCssValue(resolvedValue);
+					precedence[resolvedProperty] = { specificity, order: rule.order };
+				}
+			}
+		}
+	}
+	return values;
 }
 
 const normalCss = parseCss("runtime/main.css");
@@ -107,10 +169,9 @@ for (const selector of ["div.epigraph", "div.annotation", "div.history", "div.po
     ["padding-left", undefined, "0.4em"], ["border-left", undefined, "solid 1px"]
   ]);
 }
-for (const selector of ["div.cite", "div.title"]) {
+for (const selector of ["div#fbw_body div.cite", "div#fbw_body div.title"]) {
   addIntentionalDifferences(selector, "Restores the structural left marker removed from the fast base div rule.", [["border-left", undefined, "solid 1px"]]);
 }
-addIntentionalDifferences("span.code", "Keeps code upright when it appears inside inherited emphasis.", [["font-style", undefined, "normal"]]);
 addIntentionalDifferences("strong", "Fast Mode omits only the decorative strong colour.", [["color", "#660066", undefined]]);
 
 for (const [selector, properties] of sharedDeclarations) {
@@ -128,6 +189,15 @@ for (const [selector, properties] of sharedDeclarations) {
 
 assert.strictEqual(normalCss.selectorCounts.get("em"), 1, "main.css: em must have one rule");
 assert.strictEqual(fastCss.selectorCounts.get("em"), 1, "main_fast.css: em must have one rule");
+
+for (const [className, expected] of [["cite", ["0", "2em", "0", "2em"]], ["title", ["0.3em", "0.3em", "0.3em", "0.3em"]]]) {
+	const hierarchy = [{ tag: "div", id: "fbw_body", classes: [] }, { tag: "div", id: "", classes: [className] }];
+	const normalPadding = resolveComputedPadding(normalCss, hierarchy);
+	const fastPadding = resolveComputedPadding(fastCss, hierarchy);
+	const values = ["padding-top", "padding-right", "padding-bottom", "padding-left"];
+	assert.deepStrictEqual(values.map(property => normalPadding[property]), expected, `Normal Mode computed ${className} padding`);
+	assert.deepStrictEqual(values.map(property => fastPadding[property]), expected, `Fast Mode computed ${className} padding`);
+}
 
 const intentionalByKey = new Map(intentionalDifferences.map(difference => [
   `${difference.selector}\u0000${difference.property}`, difference
