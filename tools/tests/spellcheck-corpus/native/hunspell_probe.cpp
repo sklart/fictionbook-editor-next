@@ -1,6 +1,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <fstream>
 #include <iostream>
@@ -163,6 +164,33 @@ int PipeMode(const Dictionary& dictionary) {
     return 0;
 }
 
+int BenchmarkMode(const Dictionary& dictionary, const std::string& path, long long loadMs) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) throw std::runtime_error("Cannot open input file: " + path);
+    std::vector<std::string> words;
+    std::string word;
+    while (std::getline(input, word)) {
+        word = TrimLine(word);
+        if (!word.empty()) words.push_back(word);
+    }
+    const auto checksStarted = std::chrono::steady_clock::now();
+    size_t rejected = 0;
+    for (const std::string& item : words) if (!dictionary.SpellUtf8(item)) ++rejected;
+    const auto checksFinished = std::chrono::steady_clock::now();
+    const auto suggestionsStarted = std::chrono::steady_clock::now();
+    size_t suggestionCount = 0;
+    for (const std::string& item : words) if (!dictionary.SpellUtf8(item)) suggestionCount += dictionary.SuggestUtf8(item).size();
+    const auto suggestionsFinished = std::chrono::steady_clock::now();
+    const auto ms = [](std::chrono::steady_clock::time_point begin, std::chrono::steady_clock::time_point end) {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    };
+    std::cout << "load_ms=" << loadMs << "\nwords=" << words.size() << "\nrejected=" << rejected
+              << "\ncheck_ms=" << ms(checksStarted, checksFinished)
+              << "\nsuggest_ms=" << ms(suggestionsStarted, suggestionsFinished)
+              << "\nsuggestions=" << suggestionCount << "\n";
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -174,12 +202,17 @@ int main(int argc, char** argv) {
             std::cerr << "Usage: hunspell-probe -i UTF-8 -d DICTIONARY_BASE (-l FILE | -a)\n";
             return 2;
         }
+        const auto loadStarted = std::chrono::steady_clock::now();
         Dictionary dictionary(base);
+        const long long loadMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - loadStarted).count();
         if (HasArgument(argc, argv, "-l")) {
             return ListMode(dictionary, FindArgument(argc, argv, "-l"));
         }
         if (HasArgument(argc, argv, "-a")) {
             return PipeMode(dictionary);
+        }
+        if (HasArgument(argc, argv, "--benchmark")) {
+            return BenchmarkMode(dictionary, FindArgument(argc, argv, "--benchmark"), loadMs);
         }
         std::cerr << "Specify -l FILE or -a\n";
         return 2;

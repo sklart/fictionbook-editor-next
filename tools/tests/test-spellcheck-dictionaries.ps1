@@ -121,6 +121,9 @@ $spellCheckSource = $spellerSource.Substring($spellCheckStart)
 if (-not $spellCheckSource.Contains("checkWord = FbePrepareDictionaryWord(checkWord);")) {
     throw "SpellCheck должен использовать общую подготовку словаря."
 }
+if ($spellCheckSource -notmatch 'currDict == m_Dictionaries\[LANG_RU\]\.handle\) checkWord\.Replace\(L"\\u0451", L"\\u0435"\)') {
+    throw "Russian ё→е compatibility policy is a production spell-check contract and must not change silently."
+}
 
 if ($resourceScript -match 'IDC_SPELL_SUGG_LIST[^\r\n]*LBS_SORT') {
     throw "IDC_SPELL_SUGG_LIST must preserve the raw Hunspell suggestion order."
