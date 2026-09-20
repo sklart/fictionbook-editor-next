@@ -32,8 +32,8 @@ function Assert-NotContains([string]$text, [string]$pattern, [string]$descriptio
 $settingsStore = Get-ProjectText 'src\fbe\settings\SettingsStore.cpp'
 Assert-Contains $settingsStore 'FictionBook Editor Next' 'Корневой ключ настроек FBE Next'
 
-$utils = Get-ProjectText 'src\fbe\utils\Utils.cpp'
-Assert-Contains $utils 'FBE Next' 'Каталог пользовательских данных FBE Next'
+$deploymentContext = Get-ProjectText 'src\common\DeploymentContext.h'
+Assert-Contains $deploymentContext 'FBE Next' 'Каталог пользовательских данных FBE Next'
 
 $runtimeLocalization = Get-ProjectText 'src\fbe\RuntimeLocalization.cpp'
 $runtimeCommon = Get-ProjectText 'src\common\RuntimeLocalizationCommon.h'

@@ -37,6 +37,7 @@ Must $runtime 'm_testFailAfterCustomToolbarCreates = 2' 'Runtime regression inje
 Must $frame 'm_testFailAfterCustomToolbarCreates' 'Test-only runtime fail point is available after custom toolbar creation'
 Must $runner 'IncludeInstalled' 'Runtime runner covers installed mode on an isolated CI worker'
 Must $runner 'FBE_CI_ISOLATED_PROFILE' 'Installed runner rejects non-isolated developer profiles'
+Must $runner 'FBE_NEXT_TEST_SETTINGS_DIRECTORY' 'Installed runner redirects test settings outside the caller profile'
 Must $runner "'--installed' 'script-toolbar-rollback-no-main-runtime'" 'Installed runner covers rollback without persisted scripts-main'
 Must $runner "'--installed' 'script-toolbar-rollback-persisted-runtime'" 'Installed runner covers rollback with persisted state'
 Must $runner "'--portable' 'script-toolbar-rollback-partial-runtime'" 'Portable runner covers partial rollback'

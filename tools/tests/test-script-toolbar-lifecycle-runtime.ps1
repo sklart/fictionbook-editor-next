@@ -30,6 +30,8 @@ function Reset-PortableLifecycleState {
     if(Test-Path -LiteralPath $portableData) { Remove-Item -LiteralPath $portableData -Recurse -Force }
     New-Item -ItemType Directory -Path $portableData -Force | Out-Null
 }
+$installedProfile = Join-Path ([IO.Path]::GetTempPath()) ('fbe-script-toolbar-lifecycle-' + [guid]::NewGuid().ToString('N'))
+$savedTestSettingsDirectory = $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY
 try {
     [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=ScriptToolbarLifecyclePortable`r`n", [Text.UTF8Encoding]::new($false))
     Reset-PortableLifecycleState
@@ -42,16 +44,21 @@ try {
     Invoke-Lifecycle '--portable' 'script-toolbar-lifecycle-runtime' (Join-Path $portableData 'Diagnostics')
     Invoke-Lifecycle '--portable' 'script-toolbar-lifecycle-reload-runtime' (Join-Path $portableData 'Diagnostics')
     if($IncludeInstalled) {
-        # CI explicitly marks its disposable Windows profile.  This test never
-        # removes or moves installed settings, even on that worker.
-        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-no-main-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
-        Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
-        Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-reload-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
-        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-persisted-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
-        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-partial-runtime' (Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics')
+        # Test mode redirects the installed data directory without touching the
+        # caller's LocalAppData profile.
+        New-Item -ItemType Directory -Path $installedProfile -Force | Out-Null
+        $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $installedProfile
+        $installedDiagnostics = Join-Path $installedProfile 'Diagnostics'
+        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-no-main-runtime' $installedDiagnostics
+        Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-runtime' $installedDiagnostics
+        Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-reload-runtime' $installedDiagnostics
+        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-persisted-runtime' $installedDiagnostics
+        Invoke-Lifecycle '--installed' 'script-toolbar-rollback-partial-runtime' $installedDiagnostics
     }
     Write-Host ('Script toolbar lifecycle runtime regression passed ({0}).' -f $(if($IncludeInstalled) { 'portable + installed' } else { 'portable' }))
 } finally {
+    $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $savedTestSettingsDirectory
     if($hadIni) { [IO.File]::WriteAllText($portableIni, $oldIni, [Text.UTF8Encoding]::new($false)) } else { Remove-Item -LiteralPath $portableIni -Force -ErrorAction SilentlyContinue }
     if(Test-Path -LiteralPath $portableData) { Remove-Item -LiteralPath $portableData -Recurse -Force -ErrorAction SilentlyContinue }
+    if(Test-Path -LiteralPath $installedProfile) { Remove-Item -LiteralPath $installedProfile -Recurse -Force -ErrorAction SilentlyContinue }
 }

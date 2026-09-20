@@ -50,7 +50,7 @@ foreach ($forbidden in @('TB_ADDBITMAP', 'ImageList_Replace', 'SetDisabledImageL
 }
 if ($bitmapHelper.Value.Contains('maskOneCount')) { throw 'Table toolbar bitmap helper must not retain the redundant mask-one counter.' }
 
-if ($runtimeUi -notmatch '(?s)LRESULT CMainFrame::OnCommandToolbarCustomDraw\(.*?pnmh->hwndFrom != m_CmdToolbar\.m_hWnd.*?IsTableToolbarCommand\(commandId\).*?TB_GETBITMAP.*?DrawThemeParentBackground.*?ILS_SATURATE.*?ImageList_DrawIndirect.*?CDRF_SKIPDEFAULT' -or
+if ($runtimeUi -notmatch '(?s)LRESULT CMainFrame::OnCommandToolbarCustomDraw\(.*?isCommandToolbar\s*=\s*pnmh->hwndFrom == m_CmdToolbar\.m_hWnd.*?!isCommandToolbar && !isContextAttributeBar.*?isCommandToolbar && IsTableToolbarCommand\(commandId\).*?disabled.*?TB_GETBITMAP.*?DrawThemeParentBackground.*?ILS_SATURATE.*?ImageList_DrawIndirect.*?CDRF_SKIPDEFAULT' -or
     $header -notmatch 'NOTIFY_CODE_HANDLER\(NM_CUSTOMDRAW, OnCommandToolbarCustomDraw\)') {
     throw 'Table toolbar custom draw must grayscale only disabled table icons with ImageList_DrawIndirect.'
 }

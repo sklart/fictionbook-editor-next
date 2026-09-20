@@ -170,7 +170,6 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		draw.rgbFg = ThemeManager::TextColor();
 		draw.fStyle = ILD_TRANSPARENT | ILD_BLEND50;
 	::ImageList_DrawIndirect(&draw);
-	::ImageList_DrawIndirect(&draw);
 	return CDRF_DODEFAULT;
 	}
 

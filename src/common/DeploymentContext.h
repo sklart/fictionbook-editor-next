@@ -47,6 +47,18 @@ namespace DeploymentContext
 
     inline bool HasInvalidModeOverride() { return HasCommandLineSwitch(L"--portable") && HasCommandLineSwitch(L"--installed"); }
 
+    inline std::wstring TestSettingsDirectory()
+    {
+        wchar_t testMode[2] = {};
+        if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) != 1 || testMode[0] != L'1') return std::wstring();
+        wchar_t path[32768] = {};
+        const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SETTINGS_DIRECTORY", path, _countof(path));
+        if (length == 0 || length >= _countof(path)) return std::wstring();
+        std::wstring result(path, length);
+        if (result.back() != L'\\') result += L'\\';
+        return result;
+    }
+
     inline std::wstring DataRoot()
     {
         if (CurrentMode() != Mode::Portable) return std::wstring();
@@ -64,6 +76,8 @@ namespace DeploymentContext
     inline std::wstring SettingsDirectory()
     {
         if (CurrentMode() == Mode::Portable) return DataRoot() + L"Settings\\";
+        const std::wstring testDirectory = TestSettingsDirectory();
+        if (!testDirectory.empty()) return testDirectory;
         wchar_t localAppData[MAX_PATH] = {};
         if (FAILED(::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, localAppData))) return std::wstring();
         return std::wstring(localAppData) + L"\\FBE Next\\";

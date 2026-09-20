@@ -431,24 +431,13 @@ CString	Win32ErrMsg(DWORD code) {
 // fix Vista/Windows 7 issues
 CString GetSettingsDir()
 {
-	if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable)
+	const CString settingsDirectory(DeploymentContext::SettingsDirectory().c_str());
+	if (!settingsDirectory.IsEmpty())
 	{
-		const CString portableSettings(DeploymentContext::SettingsDirectory().c_str());
-		if (portableSettings.IsEmpty() || !::CreateDirectory(portableSettings, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS)
-			return CString();
-		return portableSettings;
+		if (::CreateDirectory(settingsDirectory, NULL) || ::GetLastError() == ERROR_ALREADY_EXISTS)
+			return settingsDirectory;
 	}
-	wchar_t szPath[MAX_PATH];
-	if ( SUCCEEDED( SHGetFolderPath( NULL, CSIDL_LOCAL_APPDATA, NULL, 0, szPath ) ) )
-	{
-		CString appSettingPath(szPath);
-		// Next хранит пользовательские данные отдельно от исторического FBE,
-		// чтобы обе версии не делили настройки, recovery и диагностические файлы.
-		appSettingPath += L"\\FBE Next\\";
-		::CreateDirectory(appSettingPath, NULL);
-		return appSettingPath; 
-	}
-	else return GetProgDir();
+	return GetProgDir();
 }
 
 CString GetBuiltInResourceFile(const CString& filename)

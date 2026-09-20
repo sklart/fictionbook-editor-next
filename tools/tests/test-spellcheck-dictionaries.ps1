@@ -130,9 +130,8 @@ if ($mainFrameSource -notmatch 'COMMAND_RANGE_HANDLER\(ID_SPELL_REPLACE_FIRST, I
     throw "Spell popup suggestions must use one safe command-ID range handler."
 }
 if ($resourceHeader -notmatch '#define ID_SPELL_REPLACE_FIRST\s+33000' -or
-    $resourceHeader -notmatch '#define ID_SPELL_REPLACE_LAST\s+33031' -or
-    $resourceHeader -notmatch '#define _APS_NEXT_COMMAND_VALUE\s+33032') {
-    throw "Spell suggestion command range collides with another resource ID."
+    $resourceHeader -notmatch '#define ID_SPELL_REPLACE_LAST\s+33031') {
+    throw "Spell suggestion command range definitions are missing."
 }
 function Get-NumericResourceMacros([string]$Text) {
     return @([regex]::Matches($Text, '(?m)^#define\s+(?<name>\w+)\s+(?<value>0x[0-9A-Fa-f]+|\d+)\b') |

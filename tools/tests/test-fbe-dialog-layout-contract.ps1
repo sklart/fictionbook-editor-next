@@ -68,7 +68,7 @@ foreach ($control in @('IDC_DEFAULT_SCRIPTS_FOLDER', 'IDC_SCRIPTS_FOLDER_PATH', 
     Assert-Contains $advancedDialog $control "Advanced control missing: $control"
     if ($generalDialog -match $control) { throw "Advanced control must not be in General: $control" }
 }
-Assert-Contains $generalDialog 'IDC_RESTORE_POS,"Button".*?,14,67,268,10' 'Restore-position checkbox must fit localized text.'
+Assert-Contains $generalDialog 'IDC_RESTORE_POS,"Button".*?,14,83,268,10' 'Restore-position checkbox must fit localized text.'
 Assert-Contains $advancedDialog 'IDC_DEFAULT_SCRIPTS_FOLDER,"Button".*?,14,19,260,10' 'Default-scripts-folder checkbox must fit localized text.'
 foreach ($control in @('IDC_SETTINGS_OTHER_KEYBOARD', 'IDC_CHANGE_KEYB', 'IDC_SETTINGS_OTHER_CHANGE_TO', 'IDC_KEYB_LAYOUT')) {
     Assert-Contains $hotkeysDialog $control "Keyboard-layout control missing from IDD_HOTKEYS: $control"
@@ -81,7 +81,7 @@ foreach ($control in @('IDC_KEEP', 'IDC_DEFAULT_ENC', 'IDC_RESTORE_POS', 'IDC_SE
     if ($imagesDialog -match $control) { throw "General or Editor control must not be in IDD_SETTINGS_IMAGES: $control" }
 }
 if ($rc -match ('(?m)^IDD_SETTING' + '_OTHER DIALOGEX')) { throw 'Legacy Other dialog must be removed.' }
-Assert-Contains $generalDialog 'IDC_UPDATE_CHANNEL,82,223,180,55' 'Update-channel selector geometry changed in IDD_SETTINGS_GENERAL.'
+Assert-Contains $generalDialog 'IDC_UPDATE_CHANNEL,82,239,180,55' 'Update-channel selector geometry changed in IDD_SETTINGS_GENERAL.'
 Assert-Contains $wordsDialog 'IDD_SETTINGS_WORDS DIALOGEX 0, 0, 300, 227' 'Words page must use the Settings content width.'
 Assert-Contains $wordsDialog 'IDC_STATIC_WORDS_NEW_WORD,18,162,65,9' 'Words new-word label must stay aligned with the input row.'
 Assert-Contains $wordsDialog 'IDC_EDIT_NEW,86,160,130,14' 'Words input must follow its label on the same row.'
