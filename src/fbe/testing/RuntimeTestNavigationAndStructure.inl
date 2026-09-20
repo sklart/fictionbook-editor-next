@@ -191,6 +191,56 @@
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"auto-url-detect-runtime"))
+	{
+		CStringA header("initial\tsource_roundtrip\tsaved_reopened\tundo\tredo\tmanual_link\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		const wchar_t* samples[] = { L"\\\\слово", L"\\\\server\\share", L"C:\\Books\\book.fb2", L"http://example.org", L"https://example.org", L"user@example.org" };
+		auto getEditable = [&]() -> MSHTML::IHTMLElementPtr {
+			return FBELinkNavigation::GetEditableBody(MSHTML::IHTMLDocument2Ptr(m_doc->m_body.Document()));
+		};
+		auto hasExpectedPlainText = [&](bool allowManualLink) -> bool {
+			MSHTML::IHTMLElementPtr editable(getEditable());
+			if (!editable) return false;
+			const CString text(static_cast<LPCWSTR>(editable->innerText));
+			for (const wchar_t* sample : samples) if (text.Find(sample) < 0) return false;
+			MSHTML::IHTMLElementCollectionPtr links(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"A"));
+			if (!links) return !allowManualLink;
+			if (!allowManualLink) return links->length == 0;
+			MSHTML::IHTMLElementPtr link(links->length == 1 ? links->item(0L) : MSHTML::IHTMLElementPtr());
+			return link && CString(static_cast<LPCWSTR>(link->innerText)) == L"manual-link";
+		};
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		const bool initial = hasExpectedPlainText(false);
+		ShowView(SOURCE); ShowView(BODY);
+		const bool sourceRoundtrip = initial && hasExpectedPlainText(false);
+		const CString filename(m_doc->m_filename);
+		const bool saved = sourceRoundtrip && m_doc->Save();
+		const bool reopened = saved && LoadFile(filename) == OK;
+		ShowView(BODY);
+		document = m_doc->m_body.Document();
+		const bool savedReopened = reopened && hasExpectedPlainText(false);
+		bool undo = false, redo = false, manualLink = false;
+		try {
+			MSHTML::IHTMLElementPtr manualTarget(document && document->all ? document->all->item(L"auto-url-manual") : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLTxtRangePtr range(manualTarget ? MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+			if (range && manualTarget) {
+				range->moveToElementText(manualTarget); range->select();
+				BOOL handled = FALSE; m_doc->m_body.OnStyleLink(0, ID_STYLE_LINK, NULL, handled);
+				const bool created = hasExpectedPlainText(true);
+				m_doc->m_body.OnUndo(0, ID_EDIT_UNDO, NULL, handled);
+				undo = created && hasExpectedPlainText(false);
+				m_doc->m_body.OnRedo(0, ID_EDIT_REDO, NULL, handled);
+				redo = undo && hasExpectedPlainText(true);
+				manualLink = redo;
+			}
+		} catch (const _com_error&) { undo = redo = false; }
+		const bool passed = initial && sourceRoundtrip && savedReopened && undo && redo && manualLink;
+		CStringA row;
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", initial, sourceRoundtrip, savedReopened, undo, redo, manualLink, passed ? "pass" : "fail");
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"reference-navigation-runtime"))
 	{
 		CStringA header("footnote_check\tfootnote_target\treference_check\treference_target\tcheck_unchanged\tdom_unchanged\tresult\r\n");

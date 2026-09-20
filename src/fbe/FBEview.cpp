@@ -2907,17 +2907,28 @@ bool CFBEView::Init()
 	// MSHTML happens to retain its internal version number.
 	AdvanceSearchDocumentGeneration();
 
-  // MSHTML otherwise turns text resembling a UNC path (for example, \\word)
-  // into a file:// hyperlink when the editor loses focus.  Links in FB2 must
-  // only be created by an explicit editor command.
+  bool autoUrlDetectDisabled = false;
   try
   {
-    if (document->execCommand(L"AutoUrlDetect", VARIANT_FALSE, _variant_t(VARIANT_FALSE)) != VARIANT_TRUE)
-      StartupTrace::Warning(L"webbrowser", L"WB205", L"AutoUrlDetect was not disabled");
+    autoUrlDetectDisabled = document->execCommand(L"AutoUrlDetect", VARIANT_FALSE, _variant_t(VARIANT_FALSE)) == VARIANT_TRUE;
   }
   catch (const _com_error& error)
   {
-    StartupTrace::HResult(L"webbrowser", L"WB205", error.Error(), L"Disable AutoUrlDetect");
+    StartupTrace::HResult(L"webbrowser", L"WB205", error.Error(), L"Disable AutoUrlDetect via execCommand");
+  }
+  if (!autoUrlDetectDisabled)
+  {
+    IOleCommandTargetPtr commandTarget(m_browser);
+    VARIANT disabled;
+    ::VariantInit(&disabled);
+    disabled.vt = VT_BOOL;
+    disabled.boolVal = VARIANT_FALSE;
+    autoUrlDetectDisabled = commandTarget && SUCCEEDED(commandTarget->Exec(
+      &CGID_MSHTML, IDM_AUTOURLDETECT_MODE, OLECMDEXECOPT_DONTPROMPTUSER, &disabled, NULL));
+  }
+  if (!autoUrlDetectDisabled)
+  {
+    StartupTrace::Warning(L"webbrowser", L"WB205", L"AutoUrlDetect was not disabled");
   }
 
   CComPtr<MSHTML::IMarkupServices2> markupServices;
