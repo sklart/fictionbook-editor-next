@@ -999,8 +999,8 @@ public:
     }
 	if (scn.updated & (SC_UPDATE_SELECTION | SC_UPDATE_TEXT))
 	{
-		InvalidateUi(UiDirtySource | UiDirtyToolbar | UiDirtyStatus);
 		SciUpdateUI(false);
+		InvalidateUi(UiDirtySource | UiDirtyToolbar | UiDirtyStatus);
 	}
 	return 0;
   }
