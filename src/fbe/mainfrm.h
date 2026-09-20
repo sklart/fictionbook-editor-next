@@ -179,6 +179,24 @@ public:
 	DWORD			  m_last_clipboard_fallback_check;
 	bool			  m_clipboard_fallback_check_started;
 	unsigned int	  m_ui_dirty;
+	struct SelectionContext
+	{
+		MSHTML::IHTMLElementPtr container;
+		MSHTML::IHTMLElementPtr structuralContainer;
+		MSHTML::IHTMLElementPtr image;
+		MSHTML::IHTMLElementPtr section;
+		MSHTML::IHTMLElementPtr table;
+		MSHTML::IHTMLElementPtr tableCell;
+		MSHTML::IHTMLElementPtr anchor;
+		bool valid;
+		SelectionContext() : valid(false) {}
+		void Invalidate()
+		{
+			container = nullptr; structuralContainer = nullptr; image = nullptr;
+			section = nullptr; table = nullptr; tableCell = nullptr; anchor = nullptr;
+			valid = false;
+		}
+	} m_selection_context;
   BOOL			  m_last_sci_ovr:1;
   bool			  m_last_ie_ovr:1;
   bool			  m_doc_changed:1;
@@ -325,6 +343,8 @@ public:
   void	  StopIncSearch(bool fCancel);
   void	  SetIsText();
 	void InvalidateUi(unsigned int flags) { m_ui_dirty |= flags; }
+	void InvalidateSelectionContext() { m_selection_context.Invalidate(); }
+	void RebuildSelectionContext();
 
 	// source<->html exchange
 	bool SourceToHTML();
@@ -825,6 +845,7 @@ public:
 
   LRESULT OnEdSelChange(WORD, WORD, HWND /* unused: hWndCtl */, BOOL&) {
     m_sel_changed=true;
+	InvalidateSelectionContext();
 	InvalidateUi(UiDirtySelection | UiDirtyStatus | UiDirtyToolbar);
     StopIncSearch(true);
 	DisplayCharCode();
@@ -875,6 +896,7 @@ public:
 	LRESULT OnEdChange(WORD, WORD, HWND /* unused: hWnd */, BOOL& /* unused: b */) {
     StopIncSearch(true);
 		m_doc_changed=true;
+		InvalidateSelectionContext();
 		InvalidateUi(UiDirtyDocument | UiDirtySelection | UiDirtyStatus | UiDirtyToolbar);
     ResetValidationStatus();
     m_cb_updated=false;

@@ -873,6 +873,7 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 	m_editor_view_state.Reset(EditorView::Body, EditorView::Description);
 	m_editor_selection_state.Reset();
 	m_cb_updated=false;
+	InvalidateSelectionContext();
 	m_need_title_update=m_sel_changed=true;
 	InvalidateUi(UiDirtyAll);
 	if(_Settings.ViewDocumentTree())
@@ -1202,6 +1203,30 @@ struct IdleProfile
 IdleProfile g_idleProfile;
 }
 
+void CMainFrame::RebuildSelectionContext()
+{
+	if (m_selection_context.valid || !m_doc || !m_doc->m_body.HasDoc() || IsSourceActive())
+		return;
+
+	m_selection_context.Invalidate();
+	try
+	{
+		m_selection_context.container = m_doc->m_body.SelectionContainer();
+		m_selection_context.structuralContainer = m_doc->m_body.SelectionStructCon();
+		m_selection_context.image = m_doc->m_body.SelectionStructImage();
+		m_selection_context.section = m_doc->m_body.SelectionStructSection();
+		m_selection_context.table = m_doc->m_body.SelectionStructTable();
+		m_selection_context.tableCell = m_doc->m_body.SelectionStructTableCon();
+		m_selection_context.anchor = m_doc->m_body.SelectionAnchor();
+		m_selection_context.valid = true;
+		if (StartupTrace::Enabled()) ++g_idleProfile.selectionUpdates;
+	}
+	catch (const _com_error&)
+	{
+		m_selection_context.Invalidate();
+	}
+}
+
 BOOL CMainFrame::OnIdle()
 {
 	const bool profileIdle = StartupTrace::Enabled();
@@ -1403,7 +1428,7 @@ BOOL CMainFrame::OnIdle()
 
 		if (m_sel_changed && /*GetCurView()*/m_editor_view_state.Current() != DESC)
 		{
-			if (profileIdle) ++g_idleProfile.selectionUpdates;
+			RebuildSelectionContext();
 			SetStatusContext(m_doc->m_body.SelPath());
 			UpdateStatusBar();
 
@@ -1414,7 +1439,7 @@ BOOL CMainFrame::OnIdle()
 				LinkAttributeAvailability linkAvailability = {};
 				TableAttributeState tableState;
 				TableAttributeAvailability tableAvailability = {};
-				MSHTML::IHTMLElementPtr an(m_doc->m_body.SelectionAnchor());
+				MSHTML::IHTMLElementPtr an(m_selection_context.anchor);
 				_variant_t    href;
 
 				if(an)
@@ -1431,7 +1456,7 @@ BOOL CMainFrame::OnIdle()
 					m_cb_last_images = img;
 				}
 
-				MSHTML::IHTMLElementPtr	sc(m_doc->m_body.SelectionStructCon());
+				MSHTML::IHTMLElementPtr	sc(m_selection_context.structuralContainer);
 				if(sc)
 				{
 					linkAvailability.id = true;
@@ -1439,7 +1464,7 @@ BOOL CMainFrame::OnIdle()
 						linkState.id = static_cast<const wchar_t*>(sc->id);
 				}
 
-				MSHTML::IHTMLElementPtr	  im(m_doc->m_body.SelectionStructImage());
+				MSHTML::IHTMLElementPtr	  im(m_selection_context.image);
 				if(im)
 				{
 					linkAvailability.imageTitle = true;
@@ -1447,14 +1472,14 @@ BOOL CMainFrame::OnIdle()
 				}
 
 				// ??????????? ID ??? ????? <section>
-				MSHTML::IHTMLElementPtr scstn(m_doc->m_body.SelectionStructSection());
+				MSHTML::IHTMLElementPtr scstn(m_selection_context.section);
 				if(scstn)
 				{
 					linkAvailability.section = true;
 					linkState.section = static_cast<const wchar_t*>(scstn->id);
 				}
 				// ??????????? ID ??? ????? <table>
-				MSHTML::IHTMLElementPtr sct(m_doc->m_body.SelectionStructTable());
+				MSHTML::IHTMLElementPtr sct(m_selection_context.table);
 				if(sct)
 				{
 					tableAvailability.tableId = true;
@@ -1462,7 +1487,7 @@ BOOL CMainFrame::OnIdle()
 				}
 
 				// ??????????? ID ??? ????? <tr>, <th>, <td>
-				MSHTML::IHTMLElementPtr sctc(m_doc->m_body.SelectionStructTableCon());
+				MSHTML::IHTMLElementPtr sctc(m_selection_context.tableCell);
 				if (sctc) {
 					tableAvailability.cellId = true;
 					tableState.id = static_cast<const wchar_t*>(sctc->id);
@@ -1541,7 +1566,7 @@ BOOL CMainFrame::OnIdle()
 
 			// update current tree node
 			if (!m_doc_changed && _Settings.ViewDocumentTree())
-				m_document_tree.HighlightItemAtPos(m_doc->m_body.SelectionContainer()); // locate appropriate tree node
+				m_document_tree.HighlightItemAtPos(m_selection_context.container); // locate appropriate tree node
 
 			m_sel_changed = false;
 		}
@@ -1583,7 +1608,9 @@ BOOL CMainFrame::OnIdle()
 
 	if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone)
 	{
-	const bool tableCommandEnabled = m_editor_view_state.Current() == BODY && m_doc && m_doc->m_body.SelectionStructTableCon();
+	if (m_editor_view_state.Current() == BODY)
+		RebuildSelectionContext();
+	const bool tableCommandEnabled = m_editor_view_state.Current() == BODY && m_doc && m_selection_context.tableCell;
 	const UINT tableCommands[] = {
 		ID_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_BELOW, ID_TABLE_DELETE_ROW,
 		ID_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_DELETE_COLUMN,
@@ -4110,10 +4137,11 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
     return 0;
 
   try {
+	RebuildSelectionContext();
 	const LinkAttributeState linkState = m_contextAttributeBars.GetLinkState();
 	const TableAttributeState tableState = m_contextAttributeBars.GetTableState();
     if (wID==IDC_HREF) {
-      MSHTML::IHTMLElementPtr an(m_doc->m_body.SelectionAnchor());
+      MSHTML::IHTMLElementPtr an(m_selection_context.anchor);
       _variant_t    href;
       if (an)
 		href=an->getAttribute(L"href",2);
@@ -4150,14 +4178,14 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
       }
     }
     if (wID==IDC_ID) {
-      MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionStructCon());
+      MSHTML::IHTMLElementPtr		sc(m_selection_context.structuralContainer);
       if (sc)
 		sc->id=(const wchar_t *)linkState.id;
       else
 		m_contextAttributeBars.SetLinkAvailability(LinkAttributeAvailability{ false, false, false, false });
     }
 	if (wID==IDC_SECTION) {
-		MSHTML::IHTMLElementPtr		scs(m_doc->m_body.SelectionStructSection());
+		MSHTML::IHTMLElementPtr		scs(m_selection_context.section);
 		if (scs)
 			scs->id=(const wchar_t *)linkState.section;
 		else
@@ -4165,7 +4193,7 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 	}
 
 	if (wID==IDC_IMAGE_TITLE) {
-		MSHTML::IHTMLElementPtr		scs(m_doc->m_body.SelectionStructImage());
+		MSHTML::IHTMLElementPtr		scs(m_selection_context.image);
 		if (scs)
 		{
 			U::ChangeAttribute(scs, L"title", (const wchar_t *)linkState.imageTitle);
@@ -4179,14 +4207,14 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 	}
 
 	if (wID==IDC_IDT) {
-		MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionStructTable());
+		MSHTML::IHTMLElementPtr		sc(m_selection_context.table);
 		if (sc)
 			sc->id=(const wchar_t *)tableState.tableId;
 		else
 			m_contextAttributeBars.SetTableAvailability(TableAttributeAvailability{ false, false, false, false, false, false, false, false, false });
 	}
 	if (wID==IDC_ID) {
-		MSHTML::IHTMLElementPtr		sc(m_doc->m_body.SelectionStructTableCon());
+		MSHTML::IHTMLElementPtr		sc(m_selection_context.tableCell);
 		if (sc)
 			sc->id=(const wchar_t *)tableState.id;
 		else
@@ -4264,6 +4292,11 @@ LRESULT CMainFrame::OnCbEdChange(WORD /* unused: code */, WORD wID, HWND /* unus
 	}
   }
   catch (_com_error&) { }
+
+	// Attribute edits mutate DOM.  Do not let a following command reuse any
+	// element captured before the mutation.
+	InvalidateSelectionContext();
+	InvalidateUi(UiDirtySelection | UiDirtyDocument | UiDirtyToolbar | UiDirtyStatus);
 
   return 0;
 }
@@ -4846,6 +4879,8 @@ void CMainFrame::ShowView(EditorView vt)
 
 void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)
 {
+	if (prev != vt)
+		InvalidateSelectionContext();
 	if (vt != BODY && m_Speller) m_Speller->EndDocumentCheck();
 	if (prev != vt) {
 		m_doc->m_body.CloseFindDialog(m_doc->m_body.m_find_dlg);
