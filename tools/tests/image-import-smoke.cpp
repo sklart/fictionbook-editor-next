@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <cmath>
+#include <icm.h>
 #include <webp/decode.h>
 #include <webp/encode.h>
 #include <webp/mux.h>
@@ -338,13 +339,39 @@ static bool TestHeif10Bit(const wchar_t* path)
 	return heif_image_handle_get_luma_bits_per_pixel(handle.get()) >= 10 && TestHeif(path);
 }
 
+static bool TransformIccControlPixel(const std::vector<BYTE>& profile, const BYTE* rgba, BYTE* bgra)
+{
+	if (!rgba || !bgra || profile.size() < 128) return false;
+	PROFILE sourceProfile = { PROFILE_MEMBUFFER, const_cast<BYTE*>(profile.data()), static_cast<DWORD>(profile.size()) };
+	HPROFILE source = OpenColorProfileW(&sourceProfile, PROFILE_READ, FILE_SHARE_READ, OPEN_EXISTING); if (!source) return false;
+	DWORD pathChars = 0;
+	if (GetStandardColorSpaceProfileW(NULL, LCS_sRGB, NULL, &pathChars) || GetLastError() != ERROR_INSUFFICIENT_BUFFER || !pathChars) { CloseColorProfile(source); return false; }
+	std::vector<wchar_t> pathBuffer(pathChars); if (!GetStandardColorSpaceProfileW(NULL, LCS_sRGB, pathBuffer.data(), &pathChars)) { CloseColorProfile(source); return false; }
+	PROFILE destinationProfile = { PROFILE_FILENAME, pathBuffer.data(), static_cast<DWORD>(pathBuffer.size() * sizeof(wchar_t)) };
+	HPROFILE destination = OpenColorProfileW(&destinationProfile, PROFILE_READ, FILE_SHARE_READ, OPEN_EXISTING); if (!destination) { CloseColorProfile(source); return false; }
+	HPROFILE profiles[] = { source, destination }; DWORD intent[] = { INTENT_PERCEPTUAL, INTENT_PERCEPTUAL };
+	HTRANSFORM transform = CreateMultiProfileTransform(profiles, _countof(profiles), intent, _countof(intent), BEST_MODE, 0);
+	BYTE input[] = { rgba[2], rgba[1], rgba[0], 0 }; const BOOL ok = transform && TranslateBitmapBits(transform, input, BM_xBGRQUADS, 1, 1, 4, bgra, BM_xBGRQUADS, 4, NULL, 0);
+	if (transform) DeleteColorTransform(transform); CloseColorProfile(destination); CloseColorProfile(source); return ok == TRUE;
+}
+
 static bool TestHeifIcc(const wchar_t* path)
 {
 	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free); if (!context) return false;
 	if (heif_context_read_from_file(context.get(), CStringA(path), NULL).code != heif_error_Ok) return false;
 	heif_image_handle* raw = NULL; if (heif_context_get_primary_image_handle(context.get(), &raw).code != heif_error_Ok || !raw) return false;
 	std::unique_ptr<heif_image_handle, void(*)(const heif_image_handle*)> handle(raw, heif_image_handle_release);
-	return heif_image_handle_get_raw_color_profile_size(handle.get()) >= 128 && TestHeif(path, 451, 461, true);
+	const size_t profileSize = heif_image_handle_get_raw_color_profile_size(handle.get()); std::vector<BYTE> profile(profileSize);
+	if (profileSize < 128 || heif_image_handle_get_raw_color_profile(handle.get(), profile.data()).code != heif_error_Ok) return false;
+	heif_decoding_options* rawOptions = heif_decoding_options_alloc(); std::unique_ptr<heif_decoding_options, void(*)(heif_decoding_options*)> options(rawOptions, heif_decoding_options_free);
+	if (!options) return false; options->strict_decoding = 1; options->ignore_transformations = 0; options->output_image_nclx_profile_passthrough = 1;
+	heif_image* rawImage = NULL; if (heif_decode_image(handle.get(), &rawImage, heif_colorspace_RGB, heif_chroma_interleaved_RGBA, options.get()).code != heif_error_Ok || !rawImage) return false;
+	std::unique_ptr<heif_image, void(*)(const heif_image*)> image(rawImage, heif_image_release); int stride = 0; const uint8_t* plane = heif_image_get_plane_readonly(image.get(), heif_channel_interleaved, &stride); if (!plane) return false;
+	UINT controlX = 0, controlY = 0; bool found = false;
+	for (UINT y = 0; y < static_cast<UINT>(heif_image_get_primary_height(image.get())) && !found; ++y) for (UINT x = 0; x < static_cast<UINT>(heif_image_get_primary_width(image.get())); ++x) { const BYTE* p = plane + size_t(y) * stride + x * 4; if (max(abs(int(p[0]) - int(p[1])), max(abs(int(p[1]) - int(p[2])), abs(int(p[2]) - int(p[0])))) > 80) { controlX = x; controlY = y; found = true; break; } }
+	BYTE expected[4] = {}; if (!found || !TransformIccControlPixel(profile, plane + size_t(controlY) * stride + controlX * 4, expected)) return false;
+	ImageImportOptions importOptions; ImageImportResult result; CString error; Gdiplus::Color output;
+	return SUCCEEDED(ImportImageForFb2(path, importOptions, result, error)) && result.width == 451 && result.height == 461 && OutputPixelAt(result.data, controlX, controlY, output) && abs(int(output.GetBlue()) - expected[0]) <= 32 && abs(int(output.GetGreen()) - expected[1]) <= 32 && abs(int(output.GetRed()) - expected[2]) <= 32;
 }
 
 static bool TestNclxP3WithAlpha(const wchar_t* path)
