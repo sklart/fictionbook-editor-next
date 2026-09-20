@@ -82,11 +82,14 @@ double HlgToRelative(double value) {
 }
 
 double ToneMapHdr(double linearSdr) {
-	// A bounded Reinhard shoulder: it is strictly below one for any finite HDR
-	// value, so GDI+ cannot turn a large highlight region into clipped 255s.
-	// The small shoulder keeps diffuse SDR white close to its original level.
+	// Keep the SDR shadows and midtones untouched.  Above the knee, a bounded
+	// rational shoulder reserves headroom for highlights without ever producing
+	// a linear value of one (and therefore without clipping it to 255 later).
 	const double value = max(0.0, linearSdr);
-	return min(254.0 / 255.0, value / (value + 0.10));
+	const double knee = 0.80;
+	if (value <= knee) return value;
+	const double normalizedHighlight = (value - knee) / (1.0 - knee);
+	return knee + (1.0 - knee) * normalizedHighlight / (1.0 + normalizedHighlight);
 }
 
 void ConvertPrimariesToSrgb(const heif_color_profile_nclx* nclx, double& red, double& green, double& blue) {
@@ -381,6 +384,10 @@ HRESULT DecodeJ2k(const std::vector<BYTE>& data, SourceFormat type, const ImageI
 	r.logicalFileName=TargetName(r.logicalFileName,png); r.mimeType=png?L"image/png":L"image/jpeg"; r.converted=true; return S_OK;
 }
 }
+
+#ifdef FBE_IMAGE_IMPORT_TESTING
+double FbeToneMapHdrForRegressionTest(double linearSdr) { return ToneMapHdr(linearSdr); }
+#endif
 
 HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& options, ImageImportResult& result, CString& errorMessage) {
 	try {

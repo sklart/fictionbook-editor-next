@@ -456,6 +456,24 @@ static bool TestHdrUnspecifiedPrimariesRejected(const wchar_t* path)
 	return ImportImageForFb2(path, options, result, error) == E_NOTIMPL && error == L"HDR AVIF/HEIF without ICC and colour primaries cannot be converted safely to sRGB." && result.data.empty();
 }
 
+static bool TestHdrToneMapReferenceLevels()
+{
+	// These reference values deliberately live in the test, not in the production
+	// formula.  They protect shadow/midtone preservation and the highlight knee.
+	struct Sample { double input; double expected; };
+	const Sample samples[] = {
+		{ 0.1, 0.1000 }, { 0.5, 0.5000 }, { 1.0, 0.9000 },
+		{ 2.0, 0.9714 }, { 10.0, 0.9957 }
+	};
+	double previous = -1.0;
+	for (const Sample& sample : samples) {
+		const double actual = FbeToneMapHdrForRegressionTest(sample.input);
+		if (actual < 0.0 || actual > 1.0 || actual <= previous || fabs(actual - sample.expected) > 0.003) return false;
+		previous = actual;
+	}
+	return FbeToneMapHdrForRegressionTest(1000000.0) < 1.0;
+}
+
 static bool TestHeifHighDepth(const wchar_t* path)
 {
 	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free); if (!context) return false;
@@ -643,5 +661,6 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestHdrHeif(argv[27], heif_transfer_characteristic_ITU_R_BT_2100_0_HLG)) return 44;
 	if (!TestHdrUnspecifiedPrimariesRejected(argv[28])) return 45;
 	if (!TestHeifHighDepth(argv[29])) return 46;
+	if (!TestHdrToneMapReferenceLevels()) return 47;
 	return 0;
 }

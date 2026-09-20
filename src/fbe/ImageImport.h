@@ -30,6 +30,11 @@ struct ImageImportResult
 HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& options,
 	ImageImportResult& result, CString& errorMessage);
 
+#ifdef FBE_IMAGE_IMPORT_TESTING
+// Exposed only to the native regression executable; never part of the editor API.
+double FbeToneMapHdrForRegressionTest(double linearSdr);
+#endif
+
 struct ImageImportFileType {
 	CString displayName;
 	CString wildcard;
