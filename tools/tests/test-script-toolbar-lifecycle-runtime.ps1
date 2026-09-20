@@ -32,6 +32,10 @@ function Reset-PortableLifecycleState {
 }
 $installedProfile = Join-Path ([IO.Path]::GetTempPath()) ('fbe-script-toolbar-lifecycle-' + [guid]::NewGuid().ToString('N'))
 $savedTestSettingsDirectory = $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY
+function Reset-InstalledLifecycleState {
+    if(Test-Path -LiteralPath $installedProfile) { Remove-Item -LiteralPath $installedProfile -Recurse -Force }
+    New-Item -ItemType Directory -Path $installedProfile -Force | Out-Null
+}
 try {
     [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=ScriptToolbarLifecyclePortable`r`n", [Text.UTF8Encoding]::new($false))
     Reset-PortableLifecycleState
@@ -46,13 +50,16 @@ try {
     if($IncludeInstalled) {
         # Test mode redirects the installed data directory without touching the
         # caller's LocalAppData profile.
-        New-Item -ItemType Directory -Path $installedProfile -Force | Out-Null
         $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $installedProfile
         $installedDiagnostics = Join-Path $installedProfile 'Diagnostics'
+        Reset-InstalledLifecycleState
         Invoke-Lifecycle '--installed' 'script-toolbar-rollback-no-main-runtime' $installedDiagnostics
+        Reset-InstalledLifecycleState
         Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-runtime' $installedDiagnostics
         Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-reload-runtime' $installedDiagnostics
+        Reset-InstalledLifecycleState
         Invoke-Lifecycle '--installed' 'script-toolbar-rollback-persisted-runtime' $installedDiagnostics
+        Reset-InstalledLifecycleState
         Invoke-Lifecycle '--installed' 'script-toolbar-rollback-partial-runtime' $installedDiagnostics
     }
     Write-Host ('Script toolbar lifecycle runtime regression passed ({0}).' -f $(if($IncludeInstalled) { 'portable + installed' } else { 'portable' }))
