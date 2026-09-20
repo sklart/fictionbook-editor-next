@@ -8,6 +8,7 @@
 #include "FBE.h"
 #include "ExternalHelper.h"
 #include <map>
+#include <vector>
 
 __declspec(thread) bool ExternalHelper::s_traceScriptActive = false;
 CComAutoCriticalSection ExternalHelper::s_embeddedTypeInfoLock;
@@ -261,7 +262,13 @@ static CString GetCurrentDocumentFilePath(const CString* filename, const bool* n
 	if (filename == NULL || namevalid == NULL || !*namevalid || filename->IsEmpty())
 		return CString();
 
-	return U::GetFullPathName(*filename);
+	const DWORD required = ::GetFullPathName(*filename, 0, NULL, NULL);
+	if (required == 0)
+		return CString();
+
+	std::vector<wchar_t> path(static_cast<size_t>(required));
+	const DWORD written = ::GetFullPathName(*filename, required, path.data(), NULL);
+	return written > 0 && written < required ? CString(path.data()) : CString();
 }
 
 HRESULT ExternalHelper::GetDocumentFilePath(BSTR* path)

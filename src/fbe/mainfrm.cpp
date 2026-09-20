@@ -902,12 +902,13 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	// narrowly scoped test mode; normal Save As always shows the native dialog.
 	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime") || RuntimeTests::IsScenario(L"script-document-path-runtime"))
 	{
-		wchar_t testPath[MAX_PATH] = {};
-		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", testPath, _countof(testPath));
-		if (length && length < _countof(testPath))
+		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", NULL, 0);
+		if (length)
 		{
+			std::vector<wchar_t> testPath(static_cast<size_t>(length));
+			if (!::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", testPath.data(), length)) return CString();
 			encoding = RuntimeTests::IsScenario(L"save-as-failure-runtime") ? CString(L"windows-1251") : (_Settings.KeepEncoding() ? m_doc->m_encoding : _Settings.GetDefaultEncoding());
-			return CString(testPath);
+			return CString(testPath.data());
 		}
 	}
 	DocumentFileDialogs::SaveRequest request;

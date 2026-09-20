@@ -273,7 +273,7 @@
 	}
 	if (IsFbeTestScenario(L"script-document-path-runtime"))
 	{
-		struct PathApiValues { CString path, name, directory; };
+		struct PathApiValues { CString path, name, directory; bool pathCalled = false, nameCalled = false, directoryCalled = false; };
 		auto readEnvironmentPath = [](const wchar_t* name) -> CString {
 			const DWORD length = ::GetEnvironmentVariable(name, NULL, 0);
 			if (!length) return CString();
@@ -296,29 +296,43 @@
 				if (succeeded) value = V_BSTR(&result) ? CString(V_BSTR(&result)) : CString();
 				::VariantClear(&result); return succeeded;
 			};
-			if (!invoke(L"GetDocumentFilePath", values.path) || !invoke(L"GetDocumentFileName", values.name) || !invoke(L"GetDocumentDirectory", values.directory)) return PathApiValues();
+			values.pathCalled = invoke(L"GetDocumentFilePath", values.path);
+			values.nameCalled = invoke(L"GetDocumentFileName", values.name);
+			values.directoryCalled = invoke(L"GetDocumentDirectory", values.directory);
 			return values;
 		};
 		auto matches = [](const PathApiValues& actual, const CString& expected) -> bool {
 			const int separator = expected.ReverseFind(L'\\');
 			const CString expectedName = separator >= 0 ? expected.Mid(separator + 1) : expected;
 			const CString expectedDirectory = separator == 2 && expected.GetLength() >= 3 && expected[1] == L':' ? expected.Left(3) : separator > 0 ? expected.Left(separator) : CString();
-			const bool absolute = expected.GetLength() >= 3 && ((expected[0] >= L'A' && expected[0] <= L'Z') || (expected[0] >= L'a' && expected[0] <= L'z')) && expected[1] == L':' && expected[2] == L'\\';
-			return absolute && actual.path == expected && actual.name == expectedName && actual.directory == expectedDirectory;
+			const bool absolute = expected.GetLength() >= 2 && expected[0] == L'\\' && expected[1] == L'\\' || expected.GetLength() >= 3 && ((expected[0] >= L'A' && expected[0] <= L'Z') || (expected[0] >= L'a' && expected[0] <= L'z')) && expected[1] == L':' && expected[2] == L'\\';
+			return actual.pathCalled && actual.nameCalled && actual.directoryCalled && absolute && actual.path == expected && actual.name == expectedName && actual.directory == expectedDirectory;
 		};
 		const CString first(readEnvironmentPath(L"FBE_NEXT_TEST_DOCUMENT_PATH_FIRST"));
 		const CString saveAs(readEnvironmentPath(L"FBE_NEXT_TEST_SAVE_PATH"));
 		const CString second(readEnvironmentPath(L"FBE_NEXT_TEST_DOCUMENT_PATH_SECOND"));
+		const CString unc(readEnvironmentPath(L"FBE_NEXT_TEST_DOCUMENT_PATH_UNC"));
+		const CString longPath(readEnvironmentPath(L"FBE_NEXT_TEST_DOCUMENT_PATH_LONG"));
 		const PathApiValues untitled(readExternal());
-		const bool unsaved = untitled.path.IsEmpty() && untitled.name.IsEmpty() && untitled.directory.IsEmpty();
+		const bool unsaved = untitled.pathCalled && untitled.nameCalled && untitled.directoryCalled && untitled.path.IsEmpty() && untitled.name.IsEmpty() && untitled.directory.IsEmpty();
 		const bool opened = !first.IsEmpty() && LoadFile(first) == OK && matches(readExternal(), first);
 		const bool savedAs = opened && !saveAs.IsEmpty() && SaveFile(true) == OK && matches(readExternal(), saveAs);
 		const PathApiValues beforeSecond(readExternal());
 		const bool otherOpened = savedAs && !second.IsEmpty() && LoadFile(second) == OK && matches(readExternal(), second) && beforeSecond.path != second;
+		const CString currentFilename(m_doc->m_filename); const bool currentNameValid = m_doc->m_namevalid;
+		m_doc->m_filename = unc; m_doc->m_namevalid = true;
+		const bool uncPath = !unc.IsEmpty() && matches(readExternal(), unc);
+		m_doc->m_filename = longPath; m_doc->m_namevalid = true;
+		const PathApiValues longValues(readExternal());
+		const bool longDocumentPath = longPath.GetLength() > MAX_PATH && matches(longValues, longPath);
+		const int longSeparator = longPath.ReverseFind(L'\\');
+		const CString longName = longSeparator >= 0 ? longPath.Mid(longSeparator + 1) : longPath;
+		const CString longDirectory = longSeparator > 0 ? longPath.Left(longSeparator) : CString();
+		m_doc->m_filename = currentFilename; m_doc->m_namevalid = currentNameValid;
 		const bool unicode = first.Find(L"путь") >= 0 && first.Find(L"книга") >= 0 && second.Find(L"путь") >= 0 && second.Find(L"книга") >= 0;
-		const bool passed = unsaved && opened && savedAs && otherOpened && unicode;
+		const bool passed = unsaved && opened && savedAs && otherOpened && unicode && uncPath && longDocumentPath;
 		CStringA report;
-		report.Format("unsaved=%d\nopened=%d\nsave_as=%d\nother_opened=%d\nunicode=%d\nresult=%s\n", unsaved, opened, savedAs, otherOpened, unicode, passed ? "pass" : "fail");
+		report.Format("unsaved=%d\nopened=%d\nsave_as=%d\nother_opened=%d\nunicode=%d\nunc=%d\nlong_path=%d\nlong_calls=%d\nlong_actual_length=%d\nlong_expected_length=%d\nlong_full=%d\nlong_name=%d\nlong_directory=%d\nresult=%s\n", unsaved, opened, savedAs, otherOpened, unicode, uncPath, longDocumentPath, longValues.pathCalled && longValues.nameCalled && longValues.directoryCalled, longValues.path.GetLength(), longPath.GetLength(), longValues.path == longPath, longValues.name == longName, longValues.directory == longDirectory, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
