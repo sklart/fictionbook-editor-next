@@ -271,6 +271,57 @@
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"script-document-path-runtime"))
+	{
+		struct PathApiValues { CString path, name, directory; };
+		auto readEnvironmentPath = [](const wchar_t* name) -> CString {
+			const DWORD length = ::GetEnvironmentVariable(name, NULL, 0);
+			if (!length) return CString();
+			std::vector<wchar_t> value(static_cast<size_t>(length));
+			return ::GetEnvironmentVariable(name, value.data(), length) ? CString(value.data()) : CString();
+		};
+		auto readExternal = [&]() -> PathApiValues {
+			PathApiValues values;
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			MSHTML::IHTMLWindow2Ptr window(document ? document->parentWindow : MSHTML::IHTMLWindow2Ptr());
+			IDispatch* rawExternal = NULL;
+			if (!window || FAILED(window->get_external(&rawExternal)) || !rawExternal) return values;
+			CComPtr<IDispatch> external; external.Attach(rawExternal);
+			auto invoke = [&](const wchar_t* method, CString& value) -> bool {
+				LPOLESTR name = const_cast<LPOLESTR>(method); DISPID dispid = DISPID_UNKNOWN;
+				if (FAILED(external->GetIDsOfNames(IID_NULL, &name, 1, LOCALE_USER_DEFAULT, &dispid))) return false;
+				DISPPARAMS parameters = {}; VARIANT result; ::VariantInit(&result); EXCEPINFO exception = {}; UINT argument = UINT_MAX;
+				const HRESULT status = external->Invoke(dispid, IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD, &parameters, &result, &exception, &argument);
+				const bool succeeded = SUCCEEDED(status) && V_VT(&result) == VT_BSTR;
+				if (succeeded) value = V_BSTR(&result) ? CString(V_BSTR(&result)) : CString();
+				::VariantClear(&result); return succeeded;
+			};
+			if (!invoke(L"GetDocumentFilePath", values.path) || !invoke(L"GetDocumentFileName", values.name) || !invoke(L"GetDocumentDirectory", values.directory)) return PathApiValues();
+			return values;
+		};
+		auto matches = [](const PathApiValues& actual, const CString& expected) -> bool {
+			const int separator = expected.ReverseFind(L'\\');
+			const CString expectedName = separator >= 0 ? expected.Mid(separator + 1) : expected;
+			const CString expectedDirectory = separator == 2 && expected.GetLength() >= 3 && expected[1] == L':' ? expected.Left(3) : separator > 0 ? expected.Left(separator) : CString();
+			const bool absolute = expected.GetLength() >= 3 && ((expected[0] >= L'A' && expected[0] <= L'Z') || (expected[0] >= L'a' && expected[0] <= L'z')) && expected[1] == L':' && expected[2] == L'\\';
+			return absolute && actual.path == expected && actual.name == expectedName && actual.directory == expectedDirectory;
+		};
+		const CString first(readEnvironmentPath(L"FBE_NEXT_TEST_DOCUMENT_PATH_FIRST"));
+		const CString saveAs(readEnvironmentPath(L"FBE_NEXT_TEST_SAVE_PATH"));
+		const CString second(readEnvironmentPath(L"FBE_NEXT_TEST_DOCUMENT_PATH_SECOND"));
+		const PathApiValues untitled(readExternal());
+		const bool unsaved = untitled.path.IsEmpty() && untitled.name.IsEmpty() && untitled.directory.IsEmpty();
+		const bool opened = !first.IsEmpty() && LoadFile(first) == OK && matches(readExternal(), first);
+		const bool savedAs = opened && !saveAs.IsEmpty() && SaveFile(true) == OK && matches(readExternal(), saveAs);
+		const PathApiValues beforeSecond(readExternal());
+		const bool otherOpened = savedAs && !second.IsEmpty() && LoadFile(second) == OK && matches(readExternal(), second) && beforeSecond.path != second;
+		const bool unicode = first.Find(L"путь") >= 0 && first.Find(L"книга") >= 0 && second.Find(L"путь") >= 0 && second.Find(L"книга") >= 0;
+		const bool passed = unsaved && opened && savedAs && otherOpened && unicode;
+		CStringA report;
+		report.Format("unsaved=%d\nopened=%d\nsave_as=%d\nother_opened=%d\nunicode=%d\nresult=%s\n", unsaved, opened, savedAs, otherOpened, unicode, passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"reference-navigation-runtime"))
 	{
 		CStringA header("footnote_check\tfootnote_target\treference_check\treference_target\tcheck_unchanged\tdom_unchanged\tresult\r\n");
