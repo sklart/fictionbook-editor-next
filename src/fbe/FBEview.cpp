@@ -508,6 +508,7 @@ LRESULT CFBEView::OnStyleFootnote(WORD, WORD, HWND, BOOL&) {
 }
 
 bool CFBEView::CheckCommand(WORD wID) {
+  StartupTrace::CountUiCheckCommand();
   if (!HasDoc())
     return false;
   if (!m_normalize)
@@ -1268,6 +1269,7 @@ MSHTML::IHTMLElementPtr CFBEView::SelectionAnchor(MSHTML::IHTMLElementPtr cur) {
 
 
 MSHTML::IHTMLElementPtr CFBEView::SelectionStructCon() {
+	StartupTrace::CountUiSelectionStructConQuery();
 	try
 	{
 		MSHTML::IHTMLElementPtr cur(SelectionContainer());
@@ -1370,6 +1372,7 @@ MSHTML::IHTMLElementPtr	  CFBEView::SelectionStructTable() {
 }
 
 MSHTML::IHTMLElementPtr	  CFBEView::SelectionStructTableCon() {
+	StartupTrace::CountUiSelectionStructTableConQuery();
   try {
     MSHTML::IHTMLElementPtr   cur(SelectionContainer());
     while (cur) {

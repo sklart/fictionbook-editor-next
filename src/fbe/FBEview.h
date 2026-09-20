@@ -696,6 +696,7 @@ public:
   void			    GoTo(MSHTML::IHTMLElement *e,bool fScroll=true);
   MSHTML::IHTMLElementPtr SelectionContainer()
   {
+    StartupTrace::CountUiSelectionContainerQuery();
     if (m_cur_sel)
       return m_cur_sel;
     return SelectionContainerImp();

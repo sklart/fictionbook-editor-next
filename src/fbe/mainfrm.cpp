@@ -1195,9 +1195,10 @@ struct IdleProfile
 		if (elapsed > maxMilliseconds) maxMilliseconds = elapsed;
 		if ((count % 256) != 0) return;
 		CString summary;
-		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; command-state-ms=%llu; selection-context-updates=%llu; selection-context-ms=%llu; js-com-calls=%llu; toolbar-updates=%llu; toolbar-ms=%llu; tree-updates=%llu; tree-ms=%llu; file-fingerprint-checks=%llu; file-fingerprint-ms=%llu; clipboard-checks=%llu; spell-ms=%llu; title-ms=%llu",
+		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; command-state-ms=%llu; check-command-calls=%llu; selection-context-updates=%llu; selection-context-ms=%llu; selection-container-queries=%llu; selection-struct-con-queries=%llu; selection-struct-table-con-queries=%llu; js-com-calls=%llu; toolbar-updates=%llu; toolbar-ms=%llu; tree-updates=%llu; tree-ms=%llu; file-fingerprint-checks=%llu; file-fingerprint-ms=%llu; clipboard-checks=%llu; spell-ms=%llu; title-ms=%llu",
 			count, totalMilliseconds, maxMilliseconds, totalMilliseconds / count,
-			commandUpdates, commandMilliseconds, selectionUpdates, selectionMilliseconds, StartupTrace::UiComCallCount(),
+			commandUpdates, commandMilliseconds, StartupTrace::UiCheckCommandCount(), selectionUpdates, selectionMilliseconds,
+			StartupTrace::UiSelectionContainerQueryCount(), StartupTrace::UiSelectionStructConQueryCount(), StartupTrace::UiSelectionStructTableConQueryCount(), StartupTrace::UiComCallCount(),
 			toolbarUpdates, toolbarMilliseconds, treeUpdates, treeMilliseconds, fileChecks, fileMilliseconds,
 			clipboardChecks, spellMilliseconds, titleMilliseconds);
 		StartupTrace::Event(L"performance", L"P410", summary);

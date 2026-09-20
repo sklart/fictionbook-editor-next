@@ -30,6 +30,14 @@ namespace StartupTrace
 	// the existing diagnostic trace is active.
 	void CountUiComCall();
 	ULONGLONG UiComCallCount();
+	void CountUiCheckCommand();
+	ULONGLONG UiCheckCommandCount();
+	void CountUiSelectionContainerQuery();
+	ULONGLONG UiSelectionContainerQueryCount();
+	void CountUiSelectionStructConQuery();
+	ULONGLONG UiSelectionStructConQueryCount();
+	void CountUiSelectionStructTableConQuery();
+	ULONGLONG UiSelectionStructTableConQueryCount();
 	// Определяет режим следующего запуска: настройка FBE имеет приоритет над переменной среды.
 	bool IsEnabledForNextLaunch();
 	// Возвращает true только для явно сохранённого пользовательского включения.
