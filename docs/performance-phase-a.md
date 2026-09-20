@@ -38,6 +38,20 @@ toolbar, tree, файла и clipboard. Журнал не включает те�
 имеет миллисекундное разрешение; в этом случае главным критерием становятся
 счётчики вызовов.
 
+Автоматический after-guard запускается отдельно от FAST:
+
+```powershell
+pwsh .\tools\tests\test-fbe-idle-performance-runtime.ps1
+```
+
+Он создаёт реальные FB2 на 1 000 и 10 000 абзацев, выполняет первичный
+event-driven update и затем 1 000 неизменных `OnIdle`. В Release-прогоне
+21 сентября 2026 года оба fixture прошли: `elapsed_ms=0` (ниже разрешения
+`GetTickCount64`), а `command_state_updates`, `selection_context_builds`,
+`toolbar_updates`, `clipboard_checks`, `check_command_calls`, все три
+selection-query и `js_com_calls` были равны нулю. `file_fingerprint_checks`
+был ограничен единицей throttle. Этот тест включён в `-FullValidation`.
+
 ## Ожидаемые инварианты Phase A
 
 - После стабилизации idle не вызывает command-state, toolbar, tree или
@@ -51,9 +65,12 @@ toolbar, tree, файла и clipboard. Журнал не включает те�
 
 ## Статус результатов
 
-Этот документ описывает методику и формат доказательства, а не выдаёт
-несуществующие before/after числа. Автоматически подтверждены контракты
-инвалидации, throttle, clipboard listener, selection cache, SOURCE idle и
-диагностических полей P410. Реальные шесть интерактивных запусков по протоколу
-выше остаются отдельной ручной проверкой, поскольку они зависят от конкретной
-книги, дисплея и пользовательского Windows/MSHTML окружения.
+Автоматически подтверждены контракты инвалидации, throttle, clipboard
+listener, selection cache, SOURCE idle, диагностических полей P410 и
+стабильного idle на real FBE. Исторический baseline `dc043cd1` не удалось
+собрать в этом automation-окружении: созданный checkout не содержал pinned
+submodules, а их восстановление остановилось на DNS для upstream aom/libwebp.
+Поэтому before/after цифры не подменены предположениями. Реальные шесть
+интерактивных запусков по протоколу выше остаются отдельной ручной проверкой,
+для которой нужен доступный baseline checkout и конкретная книга, дисплей и
+Windows/MSHTML окружение.
