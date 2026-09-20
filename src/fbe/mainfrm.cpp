@@ -900,7 +900,7 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	if (RuntimeTests::IsScenario(L"save-as-cancel-runtime")) return CString();
 	// Runtime integration uses an explicitly supplied output only in this
 	// narrowly scoped test mode; normal Save As always shows the native dialog.
-	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime"))
+	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime") || RuntimeTests::IsScenario(L"script-document-path-runtime"))
 	{
 		wchar_t testPath[MAX_PATH] = {};
 		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", testPath, _countof(testPath));
