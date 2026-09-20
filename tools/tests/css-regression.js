@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 function parseCss(path) {
+  // This deliberately small parser supports only the current flat CSS files:
+  // no @media blocks, nested rules, or other advanced CSS constructs.
   const source = fs.readFileSync(path, "utf8");
   const withoutComments = source.replace(/\/\*[^]*?\*\//g, "");
   assert(!/\/\*/.test(withoutComments), `${path}: unterminated comment`);
@@ -82,12 +84,14 @@ const sharedDeclarations = [
   ["div#fbw_body div.image", ["margin", "padding", "border", "overflow", "clear", "text-align"]],
   ["img", ["margin", "padding", "border", "position", "cursor"]],
   ["div#fbw_body div.hider", ["border", "margin", "padding", "width"]],
-  ["span.image", ["text-indent", "margin", "padding", "border", "overflow", "clear", "text-align"]]
+  ["span.image", ["text-indent", "margin", "padding", "border", "overflow", "clear", "text-align"]],
+  ["strong", ["font-weight"]]
 ];
 
-// Fast Mode intentionally removes expensive/redundant document decoration and
-// compacts descriptor geometry. Every remaining cross-file difference is
-// listed here so a new, unclassified drift fails the test.
+// Fast Mode removes the base decoration from every document div. Individual
+// structural selectors explicitly restore the minimal marker they inherit in
+// Normal Mode. Every remaining source-level difference is listed here so a
+// new, unclassified drift fails the test.
 const intentionalDifferences = [];
 function addIntentionalDifferences(selector, reason, declarations) {
   for (const [property, normalValue, fastValue] of declarations) {
@@ -95,56 +99,19 @@ function addIntentionalDifferences(selector, reason, declarations) {
   }
 }
 
-addIntentionalDifferences("div#fbw_desc", "Fast descriptor pane uses compact padding and fixed height.", [
-  ["text-align", "left", undefined], ["padding", "0.4em", undefined],
-  ["padding-left", undefined, "0.8em"], ["height", undefined, "100%"]
-]);
-addIntentionalDifferences("div#fbw_desc fieldset", "Fast descriptor fieldsets omit decorative borders and use compact geometry.", [
-  ["width", "61.5em", "60em"], ["padding-left", "0.5em", "0.2em"],
-  ["padding-right", "0.5em", "0.2em"], ["padding-bottom", "0.5em", "0.3em"],
-  ["padding-top", "0.5em", "0.3em"], ["border", "1px solid #C0C0C0", undefined]
-]);
-addIntentionalDifferences("div#fbw_desc fieldset.kid", "Nested fast fieldsets fill their row and omit a second decorative border.", [
-  ["width", "60em", "100%"], ["border", "solid 1px #B0B0B0", undefined]
-]);
-addIntentionalDifferences("div#fbw_desc legend", "Fast descriptor legends omit left padding with the surrounding border.", [["padding-left", "0.5em", undefined]]);
-addIntentionalDifferences("div#fbw_desc br", "Fast descriptor controls use a fixed compact vertical gap.", [["height", "0.5em", "10px"]]);
-addIntentionalDifferences("div#fbw_body", "Fast document layout retains its historic wider left margin.", [["margin", "0.2em 0.2em 0 0.2em", "0.2em 0.2em 0 0.5em"]]);
 addIntentionalDifferences("div#fbw_body div", "Fast Mode removes per-div indentation and borders for large documents.", [
   ["padding", "0em 0em 0em 0.4em", undefined], ["border-left", "solid 1px", undefined]
 ]);
-addIntentionalDifferences("div#fbw_body div.body", "The fast body has no inherited container decoration.", [["padding", "0px", undefined], ["border", "none", undefined]]);
-addIntentionalDifferences("div.section", "Fast Mode omits section border colouring.", [["border-color", "#008000", undefined]]);
-addIntentionalDifferences("div.cite", "Fast Mode uses a single subdued left marker instead of full decoration.", [
-  ["color", "#660000", "#B46400"], ["border-color", "#660000", "#B46400"], ["border-left", undefined, "solid 1px"]
-]);
-addIntentionalDifferences("em", "Fast Mode omits the decorative emphasis colour while retaining italics.", [["color", "#0000E0", undefined]]);
-addIntentionalDifferences("div.epigraph", "Fast Mode uses a simple left marker instead of decorative epigraph styling.", [
-  ["font-size", "80%", undefined], ["border-color", "#00FFFF", "#0000F0"], ["color", "#FF0066", "#0000F0"],
-  ["padding-left", undefined, "0.4em"], ["border-left", undefined, "solid 1px"]
-]);
-addIntentionalDifferences("div.annotation", "Fast Mode uses a simple annotation marker.", [
-  ["border-color", "#00CC99", "#2C6B7B"], ["color", "#6633FF", "#2C6B7B"],
-  ["padding-left", undefined, "0.4em"], ["border-left", undefined, "solid 1px"]
-]);
-for (const selector of ["div.history", "div.poem", "div.stanza", "div.table", "div.tr"]) {
-  addIntentionalDifferences(selector, "Fast Mode represents structural containers with a simple left marker.", [
+for (const selector of ["div.epigraph", "div.annotation", "div.history", "div.poem", "div.stanza", "div.table", "div.tr"]) {
+  addIntentionalDifferences(selector, "Restores the structural left marker removed from the fast base div rule.", [
     ["padding-left", undefined, "0.4em"], ["border-left", undefined, "solid 1px"]
   ]);
 }
-addIntentionalDifferences("div.stanza p", "Fast Mode omits decorative stanza colour.", [["color", "#006600", undefined]]);
-addIntentionalDifferences("div.title", "Fast Mode keeps title structure but omits enlarged and decorative title styling.", [
-  ["font-size", "130%", undefined], ["border-color", "#008080", "rgb(0,150,0)"],
-  ["background", "#008080", "rgb(0,150,0)"], ["padding", "0.3em", "0em 0em 0em 0.3em"],
-  ["border-left", undefined, "solid 1px"]
-]);
-addIntentionalDifferences("p.subtitle", "Fast Mode omits decorative subtitle colour.", [["color", "#003300", undefined]]);
-addIntentionalDifferences("p.text-author", "Fast Mode uses its simplified author colour.", [["color", "#9900CC", "rgb(192,64,64)"]]);
-addIntentionalDifferences("span.code", "Fast Mode keeps inline code upright inside inherited emphasis.", [["font-style", undefined, "normal"]]);
-addIntentionalDifferences("a.note", "Fast Mode keeps note markers at the inherited compact size.", [["font-size", "75%", undefined]]);
-addIntentionalDifferences("strong", "Fast Mode relies on the browser's semantic strong styling and omits decorative colour.", [
-  ["font-weight", "bold", undefined], ["color", "#660066", undefined]
-]);
+for (const selector of ["div.cite", "div.title"]) {
+  addIntentionalDifferences(selector, "Restores the structural left marker removed from the fast base div rule.", [["border-left", undefined, "solid 1px"]]);
+}
+addIntentionalDifferences("span.code", "Keeps code upright when it appears inside inherited emphasis.", [["font-style", undefined, "normal"]]);
+addIntentionalDifferences("strong", "Fast Mode omits only the decorative strong colour.", [["color", "#660066", undefined]]);
 
 for (const [selector, properties] of sharedDeclarations) {
   const normalRule = normal.get(selector);

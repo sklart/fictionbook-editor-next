@@ -1,23 +1,19 @@
-body
-{
+body {
 	font-size: 12pt;
 	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
 	padding: 0;
 	margin: 0;
 }
 
-div#fbw_desc
-{
+div#fbw_desc {
 	text-align: left;
 	font-size: 8pt;
 	font-family: Tahoma, sans-serif;
 	background-color: #DCDCDC;
 	padding: 0.4em;
-
 }
 
-div#fbw_desc fieldset
-{
+div#fbw_desc fieldset {
 	width: 61.5em;
 	margin: 0.1em;
 	padding-left: 0.5em;
@@ -27,36 +23,31 @@ div#fbw_desc fieldset
 	border: 1px solid #C0C0C0;
 }
 
-div#fbw_desc legend
-{
+div#fbw_desc legend {
 	padding-left: 0.5em;
 	padding-right: 0.5em;
 }
 
-div#fbw_desc br
-{
+div#fbw_desc br {
 	height: 0.5em;
 }
 
-div#fbw_desc div
-{
+div#fbw_desc div {
 	border: none;
 	white-space: nowrap;
 	clear: both;
 }
 
-div#fbw_desc div.float
-{
-   visibility: hidden;
-   position: absolute;
-   z-index: 1;
-   top: 0;
-   left: 0;
-   background: white;
+div#fbw_desc div.float {
+	visibility: hidden;
+	position: absolute;
+	z-index: 1;
+	top: 0;
+	left: 0;
+	background: white;
 }
 
-div#fbw_desc button
-{
+div#fbw_desc button {
 	font-family: "Webdings";
 	font-size: 8pt;
 	color: Black;
@@ -64,55 +55,45 @@ div#fbw_desc button
 	cursor: pointer;
 }
 
-div#fbw_desc button.popup_btn
-{
+div#fbw_desc button.popup_btn {
 	float: none;
 }
 
-div#fbw_desc input
-{
+div#fbw_desc input {
 	font-family: "Tahoma",sans-serif;
 	font-size: 8pt;
 	border: 1px solid #7F9DB8;
-	margin-top:2px;
-	margin-bottom:2px;
-
+	margin-top: 2px;
+	margin-bottom: 2px;
 }
 
-div#fbw_desc input.short
-{
+div#fbw_desc input.short {
 	width: 2em;
 }
 
-div#fbw_desc input.middle
-{
+div#fbw_desc input.middle {
 	width: 35em;
 }
 
-div#fbw_desc input.wide
-{
+div#fbw_desc input.wide {
 	width: 48em;
 }
 
-div#fbw_desc input.url
-{
+div#fbw_desc input.url {
 	width: 53.4em;
 	margin-left: 0.3em;
 	margin-top: 0.3em;
 	margin-bottom: 0.1em;
 }
 
-
-div#fbw_desc textarea#val
-{
+div#fbw_desc textarea#val {
 	width: 48em;
 	font-family: "Tahoma",sans-serif;
 	font-size: 8pt;
 	border: 1px solid Black;
 }
 
-div#fbw_desc label
-{
+div#fbw_desc label {
 	width: 6.5em;
 	text-align: right;
 	margin-top: 0.3em;
@@ -122,34 +103,28 @@ div#fbw_desc label
 	color: black;
 }
 
-div#fbw_desc label.hl
-{
+div#fbw_desc label.hl {
 	color: #EE0000;
 	font-weight: bold;
 }
 
-div#fbw_desc label.short
-{
+div#fbw_desc label.short {
 	width: 4em;
 }
 
-div#fbw_desc fieldset label
-{
+div#fbw_desc fieldset label {
 	width: 6.9em;
 }
-div#fbw_desc fieldset.kid
-{
+div#fbw_desc fieldset.kid {
 	width: 60em;
 	border: solid 1px #B0B0B0;
 }
 
-div#fbw_desc fieldset.kid label
-{
+div#fbw_desc fieldset.kid label {
 	width: 6.5em;
 }
 
-div#fbw_desc legend.top
-{
+div#fbw_desc legend.top {
 	font-size: 10pt;
 	color: #0000AA;
 	font-weight: bold;
@@ -157,21 +132,18 @@ div#fbw_desc legend.top
 	margin-bottom: 0.4em;
 }
 
-div#fbw_desc textarea#stylesheetId 
-{
+div#fbw_desc textarea#stylesheetId {
 	width: 60em;
 	font-family: "Tahoma",sans-serif;
 	font-size: 10pt;
 	border: 1px solid Black;
 }
 
-span.top
-{
+span.top {
 	vertical-align: top;
 }
 
-div#fbw_body
-{
+div#fbw_body {
 	padding: 0;
 	margin: 0.2em 0.2em 0 0.2em;
 	border: none;
@@ -179,7 +151,7 @@ div#fbw_body
 	width: 99%;
 }
 
-div#fbw_body div{
+div#fbw_body div {
 	padding: 0em 0em 0em 0.4em;
 	margin: 0.5em 0em 0.5em 0em;
 	border-left: solid 1px;
@@ -213,84 +185,84 @@ div#fbw_body table.table th {
 	font-weight: bold;
 }
 
-div.section{
+div.section {
 	border-color: #008000;
 }
-div.cite{
+div.cite {
 	padding-left: 2em;
 	padding-right: 2em;
 	color: #660000;
 	border-color: #660000;
 }
 
-em{
+em {
 	font-style: italic;
 	color: #0000E0;
 }
-div.epigraph{
+div.epigraph {
 	font-size: 80%;
 	/*font-style: italic;*/
 	border-color: #00FFFF;
 	color: #FF0066;
 }
 
-div.epigraph p{
+div.epigraph p {
 	text-indent: 3em;
 	margin: 0 1em 0.5em 25%;
 }
-div.annotation{
+div.annotation {
 	border-color: #00CC99;
 	color: #6633FF;
 }
-div.history{
+div.history {
 	border-color: #FF1515;
 	color: #FF1515;
 }
-div.poem{
+div.poem {
 	border-color: black;
 }
-div.stanza{
+div.stanza {
 	border-color: #FF1493;
 }
-div.stanza p{
+div.stanza p {
 	text-align: left;
 	text-indent: 3em;
 	margin-bottom: 0em;
 	color: #006600;
 }
-div.title{
+div.title {
 	font-size: 130%;
 	border-color: #008080;
 	background: #008080;
 	color: white;
 	padding: 0.3em;
 }
-div.title p{
+div.title p {
 	text-align: center;
 	text-indent: 0em;
-}  
-p{
+}
+p {
 	text-indent: 3em;
 	margin-top: 0em;
 	margin-bottom: 0.2em;
 	text-align: justify;
 }
-p.subtitle{
+p.subtitle {
 	text-align: center;
 	font-weight: bold;
 	text-indent: 0em;
 	color: #003300;
 }
-p.text-author{
+p.text-author {
 	margin-left: 3em;
 	margin-bottom: 1em;
 	color: #9900CC;
 }
-span.code{
+span.code {
 	font-family: monospace;
 	background: rgb(238,238,238);
 }
-a.note{
+a.note {
 	vertical-align: super;
 	color: blue;
 	font-size: 75%;
@@ -298,7 +270,7 @@ a.note{
 
 /* Created by main.js outside the editable fbw_body.  Size and background are
    selected by main.js from the current document before the popup is shown. */
-div#fbNotePreview{
+div#fbNotePreview {
 	visibility: hidden;
 	position: absolute;
 	z-index: 1000;
@@ -314,13 +286,13 @@ div#fbNotePreview{
 	word-spacing: normal;
 	letter-spacing: normal;
 }
-div#fbNotePreview p{
+div#fbNotePreview p {
 	margin: 0 0 0.4em 0;
 	text-indent: 0;
 	text-align: left;
 	word-spacing: normal;
 }
-div#fbNotePreview p:last-child{
+div#fbNotePreview p:last-child {
 	margin-bottom: 0;
 }
 div.table {
@@ -343,7 +315,7 @@ p.td {
 	color: navy;
 }
 
-div#fbw_body div.image{
+div#fbw_body div.image {
 	margin: 0;
 	padding: 0;
 	border: none;
@@ -351,7 +323,7 @@ div#fbw_body div.image{
 	clear: both;
 	text-align: center;
 }
-img{
+img {
 	margin: 0;
 	padding: 0;
 	border: none;
@@ -359,13 +331,13 @@ img{
 	cursor: move;
 }
 
-div#fbw_body div.hider{
+div#fbw_body div.hider {
 	border: none;
 	margin: 0;
 	padding: 0;
 	width: 100%;
 }
-span.image{
+span.image {
 	text-indent: 0em;
 	margin: 0;
 	padding: 0;
@@ -375,7 +347,7 @@ span.image{
 	text-align: center;
 }
 
-strong{
+strong {
 	font-weight: bold;
 	color: #660066;
 }

@@ -85,6 +85,10 @@ function ActiveXObject(name) {
 // TextIntoHTML must escape every occurrence, not only the first special char.
 assert(TextIntoHTML("&&<><>")=="&amp;&amp;&lt;&gt;&lt;&gt;", "TextIntoHTML escapes repeated ampersands and angle brackets");
 
+// Switching editor modes must select the matching stylesheet and be reversible.
+apiSetFastMode(true); assert(elements.css.href=="main_fast.css", "Fast Mode selects its stylesheet");
+apiSetFastMode(false); assert(elements.css.href=="main.css", "Normal Mode restores its stylesheet");
+
 // A blank cover does nothing; preview and full image take distinct paths.
 var cover={getElementsByTagName:function(){return [{value:""}];}};
 var realShowPrevImage=ShowPrevImage;

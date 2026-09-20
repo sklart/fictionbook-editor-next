@@ -1,5 +1,14 @@
 # Текущий TODO
 
+- [x] Завершить автоматизируемую часть issue #32: `main.css` и
+  `main_fast.css` синхронизированы по геометрии панели описания, `strong` и
+  декоративным стилям; Fast Mode сохраняет только упрощение базовых
+  document-`div` и минимальные структурные маркеры. Контракт CSS фиксирует
+  все оставшиеся различия, а parser явно ограничен текущим плоским CSS.
+- [ ] Выполнить ручной smoke issue #32 в интерактивном FBE на обычной и
+  крупной FB2: загрузка, Normal/Fast переключение, прокрутка и редактирование;
+  подтвердить отсутствие заметной регрессии Fast Mode на реальной машине.
+
 - [x] Первый этап пользовательских панелей скриптов: выделить `ScriptRegistry`
   и `ScriptIdentity` с GUID, fingerprint-heuristic, orphan preservation и
   atomic persistence в `DeploymentContext::SettingsDirectory`; перевести

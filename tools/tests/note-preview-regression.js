@@ -143,12 +143,12 @@ assert.strictEqual(roundingPanel.style.overflow, "auto", "a near-limit note must
 assert.strictEqual(GetNotePreviewNaturalHeight({ scrollHeight: 40, offsetHeight: 40,
   firstChild: { nodeType: 1, offsetTop: 12, offsetHeight: 68, nextSibling: null } }), 80,
   "MSHTML child line boxes must extend the measured preview height");
-assert.match(css, /div#fbNotePreview\{[\s\S]*border: 1px solid #808080;/, "preview needs a subtle boundary");
-assert.match(css, /div#fbNotePreview p\{[\s\S]*text-align: left;/, "preview paragraphs must not inherit justified book text");
+assert.match(css, /div#fbNotePreview\s*\{[\s\S]*border: 1px solid #808080;/, "preview needs a subtle boundary");
+assert.match(css, /div#fbNotePreview p\s*\{[\s\S]*text-align: left;/, "preview paragraphs must not inherit justified book text");
 for (const property of ["visibility: hidden", "position: absolute", "z-index: 1000", "box-sizing: border-box", "background: #ffffff", "color: #000", "border: 1px solid #808080", "overflow: hidden", "line-height: normal", "text-align: left"]) {
   assert(fastCss.includes(property), `Fast Mode preview must include ${property}`);
 }
-assert.match(fastCss, /div#fbNotePreview p\{[\s\S]*text-align: left;/, "Fast Mode preview paragraphs must not inherit justified text");
+assert.match(fastCss, /div#fbNotePreview p\s*\{[\s\S]*text-align: left;/, "Fast Mode preview paragraphs must not inherit justified text");
 
 const originalGetElementById = document.getElementById;
 document.getElementById = id => id === "fbw_body" ? { currentStyle: {
