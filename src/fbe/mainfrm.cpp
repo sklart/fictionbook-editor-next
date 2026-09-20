@@ -1213,8 +1213,7 @@ BOOL CMainFrame::OnIdle()
 		return false;
 	}
 
-	if (profileIdle) ++g_idleProfile.fileChecks;
-	if(CheckFileTimeStamp())
+	if(CheckFileTimeStampIfDue())
 	{
 		if (profileIdle) g_idleProfile.Finish(idleStarted);
 		return true;
@@ -5350,6 +5349,19 @@ bool CMainFrame::CheckFileTimeStamp()
 		return ReloadFile();
 	m_document_session.AcceptExternalVersion();
 	return false;
+}
+
+bool CMainFrame::CheckFileTimeStampIfDue()
+{
+	// Fingerprinting can touch a network or removable drive.  It is not UI
+	// state and therefore must not be paid for once per idle iteration.
+	const DWORD now = ::GetTickCount();
+	if (m_external_file_check_started && static_cast<DWORD>(now - m_last_external_file_check) < 1000)
+		return false;
+	m_external_file_check_started = true;
+	m_last_external_file_check = now;
+	if (StartupTrace::Enabled()) ++g_idleProfile.fileChecks;
+	return CheckFileTimeStamp();
 }
 
 bool CMainFrame::ReloadFile()
