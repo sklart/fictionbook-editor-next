@@ -1390,8 +1390,10 @@ BOOL CMainFrame::OnIdle()
 		UIEnable(ID_GOTO_MATCHTAG, false);
 		UIEnable(ID_GOTO_WRONGTAG, false);
 
-		// Added by SeNS: process bitmap paste
-		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || BitmapInClipboard());
+		// Clipboard bitmap availability is event-driven.  On a platform where
+		// registration failed, retain compatibility through a rare fallback.
+		RefreshClipboardStateFallbackIfDue();
+		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
 
 		if (m_sel_changed && /*GetCurView()*/m_editor_view_state.Current() != DESC)
 		{
@@ -2187,6 +2189,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	StartupTrace::AppendTestStartupBreadcrumb("mainframe-ui-create-start");
   StartupTrace::Event(L"mainframe", L"M100", L"OnCreate started");
   StartupTrace::Event(L"settings", L"G100", L"application settings applied");
+	m_clipboard_listener_registered = ::AddClipboardFormatListener(m_hWnd) != FALSE;
+	RefreshClipboardState();
 	UiMetrics::UpdateForWindow(m_hWnd);
   m_editor_view_state.SetCtrlTabActive(false);
 
@@ -2607,6 +2611,11 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	if (m_clipboard_listener_registered)
+	{
+		::RemoveClipboardFormatListener(m_hWnd);
+		m_clipboard_listener_registered = false;
+	}
 	::RemoveWindowSubclass(m_hWnd, MainMenuBarThemeProc, kMainMenuBarThemeSubclassId);
 	if(::IsWindow(m_ScriptsToolbar)) ::RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1);
 	m_source.Destroy();
@@ -2622,6 +2631,14 @@ LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 	::PostQuitMessage(0);
 	bHandled=TRUE;
   return 0;
+}
+
+LRESULT CMainFrame::OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&)
+{
+	RefreshClipboardState();
+	if (m_doc && !IsSourceActive())
+		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
+	return 0;
 }
 
 LRESULT CMainFrame::OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&)
@@ -5349,6 +5366,24 @@ bool CMainFrame::CheckFileTimeStamp()
 		return ReloadFile();
 	m_document_session.AcceptExternalVersion();
 	return false;
+}
+
+void CMainFrame::RefreshClipboardState()
+{
+	m_clipboard_has_bitmap = BitmapInClipboard();
+}
+
+void CMainFrame::RefreshClipboardStateFallbackIfDue()
+{
+	if (m_clipboard_listener_registered)
+		return;
+	const DWORD now = ::GetTickCount();
+	if (m_clipboard_fallback_check_started && static_cast<DWORD>(now - m_last_clipboard_fallback_check) < 1000)
+		return;
+	m_clipboard_fallback_check_started = true;
+	m_last_clipboard_fallback_check = now;
+	if (StartupTrace::Enabled()) ++g_idleProfile.clipboardChecks;
+	RefreshClipboardState();
 }
 
 bool CMainFrame::CheckFileTimeStampIfDue()

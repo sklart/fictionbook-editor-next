@@ -160,7 +160,11 @@ public:
   DocumentSession m_document_session;
   DWORD			  m_last_tree_update;
 	DWORD			  m_last_external_file_check;
-	bool			  m_external_file_check_started;
+  bool			  m_external_file_check_started;
+	bool			  m_clipboard_listener_registered;
+	bool			  m_clipboard_has_bitmap;
+	DWORD			  m_last_clipboard_fallback_check;
+	bool			  m_clipboard_fallback_check_started;
   BOOL			  m_last_sci_ovr:1;
   bool			  m_last_ie_ovr:1;
   bool			  m_doc_changed:1;
@@ -203,7 +207,7 @@ public:
 	void InitScriptHotkey(ScriptDescriptor&);
 
   // contruction/destruction
-  CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_external_file_check(0), m_external_file_check_started(false), m_last_sci_ovr(true), m_last_ie_ovr(true),
+  CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_external_file_check(0), m_external_file_check_started(false), m_clipboard_listener_registered(false), m_clipboard_has_bitmap(false), m_last_clipboard_fallback_check(0), m_clipboard_fallback_check_started(false), m_last_sci_ovr(true), m_last_ie_ovr(true),
     m_doc_changed(false), m_sel_changed(false), m_change_state(false), m_need_title_update(false),
 	m_current_dpi(96), m_status_layout_posted(false), m_source_view_session(m_source, m_doc, m_editor_selection_state, m_source_selection_coordinator), m_cb_updated(false),
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
@@ -391,6 +395,7 @@ public:
 		MESSAGE_HANDLER(WM_QUERYENDSESSION, OnQueryEndSession)
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_CLIPBOARDUPDATE, OnClipboardUpdate)
         MESSAGE_HANDLER(WM_TIMER, OnTimer)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_SETFOCUS, OnSetFocus)
@@ -572,6 +577,7 @@ public:
   LRESULT OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnPostCreate(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
@@ -999,6 +1005,8 @@ public:
 	void SourceGoTo(int line, int linePos);
 	bool CheckFileTimeStamp();
 	bool CheckFileTimeStampIfDue();
+	void RefreshClipboardState();
+	void RefreshClipboardStateFallbackIfDue();
 	bool ReloadFile();
 	void UpdateFileTimeStamp();
 	bool ShowSettingsDialog(HWND parent = ::GetActiveWindow());
