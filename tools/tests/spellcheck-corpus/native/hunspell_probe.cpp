@@ -191,6 +191,24 @@ int BenchmarkMode(const Dictionary& dictionary, const std::string& path, long lo
     return 0;
 }
 
+int SuggestFileMode(const Dictionary& dictionary, const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) throw std::runtime_error("Cannot open input file: " + path);
+    std::string word;
+    while (std::getline(input, word)) {
+        word = TrimLine(word);
+        if (word.empty()) continue;
+        std::cout << word << '\t';
+        const std::vector<std::string> suggestions = dictionary.SuggestUtf8(word);
+        for (size_t index = 0; index < suggestions.size(); ++index) {
+            if (index) std::cout << '|';
+            std::cout << suggestions[index];
+        }
+        std::cout << '\n';
+    }
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -213,6 +231,9 @@ int main(int argc, char** argv) {
         }
         if (HasArgument(argc, argv, "--benchmark")) {
             return BenchmarkMode(dictionary, FindArgument(argc, argv, "--benchmark"), loadMs);
+        }
+        if (HasArgument(argc, argv, "--suggest-file")) {
+            return SuggestFileMode(dictionary, FindArgument(argc, argv, "--suggest-file"));
         }
         std::cerr << "Specify -l FILE or -a\n";
         return 2;
