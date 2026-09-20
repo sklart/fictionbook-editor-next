@@ -211,7 +211,28 @@
 			return link && CString(static_cast<LPCWSTR>(link->innerText)) == L"manual-link";
 		};
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-		const bool initial = hasExpectedPlainText(false);
+		bool enteredByUserInput = false;
+		try
+		{
+			MSHTML::IHTMLElementPtr inputTarget(document && document->all ? document->all->item(L"auto-url-typed") : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr focusTarget(document && document->all ? document->all->item(L"auto-url-focus") : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLTxtRangePtr inputRange(inputTarget ? MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+			if (inputRange && inputTarget && focusTarget)
+			{
+				inputRange->moveToElementText(inputTarget); inputRange->collapse(VARIANT_TRUE); inputRange->select();
+				m_doc->m_body.SetFocus();
+				const HWND inputFocus = ::GetFocus();
+				const wchar_t* typedText = L"\\\\слово";
+				enteredByUserInput = inputFocus != NULL;
+				for (const wchar_t* character = typedText; enteredByUserInput && *character; ++character)
+					::SendMessage(inputFocus, WM_CHAR, *character, 0);
+				MSHTML::IHTMLTxtRangePtr focusRange(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+				focusRange->moveToElementText(focusTarget); focusRange->collapse(VARIANT_TRUE); focusRange->select();
+				enteredByUserInput = enteredByUserInput && CString(static_cast<LPCWSTR>(inputTarget->innerText)) == typedText;
+			}
+		}
+		catch (const _com_error&) { enteredByUserInput = false; }
+		const bool initial = enteredByUserInput && hasExpectedPlainText(false);
 		ShowView(SOURCE); ShowView(BODY);
 		const bool sourceRoundtrip = initial && hasExpectedPlainText(false);
 		const CString filename(m_doc->m_filename);

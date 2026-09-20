@@ -179,7 +179,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fbe-editor-view-lifecycle-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-document-path-api.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-backup-settings.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-auto-url-detect.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-auto-url-detect.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-themes.ps1")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-current-line.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-filename-state.ps1")

@@ -25,7 +25,7 @@ try {
     $report = Join-Path $directory 'auto-url.tsv'
     @"
 <?xml version="1.0" encoding="utf-8"?>
-<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Auto URL detect</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>auto-url-detect-test</id><version>1.0</version></document-info></description><body><section><p>\\слово</p><p>\\server\share</p><p>C:\Books\book.fb2</p><p>http://example.org</p><p>https://example.org</p><p>user@example.org</p><p id="auto-url-manual">manual-link</p></section></body></FictionBook>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Auto URL detect</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>auto-url-detect-test</id><version>1.0</version></document-info></description><body><section><p>\\слово</p><p>\\server\share</p><p>C:\Books\book.fb2</p><p>http://example.org</p><p>https://example.org</p><p>user@example.org</p><p id="auto-url-typed"></p><p id="auto-url-focus">focus</p><p id="auto-url-manual">manual-link</p></section></body></FictionBook>
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
     $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
     try {
