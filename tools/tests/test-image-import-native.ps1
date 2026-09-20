@@ -23,6 +23,27 @@ Copy-Item -LiteralPath $avifFixture -Destination $avifWithPngExtension -Force
 $truncatedAvif = Join-Path $testDir 'truncated-avif.heic'
 $avifBytes = [IO.File]::ReadAllBytes($avifFixture)
 [IO.File]::WriteAllBytes($truncatedAvif, $avifBytes[0..15])
+function New-NclxFixture {
+    param([string]$Source, [string]$Destination, [UInt16]$Primaries, [UInt16]$Transfer)
+    $bytes = [IO.File]::ReadAllBytes($Source)
+    $marker = [Text.Encoding]::ASCII.GetBytes('nclx')
+    $offset = -1
+    for ($i = 0; $i -le $bytes.Length - $marker.Length; ++$i) {
+        if ($bytes[$i] -eq $marker[0] -and $bytes[$i + 1] -eq $marker[1] -and $bytes[$i + 2] -eq $marker[2] -and $bytes[$i + 3] -eq $marker[3]) { $offset = $i; break }
+    }
+    if ($offset -lt 0 -or $offset + 8 -ge $bytes.Length) { throw "В $Source не найден NCLX." }
+    $bytes[$offset + 4] = [byte]($Primaries -shr 8); $bytes[$offset + 5] = [byte]$Primaries
+    $bytes[$offset + 6] = [byte]($Transfer -shr 8); $bytes[$offset + 7] = [byte]$Transfer
+    [IO.File]::WriteAllBytes($Destination, $bytes)
+}
+$displayP3AlphaFixture = Join-Path $testDir 'display-p3-alpha.avif'
+$displayP3Fixture = Join-Path $testDir 'display-p3.avif'
+$hdrPqFixture = Join-Path $testDir 'hdr-pq-10bit.avif'
+$hdrHlgFixture = Join-Path $testDir 'hdr-hlg-10bit.avif'
+New-NclxFixture (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') $displayP3AlphaFixture 12 13
+New-NclxFixture $avifFixture $displayP3Fixture 12 13
+New-NclxFixture (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') $hdrPqFixture 9 16
+New-NclxFixture (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') $hdrHlgFixture 9 18
 $jpegFixture = Join-Path $testDir 'generated.jpg'
 $jpegPassThroughFixture = Join-Path $testDir 'original.jpeg'
 $gifFixture = Join-Path $testDir 'generated.gif'
@@ -84,7 +105,7 @@ $openjpeg = Join-Path $repoRoot "build\openjpeg\install\$Configuration"
 & cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE "/Fo$testDir\\" `
     "/I$repoRoot\src\fbe" "/I$repoRoot\third_party\wtl" "/I$webp\include" "/I$openjpeg\include" "/I$repoRoot\build\libheif\install\$Configuration\include" `
     (Join-Path $PSScriptRoot 'image-import-smoke.cpp') (Join-Path $repoRoot 'src\fbe\ImageImport.cpp') `
-    "/Fe$exe" "/link" "/SUBSYSTEM:CONSOLE" "/LIBPATH:$webp\lib" "/LIBPATH:$openjpeg\lib" "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib" libwebpmux.lib libwebp.lib libsharpyuv.lib openjp2.lib heif.lib libde265.lib aom.lib gdiplus.lib ole32.lib
+    "/Fe$exe" "/link" "/SUBSYSTEM:CONSOLE" "/LIBPATH:$webp\lib" "/LIBPATH:$openjpeg\lib" "/LIBPATH:$repoRoot\build\libheif\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\libde265\install\$Configuration\lib" "/LIBPATH:$repoRoot\build\aom\install\$Configuration\lib" libwebpmux.lib libwebp.lib libsharpyuv.lib openjp2.lib heif.lib libde265.lib aom.lib gdiplus.lib mscms.lib ole32.lib
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & $exe `
@@ -109,6 +130,12 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $singleTiffFixture `
     (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic') `
     (Join-Path $repoRoot 'tools\tests\fixtures\sdr_fox_10bit.avif') `
-    (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif')
+    (Join-Path $repoRoot 'tools\tests\fixtures\abc_color_irot_alpha_irot.avif') `
+    $displayP3Fixture `
+    $displayP3AlphaFixture `
+    (Join-Path $repoRoot 'third_party\libheif\tests\data\rainbow-451x461.heic') `
+    $hdrPqFixture `
+    $hdrHlgFixture `
+    (Join-Path $repoRoot 'tools\tests\fixtures\sdr_fox_10bit.avif')
 if ($LASTEXITCODE -ne 0) { throw "Native ImageImport smoke-test завершился с кодом $LASTEXITCODE." }
 Write-Host 'Native ImageImport smoke-test passed.'

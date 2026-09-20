@@ -6223,6 +6223,42 @@
         "bg-BG": "AVIF/HEIF изображението не можа да бъде декодирано."
       }
     },
+    "fbe.image_import.heif_color_profile_failed": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "The embedded ICC profile cannot be converted safely to sRGB; the image was not imported.",
+        "ru-RU": "Встроенный ICC-профиль нельзя безопасно преобразовать в sRGB; изображение не импортировано.",
+        "uk-UA": "Вбудований ICC-профіль не можна безпечно перетворити на sRGB; зображення не імпортовано.",
+        "de-DE": "Das eingebettete ICC-Profil kann nicht sicher nach sRGB konvertiert werden; das Bild wurde nicht importiert.",
+        "fr-FR": "Le profil ICC intégré ne peut pas être converti en toute sécurité vers sRGB ; l’image n’a pas été importée.",
+        "es-ES": "El perfil ICC incorporado no se puede convertir de forma segura a sRGB; la imagen no se importó.",
+        "it-IT": "Il profilo ICC incorporato non può essere convertito in modo sicuro in sRGB; l’immagine non è stata importata.",
+        "pl-PL": "Osadzonego profilu ICC nie można bezpiecznie przekonwertować do sRGB; obraz nie został zaimportowany.",
+        "pt-PT": "O perfil ICC incorporado não pode ser convertido com segurança para sRGB; a imagem não foi importada.",
+        "nl-NL": "Het ingesloten ICC-profiel kan niet veilig naar sRGB worden omgezet; de afbeelding is niet geïmporteerd.",
+        "cs-CZ": "Vložený profil ICC nelze bezpečně převést do sRGB; obrázek nebyl importován.",
+        "bg-BG": "Вграденият ICC профил не може да бъде безопасно преобразуван в sRGB; изображението не е импортирано."
+      }
+    },
+    "fbe.image_import.heif_color_unsupported": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "The AVIF/HEIF colour profile cannot be converted safely to sRGB.",
+        "ru-RU": "Цветовой профиль AVIF/HEIF нельзя безопасно преобразовать в sRGB.",
+        "uk-UA": "Колірний профіль AVIF/HEIF не можна безпечно перетворити на sRGB.",
+        "de-DE": "Das AVIF/HEIF-Farbprofil kann nicht sicher nach sRGB konvertiert werden.",
+        "fr-FR": "Le profil colorimétrique AVIF/HEIF ne peut pas être converti en toute sécurité vers sRGB.",
+        "es-ES": "El perfil de color AVIF/HEIF no se puede convertir de forma segura a sRGB.",
+        "it-IT": "Il profilo colore AVIF/HEIF non può essere convertito in modo sicuro in sRGB.",
+        "pl-PL": "Profilu kolorów AVIF/HEIF nie można bezpiecznie przekonwertować do sRGB.",
+        "pt-PT": "O perfil de cor AVIF/HEIF não pode ser convertido com segurança para sRGB.",
+        "nl-NL": "Het AVIF/HEIF-kleurprofiel kan niet veilig naar sRGB worden omgezet.",
+        "cs-CZ": "Barevný profil AVIF/HEIF nelze bezpečně převést do sRGB.",
+        "bg-BG": "Цветовият профил AVIF/HEIF не може да бъде безопасно преобразуван в sRGB."
+      }
+    },
     "fbe.image_import.jp2_invalid": {
       "component": "fbe.core",
       "runtimeOnly": true,

@@ -5,6 +5,8 @@
 
 #include <webp/decode.h>
 #include <memory>
+#include <cmath>
+#include <icm.h>
 #define OPJ_STATIC
 #include <openjpeg-2.5/openjpeg.h>
 #define LIBHEIF_STATIC_BUILD
@@ -38,6 +40,122 @@ bool CheckedRasterSize(UINT width, UINT height, size_t channels, size_t& bytes) 
 	if (channels && pixels > SIZE_MAX / channels) return false;
 	bytes = pixels * channels;
 	return bytes <= kMaxRasterBytes;
+}
+
+// JPEG and PNG written by this importer have no reliable way to carry the
+// source HEIF colour volume through the legacy FB2 pipeline.  Keep the raster
+// in sRGB before it reaches GDI+, rather than merely dropping the HEIF tag.
+bool IsHeifHdr(const heif_color_profile_nclx* nclx) {
+	return nclx && (nclx->transfer_characteristics == heif_transfer_characteristic_ITU_R_BT_2100_0_PQ || nclx->transfer_characteristics == heif_transfer_characteristic_ITU_R_BT_2100_0_HLG);
+}
+
+bool IsSrgbNclx(const heif_color_profile_nclx* nclx) {
+	return !nclx || ((nclx->color_primaries == heif_color_primaries_ITU_R_BT_709_5 || nclx->color_primaries == heif_color_primaries_unspecified) &&
+		(nclx->transfer_characteristics == heif_transfer_characteristic_IEC_61966_2_1 || nclx->transfer_characteristics == heif_transfer_characteristic_unspecified));
+}
+
+bool IsSupportedNclx(const heif_color_profile_nclx* nclx) {
+	if (!nclx) return true;
+	const heif_color_primaries p = nclx->color_primaries;
+	const heif_transfer_characteristics t = nclx->transfer_characteristics;
+	const bool primaries = p == heif_color_primaries_ITU_R_BT_709_5 || p == heif_color_primaries_unspecified || p == heif_color_primaries_SMPTE_EG_432_1 || p == heif_color_primaries_ITU_R_BT_2020_2_and_2100_0;
+	const bool transfer = t == heif_transfer_characteristic_IEC_61966_2_1 || t == heif_transfer_characteristic_ITU_R_BT_709_5 || t == heif_transfer_characteristic_ITU_R_BT_2020_2_10bit || t == heif_transfer_characteristic_ITU_R_BT_2020_2_12bit || t == heif_transfer_characteristic_linear || t == heif_transfer_characteristic_unspecified || IsHeifHdr(nclx);
+	return primaries && transfer;
+}
+
+double ClampUnit(double value) { return value < 0.0 ? 0.0 : value > 1.0 ? 1.0 : value; }
+double SrgbToLinear(double value) { value = ClampUnit(value); return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4); }
+double Bt709ToLinear(double value) { value = ClampUnit(value); return value < 0.081 ? value / 4.5 : pow((value + 0.099) / 1.099, 1.0 / 0.45); }
+double LinearToSrgb(double value) { value = value < 0.0 ? 0.0 : value; return value <= 0.0031308 ? value * 12.92 : 1.055 * pow(value, 1.0 / 2.4) - 0.055; }
+
+double PqToNits(double value) {
+	const double m1 = 2610.0 / 16384.0, m2 = 2523.0 / 32.0, c1 = 3424.0 / 4096.0, c2 = 2413.0 / 128.0, c3 = 2392.0 / 128.0;
+	const double power = pow(ClampUnit(value), 1.0 / m2);
+	const double numerator = max(0.0, power - c1);
+	const double denominator = max(0.000001, c2 - c3 * power);
+	return 10000.0 * pow(numerator / denominator, 1.0 / m1);
+}
+
+double HlgToRelative(double value) {
+	value = ClampUnit(value);
+	return value <= 0.5 ? value * value / 3.0 : (exp((value - 0.55991073) / 0.17883277) + 0.28466892) / 12.0;
+}
+
+double ToneMapHdr(double linearSdr) {
+	// Preserve the SDR range around diffuse white and compress only highlights.
+	if (linearSdr <= 1.0) return max(0.0, linearSdr);
+	return 1.0 + (linearSdr - 1.0) / (linearSdr + 4.0);
+}
+
+void ConvertPrimariesToSrgb(const heif_color_profile_nclx* nclx, double& red, double& green, double& blue) {
+	if (!nclx || nclx->color_primaries == heif_color_primaries_ITU_R_BT_709_5 || nclx->color_primaries == heif_color_primaries_unspecified) return;
+	const double inRed = red, inGreen = green, inBlue = blue;
+	if (nclx->color_primaries == heif_color_primaries_SMPTE_EG_432_1) { // Display-P3, D65
+		red = 1.2247455 * inRed - 0.2249044 * inGreen;
+		green = -0.0420581 * inRed + 1.0420810 * inGreen - 0.0000790 * inBlue;
+		blue = -0.0196423 * inRed - 0.0786549 * inGreen + 1.0985372 * inBlue;
+	} else { // Rec.2020 / Rec.2100, D65
+		red = 1.6604910 * inRed - 0.5876411 * inGreen - 0.0728499 * inBlue;
+		green = -0.1245505 * inRed + 1.1328999 * inGreen - 0.0083494 * inBlue;
+		blue = -0.0181508 * inRed - 0.1005789 * inGreen + 1.1187297 * inBlue;
+	}
+}
+
+BYTE ToByte(double value) { return static_cast<BYTE>(max(0.0, min(255.0, floor(value * 255.0 + 0.5)))); }
+
+HRESULT ConvertNclxPixelsToSrgb(const uint8_t* plane, int stride, int width, int height, int bitsPerPixel, const heif_color_profile_nclx* nclx, std::vector<BYTE>& pixels) {
+	if (!plane || bitsPerPixel < 1 || bitsPerPixel > 16 || (bitsPerPixel > 8 && stride < width * 8) || (bitsPerPixel <= 8 && stride < width * 4)) return E_FAIL;
+	const double maximum = bitsPerPixel > 8 ? static_cast<double>((1u << bitsPerPixel) - 1u) : 255.0;
+	const bool hdr = IsHeifHdr(nclx);
+	try { pixels.resize(static_cast<size_t>(width) * height * 4); } catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+	for (int y = 0; y < height; ++y) {
+		const uint8_t* source = plane + static_cast<size_t>(y) * stride;
+		BYTE* target = pixels.data() + static_cast<size_t>(y) * width * 4;
+		for (int x = 0; x < width; ++x) {
+			double red, green, blue, alpha;
+			if (bitsPerPixel > 8) {
+				const uint16_t* value = reinterpret_cast<const uint16_t*>(source + static_cast<size_t>(x) * 8);
+				red = value[0] / maximum; green = value[1] / maximum; blue = value[2] / maximum; alpha = value[3] / maximum;
+			} else { red = source[x * 4] / maximum; green = source[x * 4 + 1] / maximum; blue = source[x * 4 + 2] / maximum; alpha = source[x * 4 + 3] / maximum; }
+			if (hdr) {
+				if (nclx->transfer_characteristics == heif_transfer_characteristic_ITU_R_BT_2100_0_PQ) { red = PqToNits(red) / 100.0; green = PqToNits(green) / 100.0; blue = PqToNits(blue) / 100.0; }
+				else { red = HlgToRelative(red) * 10.0; green = HlgToRelative(green) * 10.0; blue = HlgToRelative(blue) * 10.0; }
+			} else if (nclx && (nclx->transfer_characteristics == heif_transfer_characteristic_ITU_R_BT_709_5 || nclx->transfer_characteristics == heif_transfer_characteristic_ITU_R_BT_2020_2_10bit || nclx->transfer_characteristics == heif_transfer_characteristic_ITU_R_BT_2020_2_12bit)) { red = Bt709ToLinear(red); green = Bt709ToLinear(green); blue = Bt709ToLinear(blue); }
+			else if (!nclx || nclx->transfer_characteristics != heif_transfer_characteristic_linear) { red = SrgbToLinear(red); green = SrgbToLinear(green); blue = SrgbToLinear(blue); }
+			ConvertPrimariesToSrgb(nclx, red, green, blue);
+			if (hdr) { const double luma = max(0.000001, 0.2126 * red + 0.7152 * green + 0.0722 * blue); const double scale = ToneMapHdr(luma) / luma; red *= scale; green *= scale; blue *= scale; }
+			target[x * 4] = ToByte(LinearToSrgb(blue)); target[x * 4 + 1] = ToByte(LinearToSrgb(green)); target[x * 4 + 2] = ToByte(LinearToSrgb(red)); target[x * 4 + 3] = ToByte(alpha);
+		}
+	}
+	return S_OK;
+}
+
+bool IsRgbIccProfile(const std::vector<BYTE>& profile) {
+	return profile.size() >= 128 && memcmp(profile.data() + 16, "RGB ", 4) == 0 && memcmp(profile.data() + 36, "acsp", 4) == 0;
+}
+
+HRESULT ApplyIccProfileToSrgb(const std::vector<BYTE>& profile, UINT width, UINT height, std::vector<BYTE>& pixels) {
+	if (!IsRgbIccProfile(profile)) return E_NOTIMPL;
+	PROFILE sourceProfile = { PROFILE_MEMBUFFER, const_cast<BYTE*>(profile.data()), static_cast<DWORD>(profile.size()) };
+	HPROFILE source = OpenColorProfileW(&sourceProfile, PROFILE_READ, FILE_SHARE_READ, OPEN_EXISTING);
+	if (!source) return HRESULT_FROM_WIN32(GetLastError());
+	DWORD pathChars = 0;
+	if (GetStandardColorSpaceProfileW(NULL, LCS_sRGB, NULL, &pathChars) || GetLastError() != ERROR_INSUFFICIENT_BUFFER || !pathChars) { CloseColorProfile(source); return E_FAIL; }
+	std::vector<wchar_t> path(pathChars);
+	if (!GetStandardColorSpaceProfileW(NULL, LCS_sRGB, path.data(), &pathChars)) { CloseColorProfile(source); return HRESULT_FROM_WIN32(GetLastError()); }
+	PROFILE destinationProfile = { PROFILE_FILENAME, path.data(), static_cast<DWORD>(path.size() * sizeof(wchar_t)) };
+	HPROFILE destination = OpenColorProfileW(&destinationProfile, PROFILE_READ, FILE_SHARE_READ, OPEN_EXISTING);
+	if (!destination) { const HRESULT hr = HRESULT_FROM_WIN32(GetLastError()); CloseColorProfile(source); return hr; }
+	HPROFILE profiles[] = { source, destination }; DWORD intent[] = { INTENT_PERCEPTUAL, INTENT_PERCEPTUAL };
+	HTRANSFORM transform = CreateMultiProfileTransform(profiles, _countof(profiles), intent, _countof(intent), BEST_MODE, 0);
+	if (!transform) { const HRESULT hr = HRESULT_FROM_WIN32(GetLastError()); CloseColorProfile(destination); CloseColorProfile(source); return hr; }
+	std::vector<BYTE> converted(pixels.size());
+	const BOOL ok = TranslateBitmapBits(transform, pixels.data(), BM_xBGRQUADS, width, height, width * 4, converted.data(), BM_xBGRQUADS, width * 4, NULL, 0);
+	DeleteColorTransform(transform); CloseColorProfile(destination); CloseColorProfile(source);
+	if (!ok) return HRESULT_FROM_WIN32(GetLastError());
+	for (size_t offset = 3; offset < pixels.size(); offset += 4) converted[offset] = pixels[offset];
+	pixels.swap(converted);
+	return S_OK;
 }
 
 bool StartsWith(const std::vector<BYTE>& b, const BYTE* s, size_t n) { return b.size() >= n && memcmp(b.data(), s, n) == 0; }
@@ -168,12 +286,37 @@ HRESULT DecodeHeif(const std::vector<BYTE>& data, const ImageImportOptions& o, I
 	if(heif_context_get_number_of_top_level_images(context.get())!=1) { err=ImageMessage(L"fbe.image_import.heif_multiple",L"HEIF image sequences are not supported."); return E_NOTIMPL; }
 	heif_image_handle* rawHandle=NULL; status=heif_context_get_primary_image_handle(context.get(),&rawHandle); std::unique_ptr<heif_image_handle,void(*)(const heif_image_handle*)> handle(rawHandle,heif_image_handle_release); if(status.code!=heif_error_Ok||!handle) { err=ImageMessage(L"fbe.image_import.heif_invalid",L"Corrupt or unsupported AVIF/HEIF image."); return E_FAIL; }
 	int width=heif_image_handle_get_width(handle.get()),height=heif_image_handle_get_height(handle.get()); size_t rasterBytes=0; if(width<=0||height<=0||!CheckedRasterSize((UINT)width,(UINT)height,4,rasterBytes)) { err=ImageMessage(L"fbe.image_import.too_large",L"Image is too large."); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); }
-	heif_decoding_options* rawOptions=heif_decoding_options_alloc(); std::unique_ptr<heif_decoding_options,void(*)(heif_decoding_options*)> options(rawOptions,heif_decoding_options_free); if(!options) return E_OUTOFMEMORY; options->strict_decoding=1; options->convert_hdr_to_8bit=1; options->ignore_transformations=0;
-	heif_image* rawImage=NULL; status=heif_decode_image(handle.get(),&rawImage,heif_colorspace_RGB,heif_chroma_interleaved_RGBA,options.get()); std::unique_ptr<heif_image,void(*)(const heif_image*)> image(rawImage,heif_image_release); if(status.code!=heif_error_Ok||!image) { err=ImageMessage(L"fbe.image_import.heif_decode_failed",L"Could not decode AVIF/HEIF image."); return E_FAIL; }
+	heif_color_profile_nclx* rawNclx = NULL;
+	status = heif_image_handle_get_nclx_color_profile(handle.get(), &rawNclx);
+	std::unique_ptr<heif_color_profile_nclx, void(*)(heif_color_profile_nclx*)> nclx(status.code == heif_error_Ok ? rawNclx : NULL, heif_nclx_color_profile_free);
+	const size_t rawIccSize = heif_image_handle_get_raw_color_profile_size(handle.get());
+	std::vector<BYTE> rawIcc(rawIccSize);
+	if (rawIccSize && heif_image_handle_get_raw_color_profile(handle.get(), rawIcc.data()).code != heif_error_Ok) { err=ImageMessage(L"fbe.image_import.heif_color_profile_failed",L"Could not read the embedded colour profile; the image was not imported."); return E_FAIL; }
+	const bool hdr = IsHeifHdr(nclx.get());
+	const bool needsColorConversion = nclx && !IsSrgbNclx(nclx.get());
+	if (needsColorConversion && !IsSupportedNclx(nclx.get()) && rawIcc.empty()) { err=ImageMessage(L"fbe.image_import.heif_color_unsupported",L"The AVIF/HEIF colour profile cannot be converted safely to sRGB."); return E_NOTIMPL; }
+	const int sourceBits = heif_image_handle_get_luma_bits_per_pixel(handle.get());
+	const bool highDepth = sourceBits > 8;
+	heif_decoding_options* rawOptions=heif_decoding_options_alloc(); std::unique_ptr<heif_decoding_options,void(*)(heif_decoding_options*)> options(rawOptions,heif_decoding_options_free); if(!options) return E_OUTOFMEMORY; options->strict_decoding=1; options->ignore_transformations=0;
+	// Do not let libheif merely retag HDR/wide-gamut data as sRGB.  The raster is
+	// converted below (ICC through WCS, NCLX through the explicit SDR path).
+	options->convert_hdr_to_8bit = (needsColorConversion || rawIccSize || highDepth) ? 0 : 1;
+	options->output_image_nclx_profile_passthrough = (needsColorConversion || rawIccSize) ? 1 : 0;
+	const heif_chroma outputChroma = highDepth ? heif_chroma_interleaved_RRGGBBAA_LE : heif_chroma_interleaved_RGBA;
+	heif_image* rawImage=NULL; status=heif_decode_image(handle.get(),&rawImage,heif_colorspace_RGB,outputChroma,options.get()); std::unique_ptr<heif_image,void(*)(const heif_image*)> image(rawImage,heif_image_release); if(status.code!=heif_error_Ok||!image) { err=ImageMessage(L"fbe.image_import.heif_decode_failed",L"Could not decode AVIF/HEIF image."); return E_FAIL; }
 	width=heif_image_get_primary_width(image.get()); height=heif_image_get_primary_height(image.get()); if(width<=0||height<=0||!CheckedRasterSize((UINT)width,(UINT)height,4,rasterBytes)) { err=ImageMessage(L"fbe.image_import.too_large",L"Image is too large."); return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE); }
-	int stride=0; const uint8_t* plane=heif_image_get_plane_readonly(image.get(),heif_channel_interleaved,&stride); if(!plane||stride<width*4||size_t(stride)>kMaxRasterBytes/size_t(height)) { err=ImageMessage(L"fbe.image_import.heif_decode_failed",L"Could not decode AVIF/HEIF image."); return E_FAIL; }
-	// libheif returns RGBA; GDI+ PixelFormat32bppARGB is stored as BGRA on little-endian Win32.
-	std::vector<BYTE> pixels(rasterBytes); for(int y=0;y<height;++y) { const BYTE* source=plane+size_t(y)*stride; BYTE* target=pixels.data()+size_t(y)*width*4; for(int x=0;x<width;++x) { target[x*4]=source[x*4+2]; target[x*4+1]=source[x*4+1]; target[x*4+2]=source[x*4]; target[x*4+3]=source[x*4+3]; } }
+	int stride=0; const uint8_t* plane=heif_image_get_plane_readonly(image.get(),heif_channel_interleaved,&stride); if(!plane||stride<width*(highDepth ? 8 : 4)||size_t(stride)>kMaxRasterBytes/size_t(height)) { err=ImageMessage(L"fbe.image_import.heif_decode_failed",L"Could not decode AVIF/HEIF image."); return E_FAIL; }
+	const int decodedBits = heif_image_get_bits_per_pixel_range(image.get(), heif_channel_interleaved);
+	// libheif returns RGBA/RRGGBBAA; GDI+ PixelFormat32bppARGB is BGRA on little-endian Win32.
+	std::vector<BYTE> pixels;
+	if (needsColorConversion && (!rawIccSize || hdr)) {
+		if (!IsSupportedNclx(nclx.get()) || FAILED(ConvertNclxPixelsToSrgb(plane, stride, width, height, decodedBits, nclx.get(), pixels))) { err=ImageMessage(L"fbe.image_import.heif_color_unsupported",L"The AVIF/HEIF colour profile cannot be converted safely to sRGB."); return E_NOTIMPL; }
+	} else if (highDepth) {
+		if (FAILED(ConvertNclxPixelsToSrgb(plane, stride, width, height, decodedBits, NULL, pixels))) { err=ImageMessage(L"fbe.image_import.heif_decode_failed",L"Could not decode AVIF/HEIF image."); return E_FAIL; }
+	} else {
+		pixels.resize(rasterBytes); for(int y=0;y<height;++y) { const BYTE* source=plane+size_t(y)*stride; BYTE* target=pixels.data()+size_t(y)*width*4; for(int x=0;x<width;++x) { target[x*4]=source[x*4+2]; target[x*4+1]=source[x*4+1]; target[x*4+2]=source[x*4]; target[x*4+3]=source[x*4+3]; } }
+	}
+	if (rawIccSize && !hdr) { const HRESULT colorResult = ApplyIccProfileToSrgb(rawIcc, width, height, pixels); if (FAILED(colorResult)) { err=ImageMessage(L"fbe.image_import.heif_color_profile_failed",L"The embedded ICC profile cannot be converted safely to sRGB; the image was not imported."); return colorResult == E_NOTIMPL ? E_NOTIMPL : E_FAIL; } }
 	r.width=width; r.height=height; r.hasTransparency=false; if(heif_image_handle_has_alpha_channel(handle.get())) for(size_t i=3;i<pixels.size();i+=4) if(pixels[i]!=255) { r.hasTransparency=true; break; }
 	bool png=o.outputFormat==ImageOutputFormat::Png||(o.outputFormat==ImageOutputFormat::Auto&&r.hasTransparency); if(o.outputFormat==ImageOutputFormat::Jpeg&&r.hasTransparency&&!o.flattenTransparentJpeg) { err=ImageMessage(L"fbe.image_import.flatten_required",L"This image has transparency and needs confirmation before JPEG conversion."); return E_ABORT; }
 	if(!GetGdiplusSession().Ready()) return E_FAIL; Gdiplus::Bitmap bitmap(width,height,width*4,PixelFormat32bppARGB,pixels.data()); HRESULT hr = SaveBitmap(bitmap,png,o.jpegQuality,r.data,o.flattenTransparentJpeg&&!png); if(FAILED(hr)) { err=ImageMessage(hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"fbe.image_import.too_large" : L"fbe.image_import.encode_failed",hr == HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE) ? L"Image is too large." : L"Could not encode image."); return hr; }

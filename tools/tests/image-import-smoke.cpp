@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <cmath>
 #include <webp/decode.h>
 #include <webp/encode.h>
 #include <webp/mux.h>
@@ -337,6 +338,80 @@ static bool TestHeif10Bit(const wchar_t* path)
 	return heif_image_handle_get_luma_bits_per_pixel(handle.get()) >= 10 && TestHeif(path);
 }
 
+static bool TestHeifIcc(const wchar_t* path)
+{
+	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free); if (!context) return false;
+	if (heif_context_read_from_file(context.get(), CStringA(path), NULL).code != heif_error_Ok) return false;
+	heif_image_handle* raw = NULL; if (heif_context_get_primary_image_handle(context.get(), &raw).code != heif_error_Ok || !raw) return false;
+	std::unique_ptr<heif_image_handle, void(*)(const heif_image_handle*)> handle(raw, heif_image_handle_release);
+	return heif_image_handle_get_raw_color_profile_size(handle.get()) >= 128 && TestHeif(path, 451, 461, true);
+}
+
+static bool TestNclxP3WithAlpha(const wchar_t* path)
+{
+	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free); if (!context) return false;
+	if (heif_context_read_from_file(context.get(), CStringA(path), NULL).code != heif_error_Ok) return false;
+	heif_image_handle* raw = NULL; if (heif_context_get_primary_image_handle(context.get(), &raw).code != heif_error_Ok || !raw) return false;
+	std::unique_ptr<heif_image_handle, void(*)(const heif_image_handle*)> handle(raw, heif_image_handle_release);
+	heif_color_profile_nclx* rawNclx = NULL;
+	const heif_error profile = heif_image_handle_get_nclx_color_profile(handle.get(), &rawNclx);
+	std::unique_ptr<heif_color_profile_nclx, void(*)(heif_color_profile_nclx*)> nclx(profile.code == heif_error_Ok ? rawNclx : NULL, heif_nclx_color_profile_free);
+	if (!nclx || nclx->color_primaries != heif_color_primaries_SMPTE_EG_432_1 || nclx->transfer_characteristics != heif_transfer_characteristic_IEC_61966_2_1) return false;
+	ImageImportOptions options; ImageImportResult result; CString error;
+	const bool ok = SUCCEEDED(ImportImageForFb2(path, options, result, error)) && result.hasTransparency && result.mimeType == L"image/png" && OutputHasTransparentPixel(result.data) && OutputHasContrast(result.data);
+	if (!ok) std::wcerr << L"Display-P3/NCLX: " << error.GetString() << L"; alpha=" << result.hasTransparency << L"; mime=" << result.mimeType.GetString() << L"; bytes=" << result.data.size() << std::endl;
+	return ok;
+}
+
+static bool TestNclxP3(const wchar_t* path)
+{
+	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free); if (!context) return false;
+	if (heif_context_read_from_file(context.get(), CStringA(path), NULL).code != heif_error_Ok) return false;
+	heif_image_handle* raw = NULL; if (heif_context_get_primary_image_handle(context.get(), &raw).code != heif_error_Ok || !raw) return false;
+	std::unique_ptr<heif_image_handle, void(*)(const heif_image_handle*)> handle(raw, heif_image_handle_release);
+	heif_color_profile_nclx* rawNclx = NULL; const heif_error profile = heif_image_handle_get_nclx_color_profile(handle.get(), &rawNclx);
+	std::unique_ptr<heif_color_profile_nclx, void(*)(heif_color_profile_nclx*)> nclx(profile.code == heif_error_Ok ? rawNclx : NULL, heif_nclx_color_profile_free);
+	if (!nclx || nclx->color_primaries != heif_color_primaries_SMPTE_EG_432_1 || nclx->transfer_characteristics != heif_transfer_characteristic_IEC_61966_2_1) return false;
+	heif_decoding_options* rawOptions = heif_decoding_options_alloc(); std::unique_ptr<heif_decoding_options, void(*)(heif_decoding_options*)> options(rawOptions, heif_decoding_options_free);
+	if (!options) return false; options->strict_decoding = 1; options->ignore_transformations = 0; options->output_image_nclx_profile_passthrough = 1;
+	heif_image* rawImage = NULL; if (heif_decode_image(handle.get(), &rawImage, heif_colorspace_RGB, heif_chroma_interleaved_RGBA, options.get()).code != heif_error_Ok || !rawImage) return false;
+	std::unique_ptr<heif_image, void(*)(const heif_image*)> image(rawImage, heif_image_release);
+	int stride = 0; const uint8_t* plane = heif_image_get_plane_readonly(image.get(), heif_channel_interleaved, &stride);
+	if (!plane) return false;
+	UINT controlX = 0, controlY = 0; bool found = false;
+	for (UINT y = 0; y < static_cast<UINT>(heif_image_get_primary_height(image.get())) && !found; ++y) for (UINT x = 0; x < static_cast<UINT>(heif_image_get_primary_width(image.get())); ++x) { const BYTE* p = plane + size_t(y) * stride + x * 4; if (p[3] == 255 && max(abs(int(p[0]) - int(p[1])), max(abs(int(p[1]) - int(p[2])), abs(int(p[2]) - int(p[0])))) > 80) { controlX = x; controlY = y; found = true; break; } }
+	if (!found) return false;
+	const BYTE* source = plane + size_t(controlY) * stride + controlX * 4;
+	auto linear = [](double value) { value /= 255.0; return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4); };
+	auto encoded = [](double value) { value = max(0.0, value); value = value <= 0.0031308 ? value * 12.92 : 1.055 * pow(value, 1.0 / 2.4) - 0.055; return int(max(0.0, min(255.0, floor(value * 255.0 + 0.5)))); };
+	const double sourceRed = linear(source[0]), sourceGreen = linear(source[1]), sourceBlue = linear(source[2]);
+	const int expectedRed = encoded(1.2247455 * sourceRed - 0.2249044 * sourceGreen), expectedGreen = encoded(-0.0420581 * sourceRed + 1.0420810 * sourceGreen - 0.0000790 * sourceBlue), expectedBlue = encoded(-0.0196423 * sourceRed - 0.0786549 * sourceGreen + 1.0985372 * sourceBlue);
+	ImageImportOptions importOptions; ImageImportResult result; CString error; Gdiplus::Color output;
+	return SUCCEEDED(ImportImageForFb2(path, importOptions, result, error)) && result.width == 800 && result.height == 533 && OutputHasColorPixel(result.data) && OutputPixelAt(result.data, controlX, controlY, output) && abs(int(output.GetRed()) - expectedRed) <= 28 && abs(int(output.GetGreen()) - expectedGreen) <= 28 && abs(int(output.GetBlue()) - expectedBlue) <= 28;
+}
+
+static bool TestHdrHeif(const wchar_t* path, heif_transfer_characteristics transfer)
+{
+	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free); if (!context) return false;
+	if (heif_context_read_from_file(context.get(), CStringA(path), NULL).code != heif_error_Ok) return false;
+	heif_image_handle* raw = NULL; if (heif_context_get_primary_image_handle(context.get(), &raw).code != heif_error_Ok || !raw) return false;
+	std::unique_ptr<heif_image_handle, void(*)(const heif_image_handle*)> handle(raw, heif_image_handle_release);
+	heif_color_profile_nclx* rawNclx = NULL; const heif_error profile = heif_image_handle_get_nclx_color_profile(handle.get(), &rawNclx);
+	std::unique_ptr<heif_color_profile_nclx, void(*)(heif_color_profile_nclx*)> nclx(profile.code == heif_error_Ok ? rawNclx : NULL, heif_nclx_color_profile_free);
+	if (!nclx || nclx->color_primaries != heif_color_primaries_ITU_R_BT_2020_2_and_2100_0 || nclx->transfer_characteristics != transfer) return false;
+	ImageImportOptions options; ImageImportResult result; CString error;
+	return SUCCEEDED(ImportImageForFb2(path, options, result, error)) && (result.mimeType == L"image/jpeg" || result.mimeType == L"image/png") && !result.data.empty() && OutputHasContrast(result.data);
+}
+
+static bool TestHeifHighDepth(const wchar_t* path)
+{
+	std::unique_ptr<heif_context, void(*)(heif_context*)> context(heif_context_alloc(), heif_context_free); if (!context) return false;
+	if (heif_context_read_from_file(context.get(), CStringA(path), NULL).code != heif_error_Ok) return false;
+	heif_image_handle* raw = NULL; if (heif_context_get_primary_image_handle(context.get(), &raw).code != heif_error_Ok || !raw) return false;
+	std::unique_ptr<heif_image_handle, void(*)(const heif_image_handle*)> handle(raw, heif_image_handle_release);
+	return heif_image_handle_get_luma_bits_per_pixel(handle.get()) > 8 && TestHeif(path);
+}
+
 static bool TestTransformedHeif(const wchar_t* path)
 {
 	ImageImportOptions options;
@@ -438,7 +513,7 @@ int wmain(int argc, wchar_t** argv)
 		}
 		return 0;
 	}
-	if (argc != 23) return 2;
+	if (argc != 29) return 2;
 	std::vector<BYTE> input;
 	if (!ReadFile(argv[1], input)) return 3;
 
@@ -505,5 +580,14 @@ int wmain(int argc, wchar_t** argv)
 	if (!TestHeif(argv[20], 451, 461, true)) return 37;
 	if (!TestHeif10Bit(argv[21])) return 38;
 	if (!TestTransformedHeif(argv[22])) return 39;
+	// Metadata is deliberately changed only in copies created by the runner:
+	// the regression still decodes real AVIF pixels while covering P3/NCLX,
+	// PQ, HLG and alpha without adding binary fixtures to the repository.
+	if (!TestNclxP3(argv[23])) return 40;
+	if (!TestNclxP3WithAlpha(argv[24])) return 41;
+	if (!TestHeifIcc(argv[25])) return 42;
+	if (!TestHdrHeif(argv[26], heif_transfer_characteristic_ITU_R_BT_2100_0_PQ)) return 43;
+	if (!TestHdrHeif(argv[27], heif_transfer_characteristic_ITU_R_BT_2100_0_HLG)) return 44;
+	if (!TestHeifHighDepth(argv[28])) return 45;
 	return 0;
 }
