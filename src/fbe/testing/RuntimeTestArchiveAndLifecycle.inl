@@ -983,9 +983,24 @@
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		BOOL handled = FALSE;
-		m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+		auto invokeEditorCommand = [&](WORD commandId)
+		{
+			if (viaCommand) {
+				// Exercise the same CMainFrame routing used by the Edit menu and
+				// shortcuts.  Other scenarios intentionally retain the direct view
+				// calls to isolate structural-editor Undo units.
+				m_doc->m_body.SetFocus();
+				::SetFocus(m_doc->m_body);
+				SendMessage(WM_COMMAND, MAKEWPARAM(commandId, 0), 0);
+			}
+			else if (commandId == ID_EDIT_UNDO)
+				m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			else
+				m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+		};
+		invokeEditorCommand(ID_EDIT_UNDO);
 		const CString undo((const wchar_t*)body->innerHTML);
-		m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+		invokeEditorCommand(ID_EDIT_REDO);
 		const CString redo((const wchar_t*)body->innerHTML);
 		auto countClass = [&](const wchar_t* className) -> long
 		{
@@ -1006,7 +1021,7 @@
 		}
 		const CStringA poemTextSummary(utf16Summary(poemText));
 		const long emptyDivsAfterRedo = countEmpty(L"DIV"), emptyParagraphsAfterRedo = countEmpty(L"P"), emptyStanzasAfterRedo = countEmpty(L"DIV", L"stanza");
-		m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+		invokeEditorCommand(ID_EDIT_UNDO);
 		const CString restored((const wchar_t*)body->innerHTML);
 		const long undoEmptyDivs = countEmpty(L"DIV"), undoEmptyParagraphs = countEmpty(L"P"), undoEmptyStanzas = countEmpty(L"DIV", L"stanza");
 		const long emptyDivs = (emptyDivsAfterRedo > undoEmptyDivs ? emptyDivsAfterRedo : undoEmptyDivs) - beforeEmptyDivs;
@@ -1019,11 +1034,11 @@
 			range->select();
 			const bool secondApplied = apply(false).IsApplied();
 			const CString secondAfter((const wchar_t*)body->innerHTML);
-			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			invokeEditorCommand(ID_EDIT_UNDO);
 			const CString secondUndo((const wchar_t*)body->innerHTML);
-			m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+			invokeEditorCommand(ID_EDIT_REDO);
 			const CString secondRedo((const wchar_t*)body->innerHTML);
-			m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			invokeEditorCommand(ID_EDIT_UNDO);
 			const CString secondRestored((const wchar_t*)body->innerHTML);
 			sequential = secondApplied && before == secondUndo && secondAfter == secondRedo && before == secondRestored;
 		}
