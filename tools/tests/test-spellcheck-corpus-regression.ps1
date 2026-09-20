@@ -27,6 +27,8 @@ foreach($property in $baseline.languages.psobject.Properties) {
         $line = @($ordered.Name | & $probe -d (Join-Path $root "out\$Configuration\dict\$($case.dictionary)") -a | Select-Object -Last 1)[0]
         if($line -notmatch (':\s*' + [regex]::Escape([string]$ordered.Value) + '(?:,|$)')) { throw "$($property.Name): first suggestion order changed for $($ordered.Name)" }
     }
-    foreach($metric in 'load','suggest') { if([int]$result."${metric}_ms" -gt [int]([double]$case.referenceMs.$metric * [double]$baseline.allowedRelativeSlowdown + 50)) { throw "$($property.Name): $metric performance regression" } }
+    $benchmarkWords = @(); foreach($repeat in 1..[int]$baseline.benchmarkRepeats) { $benchmarkWords += $words }
+    $benchmark = Get-Result (Join-Path $root "out\$Configuration\dict\$($case.dictionary)") $benchmarkWords
+    foreach($metric in 'load','check','suggest') { if([int]$benchmark."${metric}_ms" -gt [int]([double]$case.referenceMs.$metric * [double]$baseline.allowedRelativeSlowdown + 50)) { throw "$($property.Name): $metric performance regression" } }
 }
 Write-Host 'Fixed Hunspell corpus quality and relative performance baseline passed.'
