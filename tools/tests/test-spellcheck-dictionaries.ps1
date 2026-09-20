@@ -73,7 +73,8 @@ foreach ($dictionaryName in @("de_DE", "en_US", "ru_RU", "uk_UA")) {
     $entry = $manifest.$dictionaryName
     if (-not $entry) { throw "В sources.json отсутствует $dictionaryName" }
     if ($entry.upstreamCommit -notmatch '^[0-9a-f]{40}$' -or $entry.retrievedAt -notmatch '^\d{4}-\d{2}-\d{2}$' -or
-        [string]::IsNullOrWhiteSpace($entry.variant) -or $null -eq $entry.localChanges) {
+        [string]::IsNullOrWhiteSpace($entry.variant) -or $null -eq $entry.localChanges -or
+        [string]::IsNullOrWhiteSpace($entry.fixtureSource)) {
         throw "Provenance словаря неполный: $dictionaryName требует полный upstream SHA, дату, variant и localChanges."
     }
     $runtimeAff = Join-Path $repoRoot "runtime\dict\$dictionaryName.aff"

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "fixturesLicense": "CC0-1.0; original FBE Next test text",
+  "allowedRelativeSlowdown": 3.0,
+  "languages": {
+    "ru": { "dictionary": "ru_RU", "file": "ru-regression.fb2", "rejected": 7, "falsePositives": ["сериализует", "UTF-8", "OCR"], "knownTypos": { "сабака": ["собака"], "карова": [], "малако": [], "собка": ["собака"] }, "firstSuggestion": { "сабака": "собака" }, "referenceMs": { "load": 590, "suggest": 586 } },
+    "uk": { "dictionary": "uk_UA", "file": "uk-regression.fb2", "rejected": 5, "falsePositives": ["UTF-8", "OCR"], "knownTypos": { "украйінський": ["український"], "Києв": [], "ґрунтт": [] }, "firstSuggestion": { "украйінський": "український" }, "referenceMs": { "load": 379, "suggest": 357 } },
+    "en": { "dictionary": "en_US", "file": "en-regression.fb2", "rejected": 4, "falsePositives": ["UTF-8"], "knownTypos": { "recieve": ["receive"], "definately": ["definitely"], "teh": ["the"] }, "firstSuggestion": { "recieve": "receive", "definately": "definitely", "teh": "the" }, "referenceMs": { "load": 16, "suggest": 39 } }
+  }
+}

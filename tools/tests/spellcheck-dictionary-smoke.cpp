@@ -175,8 +175,9 @@ static bool TestDictionary(const std::string& directory, const char* name, const
         ok &= Hunspell_add(dict, customWord.c_str()) == 0 && Spell(dict, L"FbeCustomUnicode", cp, true);
     } else if (std::string(name) == "ru_RU") {
         for (const wchar_t* word : { L"собака", L"корова", L"молоко", L"жираф", L"ёлка", L"ёжик", L"всё", L"литература", L"редактор", L"Собака" }) ok &= Spell(dict, word, cp, true);
-        // Compatibility probes retain the factual behavior of this exact release.
-        for (const wchar_t* word : { L"сабака", L"карова", L"малако" }) ReportSpell(dict, word, cp, "ru_RU compatibility");
+        // Fixed OCR regression cases: these must stay rejected by the bundled
+        // Goudron dictionary; the corpus guard separately checks suggestions.
+        for (const wchar_t* word : { L"сабака", L"карова", L"малако" }) ok &= Spell(dict, word, cp, false);
         // Confirmed against Goudron 1.0.8 with bundled Hunspell 1.7.3.
         for (const wchar_t* word : { L"компьютерр", L"редакторр", L"литератуура", L"молокоо", L"жирафф" }) ok &= Spell(dict, word, cp, false);
         ok &= HasSuggestion(dict, L"собка", L"собака", cp);
