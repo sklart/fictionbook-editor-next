@@ -441,7 +441,7 @@ static bool TestHdrHeif(const wchar_t* path, heif_transfer_characteristics trans
 	double blue = transfer == heif_transfer_characteristic_ITU_R_BT_2100_0_PQ ? pq(source[2]) : hlg(source[2]);
 	const double sourceRed = red, sourceGreen = green, sourceBlue = blue;
 	red = 1.6604910 * sourceRed - 0.5876411 * sourceGreen - 0.0728499 * sourceBlue; green = -0.1245505 * sourceRed + 1.1328999 * sourceGreen - 0.0083494 * sourceBlue; blue = -0.0181508 * sourceRed - 0.1005789 * sourceGreen + 1.1187297 * sourceBlue;
-	const double luma = max(0.000001, 0.2126 * red + 0.7152 * green + 0.0722 * blue), scale = min(254.0 / 255.0, luma / (luma + 0.10)) / luma;
+	const double luma = max(0.000001, 0.2126 * red + 0.7152 * green + 0.0722 * blue), scale = FbeToneMapHdrForRegressionTest(luma) / luma;
 	auto encoded = [](double value) { value = max(0.0, value); value = value <= 0.0031308 ? value * 12.92 : 1.055 * pow(value, 1.0 / 2.4) - 0.055; return int(max(0.0, min(255.0, floor(value * 255.0 + 0.5)))); };
 	const int expectedRed = encoded(red * scale), expectedGreen = encoded(green * scale), expectedBlue = encoded(blue * scale);
 	ImageImportOptions options; ImageImportResult result; CString error; Gdiplus::Color output;
