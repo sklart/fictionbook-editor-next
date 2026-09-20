@@ -1185,6 +1185,8 @@ struct IdleProfile
 	ULONGLONG count = 0, totalMilliseconds = 0, maxMilliseconds = 0;
 	ULONGLONG commandUpdates = 0, selectionUpdates = 0, toolbarUpdates = 0;
 	ULONGLONG treeUpdates = 0, fileChecks = 0, clipboardChecks = 0;
+	ULONGLONG fileMilliseconds = 0, commandMilliseconds = 0, selectionMilliseconds = 0;
+	ULONGLONG toolbarMilliseconds = 0, treeMilliseconds = 0, spellMilliseconds = 0, titleMilliseconds = 0;
 
 	void Finish(ULONGLONG started)
 	{
@@ -1193,9 +1195,11 @@ struct IdleProfile
 		if (elapsed > maxMilliseconds) maxMilliseconds = elapsed;
 		if ((count % 256) != 0) return;
 		CString summary;
-		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; selection-context-updates=%llu; js-com-calls=%llu; toolbar-updates=%llu; tree-updates=%llu; file-fingerprint-checks=%llu; clipboard-checks=%llu",
+		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; command-state-ms=%llu; selection-context-updates=%llu; selection-context-ms=%llu; js-com-calls=%llu; toolbar-updates=%llu; toolbar-ms=%llu; tree-updates=%llu; tree-ms=%llu; file-fingerprint-checks=%llu; file-fingerprint-ms=%llu; clipboard-checks=%llu; spell-ms=%llu; title-ms=%llu",
 			count, totalMilliseconds, maxMilliseconds, totalMilliseconds / count,
-			commandUpdates, selectionUpdates, StartupTrace::UiComCallCount(), toolbarUpdates, treeUpdates, fileChecks, clipboardChecks);
+			commandUpdates, commandMilliseconds, selectionUpdates, selectionMilliseconds, StartupTrace::UiComCallCount(),
+			toolbarUpdates, toolbarMilliseconds, treeUpdates, treeMilliseconds, fileChecks, fileMilliseconds,
+			clipboardChecks, spellMilliseconds, titleMilliseconds);
 		StartupTrace::Event(L"performance", L"P410", summary);
 	}
 };
@@ -1239,12 +1243,16 @@ BOOL CMainFrame::OnIdle()
 		return false;
 	}
 
+	const ULONGLONG fileCheckStarted = profileIdle ? ::GetTickCount64() : 0;
 	if(CheckFileTimeStampIfDue())
 	{
+		if (profileIdle) g_idleProfile.fileMilliseconds += ::GetTickCount64() - fileCheckStarted;
 		if (profileIdle) g_idleProfile.Finish(idleStarted);
 		return true;
 	}
+	if (profileIdle) g_idleProfile.fileMilliseconds += ::GetTickCount64() - fileCheckStarted;
 
+	const ULONGLONG commandStarted = profileIdle ? ::GetTickCount64() : 0;
 	if (IsSourceActive())
 	{
 		if ((m_ui_dirty & (UiDirtySource | UiDirtyView | UiDirtyClipboard | UiDirtyToolbar | UiDirtyStatus)) != UiDirtyNone)
@@ -1428,6 +1436,7 @@ BOOL CMainFrame::OnIdle()
 
 		if (m_sel_changed && /*GetCurView()*/m_editor_view_state.Current() != DESC)
 		{
+			const ULONGLONG selectionStarted = profileIdle ? ::GetTickCount64() : 0;
 			RebuildSelectionContext();
 			SetStatusContext(m_doc->m_body.SelPath());
 			UpdateStatusBar();
@@ -1569,6 +1578,7 @@ BOOL CMainFrame::OnIdle()
 				m_document_tree.HighlightItemAtPos(m_selection_context.container); // locate appropriate tree node
 
 			m_sel_changed = false;
+			if (profileIdle) g_idleProfile.selectionMilliseconds += ::GetTickCount64() - selectionStarted;
 		}
 
 		// insert/overwrite mode
@@ -1591,9 +1601,11 @@ BOOL CMainFrame::OnIdle()
 		}
 		}
 	}
+	if (profileIdle) g_idleProfile.commandMilliseconds += ::GetTickCount64() - commandStarted;
 
 	// added by SeNS
 	// detect page scrolling, run a background spellcheck if necessary
+	const ULONGLONG spellStarted = profileIdle ? ::GetTickCount64() : 0;
 	if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone && m_Speller && m_Speller->Enabled() && m_editor_view_state.Current() == BODY)
 	{
 		if (!m_Speller->Available())
@@ -1605,6 +1617,7 @@ BOOL CMainFrame::OnIdle()
 		}
 	}
 	else if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone) UIEnable(ID_TOOLS_SPELLCHECK, false, true);
+	if (profileIdle) g_idleProfile.spellMilliseconds += ::GetTickCount64() - spellStarted;
 
 	if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone)
 	{
@@ -1625,13 +1638,16 @@ BOOL CMainFrame::OnIdle()
 	if (m_ui_dirty != UiDirtyNone)
 	{
 		if (profileIdle) ++g_idleProfile.toolbarUpdates;
+		const ULONGLONG toolbarStarted = profileIdle ? ::GetTickCount64() : 0;
 		UIUpdateToolBar();
+		if (profileIdle) g_idleProfile.toolbarMilliseconds += ::GetTickCount64() - toolbarStarted;
 	}
 
 	// update document tree
 	if (m_doc_changed)
 	{
 		if (profileIdle) ++g_idleProfile.treeUpdates;
+		const ULONGLONG treeStarted = profileIdle ? ::GetTickCount64() : 0;
 		MSHTML::IHTMLDOMNodePtr chp(m_doc->m_body.GetChangedNode());
 		if ((bool)chp && m_document_tree.IsWindowVisible())
 		{
@@ -1639,6 +1655,7 @@ BOOL CMainFrame::OnIdle()
 			m_document_tree.HighlightItemAtPos(m_doc->m_body.SelectionContainer());
 		}
 		m_doc_changed = false;
+		if (profileIdle) g_idleProfile.treeMilliseconds += ::GetTickCount64() - treeStarted;
 	}
 
 	// focus some stupid control if requested
@@ -1692,6 +1709,7 @@ BOOL CMainFrame::OnIdle()
 		RefreshStatusMainPane();
 
 	// see if we need to update title
+	const ULONGLONG titleStarted = profileIdle ? ::GetTickCount64() : 0;
 	if(m_need_title_update || m_change_state != DocChanged())
 	{
 		m_need_title_update = false;
@@ -1749,6 +1767,7 @@ BOOL CMainFrame::OnIdle()
 			title += GetDiagnosticTraceText(L"fbe.trace.title_suffix", L" [Диагностика]");
 		SetWindowText(title);
 	}
+	if (profileIdle) g_idleProfile.titleMilliseconds += ::GetTickCount64() - titleStarted;
 
 	m_ui_dirty = UiDirtyNone;
 	if (profileIdle) g_idleProfile.Finish(idleStarted);
