@@ -39,7 +39,7 @@ try {
     }
     finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
     $row = Import-Csv -LiteralPath $report -Delimiter "`t"
-    if (@($row).Count -ne 1 -or $row.initial -ne '1' -or $row.source_roundtrip -ne '1' -or $row.saved_reopened -ne '1' -or $row.undo -ne '1' -or $row.redo -ne '1' -or $row.manual_link -ne '1' -or $row.result -ne 'pass') {
+    if (@($row).Count -ne 1 -or $row.typed_initial -ne '1' -or $row.initial -ne '1' -or $row.typed_source_roundtrip -ne '1' -or $row.source_roundtrip -ne '1' -or $row.typed_saved_reopened -ne '1' -or $row.saved_reopened -ne '1' -or $row.undo -ne '1' -or $row.redo -ne '1' -or $row.manual_link -ne '1' -or $row.result -ne 'pass') {
         throw "AutoUrlDetect runtime contract failed: $($row | ConvertTo-Json -Compress)"
     }
 }

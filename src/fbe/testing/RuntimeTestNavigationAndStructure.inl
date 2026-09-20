@@ -193,7 +193,7 @@
 	}
 	if (IsFbeTestScenario(L"auto-url-detect-runtime"))
 	{
-		CStringA header("initial\tsource_roundtrip\tsaved_reopened\tundo\tredo\tmanual_link\tresult\r\n");
+		CStringA header("typed_initial\tinitial\ttyped_source_roundtrip\tsource_roundtrip\ttyped_saved_reopened\tsaved_reopened\tundo\tredo\tmanual_link\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		const wchar_t* samples[] = { L"\\\\слово", L"\\\\server\\share", L"C:\\Books\\book.fb2", L"http://example.org", L"https://example.org", L"user@example.org" };
 		auto getEditable = [&]() -> MSHTML::IHTMLElementPtr {
@@ -209,6 +209,12 @@
 			if (!allowManualLink) return links->length == 0;
 			MSHTML::IHTMLElementPtr link(links->length == 1 ? links->item(0L) : MSHTML::IHTMLElementPtr());
 			return link && CString(static_cast<LPCWSTR>(link->innerText)) == L"manual-link";
+		};
+		auto hasUnlinkedTypedText = [&]() -> bool {
+			MSHTML::IHTMLDocument2Ptr current(m_doc->m_body.Document());
+			MSHTML::IHTMLElementPtr typed(current && current->all ? current->all->item(L"auto-url-typed") : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementCollectionPtr links(typed ? MSHTML::IHTMLElement2Ptr(typed)->getElementsByTagName(L"A") : MSHTML::IHTMLElementCollectionPtr());
+			return typed && CString(static_cast<LPCWSTR>(typed->innerText)) == L"\\\\слово" && (!links || links->length == 0);
 		};
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		bool enteredByUserInput = false;
@@ -232,15 +238,18 @@
 			}
 		}
 		catch (const _com_error&) { enteredByUserInput = false; }
-		const bool initial = enteredByUserInput && hasExpectedPlainText(false);
+		const bool typedInitial = enteredByUserInput && hasUnlinkedTypedText();
+		const bool initial = typedInitial && hasExpectedPlainText(false);
 		ShowView(SOURCE); ShowView(BODY);
-		const bool sourceRoundtrip = initial && hasExpectedPlainText(false);
+		const bool typedSourceRoundtrip = hasUnlinkedTypedText();
+		const bool sourceRoundtrip = initial && typedSourceRoundtrip && hasExpectedPlainText(false);
 		const CString filename(m_doc->m_filename);
 		const bool saved = sourceRoundtrip && m_doc->Save();
 		const bool reopened = saved && LoadFile(filename) == OK;
 		ShowView(BODY);
 		document = m_doc->m_body.Document();
-		const bool savedReopened = reopened && hasExpectedPlainText(false);
+		const bool typedSavedReopened = hasUnlinkedTypedText();
+		const bool savedReopened = reopened && typedSavedReopened && hasExpectedPlainText(false);
 		bool undo = false, redo = false, manualLink = false;
 		try {
 			MSHTML::IHTMLElementPtr manualTarget(document && document->all ? document->all->item(L"auto-url-manual") : MSHTML::IHTMLElementPtr());
@@ -258,7 +267,7 @@
 		} catch (const _com_error&) { undo = redo = false; }
 		const bool passed = initial && sourceRoundtrip && savedReopened && undo && redo && manualLink;
 		CStringA row;
-		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", initial, sourceRoundtrip, savedReopened, undo, redo, manualLink, passed ? "pass" : "fail");
+		row.Format("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", typedInitial, initial, typedSourceRoundtrip, sourceRoundtrip, typedSavedReopened, savedReopened, undo, redo, manualLink, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
