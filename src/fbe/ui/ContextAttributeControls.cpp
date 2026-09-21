@@ -1,16 +1,20 @@
 #include "stdafx.h"
 #include "ContextAttributeControls.h"
+#include "../ThemeManager.h"
 
 void CCustomStatic::DoPaint(CDCHandle dc)
 {
 	RECT rc; GetClientRect(&rc);
-	::FillRect(dc, &rc, ::GetSysColorBrush(COLOR_BTNFACE));
+	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	::FillRect(dc, &rc, dark ? ThemeManager::ControlBrush() : ::GetSysColorBrush(COLOR_BTNFACE));
 	HFONT oldFont = (HFONT)SelectObject(dc, m_font);
 	const int length = GetWindowTextLength();
 	std::vector<wchar_t> text(length + 1);
 	GetWindowText(&text[0], length + 1);
 	dc.SetBkMode(TRANSPARENT);
-	dc.SetTextColor(GetSysColor(m_enabled ? COLOR_BTNTEXT : COLOR_GRAYTEXT));
+	const bool enabled = m_enabled && ::IsWindowEnabled(m_hWnd) != FALSE;
+	dc.SetTextColor(dark ? (enabled ? ThemeManager::TextColor() : ThemeManager::DisabledTextColor()) :
+		GetSysColor(enabled ? COLOR_BTNTEXT : COLOR_GRAYTEXT));
 	dc.DrawText(&text[0], -1, &rc, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
 	SelectObject(dc, oldFont);
 }

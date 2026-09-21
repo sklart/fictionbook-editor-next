@@ -98,6 +98,7 @@
 
 #include "stdafx.h"
 #include "ColorButton.h"
+#include "..\\ThemeManager.h"
 
 #ifndef SPI_GETFLATMENU
 #define SPI_GETFLATMENU                     0x1022
@@ -631,14 +632,15 @@ BOOL CColorButton::Picker ()
 	//
 
 	int nAlpha = 48;
-	m_clrBackground = ::GetSysColor (COLOR_MENU);
-	m_clrHiLightBorder = ::GetSysColor (COLOR_HIGHLIGHT);
-	m_clrHiLight = m_clrHiLightBorder;
+	const bool useDarkPalette = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	m_clrBackground = useDarkPalette ? ThemeManager::ControlColor() : ::GetSysColor (COLOR_MENU);
+	m_clrHiLightBorder = useDarkPalette ? ThemeManager::AccentColor() : ::GetSysColor (COLOR_HIGHLIGHT);
+	m_clrHiLight = useDarkPalette ? ThemeManager::HoverColor() : m_clrHiLightBorder;
 #if (WINVER >= 0x0501)
 	m_clrHiLight = ::GetSysColor (COLOR_MENUHILIGHT);
 #endif
-	m_clrHiLightText = ::GetSysColor (COLOR_HIGHLIGHTTEXT);
-	m_clrText = ::GetSysColor (COLOR_MENUTEXT);
+	m_clrHiLightText = useDarkPalette ? ThemeManager::SelectionTextColor() : ::GetSysColor (COLOR_HIGHLIGHTTEXT);
+	m_clrText = useDarkPalette ? ThemeManager::TextColor() : ::GetSysColor (COLOR_MENUTEXT);
 	m_clrLoLight = RGB (
 		(GetRValue (m_clrBackground) * (255 - nAlpha) + 
 			GetRValue (m_clrHiLightBorder) * nAlpha) >> 8,
@@ -719,7 +721,9 @@ BOOL CColorButton::Picker ()
 	wc .hInstance = _Module .GetModuleInstance ();
 	wc .hIcon = NULL;
 	wc .hCursor = LoadCursor (NULL, IDC_ARROW);
-	wc .hbrBackground = (HBRUSH) (COLOR_MENU + 1);
+	// The picker paints its own background so a class registered while Light is
+	// active cannot leave a white flash when Dark is selected later.
+	wc .hbrBackground = NULL;
 	wc .lpszMenuName = NULL;
 	wc .lpszClassName = _T ("ColorPicker");
 	wc .hIconSm = NULL;
@@ -1707,10 +1711,12 @@ LRESULT CColorButton::OnPickerPaint (UINT /* unused: uMsg */,
 
 	CRect rect;
 	m_wndPicker .GetClientRect (&rect);
+	const bool useDarkPalette = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	dc.FillSolidRect(&rect, useDarkPalette ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_MENU));
 	if (m_fPickerFlat)
 	{
 		CPen pen;
-		pen .CreatePen (PS_SOLID, 0, ::GetSysColor (COLOR_GRAYTEXT));
+		pen .CreatePen (PS_SOLID, 0, useDarkPalette ? ThemeManager::SeparatorColor() : ::GetSysColor (COLOR_GRAYTEXT));
 		HPEN hpenOld = dc .SelectPen (pen);
 		dc .Rectangle (rect .left, rect .top, 
 			rect .Width (), rect .Height ());
@@ -1718,7 +1724,8 @@ LRESULT CColorButton::OnPickerPaint (UINT /* unused: uMsg */,
 	}
 	else
 	{
-		dc .DrawEdge (&rect, EDGE_RAISED, BF_RECT);
+		if(useDarkPalette) dc.FrameRect(&rect, ThemeManager::Brush(THEME_COLOR_BORDER));
+		else dc .DrawEdge (&rect, EDGE_RAISED, BF_RECT);
 	}
 
 	//

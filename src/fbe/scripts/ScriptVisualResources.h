@@ -6,13 +6,15 @@ struct VisualResource
 {
 	HBITMAP bitmap;
 	HICON icon;
-	VisualResource() : bitmap(NULL), icon(NULL) {}
+	HBITMAP menuBitmap;
+	VisualResource() : bitmap(NULL), icon(NULL), menuBitmap(NULL) {}
 	VisualResource(const VisualResource&) = delete;
 	VisualResource& operator=(const VisualResource&) = delete;
-	VisualResource(VisualResource&& other) : bitmap(other.bitmap), icon(other.icon) { other.bitmap = NULL; other.icon = NULL; }
-	VisualResource& operator=(VisualResource&& other) { if (this != &other) { Reset(); bitmap = other.bitmap; icon = other.icon; other.bitmap = NULL; other.icon = NULL; } return *this; }
+	VisualResource(VisualResource&& other) : bitmap(other.bitmap), icon(other.icon), menuBitmap(other.menuBitmap) { other.bitmap = NULL; other.icon = NULL; other.menuBitmap = NULL; }
+	VisualResource& operator=(VisualResource&& other) { if (this != &other) { Reset(); bitmap = other.bitmap; icon = other.icon; menuBitmap = other.menuBitmap; other.bitmap = NULL; other.icon = NULL; other.menuBitmap = NULL; } return *this; }
 	~VisualResource() { Reset(); }
-	void Reset() { if (bitmap != NULL) ::DeleteObject(bitmap); if (icon != NULL) ::DestroyIcon(icon); bitmap = NULL; icon = NULL; }
+	void Reset() { if (bitmap != NULL) ::DeleteObject(bitmap); if (icon != NULL) ::DestroyIcon(icon); if (menuBitmap != NULL) ::DeleteObject(menuBitmap); bitmap = NULL; icon = NULL; menuBitmap = NULL; }
+	HBITMAP NativeMenuBitmap() const { return menuBitmap != NULL ? menuBitmap : bitmap; }
 };
 
 class VisualResources

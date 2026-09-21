@@ -721,7 +721,13 @@ public:
 		AU::TRACKPARAMS* tp = (AU::TRACKPARAMS*)lParam;
 		// added by SeNS
 		if (m_Speller) m_Speller->AppendSpellMenu(tp->hMenu);
-		m_MenuBar.TrackPopupMenu(tp->hMenu, tp->uFlags, tp->x, tp->y);
+		// This message is raised only by the MSHTML BODY context menu.  Let the
+		// native popup renderer use the selected app theme; CCommandBarCtrl stays
+		// untouched for the regular menu bar.
+		const UINT command = ::TrackPopupMenuEx(tp->hMenu, tp->uFlags | TPM_RETURNCMD,
+			tp->x, tp->y, m_hWnd, NULL);
+		if(command != 0)
+			::SendMessage(m_hWnd, WM_COMMAND, MAKEWPARAM(command, 0), 0);
 		return 0;
 	}
 

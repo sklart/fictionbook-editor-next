@@ -71,6 +71,26 @@ bool IsRadioButton(HWND window)
 	return type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON;
 }
 
+bool HasClientEdge(HWND window)
+{
+	return (::GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_CLIENTEDGE) != 0;
+}
+
+void PaintDarkClientEdge(HWND window)
+{
+	HDC dc = ::GetWindowDC(window);
+	if(!dc) return;
+	RECT rect = {}; ::GetWindowRect(window, &rect);
+	::OffsetRect(&rect, -rect.left, -rect.top);
+	const int edge = (std::max)(1, ::GetSystemMetrics(SM_CXEDGE));
+	for(int index = 0; index < edge; ++index)
+	{
+		::FrameRect(dc, &rect, ThemeManager::Brush(THEME_COLOR_BORDER));
+		::InflateRect(&rect, -1, -1);
+	}
+	::ReleaseDC(window, dc);
+}
+
 bool UsesClassicSurfacePalette(HWND window)
 {
 	// Explorer visual styles ignore the colours set through the common-control
@@ -249,6 +269,12 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(ThemeManager::IsDark() && HasClientEdge(window) && message == WM_NCPAINT)
+	{
+		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+		PaintDarkClientEdge(window);
+		return result;
+	}
 	if(ThemeManager::IsDark() && IsHeader(window)) return HandleDarkHeaderMessage(window, message, wParam, lParam);
 	if(message == WM_COMMAND && HIWORD(wParam) == CBN_DROPDOWN)
 	{
@@ -510,10 +536,12 @@ void ApplyToWindow(HWND window)
 		::SetWindowTheme(window, L"DarkMode_Explorer", NULL);
 	else
 		::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
-	ApplyModernTitleBar(window, dark);
 	// Common controls reset custom colours while processing WM_THEMECHANGED.
 	// Set their palette only after that notification has completed.
 	::SendMessage(window, WM_THEMECHANGED, 0, 0);
+	// WM_THEMECHANGED can reset the DWM non-client state.  Apply the title bar
+	// last so a main window created in Dark remains dark after all child themes.
+	ApplyModernTitleBar(window, dark);
 	ApplyNativeControlPalette(window);
 	::SendMessage(window, WM_FBE_THEMECHANGED, 0, 0);
 	::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);

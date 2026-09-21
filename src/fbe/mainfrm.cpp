@@ -58,6 +58,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <map>
 #include <psapi.h>
 
 
@@ -88,6 +89,24 @@ static_assert(ID_SPELL_REPLACE_LAST < 0xffff, "Spell suggestion command IDs must
 static_assert(ID_FILE_MRU_LAST <= 0xffff, "MRU command IDs must fit in WM_COMMAND");
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE > ID_EDIT_INS_SYMBOL + 100, "Folder menu IDs overlap symbol commands");
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT_ITEM, "Folder menu IDs overlap regular commands");
+
+std::map<UINT, HBITMAP> g_scriptNativeMenuBitmaps;
+
+void ApplyScriptNativeMenuBitmaps(HMENU menu)
+{
+	if(menu == NULL) return;
+	for(int index = 0; index < ::GetMenuItemCount(menu); ++index)
+	{
+		const UINT command = ::GetMenuItemID(menu, index);
+		const std::map<UINT, HBITMAP>::const_iterator bitmap = g_scriptNativeMenuBitmaps.find(command);
+		if(bitmap != g_scriptNativeMenuBitmaps.end())
+		{
+			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP; info.hbmpItem = bitmap->second;
+			::SetMenuItemInfo(menu, index, TRUE, &info);
+		}
+		ApplyScriptNativeMenuBitmaps(::GetSubMenu(menu, index));
+	}
+}
 
 
 static WORD MruCommandId(int offset)
@@ -167,6 +186,15 @@ bool ShowNativeMainMenuPopup(HWND commandBar, int item)
 	POINT point = { itemRect.left, itemRect.bottom };
 	::ClientToScreen(commandBar, &point);
 	const HWND owner = ::GetParent(commandBar);
+	// The dark popup deliberately uses the native menu renderer rather than
+	// CCommandBarCtrl::TrackPopupMenu().  Let the unchanged stock command bar
+	// perform its normal Vista-menu bitmap assignment first, so script and
+	// plug-in icons remain visible in the native dark popup.
+	::SendMessage(commandBar, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(popup), 0);
+	// Script icons come from files, so command-bar image-list entries alone are
+	// insufficient for the native renderer.  Restore their 32-bit menu bitmaps
+	// after the stock command-bar setup, including already-created submenus.
+	ApplyScriptNativeMenuBitmaps(popup);
 	const UINT command = ::TrackPopupMenuEx(popup,
 		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON | TPM_RETURNCMD,
 		point.x, point.y, owner, NULL);
@@ -2237,6 +2265,7 @@ bool CMainFrame::InitializeScripts()
 bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition)
 {
 	ReleaseScriptResources();
+	g_scriptNativeMenuBitmaps.clear();
 	DestroyScriptToolbarRuntimeControls();
 	m_scriptToolbars.Reset();
 	for(size_t index = 0; index < definitions.size(); ++index) m_scriptToolbars.Add(definitions[index]);
@@ -2279,6 +2308,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 			for(size_t toolbarIndex = 0; !script.isFolder && toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex) if(m_scriptToolbars.Items()[toolbarIndex].window != NULL && m_scriptToolbars.Items()[toolbarIndex].window != m_ScriptsToolbar) AddTbButton(m_scriptToolbars.Items()[toolbarIndex].window, script.name, command, TBSTATE_ENABLED, visual.icon);
 			if(!script.isFolder) { TBBUTTONS catalog; bool available = GetAvailableButtons(m_ScriptsToolbar, catalog); for(int index = 0; available && index < catalog.GetSize(); ++index) if(catalog[index].idCommand == static_cast<int>(command)) available = false; if(available) { TBBUTTON button = {}; button.iBitmap = I_IMAGENONE; button.idCommand = command; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; AddToolbarButton(m_ScriptsToolbar, button, script.name); } }
 			if(visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command); else if(visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
+			if(visual.NativeMenuBitmap() != NULL) g_scriptNativeMenuBitmaps[command] = visual.NativeMenuBitmap();
 		},
 		[this](ScriptDescriptor& script) { InitScriptHotkey(script); })) _Settings.SetScriptCommandIds(serializedCommandIds);
 	for(size_t toolbarIndex = 0; toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex)
@@ -3112,6 +3142,9 @@ LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-enter");
+	// CreateEx has returned and no later creation message can reset DWM's
+	// non-client state.  Reapply the selected title-bar theme at this boundary.
+	ThemeManager::ApplyToWindow(m_hWnd);
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-recovery-start");
 	TryRestoreRecovery();
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-recovery-complete");

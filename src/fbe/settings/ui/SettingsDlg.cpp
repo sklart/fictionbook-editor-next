@@ -72,6 +72,16 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_hotkeysPage->Create(m_hWnd);
 	m_wordsPage = new CSettingsWordsDlg;
 	m_wordsPage->Create(m_hWnd);
+	// The pages are created after the dialog itself.  Apply the selected
+	// interface palette before any page becomes visible, preventing the light
+	// system background from flashing before a later theme refresh.
+	const HWND pagesToTheme[] = {
+		m_generalPage->m_hWnd, m_advancedPage->m_hWnd, m_editorPage->m_hWnd,
+		m_spellingPage->m_hWnd, m_imagesPage->m_hWnd, m_sourcePage->m_hWnd,
+		m_hotkeysPage->m_hWnd, m_wordsPage->m_hWnd
+	};
+	for(HWND page : pagesToTheme)
+		ThemeManager::ApplyToWindow(page);
 
 	m_pages[PageIndex(SettingsPageId::General)] = m_generalPage;
 	m_pages[PageIndex(SettingsPageId::Editor)] = m_editorPage;
