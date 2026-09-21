@@ -45,9 +45,12 @@ pwsh .\tools\tests\test-fbe-idle-performance-runtime.ps1
 ```
 
 Он создаёт реальные FB2 на 1 000 и 10 000 абзацев, выполняет первичный
-event-driven update и затем 1 000 неизменных `OnIdle`. В Release-прогоне
-21 сентября 2026 года оба fixture прошли: `elapsed_ms=0` (ниже разрешения
-`GetTickCount64`), а `command_state_updates`, `selection_context_builds`,
+event-driven update и затем 1 000 неизменных `OnIdle`: для BODY на обоих
+размерах и для SOURCE на 10 000 абзацев. Отчёт включает фактический `view`,
+поэтому тест не может незаметно проверить BODY вместо SOURCE. В последнем
+Release-прогоне 21 сентября 2026 года все три случая прошли: BODY показал
+`elapsed_ms=0` (ниже разрешения `GetTickCount64`), SOURCE — `elapsed_ms=15`;
+а `command_state_updates`, `selection_context_builds`,
 `toolbar_updates`, `clipboard_checks`, `check_command_calls`, все три
 selection-query и `js_com_calls` были равны нулю. `file_fingerprint_checks`
 был ограничен единицей throttle. Этот тест включён в `-FullValidation`.
@@ -89,8 +92,8 @@ diagnostic trace. Test-only harness не менял `OnIdle`: после заг�
 
 Автоматически подтверждены контракты инвалидации, throttle, clipboard
 listener, selection cache, SOURCE idle, диагностических полей P410 и
-стабильного idle на real FBE. Также получено числовое baseline/current
-сравнение неизменного BODY idle. Реальные интерактивные серии для typing,
+стабильного idle на real FBE в BODY и SOURCE. Также получено числовое
+baseline/current сравнение неизменного BODY idle. Реальные интерактивные серии для typing,
 caret navigation, BODY/SOURCE-переходов и внешнего save по протоколу выше
 остаются отдельной ручной проверкой: они зависят от конкретной книги, дисплея
 и Windows/MSHTML окружения.

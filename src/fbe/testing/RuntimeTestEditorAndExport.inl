@@ -262,6 +262,11 @@
 		// Prime the event-driven UI once, then prove that an unchanged document
 		// has no command, selection or toolbar work over a long idle streak.
 		if (!StartupTrace::Enabled()) { output.Close(); ::PostQuitMessage(1); return 0; }
+		wchar_t idleView[16] = {};
+		const DWORD idleViewLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IDLE_VIEW", idleView, _countof(idleView));
+		const bool sourceIdle = idleViewLength == 6 && std::wcscmp(idleView, L"source") == 0;
+		if (sourceIdle)
+			ShowView(SOURCE);
 		InvalidateUi(UiDirtyAll);
 		m_sel_changed = true;
 		OnIdle();
@@ -283,8 +288,8 @@
 			OnIdle();
 
 		CStringA report;
-		report.Format("idle_cycles\t%I64u\r\nelapsed_ms\t%I64u\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\nfile_fingerprint_checks\t%I64u\r\nclipboard_checks\t%I64u\r\ncheck_command_calls\t%I64u\r\nselection_container_queries\t%I64u\r\nselection_struct_con_queries\t%I64u\r\nselection_struct_table_con_queries\t%I64u\r\njs_com_calls\t%I64u\r\n",
-			g_idleProfile.count - idleBefore, ::GetTickCount64() - started,
+		report.Format("view\t%s\r\nidle_cycles\t%I64u\r\nelapsed_ms\t%I64u\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\nfile_fingerprint_checks\t%I64u\r\nclipboard_checks\t%I64u\r\ncheck_command_calls\t%I64u\r\nselection_container_queries\t%I64u\r\nselection_struct_con_queries\t%I64u\r\nselection_struct_table_con_queries\t%I64u\r\njs_com_calls\t%I64u\r\n",
+			sourceIdle ? "source" : "body", g_idleProfile.count - idleBefore, ::GetTickCount64() - started,
 			g_idleProfile.commandUpdates - commandBefore, g_idleProfile.selectionUpdates - selectionBefore,
 			g_idleProfile.toolbarUpdates - toolbarBefore, g_idleProfile.fileChecks - fileBefore,
 			g_idleProfile.clipboardChecks - clipboardBefore, StartupTrace::UiCheckCommandCount() - checkCommandBefore,
