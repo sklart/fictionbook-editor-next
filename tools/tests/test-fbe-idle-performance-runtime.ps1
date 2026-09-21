@@ -52,6 +52,7 @@ try {
         }
         if ($result.file_fingerprint_checks -gt 1) { throw "$($case.Name): throttle allowed $($result.file_fingerprint_checks) file checks in 1000 immediate idle iterations." }
         if ($result.view -ne $case.View) { throw "$($case.Name): expected view $($case.View), got $($result.view)." }
+		if ($case.View -eq 'description' -and $result.description_input_focused -ne 1) { throw "$($case.Name): tiTitle was not focused." }
         Write-Host "Idle performance runtime test passed: $($case.Name), paragraphs=$($case.Paragraphs), elapsed_ms=$($result.elapsed_ms)."
     }
 } finally {
