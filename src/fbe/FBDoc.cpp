@@ -1519,11 +1519,24 @@ static bool ShouldUseFb2SchemaValidation(FictionBookFileType type)
 	return type != FictionBookFileType::Fbd;
 }
 
+// MSXML schema collections are apartment-bound COM objects.  Keep one fully
+// populated cache per caller thread, while every SAX reader keeps its own
+// validation settings and error handler.
+static MSXML2::IXMLDOMSchemaCollection2Ptr FictionBookSchemaCacheForCurrentThread()
+{
+	thread_local MSXML2::IXMLDOMSchemaCollection2Ptr schemas;
+	if (!schemas)
+	{
+		CheckError(schemas.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
+		schemas->add(FBNS, (const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
+	}
+	return schemas;
+}
+
 static void ConfigureFictionBookSaxReader(MSXML2::ISAXXMLReaderPtr reader,
 	FictionBookFileType type, MSXML2::IXMLDOMSchemaCollection2Ptr& schemas)
 {
-	CheckError(schemas.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
-	schemas->add(FBNS, (const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
+	schemas = FictionBookSchemaCacheForCurrentThread();
 	reader->putFeature(L"schema-validation", ShouldUseFb2SchemaValidation(type) ? VARIANT_TRUE : VARIANT_FALSE);
 	reader->putProperty(L"schemas", schemas.GetInterfacePtr());
 	reader->putFeature(L"exhaustive-errors", VARIANT_TRUE);

@@ -46,6 +46,7 @@ private:
 	EditorSelectionState& m_selection;
 	IBodySourceSelectionMapper& m_selectionMapper;
 	MSXML2::IXMLDOMDocumentPtr m_savedXml;
+	SourceSerializedTextCache m_serializedSourceCache;
 	CString m_interfaceLanguage;
 	CString m_sourceEncoding;
 	bool m_memoryProfilingEnabled;

@@ -145,3 +145,20 @@ Fallback clipboard теперь запускается до ветвления B
 `medium-description` в `test-fbe-idle-performance-runtime.ps1` добавлен к
 контур 1 000 стабильных idle. Все эти контракты включены в FAST
 `verify-release.ps1`; runtime idle-сценарии остаются частью `-FullValidation`.
+
+## Phase A final interaction correction
+
+`SelectionContext` в горячем UI-пути строится из одного `SelectionContainer()`
+и одного обхода ancestors; legacy `SelectionStruct*` helpers сохранены для
+остальных вызовов. Control-range fallback для table cell остаётся редким
+специальным случаем. Clipboard notification обновляет только paste-команды,
+а `UiDirtyClipboard`, `UiDirtyStatus` и `UiDirtyToolbar` больше не запускают
+BODY/SOURCE command matrix. DESCRIPTION имеет явную ветку и не выполняет
+BODY-specific MSHTML work.
+
+Targeted Release build и контракты selection-context, UI dirty-state,
+clipboard listener и DESCRIPTION прошли. Один post-change interaction run на
+10 000 paragraphs дал `interaction_elapsed_ms=30250` и
+`command_updates=2010`; устойчивый idle остаётся покрыт прежним runtime
+контуром. Это доказательство отсутствия регрессии, а не искусственная цель по
+проценту ускорения.

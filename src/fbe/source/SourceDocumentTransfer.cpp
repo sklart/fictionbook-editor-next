@@ -31,7 +31,7 @@ SourceTransitionResult SourceDocumentTransfer::ReadSourceText(CWindow& source, S
 
 SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& document,
 	MSXML2::IXMLDOMDocumentPtr& cachedXml, const CString& encoding,
-	CString& sourceText)
+	SourceSerializedTextCache& serializedCache, CString& sourceText)
 {
 	if(document.DocRelChanged() || !(bool)cachedXml)
 	{
@@ -40,11 +40,20 @@ SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& 
 		cachedXml = candidate;
 	}
 
-	_bstr_t serialized(cachedXml->xml);
-	sourceText = static_cast<const wchar_t*>(serialized);
-	sourceText = FbeSetXmlDeclarationEncoding(
-		std::wstring(static_cast<const wchar_t*>(sourceText)),
-		std::wstring(static_cast<const wchar_t*>(encoding))).c_str();
+	const int documentType = static_cast<int>(document.GetDocumentFileType());
+	if (serializedCache.xml != cachedXml || serializedCache.encoding != encoding ||
+		serializedCache.documentType != documentType)
+	{
+		_bstr_t serialized(cachedXml->xml);
+		serializedCache.text = static_cast<const wchar_t*>(serialized);
+		serializedCache.text = FbeSetXmlDeclarationEncoding(
+			std::wstring(static_cast<const wchar_t*>(serializedCache.text)),
+			std::wstring(static_cast<const wchar_t*>(encoding))).c_str();
+		serializedCache.xml = cachedXml;
+		serializedCache.encoding = encoding;
+		serializedCache.documentType = documentType;
+	}
+	sourceText = serializedCache.text;
 	return SourceTransitionResult::Success;
 }
 

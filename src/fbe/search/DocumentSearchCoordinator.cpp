@@ -68,10 +68,7 @@ bool DocumentSearchCoordinator::Rebuild(
 	if (errorText != NULL)
 		errorText->clear();
 	m_session.SetQuery(query);
-	// The editable FB2 content consists of paragraphs in #fbw_body.  Keeping
-	// them as separate sources both excludes host metadata and preserves a
-	// readable paragraph boundary for results previews and regex matching.
-	m_snapshot = m_adapter.BuildSnapshot(document, documentGeneration);
+	EnsureSnapshot(document, documentGeneration);
 
 	std::vector<AU::Search::SearchHit> hits;
 	if (query.Mode == AU::Search::SearchMode::Literal)
@@ -134,6 +131,18 @@ bool DocumentSearchCoordinator::Rebuild(
 	m_previewMatchLengths.assign(resultCount, 0);
 	m_previewCached.assign(resultCount, false);
 	return true;
+}
+
+void DocumentSearchCoordinator::EnsureSnapshot(
+	MSHTML::IHTMLDocument2Ptr document, std::uint64_t documentGeneration)
+{
+	if (m_snapshotDocument == document && m_snapshot.DocumentGeneration == documentGeneration)
+		return;
+	// The editable FB2 content consists of paragraphs in #fbw_body. Keeping
+	// them as separate sources excludes host metadata and preserves paragraph
+	// boundaries, while query changes reuse this DOM-derived snapshot.
+	m_snapshot = m_adapter.BuildSnapshot(document, documentGeneration);
+	m_snapshotDocument = document;
 }
 
 const AU::Search::SearchTextSnapshot& DocumentSearchCoordinator::GetSnapshot() const
@@ -265,6 +274,8 @@ bool DocumentSearchCoordinator::CreateResultRange(
 
 void DocumentSearchCoordinator::Invalidate()
 {
+	m_snapshot = AU::Search::SearchTextSnapshot();
+	m_snapshotDocument = NULL;
 	m_session.Invalidate();
 	m_results.Invalidate();
 	m_previewCache.clear();

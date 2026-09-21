@@ -53,6 +53,9 @@ if($mainFrame -match 'IsFbdFile\(m_doc->m_filename\)\s*\)\s*fv=m_doc->Validate')
 if($sourceTransfer -notmatch 'TextToXML[\s\S]{0,800}GetDocumentFileType\(\)\s*==\s*FictionBookFileType::Fbd') { throw 'Source to Body must not fall back to XmlFromText after FBD structural validation fails.' }
 if($document -notmatch 'ConfigureFictionBookSaxReader\(rdr, targetType, scol\)' -or
 	$document -notmatch 'ConfigureFictionBookSaxReader\(rdr, fileType, scol\)') { throw 'XML validation policy is not shared by SaveToFile, source validation and TextToXML.' }
+if($document -notmatch 'FictionBookSchemaCacheForCurrentThread\(' -or
+	$document -notmatch 'thread_local\s+MSXML2::IXMLDOMSchemaCollection2Ptr\s+schemas' -or
+	$document -notmatch 'schemas\s*=\s*FictionBookSchemaCacheForCurrentThread\(\)') { throw 'SAX validation must reuse a schema cache within the current COM thread.' }
 if($document -notmatch 'ShouldUseFb2SchemaValidation' -or $document -notmatch 'type != FictionBookFileType::Fbd') { throw 'FBD must disable only FB2 schema validation.' }
 if($document -notmatch 'ValidateFbdDocumentStructure') { throw 'FBD structural validator is missing.' }
 if($document -notmatch 'rootName\.Compare\(L"FictionBook"\)' -or $document -notmatch 'root->namespaceURI' -or $document -notmatch 'descriptions != 1') { throw 'FBD structural validator must check root, namespace and exactly one description.' }

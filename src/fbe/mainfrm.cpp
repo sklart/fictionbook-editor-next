@@ -1314,13 +1314,36 @@ void CMainFrame::RebuildSelectionContext()
 	m_selection_context.Invalidate();
 	try
 	{
+		// The command-update path used to call seven SelectionStruct* helpers.
+		// Each helper starts from SelectionContainer(), so one caret event made
+		// several equivalent MSHTML range queries and parent walks.  Keep those
+		// public helpers for their other callers, but build this short-lived UI
+		// snapshot from one range/container query and one ancestor traversal.
 		m_selection_context.container = m_doc->m_body.SelectionContainer();
-		m_selection_context.structuralContainer = m_doc->m_body.SelectionStructCon();
-		m_selection_context.image = m_doc->m_body.SelectionStructImage();
-		m_selection_context.section = m_doc->m_body.SelectionStructSection();
-		m_selection_context.table = m_doc->m_body.SelectionStructTable();
-		m_selection_context.tableCell = m_doc->m_body.SelectionStructTableCon();
-		m_selection_context.anchor = m_doc->m_body.SelectionAnchor();
+		for (MSHTML::IHTMLElementPtr current(m_selection_context.container); current; current = current->parentElement)
+		{
+			const _bstr_t tagName(current->tagName);
+			const _bstr_t className(current->className);
+			if (!m_selection_context.structuralContainer &&
+				(U::scmp(tagName, L"P") == 0 || U::scmp(tagName, L"DIV") == 0))
+				m_selection_context.structuralContainer = current;
+			if (!m_selection_context.image && U::scmp(className, L"image") == 0 && U::scmp(tagName, L"SPAN") != 0)
+				m_selection_context.image = current;
+			if (!m_selection_context.section && U::scmp(className, L"section") == 0)
+				m_selection_context.section = current;
+			if (!m_selection_context.table && U::scmp(className, L"table") == 0)
+				m_selection_context.table = current;
+			if (!m_selection_context.tableCell && (U::scmp(className, L"th") == 0 || U::scmp(className, L"td") == 0))
+				m_selection_context.tableCell = current;
+			if (!m_selection_context.anchor &&
+				(U::scmp(tagName, L"A") == 0 ||
+					((U::scmp(tagName, L"DIV") == 0 || U::scmp(tagName, L"SPAN") == 0) && U::scmp(className, L"image") == 0)))
+				m_selection_context.anchor = current;
+		}
+		// Preserve SelectionStructTableCon's control-range fallback; ordinary
+		// text selections never reach it, so the common path remains one query.
+		if (!m_selection_context.tableCell)
+			m_selection_context.tableCell = m_doc->m_body.SelectionStructTableCon();
 		m_selection_context.valid = true;
 		if (StartupTrace::Enabled()) ++g_idleProfile.selectionUpdates;
 	}
@@ -1358,7 +1381,7 @@ BOOL CMainFrame::OnIdle()
 	const ULONGLONG commandStarted = profileIdle ? ::GetTickCount64() : 0;
 	if (IsSourceActive())
 	{
-		if ((m_ui_dirty & (UiDirtySource | UiDirtyView | UiDirtyClipboard | UiDirtyToolbar | UiDirtyStatus)) != UiDirtyNone)
+		if ((m_ui_dirty & (UiDirtySource | UiDirtyView)) != UiDirtyNone)
 		{
 		const ULONGLONG sourceStarted = profileIdle ? ::GetTickCount64() : 0;
 		if (profileIdle) ++g_idleProfile.sourceUpdates;
@@ -1442,10 +1465,11 @@ BOOL CMainFrame::OnIdle()
 		if (profileIdle) g_idleProfile.sourceMilliseconds += ::GetTickCount64() - sourceStarted;
 		}
 	}
-	// BODY view
-	else
+	// BODY-specific command status.  DESCRIPTION has its own form events and
+	// must not fall through into the MSHTML BODY command matrix.
+	else if (m_editor_view_state.Current() == BODY)
 	{
-		if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView | UiDirtyClipboard | UiDirtyToolbar | UiDirtyStatus)) != UiDirtyNone)
+		if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone)
 		{
 		if (profileIdle) ++g_idleProfile.commandUpdates;
 		// check if editing commands can be performed
@@ -2817,9 +2841,8 @@ LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 LRESULT CMainFrame::OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&)
 {
 	RefreshClipboardState();
+	UpdateClipboardCommands();
 	InvalidateUi(UiDirtyClipboard | UiDirtyToolbar);
-	if (m_doc && !IsSourceActive())
-		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
 	return 0;
 }
 
@@ -5586,6 +5609,21 @@ bool CMainFrame::RefreshClipboardState()
 	return previous != m_clipboard_has_bitmap;
 }
 
+void CMainFrame::UpdateClipboardCommands()
+{
+	if (!m_doc) return;
+	if (IsSourceActive())
+	{
+		const bool canPaste = m_source.SendMessage(SCI_CANPASTE) != 0;
+		UIEnable(ID_EDIT_PASTE, canPaste);
+		UIEnable(ID_EDIT_PASTE2, canPaste);
+	}
+	else if (m_editor_view_state.Current() == BODY)
+	{
+		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
+	}
+}
+
 void CMainFrame::RefreshClipboardStateFallbackIfDue()
 {
 	if (m_clipboard_listener_registered)
@@ -5597,7 +5635,10 @@ void CMainFrame::RefreshClipboardStateFallbackIfDue()
 	m_last_clipboard_fallback_check = now;
 	if (StartupTrace::Enabled()) ++g_idleProfile.clipboardChecks;
 	if (RefreshClipboardState())
+	{
+		UpdateClipboardCommands();
 		InvalidateUi(UiDirtyClipboard | UiDirtyToolbar);
+	}
 }
 
 bool CMainFrame::CheckFileTimeStampIfDue()

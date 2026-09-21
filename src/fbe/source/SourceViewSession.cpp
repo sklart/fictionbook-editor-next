@@ -73,7 +73,7 @@ EditorSourceOperationResult SourceViewSession::PrepareSourceDocument(EditorView 
 	const bool transferBodySelection = previous == EditorView::Body;
 	CString sourceText;
 	if(SourceDocumentTransfer::PrepareSerializedSource(*m_document, m_savedXml,
-		m_sourceEncoding, sourceText) != SourceTransitionResult::Success)
+		m_sourceEncoding, m_serializedSourceCache, sourceText) != SourceTransitionResult::Success)
 		return EditorSourceOperationResult::Failed;
 	if(phaseProfiler) phaseProfiler->Mark("serialized source preparation");
 	if(m_document->DocRelChanged())

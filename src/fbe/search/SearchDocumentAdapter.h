@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #include "SearchTextSnapshot.h"
@@ -53,4 +54,6 @@ private:
 	const SourceRange* FindSource(MSHTML::IHTMLElementPtr element) const;
 
 	std::vector<SourceRange> m_sources;
+	std::unordered_map<std::uint64_t, std::size_t> m_sourceIdIndexes;
+	std::unordered_map<long, std::size_t> m_sourceElementIndexes;
 };

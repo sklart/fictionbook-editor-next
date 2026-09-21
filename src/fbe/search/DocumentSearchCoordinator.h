@@ -76,8 +76,11 @@ public:
 		AU::Search::SearchRange* searchRange) const;
 
 private:
+	void EnsureSnapshot(MSHTML::IHTMLDocument2Ptr document, std::uint64_t documentGeneration);
+
 	SearchDocumentAdapter m_adapter;
 	AU::Search::SearchTextSnapshot m_snapshot;
+	MSHTML::IHTMLDocument2Ptr m_snapshotDocument;
 	AU::Search::SearchSession m_session;
 	AU::Search::SearchResults m_results;
 	mutable std::vector<std::wstring> m_previewCache;

@@ -1062,6 +1062,7 @@ public:
 	bool CheckFileTimeStamp();
 	bool CheckFileTimeStampIfDue();
 	bool RefreshClipboardState();
+	void UpdateClipboardCommands();
 	void RefreshClipboardStateFallbackIfDue();
 	bool ReloadFile();
 	void UpdateFileTimeStamp();

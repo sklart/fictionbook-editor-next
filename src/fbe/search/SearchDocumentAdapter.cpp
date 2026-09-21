@@ -149,6 +149,8 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 	std::uint64_t documentGeneration)
 {
 	m_sources.clear();
+	m_sourceIdIndexes.clear();
+	m_sourceElementIndexes.clear();
 	AU::Search::SearchTextSnapshotBuilder builder(documentGeneration);
 	if (!document || !document->body)
 		return builder.Build();
@@ -180,6 +182,9 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 
 		const std::uint64_t sourceId = nextSourceId++;
 		m_sources.push_back({ sourceId, element });
+		const std::size_t sourceIndex = m_sources.size() - 1;
+		m_sourceIdIndexes[sourceId] = sourceIndex;
+		m_sourceElementIndexes[element->sourceIndex] = sourceIndex;
 		builder.Append(
 			std::wstring(static_cast<LPCWSTR>(paragraphText), paragraphText.GetLength()),
 			{ sourceId, 0 });
@@ -193,6 +198,8 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildBodySnapshot(
 	std::uint64_t documentGeneration)
 {
 	m_sources.clear();
+	m_sourceIdIndexes.clear();
+	m_sourceElementIndexes.clear();
 	AU::Search::SearchTextSnapshotBuilder builder(documentGeneration);
 	if (!document || !document->body)
 		return builder.Build();
@@ -209,6 +216,8 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildBodySnapshot(
 	CString text(static_cast<LPCWSTR>(rangeText));
 	const std::uint64_t sourceId = 1;
 	m_sources.push_back({ sourceId, searchRoot });
+	m_sourceIdIndexes[sourceId] = 0;
+	m_sourceElementIndexes[searchRoot->sourceIndex] = 0;
 	builder.Append(
 		std::wstring(static_cast<LPCWSTR>(text), text.GetLength()),
 		{ sourceId, 0 });
@@ -337,23 +346,14 @@ bool SearchDocumentAdapter::TryGetSearchOffset(
 
 const SearchDocumentAdapter::SourceRange* SearchDocumentAdapter::FindSource(std::uint64_t id) const
 {
-	for (std::size_t index = 0; index < m_sources.size(); ++index)
-	{
-		if (m_sources[index].Id == id)
-			return &m_sources[index];
-	}
-	return NULL;
+	const auto found = m_sourceIdIndexes.find(id);
+	return found == m_sourceIdIndexes.end() ? NULL : &m_sources[found->second];
 }
 
 const SearchDocumentAdapter::SourceRange* SearchDocumentAdapter::FindSource(MSHTML::IHTMLElementPtr element) const
 {
 	if (!element)
 		return NULL;
-	const long sourceIndex = element->sourceIndex;
-	for (std::size_t index = 0; index < m_sources.size(); ++index)
-	{
-		if (m_sources[index].Element && m_sources[index].Element->sourceIndex == sourceIndex)
-			return &m_sources[index];
-	}
-	return NULL;
+	const auto found = m_sourceElementIndexes.find(element->sourceIndex);
+	return found == m_sourceElementIndexes.end() ? NULL : &m_sources[found->second];
 }

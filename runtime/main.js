@@ -1109,9 +1109,15 @@ function SaveImage(source)
   }
 }
 
+var xsltTemplateCache = {};
 function LoadXSL(path, lang)
 {
 	TraceScript("J400", "operation=LoadXSL");
+	var cacheKey = path + "\n" + lang;
+	if (xsltTemplateCache[cacheKey]) {
+		TraceScript("J405", "operation=LoadXSL cache-hit");
+		return xsltTemplateCache[cacheKey];
+	}
 	TraceScript("J410", "operation=create XSLTemplate");
 	var xslt = new ActiveXObject("Msxml2.XSLTemplate.6.0");
 	TraceScript("J420", "operation=create FreeThreadedDOMDocument");
@@ -1162,6 +1168,7 @@ function LoadXSL(path, lang)
 	if(lang == "ukrainian") href.nodeValue = "ukr.xsl";
 	TraceScript("J480", "operation=stylesheet assignment");
 	xslt.stylesheet = xsl;
+	xsltTemplateCache[cacheKey] = xslt;
 	TraceScript("J499", "operation=LoadXSL success");
 	return xslt;
 }

@@ -20,4 +20,5 @@ $idleEnd = $frame.IndexOf('void CMainFrame::AddTbButton', $idleStart)
 $idle = $frame.Substring($idleStart, $idleEnd - $idleStart)
 if($idle.IndexOf('if(m_need_title_update)', [StringComparison]::Ordinal) -lt 0) { throw 'Title update must be event-driven.' }
 if($idle.IndexOf('m_change_state != DocChanged()', [StringComparison]::Ordinal) -ge 0) { throw 'Stable idle must not poll IsFormChanged through DocChanged().' }
+if($idle.IndexOf('else if (m_editor_view_state.Current() == BODY)', [StringComparison]::Ordinal) -lt 0) { throw 'DESCRIPTION must not fall through to BODY command-state work.' }
 Write-Host 'Description idle contract passed.'

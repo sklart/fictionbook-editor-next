@@ -36,7 +36,7 @@ try {
     # main.js contains localized strings.  UTF-16 with BOM is the deterministic
     # input format for cscript.exe and avoids depending on the active ANSI page.
     $runnerScript = @'
-var timerId=0, timers={}, clearedTimers=[], messages=[], previewCalls=[], fullCalls=[];
+var timerId=0, timers={}, clearedTimers=[], messages=[], previewCalls=[], fullCalls=[], xslTemplateCreates=0, xslDomCreates=0;
 function assert(condition, message) { if(!condition) { WScript.Echo("FAIL: "+message); WScript.Quit(1); } }
 function element(id) { return { id:id, style:{}, src:"", width:0, height:0, innerHTML:"", innerText:"", className:"", children:[], all:{}, appendChild:function(child){ this.children.push(child); child.parentElement=this; }, insertAdjacentElement:function(where, child){ this.inserted=child; child.parentElement=this; }, removeNode:function(){ if(this.collection) for(var n=0;n<this.collection.length;n++) if(this.collection[n]===this) { this.collection.splice(n,1); break; } } }; }
 var elements={};
@@ -63,8 +63,9 @@ var event={srcElement:{offsetHeight:20},clientX:400,clientY:300};
 var xslScenario="missing";
 function ActiveXObject(name) {
   if(name=="Msxml2.DOMDocument.6.0") return { async:false, preserveWhiteSpace:false, parseError:{errorCode:0}, firstChild:null, load:function(){ if(xslScenario=="valid") this.firstChild={attributes:{getNamedItem:function(name){return name=="encoding" ? {text:"utf-8"} : null;}}}; return true;}, setProperty:function(){}, selectSingleNode:function(){return null;} };
-  if(name=="Msxml2.XSLTemplate.6.0") return { stylesheet:null, createProcessor:function(){return { input:null, output:"", setStartMode:function(mode){this.mode=mode;}, transform:function(){this.output=this.mode=="description" ? "RECOVERED DESCRIPTION" : "RECOVERED BODY";} };} };
+  if(name=="Msxml2.XSLTemplate.6.0") { xslTemplateCreates++; return { stylesheet:null, createProcessor:function(){return { input:null, output:"", setStartMode:function(mode){this.mode=mode;}, transform:function(){this.output=this.mode=="description" ? "RECOVERED DESCRIPTION" : "RECOVERED BODY";} };} }; }
   if(name=="Msxml2.FreeThreadedDOMDocument.6.0") {
+	  xslDomCreates++;
     var xsl={ async:false, parseError:{errorCode:0,reason:"",line:0,linepos:0}, documentElement:null, setProperty:function(){}, load:function(){
       if(xslScenario=="missing") { this.parseError={errorCode:1,reason:"XSL file not found",line:0,linepos:0}; return false; }
       if(xslScenario=="broken") { this.parseError={errorCode:2,reason:"Malformed XSL",line:7,linepos:3}; return false; }
@@ -154,6 +155,16 @@ assert(apiLoadFB2("valid.fb2", "english")=="utf-8", "a valid document returns it
 assert(messages.length==0, "a valid document after XSL recovery reports no error");
 assert(elements.css.href=="main.css", "a valid document after XSL recovery keeps CSS restored");
 assert(elements.fbw_body.innerHTML=="RECOVERED BODY" && elements.fbw_desc.innerHTML=="RECOVERED DESCRIPTION", "a valid document after XSL recovery replaces the editor DOM");
+
+// A successful template is immutable after assignment.  Reuse it only for the
+// same stylesheet path and language; another language receives its own DOM and
+// template.
+xslScenario="valid"; xslTemplateCreates=0; xslDomCreates=0; xsltTemplateCache={};
+var englishFirst=LoadXSL("C:\\styles\\fb2.xsl", "english");
+var englishSecond=LoadXSL("C:\\styles\\fb2.xsl", "english");
+var russian=LoadXSL("C:\\styles\\fb2.xsl", "russian");
+assert(englishFirst===englishSecond && englishFirst!==russian, "XSL cache is keyed by stylesheet path and language");
+assert(xslTemplateCreates==2 && xslDomCreates==2, "XSL cache builds each path/language template once");
 WScript.Echo("main.js behavioral reliability test passed.");
 '@
     [IO.File]::WriteAllText($runner, $runnerScript, [Text.Encoding]::Unicode)

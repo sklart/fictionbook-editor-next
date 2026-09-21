@@ -26,6 +26,17 @@ struct SourceDocumentText
 	bool caret = true;
 };
 
+// Keeps the expensive XML text projection separate from the DOM snapshot.
+// The DOM pointer changes for every document mutation; encoding is the other
+// part of the serialized representation key.
+struct SourceSerializedTextCache
+{
+	MSXML2::IXMLDOMDocumentPtr xml;
+	CString encoding;
+	int documentType = -1;
+	CString text;
+};
+
 // Details for the coordinator to present an existing validation error without
 // coupling conversion code to a frame, window, or dialog implementation.
 struct SourceDocumentApplyResult
@@ -47,7 +58,7 @@ public:
 	static SourceTransitionResult ReadSourceText(CWindow& source, SourceDocumentText& result);
 	static SourceTransitionResult PrepareSerializedSource(FB::Doc& document,
 		MSXML2::IXMLDOMDocumentPtr& cachedXml, const CString& encoding,
-		CString& sourceText);
+		SourceSerializedTextCache& serializedCache, CString& sourceText);
 	static SourceDocumentApplyResult ApplySourceDocument(FB::Doc& document,
 		const SourceDocumentText& source, bool sourceChanged,
 		MSXML2::IXMLDOMDocumentPtr& cachedXml, const CString& interfaceLanguage);
