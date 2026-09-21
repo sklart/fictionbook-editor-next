@@ -2893,39 +2893,6 @@ function EscapeBlockImageAttribute(value)
  return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
-// Test-only phase recorder for the real InsImage route.  It is inert unless
-// RuntimeTestEditorAndExport explicitly enables it.
-function FbeImageUndoProbeTrace(phase)
-{
- try
- {
-  if(!window.fbeImageUndoProbeEnabled) return;
-  if(!window.fbeImageUndoProbeEvents) window.fbeImageUndoProbeEvents=[];
-  var eventText="scenario="+(window.fbeImageUndoProbeScenario||"")+";attempt="+(window.fbeImageUndoProbeAttempt||"")+";phase="+phase;
-  window.fbeImageUndoProbeEvents.push(eventText);
-  window.external.TraceScript("IMGUNDO",eventText);
- }
- catch(ignore) {}
-}
-
-function FbeImageUndoProbeTraceError(phase,error)
-{
- try
- {
-  if(!window.fbeImageUndoProbeEnabled) return;
-  if(!window.fbeImageUndoProbeEvents) window.fbeImageUndoProbeEvents=[];
-  var eventText="scenario="+(window.fbeImageUndoProbeScenario||"")+";attempt="+(window.fbeImageUndoProbeAttempt||"")+";phase="+phase+";error.number="+(error&&error.number)+";error.description="+(error&&error.description)+";error.message="+(error&&error.message);
-  window.fbeImageUndoProbeEvents.push(eventText);
-  window.external.TraceScript("IMGUNDO",eventText);
- }
- catch(ignore) {}
-}
-
-function FbeImageUndoProbeTraceGet()
-{
- return window.fbeImageUndoProbeEvents ? window.fbeImageUndoProbeEvents.join("|") : "";
-}
-
 function BlockImageHTML(id)
 {
  var imageId=id=="" ? "undefined" : id;
@@ -2981,66 +2948,49 @@ function InsImage(check, id)
  var cleanupError=null;
  try
  {
-  FbeImageUndoProbeTrace("BeginUndoUnit");
   window.external.BeginUndoUnit(document,"insert image");
   undoStarted=true;
-  FbeImageUndoProbeTrace("read-left-right-text");
   var leftText=left.text;
   var rightText=right.text;
   if(leftText==null || leftText=="")
   {
-   FbeImageUndoProbeTrace("insert-image-beforeBegin");
    paragraph.insertAdjacentHTML("beforeBegin",imageHtml);
-   FbeImageUndoProbeTrace("get-inserted-beforeBegin");
    inserted=paragraph.previousSibling;
    caretParagraph=paragraph;
   }
   else if(rightText==null || rightText=="")
   {
-   FbeImageUndoProbeTrace("insert-image-afterEnd");
    paragraph.insertAdjacentHTML("afterEnd",imageHtml);
-   FbeImageUndoProbeTrace("get-inserted-afterEnd");
    inserted=paragraph.nextSibling;
   }
  else
  {
-   FbeImageUndoProbeTrace("cloneNode-right-paragraph");
    var rightPart=paragraph.cloneNode(false);
    if(rightPart.id) rightPart.removeAttribute("id");
-   FbeImageUndoProbeTrace("set-left-innerHTML");
    paragraph.innerHTML=leftHTML;
-   FbeImageUndoProbeTrace("set-right-innerHTML");
    rightPart.innerHTML=rightHTML;
-   FbeImageUndoProbeTrace("InflateIt-left");
    InflateIt(paragraph);
-   FbeImageUndoProbeTrace("InflateIt-right");
    InflateIt(rightPart);
-   FbeImageUndoProbeTrace("insert-image-afterEnd-split");
    paragraph.insertAdjacentHTML("afterEnd",imageHtml);
-   FbeImageUndoProbeTrace("get-inserted-split");
    inserted=paragraph.nextSibling;
-   FbeImageUndoProbeTrace("insert-right-paragraph");
    inserted.insertAdjacentElement("afterEnd",rightPart);
-   FbeImageUndoProbeTrace("restore-caret-right-paragraph");
    MoveCaretToParagraphStart(rightPart);
   }
  }
  catch(error)
  {
   operationError=error;
-  FbeImageUndoProbeTraceError("operation",error);
   throw error;
  }
  finally
  {
   try
   {
-   if(undoStarted) { FbeImageUndoProbeTrace("EndUndoUnit"); window.external.EndUndoUnit(document); }
+   if(undoStarted) window.external.EndUndoUnit(document);
   }
   catch(error)
   {
    cleanupError=error;
-   FbeImageUndoProbeTraceError("EndUndoUnit",error);
   }
   if(!operationError && cleanupError) throw cleanupError;
  }
@@ -3048,84 +2998,6 @@ function InsImage(check, id)
  return inserted;
 }
 
-// Test-only baseline for undo bisection.  Keep this algorithm textually close
-// to the corrected FBE 2.8.5 implementation; production continues to use
-// InsImage above.
-function InsImageLegacyExact(check, id)
-{
- var rng=document.selection.createRange();
- if(!rng || !("compareEndPoints" in rng)) return;
- if(rng.compareEndPoints("StartToEnd",rng)!=0)
- {
-  rng.collapse(true); if(rng.move("character",1)==1) rng.move("character",-1);
- }
- var cp=rng.parentElement();
- var pp=cp;
- while(pp && pp.tagName!="P") pp=pp.parentElement;
- var pe=cp;
- while(pe && (pe.tagName!="DIV" || pe.className!="section")) pe=pe.parentElement;
- if(!pe || !pp) return;
- var owner=pp.parentElement;
- while(owner && owner.tagName!="DIV") owner=owner.parentElement;
- if(!owner || owner.sourceIndex!=pe.sourceIndex) return;
- if(check) return true;
- var ht=(id==null || id=="") ? imgcode : "<DIV onresizestart='return false' contentEditable='false' class='image' href='#"+id+"'><IMG src='fbw-internal:#"+id+"'></DIV>";
- var whole=document.body.createTextRange();
- whole.moveToElementText(pp);
- var left=whole.duplicate(); left.setEndPoint("EndToStart",rng);
- var right=whole.duplicate(); right.setEndPoint("StartToEnd",rng);
- window.external.BeginUndoUnit(document,"insert image");
- var leftText=left.text;
- var rightText=right.text;
- if(leftText==null || leftText=="")
- {
-  pp.insertAdjacentHTML("beforeBegin",ht);
-  window.external.EndUndoUnit(document);
-  if(window.fbeLegacyExactSuppressReturn) return;
-  return pp.previousSibling;
- }
- if(rightText==null || rightText=="")
- {
-  pp.insertAdjacentHTML("afterEnd",ht);
-  window.external.EndUndoUnit(document);
-  if(window.fbeLegacyExactSuppressReturn) return;
-  return pp.nextSibling;
- }
- var leftHTML=left.htmlText;
- var rightHTML=right.htmlText;
- var rp=pp.cloneNode(false);
- if(rp.id) rp.removeAttribute("id");
- pp.innerHTML=leftHTML;
- rp.innerHTML=rightHTML;
- InflateIt(pp);
- InflateIt(rp);
- pp.insertAdjacentHTML("afterEnd",ht);
- var image=pp.nextSibling;
- image.insertAdjacentElement("afterEnd",rp);
- var nr=document.body.createTextRange();
- nr.moveToElementText(rp);
- nr.collapse(true);
- nr.select();
- window.external.EndUndoUnit(document);
- if(window.fbeLegacyExactSuppressReturn) return;
- return image;
-}
-// Test-only compilation/lifetime probe. These functions are independent from
-// InsImage and are called only by the image-undo runtime test harness.
-function FbeCompileStaticMainJsBlockProbe(){var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'compile probe');p.insertAdjacentHTML('beforeBegin',"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>");window.external.EndUndoUnit(document);}
-
-function FbeCompileStaticWrapperBlockProbe()
-{
- FbeCompileDynamicImplementationBlockProbe();
-}
-
-function FbeCompileProbeFingerprint(name)
-{
- var fn=window[name], source=fn ? String(fn) : "", normalized=source.replace(/^function[ \t]+[^\(]+/,"function <name>"), hash=2166136261, normalizedHash=2166136261, i;
- for(i=0;i<source.length;i++) hash=((hash^source.charCodeAt(i))*16777619)>>>0;
- for(i=0;i<normalized.length;i++) normalizedHash=((normalizedHash^normalized.charCodeAt(i))*16777619)>>>0;
- return source.length+":"+hash.toString(16)+":"+normalized.length+":"+normalizedHash.toString(16);
-}
 //-----------------------------------------------
 
 var inlineimgcode="<SPAN onresizestart='return false' contentEditable='false' class='image' href='#undefined'><IMG src='fbw-internal:#undefined'></SPAN>";

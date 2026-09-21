@@ -240,7 +240,7 @@
 			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=api-add-binary"); output.Close(); ::PostQuitMessage(1); return 0; }
 			appendProbePhase(probe == L"binary-fill" ? "fill-cover-list-complete" : "api-add-binary-complete");
 		}
-		else if (probe == L"image" || probe == L"image-inline" || probe == L"image-start" || probe == L"image-end" || probe == L"image-middle" || probe == L"image-legacy-exact-start" || probe == L"image-legacy-exact-noreturn-start" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start")
+		else if (probe == L"image" || probe == L"image-inline" || probe == L"image-start" || probe == L"image-end" || probe == L"image-middle" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start")
 		{
 			wchar_t existingId[256] = {};
 			const DWORD existingIdLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_BINARY_ID", existingId, _countof(existingId));
@@ -249,16 +249,7 @@
 			_variant_t check(false), inserted, id(existingId);
 			appendProbePhase("image-insert-start");
 			if (probe == L"image-discard-start") hr = script.Invoke2(L"InsImage", &check, &id, NULL);
-			else
-			{
-				if (probe == L"image-legacy-exact-noreturn-start")
-				{
-					MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
-					hr = window ? window->execScript(_bstr_t(L"window.fbeLegacyExactSuppressReturn=true;"), _bstr_t(L"JScript")) : E_NOINTERFACE;
-				}
-				if (SUCCEEDED(hr)) hr = script.Invoke2(probe == L"image-inline" ? L"InsInlineImage" : ((probe == L"image-legacy-exact-start" || probe == L"image-legacy-exact-noreturn-start") ? L"InsImageLegacyExact" : L"InsImage"), &check, &id, &inserted);
-				if (probe == L"image-legacy-exact-noreturn-start") { MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow); if (window) window->execScript(_bstr_t(L"window.fbeLegacyExactSuppressReturn=false;"), _bstr_t(L"JScript")); }
-			}
+			else hr = script.Invoke2(probe == L"image-inline" ? L"InsInlineImage" : L"InsImage", &check, &id, &inserted);
 			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=image-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
 			if (probe == L"image-clear-start") { inserted.Clear(); appendProbePhase("image-result-cleared"); }
 			else if (probe == L"image-inspect-release-start")
@@ -339,39 +330,6 @@
 			operations.Format("bisect-operations;normalize=%d;whole=%d;move-to-element=%d;duplicate=%d;set-end-point=%d;read-text=%d;insert=%S", normalize, useWhole, moveToElement, duplicate, setEndPoint, readText, probe == L"fbe285-bisect-no-whole-unconditional" ? L"unconditional" : (probe == L"fbe285-bisect-no-whole-if-true" ? L"if-true" : L"if-at-start"));
 			appendProbePhase(operations);
 			appendProbePhase("bisect-insert-complete");
-		}
-		else if (probe == L"compile-mainjs" || probe == L"compile-inline" || probe == L"compile-dynamic-load" || probe == L"compile-dynamic-documentcomplete" || probe == L"compile-static-wrapper")
-		{
-			if (!selectParagraphPosition(L"start")) { appendProbePhase("probe-failed;reason=selection"); output.Close(); ::PostQuitMessage(1); return 0; }
-			MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
-			if (!window) { appendProbePhase("probe-failed;reason=window"); output.Close(); ::PostQuitMessage(1); return 0; }
-			const wchar_t* functionName = probe == L"compile-mainjs" ? L"FbeCompileStaticMainJsBlockProbe" :
-				(probe == L"compile-inline" ? L"FbeCompileInlineMainHtmlBlockProbe" :
-				(probe == L"compile-dynamic-load" ? L"FbeCompileDynamicLoadBlockProbe" :
-				(probe == L"compile-dynamic-documentcomplete" ? L"FbeCompileDynamicDocumentCompleteBlockProbe" : L"FbeCompileStaticWrapperBlockProbe")));
-			if (probe == L"compile-dynamic-documentcomplete" || probe == L"compile-static-wrapper")
-			{
-				const wchar_t* dynamicName = probe == L"compile-dynamic-documentcomplete" ? L"FbeCompileDynamicDocumentCompleteBlockProbe" : L"FbeCompileDynamicImplementationBlockProbe";
-				CStringW dynamicScript;
-				dynamicScript.Format(L"function %s(){var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'compile probe');p.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");window.external.EndUndoUnit(document);}", dynamicName);
-				appendProbePhase("dynamic-register-after-document-complete-start");
-				hr = window->execScript(_bstr_t(dynamicScript), _bstr_t(L"JScript"));
-				if (FAILED(hr)) { appendProbePhase("probe-failed;phase=dynamic-register"); output.Close(); ::PostQuitMessage(1); return 0; }
-				appendProbePhase("dynamic-register-after-document-complete-complete");
-			}
-			const wchar_t* fingerprintNames[] = { L"FbeCompileStaticMainJsBlockProbe", L"FbeCompileInlineMainHtmlBlockProbe", L"FbeCompileDynamicLoadBlockProbe", L"FbeCompileDynamicDocumentCompleteBlockProbe", L"FbeCompileStaticWrapperBlockProbe", L"FbeCompileDynamicImplementationBlockProbe" };
-			for (const wchar_t* fingerprintName : fingerprintNames)
-			{
-				_variant_t name(fingerprintName), fingerprint;
-				if (SUCCEEDED(script.Invoke1(L"FbeCompileProbeFingerprint", &name, &fingerprint)) && V_VT(&fingerprint) == VT_BSTR)
-				{
-					CStringA phase; phase.Format("function-fingerprint;name=%S;source=%S", fingerprintName, static_cast<const wchar_t*>(_bstr_t(fingerprint))); appendProbePhase(phase);
-				}
-			}
-			appendProbePhase("compile-insert-start");
-			hr = script.Invoke0(functionName);
-			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=compile-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
-			appendProbePhase("compile-insert-complete");
 		}
 		else if (probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-after" || probe == L"plain-block-auto" || probe == L"plain-block-markup" || probe == L"plain-block-custom" || probe == L"plain-block-adjacent-html" || probe == L"plain-block-adjacent-html-after" || probe == L"plain-block-adjacent-html-image" || probe == L"plain-block-adjacent-html-image-after" || probe == L"plain-block-range-html" || probe == L"plain-block-range-html-after" || probe == L"fbe285-start" || probe == L"fbe285-end" || probe == L"fbe285-middle" || probe == L"fbe285-return-hold-start" || probe == L"fbe285-dispatch-full-start" || probe == L"fbe285-dispatch-full-invoke2-start" || probe == L"fbe285-dispatch-dom-start" || probe == L"fbe285-exec-full-start" || probe == L"fbe285-exec-split-start")
 		{
@@ -512,7 +470,7 @@
 				MSHTML::IHTMLBodyElementPtr freshBody(freshDocument ? freshDocument->body : MSHTML::IHTMLBodyElementPtr());
 				const long count = blockImageCountFor(freshBody); CStringA phase; phase.Format("fresh-body-count=%ld", count); appendProbePhase(phase);
 			}
-			if (probe.Left(14) != L"fbe285-bisect-" && (probe == L"image" || probe == L"image-start" || probe == L"image-end" || probe == L"image-middle" || probe == L"image-legacy-exact-start" || probe == L"image-legacy-exact-noreturn-start" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start" || probe == L"call-insimage-empty" || probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto" || probe.Left(8) == L"compile-") && blockImageCount() != 0)
+			if (probe.Left(14) != L"fbe285-bisect-" && (probe == L"image" || probe == L"image-start" || probe == L"image-end" || probe == L"image-middle" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start" || probe == L"call-insimage-empty" || probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto") && blockImageCount() != 0)
 			{
 				appendProbePhase("probe-failed;phase=undo;reason=image-remained"); output.Close(); ::PostQuitMessage(1); return 0;
 			}
@@ -661,41 +619,8 @@
 		}
 		wchar_t inlineMode[2] = {};
 		const bool inlineImage = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_INLINE", inlineMode, _countof(inlineMode)) != 1 || inlineMode[0] != L'0';
-		wchar_t phaseTraceMode[2] = {};
-		const bool phaseTrace = !inlineImage && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_PHASE_TRACE", phaseTraceMode, _countof(phaseTraceMode)) == 1 && phaseTraceMode[0] == L'1';
-		wchar_t phaseTraceRepeatMode[2] = {};
-		const bool phaseTraceRepeat = phaseTrace && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_PHASE_TRACE_REPEAT", phaseTraceRepeatMode, _countof(phaseTraceRepeatMode)) == 1 && phaseTraceRepeatMode[0] == L'1';
-		MSHTML::IHTMLWindow2Ptr traceWindow(m_doc->m_body.Document()->parentWindow);
-		if (phaseTrace)
-		{
-			const HRESULT traceEnableHr = traceWindow ? traceWindow->execScript(_bstr_t(L"window.fbeImageUndoProbeEnabled=true;window.fbeImageUndoProbeEvents=[];window.fbeImageUndoProbeScenario='production-add-image-start';window.fbeImageUndoProbeAttempt=1;"), _bstr_t(L"JScript")) : E_NOINTERFACE;
-			if (FAILED(traceEnableHr)) { appendImportPhase("import-failed;phase=trace-enable"); output.Close(); ::PostQuitMessage(1); return 0; }
-		}
 		m_doc->m_body.AddImage(imagePath, inlineImage);
 		appendImportPhase("import-complete");
-		if (phaseTrace && phaseTraceRepeat)
-		{
-			for (int cycle = 0; cycle < 5; ++cycle)
-			{
-				BOOL handled = FALSE;
-				m_doc->m_body.SetFocus(); appendImportPhase("trace-undo-start"); m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); appendImportPhase("trace-undo-complete");
-				m_doc->m_body.SetFocus(); appendImportPhase("trace-redo-start"); m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); appendImportPhase("trace-redo-complete");
-			}
-			HRESULT traceRepeatHr = S_OK;
-			for (int attempt = 2; attempt <= 6 && SUCCEEDED(traceRepeatHr); ++attempt)
-			{
-				CStringW traceSetup; traceSetup.Format(L"window.fbeImageUndoProbeScenario='production-add-image-repeat';window.fbeImageUndoProbeAttempt=%d;", attempt);
-				traceRepeatHr = traceWindow ? traceWindow->execScript(_bstr_t(traceSetup), _bstr_t(L"JScript")) : E_NOINTERFACE;
-				if (SUCCEEDED(traceRepeatHr)) { appendImportPhase("trace-repeat-insert-start"); m_doc->m_body.AddImage(imagePath, false); appendImportPhase("trace-repeat-insert-complete"); }
-			}
-			CComDispatchDriver traceScript(m_doc->m_body.Script()); _variant_t trace;
-			if (SUCCEEDED(traceRepeatHr) && SUCCEEDED(traceScript.Invoke0(L"FbeImageUndoProbeTraceGet", &trace)) && V_VT(&trace) == VT_BSTR)
-			{
-				CStringA phase; phase.Format("image-phase-trace;%S", static_cast<const wchar_t*>(_bstr_t(trace))); appendImportPhase(phase);
-			}
-			else appendImportPhase("trace-unavailable");
-			output.Close(); PostMessage(WM_CLOSE); return 0;
-		}
 		wchar_t undoRedoMode[2] = {};
 		const bool undoRedo = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_UNDO_REDO", undoRedoMode, _countof(undoRedoMode)) == 1 && undoRedoMode[0] == L'1';
 		wchar_t undoRedoCyclesText[8] = {};
@@ -709,38 +634,15 @@
 			appendImportPhase("post-insert-idle-complete");
 			auto sectionOuterHtml = [&]() -> CString
 			{
-				MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-				MSHTML::IHTMLBodyElementPtr currentBody(document ? document->body : MSHTML::IHTMLBodyElementPtr());
-				MSHTML::IHTMLElementCollectionPtr divs(currentBody ? MSHTML::IHTMLElement2Ptr(currentBody)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
-				for (long index = 0; divs && index < divs->length; ++index)
-				{
-					MSHTML::IHTMLElementPtr candidate(divs->item(_variant_t(index), _variant_t()));
-					if (candidate && _wcsicmp(static_cast<const wchar_t*>(_bstr_t(candidate->className)), L"section") == 0) return static_cast<const wchar_t*>(_bstr_t(candidate->outerHTML));
-				}
-				return CString();
-			};
-			auto freshBlockImageCount = [&]() -> long
-			{
-				MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
-				MSHTML::IHTMLBodyElementPtr currentBody(document ? document->body : MSHTML::IHTMLBodyElementPtr());
-				long count = 0;
-				MSHTML::IHTMLElementCollectionPtr divs(currentBody ? MSHTML::IHTMLElement2Ptr(currentBody)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
-				for (long index = 0; divs && index < divs->length; ++index)
-				{
-					MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
-					if (div && _wcsicmp(static_cast<const wchar_t*>(_bstr_t(div->className)), L"image") == 0) ++count;
-				}
-				return count;
+				MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document() ? m_doc->m_body.Document()->parentWindow : MSHTML::IHTMLWindow2Ptr());
+				const wchar_t* snapshotScript = L"function FbeRuntimeImageSectionSnapshot(){var divs=document.body.getElementsByTagName('DIV');for(var i=0;i<divs.length;i++)if(divs[i].className=='section')return divs[i].outerHTML;return '';}";
+				if (!window || FAILED(window->execScript(_bstr_t(snapshotScript), _bstr_t(L"JScript")))) return CString();
+				CComDispatchDriver script(m_doc->m_body.Script()); _variant_t snapshot;
+				return SUCCEEDED(script.Invoke0(L"FbeRuntimeImageSectionSnapshot", &snapshot)) && V_VT(&snapshot) == VT_BSTR ? static_cast<const wchar_t*>(_bstr_t(snapshot)) : CString();
 			};
 			CString insertedSection;
-			const bool captureInitialDom = undoRedoCycles == 1;
-			if (captureInitialDom)
-			{
-				if (freshBlockImageCount() != 1) { appendImportPhase("import-failed;phase=undo;reason=initial-image-count"); output.Close(); ::PostQuitMessage(1); return 0; }
-				insertedSection = sectionOuterHtml();
-				if (insertedSection.IsEmpty()) { appendImportPhase("import-failed;phase=undo;reason=initial-section"); output.Close(); ::PostQuitMessage(1); return 0; }
-			}
-			else appendImportPhase("initial-dom-snapshot-skipped");
+			insertedSection = sectionOuterHtml();
+			if (insertedSection.IsEmpty()) { appendImportPhase("import-failed;phase=undo;reason=initial-section"); output.Close(); ::PostQuitMessage(1); return 0; }
 			for (int cycle = 0; cycle < undoRedoCycles; ++cycle)
 			{
 				BOOL handled = FALSE;
@@ -752,22 +654,9 @@
 				m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
 				appendImportPhase("redo-complete");
 			}
-			if (captureInitialDom)
-			{
-				const CString finalSection = sectionOuterHtml();
-				if (freshBlockImageCount() != 1 || finalSection != insertedSection) { appendImportPhase("import-failed;phase=redo;reason=final-dom"); output.Close(); ::PostQuitMessage(1); return 0; }
-				appendImportPhase("redo-dom-complete");
-			}
-			else appendImportPhase("final-dom-snapshot-skipped");
-			if (phaseTrace)
-			{
-				CComDispatchDriver traceScript(m_doc->m_body.Script()); _variant_t trace;
-				if (SUCCEEDED(traceScript.Invoke0(L"FbeImageUndoProbeTraceGet", &trace)) && V_VT(&trace) == VT_BSTR)
-				{
-					CStringA phase; phase.Format("image-phase-trace;%S", static_cast<const wchar_t*>(_bstr_t(trace))); appendImportPhase(phase);
-				}
-				else appendImportPhase("trace-unavailable");
-			}
+			const CString finalSection = sectionOuterHtml();
+			if (finalSection != insertedSection) { appendImportPhase("import-failed;phase=redo;reason=final-dom"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendImportPhase("redo-dom-complete");
 		}
 		appendImportPhase("save-start");
 		if (!m_doc->Save())

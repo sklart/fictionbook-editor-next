@@ -9,7 +9,6 @@ param(
     [switch]$DiagnosticUndoRedo,
     [ValidateRange(0, 5)]
     [int]$ProductionUndoRedoCycles = 0,
-    [switch]$PhaseTrace,
     [string]$CaseId = ''
 )
 
@@ -30,15 +29,12 @@ function Assert-Fb2Schema([string]$Path) {
     if ($validation.errorCode -ne 0) { throw "FictionBook.xsd validation failed: $($validation.reason)" }
 }
 
-function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture, [string]$WorkingDirectory, [int]$Offset, [bool]$UndoRedo, [int]$UndoRedoCycles, [bool]$Trace) {
+function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture, [string]$WorkingDirectory, [int]$Offset, [bool]$UndoRedo, [int]$UndoRedoCycles) {
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = $Scenario
     $env:FBE_NEXT_TEST_IMAGE_CARET_OFFSET = [string]$Offset
     $env:FBE_NEXT_TEST_IMAGE_UNDO_REDO = if ($UndoRedo) { '1' } else { '0' }
     $env:FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES = [string]$UndoRedoCycles
-    $env:FBE_NEXT_TEST_IMAGE_PHASE_TRACE = if ($Trace) { '1' } else { '0' }
-    $env:FBE_NEXT_TEST_IMAGE_PHASE_TRACE_REPEAT = '0'
-    $env:FBE_NEXT_TRACE = if ($Trace) { '1' } else { '0' }
     $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('-b', $Report, $Fixture) -PassThru
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил $Scenario." }
     if ($process.ExitCode -ne 0) {
@@ -49,8 +45,7 @@ function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture
     $text = Get-Content -LiteralPath $Report -Raw
     if ($text -match 'E_POINTER|80004003|import-failed') { throw "Runtime image regression: $text" }
     if ($UndoRedo -and ($text -notmatch 'undo-complete' -or $text -notmatch 'redo-complete')) { throw "Undo/Redo не подтвердились: $text" }
-    if ($UndoRedoCycles -gt 1 -and ($text -notmatch 'final-dom-snapshot-skipped' -or $text -notmatch 'reopen-complete')) { throw "Production Undo/Redo/Save/Reopen не подтвердились: $text" }
-    if ($Trace -and $text -notmatch 'image-phase-trace;') { throw "Phase trace не получен: $text" }
+    if ($UndoRedoCycles -gt 1 -and ($text -notmatch 'redo-dom-complete' -or $text -notmatch 'reopen-complete')) { throw "Production Undo/Redo/DOM/Save/Reopen не подтвердились: $text" }
     return $text
 }
 
@@ -84,7 +79,7 @@ function Assert-Case([string]$Path, $Case) {
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-block-image-inline-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory | Out-Null
 $savedEnvironment = @{}
-foreach ($name in 'FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_IMAGE_PATH', 'FBE_NEXT_TEST_IMAGE_INLINE', 'FBE_NEXT_TEST_IMAGE_CARET_OFFSET', 'FBE_NEXT_TEST_IMAGE_UNDO_REDO', 'FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES', 'FBE_NEXT_TEST_IMAGE_PHASE_TRACE', 'FBE_NEXT_TEST_IMAGE_PHASE_TRACE_REPEAT', 'FBE_NEXT_TRACE') { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+foreach ($name in 'FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_IMAGE_PATH', 'FBE_NEXT_TEST_IMAGE_INLINE', 'FBE_NEXT_TEST_IMAGE_CARET_OFFSET', 'FBE_NEXT_TEST_IMAGE_UNDO_REDO', 'FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES') { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 try {
     Add-Type -AssemblyName System.Drawing
     $imagePath = Join-Path $directory 'formatting-boundary.jpg'
@@ -115,9 +110,9 @@ try {
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
         $undoRedo = $ProductionUndoRedoCycles -gt 0 -or [bool]$case.UndoRedo
         $undoRedoCycles = if ($ProductionUndoRedoCycles -gt 0) { $ProductionUndoRedoCycles } else { 1 }
-        $trace = Invoke-FbeScenario 'binary-import-image' $report $fixture $directory $case.Offset $undoRedo $undoRedoCycles ([bool]$PhaseTrace)
+        Invoke-FbeScenario 'binary-import-image' $report $fixture $directory $case.Offset $undoRedo $undoRedoCycles | Out-Null
         Assert-Case $fixture $case
-        Invoke-FbeScenario 'binary-roundtrip' (Join-Path $directory ($case.Id + '-reopen.tsv')) $fixture $directory 0 $false 1 $false | Out-Null
+        Invoke-FbeScenario 'binary-roundtrip' (Join-Path $directory ($case.Id + '-reopen.tsv')) $fixture $directory 0 $false 1 | Out-Null
         Assert-Case $fixture $case
     }
     Write-Host 'Block-image inline-formatting MSHTML Save -> Reopen regression passed.'
