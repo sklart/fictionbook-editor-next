@@ -112,6 +112,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-source-updateui-notification.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-scintilla-modern-features.ps1")
 & (Join-Path $repoRoot "tools\tests\test-source-idle-toolbar-localization-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-external-file-check-throttle-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-clipboard-listener-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-ui-dirty-state-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-selection-context-cache-contract.ps1")
