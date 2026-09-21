@@ -82,6 +82,7 @@ Require $runtimeArchiveLifecycle 'mruUnchanged' 'Two-phase runtime scenario must
 Require $runtimeArchiveLifecycle 'IsFbeTestScenario\(L"archive-rar-save-runtime"\)' 'RAR Save As runtime scenario must be explicitly isolated.'
 Require $frame 'FBE_NEXT_TEST_SAVE_PATH' 'RAR Save As runtime test must use an explicit isolated output path.'
 Require $runtimeArchiveLifecycle 'archive-recovery-external-verify' 'Archive recovery runtime must verify external-modification blocking.'
+Require $frame 'archive-recovery-verify.*archive-recovery-external-verify.*normal-recovery-verify.*&& U::MessageBox' 'Unattended recovery verification must bypass the modal recovery prompt.'
 Require $runtimeArchiveLifecycle 'FBE_NEXT_TEST_ARCHIVE_SAVE_ERROR' 'Archive recovery runtime must report the precise Save failure reason.'
 Require ($frame + $documentWriter) 'ErrorCode::ModifiedExternally' 'Archive recovery runtime must require the external-modification error code.'
 Require $runtimeArchiveLifecycle 'mruAfter == mruBefore' 'Two-phase runtime scenario must compare the entire MRU snapshot.'

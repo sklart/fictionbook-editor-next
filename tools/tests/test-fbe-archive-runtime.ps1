@@ -6,6 +6,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE.exe: $FbeExe" }
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $root = Join-Path ([IO.Path]::GetTempPath()) ("fbe-archive-runtime-" + [guid]::NewGuid().ToString('N'))
@@ -33,8 +34,8 @@ function Invoke-ArchiveFbe([string]$archive, [string]$report, [string]$entry = '
         # watchdog must exceed FBE's own 120-second first-MSHTML timeout.
         $arguments = '--portable -b {0} {1}' -f (ConvertTo-FbeCommandLineArgument $report), (ConvertTo-FbeCommandLineArgument $archive)
         $process = Start-Process -FilePath $FbeExe -ArgumentList $arguments -WorkingDirectory (Split-Path $FbeExe) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE archive runtime test timed out after $TimeoutSeconds seconds." }
-        if($process.ExitCode -ne 0) { $details = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { 'report was not created' }; throw "FBE archive runtime test exited $($process.ExitCode): $details" }
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario $scenario -Report $report -TimeoutSeconds $TimeoutSeconds
+        if($exitCode -ne 0) { $details = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { 'report was not created' }; throw "FBE archive runtime scenario '$scenario' exited ${exitCode}: $details" }
     } finally { foreach($pair in @(@('FBE_NEXT_TEST_MODE',$oldMode),@('FBE_NEXT_TEST_SCENARIO',$oldScenario),@('FBE_NEXT_TEST_ARCHIVE_ENTRY',$oldEntry),@('FBE_NEXT_TEST_SAVE_PATH',$oldSavePath))) { if($null -eq $pair[1]) { Remove-Item ("Env:" + $pair[0]) -ErrorAction SilentlyContinue } else { Set-Item ("Env:" + $pair[0]) $pair[1] } } }
 }
 function Invoke-TwoPhaseFbe([string]$document, [string]$failedArchive, [string]$report) {
@@ -42,23 +43,24 @@ function Invoke-TwoPhaseFbe([string]$document, [string]$failedArchive, [string]$
     try { $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='archive-two-phase-runtime'; $env:FBE_NEXT_TEST_ARCHIVE_FAILURE_PATH=$failedArchive
         $arguments = '--portable -b {0} {1}' -f (ConvertTo-FbeCommandLineArgument $report), (ConvertTo-FbeCommandLineArgument $document)
         $process = Start-Process -FilePath $FbeExe -ArgumentList $arguments -WorkingDirectory (Split-Path $FbeExe) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE two-phase runtime test timed out after $TimeoutSeconds seconds." }
-        if($process.ExitCode -ne 0) { $details = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { 'report was not created' }; throw "FBE two-phase runtime test exited $($process.ExitCode): $details" }
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'archive-two-phase-runtime' -Report $report -TimeoutSeconds $TimeoutSeconds
+        if($exitCode -ne 0) { $details = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { 'report was not created' }; throw "FBE two-phase runtime test exited ${exitCode}: $details" }
     } finally { foreach($pair in @(@('FBE_NEXT_TEST_MODE',$oldMode),@('FBE_NEXT_TEST_SCENARIO',$oldScenario),@('FBE_NEXT_TEST_ARCHIVE_FAILURE_PATH',$oldFailure))) { if($null -eq $pair[1]) { Remove-Item ("Env:" + $pair[0]) -ErrorAction SilentlyContinue } else { Set-Item ("Env:" + $pair[0]) $pair[1] } } }
 }
 function Invoke-RecoveryFbe([string]$scenario, [string]$report, [string]$archive = '') {
     $oldMode,$oldScenario = $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO
-    try { $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO=$scenario
+    try { Set-IsolatedRuntimeStage -Isolation $isolation -Stage $scenario; $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO=$scenario
         $arguments = '--portable -b {0}' -f (ConvertTo-FbeCommandLineArgument $report)
         if($archive) { $arguments += ' ' + (ConvertTo-FbeCommandLineArgument $archive) }
         $process = Start-Process -FilePath $FbeExe -ArgumentList $arguments -WorkingDirectory (Split-Path $FbeExe) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE recovery runtime test timed out after $TimeoutSeconds seconds." }
-        if($process.ExitCode -ne 0) { $details = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { 'report was not created' }; throw "FBE recovery runtime test exited $($process.ExitCode): $details" }
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario $scenario -Report $report -TimeoutSeconds $TimeoutSeconds
+        if($exitCode -ne 0) { $details = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { 'report was not created' }; throw "FBE recovery runtime scenario '$scenario' exited ${exitCode}: $details" }
     } finally { foreach($pair in @(@('FBE_NEXT_TEST_MODE',$oldMode),@('FBE_NEXT_TEST_SCENARIO',$oldScenario))) { if($null -eq $pair[1]) { Remove-Item ("Env:" + $pair[0]) -ErrorAction SilentlyContinue } else { Set-Item ("Env:" + $pair[0]) $pair[1] } } }
 }
+$isolation = $null
+$passed = $false
 try {
-    $portableIni = Join-Path (Split-Path $FbeExe) 'portable.ini'; $hadPortableIni = Test-Path -LiteralPath $portableIni; $oldPortableIni = if($hadPortableIni) { Get-Content -LiteralPath $portableIni -Raw } else { $null }
-    $portableData = 'ArchiveRuntimeData'; [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=$portableData`r`n", [Text.UTF8Encoding]::new($false)); New-Item -ItemType Directory -Force -Path (Join-Path (Split-Path $FbeExe) $portableData) | Out-Null
+    $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'ArchiveRuntimeData'; $FbeExe = $isolation.Exe; $portableData = $isolation.DataPath
     $book = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Runtime</first-name><last-name>Test</last-name></author><book-title>Archive runtime</book-title><lang>en</lang></title-info><document-info><author><nickname>FBE Next</nickname></author><program-used>FBE Next</program-used><date value="2026-09-10">10 September 2026</date><id>11111111-1111-1111-1111-111111111111</id><version>1.0</version></document-info></description><body><section><p>ARCHIVE_RUNTIME_BEFORE</p></section></body></FictionBook>'
     $zip = Join-Path $root 'Книга с пробелом.fb2.zip'; $report = Join-Path $root 'single.txt'; New-Zip $zip @{ 'book.fb2'=$book; 'cover.txt'='unchanged' }; $before = Read-Zip $zip
     Invoke-ArchiveFbe $zip $report
@@ -90,10 +92,13 @@ try {
     $rar5Multi = Join-Path $root 'fixture-rar5-multi.rar'; Expand-ArchiveFixture (Join-Path $PSScriptRoot 'fixtures\archive-runtime-rar5-multi.b64') $rar5Multi
     $rar5MultiReport = Join-Path $root 'rar5-multi.txt'; Invoke-ArchiveFbe $rar5Multi $rar5MultiReport 'book.fbd' 'archive-open-runtime'; $rar5MultiState = Get-Content -LiteralPath $rar5MultiReport -Raw
     foreach($line in @('archive=1','fb2=0','fbd=1','mshtml=1','rar=1','entry=book.fbd')) { if($rar5MultiState -notmatch [regex]::Escape($line)) { throw "RAR5 FBD multi-entry runtime regression: $line" } }
+    $recoveryDirectory = Join-Path $portableData 'Recovery'; if(Test-Path -LiteralPath $recoveryDirectory) { if((Get-ChildItem -LiteralPath $recoveryDirectory -Force | Measure-Object).Count -ne 0) { throw 'Recovery profile was not empty before archive-recovery-create.' } }
     $recovery = Join-Path $root 'recovery.zip'; New-Zip $recovery @{ 'book.fb2'=$book }; $created = Join-Path $root 'recovery-created.txt'; Invoke-RecoveryFbe 'archive-recovery-create' $created $recovery
     if((Get-Content -LiteralPath $created -Raw) -notmatch 'recovery_created=1') { throw 'Archive recovery was not created.' }
+    if(-not (Test-Path -LiteralPath (Join-Path $recoveryDirectory 'Recovery.fb2')) -or -not (Test-Path -LiteralPath (Join-Path $recoveryDirectory 'Recovery.archive.txt'))) { throw 'Archive recovery snapshot or metadata was not persisted.' }
     $restored = Join-Path $root 'recovery-restored.txt'; Invoke-RecoveryFbe 'archive-recovery-verify' $restored
     foreach($line in @('archive=1','fbd=0','recovery_payload=1')) { if((Get-Content -LiteralPath $restored -Raw) -notmatch [regex]::Escape($line)) { throw "Archive recovery FB2 regression: $line" } }
+    if(Test-Path -LiteralPath (Join-Path $recoveryDirectory 'Recovery.fb2')) { throw 'Archive recovery snapshot was not cleaned after verify.' }
     $fbd = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'fixtures\fbd\description_only.fbd') -Raw -Encoding UTF8; $recoveryFbd = Join-Path $root 'recovery-fbd.zip'; New-Zip $recoveryFbd @{ 'book.fbd'=$fbd }
     $fbdCreated = Join-Path $root 'recovery-fbd-created.txt'; Invoke-RecoveryFbe 'archive-recovery-create' $fbdCreated $recoveryFbd
     $fbdRestored = Join-Path $root 'recovery-fbd-restored.txt'; Invoke-RecoveryFbe 'archive-recovery-verify' $fbdRestored
@@ -105,4 +110,5 @@ try {
     foreach($line in @('archive=1','blocked=1','modified_externally=1')) { if((Get-Content -LiteralPath $externalReport -Raw) -notmatch [regex]::Escape($line)) { throw "Archive recovery external-modification regression: $line" } }
     if(-not [Linq.Enumerable]::SequenceEqual([byte[]]$externalSnapshot, [IO.File]::ReadAllBytes($external)) -or (Get-FileHash -LiteralPath $external -Algorithm SHA256).Hash -cne $externalHash) { throw 'Blocked recovery Save changed the externally modified ZIP.' }
     Write-Host 'FBE.exe archive ZIP and two-phase runtime integration passed.'
-} finally { if($hadPortableIni) { [IO.File]::WriteAllText($portableIni, $oldPortableIni, [Text.UTF8Encoding]::new($false)) } else { Remove-Item -LiteralPath $portableIni -Force -ErrorAction SilentlyContinue }; Remove-Item -LiteralPath (Join-Path (Split-Path $FbeExe) $portableData) -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    $passed = $true
+} finally { if ($isolation) { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed ([bool]$passed) }; Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
