@@ -59,6 +59,9 @@ void ApplyContextBarTheme(HWND bar)
 	colours.clrBtnHighlight = ThemeManager::HoverColor();
 	colours.clrBtnShadow = ThemeManager::BorderColor();
 	::SendMessage(bar, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
+	// The toolbar itself owns the background behind captions and controls.  The
+	// containing rebar band is themed separately by the main frame.
+	::SendMessage(bar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 	::RedrawWindow(bar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 }
 }

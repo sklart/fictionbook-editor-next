@@ -137,6 +137,24 @@ void ApplyMainMenuRebarBandTheme(CReBarCtrl& rebar, HWND menuBar)
 	}
 }
 
+void ApplyContextAttributeRebarBandTheme(CReBarCtrl& rebar, const ContextAttributeBars& bars)
+{
+	if(!::IsWindow(rebar)) return;
+	const HWND contextBars[] = { bars.LinksBar(), bars.TableBar(), bars.TableBar2() };
+	for(int band = 0; band < static_cast<int>(rebar.GetBandCount()); ++band)
+	{
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_COLORS;
+		if(!rebar.GetBandInfo(band, &info)) continue;
+		bool isContextBar = false;
+		for(HWND contextBar : contextBars)
+			if(info.hwndChild == contextBar) { isContextBar = true; break; }
+		if(!isContextBar) continue;
+		info.clrBack = ThemeManager::ControlColor();
+		info.clrFore = ThemeManager::TextColor();
+		rebar.SetBandInfo(band, &info);
+	}
+}
+
 bool ShowNativeMainMenuPopup(HWND commandBar, int item)
 {
 	const HMENU menu = reinterpret_cast<HMENU>(::SendMessage(commandBar, CBRM_GETMENU, 0, 0));
@@ -2426,6 +2444,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	AddSimpleReBarBand(m_contextAttributeBars.TableBar2(), 0, TRUE, 0, TRUE);
 	m_rebar = m_hWndToolBar;
 	ApplyMainMenuRebarBandTheme(m_rebar, hWndCmdBar);
+	ApplyContextAttributeRebarBandTheme(m_rebar, m_contextAttributeBars);
 	m_rebar.SendMessage(WM_SIZE);
 	StartupTrace::Event(L"mainframe", L"M110", L"menus and toolbars created");
 
@@ -6088,6 +6107,7 @@ LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
 	m_contextAttributeBars.ApplyTheme();
 	ApplyMainMenuRebarBandTheme(m_rebar, m_MenuBar);
+	ApplyContextAttributeRebarBandTheme(m_rebar, m_contextAttributeBars);
 	if(m_document_tree.IsWindow())
 		ThemeManager::ApplyToWindow(m_document_tree);
 	// Apply only resolved defaults; explicit BODY colours and background images

@@ -45,10 +45,12 @@ if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -no
 foreach($dialogSource in @($modelessDialog, $aboutBox)) {
     if($dialogSource -notlike '*ThemeManager::ApplyToWindow(m_hWnd)*') { throw 'A top-level dialog does not apply the theme after creating its HWND.' }
 }
-foreach($required in @('ApplyTheme()', 'ContextAttributeBarThemeProc', 'WM_CTLCOLORSTATIC', 'WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'TB_SETCOLORSCHEME', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()')) {
-    if($contextAttributeBars -notlike "*$required*") { throw "Context attribute bars do not apply the theme palette: $required." }
+foreach($required in @('ApplyTheme()', 'ContextAttributeBarThemeProc', 'WM_CTLCOLORSTATIC', 'WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'TB_SETCOLORSCHEME', 'CCM_SETBKCOLOR', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()')) {
+	if($contextAttributeBars -notlike "*$required*") { throw "Context attribute bars do not apply the theme palette: $required." }
 }
-if($mainFrame -notlike '*m_contextAttributeBars.ApplyTheme()*') { throw 'Main frame does not refresh context attribute bars on theme changes.' }
+foreach($required in @('m_contextAttributeBars.ApplyTheme()', 'ApplyContextAttributeRebarBandTheme', 'RBBIM_COLORS', 'ThemeManager::ControlColor()')) {
+	if($mainFrame -notlike "*$required*") { throw "Main frame does not refresh context attribute bar bands: $required." }
+}
 foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_BORDER')) {
     if($mainFrameHeader -notlike "*$required*") { throw "Main frame does not theme splitter separator $required." }
 }
