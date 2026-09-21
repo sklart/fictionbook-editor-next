@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ThemeManager.h"
+
 #define LODWORD(l) ((DWORD)((DWORDLONG)(l)))
 #define HIDWORD(l) ((DWORD)(((DWORDLONG)(l)>>32)&0xFFFFFFFF))
 #define MAKEDWORDLONG(a,b) ((DWORDLONG)(((DWORD)(a))|(((DWORDLONG)((DWORD)(b)))<<32)))
@@ -110,6 +112,11 @@ public:
 										dwInitParam);
 
 		ATLASSERT(m_hWnd == hWnd);
+		// CreateDialogParam has completed WM_INITDIALOG at this point, so the
+		// HWND and its child controls are valid.  Apply the DWM title-bar theme
+		// before a modeless Find/Replace or other dialog becomes visible.
+		if(::IsWindow(m_hWnd))
+			ThemeManager::ApplyToWindow(m_hWnd);
 		DWORD threadId = ::GetCurrentThreadId();
 		if(-1 == table().FindKey(threadId))
 		{

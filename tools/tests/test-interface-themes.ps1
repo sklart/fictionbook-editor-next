@@ -16,6 +16,8 @@ $mainFrameHeader = Read-ProjectFile 'src\fbe\mainfrm.h'
 $documentTree = Read-ProjectFile 'src\fbe\DocumentTree.cpp'
 $documentTreeHeader = Read-ProjectFile 'src\fbe\DocumentTree.h'
 $contextAttributeBars = Read-ProjectFile 'src\fbe\ui\ContextAttributeBars.cpp'
+$modelessDialog = Read-ProjectFile 'src\fbe\ModelessDialog.h'
+$aboutBox = Read-ProjectFile 'src\fbe\AboutBox.cpp'
 
 foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChanged', 'WH_CBT', 'HCBT_ACTIVATE', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
@@ -39,6 +41,9 @@ if($settings -notlike '*ThemeManager::IsDark()*') { throw 'Source Automatic must
 if($settings -like '*GetXmlSrcThemeColor*AppsUseLightTheme*') { throw 'Source Automatic must not read Windows theme directly.' }
 if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -notlike '*OnThemeChanged*') {
     throw 'Main frame does not dynamically refresh theme changes.'
+}
+foreach($dialogSource in @($modelessDialog, $aboutBox)) {
+    if($dialogSource -notlike '*ThemeManager::ApplyToWindow(m_hWnd)*') { throw 'A top-level dialog does not apply the theme after creating its HWND.' }
 }
 foreach($required in @('ApplyTheme()', 'ContextAttributeBarThemeProc', 'WM_CTLCOLORSTATIC', 'WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'TB_SETCOLORSCHEME', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()')) {
     if($contextAttributeBars -notlike "*$required*") { throw "Context attribute bars do not apply the theme palette: $required." }

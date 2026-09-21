@@ -2,6 +2,7 @@
 #include "Utils.h"
 #include "AboutBox.h"
 #include "RuntimeLocalization.h"
+#include "ThemeManager.h"
 #include "../common/DeploymentContext.h"
 #include "UpdateArtifact.h"
 #include "UpdateVersion.h"
@@ -303,6 +304,9 @@ namespace
 
 LRESULT CAboutDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
+	// The dialog HWND is valid during WM_INITDIALOG; apply its DWM title bar
+	// before showing About so it follows the selected interface theme.
+	ThemeManager::ApplyToWindow(m_hWnd);
 	m_bAllowResize = false;
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_ABOUTBOX);
 	SetWindowText(FbeLoadRuntimeString(IDS_ABOUT_WINDOW_CAPTION));
