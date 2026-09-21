@@ -131,7 +131,7 @@
 		};
 		CStringA header("phase\telapsed_ms\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
-		wchar_t probeName[32] = {};
+		wchar_t probeName[64] = {};
 		const DWORD probeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_PROBE", probeName, _countof(probeName));
 		if (!probeLength || probeLength >= _countof(probeName)) { appendProbePhase("probe-failed;reason=name"); output.Close(); ::PostQuitMessage(1); return 0; }
 		wchar_t imagePath[MAX_PATH] = {};
@@ -143,7 +143,18 @@
 		appendProbePhase("open-complete");
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
 		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr paragraph;
+		for (long paragraphIndex = 0; paragraphs && paragraphIndex < paragraphs->length && !paragraph; ++paragraphIndex)
+		{
+			MSHTML::IHTMLElementPtr candidate(paragraphs->item(_variant_t(paragraphIndex), _variant_t()));
+			for (MSHTML::IHTMLElementPtr ancestor(candidate); ancestor; ancestor = ancestor->parentElement)
+			{
+				const _bstr_t tagName(ancestor->tagName), className(ancestor->className);
+				const wchar_t* const tagText = tagName;
+				const wchar_t* const classText = className;
+				if (tagText && classText && _wcsicmp(tagText, L"DIV") == 0 && _wcsicmp(classText, L"section") == 0) { paragraph = candidate; break; }
+			}
+		}
 		CComDispatchDriver script(m_doc->m_body.Script());
 		if (!body || !paragraph || !script) { appendProbePhase("probe-failed;reason=document"); output.Close(); ::PostQuitMessage(1); return 0; }
 		auto selectParagraphStart = [&]() -> bool
@@ -200,10 +211,10 @@
 			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=image-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
 			appendProbePhase("image-insert-complete");
 		}
-		else if (probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto" || probe == L"plain-block-markup")
+		else if (probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-after" || probe == L"plain-block-auto" || probe == L"plain-block-markup" || probe == L"plain-block-custom" || probe == L"plain-block-adjacent-html" || probe == L"plain-block-adjacent-html-after" || probe == L"plain-block-adjacent-html-image" || probe == L"plain-block-adjacent-html-image-after" || probe == L"plain-block-range-html" || probe == L"plain-block-range-html-after" || probe == L"fbe285-start" || probe == L"fbe285-end" || probe == L"fbe285-middle")
 		{
 			appendProbePhase(probe == L"image-no-url" ? "image-no-url-start" : "plain-block-start");
-			if (probe != L"plain-block-auto") m_doc->m_body.BeginUndoUnit(probe == L"image-no-url" ? L"undo probe image without URL" : L"undo probe plain block");
+			if (probe != L"plain-block-auto" && probe != L"plain-block-custom" && probe != L"fbe285-start" && probe != L"fbe285-end" && probe != L"fbe285-middle") m_doc->m_body.BeginUndoUnit(probe == L"image-no-url" ? L"undo probe image without URL" : L"undo probe plain block");
 			MSHTML::IHTMLElementPtr image(m_doc->m_body.Document()->createElement(L"DIV"));
 			if (probe == L"image-no-url") { image->className = L"image"; image->setAttribute(L"href", _variant_t(L"#existing-image"), 0); }
 			if (probe == L"plain-block-markup")
@@ -216,8 +227,65 @@
 				if (SUCCEEDED(hr)) hr = markup->InsertElement(image, start, finish);
 				if (FAILED(hr)) { m_doc->m_body.EndUndoUnit(); appendProbePhase("probe-failed;phase=markup-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
 			}
-			else MSHTML::IHTMLElement2Ptr(paragraph)->insertAdjacentElement(L"beforeBegin", image);
-			if (probe != L"plain-block-auto") m_doc->m_body.EndUndoUnit();
+			else if (probe == L"plain-block-custom")
+			{
+				IServiceProviderPtr service(m_doc->m_body.Document()); CComPtr<IOleUndoManager> manager;
+				hr = service ? service->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager)) : E_NOINTERFACE;
+				{
+					CUndoManagerEnableScope disabled(manager);
+					if (FAILED(hr) || !disabled.Active()) { appendProbePhase("probe-failed;phase=undo-disable"); output.Close(); ::PostQuitMessage(1); return 0; }
+					MSHTML::IHTMLElement2Ptr(paragraph)->insertAdjacentElement(L"beforeBegin", image);
+				}
+				CComObject<CBlockImageUndoProbeUnit>* raw = NULL; hr = CComObject<CBlockImageUndoProbeUnit>::CreateInstance(&raw);
+				if (SUCCEEDED(hr)) { raw->AddRef(); raw->Initialize(image, paragraph); hr = manager->Add(raw); raw->Release(); }
+				if (FAILED(hr)) { appendProbePhase("probe-failed;phase=undo-add"); output.Close(); ::PostQuitMessage(1); return 0; }
+			}
+			else if (probe == L"plain-block-adjacent-html" || probe == L"plain-block-adjacent-html-after" || probe == L"plain-block-adjacent-html-image" || probe == L"plain-block-adjacent-html-image-after")
+			{
+				const bool beforeBegin = probe == L"plain-block-adjacent-html" || probe == L"plain-block-adjacent-html-image";
+				const bool withImage = probe == L"plain-block-adjacent-html-image" || probe == L"plain-block-adjacent-html-image-after";
+				paragraph->insertAdjacentHTML(beforeBegin ? L"beforeBegin" : L"afterEnd", withImage ? L"<DIV contentEditable='false' class='image' href='#existing-image'><IMG src='fbw-internal:#existing-image'></DIV>" : L"<DIV class='probe-block'></DIV>");
+			}
+			else if (probe == L"plain-block-range-html" || probe == L"plain-block-range-html-after")
+			{
+				MSHTML::IHTMLTxtRangePtr boundary(body->createTextRange());
+				boundary->moveToElementText(paragraph); boundary->collapse(probe == L"plain-block-range-html" ? VARIANT_TRUE : VARIANT_FALSE); boundary->pasteHTML(L"<DIV class='probe-block'></DIV>");
+			}
+			else if (probe == L"fbe285-start" || probe == L"fbe285-end" || probe == L"fbe285-middle")
+			{
+				MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
+				range->moveToElementText(paragraph);
+				if (probe == L"fbe285-end") range->collapse(VARIANT_FALSE);
+				else { range->collapse(VARIANT_TRUE); if (probe == L"fbe285-middle") range->move(L"character", 3); else if (range->move(L"character", 1) == 1) range->move(L"character", -1); }
+				range->select();
+				appendProbePhase("fbe285-selection-complete");
+				// FBE 2.8.5 main.js algorithm, with the fixture's pre-existing binary id.
+				const wchar_t* const legacyAlgorithm =
+					L"var rng=document.selection.createRange();if(!rng || !(\"compareEndPoints\" in rng))throw new Error('range');if(rng.compareEndPoints(\"StartToEnd\",rng)!=0){rng.collapse(true);if(rng.move(\"character\",1)==1)rng.move(\"character\",-1);}var cp=rng.parentElement(),pp=cp;while(pp&&pp.tagName!=\"P\")pp=pp.parentElement;var pe=cp;while(pe&&(pe.tagName!=\"DIV\"||pe.className!=\"section\"))pe=pe.parentElement;if(!pe||!pp)throw new Error('section');var owner=pp.parentElement;while(owner&&owner.tagName!=\"DIV\")owner=owner.parentElement;if(!owner||owner.sourceIndex!=pe.sourceIndex)throw new Error('owner');var ht=\"<DIV onresizestart='return false' contentEditable='false' class='image' href='#existing-image'><IMG src='fbw-internal:#existing-image'></DIV>\";var whole=document.body.createTextRange();whole.moveToElementText(pp);var left=whole.duplicate();left.setEndPoint(\"EndToStart\",rng);var right=whole.duplicate();right.setEndPoint(\"StartToEnd\",rng);var leftText=left.text,rightText=right.text;if(leftText==null||leftText==\"\"){pp.insertAdjacentHTML(\"beforeBegin\",ht);}else if(rightText==null||rightText==\"\"){pp.insertAdjacentHTML(\"afterEnd\",ht);}else{var leftHTML=left.htmlText,rightHTML=right.htmlText,rp=pp.cloneNode(false);if(rp.id)rp.removeAttribute(\"id\");pp.innerHTML=leftHTML;rp.innerHTML=rightHTML;InflateIt(pp);InflateIt(rp);pp.insertAdjacentHTML(\"afterEnd\",ht);var image=pp.nextSibling;image.insertAdjacentElement(\"afterEnd\",rp);var nr=document.body.createTextRange();nr.moveToElementText(rp);nr.collapse(true);nr.select();}";
+				MSHTML::IHTMLElementPtr legacyParent(paragraph->parentElement);
+				CStringA legacyContainer;
+				legacyContainer.Format("legacy-container=%S.%S", legacyParent ? static_cast<const wchar_t*>(_bstr_t(legacyParent->tagName)) : L"none", legacyParent ? static_cast<const wchar_t*>(_bstr_t(legacyParent->className)) : L"none");
+				appendProbePhase(legacyContainer);
+				CStringW legacyScript(L"(function(){");
+				legacyScript += legacyAlgorithm;
+				// The original function returns when the selected element is outside a section.
+				// Keep that control flow in the probe: a JavaScript throw opens a modal dialog.
+				legacyScript.Replace(L"throw new Error('range');", L"return;");
+				legacyScript.Replace(L"throw new Error('section');", L"return;");
+				legacyScript.Replace(L"throw new Error('owner');", L"return;");
+				legacyScript += L"})();";
+				MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
+				appendProbePhase("fbe285-begin-undo-start");
+				hr = window ? window->execScript(_bstr_t(L"window.external.BeginUndoUnit(document,'insert image');"), _bstr_t(L"JScript")) : E_NOINTERFACE;
+				if (SUCCEEDED(hr)) appendProbePhase("fbe285-begin-undo-complete");
+				if (SUCCEEDED(hr)) { appendProbePhase("fbe285-dom-start"); hr = window->execScript(_bstr_t(legacyScript), _bstr_t(L"JScript")); }
+				if (SUCCEEDED(hr)) appendProbePhase("fbe285-dom-complete");
+				if (SUCCEEDED(hr)) { appendProbePhase("fbe285-end-undo-start"); hr = window->execScript(_bstr_t(L"window.external.EndUndoUnit(document);"), _bstr_t(L"JScript")); }
+				if (SUCCEEDED(hr)) appendProbePhase("fbe285-end-undo-complete");
+				if (FAILED(hr)) { appendProbePhase("probe-failed;phase=fbe285-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
+			}
+			else MSHTML::IHTMLElement2Ptr(paragraph)->insertAdjacentElement(probe == L"plain-block-after" ? L"afterEnd" : L"beforeBegin", image);
+			if (probe != L"plain-block-auto" && probe != L"plain-block-custom" && probe != L"fbe285-start" && probe != L"fbe285-end" && probe != L"fbe285-middle") m_doc->m_body.EndUndoUnit();
 			appendProbePhase(probe == L"image-no-url" ? "image-no-url-complete" : "plain-block-complete");
 		}
 		else { appendProbePhase("probe-failed;reason=unknown-name"); output.Close(); ::PostQuitMessage(1); return 0; }
@@ -229,12 +297,20 @@
 		{
 			appendProbePhase("probe-failed;phase=undo;reason=image-remained"); output.Close(); ::PostQuitMessage(1); return 0;
 		}
-		if (probe == L"image" || probe == L"image-inline" || probe == L"plain-block" || probe == L"plain-block-auto" || probe == L"plain-block-markup")
+		if (probe == L"image" || probe == L"image-inline" || probe == L"plain-block" || probe == L"plain-block-after" || probe == L"plain-block-auto" || probe == L"plain-block-markup" || probe == L"plain-block-custom" || probe == L"plain-block-adjacent-html" || probe == L"plain-block-adjacent-html-after" || probe == L"plain-block-adjacent-html-image" || probe == L"plain-block-adjacent-html-image-after" || probe == L"plain-block-range-html" || probe == L"plain-block-range-html-after" || probe == L"fbe285-start" || probe == L"fbe285-end" || probe == L"fbe285-middle")
 		{
-			m_doc->m_body.SetFocus(); appendProbePhase("redo-start"); m_doc->m_body.ExecCommand(IDM_REDO); appendProbePhase("redo-complete");
-			if (probe != L"image-inline" && blockImageCount() != 1) { appendProbePhase("probe-failed;phase=redo;reason=image-count"); output.Close(); ::PostQuitMessage(1); return 0; }
+			for (int cycle = 0; cycle < 5; ++cycle)
+			{
+				m_doc->m_body.SetFocus(); CStringA phase; phase.Format("redo-start-%d", cycle + 1); appendProbePhase(phase); m_doc->m_body.ExecCommand(IDM_REDO); phase.Format("redo-complete-%d", cycle + 1); appendProbePhase(phase);
+				if (cycle == 4) break;
+				m_doc->m_body.SetFocus(); phase.Format("undo-start-%d", cycle + 2); appendProbePhase(phase); m_doc->m_body.ExecCommand(IDM_UNDO); phase.Format("undo-complete-%d", cycle + 2); appendProbePhase(phase);
+			}
 		}
-		output.Close(); PostMessage(WM_CLOSE); return 0;
+		appendProbePhase("idle-start");
+		for (int idle = 0; idle < 8; ++idle) { MSG message = {}; if (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } else ::Sleep(5); }
+		appendProbePhase("idle-complete");
+		appendProbePhase("save-start"); if (!m_doc->Save()) { appendProbePhase("probe-failed;phase=save"); output.Close(); ::PostQuitMessage(1); return 0; }
+		appendProbePhase("save-complete"); output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"binary-import-image"))
 	{

@@ -21,6 +21,36 @@ private:
 	std::vector<CComPtr<IOleUndoUnit>> m_units;
 };
 
+class CUndoManagerEnableScope {
+public:
+	CUndoManagerEnableScope(IOleUndoManager* manager) : m_manager(manager), m_enabled(false) { if (m_manager && SUCCEEDED(m_manager->Enable(FALSE))) m_enabled = true; }
+	~CUndoManagerEnableScope() { if (m_enabled) m_manager->Enable(TRUE); }
+	bool Active() const { return m_enabled; }
+private:
+	CComPtr<IOleUndoManager> m_manager;
+	bool m_enabled;
+};
+
+class CBlockImageUndoProbeUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
+public:
+	BEGIN_COM_MAP(CBlockImageUndoProbeUnit) COM_INTERFACE_ENTRY(IOleUndoUnit) END_COM_MAP()
+	void Initialize(const MSHTML::IHTMLElementPtr& image, const MSHTML::IHTMLElementPtr& anchor) { m_image = image; m_anchor = anchor; m_inserted = true; }
+	STDMETHOD(Do)(IOleUndoManager* manager) {
+		CUndoManagerEnableScope disabled(manager);
+		if (!disabled.Active() || !m_image || !m_anchor) return E_UNEXPECTED;
+		if (m_inserted) { if (m_image->parentElement) MSHTML::IHTMLDOMNodePtr(m_image)->removeNode(VARIANT_TRUE); }
+		else { MSHTML::IHTMLElement2Ptr(m_anchor)->insertAdjacentElement(L"beforeBegin", m_image); }
+		m_inserted = !m_inserted;
+		return manager->Add(this);
+	}
+	STDMETHOD(GetDescription)(BSTR* description) { if (!description) return E_POINTER; *description = ::SysAllocString(L"block image undo probe"); return *description ? S_OK : E_OUTOFMEMORY; }
+	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id) { if (!classId || !id) return E_POINTER; *classId = CLSID_NULL; *id = 0; return S_OK; }
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+private:
+	MSHTML::IHTMLElementPtr m_image, m_anchor;
+	bool m_inserted;
+};
+
 void CMainFrame::RunPortableStateTestScenario()
 {
 	const bool ordinaryWrite = IsFbeTestScenario(L"portable-state-write");
