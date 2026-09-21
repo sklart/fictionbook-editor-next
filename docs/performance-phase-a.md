@@ -26,7 +26,7 @@ toolbar, tree, файла и clipboard. Журнал не включает те�
    внешний save файла. Для spellcheck прокрутить каждый видимый экран ровно
    один раз.
 3. Закрыть приложение обычным способом и взять строки `performance/P410` из
-   `%LOCALAPPDATA%\FBE Next\fbe-trace*.log` только данного PID.
+   `%LOCALAPPDATA%\FBE Next\Diagnostics\fbe-trace*.log` только данного PID.
 4. Сравнить последнюю полную строку каждого прогона. Значения `*-ms` — это
    накопленные миллисекунды, поэтому сравнивать нужно прогоны с одинаковым
    `idle-count`; `js-com-calls`, `command-state-updates`, `toolbar-updates` и
@@ -52,6 +52,28 @@ event-driven update и затем 1 000 неизменных `OnIdle`. В Releas
 selection-query и `js_com_calls` были равны нулю. `file_fingerprint_checks`
 был ограничен единицей throttle. Этот тест включён в `-FullValidation`.
 
+### Зафиксированное сравнение idle
+
+Для фактического before/after был собран isolated baseline `dc043cd1` тем же
+v143/14.44 toolchain и с тем же pinned `third_party` tree, что у текущего
+HEAD. Оба запуска использовали один реальный FB2 с 1 000 абзацев и включённую
+diagnostic trace. Test-only harness не менял `OnIdle`: после загрузки он
+вызвал существующий `OnIdle()` ровно 1 000 раз и записал уже имеющиеся
+агрегированные counters.
+
+| Метрика за 1 000 неизменных idle | До: `dc043cd1` | После: `93a36888` |
+| --- | ---: | ---: |
+| elapsed_ms | 781 | 0 |
+| command_state_updates | 1 000 | 0 |
+| toolbar_updates | 1 000 | 0 |
+| file_fingerprint_checks | 1 000 | 0 |
+| selection_context_builds | 1 | 0 |
+| clipboard_checks | 0 | 0 |
+
+`0 ms` после оптимизации означает «меньше разрешения `GetTickCount64`», а не
+утверждение о нулевом CPU. Главный наблюдаемый результат — устранение всех
+дорогих повторных UI/file операций на неизменном состоянии.
+
 ## Ожидаемые инварианты Phase A
 
 - После стабилизации idle не вызывает command-state, toolbar, tree или
@@ -67,10 +89,8 @@ selection-query и `js_com_calls` были равны нулю. `file_fingerprin
 
 Автоматически подтверждены контракты инвалидации, throttle, clipboard
 listener, selection cache, SOURCE idle, диагностических полей P410 и
-стабильного idle на real FBE. Исторический baseline `dc043cd1` не удалось
-собрать в этом automation-окружении: созданный checkout не содержал pinned
-submodules, а их восстановление остановилось на DNS для upstream aom/libwebp.
-Поэтому before/after цифры не подменены предположениями. Реальные шесть
-интерактивных запусков по протоколу выше остаются отдельной ручной проверкой,
-для которой нужен доступный baseline checkout и конкретная книга, дисплей и
-Windows/MSHTML окружение.
+стабильного idle на real FBE. Также получено числовое baseline/current
+сравнение неизменного BODY idle. Реальные интерактивные серии для typing,
+caret navigation, BODY/SOURCE-переходов и внешнего save по протоколу выше
+остаются отдельной ручной проверкой: они зависят от конкретной книги, дисплея
+и Windows/MSHTML окружения.
