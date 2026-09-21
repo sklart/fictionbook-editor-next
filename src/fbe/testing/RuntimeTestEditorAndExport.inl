@@ -157,6 +157,18 @@
 		}
 		CComDispatchDriver script(m_doc->m_body.Script());
 		if (!body || !paragraph || !section || !script) { appendProbePhase("probe-failed;reason=document"); output.Close(); ::PostQuitMessage(1); return 0; }
+		auto refreshSection = [&]() -> bool
+		{
+			body = m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr();
+			section = NULL;
+			MSHTML::IHTMLElementCollectionPtr divs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+			for (long index = 0; divs && index < divs->length; ++index)
+			{
+				MSHTML::IHTMLElementPtr candidate(divs->item(_variant_t(index), _variant_t()));
+				if (candidate && _wcsicmp(static_cast<const wchar_t*>(_bstr_t(candidate->className)), L"section") == 0) { section = candidate; break; }
+			}
+			return body && section;
+		};
 		auto snapshotSection = [&](CString& outerHtml, CString& childOrder) -> bool
 		{
 			outerHtml.Empty(); childOrder.Empty();
@@ -182,12 +194,13 @@
 		const DWORD undoRedoCyclesLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES", undoRedoCyclesText, _countof(undoRedoCyclesText));
 		const int undoRedoCycles = undoRedoCyclesLength && undoRedoCyclesLength < _countof(undoRedoCyclesText) ? _wtoi(undoRedoCyclesText) : 5;
 		if (undoRedoCycles != 0 && undoRedoCycles != 1 && undoRedoCycles != 2 && undoRedoCycles != 5) { appendProbePhase("probe-failed;reason=undo-redo-cycles"); output.Close(); ::PostQuitMessage(1); return 0; }
-		auto selectParagraphStart = [&]() -> bool
+		auto selectParagraphPosition = [&](const CString& position) -> bool
 		{
 			MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
 			if (!range) return false;
-			range->moveToElementText(paragraph); range->collapse(VARIANT_TRUE);
-			if (range->move(L"character", 1) == 1) range->move(L"character", -1);
+			range->moveToElementText(paragraph);
+			if (position == L"end") range->collapse(VARIANT_FALSE);
+			else { range->collapse(VARIANT_TRUE); if (position == L"middle") range->move(L"character", 3); else if (range->move(L"character", 1) == 1) range->move(L"character", -1); }
 			range->select(); return true;
 		};
 		auto addBinary = [&](bool fillCoverList, _variant_t& binaryId) -> HRESULT
@@ -204,10 +217,10 @@
 			if (SUCCEEDED(hr) && fillCoverList) hr = script.Invoke0(L"FillCoverList");
 			return hr;
 		};
-		auto blockImageCount = [&]() -> long
+		auto blockImageCountFor = [&](MSHTML::IHTMLBodyElementPtr targetBody) -> long
 		{
 			long count = 0;
-			MSHTML::IHTMLElementCollectionPtr divs(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
+			MSHTML::IHTMLElementCollectionPtr divs(targetBody ? MSHTML::IHTMLElement2Ptr(targetBody)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
 			for (long index = 0; divs && index < divs->length; ++index)
 			{
 				MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
@@ -215,7 +228,9 @@
 			}
 			return count;
 		};
+		auto blockImageCount = [&]() -> long { return blockImageCountFor(body); };
 		const CString probe(probeName);
+		MSHTML::IHTMLBodyElementPtr cachedBody;
 		HRESULT hr = S_OK;
 		_variant_t binaryId;
 		if (probe == L"binary" || probe == L"binary-fill")
@@ -225,21 +240,143 @@
 			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=api-add-binary"); output.Close(); ::PostQuitMessage(1); return 0; }
 			appendProbePhase(probe == L"binary-fill" ? "fill-cover-list-complete" : "api-add-binary-complete");
 		}
-		else if (probe == L"image" || probe == L"image-inline")
+		else if (probe == L"image" || probe == L"image-inline" || probe == L"image-start" || probe == L"image-end" || probe == L"image-middle" || probe == L"image-legacy-exact-start" || probe == L"image-legacy-exact-noreturn-start" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start")
 		{
 			wchar_t existingId[256] = {};
 			const DWORD existingIdLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_BINARY_ID", existingId, _countof(existingId));
-			if (!existingIdLength || existingIdLength >= _countof(existingId) || !selectParagraphStart()) { appendProbePhase("probe-failed;reason=existing-binary-or-selection"); output.Close(); ::PostQuitMessage(1); return 0; }
+			const CString position = probe == L"image-end" ? L"end" : (probe == L"image-middle" ? L"middle" : L"start");
+			if (!existingIdLength || existingIdLength >= _countof(existingId) || !selectParagraphPosition(position)) { appendProbePhase("probe-failed;reason=existing-binary-or-selection"); output.Close(); ::PostQuitMessage(1); return 0; }
 			_variant_t check(false), inserted, id(existingId);
 			appendProbePhase("image-insert-start");
-			hr = script.Invoke2(probe == L"image-inline" ? L"InsInlineImage" : L"InsImage", &check, &id, &inserted);
+			if (probe == L"image-discard-start") hr = script.Invoke2(L"InsImage", &check, &id, NULL);
+			else
+			{
+				if (probe == L"image-legacy-exact-noreturn-start")
+				{
+					MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
+					hr = window ? window->execScript(_bstr_t(L"window.fbeLegacyExactSuppressReturn=true;"), _bstr_t(L"JScript")) : E_NOINTERFACE;
+				}
+				if (SUCCEEDED(hr)) hr = script.Invoke2(probe == L"image-inline" ? L"InsInlineImage" : ((probe == L"image-legacy-exact-start" || probe == L"image-legacy-exact-noreturn-start") ? L"InsImageLegacyExact" : L"InsImage"), &check, &id, &inserted);
+				if (probe == L"image-legacy-exact-noreturn-start") { MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow); if (window) window->execScript(_bstr_t(L"window.fbeLegacyExactSuppressReturn=false;"), _bstr_t(L"JScript")); }
+			}
 			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=image-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
+			if (probe == L"image-clear-start") { inserted.Clear(); appendProbePhase("image-result-cleared"); }
+			else if (probe == L"image-inspect-release-start")
+			{
+				MSHTML::IHTMLElementPtr returned(V_VT(&inserted) == VT_DISPATCH ? V_DISPATCH(&inserted) : NULL);
+				const bool valid = returned && _wcsicmp(static_cast<const wchar_t*>(_bstr_t(returned->tagName)), L"DIV") == 0 && _wcsicmp(static_cast<const wchar_t*>(_bstr_t(returned->className)), L"image") == 0;
+				returned = NULL; inserted.Clear();
+				if (!valid) { appendProbePhase("probe-failed;phase=image-result-inspect"); output.Close(); ::PostQuitMessage(1); return 0; }
+				appendProbePhase("image-result-inspected-and-released");
+			}
+			else if (probe == L"image-hold-start") appendProbePhase("image-result-held");
+			else if (probe == L"image-discard-start") appendProbePhase("image-result-discarded");
 			appendProbePhase("image-insert-complete");
 		}
-		else if (probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-after" || probe == L"plain-block-auto" || probe == L"plain-block-markup" || probe == L"plain-block-custom" || probe == L"plain-block-adjacent-html" || probe == L"plain-block-adjacent-html-after" || probe == L"plain-block-adjacent-html-image" || probe == L"plain-block-adjacent-html-image-after" || probe == L"plain-block-range-html" || probe == L"plain-block-range-html-after" || probe == L"fbe285-start" || probe == L"fbe285-end" || probe == L"fbe285-middle")
+		else if (probe == L"call-insimage-empty")
+		{
+			if (!selectParagraphPosition(L"start")) { appendProbePhase("probe-failed;reason=selection"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendProbePhase("call-insimage-empty-start");
+			{
+				MSHTML::IHTMLDOMNodePtr returned(m_doc->m_body.Call(L"InsImage"));
+				if (!returned) { appendProbePhase("probe-failed;phase=call-insimage-empty"); output.Close(); ::PostQuitMessage(1); return 0; }
+			}
+			appendProbePhase("call-insimage-empty-return-released");
+			appendProbePhase("image-insert-complete");
+		}
+		else if (probe == L"body-cache-cached" || probe == L"body-cache-fresh" || probe == L"body-cache-production-undo")
+		{
+			if (!selectParagraphPosition(L"start")) { appendProbePhase("probe-failed;reason=selection"); output.Close(); ::PostQuitMessage(1); return 0; }
+			cachedBody = body;
+			MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
+			const wchar_t* exactInsert = L"function FbeBodyCacheProbe(){var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'insert image');p.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");window.external.EndUndoUnit(document);}";
+			appendProbePhase("body-cache-insert-start");
+			hr = window ? window->execScript(_bstr_t(exactInsert), _bstr_t(L"JScript")) : E_NOINTERFACE;
+			if (SUCCEEDED(hr)) hr = script.Invoke0(L"FbeBodyCacheProbe");
+			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=body-cache-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendProbePhase("body-cache-insert-complete");
+		}
+		else if (probe.Left(14) == L"fbe285-bisect-")
+		{
+			if (!selectParagraphPosition(L"start")) { appendProbePhase("probe-failed;reason=selection"); output.Close(); ::PostQuitMessage(1); return 0; }
+			MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
+			if (!window) { appendProbePhase("probe-failed;reason=window"); output.Close(); ::PostQuitMessage(1); return 0; }
+			const bool normalize = probe != L"fbe285-bisect-no-normalize" && probe != L"fbe285-bisect-no-whole-no-normalize" && probe != L"fbe285-bisect-compile-label-unconditional" && probe != L"fbe285-bisect-minimal";
+			const bool useWhole = probe != L"fbe285-bisect-no-whole" && probe != L"fbe285-bisect-no-whole-no-normalize" && probe != L"fbe285-bisect-no-whole-unconditional" && probe != L"fbe285-bisect-no-whole-if-true" && probe != L"fbe285-bisect-compile-label-unconditional" && probe != L"fbe285-bisect-minimal";
+			const bool moveToElement = useWhole && probe != L"fbe285-bisect-no-move-to-element";
+			const bool duplicate = moveToElement && probe != L"fbe285-bisect-no-duplicate";
+			const bool setEndPoint = duplicate && probe != L"fbe285-bisect-no-set-endpoint";
+			const bool readText = setEndPoint && probe != L"fbe285-bisect-no-text-read";
+			CStringW algorithm;
+			if (probe == L"fbe285-bisect-compile-exact")
+			{
+				algorithm = L"var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'compile probe');p.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");window.external.EndUndoUnit(document);";
+			}
+			else
+			{
+				algorithm = L"var rng=document.selection.createRange();";
+				if (normalize) algorithm += L"if(rng.compareEndPoints('StartToEnd',rng)!=0){rng.collapse(true);if(rng.move('character',1)==1)rng.move('character',-1);}";
+				algorithm += L"var pp=rng.parentElement();while(pp&&pp.tagName!='P')pp=pp.parentElement;if(!pp)throw new Error('paragraph');";
+			if (useWhole) algorithm += L"var whole=document.body.createTextRange();";
+			if (moveToElement) algorithm += L"whole.moveToElementText(pp);";
+			if (duplicate) algorithm += L"var left=whole.duplicate(),right=whole.duplicate();";
+			if (setEndPoint) algorithm += L"left.setEndPoint('EndToStart',rng);right.setEndPoint('StartToEnd',rng);";
+			if (readText) algorithm += L"var atStart=(left.text==null||left.text=='');";
+			else if (probe != L"fbe285-bisect-minimal") algorithm += L"var atStart=true;";
+			algorithm += (probe == L"fbe285-bisect-compile-label-unconditional" || probe == L"fbe285-bisect-minimal") ? L"window.external.BeginUndoUnit(document,'compile probe');" : L"window.external.BeginUndoUnit(document,'insert image');";
+			if (probe == L"fbe285-bisect-no-whole-unconditional" || probe == L"fbe285-bisect-compile-label-unconditional" || probe == L"fbe285-bisect-minimal") algorithm += L"pp.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");";
+			else if (probe == L"fbe285-bisect-no-whole-if-true") algorithm += L"if(true)pp.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");";
+			else algorithm += L"if(atStart)pp.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");";
+				algorithm += L"window.external.EndUndoUnit(document);";
+			}
+			CStringW functionScript(L"function Fbe285BisectProbe(){"); functionScript += algorithm; functionScript += L"}";
+			appendProbePhase("bisect-register-start");
+			hr = window->execScript(_bstr_t(functionScript), _bstr_t(L"JScript"));
+			if (SUCCEEDED(hr)) appendProbePhase("bisect-register-complete");
+			if (SUCCEEDED(hr)) { appendProbePhase("bisect-insert-start"); hr = script.Invoke0(L"Fbe285BisectProbe"); }
+			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=bisect-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
+			CStringA operations;
+			operations.Format("bisect-operations;normalize=%d;whole=%d;move-to-element=%d;duplicate=%d;set-end-point=%d;read-text=%d;insert=%S", normalize, useWhole, moveToElement, duplicate, setEndPoint, readText, probe == L"fbe285-bisect-no-whole-unconditional" ? L"unconditional" : (probe == L"fbe285-bisect-no-whole-if-true" ? L"if-true" : L"if-at-start"));
+			appendProbePhase(operations);
+			appendProbePhase("bisect-insert-complete");
+		}
+		else if (probe == L"compile-mainjs" || probe == L"compile-inline" || probe == L"compile-dynamic-load" || probe == L"compile-dynamic-documentcomplete" || probe == L"compile-static-wrapper")
+		{
+			if (!selectParagraphPosition(L"start")) { appendProbePhase("probe-failed;reason=selection"); output.Close(); ::PostQuitMessage(1); return 0; }
+			MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
+			if (!window) { appendProbePhase("probe-failed;reason=window"); output.Close(); ::PostQuitMessage(1); return 0; }
+			const wchar_t* functionName = probe == L"compile-mainjs" ? L"FbeCompileStaticMainJsBlockProbe" :
+				(probe == L"compile-inline" ? L"FbeCompileInlineMainHtmlBlockProbe" :
+				(probe == L"compile-dynamic-load" ? L"FbeCompileDynamicLoadBlockProbe" :
+				(probe == L"compile-dynamic-documentcomplete" ? L"FbeCompileDynamicDocumentCompleteBlockProbe" : L"FbeCompileStaticWrapperBlockProbe")));
+			if (probe == L"compile-dynamic-documentcomplete" || probe == L"compile-static-wrapper")
+			{
+				const wchar_t* dynamicName = probe == L"compile-dynamic-documentcomplete" ? L"FbeCompileDynamicDocumentCompleteBlockProbe" : L"FbeCompileDynamicImplementationBlockProbe";
+				CStringW dynamicScript;
+				dynamicScript.Format(L"function %s(){var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'compile probe');p.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");window.external.EndUndoUnit(document);}", dynamicName);
+				appendProbePhase("dynamic-register-after-document-complete-start");
+				hr = window->execScript(_bstr_t(dynamicScript), _bstr_t(L"JScript"));
+				if (FAILED(hr)) { appendProbePhase("probe-failed;phase=dynamic-register"); output.Close(); ::PostQuitMessage(1); return 0; }
+				appendProbePhase("dynamic-register-after-document-complete-complete");
+			}
+			const wchar_t* fingerprintNames[] = { L"FbeCompileStaticMainJsBlockProbe", L"FbeCompileInlineMainHtmlBlockProbe", L"FbeCompileDynamicLoadBlockProbe", L"FbeCompileDynamicDocumentCompleteBlockProbe", L"FbeCompileStaticWrapperBlockProbe", L"FbeCompileDynamicImplementationBlockProbe" };
+			for (const wchar_t* fingerprintName : fingerprintNames)
+			{
+				_variant_t name(fingerprintName), fingerprint;
+				if (SUCCEEDED(script.Invoke1(L"FbeCompileProbeFingerprint", &name, &fingerprint)) && V_VT(&fingerprint) == VT_BSTR)
+				{
+					CStringA phase; phase.Format("function-fingerprint;name=%S;source=%S", fingerprintName, static_cast<const wchar_t*>(_bstr_t(fingerprint))); appendProbePhase(phase);
+				}
+			}
+			appendProbePhase("compile-insert-start");
+			hr = script.Invoke0(functionName);
+			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=compile-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendProbePhase("compile-insert-complete");
+		}
+		else if (probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-after" || probe == L"plain-block-auto" || probe == L"plain-block-markup" || probe == L"plain-block-custom" || probe == L"plain-block-adjacent-html" || probe == L"plain-block-adjacent-html-after" || probe == L"plain-block-adjacent-html-image" || probe == L"plain-block-adjacent-html-image-after" || probe == L"plain-block-range-html" || probe == L"plain-block-range-html-after" || probe == L"fbe285-start" || probe == L"fbe285-end" || probe == L"fbe285-middle" || probe == L"fbe285-return-hold-start" || probe == L"fbe285-dispatch-full-start" || probe == L"fbe285-dispatch-full-invoke2-start" || probe == L"fbe285-dispatch-dom-start" || probe == L"fbe285-exec-full-start" || probe == L"fbe285-exec-split-start")
 		{
 			appendProbePhase(probe == L"image-no-url" ? "image-no-url-start" : "plain-block-start");
-			if (probe != L"plain-block-auto" && probe != L"plain-block-custom" && probe != L"fbe285-start" && probe != L"fbe285-end" && probe != L"fbe285-middle") m_doc->m_body.BeginUndoUnit(probe == L"image-no-url" ? L"undo probe image without URL" : L"undo probe plain block");
+			if (probe != L"plain-block-auto" && probe != L"plain-block-custom" && probe.Left(7) != L"fbe285-") m_doc->m_body.BeginUndoUnit(probe == L"image-no-url" ? L"undo probe image without URL" : L"undo probe plain block");
 			MSHTML::IHTMLElementPtr image(m_doc->m_body.Document()->createElement(L"DIV"));
 			if (probe == L"image-no-url") { image->className = L"image"; image->setAttribute(L"href", _variant_t(L"#existing-image"), 0); }
 			if (probe == L"plain-block-markup")
@@ -276,7 +413,7 @@
 				MSHTML::IHTMLTxtRangePtr boundary(body->createTextRange());
 				boundary->moveToElementText(paragraph); boundary->collapse(probe == L"plain-block-range-html" ? VARIANT_TRUE : VARIANT_FALSE); boundary->pasteHTML(L"<DIV class='probe-block'></DIV>");
 			}
-			else if (probe == L"fbe285-start" || probe == L"fbe285-end" || probe == L"fbe285-middle")
+			else if (probe.Left(7) == L"fbe285-")
 			{
 				MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
 				range->moveToElementText(paragraph);
@@ -298,19 +435,59 @@
 				legacyScript.Replace(L"throw new Error('range');", L"return;");
 				legacyScript.Replace(L"throw new Error('section');", L"return;");
 				legacyScript.Replace(L"throw new Error('owner');", L"return;");
+				if (probe == L"fbe285-return-hold-start") legacyScript += L"window.Fbe285ProbeReturn=function(){return pp.previousSibling;};";
 				legacyScript += L"})();";
 				MSHTML::IHTMLWindow2Ptr window(m_doc->m_body.Document()->parentWindow);
-				appendProbePhase("fbe285-begin-undo-start");
-				hr = window ? window->execScript(_bstr_t(L"window.external.BeginUndoUnit(document,'insert image');"), _bstr_t(L"JScript")) : E_NOINTERFACE;
-				if (SUCCEEDED(hr)) appendProbePhase("fbe285-begin-undo-complete");
-				if (SUCCEEDED(hr)) { appendProbePhase("fbe285-dom-start"); hr = window->execScript(_bstr_t(legacyScript), _bstr_t(L"JScript")); }
-				if (SUCCEEDED(hr)) appendProbePhase("fbe285-dom-complete");
-				if (SUCCEEDED(hr)) { appendProbePhase("fbe285-end-undo-start"); hr = window->execScript(_bstr_t(L"window.external.EndUndoUnit(document);"), _bstr_t(L"JScript")); }
-				if (SUCCEEDED(hr)) appendProbePhase("fbe285-end-undo-complete");
+				const bool dispatchFull = probe == L"fbe285-dispatch-full-start" || probe == L"fbe285-dispatch-full-invoke2-start";
+				const bool dispatchFullInvoke2 = probe == L"fbe285-dispatch-full-invoke2-start";
+				const bool dispatchDom = probe == L"fbe285-dispatch-dom-start";
+				const bool execFull = probe == L"fbe285-exec-full-start";
+				if (dispatchFull || dispatchDom)
+				{
+					CStringW functionScript(L"function Fbe285DispatchProbe(){");
+					if (dispatchFull) functionScript += L"window.external.BeginUndoUnit(document,'insert image');";
+					functionScript += legacyAlgorithm;
+					if (dispatchFull) functionScript += L"window.external.EndUndoUnit(document);";
+					functionScript += L"}";
+					functionScript.Replace(L"throw new Error('range');", L"return;");
+					functionScript.Replace(L"throw new Error('section');", L"return;");
+					functionScript.Replace(L"throw new Error('owner');", L"return;");
+					hr = window ? window->execScript(_bstr_t(functionScript), _bstr_t(L"JScript")) : E_NOINTERFACE;
+					if (SUCCEEDED(hr) && dispatchDom) { appendProbePhase("fbe285-begin-undo-start"); hr = window->execScript(_bstr_t(L"window.external.BeginUndoUnit(document,'insert image');"), _bstr_t(L"JScript")); if (SUCCEEDED(hr)) appendProbePhase("fbe285-begin-undo-complete"); }
+					if (SUCCEEDED(hr)) { appendProbePhase("fbe285-dispatch-start"); _variant_t check(false), existingId(L"existing-image"), result; hr = dispatchFullInvoke2 ? script.Invoke2(L"Fbe285DispatchProbe", &check, &existingId, &result) : script.Invoke0(L"Fbe285DispatchProbe"); }
+					if (SUCCEEDED(hr)) appendProbePhase("fbe285-dispatch-complete");
+					if (SUCCEEDED(hr) && dispatchDom) { appendProbePhase("fbe285-end-undo-start"); hr = window->execScript(_bstr_t(L"window.external.EndUndoUnit(document);"), _bstr_t(L"JScript")); if (SUCCEEDED(hr)) appendProbePhase("fbe285-end-undo-complete"); }
+				}
+				else if (execFull)
+				{
+					CStringW fullScript(L"(function(){window.external.BeginUndoUnit(document,'insert image');");
+					fullScript += legacyAlgorithm; fullScript += L"window.external.EndUndoUnit(document);})();";
+					fullScript.Replace(L"throw new Error('range');", L"return;"); fullScript.Replace(L"throw new Error('section');", L"return;"); fullScript.Replace(L"throw new Error('owner');", L"return;");
+					appendProbePhase("fbe285-exec-full-start"); hr = window ? window->execScript(_bstr_t(fullScript), _bstr_t(L"JScript")) : E_NOINTERFACE; if (SUCCEEDED(hr)) appendProbePhase("fbe285-exec-full-complete");
+				}
+				else
+				{
+					appendProbePhase("fbe285-begin-undo-start");
+					hr = window ? window->execScript(_bstr_t(L"window.external.BeginUndoUnit(document,'insert image');"), _bstr_t(L"JScript")) : E_NOINTERFACE;
+					if (SUCCEEDED(hr)) appendProbePhase("fbe285-begin-undo-complete");
+					if (SUCCEEDED(hr)) { appendProbePhase("fbe285-dom-start"); hr = window->execScript(_bstr_t(legacyScript), _bstr_t(L"JScript")); }
+					if (SUCCEEDED(hr)) appendProbePhase("fbe285-dom-complete");
+					if (SUCCEEDED(hr)) { appendProbePhase("fbe285-end-undo-start"); hr = window->execScript(_bstr_t(L"window.external.EndUndoUnit(document);"), _bstr_t(L"JScript")); }
+					if (SUCCEEDED(hr)) appendProbePhase("fbe285-end-undo-complete");
+				}
+				if (SUCCEEDED(hr) && probe == L"fbe285-return-hold-start")
+				{
+					_variant_t held;
+					hr = script.Invoke0(L"Fbe285ProbeReturn", &held);
+					if (FAILED(hr) || V_VT(&held) != VT_DISPATCH) { appendProbePhase("probe-failed;phase=fbe285-result"); output.Close(); ::PostQuitMessage(1); return 0; }
+					appendProbePhase("fbe285-result-held");
+					// Keep the returned DOM dispatch alive through Undo/Redo below.
+					binaryId = held;
+				}
 				if (FAILED(hr)) { appendProbePhase("probe-failed;phase=fbe285-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
 			}
 			else MSHTML::IHTMLElement2Ptr(paragraph)->insertAdjacentElement(probe == L"plain-block-after" ? L"afterEnd" : L"beforeBegin", image);
-			if (probe != L"plain-block-auto" && probe != L"plain-block-custom" && probe != L"fbe285-start" && probe != L"fbe285-end" && probe != L"fbe285-middle") m_doc->m_body.EndUndoUnit();
+			if (probe != L"plain-block-auto" && probe != L"plain-block-custom" && probe.Left(7) != L"fbe285-") m_doc->m_body.EndUndoUnit();
 			appendProbePhase(probe == L"image-no-url" ? "image-no-url-complete" : "plain-block-complete");
 		}
 		else { appendProbePhase("probe-failed;reason=unknown-name"); output.Close(); ::PostQuitMessage(1); return 0; }
@@ -321,15 +498,27 @@
 		{
 			m_doc->m_body.SetFocus();
 			appendProbePhase("undo-start");
-			m_doc->m_body.ExecCommand(IDM_UNDO);
+			BOOL handled = FALSE;
+			if (probe == L"body-cache-production-undo") m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+			else m_doc->m_body.ExecCommand(IDM_UNDO);
 			appendProbePhase("undo-complete");
-			if ((probe == L"image" || probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto") && blockImageCount() != 0)
+			if (probe == L"body-cache-cached")
+			{
+				const long count = blockImageCountFor(cachedBody); CStringA phase; phase.Format("cached-body-count=%ld", count); appendProbePhase(phase);
+			}
+			else if (probe == L"body-cache-fresh")
+			{
+				MSHTML::IHTMLDocument2Ptr freshDocument(m_doc->m_body.Document());
+				MSHTML::IHTMLBodyElementPtr freshBody(freshDocument ? freshDocument->body : MSHTML::IHTMLBodyElementPtr());
+				const long count = blockImageCountFor(freshBody); CStringA phase; phase.Format("fresh-body-count=%ld", count); appendProbePhase(phase);
+			}
+			if (probe.Left(14) != L"fbe285-bisect-" && (probe == L"image" || probe == L"image-start" || probe == L"image-end" || probe == L"image-middle" || probe == L"image-legacy-exact-start" || probe == L"image-legacy-exact-noreturn-start" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start" || probe == L"call-insimage-empty" || probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto" || probe.Left(8) == L"compile-") && blockImageCount() != 0)
 			{
 				appendProbePhase("probe-failed;phase=undo;reason=image-remained"); output.Close(); ::PostQuitMessage(1); return 0;
 			}
 			for (int cycle = 0; cycle < undoRedoCycles; ++cycle)
 			{
-				m_doc->m_body.SetFocus(); CStringA phase; phase.Format("redo-start-%d", cycle + 1); appendProbePhase(phase); m_doc->m_body.ExecCommand(IDM_REDO); phase.Format("redo-complete-%d", cycle + 1); appendProbePhase(phase);
+				m_doc->m_body.SetFocus(); CStringA phase; phase.Format("redo-start-%d", cycle + 1); appendProbePhase(phase); if (probe == L"body-cache-production-undo") m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); else m_doc->m_body.ExecCommand(IDM_REDO); phase.Format("redo-complete-%d", cycle + 1); appendProbePhase(phase);
 				if (cycle + 1 == undoRedoCycles) break;
 				m_doc->m_body.SetFocus(); phase.Format("undo-start-%d", cycle + 2); appendProbePhase(phase); m_doc->m_body.ExecCommand(IDM_UNDO); phase.Format("undo-complete-%d", cycle + 2); appendProbePhase(phase);
 			}
@@ -340,11 +529,29 @@
 		CStringA domComparison;
 		domComparison.Format("dom-compare;outerhtml-equal=%d;child-order-equal=%d", insertedOuterHtml == finalOuterHtml ? 1 : 0, insertedChildOrder == finalChildOrder ? 1 : 0);
 		appendProbePhase(domComparison);
+		if (undoRedoCycles > 0 && (insertedOuterHtml != finalOuterHtml || insertedChildOrder != finalChildOrder)) { appendProbePhase("probe-failed;phase=dom-compare"); output.Close(); ::PostQuitMessage(1); return 0; }
+		if (probe.Left(14) == L"fbe285-bisect-") { appendProbePhase("bisect-complete"); output.Close(); ::PostQuitMessage(0); return 0; }
+		if (probe.Left(11) == L"body-cache-") { appendProbePhase("body-cache-complete"); output.Close(); ::PostQuitMessage(0); return 0; }
 		appendProbePhase("idle-start");
 		for (int idle = 0; idle < 8; ++idle) { MSG message = {}; if (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } else ::Sleep(5); }
 		appendProbePhase("idle-complete");
 		appendProbePhase("save-start"); if (!m_doc->Save()) { appendProbePhase("probe-failed;phase=save"); output.Close(); ::PostQuitMessage(1); return 0; }
-		appendProbePhase("save-complete"); output.Close(); PostMessage(WM_CLOSE); return 0;
+		appendProbePhase("save-complete");
+		if (probe == L"image" || probe == L"image-start" || probe == L"image-end" || probe == L"image-middle" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start")
+		{
+			const CString filename(m_doc->m_filename);
+			appendProbePhase("reopen-start");
+			if (filename.IsEmpty() || LoadFile(filename) != OK || !refreshSection()) { appendProbePhase("probe-failed;phase=reopen"); output.Close(); ::PostQuitMessage(1); return 0; }
+			CString reopenedOuterHtml, reopenedChildOrder;
+			if (!snapshotSection(reopenedOuterHtml, reopenedChildOrder)) { appendProbePhase("probe-failed;phase=reopen-dom"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendSectionSnapshot("dom-after-reopen", reopenedOuterHtml, reopenedChildOrder);
+			const bool orderMatches = (probe == L"image-end" && reopenedChildOrder.Find(L"P#") == 0 && reopenedChildOrder.Find(L"|DIV#(null).image") > 0) ||
+				(probe == L"image-middle" && reopenedChildOrder.Find(L"P#") == 0 && reopenedChildOrder.Find(L"|DIV#(null).image|P#") > 0) ||
+				((probe == L"image" || probe == L"image-start" || probe == L"image-hold-start" || probe == L"image-clear-start" || probe == L"image-discard-start" || probe == L"image-inspect-release-start") && reopenedChildOrder.Find(L"DIV#(null).image|P#") == 0);
+			if (!orderMatches || reopenedOuterHtml.Find(L"existing-image") < 0) { appendProbePhase("probe-failed;phase=reopen-structure"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendProbePhase("reopen-complete");
+		}
+		output.Close(); ::PostQuitMessage(0); return 0;
 	}
 	if (IsFbeTestScenario(L"binary-import-image"))
 	{
@@ -454,16 +661,70 @@
 		}
 		wchar_t inlineMode[2] = {};
 		const bool inlineImage = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_INLINE", inlineMode, _countof(inlineMode)) != 1 || inlineMode[0] != L'0';
+		wchar_t phaseTraceMode[2] = {};
+		const bool phaseTrace = !inlineImage && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_PHASE_TRACE", phaseTraceMode, _countof(phaseTraceMode)) == 1 && phaseTraceMode[0] == L'1';
+		wchar_t phaseTraceRepeatMode[2] = {};
+		const bool phaseTraceRepeat = phaseTrace && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_PHASE_TRACE_REPEAT", phaseTraceRepeatMode, _countof(phaseTraceRepeatMode)) == 1 && phaseTraceRepeatMode[0] == L'1';
+		MSHTML::IHTMLWindow2Ptr traceWindow(m_doc->m_body.Document()->parentWindow);
+		if (phaseTrace)
+		{
+			const HRESULT traceEnableHr = traceWindow ? traceWindow->execScript(_bstr_t(L"window.fbeImageUndoProbeEnabled=true;window.fbeImageUndoProbeEvents=[];window.fbeImageUndoProbeScenario='production-add-image-start';window.fbeImageUndoProbeAttempt=1;"), _bstr_t(L"JScript")) : E_NOINTERFACE;
+			if (FAILED(traceEnableHr)) { appendImportPhase("import-failed;phase=trace-enable"); output.Close(); ::PostQuitMessage(1); return 0; }
+		}
 		m_doc->m_body.AddImage(imagePath, inlineImage);
 		appendImportPhase("import-complete");
+		if (phaseTrace && phaseTraceRepeat)
+		{
+			for (int cycle = 0; cycle < 5; ++cycle)
+			{
+				BOOL handled = FALSE;
+				m_doc->m_body.SetFocus(); appendImportPhase("trace-undo-start"); m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled); appendImportPhase("trace-undo-complete");
+				m_doc->m_body.SetFocus(); appendImportPhase("trace-redo-start"); m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled); appendImportPhase("trace-redo-complete");
+			}
+			HRESULT traceRepeatHr = S_OK;
+			for (int attempt = 2; attempt <= 6 && SUCCEEDED(traceRepeatHr); ++attempt)
+			{
+				CStringW traceSetup; traceSetup.Format(L"window.fbeImageUndoProbeScenario='production-add-image-repeat';window.fbeImageUndoProbeAttempt=%d;", attempt);
+				traceRepeatHr = traceWindow ? traceWindow->execScript(_bstr_t(traceSetup), _bstr_t(L"JScript")) : E_NOINTERFACE;
+				if (SUCCEEDED(traceRepeatHr)) { appendImportPhase("trace-repeat-insert-start"); m_doc->m_body.AddImage(imagePath, false); appendImportPhase("trace-repeat-insert-complete"); }
+			}
+			CComDispatchDriver traceScript(m_doc->m_body.Script()); _variant_t trace;
+			if (SUCCEEDED(traceRepeatHr) && SUCCEEDED(traceScript.Invoke0(L"FbeImageUndoProbeTraceGet", &trace)) && V_VT(&trace) == VT_BSTR)
+			{
+				CStringA phase; phase.Format("image-phase-trace;%S", static_cast<const wchar_t*>(_bstr_t(trace))); appendImportPhase(phase);
+			}
+			else appendImportPhase("trace-unavailable");
+			output.Close(); PostMessage(WM_CLOSE); return 0;
+		}
 		wchar_t undoRedoMode[2] = {};
 		const bool undoRedo = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_UNDO_REDO", undoRedoMode, _countof(undoRedoMode)) == 1 && undoRedoMode[0] == L'1';
+		wchar_t undoRedoCyclesText[8] = {};
+		const DWORD undoRedoCyclesLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES", undoRedoCyclesText, _countof(undoRedoCyclesText));
+		const int undoRedoCycles = undoRedoCyclesLength && undoRedoCyclesLength < _countof(undoRedoCyclesText) ? _wtoi(undoRedoCyclesText) : 1;
+		if (undoRedoCycles < 1 || undoRedoCycles > 5) { appendImportPhase("import-failed;phase=undo;reason=undo-redo-cycles"); output.Close(); ::PostQuitMessage(1); return 0; }
 		if (!inlineImage && undoRedo)
 		{
-			auto blockImageCount = [&]() -> long
+			appendImportPhase("post-insert-idle-start");
+			for (int idle = 0; idle < 8; ++idle) { MSG message = {}; if (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } else ::Sleep(5); }
+			appendImportPhase("post-insert-idle-complete");
+			auto sectionOuterHtml = [&]() -> CString
 			{
+				MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+				MSHTML::IHTMLBodyElementPtr currentBody(document ? document->body : MSHTML::IHTMLBodyElementPtr());
+				MSHTML::IHTMLElementCollectionPtr divs(currentBody ? MSHTML::IHTMLElement2Ptr(currentBody)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+				for (long index = 0; divs && index < divs->length; ++index)
+				{
+					MSHTML::IHTMLElementPtr candidate(divs->item(_variant_t(index), _variant_t()));
+					if (candidate && _wcsicmp(static_cast<const wchar_t*>(_bstr_t(candidate->className)), L"section") == 0) return static_cast<const wchar_t*>(_bstr_t(candidate->outerHTML));
+				}
+				return CString();
+			};
+			auto freshBlockImageCount = [&]() -> long
+			{
+				MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+				MSHTML::IHTMLBodyElementPtr currentBody(document ? document->body : MSHTML::IHTMLBodyElementPtr());
 				long count = 0;
-				MSHTML::IHTMLElementCollectionPtr divs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+				MSHTML::IHTMLElementCollectionPtr divs(currentBody ? MSHTML::IHTMLElement2Ptr(currentBody)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
 				for (long index = 0; divs && index < divs->length; ++index)
 				{
 					MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
@@ -471,15 +732,42 @@
 				}
 				return count;
 			};
-			if (blockImageCount() != 1) { appendImportPhase("import-failed;phase=undo;reason=initial-image-count"); output.Close(); ::PostQuitMessage(1); return 0; }
-			m_doc->m_body.SetFocus();
-			m_doc->m_body.ExecCommand(IDM_UNDO);
-			if (blockImageCount() != 0) { appendImportPhase("import-failed;phase=undo;reason=image-remained"); output.Close(); ::PostQuitMessage(1); return 0; }
-			appendImportPhase("undo-complete");
-			m_doc->m_body.SetFocus();
-			m_doc->m_body.ExecCommand(IDM_REDO);
-			if (blockImageCount() != 1) { appendImportPhase("import-failed;phase=redo;reason=image-count"); output.Close(); ::PostQuitMessage(1); return 0; }
-			appendImportPhase("redo-complete");
+			CString insertedSection;
+			const bool captureInitialDom = undoRedoCycles == 1;
+			if (captureInitialDom)
+			{
+				if (freshBlockImageCount() != 1) { appendImportPhase("import-failed;phase=undo;reason=initial-image-count"); output.Close(); ::PostQuitMessage(1); return 0; }
+				insertedSection = sectionOuterHtml();
+				if (insertedSection.IsEmpty()) { appendImportPhase("import-failed;phase=undo;reason=initial-section"); output.Close(); ::PostQuitMessage(1); return 0; }
+			}
+			else appendImportPhase("initial-dom-snapshot-skipped");
+			for (int cycle = 0; cycle < undoRedoCycles; ++cycle)
+			{
+				BOOL handled = FALSE;
+				m_doc->m_body.SetFocus(); appendImportPhase("undo-start");
+				m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+				appendImportPhase("undo-complete");
+				// Do not dereference MSHTML DOM between the native Undo and Redo.
+				m_doc->m_body.SetFocus(); appendImportPhase("redo-start");
+				m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+				appendImportPhase("redo-complete");
+			}
+			if (captureInitialDom)
+			{
+				const CString finalSection = sectionOuterHtml();
+				if (freshBlockImageCount() != 1 || finalSection != insertedSection) { appendImportPhase("import-failed;phase=redo;reason=final-dom"); output.Close(); ::PostQuitMessage(1); return 0; }
+				appendImportPhase("redo-dom-complete");
+			}
+			else appendImportPhase("final-dom-snapshot-skipped");
+			if (phaseTrace)
+			{
+				CComDispatchDriver traceScript(m_doc->m_body.Script()); _variant_t trace;
+				if (SUCCEEDED(traceScript.Invoke0(L"FbeImageUndoProbeTraceGet", &trace)) && V_VT(&trace) == VT_BSTR)
+				{
+					CStringA phase; phase.Format("image-phase-trace;%S", static_cast<const wchar_t*>(_bstr_t(trace))); appendImportPhase(phase);
+				}
+				else appendImportPhase("trace-unavailable");
+			}
 		}
 		appendImportPhase("save-start");
 		if (!m_doc->Save())
@@ -488,6 +776,18 @@
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		appendImportPhase("save-complete");
+		if (!inlineImage && undoRedo)
+		{
+			const CString filename(m_doc->m_filename);
+			appendImportPhase("reopen-start");
+			if (filename.IsEmpty() || LoadFile(filename) != OK) { appendImportPhase("import-failed;phase=reopen"); output.Close(); ::PostQuitMessage(1); return 0; }
+			MSHTML::IHTMLDocument2Ptr reopenedDocument(m_doc->m_body.Document());
+			MSHTML::IHTMLBodyElementPtr reopenedBody(reopenedDocument ? reopenedDocument->body : MSHTML::IHTMLBodyElementPtr());
+			MSHTML::IHTMLElementPtr reopenedElement(reopenedBody);
+			const CString reopenedHtml(reopenedElement ? static_cast<const wchar_t*>(_bstr_t(reopenedElement->outerHTML)) : L"");
+			if (reopenedHtml.Find(L"fbw-internal:#") < 0 || reopenedHtml.Find(L"href=\"#") < 0) { appendImportPhase("import-failed;phase=reopen;reason=image-runtime-url"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendImportPhase("reopen-complete");
+		}
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"binary-roundtrip"))

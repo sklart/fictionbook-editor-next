@@ -2888,74 +2888,49 @@ function CloneContainer(cp,check)
 
 var imgcode="<DIV onresizestart='return false' contentEditable='false' class='image' href='#undefined'><IMG src='fbw-internal:#undefined'></DIV>";
 
-var blockImageInsertionMarkerCounter=0;
-
-function IsInlineFormattingElement(element)
+function EscapeBlockImageAttribute(value)
 {
- if(!element || element.nodeType!=1) return false;
- var name=element.tagName;
- return name=="A" || name=="B" || name=="EM" || name=="FONT" || name=="I" ||
-        name=="S" || name=="SMALL" || name=="SPAN" || name=="STRIKE" ||
-        name=="STRONG" || name=="SUB" || name=="SUP" || name=="U";
+ return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
-function RemoveEmptyInlineFormatting(element)
+// Test-only phase recorder for the real InsImage route.  It is inert unless
+// RuntimeTestEditorAndExport explicitly enables it.
+function FbeImageUndoProbeTrace(phase)
 {
- if(!element) return;
- for(var child=element.lastChild;child;)
+ try
  {
-  var previous=child.previousSibling;
-  if(child.nodeType==1)
-  {
-   RemoveEmptyInlineFormatting(child);
-   if(IsInlineFormattingElement(child) && !child.firstChild) child.removeNode(true);
-  }
-  child=previous;
+  if(!window.fbeImageUndoProbeEnabled) return;
+  if(!window.fbeImageUndoProbeEvents) window.fbeImageUndoProbeEvents=[];
+  var eventText="scenario="+(window.fbeImageUndoProbeScenario||"")+";attempt="+(window.fbeImageUndoProbeAttempt||"")+";phase="+phase;
+  window.fbeImageUndoProbeEvents.push(eventText);
+  window.external.TraceScript("IMGUNDO",eventText);
  }
+ catch(ignore) {}
 }
 
-function MoveFollowingSiblings(source, destination)
+function FbeImageUndoProbeTraceError(phase,error)
 {
- for(var sibling=source.nextSibling;sibling;)
+ try
  {
-  var next=sibling.nextSibling;
-  destination.appendChild(sibling);
-  sibling=next;
+  if(!window.fbeImageUndoProbeEnabled) return;
+  if(!window.fbeImageUndoProbeEvents) window.fbeImageUndoProbeEvents=[];
+  var eventText="scenario="+(window.fbeImageUndoProbeScenario||"")+";attempt="+(window.fbeImageUndoProbeAttempt||"")+";phase="+phase+";error.number="+(error&&error.number)+";error.description="+(error&&error.description)+";error.message="+(error&&error.message);
+  window.fbeImageUndoProbeEvents.push(eventText);
+  window.external.TraceScript("IMGUNDO",eventText);
  }
+ catch(ignore) {}
 }
 
-function HasParagraphContent(paragraph)
+function FbeImageUndoProbeTraceGet()
 {
- for(var child=paragraph.firstChild;child;child=child.nextSibling)
- {
-  if(child.nodeType==3)
-  {
-   if(child.nodeValue.replace(/[\s\xA0]/g,"")!="") return true;
-  }
-  else if(child.nodeType==1 && child.tagName!="BR") return true;
- }
- return false;
+ return window.fbeImageUndoProbeEvents ? window.fbeImageUndoProbeEvents.join("|") : "";
 }
 
-function CreateBlockImageElement(id)
+function BlockImageHTML(id)
 {
  var imageId=id=="" ? "undefined" : id;
- var image=document.createElement("DIV");
- image.setAttribute("onresizestart","return false");
- image.setAttribute("contentEditable","false");
- image.className="image";
- image.setAttribute("href","#"+imageId);
- var picture=document.createElement("IMG");
- picture.src="fbw-internal:#"+imageId;
- image.appendChild(picture);
- return image;
-}
-
-function IsMarkerAtParagraphBoundary(marker, paragraph, atStart)
-{
- for(var node=marker;node && node!=paragraph;node=node.parentNode)
-  if(atStart ? node.previousSibling : node.nextSibling) return false;
- return node==paragraph;
+ var escapedId=EscapeBlockImageAttribute(imageId);
+ return "<DIV onresizestart='return false' contentEditable='false' class='image' href='#"+escapedId+"'><IMG src='fbw-internal:#"+escapedId+"'></DIV>";
 }
 
 function MoveCaretToParagraphStart(paragraph)
@@ -2965,65 +2940,6 @@ function MoveCaretToParagraphStart(paragraph)
  caret.moveToElementText(paragraph);
  caret.collapse(true);
  caret.select();
-}
-
-function InsertBlockImageAtMarker(marker, id)
-{
- var paragraph=marker.parentElement;
- while(paragraph && paragraph.tagName!="P") paragraph=paragraph.parentElement;
- if(!paragraph) return null;
-
- // Do not rebuild a paragraph at either boundary: MSHTML has already put the
- // marker in the inline ancestry, but the original P (including its id and
- // attributes) remains the correct DOM node to retain.
- var atStart=IsMarkerAtParagraphBoundary(marker,paragraph,true);
- var atEnd=IsMarkerAtParagraphBoundary(marker,paragraph,false);
- if(atStart || atEnd)
- {
-  marker.removeNode(true);
-  var boundaryBlock=CreateBlockImageElement(id);
-  paragraph.insertAdjacentElement(atStart ? "beforeBegin" : "afterEnd",boundaryBlock);
-  if(atStart) MoveCaretToParagraphStart(paragraph);
-  return boundaryBlock;
- }
-
- // Build the right paragraph bottom-up.  Every copied inline ancestor receives
- // the text to the right of the marker, so <EM>/<STRONG>/... survive a split.
- var source=marker;
- var rightPart=null;
- while(source && source.parentNode)
- {
-  var parent=source.parentNode;
-  var copy=parent.cloneNode(false);
-  copy.removeAttribute("id");
-  if(rightPart) copy.appendChild(rightPart);
-  MoveFollowingSiblings(source,copy);
-  rightPart=copy;
-  if(parent==paragraph) break;
-  source=parent;
- }
- if(!rightPart || rightPart.tagName!="P") return null;
-
- marker.removeNode(true);
- RemoveEmptyInlineFormatting(paragraph);
- RemoveEmptyInlineFormatting(rightPart);
-
- var block=CreateBlockImageElement(id);
- var keepLeft=HasParagraphContent(paragraph);
- var keepRight=HasParagraphContent(rightPart);
- if(keepLeft)
- {
-  paragraph.insertAdjacentElement("afterEnd",block);
-  if(keepRight) block.insertAdjacentElement("afterEnd",rightPart);
- }
- else
- {
-  paragraph.insertAdjacentElement("beforeBegin",block);
-  if(keepRight) block.insertAdjacentElement("afterEnd",rightPart);
-  paragraph.removeNode(true);
- }
- if(keepRight) MoveCaretToParagraphStart(rightPart);
- return block;
 }
 
 function InsImage(check, id)
@@ -3037,60 +2953,178 @@ function InsImage(check, id)
   rng.collapse(true); if(rng.move("character",1)==1) rng.move("character",-1);
  }
 
- var pe=rng.parentElement(); while(pe && pe.tagName!="DIV") pe=pe.parentElement;
-
- if(!pe || pe.className!="section") return;
+ var cp=rng.parentElement();
+ var paragraph=cp;
+ while(paragraph && paragraph.tagName!="P") paragraph=paragraph.parentElement;
+ var section=cp;
+ while(section && (section.tagName!="DIV" || section.className!="section")) section=section.parentElement;
+ if(!paragraph || !section) return;
+ var owner=paragraph.parentElement;
+ while(owner && owner.tagName!="DIV") owner=owner.parentElement;
+ if(!owner || owner.sourceIndex!=section.sourceIndex) return;
 
  if(check) return true;
 
- var markerId;
- do { markerId="fbe-block-image-marker-"+(++blockImageInsertionMarkerCounter); }
- while(document.getElementById(markerId));
-
+ var imageHtml=BlockImageHTML(id);
+ var whole=document.body.createTextRange();
+ whole.moveToElementText(paragraph);
+ var left=whole.duplicate();
+ left.setEndPoint("EndToStart",rng);
+ var right=whole.duplicate();
+ right.setEndPoint("StartToEnd",rng);
+ var leftHTML=left.htmlText;
+ var rightHTML=right.htmlText;
  var undoStarted=false;
  var inserted=null;
- var marker=null;
+ var caretParagraph=null;
  var operationError=null;
  var cleanupError=null;
  try
  {
+  FbeImageUndoProbeTrace("BeginUndoUnit");
   window.external.BeginUndoUnit(document,"insert image");
   undoStarted=true;
-  rng.pasteHTML("<SPAN id='"+markerId+"'></SPAN>");
-  marker=document.getElementById(markerId);
-  inserted=marker ? InsertBlockImageAtMarker(marker,id) : null;
-  if(!inserted && marker) marker.removeNode(true);
+  FbeImageUndoProbeTrace("read-left-right-text");
+  var leftText=left.text;
+  var rightText=right.text;
+  if(leftText==null || leftText=="")
+  {
+   FbeImageUndoProbeTrace("insert-image-beforeBegin");
+   paragraph.insertAdjacentHTML("beforeBegin",imageHtml);
+   FbeImageUndoProbeTrace("get-inserted-beforeBegin");
+   inserted=paragraph.previousSibling;
+   caretParagraph=paragraph;
+  }
+  else if(rightText==null || rightText=="")
+  {
+   FbeImageUndoProbeTrace("insert-image-afterEnd");
+   paragraph.insertAdjacentHTML("afterEnd",imageHtml);
+   FbeImageUndoProbeTrace("get-inserted-afterEnd");
+   inserted=paragraph.nextSibling;
+  }
+ else
+ {
+   FbeImageUndoProbeTrace("cloneNode-right-paragraph");
+   var rightPart=paragraph.cloneNode(false);
+   if(rightPart.id) rightPart.removeAttribute("id");
+   FbeImageUndoProbeTrace("set-left-innerHTML");
+   paragraph.innerHTML=leftHTML;
+   FbeImageUndoProbeTrace("set-right-innerHTML");
+   rightPart.innerHTML=rightHTML;
+   FbeImageUndoProbeTrace("InflateIt-left");
+   InflateIt(paragraph);
+   FbeImageUndoProbeTrace("InflateIt-right");
+   InflateIt(rightPart);
+   FbeImageUndoProbeTrace("insert-image-afterEnd-split");
+   paragraph.insertAdjacentHTML("afterEnd",imageHtml);
+   FbeImageUndoProbeTrace("get-inserted-split");
+   inserted=paragraph.nextSibling;
+   FbeImageUndoProbeTrace("insert-right-paragraph");
+   inserted.insertAdjacentElement("afterEnd",rightPart);
+   FbeImageUndoProbeTrace("restore-caret-right-paragraph");
+   MoveCaretToParagraphStart(rightPart);
+  }
  }
  catch(error)
  {
   operationError=error;
+  FbeImageUndoProbeTraceError("operation",error);
   throw error;
  }
  finally
  {
-  // A failed DOM split must not serialize its temporary anchor.  Retain the
-  // original error if removing the anchor or closing the undo unit also fails.
   try
   {
-   if(!marker) marker=document.getElementById(markerId);
-   if(marker && marker.parentNode) marker.removeNode(true);
+   if(undoStarted) { FbeImageUndoProbeTrace("EndUndoUnit"); window.external.EndUndoUnit(document); }
   }
   catch(error)
   {
    cleanupError=error;
-  }
-  try
-  {
-   if(undoStarted) window.external.EndUndoUnit(document);
-  }
-  catch(error)
-  {
-   if(!cleanupError) cleanupError=error;
+   FbeImageUndoProbeTraceError("EndUndoUnit",error);
   }
   if(!operationError && cleanupError) throw cleanupError;
  }
-
+ if(inserted && caretParagraph) MoveCaretToParagraphStart(caretParagraph);
  return inserted;
+}
+
+// Test-only baseline for undo bisection.  Keep this algorithm textually close
+// to the corrected FBE 2.8.5 implementation; production continues to use
+// InsImage above.
+function InsImageLegacyExact(check, id)
+{
+ var rng=document.selection.createRange();
+ if(!rng || !("compareEndPoints" in rng)) return;
+ if(rng.compareEndPoints("StartToEnd",rng)!=0)
+ {
+  rng.collapse(true); if(rng.move("character",1)==1) rng.move("character",-1);
+ }
+ var cp=rng.parentElement();
+ var pp=cp;
+ while(pp && pp.tagName!="P") pp=pp.parentElement;
+ var pe=cp;
+ while(pe && (pe.tagName!="DIV" || pe.className!="section")) pe=pe.parentElement;
+ if(!pe || !pp) return;
+ var owner=pp.parentElement;
+ while(owner && owner.tagName!="DIV") owner=owner.parentElement;
+ if(!owner || owner.sourceIndex!=pe.sourceIndex) return;
+ if(check) return true;
+ var ht=(id==null || id=="") ? imgcode : "<DIV onresizestart='return false' contentEditable='false' class='image' href='#"+id+"'><IMG src='fbw-internal:#"+id+"'></DIV>";
+ var whole=document.body.createTextRange();
+ whole.moveToElementText(pp);
+ var left=whole.duplicate(); left.setEndPoint("EndToStart",rng);
+ var right=whole.duplicate(); right.setEndPoint("StartToEnd",rng);
+ window.external.BeginUndoUnit(document,"insert image");
+ var leftText=left.text;
+ var rightText=right.text;
+ if(leftText==null || leftText=="")
+ {
+  pp.insertAdjacentHTML("beforeBegin",ht);
+  window.external.EndUndoUnit(document);
+  if(window.fbeLegacyExactSuppressReturn) return;
+  return pp.previousSibling;
+ }
+ if(rightText==null || rightText=="")
+ {
+  pp.insertAdjacentHTML("afterEnd",ht);
+  window.external.EndUndoUnit(document);
+  if(window.fbeLegacyExactSuppressReturn) return;
+  return pp.nextSibling;
+ }
+ var leftHTML=left.htmlText;
+ var rightHTML=right.htmlText;
+ var rp=pp.cloneNode(false);
+ if(rp.id) rp.removeAttribute("id");
+ pp.innerHTML=leftHTML;
+ rp.innerHTML=rightHTML;
+ InflateIt(pp);
+ InflateIt(rp);
+ pp.insertAdjacentHTML("afterEnd",ht);
+ var image=pp.nextSibling;
+ image.insertAdjacentElement("afterEnd",rp);
+ var nr=document.body.createTextRange();
+ nr.moveToElementText(rp);
+ nr.collapse(true);
+ nr.select();
+ window.external.EndUndoUnit(document);
+ if(window.fbeLegacyExactSuppressReturn) return;
+ return image;
+}
+// Test-only compilation/lifetime probe. These functions are independent from
+// InsImage and are called only by the image-undo runtime test harness.
+function FbeCompileStaticMainJsBlockProbe(){var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'compile probe');p.insertAdjacentHTML('beforeBegin',"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>");window.external.EndUndoUnit(document);}
+
+function FbeCompileStaticWrapperBlockProbe()
+{
+ FbeCompileDynamicImplementationBlockProbe();
+}
+
+function FbeCompileProbeFingerprint(name)
+{
+ var fn=window[name], source=fn ? String(fn) : "", normalized=source.replace(/^function[ \t]+[^\(]+/,"function <name>"), hash=2166136261, normalizedHash=2166136261, i;
+ for(i=0;i<source.length;i++) hash=((hash^source.charCodeAt(i))*16777619)>>>0;
+ for(i=0;i<normalized.length;i++) normalizedHash=((normalizedHash^normalized.charCodeAt(i))*16777619)>>>0;
+ return source.length+":"+hash.toString(16)+":"+normalized.length+":"+normalizedHash.toString(16);
 }
 //-----------------------------------------------
 

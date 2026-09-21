@@ -6,7 +6,11 @@ Exercises production MSHTML insertion of a block image at inline-formatting boun
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [int]$TimeoutSeconds = 180,
-    [switch]$DiagnosticUndoRedo
+    [switch]$DiagnosticUndoRedo,
+    [ValidateRange(0, 5)]
+    [int]$ProductionUndoRedoCycles = 0,
+    [switch]$PhaseTrace,
+    [string]$CaseId = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,11 +30,15 @@ function Assert-Fb2Schema([string]$Path) {
     if ($validation.errorCode -ne 0) { throw "FictionBook.xsd validation failed: $($validation.reason)" }
 }
 
-function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture, [string]$WorkingDirectory, [int]$Offset, [bool]$UndoRedo) {
+function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture, [string]$WorkingDirectory, [int]$Offset, [bool]$UndoRedo, [int]$UndoRedoCycles, [bool]$Trace) {
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = $Scenario
     $env:FBE_NEXT_TEST_IMAGE_CARET_OFFSET = [string]$Offset
     $env:FBE_NEXT_TEST_IMAGE_UNDO_REDO = if ($UndoRedo) { '1' } else { '0' }
+    $env:FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES = [string]$UndoRedoCycles
+    $env:FBE_NEXT_TEST_IMAGE_PHASE_TRACE = if ($Trace) { '1' } else { '0' }
+    $env:FBE_NEXT_TEST_IMAGE_PHASE_TRACE_REPEAT = '0'
+    $env:FBE_NEXT_TRACE = if ($Trace) { '1' } else { '0' }
     $process = Start-Process -FilePath $FbeExe -WorkingDirectory $WorkingDirectory -ArgumentList @('-b', $Report, $Fixture) -PassThru
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил $Scenario." }
     if ($process.ExitCode -ne 0) {
@@ -41,6 +49,9 @@ function Invoke-FbeScenario([string]$Scenario, [string]$Report, [string]$Fixture
     $text = Get-Content -LiteralPath $Report -Raw
     if ($text -match 'E_POINTER|80004003|import-failed') { throw "Runtime image regression: $text" }
     if ($UndoRedo -and ($text -notmatch 'undo-complete' -or $text -notmatch 'redo-complete')) { throw "Undo/Redo не подтвердились: $text" }
+    if ($UndoRedoCycles -gt 1 -and ($text -notmatch 'final-dom-snapshot-skipped' -or $text -notmatch 'reopen-complete')) { throw "Production Undo/Redo/Save/Reopen не подтвердились: $text" }
+    if ($Trace -and $text -notmatch 'image-phase-trace;') { throw "Phase trace не получен: $text" }
+    return $text
 }
 
 function Assert-Case([string]$Path, $Case) {
@@ -73,7 +84,7 @@ function Assert-Case([string]$Path, $Case) {
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-block-image-inline-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory | Out-Null
 $savedEnvironment = @{}
-foreach ($name in 'FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_IMAGE_PATH', 'FBE_NEXT_TEST_IMAGE_INLINE', 'FBE_NEXT_TEST_IMAGE_CARET_OFFSET', 'FBE_NEXT_TEST_IMAGE_UNDO_REDO') { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+foreach ($name in 'FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_IMAGE_PATH', 'FBE_NEXT_TEST_IMAGE_INLINE', 'FBE_NEXT_TEST_IMAGE_CARET_OFFSET', 'FBE_NEXT_TEST_IMAGE_UNDO_REDO', 'FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES', 'FBE_NEXT_TEST_IMAGE_PHASE_TRACE', 'FBE_NEXT_TEST_IMAGE_PHASE_TRACE_REPEAT', 'FBE_NEXT_TRACE') { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 try {
     Add-Type -AssemblyName System.Drawing
     $imagePath = Join-Path $directory 'formatting-boundary.jpg'
@@ -93,6 +104,8 @@ try {
         @{ Id='before-em'; Markup='<p>normal<emphasis>italic</emphasis></p>'; Offset=6; Children='p,image,p'; Checks=@(@{Path='./fb:p[1]';Text='normal'},@{Path='./fb:p[2]/fb:emphasis';Text='italic'}) },
         @{ Id='paragraph-end'; Markup='<p>normal <emphasis>italic</emphasis></p>'; Offset=13; Children='p,image'; Checks=@(@{Path='./fb:p[1]/fb:emphasis';Text='italic'}) }
     )
+    if ($CaseId) { $cases = @($cases | Where-Object { $_.Id -eq $CaseId }); if ($cases.Count -ne 1) { throw "Не найден test case: $CaseId" } }
+    elseif ($ProductionUndoRedoCycles -gt 0) { $cases = @($cases | Where-Object { $_.Id -in 'keep-p-id-at-start', 'nested-em-strong', 'paragraph-end' }) }
     foreach ($case in $cases) {
         $fixture = Join-Path $directory ($case.Id + '.fb2')
         $report = Join-Path $directory ($case.Id + '.tsv')
@@ -100,9 +113,11 @@ try {
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Block image formatting</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>block-image-formatting</id><version>1.0</version></document-info></description><body><section>$($case.Markup)</section></body></FictionBook>
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
-        Invoke-FbeScenario 'binary-import-image' $report $fixture $directory $case.Offset ([bool]$case.UndoRedo)
+        $undoRedo = $ProductionUndoRedoCycles -gt 0 -or [bool]$case.UndoRedo
+        $undoRedoCycles = if ($ProductionUndoRedoCycles -gt 0) { $ProductionUndoRedoCycles } else { 1 }
+        $trace = Invoke-FbeScenario 'binary-import-image' $report $fixture $directory $case.Offset $undoRedo $undoRedoCycles ([bool]$PhaseTrace)
         Assert-Case $fixture $case
-        Invoke-FbeScenario 'binary-roundtrip' (Join-Path $directory ($case.Id + '-reopen.tsv')) $fixture $directory 0 $false
+        Invoke-FbeScenario 'binary-roundtrip' (Join-Path $directory ($case.Id + '-reopen.tsv')) $fixture $directory 0 $false 1 $false | Out-Null
         Assert-Case $fixture $case
     }
     Write-Host 'Block-image inline-formatting MSHTML Save -> Reopen regression passed.'

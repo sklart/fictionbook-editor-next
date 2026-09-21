@@ -6,6 +6,11 @@
         <meta http-equiv="MSThemeCompatible" content="yes">
         <link id="css" rel="Stylesheet" type="text/css" href="main.css">
         <script language="JavaScript" type="text/javascript" src="main.js"></script>
+        <!-- Test-only: intentionally compiled inline, after the external main.js. -->
+        <script language="JavaScript" type="text/javascript">
+        function FbeCompileInlineMainHtmlBlockProbe(){var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'compile probe');p.insertAdjacentHTML('beforeBegin',"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>");window.external.EndUndoUnit(document);}
+        window.execScript("function FbeCompileDynamicLoadBlockProbe(){var rng=document.selection.createRange(),p=rng.parentElement();while(p&&p.tagName!='P')p=p.parentElement;if(!p)throw new Error('paragraph');window.external.BeginUndoUnit(document,'compile probe');p.insertAdjacentHTML('beforeBegin',\"<DIV contentEditable='false' class='image' href='#existing-image'></DIV>\");window.external.EndUndoUnit(document);}", "JScript");
+        </script>
         <script id="userCmd" language="JavaScript" type="text/javascript" src=""></script>
     </head>
     <body contentEditable="false" oncontextmenu="return false;">

@@ -149,27 +149,6 @@ static CString GetDiagnosticFaultInjection()
 	return CString();
 }
 
-// These breadcrumbs exist exclusively for the real-MSHTML image undo probe.
-// They deliberately flush after every boundary so a Save hang still leaves the
-// last completed serialization phase in the StartupTrace log.
-static bool IsImageUndoSaveProbeEnabled()
-{
-	if (!StartupTrace::Enabled()) return false;
-	wchar_t testMode[4] = {}, scenario[64] = {};
-	if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) != 1 || testMode[0] != L'1') return false;
-	const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
-	return scenarioLength && scenarioLength < _countof(scenario) && _wcsicmp(scenario, L"image-undo-probe") == 0;
-}
-
-static void MarkImageUndoSaveProbePhase(const wchar_t* phase)
-{
-	if (!IsImageUndoSaveProbeEnabled()) return;
-	CString message;
-	message.Format(L"phase=%s", phase ? phase : L"unknown");
-	StartupTrace::Event(L"image-undo-save-probe", L"IUSP100", message);
-	StartupTrace::Flush();
-}
-
 static void ApplyDiagnosticFaultInjection(MSHTML::IHTMLDocument2Ptr document)
 {
 	const CString point = GetDiagnosticFaultInjection();
@@ -1745,13 +1724,9 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   markTableSerializationPhase(L"native-before-normalize-complete");
 
   // normalize body first
-  MarkImageUndoSaveProbePhase(L"cleanup-all-start");
   _EDMnr.CleanUpAll();
-  MarkImageUndoSaveProbePhase(L"cleanup-all-complete");
   markTableSerializationPhase(L"normalize-start");
-  MarkImageUndoSaveProbePhase(L"normalize-start");
   m_editor.Normalize(m_editor.Document()->body);
-  MarkImageUndoSaveProbePhase(L"normalize-complete");
   markTableSerializationPhase(L"normalize-complete");
 
   // Source/Body switches are part of the normal editor transaction. This
@@ -1845,17 +1820,13 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     args[1]=ann.GetInterfacePtr();
   args[2]=ndoc.GetInterfacePtr();
 
-  MarkImageUndoSaveProbePhase(L"get-desc-start");
   CheckError(body.InvokeN(L"GetDesc",&args[0],3));
-  MarkImageUndoSaveProbePhase(L"get-desc-complete");
 
   // fetch body elements
   markTableSerializationPhase(L"get-bodies-start");
-	MarkImageUndoSaveProbePhase(L"get-bodies-start");
 	GetBodies(fbw_body, ndoc, targetType);
 	if (targetType == FictionBookFileType::Fb2)
 		EnsureMinimalFb2Body(ndoc);
-  MarkImageUndoSaveProbePhase(L"get-bodies-complete");
   markTableSerializationPhase(L"get-bodies-complete");
 
   markTableSerializationPhase(L"serialized-snapshot-start");
@@ -1871,20 +1842,15 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   // fetch binaries
   markTableSerializationPhase(L"get-binaries-start");
-	MarkImageUndoSaveProbePhase(L"get-binaries-start");
   CheckError(body.Invoke1(L"GetBinaries",&args[2]));
-	MarkImageUndoSaveProbePhase(L"get-binaries-complete");
   markTableSerializationPhase(L"get-binaries-complete");
 
 	if (compactBinaries)
 	{
-		MarkImageUndoSaveProbePhase(L"compact-binaries-start");
 		CompactBinaryTextContent(ndoc);
-		MarkImageUndoSaveProbePhase(L"compact-binaries-complete");
 	}
 
 	markTableSerializationPhase(L"complete");
-	MarkImageUndoSaveProbePhase(L"create-dom-complete");
 
   Indent(root,ndoc,0);
   return ndoc;
@@ -1952,7 +1918,6 @@ static CString CreateTemporaryFileName(const CString& directory, const wchar_t* 
 bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		      int *errline,int *errcol,bool reportAccessDenied)
 {
-	MarkImageUndoSaveProbePhase(L"save-to-file-enter");
 	if (m_serialization_unsafe)
 	{
 		m_last_save_error = E_FAIL;
@@ -1984,9 +1949,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 	MSXML2::IXMLDOMDocument2Ptr	ndoc;
 	m_save_transaction_active = true;
 	try {
-		MarkImageUndoSaveProbePhase(L"create-dom-start");
 		ndoc = CreateDOMImp(_Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding(), true, targetType);
-		MarkImageUndoSaveProbePhase(L"create-dom-complete");
 	}
 	catch (...) {
 		m_save_transaction_active = false;
@@ -1996,21 +1959,9 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 
     // reparse the document
     IStreamPtr	    isp(ndoc);
-    MarkImageUndoSaveProbePhase(L"raw-parse-start");
     HRESULT hr=rdr->raw_parse(_variant_t((IUnknown *)isp));
-    MarkImageUndoSaveProbePhase(L"raw-parse-complete");
-	MarkImageUndoSaveProbePhase(L"post-parse-start");
     bool bErrSave = false;
 	if (FAILED(hr)) {
-		if (IsImageUndoSaveProbeEnabled())
-		{
-			CString failure;
-			failure.Format(L"raw-parse HRESULT=0x%08lX; sax-message=%s", static_cast<unsigned long>(hr), eh->m_msg.IsEmpty() ? L"absent" : static_cast<const wchar_t*>(eh->m_msg));
-			StartupTrace::HResult(L"image-undo-save-probe", L"IUSP101", hr, failure);
-			MarkImageUndoSaveProbePhase(L"raw-parse-failure");
-			m_last_save_error = hr;
-			return false;
-		}
       if (!eh->m_msg.IsEmpty()) {
 	// record error position
 	if (errline)
@@ -2045,7 +1996,6 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		if (!ValidateFbdDocumentStructure(ndoc, &structuralError))
 			return ReportFbdStructureValidationFailure(m_frame, structuralError, errline, errcol);
 	}
-	MarkImageUndoSaveProbePhase(L"post-parse-structure-complete");
 
 	if (fValidateOnly)
 	{
@@ -2060,20 +2010,15 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
     }
 
 forcesave:
-	MarkImageUndoSaveProbePhase(L"force-save-enter");
     // now save it
     // create tmp filename
-	MarkImageUndoSaveProbePhase(L"save-path-start");
     CString	path(filename);
     int		cp=path.ReverseFind(_T('\\'));
     if (cp<0)
       path=_T(".\\");
     else
       path.Delete(cp,path.GetLength()-cp);
-	MarkImageUndoSaveProbePhase(L"save-path-complete");
-	MarkImageUndoSaveProbePhase(L"temporary-file-create-start");
     CString	buf(CreateTemporaryFileName(path, _T("fbe")));
-	MarkImageUndoSaveProbePhase(L"temporary-file-created");
 
 	// added by SeNS: replace all nbsp - non-breaking spaces
 	if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
@@ -2103,9 +2048,7 @@ forcesave:
 	}
 
     // try to save file
-    MarkImageUndoSaveProbePhase(L"raw-save-start");
     hr=ndoc->raw_save(_variant_t((const wchar_t *)buf));
-	MarkImageUndoSaveProbePhase(L"raw-save-complete");
     if (FAILED(hr)) {
       ::DeleteFile(buf);
       _com_issue_errorex(hr,ndoc,__uuidof(ndoc));
@@ -2113,9 +2056,7 @@ forcesave:
 
 	bool preserveTemporaryFile = false;
 	try {
-		MarkImageUndoSaveProbePhase(L"file-commit-start");
 		CommitSavedFile(buf, filename, _Settings.GetCreateBackupFile(), &preserveTemporaryFile);
-		MarkImageUndoSaveProbePhase(L"file-commit-complete");
 	}
 	catch (...) {
 		if (!preserveTemporaryFile) ::DeleteFile(buf);
@@ -2138,7 +2079,6 @@ forcesave:
 	}
 
 	m_encoding = _Settings.KeepEncoding() ? m_encoding : _Settings.GetDefaultEncoding();
-	MarkImageUndoSaveProbePhase(L"save-to-file-complete");
 	StartupTrace::Event(L"document", L"D222", L"book save completed");
   }
   catch (_com_error& e) {
