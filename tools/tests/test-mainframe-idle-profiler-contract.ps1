@@ -42,6 +42,9 @@ if($source.IndexOf('const bool profileIdle = StartupTrace::Enabled();', [StringC
 foreach($token in @('g_uiUpdateViewCmdCount', 'g_idleProfile.sourceUpdates', 'g_idleProfile.attributeBarsUpdates', 'g_idleProfile.statusUpdates')) {
     if($source.IndexOf($token, [StringComparison]::Ordinal) -lt 0) { throw "Profiler counter is not connected: '$token'." }
 }
+foreach($token in @('HighlightItemAtPos(m_selection_context.container)', 'g_idleProfile.treeUpdates', 'g_idleProfile.treeMilliseconds')) {
+    if($source.IndexOf($token, [StringComparison]::Ordinal) -lt 0) { throw "Tree selection profiler is not connected: '$token'." }
+}
 foreach($token in @('StartupTrace::Enabled()', 'g_idleProfile.toolbarLocalizationUpdates')) {
     if($runtimeUi.IndexOf($token, [StringComparison]::Ordinal) -lt 0) { throw "Toolbar-localization profiler is not connected: '$token'." }
 }

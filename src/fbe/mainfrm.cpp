@@ -1584,7 +1584,13 @@ BOOL CMainFrame::OnIdle()
 
 			// update current tree node
 			if (!m_doc_changed && _Settings.ViewDocumentTree())
+			{
+				const ULONGLONG treeStarted = profileIdle ? ::GetTickCount64() : 0;
 				m_document_tree.HighlightItemAtPos(m_selection_context.container); // locate appropriate tree node
+				// Selection highlighting is a tree update too; include it in the
+				// aggregate rather than hiding its cost in selection-context timing.
+				if (profileIdle) { ++g_idleProfile.treeUpdates; g_idleProfile.treeMilliseconds += ::GetTickCount64() - treeStarted; }
+			}
 
 			m_sel_changed = false;
 			if (profileIdle) g_idleProfile.selectionMilliseconds += ::GetTickCount64() - selectionStarted;
