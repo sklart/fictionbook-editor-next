@@ -1,4 +1,4 @@
-﻿<# Exercises FBE.exe diagnostic runtime-paths mode without starting its GUI. #>
+<# Exercises FBE.exe diagnostic runtime-paths mode without starting its GUI. #>
 [CmdletBinding()]
 param([string]$FbeExecutable)
 $ErrorActionPreference = 'Stop'
@@ -7,6 +7,9 @@ if (-not $FbeExecutable) { $FbeExecutable = Join-Path $root 'out\Release\FBE.exe
 $FbeExecutable = (Resolve-Path -LiteralPath $FbeExecutable).Path
 $testDirectory = Join-Path $root 'out\tests\runtime-paths-cli'
 New-Item -ItemType Directory -Force -Path $testDirectory | Out-Null
+$portableIni = Join-Path (Split-Path $FbeExecutable -Parent) 'portable.ini'
+$hadPortableIni = Test-Path -LiteralPath $portableIni
+$oldPortableIni = if ($hadPortableIni) { [IO.File]::ReadAllBytes($portableIni) } else { $null }
 
 function Invoke-RuntimePaths([string[]]$Arguments, [int]$ExpectedExitCode) {
     $stdout = Join-Path $testDirectory (($Arguments -join '_').Replace('--', '') + '.stdout')
@@ -17,16 +20,26 @@ function Invoke-RuntimePaths([string[]]$Arguments, [int]$ExpectedExitCode) {
     return @{ Stdout = (Get-Content -LiteralPath $stdout -Raw -ErrorAction SilentlyContinue); Stderr = (Get-Content -LiteralPath $stderr -Raw -ErrorAction SilentlyContinue) }
 }
 
-# The staged Release directory deliberately contains portable.ini for the
-# portable package contour.  Request Installed explicitly so this assertion
-# remains valid regardless of that marker's presence.
-$installed = (Invoke-RuntimePaths @('--installed', '--print-runtime-paths') 0).Stdout | ConvertFrom-Json
-if ($installed.mode -ne 'Installed' -or $installed.architecture -ne 'Win32' -or -not $installed.registryPersistenceAllowed -or [string]::IsNullOrWhiteSpace($installed.settingsDirectory)) { throw 'Installed runtime paths are invalid.' }
-$portable = (Invoke-RuntimePaths @('--portable', '--print-runtime-paths') 0).Stdout | ConvertFrom-Json
-if ($portable.mode -ne 'Portable' -or $portable.architecture -ne 'Win32' -or $portable.registryPersistenceAllowed -or -not $portable.dataRoot.EndsWith('\Data\')) { throw 'Portable runtime paths are invalid.' }
-foreach ($pair in @{ logsDirectory = 'Logs'; cacheDirectory = 'Cache'; tempDirectory = 'Temp'; dictionariesDirectory = 'Dictionaries'; themesDirectory = 'Themes'; scriptsDirectory = 'Scripts' }.GetEnumerator()) {
-    if (-not $portable.($pair.Key).EndsWith("\$($pair.Value)\")) { throw "Portable $($pair.Key) is invalid." }
+try {
+    # Earlier runtime tests may deliberately use another portable data root.
+    # This probe verifies the package default and leaves that caller state
+    # exactly as it found it.
+    [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=Data`r`n", [Text.UTF8Encoding]::new($false))
+
+    # The staged Release directory deliberately contains portable.ini for the
+    # portable package contour.  Request Installed explicitly so this assertion
+    # remains valid regardless of that marker's presence.
+    $installed = (Invoke-RuntimePaths @('--installed', '--print-runtime-paths') 0).Stdout | ConvertFrom-Json
+    if ($installed.mode -ne 'Installed' -or $installed.architecture -ne 'Win32' -or -not $installed.registryPersistenceAllowed -or [string]::IsNullOrWhiteSpace($installed.settingsDirectory)) { throw 'Installed runtime paths are invalid.' }
+    $portable = (Invoke-RuntimePaths @('--portable', '--print-runtime-paths') 0).Stdout | ConvertFrom-Json
+    if ($portable.mode -ne 'Portable' -or $portable.architecture -ne 'Win32' -or $portable.registryPersistenceAllowed -or -not $portable.dataRoot.EndsWith('\Data\')) { throw 'Portable runtime paths are invalid.' }
+    foreach ($pair in @{ logsDirectory = 'Logs'; cacheDirectory = 'Cache'; tempDirectory = 'Temp'; dictionariesDirectory = 'Dictionaries'; themesDirectory = 'Themes'; scriptsDirectory = 'Scripts' }.GetEnumerator()) {
+        if (-not $portable.($pair.Key).EndsWith("\$($pair.Value)\")) { throw "Portable $($pair.Key) is invalid." }
+    }
+    $conflict = Invoke-RuntimePaths @('--portable', '--installed', '--print-runtime-paths') 2
+    if ($conflict.Stderr -notmatch 'cannot be used together') { throw 'Conflicting mode diagnostic is missing.' }
+    Write-Host 'Runtime paths CLI behavior passed.'
+} finally {
+    if ($hadPortableIni) { [IO.File]::WriteAllBytes($portableIni, $oldPortableIni) }
+    else { Remove-Item -LiteralPath $portableIni -Force -ErrorAction SilentlyContinue }
 }
-$conflict = Invoke-RuntimePaths @('--portable', '--installed', '--print-runtime-paths') 2
-if ($conflict.Stderr -notmatch 'cannot be used together') { throw 'Conflicting mode diagnostic is missing.' }
-Write-Host 'Runtime paths CLI behavior passed.'
