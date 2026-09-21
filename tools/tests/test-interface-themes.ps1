@@ -56,7 +56,7 @@ foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ForceDark'
 foreach($required in @('OnThemeChanged', 'OnThemePaint', 'PaintDarkTitle', 'OnToolbarCustomDraw', 'DocumentTreeViewBarThemeProc', 'DocumentTreeViewBarWindowThemeProc', 'ShowNativeDocumentTreeViewBarPopup', 'TrackPopupMenuEx', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::ControlColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR', 'TB_SETCOLORSCHEME')) {
 	if($documentTree -notlike "*$required*") { throw "Document Tree does not refresh $required on theme changes." }
 }
-foreach($required in @('MainMenuBarThemeProc', 'ApplyMainMenuRebarBandTheme', 'RBBIM_COLORS', 'SetWindowSubclass(m_hWnd, MainMenuBarThemeProc', 'CDRF_SKIPDEFAULT')) {
+foreach($required in @('MainMenuBarThemeProc', 'MainMenuBarWindowThemeProc', 'ShowNativeMainMenuPopup', 'TrackPopupMenuEx', 'DarkMode_Explorer', 'ApplyMainMenuRebarBandTheme', 'RBBIM_COLORS', 'SetWindowSubclass(m_hWnd, MainMenuBarThemeProc', 'SetWindowSubclass(hWndCmdBar, MainMenuBarWindowThemeProc', 'CDRF_SKIPDEFAULT')) {
 	if($mainFrame -notlike "*$required*") { throw "Main menu bar does not refresh its dark rebar surface: $required." }
 }
 if($documentTree -notlike '*SetWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc*') {
