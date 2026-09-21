@@ -1186,9 +1186,9 @@ namespace
 struct IdleProfile
 {
 	ULONGLONG count = 0, totalMilliseconds = 0, maxMilliseconds = 0;
-	ULONGLONG commandUpdates = 0, sourceUpdates = 0, selectionUpdates = 0, toolbarUpdates = 0, statusUpdates = 0, toolbarLocalizationUpdates = 0;
+	ULONGLONG commandUpdates = 0, sourceUpdates = 0, selectionUpdates = 0, attributeBarsUpdates = 0, toolbarUpdates = 0, statusUpdates = 0, toolbarLocalizationUpdates = 0;
 	ULONGLONG treeUpdates = 0, fileChecks = 0, clipboardChecks = 0;
-	ULONGLONG fileMilliseconds = 0, commandMilliseconds = 0, sourceMilliseconds = 0, selectionMilliseconds = 0;
+	ULONGLONG fileMilliseconds = 0, commandMilliseconds = 0, sourceMilliseconds = 0, selectionMilliseconds = 0, attributeBarsMilliseconds = 0;
 	ULONGLONG toolbarMilliseconds = 0, statusMilliseconds = 0, toolbarLocalizationMilliseconds = 0, treeMilliseconds = 0, spellMilliseconds = 0, titleMilliseconds = 0;
 
 	void Finish(ULONGLONG started)
@@ -1198,9 +1198,9 @@ struct IdleProfile
 		if (elapsed > maxMilliseconds) maxMilliseconds = elapsed;
 		if ((count % 256) != 0) return;
 		CString summary;
-		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; command-state-ms=%llu; ui-update-view-cmd-calls=%llu; check-command-calls=%llu; source-ui-updates=%llu; source-ui-ms=%llu; selection-context-updates=%llu; selection-context-ms=%llu; selection-container-queries=%llu; selection-struct-con-queries=%llu; selection-struct-table-con-queries=%llu; js-com-calls=%llu; toolbar-updates=%llu; toolbar-ms=%llu; toolbar-localization-updates=%llu; toolbar-localization-ms=%llu; status-updates=%llu; status-ms=%llu; tree-updates=%llu; tree-ms=%llu; file-fingerprint-checks=%llu; file-fingerprint-ms=%llu; clipboard-checks=%llu; spell-ms=%llu; title-ms=%llu",
+		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; command-state-ms=%llu; ui-update-view-cmd-calls=%llu; check-command-calls=%llu; source-ui-updates=%llu; source-ui-ms=%llu; selection-context-updates=%llu; selection-context-ms=%llu; link-table-attribute-bars-updates=%llu; link-table-attribute-bars-ms=%llu; selection-container-queries=%llu; selection-struct-con-queries=%llu; selection-struct-table-con-queries=%llu; js-com-calls=%llu; toolbar-updates=%llu; toolbar-ms=%llu; toolbar-localization-updates=%llu; toolbar-localization-ms=%llu; status-updates=%llu; status-ms=%llu; tree-updates=%llu; tree-ms=%llu; file-fingerprint-checks=%llu; file-fingerprint-ms=%llu; clipboard-checks=%llu; spell-ms=%llu; title-ms=%llu",
 			count, totalMilliseconds, maxMilliseconds, totalMilliseconds / count,
-			commandUpdates, commandMilliseconds, g_uiUpdateViewCmdCount, StartupTrace::UiCheckCommandCount(), sourceUpdates, sourceMilliseconds, selectionUpdates, selectionMilliseconds,
+			commandUpdates, commandMilliseconds, g_uiUpdateViewCmdCount, StartupTrace::UiCheckCommandCount(), sourceUpdates, sourceMilliseconds, selectionUpdates, selectionMilliseconds, attributeBarsUpdates, attributeBarsMilliseconds,
 			StartupTrace::UiSelectionContainerQueryCount(), StartupTrace::UiSelectionStructConQueryCount(), StartupTrace::UiSelectionStructTableConQueryCount(), StartupTrace::UiComCallCount(),
 			toolbarUpdates, toolbarMilliseconds, toolbarLocalizationUpdates, toolbarLocalizationMilliseconds, statusUpdates, statusMilliseconds, treeUpdates, treeMilliseconds, fileChecks, fileMilliseconds,
 			clipboardChecks, spellMilliseconds, titleMilliseconds);
@@ -1571,9 +1571,11 @@ BOOL CMainFrame::OnIdle()
 					tableAvailability.valign = true;
 					if(U::scmp(valign,L"") != 0) tableState.valign = static_cast<const wchar_t*>(valign);
 				}
+				const ULONGLONG attributeBarsStarted = profileIdle ? ::GetTickCount64() : 0;
 				m_ignore_cb_changes = true;
 				m_contextAttributeBars.ApplySelectionState(linkState, linkAvailability, tableState, tableAvailability);
 				m_ignore_cb_changes = false;
+				if (profileIdle) { ++g_idleProfile.attributeBarsUpdates; g_idleProfile.attributeBarsMilliseconds += ::GetTickCount64() - attributeBarsStarted; }
 			}
 			catch(_com_error&)
 			{
