@@ -180,6 +180,8 @@ void CMainFrame::RefreshLocalizedToolbarButtonTexts(CToolBarCtrl& toolbar)
 {
 	if(!toolbar.IsWindow())
 		return;
+	const bool profileLocalization = StartupTrace::Enabled();
+	const ULONGLONG started = profileLocalization ? ::GetTickCount64() : 0;
 
 	const int buttonCount = toolbar.GetButtonCount();
 	for(int i = 0; i < buttonCount; ++i)
@@ -208,6 +210,7 @@ void CMainFrame::RefreshLocalizedToolbarButtonTexts(CToolBarCtrl& toolbar)
 
 	toolbar.AutoSize();
 	toolbar.Invalidate();
+	if (profileLocalization) { ++g_idleProfile.toolbarLocalizationUpdates; g_idleProfile.toolbarLocalizationMilliseconds += ::GetTickCount64() - started; }
 }
 void CMainFrame::RefreshLocalizedToolbarCaptions()
 {

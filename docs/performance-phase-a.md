@@ -8,10 +8,11 @@
 измерения полностью выключены.
 
 Событие содержит число вызовов, суммарное, максимальное и среднее время idle,
-а также отдельные суммы для command state, selection context, toolbar, tree,
-проверки fingerprint файла, spellcheck и заголовка. В нём также есть число
-JS/COM dispatch (`js-com-calls`) и счётчики обновлений команд, selection,
-toolbar, tree, файла и clipboard. Журнал не включает текст книги и пути к ней.
+а также отдельные суммы для command state, SOURCE, selection context, toolbar,
+локализации toolbar, tree, проверки fingerprint файла, spellcheck, status bar
+и заголовка. В нём также есть число `UIUpdateViewCmd`, JS/COM dispatch
+(`js-com-calls`) и счётчики обновлений команд, selection, SOURCE, toolbar,
+tree, файла и clipboard. Журнал не включает текст книги и пути к ней.
 
 ## Воспроизводимый замер
 

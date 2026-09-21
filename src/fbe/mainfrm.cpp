@@ -1168,8 +1168,11 @@ LRESULT CMainFrame::OnPreCommand(UINT, WPARAM wParam, LPARAM lParam, BOOL& bHand
 	return 0;
 }
 
+namespace { ULONGLONG g_uiUpdateViewCmdCount = 0; }
+
 void  CMainFrame::UIUpdateViewCmd(CFBEView& view, WORD wID, OLECMD& oc, const wchar_t *hk)
 {
+	if (StartupTrace::Enabled()) ++g_uiUpdateViewCmdCount;
 	CString fbuf;
 	fbuf.Format(L"%s\t%s", (const TCHAR*)view.QueryCmdText(oc.cmdID), hk);
 	UISetText(wID, fbuf);
@@ -1183,10 +1186,10 @@ namespace
 struct IdleProfile
 {
 	ULONGLONG count = 0, totalMilliseconds = 0, maxMilliseconds = 0;
-	ULONGLONG commandUpdates = 0, selectionUpdates = 0, toolbarUpdates = 0;
+	ULONGLONG commandUpdates = 0, sourceUpdates = 0, selectionUpdates = 0, toolbarUpdates = 0, statusUpdates = 0, toolbarLocalizationUpdates = 0;
 	ULONGLONG treeUpdates = 0, fileChecks = 0, clipboardChecks = 0;
-	ULONGLONG fileMilliseconds = 0, commandMilliseconds = 0, selectionMilliseconds = 0;
-	ULONGLONG toolbarMilliseconds = 0, treeMilliseconds = 0, spellMilliseconds = 0, titleMilliseconds = 0;
+	ULONGLONG fileMilliseconds = 0, commandMilliseconds = 0, sourceMilliseconds = 0, selectionMilliseconds = 0;
+	ULONGLONG toolbarMilliseconds = 0, statusMilliseconds = 0, toolbarLocalizationMilliseconds = 0, treeMilliseconds = 0, spellMilliseconds = 0, titleMilliseconds = 0;
 
 	void Finish(ULONGLONG started)
 	{
@@ -1195,11 +1198,11 @@ struct IdleProfile
 		if (elapsed > maxMilliseconds) maxMilliseconds = elapsed;
 		if ((count % 256) != 0) return;
 		CString summary;
-		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; command-state-ms=%llu; check-command-calls=%llu; selection-context-updates=%llu; selection-context-ms=%llu; selection-container-queries=%llu; selection-struct-con-queries=%llu; selection-struct-table-con-queries=%llu; js-com-calls=%llu; toolbar-updates=%llu; toolbar-ms=%llu; tree-updates=%llu; tree-ms=%llu; file-fingerprint-checks=%llu; file-fingerprint-ms=%llu; clipboard-checks=%llu; spell-ms=%llu; title-ms=%llu",
+		summary.Format(L"idle-count=%llu; total-ms=%llu; max-ms=%llu; average-ms=%llu; command-state-updates=%llu; command-state-ms=%llu; ui-update-view-cmd-calls=%llu; check-command-calls=%llu; source-ui-updates=%llu; source-ui-ms=%llu; selection-context-updates=%llu; selection-context-ms=%llu; selection-container-queries=%llu; selection-struct-con-queries=%llu; selection-struct-table-con-queries=%llu; js-com-calls=%llu; toolbar-updates=%llu; toolbar-ms=%llu; toolbar-localization-updates=%llu; toolbar-localization-ms=%llu; status-updates=%llu; status-ms=%llu; tree-updates=%llu; tree-ms=%llu; file-fingerprint-checks=%llu; file-fingerprint-ms=%llu; clipboard-checks=%llu; spell-ms=%llu; title-ms=%llu",
 			count, totalMilliseconds, maxMilliseconds, totalMilliseconds / count,
-			commandUpdates, commandMilliseconds, StartupTrace::UiCheckCommandCount(), selectionUpdates, selectionMilliseconds,
+			commandUpdates, commandMilliseconds, g_uiUpdateViewCmdCount, StartupTrace::UiCheckCommandCount(), sourceUpdates, sourceMilliseconds, selectionUpdates, selectionMilliseconds,
 			StartupTrace::UiSelectionContainerQueryCount(), StartupTrace::UiSelectionStructConQueryCount(), StartupTrace::UiSelectionStructTableConQueryCount(), StartupTrace::UiComCallCount(),
-			toolbarUpdates, toolbarMilliseconds, treeUpdates, treeMilliseconds, fileChecks, fileMilliseconds,
+			toolbarUpdates, toolbarMilliseconds, toolbarLocalizationUpdates, toolbarLocalizationMilliseconds, statusUpdates, statusMilliseconds, treeUpdates, treeMilliseconds, fileChecks, fileMilliseconds,
 			clipboardChecks, spellMilliseconds, titleMilliseconds);
 		StartupTrace::Event(L"performance", L"P410", summary);
 	}
@@ -1258,6 +1261,8 @@ BOOL CMainFrame::OnIdle()
 	{
 		if ((m_ui_dirty & (UiDirtySource | UiDirtyView | UiDirtyClipboard | UiDirtyToolbar | UiDirtyStatus)) != UiDirtyNone)
 		{
+		const ULONGLONG sourceStarted = profileIdle ? ::GetTickCount64() : 0;
+		if (profileIdle) ++g_idleProfile.sourceUpdates;
 		if (profileIdle) ++g_idleProfile.commandUpdates;
 		static WORD disabled_commands[] =
 		{
@@ -1335,6 +1340,7 @@ BOOL CMainFrame::OnIdle()
 
 		// Added by SeNS: issue (wish) #127
 		DisplayCharCode();
+		if (profileIdle) g_idleProfile.sourceMilliseconds += ::GetTickCount64() - sourceStarted;
 		}
 	}
 	// BODY view
@@ -5985,8 +5991,11 @@ bool CMainFrame::CurrentOverwriteMode() const
 void CMainFrame::RefreshStatusMainPane()
 {
 	if (!m_status.IsWindow()) return;
+	const bool profileStatus = StartupTrace::Enabled();
+	const ULONGLONG started = profileStatus ? ::GetTickCount64() : 0;
 	m_status.SetPaneText(ID_DEFAULT_PANE,
 		m_status_state.EffectiveMainText(m_incsearch != 0, m_is_fail, m_is_str));
+	if (profileStatus) { ++g_idleProfile.statusUpdates; g_idleProfile.statusMilliseconds += ::GetTickCount64() - started; }
 }
 
 LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
@@ -6171,6 +6180,8 @@ void CMainFrame::UpdateStatusBar()
 {
 	if (!m_status.IsWindow())
 		return;
+	const bool profileStatus = StartupTrace::Enabled();
+	const ULONGLONG started = profileStatus ? ::GetTickCount64() : 0;
 	CString position, selection, character, encoding;
 	if (m_doc && !m_doc->m_encoding.IsEmpty())
 		encoding = m_doc->m_encoding;
@@ -6253,6 +6264,7 @@ void CMainFrame::UpdateStatusBar()
 	m_status.SetPaneText(ID_PANE_VALIDATION, m_doc ? GetStatusValidationText() : L"");
 	m_status.SetPaneText(ID_PANE_INS, CurrentOverwriteMode() ? strOVR : strINS);
 	UpdateStatusBarLayout();
+	if (profileStatus) { ++g_idleProfile.statusUpdates; g_idleProfile.statusMilliseconds += ::GetTickCount64() - started; }
 }
 
 void CMainFrame::DisplayCharCode()
