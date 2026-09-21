@@ -458,6 +458,23 @@
 		// This is deliberately a UI-level probe.  The toolbar state and the
 		// pixels it paints are recorded independently, so a disabled command is
 		// never confused with an enabled command rendered as disabled.
+		auto ensureTableToolbarCommands = [&]() -> bool
+		{
+			// A normal process honours a user's persisted custom toolbar layout,
+			// which may intentionally omit table actions.  This test-mode probe
+			// needs those controls to exist in order to sample their native state;
+			// add only missing buttons to its own short-lived process.
+			for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
+			{
+				const TableToolbarCommand& command = kTableToolbarCommands[index];
+				if (m_CmdToolbar.CommandToIndex(command.commandId) >= 0) continue;
+				const int image = m_table_toolbar_image_indices[index];
+				if (image < 0) return false;
+				m_CmdToolbar.AddButton(command.commandId, TBSTYLE_BUTTON, TBSTATE_ENABLED, image,
+					StripMenuMnemonics(FbeLoadRuntimeStringByKey(command.localizationKey, command.fallbackText)), 0);
+			}
+			return true;
+		};
 		auto selectElement = [&](const wchar_t* tag, long index) -> bool
 		{
 			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
@@ -562,6 +579,7 @@
 			output.Flush();
 		};
 		CStringA header("phase\tcommand_id\ttb_state\tenabled\tchecked\thidden\timage_index\tchroma_pixels\timage_list_has_mask\timage_black_pixels\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		if (!ensureTableToolbarCommands()) { output.Close(); ::PostQuitMessage(1); return 0; }
 		ShowView(BODY);
 		if (!selectElement(L"P", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
 		updateTableCommands(false); appendPhase("outside-1");
