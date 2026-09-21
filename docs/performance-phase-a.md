@@ -58,7 +58,7 @@ selection-query и `js_com_calls` были равны нулю. `file_fingerprin
 Отдельный `test-fbe-idle-interaction-performance-runtime.ps1` выполняет на
 реальном BODY среднего FB2 1 000 перемещений caret, 1 000 изменений
 выделения и 10 правок текста через обычные notification handlers, затем 1 000
-неизменных `OnIdle`. Последний Release-прогон (10 000 абзацев) занял 27 391 мс
+неизменных `OnIdle`. Последний полный Release-прогон (10 000 абзацев) занял 27 484 мс
 для interaction-пакета и дал 2 010 command-state updates — ровно по одному на
 реальное событие. В следующем неизменном idle-отрезке все счётчики command,
 selection context, toolbar, `CheckCommand()` и JS/COM были равны нулю. Тест
