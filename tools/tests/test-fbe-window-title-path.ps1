@@ -13,6 +13,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $settingsHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.h')
 $settingsSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.cpp')
+$settingsDefaults = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\SettingsDefaults.cpp')
 $dialogSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsGeneralPage.cpp')
 $frameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $frameHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
@@ -22,7 +23,7 @@ foreach ($contract in @(
     @{ Text = 'GetShowFullPathInWindowTitle'; Source = $settingsHeader; Name = 'getter настройки' },
     @{ Text = 'SetShowFullPathInWindowTitle'; Source = $settingsHeader; Name = 'setter настройки' },
     @{ Text = 'ShowFullPathInWindowTitle'; Source = $settingsSource; Name = 'ключ Settings.xml' },
-    @{ Text = 'm_show_full_path_in_window_title\s*=\s*false'; Source = $settingsSource; Name = 'значение по умолчанию' },
+    @{ Text = 'm_show_full_path_in_window_title\s*=\s*false'; Source = $settingsDefaults; Name = 'значение по умолчанию' },
     @{ Text = 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE'; Source = $dialogSource; Name = 'контрол вкладки FBE Next' },
     @{ Text = 'U::GetFullPathName'; Source = $frameSource; Name = 'полный путь в заголовке' },
     @{ Text = 'GetTextExtentPoint32W'; Source = $frameSource; Name = 'проверка ширины пути' },
