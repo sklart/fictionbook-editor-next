@@ -11,7 +11,7 @@ $main = Get-Content -Raw -LiteralPath (Join-Path $root 'runtime\main.js')
 $insImage = [regex]::Match($main, '(?s)function InsImage\(check, id\).*?}\r?\n//-+').Value
 if ([string]::IsNullOrWhiteSpace($insImage)) { throw 'Не найдена функция InsImage.' }
 if ($insImage -match 'pasteHTML\s*\(\s*["'']<DIV') { throw 'InsImage не должен вставлять block DIV через pasteHTML.' }
-foreach ($required in @('fbe-block-image-marker-', 'while(document.getElementById(markerId))', 'InsertBlockImageAtMarker(marker,id)', 'try', 'finally', 'return inserted;')) {
+foreach ($required in @('fbe-block-image-marker-', 'while(document.getElementById(markerId))', 'InsertBlockImageAtMarker(marker,id)', 'operationError=error', 'if(marker && marker.parentNode) marker.removeNode(true);', 'if(undoStarted) window.external.EndUndoUnit(document);', 'if(!operationError && cleanupError) throw cleanupError;', 'return inserted;')) {
     if ($insImage.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "В InsImage отсутствует structural insertion contract: $required" }
 }
 foreach ($required in @('MoveFollowingSiblings(source,copy)', 'parent.cloneNode(false)', 'RemoveEmptyInlineFormatting', 'IsMarkerAtParagraphBoundary', 'paragraph.insertAdjacentElement("afterEnd",block)', 'paragraph.insertAdjacentElement("beforeBegin",block)', 'MoveCaretToParagraphStart(rightPart)')) {

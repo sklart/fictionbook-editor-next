@@ -40,8 +40,8 @@ function arrayContains(arr, item) {
     return -1;
 }
 
-function isWhitespace(char) {
-    return char == ' ' || char == '\r' || char == '\n';
+function isWhitespace(currentChar) {
+    return currentChar == ' ' || currentChar == '\r' || currentChar == '\n';
 }
 
 function trimString(str) {
@@ -56,7 +56,7 @@ try {
     if (nbspChar.charCodeAt(0) != 160)
         nbspEntity = nbspChar;
 } catch (e) {
-    var nbspChar = String.fromCharCode(160);
+    nbspChar = String.fromCharCode(160);
 }
 
 // Нормализация текста для анализа
@@ -74,7 +74,7 @@ function normalizeTextForAnalysis(text) {
         var regex = new RegExp(nbspEntity, "g");
         normalized = normalized.replace(regex, " ");
     } else {
-        var regex = new RegExp(nbspEntity, "g");
+        regex = new RegExp(nbspEntity, "g");
         normalized = normalized.replace(regex, " ");
     }
     normalized = normalized.replace(/□/g, " ");
@@ -119,8 +119,8 @@ function getPositionMapping(html, normalizedText) {
         fbeSpaces[fbeSpaces.length] = nbspEntity;
     }
     while (htmlIndex < html.length && textIndex <= normalizedText.length) {
-        var char = html.charAt(htmlIndex);
-        if (char == '<') {
+        var currentChar = html.charAt(htmlIndex);
+        if (currentChar == '<') {
             var tagEnd = -1;
             for (var k = htmlIndex; k < html.length; k++) {
                 if (html.charAt(k) == '>') {
@@ -136,7 +136,7 @@ function getPositionMapping(html, normalizedText) {
                 continue;
             }
         }
-        if (char == '&') {
+        if (currentChar == '&') {
             var foundEntity = false;
             for (var e = 0; e < htmlEntities.length; e++) {
                 var entity = htmlEntities[e];
@@ -165,7 +165,7 @@ function getPositionMapping(html, normalizedText) {
             if (foundEntity) continue;
             if (html.charAt(htmlIndex + 1) == '#') {
                 var semicolonPos = -1;
-                for (var k = htmlIndex; k < html.length; k++) {
+                for (k = htmlIndex; k < html.length; k++) {
                     if (html.charAt(k) == ';') {
                         semicolonPos = k;
                         break;
@@ -186,12 +186,12 @@ function getPositionMapping(html, normalizedText) {
         }
         var isFbeSpace = false;
         for (var s = 0; s < fbeSpaces.length; s++) {
-            if (char == fbeSpaces[s]) {
+            if (currentChar == fbeSpaces[s]) {
                 isFbeSpace = true;
                 break;
             }
         }
-        if (isFbeSpace || char.charCodeAt(0) == 160) {
+        if (isFbeSpace || currentChar.charCodeAt(0) == 160) {
             mapping[mapping.length] = {
                 htmlPos: htmlIndex,
                 textPos: textIndex,
@@ -219,7 +219,7 @@ function getPositionMapping(html, normalizedText) {
 // Конвертация позиции из нормализованного текста в HTML
 function convertTextPosToHtmlPos(textPos, mapping) {
     if (!mapping || mapping.length == 0) return textPos;
-    for (var i = 0; i < mapping.length; i++) {
+    for (i = 0; i < mapping.length; i++) {
         if (mapping[i].textPos == textPos) return mapping[i].htmlPos;
     }
     var bestMatch = -1;
@@ -354,8 +354,8 @@ function isSafeInsertPosition(html, htmlPos) {
         if (ch == '>') break;
     }
     var afterTag = false;
-    for (var i = htmlPos; i < html.length; i++) {
-        var ch = html.charAt(i);
+    for (i = htmlPos; i < html.length; i++) {
+        ch = html.charAt(i);
         if (ch == '>') {
             afterTag = true;
             break;
@@ -447,8 +447,8 @@ function splitHTMLByMarkers(html, marker) {
     var fullTag = '';
 
     while (i < len) {
-        var char = html.charAt(i);
-        if (char === '<') {
+        var currentChar = html.charAt(i);
+        if (currentChar === '<') {
             inTag = true;
             tagName = '';
             isClosing = false;
@@ -493,7 +493,7 @@ function splitHTMLByMarkers(html, marker) {
                 i++;
                 continue;
             }
-        } else if (!inTag && char === marker.charAt(0)) {
+        } else if (!inTag && currentChar === marker.charAt(0)) {
             var isFullMarker = true;
             for (var m = 0; m < marker.length; m++) {
                 if (i + m >= len || html.charAt(i + m) !== marker.charAt(m)) {
@@ -516,11 +516,11 @@ function splitHTMLByMarkers(html, marker) {
                 i += marker.length;
                 continue;
             } else {
-                currentPart += char;
+                currentPart += currentChar;
                 i++;
             }
         } else {
-            currentPart += char;
+            currentPart += currentChar;
             i++;
         }
     }
@@ -599,7 +599,7 @@ function getParagraphsInSelection() {
                             break;
                         }
                         if (child.nodeType == 1) {
-                            var firstParagraph = findFirstParagraphInElement(child);
+                            firstParagraph = findFirstParagraphInElement(child);
                             if (firstParagraph) {
                                 nextInParent = firstParagraph;
                                 break;
@@ -908,7 +908,7 @@ function Run() {
 
         // Обрабатываем каждый абзац
         for (var i = 0; i < paragraphs.length; i++) {
-            var p = paragraphs[i];
+            p = paragraphs[i];
             var result = splitParagraphByRegex(p, regex, allowInsideLinks);
             if (result.success) {
                 var parent = p.parentNode;

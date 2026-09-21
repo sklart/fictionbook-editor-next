@@ -3049,18 +3049,45 @@ function InsImage(check, id)
 
  var undoStarted=false;
  var inserted=null;
+ var marker=null;
+ var operationError=null;
+ var cleanupError=null;
  try
  {
   window.external.BeginUndoUnit(document,"insert image");
   undoStarted=true;
   rng.pasteHTML("<SPAN id='"+markerId+"'></SPAN>");
-  var marker=document.getElementById(markerId);
+  marker=document.getElementById(markerId);
   inserted=marker ? InsertBlockImageAtMarker(marker,id) : null;
   if(!inserted && marker) marker.removeNode(true);
  }
+ catch(error)
+ {
+  operationError=error;
+  throw error;
+ }
  finally
  {
-  if(undoStarted) window.external.EndUndoUnit(document);
+  // A failed DOM split must not serialize its temporary anchor.  Retain the
+  // original error if removing the anchor or closing the undo unit also fails.
+  try
+  {
+   if(!marker) marker=document.getElementById(markerId);
+   if(marker && marker.parentNode) marker.removeNode(true);
+  }
+  catch(error)
+  {
+   cleanupError=error;
+  }
+  try
+  {
+   if(undoStarted) window.external.EndUndoUnit(document);
+  }
+  catch(error)
+  {
+   if(!cleanupError) cleanupError=error;
+  }
+  if(!operationError && cleanupError) throw cleanupError;
  }
 
  return inserted;
