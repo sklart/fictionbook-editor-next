@@ -189,9 +189,14 @@
 		}
 		range->moveToElementText(paragraph);
 		range->collapse(VARIANT_TRUE);
-		// Keep the test caret inside the paragraph rather than on its boundary;
-		// InsImage then resolves its enclosing section just like a UI insertion.
-		if (range->move(L"character", 1) != 1)
+		wchar_t caretOffsetText[16] = {};
+		const DWORD caretOffsetLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_CARET_OFFSET", caretOffsetText, _countof(caretOffsetText));
+		const long caretOffset = caretOffsetLength && caretOffsetLength < _countof(caretOffsetText) ? _wtol(caretOffsetText) : 1;
+		// MSHTML represents a literal paragraph start as a structural boundary.
+		// Move through the first character and back so the selection remains in
+		// the paragraph while its final position is immediately before it.
+		const long moved = caretOffset == 0 ? (range->move(L"character", 1) == 1 ? range->move(L"character", -1) : 0) : range->move(L"character", caretOffset);
+		if (caretOffset < 0 || (caretOffset == 0 ? moved != -1 : moved != caretOffset))
 		{
 			appendImportPhase("import-failed;phase=import;reason=section-caret");
 			output.Close(); ::PostQuitMessage(1); return 0;
@@ -225,6 +230,31 @@
 		const bool inlineImage = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_INLINE", inlineMode, _countof(inlineMode)) != 1 || inlineMode[0] != L'0';
 		m_doc->m_body.AddImage(imagePath, inlineImage);
 		appendImportPhase("import-complete");
+		wchar_t undoRedoMode[2] = {};
+		const bool undoRedo = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_UNDO_REDO", undoRedoMode, _countof(undoRedoMode)) == 1 && undoRedoMode[0] == L'1';
+		if (!inlineImage && undoRedo)
+		{
+			auto blockImageCount = [&]() -> long
+			{
+				long count = 0;
+				MSHTML::IHTMLElementCollectionPtr divs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV") : MSHTML::IHTMLElementCollectionPtr());
+				for (long index = 0; divs && index < divs->length; ++index)
+				{
+					MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
+					if (div && _wcsicmp(static_cast<const wchar_t*>(_bstr_t(div->className)), L"image") == 0) ++count;
+				}
+				return count;
+			};
+			if (blockImageCount() != 1) { appendImportPhase("import-failed;phase=undo;reason=initial-image-count"); output.Close(); ::PostQuitMessage(1); return 0; }
+			m_doc->m_body.SetFocus();
+			m_doc->m_body.ExecCommand(IDM_UNDO);
+			if (blockImageCount() != 0) { appendImportPhase("import-failed;phase=undo;reason=image-remained"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendImportPhase("undo-complete");
+			m_doc->m_body.SetFocus();
+			m_doc->m_body.ExecCommand(IDM_REDO);
+			if (blockImageCount() != 1) { appendImportPhase("import-failed;phase=redo;reason=image-count"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendImportPhase("redo-complete");
+		}
 		appendImportPhase("save-start");
 		if (!m_doc->Save())
 		{

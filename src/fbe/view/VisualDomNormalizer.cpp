@@ -82,6 +82,10 @@ void BubbleUp(MSHTML::IHTMLDOMNode *node, const wchar_t *name) {
     MoveUp(false, child);
   }
 }
+bool IsDirectSectionImage(MSHTML::IHTMLDOMNode *node) {
+  MSHTML::IHTMLElementPtr image(node), parent(image ? image->parentElement : MSHTML::IHTMLElementPtr());
+  return image && parent && U::scmp(image->tagName, L"DIV") == 0 && U::scmp(image->className, L"image") == 0 && U::scmp(parent->tagName, L"DIV") == 0 && U::scmp(parent->className, L"section") == 0;
+}
 void RelocateParagraphs(MSHTML::IHTMLDOMNode *node) {
   if (!node || node->nodeType != 1)
     return;

@@ -3,6 +3,7 @@
 #include <mshtml.h>
 
 namespace FbeVisualDom {
+bool IsDirectSectionImage(MSHTML::IHTMLDOMNode *node);
 void NormalizeStructure(MSHTML::IHTMLDocument2Ptr document,
                         MSHTML::IHTMLDOMNodePtr root);
 void BubbleUp(MSHTML::IHTMLDOMNode *node, const wchar_t *name);

@@ -2888,6 +2888,113 @@ function CloneContainer(cp,check)
 
 var imgcode="<DIV onresizestart='return false' contentEditable='false' class='image' href='#undefined'><IMG src='fbw-internal:#undefined'></DIV>";
 
+var blockImageInsertionMarkerCounter=0;
+
+function IsInlineFormattingElement(element)
+{
+ if(!element || element.nodeType!=1) return false;
+ var name=element.tagName;
+ return name=="A" || name=="B" || name=="EM" || name=="FONT" || name=="I" ||
+        name=="S" || name=="SMALL" || name=="SPAN" || name=="STRIKE" ||
+        name=="STRONG" || name=="SUB" || name=="SUP" || name=="U";
+}
+
+function RemoveEmptyInlineFormatting(element)
+{
+ if(!element) return;
+ for(var child=element.lastChild;child;)
+ {
+  var previous=child.previousSibling;
+  if(child.nodeType==1)
+  {
+   RemoveEmptyInlineFormatting(child);
+   if(IsInlineFormattingElement(child) && !child.firstChild) child.removeNode(true);
+  }
+  child=previous;
+ }
+}
+
+function MoveFollowingSiblings(source, destination)
+{
+ for(var sibling=source.nextSibling;sibling;)
+ {
+  var next=sibling.nextSibling;
+  destination.appendChild(sibling);
+  sibling=next;
+ }
+}
+
+function HasParagraphContent(paragraph)
+{
+ for(var child=paragraph.firstChild;child;child=child.nextSibling)
+ {
+  if(child.nodeType==3)
+  {
+   if(child.nodeValue.replace(/[\s\xA0]/g,"")!="") return true;
+  }
+  else if(child.nodeType==1 && child.tagName!="BR") return true;
+ }
+ return false;
+}
+
+function CreateBlockImageElement(id)
+{
+ var imageId=id=="" ? "undefined" : id;
+ var image=document.createElement("DIV");
+ image.setAttribute("onresizestart","return false");
+ image.setAttribute("contentEditable","false");
+ image.className="image";
+ image.setAttribute("href","#"+imageId);
+ var picture=document.createElement("IMG");
+ picture.src="fbw-internal:#"+imageId;
+ image.appendChild(picture);
+ return image;
+}
+
+function InsertBlockImageAtMarker(marker, id)
+{
+ var paragraph=marker.parentElement;
+ while(paragraph && paragraph.tagName!="P") paragraph=paragraph.parentElement;
+ if(!paragraph) return null;
+
+ // Build the right paragraph bottom-up.  Every copied inline ancestor receives
+ // the text to the right of the marker, so <EM>/<STRONG>/... survive a split.
+ var source=marker;
+ var rightPart=null;
+ while(source && source.parentNode)
+ {
+  var parent=source.parentNode;
+  var copy=parent.cloneNode(false);
+  copy.removeAttribute("id");
+  if(rightPart) copy.appendChild(rightPart);
+  MoveFollowingSiblings(source,copy);
+  rightPart=copy;
+  if(parent==paragraph) break;
+  source=parent;
+ }
+ if(!rightPart || rightPart.tagName!="P") return null;
+
+ marker.removeNode(true);
+ RemoveEmptyInlineFormatting(paragraph);
+ RemoveEmptyInlineFormatting(rightPart);
+
+ var block=CreateBlockImageElement(id);
+ var keepLeft=HasParagraphContent(paragraph);
+ var keepRight=HasParagraphContent(rightPart);
+ if(keepLeft)
+ {
+  paragraph.insertAdjacentElement("afterEnd",block);
+  if(keepRight) block.insertAdjacentElement("afterEnd",rightPart);
+ }
+ else
+ {
+  paragraph.insertAdjacentElement("beforeBegin",block);
+  if(keepRight) block.insertAdjacentElement("afterEnd",rightPart);
+  paragraph.removeNode(true);
+ }
+ return block;
+}
+
 function InsImage(check, id)
 {
  var rng=document.selection.createRange();
@@ -2906,13 +3013,14 @@ function InsImage(check, id)
  if(check) return true;
 
  window.external.BeginUndoUnit(document,"insert image");
- if(id=="")
-  rng.pasteHTML(imgcode);
- else
-  rng.pasteHTML("<DIV onresizestart='return false' contentEditable='false' class='image' href='#"+id+"'><IMG src='fbw-internal:#"+id+"'></DIV>");
+ var markerId="fbe-block-image-marker-"+(++blockImageInsertionMarkerCounter);
+ rng.pasteHTML("<SPAN id='"+markerId+"'></SPAN>");
+ var marker=document.getElementById(markerId);
+ var inserted=marker ? InsertBlockImageAtMarker(marker,id) : null;
+ if(!inserted && marker) marker.removeNode(true);
  window.external.EndUndoUnit(document);
 
- return rng.parentElement();
+ return inserted;
 }
 //-----------------------------------------------
 

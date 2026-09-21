@@ -4111,7 +4111,7 @@ LRESULT CFBEView::OnEditInsImage(WORD, WORD cmdID, HWND, BOOL&)
 			else
 			{
 				MSHTML::IHTMLDOMNodePtr node(Call(L"InsImage"));
-				if (node)
+				if (node && !FbeVisualDom::IsDirectSectionImage(node))
 					FbeVisualDom::BubbleUp(node,L"DIV");
 			}
 		}
@@ -4531,7 +4531,7 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 			U::ReportError(hr);
 
 		MSHTML::IHTMLDOMNodePtr node(result.insertedElement);
-		if(!bInline && node)
+		if(!bInline && node && !FbeVisualDom::IsDirectSectionImage(node))
 			FbeVisualDom::BubbleUp(node, L"DIV");
 	}
 	catch (_com_error&) { }
