@@ -6,6 +6,8 @@ then proves that the following idle streak repeats none of their UI work.
 [CmdletBinding()]
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
+    [ValidateSet('idle-interaction-performance', 'idle-interaction-performance-baseline')]
+    [string]$Scenario = 'idle-interaction-performance',
     [int]$ParagraphCount = 10000,
     [int]$TimeoutSeconds = 300
 )
@@ -35,20 +37,24 @@ try {
     $fixture = Join-Path $directory 'medium.fb2'
     $reportPath = Join-Path $directory 'report.tsv'
     New-Fixture $fixture $ParagraphCount
-    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'idle-interaction-performance'; $env:FBE_NEXT_TRACE = '1'
+    $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = $Scenario; $env:FBE_NEXT_TRACE = '1'
     $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reportPath, $fixture) -PassThru
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE did not complete the idle interaction scenario.' }
     if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reportPath)) { throw "FBE idle interaction scenario failed: exit $($process.ExitCode)." }
     $result = Read-Report $reportPath
-    foreach ($expected in @{ caret_moves = 1000; selection_changes = 1000; typing_edits = 10; interaction_idle_cycles = 2010; stable_idle_cycles = 1000 }.GetEnumerator()) {
+    $expectedFields = @{ caret_moves = 1000; selection_changes = 1000; typing_edits = 10; interaction_idle_cycles = 2010 }
+    if ($Scenario -eq 'idle-interaction-performance') { $expectedFields.stable_idle_cycles = 1000 }
+    foreach ($expected in $expectedFields.GetEnumerator()) {
         if ($result[$expected.Key] -ne $expected.Value) { throw "Expected $($expected.Key)=$($expected.Value), got $($result[$expected.Key])." }
     }
     if ($result.command_state_updates -lt 2000 -or $result.command_state_updates -gt 2010) { throw "Each interaction must cause one bounded command-state update; got $($result.command_state_updates)." }
-    if ($result.selection_context_builds -lt 2000 -or $result.selection_context_builds -gt 2010) { throw "Each interaction must cause one bounded selection-context build; got $($result.selection_context_builds)." }
-    foreach ($metric in 'stable_command_state_updates', 'stable_selection_context_builds', 'stable_toolbar_updates', 'stable_check_command_calls', 'stable_js_com_calls') {
-        if ($result[$metric] -ne 0) { throw "Unchanged idle repeated $metric=$($result[$metric])." }
+    if ($Scenario -eq 'idle-interaction-performance') {
+        if ($result.selection_context_builds -lt 2000 -or $result.selection_context_builds -gt 2010) { throw "Each interaction must cause one bounded selection-context build; got $($result.selection_context_builds)." }
+        foreach ($metric in 'stable_command_state_updates', 'stable_selection_context_builds', 'stable_toolbar_updates', 'stable_check_command_calls', 'stable_js_com_calls') {
+            if ($result[$metric] -ne 0) { throw "Unchanged idle repeated $metric=$($result[$metric])." }
+        }
     }
-    Write-Host "Idle interaction performance runtime test passed: paragraphs=$ParagraphCount, interaction_elapsed_ms=$($result.interaction_elapsed_ms), command_updates=$($result.command_state_updates)."
+    Write-Host "Idle interaction performance runtime test passed: scenario=$Scenario, paragraphs=$ParagraphCount, interaction_elapsed_ms=$($result.interaction_elapsed_ms), command_updates=$($result.command_state_updates)."
 } finally {
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE = $oldMode, $oldScenario, $oldTrace
     Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue

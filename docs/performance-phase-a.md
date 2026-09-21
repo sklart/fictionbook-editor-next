@@ -64,6 +64,17 @@ selection-query и `js_com_calls` были равны нулю. `file_fingerprin
 selection context, toolbar, `CheckCommand()` и JS/COM были равны нулю. Тест
 включён в `-FullValidation`.
 
+Тот же interaction-harness был запущен на изолированном baseline `dc043cd1`
+(только test-only сценарий, без изменения его production idle-кода): на 10 000
+абзацах baseline занял 28 094 мс, текущий Release — 28 031 мс; оба выполнили
+ровно 2 010 необходимых command-state updates. Таким образом, ввод текста,
+перемещение caret и изменение selection не получили регрессии. Отличие
+проявляется после действий: текущий сценарий проверяет 1 000 последующих
+неизменных idle с нулевыми UI/COM-счётчиками, тогда как baseline-сравнение
+ниже фиксирует 1 000 command/toolbar/fingerprint обновлений за такой же idle
+отрезок. Параметр `-Scenario idle-interaction-performance-baseline` у того же
+runtime-теста оставлен для воспроизведения baseline-замера вне обычного CI.
+
 ### Зафиксированное сравнение idle
 
 Для фактического before/after был собран isolated baseline `dc043cd1` тем же
