@@ -55,6 +55,15 @@ Release-прогоне 21 сентября 2026 года все три случ�
 selection-query и `js_com_calls` были равны нулю. `file_fingerprint_checks`
 был ограничен единицей throttle. Этот тест включён в `-FullValidation`.
 
+Отдельный `test-fbe-idle-interaction-performance-runtime.ps1` выполняет на
+реальном BODY среднего FB2 1 000 перемещений caret, 1 000 изменений
+выделения и 10 правок текста через обычные notification handlers, затем 1 000
+неизменных `OnIdle`. Последний Release-прогон (10 000 абзацев) занял 27 391 мс
+для interaction-пакета и дал 2 010 command-state updates — ровно по одному на
+реальное событие. В следующем неизменном idle-отрезке все счётчики command,
+selection context, toolbar, `CheckCommand()` и JS/COM были равны нулю. Тест
+включён в `-FullValidation`.
+
 ### Зафиксированное сравнение idle
 
 Для фактического before/after был собран isolated baseline `dc043cd1` тем же
@@ -92,8 +101,9 @@ diagnostic trace. Test-only harness не менял `OnIdle`: после заг�
 
 Автоматически подтверждены контракты инвалидации, throttle, clipboard
 listener, selection cache, SOURCE idle, диагностических полей P410 и
-стабильного idle на real FBE в BODY и SOURCE. Также получено числовое
-baseline/current сравнение неизменного BODY idle. Реальные интерактивные серии для typing,
-caret navigation, BODY/SOURCE-переходов и внешнего save по протоколу выше
-остаются отдельной ручной проверкой: они зависят от конкретной книги, дисплея
-и Windows/MSHTML окружения.
+стабильного idle на real FBE в BODY и SOURCE. Synthetic runtime-контур также
+подтверждает event-driven BODY typing, caret navigation и selection updates.
+Получено числовое baseline/current сравнение неизменного BODY idle. Ручные
+серии BODY/SOURCE-переходов и внешнего save по протоколу выше остаются
+отдельной проверкой: они зависят от конкретной книги, дисплея и Windows/MSHTML
+окружения.

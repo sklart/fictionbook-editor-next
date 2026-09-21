@@ -300,6 +300,90 @@
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"idle-interaction-performance"))
+	{
+		// Use the production BODY notification route after real MSHTML range
+		// changes.  This distinguishes one event-driven update per interaction
+		// from work accidentally repeated during the following idle streak.
+		if (!StartupTrace::Enabled() || !m_doc || !m_doc->m_body.Document())
+		{
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document()->body);
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLTxtRangePtr range(body ? body->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+		if (!body || !paragraphs || !paragraphs->length || !range)
+		{
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		const int caretMoves = 1000;
+		const int selectionChanges = 1000;
+		const int typingEdits = 10;
+		const int stableIdleCycles = 1000;
+		auto selectParagraph = [&](int index, bool extend) -> bool
+		{
+			MSHTML::IHTMLElementPtr paragraph(paragraphs->item(_variant_t(static_cast<long>(index % paragraphs->length)), _variant_t()));
+			if (!paragraph) return false;
+			range->moveToElementText(paragraph);
+			range->collapse(VARIANT_TRUE);
+			if (extend) range->moveEnd(L"character", 1);
+			range->select();
+			return true;
+		};
+
+		InvalidateUi(UiDirtyAll); m_sel_changed = true; OnIdle();
+		const ULONGLONG idleBefore = g_idleProfile.count;
+		const ULONGLONG commandBefore = g_idleProfile.commandUpdates;
+		const ULONGLONG selectionBefore = g_idleProfile.selectionUpdates;
+		const ULONGLONG toolbarBefore = g_idleProfile.toolbarUpdates;
+		const ULONGLONG fileBefore = g_idleProfile.fileChecks;
+		const ULONGLONG clipboardBefore = g_idleProfile.clipboardChecks;
+		const ULONGLONG checkCommandBefore = StartupTrace::UiCheckCommandCount();
+		const ULONGLONG comBefore = StartupTrace::UiComCallCount();
+		const ULONGLONG started = ::GetTickCount64();
+		BOOL handled = FALSE;
+		for (int index = 0; index < caretMoves; ++index)
+		{
+			if (!selectParagraph(index, false)) { output.Close(); ::PostQuitMessage(1); return 0; }
+			OnEdSelChange(0, 0, NULL, handled); OnIdle();
+		}
+		for (int index = 0; index < selectionChanges; ++index)
+		{
+			if (!selectParagraph(index, true)) { output.Close(); ::PostQuitMessage(1); return 0; }
+			OnEdSelChange(0, 0, NULL, handled); OnIdle();
+		}
+		for (int index = 0; index < typingEdits; ++index)
+		{
+			MSHTML::IHTMLElementPtr paragraph(paragraphs->item(_variant_t(static_cast<long>(index % paragraphs->length)), _variant_t()));
+			_bstr_t text(paragraph->innerText);
+			CString edited(static_cast<const wchar_t*>(text)); edited += L" x";
+			paragraph->innerText = _bstr_t(static_cast<const wchar_t*>(edited));
+			OnEdChange(0, 0, NULL, handled); OnIdle();
+		}
+		const ULONGLONG interactionIdleCycles = g_idleProfile.count - idleBefore;
+		const ULONGLONG interactionElapsed = ::GetTickCount64() - started;
+		const ULONGLONG idleBeforeStable = g_idleProfile.count;
+		const ULONGLONG commandBeforeStable = g_idleProfile.commandUpdates;
+		const ULONGLONG selectionBeforeStable = g_idleProfile.selectionUpdates;
+		const ULONGLONG toolbarBeforeStable = g_idleProfile.toolbarUpdates;
+		const ULONGLONG checkCommandBeforeStable = StartupTrace::UiCheckCommandCount();
+		const ULONGLONG comBeforeStable = StartupTrace::UiComCallCount();
+		for (int cycle = 0; cycle < stableIdleCycles; ++cycle)
+			OnIdle();
+
+		CStringA report;
+		report.Format("caret_moves\t%d\r\nselection_changes\t%d\r\ntyping_edits\t%d\r\ninteraction_idle_cycles\t%I64u\r\ninteraction_elapsed_ms\t%I64u\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\nfile_fingerprint_checks\t%I64u\r\nclipboard_checks\t%I64u\r\ncheck_command_calls\t%I64u\r\njs_com_calls\t%I64u\r\nstable_idle_cycles\t%I64u\r\nstable_command_state_updates\t%I64u\r\nstable_selection_context_builds\t%I64u\r\nstable_toolbar_updates\t%I64u\r\nstable_check_command_calls\t%I64u\r\nstable_js_com_calls\t%I64u\r\n",
+			caretMoves, selectionChanges, typingEdits, interactionIdleCycles, interactionElapsed,
+			g_idleProfile.commandUpdates - commandBefore, g_idleProfile.selectionUpdates - selectionBefore,
+			g_idleProfile.toolbarUpdates - toolbarBefore, g_idleProfile.fileChecks - fileBefore,
+			g_idleProfile.clipboardChecks - clipboardBefore, StartupTrace::UiCheckCommandCount() - checkCommandBefore,
+			StartupTrace::UiComCallCount() - comBefore, g_idleProfile.count - idleBeforeStable,
+			g_idleProfile.commandUpdates - commandBeforeStable, g_idleProfile.selectionUpdates - selectionBeforeStable,
+			g_idleProfile.toolbarUpdates - toolbarBeforeStable, StartupTrace::UiCheckCommandCount() - checkCommandBeforeStable,
+			StartupTrace::UiComCallCount() - comBeforeStable);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"spellcheck-local-edit"))
 	{
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
