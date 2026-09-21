@@ -143,7 +143,7 @@
 		appendProbePhase("open-complete");
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
 		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-		MSHTML::IHTMLElementPtr paragraph;
+		MSHTML::IHTMLElementPtr paragraph, section;
 		for (long paragraphIndex = 0; paragraphs && paragraphIndex < paragraphs->length && !paragraph; ++paragraphIndex)
 		{
 			MSHTML::IHTMLElementPtr candidate(paragraphs->item(_variant_t(paragraphIndex), _variant_t()));
@@ -152,11 +152,36 @@
 				const _bstr_t tagName(ancestor->tagName), className(ancestor->className);
 				const wchar_t* const tagText = tagName;
 				const wchar_t* const classText = className;
-				if (tagText && classText && _wcsicmp(tagText, L"DIV") == 0 && _wcsicmp(classText, L"section") == 0) { paragraph = candidate; break; }
+				if (tagText && classText && _wcsicmp(tagText, L"DIV") == 0 && _wcsicmp(classText, L"section") == 0) { paragraph = candidate; section = ancestor; break; }
 			}
 		}
 		CComDispatchDriver script(m_doc->m_body.Script());
-		if (!body || !paragraph || !script) { appendProbePhase("probe-failed;reason=document"); output.Close(); ::PostQuitMessage(1); return 0; }
+		if (!body || !paragraph || !section || !script) { appendProbePhase("probe-failed;reason=document"); output.Close(); ::PostQuitMessage(1); return 0; }
+		auto snapshotSection = [&](CString& outerHtml, CString& childOrder) -> bool
+		{
+			outerHtml.Empty(); childOrder.Empty();
+			if (!section) return false;
+			outerHtml = static_cast<const wchar_t*>(_bstr_t(section->outerHTML));
+			for (MSHTML::IHTMLDOMNodePtr node(MSHTML::IHTMLDOMNodePtr(section)->firstChild); node; node = node->nextSibling)
+			{
+				if (!childOrder.IsEmpty()) childOrder += L"|";
+				if (node->nodeType != NODE_ELEMENT) { CString item; item.Format(L"#node%ld", node->nodeType); childOrder += item; continue; }
+				MSHTML::IHTMLElementPtr element(node);
+				const _bstr_t tag(element ? element->tagName : L""), id(element ? element->id : L""), className(element ? element->className : L"");
+				CString item; item.Format(L"%s#%s.%s", static_cast<const wchar_t*>(tag), static_cast<const wchar_t*>(id), static_cast<const wchar_t*>(className)); childOrder += item;
+			}
+			return true;
+		};
+		auto appendSectionSnapshot = [&](const char* name, const CString& outerHtml, const CString& childOrder)
+		{
+			ULONGLONG hash = 1469598103934665603ULL;
+			for (int index = 0; index < outerHtml.GetLength(); ++index) { hash ^= static_cast<unsigned short>(outerHtml[index]); hash *= 1099511628211ULL; }
+			CStringA phase; phase.Format("%s;outerhtml-length=%d;outerhtml-fnv64=%I64X;child-order=%S", name, outerHtml.GetLength(), hash, static_cast<const wchar_t*>(childOrder)); appendProbePhase(phase);
+		};
+		wchar_t undoRedoCyclesText[8] = {};
+		const DWORD undoRedoCyclesLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES", undoRedoCyclesText, _countof(undoRedoCyclesText));
+		const int undoRedoCycles = undoRedoCyclesLength && undoRedoCyclesLength < _countof(undoRedoCyclesText) ? _wtoi(undoRedoCyclesText) : 5;
+		if (undoRedoCycles != 0 && undoRedoCycles != 1 && undoRedoCycles != 2 && undoRedoCycles != 5) { appendProbePhase("probe-failed;reason=undo-redo-cycles"); output.Close(); ::PostQuitMessage(1); return 0; }
 		auto selectParagraphStart = [&]() -> bool
 		{
 			MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
@@ -289,23 +314,32 @@
 			appendProbePhase(probe == L"image-no-url" ? "image-no-url-complete" : "plain-block-complete");
 		}
 		else { appendProbePhase("probe-failed;reason=unknown-name"); output.Close(); ::PostQuitMessage(1); return 0; }
-		m_doc->m_body.SetFocus();
-		appendProbePhase("undo-start");
-		m_doc->m_body.ExecCommand(IDM_UNDO);
-		appendProbePhase("undo-complete");
-		if ((probe == L"image" || probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto") && blockImageCount() != 0)
+		CString insertedOuterHtml, insertedChildOrder, finalOuterHtml, finalChildOrder;
+		if (!snapshotSection(insertedOuterHtml, insertedChildOrder)) { appendProbePhase("probe-failed;phase=dom-after-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
+		appendSectionSnapshot("dom-after-insert", insertedOuterHtml, insertedChildOrder);
+		if (undoRedoCycles > 0)
 		{
-			appendProbePhase("probe-failed;phase=undo;reason=image-remained"); output.Close(); ::PostQuitMessage(1); return 0;
-		}
-		if (probe == L"image" || probe == L"image-inline" || probe == L"plain-block" || probe == L"plain-block-after" || probe == L"plain-block-auto" || probe == L"plain-block-markup" || probe == L"plain-block-custom" || probe == L"plain-block-adjacent-html" || probe == L"plain-block-adjacent-html-after" || probe == L"plain-block-adjacent-html-image" || probe == L"plain-block-adjacent-html-image-after" || probe == L"plain-block-range-html" || probe == L"plain-block-range-html-after" || probe == L"fbe285-start" || probe == L"fbe285-end" || probe == L"fbe285-middle")
-		{
-			for (int cycle = 0; cycle < 5; ++cycle)
+			m_doc->m_body.SetFocus();
+			appendProbePhase("undo-start");
+			m_doc->m_body.ExecCommand(IDM_UNDO);
+			appendProbePhase("undo-complete");
+			if ((probe == L"image" || probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto") && blockImageCount() != 0)
+			{
+				appendProbePhase("probe-failed;phase=undo;reason=image-remained"); output.Close(); ::PostQuitMessage(1); return 0;
+			}
+			for (int cycle = 0; cycle < undoRedoCycles; ++cycle)
 			{
 				m_doc->m_body.SetFocus(); CStringA phase; phase.Format("redo-start-%d", cycle + 1); appendProbePhase(phase); m_doc->m_body.ExecCommand(IDM_REDO); phase.Format("redo-complete-%d", cycle + 1); appendProbePhase(phase);
-				if (cycle == 4) break;
+				if (cycle + 1 == undoRedoCycles) break;
 				m_doc->m_body.SetFocus(); phase.Format("undo-start-%d", cycle + 2); appendProbePhase(phase); m_doc->m_body.ExecCommand(IDM_UNDO); phase.Format("undo-complete-%d", cycle + 2); appendProbePhase(phase);
 			}
 		}
+		else appendProbePhase("undo-redo-skipped");
+		if (!snapshotSection(finalOuterHtml, finalChildOrder)) { appendProbePhase("probe-failed;phase=dom-before-save"); output.Close(); ::PostQuitMessage(1); return 0; }
+		appendSectionSnapshot("dom-before-save", finalOuterHtml, finalChildOrder);
+		CStringA domComparison;
+		domComparison.Format("dom-compare;outerhtml-equal=%d;child-order-equal=%d", insertedOuterHtml == finalOuterHtml ? 1 : 0, insertedChildOrder == finalChildOrder ? 1 : 0);
+		appendProbePhase(domComparison);
 		appendProbePhase("idle-start");
 		for (int idle = 0; idle < 8; ++idle) { MSG message = {}; if (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } else ::Sleep(5); }
 		appendProbePhase("idle-complete");

@@ -9,6 +9,8 @@ param(
     [string]$Probe = 'binary',
     [ValidateSet('plain', 'formatted', 'nested', 'id')]
     [string]$Fixture = 'plain',
+    [ValidateSet(0, 1, 2, 5)]
+    [int]$UndoRedoCycles = 5,
     [int]$TimeoutSeconds = 90
 )
 
@@ -16,10 +18,21 @@ $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
 
+function Get-ProbeSaveTrace([int]$FbeProcessId) {
+    $directory = Join-Path $env:LOCALAPPDATA 'FBE Next\Diagnostics'
+    if (-not (Test-Path -LiteralPath $directory)) { return 'trace unavailable' }
+    $files = Get-ChildItem -LiteralPath $directory -Filter "fbe-trace-*-pid$FbeProcessId*.log" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime
+    if (-not $files) { return 'trace unavailable' }
+    $lines = foreach ($file in $files) { Get-Content -LiteralPath $file.FullName -ErrorAction SilentlyContinue }
+    $saveLines = $lines | Where-Object { $_ -match 'image-undo-save-probe|CreateDOM phase=' }
+    if (-not $saveLines) { return 'save probe markers unavailable' }
+    return (($saveLines | Select-Object -Last 30) -join "`n")
+}
+
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-image-undo-probe-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory | Out-Null
 $savedEnvironment = @{}
-foreach ($name in 'FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_IMAGE_PATH', 'FBE_NEXT_TEST_IMAGE_PROBE', 'FBE_NEXT_TEST_IMAGE_BINARY_ID') { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+foreach ($name in 'FBE_NEXT_TEST_MODE', 'FBE_NEXT_TEST_SCENARIO', 'FBE_NEXT_TEST_IMAGE_PATH', 'FBE_NEXT_TEST_IMAGE_PROBE', 'FBE_NEXT_TEST_IMAGE_BINARY_ID', 'FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES', 'FBE_NEXT_TRACE') { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 try {
     Add-Type -AssemblyName System.Drawing
     $imagePath = Join-Path $directory 'undo-probe.jpg'
@@ -27,9 +40,9 @@ try {
     try { $bitmap.SetPixel(0, 0, [Drawing.Color]::Blue); $bitmap.Save($imagePath, [Drawing.Imaging.ImageFormat]::Jpeg) } finally { $bitmap.Dispose() }
     $base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($imagePath))
     $paragraph = switch ($Fixture) {
-        'formatted' { '<p><em>formatted text</em> tail</p>' }
-        'nested' { '<p><em><strong>formatted text</strong></em> tail</p>' }
-        'id' { '<p id="keep-me"><em>formatted text</em> tail</p>' }
+        'formatted' { '<p><emphasis>formatted text</emphasis> tail</p>' }
+        'nested' { '<p><emphasis><strong>formatted text</strong></emphasis> tail</p>' }
+        'id' { '<p id="keep-me"><emphasis>formatted text</emphasis> tail</p>' }
         default { '<p>probe paragraph</p>' }
     }
     $fixturePath = Join-Path $directory 'fixture.fb2'
@@ -43,18 +56,22 @@ try {
     $env:FBE_NEXT_TEST_IMAGE_PATH = $imagePath
     $env:FBE_NEXT_TEST_IMAGE_PROBE = $Probe
     $env:FBE_NEXT_TEST_IMAGE_BINARY_ID = 'existing-image'
+    $env:FBE_NEXT_TEST_IMAGE_UNDO_REDO_CYCLES = $UndoRedoCycles
+    $env:FBE_NEXT_TRACE = '1'
     $process = Start-Process -FilePath $FbeExe -WorkingDirectory $directory -ArgumentList @('-b', $report, $fixturePath) -PassThru
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
         $timeoutPhases = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { 'report unavailable' }
         Stop-Process -Id $process.Id -Force
-        throw "${Probe}: FBE не завершился. Последняя фаза: $timeoutPhases"
+        $saveTrace = Get-ProbeSaveTrace $process.Id
+        throw "${Probe}: FBE не завершился. Последняя фаза: $timeoutPhases`nПоследние Save-маркеры:`n$saveTrace"
     }
     $phases = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { 'report unavailable' }
-    if ($process.ExitCode -ne 0) { throw "${Probe}: FBE завершился с $($process.ExitCode). Последняя фаза: $phases" }
-    if ($phases -notmatch 'undo-complete') { throw "${Probe}: Undo не завершился. Фазы: $phases" }
-    if ((($Probe -match '^image') -and $Probe -ne 'image-no-url') -or $Probe -match '^plain-block' -or $Probe -match '^fbe285') { if ($phases -notmatch 'redo-complete-5') { throw "${Probe}: Redo не завершился. Фазы: $phases" } }
+    $saveTrace = Get-ProbeSaveTrace $process.Id
+    if ($process.ExitCode -ne 0) { throw "${Probe}: FBE завершился с $($process.ExitCode). Последняя фаза: $phases`nПоследние Save-маркеры:`n$saveTrace" }
+    if ($UndoRedoCycles -gt 0 -and $phases -notmatch 'undo-complete') { throw "${Probe}: Undo не завершился. Фазы: $phases" }
+    if ($UndoRedoCycles -gt 0 -and ((($Probe -match '^image') -and $Probe -ne 'image-no-url') -or $Probe -match '^plain-block' -or $Probe -match '^fbe285')) { if ($phases -notmatch "redo-complete-$UndoRedoCycles") { throw "${Probe}: Redo не завершился. Фазы: $phases" } }
     if ($phases -notmatch 'idle-complete|save-complete') { throw "${Probe}: idle/Save не завершились. Фазы: $phases" }
-    Write-Host "${Probe}: real-MSHTML undo probe passed."
+    Write-Host "${Probe}: real-MSHTML undo probe passed.`n$phases`nПоследние Save-маркеры:`n$saveTrace"
 }
 finally {
     foreach ($name in $savedEnvironment.Keys) { if ($null -eq $savedEnvironment[$name]) { Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue } else { Set-Item -Path "Env:$name" -Value $savedEnvironment[$name] } }
