@@ -120,6 +120,122 @@
 		if (!m_doc->Save()) { appendStructuralPhase("save-failed;phase=save;operation=Save;actual_hresult=unavailable;symbolic_hresult=unavailable"); output.Close(); ::PostQuitMessage(1); return 0; }
 		appendStructuralPhase("save-complete"); output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"image-undo-probe"))
+	{
+		const ULONGLONG start = ::GetTickCount64();
+		auto appendProbePhase = [&](const char* phase)
+		{
+			CStringA row;
+			row.Format("%s\t%I64u\r\n", phase, ::GetTickCount64() - start);
+			DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+		};
+		CStringA header("phase\telapsed_ms\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written); output.Flush();
+		wchar_t probeName[32] = {};
+		const DWORD probeLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_PROBE", probeName, _countof(probeName));
+		if (!probeLength || probeLength >= _countof(probeName)) { appendProbePhase("probe-failed;reason=name"); output.Close(); ::PostQuitMessage(1); return 0; }
+		wchar_t imagePath[MAX_PATH] = {};
+		const DWORD imagePathLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_PATH", imagePath, _countof(imagePath));
+		if (imagePathLength == 0 || imagePathLength >= _countof(imagePath) || ::GetFileAttributes(imagePath) == INVALID_FILE_ATTRIBUTES)
+		{
+			appendProbePhase("probe-failed;reason=image-path"); output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		appendProbePhase("open-complete");
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		CComDispatchDriver script(m_doc->m_body.Script());
+		if (!body || !paragraph || !script) { appendProbePhase("probe-failed;reason=document"); output.Close(); ::PostQuitMessage(1); return 0; }
+		auto selectParagraphStart = [&]() -> bool
+		{
+			MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
+			if (!range) return false;
+			range->moveToElementText(paragraph); range->collapse(VARIANT_TRUE);
+			if (range->move(L"character", 1) == 1) range->move(L"character", -1);
+			range->select(); return true;
+		};
+		auto addBinary = [&](bool fillCoverList, _variant_t& binaryId) -> HRESULT
+		{
+			_variant_t data;
+			HRESULT hr = U::LoadFile(imagePath, &data);
+			if (FAILED(hr)) return hr;
+			_variant_t args[4];
+			args[0] = data;
+			args[1] = L"image/jpeg";
+			args[2] = L"undo-probe-binary";
+			args[3] = L"";
+			hr = script.InvokeN(L"apiAddBinary", args, 4, &binaryId);
+			if (SUCCEEDED(hr) && fillCoverList) hr = script.Invoke0(L"FillCoverList");
+			return hr;
+		};
+		auto blockImageCount = [&]() -> long
+		{
+			long count = 0;
+			MSHTML::IHTMLElementCollectionPtr divs(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
+			for (long index = 0; divs && index < divs->length; ++index)
+			{
+				MSHTML::IHTMLElementPtr div(divs->item(_variant_t(index), _variant_t()));
+				if (div && _wcsicmp(static_cast<const wchar_t*>(_bstr_t(div->className)), L"image") == 0) ++count;
+			}
+			return count;
+		};
+		const CString probe(probeName);
+		HRESULT hr = S_OK;
+		_variant_t binaryId;
+		if (probe == L"binary" || probe == L"binary-fill")
+		{
+			appendProbePhase("api-add-binary-start");
+			hr = addBinary(probe == L"binary-fill", binaryId);
+			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=api-add-binary"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendProbePhase(probe == L"binary-fill" ? "fill-cover-list-complete" : "api-add-binary-complete");
+		}
+		else if (probe == L"image" || probe == L"image-inline")
+		{
+			wchar_t existingId[256] = {};
+			const DWORD existingIdLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IMAGE_BINARY_ID", existingId, _countof(existingId));
+			if (!existingIdLength || existingIdLength >= _countof(existingId) || !selectParagraphStart()) { appendProbePhase("probe-failed;reason=existing-binary-or-selection"); output.Close(); ::PostQuitMessage(1); return 0; }
+			_variant_t check(false), inserted, id(existingId);
+			appendProbePhase("image-insert-start");
+			hr = script.Invoke2(probe == L"image-inline" ? L"InsInlineImage" : L"InsImage", &check, &id, &inserted);
+			if (FAILED(hr)) { appendProbePhase("probe-failed;phase=image-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
+			appendProbePhase("image-insert-complete");
+		}
+		else if (probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto" || probe == L"plain-block-markup")
+		{
+			appendProbePhase(probe == L"image-no-url" ? "image-no-url-start" : "plain-block-start");
+			if (probe != L"plain-block-auto") m_doc->m_body.BeginUndoUnit(probe == L"image-no-url" ? L"undo probe image without URL" : L"undo probe plain block");
+			MSHTML::IHTMLElementPtr image(m_doc->m_body.Document()->createElement(L"DIV"));
+			if (probe == L"image-no-url") { image->className = L"image"; image->setAttribute(L"href", _variant_t(L"#existing-image"), 0); }
+			if (probe == L"plain-block-markup")
+			{
+				MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices());
+				MSHTML::IMarkupPointerPtr start, finish;
+				hr = markup->CreateMarkupPointer(&start); if (SUCCEEDED(hr)) hr = markup->CreateMarkupPointer(&finish);
+				if (SUCCEEDED(hr)) hr = start->MoveAdjacentToElement(paragraph, MSHTML::ELEM_ADJ_BeforeBegin);
+				if (SUCCEEDED(hr)) hr = finish->MoveAdjacentToElement(paragraph, MSHTML::ELEM_ADJ_BeforeBegin);
+				if (SUCCEEDED(hr)) hr = markup->InsertElement(image, start, finish);
+				if (FAILED(hr)) { m_doc->m_body.EndUndoUnit(); appendProbePhase("probe-failed;phase=markup-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
+			}
+			else MSHTML::IHTMLElement2Ptr(paragraph)->insertAdjacentElement(L"beforeBegin", image);
+			if (probe != L"plain-block-auto") m_doc->m_body.EndUndoUnit();
+			appendProbePhase(probe == L"image-no-url" ? "image-no-url-complete" : "plain-block-complete");
+		}
+		else { appendProbePhase("probe-failed;reason=unknown-name"); output.Close(); ::PostQuitMessage(1); return 0; }
+		m_doc->m_body.SetFocus();
+		appendProbePhase("undo-start");
+		m_doc->m_body.ExecCommand(IDM_UNDO);
+		appendProbePhase("undo-complete");
+		if ((probe == L"image" || probe == L"image-no-url" || probe == L"plain-block" || probe == L"plain-block-auto") && blockImageCount() != 0)
+		{
+			appendProbePhase("probe-failed;phase=undo;reason=image-remained"); output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		if (probe == L"image" || probe == L"image-inline" || probe == L"plain-block" || probe == L"plain-block-auto" || probe == L"plain-block-markup")
+		{
+			m_doc->m_body.SetFocus(); appendProbePhase("redo-start"); m_doc->m_body.ExecCommand(IDM_REDO); appendProbePhase("redo-complete");
+			if (probe != L"image-inline" && blockImageCount() != 1) { appendProbePhase("probe-failed;phase=redo;reason=image-count"); output.Close(); ::PostQuitMessage(1); return 0; }
+		}
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
 	if (IsFbeTestScenario(L"binary-import-image"))
 	{
 		static bool imageImportRunnerQueued = false;
