@@ -794,6 +794,8 @@
 		const ULONGLONG fileBefore = g_idleProfile.fileChecks;
 		const ULONGLONG clipboardBefore = g_idleProfile.clipboardChecks;
 		const ULONGLONG checkCommandBefore = StartupTrace::UiCheckCommandCount();
+		const ULONGLONG selectionContainerBefore = StartupTrace::UiSelectionContainerQueryCount();
+		const ULONGLONG selectionContextContainerBefore = StartupTrace::UiSelectionContextContainerQueryCount();
 		const ULONGLONG comBefore = StartupTrace::UiComCallCount();
 		const ULONGLONG started = ::GetTickCount64();
 		BOOL handled = FALSE;
@@ -827,9 +829,11 @@
 			OnIdle();
 
 		CStringA report;
-		report.Format("caret_moves\t%d\r\nselection_changes\t%d\r\ntyping_edits\t%d\r\ninteraction_idle_cycles\t%I64u\r\ninteraction_elapsed_ms\t%I64u\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\nfile_fingerprint_checks\t%I64u\r\nclipboard_checks\t%I64u\r\ncheck_command_calls\t%I64u\r\njs_com_calls\t%I64u\r\nstable_idle_cycles\t%I64u\r\nstable_command_state_updates\t%I64u\r\nstable_selection_context_builds\t%I64u\r\nstable_toolbar_updates\t%I64u\r\nstable_check_command_calls\t%I64u\r\nstable_js_com_calls\t%I64u\r\n",
+		report.Format("caret_moves\t%d\r\nselection_changes\t%d\r\ntyping_edits\t%d\r\ninteraction_idle_cycles\t%I64u\r\ninteraction_elapsed_ms\t%I64u\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\nselection_container_queries\t%I64u\r\nselection_context_container_queries\t%I64u\r\ntoolbar_updates\t%I64u\r\nfile_fingerprint_checks\t%I64u\r\nclipboard_checks\t%I64u\r\ncheck_command_calls\t%I64u\r\njs_com_calls\t%I64u\r\nstable_idle_cycles\t%I64u\r\nstable_command_state_updates\t%I64u\r\nstable_selection_context_builds\t%I64u\r\nstable_toolbar_updates\t%I64u\r\nstable_check_command_calls\t%I64u\r\nstable_js_com_calls\t%I64u\r\n",
 			caretMoves, selectionChanges, typingEdits, interactionIdleCycles, interactionElapsed,
 			g_idleProfile.commandUpdates - commandBefore, g_idleProfile.selectionUpdates - selectionBefore,
+			StartupTrace::UiSelectionContainerQueryCount() - selectionContainerBefore,
+			StartupTrace::UiSelectionContextContainerQueryCount() - selectionContextContainerBefore,
 			g_idleProfile.toolbarUpdates - toolbarBefore, g_idleProfile.fileChecks - fileBefore,
 			g_idleProfile.clipboardChecks - clipboardBefore, StartupTrace::UiCheckCommandCount() - checkCommandBefore,
 			StartupTrace::UiComCallCount() - comBefore, g_idleProfile.count - idleBeforeStable,

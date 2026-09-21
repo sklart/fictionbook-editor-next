@@ -1319,6 +1319,7 @@ void CMainFrame::RebuildSelectionContext()
 		// several equivalent MSHTML range queries and parent walks.  Keep those
 		// public helpers for their other callers, but build this short-lived UI
 		// snapshot from one range/container query and one ancestor traversal.
+		StartupTrace::CountUiSelectionContextContainerQuery();
 		m_selection_context.container = m_doc->m_body.SelectionContainer();
 		for (MSHTML::IHTMLElementPtr current(m_selection_context.container); current; current = current->parentElement)
 		{

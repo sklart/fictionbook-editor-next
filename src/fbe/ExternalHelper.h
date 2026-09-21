@@ -103,6 +103,8 @@ public:
     CString safeCode(code ? code : L"");
     safeCode = safeCode.Left(32);
     CString safeMessage = StartupTrace::SanitizeLogText(message ? message : L"", 512);
+	if (safeCode == L"J410")
+		StartupTrace::CountXsltTemplateBuild();
     StartupTrace::ScriptEvent(safeCode, safeMessage);
     return S_OK;
   }

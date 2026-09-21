@@ -27,6 +27,12 @@
   использует тот же snapshot для преобразования scope и для query.
 - Lookup source range по id и MSHTML `sourceIndex` не выполняет линейный scan.
 
+При включённом existing diagnostic trace фиксируются aggregate counters:
+`xslt_template_builds`, `xsd_schema_loads` и `source_serializations`;
+`DocumentSearchCoordinator` хранит проверяемые счётчики snapshot builds и
+query runs. Они не пишут содержимое документа и не добавляют per-paragraph
+логирование.
+
 ## Targeted evidence
 
 Release-проект FBE собран после изменений Phase B. Пройдены целевые проверки:
@@ -36,6 +42,21 @@ Release-проект FBE собран после изменений Phase B. П�
 `test-source-serialization-cache-contract.ps1`,
 `test-search-snapshot-cache-contract.ps1`,
 `test-search-session.ps1` и MSHTML SearchDocumentAdapter regression.
+Контракт счётчиков — `test-phase-b-performance-counters-contract.ps1`.
+
+### Runtime benchmark
+
+Один реальный lifecycle run на fixture малого размера (1 000 paragraphs,
+381 428 bytes) выполнил open, BODY initialization, source validation и
+несколько BODY ↔ SOURCE переходов за `8 358 ms`. Средний fixture (10 000
+paragraphs, 3 837 429 bytes) прошёл тот же маршрут за `18 229 ms`. Оба
+прогона завершили semantic assertions BODY/SOURCE transition.
+
+Cache cardinality проверяется отдельно от wall-clock: JS harness создаёт один
+XSL template для повторного path/language и отдельный для другого языка;
+MSHTML search regression выполняет четыре incremental queries при ровно одном
+snapshot build. Source XML cache и schema cache проверяются их targeted
+контрактами и реальным BODY/SOURCE validation route.
 
 Phase B устраняет повторную фиксированную работу; задача не задаёт и не
 заявляет искусственный процент ускорения. Полный release gate и ручной smoke

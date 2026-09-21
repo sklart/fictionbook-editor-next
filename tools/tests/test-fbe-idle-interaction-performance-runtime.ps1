@@ -9,7 +9,8 @@ param(
     [ValidateSet('idle-interaction-performance', 'idle-interaction-performance-baseline')]
     [string]$Scenario = 'idle-interaction-performance',
     [int]$ParagraphCount = 10000,
-    [int]$TimeoutSeconds = 300
+    [int]$TimeoutSeconds = 300,
+    [switch]$KeepArtifacts
 )
 
 $ErrorActionPreference = 'Stop'
@@ -49,7 +50,8 @@ try {
     }
     if ($result.command_state_updates -lt 2000 -or $result.command_state_updates -gt 2010) { throw "Each interaction must cause one bounded command-state update; got $($result.command_state_updates)." }
     if ($Scenario -eq 'idle-interaction-performance') {
-        if ($result.selection_context_builds -lt 2000 -or $result.selection_context_builds -gt 2010) { throw "Each interaction must cause one bounded selection-context build; got $($result.selection_context_builds)." }
+		if ($result.selection_context_builds -lt 2000 -or $result.selection_context_builds -gt 2010) { throw "Each interaction must cause one bounded selection-context build; got $($result.selection_context_builds)." }
+		if ($result.selection_context_container_queries -lt 2000 -or $result.selection_context_container_queries -gt 2010) { throw "Each interaction must use one SelectionContext container query; got $($result.selection_context_container_queries)." }
         foreach ($metric in 'stable_command_state_updates', 'stable_selection_context_builds', 'stable_toolbar_updates', 'stable_check_command_calls', 'stable_js_com_calls') {
             if ($result[$metric] -ne 0) { throw "Unchanged idle repeated $metric=$($result[$metric])." }
         }
@@ -57,5 +59,9 @@ try {
     Write-Host "Idle interaction performance runtime test passed: scenario=$Scenario, paragraphs=$ParagraphCount, interaction_elapsed_ms=$($result.interaction_elapsed_ms), command_updates=$($result.command_state_updates)."
 } finally {
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE = $oldMode, $oldScenario, $oldTrace
-    Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+    if (-not $KeepArtifacts) {
+        Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+    } else {
+        Write-Host "Idle interaction artifacts retained: $directory"
+    }
 }

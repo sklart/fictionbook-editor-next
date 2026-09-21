@@ -1529,6 +1529,7 @@ static MSXML2::IXMLDOMSchemaCollection2Ptr FictionBookSchemaCacheForCurrentThrea
 	{
 		CheckError(schemas.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
 		schemas->add(FBNS, (const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
+		StartupTrace::CountXsdSchemaLoad();
 	}
 	return schemas;
 }

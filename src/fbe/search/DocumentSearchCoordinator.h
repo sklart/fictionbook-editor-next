@@ -34,6 +34,8 @@ public:
 	// Kept narrow and deterministic for the hosted-MSHTML scale regression.
 	// It verifies that virtual rows do not materialize every preview at once.
 	std::size_t GetCachedPreviewCountForTest() const;
+	std::size_t GetSnapshotBuildCountForTest() const;
+	std::size_t GetSearchQueryRunCountForTest() const;
 	std::size_t GetSelectedResultIndex() const;
 
 	const AU::Search::SearchHit* SelectFromOffset(
@@ -81,6 +83,8 @@ private:
 	SearchDocumentAdapter m_adapter;
 	AU::Search::SearchTextSnapshot m_snapshot;
 	MSHTML::IHTMLDocument2Ptr m_snapshotDocument;
+	std::size_t m_snapshotBuildCount = 0;
+	std::size_t m_searchQueryRunCount = 0;
 	AU::Search::SearchSession m_session;
 	AU::Search::SearchResults m_results;
 	mutable std::vector<std::wstring> m_previewCache;

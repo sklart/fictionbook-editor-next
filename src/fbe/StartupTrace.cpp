@@ -17,7 +17,8 @@ namespace
 	bool traceLockInitialized = false;
 	ULONGLONG startTime = 0, previousTime = 0, writtenBytes = 0, recordSequence = 0;
 	ULONGLONG uiComCallCount = 0, uiCheckCommandCount = 0;
-	ULONGLONG uiSelectionContainerQueryCount = 0, uiSelectionStructConQueryCount = 0, uiSelectionStructTableConQueryCount = 0;
+	ULONGLONG uiSelectionContainerQueryCount = 0, uiSelectionContextContainerQueryCount = 0, uiSelectionStructConQueryCount = 0, uiSelectionStructTableConQueryCount = 0;
+	ULONGLONG xsltTemplateBuildCount = 0, xsdSchemaLoadCount = 0, sourceSerializationCount = 0;
 	DWORD lastWriteError = ERROR_SUCCESS;
 	CString tracePath, traceBasePath, lastStageCode, lastStageMessage, lastDocumentStage, lastScriptOperationStage, lastScriptFailureStage, lastComFailure, lastHResultFailure, lastDispatchFailure;
 	unsigned int traceSegment = 0;
@@ -627,10 +628,18 @@ void StartupTrace::CountUiCheckCommand() { if (Enabled()) ++uiCheckCommandCount;
 ULONGLONG StartupTrace::UiCheckCommandCount() { return Enabled() ? uiCheckCommandCount : 0; }
 void StartupTrace::CountUiSelectionContainerQuery() { if (Enabled()) ++uiSelectionContainerQueryCount; }
 ULONGLONG StartupTrace::UiSelectionContainerQueryCount() { return Enabled() ? uiSelectionContainerQueryCount : 0; }
+void StartupTrace::CountUiSelectionContextContainerQuery() { if (Enabled()) ++uiSelectionContextContainerQueryCount; }
+ULONGLONG StartupTrace::UiSelectionContextContainerQueryCount() { return Enabled() ? uiSelectionContextContainerQueryCount : 0; }
 void StartupTrace::CountUiSelectionStructConQuery() { if (Enabled()) ++uiSelectionStructConQueryCount; }
 ULONGLONG StartupTrace::UiSelectionStructConQueryCount() { return Enabled() ? uiSelectionStructConQueryCount : 0; }
 void StartupTrace::CountUiSelectionStructTableConQuery() { if (Enabled()) ++uiSelectionStructTableConQueryCount; }
 ULONGLONG StartupTrace::UiSelectionStructTableConQueryCount() { return Enabled() ? uiSelectionStructTableConQueryCount : 0; }
+void StartupTrace::CountXsltTemplateBuild() { if (Enabled()) ++xsltTemplateBuildCount; }
+ULONGLONG StartupTrace::XsltTemplateBuildCount() { return Enabled() ? xsltTemplateBuildCount : 0; }
+void StartupTrace::CountXsdSchemaLoad() { if (Enabled()) ++xsdSchemaLoadCount; }
+ULONGLONG StartupTrace::XsdSchemaLoadCount() { return Enabled() ? xsdSchemaLoadCount : 0; }
+void StartupTrace::CountSourceSerialization() { if (Enabled()) ++sourceSerializationCount; }
+ULONGLONG StartupTrace::SourceSerializationCount() { return Enabled() ? sourceSerializationCount : 0; }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"info", code, message, false); }
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"LEGACY", message, false); }

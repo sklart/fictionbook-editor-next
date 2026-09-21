@@ -265,8 +265,17 @@ int wmain()
 
 	DocumentSearchCoordinator coordinator;
 	AU::Search::SearchQuery query;
-	query.Text = L"second";
-	if (!result && (!coordinator.Rebuild(document, 43, query) || coordinator.GetSession().GetHitCount() != 1)) result = 13;
+	if (!result)
+	{
+		for (const wchar_t* incrementalQuery : { L"s", L"se", L"sec", L"second" })
+		{
+			query.Text = incrementalQuery;
+			if (!coordinator.Rebuild(document, 43, query)) { result = 80; break; }
+		}
+		if (!result && (coordinator.GetSnapshotBuildCountForTest() != 1 ||
+			coordinator.GetSearchQueryRunCountForTest() != 4 ||
+			coordinator.GetSession().GetHitCount() != 1)) result = 81;
+	}
 	MSHTML::IHTMLTxtRangePtr resultRange;
 	if (!result && (!coordinator.CreateResultRange(document, 43, 0, resultRange) || !resultRange ||
 		wcsstr(static_cast<LPCWSTR>(_bstr_t(resultRange->text)), L"second") == NULL)) result = 34;

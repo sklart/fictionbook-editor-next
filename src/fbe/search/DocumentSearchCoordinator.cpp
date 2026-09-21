@@ -67,6 +67,7 @@ bool DocumentSearchCoordinator::Rebuild(
 {
 	if (errorText != NULL)
 		errorText->clear();
+	++m_searchQueryRunCount;
 	m_session.SetQuery(query);
 	EnsureSnapshot(document, documentGeneration);
 
@@ -143,6 +144,7 @@ void DocumentSearchCoordinator::EnsureSnapshot(
 	// boundaries, while query changes reuse this DOM-derived snapshot.
 	m_snapshot = m_adapter.BuildSnapshot(document, documentGeneration);
 	m_snapshotDocument = document;
+	++m_snapshotBuildCount;
 }
 
 const AU::Search::SearchTextSnapshot& DocumentSearchCoordinator::GetSnapshot() const
@@ -193,6 +195,16 @@ std::size_t DocumentSearchCoordinator::GetCachedPreviewCountForTest() const
 		if (m_previewCached[index])
 			++count;
 	return count;
+}
+
+std::size_t DocumentSearchCoordinator::GetSnapshotBuildCountForTest() const
+{
+	return m_snapshotBuildCount;
+}
+
+std::size_t DocumentSearchCoordinator::GetSearchQueryRunCountForTest() const
+{
+	return m_searchQueryRunCount;
 }
 
 std::size_t DocumentSearchCoordinator::GetSelectedResultIndex() const

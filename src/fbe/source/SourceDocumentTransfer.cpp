@@ -3,6 +3,7 @@
 #include "Scintilla.h"
 #include "../apputils.h"
 #include "../FBDoc.h"
+#include "../StartupTrace.h"
 #include "../XmlDeclaration.h"
 #include "BodySourceSelectionTransfer.h"
 
@@ -44,6 +45,7 @@ SourceTransitionResult SourceDocumentTransfer::PrepareSerializedSource(FB::Doc& 
 	if (serializedCache.xml != cachedXml || serializedCache.encoding != encoding ||
 		serializedCache.documentType != documentType)
 	{
+		StartupTrace::CountSourceSerialization();
 		_bstr_t serialized(cachedXml->xml);
 		serializedCache.text = static_cast<const wchar_t*>(serialized);
 		serializedCache.text = FbeSetXmlDeclarationEncoding(

@@ -157,8 +157,13 @@ BODY/SOURCE command matrix. DESCRIPTION имеет явную ветку и не
 BODY-specific MSHTML work.
 
 Targeted Release build и контракты selection-context, UI dirty-state,
-clipboard listener и DESCRIPTION прошли. Один post-change interaction run на
-10 000 paragraphs дал `interaction_elapsed_ms=30250` и
-`command_updates=2010`; устойчивый idle остаётся покрыт прежним runtime
-контуром. Это доказательство отсутствия регрессии, а не искусственная цель по
-проценту ускорения.
+clipboard listener и DESCRIPTION прошли. Финальный interaction run на 10 000
+paragraphs дал `interaction_elapsed_ms=29438`,
+`selection_context_builds=2010`,
+`selection_context_container_queries=2010`, `check_command_calls=64320` и
+`js_com_calls=30150`; следующий стабильный idle сохранил нули для command,
+selection-context, toolbar, CheckCommand и JS/COM. Общий legacy-счётчик
+`selection_container_queries=68270` включает независимые command helpers;
+выделенный scoped-счётчик доказывает ровно один базовый запрос в каждом
+SelectionContext build. Это доказательство отсутствия регрессии, а не
+искусственная цель по проценту ускорения.

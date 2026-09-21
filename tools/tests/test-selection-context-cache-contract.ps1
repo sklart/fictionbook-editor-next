@@ -17,6 +17,7 @@ $builderStart = $source.IndexOf('void CMainFrame::RebuildSelectionContext()')
 $builderEnd = $source.IndexOf('BOOL CMainFrame::OnIdle()', $builderStart)
 $builder = $source.Substring($builderStart, $builderEnd - $builderStart)
 if(([regex]::Matches($builder, 'm_selection_context\.container\s*=\s*m_doc->m_body\.SelectionContainer\(\)')).Count -ne 1) { throw 'SelectionContext builder must query SelectionContainer exactly once.' }
+if($builder.IndexOf('StartupTrace::CountUiSelectionContextContainerQuery()', [StringComparison]::Ordinal) -lt 0) { throw 'SelectionContext builder must expose its dedicated container-query counter.' }
 foreach($helper in @('SelectionStructCon()', 'SelectionStructImage()', 'SelectionStructSection()', 'SelectionStructTable()', 'SelectionAnchor()')) {
     if($builder.IndexOf($helper, [StringComparison]::Ordinal) -ge 0) { throw "SelectionContext builder must not restart traversal through $helper." }
 }

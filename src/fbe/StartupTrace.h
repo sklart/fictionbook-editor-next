@@ -34,10 +34,20 @@ namespace StartupTrace
 	ULONGLONG UiCheckCommandCount();
 	void CountUiSelectionContainerQuery();
 	ULONGLONG UiSelectionContainerQueryCount();
+	void CountUiSelectionContextContainerQuery();
+	ULONGLONG UiSelectionContextContainerQueryCount();
 	void CountUiSelectionStructConQuery();
 	ULONGLONG UiSelectionStructConQueryCount();
 	void CountUiSelectionStructTableConQuery();
 	ULONGLONG UiSelectionStructTableConQueryCount();
+	// Fixed-cost document operations. These remain aggregate diagnostics and
+	// are enabled only with the existing trace switch.
+	void CountXsltTemplateBuild();
+	ULONGLONG XsltTemplateBuildCount();
+	void CountXsdSchemaLoad();
+	ULONGLONG XsdSchemaLoadCount();
+	void CountSourceSerialization();
+	ULONGLONG SourceSerializationCount();
 	// Определяет режим следующего запуска: настройка FBE имеет приоритет над переменной среды.
 	bool IsEnabledForNextLaunch();
 	// Возвращает true только для явно сохранённого пользовательского включения.
