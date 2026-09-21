@@ -434,6 +434,15 @@
 		report.Format("spell_scroll_checks\t%ld\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\n", m_Speller->GetTestCheckScrollCalls(), g_idleProfile.commandUpdates - commands, g_idleProfile.selectionUpdates - selections, g_idleProfile.toolbarUpdates - toolbars);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close(); ::PostQuitMessage(written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"clipboard-fallback"))
+	{
+		const unsigned char pixels[] = { 0, 0, 255, 0 }; HBITMAP bitmap = ::CreateBitmap(1, 1, 1, 32, pixels);
+		if (!bitmap || !::OpenClipboard(m_hWnd) || !::EmptyClipboard() || !::SetClipboardData(CF_BITMAP, bitmap)) { if (bitmap) ::DeleteObject(bitmap); output.Close(); ::PostQuitMessage(1); return 0; }
+		::CloseClipboard(); m_clipboard_listener_registered = false; m_clipboard_has_bitmap = false; m_clipboard_fallback_check_started = false;
+		const ULONGLONG checks = g_idleProfile.clipboardChecks; OnIdle();
+		CStringA report; report.Format("clipboard_checks\t%I64u\r\nbitmap_detected\t%d\r\n", g_idleProfile.clipboardChecks - checks, m_clipboard_has_bitmap ? 1 : 0);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close(); ::PostQuitMessage(written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"spellcheck-russian-yo"))
 	{
 		// Exercise the production CSpeller path after the Russian document has

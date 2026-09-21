@@ -373,6 +373,7 @@ if ($FullValidation) {
     & (Join-Path $repoRoot "tools\tests\test-fbe-image-import-generated-id-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-local-edit-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 	& (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-scroll-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+	& (Join-Path $repoRoot "tools\tests\test-fbe-clipboard-fallback-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-idle-performance-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-idle-interaction-performance-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-image-import-fbe-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
