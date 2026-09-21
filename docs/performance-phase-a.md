@@ -128,3 +128,20 @@ listener, selection cache, SOURCE idle, диагностических поле�
 typing и navigation каретки. Ручные серии BODY/SOURCE-переходов и внешнего
 save по протоколу выше остаются отдельной проверкой: они зависят от конкретной
 книги, дисплея и Windows/MSHTML окружения.
+
+## Corrective validation
+
+Корректирующий проход Phase A добавляет отдельный `UiDirtyScroll`: реальное
+событие прокрутки BODY запускает только `CheckScroll()` spellcheck и не
+обновляет command-state, selection context или toolbar. Контракт
+`test-fbe-spellcheck-scroll-contract.ps1` проверяет полный путь
+MSHTML scroll -> message -> dirty flag -> spellcheck.
+
+Fallback clipboard теперь запускается до ветвления BODY/SOURCE даже при
+стабильном `m_ui_dirty`, но инвалидирует paste UI только после фактической
+смены доступности `CF_BITMAP`; проверяется
+`test-clipboard-listener-contract.ps1`. В DESCRIPTION обновление заголовка
+переведено с idle polling на события изменения input; тест
+`medium-description` в `test-fbe-idle-performance-runtime.ps1` добавлен к
+контур 1 000 стабильных idle. Все эти контракты включены в FAST
+`verify-release.ps1`; runtime idle-сценарии остаются частью `-FullValidation`.

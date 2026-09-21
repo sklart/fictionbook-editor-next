@@ -3211,6 +3211,7 @@ void CFBEView::OnScroll(IDispatch */* unused: evt */)
 	// MSHTML emits this only after its hosted document has updated scrollLeft /
 	// scrollTop, so popup coordinates are sampled from the final position.
 	UpdateSearchHighlightsForScroll();
+	::PostMessage(m_frame, AU::WM_BODY_SCROLL, 0, 0);
 }
 
 bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode, bool fromScopeStart)
@@ -3669,6 +3670,17 @@ VARIANT_BOOL  CFBEView::OnKeyDown(IDispatch *evt)
 	return VARIANT_TRUE;
 }
 
+VARIANT_BOOL CFBEView::OnKeyUp(IDispatch*)
+{
+	if (m_cur_input && m_cur_input->value != m_cur_val)
+	{
+		m_form_changed = true;
+		m_form_cp = true;
+		::PostMessage(m_frame, AU::WM_DESCRIPTION_FORM_CHANGED, 0, 0);
+	}
+	return VARIANT_TRUE;
+}
+
 VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
 {
 	MSHTML::IHTMLEventObjPtr oe(evt);
@@ -3682,6 +3694,8 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
 	else
 	{
 		oe->returnValue = VARIANT_TRUE;
+		if (m_cur_input)
+			::PostMessage(m_frame, AU::WM_DESCRIPTION_FORM_CHANGED, 0, 0);
 	}
 
 	return VARIANT_TRUE;

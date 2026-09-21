@@ -127,7 +127,8 @@ public:
 		UiDirtyView = 1 << 4,
 		UiDirtyToolbar = 1 << 5,
 		UiDirtyStatus = 1 << 6,
-		UiDirtyAll = UiDirtySelection | UiDirtyDocument | UiDirtyClipboard | UiDirtySource | UiDirtyView | UiDirtyToolbar | UiDirtyStatus
+		UiDirtyScroll = 1 << 7,
+		UiDirtyAll = UiDirtySelection | UiDirtyDocument | UiDirtyClipboard | UiDirtySource | UiDirtyView | UiDirtyToolbar | UiDirtyStatus | UiDirtyScroll
 	};
 
 	enum FILE_OP_STATUS
@@ -426,6 +427,8 @@ public:
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(AU::WM_POSTCREATE, OnPostCreate)
 		MESSAGE_HANDLER(AU::WM_SOURCE_MEMORY_BENCHMARK, OnSourceMemoryBenchmark)
+		MESSAGE_HANDLER(AU::WM_BODY_SCROLL, OnBodyScroll)
+		MESSAGE_HANDLER(AU::WM_DESCRIPTION_FORM_CHANGED, OnDescriptionFormChanged)
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		MESSAGE_HANDLER(WM_QUERYENDSESSION, OnQueryEndSession)
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
@@ -613,6 +616,8 @@ public:
   LRESULT OnEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnBodyScroll(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnDescriptionFormChanged(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnPostCreate(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
@@ -896,6 +901,7 @@ public:
 	LRESULT OnEdChange(WORD, WORD, HWND /* unused: hWnd */, BOOL& /* unused: b */) {
     StopIncSearch(true);
 		m_doc_changed=true;
+		m_need_title_update = true;
 		InvalidateSelectionContext();
 		InvalidateUi(UiDirtyDocument | UiDirtySelection | UiDirtyStatus | UiDirtyToolbar);
     ResetValidationStatus();
@@ -962,6 +968,7 @@ public:
       return 0;
     }
     SciModified(*(SCNotification*)hdr);
+	m_need_title_update = true;
 	InvalidateUi(UiDirtySource | UiDirtyToolbar | UiDirtyStatus);
     return 0;
   }
@@ -1048,7 +1055,7 @@ public:
 	void SourceGoTo(int line, int linePos);
 	bool CheckFileTimeStamp();
 	bool CheckFileTimeStampIfDue();
-	void RefreshClipboardState();
+	bool RefreshClipboardState();
 	void RefreshClipboardStateFallbackIfDue();
 	bool ReloadFile();
 	void UpdateFileTimeStamp();
@@ -1084,13 +1091,7 @@ public:
 	// added by SeNS - paste pictures
 	bool BitmapInClipboard()
 	{
-		bool result = false;
-		if (OpenClipboard())
-		{
-			if ( IsClipboardFormatAvailable(CF_BITMAP)) result = true;
-			CloseClipboard();
-		}
-		return result;
+		return ::IsClipboardFormatAvailable(CF_BITMAP) != FALSE;
 	}
 
     // added by SeNS

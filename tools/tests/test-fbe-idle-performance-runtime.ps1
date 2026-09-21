@@ -1,4 +1,4 @@
-<# Runs the real Release editor against BODY and SOURCE fixtures and verifies
+<# Runs the real Release editor against BODY, SOURCE and DESCRIPTION fixtures and verifies
    that 1000 unchanged idle iterations do not re-query UI state. #>
 [CmdletBinding()]
 param(
@@ -36,7 +36,8 @@ try {
     foreach ($case in @(
             @{ Name = 'small-body'; Paragraphs = $SmallParagraphCount; View = 'body' },
             @{ Name = 'medium-body'; Paragraphs = $MediumParagraphCount; View = 'body' },
-            @{ Name = 'medium-source'; Paragraphs = $MediumParagraphCount; View = 'source' })) {
+            @{ Name = 'medium-source'; Paragraphs = $MediumParagraphCount; View = 'source' },
+            @{ Name = 'medium-description'; Paragraphs = $MediumParagraphCount; View = 'description' })) {
         $fixture = Join-Path $directory ($case.Name + '.fb2')
         $reportPath = Join-Path $directory ($case.Name + '.tsv')
         New-Fixture $fixture $case.Paragraphs

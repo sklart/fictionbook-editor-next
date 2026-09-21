@@ -13,4 +13,7 @@ $idleStart = $source.IndexOf('BOOL CMainFrame::OnIdle()')
 $idleEnd = $source.IndexOf('void CMainFrame::AddTbButton', $idleStart)
 $idle = $source.Substring($idleStart, $idleEnd - $idleStart)
 if($idle.IndexOf('BitmapInClipboard()', [StringComparison]::Ordinal) -ge 0) { throw 'OnIdle must not poll BitmapInClipboard directly.' }
+if($idle.IndexOf('RefreshClipboardStateFallbackIfDue();', [StringComparison]::Ordinal) -gt $idle.IndexOf('if (IsSourceActive())', [StringComparison]::Ordinal)) { throw 'Clipboard fallback must run before the BODY/SOURCE-specific idle branches.' }
+if($source.IndexOf('if (RefreshClipboardState())', [StringComparison]::Ordinal) -lt 0 -or $source.IndexOf('InvalidateUi(UiDirtyClipboard | UiDirtyToolbar)', [StringComparison]::Ordinal) -lt 0) { throw 'Clipboard fallback must invalidate paste UI only after observed clipboard state changes.' }
+if($header.IndexOf('OpenClipboard', [StringComparison]::Ordinal) -ge 0) { throw 'Clipboard bitmap availability must use the non-blocking format query.' }
 Write-Host 'Clipboard listener contract passed.'

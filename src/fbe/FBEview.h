@@ -453,6 +453,7 @@ public:
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEMOVE, OnMouseMove, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONMOUSEUP, OnMouseUp, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYDOWN, OnKeyDown, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONKEYUP, OnKeyUp, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONFOCUSIN, OnFocusIn, &VoidEventInfo)
 		SINK_ENTRY_INFO(1, DIID_FBEHTMLElementEvents2, DISPID_HTMLELEMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONPASTE, OnRealPaste, &EventInfo)
@@ -789,7 +790,8 @@ public:
 	VARIANT_BOOL __stdcall  OnMouseDown(IDispatch *evt);
 	VARIANT_BOOL __stdcall  OnMouseMove(IDispatch *evt);
 	VARIANT_BOOL __stdcall  OnMouseUp(IDispatch *evt);
-  VARIANT_BOOL __stdcall  OnKeyDown(IDispatch *evt);
+	VARIANT_BOOL __stdcall  OnKeyDown(IDispatch *evt);
+	VARIANT_BOOL __stdcall  OnKeyUp(IDispatch *evt);
   void __stdcall	  OnFocusIn(IDispatch *evt);
 
 	// HTMLTextContainerEvents2

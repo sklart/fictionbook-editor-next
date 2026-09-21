@@ -265,8 +265,11 @@
 		wchar_t idleView[16] = {};
 		const DWORD idleViewLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_IDLE_VIEW", idleView, _countof(idleView));
 		const bool sourceIdle = idleViewLength == 6 && std::wcscmp(idleView, L"source") == 0;
+		const bool descriptionIdle = idleViewLength == 11 && std::wcscmp(idleView, L"description") == 0;
 		if (sourceIdle)
 			ShowView(SOURCE);
+		else if (descriptionIdle)
+			ShowView(DESC);
 		InvalidateUi(UiDirtyAll);
 		m_sel_changed = true;
 		OnIdle();
@@ -289,7 +292,7 @@
 
 		CStringA report;
 		report.Format("view\t%s\r\nidle_cycles\t%I64u\r\nelapsed_ms\t%I64u\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\nfile_fingerprint_checks\t%I64u\r\nclipboard_checks\t%I64u\r\ncheck_command_calls\t%I64u\r\nselection_container_queries\t%I64u\r\nselection_struct_con_queries\t%I64u\r\nselection_struct_table_con_queries\t%I64u\r\njs_com_calls\t%I64u\r\n",
-			sourceIdle ? "source" : "body", g_idleProfile.count - idleBefore, ::GetTickCount64() - started,
+			sourceIdle ? "source" : (descriptionIdle ? "description" : "body"), g_idleProfile.count - idleBefore, ::GetTickCount64() - started,
 			g_idleProfile.commandUpdates - commandBefore, g_idleProfile.selectionUpdates - selectionBefore,
 			g_idleProfile.toolbarUpdates - toolbarBefore, g_idleProfile.fileChecks - fileBefore,
 			g_idleProfile.clipboardChecks - clipboardBefore, StartupTrace::UiCheckCommandCount() - checkCommandBefore,

@@ -1256,6 +1256,10 @@ BOOL CMainFrame::OnIdle()
 	}
 	if (profileIdle) g_idleProfile.fileMilliseconds += ::GetTickCount64() - fileCheckStarted;
 
+	// The listener path returns immediately; the fallback remains live even
+	// while every other UI state is stable.
+	RefreshClipboardStateFallbackIfDue();
+
 	const ULONGLONG commandStarted = profileIdle ? ::GetTickCount64() : 0;
 	if (IsSourceActive())
 	{
@@ -1436,9 +1440,6 @@ BOOL CMainFrame::OnIdle()
 		UIEnable(ID_GOTO_MATCHTAG, false);
 		UIEnable(ID_GOTO_WRONGTAG, false);
 
-		// Clipboard bitmap availability is event-driven.  On a platform where
-		// registration failed, retain compatibility through a rare fallback.
-		RefreshClipboardStateFallbackIfDue();
 		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
 
 		if (m_sel_changed && /*GetCurView()*/m_editor_view_state.Current() != DESC)
@@ -1621,17 +1622,20 @@ BOOL CMainFrame::OnIdle()
 	// added by SeNS
 	// detect page scrolling, run a background spellcheck if necessary
 	const ULONGLONG spellStarted = profileIdle ? ::GetTickCount64() : 0;
-	if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone && m_Speller && m_Speller->Enabled() && m_editor_view_state.Current() == BODY)
+	const bool spellStateDirty = (m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone;
+	if ((spellStateDirty || (m_ui_dirty & UiDirtyScroll) != UiDirtyNone) && m_Speller && m_Speller->Enabled() && m_editor_view_state.Current() == BODY)
 	{
 		if (!m_Speller->Available())
-			UIEnable(ID_TOOLS_SPELLCHECK, false, true);
+		{
+			if (spellStateDirty) UIEnable(ID_TOOLS_SPELLCHECK, false, true);
+		}
 		else
 		{
-			UIEnable(ID_TOOLS_SPELLCHECK, true, true);
+			if (spellStateDirty) UIEnable(ID_TOOLS_SPELLCHECK, true, true);
 			m_Speller->CheckScroll();
 		}
 	}
-	else if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone) UIEnable(ID_TOOLS_SPELLCHECK, false, true);
+	else if (spellStateDirty) UIEnable(ID_TOOLS_SPELLCHECK, false, true);
 	if (profileIdle) g_idleProfile.spellMilliseconds += ::GetTickCount64() - spellStarted;
 
 	if ((m_ui_dirty & (UiDirtySelection | UiDirtyDocument | UiDirtyView)) != UiDirtyNone)
@@ -1650,7 +1654,7 @@ BOOL CMainFrame::OnIdle()
 	}
 
 	// update UI
-	if (m_ui_dirty != UiDirtyNone)
+	if ((m_ui_dirty & ~UiDirtyScroll) != UiDirtyNone)
 	{
 		if (profileIdle) ++g_idleProfile.toolbarUpdates;
 		const ULONGLONG toolbarStarted = profileIdle ? ::GetTickCount64() : 0;
@@ -1725,7 +1729,7 @@ BOOL CMainFrame::OnIdle()
 
 	// see if we need to update title
 	const ULONGLONG titleStarted = profileIdle ? ::GetTickCount64() : 0;
-	if(m_need_title_update || m_change_state != DocChanged())
+	if(m_need_title_update)
 	{
 		m_need_title_update = false;
 		m_change_state = DocChanged();
@@ -2714,6 +2718,23 @@ LRESULT CMainFrame::OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&)
 	InvalidateUi(UiDirtyClipboard | UiDirtyToolbar);
 	if (m_doc && !IsSourceActive())
 		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
+	return 0;
+}
+
+LRESULT CMainFrame::OnBodyScroll(UINT, WPARAM, LPARAM, BOOL&)
+{
+	// This notification comes from the real post-scroll MSHTML event.  Do not
+	// turn scrolling into a selection or command-state update.
+	InvalidateUi(UiDirtyScroll);
+	return 0;
+}
+
+LRESULT CMainFrame::OnDescriptionFormChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	// The view has observed an actual editable-form mutation.  Keep title and
+	// save state event-driven instead of polling IHTMLInputTextElement::value.
+	m_need_title_update = true;
+	InvalidateUi(UiDirtyDocument | UiDirtyToolbar | UiDirtyStatus);
 	return 0;
 }
 
@@ -5453,9 +5474,11 @@ bool CMainFrame::CheckFileTimeStamp()
 	return false;
 }
 
-void CMainFrame::RefreshClipboardState()
+bool CMainFrame::RefreshClipboardState()
 {
+	const bool previous = m_clipboard_has_bitmap;
 	m_clipboard_has_bitmap = BitmapInClipboard();
+	return previous != m_clipboard_has_bitmap;
 }
 
 void CMainFrame::RefreshClipboardStateFallbackIfDue()
@@ -5468,7 +5491,8 @@ void CMainFrame::RefreshClipboardStateFallbackIfDue()
 	m_clipboard_fallback_check_started = true;
 	m_last_clipboard_fallback_check = now;
 	if (StartupTrace::Enabled()) ++g_idleProfile.clipboardChecks;
-	RefreshClipboardState();
+	if (RefreshClipboardState())
+		InvalidateUi(UiDirtyClipboard | UiDirtyToolbar);
 }
 
 bool CMainFrame::CheckFileTimeStampIfDue()
