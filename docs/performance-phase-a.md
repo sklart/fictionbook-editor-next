@@ -68,23 +68,31 @@ selection context, toolbar, `CheckCommand()` и JS/COM были равны ну�
 
 Для фактического before/after был собран isolated baseline `dc043cd1` тем же
 v143/14.44 toolchain и с тем же pinned `third_party` tree, что у текущего
-HEAD. Оба запуска использовали один реальный FB2 с 1 000 абзацев и включённую
-diagnostic trace. Test-only harness не менял `OnIdle`: после загрузки он
-вызвал существующий `OnIdle()` ровно 1 000 раз и записал уже имеющиеся
-агрегированные counters.
+HEAD. Диагностическая трассировка была включена в обоих запусках. Test-only
+harness не меняет `OnIdle`: после загрузки он вызывает существующий `OnIdle()`
+ровно 1 000 раз и записывает агрегированные counters. 21 сентября 2026 года
+одинаковые fixtures дали следующие результаты:
 
-| Метрика за 1 000 неизменных idle | До: `dc043cd1` | После: `93a36888` |
-| --- | ---: | ---: |
-| elapsed_ms | 781 | 0 |
-| command_state_updates | 1 000 | 0 |
-| toolbar_updates | 1 000 | 0 |
-| file_fingerprint_checks | 1 000 | 0 |
-| selection_context_builds | 1 | 0 |
-| clipboard_checks | 0 | 0 |
+| Сценарий (1 000 неизменных idle) | Размер FB2 | До: `dc043cd1`, мс | После: `6ac14961`, мс | До: command / toolbar / fingerprint | После: command / toolbar / fingerprint |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| пустой BODY | 454 Б | 750 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
+| малый BODY, 1 000 абзацев | 230 347 Б | 781 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
+| средний BODY, 10 000 абзацев | 2 309 348 Б | 1 015 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
+| средний SOURCE, 10 000 абзацев | 2 309 348 Б | 1 047 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
 
-`0 ms` после оптимизации означает «меньше разрешения `GetTickCount64`», а не
-утверждение о нулевом CPU. Главный наблюдаемый результат — устранение всех
-дорогих повторных UI/file операций на неизменном состоянии.
+Во всех after-строках также равны нулю `selection_context_builds`,
+`clipboard_checks`, `check_command_calls` и `js_com_calls`. Старый baseline
+ещё не записывал последние два счётчика, поэтому они сознательно не
+реконструируются задним числом. `0 ms` означает «меньше разрешения
+`GetTickCount64`», а не утверждение о нулевом CPU. Главный наблюдаемый
+результат — устранение повторных UI/file/COM операций на неизменном состоянии.
+
+Замер воспроизводится скриптом `tools/tests/measure-fbe-idle-performance.ps1`:
+его нужно дважды запустить с одинаковыми параметрами fixture, сначала с
+`-Scenario idle-performance-baseline` и собранным baseline, затем с
+`-Scenario idle-performance` и текущим `out/Release/FBE.exe`. Два TSV образуют
+проверяемый исходный материал отчёта; сам baseline не является частью обычной
+CI-сборки.
 
 ## Ожидаемые инварианты Phase A
 
@@ -103,7 +111,8 @@ diagnostic trace. Test-only harness не менял `OnIdle`: после заг�
 listener, selection cache, SOURCE idle, диагностических полей P410 и
 стабильного idle на real FBE в BODY и SOURCE. Synthetic runtime-контур также
 подтверждает event-driven BODY typing, caret navigation и selection updates.
-Получено числовое baseline/current сравнение неизменного BODY idle. Ручные
-серии BODY/SOURCE-переходов и внешнего save по протоколу выше остаются
-отдельной проверкой: они зависят от конкретной книги, дисплея и Windows/MSHTML
-окружения.
+Получено числовое baseline/current сравнение пустого, малого и среднего BODY,
+а также среднего SOURCE idle. Synthetic runtime-контур также покрывает BODY
+typing и navigation каретки. Ручные серии BODY/SOURCE-переходов и внешнего
+save по протоколу выше остаются отдельной проверкой: они зависят от конкретной
+книги, дисплея и Windows/MSHTML окружения.
