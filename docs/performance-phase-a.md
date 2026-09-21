@@ -50,7 +50,7 @@ event-driven update и затем 1 000 неизменных `OnIdle`: для BO
 размерах и для SOURCE на 10 000 абзацев. Отчёт включает фактический `view`,
 поэтому тест не может незаметно проверить BODY вместо SOURCE. В последнем
 Release-прогоне 21 сентября 2026 года все три случая прошли: BODY показал
-`elapsed_ms=0` (ниже разрешения `GetTickCount64`), SOURCE — `elapsed_ms=15`;
+`elapsed_ms=0` (ниже разрешения `GetTickCount64`), SOURCE — `elapsed_ms=16`;
 а `command_state_updates`, `selection_context_builds`,
 `toolbar_updates`, `clipboard_checks`, `check_command_calls`, все три
 selection-query и `js_com_calls` были равны нулю. `file_fingerprint_checks`
@@ -59,7 +59,7 @@ selection-query и `js_com_calls` были равны нулю. `file_fingerprin
 Отдельный `test-fbe-idle-interaction-performance-runtime.ps1` выполняет на
 реальном BODY среднего FB2 1 000 перемещений caret, 1 000 изменений
 выделения и 10 правок текста через обычные notification handlers, затем 1 000
-неизменных `OnIdle`. Последний полный Release-прогон (10 000 абзацев) занял 27 484 мс
+неизменных `OnIdle`. Последний полный Release-прогон (10 000 абзацев) занял 27 937 мс
 для interaction-пакета и дал 2 010 command-state updates — ровно по одному на
 реальное событие. В следующем неизменном idle-отрезке все счётчики command,
 selection context, toolbar, `CheckCommand()` и JS/COM были равны нулю. Тест
@@ -85,12 +85,12 @@ harness не меняет `OnIdle`: после загрузки он вызыв�
 ровно 1 000 раз и записывает агрегированные counters. 21 сентября 2026 года
 одинаковые fixtures дали следующие результаты:
 
-| Сценарий (1 000 неизменных idle) | Размер FB2 | До: `dc043cd1`, мс | После: `6ac14961`, мс | До: command / toolbar / fingerprint | После: command / toolbar / fingerprint |
+| Сценарий (1 000 неизменных idle) | Размер FB2 | До: `dc043cd1`, мс | После: `8b768058`, мс | До: command / toolbar / fingerprint | После: command / toolbar / fingerprint |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| пустой BODY | 454 Б | 750 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
-| малый BODY, 1 000 абзацев | 230 347 Б | 781 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
-| средний BODY, 10 000 абзацев | 2 309 348 Б | 1 015 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
-| средний SOURCE, 10 000 абзацев | 2 309 348 Б | 1 047 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
+| пустой BODY | 454 Б | 1 891 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
+| малый BODY, 1 000 абзацев | 230 347 Б | 797 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
+| средний BODY, 10 000 абзацев | 2 309 348 Б | 1 000 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
+| средний SOURCE, 10 000 абзацев | 2 309 348 Б | 1 438 | 0 | 1 000 / 1 000 / 1 000 | 0 / 0 / 0 |
 
 Во всех after-строках также равны нулю `selection_context_builds`,
 `clipboard_checks`, `check_command_calls` и `js_com_calls`. Старый baseline
