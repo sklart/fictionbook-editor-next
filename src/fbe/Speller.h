@@ -207,9 +207,10 @@ public:
 
 	void CheckScroll();
 	void CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID);
-	void ResetTestDiagnostics() { m_testCheckElementCalls = 0; m_testVisitedParagraphs = 0; }
+	void ResetTestDiagnostics() { m_testCheckElementCalls = 0; m_testVisitedParagraphs = 0; m_testCheckScrollCalls = 0; }
 	long GetTestCheckElementCalls() const { return m_testCheckElementCalls; }
 	long GetTestVisitedParagraphs() const { return m_testVisitedParagraphs; }
+	long GetTestCheckScrollCalls() const { return m_testCheckScrollCalls; }
 	void CheckCurrentPage();
 	// main function
 	SPELL_RESULT SpellCheck(CString word);
@@ -275,6 +276,7 @@ protected:
 	bool m_HighlightMisspells;
 	long m_testCheckElementCalls;
 	long m_testVisitedParagraphs;
+	long m_testCheckScrollCalls;
 	int m_prevY, m_codePage;
 	HWND m_frame;
 	SPELL_LANG m_Lang;

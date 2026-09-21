@@ -421,6 +421,19 @@
 		// unattended message loop without opening the normal dirty-document UI.
 		::PostQuitMessage(0); return 0;
 	}
+	if (IsFbeTestScenario(L"spellcheck-scroll"))
+	{
+		if (!m_doc || !m_doc->m_body.Document() || !m_Speller) { output.Close(); ::PostQuitMessage(1); return 0; }
+		m_Speller->SetEnabled(true); m_Speller->ResetTestDiagnostics();
+		InvalidateUi(UiDirtyAll); m_sel_changed = true; OnIdle();
+		const ULONGLONG commands = g_idleProfile.commandUpdates, selections = g_idleProfile.selectionUpdates, toolbars = g_idleProfile.toolbarUpdates;
+		m_doc->m_body.OnScroll(NULL);
+		MSG message = {}; while (::PeekMessage(&message, m_hWnd, AU::WM_BODY_SCROLL, AU::WM_BODY_SCROLL, PM_REMOVE)) ::DispatchMessage(&message);
+		OnIdle();
+		CStringA report;
+		report.Format("spell_scroll_checks\t%ld\r\ncommand_state_updates\t%I64u\r\nselection_context_builds\t%I64u\r\ntoolbar_updates\t%I64u\r\n", m_Speller->GetTestCheckScrollCalls(), g_idleProfile.commandUpdates - commands, g_idleProfile.selectionUpdates - selections, g_idleProfile.toolbarUpdates - toolbars);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close(); ::PostQuitMessage(written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"spellcheck-russian-yo"))
 	{
 		// Exercise the production CSpeller path after the Russian document has

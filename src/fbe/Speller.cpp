@@ -244,7 +244,7 @@ UINT CSpeller::DetectDictionaryCodePage(Hunhandle* dict, UINT fallbackCodePage)
 //
 CSpeller::CSpeller(CString dictPath):
 	m_prevSelRange(nullptr), m_spell_dlg(nullptr), m_Enabled(true),
-	m_HighlightMisspells(false), m_testCheckElementCalls(0), m_testVisitedParagraphs(0), m_prevY(0), m_codePage(CP_UTF8),
+	m_HighlightMisspells(false), m_testCheckElementCalls(0), m_testVisitedParagraphs(0), m_testCheckScrollCalls(0), m_prevY(0), m_codePage(CP_UTF8),
 	m_frame(nullptr), m_Lang(LANG_EN),
 	m_menuSuggestions(nullptr), m_DictPath(dictPath),
 	m_CustomDictCodepage(CP_UTF8), splitter(nullptr)
@@ -782,6 +782,7 @@ void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 //
 void CSpeller::CheckScroll()
 {
+	++m_testCheckScrollCalls;
 	if (m_scrollElement)
 	{
 		long Y = m_scrollElement->scrollTop;
