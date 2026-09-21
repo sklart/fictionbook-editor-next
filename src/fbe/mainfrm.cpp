@@ -195,9 +195,8 @@ bool ShowNativeMainMenuPopup(HWND commandBar, int item)
 	// insufficient for the native renderer.  Restore their 32-bit menu bitmaps
 	// after the stock command-bar setup, including already-created submenus.
 	ApplyScriptNativeMenuBitmaps(popup);
-	const UINT command = ::TrackPopupMenuEx(popup,
-		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON | TPM_RETURNCMD,
-		point.x, point.y, owner, NULL);
+	const UINT command = ThemeManager::TrackPopupMenu(popup,
+		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON, point.x, point.y, owner);
 	if(command != 0)
 		::SendMessage(owner, WM_COMMAND, MAKEWPARAM(command, 0), 0);
 	return true;

@@ -421,6 +421,38 @@ void EnsureThemeCbtHook()
 
 namespace ThemeManager
 {
+namespace
+{
+struct TaskDialogCallbackState
+{
+	PFTASKDIALOGCALLBACK callback;
+	LONG_PTR callbackData;
+};
+
+HRESULT CALLBACK ThemedTaskDialogCallback(HWND window, UINT notification, WPARAM wParam, LPARAM lParam, LONG_PTR reference)
+{
+	TaskDialogCallbackState* state = reinterpret_cast<TaskDialogCallbackState*>(reference);
+	if(notification == TDN_CREATED)
+		ApplyToWindow(window);
+	return state->callback != NULL ? state->callback(window, notification, wParam, lParam, state->callbackData) : S_OK;
+}
+}
+
+UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
+{
+	if(menu == NULL || !::IsWindow(owner)) return 0;
+	return ::TrackPopupMenuEx(menu, flags | TPM_RETURNCMD, x, y, owner, NULL);
+}
+
+HRESULT TaskDialogIndirect(const TASKDIALOGCONFIG& config, int* button, int* radioButton, BOOL* verification)
+{
+	TaskDialogCallbackState state = { config.pfCallback, config.lpCallbackData };
+	TASKDIALOGCONFIG themed = config;
+	themed.pfCallback = ThemedTaskDialogCallback;
+	themed.lpCallbackData = reinterpret_cast<LONG_PTR>(&state);
+	return ::TaskDialogIndirect(&themed, button, radioButton, verification);
+}
+
 void SetSelectedTheme(InterfaceTheme theme)
 {
 	if(theme < INTERFACE_THEME_AUTOMATIC || theme > INTERFACE_THEME_DARK)

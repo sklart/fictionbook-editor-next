@@ -2,6 +2,7 @@
 
 #include <commctrl.h>
 #include "StartupTrace.h"
+#include "ThemeManager.h"
 
 namespace FbeScriptDiagnostics {
 
@@ -109,7 +110,7 @@ inline void ShowDetails(HWND owner, const CString& details)
 	config.pButtons = buttons;
 	int button = IDCANCEL;
 	do {
-		TaskDialogIndirect(&config, &button, NULL, NULL);
+		ThemeManager::TaskDialogIndirect(config, &button, NULL, NULL);
 		if (button == 1001)
 			Copy(details);
 	} while (button == 1001);

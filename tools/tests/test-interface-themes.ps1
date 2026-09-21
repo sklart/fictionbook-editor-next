@@ -49,7 +49,7 @@ if($mainFrame -notlike '*ThemeManager::RefreshSystemTheme()*' -or $mainFrame -no
 if($mainFrame -notlike '*OnPostCreate*' -or $mainFrame -notlike '*ThemeManager::ApplyToWindow(m_hWnd);*') {
     throw 'Main frame does not reapply its DWM theme after creation has completed.'
 }
-foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl::TrackPopupMenu')) {
+foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl::TrackPopupMenu', 'ThemeManager::TrackPopupMenu')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus do not retain command-bar icons: $required." }
 }
 foreach($required in @('ApplyScriptNativeMenuBitmaps', 'g_scriptNativeMenuBitmaps', 'NativeMenuBitmap')) {
@@ -58,9 +58,16 @@ foreach($required in @('ApplyScriptNativeMenuBitmaps', 'g_scriptNativeMenuBitmap
 foreach($required in @('CreateMenuBitmap', 'ImageList_DrawIndirect', 'ILC_COLOR32')) {
 	if($scriptVisuals -notlike "*$required*") { throw "Script visual resources do not create native alpha menu bitmaps: $required." }
 }
-foreach($required in @('useDarkPalette', 'ThemeManager::ControlColor()', 'ThemeManager::TextColor()', 'wc .hbrBackground = NULL')) {
+foreach($required in @('useDarkPalette', 'ThemeManager::ControlColor()', 'ThemeManager::TextColor()', 'ThemeManager::SelectionBackgroundColor()', 'ThemeManager::HoverColor()', 'ThemeManager::BorderColor()', 'wc .hbrBackground = NULL')) {
 	if($colorButton -notlike "*$required*") { throw "Color picker popup does not follow the interface theme: $required." }
 }
+foreach($required in @('TrackPopupMenu', 'TaskDialogIndirect', 'TDN_CREATED', 'ThemedTaskDialogCallback', 'ApplyToWindow(window)')) {
+	if($manager -notlike "*$required*") { throw "Theme manager does not provide the native popup and TaskDialog wrappers: $required." }
+}
+if($mainFrameHeader -notlike '*ThemeManager::TrackPopupMenu(tp->hMenu*') {
+	throw 'BODY context menu does not use the shared native popup helper.'
+}
+if($scriptVisuals -notlike '*CreateMenuBitmap*') { throw 'Script visual resources no longer provide native menu bitmaps.' }
 foreach($required in @('pagesToTheme', 'ThemeManager::ApplyToWindow(page)', 'before any page becomes visible')) {
 	if($settingsDialog -notlike "*$required*") { throw "Settings pages do not receive the selected theme on creation: $required." }
 }
@@ -88,10 +95,10 @@ foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ForceDark'
 foreach($required in @('OnThemeChanged', 'OnThemePaint', 'PaintDarkTitle', 'OnToolbarCustomDraw', 'DocumentTreeViewBarThemeProc', 'DocumentTreeViewBarWindowThemeProc', 'ShowNativeDocumentTreeViewBarPopup', 'TrackPopupMenuEx', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::ControlColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR', 'TB_SETCOLORSCHEME')) {
 	if($documentTree -notlike "*$required*") { throw "Document Tree does not refresh $required on theme changes." }
 }
-foreach($required in @('MainMenuBarThemeProc', 'MainMenuBarWindowThemeProc', 'ShowNativeMainMenuPopup', 'TrackPopupMenuEx', 'DarkMode_Explorer', 'ApplyMainMenuRebarBandTheme', 'RBBIM_COLORS', 'SetWindowSubclass(m_hWnd, MainMenuBarThemeProc', 'SetWindowSubclass(hWndCmdBar, MainMenuBarWindowThemeProc', 'CDRF_SKIPDEFAULT')) {
+foreach($required in @('MainMenuBarThemeProc', 'MainMenuBarWindowThemeProc', 'ShowNativeMainMenuPopup', 'ThemeManager::TrackPopupMenu', 'DarkMode_Explorer', 'ApplyMainMenuRebarBandTheme', 'RBBIM_COLORS', 'SetWindowSubclass(m_hWnd, MainMenuBarThemeProc', 'SetWindowSubclass(hWndCmdBar, MainMenuBarWindowThemeProc', 'CDRF_SKIPDEFAULT')) {
 	if($mainFrame -notlike "*$required*") { throw "Main menu bar does not refresh its dark rebar surface: $required." }
 }
-foreach($required in @('TrackPopupMenuEx(tp->hMenu', 'TPM_RETURNCMD', 'WM_COMMAND', 'CCommandBarCtrl stays')) {
+foreach($required in @('ThemeManager::TrackPopupMenu(tp->hMenu', 'WM_COMMAND', 'CCommandBarCtrl stays')) {
 	if($mainFrameHeader -notlike "*$required*") { throw "BODY context menu does not use the native themed popup: $required." }
 }
 if($documentTree -notlike '*SetWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc*') {

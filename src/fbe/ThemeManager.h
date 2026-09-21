@@ -60,6 +60,13 @@ namespace ThemeManager
 	HBRUSH WindowBrush();
 	HBRUSH ControlBrush();
 
+	// Keeps FBE-owned native popups on the effective app palette.  The native
+	// renderer remains system-owned in Light and High Contrast.
+	UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner);
+	// Applies the theme as soon as a TaskDialog has a valid HWND, while keeping
+	// a caller-provided callback and its data intact.
+	HRESULT TaskDialogIndirect(const TASKDIALOGCONFIG& config, int* button, int* radioButton, BOOL* verification);
+
 	// Applies the appropriate system theme, DWM title-bar attribute and colours
 	// to a window and all its children.  Safe to call on Windows 7.
 	void ApplyToWindow(HWND window);

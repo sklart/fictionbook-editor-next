@@ -634,10 +634,10 @@ BOOL CColorButton::Picker ()
 	int nAlpha = 48;
 	const bool useDarkPalette = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	m_clrBackground = useDarkPalette ? ThemeManager::ControlColor() : ::GetSysColor (COLOR_MENU);
-	m_clrHiLightBorder = useDarkPalette ? ThemeManager::AccentColor() : ::GetSysColor (COLOR_HIGHLIGHT);
-	m_clrHiLight = useDarkPalette ? ThemeManager::HoverColor() : m_clrHiLightBorder;
+	m_clrHiLightBorder = useDarkPalette ? ThemeManager::BorderColor() : ::GetSysColor (COLOR_HIGHLIGHT);
+	m_clrHiLight = useDarkPalette ? ThemeManager::SelectionBackgroundColor() : m_clrHiLightBorder;
 #if (WINVER >= 0x0501)
-	m_clrHiLight = ::GetSysColor (COLOR_MENUHILIGHT);
+	if(!useDarkPalette) m_clrHiLight = ::GetSysColor (COLOR_MENUHILIGHT);
 #endif
 	m_clrHiLightText = useDarkPalette ? ThemeManager::SelectionTextColor() : ::GetSysColor (COLOR_HIGHLIGHTTEXT);
 	m_clrText = useDarkPalette ? ThemeManager::TextColor() : ::GetSysColor (COLOR_MENUTEXT);
@@ -647,7 +647,8 @@ BOOL CColorButton::Picker ()
 		(GetGValue (m_clrBackground) * (255 - nAlpha) + 
 			GetGValue (m_clrHiLightBorder) * nAlpha) >> 8,
 		(GetBValue (m_clrBackground) * (255 - nAlpha) + 
-			GetBValue (m_clrHiLightBorder) * nAlpha) >> 8);
+		GetBValue (m_clrHiLightBorder) * nAlpha) >> 8);
+	if(useDarkPalette) m_clrLoLight = ThemeManager::HoverColor();
    
 	//
 	// Get the margins
@@ -1477,7 +1478,7 @@ void CColorButton::DrawPickerCell (CDC &dc, int nIndex)
 		// will notice.)
 		//
 
-		dc .SetBkColor (::GetSysColor (COLOR_3DSHADOW));
+		dc .SetBkColor (ThemeManager::IsDark() && !ThemeManager::IsHighContrast() ? ThemeManager::BorderColor() : ::GetSysColor (COLOR_3DSHADOW));
 		dc .ExtTextOut (0, 0, ETO_OPAQUE, &rect, NULL, 0, NULL);
 		rect .InflateRect (-1, -1);
 		dc .SetBkColor (gm_sColors [nIndex] .clrColor);
