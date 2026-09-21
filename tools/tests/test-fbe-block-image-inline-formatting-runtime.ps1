@@ -5,7 +5,8 @@ Exercises production MSHTML insertion of a block image at inline-formatting boun
 [CmdletBinding()]
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
-    [int]$TimeoutSeconds = 180
+    [int]$TimeoutSeconds = 180,
+    [switch]$DiagnosticUndoRedo
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,6 +64,10 @@ function Assert-Case([string]$Path, $Case) {
         $node = $section.SelectSingleNode($check.Path, $ns)
         if ($null -eq $node -or $node.InnerText -ne $check.Text) { throw "$($Case.Id): не сохранён фрагмент $($check.Path)='$($check.Text)'." }
     }
+    if ($Case.ParagraphId) {
+        $paragraph = $section.SelectSingleNode('./fb:p[1]', $ns)
+        if ($null -eq $paragraph -or $paragraph.GetAttribute('id') -ne $Case.ParagraphId) { throw "$($Case.Id): не сохранён id='$($Case.ParagraphId)' исходного P." }
+    }
 }
 
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-block-image-inline-' + [guid]::NewGuid().ToString('N'))
@@ -77,13 +82,13 @@ try {
     $env:FBE_NEXT_TEST_IMAGE_PATH = $imagePath
     $env:FBE_NEXT_TEST_IMAGE_INLINE = '0'
     $cases = @(
-        @{ Id='em-start'; Markup='<p><emphasis>italic text</emphasis> normal text</p>'; Offset=0; Children='image,p'; Checks=@(@{Path='./fb:p[1]/fb:emphasis';Text='italic text'}) },
+        @{ Id='keep-p-id-at-start'; Markup='<p id="keep-me"><emphasis>formatted text</emphasis> tail</p>'; Offset=0; Children='image,p'; ParagraphId='keep-me'; Checks=@(@{Path='./fb:p[1]/fb:emphasis';Text='formatted text'},@{Path='./fb:p[1]';Text='formatted text tail'}) },
         @{ Id='strong-start'; Markup='<p><strong>bold text</strong> normal</p>'; Offset=0; Children='image,p'; Checks=@(@{Path='./fb:p[1]/fb:strong';Text='bold text'}) },
         @{ Id='strike-start'; Markup='<p><strikethrough>strike text</strikethrough> normal</p>'; Offset=0; Children='image,p'; Checks=@(@{Path='./fb:p[1]/fb:strikethrough';Text='strike text'}) },
         @{ Id='sup-start'; Markup='<p><sup>sup</sup> normal</p>'; Offset=0; Children='image,p'; Checks=@(@{Path='./fb:p[1]/fb:sup';Text='sup'}) },
         @{ Id='sub-start'; Markup='<p><sub>sub</sub> normal</p>'; Offset=0; Children='image,p'; Checks=@(@{Path='./fb:p[1]/fb:sub';Text='sub'}) },
         @{ Id='em-inside'; Markup='<p><emphasis>one twothree four</emphasis></p>'; Offset=7; Children='p,image,p'; Checks=@(@{Path='./fb:p[1]/fb:emphasis';Text='one two'},@{Path='./fb:p[2]/fb:emphasis';Text='three four'}) },
-        @{ Id='nested-em-strong'; Markup='<p>normal <emphasis>italic <strong>boldbold2</strong> italic2</emphasis> normal2</p>'; Offset=18; Children='p,image,p'; Checks=@(@{Path='./fb:p[1]/fb:emphasis/fb:strong';Text='bold'},@{Path='./fb:p[2]/fb:emphasis/fb:strong';Text='bold2'}) ; UndoRedo=$true },
+        @{ Id='nested-em-strong'; Markup='<p>normal <emphasis>italic <strong>boldbold2</strong> italic2</emphasis> normal2</p>'; Offset=18; Children='p,image,p'; Checks=@(@{Path='./fb:p[1]/fb:emphasis/fb:strong';Text='bold'},@{Path='./fb:p[2]/fb:emphasis/fb:strong';Text='bold2'}) ; UndoRedo=[bool]$DiagnosticUndoRedo },
         @{ Id='after-em'; Markup='<p><emphasis>italic</emphasis>normal</p>'; Offset=6; Children='p,image,p'; Checks=@(@{Path='./fb:p[1]/fb:emphasis';Text='italic'},@{Path='./fb:p[2]';Text='normal'}) },
         @{ Id='before-em'; Markup='<p>normal<emphasis>italic</emphasis></p>'; Offset=6; Children='p,image,p'; Checks=@(@{Path='./fb:p[1]';Text='normal'},@{Path='./fb:p[2]/fb:emphasis';Text='italic'}) },
         @{ Id='paragraph-end'; Markup='<p>normal <emphasis>italic</emphasis></p>'; Offset=13; Children='p,image'; Checks=@(@{Path='./fb:p[1]/fb:emphasis';Text='italic'}) }

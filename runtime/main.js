@@ -2951,11 +2951,41 @@ function CreateBlockImageElement(id)
  return image;
 }
 
+function IsMarkerAtParagraphBoundary(marker, paragraph, atStart)
+{
+ for(var node=marker;node && node!=paragraph;node=node.parentNode)
+  if(atStart ? node.previousSibling : node.nextSibling) return false;
+ return node==paragraph;
+}
+
+function MoveCaretToParagraphStart(paragraph)
+{
+ if(!paragraph || !document.body) return;
+ var caret=document.body.createTextRange();
+ caret.moveToElementText(paragraph);
+ caret.collapse(true);
+ caret.select();
+}
+
 function InsertBlockImageAtMarker(marker, id)
 {
  var paragraph=marker.parentElement;
  while(paragraph && paragraph.tagName!="P") paragraph=paragraph.parentElement;
  if(!paragraph) return null;
+
+ // Do not rebuild a paragraph at either boundary: MSHTML has already put the
+ // marker in the inline ancestry, but the original P (including its id and
+ // attributes) remains the correct DOM node to retain.
+ var atStart=IsMarkerAtParagraphBoundary(marker,paragraph,true);
+ var atEnd=IsMarkerAtParagraphBoundary(marker,paragraph,false);
+ if(atStart || atEnd)
+ {
+  marker.removeNode(true);
+  var boundaryBlock=CreateBlockImageElement(id);
+  paragraph.insertAdjacentElement(atStart ? "beforeBegin" : "afterEnd",boundaryBlock);
+  if(atStart) MoveCaretToParagraphStart(paragraph);
+  return boundaryBlock;
+ }
 
  // Build the right paragraph bottom-up.  Every copied inline ancestor receives
  // the text to the right of the marker, so <EM>/<STRONG>/... survive a split.
@@ -2992,6 +3022,7 @@ function InsertBlockImageAtMarker(marker, id)
   if(keepRight) block.insertAdjacentElement("afterEnd",rightPart);
   paragraph.removeNode(true);
  }
+ if(keepRight) MoveCaretToParagraphStart(rightPart);
  return block;
 }
 
@@ -3012,13 +3043,25 @@ function InsImage(check, id)
 
  if(check) return true;
 
- window.external.BeginUndoUnit(document,"insert image");
- var markerId="fbe-block-image-marker-"+(++blockImageInsertionMarkerCounter);
- rng.pasteHTML("<SPAN id='"+markerId+"'></SPAN>");
- var marker=document.getElementById(markerId);
- var inserted=marker ? InsertBlockImageAtMarker(marker,id) : null;
- if(!inserted && marker) marker.removeNode(true);
- window.external.EndUndoUnit(document);
+ var markerId;
+ do { markerId="fbe-block-image-marker-"+(++blockImageInsertionMarkerCounter); }
+ while(document.getElementById(markerId));
+
+ var undoStarted=false;
+ var inserted=null;
+ try
+ {
+  window.external.BeginUndoUnit(document,"insert image");
+  undoStarted=true;
+  rng.pasteHTML("<SPAN id='"+markerId+"'></SPAN>");
+  var marker=document.getElementById(markerId);
+  inserted=marker ? InsertBlockImageAtMarker(marker,id) : null;
+  if(!inserted && marker) marker.removeNode(true);
+ }
+ finally
+ {
+  if(undoStarted) window.external.EndUndoUnit(document);
+ }
 
  return inserted;
 }
