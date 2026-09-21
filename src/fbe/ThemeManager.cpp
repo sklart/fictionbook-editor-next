@@ -64,6 +64,13 @@ bool IsGroupBox(HWND window)
 		((::GetWindowLongPtrW(window, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX);
 }
 
+bool IsRadioButton(HWND window)
+{
+	if(!IsClass(window, L"Button")) return false;
+	const LONG_PTR type = ::GetWindowLongPtrW(window, GWL_STYLE) & BS_TYPEMASK;
+	return type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON;
+}
+
 bool UsesClassicSurfacePalette(HWND window)
 {
 	// Explorer visual styles ignore the colours set through the common-control
@@ -489,7 +496,10 @@ void ApplyToWindow(HWND window)
 	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
 	// A single-space app/sub-app pair is the documented opt-out marker for
 	// visual styles. An empty string merely selects the default theme again.
-	if(dark && UsesClassicSurfacePalette(window))
+	if(dark && (UsesClassicSurfacePalette(window) || IsRadioButton(window)))
+		// UxTheme draws radio labels using its system disabled colour.  The
+		// classic path honours the parent's WM_CTLCOLORBTN palette, including
+		// DisabledTextColor(), while leaving ordinary buttons untouched.
 		::SetWindowTheme(window, L" ", L" ");
 	else if(dark && IsComboBox(window))
 		// DarkMode_CFD is the Windows 10/11 ComboBox visual-style contract. It
