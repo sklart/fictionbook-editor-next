@@ -30,6 +30,7 @@
 #include "document\\FileFingerprint.h"
 #include "archive\\ArchiveReader.h"
 #include "archive\\ArchiveDocumentResolver.h"
+#include <thread>
 #include "archive\\ArchiveDocumentWriter.h"
 #include "recovery\\RecoveryService.h"
 #include "xmlMatchedTagsHighlighter.h"
@@ -200,6 +201,30 @@ void ApplyMainRebarTheme(CReBarCtrl& rebar)
 
 const UINT_PTR kStatusBarThemeSubclassId = 0x46425342; // "FBSB"
 
+thread_local bool g_rejectThemedMessageButton = false;
+thread_local bool g_rejectedThemedMessageButton = false;
+
+LRESULT CALLBACK RejectThemedMessageButtonForTest(int code, WPARAM wParam, LPARAM lParam)
+{
+	if(code == HCBT_CREATEWND && g_rejectThemedMessageButton)
+	{
+		const CBT_CREATEWND* creating = reinterpret_cast<const CBT_CREATEWND*>(lParam);
+		const CREATESTRUCT* details = creating != NULL ? creating->lpcs : NULL;
+		wchar_t parentClass[64] = {};
+		if(details != NULL && details->hwndParent != NULL && details->lpszClass != NULL &&
+			HIWORD(reinterpret_cast<ULONG_PTR>(details->lpszClass)) != 0 &&
+			::lstrcmpiW(details->lpszClass, WC_BUTTONW) == 0 &&
+			::GetClassNameW(details->hwndParent, parentClass, _countof(parentClass)) != 0 &&
+			::lstrcmpiW(parentClass, L"FBEThemedMessageDialog") == 0)
+		{
+			g_rejectThemedMessageButton = false;
+			g_rejectedThemedMessageButton = true;
+			return 1; // Fail exactly this child creation; the native fallback remains available.
+		}
+	}
+	return ::CallNextHookEx(NULL, code, wParam, lParam);
+}
+
 LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
 	if(message == WM_NCDESTROY)
@@ -213,6 +238,7 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 	if(message != WM_PAINT) return ::DefSubclassProc(window, message, wParam, lParam);
 
 	PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+	if(dc == NULL) return 0;
 	RECT client = {}; ::GetClientRect(window, &client);
 	::FillRect(dc, &client, ThemeManager::ControlBrush());
 	RECT topBorder = { client.left, client.top, client.right, client.top + 1 };
@@ -233,8 +259,16 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 			RECT separator = { pane.left, pane.top + 2, pane.left + 1, pane.bottom - 2 };
 			::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
 		}
-		wchar_t text[1024] = {};
-		::SendMessage(window, SB_GETTEXTW, index, reinterpret_cast<LPARAM>(text));
+		// SB_GETTEXTW has no buffer-size parameter.  Query and consume the
+		// length synchronously on the status bar's owner thread, and never
+		// interpret an owner-drawn pane's application data as a string.
+		const LRESULT textInfo = ::SendMessageW(window, SB_GETTEXTLENGTHW, index, 0);
+		if(textInfo == -1 || (HIWORD(static_cast<DWORD>(textInfo)) & SBT_OWNERDRAW) != 0)
+			continue;
+		const size_t textLength = LOWORD(static_cast<DWORD>(textInfo));
+		std::vector<wchar_t> text(textLength + 1, L'\0');
+		if(textLength != 0)
+			::SendMessageW(window, SB_GETTEXTW, index, reinterpret_cast<LPARAM>(text.data()));
 		::SetBkMode(dc, TRANSPARENT);
 		::SetTextColor(dc, index == 0 ? ThemeManager::TextColor() : ThemeManager::SecondaryTextColor());
 		pane.left += leftPadding; pane.right -= rightPadding;
@@ -242,7 +276,7 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 		const int textHeight = static_cast<int>(metrics.tmHeight);
 		const int textTop = pane.top + (std::max)(0, (paneHeight - textHeight) / 2);
 		pane.top = textTop; pane.bottom = textTop + textHeight;
-		::DrawText(dc, text, -1, &pane, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+		::DrawTextW(dc, text.data(), -1, &pane, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
 	}
 	if((::GetWindowLongPtr(window, GWL_STYLE) & SBARS_SIZEGRIP) != 0)
 	{

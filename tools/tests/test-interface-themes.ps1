@@ -72,7 +72,7 @@ foreach($required in @('useDarkPalette', 'ThemeManager::ControlColor()', 'ThemeM
 foreach($required in @('TrackPopupMenu', 'TaskDialogIndirect', 'TDN_CREATED', 'ThemedTaskDialogCallback', 'ApplyToWindow(window)')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not provide the native popup and TaskDialog wrappers: $required." }
 }
-foreach($required in @('ThemedMessageDialog', 'FBEThemedMessageDialog', 'MB_SYSTEMMODAL', 'MB_SERVICE_NOTIFICATION', 'UiMetrics::DialogFont()', 'UiMetrics::DpiForWindow(m_owner)', 'AdjustWindowRectExForDpi', 'AdjustWindowRectEx', 'EnsureClientArea', 'GetClientRect', 'MB_DEFMASK', 'BM_CLICK', 'ThemeManager::ApplyToWindow(m_window)', 'ThemeManager::WindowBrush()', 'ThemeManager::ControlBrush()', 'THEME_COLOR_SEPARATOR', 'VK_ESCAPE', 'VK_RETURN', 'IsDialogMessageW')) {
+foreach($required in @('ThemedMessageDialog', 'FBEThemedMessageDialog', 'MB_SYSTEMMODAL', 'MB_SERVICE_NOTIFICATION', 'UiMetrics::CreateDialogFontForDpi', 'UiMetrics::DpiForWindow(m_owner)', 'AdjustWindowRectExForDpi', 'AdjustWindowRectEx', 'EnsureClientArea', 'GetClientRect', 'GetMonitorInfoW', 'WM_DPICHANGED', 'WS_TABSTOP', 'PostQuitMessage', 'MB_DEFMASK', 'BM_CLICK', 'ThemeManager::ApplyToWindow(m_window)', 'ThemeManager::WindowBrush()', 'ThemeManager::ControlBrush()', 'THEME_COLOR_SEPARATOR', 'VK_ESCAPE', 'VK_RETURN', 'IsDialogMessageW')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not provide the themed FBE-owned message dialog: $required." }
 }
 if($managerHeader -notlike '*int MessageBox(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type)*') {

@@ -340,11 +340,11 @@
 			if (probe == L"plain-block-markup")
 			{
 				MSHTML::IMarkupServices2Ptr markup(m_doc->m_body.MarkupServices());
-				MSHTML::IMarkupPointerPtr start, finish;
-				hr = markup->CreateMarkupPointer(&start); if (SUCCEEDED(hr)) hr = markup->CreateMarkupPointer(&finish);
-				if (SUCCEEDED(hr)) hr = start->MoveAdjacentToElement(paragraph, MSHTML::ELEM_ADJ_BeforeBegin);
+				MSHTML::IMarkupPointerPtr startPointer, finish;
+				hr = markup->CreateMarkupPointer(&startPointer); if (SUCCEEDED(hr)) hr = markup->CreateMarkupPointer(&finish);
+				if (SUCCEEDED(hr)) hr = startPointer->MoveAdjacentToElement(paragraph, MSHTML::ELEM_ADJ_BeforeBegin);
 				if (SUCCEEDED(hr)) hr = finish->MoveAdjacentToElement(paragraph, MSHTML::ELEM_ADJ_BeforeBegin);
-				if (SUCCEEDED(hr)) hr = markup->InsertElement(image, start, finish);
+				if (SUCCEEDED(hr)) hr = markup->InsertElement(image, startPointer, finish);
 				if (FAILED(hr)) { m_doc->m_body.EndUndoUnit(); appendProbePhase("probe-failed;phase=markup-insert"); output.Close(); ::PostQuitMessage(1); return 0; }
 			}
 			else if (probe == L"plain-block-custom")
@@ -1085,6 +1085,330 @@
 		const SourceEditorControlDiagnostics diagnostics = m_source.RunDiagnostics();
 		CStringA row; row.Format("created\t%d\r\nutf8\t%d\r\neol\t%d\r\neol_visibility\t%d\r\nwrapping\t%d\r\nwhitespace\t%d\r\nline_numbers\t%d\r\nfolding\t%d\r\nstyles\t%d\r\ntag_state\t%d\r\nmetrics\t%d\r\nreapply\t%d\r\n", diagnostics.created ? 1 : 0, diagnostics.utf8 ? 1 : 0, diagnostics.eol ? 1 : 0, diagnostics.eolVisibility ? 1 : 0, diagnostics.wrapping ? 1 : 0, diagnostics.whitespace ? 1 : 0, diagnostics.lineNumbers ? 1 : 0, diagnostics.folding ? 1 : 0, diagnostics.styles ? 1 : 0, diagnostics.tagState ? 1 : 0, diagnostics.metrics ? 1 : 0, diagnostics.reapply ? 1 : 0);
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"status-bar-long-paint"))
+	{
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		CStringA header("length\tset\troundtrip\tpainted\towner_draw\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		const int lengths[] = { 0, 1023, 1024, 1500, 10000 };
+		for(int length : lengths)
+		{
+			CStringW text;
+			for(int index = 0; index < length; ++index) text.AppendChar(L'X');
+			const BOOL set = static_cast<BOOL>(m_status.SendMessage(SB_SETTEXTW, 0, reinterpret_cast<LPARAM>(text.GetString())));
+			const LRESULT info = m_status.SendMessage(SB_GETTEXTLENGTHW, 0, 0);
+			std::vector<wchar_t> received(static_cast<size_t>(LOWORD(static_cast<DWORD>(info))) + 1, L'\0');
+			m_status.SendMessage(SB_GETTEXTW, 0, reinterpret_cast<LPARAM>(received.data()));
+			m_status.Invalidate();
+			const BOOL painted = m_status.UpdateWindow();
+			CStringA row; row.Format("%d\t%d\t%d\t%d\t0\r\n", length, set ? 1 : 0,
+				info != -1 && LOWORD(static_cast<DWORD>(info)) == length &&
+					static_cast<int>(wcslen(received.data())) == length ? 1 : 0, painted ? 1 : 0);
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+		}
+		const BOOL ownerSet = static_cast<BOOL>(m_status.SendMessage(SB_SETTEXTW, SBT_OWNERDRAW, static_cast<LPARAM>(0x12345678)));
+		const LRESULT ownerInfo = m_status.SendMessage(SB_GETTEXTLENGTHW, 0, 0);
+		m_status.Invalidate();
+		const BOOL ownerPainted = m_status.UpdateWindow();
+		CStringA row; row.Format("owner\t%d\t0\t%d\t%d\r\n", ownerSet ? 1 : 0,
+			ownerPainted ? 1 : 0, (HIWORD(static_cast<DWORD>(ownerInfo)) & SBT_OWNERDRAW) != 0 ? 1 : 0);
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"themed-message-behavior"))
+	{
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		CStringA header("case\tresult\twindow\tgeometry\tcontent\tkeyboard\tdpi_geometry\tdpi_font\tbounds\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		auto runDialog = [&](const char* name, UINT type, int action, int expected, int textLength)
+		{
+			CStringW caption(L"FBE themed message behavior probe");
+			CStringW message;
+			for(int index = 0; index < textLength; ++index) message.AppendChar(L'X');
+			bool found = false, geometry = false, content = false, keyboard = false;
+			bool dpiGeometry = true, dpiFont = true;
+			CStringA bounds;
+			std::thread driver([&]()
+			{
+				HWND dialog = NULL;
+				for(int retry = 0; retry < 500 && dialog == NULL; ++retry)
+				{
+					dialog = ::FindWindowW(L"FBEThemedMessageDialog", caption);
+					if(dialog == NULL) ::Sleep(10);
+				}
+				if(dialog == NULL) return;
+				found = true;
+				const UINT firstId = (type & MB_TYPEMASK) == MB_YESNO || (type & MB_TYPEMASK) == MB_YESNOCANCEL ? IDYES : IDOK;
+				HWND firstButton = NULL, edit = NULL;
+				for(int retry = 0; retry < 500 && (firstButton == NULL || edit == NULL || !::IsWindowVisible(dialog)); ++retry)
+				{
+					firstButton = ::GetDlgItem(dialog, firstId);
+					edit = ::FindWindowExW(dialog, NULL, WC_EDITW, NULL);
+					if(firstButton == NULL || edit == NULL || !::IsWindowVisible(dialog)) ::Sleep(10);
+				}
+				if(firstButton == NULL || edit == NULL) return;
+				::Sleep(20); // Initial default focus is assigned immediately after ShowWindow.
+				RECT outer = {}, client = {}, buttonRect = {};
+				::GetWindowRect(dialog, &outer); ::GetClientRect(dialog, &client);
+				if(firstButton != NULL) ::GetWindowRect(firstButton, &buttonRect);
+				::MapWindowPoints(NULL, dialog, reinterpret_cast<LPPOINT>(&buttonRect), 2);
+				MONITORINFO monitor = {}; monitor.cbSize = sizeof(monitor);
+				HMONITOR nearest = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
+				geometry = nearest != NULL && ::GetMonitorInfoW(nearest, &monitor) &&
+					outer.left >= monitor.rcWork.left && outer.top >= monitor.rcWork.top &&
+					outer.right <= monitor.rcWork.right && outer.bottom <= monitor.rcWork.bottom &&
+					firstButton != NULL && buttonRect.left >= client.left && buttonRect.top >= client.top &&
+					buttonRect.right <= client.right && buttonRect.bottom <= client.bottom;
+				bounds.Format("outer=%ld,%ld,%ld,%ld;work=%ld,%ld,%ld,%ld;client=%ld,%ld,%ld,%ld;button=%ld,%ld,%ld,%ld",
+					outer.left, outer.top, outer.right, outer.bottom,
+					monitor.rcWork.left, monitor.rcWork.top, monitor.rcWork.right, monitor.rcWork.bottom,
+					client.left, client.top, client.right, client.bottom,
+					buttonRect.left, buttonRect.top, buttonRect.right, buttonRect.bottom);
+				content = edit != NULL && ::GetWindowTextLengthW(edit) == textLength;
+				switch(action)
+				{
+				case 0: // A forged notification without a button HWND must be ignored.
+					::SendMessageW(dialog, WM_COMMAND, MAKEWPARAM(IDYES, BN_CLICKED), 0);
+					keyboard = ::IsWindow(dialog) != FALSE;
+					if(HWND button = ::GetDlgItem(dialog, IDNO)) ::SendMessageW(button, BM_CLICK, 0, 0);
+					break;
+				case 1: // Yes/No has no Esc answer.
+					::PostMessageW(dialog, WM_KEYDOWN, VK_ESCAPE, 0); ::Sleep(80);
+					keyboard = ::IsWindow(dialog) != FALSE;
+					if(HWND button = ::GetDlgItem(dialog, IDNO)) ::SendMessageW(button, BM_CLICK, 0, 0);
+					break;
+				case 2: { // Tab changes focus; Enter activates that button, not the old default.
+					if(firstButton != NULL) ::PostMessageW(firstButton, WM_KEYDOWN, VK_TAB, 0);
+					::Sleep(100);
+					GUITHREADINFO focus = {}; focus.cbSize = sizeof(focus);
+					keyboard = ::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &focus) &&
+						focus.hwndFocus == ::GetDlgItem(dialog, IDNO);
+					if(focus.hwndFocus != NULL) ::PostMessageW(focus.hwndFocus, WM_KEYDOWN, VK_RETURN, 0);
+					break;
+				}
+				case 3: // The second button is the native default for MB_DEFBUTTON2.
+					keyboard = true; ::PostMessageW(dialog, WM_KEYDOWN, VK_RETURN, 0); break;
+				case 4:
+					keyboard = true; ::PostMessageW(dialog, WM_CLOSE, 0, 0); break;
+				case 5:
+					keyboard = true; ::PostMessageW(dialog, WM_KEYDOWN, VK_ESCAPE, 0); break;
+				case 6:
+					keyboard = true;
+					for(UINT dpi : { 96u, 120u, 144u, 192u })
+					{
+						RECT suggested = {}; ::GetWindowRect(dialog, &suggested);
+						::SendMessageW(dialog, WM_DPICHANGED, MAKEWPARAM(dpi, dpi), reinterpret_cast<LPARAM>(&suggested));
+						RECT resized = {}, resizedClient = {}, resizedButton = {};
+						::GetWindowRect(dialog, &resized); ::GetClientRect(dialog, &resizedClient);
+						::GetWindowRect(firstButton, &resizedButton);
+						::MapWindowPoints(NULL, dialog, reinterpret_cast<LPPOINT>(&resizedButton), 2);
+						MONITORINFO currentMonitor = {}; currentMonitor.cbSize = sizeof(currentMonitor);
+						HMONITOR current = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
+						dpiGeometry = dpiGeometry && current != NULL && ::GetMonitorInfoW(current, &currentMonitor) &&
+							resized.left >= currentMonitor.rcWork.left && resized.top >= currentMonitor.rcWork.top &&
+							resized.right <= currentMonitor.rcWork.right && resized.bottom <= currentMonitor.rcWork.bottom &&
+							resizedButton.left >= resizedClient.left && resizedButton.top >= resizedClient.top &&
+							resizedButton.right <= resizedClient.right && resizedButton.bottom <= resizedClient.bottom;
+						LOGFONTW font = {};
+						HFONT editFont = reinterpret_cast<HFONT>(::SendMessageW(edit, WM_GETFONT, 0, 0));
+						dpiFont = dpiFont && editFont != NULL && ::GetObjectW(editFont, sizeof(font), &font) == sizeof(font) &&
+							font.lfHeight != 0;
+						content = content && ::GetWindowTextLengthW(edit) == textLength;
+					}
+					if(HWND button = ::GetDlgItem(dialog, IDOK)) ::SendMessageW(button, BM_CLICK, 0, 0);
+					break;
+				case 7: { // The localized '&' mnemonic must activate its actual button.
+					HWND noButton = ::GetDlgItem(dialog, IDNO);
+					wchar_t label[128] = {};
+					if(noButton != NULL) ::GetWindowTextW(noButton, label, _countof(label));
+					const wchar_t* mnemonic = wcschr(label, L'&');
+					if(mnemonic != NULL && mnemonic[1] != L'\0')
+						::PostMessageW(dialog, WM_SYSCHAR, static_cast<WPARAM>(mnemonic[1]), 1 << 29);
+					::Sleep(100);
+					keyboard = mnemonic != NULL && !::IsWindow(dialog);
+					if(::IsWindow(dialog) && noButton != NULL) ::SendMessageW(noButton, BM_CLICK, 0, 0);
+					break;
+				}
+				case 8: { // Arrows move button focus; Space activates the focused button.
+					HWND noButton = ::GetDlgItem(dialog, IDNO);
+					::PostMessageW(firstButton, WM_KEYDOWN, VK_RIGHT, 0);
+					::Sleep(80);
+					GUITHREADINFO focus = {}; focus.cbSize = sizeof(focus);
+					keyboard = noButton != NULL && ::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &focus) &&
+						focus.hwndFocus == noButton;
+					if(keyboard)
+					{
+						::PostMessageW(noButton, WM_KEYDOWN, VK_SPACE, 0);
+						::PostMessageW(noButton, WM_KEYUP, VK_SPACE, 0);
+						::Sleep(100);
+						keyboard = !::IsWindow(dialog);
+					}
+					if(::IsWindow(dialog) && noButton != NULL) ::SendMessageW(noButton, BM_CLICK, 0, 0);
+					break;
+				}
+				}
+			});
+			const int result = ThemeManager::MessageBox(m_hWnd, message, caption, type);
+			driver.join();
+			CStringA row; row.Format("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", name, result == expected ? 1 : 0,
+				found ? 1 : 0, geometry ? 1 : 0, content ? 1 : 0, keyboard ? 1 : 0,
+				dpiGeometry ? 1 : 0, dpiFont ? 1 : 0, bounds.GetString());
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+		};
+		runDialog("forged-command", MB_YESNO | MB_ICONQUESTION, 0, IDNO, 20);
+		runDialog("yesno-escape", MB_YESNO | MB_ICONQUESTION, 1, IDNO, 20);
+		runDialog("focused-enter", MB_YESNOCANCEL | MB_ICONWARNING, 2, IDNO, 20);
+		runDialog("default-second", MB_YESNO | MB_DEFBUTTON2, 3, IDNO, 20);
+		runDialog("close-cancel", MB_YESNOCANCEL, 4, IDCANCEL, 20);
+		runDialog("escape-cancel", MB_OKCANCEL, 5, IDCANCEL, 20);
+		runDialog("long-warning", MB_OK | MB_ICONWARNING, 6, IDOK, 10000);
+		runDialog("localized-mnemonic", MB_YESNO, 7, IDNO, 20);
+		runDialog("arrow-space", MB_YESNO, 8, IDNO, 20);
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"themed-message-quit"))
+	{
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		const DWORD mainThread = ::GetCurrentThreadId();
+		bool found = false, posted = false;
+		std::thread driver([&]()
+		{
+			HWND dialog = NULL;
+			for(int retry = 0; retry < 500 && dialog == NULL; ++retry)
+			{
+				dialog = ::FindWindowW(L"FBEThemedMessageDialog", L"FBE themed quit probe");
+				if(dialog == NULL) ::Sleep(10);
+			}
+			if(dialog == NULL) return;
+			found = true;
+			posted = ::PostThreadMessageW(mainThread, WM_QUIT, 73, 0) != FALSE;
+		});
+		const int answer = ThemeManager::MessageBox(m_hWnd, L"Application exit must not become a dialog answer.",
+			L"FBE themed quit probe", MB_YESNOCANCEL | MB_ICONWARNING);
+		driver.join();
+		const bool ownerEnabled = ::IsWindowEnabled(m_hWnd) != FALSE;
+		const bool destroyed = ::FindWindowW(L"FBEThemedMessageDialog", L"FBE themed quit probe") == NULL;
+		CStringA row; row.Format("found\t%d\r\nposted\t%d\r\nno_answer\t%d\r\nowner_enabled\t%d\r\ndestroyed\t%d\r\n",
+			found ? 1 : 0, posted ? 1 : 0, answer == 0 ? 1 : 0, ownerEnabled ? 1 : 0, destroyed ? 1 : 0);
+		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+		output.Close(); return 0; // Show reposts the original WM_QUIT for the outer loop.
+	}
+	if (IsFbeTestScenario(L"themed-message-native-parity"))
+	{
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		struct ButtonSet { const char* name; UINT type; UINT ids[3]; int count; };
+		const ButtonSet sets[] = {
+			{ "ok", MB_OK, { IDOK, 0, 0 }, 1 },
+			{ "okcancel", MB_OKCANCEL, { IDOK, IDCANCEL, 0 }, 2 },
+			{ "yesno", MB_YESNO, { IDYES, IDNO, 0 }, 2 },
+			{ "yesnocancel", MB_YESNOCANCEL, { IDYES, IDNO, IDCANCEL }, 3 },
+			{ "retrycancel", MB_RETRYCANCEL, { IDRETRY, IDCANCEL, 0 }, 2 },
+			{ "abortretryignore", MB_ABORTRETRYIGNORE, { IDABORT, IDRETRY, IDIGNORE }, 3 }
+		};
+		CStringA header("set\tbutton\tnative\tthemed\tbuttons_found\tparity\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		auto invoke = [&](bool themed, UINT type, UINT buttonId, int buttonIndex, bool& found) -> int
+		{
+			const wchar_t* caption = themed ? L"FBE themed parity probe" : L"FBE native parity probe";
+			std::thread driver([&]()
+			{
+				HWND dialog = NULL;
+				for(int retry = 0; retry < 500 && dialog == NULL; ++retry)
+				{
+					dialog = ::FindWindowW(themed ? L"FBEThemedMessageDialog" : NULL, caption);
+					if(dialog == NULL) ::Sleep(10);
+				}
+				if(dialog == NULL) return;
+				HWND button = NULL;
+				for(int retry = 0; retry < 500 && button == NULL; ++retry)
+				{
+					if(themed)
+						button = ::GetDlgItem(dialog, buttonId);
+					else
+					{
+						std::vector<HWND> buttons;
+						::EnumChildWindows(dialog, [](HWND child, LPARAM context) -> BOOL
+						{
+							std::vector<HWND>* buttons = reinterpret_cast<std::vector<HWND>*>(context);
+							wchar_t className[32] = {};
+							::GetClassNameW(child, className, _countof(className));
+							if(_wcsicmp(className, L"Button") == 0 && ::IsWindowVisible(child) && ::IsWindowEnabled(child))
+								buttons->push_back(child);
+							return TRUE;
+						}, reinterpret_cast<LPARAM>(&buttons));
+						std::sort(buttons.begin(), buttons.end(), [](HWND left, HWND right)
+						{
+							RECT leftRect = {}, rightRect = {};
+							::GetWindowRect(left, &leftRect); ::GetWindowRect(right, &rightRect);
+							return leftRect.left < rightRect.left;
+						});
+						if(buttonIndex < static_cast<int>(buttons.size())) button = buttons[buttonIndex];
+					}
+					if(button == NULL) ::Sleep(10);
+				}
+				if(button != NULL) { found = true; ::SendMessageW(button, BM_CLICK, 0, 0); }
+			});
+			const int answer = themed ? ThemeManager::MessageBox(m_hWnd, L"Compare the selected button.", caption, type) :
+				::MessageBoxW(m_hWnd, L"Compare the selected button.", caption, type);
+			driver.join();
+			return answer;
+		};
+		for(const ButtonSet& set : sets)
+			for(int index = 0; index < set.count; ++index)
+			{
+				bool nativeFound = false, themedFound = false;
+				const int native = invoke(false, set.type, set.ids[index], index, nativeFound);
+				const int themed = invoke(true, set.type, set.ids[index], index, themedFound);
+				CStringA row; row.Format("%s\t%u\t%d\t%d\t%d\t%d\r\n", set.name, set.ids[index], native, themed,
+					nativeFound && themedFound ? 1 : 0, native == themed && native == static_cast<int>(set.ids[index]) ? 1 : 0);
+				output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
+			}
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"themed-message-partial-failure"))
+	{
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		g_rejectThemedMessageButton = true;
+		g_rejectedThemedMessageButton = false;
+		HHOOK hook = ::SetWindowsHookExW(WH_CBT, RejectThemedMessageButtonForTest, NULL, ::GetCurrentThreadId());
+		bool nativeFound = false;
+		std::thread driver([&]()
+		{
+			HWND native = NULL;
+			for(int retry = 0; retry < 500 && native == NULL; ++retry)
+			{
+				native = ::FindWindowW(NULL, L"FBE themed failure probe");
+				if(native == NULL) ::Sleep(10);
+			}
+			if(native == NULL) return;
+			nativeFound = true;
+			HWND ok = ::GetDlgItem(native, IDOK);
+			if(ok == NULL)
+				::EnumChildWindows(native, [](HWND child, LPARAM context) -> BOOL
+				{
+					wchar_t className[32] = {};
+					::GetClassNameW(child, className, _countof(className));
+					if(_wcsicmp(className, L"Button") == 0 && ::IsWindowVisible(child) && ::IsWindowEnabled(child))
+					{
+						*reinterpret_cast<HWND*>(context) = child;
+						return FALSE;
+					}
+					return TRUE;
+				}, reinterpret_cast<LPARAM>(&ok));
+			if(ok != NULL) ::SendMessageW(ok, BM_CLICK, 0, 0);
+		});
+		const int answer = hook != NULL ? ThemeManager::MessageBox(m_hWnd, L"Creation failure must clean up before native fallback.",
+			L"FBE themed failure probe", MB_OK | MB_ICONERROR) : 0;
+		driver.join();
+		if(hook != NULL) ::UnhookWindowsHookEx(hook);
+		g_rejectThemedMessageButton = false;
+		CStringA row; row.Format("hook\t%d\r\nrejected\t%d\r\nnative\t%d\r\nanswer\t%d\r\nowner_enabled\t%d\r\nno_themed_hwnd\t%d\r\n",
+			hook != NULL ? 1 : 0, g_rejectedThemedMessageButton ? 1 : 0, nativeFound ? 1 : 0,
+			answer == IDOK ? 1 : 0, ::IsWindowEnabled(m_hWnd) ? 1 : 0,
+			::FindWindowW(L"FBEThemedMessageDialog", L"FBE themed failure probe") == NULL ? 1 : 0);
+		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"export-html"))
 	{

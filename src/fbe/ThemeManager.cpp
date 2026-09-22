@@ -513,7 +513,13 @@ class ThemedMessageDialog
 	int m_contentTop = 0;
 	int m_textWidth = 0;
 	int m_iconSize = 0;
+	RECT m_workArea = {};
 	UINT m_defaultId = IDOK;
+	HFONT m_font = NULL;
+	HWND m_messageWindow = NULL;
+	HWND m_iconWindow = NULL;
+	HWND m_previousFocus = NULL;
+	bool m_scrollMessage = false;
 	std::vector<ThemedMessageButton> m_buttons;
 	std::vector<int> m_buttonWidths;
 	std::vector<HWND> m_buttonWindows;
@@ -548,7 +554,10 @@ class ThemedMessageDialog
 		if(message == WM_NCCREATE)
 		{
 			dialog = static_cast<ThemedMessageDialog*>(reinterpret_cast<LPCREATESTRUCTW>(lParam)->lpCreateParams);
+			if(dialog == NULL) return FALSE;
+			::SetLastError(ERROR_SUCCESS);
 			::SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(dialog));
+			if(::GetLastError() != ERROR_SUCCESS) return FALSE;
 			dialog->m_window = window;
 		}
 		if(dialog == NULL) return ::DefWindowProcW(window, message, wParam, lParam);
@@ -558,9 +567,21 @@ class ThemedMessageDialog
 		case WM_ERASEBKGND: return 1;
 		case WM_PAINT: dialog->Paint(); return 0;
 		case WM_COMMAND:
-			if(HIWORD(wParam) == BN_CLICKED) { dialog->Close(static_cast<UINT>(LOWORD(wParam))); return 0; }
+			if(HIWORD(wParam) == BN_CLICKED && dialog->IsButtonCommand(LOWORD(wParam), reinterpret_cast<HWND>(lParam)))
+			{
+				dialog->Close(static_cast<UINT>(LOWORD(wParam))); return 0;
+			}
 			break;
-		case WM_CLOSE: dialog->Close(dialog->CancelResult()); return 0;
+		case WM_CLOSE:
+			if(const int cancel = dialog->CancelResult()) dialog->Close(static_cast<UINT>(cancel));
+			return 0;
+		case WM_DPICHANGED:
+			dialog->OnDpiChanged(HIWORD(wParam), reinterpret_cast<const RECT*>(lParam));
+			return 0;
+		case WM_NCDESTROY:
+			::SetWindowLongPtrW(window, GWLP_USERDATA, 0);
+			dialog->m_window = NULL;
+			return ::DefWindowProcW(window, message, wParam, lParam);
 		case WM_DESTROY: return 0;
 		}
 		return ::DefWindowProcW(window, message, wParam, lParam);
@@ -584,37 +605,42 @@ class ThemedMessageDialog
 
 	void AddButton(UINT id) { ThemedMessageButton button = { id, ButtonText(id) }; m_buttons.push_back(button); }
 
-	void BuildButtons()
+	bool BuildButtons()
 	{
 		switch(m_type & MB_TYPEMASK)
 		{
+		case MB_OK: AddButton(IDOK); break;
 		case MB_OKCANCEL: AddButton(IDOK); AddButton(IDCANCEL); break;
 		case MB_YESNO: AddButton(IDYES); AddButton(IDNO); break;
 		case MB_YESNOCANCEL: AddButton(IDYES); AddButton(IDNO); AddButton(IDCANCEL); break;
 		case MB_RETRYCANCEL: AddButton(IDRETRY); AddButton(IDCANCEL); break;
 		case MB_ABORTRETRYIGNORE: AddButton(IDABORT); AddButton(IDRETRY); AddButton(IDIGNORE); break;
-		default: AddButton(IDOK); break;
+		default: return false;
 		}
 		UINT defaultIndex = 0;
 		switch(m_type & MB_DEFMASK) { case MB_DEFBUTTON2: defaultIndex = 1; break; case MB_DEFBUTTON3: defaultIndex = 2; break; case MB_DEFBUTTON4: defaultIndex = 3; break; }
-		if(defaultIndex >= m_buttons.size()) defaultIndex = 0;
+		if(defaultIndex >= m_buttons.size()) return false;
 		m_defaultId = m_buttons[defaultIndex].id;
+		return true;
 	}
 
-	void MeasureButtonRow()
+	bool MeasureButtonRow()
 	{
 		m_buttonWidths.clear();
-		const HFONT font = UiMetrics::DialogFont() ? UiMetrics::DialogFont() : static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
 		HDC dc = ::GetDC(m_owner ? m_owner : NULL);
-		if(dc == NULL) return;
-		HGDIOBJ old = ::SelectObject(dc, font);
+		if(dc == NULL) return false;
+		if(m_font == NULL) { ::ReleaseDC(m_owner ? m_owner : NULL, dc); return false; }
+		HGDIOBJ old = ::SelectObject(dc, m_font);
+		if(old == NULL || old == HGDI_ERROR) { ::ReleaseDC(m_owner ? m_owner : NULL, dc); return false; }
 		for(size_t index = 0; index < m_buttons.size(); ++index)
 		{
-			SIZE extent = {}; ::GetTextExtentPoint32W(dc, m_buttons[index].text, m_buttons[index].text.GetLength(), &extent);
+			SIZE extent = {};
+			if(!::GetTextExtentPoint32W(dc, m_buttons[index].text, m_buttons[index].text.GetLength(), &extent)) break;
 			m_buttonWidths.push_back((std::max)(Scale(76), static_cast<int>(extent.cx) + Scale(30)));
 		}
-		if(old != NULL) ::SelectObject(dc, old);
+		::SelectObject(dc, old);
 		::ReleaseDC(m_owner ? m_owner : NULL, dc);
+		return m_buttonWidths.size() == m_buttons.size();
 	}
 
 	int ButtonRowWidth() const
@@ -627,48 +653,62 @@ class ThemedMessageDialog
 	int CancelResult() const
 	{
 		for(size_t index = 0; index < m_buttons.size(); ++index) if(m_buttons[index].id == IDCANCEL) return IDCANCEL;
-		for(size_t index = 0; index < m_buttons.size(); ++index) if(m_buttons[index].id == IDNO) return IDNO;
-		return static_cast<int>(m_defaultId);
+		for(size_t index = 0; index < m_buttons.size(); ++index) if(m_buttons[index].id == IDOK && m_buttons.size() == 1) return IDOK;
+		return 0;
 	}
 
-	void CreateControls()
+	bool IsButtonCommand(UINT id, HWND source) const
+	{
+		if(source == NULL || !::IsWindow(source)) return false;
+		for(size_t index = 0; index < m_buttons.size() && index < m_buttonWindows.size(); ++index)
+			if(m_buttons[index].id == id && m_buttonWindows[index] == source) return true;
+		return false;
+	}
+
+	bool CreateControls()
 	{
 		const int margin = Scale(18);
 		const int buttonHeight = Scale(28);
 		const int buttonGap = Scale(8);
 		const int buttonBottom = Scale(12);
-		const HFONT font = UiMetrics::DialogFont() ? UiMetrics::DialogFont() : static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
 		const int textX = m_contentLeft;
 		const int textY = m_contentTop;
 		if(LPCWSTR icon = IconFor(m_type))
 		{
-			HWND control = ::CreateWindowExW(0, WC_STATICW, NULL, WS_CHILD | WS_VISIBLE | SS_ICON,
+			m_iconWindow = ::CreateWindowExW(0, WC_STATICW, NULL, WS_CHILD | WS_VISIBLE | SS_ICON,
 				margin, textY, m_iconSize, m_iconSize, m_window, NULL, _Module.GetModuleInstance(), NULL);
-			::SendMessageW(control, STM_SETICON, reinterpret_cast<WPARAM>(::LoadIconW(NULL, icon)), 0);
+			if(m_iconWindow == NULL) return false;
+			HICON image = static_cast<HICON>(::LoadImageW(NULL, icon, IMAGE_ICON, m_iconSize, m_iconSize, LR_SHARED));
+			if(image == NULL) return false;
+			::SendMessageW(m_iconWindow, STM_SETICON, reinterpret_cast<WPARAM>(image), 0);
 		}
 		RECT client = {}; ::GetClientRect(m_window, &client);
 		const int contentHeight = m_buttonTop - textY - Scale(12);
-		HWND message = ::CreateWindowExW(0, WC_STATICW, m_message, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX,
+		m_messageWindow = ::CreateWindowExW(0, WC_EDITW, m_message,
+			WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL,
 			textX, textY, m_textWidth, contentHeight, m_window, NULL, _Module.GetModuleInstance(), NULL);
-		::SendMessage(message, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+		if(m_messageWindow == NULL) return false;
+		::SendMessageW(m_messageWindow, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
+		::ShowScrollBar(m_messageWindow, SB_VERT, m_scrollMessage ? TRUE : FALSE);
 		const int totalWidth = ButtonRowWidth();
 		int x = client.right - margin - totalWidth;
 		for(size_t index = 0; index < m_buttons.size(); ++index)
 		{
-			const DWORD style = WS_CHILD | WS_VISIBLE | (m_buttons[index].id == m_defaultId ? BS_DEFPUSHBUTTON : BS_PUSHBUTTON);
+			const DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | (m_buttons[index].id == m_defaultId ? BS_DEFPUSHBUTTON : BS_PUSHBUTTON);
 			HWND button = ::CreateWindowExW(0, WC_BUTTONW, m_buttons[index].text, style, x, m_buttonTop + buttonBottom, m_buttonWidths[index], buttonHeight,
 				m_window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(m_buttons[index].id)), _Module.GetModuleInstance(), NULL);
-			::SendMessage(button, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+			if(button == NULL) return false;
+			::SendMessageW(button, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
 			m_buttonWindows.push_back(button); x += m_buttonWidths[index] + buttonGap;
 		}
 		ThemeManager::ApplyToWindow(m_window);
-		for(size_t index = 0; index < m_buttons.size(); ++index)
-			if(m_buttons[index].id == m_defaultId) { ::SetFocus(m_buttonWindows[index]); break; }
+		return true;
 	}
 
 	void Paint()
 	{
 		PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(m_window, &paint);
+		if(dc == NULL) return;
 		RECT client = {}; ::GetClientRect(m_window, &client);
 		RECT content = client; content.bottom = m_buttonTop;
 		::FillRect(dc, &content, ThemeManager::WindowBrush());
@@ -682,61 +722,176 @@ class ThemedMessageDialog
 
 	int Scale(int value) const { return ::MulDiv(value, m_dpi, 96); }
 
-	void EnsureClientArea()
+	bool EnsureClientArea()
 	{
 		RECT actual = {}; ::GetClientRect(m_window, &actual);
 		const int actualWidth = actual.right - actual.left;
 		const int actualHeight = actual.bottom - actual.top;
-		if(actualWidth == m_clientWidth && actualHeight == m_clientHeight) return;
+		if(actualWidth == m_clientWidth && actualHeight == m_clientHeight) return true;
 		RECT outer = {}; ::GetWindowRect(m_window, &outer);
-		::SetWindowPos(m_window, NULL, 0, 0,
+		if(!::SetWindowPos(m_window, NULL, 0, 0,
 			(outer.right - outer.left) + m_clientWidth - actualWidth,
 			(outer.bottom - outer.top) + m_clientHeight - actualHeight,
-			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE)) return false;
+		::GetClientRect(m_window, &actual);
+		return actual.right - actual.left >= m_clientWidth && actual.bottom - actual.top >= m_clientHeight;
 	}
 
-	void MeasureLayout()
+	bool MeasureLayout()
 	{
-		RECT workArea = {};
-		if(m_owner == NULL || !::GetWindowRect(m_owner, &workArea))
-			::SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
+		MONITORINFO monitor = {}; monitor.cbSize = sizeof(monitor);
+		HMONITOR nearest = ::MonitorFromWindow(::IsWindow(m_window) ? m_window :
+			(::IsWindow(m_owner) ? m_owner : ::GetDesktopWindow()), MONITOR_DEFAULTTOPRIMARY);
+		if(nearest == NULL || !::GetMonitorInfoW(nearest, &monitor)) return false;
+		m_workArea = monitor.rcWork;
 		const int margin = Scale(18);
 		const int textTop = Scale(22);
-		const int maxWidth = (std::max)(Scale(320), static_cast<int>(workArea.right - workArea.left) - Scale(80));
+		RECT chrome = { 0, 0, 0, 0 };
+		if(!AdjustWindowRectForDpi(&chrome, WS_POPUP | WS_CAPTION | WS_SYSMENU, WS_EX_DLGMODALFRAME, static_cast<UINT>(m_dpi))) return false;
+		const int maxWidth = m_workArea.right - m_workArea.left - (chrome.right - chrome.left) - Scale(16);
+		const int maxHeight = m_workArea.bottom - m_workArea.top - (chrome.bottom - chrome.top) - Scale(16);
 		const int minimumButtonWidth = ButtonRowWidth() + margin * 2;
+		if(maxWidth < minimumButtonWidth || maxHeight < Scale(100)) return false;
 		m_clientWidth = (std::max)(minimumButtonWidth, (std::min)(Scale(520), maxWidth));
 		m_iconSize = IconFor(m_type) != NULL ? Scale(32) : 0;
 		m_contentLeft = margin + (m_iconSize ? m_iconSize + Scale(16) : 0);
 		m_contentTop = textTop;
 		m_textWidth = m_clientWidth - m_contentLeft - margin;
+		if(m_textWidth < Scale(80)) return false;
 		HDC dc = ::GetDC(m_owner ? m_owner : NULL);
-		const HFONT font = UiMetrics::DialogFont() ? UiMetrics::DialogFont() : static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
-		HGDIOBJ old = ::SelectObject(dc, font);
+		if(dc == NULL) return false;
+		if(m_font == NULL) { ::ReleaseDC(m_owner ? m_owner : NULL, dc); return false; }
+		HGDIOBJ old = ::SelectObject(dc, m_font);
+		if(old == NULL || old == HGDI_ERROR) { ::ReleaseDC(m_owner ? m_owner : NULL, dc); return false; }
 		RECT text = { 0, 0, m_textWidth, 0 };
-		::DrawTextW(dc, m_message, -1, &text, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+		const int measured = ::DrawTextW(dc, m_message, -1, &text, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
 		::SelectObject(dc, old); ::ReleaseDC(m_owner ? m_owner : NULL, dc);
+		if(measured == 0 && !m_message.IsEmpty()) return false;
 		const int textHeight = (std::max)(Scale(18), static_cast<int>(text.bottom - text.top));
-		const int contentHeight = (std::max)(m_iconSize, textHeight);
+		const int maxContentHeight = maxHeight - m_contentTop - Scale(20 + 12 + 28 + 12);
+		if(maxContentHeight < (std::max)(m_iconSize, Scale(18))) return false;
+		m_scrollMessage = textHeight > maxContentHeight;
+		const int contentHeight = (std::max)(m_iconSize, (std::min)(textHeight, maxContentHeight));
 		m_buttonTop = m_contentTop + contentHeight + Scale(20);
 		m_clientHeight = m_buttonTop + Scale(12 + 28 + 12);
+		return m_clientHeight <= maxHeight;
 	}
 
 	void Close(UINT result) { m_result = static_cast<int>(result); if(::IsWindow(m_window)) ::DestroyWindow(m_window); }
 
+	void LayoutControls()
+	{
+		const int margin = Scale(18);
+		const int buttonGap = Scale(8);
+		RECT client = {}; ::GetClientRect(m_window, &client);
+		if(m_iconWindow != NULL)
+		{
+			::SetWindowPos(m_iconWindow, NULL, margin, m_contentTop, m_iconSize, m_iconSize, SWP_NOZORDER | SWP_NOACTIVATE);
+			if(LPCWSTR icon = IconFor(m_type))
+			{
+				HICON image = static_cast<HICON>(::LoadImageW(NULL, icon, IMAGE_ICON, m_iconSize, m_iconSize, LR_SHARED));
+				if(image != NULL) ::SendMessageW(m_iconWindow, STM_SETICON, reinterpret_cast<WPARAM>(image), 0);
+			}
+		}
+		::SetWindowPos(m_messageWindow, NULL, m_contentLeft, m_contentTop, m_textWidth,
+			m_buttonTop - m_contentTop - Scale(12), SWP_NOZORDER | SWP_NOACTIVATE);
+		::SendMessageW(m_messageWindow, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
+		::ShowScrollBar(m_messageWindow, SB_VERT, m_scrollMessage ? TRUE : FALSE);
+		int x = client.right - margin - ButtonRowWidth();
+		for(size_t index = 0; index < m_buttonWindows.size(); ++index)
+		{
+			::SetWindowPos(m_buttonWindows[index], NULL, x, m_buttonTop + Scale(12),
+				m_buttonWidths[index], Scale(28), SWP_NOZORDER | SWP_NOACTIVATE);
+			::SendMessageW(m_buttonWindows[index], WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
+			x += m_buttonWidths[index] + buttonGap;
+		}
+		::InvalidateRect(m_window, NULL, TRUE);
+	}
+
+	void OnDpiChanged(UINT dpi, const RECT* suggested)
+	{
+		if(dpi == 0 || suggested == NULL || m_window == NULL || m_messageWindow == NULL || dpi == static_cast<UINT>(m_dpi)) return;
+		HFONT newFont = UiMetrics::CreateDialogFontForDpi(dpi);
+		if(newFont == NULL) return;
+		const int oldDpi = m_dpi;
+		HFONT oldFont = m_font;
+		m_dpi = static_cast<int>(dpi);
+		m_font = newFont;
+		if(!MeasureButtonRow() || !MeasureLayout())
+		{
+			m_dpi = oldDpi;
+			m_font = oldFont;
+			::DeleteObject(newFont);
+			MeasureButtonRow(); MeasureLayout();
+			return;
+		}
+		RECT outer = { 0, 0, m_clientWidth, m_clientHeight };
+		if(!AdjustWindowRectForDpi(&outer, WS_POPUP | WS_CAPTION | WS_SYSMENU, WS_EX_DLGMODALFRAME, dpi))
+		{
+			m_dpi = oldDpi; m_font = oldFont; ::DeleteObject(newFont);
+			MeasureButtonRow(); MeasureLayout();
+			return;
+		}
+		const int width = outer.right - outer.left;
+		const int height = outer.bottom - outer.top;
+		const int x = (std::max)(m_workArea.left, (std::min)(suggested->left, m_workArea.right - width));
+		const int y = (std::max)(m_workArea.top, (std::min)(suggested->top, m_workArea.bottom - height));
+		if(!::SetWindowPos(m_window, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE))
+		{
+			m_dpi = oldDpi; m_font = oldFont; ::DeleteObject(newFont);
+			MeasureButtonRow(); MeasureLayout();
+			return;
+		}
+		EnsureClientArea();
+		LayoutControls();
+		::DeleteObject(oldFont);
+	}
+
 	bool HandleMessage(MSG& message)
 	{
-		if(message.message != WM_KEYDOWN || (message.hwnd != m_window && !::IsChild(m_window, message.hwnd))) return false;
-		if(message.wParam == VK_ESCAPE) { Close(CancelResult()); return true; }
+		if(message.hwnd != m_window && !::IsChild(m_window, message.hwnd)) return false;
+		if(message.message == WM_SYSCHAR)
+		{
+			wchar_t key = static_cast<wchar_t>(message.wParam);
+			::CharUpperBuffW(&key, 1);
+			for(size_t index = 0; index < m_buttons.size() && index < m_buttonWindows.size(); ++index)
+			{
+				const CString& label = m_buttons[index].text;
+				for(int character = 0; character + 1 < label.GetLength(); ++character)
+				{
+					if(label[character] != L'&') continue;
+					if(label[character + 1] == L'&') { ++character; continue; }
+					wchar_t mnemonic = label[character + 1];
+					::CharUpperBuffW(&mnemonic, 1);
+					if(mnemonic == key) { ::SendMessageW(m_buttonWindows[index], BM_CLICK, 0, 0); return true; }
+				}
+			}
+			return false;
+		}
+		if(message.message != WM_KEYDOWN) return false;
+		if(message.wParam == VK_ESCAPE)
+		{
+			if(const int cancel = CancelResult()) Close(static_cast<UINT>(cancel));
+			return true;
+		}
 		if(message.wParam == VK_RETURN)
 		{
+			const HWND focused = ::GetFocus();
+			for(size_t index = 0; index < m_buttonWindows.size(); ++index)
+				if(m_buttonWindows[index] == focused) { ::SendMessageW(focused, BM_CLICK, 0, 0); return true; }
 			for(size_t index = 0; index < m_buttons.size(); ++index)
-				if(m_buttons[index].id == m_defaultId) { ::SendMessage(m_buttonWindows[index], BM_CLICK, 0, 0); return true; }
+				if(m_buttons[index].id == m_defaultId) { ::SendMessageW(m_buttonWindows[index], BM_CLICK, 0, 0); return true; }
 		}
-		if(message.wParam == VK_TAB)
+		if(message.wParam == VK_LEFT || message.wParam == VK_RIGHT || message.wParam == VK_UP || message.wParam == VK_DOWN)
 		{
-			HWND next = ::GetNextDlgTabItem(m_window, ::GetFocus(), (::GetKeyState(VK_SHIFT) & 0x8000) != 0);
-			if(next) ::SetFocus(next);
-			return true;
+			for(size_t index = 0; index < m_buttonWindows.size(); ++index)
+				if(m_buttonWindows[index] == ::GetFocus())
+				{
+					const bool reverse = message.wParam == VK_LEFT || message.wParam == VK_UP;
+					::SetFocus(m_buttonWindows[reverse ? (index + m_buttonWindows.size() - 1) % m_buttonWindows.size() :
+						(index + 1) % m_buttonWindows.size()]);
+					return true;
+				}
 		}
 		return false;
 	}
@@ -745,35 +900,62 @@ public:
 	ThemedMessageDialog(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type) :
 		m_owner(owner), m_message(message ? message : L""), m_caption(caption ? caption : L""), m_type(type) {}
 
-	int Show()
+	int Show(bool& allowNativeFallback)
 	{
-		if(RegisterWindowClass() == 0) return 0;
-		BuildButtons();
+		allowNativeFallback = true;
+		if(RegisterWindowClass() == 0 || !BuildButtons()) return 0;
 		m_dpi = static_cast<int>(UiMetrics::DpiForWindow(m_owner));
-		MeasureButtonRow();
-		MeasureLayout();
+		m_font = UiMetrics::CreateDialogFontForDpi(static_cast<UINT>(m_dpi));
+		if(m_font == NULL) return 0;
+		if(!MeasureButtonRow() || !MeasureLayout()) { ::DeleteObject(m_font); m_font = NULL; return 0; }
 		RECT windowRect = { 0, 0, m_clientWidth, m_clientHeight };
-		AdjustWindowRectForDpi(&windowRect, WS_POPUP | WS_CAPTION | WS_SYSMENU, WS_EX_DLGMODALFRAME, static_cast<UINT>(m_dpi));
+		if(!AdjustWindowRectForDpi(&windowRect, WS_POPUP | WS_CAPTION | WS_SYSMENU, WS_EX_DLGMODALFRAME, static_cast<UINT>(m_dpi)))
+		{
+			::DeleteObject(m_font); m_font = NULL; return 0;
+		}
 		const int width = windowRect.right - windowRect.left;
 		const int height = windowRect.bottom - windowRect.top;
-		RECT ownerRect = {}; if(!::GetWindowRect(m_owner, &ownerRect)) ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &ownerRect, 0);
-		const int x = ownerRect.left + ((ownerRect.right - ownerRect.left) - width) / 2;
-		const int y = ownerRect.top + ((ownerRect.bottom - ownerRect.top) - height) / 2;
+		RECT ownerRect = m_workArea;
+		if(::IsWindow(m_owner)) ::GetWindowRect(m_owner, &ownerRect);
+		const int x = (std::max)(m_workArea.left, (std::min)(ownerRect.left + ((ownerRect.right - ownerRect.left) - width) / 2, m_workArea.right - width));
+		const int y = (std::max)(m_workArea.top, (std::min)(ownerRect.top + ((ownerRect.bottom - ownerRect.top) - height) / 2, m_workArea.bottom - height));
 		m_window = ::CreateWindowExW(WS_EX_DLGMODALFRAME, L"FBEThemedMessageDialog", m_caption,
 			WS_POPUP | WS_CAPTION | WS_SYSMENU, x, y, width, height, m_owner, NULL, _Module.GetModuleInstance(), this);
-		if(!m_window) return 0;
-		EnsureClientArea();
-		CreateControls();
+		if(!m_window || !EnsureClientArea() || !CreateControls())
+		{
+			if(::IsWindow(m_window)) ::DestroyWindow(m_window);
+			::DeleteObject(m_font); m_font = NULL;
+			return 0;
+		}
+		allowNativeFallback = false;
+		if(CancelResult() == 0)
+			if(HMENU systemMenu = ::GetSystemMenu(m_window, FALSE)) ::EnableMenuItem(systemMenu, SC_CLOSE, MF_BYCOMMAND | MF_GRAYED);
 		const bool enableOwner = ::IsWindow(m_owner) && ::IsWindowEnabled(m_owner);
+		m_previousFocus = ::GetFocus();
 		if(enableOwner) ::EnableWindow(m_owner, FALSE);
 		::ShowWindow(m_window, SW_SHOW); ::UpdateWindow(m_window); ::SetForegroundWindow(m_window);
+		for(size_t index = 0; index < m_buttons.size(); ++index)
+			if(m_buttons[index].id == m_defaultId) { ::SetFocus(m_buttonWindows[index]); break; }
 		MSG message = {};
-		while(::IsWindow(m_window) && ::GetMessageW(&message, NULL, 0, 0) > 0)
+		bool repostQuit = false;
+		int quitCode = 0;
+		while(::IsWindow(m_window))
 		{
+			const BOOL read = ::GetMessageW(&message, NULL, 0, 0);
+			if(read <= 0) { repostQuit = read == 0; quitCode = static_cast<int>(message.wParam); break; }
 			if(!HandleMessage(message) && !::IsDialogMessageW(m_window, &message)) { ::TranslateMessage(&message); ::DispatchMessageW(&message); }
 		}
-		if(enableOwner) { ::EnableWindow(m_owner, TRUE); ::SetForegroundWindow(m_owner); }
-		return m_result ? m_result : CancelResult();
+		if(::IsWindow(m_window)) ::DestroyWindow(m_window);
+		if(enableOwner && ::IsWindow(m_owner))
+		{
+			::EnableWindow(m_owner, TRUE);
+			::SetForegroundWindow(m_owner);
+			if(::IsWindow(m_previousFocus) && (m_previousFocus == m_owner || ::IsChild(m_owner, m_previousFocus)))
+				::SetFocus(m_previousFocus);
+		}
+		::DeleteObject(m_font); m_font = NULL;
+		if(repostQuit) ::PostQuitMessage(quitCode);
+		return repostQuit ? 0 : m_result;
 	}
 };
 }
@@ -799,11 +981,19 @@ int MessageBox(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type)
 {
 	// FBE's custom surface intentionally handles only ordinary in-process
 	// messages.  Service/system-modal requests retain their Windows semantics.
-	if(!IsDark() || IsHighContrastEnabled() || (type & (MB_SYSTEMMODAL | MB_SERVICE_NOTIFICATION)) != 0)
+	const UINT supportedFlags = MB_TYPEMASK | MB_ICONMASK | MB_DEFMASK;
+	if(!IsDark() || IsHighContrastEnabled() || (type & (MB_SYSTEMMODAL | MB_SERVICE_NOTIFICATION)) != 0 ||
+		(type & ~supportedFlags) != 0)
 		return ::MessageBoxW(owner, message, caption, type);
+	switch(type & MB_ICONMASK)
+	{
+	case 0: case MB_ICONHAND: case MB_ICONQUESTION: case MB_ICONEXCLAMATION: case MB_ICONASTERISK: break;
+	default: return ::MessageBoxW(owner, message, caption, type);
+	}
 	ThemedMessageDialog dialog(owner ? owner : ::GetActiveWindow(), message, caption, type);
-	const int result = dialog.Show();
-	return result != 0 ? result : ::MessageBoxW(owner, message, caption, type);
+	bool allowNativeFallback = false;
+	const int result = dialog.Show(allowNativeFallback);
+	return allowNativeFallback ? ::MessageBoxW(owner, message, caption, type) : result;
 }
 
 HRESULT TaskDialogIndirect(const TASKDIALOGCONFIG& config, int* button, int* radioButton, BOOL* verification)
