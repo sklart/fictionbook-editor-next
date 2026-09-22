@@ -366,6 +366,10 @@ int wmain()
 	}
 	// Coordinator snapshots searchable paragraph sources; table structure is
 	// deliberately outside this Result-pane preview assertion.
+	// The preceding replacement mutates the hosted DOM directly.  Production
+	// callers advance their document generation; this focused harness performs
+	// the equivalent explicit invalidation before querying the new text.
+	coordinator.Invalidate();
 	query.Text = L"block-replaced";
 	if (!result && (!coordinator.Rebuild(document, 44, query) || coordinator.GetSession().GetHitCount() != 1 ||
 		coordinator.GetResults().GetCount() != 1)) result = 16;
@@ -387,6 +391,15 @@ int wmain()
 	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &secondScope) || coordinator.GetResults().GetCount() != 0)) result = 20;
 	query.Text = L"second";
 	if (!result && (!coordinator.Rebuild(document, 44, query, NULL, &secondScope) || coordinator.GetResults().GetCount() != 1)) result = 21;
+	// The editor prepares the snapshot before mapping its MSHTML scope.  A
+	// scoped execution must therefore run one query, not a provisional whole-
+	// document query followed by the scoped one.
+	DocumentSearchCoordinator scopedCoordinator;
+	scopedCoordinator.EnsureSnapshot(document, 44);
+	if (!result && (!scopedCoordinator.Rebuild(document, 44, query, NULL, &secondScope) ||
+		scopedCoordinator.GetSnapshotBuildCountForTest() != 1 ||
+		scopedCoordinator.GetSearchQueryRunCountForTest() != 1 ||
+		scopedCoordinator.GetResults().GetCount() != 1)) result = 82;
 
 	query.Mode = AU::Search::SearchMode::Regex;
 	query.Scope = AU::Search::SearchScope::CurrentSection;
