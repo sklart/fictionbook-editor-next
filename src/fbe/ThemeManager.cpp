@@ -63,6 +63,19 @@ void RebuildBrushes()
 typedef HRESULT (WINAPI* DwmSetWindowAttributeFn)(HWND, DWORD, LPCVOID, DWORD);
 typedef HRESULT (WINAPI* SetPreferredAppModeFn)(int);
 typedef void (WINAPI* FlushMenuThemesFn)();
+typedef BOOL (WINAPI* AdjustWindowRectExForDpiFn)(LPRECT, DWORD, BOOL, DWORD, UINT);
+
+// AdjustWindowRectExForDpi is a Windows 10 API. Resolve it at runtime so the
+// editor continues to start on Windows 7, where the classic calculation is
+// still the best available approximation.
+bool AdjustWindowRectForDpi(RECT* rect, DWORD style, DWORD exStyle, UINT dpi)
+{
+	HMODULE user32 = ::GetModuleHandleW(L"user32.dll");
+	AdjustWindowRectExForDpiFn adjustForDpi = user32 != NULL ?
+		reinterpret_cast<AdjustWindowRectExForDpiFn>(::GetProcAddress(user32, "AdjustWindowRectExForDpi")) : NULL;
+	if(adjustForDpi != NULL && adjustForDpi(rect, style, FALSE, exStyle, dpi)) return true;
+	return ::AdjustWindowRectEx(rect, style, FALSE, exStyle) != FALSE;
+}
 
 const UINT_PTR kThemeControlSubclassId = 0x46424554; // "FBET"
 const wchar_t kHeaderThemeStateProperty[] = L"FBE.HeaderThemeState";
@@ -493,6 +506,7 @@ class ThemedMessageDialog
 	UINT m_type = 0;
 	int m_result = 0;
 	int m_buttonTop = 0;
+	int m_clientHeight = 0;
 	int m_dpi = 96;
 	int m_clientWidth = 0;
 	int m_contentLeft = 0;
@@ -501,6 +515,7 @@ class ThemedMessageDialog
 	int m_iconSize = 0;
 	UINT m_defaultId = IDOK;
 	std::vector<ThemedMessageButton> m_buttons;
+	std::vector<int> m_buttonWidths;
 	std::vector<HWND> m_buttonWindows;
 
 	static ATOM RegisterWindowClass()
@@ -539,7 +554,7 @@ class ThemedMessageDialog
 		if(dialog == NULL) return ::DefWindowProcW(window, message, wParam, lParam);
 		switch(message)
 		{
-		case WM_CREATE: dialog->CreateControls(); return 0;
+		case WM_CREATE: return 0;
 		case WM_ERASEBKGND: return 1;
 		case WM_PAINT: dialog->Paint(); return 0;
 		case WM_COMMAND:
@@ -586,6 +601,29 @@ class ThemedMessageDialog
 		m_defaultId = m_buttons[defaultIndex].id;
 	}
 
+	void MeasureButtonRow()
+	{
+		m_buttonWidths.clear();
+		const HFONT font = UiMetrics::DialogFont() ? UiMetrics::DialogFont() : static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
+		HDC dc = ::GetDC(m_owner ? m_owner : NULL);
+		if(dc == NULL) return;
+		HGDIOBJ old = ::SelectObject(dc, font);
+		for(size_t index = 0; index < m_buttons.size(); ++index)
+		{
+			SIZE extent = {}; ::GetTextExtentPoint32W(dc, m_buttons[index].text, m_buttons[index].text.GetLength(), &extent);
+			m_buttonWidths.push_back((std::max)(Scale(76), static_cast<int>(extent.cx) + Scale(30)));
+		}
+		if(old != NULL) ::SelectObject(dc, old);
+		::ReleaseDC(m_owner ? m_owner : NULL, dc);
+	}
+
+	int ButtonRowWidth() const
+	{
+		int width = 0;
+		for(size_t index = 0; index < m_buttonWidths.size(); ++index) width += m_buttonWidths[index];
+		return width + (m_buttonWidths.empty() ? 0 : static_cast<int>(m_buttonWidths.size() - 1) * Scale(8));
+	}
+
 	int CancelResult() const
 	{
 		for(size_t index = 0; index < m_buttons.size(); ++index) if(m_buttons[index].id == IDCANCEL) return IDCANCEL;
@@ -613,26 +651,15 @@ class ThemedMessageDialog
 		HWND message = ::CreateWindowExW(0, WC_STATICW, m_message, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX,
 			textX, textY, m_textWidth, contentHeight, m_window, NULL, _Module.GetModuleInstance(), NULL);
 		::SendMessage(message, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-		std::vector<int> widths;
-		int totalWidth = 0;
-		HDC dc = ::GetDC(m_window);
-		HGDIOBJ old = ::SelectObject(dc, font);
-		for(size_t index = 0; index < m_buttons.size(); ++index)
-		{
-			SIZE extent = {}; ::GetTextExtentPoint32W(dc, m_buttons[index].text, m_buttons[index].text.GetLength(), &extent);
-			const int width = (std::max)(Scale(76), static_cast<int>(extent.cx) + Scale(30));
-			widths.push_back(width); totalWidth += width;
-		}
-		::SelectObject(dc, old); ::ReleaseDC(m_window, dc);
-		totalWidth += static_cast<int>(m_buttons.size() - 1) * buttonGap;
+		const int totalWidth = ButtonRowWidth();
 		int x = client.right - margin - totalWidth;
 		for(size_t index = 0; index < m_buttons.size(); ++index)
 		{
 			const DWORD style = WS_CHILD | WS_VISIBLE | (m_buttons[index].id == m_defaultId ? BS_DEFPUSHBUTTON : BS_PUSHBUTTON);
-			HWND button = ::CreateWindowExW(0, WC_BUTTONW, m_buttons[index].text, style, x, m_buttonTop + buttonBottom, widths[index], buttonHeight,
+			HWND button = ::CreateWindowExW(0, WC_BUTTONW, m_buttons[index].text, style, x, m_buttonTop + buttonBottom, m_buttonWidths[index], buttonHeight,
 				m_window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(m_buttons[index].id)), _Module.GetModuleInstance(), NULL);
 			::SendMessage(button, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-			m_buttonWindows.push_back(button); x += widths[index] + buttonGap;
+			m_buttonWindows.push_back(button); x += m_buttonWidths[index] + buttonGap;
 		}
 		ThemeManager::ApplyToWindow(m_window);
 		for(size_t index = 0; index < m_buttons.size(); ++index)
@@ -655,6 +682,19 @@ class ThemedMessageDialog
 
 	int Scale(int value) const { return ::MulDiv(value, m_dpi, 96); }
 
+	void EnsureClientArea()
+	{
+		RECT actual = {}; ::GetClientRect(m_window, &actual);
+		const int actualWidth = actual.right - actual.left;
+		const int actualHeight = actual.bottom - actual.top;
+		if(actualWidth == m_clientWidth && actualHeight == m_clientHeight) return;
+		RECT outer = {}; ::GetWindowRect(m_window, &outer);
+		::SetWindowPos(m_window, NULL, 0, 0,
+			(outer.right - outer.left) + m_clientWidth - actualWidth,
+			(outer.bottom - outer.top) + m_clientHeight - actualHeight,
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+
 	void MeasureLayout()
 	{
 		RECT workArea = {};
@@ -663,7 +703,8 @@ class ThemedMessageDialog
 		const int margin = Scale(18);
 		const int textTop = Scale(22);
 		const int maxWidth = (std::max)(Scale(320), static_cast<int>(workArea.right - workArea.left) - Scale(80));
-		m_clientWidth = (std::min)(Scale(520), maxWidth);
+		const int minimumButtonWidth = ButtonRowWidth() + margin * 2;
+		m_clientWidth = (std::max)(minimumButtonWidth, (std::min)(Scale(520), maxWidth));
 		m_iconSize = IconFor(m_type) != NULL ? Scale(32) : 0;
 		m_contentLeft = margin + (m_iconSize ? m_iconSize + Scale(16) : 0);
 		m_contentTop = textTop;
@@ -677,6 +718,7 @@ class ThemedMessageDialog
 		const int textHeight = (std::max)(Scale(18), static_cast<int>(text.bottom - text.top));
 		const int contentHeight = (std::max)(m_iconSize, textHeight);
 		m_buttonTop = m_contentTop + contentHeight + Scale(20);
+		m_clientHeight = m_buttonTop + Scale(12 + 28 + 12);
 	}
 
 	void Close(UINT result) { m_result = static_cast<int>(result); if(::IsWindow(m_window)) ::DestroyWindow(m_window); }
@@ -708,10 +750,10 @@ public:
 		if(RegisterWindowClass() == 0) return 0;
 		BuildButtons();
 		m_dpi = static_cast<int>(UiMetrics::DpiForWindow(m_owner));
+		MeasureButtonRow();
 		MeasureLayout();
-		const int clientHeight = m_buttonTop + Scale(12 + 28 + 12);
-		RECT windowRect = { 0, 0, m_clientWidth, clientHeight };
-		::AdjustWindowRectEx(&windowRect, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME);
+		RECT windowRect = { 0, 0, m_clientWidth, m_clientHeight };
+		AdjustWindowRectForDpi(&windowRect, WS_POPUP | WS_CAPTION | WS_SYSMENU, WS_EX_DLGMODALFRAME, static_cast<UINT>(m_dpi));
 		const int width = windowRect.right - windowRect.left;
 		const int height = windowRect.bottom - windowRect.top;
 		RECT ownerRect = {}; if(!::GetWindowRect(m_owner, &ownerRect)) ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &ownerRect, 0);
@@ -720,6 +762,8 @@ public:
 		m_window = ::CreateWindowExW(WS_EX_DLGMODALFRAME, L"FBEThemedMessageDialog", m_caption,
 			WS_POPUP | WS_CAPTION | WS_SYSMENU, x, y, width, height, m_owner, NULL, _Module.GetModuleInstance(), this);
 		if(!m_window) return 0;
+		EnsureClientArea();
+		CreateControls();
 		const bool enableOwner = ::IsWindow(m_owner) && ::IsWindowEnabled(m_owner);
 		if(enableOwner) ::EnableWindow(m_owner, FALSE);
 		::ShowWindow(m_window, SW_SHOW); ::UpdateWindow(m_window); ::SetForegroundWindow(m_window);

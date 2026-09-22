@@ -135,8 +135,8 @@ LRESULT CALLBACK MainRebarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 	{
 		RECT rect = {};
 		if(!::SendMessage(window, RB_GETRECT, band, reinterpret_cast<LPARAM>(&rect)) || rect.bottom <= rect.top) continue;
-		RECT separator = { rect.left, rect.bottom - 1, rect.right, rect.bottom };
-		::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+		RECT border = { rect.left, rect.bottom - 1, rect.right, rect.bottom };
+		::FillRect(dc, &border, ThemeManager::Brush(THEME_COLOR_BORDER));
 	}
 	::ReleaseDC(window, dc);
 	return result;
@@ -215,11 +215,15 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 	PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
 	RECT client = {}; ::GetClientRect(window, &client);
 	::FillRect(dc, &client, ThemeManager::ControlBrush());
-	RECT topSeparator = { client.left, client.top, client.right, client.top + 1 };
-	::FillRect(dc, &topSeparator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+	RECT topBorder = { client.left, client.top, client.right, client.top + 1 };
+	::FillRect(dc, &topBorder, ThemeManager::Brush(THEME_COLOR_BORDER));
 	HFONT font = reinterpret_cast<HFONT>(::SendMessage(window, WM_GETFONT, 0, 0));
 	if(font == NULL) font = UiMetrics::DialogFont();
 	HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+	TEXTMETRIC metrics = {}; ::GetTextMetrics(dc, &metrics);
+	const UINT dpi = UiMetrics::DpiForWindow(window);
+	const int leftPadding = UiMetrics::ScaleForDpi(6, dpi);
+	const int rightPadding = UiMetrics::ScaleForDpi(4, dpi);
 	const int count = static_cast<int>(::SendMessage(window, SB_GETPARTS, 0, 0));
 	for(int index = 0; index < count; ++index)
 	{
@@ -233,7 +237,11 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 		::SendMessage(window, SB_GETTEXTW, index, reinterpret_cast<LPARAM>(text));
 		::SetBkMode(dc, TRANSPARENT);
 		::SetTextColor(dc, index == 0 ? ThemeManager::TextColor() : ThemeManager::SecondaryTextColor());
-		pane.left += 6; pane.right -= 4;
+		pane.left += leftPadding; pane.right -= rightPadding;
+		const int paneHeight = pane.bottom - pane.top;
+		const int textHeight = static_cast<int>(metrics.tmHeight);
+		const int textTop = pane.top + (std::max)(0, (paneHeight - textHeight) / 2);
+		pane.top = textTop; pane.bottom = textTop + textHeight;
 		::DrawText(dc, text, -1, &pane, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
 	}
 	if((::GetWindowLongPtr(window, GWL_STYLE) & SBARS_SIZEGRIP) != 0)

@@ -60,7 +60,7 @@ foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl
 foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'CreateAlphaBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE', 'RBBIM_COLORS')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus or rebar bands do not apply the required dark path: $required." }
 }
-foreach($required in @('RBBS_NOGRIPPER', 'FBE persists toolbar visibility/order', 'MainRebarThemeProc', 'RB_GETRECT', 'StatusBarThemeProc', 'SB_GETPARTS', 'WM_GETFONT', 'UiMetrics::DialogFont()', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR', 'SetDCPenColor', 'ThemeManager::SeparatorColor()')) {
+foreach($required in @('RBBS_NOGRIPPER', 'FBE persists toolbar visibility/order', 'MainRebarThemeProc', 'RB_GETRECT', 'THEME_COLOR_BORDER', 'StatusBarThemeProc', 'SB_GETPARTS', 'WM_GETFONT', 'UiMetrics::DialogFont()', 'GetTextMetrics', 'ScaleForDpi', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR', 'SetDCPenColor', 'ThemeManager::SeparatorColor()')) {
 	if($mainFrame -notlike "*$required*") { throw "Rebar/status bar Dark surface lacks the required native-theme handling: $required." }
 }
 foreach($required in @('CreateMenuBitmap', 'ImageList_DrawIndirect', 'ILC_COLOR32')) {
@@ -72,7 +72,7 @@ foreach($required in @('useDarkPalette', 'ThemeManager::ControlColor()', 'ThemeM
 foreach($required in @('TrackPopupMenu', 'TaskDialogIndirect', 'TDN_CREATED', 'ThemedTaskDialogCallback', 'ApplyToWindow(window)')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not provide the native popup and TaskDialog wrappers: $required." }
 }
-foreach($required in @('ThemedMessageDialog', 'FBEThemedMessageDialog', 'MB_SYSTEMMODAL', 'MB_SERVICE_NOTIFICATION', 'UiMetrics::DialogFont()', 'UiMetrics::DpiForWindow(m_owner)', 'AdjustWindowRectEx', 'MB_DEFMASK', 'BM_CLICK', 'ThemeManager::ApplyToWindow(m_window)', 'ThemeManager::WindowBrush()', 'ThemeManager::ControlBrush()', 'THEME_COLOR_SEPARATOR', 'VK_ESCAPE', 'VK_RETURN', 'IsDialogMessageW')) {
+foreach($required in @('ThemedMessageDialog', 'FBEThemedMessageDialog', 'MB_SYSTEMMODAL', 'MB_SERVICE_NOTIFICATION', 'UiMetrics::DialogFont()', 'UiMetrics::DpiForWindow(m_owner)', 'AdjustWindowRectExForDpi', 'AdjustWindowRectEx', 'EnsureClientArea', 'GetClientRect', 'MB_DEFMASK', 'BM_CLICK', 'ThemeManager::ApplyToWindow(m_window)', 'ThemeManager::WindowBrush()', 'ThemeManager::ControlBrush()', 'THEME_COLOR_SEPARATOR', 'VK_ESCAPE', 'VK_RETURN', 'IsDialogMessageW')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not provide the themed FBE-owned message dialog: $required." }
 }
 if($managerHeader -notlike '*int MessageBox(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type)*') {
@@ -129,7 +129,7 @@ foreach($required in @('ThemeManager::ControlBrush()', 'ThemeManager::TextColor(
 foreach($required in @('m_contextAttributeBars.ApplyTheme()', 'ApplyContextAttributeRebarBandTheme', 'RBBIM_COLORS', 'ThemeManager::ControlColor()')) {
 	if($mainFrame -notlike "*$required*") { throw "Main frame does not refresh context attribute bar bands: $required." }
 }
-foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'ThemeManager::ControlBrush()', 'THEME_COLOR_SEPARATOR', 'single horizontal section separator')) {
+foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'ThemeManager::ControlBrush()', 'THEME_COLOR_BORDER', 'single horizontal structural border')) {
     if($mainFrameHeader -notlike "*$required*") { throw "Main frame does not theme splitter separator $required." }
 }
 foreach($required in @('isContextAttributeBar', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {

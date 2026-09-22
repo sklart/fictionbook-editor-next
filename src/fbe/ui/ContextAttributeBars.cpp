@@ -52,8 +52,8 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 				HDC dc = ::GetWindowDC(window);
 				if(dc != NULL)
 				{
-					RECT separator = { client.left, client.bottom - 1, client.right, client.bottom };
-					::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+					RECT border = { client.left, client.bottom - 1, client.right, client.bottom };
+					::FillRect(dc, &border, ThemeManager::Brush(THEME_COLOR_BORDER));
 					::ReleaseDC(window, dc);
 				}
 			}

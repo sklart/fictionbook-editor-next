@@ -80,12 +80,12 @@ public:
 		RECT rect = {};
 		if(!GetSplitterBarRect(&rect)) return;
 		// Keep the full splitter rectangle as the drag target, but render one
-		// deliberate separator instead of the legacy pair of bright edges.
+		// structural border between the document tree and the editor.
 		::FillRect(dc.m_hDC, &rect, ThemeManager::ControlBrush());
 		RECT separator = rect;
 		separator.left = rect.left + (rect.right - rect.left) / 2;
 		separator.right = separator.left + 1;
-		::FillRect(dc.m_hDC, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+		::FillRect(dc.m_hDC, &separator, ThemeManager::Brush(THEME_COLOR_BORDER));
 	}
 };
 
@@ -100,12 +100,12 @@ public:
 		RECT rect = {};
 		if(!GetSplitterBarRect(&rect)) return;
 		// The hit target remains wide enough for pointer use at every DPI; only
-		// its centre is visible as the single horizontal section separator.
+		// its centre is visible as the single horizontal structural border.
 		::FillRect(dc.m_hDC, &rect, ThemeManager::ControlBrush());
 		RECT separator = rect;
 		separator.top = rect.top + (rect.bottom - rect.top) / 2;
 		separator.bottom = separator.top + 1;
-		::FillRect(dc.m_hDC, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+		::FillRect(dc.m_hDC, &separator, ThemeManager::Brush(THEME_COLOR_BORDER));
 	}
 };
 
