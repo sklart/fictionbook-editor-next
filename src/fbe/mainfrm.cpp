@@ -3106,18 +3106,26 @@ bool CMainFrame::TryAutoRecovery()
 	{
 		++g_recoveryDiagnostics.skippedClean;
 		g_recoveryDiagnostics.Report();
+		SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
 		return true;
 	}
 	if (m_recovery_generation == m_recovery_saved_generation)
+	{
+		SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
 		return true;
+	}
 	const DWORD sinceEdit = ::GetTickCount() - m_recovery_last_edit_tick;
 	if (m_recovery_last_edit_tick != 0 && sinceEdit < RECOVERY_TYPING_DEBOUNCE_MS)
 	{
 		++g_recoveryDiagnostics.deferredTyping;
 		g_recoveryDiagnostics.Report();
+		const UINT remaining = RECOVERY_TYPING_DEBOUNCE_MS - sinceEdit;
+		SetTimer(RECOVERY_TIMER_ID, (std::max)(1U, remaining));
 		return true;
 	}
-	return SaveRecoveryNow();
+	const bool saved = SaveRecoveryNow();
+	SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
+	return saved;
 }
 void CMainFrame::TryRestoreRecovery()
 {

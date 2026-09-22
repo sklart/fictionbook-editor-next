@@ -223,6 +223,7 @@ protected:
 
   int			    m_ignore_changes;
   int			    m_enable_paste;
+	MSHTML::IHTMLDOMNodePtr m_pending_drop_normalization_scope;
 
   bool			    m_normalize:1;
   bool			    m_complete:1;
@@ -804,12 +805,16 @@ public:
 	VARIANT_BOOL __stdcall OnRealPaste(IDispatch *evt);
 	void __stdcall OnDrop(IDispatch*)
 	{
-		if(m_normalize)
-			NormalizeScope(ResolveNormalizationScope());
+		if(m_normalize) {
+			NormalizeScope(m_pending_drop_normalization_scope ? m_pending_drop_normalization_scope : ResolveNormalizationScope());
+			m_pending_drop_normalization_scope = nullptr;
+		}
 	}
 
    VARIANT_BOOL __stdcall OnDragDrop(IDispatch*)
    {
+		if(m_normalize)
+			m_pending_drop_normalization_scope = ResolveNormalizationScope();
 	    return VARIANT_FALSE;
    }
 

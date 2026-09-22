@@ -1639,14 +1639,30 @@ bool IsNormalizationOwner(const MSHTML::IHTMLElementPtr& element)
 		U::scmp(className, L"stanza") == 0 || U::scmp(className, L"poem") == 0 ||
 		U::scmp(className, L"body") == 0;
 }
+
+MSHTML::IHTMLElementPtr FindNormalizationOwner(MSHTML::IHTMLElementPtr element)
+{
+	for (MSHTML::IHTMLElementPtr current(element); current; current = current->parentElement)
+		if (IsNormalizationOwner(current)) return current;
+	return MSHTML::IHTMLElementPtr();
+}
 }
 
 MSHTML::IHTMLDOMNodePtr CFBEView::ResolveNormalizationScope()
 {
 	try
 	{
-		for (MSHTML::IHTMLElementPtr current(SelectionContainer()); current; current = current->parentElement)
-			if (IsNormalizationOwner(current)) return MSHTML::IHTMLDOMNodePtr(current);
+		// Resolve both endpoints before IDM_PASTE changes the live MSHTML range.
+		// A cross-owner selection can alter multiple structural containers, so
+		// deliberately retain the conservative body-wide normalizer for it.
+		MSHTML::IHTMLElementPtr selectionBegin, selectionEnd;
+		if (GetSelectionInfo(std::addressof(selectionBegin), std::addressof(selectionEnd), NULL, NULL, MSHTML::IHTMLTxtRangePtr()))
+		{
+			MSHTML::IHTMLElementPtr beginOwner(FindNormalizationOwner(selectionBegin));
+			MSHTML::IHTMLElementPtr endOwner(FindNormalizationOwner(selectionEnd));
+			if (beginOwner && endOwner && beginOwner == endOwner)
+				return MSHTML::IHTMLDOMNodePtr(beginOwner);
+		}
 	}
 	catch (_com_error&) {}
 	return MSHTML::IHTMLDOMNodePtr(Document() ? Document()->body : NULL);
@@ -1714,10 +1730,15 @@ LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
 		if (preparation.HasPreparedBitmap())
 			AddImage(preparation.temporaryImagePath, true);
 
+		// MSHTML moves the live selection while pasting. Keep the pre-paste
+		// endpoints so a cross-owner insertion cannot be normalized too narrowly.
+		MSHTML::IHTMLDOMNodePtr normalizationScope;
+		if (m_normalize)
+			normalizationScope = ResolveNormalizationScope();
 		IOleCommandTargetPtr(m_browser)->Exec(&CGID_MSHTML, IDM_PASTE, 0, NULL, NULL);
 		pasteEnabled.Close();
 		if(m_normalize)
-			NormalizeScope(ResolveNormalizationScope());
+			NormalizeScope(normalizationScope);
 		undo.Close();
 	}
 	catch(_com_error& err)

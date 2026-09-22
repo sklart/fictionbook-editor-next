@@ -34,11 +34,14 @@ $paste = $view.Substring($open + 1, $end - $open - 1)
 foreach($forbidden in @('GetClipboardData', 'SetClipboardData', 'GlobalLock', 'GlobalAlloc', 'GetTempPath', 'GetTempFileName', 'CImage')) {
     if($paste.Contains($forbidden)) { throw "OnPaste retains clipboard preparation: $forbidden" }
 }
-foreach($required in @('FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Paste")', 'PasteEnableScope pasteEnabled(m_enable_paste)', 'pasteEnabled.Close()', 'ClipboardPastePreparer::Prepare', 'IDM_PASTE', 'NormalizeScope(ResolveNormalizationScope())', 'undo.Close()')) {
+foreach($required in @('FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Paste")', 'PasteEnableScope pasteEnabled(m_enable_paste)', 'pasteEnabled.Close()', 'ClipboardPastePreparer::Prepare', 'normalizationScope = ResolveNormalizationScope()', 'IDM_PASTE', 'NormalizeScope(normalizationScope)', 'undo.Close()')) {
     if(-not $paste.Contains($required)) { throw "OnPaste lost editor orchestration: $required" }
 }
-foreach($required in @('ResolveNormalizationScope', 'IsNormalizationOwner', 'normalization-full', 'normalization-scoped', 'RemoveUnk(scopeNode,Document())', 'MergeEqualHTMLElements(scopeNode, Document())', 'FbeVisualDom::NormalizeStructure(Document(), scopeNode)', 'FixupLinks(scopeNode)')) {
+foreach($required in @('ResolveNormalizationScope', 'GetSelectionInfo(std::addressof(selectionBegin), std::addressof(selectionEnd)', 'FindNormalizationOwner(selectionBegin)', 'FindNormalizationOwner(selectionEnd)', 'beginOwner == endOwner', 'normalization-full', 'normalization-scoped', 'RemoveUnk(scopeNode,Document())', 'MergeEqualHTMLElements(scopeNode, Document())', 'FbeVisualDom::NormalizeStructure(Document(), scopeNode)', 'FixupLinks(scopeNode)')) {
     if(-not $view.Contains($required)) { throw "Scoped paste normalization is missing: $required" }
 }
+$scope = [regex]::Match($view, 'MSHTML::IHTMLDOMNodePtr CFBEView::ResolveNormalizationScope\(\)[\s\S]*?(?=void CFBEView::NormalizeScope)').Value
+if(-not $scope -or $scope -match 'SelectionContainer\(\)') { throw 'Paste scope must be resolved from both selection endpoints, not the post-paste caret.' }
+if($scope -notmatch 'return MSHTML::IHTMLDOMNodePtr\(Document\(\) \? Document\(\)->body : NULL\)') { throw 'Cross-owner or indeterminate paste must fall back to fbw_body.' }
 if($view.Contains('RemovePreparedBitmap')) { throw 'CFBEView retains manual temporary bitmap cleanup.' }
 Write-Host 'Clipboard paste boundary passed.'
