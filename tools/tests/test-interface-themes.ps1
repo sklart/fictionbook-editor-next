@@ -52,8 +52,8 @@ if($mainFrame -notlike '*OnPostCreate*' -or $mainFrame -notlike '*ThemeManager::
 foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl::TrackPopupMenu', 'ThemeManager::TrackPopupMenu')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus do not retain command-bar icons: $required." }
 }
-foreach($required in @('ApplyScriptNativeMenuBitmaps', 'g_scriptNativeMenuBitmaps', 'NativeMenuBitmap')) {
-	if($mainFrame -notlike "*$required*") { throw "Native dark menus do not restore script bitmaps: $required." }
+foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE')) {
+	if($mainFrame -notlike "*$required*") { throw "Native dark menus or rebar bands do not apply the required dark path: $required." }
 }
 foreach($required in @('CreateMenuBitmap', 'ImageList_DrawIndirect', 'ILC_COLOR32')) {
 	if($scriptVisuals -notlike "*$required*") { throw "Script visual resources do not create native alpha menu bitmaps: $required." }
@@ -63,6 +63,9 @@ foreach($required in @('useDarkPalette', 'ThemeManager::ControlColor()', 'ThemeM
 }
 foreach($required in @('TrackPopupMenu', 'TaskDialogIndirect', 'TDN_CREATED', 'ThemedTaskDialogCallback', 'ApplyToWindow(window)')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not provide the native popup and TaskDialog wrappers: $required." }
+}
+foreach($required in @('RegisterNativeMenuBitmap', 'UnregisterNativeMenuBitmap', 'ApplyNativeMenuBitmaps', 'MIIM_BITMAP', 'TrackPopupMenuEx')) {
+	if($manager -notlike "*$required*") { throw "Theme manager does not attach registered native popup bitmaps: $required." }
 }
 if($mainFrameHeader -notlike '*ThemeManager::TrackPopupMenu(tp->hMenu*') {
 	throw 'BODY context menu does not use the shared native popup helper.'

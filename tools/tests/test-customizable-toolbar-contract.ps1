@@ -58,9 +58,16 @@ if ($mainFrameSource.IndexOf('fbe.hotkey.scripts.last_script', [StringComparison
     throw 'Last script не получает runtime-локализацию при формировании каталога панели.'
 }
 foreach ($required in @('SetWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc', 'message == WM_LBUTTONDBLCLK', 'ShowScriptsToolbarCustomizeDialog()', 'RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc')) {
-    if ($mainFrameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
-        throw "Scripts toolbar не перехватывает double-click через безопасный subclass: $required"
-    }
+	if ($mainFrameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+		throw "Scripts toolbar не перехватывает double-click через безопасный subclass: $required"
+	}
+}
+
+$runtimeUi = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ui\MainFrameRuntimeUi.inl')
+foreach ($required in @('isScriptsToolbar = pnmh->hwndFrom == m_ScriptsToolbar.m_hWnd', 'm_scriptToolbars.Items()[index].window == pnmh->hwndFrom', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::PressedColor()', 'ThemeManager::Brush(THEME_COLOR_BORDER)')) {
+	if ($runtimeUi.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+		throw "Scripts toolbar does not use the required dark custom draw: $required"
+	}
 }
 
 foreach ($required in @('MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)')) {

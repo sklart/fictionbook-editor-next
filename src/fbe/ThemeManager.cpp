@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ThemeManager.h"
+#include <map>
 
 namespace
 {
@@ -10,6 +11,23 @@ HHOOK g_themeCbtHook = NULL;
 HBRUSH g_windowBrush = NULL;
 HBRUSH g_controlBrush = NULL;
 HBRUSH g_brushes[THEME_COLOR_COUNT] = {};
+std::map<UINT, HBITMAP> g_nativeMenuBitmaps;
+
+void ApplyNativeMenuBitmaps(HMENU menu)
+{
+	if(menu == NULL) return;
+	for(int index = 0; index < ::GetMenuItemCount(menu); ++index)
+	{
+		const UINT command = ::GetMenuItemID(menu, index);
+		const std::map<UINT, HBITMAP>::const_iterator bitmap = g_nativeMenuBitmaps.find(command);
+		if(bitmap != g_nativeMenuBitmaps.end())
+		{
+			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP; info.hbmpItem = bitmap->second;
+			::SetMenuItemInfo(menu, index, TRUE, &info);
+		}
+		ApplyNativeMenuBitmaps(::GetSubMenu(menu, index));
+	}
+}
 
 bool IsHighContrastEnabled()
 {
@@ -441,7 +459,18 @@ HRESULT CALLBACK ThemedTaskDialogCallback(HWND window, UINT notification, WPARAM
 UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
 {
 	if(menu == NULL || !::IsWindow(owner)) return 0;
+	ApplyNativeMenuBitmaps(menu);
 	return ::TrackPopupMenuEx(menu, flags | TPM_RETURNCMD, x, y, owner, NULL);
+}
+
+void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap)
+{
+	if(command != 0 && bitmap != NULL) g_nativeMenuBitmaps[command] = bitmap;
+}
+
+void UnregisterNativeMenuBitmap(UINT command)
+{
+	g_nativeMenuBitmaps.erase(command);
 }
 
 HRESULT TaskDialogIndirect(const TASKDIALOGCONFIG& config, int* button, int* radioButton, BOOL* verification)

@@ -63,6 +63,10 @@ namespace ThemeManager
 	// Keeps FBE-owned native popups on the effective app palette.  The native
 	// renderer remains system-owned in Light and High Contrast.
 	UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner);
+	// Registers a bitmap whose lifetime is owned by the caller.  The bitmap is
+	// attached recursively immediately before an FBE native popup is shown.
+	void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap);
+	void UnregisterNativeMenuBitmap(UINT command);
 	// Applies the theme as soon as a TaskDialog has a valid HWND, while keeping
 	// a caller-provided callback and its data intact.
 	HRESULT TaskDialogIndirect(const TASKDIALOGCONFIG& config, int* button, int* radioButton, BOOL* verification);

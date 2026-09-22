@@ -88,8 +88,11 @@ LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled)
 {
 	const bool isCommandToolbar = pnmh->hwndFrom == m_CmdToolbar.m_hWnd;
+	bool isScriptsToolbar = pnmh->hwndFrom == m_ScriptsToolbar.m_hWnd;
+	for(size_t index = 0; !isScriptsToolbar && index < m_scriptToolbars.Items().size(); ++index)
+		isScriptsToolbar = m_scriptToolbars.Items()[index].window == pnmh->hwndFrom;
 	const bool isContextAttributeBar = m_contextAttributeBars.IsBar(pnmh->hwndFrom);
-	if (!isCommandToolbar && !isContextAttributeBar)
+	if (!isCommandToolbar && !isScriptsToolbar && !isContextAttributeBar)
 	{
 		bHandled = FALSE;
 		return 0;
@@ -98,7 +101,7 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 	NMTBCUSTOMDRAW* customDraw = reinterpret_cast<NMTBCUSTOMDRAW*>(pnmh);
 	if (customDraw->nmcd.dwDrawStage == CDDS_PREPAINT)
 	{
-		if(ThemeManager::IsDark())
+		if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
 		{
 			RECT client = {};
 			::GetClientRect(pnmh->hwndFrom, &client);
@@ -113,8 +116,11 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		customDraw->clrText = disabled ? ThemeManager::DisabledTextColor() : ThemeManager::TextColor();
 		customDraw->clrTextHighlight = ThemeManager::SelectionTextColor();
 		customDraw->clrBtnFace = ThemeManager::ControlColor();
-		customDraw->clrBtnHighlight = ThemeManager::HoverColor();
+		const bool pressed = (customDraw->nmcd.uItemState & CDIS_SELECTED) != 0;
+		customDraw->clrBtnHighlight = pressed ? ThemeManager::PressedColor() : ThemeManager::HoverColor();
 		customDraw->clrHighlightHotTrack = ThemeManager::HoverColor();
+		if(isScriptsToolbar && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+			return CDRF_NOTIFYPOSTPAINT;
 		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
 		if (isCommandToolbar && IsTableToolbarCommand(commandId) &&
 			disabled)
@@ -146,6 +152,14 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		// strokes remain visible without replacing application-owned resources.
 		if (isCommandToolbar && ThemeManager::IsDark() && !disabled)
 			return CDRF_NOTIFYPOSTPAINT;
+	}
+
+	if (isScriptsToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+	{
+		const UINT state = customDraw->nmcd.uItemState;
+		if((state & (CDIS_HOT | CDIS_SELECTED)) != 0)
+			::FrameRect(customDraw->nmcd.hdc, &customDraw->nmcd.rc, ThemeManager::Brush(THEME_COLOR_BORDER));
+		return CDRF_DODEFAULT;
 	}
 
 	if (isCommandToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark())

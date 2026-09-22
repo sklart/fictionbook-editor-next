@@ -109,22 +109,47 @@ static_assert(ID_FILE_MRU_LAST <= 0xffff, "MRU command IDs must fit in WM_COMMAN
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE > ID_EDIT_INS_SYMBOL + 100, "Folder menu IDs overlap symbol commands");
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT_ITEM, "Folder menu IDs overlap regular commands");
 
-std::map<UINT, HBITMAP> g_scriptNativeMenuBitmaps;
+std::map<UINT, HBITMAP> g_ownedNativeMenuBitmaps;
+std::map<HWND, LONG_PTR> g_rebarBaseStyles;
+std::map<HWND, std::map<UINT, UINT> > g_rebarBaseBandStyles;
 
-void ApplyScriptNativeMenuBitmaps(HMENU menu)
+void RegisterOwnedNativeMenuBitmap(HINSTANCE module, UINT bitmapResourceId, UINT commandId)
 {
-	if(menu == NULL) return;
-	for(int index = 0; index < ::GetMenuItemCount(menu); ++index)
+	HBITMAP bitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+	if(bitmap == NULL) return;
+	g_ownedNativeMenuBitmaps[commandId] = bitmap;
+	ThemeManager::RegisterNativeMenuBitmap(commandId, bitmap);
+}
+
+void ReleaseOwnedNativeMenuBitmaps()
+{
+	for(std::map<UINT, HBITMAP>::iterator it = g_ownedNativeMenuBitmaps.begin(); it != g_ownedNativeMenuBitmaps.end(); ++it)
 	{
-		const UINT command = ::GetMenuItemID(menu, index);
-		const std::map<UINT, HBITMAP>::const_iterator bitmap = g_scriptNativeMenuBitmaps.find(command);
-		if(bitmap != g_scriptNativeMenuBitmaps.end())
-		{
-			MENUITEMINFO info = {}; info.cbSize = sizeof(info); info.fMask = MIIM_BITMAP; info.hbmpItem = bitmap->second;
-			::SetMenuItemInfo(menu, index, TRUE, &info);
-		}
-		ApplyScriptNativeMenuBitmaps(::GetSubMenu(menu, index));
+		ThemeManager::UnregisterNativeMenuBitmap(it->first);
+		::DeleteObject(it->second);
 	}
+	g_ownedNativeMenuBitmaps.clear();
+}
+
+void ApplyMainRebarTheme(CReBarCtrl& rebar)
+{
+	if(!::IsWindow(rebar)) return;
+	const HWND window = rebar;
+	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	std::map<HWND, LONG_PTR>::iterator style = g_rebarBaseStyles.find(window);
+	if(style == g_rebarBaseStyles.end()) style = g_rebarBaseStyles.insert(std::make_pair(window, ::GetWindowLongPtr(window, GWL_STYLE))).first;
+	::SetWindowLongPtr(window, GWL_STYLE, dark ? style->second & ~static_cast<LONG_PTR>(RBS_BANDBORDERS) : style->second);
+	std::map<UINT, UINT>& baseBands = g_rebarBaseBandStyles[window];
+	for(int index = 0; index < static_cast<int>(rebar.GetBandCount()); ++index)
+	{
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_STYLE;
+		if(!rebar.GetBandInfo(index, &info)) continue;
+		if(baseBands.find(info.wID) == baseBands.end()) baseBands[info.wID] = info.fStyle;
+		const UINT base = baseBands[info.wID];
+		info.fStyle = dark ? info.fStyle & ~RBBS_CHILDEDGE : (info.fStyle & ~RBBS_CHILDEDGE) | (base & RBBS_CHILDEDGE);
+		rebar.SetBandInfo(index, &info);
+	}
+	::SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
 
@@ -210,10 +235,8 @@ bool ShowNativeMainMenuPopup(HWND commandBar, int item)
 	// perform its normal Vista-menu bitmap assignment first, so script and
 	// plug-in icons remain visible in the native dark popup.
 	::SendMessage(commandBar, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(popup), 0);
-	// Script icons come from files, so command-bar image-list entries alone are
-	// insufficient for the native renderer.  Restore their 32-bit menu bitmaps
-	// after the stock command-bar setup, including already-created submenus.
-	ApplyScriptNativeMenuBitmaps(popup);
+	// TrackPopupMenu() restores all registered FBE bitmap resources after the
+	// stock command-bar setup, including script and table submenus.
 	const UINT command = ThemeManager::TrackPopupMenu(popup,
 		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON, point.x, point.y, owner);
 	if(command != 0)
@@ -2328,7 +2351,10 @@ bool CMainFrame::InitializeScripts()
 bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition)
 {
 	ReleaseScriptResources();
-	g_scriptNativeMenuBitmaps.clear();
+	for(UINT command = ID_SCRIPT_BASE; command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT; ++command)
+		ThemeManager::UnregisterNativeMenuBitmap(command);
+	for(UINT command = SCRIPT_FOLDER_MENU_ID_BASE; command <= SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT; ++command)
+		ThemeManager::UnregisterNativeMenuBitmap(command);
 	DestroyScriptToolbarRuntimeControls();
 	m_scriptToolbars.Reset();
 	for(size_t index = 0; index < definitions.size(); ++index) m_scriptToolbars.Add(definitions[index]);
@@ -2371,7 +2397,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 			for(size_t toolbarIndex = 0; !script.isFolder && toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex) if(m_scriptToolbars.Items()[toolbarIndex].window != NULL && m_scriptToolbars.Items()[toolbarIndex].window != m_ScriptsToolbar) AddTbButton(m_scriptToolbars.Items()[toolbarIndex].window, script.name, command, TBSTATE_ENABLED, visual.icon);
 			if(!script.isFolder) { TBBUTTONS catalog; bool available = GetAvailableButtons(m_ScriptsToolbar, catalog); for(int index = 0; available && index < catalog.GetSize(); ++index) if(catalog[index].idCommand == static_cast<int>(command)) available = false; if(available) { TBBUTTON button = {}; button.iBitmap = I_IMAGENONE; button.idCommand = command; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; AddToolbarButton(m_ScriptsToolbar, button, script.name); } }
 			if(visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command); else if(visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
-			if(visual.NativeMenuBitmap() != NULL) g_scriptNativeMenuBitmaps[command] = visual.NativeMenuBitmap();
+			ThemeManager::RegisterNativeMenuBitmap(command, visual.NativeMenuBitmap());
 		},
 		[this](ScriptDescriptor& script) { InitScriptHotkey(script); })) _Settings.SetScriptCommandIds(serializedCommandIds);
 	for(size_t toolbarIndex = 0; toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex)
@@ -2388,6 +2414,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 	}
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
+	ApplyMainRebarTheme(m_rebar);
 	ApplyRuntimeMainFrameMenuLocalization(mainMenu);
 	RefreshScriptToolbarViewMenu();
 	return true;
@@ -2469,6 +2496,18 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     IDB_TABLE_MAKE_HEADER_CELLS, ID_TABLE_MAKE_HEADER_CELLS);
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TABLE_MAKE_NORMAL_CELLS, ID_TABLE_MAKE_NORMAL_CELLS);
+	const struct { UINT bitmap; UINT command; } nativeTableMenuBitmaps[] = {
+		{ IDB_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_ABOVE },
+		{ IDB_TABLE_INSERT_ROW_BELOW, ID_TABLE_INSERT_ROW_BELOW },
+		{ IDB_TABLE_DELETE_ROW, ID_TABLE_DELETE_ROW },
+		{ IDB_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_LEFT },
+		{ IDB_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_INSERT_COLUMN_RIGHT },
+		{ IDB_TABLE_DELETE_COLUMN, ID_TABLE_DELETE_COLUMN },
+		{ IDB_TABLE_MAKE_HEADER_CELLS, ID_TABLE_MAKE_HEADER_CELLS },
+		{ IDB_TABLE_MAKE_NORMAL_CELLS, ID_TABLE_MAKE_NORMAL_CELLS }
+	};
+	for(size_t index = 0; index < _countof(nativeTableMenuBitmaps); ++index)
+		RegisterOwnedNativeMenuBitmap(applicationModule, nativeTableMenuBitmaps[index].bitmap, nativeTableMenuBitmaps[index].command);
 
 	m_CmdToolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME,
 		ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
@@ -2536,6 +2575,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	AddSimpleReBarBand(m_contextAttributeBars.TableBar(), 0, TRUE, 0, TRUE);
 	AddSimpleReBarBand(m_contextAttributeBars.TableBar2(), 0, TRUE, 0, TRUE);
 	m_rebar = m_hWndToolBar;
+	ApplyMainRebarTheme(m_rebar);
 	ApplyMainMenuRebarBandTheme(m_rebar, hWndCmdBar);
 	ApplyContextAttributeRebarBandTheme(m_rebar, m_contextAttributeBars);
 	m_rebar.SendMessage(WM_SIZE);
@@ -2863,6 +2903,9 @@ LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 	if(::IsWindow(m_MenuBar))
 		::RemoveWindowSubclass(m_MenuBar, MainMenuBarWindowThemeProc, kMainMenuBarWindowThemeSubclassId);
 	if(::IsWindow(m_ScriptsToolbar)) ::RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1);
+	ReleaseOwnedNativeMenuBitmaps();
+	g_rebarBaseStyles.erase(m_rebar);
+	g_rebarBaseBandStyles.erase(m_rebar);
 	m_source.Destroy();
   KillTimer(RECOVERY_TIMER_ID);
   DestroyAcceleratorTable(m_hAccel);
@@ -6262,6 +6305,7 @@ void CMainFrame::RefreshStatusMainPane()
 LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
 	m_contextAttributeBars.ApplyTheme();
+	ApplyMainRebarTheme(m_rebar);
 	ApplyMainMenuRebarBandTheme(m_rebar, m_MenuBar);
 	ApplyContextAttributeRebarBandTheme(m_rebar, m_contextAttributeBars);
 	if(m_document_tree.IsWindow())
