@@ -48,16 +48,16 @@
   "uk_UA": {
     "project": "VESUM / dict_uk",
     "repository": "https://github.com/brown-uk/dict_uk",
-    "version": "6.8.5",
-    "upstreamTag": "v6.8.5",
-    "upstreamCommit": "71803fc18cb2d24e0caa5a0d8b1869816cfc5cc7",
-    "retrievedAt": "2026-09-20",
+    "version": "6.8.6",
+    "upstreamTag": "v6.8.6",
+    "upstreamCommit": "fbf4caee38bc5995bb599731942ebeac8d2cd78f",
+    "retrievedAt": "2026-09-22",
     "variant": "nolat",
     "localChanges": "none",
     "fixtureSource": "tools/tests/spellcheck-corpus/fixtures/fb2; CC0-1.0 original FBE Next test text",
     "encoding": "UTF-8",
-    "dicEntries": 352876,
-    "affSha256": "3222E8D5F88FD1DB291A74C59E8FC5541BB2CC3D3AC29C6882DF4F3DBB051A32",
-    "dicSha256": "B73062ADA50324D2575121C9734C18789D67EB4502AF6AE12ED62DEF7D0528B4"
+    "dicEntries": 351817,
+    "affSha256": "C608FA229B68403AC182F2AF546FA45425DCF678C2F2E9D292DF15E9B72A5AA8",
+    "dicSha256": "E7F2ED8543F14A8D69F63120470E602500E06F8C5BE8C3AC86B586C29966E2FC"
   }
 }

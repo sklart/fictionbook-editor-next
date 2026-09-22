@@ -14,10 +14,10 @@ is needed to build the project but is not shipped as a separate component.
 | English Speller Database / SCOWL | 2026.02.25 | SCOWL permissive license; BSD license for the affix file | Bundled English (`en_US`) spell-check dictionary | <https://github.com/en-wl/wordlist> |
 | igerman98 / frami German Hunspell Dictionary | 20161207+frami20170109 | GPL-2.0 OR GPL-3.0 | Bundled German (`de_DE`) spell-check dictionary | <https://github.com/LibreOffice/dictionaries> |
 | Goudron Russian Hunspell Dictionary | 1.0.8 | MPL-2.0 | Bundled Russian (`ru_RU`) spell-check dictionary | <https://github.com/Goudron/ru-spelling-dictionary> |
-| VESUM / dict_uk | 6.8.5 | MPL-1.1 (Hunspell distribution) | Bundled Ukrainian (`uk_UA`) spell-check dictionary | <https://github.com/brown-uk/dict_uk> |
+| VESUM / dict_uk | 6.8.6 | MPL-1.1 (Hunspell distribution) | Bundled Ukrainian (`uk_UA`) spell-check dictionary | <https://github.com/brown-uk/dict_uk> |
 | libwebp | 1.6.0 | BSD-3-Clause | Static WebP decoder linked into FBE | <https://chromium.googlesource.com/webm/libwebp> |
 | OpenJPEG | 2.5.4 | BSD-2-Clause | JPEG 2000 decoder build input for FBE | <https://github.com/uclouvain/openjpeg> |
-| libheif | 1.23.4 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
+| libheif | 1.23.5 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
 | libde265 | 1.1.3 | LGPL-2.1-or-later | Static HEVC decoder used by bundled libheif | <https://github.com/strukturag/libde265> |
 | libaom | 3.15.0 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
 | zlib | 1.3.2 | zlib License | Static DEFLATE backend used by libarchive | <https://github.com/madler/zlib> |
