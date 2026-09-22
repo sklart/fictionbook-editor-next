@@ -79,13 +79,13 @@ public:
 	{
 		RECT rect = {};
 		if(!GetSplitterBarRect(&rect)) return;
-		::FillRect(dc.m_hDC, &rect, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
-		RECT edge = rect;
-		edge.right = edge.left + 1;
-		::FillRect(dc.m_hDC, &edge, ThemeManager::Brush(THEME_COLOR_BORDER));
-		edge = rect;
-		edge.left = edge.right - 1;
-		::FillRect(dc.m_hDC, &edge, ThemeManager::Brush(THEME_COLOR_BORDER));
+		// Keep the full splitter rectangle as the drag target, but render one
+		// deliberate separator instead of the legacy pair of bright edges.
+		::FillRect(dc.m_hDC, &rect, ThemeManager::ControlBrush());
+		RECT separator = rect;
+		separator.left = rect.left + (rect.right - rect.left) / 2;
+		separator.right = separator.left + 1;
+		::FillRect(dc.m_hDC, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
 	}
 };
 
@@ -99,13 +99,13 @@ public:
 	{
 		RECT rect = {};
 		if(!GetSplitterBarRect(&rect)) return;
-		::FillRect(dc.m_hDC, &rect, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
-		RECT edge = rect;
-		edge.bottom = edge.top + 1;
-		::FillRect(dc.m_hDC, &edge, ThemeManager::Brush(THEME_COLOR_BORDER));
-		edge = rect;
-		edge.top = edge.bottom - 1;
-		::FillRect(dc.m_hDC, &edge, ThemeManager::Brush(THEME_COLOR_BORDER));
+		// The hit target remains wide enough for pointer use at every DPI; only
+		// its centre is visible as the single horizontal section separator.
+		::FillRect(dc.m_hDC, &rect, ThemeManager::ControlBrush());
+		RECT separator = rect;
+		separator.top = rect.top + (rect.bottom - rect.top) / 2;
+		separator.bottom = separator.top + 1;
+		::FillRect(dc.m_hDC, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
 	}
 };
 

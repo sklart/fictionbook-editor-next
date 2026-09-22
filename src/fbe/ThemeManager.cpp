@@ -2,6 +2,7 @@
 #include "ThemeManager.h"
 #include "RuntimeLocalization.h"
 #include "resource.h"
+#include "UiMetrics.h"
 #include <map>
 #include <vector>
 
@@ -492,6 +493,12 @@ class ThemedMessageDialog
 	UINT m_type = 0;
 	int m_result = 0;
 	int m_buttonTop = 0;
+	int m_dpi = 96;
+	int m_clientWidth = 0;
+	int m_contentLeft = 0;
+	int m_contentTop = 0;
+	int m_textWidth = 0;
+	int m_iconSize = 0;
 	UINT m_defaultId = IDOK;
 	std::vector<ThemedMessageButton> m_buttons;
 	std::vector<HWND> m_buttonWindows;
@@ -588,23 +595,44 @@ class ThemedMessageDialog
 
 	void CreateControls()
 	{
-		const int iconX = 22, textX = 68, textY = 24;
+		const int margin = Scale(18);
+		const int buttonHeight = Scale(28);
+		const int buttonGap = Scale(8);
+		const int buttonBottom = Scale(12);
+		const HFONT font = UiMetrics::DialogFont() ? UiMetrics::DialogFont() : static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
+		const int textX = m_contentLeft;
+		const int textY = m_contentTop;
 		if(LPCWSTR icon = IconFor(m_type))
 		{
-			HWND control = ::CreateWindowExW(0, WC_STATICW, NULL, WS_CHILD | WS_VISIBLE | SS_ICON, iconX, textY, 32, 32, m_window, NULL, _Module.GetModuleInstance(), NULL);
+			HWND control = ::CreateWindowExW(0, WC_STATICW, NULL, WS_CHILD | WS_VISIBLE | SS_ICON,
+				margin, textY, m_iconSize, m_iconSize, m_window, NULL, _Module.GetModuleInstance(), NULL);
 			::SendMessageW(control, STM_SETICON, reinterpret_cast<WPARAM>(::LoadIconW(NULL, icon)), 0);
 		}
 		RECT client = {}; ::GetClientRect(m_window, &client);
-		::CreateWindowExW(0, WC_STATICW, m_message, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX,
-			textX, textY, client.right - textX - 20, m_buttonTop - textY - 14, m_window, NULL, _Module.GetModuleInstance(), NULL);
-		const int width = 92, gap = 9, margin = 18;
-		int x = client.right - margin - static_cast<int>(m_buttons.size()) * width - static_cast<int>(m_buttons.size() - 1) * gap;
+		const int contentHeight = m_buttonTop - textY - Scale(12);
+		HWND message = ::CreateWindowExW(0, WC_STATICW, m_message, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX,
+			textX, textY, m_textWidth, contentHeight, m_window, NULL, _Module.GetModuleInstance(), NULL);
+		::SendMessage(message, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+		std::vector<int> widths;
+		int totalWidth = 0;
+		HDC dc = ::GetDC(m_window);
+		HGDIOBJ old = ::SelectObject(dc, font);
+		for(size_t index = 0; index < m_buttons.size(); ++index)
+		{
+			SIZE extent = {}; ::GetTextExtentPoint32W(dc, m_buttons[index].text, m_buttons[index].text.GetLength(), &extent);
+			const int width = (std::max)(Scale(76), static_cast<int>(extent.cx) + Scale(30));
+			widths.push_back(width); totalWidth += width;
+		}
+		::SelectObject(dc, old); ::ReleaseDC(m_window, dc);
+		totalWidth += static_cast<int>(m_buttons.size() - 1) * buttonGap;
+		int x = client.right - margin - totalWidth;
 		for(size_t index = 0; index < m_buttons.size(); ++index)
 		{
 			const DWORD style = WS_CHILD | WS_VISIBLE | (m_buttons[index].id == m_defaultId ? BS_DEFPUSHBUTTON : BS_PUSHBUTTON);
-			HWND button = ::CreateWindowExW(0, WC_BUTTONW, m_buttons[index].text, style, x, m_buttonTop + 12, width, 27,
+			HWND button = ::CreateWindowExW(0, WC_BUTTONW, m_buttons[index].text, style, x, m_buttonTop + buttonBottom, widths[index], buttonHeight,
 				m_window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(m_buttons[index].id)), _Module.GetModuleInstance(), NULL);
-			m_buttonWindows.push_back(button); x += width + gap;
+			::SendMessage(button, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+			m_buttonWindows.push_back(button); x += widths[index] + buttonGap;
 		}
 		ThemeManager::ApplyToWindow(m_window);
 		for(size_t index = 0; index < m_buttons.size(); ++index)
@@ -623,6 +651,32 @@ class ThemedMessageDialog
 		::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
 		::FrameRect(dc, &client, ThemeManager::Brush(THEME_COLOR_BORDER));
 		::EndPaint(m_window, &paint);
+	}
+
+	int Scale(int value) const { return ::MulDiv(value, m_dpi, 96); }
+
+	void MeasureLayout()
+	{
+		RECT workArea = {};
+		if(m_owner == NULL || !::GetWindowRect(m_owner, &workArea))
+			::SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
+		const int margin = Scale(18);
+		const int textTop = Scale(22);
+		const int maxWidth = (std::max)(Scale(320), static_cast<int>(workArea.right - workArea.left) - Scale(80));
+		m_clientWidth = (std::min)(Scale(520), maxWidth);
+		m_iconSize = IconFor(m_type) != NULL ? Scale(32) : 0;
+		m_contentLeft = margin + (m_iconSize ? m_iconSize + Scale(16) : 0);
+		m_contentTop = textTop;
+		m_textWidth = m_clientWidth - m_contentLeft - margin;
+		HDC dc = ::GetDC(m_owner ? m_owner : NULL);
+		const HFONT font = UiMetrics::DialogFont() ? UiMetrics::DialogFont() : static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
+		HGDIOBJ old = ::SelectObject(dc, font);
+		RECT text = { 0, 0, m_textWidth, 0 };
+		::DrawTextW(dc, m_message, -1, &text, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+		::SelectObject(dc, old); ::ReleaseDC(m_owner ? m_owner : NULL, dc);
+		const int textHeight = (std::max)(Scale(18), static_cast<int>(text.bottom - text.top));
+		const int contentHeight = (std::max)(m_iconSize, textHeight);
+		m_buttonTop = m_contentTop + contentHeight + Scale(20);
 	}
 
 	void Close(UINT result) { m_result = static_cast<int>(result); if(::IsWindow(m_window)) ::DestroyWindow(m_window); }
@@ -653,12 +707,15 @@ public:
 	{
 		if(RegisterWindowClass() == 0) return 0;
 		BuildButtons();
-		HDC dc = ::GetDC(NULL); HFONT font = static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
-		HGDIOBJ old = ::SelectObject(dc, font); RECT text = { 0, 0, 420, 0 };
-		::DrawTextW(dc, m_message, -1, &text, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
-		::SelectObject(dc, old); ::ReleaseDC(NULL, dc);
-		const int width = 500; m_buttonTop = (std::max)(104, static_cast<int>(text.bottom - text.top) + 48);
-		const int height = m_buttonTop + 57;
+		HDC ownerDc = ::GetDC(m_owner ? m_owner : NULL);
+		m_dpi = (std::max)(96, ::GetDeviceCaps(ownerDc, LOGPIXELSX));
+		::ReleaseDC(m_owner ? m_owner : NULL, ownerDc);
+		MeasureLayout();
+		const int clientHeight = m_buttonTop + Scale(12 + 28 + 12);
+		RECT windowRect = { 0, 0, m_clientWidth, clientHeight };
+		::AdjustWindowRectEx(&windowRect, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME);
+		const int width = windowRect.right - windowRect.left;
+		const int height = windowRect.bottom - windowRect.top;
 		RECT ownerRect = {}; if(!::GetWindowRect(m_owner, &ownerRect)) ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &ownerRect, 0);
 		const int x = ownerRect.left + ((ownerRect.right - ownerRect.left) - width) / 2;
 		const int y = ownerRect.top + ((ownerRect.bottom - ownerRect.top) - height) / 2;

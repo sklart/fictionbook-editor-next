@@ -117,6 +117,31 @@ struct RebarBandThemeState
 };
 std::map<HWND, std::map<UINT, RebarBandThemeState> > g_rebarBaseBandStyles;
 
+const UINT_PTR kMainRebarThemeSubclassId = 0x46425242; // "FBRB"
+
+LRESULT CALLBACK MainRebarThemeProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
+{
+	if(message == WM_NCDESTROY)
+	{
+		::RemoveWindowSubclass(window, MainRebarThemeProc, kMainRebarThemeSubclassId);
+		return ::DefSubclassProc(window, message, wParam, lParam);
+	}
+	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+	if(message != WM_PAINT || !ThemeManager::IsDark() || ThemeManager::IsHighContrast()) return result;
+	HDC dc = ::GetWindowDC(window);
+	if(dc == NULL) return result;
+	const int count = static_cast<int>(::SendMessage(window, RB_GETBANDCOUNT, 0, 0));
+	for(int band = 0; band < count; ++band)
+	{
+		RECT rect = {};
+		if(!::SendMessage(window, RB_GETRECT, band, reinterpret_cast<LPARAM>(&rect)) || rect.bottom <= rect.top) continue;
+		RECT separator = { rect.left, rect.bottom - 1, rect.right, rect.bottom };
+		::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+	}
+	::ReleaseDC(window, dc);
+	return result;
+}
+
 void RegisterOwnedNativeMenuBitmap(HINSTANCE module, UINT bitmapResourceId, UINT commandId)
 {
 	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
@@ -144,6 +169,7 @@ void ApplyMainRebarTheme(CReBarCtrl& rebar)
 	const HWND window = rebar;
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	ThemeManager::ApplyToWindow(window);
+	::SetWindowSubclass(window, MainRebarThemeProc, kMainRebarThemeSubclassId, 0);
 	std::map<HWND, LONG_PTR>::iterator style = g_rebarBaseStyles.find(window);
 	if(style == g_rebarBaseStyles.end()) style = g_rebarBaseStyles.insert(std::make_pair(window, ::GetWindowLongPtr(window, GWL_STYLE))).first;
 	::SetWindowLongPtr(window, GWL_STYLE, dark ? style->second & ~static_cast<LONG_PTR>(RBS_BANDBORDERS) : style->second);
@@ -189,6 +215,11 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 	PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
 	RECT client = {}; ::GetClientRect(window, &client);
 	::FillRect(dc, &client, ThemeManager::ControlBrush());
+	RECT topSeparator = { client.left, client.top, client.right, client.top + 1 };
+	::FillRect(dc, &topSeparator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(window, WM_GETFONT, 0, 0));
+	if(font == NULL) font = UiMetrics::DialogFont();
+	HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
 	const int count = static_cast<int>(::SendMessage(window, SB_GETPARTS, 0, 0));
 	for(int index = 0; index < count; ++index)
 	{
@@ -219,6 +250,7 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 		}
 		::SelectObject(dc, oldPen);
 	}
+	if(oldFont != NULL) ::SelectObject(dc, oldFont);
 	::EndPaint(window, &paint);
 	return 0;
 }

@@ -41,6 +41,25 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 		::FillRect(reinterpret_cast<HDC>(wParam), &client, ThemeManager::ControlBrush());
 		return 1;
 	}
+	if(message == WM_PAINT)
+	{
+		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+		if(ThemeManager::IsDark())
+		{
+			RECT client = {}; ::GetClientRect(window, &client);
+			if(client.bottom > client.top)
+			{
+				HDC dc = ::GetWindowDC(window);
+				if(dc != NULL)
+				{
+					RECT separator = { client.left, client.bottom - 1, client.right, client.bottom };
+					::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+					::ReleaseDC(window, dc);
+				}
+			}
+		}
+		return result;
+	}
 	if(message == WM_CTLCOLORSTATIC || message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX || message == WM_CTLCOLORBTN)
 	{
 		HDC dc = reinterpret_cast<HDC>(wParam);

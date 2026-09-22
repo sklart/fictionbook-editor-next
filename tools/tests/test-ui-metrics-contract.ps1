@@ -39,5 +39,7 @@ Require $contextControlsSource 'bHandled\s*=\s*FALSE' 'CCustomStatic chains WM_S
 Require $contextControlsSource 'SendMessage\(m_hWnd, WM_SETFONT' 'CCustomStatic SetFont uses the WM_SETFONT path'
 Require $contextControlsSource 'GetSysColorBrush\(COLOR_BTNFACE\)' 'attribute captions paint an opaque system toolbar background'
 Require $mainFrame 'm_contextAttributeBars\.UpdateMetrics\(\)' 'context bars receive centralized DPI/font update'
+Require $mainFrame 'm_status\.SetFont\(UiMetrics::DialogFont\(\)\)' 'status bar receives the dialog font during initialization and DPI changes'
+Require $mainFrame 'StatusBarThemeProc[\s\S]{0,1800}WM_GETFONT' 'custom status painting selects the control font before drawing text'
 
 Write-Host 'UiMetrics and toolbar geometry contract passed.'
