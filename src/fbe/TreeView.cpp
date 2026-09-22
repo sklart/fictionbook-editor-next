@@ -107,9 +107,40 @@ CTreeItem CTreeView::LocatePosition(MSHTML::IHTMLElement *p) {
   if (GetCount()==0 || !p)
     return ret; // no items at all
 
+	// sourceIndex is stable for the current MSHTML document.  Walk only the
+	// selection's ancestors, rather than asking every tree item contains().
+	try {
+		for (MSHTML::IHTMLElementPtr current(p); current; current = current->parentElement) {
+			const std::map<long, HTREEITEM>::const_iterator found = m_source_index.find(current->sourceIndex);
+			if (found != m_source_index.end()) {
+				++m_tree_index_lookup_count;
+				return CTreeItem(found->second, this);
+			}
+		}
+	}
+	catch (_com_error&) {}
+
+	++m_tree_linear_fallback_count;
   SearchUnder(ret,ret,p);
 
   return ret;
+}
+
+void CTreeView::IndexTreeItem(CTreeItem item)
+{
+	for (CTreeItem current(item); !current.IsNull(); current = current.GetNextSibling())
+	{
+		MSHTML::IHTMLElementPtr element(reinterpret_cast<MSHTML::IHTMLElement*>(current.GetData()));
+		if (element && element->sourceIndex >= 0)
+			m_source_index[element->sourceIndex] = current;
+		if (current.HasChildren()) IndexTreeItem(current.GetChild());
+	}
+}
+
+void CTreeView::RebuildSourceIndex()
+{
+	m_source_index.clear();
+	if (GetCount()) IndexTreeItem(CTreeItem(TVI_ROOT, this).GetChild());
 }
 
 void  CTreeView::HighlightItemAtPos(MSHTML::IHTMLElement *p) {
@@ -280,6 +311,7 @@ void  CTreeView::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& view) {
 
   TreeNode  *root=GetDocTree(view);
   if (!root) {
+		m_source_index.clear();
     SetRedraw(FALSE);
     DeleteAllItems();
     SetRedraw(TRUE);
@@ -290,6 +322,7 @@ void  CTreeView::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& view) {
   if (fDisableRedraw)
     SetRedraw(TRUE);
   delete root;
+	RebuildSourceIndex();
 }
 
 void CTreeView::UpdateAll()
@@ -358,6 +391,7 @@ void  CTreeView::UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHT
   CompareTreesAndSet(nn.child,ii,fDisableRedraw);
   if (fDisableRedraw)
     SetRedraw(TRUE);
+	RebuildSourceIndex();
 
  /* if((bool)selected_elem)
   {

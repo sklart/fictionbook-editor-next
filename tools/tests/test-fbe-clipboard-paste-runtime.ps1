@@ -22,14 +22,14 @@ try {
     try {
         $env:FBE_NEXT_TEST_MODE = '1'
         $env:FBE_NEXT_TEST_SCENARIO = 'visual-dom-normalizer'
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -WindowStyle Hidden -PassThru
+        $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WindowStyle Hidden -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE clipboard paste runtime timed out.' }
         if($process.ExitCode -ne 0) { throw "FBE clipboard paste runtime exited $($process.ExitCode)." }
     }
     finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
     $rows = Import-Csv -LiteralPath $report -Delimiter "`t"
     $paste = @($rows | Where-Object { $_.case -eq 'paste-normal' })
-    if($paste.Count -ne 1 -or $paste[0].result -ne 'pass' -or $paste[0].nbsp -ne '1' -or $paste[0].exact_paragraphs -ne '1') {
+    if($paste.Count -ne 1 -or $paste[0].result -ne 'pass' -or $paste[0].nbsp -ne '1' -or $paste[0].exact_paragraphs -ne '1' -or $paste[0].scope_isolated -ne '1') {
         throw "Production clipboard paste did not preserve one normalized NBSP insertion: $($paste | ConvertTo-Json -Compress)"
     }
 }

@@ -66,8 +66,27 @@
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
+static const UINT RECOVERY_TYPING_DEBOUNCE_MS = 3 * 1000;
 static SourceEditorConfig BuildSourceEditorConfig();
 typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
+
+namespace
+{
+struct RecoveryDiagnostics
+{
+	ULONGLONG attempts = 0, skippedClean = 0, deferredTyping = 0, written = 0;
+	void Report()
+	{
+		const ULONGLONG total = attempts + skippedClean + deferredTyping;
+		if (!StartupTrace::Enabled() || total == 0 || total % 64 != 0) return;
+		CString message;
+		message.Format(L"recovery-attempts=%llu; recovery-skipped-clean=%llu; recovery-deferred-typing=%llu; recovery-written=%llu", attempts, skippedClean, deferredTyping, written);
+		StartupTrace::Event(L"performance", L"P430", message);
+	}
+};
+
+RecoveryDiagnostics g_recoveryDiagnostics;
+}
 
 
 namespace
@@ -2880,6 +2899,7 @@ LRESULT CMainFrame::OnDescriptionFormChanged(UINT, WPARAM, LPARAM, BOOL&)
 	// The view has observed an actual editable-form mutation.  Keep title and
 	// save state event-driven instead of polling IHTMLInputTextElement::value.
 	m_need_title_update = true;
+	MarkRecoveryDirty();
 	InvalidateUi(UiDirtyDocument | UiDirtyToolbar | UiDirtyStatus);
 	return 0;
 }
@@ -2974,6 +2994,15 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 
 bool CMainFrame::SaveRecoveryNow()
 {
+	// Forced paths (shutdown and explicit runtime recovery) must remain
+	// immediate, but never copy a complete Scintilla buffer for a clean file.
+	if (!DocChanged())
+	{
+		++g_recoveryDiagnostics.skippedClean;
+		g_recoveryDiagnostics.Report();
+		return true;
+	}
+	++g_recoveryDiagnostics.attempts;
 	std::vector<char> sourceText;
 	const bool sourceActive = IsSourceActive();
 	if (sourceActive)
@@ -2984,7 +3013,40 @@ bool CMainFrame::SaveRecoveryNow()
 	}
 	FbeRecovery::SnapshotRequest request; request.documentChanged = DocChanged(); request.sourceActive = sourceActive; request.sourceXmlInvalid = m_bad_xml;
 	request.sourceText = sourceText.empty() ? NULL : sourceText.data(); request.sourceTextLength = sourceText.empty() ? 0 : sourceText.size() - 1; request.location = m_document_session.Location();
-	return m_doc && m_recovery.Save(*m_doc, request);
+	const bool saved = m_doc && m_recovery.Save(*m_doc, request);
+	if (saved)
+	{
+		m_recovery_saved_generation = m_recovery_generation;
+		++g_recoveryDiagnostics.written;
+	}
+	g_recoveryDiagnostics.Report();
+	return saved;
+}
+
+void CMainFrame::MarkRecoveryDirty()
+{
+	++m_recovery_generation;
+	m_recovery_last_edit_tick = ::GetTickCount();
+}
+
+bool CMainFrame::TryAutoRecovery()
+{
+	if (!DocChanged())
+	{
+		++g_recoveryDiagnostics.skippedClean;
+		g_recoveryDiagnostics.Report();
+		return true;
+	}
+	if (m_recovery_generation == m_recovery_saved_generation)
+		return true;
+	const DWORD sinceEdit = ::GetTickCount() - m_recovery_last_edit_tick;
+	if (m_recovery_last_edit_tick != 0 && sinceEdit < RECOVERY_TYPING_DEBOUNCE_MS)
+	{
+		++g_recoveryDiagnostics.deferredTyping;
+		g_recoveryDiagnostics.Report();
+		return true;
+	}
+	return SaveRecoveryNow();
 }
 void CMainFrame::TryRestoreRecovery()
 {
@@ -3176,7 +3238,7 @@ LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 		return 0;
 	}
 
-	SaveRecoveryNow();
+	TryAutoRecovery();
 
 
 	return 0;

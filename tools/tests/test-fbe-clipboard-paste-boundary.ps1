@@ -34,8 +34,11 @@ $paste = $view.Substring($open + 1, $end - $open - 1)
 foreach($forbidden in @('GetClipboardData', 'SetClipboardData', 'GlobalLock', 'GlobalAlloc', 'GetTempPath', 'GetTempFileName', 'CImage')) {
     if($paste.Contains($forbidden)) { throw "OnPaste retains clipboard preparation: $forbidden" }
 }
-foreach($required in @('FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Paste")', 'PasteEnableScope pasteEnabled(m_enable_paste)', 'pasteEnabled.Close()', 'ClipboardPastePreparer::Prepare', 'IDM_PASTE', 'Normalize(Document()->body)', 'undo.Close()')) {
+foreach($required in @('FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Paste")', 'PasteEnableScope pasteEnabled(m_enable_paste)', 'pasteEnabled.Close()', 'ClipboardPastePreparer::Prepare', 'IDM_PASTE', 'NormalizeScope(ResolveNormalizationScope())', 'undo.Close()')) {
     if(-not $paste.Contains($required)) { throw "OnPaste lost editor orchestration: $required" }
+}
+foreach($required in @('ResolveNormalizationScope', 'IsNormalizationOwner', 'normalization-full', 'normalization-scoped', 'RemoveUnk(scopeNode,Document())', 'MergeEqualHTMLElements(scopeNode, Document())', 'FbeVisualDom::NormalizeStructure(Document(), scopeNode)', 'FixupLinks(scopeNode)')) {
+    if(-not $view.Contains($required)) { throw "Scoped paste normalization is missing: $required" }
 }
 if($view.Contains('RemovePreparedBitmap')) { throw 'CFBEView retains manual temporary bitmap cleanup.' }
 Write-Host 'Clipboard paste boundary passed.'

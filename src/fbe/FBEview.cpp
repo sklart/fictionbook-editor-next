@@ -1608,40 +1608,86 @@ MSHTML::IHTMLElementPtr	  CFBEView::SelectionsVAlignB(_bstr_t& valign) {
   return MSHTML::IHTMLElementPtr();
 }
 
+namespace
+{
+struct NormalizationDiagnostics
+{
+	ULONGLONG full = 0;
+	ULONGLONG scoped = 0;
+	void Record(bool isFull)
+	{
+		isFull ? ++full : ++scoped;
+		const ULONGLONG total = full + scoped;
+		if (StartupTrace::Enabled() && total % 128 == 0)
+		{
+			CString message;
+			message.Format(L"normalization-full=%llu; normalization-scoped=%llu", full, scoped);
+			StartupTrace::Event(L"performance", L"P420", message);
+		}
+	}
+};
+
+NormalizationDiagnostics g_normalizationDiagnostics;
+
+bool IsNormalizationOwner(const MSHTML::IHTMLElementPtr& element)
+{
+	if (!element || U::scmp(element->tagName, L"DIV") != 0) return false;
+	const _bstr_t className(element->className);
+	return U::scmp(className, L"section") == 0 || U::scmp(className, L"annotation") == 0 ||
+		U::scmp(className, L"history") == 0 || U::scmp(className, L"title") == 0 ||
+		U::scmp(className, L"epigraph") == 0 || U::scmp(className, L"cite") == 0 ||
+		U::scmp(className, L"stanza") == 0 || U::scmp(className, L"poem") == 0 ||
+		U::scmp(className, L"body") == 0;
+}
+}
+
+MSHTML::IHTMLDOMNodePtr CFBEView::ResolveNormalizationScope()
+{
+	try
+	{
+		for (MSHTML::IHTMLElementPtr current(SelectionContainer()); current; current = current->parentElement)
+			if (IsNormalizationOwner(current)) return MSHTML::IHTMLDOMNodePtr(current);
+	}
+	catch (_com_error&) {}
+	return MSHTML::IHTMLDOMNodePtr(Document() ? Document()->body : NULL);
+}
+
+void CFBEView::NormalizeScope(MSHTML::IHTMLDOMNodePtr dom)
+{
+	Normalize(dom);
+}
+
 void  CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom) {
   try {
-	//MSHTML::IHTMLElementCollectionPtr col = dom->childNodes;
-	MSHTML::IHTMLDOMNodePtr el = dom->firstChild;
-	bool found = false;
-
-	// Locate the document body before normalizing its children.
-	while(el)
+	MSHTML::IHTMLDOMNodePtr el(dom);
+	MSHTML::IHTMLElementPtr scope(el);
+	if (!scope || (!IsNormalizationOwner(scope) && U::scmp(scope->id, L"fbw_body") != 0))
 	{
-		MSHTML::IHTMLElementPtr hel(el);
-
-		if(U::scmp(hel->id, L"fbw_body") == 0)
+		// Legacy callers pass document.body, whose child is fbw_body.
+		el = dom ? dom->firstChild : MSHTML::IHTMLDOMNodePtr();
+		while (el)
 		{
-			found = true;
-			break;
+			MSHTML::IHTMLElementPtr candidate(el);
+			if (candidate && U::scmp(candidate->id, L"fbw_body") == 0) break;
+			el = el->nextSibling;
 		}
-		el = el->nextSibling;
+		scope = MSHTML::IHTMLElementPtr(el);
 	}
-
-	if(!found)
-	{
-		return;
-	}
+	if (!scope) return;
+	MSHTML::IHTMLDOMNodePtr scopeNode(scope);
+	const bool fullNormalization = U::scmp(scope->id, L"fbw_body") == 0;
+	g_normalizationDiagnostics.Record(fullNormalization);
 
     // wrap in an undo unit
     m_mk_srv->BeginUndoUnit(L"Normalize");
 
     // remove unsupported elements
-	RemoveUnk(el,Document());
+	RemoveUnk(scopeNode,Document());
 
-	MergeEqualHTMLElements(el, Document());
-	FbeVisualDom::NormalizeStructure(Document(), el);
+	MergeEqualHTMLElements(scopeNode, Document());
+	FbeVisualDom::NormalizeStructure(Document(), scopeNode);
     // fixup links
-    FixupLinks(el);
+	FixupLinks(scopeNode);
 
     m_mk_srv->EndUndoUnit();
   }
@@ -1671,7 +1717,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
 		IOleCommandTargetPtr(m_browser)->Exec(&CGID_MSHTML, IDM_PASTE, 0, NULL, NULL);
 		pasteEnabled.Close();
 		if(m_normalize)
-			Normalize(Document()->body);
+			NormalizeScope(ResolveNormalizationScope());
 		undo.Close();
 	}
 	catch(_com_error& err)

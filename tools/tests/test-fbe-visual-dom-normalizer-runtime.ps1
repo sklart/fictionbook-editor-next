@@ -15,7 +15,7 @@ try {
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
     $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
     $invokeNormalizer = {
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
+        $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE timed out while normalizing the live DOM.' }
         if($process.ExitCode -ne 0) { throw "FBE normalizer scenario failed: exit $($process.ExitCode)." }
     }
@@ -28,12 +28,12 @@ try {
     if(@($row).Count -ne 6 -or @($row | Where-Object { $_.result -ne 'pass' }).Count -ne 0) { throw "Visual DOM normalizer runtime contract failed: $($row | ConvertTo-Json -Compress)" }
     $byCase = @{}; foreach($entry in $row) { $byCase[$entry.case] = $entry }
     foreach($name in 'single-br', 'double-br', 'empty-p', 'nbsp-p', 'formatted-br') { if(-not $byCase.ContainsKey($name)) { throw "Missing normalizer case: $name" } }
-	if(-not $byCase.ContainsKey('paste-normal') -or $byCase['paste-normal'].result -ne 'pass' -or $byCase['paste-normal'].nbsp -ne '1') { throw 'Ordinary Paste did not preserve the unique NBSP and line-break payload through Normalize.' }
+	if(-not $byCase.ContainsKey('paste-normal') -or $byCase['paste-normal'].result -ne 'pass' -or $byCase['paste-normal'].nbsp -ne '1' -or $byCase['paste-normal'].scope_isolated -ne '1') { throw 'Ordinary Paste did not preserve its local scope and NBSP payload through Normalize.' }
     if([int]$byCase['single-br'].paragraphs -ne 2 -or $byCase['single-br'].exact_paragraphs -ne '1') { throw 'A single BR did not become two ordered paragraphs.' }
     if([int]$byCase['double-br'].paragraphs -ne 3 -or $byCase['double-br'].empty_line -ne '1') { throw 'Two BRs did not preserve the intermediate empty line.' }
     if([int]$byCase['empty-p'].paragraphs -ne 3 -or $byCase['empty-p'].exact_paragraphs -ne '1') { throw 'An explicit empty paragraph was lost or reordered.' }
     if($byCase['nbsp-p'].nbsp -ne '1' -or $byCase['formatted-br'].formatting -ne '1') { throw 'NBSP or inline formatting around BR was not preserved.' }
-    if(@($row | Where-Object { $_.empty_divs -ne '0' -or $_.brs -ne '0' }).Count -ne 0) { throw 'Normalizer left disposable DIVs or BRs in the resulting DOM.' }
+    if(@($row | Where-Object { $_.case -ne 'paste-normal' -and ($_.empty_divs -ne '0' -or $_.brs -ne '0') }).Count -ne 0) { throw 'Normalizer left disposable DIVs or BRs in the resulting DOM.' }
     $saved = New-Object -ComObject Msxml2.DOMDocument.6.0
     if(-not $saved.load($fixture)) { throw "Saved normalization fixture is not XML: $($saved.parseError.reason)" }
     if($saved.selectNodes('//*[local-name()="table"]').length -ne 0) { throw 'Normalizer runtime fixture unexpectedly used a table.' }

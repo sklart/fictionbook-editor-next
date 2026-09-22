@@ -740,6 +740,8 @@ public:
   MSHTML::IHTMLElementPtr   SelectionsVAlignB(_bstr_t& valign);
 
   void			    Normalize(MSHTML::IHTMLDOMNodePtr dom);
+  MSHTML::IHTMLDOMNodePtr ResolveNormalizationScope();
+  void			    NormalizeScope(MSHTML::IHTMLDOMNodePtr dom);
   MSHTML::IHTMLDOMNodePtr   GetChangedNode();
   void			    ImgSetURL(IDispatch *elem,const CString& url);
 
@@ -803,7 +805,7 @@ public:
 	void __stdcall OnDrop(IDispatch*)
 	{
 		if(m_normalize)
-			Normalize(Document()->body);
+			NormalizeScope(ResolveNormalizationScope());
 	}
 
    VARIANT_BOOL __stdcall OnDragDrop(IDispatch*)

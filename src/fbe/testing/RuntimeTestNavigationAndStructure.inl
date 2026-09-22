@@ -1,6 +1,6 @@
 	if (IsFbeTestScenario(L"visual-dom-normalizer"))
 	{
-		CStringA header("case\tparagraphs\tempty_divs\tbrs\texact_paragraphs\tempty_line\tnbsp\tformatting\tresult\r\n");
+		CStringA header("case\tparagraphs\tempty_divs\tbrs\texact_paragraphs\tempty_line\tnbsp\tformatting\tscope_isolated\tresult\r\n");
 		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
@@ -10,6 +10,9 @@
 			output.Close(); ::PostQuitMessage(1); return 0;
 		}
 		const CString originalHtml((const wchar_t*)editable->innerHTML);
+		// The adjacent section deliberately contains a BR. A body-wide paste
+		// normalization would rewrite it; a scoped paste must not.
+		editable->innerHTML = L"<DIV class='section'><P>Before paste</P></DIV><DIV class='section'><P>Adjacent<BR>untouched</P></DIV>";
 		const CString pastePayload(L"paste-alpha\x00a0bold\r\npaste-beta\r\n\r\npaste-gamma");
 		bool pasteNormalized = false;
 		CComPtr<IDataObject> originalClipboard;
@@ -30,11 +33,17 @@
 				const CString pastedHtml(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
 				const CString pastedText(editable ? static_cast<LPCWSTR>(editable->innerText) : L"");
 				const int alpha = pastedText.Find(L"paste-alpha"), beta = pastedText.Find(L"paste-beta"), gamma = pastedText.Find(L"paste-gamma");
-				pasteNormalized = alpha >= 0 && beta > alpha && gamma > beta && pastedHtml.Find(L"<BR") < 0 && (pastedHtml.Find(L"&nbsp;") >= 0 || pastedHtml.Find(L"\x00a0") >= 0);
+				MSHTML::IHTMLElementCollectionPtr sections(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"DIV"));
+				MSHTML::IHTMLElementPtr pastedSection(sections && sections->length ? sections->item(0L) : MSHTML::IHTMLElementPtr());
+				MSHTML::IHTMLElementPtr adjacent(sections && sections->length > 1 ? sections->item(1L) : MSHTML::IHTMLElementPtr());
+				CString pastedSectionHtml(pastedSection ? static_cast<LPCWSTR>(pastedSection->innerHTML) : L""); pastedSectionHtml.MakeUpper();
+				CString adjacentHtml(adjacent ? static_cast<LPCWSTR>(adjacent->innerHTML) : L""); adjacentHtml.MakeUpper();
+				const bool scopeIsolated = adjacent && adjacentHtml.Find(L"<BR") >= 0 && pastedSection && pastedSectionHtml.Find(L"<BR") < 0;
+				pasteNormalized = alpha >= 0 && beta > alpha && gamma > beta && (pastedHtml.Find(L"&nbsp;") >= 0 || pastedHtml.Find(L"\x00a0") >= 0) && scopeIsolated;
 			}
 			::OleSetClipboard(originalClipboard);
 		}
-		CStringA pasteRow; pasteRow.Format("paste-normal\t0\t0\t0\t%d\t%d\t%d\t%d\t%s\r\n", pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, 1, pasteNormalized ? "pass" : "fail");
+		CStringA pasteRow; pasteRow.Format("paste-normal\t0\t0\t0\t%d\t%d\t%d\t%d\t%d\t%s\r\n", pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, pasteNormalized ? 1 : 0, 1, pasteNormalized ? 1 : 0, pasteNormalized ? "pass" : "fail");
 		output.Write(pasteRow, static_cast<DWORD>(pasteRow.GetLength()), &written);
 		editable = document->all->item(L"fbw_body");
 		if (!editable) { output.Close(); ::PostQuitMessage(1); return 0; }
@@ -81,7 +90,7 @@
 				(wcscmp(testCase.name, L"double-br") || emptyLine) && nbsp && formatting;
 			allPassed = allPassed && passed;
 			CStringA row;
-			row.Format("%S\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%s\r\n", testCase.name, countElements(L"P"), emptyDivs, countElements(L"BR"), exactParagraphs, emptyLine, nbsp, formatting, passed ? "pass" : "fail");
+			row.Format("%S\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t1\t%s\r\n", testCase.name, countElements(L"P"), emptyDivs, countElements(L"BR"), exactParagraphs, emptyLine, nbsp, formatting, passed ? "pass" : "fail");
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 		}
 		// Restore the fixture before exercising the ordinary production save path.

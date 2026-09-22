@@ -2,6 +2,7 @@
 #define	LTREEVIEW_H
 
 #include "ElementDescMnr.h"
+#include <map>
 
 typedef CWinTraits<WS_CHILD|WS_VISIBLE|
 		   TVS_HASBUTTONS|TVS_LINESATROOT|TVS_SHOWSELALWAYS,0>
@@ -17,6 +18,9 @@ protected:
   HIMAGELIST			m_himlDrag;
   CTreeItem				m_move_from;
   CTreeItem				m_move_to;
+  std::map<long, HTREEITEM>	m_source_index;
+  ULONGLONG				m_tree_index_lookup_count;
+  ULONGLONG				m_tree_linear_fallback_count;
  // HTREEITEM				m_dragdrop_inserted_item;  
   int					m_drop_item_nimage;
 
@@ -36,7 +40,7 @@ public:
 public:
   DECLARE_WND_SUPERCLASS(_T("Tree"), CTreeViewCtrlEx::GetWndClassName())
 
-  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
+  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
     
   BOOL PreTranslateMessage(MSG* pMsg);
   
@@ -131,6 +135,8 @@ public:
  
 protected:
   CTreeItem LocatePosition(MSHTML::IHTMLElement *p);
+  void RebuildSourceIndex();
+  void IndexTreeItem(CTreeItem item);
   bool IsDropChangePosition(UINT flags, HTREEITEM	hitem);
   bool IsParent(CTreeItem	parent, CTreeItem	child);
   bool IsSibling(CTreeItem	item, CTreeItem	sibling);
