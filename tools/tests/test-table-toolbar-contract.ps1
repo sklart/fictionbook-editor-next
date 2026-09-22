@@ -90,29 +90,36 @@ foreach ($required in @('TBIF_IMAGE', 'm_table_toolbar_image_indices[index]', 'D
     if (-not $cpp.Contains($required)) { throw "Missing table toolbar persistence contract: $required" }
 }
 
-$bitmapPaths = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe\res') -Filter 'table_toolbar_*.bmp'
-if ($bitmapPaths.Count -ne 8) { throw "Expected 8 table toolbar bitmaps, found $($bitmapPaths.Count)." }
-$disabledBitmapPaths = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe\res') -Filter 'table_toolbar_*_disabled.bmp'
+$resourceDirectory = Join-Path $repoRoot 'src\fbe\res'
+$toolbarBitmapPaths = Get-ChildItem -LiteralPath $resourceDirectory -Filter 'table_toolbar_*.bmp'
+$menuBitmapPaths = @('insert_row_above.bmp', 'insert_row_below.bmp', 'delete_row.bmp', 'insert_column_left.bmp',
+	'insert_column_right.bmp', 'delete_column.bmp', 'make_header_cells.bmp', 'make_normal_cells.bmp') |
+	ForEach-Object { Get-Item -LiteralPath (Join-Path $resourceDirectory $_) }
+if ($toolbarBitmapPaths.Count -ne 8) { throw "Expected 8 table toolbar bitmaps, found $($toolbarBitmapPaths.Count)." }
+if ($menuBitmapPaths.Count -ne 8) { throw "Expected 8 table menu bitmaps, found $($menuBitmapPaths.Count)." }
+$disabledBitmapPaths = Get-ChildItem -LiteralPath $resourceDirectory -Filter 'table_toolbar_*_disabled.bmp'
 if ($disabledBitmapPaths.Count -ne 0) { throw 'Disabled table toolbar bitmaps must not be present; disabled rendering is generated programmatically.' }
 $operationColors = @{
-	'table_toolbar_insert_row_above.bmp' = @(45, 170, 100)
-	'table_toolbar_insert_row_below.bmp' = @(45, 170, 100)
-	'table_toolbar_delete_row.bmp' = @(205, 70, 70)
-	'table_toolbar_insert_column_left.bmp' = @(45, 170, 100)
-	'table_toolbar_insert_column_right.bmp' = @(45, 170, 100)
-	'table_toolbar_delete_column.bmp' = @(205, 70, 70)
-	'table_toolbar_make_header_cells.bmp' = @(65, 130, 190)
-	'table_toolbar_make_normal_cells.bmp' = @(110, 165, 195)
+	'insert_row_above.bmp' = @(45, 170, 100)
+	'insert_row_below.bmp' = @(45, 170, 100)
+	'delete_row.bmp' = @(205, 70, 70)
+	'insert_column_left.bmp' = @(45, 170, 100)
+	'insert_column_right.bmp' = @(45, 170, 100)
+	'delete_column.bmp' = @(205, 70, 70)
+	'make_header_cells.bmp' = @(65, 130, 190)
+	'make_normal_cells.bmp' = @(110, 165, 195)
 }
 $neutralColors = @('220,225,230', '195,205,215')
 $gridColor = '70,78,88'
-foreach ($path in $bitmapPaths) {
+
+function Assert-TableBitmapSet([System.IO.FileInfo[]]$paths, [int]$expectedSize, [string]$setName) {
+foreach ($path in $paths) {
     $bytes = [IO.File]::ReadAllBytes($path.FullName)
     if ($bytes.Length -lt 54 -or $bytes[0] -ne [byte][char]'B' -or $bytes[1] -ne [byte][char]'M') { throw "$($path.Name) is not a valid BMP." }
     $width = [BitConverter]::ToInt32($bytes, 18)
     $signedHeight = [BitConverter]::ToInt32($bytes, 22)
     $height = [Math]::Abs($signedHeight)
-    if ($width -ne 24 -or $height -ne 24) { throw "$($path.Name) must be 24x24, got ${width}x${height}." }
+    if ($width -ne $expectedSize -or $height -ne $expectedSize) { throw "$($path.Name) must be ${expectedSize}x${expectedSize}, got ${width}x${height}." }
     $bitCount = [BitConverter]::ToInt16($bytes, 28)
     if ($bitCount -ne 24) { throw "$($path.Name) must be a 24-bpp BMP, got $bitCount bpp." }
 
@@ -125,7 +132,8 @@ foreach ($path in $bitmapPaths) {
 	$gridXs = [System.Collections.Generic.HashSet[int]]::new()
 	$gridYs = [System.Collections.Generic.HashSet[int]]::new()
 	$operationPixels = 0
-	$operation = ($operationColors[$path.Name] -join ',')
+	$operationName = $path.Name -replace '^table_toolbar_'
+	$operation = ($operationColors[$operationName] -join ',')
 	for ($y = 0; $y -lt $height; $y++) {
         $rowStart = $pixelOffset + ($y * $rowStride)
         for ($x = 0; $x -lt $width; $x++) {
@@ -138,10 +146,13 @@ foreach ($path in $bitmapPaths) {
 			if ($color -eq $operation) { ++$operationPixels }
         }
     }
-	if ($keyPixels -lt 100 -or $opaquePixels -lt 100) { throw "$($path.Name) must use magenta only as a surrounding transparency key, not as its glyph." }
-	if ($neutralPixels -lt 30) { throw "$($path.Name) must retain opaque neutral table cells after alpha conversion." }
+	if ($keyPixels -lt ($expectedSize * 3) -or $opaquePixels -lt ($expectedSize * 3)) { throw "$setName $($path.Name) must use magenta only as a surrounding transparency key, not as its glyph." }
+	if ($neutralPixels -lt 18) { throw "$setName $($path.Name) must retain opaque neutral table cells after alpha conversion." }
 	if ($gridXs.Count -lt 4 -or $gridYs.Count -lt 4) { throw "$($path.Name) is not a full table grid; a colored strip is insufficient." }
 	if ($operationPixels -lt 8) { throw "$($path.Name) must visibly distinguish its table operation with the assigned colour." }
 }
+}
+Assert-TableBitmapSet $toolbarBitmapPaths 24 'toolbar'
+Assert-TableBitmapSet $menuBitmapPaths 16 'menu'
 
 Write-Host 'Table toolbar native bitmap and UpdateUI contract passed.'

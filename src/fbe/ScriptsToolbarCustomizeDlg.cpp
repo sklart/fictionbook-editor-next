@@ -365,7 +365,9 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	const bool selected = (item.itemState & ODS_SELECTED) != 0;
 	const bool disabled = (item.itemState & ODS_DISABLED) != 0 || ::IsWindowEnabled(item.hwndItem) == FALSE;
 	const bool themed = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
-	const COLORREF background = themed ? (selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::WindowColor()) :
+	// Keep owner-drawn rows on the same ControlColor surface as the listbox's
+	// unused area, so a short list does not split into two Dark backgrounds.
+	const COLORREF background = themed ? (selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor()) :
 		::GetSysColor(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW);
 	const COLORREF textColor = themed ? (disabled ? ThemeManager::DisabledTextColor() :
 		(selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor())) :
